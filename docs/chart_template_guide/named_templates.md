@@ -14,9 +14,9 @@ So far, we've used one file, and that one file has contained a single template. 
 
 Before we get to the nuts-and-bolts of writing those templates, there is file naming convention that deserves mention:
 
-* Most files in `templates/` are treated as if they contain Kubernetes manifests
-* The `NOTES.txt` is one exception
-* But files whose name begins with an underscore (`_`) are assumed to _not_ have a manifest inside. These files are not rendered to Kubernetes object definitions, but are available everywhere within other chart templates for use.
+- Most files in `templates/` are treated as if they contain Kubernetes manifests
+- The `NOTES.txt` is one exception
+- But files whose name begins with an underscore (`_`) are assumed to _not_ have a manifest inside. These files are not rendered to Kubernetes object definitions, but are available everywhere within other chart templates for use.
 
 These files are used to store partials and helpers. In fact, when we first created `mychart`, we saw a file called `_helpers.tpl`. That file is the default location for template partials.
 
@@ -139,7 +139,7 @@ metadata:
 
 What happened to the name and version? They weren't in the scope for our defined template. When a named template (created with `define`) is rendered, it will receive the scope passed in by the `template` call. In our example, we included the template like this:
 
-```yaml
+```gotpl
 {{- template "mychart.labels" }}
 ```
 
@@ -223,7 +223,7 @@ Note that the indentation on `app_version` is wrong in both places. Why? Because
 
 To work around this case, Helm provides an alternative to `template` that will import the contents of a template into the present pipeline where it can be passed along to other functions in the pipeline.
 
-Here's the example above, corrected to use `indent` to indent the `mychart_app` template correctly:
+Here's the example above, corrected to use `nindent` to indent the `mychart_app` template correctly:
 
 ```yaml
 apiVersion: v1
@@ -231,13 +231,13 @@ kind: ConfigMap
 metadata:
   name: {{ .Release.Name }}-configmap
   labels:
-{{ include "mychart.app" . | indent 4 }}
+    {{- include "mychart.app" . | nindent 4 }}
 data:
   myvalue: "Hello World"
   {{- range $key, $val := .Values.favorite }}
   {{ $key }}: {{ $val | quote }}
   {{- end }}
-{{ include "mychart.app" . | indent 2 }}
+  {{- include "mychart.app" . | nindent 2 }}
 ```
 
 Now the produced YAML is correctly indented for each section:
