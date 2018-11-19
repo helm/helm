@@ -259,27 +259,27 @@ Tags - The tags field is a YAML list of labels to associate with this chart.
 In the top parent's values, all charts with tags can be enabled or disabled by
 specifying the tag and a boolean value.
 
-````
+```yaml
 # parentchart/requirements.yaml
 dependencies:
-      - name: subchart1
-        repository: http://localhost:10191
-        version: 0.1.0
-        condition: subchart1.enabled,global.subchart1.enabled
-        tags:
-          - front-end
-          - subchart1
+  - name: subchart1
+    repository: http://localhost:10191
+    version: 0.1.0
+    condition: subchart1.enabled,global.subchart1.enabled
+    tags:
+      - front-end
+      - subchart1
 
-      - name: subchart2
-        repository: http://localhost:10191
-        version: 0.1.0
-        condition: subchart2.enabled,global.subchart2.enabled
-        tags:
-          - back-end
+  - name: subchart2
+    repository: http://localhost:10191
+    version: 0.1.0
+    condition: subchart2.enabled,global.subchart2.enabled
+    tags:
+      - back-end
           - subchart2
 
-````
-````
+```
+```yaml
 # parentchart/values.yaml
 
 subchart1:
