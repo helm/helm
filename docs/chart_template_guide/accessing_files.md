@@ -6,8 +6,8 @@ Helm provides access to files through the `.Files` object. Before we get going w
 
 - It is okay to add extra files to your Helm chart. These files will be bundled and sent to Tiller. Be careful, though. Charts must be smaller than 1M because of the storage limitations of Kubernetes objects.
 - Some files cannot be accessed through the `.Files` object, usually for security reasons.
-	- Files in `templates/` cannot be accessed.
-	- Files excluded using `.helmignore` cannot be accessed.
+  - Files in `templates/` cannot be accessed.
+  - Files excluded using `.helmignore` cannot be accessed.
 - Charts do not preserve UNIX mode information, so file-level permissions will have no impact on the availability of a file when it comes to the `.Files` object.
 
 <!-- (see https://github.com/jonschlinkert/markdown-toc) -->
@@ -90,6 +90,7 @@ use. They are all accessible with the same names as in the Go package, but
 with a lowercase first letter. For example, `Base` becomes `base`, etc.
 
 The imported functions are:
+
 - Base
 - Dir
 - Ext
@@ -107,8 +108,8 @@ the returned object.
 
 For example, imagine the directory structure:
 
-```
-foo/: 
+```txt
+foo/:
   foo.txt foo.yaml
 
 bar/:
@@ -116,7 +117,6 @@ bar/:
 ```
 
 You have multiple options with Globs:
-
 
 ```yaml
 {{ $root := . }}
@@ -153,7 +153,7 @@ kind: ConfigMap
 metadata:
   name: conf
 data:
-{{ (.Files.Glob "foo/*").AsConfig | indent 2 }}
+  {{- (.Files.Glob "foo/*").AsConfig | nindent 2 }}
 ---
 apiVersion: v1
 kind: Secret
@@ -161,7 +161,7 @@ metadata:
   name: very-secret
 type: Opaque
 data:
-{{ (.Files.Glob "bar/*").AsSecrets | indent 2 }}
+  {{- (.Files.Glob "bar/*").AsSecrets | nindent 2 }}
 ```
 
 ## Encoding
@@ -207,4 +207,3 @@ data:
 Currently, there is no way to pass files external to the chart during `helm install`. So if you are asking users to supply data, it must be loaded using `helm install -f` or `helm install --set`.
 
 This discussion wraps up our dive into the tools and techniques for writing Helm templates. In the next section we will see how you can use one special file, `templates/NOTES.txt`, to send post-installation instructions to the users of your chart.
-
