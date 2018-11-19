@@ -294,6 +294,30 @@ func TestParseSet(t *testing.T) {
 			str:    "nested[1][1]=1",
 			expect: map[string]interface{}{"nested": []interface{}{nil, []interface{}{nil, 1}}},
 		},
+		{
+			str: "name1.name2[0].foo=bar,name1.name2[1].foo=bar",
+			expect: map[string]interface{}{
+				"name1": map[string]interface{}{
+					"name2": []map[string]interface{}{{"foo": "bar"}, {"foo": "bar"}},
+				},
+			},
+		},
+		{
+			str: "name1.name2[1].foo=bar,name1.name2[0].foo=bar",
+			expect: map[string]interface{}{
+				"name1": map[string]interface{}{
+					"name2": []map[string]interface{}{{"foo": "bar"}, {"foo": "bar"}},
+				},
+			},
+		},
+		{
+			str: "name1.name2[1].foo=bar",
+			expect: map[string]interface{}{
+				"name1": map[string]interface{}{
+					"name2": []map[string]interface{}{nil, {"foo": "bar"}},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {

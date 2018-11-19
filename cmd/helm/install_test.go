@@ -61,7 +61,13 @@ func TestInstall(t *testing.T) {
 			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "virgil"}),
 			expected: "virgil",
 		},
-		// Install, values from yaml
+		{
+			name:     "install with multiple unordered list values",
+			args:     []string{"testdata/testcharts/alpine"},
+			flags:    strings.Split("--name virgil --set foo[1].bar=baz,foo[0].baz=bar", " "),
+			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "virgil"}),
+			expected: "virgil",
+		},
 		{
 			name:     "install with values",
 			args:     []string{"testdata/testcharts/alpine"},
