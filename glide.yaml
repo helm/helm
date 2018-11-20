@@ -4,7 +4,7 @@ import:
     subpackages:
       - context
   - package: github.com/spf13/cobra
-    version: c439c4fa093711d42e1b01acb1235b52004753c1
+    version: fe5e611709b0c57fa4a89136deaa8e1d4004d053
   - package: github.com/spf13/pflag
     version: ~1.0.1
   - package: github.com/Masterminds/vcs
