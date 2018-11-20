@@ -130,7 +130,7 @@ func ensureTestHome(t *testing.T, home helmpath.Home) {
 
 	repoFile := home.RepositoryFile()
 	if _, err := os.Stat(repoFile); err != nil {
-		rf := repo.NewRepoFile()
+		rf := repo.NewFile()
 		rf.Add(&repo.Entry{
 			Name:  "charts",
 			URL:   "http://example.com/foo",
@@ -140,7 +140,7 @@ func ensureTestHome(t *testing.T, home helmpath.Home) {
 			t.Fatal(err)
 		}
 	}
-	if r, err := repo.LoadRepositoriesFile(repoFile); err == repo.ErrRepoOutOfDate {
+	if r, err := repo.LoadFile(repoFile); err == repo.ErrRepoOutOfDate {
 		if err := r.WriteFile(repoFile, 0644); err != nil {
 			t.Fatal(err)
 		}

@@ -161,7 +161,7 @@ func (s *Server) LinkIndices() error {
 
 // setTestingRepository sets up a testing repository.yaml with only the given name/URL.
 func setTestingRepository(home helmpath.Home, name, url string) error {
-	r := repo.NewRepoFile()
+	r := repo.NewFile()
 	r.Add(&repo.Entry{
 		Name:  name,
 		URL:   url,

@@ -23,8 +23,8 @@ import "strings"
 
 const testRepositoriesFile = "testdata/repositories.yaml"
 
-func TestRepoFile(t *testing.T) {
-	rf := NewRepoFile()
+func TestFile(t *testing.T) {
+	rf := NewFile()
 	rf.Add(
 		&Entry{
 			Name:  "stable",
@@ -61,8 +61,8 @@ func TestRepoFile(t *testing.T) {
 	}
 }
 
-func TestNewRepositoriesFile(t *testing.T) {
-	expects := NewRepoFile()
+func TestNewFile(t *testing.T) {
+	expects := NewFile()
 	expects.Add(
 		&Entry{
 			Name:  "stable",
@@ -76,17 +76,17 @@ func TestNewRepositoriesFile(t *testing.T) {
 		},
 	)
 
-	repofile, err := LoadRepositoriesFile(testRepositoriesFile)
+	file, err := LoadFile(testRepositoriesFile)
 	if err != nil {
 		t.Errorf("%q could not be loaded: %s", testRepositoriesFile, err)
 	}
 
-	if len(expects.Repositories) != len(repofile.Repositories) {
-		t.Fatalf("Unexpected repo data: %#v", repofile.Repositories)
+	if len(expects.Repositories) != len(file.Repositories) {
+		t.Fatalf("Unexpected repo data: %#v", file.Repositories)
 	}
 
 	for i, expect := range expects.Repositories {
-		got := repofile.Repositories[i]
+		got := file.Repositories[i]
 		if expect.Name != got.Name {
 			t.Errorf("Expected name %q, got %q", expect.Name, got.Name)
 		}
@@ -99,8 +99,8 @@ func TestNewRepositoriesFile(t *testing.T) {
 	}
 }
 
-func TestNewPreV1RepositoriesFile(t *testing.T) {
-	r, err := LoadRepositoriesFile("testdata/old-repositories.yaml")
+func TestNewPreV1File(t *testing.T) {
+	r, err := LoadFile("testdata/old-repositories.yaml")
 	if err != nil && err != ErrRepoOutOfDate {
 		t.Fatal(err)
 	}
@@ -121,7 +121,7 @@ func TestNewPreV1RepositoriesFile(t *testing.T) {
 }
 
 func TestRemoveRepository(t *testing.T) {
-	sampleRepository := NewRepoFile()
+	sampleRepository := NewFile()
 	sampleRepository.Add(
 		&Entry{
 			Name:  "stable",
@@ -148,7 +148,7 @@ func TestRemoveRepository(t *testing.T) {
 }
 
 func TestUpdateRepository(t *testing.T) {
-	sampleRepository := NewRepoFile()
+	sampleRepository := NewFile()
 	sampleRepository.Add(
 		&Entry{
 			Name:  "stable",
@@ -183,7 +183,7 @@ func TestUpdateRepository(t *testing.T) {
 }
 
 func TestWriteFile(t *testing.T) {
-	sampleRepository := NewRepoFile()
+	sampleRepository := NewFile()
 	sampleRepository.Add(
 		&Entry{
 			Name:  "stable",
@@ -197,16 +197,16 @@ func TestWriteFile(t *testing.T) {
 		},
 	)
 
-	repoFile, err := ioutil.TempFile("", "helm-repo")
+	file, err := ioutil.TempFile("", "helm-repo")
 	if err != nil {
 		t.Errorf("failed to create test-file (%v)", err)
 	}
-	defer os.Remove(repoFile.Name())
-	if err := sampleRepository.WriteFile(repoFile.Name(), 0744); err != nil {
+	defer os.Remove(file.Name())
+	if err := sampleRepository.WriteFile(file.Name(), 0744); err != nil {
 		t.Errorf("failed to write file (%v)", err)
 	}
 
-	repos, err := LoadRepositoriesFile(repoFile.Name())
+	repos, err := LoadFile(file.Name())
 	if err != nil {
 		t.Errorf("failed to load file (%v)", err)
 	}
@@ -218,7 +218,7 @@ func TestWriteFile(t *testing.T) {
 }
 
 func TestRepoNotExists(t *testing.T) {
-	_, err := LoadRepositoriesFile("/this/path/does/not/exist.yaml")
+	_, err := LoadFile("/this/path/does/not/exist.yaml")
 	if err == nil {
 		t.Errorf("expected err to be non-nil when path does not exist")
 	} else if !strings.Contains(err.Error(), "You might need to run `helm init`") {

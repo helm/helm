@@ -113,7 +113,7 @@ func ensureDefaultRepos(home helmpath.Home, out io.Writer, skipRefresh bool, url
 	repoFile := home.RepositoryFile()
 	if fi, err := os.Stat(repoFile); err != nil {
 		fmt.Fprintf(out, "Creating %s \n", repoFile)
-		f := repo.NewRepoFile()
+		f := repo.NewFile()
 		sr, err := initRepo(url, home.CacheIndex(stableRepository), out, skipRefresh, home)
 		if err != nil {
 			return err
@@ -154,7 +154,7 @@ func initRepo(url, cacheFile string, out io.Writer, skipRefresh bool, home helmp
 }
 
 func ensureRepoFileFormat(file string, out io.Writer) error {
-	r, err := repo.LoadRepositoriesFile(file)
+	r, err := repo.LoadFile(file)
 	if err == repo.ErrRepoOutOfDate {
 		fmt.Fprintln(out, "Updating repository file format...")
 		if err := r.WriteFile(file, 0644); err != nil {

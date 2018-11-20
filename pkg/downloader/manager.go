@@ -320,7 +320,7 @@ func (m *Manager) safeDeleteDep(name, dir string) error {
 
 // hasAllRepos ensures that all of the referenced deps are in the local repo cache.
 func (m *Manager) hasAllRepos(deps []*chart.Dependency) error {
-	rf, err := repo.LoadRepositoriesFile(m.HelmHome.RepositoryFile())
+	rf, err := repo.LoadFile(m.HelmHome.RepositoryFile())
 	if err != nil {
 		return err
 	}
@@ -354,7 +354,7 @@ Loop:
 
 // getRepoNames returns the repo names of the referenced deps which can be used to fetch the cahced index file.
 func (m *Manager) getRepoNames(deps []*chart.Dependency) (map[string]string, error) {
-	rf, err := repo.LoadRepositoriesFile(m.HelmHome.RepositoryFile())
+	rf, err := repo.LoadFile(m.HelmHome.RepositoryFile())
 	if err != nil {
 		return nil, err
 	}
@@ -421,7 +421,7 @@ repository, use "https://kubernetes-charts.storage.googleapis.com/" or "@stable"
 
 // UpdateRepositories updates all of the local repos to the latest.
 func (m *Manager) UpdateRepositories() error {
-	rf, err := repo.LoadRepositoriesFile(m.HelmHome.RepositoryFile())
+	rf, err := repo.LoadFile(m.HelmHome.RepositoryFile())
 	if err != nil {
 		return err
 	}
@@ -561,7 +561,7 @@ func (m *Manager) loadChartRepositories() (map[string]*repo.ChartRepository, err
 	repoyaml := m.HelmHome.RepositoryFile()
 
 	// Load repositories.yaml file
-	rf, err := repo.LoadRepositoriesFile(repoyaml)
+	rf, err := repo.LoadFile(repoyaml)
 	if err != nil {
 		return indices, errors.Wrapf(err, "failed to load %s", repoyaml)
 	}

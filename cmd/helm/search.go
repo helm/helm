@@ -141,7 +141,7 @@ func (o *searchOptions) formatSearchResults(res []*search.Result) string {
 
 func (o *searchOptions) buildIndex(out io.Writer) (*search.Index, error) {
 	// Load the repositories.yaml
-	rf, err := repo.LoadRepositoriesFile(o.helmhome.RepositoryFile())
+	rf, err := repo.LoadFile(o.helmhome.RepositoryFile())
 	if err != nil {
 		return nil, err
 	}
