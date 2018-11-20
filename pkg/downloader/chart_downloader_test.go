@@ -293,7 +293,7 @@ func TestScanReposForURL(t *testing.T) {
 	}
 
 	u := "http://example.com/alpine-0.2.0.tgz"
-	rf, err := repo.LoadRepositoriesFile(c.HelmHome.RepositoryFile())
+	rf, err := repo.LoadFile(c.HelmHome.RepositoryFile())
 	if err != nil {
 		t.Fatal(err)
 	}

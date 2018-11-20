@@ -30,30 +30,29 @@ import (
 // is fixable.
 var ErrRepoOutOfDate = errors.New("repository file is out of date")
 
-// RepoFile represents the repositories.yaml file in $HELM_HOME
-// TODO: change type name to File in Helm 3 to resolve linter warning
-type RepoFile struct { // nolint
+// File represents the repositories.yaml file in $HELM_HOME
+type File struct {
 	APIVersion   string    `json:"apiVersion"`
 	Generated    time.Time `json:"generated"`
 	Repositories []*Entry  `json:"repositories"`
 }
 
-// NewRepoFile generates an empty repositories file.
+// NewFile generates an empty repositories file.
 //
 // Generated and APIVersion are automatically set.
-func NewRepoFile() *RepoFile {
-	return &RepoFile{
+func NewFile() *File {
+	return &File{
 		APIVersion:   APIVersionV1,
 		Generated:    time.Now(),
 		Repositories: []*Entry{},
 	}
 }
 
-// LoadRepositoriesFile takes a file at the given path and returns a RepoFile object
+// LoadFile takes a file at the given path and returns a File object
 //
-// If this returns ErrRepoOutOfDate, it also returns a recovered RepoFile that
+// If this returns ErrRepoOutOfDate, it also returns a recovered File that
 // can be saved as a replacement to the out of date file.
-func LoadRepositoriesFile(path string) (*RepoFile, error) {
+func LoadFile(path string) (*File, error) {
 	b, err := ioutil.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -62,7 +61,7 @@ func LoadRepositoriesFile(path string) (*RepoFile, error) {
 		return nil, err
 	}
 
-	r := &RepoFile{}
+	r := &File{}
 	err = yaml.Unmarshal(b, r)
 	if err != nil {
 		return nil, err
@@ -74,7 +73,7 @@ func LoadRepositoriesFile(path string) (*RepoFile, error) {
 		if err = yaml.Unmarshal(b, &m); err != nil {
 			return nil, err
 		}
-		r := NewRepoFile()
+		r := NewFile()
 		for k, v := range m {
 			r.Add(&Entry{
 				Name:  k,
@@ -89,13 +88,13 @@ func LoadRepositoriesFile(path string) (*RepoFile, error) {
 }
 
 // Add adds one or more repo entries to a repo file.
-func (r *RepoFile) Add(re ...*Entry) {
+func (r *File) Add(re ...*Entry) {
 	r.Repositories = append(r.Repositories, re...)
 }
 
 // Update attempts to replace one or more repo entries in a repo file. If an
 // entry with the same name doesn't exist in the repo file it will add it.
-func (r *RepoFile) Update(re ...*Entry) {
+func (r *File) Update(re ...*Entry) {
 	for _, target := range re {
 		found := false
 		for j, repo := range r.Repositories {
@@ -112,7 +111,7 @@ func (r *RepoFile) Update(re ...*Entry) {
 }
 
 // Has returns true if the given name is already a repository name.
-func (r *RepoFile) Has(name string) bool {
+func (r *File) Has(name string) bool {
 	for _, rf := range r.Repositories {
 		if rf.Name == name {
 			return true
@@ -122,7 +121,7 @@ func (r *RepoFile) Has(name string) bool {
 }
 
 // Remove removes the entry from the list of repositories.
-func (r *RepoFile) Remove(name string) bool {
+func (r *File) Remove(name string) bool {
 	cp := []*Entry{}
 	found := false
 	for _, rf := range r.Repositories {
@@ -137,7 +136,7 @@ func (r *RepoFile) Remove(name string) bool {
 }
 
 // WriteFile writes a repositories file to the given path.
-func (r *RepoFile) WriteFile(path string, perm os.FileMode) error {
+func (r *File) WriteFile(path string, perm os.FileMode) error {
 	data, err := yaml.Marshal(r)
 	if err != nil {
 		return err

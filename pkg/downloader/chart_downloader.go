@@ -159,7 +159,7 @@ func (c *ChartDownloader) ResolveChartVersionAndGetRepo(ref, version string) (*u
 		return nil, nil, nil, errors.Errorf("invalid chart URL format: %s", ref)
 	}
 
-	rf, err := repo.LoadRepositoriesFile(c.HelmHome.RepositoryFile())
+	rf, err := repo.LoadFile(c.HelmHome.RepositoryFile())
 	if err != nil {
 		return u, nil, nil, err
 	}
@@ -338,7 +338,7 @@ func pickChartRepositoryConfigByName(name string, cfgs []*repo.Entry) (*repo.Ent
 // The same URL can technically exist in two or more repositories. This algorithm
 // will return the first one it finds. Order is determined by the order of repositories
 // in the repositories.yaml file.
-func (c *ChartDownloader) scanReposForURL(u string, rf *repo.RepoFile) (*repo.Entry, error) {
+func (c *ChartDownloader) scanReposForURL(u string, rf *repo.File) (*repo.Entry, error) {
 	// FIXME: This is far from optimal. Larger installations and index files will
 	// incur a performance hit for this type of scanning.
 	for _, rc := range rf.Repositories {

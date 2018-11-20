@@ -78,7 +78,7 @@ func (o *repoAddOptions) run(out io.Writer) error {
 }
 
 func addRepository(name, url, username, password string, home helmpath.Home, certFile, keyFile, caFile string, noUpdate bool) error {
-	f, err := repo.LoadRepositoriesFile(home.RepositoryFile())
+	f, err := repo.LoadFile(home.RepositoryFile())
 	if err != nil {
 		return err
 	}
