@@ -1,5 +1,5 @@
-hash: 30b1d3f31b7bd310a9434e081bae3d5dc18c0a79b3674c0adffccc8d602e9227
-updated: 2018-10-04T17:11:58.043264Z
+hash: fcbba2207c6511df365dfe355dfe601a862d340bbf15db47938a404fd0ec58d0
+updated: 2018-11-11T19:26:29.631232-05:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -249,7 +249,7 @@ imports:
 - name: github.com/sirupsen/logrus
   version: 89742aefa4b206dcf400792f3bd35b542998eb3b
 - name: github.com/spf13/cobra
-  version: c439c4fa093711d42e1b01acb1235b52004753c1
+  version: fe5e611709b0c57fa4a89136deaa8e1d4004d053
   subpackages:
   - doc
 - name: github.com/spf13/pflag
