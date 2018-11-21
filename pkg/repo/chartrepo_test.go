@@ -287,6 +287,14 @@ func TestResolveReferenceURL(t *testing.T) {
 		t.Errorf("%s", chartURL)
 	}
 
+	chartURL, err = ResolveReferenceURL("http://localhost:8123/charts", "nginx-0.2.0.tgz")
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	if chartURL != "http://localhost:8123/charts/nginx-0.2.0.tgz" {
+		t.Errorf("%s", chartURL)
+	}
+
 	chartURL, err = ResolveReferenceURL("http://localhost:8123/charts/?st=2018-08-06T22%3A59%3A04Z&se=2018-08-07T22%3A59%3A04Z&sp=rl&sv=2018-03-28&sr=c&sig=cyqM4%2F5G7HNk%2F3faaHSDMaWxFxefCglvZlYSnmQBwiY%3D", "nginx-0.2.0.tgz")
 	if err != nil {
 		t.Errorf("%s", err)
