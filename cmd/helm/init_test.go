@@ -19,6 +19,7 @@ package main
 import (
 	"bytes"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"k8s.io/helm/pkg/helm/helmpath"
@@ -43,7 +44,7 @@ func TestEnsureHome(t *testing.T) {
 		t.Error(err)
 	}
 
-	rr, err := repo.LoadRepositoriesFile(hh.RepositoryFile())
+	rr, err := repo.LoadFile(hh.RepositoryFile())
 	if err != nil {
 		t.Error(err)
 	}
