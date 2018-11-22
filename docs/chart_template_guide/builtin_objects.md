@@ -12,7 +12,7 @@ In the previous section, we use `{{.Release.Name}}` to insert the name of a rele
   - `Release.IsInstall`: This is set to `true` if the current operation is an install.
 - `Values`: Values passed into the template from the `values.yaml` file and from user-supplied files. By default, `Values` is empty.
 - `Chart`: The contents of the `Chart.yaml` file. Any data in `Chart.yaml` will be accessible here. For example `{{.Chart.Name}}-{{.Chart.Version}}` will print out the `mychart-0.1.0`.
-  - The available fields are listed in the [Charts Guide](https://github.com/kubernetes/helm/blob/master/docs/charts.md#the-chartyaml-file)
+  - The available fields are listed in the [Charts Guide](https://github.com/helm/helm/blob/master/docs/charts.md#the-chartyaml-file)
 - `Files`: This provides access to all non-special files in a chart. While you cannot use it to access templates, you can use it to access other files in the chart. See the section _Accessing Files_ for more.
   - `Files.Get` is a function for getting a file by name (`.Files.Get config.ini`)
   - `Files.GetBytes` is a function for getting the contents of a file as an array of bytes instead of as a string. This is useful for things like images.
@@ -27,5 +27,5 @@ In the previous section, we use `{{.Release.Name}}` to insert the name of a rele
 
 The values are available to any top-level template. As we will see later, this does not necessarily mean that they will be available _everywhere_.
 
-The built-in values always begin with a capital letter. This is in keeping with Go's naming convention. When you create your own names, you are free to use a convention that suits your team. Some teams, like the [Kubernetes Charts](https://github.com/kubernetes/charts) team, choose to use only initial lower case letters in order to distinguish local names from those built-in. In this guide, we follow that convention.
+The built-in values always begin with a capital letter. This is in keeping with Go's naming convention. When you create your own names, you are free to use a convention that suits your team. Some teams, like the [Kubernetes Charts](https://github.com/helm/charts) team, choose to use only initial lower case letters in order to distinguish local names from those built-in. In this guide, we follow that convention.
 

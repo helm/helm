@@ -122,7 +122,7 @@ func TestToTOML(t *testing.T) {
 		t.Errorf("Expected %q, got %q", expect, got)
 	}
 
-	// Regression for https://github.com/kubernetes/helm/issues/2271
+	// Regression for https://github.com/helm/helm/issues/2271
 	dict := map[string]map[string]string{
 		"mast": {
 			"sail": "white",

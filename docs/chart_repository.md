@@ -5,7 +5,7 @@ high level, a chart repository is a location where packaged charts can be
 stored and shared.
 
 The official chart repository is maintained by the
-[Kubernetes Charts](https://github.com/kubernetes/charts), and we welcome
+[Kubernetes Charts](https://github.com/helm/charts), and we welcome
 participation. But Helm also makes it easy to create and run your own chart
 repository. This guide explains how to do so.
 
@@ -21,7 +21,7 @@ optionally some packaged charts.  When you're ready to share your charts, the
 preferred way to do so is by uploading them to a chart repository.
 
 **Note:** For Helm 2.0.0, chart repositories do not have any intrinsic
-authentication. There is an [issue tracking progress](https://github.com/kubernetes/helm/issues/1038)
+authentication. There is an [issue tracking progress](https://github.com/helm/helm/issues/1038)
 in GitHub.
 
 Because a chart repository can be any HTTP server that can serve YAML and tar
@@ -78,7 +78,7 @@ entries:
       home: https://k8s.io/helm
       name: alpine
       sources:
-      - https://github.com/kubernetes/helm
+      - https://github.com/helm/helm
       urls:
       - https://technosophos.github.io/tscharts/alpine-0.2.0.tgz
       version: 0.2.0
@@ -88,7 +88,7 @@ entries:
       home: https://k8s.io/helm
       name: alpine
       sources:
-      - https://github.com/kubernetes/helm
+      - https://github.com/helm/helm
       urls:
       - https://technosophos.github.io/tscharts/alpine-0.1.0.tgz
       version: 0.1.0
@@ -99,7 +99,7 @@ entries:
       home: https://k8s.io/helm
       name: nginx
       sources:
-      - https://github.com/kubernetes/charts
+      - https://github.com/helm/charts
       urls:
       - https://technosophos.github.io/tscharts/nginx-1.1.0.tgz
       version: 1.1.0
@@ -143,7 +143,7 @@ Congratulations, now you have an empty GCS bucket ready to serve charts!
 You may upload your chart repository using the Google Cloud Storage command line
 tool, or using the GCS web UI. This is the technique the official Kubernetes
 Charts repository hosts its charts, so you may want to take a
-[peek at that project](https://github.com/kubernetes/charts) if you get stuck.
+[peek at that project](https://github.com/helm/charts) if you get stuck.
 
 **Note:** A public GCS bucket can be accessed via simple HTTPS at this address
 `https://bucket-name.storage.googleapis.com/`.

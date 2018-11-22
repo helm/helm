@@ -214,7 +214,7 @@ entries:
     name: concourse
     sources:
     - https://github.com/concourse/bin
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     urls:
     - https://kubernetes-charts.storage.googleapis.com/concourse-0.1.3.tgz
     version: 0.1.3
@@ -234,7 +234,7 @@ entries:
     name: concourse
     sources:
     - https://github.com/concourse/bin
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     urls:
     - https://kubernetes-charts.storage.googleapis.com/concourse-0.1.2.tgz
     version: 0.1.2
@@ -254,7 +254,7 @@ entries:
     name: concourse
     sources:
     - https://github.com/concourse/bin
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     urls:
     - https://kubernetes-charts.storage.googleapis.com/concourse-0.1.1.tgz
     version: 0.1.1
@@ -273,7 +273,7 @@ entries:
     name: concourse
     sources:
     - https://github.com/concourse/bin
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     urls:
     - https://kubernetes-charts.storage.googleapis.com/concourse-0.1.0.tgz
     version: 0.1.0
@@ -3985,7 +3985,7 @@ entries:
       name: Vic Iglesias
     name: mysql
     sources:
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     - https://github.com/docker-library/mysql
     urls:
     - https://kubernetes-charts.storage.googleapis.com/mysql-0.2.6.tgz
@@ -4006,7 +4006,7 @@ entries:
       name: Vic Iglesias
     name: mysql
     sources:
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     - https://github.com/docker-library/mysql
     urls:
     - https://kubernetes-charts.storage.googleapis.com/mysql-0.2.5.tgz
@@ -4025,7 +4025,7 @@ entries:
       name: Vic Iglesias
     name: mysql
     sources:
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     - https://github.com/docker-library/mysql
     urls:
     - https://kubernetes-charts.storage.googleapis.com/mysql-0.2.4.tgz
@@ -4044,7 +4044,7 @@ entries:
       name: Vic Iglesias
     name: mysql
     sources:
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     - https://github.com/docker-library/mysql
     urls:
     - https://kubernetes-charts.storage.googleapis.com/mysql-0.2.3.tgz
@@ -4063,7 +4063,7 @@ entries:
       name: Vic Iglesias
     name: mysql
     sources:
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     - https://github.com/docker-library/mysql
     urls:
     - https://kubernetes-charts.storage.googleapis.com/mysql-0.2.2.tgz
@@ -4082,7 +4082,7 @@ entries:
       name: Vic Iglesias
     name: mysql
     sources:
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     - https://github.com/docker-library/mysql
     urls:
     - https://kubernetes-charts.storage.googleapis.com/mysql-0.2.1.tgz
@@ -4101,7 +4101,7 @@ entries:
       name: Vic Iglesias
     name: mysql
     sources:
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     - https://github.com/docker-library/mysql
     urls:
     - https://kubernetes-charts.storage.googleapis.com/mysql-0.2.0.tgz
@@ -4120,7 +4120,7 @@ entries:
       name: Vic Iglesias
     name: mysql
     sources:
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     - https://github.com/docker-library/mysql
     urls:
     - https://kubernetes-charts.storage.googleapis.com/mysql-0.1.2.tgz
@@ -4139,7 +4139,7 @@ entries:
       name: Vic Iglesias
     name: mysql
     sources:
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     - https://github.com/docker-library/mysql
     urls:
     - https://kubernetes-charts.storage.googleapis.com/mysql-0.1.1.tgz
@@ -4158,7 +4158,7 @@ entries:
       name: Vic Iglesias
     name: mysql
     sources:
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     - https://github.com/docker-library/mysql
     urls:
     - https://kubernetes-charts.storage.googleapis.com/mysql-0.1.0.tgz
@@ -5034,7 +5034,7 @@ entries:
       name: Patrick Galbraith
     name: percona
     sources:
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     - https://github.com/docker-library/percona
     urls:
     - https://kubernetes-charts.storage.googleapis.com/percona-0.1.0.tgz
@@ -5404,7 +5404,7 @@ entries:
     - name: databus23
     name: postgresql
     sources:
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     - https://github.com/docker-library/postgres
     urls:
     - https://kubernetes-charts.storage.googleapis.com/postgresql-0.6.0.tgz
@@ -5426,7 +5426,7 @@ entries:
     - name: databus23
     name: postgresql
     sources:
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     - https://github.com/docker-library/postgres
     urls:
     - https://kubernetes-charts.storage.googleapis.com/postgresql-0.5.1.tgz
@@ -5448,7 +5448,7 @@ entries:
     - name: databus23
     name: postgresql
     sources:
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     - https://github.com/docker-library/postgres
     urls:
     - https://kubernetes-charts.storage.googleapis.com/postgresql-0.5.0.tgz
@@ -5470,7 +5470,7 @@ entries:
     - name: databus23
     name: postgresql
     sources:
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     - https://github.com/docker-library/postgres
     urls:
     - https://kubernetes-charts.storage.googleapis.com/postgresql-0.4.0.tgz
@@ -5492,7 +5492,7 @@ entries:
     - name: databus23
     name: postgresql
     sources:
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     - https://github.com/docker-library/postgres
     urls:
     - https://kubernetes-charts.storage.googleapis.com/postgresql-0.3.4.tgz
@@ -5512,7 +5512,7 @@ entries:
     - name: databus23
     name: postgresql
     sources:
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     - https://github.com/docker-library/postgres
     urls:
     - https://kubernetes-charts.storage.googleapis.com/postgresql-0.3.3.tgz
@@ -5532,7 +5532,7 @@ entries:
     - name: databus23
     name: postgresql
     sources:
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     - https://github.com/docker-library/postgres
     urls:
     - https://kubernetes-charts.storage.googleapis.com/postgresql-0.3.2.tgz
@@ -5552,7 +5552,7 @@ entries:
     - name: databus23
     name: postgresql
     sources:
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     - https://github.com/docker-library/postgres
     urls:
     - https://kubernetes-charts.storage.googleapis.com/postgresql-0.3.1.tgz
@@ -5572,7 +5572,7 @@ entries:
     - name: databus23
     name: postgresql
     sources:
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     - https://github.com/docker-library/postgres
     urls:
     - https://kubernetes-charts.storage.googleapis.com/postgresql-0.3.0.tgz
@@ -5591,7 +5591,7 @@ entries:
     - name: swordbeta
     name: postgresql
     sources:
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     - https://github.com/docker-library/postgres
     urls:
     - https://kubernetes-charts.storage.googleapis.com/postgresql-0.2.2.tgz
@@ -5610,7 +5610,7 @@ entries:
     - name: swordbeta
     name: postgresql
     sources:
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     - https://github.com/docker-library/postgres
     urls:
     - https://kubernetes-charts.storage.googleapis.com/postgresql-0.2.1.tgz
@@ -5629,7 +5629,7 @@ entries:
     - name: swordbeta
     name: postgresql
     sources:
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     - https://github.com/docker-library/postgres
     urls:
     - https://kubernetes-charts.storage.googleapis.com/postgresql-0.2.0.tgz
@@ -5648,7 +5648,7 @@ entries:
     - name: swordbeta
     name: postgresql
     sources:
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     - https://github.com/docker-library/postgres
     urls:
     - https://kubernetes-charts.storage.googleapis.com/postgresql-0.1.1.tgz
@@ -5667,7 +5667,7 @@ entries:
     - name: swordbeta
     name: postgresql
     sources:
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     - https://github.com/docker-library/postgres
     urls:
     - https://kubernetes-charts.storage.googleapis.com/postgresql-0.1.0.tgz
@@ -6720,7 +6720,7 @@ entries:
     sources:
     - https://bitbucket.org/sapho/ops-docker-tomcat/src
     - https://hub.docker.com/r/sapho/ops-docker-tomcat
-    - https://github.com/kubernetes/charts/tree/master/stable/mysql
+    - https://github.com/helm/charts/tree/master/stable/mysql
     urls:
     - https://kubernetes-charts.storage.googleapis.com/sapho-0.1.5.tgz
     version: 0.1.5
@@ -6738,7 +6738,7 @@ entries:
     sources:
     - https://bitbucket.org/sapho/ops-docker-tomcat/src
     - https://hub.docker.com/r/sapho/ops-docker-tomcat
-    - https://github.com/kubernetes/charts/tree/master/stable/mysql
+    - https://github.com/helm/charts/tree/master/stable/mysql
     urls:
     - https://kubernetes-charts.storage.googleapis.com/sapho-0.1.4.tgz
     version: 0.1.4
@@ -6756,7 +6756,7 @@ entries:
     sources:
     - https://bitbucket.org/sapho/ops-docker-tomcat/src
     - https://hub.docker.com/r/sapho/ops-docker-tomcat
-    - https://github.com/kubernetes/charts/tree/master/stable/mysql
+    - https://github.com/helm/charts/tree/master/stable/mysql
     urls:
     - https://kubernetes-charts.storage.googleapis.com/sapho-0.1.3.tgz
     version: 0.1.3
@@ -6794,7 +6794,7 @@ entries:
       name: Shane Starcher
     name: sensu
     sources:
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     - https://github.com/sstarcher/docker-sensu
     - https://github.com/sensu/sensu
     urls:
@@ -6815,7 +6815,7 @@ entries:
       name: Shane Starcher
     name: sensu
     sources:
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     - https://github.com/sstarcher/docker-sensu
     - https://github.com/sensu/sensu
     urls:
@@ -6836,7 +6836,7 @@ entries:
       name: Shane Starcher
     name: sensu
     sources:
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     - https://github.com/sstarcher/docker-sensu
     - https://github.com/sensu/sensu
     urls:
@@ -7506,7 +7506,7 @@ entries:
       name: Shane Starcher
     name: uchiwa
     sources:
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     - https://github.com/sstarcher/docker-uchiwa
     - https://github.com/sensu/uchiwa
     urls:
@@ -7528,7 +7528,7 @@ entries:
       name: Shane Starcher
     name: uchiwa
     sources:
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     - https://github.com/sstarcher/docker-uchiwa
     - https://github.com/sensu/uchiwa
     urls:
@@ -7550,7 +7550,7 @@ entries:
       name: Shane Starcher
     name: uchiwa
     sources:
-    - https://github.com/kubernetes/charts
+    - https://github.com/helm/charts
     - https://github.com/sstarcher/docker-uchiwa
     - https://github.com/sensu/uchiwa
     urls:

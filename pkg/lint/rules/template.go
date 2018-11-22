@@ -99,11 +99,11 @@ func Templates(linter *support.Linter, values []byte, namespace string, strict b
 			continue
 		}
 
-		// NOTE: disabled for now, Refs https://github.com/kubernetes/helm/issues/1463
+		// NOTE: disabled for now, Refs https://github.com/helm/helm/issues/1463
 		// Check that all the templates have a matching value
 		//linter.RunLinterRule(support.WarningSev, path, validateNoMissingValues(templatesPath, valuesToRender, preExecutedTemplate))
 
-		// NOTE: disabled for now, Refs https://github.com/kubernetes/helm/issues/1037
+		// NOTE: disabled for now, Refs https://github.com/helm/helm/issues/1037
 		// linter.RunLinterRule(support.WarningSev, path, validateQuotes(string(preExecutedTemplate)))
 
 		renderedContent := renderedContentMap[filepath.Join(chart.Name(), fileName)]

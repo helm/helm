@@ -112,7 +112,7 @@ to mark a chart as deprecated. If the **latest** version of a chart in the
 repository is marked as deprecated, then the chart as a whole is considered to
 be deprecated. The chart name can later be reused by publishing a newer version
 that is not marked as deprecated. The workflow for deprecating charts, as
-followed by the [kubernetes/charts](https://github.com/kubernetes/charts)
+followed by the [kubernetes/charts](https://github.com/helm/charts)
 project is:
   - Update chart's `Chart.yaml` to mark the chart as deprecated, bumping the
   version
@@ -560,7 +560,7 @@ All of these values are defined by the template author. Helm does not
 require or dictate parameters.
 
 To see many working charts, check out the [Kubernetes Charts
-project](https://github.com/kubernetes/charts)
+project](https://github.com/helm/charts)
 
 ### Predefined Values
 

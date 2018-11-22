@@ -4,7 +4,7 @@ This section tracks some of the more frequently encountered issues with installi
 or getting started with Helm.
 
 **We'd love your help** making this document better. To add, correct, or remove
-information, [file an issue](https://github.com/kubernetes/helm/issues) or
+information, [file an issue](https://github.com/helm/helm/issues) or
 send us a pull request.
 
 ## Downloading
@@ -74,7 +74,7 @@ follows. On each of the control plane nodes:
 3) Remove the k8s api server container (kubelet will recreate it)
 4) Then `systemctl restart docker` (or reboot the node) for it to pick up the /etc/resolv.conf changes
 
-See this issue for more information: https://github.com/kubernetes/helm/issues/1455
+See this issue for more information: https://github.com/helm/helm/issues/1455
 
 **Q: On GKE (Google Container Engine) I get "No SSH tunnels currently open"**
 

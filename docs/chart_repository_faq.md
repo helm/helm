@@ -3,7 +3,7 @@
 This section tracks some of the more frequently encountered issues with using chart repositories.
 
 **We'd love your help** making this document better. To add, correct, or remove
-information, [file an issue](https://github.com/kubernetes/helm/issues) or
+information, [file an issue](https://github.com/helm/helm/issues) or
 send us a pull request.
 
 ## Pulling

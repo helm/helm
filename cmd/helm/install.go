@@ -228,7 +228,7 @@ func (o *installOptions) run(out io.Writer) error {
 	if req := chartRequested.Metadata.Requirements; req != nil {
 		// If checkDependencies returns an error, we have unfulfilled dependencies.
 		// As of Helm 2.4.0, this is treated as a stopping condition:
-		// https://github.com/kubernetes/helm/issues/2209
+		// https://github.com/helm/helm/issues/2209
 		if err := checkDependencies(chartRequested, req); err != nil {
 			if o.depUp {
 				man := &downloader.Manager{

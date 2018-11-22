@@ -7,7 +7,7 @@ entries:
       checksum: 0e6661f193211d7a5206918d42f5c2a9470b737d
       home: https://k8s.io/helm
       sources:
-      - https://github.com/kubernetes/helm
+      - https://github.com/helm/helm
       version: 1.2.3
       description: Deploy a basic Alpine Linux pod
       keywords: []
@@ -21,7 +21,7 @@ entries:
       checksum: 0e6661f193211d7a5206918d42f5c2a9470b737d
       home: https://k8s.io/helm
       sources:
-      - https://github.com/kubernetes/helm
+      - https://github.com/helm/helm
       version: 0.2.0
       description: Deploy a basic Alpine Linux pod
       keywords: []
@@ -36,7 +36,7 @@ entries:
       keywords: []
       maintainers: []
       sources:
-        - https://github.com/kubernetes/charts
+        - https://github.com/helm/charts
       urls:
         - http://example.com/foo-1.2.3.tgz
       version: 1.2.3
