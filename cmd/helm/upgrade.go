@@ -101,6 +101,7 @@ type upgradeCmd struct {
 	install      bool
 	namespace    string
 	version      string
+	appVersion   string
 	timeout      int64
 	resetValues  bool
 	reuseValues  bool
@@ -162,6 +163,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVarP(&upgrade.install, "install", "i", false, "if a release by this name doesn't already exist, run an install")
 	f.StringVar(&upgrade.namespace, "namespace", "", "namespace to install the release into (only used if --install is set). Defaults to the current kube config namespace")
 	f.StringVar(&upgrade.version, "version", "", "specify the exact chart version to use. If this is not specified, the latest version is used")
+	f.StringVar(&upgrade.appVersion, "app-version", "", "specify the app version to use for the upgrade")
 	f.Int64Var(&upgrade.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&upgrade.resetValues, "reset-values", false, "when upgrading, reset the values to the ones built into the chart")
 	f.BoolVar(&upgrade.reuseValues, "reuse-values", false, "when upgrading, reuse the last release's values and merge in any overrides from the command line via --set and -f. If '--reset-values' is specified, this is ignored.")
@@ -227,6 +229,7 @@ func (u *upgradeCmd) run() error {
 				stringValues: u.stringValues,
 				fileValues:   u.fileValues,
 				namespace:    u.namespace,
+				appVersion:   u.appVersion,
 				timeout:      u.timeout,
 				wait:         u.wait,
 				description:  u.description,
@@ -240,22 +243,28 @@ func (u *upgradeCmd) run() error {
 		return err
 	}
 
-	// Check chart requirements to make sure all dependencies are present in /charts
-	if ch, err := chartutil.Load(chartPath); err == nil {
-		if req, err := chartutil.LoadRequirements(ch); err == nil {
-			if err := renderutil.CheckDependencies(ch, req); err != nil {
-				return err
-			}
-		} else if err != chartutil.ErrRequirementsNotFound {
-			return fmt.Errorf("cannot load requirements: %v", err)
-		}
-	} else {
+	// load the chart to update
+	chart, err := chartutil.Load(chartPath)
+	if err != nil {
 		return prettyError(err)
 	}
 
-	resp, err := u.client.UpdateRelease(
+	// Check chart requirements to make sure all dependencies are present in /charts
+	if req, err := chartutil.LoadRequirements(chart); err == nil {
+		if err := renderutil.CheckDependencies(chart, req); err != nil {
+			return err
+		}
+	} else if err != chartutil.ErrRequirementsNotFound {
+		return fmt.Errorf("cannot load requirements: %v", err)
+	}
+
+	if u.appVersion != "" {
+		chart.Metadata.AppVersion = u.appVersion
+	}
+
+	resp, err := u.client.UpdateReleaseFromChart(
 		u.release,
-		chartPath,
+		chart,
 		helm.UpdateValueOverrides(rawVals),
 		helm.UpgradeDryRun(u.dryRun),
 		helm.UpgradeRecreate(u.recreate),
