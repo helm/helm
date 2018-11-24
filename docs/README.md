@@ -15,6 +15,7 @@
 	- [Syncing your Chart Repository](chart_repository_sync_example.md)
 	- [Signing Charts](provenance.md)
 	- [Writing Tests for Charts](chart_tests.md)
+	- [Ignoring unwanted files and folders](helm_ignore_file.md)
 - [Chart Template Developer's Guide](chart_template_guide/index.md) - Master Helm templates
   - [Getting Started with Templates](chart_template_guide/getting_started.md)
   - [Built-in Objects](chart_template_guide/builtin_objects.md)
