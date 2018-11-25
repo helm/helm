@@ -15,7 +15,6 @@
 	- [Syncing your Chart Repository](chart_repository_sync_example.md)
 	- [Signing Charts](provenance.md)
 	- [Writing Tests for Charts](chart_tests.md)
-	- [Ignoring unwanted files and folders](helm_ignore_file.md)
 - [Chart Template Developer's Guide](chart_template_guide/index.md) - Master Helm templates
   - [Getting Started with Templates](chart_template_guide/getting_started.md)
   - [Built-in Objects](chart_template_guide/builtin_objects.md)
@@ -25,6 +24,7 @@
   - [Variables](chart_template_guide/variables.md)
   - [Named Templates (Partials)](chart_template_guide/named_templates.md)
   - [Accessing Files Inside Templates](chart_template_guide/accessing_files.md)
+  - [Ignoring unwanted files and folders](chart_template_guide/helm_ignore_file.md)
   - [Creating a NOTES.txt File](chart_template_guide/notes_files.md)
   - [Subcharts and Global Values](chart_template_guide/subcharts_and_globals.md)
   - [Debugging Templates](chart_template_guide/debugging.md)
