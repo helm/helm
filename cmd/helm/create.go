@@ -76,7 +76,7 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 				return errors.New("the name of the new chart is required")
 			}
 			if len(args) > 1 {
-				return errors.New("command 'create' doesn't support multiple helm-chart creation at a time")
+				return errors.New("command 'create' doesn't support multiple arguments")
 			}
 			cc.name = args[0]
 			return cc.run()
