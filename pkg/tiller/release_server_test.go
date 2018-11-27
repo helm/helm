@@ -521,7 +521,7 @@ func (l *mockListServer) Send(res *services.ListReleasesResponse) error {
 	return nil
 }
 
-func (l *mockListServer) Context() context.Context       { return helm.NewContext() }
+func (l *mockListServer) Context() context.Context       { return helm.NewContext(context.Background()) }
 func (l *mockListServer) SendMsg(v interface{}) error    { return nil }
 func (l *mockListServer) RecvMsg(v interface{}) error    { return nil }
 func (l *mockListServer) SendHeader(m metadata.MD) error { return nil }
@@ -538,7 +538,9 @@ func (rs mockRunReleaseTestServer) SendHeader(m metadata.MD) error { return nil 
 func (rs mockRunReleaseTestServer) SetTrailer(m metadata.MD)       {}
 func (rs mockRunReleaseTestServer) SendMsg(v interface{}) error    { return nil }
 func (rs mockRunReleaseTestServer) RecvMsg(v interface{}) error    { return nil }
-func (rs mockRunReleaseTestServer) Context() context.Context       { return helm.NewContext() }
+func (rs mockRunReleaseTestServer) Context() context.Context {
+	return helm.NewContext(context.Background())
+}
 
 type mockHooksManifest struct {
 	Metadata struct {

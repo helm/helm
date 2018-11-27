@@ -22,17 +22,19 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"golang.org/x/net/context"
+
+	"reflect"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
-	"reflect"
 )
 
 func TestUpdateRelease(t *testing.T) {
-	c := helm.NewContext()
+	c := helm.NewContext(context.Background())
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
@@ -105,7 +107,7 @@ func TestUpdateRelease(t *testing.T) {
 	}
 }
 func TestUpdateRelease_ResetValues(t *testing.T) {
-	c := helm.NewContext()
+	c := helm.NewContext(context.Background())
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
@@ -132,7 +134,7 @@ func TestUpdateRelease_ResetValues(t *testing.T) {
 }
 
 func TestUpdateRelease_ReuseValuesWithNoValues(t *testing.T) {
-	c := helm.NewContext()
+	c := helm.NewContext(context.Background())
 	rs := rsFixture()
 
 	installReq := &services.InstallReleaseRequest{
@@ -171,7 +173,7 @@ func TestUpdateRelease_ReuseValuesWithNoValues(t *testing.T) {
 }
 
 func TestUpdateRelease_NestedReuseValues(t *testing.T) {
-	c := helm.NewContext()
+	c := helm.NewContext(context.Background())
 	rs := rsFixture()
 
 	installReq := &services.InstallReleaseRequest{
@@ -237,7 +239,7 @@ root:
 
 // This is a regression test for bug found in issue #3655
 func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
-	c := helm.NewContext()
+	c := helm.NewContext(context.Background())
 	rs := rsFixture()
 
 	installReq := &services.InstallReleaseRequest{
@@ -337,7 +339,7 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 }
 
 func TestUpdateRelease_ReuseValues(t *testing.T) {
-	c := helm.NewContext()
+	c := helm.NewContext(context.Background())
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
@@ -375,7 +377,7 @@ func TestUpdateRelease_ReuseValues(t *testing.T) {
 
 func TestUpdateRelease_ResetReuseValues(t *testing.T) {
 	// This verifies that when both reset and reuse are set, reset wins.
-	c := helm.NewContext()
+	c := helm.NewContext(context.Background())
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
@@ -404,7 +406,7 @@ func TestUpdateRelease_ResetReuseValues(t *testing.T) {
 }
 
 func TestUpdateReleaseFailure(t *testing.T) {
-	c := helm.NewContext()
+	c := helm.NewContext(context.Background())
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
@@ -448,7 +450,7 @@ func TestUpdateReleaseFailure(t *testing.T) {
 }
 
 func TestUpdateReleaseFailure_Force(t *testing.T) {
-	c := helm.NewContext()
+	c := helm.NewContext(context.Background())
 	rs := rsFixture()
 	rel := namedReleaseStub("forceful-luke", release.Status_FAILED)
 	rs.env.Releases.Create(rel)
@@ -492,7 +494,7 @@ func TestUpdateReleaseFailure_Force(t *testing.T) {
 }
 
 func TestUpdateReleaseNoHooks(t *testing.T) {
-	c := helm.NewContext()
+	c := helm.NewContext(context.Background())
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
@@ -521,7 +523,7 @@ func TestUpdateReleaseNoHooks(t *testing.T) {
 }
 
 func TestUpdateReleaseNoChanges(t *testing.T) {
-	c := helm.NewContext()
+	c := helm.NewContext(context.Background())
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
@@ -539,7 +541,7 @@ func TestUpdateReleaseNoChanges(t *testing.T) {
 }
 
 func TestUpdateReleaseCustomDescription(t *testing.T) {
-	c := helm.NewContext()
+	c := helm.NewContext(context.Background())
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
@@ -563,7 +565,7 @@ func TestUpdateReleaseCustomDescription(t *testing.T) {
 }
 
 func TestUpdateReleaseCustomDescription_Force(t *testing.T) {
-	c := helm.NewContext()
+	c := helm.NewContext(context.Background())
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
@@ -588,7 +590,7 @@ func TestUpdateReleaseCustomDescription_Force(t *testing.T) {
 }
 
 func TestUpdateReleasePendingInstall_Force(t *testing.T) {
-	c := helm.NewContext()
+	c := helm.NewContext(context.Background())
 	rs := rsFixture()
 	rel := namedReleaseStub("forceful-luke", release.Status_PENDING_INSTALL)
 	rs.env.Releases.Create(rel)

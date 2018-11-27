@@ -19,12 +19,13 @@ package tiller
 import (
 	"testing"
 
+	"golang.org/x/net/context"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/services"
 )
 
 func TestGetReleaseContent(t *testing.T) {
-	c := helm.NewContext()
+	c := helm.NewContext(context.Background())
 	rs := rsFixture()
 	rel := releaseStub()
 	if err := rs.env.Releases.Create(rel); err != nil {

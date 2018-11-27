@@ -20,13 +20,14 @@ import (
 	"strings"
 	"testing"
 
+	"golang.org/x/net/context"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 )
 
 func TestUninstallRelease(t *testing.T) {
-	c := helm.NewContext()
+	c := helm.NewContext(context.Background())
 	rs := rsFixture()
 	rs.env.Releases.Create(releaseStub())
 
@@ -61,7 +62,7 @@ func TestUninstallRelease(t *testing.T) {
 }
 
 func TestUninstallPurgeRelease(t *testing.T) {
-	c := helm.NewContext()
+	c := helm.NewContext(context.Background())
 	rs := rsFixture()
 	rel := releaseStub()
 	rs.env.Releases.Create(rel)
@@ -90,7 +91,7 @@ func TestUninstallPurgeRelease(t *testing.T) {
 	if res.Release.Info.Deleted.Seconds <= 0 {
 		t.Errorf("Expected valid UNIX date, got %d", res.Release.Info.Deleted.Seconds)
 	}
-	rels, err := rs.GetHistory(helm.NewContext(), &services.GetHistoryRequest{Name: "angry-panda"})
+	rels, err := rs.GetHistory(helm.NewContext(context.Background()), &services.GetHistoryRequest{Name: "angry-panda"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +101,7 @@ func TestUninstallPurgeRelease(t *testing.T) {
 }
 
 func TestUninstallPurgeDeleteRelease(t *testing.T) {
-	c := helm.NewContext()
+	c := helm.NewContext(context.Background())
 	rs := rsFixture()
 	rs.env.Releases.Create(releaseStub())
 
@@ -125,7 +126,7 @@ func TestUninstallPurgeDeleteRelease(t *testing.T) {
 }
 
 func TestUninstallReleaseWithKeepPolicy(t *testing.T) {
-	c := helm.NewContext()
+	c := helm.NewContext(context.Background())
 	rs := rsFixture()
 	name := "angry-bunny"
 	rs.env.Releases.Create(releaseWithKeepStub(name))
@@ -157,7 +158,7 @@ func TestUninstallReleaseWithKeepPolicy(t *testing.T) {
 }
 
 func TestUninstallReleaseNoHooks(t *testing.T) {
-	c := helm.NewContext()
+	c := helm.NewContext(context.Background())
 	rs := rsFixture()
 	rs.env.Releases.Create(releaseStub())
 
@@ -178,7 +179,7 @@ func TestUninstallReleaseNoHooks(t *testing.T) {
 }
 
 func TestUninstallReleaseCustomDescription(t *testing.T) {
-	c := helm.NewContext()
+	c := helm.NewContext(context.Background())
 	rs := rsFixture()
 	rs.env.Releases.Create(releaseStub())
 
@@ -199,7 +200,7 @@ func TestUninstallReleaseCustomDescription(t *testing.T) {
 }
 
 func TestUninstallReleaseObjectNotFoundError(t *testing.T) {
-	c := helm.NewContext()
+	c := helm.NewContext(context.Background())
 	rs := rsFixture()
 	rel := releaseStub()
 	manifest := `kind: ConfigMap

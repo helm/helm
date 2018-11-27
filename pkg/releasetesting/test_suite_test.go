@@ -312,7 +312,9 @@ func (rs mockStream) SendHeader(m metadata.MD) error { return nil }
 func (rs mockStream) SetTrailer(m metadata.MD)       {}
 func (rs mockStream) SendMsg(v interface{}) error    { return nil }
 func (rs mockStream) RecvMsg(v interface{}) error    { return nil }
-func (rs mockStream) Context() context.Context       { return helm.NewContext() }
+func (rs mockStream) Context() context.Context {
+	return helm.NewContext(context.Background())
+}
 
 type podSucceededKubeClient struct {
 	tillerEnv.PrintingKubeClient
