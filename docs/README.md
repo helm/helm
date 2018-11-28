@@ -24,6 +24,7 @@
   - [Variables](chart_template_guide/variables.md)
   - [Named Templates (Partials)](chart_template_guide/named_templates.md)
   - [Accessing Files Inside Templates](chart_template_guide/accessing_files.md)
+  - [Ignoring unwanted files and folders](chart_template_guide/helm_ignore_file.md)
   - [Creating a NOTES.txt File](chart_template_guide/notes_files.md)
   - [Subcharts and Global Values](chart_template_guide/subcharts_and_globals.md)
   - [Debugging Templates](chart_template_guide/debugging.md)
