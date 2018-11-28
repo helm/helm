@@ -272,7 +272,7 @@ func verifyLocalIndex(t *testing.T, i *IndexFile) {
 }
 
 func TestIndexDirectory(t *testing.T) {
-	dir := "testdata/repository"
+	dir := filepath.Join("testdata", "repository")
 	index, err := IndexDirectory(dir, "http://localhost:8080")
 	if err != nil {
 		t.Fatal(err)
