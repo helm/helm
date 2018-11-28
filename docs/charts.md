@@ -124,7 +124,14 @@ project is:
 ## Chart LICENSE, README and NOTES
 
 Charts can also contain files that describe the installation, configuration, usage and license of a
-chart. A README for a chart should be formatted in Markdown (README.md), and should generally
+chart.
+
+A LICENSE is a plain text file containing the [license](https://en.wikipedia.org/wiki/Software_license)
+for the chart. The chart can contain a license as it may have programming logic in the templates and
+would therefore not be configuration only. There can also be separate license(s) for the application
+installed by the chart, if required.
+
+A README for a chart should be formatted in Markdown (README.md), and should generally
 contain:
 
 - A description of the application or service the chart provides
@@ -259,27 +266,27 @@ Tags - The tags field is a YAML list of labels to associate with this chart.
 In the top parent's values, all charts with tags can be enabled or disabled by
 specifying the tag and a boolean value.
 
-````
+```yaml
 # parentchart/requirements.yaml
 dependencies:
-      - name: subchart1
-        repository: http://localhost:10191
-        version: 0.1.0
-        condition: subchart1.enabled,global.subchart1.enabled
-        tags:
-          - front-end
-          - subchart1
+  - name: subchart1
+    repository: http://localhost:10191
+    version: 0.1.0
+    condition: subchart1.enabled,global.subchart1.enabled
+    tags:
+      - front-end
+      - subchart1
 
-      - name: subchart2
-        repository: http://localhost:10191
-        version: 0.1.0
-        condition: subchart2.enabled,global.subchart2.enabled
-        tags:
-          - back-end
+  - name: subchart2
+    repository: http://localhost:10191
+    version: 0.1.0
+    condition: subchart2.enabled,global.subchart2.enabled
+    tags:
+      - back-end
           - subchart2
 
-````
-````
+```
+```yaml
 # parentchart/values.yaml
 
 subchart1:

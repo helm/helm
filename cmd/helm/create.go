@@ -75,6 +75,9 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 			if len(args) == 0 {
 				return errors.New("the name of the new chart is required")
 			}
+			if len(args) > 1 {
+				return errors.New("command 'create' doesn't support multiple arguments")
+			}
 			cc.name = args[0]
 			return cc.run()
 		},
