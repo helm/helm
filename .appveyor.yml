@@ -6,10 +6,10 @@ environment:
 install:
   - ps: iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/fishworks/gofish/master/scripts/install.ps1'))
   - gofish init
-  - gofish install dep
-  - dep ensure -v
+  - gofish install glide
+  - glide install --strip-vendor
 cache:
-  - vendor -> Gopkg.lock
+  - vendor -> glide.lock
 build: "off"
 deploy: "off"
 test_script:

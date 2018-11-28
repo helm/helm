@@ -17,10 +17,12 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -52,6 +54,13 @@ func TestSetVersion(t *testing.T) {
 }
 
 func TestPackage(t *testing.T) {
+
+	statExe := "stat"
+	statFileMsg := "no such file or directory"
+	if runtime.GOOS == "windows" {
+		statExe = "FindFirstFile"
+		statFileMsg = "The system cannot find the file specified."
+	}
 
 	tests := []struct {
 		name    string
@@ -106,7 +115,7 @@ func TestPackage(t *testing.T) {
 			name:   "package --destination does-not-exist",
 			args:   []string{"testdata/testcharts/alpine"},
 			flags:  map[string]string{"destination": "does-not-exist"},
-			expect: "stat does-not-exist: no such file or directory",
+			expect: fmt.Sprintf("Failed to save: %s does-not-exist: %s", statExe, statFileMsg),
 			err:    true,
 		},
 		{

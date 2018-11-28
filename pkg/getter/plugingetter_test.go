@@ -18,6 +18,7 @@ package getter
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -67,6 +68,10 @@ func TestCollectPlugins(t *testing.T) {
 }
 
 func TestPluginGetter(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TODO: refactor this test to work on windows")
+	}
+
 	oldhh := os.Getenv("HELM_HOME")
 	defer os.Setenv("HELM_HOME", oldhh)
 	os.Setenv("HELM_HOME", "")
