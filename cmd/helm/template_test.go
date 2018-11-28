@@ -75,7 +75,7 @@ func TestTemplateCmd(t *testing.T) {
 		{
 			name:        "check_execute_absolute",
 			desc:        "verify --execute single template",
-			args:        []string{subchart1ChartPath, "-x", subchart1AbsChartPath + "/" + "templates/service.yaml", "--set", "service.name=apache"},
+			args:        []string{subchart1ChartPath, "-x", filepath.Join(subchart1AbsChartPath, "templates", "service.yaml"), "--set", "service.name=apache"},
 			expectKey:   "subchart1/templates/service.yaml",
 			expectValue: "protocol: TCP\n    name: apache",
 		},
