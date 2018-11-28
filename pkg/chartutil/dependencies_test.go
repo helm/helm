@@ -27,12 +27,12 @@ import (
 	"k8s.io/helm/pkg/version"
 )
 
-func TestLoadRequirements(t *testing.T) {
+func TestLoadDependency(t *testing.T) {
 	c, err := loader.Load("testdata/frobnitz")
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
-	verifyRequirements(t, c)
+	verifyDependency(t, c)
 }
 
 func TestLoadChartLock(t *testing.T) {
@@ -43,7 +43,7 @@ func TestLoadChartLock(t *testing.T) {
 	verifyChartLock(t, c)
 }
 
-func TestRequirementsEnabled(t *testing.T) {
+func TestDependencyEnabled(t *testing.T) {
 	tests := []struct {
 		name string
 		v    []byte
@@ -104,16 +104,16 @@ func TestRequirementsEnabled(t *testing.T) {
 			t.Fatalf("Failed to load testdata: %s", err)
 		}
 		t.Run(tc.name, func(t *testing.T) {
-			verifyRequirementsEnabled(t, c, tc.v, tc.e)
+			verifyDependencyEnabled(t, c, tc.v, tc.e)
 		})
 	}
 }
 
-func verifyRequirementsEnabled(t *testing.T, c *chart.Chart, v []byte, e []string) {
+func verifyDependencyEnabled(t *testing.T, c *chart.Chart, v []byte, e []string) {
 	var m map[string]interface{}
 	yaml.Unmarshal(v, &m)
-	if err := ProcessRequirementsEnabled(c, m); err != nil {
-		t.Errorf("Error processing enabled requirements %v", err)
+	if err := ProcessDependencyEnabled(c, m); err != nil {
+		t.Errorf("Error processing enabled dependencies %v", err)
 	}
 
 	out := extractCharts(c, nil)
@@ -146,7 +146,7 @@ func extractCharts(c *chart.Chart, out []*chart.Chart) []*chart.Chart {
 	return out
 }
 
-func TestProcessRequirementsImportValues(t *testing.T) {
+func TestProcessDependencyImportValues(t *testing.T) {
 	c, err := loader.Load("testdata/subpop")
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
@@ -213,12 +213,12 @@ func TestProcessRequirementsImportValues(t *testing.T) {
 	e["SCBexported2A"] = "blaster"
 	e["global.SC1exported2.all.SC1exported3"] = "SC1expstr"
 
-	verifyRequirementsImportValues(t, c, e)
+	verifyDependencyImportValues(t, c, e)
 }
 
-func verifyRequirementsImportValues(t *testing.T, c *chart.Chart, e map[string]string) {
-	if err := ProcessRequirementsImportValues(c); err != nil {
-		t.Fatalf("Error processing import values requirements %v", err)
+func verifyDependencyImportValues(t *testing.T, c *chart.Chart, e map[string]string) {
+	if err := ProcessDependencyImportValues(c); err != nil {
+		t.Fatalf("Error processing import values dependencies %v", err)
 	}
 	cc := Values(c.Values)
 	for kk, vv := range e {
@@ -256,10 +256,10 @@ func TestGetAliasDependency(t *testing.T) {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
 
-	req := c.Metadata.Requirements
+	req := c.Metadata.Dependencies
 
 	if len(req) == 0 {
-		t.Fatalf("There are no requirements to test")
+		t.Fatalf("There are no dependencies to test")
 	}
 
 	// Success case
@@ -304,7 +304,7 @@ func TestDependentChartAliases(t *testing.T) {
 	}
 
 	origLength := len(c.Dependencies())
-	if err := ProcessRequirementsEnabled(c, c.Values); err != nil {
+	if err := ProcessDependencyEnabled(c, c.Values); err != nil {
 		t.Fatalf("Expected no errors but got %q", err)
 	}
 
@@ -312,12 +312,12 @@ func TestDependentChartAliases(t *testing.T) {
 		t.Fatal("Expected alias dependencies to be added, but did not got that")
 	}
 
-	if len(c.Dependencies()) != len(c.Metadata.Requirements) {
-		t.Fatalf("Expected number of chart dependencies %d, but got %d", len(c.Metadata.Requirements), len(c.Dependencies()))
+	if len(c.Dependencies()) != len(c.Metadata.Dependencies) {
+		t.Fatalf("Expected number of chart dependencies %d, but got %d", len(c.Metadata.Dependencies), len(c.Dependencies()))
 	}
 }
 
-func TestDependentChartWithSubChartsAbsentInRequirements(t *testing.T) {
+func TestDependentChartWithSubChartsAbsentInDependency(t *testing.T) {
 	c, err := loader.Load("testdata/dependent-chart-no-requirements-yaml")
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
@@ -328,7 +328,7 @@ func TestDependentChartWithSubChartsAbsentInRequirements(t *testing.T) {
 	}
 
 	origLength := len(c.Dependencies())
-	if err := ProcessRequirementsEnabled(c, c.Values); err != nil {
+	if err := ProcessDependencyEnabled(c, c.Values); err != nil {
 		t.Fatalf("Expected no errors but got %q", err)
 	}
 
@@ -356,7 +356,7 @@ func TestDependentChartsWithSubChartsSymlink(t *testing.T) {
 	}
 }
 
-func TestDependentChartsWithSubchartsAllSpecifiedInRequirements(t *testing.T) {
+func TestDependentChartsWithSubchartsAllSpecifiedInDependency(t *testing.T) {
 	c, err := loader.Load("testdata/dependent-chart-with-all-in-requirements-yaml")
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
@@ -367,7 +367,7 @@ func TestDependentChartsWithSubchartsAllSpecifiedInRequirements(t *testing.T) {
 	}
 
 	origLength := len(c.Dependencies())
-	if err := ProcessRequirementsEnabled(c, c.Values); err != nil {
+	if err := ProcessDependencyEnabled(c, c.Values); err != nil {
 		t.Fatalf("Expected no errors but got %q", err)
 	}
 
@@ -375,12 +375,12 @@ func TestDependentChartsWithSubchartsAllSpecifiedInRequirements(t *testing.T) {
 		t.Fatal("Expected no changes in dependencies to be, but did something got changed")
 	}
 
-	if len(c.Dependencies()) != len(c.Metadata.Requirements) {
-		t.Fatalf("Expected number of chart dependencies %d, but got %d", len(c.Metadata.Requirements), len(c.Dependencies()))
+	if len(c.Dependencies()) != len(c.Metadata.Dependencies) {
+		t.Fatalf("Expected number of chart dependencies %d, but got %d", len(c.Metadata.Dependencies), len(c.Dependencies()))
 	}
 }
 
-func TestDependentChartsWithSomeSubchartsSpecifiedInRequirements(t *testing.T) {
+func TestDependentChartsWithSomeSubchartsSpecifiedInDependency(t *testing.T) {
 	c, err := loader.Load("testdata/dependent-chart-with-mixed-requirements-yaml")
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
@@ -391,7 +391,7 @@ func TestDependentChartsWithSomeSubchartsSpecifiedInRequirements(t *testing.T) {
 	}
 
 	origLength := len(c.Dependencies())
-	if err := ProcessRequirementsEnabled(c, c.Values); err != nil {
+	if err := ProcessDependencyEnabled(c, c.Values); err != nil {
 		t.Fatalf("Expected no errors but got %q", err)
 	}
 
@@ -399,21 +399,21 @@ func TestDependentChartsWithSomeSubchartsSpecifiedInRequirements(t *testing.T) {
 		t.Fatal("Expected no changes in dependencies to be, but did something got changed")
 	}
 
-	if len(c.Dependencies()) <= len(c.Metadata.Requirements) {
-		t.Fatalf("Expected more dependencies than specified in requirements.yaml(%d), but got %d", len(c.Metadata.Requirements), len(c.Dependencies()))
+	if len(c.Dependencies()) <= len(c.Metadata.Dependencies) {
+		t.Fatalf("Expected more dependencies than specified in Chart.yaml(%d), but got %d", len(c.Metadata.Dependencies), len(c.Dependencies()))
 	}
 }
 
-func verifyRequirements(t *testing.T, c *chart.Chart) {
-	if len(c.Metadata.Requirements) != 2 {
-		t.Errorf("Expected 2 requirements, got %d", len(c.Metadata.Requirements))
+func verifyDependency(t *testing.T, c *chart.Chart) {
+	if len(c.Metadata.Dependencies) != 2 {
+		t.Errorf("Expected 2 dependencies, got %d", len(c.Metadata.Dependencies))
 	}
 	tests := []*chart.Dependency{
 		{Name: "alpine", Version: "0.1.0", Repository: "https://example.com/charts"},
 		{Name: "mariner", Version: "4.3.2", Repository: "https://example.com/charts"},
 	}
 	for i, tt := range tests {
-		d := c.Metadata.Requirements[i]
+		d := c.Metadata.Dependencies[i]
 		if d.Name != tt.Name {
 			t.Errorf("Expected dependency named %q, got %q", tt.Name, d.Name)
 		}
@@ -427,15 +427,15 @@ func verifyRequirements(t *testing.T, c *chart.Chart) {
 }
 
 func verifyChartLock(t *testing.T, c *chart.Chart) {
-	if len(c.Metadata.Requirements) != 2 {
-		t.Errorf("Expected 2 requirements, got %d", len(c.Metadata.Requirements))
+	if len(c.Metadata.Dependencies) != 2 {
+		t.Errorf("Expected 2 dependencies, got %d", len(c.Metadata.Dependencies))
 	}
 	tests := []*chart.Dependency{
 		{Name: "alpine", Version: "0.1.0", Repository: "https://example.com/charts"},
 		{Name: "mariner", Version: "4.3.2", Repository: "https://example.com/charts"},
 	}
 	for i, tt := range tests {
-		d := c.Metadata.Requirements[i]
+		d := c.Metadata.Dependencies[i]
 		if d.Name != tt.Name {
 			t.Errorf("Expected dependency named %q, got %q", tt.Name, d.Name)
 		}

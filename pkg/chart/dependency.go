@@ -49,13 +49,13 @@ type Dependency struct {
 	Alias string `json:"alias,omitempty"`
 }
 
-// Lock is a lock file for requirements.
+// Lock is a lock file for dependencies.
 //
 // It represents the state that the dependencies should be in.
 type Lock struct {
 	// Genderated is the date the lock file was last generated.
 	Generated time.Time `json:"generated"`
-	// Digest is a hash of the requirements file used to generate it.
+	// Digest is a hash of the dependencies in Chart.yaml.
 	Digest string `json:"digest"`
 	// Dependencies is the list of dependencies that this lock file has locked.
 	Dependencies []*Dependency `json:"dependencies"`

@@ -35,7 +35,7 @@ are present in 'charts/' and are at an acceptable version. It will pull down
 the latest charts that satisfy the dependencies, and clean up old dependencies.
 
 On successful update, this will generate a lock file that can be used to
-rebuild the requirements to an exact version.
+rebuild the dependencies to an exact version.
 
 Dependencies are not required to be represented in 'Chart.yaml'. For that
 reason, an update command will not remove charts unless they are (a) present
