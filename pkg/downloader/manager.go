@@ -78,7 +78,7 @@ func (m *Manager) Build() error {
 		return m.Update()
 	}
 
-	req := c.Metadata.Requirements
+	req := c.Metadata.Dependencies
 	if sum, err := resolver.HashReq(req); err != nil || sum != lock.Digest {
 		return errors.New("Chart.lock is out of sync with Chart.yaml")
 	}
@@ -114,14 +114,14 @@ func (m *Manager) Update() error {
 		return err
 	}
 
-	// If no requirements file is found, we consider this a successful
+	// If no dependencies are found, we consider this a successful
 	// completion.
-	req := c.Metadata.Requirements
+	req := c.Metadata.Dependencies
 	if req == nil {
 		return nil
 	}
 
-	// Hash requirements.yaml
+	// Hash dependencies
 	// FIXME should this hash all of Chart.yaml
 	hash, err := resolver.HashReq(req)
 	if err != nil {
@@ -143,7 +143,7 @@ func (m *Manager) Update() error {
 	}
 
 	// Now we need to find out which version of a chart best satisfies the
-	// requirements in the Chart.yaml
+	// dependencies in the Chart.yaml
 	lock, err := m.resolve(req, repoNames, hash)
 	if err != nil {
 		return err
@@ -173,9 +173,9 @@ func (m *Manager) loadChartDir() (*chart.Chart, error) {
 	return loader.LoadDir(m.ChartPath)
 }
 
-// resolve takes a list of requirements and translates them into an exact version to download.
+// resolve takes a list of dependencies and translates them into an exact version to download.
 //
-// This returns a lock file, which has all of the requirements normalized to a specific version.
+// This returns a lock file, which has all of the dependencies normalized to a specific version.
 func (m *Manager) resolve(req []*chart.Dependency, repoNames map[string]string, hash string) (*chart.Lock, error) {
 	res := resolver.New(m.ChartPath, m.HelmHome)
 	return res.Resolve(req, repoNames, hash)

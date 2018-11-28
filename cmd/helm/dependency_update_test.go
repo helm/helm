@@ -86,7 +86,7 @@ func TestDependencyUpdateCmd(t *testing.T) {
 
 	// Now change the dependencies and update. This verifies that on update,
 	// old dependencies are cleansed and new dependencies are added.
-	md.Requirements = []*chart.Dependency{
+	md.Dependencies = []*chart.Dependency{
 		{Name: "reqtest", Version: "0.1.0", Repository: srv.URL()},
 		{Name: "compressedchart", Version: "0.3.0", Repository: srv.URL()},
 	}
@@ -213,7 +213,7 @@ func createTestingMetadata(name, baseURL string) *chart.Metadata {
 	return &chart.Metadata{
 		Name:    name,
 		Version: "1.2.3",
-		Requirements: []*chart.Dependency{
+		Dependencies: []*chart.Dependency{
 			{Name: "reqtest", Version: "0.1.0", Repository: baseURL},
 			{Name: "compressedchart", Version: "0.1.0", Repository: baseURL},
 		},

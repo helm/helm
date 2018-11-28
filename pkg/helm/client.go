@@ -97,11 +97,11 @@ func (c *Client) InstallReleaseFromChart(chart *chart.Chart, ns string, opts ...
 	}
 	var m map[string]interface{}
 	yaml.Unmarshal(req.Values, &m)
-	err := chartutil.ProcessRequirementsEnabled(req.Chart, m)
+	err := chartutil.ProcessDependencyEnabled(req.Chart, m)
 	if err != nil {
 		return nil, err
 	}
-	err = chartutil.ProcessRequirementsImportValues(req.Chart)
+	err = chartutil.ProcessDependencyImportValues(req.Chart)
 	if err != nil {
 		return nil, err
 	}
@@ -171,10 +171,10 @@ func (c *Client) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts
 	if err := yaml.Unmarshal(req.Values, &m); err != nil {
 		return nil, err
 	}
-	if err := chartutil.ProcessRequirementsEnabled(req.Chart, m); err != nil {
+	if err := chartutil.ProcessDependencyEnabled(req.Chart, m); err != nil {
 		return nil, err
 	}
-	if err := chartutil.ProcessRequirementsImportValues(req.Chart); err != nil {
+	if err := chartutil.ProcessDependencyImportValues(req.Chart); err != nil {
 		return nil, err
 	}
 

@@ -146,12 +146,12 @@ func (o *upgradeOptions) run(out io.Writer) error {
 		return err
 	}
 
-	// Check chart requirements to make sure all dependencies are present in /charts
+	// Check chart dependencies to make sure all are present in /charts
 	ch, err := loader.Load(chartPath)
 	if err != nil {
 		return err
 	}
-	if req := ch.Metadata.Requirements; req != nil {
+	if req := ch.Metadata.Dependencies; req != nil {
 		if err := checkDependencies(ch, req); err != nil {
 			return err
 		}

@@ -34,18 +34,16 @@ const dependencyDesc = `
 Manage the dependencies of a chart.
 
 Helm charts store their dependencies in 'charts/'. For chart developers, it is
-often easier to manage a single dependency file ('requirements.yaml')
-which declares all dependencies.
+often easier to manage dependencies in 'Chart.yaml' which declares all
+dependencies.
 
 The dependency commands operate on that file, making it easy to synchronize
 between the desired dependencies and the actual dependencies stored in the
 'charts/' directory.
 
-A 'requirements.yaml' file is a YAML file in which developers can declare chart
-dependencies, along with the location of the chart and the desired version.
-For example, this requirements file declares two dependencies:
+For example, this Chart.yaml declares two dependencies:
 
-    # requirements.yaml
+    # Chart.yaml
     dependencies:
     - name: nginx
       version: "1.2.3"
@@ -53,6 +51,7 @@ For example, this requirements file declares two dependencies:
     - name: memcached
       version: "3.2.1"
       repository: "https://another.example.com/charts"
+
 
 The 'name' should be the name of a chart, where that name must match the name
 in that chart's 'Chart.yaml' file.
@@ -68,7 +67,7 @@ Starting from 2.2.0, repository can be defined as the path to the directory of
 the dependency charts stored locally. The path should start with a prefix of
 "file://". For example,
 
-    # requirements.yaml
+    # Chart.yaml
     dependencies:
     - name: nginx
       version: "1.2.3"
@@ -85,8 +84,7 @@ List all of the dependencies declared in a chart.
 This can take chart archives and chart directories as input. It will not alter
 the contents of a chart.
 
-This will produce an error if the chart cannot be loaded. It will emit a warning
-if it cannot find a requirements.yaml.
+This will produce an error if the chart cannot be loaded.
 `
 
 func newDependencyCmd(out io.Writer) *cobra.Command {
@@ -136,14 +134,14 @@ func (o *dependencyLisOptions) run(out io.Writer) error {
 		return err
 	}
 
-	if c.Metadata.Requirements == nil {
-		fmt.Fprintf(out, "WARNING: no requirements at %s/charts\n", o.chartpath)
+	if c.Metadata.Dependencies == nil {
+		fmt.Fprintf(out, "WARNING: no dependencies at %s/charts\n", o.chartpath)
 		return nil
 	}
 
-	o.printRequirements(out, c.Metadata.Requirements)
+	o.printDependencies(out, c.Metadata.Dependencies)
 	fmt.Fprintln(out)
-	o.printMissing(out, c.Metadata.Requirements)
+	o.printMissing(out, c.Metadata.Dependencies)
 	return nil
 }
 
@@ -221,8 +219,8 @@ func (o *dependencyLisOptions) dependencyStatus(dep *chart.Dependency) string {
 	return "unpacked"
 }
 
-// printRequirements prints all of the requirements in the yaml file.
-func (o *dependencyLisOptions) printRequirements(out io.Writer, reqs []*chart.Dependency) {
+// printDependencies prints all of the dependencies in the yaml file.
+func (o *dependencyLisOptions) printDependencies(out io.Writer, reqs []*chart.Dependency) {
 	table := uitable.New()
 	table.MaxColWidth = 80
 	table.AddRow("NAME", "VERSION", "REPOSITORY", "STATUS")
@@ -232,7 +230,8 @@ func (o *dependencyLisOptions) printRequirements(out io.Writer, reqs []*chart.De
 	fmt.Fprintln(out, table)
 }
 
-// printMissing prints warnings about charts that are present on disk, but are not in the requirements.
+// printMissing prints warnings about charts that are present on disk, but are
+// not in Charts.yaml.
 func (o *dependencyLisOptions) printMissing(out io.Writer, reqs []*chart.Dependency) {
 	folder := filepath.Join(o.chartpath, "charts/*")
 	files, err := filepath.Glob(folder)

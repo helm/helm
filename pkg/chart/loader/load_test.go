@@ -33,8 +33,8 @@ func TestLoadDir(t *testing.T) {
 	}
 	verifyFrobnitz(t, c)
 	verifyChart(t, c)
-	verifyRequirements(t, c)
-	verifyRequirementsLock(t, c)
+	verifyDependencies(t, c)
+	verifyDependenciesLock(t, c)
 }
 
 func TestLoadFile(t *testing.T) {
@@ -48,7 +48,7 @@ func TestLoadFile(t *testing.T) {
 	}
 	verifyFrobnitz(t, c)
 	verifyChart(t, c)
-	verifyRequirements(t, c)
+	verifyDependencies(t, c)
 }
 
 func TestLoadFiles(t *testing.T) {
@@ -123,7 +123,7 @@ func TestLoadFileBackslash(t *testing.T) {
 	}
 	verifyChartFileAndTemplate(t, c, "frobnitz_backslash")
 	verifyChart(t, c)
-	verifyRequirements(t, c)
+	verifyDependencies(t, c)
 }
 
 func verifyChart(t *testing.T, c *chart.Chart) {
@@ -175,16 +175,16 @@ func verifyChart(t *testing.T, c *chart.Chart) {
 
 }
 
-func verifyRequirements(t *testing.T, c *chart.Chart) {
-	if len(c.Metadata.Requirements) != 2 {
-		t.Errorf("Expected 2 requirements, got %d", len(c.Metadata.Requirements))
+func verifyDependencies(t *testing.T, c *chart.Chart) {
+	if len(c.Metadata.Dependencies) != 2 {
+		t.Errorf("Expected 2 dependencies, got %d", len(c.Metadata.Dependencies))
 	}
 	tests := []*chart.Dependency{
 		{Name: "alpine", Version: "0.1.0", Repository: "https://example.com/charts"},
 		{Name: "mariner", Version: "4.3.2", Repository: "https://example.com/charts"},
 	}
 	for i, tt := range tests {
-		d := c.Metadata.Requirements[i]
+		d := c.Metadata.Dependencies[i]
 		if d.Name != tt.Name {
 			t.Errorf("Expected dependency named %q, got %q", tt.Name, d.Name)
 		}
@@ -197,16 +197,16 @@ func verifyRequirements(t *testing.T, c *chart.Chart) {
 	}
 }
 
-func verifyRequirementsLock(t *testing.T, c *chart.Chart) {
-	if len(c.Metadata.Requirements) != 2 {
-		t.Errorf("Expected 2 requirements, got %d", len(c.Metadata.Requirements))
+func verifyDependenciesLock(t *testing.T, c *chart.Chart) {
+	if len(c.Metadata.Dependencies) != 2 {
+		t.Errorf("Expected 2 dependencies, got %d", len(c.Metadata.Dependencies))
 	}
 	tests := []*chart.Dependency{
 		{Name: "alpine", Version: "0.1.0", Repository: "https://example.com/charts"},
 		{Name: "mariner", Version: "4.3.2", Repository: "https://example.com/charts"},
 	}
 	for i, tt := range tests {
-		d := c.Metadata.Requirements[i]
+		d := c.Metadata.Dependencies[i]
 		if d.Name != tt.Name {
 			t.Errorf("Expected dependency named %q, got %q", tt.Name, d.Name)
 		}
@@ -245,8 +245,8 @@ func verifyChartFileAndTemplate(t *testing.T, c *chart.Chart, name string) {
 	if len(c.Dependencies()) != 2 {
 		t.Fatalf("Expected 2 Dependency, got %d", len(c.Dependencies()))
 	}
-	if len(c.Metadata.Requirements) != 2 {
-		t.Fatalf("Expected 2 Requirements.Dependency, got %d", len(c.Metadata.Requirements))
+	if len(c.Metadata.Dependencies) != 2 {
+		t.Fatalf("Expected 2 Dependencies.Dependency, got %d", len(c.Metadata.Dependencies))
 	}
 	if len(c.Lock.Dependencies) != 2 {
 		t.Fatalf("Expected 2 Lock.Dependency, got %d", len(c.Lock.Dependencies))

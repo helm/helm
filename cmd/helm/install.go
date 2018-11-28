@@ -219,13 +219,13 @@ func (o *installOptions) run(out io.Writer) error {
 		fmt.Printf("FINAL NAME: %s\n", o.name)
 	}
 
-	// Check chart requirements to make sure all dependencies are present in /charts
+	// Check chart dependencies to make sure all are present in /charts
 	chartRequested, err := loader.Load(o.chartPath)
 	if err != nil {
 		return err
 	}
 
-	if req := chartRequested.Metadata.Requirements; req != nil {
+	if req := chartRequested.Metadata.Dependencies; req != nil {
 		// If checkDependencies returns an error, we have unfulfilled dependencies.
 		// As of Helm 2.4.0, this is treated as a stopping condition:
 		// https://github.com/helm/helm/issues/2209
@@ -344,7 +344,7 @@ OUTER:
 	}
 
 	if len(missing) > 0 {
-		return errors.Errorf("found in requirements.yaml, but missing in charts/ directory: %s", strings.Join(missing, ", "))
+		return errors.Errorf("found in Chart.yaml, but missing in charts/ directory: %s", strings.Join(missing, ", "))
 	}
 	return nil
 }

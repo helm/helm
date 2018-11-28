@@ -157,7 +157,7 @@ func (o *packageOptions) run(out io.Writer) error {
 		debug("Setting appVersion to %s", o.appVersion)
 	}
 
-	if reqs := ch.Metadata.Requirements; reqs != nil {
+	if reqs := ch.Metadata.Dependencies; reqs != nil {
 		if err := checkDependencies(ch, reqs); err != nil {
 			return err
 		}

@@ -152,13 +152,13 @@ func (o *templateOptions) run(out io.Writer) error {
 		}
 	}
 
-	// Check chart requirements to make sure all dependencies are present in /charts
+	// Check chart dependencies to make sure all are present in /charts
 	c, err := loader.Load(o.chartPath)
 	if err != nil {
 		return err
 	}
 
-	if req := c.Metadata.Requirements; req != nil {
+	if req := c.Metadata.Dependencies; req != nil {
 		if err := checkDependencies(c, req); err != nil {
 			return err
 		}
@@ -171,10 +171,10 @@ func (o *templateOptions) run(out io.Writer) error {
 	if err := yaml.Unmarshal(config, &m); err != nil {
 		return err
 	}
-	if err := chartutil.ProcessRequirementsEnabled(c, m); err != nil {
+	if err := chartutil.ProcessDependencyEnabled(c, m); err != nil {
 		return err
 	}
-	if err := chartutil.ProcessRequirementsImportValues(c); err != nil {
+	if err := chartutil.ProcessDependencyImportValues(c); err != nil {
 		return err
 	}
 

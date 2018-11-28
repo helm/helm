@@ -1,4 +1,0 @@
-dependencies:
-  - name: albatross
-    repository: https://example.com/mariner/charts
-    version: "0.1.0"

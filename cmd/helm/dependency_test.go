@@ -26,15 +26,15 @@ func TestDependencyListCmd(t *testing.T) {
 		golden:    "output/dependency-list-no-chart.txt",
 		wantError: true,
 	}, {
-		name:   "No requirements.yaml",
+		name:   "No dependencies",
 		cmd:    "dependency list testdata/testcharts/alpine",
 		golden: "output/dependency-list-no-requirements.txt",
 	}, {
-		name:   "Requirements in chart dir",
+		name:   "Dependencies in chart dir",
 		cmd:    "dependency list testdata/testcharts/reqtest",
 		golden: "output/dependency-list.txt",
 	}, {
-		name:   "Requirements in chart archive",
+		name:   "Dependencies in chart archive",
 		cmd:    "dependency list testdata/testcharts/reqtest-0.1.0.tgz",
 		golden: "output/dependency-list-archive.txt",
 	}}

@@ -25,8 +25,8 @@ import (
 	"k8s.io/helm/pkg/version"
 )
 
-// ProcessRequirementsConditions disables charts based on condition path value in values
-func ProcessRequirementsConditions(reqs []*chart.Dependency, cvals Values) {
+// ProcessDependencyConditions disables charts based on condition path value in values
+func ProcessDependencyConditions(reqs []*chart.Dependency, cvals Values) {
 	if reqs == nil {
 		return
 	}
@@ -66,8 +66,8 @@ func ProcessRequirementsConditions(reqs []*chart.Dependency, cvals Values) {
 	}
 }
 
-// ProcessRequirementsTags disables charts based on tags in values
-func ProcessRequirementsTags(reqs []*chart.Dependency, cvals Values) {
+// ProcessDependencyTags disables charts based on tags in values
+func ProcessDependencyTags(reqs []*chart.Dependency, cvals Values) {
 	if reqs == nil {
 		return
 	}
@@ -125,9 +125,9 @@ func getAliasDependency(charts []*chart.Chart, aliasChart *chart.Dependency) *ch
 	return nil
 }
 
-// ProcessRequirementsEnabled removes disabled charts from dependencies
-func ProcessRequirementsEnabled(c *chart.Chart, v map[string]interface{}) error {
-	if c.Metadata.Requirements == nil {
+// ProcessDependencyEnabled removes disabled charts from dependencies
+func ProcessDependencyEnabled(c *chart.Chart, v map[string]interface{}) error {
+	if c.Metadata.Dependencies == nil {
 		return nil
 	}
 
@@ -139,7 +139,7 @@ func ProcessRequirementsEnabled(c *chart.Chart, v map[string]interface{}) error 
 
 	for _, existingDependency := range c.Dependencies() {
 		var dependencyFound bool
-		for _, req := range c.Metadata.Requirements {
+		for _, req := range c.Metadata.Dependencies {
 			if existingDependency.Metadata.Name == req.Name && version.IsCompatibleRange(req.Version, existingDependency.Metadata.Version) {
 				dependencyFound = true
 				break
@@ -150,7 +150,7 @@ func ProcessRequirementsEnabled(c *chart.Chart, v map[string]interface{}) error 
 		}
 	}
 
-	for _, req := range c.Metadata.Requirements {
+	for _, req := range c.Metadata.Dependencies {
 		if chartDependency := getAliasDependency(c.Dependencies(), req); chartDependency != nil {
 			chartDependencies = append(chartDependencies, chartDependency)
 		}
@@ -161,7 +161,7 @@ func ProcessRequirementsEnabled(c *chart.Chart, v map[string]interface{}) error 
 	c.SetDependencies(chartDependencies...)
 
 	// set all to true
-	for _, lr := range c.Metadata.Requirements {
+	for _, lr := range c.Metadata.Dependencies {
 		lr.Enabled = true
 	}
 	b, _ := yaml.Marshal(v)
@@ -170,11 +170,11 @@ func ProcessRequirementsEnabled(c *chart.Chart, v map[string]interface{}) error 
 		return err
 	}
 	// flag dependencies as enabled/disabled
-	ProcessRequirementsTags(c.Metadata.Requirements, cvals)
-	ProcessRequirementsConditions(c.Metadata.Requirements, cvals)
+	ProcessDependencyTags(c.Metadata.Dependencies, cvals)
+	ProcessDependencyConditions(c.Metadata.Dependencies, cvals)
 	// make a map of charts to remove
 	rm := map[string]struct{}{}
-	for _, r := range c.Metadata.Requirements {
+	for _, r := range c.Metadata.Dependencies {
 		if !r.Enabled {
 			// remove disabled chart
 			rm[r.Name] = struct{}{}
@@ -191,7 +191,7 @@ func ProcessRequirementsEnabled(c *chart.Chart, v map[string]interface{}) error 
 
 	// recursively call self to process sub dependencies
 	for _, t := range cd {
-		if err := ProcessRequirementsEnabled(t, cvals); err != nil {
+		if err := ProcessDependencyEnabled(t, cvals); err != nil {
 			return err
 		}
 	}
@@ -221,7 +221,7 @@ func set(path []string, data map[string]interface{}) map[string]interface{} {
 
 // processImportValues merges values from child to parent based on the chart's dependencies' ImportValues field.
 func processImportValues(c *chart.Chart) error {
-	if c.Metadata.Requirements == nil {
+	if c.Metadata.Dependencies == nil {
 		return nil
 	}
 	// combine chart values and empty config to get Values
@@ -231,7 +231,7 @@ func processImportValues(c *chart.Chart) error {
 	}
 	b := make(map[string]interface{})
 	// import values from each dependency if specified in import-values
-	for _, r := range c.Metadata.Requirements {
+	for _, r := range c.Metadata.Dependencies {
 		var outiv []interface{}
 		for _, riv := range r.ImportValues {
 			switch iv := riv.(type) {
@@ -276,11 +276,11 @@ func processImportValues(c *chart.Chart) error {
 	return nil
 }
 
-// ProcessRequirementsImportValues imports specified chart values from child to parent.
-func ProcessRequirementsImportValues(c *chart.Chart) error {
+// ProcessDependencyImportValues imports specified chart values from child to parent.
+func ProcessDependencyImportValues(c *chart.Chart) error {
 	for _, d := range c.Dependencies() {
 		// recurse
-		if err := ProcessRequirementsImportValues(d); err != nil {
+		if err := ProcessDependencyImportValues(d); err != nil {
 			return err
 		}
 	}
