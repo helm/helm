@@ -124,7 +124,14 @@ project is:
 ## Chart LICENSE, README and NOTES
 
 Charts can also contain files that describe the installation, configuration, usage and license of a
-chart. A README for a chart should be formatted in Markdown (README.md), and should generally
+chart.
+
+A LICENSE is a plain text file containing the [license](https://en.wikipedia.org/wiki/Software_license)
+for the chart. The chart can contain a license as it may have programming logic in the templates and
+would therefore not be configuration only. There can also be separate license(s) for the application
+installed by the chart, if required.
+
+A README for a chart should be formatted in Markdown (README.md), and should generally
 contain:
 
 - A description of the application or service the chart provides
