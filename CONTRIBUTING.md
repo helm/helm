@@ -178,7 +178,7 @@ contributing to Helm. All issue types follow the same general lifecycle. Differe
 1. Submit a pull request.
 
 Coding conventions and standards are explained in the official developer docs:
-https://github.com/helm/helm/blob/master/docs/developers.md
+[Developers Guide](docs/developers.md)
 
 The next section contains more information on the workflow followed for PRs
 
