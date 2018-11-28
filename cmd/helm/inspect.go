@@ -18,15 +18,13 @@ package main
 
 import (
 	"fmt"
-	"io"
-	"strings"
-
 	"github.com/ghodss/yaml"
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/spf13/cobra"
+	"io"
+	"strings"
 
 	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/kubernetes/pkg/util/slice"
 )
 
 const inspectDesc = `
@@ -256,9 +254,23 @@ func (i *inspectCmd) run() error {
 
 func findReadme(files []*any.Any) (file *any.Any) {
 	for _, file := range files {
-		if slice.ContainsString(readmeFileNames, strings.ToLower(file.TypeUrl), nil) {
+		if containsString(readmeFileNames, strings.ToLower(file.TypeUrl), nil) {
 			return file
 		}
 	}
 	return nil
+}
+
+// containsString checks if a given slice of strings contains the provided string.
+// If a modifier func is provided, it is called with the slice item before the comparison.
+func containsString(slice []string, s string, modifier func(s string) string) bool {
+	for _, item := range slice {
+		if item == s {
+			return true
+		}
+		if modifier != nil && modifier(item) == s {
+			return true
+		}
+	}
+	return false
 }
