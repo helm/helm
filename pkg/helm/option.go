@@ -346,6 +346,13 @@ func UpgradeForce(force bool) UpdateOption {
 	}
 }
 
+// Limit the maximum number of revisions saved per release
+func MaxHistory(maxHistory int) UpdateOption {
+	return func(opts *options) {
+		opts.updateReq.MaxHistory = maxHistory
+	}
+}
+
 // UninstallOption allows setting optional attributes when
 // performing a UninstallRelease tiller rpc.
 type UninstallOption func(*options)

@@ -117,6 +117,8 @@ type UpdateReleaseRequest struct {
 	ReuseValues bool `json:"reuse_values,omitempty"`
 	// Force resource update through delete/recreate if needed.
 	Force bool `json:"force,omitempty"`
+	// Limit the maximum number of revisions saved per release.
+	MaxHistory int `json:"max_history,omitempty"`
 }
 
 // RollbackReleaseRequest is the request for a release to be rolledback to a
