@@ -18,12 +18,11 @@ package main
 
 import (
 	"fmt"
-	"io"
-	"strings"
-
 	"github.com/ghodss/yaml"
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/spf13/cobra"
+	"io"
+	"strings"
 
 	"k8s.io/helm/pkg/chartutil"
 )
@@ -255,16 +254,21 @@ func (i *inspectCmd) run() error {
 
 func findReadme(files []*any.Any) (file *any.Any) {
 	for _, file := range files {
-		if contains(readmeFileNames, strings.ToLower(file.TypeUrl)) {
+		if containsString(readmeFileNames, strings.ToLower(file.TypeUrl), nil) {
 			return file
 		}
 	}
 	return nil
 }
 
-func contains(slice []string, s string) bool {
+// containsString checks if a given slice of strings contains the provided string.
+// If a modifier func is provided, it is called with the slice item before the comparison.
+func containsString(slice []string, s string, modifier func(s string) string) bool {
 	for _, item := range slice {
 		if item == s {
+			return true
+		}
+		if modifier != nil && modifier(item) == s {
 			return true
 		}
 	}
