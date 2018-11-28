@@ -69,7 +69,7 @@ elegant and high-quality open source code so that our users will benefit.
 
 Make sure you have read and understood the main CONTRIBUTING guide:
 
-https://github.com/kubernetes/helm/blob/master/CONTRIBUTING.md
+https://github.com/helm/helm/blob/master/CONTRIBUTING.md
 
 ### Structure of the Code
 

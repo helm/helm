@@ -99,7 +99,7 @@ func TestIgnore(t *testing.T) {
 		{`cargo/*.txt`, "mast/a.txt", false},
 		{`ru[c-e]?er.txt`, "rudder.txt", true},
 		{`templates/.?*`, "templates/.dotfile", true},
-		// "." should never get ignored. https://github.com/kubernetes/helm/issues/1776
+		// "." should never get ignored. https://github.com/helm/helm/issues/1776
 		{`.*`, ".", false},
 		{`.*`, "./", false},
 		{`.*`, ".joonix", true},

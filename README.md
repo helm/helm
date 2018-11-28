@@ -9,7 +9,7 @@ pre-configured Kubernetes resources.
 
 Use Helm to:
 
-- Find and use [popular software packaged as Kubernetes charts](https://github.com/kubernetes/charts)
+- Find and use [popular software packaged as Kubernetes charts](https://github.com/helm/charts)
 - Share your own applications as Kubernetes charts
 - Create reproducible builds of your Kubernetes applications
 - Intelligently manage your Kubernetes manifest files
@@ -56,7 +56,7 @@ Get started with the [Quick Start guide](https://docs.helm.sh/using_helm/#quicks
 
 ## Roadmap
 
-The [Helm roadmap uses Github milestones](https://github.com/kubernetes/helm/milestones) to track the progress of the project.
+The [Helm roadmap uses Github milestones](https://github.com/helm/helm/milestones) to track the progress of the project.
 
 ## Community, discussion, contribution, and support
 

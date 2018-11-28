@@ -63,7 +63,7 @@ verifySupported() {
   local supported="darwin-386\ndarwin-amd64\nlinux-386\nlinux-amd64\nlinux-arm\nlinux-arm64\nlinux-ppc64le\nwindows-386\nwindows-amd64"
   if ! echo "${supported}" | grep -q "${OS}-${ARCH}"; then
     echo "No prebuilt binary for ${OS}-${ARCH}."
-    echo "To build from source, go to https://github.com/kubernetes/helm"
+    echo "To build from source, go to https://github.com/helm/helm"
     exit 1
   fi
 
@@ -76,7 +76,7 @@ verifySupported() {
 # checkDesiredVersion checks if the desired version is available.
 checkDesiredVersion() {
   # Use the GitHub releases webpage for the project to find the desired version for this project.
-  local release_url="https://github.com/kubernetes/helm/releases/${DESIRED_VERSION:-latest}"
+  local release_url="https://github.com/helm/helm/releases/${DESIRED_VERSION:-latest}"
   if type "curl" > /dev/null; then
     TAG=$(curl -SsL $release_url | awk '/\/tag\//' | grep -v no-underline | cut -d '"' -f 2 | awk '{n=split($NF,a,"/");print a[n]}' | awk 'a !~ $0{print}; {a=$0}')
   elif type "wget" > /dev/null; then
@@ -155,7 +155,7 @@ fail_trap() {
     else
       echo "Failed to install $PROJECT_NAME"
     fi
-    echo -e "\tFor support, go to https://github.com/kubernetes/helm."
+    echo -e "\tFor support, go to https://github.com/helm/helm."
   fi
   cleanup
   exit $result
@@ -182,7 +182,7 @@ help () {
   echo -e "\te.g. --version v2.4.0  or -v latest"
 }
 
-# cleanup temporary files to avoid https://github.com/kubernetes/helm/issues/2977
+# cleanup temporary files to avoid https://github.com/helm/helm/issues/2977
 cleanup() {
   if [[ -d "${HELM_TMP_ROOT:-}" ]]; then
     rm -rf "$HELM_TMP_ROOT"

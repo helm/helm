@@ -12,7 +12,7 @@ Just kidding! :trollface:
 
 All releases will be of the form vX.Y.Z where X is the major version number, Y is the minor version number and Z is the patch release number. This project strictly follows [semantic versioning](http://semver.org/) so following this step is critical.
 
-It is important to note that this document assumes that the git remote in your repository that corresponds to "https://github.com/kubernetes/helm" is named "upstream". If yours is not (for example, if you've chosen to name it "origin" or something similar instead), be sure to adjust the listed snippets for your local environment accordingly. If you are not sure what your upstream remote is named, use a command like `git remote -v` to find out.
+It is important to note that this document assumes that the git remote in your repository that corresponds to "https://github.com/helm/helm" is named "upstream". If yours is not (for example, if you've chosen to name it "origin" or something similar instead), be sure to adjust the listed snippets for your local environment accordingly. If you are not sure what your upstream remote is named, use a command like `git remote -v` to find out.
 
 If you don't have an upstream remote, you can add one easily using something like:
 
@@ -224,7 +224,7 @@ The community keeps growing, and we'd love to see you there.
   - `#helm-users` for questions and just to hang out
   - `#helm-dev` for discussing PRs, code, and bugs
 - Hang out at the Public Developer Call: Thursday, 9:30 Pacific via [Zoom](https://zoom.us/j/4526666954)
-- Test, debug, and contribute charts: [GitHub/kubernetes/charts](https://github.com/kubernetes/charts)
+- Test, debug, and contribute charts: [GitHub/kubernetes/charts](https://github.com/helm/charts)
 
 ## Installation and Upgrading
 

@@ -5,7 +5,7 @@ The Kubernetes Helm project accepts contributions via GitHub pull requests. This
 ## Reporting a Security Issue
 
 Most of the time, when you find a bug in Helm, it should be reported
-using [GitHub issues](https://github.com/kubernetes/helm/issues). However, if
+using [GitHub issues](https://github.com/helm/helm/issues). However, if
 you are reporting a _security vulnerability_, please email a report to
 [helm-security@deis.com](mailto:helm-security@deis.com). This will give
 us a chance to try to fix the issue before it is exploited in the wild.
@@ -30,7 +30,7 @@ apply to [third_party](third_party/) and [vendor](vendor/).
 
 Whether you are a user or contributor, official support channels include:
 
-- GitHub [issues](https://github.com/kubernetes/helm/issues/new)
+- GitHub [issues](https://github.com/helm/helm/issues/new)
 - Slack: #Helm room in the [Kubernetes Slack](http://slack.kubernetes.io/)
 
 Before opening a new issue or submitting a new pull request, it's helpful to search the project - it's likely that another user has already reported the issue you're facing, or it's a known issue that we're already aware of.
@@ -121,7 +121,7 @@ contributing to Helm. All issue types follow the same general lifecycle. Differe
 3. Submit a pull request.
 
 Coding conventions and standards are explained in the official developer docs:
-https://github.com/kubernetes/helm/blob/master/docs/developers.md
+https://github.com/helm/helm/blob/master/docs/developers.md
 
 The next section contains more information on the workflow followed for PRs
 

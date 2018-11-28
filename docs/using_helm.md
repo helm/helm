@@ -490,7 +490,7 @@ Charts that are archived can be loaded into chart repositories. See the
 documentation for your chart repository server to learn how to upload.
 
 Note: The `stable` repository is managed on the [Kubernetes Charts
-GitHub repository](https://github.com/kubernetes/charts). That project
+GitHub repository](https://github.com/helm/charts). That project
 accepts chart source code, and (after audit) packages those for you.
 
 ## Conclusion

@@ -2,8 +2,8 @@
 
 The Helm community has produced many extra tools, plugins, and documentation about
 Helm. We love to hear about these projects. If you have anything you'd like to
-add to this list, please open an [issue](https://github.com/kubernetes/helm/issues)
-or [pull request](https://github.com/kubernetes/helm/pulls).
+add to this list, please open an [issue](https://github.com/helm/helm/issues)
+or [pull request](https://github.com/helm/helm/pulls).
 
 ## Article, Blogs, How-Tos, and Extra Documentation
 - [Using Helm to Deploy to Kubernetes](https://daemonza.github.io/2017/02/20/using-helm-to-deploy-to-kubernetes/)

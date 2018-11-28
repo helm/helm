@@ -32,7 +32,7 @@ to [configure a service account and rules](rbac.md) before proceeding.
 ## Install Helm
 
 Download a binary release of the Helm client. You can use tools like
-`homebrew`, or look at [the official releases page](https://github.com/kubernetes/helm/releases).
+`homebrew`, or look at [the official releases page](https://github.com/helm/helm/releases).
 
 For more details, or for other options, see [the installation
 guide](install.md).

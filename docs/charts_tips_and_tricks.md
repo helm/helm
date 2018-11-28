@@ -193,7 +193,7 @@ by convention, helper templates and partials are placed in a
 
 ## Complex Charts with Many Dependencies
 
-Many of the charts in the [official charts repository](https://github.com/kubernetes/charts)
+Many of the charts in the [official charts repository](https://github.com/helm/charts)
 are "building blocks" for creating more advanced applications. But charts may be
 used to create instances of large-scale applications. In such cases, a single
 umbrella chart may have multiple subcharts, each of which functions as a piece
