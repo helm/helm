@@ -26,7 +26,6 @@ import (
 	kversion "k8s.io/apimachinery/pkg/version"
 
 	"k8s.io/helm/pkg/chart"
-	"k8s.io/helm/pkg/chart/loader"
 	"k8s.io/helm/pkg/version"
 )
 
@@ -290,11 +289,7 @@ pequod:
 `
 
 func TestCoalesceValues(t *testing.T) {
-	tchart := "testdata/moby"
-	c, err := loader.LoadDir(tchart)
-	if err != nil {
-		t.Fatal(err)
-	}
+	c := loadChart(t, "testdata/moby")
 
 	v, err := CoalesceValues(c, []byte(testCoalesceValuesYaml))
 	if err != nil {

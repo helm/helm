@@ -171,10 +171,7 @@ func (o *templateOptions) run(out io.Writer) error {
 	if err := yaml.Unmarshal(config, &m); err != nil {
 		return err
 	}
-	if err := chartutil.ProcessDependencyEnabled(c, m); err != nil {
-		return err
-	}
-	if err := chartutil.ProcessDependencyImportValues(c); err != nil {
+	if err := chartutil.ProcessDependencies(c, m); err != nil {
 		return err
 	}
 

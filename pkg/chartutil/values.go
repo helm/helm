@@ -17,6 +17,7 @@ limitations under the License.
 package chartutil
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -29,10 +30,14 @@ import (
 )
 
 // ErrNoTable indicates that a chart does not have a matching table.
-type ErrNoTable error
+type ErrNoTable string
+
+func (e ErrNoTable) Error() string { return fmt.Sprintf("%q is not a table", e) }
 
 // ErrNoValue indicates that Values does not contain a key with a value
-type ErrNoValue error
+type ErrNoValue string
+
+func (e ErrNoValue) Error() string { return fmt.Sprintf("%q is not a value", e) }
 
 // GlobalKey is the name of the Values key that is used for storing global vars.
 const GlobalKey = "global"
@@ -63,9 +68,8 @@ func (v Values) Table(name string) (Values, error) {
 	var err error
 
 	for _, n := range parsePath(name) {
-		table, err = tableLookup(table, n)
-		if err != nil {
-			return table, err
+		if table, err = tableLookup(table, n); err != nil {
+			break
 		}
 	}
 	return table, err
@@ -95,7 +99,7 @@ func (v Values) Encode(w io.Writer) error {
 func tableLookup(v Values, simple string) (Values, error) {
 	v2, ok := v[simple]
 	if !ok {
-		return v, ErrNoTable(errors.Errorf("no table named %q (%v)", simple, v))
+		return v, ErrNoTable(simple)
 	}
 	if vv, ok := v2.(map[string]interface{}); ok {
 		return vv, nil
@@ -108,8 +112,7 @@ func tableLookup(v Values, simple string) (Values, error) {
 		return vv, nil
 	}
 
-	var e ErrNoTable = errors.Errorf("no table named %q", simple)
-	return Values{}, e
+	return Values{}, ErrNoTable(simple)
 }
 
 // ReadValues will parse YAML byte data into a Values.
@@ -150,19 +153,18 @@ func CoalesceValues(chrt *chart.Chart, vals []byte) (Values, error) {
 			return cvals, err
 		}
 	}
-
-	coalesce(chrt, cvals)
-
+	if _, err := coalesce(chrt, cvals); err != nil {
+		return cvals, err
+	}
 	return coalesceDeps(chrt, cvals)
 }
 
 // coalesce coalesces the dest values and the chart values, giving priority to the dest values.
 //
 // This is a helper function for CoalesceValues.
-func coalesce(ch *chart.Chart, dest map[string]interface{}) map[string]interface{} {
+func coalesce(ch *chart.Chart, dest map[string]interface{}) (map[string]interface{}, error) {
 	coalesceValues(ch, dest)
-	coalesceDeps(ch, dest)
-	return dest
+	return coalesceDeps(ch, dest)
 }
 
 // coalesceDeps coalesces the dependencies of the given chart.
@@ -181,7 +183,11 @@ func coalesceDeps(chrt *chart.Chart, dest map[string]interface{}) (map[string]in
 			coalesceGlobals(dvmap, dest)
 
 			// Now coalesce the rest of the values.
-			dest[subchart.Name()] = coalesce(subchart, dvmap)
+			var err error
+			dest[subchart.Name()], err = coalesce(subchart, dvmap)
+			if err != nil {
+				return dest, err
+			}
 		}
 	}
 	return dest, nil
@@ -363,20 +369,20 @@ func (v Values) pathValue(path []string) (interface{}, error) {
 		if _, ok := v[path[0]]; ok && !istable(v[path[0]]) {
 			return v[path[0]], nil
 		}
-		return nil, ErrNoValue(errors.Errorf("%v is not a value", path[0]))
+		return nil, ErrNoValue(path[0])
 	}
 
 	key, path := path[len(path)-1], path[:len(path)-1]
 	// get our table for table path
 	t, err := v.Table(joinPath(path...))
 	if err != nil {
-		return nil, ErrNoValue(errors.Errorf("%v is not a value", key))
+		return nil, ErrNoValue(key)
 	}
 	// check table for key and ensure value is not a table
 	if k, ok := t[key]; ok && !istable(k) {
 		return k, nil
 	}
-	return nil, ErrNoValue(errors.Errorf("key not found: %s", key))
+	return nil, ErrNoValue(key)
 }
 
 func parsePath(key string) []string { return strings.Split(key, ".") }
