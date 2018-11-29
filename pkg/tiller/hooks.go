@@ -174,6 +174,13 @@ func (file *manifestFile) sort(result *result) error {
 				isUnknownHook = true
 				break
 			}
+			if e == release.Hook_CRD_INSTALL {
+				result.generic = append(result.generic, Manifest{
+					Name:    file.path,
+					Content: m,
+					Head:    &entry,
+				})
+			}
 			h.Events = append(h.Events, e)
 		}
 
