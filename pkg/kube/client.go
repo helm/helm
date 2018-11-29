@@ -180,7 +180,11 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		vk := gvk.Version + "/" + gvk.Kind
 		internalObj, err := asInternal(info)
 		if err != nil {
-			c.Log("Warning: conversion to internal type failed: %v", err)
+			// If the problem is just that the resource is not registered, don't print any
+			// error. This is normal for custom resources.
+			if !runtime.IsNotRegisteredError(err) {
+				c.Log("Warning: conversion to internal type failed: %v", err)
+			}
 			// Add the unstructured object in this situation. It will still get listed, just
 			// with less information.
 			objs[vk] = append(objs[vk], info.Object)
@@ -357,7 +361,7 @@ func (c *Client) watchTimeout(t time.Duration) ResourceActorFunc {
 //
 // Handling for other kinds will be added as necessary.
 func (c *Client) WatchUntilReady(namespace string, reader io.Reader, timeout int64, shouldWait bool) error {
-	infos, err := c.Build(namespace, reader)
+	infos, err := c.BuildUnstructured(namespace, reader)
 	if err != nil {
 		return err
 	}
@@ -604,12 +608,13 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 //
 // This operates on an event returned from a watcher.
 func (c *Client) waitForJob(e watch.Event, name string) (bool, error) {
-	o, ok := e.Object.(*batch.Job)
-	if !ok {
-		return true, fmt.Errorf("Expected %s to be a *batch.Job, got %T", name, e.Object)
+	job := &batch.Job{}
+	err := legacyscheme.Scheme.Convert(e.Object, job, nil)
+	if err != nil {
+		return true, err
 	}
 
-	for _, c := range o.Status.Conditions {
+	for _, c := range job.Status.Conditions {
 		if c.Type == batch.JobComplete && c.Status == v1.ConditionTrue {
 			return true, nil
 		} else if c.Type == batch.JobFailed && c.Status == v1.ConditionTrue {
@@ -617,7 +622,7 @@ func (c *Client) waitForJob(e watch.Event, name string) (bool, error) {
 		}
 	}
 
-	c.Log("%s: Jobs active: %d, jobs failed: %d, jobs succeeded: %d", name, o.Status.Active, o.Status.Failed, o.Status.Succeeded)
+	c.Log("%s: Jobs active: %d, jobs failed: %d, jobs succeeded: %d", name, job.Status.Active, job.Status.Failed, job.Status.Succeeded)
 	return false, nil
 }
 
