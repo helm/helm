@@ -428,7 +428,7 @@ func processImportValues(c *chart.Chart) error {
 					}
 					// create value map from child to be merged into parent
 					vm := pathToMap(nm["parent"], vv.AsMap())
-					b = coalesceTables(cvals, vm)
+					b = coalesceTables(cvals, vm, c.Metadata.Name)
 				case string:
 					nm := map[string]string{
 						"child":  "exports." + iv,
@@ -441,14 +441,14 @@ func processImportValues(c *chart.Chart) error {
 						log.Printf("Warning: ImportValues missing table: %v", err)
 						continue
 					}
-					b = coalesceTables(b, vm.AsMap())
+					b = coalesceTables(b, vm.AsMap(), c.Metadata.Name)
 				}
 			}
 			// set our formatted import values
 			r.ImportValues = outiv
 		}
 	}
-	b = coalesceTables(b, cvals)
+	b = coalesceTables(b, cvals, c.Metadata.Name)
 	y, err := yaml.Marshal(b)
 	if err != nil {
 		return err
