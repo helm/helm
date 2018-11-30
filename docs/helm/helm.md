@@ -1,4 +1,4 @@
-## helm
+## HELM
 
 The Helm package manager for Kubernetes.
 
