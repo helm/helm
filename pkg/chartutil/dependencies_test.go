@@ -16,141 +16,134 @@ package chartutil
 
 import (
 	"sort"
-	"testing"
-
 	"strconv"
-
-	"github.com/ghodss/yaml"
+	"testing"
 
 	"k8s.io/helm/pkg/chart"
 	"k8s.io/helm/pkg/chart/loader"
 	"k8s.io/helm/pkg/version"
 )
 
-func TestLoadDependency(t *testing.T) {
-	c, err := loader.Load("testdata/frobnitz")
+func loadChart(t *testing.T, path string) *chart.Chart {
+	c, err := loader.Load(path)
 	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
+		t.Fatalf("failed to load testdata: %s", err)
 	}
-	verifyDependency(t, c)
+	return c
 }
 
-func TestLoadChartLock(t *testing.T) {
-	c, err := loader.Load("testdata/frobnitz")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
+func TestLoadDependency(t *testing.T) {
+	tests := []*chart.Dependency{
+		{Name: "alpine", Version: "0.1.0", Repository: "https://example.com/charts"},
+		{Name: "mariner", Version: "4.3.2", Repository: "https://example.com/charts"},
 	}
-	verifyChartLock(t, c)
+
+	check := func(deps []*chart.Dependency) {
+		if len(deps) != 2 {
+			t.Errorf("expected 2 dependencies, got %d", len(deps))
+		}
+		for i, tt := range tests {
+			if deps[i].Name != tt.Name {
+				t.Errorf("expected dependency named %q, got %q", tt.Name, deps[i].Name)
+			}
+			if deps[i].Version != tt.Version {
+				t.Errorf("expected dependency named %q to have version %q, got %q", tt.Name, tt.Version, deps[i].Version)
+			}
+			if deps[i].Repository != tt.Repository {
+				t.Errorf("expected dependency named %q to have repository %q, got %q", tt.Name, tt.Repository, deps[i].Repository)
+			}
+		}
+	}
+	c := loadChart(t, "testdata/frobnitz")
+	check(c.Metadata.Dependencies)
+	check(c.Lock.Dependencies)
 }
 
 func TestDependencyEnabled(t *testing.T) {
+	type M = map[string]interface{}
 	tests := []struct {
 		name string
-		v    []byte
+		v    M
 		e    []string // expected charts including duplicates in alphanumeric order
 	}{{
 		"tags with no effect",
-		[]byte("tags:\n  nothinguseful: false\n\n"),
-		[]string{"parentchart", "subchart1", "subcharta", "subchartb"},
-	}, {
-		"tags with no effect",
-		[]byte("tags:\n  nothinguseful: false\n\n"),
-		[]string{"parentchart", "subchart1", "subcharta", "subchartb"},
+		M{"tags": M{"nothinguseful": false}},
+		[]string{"parentchart", "parentchart.subchart1", "parentchart.subchart1.subcharta", "parentchart.subchart1.subchartb"},
 	}, {
 		"tags disabling a group",
-		[]byte("tags:\n  front-end: false\n\n"),
+		M{"tags": M{"front-end": false}},
 		[]string{"parentchart"},
 	}, {
 		"tags disabling a group and enabling a different group",
-		[]byte("tags:\n  front-end: false\n\n  back-end: true\n"),
-		[]string{"parentchart", "subchart2", "subchartb", "subchartc"},
+		M{"tags": M{"front-end": false, "back-end": true}},
+		[]string{"parentchart", "parentchart.subchart2", "parentchart.subchart2.subchartb", "parentchart.subchart2.subchartc"},
 	}, {
 		"tags disabling only children, children still enabled since tag front-end=true in values.yaml",
-		[]byte("tags:\n  subcharta: false\n\n  subchartb: false\n"),
-		[]string{"parentchart", "subchart1", "subcharta", "subchartb"},
+		M{"tags": M{"subcharta": false, "subchartb": false}},
+		[]string{"parentchart", "parentchart.subchart1", "parentchart.subchart1.subcharta", "parentchart.subchart1.subchartb"},
 	}, {
 		"tags disabling all parents/children with additional tag re-enabling a parent",
-		[]byte("tags:\n  front-end: false\n\n  subchart1: true\n\n  back-end: false\n"),
-		[]string{"parentchart", "subchart1"},
-	}, {
-		"tags with no effect",
-		[]byte("subchart1:\n  nothinguseful: false\n\n"),
-		[]string{"parentchart", "subchart1", "subcharta", "subchartb"},
+		M{"tags": M{"front-end": false, "subchart1": true, "back-end": false}},
+		[]string{"parentchart", "parentchart.subchart1"},
 	}, {
 		"conditions enabling the parent charts, but back-end (b, c) is still disabled via values.yaml",
-		[]byte("subchart1:\n  enabled: true\nsubchart2:\n  enabled: true\n"),
-		[]string{"parentchart", "subchart1", "subchart2", "subcharta", "subchartb"},
+		M{"subchart1": M{"enabled": true}, "subchart2": M{"enabled": true}},
+		[]string{"parentchart", "parentchart.subchart1", "parentchart.subchart1.subcharta", "parentchart.subchart1.subchartb", "parentchart.subchart2"},
 	}, {
 		"conditions disabling the parent charts, effectively disabling children",
-		[]byte("subchart1:\n  enabled: false\nsubchart2:\n  enabled: false\n"),
+		M{"subchart1": M{"enabled": false}, "subchart2": M{"enabled": false}},
 		[]string{"parentchart"},
 	}, {
 		"conditions a child using the second condition path of child's condition",
-		[]byte("subchart1:\n  subcharta:\n    enabled: false\n"),
-		[]string{"parentchart", "subchart1", "subchartb"},
+		M{"subchart1": M{"subcharta": M{"enabled": false}}},
+		[]string{"parentchart", "parentchart.subchart1", "parentchart.subchart1.subchartb"},
 	}, {
 		"tags enabling a parent/child group with condition disabling one child",
-		[]byte("subchartc:\n  enabled: false\ntags:\n  back-end: true\n"),
-		[]string{"parentchart", "subchart1", "subchart2", "subcharta", "subchartb", "subchartb"},
+		M{"subchartc": M{"enabled": false}, "tags": M{"back-end": true}},
+		[]string{"parentchart", "parentchart.subchart1", "parentchart.subchart1.subcharta", "parentchart.subchart1.subchartb", "parentchart.subchart2", "parentchart.subchart2.subchartb"},
 	}, {
 		"tags will not enable a child if parent is explicitly disabled with condition",
-		[]byte("subchart1:\n  enabled: false\ntags:\n  front-end: true\n"),
+		M{"subchart1": M{"enabled": false}, "tags": M{"front-end": true}},
 		[]string{"parentchart"},
 	}}
 
 	for _, tc := range tests {
-		c, err := loader.Load("testdata/subpop")
-		if err != nil {
-			t.Fatalf("Failed to load testdata: %s", err)
-		}
+		c := loadChart(t, "testdata/subpop")
 		t.Run(tc.name, func(t *testing.T) {
-			verifyDependencyEnabled(t, c, tc.v, tc.e)
+			if err := processDependencyEnabled(c, tc.v); err != nil {
+				t.Fatalf("error processing enabled dependencies %v", err)
+			}
+
+			names := extractChartNames(c)
+			if len(names) != len(tc.e) {
+				t.Fatalf("slice lengths do not match got %v, expected %v", len(names), len(tc.e))
+			}
+			for i := range names {
+				if names[i] != tc.e[i] {
+					t.Fatalf("slice values do not match got %v, expected %v", names, tc.e)
+				}
+			}
 		})
 	}
 }
 
-func verifyDependencyEnabled(t *testing.T, c *chart.Chart, v []byte, e []string) {
-	var m map[string]interface{}
-	yaml.Unmarshal(v, &m)
-	if err := ProcessDependencyEnabled(c, m); err != nil {
-		t.Errorf("Error processing enabled dependencies %v", err)
-	}
-
-	out := extractCharts(c, nil)
-	// build list of chart names
-	var p []string
-	for _, r := range out {
-		p = append(p, r.Name())
-	}
-	//sort alphanumeric and compare to expectations
-	sort.Strings(p)
-	if len(p) != len(e) {
-		t.Errorf("Error slice lengths do not match got %v, expected %v", len(p), len(e))
-		return
-	}
-	for i := range p {
-		if p[i] != e[i] {
-			t.Errorf("Error slice values do not match got %v, expected %v", p[i], e[i])
+// extractCharts recursively searches chart dependencies returning all charts found
+func extractChartNames(c *chart.Chart) []string {
+	var out []string
+	var fn func(c *chart.Chart)
+	fn = func(c *chart.Chart) {
+		out = append(out, c.ChartPath())
+		for _, d := range c.Dependencies() {
+			fn(d)
 		}
 	}
-}
-
-// extractCharts recursively searches chart dependencies returning all charts found
-func extractCharts(c *chart.Chart, out []*chart.Chart) []*chart.Chart {
-	if len(c.Name()) > 0 {
-		out = append(out, c)
-	}
-	for _, d := range c.Dependencies() {
-		out = extractCharts(d, out)
-	}
+	fn(c)
+	sort.Strings(out)
 	return out
 }
 
 func TestProcessDependencyImportValues(t *testing.T) {
-	c, err := loader.Load("testdata/subpop")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
+	c := loadChart(t, "testdata/subpop")
 
 	e := make(map[string]string)
 
@@ -213,71 +206,57 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	e["SCBexported2A"] = "blaster"
 	e["global.SC1exported2.all.SC1exported3"] = "SC1expstr"
 
-	verifyDependencyImportValues(t, c, e)
-}
-
-func verifyDependencyImportValues(t *testing.T, c *chart.Chart, e map[string]string) {
-	if err := ProcessDependencyImportValues(c); err != nil {
-		t.Fatalf("Error processing import values dependencies %v", err)
+	if err := processDependencyImportValues(c); err != nil {
+		t.Fatalf("processing import values dependencies %v", err)
 	}
 	cc := Values(c.Values)
 	for kk, vv := range e {
 		pv, err := cc.PathValue(kk)
 		if err != nil {
-			t.Fatalf("Error retrieving import values table %v %v", kk, err)
-			return
+			t.Fatalf("retrieving import values table %v %v", kk, err)
 		}
 
 		switch pv.(type) {
 		case float64:
-			s := strconv.FormatFloat(pv.(float64), 'f', -1, 64)
-			if s != vv {
-				t.Errorf("Failed to match imported float value %v with expected %v", s, vv)
-				return
+			if s := strconv.FormatFloat(pv.(float64), 'f', -1, 64); s != vv {
+				t.Errorf("failed to match imported float value %v with expected %v", s, vv)
 			}
 		case bool:
-			b := strconv.FormatBool(pv.(bool))
-			if b != vv {
-				t.Errorf("Failed to match imported bool value %v with expected %v", b, vv)
-				return
+			if b := strconv.FormatBool(pv.(bool)); b != vv {
+				t.Errorf("failed to match imported bool value %v with expected %v", b, vv)
 			}
 		default:
 			if pv.(string) != vv {
-				t.Errorf("Failed to match imported string value %q with expected %q", pv, vv)
-				return
+				t.Errorf("failed to match imported string value %q with expected %q", pv, vv)
 			}
 		}
 	}
 }
 
 func TestGetAliasDependency(t *testing.T) {
-	c, err := loader.Load("testdata/frobnitz")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
-
+	c := loadChart(t, "testdata/frobnitz")
 	req := c.Metadata.Dependencies
 
 	if len(req) == 0 {
-		t.Fatalf("There are no dependencies to test")
+		t.Fatalf("there are no dependencies to test")
 	}
 
 	// Success case
 	aliasChart := getAliasDependency(c.Dependencies(), req[0])
 	if aliasChart == nil {
-		t.Fatalf("Failed to get dependency chart for alias %s", req[0].Name)
+		t.Fatalf("failed to get dependency chart for alias %s", req[0].Name)
 	}
 	if req[0].Alias != "" {
 		if aliasChart.Name() != req[0].Alias {
-			t.Fatalf("Dependency chart name should be %s but got %s", req[0].Alias, aliasChart.Name())
+			t.Fatalf("dependency chart name should be %s but got %s", req[0].Alias, aliasChart.Name())
 		}
 	} else if aliasChart.Name() != req[0].Name {
-		t.Fatalf("Dependency chart name should be %s but got %s", req[0].Name, aliasChart.Name())
+		t.Fatalf("dependency chart name should be %s but got %s", req[0].Name, aliasChart.Name())
 	}
 
 	if req[0].Version != "" {
 		if !version.IsCompatibleRange(req[0].Version, aliasChart.Metadata.Version) {
-			t.Fatalf("Dependency chart version is not in the compatible range")
+			t.Fatalf("dependency chart version is not in the compatible range")
 		}
 	}
 
@@ -289,161 +268,99 @@ func TestGetAliasDependency(t *testing.T) {
 
 	req[0].Version = "something else which is not in the compatible range"
 	if version.IsCompatibleRange(req[0].Version, aliasChart.Metadata.Version) {
-		t.Fatalf("Dependency chart version which is not in the compatible range should cause a failure other than a success ")
+		t.Fatalf("dependency chart version which is not in the compatible range should cause a failure other than a success ")
 	}
 }
 
 func TestDependentChartAliases(t *testing.T) {
-	c, err := loader.Load("testdata/dependent-chart-alias")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
+	c := loadChart(t, "testdata/dependent-chart-alias")
+
+	if len(c.Dependencies()) != 2 {
+		t.Fatalf("expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
 	}
 
-	if len(c.Dependencies()) == 0 {
-		t.Fatal("There are no dependencies to run this test")
+	if err := processDependencyEnabled(c, c.Values); err != nil {
+		t.Fatalf("expected no errors but got %q", err)
 	}
 
-	origLength := len(c.Dependencies())
-	if err := ProcessDependencyEnabled(c, c.Values); err != nil {
-		t.Fatalf("Expected no errors but got %q", err)
-	}
-
-	if len(c.Dependencies()) == origLength {
-		t.Fatal("Expected alias dependencies to be added, but did not got that")
+	if len(c.Dependencies()) != 3 {
+		t.Fatal("expected alias dependencies to be added")
 	}
 
 	if len(c.Dependencies()) != len(c.Metadata.Dependencies) {
-		t.Fatalf("Expected number of chart dependencies %d, but got %d", len(c.Metadata.Dependencies), len(c.Dependencies()))
+		t.Fatalf("expected number of chart dependencies %d, but got %d", len(c.Metadata.Dependencies), len(c.Dependencies()))
 	}
+	// FIXME test for correct aliases
 }
 
 func TestDependentChartWithSubChartsAbsentInDependency(t *testing.T) {
-	c, err := loader.Load("testdata/dependent-chart-no-requirements-yaml")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
+	c := loadChart(t, "testdata/dependent-chart-no-requirements-yaml")
+
+	if len(c.Dependencies()) != 2 {
+		t.Fatalf("expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
+	}
+
+	if err := processDependencyEnabled(c, c.Values); err != nil {
+		t.Fatalf("expected no errors but got %q", err)
 	}
 
 	if len(c.Dependencies()) != 2 {
-		t.Fatalf("Expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
-	}
-
-	origLength := len(c.Dependencies())
-	if err := ProcessDependencyEnabled(c, c.Values); err != nil {
-		t.Fatalf("Expected no errors but got %q", err)
-	}
-
-	if len(c.Dependencies()) != origLength {
-		t.Fatal("Expected no changes in dependencies to be, but did something got changed")
+		t.Fatal("expected no changes in dependencies")
 	}
 }
 
 func TestDependentChartWithSubChartsHelmignore(t *testing.T) {
-	if _, err := loader.Load("testdata/dependent-chart-helmignore"); err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
+	// FIXME what does this test?
+	loadChart(t, "testdata/dependent-chart-helmignore")
 }
 
 func TestDependentChartsWithSubChartsSymlink(t *testing.T) {
-	c, err := loader.Load("testdata/joonix")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
-	}
+	c := loadChart(t, "testdata/joonix")
+
 	if c.Name() != "joonix" {
-		t.Fatalf("Unexpected chart name: %s", c.Name())
+		t.Fatalf("unexpected chart name: %s", c.Name())
 	}
 	if n := len(c.Dependencies()); n != 1 {
-		t.Fatalf("Expected 1 dependency for this chart, but got %d", n)
+		t.Fatalf("expected 1 dependency for this chart, but got %d", n)
 	}
 }
 
 func TestDependentChartsWithSubchartsAllSpecifiedInDependency(t *testing.T) {
-	c, err := loader.Load("testdata/dependent-chart-with-all-in-requirements-yaml")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
+	c := loadChart(t, "testdata/dependent-chart-with-all-in-requirements-yaml")
+
+	if len(c.Dependencies()) != 2 {
+		t.Fatalf("expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
 	}
 
-	if len(c.Dependencies()) == 0 {
-		t.Fatal("There are no dependencies to run this test")
+	if err := processDependencyEnabled(c, c.Values); err != nil {
+		t.Fatalf("expected no errors but got %q", err)
 	}
 
-	origLength := len(c.Dependencies())
-	if err := ProcessDependencyEnabled(c, c.Values); err != nil {
-		t.Fatalf("Expected no errors but got %q", err)
-	}
-
-	if len(c.Dependencies()) != origLength {
-		t.Fatal("Expected no changes in dependencies to be, but did something got changed")
+	if len(c.Dependencies()) != 2 {
+		t.Fatal("expected no changes in dependencies")
 	}
 
 	if len(c.Dependencies()) != len(c.Metadata.Dependencies) {
-		t.Fatalf("Expected number of chart dependencies %d, but got %d", len(c.Metadata.Dependencies), len(c.Dependencies()))
+		t.Fatalf("expected number of chart dependencies %d, but got %d", len(c.Metadata.Dependencies), len(c.Dependencies()))
 	}
 }
 
 func TestDependentChartsWithSomeSubchartsSpecifiedInDependency(t *testing.T) {
-	c, err := loader.Load("testdata/dependent-chart-with-mixed-requirements-yaml")
-	if err != nil {
-		t.Fatalf("Failed to load testdata: %s", err)
+	c := loadChart(t, "testdata/dependent-chart-with-mixed-requirements-yaml")
+
+	if len(c.Dependencies()) != 2 {
+		t.Fatalf("expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
 	}
 
-	if len(c.Dependencies()) == 0 {
-		t.Fatal("There are no dependencies to run this test")
+	if err := processDependencyEnabled(c, c.Values); err != nil {
+		t.Fatalf("expected no errors but got %q", err)
 	}
 
-	origLength := len(c.Dependencies())
-	if err := ProcessDependencyEnabled(c, c.Values); err != nil {
-		t.Fatalf("Expected no errors but got %q", err)
+	if len(c.Dependencies()) != 2 {
+		t.Fatal("expected no changes in dependencies")
 	}
 
-	if len(c.Dependencies()) != origLength {
-		t.Fatal("Expected no changes in dependencies to be, but did something got changed")
-	}
-
-	if len(c.Dependencies()) <= len(c.Metadata.Dependencies) {
-		t.Fatalf("Expected more dependencies than specified in Chart.yaml(%d), but got %d", len(c.Metadata.Dependencies), len(c.Dependencies()))
-	}
-}
-
-func verifyDependency(t *testing.T, c *chart.Chart) {
-	if len(c.Metadata.Dependencies) != 2 {
-		t.Errorf("Expected 2 dependencies, got %d", len(c.Metadata.Dependencies))
-	}
-	tests := []*chart.Dependency{
-		{Name: "alpine", Version: "0.1.0", Repository: "https://example.com/charts"},
-		{Name: "mariner", Version: "4.3.2", Repository: "https://example.com/charts"},
-	}
-	for i, tt := range tests {
-		d := c.Metadata.Dependencies[i]
-		if d.Name != tt.Name {
-			t.Errorf("Expected dependency named %q, got %q", tt.Name, d.Name)
-		}
-		if d.Version != tt.Version {
-			t.Errorf("Expected dependency named %q to have version %q, got %q", tt.Name, tt.Version, d.Version)
-		}
-		if d.Repository != tt.Repository {
-			t.Errorf("Expected dependency named %q to have repository %q, got %q", tt.Name, tt.Repository, d.Repository)
-		}
-	}
-}
-
-func verifyChartLock(t *testing.T, c *chart.Chart) {
-	if len(c.Metadata.Dependencies) != 2 {
-		t.Errorf("Expected 2 dependencies, got %d", len(c.Metadata.Dependencies))
-	}
-	tests := []*chart.Dependency{
-		{Name: "alpine", Version: "0.1.0", Repository: "https://example.com/charts"},
-		{Name: "mariner", Version: "4.3.2", Repository: "https://example.com/charts"},
-	}
-	for i, tt := range tests {
-		d := c.Metadata.Dependencies[i]
-		if d.Name != tt.Name {
-			t.Errorf("Expected dependency named %q, got %q", tt.Name, d.Name)
-		}
-		if d.Version != tt.Version {
-			t.Errorf("Expected dependency named %q to have version %q, got %q", tt.Name, tt.Version, d.Version)
-		}
-		if d.Repository != tt.Repository {
-			t.Errorf("Expected dependency named %q to have repository %q, got %q", tt.Name, tt.Repository, d.Repository)
-		}
+	if len(c.Metadata.Dependencies) != 1 {
+		t.Fatalf("expected 1 dependency specified in Chart.yaml, got %d", len(c.Metadata.Dependencies))
 	}
 }

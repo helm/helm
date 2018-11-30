@@ -97,15 +97,10 @@ func (c *Client) InstallReleaseFromChart(chart *chart.Chart, ns string, opts ...
 	}
 	var m map[string]interface{}
 	yaml.Unmarshal(req.Values, &m)
-	err := chartutil.ProcessDependencyEnabled(req.Chart, m)
+	err := chartutil.ProcessDependencies(req.Chart, m)
 	if err != nil {
 		return nil, err
 	}
-	err = chartutil.ProcessDependencyImportValues(req.Chart)
-	if err != nil {
-		return nil, err
-	}
-
 	return c.tiller.InstallRelease(req)
 }
 
@@ -171,13 +166,9 @@ func (c *Client) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts
 	if err := yaml.Unmarshal(req.Values, &m); err != nil {
 		return nil, err
 	}
-	if err := chartutil.ProcessDependencyEnabled(req.Chart, m); err != nil {
+	if err := chartutil.ProcessDependencies(req.Chart, m); err != nil {
 		return nil, err
 	}
-	if err := chartutil.ProcessDependencyImportValues(req.Chart); err != nil {
-		return nil, err
-	}
-
 	return c.tiller.UpdateRelease(req)
 }
 
