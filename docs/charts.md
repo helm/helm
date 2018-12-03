@@ -283,7 +283,7 @@ dependencies:
     condition: subchart2.enabled,global.subchart2.enabled
     tags:
       - back-end
-          - subchart2
+      - subchart2
 
 ```
 ```yaml
