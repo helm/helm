@@ -275,7 +275,7 @@ dependencies:
     condition: subchart1.enabled,global.subchart1.enabled
     tags:
       - front-end
-      - subchart1
+          - subchart1
 
   - name: subchart2
     repository: http://localhost:10191
