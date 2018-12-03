@@ -145,7 +145,7 @@ after installation, and when viewing the status of a release. This file is evalu
 information relevant to a release of the chart. For example, instructions could be provided for
 connecting to a database, or accessing a web UI. Since this file is printed to STDOUT when running
 `helm install` or `helm status`, it is recommended to keep the content brief and point to the README
-for greater detail.
+for greater details.
 
 ## Chart Dependencies
 
