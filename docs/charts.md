@@ -345,6 +345,7 @@ directly into the parent's values by specifying the keys to import as in the exa
     import-values:
       - data
 ```
+
 ```yaml
 # child's values.yaml file
 ...
