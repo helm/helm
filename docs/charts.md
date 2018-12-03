@@ -314,7 +314,6 @@ helm install --set tags.front-end=true --set subchart2.enabled=false
 
 ##### Tags and Condition Resolution
 
-
   * **Conditions (when set in values) always override tags.** The first condition
     path that exists wins and subsequent ones for that chart are ignored.
   * Tags are evaluated as 'if any of the chart's tags are true then enable the chart'.
