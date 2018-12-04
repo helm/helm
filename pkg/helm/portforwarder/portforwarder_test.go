@@ -85,3 +85,54 @@ func TestGetFirstPod(t *testing.T) {
 		}
 	}
 }
+
+func TestGetTillerPodImage(t *testing.T) {
+	tests := []struct {
+		name     string
+		podSpec  v1.PodSpec
+		expected string
+		err      bool
+	}{
+		{
+			name: "pod with tiller container image",
+			podSpec: v1.PodSpec{
+				Containers: []v1.Container{
+					{
+						Name:  "tiller",
+						Image: "gcr.io/kubernetes-helm/tiller:v2.0.0",
+					},
+				},
+			},
+			expected: "gcr.io/kubernetes-helm/tiller:v2.0.0",
+			err:      false,
+		},
+		{
+			name: "pod without tiller container image",
+			podSpec: v1.PodSpec{
+				Containers: []v1.Container{
+					{
+						Name:  "not_tiller",
+						Image: "gcr.io/kubernetes-helm/not_tiller:v1.0.0",
+					},
+				},
+			},
+			expected: "",
+			err:      true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockPod := mockTillerPod()
+			mockPod.Spec = tt.podSpec
+			client := fake.NewSimpleClientset(&v1.PodList{Items: []v1.Pod{mockPod}})
+			imageName, err := GetTillerPodImage(client.CoreV1(), v1.NamespaceDefault)
+			if (err != nil) != tt.err {
+				t.Errorf("%q. expected error: %v, got %v", tt.name, tt.err, err)
+			}
+			if imageName != tt.expected {
+				t.Errorf("%q. expected %q, got %q", tt.name, tt.expected, imageName)
+			}
+		})
+	}
+}
