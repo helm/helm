@@ -25,7 +25,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/discovery"
 
@@ -126,31 +125,14 @@ func (s *ReleaseServer) reuseValues(req *hapi.UpdateReleaseRequest, current *rel
 			return errors.Wrap(err, "failed to rebuild old values")
 		}
 
-		// merge new values with current
-		b := append(current.Config, '\n')
-		req.Values = append(b, req.Values...)
+		req.Values = chartutil.CoalesceTables(current.Config, req.Values)
 
 		req.Chart.Values = oldVals
 
-		// yaml unmarshal and marshal to remove duplicate keys
-		y := map[string]interface{}{}
-		if err := yaml.Unmarshal(req.Values, &y); err != nil {
-			return err
-		}
-		data, err := yaml.Marshal(y)
-		if err != nil {
-			return err
-		}
-
-		req.Values = data
 		return nil
 	}
 
-	// If req.Values is empty, but current.Config is not, copy current into the
-	// request.
-	if (len(req.Values) == 0 || bytes.Equal(req.Values, []byte("{}\n"))) &&
-		len(current.Config) > 0 &&
-		!bytes.Equal(current.Config, []byte("{}\n")) {
+	if len(req.Values) == 0 && len(current.Config) > 0 {
 		s.Log("copying values from %s (v%d) to new release.", current.Name, current.Version)
 		req.Values = current.Config
 	}

@@ -143,7 +143,7 @@ func ReleaseListStatuses(statuses []release.ReleaseStatus) ReleaseListOption {
 type InstallOption func(*options)
 
 // ValueOverrides specifies a list of values to include when installing.
-func ValueOverrides(raw []byte) InstallOption {
+func ValueOverrides(raw map[string]interface{}) InstallOption {
 	return func(opts *options) {
 		opts.instReq.Values = raw
 	}
@@ -220,7 +220,7 @@ func RollbackWait(wait bool) RollbackOption {
 }
 
 // UpdateValueOverrides specifies a list of values to include when upgrading
-func UpdateValueOverrides(raw []byte) UpdateOption {
+func UpdateValueOverrides(raw map[string]interface{}) UpdateOption {
 	return func(opts *options) {
 		opts.updateReq.Values = raw
 	}

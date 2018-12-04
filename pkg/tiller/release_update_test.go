@@ -17,7 +17,6 @@ limitations under the License.
 package tiller
 
 import (
-	"bytes"
 	"reflect"
 	"strings"
 	"testing"
@@ -82,7 +81,7 @@ func TestUpdateRelease(t *testing.T) {
 
 	if res.Config == nil {
 		t.Errorf("Got release without config: %#v", res)
-	} else if !bytes.Equal(res.Config, rel.Config) {
+	} else if len(res.Config) != len(rel.Config) {
 		t.Errorf("Expected release values %q, got %q", rel.Config, res.Config)
 	}
 
@@ -139,7 +138,7 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 				{Name: "templates/hooks", Data: []byte(manifestWithHook)},
 			},
 		},
-		Values: []byte("foo: bar"),
+		Values: map[string]interface{}{"foo": "bar"},
 	}
 
 	t.Log("Running Install release with foo: bar override")
@@ -165,9 +164,8 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 		t.Fatalf("Failed updated: %s", err)
 	}
 
-	expect := "foo: bar"
-	if rel.Config != nil && !bytes.Equal(rel.Config, []byte(expect)) {
-		t.Errorf("Expected chart values to be %q, got %q", expect, string(rel.Config))
+	if rel.Config != nil && rel.Config["foo"] != "bar" {
+		t.Errorf("Expected chart value 'foo' = 'bar', got %s", rel.Config)
 	}
 
 	req = &hapi.UpdateReleaseRequest{
@@ -179,7 +177,7 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
 			},
 		},
-		Values:      []byte("foo2: bar2"),
+		Values:      map[string]interface{}{"foo2": "bar2"},
 		ReuseValues: true,
 	}
 
@@ -190,9 +188,8 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 	}
 
 	// This should have the newly-passed overrides.
-	expect = "foo: bar\nfoo2: bar2\n"
-	if rel.Config != nil && !bytes.Equal(rel.Config, []byte(expect)) {
-		t.Errorf("Expected request config to be %q, got %q", expect, string(rel.Config))
+	if len(rel.Config) != 2 && rel.Config["foo2"] != "bar2" {
+		t.Errorf("Expected chart value 'foo2' = 'bar2', got %s", rel.Config)
 	}
 
 	req = &hapi.UpdateReleaseRequest{
@@ -204,7 +201,7 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
 			},
 		},
-		Values:      []byte("foo: baz"),
+		Values:      map[string]interface{}{"foo": "baz"},
 		ReuseValues: true,
 	}
 
@@ -213,9 +210,8 @@ func TestUpdateRelease_ComplexReuseValues(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed updated: %s", err)
 	}
-	expect = "foo: baz\nfoo2: bar2\n"
-	if rel.Config != nil && !bytes.Equal(rel.Config, []byte(expect)) {
-		t.Errorf("Expected chart values to be %q, got %q", expect, rel.Config)
+	if len(rel.Config) != 2 && rel.Config["foo"] != "baz" {
+		t.Errorf("Expected chart value 'foo' = 'baz', got %s", rel.Config)
 	}
 }
 
@@ -235,7 +231,7 @@ func TestUpdateRelease_ReuseValues(t *testing.T) {
 			// Since reuseValues is set, this should get ignored.
 			Values: map[string]interface{}{"foo": "bar"},
 		},
-		Values:      []byte("name2: val2"),
+		Values:      map[string]interface{}{"name2": "val2"},
 		ReuseValues: true,
 	}
 	res, err := rs.UpdateRelease(req)
@@ -248,7 +244,7 @@ func TestUpdateRelease_ReuseValues(t *testing.T) {
 	}
 	// This should have the newly-passed overrides and any other computed values. `name: value` comes from release Config via releaseStub()
 	expect := "name: value\nname2: val2\n"
-	if res.Config != nil && !bytes.Equal(res.Config, []byte(expect)) {
+	if len(res.Config) != 2 || res.Config["name"] != "value" || res.Config["name2"] != "val2" {
 		t.Errorf("Expected request config to be %q, got %q", expect, res.Config)
 	}
 	compareStoredAndReturnedRelease(t, *rs, res)

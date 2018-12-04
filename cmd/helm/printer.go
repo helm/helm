@@ -21,6 +21,8 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/ghodss/yaml"
+
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hapi/release"
 )
@@ -51,15 +53,20 @@ func printRelease(out io.Writer, rel *release.Release) error {
 	if err != nil {
 		return err
 	}
-	cfgStr, err := cfg.YAML()
+	computed, err := cfg.YAML()
+	if err != nil {
+		return err
+	}
+
+	config, err := yaml.Marshal(rel.Config)
 	if err != nil {
 		return err
 	}
 
 	data := map[string]interface{}{
 		"Release":        rel,
-		"Config":         string(rel.Config),
-		"ComputedValues": cfgStr,
+		"Config":         string(config),
+		"ComputedValues": computed,
 		"ReleaseDate":    rel.Info.LastDeployed.Format(time.ANSIC),
 	}
 	return tpl(printReleaseTemplate, data, out)

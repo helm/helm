@@ -33,7 +33,7 @@ var releases = []*rspb.Release{
 }
 
 func tsRelease(name string, vers int, dur time.Duration, status rspb.ReleaseStatus) *rspb.Release {
-	tmsp := time.Now().Add(time.Duration(dur))
+	tmsp := time.Now().Add(dur)
 	info := &rspb.Info{Status: status, LastDeployed: tmsp}
 	return &rspb.Release{
 		Name:    name,

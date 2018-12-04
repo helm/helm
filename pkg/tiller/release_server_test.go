@@ -239,7 +239,7 @@ func namedReleaseStub(name string, status release.ReleaseStatus) *release.Releas
 			Description:   "Named Release Stub",
 		},
 		Chart:   chartStub(),
-		Config:  []byte(`name: value`),
+		Config:  map[string]interface{}{"name": "value"},
 		Version: 1,
 		Hooks: []*release.Hook{
 			{
@@ -379,7 +379,7 @@ func releaseWithKeepStub(rlsName string) *release.Release {
 			Status:        release.StatusDeployed,
 		},
 		Chart:    ch,
-		Config:   []byte(`name: value`),
+		Config:   map[string]interface{}{"name": "value"},
 		Version:  1,
 		Manifest: manifestWithKeep,
 	}

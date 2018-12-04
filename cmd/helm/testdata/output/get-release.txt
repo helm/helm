@@ -2,7 +2,8 @@ REVISION: 1
 RELEASED: Fri Sep  2 22:04:05 1977
 CHART: foo-0.1.0-beta.1
 USER-SUPPLIED VALUES:
-name: "value"
+name: value
+
 COMPUTED VALUES:
 name: value
 

@@ -19,8 +19,6 @@ import (
 	"log"
 	"strings"
 
-	"github.com/ghodss/yaml"
-
 	"k8s.io/helm/pkg/chart"
 	"k8s.io/helm/pkg/version"
 )
@@ -166,8 +164,7 @@ Loop:
 	for _, lr := range c.Metadata.Dependencies {
 		lr.Enabled = true
 	}
-	b, _ := yaml.Marshal(v)
-	cvals, err := CoalesceValues(c, b)
+	cvals, err := CoalesceValues(c, v)
 	if err != nil {
 		return err
 	}
@@ -227,7 +224,7 @@ func processImportValues(c *chart.Chart) error {
 		return nil
 	}
 	// combine chart values and empty config to get Values
-	cvals, err := CoalesceValues(c, []byte{})
+	cvals, err := CoalesceValues(c, nil)
 	if err != nil {
 		return err
 	}
@@ -253,7 +250,7 @@ func processImportValues(c *chart.Chart) error {
 					continue
 				}
 				// create value map from child to be merged into parent
-				b = coalesceTables(cvals, pathToMap(parent, vv.AsMap()))
+				b = CoalesceTables(cvals, pathToMap(parent, vv.AsMap()))
 			case string:
 				child := "exports." + iv
 				outiv = append(outiv, map[string]string{
@@ -265,7 +262,7 @@ func processImportValues(c *chart.Chart) error {
 					log.Printf("Warning: ImportValues missing table: %v", err)
 					continue
 				}
-				b = coalesceTables(b, vm.AsMap())
+				b = CoalesceTables(b, vm.AsMap())
 			}
 		}
 		// set our formatted import values
@@ -273,7 +270,7 @@ func processImportValues(c *chart.Chart) error {
 	}
 
 	// set the new values
-	c.Values = coalesceTables(b, cvals)
+	c.Values = CoalesceTables(b, cvals)
 
 	return nil
 }

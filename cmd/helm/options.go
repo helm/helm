@@ -50,7 +50,7 @@ func (o *valuesOptions) addFlags(fs *pflag.FlagSet) {
 
 // mergeValues merges values from files specified via -f/--values and
 // directly via --set or --set-string, marshaling them to YAML
-func (o *valuesOptions) mergedValues() ([]byte, error) {
+func (o *valuesOptions) mergedValues() (map[string]interface{}, error) {
 	base := map[string]interface{}{}
 
 	// User specified a values files via -f/--values
@@ -59,11 +59,11 @@ func (o *valuesOptions) mergedValues() ([]byte, error) {
 
 		bytes, err := readFile(filePath)
 		if err != nil {
-			return []byte{}, err
+			return base, err
 		}
 
 		if err := yaml.Unmarshal(bytes, &currentMap); err != nil {
-			return []byte{}, errors.Wrapf(err, "failed to parse %s", filePath)
+			return base, errors.Wrapf(err, "failed to parse %s", filePath)
 		}
 		// Merge with the previous map
 		base = mergeValues(base, currentMap)
@@ -72,18 +72,18 @@ func (o *valuesOptions) mergedValues() ([]byte, error) {
 	// User specified a value via --set
 	for _, value := range o.values {
 		if err := strvals.ParseInto(value, base); err != nil {
-			return []byte{}, errors.Wrap(err, "failed parsing --set data")
+			return base, errors.Wrap(err, "failed parsing --set data")
 		}
 	}
 
 	// User specified a value via --set-string
 	for _, value := range o.stringValues {
 		if err := strvals.ParseIntoString(value, base); err != nil {
-			return []byte{}, errors.Wrap(err, "failed parsing --set-string data")
+			return base, errors.Wrap(err, "failed parsing --set-string data")
 		}
 	}
 
-	return yaml.Marshal(base)
+	return base, nil
 }
 
 // readFile load a file from stdin, the local directory, or a remote file with a url.

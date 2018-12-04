@@ -17,8 +17,6 @@ limitations under the License.
 package helm // import "k8s.io/helm/pkg/helm"
 
 import (
-	yaml "gopkg.in/yaml.v2"
-
 	"k8s.io/helm/pkg/chart"
 	"k8s.io/helm/pkg/chart/loader"
 	"k8s.io/helm/pkg/chartutil"
@@ -95,10 +93,7 @@ func (c *Client) InstallReleaseFromChart(chart *chart.Chart, ns string, opts ...
 	if err := reqOpts.runBefore(req); err != nil {
 		return nil, err
 	}
-	var m map[string]interface{}
-	yaml.Unmarshal(req.Values, &m)
-	err := chartutil.ProcessDependencies(req.Chart, m)
-	if err != nil {
+	if err := chartutil.ProcessDependencies(req.Chart, req.Values); err != nil {
 		return nil, err
 	}
 	return c.tiller.InstallRelease(req)
@@ -162,11 +157,7 @@ func (c *Client) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts
 	if err := reqOpts.runBefore(req); err != nil {
 		return nil, err
 	}
-	var m map[string]interface{}
-	if err := yaml.Unmarshal(req.Values, &m); err != nil {
-		return nil, err
-	}
-	if err := chartutil.ProcessDependencies(req.Chart, m); err != nil {
+	if err := chartutil.ProcessDependencies(req.Chart, req.Values); err != nil {
 		return nil, err
 	}
 	return c.tiller.UpdateRelease(req)

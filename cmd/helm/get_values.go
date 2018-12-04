@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/require"
@@ -81,6 +82,11 @@ func (o *getValuesOptions) run(out io.Writer) error {
 		return nil
 	}
 
-	fmt.Fprintln(out, string(res.Config))
+	resConfig, err := yaml.Marshal(res.Config)
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintln(out, string(resConfig))
 	return nil
 }

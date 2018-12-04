@@ -101,12 +101,10 @@ func TestInstallRelease_VerifyOptions(t *testing.T) {
 	var dryRun = true
 	var chartName = "alpine"
 	var chartPath = filepath.Join(chartsDir, chartName)
-	var overrides = []byte("key1=value1,key2=value2")
 
 	// Expected InstallReleaseRequest message
 	exp := &hapi.InstallReleaseRequest{
 		Chart:        loadChart(t, chartName),
-		Values:       overrides,
 		DryRun:       dryRun,
 		Name:         releaseName,
 		DisableHooks: disableHooks,
@@ -115,7 +113,6 @@ func TestInstallRelease_VerifyOptions(t *testing.T) {
 
 	// Options used in InstallRelease
 	ops := []InstallOption{
-		ValueOverrides(overrides),
 		InstallDryRun(dryRun),
 		ReleaseName(releaseName),
 		InstallReuseName(reuseName),
@@ -191,14 +188,12 @@ func TestUpdateRelease_VerifyOptions(t *testing.T) {
 	var chartPath = filepath.Join(chartsDir, chartName)
 	var releaseName = "test"
 	var disableHooks = true
-	var overrides = []byte("key1=value1,key2=value2")
 	var dryRun = false
 
 	// Expected UpdateReleaseRequest message
 	exp := &hapi.UpdateReleaseRequest{
 		Name:         releaseName,
 		Chart:        loadChart(t, chartName),
-		Values:       overrides,
 		DryRun:       dryRun,
 		DisableHooks: disableHooks,
 	}
@@ -206,7 +201,6 @@ func TestUpdateRelease_VerifyOptions(t *testing.T) {
 	// Options used in UpdateRelease
 	ops := []UpdateOption{
 		UpgradeDryRun(dryRun),
-		UpdateValueOverrides(overrides),
 		UpgradeDisableHooks(disableHooks),
 	}
 

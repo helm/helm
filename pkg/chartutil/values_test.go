@@ -70,7 +70,7 @@ water:
 	}
 }
 
-func TestToRenderValuesCaps(t *testing.T) {
+func TestToRenderValues(t *testing.T) {
 
 	chartValues := map[string]interface{}{
 		"name": "al Rashid",
@@ -80,12 +80,13 @@ func TestToRenderValuesCaps(t *testing.T) {
 		},
 	}
 
-	overideValues := `
-name: Haroun
-where:
-  city: Baghdad
-  date: 809 CE
-`
+	overideValues := map[string]interface{}{
+		"name": "Haroun",
+		"where": map[string]interface{}{
+			"city": "Baghdad",
+			"date": "809 CE",
+		},
+	}
 
 	c := &chart.Chart{
 		Metadata:  &chart.Metadata{Name: "test"},
@@ -98,7 +99,6 @@ where:
 	c.AddDependency(&chart.Chart{
 		Metadata: &chart.Metadata{Name: "where"},
 	})
-	v := []byte(overideValues)
 
 	o := ReleaseOptions{
 		Name:      "Seven Voyages",
@@ -111,7 +111,7 @@ where:
 		KubeVersion: &kversion.Info{Major: "1"},
 	}
 
-	res, err := ToRenderValues(c, v, o, caps)
+	res, err := ToRenderValues(c, overideValues, o, caps)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -263,7 +263,7 @@ func ttpl(tpl string, v map[string]interface{}) (string, error) {
 }
 
 // ref: http://www.yaml.org/spec/1.2/spec.html#id2803362
-var testCoalesceValuesYaml = `
+var testCoalesceValuesYaml = []byte(`
 top: yup
 bottom: null
 right: Null
@@ -286,12 +286,17 @@ pequod:
       sail: true
   ahab:
     scope: whale
-`
+`)
 
 func TestCoalesceValues(t *testing.T) {
 	c := loadChart(t, "testdata/moby")
 
-	v, err := CoalesceValues(c, []byte(testCoalesceValuesYaml))
+	vals, err := ReadValues(testCoalesceValuesYaml)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	v, err := CoalesceValues(c, vals)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -366,7 +371,7 @@ func TestCoalesceTables(t *testing.T) {
 
 	// What we expect is that anything in dst overrides anything in src, but that
 	// otherwise the values are coalesced.
-	coalesceTables(dst, src)
+	CoalesceTables(dst, src)
 
 	if dst["name"] != "Ishmael" {
 		t.Errorf("Unexpected name: %s", dst["name"])
