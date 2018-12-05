@@ -25,6 +25,7 @@ import (
 	"k8s.io/helm/pkg/storage/driver"
 )
 
+// NoReleasesErr indicates that a given release cannot be found
 const NoReleasesErr = "has no deployed releases"
 
 // Storage represents a storage engine for a Release.
