@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"k8s.io/api/core/v1"
@@ -31,10 +32,13 @@ import (
 
 // Environment encapsulates information about where test suite executes and returns results
 type Environment struct {
-	Namespace  string
-	KubeClient environment.KubeClient
-	Stream     services.ReleaseService_RunReleaseTestServer
-	Timeout    int64
+	Namespace   string
+	KubeClient  environment.KubeClient
+	Stream      services.ReleaseService_RunReleaseTestServer
+	Timeout     int64
+	Parallel    bool
+	Parallelism uint32
+	streamLock  sync.Mutex
 }
 
 func (env *Environment) createTestPod(test *test) error {
@@ -108,6 +112,8 @@ func (env *Environment) streamUnknown(name, info string) error {
 
 func (env *Environment) streamMessage(msg string, status release.TestRun_Status) error {
 	resp := &services.TestReleaseResponse{Msg: msg, Status: status}
+	env.streamLock.Lock()
+	defer env.streamLock.Unlock()
 	return env.Stream.Send(resp)
 }
 

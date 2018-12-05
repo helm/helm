@@ -339,6 +339,8 @@ message TestReleaseRequest {
 	int64 timeout = 2;
 	// cleanup specifies whether or not to attempt pod deletion after test completes
 	bool cleanup = 3;
+	// parallel specifies whether or not to run test pods in parallel
+	bool parallel = 4;
 }
 
 // TestReleaseResponse represents a message from executing a test
