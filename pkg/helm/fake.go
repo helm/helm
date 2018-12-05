@@ -231,7 +231,7 @@ func ReleaseMock(opts *MockReleaseOptions) *release.Release {
 			Description:   "Release mock",
 		},
 		Chart:     ch,
-		Config:    []byte(`name: "value"`),
+		Config:    map[string]interface{}{"name": "value"},
 		Version:   version,
 		Namespace: namespace,
 		Hooks: []*release.Hook{

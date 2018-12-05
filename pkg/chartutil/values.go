@@ -142,21 +142,14 @@ func ReadValuesFile(filename string) (Values, error) {
 //	- Scalar values and arrays are replaced, maps are merged
 //	- A chart has access to all of the variables for it, as well as all of
 //		the values destined for its dependencies.
-func CoalesceValues(chrt *chart.Chart, vals []byte) (Values, error) {
-	var err error
-	cvals := Values{}
-	// Parse values if not nil. We merge these at the top level because
-	// the passed-in values are in the same namespace as the parent chart.
-	if vals != nil {
-		cvals, err = ReadValues(vals)
-		if err != nil {
-			return cvals, err
-		}
+func CoalesceValues(chrt *chart.Chart, vals map[string]interface{}) (Values, error) {
+	if vals == nil {
+		vals = make(map[string]interface{})
 	}
-	if _, err := coalesce(chrt, cvals); err != nil {
-		return cvals, err
+	if _, err := coalesce(chrt, vals); err != nil {
+		return vals, err
 	}
-	return coalesceDeps(chrt, cvals)
+	return coalesceDeps(chrt, vals)
 }
 
 // coalesce coalesces the dest values and the chart values, giving priority to the dest values.
@@ -229,7 +222,7 @@ func coalesceGlobals(dest, src map[string]interface{}) {
 				} else {
 					// Basically, we reverse order of coalesce here to merge
 					// top-down.
-					coalesceTables(vv, destvmap)
+					CoalesceTables(vv, destvmap)
 					dg[key] = vv
 					continue
 				}
@@ -273,7 +266,7 @@ func coalesceValues(c *chart.Chart, v map[string]interface{}) {
 				}
 				// Because v has higher precedence than nv, dest values override src
 				// values.
-				coalesceTables(dest, src)
+				CoalesceTables(dest, src)
 			}
 		} else {
 			// If the key is not in v, copy it from nv.
@@ -285,7 +278,10 @@ func coalesceValues(c *chart.Chart, v map[string]interface{}) {
 // coalesceTables merges a source map into a destination map.
 //
 // dest is considered authoritative.
-func coalesceTables(dst, src map[string]interface{}) map[string]interface{} {
+func CoalesceTables(dst, src map[string]interface{}) map[string]interface{} {
+	if dst == nil || src == nil {
+		return src
+	}
 	// Because dest has higher precedence than src, dest values override src
 	// values.
 	for key, val := range src {
@@ -293,17 +289,14 @@ func coalesceTables(dst, src map[string]interface{}) map[string]interface{} {
 			if innerdst, ok := dst[key]; !ok {
 				dst[key] = val
 			} else if istable(innerdst) {
-				coalesceTables(innerdst.(map[string]interface{}), val.(map[string]interface{}))
+				CoalesceTables(innerdst.(map[string]interface{}), val.(map[string]interface{}))
 			} else {
 				log.Printf("warning: cannot overwrite table with non table for %s (%v)", key, val)
 			}
-			continue
 		} else if dv, ok := dst[key]; ok && istable(dv) {
 			log.Printf("warning: destination for %s is a table. Ignoring non-table value %v", key, val)
-			continue
 		} else if !ok { // <- ok is still in scope from preceding conditional.
 			dst[key] = val
-			continue
 		}
 	}
 	return dst
@@ -320,7 +313,7 @@ type ReleaseOptions struct {
 // ToRenderValues composes the struct from the data coming from the Releases, Charts and Values files
 //
 // This takes both ReleaseOptions and Capabilities to merge into the render values.
-func ToRenderValues(chrt *chart.Chart, chrtVals []byte, options ReleaseOptions, caps *Capabilities) (Values, error) {
+func ToRenderValues(chrt *chart.Chart, chrtVals map[string]interface{}, options ReleaseOptions, caps *Capabilities) (Values, error) {
 
 	top := map[string]interface{}{
 		"Release": map[string]interface{}{

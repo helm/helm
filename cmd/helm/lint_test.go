@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	values                       = []byte{}
+	values                       = make(map[string]interface{})
 	namespace                    = "testNamespace"
 	strict                       = false
 	archivedChartPath            = "testdata/testcharts/compressedchart-0.1.0.tgz"

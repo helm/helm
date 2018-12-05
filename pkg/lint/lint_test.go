@@ -24,7 +24,7 @@ import (
 	"testing"
 )
 
-var values = []byte{}
+var values map[string]interface{}
 
 const namespace = "testNamespace"
 const strict = false

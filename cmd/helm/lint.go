@@ -126,7 +126,7 @@ func (o *lintOptions) run(out io.Writer) error {
 	return nil
 }
 
-func lintChart(path string, vals []byte, namespace string, strict bool) (support.Linter, error) {
+func lintChart(path string, vals map[string]interface{}, namespace string, strict bool) (support.Linter, error) {
 	var chartPath string
 	linter := support.Linter{}
 
@@ -165,7 +165,7 @@ func lintChart(path string, vals []byte, namespace string, strict bool) (support
 	return lint.All(chartPath, vals, namespace, strict), nil
 }
 
-func (o *lintOptions) vals() ([]byte, error) {
+func (o *lintOptions) vals() (map[string]interface{}, error) {
 	base := map[string]interface{}{}
 
 	// User specified a values files via -f/--values
@@ -173,11 +173,11 @@ func (o *lintOptions) vals() ([]byte, error) {
 		currentMap := map[string]interface{}{}
 		bytes, err := ioutil.ReadFile(filePath)
 		if err != nil {
-			return []byte{}, err
+			return base, err
 		}
 
 		if err := yaml.Unmarshal(bytes, &currentMap); err != nil {
-			return []byte{}, errors.Wrapf(err, "failed to parse %s", filePath)
+			return base, errors.Wrapf(err, "failed to parse %s", filePath)
 		}
 		// Merge with the previous map
 		base = mergeValues(base, currentMap)
@@ -186,16 +186,16 @@ func (o *lintOptions) vals() ([]byte, error) {
 	// User specified a value via --set
 	for _, value := range o.values {
 		if err := strvals.ParseInto(value, base); err != nil {
-			return []byte{}, errors.Wrap(err, "failed parsing --set data")
+			return base, errors.Wrap(err, "failed parsing --set data")
 		}
 	}
 
 	// User specified a value via --set-string
 	for _, value := range o.stringValues {
 		if err := strvals.ParseIntoString(value, base); err != nil {
-			return []byte{}, errors.Wrap(err, "failed parsing --set-string data")
+			return base, errors.Wrap(err, "failed parsing --set-string data")
 		}
 	}
 
-	return yaml.Marshal(base)
+	return base, nil
 }

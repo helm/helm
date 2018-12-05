@@ -44,7 +44,7 @@ func TestValidateAllowedExtension(t *testing.T) {
 	}
 }
 
-var values = []byte("nameOverride: ''\nhttpPort: 80")
+var values = map[string]interface{}{"nameOverride": "", "httpPort": 80}
 
 const namespace = "testNamespace"
 const strict = false

@@ -30,7 +30,7 @@ import (
 )
 
 // Templates lints the templates in the Linter.
-func Templates(linter *support.Linter, values []byte, namespace string, strict bool) {
+func Templates(linter *support.Linter, values map[string]interface{}, namespace string, strict bool) {
 	path := "templates/"
 	templatesPath := filepath.Join(linter.ChartDir, path)
 
@@ -56,13 +56,8 @@ func Templates(linter *support.Linter, values []byte, namespace string, strict b
 	if err != nil {
 		return
 	}
-	// convert our values back into config
-	yvals, err := yaml.Marshal(cvals)
-	if err != nil {
-		return
-	}
 	caps := chartutil.DefaultCapabilities
-	valuesToRender, err := chartutil.ToRenderValues(chart, yvals, options, caps)
+	valuesToRender, err := chartutil.ToRenderValues(chart, cvals, options, caps)
 	if err != nil {
 		// FIXME: This seems to generate a duplicate, but I can't find where the first
 		// error is coming from.

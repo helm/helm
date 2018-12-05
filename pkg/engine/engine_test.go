@@ -100,12 +100,13 @@ func TestRender(t *testing.T) {
 		Values: map[string]interface{}{"outer": "DEFAULT", "inner": "DEFAULT"},
 	}
 
-	vals := []byte(`
-outer: spouter
-inner: inn
-global:
-  callme: Ishmael
-`)
+	vals := map[string]interface{}{
+		"outer": "spouter",
+		"inner": "inn",
+		"global": map[string]interface{}{
+			"callme": "Ishmael",
+		},
+	}
 
 	e := New()
 	v, err := chartutil.CoalesceValues(c, vals)
@@ -302,13 +303,17 @@ func TestRenderNestedValues(t *testing.T) {
 	}
 	outer.AddDependency(inner)
 
-	injValues := []byte(`
-what: rosebuds
-herrick:
-  deepest:
-    what: flower
-global:
-  when: to-day`)
+	injValues := map[string]interface{}{
+		"what": "rosebuds",
+		"herrick": map[string]interface{}{
+			"deepest": map[string]interface{}{
+				"what": "flower",
+			},
+		},
+		"global": map[string]interface{}{
+			"when": "to-day",
+		},
+	}
 
 	tmp, err := chartutil.CoalesceValues(outer, injValues)
 	if err != nil {
