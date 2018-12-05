@@ -116,10 +116,10 @@ be deprecated. The chart name can later be reused by publishing a newer version
 that is not marked as deprecated. The workflow for deprecating charts, as
 followed by the [helm/charts](https://github.com/helm/charts)
 project is:
-  - Update chart's `Chart.yaml` to mark the chart as deprecated, bumping the
-  version
-  - Release the new chart version in the Chart Repository
-  - Remove the chart from the source repository (e.g. git)
+
+- Update chart's `Chart.yaml` to mark the chart as deprecated, bumping the version
+- Release the new chart version in the Chart Repository
+- Remove the chart from the source repository (e.g. git)
 
 ## Chart LICENSE, README and NOTES
 
@@ -159,7 +159,6 @@ the preferred method of declaring dependencies is by using a
 
 **Note:** The `dependencies:` section of the `Chart.yaml` from Helm
 Classic has been completely removed.
-
 
 ### Managing Dependencies with `requirements.yaml`
 
@@ -240,6 +239,7 @@ dependencies:
 ```
 
 In the above example we will get 3 dependencies in all for `parentchart`
+
 ```
 subchart
 new-subchart-1
@@ -283,9 +283,10 @@ dependencies:
     condition: subchart2.enabled,global.subchart2.enabled
     tags:
       - back-end
-          - subchart2
+      - subchart2
 
 ```
+
 ```yaml
 # parentchart/values.yaml
 
@@ -294,7 +295,7 @@ subchart1:
 tags:
   front-end: false
   back-end: true
-````
+```
 
 In the above example all charts with the tag `front-end` would be disabled but since the
 `subchart1.enabled` path evaluates to 'true' in the parent's values, the condition will override the
@@ -314,12 +315,11 @@ helm install --set tags.front-end=true --set subchart2.enabled=false
 
 ##### Tags and Condition Resolution
 
-
-  * **Conditions (when set in values) always override tags.** The first condition
-    path that exists wins and subsequent ones for that chart are ignored.
-  * Tags are evaluated as 'if any of the chart's tags are true then enable the chart'.
-  * Tags and conditions values must be set in the top parent's values.
-  * The `tags:` key in values must be a top level key. Globals and nested `tags:` tables
+- **Conditions (when set in values) always override tags.**
+- The first condition path that exists wins and subsequent ones for that chart are ignored.
+- Tags are evaluated as 'if any of the chart's tags are true then enable the chart'.
+- Tags and conditions values must be set in the top parent's values.
+- The `tags:` key in values must be a top level key. Globals and nested `tags:` tables
     are not currently supported.
 
 #### Importing Child Values via requirements.yaml
@@ -345,6 +345,7 @@ directly into the parent's values by specifying the keys to import as in the exa
     import-values:
       - data
 ```
+
 ```yaml
 # child's values.yaml file
 ...
@@ -388,6 +389,7 @@ dependencies:
       - child: default.data
         parent: myimports
 ```
+
 In the above example, values found at `default.data` in the subchart1's values will be imported
 to the `myimports` key in the parent chart's values as detailed below:
 
@@ -400,6 +402,7 @@ myimports:
   mystring: "helm rocks!"
 
 ```
+
 ```yaml
 # subchart1's values.yaml file
 
@@ -409,6 +412,7 @@ default:
     mybool: true
 
 ```
+
 The parent chart's resulting values would be:
 
 ```yaml
@@ -511,10 +515,10 @@ through the template engine.
 
 Values for the templates are supplied two ways:
 
-  - Chart developers may supply a file called `values.yaml` inside of a
-    chart. This file can contain default values.
-  - Chart users may supply a YAML file that contains values. This can be
-    provided on the command line with `helm install`.
+- Chart developers may supply a file called `values.yaml` inside of a
+  chart. This file can contain default values.
+- Chart users may supply a YAML file that contains values. This can be
+  provided on the command line with `helm install`.
 
 When a user supplies custom values, these values will override the
 values in the chart's `values.yaml` file.
