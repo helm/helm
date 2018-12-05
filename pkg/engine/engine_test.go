@@ -466,12 +466,37 @@ func TestAlterFuncMap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	expectStr := "All your base are belong to us"
 	if gotStr := outReq["conan/templates/quote"]; gotStr != expectStr {
 		t.Errorf("Expected %q, got %q (%v)", expectStr, gotStr, outReq)
 	}
 	expectNum := "All 2 of them!"
+	if gotNum := outReq["conan/templates/bases"]; gotNum != expectNum {
+		t.Errorf("Expected %q, got %q (%v)", expectNum, gotNum, outReq)
+	}
+
+	// test required without passing in needed values with lint mode on
+	// verifies lint replaces required with an empty string (should not fail)
+	lintValues := chartutil.Values{
+		"Values": chartutil.Values{
+			"who": "us",
+		},
+		"Chart": reqChart.Metadata,
+		"Release": chartutil.Values{
+			"Name": "That 90s meme",
+		},
+	}
+	e := New()
+	e.LintMode = true
+	outReq, err = e.Render(reqChart, lintValues)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expectStr = "All your base are belong to us"
+	if gotStr := outReq["conan/templates/quote"]; gotStr != expectStr {
+		t.Errorf("Expected %q, got %q (%v)", expectStr, gotStr, outReq)
+	}
+	expectNum = "All  of them!"
 	if gotNum := outReq["conan/templates/bases"]; gotNum != expectNum {
 		t.Errorf("Expected %q, got %q (%v)", expectNum, gotNum, outReq)
 	}
