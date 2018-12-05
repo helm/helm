@@ -167,7 +167,7 @@ workflow for doing this is as follows:
 3. Add your repository as a remote for `$GOPATH/src/k8s.io/helm`
 4. Create a new working branch (`git checkout -b feat/my-feature`) and
    do your work on that branch.
-5. When you are ready for us to review, push your branch to GitHub, and
+5. When you are ready for us to review, sign your commit, push your branch to GitHub, and
    then open a new pull request with us.
 
 For Git commit messages, we follow the [Semantic Commit Messages](http://karma-runner.github.io/0.13/dev/git-commit-msg.html):
