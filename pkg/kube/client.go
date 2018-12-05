@@ -220,8 +220,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	buf := new(bytes.Buffer)
 	printFlags := get.NewHumanPrintFlags()
 	for t, ot := range objs {
-		kindHeader := fmt.Sprintf("==> %s\n", t)
-		if _, err = buf.WriteString(kindHeader); err != nil {
+		if _, err = fmt.Fprintf(buf, "==> %s\n", t); err != nil {
 			return "", err
 		}
 		typePrinter, _ := printFlags.ToPrinter("")
