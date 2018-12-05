@@ -3,6 +3,9 @@ import:
   - package: golang.org/x/net
     subpackages:
       - context
+  - package: golang.org/x/sync
+    subpackages:
+    - semaphore
   - package: github.com/spf13/cobra
     version: fe5e611709b0c57fa4a89136deaa8e1d4004d053
   - package: github.com/spf13/pflag
@@ -41,7 +44,6 @@ import:
   - package: github.com/prometheus/client_golang
     version: 0.8.0
   - package: github.com/grpc-ecosystem/go-grpc-prometheus
-
   - package: k8s.io/kubernetes
     version: release-1.12
   - package: k8s.io/client-go
