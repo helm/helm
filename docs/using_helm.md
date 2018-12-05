@@ -215,8 +215,11 @@ You can then override any of these settings in a JSON or YAML formatted file,
 and then pass that file during installation.
 
 ```console
-$ echo '{mariadbUser: user0, mariadbDatabase: user0db}' > config.json
-$ helm install -f config.json stable/mariadb
+$ cat << EOF > config.yaml
+mariadbUser: user0
+mariadbDatabase: user0db
+EOF
+$ helm install -f config.yaml stable/mariadb
 ```
 
 The above will create a default MariaDB user with the name `user0`, and
