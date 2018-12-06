@@ -304,7 +304,7 @@ func (i *installCmd) run() error {
 		helm.InstallWait(i.wait),
 		helm.InstallDescription(i.description))
 
-	// If there is an error while waiting, make a call without waiting to get the release content
+	// If there is an error while waiting, display the release content
 	if (resp == nil || resp.Release == nil) && i.wait {
 		if res, e := i.client.ReleaseContent(i.name); e != nil {
 			fmt.Fprintf(i.out, "Error reading release content: %v", prettyError(e))
