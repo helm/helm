@@ -104,6 +104,24 @@ func (r *rollbackCmd) run() error {
 		helm.RollbackTimeout(r.timeout),
 		helm.RollbackWait(r.wait),
 		helm.RollbackDescription(r.description))
+
+	if settings.Debug {
+		// If there is an error while waiting, make a call without waiting to get the release content
+		if (resp == nil || resp.Release == nil) && r.wait {
+			if res, e := r.client.ReleaseContent(r.name); e != nil {
+				fmt.Fprintf(r.out, "Error reading release content: %v", prettyError(e))
+			} else {
+				printRelease(r.out, res.Release)
+			}
+		} else {
+			rel := resp.GetRelease()
+			if rel == nil {
+				return nil
+			}
+			printRelease(r.out, rel)
+		}
+	}
+	
 	if err != nil {
 		return prettyError(err)
 	}

@@ -291,7 +291,7 @@ func (i *installCmd) run() error {
 		return fmt.Errorf("cannot load requirements: %v", err)
 	}
 
-	res, err := i.client.InstallReleaseFromChart(
+	resp, err := i.client.InstallReleaseFromChart(
 		chartRequested,
 		i.namespace,
 		helm.ValueOverrides(rawVals),
@@ -303,15 +303,25 @@ func (i *installCmd) run() error {
 		helm.InstallTimeout(i.timeout),
 		helm.InstallWait(i.wait),
 		helm.InstallDescription(i.description))
+
+	// If there is an error while waiting, display the release content
+	if (resp == nil || resp.Release == nil) && i.wait {
+		if res, e := i.client.ReleaseContent(i.name); e != nil {
+			fmt.Fprintf(i.out, "Error reading release content: %v", prettyError(e))
+		} else {
+			i.printRelease(res.Release)
+		}
+	} else {
+		rel := resp.GetRelease()
+		if rel == nil {
+			return nil
+		}
+		i.printRelease(rel)
+	}
+
 	if err != nil {
 		return prettyError(err)
 	}
-
-	rel := res.GetRelease()
-	if rel == nil {
-		return nil
-	}
-	i.printRelease(rel)
 
 	// If this is a dry run, we can't display status.
 	if i.dryRun {
