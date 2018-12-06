@@ -326,13 +326,14 @@ func (i *installCmd) run() error {
 	// If this is a dry run, we can't display status.
 	if i.dryRun {
 		// This is special casing to avoid breaking backward compatibility:
-		if res.Release.Info.Description != "Dry run complete" {
-			fmt.Fprintf(os.Stdout, "WARNING: %s\n", res.Release.Info.Description)
+		if resp.Release.Info.Description != "Dry run complete" {
+			fmt.Fprintf(os.Stdout, "WARNING: %s\n", resp.Release.Info.Description)
 		}
 		return nil
 	}
 
 	// Print the status like status command does
+	rel := resp.GetRelease()
 	status, err := i.client.ReleaseStatus(rel.Name)
 	if err != nil {
 		return prettyError(err)

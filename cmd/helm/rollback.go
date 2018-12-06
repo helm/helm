@@ -94,7 +94,7 @@ func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
 }
 
 func (r *rollbackCmd) run() error {
-	_, err := r.client.RollbackRelease(
+	resp, err := r.client.RollbackRelease(
 		r.name,
 		helm.RollbackDryRun(r.dryRun),
 		helm.RollbackRecreate(r.recreate),
@@ -121,7 +121,7 @@ func (r *rollbackCmd) run() error {
 			printRelease(r.out, rel)
 		}
 	}
-	
+
 	if err != nil {
 		return prettyError(err)
 	}
