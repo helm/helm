@@ -89,6 +89,29 @@ func newClient(allNamespaces bool) helm.Interface {
 	)
 }
 
+func newActionConfig(allNamespaces bool) *action.Configuration {
+	kc := kube.New(kubeConfig())
+	kc.Log = logf
+
+	clientset, err := kc.KubernetesClientSet()
+	if err != nil {
+		// TODO return error
+		log.Fatal(err)
+	}
+	var namespace string
+	if !allNamespaces {
+		namespace = getNamespace()
+	}
+	// TODO add other backends
+	d := driver.NewSecrets(clientset.CoreV1().Secrets(namespace))
+	d.Log = logf
+	
+	c := &action.Configuration{
+		KubeClient: helm.KubeClient(kc),
+		Storage: storage
+	}
+}
+
 func kubeConfig() genericclioptions.RESTClientGetter {
 	configOnce.Do(func() {
 		config = kube.GetConfig(settings.KubeConfig, settings.KubeContext, settings.Namespace)

@@ -25,9 +25,11 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/require"
+	"k8s.io/helm/pkg/action"
 	"k8s.io/helm/pkg/hapi"
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/storage"
 )
 
 var listHelp = `
@@ -93,7 +95,14 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 				o.filter = strings.Join(args, " ")
 			}
 			o.client = ensureHelmClient(o.client, o.allNamespaces)
-			return o.run(out)
+
+			lister := action.NewList(action.Configuration{
+				Releases:   storage.Init(driver.ConfigMap),
+				KubeClient: newClient(o.all),
+			})
+			//return o.run(out)
+			_, err := lister.Run()
+			return err
 		},
 	}
 
