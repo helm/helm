@@ -7,13 +7,19 @@ package fs
 import (
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"testing"
+	"sync"
+)
+
+var (
+	mu	sync.Mutex
 )
 
 func TestRenameWithFallback(t *testing.T) {
-	dir, err := ioutil.TempDir("", "dep")
+	dir, err := ioutil.TempDir("", "helm-tmp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +57,7 @@ func TestRenameWithFallback(t *testing.T) {
 }
 
 func TestCopyDir(t *testing.T) {
-	dir, err := ioutil.TempDir("", "dep")
+	dir, err := ioutil.TempDir("", "helm-tmp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,7 +155,7 @@ func TestCopyDirFail_SrcInaccessible(t *testing.T) {
 	})
 	defer cleanup()
 
-	dir, err := ioutil.TempDir("", "dep")
+	dir, err := ioutil.TempDir("", "helm-tmp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,7 +177,7 @@ func TestCopyDirFail_DstInaccessible(t *testing.T) {
 
 	var srcdir, dstdir string
 
-	dir, err := ioutil.TempDir("", "dep")
+	dir, err := ioutil.TempDir("", "helm-tmp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -196,7 +202,7 @@ func TestCopyDirFail_DstInaccessible(t *testing.T) {
 func TestCopyDirFail_SrcIsNotDir(t *testing.T) {
 	var srcdir, dstdir string
 
-	dir, err := ioutil.TempDir("", "dep")
+	dir, err := ioutil.TempDir("", "helm-tmp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -222,7 +228,7 @@ func TestCopyDirFail_SrcIsNotDir(t *testing.T) {
 func TestCopyDirFail_DstExists(t *testing.T) {
 	var srcdir, dstdir string
 
-	dir, err := ioutil.TempDir("", "dep")
+	dir, err := ioutil.TempDir("", "helm-tmp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -260,7 +266,7 @@ func TestCopyDirFailOpen(t *testing.T) {
 
 	var srcdir, dstdir string
 
-	dir, err := ioutil.TempDir("", "dep")
+	dir, err := ioutil.TempDir("", "helm-tmp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -291,7 +297,7 @@ func TestCopyDirFailOpen(t *testing.T) {
 }
 
 func TestCopyFile(t *testing.T) {
-	dir, err := ioutil.TempDir("", "dep")
+	dir, err := ioutil.TempDir("", "helm-tmp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -337,15 +343,32 @@ func TestCopyFile(t *testing.T) {
 	}
 }
 
+func cleanUpDir(dir string) {
+	// NOTE(mattn): It seems that sometimes git.exe is not dead
+	// when cleanUpDir() is called. But we do not know any way to wait for it.
+	if runtime.GOOS == "windows" {
+		mu.Lock()
+		exec.Command(`taskkill`, `/F`, `/IM`, `git.exe`).Run()
+		mu.Unlock()
+	}
+	if dir != "" {
+		os.RemoveAll(dir)
+	}
+}
+
 func TestCopyFileSymlink(t *testing.T) {
-	h := test.NewHelper(t)
-	defer h.Cleanup()
-	h.TempDir(".")
+	var tempdir, err = ioutil.TempDir("", "gotest")
+
+	if err != nil {
+		t.Fatalf("failed to create directory: %s", err);
+	}
+
+	defer cleanUpDir(tempdir)
 
 	testcases := map[string]string{
-		filepath.Join("./testdata/symlinks/file-symlink"):         filepath.Join(h.Path("."), "dst-file"),
-		filepath.Join("./testdata/symlinks/windows-file-symlink"): filepath.Join(h.Path("."), "windows-dst-file"),
-		filepath.Join("./testdata/symlinks/invalid-symlink"):      filepath.Join(h.Path("."), "invalid-symlink"),
+		filepath.Join("./testdata/symlinks/file-symlink"):         filepath.Join(tempdir, "dst-file"),
+		filepath.Join("./testdata/symlinks/windows-file-symlink"): filepath.Join(tempdir, "windows-dst-file"),
+		filepath.Join("./testdata/symlinks/invalid-symlink"):      filepath.Join(tempdir, "invalid-symlink"),
 	}
 
 	for symlink, dst := range testcases {
@@ -362,15 +385,21 @@ func TestCopyFileSymlink(t *testing.T) {
 				// regular users aren't granted usually. So we copy the file
 				// content as a fall back instead of creating a real symlink.
 				srcb, err := ioutil.ReadFile(symlink)
-				h.Must(err)
+				if err != nil {
+					t.Fatalf("%+v", err)
+				}
 				dstb, err := ioutil.ReadFile(dst)
-				h.Must(err)
+				if err != nil {
+					t.Fatalf("%+v", err)
+				}
 
 				want = string(srcb)
 				got = string(dstb)
 			} else {
 				want, err = os.Readlink(symlink)
-				h.Must(err)
+				if err != nil {
+					t.Fatalf("%+v", err)
+				}
 
 				got, err = os.Readlink(dst)
 				if err != nil {
@@ -385,38 +414,6 @@ func TestCopyFileSymlink(t *testing.T) {
 	}
 }
 
-func TestCopyFileLongFilePath(t *testing.T) {
-	if runtime.GOOS != "windows" {
-		// We want to ensure the temporary fix actually fixes the issue with
-		// os.Chmod and long file paths. This is only applicable on Windows.
-		t.Skip("skipping on non-windows")
-	}
-
-	h := test.NewHelper(t)
-	h.TempDir(".")
-	defer h.Cleanup()
-
-	tmpPath := h.Path(".")
-
-	// Create a directory with a long-enough path name to cause the bug in #774.
-	dirName := ""
-	for len(tmpPath+string(os.PathSeparator)+dirName) <= 300 {
-		dirName += "directory"
-	}
-
-	h.TempDir(dirName)
-	h.TempFile(dirName+string(os.PathSeparator)+"src", "")
-
-	tmpDirPath := tmpPath + string(os.PathSeparator) + dirName + string(os.PathSeparator)
-
-	err := copyFile(tmpDirPath+"src", tmpDirPath+"dst")
-	if err != nil {
-		t.Fatalf("unexpected error while copying file: %v", err)
-	}
-}
-
-// C:\Users\appveyor\AppData\Local\Temp\1\gotest639065787\dir4567890\dir4567890\dir4567890\dir4567890\dir4567890\dir4567890\dir4567890\dir4567890\dir4567890\dir4567890\dir4567890\dir4567890\dir4567890\dir4567890\dir4567890\dir4567890\dir4567890\dir4567890\dir4567890\dir4567890\dir4567890\dir4567890\dir4567890
-
 func TestCopyFileFail(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		// XXX: setting permissions works differently in
@@ -425,7 +422,7 @@ func TestCopyFileFail(t *testing.T) {
 		t.Skip("skipping on windows")
 	}
 
-	dir, err := ioutil.TempDir("", "dep")
+	dir, err := ioutil.TempDir("", "helm-tmp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -465,7 +462,7 @@ func TestCopyFileFail(t *testing.T) {
 // files this function creates. It is the caller's responsibility to call
 // this function before the test is done running, whether there's an error or not.
 func setupInaccessibleDir(t *testing.T, op func(dir string) error) func() {
-	dir, err := ioutil.TempDir("", "dep")
+	dir, err := ioutil.TempDir("", "helm-tmp")
 	if err != nil {
 		t.Fatal(err)
 		return nil // keep compiler happy
@@ -549,7 +546,7 @@ func TestIsDir(t *testing.T) {
 }
 
 func TestIsSymlink(t *testing.T) {
-	dir, err := ioutil.TempDir("", "dep")
+	dir, err := ioutil.TempDir("", "helm-tmp")
 	if err != nil {
 		t.Fatal(err)
 	}
