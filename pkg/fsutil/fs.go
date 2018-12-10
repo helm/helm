@@ -55,8 +55,6 @@ func renameByCopy(src, dst string) error {
 	return errors.Wrapf(os.RemoveAll(src), "cannot delete %s", src)
 }
 
-var errPathNotDir = errors.New("given path is not a directory")
-
 var (
 	errSrcNotDir = errors.New("source is not a directory")
 	errDstExist  = errors.New("destination already exists")
