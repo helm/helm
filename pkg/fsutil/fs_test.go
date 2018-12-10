@@ -11,12 +11,12 @@ import (
 	"os/user"
 	"path/filepath"
 	"runtime"
-	"testing"
 	"sync"
+	"testing"
 )
 
 var (
-	mu	sync.Mutex
+	mu sync.Mutex
 )
 
 func TestRenameWithFallback(t *testing.T) {
@@ -394,7 +394,7 @@ func TestCopyFileSymlink(t *testing.T) {
 	var tempdir, err = ioutil.TempDir("", "gotest")
 
 	if err != nil {
-		t.Fatalf("failed to create directory: %s", err);
+		t.Fatalf("failed to create directory: %s", err)
 	}
 
 	defer cleanUpDir(tempdir)
