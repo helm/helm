@@ -148,9 +148,13 @@ func TestCopyDirFail_SrcInaccessible(t *testing.T) {
 		t.Skip("skipping on windows")
 	}
 
-	var current_user, err = user.Current()
+	var currentUser, err = user.Current()
 
-	if current_user.Name == "root" {
+	if err != nil {
+		t.Fatalf("Failed to get name of current user: %s", err)
+	}
+
+	if currentUser.Name == "root" {
 		// Skipping if root, because all files are accessible
 		t.Skip("Skipping for root user")
 	}
@@ -183,9 +187,13 @@ func TestCopyDirFail_DstInaccessible(t *testing.T) {
 		t.Skip("skipping on windows")
 	}
 
-	var current_user, err = user.Current()
+	var currentUser, err = user.Current()
 
-	if current_user.Name == "root" {
+	if err != nil {
+		t.Fatalf("Failed to get name of current user: %s", err)
+	}
+
+	if currentUser.Name == "root" {
 		// Skipping if root, because all files are accessible
 		t.Skip("Skipping for root user")
 	}
@@ -279,9 +287,13 @@ func TestCopyDirFailOpen(t *testing.T) {
 		t.Skip("skipping on windows")
 	}
 
-	var current_user, err = user.Current()
+	var currentUser, err = user.Current()
 
-	if current_user.Name == "root" {
+	if err != nil {
+		t.Fatalf("Failed to get name of current user: %s", err)
+	}
+
+	if currentUser.Name == "root" {
 		// Skipping if root, because all files are accessible
 		t.Skip("Skipping for root user")
 	}
@@ -444,9 +456,13 @@ func TestCopyFileFail(t *testing.T) {
 		t.Skip("skipping on windows")
 	}
 
-	var current_user, err = user.Current()
+	var currentUser, err = user.Current()
 
-	if current_user.Name == "root" {
+	if err != nil {
+		t.Fatalf("Failed to get name of current user: %s", err)
+	}
+
+	if currentUser.Name == "root" {
 		// Skipping if root, because all files are accessible
 		t.Skip("Skipping for root user")
 	}
@@ -531,9 +547,13 @@ func setupInaccessibleDir(t *testing.T, op func(dir string) error) func() {
 
 func TestIsDir(t *testing.T) {
 
-	var current_user, err = user.Current()
+	var currentUser, err = user.Current()
 
-	if current_user.Name == "root" {
+	if err != nil {
+		t.Fatalf("Failed to get name of current user: %s", err)
+	}
+
+	if currentUser.Name == "root" {
 		// Skipping if root, because all files are accessible
 		t.Skip("Skipping for root user")
 	}
@@ -584,9 +604,13 @@ func TestIsDir(t *testing.T) {
 
 func TestIsSymlink(t *testing.T) {
 
-	var current_user, err = user.Current()
+	var currentUser, err = user.Current()
 
-	if current_user.Name == "root" {
+	if err != nil {
+		t.Fatalf("Failed to get name of current user: %s", err)
+	}
+
+	if currentUser.Name == "root" {
 		// Skipping if root, because all files are accessible
 		t.Skip("Skipping for root user")
 	}
