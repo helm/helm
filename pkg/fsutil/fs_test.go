@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -147,6 +148,13 @@ func TestCopyDirFail_SrcInaccessible(t *testing.T) {
 		t.Skip("skipping on windows")
 	}
 
+	var current_user, err = user.Current()
+
+	if current_user.Name == "root" {
+		// Skipping if root, because all files are accessible
+		t.Skip("Skipping for root user")
+	}
+
 	var srcdir, dstdir string
 
 	cleanup := setupInaccessibleDir(t, func(dir string) error {
@@ -173,6 +181,13 @@ func TestCopyDirFail_DstInaccessible(t *testing.T) {
 		// Microsoft Windows. Skipping this this until a
 		// compatible implementation is provided.
 		t.Skip("skipping on windows")
+	}
+
+	var current_user, err = user.Current()
+
+	if current_user.Name == "root" {
+		// Skipping if root, because all files are accessible
+		t.Skip("Skipping for root user")
 	}
 
 	var srcdir, dstdir string
@@ -262,6 +277,13 @@ func TestCopyDirFailOpen(t *testing.T) {
 		// this this until a compatible implementation is
 		// provided.
 		t.Skip("skipping on windows")
+	}
+
+	var current_user, err = user.Current()
+
+	if current_user.Name == "root" {
+		// Skipping if root, because all files are accessible
+		t.Skip("Skipping for root user")
 	}
 
 	var srcdir, dstdir string
@@ -422,6 +444,13 @@ func TestCopyFileFail(t *testing.T) {
 		t.Skip("skipping on windows")
 	}
 
+	var current_user, err = user.Current()
+
+	if current_user.Name == "root" {
+		// Skipping if root, because all files are accessible
+		t.Skip("Skipping for root user")
+	}
+
 	dir, err := ioutil.TempDir("", "helm-tmp")
 	if err != nil {
 		t.Fatal(err)
@@ -501,6 +530,14 @@ func setupInaccessibleDir(t *testing.T, op func(dir string) error) func() {
 }
 
 func TestIsDir(t *testing.T) {
+
+	var current_user, err = user.Current()
+
+	if current_user.Name == "root" {
+		// Skipping if root, because all files are accessible
+		t.Skip("Skipping for root user")
+	}
+
 	wd, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
@@ -546,6 +583,14 @@ func TestIsDir(t *testing.T) {
 }
 
 func TestIsSymlink(t *testing.T) {
+
+	var current_user, err = user.Current()
+
+	if current_user.Name == "root" {
+		// Skipping if root, because all files are accessible
+		t.Skip("Skipping for root user")
+	}
+
 	dir, err := ioutil.TempDir("", "helm-tmp")
 	if err != nil {
 		t.Fatal(err)
