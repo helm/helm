@@ -575,9 +575,9 @@ func TestIsDir(t *testing.T) {
 		exists bool
 		err    bool
 	}{
-		wd: {true, false},
-		filepath.Join(wd, "testdata"):                       {true, false},
-		filepath.Join(wd, "main.go"):                        {false, true},
+		wd:                            {true, false},
+		filepath.Join(wd, "testdata"): {true, false},
+		filepath.Join(wd, "main.go"):  {false, true},
 		filepath.Join(wd, "this_file_does_not_exist.thing"): {false, true},
 		dn: {false, true},
 	}
