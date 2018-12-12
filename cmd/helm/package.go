@@ -59,6 +59,7 @@ type packageCmd struct {
 	version          string
 	appVersion       string
 	destination      string
+	cipherKey        string
 	dependencyUpdate bool
 
 	out  io.Writer
@@ -103,6 +104,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&pkg.version, "version", "", "set the version on the chart to this semver version")
 	f.StringVar(&pkg.appVersion, "app-version", "", "set the appVersion on the chart to this version")
 	f.StringVarP(&pkg.destination, "destination", "d", ".", "location to write the chart.")
+	f.StringVar(&pkg.cipherKey, "cipher-key", "", "the cipher key to encrypt this package")
 	f.BoolVarP(&pkg.dependencyUpdate, "dependency-update", "u", false, `update dependencies from "requirements.yaml" to dir "charts/" before packaging`)
 
 	return cmd
@@ -171,6 +173,14 @@ func (p *packageCmd) run() error {
 	} else {
 		// Otherwise save to set destination
 		dest = p.destination
+	}
+
+	// encrypt this chart
+	if len(p.cipherKey) > 0 {
+		ch, err = chartutil.Encrypt(ch, p.cipherKey)
+		if err != nil {
+			return fmt.Errorf("Failed to encrypt: %s", err)
+		}
 	}
 
 	name, err := chartutil.Save(ch, dest)

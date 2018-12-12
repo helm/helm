@@ -31,6 +31,14 @@ import (
 
 // UpdateRelease takes an existing release and new information, and upgrades the release.
 func (s *ReleaseServer) UpdateRelease(c ctx.Context, req *services.UpdateReleaseRequest) (*services.UpdateReleaseResponse, error) {
+	// decrypt this chart if possible
+	if len(s.env.CipherKey) > 0 {
+		ch, err := chartutil.Decrypt(req.Chart, s.env.CipherKey)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to decrypt: %s", err)
+		}
+		req.Chart = ch
+	}
 	if err := validateReleaseName(req.Name); err != nil {
 		s.Log("updateRelease: Release name is invalid: %s", req.Name)
 		return nil, err

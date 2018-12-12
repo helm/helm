@@ -32,6 +32,14 @@ import (
 
 // InstallRelease installs a release and stores the release record.
 func (s *ReleaseServer) InstallRelease(c ctx.Context, req *services.InstallReleaseRequest) (*services.InstallReleaseResponse, error) {
+	// decrypt this chart if possible
+	if len(s.env.CipherKey) > 0 {
+		ch, err := chartutil.Decrypt(req.Chart, s.env.CipherKey)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to decrypt: %s", err)
+		}
+		req.Chart = ch
+	}
 	s.Log("preparing install for %s", req.Name)
 	rel, err := s.prepareRelease(req)
 	if err != nil {

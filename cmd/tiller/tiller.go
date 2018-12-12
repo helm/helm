@@ -61,6 +61,8 @@ const (
 	tlsCertsEnvVar = "TILLER_TLS_CERTS"
 	// historyMaxEnvVar is the name of the env var for setting max history.
 	historyMaxEnvVar = "TILLER_HISTORY_MAX"
+	// cipherKeyEnvVar is the name of the env var for the cipher key to decrypt chart.
+	cipherKeyEnvVar = "CIPHER_KEY"
 
 	storageMemory    = "memory"
 	storageConfigMap = "configmap"
@@ -84,6 +86,7 @@ var (
 	certFile             = flag.String("tls-cert", tlsDefaultsFromEnv("tls-cert"), "path to TLS certificate file")
 	caCertFile           = flag.String("tls-ca-cert", tlsDefaultsFromEnv("tls-ca-cert"), "trust certificates signed by this CA")
 	maxHistory           = flag.Int("history-max", historyMaxFromEnv(), "maximum number of releases kept in release history, with 0 meaning no limit")
+	cipherKey            = flag.String("cipher-key", cipherKeyDefaultsFromEnv(), "the cipher key to decrypt chart")
 	printVersion         = flag.Bool("version", false, "print the version number")
 
 	// rootServer is the root gRPC server.
@@ -150,6 +153,8 @@ func start() {
 	kubeClient := kube.New(nil)
 	kubeClient.Log = newLogger("kube").Printf
 	env.KubeClient = kubeClient
+
+	env.CipherKey = *cipherKey
 
 	if *tlsEnable || *tlsVerify {
 		opts := tlsutil.Options{CertFile: *certFile, KeyFile: *keyFile}
@@ -287,5 +292,6 @@ func historyMaxFromEnv() int {
 	return ret
 }
 
-func tlsEnableEnvVarDefault() bool { return os.Getenv(tlsEnableEnvVar) != "" }
-func tlsVerifyEnvVarDefault() bool { return os.Getenv(tlsVerifyEnvVar) != "" }
+func tlsEnableEnvVarDefault() bool     { return os.Getenv(tlsEnableEnvVar) != "" }
+func tlsVerifyEnvVarDefault() bool     { return os.Getenv(tlsVerifyEnvVar) != "" }
+func cipherKeyDefaultsFromEnv() string { return os.Getenv(cipherKeyEnvVar) }

@@ -207,6 +207,8 @@ type Environment struct {
 	Releases *storage.Storage
 	// KubeClient is a Kubernetes API client.
 	KubeClient KubeClient
+	// the cipher key to decrypt chart
+	CipherKey string
 }
 
 // New returns an environment initialized with the defaults.
