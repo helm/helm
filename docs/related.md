@@ -81,6 +81,7 @@ Tools layered on top of Helm or Tiller.
 - [Quay App Registry](https://coreos.com/blog/quay-application-registry-for-kubernetes.html) - Open Kubernetes application registry, including a Helm access client
 - [Rudder](https://github.com/AcalephStorage/rudder) - RESTful (JSON) proxy for Tiller's API
 - [Schelm](https://github.com/databus23/schelm) - Render a Helm manifest to a directory
+- [Shipper](https://github.com/bookingcom/shipper) - Multi-cluster canary or blue-green rollouts using Helm
 - [VIM-Kubernetes](https://github.com/andrewstuart/vim-kubernetes) - VIM plugin for Kubernetes and Helm
 
 ## Helm Included
