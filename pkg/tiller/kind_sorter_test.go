@@ -223,3 +223,39 @@ func TestKindSorterSubSort(t *testing.T) {
 		})
 	}
 }
+
+func TestKindSorterUnknownsWithNamespace(t *testing.T) {
+	// a.Kind=Namespace should win over b.Kind=Unknown even if the a.Name > b.Name
+	manifests := []Manifest{
+		{
+			Name: "a",
+			Head: &util.SimpleHead{Kind: "Namespace"},
+		},
+		{
+			Name: "N",
+			Head: &util.SimpleHead{Kind: "Unknown"},
+		},
+	}
+	for _, test := range []struct {
+		description string
+		order       SortOrder
+		expected    string
+	}{
+		// expectation is sorted by kind (unknown is last) and then sub sorted alphabetically within each group
+		{"Namespace,Unknown", InstallOrder, "aN"},
+	} {
+		var buf bytes.Buffer
+		t.Run(test.description, func(t *testing.T) {
+
+			defer buf.Reset()
+			m := make([]Manifest, len(manifests))
+			copy(m, manifests)
+			for _, r := range sortByKind(m, test.order) {
+				buf.WriteString(r.Name)
+			}
+			if got := buf.String(); got != test.expected {
+				t.Errorf("Expected %q, got %q", test.expected, got)
+			}
+		})
+	}
+}
