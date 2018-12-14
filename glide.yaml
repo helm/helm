@@ -47,17 +47,17 @@ import:
   - package: k8s.io/kubernetes
     version: release-1.13
   - package: k8s.io/client-go
-    version: kubernetes-1.13.0
+    version: kubernetes-1.13.1
   - package: k8s.io/api
-    version: kubernetes-1.13.0
+    version: kubernetes-1.13.1
   - package: k8s.io/apimachinery
-    version: kubernetes-1.13.0
+    version: kubernetes-1.13.1
   - package: k8s.io/apiserver
-    version: kubernetes-1.13.0
+    version: kubernetes-1.13.1
   - package: k8s.io/cli-runtime
-    version: kubernetes-1.13.0
+    version: kubernetes-1.13.1
   - package: k8s.io/apiextensions-apiserver
-    version: kubernetes-1.13.0
+    version: kubernetes-1.13.1
   - package: github.com/cyphar/filepath-securejoin
     version: ^0.2.1
 

@@ -1,5 +1,5 @@
-hash: c54977baef0c54fe52cd8b2df120454018de82a1c8967a34b804e9a1fa0ae9cc
-updated: 2018-12-08T01:25:26.033266Z
+hash: 2af9a5c4f891a0f44109a929a494b5aeaaffa3a87cd1f3881f25f79845703d5b
+updated: 2018-12-14T21:39:31.112097Z
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -356,7 +356,7 @@ imports:
 - name: gopkg.in/yaml.v2
   version: 670d4cfef0544295bc27a114dbac37980d83185a
 - name: k8s.io/api
-  version: 89a74a8d264df0e993299876a8cde88379b940ee
+  version: 05914d821849570fba9eacfb29466f2d8d3cd229
   subpackages:
   - admission/v1beta1
   - admissionregistration/v1alpha1
@@ -393,7 +393,7 @@ imports:
   - storage/v1alpha1
   - storage/v1beta1
 - name: k8s.io/apiextensions-apiserver
-  version: 20c909e7c8c3fec1a0e345b1d4e57f1c1623c368
+  version: 0fe22c71c47604641d9aa352c785b7912c200562
   subpackages:
   - pkg/features
 - name: k8s.io/apimachinery
@@ -453,7 +453,7 @@ imports:
   - third_party/forked/golang/netutil
   - third_party/forked/golang/reflect
 - name: k8s.io/apiserver
-  version: 9caa0299108fbdf51d3d9b8e8956834ae84dac75
+  version: 3ccfe8365421eb08e334b195786a2973460741d8
   subpackages:
   - pkg/authentication/authenticator
   - pkg/authentication/serviceaccount
@@ -461,13 +461,13 @@ imports:
   - pkg/features
   - pkg/util/feature
 - name: k8s.io/cli-runtime
-  version: a04da5c88c0796c1dc5ff976a9c91999779ac0e4
+  version: 835b10687cb6556f6b113099ef925146a56d5981
   subpackages:
   - pkg/genericclioptions
   - pkg/genericclioptions/printers
   - pkg/genericclioptions/resource
 - name: k8s.io/client-go
-  version: e64494209f554a6723674bd494d69445fb76a1d4
+  version: 8d9ed539ba3134352c586810e749e58df4e94e4f
   subpackages:
   - discovery
   - discovery/fake
