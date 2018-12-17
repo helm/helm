@@ -1,8 +1,10 @@
+// +build !windows
+
 /*
 Copyright (c) for portions of rename.go are held by The Go Authors, 2016 and are provided under
 the BSD license.
 
-https://github.com/golang/dep/blob/master/LICENSE
+https://github.com/golang/go/blob/master/LICENSE
 
 Copyright The Helm Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,8 +19,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-
-// +build !windows
 
 package fs
 
