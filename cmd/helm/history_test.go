@@ -63,7 +63,7 @@ func TestHistoryCmd(t *testing.T) {
 			name:     "get history with max limit set",
 			args:     []string{"angry-bird"},
 			flags:    []string{"--max", "2"},
-			rels:     releases[:2],
+			rels:     releases,
 			expected: "REVISION\tUPDATED                 \tSTATUS    \tCHART           \tAPP VERSION\tDESCRIPTION \n3       \t(.*)\tSUPERSEDED\tfoo-0.1.0-beta.1\t1.3        \tRelease mock\n4       \t(.*)\tDEPLOYED  \tfoo-0.1.0-beta.1\t1.4        \tRelease mock\n",
 		},
 		{

@@ -229,7 +229,22 @@ func (c *FakeClient) ReleaseContent(rlsName string, opts ...ContentOption) (resp
 
 // ReleaseHistory returns a release's revision history.
 func (c *FakeClient) ReleaseHistory(rlsName string, opts ...HistoryOption) (*rls.GetHistoryResponse, error) {
-	return &rls.GetHistoryResponse{Releases: c.Rels}, nil
+	reqOpts := c.Opts
+	for _, opt := range opts {
+		opt(&reqOpts)
+	}
+	maxLen := int(reqOpts.histReq.Max)
+
+	var resp rls.GetHistoryResponse
+	for _, rel := range c.Rels {
+		if maxLen > 0 && len(resp.Releases) >= maxLen {
+			return &resp, nil
+		}
+		if rel.Name == rlsName {
+			resp.Releases = append(resp.Releases, rel)
+		}
+	}
+	return &resp, nil
 }
 
 // RunReleaseTest executes a pre-defined tests on a release
