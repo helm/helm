@@ -2,7 +2,7 @@
 Copyright (c) for portions of fs.go are held by The Go Authors, 2016 and are provided under
 the BSD license.
 
-https://github.com/golang/go/blob/master/LICENSE
+https://github.com/golang/dep/blob/master/LICENSE
 
 Copyright The Helm Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
