@@ -158,12 +158,12 @@ spec:
     - host: {{ . | quote }}
       http:
         paths:
-	{{- range $ingressPaths }}
+        {{- range $ingressPaths }}
           - path: {{ . }}
             backend:
               serviceName: {{ $fullName }}
               servicePort: http
-	{{- end }}
+        {{- end }}
   {{- end }}
 {{- end }}
 `
