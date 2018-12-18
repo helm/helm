@@ -65,6 +65,7 @@ type upgradeOptions struct {
 	reuseValues  bool  // --reuse-values
 	timeout      int64 // --timeout
 	wait         bool  // --wait
+	maxHistory   int   // --max-history
 
 	valuesOptions
 	chartPathOptions
@@ -109,6 +110,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&o.reuseValues, "reuse-values", false, "when upgrading, reuse the last release's values and merge in any overrides from the command line via --set and -f. If '--reset-values' is specified, this is ignored.")
 	f.BoolVar(&o.wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
 	f.BoolVar(&o.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
+	f.IntVar(&o.maxHistory, "history-max", 0, "limit the maximum number of revisions saved per release. Use 0 for no limit.")
 	o.valuesOptions.addFlags(f)
 	o.chartPathOptions.addFlags(f)
 
@@ -168,7 +170,8 @@ func (o *upgradeOptions) run(out io.Writer) error {
 		helm.UpgradeTimeout(o.timeout),
 		helm.ResetValues(o.resetValues),
 		helm.ReuseValues(o.reuseValues),
-		helm.UpgradeWait(o.wait))
+		helm.UpgradeWait(o.wait),
+		helm.MaxHistory(o.maxHistory))
 	if err != nil {
 		return errors.Wrap(err, "UPGRADE FAILED")
 	}

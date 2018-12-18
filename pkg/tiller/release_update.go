@@ -45,6 +45,8 @@ func (s *ReleaseServer) UpdateRelease(req *hapi.UpdateReleaseRequest) (*release.
 		return nil, err
 	}
 
+	s.Releases.MaxHistory = req.MaxHistory
+
 	if !req.DryRun {
 		s.Log("creating updated release for %s", req.Name)
 		if err := s.Releases.Create(updatedRelease); err != nil {
