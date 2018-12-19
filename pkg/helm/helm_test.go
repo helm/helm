@@ -26,7 +26,6 @@ import (
 	cpb "k8s.io/helm/pkg/chart"
 	"k8s.io/helm/pkg/chart/loader"
 	"k8s.io/helm/pkg/hapi"
-	rls "k8s.io/helm/pkg/hapi/release"
 )
 
 // Path to example charts relative to pkg/helm.
@@ -36,61 +35,6 @@ const chartsDir = "../../docs/examples/"
 var errSkip = errors.New("test: skip")
 
 // Verify each ReleaseListOption is applied to a ListReleasesRequest correctly.
-func TestListReleases_VerifyOptions(t *testing.T) {
-	// Options testdata
-	var limit = 2
-	var offset = "offset"
-	var filter = "filter"
-	var sortBy = hapi.SortByLastReleased
-	var sortOrd = hapi.SortAsc
-	var codes = []rls.ReleaseStatus{
-		rls.StatusFailed,
-		rls.StatusUninstalled,
-		rls.StatusDeployed,
-		rls.StatusSuperseded,
-	}
-
-	// Expected ListReleasesRequest message
-	exp := &hapi.ListReleasesRequest{
-		Limit:       int64(limit),
-		Offset:      offset,
-		Filter:      filter,
-		SortBy:      sortBy,
-		SortOrder:   sortOrd,
-		StatusCodes: codes,
-	}
-
-	// Options used in ListReleases
-	ops := []ReleaseListOption{
-		ReleaseListSort(sortBy),
-		ReleaseListOrder(sortOrd),
-		ReleaseListLimit(limit),
-		ReleaseListOffset(offset),
-		ReleaseListFilter(filter),
-		ReleaseListStatuses(codes),
-	}
-
-	// BeforeCall option to intercept Helm client ListReleasesRequest
-	b4c := BeforeCall(func(msg interface{}) error {
-		switch act := msg.(type) {
-		case *hapi.ListReleasesRequest:
-			t.Logf("ListReleasesRequest: %#+v\n", act)
-			assert(t, exp, act)
-		default:
-			t.Fatalf("expected message of type ListReleasesRequest, got %T\n", act)
-		}
-		return errSkip
-	})
-
-	client := NewClient(b4c)
-
-	if _, err := client.ListReleases(ops...); err != errSkip {
-		t.Fatalf("did not expect error but got (%v)\n``", err)
-	}
-
-	// ensure options for call are not saved to client
-	assert(t, "", client.opts.listReq.Filter)
-}
 
 // Verify each InstallOption is applied to an InstallReleaseRequest correctly.
 func TestInstallRelease_VerifyOptions(t *testing.T) {

@@ -26,9 +26,11 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	"k8s.io/helm/pkg/action"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/helm/environment"
 	"k8s.io/helm/pkg/kube"
+	"k8s.io/helm/pkg/storage"
 	"k8s.io/helm/pkg/storage/driver"
 )
 
@@ -50,7 +52,7 @@ func logf(format string, v ...interface{}) {
 }
 
 func main() {
-	cmd := newRootCmd(nil, os.Stdout, os.Args[1:])
+	cmd := newRootCmd(nil, newActionConfig(false), os.Stdout, os.Args[1:])
 	if err := cmd.Execute(); err != nil {
 		logf("%+v", err)
 		os.Exit(1)
@@ -102,13 +104,28 @@ func newActionConfig(allNamespaces bool) *action.Configuration {
 	if !allNamespaces {
 		namespace = getNamespace()
 	}
-	// TODO add other backends
-	d := driver.NewSecrets(clientset.CoreV1().Secrets(namespace))
-	d.Log = logf
-	
-	c := &action.Configuration{
-		KubeClient: helm.KubeClient(kc),
-		Storage: storage
+
+	var store *storage.Storage
+	switch os.Getenv("HELM_DRIVER") {
+	case "secret", "secrets", "":
+		d := driver.NewSecrets(clientset.CoreV1().Secrets(namespace))
+		d.Log = logf
+		store = storage.Init(d)
+	case "configmap", "configmaps":
+		d := driver.NewConfigMaps(clientset.CoreV1().ConfigMaps(namespace))
+		d.Log = logf
+		store = storage.Init(d)
+	case "memory":
+		d := driver.NewMemory()
+		store = storage.Init(d)
+	default:
+		// Not sure what to do here.
+		panic("Unknown driver in HELM_DRIVER: " + os.Getenv("HELM_DRIVER"))
+	}
+
+	return &action.Configuration{
+		KubeClient: kc,
+		Releases:   store,
 	}
 }
 

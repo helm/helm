@@ -52,19 +52,6 @@ func (c *Client) Option(opts ...Option) *Client {
 	return c
 }
 
-// ListReleases lists the current releases.
-func (c *Client) ListReleases(opts ...ReleaseListOption) ([]*release.Release, error) {
-	reqOpts := c.opts
-	for _, opt := range opts {
-		opt(&reqOpts)
-	}
-	req := &reqOpts.listReq
-	if err := reqOpts.runBefore(req); err != nil {
-		return nil, err
-	}
-	return c.tiller.ListReleases(req)
-}
-
 // InstallRelease loads a chart from chstr, installs it, and returns the release response.
 func (c *Client) InstallRelease(chstr, ns string, opts ...InstallOption) (*release.Release, error) {
 	// load the chart to install

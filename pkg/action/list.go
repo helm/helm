@@ -1,14 +1,32 @@
+/*
+Copyright The Helm Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package action
 
 import (
-	"errors"
 	"regexp"
-	"sort"
 
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/releaseutil"
 )
 
+// ListStates represents zero or more status codes that a list item may have set
+//
+// Because this is used as a bitmask filter, more than one one bit can be flipped
+// in the ListStates.
 type ListStates uint
 
 const (
@@ -32,17 +50,47 @@ const (
 	ListUnknown
 )
 
-type ByDate struct{}
-type ByNameAsc struct{}
-type ByNameDesc struct{}
-
-// ReleaseSorter is a sorter for releases
-type ReleaseSorter interface {
-	SetList([]*release.Release)
-	Len() int
-	Less(i, j int) bool
-	Swap(i, j int)
+// FromName takes a state name and returns a ListStates representation.
+//
+// Currently, there are only names for individual flipped bits, so the returned
+// ListStates will only match one of the constants. However, it is possible that
+// this behavior could change in the future.
+func (s ListStates) FromName(str string) ListStates {
+	switch str {
+	case "deployed":
+		return ListDeployed
+	case "uninstalled":
+		return ListUninstalled
+	case "superseded":
+		return ListSuperseded
+	case "failed":
+		return ListFailed
+	case "uninstalling":
+		return ListUninstalling
+	case "pending-install":
+		return ListPendingInstall
+	case "pending-upgrade":
+		return ListPendingUpgrade
+	case "pending-rollback":
+		return ListPendingRollback
+	}
+	return ListUnknown
 }
+
+// ListAll is a convenience for enabling all list filters
+const ListAll = ListDeployed | ListUninstalled | ListUninstalling | ListPendingInstall | ListPendingRollback | ListPendingUpgrade | ListSuperseded | ListFailed
+
+// Sorter is a top-level sort
+type Sorter uint
+
+const (
+	// ByDate sorts by date
+	ByDate Sorter = iota
+	// ByNameAsc sorts by ascending lexicographic order
+	ByNameAsc
+	// ByNameDesc sorts by descending lexicographic order
+	ByNameDesc
+)
 
 // List is the action for listing releases.
 //
@@ -55,7 +103,7 @@ type List struct {
 	// Sort indicates the sort to use
 	//
 	// see pkg/releaseutil for several useful sorters
-	Sort ReleaseSorter
+	Sort Sorter
 	// StateMask accepts a bitmask of states for items to show.
 	// The default is ListDeployed
 	StateMask ListStates
@@ -73,56 +121,65 @@ type List struct {
 func NewList(cfg *Configuration) *List {
 	return &List{
 		StateMask: ListDeployed | ListFailed,
+		cfg:       cfg,
 	}
 }
 
+// Run executes the list command, returning a set of matches.
 func (a *List) Run() ([]*release.Release, error) {
-	return []*release.Release{}, errors.New("not implemented")
-}
 
-func (a *List) listReleases() ([]*release.Release, error) {
-	rels, err := a.cfg.Releases.ListReleases()
-	if err != nil {
-		return rels, err
-	}
-
-	// TODO: add the rest of the filters here
-
-	// Run filter
-	rels, err = a.filterReleases(rels)
-	if err != nil {
-		return rels, err
-	}
-
-	// Run sort
-	rels = a.sort(rels)
-
-	return rels, nil
-}
-
-func (a *List) filterReleases(rels []*release.Release) ([]*release.Release, error) {
-	if a.Filter == "" {
-		return rels, nil
-	}
-	preg, err := regexp.Compile(a.Filter)
-	if err != nil {
-		return rels, err
-	}
-	matches := []*release.Release{}
-	for _, r := range rels {
-		if preg.MatchString(r.Name) {
-			matches = append(matches, r)
+	offset := 0
+	limit := 0
+	var filter *regexp.Regexp
+	if a.Filter != "" {
+		var err error
+		filter, err = regexp.Compile(a.Filter)
+		if err != nil {
+			return nil, err
 		}
 	}
-	return matches, nil
+
+	results, err := a.cfg.Releases.List(func(rel *release.Release) bool {
+		// If we haven't reached offset, skip because there
+		// is nothing to add.
+		if offset < a.Offset {
+			offset++
+			return false
+		}
+		// If over limit, return. This is rather inefficient
+		if limit >= a.Limit {
+			return false
+		}
+
+		// Skip anything that the mask doesn't cover
+		currentStatus := a.StateMask.FromName(rel.Info.Status.String())
+		if a.StateMask&currentStatus == 0 {
+			return false
+		}
+
+		// Skip anything that doesn't match the filter.
+		if filter != nil && !filter.MatchString(rel.Name) {
+			return false
+		}
+
+		limit++
+		return true
+	})
+	if results != nil {
+		a.sort(results)
+	}
+
+	return results, err
 }
 
-func (a *List) sort(rels []*release.Release) []*release.Release {
-	if a.Sort == nil {
+// sort is an in-place sort where order is based on the value of a.Sort
+func (a *List) sort(rels []*release.Release) {
+	switch a.Sort {
+	case ByDate:
+		releaseutil.SortByDate(rels)
+	case ByNameDesc:
+		releaseutil.Reverse(rels, releaseutil.SortByName)
+	default:
 		releaseutil.SortByName(rels)
-		return rels
 	}
-	a.Sort.SetList(rels)
-	sort.Sort(a.Sort)
-	return rels
 }

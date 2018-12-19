@@ -20,7 +20,6 @@ import (
 	"k8s.io/client-go/discovery"
 
 	"k8s.io/helm/pkg/hapi"
-	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/storage/driver"
 	"k8s.io/helm/pkg/tiller/environment"
 )
@@ -84,56 +83,6 @@ func (opts *options) runBefore(msg interface{}) error {
 func BeforeCall(fn func(interface{}) error) Option {
 	return func(opts *options) {
 		opts.before = fn
-	}
-}
-
-// ReleaseListOption allows specifying various settings
-// configurable by the helm client user for overriding
-// the defaults used when running the `helm list` command.
-type ReleaseListOption func(*options)
-
-// ReleaseListOffset specifies the offset into a list of releases.
-func ReleaseListOffset(offset string) ReleaseListOption {
-	return func(opts *options) {
-		opts.listReq.Offset = offset
-	}
-}
-
-// ReleaseListFilter specifies a filter to apply a list of releases.
-func ReleaseListFilter(filter string) ReleaseListOption {
-	return func(opts *options) {
-		opts.listReq.Filter = filter
-	}
-}
-
-// ReleaseListLimit set an upper bound on the number of releases returned.
-func ReleaseListLimit(limit int) ReleaseListOption {
-	return func(opts *options) {
-		opts.listReq.Limit = int64(limit)
-	}
-}
-
-// ReleaseListOrder specifies how to order a list of releases.
-func ReleaseListOrder(order hapi.SortOrder) ReleaseListOption {
-	return func(opts *options) {
-		opts.listReq.SortOrder = order
-	}
-}
-
-// ReleaseListSort specifies how to sort a release list.
-func ReleaseListSort(sort hapi.SortBy) ReleaseListOption {
-	return func(opts *options) {
-		opts.listReq.SortBy = sort
-	}
-}
-
-// ReleaseListStatuses specifies which status codes should be returned.
-func ReleaseListStatuses(statuses []release.ReleaseStatus) ReleaseListOption {
-	return func(opts *options) {
-		if len(statuses) == 0 {
-			statuses = []release.ReleaseStatus{release.StatusDeployed}
-		}
-		opts.listReq.StatusCodes = statuses
 	}
 }
 
