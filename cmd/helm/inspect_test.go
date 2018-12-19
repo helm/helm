@@ -27,9 +27,10 @@ func TestInspect(t *testing.T) {
 	b := bytes.NewBuffer(nil)
 
 	insp := &inspectCmd{
-		chartpath: "testdata/testcharts/alpine",
-		output:    all,
-		out:       b,
+		chartpath:    "testdata/testcharts/alpine",
+		output:       all,
+		out:          b,
+		outputFormat: "yaml",
 	}
 	insp.run()
 

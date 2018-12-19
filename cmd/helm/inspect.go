@@ -17,12 +17,14 @@ limitations under the License.
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"strings"
+
 	"github.com/ghodss/yaml"
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/spf13/cobra"
-	"io"
-	"strings"
 
 	"k8s.io/helm/pkg/chartutil"
 )
@@ -50,15 +52,16 @@ of the README file
 `
 
 type inspectCmd struct {
-	chartpath string
-	output    string
-	verify    bool
-	keyring   string
-	out       io.Writer
-	version   string
-	repoURL   string
-	username  string
-	password  string
+	chartpath    string
+	output       string
+	outputFormat string
+	verify       bool
+	keyring      string
+	out          io.Writer
+	version      string
+	repoURL      string
+	username     string
+	password     string
 
 	certFile string
 	keyFile  string
@@ -70,6 +73,8 @@ const (
 	valuesOnly = "values"
 	readmeOnly = "readme"
 	all        = "all"
+	yamlFormat = "yaml"
+	jsonFormat = "json"
 )
 
 var readmeFileNames = []string{"readme.md", "readme.txt", "readme"}
@@ -211,6 +216,12 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 		subCmd.Flags().StringVar(&insp.caFile, caFile, "", caFiledesc)
 	}
 
+	outputFormat := "output"
+	outputFormatDesc := "output represents the output format. One of: json|yaml"
+	inspectCommand.Flags().StringVar(&insp.outputFormat, outputFormat, yamlFormat, outputFormatDesc)
+	valuesSubCmd.Flags().StringVar(&insp.outputFormat, outputFormat, yamlFormat, outputFormatDesc)
+	chartSubCmd.Flags().StringVar(&insp.outputFormat, outputFormat, yamlFormat, outputFormatDesc)
+
 	for _, subCmd := range cmds[1:] {
 		inspectCommand.AddCommand(subCmd)
 	}
@@ -223,7 +234,17 @@ func (i *inspectCmd) run() error {
 	if err != nil {
 		return err
 	}
-	cf, err := yaml.Marshal(chrt.Metadata)
+
+	if err := i.validateFlags(); err != nil {
+		return err
+	}
+
+	var cf []byte
+	if i.outputFormat == yamlFormat {
+		cf, err = yaml.Marshal(chrt.Metadata)
+	} else {
+		cf, err = json.Marshal(chrt.Metadata)
+	}
 	if err != nil {
 		return err
 	}
@@ -236,7 +257,16 @@ func (i *inspectCmd) run() error {
 		if i.output == all {
 			fmt.Fprintln(i.out, "---")
 		}
-		fmt.Fprintln(i.out, chrt.Values.Raw)
+
+		cValues := []byte(chrt.Values.Raw)
+		if i.outputFormat == jsonFormat {
+			cValues, err = yaml.YAMLToJSON(cValues)
+			if err != nil {
+				return err
+			}
+		}
+
+		fmt.Fprintln(i.out, string(cValues))
 	}
 
 	if i.output == readmeOnly || i.output == all {
@@ -250,6 +280,13 @@ func (i *inspectCmd) run() error {
 		fmt.Fprintln(i.out, string(readme.Value))
 	}
 	return nil
+}
+
+func (i *inspectCmd) validateFlags() error {
+	if i.outputFormat == jsonFormat || i.outputFormat == yamlFormat {
+		return nil
+	}
+	return fmt.Errorf("invalid output format provided =%s, expected values json,yaml", i.outputFormat)
 }
 
 func findReadme(files []*any.Any) (file *any.Any) {
