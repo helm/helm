@@ -133,21 +133,6 @@ metadata:
     "helm.sh/hook": test-success
 `,
 		},
-		{
-			name:  []string{"ninth"},
-			path:  "nine",
-			kind:  []string{"CustomResourceDefinition"},
-			hooks: map[string][]release.Hook_Event{"ninth": {release.Hook_CRD_INSTALL}},
-			manifest: `apiVersion: apiextensions.k8s.io/v1beta1
-kind: CustomResourceDefinition
-metadata:
-  name: ninth
-  labels:
-    doesnot: matter
-  annotations:
-    "helm.sh/hook": crd-install
-`,
-		},
 	}
 
 	manifests := make(map[string]string, len(data))
@@ -161,22 +146,22 @@ metadata:
 	}
 
 	// This test will fail if 'six' or 'seven' was added.
-	// changed to account for CustomResourceDefinition with crd-install hook being added to generic list of manifests
-	if len(generic) != 3 {
-		t.Errorf("Expected 3 generic manifests, got %d", len(generic))
+	if len(generic) != 2 {
+		t.Errorf("Expected 2 generic manifests, got %d", len(generic))
 	}
 
-	// changed to account for 5 hooks now that there is a crd-install hook added as member 9 of the data list.  It was 4 before.
-	if len(hs) != 5 {
-		t.Errorf("Expected 5 hooks, got %d", len(hs))
+	if len(hs) != 4 {
+		t.Errorf("Expected 4 hooks, got %d", len(hs))
 	}
 
 	for _, out := range hs {
-		t.Logf("Checking name %s path %s and kind %s", out.Name, out.Path, out.Kind)
 		found := false
 		for _, expect := range data {
 			if out.Path == expect.path {
 				found = true
+				if out.Path != expect.path {
+					t.Errorf("Expected path %s, got %s", expect.path, out.Path)
+				}
 				nameFound := false
 				for _, expectedName := range expect.name {
 					if out.Name == expectedName {
@@ -224,8 +209,8 @@ metadata:
 
 			name := sh.Metadata.Name
 
-			//only keep track of non-hook manifests, that are not CustomResourceDefinitions with crd-install
-			if err == nil && (s.hooks[name] == nil || s.hooks[name][0] == release.Hook_CRD_INSTALL) {
+			//only keep track of non-hook manifests
+			if err == nil && s.hooks[name] == nil {
 				another := Manifest{
 					Content: m,
 					Name:    name,
