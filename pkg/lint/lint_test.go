@@ -28,14 +28,16 @@ var values = []byte{}
 
 const namespace = "testNamespace"
 const strict = false
+const version = "199.44.12345-Alpha.1+cafe009"
 
 const badChartDir = "rules/testdata/badchartfile"
 const badValuesFileDir = "rules/testdata/badvaluesfile"
 const badYamlFileDir = "rules/testdata/albatross"
 const goodChartDir = "rules/testdata/goodone"
+const chartNoVersionDir = "rules/testdata/noversionchart"
 
 func TestBadChart(t *testing.T) {
-	m := All(badChartDir, values, namespace, strict).Messages
+	m := All(badChartDir, values, namespace, strict, "").Messages
 	if len(m) != 5 {
 		t.Errorf("Number of errors %v", len(m))
 		t.Errorf("All didn't fail with expected errors, got %#v", m)
@@ -68,10 +70,28 @@ func TestBadChart(t *testing.T) {
 	if !e || !e2 || !e3 || !w || !i {
 		t.Errorf("Didn't find all the expected errors, got %#v", m)
 	}
+
+	m = All(chartNoVersionDir, values, namespace, strict, "").Messages
+	if len(m) != 1 {
+		t.Errorf("Number of errors %v, expected 1", len(m))
+	}
+
+	e = false
+	// There should be one ERROR messages, check for them
+	for _, msg := range m {
+		if msg.Severity == support.ErrorSev {
+			if strings.Contains(msg.Err.Error(), "version is required") {
+				e = true
+			}
+		}
+		if !e {
+			t.Errorf("Didn't find all the expected errors, got %#v expected: \"version is required\"", msg.Err.Error())
+		}
+	}
 }
 
 func TestInvalidYaml(t *testing.T) {
-	m := All(badYamlFileDir, values, namespace, strict).Messages
+	m := All(badYamlFileDir, values, namespace, strict, "").Messages
 	if len(m) != 1 {
 		t.Fatalf("All didn't fail with expected errors, got %#v", m)
 	}
@@ -81,7 +101,7 @@ func TestInvalidYaml(t *testing.T) {
 }
 
 func TestBadValues(t *testing.T) {
-	m := All(badValuesFileDir, values, namespace, strict).Messages
+	m := All(badValuesFileDir, values, namespace, strict, "").Messages
 	if len(m) != 1 {
 		t.Fatalf("All didn't fail with expected errors, got %#v", m)
 	}
@@ -91,8 +111,13 @@ func TestBadValues(t *testing.T) {
 }
 
 func TestGoodChart(t *testing.T) {
-	m := All(goodChartDir, values, namespace, strict).Messages
+	m := All(goodChartDir, values, namespace, strict, "").Messages
 	if len(m) != 0 {
 		t.Errorf("All failed but shouldn't have: %#v", m)
+	}
+
+	m = All(chartNoVersionDir, values, namespace, strict, "199.44.12345-Alpha.1+cafe009").Messages
+	if len(m) != 0 {
+		t.Errorf("All failed but shouldn't have: %#v", m[0].Err)
 	}
 }
