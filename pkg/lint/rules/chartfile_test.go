@@ -29,8 +29,10 @@ import (
 )
 
 const (
-	badChartDir  = "testdata/badchartfile"
-	goodChartDir = "testdata/goodone"
+	badChartDir       = "testdata/badchartfile"
+	goodChartDir      = "testdata/goodone"
+	noVersionChartDir = "testdata/noversionchart"
+	version           = "1.0"
 )
 
 var (
@@ -75,7 +77,7 @@ func TestValidateChartName(t *testing.T) {
 func TestValidateChartNameDirMatch(t *testing.T) {
 	err := validateChartNameDirMatch(goodChartDir, goodChart)
 	if err != nil {
-		t.Errorf("validateChartNameDirMatch to return no error, gor a linter error")
+		t.Errorf("validateChartNameDirMatch to return no error, got a linter error")
 	}
 	// It has not name
 	err = validateChartNameDirMatch(badChartDir, badChart)
@@ -223,7 +225,7 @@ func TestValidateChartIconURL(t *testing.T) {
 
 func TestChartfile(t *testing.T) {
 	linter := support.Linter{ChartDir: badChartDir}
-	Chartfile(&linter)
+	Chartfile(&linter, "")
 	msgs := linter.Messages
 
 	if len(msgs) != 4 {
@@ -246,4 +248,15 @@ func TestChartfile(t *testing.T) {
 		t.Errorf("Unexpected message 3: %s", msgs[3].Err)
 	}
 
+	linter = support.Linter{ChartDir: noVersionChartDir}
+	Chartfile(&linter, "")
+	msgs = linter.Messages
+
+	if len(msgs) != 1 {
+		t.Errorf("Expected 1 errors, got %d", len(msgs))
+	}
+
+	if !strings.Contains(msgs[0].Err.Error(), "version is required") {
+		t.Errorf("Unexpected message 0: %s, expected \"version is required\"", msgs[0].Err)
+	}
 }

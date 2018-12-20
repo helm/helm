@@ -29,26 +29,32 @@ var (
 	invalidArchivedChartPath     = "testdata/testcharts/invalidcompressedchart0.1.0.tgz"
 	chartDirPath                 = "testdata/testcharts/decompressedchart/"
 	chartMissingManifest         = "testdata/testcharts/chart-missing-manifest"
+	chartMissingVersion          = "testdata/testcharts/chart-missing-version"
 )
 
 func TestLintChart(t *testing.T) {
-	if _, err := lintChart(chartDirPath, values, namespace, strict); err != nil {
+	if _, err := lintChart(chartDirPath, values, namespace, strict, ""); err != nil {
 		t.Errorf("%s", err)
 	}
 
-	if _, err := lintChart(archivedChartPath, values, namespace, strict); err != nil {
+	if _, err := lintChart(archivedChartPath, values, namespace, strict, ""); err != nil {
 		t.Errorf("%s", err)
 	}
 
-	if _, err := lintChart(archivedChartPathWithHyphens, values, namespace, strict); err != nil {
+	if _, err := lintChart(archivedChartPathWithHyphens, values, namespace, strict, ""); err != nil {
 		t.Errorf("%s", err)
 	}
 
-	if _, err := lintChart(invalidArchivedChartPath, values, namespace, strict); err == nil {
+	if _, err := lintChart(chartMissingVersion, values, namespace, strict, "0.1.0"); err != nil {
+		t.Errorf("%s", err)
+	}
+
+	if _, err := lintChart(invalidArchivedChartPath, values, namespace, strict, ""); err == nil {
 		t.Errorf("Expected a chart parsing error")
 	}
 
-	if _, err := lintChart(chartMissingManifest, values, namespace, strict); err == nil {
+	if _, err := lintChart(chartMissingManifest, values, namespace, strict, ""); err == nil {
 		t.Errorf("Expected a chart parsing error")
 	}
+
 }

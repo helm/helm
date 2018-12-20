@@ -52,6 +52,7 @@ type lintCmd struct {
 	strict     bool
 	paths      []string
 	out        io.Writer
+	version    string
 }
 
 func newLintCmd(out io.Writer) *cobra.Command {
@@ -77,6 +78,7 @@ func newLintCmd(out io.Writer) *cobra.Command {
 	cmd.Flags().StringArrayVar(&l.fValues, "set-file", []string{}, "set values from respective files specified via the command line (can specify multiple or separate values with commas: key1=path1,key2=path2)")
 	cmd.Flags().StringVar(&l.namespace, "namespace", "default", "namespace to put the release into")
 	cmd.Flags().BoolVar(&l.strict, "strict", false, "fail on lint warnings")
+	cmd.Flags().StringVar(&l.version, "version", "", "version of the chart")
 
 	return cmd
 }
@@ -100,7 +102,7 @@ func (l *lintCmd) run() error {
 	var total int
 	var failures int
 	for _, path := range l.paths {
-		if linter, err := lintChart(path, rvals, l.namespace, l.strict); err != nil {
+		if linter, err := lintChart(path, rvals, l.namespace, l.strict, l.version); err != nil {
 			fmt.Println("==> Skipping", path)
 			fmt.Println(err)
 			if err == errLintNoChart {
@@ -135,7 +137,7 @@ func (l *lintCmd) run() error {
 	return nil
 }
 
-func lintChart(path string, vals []byte, namespace string, strict bool) (support.Linter, error) {
+func lintChart(path string, vals []byte, namespace string, strict bool, version string) (support.Linter, error) {
 	var chartPath string
 	linter := support.Linter{}
 
@@ -171,7 +173,7 @@ func lintChart(path string, vals []byte, namespace string, strict bool) (support
 		return linter, errLintNoChart
 	}
 
-	return lint.All(chartPath, vals, namespace, strict), nil
+	return lint.All(chartPath, vals, namespace, strict, version), nil
 }
 
 // vals merges values from files specified via -f/--values and
