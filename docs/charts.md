@@ -25,7 +25,6 @@ wordpress/
   Chart.yaml          # A YAML file containing information about the chart
   LICENSE             # OPTIONAL: A plain text file containing the license for the chart
   README.md           # OPTIONAL: A human-readable README file
-  requirements.yaml   # OPTIONAL: A YAML file listing dependencies for the chart
   values.yaml         # The default configuration values for this chart
   charts/             # A directory containing any charts upon which this chart depends.
   templates/          # A directory of templates that, when combined with values,
@@ -50,6 +49,10 @@ keywords:
 home: The URL of this project's home page (optional)
 sources:
   - A list of URLs to source code for this project (optional)
+dependencies: # A list of the chart requirements (optional)
+  - name: The name of the chart (nginx)
+    version: The version of the chart ("1.2.3")
+    repository: The repository URL ("https://example.com/charts")
 maintainers: # (optional)
   - name: The maintainer's name (required for each maintainer)
     email: The maintainer's email (optional for each maintainer)
@@ -59,10 +62,6 @@ icon: A URL to an SVG or PNG image to be used as an icon (optional).
 appVersion: The version of the app that this contains (optional). This needn't be SemVer.
 deprecated: Whether this chart is deprecated (optional, boolean)
 ```
-
-If you are familiar with the `Chart.yaml` file format for Helm Classic, you will
-notice that fields specifying dependencies have been removed. That is because
-the new Chart format expresses dependencies using the `charts/` directory.
 
 Other fields will be silently ignored.
 
@@ -141,21 +140,11 @@ for greater detail.
 ## Chart Dependencies
 
 In Helm, one chart may depend on any number of other charts.
-These dependencies can be dynamically linked through the `requirements.yaml`
-file or brought in to the `charts/` directory and managed manually.
+These dependencies can be dynamically linked using the `dependencies` field in `Chart.yaml` or brought in to the `charts/` directory and managed manually.
 
-Although manually managing your dependencies has a few advantages some teams need,
-the preferred method of declaring dependencies is by using a
-`requirements.yaml` file inside of your chart.
+### Managing Dependencies with the `dependencies` field
 
-**Note:** The `dependencies:` section of the `Chart.yaml` from Helm
-Classic has been completely removed.
-
-
-### Managing Dependencies with `requirements.yaml`
-
-A `requirements.yaml` file is a simple file for listing your
-dependencies.
+The charts required by the current chart are defined as a list in the `dependencies` field.
 
 ```yaml
 dependencies:
@@ -172,7 +161,7 @@ dependencies:
 - The `repository` field is the full URL to the chart repository. Note
   that you must also use `helm repo add` to add that repo locally.
 
-Once you have a dependencies file, you can run `helm dependency update`
+Once you have defined dependencies, you can run `helm dependency update`
 and it will use your dependency file to download all the specified
 charts into your `charts/` directory for you.
 
@@ -199,11 +188,7 @@ charts/
   mysql-3.2.1.tgz
 ```
 
-Managing charts with `requirements.yaml` is a good way to easily keep
-charts updated, and also share requirements information throughout a
-team.
-
-#### Alias field in requirements.yaml
+#### Alias field in dependencies
 
 In addition to the other fields above, each requirements entry may contain
 the optional field `alias`.
@@ -215,7 +200,7 @@ One can use `alias` in cases where they need to access a chart
 with other name(s).
 
 ```yaml
-# parentchart/requirements.yaml
+# parentchart/Chart.yaml
 dependencies:
   - name: subchart
     repository: http://localhost:10191
@@ -240,7 +225,7 @@ new-subchart-2
 The manual way of achieving this is by copy/pasting the same chart in the
 `charts/` directory multiple times with different names.
 
-#### Tags and Condition fields in requirements.yaml
+#### Tags and Condition fields in dependencies
 
 In addition to the other fields above, each requirements entry may contain
 the optional fields `tags` and `condition`.
@@ -258,7 +243,7 @@ In the top parent's values, all charts with tags can be enabled or disabled by
 specifying the tag and a boolean value.
 
 ````
-# parentchart/requirements.yaml
+# parentchart/Chart.yaml
 dependencies:
       - name: subchart1
         repository: http://localhost:10191
@@ -292,7 +277,7 @@ In the above example all charts with the tag `front-end` would be disabled but s
 `front-end` tag and `subchart1` will be enabled.
 
 Since `subchart2` is tagged with `back-end` and that tag evaluates to `true`, `subchart2` will be
-enabled. Also notes that although `subchart2` has a condition specified in `requirements.yaml`, there
+enabled. Also notes that although `subchart2` has a condition specified, there
 is no corresponding path and value in the parent's values so that condition has no effect.
 
 ##### Using the CLI with Tags and Conditions
@@ -314,13 +299,13 @@ helm install --set tags.front-end=true --set subchart2.enabled=false
   * The `tags:` key in values must be a top level key. Globals and nested `tags:` tables
     are not currently supported.
 
-#### Importing Child Values via requirements.yaml
+#### Importing Child Values via dependencies
 
 In some cases it is desirable to allow a child chart's values to propagate to the parent chart and be
 shared as common defaults. An additional benefit of using the `exports` format is that it will enable future
 tooling to introspect user-settable values.
 
-The keys containing the values to be imported can be specified in the parent chart's `requirements.yaml` file
+The keys containing the values to be imported can be specified in the parent chart's `dependencies` in the field `input-values`
 using a YAML list. Each item in the list is a key which is imported from the child chart's `exports` field.
 
 To import values not contained in the `exports` key, use the [child-parent](#using-the-child-parent-format) format.
@@ -332,8 +317,12 @@ If a child chart's `values.yaml` file contains an `exports` field at the root, i
 directly into the parent's values by specifying the keys to import as in the example below:
 
 ```yaml
-# parent's requirements.yaml file
-    ...
+# parent's Chart.yaml file
+
+dependencies:
+  - name: subchart
+    repository: http://localhost:10191
+    version: 0.1.0
     import-values:
       - data
 ```
@@ -370,7 +359,7 @@ The `import-values` in the example below instructs Helm to take any values found
 to the parent's values at the path specified in `parent:`
 
 ```yaml
-# parent's requirements.yaml file
+# parent's Chart.yaml file
 dependencies:
   - name: subchart1
     repository: http://localhost:10191
@@ -432,7 +421,6 @@ chart's `charts/` directory:
 ```
 wordpress:
   Chart.yaml
-  requirements.yaml
   # ...
   charts/
     apache/
