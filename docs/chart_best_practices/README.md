@@ -12,7 +12,7 @@ may find that their internal interests override our suggestions here.
 - [General Conventions](conventions.md): Learn about general chart conventions.
 - [Values Files](values.md): See the best practices for structuring `values.yaml`.
 - [Templates](templates.md): Learn some of the best techniques for writing templates.
-- [Requirements](requirements.md): Follow best practices for `requirements.yaml` files.
+- [Dependencies](requirements.md): Follow best practices for `dependencies` declared in `Chart.yaml`.
 - [Labels and Annotations](labels.md): Helm has a _heritage_ of labeling and annotating.
 - Kubernetes Resources:
 	- [Pods and Pod Specs](pods.md): See the best practices for working with pod specifications.
