@@ -127,9 +127,6 @@ func NewList(cfg *Configuration) *List {
 
 // Run executes the list command, returning a set of matches.
 func (a *List) Run() ([]*release.Release, error) {
-
-	offset := 0
-	limit := 0
 	var filter *regexp.Regexp
 	if a.Filter != "" {
 		var err error
@@ -140,17 +137,6 @@ func (a *List) Run() ([]*release.Release, error) {
 	}
 
 	results, err := a.cfg.Releases.List(func(rel *release.Release) bool {
-		// If we haven't reached offset, skip because there
-		// is nothing to add.
-		if offset < a.Offset {
-			offset++
-			return false
-		}
-		// If over limit, return. This is rather inefficient
-		if limit >= a.Limit {
-			return false
-		}
-
 		// Skip anything that the mask doesn't cover
 		currentStatus := a.StateMask.FromName(rel.Info.Status.String())
 		if a.StateMask&currentStatus == 0 {
@@ -161,13 +147,31 @@ func (a *List) Run() ([]*release.Release, error) {
 		if filter != nil && !filter.MatchString(rel.Name) {
 			return false
 		}
-
-		limit++
 		return true
 	})
-	if results != nil {
-		a.sort(results)
+
+	if results == nil {
+		return results, nil
 	}
+
+	// Unfortunately, we have to sort before truncating, which can incur substantial overhead
+	a.sort(results)
+
+	// Guard on offset
+	if a.Offset >= len(results) {
+		return []*release.Release{}, nil
+	}
+
+	// Calculate the limit and offset, and then truncate results if necessary.
+	limit := len(results)
+	if a.Limit > 0 && a.Limit < limit {
+		limit = a.Limit
+	}
+	last := a.Offset + limit
+	if l := len(results); l < last {
+		last = l
+	}
+	results = results[a.Offset:last]
 
 	return results, err
 }

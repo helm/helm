@@ -27,25 +27,20 @@ func TestInstall(t *testing.T) {
 		// Install, base case
 		{
 			name:   "basic install",
-			cmd:    "install aeneas testdata/testcharts/alpine ",
+			cmd:    "install aeneas testdata/testcharts/empty",
 			golden: "output/install.txt",
 		},
-		// Install, no hooks
-		{
-			name:   "install without hooks",
-			cmd:    "install aeneas testdata/testcharts/alpine --no-hooks",
-			golden: "output/install-no-hooks.txt",
-		},
+
 		// Install, values from cli
 		{
 			name:   "install with values",
-			cmd:    "install virgil testdata/testcharts/alpine --set foo=bar",
+			cmd:    "install virgil testdata/testcharts/alpine --set test.Name=bar",
 			golden: "output/install-with-values.txt",
 		},
 		// Install, values from cli via multiple --set
 		{
 			name:   "install with multiple values",
-			cmd:    "install virgil testdata/testcharts/alpine --set foo=bar --set bar=foo",
+			cmd:    "install virgil testdata/testcharts/alpine --set test.Color=yellow --set test.Name=banana",
 			golden: "output/install-with-multiple-values.txt",
 		},
 		// Install, values from yaml
@@ -53,6 +48,12 @@ func TestInstall(t *testing.T) {
 			name:   "install with values file",
 			cmd:    "install virgil testdata/testcharts/alpine  -f testdata/testcharts/alpine/extra_values.yaml",
 			golden: "output/install-with-values-file.txt",
+		},
+		// Install, no hooks
+		{
+			name:   "install without hooks",
+			cmd:    "install aeneas testdata/testcharts/alpine --no-hooks --set test.Name=hello",
+			golden: "output/install-no-hooks.txt",
 		},
 		// Install, values from multiple yaml
 		{
@@ -70,25 +71,25 @@ func TestInstall(t *testing.T) {
 		// Install, re-use name
 		{
 			name:   "install and replace release",
-			cmd:    "install aeneas testdata/testcharts/alpine --replace",
+			cmd:    "install aeneas testdata/testcharts/empty --replace",
 			golden: "output/install-and-replace.txt",
 		},
 		// Install, with timeout
 		{
 			name:   "install with a timeout",
-			cmd:    "install foobar testdata/testcharts/alpine --timeout 120",
+			cmd:    "install foobar testdata/testcharts/empty --timeout 120",
 			golden: "output/install-with-timeout.txt",
 		},
 		// Install, with wait
 		{
 			name:   "install with a wait",
-			cmd:    "install apollo testdata/testcharts/alpine --wait",
+			cmd:    "install apollo testdata/testcharts/empty --wait",
 			golden: "output/install-with-wait.txt",
 		},
 		// Install, using the name-template
 		{
 			name:   "install with name-template",
-			cmd:    "install testdata/testcharts/alpine --name-template '{{upper \"foobar\"}}'",
+			cmd:    "install testdata/testcharts/empty --name-template '{{upper \"foobar\"}}'",
 			golden: "output/install-name-template.txt",
 		},
 		// Install, perform chart verification along the way.
@@ -120,7 +121,7 @@ func TestInstall(t *testing.T) {
 		},
 	}
 
-	runTestCmd(t, tests)
+	runTestActionCmd(t, tests)
 }
 
 type nameTemplateTestCase struct {

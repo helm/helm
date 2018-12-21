@@ -17,28 +17,28 @@ limitations under the License.
 package action
 
 import (
+	"time"
+
+	"github.com/pkg/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/discovery"
 
+	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/storage"
 	"k8s.io/helm/pkg/tiller/environment"
+	"k8s.io/helm/pkg/version"
 )
 
-// Action describes a top-level Helm action.
+// Timestamper is a function that can provide a timestamp.
 //
-// When implementing an action, the following guidelines should be observed:
-//	- Constructors should take all REQUIRED fields
-//	- Exported properties should hold all OPTIONAL fields
-//
-// When an error occurs, the result of 'Run()' should be targeted
-// toward a user, but not assume a particular user interface (e.g. don't
-// make reference to a command line flag).
-type Action interface {
-	Run() error
-}
+// If this is not set, the `time.Now()` function is used to generate
+// timestamps. This may be overridden for testing.
+type Timestamper func() time.Time
 
+// Configuration injects the dependencies that all actions share.
 type Configuration struct {
 	//engine    Engine
-	discovery discovery.DiscoveryInterface
+	Discovery discovery.DiscoveryInterface
 
 	// Releases stores records of releases.
 	Releases *storage.Storage
@@ -46,4 +46,53 @@ type Configuration struct {
 	KubeClient environment.KubeClient
 
 	Log func(string, ...interface{})
+
+	Timestamper Timestamper
+}
+
+// capabilities builds a Capabilities from discovery information.
+func (c *Configuration) capabilities() (*chartutil.Capabilities, error) {
+	sv, err := c.Discovery.ServerVersion()
+	if err != nil {
+		return nil, err
+	}
+	vs, err := GetVersionSet(c.Discovery)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get apiVersions from Kubernetes")
+	}
+	return &chartutil.Capabilities{
+		APIVersions: vs,
+		KubeVersion: sv,
+		HelmVersion: version.GetBuildInfo(),
+	}, nil
+}
+
+// Now generates a timestamp
+//
+// If the configuration has a Timestamper on it, that will be used.
+// Otherwise, this will use time.Now().
+func (c *Configuration) Now() time.Time {
+	if c.Timestamper != nil {
+		return c.Timestamper()
+	}
+	return time.Now()
+}
+
+// GetVersionSet retrieves a set of available k8s API versions
+func GetVersionSet(client discovery.ServerGroupsInterface) (chartutil.VersionSet, error) {
+	groups, err := client.ServerGroups()
+	if err != nil {
+		return chartutil.DefaultVersionSet, err
+	}
+
+	// FIXME: The Kubernetes test fixture for cli appears to always return nil
+	// for calls to Discovery().ServerGroups(). So in this case, we return
+	// the default API list. This is also a safe value to return in any other
+	// odd-ball case.
+	if groups.Size() == 0 {
+		return chartutil.DefaultVersionSet, nil
+	}
+
+	versions := metav1.ExtractGroupVersions(groups)
+	return chartutil.NewVersionSet(versions...), nil
 }

@@ -22,6 +22,10 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
+
+	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/helm/pkg/tiller/environment"
 
 	shellwords "github.com/mattn/go-shellwords"
 	"github.com/spf13/cobra"
@@ -118,7 +122,11 @@ func executeActionCommandC(store *storage.Storage, cmd string) (*cobra.Command, 
 	buf := new(bytes.Buffer)
 
 	actionConfig := &action.Configuration{
-		Releases: store,
+		Releases:    store,
+		KubeClient:  &environment.PrintingKubeClient{Out: ioutil.Discard},
+		Discovery:   fake.NewSimpleClientset().Discovery(),
+		Log:         func(format string, v ...interface{}) {},
+		Timestamper: func() time.Time { return time.Unix(242085845, 0).UTC() },
 	}
 
 	root := newRootCmd(nil, actionConfig, buf, args)
@@ -157,7 +165,6 @@ func executeCommandC(client helm.Interface, cmd string) (*cobra.Command, string,
 
 	actionConfig := &action.Configuration{
 		Releases: storage.Init(driver.NewMemory()),
-		//KubeClient: client.
 	}
 
 	root := newRootCmd(client, actionConfig, buf, args)

@@ -16,7 +16,13 @@ limitations under the License.
 
 package action
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"k8s.io/helm/pkg/hapi/release"
+	"k8s.io/helm/pkg/storage"
+)
 
 func TestListStates(t *testing.T) {
 	for input, expect := range map[string]ListStates{
@@ -47,4 +53,193 @@ func TestListStates(t *testing.T) {
 	if status := filter.FromName("failed"); filter&status != 0 {
 		t.Errorf("Expected %d to fail to match mask %d", status, filter)
 	}
+}
+
+func TestList_Empty(t *testing.T) {
+	lister := NewList(actionConfigFixture(t))
+	list, err := lister.Run()
+	assert.NoError(t, err)
+	assert.Len(t, list, 0)
+}
+
+func newListFixture(t *testing.T) *List {
+	return NewList(actionConfigFixture(t))
+}
+
+func TestList_OneNamespace(t *testing.T) {
+	is := assert.New(t)
+	lister := newListFixture(t)
+	makeMeSomeReleases(lister.cfg.Releases, t)
+	list, err := lister.Run()
+	is.NoError(err)
+	is.Len(list, 3)
+}
+
+func TestList_AllNamespaces(t *testing.T) {
+	is := assert.New(t)
+	lister := newListFixture(t)
+	makeMeSomeReleases(lister.cfg.Releases, t)
+	lister.AllNamespaces = true
+	list, err := lister.Run()
+	is.NoError(err)
+	is.Len(list, 3)
+}
+
+func TestList_Sort(t *testing.T) {
+	is := assert.New(t)
+	lister := newListFixture(t)
+	lister.Sort = ByNameDesc // Other sorts are tested elsewhere
+	makeMeSomeReleases(lister.cfg.Releases, t)
+	list, err := lister.Run()
+	is.NoError(err)
+	is.Len(list, 3)
+	is.Equal("two", list[0].Name)
+	is.Equal("three", list[1].Name)
+	is.Equal("one", list[2].Name)
+}
+
+func TestList_Limit(t *testing.T) {
+	is := assert.New(t)
+	lister := newListFixture(t)
+	lister.Limit = 2
+	// Sort because otherwise there is no guaranteed order
+	lister.Sort = ByNameAsc
+	makeMeSomeReleases(lister.cfg.Releases, t)
+	list, err := lister.Run()
+	is.NoError(err)
+	is.Len(list, 2)
+
+	// Lex order means one, three, two
+	is.Equal("one", list[0].Name)
+	is.Equal("three", list[1].Name)
+}
+
+func TestList_BigLimit(t *testing.T) {
+	is := assert.New(t)
+	lister := newListFixture(t)
+	lister.Limit = 20
+	// Sort because otherwise there is no guaranteed order
+	lister.Sort = ByNameAsc
+	makeMeSomeReleases(lister.cfg.Releases, t)
+	list, err := lister.Run()
+	is.NoError(err)
+	is.Len(list, 3)
+
+	// Lex order means one, three, two
+	is.Equal("one", list[0].Name)
+	is.Equal("three", list[1].Name)
+	is.Equal("two", list[2].Name)
+}
+
+func TestList_LimitOffset(t *testing.T) {
+	is := assert.New(t)
+	lister := newListFixture(t)
+	lister.Limit = 2
+	lister.Offset = 1
+	// Sort because otherwise there is no guaranteed order
+	lister.Sort = ByNameAsc
+	makeMeSomeReleases(lister.cfg.Releases, t)
+	list, err := lister.Run()
+	is.NoError(err)
+	is.Len(list, 2)
+
+	// Lex order means one, three, two
+	is.Equal("three", list[0].Name)
+	is.Equal("two", list[1].Name)
+}
+
+func TestList_LimitOffsetOutOfBounds(t *testing.T) {
+	is := assert.New(t)
+	lister := newListFixture(t)
+	lister.Limit = 2
+	lister.Offset = 3 // Last item is index 2
+	// Sort because otherwise there is no guaranteed order
+	lister.Sort = ByNameAsc
+	makeMeSomeReleases(lister.cfg.Releases, t)
+	list, err := lister.Run()
+	is.NoError(err)
+	is.Len(list, 0)
+
+	lister.Limit = 10
+	lister.Offset = 1
+	list, err = lister.Run()
+	is.NoError(err)
+	is.Len(list, 2)
+}
+func TestList_StateMask(t *testing.T) {
+	is := assert.New(t)
+	lister := newListFixture(t)
+	// Sort because otherwise there is no guaranteed order
+	lister.Sort = ByNameAsc
+	makeMeSomeReleases(lister.cfg.Releases, t)
+	one, err := lister.cfg.Releases.Get("one", 1)
+	is.NoError(err)
+	one.SetStatus(release.StatusUninstalled, "uninstalled")
+	lister.cfg.Releases.Update(one)
+
+	res, err := lister.Run()
+	is.NoError(err)
+	is.Len(res, 2)
+	is.Equal("three", res[0].Name)
+	is.Equal("two", res[1].Name)
+
+	lister.StateMask = ListUninstalled
+	res, err = lister.Run()
+	is.NoError(err)
+	is.Len(res, 1)
+	is.Equal("one", res[0].Name)
+
+	lister.StateMask |= ListDeployed
+	res, err = lister.Run()
+	is.NoError(err)
+	is.Len(res, 3)
+}
+
+func TestList_Filter(t *testing.T) {
+	is := assert.New(t)
+	lister := newListFixture(t)
+	lister.Filter = "th."
+	lister.Sort = ByNameAsc
+	makeMeSomeReleases(lister.cfg.Releases, t)
+
+	res, err := lister.Run()
+	is.NoError(err)
+	is.Len(res, 1)
+	is.Equal("three", res[0].Name)
+}
+
+func TestList_FilterFailsCompile(t *testing.T) {
+	is := assert.New(t)
+	lister := newListFixture(t)
+	lister.Filter = "t[h.{{{"
+	makeMeSomeReleases(lister.cfg.Releases, t)
+
+	_, err := lister.Run()
+	is.Error(err)
+}
+
+func makeMeSomeReleases(store *storage.Storage, t *testing.T) {
+	t.Helper()
+	one := releaseStub()
+	one.Name = "one"
+	one.Namespace = "default"
+	one.Version = 1
+	two := releaseStub()
+	two.Name = "two"
+	two.Namespace = "default"
+	two.Version = 2
+	three := releaseStub()
+	three.Name = "three"
+	three.Namespace = "default"
+	three.Version = 3
+
+	for _, rel := range []*release.Release{one, two, three} {
+		if err := store.Create(rel); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	all, err := store.ListReleases()
+	assert.NoError(t, err)
+	assert.Len(t, all, 3, "sanity test: three items added")
 }

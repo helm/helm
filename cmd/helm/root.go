@@ -76,7 +76,7 @@ func newRootCmd(c helm.Interface, actionConfig *action.Configuration, out io.Wri
 		// release commands
 		newGetCmd(c, out),
 		newHistoryCmd(c, out),
-		newInstallCmd(c, out),
+		newInstallCmd(actionConfig, out),
 		newListCmd(actionConfig, out),
 		newReleaseTestCmd(c, out),
 		newRollbackCmd(c, out),

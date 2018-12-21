@@ -126,6 +126,7 @@ func newActionConfig(allNamespaces bool) *action.Configuration {
 	return &action.Configuration{
 		KubeClient: kc,
 		Releases:   store,
+		Discovery:  clientset.Discovery(),
 	}
 }
 

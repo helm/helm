@@ -38,3 +38,9 @@ type Release struct {
 	// Namespace is the kubernetes namespace of the release.
 	Namespace string `json:"namespace,omitempty"`
 }
+
+// SetStatus is a helper for setting the status on a release.
+func (r *Release) SetStatus(status ReleaseStatus, msg string) {
+	r.Info.Status = status
+	r.Info.Description = msg
+}

@@ -44,13 +44,6 @@ var events = map[string]release.HookEvent{
 	hooks.ReleaseTestFailure: release.HookReleaseTestFailure,
 }
 
-// deletePolices represents a mapping between the key in the annotation for label deleting policy and its real meaning
-var deletePolices = map[string]release.HookDeletePolicy{
-	hooks.HookSucceeded:      release.HookSucceeded,
-	hooks.HookFailed:         release.HookFailed,
-	hooks.BeforeHookCreation: release.HookBeforeHookCreation,
-}
-
 // Manifest represents a manifest file, which has a name and some content.
 type Manifest struct {
 	Name    string
