@@ -46,6 +46,55 @@ type Configuration struct {
 	KubeClient environment.KubeClient
 
 	Log func(string, ...interface{})
+
+	Timestamper Timestamper
+}
+
+// capabilities builds a Capabilities from discovery information.
+func (c *Configuration) capabilities() (*chartutil.Capabilities, error) {
+	sv, err := c.Discovery.ServerVersion()
+	if err != nil {
+		return nil, err
+	}
+	vs, err := GetVersionSet(c.Discovery)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get apiVersions from Kubernetes")
+	}
+	return &chartutil.Capabilities{
+		APIVersions: vs,
+		KubeVersion: sv,
+		HelmVersion: version.GetBuildInfo(),
+	}, nil
+}
+
+// Now generates a timestamp
+//
+// If the configuration has a Timestamper on it, that will be used.
+// Otherwise, this will use time.Now().
+func (c *Configuration) Now() time.Time {
+	if c.Timestamper != nil {
+		return c.Timestamper()
+	}
+	return time.Now()
+}
+
+// GetVersionSet retrieves a set of available k8s API versions
+func GetVersionSet(client discovery.ServerGroupsInterface) (chartutil.VersionSet, error) {
+	groups, err := client.ServerGroups()
+	if err != nil {
+		return chartutil.DefaultVersionSet, err
+	}
+
+	// FIXME: The Kubernetes test fixture for cli appears to always return nil
+	// for calls to Discovery().ServerGroups(). So in this case, we return
+	// the default API list. This is also a safe value to return in any other
+	// odd-ball case.
+	if groups.Size() == 0 {
+		return chartutil.DefaultVersionSet, nil
+	}
+
+	versions := metav1.ExtractGroupVersions(groups)
+	return chartutil.NewVersionSet(versions...), nil
 }
 
 // capabilities builds a Capabilities from discovery information.
