@@ -65,7 +65,7 @@ Tools layered on top of Helm or Tiller.
 
 - [AppsCode Swift](https://github.com/appscode/swift) - Ajax friendly Helm Tiller Proxy using [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway)
 - [Armada](https://github.com/att-comdev/armada) - Manage prefixed releases throughout various Kubernetes namespaces, and removes completed jobs for complex deployments. Used by the [Openstack-Helm](https://github.com/openstack/openstack-helm) team.
-- [Autohelm](https://github.com/reactiveops/autohelm) - Autohelm is _another_ simple declarative spec for deploying helm charts. Written in python and supports git urls as a source for helm charts.
+- [Reckoner](https://github.com/reactiveops/reckoner) - Reckoner (formerly Autohelm) is a tool for declarative management of helm releases. Written in python and supports git urls as a source for helm charts.
 - [ChartMuseum](https://github.com/chartmuseum/chartmuseum) - Helm Chart Repository with support for Amazon S3 and Google Cloud Storage
 - [Chartify](https://github.com/appscode/chartify) - Generate Helm charts from existing Kubernetes resources.
 - [Codefresh](https://codefresh.io) - Kubernetes native CI/CD and management platform with UI dashboards for managing Helm charts and releases
