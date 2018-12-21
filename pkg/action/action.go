@@ -19,6 +19,7 @@ package action
 import (
 	"time"
 
+	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/discovery"
 
@@ -49,11 +50,19 @@ type Configuration struct {
 }
 
 // capabilities builds a Capabilities from discovery information.
-func (c *Configuration) capabilities() *chartutil.Capabilities {
-	if c.Capabilities == nil {
-		return chartutil.DefaultCapabilities
+func (c *Configuration) capabilities() (*chartutil.Capabilities, error) {
+	sv, err := c.Discovery.ServerVersion()
+	if err != nil {
+		return nil, err
 	}
-	return c.Capabilities
+	vs, err := GetVersionSet(c.Discovery)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get apiVersions from Kubernetes")
+	}
+	return &chartutil.Capabilities{
+		APIVersions: vs,
+		KubeVersion: sv,
+	}, nil
 }
 
 // Now generates a timestamp

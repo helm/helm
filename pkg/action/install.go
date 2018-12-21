@@ -79,7 +79,10 @@ func (i *Install) Run(chrt *chart.Chart, rawValues map[string]interface{}) (*rel
 		return nil, err
 	}
 
-	caps := i.cfg.capabilities()
+	caps, err := i.cfg.capabilities()
+	if err != nil {
+		return nil, err
+	}
 
 	options := chartutil.ReleaseOptions{
 		Name:      i.ReleaseName,
