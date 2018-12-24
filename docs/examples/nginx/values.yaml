@@ -14,7 +14,7 @@ index: >-
 
 image:
   repository: nginx
-  tag: 1.11.0
+  tag: alpine
   pullPolicy: IfNotPresent
 
 service:
