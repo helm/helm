@@ -32,7 +32,6 @@ import (
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/hooks"
 	"k8s.io/helm/pkg/releaseutil"
-	"k8s.io/helm/pkg/tiller"
 	"k8s.io/helm/pkg/version"
 )
 
@@ -303,7 +302,7 @@ func (i *Install) renderResources(ch *chart.Chart, values chartutil.Values, vs c
 	// as partials are not used after renderer.Render. Empty manifests are also
 	// removed here.
 	// TODO: Can we migrate SortManifests out of pkg/tiller?
-	hooks, manifests, err := tiller.SortManifests(files, vs, tiller.InstallOrder)
+	hooks, manifests, err := releaseutil.SortManifests(files, vs, releaseutil.InstallOrder)
 	if err != nil {
 		// By catching parse errors here, we can prevent bogus releases from going
 		// to Kubernetes.

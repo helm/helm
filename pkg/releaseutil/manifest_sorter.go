@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package tiller
+package releaseutil
 
 import (
 	"log"
@@ -22,15 +22,35 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
-
+	yaml "gopkg.in/yaml.v2"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/hooks"
-	util "k8s.io/helm/pkg/releaseutil"
 )
 
+// Manifest represents a manifest file, which has a name and some content.
+type Manifest struct {
+	Name    string
+	Content string
+	Head    *SimpleHead
+}
+
+// manifestFile represents a file that contains a manifest.
+type manifestFile struct {
+	entries map[string]string
+	path    string
+	apis    chartutil.VersionSet
+}
+
+// result is an intermediate structure used during sorting.
+type result struct {
+	hooks   []*release.Hook
+	generic []Manifest
+}
+
+// TODO: Refactor this out. It's here because naming conventions were not followed through.
+// So fix the Test hook names and then remove this.
 var events = map[string]release.HookEvent{
 	hooks.PreInstall:         release.HookPreInstall,
 	hooks.PostInstall:        release.HookPostInstall,
@@ -44,24 +64,6 @@ var events = map[string]release.HookEvent{
 	hooks.ReleaseTestFailure: release.HookReleaseTestFailure,
 }
 
-// Manifest represents a manifest file, which has a name and some content.
-type Manifest struct {
-	Name    string
-	Content string
-	Head    *util.SimpleHead
-}
-
-type result struct {
-	hooks   []*release.Hook
-	generic []Manifest
-}
-
-type manifestFile struct {
-	entries map[string]string
-	path    string
-	apis    chartutil.VersionSet
-}
-
 // SortManifests takes a map of filename/YAML contents, splits the file
 // by manifest entries, and sorts the entries into hook types.
 //
@@ -71,7 +73,7 @@ type manifestFile struct {
 //
 // Files that do not parse into the expected format are simply placed into a map and
 // returned.
-func SortManifests(files map[string]string, apis chartutil.VersionSet, sort SortOrder) ([]*release.Hook, []Manifest, error) {
+func SortManifests(files map[string]string, apis chartutil.VersionSet, sort KindSortOrder) ([]*release.Hook, []Manifest, error) {
 	result := &result{}
 
 	for filePath, c := range files {
@@ -88,7 +90,7 @@ func SortManifests(files map[string]string, apis chartutil.VersionSet, sort Sort
 		}
 
 		manifestFile := &manifestFile{
-			entries: util.SplitManifests(c),
+			entries: SplitManifests(c),
 			path:    filePath,
 			apis:    apis,
 		}
@@ -122,7 +124,7 @@ func SortManifests(files map[string]string, apis chartutil.VersionSet, sort Sort
 // 			helm.sh/hook-delete-policy: hook-succeeded
 func (file *manifestFile) sort(result *result) error {
 	for _, m := range file.entries {
-		var entry util.SimpleHead
+		var entry SimpleHead
 		if err := yaml.Unmarshal([]byte(m), &entry); err != nil {
 			return errors.Wrapf(err, "YAML parse error on %s", file.path)
 		}
@@ -181,29 +183,24 @@ func (file *manifestFile) sort(result *result) error {
 		result.hooks = append(result.hooks, h)
 
 		operateAnnotationValues(entry, hooks.HookDeleteAnno, func(value string) {
-			policy, exist := deletePolices[value]
-			if exist {
-				h.DeletePolicies = append(h.DeletePolicies, policy)
-			} else {
-				log.Printf("info: skipping unknown hook delete policy: %q", value)
-			}
+			h.DeletePolicies = append(h.DeletePolicies, release.HookDeletePolicy(value))
 		})
 	}
 
 	return nil
 }
 
-func hasAnyAnnotation(entry util.SimpleHead) bool {
-	if entry.Metadata == nil ||
-		entry.Metadata.Annotations == nil ||
-		len(entry.Metadata.Annotations) == 0 {
-		return false
-	}
-
-	return true
+// hasAnyAnnotation returns true if the given entry has any annotations at all.
+func hasAnyAnnotation(entry SimpleHead) bool {
+	return entry.Metadata != nil &&
+		entry.Metadata.Annotations != nil &&
+		len(entry.Metadata.Annotations) != 0
 }
 
-func calculateHookWeight(entry util.SimpleHead) int {
+// calculateHookWeight finds the weight in the hook weight annotation.
+//
+// If no weight is found, the assigned weight is 0
+func calculateHookWeight(entry SimpleHead) int {
 	hws := entry.Metadata.Annotations[hooks.HookWeightAnno]
 	hw, err := strconv.Atoi(hws)
 	if err != nil {
@@ -212,7 +209,8 @@ func calculateHookWeight(entry util.SimpleHead) int {
 	return hw
 }
 
-func operateAnnotationValues(entry util.SimpleHead, annotation string, operate func(p string)) {
+// operateAnnotationValues finds the given annotation and runs the operate function with the value of that annotation
+func operateAnnotationValues(entry SimpleHead, annotation string, operate func(p string)) {
 	if dps, ok := entry.Metadata.Annotations[annotation]; ok {
 		for _, dp := range strings.Split(dps, ",") {
 			dp = strings.ToLower(strings.TrimSpace(dp))

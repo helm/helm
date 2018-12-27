@@ -27,20 +27,26 @@ type list []*rspb.Release
 func (s list) Len() int      { return len(s) }
 func (s list) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
 
+// ByName sorts releases by name
 type ByName struct{ list }
 
+// Less compares to releases
 func (s ByName) Less(i, j int) bool { return s.list[i].Name < s.list[j].Name }
 
+// ByDate sorts releases by date
 type ByDate struct{ list }
 
+// Less compares to releases
 func (s ByDate) Less(i, j int) bool {
 	ti := s.list[i].Info.LastDeployed.Second()
 	tj := s.list[j].Info.LastDeployed.Second()
 	return ti < tj
 }
 
+// ByRevision sorts releases by revision number
 type ByRevision struct{ list }
 
+// Less compares to releases
 func (s ByRevision) Less(i, j int) bool {
 	return s.list[i].Version < s.list[j].Version
 }
