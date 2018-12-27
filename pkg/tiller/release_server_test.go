@@ -642,6 +642,10 @@ func (kc *mockHooksKubeClient) WaitAndGetCompletedPodPhase(namespace string, rea
 	return v1.PodUnknown, nil
 }
 
+func (kc *mockHooksKubeClient) WaitUntilCRDEstablished(reader io.Reader, timeout time.Duration) error {
+	return nil
+}
+
 func deletePolicyStub(kubeClient *mockHooksKubeClient) *ReleaseServer {
 	e := environment.New()
 	e.Releases = storage.Init(driver.NewMemory())

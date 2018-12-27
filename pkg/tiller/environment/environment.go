@@ -141,6 +141,8 @@ type KubeClient interface {
 	// WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
 	// and returns said phase (PodSucceeded or PodFailed qualify).
 	WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (v1.PodPhase, error)
+
+	WaitUntilCRDEstablished(reader io.Reader, timeout time.Duration) error
 }
 
 // PrintingKubeClient implements KubeClient, but simply prints the reader to
@@ -195,6 +197,11 @@ func (p *PrintingKubeClient) BuildUnstructured(ns string, reader io.Reader) (kub
 func (p *PrintingKubeClient) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (v1.PodPhase, error) {
 	_, err := io.Copy(p.Out, reader)
 	return v1.PodUnknown, err
+}
+
+func (p *PrintingKubeClient) WaitUntilCRDEstablished(reader io.Reader, timeout time.Duration) error {
+	_, err := io.Copy(p.Out, reader)
+	return err
 }
 
 // Environment provides the context for executing a client request.

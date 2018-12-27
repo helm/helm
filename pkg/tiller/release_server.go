@@ -23,6 +23,7 @@ import (
 	"path"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/technosophos/moniker"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -399,7 +400,7 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 		b.Reset()
 		b.WriteString(h.Manifest)
 
-		// We can't watch CRDs
+		// We can't watch CRDs, but need to wait until they reach the established state before continuing
 		if hook != hooks.CRDInstall {
 			if err := kubeCli.WatchUntilReady(namespace, b, timeout, false); err != nil {
 				s.Log("warning: Release %s %s %s could not complete: %s", name, hook, h.Path, err)
@@ -408,6 +409,11 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 				if err := s.deleteHookByPolicy(h, hooks.HookFailed, name, namespace, hook, kubeCli); err != nil {
 					return err
 				}
+				return err
+			}
+		} else {
+			if err := kubeCli.WaitUntilCRDEstablished(b, time.Duration(timeout)*time.Second); err != nil {
+				s.Log("warning: Release %s %s %s could not complete: %s", name, hook, h.Path, err)
 				return err
 			}
 		}
