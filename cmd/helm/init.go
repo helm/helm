@@ -19,14 +19,19 @@ package main
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 
+	"github.com/Masterminds/semver"
+	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/helmpath"
+	"k8s.io/helm/pkg/plugin"
+	"k8s.io/helm/pkg/plugin/installer"
 	"k8s.io/helm/pkg/repo"
 )
 
@@ -42,8 +47,18 @@ const (
 type initOptions struct {
 	skipRefresh         bool   // --skip-refresh
 	stableRepositoryURL string // --stable-repo-url
+	pluginsFilename     string // --plugins
 
 	home helmpath.Home
+}
+
+type pluginsFileEntry struct {
+	URL     string `json:"url"`
+	Version string `json:"version,omitempty"`
+}
+
+type pluginsFile struct {
+	Plugins []*pluginsFileEntry `json:"plugins"`
 }
 
 func newInitCmd(out io.Writer) *cobra.Command {
@@ -63,6 +78,7 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.BoolVar(&o.skipRefresh, "skip-refresh", false, "do not refresh (download) the local repository cache")
 	f.StringVar(&o.stableRepositoryURL, "stable-repo-url", defaultStableRepositoryURL, "URL for stable repository")
+	f.StringVar(&o.pluginsFilename, "plugins", "", "a YAML file specifying plugins to install")
 
 	return cmd
 }
@@ -77,6 +93,11 @@ func (o *initOptions) run(out io.Writer) error {
 	}
 	if err := ensureRepoFileFormat(o.home.RepositoryFile(), out); err != nil {
 		return err
+	}
+	if o.pluginsFilename != "" {
+		if err := ensurePluginsInstalled(o.pluginsFilename, out); err != nil {
+			return err
+		}
 	}
 	fmt.Fprintf(out, "$HELM_HOME has been configured at %s.\n", settings.Home)
 	fmt.Fprintln(out, "Happy Helming!")
@@ -161,5 +182,73 @@ func ensureRepoFileFormat(file string, out io.Writer) error {
 			return err
 		}
 	}
+	return nil
+}
+
+func ensurePluginsInstalled(pluginsFilename string, out io.Writer) error {
+	bytes, err := ioutil.ReadFile(pluginsFilename)
+	if err != nil {
+		return err
+	}
+
+	pf := new(pluginsFile)
+	if err := yaml.Unmarshal(bytes, &pf); err != nil {
+		return errors.Wrapf(err, "failed to parse %s", pluginsFilename)
+	}
+
+	for _, requiredPlugin := range pf.Plugins {
+		if err := ensurePluginInstalled(requiredPlugin, pluginsFilename, out); err != nil {
+			return errors.Wrapf(err, "failed to install plugin from %s", requiredPlugin.URL)
+		}
+	}
+
+	return nil
+}
+
+func ensurePluginInstalled(requiredPlugin *pluginsFileEntry, pluginsFilename string, out io.Writer) error {
+	i, err := installer.NewForSource(requiredPlugin.URL, requiredPlugin.Version, settings.Home)
+	if err != nil {
+		return err
+	}
+
+	if _, pathErr := os.Stat(i.Path()); os.IsNotExist(pathErr) {
+		if err := installer.Install(i); err != nil {
+			return err
+		}
+
+		p, err := plugin.LoadDir(i.Path())
+		if err != nil {
+			return err
+		}
+
+		if err := runHook(p, plugin.Install); err != nil {
+			return err
+		}
+
+		fmt.Fprintf(out, "Installed plugin: %s\n", p.Metadata.Name)
+	} else if requiredPlugin.Version != "" {
+		p, err := plugin.LoadDir(i.Path())
+		if err != nil {
+			return err
+		}
+
+		if p.Metadata.Version != "" {
+			pluginVersion, err := semver.NewVersion(p.Metadata.Version)
+			if err != nil {
+				return err
+			}
+
+			constraint, err := semver.NewConstraint(requiredPlugin.Version)
+			if err != nil {
+				return err
+			}
+
+			if !constraint.Check(pluginVersion) {
+				fmt.Fprintf(out, "WARNING: Installed plugin '%s' is at version %s, while %s specifies %s\n",
+					p.Metadata.Name, p.Metadata.Version, pluginsFilename, requiredPlugin.Version)
+			}
+		}
+	}
+
 	return nil
 }

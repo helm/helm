@@ -24,6 +24,8 @@ import (
 	"k8s.io/helm/pkg/helm/helmpath"
 )
 
+const testPluginsFile = "testdata/plugins.yaml"
+
 func TestEnsureHome(t *testing.T) {
 	hh := helmpath.Home(testTempDir(t))
 
@@ -41,6 +43,9 @@ func TestEnsureHome(t *testing.T) {
 	if err := ensureRepoFileFormat(hh.RepositoryFile(), b); err != nil {
 		t.Error(err)
 	}
+	if err := ensurePluginsInstalled(testPluginsFile, b); err != nil {
+		t.Error(err)
+	}
 
 	expectedDirs := []string{hh.String(), hh.Repository(), hh.Cache()}
 	for _, dir := range expectedDirs {
@@ -55,5 +60,13 @@ func TestEnsureHome(t *testing.T) {
 		t.Error(err)
 	} else if fi.IsDir() {
 		t.Errorf("%s should not be a directory", fi)
+	}
+
+	if plugins, err := findPlugins(settings.PluginDirs()); err != nil {
+		t.Error(err)
+	} else if len(plugins) != 1 {
+		t.Errorf("Expected 1 plugin, got %d", len(plugins))
+	} else if plugins[0].Metadata.Name != "testplugin" {
+		t.Errorf("Expected %s to be installed", "testplugin")
 	}
 }
