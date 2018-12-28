@@ -40,6 +40,8 @@ const (
 	IngressFileName = "ingress.yaml"
 	// DeploymentName is the name of the example deployment file.
 	DeploymentName = "deployment.yaml"
+	// HorizontalPodAutoscalerName is the name of the example hpa file.
+	HorizontalPodAutoscalerName = "hpa.yaml"
 	// ServiceName is the name of the example service file.
 	ServiceName = "service.yaml"
 	// NotesName is the name of the example NOTES.txt file.
@@ -56,15 +58,47 @@ const defaultValues = `# Default values for %s.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-replicaCount: 1
-
-image:
-  repository: nginx
-  tag: stable
-  pullPolicy: IfNotPresent
-
 nameOverride: ""
 fullnameOverride: ""
+
+deployment:
+  image:
+    repository: nginx
+    tag: stable
+    pullPolicy: IfNotPresent
+
+  replicaCount: 1
+
+  hpa:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
+  resources: {}
+    # We usually recommend not to specify default resources and to leave this as a conscious
+    # choice for the user. This also increases chances charts run on environments with little
+    # resources, such as Minikube. If you do want to specify resources, uncomment the following
+    # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+    # limits:
+    #   cpu: 100m
+    #   memory: 128Mi
+    # requests:
+    #   cpu: 100m
+    #   memory: 128Mi
+
+  env: {}
+    # - name: FOO
+    #   value: bar
+    # - name: BAZ
+    #   value: qux
+
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}
 
 service:
   type: ClusterIP
@@ -82,24 +116,6 @@ ingress:
   #  - secretName: chart-example-tls
   #    hosts:
   #      - chart-example.local
-
-resources: {}
-  # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with little
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following
-  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-  # limits:
-  #   cpu: 100m
-  #   memory: 128Mi
-  # requests:
-  #   cpu: 100m
-  #   memory: 128Mi
-
-nodeSelector: {}
-
-tolerations: []
-
-affinity: {}
 `
 
 const defaultIgnore = `# Patterns to ignore when building packages.
@@ -178,7 +194,7 @@ metadata:
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
 spec:
-  replicas: {{ .Values.replicaCount }}
+  replicas: {{ .Values.deployment.replicaCount }}
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
@@ -191,8 +207,8 @@ spec:
     spec:
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          image: "{{ .Values.deployment.image.repository }}:{{ .Values.deployment.image.tag }}"
+          imagePullPolicy: {{ .Values.deployment.image.pullPolicy }}
           ports:
             - name: http
               containerPort: 80
@@ -206,19 +222,53 @@ spec:
               path: /
               port: http
           resources:
-            {{- toYaml .Values.resources | nindent 12 }}
-      {{- with .Values.nodeSelector }}
+            {{- toYaml .Values.deployment.resources | nindent 12 }}
+          env:
+            {{- toYaml .Values.deployment.env | nindent 12 }}
+    {{- with .Values.deployment.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
-      {{- end }}
-    {{- with .Values.affinity }}
+    {{- end }}
+    {{- with .Values.deployment.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
     {{- end }}
-    {{- with .Values.tolerations }}
+    {{- with .Values.deployment.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
     {{- end }}
+`
+const defaultHorizontalPodAutoscaler = `{{- if .Values.deployment.hpa.enabled }}
+apiVersion: autoscaling/v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  labels:
+    app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
+    helm.sh/chart: {{ include "<CHARTNAME>.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+  name: {{ template "<CHARTNAME>.fullname" . }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ template "<CHARTNAME>.fullname" . }}
+  minReplicas: {{ .Values.hpa.minReplicas }}
+  maxReplicas: {{ .Values.hpa.maxReplicas }}
+  metrics:
+  {{- if .Values.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        targetAverageUtilization: {{ .Values.hpa.targetCPUUtilizationPercentage }}
+  {{- end }}
+  {{- if .Values.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        targetAverageUtilization: {{ .Values.hpa.targetMemoryUtilizationPercentage }}
+  {{- end }}
+{{- end }}
 `
 
 const defaultService = `apiVersion: v1
@@ -412,6 +462,11 @@ func Create(chartfile *chart.Metadata, dir string) (string, error) {
 			// deployment.yaml
 			path:    filepath.Join(cdir, TemplatesDir, DeploymentName),
 			content: Transform(defaultDeployment, "<CHARTNAME>", chartfile.Name),
+		},
+		{
+			// hpa.yaml
+			path:    filepath.Join(cdir, TemplatesDir, HorizontalPodAutoscalerName),
+			content: Transform(defaultHorizontalPodAutoscaler, "<CHARTNAME>", chartfile.Name),
 		},
 		{
 			// service.yaml
