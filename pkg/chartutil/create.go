@@ -76,16 +76,24 @@ deployment:
     targetCPUUtilizationPercentage: 80
     targetMemoryUtilizationPercentage: 80
   
+  volumes: []
+    # - name: cache-volume
+    #   emptyDir: {}
+  
+  volumeMounts: []
+    # - name: cache-volume
+    #   mountPath: /cache
+  
   podSecurityContext: {}
-    # runAsUser: 10001
     # fsGroup: 2000
+    # runAsNonRoot: true
+    # runAsUser: 10001
 
   containerSecurityContext: {}
-    # runAsNonRoot: true
-    # readOnlyRootFilesystem: true
     # capabilities:
     #   drop:
     #   - ALL
+    # readOnlyRootFilesystem: true
 
   resources: {}
     # We usually recommend not to specify default resources and to leave this as a conscious
@@ -229,6 +237,10 @@ spec:
       securityContext:
         {{- toYaml . | nindent 8 }}
     {{- end }}
+    {{- with .Values.deployment.volumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.deployment.image.repository }}:{{ .Values.deployment.image.tag }}"
@@ -249,6 +261,8 @@ spec:
             {{- toYaml .Values.deployment.resources | nindent 12 }}
           env:
             {{- toYaml .Values.deployment.env | nindent 12 }}
+          volumeMounts:
+            {{- toYaml .Values.deployment.volumeMounts | nindent 12 }}
           securityContext:
             {{- toYaml .Values.deployment.containerSecurityContext | nindent 12 }}
     {{- with .Values.deployment.nodeSelector }}
