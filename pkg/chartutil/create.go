@@ -94,6 +94,15 @@ deployment:
     # - name: BAZ
     #   value: qux
 
+  readinessProbe:
+    httpGet:
+      path: /
+      port: http
+  livenessProbe:
+    httpGet:
+      path: /
+      port: http
+
   nodeSelector: {}
 
   tolerations: []
@@ -215,12 +224,12 @@ spec:
               protocol: TCP
           livenessProbe:
             httpGet:
-              path: /
-              port: http
+              path: {{ .Values.deployment.livenessProbe.httpGet.path }}
+              port: {{ .Values.deployment.livenessProbe.httpGet.port }}
           readinessProbe:
             httpGet:
-              path: /
-              port: http
+              path: {{ .Values.deployment.readinessProbe.httpGet.path }}
+              port: {{ .Values.deployment.readinessProbe.httpGet.port }}
           resources:
             {{- toYaml .Values.deployment.resources | nindent 12 }}
           env:
