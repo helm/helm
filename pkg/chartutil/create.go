@@ -75,6 +75,17 @@ deployment:
     maxReplicas: 10
     targetCPUUtilizationPercentage: 80
     targetMemoryUtilizationPercentage: 80
+  
+  podSecurityContext: {}
+    # runAsUser: 10001
+    # fsGroup: 2000
+
+  containerSecurityContext: {}
+    # runAsNonRoot: true
+    # readOnlyRootFilesystem: true
+    # capabilities:
+    #   drop:
+    #   - ALL
 
   resources: {}
     # We usually recommend not to specify default resources and to leave this as a conscious
@@ -214,6 +225,10 @@ spec:
         app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
+    {{- with .Values.deployment.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.deployment.image.repository }}:{{ .Values.deployment.image.tag }}"
@@ -234,6 +249,8 @@ spec:
             {{- toYaml .Values.deployment.resources | nindent 12 }}
           env:
             {{- toYaml .Values.deployment.env | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.deployment.containerSecurityContext | nindent 12 }}
     {{- with .Values.deployment.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
