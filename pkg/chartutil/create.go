@@ -99,7 +99,7 @@ deployment:
     #   cpu: 100m
     #   memory: 128Mi
 
-  env: {}
+  env: []
     # - name: FOO
     #   value: bar
     # - name: BAZ
