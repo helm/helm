@@ -86,14 +86,14 @@ deployment:
   
   podSecurityContext: {}
     # fsGroup: 2000
-    # runAsNonRoot: true
-    # runAsUser: 10001
 
-  containerSecurityContext: {}
+  securityContext: {}
     # capabilities:
     #   drop:
     #   - ALL
     # readOnlyRootFilesystem: true
+    # runAsNonRoot: true
+    # runAsUser: 10001
 
   resources: {}
     # We usually recommend not to specify default resources and to leave this as a conscious
@@ -264,7 +264,7 @@ spec:
           volumeMounts:
             {{- toYaml .Values.deployment.volumeMounts | nindent 12 }}
           securityContext:
-            {{- toYaml .Values.deployment.containerSecurityContext | nindent 12 }}
+            {{- toYaml .Values.deployment.securityContext | nindent 12 }}
     {{- with .Values.deployment.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
