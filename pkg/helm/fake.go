@@ -152,7 +152,8 @@ func (c *FakeClient) GetVersion(opts ...VersionOption) (*rls.GetVersionResponse,
 
 // UpdateRelease returns an UpdateReleaseResponse containing the updated release, if it exists
 func (c *FakeClient) UpdateRelease(rlsName string, chStr string, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
-	return c.UpdateReleaseFromChart(rlsName, &chart.Chart{}, opts...)
+	chart := &chart.Chart{Metadata: &chart.Metadata{Deprecated: false}}
+	return c.UpdateReleaseFromChart(rlsName, chart, opts...)
 }
 
 // UpdateReleaseFromChart returns an UpdateReleaseResponse containing the updated release, if it exists
@@ -209,6 +210,7 @@ func (c *FakeClient) ReleaseStatus(rlsName string, opts ...StatusOption) (*rls.G
 				Name:      rel.Name,
 				Info:      rel.Info,
 				Namespace: rel.Namespace,
+				Chart:     rel.Chart,
 			}, nil
 		}
 	}
@@ -318,8 +320,9 @@ func ReleaseMock(opts *MockReleaseOptions) *release.Release {
 	if opts.Chart == nil {
 		ch = &chart.Chart{
 			Metadata: &chart.Metadata{
-				Name:    "foo",
-				Version: "0.1.0-beta.1",
+				Name:       "foo",
+				Version:    "0.1.0-beta.1",
+				Deprecated: false,
 			},
 			Templates: []*chart.Template{
 				{Name: "templates/foo.tpl", Data: []byte(MockManifest)},

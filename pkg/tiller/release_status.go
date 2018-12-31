@@ -60,6 +60,7 @@ func (s *ReleaseServer) GetReleaseStatus(c ctx.Context, req *services.GetRelease
 		Name:      rel.Name,
 		Namespace: rel.Namespace,
 		Info:      rel.Info,
+		Chart:     rel.Chart,
 	}
 
 	// Ok, we got the status of the release as we had jotted down, now we need to match the

@@ -166,8 +166,11 @@ message GetReleaseStatusResponse {
 	// Info contains information about the release.
 	hapi.release.Info info = 2;
 
-  // Namespace the release was released into
-  string namespace = 3;
+    // Namespace the release was released into
+    string namespace = 3;
+
+    // Chart contains information about the chart.
+    hapi.chart.Chart chart = 4;
 }
 
 // GetReleaseContentRequest is a request to get the contents of a release.

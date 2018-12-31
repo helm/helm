@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"k8s.io/helm/pkg/proto/hapi/chart"
 	"testing"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
@@ -61,7 +62,7 @@ func TestStatusCmd(t *testing.T) {
 			name:     "get status of a deployed release with notes in json",
 			args:     []string{"flummoxed-chickadee"},
 			flags:    []string{"-o", "json"},
-			expected: `{"name":"flummoxed-chickadee","info":{"status":{"code":1,"notes":"release notes"},"first_deployed":{"seconds":242085845},"last_deployed":{"seconds":242085845}}}`,
+			expected: `{"name":"flummoxed-chickadee","info":{"status":{"code":1,"notes":"release notes"},"first_deployed":{"seconds":242085845},"last_deployed":{"seconds":242085845}},"chart":{"metadata":{}}}`,
 			rels: []*release.Release{
 				releaseMockWithStatus(&release.Status{
 					Code:  release.Status_DEPLOYED,
@@ -146,6 +147,11 @@ func releaseMockWithStatus(status *release.Status) *release.Release {
 			FirstDeployed: &date,
 			LastDeployed:  &date,
 			Status:        status,
+		},
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{
+				Deprecated: false,
+			},
 		},
 	}
 }

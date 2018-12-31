@@ -110,6 +110,7 @@ func TestFakeClient_ReleaseStatus(t *testing.T) {
 				Name:      releasePresent.Name,
 				Info:      releasePresent.Info,
 				Namespace: releasePresent.Namespace,
+				Chart:     releasePresent.Chart,
 			},
 
 			wantErr: false,
@@ -145,6 +146,7 @@ func TestFakeClient_ReleaseStatus(t *testing.T) {
 				Name:      releasePresent.Name,
 				Info:      releasePresent.Info,
 				Namespace: releasePresent.Namespace,
+				Chart:     releasePresent.Chart,
 			},
 
 			wantErr: false,

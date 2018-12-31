@@ -143,6 +143,10 @@ func PrintStatus(out io.Writer, res *services.GetReleaseStatusResponse) {
 	if len(res.Info.Status.Notes) > 0 {
 		fmt.Fprintf(out, "NOTES:\n%s\n", res.Info.Status.Notes)
 	}
+
+	if res.Chart.Metadata.Deprecated {
+		fmt.Printf("WARNING: This chart has been deprecated.\n")
+	}
 }
 
 func formatTestResults(results []*release.TestRun) string {
