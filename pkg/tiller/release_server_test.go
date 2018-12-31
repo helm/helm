@@ -381,6 +381,40 @@ func TestUniqName(t *testing.T) {
 	}
 }
 
+func TestLastSupersededRelease(t *testing.T) {
+	rs := rsFixture()
+
+	sr := rs.lastSupersededRelease("non-existent-name")
+	if sr != -1 {
+		t.Errorf("Expected -1 return for a not existent release.")
+	}
+
+	rel1 := releaseStub()
+	rel1.Version = 1
+	rel1.Info.Status.Code = release.Status_FAILED
+	rs.env.Releases.Create(rel1)
+
+	rel2 := releaseStub()
+	rel2.Version = 2
+	rel2.Info.Status.Code = release.Status_SUPERSEDED
+	rs.env.Releases.Create(rel2)
+
+	rel3 := releaseStub()
+	rel3.Version = 3
+	rel3.Info.Status.Code = release.Status_SUPERSEDED
+	rs.env.Releases.Create(rel3)
+
+	rel4 := releaseStub()
+	rel4.Version = 4
+	rel4.Info.Status.Code = release.Status_DEPLOYED
+	rs.env.Releases.Create(rel4)
+
+	sr = rs.lastSupersededRelease("angry-panda")
+	if sr != 3 {
+		t.Errorf("Wrong release version return, got: %d", sr)
+	}
+}
+
 type fakeNamer struct {
 	name string
 }

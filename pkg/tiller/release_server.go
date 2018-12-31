@@ -230,6 +230,15 @@ func (s *ReleaseServer) createUniqName(m moniker.Namer) (string, error) {
 	return "ERROR", errors.New("no available release name found")
 }
 
+func (s *ReleaseServer) lastSupersededRelease(name string) int32 {
+	releases, err := s.env.Releases.SupersededAll(name)
+	if len(releases) == 0 || err != nil {
+		return -1
+	}
+	relutil.Reverse(releases, relutil.SortByRevision)
+	return releases[0].Version
+}
+
 func (s *ReleaseServer) engine(ch *chart.Chart) environment.Engine {
 	renderer := s.env.EngineYard.Default()
 	if ch.Metadata.Engine != "" {

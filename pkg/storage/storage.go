@@ -139,23 +139,45 @@ func (s *Storage) Deployed(name string) (*rspb.Release, error) {
 	return ls[0], err
 }
 
+// checkResultFound search for string and convert to NoReleasesErr
+func checkResultFound(err error, name string) ([]*rspb.Release, error) {
+	if strings.Contains(err.Error(), "not found") {
+		return nil, fmt.Errorf("%q %s", name, NoReleasesErr)
+	}
+	return nil, err
+}
+
 // DeployedAll returns all deployed releases with the provided name, or
 // returns ErrReleaseNotFound if not found.
 func (s *Storage) DeployedAll(name string) ([]*rspb.Release, error) {
 	s.Log("getting deployed releases from %q history", name)
-
 	ls, err := s.Driver.Query(map[string]string{
 		"NAME":   name,
 		"OWNER":  "TILLER",
 		"STATUS": "DEPLOYED",
 	})
+
 	if err == nil {
 		return ls, nil
 	}
-	if strings.Contains(err.Error(), "not found") {
-		return nil, fmt.Errorf("%q %s", name, NoReleasesErr)
+
+	return checkResultFound(err, name)
+}
+
+// SupersededAll returns all superseded releases with the provided name or
+// returns ErrReleaseNotFound if not found.
+func (s *Storage) SupersededAll(name string) ([]*rspb.Release, error) {
+	s.Log("getting superseded revisions from %q history", name)
+	ls, err := s.Driver.Query(map[string]string{
+		"NAME":   name,
+		"OWNER":  "TILLER",
+		"STATUS": "SUPERSEDED",
+	})
+	if err == nil {
+		return ls, nil
 	}
-	return nil, err
+
+	return checkResultFound(err, name)
 }
 
 // History returns the revision history for the release with the provided name, or

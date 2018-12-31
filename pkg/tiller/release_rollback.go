@@ -78,7 +78,11 @@ func (s *ReleaseServer) prepareRollback(req *services.RollbackReleaseRequest) (*
 
 	previousVersion := req.Version
 	if req.Version == 0 {
-		previousVersion = currentRelease.Version - 1
+		p := s.lastSupersededRelease(req.Name)
+		if p < 0 || err != nil {
+			return nil, nil, errInvalidRevision
+		}
+		previousVersion = p
 	}
 
 	s.Log("rolling back %s (current: v%d, target: v%d)", req.Name, currentRelease.Version, previousVersion)

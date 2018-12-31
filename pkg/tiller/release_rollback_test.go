@@ -184,6 +184,54 @@ func TestRollbackWithReleaseVersion(t *testing.T) {
 	}
 }
 
+func TestRollbackLatestSuperseded(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+
+	rel := releaseStub()
+	rel.Version = 1
+	rel.Info.Status.Code = release.Status_SUPERSEDED
+	rs.env.Releases.Create(rel)
+	v2 := upgradeReleaseVersion(rel)
+	v2.Version = 2
+	v2.Info.Status.Code = release.Status_FAILED
+	rs.env.Releases.Create(v2)
+	v3 := upgradeReleaseVersion(v2)
+	v3.Info.Status.Code = release.Status_DEPLOYED
+	rs.env.Releases.Create(v3)
+
+	req := &services.RollbackReleaseRequest{
+		Name:         rel.Name,
+		DisableHooks: true,
+		Version:      0,
+	}
+
+	_, err := rs.RollbackRelease(c, req)
+	if err != nil {
+		t.Fatalf("Failed rollback: %s", err)
+	}
+
+	// check that v3 is now in a SUPERSEDED state
+	oldRel, err := rs.env.Releases.Get(rel.Name, 3)
+	if err != nil {
+		t.Fatalf("Failed to retrieve v3: %s", err)
+	}
+	if oldRel.Info.Status.Code != release.Status_SUPERSEDED {
+		t.Errorf("Expected v3 to be in a SUPERSEDED state, got %q", oldRel.Info.Status.Code)
+	}
+
+	lastRelease, _ := rs.env.Releases.Get(rel.Name, 4)
+	statusCode := lastRelease.Info.Status.Code
+	description := lastRelease.Info.Description
+
+	if statusCode != release.Status_DEPLOYED {
+		t.Errorf("Expected a new release created on deployed state, got: %s", statusCode)
+	}
+	if description != "Rollback to 1" {
+		t.Errorf("Expected to rollback for release 1, got: %s", description)
+	}
+}
+
 func TestRollbackDeleted(t *testing.T) {
 	c := helm.NewContext()
 	rs := rsFixture()
