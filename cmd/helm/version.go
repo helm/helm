@@ -19,12 +19,11 @@ package main
 import (
 	"fmt"
 	"io"
-	"text/template"
 
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/require"
-	"k8s.io/helm/pkg/version"
+	"k8s.io/helm/pkg/action"
 )
 
 const versionDesc = `
@@ -66,21 +65,19 @@ func newVersionCmd(out io.Writer) *cobra.Command {
 }
 
 func (o *versionOptions) run(out io.Writer) error {
-	if o.template != "" {
-		tt, err := template.New("_").Parse(o.template)
-		if err != nil {
-			return err
-		}
-		return tt.Execute(out, version.GetBuildInfo())
-	}
-	fmt.Fprintln(out, formatVersion(o.short))
-	return nil
-}
 
-func formatVersion(short bool) string {
-	v := version.GetBuildInfo()
-	if short {
-		return fmt.Sprintf("%s+g%s", v.Version, v.GitCommit[:7])
+	ver := &action.Version{}
+	if o.short {
+		ver.Formatter = action.ShortVersion()
 	}
-	return fmt.Sprintf("%#v", v)
+	if o.template != "" {
+		ver.Formatter = action.TemplateVersion(o.template)
+	}
+
+	result, err := ver.Run()
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(out, result)
+	return nil
 }
