@@ -147,7 +147,7 @@ func namedReleaseStub(name string, status release.ReleaseStatus) *release.Releas
 			Description:   "Named Release Stub",
 		},
 		Chart:   buildChart(withSampleTemplates()),
-		Config:  []byte(`name: value`),
+		Config:  map[string]interface{}{"name": "value"},
 		Version: 1,
 		Hooks: []*release.Hook{
 			{

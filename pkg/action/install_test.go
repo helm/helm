@@ -34,10 +34,12 @@ func installAction(t *testing.T) *Install {
 	return instAction
 }
 
+var mockEmptyVals = func() map[string]interface{} { return map[string]interface{}{} }
+
 func TestInstallRelease(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
-	res, err := instAction.Run(buildChart(), []byte{})
+	res, err := instAction.Run(buildChart(), mockEmptyVals())
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
 	}
@@ -61,7 +63,7 @@ func TestInstallRelease(t *testing.T) {
 func TestInstallRelease_NoName(t *testing.T) {
 	instAction := installAction(t)
 	instAction.ReleaseName = ""
-	_, err := instAction.Run(buildChart(), []byte{})
+	_, err := instAction.Run(buildChart(), mockEmptyVals())
 	if err == nil {
 		t.Fatal("expected failure when no name is specified")
 	}
@@ -72,7 +74,7 @@ func TestInstallRelease_WithNotes(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "with-notes"
-	res, err := instAction.Run(buildChart(withNotes("note here")), []byte{})
+	res, err := instAction.Run(buildChart(withNotes("note here")), mockEmptyVals())
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
 	}
@@ -98,7 +100,7 @@ func TestInstallRelease_WithNotesRendered(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "with-notes"
-	res, err := instAction.Run(buildChart(withNotes("got-{{.Release.Name}}")), []byte{})
+	res, err := instAction.Run(buildChart(withNotes("got-{{.Release.Name}}")), mockEmptyVals())
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
 	}
@@ -118,7 +120,8 @@ func TestInstallRelease_WithChartAndDependencyNotes(t *testing.T) {
 	instAction.ReleaseName = "with-notes"
 	res, err := instAction.Run(buildChart(
 		withNotes("parent"),
-		withDependency(withNotes("child"))), []byte{},
+		withDependency(withNotes("child"))),
+		mockEmptyVals(),
 	)
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
@@ -135,7 +138,7 @@ func TestInstallRelease_DryRun(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
 	instAction.DryRun = true
-	res, err := instAction.Run(buildChart(withSampleTemplates()), []byte{})
+	res, err := instAction.Run(buildChart(withSampleTemplates()), mockEmptyVals())
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
 	}
@@ -160,7 +163,7 @@ func TestInstallRelease_NoHooks(t *testing.T) {
 	instAction.ReleaseName = "no-hooks"
 	instAction.cfg.Releases.Create(releaseStub())
 
-	res, err := instAction.Run(buildChart(), []byte{})
+	res, err := instAction.Run(buildChart(), mockEmptyVals())
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
 	}
@@ -174,7 +177,7 @@ func TestInstallRelease_FailedHooks(t *testing.T) {
 	instAction.ReleaseName = "failed-hooks"
 	instAction.cfg.KubeClient = newHookFailingKubeClient()
 
-	res, err := instAction.Run(buildChart(), []byte{})
+	res, err := instAction.Run(buildChart(), mockEmptyVals())
 	is.Error(err)
 	is.Contains(res.Info.Description, "failed post-install")
 	is.Equal(res.Info.Status, release.StatusFailed)
@@ -190,7 +193,7 @@ func TestInstallRelease_ReplaceRelease(t *testing.T) {
 	instAction.cfg.Releases.Create(rel)
 	instAction.ReleaseName = rel.Name
 
-	res, err := instAction.Run(buildChart(), []byte{})
+	res, err := instAction.Run(buildChart(), mockEmptyVals())
 	is.NoError(err)
 
 	// This should have been auto-incremented
@@ -205,12 +208,12 @@ func TestInstallRelease_ReplaceRelease(t *testing.T) {
 func TestInstallRelease_KubeVersion(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
-	_, err := instAction.Run(buildChart(withKube(">=0.0.0")), []byte{})
+	_, err := instAction.Run(buildChart(withKube(">=0.0.0")), mockEmptyVals())
 	is.NoError(err)
 
 	// This should fail for a few hundred years
 	instAction.ReleaseName = "should-fail"
-	_, err = instAction.Run(buildChart(withKube(">=99.0.0")), []byte{})
+	_, err = instAction.Run(buildChart(withKube(">=99.0.0")), mockEmptyVals())
 	is.Error(err)
 	is.Contains(err.Error(), "chart requires kubernetesVersion")
 }

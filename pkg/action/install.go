@@ -73,7 +73,7 @@ func NewInstall(cfg *Configuration) *Install {
 // Run executes the installation
 //
 // If DryRun is set to true, this will prepare the release, but not install it
-func (i *Install) Run(chrt *chart.Chart, rawValues []byte) (*release.Release, error) {
+func (i *Install) Run(chrt *chart.Chart, rawValues map[string]interface{}) (*release.Release, error) {
 	if err := i.availableName(); err != nil {
 		return nil, err
 	}
@@ -207,7 +207,7 @@ func (i *Install) availableName() error {
 }
 
 // createRelease creates a new release object
-func (i *Install) createRelease(chrt *chart.Chart, rawVals []byte) *release.Release {
+func (i *Install) createRelease(chrt *chart.Chart, rawVals map[string]interface{}) *release.Release {
 	ts := i.cfg.Now()
 	return &release.Release{
 		Name:      i.ReleaseName,
