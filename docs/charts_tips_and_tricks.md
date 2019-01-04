@@ -255,9 +255,9 @@ embed each of the components.
 
 Two strong design patterns are illustrated by these projects:
 
-**SAP's [OpenStack chart](https://github.com/sapcc/openstack-helm):** This chart
-installs a full OpenStack IaaS on Kubernetes. All of the charts are collected
-together in one GitHub repository.
+**SAP's [Converged charts](https://github.com/sapcc/helm-charts):** These charts
+install SAP Converged Cloud a full OpenStack IaaS on Kubernetes. All of the charts are collected
+together in one GitHub repository, except for a few submodules.
 
 **Deis's [Workflow](https://github.com/deis/workflow/tree/master/charts/workflow):**
 This chart exposes the entire Deis PaaS system with one chart. But it's different
