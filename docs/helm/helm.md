@@ -21,11 +21,11 @@ Common actions from this point include:
 - helm list:      list releases of charts
 
 Environment:
-  $HELM_HOME           set an alternative location for Helm files. By default, these are stored in ~/.helm
+  $HELM_HOME           set an alternative location for Helm files. By default, these are stored in $HOME/.helm
   $HELM_HOST           set an alternative Tiller host. The format is host:port
   $HELM_NO_PLUGINS     disable plugins. Set HELM_NO_PLUGINS=1 to disable plugins.
   $TILLER_NAMESPACE    set an alternative Tiller namespace (default "kube-system")
-  $KUBECONFIG          set an alternative Kubernetes configuration file (default "~/.kube/config")
+  $KUBECONFIG          set an alternative Kubernetes configuration file (default "$HOME/.kube/config")
   $HELM_TLS_CA_CERT    path to TLS CA certificate used to verify the Helm client and Tiller server certificates (default "$HELM_HOME/ca.pem")
   $HELM_TLS_CERT       path to TLS client certificate file for authenticating to Tiller (default "$HELM_HOME/cert.pem")
   $HELM_TLS_KEY        path to TLS client key file for authenticating to Tiller (default "$HELM_HOME/key.pem")
