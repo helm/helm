@@ -169,7 +169,6 @@ func TestInstall(t *testing.T) {
 			name:  "install chart with release name using periods",
 			args:  []string{"testdata/testcharts/alpine"},
 			flags: []string{"--name", "foo.bar"},
-			err:   true,
 		},
 		{
 			name:  "install chart with release name using underscores",
