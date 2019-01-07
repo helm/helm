@@ -3,14 +3,18 @@ DIST_DIRS  := find * -type d -exec
 TARGETS    := darwin/amd64 linux/amd64 linux/386 linux/arm linux/arm64 linux/ppc64le windows/amd64
 BINNAME    ?= helm
 
+GOPATH     = $(shell go env GOPATH)
+DEP        = $(GOPATH)/bin/dep
+GOX        = $(GOPATH)/bin/gox
+
 # go option
-GO         ?= go
 PKG        := ./...
 TAGS       :=
 TESTS      := .
 TESTFLAGS  :=
 LDFLAGS    := -w -s
 GOFLAGS    :=
+SRC        := $(shell find . -type f -name '*.go' -print)
 
 # Required for globs to work correctly
 SHELL      = /bin/bash
@@ -40,14 +44,73 @@ LDFLAGS += -X k8s.io/helm/pkg/version.gitTreeState=${GIT_DIRTY}
 .PHONY: all
 all: build
 
+# ------------------------------------------------------------------------------
+#  build
+
 .PHONY: build
-build:
-	$(GO) build $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' -o $(BINDIR)/$(BINNAME) k8s.io/helm/cmd/helm
+build: $(BINDIR)/$(BINNAME)
+
+$(BINDIR)/$(BINNAME): $(SRC) vendor
+	go build $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' -o $(BINDIR)/$(BINNAME) k8s.io/helm/cmd/helm
+
+# ------------------------------------------------------------------------------
+#  test
+
+.PHONY: test
+test: build
+test: TESTFLAGS += -race -v
+test: test-style
+test: test-unit
+
+.PHONY: test-unit
+test-unit: vendor
+	@echo
+	@echo "==> Running unit tests <=="
+	HELM_HOME=/no_such_dir go test $(GOFLAGS) -run $(TESTS) $(PKG) $(TESTFLAGS)
+
+.PHONY: test-style
+test-style: vendor
+	@scripts/validate-go.sh
+	@scripts/validate-license.sh
+
+.PHONY: verify-docs
+verify-docs: build
+	@scripts/verify-docs.sh
+
+.PHONY: coverage
+coverage:
+	@scripts/coverage.sh
+
+# ------------------------------------------------------------------------------
+#  dependencies
+
+.PHONY: bootstrap
+bootstrap: vendor
+
+$(DEP):
+	go get -u github.com/golang/dep/cmd/dep
+
+$(GOX):
+	go get -u github.com/mitchellh/gox
+
+# install vendored dependencies
+vendor: Gopkg.lock
+	$(DEP) ensure -v --vendor-only
+
+# update vendored dependencies
+Gopkg.lock: Gopkg.toml
+	$(DEP) ensure -v --no-vendor
+
+Gopkg.toml: $(DEP)
+
+# ------------------------------------------------------------------------------
+#  release
 
 .PHONY: build-cross
 build-cross: LDFLAGS += -extldflags "-static"
-build-cross:
-	CGO_ENABLED=0 gox -parallel=3 -output="_dist/{{.OS}}-{{.Arch}}/$(BINNAME)" -osarch='$(TARGETS)' $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/helm
+build-cross: vendor
+build-cross: $(GOX)
+	CGO_ENABLED=0 $(GOX) -parallel=3 -output="_dist/{{.OS}}-{{.Arch}}/$(BINNAME)" -osarch='$(TARGETS)' $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/helm
 
 .PHONY: dist
 dist:
@@ -65,55 +128,15 @@ checksum:
 		shasum -a 256 "$${f}"  | awk '{print $$1}' > "$${f}.sha256" ; \
 	done
 
-.PHONY: test
-test: build
-test: TESTFLAGS += -race -v
-test: test-style
-test: test-unit
-
-.PHONY: test-unit
-test-unit:
-	@echo
-	@echo "==> Running unit tests <=="
-	HELM_HOME=/no_such_dir $(GO) test $(GOFLAGS) -run $(TESTS) $(PKG) $(TESTFLAGS)
-
-.PHONY: test-style
-test-style:
-	@scripts/validate-go.sh
-	@scripts/validate-license.sh
+# ------------------------------------------------------------------------------
 
 .PHONY: docs
 docs: build
 	@scripts/update-docs.sh
 
-.PHONY: verify-docs
-verify-docs: build
-	@scripts/verify-docs.sh
-
 .PHONY: clean
 clean:
 	@rm -rf $(BINDIR) ./_dist
-
-.PHONY: coverage
-coverage:
-	@scripts/coverage.sh
-
-HAS_DEP := $(shell command -v dep;)
-HAS_GOX := $(shell command -v gox;)
-HAS_GIT := $(shell command -v git;)
-
-.PHONY: bootstrap
-bootstrap:
-ifndef HAS_GIT
-	$(error You must install Git)
-endif
-ifndef HAS_DEP
-	go get -u github.com/golang/dep/cmd/dep
-endif
-ifndef HAS_GOX
-	go get -u github.com/mitchellh/gox
-endif
-	dep ensure -vendor-only
 
 .PHONY: info
 info:
