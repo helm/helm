@@ -29,8 +29,10 @@ import (
 	"k8s.io/helm/pkg/sympath"
 )
 
+// DirLoader loads a chart from a directory
 type DirLoader string
 
+// Load loads the chart
 func (l DirLoader) Load() (*chart.Chart, error) {
 	return LoadDir(string(l))
 }

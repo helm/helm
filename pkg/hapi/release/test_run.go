@@ -17,8 +17,10 @@ package release
 
 import "time"
 
+// TestRunStatus is the status of a test run
 type TestRunStatus string
 
+// Indicates the results of a test run
 const (
 	TestRunUnknown TestRunStatus = "unknown"
 	TestRunSuccess TestRunStatus = "success"
@@ -26,8 +28,10 @@ const (
 	TestRunRunning TestRunStatus = "running"
 )
 
+// Strng converts a test run status to a printable string
 func (x TestRunStatus) String() string { return string(x) }
 
+// TestRun describes the run of a test
 type TestRun struct {
 	Name        string        `json:"name,omitempty"`
 	Status      TestRunStatus `json:"status,omitempty"`

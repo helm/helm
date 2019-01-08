@@ -275,7 +275,7 @@ func coalesceValues(c *chart.Chart, v map[string]interface{}) {
 	}
 }
 
-// coalesceTables merges a source map into a destination map.
+// CoalesceTables merges a source map into a destination map.
 //
 // dest is considered authoritative.
 func CoalesceTables(dst, src map[string]interface{}) map[string]interface{} {

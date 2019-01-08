@@ -15,8 +15,10 @@ limitations under the License.
 
 package release
 
+// ReleaseStatus is the status of a release
 type ReleaseStatus string
 
+// Describe the status of a release
 const (
 	// StatusUnknown indicates that a release is in an uncertain state.
 	StatusUnknown ReleaseStatus = "unknown"

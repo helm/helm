@@ -28,16 +28,19 @@ import (
 // UpdateGolden writes out the golden files with the latest values, rather than failing the test.
 var updateGolden = flag.Bool("update", false, "update golden files")
 
+// TestingT describes a testing object compatible with the critical functions from the testing.T type
 type TestingT interface {
 	Fatal(...interface{})
 	Fatalf(string, ...interface{})
 	HelperT
 }
 
+// HelperT describes a test with a helper function
 type HelperT interface {
 	Helper()
 }
 
+// AssertGoldenBytes asserts that the give actual content matches the contents of the given filename
 func AssertGoldenBytes(t TestingT, actual []byte, filename string) {
 	t.Helper()
 
@@ -46,6 +49,7 @@ func AssertGoldenBytes(t TestingT, actual []byte, filename string) {
 	}
 }
 
+// AssertGoldenString asserts that the given string matches the contents of the given file.
 func AssertGoldenString(t TestingT, actual, filename string) {
 	t.Helper()
 

@@ -28,10 +28,12 @@ import (
 	"k8s.io/helm/pkg/chart"
 )
 
+// ChartLoader loads a chart.
 type ChartLoader interface {
 	Load() (*chart.Chart, error)
 }
 
+// Loader returns a new ChartLoader appropriate for the given chart name
 func Loader(name string) (ChartLoader, error) {
 	fi, err := os.Stat(name)
 	if err != nil {

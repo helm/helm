@@ -23,6 +23,7 @@ import (
 	"k8s.io/helm/pkg/version"
 )
 
+// ProcessDependencies checks through this chart's dependencies, processing accordingly.
 func ProcessDependencies(c *chart.Chart, v Values) error {
 	if err := processDependencyEnabled(c, v); err != nil {
 		return err

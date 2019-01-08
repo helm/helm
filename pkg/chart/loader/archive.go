@@ -29,8 +29,10 @@ import (
 	"k8s.io/helm/pkg/chart"
 )
 
+// FileLoader loads a chart from a file
 type FileLoader string
 
+// Load loads a chart
 func (l FileLoader) Load() (*chart.Chart, error) {
 	return LoadFile(string(l))
 }

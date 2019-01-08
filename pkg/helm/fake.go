@@ -189,7 +189,7 @@ func ReleaseMock(opts *MockReleaseOptions) *release.Release {
 		name = "testrelease-" + string(rand.Intn(100))
 	}
 
-	var version int = 1
+	version := 1
 	if opts.Version != 0 {
 		version = opts.Version
 	}
