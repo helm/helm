@@ -59,6 +59,7 @@ type inspectCmd struct {
 	repoURL   string
 	username  string
 	password  string
+	devel     bool
 
 	certFile string
 	keyFile  string
@@ -88,6 +89,13 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
+
+			debug("Original chart version: %q", insp.version)
+			if insp.version == "" && insp.devel {
+				debug("setting version to >0.0.0-0")
+				insp.version = ">0.0.0-0"
+			}
+
 			cp, err := locateChartPath(insp.repoURL, insp.username, insp.password, args[0], insp.version, insp.verify, insp.keyring,
 				insp.certFile, insp.keyFile, insp.caFile)
 			if err != nil {
@@ -107,6 +115,13 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
+
+			debug("Original chart version: %q", insp.version)
+			if insp.version == "" && insp.devel {
+				debug("setting version to >0.0.0-0")
+				insp.version = ">0.0.0-0"
+			}
+
 			cp, err := locateChartPath(insp.repoURL, insp.username, insp.password, args[0], insp.version, insp.verify, insp.keyring,
 				insp.certFile, insp.keyFile, insp.caFile)
 			if err != nil {
@@ -126,6 +141,13 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
+
+			debug("Original chart version: %q", insp.version)
+			if insp.version == "" && insp.devel {
+				debug("setting version to >0.0.0-0")
+				insp.version = ">0.0.0-0"
+			}
+
 			cp, err := locateChartPath(insp.repoURL, insp.username, insp.password, args[0], insp.version, insp.verify, insp.keyring,
 				insp.certFile, insp.keyFile, insp.caFile)
 			if err != nil {
@@ -145,6 +167,13 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
+
+			debug("Original chart version: %q", insp.version)
+			if insp.version == "" && insp.devel {
+				debug("setting version to >0.0.0-0")
+				insp.version = ">0.0.0-0"
+			}
+
 			cp, err := locateChartPath(insp.repoURL, insp.username, insp.password, args[0], insp.version, insp.verify, insp.keyring,
 				insp.certFile, insp.keyFile, insp.caFile)
 			if err != nil {
@@ -192,6 +221,12 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 	inspectCommand.Flags().StringVar(&insp.password, password, "", passworddesc)
 	valuesSubCmd.Flags().StringVar(&insp.password, password, "", passworddesc)
 	chartSubCmd.Flags().StringVar(&insp.password, password, "", passworddesc)
+
+	develFlag := "devel"
+	develDesc := "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored."
+	for _, subCmd := range cmds {
+		subCmd.Flags().BoolVar(&insp.devel, develFlag, false, develDesc)
+	}
 
 	certFile := "cert-file"
 	certFiledesc := "verify certificates of HTTPS-enabled servers using this CA bundle"
