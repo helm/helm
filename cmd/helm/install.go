@@ -308,41 +308,6 @@ func (o *installOptions) printRelease(out io.Writer, rel *release.Release) {
 	}
 }
 
-// printRelease prints info about a release if the Debug is true.
-func (o *installOptions) printRelease(out io.Writer, rel *release.Release) {
-	if rel == nil {
-		return
-	}
-	fmt.Fprintf(out, "NAME:   %s\n", rel.Name)
-	if settings.Debug {
-		printRelease(out, rel)
-	}
-	if !rel.Info.LastDeployed.IsZero() {
-		fmt.Fprintf(out, "LAST DEPLOYED: %s\n", rel.Info.LastDeployed)
-	}
-	fmt.Fprintf(out, "NAMESPACE: %s\n", rel.Namespace)
-	fmt.Fprintf(out, "STATUS: %s\n", rel.Info.Status.String())
-	fmt.Fprintf(out, "\n")
-	if len(rel.Info.Resources) > 0 {
-		re := regexp.MustCompile("  +")
-
-		w := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.TabIndent)
-		fmt.Fprintf(w, "RESOURCES:\n%s\n", re.ReplaceAllString(rel.Info.Resources, "\t"))
-		w.Flush()
-	}
-	if rel.Info.LastTestSuiteRun != nil {
-		lastRun := rel.Info.LastTestSuiteRun
-		fmt.Fprintf(out, "TEST SUITE:\n%s\n%s\n\n%s\n",
-			fmt.Sprintf("Last Started: %s", lastRun.StartedAt),
-			fmt.Sprintf("Last Completed: %s", lastRun.CompletedAt),
-			formatTestResults(lastRun.Results))
-	}
-
-	if len(rel.Info.Notes) > 0 {
-		fmt.Fprintf(out, "NOTES:\n%s\n", rel.Info.Notes)
-	}
-}
-
 // Merges source and destination map, preferring values from the source map
 func mergeValues(dest, src map[string]interface{}) map[string]interface{} {
 	for k, v := range src {
