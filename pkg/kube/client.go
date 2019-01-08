@@ -153,7 +153,7 @@ func (c *Client) Build(namespace string, reader io.Reader) (Result, error) {
 }
 
 // Return the resource info as internal
-func resourceInfoToObject(info *resource.Info) runtime.Object {
+func resourceInfoToObject(info *resource.Info, c *Client) runtime.Object {
 	internalObj, err := asInternal(info)
 	if err != nil {
 		// If the problem is just that the resource is not registered, don't print any
@@ -215,7 +215,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 			objs[vk] = make(map[string]runtime.Object)
 		}
 		// Map between the resource name to the underlying info object
-		objs[vk][info.Name] = resourceInfoToObject(info)
+		objs[vk][info.Name] = resourceInfoToObject(info, c)
 
 		//Get the relation pods
 		objPods, err = c.getSelectRelationPod(info, objPods)
