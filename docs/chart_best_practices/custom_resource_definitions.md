@@ -28,7 +28,7 @@ resources that use that CRD in _another_ chart.
 
 In this method, each chart must be installed separately.
 
-### Method 2: Pre-install Hooks
+### Method 2: Crd-install Hooks
 
 To package the two together, add a `crd-install` hook to the CRD definition so
 that it is fully installed before the rest of the chart is executed.
