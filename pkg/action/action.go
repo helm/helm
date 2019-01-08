@@ -29,15 +29,15 @@ import (
 	"k8s.io/helm/pkg/version"
 )
 
-// Timestamper is a function that can provide a timestamp.
+// Timestamper is a function capable of producing a timestamp.Timestamper.
 //
-// If this is not set, the `time.Now()` function is used to generate
-// timestamps. This may be overridden for testing.
-type Timestamper func() time.Time
+// By default, this is a time.Time function. This can be overridden for testing,
+// though, so that timestamps are predictable.
+var Timestamper = time.Now
 
 // Configuration injects the dependencies that all actions share.
 type Configuration struct {
-	//engine    Engine
+	// Discovery contains a discovery client
 	Discovery discovery.DiscoveryInterface
 
 	// Releases stores records of releases.
@@ -46,8 +46,6 @@ type Configuration struct {
 	KubeClient environment.KubeClient
 
 	Log func(string, ...interface{})
-
-	Timestamper Timestamper
 }
 
 // capabilities builds a Capabilities from discovery information.
@@ -72,10 +70,7 @@ func (c *Configuration) capabilities() (*chartutil.Capabilities, error) {
 // If the configuration has a Timestamper on it, that will be used.
 // Otherwise, this will use time.Now().
 func (c *Configuration) Now() time.Time {
-	if c.Timestamper != nil {
-		return c.Timestamper()
-	}
-	return time.Now()
+	return Timestamper()
 }
 
 // GetVersionSet retrieves a set of available k8s API versions

@@ -270,23 +270,10 @@ func (o *installOptions) run(out io.Writer) error {
 	}
 
 	o.printRelease(out, rel)
-	// If this is a dry run, we can't display status.
-	if o.dryRun {
-		return nil
-	}
-
-	// Print the status like status command does
-	/*
-		status, err := o.client.ReleaseStatus(rel.Name, 0)
-		if err != nil {
-			return err
-		}
-		PrintStatus(out, status)
-	*/
 	return nil
 }
 
-// printRelease prints info about a release if the Debug is true.
+// printRelease prints info about a release
 func (o *installOptions) printRelease(out io.Writer, rel *release.Release) {
 	if rel == nil {
 		return

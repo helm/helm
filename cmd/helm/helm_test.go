@@ -43,12 +43,16 @@ import (
 // base temp directory
 var testingDir string
 
+func testTimestamper() time.Time { return time.Unix(242085845, 0).UTC() }
+
 func init() {
 	var err error
 	testingDir, err = ioutil.TempDir(testingDir, "helm")
 	if err != nil {
 		panic(err)
 	}
+
+	action.Timestamper = testTimestamper
 }
 
 func TestMain(m *testing.M) {
@@ -122,11 +126,10 @@ func executeActionCommandC(store *storage.Storage, cmd string) (*cobra.Command, 
 	buf := new(bytes.Buffer)
 
 	actionConfig := &action.Configuration{
-		Releases:    store,
-		KubeClient:  &environment.PrintingKubeClient{Out: ioutil.Discard},
-		Discovery:   fake.NewSimpleClientset().Discovery(),
-		Log:         func(format string, v ...interface{}) {},
-		Timestamper: func() time.Time { return time.Unix(242085845, 0).UTC() },
+		Releases:   store,
+		KubeClient: &environment.PrintingKubeClient{Out: ioutil.Discard},
+		Discovery:  fake.NewSimpleClientset().Discovery(),
+		Log:        func(format string, v ...interface{}) {},
 	}
 
 	root := newRootCmd(nil, actionConfig, buf, args)

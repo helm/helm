@@ -74,8 +74,6 @@ type listOptions struct {
 	superseded    bool // --superseded
 
 	filter string
-
-	//client helm.Interface
 }
 
 func newListCmd(actionConfig *action.Configuration, out io.Writer) *cobra.Command {
