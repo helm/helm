@@ -61,6 +61,9 @@ func (k *mockKubeClient) UpdateWithOptions(ns string, currentReader, modifiedRea
 func (k *mockKubeClient) WatchUntilReady(ns string, r io.Reader, timeout int64, shouldWait bool) error {
 	return nil
 }
+func (k *mockKubeClient) RemoveDiff(namespace string, originalReader, targetReader io.Reader) error {
+	return nil
+}
 func (k *mockKubeClient) Build(ns string, reader io.Reader) (kube.Result, error) {
 	return []*resource.Info{}, nil
 }

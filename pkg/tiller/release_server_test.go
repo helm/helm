@@ -665,6 +665,9 @@ func (kc *mockHooksKubeClient) Update(ns string, currentReader, modifiedReader i
 func (kc *mockHooksKubeClient) UpdateWithOptions(ns string, currentReader, modifiedReader io.Reader, opts kube.UpdateOptions) error {
 	return nil
 }
+func (kc *mockHooksKubeClient) RemoveDiff(namespace string, originalReader, targetReader io.Reader) error {
+	return nil
+}
 func (kc *mockHooksKubeClient) Build(ns string, reader io.Reader) (kube.Result, error) {
 	return []*resource.Info{}, nil
 }

@@ -19,6 +19,7 @@ package tiller
 import (
 	"fmt"
 	"log"
+	"os"
 	"path"
 	"strconv"
 	"strings"
@@ -28,8 +29,19 @@ import (
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/hooks"
 	"k8s.io/helm/pkg/manifest"
+	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	util "k8s.io/helm/pkg/releaseutil"
+)
+
+// SortType is used for determining sort function
+type SortType int
+
+const (
+	// SortInstall is used for installing a chart
+	SortInstall SortType = iota
+	// SortUninstall is used for removing a chart
+	SortUninstall
 )
 
 var events = map[string]release.Hook_Event{
@@ -79,7 +91,7 @@ type manifestFile struct {
 //
 // Files that do not parse into the expected format are simply placed into a map and
 // returned.
-func sortManifests(files map[string]string, apis chartutil.VersionSet, sort SortOrder) ([]*release.Hook, []Manifest, error) {
+func sortManifests(ch *chart.Chart, files map[string]string, apis chartutil.VersionSet, sort SortType) ([]*release.Hook, []Manifest, error) {
 	result := &result{}
 
 	for filePath, c := range files {
@@ -101,12 +113,12 @@ func sortManifests(files map[string]string, apis chartutil.VersionSet, sort Sort
 			apis:    apis,
 		}
 
-		if err := manifestFile.sort(result); err != nil {
+		if err := manifestFile.sort(ch, result); err != nil {
 			return result.hooks, result.generic, err
 		}
 	}
 
-	return result.hooks, sortByKind(result.generic, sort), nil
+	return result.hooks, sortByWeight(sortByKind(result.generic, sort), sort), nil
 }
 
 // sort takes a manifestFile object which may contain multiple resource definition
@@ -128,9 +140,9 @@ func sortManifests(files map[string]string, apis chartutil.VersionSet, sort Sort
 //  metadata:
 // 		annotations:
 // 			helm.sh/hook-delete-policy: hook-succeeded
-func (file *manifestFile) sort(result *result) error {
+func (file *manifestFile) sort(ch *chart.Chart, result *result) error {
 	for _, m := range file.entries {
-		var entry util.SimpleHead
+		var entry manifest.SimpleHead
 		err := yaml.Unmarshal([]byte(m), &entry)
 
 		if err != nil {
@@ -138,13 +150,26 @@ func (file *manifestFile) sort(result *result) error {
 			return e
 		}
 
+		var weight manifest.Weight
+		if ch != nil {
+			weight = manifest.Weight{
+				Chart:    getChartWeight(ch, file.path),
+				Manifest: 0,
+			}
+		}
+
 		if !hasAnyAnnotation(entry) {
 			result.generic = append(result.generic, Manifest{
 				Name:    file.path,
 				Content: m,
 				Head:    &entry,
+				Weight:  &weight,
 			})
 			continue
+		}
+
+		if mw, err := strconv.ParseUint(entry.Metadata.Annotations[manifest.ManifestOrderWeight], 10, 32); err == nil {
+			weight.Manifest = uint32(mw)
 		}
 
 		hookTypes, ok := entry.Metadata.Annotations[hooks.HookAnno]
@@ -153,6 +178,7 @@ func (file *manifestFile) sort(result *result) error {
 				Name:    file.path,
 				Content: m,
 				Head:    &entry,
+				Weight:  &weight,
 			})
 			continue
 		}
@@ -211,7 +237,35 @@ func (file *manifestFile) sort(result *result) error {
 	return nil
 }
 
-func hasAnyAnnotation(entry util.SimpleHead) bool {
+func getChartWeight(ch *chart.Chart, name string) uint32 {
+	if ch == nil {
+		return 0
+	}
+
+	for _, tpl := range ch.Templates {
+		if path.Base(tpl.Name) == path.Base(name) && ch.Metadata.Name == getOwnerChart(name) {
+			return ch.Metadata.Weight
+		}
+	}
+
+	for _, chart := range ch.Dependencies {
+		if w := getChartWeight(chart, name); w != 0 {
+			return w
+		}
+	}
+
+	return 0
+}
+
+func getOwnerChart(path string) string {
+	parts := strings.Split(path, string(os.PathSeparator))
+	if len(parts) >= 3 {
+		return parts[len(parts)-3]
+	}
+	return ""
+}
+
+func hasAnyAnnotation(entry manifest.SimpleHead) bool {
 	if entry.Metadata == nil ||
 		entry.Metadata.Annotations == nil ||
 		len(entry.Metadata.Annotations) == 0 {
@@ -221,7 +275,7 @@ func hasAnyAnnotation(entry util.SimpleHead) bool {
 	return true
 }
 
-func calculateHookWeight(entry util.SimpleHead) int32 {
+func calculateHookWeight(entry manifest.SimpleHead) int32 {
 	hws := entry.Metadata.Annotations[hooks.HookWeightAnno]
 	hw, err := strconv.Atoi(hws)
 	if err != nil {
@@ -231,7 +285,7 @@ func calculateHookWeight(entry util.SimpleHead) int32 {
 	return int32(hw)
 }
 
-func operateAnnotationValues(entry util.SimpleHead, annotation string, operate func(p string)) {
+func operateAnnotationValues(entry manifest.SimpleHead, annotation string, operate func(p string)) {
 	if dps, ok := entry.Metadata.Annotations[annotation]; ok {
 		for _, dp := range strings.Split(dps, ",") {
 			dp = strings.ToLower(strings.TrimSpace(dp))

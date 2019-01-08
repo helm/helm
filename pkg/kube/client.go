@@ -423,6 +423,28 @@ func (c *Client) UpdateWithOptions(namespace string, originalReader, targetReade
 		return fmt.Errorf(strings.Join(append(updateErrors, cleanupErrors...), " && "))
 	}
 
+	if opts.ShouldWait {
+		return c.waitForResources(time.Duration(opts.Timeout)*time.Second, target)
+	}
+	return nil
+}
+
+// RemoveDiff deletes resources from the current configuration that are
+// not present in the target configuration
+//
+// Namespace will set the namespace.
+func (c *Client) RemoveDiff(namespace string, originalReader, targetReader io.Reader) error {
+	original, err := c.BuildUnstructured(namespace, originalReader)
+	if err != nil {
+		return fmt.Errorf("failed decoding reader into objects: %s", err)
+	}
+
+	c.Log("building resources from updated manifest")
+	target, err := c.BuildUnstructured(namespace, targetReader)
+	if err != nil {
+		return fmt.Errorf("failed decoding reader into objects: %s", err)
+	}
+
 	for _, info := range original.Difference(target) {
 		c.Log("Deleting %q in %s...", info.Name, info.Namespace)
 
@@ -442,17 +464,6 @@ func (c *Client) UpdateWithOptions(namespace string, originalReader, targetReade
 		if err := deleteResource(info); err != nil {
 			c.Log("Failed to delete %q, err: %s", info.Name, err)
 		}
-	}
-	if opts.ShouldWait {
-		err := c.waitForResources(time.Duration(opts.Timeout)*time.Second, target)
-
-		if opts.CleanupOnFail && err != nil {
-			c.Log("Cleanup on fail enabled: cleaning up newly created resources due to wait failure during update")
-			cleanupErrors = c.cleanup(newlyCreatedResources)
-			return fmt.Errorf(strings.Join(append([]string{err.Error()}, cleanupErrors...), " && "))
-		}
-
-		return err
 	}
 	return nil
 }

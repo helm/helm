@@ -91,7 +91,7 @@ func TestUpdateRelease(t *testing.T) {
 		t.Errorf("Expected release values %q, got %q", rel.Config.Raw, res.Release.Config.Raw)
 	}
 
-	if !strings.Contains(updated.Manifest, "---\n# Source: hello/templates/hello\nhello: world") {
+	if !strings.Contains(updated.Manifest, "---\n# Source: hello/templates/hello\n# Weight: 0,0\nhello: world") {
 		t.Errorf("unexpected output: %s", updated.Manifest)
 	}
 

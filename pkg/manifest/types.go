@@ -16,13 +16,29 @@ limitations under the License.
 
 package manifest
 
-import (
-	"k8s.io/helm/pkg/releaseutil"
-)
+// ManifestOrderWeight is the label name for a manifest
+const ManifestOrderWeight = "helm.sh/order-weight"
+
+// Weight represents the deployment order of a manifest
+type Weight struct {
+	Chart    uint32
+	Manifest uint32
+}
+
+// SimpleHead defines what the structure of the head of a manifest file
+type SimpleHead struct {
+	Version  string `json:"apiVersion"`
+	Kind     string `json:"kind,omitempty"`
+	Metadata *struct {
+		Name        string            `json:"name"`
+		Annotations map[string]string `json:"annotations"`
+	} `json:"metadata,omitempty"`
+}
 
 // Manifest represents a manifest file, which has a name and some content.
 type Manifest struct {
 	Name    string
 	Content string
-	Head    *releaseutil.SimpleHead
+	Head    *SimpleHead
+	Weight  *Weight
 }

@@ -68,6 +68,8 @@ type Dependency struct {
 	ImportValues []interface{} `json:"import-values,omitempty"`
 	// Alias usable alias to be used for the chart
 	Alias string `json:"alias,omitempty"`
+	// Deployment weight of this chart
+	Weight uint32 `json:"weight,omitempty"`
 }
 
 // ErrNoRequirementsFile to detect error condition

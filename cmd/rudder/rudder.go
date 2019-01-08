@@ -131,14 +131,16 @@ func (r *ReleaseModuleServiceServer) RollbackRelease(ctx context.Context, in *ru
 	grpclog.Print("rollback")
 	c := bytes.NewBufferString(in.Current.Manifest)
 	t := bytes.NewBufferString(in.Target.Manifest)
-	err := kubeClient.UpdateWithOptions(in.Target.Namespace, c, t, kube.UpdateOptions{
+	if err := kubeClient.UpdateWithOptions(in.Target.Namespace, c, t, kube.UpdateOptions{
 		Force:         in.Force,
 		Recreate:      in.Recreate,
 		Timeout:       in.Timeout,
 		ShouldWait:    in.Wait,
 		CleanupOnFail: in.CleanupOnFail,
-	})
-	return &rudderAPI.RollbackReleaseResponse{}, err
+	}); err != nil {
+		return &rudderAPI.RollbackReleaseResponse{}, err
+	}
+	return &rudderAPI.RollbackReleaseResponse{}, nil
 }
 
 // UpgradeRelease upgrades manifests using kubernetes client
@@ -146,15 +148,17 @@ func (r *ReleaseModuleServiceServer) UpgradeRelease(ctx context.Context, in *rud
 	grpclog.Print("upgrade")
 	c := bytes.NewBufferString(in.Current.Manifest)
 	t := bytes.NewBufferString(in.Target.Manifest)
-	err := kubeClient.UpdateWithOptions(in.Target.Namespace, c, t, kube.UpdateOptions{
+	if err := kubeClient.UpdateWithOptions(in.Target.Namespace, c, t, kube.UpdateOptions{
 		Force:         in.Force,
 		Recreate:      in.Recreate,
 		Timeout:       in.Timeout,
 		ShouldWait:    in.Wait,
 		CleanupOnFail: in.CleanupOnFail,
-	})
-	// upgrade response object should be changed to include status
-	return &rudderAPI.UpgradeReleaseResponse{}, err
+	}); err != nil {
+		// upgrade response object should be changed to include status
+		return &rudderAPI.UpgradeReleaseResponse{}, err
+	}
+	return &rudderAPI.UpgradeReleaseResponse{}, nil
 }
 
 // ReleaseStatus retrieves release status

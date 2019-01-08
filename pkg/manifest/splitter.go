@@ -19,8 +19,6 @@ package manifest
 import (
 	"regexp"
 	"strings"
-
-	"k8s.io/helm/pkg/releaseutil"
 )
 
 var (
@@ -38,7 +36,7 @@ func SplitManifests(templates map[string]string) []Manifest {
 		if len(match) == 2 {
 			h = strings.TrimSpace(match[1])
 		}
-		m := Manifest{Name: k, Content: v, Head: &releaseutil.SimpleHead{Kind: h}}
+		m := Manifest{Name: k, Content: v, Head: &SimpleHead{Kind: h}}
 		listManifests = append(listManifests, m)
 	}
 

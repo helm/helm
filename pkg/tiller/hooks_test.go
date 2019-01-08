@@ -25,6 +25,7 @@ import (
 	"github.com/ghodss/yaml"
 
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/manifest"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	util "k8s.io/helm/pkg/releaseutil"
 )
@@ -142,7 +143,7 @@ metadata:
 		manifests[o.path] = o.manifest
 	}
 
-	hs, generic, err := sortManifests(manifests, chartutil.NewVersionSet("v1", "v1beta1"), InstallOrder)
+	hs, generic, err := sortManifests(nil, manifests, chartutil.NewVersionSet("v1", "v1beta1"), SortInstall)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
@@ -201,7 +202,7 @@ metadata:
 		manifests := util.SplitManifests(s.manifest)
 
 		for _, m := range manifests {
-			var sh util.SimpleHead
+			var sh manifest.SimpleHead
 			err := yaml.Unmarshal([]byte(m), &sh)
 			if err != nil {
 				// This is expected for manifests that are corrupt or empty.
@@ -223,7 +224,7 @@ metadata:
 		}
 	}
 
-	sorted = sortByKind(sorted, InstallOrder)
+	sorted = sortByKind(sorted, SortInstall)
 	for i, m := range generic {
 		if m.Content != sorted[i].Content {
 			t.Errorf("Expected %q, got %q", m.Content, sorted[i].Content)
@@ -304,7 +305,7 @@ func TestSortManifestsHookDeletion(t *testing.T) {
 				"exampleManifest": buf.String(),
 			}
 
-			hs, _, err := sortManifests(manifests, chartutil.NewVersionSet("v1", "v1beta1"), InstallOrder)
+			hs, _, err := sortManifests(nil, manifests, chartutil.NewVersionSet("v1", "v1beta1"), SortInstall)
 			if err != nil {
 				t.Error(err)
 			}

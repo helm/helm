@@ -102,7 +102,13 @@ var UninstallOrder SortOrder = []string{
 // sortByKind does an in-place sort of manifests by Kind.
 //
 // Results are sorted by 'ordering'
-func sortByKind(manifests []Manifest, ordering SortOrder) []Manifest {
+func sortByKind(manifests []Manifest, st SortType) []Manifest {
+	var ordering SortOrder
+	if st == SortInstall {
+		ordering = InstallOrder
+	} else {
+		ordering = UninstallOrder
+	}
 	ks := newKindSorter(manifests, ordering)
 	sort.Sort(ks)
 	return ks.manifests

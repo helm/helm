@@ -27,6 +27,7 @@ import (
 	"k8s.io/api/core/v1"
 
 	"k8s.io/helm/pkg/hooks"
+	"k8s.io/helm/pkg/manifest"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	util "k8s.io/helm/pkg/releaseutil"
 	"k8s.io/helm/pkg/timeconv"
@@ -206,7 +207,7 @@ func extractTestManifestsFromHooks(h []*release.Hook) ([]string, error) {
 }
 
 func newTest(testManifest string) (*test, error) {
-	var sh util.SimpleHead
+	var sh manifest.SimpleHead
 	err := yaml.Unmarshal([]byte(testManifest), &sh)
 	if err != nil {
 		return nil, err

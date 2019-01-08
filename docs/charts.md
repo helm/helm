@@ -60,6 +60,7 @@ icon: A URL to an SVG or PNG image to be used as an icon (optional).
 appVersion: The version of the app that this contains (optional). This needn't be SemVer.
 deprecated: Whether this chart is deprecated (optional, boolean)
 tillerVersion: The version of Tiller that this chart requires. This should be expressed as a SemVer range: ">2.0.0" (optional)
+weight: A number (>0) that represents the precedence of objects in the chart. Heavier objects will be installed sooner. (optional)
 ```
 
 If you are familiar with the `Chart.yaml` file format for Helm Classic, you will

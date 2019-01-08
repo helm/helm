@@ -105,7 +105,7 @@ func TestInstallRelease(t *testing.T) {
 		t.Errorf("Expected manifest in %v", res)
 	}
 
-	if !strings.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world") {
+	if !strings.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\n# Weight: 0,0\nhello: world") {
 		t.Errorf("unexpected output: %s", rel.Manifest)
 	}
 
@@ -165,7 +165,7 @@ func TestInstallRelease_WithNotes(t *testing.T) {
 		t.Errorf("Expected manifest in %v", res)
 	}
 
-	if !strings.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world") {
+	if !strings.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\n# Weight: 0,0\nhello: world") {
 		t.Errorf("unexpected output: %s", rel.Manifest)
 	}
 
@@ -226,7 +226,7 @@ func TestInstallRelease_WithNotesRendered(t *testing.T) {
 		t.Errorf("Expected manifest in %v", res)
 	}
 
-	if !strings.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world") {
+	if !strings.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\n# Weight: 0,0\nhello: world") {
 		t.Errorf("unexpected output: %s", rel.Manifest)
 	}
 
@@ -348,11 +348,11 @@ func TestInstallRelease_DryRun(t *testing.T) {
 		t.Errorf("Expected release name.")
 	}
 
-	if !strings.Contains(res.Release.Manifest, "---\n# Source: hello/templates/hello\nhello: world") {
+	if !strings.Contains(res.Release.Manifest, "---\n# Source: hello/templates/hello\n# Weight: 0,0\nhello: world") {
 		t.Errorf("unexpected output: %s", res.Release.Manifest)
 	}
 
-	if !strings.Contains(res.Release.Manifest, "---\n# Source: hello/templates/goodbye\ngoodbye: world") {
+	if !strings.Contains(res.Release.Manifest, "---\n# Source: hello/templates/goodbye\n# Weight: 0,0\ngoodbye: world") {
 		t.Errorf("unexpected output: %s", res.Release.Manifest)
 	}
 

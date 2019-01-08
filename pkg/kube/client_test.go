@@ -203,6 +203,10 @@ func TestUpdate(t *testing.T) {
 	if err := c.Update(v1.NamespaceDefault, objBody(&listA), objBody(&listB), false, false, 0, false); err != nil {
 		t.Fatal(err)
 	}
+
+	if err := c.RemoveDiff(v1.NamespaceDefault, objBody(&listA), objBody(&listB)); err != nil {
+		t.Fatal(err)
+	}
 	// TODO: Find a way to test methods that use Client Set
 	// Test with a wait
 	// if err := c.Update("test", objBody(&listB), objBody(&listC), false, 300, true); err != nil {

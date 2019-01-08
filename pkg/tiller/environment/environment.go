@@ -156,6 +156,8 @@ type KubeClient interface {
 	// by "\n---\n").
 	UpdateWithOptions(namespace string, originalReader, modifiedReader io.Reader, opts kube.UpdateOptions) error
 
+	RemoveDiff(namespace string, originalReader, targetReader io.Reader) error
+
 	Build(namespace string, reader io.Reader) (kube.Result, error)
 
 	// BuildUnstructured reads a stream of manifests from a reader and turns them into
@@ -231,6 +233,12 @@ func (p *PrintingKubeClient) Update(ns string, currentReader, modifiedReader io.
 // UpdateWithOptions implements KubeClient UpdateWithOptions.
 func (p *PrintingKubeClient) UpdateWithOptions(ns string, currentReader, modifiedReader io.Reader, opts kube.UpdateOptions) error {
 	_, err := io.Copy(p.Out, modifiedReader)
+	return err
+}
+
+// RemoveDiff implements KubeClient RemoveDiff.
+func (p *PrintingKubeClient) RemoveDiff(namespace string, originalReader, targetReader io.Reader) error {
+	_, err := io.Copy(p.Out, targetReader)
 	return err
 }
 

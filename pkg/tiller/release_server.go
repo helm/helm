@@ -383,7 +383,7 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 	// Sort hooks, manifests, and partials. Only hooks and manifests are returned,
 	// as partials are not used after renderer.Render. Empty manifests are also
 	// removed here.
-	hooks, manifests, err := sortManifests(files, vs, InstallOrder)
+	hooks, manifests, err := sortManifests(ch, files, vs, SortInstall)
 	if err != nil {
 		// By catching parse errors here, we can prevent bogus releases from going
 		// to Kubernetes.
@@ -405,6 +405,7 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 	b := bytes.NewBuffer(nil)
 	for _, m := range manifests {
 		b.WriteString("\n---\n# Source: " + m.Name + "\n")
+		b.WriteString(fmt.Sprintf("# Weight: %d,%d\n", m.Weight.Chart, m.Weight.Manifest))
 		b.WriteString(m.Content)
 	}
 
