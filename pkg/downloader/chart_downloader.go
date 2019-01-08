@@ -153,7 +153,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, ge
 }
 
 // ResolveChartVersionAndGetRepo is the same as the ResolveChartVersion method, but returns the chart repositoryy.
-func (c *ChartDownloader) ResolveChartVersionAndGetRepo(ref, version string) (*url.URL, *repo.ChartRepository, *getter.HttpGetter, error) {
+func (c *ChartDownloader) ResolveChartVersionAndGetRepo(ref, version string) (*url.URL, *repo.ChartRepository, *getter.HTTPGetter, error) {
 	u, err := url.Parse(ref)
 	if err != nil {
 		return nil, nil, nil, errors.Errorf("invalid chart URL format: %s", ref)
@@ -164,6 +164,7 @@ func (c *ChartDownloader) ResolveChartVersionAndGetRepo(ref, version string) (*u
 		return u, nil, nil, err
 	}
 
+	// TODO add user-agent
 	g, err := getter.NewHTTPGetter(ref, "", "", "")
 	if err != nil {
 		return u, nil, nil, err
@@ -246,6 +247,7 @@ func (c *ChartDownloader) ResolveChartVersionAndGetRepo(ref, version string) (*u
 		repoURL.Path = strings.TrimSuffix(repoURL.Path, "/") + "/"
 		u = repoURL.ResolveReference(u)
 		u.RawQuery = q.Encode()
+		// TODO add user-agent
 		g, err := getter.NewHTTPGetter(rc.URL, "", "", "")
 		if err != nil {
 			return repoURL, r, nil, err

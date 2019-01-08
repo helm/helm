@@ -120,6 +120,7 @@ func (r *ChartRepository) DownloadIndexFile(cachePath string) error {
 	parsedURL.Path = strings.TrimSuffix(parsedURL.Path, "/") + "/index.yaml"
 
 	indexURL = parsedURL.String()
+	// TODO add user-agent
 	g, err := getter.NewHTTPGetter(indexURL, r.Config.CertFile, r.Config.KeyFile, r.Config.CAFile)
 	if err != nil {
 		return err

@@ -165,53 +165,9 @@ func (s *ReleaseServer) uniqName(start string, reuse bool) (string, error) {
 	}
 
 	return "", errors.Errorf("a release named %s already exists.\nRun: helm ls --all %s; to check the status of the release\nOr run: helm del --purge %s; to delete it", start, start, start)
-
-}
-
-// capabilities builds a Capabilities from discovery information.
-func capabilities(disc discovery.DiscoveryInterface) (*chartutil.Capabilities, error) {
-	sv, err := disc.ServerVersion()
-	if err != nil {
-		return nil, err
-	}
-	vs, err := GetVersionSet(disc)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not get apiVersions from Kubernetes")
-	}
-	return &chartutil.Capabilities{
-		APIVersions: vs,
-		KubeVersion: sv,
-		HelmVersion: version.GetBuildInfo(),
-	}, nil
-}
-
-// GetVersionSet retrieves a set of available k8s API versions
-func GetVersionSet(client discovery.ServerGroupsInterface) (chartutil.VersionSet, error) {
-	groups, err := client.ServerGroups()
-	if err != nil {
-		return chartutil.DefaultVersionSet, err
-	}
-
-	// FIXME: The Kubernetes test fixture for cli appears to always return nil
-	// for calls to Discovery().ServerGroups(). So in this case, we return
-	// the default API list. This is also a safe value to return in any other
-	// odd-ball case.
-	if groups.Size() == 0 {
-		return chartutil.DefaultVersionSet, nil
-	}
-
-	versions := metav1.ExtractGroupVersions(groups)
-	return chartutil.NewVersionSet(versions...), nil
 }
 
 func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values, vs chartutil.VersionSet) ([]*release.Hook, *bytes.Buffer, string, error) {
-	// Guard to make sure Helm is at the right version to handle this chart.
-	sver := version.GetVersion()
-	if ch.Metadata.HelmVersion != "" &&
-		!version.IsCompatibleRange(ch.Metadata.HelmVersion, sver) {
-		return nil, nil, "", errors.Errorf("chart incompatible with Helm %s", sver)
-	}
-
 	if ch.Metadata.KubeVersion != "" {
 		cap, _ := values["Capabilities"].(*chartutil.Capabilities)
 		gitVersion := cap.KubeVersion.String()
@@ -382,4 +338,32 @@ func hookHasDeletePolicy(h *release.Hook, policy string) bool {
 		}
 	}
 	return false
+}
+
+func newCapabilities(dc discovery.DiscoveryInterface) (*chartutil.Capabilities, error) {
+	kubeVersion, err := dc.ServerVersion()
+	if err != nil {
+		return nil, err
+	}
+
+	apiVersions, err := GetVersionSet(dc)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get apiVersions from Kubernetes")
+	}
+
+	return &chartutil.Capabilities{
+		KubeVersion: kubeVersion,
+		APIVersions: apiVersions,
+	}, nil
+}
+
+// GetVersionSet retrieves a set of available k8s API versions
+func GetVersionSet(dc discovery.ServerGroupsInterface) (chartutil.VersionSet, error) {
+	groups, err := dc.ServerGroups()
+	if groups.Size() > 0 {
+		versions := metav1.ExtractGroupVersions(groups)
+		return chartutil.NewVersionSet(versions...), err
+	}
+	return chartutil.DefaultVersionSet, err
+
 }

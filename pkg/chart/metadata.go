@@ -57,9 +57,6 @@ type Metadata struct {
 	AppVersion string `json:"appVersion,omitempty"`
 	// Whether or not this chart is deprecated
 	Deprecated bool `json:"deprecated,omitempty"`
-	// HelmVersion is a SemVer constraints on what version of Helm is required.
-	// See SemVer ranges here: https://github.com/Masterminds/semver#basic-comparisons
-	HelmVersion string `json:"helmVersion,omitempty"`
 	// Annotations are additional mappings uninterpreted by Helm,
 	// made available for inspection by other applications.
 	Annotations map[string]string `json:"annotations,omitempty"`

@@ -19,14 +19,12 @@ package action
 import (
 	"time"
 
-	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/discovery"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/storage"
 	"k8s.io/helm/pkg/tiller/environment"
-	"k8s.io/helm/pkg/version"
 )
 
 // Timestamper is a function capable of producing a timestamp.Timestamper.
@@ -45,24 +43,17 @@ type Configuration struct {
 	// KubeClient is a Kubernetes API client.
 	KubeClient environment.KubeClient
 
+	Capabilities *chartutil.Capabilities
+
 	Log func(string, ...interface{})
 }
 
 // capabilities builds a Capabilities from discovery information.
-func (c *Configuration) capabilities() (*chartutil.Capabilities, error) {
-	sv, err := c.Discovery.ServerVersion()
-	if err != nil {
-		return nil, err
+func (c *Configuration) capabilities() *chartutil.Capabilities {
+	if c.Capabilities == nil {
+		return chartutil.DefaultCapabilities
 	}
-	vs, err := GetVersionSet(c.Discovery)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not get apiVersions from Kubernetes")
-	}
-	return &chartutil.Capabilities{
-		APIVersions: vs,
-		KubeVersion: sv,
-		HelmVersion: version.GetBuildInfo(),
-	}, nil
+	return c.Capabilities
 }
 
 // Now generates a timestamp

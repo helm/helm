@@ -31,15 +31,15 @@ BINARY_VERSION ?= ${GIT_TAG}
 
 # Only set Version if building a tag or VERSION is set
 ifneq ($(BINARY_VERSION),)
-	LDFLAGS += -X k8s.io/helm/pkg/version.version=${BINARY_VERSION}
+	LDFLAGS += -X k8s.io/helm/internal/version.version=${BINARY_VERSION}
 endif
 
 # Clear the "unreleased" string in BuildMetadata
 ifneq ($(GIT_TAG),)
-	LDFLAGS += -X k8s.io/helm/pkg/version.metadata=
+	LDFLAGS += -X k8s.io/helm/internal/version.metadata=
 endif
-LDFLAGS += -X k8s.io/helm/pkg/version.gitCommit=${GIT_COMMIT}
-LDFLAGS += -X k8s.io/helm/pkg/version.gitTreeState=${GIT_DIRTY}
+LDFLAGS += -X k8s.io/helm/internal/version.gitCommit=${GIT_COMMIT}
+LDFLAGS += -X k8s.io/helm/internal/version.gitTreeState=${GIT_DIRTY}
 
 .PHONY: all
 all: build

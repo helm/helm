@@ -28,7 +28,7 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions/resource"
 	"k8s.io/client-go/kubernetes/fake"
 
@@ -300,20 +300,6 @@ func TestValidName(t *testing.T) {
 		if valid != validateReleaseName(name) {
 			t.Errorf("Expected %q to be %s", name, valid)
 		}
-	}
-}
-
-func TestGetVersionSet(t *testing.T) {
-	rs := rsFixture(t)
-	vs, err := GetVersionSet(rs.discovery)
-	if err != nil {
-		t.Error(err)
-	}
-	if !vs.Has("v1") {
-		t.Errorf("Expected supported versions to at least include v1.")
-	}
-	if vs.Has("nosuchversion/v1") {
-		t.Error("Non-existent version is reported found.")
 	}
 }
 
