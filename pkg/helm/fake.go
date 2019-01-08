@@ -46,11 +46,6 @@ func (c *FakeClient) Option(opts ...Option) Interface {
 var _ Interface = &FakeClient{}
 var _ Interface = (*FakeClient)(nil)
 
-// ListReleases lists the current releases
-func (c *FakeClient) ListReleases(opts ...ReleaseListOption) ([]*release.Release, error) {
-	return c.Rels, nil
-}
-
 // InstallRelease creates a new release and returns the release
 func (c *FakeClient) InstallRelease(chStr, ns string, opts ...InstallOption) (*release.Release, error) {
 	chart := &chart.Chart{}

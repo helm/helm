@@ -21,7 +21,9 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"regexp"
 	"strings"
+	"text/tabwriter"
 	"text/template"
 	"time"
 
@@ -30,6 +32,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/require"
+	"k8s.io/helm/pkg/action"
 	"k8s.io/helm/pkg/chart"
 	"k8s.io/helm/pkg/chart/loader"
 	"k8s.io/helm/pkg/downloader"
@@ -116,11 +119,14 @@ type installOptions struct {
 	valuesOptions
 	chartPathOptions
 
+	cfg *action.Configuration
+
+	// LEGACY: Here until we get upgrade converted
 	client helm.Interface
 }
 
-func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
-	o := &installOptions{client: c}
+func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+	o := &installOptions{cfg: cfg}
 
 	cmd := &cobra.Command{
 		Use:   "install [NAME] [CHART]",
@@ -145,7 +151,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 				return err
 			}
 			o.chartPath = cp
-			o.client = ensureHelmClient(o.client, false)
+
 			return o.run(out)
 		},
 	}
@@ -216,7 +222,7 @@ func (o *installOptions) run(out io.Writer) error {
 			return err
 		}
 		// Print the final name so the user knows what the final name of the release is.
-		fmt.Printf("FINAL NAME: %s\n", o.name)
+		fmt.Fprintf(out, "FINAL NAME: %s\n", o.name)
 	}
 
 	// Check chart dependencies to make sure all are present in /charts
@@ -249,37 +255,57 @@ func (o *installOptions) run(out io.Writer) error {
 		}
 	}
 
-	rel, err := o.client.InstallReleaseFromChart(
-		chartRequested,
-		getNamespace(),
-		helm.ValueOverrides(rawVals),
-		helm.ReleaseName(o.name),
-		helm.InstallDryRun(o.dryRun),
-		helm.InstallReuseName(o.replace),
-		helm.InstallDisableHooks(o.disableHooks),
-		helm.InstallTimeout(o.timeout),
-		helm.InstallWait(o.wait))
+	inst := action.NewInstall(o.cfg)
+	inst.DryRun = o.dryRun
+	inst.DisableHooks = o.disableHooks
+	inst.Replace = o.replace
+	inst.Wait = o.wait
+	inst.Devel = o.devel
+	inst.Timeout = o.timeout
+	inst.Namespace = getNamespace()
+	inst.ReleaseName = o.name
+	rel, err := inst.Run(chartRequested, rawVals)
 	if err != nil {
 		return err
 	}
 
-	if rel == nil {
-		return nil
-	}
 	o.printRelease(out, rel)
-
-	// If this is a dry run, we can't display status.
-	if o.dryRun {
-		return nil
-	}
-
-	// Print the status like status command does
-	status, err := o.client.ReleaseStatus(rel.Name, 0)
-	if err != nil {
-		return err
-	}
-	PrintStatus(out, status)
 	return nil
+}
+
+// printRelease prints info about a release
+func (o *installOptions) printRelease(out io.Writer, rel *release.Release) {
+	if rel == nil {
+		return
+	}
+	fmt.Fprintf(out, "NAME:   %s\n", rel.Name)
+	if settings.Debug {
+		printRelease(out, rel)
+	}
+	if !rel.Info.LastDeployed.IsZero() {
+		fmt.Fprintf(out, "LAST DEPLOYED: %s\n", rel.Info.LastDeployed)
+	}
+	fmt.Fprintf(out, "NAMESPACE: %s\n", rel.Namespace)
+	fmt.Fprintf(out, "STATUS: %s\n", rel.Info.Status.String())
+	fmt.Fprintf(out, "\n")
+	if len(rel.Info.Resources) > 0 {
+		re := regexp.MustCompile("  +")
+
+		w := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.TabIndent)
+		fmt.Fprintf(w, "RESOURCES:\n%s\n", re.ReplaceAllString(rel.Info.Resources, "\t"))
+		w.Flush()
+	}
+	if rel.Info.LastTestSuiteRun != nil {
+		lastRun := rel.Info.LastTestSuiteRun
+		fmt.Fprintf(out, "TEST SUITE:\n%s\n%s\n\n%s\n",
+			fmt.Sprintf("Last Started: %s", lastRun.StartedAt),
+			fmt.Sprintf("Last Completed: %s", lastRun.CompletedAt),
+			formatTestResults(lastRun.Results))
+	}
+
+	if len(rel.Info.Notes) > 0 {
+		fmt.Fprintf(out, "NOTES:\n%s\n", rel.Info.Notes)
+	}
 }
 
 // Merges source and destination map, preferring values from the source map
@@ -307,17 +333,6 @@ func mergeValues(dest, src map[string]interface{}) map[string]interface{} {
 		dest[k] = mergeValues(destMap, nextMap)
 	}
 	return dest
-}
-
-// printRelease prints info about a release if the Debug is true.
-func (o *installOptions) printRelease(out io.Writer, rel *release.Release) {
-	if rel == nil {
-		return
-	}
-	fmt.Fprintf(out, "NAME:   %s\n", rel.Name)
-	if settings.Debug {
-		printRelease(out, rel)
-	}
 }
 
 func templateName(nameTemplate string) (string, error) {

@@ -14,16 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package tiller
-
-// func TestRunReleaseTest(t *testing.T) {
-// 	rs := rsFixture()
-// 	rel := namedReleaseStub("nemo", release.Status_DEPLOYED)
-// 	rs.env.Releases.Create(rel)
-
-// 	req := &services.TestReleaseRequest{Name: "nemo", Timeout: 2}
-// 	err := rs.RunReleaseTest(req, mockRunReleaseTestServer{})
-// 	if err != nil {
-// 		t.Fatalf("failed to run release tests on %s: %s", rel.Name, err)
-// 	}
-// }
+// Package action contains the logic for each action that Helm can perform.
+//
+// This is a library for calling top-level Helm actions like 'install',
+// 'upgrade', or 'list'. Actions approximately match the command line
+// invocations that the Helm client uses.
+package action

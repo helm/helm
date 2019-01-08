@@ -31,6 +31,14 @@ import (
 	relutil "k8s.io/helm/pkg/releaseutil"
 )
 
+// deletePolices represents a mapping between the key in the annotation for label deleting policy and its real meaning
+// FIXME: Can we refactor this out?
+var deletePolices = map[string]release.HookDeletePolicy{
+	hooks.HookSucceeded:      release.HookSucceeded,
+	hooks.HookFailed:         release.HookFailed,
+	hooks.BeforeHookCreation: release.HookBeforeHookCreation,
+}
+
 // InstallRelease installs a release and stores the release record.
 func (s *ReleaseServer) InstallRelease(req *hapi.InstallReleaseRequest) (*release.Release, error) {
 	s.Log("preparing install for %s", req.Name)

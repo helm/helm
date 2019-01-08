@@ -22,19 +22,28 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
+
+	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/helm/pkg/tiller/environment"
 
 	shellwords "github.com/mattn/go-shellwords"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/internal/test"
+	"k8s.io/helm/pkg/action"
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
+	"k8s.io/helm/pkg/storage"
+	"k8s.io/helm/pkg/storage/driver"
 )
 
 // base temp directory
 var testingDir string
+
+func testTimestamper() time.Time { return time.Unix(242085845, 0).UTC() }
 
 func init() {
 	var err error
@@ -42,6 +51,8 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
+	action.Timestamper = testTimestamper
 }
 
 func TestMain(m *testing.M) {
@@ -82,6 +93,54 @@ func runTestCmd(t *testing.T, tests []cmdTestCase) {
 	}
 }
 
+func runTestActionCmd(t *testing.T, tests []cmdTestCase) {
+	t.Helper()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer resetEnv()()
+
+			store := storageFixture()
+			for _, rel := range tt.rels {
+				store.Create(rel)
+			}
+			_, out, err := executeActionCommandC(store, tt.cmd)
+			if (err != nil) != tt.wantError {
+				t.Errorf("expected error, got '%v'", err)
+			}
+			if tt.golden != "" {
+				test.AssertGoldenString(t, out, tt.golden)
+			}
+		})
+	}
+}
+
+func storageFixture() *storage.Storage {
+	return storage.Init(driver.NewMemory())
+}
+
+func executeActionCommandC(store *storage.Storage, cmd string) (*cobra.Command, string, error) {
+	args, err := shellwords.Parse(cmd)
+	if err != nil {
+		return nil, "", err
+	}
+	buf := new(bytes.Buffer)
+
+	actionConfig := &action.Configuration{
+		Releases:   store,
+		KubeClient: &environment.PrintingKubeClient{Out: ioutil.Discard},
+		Discovery:  fake.NewSimpleClientset().Discovery(),
+		Log:        func(format string, v ...interface{}) {},
+	}
+
+	root := newRootCmd(nil, actionConfig, buf, args)
+	root.SetOutput(buf)
+	root.SetArgs(args)
+
+	c, err := root.ExecuteC()
+
+	return c, buf.String(), err
+}
+
 // cmdTestCase describes a test case that works with releases.
 type cmdTestCase struct {
 	name      string
@@ -93,18 +152,25 @@ type cmdTestCase struct {
 	testRunStatus map[string]release.TestRunStatus
 }
 
+// deprecated: Switch to executeActionCommandC
 func executeCommand(c helm.Interface, cmd string) (string, error) {
 	_, output, err := executeCommandC(c, cmd)
 	return output, err
 }
 
+// deprecated: Switch to executeActionCommandC
 func executeCommandC(client helm.Interface, cmd string) (*cobra.Command, string, error) {
 	args, err := shellwords.Parse(cmd)
 	if err != nil {
 		return nil, "", err
 	}
 	buf := new(bytes.Buffer)
-	root := newRootCmd(client, buf, args)
+
+	actionConfig := &action.Configuration{
+		Releases: storage.Init(driver.NewMemory()),
+	}
+
+	root := newRootCmd(client, actionConfig, buf, args)
 	root.SetOutput(buf)
 	root.SetArgs(args)
 

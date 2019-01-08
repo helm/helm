@@ -21,7 +21,7 @@ import (
 	"testing"
 )
 
-const manifestFile = `
+const mockManifestFile = `
 
 ---
 apiVersion: v1
@@ -50,7 +50,7 @@ spec:
     cmd: fake-command`
 
 func TestSplitManifest(t *testing.T) {
-	manifests := SplitManifests(manifestFile)
+	manifests := SplitManifests(mockManifestFile)
 	if len(manifests) != 1 {
 		t.Errorf("Expected 1 manifest, got %v", len(manifests))
 	}

@@ -25,9 +25,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/require"
-	"k8s.io/helm/pkg/hapi"
+	"k8s.io/helm/pkg/action"
 	"k8s.io/helm/pkg/hapi/release"
-	"k8s.io/helm/pkg/helm"
 )
 
 var listHelp = `
@@ -59,28 +58,26 @@ flag with the '--offset' flag allows you to page through results.
 
 type listOptions struct {
 	// flags
-	all           bool   // --all
-	allNamespaces bool   // --all-namespaces
-	byDate        bool   // --date
-	colWidth      uint   // --col-width
-	uninstalled   bool   // --uninstalled
-	uninstalling  bool   // --uninstalling
-	deployed      bool   // --deployed
-	failed        bool   // --failed
-	limit         int    // --max
-	offset        string // --offset
-	pending       bool   // --pending
-	short         bool   // --short
-	sortDesc      bool   // --reverse
-	superseded    bool   // --superseded
+	all           bool // --all
+	allNamespaces bool // --all-namespaces
+	byDate        bool // --date
+	colWidth      uint // --col-width
+	uninstalled   bool // --uninstalled
+	uninstalling  bool // --uninstalling
+	deployed      bool // --deployed
+	failed        bool // --failed
+	limit         int  // --max
+	offset        int  // --offset
+	pending       bool // --pending
+	short         bool // --short
+	sortDesc      bool // --reverse
+	superseded    bool // --superseded
 
 	filter string
-
-	client helm.Interface
 }
 
-func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
-	o := &listOptions{client: client}
+func newListCmd(actionConfig *action.Configuration, out io.Writer) *cobra.Command {
+	o := &listOptions{}
 
 	cmd := &cobra.Command{
 		Use:     "list [FILTER]",
@@ -92,8 +89,41 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 			if len(args) > 0 {
 				o.filter = strings.Join(args, " ")
 			}
-			o.client = ensureHelmClient(o.client, o.allNamespaces)
-			return o.run(out)
+
+			if o.allNamespaces {
+				actionConfig = newActionConfig(true)
+			}
+
+			lister := action.NewList(actionConfig)
+			lister.All = o.limit == -1
+			lister.AllNamespaces = o.allNamespaces
+			lister.Limit = o.limit
+			lister.Offset = o.offset
+			lister.Filter = o.filter
+
+			// Set StateMask
+			lister.StateMask = o.setStateMask()
+
+			// Set sorter
+			lister.Sort = action.ByNameAsc
+			if o.sortDesc {
+				lister.Sort = action.ByNameDesc
+			}
+			if o.byDate {
+				lister.Sort = action.ByDate
+			}
+
+			results, err := lister.Run()
+
+			if o.short {
+				for _, res := range results {
+					fmt.Fprintln(out, res.Name)
+				}
+				return err
+			}
+
+			fmt.Fprintln(out, formatList(results, 90))
+			return err
 		},
 	}
 
@@ -102,7 +132,7 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVarP(&o.byDate, "date", "d", false, "sort by release date")
 	f.BoolVarP(&o.sortDesc, "reverse", "r", false, "reverse the sort order")
 	f.IntVarP(&o.limit, "max", "m", 256, "maximum number of releases to fetch")
-	f.StringVarP(&o.offset, "offset", "o", "", "next release name in the list, used to offset from start value")
+	f.IntVarP(&o.offset, "offset", "o", 0, "next release name in the list, used to offset from start value")
 	f.BoolVarP(&o.all, "all", "a", false, "show all releases, not just the ones marked deployed")
 	f.BoolVar(&o.uninstalled, "uninstalled", false, "show uninstalled releases")
 	f.BoolVar(&o.superseded, "superseded", false, "show superseded releases")
@@ -116,111 +146,35 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (o *listOptions) run(out io.Writer) error {
-	sortBy := hapi.SortByName
-	if o.byDate {
-		sortBy = hapi.SortByLastReleased
-	}
-
-	sortOrder := hapi.SortAsc
-	if o.sortDesc {
-		sortOrder = hapi.SortDesc
-	}
-
-	stats := o.statusCodes()
-
-	res, err := o.client.ListReleases(
-		helm.ReleaseListLimit(o.limit),
-		helm.ReleaseListOffset(o.offset),
-		helm.ReleaseListFilter(o.filter),
-		helm.ReleaseListSort(sortBy),
-		helm.ReleaseListOrder(sortOrder),
-		helm.ReleaseListStatuses(stats),
-	)
-
-	if err != nil {
-		return err
-	}
-
-	if len(res) == 0 {
-		return nil
-	}
-
-	rels := filterList(res)
-
-	if o.short {
-		for _, r := range rels {
-			fmt.Fprintln(out, r.Name)
-		}
-		return nil
-	}
-	fmt.Fprintln(out, formatList(rels, o.colWidth))
-	return nil
-}
-
-// filterList returns a list scrubbed of old releases.
-func filterList(rels []*release.Release) []*release.Release {
-	idx := map[string]int{}
-
-	for _, r := range rels {
-		name, version := r.Name, r.Version
-		if max, ok := idx[name]; ok {
-			// check if we have a greater version already
-			if max > version {
-				continue
-			}
-		}
-		idx[name] = version
-	}
-
-	uniq := make([]*release.Release, 0, len(idx))
-	for _, r := range rels {
-		if idx[r.Name] == r.Version {
-			uniq = append(uniq, r)
-		}
-	}
-	return uniq
-}
-
-// statusCodes gets the list of status codes that are to be included in the results.
-func (o *listOptions) statusCodes() []release.ReleaseStatus {
+// setStateMask calculates the state mask based on parameters.
+func (o *listOptions) setStateMask() action.ListStates {
 	if o.all {
-		return []release.ReleaseStatus{
-			release.StatusUnknown,
-			release.StatusDeployed,
-			release.StatusUninstalled,
-			release.StatusUninstalling,
-			release.StatusFailed,
-			release.StatusPendingInstall,
-			release.StatusPendingUpgrade,
-			release.StatusPendingRollback,
-		}
+		return action.ListAll
 	}
-	status := []release.ReleaseStatus{}
+
+	state := action.ListStates(0)
 	if o.deployed {
-		status = append(status, release.StatusDeployed)
+		state |= action.ListDeployed
 	}
 	if o.uninstalled {
-		status = append(status, release.StatusUninstalled)
+		state |= action.ListUninstalled
 	}
 	if o.uninstalling {
-		status = append(status, release.StatusUninstalling)
-	}
-	if o.failed {
-		status = append(status, release.StatusFailed)
-	}
-	if o.superseded {
-		status = append(status, release.StatusSuperseded)
+		state |= action.ListUninstalling
 	}
 	if o.pending {
-		status = append(status, release.StatusPendingInstall, release.StatusPendingUpgrade, release.StatusPendingRollback)
+		state |= action.ListPendingInstall | action.ListPendingRollback | action.ListPendingUpgrade
+	}
+	if o.failed {
+		state |= action.ListFailed
 	}
 
-	// Default case.
-	if len(status) == 0 {
-		status = append(status, release.StatusDeployed, release.StatusFailed)
+	// Apply a default
+	if state == 0 {
+		return action.ListDeployed | action.ListFailed
 	}
-	return status
+
+	return state
 }
 
 func formatList(rels []*release.Release, colWidth uint) string {

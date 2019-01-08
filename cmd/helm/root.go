@@ -22,6 +22,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/require"
+	"k8s.io/helm/pkg/action"
 	"k8s.io/helm/pkg/helm"
 )
 
@@ -42,11 +43,13 @@ Common actions from this point include:
 
 Environment:
   $HELM_HOME          set an alternative location for Helm files. By default, these are stored in ~/.helm
+  $HELM_DRIVER        set the backend storage driver. Values are: configmap, secret, memory
   $HELM_NO_PLUGINS    disable plugins. Set HELM_NO_PLUGINS=1 to disable plugins.
   $KUBECONFIG         set an alternative Kubernetes configuration file (default "~/.kube/config")
 `
 
-func newRootCmd(c helm.Interface, out io.Writer, args []string) *cobra.Command {
+// TODO: 'c helm.Interface' is deprecated in favor of actionConfig
+func newRootCmd(c helm.Interface, actionConfig *action.Configuration, out io.Writer, args []string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "helm",
 		Short:        "The Helm package manager for Kubernetes.",
@@ -73,8 +76,8 @@ func newRootCmd(c helm.Interface, out io.Writer, args []string) *cobra.Command {
 		// release commands
 		newGetCmd(c, out),
 		newHistoryCmd(c, out),
-		newInstallCmd(c, out),
-		newListCmd(c, out),
+		newInstallCmd(actionConfig, out),
+		newListCmd(actionConfig, out),
 		newReleaseTestCmd(c, out),
 		newRollbackCmd(c, out),
 		newStatusCmd(c, out),
