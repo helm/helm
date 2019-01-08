@@ -89,19 +89,9 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
-
-			debug("Original chart version: %q", insp.version)
-			if insp.version == "" && insp.devel {
-				debug("setting version to >0.0.0-0")
-				insp.version = ">0.0.0-0"
-			}
-
-			cp, err := locateChartPath(insp.repoURL, insp.username, insp.password, args[0], insp.version, insp.verify, insp.keyring,
-				insp.certFile, insp.keyFile, insp.caFile)
-			if err != nil {
+			if err := insp.prepare(args[0]); err != nil {
 				return err
 			}
-			insp.chartpath = cp
 			return insp.run()
 		},
 	}
@@ -115,19 +105,9 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
-
-			debug("Original chart version: %q", insp.version)
-			if insp.version == "" && insp.devel {
-				debug("setting version to >0.0.0-0")
-				insp.version = ">0.0.0-0"
-			}
-
-			cp, err := locateChartPath(insp.repoURL, insp.username, insp.password, args[0], insp.version, insp.verify, insp.keyring,
-				insp.certFile, insp.keyFile, insp.caFile)
-			if err != nil {
+			if err := insp.prepare(args[0]); err != nil {
 				return err
 			}
-			insp.chartpath = cp
 			return insp.run()
 		},
 	}
@@ -141,19 +121,9 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
-
-			debug("Original chart version: %q", insp.version)
-			if insp.version == "" && insp.devel {
-				debug("setting version to >0.0.0-0")
-				insp.version = ">0.0.0-0"
-			}
-
-			cp, err := locateChartPath(insp.repoURL, insp.username, insp.password, args[0], insp.version, insp.verify, insp.keyring,
-				insp.certFile, insp.keyFile, insp.caFile)
-			if err != nil {
+			if err := insp.prepare(args[0]); err != nil {
 				return err
 			}
-			insp.chartpath = cp
 			return insp.run()
 		},
 	}
@@ -167,19 +137,9 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
-
-			debug("Original chart version: %q", insp.version)
-			if insp.version == "" && insp.devel {
-				debug("setting version to >0.0.0-0")
-				insp.version = ">0.0.0-0"
-			}
-
-			cp, err := locateChartPath(insp.repoURL, insp.username, insp.password, args[0], insp.version, insp.verify, insp.keyring,
-				insp.certFile, insp.keyFile, insp.caFile)
-			if err != nil {
+			if err := insp.prepare(args[0]); err != nil {
 				return err
 			}
-			insp.chartpath = cp
 			return insp.run()
 		},
 	}
@@ -251,6 +211,22 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 	}
 
 	return inspectCommand
+}
+
+func (i *inspectCmd) prepare(chart string) error {
+	debug("Original chart version: %q", i.version)
+	if i.version == "" && i.devel {
+		debug("setting version to >0.0.0-0")
+		i.version = ">0.0.0-0"
+	}
+
+	cp, err := locateChartPath(i.repoURL, i.username, i.password, chart, i.version, i.verify, i.keyring,
+		i.certFile, i.keyFile, i.caFile)
+	if err != nil {
+		return err
+	}
+	i.chartpath = cp
+	return nil
 }
 
 func (i *inspectCmd) run() error {
