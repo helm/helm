@@ -77,6 +77,7 @@ func New(getter genericclioptions.RESTClientGetter) *Client {
 	}
 }
 
+// KubernetesClientSet returns a client set from the client factory.
 func (c *Client) KubernetesClientSet() (*kubernetes.Clientset, error) {
 	return c.Factory.KubernetesClientSet()
 }
