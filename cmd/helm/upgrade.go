@@ -275,9 +275,9 @@ func (u *upgradeCmd) run() error {
 		helm.UpgradeWait(u.wait),
 		helm.UpgradeDescription(u.description))
 	if err != nil {
-		fmt.Fprintf(u.out, "UPGRADE FAILED\nROLLING BACK\nError: %v", prettyError(err))
+		fmt.Fprintf(u.out, "UPGRADE FAILED\nROLLING BACK\nError: %v\n", prettyError(err))
 		if u.safe {
-			rollback := &rollbackCmd {
+			rollback := &rollbackCmd{
 				out:          u.out,
 				client:       u.client,
 				name:         u.release,
@@ -290,9 +290,11 @@ func (u *upgradeCmd) run() error {
 				revision:     releaseHistory.Releases[0].Version,
 				disableHooks: u.disableHooks,
 			}
-			if err := rollback.run(); err != nil { return err }
+			if err := rollback.run(); err != nil {
+				return err
+			}
 		}
-		return fmt.Errorf("UPGRADE FAILED: %v\n", prettyError(err))
+		return fmt.Errorf("UPGRADE FAILED: %v", prettyError(err))
 	}
 
 	if settings.Debug {
