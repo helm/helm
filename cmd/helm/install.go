@@ -131,6 +131,7 @@ type installCmd struct {
 	version        string
 	timeout        int64
 	wait           bool
+	safe           bool
 	repoURL        string
 	username       string
 	password       string
@@ -190,6 +191,8 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 			}
 			inst.chartPath = cp
 			inst.client = ensureHelmClient(inst.client)
+			inst.wait = inst.wait || inst.safe
+
 			return inst.run()
 		},
 	}
@@ -212,6 +215,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.StringVar(&inst.version, "version", "", "specify the exact chart version to install. If this is not specified, the latest version is installed")
 	f.Int64Var(&inst.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&inst.wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
+	f.BoolVar(&inst.safe, "safe", false, "if set, upgrade process rolls back changes made in case of failed upgrade")
 	f.StringVar(&inst.repoURL, "repo", "", "chart repository url where to locate the requested chart")
 	f.StringVar(&inst.username, "username", "", "chart repository username where to locate the requested chart")
 	f.StringVar(&inst.password, "password", "", "chart repository password where to locate the requested chart")
@@ -307,6 +311,20 @@ func (i *installCmd) run() error {
 		helm.InstallWait(i.wait),
 		helm.InstallDescription(i.description))
 	if err != nil {
+		if i.safe {
+			fmt.Fprintf(os.Stdout, "INSTALL FAILED\nPURGING CHART\nError: %v", prettyError(err))
+			deleteSideEffects := &deleteCmd{
+				name:         i.name,
+				disableHooks: i.disableHooks,
+				purge:        true,
+				timeout:      i.timeout,
+				description:  "",
+				dryRun:       i.dryRun,
+				out:          i.out,
+				client:       i.client,
+			}
+			if err := deleteSideEffects.run(); err != nil { return err }
+		}
 		return prettyError(err)
 	}
 

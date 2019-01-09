@@ -105,6 +105,7 @@ type upgradeCmd struct {
 	resetValues  bool
 	reuseValues  bool
 	wait         bool
+	safe         bool
 	repoURL      string
 	username     string
 	password     string
@@ -142,6 +143,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 			upgrade.release = args[0]
 			upgrade.chart = args[1]
 			upgrade.client = ensureHelmClient(upgrade.client)
+			upgrade.wait = upgrade.wait || upgrade.safe
 
 			return upgrade.run()
 		},
@@ -167,6 +169,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&upgrade.resetValues, "reset-values", false, "when upgrading, reset the values to the ones built into the chart")
 	f.BoolVar(&upgrade.reuseValues, "reuse-values", false, "when upgrading, reuse the last release's values and merge in any overrides from the command line via --set and -f. If '--reset-values' is specified, this is ignored.")
 	f.BoolVar(&upgrade.wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
+	f.BoolVar(&upgrade.safe, "safe", false, "if set, upgrade process rolls back changes made in case of failed upgrade")
 	f.StringVar(&upgrade.repoURL, "repo", "", "chart repository url where to locate the requested chart")
 	f.StringVar(&upgrade.username, "username", "", "chart repository username where to locate the requested chart")
 	f.StringVar(&upgrade.password, "password", "", "chart repository password where to locate the requested chart")
@@ -191,6 +194,8 @@ func (u *upgradeCmd) run() error {
 		return err
 	}
 
+	releaseHistory, err := u.client.ReleaseHistory(u.release, helm.WithMaxHistory(1))
+
 	if u.install {
 		// If a release does not exist, install it. If another error occurs during
 		// the check, ignore the error and continue with the upgrade.
@@ -198,7 +203,6 @@ func (u *upgradeCmd) run() error {
 		// The returned error is a grpc.rpcError that wraps the message from the original error.
 		// So we're stuck doing string matching against the wrapped error, which is nested somewhere
 		// inside of the grpc.rpcError message.
-		releaseHistory, err := u.client.ReleaseHistory(u.release, helm.WithMaxHistory(1))
 
 		if err == nil {
 			if u.namespace == "" {
@@ -232,6 +236,7 @@ func (u *upgradeCmd) run() error {
 				timeout:      u.timeout,
 				wait:         u.wait,
 				description:  u.description,
+				safe:         u.safe,
 			}
 			return ic.run()
 		}
@@ -270,7 +275,24 @@ func (u *upgradeCmd) run() error {
 		helm.UpgradeWait(u.wait),
 		helm.UpgradeDescription(u.description))
 	if err != nil {
-		return fmt.Errorf("UPGRADE FAILED: %v", prettyError(err))
+		fmt.Fprintf(u.out, "UPGRADE FAILED\nROLLING BACK\nError: %v", prettyError(err))
+		if u.safe {
+			rollback := &rollbackCmd {
+				out:          u.out,
+				client:       u.client,
+				name:         u.release,
+				dryRun:       u.dryRun,
+				recreate:     u.recreate,
+				force:        u.force,
+				timeout:      u.timeout,
+				wait:         u.wait,
+				description:  "",
+				revision:     releaseHistory.Releases[0].Version,
+				disableHooks: u.disableHooks,
+			}
+			if err := rollback.run(); err != nil { return err }
+		}
+		return fmt.Errorf("UPGRADE FAILED: %v\n", prettyError(err))
 	}
 
 	if settings.Debug {
