@@ -76,7 +76,7 @@ service ReleaseService {
     rpc RollbackRelease(RollbackReleaseRequest) returns (RollbackReleaseResponse) {
     }
 
-    // ReleaseHistory retrieves a releasse's history.
+    // ReleaseHistory retrieves a release's history.
     rpc GetHistory(GetHistoryRequest) returns (GetHistoryResponse) {
     }
 
@@ -298,7 +298,7 @@ message UninstallReleaseRequest {
 	bool purge = 3;
 	// timeout specifies the max amount of time any kubernetes client command can run.
 	int64 timeout = 4;
-	// Description, if set, will set the description for the uninnstalled release
+	// Description, if set, will set the description for the uninstalled release
 	string description = 5;
 }
 
