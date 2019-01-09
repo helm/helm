@@ -21,8 +21,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/kubernetes/scheme"
-
-	tversion "k8s.io/helm/pkg/version"
 )
 
 var (
@@ -52,10 +50,6 @@ type Capabilities struct {
 	APIVersions VersionSet
 	// KubeVerison is the Kubernetes version
 	KubeVersion *version.Info
-	// HelmVersion is the Helm version
-	//
-	// This always comes from pkg/version.BuildInfo().
-	HelmVersion tversion.BuildInfo
 }
 
 // VersionSet is a set of Kubernetes API versions.

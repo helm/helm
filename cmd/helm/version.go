@@ -24,7 +24,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/require"
-	"k8s.io/helm/pkg/version"
+	"k8s.io/helm/internal/version"
 )
 
 const versionDesc = `
@@ -71,14 +71,14 @@ func (o *versionOptions) run(out io.Writer) error {
 		if err != nil {
 			return err
 		}
-		return tt.Execute(out, version.GetBuildInfo())
+		return tt.Execute(out, version.Get())
 	}
 	fmt.Fprintln(out, formatVersion(o.short))
 	return nil
 }
 
 func formatVersion(short bool) string {
-	v := version.GetBuildInfo()
+	v := version.Get()
 	if short {
 		return fmt.Sprintf("%s+g%s", v.Version, v.GitCommit[:7])
 	}

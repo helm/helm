@@ -587,8 +587,7 @@ sensitive_.
   `{{.Files.GetString name}}` functions. You can also access the contents of the file
   as `[]byte` using `{{.Files.GetBytes}}`
 - `Capabilities`: A map-like object that contains information about the versions
-  of Kubernetes (`{{.Capabilities.KubeVersion}}`, Helm
-  (`{{.Capabilities.HelmVersion}}`, and the supported Kubernetes
+  of Kubernetes (`{{.Capabilities.KubeVersion}}` and the supported Kubernetes
  API versions (`{{.Capabilities.APIVersions.Has "batch/v1"`)
 
 **NOTE:** Any unknown Chart.yaml fields will be dropped. They will not

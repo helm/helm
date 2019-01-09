@@ -103,7 +103,7 @@ func (s *ReleaseServer) prepareUpdate(req *hapi.UpdateReleaseRequest) (*release.
 		IsUpgrade: true,
 	}
 
-	caps, err := capabilities(s.discovery)
+	caps, err := newCapabilities(s.discovery)
 	if err != nil {
 		return nil, nil, err
 	}

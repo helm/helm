@@ -9,7 +9,6 @@ metadata:
     release: {{ .Release.Name | quote }}
     chart: "{{.Chart.Name}}-{{.Chart.Version}}"
     kubeVersion: {{ .Capabilities.KubeVersion.Major }}
-    helmVersion: {{ .Capabilities.HelmVersion }}
 spec:
   ports:
   - port: {{default 80 .Values.httpPort | quote}}

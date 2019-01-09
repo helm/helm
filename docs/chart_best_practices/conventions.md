@@ -37,21 +37,3 @@ There are a few small conventions followed for using the words Helm and helm.
 - The term 'chart' does not need to be capitalized, as it is not a proper noun.
 
 When in doubt, use _Helm_ (with an uppercase 'H').
-
-## Restricting Helm by Version
-
-A `Chart.yaml` file can specify a `helmVersion` SemVer constraint:
-
-```yaml
-name: mychart
-version: 0.2.0
-helmVersion: ">=2.4.0"
-```
-
-This constraint should be set when templates use a new feature that was not
-supported in older versions of Helm. While this parameter will accept sophisticated
-SemVer rules, the best practice is to default to the form `>=2.4.0`, where `2.4.0`
-is the version that introduced the new feature used in the chart.
-
-This feature was introduced in Helm 2.4.0, so any version of Helm older than
-2.4.0 will simply ignore this field.

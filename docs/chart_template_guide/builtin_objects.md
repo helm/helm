@@ -20,7 +20,6 @@ In the previous section, we use `{{.Release.Name}}` to insert the name of a rele
   - `Capabilities.APIVersions` is a set of versions.
   - `Capabilities.APIVersions.Has $version` indicates whether a version (`batch/v1`) is enabled on the cluster.
   - `Capabilities.KubeVersion` provides a way to look up the Kubernetes version. It has the following values: `Major`, `Minor`, `GitVersion`, `GitCommit`, `GitTreeState`, `BuildDate`, `GoVersion`, `Compiler`, and `Platform`.
-  - `Capabilities.HelmVersion` provides a way to look up the Helm version. It has the following values: `SemVer`, `GitCommit`, and `GitTreeState`.
 - `Template`: Contains information about the current template that is being executed
   - `Name`: A namespaced filepath to the current template (e.g. `mychart/templates/mytemplate.yaml`)
   - `BasePath`: The namespaced path to the templates directory of the current chart (e.g. `mychart/templates`).

@@ -26,7 +26,6 @@ import (
 	kversion "k8s.io/apimachinery/pkg/version"
 
 	"k8s.io/helm/pkg/chart"
-	"k8s.io/helm/pkg/version"
 )
 
 func TestReadValues(t *testing.T) {
@@ -107,7 +106,6 @@ func TestToRenderValues(t *testing.T) {
 
 	caps := &Capabilities{
 		APIVersions: DefaultVersionSet,
-		HelmVersion: version.GetBuildInfo(),
 		KubeVersion: &kversion.Info{Major: "1"},
 	}
 
@@ -135,9 +133,6 @@ func TestToRenderValues(t *testing.T) {
 	}
 	if !res["Capabilities"].(*Capabilities).APIVersions.Has("v1") {
 		t.Error("Expected Capabilities to have v1 as an API")
-	}
-	if res["Capabilities"].(*Capabilities).HelmVersion.Version == "" {
-		t.Error("Expected Capabilities to have a Helm version")
 	}
 	if res["Capabilities"].(*Capabilities).KubeVersion.Major != "1" {
 		t.Error("Expected Capabilities to have a Kube version")

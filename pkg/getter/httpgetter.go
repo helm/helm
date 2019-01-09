@@ -19,35 +19,38 @@ import (
 	"bytes"
 	"io"
 	"net/http"
-	"strings"
 
 	"github.com/pkg/errors"
 
 	"k8s.io/helm/pkg/tlsutil"
 	"k8s.io/helm/pkg/urlutil"
-	"k8s.io/helm/pkg/version"
 )
 
-//HttpGetter is the efault HTTP(/S) backend handler
-// TODO: change the name to HTTPGetter in Helm 3
-type HttpGetter struct { //nolint
-	client   *http.Client
-	username string
-	password string
+// HTTPGetter is the efault HTTP(/S) backend handler
+type HTTPGetter struct {
+	client    *http.Client
+	username  string
+	password  string
+	userAgent string
 }
 
-//SetCredentials sets the credentials for the getter
-func (g *HttpGetter) SetCredentials(username, password string) {
+// SetCredentials sets the credentials for the getter
+func (g *HTTPGetter) SetCredentials(username, password string) {
 	g.username = username
 	g.password = password
 }
 
+// SetUserAgent sets the HTTP User-Agent for the getter
+func (g *HTTPGetter) SetUserAgent(userAgent string) {
+	g.userAgent = userAgent
+}
+
 //Get performs a Get from repo.Getter and returns the body.
-func (g *HttpGetter) Get(href string) (*bytes.Buffer, error) {
+func (g *HTTPGetter) Get(href string) (*bytes.Buffer, error) {
 	return g.get(href)
 }
 
-func (g *HttpGetter) get(href string) (*bytes.Buffer, error) {
+func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
 	buf := bytes.NewBuffer(nil)
 
 	// Set a helm specific user agent so that a repo server and metrics can
@@ -56,7 +59,10 @@ func (g *HttpGetter) get(href string) (*bytes.Buffer, error) {
 	if err != nil {
 		return buf, err
 	}
-	req.Header.Set("User-Agent", "Helm/"+strings.TrimPrefix(version.GetVersion(), "v"))
+	// req.Header.Set("User-Agent", "Helm/"+strings.TrimPrefix(version.GetVersion(), "v"))
+	if g.userAgent != "" {
+		req.Header.Set("User-Agent", g.userAgent)
+	}
 
 	if g.username != "" && g.password != "" {
 		req.SetBasicAuth(g.username, g.password)
@@ -80,9 +86,9 @@ func newHTTPGetter(URL, CertFile, KeyFile, CAFile string) (Getter, error) {
 	return NewHTTPGetter(URL, CertFile, KeyFile, CAFile)
 }
 
-// NewHTTPGetter constructs a valid http/https client as HttpGetter
-func NewHTTPGetter(URL, CertFile, KeyFile, CAFile string) (*HttpGetter, error) {
-	var client HttpGetter
+// NewHTTPGetter constructs a valid http/https client as HTTPGetter
+func NewHTTPGetter(URL, CertFile, KeyFile, CAFile string) (*HTTPGetter, error) {
+	var client HTTPGetter
 	if CertFile != "" && KeyFile != "" {
 		tlsConf, err := tlsutil.NewClientTLS(CertFile, KeyFile, CAFile)
 		if err != nil {

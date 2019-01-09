@@ -27,7 +27,7 @@ func TestHTTPGetter(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if hg, ok := g.(*HttpGetter); !ok {
+	if hg, ok := g.(*HTTPGetter); !ok {
 		t.Fatal("Expected newHTTPGetter to produce an httpGetter")
 	} else if hg.client != http.DefaultClient {
 		t.Fatal("Expected newHTTPGetter to return a default HTTP client.")
@@ -42,7 +42,7 @@ func TestHTTPGetter(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, ok := g.(*HttpGetter); !ok {
+	if _, ok := g.(*HTTPGetter); !ok {
 		t.Fatal("Expected newHTTPGetter to produce an httpGetter")
 	}
 }

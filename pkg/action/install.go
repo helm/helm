@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
 	"k8s.io/helm/pkg/chart"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/engine"
@@ -78,10 +79,7 @@ func (i *Install) Run(chrt *chart.Chart, rawValues map[string]interface{}) (*rel
 		return nil, err
 	}
 
-	caps, err := i.cfg.capabilities()
-	if err != nil {
-		return nil, err
-	}
+	caps := i.cfg.capabilities()
 
 	options := chartutil.ReleaseOptions{
 		Name:      i.ReleaseName,
@@ -260,12 +258,6 @@ func (i *Install) replaceRelease(rel *release.Release) error {
 func (i *Install) renderResources(ch *chart.Chart, values chartutil.Values, vs chartutil.VersionSet) ([]*release.Hook, *bytes.Buffer, string, error) {
 	hooks := []*release.Hook{}
 	buf := bytes.NewBuffer(nil)
-	// Guard to make sure Helm is at the right version to handle this chart.
-	sver := version.GetVersion()
-	if ch.Metadata.HelmVersion != "" &&
-		!version.IsCompatibleRange(ch.Metadata.HelmVersion, sver) {
-		return hooks, buf, "", errors.Errorf("chart incompatible with Helm %s", sver)
-	}
 
 	if ch.Metadata.KubeVersion != "" {
 		cap, _ := values["Capabilities"].(*chartutil.Capabilities)

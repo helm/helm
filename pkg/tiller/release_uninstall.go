@@ -126,13 +126,13 @@ func (s *ReleaseServer) purgeReleases(rels ...*release.Release) error {
 
 // deleteRelease deletes the release and returns manifests that were kept in the deletion process
 func (s *ReleaseServer) deleteRelease(rel *release.Release) (kept string, errs []error) {
-	vs, err := GetVersionSet(s.discovery)
+	caps, err := newCapabilities(s.discovery)
 	if err != nil {
 		return rel.Manifest, []error{errors.Wrap(err, "could not get apiVersions from Kubernetes")}
 	}
 
 	manifests := relutil.SplitManifests(rel.Manifest)
-	_, files, err := SortManifests(manifests, vs, UninstallOrder)
+	_, files, err := SortManifests(manifests, caps.APIVersions, UninstallOrder)
 	if err != nil {
 		// We could instead just delete everything in no particular order.
 		// FIXME: One way to delete at this point would be to try a label-based
