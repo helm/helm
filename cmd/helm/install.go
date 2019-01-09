@@ -323,7 +323,9 @@ func (i *installCmd) run() error {
 				out:          i.out,
 				client:       i.client,
 			}
-			if err := deleteSideEffects.run(); err != nil { return err }
+			if err := deleteSideEffects.run(); err != nil {
+				return err
+			}
 		}
 		return prettyError(err)
 	}
