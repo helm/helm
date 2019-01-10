@@ -109,9 +109,7 @@ func LoadArchive(in io.Reader) (*chart.Chart, error) {
 			return nil, errors.New("chart illegally contains absolute paths")
 		}
 
-		println("path", n)
 		n = path.Clean(n)
-		println("  cleaned", n)
 		if n == "." {
 			// In this case, the original path was relative when it should have been absolute.
 			return nil, errors.New("chart illegally contains empty path")
