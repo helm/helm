@@ -25,6 +25,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -100,6 +101,19 @@ func LoadArchive(in io.Reader) (*chart.Chart, error) {
 
 		// Normalize the path to the / delimiter
 		n = strings.Replace(n, delimiter, "/", -1)
+
+		if path.IsAbs(n) {
+			return nil, errors.New("chart illegally contains absolute paths")
+		}
+
+		println("path", n)
+		n = path.Clean(n)
+		if n == "." {
+			return nil, errors.New("chart illegally contains empty path")
+		}
+		if strings.HasPrefix(n, "..") {
+			return nil, errors.New("chart illegally references parent directory")
+		}
 
 		if parts[0] == "Chart.yaml" {
 			return nil, errors.New("chart yaml not in base directory")

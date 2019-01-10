@@ -17,8 +17,14 @@ limitations under the License.
 package chartutil
 
 import (
+	"archive/tar"
+	"compress/gzip"
+	"io/ioutil"
+	"os"
 	"path"
+	"path/filepath"
 	"testing"
+	"time"
 
 	"k8s.io/helm/pkg/proto/hapi/chart"
 )
@@ -41,6 +47,61 @@ func TestLoadFile(t *testing.T) {
 	verifyFrobnitz(t, c)
 	verifyChart(t, c)
 	verifyRequirements(t, c)
+}
+
+func TestLoadArchive_InvalidArchive(t *testing.T) {
+	tmpdir, err := ioutil.TempDir("", "helm-test-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpdir)
+
+	writeTar := func(filename, internalPath string, body []byte) {
+		dest, err := os.Create(filename)
+		if err != nil {
+			t.Fatal(err)
+		}
+		zipper := gzip.NewWriter(dest)
+		tw := tar.NewWriter(zipper)
+
+		h := &tar.Header{
+			Name:    internalPath,
+			Mode:    0755,
+			Size:    int64(len(body)),
+			ModTime: time.Now(),
+		}
+		if err := tw.WriteHeader(h); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := tw.Write(body); err != nil {
+			t.Fatal(err)
+		}
+		tw.Close()
+		zipper.Close()
+		dest.Close()
+	}
+
+	for _, tt := range []struct {
+		chartname   string
+		internal    string
+		expectError string
+	}{
+		{"illegal-dots.tgz", "../../malformed-helm-test", "chart illegally references parent directory"},
+		{"illegal-dots2.tgz", "foo/../../malformed-helm-test", "chart illegally references parent directory"},
+		{"illegal-name.tgz", ".", "chart illegally contains empty path"},
+		{"illegal-name.tgz", " ", "chart illegally contains empty path"},
+		{"illegal-name.tgz", "       ", "chart illegally contains empty path"},
+	} {
+		illegalChart := filepath.Join(tmpdir, tt.chartname)
+		writeTar(illegalChart, tt.internal, []byte("junk"))
+		_, err = Load(illegalChart)
+		if err == nil {
+			t.Fatal("expected error when unpacking illegal files")
+		}
+		if err.Error() != tt.expectError {
+			t.Errorf("Expected %q, got %q", tt.expectError, err.Error())
+		}
+	}
 }
 
 func TestLoadFiles(t *testing.T) {
