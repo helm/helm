@@ -145,7 +145,7 @@ func PrintStatus(out io.Writer, res *services.GetReleaseStatusResponse) {
 	}
 
 	if res.Chart.Metadata.Deprecated {
-		fmt.Printf("WARNING: This chart has been deprecated.\n")
+		fmt.Fprintf(out, "WARNING: This chart has been deprecated.\n")
 	}
 }
 
