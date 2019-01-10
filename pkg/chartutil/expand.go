@@ -17,60 +17,17 @@ limitations under the License.
 package chartutil
 
 import (
-	"archive/tar"
-	"compress/gzip"
 	"io"
 	"os"
-	"path/filepath"
 )
 
 // Expand uncompresses and extracts a chart into the specified directory.
 func Expand(dir string, r io.Reader) error {
-	gr, err := gzip.NewReader(r)
+	ch, err := LoadArchive(r)
 	if err != nil {
 		return err
 	}
-	defer gr.Close()
-	tr := tar.NewReader(gr)
-	for {
-		header, err := tr.Next()
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			return err
-		}
-
-		//split header name and create missing directories
-		d, _ := filepath.Split(header.Name)
-		fullDir := filepath.Join(dir, d)
-		_, err = os.Stat(fullDir)
-		if err != nil && d != "" {
-			if err := os.MkdirAll(fullDir, 0700); err != nil {
-				return err
-			}
-		}
-
-		path := filepath.Clean(filepath.Join(dir, header.Name))
-		info := header.FileInfo()
-		if info.IsDir() {
-			if err = os.MkdirAll(path, info.Mode()); err != nil {
-				return err
-			}
-			continue
-		}
-
-		file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, info.Mode())
-		if err != nil {
-			return err
-		}
-		_, err = io.Copy(file, tr)
-		if err != nil {
-			file.Close()
-			return err
-		}
-		file.Close()
-	}
-	return nil
+	return SaveDir(ch, dir)
 }
 
 // ExpandFile expands the src file into the dest directory.

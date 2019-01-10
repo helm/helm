@@ -27,6 +27,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/golang/protobuf/ptypes/any"
@@ -63,6 +64,8 @@ type BufferedFile struct {
 	Name string
 	Data []byte
 }
+
+var drivePathPattern = regexp.MustCompile(`^[a-zA-Z]:/`)
 
 // LoadArchive loads from a reader containing a compressed tar archive.
 func LoadArchive(in io.Reader) (*chart.Chart, error) {
@@ -108,11 +111,21 @@ func LoadArchive(in io.Reader) (*chart.Chart, error) {
 
 		println("path", n)
 		n = path.Clean(n)
+		println("  cleaned", n)
 		if n == "." {
+			// In this case, the original path was relative when it should have been absolute.
 			return nil, errors.New("chart illegally contains empty path")
 		}
 		if strings.HasPrefix(n, "..") {
 			return nil, errors.New("chart illegally references parent directory")
+		}
+
+		// In some particularly arcane acts of path creativity, it is possible to intermix
+		// UNIX and Windows style paths in such a way that you produce a result of the form
+		// c:/foo even after all the built-in absolute path checks. So we explicitly check
+		// for this condition.
+		if drivePathPattern.MatchString(n) {
+			return nil, errors.New("chart contains illegally named files")
 		}
 
 		if parts[0] == "Chart.yaml" {
