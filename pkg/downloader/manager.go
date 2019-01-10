@@ -371,6 +371,9 @@ func (m *Manager) getRepoNames(deps []*chartutil.Dependency) (map[string]string,
 	// by Helm.
 	missing := []string{}
 	for _, dd := range deps {
+		if dd.Repository == "" {
+			return nil, fmt.Errorf("no 'repository' field specified for dependency: %q", dd.Name)
+		}
 		// if dep chart is from local path, verify the path is valid
 		if strings.HasPrefix(dd.Repository, "file://") {
 			if _, err := resolver.GetLocalPath(dd.Repository, m.ChartPath); err != nil {
