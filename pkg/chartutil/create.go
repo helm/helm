@@ -289,21 +289,23 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: {{ template "<CHARTNAME>.fullname" . }}
-  minReplicas: {{ .Values.hpa.minReplicas }}
-  maxReplicas: {{ .Values.hpa.maxReplicas }}
+{{- with .Values.deployment.hpa }}
+  minReplicas: {{ .minReplicas }}
+  maxReplicas: {{ .maxReplicas }}
   metrics:
-  {{- if .Values.autoscaling.targetCPUUtilizationPercentage }}
+  {{- if .targetCPUUtilizationPercentage }}
     - type: Resource
       resource:
         name: cpu
-        targetAverageUtilization: {{ .Values.hpa.targetCPUUtilizationPercentage }}
+        targetAverageUtilization: {{ .targetCPUUtilizationPercentage }}
   {{- end }}
-  {{- if .Values.autoscaling.targetMemoryUtilizationPercentage }}
+  {{- if .targetMemoryUtilizationPercentage }}
     - type: Resource
       resource:
         name: memory
-        targetAverageUtilization: {{ .Values.hpa.targetMemoryUtilizationPercentage }}
+        targetAverageUtilization: {{ .targetMemoryUtilizationPercentage }}
   {{- end }}
+{{- end }}
 {{- end }}
 `
 
