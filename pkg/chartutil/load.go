@@ -67,11 +67,11 @@ type BufferedFile struct {
 
 var drivePathPattern = regexp.MustCompile(`^[a-zA-Z]:/`)
 
-// LoadArchive loads from a reader containing a compressed tar archive.
-func LoadArchive(in io.Reader) (*chart.Chart, error) {
+// loadArchiveFiles loads files out of an archive
+func loadArchiveFiles(in io.Reader) ([]*BufferedFile, error) {
 	unzipped, err := gzip.NewReader(in)
 	if err != nil {
-		return &chart.Chart{}, err
+		return nil, err
 	}
 	defer unzipped.Close()
 
@@ -84,7 +84,7 @@ func LoadArchive(in io.Reader) (*chart.Chart, error) {
 			break
 		}
 		if err != nil {
-			return &chart.Chart{}, err
+			return nil, err
 		}
 
 		if hd.FileInfo().IsDir() {
@@ -131,7 +131,7 @@ func LoadArchive(in io.Reader) (*chart.Chart, error) {
 		}
 
 		if _, err := io.Copy(b, tr); err != nil {
-			return &chart.Chart{}, err
+			return files, err
 		}
 
 		files = append(files, &BufferedFile{Name: n, Data: b.Bytes()})
@@ -141,7 +141,15 @@ func LoadArchive(in io.Reader) (*chart.Chart, error) {
 	if len(files) == 0 {
 		return nil, errors.New("no files in chart archive")
 	}
+	return files, nil
+}
 
+// LoadArchive loads from a reader containing a compressed tar archive.
+func LoadArchive(in io.Reader) (*chart.Chart, error) {
+	files, err := loadArchiveFiles(in)
+	if err != nil {
+		return nil, err
+	}
 	return LoadFiles(files)
 }
 

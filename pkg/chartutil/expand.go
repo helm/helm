@@ -17,17 +17,63 @@ limitations under the License.
 package chartutil
 
 import (
+	"errors"
 	"io"
+	"io/ioutil"
 	"os"
+	"path/filepath"
+
+	securejoin "github.com/cyphar/filepath-securejoin"
 )
 
 // Expand uncompresses and extracts a chart into the specified directory.
 func Expand(dir string, r io.Reader) error {
-	ch, err := LoadArchive(r)
+	files, err := loadArchiveFiles(r)
 	if err != nil {
 		return err
 	}
-	return SaveDir(ch, dir)
+
+	// Get the name of the chart
+	var chartName string
+	for _, file := range files {
+		if file.Name == "Chart.yaml" {
+			ch, err := UnmarshalChartfile(file.Data)
+			if err != nil {
+				return err
+			}
+			chartName = ch.GetName()
+		}
+	}
+	if chartName == "" {
+		return errors.New("chart name not specified")
+	}
+
+	// Find the base directory
+	chartdir, err := securejoin.SecureJoin(dir, chartName)
+	if err != nil {
+		return err
+	}
+	println(chartdir)
+
+	// Copy all files verbatim. We don't parse these files because parsing can remove
+	// comments.
+	for _, file := range files {
+		outpath, err := securejoin.SecureJoin(chartdir, file.Name)
+		if err != nil {
+			return err
+		}
+
+		// Make sure the necessary subdirs get created.
+		basedir := filepath.Dir(outpath)
+		if err := os.MkdirAll(basedir, 0755); err != nil {
+			return err
+		}
+
+		if err := ioutil.WriteFile(outpath, file.Data, 0644); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ExpandFile expands the src file into the dest directory.
