@@ -243,39 +243,35 @@ spec:
     {{- end }}
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.deployment.image.repository }}:{{ .Values.deployment.image.tag }}"
-          imagePullPolicy: {{ .Values.deployment.image.pullPolicy }}
+{{- with .Values.deployment }}
+          image: "{{ .image.repository }}:{{ .image.tag }}"
+          imagePullPolicy: {{ .image.pullPolicy }}
           ports:
             - name: http
               containerPort: 80
               protocol: TCP
           livenessProbe:
             httpGet:
-              path: {{ .Values.deployment.livenessProbe.httpGet.path }}
-              port: {{ .Values.deployment.livenessProbe.httpGet.port }}
+              path: {{ .livenessProbe.httpGet.path }}
+              port: {{ .livenessProbe.httpGet.port }}
           readinessProbe:
             httpGet:
-              path: {{ .Values.deployment.readinessProbe.httpGet.path }}
-              port: {{ .Values.deployment.readinessProbe.httpGet.port }}
+              path: {{ .readinessProbe.httpGet.path }}
+              port: {{ .readinessProbe.httpGet.port }}
           resources:
-            {{- toYaml .Values.deployment.resources | nindent 12 }}
+            {{- toYaml .resources | nindent 12 }}
           env:
-            {{- toYaml .Values.deployment.env | nindent 12 }}
+            {{- toYaml .env | nindent 12 }}
           volumeMounts:
-            {{- toYaml .Values.deployment.volumeMounts | nindent 12 }}
+            {{- toYaml .volumeMounts | nindent 12 }}
           securityContext:
-            {{- toYaml .Values.deployment.securityContext | nindent 12 }}
-    {{- with .Values.deployment.nodeSelector }}
+            {{- toYaml .securityContext | nindent 12 }}
       nodeSelector:
-        {{- toYaml . | nindent 8 }}
-    {{- end }}
-    {{- with .Values.deployment.affinity }}
+        {{- toYaml .nodeSelector | nindent 8 }}
       affinity:
-        {{- toYaml . | nindent 8 }}
-    {{- end }}
-    {{- with .Values.deployment.tolerations }}
+        {{- toYaml .affinity | nindent 8 }}
       tolerations:
-        {{- toYaml . | nindent 8 }}
+        {{- toYaml .tolerations | nindent 8 }}
     {{- end }}
 `
 const defaultHorizontalPodAutoscaler = `{{- if .Values.deployment.hpa.enabled }}
