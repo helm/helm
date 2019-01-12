@@ -53,7 +53,6 @@ func Expand(dir string, r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	println(chartdir)
 
 	// Copy all files verbatim. We don't parse these files because parsing can remove
 	// comments.
