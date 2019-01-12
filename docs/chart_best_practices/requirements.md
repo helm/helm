@@ -1,6 +1,6 @@
-# Requirements Files
+# Dependencies 
 
-This section of the guide covers best practices for `requirements.yaml` files.
+This section of the guide covers best practices for `dependencies` declared in `Chart.yaml`.
 
 ## Versions
 
@@ -20,7 +20,7 @@ Where possible, use `https://` repository URLs, followed by `http://` URLs.
 
 If the repository has been added to the repository index file, the repository name can be used as an alias of URL. Use `alias:` or `@` followed by repository names.
 
-File URLs (`file://...`) are considered a "special case" for charts that are assembled by a fixed deployment pipeline. Charts that use `file://` in a `requirements.yaml` file are not allowed in the official Helm repository.
+File URLs (`file://...`) are considered a "special case" for charts that are assembled by a fixed deployment pipeline. Charts that use `file://` are not allowed in the official Helm repository.
 
 ## Conditions and Tags
 
