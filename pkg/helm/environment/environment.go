@@ -23,6 +23,7 @@ These dependencies are expressed as interfaces so that alternate implementations
 package environment
 
 import (
+	"github.com/casimir/xdg-go"
 	"os"
 	"path/filepath"
 
@@ -32,8 +33,22 @@ import (
 	"k8s.io/helm/pkg/helm/helmpath"
 )
 
-// defaultHelmHome is the default HELM_HOME.
-var defaultHelmHome = filepath.Join(homedir.HomeDir(), ".helm")
+
+var oldDefaultHelmHome = filepath.Join(homedir.HomeDir(), ".helm")
+var defaultHelmHome = filepath.Join(xdg.ConfigHome(), "helm")
+
+// Get configuration home dir.
+//
+// Note: Temporal until all migrate to XDG Base Directory spec
+func getDefaultConfigHome() string {
+	if _, err := os.Stat(defaultHelmHome); err != nil {
+		return defaultHelmHome
+	} else if _, err := os.Stat(oldDefaultHelmHome); err != nil {
+		return defaultHelmHome
+	}
+	// TODO: Write a warning to output
+	return oldDefaultHelmHome
+}
 
 // EnvSettings describes all of the environment settings.
 type EnvSettings struct {
@@ -51,7 +66,7 @@ type EnvSettings struct {
 
 // AddFlags binds flags to the given flagset.
 func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
-	fs.StringVar((*string)(&s.Home), "home", defaultHelmHome, "location of your Helm config. Overrides $HELM_HOME")
+	fs.StringVar((*string)(&s.Home), "home", getDefaultConfigHome(), "location of your Helm config. Overrides $HELM_HOME")
 	fs.StringVarP(&s.Namespace, "namespace", "n", "", "namespace scope for this request")
 	fs.StringVar(&s.KubeConfig, "kubeconfig", "", "path to the kubeconfig file")
 	fs.StringVar(&s.KubeContext, "kube-context", "", "name of the kubeconfig context to use")
