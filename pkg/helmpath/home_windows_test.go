@@ -16,23 +16,34 @@
 package helmpath
 
 import (
+	"os"
 	"testing"
+
+	"helm.sh/helm/pkg/helmpath/xdg"
 )
 
 func TestHelmHome(t *testing.T) {
-	hh := Home("r:\\users\\helmtest")
+	os.Setenv(xdg.XDGCacheHomeEnvVar, "c:\\")
+	os.Setenv(xdg.XDGConfigHomeEnvVar, "d:\\")
+	os.Setenv(xdg.XDGDataHomeEnvVar, "e:\\")
 	isEq := func(t *testing.T, a, b string) {
 		if a != b {
 			t.Errorf("Expected %q, got %q", b, a)
 		}
 	}
 
-	isEq(t, hh.String(), "r:\\users\\helmtest")
-	isEq(t, hh.Registry(), "r:\\users\\helmtest\\registry")
-	isEq(t, hh.Repository(), "r:\\users\\helmtest\\repository")
-	isEq(t, hh.RepositoryFile(), "r:\\users\\helmtest\\repository\\repositories.yaml")
-	isEq(t, hh.Cache(), "r:\\users\\helmtest\\repository\\cache")
-	isEq(t, hh.CacheIndex("t"), "r:\\users\\helmtest\\repository\\cache\\t-index.yaml")
-	isEq(t, hh.Starters(), "r:\\users\\helmtest\\starters")
-	isEq(t, hh.Archive(), "r:\\users\\helmtest\\cache\\archive")
+	isEq(t, CachePath(), "c:\\helm")
+	isEq(t, ConfigPath(), "d:\\helm")
+	isEq(t, DataPath(), "e:\\helm")
+	isEq(t, RepositoryFile(), "d:\\helm\\repositories.yaml")
+	isEq(t, RepositoryCache(), "c:\\helm\\repository")
+	isEq(t, CacheIndex("t"), "c:\\helm\\repository\\t-index.yaml")
+	isEq(t, CacheIndex(""), "c:\\helm\\repository\\index.yaml")
+	isEq(t, Starters(), "e:\\helm\\starters")
+	isEq(t, Archive(), "c:\\helm\\archive")
+
+	// test to see if lazy-loading environment variables at runtime works
+	os.Setenv(xdg.CacheHomeEnvVar, "f:\\")
+
+	isEq(t, CachePath(), "f:\\helm")
 }

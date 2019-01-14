@@ -18,6 +18,9 @@ package getter
 import (
 	"os"
 	"testing"
+
+	"helm.sh/helm/pkg/cli"
+	"helm.sh/helm/pkg/helmpath/xdg"
 )
 
 func TestProvider(t *testing.T) {
@@ -50,13 +53,9 @@ func TestProviders(t *testing.T) {
 }
 
 func TestAll(t *testing.T) {
-	oldhh := os.Getenv("HELM_HOME")
-	defer os.Setenv("HELM_HOME", oldhh)
-	os.Setenv("HELM_HOME", "")
+	os.Setenv(xdg.DataHomeEnvVar, "testdata")
 
-	env := hh(false)
-
-	all := All(env)
+	all := All(cli.EnvSettings{})
 	if len(all) != 3 {
 		t.Errorf("expected 3 providers (default plus two plugins), got %d", len(all))
 	}
@@ -67,15 +66,12 @@ func TestAll(t *testing.T) {
 }
 
 func TestByScheme(t *testing.T) {
-	oldhh := os.Getenv("HELM_HOME")
-	defer os.Setenv("HELM_HOME", oldhh)
-	os.Setenv("HELM_HOME", "")
+	os.Setenv(xdg.DataHomeEnvVar, "testdata")
 
-	env := hh(false)
-	if _, err := ByScheme("test", env); err != nil {
+	if _, err := ByScheme("test", cli.EnvSettings{}); err != nil {
 		t.Error(err)
 	}
-	if _, err := ByScheme("https", env); err != nil {
+	if _, err := ByScheme("https", cli.EnvSettings{}); err != nil {
 		t.Error(err)
 	}
 }

@@ -19,12 +19,12 @@ package repo
 import (
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"helm.sh/helm/pkg/chart"
 	"helm.sh/helm/pkg/cli"
 	"helm.sh/helm/pkg/getter"
+	"helm.sh/helm/pkg/helmpath"
 )
 
 const (
@@ -135,31 +135,25 @@ func TestDownloadIndexFile(t *testing.T) {
 	}
 	defer srv.Close()
 
-	dirName, err := ioutil.TempDir("", "tmp")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dirName)
+	setupCacheHome(t)
 
-	indexFilePath := filepath.Join(dirName, testRepo+"-index.yaml")
 	r, err := NewChartRepository(&Entry{
-		Name:  testRepo,
-		URL:   srv.URL,
-		Cache: indexFilePath,
+		Name: testRepo,
+		URL:  srv.URL,
 	}, getter.All(cli.EnvSettings{}))
 	if err != nil {
 		t.Errorf("Problem creating chart repository from %s: %v", testRepo, err)
 	}
 
-	if err := r.DownloadIndexFile(""); err != nil {
+	if err := r.DownloadIndexFile(); err != nil {
 		t.Errorf("%#v", err)
 	}
 
-	if _, err := os.Stat(indexFilePath); err != nil {
+	if _, err := os.Stat(helmpath.CacheIndex(testRepo)); err != nil {
 		t.Errorf("error finding created index file: %#v", err)
 	}
 
-	b, err := ioutil.ReadFile(indexFilePath)
+	b, err := ioutil.ReadFile(helmpath.CacheIndex(testRepo))
 	if err != nil {
 		t.Errorf("error reading index file: %#v", err)
 	}

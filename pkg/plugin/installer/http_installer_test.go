@@ -18,12 +18,13 @@ package installer // import "helm.sh/helm/pkg/plugin/installer"
 import (
 	"bytes"
 	"encoding/base64"
-	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/pkg/errors"
 
+	"helm.sh/helm/internal/test/ensure"
 	"helm.sh/helm/pkg/helmpath"
 )
 
@@ -57,18 +58,14 @@ func TestStripName(t *testing.T) {
 
 func TestHTTPInstaller(t *testing.T) {
 	source := "https://repo.localdomain/plugins/fake-plugin-0.0.1.tar.gz"
-	hh, err := ioutil.TempDir("", "helm-home-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(hh)
+	ensure.HelmHome(t)
+	defer ensure.CleanHomeDirs(t)
 
-	home := helmpath.Home(hh)
-	if err := os.MkdirAll(home.Plugins(), 0755); err != nil {
-		t.Fatalf("Could not create %s: %s", home.Plugins(), err)
+	if err := os.MkdirAll(helmpath.Plugins(), 0755); err != nil {
+		t.Fatalf("Could not create %s: %s", helmpath.Plugins(), err)
 	}
 
-	i, err := NewForSource(source, "0.0.1", home)
+	i, err := NewForSource(source, "0.0.1")
 	if err != nil {
 		t.Errorf("unexpected error: %s", err)
 	}
@@ -93,8 +90,8 @@ func TestHTTPInstaller(t *testing.T) {
 	if err := Install(i); err != nil {
 		t.Error(err)
 	}
-	if i.Path() != home.Path("plugins", "fake-plugin") {
-		t.Errorf("expected path '$HELM_HOME/plugins/fake-plugin', got %q", i.Path())
+	if i.Path() != filepath.Join(helmpath.Plugins(), "fake-plugin") {
+		t.Errorf("expected path '$XDG_CONFIG_HOME/helm/plugins/fake-plugin', got %q", i.Path())
 	}
 
 	// Install again to test plugin exists error
@@ -108,18 +105,14 @@ func TestHTTPInstaller(t *testing.T) {
 
 func TestHTTPInstallerNonExistentVersion(t *testing.T) {
 	source := "https://repo.localdomain/plugins/fake-plugin-0.0.2.tar.gz"
-	hh, err := ioutil.TempDir("", "helm-home-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(hh)
+	ensure.HelmHome(t)
+	defer ensure.CleanHomeDirs(t)
 
-	home := helmpath.Home(hh)
-	if err := os.MkdirAll(home.Plugins(), 0755); err != nil {
-		t.Fatalf("Could not create %s: %s", home.Plugins(), err)
+	if err := os.MkdirAll(helmpath.Plugins(), 0755); err != nil {
+		t.Fatalf("Could not create %s: %s", helmpath.Plugins(), err)
 	}
 
-	i, err := NewForSource(source, "0.0.2", home)
+	i, err := NewForSource(source, "0.0.2")
 	if err != nil {
 		t.Errorf("unexpected error: %s", err)
 	}
@@ -144,18 +137,14 @@ func TestHTTPInstallerNonExistentVersion(t *testing.T) {
 
 func TestHTTPInstallerUpdate(t *testing.T) {
 	source := "https://repo.localdomain/plugins/fake-plugin-0.0.1.tar.gz"
-	hh, err := ioutil.TempDir("", "helm-home-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(hh)
+	ensure.HelmHome(t)
+	defer ensure.CleanHomeDirs(t)
 
-	home := helmpath.Home(hh)
-	if err := os.MkdirAll(home.Plugins(), 0755); err != nil {
-		t.Fatalf("Could not create %s: %s", home.Plugins(), err)
+	if err := os.MkdirAll(helmpath.Plugins(), 0755); err != nil {
+		t.Fatalf("Could not create %s: %s", helmpath.Plugins(), err)
 	}
 
-	i, err := NewForSource(source, "0.0.1", home)
+	i, err := NewForSource(source, "0.0.1")
 	if err != nil {
 		t.Errorf("unexpected error: %s", err)
 	}
@@ -180,8 +169,8 @@ func TestHTTPInstallerUpdate(t *testing.T) {
 	if err := Install(i); err != nil {
 		t.Error(err)
 	}
-	if i.Path() != home.Path("plugins", "fake-plugin") {
-		t.Errorf("expected path '$HELM_HOME/plugins/fake-plugin', got %q", i.Path())
+	if i.Path() != filepath.Join(helmpath.Plugins(), "fake-plugin") {
+		t.Errorf("expected path '$XDG_CONFIG_HOME/helm/plugins/fake-plugin', got %q", i.Path())
 	}
 
 	// Update plugin, should fail because it is not implemented

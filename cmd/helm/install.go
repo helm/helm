@@ -195,7 +195,6 @@ func runInstall(args []string, client *action.Install, out io.Writer) (*release.
 				man := &downloader.Manager{
 					Out:        out,
 					ChartPath:  cp,
-					HelmHome:   settings.Home,
 					Keyring:    client.ChartPathOptions.Keyring,
 					SkipUpdate: false,
 					Getters:    getter.All(settings),

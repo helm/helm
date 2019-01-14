@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/pkg/helmpath"
+	"helm.sh/helm/pkg/helmpath/xdg"
 	"helm.sh/helm/pkg/plugin"
 )
 
@@ -39,11 +40,11 @@ func TestManuallyProcessArgs(t *testing.T) {
 	}
 
 	expectKnown := []string{
-		"--debug", "--context", "test1", "--home=/tmp",
+		"--debug", "--context", "test1",
 	}
 
 	expectUnknown := []string{
-		"--foo", "bar", "command",
+		"--foo", "bar", "--home=/tmp", "command",
 	}
 
 	known, unknown := manuallyProcessArgs(input)
@@ -64,10 +65,9 @@ func TestManuallyProcessArgs(t *testing.T) {
 func TestLoadPlugins(t *testing.T) {
 	defer resetEnv()()
 
-	settings.Home = "testdata/helmhome"
-
-	os.Setenv("HELM_HOME", settings.Home.String())
-	hh := settings.Home
+	os.Setenv(xdg.CacheHomeEnvVar, "testdata/helmhome")
+	os.Setenv(xdg.ConfigHomeEnvVar, "testdata/helmhome")
+	os.Setenv(xdg.DataHomeEnvVar, "testdata/helmhome")
 
 	out := bytes.NewBuffer(nil)
 	cmd := &cobra.Command{}
@@ -75,12 +75,13 @@ func TestLoadPlugins(t *testing.T) {
 
 	envs := strings.Join([]string{
 		"fullenv",
-		hh.Plugins() + "/fullenv",
-		hh.Plugins(),
-		hh.String(),
-		hh.Repository(),
-		hh.RepositoryFile(),
-		hh.Cache(),
+		helmpath.Plugins() + "/fullenv",
+		helmpath.Plugins(),
+		helmpath.CachePath(),
+		helmpath.ConfigPath(),
+		helmpath.DataPath(),
+		helmpath.RepositoryFile(),
+		helmpath.RepositoryCache(),
 		os.Args[0],
 	}, "\n")
 
@@ -94,7 +95,7 @@ func TestLoadPlugins(t *testing.T) {
 	}{
 		{"args", "echo args", "This echos args", "-a -b -c\n", []string{"-a", "-b", "-c"}},
 		{"echo", "echo stuff", "This echos stuff", "hello\n", []string{}},
-		{"env", "env stuff", "show the env", hh.String() + "\n", []string{}},
+		{"env", "env stuff", "show the env", helmpath.DataPath() + "\n", []string{}},
 		{"fullenv", "show env vars", "show all env vars", envs + "\n", []string{}},
 	}
 
@@ -134,7 +135,7 @@ func TestLoadPlugins(t *testing.T) {
 func TestLoadPlugins_HelmNoPlugins(t *testing.T) {
 	defer resetEnv()()
 
-	settings.Home = "testdata/helmhome"
+	os.Setenv(xdg.DataHomeEnvVar, "testdata/helmhome")
 
 	os.Setenv("HELM_NO_PLUGINS", "1")
 
@@ -151,8 +152,8 @@ func TestLoadPlugins_HelmNoPlugins(t *testing.T) {
 func TestSetupEnv(t *testing.T) {
 	defer resetEnv()()
 	name := "pequod"
-	settings.Home = helmpath.Home("testdata/helmhome")
-	base := filepath.Join(settings.Home.Plugins(), name)
+	os.Setenv(xdg.DataHomeEnvVar, "testdata/helmhome")
+	base := filepath.Join(helmpath.Plugins(), name)
 	settings.Debug = true
 	defer func() {
 		settings.Debug = false
@@ -165,13 +166,13 @@ func TestSetupEnv(t *testing.T) {
 	}{
 		{"HELM_PLUGIN_NAME", name},
 		{"HELM_PLUGIN_DIR", base},
-		{"HELM_PLUGIN", settings.Home.Plugins()},
 		{"HELM_DEBUG", "1"},
-		{"HELM_HOME", settings.Home.String()},
-		{"HELM_PATH_REPOSITORY", settings.Home.Repository()},
-		{"HELM_PATH_REPOSITORY_FILE", settings.Home.RepositoryFile()},
-		{"HELM_PATH_CACHE", settings.Home.Cache()},
-		{"HELM_PATH_STARTER", settings.Home.Starters()},
+		{"HELM_PATH_REPOSITORY_FILE", helmpath.RepositoryFile()},
+		{"HELM_PATH_CACHE", helmpath.CachePath()},
+		{"HELM_PATH_CONFIG", helmpath.ConfigPath()},
+		{"HELM_PATH_DATA", helmpath.DataPath()},
+		{"HELM_PATH_STARTER", helmpath.Starters()},
+		{"HELM_PLUGIN", helmpath.Plugins()},
 	} {
 		if got := os.Getenv(tt.name); got != tt.expect {
 			t.Errorf("Expected $%s=%q, got %q", tt.name, tt.expect, got)

@@ -38,6 +38,7 @@ import (
 	"helm.sh/helm/pkg/downloader"
 	"helm.sh/helm/pkg/engine"
 	"helm.sh/helm/pkg/getter"
+	"helm.sh/helm/pkg/helmpath"
 	"helm.sh/helm/pkg/hooks"
 	kubefake "helm.sh/helm/pkg/kube/fake"
 	"helm.sh/helm/pkg/release"
@@ -574,7 +575,6 @@ OUTER:
 // Order of resolution:
 // - relative to current working directory
 // - if path is absolute or begins with '.', error out here
-// - chart repos in $HELM_HOME
 // - URL
 //
 // If 'verify' is true, this will attempt to also verify the chart.
@@ -598,16 +598,10 @@ func (c *ChartPathOptions) LocateChart(name string, settings cli.EnvSettings) (s
 		return name, errors.Errorf("path %q not found", name)
 	}
 
-	crepo := filepath.Join(settings.Home.Repository(), name)
-	if _, err := os.Stat(crepo); err == nil {
-		return filepath.Abs(crepo)
-	}
-
 	dl := downloader.ChartDownloader{
-		HelmHome: settings.Home,
-		Out:      os.Stdout,
-		Keyring:  c.Keyring,
-		Getters:  getter.All(settings),
+		Out:     os.Stdout,
+		Keyring: c.Keyring,
+		Getters: getter.All(settings),
 		Options: []getter.Option{
 			getter.WithBasicAuth(c.Username, c.Password),
 		},
@@ -624,11 +618,11 @@ func (c *ChartPathOptions) LocateChart(name string, settings cli.EnvSettings) (s
 		name = chartURL
 	}
 
-	if _, err := os.Stat(settings.Home.Archive()); os.IsNotExist(err) {
-		os.MkdirAll(settings.Home.Archive(), 0744)
+	if _, err := os.Stat(helmpath.Archive()); os.IsNotExist(err) {
+		os.MkdirAll(helmpath.Archive(), 0744)
 	}
 
-	filename, _, err := dl.DownloadTo(name, version, settings.Home.Archive())
+	filename, _, err := dl.DownloadTo(name, version, helmpath.Archive())
 	if err == nil {
 		lname, err := filepath.Abs(filename)
 		if err != nil {

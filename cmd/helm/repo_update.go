@@ -41,8 +41,7 @@ future releases.
 var errNoRepositories = errors.New("no repositories found. You must add one before updating")
 
 type repoUpdateOptions struct {
-	update func([]*repo.ChartRepository, io.Writer, helmpath.Home)
-	home   helmpath.Home
+	update func([]*repo.ChartRepository, io.Writer)
 }
 
 func newRepoUpdateCmd(out io.Writer) *cobra.Command {
@@ -55,7 +54,6 @@ func newRepoUpdateCmd(out io.Writer) *cobra.Command {
 		Long:    updateDesc,
 		Args:    require.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			o.home = settings.Home
 			return o.run(out)
 		},
 	}
@@ -63,7 +61,7 @@ func newRepoUpdateCmd(out io.Writer) *cobra.Command {
 }
 
 func (o *repoUpdateOptions) run(out io.Writer) error {
-	f, err := repo.LoadFile(o.home.RepositoryFile())
+	f, err := repo.LoadFile(helmpath.RepositoryFile())
 	if err != nil {
 		return err
 	}
@@ -80,18 +78,18 @@ func (o *repoUpdateOptions) run(out io.Writer) error {
 		repos = append(repos, r)
 	}
 
-	o.update(repos, out, o.home)
+	o.update(repos, out)
 	return nil
 }
 
-func updateCharts(repos []*repo.ChartRepository, out io.Writer, home helmpath.Home) {
+func updateCharts(repos []*repo.ChartRepository, out io.Writer) {
 	fmt.Fprintln(out, "Hang tight while we grab the latest from your chart repositories...")
 	var wg sync.WaitGroup
 	for _, re := range repos {
 		wg.Add(1)
 		go func(re *repo.ChartRepository) {
 			defer wg.Done()
-			if err := re.DownloadIndexFile(home.Cache()); err != nil {
+			if err := re.DownloadIndexFile(); err != nil {
 				fmt.Fprintf(out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", re.Config.Name, re.Config.URL, err)
 			} else {
 				fmt.Fprintf(out, "...Successfully got an update from the %q chart repository\n", re.Config.Name)

@@ -35,14 +35,28 @@ import (
 )
 
 const initDesc = `
-This command sets up local configuration in $HELM_HOME (default ~/.helm/).
+This command sets up local configuration.
+
+Helm stores configuration based on the XDG base directory specification, so
+
+- cached files are stored in $XDG_CACHE_HOME/helm
+- configuration is stored in $XDG_CONFIG_HOME/helm
+- data is stored in $XDG_DATA_HOME/helm
+
+By default, the default directories depend on the Operating System. The defaults are listed below:
+
++------------------+---------------------------+--------------------------------+-------------------------+
+| Operating System | Cache Path                | Configuration Path             | Data Path               |
++------------------+---------------------------+--------------------------------+-------------------------+
+| Linux            | $HOME/.cache/helm         | $HOME/.config/helm             | $HOME/.local/share/helm |
+| macOS            | $HOME/Library/Caches/helm | $HOME/Library/Preferences/helm | $HOME/Library/helm      |
+| Windows          | %TEMP%\helm               | %APPDATA%\helm                 | %APPDATA%\helm          |
++------------------+---------------------------+--------------------------------+-------------------------+
 `
 
 type initOptions struct {
 	skipRefresh     bool   // --skip-refresh
 	pluginsFilename string // --plugins
-
-	home helmpath.Home
 }
 
 type pluginsFileEntry struct {
@@ -63,7 +77,6 @@ func newInitCmd(out io.Writer) *cobra.Command {
 		Long:  initDesc,
 		Args:  require.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			o.home = settings.Home
 			return o.run(out)
 		},
 	}
@@ -77,13 +90,13 @@ func newInitCmd(out io.Writer) *cobra.Command {
 
 // run initializes local config.
 func (o *initOptions) run(out io.Writer) error {
-	if err := ensureDirectories(o.home, out); err != nil {
+	if err := ensureDirectories(out); err != nil {
 		return err
 	}
-	if err := ensureReposFile(o.home, out, o.skipRefresh); err != nil {
+	if err := ensureReposFile(out, o.skipRefresh); err != nil {
 		return err
 	}
-	if err := ensureRepoFileFormat(o.home.RepositoryFile(), out); err != nil {
+	if err := ensureRepoFileFormat(helmpath.RepositoryFile(), out); err != nil {
 		return err
 	}
 	if o.pluginsFilename != "" {
@@ -91,24 +104,29 @@ func (o *initOptions) run(out io.Writer) error {
 			return err
 		}
 	}
-	fmt.Fprintf(out, "$HELM_HOME has been configured at %s.\n", settings.Home)
+	fmt.Fprintln(out, "Helm is now configured to use the following directories:")
+	fmt.Fprintf(out, "Cache: %s\n", helmpath.CachePath())
+	fmt.Fprintf(out, "Configuration: %s\n", helmpath.ConfigPath())
+	fmt.Fprintf(out, "Data: %s\n", helmpath.DataPath())
 	fmt.Fprintln(out, "Happy Helming!")
 	return nil
 }
 
-// ensureDirectories checks to see if $HELM_HOME exists.
+// ensureDirectories checks to see if the directories Helm uses exists.
 //
-// If $HELM_HOME does not exist, this function will create it.
-func ensureDirectories(home helmpath.Home, out io.Writer) error {
-	configDirectories := []string{
-		home.String(),
-		home.Repository(),
-		home.Cache(),
-		home.Plugins(),
-		home.Starters(),
-		home.Archive(),
+// If they do not exist, this function will create it.
+func ensureDirectories(out io.Writer) error {
+	directories := []string{
+		helmpath.CachePath(),
+		helmpath.ConfigPath(),
+		helmpath.DataPath(),
+		helmpath.RepositoryCache(),
+		helmpath.Plugins(),
+		helmpath.PluginCache(),
+		helmpath.Starters(),
+		helmpath.Archive(),
 	}
-	for _, p := range configDirectories {
+	for _, p := range directories {
 		if fi, err := os.Stat(p); err != nil {
 			fmt.Fprintf(out, "Creating %s \n", p)
 			if err := os.MkdirAll(p, 0755); err != nil {
@@ -122,8 +140,8 @@ func ensureDirectories(home helmpath.Home, out io.Writer) error {
 	return nil
 }
 
-func ensureReposFile(home helmpath.Home, out io.Writer, skipRefresh bool) error {
-	repoFile := home.RepositoryFile()
+func ensureReposFile(out io.Writer, skipRefresh bool) error {
+	repoFile := helmpath.RepositoryFile()
 	if fi, err := os.Stat(repoFile); err != nil {
 		fmt.Fprintf(out, "Creating %s \n", repoFile)
 		f := repo.NewFile()
@@ -168,7 +186,7 @@ func ensurePluginsInstalled(pluginsFilename string, out io.Writer) error {
 }
 
 func ensurePluginInstalled(requiredPlugin *pluginsFileEntry, pluginsFilename string, out io.Writer) error {
-	i, err := installer.NewForSource(requiredPlugin.URL, requiredPlugin.Version, settings.Home)
+	i, err := installer.NewForSource(requiredPlugin.URL, requiredPlugin.Version)
 	if err != nil {
 		return err
 	}

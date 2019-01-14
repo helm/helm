@@ -25,13 +25,14 @@ import (
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/pkg/cli"
+	"helm.sh/helm/pkg/helmpath"
 	"helm.sh/helm/pkg/plugin"
 )
 
 // collectPlugins scans for getter plugins.
 // This will load plugins according to the cli.
 func collectPlugins(settings cli.EnvSettings) (Providers, error) {
-	plugins, err := plugin.FindPlugins(settings.PluginDirs())
+	plugins, err := plugin.FindPlugins(helmpath.Plugins())
 	if err != nil {
 		return nil, err
 	}

@@ -21,22 +21,15 @@ import (
 	"path/filepath"
 	"testing"
 
+	"helm.sh/helm/internal/test/ensure"
 	"helm.sh/helm/pkg/helmpath"
 )
 
 var _ Installer = new(LocalInstaller)
 
 func TestLocalInstaller(t *testing.T) {
-	hh, err := ioutil.TempDir("", "helm-home-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(hh)
-
-	home := helmpath.Home(hh)
-	if err := os.MkdirAll(home.Plugins(), 0755); err != nil {
-		t.Fatalf("Could not create %s: %s", home.Plugins(), err)
-	}
+	ensure.HelmHome(t)
+	defer ensure.CleanHomeDirs(t)
 
 	// Make a temp dir
 	tdir, err := ioutil.TempDir("", "helm-installer-")
@@ -49,7 +42,7 @@ func TestLocalInstaller(t *testing.T) {
 	}
 
 	source := "../testdata/plugdir/echo"
-	i, err := NewForSource(source, "", home)
+	i, err := NewForSource(source, "")
 	if err != nil {
 		t.Errorf("unexpected error: %s", err)
 	}
@@ -58,7 +51,7 @@ func TestLocalInstaller(t *testing.T) {
 		t.Error(err)
 	}
 
-	if i.Path() != home.Path("plugins", "echo") {
-		t.Errorf("expected path '$HELM_HOME/plugins/helm-env', got %q", i.Path())
+	if i.Path() != filepath.Join(helmpath.Plugins(), "echo") {
+		t.Errorf("expected path '$XDG_CONFIG_HOME/helm/plugins/helm-env', got %q", i.Path())
 	}
 }

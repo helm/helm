@@ -25,35 +25,25 @@ import (
 	"helm.sh/helm/pkg/helmpath"
 )
 
-type pluginListOptions struct {
-	home helmpath.Home
-}
-
 func newPluginListCmd(out io.Writer) *cobra.Command {
-	o := &pluginListOptions{}
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "list installed Helm plugins",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			o.home = settings.Home
-			return o.run(out)
+			debug("pluginDirs: %s", helmpath.Plugins())
+			plugins, err := findPlugins(helmpath.Plugins())
+			if err != nil {
+				return err
+			}
+
+			table := uitable.New()
+			table.AddRow("NAME", "VERSION", "DESCRIPTION")
+			for _, p := range plugins {
+				table.AddRow(p.Metadata.Name, p.Metadata.Version, p.Metadata.Description)
+			}
+			fmt.Fprintln(out, table)
+			return nil
 		},
 	}
 	return cmd
-}
-
-func (o *pluginListOptions) run(out io.Writer) error {
-	debug("pluginDirs: %s", settings.PluginDirs())
-	plugins, err := findPlugins(settings.PluginDirs())
-	if err != nil {
-		return err
-	}
-
-	table := uitable.New()
-	table.AddRow("NAME", "VERSION", "DESCRIPTION")
-	for _, p := range plugins {
-		table.AddRow(p.Metadata.Name, p.Metadata.Version, p.Metadata.Description)
-	}
-	fmt.Fprintln(out, table)
-	return nil
 }

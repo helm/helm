@@ -35,22 +35,21 @@ import (
 //
 // The caller is responsible for destroying the temp directory as well as stopping
 // the server.
-func NewTempServer(glob string) (*Server, helmpath.Home, error) {
+func NewTempServer(glob string) (*Server, error) {
 	tdir, err := ioutil.TempDir("", "helm-repotest-")
-	tdirh := helmpath.Home(tdir)
 	if err != nil {
-		return nil, tdirh, err
+		return nil, err
 	}
 	srv := NewServer(tdir)
 
 	if glob != "" {
 		if _, err := srv.CopyCharts(glob); err != nil {
 			srv.Stop()
-			return srv, tdirh, err
+			return srv, err
 		}
 	}
 
-	return srv, tdirh, nil
+	return srv, nil
 }
 
 // NewServer creates a repository server for testing.
@@ -71,7 +70,7 @@ func NewServer(docroot string) *Server {
 	}
 	srv.Start()
 	// Add the testing repository as the only repo.
-	if err := setTestingRepository(helmpath.Home(docroot), "test", srv.URL()); err != nil {
+	if err := setTestingRepository(srv.URL()); err != nil {
 		panic(err)
 	}
 	return srv
@@ -160,25 +159,21 @@ func (s *Server) URL() string {
 	return s.srv.URL
 }
 
-// LinkIndices links the index created with CreateIndex and makes a symboic link to the repositories/cache directory.
+// LinkIndices links the index created with CreateIndex and makes a symbolic link to the cache index.
 //
 // This makes it possible to simulate a local cache of a repository.
 func (s *Server) LinkIndices() error {
-	destfile := "test-index.yaml"
-	// Link the index.yaml file to the
 	lstart := filepath.Join(s.docroot, "index.yaml")
-	ldest := filepath.Join(s.docroot, "repository/cache", destfile)
+	ldest := helmpath.CacheIndex("test")
 	return os.Symlink(lstart, ldest)
 }
 
-// setTestingRepository sets up a testing repository.yaml with only the given name/URL.
-func setTestingRepository(home helmpath.Home, name, url string) error {
+// setTestingRepository sets up a testing repository.yaml with only the given URL.
+func setTestingRepository(url string) error {
 	r := repo.NewFile()
 	r.Add(&repo.Entry{
-		Name:  name,
-		URL:   url,
-		Cache: home.CacheIndex(name),
+		Name: "test",
+		URL:  url,
 	})
-	os.MkdirAll(filepath.Join(home.Repository(), name), 0755)
-	return r.WriteFile(home.RepositoryFile(), 0644)
+	return r.WriteFile(helmpath.RepositoryFile(), 0644)
 }

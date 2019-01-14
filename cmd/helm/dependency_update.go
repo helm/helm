@@ -60,7 +60,6 @@ func newDependencyUpdateCmd(out io.Writer) *cobra.Command {
 			man := &downloader.Manager{
 				Out:        out,
 				ChartPath:  chartpath,
-				HelmHome:   settings.Home,
 				Keyring:    client.Keyring,
 				SkipUpdate: client.SkipRefresh,
 				Getters:    getter.All(settings),

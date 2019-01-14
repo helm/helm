@@ -18,9 +18,12 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"helm.sh/helm/internal/test/ensure"
+	"helm.sh/helm/pkg/helmpath"
 	"helm.sh/helm/pkg/provenance"
 	"helm.sh/helm/pkg/repo"
 	"helm.sh/helm/pkg/repo/repotest"
@@ -29,21 +32,21 @@ import (
 func TestDependencyBuildCmd(t *testing.T) {
 	defer resetEnv()()
 
-	hh := testHelmHome(t)
-	settings.Home = hh
+	ensure.HelmHome(t)
+	defer ensure.CleanHomeDirs(t)
 
-	srv := repotest.NewServer(hh.String())
+	srv := repotest.NewServer(helmpath.ConfigPath())
 	defer srv.Stop()
 	if _, err := srv.CopyCharts("testdata/testcharts/*.tgz"); err != nil {
 		t.Fatal(err)
 	}
 
 	chartname := "depbuild"
-	if err := createTestingChart(hh.String(), chartname, srv.URL()); err != nil {
+	if err := createTestingChart(helmpath.DataPath(), chartname, srv.URL()); err != nil {
 		t.Fatal(err)
 	}
 
-	cmd := fmt.Sprintf("--home='%s' dependency build '%s'", hh, hh.Path(chartname))
+	cmd := fmt.Sprintf("dependency build '%s'", filepath.Join(helmpath.DataPath(), chartname))
 	_, out, err := executeActionCommand(cmd)
 
 	// In the first pass, we basically want the same results as an update.
@@ -57,14 +60,14 @@ func TestDependencyBuildCmd(t *testing.T) {
 	}
 
 	// Make sure the actual file got downloaded.
-	expect := hh.Path(chartname, "charts/reqtest-0.1.0.tgz")
+	expect := filepath.Join(helmpath.DataPath(), chartname, "charts/reqtest-0.1.0.tgz")
 	if _, err := os.Stat(expect); err != nil {
 		t.Fatal(err)
 	}
 
 	// In the second pass, we want to remove the chart's request dependency,
 	// then see if it restores from the lock.
-	lockfile := hh.Path(chartname, "Chart.lock")
+	lockfile := filepath.Join(helmpath.DataPath(), chartname, "Chart.lock")
 	if _, err := os.Stat(lockfile); err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +82,7 @@ func TestDependencyBuildCmd(t *testing.T) {
 	}
 
 	// Now repeat the test that the dependency exists.
-	expect = hh.Path(chartname, "charts/reqtest-0.1.0.tgz")
+	expect = filepath.Join(helmpath.DataPath(), chartname, "charts/reqtest-0.1.0.tgz")
 	if _, err := os.Stat(expect); err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +93,7 @@ func TestDependencyBuildCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	i, err := repo.LoadIndexFile(hh.CacheIndex("test"))
+	i, err := repo.LoadIndexFile(helmpath.CacheIndex("test"))
 	if err != nil {
 		t.Fatal(err)
 	}

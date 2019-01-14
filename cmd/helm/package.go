@@ -74,7 +74,6 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 					downloadManager := &downloader.Manager{
 						Out:       ioutil.Discard,
 						ChartPath: path,
-						HelmHome:  settings.Home,
 						Keyring:   client.Keyring,
 						Getters:   getter.All(settings),
 						Debug:     settings.Debug,

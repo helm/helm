@@ -57,11 +57,10 @@ func (p *Pull) Run(chartRef string) (string, error) {
 	var out strings.Builder
 
 	c := downloader.ChartDownloader{
-		HelmHome: p.Settings.Home,
-		Out:      &out,
-		Keyring:  p.Keyring,
-		Verify:   downloader.VerifyNever,
-		Getters:  getter.All(p.Settings),
+		Out:     &out,
+		Keyring: p.Keyring,
+		Verify:  downloader.VerifyNever,
+		Getters: getter.All(p.Settings),
 		Options: []getter.Option{
 			getter.WithBasicAuth(p.Username, p.Password),
 		},

@@ -17,6 +17,8 @@ limitations under the License.
 package repo // import "helm.sh/helm/pkg/repo"
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"net/url"
@@ -29,13 +31,13 @@ import (
 
 	"helm.sh/helm/pkg/chart/loader"
 	"helm.sh/helm/pkg/getter"
+	"helm.sh/helm/pkg/helmpath"
 	"helm.sh/helm/pkg/provenance"
 )
 
 // Entry represents a collection of parameters for chart repository
 type Entry struct {
 	Name     string `json:"name"`
-	Cache    string `json:"cache"`
 	URL      string `json:"url"`
 	Username string `json:"username"`
 	Password string `json:"password"`
@@ -112,10 +114,7 @@ func (r *ChartRepository) Load() error {
 }
 
 // DownloadIndexFile fetches the index from a repository.
-//
-// cachePath is prepended to any index that does not have an absolute path. This
-// is for pre-2.2.0 repo files.
-func (r *ChartRepository) DownloadIndexFile(cachePath string) error {
+func (r *ChartRepository) DownloadIndexFile() error {
 	var indexURL string
 	parsedURL, err := url.Parse(r.Config.URL)
 	if err != nil {
@@ -139,18 +138,7 @@ func (r *ChartRepository) DownloadIndexFile(cachePath string) error {
 		return err
 	}
 
-	// In Helm 2.2.0 the config.cache was accidentally switched to an absolute
-	// path, which broke backward compatibility. This fixes it by prepending a
-	// global cache path to relative paths.
-	//
-	// It is changed on DownloadIndexFile because that was the method that
-	// originally carried the cache path.
-	cp := r.Config.Cache
-	if !filepath.IsAbs(cp) {
-		cp = filepath.Join(cachePath, cp)
-	}
-
-	return ioutil.WriteFile(cp, index, 0644)
+	return ioutil.WriteFile(helmpath.CacheIndex(r.Config.Name), index, 0644)
 }
 
 // Index generates an index for the chart repository and writes an index.yaml file.
@@ -203,11 +191,9 @@ func FindChartInRepoURL(repoURL, chartName, chartVersion, certFile, keyFile, caF
 func FindChartInAuthRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile string, getters getter.Providers) (string, error) {
 
 	// Download and write the index file to a temporary location
-	tempIndexFile, err := ioutil.TempFile("", "tmp-repo-file")
-	if err != nil {
-		return "", errors.Errorf("cannot write index file for repository requested")
-	}
-	defer os.Remove(tempIndexFile.Name())
+	buf := make([]byte, 20)
+	rand.Read(buf)
+	name := strings.ReplaceAll(base64.StdEncoding.EncodeToString(buf), "/", "-")
 
 	c := Entry{
 		URL:      repoURL,
@@ -216,17 +202,18 @@ func FindChartInAuthRepoURL(repoURL, username, password, chartName, chartVersion
 		CertFile: certFile,
 		KeyFile:  keyFile,
 		CAFile:   caFile,
+		Name:     name,
 	}
 	r, err := NewChartRepository(&c, getters)
 	if err != nil {
 		return "", err
 	}
-	if err := r.DownloadIndexFile(tempIndexFile.Name()); err != nil {
+	if err := r.DownloadIndexFile(); err != nil {
 		return "", errors.Wrapf(err, "looks like %q is not a valid chart repository or cannot be reached", repoURL)
 	}
 
 	// Read the index file for the repository to get chart information and return chart URL
-	repoIndex, err := LoadIndexFile(tempIndexFile.Name())
+	repoIndex, err := LoadIndexFile(helmpath.CacheIndex(name))
 	if err != nil {
 		return "", err
 	}
