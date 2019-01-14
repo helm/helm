@@ -125,6 +125,14 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:ef3589c5082eac12d04efdeca6dab7f8bac2d10bac4cfdbe51b252e4022b535a"
+  name = "github.com/casimir/xdg-go"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "372ccc2180dab73316615641d5617c5ed3e35529"
+
+[[projects]]
+  branch = "master"
   digest = "1:d6afaeed1502aa28e80a4ed0981d570ad91b2579193404256ce672ed0a609e0d"
   name = "github.com/beorn7/perks"
   packages = ["quantile"]
@@ -1624,6 +1632,7 @@
     "github.com/docker/distribution/registry",
     "github.com/docker/distribution/registry/storage/driver/inmemory",
     "github.com/docker/go-units",
+    "github.com/casimir/xdg-go",
     "github.com/evanphx/json-patch",
     "github.com/ghodss/yaml",
     "github.com/gobwas/glob",

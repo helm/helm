@@ -23,6 +23,7 @@ These dependencies are expressed as interfaces so that alternate implementations
 package environment
 
 import (
+	"fmt"
 	"github.com/casimir/xdg-go"
 	"os"
 	"path/filepath"
@@ -32,7 +33,6 @@ import (
 
 	"k8s.io/helm/pkg/helm/helmpath"
 )
-
 
 var oldDefaultHelmHome = filepath.Join(homedir.HomeDir(), ".helm")
 var defaultHelmHome = filepath.Join(xdg.ConfigHome(), "helm")
@@ -46,7 +46,7 @@ func getDefaultConfigHome() string {
 	} else if _, err := os.Stat(oldDefaultHelmHome); err != nil {
 		return defaultHelmHome
 	}
-	// TODO: Write a warning to output
+	fmt.Printf("WARNING: using old-style configuration directiry. Please, consider moving it to %s\n", defaultHelmHome)
 	return oldDefaultHelmHome
 }
 
