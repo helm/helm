@@ -17,8 +17,14 @@ limitations under the License.
 package chartutil
 
 import (
+	"archive/tar"
+	"compress/gzip"
+	"io/ioutil"
+	"os"
 	"path"
+	"path/filepath"
 	"testing"
+	"time"
 
 	"k8s.io/helm/pkg/proto/hapi/chart"
 )
@@ -41,6 +47,97 @@ func TestLoadFile(t *testing.T) {
 	verifyFrobnitz(t, c)
 	verifyChart(t, c)
 	verifyRequirements(t, c)
+}
+
+func TestLoadArchive_InvalidArchive(t *testing.T) {
+	tmpdir, err := ioutil.TempDir("", "helm-test-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpdir)
+
+	writeTar := func(filename, internalPath string, body []byte) {
+		dest, err := os.Create(filename)
+		if err != nil {
+			t.Fatal(err)
+		}
+		zipper := gzip.NewWriter(dest)
+		tw := tar.NewWriter(zipper)
+
+		h := &tar.Header{
+			Name:    internalPath,
+			Mode:    0755,
+			Size:    int64(len(body)),
+			ModTime: time.Now(),
+		}
+		if err := tw.WriteHeader(h); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := tw.Write(body); err != nil {
+			t.Fatal(err)
+		}
+		tw.Close()
+		zipper.Close()
+		dest.Close()
+	}
+
+	for _, tt := range []struct {
+		chartname   string
+		internal    string
+		expectError string
+	}{
+		{"illegal-dots.tgz", "../../malformed-helm-test", "chart illegally references parent directory"},
+		{"illegal-dots2.tgz", "/foo/../../malformed-helm-test", "chart illegally references parent directory"},
+		{"illegal-dots3.tgz", "/../../malformed-helm-test", "chart illegally references parent directory"},
+		{"illegal-dots4.tgz", "./../../malformed-helm-test", "chart illegally references parent directory"},
+		{"illegal-name.tgz", "./.", "chart illegally contains empty path"},
+		{"illegal-name2.tgz", "/./.", "chart illegally contains empty path"},
+		{"illegal-name3.tgz", "missing-leading-slash", "chart illegally contains empty path"},
+		{"illegal-name4.tgz", "/missing-leading-slash", "chart metadata (Chart.yaml) missing"},
+		{"illegal-abspath.tgz", "//foo", "chart illegally contains absolute paths"},
+		{"illegal-abspath2.tgz", "///foo", "chart illegally contains absolute paths"},
+		{"illegal-abspath3.tgz", "\\\\foo", "chart illegally contains absolute paths"},
+		{"illegal-abspath3.tgz", "\\..\\..\\foo", "chart illegally references parent directory"},
+
+		// Under special circumstances, this can get normalized to things that look like absolute Windows paths
+		{"illegal-abspath4.tgz", "\\.\\c:\\\\foo", "chart contains illegally named files"},
+		{"illegal-abspath5.tgz", "/./c://foo", "chart contains illegally named files"},
+		{"illegal-abspath6.tgz", "\\\\?\\Some\\windows\\magic", "chart illegally contains absolute paths"},
+	} {
+		illegalChart := filepath.Join(tmpdir, tt.chartname)
+		writeTar(illegalChart, tt.internal, []byte("hello: world"))
+		_, err = Load(illegalChart)
+		if err == nil {
+			t.Fatal("expected error when unpacking illegal files")
+		}
+		if err.Error() != tt.expectError {
+			t.Errorf("Expected %q, got %q for %s", tt.expectError, err.Error(), tt.chartname)
+		}
+	}
+
+	// Make sure that absolute path gets interpreted as relative
+	illegalChart := filepath.Join(tmpdir, "abs-path.tgz")
+	writeTar(illegalChart, "/Chart.yaml", []byte("hello: world"))
+	_, err = Load(illegalChart)
+	if err.Error() != "invalid chart (Chart.yaml): name must not be empty" {
+		t.Error(err)
+	}
+
+	// And just to validate that the above was not spurious
+	illegalChart = filepath.Join(tmpdir, "abs-path2.tgz")
+	writeTar(illegalChart, "files/whatever.yaml", []byte("hello: world"))
+	_, err = Load(illegalChart)
+	if err.Error() != "chart metadata (Chart.yaml) missing" {
+		t.Error(err)
+	}
+
+	// Finally, test that drive letter gets stripped off on Windows
+	illegalChart = filepath.Join(tmpdir, "abs-winpath.tgz")
+	writeTar(illegalChart, "c:\\Chart.yaml", []byte("hello: world"))
+	_, err = Load(illegalChart)
+	if err.Error() != "invalid chart (Chart.yaml): name must not be empty" {
+		t.Error(err)
+	}
 }
 
 func TestLoadFiles(t *testing.T) {
