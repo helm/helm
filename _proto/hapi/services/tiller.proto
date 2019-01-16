@@ -212,6 +212,8 @@ message UpdateReleaseRequest {
 	bool force = 11;
 	// Description, if set, will set the description for the updated release
 	string description = 12;
+        // Render subchart notes if enabled
+	bool subNotes = 13;
 }
 
 // UpdateReleaseResponse is the response to an update request.
@@ -281,6 +283,9 @@ message InstallReleaseRequest {
 
 	// Description, if set, will set the description for the installed release
 	string description = 11;
+  
+        bool subNotes = 12;
+
 }
 
 // InstallReleaseResponse is the response from a release installation.
