@@ -53,7 +53,7 @@ type options struct {
 	disableHooks bool
 	// if set, skip CRD hook only
 	disableCRDHook bool
-	// if set, render SubChart Notes
+	// name of release
 	releaseName string
 	// tls.Config to use for rpc if tls enabled
 	tlsConfig *tls.Config
