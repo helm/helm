@@ -78,7 +78,11 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 				// PrepareCommand uses os.ExpandEnv and expects the
 				// setupEnv vars.
 				plugin.SetupPluginEnv(settings, md.Name, plug.Dir)
-				main, argv := plug.PrepareCommand(u)
+				main, argv, prepCmdErr := plug.PrepareCommand(u)
+				if prepCmdErr != nil {
+					os.Stderr.WriteString(prepCmdErr.Error())
+					return errors.Errorf("plugin %q exited with error", md.Name)
+				}
 
 				prog := exec.Command(main, argv...)
 				prog.Env = os.Environ()
