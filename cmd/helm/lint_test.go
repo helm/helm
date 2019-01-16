@@ -29,6 +29,7 @@ var (
 	invalidArchivedChartPath     = "testdata/testcharts/invalidcompressedchart0.1.0.tgz"
 	chartDirPath                 = "testdata/testcharts/decompressedchart/"
 	chartMissingManifest         = "testdata/testcharts/chart-missing-manifest"
+	chartWithPreReleaseVersion   = "testdata/testcharts/pre-release-chart-0.1.0-alpha.tgz"
 )
 
 func TestLintChart(t *testing.T) {
@@ -41,6 +42,10 @@ func TestLintChart(t *testing.T) {
 	}
 
 	if _, err := lintChart(archivedChartPathWithHyphens, values, namespace, strict); err != nil {
+		t.Errorf("%s", err)
+	}
+
+	if _, err := lintChart(chartWithPreReleaseVersion, values, namespace, strict); err != nil {
 		t.Errorf("%s", err)
 	}
 
