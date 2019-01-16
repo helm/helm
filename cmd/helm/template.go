@@ -42,35 +42,25 @@ import (
 	"k8s.io/helm/pkg/tiller/environment"
 )
 
-//const defaultDirectoryPermission = 0755
-
-var (
-	//whitespaceRegex = regexp.MustCompile(`^\s*$`)
-
-	// defaultKubeVersion is the default value of --kube-version flag
-	defaultKubeVersion = fmt.Sprintf("%s.%s", chartutil.DefaultKubeVersion.Major, chartutil.DefaultKubeVersion.Minor)
-)
+// defaultKubeVersion is the default value of --kube-version flag
+var defaultKubeVersion = fmt.Sprintf("%s.%s", chartutil.DefaultKubeVersion.Major, chartutil.DefaultKubeVersion.Minor)
 
 const templateDesc = `
 Render chart templates locally and display the output.
 
-This does not require Tiller. However, any values that would normally be
-looked up or retrieved in-cluster will be faked locally. Additionally, none
-of the server-side testing of chart validity (e.g. whether an API is supported)
-is done.
+This does not require a Kubernetes connection. However, any values that would normally
+be retrieved in-cluster will be faked locally. Additionally, no validation is
+performed on the resulting manifest files. As a result, there is no assurance that a
+file generated from this command will be valid to Kubernetes.
 
-To render just one template in a chart, use '-x':
-
-	$ helm template mychart -x templates/deployment.yaml
 `
 
 type templateOptions struct {
-	nameTemplate string   // --name-template
-	showNotes    bool     // --notes
-	releaseName  string   // --name
-	renderFiles  []string // --execute
-	kubeVersion  string   // --kube-version
-	outputDir    string   // --output-dir
+	nameTemplate string // --name-template
+	showNotes    bool   // --notes
+	releaseName  string // --name
+	kubeVersion  string // --kube-version
+	outputDir    string // --output-dir
 
 	valuesOptions
 
@@ -101,7 +91,6 @@ func newTemplateCmd(out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.BoolVar(&o.showNotes, "notes", false, "show the computed NOTES.txt file as well")
 	f.StringVarP(&o.releaseName, "name", "", "RELEASE-NAME", "release name")
-	f.StringArrayVarP(&o.renderFiles, "execute", "x", []string{}, "only execute the given templates")
 	f.StringVar(&o.nameTemplate, "name-template", "", "specify template used to name the release")
 	f.StringVar(&o.kubeVersion, "kube-version", defaultKubeVersion, "kubernetes version used as Capabilities.KubeVersion.Major/Minor")
 	f.StringVar(&o.outputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
@@ -111,28 +100,6 @@ func newTemplateCmd(out io.Writer) *cobra.Command {
 }
 
 func (o *templateOptions) run(out io.Writer) error {
-	// verify specified templates exist relative to chart
-	rf := []string{}
-	var af string
-	var err error
-	if len(o.renderFiles) > 0 {
-		for _, f := range o.renderFiles {
-			if !filepath.IsAbs(f) {
-				af, err = filepath.Abs(filepath.Join(o.chartPath, f))
-				if err != nil {
-					return errors.Wrap(err, "could not resolve template path")
-				}
-			} else {
-				af = f
-			}
-			rf = append(rf, af)
-
-			if _, err := os.Stat(af); err != nil {
-				return errors.Wrap(err, "could not resolve template path")
-			}
-		}
-	}
-
 	// get combined values and create config
 	config, err := o.mergedValues()
 	if err != nil {
@@ -187,15 +154,15 @@ func (o *templateOptions) run(out io.Writer) error {
 		return err
 	}
 
-	if o.showNotes {
-		fmt.Fprintln(out, rel.Info.Notes)
-	}
-
 	if o.outputDir != "" {
 		return o.writeAsFiles(rel)
 
 	}
 	fmt.Fprintln(out, rel.Manifest)
+	if o.showNotes {
+		fmt.Fprintf(out, "---\n# Source: %s/templates/NOTES.txt\n", c.Name())
+		fmt.Fprintln(out, rel.Info.Notes)
+	}
 	return nil
 
 	/*

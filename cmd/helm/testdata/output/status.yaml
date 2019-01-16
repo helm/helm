@@ -1,7 +1,7 @@
 info:
-  deleted: 0001-01-01T00:00:00Z
-  first_deployed: 0001-01-01T00:00:00Z
-  last_deployed: 2016-01-16T00:00:00Z
+  deleted: "0001-01-01T00:00:00Z"
+  first_deployed: "0001-01-01T00:00:00Z"
+  last_deployed: "2016-01-16T00:00:00Z"
   resources: |
     resource A
     resource B

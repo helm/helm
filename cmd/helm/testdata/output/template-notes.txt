@@ -1,3 +1,4 @@
+
 ---
 # Source: subchart1/charts/subcharta/templates/service.yaml
 apiVersion: v1
@@ -15,7 +16,6 @@ spec:
     name: apache
   selector:
     app: subcharta
-
 ---
 # Source: subchart1/charts/subchartb/templates/service.yaml
 apiVersion: v1
@@ -33,7 +33,6 @@ spec:
     name: nginx
   selector:
     app: subchartb
-
 ---
 # Source: subchart1/templates/service.yaml
 apiVersion: v1
@@ -55,7 +54,6 @@ spec:
     name: nginx
   selector:
     app: subchart1
-
 ---
 # Source: subchart1/templates/NOTES.txt
 Sample notes for subchart1

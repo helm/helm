@@ -17,17 +17,12 @@ limitations under the License.
 package main
 
 import (
-	"path/filepath"
 	"testing"
 )
 
 var chartPath = "./../../pkg/chartutil/testdata/subpop/charts/subchart1"
 
 func TestTemplateCmd(t *testing.T) {
-	absChartPath, err := filepath.Abs(chartPath)
-	if err != nil {
-		t.Fatal(err)
-	}
 	tests := []cmdTestCase{
 		{
 			name:   "check name",
@@ -35,14 +30,9 @@ func TestTemplateCmd(t *testing.T) {
 			golden: "output/template.txt",
 		},
 		{
-			name:   "check set name",
-			cmd:    "template -x templates/service.yaml --set service.name=apache " + chartPath,
+			name:   "check set name", //
+			cmd:    "template --set service.name=apache " + chartPath,
 			golden: "output/template-set.txt",
-		},
-		{
-			name:   "check execute absolute",
-			cmd:    "template -x " + absChartPath + "/templates/service.yaml --set service.name=apache " + chartPath,
-			golden: "output/template-absolute.txt",
 		},
 		{
 			name:   "check release name",
