@@ -26,6 +26,7 @@ import (
 	"k8s.io/helm/pkg/action"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/registry"
+	"k8s.io/helm/pkg/helm/helmpath"
 )
 
 var globalUsage = `The Kubernetes package manager
@@ -45,8 +46,8 @@ Common actions from this point include:
 
 Environment:
   $HELM_HOME          set an alternative location for Helm files. By default, these are stored in 
-					  "$XDG_CONFIG_DIR/helm"" on *nix, "%APPDATA%\helm" on Windows and 
-                      "$HOME/Library/Preferences" on OSX.
+					  "$XDG_CONFIG_DIR/helm" (defaults to ~/.config/helm) on Linux, 
+					  "%APPDATA%\helm" on Windows and "$HOME/Library/Preferences" on OSX.
                       NOTE: if you have old-style "~/.helm" directory, it will be used, but consider 
 					  moving it to a new home.
   $HELM_DRIVER        set the backend storage driver. Values are: configmap, secret, memory
@@ -66,6 +67,7 @@ func newRootCmd(c helm.Interface, actionConfig *action.Configuration, out io.Wri
 	flags := cmd.PersistentFlags()
 
 	settings.AddFlags(flags)
+	settings.AddHomeFlag(flags, helmpath.GetDefaultConfigHome(out))
 
 	flags.Parse(args)
 

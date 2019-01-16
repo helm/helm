@@ -40,8 +40,8 @@ func TestEnvSettings(t *testing.T) {
 	}{
 		{
 			name:    "defaults",
-			home:    defaultHelmHome,
-			plugins: helmpath.Home(defaultHelmHome).Plugins(),
+			home:    "~/.helm",
+			plugins: helmpath.Home("~/.helm").Plugins(),
 			ns:      "",
 		},
 		{
@@ -83,6 +83,7 @@ func TestEnvSettings(t *testing.T) {
 
 			settings := &EnvSettings{}
 			settings.AddFlags(flags)
+			settings.AddHomeFlag(flags, "~/.helm")
 			flags.Parse(strings.Split(tt.args, " "))
 
 			settings.Init(flags)

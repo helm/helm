@@ -36,7 +36,9 @@ import (
 )
 
 const initDesc = `
-This command sets up local configuration in $HELM_HOME (default $XDG_CONFIG_DIR/helm/).
+This command sets up local configuration in $HELM_HOME (defaults to, based on system to:
+$XDG_CONFIG_DIR/helm (default ~/.config/helm) on Linux, %APPDATA%\helm on Windows and
+$HOME/Library/Preferences on OSX.
 `
 
 const (
