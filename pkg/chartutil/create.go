@@ -75,9 +75,10 @@ ingress:
   annotations: {}
     # kubernetes.io/ingress.class: nginx
     # kubernetes.io/tls-acme: "true"
-  paths: []
   hosts:
-    - chart-example.local
+    - host: chart-example.local
+      paths: []
+
   tls: []
   #  - secretName: chart-example-tls
   #    hosts:
@@ -128,7 +129,6 @@ const defaultIgnore = `# Patterns to ignore when building packages.
 
 const defaultIngress = `{{- if .Values.ingress.enabled -}}
 {{- $fullName := include "<CHARTNAME>.fullname" . -}}
-{{- $ingressPaths := .Values.ingress.paths -}}
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
@@ -155,10 +155,10 @@ spec:
 {{- end }}
   rules:
   {{- range .Values.ingress.hosts }}
-    - host: {{ . | quote }}
+    - host: {{ .host | quote }}
       http:
         paths:
-        {{- range $ingressPaths }}
+        {{- range .paths }}
           - path: {{ . }}
             backend:
               serviceName: {{ $fullName }}
