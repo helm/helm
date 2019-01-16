@@ -46,12 +46,6 @@ var testingDir string
 func testTimestamper() time.Time { return time.Unix(242085845, 0).UTC() }
 
 func init() {
-	var err error
-	testingDir, err = ioutil.TempDir(testingDir, "helm")
-	if err != nil {
-		panic(err)
-	}
-
 	action.Timestamper = testTimestamper
 }
 
@@ -64,10 +58,11 @@ func TestMain(m *testing.M) {
 
 func testTempDir(t *testing.T) string {
 	t.Helper()
-	d, err := ioutil.TempDir(testingDir, "helm")
+	d, err := ioutil.TempDir("", "helm")
 	if err != nil {
 		t.Fatal(err)
 	}
+	testingDir = d
 	return d
 }
 
