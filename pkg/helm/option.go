@@ -346,6 +346,20 @@ func InstallReuseName(reuse bool) InstallOption {
 	}
 }
 
+// InstallSubNotes will (if true) instruct Tiller to render SubChart Notes
+func InstallSubNotes(enable bool) InstallOption {
+	return func(opts *options) {
+		opts.instReq.SubNotes = enable
+	}
+}
+
+// UpgradeSubNotes will (if true) instruct Tiller to render SubChart Notes
+func UpgradeSubNotes(enable bool) UpdateOption {
+	return func(opts *options) {
+		opts.updateReq.SubNotes = enable
+	}
+}
+
 // RollbackDisableHooks will disable hooks for a rollback operation
 func RollbackDisableHooks(disable bool) RollbackOption {
 	return func(opts *options) {

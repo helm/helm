@@ -109,6 +109,7 @@ type upgradeCmd struct {
 	username     string
 	password     string
 	devel        bool
+	subNotes     bool
 	description  string
 
 	certFile string
@@ -173,6 +174,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.StringVar(&upgrade.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.StringVar(&upgrade.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 	f.BoolVar(&upgrade.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
+	f.BoolVar(&upgrade.subNotes, "render-subchart-notes", false, "render subchart notes along with parent")
 	f.StringVar(&upgrade.description, "description", "", "specify the description to use for the upgrade, rather than the default")
 
 	f.MarkDeprecated("disable-hooks", "use --no-hooks instead")
@@ -264,6 +266,7 @@ func (u *upgradeCmd) run() error {
 		helm.UpgradeTimeout(u.timeout),
 		helm.ResetValues(u.resetValues),
 		helm.ReuseValues(u.reuseValues),
+		helm.UpgradeSubNotes(u.subNotes),
 		helm.UpgradeWait(u.wait),
 		helm.UpgradeDescription(u.description))
 	if err != nil {

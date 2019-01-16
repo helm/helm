@@ -381,6 +381,8 @@ type UpdateReleaseRequest struct {
 	Force bool `protobuf:"varint,11,opt,name=force" json:"force,omitempty"`
 	// Description, if set, will set the description for the updated release
 	Description string `protobuf:"bytes,12,opt,name=description" json:"description,omitempty"`
+	// Render subchart notes if enabled
+	SubNotes bool `protobuf:"varint,13,opt,name=subNotes" json:"subNotes,omitempty"`
 }
 
 func (m *UpdateReleaseRequest) Reset()                    { *m = UpdateReleaseRequest{} }
@@ -461,6 +463,13 @@ func (m *UpdateReleaseRequest) GetReuseValues() bool {
 func (m *UpdateReleaseRequest) GetForce() bool {
 	if m != nil {
 		return m.Force
+	}
+	return false
+}
+
+func (m *UpdateReleaseRequest) GetSubNotes() bool {
+	if m != nil {
+		return m.SubNotes
 	}
 	return false
 }
@@ -624,6 +633,7 @@ type InstallReleaseRequest struct {
 	DisableCrdHook bool `protobuf:"varint,10,opt,name=disable_crd_hook,json=disableCrdHook" json:"disable_crd_hook,omitempty"`
 	// Description, if set, will set the description for the installed release
 	Description string `protobuf:"bytes,11,opt,name=description" json:"description,omitempty"`
+	SubNotes    bool   `protobuf:"varint,12,opt,name=subNotes" json:"subNotes,omitempty"`
 }
 
 func (m *InstallReleaseRequest) Reset()                    { *m = InstallReleaseRequest{} }
@@ -697,6 +707,13 @@ func (m *InstallReleaseRequest) GetWait() bool {
 func (m *InstallReleaseRequest) GetDisableCrdHook() bool {
 	if m != nil {
 		return m.DisableCrdHook
+	}
+	return false
+}
+
+func (m *InstallReleaseRequest) GetSubNotes() bool {
+	if m != nil {
+		return m.SubNotes
 	}
 	return false
 }
