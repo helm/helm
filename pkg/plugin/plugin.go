@@ -109,12 +109,16 @@ type Plugin struct {
 // - If OS matches and there is no more specific match, the command will be prepared for execution
 // - If no OS/Arch match is found, return nil
 func getPlatformCommand(platformCommands []PlatformCommand) []string {
+	var command []string
 	for _, platformCommand := range platformCommands {
+		if strings.EqualFold(platformCommand.OperatingSystem, runtime.GOOS) {
+			command = strings.Split(os.ExpandEnv(platformCommand.Command), " ")
+		}
 		if strings.EqualFold(platformCommand.OperatingSystem, runtime.GOOS) && strings.EqualFold(platformCommand.Architecture, runtime.GOARCH) {
 			return strings.Split(os.ExpandEnv(platformCommand.Command), " ")
 		}
 	}
-	return nil
+	return command
 }
 
 // PrepareCommand takes a Plugin.PlatformCommand.Command, a Plugin.Command and will applying the following processing:

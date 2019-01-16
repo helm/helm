@@ -21,17 +21,8 @@ import (
 	"testing"
 )
 
-func TestPrepareCommand(t *testing.T) {
-	p := &Plugin{
-		Dir: "/tmp", // Unused
-		Metadata: &Metadata{
-			Name:    "test",
-			Command: "echo -n foo",
-		},
-	}
-	argv := []string{"--debug", "--foo", "bar"}
-
-	cmd, args, err := p.PrepareCommand(argv)
+func checkCommand(p *Plugin, extraArgs []string, osStrCmp string, t *testing.T) {
+	cmd, args, err := p.PrepareCommand(extraArgs)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -43,7 +34,7 @@ func TestPrepareCommand(t *testing.T) {
 		t.Errorf("expected 5 args, got %d", l)
 	}
 
-	expect := []string{"-n", "foo", "--debug", "--foo", "bar"}
+	expect := []string{"-n", osStrCmp, "--debug", "--foo", "bar"}
 	for i := 0; i < len(args); i++ {
 		if expect[i] != args[i] {
 			t.Errorf("Expected arg=%q, got %q", expect[i], args[i])
@@ -52,7 +43,7 @@ func TestPrepareCommand(t *testing.T) {
 
 	// Test with IgnoreFlags. This should omit --debug, --foo, bar
 	p.Metadata.IgnoreFlags = true
-	cmd, args, err = p.PrepareCommand(argv)
+	cmd, args, err = p.PrepareCommand(extraArgs)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -62,12 +53,25 @@ func TestPrepareCommand(t *testing.T) {
 	if l := len(args); l != 2 {
 		t.Errorf("expected 2 args, got %d", l)
 	}
-	expect = []string{"-n", "foo"}
+	expect = []string{"-n", osStrCmp}
 	for i := 0; i < len(args); i++ {
 		if expect[i] != args[i] {
 			t.Errorf("Expected arg=%q, got %q", expect[i], args[i])
 		}
 	}
+}
+
+func TestPrepareCommand(t *testing.T) {
+	p := &Plugin{
+		Dir: "/tmp", // Unused
+		Metadata: &Metadata{
+			Name:    "test",
+			Command: "echo -n foo",
+		},
+	}
+	argv := []string{"--debug", "--foo", "bar"}
+
+	checkCommand(p, argv, "foo", t)
 }
 
 func TestPlatformPrepareCommand(t *testing.T) {
@@ -84,19 +88,6 @@ func TestPlatformPrepareCommand(t *testing.T) {
 		},
 	}
 	argv := []string{"--debug", "--foo", "bar"}
-
-	cmd, args, err := p.PrepareCommand(argv)
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-	if cmd != "echo" {
-		t.Errorf("Expected echo, got %q", cmd)
-	}
-
-	if l := len(args); l != 5 {
-		t.Errorf("expected 5 args, got %d", l)
-	}
-
 	var osStrCmp string
 	os := runtime.GOOS
 	arch := runtime.GOARCH
@@ -109,31 +100,35 @@ func TestPlatformPrepareCommand(t *testing.T) {
 	} else {
 		osStrCmp = "os-arch"
 	}
-	expect := []string{"-n", osStrCmp, "--debug", "--foo", "bar"}
-	for i := 0; i < len(args); i++ {
-		if expect[i] != args[i] {
-			t.Errorf("Expected arg=%q, got %q", expect[i], args[i])
-		}
+
+	checkCommand(p, argv, osStrCmp, t)
+}
+
+func TestPartialPlatformPrepareCommand(t *testing.T) {
+	p := &Plugin{
+		Dir: "/tmp", // Unused
+		Metadata: &Metadata{
+			Name:    "test",
+			Command: "echo -n os-arch",
+			PlatformCommand: []PlatformCommand{
+				{OperatingSystem: "linux", Architecture: "i386", Command: "echo -n linux-i386"},
+				{OperatingSystem: "windows", Architecture: "amd64", Command: "echo -n win-64"},
+			},
+		},
+	}
+	argv := []string{"--debug", "--foo", "bar"}
+	var osStrCmp string
+	os := runtime.GOOS
+	arch := runtime.GOARCH
+	if os == "linux" {
+		osStrCmp = "linux-i386"
+	} else if os == "windows" && arch == "amd64" {
+		osStrCmp = "win-64"
+	} else {
+		osStrCmp = "os-arch"
 	}
 
-	// Test with IgnoreFlags. This should omit --debug, --foo, bar
-	p.Metadata.IgnoreFlags = true
-	cmd, args, err = p.PrepareCommand(argv)
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-	if cmd != "echo" {
-		t.Errorf("Expected echo, got %q", cmd)
-	}
-	if l := len(args); l != 2 {
-		t.Errorf("expected 2 args, got %d", l)
-	}
-	expect = []string{"-n", osStrCmp}
-	for i := 0; i < len(args); i++ {
-		if expect[i] != args[i] {
-			t.Errorf("Expected arg=%q, got %q", expect[i], args[i])
-		}
-	}
+	checkCommand(p, argv, osStrCmp, t)
 }
 
 func TestNoPrepareCommand(t *testing.T) {
@@ -157,7 +152,7 @@ func TestNoMatchPrepareCommand(t *testing.T) {
 		Metadata: &Metadata{
 			Name: "test",
 			PlatformCommand: []PlatformCommand{
-				{OperatingSystem: "linux", Architecture: "no-arch", Command: "echo -n linux-i386"},
+				{OperatingSystem: "no-os", Architecture: "amd64", Command: "echo -n linux-i386"},
 			},
 		},
 	}
