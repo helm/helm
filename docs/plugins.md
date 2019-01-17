@@ -64,13 +64,22 @@ The core of a plugin is a simple YAML file named `plugin.yaml`.
 Here is a plugin YAML for a plugin that adds support for Keybase operations:
 
 ```
-name: "keybase"
+name: "last"
 version: "0.1.0"
-usage: "Integrate Keybase.io tools with Helm"
-description: |-
-  This plugin provides Keybase services to Helm.
+usage: "get the last release name"
+description: "get the last release name""
 ignoreFlags: false
-command: "$HELM_PLUGIN_DIR/keybase.sh"
+command: "$HELM_BIN --host $TILLER_HOST list --short --max 1 --date -r"
+platformCommand:
+  - os: linux
+    arch: i386
+    command: "$HELM_BIN list --short --max 1 --date -r"
+  - os: linux
+    arch: amd64
+    command: "$HELM_BIN list --short --max 1 --date -r"
+  - os: windows
+    arch: amd64
+    command: "$HELM_BIN list --short --max 1 --date -r"
 ```
 
 The `name` is the name of the plugin. When Helm executes it plugin, this is the
@@ -91,17 +100,31 @@ The `ignoreFlags` switch tells Helm to _not_ pass flags to the plugin. So if a
 plugin is called with `helm myplugin --foo` and `ignoreFlags: true`, then `--foo`
 is silently discarded.
 
-Finally, and most importantly, `command` is the command that this plugin will
-execute when it is called. Environment variables are interpolated before the plugin
-is executed. The pattern above illustrates the preferred way to indicate where
-the plugin program lives.
+Finally, and most importantly, `platformCommand` or `command` is the command
+that this plugin will execute when it is called. The `platformCommand` section
+defines the OS/Architecture specific variations of a command. The following
+rules will apply in deciding which command to use:
+
+- If `platformCommand` is present, it will be searched first.
+- If both `os` and `arch` match the current platform, search will stop and the
+command will be used.
+- If `os` matches and there is no more specific `arch` match, the command
+will be used.
+- If no `platformCommand` match is found, the default `command` will be used.
+- If no matches are found in `platformCommand` and no `command` is present,
+Helm will exit with an error.
+
+Environment variables are interpolated before the plugin is executed. The
+pattern above illustrates the preferred way to indicate where the plugin
+program lives.
 
 There are some strategies for working with plugin commands:
 
-- If a plugin includes an executable, the executable for a `command:` should be
-  packaged in the plugin directory.
-- The `command:` line will have any environment variables expanded before
-  execution. `$HELM_PLUGIN_DIR` will point to the plugin directory.
+- If a plugin includes an executable, the executable for a
+`platformCommand:` or a `command:` should be packaged in the plugin directory.
+- The `platformCommand:` or `command:` line will have any environment
+variables expanded before execution. `$HELM_PLUGIN_DIR` will point to the
+plugin directory.
 - The command itself is not executed in a shell. So you can't oneline a shell script.
 - Helm injects lots of configuration into environment variables. Take a look at
   the environment to see what information is available.

@@ -16,9 +16,11 @@ limitations under the License.
 package plugin // import "k8s.io/helm/pkg/plugin"
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	helm_env "k8s.io/helm/pkg/helm/environment"
@@ -36,6 +38,13 @@ type Downloaders struct {
 	// Command is the executable path with which the plugin performs
 	// the actual download for the corresponding Protocols
 	Command string `json:"command"`
+}
+
+// PlatformCommand represents a command for a particular operating system and architecture
+type PlatformCommand struct {
+	OperatingSystem string `json:"os"`
+	Architecture    string `json:"arch"`
+	Command         string `json:"command"`
 }
 
 // Metadata describes a plugin.
@@ -62,7 +71,15 @@ type Metadata struct {
 	//
 	// Note that command is not executed in a shell. To do so, we suggest
 	// pointing the command to a shell script.
-	Command string `json:"command"`
+	//
+	// The following rules will apply to processing commands:
+	// - If platformCommand is present, it will be searched first
+	// - If both OS and Arch match the current platform, search will stop and the command will be executed
+	// - If OS matches and there is no more specific match, the command will be executed
+	// - If no OS/Arch match is found, the default command will be executed
+	// - If no command is present and no matches are found in platformCommand, Helm will exit with an error
+	PlatformCommand []PlatformCommand `json:"platformCommand"`
+	Command         string            `json:"command"`
 
 	// IgnoreFlags ignores any flags passed in from Helm
 	//
@@ -87,14 +104,47 @@ type Plugin struct {
 	Dir string
 }
 
-// PrepareCommand takes a Plugin.Command and prepares it for execution.
+// The following rules will apply to processing the Plugin.PlatformCommand.Command:
+// - If both OS and Arch match the current platform, search will stop and the command will be prepared for execution
+// - If OS matches and there is no more specific match, the command will be prepared for execution
+// - If no OS/Arch match is found, return nil
+func getPlatformCommand(platformCommands []PlatformCommand) []string {
+	var command []string
+	for _, platformCommand := range platformCommands {
+		if strings.EqualFold(platformCommand.OperatingSystem, runtime.GOOS) {
+			command = strings.Split(os.ExpandEnv(platformCommand.Command), " ")
+		}
+		if strings.EqualFold(platformCommand.OperatingSystem, runtime.GOOS) && strings.EqualFold(platformCommand.Architecture, runtime.GOARCH) {
+			return strings.Split(os.ExpandEnv(platformCommand.Command), " ")
+		}
+	}
+	return command
+}
+
+// PrepareCommand takes a Plugin.PlatformCommand.Command, a Plugin.Command and will applying the following processing:
+// - If platformCommand is present, it will be searched first
+// - If both OS and Arch match the current platform, search will stop and the command will be prepared for execution
+// - If OS matches and there is no more specific match, the command will be prepared for execution
+// - If no OS/Arch match is found, the default command will be prepared for execution
+// - If no command is present and no matches are found in platformCommand, will exit with an error
 //
 // It merges extraArgs into any arguments supplied in the plugin. It
 // returns the name of the command and an args array.
 //
 // The result is suitable to pass to exec.Command.
-func (p *Plugin) PrepareCommand(extraArgs []string) (string, []string) {
-	parts := strings.Split(os.ExpandEnv(p.Metadata.Command), " ")
+func (p *Plugin) PrepareCommand(extraArgs []string) (string, []string, error) {
+	var parts []string
+	platCmdLen := len(p.Metadata.PlatformCommand)
+	if platCmdLen > 0 {
+		parts = getPlatformCommand(p.Metadata.PlatformCommand)
+	}
+	if platCmdLen == 0 || parts == nil {
+		parts = strings.Split(os.ExpandEnv(p.Metadata.Command), " ")
+	}
+	if parts == nil || len(parts) == 0 || parts[0] == "" {
+		return "", nil, fmt.Errorf("No plugin command is applicable")
+	}
+
 	main := parts[0]
 	baseArgs := []string{}
 	if len(parts) > 1 {
@@ -103,7 +153,7 @@ func (p *Plugin) PrepareCommand(extraArgs []string) (string, []string) {
 	if !p.Metadata.IgnoreFlags {
 		baseArgs = append(baseArgs, extraArgs...)
 	}
-	return main, baseArgs
+	return main, baseArgs, nil
 }
 
 // LoadDir loads a plugin from the given directory.
