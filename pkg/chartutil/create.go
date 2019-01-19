@@ -61,72 +61,71 @@ const defaultValues = `# Default values for %s.
 nameOverride: ""
 fullnameOverride: ""
 
-deployment:
-  image:
-    repository: nginx
-    tag: stable
-    pullPolicy: IfNotPresent
+image:
+  repository: nginx
+  tag: stable
+  pullPolicy: IfNotPresent
 
-  replicaCount: 1
+replicaCount: 1
 
-  hpa:
-    enabled: false
-    minReplicas: 1
-    maxReplicas: 10
-    targetCPUUtilizationPercentage: 80
-    targetMemoryUtilizationPercentage: 80
-  
-  volumes: []
-    # - name: cache-volume
-    #   emptyDir: {}
-  
-  volumeMounts: []
-    # - name: cache-volume
-    #   mountPath: /cache
-  
-  podSecurityContext: {}
-    # fsGroup: 2000
+hpa:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
 
-  securityContext: {}
-    # capabilities:
-    #   drop:
-    #   - ALL
-    # readOnlyRootFilesystem: true
-    # runAsNonRoot: true
-    # runAsUser: 10001
+volumes: []
+  # - name: cache-volume
+  #   emptyDir: {}
 
-  resources: {}
-    # We usually recommend not to specify default resources and to leave this as a conscious
-    # choice for the user. This also increases chances charts run on environments with little
-    # resources, such as Minikube. If you do want to specify resources, uncomment the following
-    # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-    # limits:
-    #   cpu: 100m
-    #   memory: 128Mi
-    # requests:
-    #   cpu: 100m
-    #   memory: 128Mi
+volumeMounts: []
+  # - name: cache-volume
+  #   mountPath: /cache
 
-  env: []
-    # - name: FOO
-    #   value: bar
-    # - name: BAZ
-    #   value: qux
+podSecurityContext: {}
+  # fsGroup: 2000
 
-  readinessProbe:
-    httpGet:
-      path: /
-      port: http
-  livenessProbe:
-    httpGet:
-      path: /
-      port: http
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 10001
 
-  nodeSelector: {}
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
 
-  tolerations: []
+env: []
+  # - name: FOO
+  #   value: bar
+  # - name: BAZ
+  #   value: qux
 
-  affinity: {}
+readinessProbe:
+  httpGet:
+    path: /
+    port: http
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
 
 service:
   type: ClusterIP
@@ -222,7 +221,7 @@ metadata:
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
 spec:
-  replicas: {{ .Values.deployment.replicaCount }}
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
@@ -233,48 +232,46 @@ spec:
         app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
-    {{- with .Values.deployment.podSecurityContext }}
+    {{- with .Values.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
     {{- end }}
-    {{- with .Values.deployment.volumes }}
+    {{- with .Values.volumes }}
       volumes:
         {{- toYaml . | nindent 8 }}
     {{- end }}
       containers:
         - name: {{ .Chart.Name }}
-{{- with .Values.deployment }}
-          image: "{{ .image.repository }}:{{ .image.tag }}"
-          imagePullPolicy: {{ .image.pullPolicy }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
               containerPort: 80
               protocol: TCP
           livenessProbe:
             httpGet:
-              path: {{ .livenessProbe.httpGet.path }}
-              port: {{ .livenessProbe.httpGet.port }}
+              path: {{ .Values.livenessProbe.httpGet.path }}
+              port: {{ .Values.livenessProbe.httpGet.port }}
           readinessProbe:
             httpGet:
-              path: {{ .readinessProbe.httpGet.path }}
-              port: {{ .readinessProbe.httpGet.port }}
+              path: {{ .Values.readinessProbe.httpGet.path }}
+              port: {{ .Values.readinessProbe.httpGet.port }}
           resources:
-            {{- toYaml .resources | nindent 12 }}
+            {{- toYaml .Values.resources | nindent 12 }}
           env:
-            {{- toYaml .env | nindent 12 }}
+            {{- toYaml .Values.env | nindent 12 }}
           volumeMounts:
-            {{- toYaml .volumeMounts | nindent 12 }}
+            {{- toYaml .Values.volumeMounts | nindent 12 }}
           securityContext:
-            {{- toYaml .securityContext | nindent 12 }}
+            {{- toYaml .Values.securityContext | nindent 12 }}
       nodeSelector:
-        {{- toYaml .nodeSelector | nindent 8 }}
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
       affinity:
-        {{- toYaml .affinity | nindent 8 }}
+        {{- toYaml .Values.affinity | nindent 8 }}
       tolerations:
-        {{- toYaml .tolerations | nindent 8 }}
-    {{- end }}
+        {{- toYaml .Values.tolerations | nindent 8 }}
 `
-const defaultHorizontalPodAutoscaler = `{{- if .Values.deployment.hpa.enabled }}
+const defaultHorizontalPodAutoscaler = `{{- if .Values.hpa.enabled }}
 apiVersion: autoscaling/v2beta2
 kind: HorizontalPodAutoscaler
 metadata:
@@ -283,13 +280,13 @@ metadata:
     helm.sh/chart: {{ include "<CHARTNAME>.chart" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
-  name: {{ template "<CHARTNAME>.fullname" . }}
+  name: {{ include "<CHARTNAME>.fullname" . }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ template "<CHARTNAME>.fullname" . }}
-{{- with .Values.deployment.hpa }}
+    name: {{ include "<CHARTNAME>.fullname" . }}
+{{- with .Values.hpa }}
   minReplicas: {{ .minReplicas }}
   maxReplicas: {{ .maxReplicas }}
   metrics:
