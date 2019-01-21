@@ -147,8 +147,8 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if msgs := validation.IsDNS1123Label(t.releaseName); t.releaseName != "" && len(msgs) > 0 {
-		return fmt.Errorf("release name %s is not a valid DNS label: %s", t.releaseName, strings.Join(msgs, ";"))
+	if msgs := validation.IsDNS1123Subdomain(t.releaseName); t.releaseName != "" && len(msgs) > 0 {
+		return fmt.Errorf("release name %s is invalid: %s", t.releaseName, strings.Join(msgs, ";"))
 	}
 
 	// Check chart requirements to make sure all dependencies are present in /charts
