@@ -112,21 +112,21 @@ func TestTemplateCmd(t *testing.T) {
 			desc:        "verify the release name using capitals is invalid",
 			args:        []string{subchart1ChartPath, "--name", "FOO"},
 			expectKey:   "subchart1/templates/service.yaml",
-			expectError: "is not a valid DNS label",
+			expectError: "is invalid",
 		},
 		{
 			name:        "check_invalid_name_uppercase",
 			desc:        "verify the release name using periods is invalid",
 			args:        []string{subchart1ChartPath, "--name", "foo.bar"},
 			expectKey:   "subchart1/templates/service.yaml",
-			expectError: "is not a valid DNS label",
+			expectValue: "release-name: \"foo.bar\"",
 		},
 		{
 			name:        "check_invalid_name_uppercase",
 			desc:        "verify the release name using underscores is invalid",
 			args:        []string{subchart1ChartPath, "--name", "foo_bar"},
 			expectKey:   "subchart1/templates/service.yaml",
-			expectError: "is not a valid DNS label",
+			expectError: "is invalid",
 		},
 		{
 			name:        "check_release_is_install",
@@ -160,7 +160,7 @@ func TestTemplateCmd(t *testing.T) {
 			name:        "check_invalid_name_template",
 			desc:        "verify the relase name generate by template is invalid",
 			args:        []string{subchart1ChartPath, "--name-template", "foobar-{{ b64enc \"abc\" }}-baz"},
-			expectError: "is not a valid DNS label",
+			expectError: "is invalid",
 		},
 		{
 			name:        "check_name_template",

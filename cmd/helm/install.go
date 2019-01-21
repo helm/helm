@@ -251,8 +251,8 @@ func (i *installCmd) run() error {
 		fmt.Printf("FINAL NAME: %s\n", i.name)
 	}
 
-	if msgs := validation.IsDNS1123Label(i.name); i.name != "" && len(msgs) > 0 {
-		return fmt.Errorf("release name %s is not a valid DNS label: %s", i.name, strings.Join(msgs, ";"))
+	if msgs := validation.IsDNS1123Subdomain(i.name); i.name != "" && len(msgs) > 0 {
+		return fmt.Errorf("release name %s is invalid: %s", i.name, strings.Join(msgs, ";"))
 	}
 
 	// Check chart requirements to make sure all dependencies are present in /charts
