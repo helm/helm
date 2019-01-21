@@ -94,6 +94,7 @@ helm install [CHART] [flags]
       --no-crd-hook              prevent CRD hooks from running, but run other hooks
       --no-hooks                 prevent hooks from running during install
       --password string          chart repository password where to locate the requested chart
+      --render-subchart-notes    render subchart notes along with the parent
       --replace                  re-use the given name, even if that name is already used. This is unsafe in production
       --repo string              chart repository url where to locate the requested chart
       --set stringArray          set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)

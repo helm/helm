@@ -17,7 +17,9 @@ limitations under the License.
 package releasetesting
 
 import (
+	"context"
 	"fmt"
+	"golang.org/x/sync/semaphore"
 	"strings"
 
 	"github.com/ghodss/yaml"
@@ -69,53 +71,91 @@ func (ts *TestSuite) Run(env *Environment) error {
 		env.streamMessage("No Tests Found", release.TestRun_UNKNOWN)
 	}
 
+	var tests []*test
+
 	for _, testManifest := range ts.TestManifests {
 		test, err := newTest(testManifest)
 		if err != nil {
 			return err
 		}
 
-		test.result.StartedAt = timeconv.Now()
-		if err := env.streamRunning(test.result.Name); err != nil {
-			return err
-		}
-		test.result.Status = release.TestRun_RUNNING
+		tests = append(tests, test)
+	}
 
-		resourceCreated := true
-		if err := env.createTestPod(test); err != nil {
-			resourceCreated = false
-			if streamErr := env.streamError(test.result.Info); streamErr != nil {
+	if env.Parallel {
+		c := make(chan error, len(tests))
+		// Use a semaphore to restrict the number of tests running in parallel.
+		sem := semaphore.NewWeighted(int64(env.Parallelism))
+		ctx := context.Background()
+		for _, t := range tests {
+			sem.Acquire(ctx, 1)
+			go func(t *test, sem *semaphore.Weighted) {
+				defer sem.Release(1)
+				c <- t.run(env)
+			}(t, sem)
+		}
+
+		for range tests {
+			if err := <-c; err != nil {
 				return err
 			}
 		}
 
-		resourceCleanExit := true
-		status := v1.PodUnknown
-		if resourceCreated {
-			status, err = env.getTestPodStatus(test)
-			if err != nil {
-				resourceCleanExit = false
-				if streamErr := env.streamError(test.result.Info); streamErr != nil {
-					return streamErr
-				}
-			}
-		}
-
-		if resourceCreated && resourceCleanExit {
-			if err := test.assignTestResult(status); err != nil {
-				return err
-			}
-
-			if err := env.streamResult(test.result); err != nil {
+	} else {
+		for _, t := range tests {
+			if err := t.run(env); err != nil {
 				return err
 			}
 		}
+	}
 
-		test.result.CompletedAt = timeconv.Now()
-		ts.Results = append(ts.Results, test.result)
+	for _, t := range tests {
+		ts.Results = append(ts.Results, t.result)
 	}
 
 	ts.CompletedAt = timeconv.Now()
+	return nil
+}
+
+func (t *test) run(env *Environment) error {
+	t.result.StartedAt = timeconv.Now()
+	if err := env.streamRunning(t.result.Name); err != nil {
+		return err
+	}
+	t.result.Status = release.TestRun_RUNNING
+
+	resourceCreated := true
+	if err := env.createTestPod(t); err != nil {
+		resourceCreated = false
+		if streamErr := env.streamError(t.result.Info); streamErr != nil {
+			return err
+		}
+	}
+
+	resourceCleanExit := true
+	status := v1.PodUnknown
+	if resourceCreated {
+		var err error
+		status, err = env.getTestPodStatus(t)
+		if err != nil {
+			resourceCleanExit = false
+			if streamErr := env.streamError(t.result.Info); streamErr != nil {
+				return streamErr
+			}
+		}
+	}
+
+	if resourceCreated && resourceCleanExit {
+		if err := t.assignTestResult(status); err != nil {
+			return err
+		}
+
+		if err := env.streamResult(t.result); err != nil {
+			return err
+		}
+	}
+
+	t.result.CompletedAt = timeconv.Now()
 	return nil
 }
 

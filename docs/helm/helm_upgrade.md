@@ -80,6 +80,7 @@ helm upgrade [RELEASE] [CHART] [flags]
       --no-hooks                 disable pre/post upgrade hooks
       --password string          chart repository password where to locate the requested chart
       --recreate-pods            performs pods restart for the resource if applicable
+      --render-subchart-notes    render subchart notes along with parent
       --repo string              chart repository url where to locate the requested chart
       --reset-values             when upgrading, reset the values to the ones built into the chart
       --reuse-values             when upgrading, reuse the last release's values and merge in any overrides from the command line via --set and -f. If '--reset-values' is specified, this is ignored.

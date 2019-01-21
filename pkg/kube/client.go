@@ -48,6 +48,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	watchtools "k8s.io/client-go/tools/watch"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
+	"k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/get"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/validation"
@@ -179,7 +180,11 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		vk := gvk.Version + "/" + gvk.Kind
 		internalObj, err := asInternal(info)
 		if err != nil {
-			c.Log("Warning: conversion to internal type failed: %v", err)
+			// If the problem is just that the resource is not registered, don't print any
+			// error. This is normal for custom resources.
+			if !runtime.IsNotRegisteredError(err) {
+				c.Log("Warning: conversion to internal type failed: %v", err)
+			}
 			// Add the unstructured object in this situation. It will still get listed, just
 			// with less information.
 			objs[vk] = append(objs[vk], info.Object)
@@ -202,7 +207,9 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	//here, we will add the objPods to the objs
 	for key, podItems := range objPods {
 		for i := range podItems {
-			objs[key+"(related)"] = append(objs[key+"(related)"], &podItems[i])
+			pod := &core.Pod{}
+			legacyscheme.Scheme.Convert(&podItems[i], pod, nil)
+			objs[key+"(related)"] = append(objs[key+"(related)"], pod)
 		}
 	}
 
@@ -211,18 +218,14 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	// an object type changes, so we can just rely on that. Problem is it doesn't seem to keep
 	// track of tab widths.
 	buf := new(bytes.Buffer)
-	p, _ := get.NewHumanPrintFlags().ToPrinter("")
-	index := 0
+	printFlags := get.NewHumanPrintFlags()
 	for t, ot := range objs {
-		kindHeader := fmt.Sprintf("==> %s", t)
-		if index == 0 {
-			kindHeader = kindHeader + "\n"
-		}
-		if _, err = buf.WriteString(kindHeader); err != nil {
+		if _, err = fmt.Fprintf(buf, "==> %s\n", t); err != nil {
 			return "", err
 		}
+		typePrinter, _ := printFlags.ToPrinter("")
 		for _, o := range ot {
-			if err := p.PrintObj(o, buf); err != nil {
+			if err := typePrinter.PrintObj(o, buf); err != nil {
 				c.Log("failed to print object type %s, object: %q :\n %v", t, o, err)
 				return "", err
 			}
@@ -230,7 +233,6 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		if _, err := buf.WriteString("\n"); err != nil {
 			return "", err
 		}
-		index += 1
 	}
 	if len(missing) > 0 {
 		buf.WriteString(MissingGetHeader)
@@ -358,7 +360,7 @@ func (c *Client) watchTimeout(t time.Duration) ResourceActorFunc {
 //
 // Handling for other kinds will be added as necessary.
 func (c *Client) WatchUntilReady(namespace string, reader io.Reader, timeout int64, shouldWait bool) error {
-	infos, err := c.Build(namespace, reader)
+	infos, err := c.BuildUnstructured(namespace, reader)
 	if err != nil {
 		return err
 	}
@@ -605,12 +607,13 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 //
 // This operates on an event returned from a watcher.
 func (c *Client) waitForJob(e watch.Event, name string) (bool, error) {
-	o, ok := e.Object.(*batch.Job)
-	if !ok {
-		return true, fmt.Errorf("Expected %s to be a *batch.Job, got %T", name, e.Object)
+	job := &batch.Job{}
+	err := legacyscheme.Scheme.Convert(e.Object, job, nil)
+	if err != nil {
+		return true, err
 	}
 
-	for _, c := range o.Status.Conditions {
+	for _, c := range job.Status.Conditions {
 		if c.Type == batch.JobComplete && c.Status == v1.ConditionTrue {
 			return true, nil
 		} else if c.Type == batch.JobFailed && c.Status == v1.ConditionTrue {
@@ -618,7 +621,7 @@ func (c *Client) waitForJob(e watch.Event, name string) (bool, error) {
 		}
 	}
 
-	c.Log("%s: Jobs active: %d, jobs failed: %d, jobs succeeded: %d", name, o.Status.Active, o.Status.Failed, o.Status.Succeeded)
+	c.Log("%s: Jobs active: %d, jobs failed: %d, jobs succeeded: %d", name, job.Status.Active, job.Status.Failed, job.Status.Succeeded)
 	return false, nil
 }
 

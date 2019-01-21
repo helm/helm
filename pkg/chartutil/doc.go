@@ -25,7 +25,7 @@ A chart can be represented on the file system in one of two ways:
 	- As a tarred gzipped file containing a directory that then contains a
 	Chart.yaml file.
 
-This package provides utilitites for working with those file formats.
+This package provides utilities for working with those file formats.
 
 The preferred way of loading a chart is using 'chartutil.Load`:
 

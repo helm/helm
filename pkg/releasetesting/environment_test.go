@@ -121,10 +121,11 @@ func newMockTestingEnvironment() *MockTestingEnvironment {
 
 	return &MockTestingEnvironment{
 		Environment: &Environment{
-			Namespace:  "default",
-			KubeClient: tEnv.KubeClient,
-			Timeout:    5,
-			Stream:     &mockStream{},
+			Namespace:   "default",
+			KubeClient:  tEnv.KubeClient,
+			Timeout:     5,
+			Stream:      &mockStream{},
+			Parallelism: 20,
 		},
 	}
 }
