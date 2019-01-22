@@ -17,16 +17,11 @@ limitations under the License.
 package helmpath
 
 import (
-	"fmt"
 	"github.com/casimir/xdg-go"
-	"io"
 	"k8s.io/client-go/util/homedir"
 	"os"
 	"path/filepath"
 )
-
-// Old default helm home, it's old good ~/.helm
-var oldDefaultHelmHome = filepath.Join(homedir.HomeDir(), ".helm")
 
 // New default helm home, with different paths for different OS:
 //	- %APPDATA%\helm on Windows
@@ -34,30 +29,37 @@ var oldDefaultHelmHome = filepath.Join(homedir.HomeDir(), ".helm")
 //  - $XDG_CONFIG_DIR/helm (typically ~/.config/helm for linux)
 var defaultHelmHome = filepath.Join(xdg.ConfigHome(), "helm")
 
+// Old default helm home, it's old good ~/.helm
+var oldDefaultHelmHome = filepath.Join(homedir.HomeDir(), ".helm")
+
+type DefaultConfigHomePath interface {
+	xdgHomeExists() bool
+	basicHomeExists() bool
+}
+
+type FSConfigHomePath struct{ DefaultConfigHomePath }
+
+// Checks whether $XDG_CONFIG_HOME/helm exists
+func (FSConfigHomePath) xdgHomeExists() bool {
+	return DirExists(defaultHelmHome)
+}
+
+// Checks whether ~/.helm exists
+func (FSConfigHomePath) basicHomeExists() bool {
+	return DirExists(oldDefaultHelmHome)
+}
+
+var ConfigPath DefaultConfigHomePath = FSConfigHomePath{}
+
 func DirExists(path string) bool {
 	osStat, err := os.Stat(path)
 	return err == nil && osStat.IsDir()
 }
 
-// Check whether new default helm home exists
-// TODO: improve me
-var DefaultHelmHomeExists = func() bool {
-	return DirExists(defaultHelmHome)
-}
-
-// Checks whether old-style ~/.helm exists
-// TODO: improve me
-var OldDefaultHelmHomeExists = func() bool {
-	return DirExists(oldDefaultHelmHome)
-}
-
 // Get configuration home dir.
-//
-// Note: Temporal until all migrate to XDG Base Directory spec
-func GetDefaultConfigHome(out io.Writer) string {
-	if DefaultHelmHomeExists() || !OldDefaultHelmHomeExists() {
+func GetDefaultConfigHome() string {
+	if ConfigPath.xdgHomeExists() || !ConfigPath.basicHomeExists() {
 		return defaultHelmHome
 	}
-	fmt.Fprintf(out, "WARNING: using old-style configuration directory. Please, consider moving it to %s\n", defaultHelmHome)
 	return oldDefaultHelmHome
 }

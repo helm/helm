@@ -17,8 +17,8 @@ limitations under the License.
 package main
 
 import (
+	"k8s.io/helm/pkg/helm/helmpath"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"k8s.io/client-go/util/homedir"
@@ -34,7 +34,7 @@ func TestRootCmd(t *testing.T) {
 		{
 			name: "defaults",
 			args: "home",
-			home: filepath.Join(homedir.HomeDir(), ".config/helm"),
+			home: helmpath.GetDefaultConfigHome(),
 		},
 		{
 			name: "with --home set",

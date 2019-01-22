@@ -14,7 +14,6 @@
 package helmpath
 
 import (
-	"os"
 	"runtime"
 	"testing"
 )
@@ -26,28 +25,40 @@ func StringEquals(t *testing.T, a, b string) {
 	}
 }
 
-func returns(what bool) func() bool { return func() bool { return what } }
+type WithNewHome struct{ DefaultConfigHomePath }
+
+func (WithNewHome) xdgHomeExists() bool   { return true }
+func (WithNewHome) basicHomeExists() bool { return false }
+
+type WithOldHome struct{ DefaultConfigHomePath }
+
+func (WithOldHome) xdgHomeExists() bool   { return false }
+func (WithOldHome) basicHomeExists() bool { return true }
+
+type WithNoHome struct{ DefaultConfigHomePath }
+
+func (WithNoHome) xdgHomeExists() bool   { return false }
+func (WithNoHome) basicHomeExists() bool { return false }
+
+type WithAllHomes struct{ DefaultConfigHomePath }
+
+func (WithAllHomes) xdgHomeExists() bool   { return true }
+func (WithAllHomes) basicHomeExists() bool { return true }
 
 func TestGetDefaultConfigHome(t *testing.T) {
-	var _OldDefaultHelmHomeExists = OldDefaultHelmHomeExists
-	var _DefaultHelmHomeExists = DefaultHelmHomeExists
+	oldConfig := ConfigPath
 
-	OldDefaultHelmHomeExists = returns(false)
-	DefaultHelmHomeExists = returns(false)
-	StringEquals(t, GetDefaultConfigHome(os.Stdout), defaultHelmHome)
+	ConfigPath = WithNewHome{}
+	StringEquals(t, GetDefaultConfigHome(), defaultHelmHome)
 
-	OldDefaultHelmHomeExists = returns(true)
-	DefaultHelmHomeExists = returns(false)
-	StringEquals(t, GetDefaultConfigHome(os.Stdout), oldDefaultHelmHome)
+	ConfigPath = WithOldHome{}
+	StringEquals(t, GetDefaultConfigHome(), oldDefaultHelmHome)
 
-	OldDefaultHelmHomeExists = returns(false)
-	DefaultHelmHomeExists = returns(true)
-	StringEquals(t, GetDefaultConfigHome(os.Stdout), defaultHelmHome)
+	ConfigPath = WithNoHome{}
+	StringEquals(t, GetDefaultConfigHome(), defaultHelmHome)
 
-	OldDefaultHelmHomeExists = returns(true)
-	DefaultHelmHomeExists = returns(true)
-	StringEquals(t, GetDefaultConfigHome(os.Stdout), defaultHelmHome)
+	ConfigPath = WithAllHomes{}
+	StringEquals(t, GetDefaultConfigHome(), defaultHelmHome)
 
-	OldDefaultHelmHomeExists = _OldDefaultHelmHomeExists
-	DefaultHelmHomeExists = _DefaultHelmHomeExists
+	ConfigPath = oldConfig
 }
