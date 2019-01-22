@@ -62,6 +62,7 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 	}
 
 	// Now we create commands for all of these.
+loop:
 	for _, plug := range found {
 		plug := plug
 		md := plug.Metadata
@@ -117,7 +118,12 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 			}
 		}
 
-		// TODO: Make sure a command with this name does not already exist.
+		// Make sure a command with this name does not already exist.
+		for _, cmd := range baseCmd.Commands() {
+			if cmd.Name() == md.Name {
+				continue loop
+			}
+		}
 		baseCmd.AddCommand(c)
 	}
 }
