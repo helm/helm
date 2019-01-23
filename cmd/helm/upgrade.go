@@ -44,7 +44,7 @@ To customize the chart values, use any of
  - '--set-string' to provide key=val forcing val to be stored as a string,
  - '--set-file' to provide key=path to read a single large value from a file at path.
 
-To edit or append to the existing customized values, add the 
+To edit or append to the existing customized values, add the
  '--reuse-values' flag, otherwise any existing customized values are ignored.
 
 If no chart value arguments are provided on the command line, any existing customized values are carried
@@ -105,7 +105,7 @@ type upgradeCmd struct {
 	resetValues  bool
 	reuseValues  bool
 	wait         bool
-	safe         bool
+	atomic       bool
 	repoURL      string
 	username     string
 	password     string
@@ -143,7 +143,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 			upgrade.release = args[0]
 			upgrade.chart = args[1]
 			upgrade.client = ensureHelmClient(upgrade.client)
-			upgrade.wait = upgrade.wait || upgrade.safe
+			upgrade.wait = upgrade.wait || upgrade.atomic
 
 			return upgrade.run()
 		},
@@ -169,7 +169,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&upgrade.resetValues, "reset-values", false, "when upgrading, reset the values to the ones built into the chart")
 	f.BoolVar(&upgrade.reuseValues, "reuse-values", false, "when upgrading, reuse the last release's values and merge in any overrides from the command line via --set and -f. If '--reset-values' is specified, this is ignored.")
 	f.BoolVar(&upgrade.wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
-	f.BoolVar(&upgrade.safe, "safe", false, "if set, upgrade process rolls back changes made in case of failed upgrade")
+	f.BoolVar(&upgrade.atomic, "atomic", false, "if set, upgrade process rolls back changes made in case of failed upgrade")
 	f.StringVar(&upgrade.repoURL, "repo", "", "chart repository url where to locate the requested chart")
 	f.StringVar(&upgrade.username, "username", "", "chart repository username where to locate the requested chart")
 	f.StringVar(&upgrade.password, "password", "", "chart repository password where to locate the requested chart")
@@ -236,7 +236,7 @@ func (u *upgradeCmd) run() error {
 				timeout:      u.timeout,
 				wait:         u.wait,
 				description:  u.description,
-				safe:         u.safe,
+				atomic:       u.atomic,
 			}
 			return ic.run()
 		}
@@ -276,7 +276,7 @@ func (u *upgradeCmd) run() error {
 		helm.UpgradeDescription(u.description))
 	if err != nil {
 		fmt.Fprintf(u.out, "UPGRADE FAILED\nROLLING BACK\nError: %v\n", prettyError(err))
-		if u.safe {
+		if u.atomic {
 			rollback := &rollbackCmd{
 				out:          u.out,
 				client:       u.client,
