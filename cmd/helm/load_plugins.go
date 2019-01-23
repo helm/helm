@@ -23,11 +23,21 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"text/template"
 
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/plugin"
 )
+
+var pluginLoadWarningTemp = template.Must(template.New("plugin").Parse(`
+Helm Client Plugin Load Warning(s):
+{{range $_, $warning := .Warnings}}
+- {{ $warning }}
+{{end}}
+In order to eliminate this warning(s), please try to uninstall or reinstall the plugin(s) in question.
+------------------------------------------------------------------------------------------------------
+`))
 
 type pluginError struct {
 	error
@@ -62,6 +72,7 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 	}
 
 	// Now we create commands for all of these.
+	warnings := []string{}
 loop:
 	for _, plug := range found {
 		plug := plug
@@ -121,11 +132,19 @@ loop:
 		// Make sure a command with this name does not already exist.
 		for _, cmd := range baseCmd.Commands() {
 			if cmd.Name() == md.Name {
+				warning := fmt.Sprintf("A command with the name of [%s] already exists, so the plugin at [%s] will not be loaded.", md.Name, plug.Dir)
+				warnings = append(warnings, warning)
 				continue loop
 			}
 		}
 		baseCmd.AddCommand(c)
 	}
+
+	ctx := map[string]interface{}{
+		"Warnings": warnings,
+	}
+
+	pluginLoadWarningTemp.Execute(out, ctx)
 }
 
 // manuallyProcessArgs processes an arg array, removing special args.
