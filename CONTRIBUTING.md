@@ -84,12 +84,12 @@ your PR will be rejected by the automated DCO check.
 
 Whether you are a user or contributor, official support channels include:
 
-- GitHub [issues](https://github.com/helm/helm/issues/new)
-- Slack [Kubernetes Slack](http://slack.kubernetes.io/):
-  - User: #helm-users
-  - Contributor: #helm-dev
+- [Issues](https://github.com/helm/helm/issues)
+- Slack:
+  - User: [#helm-users](https://kubernetes.slack.com/messages/C0NH30761/details/)
+  - Contributor: [#helm-dev](https://kubernetes.slack.com/messages/C51E88VDG/)
 
-Before opening a new issue or submitting a new pull request, it's helpful to search the project - it's likely that another user has already reported the issue you're facing, or it's a known issue that we're already aware of.
+Before opening a new issue or submitting a new pull request, it's helpful to search the project - it's likely that another user has already reported the issue you're facing, or it's a known issue that we're already aware of. It is also worth asking on the Slack channels.
 
 ## Milestones
 
@@ -180,33 +180,33 @@ contributing to Helm. All issue types follow the same general lifecycle. Differe
 Coding conventions and standards are explained in the official developer docs:
 [Developers Guide](docs/developers.md)
 
-The next section contains more information on the workflow followed for PRs
+The next section contains more information on the workflow followed for Pull Requests.
 
 ## Pull Requests
 
-Like any good open source project, we use Pull Requests to track code changes
+Like any good open source project, we use Pull Requests (PRs) to track code changes.
 
 ### PR Lifecycle
 
 1. PR creation
+    - PRs are usually created to fix or else be a subset of other PRs that fix a particular issue.
     - We more than welcome PRs that are currently in progress. They are a great way to keep track of
     important work that is in-flight, but useful for others to see. If a PR is a work in progress,
     it **must** be prefaced with "WIP: [title]". Once the PR is ready for review, remove "WIP" from
     the title.
-    - It is preferred, but not required, to have a PR tied to a specific issue.
+    - It is preferred, but not required, to have a PR tied to a specific issue. There can be
+    circumstances where if it is a quick fix then an issue might be overkill. The details provided
+    in the PR description would suffice in this case.
 2. Triage
     - The maintainer in charge of triaging will apply the proper labels for the issue. This should
     include at least a size label, `bug` or `feature`, and `awaiting review` once all labels are applied.
-    See the [Labels section](#labels) for full details on the definitions of labels
+    See the [Labels section](#labels) for full details on the definitions of labels.
     - Add the PR to the correct milestone. This should be the same as the issue the PR closes.
 3. Assigning reviews
     - Once a review has the `awaiting review` label, maintainers will review them as schedule permits.
     The maintainer who takes the issue should self-request a review.
-    - Reviews from others in the community, especially those who have encountered a bug or have
-    requested a feature, are highly encouraged, but not required. Maintainer reviews **are** required
-    before any merge
     - Any PR with the `size/large` label requires 2 review approvals from maintainers before it can be
-    merged. Those with `size/medium` are per the judgement of the maintainers
+    merged. Those with `size/medium` or `size/small` are per the judgement of the maintainers. 
 4. Reviewing/Discussion
     - Once a maintainer begins reviewing a PR, they will remove the `awaiting review` label and add
     the `in progress` label so the person submitting knows that it is being worked on. This is
@@ -214,17 +214,24 @@ Like any good open source project, we use Pull Requests to track code changes
     - All reviews will be completed using Github review tool.
     - A "Comment" review should be used when there are questions about the code that should be
     answered, but that don't involve code changes. This type of review does not count as approval.
-    - A "Changes Requested" review indicates that changes to the code need to be made before they will be merged.
-    - Reviewers should update labels as needed (such as `needs rebase`)
-5. Address comments by answering questions or changing code
+    - A "Changes Requested" review indicates that changes to the code need to be made before they will be
+    merged.
+    - Reviewers (maintainers) should update labels as needed (such as `needs rebase`).
+    - Reviews are also welcome from others in the community, especially those who have encountered a bug or
+    have requested a feature. In the code review, a message can be added, as well as `LGTM` if the PR is
+    good to merge. It’s also possible to add comments to specific lines in a file, for giving context
+    to the comment. 
+5. PR owner should try to be responsive to comments by answering questions or changing code. If the
+   owner is unsure of any comment, reach out to the person who added the comment in
+   [#helm-dev](https://kubernetes.slack.com/messages/C51E88VDG/). Once all comments have been addressed,
+   the PR is ready to be merged.
 6. Merge or close
     - PRs should stay open until merged or if they have not been active for more than 30 days.
     This will help keep the PR queue to a manageable size and reduce noise. Should the PR need
     to stay open (like in the case of a WIP), the `keep open` label can be added.
-    - If the owner of the PR is listed in `OWNERS`, that user **must** merge their own PRs
-    or explicitly request another OWNER do that for them.
-    - If the owner of a PR is _not_ listed in `OWNERS`, any core committer may
-    merge the PR once it is approved.
+    - If the owner of the PR is listed in `OWNERS`, that user **must** merge their own PRs or explicitly
+    request another OWNER do that for them.
+    - If the owner of a PR is _not_ listed in `OWNERS`, any maintainer may merge the PR once it is approved.
 
 #### Documentation PRs
 
