@@ -6,6 +6,12 @@ import:
   - package: golang.org/x/sync
     subpackages:
     - semaphore
+  # This is temporary and can probably be removed the next time gRPC is updated
+  - package: golang.org/x/sys
+    version: b90733256f2e882e81d52f9126de08df5615afd9
+    subpackages:
+    - unix
+    - windows
   - package: github.com/spf13/cobra
     version: fe5e611709b0c57fa4a89136deaa8e1d4004d053
   - package: github.com/spf13/pflag
@@ -22,13 +28,13 @@ import:
   - package: github.com/technosophos/moniker
     version: ~0.2
   - package: github.com/golang/protobuf
-    version: 1643683e1b54a9e88ad26d98f81400c8c9d9f4f9
+    version: b4deda0973fb4c70b50d226b1af49f3da59f5265
     subpackages:
       - proto
       - ptypes/any
       - ptypes/timestamp
   - package: google.golang.org/grpc
-    version: 1.7.2
+    version: 1.18.0
   - package: github.com/gosuri/uitable
   - package: github.com/asaskevich/govalidator
     version: ^4.0.0
