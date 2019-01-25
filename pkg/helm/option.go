@@ -460,7 +460,7 @@ type VersionOption func(*options)
 // the defaults used when running the `helm upgrade` command.
 type UpdateOption func(*options)
 
-// RollbackOption allows specififying various settings configurable
+// RollbackOption allows specifying various settings configurable
 // by the helm client user for overriding the defaults used when
 // running the `helm rollback` command.
 type RollbackOption func(*options)
