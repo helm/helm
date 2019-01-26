@@ -69,9 +69,10 @@ When Helm clients are connecting from outside of the cluster, the security betwe
 Contrary to the previous [Enabling TLS](#enabling-tls) section, this section does not involve running a tiller server pod in your cluster (for what it's worth, that lines up with the current [helm v3 proposal](https://github.com/helm/community/blob/master/helm-v3/000-helm-v3.md)), thus there is no gRPC endpoint (and thus there's no need to create & manage TLS certificates to secure each gRPC endpoint).
 
 Steps:
- * Fetch the latest helm release tarball from the [GitHub release page](https://github.com/helm/helm/releases), and extract and move `helm` and `tiller` somewhere on your `$PATH`.
- * "Server": Run `tiller --storage=secret`. (Note that `tiller` has a default value of ":44134" for the `--listen` argument.)
- * Client: In another terminal (and on the same host that the aforementioned `tiller` command was run for the previous bullet): Run `export HELM_HOST=:44134`, and then run `helm` commands as usual.
+
+- Fetch the latest helm release tarball from the [GitHub release page](https://github.com/helm/helm/releases), and extract and move `helm` and `tiller` somewhere on your `$PATH`.
+- "Server": Run `tiller --storage=secret`. (Note that `tiller` has a default value of ":44134" for the `--listen` argument.)
+- Client: In another terminal (and on the same host that the aforementioned `tiller` command was run for the previous bullet): Run `export HELM_HOST=:44134`, and then run `helm` commands as usual.
 
 ### Tiller's Release Information
 
