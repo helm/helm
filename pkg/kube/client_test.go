@@ -151,6 +151,8 @@ func TestUpdate(t *testing.T) {
 				return newResponse(200, &listB.Items[1])
 			case p == "/namespaces/default/pods/squid" && m == "DELETE":
 				return newResponse(200, &listB.Items[1])
+			case p == "/namespaces/default/pods/squid" && m == "GET":
+				return newResponse(200, &listA.Items[2])
 			default:
 				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
 				return nil, nil
@@ -183,6 +185,7 @@ func TestUpdate(t *testing.T) {
 		"/namespaces/default/pods/otter:GET",
 		"/namespaces/default/pods/dolphin:GET",
 		"/namespaces/default/pods:POST",
+		"/namespaces/default/pods/squid:GET",
 		"/namespaces/default/pods/squid:DELETE",
 	}
 	if len(expectedActions) != len(actions) {
@@ -192,6 +195,18 @@ func TestUpdate(t *testing.T) {
 	for k, v := range expectedActions {
 		if actions[k] != v {
 			t.Errorf("expected %s request got %s", v, actions[k])
+		}
+	}
+
+	// Test resource policy is respected
+	actions = nil
+	listA.Items[2].ObjectMeta.Annotations = map[string]string{ResourcePolicyAnno: KeepPolicy}
+	if err := c.Update(v1.NamespaceDefault, objBody(&listA), objBody(&listB), false, false, 0, false); err != nil {
+		t.Fatal(err)
+	}
+	for _, v := range actions {
+		if v == "/namespaces/default/pods/squid:DELETE" {
+			t.Errorf("should not have deleted squid - it has helm.sh/resource-policy=keep")
 		}
 	}
 }

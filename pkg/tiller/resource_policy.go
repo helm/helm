@@ -24,15 +24,6 @@ import (
 	"k8s.io/helm/pkg/tiller/environment"
 )
 
-// resourcePolicyAnno is the annotation name for a resource policy
-const resourcePolicyAnno = "helm.sh/resource-policy"
-
-// keepPolicy is the resource policy type for keep
-//
-// This resource policy type allows resources to skip being deleted
-//   during an uninstallRelease action.
-const keepPolicy = "keep"
-
 func filterManifestsToKeep(manifests []Manifest) ([]Manifest, []Manifest) {
 	remaining := []Manifest{}
 	keep := []Manifest{}
@@ -43,14 +34,14 @@ func filterManifestsToKeep(manifests []Manifest) ([]Manifest, []Manifest) {
 			continue
 		}
 
-		resourcePolicyType, ok := m.Head.Metadata.Annotations[resourcePolicyAnno]
+		resourcePolicyType, ok := m.Head.Metadata.Annotations[kube.ResourcePolicyAnno]
 		if !ok {
 			remaining = append(remaining, m)
 			continue
 		}
 
 		resourcePolicyType = strings.ToLower(strings.TrimSpace(resourcePolicyType))
-		if resourcePolicyType == keepPolicy {
+		if resourcePolicyType == kube.KeepPolicy {
 			keep = append(keep, m)
 		}
 
