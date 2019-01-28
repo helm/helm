@@ -40,7 +40,7 @@ import (
 	"k8s.io/helm/pkg/urlutil"
 )
 
-// Manager handles the lifecycle of fetching, resolving, and storing dependencies.
+// Manager handles the lifecycle of fetching, resolving, and storing dependencies/libraries.
 type Manager struct {
 	// Out is used to print warnings and notifications.
 	Out io.Writer
@@ -65,7 +65,7 @@ type Manager struct {
 // If the lockfile is not present, this will run a Manager.Update()
 //
 // If SkipUpdate is set, this will not update the repository.
-func (m *Manager) Build() error {
+func (m *Manager) Build(isLib bool) error {
 	c, err := m.loadChartDir()
 	if err != nil {
 		return err
@@ -75,16 +75,24 @@ func (m *Manager) Build() error {
 	// an update.
 	lock := c.Lock
 	if lock == nil {
-		return m.Update()
+		return m.Update(isLib)
 	}
 
-	req := c.Metadata.Dependencies
+	var req []*chart.Dependency
+	var lockReq []*chart.Dependency
+	if isLib {
+		req = c.Metadata.Libraries
+		lockReq = lock.Libraries
+	} else {
+		req = c.Metadata.Dependencies
+		lockReq = lock.Dependencies
+	}
 	if sum, err := resolver.HashReq(req); err != nil || sum != lock.Digest {
 		return errors.New("Chart.lock is out of sync with Chart.yaml")
 	}
 
 	// Check that all of the repos we're dependent on actually exist.
-	if err := m.hasAllRepos(lock.Dependencies); err != nil {
+	if err := m.hasAllRepos(lockReq); err != nil {
 		return err
 	}
 
@@ -96,7 +104,7 @@ func (m *Manager) Build() error {
 	}
 
 	// Now we need to fetch every package here into charts/
-	if err := m.downloadAll(lock.Dependencies); err != nil {
+	if err := m.downloadAll(lockReq, isLib); err != nil {
 		return err
 	}
 
@@ -108,20 +116,25 @@ func (m *Manager) Build() error {
 // It first reads the Chart.yaml file, and then attempts to
 // negotiate versions based on that. It will download the versions
 // from remote chart repositories unless SkipUpdate is true.
-func (m *Manager) Update() error {
+func (m *Manager) Update(isLib bool) error {
 	c, err := m.loadChartDir()
 	if err != nil {
 		return err
 	}
 
-	// If no dependencies are found, we consider this a successful
+	// If no dependencies/libraries are found, we consider this a successful
 	// completion.
-	req := c.Metadata.Dependencies
+	var req []*chart.Dependency
+	if isLib {
+		req = c.Metadata.Libraries
+	} else {
+		req = c.Metadata.Dependencies
+	}
 	if req == nil {
 		return nil
 	}
 
-	// Hash dependencies
+	// Hash dependencies/libraries
 	// FIXME should this hash all of Chart.yaml
 	hash, err := resolver.HashReq(req)
 	if err != nil {
@@ -143,14 +156,20 @@ func (m *Manager) Update() error {
 	}
 
 	// Now we need to find out which version of a chart best satisfies the
-	// dependencies in the Chart.yaml
-	lock, err := m.resolve(req, repoNames, hash)
+	// dependencies/libraries in the Chart.yaml
+	lock, err := m.resolve(req, repoNames, hash, isLib)
 	if err != nil {
 		return err
 	}
 
 	// Now we need to fetch every package here into charts/
-	if err := m.downloadAll(lock.Dependencies); err != nil {
+	var lockReq []*chart.Dependency
+	if isLib {
+		lockReq = lock.Libraries
+	} else {
+		lockReq = lock.Dependencies
+	}
+	if err := m.downloadAll(lockReq, isLib); err != nil {
 		return err
 	}
 
@@ -173,26 +192,35 @@ func (m *Manager) loadChartDir() (*chart.Chart, error) {
 	return loader.LoadDir(m.ChartPath)
 }
 
-// resolve takes a list of dependencies and translates them into an exact version to download.
+// resolve takes a list of dependencies/libraries and translates them into an exact version to download.
 //
-// This returns a lock file, which has all of the dependencies normalized to a specific version.
-func (m *Manager) resolve(req []*chart.Dependency, repoNames map[string]string, hash string) (*chart.Lock, error) {
+// This returns a lock file, which has all of the dependencies/libraries normalized to a specific version.
+func (m *Manager) resolve(req []*chart.Dependency, repoNames map[string]string, hash string, isLib bool) (*chart.Lock, error) {
 	res := resolver.New(m.ChartPath, m.HelmHome)
-	return res.Resolve(req, repoNames, hash)
+	return res.Resolve(req, repoNames, hash, isLib)
 }
 
-// downloadAll takes a list of dependencies and downloads them into charts/
+// downloadAll takes a list of dependencies/libraries and downloads them into charts/
 //
 // It will delete versions of the chart that exist on disk and might cause
 // a conflict.
-func (m *Manager) downloadAll(deps []*chart.Dependency) error {
+func (m *Manager) downloadAll(deps []*chart.Dependency, isLib bool) error {
 	repos, err := m.loadChartRepositories()
 	if err != nil {
 		return err
 	}
 
-	destPath := filepath.Join(m.ChartPath, "charts")
-	tmpPath := filepath.Join(m.ChartPath, "tmpcharts")
+	var dirName string
+	var tmpDirName string
+	if isLib {
+		dirName = "library"
+		tmpDirName = "tmplibrary"
+	} else {
+		dirName = "charts"
+		tmpDirName = "tmpcharts"
+	}
+	destPath := filepath.Join(m.ChartPath, dirName)
+	tmpPath := filepath.Join(m.ChartPath, tmpDirName)
 
 	// Create 'charts' directory if it doesn't already exist.
 	if fi, err := os.Stat(destPath); err != nil {

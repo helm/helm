@@ -156,17 +156,26 @@ func (o *templateOptions) run(out io.Writer) error {
 	if err != nil {
 		return err
 	}
-
 	if req := c.Metadata.Dependencies; req != nil {
 		if err := checkDependencies(c, req); err != nil {
 			return err
 		}
 	}
-	options := chartutil.ReleaseOptions{
-		Name: o.releaseName,
+	if err := chartutil.ProcessDependencies(c, config); err != nil {
+		return err
 	}
 
-	if err := chartutil.ProcessDependencies(c, config); err != nil {
+	// Check chart libraries to make sure all are present in /library
+	c, err = loader.Load(o.chartPath)
+	if err != nil {
+		return err
+	}
+	if req := c.Metadata.Libraries; req != nil {
+		if err := checkLibraries(c, req); err != nil {
+			return err
+		}
+	}
+	if err := chartutil.ProcessLibraries(c, config); err != nil {
 		return err
 	}
 
@@ -184,6 +193,9 @@ func (o *templateOptions) run(out io.Writer) error {
 	caps.KubeVersion.Minor = fmt.Sprint(kv.Minor())
 	caps.KubeVersion.GitVersion = fmt.Sprintf("v%d.%d.0", kv.Major(), kv.Minor())
 
+	options := chartutil.ReleaseOptions{
+		Name: o.releaseName,
+	}
 	vals, err := chartutil.ToRenderValues(c, config, options, caps)
 	if err != nil {
 		return err

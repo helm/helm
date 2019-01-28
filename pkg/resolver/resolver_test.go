@@ -95,7 +95,7 @@ func TestResolve(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		l, err := r.Resolve(tt.req, repoNames, hash)
+		l, err := r.Resolve(tt.req, repoNames, hash, false)
 		if err != nil {
 			if tt.err {
 				continue

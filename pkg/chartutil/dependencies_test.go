@@ -208,7 +208,7 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	e["SCBexported2A"] = "blaster"
 	e["global.SC1exported2.all.SC1exported3"] = "SC1expstr"
 
-	if err := processDependencyImportValues(c); err != nil {
+	if err := ProcessDependencyImportValues(c, false); err != nil {
 		t.Fatalf("processing import values dependencies %v", err)
 	}
 	cc := Values(c.Values)
@@ -244,7 +244,7 @@ func TestGetAliasDependency(t *testing.T) {
 	}
 
 	// Success case
-	aliasChart := getAliasDependency(c.Dependencies(), req[0])
+	aliasChart := GetAliasDependency(c.Dependencies(), req[0])
 	if aliasChart == nil {
 		t.Fatalf("failed to get dependency chart for alias %s", req[0].Name)
 	}
@@ -264,7 +264,7 @@ func TestGetAliasDependency(t *testing.T) {
 
 	// Failure case
 	req[0].Name = "something-else"
-	if aliasChart := getAliasDependency(c.Dependencies(), req[0]); aliasChart != nil {
+	if aliasChart := GetAliasDependency(c.Dependencies(), req[0]); aliasChart != nil {
 		t.Fatalf("expected no chart but got %s", aliasChart.Name())
 	}
 

@@ -23,32 +23,32 @@ import (
 	"k8s.io/helm/cmd/helm/require"
 )
 
-const dependencyBuildDesc = `
-Build out the charts/ directory from the Chart.lock file.
+const libraryBuildDesc = `
+Build out the library/ directory from the Chart.lock file.
 
-Build is used to reconstruct a chart's dependencies to the state specified in
-the lock file. This will not re-negotiate dependencies, as 'helm dependency update'
+Build is used to reconstruct a chart's libraries to the state specified in
+the lock file. This will not re-negotiate libraries, as 'helm library update'
 does.
 
-If no lock file is found, 'helm dependency build' will mirror the behavior
-of 'helm dependency update'.
+If no lock file is found, 'helm library build' will mirror the behavior
+of 'helm library update'.
 `
 
-func newDependencyBuildCmd(out io.Writer) *cobra.Command {
+func newLibraryBuildCmd(out io.Writer) *cobra.Command {
 	o := &refBuildOptions{
 		chartpath: ".",
 	}
 
 	cmd := &cobra.Command{
 		Use:   "build CHART",
-		Short: "rebuild the charts/ directory based on the Chart.lock file",
-		Long:  dependencyBuildDesc,
+		Short: "rebuild the library/ directory based on the Chart.lock file",
+		Long:  libraryBuildDesc,
 		Args:  require.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				o.chartpath = args[0]
 			}
-			return o.run(out, false)
+			return o.run(out, true)
 		},
 	}
 

@@ -71,6 +71,7 @@ type BufferedFile struct {
 func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 	c := new(chart.Chart)
 	subcharts := make(map[string][]*BufferedFile)
+	libcharts := make(map[string][]*BufferedFile)
 
 	for _, f := range files {
 		switch {
@@ -101,6 +102,15 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 			fname := strings.TrimPrefix(f.Name, "charts/")
 			cname := strings.SplitN(fname, "/", 2)[0]
 			subcharts[cname] = append(subcharts[cname], &BufferedFile{Name: fname, Data: f.Data})
+		case strings.HasPrefix(f.Name, "library/"):
+			if filepath.Ext(f.Name) == ".prov" {
+				c.Files = append(c.Files, &chart.File{Name: f.Name, Data: f.Data})
+				continue
+			}
+
+			fname := strings.TrimPrefix(f.Name, "library/")
+			cname := strings.SplitN(fname, "/", 2)[0]
+			libcharts[cname] = append(libcharts[cname], &BufferedFile{Name: fname, Data: f.Data})
 		default:
 			c.Files = append(c.Files, &chart.File{Name: f.Name, Data: f.Data})
 		}
@@ -146,6 +156,40 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 			return c, errors.Wrapf(err, "error unpacking %s in %s", n, c.Name())
 		}
 		c.AddDependency(sc)
+	}
+
+	for n, files := range libcharts {
+		var sc *chart.Chart
+		var err error
+		switch {
+		case strings.IndexAny(n, "_.") == 0:
+			continue
+		case filepath.Ext(n) == ".tgz":
+			file := files[0]
+			if file.Name != n {
+				return c, errors.Errorf("error unpacking tar in %s: expected %s, got %s", c.Name(), n, file.Name)
+			}
+			// Untar the chart and add to c.Dependencies
+			sc, err = LoadArchive(bytes.NewBuffer(file.Data))
+		default:
+			// We have to trim the prefix off of every file, and ignore any file
+			// that is in charts/, but isn't actually a chart.
+			buff := make([]*BufferedFile, 0, len(files))
+			for _, f := range files {
+				parts := strings.SplitN(f.Name, "/", 2)
+				if len(parts) < 2 {
+					continue
+				}
+				f.Name = parts[1]
+				buff = append(buff, f)
+			}
+			sc, err = LoadFiles(buff)
+		}
+
+		if err != nil {
+			return c, errors.Wrapf(err, "error unpacking %s in %s", n, c.Name())
+		}
+		c.AddLibrary(sc)
 	}
 
 	return c, nil

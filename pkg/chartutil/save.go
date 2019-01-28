@@ -90,6 +90,16 @@ func SaveDir(c *chart.Chart, dest string) error {
 			return err
 		}
 	}
+
+	// Save libraries
+	base = filepath.Join(outdir, LibraryDir)
+	for _, lib := range c.Libraries() {
+		// Here, we write each library as a tar file.
+		if _, err := Save(lib, base); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -201,6 +211,14 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 			return err
 		}
 	}
+
+	// Save libraries
+	for _, lib := range c.Libraries() {
+		if err := writeTarContents(out, lib, base+"/library"); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 

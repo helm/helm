@@ -24,27 +24,24 @@ import (
 	"k8s.io/helm/cmd/helm/require"
 )
 
-const dependencyDesc = `
-Manage the dependencies of a chart.
+const libraryDesc = `
+Manage the libraries of a chart.
 
-Helm charts store their dependencies in 'charts/'. For chart developers, it is
-often easier to manage dependencies in 'Chart.yaml' which declares all
-dependencies.
+Helm charts store their libraries in 'library/'. For chart developers, it is
+often easier to manage libraries in 'Chart.yaml' which declares all
+libraries.
 
-The dependency commands operate on that file, making it easy to synchronize
-between the desired dependencies and the actual dependencies stored in the
-'charts/' directory.
+The library commands operate on that file, making it easy to synchronize
+between the desired libraries and the actual libraries stored in the
+'library/' directory.
 
-For example, this Chart.yaml declares two dependencies:
+For example, this Chart.yaml declares one library:
 
     # Chart.yaml
-    dependencies:
-    - name: nginx
-      version: "1.2.3"
-      repository: "https://example.com/charts"
-    - name: memcached
-      version: "3.2.1"
-      repository: "https://another.example.com/charts"
+    libraries:
+    - name: common
+      version: "^2.1.0"
+      repository: http://another.example.com/charts
 
 
 The 'name' should be the name of a chart, where that name must match the name
@@ -58,22 +55,22 @@ repository's index. Note: 'repository' can be an alias. The alias must start
 with 'alias:' or '@'.
 
 Starting from 2.2.0, repository can be defined as the path to the directory of
-the dependency charts stored locally. The path should start with a prefix of
+the library charts stored locally. The path should start with a prefix of
 "file://". For example,
 
     # Chart.yaml
-    dependencies:
-    - name: nginx
-      version: "1.2.3"
-      repository: "file://../dependency_chart/nginx"
+    libraries:
+    - name: common
+      version: "^2.1.0"
+      repository: "file://../library_chart/common"
 
-If the dependency chart is retrieved locally, it is not required to have the
+If the library chart is retrieved locally, it is not required to have the
 repository added to helm by "helm add repo". Version matching is also supported
 for this case.
 `
 
-const dependencyListDesc = `
-List all of the dependencies declared in a chart.
+const libraryListDesc = `
+List all of the libraries declared in a chart.
 
 This can take chart archives and chart directories as input. It will not alter
 the contents of a chart.
@@ -81,23 +78,23 @@ the contents of a chart.
 This will produce an error if the chart cannot be loaded.
 `
 
-func newDependencyCmd(out io.Writer) *cobra.Command {
+func newLibraryCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "dependency update|build|list",
-		Aliases: []string{"dep", "dependencies"},
-		Short:   "manage a chart's dependencies",
-		Long:    dependencyDesc,
+		Use:     "library update|build|list",
+		Aliases: []string{"lib", "libraries"},
+		Short:   "manage a chart's libraries",
+		Long:    libraryDesc,
 		Args:    require.NoArgs,
 	}
 
-	cmd.AddCommand(newDependencyListCmd(out))
-	cmd.AddCommand(newDependencyUpdateCmd(out))
-	cmd.AddCommand(newDependencyBuildCmd(out))
+	cmd.AddCommand(newLibraryListCmd(out))
+	cmd.AddCommand(newLibraryUpdateCmd(out))
+	cmd.AddCommand(newLibraryBuildCmd(out))
 
 	return cmd
 }
 
-func newDependencyListCmd(out io.Writer) *cobra.Command {
+func newLibraryListCmd(out io.Writer) *cobra.Command {
 	o := &refListOptions{
 		chartpath: ".",
 	}
@@ -105,14 +102,14 @@ func newDependencyListCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "list CHART",
 		Aliases: []string{"ls"},
-		Short:   "list the dependencies for the given chart",
-		Long:    dependencyListDesc,
+		Short:   "list the libraries for the given chart",
+		Long:    libraryListDesc,
 		Args:    require.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				o.chartpath = filepath.Clean(args[0])
 			}
-			return o.run(out, false)
+			return o.run(out, true)
 		},
 	}
 	return cmd

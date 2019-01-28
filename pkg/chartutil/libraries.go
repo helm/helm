@@ -20,48 +20,48 @@ import (
 	"k8s.io/helm/pkg/version"
 )
 
-// ProcessDependencies checks through this chart's dependencies, processing accordingly.
-func ProcessDependencies(c *chart.Chart, v Values) error {
-	if err := processDependencyEnabled(c, v); err != nil {
+// ProcessLibraries checks through this chart's dependencies, processing accordingly.
+func ProcessLibraries(c *chart.Chart, v Values) error {
+	if err := processLibraryEnabled(c, v); err != nil {
 		return err
 	}
-	return ProcessDependencyImportValues(c, false)
+	return ProcessDependencyImportValues(c, true)
 }
 
-// processDependencyEnabled removes disabled charts from dependencies
-func processDependencyEnabled(c *chart.Chart, v map[string]interface{}) error {
-	if c.Metadata.Dependencies == nil {
+// processLibraryEnabled removes disabled charts from dependencies
+func processLibraryEnabled(c *chart.Chart, v map[string]interface{}) error {
+	if c.Metadata.Libraries == nil {
 		return nil
 	}
 
-	var chartDependencies []*chart.Chart
+	var chartLibraries []*chart.Chart
 	// If any dependency is not a part of Chart.yaml
-	// then this should be added to chartDependencies.
+	// then this should be added to chartLibraries.
 	// However, if the dependency is already specified in Chart.yaml
 	// we should not add it, as it would be anyways processed from Chart.yaml
 
 Loop:
-	for _, existing := range c.Dependencies() {
-		for _, req := range c.Metadata.Dependencies {
+	for _, existing := range c.Libraries() {
+		for _, req := range c.Metadata.Libraries {
 			if existing.Name() == req.Name && version.IsCompatibleRange(req.Version, existing.Metadata.Version) {
 				continue Loop
 			}
 		}
-		chartDependencies = append(chartDependencies, existing)
+		chartLibraries = append(chartLibraries, existing)
 	}
 
-	for _, req := range c.Metadata.Dependencies {
-		if chartDependency := GetAliasDependency(c.Dependencies(), req); chartDependency != nil {
-			chartDependencies = append(chartDependencies, chartDependency)
+	for _, req := range c.Metadata.Libraries {
+		if chartLibrary := GetAliasDependency(c.Libraries(), req); chartLibrary != nil {
+			chartLibraries = append(chartLibraries, chartLibrary)
 		}
 		if req.Alias != "" {
 			req.Name = req.Alias
 		}
 	}
-	c.SetDependencies(chartDependencies...)
+	c.SetLibraries(chartLibraries...)
 
 	// set all to true
-	for _, lr := range c.Metadata.Dependencies {
+	for _, lr := range c.Metadata.Libraries {
 		lr.Enabled = true
 	}
 	cvals, err := CoalesceValues(c, v)
@@ -69,11 +69,11 @@ Loop:
 		return err
 	}
 	// flag dependencies as enabled/disabled
-	ProcessDependencyTags(c.Metadata.Dependencies, cvals)
-	ProcessDependencyConditions(c.Metadata.Dependencies, cvals)
+	ProcessDependencyTags(c.Metadata.Libraries, cvals)
+	ProcessDependencyConditions(c.Metadata.Libraries, cvals)
 	// make a map of charts to remove
 	rm := map[string]struct{}{}
-	for _, r := range c.Metadata.Dependencies {
+	for _, r := range c.Metadata.Libraries {
 		if !r.Enabled {
 			// remove disabled chart
 			rm[r.Name] = struct{}{}
@@ -81,8 +81,8 @@ Loop:
 	}
 	// don't keep disabled charts in new slice
 	cd := []*chart.Chart{}
-	copy(cd, c.Dependencies()[:0])
-	for _, n := range c.Dependencies() {
+	copy(cd, c.Libraries()[:0])
+	for _, n := range c.Libraries() {
 		if _, ok := rm[n.Metadata.Name]; !ok {
 			cd = append(cd, n)
 		}
@@ -90,11 +90,11 @@ Loop:
 
 	// recursively call self to process sub dependencies
 	for _, t := range cd {
-		if err := processDependencyEnabled(t, cvals); err != nil {
+		if err := processLibraryEnabled(t, cvals); err != nil {
 			return err
 		}
 	}
-	c.SetDependencies(cd...)
+	c.SetLibraries(cd...)
 
 	return nil
 }

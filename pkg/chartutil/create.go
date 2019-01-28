@@ -39,6 +39,8 @@ const (
 	TemplatesDir = "templates"
 	// ChartsDir is the relative directory name for charts dependencies.
 	ChartsDir = "charts"
+	// LibraryDir is the relative directory name for charts libraries.
+	LibraryDir = "library"
 	// IgnorefileName is the name of the Helm ignore file.
 	IgnorefileName = ".helmignore"
 	// IngressFileName is the name of the example ingress file.
@@ -368,6 +370,12 @@ func Create(chartfile *chart.Metadata, dir string) (string, error) {
 	}
 
 	for _, d := range []string{TemplatesDir, ChartsDir} {
+		if err := os.MkdirAll(filepath.Join(cdir, d), 0755); err != nil {
+			return cdir, err
+		}
+	}
+
+	for _, d := range []string{TemplatesDir, LibraryDir} {
 		if err := os.MkdirAll(filepath.Join(cdir, d), 0755); err != nil {
 			return cdir, err
 		}

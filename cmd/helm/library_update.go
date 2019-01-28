@@ -24,23 +24,23 @@ import (
 	"k8s.io/helm/cmd/helm/require"
 )
 
-const dependencyUpDesc = `
-Update the on-disk dependencies to mirror Chart.yaml.
+const libraryUpDesc = `
+Update the on-disk libraries to mirror Chart.yaml.
 
 This command verifies that the required charts, as expressed in 'Chart.yaml',
-are present in 'charts/' and are at an acceptable version. It will pull down
-the latest charts that satisfy the dependencies, and clean up old dependencies.
+are present in 'library/' and are at an acceptable version. It will pull down
+the latest charts that satisfy the libraries, and clean up old libraries.
 
 On successful update, this will generate a lock file that can be used to
-rebuild the dependencies to an exact version.
+rebuild the libraries to an exact version.
 
-Dependencies are not required to be represented in 'Chart.yaml'. For that
+Libraries are not required to be represented in 'Chart.yaml'. For that
 reason, an update command will not remove charts unless they are (a) present
 in the Chart.yaml file, but (b) at the wrong version.
 `
 
-// newDependencyUpdateCmd creates a new dependency update command.
-func newDependencyUpdateCmd(out io.Writer) *cobra.Command {
+// newLibraryUpdateCmd creates a new library update command.
+func newLibraryUpdateCmd(out io.Writer) *cobra.Command {
 	o := &refUpdateOptions{
 		chartpath: ".",
 	}
@@ -48,15 +48,15 @@ func newDependencyUpdateCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "update CHART",
 		Aliases: []string{"up"},
-		Short:   "update charts/ based on the contents of Chart.yaml",
-		Long:    dependencyUpDesc,
+		Short:   "update library/ based on the contents of Chart.yaml",
+		Long:    libraryUpDesc,
 		Args:    require.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				o.chartpath = filepath.Clean(args[0])
 			}
 			o.helmhome = settings.Home
-			return o.run(out, false)
+			return o.run(out, true)
 		},
 	}
 

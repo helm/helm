@@ -113,6 +113,7 @@ type installOptions struct {
 	wait         bool   // --wait
 	devel        bool   // --devel
 	depUp        bool   // --dep-up
+	libUp        bool   // --lib-up
 	chartPath    string // arg 1
 	generateName bool   // --generate-name
 
@@ -166,6 +167,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&o.wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
 	f.BoolVar(&o.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
 	f.BoolVar(&o.depUp, "dep-up", false, "run helm dependency update before installing the chart")
+	f.BoolVar(&o.libUp, "lib-up", false, "run helm library update before installing the chart")
 	o.valuesOptions.addFlags(f)
 	o.chartPathOptions.addFlags(f)
 
@@ -245,7 +247,31 @@ func (o *installOptions) run(out io.Writer) error {
 					SkipUpdate: false,
 					Getters:    getter.All(settings),
 				}
-				if err := man.Update(); err != nil {
+				if err := man.Update(false); err != nil {
+					return err
+				}
+			} else {
+				return err
+			}
+
+		}
+	}
+
+	if req := chartRequested.Metadata.Libraries; req != nil {
+		// If checkLibraries returns an error, we have unfulfilled libraries.
+		// As of Helm 2.4.0, this is treated as a stopping condition:
+		// https://github.com/helm/helm/issues/2209
+		if err := checkLibraries(chartRequested, req); err != nil {
+			if o.libUp {
+				man := &downloader.Manager{
+					Out:        out,
+					ChartPath:  o.chartPath,
+					HelmHome:   settings.Home,
+					Keyring:    o.keyring,
+					SkipUpdate: false,
+					Getters:    getter.All(settings),
+				}
+				if err := man.Update(true); err != nil {
 					return err
 				}
 			} else {
@@ -360,6 +386,25 @@ OUTER:
 
 	if len(missing) > 0 {
 		return errors.Errorf("found in Chart.yaml, but missing in charts/ directory: %s", strings.Join(missing, ", "))
+	}
+	return nil
+}
+
+func checkLibraries(ch *chart.Chart, reqs []*chart.Dependency) error {
+	var missing []string
+
+OUTER:
+	for _, r := range reqs {
+		for _, d := range ch.Libraries() {
+			if d.Name() == r.Name {
+				continue OUTER
+			}
+		}
+		missing = append(missing, r.Name)
+	}
+
+	if len(missing) > 0 {
+		return errors.Errorf("found in Chart.yaml, but missing in library/ directory: %s", strings.Join(missing, ", "))
 	}
 	return nil
 }

@@ -159,6 +159,17 @@ func (o *upgradeOptions) run(out io.Writer) error {
 		}
 	}
 
+	// Check chart dependencies libraries to make sure all are present in /library
+	ch, err = loader.Load(chartPath)
+	if err != nil {
+		return err
+	}
+	if req := ch.Metadata.Libraries; req != nil {
+		if err := checkLibraries(ch, req); err != nil {
+			return err
+		}
+	}
+
 	resp, err := o.client.UpdateRelease(
 		o.release,
 		chartPath,

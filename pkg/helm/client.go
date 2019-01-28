@@ -83,6 +83,9 @@ func (c *Client) InstallReleaseFromChart(chart *chart.Chart, ns string, opts ...
 	if err := chartutil.ProcessDependencies(req.Chart, req.Values); err != nil {
 		return nil, err
 	}
+	if err := chartutil.ProcessLibraries(req.Chart, req.Values); err != nil {
+		return nil, err
+	}
 	return c.tiller.InstallRelease(req)
 }
 
@@ -145,6 +148,9 @@ func (c *Client) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts
 		return nil, err
 	}
 	if err := chartutil.ProcessDependencies(req.Chart, req.Values); err != nil {
+		return nil, err
+	}
+	if err := chartutil.ProcessLibraries(req.Chart, req.Values); err != nil {
 		return nil, err
 	}
 	return c.tiller.UpdateRelease(req)

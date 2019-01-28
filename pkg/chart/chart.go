@@ -19,7 +19,7 @@ package chart
 const APIVersionv1 = "v1"
 
 // Chart is a helm package that contains metadata, a default config, zero or more
-// optionally parameterizable templates, and zero or more charts (dependencies).
+// optionally parameterizable templates, and zero or more charts (libraries).
 type Chart struct {
 	// Metadata is the contents of the Chartfile.
 	Metadata *Metadata
@@ -37,12 +37,19 @@ type Chart struct {
 
 	parent       *Chart
 	dependencies []*Chart
+	libraries    []*Chart
 }
 
 // SetDependencies replaces the chart dependencies.
 func (ch *Chart) SetDependencies(charts ...*Chart) {
 	ch.dependencies = nil
 	ch.AddDependency(charts...)
+}
+
+// SetLibraries replaces the chart libraries.
+func (ch *Chart) SetLibraries(charts ...*Chart) {
+	ch.libraries = nil
+	ch.AddLibrary(charts...)
 }
 
 // Name returns the name of the chart.
@@ -61,6 +68,14 @@ func (ch *Chart) AddDependency(charts ...*Chart) {
 	}
 }
 
+// AddLibrary determines if the chart is a subchart.
+func (ch *Chart) AddLibrary(charts ...*Chart) {
+	for i, x := range charts {
+		charts[i].parent = ch
+		ch.libraries = append(ch.libraries, x)
+	}
+}
+
 // Root finds the root chart.
 func (ch *Chart) Root() *Chart {
 	if ch.IsRoot() {
@@ -71,6 +86,9 @@ func (ch *Chart) Root() *Chart {
 
 // Dependencies are the charts that this chart depends on.
 func (ch *Chart) Dependencies() []*Chart { return ch.dependencies }
+
+// Libraries are the common charts that this chart uses.
+func (ch *Chart) Libraries() []*Chart { return ch.libraries }
 
 // IsRoot determines if the chart is the root chart.
 func (ch *Chart) IsRoot() bool { return ch.parent == nil }

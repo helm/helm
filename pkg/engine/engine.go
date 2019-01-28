@@ -293,7 +293,7 @@ func (p byPathLen) Less(i, j int) bool {
 	return ca < cb
 }
 
-// allTemplates returns all templates for a chart and its dependencies.
+// allTemplates returns all templates for a chart, its libraries and its dependencies.
 //
 // As it goes, it also prepares the values in a scope-sensitive manner.
 func allTemplates(c *chart.Chart, vals chartutil.Values) map[string]renderable {
@@ -328,6 +328,10 @@ func recAllTpls(c *chart.Chart, templates map[string]renderable, parentVals char
 	}
 
 	for _, child := range c.Dependencies() {
+		recAllTpls(child, templates, cvals)
+	}
+
+	for _, child := range c.Libraries() {
 		recAllTpls(child, templates, cvals)
 	}
 
