@@ -63,7 +63,7 @@ data:
   dessert: cake
 ```
 
-## Overriding Values from a Parent Chart
+## Overriding Values of a Child Chart
 
 Our original chart, `mychart` is now the _parent_ chart of `mysubchart`. This relationship is based entirely on the fact that `mysubchart` is within `mychart/charts`.
 
