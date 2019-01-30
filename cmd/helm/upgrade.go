@@ -208,12 +208,14 @@ func (u *upgradeCmd) run() error {
 			if u.namespace == "" {
 				u.namespace = defaultNamespace()
 			}
-			previousReleaseNamespace := releaseHistory.Releases[0].Namespace
-			if previousReleaseNamespace != u.namespace {
-				fmt.Fprintf(u.out,
-					"WARNING: Namespace %q doesn't match with previous. Release will be deployed to %s\n",
-					u.namespace, previousReleaseNamespace,
-				)
+			if len(releaseHistory.Releases) > 0 {
+				previousReleaseNamespace := releaseHistory.Releases[0].Namespace
+				if previousReleaseNamespace != u.namespace {
+					fmt.Fprintf(u.out,
+						"WARNING: Namespace %q doesn't match with previous. Release will be deployed to %s\n",
+						u.namespace, previousReleaseNamespace,
+					)
+				}
 			}
 		}
 

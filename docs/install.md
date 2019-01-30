@@ -130,12 +130,10 @@ Check the [Kubernetes Distribution Guide](kubernetes_distros.md) to see if there
 The easiest way to install `tiller` into the cluster is simply to run
 `helm init`. This will validate that `helm`'s local environment is set
 up correctly (and set it up if necessary). Then it will connect to
-whatever cluster `kubectl` connects to by default (`kubectl config
-view`). Once it connects, it will install `tiller` into the
+whatever cluster `kubectl` connects to by default (`kubectl config view`). Once it connects, it will install `tiller` into the
 `kube-system` namespace.
 
-After `helm init`, you should be able to run `kubectl get pods --namespace
-kube-system` and see Tiller running.
+After `helm init`, you should be able to run `kubectl get pods --namespace kube-system` and see Tiller running.
 
 You can explicitly tell `helm init` to...
 
@@ -185,8 +183,7 @@ Tiller running on :44134
 ```
 
 When Tiller is running locally, it will attempt to connect to the
-Kubernetes cluster that is configured by `kubectl`. (Run `kubectl config
-view` to see which cluster that is.)
+Kubernetes cluster that is configured by `kubectl`. (Run `kubectl config view` to see which cluster that is.)
 
 You must tell `helm` to connect to this new local Tiller host instead of
 connecting to the one in-cluster. There are two ways to do this. The
@@ -222,8 +219,7 @@ Setting `TILLER_TAG=canary` will get the latest snapshot of master.
 
 Because Tiller stores its data in Kubernetes ConfigMaps, you can safely
 delete and re-install Tiller without worrying about losing any data. The
-recommended way of deleting Tiller is with `kubectl delete deployment
-tiller-deploy --namespace kube-system`, or more concisely `helm reset`.
+recommended way of deleting Tiller is with `kubectl delete deployment tiller-deploy --namespace kube-system`, or more concisely `helm reset`.
 
 Tiller can then be re-installed from the client with:
 
@@ -260,7 +256,6 @@ spec:
 ...
 ```
 
-
 ### Using `--override`
 
 `--override` allows you to specify properties of Tiller's
@@ -277,6 +272,7 @@ its value to 1.
 ```
 helm init --override metadata.annotations."deployment\.kubernetes\.io/revision"="1"
 ```
+
 Output:
 
 ```
@@ -352,11 +348,12 @@ in JSON format.
 ```
 
 ### Storage backends
+
 By default, `tiller` stores release information in `ConfigMaps` in the namespace
 where it is running. As of Helm 2.7.0, there is now a beta storage backend that
 uses `Secrets` for storing release information. This was added for additional
-security in protecting charts in conjunction with the release of `Secret` 
-encryption in Kubernetes. 
+security in protecting charts in conjunction with the release of `Secret`
+encryption in Kubernetes.
 
 To enable the secrets backend, you'll need to init Tiller with the following
 options:
@@ -364,6 +361,11 @@ options:
 ```shell
 helm init --override 'spec.template.spec.containers[0].command'='{/tiller,--storage=secret}'
 ```
+
+For versions later then 2.13 there is now a storage backend called disk. This
+backend moves the configuration out of Kubernetes to the local disk of the container running Tiller. It is therefore
+a good idea to volume mount the directory, so the release information will survive pod
+restarts. For more information about the disk storage option see this document [disk storage](storage-disk.md)
 
 Currently, if you want to switch from the default backend to the secrets
 backend, you'll have to do the migration for this on your own. When this backend

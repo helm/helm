@@ -66,6 +66,7 @@ const (
 	storageMemory    = "memory"
 	storageConfigMap = "configmap"
 	storageSecret    = "secret"
+	storageDisk      = "disk"
 
 	probeAddr = ":44135"
 	traceAddr = ":44136"
@@ -77,7 +78,7 @@ const (
 var (
 	grpcAddr             = flag.String("listen", ":44134", "address:port to listen on")
 	enableTracing        = flag.Bool("trace", false, "enable rpc tracing")
-	store                = flag.String("storage", storageConfigMap, "storage driver to use. One of 'configmap', 'memory', or 'secret'")
+	store                = flag.String("storage", storageConfigMap, "storage driver to use. One of 'configmap', 'memory', 'disk', or 'secret'")
 	remoteReleaseModules = flag.Bool("experimental-release", false, "enable experimental release modules")
 	tlsEnable            = flag.Bool("tls", tlsEnableEnvVarDefault(), "enable TLS")
 	tlsVerify            = flag.Bool("tls-verify", tlsVerifyEnvVarDefault(), "enable TLS and verify remote certificate")
@@ -143,6 +144,15 @@ func start() {
 
 		env.Releases = storage.Init(secrets)
 		env.Releases.Log = newLogger("storage").Printf
+	case storageDisk:
+		disk, err := driver.NewDisk()
+		if err != nil {
+			logger.Fatalf("Could not create disk storage: %v", err)
+		}
+		disk.Log = newLogger("storage/driver").Printf
+		env.Releases = storage.Init(disk)
+		env.Releases.Log = newLogger("storage").Printf
+
 	}
 
 	if *maxHistory > 0 {
