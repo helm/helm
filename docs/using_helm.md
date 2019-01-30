@@ -1,4 +1,4 @@
-# Using Helm
+﻿# Using Helm
 
 This guide explains the basics of using Helm (and Tiller) to manage
 packages on your Kubernetes cluster. It assumes that you have already
@@ -211,7 +211,7 @@ imageTag: 10.1.14-r3
 # mariadbDatabase:
 ```
 
-You can then override any of these settings in a JSON or YAML formatted file,
+You can then override any of these settings in a YAML formatted file,
 and then pass that file during installation.
 
 ```console
