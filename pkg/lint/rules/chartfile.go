@@ -48,7 +48,6 @@ func Chartfile(linter *support.Linter) {
 
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartNamePresence(chartFile))
 	linter.RunLinterRule(support.WarningSev, chartFileName, validateChartNameFormat(chartFile))
-	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartNameDirMatch(linter.ChartDir, chartFile))
 
 	// Chart metadata
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartVersion(chartFile))
@@ -85,13 +84,6 @@ func validateChartNamePresence(cf *chart.Metadata) error {
 func validateChartNameFormat(cf *chart.Metadata) error {
 	if strings.Contains(cf.Name, ".") {
 		return errors.New("name should be lower case letters and numbers. Words may be separated with dashes")
-	}
-	return nil
-}
-
-func validateChartNameDirMatch(chartDir string, cf *chart.Metadata) error {
-	if cf.Name != filepath.Base(chartDir) {
-		return fmt.Errorf("directory name (%s) and chart name (%s) must be the same", filepath.Base(chartDir), cf.Name)
 	}
 	return nil
 }
