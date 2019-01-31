@@ -82,6 +82,8 @@ func TestUpgradeCmd(t *testing.T) {
 
 	missingDepsPath := "testdata/testcharts/chart-missing-deps"
 	badDepsPath := "testdata/testcharts/chart-bad-requirements"
+	missingLibsPath := "testdata/testcharts/chart-missing-libs"
+	badLibsPath := "testdata/testcharts/chart-bad-libraries"
 
 	relMock := func(n string, v int, ch *chart.Chart) *release.Release {
 		return helm.ReleaseMock(&helm.MockReleaseOptions{Name: n, Version: v, Chart: ch})
@@ -139,6 +141,18 @@ func TestUpgradeCmd(t *testing.T) {
 		{
 			name:      "upgrade a release with bad dependencies",
 			cmd:       fmt.Sprintf("upgrade bonkers-bunny '%s'", badDepsPath),
+			golden:    "output/upgrade-with-bad-dependencies.txt",
+			wantError: true,
+		},
+		{
+			name:      "upgrade a release with missing libraries",
+			cmd:       "upgrade bonkers-bunny" + missingLibsPath,
+			golden:    "output/upgrade-with-missing-dependencies.txt",
+			wantError: true,
+		},
+		{
+			name:      "upgrade a release with bad libraries",
+			cmd:       "upgrade bonkers-bunny " + badLibsPath,
 			golden:    "output/upgrade-with-bad-dependencies.txt",
 			wantError: true,
 		},

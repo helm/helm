@@ -1,0 +1,35 @@
+# Default values for subchart.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+service:
+  name: nginx
+  type: ClusterIP
+  externalPort: 80
+  internalPort: 80
+
+SCBdata:
+  SCBbool: true
+  SCBfloat: 7.77
+  SCBint: 33
+  SCBstring: "boba"
+
+exports:
+  SCBexported1:
+    SCBexported1A:
+      SCBexported1B: 1965
+
+  SCBexported2:
+    SCBexported2A: "blaster"
+
+global:
+  kolla:
+    nova:
+      api:
+        all:
+          port: 8774
+      metadata:
+        all:
+          port: 8775
+
+
+

@@ -119,6 +119,18 @@ func TestInstall(t *testing.T) {
 			cmd:       "install badreq testdata/testcharts/chart-bad-requirements",
 			wantError: true,
 		},
+		// Install, chart with missing libraries in /library
+		{
+			name:      "install chart with missing libraries",
+			cmd:       "install nolibs testdata/testcharts/chart-missing-libs",
+			wantError: true,
+		},
+		// Install, chart with bad libraries in Chart.yaml in /library
+		{
+			name:      "install chart with bad libraries in Chart.yaml",
+			cmd:       "install badlib testdata/testcharts/lib-chart-bad-libraries",
+			wantError: true,
+		},
 	}
 
 	runTestActionCmd(t, tests)
