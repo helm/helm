@@ -1559,12 +1559,13 @@
   revision = "8a16e7dd8fb6d97d1331b0c79a16722f934b00b1"
 
 [[projects]]
-  digest = "1:3253435bcec387270fe70c39a4ffcb8bdc9bcc82c32d320b5546ec02a0808007"
+  branch = "master"
+  digest = "1:15fbb9f95a13abe2be748b1159b491369d46a2ccc3f378e0f93c391f89608929"
   name = "rsc.io/letsencrypt"
   packages = ["."]
   pruneopts = "UT"
-  revision = "33926faef6d434b854ea994228f11d0185faa0c1"
-  version = "v0.0.1"
+  revision = "1847a81d2087eba73081db43989e54dabe0768cd"
+  source = "https://github.com/dmcgowan/letsencrypt.git"
 
 [[projects]]
   digest = "1:443f6048f55fc9e389e8f7fa20b25bc30ef565953dd5c6425c9032432a677301"

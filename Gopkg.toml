@@ -70,19 +70,8 @@
 [[constraint]]
   name = "github.com/stretchr/testify"
 
-# These overrides below necessary for using docker/distribution as a test dependency
+# This override below necessary for using docker/distribution as a test dependency
 [[override]]
-  name = "github.com/yvasiyarov/newrelic_platform_go"
-  revision = "b21fdbd4370f3717f3bbd2bf41c223bc273068e6"
-
-[[override]]
-  name = "github.com/miekg/dns"
-  revision = "0d29b283ac0f967dd3a02739bf26a22702210d7a"
-
-[[override]]
-  name = "github.com/xenolf/lego"
-  revision = "a9d8cec0e6563575e5868a005359ac97911b5985"
-
-[[override]]
-  name = "github.com/bugsnag/bugsnag-go"
-  revision = "109a9d63f2b57c4623f4912b256bac4a7a63517d"
+  name = "rsc.io/letsencrypt"
+  branch = "master"
+  source = "https://github.com/dmcgowan/letsencrypt.git"
