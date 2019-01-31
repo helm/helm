@@ -85,7 +85,12 @@ coverage:
 #  dependencies
 
 .PHONY: bootstrap
-bootstrap: vendor
+bootstrap: vendor fix-vendor
+
+# fix dependecies that are incorrect
+.PHONY: fix-vendor
+fix-vendor:
+	wget -O vendor/rsc.io/letsencrypt/lets.go https://raw.githubusercontent.com/dmcgowan/letsencrypt/e770c10b0f1a64775ae91d240407ce00d1a5bdeb/lets.go
 
 $(DEP):
 	go get -u github.com/golang/dep/cmd/dep

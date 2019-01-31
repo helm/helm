@@ -23,6 +23,7 @@ import (
 	"k8s.io/client-go/discovery"
 
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/registry"
 	"k8s.io/helm/pkg/storage"
 	"k8s.io/helm/pkg/tiller/environment"
 )
@@ -40,8 +41,12 @@ type Configuration struct {
 
 	// Releases stores records of releases.
 	Releases *storage.Storage
+
 	// KubeClient is a Kubernetes API client.
 	KubeClient environment.KubeClient
+
+	// RegistryClient is a client for working with registries
+	RegistryClient *registry.Client
 
 	Capabilities *chartutil.Capabilities
 

@@ -28,6 +28,7 @@ func TestHelmHome(t *testing.T) {
 	}
 
 	isEq(t, hh.String(), "r:\\")
+	isEq(t, hh.Registry(), "r:\\registry")
 	isEq(t, hh.Repository(), "r:\\repository")
 	isEq(t, hh.RepositoryFile(), "r:\\repository\\repositories.yaml")
 	isEq(t, hh.Cache(), "r:\\repository\\cache")
