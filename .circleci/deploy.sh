@@ -41,7 +41,7 @@ curl https://sdk.cloud.google.com | bash
 ${HOME}/google-cloud-sdk/bin/gcloud --quiet components update
 
 echo "Configuring gcloud authentication"
-echo "${GCLOUD_SERVICE_KEY}" | base64 --decode > "${HOME}/gcloud-service-key.json"
+echo "${GCLOUD_SERVICE_KEY}" | base64 --decode >"${HOME}/gcloud-service-key.json"
 ${HOME}/google-cloud-sdk/bin/gcloud auth activate-service-account --key-file "${HOME}/gcloud-service-key.json"
 ${HOME}/google-cloud-sdk/bin/gcloud config set project "${PROJECT_NAME}"
 
