@@ -36,6 +36,12 @@ is required, and will print an error message when that entry is missing:
 value: {{ required "A valid .Values.who entry required!" .Values.who }}
 ```
 
+When using the `include` function, you can pass it a custom object tree built from the current context by using the `dict` function:
+
+```yaml
+{{- include "mytpl" (dict "key1" .Values.originalKey1 "key2" .Values.originalKey2) }}
+```
+
 ## Quote Strings, Don't Quote Integers
 
 When you are working with string data, you are always safer quoting the
@@ -255,9 +261,9 @@ embed each of the components.
 
 Two strong design patterns are illustrated by these projects:
 
-**SAP's [OpenStack chart](https://github.com/sapcc/openstack-helm):** This chart
-installs a full OpenStack IaaS on Kubernetes. All of the charts are collected
-together in one GitHub repository.
+**SAP's [Converged charts](https://github.com/sapcc/helm-charts):** These charts
+install SAP Converged Cloud a full OpenStack IaaS on Kubernetes. All of the charts are collected
+together in one GitHub repository, except for a few submodules.
 
 **Deis's [Workflow](https://github.com/deis/workflow/tree/master/charts/workflow):**
 This chart exposes the entire Deis PaaS system with one chart. But it's different

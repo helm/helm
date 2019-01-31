@@ -50,7 +50,7 @@ type Options struct {
 	// AutoMountServiceAccountToken determines whether or not the service account should be added to Tiller.
 	AutoMountServiceAccountToken bool
 
-	// Force allows to force upgrading tiller if deployed version is greater than current version
+	// ForceUpgrade allows to force upgrading tiller if deployed version is greater than current version
 	ForceUpgrade bool
 
 	// ImageSpec identifies the image Tiller will use when deployed.
