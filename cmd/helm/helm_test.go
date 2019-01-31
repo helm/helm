@@ -40,9 +40,6 @@ import (
 	"k8s.io/helm/pkg/storage/driver"
 )
 
-// base temp directory
-var testingDir string
-
 func testTimestamper() time.Time { return time.Unix(242085845, 0).UTC() }
 
 func init() {
@@ -52,7 +49,6 @@ func init() {
 func TestMain(m *testing.M) {
 	os.Unsetenv("HELM_HOME")
 	exitCode := m.Run()
-	os.RemoveAll(testingDir)
 	os.Exit(exitCode)
 }
 
@@ -62,7 +58,6 @@ func testTempDir(t *testing.T) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	testingDir = d
 	return d
 }
 

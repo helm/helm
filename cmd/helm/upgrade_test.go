@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"testing"
 
 	"k8s.io/helm/pkg/chart"
@@ -89,55 +90,55 @@ func TestUpgradeCmd(t *testing.T) {
 	tests := []cmdTestCase{
 		{
 			name:   "upgrade a release",
-			cmd:    "upgrade funny-bunny " + chartPath,
+			cmd:    fmt.Sprintf("upgrade funny-bunny '%s'", chartPath),
 			golden: "output/upgrade.txt",
 			rels:   []*release.Release{relMock("funny-bunny", 2, ch)},
 		},
 		{
 			name:   "upgrade a release with timeout",
-			cmd:    "upgrade funny-bunny --timeout 120 " + chartPath,
+			cmd:    fmt.Sprintf("upgrade funny-bunny --timeout 120 '%s'", chartPath),
 			golden: "output/upgrade-with-timeout.txt",
 			rels:   []*release.Release{relMock("funny-bunny", 3, ch2)},
 		},
 		{
 			name:   "upgrade a release with --reset-values",
-			cmd:    "upgrade funny-bunny --reset-values " + chartPath,
+			cmd:    fmt.Sprintf("upgrade funny-bunny --reset-values '%s'", chartPath),
 			golden: "output/upgrade-with-reset-values.txt",
 			rels:   []*release.Release{relMock("funny-bunny", 4, ch2)},
 		},
 		{
 			name:   "upgrade a release with --reuse-values",
-			cmd:    "upgrade funny-bunny --reuse-values " + chartPath,
+			cmd:    fmt.Sprintf("upgrade funny-bunny --reuse-values '%s'", chartPath),
 			golden: "output/upgrade-with-reset-values2.txt",
 			rels:   []*release.Release{relMock("funny-bunny", 5, ch2)},
 		},
 		{
 			name:   "install a release with 'upgrade --install'",
-			cmd:    "upgrade zany-bunny -i " + chartPath,
+			cmd:    fmt.Sprintf("upgrade zany-bunny -i '%s'", chartPath),
 			golden: "output/upgrade-with-install.txt",
 			rels:   []*release.Release{relMock("zany-bunny", 1, ch)},
 		},
 		{
 			name:   "install a release with 'upgrade --install' and timeout",
-			cmd:    "upgrade crazy-bunny -i --timeout 120 " + chartPath,
+			cmd:    fmt.Sprintf("upgrade crazy-bunny -i --timeout 120 '%s'", chartPath),
 			golden: "output/upgrade-with-install-timeout.txt",
 			rels:   []*release.Release{relMock("crazy-bunny", 1, ch)},
 		},
 		{
 			name:   "upgrade a release with wait",
-			cmd:    "upgrade crazy-bunny --wait " + chartPath,
+			cmd:    fmt.Sprintf("upgrade crazy-bunny --wait '%s'", chartPath),
 			golden: "output/upgrade-with-wait.txt",
 			rels:   []*release.Release{relMock("crazy-bunny", 2, ch2)},
 		},
 		{
 			name:      "upgrade a release with missing dependencies",
-			cmd:       "upgrade bonkers-bunny" + missingDepsPath,
+			cmd:       fmt.Sprintf("upgrade bonkers-bunny%s", missingDepsPath),
 			golden:    "output/upgrade-with-missing-dependencies.txt",
 			wantError: true,
 		},
 		{
 			name:      "upgrade a release with bad dependencies",
-			cmd:       "upgrade bonkers-bunny " + badDepsPath,
+			cmd:       fmt.Sprintf("upgrade bonkers-bunny '%s'", badDepsPath),
 			golden:    "output/upgrade-with-bad-dependencies.txt",
 			wantError: true,
 		},

@@ -27,7 +27,7 @@ func TestVerifyCmd(t *testing.T) {
 	statPathMsg := "no such file or directory"
 	statFileMsg := statPathMsg
 	if runtime.GOOS == "windows" {
-		statExe = "GetFileAttributesEx"
+		statExe = "FindFirstFile"
 		statPathMsg = "The system cannot find the path specified."
 		statFileMsg = "The system cannot find the file specified."
 	}
