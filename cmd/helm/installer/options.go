@@ -105,6 +105,9 @@ func (opts *Options) SelectImage() string {
 	case opts.UseCanary:
 		return defaultImage + ":canary"
 	case opts.ImageSpec == "":
+		if version.BuildMetadata == "unreleased" {
+			return defaultImage + ":canary"
+		}
 		return fmt.Sprintf("%s:%s", defaultImage, version.Version)
 	default:
 		return opts.ImageSpec

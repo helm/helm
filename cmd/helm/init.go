@@ -36,6 +36,7 @@ import (
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/helm/portforwarder"
 	"k8s.io/helm/pkg/repo"
+	"k8s.io/helm/pkg/version"
 )
 
 const initDesc = `
@@ -313,6 +314,14 @@ func (i *initCmd) run() error {
 		}
 	} else {
 		fmt.Fprintln(i.out, "Not installing Tiller due to 'client-only' flag having been set")
+	}
+
+	needsDefaultImage := !i.clientOnly && !i.opts.UseCanary && len(i.opts.ImageSpec) == 0 && version.BuildMetadata == "unreleased"
+	if needsDefaultImage {
+		fmt.Fprintf(i.out, "\nWarning: You appear to be using an unreleased version of Helm. Please either use the\n"+
+			"--canary-image flag, or specify your desired tiller version with --tiller-image.\n\n"+
+			"Ex:\n"+
+			"$ helm init --tiller-image gcr.io/kubernetes-helm/tiller:v2.8.2\n\n")
 	}
 
 	fmt.Fprintln(i.out, "Happy Helming!")

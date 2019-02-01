@@ -53,6 +53,10 @@ func TestDeployment(t *testing.T) {
 			t.Fatalf("%s: error %q", tt.name, err)
 		}
 
+		// Unreleased versions of helm don't have a release image. See issue 3370
+		if tt.name == "default" && version.BuildMetadata == "unreleased" {
+			tt.expect = "gcr.io/kubernetes-helm/tiller:canary"
+		}
 		if got := dep.Spec.Template.Spec.Containers[0].Image; got != tt.expect {
 			t.Errorf("%s: expected image %q, got %q", tt.name, tt.expect, got)
 		}
