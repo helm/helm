@@ -208,10 +208,10 @@ func (o *templateOptions) run(out io.Writer) error {
 	}
 	in := func(needle string, haystack []string) bool {
 		// make needle path absolute
+		// NOTE: chart manifest names always use backslashes as path separators, even on Windows
 		d := strings.Split(needle, "/")
 		dd := d[1:]
 		an := filepath.Join(o.chartPath, strings.Join(dd, string(os.PathSeparator)))
-		fmt.Println(an)
 
 		for _, h := range haystack {
 			if h == an {
@@ -236,7 +236,6 @@ func (o *templateOptions) run(out io.Writer) error {
 		b := filepath.Base(m.Name)
 		switch {
 		case len(o.renderFiles) > 0 && !in(m.Name, rf):
-			fmt.Printf("%s not in %s\n", m.Name, rf)
 			continue
 		case !o.showNotes && b == "NOTES.txt":
 			continue
