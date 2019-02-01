@@ -17,6 +17,8 @@ limitations under the License.
 package main
 
 import (
+	"io"
+
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/pkg/action"
@@ -26,14 +28,14 @@ const chartListDesc = `
 TODO
 `
 
-func newChartListCmd(cfg *action.Configuration) *cobra.Command {
+func newChartListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	return &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"ls"},
 		Short:   "list all saved charts",
 		Long:    chartListDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return action.NewChartList(cfg).Run()
+			return action.NewChartList(cfg).Run(out)
 		},
 	}
 }

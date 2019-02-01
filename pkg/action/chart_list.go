@@ -16,6 +16,10 @@ limitations under the License.
 
 package action
 
+import (
+	"io"
+)
+
 // ChartList performs a chart list operation.
 type ChartList struct {
 	cfg *Configuration
@@ -29,6 +33,6 @@ func NewChartList(cfg *Configuration) *ChartList {
 }
 
 // Run executes the chart list operation
-func (a *ChartList) Run() error {
+func (a *ChartList) Run(out io.Writer) error {
 	return a.cfg.RegistryClient.PrintChartTable()
 }

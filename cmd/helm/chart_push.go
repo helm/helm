@@ -17,6 +17,8 @@ limitations under the License.
 package main
 
 import (
+	"io"
+
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/require"
@@ -27,7 +29,7 @@ const chartPushDesc = `
 TODO
 `
 
-func newChartPushCmd(cfg *action.Configuration) *cobra.Command {
+func newChartPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	return &cobra.Command{
 		Use:   "push [ref]",
 		Short: "push a chart to remote",
@@ -35,7 +37,7 @@ func newChartPushCmd(cfg *action.Configuration) *cobra.Command {
 		Args:  require.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ref := args[0]
-			return action.NewChartPush(cfg).Run(ref)
+			return action.NewChartPush(cfg).Run(out, ref)
 		},
 	}
 }

@@ -17,6 +17,8 @@ limitations under the License.
 package action
 
 import (
+	"io"
+
 	"k8s.io/helm/pkg/registry"
 )
 
@@ -33,7 +35,7 @@ func NewChartPush(cfg *Configuration) *ChartPush {
 }
 
 // Run executes the chart push operation
-func (a *ChartPush) Run(ref string) error {
+func (a *ChartPush) Run(out io.Writer, ref string) error {
 	r, err := registry.ParseReference(ref)
 	if err != nil {
 		return err

@@ -89,7 +89,7 @@ func newRootCmd(c helm.Interface, actionConfig *action.Configuration, out io.Wri
 		newRepoCmd(out),
 		newSearchCmd(out),
 		newVerifyCmd(out),
-		newChartCmd(actionConfig),
+		newChartCmd(actionConfig, out),
 
 		// release commands
 		newGetCmd(c, out),

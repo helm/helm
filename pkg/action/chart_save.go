@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"io"
 	"path/filepath"
 
 	"k8s.io/helm/pkg/chart/loader"
@@ -36,7 +37,7 @@ func NewChartSave(cfg *Configuration) *ChartSave {
 }
 
 // Run executes the chart save operation
-func (a *ChartSave) Run(path string, ref string) error {
+func (a *ChartSave) Run(out io.Writer, path string, ref string) error {
 	path, err := filepath.Abs(path)
 	if err != nil {
 		return err

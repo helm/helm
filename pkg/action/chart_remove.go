@@ -17,6 +17,8 @@ limitations under the License.
 package action
 
 import (
+	"io"
+
 	"k8s.io/helm/pkg/registry"
 )
 
@@ -33,7 +35,7 @@ func NewChartRemove(cfg *Configuration) *ChartRemove {
 }
 
 // Run executes the chart remove operation
-func (a *ChartRemove) Run(ref string) error {
+func (a *ChartRemove) Run(out io.Writer, ref string) error {
 	r, err := registry.ParseReference(ref)
 	if err != nil {
 		return err

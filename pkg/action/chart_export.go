@@ -17,6 +17,8 @@ limitations under the License.
 package action
 
 import (
+	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 
@@ -37,7 +39,7 @@ func NewChartExport(cfg *Configuration) *ChartExport {
 }
 
 // Run executes the chart export operation
-func (a *ChartExport) Run(ref string) error {
+func (a *ChartExport) Run(out io.Writer, ref string) error {
 	r, err := registry.ParseReference(ref)
 	if err != nil {
 		return err
@@ -66,5 +68,6 @@ func (a *ChartExport) Run(ref string) error {
 		return err
 	}
 
+	fmt.Fprintf(out, "Exported to %s/\n", ch.Metadata.Name)
 	return nil
 }

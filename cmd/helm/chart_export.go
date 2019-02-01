@@ -17,6 +17,8 @@ limitations under the License.
 package main
 
 import (
+	"io"
+
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/require"
@@ -27,7 +29,7 @@ const chartExportDesc = `
 TODO
 `
 
-func newChartExportCmd(cfg *action.Configuration) *cobra.Command {
+func newChartExportCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	return &cobra.Command{
 		Use:   "export [ref]",
 		Short: "export a chart to directory",
@@ -35,7 +37,7 @@ func newChartExportCmd(cfg *action.Configuration) *cobra.Command {
 		Args:  require.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ref := args[0]
-			return action.NewChartExport(cfg).Run(ref)
+			return action.NewChartExport(cfg).Run(out, ref)
 		},
 	}
 }

@@ -16,6 +16,8 @@ limitations under the License.
 package main
 
 import (
+	"io"
+
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -30,19 +32,19 @@ Example usage:
     $ helm chart pull [URL]
 `
 
-func newChartCmd(cfg *action.Configuration) *cobra.Command {
+func newChartCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "chart",
 		Short: "push, pull, tag, or remove Helm charts",
 		Long:  chartHelp,
 	}
 	cmd.AddCommand(
-		newChartListCmd(cfg),
-		newChartExportCmd(cfg),
-		newChartPullCmd(cfg),
-		newChartPushCmd(cfg),
-		newChartRemoveCmd(cfg),
-		newChartSaveCmd(cfg),
+		newChartListCmd(cfg, out),
+		newChartExportCmd(cfg, out),
+		newChartPullCmd(cfg, out),
+		newChartPushCmd(cfg, out),
+		newChartRemoveCmd(cfg, out),
+		newChartSaveCmd(cfg, out),
 	)
 	return cmd
 }

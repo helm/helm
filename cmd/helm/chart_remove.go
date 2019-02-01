@@ -17,6 +17,8 @@ limitations under the License.
 package main
 
 import (
+	"io"
+
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/require"
@@ -27,7 +29,7 @@ const chartRemoveDesc = `
 TODO
 `
 
-func newChartRemoveCmd(cfg *action.Configuration) *cobra.Command {
+func newChartRemoveCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	return &cobra.Command{
 		Use:     "remove [ref]",
 		Aliases: []string{"rm"},
@@ -36,7 +38,7 @@ func newChartRemoveCmd(cfg *action.Configuration) *cobra.Command {
 		Args:    require.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ref := args[0]
-			return action.NewChartRemove(cfg).Run(ref)
+			return action.NewChartRemove(cfg).Run(out, ref)
 		},
 	}
 }

@@ -153,65 +153,83 @@ func (cache *filesystemCache) LoadReference(ref *Reference) ([]ocispec.Descripto
 		return nil, err
 	}
 
+	printChartSummary(cache.out, metaLayer, contentLayer)
 	layers := []ocispec.Descriptor{metaLayer, contentLayer}
 	return layers, nil
 }
 
-func (cache *filesystemCache) StoreReference(ref *Reference, layers []ocispec.Descriptor) error {
-	tagDir := mkdir(filepath.Join(cache.rootDir, "refs", ref.Locator, "tags", tagOrDefault(ref.Object)))
+func (cache *filesystemCache) StoreReference(ref *Reference, layers []ocispec.Descriptor) (bool, error) {
+	tag := tagOrDefault(ref.Object)
+	tagDir := mkdir(filepath.Join(cache.rootDir, "refs", ref.Locator, "tags", tag))
 
 	// Retrieve just the meta and content layers
 	metaLayer, contentLayer, err := extractLayers(layers)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// Extract chart name and version
 	name, version, err := extractChartNameVersionFromLayer(contentLayer)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// Create chart file
 	chartPath, err := createChartFile(filepath.Join(cache.rootDir, "charts"), name, version)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// Create chart symlink
 	err = createSymlink(chartPath, filepath.Join(tagDir, "chart"))
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// Save meta blob
-	_, metaJSONRaw, ok := cache.store.Get(metaLayer)
-	if !ok {
-		return errors.New("error retrieving meta layer")
-	}
-	metaPath, err := createDigestFile(filepath.Join(cache.rootDir, "blobs", "meta"), metaJSONRaw)
-	if err != nil {
-		return err
+	metaExists, metaPath := digestPath(filepath.Join(cache.rootDir, "blobs", "meta"), metaLayer.Digest)
+	if !metaExists {
+		fmt.Fprintf(cache.out, "%s: Saving meta (%s)\n",
+			shortDigest(metaLayer.Digest.Hex()), byteCountBinary(metaLayer.Size))
+		_, metaJSONRaw, ok := cache.store.Get(metaLayer)
+		if !ok {
+			return false, errors.New("error retrieving meta layer")
+		}
+		err = writeFile(metaPath, metaJSONRaw)
+		if err != nil {
+			return false, err
+		}
 	}
 
 	// Create meta symlink
 	err = createSymlink(metaPath, filepath.Join(tagDir, "meta"))
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// Save content blob
-	_, contentRaw, ok := cache.store.Get(contentLayer)
-	if !ok {
-		return errors.New("error retrieving content layer")
-	}
-	contentPath, err := createDigestFile(filepath.Join(cache.rootDir, "blobs", "content"), contentRaw)
-	if err != nil {
-		return err
+	contentExists, contentPath := digestPath(filepath.Join(cache.rootDir, "blobs", "content"), contentLayer.Digest)
+	if !contentExists {
+		fmt.Fprintf(cache.out, "%s: Saving content (%s)\n",
+			shortDigest(contentLayer.Digest.Hex()), byteCountBinary(contentLayer.Size))
+		_, contentRaw, ok := cache.store.Get(contentLayer)
+		if !ok {
+			return false, errors.New("error retrieving content layer")
+		}
+		err = writeFile(contentPath, contentRaw)
+		if err != nil {
+			return false, err
+		}
 	}
 
 	// Create content symlink
-	return createSymlink(contentPath, filepath.Join(tagDir, "content"))
+	err = createSymlink(contentPath, filepath.Join(tagDir, "content"))
+	if err != nil {
+		return false, err
+	}
+
+	printChartSummary(cache.out, metaLayer, contentLayer)
+	return metaExists && contentExists, nil
 }
 
 func (cache *filesystemCache) DeleteReference(ref *Reference) error {
@@ -224,6 +242,22 @@ func (cache *filesystemCache) DeleteReference(ref *Reference) error {
 
 func (cache *filesystemCache) TableRows() ([][]string, error) {
 	return getRefsSorted(filepath.Join(cache.rootDir, "refs"))
+}
+
+// printChartSummary prints details about a chart layers
+func printChartSummary(out io.Writer, metaLayer ocispec.Descriptor, contentLayer ocispec.Descriptor) {
+	fmt.Fprintf(out, "Name: %s\n", contentLayer.Annotations[HelmChartNameAnnotation])
+	fmt.Fprintf(out, "Version: %s\n", contentLayer.Annotations[HelmChartVersionAnnotation])
+	fmt.Fprintf(out, "Meta: %s\n", metaLayer.Digest)
+	fmt.Fprintf(out, "Content: %s\n", contentLayer.Digest)
+}
+
+// fileExists determines if a file exists
+func fileExists(path string) bool {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return false
+	}
+	return true
 }
 
 // mkdir will create a directory (no error check) and return the path
@@ -318,20 +352,18 @@ func createChartFile(chartsRootDir string, name string, version string) (string,
 	return chartPath, nil
 }
 
-// createDigestFile calcultaes the sha256 digest of some content and creates a file, returning the path
-func createDigestFile(rootDir string, c []byte) (string, error) {
-	digest := checksum.FromBytes(c).String()
-	digestLeft, digestRight := splitDigest(digest)
-	pathDir := filepath.Join(rootDir, "sha256", digestLeft)
-	path := filepath.Join(pathDir, digestRight)
-	if _, err := os.Stat(path); err != nil && os.IsNotExist(err) {
-		os.MkdirAll(pathDir, 0755)
-		err := ioutil.WriteFile(path, c, 0644)
-		if err != nil {
-			return "", err
-		}
-	}
-	return path, nil
+// digestPath returns the path to addressable content, and whether the file exists
+func digestPath(rootDir string, digest checksum.Digest) (bool, string) {
+	digestLeft, digestRight := splitDigest(digest.Hex())
+	path := filepath.Join(rootDir, "sha256", digestLeft, digestRight)
+	exists := fileExists(path)
+	return exists, path
+}
+
+// writeFile creates a path, ensuring parent directory
+func writeFile(path string, c []byte) error {
+	os.MkdirAll(filepath.Dir(path), 0755)
+	return ioutil.WriteFile(path, c, 0644)
 }
 
 // splitDigest returns a sha256 digest in two parts, on with first 2 chars and one with second 62 chars
@@ -365,6 +397,14 @@ func tagOrDefault(tag string) string {
 		return tag
 	}
 	return HelmChartDefaultTag
+}
+
+// shortDigest returns first 7 characters of a sha256 digest
+func shortDigest(digest string) string {
+	if len(digest) == 64 {
+		return digest[:7]
+	}
+	return digest
 }
 
 // getRefsSorted returns a map of all refs stored in a refsRootDir
@@ -404,7 +444,7 @@ func getRefsSorted(refsRootDir string) ([][]string, error) {
 
 					// Make sure the filename looks like a sha256 digest (64 chars)
 					if len(digest) == 64 {
-						refsMap[ref]["digest"] = digest[:7]
+						refsMap[ref]["digest"] = shortDigest(digest)
 						refsMap[ref]["size"] = byteCountBinary(destFileInfo.Size())
 						refsMap[ref]["created"] = units.HumanDuration(time.Now().UTC().Sub(destFileInfo.ModTime()))
 					}

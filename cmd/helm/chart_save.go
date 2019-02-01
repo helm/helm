@@ -17,6 +17,8 @@ limitations under the License.
 package main
 
 import (
+	"io"
+
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/require"
@@ -27,7 +29,7 @@ const chartSaveDesc = `
 TODO
 `
 
-func newChartSaveCmd(cfg *action.Configuration) *cobra.Command {
+func newChartSaveCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	return &cobra.Command{
 		Use:   "save [path] [ref]",
 		Short: "save a chart directory",
@@ -36,7 +38,7 @@ func newChartSaveCmd(cfg *action.Configuration) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			path := args[0]
 			ref := args[1]
-			return action.NewChartSave(cfg).Run(path, ref)
+			return action.NewChartSave(cfg).Run(out, path, ref)
 		},
 	}
 }
