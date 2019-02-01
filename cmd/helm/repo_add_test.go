@@ -42,7 +42,7 @@ func TestRepoAddCmd(t *testing.T) {
 
 	tests := []cmdTestCase{{
 		name:   "add a repository",
-		cmd:    fmt.Sprintf("repo add test-name %s --home %s", srv.URL(), hh),
+		cmd:    fmt.Sprintf("repo add test-name %s --home '%s'", srv.URL(), hh),
 		golden: "output/repo-add.txt",
 	}}
 

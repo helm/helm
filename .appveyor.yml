@@ -1,0 +1,18 @@
+version: "{build}"
+clone_folder: c:\go\src\k8s.io\helm
+environment:
+  GOPATH: c:\go
+  PATH: c:\ProgramData\bin;$(PATH)
+install:
+  - ps: iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/fishworks/gofish/master/scripts/install.ps1'))
+  - gofish init
+  - gofish install dep
+  - go version
+  - dep ensure -vendor-only
+cache:
+  - vendor -> Gopkg.lock
+build: "off"
+deploy: "off"
+test_script:
+  - go build .\cmd\...
+  - go test .\...

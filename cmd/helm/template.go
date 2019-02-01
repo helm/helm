@@ -208,7 +208,8 @@ func (o *templateOptions) run(out io.Writer) error {
 	}
 	in := func(needle string, haystack []string) bool {
 		// make needle path absolute
-		d := strings.Split(needle, string(os.PathSeparator))
+		// NOTE: chart manifest names always use backslashes as path separators, even on Windows
+		d := strings.Split(needle, "/")
 		dd := d[1:]
 		an := filepath.Join(o.chartPath, strings.Join(dd, string(os.PathSeparator)))
 
