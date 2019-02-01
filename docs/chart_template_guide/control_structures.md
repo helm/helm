@@ -20,7 +20,7 @@ The first control structure we'll look at is for conditionally including blocks 
 
 The basic structure for a conditional looks like this:
 
-```
+```yaml
 {{ if PIPELINE }}
   # Do something
 {{ else if OTHER PIPELINE }}
@@ -115,7 +115,7 @@ data:
 
 `mug` is incorrectly indented. Let's simply out-dent that one line, and re-run:
 
-```
+```yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -224,7 +224,7 @@ The next control structure to look at is the `with` action. This controls variab
 
 The syntax for `with` is similar to a simple `if` statement:
 
-```
+```yaml
 {{ with PIPELINE }}
   # restricted scope
 {{ end }}
