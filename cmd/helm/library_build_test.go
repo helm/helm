@@ -43,7 +43,7 @@ func TestLibraryBuildCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cmd := fmt.Sprintf("--home=%s library build %s", hh, hh.Path(chartname))
+	cmd := fmt.Sprintf("--home='%s' library build '%s'", hh, hh.Path(chartname))
 	out, err := executeCommand(nil, cmd)
 
 	// In the first pass, we basically want the same results as an update.

@@ -16,27 +16,38 @@ limitations under the License.
 package main
 
 import (
+	"runtime"
 	"testing"
 )
 
 func TestLibraryListCmd(t *testing.T) {
-	tests := []cmdTestCase{{
+	noSuchChart := cmdTestCase{
 		name:      "No such chart",
 		cmd:       "library list /no/such/chart",
-		golden:    "output/dependency-list-no-chart.txt",
+		golden:    "output/dependency-list-no-chart-linux.txt",
 		wantError: true,
-	}, {
+	}
+
+	noDependencies := cmdTestCase{
 		name:   "No libraries",
 		cmd:    "library list testdata/testcharts/alpine",
-		golden: "output/dependency-list-no-requirements.txt",
-	}, {
-		name:   "Libraries in library dir",
-		cmd:    "library list testdata/testcharts/libcharttest",
-		golden: "output/dependency-list.txt",
-	}, {
-		name:   "Libraries in chart archive",
-		cmd:    "library list testdata/testcharts/libcharttest-0.1.0.tgz",
-		golden: "output/dependency-list-archive.txt",
-	}}
+		golden: "output/library-list-no-requirements-linux.txt",
+	}
+
+	if runtime.GOOS == "windows" {
+		noSuchChart.golden = "output/dependency-list-no-chart-windows.txt"
+		noDependencies.golden = "output/library-list-no-requirements-windows.txt"
+	}
+
+	tests := []cmdTestCase{noSuchChart,
+		noDependencies, {
+			name:   "Libraries in library dir",
+			cmd:    "library list testdata/testcharts/libcharttest",
+			golden: "output/dependency-list.txt",
+		}, {
+			name:   "Libraries in chart archive",
+			cmd:    "library list testdata/testcharts/libcharttest-0.1.0.tgz",
+			golden: "output/dependency-list-archive.txt",
+		}}
 	runTestCmd(t, tests)
 }

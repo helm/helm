@@ -146,13 +146,13 @@ func TestUpgradeCmd(t *testing.T) {
 		},
 		{
 			name:      "upgrade a release with missing libraries",
-			cmd:       "upgrade bonkers-bunny" + missingLibsPath,
+			cmd:       fmt.Sprintf("upgrade bonkers-bunny%s", missingLibsPath),
 			golden:    "output/upgrade-with-missing-dependencies.txt",
 			wantError: true,
 		},
 		{
 			name:      "upgrade a release with bad libraries",
-			cmd:       "upgrade bonkers-bunny " + badLibsPath,
+			cmd:       fmt.Sprintf("upgrade bonkers-bunny '%s'", badLibsPath),
 			golden:    "output/upgrade-with-bad-dependencies.txt",
 			wantError: true,
 		},

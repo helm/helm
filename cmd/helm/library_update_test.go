@@ -52,7 +52,7 @@ func TestLibraryUpdateCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out, err := executeCommand(nil, fmt.Sprintf("--home=%s library update %s", hh, hh.Path(chartname)))
+	out, err := executeCommand(nil, fmt.Sprintf("--home='%s' library update '%s'", hh, hh.Path(chartname)))
 	if err != nil {
 		t.Logf("Output: %s", out)
 		t.Fatal(err)
@@ -95,7 +95,7 @@ func TestLibraryUpdateCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out, err = executeCommand(nil, fmt.Sprintf("--home=%s library update %s", hh, hh.Path(chartname)))
+	out, err = executeCommand(nil, fmt.Sprintf("--home='%s' library update '%s'", hh, hh.Path(chartname)))
 	if err != nil {
 		t.Logf("Output: %s", out)
 		t.Fatal(err)
@@ -133,7 +133,7 @@ func TestLibraryUpdateCmd_SkipRefresh(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out, err := executeCommand(nil, fmt.Sprintf("--home=%s library update --skip-refresh %s", hh, hh.Path(chartname)))
+	out, err := executeCommand(nil, fmt.Sprintf("--home='%s' library update --skip-refresh '%s'", hh, hh.Path(chartname)))
 	if err == nil {
 		t.Fatal("Expected failure to find the repo with skipRefresh")
 	}

@@ -49,10 +49,11 @@ func (o *refListOptions) run(out io.Writer, isLib bool) error {
 	}
 
 	if reqs == nil {
-                if isLib {
-                        fmt.Fprintf(out, "WARNING: no libraries at %s\n", filepath.Join(o.chartpath, dirname)) } else {
-                        fmt.Fprintf(out, "WARNING: no dependencies at %s\n", filepath.Join(o.chartpath, dirname))
-                }
+		if isLib {
+			fmt.Fprintf(out, "WARNING: no libraries at %s\n", filepath.Join(o.chartpath, dirName))
+		} else {
+			fmt.Fprintf(out, "WARNING: no dependencies at %s\n", filepath.Join(o.chartpath, dirName))
+		}
 		return nil
 	}
 
