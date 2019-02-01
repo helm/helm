@@ -4,7 +4,7 @@ jobs:
     working_directory: /go/src/k8s.io/helm
     parallelism: 3
     docker:
-      - image: circleci/golang:1.10.0
+      - image: circleci/golang:1.11.5
     environment:
       - PROJECT_NAME: "kubernetes-helm"
       - GOCACHE: "/tmp/go/cache"
@@ -13,26 +13,26 @@ jobs:
       - restore_cache:
           key: gopkg-{{ .Branch }}-{{ checksum "Gopkg.lock" }}
           paths:
-              - /go/src/k8s.io/helm/vendor
+            - /go/src/k8s.io/helm/vendor
       - run:
           name: install dependencies
           command: .circleci/bootstrap.sh
       - save_cache:
           key: gopkg-{{ .Branch }}-{{ checksum "Gopkg.lock" }}
           paths:
-              - /go/src/k8s.io/helm/vendor
+            - /go/src/k8s.io/helm/vendor
       - restore_cache:
           keys:
-              - build-cache-{{ .Branch }}-{{ .Environment.CIRCLE_PREVIOUS_BUILD_NUM }}
+            - build-cache-{{ .Branch }}-{{ .Environment.CIRCLE_PREVIOUS_BUILD_NUM }}
           paths:
-              - /tmp/go/cache
+            - /tmp/go/cache
       - run:
           name: test
           command: .circleci/test.sh
       - save_cache:
           key: build-cache-{{ .Branch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
           paths:
-              - /tmp/go/cache
+            - /tmp/go/cache
       - deploy:
           name: deploy
           command: .circleci/deploy.sh
