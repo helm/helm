@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"path/filepath"
 	"testing"
 )
@@ -31,42 +32,42 @@ func TestTemplateCmd(t *testing.T) {
 	tests := []cmdTestCase{
 		{
 			name:   "check name",
-			cmd:    "template " + chartPath,
+			cmd:    fmt.Sprintf("template '%s'", chartPath),
 			golden: "output/template.txt",
 		},
 		{
 			name:   "check set name",
-			cmd:    "template -x templates/service.yaml --set service.name=apache " + chartPath,
+			cmd:    fmt.Sprintf("template '%s' -x '%s' --set service.name=apache", chartPath, filepath.Join("templates", "service.yaml")),
 			golden: "output/template-set.txt",
 		},
 		{
 			name:   "check execute absolute",
-			cmd:    "template -x " + absChartPath + "/templates/service.yaml --set service.name=apache " + chartPath,
+			cmd:    fmt.Sprintf("template '%s' -x '%s' --set service.name=apache", chartPath, filepath.Join(absChartPath, "templates", "service.yaml")),
 			golden: "output/template-absolute.txt",
 		},
 		{
 			name:   "check release name",
-			cmd:    "template --name test " + chartPath,
+			cmd:    fmt.Sprintf("template '%s' --name test", chartPath),
 			golden: "output/template-name.txt",
 		},
 		{
 			name:   "check notes",
-			cmd:    "template --notes " + chartPath,
+			cmd:    fmt.Sprintf("template '%s' --notes", chartPath),
 			golden: "output/template-notes.txt",
 		},
 		{
 			name:   "check values files",
-			cmd:    "template --values " + chartPath + "/charts/subchartA/values.yaml " + chartPath,
+			cmd:    fmt.Sprintf("template '%s' --values '%s'", chartPath, filepath.Join(chartPath, "/charts/subchartA/values.yaml")),
 			golden: "output/template-values-files.txt",
 		},
 		{
 			name:   "check name template",
-			cmd:    `template --name-template='foobar-{{ b64enc "abc" }}-baz' ` + chartPath,
+			cmd:    fmt.Sprintf(`template '%s' --name-template='foobar-{{ b64enc "abc" }}-baz'`, chartPath),
 			golden: "output/template-name-template.txt",
 		},
 		{
 			name:   "check kube version",
-			cmd:    "template --kube-version 1.6 " + chartPath,
+			cmd:    fmt.Sprintf("template '%s' --kube-version 1.6", chartPath),
 			golden: "output/template-kube-version.txt",
 		},
 		{

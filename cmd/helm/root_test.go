@@ -20,6 +20,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"k8s.io/client-go/util/homedir"
 )
 
 func TestRootCmd(t *testing.T) {
@@ -32,7 +34,7 @@ func TestRootCmd(t *testing.T) {
 		{
 			name: "defaults",
 			args: "home",
-			home: filepath.Join(os.Getenv("HOME"), "/.helm"),
+			home: filepath.Join(homedir.HomeDir(), ".helm"),
 		},
 		{
 			name: "with --home set",

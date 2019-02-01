@@ -86,7 +86,7 @@ func TestCreateStarterCmd(t *testing.T) {
 	defer testChdir(t, tdir)()
 
 	// Run a create
-	if _, err := executeCommand(nil, fmt.Sprintf("--home=%s create --starter=starterchart %s", hh, cname)); err != nil {
+	if _, err := executeCommand(nil, fmt.Sprintf("--home='%s' create --starter=starterchart %s", hh.String(), cname)); err != nil {
 		t.Errorf("Failed to run create: %s", err)
 		return
 	}

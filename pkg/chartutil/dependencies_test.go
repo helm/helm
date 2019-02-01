@@ -15,6 +15,8 @@ limitations under the License.
 package chartutil
 
 import (
+	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"testing"
@@ -315,7 +317,12 @@ func TestDependentChartWithSubChartsHelmignore(t *testing.T) {
 }
 
 func TestDependentChartsWithSubChartsSymlink(t *testing.T) {
-	c := loadChart(t, "testdata/joonix")
+	joonix := filepath.Join("testdata", "joonix")
+	if err := os.Symlink(filepath.Join("..", "..", "frobnitz"), filepath.Join(joonix, "charts", "frobnitz")); err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(filepath.Join(joonix, "charts", "frobnitz"))
+	c := loadChart(t, joonix)
 
 	if c.Name() != "joonix" {
 		t.Fatalf("unexpected chart name: %s", c.Name())

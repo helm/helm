@@ -46,7 +46,7 @@ func TestInstall(t *testing.T) {
 		// Install, values from yaml
 		{
 			name:   "install with values file",
-			cmd:    "install virgil testdata/testcharts/alpine  -f testdata/testcharts/alpine/extra_values.yaml",
+			cmd:    "install virgil testdata/testcharts/alpine -f testdata/testcharts/alpine/extra_values.yaml",
 			golden: "output/install-with-values-file.txt",
 		},
 		// Install, no hooks
