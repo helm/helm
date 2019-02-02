@@ -228,7 +228,6 @@ func TestProcessRequirementsImportValues(t *testing.T) {
 	e["imported-chart1.SC1string"] = "dollywood"
 	e["imported-chart1.SC1extra1"] = "11"
 	e["imported-chart1.SPextra1"] = "helm rocks"
-	e["imported-chart1.SC1extra1"] = "11"
 
 	e["imported-chartA.SCAbool"] = "false"
 	e["imported-chartA.SCAfloat"] = "3.1"
