@@ -131,7 +131,7 @@ func (cache *filesystemCache) ChartToLayers(ch *chart.Chart) ([]ocispec.Descript
 }
 
 func (cache *filesystemCache) LoadReference(ref *Reference) ([]ocispec.Descriptor, error) {
-	tagDir := filepath.Join(cache.rootDir, "refs", ref.Locator, "tags", tagOrDefault(ref.Object))
+	tagDir := filepath.Join(cache.rootDir, "refs", escape(ref.Locator), "tags", tagOrDefault(ref.Object))
 
 	// add meta layer
 	metaJSONRaw, err := getSymlinkDestContent(filepath.Join(tagDir, "meta"))
@@ -160,7 +160,7 @@ func (cache *filesystemCache) LoadReference(ref *Reference) ([]ocispec.Descripto
 
 func (cache *filesystemCache) StoreReference(ref *Reference, layers []ocispec.Descriptor) (bool, error) {
 	tag := tagOrDefault(ref.Object)
-	tagDir := mkdir(filepath.Join(cache.rootDir, "refs", ref.Locator, "tags", tag))
+	tagDir := mkdir(filepath.Join(cache.rootDir, "refs", escape(ref.Locator), "tags", tag))
 
 	// Retrieve just the meta and content layers
 	metaLayer, contentLayer, err := extractLayers(layers)
@@ -233,7 +233,7 @@ func (cache *filesystemCache) StoreReference(ref *Reference, layers []ocispec.De
 }
 
 func (cache *filesystemCache) DeleteReference(ref *Reference) error {
-	tagDir := filepath.Join(cache.rootDir, "refs", ref.Locator, "tags", tagOrDefault(ref.Object))
+	tagDir := filepath.Join(cache.rootDir, "refs", escape(ref.Locator), "tags", tagOrDefault(ref.Object))
 	if _, err := os.Stat(tagDir); os.IsNotExist(err) {
 		return errors.New("ref not found")
 	}
@@ -242,6 +242,17 @@ func (cache *filesystemCache) DeleteReference(ref *Reference) error {
 
 func (cache *filesystemCache) TableRows() ([][]string, error) {
 	return getRefsSorted(filepath.Join(cache.rootDir, "refs"))
+}
+
+// escape sanitizes a registry URL to remove characters such as ":"
+// which are illegal on windows
+func escape(s string) string {
+	return strings.Replace(s, ":", "_", -1)
+}
+
+// escape reverses escape
+func unescape(s string) string {
+	return strings.Replace(s, "_", ":", -1)
 }
 
 // printChartSummary prints details about a chart layers
@@ -422,8 +433,8 @@ func getRefsSorted(refsRootDir string) ([][]string, error) {
 				tagDir := filepath.Dir(path)
 
 				// Determine the ref
-				locator := strings.TrimLeft(
-					strings.TrimPrefix(filepath.Dir(filepath.Dir(tagDir)), refsRootDir), "/\\")
+				locator := unescape(strings.TrimLeft(
+					strings.TrimPrefix(filepath.Dir(filepath.Dir(tagDir)), refsRootDir), "/\\"))
 				object := filepath.Base(tagDir)
 				ref := fmt.Sprintf("%s:%s", locator, object)
 
