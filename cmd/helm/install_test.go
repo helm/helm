@@ -113,6 +113,14 @@ func TestInstall(t *testing.T) {
 			expected: "apollo",
 			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "apollo"}),
 		},
+		// Install, with atomic
+		{
+			name:     "install with a atomic",
+			args:     []string{"testdata/testcharts/alpine"},
+			flags:    strings.Split("--name apollo", " "),
+			expected: "apollo",
+			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "apollo"}),
+		},
 		// Install, using the name-template
 		{
 			name:     "install with name-template",
@@ -169,7 +177,6 @@ func TestInstall(t *testing.T) {
 			name:  "install chart with release name using periods",
 			args:  []string{"testdata/testcharts/alpine"},
 			flags: []string{"--name", "foo.bar"},
-			err:   true,
 		},
 		{
 			name:  "install chart with release name using underscores",

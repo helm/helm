@@ -177,7 +177,7 @@ Now the value of `coffee` will be `Latte\nCappuccino\nEspresso\n\n\n`.
 Indentation inside of a text block is preserved, and results in the preservation
 of line breaks, too:
 
-```
+```yaml
 coffee: |-
   Latte
     12 oz
@@ -336,7 +336,7 @@ reference is expanded and then discarded.
 So if we were to decode and then re-encode the example above, the resulting
 YAML would be:
 
-```YAML
+```yaml
 coffee: yes, please
 favorite: Cappucino
 coffees:

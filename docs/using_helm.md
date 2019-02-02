@@ -1,4 +1,4 @@
-# Using Helm
+﻿# Using Helm
 
 This guide explains the basics of using Helm (and Tiller) to manage
 packages on your Kubernetes cluster. It assumes that you have already
@@ -215,7 +215,10 @@ You can then override any of these settings in a YAML formatted file,
 and then pass that file during installation.
 
 ```console
-$ echo '{mariadbUser: user0, mariadbDatabase: user0db}' > config.yaml
+$ cat << EOF > config.yaml
+mariadbUser: user0
+mariadbDatabase: user0db
+EOF
 $ helm install -f config.yaml stable/mariadb
 ```
 

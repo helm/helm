@@ -105,3 +105,30 @@ func TestUpdateCharts(t *testing.T) {
 		t.Error("Update was not successful")
 	}
 }
+
+func TestUpdateCmdStrictFlag(t *testing.T) {
+	thome, err := tempHelmHome(t)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cleanup := resetEnv()
+	defer func() {
+		os.RemoveAll(thome.String())
+		cleanup()
+	}()
+
+	settings.Home = thome
+
+	out := bytes.NewBuffer(nil)
+	cmd := newRepoUpdateCmd(out)
+	cmd.ParseFlags([]string{"--strict"})
+
+	if err := cmd.RunE(cmd, []string{}); err == nil {
+		t.Fatal("expected error due to strict flag")
+	}
+
+	if got := out.String(); !strings.Contains(got, "Unable to get an update") {
+		t.Errorf("Expected 'Unable to get an update', got %q", got)
+	}
+}

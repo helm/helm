@@ -221,6 +221,12 @@ func withChart(chartOpts ...chartOption) installOption {
 	}
 }
 
+func withSubNotes() installOption {
+	return func(opts *installOptions) {
+		opts.SubNotes = true
+	}
+}
+
 func installRequest(opts ...installOption) *services.InstallReleaseRequest {
 	reqOpts := &installOptions{
 		&services.InstallReleaseRequest{

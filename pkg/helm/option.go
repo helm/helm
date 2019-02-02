@@ -346,6 +346,20 @@ func InstallReuseName(reuse bool) InstallOption {
 	}
 }
 
+// InstallSubNotes will (if true) instruct Tiller to render SubChart Notes
+func InstallSubNotes(enable bool) InstallOption {
+	return func(opts *options) {
+		opts.instReq.SubNotes = enable
+	}
+}
+
+// UpgradeSubNotes will (if true) instruct Tiller to render SubChart Notes
+func UpgradeSubNotes(enable bool) UpdateOption {
+	return func(opts *options) {
+		opts.updateReq.SubNotes = enable
+	}
+}
+
 // RollbackDisableHooks will disable hooks for a rollback operation
 func RollbackDisableHooks(disable bool) RollbackOption {
 	return func(opts *options) {
@@ -460,7 +474,7 @@ type VersionOption func(*options)
 // the defaults used when running the `helm upgrade` command.
 type UpdateOption func(*options)
 
-// RollbackOption allows specififying various settings configurable
+// RollbackOption allows specifying various settings configurable
 // by the helm client user for overriding the defaults used when
 // running the `helm rollback` command.
 type RollbackOption func(*options)

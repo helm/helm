@@ -12,7 +12,7 @@ When your YAML is failing to parse, but you want to see what is generated, one
 easy way to retrieve the YAML is to comment out the problem section in the template,
 and then re-run `helm install --dry-run --debug`:
 
-```YAML
+```yaml
 apiVersion: v1
 # some: problem section
 # {{ .Values.foo | quote }}
@@ -20,7 +20,7 @@ apiVersion: v1
 
 The above will be rendered and returned with the comments intact:
 
-```YAML
+```yaml
 apiVersion: v1
 # some: problem section
 #  "bar"

@@ -53,6 +53,7 @@ or [pull request](https://github.com/helm/helm/pulls).
 - [helm-stop](https://github.com/IBM/helm-stop) - Plugin for stopping a release pods
 - [helm-template](https://github.com/technosophos/helm-template) - Debug/render templates client-side
 - [helm-tiller](https://github.com/adamreese/helm-tiller) - Additional commands to work with Tiller
+- [helm-tiller-info](https://github.com/maorfr/helm-tiller-info) - Plugin which prints information about Tiller
 - [helm-unittest](https://github.com/lrills/helm-unittest) - Plugin for unit testing chart locally with YAML
 - [Tillerless Helm v2](https://github.com/rimusz/helm-tiller) - Helm plugin for using Tiller locally and in CI/CD pipelines
 
@@ -88,7 +89,6 @@ Tools layered on top of Helm or Tiller.
 
 Platforms, distributions, and services that include Helm support.
 
-- [Cabin](http://www.skippbox.com/cabin/) - Mobile App for Managing Kubernetes
 - [Fabric8](https://fabric8.io) - Integrated development platform for Kubernetes
 - [Jenkins X](http://jenkins-x.io/) - open source automated CI/CD for Kubernetes which uses Helm for [promoting](http://jenkins-x.io/about/features/#promotion) applications through [environments via GitOps](http://jenkins-x.io/about/features/#environments)
 - [Kubernetic](https://kubernetic.com/) - Kubernetes Desktop Client

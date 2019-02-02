@@ -73,7 +73,7 @@ func ExtractHostname(addr string) (string, error) {
 	return stripPort(u.Host), nil
 }
 
-// Backported from Go 1.8 because Circle is still on 1.7
+// stripPort from Go 1.8 because Circle is still on 1.7
 func stripPort(hostport string) string {
 	colon := strings.IndexByte(hostport, ':')
 	if colon == -1 {

@@ -124,6 +124,14 @@ func TestUpgradeCmd(t *testing.T) {
 			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "funny-bunny", Version: 5, Chart: ch2})},
 		},
 		{
+			name:     "install a release with 'upgrade --atomic'",
+			args:     []string{"funny-bunny", chartPath},
+			flags:    []string{"--atomic"},
+			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "funny-bunny", Version: 6, Chart: ch}),
+			expected: "Release \"funny-bunny\" has been upgraded. Happy Helming!\n",
+			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "funny-bunny", Version: 6, Chart: ch})},
+		},
+		{
 			name:     "install a release with 'upgrade --install'",
 			args:     []string{"zany-bunny", chartPath},
 			flags:    []string{"-i"},

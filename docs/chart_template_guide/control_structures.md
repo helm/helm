@@ -20,7 +20,7 @@ The first control structure we'll look at is for conditionally including blocks 
 
 The basic structure for a conditional looks like this:
 
-```
+```yaml
 {{ if PIPELINE }}
   # Do something
 {{ else if OTHER PIPELINE }}
@@ -53,7 +53,7 @@ data:
   myvalue: "Hello World"
   drink: {{ .Values.favorite.drink | default "tea" | quote }}
   food: {{ .Values.favorite.food | upper | quote }}
-  {{ if and (.Values.favorite.drink) (eq .Values.favorite.drink "coffee") }}mug: true{{ end }}
+  {{ if and .Values.favorite.drink (eq .Values.favorite.drink "coffee") }}mug: true{{ end }}
 ```
 
 Note that `.Values.favorite.drink` must be defined or else it will throw an error when comparing it to "coffee". Since we commented out `drink: coffee` in our last example, the output should not include a `mug: true` flag. But if we add that line back into our `values.yaml` file, the output should look like this:
@@ -115,7 +115,7 @@ data:
 
 `mug` is incorrectly indented. Let's simply out-dent that one line, and re-run:
 
-```
+```yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -224,7 +224,7 @@ The next control structure to look at is the `with` action. This controls variab
 
 The syntax for `with` is similar to a simple `if` statement:
 
-```
+```yaml
 {{ with PIPELINE }}
   # restricted scope
 {{ end }}

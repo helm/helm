@@ -278,7 +278,7 @@ func GetVersionSet(client discovery.ServerGroupsInterface) (chartutil.VersionSet
 	return chartutil.NewVersionSet(versions...), nil
 }
 
-func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values, vs chartutil.VersionSet) ([]*release.Hook, *bytes.Buffer, string, error) {
+func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values, subNotes bool, vs chartutil.VersionSet) ([]*release.Hook, *bytes.Buffer, string, error) {
 	// Guard to make sure Tiller is at the right version to handle this chart.
 	sver := version.GetVersion()
 	if ch.Metadata.TillerVersion != "" &&
@@ -307,17 +307,22 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 	// text file. We have to spin through this map because the file contains path information, so we
 	// look for terminating NOTES.txt. We also remove it from the files so that we don't have to skip
 	// it in the sortHooks.
-	notes := ""
+	var notesBuffer bytes.Buffer
 	for k, v := range files {
 		if strings.HasSuffix(k, notesFileSuffix) {
-			// Only apply the notes if it belongs to the parent chart
-			// Note: Do not use filePath.Join since it creates a path with \ which is not expected
-			if k == path.Join(ch.Metadata.Name, "templates", notesFileSuffix) {
-				notes = v
+			if subNotes || (k == path.Join(ch.Metadata.Name, "templates", notesFileSuffix)) {
+
+				// If buffer contains data, add newline before adding more
+				if notesBuffer.Len() > 0 {
+					notesBuffer.WriteString("\n")
+				}
+				notesBuffer.WriteString(v)
 			}
 			delete(files, k)
 		}
 	}
+
+	notes := notesBuffer.String()
 
 	// Sort hooks, manifests, and partials. Only hooks and manifests are returned,
 	// as partials are not used after renderer.Render. Empty manifests are also
@@ -451,7 +456,7 @@ func (s *ReleaseServer) deleteHookByPolicy(h *release.Hook, policy string, name,
 	return nil
 }
 
-// hookShouldBeDeleted determines whether the defined hook deletion policy matches the hook deletion polices
+// hookHasDeletePolicy determines whether the defined hook deletion policy matches the hook deletion polices
 // supported by helm. If so, mark the hook as one should be deleted.
 func hookHasDeletePolicy(h *release.Hook, policy string) bool {
 	if dp, ok := deletePolices[policy]; ok {

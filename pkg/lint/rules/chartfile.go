@@ -46,7 +46,8 @@ func Chartfile(linter *support.Linter) {
 		return
 	}
 
-	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartName(chartFile))
+	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartNamePresence(chartFile))
+	linter.RunLinterRule(support.WarningSev, chartFileName, validateChartNameFormat(chartFile))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartNameDirMatch(linter.ChartDir, chartFile))
 
 	// Chart metadata
@@ -74,9 +75,16 @@ func validateChartYamlFormat(chartFileError error) error {
 	return nil
 }
 
-func validateChartName(cf *chart.Metadata) error {
+func validateChartNamePresence(cf *chart.Metadata) error {
 	if cf.Name == "" {
 		return errors.New("name is required")
+	}
+	return nil
+}
+
+func validateChartNameFormat(cf *chart.Metadata) error {
+	if strings.Contains(cf.Name, ".") {
+		return errors.New("name should be lower case letters and numbers. Words may be separated with dashes")
 	}
 	return nil
 }
