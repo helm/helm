@@ -141,6 +141,12 @@ func TestPackage(t *testing.T) {
 			err:     true,
 		},
 		{
+			name:    "package testdata/testcharts/chart-missing-libs",
+			args:    []string{"testdata/testcharts/chart-missing-libs"},
+			hasfile: "chart-missing-libs-0.1.0.tgz",
+			err:     true,
+		},
+		{
 			name:   "package --values does-not-exist",
 			args:   []string{"testdata/testcharts/alpine"},
 			flags:  map[string]string{"values": "does-not-exist"},

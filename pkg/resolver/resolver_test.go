@@ -21,7 +21,65 @@ import (
 	"k8s.io/helm/pkg/chart"
 )
 
-func TestResolve(t *testing.T) {
+func TestDependencyResolve(t *testing.T) {
+	resolve(t, false)
+}
+
+func TestLibraryResolve(t *testing.T) {
+	resolve(t, true)
+}
+
+func TestHashReq(t *testing.T) {
+	expect := "sha256:d661820b01ed7bcf26eed8f01cf16380e0a76326ba33058d3150f919d9b15bc0"
+	req := []*chart.Dependency{
+		{Name: "alpine", Version: "0.1.0", Repository: "http://localhost:8879/charts"},
+	}
+	h, err := HashReq(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if expect != h {
+		t.Errorf("Expected %q, got %q", expect, h)
+	}
+
+	req = []*chart.Dependency{}
+	h, err = HashReq(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if expect == h {
+		t.Errorf("Expected %q !=  %q", expect, h)
+	}
+}
+
+func resolve(t *testing.T, isLib bool) {
+	var lock1 *chart.Lock
+	var lock2 *chart.Lock
+	if isLib {
+		lock1 = &chart.Lock{
+			Libraries: []*chart.Dependency{
+				{Name: "alpine", Repository: "http://example.com", Version: "0.2.0"},
+			},
+		}
+		lock2 = &chart.Lock{
+			Libraries: []*chart.Dependency{
+				{Name: "signtest", Repository: "file://../../../../cmd/helm/testdata/testcharts/signtest", Version: "0.1.0"},
+			},
+		}
+
+	} else {
+		lock1 = &chart.Lock{
+			Dependencies: []*chart.Dependency{
+				{Name: "alpine", Repository: "http://example.com", Version: "0.2.0"},
+			},
+		}
+		lock2 = &chart.Lock{
+			Dependencies: []*chart.Dependency{
+				{Name: "signtest", Repository: "file://../../../../cmd/helm/testdata/testcharts/signtest", Version: "0.1.0"},
+			},
+		}
+	}
+
 	tests := []struct {
 		name   string
 		req    []*chart.Dependency
@@ -61,22 +119,14 @@ func TestResolve(t *testing.T) {
 			req: []*chart.Dependency{
 				{Name: "alpine", Repository: "http://example.com", Version: ">=0.1.0"},
 			},
-			expect: &chart.Lock{
-				Dependencies: []*chart.Dependency{
-					{Name: "alpine", Repository: "http://example.com", Version: "0.2.0"},
-				},
-			},
+			expect: lock1,
 		},
 		{
 			name: "repo from valid local path",
 			req: []*chart.Dependency{
 				{Name: "signtest", Repository: "file://../../../../cmd/helm/testdata/testcharts/signtest", Version: "0.1.0"},
 			},
-			expect: &chart.Lock{
-				Dependencies: []*chart.Dependency{
-					{Name: "signtest", Repository: "file://../../../../cmd/helm/testdata/testcharts/signtest", Version: "0.1.0"},
-				},
-			},
+			expect: lock2,
 		},
 		{
 			name: "repo from invalid local path",
@@ -95,12 +145,18 @@ func TestResolve(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		l, err := r.Resolve(tt.req, repoNames, hash, false)
-		if err != nil {
+		var l *chart.Lock
+		var errRes error
+		if isLib {
+			l, errRes = r.Resolve(tt.req, repoNames, hash, true)
+		} else {
+			l, errRes = r.Resolve(tt.req, repoNames, hash, false)
+		}
+		if errRes != nil {
 			if tt.err {
 				continue
 			}
-			t.Fatal(err)
+			t.Fatal(errRes)
 		}
 
 		if tt.err {
@@ -114,11 +170,20 @@ func TestResolve(t *testing.T) {
 		}
 
 		// Check fields.
-		if len(l.Dependencies) != len(tt.req) {
+		var reqs []*chart.Dependency
+		var ttReqs []*chart.Dependency
+		if isLib {
+			reqs = l.Libraries
+			ttReqs = tt.expect.Libraries
+		} else {
+			reqs = l.Dependencies
+			ttReqs = tt.expect.Dependencies
+		}
+		if len(reqs) != len(tt.req) {
 			t.Errorf("%s: wrong number of dependencies in lock", tt.name)
 		}
-		d0 := l.Dependencies[0]
-		e0 := tt.expect.Dependencies[0]
+		d0 := reqs[0]
+		e0 := ttReqs[0]
 		if d0.Name != e0.Name {
 			t.Errorf("%s: expected name %s, got %s", tt.name, e0.Name, d0.Name)
 		}
@@ -128,28 +193,5 @@ func TestResolve(t *testing.T) {
 		if d0.Version != e0.Version {
 			t.Errorf("%s: expected version %s, got %s", tt.name, e0.Version, d0.Version)
 		}
-	}
-}
-
-func TestHashReq(t *testing.T) {
-	expect := "sha256:d661820b01ed7bcf26eed8f01cf16380e0a76326ba33058d3150f919d9b15bc0"
-	req := []*chart.Dependency{
-		{Name: "alpine", Version: "0.1.0", Repository: "http://localhost:8879/charts"},
-	}
-	h, err := HashReq(req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if expect != h {
-		t.Errorf("Expected %q, got %q", expect, h)
-	}
-
-	req = []*chart.Dependency{}
-	h, err = HashReq(req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if expect == h {
-		t.Errorf("Expected %q !=  %q", expect, h)
 	}
 }
