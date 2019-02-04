@@ -65,6 +65,7 @@ func newRootCmd(c helm.Interface, actionConfig *action.Configuration, out io.Wri
 		// chart commands
 		newCreateCmd(out),
 		newDependencyCmd(out),
+		newLibraryCmd(out),
 		newPullCmd(out),
 		newShowCmd(out),
 		newLintCmd(out),

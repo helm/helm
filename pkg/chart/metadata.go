@@ -64,4 +64,6 @@ type Metadata struct {
 	KubeVersion string `json:"kubeVersion,omitempty"`
 	// Dependencies are a list of dependencies for a chart.
 	Dependencies []*Dependency `json:"dependencies,omitempty"`
+	// Libraries are a list of libraries for a chart.
+	Libraries []*Dependency `json:"libraries,omitempty"`
 }

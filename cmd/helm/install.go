@@ -245,7 +245,7 @@ func (o *installOptions) run(out io.Writer) error {
 					SkipUpdate: false,
 					Getters:    getter.All(settings),
 				}
-				if err := man.Update(); err != nil {
+				if err := man.Update(false); err != nil {
 					return err
 				}
 			} else {

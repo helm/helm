@@ -19,7 +19,8 @@ package chart
 const APIVersionv1 = "v1"
 
 // Chart is a helm package that contains metadata, a default config, zero or more
-// optionally parameterizable templates, and zero or more charts (dependencies).
+// optionally parameterizable templates, and zero or more
+// charts (dependencies/libraries).
 type Chart struct {
 	// Metadata is the contents of the Chartfile.
 	Metadata *Metadata
@@ -37,6 +38,7 @@ type Chart struct {
 
 	parent       *Chart
 	dependencies []*Chart
+	libraries    []*Chart
 }
 
 // SetDependencies replaces the chart dependencies.
@@ -71,6 +73,9 @@ func (ch *Chart) Root() *Chart {
 
 // Dependencies are the charts that this chart depends on.
 func (ch *Chart) Dependencies() []*Chart { return ch.dependencies }
+
+// Libraries are the common charts that this chart uses.
+func (ch *Chart) Libraries() []*Chart { return ch.libraries }
 
 // IsRoot determines if the chart is the root chart.
 func (ch *Chart) IsRoot() bool { return ch.parent == nil }

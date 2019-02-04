@@ -19,7 +19,7 @@ import "time"
 
 // Dependency describes a chart upon which another chart depends.
 //
-// Dependencies can be used to express developer intent, or to capture the state
+// Dependencies/libraries can be used to express developer intent, or to capture the state
 // of a chart.
 type Dependency struct {
 	// Name is the name of the dependency.
@@ -49,9 +49,9 @@ type Dependency struct {
 	Alias string `json:"alias,omitempty"`
 }
 
-// Lock is a lock file for dependencies.
+// Lock is a lock file for dependencies/libraries.
 //
-// It represents the state that the dependencies should be in.
+// It represents the state that the dependencies/libraries should be in.
 type Lock struct {
 	// Genderated is the date the lock file was last generated.
 	Generated time.Time `json:"generated"`
@@ -59,4 +59,6 @@ type Lock struct {
 	Digest string `json:"digest"`
 	// Dependencies is the list of dependencies that this lock file has locked.
 	Dependencies []*Dependency `json:"dependencies"`
+	// Libraries is the list of libraries that this lock file has locked.
+	Libraries []*Dependency `json:"libraries"`
 }
