@@ -19,7 +19,6 @@ package engine
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"path"
 	"sort"
 	"strings"
@@ -156,20 +155,10 @@ func (e *Engine) alterFuncMap(t *template.Template, referenceTpls map[string]ren
 	// Add the 'required' function here
 	funcMap["required"] = func(warn string, val interface{}) (interface{}, error) {
 		if val == nil {
-			if e.LintMode {
-				// Don't fail on missing required values when linting
-				log.Printf("[INFO] Missing required value: %s", warn)
-				return "", nil
-			}
 			// Convert nil to "" in case required is piped into other functions
 			return "", fmt.Errorf(warn)
 		} else if _, ok := val.(string); ok {
 			if val == "" {
-				if e.LintMode {
-					// Don't fail on missing required values when linting
-					log.Printf("[INFO] Missing required value: %s", warn)
-					return val, nil
-				}
 				return val, fmt.Errorf(warn)
 			}
 		}
