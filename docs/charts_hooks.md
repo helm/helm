@@ -246,12 +246,10 @@ annotated.
 
 ### Automatically delete hook from previous release
 
-When helm release being updated it is possible, that hook resource already exists in cluster. By default helm will try to create resource and fail with `"... already exists"` error.
+When a helm release, that uses a hook, is being updated, it is possible that the hook resource might already exist in the cluster. In such circumstances, by default, helm will fail trying to install the hook resource with an `"... already exists"` error.
 
-One might choose `"helm.sh/hook-delete-policy": "before-hook-creation"` over `"helm.sh/hook-delete-policy": "hook-succeeded,hook-failed"` because:
+A common reason why the hook resource might already exist is that it was not deleted following use on a previous install/upgrade. There are, in fact, good reasons why one might want to keep the hook: for example, to aid manual debugging in case something went wrong. In this case, the recommended way of ensuring subsequent attemps to create the hook do not fail is to define a `"hook-delete-policy"` that can handle this: `"helm.sh/hook-delete-policy": "before-hook-creation"`. This hook annotation causes any existing hook to be removed, before the new hook is installed.
 
-* It is convenient to keep failed hook job resource in kubernetes for example for manual debug.
-* It may be necessary to keep succeeded hook resource in kubernetes for some reason.
-* At the same time it is not desirable to do manual resource deletion before helm release upgrade.
+If it is preferred to actually delete the hook after each use (rather than have to handle it on a subsequent use, as shown above), then this can be achived using a delete policy of `"helm.sh/hook-delete-policy": "hook-succeeded,hook-failed"`.
 
-`"helm.sh/hook-delete-policy": "before-hook-creation"` annotation on hook causes tiller to remove the hook from previous release if there is one before the new hook is launched and can be used with another policy.
+
