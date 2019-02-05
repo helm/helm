@@ -63,7 +63,7 @@ stable/mysql  	0.1.0  	Chart for MySQL
 stable/mariadb	0.5.1  	Chart for MariaDB
 ```
 
-Now you will only see the results that match your filter. 
+Now you will only see the results that match your filter.
 
 Why is
 `mariadb` in the list? Because its package description relates it to
@@ -73,7 +73,6 @@ MySQL. We can use `helm inspect chart` to see this:
 $ helm inspect stable/mariadb
 Fetched stable/mariadb to mariadb-0.5.1.tgz
 description: Chart for MariaDB
-engine: gotpl
 home: https://mariadb.org
 keywords:
 - mariadb
@@ -231,7 +230,7 @@ There are two ways to pass configuration data during install:
 
 If both are used, `--set` values are merged into `--values` with higher precedence.
 Overrides specified with `--set` are persisted in a configmap. Values that have been
-`--set` can be viewed for a given release with `helm get values <release-name>`. 
+`--set` can be viewed for a given release with `helm get values <release-name>`.
 Values that have been `--set` can be cleared by running `helm upgrade` with `--reset-values`
 specified.
 
@@ -376,11 +375,11 @@ is not a full list of cli flags. To see a description of all flags, just run
   This defaults to 300 (5 minutes)
 - `--wait`: Waits until all Pods are in a ready state, PVCs are bound, Deployments
   have minimum (`Desired` minus `maxUnavailable`) Pods in ready state and
-  Services have an IP address (and Ingress if a `LoadBalancer`) before 
-  marking the release as successful. It will wait for as long as the 
-  `--timeout` value. If timeout is reached, the release will be marked as 
-  `FAILED`. Note: In scenario where Deployment has `replicas` set to 1 and 
-  `maxUnavailable` is not set to 0 as part of rolling update strategy, 
+  Services have an IP address (and Ingress if a `LoadBalancer`) before
+  marking the release as successful. It will wait for as long as the
+  `--timeout` value. If timeout is reached, the release will be marked as
+  `FAILED`. Note: In scenario where Deployment has `replicas` set to 1 and
+  `maxUnavailable` is not set to 0 as part of rolling update strategy,
   `--wait` will return as ready as it has satisfied the minimum Pod in ready condition.
 - `--no-hooks`: This skips running hooks for the command
 - `--recreate-pods` (only available for `upgrade` and `rollback`): This flag

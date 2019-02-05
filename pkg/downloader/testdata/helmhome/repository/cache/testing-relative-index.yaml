@@ -3,7 +3,6 @@ entries:
   foo:
     - name: foo
       description: Foo Chart With Relative Path
-      engine: gotpl
       home: https://k8s.io/helm
       keywords: []
       maintainers: []
@@ -16,7 +15,6 @@ entries:
   bar:
     - name: bar
       description: Bar Chart With Relative Path
-      engine: gotpl
       home: https://k8s.io/helm
       keywords: []
       maintainers: []
