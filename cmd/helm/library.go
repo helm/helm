@@ -17,6 +17,7 @@ package main
 
 import (
 	"io"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
@@ -67,17 +68,47 @@ If the library chart is retrieved locally, it is not required to have the
 repository added to helm by "helm add repo". Version matching is also supported
 for this case.
 `
+const libraryListDesc = `
+List all of the libraries declared in a chart.
+
+This can take chart archives and chart directories as input. It will not alter
+the contents of a chart.
+
+This will produce an error if the chart cannot be loaded.
+`
 
 func newLibraryCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "library update",
+		Use:     "library update|list",
 		Aliases: []string{"lib", "libraries"},
 		Short:   "manage a chart's libraries",
 		Long:    libraryDesc,
 		Args:    require.NoArgs,
 	}
 
+	cmd.AddCommand(newLibraryListCmd(out))
 	cmd.AddCommand(newLibraryUpdateCmd(out))
 
+	return cmd
+}
+
+func newLibraryListCmd(out io.Writer) *cobra.Command {
+	o := &refListOptions{
+		chartpath: ".",
+	}
+
+	cmd := &cobra.Command{
+		Use:     "list CHART",
+		Aliases: []string{"ls"},
+		Short:   "list the libraries for the given chart",
+		Long:    libraryListDesc,
+		Args:    require.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				o.chartpath = filepath.Clean(args[0])
+			}
+			return o.run(out, true)
+		},
+	}
 	return cmd
 }
