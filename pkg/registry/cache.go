@@ -109,6 +109,8 @@ func (cache *filesystemCache) ChartToLayers(ch *chart.Chart) ([]ocispec.Descript
 
 	// Create content layer
 	// TODO: something better than this hack. Currently needed for chartutil.Save()
+	// If metadata does not contain Name or Version, an error is returned
+	// such as "no chart name specified (Chart.yaml)"
 	ch.Metadata = &chart.Metadata{Name: "-", Version: "-"}
 	destDir := mkdir(filepath.Join(cache.rootDir, "blobs", ".build"))
 	tmpFile, err := chartutil.Save(ch, destDir)
@@ -187,7 +189,7 @@ func (cache *filesystemCache) StoreReference(ref *Reference, layers []ocispec.De
 	}
 
 	// Save meta blob
-	metaExists, metaPath := digestPath(filepath.Join(cache.rootDir, "blobs", "meta"), metaLayer.Digest)
+	metaExists, metaPath := digestPath(filepath.Join(cache.rootDir, "blobs"), metaLayer.Digest)
 	if !metaExists {
 		fmt.Fprintf(cache.out, "%s: Saving meta (%s)\n",
 			shortDigest(metaLayer.Digest.Hex()), byteCountBinary(metaLayer.Size))
@@ -208,7 +210,7 @@ func (cache *filesystemCache) StoreReference(ref *Reference, layers []ocispec.De
 	}
 
 	// Save content blob
-	contentExists, contentPath := digestPath(filepath.Join(cache.rootDir, "blobs", "content"), contentLayer.Digest)
+	contentExists, contentPath := digestPath(filepath.Join(cache.rootDir, "blobs"), contentLayer.Digest)
 	if !contentExists {
 		fmt.Fprintf(cache.out, "%s: Saving content (%s)\n",
 			shortDigest(contentLayer.Digest.Hex()), byteCountBinary(contentLayer.Size))
@@ -365,8 +367,7 @@ func createChartFile(chartsRootDir string, name string, version string) (string,
 
 // digestPath returns the path to addressable content, and whether the file exists
 func digestPath(rootDir string, digest checksum.Digest) (bool, string) {
-	digestLeft, digestRight := splitDigest(digest.Hex())
-	path := filepath.Join(rootDir, "sha256", digestLeft, digestRight)
+	path := filepath.Join(rootDir, "sha256", digest.Hex())
 	exists := fileExists(path)
 	return exists, path
 }
@@ -375,17 +376,6 @@ func digestPath(rootDir string, digest checksum.Digest) (bool, string) {
 func writeFile(path string, c []byte) error {
 	os.MkdirAll(filepath.Dir(path), 0755)
 	return ioutil.WriteFile(path, c, 0644)
-}
-
-// splitDigest returns a sha256 digest in two parts, on with first 2 chars and one with second 62 chars
-func splitDigest(digest string) (string, string) {
-	var digestLeft, digestRight string
-	digest = strings.TrimPrefix(digest, "sha256:")
-	if len(digest) == 64 {
-		digestLeft = digest[0:2]
-		digestRight = digest[2:64]
-	}
-	return digestLeft, digestRight
 }
 
 // byteCountBinary produces a human-readable file size
@@ -450,10 +440,9 @@ func getRefsSorted(refsRootDir string) ([][]string, error) {
 					refsMap[ref]["name"] = filepath.Base(filepath.Dir(filepath.Dir(linkPath)))
 					refsMap[ref]["version"] = destFileInfo.Name()
 				case "content":
-					shaPrefix := filepath.Base(filepath.Dir(linkPath))
-					digest := fmt.Sprintf("%s%s", shaPrefix, destFileInfo.Name())
 
 					// Make sure the filename looks like a sha256 digest (64 chars)
+					digest := destFileInfo.Name()
 					if len(digest) == 64 {
 						refsMap[ref]["digest"] = shortDigest(digest)
 						refsMap[ref]["size"] = byteCountBinary(destFileInfo.Size())
