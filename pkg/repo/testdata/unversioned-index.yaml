@@ -11,9 +11,8 @@ memcached-0.1.0:
     description: A simple Memcached cluster
     keywords: []
     maintainers:
-    - name: Matt Butcher
-      email: mbutcher@deis.com
-    engine: ""
+      - name: Matt Butcher
+        email: mbutcher@deis.com
 mysql-0.2.0:
   name: mysql
   url: https://mumoshu.github.io/charts/mysql-0.2.0.tgz
@@ -27,9 +26,8 @@ mysql-0.2.0:
     description: Chart running MySQL.
     keywords: []
     maintainers:
-    - name: Matt Fisher
-      email: mfisher@deis.com
-    engine: ""
+      - name: Matt Fisher
+        email: mfisher@deis.com
 mysql-0.2.1:
   name: mysql
   url: https://mumoshu.github.io/charts/mysql-0.2.1.tgz
@@ -43,9 +41,8 @@ mysql-0.2.1:
     description: Chart running MySQL.
     keywords: []
     maintainers:
-    - name: Matt Fisher
-      email: mfisher@deis.com
-    engine: ""
+      - name: Matt Fisher
+        email: mfisher@deis.com
 mysql-0.2.2:
   name: mysql
   url: https://mumoshu.github.io/charts/mysql-0.2.2.tgz
@@ -59,6 +56,5 @@ mysql-0.2.2:
     description: Chart running MySQL.
     keywords: []
     maintainers:
-    - name: Matt Fisher
-      email: mfisher@deis.com
-    engine: ""
+      - name: Matt Fisher
+        email: mfisher@deis.com
