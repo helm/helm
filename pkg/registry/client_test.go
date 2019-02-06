@@ -35,15 +35,20 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+var (
+	testCacheRootDir = "helm-registry-test"
+)
+
 type RegistryClientTestSuite struct {
 	suite.Suite
 	Out                io.Writer
 	DockerRegistryHost string
+	CacheRootDir       string
 	RegistryClient     *Client
 }
 
 func (suite *RegistryClientTestSuite) SetupSuite() {
-	os.RemoveAll("helm-registry-test")
+	suite.CacheRootDir = testCacheRootDir
 
 	// Init test client
 	var out bytes.Buffer
@@ -53,7 +58,7 @@ func (suite *RegistryClientTestSuite) SetupSuite() {
 		Resolver: Resolver{
 			Resolver: docker.NewResolver(docker.ResolverOptions{}),
 		},
-		CacheRootDir: "helm-registry-test",
+		CacheRootDir: suite.CacheRootDir,
 	})
 
 	// Registry config
@@ -71,6 +76,10 @@ func (suite *RegistryClientTestSuite) SetupSuite() {
 
 	// Start Docker registry
 	go dockerRegistry.ListenAndServe()
+}
+
+func (suite *RegistryClientTestSuite) TearDownSuite() {
+	os.RemoveAll(suite.CacheRootDir)
 }
 
 func (suite *RegistryClientTestSuite) Test_0_SaveChart() {
