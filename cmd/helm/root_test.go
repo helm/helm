@@ -20,8 +20,6 @@ import (
 	"k8s.io/helm/pkg/helm/helmpath"
 	"os"
 	"testing"
-
-	"k8s.io/client-go/util/homedir"
 )
 
 func TestRootCmd(t *testing.T) {
