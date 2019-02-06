@@ -21,6 +21,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"sort"
 	"strings"
 	"testing"
 
@@ -75,6 +76,18 @@ func newPodList(names ...string) v1.PodList {
 		list.Items = append(list.Items, newPod(name))
 	}
 	return list
+}
+
+func newService(name string) v1.Service {
+	ns := v1.NamespaceDefault
+	return v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+			SelfLink:  "/api/v1/namespaces/default/services/" + name,
+		},
+		Spec: v1.ServiceSpec{},
+	}
 }
 
 func notFoundBody() *metav1.Status {
@@ -280,6 +293,95 @@ func TestGet(t *testing.T) {
 	}
 }
 
+func TestResourceTypeSortOrder(t *testing.T) {
+	pod := newPod("my-pod")
+	service := newService("my-service")
+	c := newTestClient()
+	defer c.Cleanup()
+	c.TestFactory.UnstructuredClient = &fake.RESTClient{
+		GroupVersion:         schema.GroupVersion{Version: "v1"},
+		NegotiatedSerializer: unstructuredSerializer,
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			p, m := req.URL.Path, req.Method
+			t.Logf("got request %s %s", p, m)
+			switch {
+			case p == "/namespaces/default/pods/my-pod" && m == "GET":
+				return newResponse(200, &pod)
+			case p == "/namespaces/default/services/my-service" && m == "GET":
+				return newResponse(200, &service)
+			default:
+				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
+				return nil, nil
+			}
+		}),
+	}
+
+	// Test sorting order
+	data := strings.NewReader(testResourceTypeSortOrder)
+	o, err := c.Get("default", data)
+	if err != nil {
+		t.Errorf("Expected missing results, got %q", err)
+	}
+	podIndex := strings.Index(o, "my-pod")
+	serviceIndex := strings.Index(o, "my-service")
+	if podIndex == -1 {
+		t.Errorf("Expected v1/Pod my-pod, got %s", o)
+	}
+	if serviceIndex == -1 {
+		t.Errorf("Expected v1/Service my-service, got %s", o)
+	}
+	if !sort.IntsAreSorted([]int{podIndex, serviceIndex}) {
+		t.Errorf("Expected order: [v1/Pod v1/Service], got %s", o)
+	}
+}
+
+func TestResourceSortOrder(t *testing.T) {
+	list := newPodList("albacore", "coral", "beluga")
+	c := newTestClient()
+	defer c.Cleanup()
+	c.TestFactory.UnstructuredClient = &fake.RESTClient{
+		GroupVersion:         schema.GroupVersion{Version: "v1"},
+		NegotiatedSerializer: unstructuredSerializer,
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			p, m := req.URL.Path, req.Method
+			t.Logf("got request %s %s", p, m)
+			switch {
+			case p == "/namespaces/default/pods/albacore" && m == "GET":
+				return newResponse(200, &list.Items[0])
+			case p == "/namespaces/default/pods/coral" && m == "GET":
+				return newResponse(200, &list.Items[1])
+			case p == "/namespaces/default/pods/beluga" && m == "GET":
+				return newResponse(200, &list.Items[2])
+			default:
+				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
+				return nil, nil
+			}
+		}),
+	}
+
+	// Test sorting order
+	data := strings.NewReader(testResourceSortOrder)
+	o, err := c.Get("default", data)
+	if err != nil {
+		t.Errorf("Expected missing results, got %q", err)
+	}
+	albacoreIndex := strings.Index(o, "albacore")
+	belugaIndex := strings.Index(o, "beluga")
+	coralIndex := strings.Index(o, "coral")
+	if albacoreIndex == -1 {
+		t.Errorf("Expected v1/Pod albacore, got %s", o)
+	}
+	if belugaIndex == -1 {
+		t.Errorf("Expected v1/Pod beluga, got %s", o)
+	}
+	if coralIndex == -1 {
+		t.Errorf("Expected v1/Pod coral, got %s", o)
+	}
+	if !sort.IntsAreSorted([]int{albacoreIndex, belugaIndex, coralIndex}) {
+		t.Errorf("Expected order: [albacore beluga coral], got %s", o)
+	}
+}
+
 func TestPerform(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -360,6 +462,35 @@ func TestReal(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+const testResourceTypeSortOrder = `
+kind: Service
+apiVersion: v1
+metadata:
+  name: my-service
+---
+kind: Pod
+apiVersion: v1
+metadata:
+  name: my-pod
+`
+
+const testResourceSortOrder = `
+kind: Pod
+apiVersion: v1
+metadata:
+  name: albacore
+---
+kind: Pod
+apiVersion: v1
+metadata:
+  name: beluga
+---
+kind: Pod
+apiVersion: v1
+metadata:
+  name: coral
+`
 
 const testServiceManifest = `
 kind: Service

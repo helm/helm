@@ -266,8 +266,8 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 
 		// Now that each individual resource within the specific version/kind
 		// is sorted, we print each resource using the k8s printer
+		vk := objs[t]
 		for _, resourceName := range sortedResources {
-			vk := objs[t]
 			if err := typePrinter.PrintObj(vk[resourceName], buf); err != nil {
 				c.Log("failed to print object type %s, object: %q :\n %v", t, resourceName, err)
 				return "", err
