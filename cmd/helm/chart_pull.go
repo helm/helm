@@ -26,7 +26,9 @@ import (
 )
 
 const chartPullDesc = `
-TODO
+Download a chart from a remote registry.
+
+This will store the chart in the local registry cache to be used later.
 `
 
 func newChartPullCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {

@@ -26,7 +26,10 @@ import (
 )
 
 const chartSaveDesc = `
-TODO
+Store a copy of chart in local registry cache.
+
+Note: modifying the chart after this operation will
+not change the item as it exists in the cache.
 `
 
 func newChartSaveCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {

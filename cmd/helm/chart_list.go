@@ -25,7 +25,9 @@ import (
 )
 
 const chartListDesc = `
-TODO
+List all charts in the local registry cache.
+
+Charts are sorted by ref name, alphabetically.
 `
 
 func newChartListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {

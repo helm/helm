@@ -26,7 +26,12 @@ import (
 )
 
 const chartRemoveDesc = `
-TODO
+Remove a chart from the local registry cache.
+
+Note: the chart content will still exist in the cache,
+but it will no longer appear in "helm chart list".
+
+To remove all unlinked content, please run "helm chart prune". (TODO)
 `
 
 func newChartRemoveCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {

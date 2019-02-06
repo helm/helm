@@ -26,7 +26,11 @@ import (
 )
 
 const chartPushDesc = `
-TODO
+Upload a chart to a remote registry.
+
+Note: the ref must already exist in the local registry cache.
+
+Must first run "helm chart save" or "helm chart pull".
 `
 
 func newChartPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
