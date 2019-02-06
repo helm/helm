@@ -1,28 +1,40 @@
-BINDIR     := $(CURDIR)/bin
-DIST_DIRS  := find * -type d -exec
-TARGETS    := darwin/amd64 linux/amd64 linux/386 linux/arm linux/arm64 linux/ppc64le windows/amd64
-BINNAME    ?= helm
-
-GOPATH     = $(shell go env GOPATH)
-DEP        = $(GOPATH)/bin/dep
-GOX        = $(GOPATH)/bin/gox
-
-# go option
-PKG        := ./...
-TAGS       :=
-TESTS      := .
-TESTFLAGS  :=
-LDFLAGS    := -w -s
-GOFLAGS    :=
-SRC        := $(shell find . -type f -name '*.go' -print)
+PROJECTNAME = helm
 
 # Required for globs to work correctly
-SHELL      = /bin/bash
+SHELL       = /bin/bash
+CHECK       = which
+NUL         = /dev/null
+BINNAME     = $(PROJECTNAME)
 
-GIT_COMMIT = $(shell git rev-parse HEAD)
-GIT_SHA    = $(shell git rev-parse --short HEAD)
-GIT_TAG    = $(shell git describe --tags --abbrev=0 --exact-match 2>/dev/null)
-GIT_DIRTY  = $(shell test -n "`git status --porcelain`" && echo "dirty" || echo "clean")
+# go option
+PKG         := ./...
+TAGS        :=
+TESTS       := .
+TESTFLAGS   :=
+LDFLAGS     := -w -s
+GOFLAGS     :=
+SRC         = $(shell find . -type f -name '*.go' -print)
+
+GIT_COMMIT  = $(shell git rev-parse HEAD)
+GIT_SHA     = $(shell git rev-parse --short HEAD)
+GIT_TAG     = $(shell git describe --tags --abbrev=0 --exact-match 2>$(NUL))
+GIT_DIRTY   = $(shell test -n "`git status --porcelain`" && echo "dirty" || echo "clean")
+
+BINDIR      := $(CURDIR)/bin
+DIST_DIRS   := find * -type d -exec
+TARGETS     := darwin/amd64 linux/amd64 linux/386 linux/arm linux/arm64 linux/ppc64le windows/amd64
+
+ifeq ($(OS),Windows_NT)
+	BINNAME    = $(PROJECTNAME).exe
+	SHELL      = cmd.exe
+	CHECK      = where.exe
+	NUL        = NUL
+	SRC        = $(shell dir /B /S /A:-D . *.go)
+	GIT_DIRTY  = $(shell powershell "if (-not ([string]::IsNullOrEmpty((git status --porcelain)))) { echo dirty } else { echo clean }")
+endif
+
+DEP         = $(shell $(CHECK) dep)
+GOX         = $(shell $(CHECK) gox)
 
 ifdef VERSION
 	BINARY_VERSION = $(VERSION)
