@@ -27,7 +27,7 @@ import (
 //	- %APPDATA%\helm on Windows
 //	- ~/Library/Preferences/helm on OSX
 //  - $XDG_CONFIG_DIR/helm (typically ~/.config/helm for linux)
-var defaultHelmHome = filepath.Join(xdg.ConfigHome(), "helm")
+var defaultHelmHome = xdg.App{Name: "helm"}.ConfigPath("")
 
 // Old default helm home, it's old good ~/.helm
 var oldDefaultHelmHome = filepath.Join(homedir.HomeDir(), ".helm")
