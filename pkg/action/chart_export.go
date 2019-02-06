@@ -19,8 +19,6 @@ package action
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
-	"os"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/registry"
@@ -51,19 +49,8 @@ func (a *ChartExport) Run(out io.Writer, ref string) error {
 	}
 
 	// Save the chart to local directory
-	// TODO: init in Helm home? Or no file creation at all?
-	tempDirPrefix := ".helm-chart-export"
-	os.MkdirAll(tempDirPrefix, 0755)
-	tempDir, err := ioutil.TempDir(tempDirPrefix, "")
-	if err != nil {
-		return err
-	}
-	defer os.RemoveAll(tempDir)
-	tarballAbsPath, err := chartutil.Save(ch, tempDir)
-	if err != nil {
-		return err
-	}
-	err = chartutil.ExpandFile("", tarballAbsPath)
+	// TODO: make destination dir configurable
+	err = chartutil.SaveDir(ch, ".")
 	if err != nil {
 		return err
 	}
