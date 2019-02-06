@@ -26,7 +26,11 @@ import (
 )
 
 const chartExportDesc = `
-TODO
+Export a chart stored in local registry cache.
+
+This will create a new directory with the name of
+the chart, in a format that developers can modify
+and check into source control if desired.
 `
 
 func newChartExportCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
