@@ -19,11 +19,13 @@ package main // import "k8s.io/helm/cmd/helm"
 import (
 	"io"
 
+	"github.com/containerd/containerd/remotes/docker"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/action"
 	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/registry"
 )
 
 var globalUsage = `The Kubernetes package manager
@@ -61,6 +63,21 @@ func newRootCmd(c helm.Interface, actionConfig *action.Configuration, out io.Wri
 
 	settings.AddFlags(flags)
 
+	flags.Parse(args)
+
+	// set defaults from environment
+	settings.Init(flags)
+
+	// Add the registry client based on settings
+	// TODO: Move this elsewhere (first, settings.Init() must move)
+	actionConfig.RegistryClient = registry.NewClient(&registry.ClientOptions{
+		Out: out,
+		Resolver: registry.Resolver{
+			Resolver: docker.NewResolver(docker.ResolverOptions{}),
+		},
+		CacheRootDir: settings.Home.Registry(),
+	})
+
 	cmd.AddCommand(
 		// chart commands
 		newCreateCmd(out),
@@ -72,6 +89,7 @@ func newRootCmd(c helm.Interface, actionConfig *action.Configuration, out io.Wri
 		newRepoCmd(out),
 		newSearchCmd(out),
 		newVerifyCmd(out),
+		newChartCmd(actionConfig, out),
 
 		// release commands
 		newGetCmd(c, out),
@@ -94,11 +112,6 @@ func newRootCmd(c helm.Interface, actionConfig *action.Configuration, out io.Wri
 		// Hidden documentation generator command: 'helm docs'
 		newDocsCmd(out),
 	)
-
-	flags.Parse(args)
-
-	// set defaults from environment
-	settings.Init(flags)
 
 	// Find and add plugins
 	loadPlugins(cmd, out)

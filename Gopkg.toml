@@ -56,6 +56,14 @@
   version = "v0.3.5"
 
 [[constraint]]
+  name = "github.com/deislabs/oras"
+  version = "v0.3.3"
+
+[[constraint]]
+  name = "github.com/docker/go-units"
+  version = "v0.3.3"
+
+[[constraint]]
   name = "github.com/stretchr/testify"
   version = "^1.3.0"
 
@@ -63,3 +71,8 @@
   go-tests = true
   unused-packages = true
 
+# This override below necessary for using docker/distribution as a test dependency
+[[override]]
+  name = "rsc.io/letsencrypt"
+  branch = "master"
+  source = "https://github.com/dmcgowan/letsencrypt.git"

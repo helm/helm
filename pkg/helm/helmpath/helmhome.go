@@ -40,6 +40,11 @@ func (h Home) Path(elem ...string) string {
 	return filepath.Join(p...)
 }
 
+// Registry returns the path to the local registry cache.
+func (h Home) Registry() string {
+	return h.Path("registry")
+}
+
 // Repository returns the path to the local repository.
 func (h Home) Repository() string {
 	return h.Path("repository")
