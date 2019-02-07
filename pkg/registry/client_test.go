@@ -21,7 +21,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"k8s.io/helm/pkg/chart"
 	"net"
 	"os"
 	"testing"
@@ -31,8 +30,9 @@ import (
 	"github.com/docker/distribution/configuration"
 	"github.com/docker/distribution/registry"
 	_ "github.com/docker/distribution/registry/storage/driver/inmemory"
-
 	"github.com/stretchr/testify/suite"
+
+	"k8s.io/helm/pkg/chart"
 )
 
 var (

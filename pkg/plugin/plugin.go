@@ -23,9 +23,9 @@ import (
 	"runtime"
 	"strings"
 
-	helm_env "k8s.io/helm/pkg/helm/environment"
-
 	"github.com/ghodss/yaml"
+
+	helm_env "k8s.io/helm/pkg/helm/environment"
 )
 
 const pluginFileName = "plugin.yaml"

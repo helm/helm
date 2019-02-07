@@ -24,11 +24,9 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/helm/pkg/tiller/environment"
-
 	shellwords "github.com/mattn/go-shellwords"
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/kubernetes/fake"
 
 	"k8s.io/helm/internal/test"
 	"k8s.io/helm/pkg/action"
@@ -38,6 +36,7 @@ import (
 	"k8s.io/helm/pkg/repo"
 	"k8s.io/helm/pkg/storage"
 	"k8s.io/helm/pkg/storage/driver"
+	"k8s.io/helm/pkg/tiller/environment"
 )
 
 func testTimestamper() time.Time { return time.Unix(242085845, 0).UTC() }

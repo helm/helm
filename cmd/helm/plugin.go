@@ -20,10 +20,10 @@ import (
 	"os"
 	"os/exec"
 
-	"k8s.io/helm/pkg/plugin"
-
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+
+	"k8s.io/helm/pkg/plugin"
 )
 
 const pluginHelp = `

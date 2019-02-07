@@ -21,9 +21,9 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/helm/pkg/helm/helmpath"
-
 	"github.com/spf13/pflag"
+
+	"k8s.io/helm/pkg/helm/helmpath"
 )
 
 func TestEnvSettings(t *testing.T) {
