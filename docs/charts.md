@@ -846,6 +846,13 @@ remote repository servers. This is because doing so would add
 substantial requirements to an implementing server, and thus raise the
 barrier for setting up a repository.
 
+### Chart Museum
+
+[ChartMuseum](https://github.com/helm/chartmuseum) is an open-source Helm Chart
+Repository server written in Go, with support for various cloud storage
+backends. It works as a valid Helm Chart Repository, and also provides an API
+for uploading charts.
+
 ## Chart Starter Packs
 
 The `helm create` command takes an optional `--starter` option that lets you
