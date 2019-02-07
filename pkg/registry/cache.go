@@ -39,6 +39,10 @@ import (
 	"k8s.io/helm/pkg/chartutil"
 )
 
+var (
+	tableHeaders = []string{"name", "version", "digest", "size", "created"}
+)
+
 type (
 	filesystemCache struct {
 		out     io.Writer
@@ -242,7 +246,7 @@ func (cache *filesystemCache) DeleteReference(ref *Reference) error {
 	return os.RemoveAll(tagDir)
 }
 
-func (cache *filesystemCache) TableRows() ([][]string, error) {
+func (cache *filesystemCache) TableRows() ([][]interface{}, error) {
 	return getRefsSorted(filepath.Join(cache.rootDir, "refs"))
 }
 
@@ -409,7 +413,7 @@ func shortDigest(digest string) string {
 }
 
 // getRefsSorted returns a map of all refs stored in a refsRootDir
-func getRefsSorted(refsRootDir string) ([][]string, error) {
+func getRefsSorted(refsRootDir string) ([][]interface{}, error) {
 	refsMap := map[string]map[string]string{}
 
 	// Walk the storage dir, check for symlinks under "refs" dir pointing to valid files in "blobs/" and "charts/"
@@ -458,7 +462,7 @@ func getRefsSorted(refsRootDir string) ([][]string, error) {
 	// Filter out any refs that are incomplete (do not have all required fields)
 	for k, ref := range refsMap {
 		allKeysFound := true
-		for _, v := range []string{"name", "version", "digest", "size", "created"} {
+		for _, v := range tableHeaders {
 			if _, ok := ref[v]; !ok {
 				allKeysFound = false
 				break
@@ -469,17 +473,20 @@ func getRefsSorted(refsRootDir string) ([][]string, error) {
 		}
 	}
 
-	// Sort and convert to slice of slices
-	var refs [][]string
+	// Sort and convert to format expected by uitable
+	refs := make([][]interface{}, len(refsMap))
 	keys := make([]string, 0, len(refsMap))
 	for key := range refsMap {
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
-	for _, key := range keys {
+	for i, key := range keys {
+		refs[i] = make([]interface{}, len(tableHeaders)+1)
+		refs[i][0] = key
 		ref := refsMap[key]
-		ref["ref"] = key
-		refs = append(refs, []string{key, ref["name"], ref["version"], ref["digest"], ref["size"], ref["created"]})
+		for j, k := range tableHeaders {
+			refs[i][j+1] = ref[k]
+		}
 	}
 
 	return refs, err

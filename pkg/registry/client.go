@@ -145,9 +145,7 @@ func (c *Client) PrintChartTable() error {
 		return err
 	}
 	for _, row := range rows {
-		if len(row) == 6 {
-			table.AddRow(row[0], row[1], row[2], row[3], row[4], row[5])
-		}
+		table.AddRow(row...)
 	}
 	fmt.Fprintln(c.out, table.String())
 	return nil
