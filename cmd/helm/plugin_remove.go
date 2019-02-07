@@ -82,7 +82,7 @@ func (o *pluginRemoveOptions) run(out io.Writer) error {
 }
 
 func removePlugin(p *plugin.Plugin) error {
-	if err := os.Remove(p.Dir); err != nil {
+	if err := os.RemoveAll(p.Dir); err != nil {
 		return err
 	}
 	return runHook(p, plugin.Delete)
