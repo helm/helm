@@ -17,7 +17,7 @@ limitations under the License.
 package main
 
 import (
-	"k8s.io/helm/pkg/helm/helmpath"
+	"k8s.io/helm/pkg/helm/environment"
 	"os"
 	"testing"
 )
@@ -32,7 +32,7 @@ func TestRootCmd(t *testing.T) {
 		{
 			name: "defaults",
 			args: "home",
-			home: helmpath.GetDefaultConfigHome(),
+			home: environment.GetDefaultConfigHome(),
 		},
 		{
 			name: "with --home set",

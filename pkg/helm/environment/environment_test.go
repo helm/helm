@@ -40,8 +40,8 @@ func TestEnvSettings(t *testing.T) {
 	}{
 		{
 			name:    "defaults",
-			home:    helmpath.GetDefaultConfigHome(),
-			plugins: helmpath.Home(helmpath.GetDefaultConfigHome()).Plugins(),
+			home:    GetDefaultConfigHome(),
+			plugins: helmpath.Home(GetDefaultConfigHome()).Plugins(),
 			ns:      "",
 		},
 		{

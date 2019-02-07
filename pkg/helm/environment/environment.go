@@ -48,7 +48,7 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.KubeConfig, "kubeconfig", "", "path to the kubeconfig file")
 	fs.StringVar(&s.KubeContext, "kube-context", "", "name of the kubeconfig context to use")
 	fs.BoolVar(&s.Debug, "debug", false, "enable verbose output")
-	fs.StringVar((*string)(&s.Home), "home", helmpath.GetDefaultConfigHome(), "location of your Helm config. Overrides $HELM_HOME")
+	fs.StringVar((*string)(&s.Home), "home", GetDefaultConfigHome(), "location of your Helm config. Overrides $HELM_HOME")
 }
 
 // Init sets values from the environment.
