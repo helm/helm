@@ -484,12 +484,12 @@ metadata:
 kind: Pod
 apiVersion: v1
 metadata:
-  name: beluga
+  name: coral
 ---
 kind: Pod
 apiVersion: v1
 metadata:
-  name: coral
+  name: beluga
 `
 
 const testServiceManifest = `
