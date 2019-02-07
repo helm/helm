@@ -42,48 +42,48 @@ func TestReference(t *testing.T) {
 	s = "mychart"
 	ref, err := ParseReference(s)
 	is.NoError(err)
-	is.Equal("mychart", ref.Locator)
-	is.Equal("", ref.Object)
+	is.Equal("mychart", ref.Repo)
+	is.Equal("", ref.Tag)
 
 	s = "mychart:1.5.0"
 	ref, err = ParseReference(s)
 	is.NoError(err)
-	is.Equal("mychart", ref.Locator)
-	is.Equal("1.5.0", ref.Object)
+	is.Equal("mychart", ref.Repo)
+	is.Equal("1.5.0", ref.Tag)
 
 	s = "myrepo/mychart"
 	ref, err = ParseReference(s)
 	is.NoError(err)
-	is.Equal("myrepo/mychart", ref.Locator)
-	is.Equal("", ref.Object)
+	is.Equal("myrepo/mychart", ref.Repo)
+	is.Equal("", ref.Tag)
 
 	s = "myrepo/mychart:1.5.0"
 	ref, err = ParseReference(s)
 	is.NoError(err)
-	is.Equal("myrepo/mychart", ref.Locator)
-	is.Equal("1.5.0", ref.Object)
+	is.Equal("myrepo/mychart", ref.Repo)
+	is.Equal("1.5.0", ref.Tag)
 
 	s = "mychart:5001:1.5.0"
 	ref, err = ParseReference(s)
 	is.NoError(err)
-	is.Equal("mychart:5001", ref.Locator)
-	is.Equal("1.5.0", ref.Object)
+	is.Equal("mychart:5001", ref.Repo)
+	is.Equal("1.5.0", ref.Tag)
 
 	s = "myrepo:5001/mychart:1.5.0"
 	ref, err = ParseReference(s)
 	is.NoError(err)
-	is.Equal("myrepo:5001/mychart", ref.Locator)
-	is.Equal("1.5.0", ref.Object)
+	is.Equal("myrepo:5001/mychart", ref.Repo)
+	is.Equal("1.5.0", ref.Tag)
 
 	s = "localhost:5000/mychart:latest"
 	ref, err = ParseReference(s)
 	is.NoError(err)
-	is.Equal("localhost:5000/mychart", ref.Locator)
-	is.Equal("latest", ref.Object)
+	is.Equal("localhost:5000/mychart", ref.Repo)
+	is.Equal("latest", ref.Tag)
 
 	s = "my.host.com/my/nested/repo:1.2.3"
 	ref, err = ParseReference(s)
 	is.NoError(err)
-	is.Equal("my.host.com/my/nested/repo", ref.Locator)
-	is.Equal("1.2.3", ref.Object)
+	is.Equal("my.host.com/my/nested/repo", ref.Repo)
+	is.Equal("1.2.3", ref.Tag)
 }

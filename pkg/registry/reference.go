@@ -33,6 +33,8 @@ type (
 	// Reference defines the main components of a reference specification
 	Reference struct {
 		*reference.Spec
+		Tag  string
+		Repo string
 	}
 )
 
@@ -44,8 +46,8 @@ func ParseReference(s string) (*Reference, error) {
 	}
 
 	// convert to our custom type and make necessary mods
-	ref := Reference{&spec}
-	ref.fix()
+	ref := Reference{Spec: &spec}
+	ref.setExtraFields()
 
 	// ensure the reference is valid
 	err = ref.validate()
@@ -56,33 +58,35 @@ func ParseReference(s string) (*Reference, error) {
 	return &ref, nil
 }
 
-// fix modifies and augments a ref that may not have been parsed properly
-func (ref *Reference) fix() {
+// setExtraFields adds the Rpeo and Tag fields to a Reference
+func (ref *Reference) setExtraFields() {
+	ref.Tag = ref.Object
+	ref.Repo = ref.Locator
 	ref.fixNoTag()
-	ref.fixNoLocator()
+	ref.fixNoRepo()
 }
 
 // fixNoTag is a fix for ref strings such as "mychart:1.0.0", which result in missing tag
 func (ref *Reference) fixNoTag() {
-	if ref.Object == "" {
-		parts := strings.Split(ref.Locator, ":")
+	if ref.Tag == "" {
+		parts := strings.Split(ref.Repo, ":")
 		numParts := len(parts)
 		if 0 < numParts {
 			lastIndex := numParts - 1
 			lastPart := parts[lastIndex]
 			if !strings.Contains(lastPart, "/") {
-				ref.Locator = strings.Join(parts[:lastIndex], ":")
-				ref.Object = lastPart
+				ref.Repo = strings.Join(parts[:lastIndex], ":")
+				ref.Tag = lastPart
 			}
 		}
 	}
 }
 
-// fixNoLocator is a fix for ref strings such as "mychart", which have the locator swapped with tag
-func (ref *Reference) fixNoLocator() {
-	if ref.Locator == "" {
-		ref.Locator = ref.Object
-		ref.Object = ""
+// fixNoRepo is a fix for ref strings such as "mychart", which have the repo swapped with tag
+func (ref *Reference) fixNoRepo() {
+	if ref.Repo == "" {
+		ref.Repo = ref.Tag
+		ref.Tag = ""
 	}
 }
 
@@ -94,10 +98,10 @@ func (ref *Reference) validate() error {
 // validateColons verifies the ref only contains one colon max
 // (or two, there might be a port number specified i.e. :5000)
 func (ref *Reference) validateColons() error {
-	if strings.Contains(ref.Object, ":") {
+	if strings.Contains(ref.Tag, ":") {
 		return tooManyColonsError
 	}
-	locParts := strings.Split(ref.Locator, ":")
+	locParts := strings.Split(ref.Repo, ":")
 	locLastIndex := len(locParts) - 1
 	if 1 < locLastIndex {
 		return tooManyColonsError
