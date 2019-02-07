@@ -39,11 +39,23 @@ func TestReference(t *testing.T) {
 	is.Error(err, "ref contains too many colons (3)")
 
 	// good refs
-	s = "mychart:1.5.0"
+	s = "mychart"
 	ref, err := ParseReference(s)
 	is.NoError(err)
 	is.Equal("mychart", ref.Locator)
+	is.Equal("", ref.Object)
+
+	s = "mychart:1.5.0"
+	ref, err = ParseReference(s)
+	is.NoError(err)
+	is.Equal("mychart", ref.Locator)
 	is.Equal("1.5.0", ref.Object)
+
+	s = "myrepo/mychart"
+	ref, err = ParseReference(s)
+	is.NoError(err)
+	is.Equal("myrepo/mychart", ref.Locator)
+	is.Equal("", ref.Object)
 
 	s = "myrepo/mychart:1.5.0"
 	ref, err = ParseReference(s)

@@ -56,39 +56,48 @@ func ParseReference(s string) (*Reference, error) {
 	return &ref, nil
 }
 
-// fix modifies references that were potentially not parsed properly
-func (spec *Reference) fix() {
-	spec.fixNoTag()
+// fix modifies and augments a ref that may not have been parsed properly
+func (ref *Reference) fix() {
+	ref.fixNoTag()
+	ref.fixNoLocator()
 }
 
-// fixNoTag is a fix for ref strings such as "mychart:1.0.0", which result in missing tag (object)
-func (spec *Reference) fixNoTag() {
-	if spec.Object == "" {
-		parts := strings.Split(spec.Locator, ":")
+// fixNoTag is a fix for ref strings such as "mychart:1.0.0", which result in missing tag
+func (ref *Reference) fixNoTag() {
+	if ref.Object == "" {
+		parts := strings.Split(ref.Locator, ":")
 		numParts := len(parts)
 		if 0 < numParts {
 			lastIndex := numParts - 1
 			lastPart := parts[lastIndex]
 			if !strings.Contains(lastPart, "/") {
-				spec.Locator = strings.Join(parts[:lastIndex], ":")
-				spec.Object = lastPart
+				ref.Locator = strings.Join(parts[:lastIndex], ":")
+				ref.Object = lastPart
 			}
 		}
 	}
 }
 
+// fixNoLocator is a fix for ref strings such as "mychart", which have the locator swapped with tag
+func (ref *Reference) fixNoLocator() {
+	if ref.Locator == "" {
+		ref.Locator = ref.Object
+		ref.Object = ""
+	}
+}
+
 // validate makes sure the ref meets our criteria
-func (spec *Reference) validate() error {
-	return spec.validateColons()
+func (ref *Reference) validate() error {
+	return ref.validateColons()
 }
 
 // validateColons verifies the ref only contains one colon max
 // (or two, there might be a port number specified i.e. :5000)
-func (spec *Reference) validateColons() error {
-	if strings.Contains(spec.Object, ":") {
+func (ref *Reference) validateColons() error {
+	if strings.Contains(ref.Object, ":") {
 		return tooManyColonsError
 	}
-	locParts := strings.Split(spec.Locator, ":")
+	locParts := strings.Split(ref.Locator, ":")
 	locLastIndex := len(locParts) - 1
 	if 1 < locLastIndex {
 		return tooManyColonsError
