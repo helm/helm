@@ -27,8 +27,10 @@ import (
 )
 
 const uninstallDesc = `
-This command takes a release name, and then uninstalls the release from Kubernetes.
-It removes all of the resources associated with the last release of the chart.
+This command takes a release name and uninstalls the release.
+
+It removes all of the resources associated with the last release of the chart
+as well as the release history, freeing it up for future use.
 
 Use the '--dry-run' flag to see which releases will be uninstalled without actually
 uninstalling them.
@@ -41,7 +43,7 @@ func newUninstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Use:        "uninstall RELEASE_NAME [...]",
 		Aliases:    []string{"del", "delete", "un"},
 		SuggestFor: []string{"remove", "rm"},
-		Short:      "given a release name, uninstall the release from Kubernetes",
+		Short:      "uninstall a release",
 		Long:       uninstallDesc,
 		Args:       require.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -64,7 +66,7 @@ func newUninstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.BoolVar(&client.DryRun, "dry-run", false, "simulate a uninstall")
 	f.BoolVar(&client.DisableHooks, "no-hooks", false, "prevent hooks from running during uninstallation")
-	f.BoolVar(&client.Purge, "purge", false, "remove the release from the store and make its name free for later use")
+	f.BoolVar(&client.KeepHistory, "keep-history", false, "remove all associated resources and mark the release as deleted, but retain the release history")
 	f.Int64Var(&client.Timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
 
 	return cmd

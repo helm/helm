@@ -15,6 +15,16 @@ Here's an exhaustive list of all the major changes introduced in Helm 3.
 In Helm 3, Helm switched the Go import path over from `k8s.io/helm` to `helm.sh/helm`. If you intend
 to upgrade to the Helm 3 Go client libraries, make sure to change your import paths.
 
+### Helm delete
+
+In order to better align the verbiage from other package managers, `helm delete` was re-named to
+`helm uninstall`. `helm delete` is still retained as an alias to `helm uninstall`, so either form
+can be used.
+
+In Helm 2, in order to purge the release ledger, the `--purge` flag had to be provided. This
+functionality is now enabled by default. To retain the previous behaviour, use
+`helm uninstall --keep-history`.
+
 
 ## Installing
 
