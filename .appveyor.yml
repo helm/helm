@@ -11,8 +11,8 @@ install:
   - go version
   - dep ensure -vendor-only -v
 cache:
-  - c:\go\src\k8s.io\helm\vendor -> Gopkg.lock
-  - c:\go\cache -> Gopkg.lock
+  - c:\go\pkg\dep -> Gopkg.lock
+  - c:\go\cache
 build: "off"
 deploy: "off"
 test_script:
