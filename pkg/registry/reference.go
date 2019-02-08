@@ -17,15 +17,25 @@ limitations under the License.
 package registry // import "k8s.io/helm/pkg/registry"
 
 import (
+	"errors"
+	"regexp"
 	"strings"
 
 	"github.com/containerd/containerd/reference"
+)
+
+var (
+	validPortRegEx     = regexp.MustCompile("^([1-9]\\d{0,3}|0|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$") // adapted from https://stackoverflow.com/a/12968117
+	emptyRepoError     = errors.New("parsed repo was empty")
+	tooManyColonsError = errors.New("ref may only contain a single colon character (:) unless specifying a port number")
 )
 
 type (
 	// Reference defines the main components of a reference specification
 	Reference struct {
 		*reference.Spec
+		Tag  string
+		Repo string
 	}
 )
 
@@ -35,11 +45,90 @@ func ParseReference(s string) (*Reference, error) {
 	if err != nil {
 		return nil, err
 	}
-	ref := Reference{&spec}
+
+	// convert to our custom type and make necessary mods
+	ref := Reference{Spec: &spec}
+	ref.setExtraFields()
+
+	// ensure the reference is valid
+	err = ref.validate()
+	if err != nil {
+		return nil, err
+	}
+
 	return &ref, nil
 }
 
-// Repo returns a reference's repo minus the hostname
-func (ref *Reference) Repo() string {
-	return strings.TrimPrefix(strings.TrimPrefix(ref.Locator, ref.Hostname()), "/")
+// setExtraFields adds the Repo and Tag fields to a Reference
+func (ref *Reference) setExtraFields() {
+	ref.Tag = ref.Object
+	ref.Repo = ref.Locator
+	ref.fixNoTag()
+	ref.fixNoRepo()
+}
+
+// fixNoTag is a fix for ref strings such as "mychart:1.0.0", which result in missing tag
+func (ref *Reference) fixNoTag() {
+	if ref.Tag == "" {
+		parts := strings.Split(ref.Repo, ":")
+		numParts := len(parts)
+		if 0 < numParts {
+			lastIndex := numParts - 1
+			lastPart := parts[lastIndex]
+			if !strings.Contains(lastPart, "/") {
+				ref.Repo = strings.Join(parts[:lastIndex], ":")
+				ref.Tag = lastPart
+			}
+		}
+	}
+}
+
+// fixNoRepo is a fix for ref strings such as "mychart", which have the repo swapped with tag
+func (ref *Reference) fixNoRepo() {
+	if ref.Repo == "" {
+		ref.Repo = ref.Tag
+		ref.Tag = ""
+	}
+}
+
+// validate makes sure the ref meets our criteria
+func (ref *Reference) validate() error {
+	err := ref.validateRepo()
+	if err != nil {
+		return err
+	}
+	return ref.validateNumColons()
+}
+
+// validateRepo checks that the Repo field is non-empty
+func (ref *Reference) validateRepo() error {
+	if ref.Repo == "" {
+		return emptyRepoError
+	}
+	return nil
+}
+
+// validateNumColon ensures the ref only contains a single colon character (:)
+// (or potentially two, there might be a port number specified i.e. :5000)
+func (ref *Reference) validateNumColons() error {
+	if strings.Contains(ref.Tag, ":") {
+		return tooManyColonsError
+	}
+	parts := strings.Split(ref.Repo, ":")
+	lastIndex := len(parts) - 1
+	if 1 < lastIndex {
+		return tooManyColonsError
+	}
+	if 0 < lastIndex {
+		port := strings.Split(parts[lastIndex], "/")[0]
+		if !isValidPort(port) {
+			return tooManyColonsError
+		}
+	}
+	return nil
+}
+
+// isValidPort returns whether or not a string looks like a valid port
+func isValidPort(s string) bool {
+	return validPortRegEx.MatchString(s)
 }

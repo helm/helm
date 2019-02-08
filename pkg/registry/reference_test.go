@@ -25,25 +25,65 @@ import (
 func TestReference(t *testing.T) {
 	is := assert.New(t)
 
-	// bad ref
+	// bad refs
 	s := ""
 	_, err := ParseReference(s)
-	is.Error(err)
+	is.Error(err, "empty ref")
+
+	s = "my:bad:ref"
+	_, err = ParseReference(s)
+	is.Error(err, "ref contains too many colons (2)")
+
+	s = "my:really:bad:ref"
+	_, err = ParseReference(s)
+	is.Error(err, "ref contains too many colons (3)")
 
 	// good refs
-	s = "localhost:5000/mychart:latest"
+	s = "mychart"
 	ref, err := ParseReference(s)
 	is.NoError(err)
-	is.Equal("localhost:5000", ref.Hostname())
-	is.Equal("mychart", ref.Repo())
-	is.Equal("localhost:5000/mychart", ref.Locator)
-	is.Equal("latest", ref.Object)
+	is.Equal("mychart", ref.Repo)
+	is.Equal("", ref.Tag)
+
+	s = "mychart:1.5.0"
+	ref, err = ParseReference(s)
+	is.NoError(err)
+	is.Equal("mychart", ref.Repo)
+	is.Equal("1.5.0", ref.Tag)
+
+	s = "myrepo/mychart"
+	ref, err = ParseReference(s)
+	is.NoError(err)
+	is.Equal("myrepo/mychart", ref.Repo)
+	is.Equal("", ref.Tag)
+
+	s = "myrepo/mychart:1.5.0"
+	ref, err = ParseReference(s)
+	is.NoError(err)
+	is.Equal("myrepo/mychart", ref.Repo)
+	is.Equal("1.5.0", ref.Tag)
+
+	s = "mychart:5001:1.5.0"
+	ref, err = ParseReference(s)
+	is.NoError(err)
+	is.Equal("mychart:5001", ref.Repo)
+	is.Equal("1.5.0", ref.Tag)
+
+	s = "myrepo:5001/mychart:1.5.0"
+	ref, err = ParseReference(s)
+	is.NoError(err)
+	is.Equal("myrepo:5001/mychart", ref.Repo)
+	is.Equal("1.5.0", ref.Tag)
+
+	s = "localhost:5000/mychart:latest"
+	ref, err = ParseReference(s)
+	is.NoError(err)
+	is.Equal("localhost:5000/mychart", ref.Repo)
+	is.Equal("latest", ref.Tag)
 
 	s = "my.host.com/my/nested/repo:1.2.3"
 	ref, err = ParseReference(s)
 	is.NoError(err)
-	is.Equal("my.host.com", ref.Hostname())
-	is.Equal("my/nested/repo", ref.Repo())
-	is.Equal("my.host.com/my/nested/repo", ref.Locator)
-	is.Equal("1.2.3", ref.Object)
+	is.Equal("my.host.com/my/nested/repo", ref.Repo)
+	is.Equal("1.2.3", ref.Tag)
 }

@@ -60,7 +60,7 @@ func NewClient(options *ClientOptions) *Client {
 // PushChart uploads a chart to a registry
 func (c *Client) PushChart(ref *Reference) error {
 	c.setDefaultTag(ref)
-	fmt.Fprintf(c.out, "The push refers to repository [%s]\n", ref.Locator)
+	fmt.Fprintf(c.out, "The push refers to repository [%s]\n", ref.Repo)
 	layers, err := c.cache.LoadReference(ref)
 	if err != nil {
 		return err
@@ -74,14 +74,14 @@ func (c *Client) PushChart(ref *Reference) error {
 		totalSize += layer.Size
 	}
 	fmt.Fprintf(c.out,
-		"%s: pushed to remote (%d layers, %s total)\n", ref.Object, len(layers), byteCountBinary(totalSize))
+		"%s: pushed to remote (%d layers, %s total)\n", ref.Tag, len(layers), byteCountBinary(totalSize))
 	return nil
 }
 
 // PullChart downloads a chart from a registry
 func (c *Client) PullChart(ref *Reference) error {
 	c.setDefaultTag(ref)
-	fmt.Fprintf(c.out, "%s: Pulling from %s\n", ref.Object, ref.Locator)
+	fmt.Fprintf(c.out, "%s: Pulling from %s\n", ref.Tag, ref.Repo)
 	layers, err := oras.Pull(context.Background(), c.resolver, ref.String(), c.cache.store, KnownMediaTypes()...)
 	if err != nil {
 		return err
@@ -91,9 +91,9 @@ func (c *Client) PullChart(ref *Reference) error {
 		return err
 	}
 	if !exists {
-		fmt.Fprintf(c.out, "Status: Downloaded newer chart for %s:%s\n", ref.Locator, ref.Object)
+		fmt.Fprintf(c.out, "Status: Downloaded newer chart for %s:%s\n", ref.Repo, ref.Tag)
 	} else {
-		fmt.Fprintf(c.out, "Status: Chart is up to date for %s:%s\n", ref.Locator, ref.Object)
+		fmt.Fprintf(c.out, "Status: Chart is up to date for %s:%s\n", ref.Repo, ref.Tag)
 	}
 	return nil
 }
@@ -109,7 +109,7 @@ func (c *Client) SaveChart(ch *chart.Chart, ref *Reference) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(c.out, "%s: saved\n", ref.Object)
+	fmt.Fprintf(c.out, "%s: saved\n", ref.Tag)
 	return nil
 }
 
@@ -131,7 +131,7 @@ func (c *Client) RemoveChart(ref *Reference) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(c.out, "%s: removed\n", ref.Object)
+	fmt.Fprintf(c.out, "%s: removed\n", ref.Tag)
 	return err
 }
 
@@ -152,8 +152,8 @@ func (c *Client) PrintChartTable() error {
 }
 
 func (c *Client) setDefaultTag(ref *Reference) {
-	if ref.Object == "" {
-		ref.Object = HelmChartDefaultTag
+	if ref.Tag == "" {
+		ref.Tag = HelmChartDefaultTag
 		fmt.Fprintf(c.out, "Using default tag: %s\n", HelmChartDefaultTag)
 	}
 }

@@ -137,7 +137,7 @@ func (cache *filesystemCache) ChartToLayers(ch *chart.Chart) ([]ocispec.Descript
 }
 
 func (cache *filesystemCache) LoadReference(ref *Reference) ([]ocispec.Descriptor, error) {
-	tagDir := filepath.Join(cache.rootDir, "refs", escape(ref.Locator), "tags", tagOrDefault(ref.Object))
+	tagDir := filepath.Join(cache.rootDir, "refs", escape(ref.Repo), "tags", tagOrDefault(ref.Tag))
 
 	// add meta layer
 	metaJSONRaw, err := getSymlinkDestContent(filepath.Join(tagDir, "meta"))
@@ -165,8 +165,8 @@ func (cache *filesystemCache) LoadReference(ref *Reference) ([]ocispec.Descripto
 }
 
 func (cache *filesystemCache) StoreReference(ref *Reference, layers []ocispec.Descriptor) (bool, error) {
-	tag := tagOrDefault(ref.Object)
-	tagDir := mkdir(filepath.Join(cache.rootDir, "refs", escape(ref.Locator), "tags", tag))
+	tag := tagOrDefault(ref.Tag)
+	tagDir := mkdir(filepath.Join(cache.rootDir, "refs", escape(ref.Repo), "tags", tag))
 
 	// Retrieve just the meta and content layers
 	metaLayer, contentLayer, err := extractLayers(layers)
@@ -239,7 +239,7 @@ func (cache *filesystemCache) StoreReference(ref *Reference, layers []ocispec.De
 }
 
 func (cache *filesystemCache) DeleteReference(ref *Reference) error {
-	tagDir := filepath.Join(cache.rootDir, "refs", escape(ref.Locator), "tags", tagOrDefault(ref.Object))
+	tagDir := filepath.Join(cache.rootDir, "refs", escape(ref.Repo), "tags", tagOrDefault(ref.Tag))
 	if _, err := os.Stat(tagDir); os.IsNotExist(err) {
 		return errors.New("ref not found")
 	}
@@ -427,10 +427,10 @@ func getRefsSorted(refsRootDir string) ([][]interface{}, error) {
 				tagDir := filepath.Dir(path)
 
 				// Determine the ref
-				locator := unescape(strings.TrimLeft(
+				repo := unescape(strings.TrimLeft(
 					strings.TrimPrefix(filepath.Dir(filepath.Dir(tagDir)), refsRootDir), "/\\"))
-				object := filepath.Base(tagDir)
-				ref := fmt.Sprintf("%s:%s", locator, object)
+				tag := filepath.Base(tagDir)
+				ref := fmt.Sprintf("%s:%s", repo, tag)
 
 				// Init hashmap entry if does not exist
 				if _, ok := refsMap[ref]; !ok {
