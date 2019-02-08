@@ -37,10 +37,20 @@ Plugins are installed using the `$ helm plugin install <path|url>` command. You 
 $ helm plugin install https://github.com/technosophos/helm-template
 ```
 
-If you have a plugin tar distribution, simply untar the plugin into the
-`$(helm home)/plugins` directory.
+If you have a plugin tar distribution, simply untar the plugin into the `$(helm home)/plugins` directory. You can also install tarball plugins directly from url by issuing `helm plugin install http://domain/path/to/plugin.tar.gz`
 
-You can also install tarball plugins directly from url by issuing `helm plugin install http://domain/path/to/plugin.tar.gz`
+Alternatively, a set of plugins can be installed during the `helm init` process by using the `--plugins <file.yaml>` flag, where `file.yaml` looks like this:
+
+```
+plugins:
+- name: helm-template
+  url: https://github.com/technosophos/helm-template
+- name: helm-diff
+  url: https://github.com/databus23/helm-diff
+  version: 2.11.0+3
+```
+
+The `name` field only exists to allow you to easily identify plugins, and does not serve a functional purpose. If a plugin specified in the file is already installed, it maintains its current version.
 
 ## Building Plugins
 
