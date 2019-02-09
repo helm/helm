@@ -24,7 +24,6 @@ import (
 
 	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/action"
-	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/registry"
 )
 
@@ -50,8 +49,7 @@ Environment:
   $KUBECONFIG         set an alternative Kubernetes configuration file (default "~/.kube/config")
 `
 
-// TODO: 'c helm.Interface' is deprecated in favor of actionConfig
-func newRootCmd(c helm.Interface, actionConfig *action.Configuration, out io.Writer, args []string) *cobra.Command {
+func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "helm",
 		Short:        "The Helm package manager for Kubernetes.",
@@ -92,15 +90,15 @@ func newRootCmd(c helm.Interface, actionConfig *action.Configuration, out io.Wri
 		newChartCmd(actionConfig, out),
 
 		// release commands
-		newGetCmd(c, out),
-		newHistoryCmd(c, out),
+		newGetCmd(actionConfig, out),
+		newHistoryCmd(actionConfig, out),
 		newInstallCmd(actionConfig, out),
 		newListCmd(actionConfig, out),
-		newReleaseTestCmd(c, out),
-		newRollbackCmd(c, out),
-		newStatusCmd(c, out),
-		newUninstallCmd(c, out),
-		newUpgradeCmd(c, out),
+		newReleaseTestCmd(actionConfig, out),
+		newRollbackCmd(actionConfig, out),
+		newStatusCmd(actionConfig, out),
+		newUninstallCmd(actionConfig, out),
+		newUpgradeCmd(actionConfig, out),
 
 		newCompletionCmd(out),
 		newHomeCmd(out),

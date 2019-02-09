@@ -19,8 +19,7 @@ package main
 import (
 	"testing"
 
-	"k8s.io/helm/pkg/hapi/release"
-	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/release"
 )
 
 func TestGetHooks(t *testing.T) {
@@ -28,7 +27,7 @@ func TestGetHooks(t *testing.T) {
 		name:   "get hooks with release",
 		cmd:    "get hooks aeneas",
 		golden: "output/get-hooks.txt",
-		rels:   []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"})},
+		rels:   []*release.Release{release.Mock(&release.MockReleaseOptions{Name: "aeneas"})},
 	}, {
 		name:      "get hooks without args",
 		cmd:       "get hooks",

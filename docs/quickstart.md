@@ -12,7 +12,7 @@ The following prerequisites are required for a successful and properly secured u
 
 
 ### Install Kubernetes or have access to a cluster
-- You must have Kubernetes installed. For the latest release of Helm, we recommend the latest stable release of Kubernetes, which in most cases is the second-latest minor release. 
+- You must have Kubernetes installed. For the latest release of Helm, we recommend the latest stable release of Kubernetes, which in most cases is the second-latest minor release.
 - You should also have a local configured copy of `kubectl`.
 
 NOTE: Kubernetes versions prior to 1.6 have limited or no support for role-based access controls (RBAC).

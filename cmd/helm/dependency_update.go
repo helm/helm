@@ -22,9 +22,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/require"
+	"k8s.io/helm/pkg/action"
 	"k8s.io/helm/pkg/downloader"
 	"k8s.io/helm/pkg/getter"
-	"k8s.io/helm/pkg/helm/helmpath"
 )
 
 const dependencyUpDesc = `
@@ -42,23 +42,9 @@ reason, an update command will not remove charts unless they are (a) present
 in the Chart.yaml file, but (b) at the wrong version.
 `
 
-// dependencyUpdateOptions describes a 'helm dependency update'
-type dependencyUpdateOptions struct {
-	keyring     string // --keyring
-	skipRefresh bool   // --skip-refresh
-	verify      bool   // --verify
-
-	// args
-	chartpath string
-
-	helmhome helmpath.Home
-}
-
 // newDependencyUpdateCmd creates a new dependency update command.
 func newDependencyUpdateCmd(out io.Writer) *cobra.Command {
-	o := &dependencyUpdateOptions{
-		chartpath: ".",
-	}
+	client := action.NewDependency()
 
 	cmd := &cobra.Command{
 		Use:     "update CHART",
@@ -67,37 +53,29 @@ func newDependencyUpdateCmd(out io.Writer) *cobra.Command {
 		Long:    dependencyUpDesc,
 		Args:    require.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			chartpath := "."
 			if len(args) > 0 {
-				o.chartpath = filepath.Clean(args[0])
+				chartpath = filepath.Clean(args[0])
 			}
-			o.helmhome = settings.Home
-			return o.run(out)
+			man := &downloader.Manager{
+				Out:        out,
+				ChartPath:  chartpath,
+				HelmHome:   settings.Home,
+				Keyring:    client.Keyring,
+				SkipUpdate: client.SkipRefresh,
+				Getters:    getter.All(settings),
+			}
+			if client.Verify {
+				man.Verify = downloader.VerifyAlways
+			}
+			if settings.Debug {
+				man.Debug = true
+			}
+			return man.Update()
 		},
 	}
 
-	f := cmd.Flags()
-	f.BoolVar(&o.verify, "verify", false, "verify the packages against signatures")
-	f.StringVar(&o.keyring, "keyring", defaultKeyring(), "keyring containing public keys")
-	f.BoolVar(&o.skipRefresh, "skip-refresh", false, "do not refresh the local repository cache")
+	client.AddUpdateFlags(cmd.Flags())
 
 	return cmd
-}
-
-// run runs the full dependency update process.
-func (o *dependencyUpdateOptions) run(out io.Writer) error {
-	man := &downloader.Manager{
-		Out:        out,
-		ChartPath:  o.chartpath,
-		HelmHome:   o.helmhome,
-		Keyring:    o.keyring,
-		SkipUpdate: o.skipRefresh,
-		Getters:    getter.All(settings),
-	}
-	if o.verify {
-		man.Verify = downloader.VerifyAlways
-	}
-	if settings.Debug {
-		man.Debug = true
-	}
-	return man.Update()
 }

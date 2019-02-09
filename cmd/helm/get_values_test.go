@@ -19,8 +19,7 @@ package main
 import (
 	"testing"
 
-	"k8s.io/helm/pkg/hapi/release"
-	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/release"
 )
 
 func TestGetValuesCmd(t *testing.T) {
@@ -28,7 +27,7 @@ func TestGetValuesCmd(t *testing.T) {
 		name:   "get values with a release",
 		cmd:    "get values thomas-guide",
 		golden: "output/get-values.txt",
-		rels:   []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide"})},
+		rels:   []*release.Release{release.Mock(&release.MockReleaseOptions{Name: "thomas-guide"})},
 	}, {
 		name:      "get values requires release name arg",
 		cmd:       "get values",

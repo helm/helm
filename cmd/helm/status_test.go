@@ -20,15 +20,18 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/helm/pkg/hapi/release"
+	"k8s.io/helm/pkg/chart"
+
+	"k8s.io/helm/pkg/release"
 )
 
 func TestStatusCmd(t *testing.T) {
 	releasesMockWithStatus := func(info *release.Info) []*release.Release {
 		info.LastDeployed = time.Unix(1452902400, 0).UTC()
 		return []*release.Release{{
-			Name: "flummoxed-chickadee",
-			Info: info,
+			Name:  "flummoxed-chickadee",
+			Info:  info,
+			Chart: &chart.Chart{},
 		}}
 	}
 

@@ -17,9 +17,13 @@ limitations under the License.
 package action
 
 import (
+	"fmt"
 	"regexp"
 
-	"k8s.io/helm/pkg/hapi/release"
+	"github.com/gosuri/uitable"
+	"github.com/spf13/pflag"
+
+	"k8s.io/helm/pkg/release"
 	"k8s.io/helm/pkg/releaseutil"
 )
 
@@ -96,6 +100,8 @@ const (
 //
 // It provides, for example, the implementation of 'helm list'.
 type List struct {
+	cfg *Configuration
+
 	// All ignores the limit/offset
 	All bool
 	// AllNamespaces searches across namespaces
@@ -112,9 +118,16 @@ type List struct {
 	// Offset is the starting index for the Run() call
 	Offset int
 	// Filter is a filter that is applied to the results
-	Filter string
-
-	cfg *Configuration
+	Filter       string
+	Short        bool
+	ByDate       bool
+	SortDesc     bool
+	Uninstalled  bool
+	Superseded   bool
+	Uninstalling bool
+	Deployed     bool
+	Failed       bool
+	Pending      bool
 }
 
 // NewList constructs a new *List
@@ -125,21 +138,42 @@ func NewList(cfg *Configuration) *List {
 	}
 }
 
+func (l *List) AddFlags(f *pflag.FlagSet) {
+	f.BoolVarP(&l.Short, "short", "q", false, "output short (quiet) listing format")
+	f.BoolVarP(&l.ByDate, "date", "d", false, "sort by release date")
+	f.BoolVarP(&l.SortDesc, "reverse", "r", false, "reverse the sort order")
+	f.BoolVarP(&l.All, "all", "a", false, "show all releases, not just the ones marked deployed")
+	f.BoolVar(&l.Uninstalled, "uninstalled", false, "show uninstalled releases")
+	f.BoolVar(&l.Superseded, "superseded", false, "show superseded releases")
+	f.BoolVar(&l.Uninstalling, "uninstalling", false, "show releases that are currently being uninstalled")
+	f.BoolVar(&l.Deployed, "deployed", false, "show deployed releases. If no other is specified, this will be automatically enabled")
+	f.BoolVar(&l.Failed, "failed", false, "show failed releases")
+	f.BoolVar(&l.Pending, "pending", false, "show pending releases")
+	f.BoolVar(&l.AllNamespaces, "all-namespaces", false, "list releases across all namespaces")
+	f.IntVarP(&l.Limit, "max", "m", 256, "maximum number of releases to fetch")
+	f.IntVarP(&l.Offset, "offset", "o", 0, "next release name in the list, used to offset from start value")
+	f.StringVarP(&l.Filter, "filter", "f", "", "a regular expression (Perl compatible). Any releases that match the expression will be included in the results")
+}
+
+func (l *List) SetConfiguration(cfg *Configuration) {
+	l.cfg = cfg
+}
+
 // Run executes the list command, returning a set of matches.
-func (a *List) Run() ([]*release.Release, error) {
+func (l *List) Run() ([]*release.Release, error) {
 	var filter *regexp.Regexp
-	if a.Filter != "" {
+	if l.Filter != "" {
 		var err error
-		filter, err = regexp.Compile(a.Filter)
+		filter, err = regexp.Compile(l.Filter)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	results, err := a.cfg.Releases.List(func(rel *release.Release) bool {
+	results, err := l.cfg.Releases.List(func(rel *release.Release) bool {
 		// Skip anything that the mask doesn't cover
-		currentStatus := a.StateMask.FromName(rel.Info.Status.String())
-		if a.StateMask&currentStatus == 0 {
+		currentStatus := l.StateMask.FromName(rel.Info.Status.String())
+		if l.StateMask&currentStatus == 0 {
 			return false
 		}
 
@@ -155,30 +189,30 @@ func (a *List) Run() ([]*release.Release, error) {
 	}
 
 	// Unfortunately, we have to sort before truncating, which can incur substantial overhead
-	a.sort(results)
+	l.sort(results)
 
 	// Guard on offset
-	if a.Offset >= len(results) {
+	if l.Offset >= len(results) {
 		return []*release.Release{}, nil
 	}
 
 	// Calculate the limit and offset, and then truncate results if necessary.
 	limit := len(results)
-	if a.Limit > 0 && a.Limit < limit {
-		limit = a.Limit
+	if l.Limit > 0 && l.Limit < limit {
+		limit = l.Limit
 	}
-	last := a.Offset + limit
+	last := l.Offset + limit
 	if l := len(results); l < last {
 		last = l
 	}
-	results = results[a.Offset:last]
+	results = results[l.Offset:last]
 
 	return results, err
 }
 
 // sort is an in-place sort where order is based on the value of a.Sort
-func (a *List) sort(rels []*release.Release) {
-	switch a.Sort {
+func (l *List) sort(rels []*release.Release) {
+	switch l.Sort {
 	case ByDate:
 		releaseutil.SortByDate(rels)
 	case ByNameDesc:
@@ -186,4 +220,54 @@ func (a *List) sort(rels []*release.Release) {
 	default:
 		releaseutil.SortByName(rels)
 	}
+}
+
+// setStateMask calculates the state mask based on parameters.
+func (l *List) SetStateMask() {
+	if l.All {
+		l.StateMask = ListAll
+		return
+	}
+
+	state := ListStates(0)
+	if l.Deployed {
+		state |= ListDeployed
+	}
+	if l.Uninstalled {
+		state |= ListUninstalled
+	}
+	if l.Uninstalling {
+		state |= ListUninstalling
+	}
+	if l.Pending {
+		state |= ListPendingInstall | ListPendingRollback | ListPendingUpgrade
+	}
+	if l.Failed {
+		state |= ListFailed
+	}
+
+	// Apply a default
+	if state == 0 {
+		state = ListDeployed | ListFailed
+	}
+
+	l.StateMask = state
+}
+
+func FormatList(rels []*release.Release) string {
+	table := uitable.New()
+	table.AddRow("NAME", "REVISION", "UPDATED", "STATUS", "CHART", "NAMESPACE")
+	for _, r := range rels {
+		md := r.Chart.Metadata
+		c := fmt.Sprintf("%s-%s", md.Name, md.Version)
+		t := "-"
+		if tspb := r.Info.LastDeployed; !tspb.IsZero() {
+			t = tspb.String()
+		}
+		s := r.Info.Status.String()
+		v := r.Version
+		n := r.Namespace
+		table.AddRow(r.Name, v, t, s, c, n)
+	}
+	return table.String()
 }

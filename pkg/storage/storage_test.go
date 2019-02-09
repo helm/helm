@@ -21,7 +21,7 @@ import (
 	"reflect"
 	"testing"
 
-	rspb "k8s.io/helm/pkg/hapi/release"
+	rspb "k8s.io/helm/pkg/release"
 	"k8s.io/helm/pkg/storage/driver"
 )
 

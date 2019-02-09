@@ -130,7 +130,7 @@ func TestPullCmd(t *testing.T) {
 		os.Mkdir(outdir, 0755)
 
 		cmd := strings.Join(append(tt.args, "-d", "'"+outdir+"'", "--home", "'"+hh.String()+"'"), " ")
-		out, err := executeCommand(nil, "fetch "+cmd)
+		_, out, err := executeActionCommand("fetch " + cmd)
 		if err != nil {
 			if tt.wantError {
 				continue

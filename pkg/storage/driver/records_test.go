@@ -19,7 +19,7 @@ package driver // import "k8s.io/helm/pkg/storage/driver"
 import (
 	"testing"
 
-	rspb "k8s.io/helm/pkg/hapi/release"
+	rspb "k8s.io/helm/pkg/release"
 )
 
 func TestRecordsAdd(t *testing.T) {

@@ -25,10 +25,6 @@ import (
 var chartPath = "./../../pkg/chartutil/testdata/subpop/charts/subchart1"
 
 func TestTemplateCmd(t *testing.T) {
-	absChartPath, err := filepath.Abs(chartPath)
-	if err != nil {
-		t.Fatal(err)
-	}
 	tests := []cmdTestCase{
 		{
 			name:   "check name",
@@ -37,23 +33,8 @@ func TestTemplateCmd(t *testing.T) {
 		},
 		{
 			name:   "check set name",
-			cmd:    fmt.Sprintf("template '%s' -x '%s' --set service.name=apache", chartPath, filepath.Join("templates", "service.yaml")),
+			cmd:    fmt.Sprintf("template '%s' --set service.name=apache", chartPath),
 			golden: "output/template-set.txt",
-		},
-		{
-			name:   "check execute absolute",
-			cmd:    fmt.Sprintf("template '%s' -x '%s' --set service.name=apache", chartPath, filepath.Join(absChartPath, "templates", "service.yaml")),
-			golden: "output/template-absolute.txt",
-		},
-		{
-			name:   "check release name",
-			cmd:    fmt.Sprintf("template '%s' --name test", chartPath),
-			golden: "output/template-name.txt",
-		},
-		{
-			name:   "check notes",
-			cmd:    fmt.Sprintf("template '%s' --notes", chartPath),
-			golden: "output/template-notes.txt",
 		},
 		{
 			name:   "check values files",
@@ -64,11 +45,6 @@ func TestTemplateCmd(t *testing.T) {
 			name:   "check name template",
 			cmd:    fmt.Sprintf(`template '%s' --name-template='foobar-{{ b64enc "abc" }}-baz'`, chartPath),
 			golden: "output/template-name-template.txt",
-		},
-		{
-			name:   "check kube version",
-			cmd:    fmt.Sprintf("template '%s' --kube-version 1.6", chartPath),
-			golden: "output/template-kube-version.txt",
 		},
 		{
 			name:      "check no args",

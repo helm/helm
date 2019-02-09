@@ -24,8 +24,8 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 
-	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/hooks"
+	"k8s.io/helm/pkg/release"
 	util "k8s.io/helm/pkg/releaseutil"
 )
 

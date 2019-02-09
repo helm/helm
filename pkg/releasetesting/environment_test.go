@@ -21,7 +21,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"k8s.io/helm/pkg/hapi/release"
+	"k8s.io/helm/pkg/release"
 )
 
 func TestCreateTestPodSuccess(t *testing.T) {
@@ -53,7 +53,7 @@ func TestCreateTestPodFailure(t *testing.T) {
 
 func TestStreamMessage(t *testing.T) {
 	env := testEnvFixture()
-	defer close(env.Mesages)
+	defer close(env.Messages)
 
 	expectedMessage := "testing streamMessage"
 	expectedStatus := release.TestRunSuccess
@@ -61,7 +61,7 @@ func TestStreamMessage(t *testing.T) {
 		t.Errorf("Expected no errors, got: %s", err)
 	}
 
-	got := <-env.Mesages
+	got := <-env.Messages
 	if got.Msg != expectedMessage {
 		t.Errorf("Expected message: %s, got: %s", expectedMessage, got.Msg)
 	}

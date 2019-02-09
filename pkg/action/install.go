@@ -20,19 +20,33 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"net/url"
+	"os"
 	"path"
+	"path/filepath"
 	"sort"
 	"strings"
+	"text/template"
 	"time"
 
+	"github.com/Masterminds/sprig"
+	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
+	"github.com/spf13/pflag"
+	"k8s.io/client-go/util/homedir"
 
 	"k8s.io/helm/pkg/chart"
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/cli"
+	"k8s.io/helm/pkg/downloader"
 	"k8s.io/helm/pkg/engine"
-	"k8s.io/helm/pkg/hapi/release"
+	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/hooks"
+	"k8s.io/helm/pkg/release"
 	"k8s.io/helm/pkg/releaseutil"
+	"k8s.io/helm/pkg/repo"
+	"k8s.io/helm/pkg/strvals"
 	"k8s.io/helm/pkg/version"
 )
 
@@ -53,15 +67,39 @@ const notesFileSuffix = "NOTES.txt"
 type Install struct {
 	cfg *Configuration
 
-	DryRun       bool
-	DisableHooks bool
-	Replace      bool
-	Wait         bool
-	Devel        bool
-	DepUp        bool
-	Timeout      int64
-	Namespace    string
-	ReleaseName  string
+	ChartPathOptions
+	ValueOptions
+
+	DryRun           bool
+	DisableHooks     bool
+	Replace          bool
+	Wait             bool
+	Devel            bool
+	DependencyUpdate bool
+	Timeout          int64
+	Namespace        string
+	ReleaseName      string
+	GenerateName     bool
+	NameTemplate     string
+}
+
+type ValueOptions struct {
+	ValueFiles   []string
+	StringValues []string
+	Values       []string
+	rawValues    map[string]interface{}
+}
+
+type ChartPathOptions struct {
+	CaFile   string // --ca-file
+	CertFile string // --cert-file
+	KeyFile  string // --key-file
+	Keyring  string // --keyring
+	Password string // --password
+	RepoURL  string // --repo
+	Username string // --username
+	Verify   bool   // --verify
+	Version  string // --version
 }
 
 // NewInstall creates a new Install object with the given configuration.
@@ -74,7 +112,7 @@ func NewInstall(cfg *Configuration) *Install {
 // Run executes the installation
 //
 // If DryRun is set to true, this will prepare the release, but not install it
-func (i *Install) Run(chrt *chart.Chart, rawValues map[string]interface{}) (*release.Release, error) {
+func (i *Install) Run(chrt *chart.Chart) (*release.Release, error) {
 	if err := i.availableName(); err != nil {
 		return nil, err
 	}
@@ -85,12 +123,12 @@ func (i *Install) Run(chrt *chart.Chart, rawValues map[string]interface{}) (*rel
 		Name:      i.ReleaseName,
 		IsInstall: true,
 	}
-	valuesToRender, err := chartutil.ToRenderValues(chrt, rawValues, options, caps)
+	valuesToRender, err := chartutil.ToRenderValues(chrt, i.rawValues, options, caps)
 	if err != nil {
 		return nil, err
 	}
 
-	rel := i.createRelease(chrt, rawValues)
+	rel := i.createRelease(chrt, i.rawValues)
 	var manifestDoc *bytes.Buffer
 	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.renderResources(chrt, valuesToRender, caps.APIVersions)
 	// Even for errors, attach this if available
@@ -100,12 +138,12 @@ func (i *Install) Run(chrt *chart.Chart, rawValues map[string]interface{}) (*rel
 	// Check error from render
 	if err != nil {
 		rel.SetStatus(release.StatusFailed, fmt.Sprintf("failed to render resource: %s", err.Error()))
-		rel.Version = 0 // Why do we do this?
+		// Return a release with partial data so that the client can show debugging information.
 		return rel, err
 	}
 
 	// Mark this release as in-progress
-	rel.SetStatus(release.StatusPendingInstall, "Intiial install underway")
+	rel.SetStatus(release.StatusPendingInstall, "Initial install underway")
 	if err := i.validateManifest(manifestDoc); err != nil {
 		return rel, err
 	}
@@ -257,20 +295,20 @@ func (i *Install) replaceRelease(rel *release.Release) error {
 // renderResources renders the templates in a chart
 func (i *Install) renderResources(ch *chart.Chart, values chartutil.Values, vs chartutil.VersionSet) ([]*release.Hook, *bytes.Buffer, string, error) {
 	hooks := []*release.Hook{}
-	buf := bytes.NewBuffer(nil)
+	b := bytes.NewBuffer(nil)
 
 	if ch.Metadata.KubeVersion != "" {
 		cap, _ := values["Capabilities"].(*chartutil.Capabilities)
 		gitVersion := cap.KubeVersion.String()
 		k8sVersion := strings.Split(gitVersion, "+")[0]
 		if !version.IsCompatibleRange(ch.Metadata.KubeVersion, k8sVersion) {
-			return hooks, buf, "", errors.Errorf("chart requires kubernetesVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, k8sVersion)
+			return hooks, b, "", errors.Errorf("chart requires kubernetesVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, k8sVersion)
 		}
 	}
 
 	files, err := engine.Render(ch, values)
 	if err != nil {
-		return hooks, buf, "", err
+		return hooks, b, "", err
 	}
 
 	// NOTES.txt gets rendered like all the other files, but because it's not a hook nor a resource,
@@ -301,22 +339,18 @@ func (i *Install) renderResources(ch *chart.Chart, values chartutil.Values, vs c
 		//
 		// We return the files as a big blob of data to help the user debug parser
 		// errors.
-		b := bytes.NewBuffer(nil)
 		for name, content := range files {
 			if len(strings.TrimSpace(content)) == 0 {
 				continue
 			}
-			b.WriteString("\n---\n# Source: " + name + "\n")
-			b.WriteString(content)
+			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", name, content)
 		}
 		return hooks, b, "", err
 	}
 
 	// Aggregate all valid manifests into one big doc.
-	b := bytes.NewBuffer(nil)
 	for _, m := range manifests {
-		b.WriteString("\n---\n# Source: " + m.Name + "\n")
-		b.WriteString(m.Content)
+		fmt.Fprintf(b, "---\n# Source: %s\n%s\n", m.Name, m.Content)
 	}
 
 	return hooks, b, notes, nil
@@ -346,7 +380,7 @@ func (i *Install) execHook(hs []*release.Hook, hook string) error {
 	sort.Sort(hookByWeight(executingHooks))
 
 	for _, h := range executingHooks {
-		if err := i.deleteHookByPolicy(h, hooks.BeforeHookCreation, hook); err != nil {
+		if err := deleteHookByPolicy(i.cfg, i.Namespace, h, hooks.BeforeHookCreation, hook); err != nil {
 			return err
 		}
 
@@ -360,7 +394,7 @@ func (i *Install) execHook(hs []*release.Hook, hook string) error {
 		if err := i.cfg.KubeClient.WatchUntilReady(namespace, b, timeout, false); err != nil {
 			// If a hook is failed, checkout the annotation of the hook to determine whether the hook should be deleted
 			// under failed condition. If so, then clear the corresponding resource object in the hook
-			if err := i.deleteHookByPolicy(h, hooks.HookFailed, hook); err != nil {
+			if err := deleteHookByPolicy(i.cfg, i.Namespace, h, hooks.HookFailed, hook); err != nil {
 				return err
 			}
 			return err
@@ -370,23 +404,12 @@ func (i *Install) execHook(hs []*release.Hook, hook string) error {
 	// If all hooks are succeeded, checkout the annotation of each hook to determine whether the hook should be deleted
 	// under succeeded condition. If so, then clear the corresponding resource object in each hook
 	for _, h := range executingHooks {
-		if err := i.deleteHookByPolicy(h, hooks.HookSucceeded, hook); err != nil {
+		if err := deleteHookByPolicy(i.cfg, i.Namespace, h, hooks.HookSucceeded, hook); err != nil {
 			return err
 		}
 		h.LastRun = time.Now()
 	}
 
-	return nil
-}
-
-// deleteHookByPolicy deletes a hook if the hook policy instructs it to
-func (i *Install) deleteHookByPolicy(h *release.Hook, policy, hook string) error {
-	b := bytes.NewBufferString(h.Manifest)
-	if hookHasDeletePolicy(h, policy) {
-		if errHookDelete := i.cfg.KubeClient.Delete(i.Namespace, b); errHookDelete != nil {
-			return errHookDelete
-		}
-	}
 	return nil
 }
 
@@ -423,4 +446,282 @@ func (x hookByWeight) Less(i, j int) bool {
 		return x[i].Name < x[j].Name
 	}
 	return x[i].Weight < x[j].Weight
+}
+
+// NameAndChart returns the name and chart that should be used.
+//
+// This will read the flags and handle name generation if necessary.
+func (i *Install) NameAndChart(args []string) (string, string, error) {
+	flagsNotSet := func() error {
+		if i.GenerateName {
+			return errors.New("cannot set --generate-name and also specify a name")
+		}
+		if i.NameTemplate != "" {
+			return errors.New("cannot set --name-template and also specify a name")
+		}
+		return nil
+	}
+
+	if len(args) == 2 {
+		return args[0], args[1], flagsNotSet()
+	}
+
+	if i.NameTemplate != "" {
+		name, err := TemplateName(i.NameTemplate)
+		return name, args[0], err
+	}
+
+	if i.ReleaseName != "" {
+		return i.ReleaseName, args[0], nil
+	}
+
+	if !i.GenerateName {
+		return "", args[0], errors.New("must either provide a name or specify --generate-name")
+	}
+
+	base := filepath.Base(args[0])
+	if base == "." || base == "" {
+		base = "chart"
+	}
+
+	return fmt.Sprintf("%s-%d", base, time.Now().Unix()), args[0], nil
+}
+
+func (i *Install) AddFlags(f *pflag.FlagSet) {
+	f.BoolVar(&i.DryRun, "dry-run", false, "simulate an install")
+	f.BoolVar(&i.DisableHooks, "no-hooks", false, "prevent hooks from running during install")
+	f.BoolVar(&i.Replace, "replace", false, "re-use the given name, even if that name is already used. This is unsafe in production")
+	f.Int64Var(&i.Timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
+	f.BoolVar(&i.Wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
+	f.BoolVarP(&i.GenerateName, "generate-name", "g", false, "generate the name (and omit the NAME parameter)")
+	f.StringVar(&i.NameTemplate, "name-template", "", "specify template used to name the release")
+	f.BoolVar(&i.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
+	f.BoolVar(&i.DependencyUpdate, "dependency-update", false, "run helm dependency update before installing the chart")
+	i.ValueOptions.AddFlags(f)
+	i.ChartPathOptions.AddFlags(f)
+}
+
+func (v *ValueOptions) AddFlags(f *pflag.FlagSet) {
+	f.StringSliceVarP(&v.ValueFiles, "values", "f", []string{}, "specify values in a YAML file or a URL(can specify multiple)")
+	f.StringArrayVar(&v.Values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	f.StringArrayVar(&v.StringValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+}
+
+func (c *ChartPathOptions) AddFlags(f *pflag.FlagSet) {
+	f.StringVar(&c.Version, "version", "", "specify the exact chart version to install. If this is not specified, the latest version is installed")
+	f.BoolVar(&c.Verify, "verify", false, "verify the package before installing it")
+	f.StringVar(&c.Keyring, "keyring", defaultKeyring(), "location of public keys used for verification")
+	f.StringVar(&c.RepoURL, "repo", "", "chart repository url where to locate the requested chart")
+	f.StringVar(&c.Username, "username", "", "chart repository username where to locate the requested chart")
+	f.StringVar(&c.Password, "password", "", "chart repository password where to locate the requested chart")
+	f.StringVar(&c.CertFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
+	f.StringVar(&c.KeyFile, "key-file", "", "identify HTTPS client using this SSL key file")
+	f.StringVar(&c.CaFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+}
+
+// defaultKeyring returns the expanded path to the default keyring.
+func defaultKeyring() string {
+	if v, ok := os.LookupEnv("GNUPGHOME"); ok {
+		return filepath.Join(v, "pubring.gpg")
+	}
+	return filepath.Join(homedir.HomeDir(), ".gnupg", "pubring.gpg")
+}
+
+func TemplateName(nameTemplate string) (string, error) {
+	if nameTemplate == "" {
+		return "", nil
+	}
+
+	t, err := template.New("name-template").Funcs(sprig.TxtFuncMap()).Parse(nameTemplate)
+	if err != nil {
+		return "", err
+	}
+	var b bytes.Buffer
+	if err := t.Execute(&b, nil); err != nil {
+		return "", err
+	}
+
+	return b.String(), nil
+}
+
+func CheckDependencies(ch *chart.Chart, reqs []*chart.Dependency) error {
+	var missing []string
+
+OUTER:
+	for _, r := range reqs {
+		for _, d := range ch.Dependencies() {
+			if d.Name() == r.Name {
+				continue OUTER
+			}
+		}
+		missing = append(missing, r.Name)
+	}
+
+	if len(missing) > 0 {
+		return errors.Errorf("found in Chart.yaml, but missing in charts/ directory: %s", strings.Join(missing, ", "))
+	}
+	return nil
+}
+
+// LocateChart looks for a chart directory in known places, and returns either the full path or an error.
+//
+// This does not ensure that the chart is well-formed; only that the requested filename exists.
+//
+// Order of resolution:
+// - relative to current working directory
+// - if path is absolute or begins with '.', error out here
+// - chart repos in $HELM_HOME
+// - URL
+//
+// If 'verify' is true, this will attempt to also verify the chart.
+func (c *ChartPathOptions) LocateChart(name string, settings cli.EnvSettings) (string, error) {
+	name = strings.TrimSpace(name)
+	version := strings.TrimSpace(c.Version)
+
+	if _, err := os.Stat(name); err == nil {
+		abs, err := filepath.Abs(name)
+		if err != nil {
+			return abs, err
+		}
+		if c.Verify {
+			if _, err := downloader.VerifyChart(abs, c.Keyring); err != nil {
+				return "", err
+			}
+		}
+		return abs, nil
+	}
+	if filepath.IsAbs(name) || strings.HasPrefix(name, ".") {
+		return name, errors.Errorf("path %q not found", name)
+	}
+
+	crepo := filepath.Join(settings.Home.Repository(), name)
+	if _, err := os.Stat(crepo); err == nil {
+		return filepath.Abs(crepo)
+	}
+
+	dl := downloader.ChartDownloader{
+		HelmHome: settings.Home,
+		Out:      os.Stdout,
+		Keyring:  c.Keyring,
+		Getters:  getter.All(settings),
+		Username: c.Username,
+		Password: c.Password,
+	}
+	if c.Verify {
+		dl.Verify = downloader.VerifyAlways
+	}
+	if c.RepoURL != "" {
+		chartURL, err := repo.FindChartInAuthRepoURL(c.RepoURL, c.Username, c.Password, name, version,
+			c.CertFile, c.KeyFile, c.CaFile, getter.All(settings))
+		if err != nil {
+			return "", err
+		}
+		name = chartURL
+	}
+
+	if _, err := os.Stat(settings.Home.Archive()); os.IsNotExist(err) {
+		os.MkdirAll(settings.Home.Archive(), 0744)
+	}
+
+	filename, _, err := dl.DownloadTo(name, version, settings.Home.Archive())
+	if err == nil {
+		lname, err := filepath.Abs(filename)
+		if err != nil {
+			return filename, err
+		}
+		return lname, nil
+	} else if settings.Debug {
+		return filename, err
+	}
+
+	return filename, errors.Errorf("failed to download %q (hint: running `helm repo update` may help)", name)
+}
+
+// MergeValues merges values from files specified via -f/--values and
+// directly via --set or --set-string, marshaling them to YAML
+func (v *ValueOptions) MergeValues(settings cli.EnvSettings) error {
+	base := map[string]interface{}{}
+
+	// User specified a values files via -f/--values
+	for _, filePath := range v.ValueFiles {
+		currentMap := map[string]interface{}{}
+
+		bytes, err := readFile(filePath, settings)
+		if err != nil {
+			return err
+		}
+
+		if err := yaml.Unmarshal(bytes, &currentMap); err != nil {
+			return errors.Wrapf(err, "failed to parse %s", filePath)
+		}
+		// Merge with the previous map
+		base = MergeValues(base, currentMap)
+	}
+
+	// User specified a value via --set
+	for _, value := range v.Values {
+		if err := strvals.ParseInto(value, base); err != nil {
+			return errors.Wrap(err, "failed parsing --set data")
+		}
+	}
+
+	// User specified a value via --set-string
+	for _, value := range v.StringValues {
+		if err := strvals.ParseIntoString(value, base); err != nil {
+			return errors.Wrap(err, "failed parsing --set-string data")
+		}
+	}
+
+	v.rawValues = base
+	return nil
+}
+
+// MergeValues merges source and destination map, preferring values from the source map
+func MergeValues(dest, src map[string]interface{}) map[string]interface{} {
+	for k, v := range src {
+		// If the key doesn't exist already, then just set the key to that value
+		if _, exists := dest[k]; !exists {
+			dest[k] = v
+			continue
+		}
+		nextMap, ok := v.(map[string]interface{})
+		// If it isn't another map, overwrite the value
+		if !ok {
+			dest[k] = v
+			continue
+		}
+		// Edge case: If the key exists in the destination, but isn't a map
+		destMap, isMap := dest[k].(map[string]interface{})
+		// If the source map has a map for this key, prefer it
+		if !isMap {
+			dest[k] = v
+			continue
+		}
+		// If we got to this point, it is a map in both, so merge them
+		dest[k] = MergeValues(destMap, nextMap)
+	}
+	return dest
+}
+
+// readFile load a file from stdin, the local directory, or a remote file with a url.
+func readFile(filePath string, settings cli.EnvSettings) ([]byte, error) {
+	if strings.TrimSpace(filePath) == "-" {
+		return ioutil.ReadAll(os.Stdin)
+	}
+	u, _ := url.Parse(filePath)
+	p := getter.All(settings)
+
+	// FIXME: maybe someone handle other protocols like ftp.
+	getterConstructor, err := p.ByScheme(u.Scheme)
+
+	if err != nil {
+		return ioutil.ReadFile(filePath)
+	}
+
+	getter, err := getterConstructor(filePath, "", "", "")
+	if err != nil {
+		return []byte{}, err
+	}
+	data, err := getter.Get(filePath)
+	return data.Bytes(), err
 }

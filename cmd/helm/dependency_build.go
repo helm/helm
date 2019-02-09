@@ -17,10 +17,12 @@ package main
 
 import (
 	"io"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/require"
+	"k8s.io/helm/pkg/action"
 	"k8s.io/helm/pkg/downloader"
 	"k8s.io/helm/pkg/getter"
 )
@@ -36,17 +38,8 @@ If no lock file is found, 'helm dependency build' will mirror the behavior
 of 'helm dependency update'.
 `
 
-type dependencyBuildOptions struct {
-	keyring string // --keyring
-	verify  bool   // --verify
-
-	chartpath string
-}
-
 func newDependencyBuildCmd(out io.Writer) *cobra.Command {
-	o := &dependencyBuildOptions{
-		chartpath: ".",
-	}
+	client := action.NewDependency()
 
 	cmd := &cobra.Command{
 		Use:   "build CHART",
@@ -54,31 +47,28 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 		Long:  dependencyBuildDesc,
 		Args:  require.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			chartpath := "."
 			if len(args) > 0 {
-				o.chartpath = args[0]
+				chartpath = filepath.Clean(args[0])
 			}
-			return o.run(out)
+			man := &downloader.Manager{
+				Out:       out,
+				ChartPath: chartpath,
+				HelmHome:  settings.Home,
+				Keyring:   client.Keyring,
+				Getters:   getter.All(settings),
+			}
+			if client.Verify {
+				man.Verify = downloader.VerifyIfPossible
+			}
+			if settings.Debug {
+				man.Debug = true
+			}
+			return man.Build()
 		},
 	}
 
-	f := cmd.Flags()
-	f.BoolVar(&o.verify, "verify", false, "verify the packages against signatures")
-	f.StringVar(&o.keyring, "keyring", defaultKeyring(), "keyring containing public keys")
+	client.AddBuildFlags(cmd.Flags())
 
 	return cmd
-}
-
-func (o *dependencyBuildOptions) run(out io.Writer) error {
-	man := &downloader.Manager{
-		Out:       out,
-		ChartPath: o.chartpath,
-		HelmHome:  settings.Home,
-		Keyring:   o.keyring,
-		Getters:   getter.All(settings),
-	}
-	if o.verify {
-		man.Verify = downloader.VerifyIfPossible
-	}
-
-	return man.Build()
 }

@@ -21,7 +21,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"k8s.io/helm/pkg/helm/helmpath"
+	"k8s.io/helm/pkg/helmpath"
 )
 
 var _ Installer = new(LocalInstaller)

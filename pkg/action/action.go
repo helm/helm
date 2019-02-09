@@ -17,15 +17,18 @@ limitations under the License.
 package action
 
 import (
+	"regexp"
 	"time"
 
+	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/discovery"
 
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/registry"
+	"k8s.io/helm/pkg/release"
 	"k8s.io/helm/pkg/storage"
-	"k8s.io/helm/pkg/tiller/environment"
 )
 
 // Timestamper is a function capable of producing a timestamp.Timestamper.
@@ -33,6 +36,28 @@ import (
 // By default, this is a time.Time function. This can be overridden for testing,
 // though, so that timestamps are predictable.
 var Timestamper = time.Now
+
+var (
+	// errMissingChart indicates that a chart was not provided.
+	errMissingChart = errors.New("no chart provided")
+	// errMissingRelease indicates that a release (name) was not provided.
+	errMissingRelease = errors.New("no release provided")
+	// errInvalidRevision indicates that an invalid release revision number was provided.
+	errInvalidRevision = errors.New("invalid release revision")
+	//errInvalidName indicates that an invalid release name was provided
+	errInvalidName = errors.New("invalid release name, must match regex ^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+$ and the length must not longer than 53")
+)
+
+// ValidName is a regular expression for names.
+//
+// According to the Kubernetes help text, the regular expression it uses is:
+//
+//	(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?
+//
+// We modified that. First, we added start and end delimiters. Second, we changed
+// the final ? to + to require that the pattern match at least once. This modification
+// prevents an empty string from matching.
+var ValidName = regexp.MustCompile("^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+$")
 
 // Configuration injects the dependencies that all actions share.
 type Configuration struct {
@@ -43,7 +68,7 @@ type Configuration struct {
 	Releases *storage.Storage
 
 	// KubeClient is a Kubernetes API client.
-	KubeClient environment.KubeClient
+	KubeClient kube.KubernetesClient
 
 	// RegistryClient is a client for working with registries
 	RegistryClient *registry.Client
@@ -69,6 +94,18 @@ func (c *Configuration) Now() time.Time {
 	return Timestamper()
 }
 
+func (c *Configuration) releaseContent(name string, version int) (*release.Release, error) {
+	if err := validateReleaseName(name); err != nil {
+		return nil, errors.Errorf("releaseContent: Release name is invalid: %s", name)
+	}
+
+	if version <= 0 {
+		return c.Releases.Last(name)
+	}
+
+	return c.Releases.Get(name, version)
+}
+
 // GetVersionSet retrieves a set of available k8s API versions
 func GetVersionSet(client discovery.ServerGroupsInterface) (chartutil.VersionSet, error) {
 	groups, err := client.ServerGroups()
@@ -86,4 +123,15 @@ func GetVersionSet(client discovery.ServerGroupsInterface) (chartutil.VersionSet
 
 	versions := metav1.ExtractGroupVersions(groups)
 	return chartutil.NewVersionSet(versions...), nil
+}
+
+// recordRelease with an update operation in case reuse has been set.
+func (c *Configuration) recordRelease(r *release.Release, reuse bool) {
+	if reuse {
+		if err := c.Releases.Update(r); err != nil {
+			c.Log("warning: Failed to update release %s: %s", r.Name, err)
+		}
+	} else if err := c.Releases.Create(r); err != nil {
+		c.Log("warning: Failed to record release %s: %s", r.Name, err)
+	}
 }

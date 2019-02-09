@@ -1,0 +1,122 @@
+/*
+Copyright The Helm Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package action
+
+import (
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/pkg/errors"
+	"github.com/spf13/pflag"
+
+	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/lint"
+	"k8s.io/helm/pkg/lint/support"
+)
+
+var errLintNoChart = errors.New("no chart found for linting (missing Chart.yaml)")
+
+// Lint is the action for checking that the semantics of a chart are well-formed.
+//
+// It provides the implementation of 'helm lint'.
+type Lint struct {
+	ValueOptions
+
+	Strict    bool
+	Namespace string
+}
+
+type LintResult struct {
+	TotalChartsLinted int
+	Messages          []support.Message
+	Errors            []error
+}
+
+// NewLint creates a new Lint object with the given configuration.
+func NewLint() *Lint {
+	return &Lint{}
+}
+
+// Run executes 'helm Lint' against the given chart.
+func (l *Lint) Run(paths []string) *LintResult {
+	lowestTolerance := support.ErrorSev
+	if l.Strict {
+		lowestTolerance = support.WarningSev
+	}
+
+	result := &LintResult{}
+	for _, path := range paths {
+		if linter, err := lintChart(path, l.ValueOptions.rawValues, l.Namespace, l.Strict); err != nil {
+			if err == errLintNoChart {
+				result.Errors = append(result.Errors, err)
+			}
+		} else {
+			result.Messages = append(result.Messages, linter.Messages...)
+			result.TotalChartsLinted++
+			if linter.HighestSeverity >= lowestTolerance {
+				result.Errors = append(result.Errors, err)
+			}
+		}
+	}
+	return result
+}
+
+func lintChart(path string, vals map[string]interface{}, namespace string, strict bool) (support.Linter, error) {
+	var chartPath string
+	linter := support.Linter{}
+
+	if strings.HasSuffix(path, ".tgz") {
+		tempDir, err := ioutil.TempDir("", "helm-lint")
+		if err != nil {
+			return linter, err
+		}
+		defer os.RemoveAll(tempDir)
+
+		file, err := os.Open(path)
+		if err != nil {
+			return linter, err
+		}
+		defer file.Close()
+
+		if err = chartutil.Expand(tempDir, file); err != nil {
+			return linter, err
+		}
+
+		lastHyphenIndex := strings.LastIndex(filepath.Base(path), "-")
+		if lastHyphenIndex <= 0 {
+			return linter, errors.Errorf("unable to parse chart archive %q, missing '-'", filepath.Base(path))
+		}
+		base := filepath.Base(path)[:lastHyphenIndex]
+		chartPath = filepath.Join(tempDir, base)
+	} else {
+		chartPath = path
+	}
+
+	// Guard: Error out of this is not a chart.
+	if _, err := os.Stat(filepath.Join(chartPath, "Chart.yaml")); err != nil {
+		return linter, errLintNoChart
+	}
+
+	return lint.All(chartPath, vals, namespace, strict), nil
+}
+
+func (l *Lint) AddFlags(f *pflag.FlagSet) {
+	f.BoolVar(&l.Strict, "strict", false, "fail on lint warnings")
+	l.ValueOptions.AddFlags(f)
+}

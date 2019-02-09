@@ -19,38 +19,34 @@ package main
 import (
 	"testing"
 
-	"k8s.io/helm/pkg/hapi/release"
-	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/release"
 )
 
 func TestUninstall(t *testing.T) {
-
-	rels := []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "aeneas"})}
-
 	tests := []cmdTestCase{
 		{
 			name:   "basic uninstall",
 			cmd:    "uninstall aeneas",
 			golden: "output/uninstall.txt",
-			rels:   rels,
+			rels:   []*release.Release{release.Mock(&release.MockReleaseOptions{Name: "aeneas"})},
 		},
 		{
 			name:   "uninstall with timeout",
 			cmd:    "uninstall aeneas --timeout 120",
 			golden: "output/uninstall-timeout.txt",
-			rels:   rels,
+			rels:   []*release.Release{release.Mock(&release.MockReleaseOptions{Name: "aeneas"})},
 		},
 		{
 			name:   "uninstall without hooks",
 			cmd:    "uninstall aeneas --no-hooks",
 			golden: "output/uninstall-no-hooks.txt",
-			rels:   rels,
+			rels:   []*release.Release{release.Mock(&release.MockReleaseOptions{Name: "aeneas"})},
 		},
 		{
 			name:   "purge",
 			cmd:    "uninstall aeneas --purge",
 			golden: "output/uninstall-purge.txt",
-			rels:   rels,
+			rels:   []*release.Release{release.Mock(&release.MockReleaseOptions{Name: "aeneas"})},
 		},
 		{
 			name:      "uninstall without release",

@@ -26,10 +26,10 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 
 	"k8s.io/helm/pkg/chart"
-	"k8s.io/helm/pkg/hapi/release"
+	"k8s.io/helm/pkg/kube"
+	"k8s.io/helm/pkg/release"
 	"k8s.io/helm/pkg/storage"
 	"k8s.io/helm/pkg/storage/driver"
-	"k8s.io/helm/pkg/tiller/environment"
 )
 
 var verbose = flag.Bool("test.log", false, "enable test logging")
@@ -39,7 +39,7 @@ func actionConfigFixture(t *testing.T) *Configuration {
 
 	return &Configuration{
 		Releases:   storage.Init(driver.NewMemory()),
-		KubeClient: &environment.PrintingKubeClient{Out: ioutil.Discard},
+		KubeClient: &kube.PrintingKubeClient{Out: ioutil.Discard},
 		Discovery:  fake.NewSimpleClientset().Discovery(),
 		Log: func(format string, v ...interface{}) {
 			t.Helper()
@@ -176,12 +176,12 @@ func namedReleaseStub(name string, status release.Status) *release.Release {
 
 func newHookFailingKubeClient() *hookFailingKubeClient {
 	return &hookFailingKubeClient{
-		PrintingKubeClient: environment.PrintingKubeClient{Out: ioutil.Discard},
+		PrintingKubeClient: kube.PrintingKubeClient{Out: ioutil.Discard},
 	}
 }
 
 type hookFailingKubeClient struct {
-	environment.PrintingKubeClient
+	kube.PrintingKubeClient
 }
 
 func (h *hookFailingKubeClient) WatchUntilReady(ns string, r io.Reader, timeout int64, shouldWait bool) error {

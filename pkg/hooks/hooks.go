@@ -17,7 +17,7 @@ limitations under the License.
 package hooks
 
 import (
-	"k8s.io/helm/pkg/hapi/release"
+	"k8s.io/helm/pkg/release"
 )
 
 // HookAnno is the label name for a hook

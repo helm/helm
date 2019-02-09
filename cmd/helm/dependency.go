@@ -16,18 +16,13 @@ limitations under the License.
 package main
 
 import (
-	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 
-	"github.com/Masterminds/semver"
-	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/require"
-	"k8s.io/helm/pkg/chart"
-	"k8s.io/helm/pkg/chart/loader"
+	"k8s.io/helm/pkg/action"
 )
 
 const dependencyDesc = `
@@ -103,14 +98,8 @@ func newDependencyCmd(out io.Writer) *cobra.Command {
 	return cmd
 }
 
-type dependencyLisOptions struct {
-	chartpath string
-}
-
 func newDependencyListCmd(out io.Writer) *cobra.Command {
-	o := &dependencyLisOptions{
-		chartpath: ".",
-	}
+	client := action.NewDependency()
 
 	cmd := &cobra.Command{
 		Use:     "list CHART",
@@ -119,151 +108,12 @@ func newDependencyListCmd(out io.Writer) *cobra.Command {
 		Long:    dependencyListDesc,
 		Args:    require.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			chartpath := "."
 			if len(args) > 0 {
-				o.chartpath = filepath.Clean(args[0])
+				chartpath = filepath.Clean(args[0])
 			}
-			return o.run(out)
+			return client.List(chartpath, out)
 		},
 	}
 	return cmd
-}
-
-func (o *dependencyLisOptions) run(out io.Writer) error {
-	c, err := loader.Load(o.chartpath)
-	if err != nil {
-		return err
-	}
-
-	if c.Metadata.Dependencies == nil {
-		fmt.Fprintf(out, "WARNING: no dependencies at %s\n", filepath.Join(o.chartpath, "charts"))
-		return nil
-	}
-
-	o.printDependencies(out, c.Metadata.Dependencies)
-	fmt.Fprintln(out)
-	o.printMissing(out, c.Metadata.Dependencies)
-	return nil
-}
-
-func (o *dependencyLisOptions) dependencyStatus(dep *chart.Dependency) string {
-	filename := fmt.Sprintf("%s-%s.tgz", dep.Name, "*")
-	archives, err := filepath.Glob(filepath.Join(o.chartpath, "charts", filename))
-	if err != nil {
-		return "bad pattern"
-	} else if len(archives) > 1 {
-		return "too many matches"
-	} else if len(archives) == 1 {
-		archive := archives[0]
-		if _, err := os.Stat(archive); err == nil {
-			c, err := loader.Load(archive)
-			if err != nil {
-				return "corrupt"
-			}
-			if c.Name() != dep.Name {
-				return "misnamed"
-			}
-
-			if c.Metadata.Version != dep.Version {
-				constraint, err := semver.NewConstraint(dep.Version)
-				if err != nil {
-					return "invalid version"
-				}
-
-				v, err := semver.NewVersion(c.Metadata.Version)
-				if err != nil {
-					return "invalid version"
-				}
-
-				if constraint.Check(v) {
-					return "ok"
-				}
-				return "wrong version"
-			}
-			return "ok"
-		}
-	}
-
-	folder := filepath.Join(o.chartpath, "charts", dep.Name)
-	if fi, err := os.Stat(folder); err != nil {
-		return "missing"
-	} else if !fi.IsDir() {
-		return "mispackaged"
-	}
-
-	c, err := loader.Load(folder)
-	if err != nil {
-		return "corrupt"
-	}
-
-	if c.Name() != dep.Name {
-		return "misnamed"
-	}
-
-	if c.Metadata.Version != dep.Version {
-		constraint, err := semver.NewConstraint(dep.Version)
-		if err != nil {
-			return "invalid version"
-		}
-
-		v, err := semver.NewVersion(c.Metadata.Version)
-		if err != nil {
-			return "invalid version"
-		}
-
-		if constraint.Check(v) {
-			return "unpacked"
-		}
-		return "wrong version"
-	}
-
-	return "unpacked"
-}
-
-// printDependencies prints all of the dependencies in the yaml file.
-func (o *dependencyLisOptions) printDependencies(out io.Writer, reqs []*chart.Dependency) {
-	table := uitable.New()
-	table.MaxColWidth = 80
-	table.AddRow("NAME", "VERSION", "REPOSITORY", "STATUS")
-	for _, row := range reqs {
-		table.AddRow(row.Name, row.Version, row.Repository, o.dependencyStatus(row))
-	}
-	fmt.Fprintln(out, table)
-}
-
-// printMissing prints warnings about charts that are present on disk, but are
-// not in Charts.yaml.
-func (o *dependencyLisOptions) printMissing(out io.Writer, reqs []*chart.Dependency) {
-	folder := filepath.Join(o.chartpath, "charts/*")
-	files, err := filepath.Glob(folder)
-	if err != nil {
-		fmt.Fprintln(out, err)
-		return
-	}
-
-	for _, f := range files {
-		fi, err := os.Stat(f)
-		if err != nil {
-			fmt.Fprintf(out, "Warning: %s\n", err)
-		}
-		// Skip anything that is not a directory and not a tgz file.
-		if !fi.IsDir() && filepath.Ext(f) != ".tgz" {
-			continue
-		}
-		c, err := loader.Load(f)
-		if err != nil {
-			fmt.Fprintf(out, "WARNING: %q is not a chart.\n", f)
-			continue
-		}
-		found := false
-		for _, d := range reqs {
-			if d.Name == c.Name() {
-				found = true
-				break
-			}
-		}
-		if !found {
-			fmt.Fprintf(out, "WARNING: %q is not in Chart.yaml.\n", f)
-		}
-	}
-
 }

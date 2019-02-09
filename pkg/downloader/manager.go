@@ -34,7 +34,7 @@ import (
 	"k8s.io/helm/pkg/chart/loader"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/getter"
-	"k8s.io/helm/pkg/helm/helmpath"
+	"k8s.io/helm/pkg/helmpath"
 	"k8s.io/helm/pkg/repo"
 	"k8s.io/helm/pkg/resolver"
 	"k8s.io/helm/pkg/urlutil"

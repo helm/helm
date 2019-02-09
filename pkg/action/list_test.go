@@ -21,7 +21,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"k8s.io/helm/pkg/hapi/release"
+	"k8s.io/helm/pkg/release"
 	"k8s.io/helm/pkg/storage"
 )
 

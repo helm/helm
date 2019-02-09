@@ -21,7 +21,7 @@ import (
 	"os"
 	"testing"
 
-	"k8s.io/helm/pkg/helm/helmpath"
+	"k8s.io/helm/pkg/helmpath"
 )
 
 const testPluginsFile = "testdata/plugins.yaml"

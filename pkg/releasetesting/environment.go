@@ -24,16 +24,15 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 
-	"k8s.io/helm/pkg/hapi"
-	"k8s.io/helm/pkg/hapi/release"
-	"k8s.io/helm/pkg/tiller/environment"
+	"k8s.io/helm/pkg/kube"
+	"k8s.io/helm/pkg/release"
 )
 
 // Environment encapsulates information about where test suite executes and returns results
 type Environment struct {
 	Namespace  string
-	KubeClient environment.KubeClient
-	Mesages    chan *hapi.TestReleaseResponse
+	KubeClient kube.KubernetesClient
+	Messages   chan *release.TestReleaseResponse
 	Timeout    int64
 }
 
@@ -106,8 +105,8 @@ func (env *Environment) streamUnknown(name, info string) error {
 }
 
 func (env *Environment) streamMessage(msg string, status release.TestRunStatus) error {
-	resp := &hapi.TestReleaseResponse{Msg: msg, Status: status}
-	env.Mesages <- resp
+	resp := &release.TestReleaseResponse{Msg: msg, Status: status}
+	env.Messages <- resp
 	return nil
 }
 

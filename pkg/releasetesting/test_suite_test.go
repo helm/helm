@@ -23,9 +23,8 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 
-	"k8s.io/helm/pkg/hapi"
-	"k8s.io/helm/pkg/hapi/release"
-	"k8s.io/helm/pkg/tiller/environment"
+	"k8s.io/helm/pkg/kube"
+	"k8s.io/helm/pkg/release"
 )
 
 const manifestWithTestSuccessHook = `
@@ -71,16 +70,16 @@ func TestRun(t *testing.T) {
 	env := testEnvFixture()
 
 	go func() {
-		defer close(env.Mesages)
+		defer close(env.Messages)
 		if err := ts.Run(env); err != nil {
 			t.Error(err)
 		}
 	}()
 
 	for i := 0; i <= 4; i++ {
-		<-env.Mesages
+		<-env.Messages
 	}
-	if _, ok := <-env.Mesages; ok {
+	if _, ok := <-env.Messages; ok {
 		t.Errorf("Expected 4 messages streamed")
 	}
 
@@ -127,18 +126,18 @@ func TestRunEmptyTestSuite(t *testing.T) {
 	env := testEnvFixture()
 
 	go func() {
-		defer close(env.Mesages)
+		defer close(env.Messages)
 		if err := ts.Run(env); err != nil {
 			t.Error(err)
 		}
 	}()
 
-	msg := <-env.Mesages
+	msg := <-env.Messages
 	if msg.Msg != "No Tests Found" {
 		t.Errorf("Expected message 'No Tests Found', Got: %v", msg.Msg)
 	}
 
-	for range env.Mesages {
+	for range env.Messages {
 	}
 
 	if ts.StartedAt.IsZero() {
@@ -158,16 +157,16 @@ func TestRunSuccessWithTestFailureHook(t *testing.T) {
 	env.KubeClient = &mockKubeClient{podFail: true}
 
 	go func() {
-		defer close(env.Mesages)
+		defer close(env.Messages)
 		if err := ts.Run(env); err != nil {
 			t.Error(err)
 		}
 	}()
 
 	for i := 0; i <= 4; i++ {
-		<-env.Mesages
+		<-env.Messages
 	}
-	if _, ok := <-env.Mesages; ok {
+	if _, ok := <-env.Messages; ok {
 		t.Errorf("Expected 4 messages streamed")
 	}
 
@@ -240,12 +239,12 @@ func testEnvFixture() *Environment {
 		Namespace:  "default",
 		KubeClient: &mockKubeClient{},
 		Timeout:    1,
-		Mesages:    make(chan *hapi.TestReleaseResponse, 1),
+		Messages:   make(chan *release.TestReleaseResponse, 1),
 	}
 }
 
 type mockKubeClient struct {
-	environment.KubeClient
+	kube.KubernetesClient
 	podFail bool
 	err     error
 }

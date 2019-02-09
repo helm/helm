@@ -10,11 +10,11 @@ Helm can be installed either from source, or from pre-built binary releases.
 
 ### From the Binary Releases
 
-Every [release](https://github.com/helm/helm/releases) of Helm
+Every [release](https://github.com/helm/releases) of Helm
 provides binary releases for a variety of OSes. These binary versions
 can be manually downloaded and installed.
 
-1. Download your [desired version](https://github.com/helm/helm/releases)
+1. Download your [desired version](https://github.com/helm/releases)
 2. Unpack it (`tar -zxvf helm-v2.0.0-linux-amd64.tgz`)
 3. Find the `helm` binary in the unpacked directory, and move it to its
    desired destination (`mv linux-amd64/helm /usr/local/bin/helm`)

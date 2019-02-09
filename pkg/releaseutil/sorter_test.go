@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	rspb "k8s.io/helm/pkg/hapi/release"
+	rspb "k8s.io/helm/pkg/release"
 )
 
 // note: this test data is shared with filter_test.go.

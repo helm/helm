@@ -22,12 +22,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
-	yaml "gopkg.in/yaml.v2"
 
 	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/hooks"
+	"k8s.io/helm/pkg/release"
 )
 
 // Manifest represents a manifest file, which has a name and some content.

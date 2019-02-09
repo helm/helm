@@ -1,0 +1,111 @@
+/*
+Copyright The Helm Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package release
+
+import (
+	"math/rand"
+	"time"
+
+	"k8s.io/helm/pkg/chart"
+)
+
+// MockHookTemplate is the hook template used for all mock release objects.
+var MockHookTemplate = `apiVersion: v1
+kind: Job
+metadata:
+  annotations:
+    "helm.sh/hook": pre-install
+`
+
+// MockManifest is the manifest used for all mock release objects.
+var MockManifest = `apiVersion: v1
+kind: Secret
+metadata:
+  name: fixture
+`
+
+// MockReleaseOptions allows for user-configurable options on mock release objects.
+type MockReleaseOptions struct {
+	Name      string
+	Version   int
+	Chart     *chart.Chart
+	Status    Status
+	Namespace string
+}
+
+// Mock creates a mock release object based on options set by MockReleaseOptions. This function should typically not be used outside of testing.
+func Mock(opts *MockReleaseOptions) *Release {
+	date := time.Unix(242085845, 0).UTC()
+
+	name := opts.Name
+	if name == "" {
+		name = "testrelease-" + string(rand.Intn(100))
+	}
+
+	version := 1
+	if opts.Version != 0 {
+		version = opts.Version
+	}
+
+	namespace := opts.Namespace
+	if namespace == "" {
+		namespace = "default"
+	}
+
+	ch := opts.Chart
+	if opts.Chart == nil {
+		ch = &chart.Chart{
+			Metadata: &chart.Metadata{
+				Name:    "foo",
+				Version: "0.1.0-beta.1",
+			},
+			Templates: []*chart.File{
+				{Name: "templates/foo.tpl", Data: []byte(MockManifest)},
+			},
+		}
+	}
+
+	scode := StatusDeployed
+	if len(opts.Status) > 0 {
+		scode = opts.Status
+	}
+
+	return &Release{
+		Name: name,
+		Info: &Info{
+			FirstDeployed: date,
+			LastDeployed:  date,
+			Status:        scode,
+			Description:   "Release mock",
+		},
+		Chart:     ch,
+		Config:    map[string]interface{}{"name": "value"},
+		Version:   version,
+		Namespace: namespace,
+		Hooks: []*Hook{
+			{
+				Name:     "pre-install-hook",
+				Kind:     "Job",
+				Path:     "pre-install-hook.yaml",
+				Manifest: MockHookTemplate,
+				LastRun:  date,
+				Events:   []HookEvent{HookPreInstall},
+			},
+		},
+		Manifest: MockManifest,
+	}
+}

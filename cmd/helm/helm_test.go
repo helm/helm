@@ -30,13 +30,12 @@ import (
 
 	"k8s.io/helm/internal/test"
 	"k8s.io/helm/pkg/action"
-	"k8s.io/helm/pkg/hapi/release"
-	"k8s.io/helm/pkg/helm"
-	"k8s.io/helm/pkg/helm/helmpath"
+	"k8s.io/helm/pkg/helmpath"
+	"k8s.io/helm/pkg/kube"
+	"k8s.io/helm/pkg/release"
 	"k8s.io/helm/pkg/repo"
 	"k8s.io/helm/pkg/storage"
 	"k8s.io/helm/pkg/storage/driver"
-	"k8s.io/helm/pkg/tiller/environment"
 )
 
 func testTimestamper() time.Time { return time.Unix(242085845, 0).UTC() }
@@ -66,11 +65,13 @@ func runTestCmd(t *testing.T, tests []cmdTestCase) {
 		t.Run(tt.name, func(t *testing.T) {
 			defer resetEnv()()
 
-			c := &helm.FakeClient{
-				Rels:          tt.rels,
-				TestRunStatus: tt.testRunStatus,
+			storage := storageFixture()
+			for _, rel := range tt.rels {
+				if err := storage.Create(rel); err != nil {
+					t.Fatal(err)
+				}
 			}
-			out, err := executeCommand(c, tt.cmd)
+			_, out, err := executeActionCommandC(storage, tt.cmd)
 			if (err != nil) != tt.wantError {
 				t.Errorf("expected error, got '%v'", err)
 			}
@@ -115,12 +116,12 @@ func executeActionCommandC(store *storage.Storage, cmd string) (*cobra.Command, 
 
 	actionConfig := &action.Configuration{
 		Releases:   store,
-		KubeClient: &environment.PrintingKubeClient{Out: ioutil.Discard},
+		KubeClient: &kube.PrintingKubeClient{Out: ioutil.Discard},
 		Discovery:  fake.NewSimpleClientset().Discovery(),
 		Log:        func(format string, v ...interface{}) {},
 	}
 
-	root := newRootCmd(nil, actionConfig, buf, args)
+	root := newRootCmd(actionConfig, buf, args)
 	root.SetOutput(buf)
 	root.SetArgs(args)
 
@@ -136,35 +137,11 @@ type cmdTestCase struct {
 	golden    string
 	wantError bool
 	// Rels are the available releases at the start of the test.
-	rels          []*release.Release
-	testRunStatus map[string]release.TestRunStatus
+	rels []*release.Release
 }
 
-// deprecated: Switch to executeActionCommandC
-func executeCommand(c helm.Interface, cmd string) (string, error) {
-	_, output, err := executeCommandC(c, cmd)
-	return output, err
-}
-
-// deprecated: Switch to executeActionCommandC
-func executeCommandC(client helm.Interface, cmd string) (*cobra.Command, string, error) {
-	args, err := shellwords.Parse(cmd)
-	if err != nil {
-		return nil, "", err
-	}
-	buf := new(bytes.Buffer)
-
-	actionConfig := &action.Configuration{
-		Releases: storage.Init(driver.NewMemory()),
-	}
-
-	root := newRootCmd(client, actionConfig, buf, args)
-	root.SetOutput(buf)
-	root.SetArgs(args)
-
-	c, err := root.ExecuteC()
-
-	return c, buf.String(), err
+func executeActionCommand(cmd string) (*cobra.Command, string, error) {
+	return executeActionCommandC(storageFixture(), cmd)
 }
 
 // ensureTestHome creates a home directory like ensureHome, but without remote references.

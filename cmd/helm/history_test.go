@@ -19,13 +19,12 @@ package main
 import (
 	"testing"
 
-	rpb "k8s.io/helm/pkg/hapi/release"
-	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/release"
 )
 
 func TestHistoryCmd(t *testing.T) {
-	mk := func(name string, vers int, status rpb.Status) *rpb.Release {
-		return helm.ReleaseMock(&helm.MockReleaseOptions{
+	mk := func(name string, vers int, status release.Status) *release.Release {
+		return release.Mock(&release.MockReleaseOptions{
 			Name:    name,
 			Version: vers,
 			Status:  status,
@@ -35,35 +34,35 @@ func TestHistoryCmd(t *testing.T) {
 	tests := []cmdTestCase{{
 		name: "get history for release",
 		cmd:  "history angry-bird",
-		rels: []*rpb.Release{
-			mk("angry-bird", 4, rpb.StatusDeployed),
-			mk("angry-bird", 3, rpb.StatusSuperseded),
-			mk("angry-bird", 2, rpb.StatusSuperseded),
-			mk("angry-bird", 1, rpb.StatusSuperseded),
+		rels: []*release.Release{
+			mk("angry-bird", 4, release.StatusDeployed),
+			mk("angry-bird", 3, release.StatusSuperseded),
+			mk("angry-bird", 2, release.StatusSuperseded),
+			mk("angry-bird", 1, release.StatusSuperseded),
 		},
 		golden: "output/history.txt",
 	}, {
 		name: "get history with max limit set",
 		cmd:  "history angry-bird --max 2",
-		rels: []*rpb.Release{
-			mk("angry-bird", 4, rpb.StatusDeployed),
-			mk("angry-bird", 3, rpb.StatusSuperseded),
+		rels: []*release.Release{
+			mk("angry-bird", 4, release.StatusDeployed),
+			mk("angry-bird", 3, release.StatusSuperseded),
 		},
 		golden: "output/history-limit.txt",
 	}, {
 		name: "get history with yaml output format",
 		cmd:  "history angry-bird --output yaml",
-		rels: []*rpb.Release{
-			mk("angry-bird", 4, rpb.StatusDeployed),
-			mk("angry-bird", 3, rpb.StatusSuperseded),
+		rels: []*release.Release{
+			mk("angry-bird", 4, release.StatusDeployed),
+			mk("angry-bird", 3, release.StatusSuperseded),
 		},
 		golden: "output/history.yaml",
 	}, {
 		name: "get history with json output format",
 		cmd:  "history angry-bird --output json",
-		rels: []*rpb.Release{
-			mk("angry-bird", 4, rpb.StatusDeployed),
-			mk("angry-bird", 3, rpb.StatusSuperseded),
+		rels: []*release.Release{
+			mk("angry-bird", 4, release.StatusDeployed),
+			mk("angry-bird", 3, release.StatusSuperseded),
 		},
 		golden: "output/history.json",
 	}}

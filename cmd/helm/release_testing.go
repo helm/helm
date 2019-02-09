@@ -24,8 +24,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/require"
-	"k8s.io/helm/pkg/hapi/release"
-	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/action"
+	"k8s.io/helm/pkg/release"
 )
 
 const releaseTestDesc = `
@@ -35,15 +35,8 @@ The argument this command takes is the name of a deployed release.
 The tests to be run are defined in the chart that was installed.
 `
 
-type releaseTestOptions struct {
-	name    string
-	client  helm.Interface
-	timeout int64
-	cleanup bool
-}
-
-func newReleaseTestCmd(c helm.Interface, out io.Writer) *cobra.Command {
-	o := &releaseTestOptions{client: c}
+func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+	client := action.NewReleaseTesting(cfg)
 
 	cmd := &cobra.Command{
 		Use:   "test [RELEASE]",
@@ -51,45 +44,33 @@ func newReleaseTestCmd(c helm.Interface, out io.Writer) *cobra.Command {
 		Long:  releaseTestDesc,
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			o.name = args[0]
-			o.client = ensureHelmClient(o.client, false)
-			return o.run(out)
+			c, errc := client.Run(args[0])
+			testErr := &testErr{}
+
+			for {
+				select {
+				case err := <-errc:
+					if err == nil && testErr.failed > 0 {
+						return testErr.Error()
+					}
+					return err
+				case res, ok := <-c:
+					if !ok {
+						break
+					}
+
+					if res.Status == release.TestRunFailure {
+						testErr.failed++
+					}
+					fmt.Fprintf(out, res.Msg+"\n")
+				}
+			}
 		},
 	}
 
-	f := cmd.Flags()
-	f.Int64Var(&o.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
-	f.BoolVar(&o.cleanup, "cleanup", false, "delete test pods upon completion")
+	client.AddFlags(cmd.Flags())
 
 	return cmd
-}
-
-func (o *releaseTestOptions) run(out io.Writer) (err error) {
-	c, errc := o.client.RunReleaseTest(
-		o.name,
-		helm.ReleaseTestTimeout(o.timeout),
-		helm.ReleaseTestCleanup(o.cleanup),
-	)
-	testErr := &testErr{}
-
-	for {
-		select {
-		case err := <-errc:
-			if err == nil && testErr.failed > 0 {
-				return testErr.Error()
-			}
-			return err
-		case res, ok := <-c:
-			if !ok {
-				break
-			}
-
-			if res.Status == release.TestRunFailure {
-				testErr.failed++
-			}
-			fmt.Fprintf(out, res.Msg+"\n")
-		}
-	}
 }
 
 type testErr struct {

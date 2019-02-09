@@ -16,7 +16,6 @@ limitations under the License.
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -52,7 +51,7 @@ func TestDependencyUpdateCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out, err := executeCommand(nil, fmt.Sprintf("--home='%s' dependency update '%s'", hh.String(), hh.Path(chartname)))
+	_, out, err := executeActionCommand(fmt.Sprintf("--home='%s' dependency update '%s'", hh.String(), hh.Path(chartname)))
 	if err != nil {
 		t.Logf("Output: %s", out)
 		t.Fatal(err)
@@ -95,7 +94,7 @@ func TestDependencyUpdateCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out, err = executeCommand(nil, fmt.Sprintf("--home='%s' dependency update '%s'", hh, hh.Path(chartname)))
+	_, out, err = executeActionCommand(fmt.Sprintf("--home='%s' dependency update '%s'", hh, hh.Path(chartname)))
 	if err != nil {
 		t.Logf("Output: %s", out)
 		t.Fatal(err)
@@ -133,7 +132,7 @@ func TestDependencyUpdateCmd_SkipRefresh(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out, err := executeCommand(nil, fmt.Sprintf("--home='%s' dependency update --skip-refresh %s", hh, hh.Path(chartname)))
+	_, out, err := executeActionCommand(fmt.Sprintf("--home='%s' dependency update --skip-refresh %s", hh, hh.Path(chartname)))
 	if err == nil {
 		t.Fatal("Expected failure to find the repo with skipRefresh")
 	}
@@ -164,13 +163,8 @@ func TestDependencyUpdateCmd_DontDeleteOldChartsOnError(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out := bytes.NewBuffer(nil)
-	o := &dependencyUpdateOptions{}
-	o.helmhome = hh
-	o.chartpath = hh.Path(chartname)
-
-	if err := o.run(out); err != nil {
-		output := out.String()
+	_, output, err := executeActionCommand(fmt.Sprintf("--home='%s' dependency update %s", hh, hh.Path(chartname)))
+	if err != nil {
 		t.Logf("Output: %s", output)
 		t.Fatal(err)
 	}
@@ -178,14 +172,14 @@ func TestDependencyUpdateCmd_DontDeleteOldChartsOnError(t *testing.T) {
 	// Chart repo is down
 	srv.Stop()
 
-	if err := o.run(out); err == nil {
-		output := out.String()
+	_, output, err = executeActionCommand(fmt.Sprintf("--home='%s' dependency update %s", hh, hh.Path(chartname)))
+	if err == nil {
 		t.Logf("Output: %s", output)
 		t.Fatal("Expected error, got nil")
 	}
 
 	// Make sure charts dir still has dependencies
-	files, err := ioutil.ReadDir(filepath.Join(o.chartpath, "charts"))
+	files, err := ioutil.ReadDir(filepath.Join(hh.Path(chartname), "charts"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,7 +195,7 @@ func TestDependencyUpdateCmd_DontDeleteOldChartsOnError(t *testing.T) {
 	}
 
 	// Make sure tmpcharts is deleted
-	if _, err := os.Stat(filepath.Join(o.chartpath, "tmpcharts")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(hh.Path(chartname), "tmpcharts")); !os.IsNotExist(err) {
 		t.Fatalf("tmpcharts dir still exists")
 	}
 }
