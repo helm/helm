@@ -129,9 +129,8 @@ func (k *kindSorter) Less(i, j int) bool {
 		// if both are unknown then sort alphabetically by kind and name
 		if a.Head.Kind != b.Head.Kind {
 			return a.Head.Kind < b.Head.Kind
-		} else {
-			return a.Name < b.Name
 		}
+		return a.Name < b.Name
 	}
 
 	// unknown kind is last
