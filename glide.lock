@@ -1,5 +1,5 @@
-hash: a5d70cb66da8200d2281632de5eb5141769edc183fc807af8838cca50b935352
-updated: 2019-01-24T14:38:45.329901-07:00
+hash: 5dc21cc57b38ab1076f9e12d1e4248047ccc4470af8f81c8560560cb492bee9e
+updated: 2019-02-08T15:20:12.179155-07:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -122,7 +122,7 @@ imports:
   subpackages:
   - lru
 - name: github.com/golang/protobuf
-  version: b4deda0973fb4c70b50d226b1af49f3da59f5265
+  version: aa810b61a9c79d51363740d207bb46cf8e620ed5
   subpackages:
   - proto
   - ptypes
@@ -611,7 +611,7 @@ imports:
   - pkg/util/proto/testing
   - pkg/util/proto/validation
 - name: k8s.io/kubernetes
-  version: 4807084f79e0f8618f4619f7db4a9f28babc3d8f
+  version: c6d339953bd4fd8c021a6b5fb46d7952b30be9f9
   subpackages:
   - pkg/api/legacyscheme
   - pkg/api/service
