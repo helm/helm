@@ -26,6 +26,22 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/chart"
 )
 
+func checkDir(t *testing.T, d string) {
+	if fi, err := os.Stat(d); err != nil {
+		t.Errorf("Expected %s dir: %s", d, err)
+	} else if !fi.IsDir() {
+		t.Errorf("Expected %s to be a directory.", d)
+	}
+}
+
+func checkFile(t *testing.T, f string) {
+	if fi, err := os.Stat(f); err != nil {
+		t.Errorf("Expected %s file: %s", filepath.Base(f), err)
+	} else if fi.IsDir() {
+		t.Errorf("Expected %s to be a file.", filepath.Base(f))
+	}
+}
+
 func TestCreate(t *testing.T) {
 	tdir, err := ioutil.TempDir("", "helm-")
 	if err != nil {
@@ -52,35 +68,19 @@ func TestCreate(t *testing.T) {
 	}
 
 	for _, d := range []string{TemplatesDir, ChartsDir} {
-		if fi, err := os.Stat(filepath.Join(dir, d)); err != nil {
-			t.Errorf("Expected %s dir: %s", d, err)
-		} else if !fi.IsDir() {
-			t.Errorf("Expected %s to be a directory.", d)
-		}
+		checkDir(t, filepath.Join(dir, d))
 	}
 
 	for _, f := range []string{ChartfileName, ValuesfileName, IgnorefileName} {
-		if fi, err := os.Stat(filepath.Join(dir, f)); err != nil {
-			t.Errorf("Expected %s file: %s", f, err)
-		} else if fi.IsDir() {
-			t.Errorf("Expected %s to be a file.", f)
-		}
+		checkFile(t, filepath.Join(dir, f))
 	}
 
 	for _, f := range []string{NotesName, DeploymentName, ServiceName, HelpersName} {
-		if fi, err := os.Stat(filepath.Join(dir, TemplatesDir, f)); err != nil {
-			t.Errorf("Expected %s file: %s", f, err)
-		} else if fi.IsDir() {
-			t.Errorf("Expected %s to be a file.", f)
-		}
+		checkFile(t, filepath.Join(dir, TemplatesDir, f))
 	}
 
 	for _, f := range []string{TestConnectionName} {
-		if fi, err := os.Stat(filepath.Join(dir, TemplatesTestsDir, f)); err != nil {
-			t.Errorf("Expected %s file: %s", f, err)
-		} else if fi.IsDir() {
-			t.Errorf("Expected %s to be a file.", f)
-		}
+		checkFile(t, filepath.Join(dir, TemplatesTestsDir, f))
 	}
 
 }
@@ -112,27 +112,15 @@ func TestCreateFrom(t *testing.T) {
 	}
 
 	for _, d := range []string{TemplatesDir, ChartsDir} {
-		if fi, err := os.Stat(filepath.Join(dir, d)); err != nil {
-			t.Errorf("Expected %s dir: %s", d, err)
-		} else if !fi.IsDir() {
-			t.Errorf("Expected %s to be a directory.", d)
-		}
+		checkDir(t, filepath.Join(dir, d))
 	}
 
 	for _, f := range []string{ChartfileName, ValuesfileName, "requirements.yaml"} {
-		if fi, err := os.Stat(filepath.Join(dir, f)); err != nil {
-			t.Errorf("Expected %s file: %s", f, err)
-		} else if fi.IsDir() {
-			t.Errorf("Expected %s to be a file.", f)
-		}
+		checkFile(t, filepath.Join(dir, f))
 	}
 
 	for _, f := range []string{"placeholder.tpl"} {
-		if fi, err := os.Stat(filepath.Join(dir, TemplatesDir, f)); err != nil {
-			t.Errorf("Expected %s file: %s", f, err)
-		} else if fi.IsDir() {
-			t.Errorf("Expected %s to be a file.", f)
-		}
+		checkFile(t, filepath.Join(dir, TemplatesDir, f))
 	}
 
 	// Ensure we replace `<CHARTNAME>`
