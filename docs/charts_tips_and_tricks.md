@@ -235,6 +235,35 @@ orphaned. Helm will no longer manage it in any way. This can lead to problems
 if using `helm install --replace` on a release that has already been deleted, but
 has kept resources.
 
+### Using with Random Secrets
+
+For the case where a chart installs a randomized secret that should not be
+upgraded unless specifically overridden, but should also be deleted if the
+chart is removed, you can use `"helm.sh/resource-policy": no-upgrade-existing` with
+a secret such as:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ template "helm-random-secret.fullname" . }}
+{{- if not .Values.somePassword }}
+  annotations:
+    "helm.sh/resource-policy": no-upgrade-existing
+{{- end }}
+  labels:
+    app: {{ template "helm-random-secret.name" . }}
+    chart: {{ template "helm-random-secret.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+data:
+  {{- if .Values.somePassword }}
+  some-password: {{ .Values.somePassword | b64enc | quote }}
+  {{- else }}
+  some-password: {{ randAlphaNum 10 | b64enc | quote }}
+  {{- end }}
+```  
+
 ## Using "Partials" and Template Includes
 
 Sometimes you want to create some reusable parts in your chart, whether

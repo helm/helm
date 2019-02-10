@@ -23,17 +23,18 @@ import (
 	goerrors "errors"
 	"fmt"
 	"io"
-	"k8s.io/apimachinery/pkg/api/meta"
 	"log"
 	"strings"
 	"time"
 
-	"github.com/evanphx/json-patch"
+	"k8s.io/apimachinery/pkg/api/meta"
+
+	jsonpatch "github.com/evanphx/json-patch"
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	batch "k8s.io/api/batch/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	extv1beta1 "k8s.io/api/extensions/v1beta1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -454,6 +455,16 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 }
 
 func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force bool, recreate bool) error {
+	// Avoid the update if we have a no-upgrade-existing annotation on the target.
+	annotations, err := metadataAccessor.Annotations(target.Object)
+	if err != nil {
+		c.Log("Unable to get annotations on %q, err: %s", target.Name, err)
+	}
+	if annotations != nil && annotations[ResourcePolicyAnno] == NoUpgradeExistingPolicy {
+		c.Log("Skipping upgrade of %q due to annotation [%s=%s]", target.Name, ResourcePolicyAnno, NoUpgradeExistingPolicy)
+		return nil
+	}
+
 	patch, patchType, err := createPatch(target, currentObj)
 	if err != nil {
 		return fmt.Errorf("failed to create patch: %s", err)

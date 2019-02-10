@@ -24,3 +24,9 @@ const ResourcePolicyAnno = "helm.sh/resource-policy"
 // This resource policy type allows resources to skip being deleted
 //   during an uninstallRelease action.
 const KeepPolicy = "keep"
+
+// NoUpgradeExistingPolicy is the resource policy type for no-upgrade-existing
+//
+// This resource policy type allows resources to skip upgrading
+// an existing resource if it already exists.
+const NoUpgradeExistingPolicy = "no-upgrade-existing"
