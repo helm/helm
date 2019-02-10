@@ -213,6 +213,41 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 		return err
 	}
 
+	saveError := m.savingCharts(deps, repos, destPath)
+
+	if saveError == nil {
+		fmt.Fprintln(m.Out, "Deleting outdated charts")
+		for _, dep := range deps {
+			if err := m.safeDeleteDep(dep.Name, tmpPath); err != nil {
+				return err
+			}
+		}
+		if err := move(tmpPath, destPath); err != nil {
+			return err
+		}
+		if err := os.RemoveAll(tmpPath); err != nil {
+			return fmt.Errorf("Failed to remove %v: %v", tmpPath, err)
+		}
+	} else {
+		fmt.Fprintln(m.Out, "Save error occurred: ", saveError)
+		fmt.Fprintln(m.Out, "Deleting newly downloaded charts, restoring pre-update state")
+		for _, dep := range deps {
+			if err := m.safeDeleteDep(dep.Name, destPath); err != nil {
+				return err
+			}
+		}
+		if err := os.RemoveAll(destPath); err != nil {
+			return fmt.Errorf("Failed to remove %v: %v", destPath, err)
+		}
+		if err := os.Rename(tmpPath, destPath); err != nil {
+			return fmt.Errorf("Unable to move current charts to tmp dir: %v", err)
+		}
+		return saveError
+	}
+	return nil
+}
+
+func (m *Manager) savingCharts(deps []*chartutil.Dependency, repos map[string]*repo.ChartRepository, destPath string) error {
 	fmt.Fprintf(m.Out, "Saving %d charts\n", len(deps))
 	var saveError error
 	for _, dep := range deps {
@@ -254,37 +289,7 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 			break
 		}
 	}
-
-	if saveError == nil {
-		fmt.Fprintln(m.Out, "Deleting outdated charts")
-		for _, dep := range deps {
-			if err := m.safeDeleteDep(dep.Name, tmpPath); err != nil {
-				return err
-			}
-		}
-		if err := move(tmpPath, destPath); err != nil {
-			return err
-		}
-		if err := os.RemoveAll(tmpPath); err != nil {
-			return fmt.Errorf("Failed to remove %v: %v", tmpPath, err)
-		}
-	} else {
-		fmt.Fprintln(m.Out, "Save error occurred: ", saveError)
-		fmt.Fprintln(m.Out, "Deleting newly downloaded charts, restoring pre-update state")
-		for _, dep := range deps {
-			if err := m.safeDeleteDep(dep.Name, destPath); err != nil {
-				return err
-			}
-		}
-		if err := os.RemoveAll(destPath); err != nil {
-			return fmt.Errorf("Failed to remove %v: %v", destPath, err)
-		}
-		if err := os.Rename(tmpPath, destPath); err != nil {
-			return fmt.Errorf("Unable to move current charts to tmp dir: %v", err)
-		}
-		return saveError
-	}
-	return nil
+	return saveError
 }
 
 // safeDeleteDep deletes any versions of the given dependency in the given directory.
