@@ -25,11 +25,11 @@ import (
 
 // New default helm home, with different paths for different OS:
 //	- %APPDATA%\helm on Windows
-//	- ~/Library/Preferences/helm on OSX
-//  - $XDG_CONFIG_DIR/helm (typically ~/.config/helm for linux)
+//	- $HOME/Library/Preferences/helm on OSX
+//  - $kXDG_CONFIG_HOME/helm (typically $HOME/.config/helm for Linux)
 var defaultHelmHome = xdg.App{Name: "helm"}.ConfigPath("")
 
-// Old default helm home, it's old good ~/.helm
+// Old default helm home, it's old good $HELM/.helm
 var oldDefaultHelmHome = filepath.Join(homedir.HomeDir(), ".helm")
 
 type DefaultConfigHomePath interface {
@@ -44,7 +44,7 @@ func (FSConfigHomePath) xdgHomeExists() bool {
 	return DirExists(defaultHelmHome)
 }
 
-// Checks whether ~/.helm exists
+// Checks whether $HOME/.helm exists
 func (FSConfigHomePath) basicHomeExists() bool {
 	return DirExists(oldDefaultHelmHome)
 }
