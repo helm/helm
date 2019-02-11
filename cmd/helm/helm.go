@@ -44,6 +44,8 @@ var (
 	settings     helm_env.EnvSettings
 )
 
+var RootCmd *cobra.Command
+
 var globalUsage = `The Kubernetes package manager
 
 To begin working with Helm, run the 'helm init' command:
@@ -156,6 +158,8 @@ func newRootCmd(args []string) *cobra.Command {
 
 	// Find and add plugins
 	loadPlugins(cmd, out)
+
+	RootCmd = cmd
 
 	return cmd
 }

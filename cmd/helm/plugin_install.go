@@ -18,6 +18,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"os"
 
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/plugin"
@@ -83,10 +84,20 @@ func (pcmd *pluginInstallCmd) run() error {
 		return err
 	}
 
+	// Make sure a command with this name does not already exist.
+	pluginCmdName := p.Metadata.Name
+	for _, cmd := range RootCmd.Commands() {
+		if cmd.Name() == pluginCmdName {
+			os.Remove(p.Dir)
+			err = fmt.Errorf("Plugin <%s> not installed as plugin with that name is already installed.", pluginCmdName)
+			return err
+		}
+	}
+
 	if err := runHook(p, plugin.Install); err != nil {
 		return err
 	}
 
-	fmt.Fprintf(pcmd.out, "Installed plugin: %s\n", p.Metadata.Name)
+	fmt.Fprintf(pcmd.out, "Installed plugin: %s\n", pluginCmdName)
 	return nil
 }
