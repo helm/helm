@@ -85,7 +85,7 @@ type Requirements struct {
 //
 // It represents the state that the dependencies should be in.
 type RequirementsLock struct {
-	// Genderated is the date the lock file was last generated.
+	// Generated is the date the lock file was last generated.
 	Generated time.Time `json:"generated"`
 	// Digest is a hash of the requirements file used to generate it.
 	Digest string `json:"digest"`
