@@ -17,7 +17,9 @@ limitations under the License.
 // Package version represents the current version of the project.
 package version // import "k8s.io/helm/pkg/version"
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestIsCompatible(t *testing.T) {
 	tests := []struct {

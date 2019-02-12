@@ -16,10 +16,12 @@ limitations under the License.
 
 package repo
 
-import "testing"
-import "io/ioutil"
-import "os"
-import "strings"
+import (
+	"testing"
+	"io/ioutil"
+	"os"
+	"strings"
+)
 
 const testRepositoriesFile = "testdata/repositories.yaml"
 

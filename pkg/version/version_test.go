@@ -17,8 +17,10 @@ limitations under the License.
 // Package version represents the current version of the project.
 package version // import "k8s.io/helm/pkg/version"
 
-import "testing"
-import "k8s.io/helm/pkg/proto/hapi/version"
+import (
+	"testing"
+	"k8s.io/helm/pkg/proto/hapi/version"
+)
 
 func TestGetVersionProto(t *testing.T) {
 	tests := []struct {

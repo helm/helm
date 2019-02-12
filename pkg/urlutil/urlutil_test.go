@@ -16,7 +16,9 @@ limitations under the License.
 
 package urlutil
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestUrlJoin(t *testing.T) {
 	tests := []struct {
