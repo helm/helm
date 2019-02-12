@@ -61,8 +61,8 @@ type ListReleasesRequest struct {
 	// Anything that matches the regexp will be included in the results.
 	Filter string `json:"filter,omitempty"`
 	// SortOrder is the ordering directive used for sorting.
-	SortOrder   SortOrder               `json:"sort_order,omitempty"`
-	StatusCodes []release.ReleaseStatus `json:"status_codes,omitempty"`
+	SortOrder   SortOrder        `json:"sort_order,omitempty"`
+	StatusCodes []release.Status `json:"status_codes,omitempty"`
 }
 
 // GetReleaseStatusRequest is a request to get the status of a release.

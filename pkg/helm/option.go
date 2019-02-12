@@ -295,7 +295,7 @@ func UpgradeForce(force bool) UpdateOption {
 	}
 }
 
-// Limit the maximum number of revisions saved per release
+// MaxHistory limits the maximum number of revisions saved per release
 func MaxHistory(maxHistory int) UpdateOption {
 	return func(opts *options) {
 		opts.updateReq.MaxHistory = maxHistory
@@ -320,18 +320,21 @@ type RollbackOption func(*options)
 // issuing a TestRelease rpc.
 type ReleaseTestOption func(*options)
 
+// Driver set the driver option
 func Driver(d driver.Driver) Option {
 	return func(opts *options) {
 		opts.driver = d
 	}
 }
 
+// KubeClient sets the cluster environment
 func KubeClient(kc environment.KubeClient) Option {
 	return func(opts *options) {
 		opts.kubeClient = kc
 	}
 }
 
+// Discovery sets the discovery interface
 func Discovery(dc discovery.DiscoveryInterface) Option {
 	return func(opts *options) {
 		opts.discovery = dc

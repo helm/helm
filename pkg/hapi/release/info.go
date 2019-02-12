@@ -28,7 +28,7 @@ type Info struct {
 	// Description is human-friendly "log entry" about this release.
 	Description string `json:"Description,omitempty"`
 	// Status is the current state of the release
-	Status ReleaseStatus `json:"status,omitempty"`
+	Status Status `json:"status,omitempty"`
 	// Cluster resources as kubectl would print them.
 	Resources string `json:"resources,omitempty"`
 	// Contains the rendered templates/NOTES.txt if available

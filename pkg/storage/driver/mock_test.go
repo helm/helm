@@ -28,7 +28,7 @@ import (
 	rspb "k8s.io/helm/pkg/hapi/release"
 )
 
-func releaseStub(name string, vers int, namespace string, status rspb.ReleaseStatus) *rspb.Release {
+func releaseStub(name string, vers int, namespace string, status rspb.Status) *rspb.Release {
 	return &rspb.Release{
 		Name:      name,
 		Version:   vers,

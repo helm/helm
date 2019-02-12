@@ -25,7 +25,7 @@ import (
 )
 
 func TestGetHistory_WithRevisions(t *testing.T) {
-	mk := func(name string, vers int, status rpb.ReleaseStatus) *rpb.Release {
+	mk := func(name string, vers int, status rpb.Status) *rpb.Release {
 		return &rpb.Release{
 			Name:    name,
 			Version: vers,

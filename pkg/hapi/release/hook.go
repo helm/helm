@@ -17,8 +17,10 @@ package release
 
 import "time"
 
+// HookEvent specifies the hook event
 type HookEvent string
 
+// Hook event types
 const (
 	HookPreInstall         HookEvent = "pre-install"
 	HookPostInstall        HookEvent = "post-install"
@@ -34,8 +36,10 @@ const (
 
 func (x HookEvent) String() string { return string(x) }
 
+// HookDeletePolicy specifies the hook delete policy
 type HookDeletePolicy string
 
+// Hook delete policy types
 const (
 	HookSucceeded          HookDeletePolicy = "succeeded"
 	HookFailed             HookDeletePolicy = "failed"
