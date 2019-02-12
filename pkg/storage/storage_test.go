@@ -330,7 +330,7 @@ type ReleaseTestData struct {
 	Version   int
 	Manifest  string
 	Namespace string
-	Status    rspb.ReleaseStatus
+	Status    rspb.Status
 }
 
 func (test ReleaseTestData) ToRelease() *rspb.Release {

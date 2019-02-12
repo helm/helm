@@ -25,9 +25,9 @@ import (
 )
 
 var (
-	validPortRegEx     = regexp.MustCompile("^([1-9]\\d{0,3}|0|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$") // adapted from https://stackoverflow.com/a/12968117
-	emptyRepoError     = errors.New("parsed repo was empty")
-	tooManyColonsError = errors.New("ref may only contain a single colon character (:) unless specifying a port number")
+	validPortRegEx   = regexp.MustCompile("^([1-9]\\d{0,3}|0|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$") // adapted from https://stackoverflow.com/a/12968117
+	errEmptyRepo     = errors.New("parsed repo was empty")
+	errTooManyColons = errors.New("ref may only contain a single colon character (:) unless specifying a port number")
 )
 
 type (
@@ -103,7 +103,7 @@ func (ref *Reference) validate() error {
 // validateRepo checks that the Repo field is non-empty
 func (ref *Reference) validateRepo() error {
 	if ref.Repo == "" {
-		return emptyRepoError
+		return errEmptyRepo
 	}
 	return nil
 }
@@ -112,17 +112,17 @@ func (ref *Reference) validateRepo() error {
 // (or potentially two, there might be a port number specified i.e. :5000)
 func (ref *Reference) validateNumColons() error {
 	if strings.Contains(ref.Tag, ":") {
-		return tooManyColonsError
+		return errTooManyColons
 	}
 	parts := strings.Split(ref.Repo, ":")
 	lastIndex := len(parts) - 1
 	if 1 < lastIndex {
-		return tooManyColonsError
+		return errTooManyColons
 	}
 	if 0 < lastIndex {
 		port := strings.Split(parts[lastIndex], "/")[0]
 		if !isValidPort(port) {
-			return tooManyColonsError
+			return errTooManyColons
 		}
 	}
 	return nil

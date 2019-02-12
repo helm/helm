@@ -24,7 +24,7 @@ import (
 )
 
 func TestHistoryCmd(t *testing.T) {
-	mk := func(name string, vers int, status rpb.ReleaseStatus) *rpb.Release {
+	mk := func(name string, vers int, status rpb.Status) *rpb.Release {
 		return helm.ReleaseMock(&helm.MockReleaseOptions{
 			Name:    name,
 			Version: vers,

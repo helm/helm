@@ -136,7 +136,7 @@ func releaseStub() *release.Release {
 	return namedReleaseStub("angry-panda", release.StatusDeployed)
 }
 
-func namedReleaseStub(name string, status release.ReleaseStatus) *release.Release {
+func namedReleaseStub(name string, status release.Status) *release.Release {
 	now := time.Now()
 	return &release.Release{
 		Name: name,
