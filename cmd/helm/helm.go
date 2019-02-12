@@ -42,9 +42,8 @@ import (
 var (
 	tillerTunnel *kube.Tunnel
 	settings     helm_env.EnvSettings
+	rootCmd      *cobra.Command
 )
-
-var RootCmd *cobra.Command
 
 var globalUsage = `The Kubernetes package manager
 
@@ -159,7 +158,7 @@ func newRootCmd(args []string) *cobra.Command {
 	// Find and add plugins
 	loadPlugins(cmd, out)
 
-	RootCmd = cmd
+	rootCmd = cmd
 
 	return cmd
 }
@@ -294,4 +293,9 @@ func newClient() helm.Interface {
 		options = append(options, helm.WithTLS(tlscfg))
 	}
 	return helm.NewClient(options...)
+}
+
+// GetRootCmd returns the root cobra command
+func GetRootCmd() *cobra.Command {
+	return rootCmd
 }

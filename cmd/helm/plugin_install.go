@@ -86,7 +86,8 @@ func (pcmd *pluginInstallCmd) run() error {
 
 	// Make sure a command with this name does not already exist.
 	pluginCmdName := p.Metadata.Name
-	for _, cmd := range RootCmd.Commands() {
+	rootCmd := GetRootCmd()
+	for _, cmd := range rootCmd.Commands() {
 		if cmd.Name() == pluginCmdName {
 			os.Remove(p.Dir)
 			err = fmt.Errorf("Plugin <%s> not installed as plugin with that name is already installed.", pluginCmdName)
