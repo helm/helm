@@ -78,6 +78,7 @@ func (o *createOptions) run(out io.Writer) error {
 	cfile := &chart.Metadata{
 		Name:        chartname,
 		Description: "A Helm chart for Kubernetes",
+		Type:        "application",
 		Version:     "0.1.0",
 		AppVersion:  "1.0",
 		APIVersion:  chart.APIVersionv1,

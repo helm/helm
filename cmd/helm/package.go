@@ -22,6 +22,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 
 	"github.com/Masterminds/semver"
@@ -132,6 +133,12 @@ func (o *packageOptions) run(out io.Writer) error {
 	ch, err := loader.LoadDir(path)
 	if err != nil {
 		return err
+	}
+
+	chartType := ch.Metadata.Type
+	if chartType != "" && !strings.EqualFold(chartType, "library") &&
+		!strings.EqualFold(chartType, "application") {
+		return errors.New("Invalid chart type. Valid types are: application or library")
 	}
 
 	overrideVals, err := o.mergedValues()

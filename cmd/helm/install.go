@@ -231,6 +231,14 @@ func (o *installOptions) run(out io.Writer) error {
 		return err
 	}
 
+	chartType := chartRequested.Metadata.Type
+	if strings.EqualFold(chartType, "library") {
+		return errors.New("Library charts are not installable")
+	}
+	if chartType != "" && !strings.EqualFold(chartType, "application") {
+		return errors.New("Invalid chart type. Valid types are: application or library")
+	}
+
 	if req := chartRequested.Metadata.Dependencies; req != nil {
 		// If checkDependencies returns an error, we have unfulfilled dependencies.
 		// As of Helm 2.4.0, this is treated as a stopping condition:

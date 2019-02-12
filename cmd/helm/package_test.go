@@ -147,6 +147,11 @@ func TestPackage(t *testing.T) {
 			expect: fmt.Sprintf("does-not-exist: %s", statFileMsg),
 			err:    true,
 		},
+		{
+			name: "package testdata/testcharts/chart-bad-type",
+			args: []string{"testdata/testcharts/chart-bad-type"},
+			err:  true,
+		},
 	}
 
 	origDir, err := os.Getwd()

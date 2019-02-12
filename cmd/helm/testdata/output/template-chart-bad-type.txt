@@ -1,0 +1,1 @@
+Error: Invalid chart type. Valid types are: application or library

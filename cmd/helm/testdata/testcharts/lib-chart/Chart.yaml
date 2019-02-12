@@ -1,0 +1,12 @@
+apiVersion: v1
+description: Common chartbuilding components and helpers
+name: lib-chart
+version: 0.0.5
+appVersion: 0.0.5
+home: https://helm.sh
+maintainers:
+- name: technosophos
+  email: technosophos@gmail.com
+- name: prydonius
+  email: adnan@bitnami.com
+type: Library

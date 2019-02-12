@@ -119,6 +119,25 @@ func TestInstall(t *testing.T) {
 			cmd:       "install badreq testdata/testcharts/chart-bad-requirements",
 			wantError: true,
 		},
+		// Install, chart with library chart dependency
+		{
+			name: "install chart with library chart dependency",
+			cmd:  "install withlibchartp testdata/testcharts/chart-with-lib-dep",
+		},
+		// Install, library chart
+		{
+			name:      "install library chart",
+			cmd:       "install libchart testdata/testcharts/lib-chart",
+			wantError: true,
+			golden:    "output/template-lib-chart.txt",
+		},
+		// Install, chart with bad type
+		{
+			name:      "install chart with bad type",
+			cmd:       "install badtype testdata/testcharts/chart-bad-type",
+			wantError: true,
+			golden:    "output/template-chart-bad-type.txt",
+		},
 	}
 
 	runTestActionCmd(t, tests)

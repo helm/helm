@@ -157,6 +157,14 @@ func (o *templateOptions) run(out io.Writer) error {
 		return err
 	}
 
+	chartType := c.Metadata.Type
+	if strings.EqualFold(chartType, "library") {
+		return errors.New("Library charts are not installable")
+	}
+	if chartType != "" && !strings.EqualFold(chartType, "application") {
+		return errors.New("Invalid chart type. Valid types are: application or library")
+	}
+
 	if req := c.Metadata.Dependencies; req != nil {
 		if err := checkDependencies(c, req); err != nil {
 			return err
