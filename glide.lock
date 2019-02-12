@@ -1,13 +1,11 @@
-hash: 5dc21cc57b38ab1076f9e12d1e4248047ccc4470af8f81c8560560cb492bee9e
-updated: 2019-02-08T15:20:12.179155-07:00
+hash: 70f4fe304d0034fd077f122570adc6bb5f40ceee5f4f53d8930ba5ad700a911d
+updated: 2019-02-12T13:10:08.039408-07:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
   subpackages:
   - compute/metadata
   - internal
-- name: github.com/aokoli/goutils
-  version: 9c37978a95bd5c709a15883b6242714ea6709e64
 - name: github.com/asaskevich/govalidator
   version: 7664702784775e51966f0885f5cd27435916517b
 - name: github.com/Azure/go-ansiterm
@@ -181,10 +179,12 @@ imports:
   - jwriter
 - name: github.com/MakeNowJust/heredoc
   version: bb23615498cded5e105af4ce27de75b089cbe851
+- name: github.com/Masterminds/goutils
+  version: 41ac8693c5c10a92ea1ff5ac3a7f95646f6123b0
 - name: github.com/Masterminds/semver
   version: 517734cc7d6470c0d07130e40fd40bdeb9bcd3fd
 - name: github.com/Masterminds/sprig
-  version: 544a9b1d90f323f6509491b389714fbbd126bee3
+  version: b1fe2752acccf8c3d7f8a1e7c75c7ae7d83a1975
 - name: github.com/Masterminds/vcs
   version: 3084677c2c188840777bff30054f2b553729d329
 - name: github.com/mattn/go-runewidth
