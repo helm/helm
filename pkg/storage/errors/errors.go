@@ -15,7 +15,9 @@ limitations under the License.
 */
 
 package errors // import "k8s.io/helm/pkg/storage/errors"
-import "fmt"
+import (
+	"fmt"
+)
 
 var (
 	// ErrReleaseNotFound indicates that a release is not found.

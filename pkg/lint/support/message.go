@@ -16,7 +16,9 @@ limitations under the License.
 
 package support
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // Severity indicates the severity of a Message.
 const (
