@@ -1,5 +1,5 @@
-hash: 2af9a5c4f891a0f44109a929a494b5aeaaffa3a87cd1f3881f25f79845703d5b
-updated: 2018-12-14T21:39:31.112097Z
+hash: 5dc21cc57b38ab1076f9e12d1e4248047ccc4470af8f81c8560560cb492bee9e
+updated: 2019-02-08T15:20:12.179155-07:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -122,7 +122,7 @@ imports:
   subpackages:
   - lru
 - name: github.com/golang/protobuf
-  version: 1643683e1b54a9e88ad26d98f81400c8c9d9f4f9
+  version: aa810b61a9c79d51363740d207bb46cf8e620ed5
   subpackages:
   - proto
   - ptypes
@@ -166,7 +166,7 @@ imports:
   subpackages:
   - simplelru
 - name: github.com/huandu/xstrings
-  version: 3959339b333561bf62a38b424fd41517c2c90f40
+  version: f02667b379e2fb5916c3cda2cf31e0eb885d79f8
 - name: github.com/imdario/mergo
   version: 9316a62528ac99aaecb4e47eadd6dc8aa6533d58
 - name: github.com/inconshreveable/mousetrap
@@ -184,7 +184,7 @@ imports:
 - name: github.com/Masterminds/semver
   version: 517734cc7d6470c0d07130e40fd40bdeb9bcd3fd
 - name: github.com/Masterminds/sprig
-  version: 15f9564e7e9cf0da02a48e0d25f12a7b83559aa6
+  version: 544a9b1d90f323f6509491b389714fbbd126bee3
 - name: github.com/Masterminds/vcs
   version: 3084677c2c188840777bff30054f2b553729d329
 - name: github.com/mattn/go-runewidth
@@ -281,7 +281,7 @@ imports:
   subpackages:
   - semaphore
 - name: golang.org/x/sys
-  version: 95c6576299259db960f6c5b9b69ea52422860fce
+  version: b90733256f2e882e81d52f9126de08df5615afd9
   subpackages:
   - unix
   - windows
@@ -325,26 +325,40 @@ imports:
   subpackages:
   - googleapis/rpc/status
 - name: google.golang.org/grpc
-  version: 5ffe3083946d5603a0578721101dc8165b1d5b5f
+  version: a02b0774206b209466313a0b525d2c738fe407eb
   subpackages:
   - balancer
+  - balancer/base
+  - balancer/roundrobin
+  - binarylog/grpc_binarylog_v1
   - codes
   - connectivity
   - credentials
-  - grpclb/grpc_lb_v1/messages
+  - credentials/internal
+  - encoding
+  - encoding/proto
   - grpclog
   - health
   - health/grpc_health_v1
   - internal
+  - internal/backoff
+  - internal/binarylog
+  - internal/channelz
+  - internal/envconfig
+  - internal/grpcrand
+  - internal/grpcsync
+  - internal/syscall
+  - internal/transport
   - keepalive
   - metadata
   - naming
   - peer
   - resolver
+  - resolver/dns
+  - resolver/passthrough
   - stats
   - status
   - tap
-  - transport
 - name: gopkg.in/inf.v0
   version: 3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4
 - name: gopkg.in/square/go-jose.v2
@@ -597,7 +611,7 @@ imports:
   - pkg/util/proto/testing
   - pkg/util/proto/validation
 - name: k8s.io/kubernetes
-  version: f2c8f1cadf1808ec28476682e49a3cce2b09efbf
+  version: c6d339953bd4fd8c021a6b5fb46d7952b30be9f9
   subpackages:
   - pkg/api/legacyscheme
   - pkg/api/service
