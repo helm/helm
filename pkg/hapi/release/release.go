@@ -40,7 +40,7 @@ type Release struct {
 }
 
 // SetStatus is a helper for setting the status on a release.
-func (r *Release) SetStatus(status ReleaseStatus, msg string) {
+func (r *Release) SetStatus(status Status, msg string) {
 	r.Info.Status = status
 	r.Info.Description = msg
 }

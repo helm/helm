@@ -32,7 +32,7 @@ var releases = []*rspb.Release{
 	tsRelease("vocal-dogs", 3, 6000, rspb.StatusUninstalled),
 }
 
-func tsRelease(name string, vers int, dur time.Duration, status rspb.ReleaseStatus) *rspb.Release {
+func tsRelease(name string, vers int, dur time.Duration, status rspb.Status) *rspb.Release {
 	tmsp := time.Now().Add(dur)
 	info := &rspb.Info{Status: status, LastDeployed: tmsp}
 	return &rspb.Release{

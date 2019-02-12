@@ -176,7 +176,7 @@ type MockReleaseOptions struct {
 	Name      string
 	Version   int
 	Chart     *chart.Chart
-	Status    release.ReleaseStatus
+	Status    release.Status
 	Namespace string
 }
 

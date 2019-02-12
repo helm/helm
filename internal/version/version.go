@@ -46,7 +46,7 @@ func GetVersion() string {
 	return version + "+" + metadata
 }
 
-// GetBuildInfo returns build info
+// Get returns build info
 func Get() hversion.BuildInfo {
 	return hversion.BuildInfo{
 		Version:      GetVersion(),

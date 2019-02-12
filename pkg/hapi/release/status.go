@@ -15,29 +15,29 @@ limitations under the License.
 
 package release
 
-// ReleaseStatus is the status of a release
-type ReleaseStatus string
+// Status is the status of a release
+type Status string
 
 // Describe the status of a release
 const (
 	// StatusUnknown indicates that a release is in an uncertain state.
-	StatusUnknown ReleaseStatus = "unknown"
+	StatusUnknown Status = "unknown"
 	// StatusDeployed indicates that the release has been pushed to Kubernetes.
-	StatusDeployed ReleaseStatus = "deployed"
+	StatusDeployed Status = "deployed"
 	// StatusUninstalled indicates that a release has been uninstalled from Kubermetes.
-	StatusUninstalled ReleaseStatus = "uninstalled"
+	StatusUninstalled Status = "uninstalled"
 	// StatusSuperseded indicates that this release object is outdated and a newer one exists.
-	StatusSuperseded ReleaseStatus = "superseded"
+	StatusSuperseded Status = "superseded"
 	// StatusFailed indicates that the release was not successfully deployed.
-	StatusFailed ReleaseStatus = "failed"
+	StatusFailed Status = "failed"
 	// StatusUninstalling indicates that a uninstall operation is underway.
-	StatusUninstalling ReleaseStatus = "uninstalling"
+	StatusUninstalling Status = "uninstalling"
 	// StatusPendingInstall indicates that an install operation is underway.
-	StatusPendingInstall ReleaseStatus = "pending-install"
+	StatusPendingInstall Status = "pending-install"
 	// StatusPendingUpgrade indicates that an upgrade operation is underway.
-	StatusPendingUpgrade ReleaseStatus = "pending-upgrade"
+	StatusPendingUpgrade Status = "pending-upgrade"
 	// StatusPendingRollback indicates that an rollback operation is underway.
-	StatusPendingRollback ReleaseStatus = "pending-rollback"
+	StatusPendingRollback Status = "pending-rollback"
 )
 
-func (x ReleaseStatus) String() string { return string(x) }
+func (x Status) String() string { return string(x) }
