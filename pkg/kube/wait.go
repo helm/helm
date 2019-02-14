@@ -279,7 +279,7 @@ func isPodReady(pod *v1.Pod) bool {
 
 func (c *Client) ingressesReady(ingresses []extensions.Ingress) bool {
 	for _, ingress := range ingresses {
-		if &ingress.Status == nil && len(ingress.Status.LoadBalancer.Ingress) > 0 {
+		if &ingress.Status == nil || len(ingress.Status.LoadBalancer.Ingress) == 0 {
 			c.Log("Ingress is not ready: %s/%s", ingress.GetNamespace(), ingress.GetName())
 			return false
 		}
