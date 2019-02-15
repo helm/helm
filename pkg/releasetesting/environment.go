@@ -22,7 +22,7 @@ import (
 	"log"
 	"time"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 
 	"k8s.io/helm/pkg/hapi"
 	"k8s.io/helm/pkg/hapi/release"

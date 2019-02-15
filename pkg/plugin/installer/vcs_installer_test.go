@@ -22,9 +22,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"k8s.io/helm/pkg/helm/helmpath"
-
 	"github.com/Masterminds/vcs"
+
+	"k8s.io/helm/pkg/helm/helmpath"
 )
 
 var _ Installer = new(VCSInstaller)

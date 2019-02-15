@@ -19,10 +19,10 @@ import (
 	"fmt"
 	"io"
 
-	"k8s.io/helm/pkg/helm/helmpath"
-
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
+
+	"k8s.io/helm/pkg/helm/helmpath"
 )
 
 type pluginListOptions struct {

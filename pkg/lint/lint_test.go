@@ -18,10 +18,9 @@ package lint
 
 import (
 	"strings"
+	"testing"
 
 	"k8s.io/helm/pkg/lint/support"
-
-	"testing"
 )
 
 var values map[string]interface{}

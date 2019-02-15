@@ -23,10 +23,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/spf13/cobra"
+
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/plugin"
-
-	"github.com/spf13/cobra"
 )
 
 func TestManuallyProcessArgs(t *testing.T) {

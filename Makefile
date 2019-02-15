@@ -6,6 +6,7 @@ BINNAME    ?= helm
 GOPATH     = $(shell go env GOPATH)
 DEP        = $(GOPATH)/bin/dep
 GOX        = $(GOPATH)/bin/gox
+GOIMPORTS  = $(GOPATH)/bin/goimports
 
 # go option
 PKG        := ./...
@@ -81,6 +82,10 @@ verify-docs: build
 coverage:
 	@scripts/coverage.sh
 
+.PHONY: format
+format: $(GOIMPORTS)
+	go list -f '{{.Dir}}' ./... | xargs $(GOIMPORTS) -w -local k8s.io/helm
+
 # ------------------------------------------------------------------------------
 #  dependencies
 
@@ -92,6 +97,9 @@ $(DEP):
 
 $(GOX):
 	go get -u github.com/mitchellh/gox
+
+$(GOIMPORTS):
+	go get -u golang.org/x/tools/cmd/goimports
 
 # install vendored dependencies
 vendor: Gopkg.lock
