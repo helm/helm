@@ -17,7 +17,7 @@ cluster. Think of it like the Kubernetes equivalent of a Homebrew formula,
 an Apt dpkg, or a Yum RPM file.
 
 A *Repository* is the place where charts can be collected and shared.
-It's like Perl's [CPAN archive](http://www.cpan.org) or the
+It's like Perl's [CPAN archive](https://www.cpan.org) or the
 [Fedora Package Database](https://admin.fedoraproject.org/pkgdb/), but for
 Kubernetes packages.
 
@@ -190,7 +190,7 @@ imageTag: 10.1.14-r3
 
 ## Specify a imagePullPolicy
 ## Default to 'Always' if imageTag is 'latest', else set to 'IfNotPresent'
-## ref: http://kubernetes.io/docs/user-guide/images/#pre-pulling-images
+## ref: https://kubernetes.io/docs/user-guide/images/#pre-pulling-images
 ##
 # imagePullPolicy:
 

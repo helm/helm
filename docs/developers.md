@@ -170,7 +170,7 @@ workflow for doing this is as follows:
 5. When you are ready for us to review, sign your commit, push your branch to GitHub, and
    then open a new pull request with us.
 
-For Git commit messages, we follow the [Semantic Commit Messages](http://karma-runner.github.io/0.13/dev/git-commit-msg.html):
+For Git commit messages, we follow the [Semantic Commit Messages](https://karma-runner.github.io/0.13/dev/git-commit-msg.html):
 
 ```
 fix(helm): add --foo flag to 'helm install'
@@ -201,7 +201,7 @@ Common scopes:
 Read more:
 - The [Deis Guidelines](https://github.com/deis/workflow/blob/master/src/contributing/submitting-a-pull-request.md)
   were the inspiration for this section.
-- Karma Runner [defines](http://karma-runner.github.io/0.13/dev/git-commit-msg.html) the semantic commit message idea.
+- Karma Runner [defines](https://karma-runner.github.io/0.13/dev/git-commit-msg.html) the semantic commit message idea.
 
 ### Go Conventions
 
