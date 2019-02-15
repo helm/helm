@@ -136,7 +136,7 @@ func TestInstall(t *testing.T) {
 			name:      "install chart with bad type",
 			cmd:       "install badtype testdata/testcharts/chart-bad-type",
 			wantError: true,
-			golden:    "output/template-chart-bad-type.txt",
+			golden:    "output/install-chart-bad-type.txt",
 		},
 	}
 

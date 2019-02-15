@@ -35,6 +35,7 @@ import (
 	"k8s.io/helm/pkg/action"
 	"k8s.io/helm/pkg/chart"
 	"k8s.io/helm/pkg/chart/loader"
+	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/downloader"
 	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/hapi/release"
@@ -231,12 +232,9 @@ func (o *installOptions) run(out io.Writer) error {
 		return err
 	}
 
-	chartType := chartRequested.Metadata.Type
-	if strings.EqualFold(chartType, "library") {
-		return errors.New("Library charts are not installable")
-	}
-	if chartType != "" && !strings.EqualFold(chartType, "application") {
-		return errors.New("Invalid chart type. Valid types are: application or library")
+	validInstallableChart, err := chartutil.IsChartInstallable(chartRequested)
+	if !validInstallableChart {
+		return err
 	}
 
 	if req := chartRequested.Metadata.Dependencies; req != nil {
