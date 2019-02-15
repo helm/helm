@@ -41,7 +41,7 @@ Just kidding! :trollface:
 
 All releases will be of the form vX.Y.Z where X is the major version number, Y
 is the minor version number and Z is the patch release number. This project
-strictly follows [semantic versioning](http://semver.org/) so following this
+strictly follows [semantic versioning](https://semver.org/) so following this
 step is critical.
 
 It is important to note that this document assumes that the git remote in your

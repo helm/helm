@@ -71,7 +71,7 @@ Other fields will be silently ignored.
 ### Charts and Versioning
 
 Every chart must have a version number. A version must follow the
-[SemVer 2](http://semver.org/) standard. Unlike Helm Classic, Kubernetes
+[SemVer 2](https://semver.org/) standard. Unlike Helm Classic, Kubernetes
 Helm uses version numbers as release markers. Packages in repositories
 are identified by name plus version.
 
@@ -792,7 +792,7 @@ standard references that will help you out.
 
 - [Go templates](https://godoc.org/text/template)
 - [Extra template functions](https://godoc.org/github.com/Masterminds/sprig)
-- [The YAML format](http://yaml.org/spec/)
+- [The YAML format](https://yaml.org/spec/)
 
 ## Using Helm to Manage Charts
 

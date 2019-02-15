@@ -15,7 +15,7 @@ us a chance to try to fix the issue before it is exploited in the wild.
 The sign-off is a simple line at the end of the explanation for a commit. All 
 commits needs to be signed. Your signature certifies that you wrote the patch or
 otherwise have the right to contribute the material. The rules are pretty simple,
-if you can certify the below (from [developercertificate.org](http://developercertificate.org/)):
+if you can certify the below (from [developercertificate.org](https://developercertificate.org/)):
 
 ```
 Developer Certificate of Origin
