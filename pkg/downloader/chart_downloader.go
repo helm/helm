@@ -213,7 +213,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, ge
 
 	cv, err := i.Get(chartName, version)
 	if err != nil {
-		return u, r.Client, fmt.Errorf("chart %q matching %q not found in %s index. (try 'helm repo update'). %s", chartName, version, r.Config.Name, err)
+		return u, r.Client, fmt.Errorf("chart %q matching version %q not found in %s index. (try 'helm repo update'). %s", chartName, version, r.Config.Name, err)
 	}
 
 	if len(cv.URLs) == 0 {
