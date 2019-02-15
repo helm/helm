@@ -48,6 +48,7 @@ dist:
 checksum:
 	for f in _dist/*.{gz,zip} ; do \
 		shasum -a 256 "$${f}"  | awk '{print $$1}' > "$${f}.sha256" ; \
+		echo -n "Checksum: " && cat $${f}.sha256 ; \
 	done
 
 .PHONY: check-docker
