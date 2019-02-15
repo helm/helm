@@ -35,6 +35,7 @@ import (
 	"k8s.io/helm/pkg/action"
 	"k8s.io/helm/pkg/chart"
 	"k8s.io/helm/pkg/chart/loader"
+	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/downloader"
 	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/hapi/release"
@@ -228,6 +229,11 @@ func (o *installOptions) run(out io.Writer) error {
 	// Check chart dependencies to make sure all are present in /charts
 	chartRequested, err := loader.Load(o.chartPath)
 	if err != nil {
+		return err
+	}
+
+	validInstallableChart, err := chartutil.IsChartInstallable(chartRequested)
+	if !validInstallableChart {
 		return err
 	}
 

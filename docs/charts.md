@@ -44,6 +44,7 @@ name: The name of the chart (required)
 version: A SemVer 2 version (required)
 kubeVersion: A SemVer range of compatible Kubernetes versions (optional)
 description: A single-sentence description of this project (optional)
+type: It is the type of chart (optional)
 keywords:
   - A list of keywords about this project (optional)
 home: The URL of this project's home page (optional)
@@ -116,6 +117,15 @@ project is:
   version
   - Release the new chart version in the Chart Repository
   - Remove the chart from the source repository (e.g. git)
+
+### Chart Types
+
+The `type` field defines the type of chart. There are 2 types: `application`
+and `library`.  Application is the default type and it is the standard chart
+which can be operated on fully. The [library or helper chart](https://github.com/helm/charts/tree/master/incubator/common)
+provides utilities or functions for the chart builder. A library chart differs
+from an application chart because it has no resource object and is therefore not
+installable.
 
 ## Chart LICENSE, README and NOTES
 

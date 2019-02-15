@@ -157,6 +157,11 @@ func (o *templateOptions) run(out io.Writer) error {
 		return err
 	}
 
+	validInstallableChart, err := chartutil.IsChartInstallable(c)
+	if !validInstallableChart {
+		return err
+	}
+
 	if req := c.Metadata.Dependencies; req != nil {
 		if err := checkDependencies(c, req); err != nil {
 			return err

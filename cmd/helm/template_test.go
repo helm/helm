@@ -76,6 +76,18 @@ func TestTemplateCmd(t *testing.T) {
 			wantError: true,
 			golden:    "output/template-no-args.txt",
 		},
+		{
+			name:      "check library chart",
+			cmd:       fmt.Sprintf("template '%s'", "testdata/testcharts/lib-chart"),
+			wantError: true,
+			golden:    "output/template-lib-chart.txt",
+		},
+		{
+			name:      "check chart bad type",
+			cmd:       fmt.Sprintf("template '%s'", "testdata/testcharts/chart-bad-type"),
+			wantError: true,
+			golden:    "output/install-chart-bad-type.txt",
+		},
 	}
 	runTestCmd(t, tests)
 }

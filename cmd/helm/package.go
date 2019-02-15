@@ -134,6 +134,11 @@ func (o *packageOptions) run(out io.Writer) error {
 		return err
 	}
 
+	validChartType, err := chartutil.IsValidChartType(ch)
+	if !validChartType {
+		return err
+	}
+
 	overrideVals, err := o.mergedValues()
 	if err != nil {
 		return err
