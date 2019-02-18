@@ -26,7 +26,6 @@ import (
 	"k8s.io/helm/pkg/action"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/registry"
-	"k8s.io/helm/pkg/helm/helmpath"
 )
 
 var globalUsage = `The Kubernetes package manager
