@@ -435,3 +435,118 @@ chapter:
 		}
 	}
 }
+
+func TestReadSchema(t *testing.T) {
+	schemaTest := `# Test YAML parse
+title: Values
+type: object
+properties:
+    name:
+        description: Service name
+        type: string
+    protocol:
+        type: string
+    port:
+        description: Port
+        type: integer
+        minimum: 0
+    image:
+        description: Container Image
+        type: object
+        properties:
+            repo:
+                type: string
+            tag:
+                type: string
+required:
+    - protocol
+    - port
+`
+	data, err := ReadSchema([]byte(schemaTest))
+	if err != nil {
+		t.Fatalf("Error parsing bytes: %s", err)
+	}
+	matchSchema(t, data)
+}
+
+func matchSchema(t *testing.T, data Schema) {
+	if data.Title != "Values" {
+		t.Errorf("Expected .title to be 'Values', got '%s'", data.Title)
+	}
+
+	if data.Type != "object" {
+		t.Errorf("Expected .type to be 'object', got '%s'", data.Type)
+	}
+
+	if name, ok := data.Properties["name"]; !ok {
+		t.Errorf("Expected property '.properties.name' is missing")
+	} else {
+		if name.Description != "Service name" {
+			t.Errorf("Expected .properties.name.description to be 'Service name', got '%s'", name.Description)
+		}
+		if name.Type != "string" {
+			t.Errorf("Expected .properties.name.type to be 'string', got '%s'", name.Description)
+		}
+	}
+
+	if protocol, ok := data.Properties["protocol"]; !ok {
+		t.Errorf("Expected property '.properties.protocol' is missing")
+	} else {
+		if protocol.Type != "string" {
+			t.Errorf("Expected .properties.protocol.type to be 'string', got '%s'", protocol.Description)
+		}
+	}
+
+	if port, ok := data.Properties["port"]; !ok {
+		t.Errorf("Expected property '.properties.port' is missing")
+	} else {
+		if port.Description != "Port" {
+			t.Errorf("Expected .properties.port.description to be 'Port', got '%s'", port.Description)
+		}
+		if port.Type != "integer" {
+			t.Errorf("Expected .properties.port.type to be 'string', got '%s'", port.Description)
+		}
+		if port.Minimum != 0 {
+			t.Errorf("Expected .properties.port.minimum to be 0, got %d", port.Minimum)
+		}
+	}
+
+	if image, ok := data.Properties["image"]; !ok {
+		t.Errorf("Expected property '.properties.image' is missing")
+	} else {
+		if image.Description != "Container Image" {
+			t.Errorf("Expected .properties.image.description to be 'Container Image', got '%s'", image.Description)
+		}
+		if image.Type != "object" {
+			t.Errorf("Expected .properties.image.type to be 'object', got '%s'", image.Description)
+		}
+		if repo, ok := image.Properties["repo"]; !ok {
+			t.Errorf("Expected property '.properties.repo' is missing")
+		} else {
+			if repo.Type != "string" {
+				t.Errorf("Expected .properties.repo.type to be 'string', got '%s'", repo.Description)
+			}
+		}
+		if tag, ok := image.Properties["tag"]; !ok {
+			t.Errorf("Expected property '.properties.tag' is missing")
+		} else {
+			if tag.Type != "string" {
+				t.Errorf("Expected .properties.tag.type to be 'string', got '%s'", tag.Description)
+			}
+		}
+	}
+
+	if len(data.Required) != 2 {
+		t.Errorf("Expected length of .required to be 2, got %d", len(data.Required))
+	}
+
+	expectedRequired := []string{
+		"protocol",
+		"port",
+	}
+	for i := 0; i < 2; i++ {
+		if data.Required[i] != expectedRequired[i] {
+			t.Errorf("Expected .required to be %v, got %v", expectedRequired, data.Required)
+		}
+	}
+}

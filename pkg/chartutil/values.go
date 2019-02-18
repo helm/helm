@@ -45,6 +45,25 @@ const GlobalKey = "global"
 // Values represents a collection of chart values.
 type Values map[string]interface{}
 
+// SchemaProperties represents the nested objects of a schema
+type SchemaProperties map[string]*Schema
+
+// Schema is a JSON schema which can be applied to a values file to validate it
+type Schema struct {
+	Title       string           `json:"title,omitempty"`
+	Description string           `json:"description,omitempty"`
+	Type        string           `json:"type,omitempty"`
+	Properties  SchemaProperties `json:"properties,omitempty"`
+	Required    []string         `json:"required,omitempty"`
+	Minimum     int              `json:"minimum,omitempty"`
+}
+
+// YAML encodes the Values into a YAML string.
+func (s Schema) YAML() (string, error) {
+	b, err := yaml.Marshal(s)
+	return string(b), err
+}
+
 // YAML encodes the Values into a YAML string.
 func (v Values) YAML() (string, error) {
 	b, err := yaml.Marshal(v)
@@ -122,6 +141,12 @@ func ReadValues(data []byte) (vals Values, err error) {
 		vals = Values{}
 	}
 	return vals, err
+}
+
+// ReadSchema will parse YAML byte data into a Schema.
+func ReadSchema(data []byte) (schema Schema, err error) {
+	err = yaml.Unmarshal(data, &schema)
+	return schema, err
 }
 
 // ReadValuesFile will parse a YAML file into a map of values.
