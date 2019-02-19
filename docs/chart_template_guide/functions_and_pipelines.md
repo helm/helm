@@ -150,7 +150,7 @@ Template functions and pipelines are a powerful way to transform information and
 
 ## Operators are functions
 
-Operators are implemented as functions that return a boolean value. To use `eq`, `ne`, `lt`, `gt`, `and`, `or`, `not` etcetera place the operator at the front of the statement followed by its parameters just as you would a function. To chain multiple operations together, separate individual functions by surrounding them with paranthesis.
+Operators are implemented as functions that return a boolean value. To use `eq`, `ne`, `lt`, `gt`, `and`, `or`, `not` etcetera place the operator at the front of the statement followed by its parameters just as you would a function. To chain multiple operations together, separate individual functions by surrounding them with parentheses.
 
 ```yaml
 {{/* include the body of this if statement when the variable .Values.fooString exists and is set to "foo" */}}
