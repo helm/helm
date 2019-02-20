@@ -128,7 +128,7 @@ func addRepository(name, url, username, password string, home helmpath.Home, cer
 	}
 
 	if err := r.DownloadIndexFile(home.Cache()); err != nil {
-		return fmt.Errorf("Looks like %q is not a valid chart repository or cannot be reached: %s", url, err.Error())
+		return fmt.Errorf("looks like %q is not a valid chart repository or cannot be reached: %s", url, err.Error())
 	}
 
 	f.Update(&c)

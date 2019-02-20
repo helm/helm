@@ -138,7 +138,7 @@ func (f *fetchCmd) run() error {
 		var err error
 		dest, err = ioutil.TempDir("", "helm-")
 		if err != nil {
-			return fmt.Errorf("Failed to untar: %s", err)
+			return fmt.Errorf("failed to untar: %s", err)
 		}
 		defer os.RemoveAll(dest)
 	}
@@ -168,11 +168,11 @@ func (f *fetchCmd) run() error {
 		}
 		if fi, err := os.Stat(ud); err != nil {
 			if err := os.MkdirAll(ud, 0755); err != nil {
-				return fmt.Errorf("Failed to untar (mkdir): %s", err)
+				return fmt.Errorf("failed to untar (mkdir): %s", err)
 			}
 
 		} else if !fi.IsDir() {
-			return fmt.Errorf("Failed to untar: %s is not a directory", ud)
+			return fmt.Errorf("failed to untar: %s is not a directory", ud)
 		}
 
 		return chartutil.ExpandFile(ud, saved)

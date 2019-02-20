@@ -368,7 +368,7 @@ func ensureDirectories(home helmpath.Home, out io.Writer) error {
 		if fi, err := os.Stat(p); err != nil {
 			fmt.Fprintf(out, "Creating %s \n", p)
 			if err := os.MkdirAll(p, 0755); err != nil {
-				return fmt.Errorf("Could not create %s: %s", p, err)
+				return fmt.Errorf("could not create %s: %s", p, err)
 			}
 		} else if !fi.IsDir() {
 			return fmt.Errorf("%s must be a directory", p)
@@ -421,7 +421,7 @@ func initStableRepo(cacheFile string, out io.Writer, skipRefresh bool, home helm
 	// In this case, the cacheFile is always absolute. So passing empty string
 	// is safe.
 	if err := r.DownloadIndexFile(""); err != nil {
-		return nil, fmt.Errorf("Looks like %q is not a valid chart repository or cannot be reached: %s", stableRepositoryURL, err.Error())
+		return nil, fmt.Errorf("looks like %q is not a valid chart repository or cannot be reached: %s", stableRepositoryURL, err.Error())
 	}
 
 	return &c, nil

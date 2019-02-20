@@ -177,7 +177,7 @@ func (p *packageCmd) run() error {
 	if err == nil {
 		fmt.Fprintf(p.out, "Successfully packaged chart and saved it to: %s\n", name)
 	} else {
-		return fmt.Errorf("Failed to save: %s", err)
+		return fmt.Errorf("failed to save: %s", err)
 	}
 
 	// Save to $HELM_HOME/local directory. This is second, because we don't want

@@ -318,7 +318,7 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 		helper := resource.NewHelper(info.Client, info.Mapping)
 		if _, err := helper.Get(info.Namespace, info.Name, info.Export); err != nil {
 			if !errors.IsNotFound(err) {
-				return fmt.Errorf("Could not get information about the resource: %s", err)
+				return fmt.Errorf("could not get information about the resource: %s", err)
 			}
 
 			// Since the resource does not exist, create it.
@@ -526,7 +526,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 
 				// ... and recreate
 				if err := createResource(target); err != nil {
-					return fmt.Errorf("Failed to recreate resource: %s", err)
+					return fmt.Errorf("failed to recreate resource: %s", err)
 				}
 				log.Printf("Created a new %s called %q\n", kind, target.Name)
 
@@ -676,7 +676,7 @@ func (c *Client) waitForJob(e watch.Event, name string) (bool, error) {
 		if c.Type == batch.JobComplete && c.Status == v1.ConditionTrue {
 			return true, nil
 		} else if c.Type == batch.JobFailed && c.Status == v1.ConditionTrue {
-			return true, fmt.Errorf("Job failed: %s", c.Reason)
+			return true, fmt.Errorf("job failed: %s", c.Reason)
 		}
 	}
 

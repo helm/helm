@@ -111,10 +111,10 @@ func formatValues(format string, values chartutil.Values) (string, error) {
 	case "json":
 		out, err := json.Marshal(values)
 		if err != nil {
-			return "", fmt.Errorf("Failed to Marshal JSON output: %s", err)
+			return "", fmt.Errorf("failed to Marshal JSON output: %s", err)
 		}
 		return string(out), nil
 	default:
-		return "", fmt.Errorf("Unknown output format %q", format)
+		return "", fmt.Errorf("unknown output format %q", format)
 	}
 }

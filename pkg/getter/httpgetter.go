@@ -65,7 +65,7 @@ func (g *HttpGetter) get(href string) (*bytes.Buffer, error) {
 		return buf, err
 	}
 	if resp.StatusCode != 200 {
-		return buf, fmt.Errorf("Failed to fetch %s : %s", href, resp.Status)
+		return buf, fmt.Errorf("failed to fetch %s : %s", href, resp.Status)
 	}
 
 	_, err = io.Copy(buf, resp.Body)
