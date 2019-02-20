@@ -91,7 +91,7 @@ data:
 
 Initially, this looks good. But if we run it through the template engine, we'll get an unfortunate result:
 
-```console
+```bash
 $ helm install --dry-run --debug ./mychart
 SERVER: "localhost:44134"
 CHART PATH: /Users/mattbutcher/Code/Go/src/k8s.io/helm/_scratch/mychart

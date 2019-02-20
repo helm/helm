@@ -98,7 +98,7 @@ go if you want to test the latest (pre-release) Helm version.
 You must have a working Go environment with
 [glide](https://github.com/Masterminds/glide) installed.
 
-```console
+```bash
 $ cd $GOPATH
 $ mkdir -p src/k8s.io
 $ cd src/k8s.io
@@ -162,7 +162,7 @@ stable, but they offer you the chance to test out the latest features.
 The easiest way to install a canary image is to use `helm init` with the
 `--canary-image` flag:
 
-```console
+```bash
 $ helm init --canary-image
 ```
 
@@ -179,7 +179,7 @@ The process of building Tiller is explained above.
 
 Once `tiller` has been built, simply start it:
 
-```console
+```bash
 $ bin/tiller
 Tiller running on :44134
 ```
@@ -193,7 +193,7 @@ connecting to the one in-cluster. There are two ways to do this. The
 first is to specify the `--host` option on the command line. The second
 is to set the `$HELM_HOST` environment variable.
 
-```console
+```bash
 $ export HELM_HOST=localhost:44134
 $ helm version # Should connect to localhost.
 Client: &version.Version{SemVer:"v2.0.0-alpha.4", GitCommit:"db...", GitTreeState:"dirty"}
@@ -210,7 +210,7 @@ As of Helm 2.2.0, Tiller can be upgraded using `helm init --upgrade`.
 For older versions of Helm, or for manual upgrades, you can use `kubectl` to modify
 the Tiller image:
 
-```console
+```bash
 $ export TILLER_TAG=v2.0.0-beta.1        # Or whatever version you want
 $ kubectl --namespace=kube-system set image deployments/tiller-deploy tiller=gcr.io/kubernetes-helm/tiller:$TILLER_TAG
 deployment "tiller-deploy" image updated
@@ -227,7 +227,7 @@ tiller-deploy --namespace kube-system`, or more concisely `helm reset`.
 
 Tiller can then be re-installed from the client with:
 
-```console
+```bash
 $ helm init
 ```
 

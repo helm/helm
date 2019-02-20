@@ -109,7 +109,7 @@ generated: 2016-10-06T16:23:20.499029981-06:00
 A generated index and packages can be served from a basic webserver. You can test
 things out locally with the `helm serve` command, which starts a local server.
 
-```console
+```bash
 $ helm serve --repo-path ./charts
 Regenerating index. This may take a moment.
 Now serving you on 127.0.0.1:8879
@@ -196,7 +196,7 @@ We'll take the second approach, though the first is just as easy.
 The first step will be to **create your gh-pages branch**.  You can do that
 locally as.
 
-```console
+```bash
 $ git checkout -b gh-pages
 ```
 
@@ -257,7 +257,7 @@ repository.
 Once you have a packaged chart ready, create a new directory, and move your
 packaged chart to that directory.
 
-```console
+```bash
 $ helm package docs/examples/alpine/
 $ mkdir fantastic-charts
 $ mv alpine-0.1.0.tgz fantastic-charts/
@@ -295,7 +295,7 @@ From there, they will add the repository to their helm client via the `helm
 repo add [NAME] [URL]` command with any name they would like to use to
 reference the repository.
 
-```console
+```bash
 $ helm repo add fantastic-charts https://fantastic-charts.storage.googleapis.com
 $ helm repo list
 fantastic-charts    https://fantastic-charts.storage.googleapis.com
@@ -304,7 +304,7 @@ fantastic-charts    https://fantastic-charts.storage.googleapis.com
 If the charts are backed by HTTP basic authentication, you can also supply the
 username and password here:
 
-```console
+```bash
 $ helm repo add fantastic-charts https://fantastic-charts.storage.googleapis.com --username my-username --password my-password
 $ helm repo list
 fantastic-charts    https://fantastic-charts.storage.googleapis.com

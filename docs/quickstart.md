@@ -24,7 +24,7 @@ that `kubectl` uses.
 To find out which cluster Tiller would install to, you can run
 `kubectl config current-context` or `kubectl cluster-info`.
 
-```console
+```bash
 $ kubectl config current-context
 my-cluster
 ```
@@ -53,7 +53,7 @@ guide](install.md).
 Once you have Helm ready, you can initialize the local CLI and also
 install Tiller into your Kubernetes cluster in one step:
 
-```console
+```bash
 $ helm init
 ```
 
@@ -75,7 +75,7 @@ To install a chart, you can run the `helm install` command. Helm has
 several ways to find and install a chart, but the easiest is to use one
 of the official `stable` charts.
 
-```console
+```bash
 $ helm repo update              # Make sure we get the latest list of charts
 $ helm install stable/mysql
 NAME:   wintering-rodent
@@ -154,7 +154,7 @@ Guide](using_helm.md)
 
 It's easy to see what has been released using Helm:
 
-```console
+```bash
 $ helm ls
 NAME            	REVISION	UPDATED                 	STATUS  	CHART       	APP VERSION	NAMESPACE
 wintering-rodent	1       	Thu Oct 18 15:06:58 2018	DEPLOYED	mysql-0.10.1	5.7.14     	default
@@ -166,7 +166,7 @@ The `helm list` function will show you a list of all deployed releases.
 
 To uninstall a release, use the `helm delete` command:
 
-```console
+```bash
 $ helm delete wintering-rodent
 release "wintering-rodent" deleted
 ```
@@ -174,7 +174,7 @@ release "wintering-rodent" deleted
 This will uninstall `wintering-rodent` from Kubernetes, but you will
 still be able to request information about that release:
 
-```console
+```bash
 $ helm status wintering-rodent
 LAST DEPLOYED: Thu Oct 18 14:21:18 2018
 NAMESPACE: default
@@ -220,6 +220,6 @@ rollback`).
 To learn more about the available Helm commands, use `helm help` or type
 a command followed by the `-h` flag:
 
-```console
+```bash
 $ helm get -h
 ```

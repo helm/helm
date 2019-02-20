@@ -41,7 +41,7 @@ I'm trying to install Helm/Tiller, but something is not right.
 
 Set the `$HELM_HOME` environment variable, and then run `helm init`:
 
-```console
+```bash
 export HELM_HOME=/some/path
 helm init --client-only
 ```

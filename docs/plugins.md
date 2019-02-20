@@ -33,7 +33,7 @@ plugins do the "detail work" of performing a desired action.
 
 Plugins are installed using the `$ helm plugin install <path|url>` command. You can pass in a path to a plugin on your local file system or a url of a remote VCS repo. The `helm plugin install` command clones or copies the plugin at the path/url given into `$ (helm home)/plugins`
 
-```console
+```bash
 $ helm plugin install https://github.com/technosophos/helm-template
 ```
 

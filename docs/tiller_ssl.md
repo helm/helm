@@ -46,7 +46,7 @@ consult other resources.
 
 The simplest way to generate a certificate authority is to run two commands:
 
-```console
+```bash
 $ openssl genrsa -out ./ca.key.pem 4096
 $ openssl req -key ca.key.pem -new -x509 -days 7300 -sha256 -out ca.cert.pem -extensions v3_ca
 Enter pass phrase for ca.key.pem:
@@ -88,7 +88,7 @@ same time. The names will indicate their target.
 
 First, the Tiller key:
 
-```console
+```bash
 $ openssl genrsa -out ./tiller.key.pem 4096
 Generating RSA private key, 4096 bit long modulus
 ..........................................................................................................................................................................................................................................................................................................................++
@@ -100,7 +100,7 @@ Verifying - Enter pass phrase for ./tiller.key.pem:
 
 Next, generate the Helm client's key:
 
-```console
+```bash
 $ openssl genrsa -out ./helm.key.pem 4096
 Generating RSA private key, 4096 bit long modulus
 .....++
@@ -115,7 +115,7 @@ Again, for production use you will generate one client certificate for each user
 Next we need to create certificates from these keys. For each certificate, this is
 a two-step process of creating a CSR, and then creating the certificate.
 
-```console
+```bash
 $ openssl req -key tiller.key.pem -new -sha256 -out tiller.csr.pem
 Enter pass phrase for tiller.key.pem:
 You are about to be asked to enter information that will be incorporated
@@ -141,7 +141,7 @@ An optional company name []:
 
 And we repeat this step for the Helm client certificate:
 
-```console
+```bash
 $ openssl req -key helm.key.pem -new -sha256 -out helm.csr.pem
 # Answer the questions with your client user's info
 ```
@@ -150,7 +150,7 @@ $ openssl req -key helm.key.pem -new -sha256 -out helm.csr.pem
 
 Now we sign each of these CSRs with the CA certificate we created (adjust the days parameter to suit your requirements):
 
-```console
+```bash
 $ openssl x509 -req -CA ca.cert.pem -CAkey ca.key.pem -CAcreateserial -in tiller.csr.pem -out tiller.cert.pem -days 365
 Signature ok
 subject=/C=US/ST=CO/L=Boulder/O=Tiller Server/CN=tiller-server
@@ -160,7 +160,7 @@ Enter pass phrase for ca.key.pem:
 
 And again for the client certificate:
 
-```console
+```bash
 $ openssl x509 -req -CA ca.cert.pem -CAkey ca.key.pem -CAcreateserial -in helm.csr.pem -out helm.cert.pem  -days 365
 ```
 
@@ -188,7 +188,7 @@ with all of our SSL configuration.
 
 To take a look at what this will generate, run this command:
 
-```console
+```bash
 $ helm init --dry-run --debug --tiller-tls --tiller-tls-cert ./tiller.cert.pem --tiller-tls-key ./tiller.key.pem --tiller-tls-verify --tls-ca-cert ca.cert.pem
 ```
 
@@ -207,13 +207,13 @@ putting Tiller in a non-system namespace (`--tiller-namespace=something`) and en
 a service account (`--service-account=somename`). But for this example we will stay
 with the basics:
 
-```console
+```bash
 $ helm init --tiller-tls --tiller-tls-cert ./tiller.cert.pem --tiller-tls-key ./tiller.key.pem --tiller-tls-verify --tls-ca-cert ca.cert.pem
 ```
 
 In a minute or two it should be ready. We can check Tiller like this:
 
-```console
+```bash
 $ kubectl -n kube-system get deployment
 NAME            DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
 ... other stuff
@@ -227,7 +227,7 @@ cert and the key.
 
 At this point, you should get a _failure_ when you run basic Helm commands:
 
-```console
+```bash
 $ helm ls
 Error: transport is closing
 ```
@@ -243,7 +243,7 @@ Helm client to also perform TLS operations.
 For a quick test, we can specify our configuration manually. We'll run a normal
 Helm command (`helm ls`), but with SSL/TLS enabled.
 
-```console
+```bash
 helm ls --tls --tls-ca-cert ca.cert.pem --tls-cert helm.cert.pem --tls-key helm.key.pem
 ```
 
@@ -254,7 +254,7 @@ Tiller's identity.
 Typing a line that is cumbersome, though. The shortcut is to move the key,
 cert, and CA into `$HELM_HOME`:
 
-```console
+```bash
 $ cp ca.cert.pem $(helm home)/ca.pem
 $ cp helm.cert.pem $(helm home)/cert.pem
 $ cp helm.key.pem $(helm home)/key.pem
@@ -294,7 +294,7 @@ Therefore, to validate the certificate, the IP address 127.0.0.1 must be listed 
 
 For example, to list 127.0.0.1 as an IP SAN when generating the Tiller certificate:
 
-```console
+```bash
 $ echo subjectAltName=IP:127.0.0.1 > extfile.cnf
 $ openssl x509 -req -CA ca.cert.pem -CAkey ca.key.pem -CAcreateserial -in tiller.csr.pem -out tiller.cert.pem -days 365 -extfile extfile.cnf
 ```

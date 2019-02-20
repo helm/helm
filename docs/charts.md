@@ -184,7 +184,7 @@ Once you have a dependencies file, you can run `helm dependency update`
 and it will use your dependency file to download all the specified
 charts into your `charts/` directory for you.
 
-```console
+```bash
 $ helm dep up foochart
 Hang tight while we grab the latest from your chart repositories...
 ...Successfully got an update from the "local" chart repository
@@ -630,7 +630,7 @@ A values file is formatted in YAML. A chart may include a default
 `values.yaml` file. The Helm install command allows a user to override
 values by supplying additional YAML values:
 
-```console
+```bash
 $ helm install --values=myvals.yaml wordpress
 ```
 
@@ -800,7 +800,7 @@ The `helm` tool has several commands for working with charts.
 
 It can create a new chart for you:
 
-```console
+```bash
 $ helm create mychart
 Created mychart/
 ```
@@ -808,7 +808,7 @@ Created mychart/
 Once you have edited a chart, `helm` can package it into a chart archive
 for you:
 
-```console
+```bash
 $ helm package mychart
 Archived mychart-0.1.-.tgz
 ```
@@ -816,7 +816,7 @@ Archived mychart-0.1.-.tgz
 You can also use `helm` to help you find issues with your chart's
 formatting or information:
 
-```console
+```bash
 $ helm lint mychart
 No issues found
 ```

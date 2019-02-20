@@ -43,7 +43,7 @@ carefully curated and maintained charts. This chart repository is named
 
 You can see which charts are available by running `helm search`:
 
-```console
+```bash
 $ helm search
 NAME                 	VERSION 	DESCRIPTION
 stable/drupal   	0.3.2   	One of the most versatile open source content m...
@@ -56,7 +56,7 @@ stable/mysql    	0.1.0   	Chart for MySQL
 With no filter, `helm search` shows you all of the available charts. You
 can narrow down your results by searching with a filter:
 
-```console
+```bash
 $ helm search mysql
 NAME               	VERSION	DESCRIPTION
 stable/mysql  	0.1.0  	Chart for MySQL
@@ -69,7 +69,7 @@ Why is
 `mariadb` in the list? Because its package description relates it to
 MySQL. We can use `helm inspect chart` to see this:
 
-```console
+```bash
 $ helm inspect stable/mariadb
 Fetched stable/mariadb to mariadb-0.5.1.tgz
 description: Chart for MariaDB
@@ -91,7 +91,7 @@ package you want to install, you can use `helm install` to install it.
 To install a new package, use the `helm install` command. At its
 simplest, it takes only one argument: The name of the chart.
 
-```console
+```bash
 $ helm install stable/mariadb
 Fetched stable/mariadb-0.3.0 to /Users/mattbutcher/Code/Go/src/k8s.io/helm/mariadb-0.3.0.tgz
 NAME: happy-panda
@@ -139,7 +139,7 @@ may take a long time to install into the cluster.
 To keep track of a release's state, or to re-read configuration
 information, you can use `helm status`:
 
-```console
+```bash
 $ helm status happy-panda
 Last Deployed: Wed Sep 28 12:32:28 2016
 Namespace: default
@@ -179,7 +179,7 @@ to use your preferred configuration.
 To see what options are configurable on a chart, use `helm inspect
 values`:
 
-```console
+```bash
 helm inspect values stable/mariadb
 Fetched stable/mariadb-0.3.0.tgz to /Users/mattbutcher/Code/Go/src/k8s.io/helm/mariadb-0.3.0.tgz
 ## Bitnami MariaDB image version
@@ -214,7 +214,7 @@ imageTag: 10.1.14-r3
 You can then override any of these settings in a YAML formatted file,
 and then pass that file during installation.
 
-```console
+```bash
 $ cat << EOF > config.yaml
 mariadbUser: user0
 mariadbDatabase: user0db
@@ -356,7 +356,7 @@ information you provide. Because Kubernetes charts can be large and
 complex, Helm tries to perform the least invasive upgrade. It will only
 update things that have changed since the last release.
 
-```console
+```bash
 $ helm upgrade -f panda.yaml happy-panda stable/mariadb
 Fetched stable/mariadb-0.3.0.tgz to /Users/mattbutcher/Code/Go/src/k8s.io/helm/mariadb-0.3.0.tgz
 happy-panda has been upgraded. Happy Helming!
@@ -376,7 +376,7 @@ mariadbUser: user1
 We can use `helm get values` to see whether that new setting took
 effect.
 
-```console
+```bash
 $ helm get values happy-panda
 mariadbUser: user1
 ```
@@ -388,7 +388,7 @@ cluster. And as we can see above, it shows that our new values from
 Now, if something does not go as planned during a release, it is easy to
 roll back to a previous release using `helm rollback [RELEASE] [REVISION]`.
 
-```console
+```bash
 $ helm rollback happy-panda 1
 ```
 
@@ -424,14 +424,14 @@ is not a full list of cli flags. To see a description of all flags, just run
 When it is time to uninstall or delete a release from the cluster, use
 the `helm delete` command:
 
-```console
+```bash
 $ helm delete happy-panda
 ```
 
 This will remove the release from the cluster. You can see all of your
 currently deployed releases with the `helm list` command:
 
-```console
+```bash
 $ helm list
 NAME           	VERSION	UPDATED                        	STATUS         	CHART
 inky-cat       	1      	Wed Sep 28 12:59:46 2016       	DEPLOYED       	alpine-0.1.0
@@ -445,7 +445,7 @@ see the deleted releases? `helm list --deleted` shows those, and `helm
 list --all` shows all of the releases (deleted and currently deployed,
 as well as releases that failed):
 
-```console
+```bash
 ⇒  helm list --all
 NAME           	VERSION	UPDATED                        	STATUS         	CHART
 happy-panda   	2      	Wed Sep 28 12:47:54 2016       	DELETED        	mariadb-0.3.0
@@ -469,7 +469,7 @@ several repository tools under the `helm repo` command.
 
 You can see which repositories are configured using `helm repo list`:
 
-```console
+```bash
 $ helm repo list
 NAME           	URL
 stable         	https://kubernetes-charts.storage.googleapis.com
@@ -479,7 +479,7 @@ mumoshu        	https://mumoshu.github.io/charts
 
 And new repositories can be added with `helm repo add`:
 
-```console
+```bash
 $ helm repo add dev https://example.com/dev-charts
 ```
 
@@ -492,7 +492,7 @@ The [Chart Development Guide](charts.md) explains how to develop your own
 charts. But you can get started quickly by using the `helm create`
 command:
 
-```console
+```bash
 $ helm create deis-workflow
 Creating deis-workflow
 ```
@@ -506,14 +506,14 @@ running `helm lint`.
 When it's time to package the chart up for distribution, you can run the
 `helm package` command:
 
-```console
+```bash
 $ helm package deis-workflow
 deis-workflow-0.1.0.tgz
 ```
 
 And that chart can now easily be installed by `helm install`:
 
-```console
+```bash
 $ helm install ./deis-workflow-0.1.0.tgz
 ...
 ```

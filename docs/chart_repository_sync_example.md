@@ -10,7 +10,7 @@
 Create a local directory like we did in [the chart repository guide](chart_repository.md), and place your packaged charts in that directory.
 
 For example:
-```console
+```bash
 $ mkdir fantastic-charts
 $ mv alpine-0.1.0.tgz fantastic-charts/
 ```
@@ -18,7 +18,7 @@ $ mv alpine-0.1.0.tgz fantastic-charts/
 ## Generate an updated index.yaml
 Use Helm to generate an updated index.yaml file by passing in the directory path and the url of the remote repository to the `helm repo index` command like this:
 
-```console
+```bash
 $ helm repo index fantastic-charts/ --url https://fantastic-charts.storage.googleapis.com
 ```
 This will generate an updated index.yaml file and place in the `fantastic-charts/` directory.
@@ -27,7 +27,7 @@ This will generate an updated index.yaml file and place in the `fantastic-charts
 Upload the contents of the directory to your GCS bucket by running `scripts/sync-repo.sh` and pass in the local directory name and the GCS bucket name.
 
 For example:
-```console
+```bash
 $ pwd
 /Users/funuser/go/src/github.com/helm/helm
 $ scripts/sync-repo.sh fantastic-charts/ fantastic-charts
@@ -51,7 +51,7 @@ Congratulations your remote chart repository now matches the contents of fantast
 You'll want to keep a local copy of the contents of your chart repository or use `gsutil rsync` to copy the contents of your remote chart repository to a local directory.
 
 For example:
-```console
+```bash
 $ gsutil rsync -d -n gs://bucket-name local-dir/    # the -n flag does a dry run
 Building synchronization state...
 Starting synchronization

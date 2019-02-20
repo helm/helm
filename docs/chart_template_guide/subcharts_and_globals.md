@@ -15,7 +15,7 @@ As we walk through the examples in this section, many of these concepts will bec
 
 For these exercises, we'll start with the `mychart/` chart we created at the beginning of this guide, and we'll add a new chart inside of it.
 
-```console
+```bash
 $ cd mychart/charts
 $ helm create mysubchart
 Creating mysubchart
@@ -45,7 +45,7 @@ data:
 
 Because every subchart is a _stand-alone chart_, we can test `mysubchart` on its own:
 
-```console
+```bash
 $ helm install --dry-run --debug mychart/charts/mysubchart
 SERVER: "localhost:44134"
 CHART PATH: /Users/mattbutcher/Code/Go/src/k8s.io/helm/_scratch/mychart/charts/mysubchart

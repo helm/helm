@@ -15,7 +15,7 @@ Helm and Tiller.
 
 We use Make to build our programs. The simplest way to get started is:
 
-```console
+```bash
 $ make bootstrap build
 ```
 
@@ -91,13 +91,13 @@ developer-oriented distribution. Once this is installed, you can use
 development may not be available in Google Cloud Container Registry. If you're getting
 image pull errors, you can override the version of Tiller. Example:
 
-```console
+```bash
 helm init --tiller-image=gcr.io/kubernetes-helm/tiller:2.7.2
 ```
 
 Or use the latest version:
 
-```console
+```bash
 helm init --canary-image
 ```
 
@@ -105,7 +105,7 @@ For developing on Tiller, it is sometimes more expedient to run Tiller locally
 instead of packaging it into an image and running it in-cluster. You can do
 this by telling the Helm client to us a local instance.
 
-```console
+```bash
 $ make build
 $ bin/tiller
 ```
@@ -113,7 +113,7 @@ $ bin/tiller
 And to configure the Helm client, use the `--host` flag or export the `HELM_HOST`
 environment variable:
 
-```console
+```bash
 $ export HELM_HOST=localhost:44134
 $ helm install foo
 ```

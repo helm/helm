@@ -37,7 +37,7 @@ comes to template rendering.
 For this guide, we'll create a simple chart called `mychart`, and then we'll
 create some templates inside of the chart.
 
-```console
+```bash
 $ helm create mychart
 Creating mychart
 ```
@@ -57,7 +57,7 @@ already there.
 
 And what we're going to do is... _remove them all!_ That way we can work through our tutorial from scratch. We'll actually create our own `NOTES.txt` and `_helpers.tpl` as we go.
 
-```console
+```bash
 $ rm -rf mychart/templates/*.*
 ```
 
@@ -95,7 +95,7 @@ When Tiller reads this template, it will simply send it to Kubernetes as-is.
 With this simple template, we now have an installable chart. And we can install
 it like this:
 
-```console
+```bash
 $ helm install ./mychart
 NAME: full-coral
 LAST DEPLOYED: Tue Nov  1 17:36:01 2016
@@ -111,7 +111,7 @@ mychart-configmap   1         1m
 In the output above, we can see that our ConfigMap was created. Using Helm, we
 can retrieve the release and see the actual template that was loaded.
 
-```console
+```bash
 $ helm get manifest full-coral
 
 ---
@@ -169,7 +169,7 @@ The `Release` object is one of the built-in objects for Helm, and we'll cover it
 
 Now when we install our resource, we'll immediately see the result of using this template directive:
 
-```console
+```bash
 $ helm install ./mychart
 NAME: clunky-serval
 LAST DEPLOYED: Tue Nov  1 17:45:37 2016
@@ -189,7 +189,7 @@ You can run `helm get manifest clunky-serval` to see the entire generated YAML.
 
 At this point, we've seen templates at their most basic: YAML files that have template directives embedded in `{{` and `}}`. In the next part, we'll take a deeper look into templates. But before moving on, there's one quick trick that can make building templates faster: When you want to test the template rendering, but not actually install anything, you can use `helm install --debug --dry-run ./mychart`. This will send the chart to the Tiller server, which will render the templates. But instead of installing the chart, it will return the rendered template to you so you can see the output:
 
-```console
+```bash
 $ helm install --debug --dry-run ./mychart
 SERVER: "localhost:44134"
 CHART PATH: /Users/mattbutcher/Code/Go/src/k8s.io/helm/_scratch/mychart
