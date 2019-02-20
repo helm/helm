@@ -288,7 +288,7 @@ not available for public resolution.
 
 By default, the Helm client connects to Tiller via tunnel (i.e. kube proxy) at 127.0.0.1. During the TLS handshake,
 a target, usually provided as a hostname (e.g. example.com), is checked against the subject and subject alternative
-names of the certificate (i.e. hostname verficiation). However, because of the tunnel, the target is an IP address.
+names of the certificate (i.e. hostname verification). However, because of the tunnel, the target is an IP address.
 Therefore, to validate the certificate, the IP address 127.0.0.1 must be listed as an IP subject alternative name
 (IP SAN) in the Tiller certificate.
 
