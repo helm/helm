@@ -263,7 +263,7 @@ func matchValues(t *testing.T, data map[string]interface{}) {
 	if o, err := ttpl("{{.water.water.where}}", data); err != nil {
 		t.Errorf(".water.water.where: %s", err)
 	} else if o != "everywhere" {
-		t.Errorf("Expected water water everywhere")
+		t.Errorf("Expected water everywhere")
 	}
 }
 
