@@ -20,6 +20,7 @@ Common actions from this point include:
 - helm install:   upload the chart to Kubernetes
 - helm list:      list releases of charts
 
+```
 Environment:
   $HELM_HOME           set an alternative location for Helm files. By default, these are stored in ~/.helm
   $HELM_HOST           set an alternative Tiller host. The format is host:port
@@ -34,6 +35,7 @@ Environment:
   $HELM_TLS_HOSTNAME   the hostname or IP address used to verify the Tiller server certificate (default "127.0.0.1")
   $HELM_KEY_PASSPHRASE set HELM_KEY_PASSPHRASE to the passphrase of your PGP private key. If set, you will not be prompted for
                        the passphrase while signing helm charts
+```
 
 
 
