@@ -158,6 +158,15 @@ func ReadValuesFile(filename string) (Values, error) {
 	return ReadValues(data)
 }
 
+// ReadSchemaFile will parse a YAML file into a Schema.
+func ReadSchemaFile(filename string) (Schema, error) {
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return Schema{}, err
+	}
+	return ReadSchema(data)
+}
+
 // CoalesceValues coalesces all of the values in a chart (and its subcharts).
 //
 // Values are coalesced together using the following rules:

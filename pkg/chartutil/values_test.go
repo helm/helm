@@ -160,6 +160,14 @@ func TestReadValuesFile(t *testing.T) {
 	matchValues(t, data)
 }
 
+func TestReadSchemaFile(t *testing.T) {
+	data, err := ReadSchemaFile("./testdata/test-values.schema.yaml")
+	if err != nil {
+		t.Fatalf("Error reading YAML file: %s", err)
+	}
+	matchSchema(t, data)
+}
+
 func ExampleValues() {
 	doc := `
 title: "Moby Dick"
@@ -441,26 +449,44 @@ func TestReadSchema(t *testing.T) {
 title: Values
 type: object
 properties:
-    name:
-        description: Service name
-        type: string
-    protocol:
-        type: string
-    port:
-        description: Port
-        type: integer
+  firstname:
+    description: First name
+    type: string
+  lastname:
+    type: string
+  likes-coffee:
+    type: boolean
+  age:
+    description: Age
+    type: integer
+    minimum: 0
+  employment-info:
+    type: object
+    properties:
+      salary:
+        type: float
         minimum: 0
-    image:
-        description: Container Image
-        type: object
-        properties:
-            repo:
-                type: string
-            tag:
-                type: string
+      title:
+        type: string
+    required:
+      - salary
+  addresses:
+    description: List of addresses
+    type: list[object]
+    properties:
+      city:
+        type: string
+      street:
+        type: string
+      number:
+        type: number
+  phone-numbers:
+    type: list[string]
 required:
-    - protocol
-    - port
+  - firstname
+  - lastname
+  - addresses
+  - employment-info
 `
 	data, err := ReadSchema([]byte(schemaTest))
 	if err != nil {
@@ -477,76 +503,147 @@ func matchSchema(t *testing.T, data Schema) {
 	if data.Type != "object" {
 		t.Errorf("Expected .type to be 'object', got '%s'", data.Type)
 	}
-
-	if name, ok := data.Properties["name"]; !ok {
-		t.Errorf("Expected property '.properties.name' is missing")
-	} else {
-		if name.Description != "Service name" {
-			t.Errorf("Expected .properties.name.description to be 'Service name', got '%s'", name.Description)
-		}
-		if name.Type != "string" {
-			t.Errorf("Expected .properties.name.type to be 'string', got '%s'", name.Description)
-		}
-	}
-
-	if protocol, ok := data.Properties["protocol"]; !ok {
-		t.Errorf("Expected property '.properties.protocol' is missing")
-	} else {
-		if protocol.Type != "string" {
-			t.Errorf("Expected .properties.protocol.type to be 'string', got '%s'", protocol.Description)
-		}
-	}
-
-	if port, ok := data.Properties["port"]; !ok {
-		t.Errorf("Expected property '.properties.port' is missing")
-	} else {
-		if port.Description != "Port" {
-			t.Errorf("Expected .properties.port.description to be 'Port', got '%s'", port.Description)
-		}
-		if port.Type != "integer" {
-			t.Errorf("Expected .properties.port.type to be 'string', got '%s'", port.Description)
-		}
-		if port.Minimum != 0 {
-			t.Errorf("Expected .properties.port.minimum to be 0, got %d", port.Minimum)
-		}
-	}
-
-	if image, ok := data.Properties["image"]; !ok {
-		t.Errorf("Expected property '.properties.image' is missing")
-	} else {
-		if image.Description != "Container Image" {
-			t.Errorf("Expected .properties.image.description to be 'Container Image', got '%s'", image.Description)
-		}
-		if image.Type != "object" {
-			t.Errorf("Expected .properties.image.type to be 'object', got '%s'", image.Description)
-		}
-		if repo, ok := image.Properties["repo"]; !ok {
-			t.Errorf("Expected property '.properties.repo' is missing")
-		} else {
-			if repo.Type != "string" {
-				t.Errorf("Expected .properties.repo.type to be 'string', got '%s'", repo.Description)
-			}
-		}
-		if tag, ok := image.Properties["tag"]; !ok {
-			t.Errorf("Expected property '.properties.tag' is missing")
-		} else {
-			if tag.Type != "string" {
-				t.Errorf("Expected .properties.tag.type to be 'string', got '%s'", tag.Description)
-			}
-		}
-	}
-
-	if len(data.Required) != 2 {
-		t.Errorf("Expected length of .required to be 2, got %d", len(data.Required))
-	}
-
 	expectedRequired := []string{
-		"protocol",
-		"port",
+		"firstname",
+		"lastname",
+		"addresses",
+		"employment-info",
 	}
-	for i := 0; i < 2; i++ {
-		if data.Required[i] != expectedRequired[i] {
-			t.Errorf("Expected .required to be %v, got %v", expectedRequired, data.Required)
+	if len(data.Required) != 4 {
+		t.Errorf("Expected length of .required to be 4, got %d", len(data.Required))
+	}
+
+	if !assertEqualSlices(data.Required, expectedRequired) {
+		t.Errorf("Expected .required to be %v, got %v", expectedRequired, data.Required)
+	}
+
+	var ok bool
+	var firstname *Schema
+	if firstname, ok = data.Properties["firstname"]; !ok {
+		t.Errorf("Expected property '.properties.firstname' is missing")
+	}
+	if firstname.Description != "First name" {
+		t.Errorf("Expected .properties.firstname.description to be 'First name', got '%s'", firstname.Description)
+	}
+	if firstname.Type != "string" {
+		t.Errorf("Expected .properties.firstname.type to be 'string', got '%s'", firstname.Type)
+	}
+
+	var lastname *Schema
+	if lastname, ok = data.Properties["lastname"]; !ok {
+		t.Errorf("Expected property '.properties.lastname' is missing")
+	}
+	if lastname.Type != "string" {
+		t.Errorf("Expected .properties.lastname.type to be 'string', got '%s'", lastname.Type)
+	}
+
+	var likesCoffee *Schema
+	if likesCoffee, ok = data.Properties["likes-coffee"]; !ok {
+		t.Errorf("Expected property '.properties.likes-coffee' is missing")
+	}
+	if likesCoffee.Type != "boolean" {
+		t.Errorf("Expected .properties.likes-coffee.type to be 'boolean', got '%s'", likesCoffee.Type)
+	}
+
+	var age *Schema
+	if age, ok = data.Properties["age"]; !ok {
+		t.Errorf("Expected property '.properties.age' is missing")
+	}
+	if age.Description != "Age" {
+		t.Errorf("Expected .properties.age.description to be 'Age', got '%s'", age.Description)
+	}
+	if age.Type != "integer" {
+		t.Errorf("Expected .properties.age.type to be 'string', got '%s'", age.Type)
+	}
+	if age.Minimum != 0 {
+		t.Errorf("Expected .properties.age.minimum to be 0, got %d", age.Minimum)
+	}
+
+	var employmentInfo *Schema
+	if employmentInfo, ok = data.Properties["employment-info"]; !ok {
+		t.Errorf("Expected property '.properties.employment-info' is missing")
+	}
+	if employmentInfo.Type != "object" {
+		t.Errorf("Expected .properties.employment-info.type to be 'object', got '%s'", employmentInfo.Type)
+	}
+	if len(employmentInfo.Required) != 1 {
+		t.Errorf("Expected length of .properties.employment-info.required to be 1, got %d", len(employmentInfo.Required))
+	}
+	if !assertEqualSlices(employmentInfo.Required, []string{"salary"}) {
+		t.Errorf("Expected .properties.employment-info.required to be %v, got %v", []string{"salary"}, data.Required)
+	}
+
+	var salary *Schema
+	if salary, ok = employmentInfo.Properties["salary"]; !ok {
+		t.Errorf("Expected property '.properties.employment-info.properties.salary' is missing")
+	}
+	if salary.Type != "float" {
+		t.Errorf("Expected .properties.employment-info.properties.salary.type to be 'float', got '%s'", salary.Type)
+	}
+	if salary.Minimum != 0 {
+		t.Errorf("Expected .properties.employment-info.properties.salary.minimum to be 0, got %d", salary.Minimum)
+	}
+
+	var title *Schema
+	if title, ok = employmentInfo.Properties["title"]; !ok {
+		t.Errorf("Expected property '.properties.employment-info.properties.title' is missing")
+	}
+	if title.Type != "string" {
+		t.Errorf("Expected .properties.employment-info.properties.title.type to be 'string', got '%s'", title.Type)
+	}
+
+	var addresses *Schema
+	if addresses, ok = data.Properties["addresses"]; !ok {
+		t.Errorf("Expected property '.properties.addresses' is missing")
+	}
+	if addresses.Type != "list[object]" {
+		t.Errorf("Expected .properties.addresses.type to be 'list[object]', got '%s'", addresses.Type)
+	}
+	if addresses.Description != "List of addresses" {
+		t.Errorf("Expected .properties.addresses.description to be 'List of addresses', got '%s'", addresses.Description)
+	}
+
+	var city *Schema
+	if city, ok = addresses.Properties["city"]; !ok {
+		t.Errorf("Expected property '.properties.addresses.properties.city' is missing")
+	}
+	if city.Type != "string" {
+		t.Errorf("Expected .properties.addresses.properties.city.type to be 'string', got '%s'", city.Type)
+	}
+
+	var street *Schema
+	if street, ok = addresses.Properties["street"]; !ok {
+		t.Errorf("Expected property '.properties.addresses.properties.street' is missing")
+	}
+	if street.Type != "string" {
+		t.Errorf("Expected .properties.addresses.properties.street.type to be 'string', got '%s'", street.Type)
+	}
+
+	var number *Schema
+	if number, ok = addresses.Properties["number"]; !ok {
+		t.Errorf("Expected property '.properties.addresses.properties.number' is missing")
+	}
+	if number.Type != "number" {
+		t.Errorf("Expected .properties.addresses.properties.number.type to be 'number', got '%s'", number.Type)
+	}
+
+	var phoneNumbers *Schema
+	if phoneNumbers, ok = data.Properties["phone-numbers"]; !ok {
+		t.Errorf("Expected property '.properties.phone-numbers' is missing")
+	}
+	if phoneNumbers.Type != "list[string]" {
+		t.Errorf("Expected .properties.phone-numbers.type to be 'list[object]', got '%s'", addresses.Type)
+	}
+}
+
+func assertEqualSlices(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := 0; i < len(a); i++ {
+		if a[i] != b[i] {
+			return false
 		}
 	}
+	return true
 }
