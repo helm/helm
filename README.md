@@ -44,14 +44,14 @@ If you want to use a package manager:
 - [Scoop](https://scoop.sh/) users can use `scoop install helm`.
 - [GoFish](https://gofi.sh/) users can use `gofish install helm`.
 
-To rapidly get Helm up and running, start with the [Quick Start Guide](https://docs.helm.sh/using_helm/#quickstart-guide).
+To rapidly get Helm up and running, start with the [Quick Start Guide](https://helm.sh/docs/using_helm/#quickstart).
 
-See the [installation guide](https://docs.helm.sh/using_helm/#installing-helm) for more options,
+See the [installation guide](https://helm.sh/docs/using_helm/#installing) for more options,
 including installing pre-releases.
 
 ## Docs
 
-Get started with the [Quick Start guide](https://docs.helm.sh/using_helm/#quickstart-guide) or plunge into the [complete documentation](https://docs.helm.sh)
+Get started with the [Quick Start guide](https://helm.sh/docs/using_helm/#quickstart) or plunge into the [complete documentation](https://docs.helm.sh)
 
 ## Roadmap
 
