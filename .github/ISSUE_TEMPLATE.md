@@ -2,7 +2,11 @@
 
 Output of `helm version`:
 
-Output of `kubectl version`:
+Output of `kubectl version`:  
+
+Output of `cat /etc/os-release`:  
+
+Output of `uname -r`:
 
 Cloud Provider/Platform (AKS, GKE, Minikube etc.): 
 
