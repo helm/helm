@@ -17,14 +17,17 @@ limitations under the License.
 package chartutil
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
+	"github.com/xeipuuv/gojsonschema"
 
 	"helm.sh/helm/pkg/chart"
 )
@@ -45,24 +48,8 @@ const GlobalKey = "global"
 // Values represents a collection of chart values.
 type Values map[string]interface{}
 
-// SchemaProperties represents the nested objects of a schema
-type SchemaProperties map[string]*Schema
-
-// Schema is a JSON schema which can be applied to a values file to validate it
-type Schema struct {
-	Title       string           `json:"title,omitempty"`
-	Description string           `json:"description,omitempty"`
-	Type        string           `json:"type,omitempty"`
-	Properties  SchemaProperties `json:"properties,omitempty"`
-	Required    []string         `json:"required,omitempty"`
-	Minimum     int              `json:"minimum,omitempty"`
-}
-
-// YAML encodes the Values into a YAML string.
-func (s Schema) YAML() (string, error) {
-	b, err := yaml.Marshal(s)
-	return string(b), err
-}
+// Schema represents the document structure to validate the values.yaml file against
+type Schema map[string]interface{}
 
 // YAML encodes the Values into a YAML string.
 func (v Values) YAML() (string, error) {
@@ -146,6 +133,9 @@ func ReadValues(data []byte) (vals Values, err error) {
 // ReadSchema will parse YAML byte data into a Schema.
 func ReadSchema(data []byte) (schema Schema, err error) {
 	err = yaml.Unmarshal(data, &schema)
+	if len(schema) == 0 {
+		schema = Schema{}
+	}
 	return schema, err
 }
 
@@ -155,6 +145,18 @@ func ReadValuesFile(filename string) (Values, error) {
 	if err != nil {
 		return map[string]interface{}{}, err
 	}
+
+	schemaPath := strings.Replace(filename, ".yaml", ".schema.yaml", 1)
+	_, err = os.Stat(schemaPath)
+	if err == nil {
+		schemaData, err := ioutil.ReadFile(schemaPath)
+		if err != nil {
+			return map[string]interface{}{}, err
+		}
+
+		return ReadSchematizedValues(data, schemaData)
+	}
+
 	return ReadValues(data)
 }
 
@@ -165,6 +167,40 @@ func ReadSchemaFile(filename string) (Schema, error) {
 		return Schema{}, err
 	}
 	return ReadSchema(data)
+}
+
+// ReadSchematizedValues parses a YAML file and asserts that it matches the schema
+func ReadSchematizedValues(data, schemaData []byte) (Values, error) {
+	values, err := ReadValues(data)
+	if err != nil {
+		return Values{}, err
+	}
+	valuesJSON := convertToJSON(values)
+
+	schema, err := ReadSchema(schemaData)
+	if err != nil {
+		return Values{}, err
+	}
+	schemaJSON := convertToJSON(schema)
+
+	schemaLoader := gojsonschema.NewStringLoader(string(schemaJSON))
+	valuesLoader := gojsonschema.NewStringLoader(string(valuesJSON))
+
+	result, err := gojsonschema.Validate(schemaLoader, valuesLoader)
+	if err != nil {
+		return Values{}, err
+	}
+
+	if !result.Valid() {
+		var sb strings.Builder
+		sb.WriteString("The values.yaml is not valid. see errors :\n")
+		for _, desc := range result.Errors() {
+			sb.WriteString(fmt.Sprintf("- %s\n", desc))
+		}
+		return Values{}, errors.New(sb.String())
+	}
+
+	return values, nil
 }
 
 // CoalesceValues coalesces all of the values in a chart (and its subcharts).
@@ -373,6 +409,15 @@ func ToRenderValues(chrt *chart.Chart, chrtVals map[string]interface{}, options 
 func istable(v interface{}) bool {
 	_, ok := v.(map[string]interface{})
 	return ok
+}
+
+// convertToJSON takes YAML and returns a []byte representation of the same object as JSON
+func convertToJSON(data interface{}) []byte {
+	js, err := json.Marshal(data)
+	if err != nil {
+		panic(err.Error())
+	}
+	return js
 }
 
 // PathValue takes a path that traverses a YAML structure and returns the value at the end of that path.

@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 	"text/template"
 
@@ -166,6 +167,33 @@ func TestReadSchemaFile(t *testing.T) {
 		t.Fatalf("Error reading YAML file: %s", err)
 	}
 	matchSchema(t, data)
+}
+
+func TestReadSchematizedValues(t *testing.T) {
+	_, err := ReadValuesFile("./testdata/test-values.yaml")
+	if err != nil {
+		t.Errorf("Got the following unexpected error while reading schematized values:\n%v", err)
+	}
+}
+
+func TestReadSchematizedValuesNegative(t *testing.T) {
+	_, err := ReadValuesFile("./testdata/test-values-negative.yaml")
+
+	if err == nil {
+		t.Errorf("Expected an error, but got none")
+	}
+
+	errString := err.Error()
+	if !strings.Contains(errString, "The values.yaml is not valid. see errors :") {
+		t.Errorf("Error string does not contain expected string: \"The values.yaml is not valid. see errors :\"")
+	}
+	if !strings.Contains(errString, "- (root): employmentInfo is required") {
+		t.Errorf("Error string does not contain expected string: \"- (root): employmentInfo is required\"")
+	}
+
+	if !strings.Contains(errString, "- age: Must be greater than or equal to 0/1") {
+		t.Errorf("Error string does not contain expected string: \"- age: Must be greater than or equal to 0/1\"")
+	}
 }
 
 func ExampleValues() {
@@ -454,17 +482,17 @@ properties:
     type: string
   lastname:
     type: string
-  likes-coffee:
+  likesCoffee:
     type: boolean
   age:
     description: Age
     type: integer
     minimum: 0
-  employment-info:
+  employmentInfo:
     type: object
     properties:
       salary:
-        type: float
+        type: number
         minimum: 0
       title:
         type: string
@@ -472,21 +500,25 @@ properties:
       - salary
   addresses:
     description: List of addresses
-    type: list[object]
-    properties:
-      city:
-        type: string
-      street:
-        type: string
-      number:
-        type: number
-  phone-numbers:
-    type: list[string]
+    type: array
+    items:
+      type: object
+      properties:
+        city:
+          type: string
+        street:
+          type: string
+        number:
+          type: number
+  phoneNumbers:
+    type: array
+    items:
+      type: string
 required:
   - firstname
   - lastname
   - addresses
-  - employment-info
+  - employmentInfo
 `
 	data, err := ReadSchema([]byte(schemaTest))
 	if err != nil {
@@ -496,154 +528,109 @@ required:
 }
 
 func matchSchema(t *testing.T, data Schema) {
-	if data.Title != "Values" {
-		t.Errorf("Expected .title to be 'Values', got '%s'", data.Title)
+	if data["title"] != "Values" {
+		t.Errorf("Expected .title to be 'Values', got '%s'", data["title"])
 	}
 
-	if data.Type != "object" {
-		t.Errorf("Expected .type to be 'object', got '%s'", data.Type)
-	}
-	expectedRequired := []string{
-		"firstname",
-		"lastname",
-		"addresses",
-		"employment-info",
-	}
-	if len(data.Required) != 4 {
-		t.Errorf("Expected length of .required to be 4, got %d", len(data.Required))
+	if data["type"] != "object" {
+		t.Errorf("Expected .type to be 'object', got '%s'", data["type"])
 	}
 
-	if !assertEqualSlices(data.Required, expectedRequired) {
-		t.Errorf("Expected .required to be %v, got %v", expectedRequired, data.Required)
+	if o, err := ttpl("{{len .required}}", data); err != nil {
+		t.Errorf("len required: %s", err)
+	} else if o != "4" {
+		t.Errorf("Expected length of .required to be 4, got %s", o)
 	}
 
-	var ok bool
-	var firstname *Schema
-	if firstname, ok = data.Properties["firstname"]; !ok {
-		t.Errorf("Expected property '.properties.firstname' is missing")
-	}
-	if firstname.Description != "First name" {
-		t.Errorf("Expected .properties.firstname.description to be 'First name', got '%s'", firstname.Description)
-	}
-	if firstname.Type != "string" {
-		t.Errorf("Expected .properties.firstname.type to be 'string', got '%s'", firstname.Type)
-	}
+	property := ".required"
+	expected := "[firstname lastname addresses employmentInfo]"
+	assertEqualProperty(t, property, expected, data)
 
-	var lastname *Schema
-	if lastname, ok = data.Properties["lastname"]; !ok {
-		t.Errorf("Expected property '.properties.lastname' is missing")
-	}
-	if lastname.Type != "string" {
-		t.Errorf("Expected .properties.lastname.type to be 'string', got '%s'", lastname.Type)
-	}
+	property = ".properties.firstname.description"
+	expected = "First name"
+	assertEqualProperty(t, property, expected, data)
 
-	var likesCoffee *Schema
-	if likesCoffee, ok = data.Properties["likes-coffee"]; !ok {
-		t.Errorf("Expected property '.properties.likes-coffee' is missing")
-	}
-	if likesCoffee.Type != "boolean" {
-		t.Errorf("Expected .properties.likes-coffee.type to be 'boolean', got '%s'", likesCoffee.Type)
-	}
+	property = ".properties.firstname.type"
+	expected = "string"
+	assertEqualProperty(t, property, expected, data)
 
-	var age *Schema
-	if age, ok = data.Properties["age"]; !ok {
-		t.Errorf("Expected property '.properties.age' is missing")
-	}
-	if age.Description != "Age" {
-		t.Errorf("Expected .properties.age.description to be 'Age', got '%s'", age.Description)
-	}
-	if age.Type != "integer" {
-		t.Errorf("Expected .properties.age.type to be 'string', got '%s'", age.Type)
-	}
-	if age.Minimum != 0 {
-		t.Errorf("Expected .properties.age.minimum to be 0, got %d", age.Minimum)
-	}
+	property = ".properties.lastname.type"
+	expected = "string"
+	assertEqualProperty(t, property, expected, data)
 
-	var employmentInfo *Schema
-	if employmentInfo, ok = data.Properties["employment-info"]; !ok {
-		t.Errorf("Expected property '.properties.employment-info' is missing")
-	}
-	if employmentInfo.Type != "object" {
-		t.Errorf("Expected .properties.employment-info.type to be 'object', got '%s'", employmentInfo.Type)
-	}
-	if len(employmentInfo.Required) != 1 {
-		t.Errorf("Expected length of .properties.employment-info.required to be 1, got %d", len(employmentInfo.Required))
-	}
-	if !assertEqualSlices(employmentInfo.Required, []string{"salary"}) {
-		t.Errorf("Expected .properties.employment-info.required to be %v, got %v", []string{"salary"}, data.Required)
-	}
+	property = ".properties.likesCoffee.type"
+	expected = "boolean"
+	assertEqualProperty(t, property, expected, data)
 
-	var salary *Schema
-	if salary, ok = employmentInfo.Properties["salary"]; !ok {
-		t.Errorf("Expected property '.properties.employment-info.properties.salary' is missing")
-	}
-	if salary.Type != "float" {
-		t.Errorf("Expected .properties.employment-info.properties.salary.type to be 'float', got '%s'", salary.Type)
-	}
-	if salary.Minimum != 0 {
-		t.Errorf("Expected .properties.employment-info.properties.salary.minimum to be 0, got %d", salary.Minimum)
-	}
+	property = ".properties.age.description"
+	expected = "Age"
+	assertEqualProperty(t, property, expected, data)
 
-	var title *Schema
-	if title, ok = employmentInfo.Properties["title"]; !ok {
-		t.Errorf("Expected property '.properties.employment-info.properties.title' is missing")
-	}
-	if title.Type != "string" {
-		t.Errorf("Expected .properties.employment-info.properties.title.type to be 'string', got '%s'", title.Type)
-	}
+	property = ".properties.age.type"
+	expected = "integer"
+	assertEqualProperty(t, property, expected, data)
 
-	var addresses *Schema
-	if addresses, ok = data.Properties["addresses"]; !ok {
-		t.Errorf("Expected property '.properties.addresses' is missing")
-	}
-	if addresses.Type != "list[object]" {
-		t.Errorf("Expected .properties.addresses.type to be 'list[object]', got '%s'", addresses.Type)
-	}
-	if addresses.Description != "List of addresses" {
-		t.Errorf("Expected .properties.addresses.description to be 'List of addresses', got '%s'", addresses.Description)
-	}
+	property = ".properties.age.minimum"
+	expected = "0"
+	assertEqualProperty(t, property, expected, data)
 
-	var city *Schema
-	if city, ok = addresses.Properties["city"]; !ok {
-		t.Errorf("Expected property '.properties.addresses.properties.city' is missing")
-	}
-	if city.Type != "string" {
-		t.Errorf("Expected .properties.addresses.properties.city.type to be 'string', got '%s'", city.Type)
-	}
+	property = ".properties.employmentInfo.type"
+	expected = "object"
+	assertEqualProperty(t, property, expected, data)
 
-	var street *Schema
-	if street, ok = addresses.Properties["street"]; !ok {
-		t.Errorf("Expected property '.properties.addresses.properties.street' is missing")
-	}
-	if street.Type != "string" {
-		t.Errorf("Expected .properties.addresses.properties.street.type to be 'string', got '%s'", street.Type)
-	}
+	property = ".properties.employmentInfo.required"
+	expected = "[salary]"
+	assertEqualProperty(t, property, expected, data)
 
-	var number *Schema
-	if number, ok = addresses.Properties["number"]; !ok {
-		t.Errorf("Expected property '.properties.addresses.properties.number' is missing")
-	}
-	if number.Type != "number" {
-		t.Errorf("Expected .properties.addresses.properties.number.type to be 'number', got '%s'", number.Type)
-	}
+	property = ".properties.employmentInfo.properties.salary.type"
+	expected = "number"
+	assertEqualProperty(t, property, expected, data)
 
-	var phoneNumbers *Schema
-	if phoneNumbers, ok = data.Properties["phone-numbers"]; !ok {
-		t.Errorf("Expected property '.properties.phone-numbers' is missing")
-	}
-	if phoneNumbers.Type != "list[string]" {
-		t.Errorf("Expected .properties.phone-numbers.type to be 'list[object]', got '%s'", addresses.Type)
-	}
+	property = ".properties.employmentInfo.properties.salary.minimum"
+	expected = "0"
+	assertEqualProperty(t, property, expected, data)
+
+	property = ".properties.employmentInfo.properties.title.type"
+	expected = "string"
+	assertEqualProperty(t, property, expected, data)
+
+	property = ".properties.addresses.description"
+	expected = "List of addresses"
+	assertEqualProperty(t, property, expected, data)
+
+	property = ".properties.addresses.type"
+	expected = "array"
+	assertEqualProperty(t, property, expected, data)
+
+	property = ".properties.addresses.items.type"
+	expected = "object"
+	assertEqualProperty(t, property, expected, data)
+
+	property = ".properties.addresses.items.properties.city.type"
+	expected = "string"
+	assertEqualProperty(t, property, expected, data)
+
+	property = ".properties.addresses.items.properties.street.type"
+	expected = "string"
+	assertEqualProperty(t, property, expected, data)
+
+	property = ".properties.addresses.items.properties.number.type"
+	expected = "number"
+	assertEqualProperty(t, property, expected, data)
+
+	property = ".properties.phoneNumbers.type"
+	expected = "array"
+	assertEqualProperty(t, property, expected, data)
+
+	property = ".properties.phoneNumbers.items.type"
+	expected = "string"
+	assertEqualProperty(t, property, expected, data)
 }
 
-func assertEqualSlices(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
+func assertEqualProperty(t *testing.T, property, expected string, data map[string]interface{}) {
+	if o, err := ttpl("{{"+property+"}}", data); err != nil {
+		t.Errorf("%s: %s", property, err)
+	} else if o != expected {
+		t.Errorf("Expected %s to be %s, got %s", property, expected, o)
 	}
-	for i := 0; i < len(a); i++ {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
 }
