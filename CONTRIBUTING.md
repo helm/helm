@@ -172,10 +172,44 @@ contributing to Helm. All issue types follow the same general lifecycle. Differe
 
 ## How to Contribute a Patch
 
-1. Fork the repo, develop and test your code changes.
-1. Use sign-off when making each of your commits (see [above](#sign-your-work)).
+1. **Fork** the repo [helm](https://github.com/helm/helm)  
+
+Go to https://github.com/helm/helm then hit the `Fork` button to fork your own copy of repository **helm** to your github account.
+
+2. **Clone** the forked repo to your local working directory.
+```sh
+$ git clone https://github.com/$your_github_account/helm.git   
+```
+3. Add an `upstream` remote to keep your fork in sync with the main repo.
+```sh
+$ cd helm
+$ git remote add upstream https://github.com/helm/helm.git
+$ git remote -v
+
+origin  https://github.com/$your_github_account/helm.git (fetch)
+origin  https://github.com/$your_github_account/helm.git (push)
+upstream        https://github.com/helm/helm.git (fetch)
+upstream        https://github.com/helm/helm.git (push)
+```
+4. Sync your local `master` branch.
+```sh
+$ git pull upstream master
+```
+5. Create a branch to add a new feature or fix issues.
+```sh
+$ git checkout -b new-feature
+```
+6. Make any change on the branch `new-feature`  then build and test your codes.
+7. Include in what will be committed.
+```sh
+$ git add <file>
+```
+8. Use sign-off when making each of your commits (see [above](#sign-your-work)).
    If you forgot to sign some commits that are part of the contribution, you can ask [git to rewrite your commit history](https://git-scm.com/book/en/v2/Git-Tools-Rewriting-History).
-1. Submit a pull request.
+```sh
+$ git commit --signoff
+```
+9. Submit a pull request.
 
 Coding conventions and standards are explained in the official developer docs:
 [Developers Guide](docs/developers.md)
