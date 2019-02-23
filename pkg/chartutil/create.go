@@ -62,8 +62,8 @@ image:
   repository: nginx
   tag: stable
   pullPolicy: IfNotPresent
-  # pullSecret: my_secret
 
+imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
@@ -190,9 +190,9 @@ spec:
         app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
-      {{- if .Values.image.pullSecret -}}
+      {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
-        - name: {{ .Values.image.pullSecret }}
+        {{- toYaml . | nindent 8 }}
       {{- end }}
       containers:
         - name: {{ .Chart.Name }}
