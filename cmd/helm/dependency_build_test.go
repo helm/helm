@@ -162,7 +162,7 @@ func TestDependencyRecursiveBuildCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	expect = filepath.Join(hh.String(), chartname, "charts/rectest1/charts/rectest2-0.1.0.tgz")
+	expect = filepath.Join(hh.String(), chartname, "charts/rectest2-0.1.0.tgz")
 	if _, err := os.Stat(expect); err != nil {
 		t.Fatal(err)
 	}
