@@ -57,6 +57,8 @@ type Manager struct {
 	SkipUpdate bool
 	// Recursive indicates that there is a recursive build
 	Recursive bool
+	// recDestPath is the path where the packed charts are stored when the charts dependencies tree is traversed
+	recDestPath string
 	// Getter collection for the operation
 	Getters []getter.Provider
 }
@@ -125,6 +127,13 @@ func (m *Manager) build() ([]*chartutil.Dependency, error) {
 //
 // If SkipUpdate is set, this will not update the repository.
 func (m *Manager) BuildRecursively() error {
+	// Prepare the folder where the chart archives will be stored recursively
+	recDestPath := filepath.Join(m.ChartPath, "reccharts")
+	if err := os.MkdirAll(recDestPath, 0755); err != nil {
+		return err
+	}
+
+	m.recDestPath = recDestPath
 	// Build the main chart
 	dependencies, err := m.build()
 	if err != nil {
@@ -172,6 +181,17 @@ func (m *Manager) BuildRecursively() error {
 
 	// Restore to the original value before running the recursive build
 	m.SkipUpdate = prevSkipUpdate
+
+	// Remove the folder which contains the unpacked charts tree
+	err = os.RemoveAll(baseChartPath)
+	if err != nil {
+		return err
+	}
+	// Rename to "charts" the folder with all packed charts
+	err = os.Rename(recDestPath, baseChartPath)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -306,6 +326,10 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 				if err != nil {
 					return fmt.Errorf("could not unpack %s: %s", archiveFile, err)
 				}
+				err = saveFile(m.recDestPath, archiveFile)
+				if err != nil {
+					return fmt.Errorf("could not save archive file %s: %s", archiveFile, err)
+				}
 			}
 			continue
 		}
@@ -341,6 +365,10 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 			err := chartutil.ExpandFile(destPath, tarPath)
 			if err != nil {
 				return fmt.Errorf("could not unpack %s: %s", tarPath, err)
+			}
+			err = saveFile(m.recDestPath, tarPath)
+			if err != nil {
+				return fmt.Errorf("could not save archive file %s: %s", tarPath, err)
 			}
 		}
 	}
@@ -748,4 +776,14 @@ func move(tmpPath, destPath string) error {
 		}
 	}
 	return nil
+}
+
+func saveFile(destPath, filePath string) error {
+	file, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return err
+	}
+	filename := filepath.Base(filePath)
+	destfile := filepath.Join(destPath, filename)
+	return ioutil.WriteFile(destfile, file, 0644)
 }
