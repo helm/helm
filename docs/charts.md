@@ -492,7 +492,7 @@ create/update all of the above Kubernetes objects in the following order:
 This is because when Helm installs/upgrades charts,
 the Kubernetes objects from the charts and all its dependencies are
 
-- aggregrated into a single set; then
+- aggregated into a single set; then
 - sorted by type followed by name; and then
 - created/updated in that order.
 

@@ -242,7 +242,7 @@ Documentation PRs will follow the same lifecycle as other PRs. They will also be
 ## The Triager
 
 Each week, one of the core maintainers will serve as the designated "triager" starting after the
-public standup meetings on Thursday. This person will be in charge triaging new PRs and issues
+public stand-up meetings on Thursday. This person will be in charge triaging new PRs and issues
 throughout the work week.
 
 ## Labels
