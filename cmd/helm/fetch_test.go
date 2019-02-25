@@ -147,7 +147,7 @@ func TestFetchCmd(t *testing.T) {
 		os.Mkdir(outdir, 0755)
 
 		buf := bytes.NewBuffer(nil)
-		cmd := newFetchCmd(buf)
+		cmd := NewFetchCmd(buf)
 		tt.flags = append(tt.flags, "-d", outdir)
 		cmd.ParseFlags(tt.flags)
 		if err := cmd.RunE(cmd, []string{tt.chart}); err != nil {

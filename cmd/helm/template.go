@@ -78,7 +78,8 @@ type templateCmd struct {
 	outputDir        string
 }
 
-func newTemplateCmd(out io.Writer) *cobra.Command {
+// NewTemplateCmd returns cobra.Command to locally render templates
+func NewTemplateCmd(out io.Writer) *cobra.Command {
 
 	t := &templateCmd{
 		out: out,

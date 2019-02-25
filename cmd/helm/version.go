@@ -58,7 +58,8 @@ type versionCmd struct {
 	template   string
 }
 
-func newVersionCmd(c helm.Interface, out io.Writer) *cobra.Command {
+// NewVersionCmd returns cobra.Command to print the client/server version information
+func NewVersionCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	version := &versionCmd{
 		client: c,
 		out:    out,

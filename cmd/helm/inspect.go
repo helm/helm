@@ -75,7 +75,8 @@ const (
 
 var readmeFileNames = []string{"readme.md", "readme.txt", "readme"}
 
-func newInspectCmd(out io.Writer) *cobra.Command {
+// NewInspectCmd returns cobra.Command to inspect a chart
+func NewInspectCmd(out io.Writer) *cobra.Command {
 	insp := &inspectCmd{
 		out:    out,
 		output: all,

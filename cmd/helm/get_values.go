@@ -40,7 +40,8 @@ type getValuesCmd struct {
 	output    string
 }
 
-func newGetValuesCmd(client helm.Interface, out io.Writer) *cobra.Command {
+// NewGetValuesCmd returns cobra.Command to download the values file for a named release
+func NewGetValuesCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	get := &getValuesCmd{
 		out:    out,
 		client: client,

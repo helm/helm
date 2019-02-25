@@ -44,7 +44,8 @@ type docsCmd struct {
 	topCmd        *cobra.Command
 }
 
-func newDocsCmd(out io.Writer) *cobra.Command {
+// NewDocsCmd returns cobra.Command to generate documentation as markdown or man pages
+func NewDocsCmd(out io.Writer) *cobra.Command {
 	dc := &docsCmd{out: out}
 
 	cmd := &cobra.Command{

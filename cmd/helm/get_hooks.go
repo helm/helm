@@ -38,7 +38,8 @@ type getHooksCmd struct {
 	version int32
 }
 
-func newGetHooksCmd(client helm.Interface, out io.Writer) *cobra.Command {
+// NewGetHooksCmd returns cobra.Command to download all hooks for a named release
+func NewGetHooksCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	ghc := &getHooksCmd{
 		out:    out,
 		client: client,

@@ -68,7 +68,8 @@ type fetchCmd struct {
 	out io.Writer
 }
 
-func newFetchCmd(out io.Writer) *cobra.Command {
+// NewFetchCmd returns cobra.Command to download a chart from a repository and (optionally) unpack it in local directory
+func NewFetchCmd(out io.Writer) *cobra.Command {
 	fch := &fetchCmd{out: out}
 
 	cmd := &cobra.Command{

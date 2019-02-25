@@ -66,6 +66,6 @@ func TestVersion(t *testing.T) {
 	}
 	settings.TillerHost = "fake-localhost"
 	runReleaseCases(t, tests, func(c *helm.FakeClient, out io.Writer) *cobra.Command {
-		return newVersionCmd(c, out)
+		return NewVersionCmd(c, out)
 	})
 }

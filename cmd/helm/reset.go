@@ -48,7 +48,8 @@ type resetCmd struct {
 	kubeClient     kubernetes.Interface
 }
 
-func newResetCmd(client helm.Interface, out io.Writer) *cobra.Command {
+// NewResetCmd returns cobra.Command to uninstalls Tiller from a cluster
+func NewResetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	d := &resetCmd{
 		out:    out,
 		client: client,

@@ -45,7 +45,8 @@ type repoIndexCmd struct {
 	merge string
 }
 
-func newRepoIndexCmd(out io.Writer) *cobra.Command {
+// NewRepoIndexCmd returns cobra.Command to generate an index file given a directory containing packaged charts
+func NewRepoIndexCmd(out io.Writer) *cobra.Command {
 	index := &repoIndexCmd{out: out}
 
 	cmd := &cobra.Command{

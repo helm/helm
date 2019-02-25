@@ -65,7 +65,8 @@ type packageCmd struct {
 	home helmpath.Home
 }
 
-func newPackageCmd(out io.Writer) *cobra.Command {
+// NewPackageCmd returns cobra.Command to package a chart directory into a chart archive
+func NewPackageCmd(out io.Writer) *cobra.Command {
 	pkg := &packageCmd{out: out}
 
 	cmd := &cobra.Command{

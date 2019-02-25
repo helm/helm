@@ -77,7 +77,8 @@ Environment:
 
 `
 
-func newRootCmd(args []string) *cobra.Command {
+// NewRootCmd returns cobra.Command for the root command of helm CLI
+func NewRootCmd(args []string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "helm",
 		Short:        "The Helm package manager for Kubernetes.",
@@ -112,42 +113,42 @@ func newRootCmd(args []string) *cobra.Command {
 
 	cmd.AddCommand(
 		// chart commands
-		newCreateCmd(out),
-		newDependencyCmd(out),
-		newFetchCmd(out),
-		newInspectCmd(out),
-		newLintCmd(out),
-		newPackageCmd(out),
-		newRepoCmd(out),
-		newSearchCmd(out),
-		newServeCmd(out),
-		newVerifyCmd(out),
+		NewCreateCmd(out),
+		NewDependencyCmd(out),
+		NewFetchCmd(out),
+		NewInspectCmd(out),
+		NewLintCmd(out),
+		NewPackageCmd(out),
+		NewRepoCmd(out),
+		NewSearchCmd(out),
+		NewServeCmd(out),
+		NewVerifyCmd(out),
 
 		// release commands
-		newDeleteCmd(nil, out),
-		newGetCmd(nil, out),
-		newHistoryCmd(nil, out),
-		newInstallCmd(nil, out),
-		newListCmd(nil, out),
-		newRollbackCmd(nil, out),
-		newStatusCmd(nil, out),
-		newUpgradeCmd(nil, out),
+		NewDeleteCmd(nil, out),
+		NewGetCmd(nil, out),
+		NewHistoryCmd(nil, out),
+		NewInstallCmd(nil, out),
+		NewListCmd(nil, out),
+		NewRollbackCmd(nil, out),
+		NewStatusCmd(nil, out),
+		NewUpgradeCmd(nil, out),
 
-		newReleaseTestCmd(nil, out),
-		newResetCmd(nil, out),
-		newVersionCmd(nil, out),
+		NewReleaseTestCmd(nil, out),
+		NewResetCmd(nil, out),
+		NewVersionCmd(nil, out),
 
-		newCompletionCmd(out),
-		newHomeCmd(out),
-		newInitCmd(out),
-		newPluginCmd(out),
-		newTemplateCmd(out),
+		NewCompletionCmd(out),
+		NewHomeCmd(out),
+		NewInitCmd(out),
+		NewPluginCmd(out),
+		NewTemplateCmd(out),
 
 		// Hidden documentation generator command: 'helm docs'
-		newDocsCmd(out),
+		NewDocsCmd(out),
 
 		// Deprecated
-		markDeprecated(newRepoUpdateCmd(out), "use 'helm repo update'\n"),
+		markDeprecated(NewRepoUpdateCmd(out), "use 'helm repo update'\n"),
 	)
 
 	flags.Parse(args)
@@ -167,7 +168,7 @@ func init() {
 }
 
 func main() {
-	cmd := newRootCmd(os.Args[1:])
+	cmd := NewRootCmd(os.Args[1:])
 	if err := cmd.Execute(); err != nil {
 		switch e := err.(type) {
 		case pluginError:

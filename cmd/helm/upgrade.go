@@ -118,7 +118,8 @@ type upgradeCmd struct {
 	caFile   string
 }
 
-func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
+// NewUpgradeCmd returns cobra.Command to upgrade a release
+func NewUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 
 	upgrade := &upgradeCmd{
 		out:    out,

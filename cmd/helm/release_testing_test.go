@@ -78,6 +78,6 @@ func TestReleaseTesting(t *testing.T) {
 	}
 
 	runReleaseCases(t, tests, func(c *helm.FakeClient, out io.Writer) *cobra.Command {
-		return newReleaseTestCmd(c, out)
+		return NewReleaseTestCmd(c, out)
 	})
 }

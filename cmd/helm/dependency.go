@@ -87,7 +87,8 @@ This will produce an error if the chart cannot be loaded. It will emit a warning
 if it cannot find a requirements.yaml.
 `
 
-func newDependencyCmd(out io.Writer) *cobra.Command {
+// NewDependencyCmd returns cobra.Command to manage chart dependencies
+func NewDependencyCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "dependency update|build|list",
 		Aliases: []string{"dep", "dependencies"},
@@ -95,9 +96,9 @@ func newDependencyCmd(out io.Writer) *cobra.Command {
 		Long:    dependencyDesc,
 	}
 
-	cmd.AddCommand(newDependencyListCmd(out))
-	cmd.AddCommand(newDependencyUpdateCmd(out))
-	cmd.AddCommand(newDependencyBuildCmd(out))
+	cmd.AddCommand(NewDependencyListCmd(out))
+	cmd.AddCommand(NewDependencyUpdateCmd(out))
+	cmd.AddCommand(NewDependencyBuildCmd(out))
 
 	return cmd
 }
@@ -107,7 +108,8 @@ type dependencyListCmd struct {
 	chartpath string
 }
 
-func newDependencyListCmd(out io.Writer) *cobra.Command {
+// NewDependencyListCmd returns cobra.Command to list the dependencies for the given chart
+func NewDependencyListCmd(out io.Writer) *cobra.Command {
 	dlc := &dependencyListCmd{out: out}
 
 	cmd := &cobra.Command{

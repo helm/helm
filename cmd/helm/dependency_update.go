@@ -50,8 +50,8 @@ type dependencyUpdateCmd struct {
 	skipRefresh bool
 }
 
-// newDependencyUpdateCmd creates a new dependency update command.
-func newDependencyUpdateCmd(out io.Writer) *cobra.Command {
+// NewDependencyUpdateCmd returns cobra.Command to update charts/ based on content of requirements.yaml
+func NewDependencyUpdateCmd(out io.Writer) *cobra.Command {
 	duc := &dependencyUpdateCmd{out: out}
 
 	cmd := &cobra.Command{

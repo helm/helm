@@ -35,7 +35,8 @@ type pluginUpdateCmd struct {
 	out   io.Writer
 }
 
-func newPluginUpdateCmd(out io.Writer) *cobra.Command {
+// NewPluginUpdateCmd returns cobra.Command to update one or more Helm plugins
+func NewPluginUpdateCmd(out io.Writer) *cobra.Command {
 	pcmd := &pluginUpdateCmd{out: out}
 	cmd := &cobra.Command{
 		Use:   "update <plugin>...",

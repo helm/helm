@@ -46,7 +46,7 @@ func TestGetNotesCmd(t *testing.T) {
 	}
 
 	runReleaseCases(t, tests, func(c *helm.FakeClient, out io.Writer) *cobra.Command {
-		return newGetNotesCmd(c, out)
+		return NewGetNotesCmd(c, out)
 	})
 
 }

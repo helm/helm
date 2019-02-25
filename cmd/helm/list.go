@@ -96,7 +96,8 @@ type listRelease struct {
 	Namespace  string
 }
 
-func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
+// NewListCmd returns cobra.Command to list releases
+func NewListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	list := &listCmd{
 		out:    out,
 		client: client,

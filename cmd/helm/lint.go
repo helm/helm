@@ -54,7 +54,8 @@ type lintCmd struct {
 	out        io.Writer
 }
 
-func newLintCmd(out io.Writer) *cobra.Command {
+// NewLintCmd returns cobra.Command to examine a chart for possible issues
+func NewLintCmd(out io.Writer) *cobra.Command {
 	l := &lintCmd{
 		paths: []string{"."},
 		out:   out,

@@ -42,6 +42,6 @@ func TestGetManifest(t *testing.T) {
 		},
 	}
 	runReleaseCases(t, tests, func(c *helm.FakeClient, out io.Writer) *cobra.Command {
-		return newGetManifestCmd(c, out)
+		return NewGetManifestCmd(c, out)
 	})
 }

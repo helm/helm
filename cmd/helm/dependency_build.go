@@ -44,7 +44,8 @@ type dependencyBuildCmd struct {
 	helmhome  helmpath.Home
 }
 
-func newDependencyBuildCmd(out io.Writer) *cobra.Command {
+// NewDependencyBuildCmd returns cobra.Command to rebuild the charts/ directory based on requirements.lock file
+func NewDependencyBuildCmd(out io.Writer) *cobra.Command {
 	dbc := &dependencyBuildCmd{out: out}
 
 	cmd := &cobra.Command{

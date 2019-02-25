@@ -74,7 +74,7 @@ func TestVerifyCmd(t *testing.T) {
 
 	for _, tt := range tests {
 		b := bytes.NewBuffer(nil)
-		vc := newVerifyCmd(b)
+		vc := NewVerifyCmd(b)
 		vc.ParseFlags(tt.flags)
 		err := vc.RunE(vc, tt.args)
 		if tt.err {

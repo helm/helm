@@ -57,7 +57,7 @@ func TestRepoAddCmd(t *testing.T) {
 	}
 
 	runReleaseCases(t, tests, func(c *helm.FakeClient, out io.Writer) *cobra.Command {
-		return newRepoAddCmd(out)
+		return NewRepoAddCmd(out)
 	})
 }
 

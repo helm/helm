@@ -33,7 +33,8 @@ type repoListCmd struct {
 	home helmpath.Home
 }
 
-func newRepoListCmd(out io.Writer) *cobra.Command {
+// NewRepoListCmd returns cobra.Command to list chart repositories
+func NewRepoListCmd(out io.Writer) *cobra.Command {
 	list := &repoListCmd{out: out}
 
 	cmd := &cobra.Command{

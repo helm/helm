@@ -42,7 +42,8 @@ type verifyCmd struct {
 	out io.Writer
 }
 
-func newVerifyCmd(out io.Writer) *cobra.Command {
+// NewVerifyCmd returns cobra.Command to verify that a chart at the given path has been signed and is valid
+func NewVerifyCmd(out io.Writer) *cobra.Command {
 	vc := &verifyCmd{out: out}
 
 	cmd := &cobra.Command{

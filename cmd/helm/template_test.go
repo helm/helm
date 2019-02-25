@@ -188,7 +188,7 @@ func TestTemplateCmd(t *testing.T) {
 			os.Stdout = w
 			// execute template command
 			out := bytes.NewBuffer(nil)
-			cmd := newTemplateCmd(out)
+			cmd := NewTemplateCmd(out)
 			cmd.SetArgs(tt.args)
 			err := cmd.Execute()
 

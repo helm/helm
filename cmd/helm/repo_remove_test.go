@@ -82,7 +82,7 @@ func TestRepoRemove(t *testing.T) {
 }
 
 func TestRepoRemove_NoArguments(t *testing.T) {
-	cmd := newRepoRemoveCmd(ioutil.Discard)
+	cmd := NewRepoRemoveCmd(ioutil.Discard)
 	if err := cmd.RunE(cmd, []string{}); err == nil {
 		t.Errorf("Expected an error since no repo names were provided")
 	}
@@ -119,7 +119,7 @@ func TestRepoRemove_MultipleRepos(t *testing.T) {
 
 	b := bytes.NewBuffer(nil)
 
-	cmd := newRepoRemoveCmd(b)
+	cmd := NewRepoRemoveCmd(b)
 	if err := cmd.RunE(cmd, []string{repoFoo, repoBar}); err != nil {
 		t.Error(err)
 	}

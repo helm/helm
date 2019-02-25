@@ -63,7 +63,8 @@ type createCmd struct {
 	starter string
 }
 
-func newCreateCmd(out io.Writer) *cobra.Command {
+// NewCreateCmd returns cobra.Command to create a new chart with the given name
+func NewCreateCmd(out io.Writer) *cobra.Command {
 	cc := &createCmd{out: out}
 
 	cmd := &cobra.Command{

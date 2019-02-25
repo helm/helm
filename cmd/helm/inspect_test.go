@@ -129,7 +129,7 @@ func TestInspectPreReleaseChart(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.flags = append(tt.flags, "--repo", srv.URL())
-			cmd := newInspectCmd(ioutil.Discard)
+			cmd := NewInspectCmd(ioutil.Discard)
 			cmd.SetArgs(tt.args)
 			cmd.ParseFlags(tt.flags)
 			if err := cmd.RunE(cmd, tt.args); err != nil {

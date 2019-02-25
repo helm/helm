@@ -164,7 +164,7 @@ func TestPackage(t *testing.T) {
 
 	for _, tt := range tests {
 		buf := bytes.NewBuffer(nil)
-		c := newPackageCmd(buf)
+		c := NewPackageCmd(buf)
 
 		// This is an unfortunate byproduct of the tmpdir
 		if v, ok := tt.flags["keyring"]; ok && len(v) > 0 {
@@ -228,7 +228,7 @@ func TestSetAppVersion(t *testing.T) {
 
 	settings.Home = helmpath.Home(thome)
 
-	c := newPackageCmd(&bytes.Buffer{})
+	c := NewPackageCmd(&bytes.Buffer{})
 	flags := map[string]string{
 		"destination": tmp,
 		"app-version": expectedAppVersion,

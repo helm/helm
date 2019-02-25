@@ -49,7 +49,8 @@ type rollbackCmd struct {
 	description  string
 }
 
-func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
+// NewRollbackCmd returns cobra.Command to roll back a release to a previous revision
+func NewRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	rollback := &rollbackCmd{
 		out:    out,
 		client: c,

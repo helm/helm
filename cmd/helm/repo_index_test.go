@@ -45,7 +45,7 @@ func TestRepoIndexCmd(t *testing.T) {
 	}
 
 	buf := bytes.NewBuffer(nil)
-	c := newRepoIndexCmd(buf)
+	c := NewRepoIndexCmd(buf)
 
 	if err := c.RunE(c, []string{dir}); err != nil {
 		t.Error(err)

@@ -66,7 +66,8 @@ type historyCmd struct {
 	outputFormat string
 }
 
-func newHistoryCmd(c helm.Interface, w io.Writer) *cobra.Command {
+// NewHistoryCmd returns cobra.Command to fetch release history
+func NewHistoryCmd(c helm.Interface, w io.Writer) *cobra.Command {
 	his := &historyCmd{out: w, helmc: c}
 
 	cmd := &cobra.Command{

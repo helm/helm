@@ -121,7 +121,7 @@ func TestUpdateCmdStrictFlag(t *testing.T) {
 	settings.Home = thome
 
 	out := bytes.NewBuffer(nil)
-	cmd := newRepoUpdateCmd(out)
+	cmd := NewRepoUpdateCmd(out)
 	cmd.ParseFlags([]string{"--strict"})
 
 	if err := cmd.RunE(cmd, []string{}); err == nil {

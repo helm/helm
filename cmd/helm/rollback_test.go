@@ -59,7 +59,7 @@ func TestRollbackCmd(t *testing.T) {
 	}
 
 	cmd := func(c *helm.FakeClient, out io.Writer) *cobra.Command {
-		return newRollbackCmd(c, out)
+		return NewRollbackCmd(c, out)
 	}
 
 	runReleaseCases(t, tests, cmd)

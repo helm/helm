@@ -30,17 +30,18 @@ const pluginHelp = `
 Manage client-side Helm plugins.
 `
 
-func newPluginCmd(out io.Writer) *cobra.Command {
+// NewPluginCmd returns cobra.Command to add, list, or remove Helm plugins
+func NewPluginCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "plugin",
 		Short: "add, list, or remove Helm plugins",
 		Long:  pluginHelp,
 	}
 	cmd.AddCommand(
-		newPluginInstallCmd(out),
-		newPluginListCmd(out),
-		newPluginRemoveCmd(out),
-		newPluginUpdateCmd(out),
+		NewPluginInstallCmd(out),
+		NewPluginListCmd(out),
+		NewPluginRemoveCmd(out),
+		NewPluginUpdateCmd(out),
 	)
 	return cmd
 }

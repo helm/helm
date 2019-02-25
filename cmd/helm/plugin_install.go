@@ -40,7 +40,8 @@ Example usage:
     $ helm plugin install https://github.com/technosophos/helm-template
 `
 
-func newPluginInstallCmd(out io.Writer) *cobra.Command {
+// NewPluginInstallCmd returns cobra.Command to install one or more Helm plugins
+func NewPluginInstallCmd(out io.Writer) *cobra.Command {
 	pcmd := &pluginInstallCmd{out: out}
 	cmd := &cobra.Command{
 		Use:   "install [options] <path|url>...",

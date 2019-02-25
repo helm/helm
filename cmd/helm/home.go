@@ -28,7 +28,8 @@ This command displays the location of HELM_HOME. This is where
 any helm configuration files live.
 `
 
-func newHomeCmd(out io.Writer) *cobra.Command {
+// NewHomeCmd returns cobra.Command to display the location of HELM_HOME
+func NewHomeCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "home",
 		Short: "displays the location of HELM_HOME",

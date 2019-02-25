@@ -92,6 +92,6 @@ func TestSearchCmd(t *testing.T) {
 	settings.Home = "testdata/helmhome"
 
 	runReleaseCases(t, tests, func(c *helm.FakeClient, out io.Writer) *cobra.Command {
-		return newSearchCmd(out)
+		return NewSearchCmd(out)
 	})
 }

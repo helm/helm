@@ -211,7 +211,7 @@ func TestRootCmd(t *testing.T) {
 				os.Setenv(k, v)
 			}
 
-			cmd := newRootCmd(tt.args)
+			cmd := NewRootCmd(tt.args)
 			cmd.SetOutput(ioutil.Discard)
 			cmd.SetArgs(tt.args)
 			cmd.Run = func(*cobra.Command, []string) {}
@@ -525,7 +525,7 @@ func TestTLSFlags(t *testing.T) {
 				defer os.Unsetenv(k)
 			}
 
-			cmd := newRootCmd(tt.args)
+			cmd := NewRootCmd(tt.args)
 			cmd.SetOutput(ioutil.Discard)
 			cmd.SetArgs(tt.args)
 			cmd.Run = func(*cobra.Command, []string) {}

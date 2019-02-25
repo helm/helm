@@ -47,7 +47,8 @@ type getCmd struct {
 	version int32
 }
 
-func newGetCmd(client helm.Interface, out io.Writer) *cobra.Command {
+// NewGetCmd returns cobra.Command to download a names release
+func NewGetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	get := &getCmd{
 		out:    out,
 		client: client,
@@ -74,10 +75,10 @@ func newGetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	settings.AddFlagsTLS(f)
 	f.Int32Var(&get.version, "revision", 0, "get the named release with revision")
 
-	cmd.AddCommand(newGetValuesCmd(nil, out))
-	cmd.AddCommand(newGetManifestCmd(nil, out))
-	cmd.AddCommand(newGetHooksCmd(nil, out))
-	cmd.AddCommand(newGetNotesCmd(nil, out))
+	cmd.AddCommand(NewGetValuesCmd(nil, out))
+	cmd.AddCommand(NewGetManifestCmd(nil, out))
+	cmd.AddCommand(NewGetHooksCmd(nil, out))
+	cmd.AddCommand(NewGetNotesCmd(nil, out))
 
 	// set defaults from environment
 	settings.InitTLS(f)

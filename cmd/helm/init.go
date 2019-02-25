@@ -99,7 +99,8 @@ type initCmd struct {
 	wait           bool
 }
 
-func newInitCmd(out io.Writer) *cobra.Command {
+// NewInitCmd returns cobra.Command to initialize Helm on both client and server
+func NewInitCmd(out io.Writer) *cobra.Command {
 	i := &initCmd{out: out}
 
 	cmd := &cobra.Command{

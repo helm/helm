@@ -33,7 +33,8 @@ type repoRemoveCmd struct {
 	home helmpath.Home
 }
 
-func newRepoRemoveCmd(out io.Writer) *cobra.Command {
+// NewRepoRemoveCmd returns cobra.Command to remove a chart repository
+func NewRepoRemoveCmd(out io.Writer) *cobra.Command {
 	remove := &repoRemoveCmd{out: out}
 
 	cmd := &cobra.Command{

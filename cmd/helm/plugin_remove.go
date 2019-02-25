@@ -34,7 +34,8 @@ type pluginRemoveCmd struct {
 	out   io.Writer
 }
 
-func newPluginRemoveCmd(out io.Writer) *cobra.Command {
+// NewPluginRemoveCmd returns cobra.Command to remove one or more Helm plugins
+func NewPluginRemoveCmd(out io.Writer) *cobra.Command {
 	pcmd := &pluginRemoveCmd{out: out}
 	cmd := &cobra.Command{
 		Use:   "remove <plugin>...",

@@ -42,7 +42,8 @@ type releaseTestCmd struct {
 	parallel bool
 }
 
-func newReleaseTestCmd(c helm.Interface, out io.Writer) *cobra.Command {
+// NewReleaseTestCmd returns cobra.Command to test a release
+func NewReleaseTestCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	rlsTest := &releaseTestCmd{
 		out:    out,
 		client: c,

@@ -226,6 +226,6 @@ Releases: []
 	}
 
 	runReleaseCases(t, tests, func(c *helm.FakeClient, out io.Writer) *cobra.Command {
-		return newListCmd(c, out)
+		return NewListCmd(c, out)
 	})
 }

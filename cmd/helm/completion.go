@@ -42,7 +42,8 @@ var (
 	}
 )
 
-func newCompletionCmd(out io.Writer) *cobra.Command {
+// NewCompletionCmd returns cobra.Command to generate autocompletion scripts for bash or zsh
+func NewCompletionCmd(out io.Writer) *cobra.Command {
 	shells := []string{}
 	for s := range completionShells {
 		shells = append(shells, s)

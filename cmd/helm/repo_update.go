@@ -46,7 +46,8 @@ type repoUpdateCmd struct {
 	strict bool
 }
 
-func newRepoUpdateCmd(out io.Writer) *cobra.Command {
+// NewRepoUpdateCmd returns cobra.Command to update information about available charts locally from chart repositories
+func NewRepoUpdateCmd(out io.Writer) *cobra.Command {
 	u := &repoUpdateCmd{
 		out:    out,
 		update: updateCharts,

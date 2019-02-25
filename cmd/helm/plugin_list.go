@@ -30,7 +30,8 @@ type pluginListCmd struct {
 	out  io.Writer
 }
 
-func newPluginListCmd(out io.Writer) *cobra.Command {
+// NewPluginListCmd returns cobra.Command to list installed Helm plugins
+func NewPluginListCmd(out io.Writer) *cobra.Command {
 	pcmd := &pluginListCmd{out: out}
 	cmd := &cobra.Command{
 		Use:   "list",

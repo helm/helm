@@ -162,7 +162,8 @@ func (v *valueFiles) Set(value string) error {
 	return nil
 }
 
-func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
+// NewInstallCmd returns cobra.Command to install a chart archive
+func NewInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	inst := &installCmd{
 		out:    out,
 		client: c,

@@ -49,7 +49,8 @@ type serveCmd struct {
 	repoPath string
 }
 
-func newServeCmd(out io.Writer) *cobra.Command {
+// NewServeCmd returns cobra.Command to start a local http web server
+func NewServeCmd(out io.Writer) *cobra.Command {
 	srv := &serveCmd{out: out}
 	cmd := &cobra.Command{
 		Use:   "serve",

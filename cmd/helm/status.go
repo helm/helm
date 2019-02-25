@@ -53,7 +53,8 @@ type statusCmd struct {
 	outfmt  string
 }
 
-func newStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
+// NewStatusCmd returns cobra.Command to displays the status of the named release
+func NewStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	status := &statusCmd{
 		out:    out,
 		client: client,

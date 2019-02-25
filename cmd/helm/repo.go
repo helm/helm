@@ -30,18 +30,19 @@ Example usage:
     $ helm repo add [NAME] [REPO_URL]
 `
 
-func newRepoCmd(out io.Writer) *cobra.Command {
+// NewRepoCmd returns cobra.Command to manage chart repositories
+func NewRepoCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "repo [FLAGS] add|remove|list|index|update [ARGS]",
 		Short: "add, list, remove, update, and index chart repositories",
 		Long:  repoHelm,
 	}
 
-	cmd.AddCommand(newRepoAddCmd(out))
-	cmd.AddCommand(newRepoListCmd(out))
-	cmd.AddCommand(newRepoRemoveCmd(out))
-	cmd.AddCommand(newRepoIndexCmd(out))
-	cmd.AddCommand(newRepoUpdateCmd(out))
+	cmd.AddCommand(NewRepoAddCmd(out))
+	cmd.AddCommand(NewRepoListCmd(out))
+	cmd.AddCommand(NewRepoRemoveCmd(out))
+	cmd.AddCommand(NewRepoIndexCmd(out))
+	cmd.AddCommand(NewRepoUpdateCmd(out))
 
 	return cmd
 }

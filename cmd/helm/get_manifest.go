@@ -40,7 +40,8 @@ type getManifestCmd struct {
 	version int32
 }
 
-func newGetManifestCmd(client helm.Interface, out io.Writer) *cobra.Command {
+// NewGetManifestCmd returns cobra.Command to download the manifest for a named release
+func NewGetManifestCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	get := &getManifestCmd{
 		out:    out,
 		client: client,

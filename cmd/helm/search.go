@@ -50,7 +50,8 @@ type searchCmd struct {
 	colWidth uint
 }
 
-func newSearchCmd(out io.Writer) *cobra.Command {
+// NewSearchCmd returns cobra.Command to search for a keyword in charts
+func NewSearchCmd(out io.Writer) *cobra.Command {
 	sc := &searchCmd{out: out}
 
 	cmd := &cobra.Command{

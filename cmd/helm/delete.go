@@ -46,7 +46,8 @@ type deleteCmd struct {
 	client helm.Interface
 }
 
-func newDeleteCmd(c helm.Interface, out io.Writer) *cobra.Command {
+// NewDeleteCmd returns cobra.Command to delete a release from Kubernetes
+func NewDeleteCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	del := &deleteCmd{
 		out:    out,
 		client: c,

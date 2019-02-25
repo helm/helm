@@ -128,7 +128,7 @@ func TestStatusCmd(t *testing.T) {
 	}
 
 	runReleaseCases(t, tests, func(c *helm.FakeClient, out io.Writer) *cobra.Command {
-		return newStatusCmd(c, out)
+		return NewStatusCmd(c, out)
 	})
 
 }

@@ -53,6 +53,6 @@ func TestDependencyListCmd(t *testing.T) {
 	}
 
 	runReleaseCases(t, tests, func(c *helm.FakeClient, out io.Writer) *cobra.Command {
-		return newDependencyListCmd(out)
+		return NewDependencyListCmd(out)
 	})
 }

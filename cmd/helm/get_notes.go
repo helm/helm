@@ -36,7 +36,8 @@ type getNotesCmd struct {
 	version int32
 }
 
-func newGetNotesCmd(client helm.Interface, out io.Writer) *cobra.Command {
+// NewGetNotesCmd returns cobra.Command to displays the notes of the named release
+func NewGetNotesCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	get := &getNotesCmd{
 		out:    out,
 		client: client,

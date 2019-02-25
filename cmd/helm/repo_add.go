@@ -44,7 +44,8 @@ type repoAddCmd struct {
 	out io.Writer
 }
 
-func newRepoAddCmd(out io.Writer) *cobra.Command {
+// NewRepoAddCmd returns cobra.Command to add a chart repository
+func NewRepoAddCmd(out io.Writer) *cobra.Command {
 	add := &repoAddCmd{out: out}
 
 	cmd := &cobra.Command{
