@@ -45,8 +45,8 @@ Common actions from this point include:
 
 Environment:
   $HELM_HOME          set an alternative location for Helm files. By default, these are stored in
-                      "$XDG_CONFIG_HOME/helm" (typically "$HOME/.config/helm") on Linux,
-                      "%APPDATA%\helm" on Windows and "$HOME/Library/Preferences" on OSX.
+                      "$XDG_CONFIG_DIR/helm" ("$HOME/.config/helm" on Linux,
+                      "%APPDATA%\helm" on Windows and "$HOME/Library/Preferences" on OSX).
                       NOTE: if there is old-style "$HOME/.helm" directory, it will be used.
   $HELM_DRIVER        set the backend storage driver. Values are: configmap, secret, memory
   $HELM_NO_PLUGINS    disable plugins. Set HELM_NO_PLUGINS=1 to disable plugins.
