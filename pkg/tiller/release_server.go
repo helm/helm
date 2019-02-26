@@ -115,7 +115,7 @@ func NewReleaseServer(env *environment.Environment, clientset kubernetes.Interfa
 // request values are not altered.
 func (s *ReleaseServer) reuseValues(req *services.UpdateReleaseRequest, current *release.Release) error {
 	if req.ResetValues {
-		// If ResetValues is set, we comletely ignore current.Config.
+		// If ResetValues is set, we completely ignore current.Config.
 		s.Log("resetting values to the chart's original version")
 		return nil
 	}
@@ -191,7 +191,7 @@ func (s *ReleaseServer) uniqName(start string, reuse bool) (string, error) {
 		rel := h[0]
 
 		if st := rel.Info.Status.Code; reuse && (st == release.Status_DELETED || st == release.Status_FAILED) {
-			// Allowe re-use of names if the previous release is marked deleted.
+			// Allow re-use of names if the previous release is marked deleted.
 			s.Log("name %s exists but is not in use, reusing name", start)
 			return start, nil
 		} else if reuse {
