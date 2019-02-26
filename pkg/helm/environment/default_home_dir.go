@@ -32,11 +32,13 @@ var defaultHelmHome = xdg.App{Name: "helm"}.ConfigPath("")
 // Old default helm home, it's old good $HELM/.helm
 var oldDefaultHelmHome = filepath.Join(homedir.HomeDir(), ".helm")
 
+// DefaultConfigHomePath is an interface with functionality for checking existence of default dirs
 type DefaultConfigHomePath interface {
 	xdgHomeExists() bool
 	basicHomeExists() bool
 }
 
+// FSConfigHomePath is an implementation of DefaultConfigHomePath
 type FSConfigHomePath struct{ DefaultConfigHomePath }
 
 // Checks whether $XDG_CONFIG_HOME/helm exists
@@ -49,14 +51,16 @@ func (FSConfigHomePath) basicHomeExists() bool {
 	return DirExists(oldDefaultHelmHome)
 }
 
+// ConfigPath is used to check the existsence of the default dirs
 var ConfigPath DefaultConfigHomePath = FSConfigHomePath{}
 
+// DirExists is a utility function for checking for directory existence
 func DirExists(path string) bool {
 	osStat, err := os.Stat(path)
 	return err == nil && osStat.IsDir()
 }
 
-// Get configuration home dir.
+// GetDefaultConfigHome determines the configuration home dir.
 func GetDefaultConfigHome() string {
 	if ConfigPath.xdgHomeExists() || !ConfigPath.basicHomeExists() {
 		return defaultHelmHome
