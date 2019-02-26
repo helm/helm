@@ -203,6 +203,73 @@ func ReadSchematizedValues(data, schemaData []byte) (Values, error) {
 	return values, nil
 }
 
+// GenerateSchema will create a JSON Schema (in YAML format) for the given values
+func GenerateSchema(values Values) Schema {
+	schema := Schema{
+		"type":  "object",
+		"title": "Values",
+	}
+	if len(values) > 0 {
+		schema["properties"] = parsePropertiesFromValues(values)
+	}
+	return schema
+}
+
+func parsePropertiesFromValues(values Values) map[string]map[string]interface{} {
+	properties := make(map[string]map[string]interface{})
+	for k, v := range values {
+		// If the value is null, then there's no way to determine the properties attributes
+		if v == nil || v == "" {
+			continue
+		}
+
+		properties[k] = make(map[string]interface{})
+		// the following types are the only types possible from unmarshalling
+		switch v.(type) {
+		case bool:
+			properties[k]["type"] = "bool"
+		case float64:
+			properties[k]["type"] = "number"
+		case string:
+			properties[k]["type"] = "string"
+		case []interface{}:
+			properties[k]["type"] = "array"
+			properties[k]["items"] = parseItemsFromValues(v.([]interface{}))
+		case map[string]interface{}:
+			properties[k]["type"] = "object"
+			object := parsePropertiesFromValues(v.(map[string]interface{}))
+			if len(object) > 0 {
+				properties[k]["object"] = object
+			}
+		}
+	}
+	return properties
+}
+
+func parseItemsFromValues(items []interface{}) map[string]interface{} {
+	properties := make(map[string]interface{})
+	v := items[0]
+	// the following types are the only types possible from unmarshalling
+	switch v.(type) {
+	case bool:
+		properties["type"] = "bool"
+	case float64:
+		properties["type"] = "number"
+	case string:
+		properties["type"] = "string"
+	case []interface{}:
+		properties["type"] = "array"
+		properties["items"] = parseItemsFromValues(v.([]interface{}))
+	case map[string]interface{}:
+		properties["type"] = "object"
+		object := parsePropertiesFromValues(v.(map[string]interface{}))
+		if len(object) > 0 {
+			properties["object"] = object
+		}
+	}
+	return properties
+}
+
 // CoalesceValues coalesces all of the values in a chart (and its subcharts).
 //
 // Values are coalesced together using the following rules:
