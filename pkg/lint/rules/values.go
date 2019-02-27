@@ -19,6 +19,7 @@ package rules
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -48,6 +49,18 @@ func validateValuesFileExistence(valuesPath string) error {
 }
 
 func validateValuesFile(valuesPath string) error {
-	_, err := chartutil.ReadValuesFile(valuesPath)
-	return errors.Wrap(err, "unable to parse YAML")
+	values, err := chartutil.ReadValuesFile(valuesPath)
+	if err != nil {
+		return errors.Wrap(err, "unable to parse YAML")
+	}
+
+	schemaPath := strings.Replace(valuesPath, ".yaml", ".schema.yaml", 1)
+	schema, err := chartutil.ReadSchemaFile(schemaPath)
+	if len(schema) == 0 {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	return chartutil.ValidateAgainstSchema(values, schema)
 }

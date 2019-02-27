@@ -29,6 +29,8 @@ var (
 	invalidArchivedChartPath     = "../../cmd/helm/testdata/testcharts/invalidcompressedchart0.1.0.tgz"
 	chartDirPath                 = "../../cmd/helm/testdata/testcharts/decompressedchart/"
 	chartMissingManifest         = "../../cmd/helm/testdata/testcharts/chart-missing-manifest"
+	chartSchema                  = "../../cmd/helm/testdata/testcharts/chart-with-schema"
+	chartSchemaNegative          = "../../cmd/helm/testdata/testcharts/chart-with-schema-negative"
 )
 
 func TestLintChart(t *testing.T) {
@@ -46,5 +48,11 @@ func TestLintChart(t *testing.T) {
 	}
 	if _, err := lintChart(chartMissingManifest, values, namespace, strict); err == nil {
 		t.Error("Expected a chart parsing error")
+	}
+	if _, err := lintChart(chartSchema, values, namespace, strict); err != nil {
+		t.Error(err)
+	}
+	if _, err := lintChart(chartSchemaNegative, values, namespace, strict); err != nil {
+		t.Error(err)
 	}
 }
