@@ -137,6 +137,7 @@ metadata:
     app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
     helm.sh/chart: {{ include "<CHARTNAME>.chart" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
   {{- with .Values.ingress.annotations }}
   annotations:
@@ -176,6 +177,7 @@ metadata:
     app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
     helm.sh/chart: {{ include "<CHARTNAME>.chart" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
 spec:
   replicas: {{ .Values.replicaCount }}
@@ -229,6 +231,7 @@ metadata:
     app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
     helm.sh/chart: {{ include "<CHARTNAME>.chart" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
 spec:
   type: {{ .Values.service.type }}
@@ -307,6 +310,7 @@ metadata:
     app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
     helm.sh/chart: {{ include "<CHARTNAME>.chart" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
   annotations:
     "helm.sh/hook": test-success
