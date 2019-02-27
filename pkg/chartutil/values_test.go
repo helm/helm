@@ -169,23 +169,40 @@ func TestReadSchemaFile(t *testing.T) {
 	matchSchema(t, data)
 }
 
-func TestReadSchematizedValues(t *testing.T) {
-	_, err := ReadValuesFile("./testdata/test-values.yaml")
+func TestValidateAgainstSchema(t *testing.T) {
+	values, err := ReadValuesFile("./testdata/test-values.yaml")
 	if err != nil {
-		t.Errorf("Got the following unexpected error while reading schematized values:\n%v", err)
+		t.Fatalf("Error reading YAML file: %s", err)
+	}
+	schema, err := ReadSchemaFile("./testdata/test-values.schema.yaml")
+	if err != nil {
+		t.Fatalf("Error reading YAML file: %s", err)
+	}
+
+	if err := ValidateAgainstSchema(values, schema); err != nil {
+		t.Errorf("Error validating Values against Schema: %s", err)
 	}
 }
 
-func TestReadSchematizedValuesNegative(t *testing.T) {
-	_, err := ReadValuesFile("./testdata/test-values-negative.yaml")
-
-	if err == nil {
-		t.Errorf("Expected an error, but got none")
+func TestValidateAgainstSchemaNegative(t *testing.T) {
+	values, err := ReadValuesFile("./testdata/test-values-negative.yaml")
+	if err != nil {
+		t.Fatalf("Error reading YAML file: %s", err)
+	}
+	schema, err := ReadSchemaFile("./testdata/test-values.schema.yaml")
+	if err != nil {
+		t.Fatalf("Error reading YAML file: %s", err)
 	}
 
-	errString := err.Error()
-	if !strings.Contains(errString, "The values.yaml is not valid. see errors :") {
-		t.Errorf("Error string does not contain expected string: \"The values.yaml is not valid. see errors :\"")
+	var errString string
+	if err := ValidateAgainstSchema(values, schema); err == nil {
+		t.Errorf("Expected an error, but got nil")
+	} else {
+		errString = err.Error()
+	}
+
+	if !strings.Contains(errString, ".Values does not meet the specification of values.schema.yaml . see errors :") {
+		t.Errorf("Error string does not contain expected string: \".Values does not meet the specification of values.schema.yaml . see errors :\"")
 	}
 	if !strings.Contains(errString, "- (root): employmentInfo is required") {
 		t.Errorf("Error string does not contain expected string: \"- (root): employmentInfo is required\"")

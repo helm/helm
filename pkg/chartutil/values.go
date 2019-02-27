@@ -22,7 +22,6 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"os"
 	"strings"
 
 	"github.com/ghodss/yaml"
@@ -145,18 +144,6 @@ func ReadValuesFile(filename string) (Values, error) {
 	if err != nil {
 		return map[string]interface{}{}, err
 	}
-
-	schemaPath := strings.Replace(filename, ".yaml", ".schema.yaml", 1)
-	_, err = os.Stat(schemaPath)
-	if err == nil {
-		schemaData, err := ioutil.ReadFile(schemaPath)
-		if err != nil {
-			return map[string]interface{}{}, err
-		}
-
-		return ReadSchematizedValues(data, schemaData)
-	}
-
 	return ReadValues(data)
 }
 
@@ -169,38 +156,28 @@ func ReadSchemaFile(filename string) (Schema, error) {
 	return ReadSchema(data)
 }
 
-// ReadSchematizedValues parses a YAML file and asserts that it matches the schema
-func ReadSchematizedValues(data, schemaData []byte) (Values, error) {
-	values, err := ReadValues(data)
-	if err != nil {
-		return Values{}, err
-	}
+// ValidateAgainstSchema checks that values does not violate the structure laid out in schema
+func ValidateAgainstSchema(values Values, schema Schema) error {
 	valuesJSON := convertToJSON(values)
-
-	schema, err := ReadSchema(schemaData)
-	if err != nil {
-		return Values{}, err
-	}
 	schemaJSON := convertToJSON(schema)
-
 	schemaLoader := gojsonschema.NewStringLoader(string(schemaJSON))
 	valuesLoader := gojsonschema.NewStringLoader(string(valuesJSON))
 
 	result, err := gojsonschema.Validate(schemaLoader, valuesLoader)
 	if err != nil {
-		return Values{}, err
+		return err
 	}
 
 	if !result.Valid() {
 		var sb strings.Builder
-		sb.WriteString("The values.yaml is not valid. see errors :\n")
+		sb.WriteString(".Values does not meet the specification of values.schema.yaml . see errors :\n")
 		for _, desc := range result.Errors() {
 			sb.WriteString(fmt.Sprintf("- %s\n", desc))
 		}
-		return Values{}, errors.New(sb.String())
+		return errors.New(sb.String())
 	}
 
-	return values, nil
+	return nil
 }
 
 // GenerateSchema will create a JSON Schema (in YAML format) for the given values
@@ -466,6 +443,12 @@ func ToRenderValues(chrt *chart.Chart, chrtVals map[string]interface{}, options 
 	vals, err := CoalesceValues(chrt, chrtVals)
 	if err != nil {
 		return top, err
+	}
+
+	if chrt.Schema != nil {
+		if err := ValidateAgainstSchema(vals, chrt.Schema); err != nil {
+			return top, err
+		}
 	}
 
 	top["Values"] = vals
