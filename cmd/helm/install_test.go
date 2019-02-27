@@ -136,6 +136,33 @@ func TestInstall(t *testing.T) {
 			wantError: true,
 			golden:    "output/install-chart-bad-type.txt",
 		},
+		// Install, values from yaml, schematized
+		{
+			name:   "install with schema file",
+			cmd:    "install schema testdata/testcharts/chart-with-schema",
+			golden: "output/schema.txt",
+		},
+		// Install, values from yaml, schematized with errors
+		{
+			name:      "install with schema file, with errors",
+			cmd:       "install schema testdata/testcharts/chart-with-schema-negative",
+			wantError: true,
+			golden:    "output/schema-negative.txt",
+		},
+		// Install, values from yaml, extra values from yaml, schematized with errors
+		{
+			name:      "install with schema file, extra values from yaml, with errors",
+			cmd:       "install schema testdata/testcharts/chart-with-schema -f testdata/testcharts/chart-with-schema/extra-values.yaml",
+			wantError: true,
+			golden:    "output/schema-negative.txt",
+		},
+		// Install, values from yaml, extra values from cli, schematized with errors
+		{
+			name:      "install with schema file, extra values from cli, with errors",
+			cmd:       "install schema testdata/testcharts/chart-with-schema --set age=-5",
+			wantError: true,
+			golden:    "output/schema-negative-cli.txt",
+		},
 	}
 
 	runTestActionCmd(t, tests)
