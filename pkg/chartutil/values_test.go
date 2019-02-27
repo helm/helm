@@ -546,103 +546,35 @@ required:
 }
 
 func matchSchema(t *testing.T, data Schema) {
-	if data["title"] != "Values" {
-		t.Errorf("Expected .title to be 'Values', got '%s'", data["title"])
-	}
-
-	if data["type"] != "object" {
-		t.Errorf("Expected .type to be 'object', got '%s'", data["type"])
-	}
-
 	if o, err := ttpl("{{len .required}}", data); err != nil {
 		t.Errorf("len required: %s", err)
 	} else if o != "4" {
 		t.Errorf("Expected length of .required to be 4, got %s", o)
 	}
 
-	property := ".required"
-	expected := "[firstname lastname addresses employmentInfo]"
-	assertEqualProperty(t, property, expected, data)
-
-	property = ".properties.firstname.description"
-	expected = "First name"
-	assertEqualProperty(t, property, expected, data)
-
-	property = ".properties.firstname.type"
-	expected = "string"
-	assertEqualProperty(t, property, expected, data)
-
-	property = ".properties.lastname.type"
-	expected = "string"
-	assertEqualProperty(t, property, expected, data)
-
-	property = ".properties.likesCoffee.type"
-	expected = "boolean"
-	assertEqualProperty(t, property, expected, data)
-
-	property = ".properties.age.description"
-	expected = "Age"
-	assertEqualProperty(t, property, expected, data)
-
-	property = ".properties.age.type"
-	expected = "integer"
-	assertEqualProperty(t, property, expected, data)
-
-	property = ".properties.age.minimum"
-	expected = "0"
-	assertEqualProperty(t, property, expected, data)
-
-	property = ".properties.employmentInfo.type"
-	expected = "object"
-	assertEqualProperty(t, property, expected, data)
-
-	property = ".properties.employmentInfo.required"
-	expected = "[salary]"
-	assertEqualProperty(t, property, expected, data)
-
-	property = ".properties.employmentInfo.properties.salary.type"
-	expected = "number"
-	assertEqualProperty(t, property, expected, data)
-
-	property = ".properties.employmentInfo.properties.salary.minimum"
-	expected = "0"
-	assertEqualProperty(t, property, expected, data)
-
-	property = ".properties.employmentInfo.properties.title.type"
-	expected = "string"
-	assertEqualProperty(t, property, expected, data)
-
-	property = ".properties.addresses.description"
-	expected = "List of addresses"
-	assertEqualProperty(t, property, expected, data)
-
-	property = ".properties.addresses.type"
-	expected = "array"
-	assertEqualProperty(t, property, expected, data)
-
-	property = ".properties.addresses.items.type"
-	expected = "object"
-	assertEqualProperty(t, property, expected, data)
-
-	property = ".properties.addresses.items.properties.city.type"
-	expected = "string"
-	assertEqualProperty(t, property, expected, data)
-
-	property = ".properties.addresses.items.properties.street.type"
-	expected = "string"
-	assertEqualProperty(t, property, expected, data)
-
-	property = ".properties.addresses.items.properties.number.type"
-	expected = "number"
-	assertEqualProperty(t, property, expected, data)
-
-	property = ".properties.phoneNumbers.type"
-	expected = "array"
-	assertEqualProperty(t, property, expected, data)
-
-	property = ".properties.phoneNumbers.items.type"
-	expected = "string"
-	assertEqualProperty(t, property, expected, data)
+	assertEqualProperty(t, ".title", "Values", data)
+	assertEqualProperty(t, ".type", "object", data)
+	assertEqualProperty(t, ".properties.firstname.description", "First name", data)
+	assertEqualProperty(t, ".properties.firstname.type", "string", data)
+	assertEqualProperty(t, ".properties.lastname.type", "string", data)
+	assertEqualProperty(t, ".properties.likesCoffee.type", "boolean", data)
+	assertEqualProperty(t, ".properties.age.description", "Age", data)
+	assertEqualProperty(t, ".properties.age.type", "integer", data)
+	assertEqualProperty(t, ".properties.age.minimum", "0", data)
+	assertEqualProperty(t, ".properties.employmentInfo.type", "object", data)
+	assertEqualProperty(t, ".properties.employmentInfo.properties.salary.type", "number", data)
+	assertEqualProperty(t, ".properties.employmentInfo.properties.salary.minimum", "0", data)
+	assertEqualProperty(t, ".properties.employmentInfo.properties.title.type", "string", data)
+	assertEqualProperty(t, ".properties.employmentInfo.required", "[salary]", data)
+	assertEqualProperty(t, ".properties.addresses.description", "List of addresses", data)
+	assertEqualProperty(t, ".properties.addresses.type", "array", data)
+	assertEqualProperty(t, ".properties.addresses.items.type", "object", data)
+	assertEqualProperty(t, ".properties.addresses.items.properties.city.type", "string", data)
+	assertEqualProperty(t, ".properties.addresses.items.properties.street.type", "string", data)
+	assertEqualProperty(t, ".properties.addresses.items.properties.number.type", "number", data)
+	assertEqualProperty(t, ".properties.phoneNumbers.type", "array", data)
+	assertEqualProperty(t, ".properties.phoneNumbers.items.type", "string", data)
+	assertEqualProperty(t, ".required", "[firstname lastname addresses employmentInfo]", data)
 }
 
 func TestGenerateSchema(t *testing.T) {
