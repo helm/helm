@@ -353,10 +353,13 @@ in JSON format.
 
 ### Storage backends
 By default, `tiller` stores release information in `ConfigMaps` in the namespace
-where it is running. As of Helm 2.7.0, there is now a beta storage backend that
+where it is running.
+
+#### Secret storage backend
+As of Helm 2.7.0, there is now a beta storage backend that
 uses `Secrets` for storing release information. This was added for additional
-security in protecting charts in conjunction with the release of `Secret` 
-encryption in Kubernetes. 
+security in protecting charts in conjunction with the release of `Secret`
+encryption in Kubernetes.
 
 To enable the secrets backend, you'll need to init Tiller with the following
 options:
@@ -368,6 +371,31 @@ helm init --override 'spec.template.spec.containers[0].command'='{/tiller,--stor
 Currently, if you want to switch from the default backend to the secrets
 backend, you'll have to do the migration for this on your own. When this backend
 graduates from beta, there will be a more official path of migration
+
+#### SQL storage backend
+As of Helm 2.14.0 there is now a beta SQL storage backend that stores release
+information in an SQL database (only postgres has been tested so far).
+
+Using such a storage backend is particularly useful if your release information
+weighs more than 1MB (in which case, it can't be stored in ConfigMaps/Secrets
+because of internal limits in Kubernetes' underlying etcd key-value store).
+
+To enable the SQL backend, you'll need to [deploy an SQL
+database](./sql-storage.md) and init Tiller with the following options:
+
+```shell
+helm init \
+  --override \
+    'spec.template.spec.containers[0].args'='{--storage=sql,--sql-dialect=postgres,--sql-connection-string=postgresql://tiller-postgres:5432/helm?user=helm&password=changemeforgodssake&sslmode=disable}'
+```
+
+**PRODUCTION NOTES**: it's recommended to change the username and password of
+the SQL database in production deployments. Enabling SSL is also a good idea.
+Last, but not least, perform regular backups/snapshots of your SQL database.
+
+Currently, if you want to switch from the default backend to the SQL backend,
+you'll have to do the migration for this on your own. When this backend
+graduates from beta, there will be a more official migration path.
 
 ## Conclusion
 
