@@ -159,6 +159,7 @@ metadata:
     app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
     helm.sh/chart: {{ include "<CHARTNAME>.chart" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- with .Values.ingress.annotations }}
   annotations:
@@ -193,30 +194,15 @@ kind: Deployment
 metadata:
   name: {{ template "<CHARTNAME>.fullname" . }}
   labels:
-<<<<<<< HEAD
-    app: {{ template "<CHARTNAME>.name" . }}
-    chart: {{ template "<CHARTNAME>.chart" . }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
-=======
     app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
     helm.sh/chart: {{ include "<CHARTNAME>.chart" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
->>>>>>> e328d00a... Updating to the k8s label convention
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-<<<<<<< HEAD
-      app: {{ template "<CHARTNAME>.name" . }}
-      release: {{ .Release.Name }}
-  template:
-    metadata:
-      labels:
-        app: {{ template "<CHARTNAME>.name" . }}
-        release: {{ .Release.Name }}
-=======
       app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
       app.kubernetes.io/instance: {{ .Release.Name }}
   template:
@@ -224,7 +210,6 @@ spec:
       labels:
         app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
         app.kubernetes.io/instance: {{ .Release.Name }}
->>>>>>> e328d00a... Updating to the k8s label convention
     spec:
       containers:
         - name: {{ .Chart.Name }}
@@ -263,17 +248,11 @@ kind: Service
 metadata:
   name: {{ template "<CHARTNAME>.fullname" . }}
   labels:
-<<<<<<< HEAD
-    app: {{ template "<CHARTNAME>.name" . }}
-    chart: {{ template "<CHARTNAME>.chart" . }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
-=======
     app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
     helm.sh/chart: {{ include "<CHARTNAME>.chart" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
->>>>>>> e328d00a... Updating to the k8s label convention
 spec:
   type: {{ .Values.service.type }}
   ports:
@@ -282,13 +261,8 @@ spec:
       protocol: TCP
       name: http
   selector:
-<<<<<<< HEAD
-    app: {{ template "<CHARTNAME>.name" . }}
-    release: {{ .Release.Name }}
-=======
     app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
-    app.kubernetes.io/instancelease: {{ .Release.Name }}
->>>>>>> e328d00a... Updating to the k8s label convention
+    app.kubernetes.io/instance: {{ .Release.Name }}
 `
 
 const defaultNotes = `1. Get the application URL by running these commands:
