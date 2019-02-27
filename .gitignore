@@ -14,3 +14,6 @@ vendor/
 *.iml
 *.swp
 *~
+.classpath
+.project
+.settings/**
