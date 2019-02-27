@@ -79,6 +79,10 @@ icon: https://example.com/64x64.png
 			Data: []byte("var: some values"),
 		},
 		{
+			Name: "values.schema.yaml",
+			Data: []byte("type: Values"),
+		},
+		{
 			Name: "templates/deployment.yaml",
 			Data: []byte("some deployment"),
 		},
@@ -99,6 +103,10 @@ icon: https://example.com/64x64.png
 
 	if c.Values["var"] != "some values" {
 		t.Error("Expected chart values to be populated with default values")
+	}
+
+	if c.Schema["type"] != "Values" {
+		t.Error("Expected chart schema to be populated with default values")
 	}
 
 	if len(c.Templates) != 2 {
