@@ -281,7 +281,7 @@ According to the YAML specification, YAML is a superset of JSON. That
 means that any valid JSON structure ought to be valid in YAML.
 
 This has an advantage: Sometimes template developers may find it easier
-to express a datastructure with a JSON-like syntax rather than deal with
+to express a data structure with a JSON-like syntax rather than deal with
 YAML's whitespace sensitivity.
 
 As a best practice, templates should follow a YAML-like syntax _unless_
