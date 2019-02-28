@@ -169,19 +169,6 @@ func (c *Client) RollbackRelease(rlsName string, opts ...RollbackOption) (*relea
 	return c.tiller.RollbackRelease(req)
 }
 
-// ReleaseStatus returns the given release's status.
-func (c *Client) ReleaseStatus(rlsName string, version int) (*hapi.GetReleaseStatusResponse, error) {
-	reqOpts := c.opts
-	req := &reqOpts.statusReq
-	req.Name = rlsName
-	req.Version = version
-
-	if err := reqOpts.runBefore(req); err != nil {
-		return nil, err
-	}
-	return c.tiller.GetReleaseStatus(req)
-}
-
 // ReleaseContent returns the configuration for a given release.
 func (c *Client) ReleaseContent(name string, version int) (*release.Release, error) {
 	reqOpts := c.opts

@@ -62,7 +62,7 @@ func (c *FakeClient) InstallReleaseFromChart(chart *chart.Chart, ns string, opts
 	releaseName := c.Opts.instReq.Name
 
 	// Check to see if the release already exists.
-	rel, err := c.ReleaseStatus(releaseName, 0)
+	rel, err := c.ReleaseContent(releaseName, 0)
 	if err == nil && rel != nil {
 		return nil, errors.New("cannot re-use a name that is still in use")
 	}
