@@ -13,6 +13,12 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+
 type Status_Code int32
 
 const (
@@ -20,7 +26,7 @@ const (
 	Status_UNKNOWN Status_Code = 0
 	// Status_DEPLOYED indicates that the release has been pushed to Kubernetes.
 	Status_DEPLOYED Status_Code = 1
-	// Status_DELETED indicates that a release has been deleted from Kubermetes.
+	// Status_DELETED indicates that a release has been deleted from Kubernetes.
 	Status_DELETED Status_Code = 2
 	// Status_SUPERSEDED indicates that this release object is outdated and a newer one exists.
 	Status_SUPERSEDED Status_Code = 3
@@ -62,23 +68,47 @@ var Status_Code_value = map[string]int32{
 func (x Status_Code) String() string {
 	return proto.EnumName(Status_Code_name, int32(x))
 }
-func (Status_Code) EnumDescriptor() ([]byte, []int) { return fileDescriptor3, []int{0, 0} }
+func (Status_Code) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_status_933517e5a50981ed, []int{0, 0}
+}
 
 // Status defines the status of a release.
 type Status struct {
-	Code Status_Code `protobuf:"varint,1,opt,name=code,enum=hapi.release.Status_Code" json:"code,omitempty"`
+	Code Status_Code `protobuf:"varint,1,opt,name=code,proto3,enum=hapi.release.Status_Code" json:"code,omitempty"`
 	// Cluster resources as kubectl would print them.
-	Resources string `protobuf:"bytes,3,opt,name=resources" json:"resources,omitempty"`
+	Resources string `protobuf:"bytes,3,opt,name=resources,proto3" json:"resources,omitempty"`
 	// Contains the rendered templates/NOTES.txt if available
-	Notes string `protobuf:"bytes,4,opt,name=notes" json:"notes,omitempty"`
+	Notes string `protobuf:"bytes,4,opt,name=notes,proto3" json:"notes,omitempty"`
 	// LastTestSuiteRun provides results on the last test run on a release
-	LastTestSuiteRun *TestSuite `protobuf:"bytes,5,opt,name=last_test_suite_run,json=lastTestSuiteRun" json:"last_test_suite_run,omitempty"`
+	LastTestSuiteRun     *TestSuite `protobuf:"bytes,5,opt,name=last_test_suite_run,json=lastTestSuiteRun,proto3" json:"last_test_suite_run,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}   `json:"-"`
+	XXX_unrecognized     []byte     `json:"-"`
+	XXX_sizecache        int32      `json:"-"`
 }
 
-func (m *Status) Reset()                    { *m = Status{} }
-func (m *Status) String() string            { return proto.CompactTextString(m) }
-func (*Status) ProtoMessage()               {}
-func (*Status) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{0} }
+func (m *Status) Reset()         { *m = Status{} }
+func (m *Status) String() string { return proto.CompactTextString(m) }
+func (*Status) ProtoMessage()    {}
+func (*Status) Descriptor() ([]byte, []int) {
+	return fileDescriptor_status_933517e5a50981ed, []int{0}
+}
+func (m *Status) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_Status.Unmarshal(m, b)
+}
+func (m *Status) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_Status.Marshal(b, m, deterministic)
+}
+func (dst *Status) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Status.Merge(dst, src)
+}
+func (m *Status) XXX_Size() int {
+	return xxx_messageInfo_Status.Size(m)
+}
+func (m *Status) XXX_DiscardUnknown() {
+	xxx_messageInfo_Status.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Status proto.InternalMessageInfo
 
 func (m *Status) GetCode() Status_Code {
 	if m != nil {
@@ -113,9 +143,9 @@ func init() {
 	proto.RegisterEnum("hapi.release.Status_Code", Status_Code_name, Status_Code_value)
 }
 
-func init() { proto.RegisterFile("hapi/release/status.proto", fileDescriptor3) }
+func init() { proto.RegisterFile("hapi/release/status.proto", fileDescriptor_status_933517e5a50981ed) }
 
-var fileDescriptor3 = []byte{
+var fileDescriptor_status_933517e5a50981ed = []byte{
 	// 333 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x54, 0x90, 0xd1, 0x6e, 0xa2, 0x40,
 	0x14, 0x86, 0x17, 0x45, 0xd4, 0xa3, 0x71, 0x27, 0xa3, 0xc9, 0xa2, 0xd9, 0x4d, 0x8c, 0x57, 0xde,
