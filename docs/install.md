@@ -380,13 +380,13 @@ Using such a storage backend is particularly useful if your release information
 weighs more than 1MB (in which case, it can't be stored in ConfigMaps/Secrets
 because of internal limits in Kubernetes' underlying etcd key-value store).
 
-To enable the SQL backend, you'll need to [deploy an SQL
-database](./sql-storage.md) and init Tiller with the following options:
+To enable the SQL backend, you'll need to deploy a SQL database and init Tiller
+with the following options:
 
 ```shell
 helm init \
   --override \
-    'spec.template.spec.containers[0].args'='{--storage=sql,--sql-dialect=postgres,--sql-connection-string=postgresql://tiller-postgres:5432/helm?user=helm&password=changemeforgodssake&sslmode=disable}'
+    'spec.template.spec.containers[0].args'='{--storage=sql,--sql-dialect=postgres,--sql-connection-string=postgresql://tiller-postgres:5432/helm?user=helm&password=changeme}'
 ```
 
 **PRODUCTION NOTES**: it's recommended to change the username and password of

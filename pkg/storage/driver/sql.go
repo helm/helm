@@ -43,6 +43,10 @@ var labelMap = map[string]string{
 	"NAME":        "name",
 }
 
+var supportedSQLDialects = map[string]struct{}{
+	"postgres": struct{}{},
+}
+
 // SQLDriverName is the string name of this driver.
 const SQLDriverName = "SQL"
 
@@ -113,6 +117,10 @@ type Release struct {
 
 // NewSQL initializes a new memory driver.
 func NewSQL(dialect, connectionString string, logger func(string, ...interface{})) (*SQL, error) {
+	if _, ok := supportedSQLDialects[dialect]; !ok {
+		return nil, fmt.Errorf("%s dialect isn't supported, only \"postgres\" is available for now", dialect)
+	}
+
 	db, err := sqlx.Connect(dialect, connectionString)
 	if err != nil {
 		return nil, err
