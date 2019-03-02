@@ -175,6 +175,13 @@ func TestTemplateCmd(t *testing.T) {
 			expectKey:   "subchart1/templates/service.yaml",
 			expectValue: "kube-version/major: \"1\"\n    kube-version/minor: \"6\"\n    kube-version/gitversion: \"v1.6.0\"",
 		},
+		{
+			name:        "check_kube_api_versions",
+			desc:        "verify --api-versions overrides kubernetes api versions",
+			args:        []string{subchart1ChartPath, "--api-versions", "helm.k8s.io/test"},
+			expectKey:   "subchart1/templates/service.yaml",
+			expectValue: "kube-api-version/test: v1",
+		},
 	}
 
 	for _, tt := range tests {
