@@ -150,7 +150,7 @@ func TestRenderInternals(t *testing.T) {
 		"three": {tpl: `{{template "two" dict "Value" "three"}}`, vals: vals},
 	}
 
-	out, err := e.render(nil, tpls)
+	out, err := e.render(tpls)
 	if err != nil {
 		t.Fatalf("Failed template rendering: %s", err)
 	}
@@ -183,7 +183,7 @@ func TestParallelRenderInternals(t *testing.T) {
 			tt := fmt.Sprintf("expect-%d", i)
 			v := chartutil.Values{"val": tt}
 			tpls := map[string]renderable{fname: {tpl: `{{.val}}`, vals: v}}
-			out, err := e.render(nil, tpls)
+			out, err := e.render(tpls)
 			if err != nil {
 				t.Errorf("Failed to render %s: %s", tt, err)
 			}
