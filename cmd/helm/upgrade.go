@@ -286,7 +286,6 @@ func (u *upgradeCmd) run() error {
 				timeout:      u.timeout,
 				wait:         u.wait,
 				description:  "",
-				revision:     releaseHistory.Releases[0].Version,
 				disableHooks: u.disableHooks,
 			}
 			if err := rollback.run(); err != nil {
