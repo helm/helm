@@ -69,30 +69,30 @@ func (s *SQL) ensureDBSetup() error {
 				Id: "init",
 				Up: []string{
 					`
-            CREATE TABLE releases (
-		      		key VARCHAR(67) PRIMARY KEY,
-              body TEXT NOT NULL,
+						CREATE TABLE releases (
+							key VARCHAR(67) PRIMARY KEY,
+						  body TEXT NOT NULL,
 
-              name VARCHAR(64) NOT NULL,
-              version INTEGER NOT NULL,
-		      		status TEXT NOT NULL,
-		      		owner TEXT NOT NULL,
-		      		created_at INTEGER NOT NULL,
-		      		modified_at INTEGER NOT NULL DEFAULT 0
-            );
+						  name VARCHAR(64) NOT NULL,
+						  version INTEGER NOT NULL,
+							status TEXT NOT NULL,
+							owner TEXT NOT NULL,
+							created_at INTEGER NOT NULL,
+							modified_at INTEGER NOT NULL DEFAULT 0
+						);
 
-            CREATE INDEX ON releases (key);
-            CREATE INDEX ON releases (version);
-            CREATE INDEX ON releases (status);
-            CREATE INDEX ON releases (owner);
-            CREATE INDEX ON releases (created_at);
-            CREATE INDEX ON releases (modified_at);
-		      `,
+						CREATE INDEX ON releases (key);
+						CREATE INDEX ON releases (version);
+						CREATE INDEX ON releases (status);
+						CREATE INDEX ON releases (owner);
+						CREATE INDEX ON releases (created_at);
+						CREATE INDEX ON releases (modified_at);
+					`,
 				},
 				Down: []string{
 					`
-            DROP TABLE releases;
-          `,
+						 DROP TABLE releases;
+					`,
 				},
 			},
 		},
@@ -102,11 +102,17 @@ func (s *SQL) ensureDBSetup() error {
 	return err
 }
 
-// Release describes a Helm release
-type Release struct {
-	Key  string `db:"key"`
+// SQLReleaseWrapper describes how Helm releases are stored in an SQL database
+type SQLReleaseWrapper struct {
+	// The primary key, made of {release-name}.{release-version}
+	Key string `db:"key"`
+
+	// The rspb.Release body, as a base64-encoded string
 	Body string `db:"body"`
 
+	// Release "labels" that can be used as filters in the storage.Query(labels map[string]string)
+	// we implemented. Note that allowing Helm users to filter against new dimensions will require a
+	// new migration to be added, and the Create and/or update functions to be updated accordingly.
 	Name       string `db:"name"`
 	Version    int    `db:"version"`
 	Status     string `db:"status"`
@@ -140,7 +146,7 @@ func NewSQL(dialect, connectionString string, logger func(string, ...interface{}
 
 // Get returns the release named by key.
 func (s *SQL) Get(key string) (*rspb.Release, error) {
-	var record Release
+	var record SQLReleaseWrapper
 	// Get will return an error if the result is empty
 	err := s.db.Get(&record, "SELECT body FROM releases WHERE key = $1", key)
 	if err != nil {
@@ -159,7 +165,7 @@ func (s *SQL) Get(key string) (*rspb.Release, error) {
 
 // List returns the list of all releases such that filter(release) == true
 func (s *SQL) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
-	var records = []Release{}
+	var records = []SQLReleaseWrapper{}
 	if err := s.db.Select(&records, "SELECT body FROM releases WHERE owner = 'TILLER'"); err != nil {
 		s.Log("list: failed to list: %v", err)
 		return nil, err
@@ -213,7 +219,7 @@ func (s *SQL) Query(labels map[string]string) ([]*rspb.Release, error) {
 
 	var releases []*rspb.Release
 	for rows.Next() {
-		var record Release
+		var record SQLReleaseWrapper
 		if err = rows.StructScan(&record); err != nil {
 			s.Log("failed to scan record %q: %v", record, err)
 			return nil, err
@@ -249,7 +255,7 @@ func (s *SQL) Create(key string, rls *rspb.Release) error {
 	}
 
 	if _, err := transaction.NamedExec("INSERT INTO releases (key, body, name, version, status, owner, created_at) VALUES (:key, :body, :name, :version, :status, :owner, :created_at)",
-		&Release{
+		&SQLReleaseWrapper{
 			Key:  key,
 			Body: body,
 
@@ -261,7 +267,7 @@ func (s *SQL) Create(key string, rls *rspb.Release) error {
 		},
 	); err != nil {
 		defer transaction.Rollback()
-		var record Release
+		var record SQLReleaseWrapper
 		if err := transaction.Get(&record, "SELECT key FROM releases WHERE key = ?", key); err == nil {
 			s.Log("release %s already exists", key)
 			return storageerrors.ErrReleaseExists(key)
@@ -284,7 +290,7 @@ func (s *SQL) Update(key string, rls *rspb.Release) error {
 	}
 
 	if _, err := s.db.NamedExec("UPDATE releases SET body=:body, name=:name, version=:version, status=:status, owner=:owner, modified_at=:modified_at WHERE key=:key",
-		&Release{
+		&SQLReleaseWrapper{
 			Key:  key,
 			Body: body,
 
@@ -310,7 +316,7 @@ func (s *SQL) Delete(key string) (*rspb.Release, error) {
 		return nil, fmt.Errorf("error beginning transaction: %v", err)
 	}
 
-	var record Release
+	var record SQLReleaseWrapper
 	err = transaction.Get(&record, "SELECT body FROM releases WHERE key = $1", key)
 	if err != nil {
 		s.Log("release %s not found: %v", key, err)
