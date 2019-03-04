@@ -143,7 +143,6 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 			upgrade.release = args[0]
 			upgrade.chart = args[1]
 			upgrade.client = ensureHelmClient(upgrade.client)
-			upgrade.wait = upgrade.wait || upgrade.atomic
 
 			return upgrade.run()
 		},
