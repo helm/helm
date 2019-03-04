@@ -213,7 +213,7 @@ func TestUpdate(t *testing.T) {
 
 	// Test resource policy is respected
 	actions = nil
-	listA.Items[2].ObjectMeta.Annotations = map[string]string{ResourcePolicyAnno: KeepPolicy}
+	listA.Items[2].ObjectMeta.Annotations = map[string]string{ResourcePolicyAnno: "keep"}
 	if err := c.Update(v1.NamespaceDefault, objBody(&listA), objBody(&listB), false, false, 0, false); err != nil {
 		t.Fatal(err)
 	}
