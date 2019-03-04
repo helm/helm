@@ -235,6 +235,9 @@ orphaned. Helm will no longer manage it in any way. This can lead to problems
 if using `helm install --replace` on a release that has already been deleted, but
 has kept resources.
 
+To explicitly opt in to resource deletion, for example when overriding a chart's
+default annotations, set the resource policy annotation value to `delete`.
+
 ## Using "Partials" and Template Includes
 
 Sometimes you want to create some reusable parts in your chart, whether
