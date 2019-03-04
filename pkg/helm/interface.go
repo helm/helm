@@ -27,7 +27,6 @@ type Interface interface {
 	InstallRelease(chStr, namespace string, opts ...InstallOption) (*release.Release, error)
 	InstallReleaseFromChart(chart *chart.Chart, namespace string, opts ...InstallOption) (*release.Release, error)
 	UninstallRelease(rlsName string, opts ...UninstallOption) (*hapi.UninstallReleaseResponse, error)
-	ReleaseStatus(rlsName string, version int) (*hapi.GetReleaseStatusResponse, error)
 	UpdateRelease(rlsName, chStr string, opts ...UpdateOption) (*release.Release, error)
 	UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts ...UpdateOption) (*release.Release, error)
 	RollbackRelease(rlsName string, opts ...RollbackOption) (*release.Release, error)

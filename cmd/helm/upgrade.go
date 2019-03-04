@@ -181,13 +181,6 @@ func (o *upgradeOptions) run(out io.Writer) error {
 	}
 
 	fmt.Fprintf(out, "Release %q has been upgraded. Happy Helming!\n", o.release)
-
-	// Print the status like status command does
-	status, err := o.client.ReleaseStatus(o.release, 0)
-	if err != nil {
-		return err
-	}
-	PrintStatus(out, status)
-
+	PrintStatus(out, resp)
 	return nil
 }

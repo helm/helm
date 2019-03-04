@@ -30,7 +30,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/require"
-	"k8s.io/helm/pkg/hapi"
 	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/helm"
 )
@@ -75,7 +74,7 @@ func newStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
 }
 
 func (o *statusOptions) run(out io.Writer) error {
-	res, err := o.client.ReleaseStatus(o.release, o.version)
+	res, err := o.client.ReleaseContent(o.release, o.version)
 	if err != nil {
 		return err
 	}
@@ -105,7 +104,7 @@ func (o *statusOptions) run(out io.Writer) error {
 
 // PrintStatus prints out the status of a release. Shared because also used by
 // install / upgrade
-func PrintStatus(out io.Writer, res *hapi.GetReleaseStatusResponse) {
+func PrintStatus(out io.Writer, res *release.Release) {
 	if !res.Info.LastDeployed.IsZero() {
 		fmt.Fprintf(out, "LAST DEPLOYED: %s\n", res.Info.LastDeployed)
 	}

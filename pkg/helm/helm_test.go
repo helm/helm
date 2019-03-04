@@ -213,39 +213,6 @@ func TestRollbackRelease_VerifyOptions(t *testing.T) {
 	assert(t, "", client.opts.rollbackReq.Name)
 }
 
-// Verify each StatusOption is applied to a GetReleaseStatusRequest correctly.
-func TestReleaseStatus_VerifyOptions(t *testing.T) {
-	// Options testdata
-	var releaseName = "test"
-	var revision = 2
-
-	// Expected GetReleaseStatusRequest message
-	exp := &hapi.GetReleaseStatusRequest{
-		Name:    releaseName,
-		Version: revision,
-	}
-
-	// BeforeCall option to intercept Helm client GetReleaseStatusRequest
-	b4c := BeforeCall(func(msg interface{}) error {
-		switch act := msg.(type) {
-		case *hapi.GetReleaseStatusRequest:
-			t.Logf("GetReleaseStatusRequest: %#+v\n", act)
-			assert(t, exp, act)
-		default:
-			t.Fatalf("expected message of type GetReleaseStatusRequest, got %T\n", act)
-		}
-		return errSkip
-	})
-
-	client := NewClient(b4c)
-	if _, err := client.ReleaseStatus(releaseName, revision); err != errSkip {
-		t.Fatalf("did not expect error but got (%v)\n``", err)
-	}
-
-	// ensure options for call are not saved to client
-	assert(t, "", client.opts.statusReq.Name)
-}
-
 // Verify each ContentOption is applied to a GetReleaseContentRequest correctly.
 func TestReleaseContent_VerifyOptions(t *testing.T) {
 	t.Skip("refactoring out")
