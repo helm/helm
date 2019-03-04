@@ -210,7 +210,7 @@ metadata:
   name: measly-whippet-configmap
   labels:
     app_name: mychart
-app_version: "0.1.0+1478129847"
+    app_version: "0.1.0+1478129847"
 data:
   myvalue: "Hello World"
   drink: "coffee"
