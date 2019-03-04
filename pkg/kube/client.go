@@ -23,11 +23,12 @@ import (
 	goerrors "errors"
 	"fmt"
 	"io"
-	"k8s.io/apimachinery/pkg/api/meta"
 	"log"
 	"sort"
 	"strings"
 	"time"
+
+	"k8s.io/apimachinery/pkg/api/meta"
 
 	"github.com/evanphx/json-patch"
 	appsv1 "k8s.io/api/apps/v1"
@@ -362,8 +363,9 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 		if err != nil {
 			c.Log("Unable to get annotations on %q, err: %s", info.Name, err)
 		}
-		if annotations != nil && annotations[ResourcePolicyAnno] == KeepPolicy {
-			c.Log("Skipping delete of %q due to annotation [%s=%s]", info.Name, ResourcePolicyAnno, KeepPolicy)
+		if ResourcePolicyIsKeep(annotations) {
+			policy := annotations[ResourcePolicyAnno]
+			c.Log("Skipping delete of %q due to annotation [%s=%s]", info.Name, ResourcePolicyAnno, policy)
 			continue
 		}
 
