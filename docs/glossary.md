@@ -133,7 +133,7 @@ install, upgrade, and rollback.
 ## Helm Library
 
 It interacts directly with the Kubernetes API server to install,
- upgrade, query, and remove Kubernetes resources.
+upgrade, query, and remove Kubernetes resources.
 
 ## Repository (Repo, Chart Repository)
 

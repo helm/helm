@@ -29,7 +29,7 @@ Upload the contents of the directory to your GCS bucket by running `scripts/sync
 For example:
 ```console
 $ pwd
-/Users/funuser/go/src/github.com/kubernetes/helm
+/Users/me/code/go/src/k8s.io/helm
 $ scripts/sync-repo.sh fantastic-charts/ fantastic-charts
 Getting ready to sync your local directory (fantastic-charts/) to a remote repository at gs://fantastic-charts
 Verifying Prerequisites....

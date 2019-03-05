@@ -17,7 +17,7 @@ It is important to note that this document assumes that the git remote in your r
 If you don't have an upstream remote, you can add one easily using something like:
 
 ```shell
-git remote add upstream git@github.com:kubernetes/helm.git
+git remote add upstream git@github.com:helm/helm.git
 ```
 
 In this doc, we are going to reference a few environment variables as well, which you may want to set for convenience. For major/minor releases, use the following:
@@ -134,7 +134,7 @@ In order for others to start testing, we can now push the release branch upstrea
 git push upstream $RELEASE_BRANCH_NAME
 ```
 
-Make sure to check [helm on CircleCI](https://circleci.com/gh/kubernetes/helm) and make sure the release passed CI before proceeding.
+Make sure to check [helm on CircleCI](https://circleci.com/gh/helm/helm) and make sure the release passed CI before proceeding.
 
 If anyone is available, let others peer-review the branch before continuing to ensure that all the proper changes have been made and all of the commits for the release are there.
 
@@ -234,7 +234,7 @@ Download Helm X.Y. The common platform binaries are here:
 - [Linux](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-amd64.tar.gz)
 - [Windows](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-windows-amd64.tar.gz)
 
-The [Quickstart Guide](https://docs.helm.sh/using_helm/#quickstart-guide) will get you going from there. For **upgrade instructions** or detailed installation notes, check the [install guide](https://docs.helm.sh/using_helm/#installing-helm). You can also use a [script to install](https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get) on any system with `bash`.
+The [Quickstart Guide](https://docs.helm.sh/using_helm/#quickstart-guide) will get you going from there. For **upgrade instructions** or detailed installation notes, check the [install guide](https://docs.helm.sh/using_helm/#installing-helm). You can also use a [script to install](https://raw.githubusercontent.com/helm/helm/master/scripts/get) on any system with `bash`.
 
 ## What's Next
 
