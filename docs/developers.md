@@ -99,7 +99,7 @@ We accept changes to the code via GitHub Pull Requests (PRs). One
 workflow for doing this is as follows:
 
 1. Go to your `$GOPATH/src/k8s.io` directory and `git clone` the
-   `github.com/kubernetes/helm` repository.
+   `github.com/helm/helm` repository.
 2. Fork that repository into your GitHub account
 3. Add your repository as a remote for `$GOPATH/src/k8s.io/helm`
 4. Create a new working branch (`git checkout -b feat/my-feature`) and

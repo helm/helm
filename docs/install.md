@@ -45,18 +45,18 @@ choco install kubernetes-helm
 ## From Script
 
 Helm now has an installer script that will automatically grab the latest version
-of Helm and [install it locally](https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get).
+of Helm and [install it locally](https://raw.githubusercontent.com/helm/helm/master/scripts/get).
 
 You can fetch that script, and then execute it locally. It's well documented so
 that you can read through it and understand what it is doing before you run it.
 
 ```
-$ curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get > get_helm.sh
+$ curl https://raw.githubusercontent.com/helm/helm/master/scripts/get > get_helm.sh
 $ chmod 700 get_helm.sh
 $ ./get_helm.sh
 ```
 
-Yes, you can `curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get | bash` that if you want to live on the edge.
+Yes, you can `curl https://raw.githubusercontent.com/helm/helm/master/scripts/get | bash` that if you want to live on the edge.
 
 ### From Canary Builds
 
