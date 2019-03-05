@@ -44,7 +44,7 @@ var labelMap = map[string]string{
 }
 
 var supportedSQLDialects = map[string]struct{}{
-	"postgres": struct{}{},
+	"postgres": {},
 }
 
 // SQLDriverName is the string name of this driver.
