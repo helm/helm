@@ -140,17 +140,15 @@
   version = "v0.4.1"
 
 [[projects]]
-  digest = "1:7643865a2cdb66fb14d8361611a75b370a99211ac44983505b3eecb4a6a7a882"
+  digest = "1:a9ef0c82c0459e56e52a374cff03bc7b21a2e76bd957cc368fafd23ca0ba0b45"
   name = "github.com/bugsnag/bugsnag-go"
   packages = [
     ".",
-    "device",
     "errors",
-    "headers",
-    "sessions",
   ]
   pruneopts = "UT"
-  revision = "109a9d63f2b57c4623f4912b256bac4a7a63517d"
+  revision = "3f5889f222e9c07aa1f62c5e8c202e402ce574cd"
+  version = "v1.3.2"
 
 [[projects]]
   digest = "1:3049c43c6d1cfaa347acd27d6342187f8f38d9f416bbba7b02b43f82848302d2"
@@ -434,14 +432,6 @@
   pruneopts = "UT"
   revision = "5ccd90ef52e1e632236f7326478d4faa74f99438"
   version = "v0.2.3"
-
-[[projects]]
-  digest = "1:bed9d72d596f94e65fff37f4d6c01398074a6bb1c3f3ceff963516bd01db6ff5"
-  name = "github.com/gofrs/uuid"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "6b08a5c5172ba18946672b49749cde22873dd7c2"
-  version = "v3.2.0"
 
 [[projects]]
   digest = "1:b402bb9a24d108a9405a6f34675091b036c8b056aac843bf6ef2389a65c5cf48"
@@ -826,7 +816,7 @@
   version = "v1.0.3"
 
 [[projects]]
-  digest = "1:972c2427413d41a1e06ca4897e8528e5a1622894050e2f527b38ddf0f343f759"
+  digest = "1:8ff03ccc603abb0d7cce94d34b613f5f6251a9e1931eba1a3f9888a9029b055c"
   name = "github.com/stretchr/testify"
   packages = [
     "assert",
@@ -1092,6 +1082,7 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "d2d2541c53f18d2a059457998ce2876cc8e67cbf"
+  source = "https://github.com/go-inf/inf.git"
   version = "v0.9.1"
 
 [[projects]]
@@ -1104,10 +1095,11 @@
   ]
   pruneopts = "UT"
   revision = "56062818b5e15ee405eb8363f9498c7113e98337"
+  source = "https://github.com/square/go-jose.git"
   version = "v1.1.2"
 
 [[projects]]
-  digest = "1:550221cdc42e1ad44a1942d01c4135c30f6808b61dbad3c52d325e01d8e7cc07"
+  digest = "1:005cbf8b937fcb1694b9dbb845b0aef618627be7faf7bb330eb2490e3f506ef8"
   name = "gopkg.in/square/go-jose.v2"
   packages = [
     ".",
@@ -1116,8 +1108,9 @@
     "jwt",
   ]
   pruneopts = "UT"
-  revision = "72415094398e2f013bf50b76fd6de36df47938ea"
-  version = "v2.2.1"
+  revision = "628223f44a71f715d2881ea69afc795a1e9c01be"
+  source = "https://github.com/square/go-jose.git"
+  version = "v2.3.0"
 
 [[projects]]
   digest = "1:4d2e5a73dc1500038e504a8d78b986630e3626dc027bc030ba5c75da257cdb96"
@@ -1125,6 +1118,7 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "51d6538a90f86fe93ac480b35f37b2be17fef232"
+  source = "https://github.com/go-yaml/yaml"
   version = "v2.2.2"
 
 [[projects]]
