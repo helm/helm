@@ -133,7 +133,7 @@ func (s *ReleaseServer) prepareRelease(req *services.InstallReleaseRequest) (*re
 func hasCRDHook(hs []*release.Hook) bool {
 	for _, h := range hs {
 		for _, e := range h.Events {
-			if e == events[hooks.CRDInstall] {
+			if e == hooks.Events[hooks.CRDInstall] {
 				return true
 			}
 		}

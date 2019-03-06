@@ -51,6 +51,30 @@ const (
 	BeforeHookCreation = "before-hook-creation"
 )
 
+// Events represents a mapping between the key in the annotation for hooks and
+// the protobuf-defined IDs.
+var Events = map[string]release.Hook_Event{
+	PreInstall:         release.Hook_PRE_INSTALL,
+	PostInstall:        release.Hook_POST_INSTALL,
+	PreDelete:          release.Hook_PRE_DELETE,
+	PostDelete:         release.Hook_POST_DELETE,
+	PreUpgrade:         release.Hook_PRE_UPGRADE,
+	PostUpgrade:        release.Hook_POST_UPGRADE,
+	PreRollback:        release.Hook_PRE_ROLLBACK,
+	PostRollback:       release.Hook_POST_ROLLBACK,
+	ReleaseTestSuccess: release.Hook_RELEASE_TEST_SUCCESS,
+	ReleaseTestFailure: release.Hook_RELEASE_TEST_FAILURE,
+	CRDInstall:         release.Hook_CRD_INSTALL,
+}
+
+// DeletePolices represents a mapping between the key in the annotation for
+// label deleting policy and the protobuf-defined IDs
+var DeletePolices = map[string]release.Hook_DeletePolicy{
+	HookSucceeded:      release.Hook_SUCCEEDED,
+	HookFailed:         release.Hook_FAILED,
+	BeforeHookCreation: release.Hook_BEFORE_HOOK_CREATION,
+}
+
 // FilterTestHooks filters the list of hooks are returns only testing hooks.
 func FilterTestHooks(hooks []*release.Hook) []*release.Hook {
 	testHooks := []*release.Hook{}

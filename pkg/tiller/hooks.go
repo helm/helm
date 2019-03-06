@@ -32,27 +32,6 @@ import (
 	util "k8s.io/helm/pkg/releaseutil"
 )
 
-var events = map[string]release.Hook_Event{
-	hooks.PreInstall:         release.Hook_PRE_INSTALL,
-	hooks.PostInstall:        release.Hook_POST_INSTALL,
-	hooks.PreDelete:          release.Hook_PRE_DELETE,
-	hooks.PostDelete:         release.Hook_POST_DELETE,
-	hooks.PreUpgrade:         release.Hook_PRE_UPGRADE,
-	hooks.PostUpgrade:        release.Hook_POST_UPGRADE,
-	hooks.PreRollback:        release.Hook_PRE_ROLLBACK,
-	hooks.PostRollback:       release.Hook_POST_ROLLBACK,
-	hooks.ReleaseTestSuccess: release.Hook_RELEASE_TEST_SUCCESS,
-	hooks.ReleaseTestFailure: release.Hook_RELEASE_TEST_FAILURE,
-	hooks.CRDInstall:         release.Hook_CRD_INSTALL,
-}
-
-// deletePolices represents a mapping between the key in the annotation for label deleting policy and its real meaning
-var deletePolices = map[string]release.Hook_DeletePolicy{
-	hooks.HookSucceeded:      release.Hook_SUCCEEDED,
-	hooks.HookFailed:         release.Hook_FAILED,
-	hooks.BeforeHookCreation: release.Hook_BEFORE_HOOK_CREATION,
-}
-
 // Manifest represents a manifest file, which has a name and some content.
 type Manifest = manifest.Manifest
 
@@ -169,7 +148,7 @@ func (file *manifestFile) sort(result *result) error {
 		isUnknownHook := false
 		for _, hookType := range strings.Split(hookTypes, ",") {
 			hookType = strings.ToLower(strings.TrimSpace(hookType))
-			e, ok := events[hookType]
+			e, ok := hooks.Events[hookType]
 			if !ok {
 				isUnknownHook = true
 				break
@@ -185,7 +164,7 @@ func (file *manifestFile) sort(result *result) error {
 		result.hooks = append(result.hooks, h)
 
 		operateAnnotationValues(entry, hooks.HookDeleteAnno, func(value string) {
-			policy, exist := deletePolices[value]
+			policy, exist := hooks.DeletePolices[value]
 			if exist {
 				h.DeletePolicies = append(h.DeletePolicies, policy)
 			} else {

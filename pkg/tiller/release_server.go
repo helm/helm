@@ -371,7 +371,7 @@ func (s *ReleaseServer) recordRelease(r *release.Release, reuse bool) {
 
 func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook string, timeout int64) error {
 	kubeCli := s.env.KubeClient
-	code, ok := events[hook]
+	code, ok := hooks.Events[hook]
 	if !ok {
 		return fmt.Errorf("unknown hook %s", hook)
 	}
@@ -466,7 +466,7 @@ func (s *ReleaseServer) deleteHookByPolicy(h *release.Hook, policy string, name,
 // hookHasDeletePolicy determines whether the defined hook deletion policy matches the hook deletion polices
 // supported by helm. If so, mark the hook as one should be deleted.
 func hookHasDeletePolicy(h *release.Hook, policy string) bool {
-	if dp, ok := deletePolices[policy]; ok {
+	if dp, ok := hooks.DeletePolices[policy]; ok {
 		for _, v := range h.DeletePolicies {
 			if dp == v {
 				return true
