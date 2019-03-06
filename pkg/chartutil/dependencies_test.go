@@ -218,17 +218,17 @@ func TestProcessDependencyImportValues(t *testing.T) {
 			t.Fatalf("retrieving import values table %v %v", kk, err)
 		}
 
-		switch pv.(type) {
+		switch pv := pv.(type) {
 		case float64:
-			if s := strconv.FormatFloat(pv.(float64), 'f', -1, 64); s != vv {
+			if s := strconv.FormatFloat(pv, 'f', -1, 64); s != vv {
 				t.Errorf("failed to match imported float value %v with expected %v", s, vv)
 			}
 		case bool:
-			if b := strconv.FormatBool(pv.(bool)); b != vv {
+			if b := strconv.FormatBool(pv); b != vv {
 				t.Errorf("failed to match imported bool value %v with expected %v", b, vv)
 			}
 		default:
-			if pv.(string) != vv {
+			if pv != vv {
 				t.Errorf("failed to match imported string value %q with expected %q", pv, vv)
 			}
 		}

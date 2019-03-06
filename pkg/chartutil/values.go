@@ -286,11 +286,12 @@ func CoalesceTables(dst, src map[string]interface{}) map[string]interface{} {
 	// values.
 	for key, val := range src {
 		if istable(val) {
-			if innerdst, ok := dst[key]; !ok {
+			switch innerdst, ok := dst[key]; {
+			case !ok:
 				dst[key] = val
-			} else if istable(innerdst) {
+			case istable(innerdst):
 				CoalesceTables(innerdst.(map[string]interface{}), val.(map[string]interface{}))
-			} else {
+			default:
 				log.Printf("warning: cannot overwrite table with non table for %s (%v)", key, val)
 			}
 		} else if dv, ok := dst[key]; ok && istable(dv) {
@@ -316,15 +317,14 @@ type ReleaseOptions struct {
 func ToRenderValues(chrt *chart.Chart, chrtVals map[string]interface{}, options ReleaseOptions, caps *Capabilities) (Values, error) {
 
 	top := map[string]interface{}{
+		"Chart":        chrt.Metadata,
+		"Capabilities": caps,
 		"Release": map[string]interface{}{
 			"Name":      options.Name,
 			"IsUpgrade": options.IsUpgrade,
 			"IsInstall": options.IsInstall,
 			"Service":   "Helm",
 		},
-		"Chart":        chrt.Metadata,
-		"Files":        NewFiles(chrt.Files),
-		"Capabilities": caps,
 	}
 
 	vals, err := CoalesceValues(chrt, chrtVals)

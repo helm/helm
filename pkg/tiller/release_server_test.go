@@ -484,7 +484,7 @@ func (kc *mockHooksKubeClient) WaitAndGetCompletedPodPhase(_ string, _ io.Reader
 
 func deletePolicyStub(kubeClient *mockHooksKubeClient) *ReleaseServer {
 	return &ReleaseServer{
-		engine:     engine.New(),
+		engine:     new(engine.Engine),
 		discovery:  fake.NewSimpleClientset().Discovery(),
 		KubeClient: kubeClient,
 		Log:        func(_ string, _ ...interface{}) {},
