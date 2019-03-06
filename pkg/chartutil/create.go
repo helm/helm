@@ -156,12 +156,8 @@ kind: Ingress
 metadata:
   name: {{ $fullName }}
   labels:
-    app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
-    helm.sh/chart: {{ include "<CHARTNAME>.chart" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/version: {{ .Chart.AppVersion }}
-    app.kubernetes.io/managed-by: {{ .Release.Service }}
-{{- with .Values.ingress.annotations }}
+{{ include "<CHARTNAME>.labels" . | indent 4 }}
+  {{- with .Values.ingress.annotations }}
   annotations:
 {{ toYaml . | indent 4 }}
 {{- end }}
@@ -194,11 +190,7 @@ kind: Deployment
 metadata:
   name: {{ template "<CHARTNAME>.fullname" . }}
   labels:
-    app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
-    helm.sh/chart: {{ include "<CHARTNAME>.chart" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/version: {{ .Chart.AppVersion }}
-    app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{ include "<CHARTNAME>.labels" . | indent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
@@ -248,11 +240,7 @@ kind: Service
 metadata:
   name: {{ template "<CHARTNAME>.fullname" . }}
   labels:
-    app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
-    helm.sh/chart: {{ include "<CHARTNAME>.chart" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/version: {{ .Chart.AppVersion }}
-    app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{ include "<CHARTNAME>.labels" . | indent 4 }}
 spec:
   type: {{ .Values.service.type }}
   ports:
@@ -317,6 +305,19 @@ Create chart name and version as used by the chart label.
 */}}
 {{- define "<CHARTNAME>.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{/*
+Common labels
+*/}}
+{{- define "<CHARTNAME>.labels" -}}
+app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
+helm.sh/chart: {{ include "<CHARTNAME>.chart" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- if .Chart.AppVersion -}}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end -}}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end -}}
 `
 
