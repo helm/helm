@@ -203,13 +203,13 @@ func TestEnsureHome(t *testing.T) {
 		t.Error(err)
 	}
 
-	rr, err := repo.LoadRepositoriesFile(hh.RepositoryFile())
+	rf, err := repo.LoadRepositoriesFile(hh.RepositoryFile())
 	if err != nil {
 		t.Error(err)
 	}
 
 	foundStable := false
-	for _, rr := range rr.Repositories {
+	for _, rr := range rf.Repositories {
 		if rr.Name == stableRepository {
 			foundStable = true
 			if err != nil {
