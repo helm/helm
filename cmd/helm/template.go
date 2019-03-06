@@ -175,9 +175,6 @@ func (o *templateOptions) run(out io.Writer) error {
 		return err
 	}
 
-	// Set up engine.
-	renderer := engine.New()
-
 	// kubernetes version
 	kv, err := semver.NewVersion(o.kubeVersion)
 	if err != nil {
@@ -194,7 +191,7 @@ func (o *templateOptions) run(out io.Writer) error {
 		return err
 	}
 
-	rendered, err := renderer.Render(c, vals)
+	rendered, err := engine.Render(c, vals)
 	if err != nil {
 		return err
 	}

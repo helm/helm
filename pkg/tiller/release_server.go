@@ -92,7 +92,7 @@ type ReleaseServer struct {
 // NewReleaseServer creates a new release server.
 func NewReleaseServer(discovery discovery.DiscoveryInterface, kubeClient environment.KubeClient) *ReleaseServer {
 	return &ReleaseServer{
-		engine:     engine.New(),
+		engine:     new(engine.Engine),
 		discovery:  discovery,
 		Releases:   storage.Init(driver.NewMemory()),
 		KubeClient: kubeClient,

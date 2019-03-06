@@ -128,9 +128,6 @@ func TestToRenderValues(t *testing.T) {
 	if !relmap["IsInstall"].(bool) {
 		t.Errorf("Expected install to be true.")
 	}
-	if data := res["Files"].(Files)["scheherazade/shahryar.txt"]; string(data) != "1,001 Nights" {
-		t.Errorf("Expected file '1,001 Nights', got %q", string(data))
-	}
 	if !res["Capabilities"].(*Capabilities).APIVersions.Has("v1") {
 		t.Error("Expected Capabilities to have v1 as an API")
 	}

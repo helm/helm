@@ -18,6 +18,7 @@ package engine
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 
@@ -51,25 +52,16 @@ func TestSortTemplates(t *testing.T) {
 	}
 	for i, e := range expect {
 		if got[i] != e {
-			t.Errorf("expected %q, got %q at index %d\n\tExp: %#v\n\tGot: %#v", e, got[i], i, expect, got)
-		}
-	}
-}
-
-func TestEngine(t *testing.T) {
-	e := New()
-
-	// Forbidden because they allow access to the host OS.
-	forbidden := []string{"env", "expandenv"}
-	for _, f := range forbidden {
-		if _, ok := e.funcMap[f]; ok {
-			t.Errorf("Forbidden function %s exists in FuncMap.", f)
+			t.Fatalf("\n\tExp:\n%s\n\tGot:\n%s",
+				strings.Join(expect, "\n"),
+				strings.Join(got, "\n"),
+			)
 		}
 	}
 }
 
 func TestFuncMap(t *testing.T) {
-	fns := FuncMap()
+	fns := funcMap()
 	forbidden := []string{"env", "expandenv"}
 	for _, f := range forbidden {
 		if _, ok := fns[f]; ok {
@@ -108,38 +100,30 @@ func TestRender(t *testing.T) {
 		},
 	}
 
-	e := New()
 	v, err := chartutil.CoalesceValues(c, vals)
 	if err != nil {
 		t.Fatalf("Failed to coalesce values: %s", err)
 	}
-	out, err := e.Render(c, v)
+	out, err := Render(c, v)
 	if err != nil {
 		t.Errorf("Failed to render templates: %s", err)
 	}
 
-	expect := "Spouter Inn"
-	if out["moby/templates/test1"] != expect {
-		t.Errorf("Expected %q, got %q", expect, out["test1"])
+	expect := map[string]string{
+		"moby/templates/test1": "Spouter Inn",
+		"moby/templates/test2": "ishmael",
+		"moby/templates/test3": "",
 	}
 
-	expect = "ishmael"
-	if out["moby/templates/test2"] != expect {
-		t.Errorf("Expected %q, got %q", expect, out["test2"])
-	}
-	expect = ""
-	if out["moby/templates/test3"] != expect {
-		t.Errorf("Expected %q, got %q", expect, out["test3"])
-	}
-
-	if _, err := e.Render(c, v); err != nil {
-		t.Errorf("Unexpected error: %s", err)
+	for name, data := range expect {
+		if out[name] != data {
+			t.Errorf("Expected %q, got %q", data, out[name])
+		}
 	}
 }
 
 func TestRenderInternals(t *testing.T) {
 	// Test the internals of the rendering tool.
-	e := New()
 
 	vals := chartutil.Values{"Name": "one", "Value": "two"}
 	tpls := map[string]renderable{
@@ -150,7 +134,7 @@ func TestRenderInternals(t *testing.T) {
 		"three": {tpl: `{{template "two" dict "Value" "three"}}`, vals: vals},
 	}
 
-	out, err := e.render(tpls)
+	out, err := new(Engine).render(tpls)
 	if err != nil {
 		t.Fatalf("Failed template rendering: %s", err)
 	}
@@ -174,21 +158,24 @@ func TestRenderInternals(t *testing.T) {
 
 func TestParallelRenderInternals(t *testing.T) {
 	// Make sure that we can use one Engine to run parallel template renders.
-	e := New()
+	e := new(Engine)
 	var wg sync.WaitGroup
 	for i := 0; i < 20; i++ {
 		wg.Add(1)
 		go func(i int) {
-			fname := "my/file/name"
 			tt := fmt.Sprintf("expect-%d", i)
-			v := chartutil.Values{"val": tt}
-			tpls := map[string]renderable{fname: {tpl: `{{.val}}`, vals: v}}
+			tpls := map[string]renderable{
+				"t": {
+					tpl:  `{{.val}}`,
+					vals: map[string]interface{}{"val": tt},
+				},
+			}
 			out, err := e.render(tpls)
 			if err != nil {
 				t.Errorf("Failed to render %s: %s", tt, err)
 			}
-			if out[fname] != tt {
-				t.Errorf("Expected %q, got %q", tt, out[fname])
+			if out["t"] != tt {
+				t.Errorf("Expected %q, got %q", tt, out["t"])
 			}
 			wg.Done()
 		}(i)
@@ -221,15 +208,13 @@ func TestAllTemplates(t *testing.T) {
 	}
 	dep1.AddDependency(dep2)
 
-	var v chartutil.Values
-	tpls := allTemplates(ch1, v)
+	tpls := allTemplates(ch1, chartutil.Values{})
 	if len(tpls) != 5 {
 		t.Errorf("Expected 5 charts, got %d", len(tpls))
 	}
 }
 
 func TestRenderDependency(t *testing.T) {
-	e := New()
 	deptpl := `{{define "myblock"}}World{{end}}`
 	toptpl := `Hello {{template "myblock"}}`
 	ch := &chart.Chart{
@@ -245,7 +230,7 @@ func TestRenderDependency(t *testing.T) {
 		},
 	})
 
-	out, err := e.Render(ch, map[string]interface{}{})
+	out, err := Render(ch, map[string]interface{}{})
 	if err != nil {
 		t.Fatalf("failed to render chart: %s", err)
 	}
@@ -262,8 +247,6 @@ func TestRenderDependency(t *testing.T) {
 }
 
 func TestRenderNestedValues(t *testing.T) {
-	e := New()
-
 	innerpath := "templates/inner.tpl"
 	outerpath := "templates/outer.tpl"
 	// Ensure namespacing rules are working.
@@ -330,7 +313,7 @@ func TestRenderNestedValues(t *testing.T) {
 
 	t.Logf("Calculated values: %v", inject)
 
-	out, err := e.Render(outer, inject)
+	out, err := Render(outer, inject)
 	if err != nil {
 		t.Fatalf("failed to render templates: %s", err)
 	}
@@ -387,7 +370,7 @@ func TestRenderBuiltinValues(t *testing.T) {
 
 	t.Logf("Calculated values: %v", outer)
 
-	out, err := New().Render(outer, inject)
+	out, err := Render(outer, inject)
 	if err != nil {
 		t.Fatalf("failed to render templates: %s", err)
 	}
@@ -422,7 +405,7 @@ func TestAlterFuncMap_include(t *testing.T) {
 		},
 	}
 
-	out, err := New().Render(c, v)
+	out, err := Render(c, v)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -453,7 +436,7 @@ func TestAlterFuncMap_require(t *testing.T) {
 		},
 	}
 
-	out, err := New().Render(c, v)
+	out, err := Render(c, v)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -486,7 +469,7 @@ func TestAlterFuncMap_tpl(t *testing.T) {
 		},
 	}
 
-	out, err := New().Render(c, v)
+	out, err := Render(c, v)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -515,7 +498,7 @@ func TestAlterFuncMap_tplfunc(t *testing.T) {
 		},
 	}
 
-	out, err := New().Render(c, v)
+	out, err := Render(c, v)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -544,7 +527,7 @@ func TestAlterFuncMap_tplinclude(t *testing.T) {
 		},
 	}
 
-	out, err := New().Render(c, v)
+	out, err := Render(c, v)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -64,10 +64,8 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 		//linter.RunLinterRule(support.ErrorSev, err)
 		return
 	}
-	e := engine.New()
-	if strict {
-		e.Strict = true
-	}
+	var e engine.Engine
+	e.Strict = strict
 	renderedContentMap, err := e.Render(chart, valuesToRender)
 
 	renderOk := linter.RunLinterRule(support.ErrorSev, path, err)
