@@ -201,8 +201,8 @@ func TestValidateAgainstSchemaNegative(t *testing.T) {
 		errString = err.Error()
 	}
 
-	if !strings.Contains(errString, ".Values does not meet the specification of values.schema.yaml . see errors :") {
-		t.Errorf("Error string does not contain expected string: \".Values does not meet the specification of values.schema.yaml . see errors :\"")
+	if !strings.Contains(errString, "values don't meet the specification of the schema:") {
+		t.Errorf("Error string does not contain expected string: \"values don't meet the specification of the schema:\"")
 	}
 	if !strings.Contains(errString, "- (root): employmentInfo is required") {
 		t.Errorf("Error string does not contain expected string: \"- (root): employmentInfo is required\"")

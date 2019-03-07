@@ -170,7 +170,7 @@ func ValidateAgainstSchema(values Values, schema Schema) error {
 
 	if !result.Valid() {
 		var sb strings.Builder
-		sb.WriteString(".Values does not meet the specification of values.schema.yaml . see errors :\n")
+		sb.WriteString("values don't meet the specification of the schema:\n")
 		for _, desc := range result.Errors() {
 			sb.WriteString(fmt.Sprintf("- %s\n", desc))
 		}

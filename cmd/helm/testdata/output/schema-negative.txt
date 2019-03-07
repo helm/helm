@@ -1,4 +1,4 @@
-Error: .Values does not meet the specification of values.schema.yaml . see errors :
+Error: values don't meet the specification of the schema:
 - (root): employmentInfo is required
 - age: Must be greater than or equal to 0/1
 
