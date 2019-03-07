@@ -36,6 +36,7 @@ import (
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/keepalive"
+	"k8s.io/klog"
 
 	// Import to initialize client auth plugins.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -100,6 +101,7 @@ var (
 )
 
 func main() {
+	klog.InitFlags(nil)
 	// TODO: use spf13/cobra for tiller instead of flags
 	flag.Parse()
 
