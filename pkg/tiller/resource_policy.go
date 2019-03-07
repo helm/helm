@@ -34,17 +34,11 @@ func filterManifestsToKeep(manifests []Manifest) ([]Manifest, []Manifest) {
 			continue
 		}
 
-		resourcePolicyType, ok := m.Head.Metadata.Annotations[kube.ResourcePolicyAnno]
-		if !ok {
-			remaining = append(remaining, m)
-			continue
-		}
-
-		resourcePolicyType = strings.ToLower(strings.TrimSpace(resourcePolicyType))
-		if resourcePolicyType == kube.KeepPolicy {
+		if kube.ResourcePolicyIsKeep(m.Head.Metadata.Annotations) {
 			keep = append(keep, m)
+		} else {
+			remaining = append(remaining, m)
 		}
-
 	}
 	return keep, remaining
 }
