@@ -17,85 +17,36 @@ limitations under the License.
 package main
 
 import (
-	"fmt"
 	"io"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"k8s.io/helm/cmd/helm/require"
-	"k8s.io/helm/pkg/hapi/release"
 	"k8s.io/helm/pkg/helm"
 )
 
 const releaseTestDesc = `
-The test command runs the tests for a release.
+This command consists of multiple subcommands to run and manage tests
+performed on a release.
 
-The argument this command takes is the name of a deployed release.
-The tests to be run are defined in the chart that was installed.
+For now, it can be used to run tests for a given release. More
+subcommands will be added in future iterations of this command.
+
+Example usage:
+     $ helm test run [RELEASE]
+
 `
 
-type releaseTestOptions struct {
-	name    string
-	client  helm.Interface
-	timeout int64
-	cleanup bool
-}
-
 func newReleaseTestCmd(c helm.Interface, out io.Writer) *cobra.Command {
-	o := &releaseTestOptions{client: c}
-
 	cmd := &cobra.Command{
-		Use:   "test [RELEASE]",
-		Short: "test a release",
+		Use:   "test",
+		Short: "run and manage tests on a release",
 		Long:  releaseTestDesc,
-		Args:  require.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			o.name = args[0]
-			o.client = ensureHelmClient(o.client, false)
-			return o.run(out)
-		},
 	}
-
-	f := cmd.Flags()
-	f.Int64Var(&o.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
-	f.BoolVar(&o.cleanup, "cleanup", false, "delete test pods upon completion")
+	cmd.AddCommand(
+		newReleaseTestRunCmd(c, out),
+		newReleaseTestCleanupCmd(c, out),
+		newReleaseTestResultsCmd(c, out),
+	)
 
 	return cmd
-}
-
-func (o *releaseTestOptions) run(out io.Writer) (err error) {
-	c, errc := o.client.RunReleaseTest(
-		o.name,
-		helm.ReleaseTestTimeout(o.timeout),
-		helm.ReleaseTestCleanup(o.cleanup),
-	)
-	testErr := &testErr{}
-
-	for {
-		select {
-		case err := <-errc:
-			if err == nil && testErr.failed > 0 {
-				return testErr.Error()
-			}
-			return err
-		case res, ok := <-c:
-			if !ok {
-				break
-			}
-
-			if res.Status == release.TestRunFailure {
-				testErr.failed++
-			}
-			fmt.Fprintf(out, res.Msg+"\n")
-		}
-	}
-}
-
-type testErr struct {
-	failed int
-}
-
-func (err *testErr) Error() error {
-	return errors.Errorf("%v test(s) failed", err.failed)
 }
