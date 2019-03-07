@@ -268,7 +268,7 @@ func (i *Install) renderResources(ch *chart.Chart, values chartutil.Values, vs c
 		}
 	}
 
-	files, err := engine.New().Render(ch, values)
+	files, err := engine.Render(ch, values)
 	if err != nil {
 		return hooks, buf, "", err
 	}
