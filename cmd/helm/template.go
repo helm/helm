@@ -35,7 +35,6 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/renderutil"
-	"k8s.io/helm/pkg/tiller"
 	"k8s.io/helm/pkg/timeconv"
 )
 
@@ -226,7 +225,7 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 		manifestsToRender = listManifests
 	}
 
-	for _, m := range tiller.SortByKind(manifestsToRender) {
+	for _, m := range manifest.SortByKind(manifestsToRender) {
 		data := m.Content
 		b := filepath.Base(m.Name)
 		if !t.showNotes && b == "NOTES.txt" {
