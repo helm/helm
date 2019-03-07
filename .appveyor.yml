@@ -1,4 +1,7 @@
 version: "{build}"
+branches:
+  only:
+  - master
 clone_folder: c:\go\src\k8s.io\helm
 environment:
   GOPATH: c:\go
