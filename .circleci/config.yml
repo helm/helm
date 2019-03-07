@@ -4,7 +4,7 @@ jobs:
     working_directory: /go/src/k8s.io/helm
     parallelism: 3
     docker:
-      - image: circleci/golang:1.11.5
+      - image: circleci/golang:1.12
     environment:
       - PROJECT_NAME: "kubernetes-helm"
       - GOCACHE: "/tmp/go/cache"
