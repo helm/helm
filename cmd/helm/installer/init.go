@@ -87,7 +87,8 @@ func ensureDefaultRepos(home helmpath.Home, out io.Writer, skipRefresh bool, set
 	if fi, err := os.Stat(repoFile); err != nil {
 		fmt.Fprintf(out, "Creating %s \n", repoFile)
 		f := repo.NewRepoFile()
-		// the cache path is prepended to all relative paths, for backwards compatibility, we must be relative to the cache directory
+		// The cache path is prepended to all relative paths.
+		// For backwards compatibility, the repo path must be relative to the cache directory
 		sif, err := filepath.Rel(home.Cache(), home.CacheIndex(stableRepository))
 		if err != nil {
 			return err
@@ -96,6 +97,7 @@ func ensureDefaultRepos(home helmpath.Home, out io.Writer, skipRefresh bool, set
 		if err != nil {
 			return err
 		}
+		// Same for local repo path.
 		lif, err := filepath.Rel(home.Cache(), home.CacheIndex("local"))
 		if err != nil {
 			return err
@@ -131,9 +133,7 @@ func initStableRepo(cacheFile string, home helmpath.Home, out io.Writer, skipRef
 		return &c, nil
 	}
 
-	// In this case, the cacheFile is always absolute. So passing empty string
-	// is safe.
-	if err := r.DownloadIndexFile(""); err != nil {
+	if err := r.DownloadIndexFile(home.Cache()); err != nil {
 		return nil, fmt.Errorf("Looks like %q is not a valid chart repository or cannot be reached: %s", stableRepositoryURL, err.Error())
 	}
 

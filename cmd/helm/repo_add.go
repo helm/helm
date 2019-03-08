@@ -111,6 +111,8 @@ func addRepository(name, url, username, password string, home helmpath.Home, cer
 		return fmt.Errorf("repository name (%s) already exists, please specify a different name", name)
 	}
 
+	// The cache path is prepended to all relative paths.
+	// For backwards compatibility, the repo path must be relative to the cache directory
 	cif, err := filepath.Rel(home.Cache(), home.CacheIndex(name))
 	if err != nil {
 		return err
