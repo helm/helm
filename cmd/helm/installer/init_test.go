@@ -18,6 +18,7 @@ package installer // import "k8s.io/helm/cmd/helm/installer"
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -104,27 +105,27 @@ func TestEnsureHome(t *testing.T) {
 	}
 
 	foundStable := false
+	stableCachePath := fmt.Sprintf("%s-index.yaml", stableRepository)
+	foundLocal := false
+	localCachePath := fmt.Sprintf("%s-index.yaml", LocalRepository)
 	for _, rr := range rf.Repositories {
 		if rr.Name == stableRepository {
+			if rr.Cache != stableCachePath {
+				t.Errorf("stable repo cache path is %s, not %s", rr.Cache, stableCachePath)
+			}
 			foundStable = true
-			if err != nil {
-				t.Error(err)
+		} else if rr.Name == LocalRepository {
+			if rr.Cache != localCachePath {
+				t.Errorf("local repo cache path is %s, not %s", rr.Cache, localCachePath)
 			}
-			if filepath.IsAbs(rr.Cache) {
-				t.Errorf("%s stable repo cache path is an absolute path", rr.Cache)
-			}
-			absCache, err := filepath.Abs(filepath.Join(hh.Cache(), rr.Cache))
-			if err != nil {
-				t.Error(err)
-			}
-			if absCache != hh.CacheIndex(stableRepository) {
-				t.Errorf("%s stable repo cache path doesn't resolve to absolute cache index path", rr.Cache)
-			}
-			break
+			foundLocal = true
 		}
 	}
 	if !foundStable {
 		t.Errorf("stable repo not found")
+	}
+	if !foundLocal {
+		t.Errorf("local repo not found")
 	}
 
 	expectedDirs := []string{hh.String(), hh.Repository(), hh.Cache(), hh.LocalRepository()}

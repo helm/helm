@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"testing"
@@ -87,6 +88,20 @@ func TestRepoAdd(t *testing.T) {
 	f, err := repo.LoadRepositoriesFile(hh.RepositoryFile())
 	if err != nil {
 		t.Error(err)
+	}
+
+	foundTestRepo := false
+	repoCachePath := fmt.Sprintf("%s-index.yaml", testName)
+	for _, rr := range f.Repositories {
+		if rr.Name == testName {
+			if rr.Cache != repoCachePath {
+				t.Errorf("%s repo cache path is %s, not %s", testName, rr.Cache, repoCachePath)
+			}
+			foundTestRepo = true
+		}
+	}
+	if !foundTestRepo {
+		t.Errorf("%s repo not found", testName)
 	}
 
 	if !f.Has(testName) {
