@@ -81,7 +81,8 @@ func runCompletionBash(out io.Writer, cmd *cobra.Command) error {
 }
 
 func runCompletionZsh(out io.Writer, cmd *cobra.Command) error {
-	zshInitialization := `
+	zshInitialization := `#compdef helm
+
 __helm_bash_source() {
 	alias shopt=':'
 	alias _expand=_bash_expand
@@ -211,6 +212,7 @@ __helm_convert_bash_to_zsh() {
 	-e "s/${LWORD}compopt${RWORD}/__helm_compopt/g" \
 	-e "s/${LWORD}declare${RWORD}/__helm_declare/g" \
 	-e "s/\\\$(type${RWORD}/\$(__helm_type/g" \
+	-e 's/aliashash\["\(.\{1,\}\)"\]/aliashash[\1]/g' \
 	<<'BASH_COMPLETION_EOF'
 `
 	out.Write([]byte(zshInitialization))
