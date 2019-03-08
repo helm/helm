@@ -40,16 +40,12 @@ type options struct {
 	force bool
 	// if set, skip running hooks
 	disableHooks bool
-	// release list options are applied directly to the list releases request
-	listReq hapi.ListReleasesRequest
 	// release install options are applied directly to the install release request
 	instReq hapi.InstallReleaseRequest
 	// release update options are applied directly to the update release request
 	updateReq hapi.UpdateReleaseRequest
 	// release uninstall options are applied directly to the uninstall release request
 	uninstallReq hapi.UninstallReleaseRequest
-	// release get status options are applied directly to the get release status request
-	statusReq hapi.GetReleaseStatusRequest
 	// release get content options are applied directly to the get release content request
 	contentReq hapi.GetReleaseContentRequest
 	// release rollback options are applied directly to the rollback release request

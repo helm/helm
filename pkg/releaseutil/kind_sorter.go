@@ -136,11 +136,3 @@ func (k *kindSorter) Less(i, j int) bool {
 	// sort different kinds
 	return first < second
 }
-
-// SortByKind sorts manifests in InstallOrder
-func SortByKind(manifests []Manifest) []Manifest {
-	ordering := InstallOrder
-	ks := newKindSorter(manifests, ordering)
-	sort.Sort(ks)
-	return ks.manifests
-}

@@ -141,7 +141,7 @@ func (p *Plugin) PrepareCommand(extraArgs []string) (string, []string, error) {
 	if platCmdLen == 0 || parts == nil {
 		parts = strings.Split(os.ExpandEnv(p.Metadata.Command), " ")
 	}
-	if parts == nil || len(parts) == 0 || parts[0] == "" {
+	if len(parts) == 0 || parts[0] == "" {
 		return "", nil, fmt.Errorf("No plugin command is applicable")
 	}
 

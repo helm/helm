@@ -3,10 +3,11 @@ DIST_DIRS  := find * -type d -exec
 TARGETS    := darwin/amd64 linux/amd64 linux/386 linux/arm linux/arm64 linux/ppc64le windows/amd64
 BINNAME    ?= helm
 
-GOPATH     = $(shell go env GOPATH)
-DEP        = $(GOPATH)/bin/dep
-GOX        = $(GOPATH)/bin/gox
-GOIMPORTS  = $(GOPATH)/bin/goimports
+GOPATH        = $(shell go env GOPATH)
+DEP           = $(GOPATH)/bin/dep
+GOX           = $(GOPATH)/bin/gox
+GOIMPORTS     = $(GOPATH)/bin/goimports
+GOLANGCI_LINT = $(GOPATH)/bin/golangci-lint
 
 # go option
 PKG        := ./...
@@ -70,8 +71,8 @@ test-unit: vendor
 	HELM_HOME=/no_such_dir go test $(GOFLAGS) -run $(TESTS) $(PKG) $(TESTFLAGS)
 
 .PHONY: test-style
-test-style: vendor
-	@scripts/validate-go.sh
+test-style: vendor $(GOLANGCI_LINT)
+	$(GOLANGCI_LINT) run
 	@scripts/validate-license.sh
 
 .PHONY: verify-docs
@@ -97,6 +98,9 @@ $(DEP):
 
 $(GOX):
 	go get -u github.com/mitchellh/gox
+
+$(GOLANGCI_LINT):
+	go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
 
 $(GOIMPORTS):
 	go get -u golang.org/x/tools/cmd/goimports
