@@ -1,0 +1,27 @@
+run:
+  deadline: 2m
+
+linters:
+  disable-all: true
+  enable:
+    - deadcode
+    - dupl
+    - gofmt
+    - goimports
+    - golint
+    - gosimple
+    - govet
+    - ineffassign
+    - misspell
+    - nakedret
+    - structcheck
+    - unused
+    - varcheck
+
+linters-settings:
+  gofmt:
+    simplify: true
+  goimports:
+    local-prefixes: k8s.io/helm
+  dupl:
+    threshold: 400

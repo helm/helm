@@ -25,7 +25,7 @@ import (
 )
 
 var (
-	validPortRegEx   = regexp.MustCompile("^([1-9]\\d{0,3}|0|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$") // adapted from https://stackoverflow.com/a/12968117
+	validPortRegEx   = regexp.MustCompile(`^([1-9]\d{0,3}|0|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$`) // adapted from https://stackoverflow.com/a/12968117
 	errEmptyRepo     = errors.New("parsed repo was empty")
 	errTooManyColons = errors.New("ref may only contain a single colon character (:) unless specifying a port number")
 )
