@@ -39,6 +39,30 @@ import (
 	"k8s.io/helm/pkg/tlsutil"
 )
 
+const (
+	bashCompletionFunc = `
+__helm_status_list()
+{
+    local out
+    if out=$(helm list -q 2>/dev/null); then
+        COMPREPLY=( $( compgen -W "${out[*]}" -- "$cur" ) )
+    fi
+}
+
+__helm_custom_func()
+{
+    case ${last_command} in
+        helm_status)
+            __helm_status_list
+            return
+            ;;
+        *)
+            ;;
+    esac
+}
+`
+)
+
 var (
 	tillerTunnel *kube.Tunnel
 	settings     helm_env.EnvSettings
@@ -103,6 +127,7 @@ func newRootCmd(args []string) *cobra.Command {
 		PersistentPostRun: func(*cobra.Command, []string) {
 			teardown()
 		},
+		BashCompletionFunction: bashCompletionFunc,
 	}
 	flags := cmd.PersistentFlags()
 
