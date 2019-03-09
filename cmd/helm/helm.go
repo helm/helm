@@ -41,7 +41,7 @@ import (
 
 const (
 	bashCompletionFunc = `
-__helm_status_list()
+__helm_list_releases()
 {
     local out
     if out=$(helm list -q 2>/dev/null); then
@@ -52,8 +52,8 @@ __helm_status_list()
 __helm_custom_func()
 {
     case ${last_command} in
-        helm_status)
-            __helm_status_list
+        helm_status | helm_delete)
+            __helm_list_releases
             return
             ;;
         *)
