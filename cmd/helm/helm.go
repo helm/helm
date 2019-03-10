@@ -41,10 +41,38 @@ import (
 
 const (
 	bashCompletionFunc = `
+__helm_override_flag_list=(--kubeconfig --kube-context --host --tiller-namespace)
+__helm_override_flags()
+{
+    local ${__helm_override_flag_list[*]##*-} two_word_of of var
+    for w in "${words[@]}"; do
+        if [ -n "${two_word_of}" ]; then
+            eval "${two_word_of##*-}=\"${two_word_of}=\${w}\""
+            two_word_of=
+            continue
+        fi
+        for of in "${__helm_override_flag_list[@]}"; do
+            case "${w}" in
+                ${of}=*)
+                    eval "${of##*-}=\"${w}\""
+                    ;;
+                ${of})
+                    two_word_of="${of}"
+                    ;;
+            esac
+        done
+    done
+    for var in "${__helm_override_flag_list[@]##*-}"; do
+        if eval "test -n \"\$${var}\""; then
+            eval "echo \${${var}}"
+        fi
+    done
+}
+
 __helm_list_releases()
 {
     local out
-    if out=$(helm list -q 2>/dev/null); then
+    if out=$(helm list $(__helm_override_flags) -q 2>/dev/null); then
         COMPREPLY=( $( compgen -W "${out[*]}" -- "$cur" ) )
     fi
 }
