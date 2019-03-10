@@ -195,7 +195,7 @@ func (g *TarGzExtractor) Extract(buffer *bytes.Buffer, targetDir string) error {
 				return err
 			}
 		case tar.TypeReg:
-			outFile, err := os.Create(path)
+			outFile, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
 			if err != nil {
 				return err
 			}
