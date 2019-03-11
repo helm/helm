@@ -47,7 +47,7 @@ Environment:
   $HELM_HOME          set an alternative location for Helm files. By default, these are stored in
                       $XDG_CONFIG_DIR/helm ($HOME/.config/helm on Linux, %APPDATA%\helm on Windows
                       and $HOME/Library/Preferences/helm on macOS).
-                      NOTE: if there is old-style $HOME/.helm directory, it will be used.
+                      NOTE: if default does not exist but $HOME/.helm does, the last will be used.
   $HELM_DRIVER        set the backend storage driver. Values are: configmap, secret, memory
   $HELM_NO_PLUGINS    disable plugins. Set HELM_NO_PLUGINS=1 to disable plugins.
   $KUBECONFIG         set an alternative Kubernetes configuration file (default $HOME/.kube/config)

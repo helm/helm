@@ -61,7 +61,7 @@ _helm home_. By default, it is located in one of these directories:
  * `$HOME/.config/helm` on Linux
  * `$HOME/Library/Preferences/helm` on OSx
  * `%APPDATA%\helm` on Windows
- * `$HOME/.helm` if you have used helm before 3rd release
+ * `$HOME/.helm` if it exists (this means you were using old version of Helm)
 
 This directory contains configuration and cache data, and is created by
 `helm init`.

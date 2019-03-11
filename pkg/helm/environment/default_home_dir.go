@@ -17,10 +17,11 @@ limitations under the License.
 package environment
 
 import (
-	"github.com/casimir/xdg-go"
-	"k8s.io/client-go/util/homedir"
 	"os"
 	"path/filepath"
+
+	"github.com/casimir/xdg-go"
+	"k8s.io/client-go/util/homedir"
 )
 
 // New default helm home, with different paths for different OS:

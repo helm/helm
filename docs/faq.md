@@ -48,7 +48,7 @@ located by default in one of following directories:
  * `$HOME/.config/helm` on Linux
  * `$HOME/Library/Preferences/helm` on macOS
  * `%APPDATA%\helm` on Windows
- * `$HOME/.helm` if you have used helm before 3rd release
+ * `$HOME/.helm` if it exists (this means you were using old version of Helm)
 
 ## Troubleshooting
 

@@ -17,9 +17,10 @@ limitations under the License.
 package main
 
 import (
-	"k8s.io/helm/pkg/helm/environment"
 	"os"
 	"testing"
+
+	"k8s.io/helm/pkg/helm/environment"
 )
 
 func TestRootCmd(t *testing.T) {

@@ -23,9 +23,10 @@ These dependencies are expressed as interfaces so that alternate implementations
 package environment
 
 import (
+	"os"
+
 	"github.com/spf13/pflag"
 	"k8s.io/helm/pkg/helm/helmpath"
-	"os"
 )
 
 // EnvSettings describes all of the environment settings.
