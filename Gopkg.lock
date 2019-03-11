@@ -60,12 +60,12 @@
   revision = "e9091a26100e9cfb2b6a8f470085bfa541931a91"
 
 [[projects]]
-  digest = "1:6e6779c1e7984081358a4aee6f944233c8cbabfb28ca9dc0e20af595d476ebf4"
+  digest = "1:55388fd080150b9a072912f97b1f5891eb0b50df43401f8b75fb4273d3fec9fc"
   name = "github.com/Masterminds/semver"
   packages = ["."]
   pruneopts = "UT"
-  revision = "517734cc7d6470c0d07130e40fd40bdeb9bcd3fd"
-  version = "v1.3.1"
+  revision = "c7af12943936e8c39859482e61f0574c2fd7fc75"
+  version = "v1.4.2"
 
 [[projects]]
   digest = "1:b0baf96eb3f1387dfd368f38f1d9c91adb947239530014d1006540ccee7579b2"
@@ -76,12 +76,12 @@
   version = "v2.16.0"
 
 [[projects]]
-  digest = "1:035b152b3f30c1d32a82862fd7af2da1894514d748b0ff7c435ed48e75a0b58a"
+  digest = "1:74334b154a542b15a7391df3db5428675fdaa56b4d3f3de7b750289b9500d70e"
   name = "github.com/Masterminds/vcs"
   packages = ["."]
   pruneopts = "UT"
-  revision = "3084677c2c188840777bff30054f2b553729d329"
-  version = "v1.11.1"
+  revision = "b4f55832432b95a611cf1495272b5c8e24952a1a"
+  version = "v1.13.0"
 
 [[projects]]
   digest = "1:d1665c44bd5db19aaee18d1b6233c99b0b9a986e8bccb24ef54747547a48027f"
@@ -116,12 +116,12 @@
   version = "v1.0.1"
 
 [[projects]]
-  digest = "1:311ccee815cbad2b98ab1f1f3f666db6f7f9d5e425cfd99197f6e925d3907848"
+  digest = "1:320e7ead93de9fd2b0e59b50fd92a4d50c1f8ab455d96bc2eb083267453a9709"
   name = "github.com/asaskevich/govalidator"
   packages = ["."]
   pruneopts = "UT"
-  revision = "7664702784775e51966f0885f5cd27435916517b"
-  version = "v4"
+  revision = "ccb8e960c48f04d6935e72476ae4a51028f9e22f"
+  version = "v9"
 
 [[projects]]
   branch = "master"
@@ -1123,7 +1123,7 @@
 
 [[projects]]
   branch = "release-1.13"
-  digest = "1:a218faabd81ea62d514604e97d040b9c6d17ea0bbd5cf9a4e542d2d02f79512f"
+  digest = "1:59f8bed7a7fbb14fb4d57cd578e2f65b1779b11573e7aa7fdba942198bbf8c07"
   name = "k8s.io/api"
   packages = [
     "admission/v1beta1",
@@ -1162,7 +1162,7 @@
     "storage/v1beta1",
   ]
   pruneopts = "UT"
-  revision = "a61488babbd64b32da2ed985e2e70fe7b4ffc05a"
+  revision = "5cb15d34447165a97c76ed5a60e4e99c8a01ecfe"
 
 [[projects]]
   branch = "release-1.13"
@@ -1170,11 +1170,11 @@
   name = "k8s.io/apiextensions-apiserver"
   packages = ["pkg/features"]
   pruneopts = "UT"
-  revision = "80aa1ff92762056fadf699d39bf7f57fe8b34976"
+  revision = "bfb440be4b874c001bc64ea4b3324d37ab3c98dd"
 
 [[projects]]
   branch = "release-1.13"
-  digest = "1:ae43721e176dfeecf55769ea3eea983bb241813b40ffaeaf22aceed56c856523"
+  digest = "1:bdcf6344cebab8b19627c9beb2ea676f584eca1d255b060f01bb30236bcb5be5"
   name = "k8s.io/apimachinery"
   packages = [
     "pkg/api/equality",
@@ -1232,7 +1232,7 @@
     "third_party/forked/golang/reflect",
   ]
   pruneopts = "UT"
-  revision = "2b1284ed4c93a43499e781493253e2ac5959c4fd"
+  revision = "86fb29eff6288413d76bd8506874fddd9fccdff0"
 
 [[projects]]
   branch = "release-1.13"
@@ -1246,7 +1246,7 @@
     "pkg/util/feature",
   ]
   pruneopts = "UT"
-  revision = "c3083108fa3bda1f3da8742881d36d20330d07a3"
+  revision = "5838f549963bed8c4af81f430f23a29eccad093e"
 
 [[projects]]
   branch = "master"
@@ -1268,7 +1268,7 @@
   revision = "8abb1aeb8307ee1f2335c4331d850a232efb1cbd"
 
 [[projects]]
-  digest = "1:ba0a20ca14958ddb44159a08daf69b6acbdc0ef99f449ec7035759e9362bc058"
+  digest = "1:bbd76e2885a4c5d22210e1196c24e1dac3d695717892beb1231f7226e6aea7de"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
@@ -1391,8 +1391,8 @@
     "util/retry",
   ]
   pruneopts = "UT"
-  revision = "e64494209f554a6723674bd494d69445fb76a1d4"
-  version = "kubernetes-1.13.0"
+  revision = "b40b2a5939e43f7ffe0028ad67586b7ce50bb675"
+  version = "kubernetes-1.13.4"
 
 [[projects]]
   digest = "1:e2999bf1bb6eddc2a6aa03fe5e6629120a53088926520ca3b4765f77d7ff7eab"
@@ -1417,7 +1417,7 @@
 
 [[projects]]
   branch = "release-1.13"
-  digest = "1:43d50cbc3ec6a1a5d4597f9145a61a6bfeb938b32362bcca76c79e4057e8dfff"
+  digest = "1:c9564449a22bd640a6ab2b73decf4e8e42e9d896ea5d342a69319c32ca6f870b"
   name = "k8s.io/kubernetes"
   packages = [
     "pkg/api/legacyscheme",
@@ -1539,7 +1539,7 @@
     "pkg/version",
   ]
   pruneopts = "UT"
-  revision = "598a01989dcd06ec776248506fe6eb32f499bd38"
+  revision = "6c1e64b94a3e111199c934c39a0c25bc219ed5f9"
 
 [[projects]]
   branch = "master"
