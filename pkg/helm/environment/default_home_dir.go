@@ -25,8 +25,8 @@ import (
 
 // New default helm home, with different paths for different OS:
 //	- %APPDATA%\helm on Windows
-//	- $HOME/Library/Preferences/helm on OSX
-//  - $kXDG_CONFIG_HOME/helm (typically $HOME/.config/helm for Linux)
+//	- $HOME/Library/Preferences/helm on macOS
+//	- $XDG_CONFIG_HOME/helm (typically $HOME/.config/helm for Linux)
 var defaultHelmHome = xdg.App{Name: "helm"}.ConfigPath("")
 
 // Old default helm home, it's old good $HELM/.helm

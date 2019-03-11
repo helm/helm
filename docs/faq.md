@@ -26,7 +26,7 @@ We provide it because it is useful, but we suggest that users carefully read the
 script first. What we'd really like, though, are better packaged releases of
 Helm.
 
-### How do I put the Helm client files somewhere other than ~/.helm?
+### How do I put the Helm client files somewhere other than default location?
 
 Set the `$HELM_HOME` environment variable, and then run `helm init`:
 
@@ -44,8 +44,11 @@ with `helm repo add...`.
 ### I want to delete my local Helm. Where are all its files?
 
 Along with the `helm` binary, Helm stores some files in `$HELM_HOME`, which is
-located by default in `~/.helm`.
-
+located by default in one of following directories:
+ * `$HOME/.config/helm` on Linux
+ * `$HOME/Library/Preferences/helm` on macOS
+ * `%APPDATA%\helm` on Windows
+ * `$HOME/.helm` if you have used helm before 3rd release
 
 ## Troubleshooting
 

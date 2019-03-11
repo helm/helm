@@ -57,7 +57,11 @@ capitalized. When speaking of the client, _helm_ is in lowercase.
 ## Helm Home (HELM_HOME)
 
 The Helm client stores information in a local directory referred to as
-_helm home_. By default, this is in the `$HOME/.helm` directory.
+_helm home_. By default, it is located in one of these directories:
+ * `$HOME/.config/helm` on Linux
+ * `$HOME/Library/Preferences/helm` on OSx
+ * `%APPDATA%\helm` on Windows
+ * `$HOME/.helm` if you have used helm before 3rd release
 
 This directory contains configuration and cache data, and is created by
 `helm init`.
