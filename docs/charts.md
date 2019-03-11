@@ -26,6 +26,7 @@ wordpress/
   LICENSE             # OPTIONAL: A plain text file containing the license for the chart
   README.md           # OPTIONAL: A human-readable README file
   values.yaml         # The default configuration values for this chart
+  values.schema.yaml  # OPTIONAL: A JSON Schema for imposing a structure on the values.yaml file
   charts/             # A directory containing any charts upon which this chart depends.
   templates/          # A directory of templates that, when combined with values,
                       # will generate valid Kubernetes manifest files.
@@ -763,14 +764,72 @@ parent chart.
 
 Also, global variables of parent charts take precedence over the global variables from subcharts.
 
+### Schema Files
+
+Sometimes, a chart writer might want to define a structure on their values.
+This can be done by defining a schema in the `values.schema.yaml` file. A
+schema is the yaml representation of a [JSON Schema](https://json-schema.org/).
+It might look something like this:
+
+```yaml
+title: Values
+type: object
+properties:
+    name:
+        description: Service name
+        type: string
+    protocol:
+        type: string
+    port:
+        description: Port
+        type: integer
+        minimum: 0
+    image:
+        description: Container Image
+        type: object
+        properties:
+            repo:
+                type: string
+            tag:
+                type: string
+required:
+    - protocol
+    - port
+```
+
+This schema will be applied to the values to validate it. An example of a
+`values.yaml` file that meets the requirements of this schema might look
+something like this:
+
+```yaml
+name: frontend
+protocol: https
+port: 443
+```
+
+Note that the schema is applied to the final `.Values` object, and not just to
+the `values.yaml` file. This means that the following `yaml` file is valid,
+given that the chart is installed with the appropriate `--set` option shown
+below.
+
+```yaml
+name: frontend
+protocol: https
+```
+
+````
+helm install --set port=443
+````
+
 ### References
 
-When it comes to writing templates and values files, there are several
+When it comes to writing templates, values, and schema files, there are several
 standard references that will help you out.
 
 - [Go templates](https://godoc.org/text/template)
 - [Extra template functions](https://godoc.org/github.com/Masterminds/sprig)
 - [The YAML format](http://yaml.org/spec/)
+- [JSON Schema](https://json-schema.org/)
 
 ## Using Helm to Manage Charts
 
