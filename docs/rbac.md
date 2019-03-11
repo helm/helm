@@ -43,7 +43,7 @@ _Note: The cluster-admin role is created by default in a Kubernetes cluster, so 
 $ kubectl create -f rbac-config.yaml
 serviceaccount "tiller" created
 clusterrolebinding "tiller" created
-$ helm init --service-account tiller --max-history 200
+$ helm init --service-account tiller --history-max 200
 ```
 
 ### Example: Deploy Tiller in a namespace, restricted to deploying resources only in that namespace
