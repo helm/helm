@@ -63,8 +63,8 @@ func DirExists(path string) bool {
 
 // GetDefaultConfigHome determines the configuration home dir.
 func GetDefaultConfigHome() string {
-	if ConfigPath.xdgHomeExists() || !ConfigPath.basicHomeExists() {
-		return defaultHelmHome
+	if !ConfigPath.xdgHomeExists() && ConfigPath.basicHomeExists() {
+		return oldDefaultHelmHome
 	}
-	return oldDefaultHelmHome
+	return defaultHelmHome
 }
