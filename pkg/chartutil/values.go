@@ -202,7 +202,7 @@ func parsePropertiesFromValues(values Values) map[string]map[string]interface{} 
 
 		properties[k] = make(map[string]interface{})
 		// the following types are the only types possible from unmarshalling
-		switch v.(type) {
+		switch v := v.(type) {
 		case bool:
 			properties[k]["type"] = "bool"
 		case float64:
@@ -211,10 +211,10 @@ func parsePropertiesFromValues(values Values) map[string]map[string]interface{} 
 			properties[k]["type"] = "string"
 		case []interface{}:
 			properties[k]["type"] = "array"
-			properties[k]["items"] = parseItemsFromValues(v.([]interface{}))
+			properties[k]["items"] = parseItemsFromValues(v)
 		case map[string]interface{}:
 			properties[k]["type"] = "object"
-			object := parsePropertiesFromValues(v.(map[string]interface{}))
+			object := parsePropertiesFromValues(v)
 			if len(object) > 0 {
 				properties[k]["object"] = object
 			}
@@ -227,7 +227,7 @@ func parseItemsFromValues(items []interface{}) map[string]interface{} {
 	properties := make(map[string]interface{})
 	v := items[0]
 	// the following types are the only types possible from unmarshalling
-	switch v.(type) {
+	switch v := v.(type) {
 	case bool:
 		properties["type"] = "bool"
 	case float64:
@@ -236,10 +236,10 @@ func parseItemsFromValues(items []interface{}) map[string]interface{} {
 		properties["type"] = "string"
 	case []interface{}:
 		properties["type"] = "array"
-		properties["items"] = parseItemsFromValues(v.([]interface{}))
+		properties["items"] = parseItemsFromValues(v)
 	case map[string]interface{}:
 		properties["type"] = "object"
-		object := parsePropertiesFromValues(v.(map[string]interface{}))
+		object := parsePropertiesFromValues(v)
 		if len(object) > 0 {
 			properties["object"] = object
 		}
