@@ -24,7 +24,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"k8s.io/helm/pkg/release"
+	"helm.sh/helm/pkg/release"
 )
 
 type nameTemplateTestCase struct {

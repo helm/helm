@@ -26,11 +26,11 @@ import (
 
 	"github.com/pkg/errors"
 
-	"k8s.io/helm/pkg/getter"
-	"k8s.io/helm/pkg/helmpath"
-	"k8s.io/helm/pkg/provenance"
-	"k8s.io/helm/pkg/repo"
-	"k8s.io/helm/pkg/urlutil"
+	"helm.sh/helm/pkg/getter"
+	"helm.sh/helm/pkg/helmpath"
+	"helm.sh/helm/pkg/provenance"
+	"helm.sh/helm/pkg/repo"
+	"helm.sh/helm/pkg/urlutil"
 )
 
 // VerificationStrategy describes a strategy for determining whether to verify a chart.

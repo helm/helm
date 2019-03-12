@@ -5,7 +5,7 @@ entries:
       urls:
         - https://kubernetes-charts.storage.googleapis.com/alpine-0.1.0.tgz
       checksum: 0e6661f193211d7a5206918d42f5c2a9470b737d
-      home: https://k8s.io/helm
+      home: https://helm.sh/helm
       sources:
         - https://github.com/helm/helm
       version: 0.1.0
@@ -17,7 +17,7 @@ entries:
       urls:
         - https://kubernetes-charts.storage.googleapis.com/alpine-0.2.0.tgz
       checksum: 0e6661f193211d7a5206918d42f5c2a9470b737d
-      home: https://k8s.io/helm
+      home: https://helm.sh/helm
       sources:
         - https://github.com/helm/helm
       version: 0.2.0

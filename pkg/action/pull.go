@@ -25,11 +25,11 @@ import (
 
 	"github.com/pkg/errors"
 
-	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/cli"
-	"k8s.io/helm/pkg/downloader"
-	"k8s.io/helm/pkg/getter"
-	"k8s.io/helm/pkg/repo"
+	"helm.sh/helm/pkg/chartutil"
+	"helm.sh/helm/pkg/cli"
+	"helm.sh/helm/pkg/downloader"
+	"helm.sh/helm/pkg/getter"
+	"helm.sh/helm/pkg/repo"
 )
 
 // Pull is the action for checking a given release's information.

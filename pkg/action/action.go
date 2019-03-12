@@ -24,11 +24,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/discovery"
 
-	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/kube"
-	"k8s.io/helm/pkg/registry"
-	"k8s.io/helm/pkg/release"
-	"k8s.io/helm/pkg/storage"
+	"helm.sh/helm/pkg/chartutil"
+	"helm.sh/helm/pkg/kube"
+	"helm.sh/helm/pkg/registry"
+	"helm.sh/helm/pkg/release"
+	"helm.sh/helm/pkg/storage"
 )
 
 // Timestamper is a function capable of producing a timestamp.Timestamper.

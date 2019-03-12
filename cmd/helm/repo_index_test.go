@@ -23,7 +23,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"k8s.io/helm/pkg/repo"
+	"helm.sh/helm/pkg/repo"
 )
 
 func TestRepoIndexCmd(t *testing.T) {

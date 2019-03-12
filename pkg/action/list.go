@@ -22,8 +22,8 @@ import (
 
 	"github.com/gosuri/uitable"
 
-	"k8s.io/helm/pkg/release"
-	"k8s.io/helm/pkg/releaseutil"
+	"helm.sh/helm/pkg/release"
+	"helm.sh/helm/pkg/releaseutil"
 )
 
 // ListStates represents zero or more status codes that a list item may have set

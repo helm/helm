@@ -20,8 +20,8 @@ import (
 	"bytes"
 	"strings"
 
-	"k8s.io/helm/pkg/kube"
-	"k8s.io/helm/pkg/releaseutil"
+	"helm.sh/helm/pkg/kube"
+	"helm.sh/helm/pkg/releaseutil"
 )
 
 // resourcePolicyAnno is the annotation name for a resource policy

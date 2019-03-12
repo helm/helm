@@ -19,7 +19,7 @@ package action
 import (
 	"github.com/ghodss/yaml"
 
-	"k8s.io/helm/pkg/chartutil"
+	"helm.sh/helm/pkg/chartutil"
 )
 
 // GetValues is the action for checking a given release's values.

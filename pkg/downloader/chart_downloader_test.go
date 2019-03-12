@@ -25,11 +25,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"k8s.io/helm/pkg/cli"
-	"k8s.io/helm/pkg/getter"
-	"k8s.io/helm/pkg/helmpath"
-	"k8s.io/helm/pkg/repo"
-	"k8s.io/helm/pkg/repo/repotest"
+	"helm.sh/helm/pkg/cli"
+	"helm.sh/helm/pkg/getter"
+	"helm.sh/helm/pkg/helmpath"
+	"helm.sh/helm/pkg/repo"
+	"helm.sh/helm/pkg/repo/repotest"
 )
 
 func TestResolveChartRef(t *testing.T) {

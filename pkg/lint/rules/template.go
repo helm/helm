@@ -23,10 +23,10 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 
-	"k8s.io/helm/pkg/chart/loader"
-	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/engine"
-	"k8s.io/helm/pkg/lint/support"
+	"helm.sh/helm/pkg/chart/loader"
+	"helm.sh/helm/pkg/chartutil"
+	"helm.sh/helm/pkg/engine"
+	"helm.sh/helm/pkg/lint/support"
 )
 
 // Templates lints the templates in the Linter.

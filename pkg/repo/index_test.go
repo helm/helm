@@ -22,9 +22,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"k8s.io/helm/pkg/chart"
-	"k8s.io/helm/pkg/cli"
-	"k8s.io/helm/pkg/getter"
+	"helm.sh/helm/pkg/chart"
+	"helm.sh/helm/pkg/cli"
+	"helm.sh/helm/pkg/getter"
 )
 
 const (

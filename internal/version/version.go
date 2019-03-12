@@ -14,10 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package version // import "k8s.io/helm/internal/version"
+package version // import "helm.sh/helm/internal/version"
 
 import (
-	hversion "k8s.io/helm/pkg/version"
+	hversion "helm.sh/helm/pkg/version"
 )
 
 var (

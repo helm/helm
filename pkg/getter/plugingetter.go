@@ -23,8 +23,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"k8s.io/helm/pkg/cli"
-	"k8s.io/helm/pkg/plugin"
+	"helm.sh/helm/pkg/cli"
+	"helm.sh/helm/pkg/plugin"
 )
 
 // collectPlugins scans for getter plugins.

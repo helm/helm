@@ -24,9 +24,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/lint"
-	"k8s.io/helm/pkg/lint/support"
+	"helm.sh/helm/pkg/chartutil"
+	"helm.sh/helm/pkg/lint"
+	"helm.sh/helm/pkg/lint/support"
 )
 
 var errLintNoChart = errors.New("no chart found for linting (missing Chart.yaml)")

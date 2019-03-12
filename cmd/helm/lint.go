@@ -24,7 +24,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"k8s.io/helm/pkg/action"
+	"helm.sh/helm/pkg/action"
 )
 
 var longLintHelp = `

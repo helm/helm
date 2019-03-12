@@ -14,4 +14,4 @@ limitations under the License.
 */
 
 // Package installer provides an interface for installing Helm plugins.
-package installer // import "k8s.io/helm/pkg/plugin/installer"
+package installer // import "helm.sh/helm/pkg/plugin/installer"

@@ -23,9 +23,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"k8s.io/helm/cmd/helm/require"
-	"k8s.io/helm/pkg/action"
-	"k8s.io/helm/pkg/release"
+	"helm.sh/helm/cmd/helm/require"
+	"helm.sh/helm/pkg/action"
+	"helm.sh/helm/pkg/release"
 )
 
 const releaseTestDesc = `

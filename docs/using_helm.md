@@ -92,7 +92,7 @@ simplest, it takes only one argument: The name of the chart.
 
 ```
 $ helm install stable/mariadb
-Fetched stable/mariadb-0.3.0 to /Users/mattbutcher/Code/Go/src/k8s.io/helm/mariadb-0.3.0.tgz
+Fetched stable/mariadb-0.3.0 to /Users/mattbutcher/Code/Go/src/helm.sh/helm/mariadb-0.3.0.tgz
 happy-panda
 Last Deployed: Wed Sep 28 12:32:28 2016
 Namespace: default
@@ -180,7 +180,7 @@ values`:
 
 ```console
 helm inspect values stable/mariadb
-Fetched stable/mariadb-0.3.0.tgz to /Users/mattbutcher/Code/Go/src/k8s.io/helm/mariadb-0.3.0.tgz
+Fetched stable/mariadb-0.3.0.tgz to /Users/mattbutcher/Code/Go/src/helm.sh/helm/mariadb-0.3.0.tgz
 ## Bitnami MariaDB image version
 ## ref: https://hub.docker.com/r/bitnami/mariadb/tags/
 ##
@@ -325,7 +325,7 @@ update things that have changed since the last release.
 
 ```console
 $ helm upgrade -f panda.yaml happy-panda stable/mariadb
-Fetched stable/mariadb-0.3.0.tgz to /Users/mattbutcher/Code/Go/src/k8s.io/helm/mariadb-0.3.0.tgz
+Fetched stable/mariadb-0.3.0.tgz to /Users/mattbutcher/Code/Go/src/helm.sh/helm/mariadb-0.3.0.tgz
 happy-panda has been upgraded. Happy Helming!
 Last Deployed: Wed Sep 28 12:47:54 2016
 Namespace: default

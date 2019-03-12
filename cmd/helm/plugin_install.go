@@ -21,10 +21,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"k8s.io/helm/cmd/helm/require"
-	"k8s.io/helm/pkg/helmpath"
-	"k8s.io/helm/pkg/plugin"
-	"k8s.io/helm/pkg/plugin/installer"
+	"helm.sh/helm/cmd/helm/require"
+	"helm.sh/helm/pkg/helmpath"
+	"helm.sh/helm/pkg/plugin"
+	"helm.sh/helm/pkg/plugin/installer"
 )
 
 type pluginInstallOptions struct {

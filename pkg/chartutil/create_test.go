@@ -23,8 +23,8 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/helm/pkg/chart"
-	"k8s.io/helm/pkg/chart/loader"
+	"helm.sh/helm/pkg/chart"
+	"helm.sh/helm/pkg/chart/loader"
 )
 
 func TestCreate(t *testing.T) {

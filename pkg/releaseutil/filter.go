@@ -14,9 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package releaseutil // import "k8s.io/helm/pkg/releaseutil"
+package releaseutil // import "helm.sh/helm/pkg/releaseutil"
 
-import rspb "k8s.io/helm/pkg/release"
+import rspb "helm.sh/helm/pkg/release"
 
 // FilterFunc returns true if the release object satisfies
 // the predicate of the underlying filter func.

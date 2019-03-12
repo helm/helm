@@ -23,8 +23,8 @@ import (
 
 	"github.com/ghodss/yaml"
 
-	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/release"
+	"helm.sh/helm/pkg/chartutil"
+	"helm.sh/helm/pkg/release"
 )
 
 var printReleaseTemplate = `REVISION: {{.Release.Version}}

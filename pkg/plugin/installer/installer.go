@@ -24,7 +24,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"k8s.io/helm/pkg/helmpath"
+	"helm.sh/helm/pkg/helmpath"
 )
 
 // ErrMissingMetadata indicates that plugin.yaml is missing.

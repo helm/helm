@@ -20,4 +20,4 @@ Tiller provides a simple interface for taking a Chart and rendering its template
 The 'engine' package implements this interface using Go's built-in 'text/template'
 package.
 */
-package engine // import "k8s.io/helm/pkg/engine"
+package engine // import "helm.sh/helm/pkg/engine"

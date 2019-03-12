@@ -24,9 +24,9 @@ import (
 	"github.com/gosuri/uitable"
 	"github.com/pkg/errors"
 
-	"k8s.io/helm/pkg/chart"
-	"k8s.io/helm/pkg/release"
-	"k8s.io/helm/pkg/releaseutil"
+	"helm.sh/helm/pkg/chart"
+	"helm.sh/helm/pkg/release"
+	"helm.sh/helm/pkg/releaseutil"
 )
 
 type releaseInfo struct {

@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/helm/pkg/release"
+	"helm.sh/helm/pkg/release"
 )
 
 func TestReleaseTesting(t *testing.T) {

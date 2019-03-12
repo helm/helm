@@ -1,5 +1,5 @@
 description: Empty testing chart
-home: https://k8s.io/helm
+home: https://helm.sh/helm
 name: empty
 sources:
 - https://github.com/helm/helm

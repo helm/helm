@@ -31,8 +31,8 @@ import (
 	"golang.org/x/crypto/openpgp/clearsign"
 	"golang.org/x/crypto/openpgp/packet"
 
-	hapi "k8s.io/helm/pkg/chart"
-	"k8s.io/helm/pkg/chart/loader"
+	hapi "helm.sh/helm/pkg/chart"
+	"helm.sh/helm/pkg/chart/loader"
 )
 
 var defaultPGPConfig = packet.Config{

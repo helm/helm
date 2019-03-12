@@ -21,7 +21,7 @@ import (
 	"strings"
 	"sync"
 
-	rspb "k8s.io/helm/pkg/release"
+	rspb "helm.sh/helm/pkg/release"
 )
 
 var _ Driver = (*Memory)(nil)

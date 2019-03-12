@@ -21,8 +21,8 @@ import (
 	"os"
 	"testing"
 
-	"k8s.io/helm/pkg/repo"
-	"k8s.io/helm/pkg/repo/repotest"
+	"helm.sh/helm/pkg/repo"
+	"helm.sh/helm/pkg/repo/repotest"
 )
 
 func TestRepoAddCmd(t *testing.T) {

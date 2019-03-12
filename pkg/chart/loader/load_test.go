@@ -19,7 +19,7 @@ package loader
 import (
 	"testing"
 
-	"k8s.io/helm/pkg/chart"
+	"helm.sh/helm/pkg/chart"
 )
 
 func TestLoadDir(t *testing.T) {

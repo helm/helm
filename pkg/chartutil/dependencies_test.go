@@ -21,9 +21,9 @@ import (
 	"strconv"
 	"testing"
 
-	"k8s.io/helm/pkg/chart"
-	"k8s.io/helm/pkg/chart/loader"
-	"k8s.io/helm/pkg/version"
+	"helm.sh/helm/pkg/chart"
+	"helm.sh/helm/pkg/chart/loader"
+	"helm.sh/helm/pkg/version"
 )
 
 func loadChart(t *testing.T, path string) *chart.Chart {

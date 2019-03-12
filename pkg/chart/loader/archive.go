@@ -26,7 +26,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"k8s.io/helm/pkg/chart"
+	"helm.sh/helm/pkg/chart"
 )
 
 // FileLoader loads a chart from a file

@@ -23,8 +23,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"k8s.io/helm/cmd/helm/require"
-	"k8s.io/helm/internal/version"
+	"helm.sh/helm/cmd/helm/require"
+	"helm.sh/helm/internal/version"
 )
 
 const versionDesc = `

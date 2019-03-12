@@ -22,13 +22,13 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
-	"k8s.io/helm/pkg/action"
+	"helm.sh/helm/pkg/action"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"k8s.io/helm/pkg/downloader"
-	"k8s.io/helm/pkg/getter"
+	"helm.sh/helm/pkg/downloader"
+	"helm.sh/helm/pkg/getter"
 )
 
 const packageDesc = `

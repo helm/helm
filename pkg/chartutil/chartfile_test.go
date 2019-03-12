@@ -19,7 +19,7 @@ package chartutil
 import (
 	"testing"
 
-	"k8s.io/helm/pkg/chart"
+	"helm.sh/helm/pkg/chart"
 )
 
 const testfile = "testdata/chartfiletest.yaml"

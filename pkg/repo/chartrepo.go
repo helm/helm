@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package repo // import "k8s.io/helm/pkg/repo"
+package repo // import "helm.sh/helm/pkg/repo"
 
 import (
 	"fmt"
@@ -27,9 +27,9 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 
-	"k8s.io/helm/pkg/chart/loader"
-	"k8s.io/helm/pkg/getter"
-	"k8s.io/helm/pkg/provenance"
+	"helm.sh/helm/pkg/chart/loader"
+	"helm.sh/helm/pkg/getter"
+	"helm.sh/helm/pkg/provenance"
 )
 
 // Entry represents a collection of parameters for chart repository

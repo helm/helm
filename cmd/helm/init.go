@@ -27,12 +27,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"k8s.io/helm/cmd/helm/require"
-	"k8s.io/helm/pkg/getter"
-	"k8s.io/helm/pkg/helmpath"
-	"k8s.io/helm/pkg/plugin"
-	"k8s.io/helm/pkg/plugin/installer"
-	"k8s.io/helm/pkg/repo"
+	"helm.sh/helm/cmd/helm/require"
+	"helm.sh/helm/pkg/getter"
+	"helm.sh/helm/pkg/helmpath"
+	"helm.sh/helm/pkg/plugin"
+	"helm.sh/helm/pkg/plugin/installer"
+	"helm.sh/helm/pkg/repo"
 )
 
 const initDesc = `

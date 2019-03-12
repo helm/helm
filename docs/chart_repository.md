@@ -75,7 +75,7 @@ entries:
     - created: 2016-10-06T16:23:20.499814565-06:00
       description: Deploy a basic Alpine Linux pod
       digest: 99c76e403d752c84ead610644d4b1c2f2b453a74b921f422b9dcb8a7c8b559cd
-      home: https://k8s.io/helm
+      home: https://helm.sh/helm
       name: alpine
       sources:
       - https://github.com/helm/helm
@@ -85,7 +85,7 @@ entries:
     - created: 2016-10-06T16:23:20.499543808-06:00
       description: Deploy a basic Alpine Linux pod
       digest: 515c58e5f79d8b2913a10cb400ebb6fa9c77fe813287afbacf1a0b897cd78727
-      home: https://k8s.io/helm
+      home: https://helm.sh/helm
       name: alpine
       sources:
       - https://github.com/helm/helm
@@ -96,7 +96,7 @@ entries:
     - created: 2016-10-06T16:23:20.499543808-06:00
       description: Create a basic nginx HTTP server
       digest: aaff4545f79d8b2913a10cb400ebb6fa9c77fe813287afbacf1a0b897cdffffff
-      home: https://k8s.io/helm
+      home: https://helm.sh/helm
       name: nginx
       sources:
       - https://github.com/helm/charts

@@ -19,8 +19,8 @@ package action
 import (
 	"github.com/pkg/errors"
 
-	"k8s.io/helm/pkg/release"
-	reltesting "k8s.io/helm/pkg/releasetesting"
+	"helm.sh/helm/pkg/release"
+	reltesting "helm.sh/helm/pkg/releasetesting"
 )
 
 // ReleaseTesting is the action for testing a release.

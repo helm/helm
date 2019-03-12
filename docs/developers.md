@@ -18,7 +18,7 @@ We use Make to build our programs. The simplest way to get started is:
 $ make bootstrap build
 ```
 
-NOTE: This will fail if not running from the path `$GOPATH/src/k8s.io/helm`. The
+NOTE: This will fail if not running from the path `$GOPATH/src/helm.sh/helm`. The
 directory `k8s.io` should not be a symlink or `build` will not find the relevant
 packages.
 
@@ -41,7 +41,7 @@ To expose the Helm man pages to your `man` client, you can put the files in your
 `$MANPATH`:
 
 ```
-$ export MANPATH=$GOPATH/src/k8s.io/helm/docs/man:$MANPATH
+$ export MANPATH=$GOPATH/src/helm.sh/helm/docs/man:$MANPATH
 $ man helm
 ```
 
@@ -101,7 +101,7 @@ workflow for doing this is as follows:
 1. Go to your `$GOPATH/src/k8s.io` directory and `git clone` the
    `github.com/helm/helm` repository.
 2. Fork that repository into your GitHub account
-3. Add your repository as a remote for `$GOPATH/src/k8s.io/helm`
+3. Add your repository as a remote for `$GOPATH/src/helm.sh/helm`
 4. Create a new working branch (`git checkout -b feat/my-feature`) and
    do your work on that branch.
 5. When you are ready for us to review, push your branch to GitHub, and

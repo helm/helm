@@ -28,10 +28,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"k8s.io/helm/pkg/chart"
-	"k8s.io/helm/pkg/chart/loader"
-	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/helmpath"
+	"helm.sh/helm/pkg/chart"
+	"helm.sh/helm/pkg/chart/loader"
+	"helm.sh/helm/pkg/chartutil"
+	"helm.sh/helm/pkg/helmpath"
 )
 
 func TestPackage(t *testing.T) {

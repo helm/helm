@@ -20,9 +20,9 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/helm/pkg/chart"
+	"helm.sh/helm/pkg/chart"
 
-	"k8s.io/helm/pkg/release"
+	"helm.sh/helm/pkg/release"
 )
 
 func TestStatusCmd(t *testing.T) {

@@ -22,8 +22,8 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/helm/pkg/cli"
-	"k8s.io/helm/pkg/helmpath"
+	"helm.sh/helm/pkg/cli"
+	"helm.sh/helm/pkg/helmpath"
 )
 
 func hh(debug bool) cli.EnvSettings {

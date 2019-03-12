@@ -21,7 +21,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"k8s.io/helm/pkg/release"
+	"helm.sh/helm/pkg/release"
 )
 
 func TestCreateTestPodSuccess(t *testing.T) {

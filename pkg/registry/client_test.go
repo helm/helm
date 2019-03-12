@@ -32,7 +32,7 @@ import (
 	_ "github.com/docker/distribution/registry/storage/driver/inmemory"
 	"github.com/stretchr/testify/suite"
 
-	"k8s.io/helm/pkg/chart"
+	"helm.sh/helm/pkg/chart"
 )
 
 var (

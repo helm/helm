@@ -24,8 +24,8 @@ import (
 
 	"github.com/ghodss/yaml"
 
-	"k8s.io/helm/pkg/helmpath"
-	"k8s.io/helm/pkg/repo"
+	"helm.sh/helm/pkg/helmpath"
+	"helm.sh/helm/pkg/repo"
 )
 
 // NewTempServer creates a server inside of a temp dir.

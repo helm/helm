@@ -19,7 +19,7 @@ package main
 import (
 	"testing"
 
-	"k8s.io/helm/pkg/release"
+	"helm.sh/helm/pkg/release"
 )
 
 func TestGetManifest(t *testing.T) {

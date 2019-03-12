@@ -24,8 +24,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"k8s.io/helm/pkg/chart"
-	"k8s.io/helm/pkg/chartutil"
+	"helm.sh/helm/pkg/chart"
+	"helm.sh/helm/pkg/chartutil"
 )
 
 // Engine is an implementation of 'cmd/tiller/environment'.Engine that uses Go templates.

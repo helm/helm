@@ -24,9 +24,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"k8s.io/helm/pkg/chart"
-	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/lint/support"
+	"helm.sh/helm/pkg/chart"
+	"helm.sh/helm/pkg/chartutil"
+	"helm.sh/helm/pkg/lint/support"
 )
 
 const (

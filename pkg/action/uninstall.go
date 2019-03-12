@@ -24,10 +24,10 @@ import (
 
 	"github.com/pkg/errors"
 
-	"k8s.io/helm/pkg/hooks"
-	"k8s.io/helm/pkg/kube"
-	"k8s.io/helm/pkg/release"
-	"k8s.io/helm/pkg/releaseutil"
+	"helm.sh/helm/pkg/hooks"
+	"helm.sh/helm/pkg/kube"
+	"helm.sh/helm/pkg/release"
+	"helm.sh/helm/pkg/releaseutil"
 )
 
 // Uninstall is the action for uninstalling releases.

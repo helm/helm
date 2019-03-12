@@ -25,7 +25,7 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 
-	"k8s.io/helm/pkg/chart"
+	"helm.sh/helm/pkg/chart"
 )
 
 // LoadChartfile loads a Chart.yaml file into a *chart.Metadata.

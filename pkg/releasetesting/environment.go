@@ -24,8 +24,8 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 
-	"k8s.io/helm/pkg/kube"
-	"k8s.io/helm/pkg/release"
+	"helm.sh/helm/pkg/kube"
+	"helm.sh/helm/pkg/release"
 )
 
 // Environment encapsulates information about where test suite executes and returns results

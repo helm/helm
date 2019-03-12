@@ -36,7 +36,7 @@ Let's see how this renders.
 ```console
 $ helm install --dry-run --debug ./mychart
 SERVER: "localhost:44134"
-CHART PATH: /Users/mattbutcher/Code/Go/src/k8s.io/helm/_scratch/mychart
+CHART PATH: /Users/mattbutcher/Code/Go/src/helm.sh/helm/_scratch/mychart
 NAME:   geared-marsupi
 TARGET NAMESPACE:   default
 CHART:  mychart 0.1.0
@@ -57,7 +57,7 @@ Because `favoriteDrink` is set in the default `values.yaml` file to `coffee`, th
 ```
 helm install --dry-run --debug --set favoriteDrink=slurm ./mychart
 SERVER: "localhost:44134"
-CHART PATH: /Users/mattbutcher/Code/Go/src/k8s.io/helm/_scratch/mychart
+CHART PATH: /Users/mattbutcher/Code/Go/src/helm.sh/helm/_scratch/mychart
 NAME:   solid-vulture
 TARGET NAMESPACE:   default
 CHART:  mychart 0.1.0

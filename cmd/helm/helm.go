@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main // import "k8s.io/helm/cmd/helm"
+package main // import "helm.sh/helm/cmd/helm"
 
 import (
 	"fmt"
@@ -26,11 +26,11 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
-	"k8s.io/helm/pkg/action"
-	"k8s.io/helm/pkg/cli"
-	"k8s.io/helm/pkg/kube"
-	"k8s.io/helm/pkg/storage"
-	"k8s.io/helm/pkg/storage/driver"
+	"helm.sh/helm/pkg/action"
+	"helm.sh/helm/pkg/cli"
+	"helm.sh/helm/pkg/kube"
+	"helm.sh/helm/pkg/storage"
+	"helm.sh/helm/pkg/storage/driver"
 )
 
 var (

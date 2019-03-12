@@ -24,8 +24,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"k8s.io/helm/pkg/helmpath"
-	"k8s.io/helm/pkg/plugin"
+	"helm.sh/helm/pkg/helmpath"
+	"helm.sh/helm/pkg/plugin"
 )
 
 type pluginRemoveOptions struct {

@@ -14,12 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package driver // import "k8s.io/helm/pkg/storage/driver"
+package driver // import "helm.sh/helm/pkg/storage/driver"
 
 import (
 	"testing"
 
-	rspb "k8s.io/helm/pkg/release"
+	rspb "helm.sh/helm/pkg/release"
 )
 
 func TestRecordsAdd(t *testing.T) {

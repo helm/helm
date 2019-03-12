@@ -20,7 +20,7 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/helm/pkg/lint/support"
+	"helm.sh/helm/pkg/lint/support"
 )
 
 var values map[string]interface{}

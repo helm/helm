@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 // Package version represents the current version of the project.
-package version // import "k8s.io/helm/pkg/version"
+package version // import "helm.sh/helm/pkg/version"
 
 import "testing"
 

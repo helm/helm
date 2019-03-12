@@ -38,7 +38,7 @@ For accepting raw compressed tar file data from an io.Reader, the
 'loader.LoadArchive()' will read in the data, uncompress it, and unpack it
 into a Chart.
 
-When creating charts in memory, use the 'k8s.io/helm/pkg/proto/chart'
+When creating charts in memory, use the 'helm.sh/helm/pkg/proto/chart'
 package directly.
 */
-package chartutil // import "k8s.io/helm/pkg/chartutil"
+package chartutil // import "helm.sh/helm/pkg/chartutil"

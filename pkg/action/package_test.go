@@ -19,7 +19,7 @@ package action
 import (
 	"testing"
 
-	"k8s.io/helm/pkg/chart"
+	"helm.sh/helm/pkg/chart"
 )
 
 func TestSetVersion(t *testing.T) {
