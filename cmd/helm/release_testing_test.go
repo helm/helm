@@ -23,13 +23,6 @@ import (
 	"k8s.io/helm/pkg/release"
 )
 
-const mockTestSuccessTemplate = `apiVersion: v1
-kind: Pod
-metadata:
-  annotations:
-    "helm.sh/hook": test-success
-`
-
 func TestReleaseTesting(t *testing.T) {
 	timestamp := time.Unix(1452902400, 0).UTC()
 
