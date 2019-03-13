@@ -23,7 +23,7 @@ import (
 	"github.com/Masterminds/vcs"
 	"github.com/pkg/errors"
 
-	"k8s.io/helm/pkg/helm/helmpath"
+	"k8s.io/helm/pkg/helmpath"
 	"k8s.io/helm/pkg/plugin/cache"
 )
 

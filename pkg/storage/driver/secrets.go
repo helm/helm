@@ -29,7 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
-	rspb "k8s.io/helm/pkg/hapi/release"
+	rspb "k8s.io/helm/pkg/release"
 )
 
 var _ Driver = (*Secrets)(nil)

@@ -22,7 +22,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/require"
-	"k8s.io/helm/pkg/helm/helmpath"
+	"k8s.io/helm/pkg/helmpath"
 	"k8s.io/helm/pkg/plugin"
 	"k8s.io/helm/pkg/plugin/installer"
 )

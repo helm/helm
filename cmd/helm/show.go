@@ -19,14 +19,11 @@ package main
 import (
 	"fmt"
 	"io"
-	"strings"
 
-	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/require"
-	"k8s.io/helm/pkg/chart"
-	"k8s.io/helm/pkg/chart/loader"
+	"k8s.io/helm/pkg/action"
 )
 
 const showDesc = `
@@ -51,24 +48,8 @@ This command inspects a chart (directory, file, or URL) and displays the content
 of the README file
 `
 
-type showOptions struct {
-	chartpath string
-	output    string
-
-	chartPathOptions
-}
-
-const (
-	chartOnly  = "chart"
-	valuesOnly = "values"
-	readmeOnly = "readme"
-	all        = "all"
-)
-
-var readmeFileNames = []string{"readme.md", "readme.txt", "readme"}
-
 func newShowCmd(out io.Writer) *cobra.Command {
-	o := &showOptions{output: all}
+	client := action.NewShow(action.ShowAll)
 
 	showCommand := &cobra.Command{
 		Use:     "show [CHART]",
@@ -77,12 +58,16 @@ func newShowCmd(out io.Writer) *cobra.Command {
 		Long:    showDesc,
 		Args:    require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cp, err := o.locateChart(args[0])
+			cp, err := client.ChartPathOptions.LocateChart(args[0], settings)
 			if err != nil {
 				return err
 			}
-			o.chartpath = cp
-			return o.run(out)
+			output, err := client.Run(cp)
+			if err != nil {
+				return err
+			}
+			fmt.Fprint(out, output)
+			return nil
 		},
 	}
 
@@ -92,13 +77,17 @@ func newShowCmd(out io.Writer) *cobra.Command {
 		Long:  showValuesDesc,
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			o.output = valuesOnly
-			cp, err := o.locateChart(args[0])
+			client.OutputFormat = action.ShowValues
+			cp, err := client.ChartPathOptions.LocateChart(args[0], settings)
 			if err != nil {
 				return err
 			}
-			o.chartpath = cp
-			return o.run(out)
+			output, err := client.Run(cp)
+			if err != nil {
+				return err
+			}
+			fmt.Fprint(out, output)
+			return nil
 		},
 	}
 
@@ -108,13 +97,17 @@ func newShowCmd(out io.Writer) *cobra.Command {
 		Long:  showChartDesc,
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			o.output = chartOnly
-			cp, err := o.locateChart(args[0])
+			client.OutputFormat = action.ShowChart
+			cp, err := client.ChartPathOptions.LocateChart(args[0], settings)
 			if err != nil {
 				return err
 			}
-			o.chartpath = cp
-			return o.run(out)
+			output, err := client.Run(cp)
+			if err != nil {
+				return err
+			}
+			fmt.Fprint(out, output)
+			return nil
 		},
 	}
 
@@ -124,19 +117,23 @@ func newShowCmd(out io.Writer) *cobra.Command {
 		Long:  readmeChartDesc,
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			o.output = readmeOnly
-			cp, err := o.locateChart(args[0])
+			client.OutputFormat = action.ShowReadme
+			cp, err := client.ChartPathOptions.LocateChart(args[0], settings)
 			if err != nil {
 				return err
 			}
-			o.chartpath = cp
-			return o.run(out)
+			output, err := client.Run(cp)
+			if err != nil {
+				return err
+			}
+			fmt.Fprint(out, output)
+			return nil
 		},
 	}
 
 	cmds := []*cobra.Command{showCommand, readmeSubCmd, valuesSubCmd, chartSubCmd}
 	for _, subCmd := range cmds {
-		o.chartPathOptions.addFlags(subCmd.Flags())
+		addChartPathOptionsFlags(subCmd.Flags(), &client.ChartPathOptions)
 	}
 
 	for _, subCmd := range cmds[1:] {
@@ -144,53 +141,4 @@ func newShowCmd(out io.Writer) *cobra.Command {
 	}
 
 	return showCommand
-}
-
-func (i *showOptions) run(out io.Writer) error {
-	chrt, err := loader.Load(i.chartpath)
-	if err != nil {
-		return err
-	}
-	cf, err := yaml.Marshal(chrt.Metadata)
-	if err != nil {
-		return err
-	}
-
-	if i.output == chartOnly || i.output == all {
-		fmt.Fprintln(out, string(cf))
-	}
-
-	if (i.output == valuesOnly || i.output == all) && chrt.Values != nil {
-		if i.output == all {
-			fmt.Fprintln(out, "---")
-		}
-		b, err := yaml.Marshal(chrt.Values)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintln(out, string(b))
-	}
-
-	if i.output == readmeOnly || i.output == all {
-		if i.output == all {
-			fmt.Fprintln(out, "---")
-		}
-		readme := findReadme(chrt.Files)
-		if readme == nil {
-			return nil
-		}
-		fmt.Fprintln(out, string(readme.Data))
-	}
-	return nil
-}
-
-func findReadme(files []*chart.File) (file *chart.File) {
-	for _, file := range files {
-		for _, n := range readmeFileNames {
-			if strings.EqualFold(file.Name, n) {
-				return file
-			}
-		}
-	}
-	return nil
 }

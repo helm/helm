@@ -24,7 +24,7 @@ import (
 	"github.com/ghodss/yaml"
 
 	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/hapi/release"
+	"k8s.io/helm/pkg/release"
 )
 
 var printReleaseTemplate = `REVISION: {{.Release.Version}}

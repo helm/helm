@@ -19,19 +19,12 @@ package main
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
-	"os"
-	"path/filepath"
 	"strings"
 
-	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/lint"
-	"k8s.io/helm/pkg/lint/support"
-	"k8s.io/helm/pkg/strvals"
+	"k8s.io/helm/pkg/action"
 )
 
 var longLintHelp = `
@@ -43,159 +36,43 @@ it will emit [ERROR] messages. If it encounters issues that break with conventio
 or recommendation, it will emit [WARNING] messages.
 `
 
-type lintOptions struct {
-	strict bool
-	paths  []string
-
-	valuesOptions
-}
-
 func newLintCmd(out io.Writer) *cobra.Command {
-	o := &lintOptions{paths: []string{"."}}
+	client := action.NewLint()
 
 	cmd := &cobra.Command{
 		Use:   "lint PATH",
 		Short: "examines a chart for possible issues",
 		Long:  longLintHelp,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			paths := []string{"."}
 			if len(args) > 0 {
-				o.paths = args
+				paths = args
 			}
-			return o.run(out)
+			client.Namespace = getNamespace()
+			if err := client.ValueOptions.MergeValues(settings); err != nil {
+				return err
+			}
+			result := client.Run(paths)
+			var message strings.Builder
+			fmt.Fprintf(&message, "%d chart(s) linted, %d chart(s) failed\n", result.TotalChartsLinted, len(result.Errors))
+			for _, err := range result.Errors {
+				fmt.Fprintf(&message, "\t%s\n", err)
+			}
+			for _, msg := range result.Messages {
+				fmt.Fprintf(&message, "\t%s\n", msg)
+			}
+
+			if len(result.Errors) > 0 {
+				return errors.New(message.String())
+			}
+			fmt.Fprintf(out, message.String())
+			return nil
 		},
 	}
 
-	fs := cmd.Flags()
-	fs.BoolVar(&o.strict, "strict", false, "fail on lint warnings")
-	o.valuesOptions.addFlags(fs)
+	f := cmd.Flags()
+	f.BoolVar(&client.Strict, "strict", false, "fail on lint warnings")
+	addValueOptionsFlags(f, &client.ValueOptions)
 
 	return cmd
-}
-
-var errLintNoChart = errors.New("no chart found for linting (missing Chart.yaml)")
-
-func (o *lintOptions) run(out io.Writer) error {
-	var lowestTolerance int
-	if o.strict {
-		lowestTolerance = support.WarningSev
-	} else {
-		lowestTolerance = support.ErrorSev
-	}
-
-	// Get the raw values
-	rvals, err := o.vals()
-	if err != nil {
-		return err
-	}
-
-	var total int
-	var failures int
-	for _, path := range o.paths {
-		if linter, err := lintChart(path, rvals, getNamespace(), o.strict); err != nil {
-			fmt.Println("==> Skipping", path)
-			fmt.Println(err)
-			if err == errLintNoChart {
-				failures = failures + 1
-			}
-		} else {
-			fmt.Println("==> Linting", path)
-
-			if len(linter.Messages) == 0 {
-				fmt.Println("Lint OK")
-			}
-
-			for _, msg := range linter.Messages {
-				fmt.Println(msg)
-			}
-
-			total = total + 1
-			if linter.HighestSeverity >= lowestTolerance {
-				failures = failures + 1
-			}
-		}
-		fmt.Println("")
-	}
-
-	msg := fmt.Sprintf("%d chart(s) linted", total)
-	if failures > 0 {
-		return errors.Errorf("%s, %d chart(s) failed", msg, failures)
-	}
-
-	fmt.Fprintf(out, "%s, no failures\n", msg)
-
-	return nil
-}
-
-func lintChart(path string, vals map[string]interface{}, namespace string, strict bool) (support.Linter, error) {
-	var chartPath string
-	linter := support.Linter{}
-
-	if strings.HasSuffix(path, ".tgz") {
-		tempDir, err := ioutil.TempDir("", "helm-lint")
-		if err != nil {
-			return linter, err
-		}
-		defer os.RemoveAll(tempDir)
-
-		file, err := os.Open(path)
-		if err != nil {
-			return linter, err
-		}
-		defer file.Close()
-
-		if err = chartutil.Expand(tempDir, file); err != nil {
-			return linter, err
-		}
-
-		lastHyphenIndex := strings.LastIndex(filepath.Base(path), "-")
-		if lastHyphenIndex <= 0 {
-			return linter, errors.Errorf("unable to parse chart archive %q, missing '-'", filepath.Base(path))
-		}
-		base := filepath.Base(path)[:lastHyphenIndex]
-		chartPath = filepath.Join(tempDir, base)
-	} else {
-		chartPath = path
-	}
-
-	// Guard: Error out of this is not a chart.
-	if _, err := os.Stat(filepath.Join(chartPath, "Chart.yaml")); err != nil {
-		return linter, errLintNoChart
-	}
-
-	return lint.All(chartPath, vals, namespace, strict), nil
-}
-
-func (o *lintOptions) vals() (map[string]interface{}, error) {
-	base := map[string]interface{}{}
-
-	// User specified a values files via -f/--values
-	for _, filePath := range o.valueFiles {
-		currentMap := map[string]interface{}{}
-		bytes, err := ioutil.ReadFile(filePath)
-		if err != nil {
-			return base, err
-		}
-
-		if err := yaml.Unmarshal(bytes, &currentMap); err != nil {
-			return base, errors.Wrapf(err, "failed to parse %s", filePath)
-		}
-		// Merge with the previous map
-		base = mergeValues(base, currentMap)
-	}
-
-	// User specified a value via --set
-	for _, value := range o.values {
-		if err := strvals.ParseInto(value, base); err != nil {
-			return base, errors.Wrap(err, "failed parsing --set data")
-		}
-	}
-
-	// User specified a value via --set-string
-	for _, value := range o.stringValues {
-		if err := strvals.ParseIntoString(value, base); err != nil {
-			return base, errors.Wrap(err, "failed parsing --set-string data")
-		}
-	}
-
-	return base, nil
 }

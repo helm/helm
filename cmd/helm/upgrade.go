@@ -24,8 +24,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/require"
+	"k8s.io/helm/pkg/action"
 	"k8s.io/helm/pkg/chart/loader"
-	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/storage/driver"
 )
 
@@ -54,30 +54,8 @@ set for a key called 'foo', the 'newbar' value would take precedence:
 	$ helm upgrade --set foo=bar --set foo=newbar redis ./redis
 `
 
-type upgradeOptions struct {
-	devel        bool  // --devel
-	disableHooks bool  // --disable-hooks
-	dryRun       bool  // --dry-run
-	force        bool  // --force
-	install      bool  // --install
-	recreate     bool  // --recreate-pods
-	resetValues  bool  // --reset-values
-	reuseValues  bool  // --reuse-values
-	timeout      int64 // --timeout
-	wait         bool  // --wait
-	maxHistory   int   // --max-history
-
-	valuesOptions
-	chartPathOptions
-
-	release string
-	chart   string
-
-	client helm.Interface
-}
-
-func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
-	o := &upgradeOptions{client: client}
+func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+	client := action.NewUpgrade(cfg)
 
 	cmd := &cobra.Command{
 		Use:   "upgrade [RELEASE] [CHART]",
@@ -85,102 +63,92 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 		Long:  upgradeDesc,
 		Args:  require.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if o.version == "" && o.devel {
+			client.Namespace = getNamespace()
+
+			if client.Version == "" && client.Devel {
 				debug("setting version to >0.0.0-0")
-				o.version = ">0.0.0-0"
+				client.Version = ">0.0.0-0"
 			}
 
-			o.release = args[0]
-			o.chart = args[1]
-			o.client = ensureHelmClient(o.client, false)
+			if err := client.ValueOptions.MergeValues(settings); err != nil {
+				return err
+			}
 
-			return o.run(out)
+			chartPath, err := client.ChartPathOptions.LocateChart(args[1], settings)
+			if err != nil {
+				return err
+			}
+
+			if client.Install {
+				// If a release does not exist, install it. If another error occurs during
+				// the check, ignore the error and continue with the upgrade.
+				histClient := action.NewHistory(cfg)
+				histClient.Max = 1
+				if _, err := histClient.Run(args[0]); err == driver.ErrReleaseNotFound {
+					fmt.Fprintf(out, "Release %q does not exist. Installing it now.\n", args[0])
+					instClient := action.NewInstall(cfg)
+					instClient.ChartPathOptions = client.ChartPathOptions
+					instClient.ValueOptions = client.ValueOptions
+					instClient.DryRun = client.DryRun
+					instClient.DisableHooks = client.DisableHooks
+					instClient.Timeout = client.Timeout
+					instClient.Wait = client.Wait
+					instClient.Devel = client.Devel
+					instClient.Namespace = client.Namespace
+
+					_, err := runInstall(args, instClient, out)
+					return err
+				}
+			}
+
+			// Check chart dependencies to make sure all are present in /charts
+			ch, err := loader.Load(chartPath)
+			if err != nil {
+				return err
+			}
+			if req := ch.Metadata.Dependencies; req != nil {
+				if err := action.CheckDependencies(ch, req); err != nil {
+					return err
+				}
+			}
+
+			resp, err := client.Run(args[0], ch)
+			if err != nil {
+				return errors.Wrap(err, "UPGRADE FAILED")
+			}
+
+			if settings.Debug {
+				action.PrintRelease(out, resp)
+			}
+
+			fmt.Fprintf(out, "Release %q has been upgraded. Happy Helming!\n", args[0])
+
+			// Print the status like status command does
+			statusClient := action.NewStatus(cfg)
+			rel, err := statusClient.Run(args[0])
+			if err != nil {
+				return err
+			}
+			action.PrintRelease(out, rel)
+
+			return nil
 		},
 	}
 
 	f := cmd.Flags()
-	f.BoolVar(&o.dryRun, "dry-run", false, "simulate an upgrade")
-	f.BoolVar(&o.recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
-	f.BoolVar(&o.force, "force", false, "force resource update through delete/recreate if needed")
-	f.BoolVar(&o.disableHooks, "disable-hooks", false, "disable pre/post upgrade hooks. DEPRECATED. Use no-hooks")
-	f.BoolVar(&o.disableHooks, "no-hooks", false, "disable pre/post upgrade hooks")
-	f.BoolVarP(&o.install, "install", "i", false, "if a release by this name doesn't already exist, run an install")
-	f.Int64Var(&o.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
-	f.BoolVar(&o.resetValues, "reset-values", false, "when upgrading, reset the values to the ones built into the chart")
-	f.BoolVar(&o.reuseValues, "reuse-values", false, "when upgrading, reuse the last release's values and merge in any overrides from the command line via --set and -f. If '--reset-values' is specified, this is ignored.")
-	f.BoolVar(&o.wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
-	f.BoolVar(&o.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
-	f.IntVar(&o.maxHistory, "history-max", 0, "limit the maximum number of revisions saved per release. Use 0 for no limit.")
-	o.valuesOptions.addFlags(f)
-	o.chartPathOptions.addFlags(f)
+	f.BoolVarP(&client.Install, "install", "i", false, "if a release by this name doesn't already exist, run an install")
+	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
+	f.BoolVar(&client.DryRun, "dry-run", false, "simulate an upgrade")
+	f.BoolVar(&client.Recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
+	f.BoolVar(&client.Force, "force", false, "force resource update through delete/recreate if needed")
+	f.BoolVar(&client.DisableHooks, "no-hooks", false, "disable pre/post upgrade hooks")
+	f.Int64Var(&client.Timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
+	f.BoolVar(&client.ResetValues, "reset-values", false, "when upgrading, reset the values to the ones built into the chart")
+	f.BoolVar(&client.ReuseValues, "reuse-values", false, "when upgrading, reuse the last release's values and merge in any overrides from the command line via --set and -f. If '--reset-values' is specified, this is ignored.")
+	f.BoolVar(&client.Wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
+	f.IntVar(&client.MaxHistory, "history-max", 0, "limit the maximum number of revisions saved per release. Use 0 for no limit.")
+	addChartPathOptionsFlags(f, &client.ChartPathOptions)
+	addValueOptionsFlags(f, &client.ValueOptions)
 
 	return cmd
-}
-
-func (o *upgradeOptions) run(out io.Writer) error {
-	chartPath, err := o.locateChart(o.chart)
-	if err != nil {
-		return err
-	}
-
-	if o.install {
-		// If a release does not exist, install it. If another error occurs during
-		// the check, ignore the error and continue with the upgrade.
-		if _, err := o.client.ReleaseHistory(o.release, 1); err == driver.ErrReleaseNotFound {
-			fmt.Fprintf(out, "Release %q does not exist. Installing it now.\n", o.release)
-			io := &installOptions{
-				chartPath:        chartPath,
-				client:           o.client,
-				name:             o.release,
-				dryRun:           o.dryRun,
-				disableHooks:     o.disableHooks,
-				timeout:          o.timeout,
-				wait:             o.wait,
-				valuesOptions:    o.valuesOptions,
-				chartPathOptions: o.chartPathOptions,
-			}
-			return io.run(out)
-		}
-	}
-
-	rawVals, err := o.mergedValues()
-	if err != nil {
-		return err
-	}
-
-	// Check chart dependencies to make sure all are present in /charts
-	ch, err := loader.Load(chartPath)
-	if err != nil {
-		return err
-	}
-	if req := ch.Metadata.Dependencies; req != nil {
-		if err := checkDependencies(ch, req); err != nil {
-			return err
-		}
-	}
-
-	resp, err := o.client.UpdateRelease(
-		o.release,
-		chartPath,
-		helm.UpdateValueOverrides(rawVals),
-		helm.UpgradeDryRun(o.dryRun),
-		helm.UpgradeRecreate(o.recreate),
-		helm.UpgradeForce(o.force),
-		helm.UpgradeDisableHooks(o.disableHooks),
-		helm.UpgradeTimeout(o.timeout),
-		helm.ResetValues(o.resetValues),
-		helm.ReuseValues(o.reuseValues),
-		helm.UpgradeWait(o.wait),
-		helm.MaxHistory(o.maxHistory))
-	if err != nil {
-		return errors.Wrap(err, "UPGRADE FAILED")
-	}
-
-	if settings.Debug {
-		printRelease(out, resp)
-	}
-
-	fmt.Fprintf(out, "Release %q has been upgraded. Happy Helming!\n", o.release)
-	PrintStatus(out, resp)
-	return nil
 }

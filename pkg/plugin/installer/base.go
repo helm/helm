@@ -19,7 +19,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"k8s.io/helm/pkg/helm/helmpath"
+	"k8s.io/helm/pkg/helmpath"
 )
 
 type base struct {

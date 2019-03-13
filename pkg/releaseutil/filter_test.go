@@ -19,7 +19,7 @@ package releaseutil // import "k8s.io/helm/pkg/releaseutil"
 import (
 	"testing"
 
-	rspb "k8s.io/helm/pkg/hapi/release"
+	rspb "k8s.io/helm/pkg/release"
 )
 
 func TestFilterAny(t *testing.T) {

@@ -19,7 +19,7 @@ package driver // import "k8s.io/helm/pkg/storage/driver"
 import (
 	"github.com/pkg/errors"
 
-	rspb "k8s.io/helm/pkg/hapi/release"
+	rspb "k8s.io/helm/pkg/release"
 )
 
 var (

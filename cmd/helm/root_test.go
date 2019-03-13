@@ -77,7 +77,7 @@ func TestRootCmd(t *testing.T) {
 				os.Setenv(k, v)
 			}
 
-			cmd, _, err := executeCommandC(nil, tt.args)
+			cmd, _, err := executeActionCommand(tt.args)
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err)
 			}

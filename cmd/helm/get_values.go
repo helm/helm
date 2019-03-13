@@ -20,29 +20,18 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/require"
-	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/action"
 )
 
 var getValuesHelp = `
 This command downloads a values file for a given release.
 `
 
-type getValuesOptions struct {
-	allValues bool // --all
-	version   int  // --revision
-
-	release string
-
-	client helm.Interface
-}
-
-func newGetValuesCmd(client helm.Interface, out io.Writer) *cobra.Command {
-	o := &getValuesOptions{client: client}
+func newGetValuesCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+	client := action.NewGetValues(cfg)
 
 	cmd := &cobra.Command{
 		Use:   "values RELEASE_NAME",
@@ -50,43 +39,17 @@ func newGetValuesCmd(client helm.Interface, out io.Writer) *cobra.Command {
 		Long:  getValuesHelp,
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			o.release = args[0]
-			o.client = ensureHelmClient(o.client, false)
-			return o.run(out)
+			res, err := client.Run(args[0])
+			if err != nil {
+				return err
+			}
+			fmt.Fprintln(out, res)
+			return nil
 		},
 	}
 
-	cmd.Flags().BoolVarP(&o.allValues, "all", "a", false, "dump all (computed) values")
-	cmd.Flags().IntVar(&o.version, "revision", 0, "get the named release with revision")
+	f := cmd.Flags()
+	f.IntVar(&client.Version, "revision", 0, "get the named release with revision")
+	f.BoolVarP(&client.AllValues, "all", "a", false, "dump all (computed) values")
 	return cmd
-}
-
-// getValues implements 'helm get values'
-func (o *getValuesOptions) run(out io.Writer) error {
-	res, err := o.client.ReleaseContent(o.release, o.version)
-	if err != nil {
-		return err
-	}
-
-	// If the user wants all values, compute the values and return.
-	if o.allValues {
-		cfg, err := chartutil.CoalesceValues(res.Chart, res.Config)
-		if err != nil {
-			return err
-		}
-		cfgStr, err := cfg.YAML()
-		if err != nil {
-			return err
-		}
-		fmt.Fprintln(out, cfgStr)
-		return nil
-	}
-
-	resConfig, err := yaml.Marshal(res.Config)
-	if err != nil {
-		return err
-	}
-
-	fmt.Fprintln(out, string(resConfig))
-	return nil
 }

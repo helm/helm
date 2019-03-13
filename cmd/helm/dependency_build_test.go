@@ -44,7 +44,7 @@ func TestDependencyBuildCmd(t *testing.T) {
 	}
 
 	cmd := fmt.Sprintf("--home='%s' dependency build '%s'", hh, hh.Path(chartname))
-	out, err := executeCommand(nil, cmd)
+	_, out, err := executeActionCommand(cmd)
 
 	// In the first pass, we basically want the same results as an update.
 	if err != nil {
@@ -72,7 +72,7 @@ func TestDependencyBuildCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out, err = executeCommand(nil, cmd)
+	_, out, err = executeActionCommand(cmd)
 	if err != nil {
 		t.Logf("Output: %s", out)
 		t.Fatal(err)

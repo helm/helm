@@ -1,1 +1,11 @@
-UNKNOWN: yellow lights everywhere
+NAME: test-unknown
+LAST DEPLOYED: 1977-09-02 22:04:05 +0000 UTC
+NAMESPACE: default
+STATUS: deployed
+
+TEST SUITE:
+Last Started: 1977-09-02 22:04:05 +0000 UTC
+Last Completed: 1977-09-02 22:04:05 +0000 UTC
+
+TEST        	STATUS    	INFO	STARTED                      	COMPLETED                    
+test-unknown	unknown   	    	2016-01-16 00:00:00 +0000 UTC	2016-01-16 00:00:00 +0000 UTC

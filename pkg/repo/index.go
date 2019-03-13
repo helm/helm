@@ -211,8 +211,6 @@ func (i *IndexFile) Merge(f *IndexFile) {
 	}
 }
 
-// Need both JSON and YAML annotations until we get rid of gopkg.in/yaml.v2
-
 // ChartVersion represents a chart entry in the IndexFile
 type ChartVersion struct {
 	*chart.Metadata

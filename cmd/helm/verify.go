@@ -21,7 +21,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/require"
-	"k8s.io/helm/pkg/downloader"
+	"k8s.io/helm/pkg/action"
 )
 
 const verifyDesc = `
@@ -35,13 +35,8 @@ This command can be used to verify a local chart. Several other commands provide
 the 'helm package --sign' command.
 `
 
-type verifyOptions struct {
-	keyring   string
-	chartfile string
-}
-
 func newVerifyCmd(out io.Writer) *cobra.Command {
-	o := &verifyOptions{}
+	client := action.NewVerify()
 
 	cmd := &cobra.Command{
 		Use:   "verify PATH",
@@ -49,18 +44,11 @@ func newVerifyCmd(out io.Writer) *cobra.Command {
 		Long:  verifyDesc,
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			o.chartfile = args[0]
-			return o.run(out)
+			return client.Run(args[0])
 		},
 	}
 
-	f := cmd.Flags()
-	f.StringVar(&o.keyring, "keyring", defaultKeyring(), "keyring containing public keys")
+	cmd.Flags().StringVar(&client.Keyring, "keyring", defaultKeyring(), "keyring containing public keys")
 
 	return cmd
-}
-
-func (o *verifyOptions) run(out io.Writer) error {
-	_, err := downloader.VerifyChart(o.chartfile, o.keyring)
-	return err
 }

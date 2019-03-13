@@ -27,7 +27,7 @@ import (
 	"github.com/pkg/errors"
 
 	"k8s.io/helm/pkg/chart"
-	"k8s.io/helm/pkg/helm/helmpath"
+	"k8s.io/helm/pkg/helmpath"
 	"k8s.io/helm/pkg/provenance"
 	"k8s.io/helm/pkg/repo"
 )

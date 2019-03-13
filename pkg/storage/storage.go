@@ -22,7 +22,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	rspb "k8s.io/helm/pkg/hapi/release"
+	rspb "k8s.io/helm/pkg/release"
 	relutil "k8s.io/helm/pkg/releaseutil"
 	"k8s.io/helm/pkg/storage/driver"
 )

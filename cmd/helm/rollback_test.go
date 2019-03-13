@@ -18,25 +18,47 @@ package main
 
 import (
 	"testing"
+
+	"k8s.io/helm/pkg/chart"
+	"k8s.io/helm/pkg/release"
 )
 
 func TestRollbackCmd(t *testing.T) {
+	rels := []*release.Release{
+		{
+			Name:    "funny-honey",
+			Info:    &release.Info{Status: release.StatusSuperseded},
+			Chart:   &chart.Chart{},
+			Version: 1,
+		},
+		{
+			Name:    "funny-honey",
+			Info:    &release.Info{Status: release.StatusDeployed},
+			Chart:   &chart.Chart{},
+			Version: 2,
+		},
+	}
+
 	tests := []cmdTestCase{{
 		name:   "rollback a release",
 		cmd:    "rollback funny-honey 1",
 		golden: "output/rollback.txt",
+		rels:   rels,
 	}, {
 		name:   "rollback a release with timeout",
 		cmd:    "rollback funny-honey 1 --timeout 120",
 		golden: "output/rollback-timeout.txt",
+		rels:   rels,
 	}, {
 		name:   "rollback a release with wait",
 		cmd:    "rollback funny-honey 1 --wait",
 		golden: "output/rollback-wait.txt",
+		rels:   rels,
 	}, {
 		name:      "rollback a release without revision",
 		cmd:       "rollback funny-honey",
 		golden:    "output/rollback-no-args.txt",
+		rels:      rels,
 		wantError: true,
 	}}
 	runTestCmd(t, tests)

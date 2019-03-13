@@ -1,4 +1,4 @@
-NAME:   aeneas
+NAME: aeneas
 LAST DEPLOYED: 1977-09-02 22:04:05 +0000 UTC
 NAMESPACE: default
 STATUS: deployed

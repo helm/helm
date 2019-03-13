@@ -23,8 +23,7 @@ import (
 	"k8s.io/helm/pkg/chart"
 	"k8s.io/helm/pkg/chart/loader"
 	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/hapi/release"
-	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/release"
 )
 
 func TestUpgradeCmd(t *testing.T) {
@@ -42,7 +41,7 @@ func TestUpgradeCmd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error loading chart: %v", err)
 	}
-	_ = helm.ReleaseMock(&helm.MockReleaseOptions{
+	_ = release.Mock(&release.MockReleaseOptions{
 		Name:  "funny-bunny",
 		Chart: ch,
 	})
@@ -84,7 +83,7 @@ func TestUpgradeCmd(t *testing.T) {
 	badDepsPath := "testdata/testcharts/chart-bad-requirements"
 
 	relMock := func(n string, v int, ch *chart.Chart) *release.Release {
-		return helm.ReleaseMock(&helm.MockReleaseOptions{Name: n, Version: v, Chart: ch})
+		return release.Mock(&release.MockReleaseOptions{Name: n, Version: v, Chart: ch})
 	}
 
 	tests := []cmdTestCase{

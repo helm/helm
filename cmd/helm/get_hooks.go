@@ -23,7 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/helm/cmd/helm/require"
-	"k8s.io/helm/pkg/helm"
+	"k8s.io/helm/pkg/action"
 )
 
 const getHooksHelp = `
@@ -32,14 +32,8 @@ This command downloads hooks for a given release.
 Hooks are formatted in YAML and separated by the YAML '---\n' separator.
 `
 
-type getHooksOptions struct {
-	release string
-	client  helm.Interface
-	version int
-}
-
-func newGetHooksCmd(client helm.Interface, out io.Writer) *cobra.Command {
-	o := &getHooksOptions{client: client}
+func newGetHooksCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+	client := action.NewGet(cfg)
 
 	cmd := &cobra.Command{
 		Use:   "hooks RELEASE_NAME",
@@ -47,24 +41,18 @@ func newGetHooksCmd(client helm.Interface, out io.Writer) *cobra.Command {
 		Long:  getHooksHelp,
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			o.release = args[0]
-			o.client = ensureHelmClient(o.client, false)
-			return o.run(out)
+			res, err := client.Run(args[0])
+			if err != nil {
+				return err
+			}
+			for _, hook := range res.Hooks {
+				fmt.Fprintf(out, "---\n# %s\n%s", hook.Name, hook.Manifest)
+			}
+			return nil
 		},
 	}
-	cmd.Flags().IntVar(&o.version, "revision", 0, "get the named release with revision")
+
+	cmd.Flags().IntVar(&client.Version, "revision", 0, "get the named release with revision")
+
 	return cmd
-}
-
-func (o *getHooksOptions) run(out io.Writer) error {
-	res, err := o.client.ReleaseContent(o.release, o.version)
-	if err != nil {
-		fmt.Fprintln(out, o.release)
-		return err
-	}
-
-	for _, hook := range res.Hooks {
-		fmt.Fprintf(out, "---\n# %s\n%s", hook.Name, hook.Manifest)
-	}
-	return nil
 }

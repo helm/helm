@@ -18,12 +18,20 @@ package action
 
 import (
 	"fmt"
+	"reflect"
+	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
-	"k8s.io/helm/pkg/hapi/release"
+	"k8s.io/helm/pkg/release"
 )
+
+type nameTemplateTestCase struct {
+	tpl              string
+	expected         string
+	expectedErrorStr string
+}
 
 func installAction(t *testing.T) *Install {
 	config := actionConfigFixture(t)
@@ -34,12 +42,11 @@ func installAction(t *testing.T) *Install {
 	return instAction
 }
 
-var mockEmptyVals = func() map[string]interface{} { return map[string]interface{}{} }
-
 func TestInstallRelease(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
-	res, err := instAction.Run(buildChart(), mockEmptyVals())
+	instAction.rawValues = map[string]interface{}{}
+	res, err := instAction.Run(buildChart())
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
 	}
@@ -63,7 +70,8 @@ func TestInstallRelease(t *testing.T) {
 func TestInstallRelease_NoName(t *testing.T) {
 	instAction := installAction(t)
 	instAction.ReleaseName = ""
-	_, err := instAction.Run(buildChart(), mockEmptyVals())
+	instAction.rawValues = map[string]interface{}{}
+	_, err := instAction.Run(buildChart())
 	if err == nil {
 		t.Fatal("expected failure when no name is specified")
 	}
@@ -74,7 +82,8 @@ func TestInstallRelease_WithNotes(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "with-notes"
-	res, err := instAction.Run(buildChart(withNotes("note here")), mockEmptyVals())
+	instAction.rawValues = map[string]interface{}{}
+	res, err := instAction.Run(buildChart(withNotes("note here")))
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
 	}
@@ -100,7 +109,8 @@ func TestInstallRelease_WithNotesRendered(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "with-notes"
-	res, err := instAction.Run(buildChart(withNotes("got-{{.Release.Name}}")), mockEmptyVals())
+	instAction.rawValues = map[string]interface{}{}
+	res, err := instAction.Run(buildChart(withNotes("got-{{.Release.Name}}")))
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
 	}
@@ -118,11 +128,8 @@ func TestInstallRelease_WithChartAndDependencyNotes(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "with-notes"
-	res, err := instAction.Run(buildChart(
-		withNotes("parent"),
-		withDependency(withNotes("child"))),
-		mockEmptyVals(),
-	)
+	instAction.rawValues = map[string]interface{}{}
+	res, err := instAction.Run(buildChart(withNotes("parent"), withDependency(withNotes("child"))))
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
 	}
@@ -138,7 +145,8 @@ func TestInstallRelease_DryRun(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
 	instAction.DryRun = true
-	res, err := instAction.Run(buildChart(withSampleTemplates()), mockEmptyVals())
+	instAction.rawValues = map[string]interface{}{}
+	res, err := instAction.Run(buildChart(withSampleTemplates()))
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
 	}
@@ -163,7 +171,8 @@ func TestInstallRelease_NoHooks(t *testing.T) {
 	instAction.ReleaseName = "no-hooks"
 	instAction.cfg.Releases.Create(releaseStub())
 
-	res, err := instAction.Run(buildChart(), mockEmptyVals())
+	instAction.rawValues = map[string]interface{}{}
+	res, err := instAction.Run(buildChart())
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
 	}
@@ -177,7 +186,8 @@ func TestInstallRelease_FailedHooks(t *testing.T) {
 	instAction.ReleaseName = "failed-hooks"
 	instAction.cfg.KubeClient = newHookFailingKubeClient()
 
-	res, err := instAction.Run(buildChart(), mockEmptyVals())
+	instAction.rawValues = map[string]interface{}{}
+	res, err := instAction.Run(buildChart())
 	is.Error(err)
 	is.Contains(res.Info.Description, "failed post-install")
 	is.Equal(res.Info.Status, release.StatusFailed)
@@ -193,7 +203,8 @@ func TestInstallRelease_ReplaceRelease(t *testing.T) {
 	instAction.cfg.Releases.Create(rel)
 	instAction.ReleaseName = rel.Name
 
-	res, err := instAction.Run(buildChart(), mockEmptyVals())
+	instAction.rawValues = map[string]interface{}{}
+	res, err := instAction.Run(buildChart())
 	is.NoError(err)
 
 	// This should have been auto-incremented
@@ -208,12 +219,138 @@ func TestInstallRelease_ReplaceRelease(t *testing.T) {
 func TestInstallRelease_KubeVersion(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
-	_, err := instAction.Run(buildChart(withKube(">=0.0.0")), mockEmptyVals())
+	instAction.rawValues = map[string]interface{}{}
+	_, err := instAction.Run(buildChart(withKube(">=0.0.0")))
 	is.NoError(err)
 
 	// This should fail for a few hundred years
 	instAction.ReleaseName = "should-fail"
-	_, err = instAction.Run(buildChart(withKube(">=99.0.0")), mockEmptyVals())
+	instAction.rawValues = map[string]interface{}{}
+	_, err = instAction.Run(buildChart(withKube(">=99.0.0")))
 	is.Error(err)
 	is.Contains(err.Error(), "chart requires kubernetesVersion")
+}
+
+func TestNameTemplate(t *testing.T) {
+	testCases := []nameTemplateTestCase{
+		// Just a straight up nop please
+		{
+			tpl:              "foobar",
+			expected:         "foobar",
+			expectedErrorStr: "",
+		},
+		// Random numbers at the end for fun & profit
+		{
+			tpl:              "foobar-{{randNumeric 6}}",
+			expected:         "foobar-[0-9]{6}$",
+			expectedErrorStr: "",
+		},
+		// Random numbers in the middle for fun & profit
+		{
+			tpl:              "foobar-{{randNumeric 4}}-baz",
+			expected:         "foobar-[0-9]{4}-baz$",
+			expectedErrorStr: "",
+		},
+		// No such function
+		{
+			tpl:              "foobar-{{randInt}}",
+			expected:         "",
+			expectedErrorStr: "function \"randInt\" not defined",
+		},
+		// Invalid template
+		{
+			tpl:              "foobar-{{",
+			expected:         "",
+			expectedErrorStr: "unexpected unclosed action",
+		},
+	}
+
+	for _, tc := range testCases {
+
+		n, err := TemplateName(tc.tpl)
+		if err != nil {
+			if tc.expectedErrorStr == "" {
+				t.Errorf("Was not expecting error, but got: %v", err)
+				continue
+			}
+			re, compErr := regexp.Compile(tc.expectedErrorStr)
+			if compErr != nil {
+				t.Errorf("Expected error string failed to compile: %v", compErr)
+				continue
+			}
+			if !re.MatchString(err.Error()) {
+				t.Errorf("Error didn't match for %s expected %s but got %v", tc.tpl, tc.expectedErrorStr, err)
+				continue
+			}
+		}
+		if err == nil && tc.expectedErrorStr != "" {
+			t.Errorf("Was expecting error %s but didn't get an error back", tc.expectedErrorStr)
+		}
+
+		if tc.expected != "" {
+			re, err := regexp.Compile(tc.expected)
+			if err != nil {
+				t.Errorf("Expected string failed to compile: %v", err)
+				continue
+			}
+			if !re.MatchString(n) {
+				t.Errorf("Returned name didn't match for %s expected %s but got %s", tc.tpl, tc.expected, n)
+			}
+		}
+	}
+}
+
+func TestMergeValues(t *testing.T) {
+	nestedMap := map[string]interface{}{
+		"foo": "bar",
+		"baz": map[string]string{
+			"cool": "stuff",
+		},
+	}
+	anotherNestedMap := map[string]interface{}{
+		"foo": "bar",
+		"baz": map[string]string{
+			"cool":    "things",
+			"awesome": "stuff",
+		},
+	}
+	flatMap := map[string]interface{}{
+		"foo": "bar",
+		"baz": "stuff",
+	}
+	anotherFlatMap := map[string]interface{}{
+		"testing": "fun",
+	}
+
+	testMap := MergeValues(flatMap, nestedMap)
+	equal := reflect.DeepEqual(testMap, nestedMap)
+	if !equal {
+		t.Errorf("Expected a nested map to overwrite a flat value. Expected: %v, got %v", nestedMap, testMap)
+	}
+
+	testMap = MergeValues(nestedMap, flatMap)
+	equal = reflect.DeepEqual(testMap, flatMap)
+	if !equal {
+		t.Errorf("Expected a flat value to overwrite a map. Expected: %v, got %v", flatMap, testMap)
+	}
+
+	testMap = MergeValues(nestedMap, anotherNestedMap)
+	equal = reflect.DeepEqual(testMap, anotherNestedMap)
+	if !equal {
+		t.Errorf("Expected a nested map to overwrite another nested map. Expected: %v, got %v", anotherNestedMap, testMap)
+	}
+
+	testMap = MergeValues(anotherFlatMap, anotherNestedMap)
+	expectedMap := map[string]interface{}{
+		"testing": "fun",
+		"foo":     "bar",
+		"baz": map[string]string{
+			"cool":    "things",
+			"awesome": "stuff",
+		},
+	}
+	equal = reflect.DeepEqual(testMap, expectedMap)
+	if !equal {
+		t.Errorf("Expected a map with different keys to merge properly with another map. Expected: %v, got %v", expectedMap, testMap)
+	}
 }

@@ -24,7 +24,7 @@ import (
 
 	"github.com/Masterminds/vcs"
 
-	"k8s.io/helm/pkg/helm/helmpath"
+	"k8s.io/helm/pkg/helmpath"
 )
 
 var _ Installer = new(VCSInstaller)

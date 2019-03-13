@@ -31,29 +31,8 @@ import (
 	"k8s.io/helm/pkg/chart"
 	"k8s.io/helm/pkg/chart/loader"
 	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/helm/helmpath"
+	"k8s.io/helm/pkg/helmpath"
 )
-
-func TestSetVersion(t *testing.T) {
-	c := &chart.Chart{
-		Metadata: &chart.Metadata{
-			Name:    "prow",
-			Version: "0.0.1",
-		},
-	}
-	expect := "1.2.3-beta.5"
-	if err := setVersion(c, expect); err != nil {
-		t.Fatal(err)
-	}
-
-	if c.Metadata.Version != expect {
-		t.Errorf("Expected %q, got %q", expect, c.Metadata.Version)
-	}
-
-	if err := setVersion(c, "monkeyface"); err == nil {
-		t.Error("Expected bogus version to return an error.")
-	}
-}
 
 func TestPackage(t *testing.T) {
 	statExe := "stat"

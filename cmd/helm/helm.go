@@ -27,15 +27,14 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"k8s.io/helm/pkg/action"
-	"k8s.io/helm/pkg/helm"
-	"k8s.io/helm/pkg/helm/environment"
+	"k8s.io/helm/pkg/cli"
 	"k8s.io/helm/pkg/kube"
 	"k8s.io/helm/pkg/storage"
 	"k8s.io/helm/pkg/storage/driver"
 )
 
 var (
-	settings   environment.EnvSettings
+	settings   cli.EnvSettings
 	config     genericclioptions.RESTClientGetter
 	configOnce sync.Once
 )
@@ -52,43 +51,11 @@ func logf(format string, v ...interface{}) {
 }
 
 func main() {
-	cmd := newRootCmd(nil, newActionConfig(false), os.Stdout, os.Args[1:])
+	cmd := newRootCmd(newActionConfig(false), os.Stdout, os.Args[1:])
 	if err := cmd.Execute(); err != nil {
 		logf("%+v", err)
 		os.Exit(1)
 	}
-}
-
-// ensureHelmClient returns a new helm client impl. if h is not nil.
-func ensureHelmClient(h helm.Interface, allNamespaces bool) helm.Interface {
-	if h != nil {
-		return h
-	}
-	return newClient(allNamespaces)
-}
-
-func newClient(allNamespaces bool) helm.Interface {
-	kc := kube.New(kubeConfig())
-	kc.Log = logf
-
-	clientset, err := kc.KubernetesClientSet()
-	if err != nil {
-		// TODO return error
-		log.Fatal(err)
-	}
-	var namespace string
-	if !allNamespaces {
-		namespace = getNamespace()
-	}
-	// TODO add other backends
-	d := driver.NewSecrets(clientset.CoreV1().Secrets(namespace))
-	d.Log = logf
-
-	return helm.NewClient(
-		helm.KubeClient(kc),
-		helm.Driver(d),
-		helm.Discovery(clientset.Discovery()),
-	)
 }
 
 func newActionConfig(allNamespaces bool) *action.Configuration {
