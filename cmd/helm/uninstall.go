@@ -61,7 +61,11 @@ func newUninstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		},
 	}
 
-	client.AddFlags(cmd.Flags())
+	f := cmd.Flags()
+	f.BoolVar(&client.DryRun, "dry-run", false, "simulate a uninstall")
+	f.BoolVar(&client.DisableHooks, "no-hooks", false, "prevent hooks from running during uninstallation")
+	f.BoolVar(&client.Purge, "purge", false, "remove the release from the store and make its name free for later use")
+	f.Int64Var(&client.Timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
 
 	return cmd
 }

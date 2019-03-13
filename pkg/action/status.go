@@ -17,8 +17,6 @@ limitations under the License.
 package action
 
 import (
-	"github.com/spf13/pflag"
-
 	"k8s.io/helm/pkg/release"
 )
 
@@ -37,11 +35,6 @@ func NewStatus(cfg *Configuration) *Status {
 	return &Status{
 		cfg: cfg,
 	}
-}
-
-func (s *Status) AddFlags(f *pflag.FlagSet) {
-	f.IntVar(&s.Version, "revision", 0, "if set, display the status of the named release with revision")
-	f.StringVarP(&s.OutputFormat, "output", "o", "", "output the status in the specified format (json or yaml)")
 }
 
 // Run executes 'helm status' against the given release.

@@ -17,8 +17,6 @@ limitations under the License.
 package action
 
 import (
-	"github.com/spf13/pflag"
-
 	"k8s.io/helm/pkg/release"
 )
 
@@ -41,8 +39,4 @@ func NewGet(cfg *Configuration) *Get {
 // Run executes 'helm get' against the given release.
 func (g *Get) Run(name string) (*release.Release, error) {
 	return g.cfg.releaseContent(name, g.Version)
-}
-
-func (g *Get) AddFlags(f *pflag.FlagSet) {
-	f.IntVar(&g.Version, "revision", 0, "get the named release with revision")
 }

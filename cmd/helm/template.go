@@ -76,7 +76,7 @@ func newTemplateCmd(out io.Writer) *cobra.Command {
 		},
 	}
 
-	client.AddFlags(cmd.Flags())
+	addInstallFlags(cmd.Flags(), client)
 
 	return cmd
 }

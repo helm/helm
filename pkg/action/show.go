@@ -21,7 +21,6 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
-	"github.com/spf13/pflag"
 
 	"k8s.io/helm/pkg/chart"
 	"k8s.io/helm/pkg/chart/loader"
@@ -71,10 +70,6 @@ func NewShow(output ShowOutputFormat) *Show {
 	return &Show{
 		OutputFormat: output,
 	}
-}
-
-func (s *Show) AddFlags(f *pflag.FlagSet) {
-	s.ChartPathOptions.AddFlags(f)
 }
 
 // Run executes 'helm show' against the given release.

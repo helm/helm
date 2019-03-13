@@ -24,7 +24,6 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/gosuri/uitable"
-	"github.com/spf13/pflag"
 
 	"k8s.io/helm/pkg/chart"
 	"k8s.io/helm/pkg/chart/loader"
@@ -42,16 +41,6 @@ type Dependency struct {
 // NewDependency creates a new Dependency object with the given configuration.
 func NewDependency() *Dependency {
 	return &Dependency{}
-}
-
-func (d *Dependency) AddBuildFlags(f *pflag.FlagSet) {
-	f.BoolVar(&d.Verify, "verify", false, "verify the packages against signatures")
-	f.StringVar(&d.Keyring, "keyring", defaultKeyring(), "keyring containing public keys")
-}
-
-func (d *Dependency) AddUpdateFlags(f *pflag.FlagSet) {
-	d.AddBuildFlags(f)
-	f.BoolVar(&d.SkipRefresh, "skip-refresh", false, "do not refresh the local repository cache")
 }
 
 // List executes 'helm dependency list'.

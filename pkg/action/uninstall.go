@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/spf13/pflag"
 
 	"k8s.io/helm/pkg/hooks"
 	"k8s.io/helm/pkg/kube"
@@ -48,13 +47,6 @@ func NewUninstall(cfg *Configuration) *Uninstall {
 	return &Uninstall{
 		cfg: cfg,
 	}
-}
-
-func (u *Uninstall) AddFlags(f *pflag.FlagSet) {
-	f.BoolVar(&u.DryRun, "dry-run", false, "simulate a uninstall")
-	f.BoolVar(&u.DisableHooks, "no-hooks", false, "prevent hooks from running during uninstallation")
-	f.BoolVar(&u.Purge, "purge", false, "remove the release from the store and make its name free for later use")
-	f.Int64Var(&u.Timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
 }
 
 // Run uninstalls the given release.

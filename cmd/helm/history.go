@@ -61,7 +61,9 @@ func newHistoryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		},
 	}
 
-	client.AddFlags(cmd.Flags())
+	f := cmd.Flags()
+	f.StringVarP(&client.OutputFormat, "output", "o", action.Table.String(), "prints the output in the specified format (json|table|yaml)")
+	f.IntVar(&client.Max, "max", 256, "maximum number of revision to include in history")
 
 	return cmd
 }

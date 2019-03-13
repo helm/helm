@@ -135,7 +135,20 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		},
 	}
 
-	client.AddFlags(cmd.Flags())
+	f := cmd.Flags()
+	f.BoolVarP(&client.Install, "install", "i", false, "if a release by this name doesn't already exist, run an install")
+	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
+	f.BoolVar(&client.DryRun, "dry-run", false, "simulate an upgrade")
+	f.BoolVar(&client.Recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
+	f.BoolVar(&client.Force, "force", false, "force resource update through delete/recreate if needed")
+	f.BoolVar(&client.DisableHooks, "no-hooks", false, "disable pre/post upgrade hooks")
+	f.Int64Var(&client.Timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
+	f.BoolVar(&client.ResetValues, "reset-values", false, "when upgrading, reset the values to the ones built into the chart")
+	f.BoolVar(&client.ReuseValues, "reuse-values", false, "when upgrading, reuse the last release's values and merge in any overrides from the command line via --set and -f. If '--reset-values' is specified, this is ignored.")
+	f.BoolVar(&client.Wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
+	f.IntVar(&client.MaxHistory, "history-max", 0, "limit the maximum number of revisions saved per release. Use 0 for no limit.")
+	addChartPathOptionsFlags(f, &client.ChartPathOptions)
+	addValueOptionsFlags(f, &client.ValueOptions)
 
 	return cmd
 }

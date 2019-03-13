@@ -24,7 +24,6 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/pkg/errors"
-	"github.com/spf13/pflag"
 	"golang.org/x/crypto/ssh/terminal"
 
 	"k8s.io/helm/pkg/chart"
@@ -110,17 +109,6 @@ func (p *Package) Run(path string) (string, error) {
 	}
 
 	return "", err
-}
-
-func (p *Package) AddFlags(f *pflag.FlagSet) {
-	f.BoolVar(&p.Sign, "sign", false, "use a PGP private key to sign this package")
-	f.StringVar(&p.Key, "key", "", "name of the key to use when signing. Used if --sign is true")
-	f.StringVar(&p.Keyring, "keyring", defaultKeyring(), "location of a public keyring")
-	f.StringVar(&p.Version, "version", "", "set the version on the chart to this semver version")
-	f.StringVar(&p.AppVersion, "app-version", "", "set the appVersion on the chart to this version")
-	f.StringVarP(&p.Destination, "destination", "d", ".", "location to write the chart.")
-	f.BoolVarP(&p.DependencyUpdate, "dependency-update", "u", false, `update dependencies from "Chart.yaml" to dir "charts/" before packaging`)
-	p.ValueOptions.AddFlags(f)
 }
 
 func setVersion(ch *chart.Chart, ver string) error {

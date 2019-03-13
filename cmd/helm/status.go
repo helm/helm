@@ -83,7 +83,9 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		},
 	}
 
-	client.AddFlags(cmd.PersistentFlags())
+	f := cmd.PersistentFlags()
+	f.IntVar(&client.Version, "revision", 0, "if set, display the status of the named release with revision")
+	f.StringVarP(&client.OutputFormat, "output", "o", "", "output the status in the specified format (json or yaml)")
 
 	return cmd
 }

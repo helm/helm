@@ -83,7 +83,21 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		},
 	}
 
-	client.AddFlags(cmd.Flags())
+	f := cmd.Flags()
+	f.BoolVarP(&client.Short, "short", "q", false, "output short (quiet) listing format")
+	f.BoolVarP(&client.ByDate, "date", "d", false, "sort by release date")
+	f.BoolVarP(&client.SortDesc, "reverse", "r", false, "reverse the sort order")
+	f.BoolVarP(&client.All, "all", "a", false, "show all releases, not just the ones marked deployed")
+	f.BoolVar(&client.Uninstalled, "uninstalled", false, "show uninstalled releases")
+	f.BoolVar(&client.Superseded, "superseded", false, "show superseded releases")
+	f.BoolVar(&client.Uninstalling, "uninstalling", false, "show releases that are currently being uninstalled")
+	f.BoolVar(&client.Deployed, "deployed", false, "show deployed releases. If no other is specified, this will be automatically enabled")
+	f.BoolVar(&client.Failed, "failed", false, "show failed releases")
+	f.BoolVar(&client.Pending, "pending", false, "show pending releases")
+	f.BoolVar(&client.AllNamespaces, "all-namespaces", false, "list releases across all namespaces")
+	f.IntVarP(&client.Limit, "max", "m", 256, "maximum number of releases to fetch")
+	f.IntVarP(&client.Offset, "offset", "o", 0, "next release name in the list, used to offset from start value")
+	f.StringVarP(&client.Filter, "filter", "f", "", "a regular expression (Perl compatible). Any releases that match the expression will be included in the results")
 
 	return cmd
 }

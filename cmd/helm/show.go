@@ -133,7 +133,7 @@ func newShowCmd(out io.Writer) *cobra.Command {
 
 	cmds := []*cobra.Command{showCommand, readmeSubCmd, valuesSubCmd, chartSubCmd}
 	for _, subCmd := range cmds {
-		client.AddFlags(subCmd.Flags())
+		addChartPathOptionsFlags(subCmd.Flags(), &client.ChartPathOptions)
 	}
 
 	for _, subCmd := range cmds[1:] {

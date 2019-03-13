@@ -18,7 +18,6 @@ package action
 
 import (
 	"github.com/ghodss/yaml"
-	"github.com/spf13/pflag"
 
 	"k8s.io/helm/pkg/chartutil"
 )
@@ -66,9 +65,4 @@ func (g *GetValues) Run(name string) (string, error) {
 	}
 
 	return string(resConfig), nil
-}
-
-func (g *GetValues) AddFlags(f *pflag.FlagSet) {
-	f.IntVar(&g.Version, "revision", 0, "get the named release with revision")
-	f.BoolVarP(&g.AllValues, "all", "a", false, "dump all (computed) values")
 }

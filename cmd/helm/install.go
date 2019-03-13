@@ -22,6 +22,7 @@ import (
 	"k8s.io/helm/pkg/release"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/action"
@@ -111,9 +112,41 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		},
 	}
 
-	client.AddFlags(cmd.Flags())
+	addInstallFlags(cmd.Flags(), client)
 
 	return cmd
+}
+
+func addInstallFlags(f *pflag.FlagSet, client *action.Install) {
+	f.BoolVar(&client.DryRun, "dry-run", false, "simulate an install")
+	f.BoolVar(&client.DisableHooks, "no-hooks", false, "prevent hooks from running during install")
+	f.BoolVar(&client.Replace, "replace", false, "re-use the given name, even if that name is already used. This is unsafe in production")
+	f.Int64Var(&client.Timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
+	f.BoolVar(&client.Wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
+	f.BoolVarP(&client.GenerateName, "generate-name", "g", false, "generate the name (and omit the NAME parameter)")
+	f.StringVar(&client.NameTemplate, "name-template", "", "specify template used to name the release")
+	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
+	f.BoolVar(&client.DependencyUpdate, "dependency-update", false, "run helm dependency update before installing the chart")
+	addValueOptionsFlags(f, &client.ValueOptions)
+	addChartPathOptionsFlags(f, &client.ChartPathOptions)
+}
+
+func addValueOptionsFlags(f *pflag.FlagSet, v *action.ValueOptions) {
+	f.StringSliceVarP(&v.ValueFiles, "values", "f", []string{}, "specify values in a YAML file or a URL(can specify multiple)")
+	f.StringArrayVar(&v.Values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	f.StringArrayVar(&v.StringValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+}
+
+func addChartPathOptionsFlags(f *pflag.FlagSet, c *action.ChartPathOptions) {
+	f.StringVar(&c.Version, "version", "", "specify the exact chart version to install. If this is not specified, the latest version is installed")
+	f.BoolVar(&c.Verify, "verify", false, "verify the package before installing it")
+	f.StringVar(&c.Keyring, "keyring", defaultKeyring(), "location of public keys used for verification")
+	f.StringVar(&c.RepoURL, "repo", "", "chart repository url where to locate the requested chart")
+	f.StringVar(&c.Username, "username", "", "chart repository username where to locate the requested chart")
+	f.StringVar(&c.Password, "password", "", "chart repository password where to locate the requested chart")
+	f.StringVar(&c.CertFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
+	f.StringVar(&c.KeyFile, "key-file", "", "identify HTTPS client using this SSL key file")
+	f.StringVar(&c.CaFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 }
 
 func runInstall(args []string, client *action.Install, out io.Writer) (*release.Release, error) {

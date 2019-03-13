@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/spf13/pflag"
 
 	"k8s.io/helm/pkg/hooks"
 	"k8s.io/helm/pkg/release"
@@ -49,16 +48,6 @@ func NewRollback(cfg *Configuration) *Rollback {
 	return &Rollback{
 		cfg: cfg,
 	}
-}
-
-func (r *Rollback) AddFlags(f *pflag.FlagSet) {
-	f.IntVarP(&r.Version, "version", "v", 0, "revision number to rollback to (default: rollback to previous release)")
-	f.BoolVar(&r.DryRun, "dry-run", false, "simulate a rollback")
-	f.BoolVar(&r.Recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
-	f.BoolVar(&r.Force, "force", false, "force resource update through delete/recreate if needed")
-	f.BoolVar(&r.DisableHooks, "no-hooks", false, "prevent hooks from running during rollback")
-	f.Int64Var(&r.Timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
-	f.BoolVar(&r.Wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
 }
 
 // Run executes 'helm rollback' against the given release.

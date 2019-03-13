@@ -21,7 +21,6 @@ import (
 	"regexp"
 
 	"github.com/gosuri/uitable"
-	"github.com/spf13/pflag"
 
 	"k8s.io/helm/pkg/release"
 	"k8s.io/helm/pkg/releaseutil"
@@ -136,23 +135,6 @@ func NewList(cfg *Configuration) *List {
 		StateMask: ListDeployed | ListFailed,
 		cfg:       cfg,
 	}
-}
-
-func (l *List) AddFlags(f *pflag.FlagSet) {
-	f.BoolVarP(&l.Short, "short", "q", false, "output short (quiet) listing format")
-	f.BoolVarP(&l.ByDate, "date", "d", false, "sort by release date")
-	f.BoolVarP(&l.SortDesc, "reverse", "r", false, "reverse the sort order")
-	f.BoolVarP(&l.All, "all", "a", false, "show all releases, not just the ones marked deployed")
-	f.BoolVar(&l.Uninstalled, "uninstalled", false, "show uninstalled releases")
-	f.BoolVar(&l.Superseded, "superseded", false, "show superseded releases")
-	f.BoolVar(&l.Uninstalling, "uninstalling", false, "show releases that are currently being uninstalled")
-	f.BoolVar(&l.Deployed, "deployed", false, "show deployed releases. If no other is specified, this will be automatically enabled")
-	f.BoolVar(&l.Failed, "failed", false, "show failed releases")
-	f.BoolVar(&l.Pending, "pending", false, "show pending releases")
-	f.BoolVar(&l.AllNamespaces, "all-namespaces", false, "list releases across all namespaces")
-	f.IntVarP(&l.Limit, "max", "m", 256, "maximum number of releases to fetch")
-	f.IntVarP(&l.Offset, "offset", "o", 0, "next release name in the list, used to offset from start value")
-	f.StringVarP(&l.Filter, "filter", "f", "", "a regular expression (Perl compatible). Any releases that match the expression will be included in the results")
 }
 
 func (l *List) SetConfiguration(cfg *Configuration) {

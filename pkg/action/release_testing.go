@@ -18,7 +18,6 @@ package action
 
 import (
 	"github.com/pkg/errors"
-	"github.com/spf13/pflag"
 
 	"k8s.io/helm/pkg/release"
 	reltesting "k8s.io/helm/pkg/releasetesting"
@@ -39,11 +38,6 @@ func NewReleaseTesting(cfg *Configuration) *ReleaseTesting {
 	return &ReleaseTesting{
 		cfg: cfg,
 	}
-}
-
-func (r *ReleaseTesting) AddFlags(f *pflag.FlagSet) {
-	f.Int64Var(&r.Timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
-	f.BoolVar(&r.Cleanup, "cleanup", false, "delete test pods upon completion")
 }
 
 // Run executes 'helm test' against the given release.

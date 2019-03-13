@@ -75,7 +75,10 @@ func newDependencyUpdateCmd(out io.Writer) *cobra.Command {
 		},
 	}
 
-	client.AddUpdateFlags(cmd.Flags())
+	f := cmd.Flags()
+	f.BoolVar(&client.Verify, "verify", false, "verify the packages against signatures")
+	f.StringVar(&client.Keyring, "keyring", defaultKeyring(), "keyring containing public keys")
+	f.BoolVar(&client.SkipRefresh, "skip-refresh", false, "do not refresh the local repository cache")
 
 	return cmd
 }

@@ -52,7 +52,7 @@ func newGetHooksCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		},
 	}
 
-	client.AddFlags(cmd.Flags())
+	cmd.Flags().IntVar(&client.Version, "revision", 0, "get the named release with revision")
 
 	return cmd
 }

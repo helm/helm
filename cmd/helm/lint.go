@@ -70,7 +70,9 @@ func newLintCmd(out io.Writer) *cobra.Command {
 		},
 	}
 
-	client.AddFlags(cmd.Flags())
+	f := cmd.Flags()
+	f.BoolVar(&client.Strict, "strict", false, "fail on lint warnings")
+	addValueOptionsFlags(f, &client.ValueOptions)
 
 	return cmd
 }

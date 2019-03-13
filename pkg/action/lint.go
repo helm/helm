@@ -23,7 +23,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/spf13/pflag"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/lint"
@@ -114,9 +113,4 @@ func lintChart(path string, vals map[string]interface{}, namespace string, stric
 	}
 
 	return lint.All(chartPath, vals, namespace, strict), nil
-}
-
-func (l *Lint) AddFlags(f *pflag.FlagSet) {
-	f.BoolVar(&l.Strict, "strict", false, "fail on lint warnings")
-	l.ValueOptions.AddFlags(f)
 }

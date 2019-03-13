@@ -17,8 +17,6 @@ limitations under the License.
 package action
 
 import (
-	"github.com/spf13/pflag"
-
 	"k8s.io/helm/pkg/downloader"
 )
 
@@ -32,10 +30,6 @@ type Verify struct {
 // NewVerify creates a new Verify object with the given configuration.
 func NewVerify() *Verify {
 	return &Verify{}
-}
-
-func (v *Verify) AddFlags(f *pflag.FlagSet) {
-	f.StringVar(&v.Keyring, "keyring", defaultKeyring(), "keyring containing public keys")
 }
 
 // Run executes 'helm verify'.

@@ -24,7 +24,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/spf13/pflag"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/cli"
@@ -120,13 +119,4 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		return out.String(), chartutil.ExpandFile(ud, saved)
 	}
 	return out.String(), nil
-}
-
-func (p *Pull) AddFlags(f *pflag.FlagSet) {
-	f.BoolVar(&p.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
-	f.BoolVar(&p.Untar, "untar", false, "if set to true, will untar the chart after downloading it")
-	f.BoolVar(&p.VerifyLater, "prov", false, "fetch the provenance file, but don't perform verification")
-	f.StringVar(&p.UntarDir, "untardir", ".", "if untar is specified, this flag specifies the name of the directory into which the chart is expanded")
-	f.StringVarP(&p.DestDir, "destination", "d", ".", "location to write the chart. If this and tardir are specified, tardir is appended to this")
-	p.ChartPathOptions.AddFlags(f)
 }

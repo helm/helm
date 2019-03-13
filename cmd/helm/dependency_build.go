@@ -17,10 +17,12 @@ package main
 
 import (
 	"io"
+	"os"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
 
+	"k8s.io/client-go/util/homedir"
 	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/action"
 	"k8s.io/helm/pkg/downloader"
@@ -68,7 +70,17 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 		},
 	}
 
-	client.AddBuildFlags(cmd.Flags())
+	f := cmd.Flags()
+	f.BoolVar(&client.Verify, "verify", false, "verify the packages against signatures")
+	f.StringVar(&client.Keyring, "keyring", defaultKeyring(), "keyring containing public keys")
 
 	return cmd
+}
+
+// defaultKeyring returns the expanded path to the default keyring.
+func defaultKeyring() string {
+	if v, ok := os.LookupEnv("GNUPGHOME"); ok {
+		return filepath.Join(v, "pubring.gpg")
+	}
+	return filepath.Join(homedir.HomeDir(), ".gnupg", "pubring.gpg")
 }

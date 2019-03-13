@@ -33,8 +33,6 @@ import (
 	"github.com/Masterminds/sprig"
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
-	"github.com/spf13/pflag"
-	"k8s.io/client-go/util/homedir"
 
 	"k8s.io/helm/pkg/chart"
 	"k8s.io/helm/pkg/chartutil"
@@ -485,46 +483,6 @@ func (i *Install) NameAndChart(args []string) (string, string, error) {
 	}
 
 	return fmt.Sprintf("%s-%d", base, time.Now().Unix()), args[0], nil
-}
-
-func (i *Install) AddFlags(f *pflag.FlagSet) {
-	f.BoolVar(&i.DryRun, "dry-run", false, "simulate an install")
-	f.BoolVar(&i.DisableHooks, "no-hooks", false, "prevent hooks from running during install")
-	f.BoolVar(&i.Replace, "replace", false, "re-use the given name, even if that name is already used. This is unsafe in production")
-	f.Int64Var(&i.Timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
-	f.BoolVar(&i.Wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
-	f.BoolVarP(&i.GenerateName, "generate-name", "g", false, "generate the name (and omit the NAME parameter)")
-	f.StringVar(&i.NameTemplate, "name-template", "", "specify template used to name the release")
-	f.BoolVar(&i.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
-	f.BoolVar(&i.DependencyUpdate, "dependency-update", false, "run helm dependency update before installing the chart")
-	i.ValueOptions.AddFlags(f)
-	i.ChartPathOptions.AddFlags(f)
-}
-
-func (v *ValueOptions) AddFlags(f *pflag.FlagSet) {
-	f.StringSliceVarP(&v.ValueFiles, "values", "f", []string{}, "specify values in a YAML file or a URL(can specify multiple)")
-	f.StringArrayVar(&v.Values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
-	f.StringArrayVar(&v.StringValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
-}
-
-func (c *ChartPathOptions) AddFlags(f *pflag.FlagSet) {
-	f.StringVar(&c.Version, "version", "", "specify the exact chart version to install. If this is not specified, the latest version is installed")
-	f.BoolVar(&c.Verify, "verify", false, "verify the package before installing it")
-	f.StringVar(&c.Keyring, "keyring", defaultKeyring(), "location of public keys used for verification")
-	f.StringVar(&c.RepoURL, "repo", "", "chart repository url where to locate the requested chart")
-	f.StringVar(&c.Username, "username", "", "chart repository username where to locate the requested chart")
-	f.StringVar(&c.Password, "password", "", "chart repository password where to locate the requested chart")
-	f.StringVar(&c.CertFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
-	f.StringVar(&c.KeyFile, "key-file", "", "identify HTTPS client using this SSL key file")
-	f.StringVar(&c.CaFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
-}
-
-// defaultKeyring returns the expanded path to the default keyring.
-func defaultKeyring() string {
-	if v, ok := os.LookupEnv("GNUPGHOME"); ok {
-		return filepath.Join(v, "pubring.gpg")
-	}
-	return filepath.Join(homedir.HomeDir(), ".gnupg", "pubring.gpg")
 }
 
 func TemplateName(nameTemplate string) (string, error) {

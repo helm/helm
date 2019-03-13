@@ -25,7 +25,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/spf13/pflag"
 	"k8s.io/client-go/discovery"
 
 	"k8s.io/helm/pkg/chart"
@@ -70,22 +69,6 @@ func NewUpgrade(cfg *Configuration) *Upgrade {
 	return &Upgrade{
 		cfg: cfg,
 	}
-}
-
-func (u *Upgrade) AddFlags(f *pflag.FlagSet) {
-	f.BoolVarP(&u.Install, "install", "i", false, "if a release by this name doesn't already exist, run an install")
-	f.BoolVar(&u.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
-	f.BoolVar(&u.DryRun, "dry-run", false, "simulate an upgrade")
-	f.BoolVar(&u.Recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
-	f.BoolVar(&u.Force, "force", false, "force resource update through delete/recreate if needed")
-	f.BoolVar(&u.DisableHooks, "no-hooks", false, "disable pre/post upgrade hooks")
-	f.Int64Var(&u.Timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
-	f.BoolVar(&u.ResetValues, "reset-values", false, "when upgrading, reset the values to the ones built into the chart")
-	f.BoolVar(&u.ReuseValues, "reuse-values", false, "when upgrading, reuse the last release's values and merge in any overrides from the command line via --set and -f. If '--reset-values' is specified, this is ignored.")
-	f.BoolVar(&u.Wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
-	f.IntVar(&u.MaxHistory, "history-max", 0, "limit the maximum number of revisions saved per release. Use 0 for no limit.")
-	u.ChartPathOptions.AddFlags(f)
-	u.ValueOptions.AddFlags(f)
 }
 
 // Run executes the upgrade on the given release.

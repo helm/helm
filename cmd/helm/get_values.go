@@ -48,6 +48,8 @@ func newGetValuesCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		},
 	}
 
-	client.AddFlags(cmd.Flags())
+	f := cmd.Flags()
+	f.IntVar(&client.Version, "revision", 0, "get the named release with revision")
+	f.BoolVarP(&client.AllValues, "all", "a", false, "dump all (computed) values")
 	return cmd
 }

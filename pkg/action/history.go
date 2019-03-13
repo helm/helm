@@ -23,7 +23,6 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/gosuri/uitable"
 	"github.com/pkg/errors"
-	"github.com/spf13/pflag"
 
 	"k8s.io/helm/pkg/chart"
 	"k8s.io/helm/pkg/release"
@@ -134,11 +133,6 @@ func (h *History) Run(name string) (string, error) {
 	}
 
 	return string(history), nil
-}
-
-func (h *History) AddFlags(f *pflag.FlagSet) {
-	f.StringVarP(&h.OutputFormat, "output", "o", Table.String(), "prints the output in the specified format (json|table|yaml)")
-	f.IntVar(&h.Max, "max", 256, "maximum number of revision to include in history")
 }
 
 func getReleaseHistory(rls []*release.Release) (history releaseHistory) {
