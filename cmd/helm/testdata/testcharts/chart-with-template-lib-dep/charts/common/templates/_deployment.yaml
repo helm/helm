@@ -1,0 +1,18 @@
+{{- define "common.deployment.tpl" -}}
+apiVersion: extensions/v1beta1
+kind: Deployment
+{{ template "common.metadata" . }}
+spec:
+  template:
+    metadata:
+      labels:
+        app: {{ template "common.name" . }}
+        release: {{ .Release.Name | quote }}
+    spec:
+      containers:
+      -
+{{ include "common.container.tpl" . | indent 8 }}
+{{- end -}}
+{{- define "common.deployment" -}}
+{{- template "common.util.merge" (append . "common.deployment.tpl") -}}
+{{- end -}}
