@@ -18,7 +18,6 @@ package action
 
 import (
 	"fmt"
-	"io"
 	"strings"
 
 	"github.com/ghodss/yaml"
@@ -63,15 +62,13 @@ func ParseShowOutputFormat(s string) (out ShowOutputFormat, err error) {
 //
 // It provides the implementation of 'helm show' and its respective subcommands.
 type Show struct {
-	Out          io.Writer
 	OutputFormat ShowOutputFormat
 	ChartPathOptions
 }
 
 // NewShow creates a new Show object with the given configuration.
-func NewShow(out io.Writer, output ShowOutputFormat) *Show {
+func NewShow(output ShowOutputFormat) *Show {
 	return &Show{
-		Out:          out,
 		OutputFormat: output,
 	}
 }
@@ -81,42 +78,43 @@ func (s *Show) AddFlags(f *pflag.FlagSet) {
 }
 
 // Run executes 'helm show' against the given release.
-func (s *Show) Run(chartpath string) error {
+func (s *Show) Run(chartpath string) (string, error) {
+	var out strings.Builder
 	chrt, err := loader.Load(chartpath)
 	if err != nil {
-		return err
+		return "", err
 	}
 	cf, err := yaml.Marshal(chrt.Metadata)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	if s.OutputFormat == ShowChart || s.OutputFormat == ShowAll {
-		fmt.Fprintln(s.Out, string(cf))
+		fmt.Fprintf(&out, "%s\n", cf)
 	}
 
 	if (s.OutputFormat == ShowValues || s.OutputFormat == ShowAll) && chrt.Values != nil {
 		if s.OutputFormat == ShowAll {
-			fmt.Fprintln(s.Out, "---")
+			fmt.Fprintln(&out, "---")
 		}
 		b, err := yaml.Marshal(chrt.Values)
 		if err != nil {
-			return err
+			return "", err
 		}
-		fmt.Fprintln(s.Out, string(b))
+		fmt.Fprintf(&out, "%s\n", b)
 	}
 
 	if s.OutputFormat == ShowReadme || s.OutputFormat == ShowAll {
 		if s.OutputFormat == ShowAll {
-			fmt.Fprintln(s.Out, "---")
+			fmt.Fprintln(&out, "---")
 		}
 		readme := findReadme(chrt.Files)
 		if readme == nil {
-			return nil
+			return out.String(), nil
 		}
-		fmt.Fprintln(s.Out, string(readme.Data))
+		fmt.Fprintf(&out, "%s\n", readme.Data)
 	}
-	return nil
+	return out.String(), nil
 }
 
 func findReadme(files []*chart.File) (file *chart.File) {

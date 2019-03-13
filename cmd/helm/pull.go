@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/spf13/cobra"
@@ -42,7 +43,6 @@ result in an error, and the chart will not be saved locally.
 
 func newPullCmd(out io.Writer) *cobra.Command {
 	client := action.NewPull()
-	client.Out = out
 
 	cmd := &cobra.Command{
 		Use:     "pull [chart URL | repo/chartname] [...]",
@@ -58,9 +58,11 @@ func newPullCmd(out io.Writer) *cobra.Command {
 			}
 
 			for i := 0; i < len(args); i++ {
-				if err := client.Run(args[i]); err != nil {
+				output, err := client.Run(args[i])
+				if err != nil {
 					return err
 				}
+				fmt.Fprint(out, output)
 			}
 			return nil
 		},

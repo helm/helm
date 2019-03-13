@@ -17,18 +17,18 @@ limitations under the License.
 package action
 
 import (
-	"bytes"
 	"io/ioutil"
 	"strings"
 	"testing"
 )
 
 func TestShow(t *testing.T) {
-	b := bytes.NewBuffer(nil)
+	client := NewShow(ShowAll)
 
-	client := NewShow(b, ShowAll)
-
-	client.Run("../../cmd/helm/testdata/testcharts/alpine")
+	output, err := client.Run("../../cmd/helm/testdata/testcharts/alpine")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Load the data from the textfixture directly.
 	cdata, err := ioutil.ReadFile("../../cmd/helm/testdata/testcharts/alpine/Chart.yaml")
@@ -43,7 +43,7 @@ func TestShow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	parts := strings.SplitN(b.String(), "---", 3)
+	parts := strings.SplitN(output, "---", 3)
 	if len(parts) != 3 {
 		t.Fatalf("Expected 2 parts, got %d", len(parts))
 	}
@@ -64,11 +64,13 @@ func TestShow(t *testing.T) {
 	}
 
 	// Regression tests for missing values. See issue #1024.
-	b.Reset()
 	client.OutputFormat = ShowValues
-	client.Run("../../cmd/helm/testdata/testcharts/novals")
+	output, err = client.Run("../../cmd/helm/testdata/testcharts/novals")
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	if b.Len() != 0 {
-		t.Errorf("expected empty values buffer, got %q", b.String())
+	if len(output) != 0 {
+		t.Errorf("expected empty values buffer, got %s", output)
 	}
 }

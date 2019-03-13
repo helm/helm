@@ -18,10 +18,10 @@ package action
 
 import (
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
@@ -39,7 +39,6 @@ import (
 type Pull struct {
 	ChartPathOptions
 
-	Out      io.Writer       // TODO: refactor this out of pkg/action
 	Settings cli.EnvSettings // TODO: refactor this out of pkg/action
 
 	Devel       bool
@@ -55,10 +54,12 @@ func NewPull() *Pull {
 }
 
 // Run executes 'helm pull' against the given release.
-func (p *Pull) Run(chartRef string) error {
+func (p *Pull) Run(chartRef string) (string, error) {
+	var out strings.Builder
+
 	c := downloader.ChartDownloader{
 		HelmHome: p.Settings.Home,
-		Out:      p.Out,
+		Out:      &out,
 		Keyring:  p.Keyring,
 		Verify:   downloader.VerifyNever,
 		Getters:  getter.All(p.Settings),
@@ -79,7 +80,7 @@ func (p *Pull) Run(chartRef string) error {
 		var err error
 		dest, err = ioutil.TempDir("", "helm-")
 		if err != nil {
-			return errors.Wrap(err, "failed to untar")
+			return out.String(), errors.Wrap(err, "failed to untar")
 		}
 		defer os.RemoveAll(dest)
 	}
@@ -87,18 +88,18 @@ func (p *Pull) Run(chartRef string) error {
 	if p.RepoURL != "" {
 		chartURL, err := repo.FindChartInAuthRepoURL(p.RepoURL, p.Username, p.Password, chartRef, p.Version, p.CertFile, p.KeyFile, p.CaFile, getter.All(p.Settings))
 		if err != nil {
-			return err
+			return out.String(), err
 		}
 		chartRef = chartURL
 	}
 
 	saved, v, err := c.DownloadTo(chartRef, p.Version, dest)
 	if err != nil {
-		return err
+		return out.String(), err
 	}
 
 	if p.Verify {
-		fmt.Fprintf(p.Out, "Verification: %v\n", v)
+		fmt.Fprintf(&out, "Verification: %v\n", v)
 	}
 
 	// After verification, untar the chart into the requested directory.
@@ -109,16 +110,16 @@ func (p *Pull) Run(chartRef string) error {
 		}
 		if fi, err := os.Stat(ud); err != nil {
 			if err := os.MkdirAll(ud, 0755); err != nil {
-				return errors.Wrap(err, "failed to untar (mkdir)")
+				return out.String(), errors.Wrap(err, "failed to untar (mkdir)")
 			}
 
 		} else if !fi.IsDir() {
-			return errors.Errorf("failed to untar: %s is not a directory", ud)
+			return out.String(), errors.Errorf("failed to untar: %s is not a directory", ud)
 		}
 
-		return chartutil.ExpandFile(ud, saved)
+		return out.String(), chartutil.ExpandFile(ud, saved)
 	}
-	return nil
+	return out.String(), nil
 }
 
 func (p *Pull) AddFlags(f *pflag.FlagSet) {

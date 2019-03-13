@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/spf13/cobra"
@@ -48,7 +49,7 @@ of the README file
 `
 
 func newShowCmd(out io.Writer) *cobra.Command {
-	client := action.NewShow(out, action.ShowAll)
+	client := action.NewShow(action.ShowAll)
 
 	showCommand := &cobra.Command{
 		Use:     "show [CHART]",
@@ -61,7 +62,12 @@ func newShowCmd(out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return client.Run(cp)
+			output, err := client.Run(cp)
+			if err != nil {
+				return err
+			}
+			fmt.Fprint(out, output)
+			return nil
 		},
 	}
 
@@ -76,7 +82,12 @@ func newShowCmd(out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return client.Run(cp)
+			output, err := client.Run(cp)
+			if err != nil {
+				return err
+			}
+			fmt.Fprint(out, output)
+			return nil
 		},
 	}
 
@@ -91,7 +102,12 @@ func newShowCmd(out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return client.Run(cp)
+			output, err := client.Run(cp)
+			if err != nil {
+				return err
+			}
+			fmt.Fprint(out, output)
+			return nil
 		},
 	}
 
@@ -106,7 +122,12 @@ func newShowCmd(out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return client.Run(cp)
+			output, err := client.Run(cp)
+			if err != nil {
+				return err
+			}
+			fmt.Fprint(out, output)
+			return nil
 		},
 	}
 
