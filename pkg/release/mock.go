@@ -40,11 +40,12 @@ metadata:
 
 // MockReleaseOptions allows for user-configurable options on mock release objects.
 type MockReleaseOptions struct {
-	Name      string
-	Version   int
-	Chart     *chart.Chart
-	Status    Status
-	Namespace string
+	Name             string
+	Version          int
+	Chart            *chart.Chart
+	Status           Status
+	Namespace        string
+	TestSuiteResults []*TestRun
 }
 
 // Mock creates a mock release object based on options set by MockReleaseOptions. This function should typically not be used outside of testing.
@@ -84,14 +85,24 @@ func Mock(opts *MockReleaseOptions) *Release {
 		scode = opts.Status
 	}
 
+	info := &Info{
+		FirstDeployed: date,
+		LastDeployed:  date,
+		Status:        scode,
+		Description:   "Release mock",
+	}
+
+	if len(opts.TestSuiteResults) > 0 {
+		info.LastTestSuiteRun = &TestSuite{
+			StartedAt:   date,
+			CompletedAt: date,
+			Results:     opts.TestSuiteResults,
+		}
+	}
+
 	return &Release{
-		Name: name,
-		Info: &Info{
-			FirstDeployed: date,
-			LastDeployed:  date,
-			Status:        scode,
-			Description:   "Release mock",
-		},
+		Name:      name,
+		Info:      info,
 		Chart:     ch,
 		Config:    map[string]interface{}{"name": "value"},
 		Version:   version,
