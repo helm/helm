@@ -41,22 +41,6 @@ func (o ShowOutputFormat) String() string {
 	return string(o)
 }
 
-func ParseShowOutputFormat(s string) (out ShowOutputFormat, err error) {
-	switch s {
-	case ShowAll.String():
-		out, err = ShowAll, nil
-	case ShowChart.String():
-		out, err = ShowChart, nil
-	case ShowValues.String():
-		out, err = ShowValues, nil
-	case ShowReadme.String():
-		out, err = ShowReadme, nil
-	default:
-		out, err = "", ErrInvalidFormatType
-	}
-	return
-}
-
 // Show is the action for checking a given release's information.
 //
 // It provides the implementation of 'helm show' and its respective subcommands.
