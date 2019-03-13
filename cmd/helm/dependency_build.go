@@ -21,8 +21,8 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
-
 	"k8s.io/client-go/util/homedir"
+
 	"k8s.io/helm/cmd/helm/require"
 	"k8s.io/helm/pkg/action"
 	"k8s.io/helm/pkg/downloader"
