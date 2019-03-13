@@ -34,7 +34,7 @@ func PrintRelease(out io.Writer, rel *release.Release) {
 	if rel == nil {
 		return
 	}
-	fmt.Fprintf(out, "NAME:   %s\n", rel.Name)
+	fmt.Fprintf(out, "NAME: %s\n", rel.Name)
 	if !rel.Info.LastDeployed.IsZero() {
 		fmt.Fprintf(out, "LAST DEPLOYED: %s\n", rel.Info.LastDeployed)
 	}
