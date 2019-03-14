@@ -34,4 +34,4 @@ and using `gpg --verify`, `keybase pgp verify`, or similar:
 	gpg: Signature made Mon Jul 25 17:23:44 2016 MDT using RSA key ID 1FC18762
 	gpg: Good signature from "Helm Testing (This key should only be used for testing. DO NOT TRUST.) <helm-testing@helm.sh>" [ultimate]
 */
-package provenance // import "k8s.io/helm/pkg/provenance"
+package provenance // import "helm.sh/helm/pkg/provenance"

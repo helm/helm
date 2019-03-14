@@ -26,10 +26,10 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh/terminal"
 
-	"k8s.io/helm/pkg/chart"
-	"k8s.io/helm/pkg/chart/loader"
-	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/provenance"
+	"helm.sh/helm/pkg/chart"
+	"helm.sh/helm/pkg/chart/loader"
+	"helm.sh/helm/pkg/chartutil"
+	"helm.sh/helm/pkg/provenance"
 )
 
 // Package is the action for packaging a chart.

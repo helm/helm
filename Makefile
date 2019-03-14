@@ -33,15 +33,15 @@ BINARY_VERSION ?= ${GIT_TAG}
 
 # Only set Version if building a tag or VERSION is set
 ifneq ($(BINARY_VERSION),)
-	LDFLAGS += -X k8s.io/helm/internal/version.version=${BINARY_VERSION}
+	LDFLAGS += -X helm.sh/helm/internal/version.version=${BINARY_VERSION}
 endif
 
 # Clear the "unreleased" string in BuildMetadata
 ifneq ($(GIT_TAG),)
-	LDFLAGS += -X k8s.io/helm/internal/version.metadata=
+	LDFLAGS += -X helm.sh/helm/internal/version.metadata=
 endif
-LDFLAGS += -X k8s.io/helm/internal/version.gitCommit=${GIT_COMMIT}
-LDFLAGS += -X k8s.io/helm/internal/version.gitTreeState=${GIT_DIRTY}
+LDFLAGS += -X helm.sh/helm/internal/version.gitCommit=${GIT_COMMIT}
+LDFLAGS += -X helm.sh/helm/internal/version.gitTreeState=${GIT_DIRTY}
 
 .PHONY: all
 all: build
@@ -53,7 +53,7 @@ all: build
 build: $(BINDIR)/$(BINNAME)
 
 $(BINDIR)/$(BINNAME): $(SRC) vendor
-	go build $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' -o $(BINDIR)/$(BINNAME) k8s.io/helm/cmd/helm
+	go build $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' -o $(BINDIR)/$(BINNAME) helm.sh/helm/cmd/helm
 
 # ------------------------------------------------------------------------------
 #  test
@@ -85,7 +85,7 @@ coverage:
 
 .PHONY: format
 format: $(GOIMPORTS)
-	go list -f '{{.Dir}}' ./... | xargs $(GOIMPORTS) -w -local k8s.io/helm
+	go list -f '{{.Dir}}' ./... | xargs $(GOIMPORTS) -w -local helm.sh/helm
 
 # ------------------------------------------------------------------------------
 #  dependencies
@@ -122,7 +122,7 @@ Gopkg.toml: $(DEP)
 build-cross: LDFLAGS += -extldflags "-static"
 build-cross: vendor
 build-cross: $(GOX)
-	CGO_ENABLED=0 $(GOX) -parallel=3 -output="_dist/{{.OS}}-{{.Arch}}/$(BINNAME)" -osarch='$(TARGETS)' $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/helm
+	CGO_ENABLED=0 $(GOX) -parallel=3 -output="_dist/{{.OS}}-{{.Arch}}/$(BINNAME)" -osarch='$(TARGETS)' $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' helm.sh/helm/cmd/helm
 
 .PHONY: dist
 dist:

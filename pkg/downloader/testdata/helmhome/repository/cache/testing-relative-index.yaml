@@ -3,7 +3,7 @@ entries:
   foo:
     - name: foo
       description: Foo Chart With Relative Path
-      home: https://k8s.io/helm
+      home: https://helm.sh/helm
       keywords: []
       maintainers: []
       sources:
@@ -15,7 +15,7 @@ entries:
   bar:
     - name: bar
       description: Bar Chart With Relative Path
-      home: https://k8s.io/helm
+      home: https://helm.sh/helm
       keywords: []
       maintainers: []
       sources:

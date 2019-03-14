@@ -23,9 +23,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"k8s.io/helm/cmd/helm/require"
-	"k8s.io/helm/pkg/chart"
-	"k8s.io/helm/pkg/chartutil"
+	"helm.sh/helm/cmd/helm/require"
+	"helm.sh/helm/pkg/chart"
+	"helm.sh/helm/pkg/chartutil"
 )
 
 const createDesc = `

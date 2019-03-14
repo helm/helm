@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package storage // import "k8s.io/helm/pkg/storage"
+package storage // import "helm.sh/helm/pkg/storage"
 
 import (
 	"fmt"
@@ -22,9 +22,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	rspb "k8s.io/helm/pkg/release"
-	relutil "k8s.io/helm/pkg/releaseutil"
-	"k8s.io/helm/pkg/storage/driver"
+	rspb "helm.sh/helm/pkg/release"
+	relutil "helm.sh/helm/pkg/releaseutil"
+	"helm.sh/helm/pkg/storage/driver"
 )
 
 // Storage represents a storage engine for a Release.

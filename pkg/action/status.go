@@ -17,7 +17,7 @@ limitations under the License.
 package action
 
 import (
-	"k8s.io/helm/pkg/release"
+	"helm.sh/helm/pkg/release"
 )
 
 // Status is the action for checking the deployment status of releases.

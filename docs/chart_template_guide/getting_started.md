@@ -192,7 +192,7 @@ At this point, we've seen templates at their most basic: YAML files that have te
 ```console
 $ helm install --debug --dry-run ./mychart
 SERVER: "localhost:44134"
-CHART PATH: /Users/mattbutcher/Code/Go/src/k8s.io/helm/_scratch/mychart
+CHART PATH: /Users/mattbutcher/Code/Go/src/helm.sh/helm/_scratch/mychart
 NAME:   goodly-guppy
 TARGET NAMESPACE:   default
 CHART:  mychart 0.1.0

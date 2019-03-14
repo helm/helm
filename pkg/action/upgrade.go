@@ -27,14 +27,14 @@ import (
 	"github.com/pkg/errors"
 	"k8s.io/client-go/discovery"
 
-	"k8s.io/helm/pkg/chart"
-	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/engine"
-	"k8s.io/helm/pkg/hooks"
-	"k8s.io/helm/pkg/kube"
-	"k8s.io/helm/pkg/release"
-	"k8s.io/helm/pkg/releaseutil"
-	"k8s.io/helm/pkg/version"
+	"helm.sh/helm/pkg/chart"
+	"helm.sh/helm/pkg/chartutil"
+	"helm.sh/helm/pkg/engine"
+	"helm.sh/helm/pkg/hooks"
+	"helm.sh/helm/pkg/kube"
+	"helm.sh/helm/pkg/release"
+	"helm.sh/helm/pkg/releaseutil"
+	"helm.sh/helm/pkg/version"
 )
 
 // Upgrade is the action for upgrading releases.

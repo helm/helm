@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package registry // import "k8s.io/helm/pkg/registry"
+package registry // import "helm.sh/helm/pkg/registry"
 
 import (
 	"errors"

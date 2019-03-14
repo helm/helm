@@ -24,7 +24,7 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/helm/pkg/repo/repotest"
+	"helm.sh/helm/pkg/repo/repotest"
 )
 
 func TestPullCmd(t *testing.T) {

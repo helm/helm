@@ -21,7 +21,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"k8s.io/helm/pkg/action"
+	"helm.sh/helm/pkg/action"
 )
 
 const chartHelp = `

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main // import "k8s.io/helm/cmd/helm"
+package main // import "helm.sh/helm/cmd/helm"
 
 import (
 	"io"
@@ -22,9 +22,9 @@ import (
 	"github.com/containerd/containerd/remotes/docker"
 	"github.com/spf13/cobra"
 
-	"k8s.io/helm/cmd/helm/require"
-	"k8s.io/helm/pkg/action"
-	"k8s.io/helm/pkg/registry"
+	"helm.sh/helm/cmd/helm/require"
+	"helm.sh/helm/pkg/action"
+	"helm.sh/helm/pkg/registry"
 )
 
 var globalUsage = `The Kubernetes package manager

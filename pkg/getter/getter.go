@@ -21,7 +21,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"k8s.io/helm/pkg/cli"
+	"helm.sh/helm/pkg/cli"
 )
 
 // Getter is an interface to support GET to the specified URL.

@@ -21,8 +21,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"k8s.io/helm/cmd/helm/require"
-	"k8s.io/helm/pkg/action"
+	"helm.sh/helm/cmd/helm/require"
+	"helm.sh/helm/pkg/action"
 )
 
 const chartRemoveDesc = `

@@ -24,8 +24,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"k8s.io/helm/pkg/hooks"
-	"k8s.io/helm/pkg/release"
+	"helm.sh/helm/pkg/hooks"
+	"helm.sh/helm/pkg/release"
 )
 
 // Rollback is the action for rolling back to a given release.

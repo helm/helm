@@ -26,7 +26,7 @@ import (
 	"github.com/gosuri/uitable"
 	"github.com/gosuri/uitable/util/strutil"
 
-	"k8s.io/helm/pkg/release"
+	"helm.sh/helm/pkg/release"
 )
 
 // PrintRelease prints info about a release

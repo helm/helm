@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package installer // import "k8s.io/helm/pkg/plugin/installer"
+package installer // import "helm.sh/helm/pkg/plugin/installer"
 
 import (
 	"archive/tar"
@@ -27,10 +27,10 @@ import (
 
 	"github.com/pkg/errors"
 
-	"k8s.io/helm/pkg/cli"
-	"k8s.io/helm/pkg/getter"
-	"k8s.io/helm/pkg/helmpath"
-	"k8s.io/helm/pkg/plugin/cache"
+	"helm.sh/helm/pkg/cli"
+	"helm.sh/helm/pkg/getter"
+	"helm.sh/helm/pkg/helmpath"
+	"helm.sh/helm/pkg/plugin/cache"
 )
 
 // HTTPInstaller installs plugins from an archive served by a web server.

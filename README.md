@@ -2,7 +2,7 @@
 
 [![CircleCI](https://circleci.com/gh/helm/helm.svg?style=shield)](https://circleci.com/gh/helm/helm)
 [![Go Report Card](https://goreportcard.com/badge/github.com/helm/helm)](https://goreportcard.com/report/github.com/helm/helm)
-[![GoDoc](https://godoc.org/k8s.io/helm?status.svg)](https://godoc.org/k8s.io/helm)
+[![GoDoc](https://godoc.org/helm.sh/helm?status.svg)](https://godoc.org/helm.sh/helm)
 
 Helm is a tool for managing Charts. Charts are packages of pre-configured Kubernetes resources.
 

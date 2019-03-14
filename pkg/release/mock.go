@@ -20,7 +20,7 @@ import (
 	"math/rand"
 	"time"
 
-	"k8s.io/helm/pkg/chart"
+	"helm.sh/helm/pkg/chart"
 )
 
 // MockHookTemplate is the hook template used for all mock release objects.

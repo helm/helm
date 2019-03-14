@@ -24,9 +24,9 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 
-	"k8s.io/helm/pkg/hooks"
-	"k8s.io/helm/pkg/release"
-	util "k8s.io/helm/pkg/releaseutil"
+	"helm.sh/helm/pkg/hooks"
+	"helm.sh/helm/pkg/release"
+	util "helm.sh/helm/pkg/releaseutil"
 )
 
 // TestSuite what tests are run, results, and metadata

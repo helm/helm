@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"io"
 
-	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/registry"
+	"helm.sh/helm/pkg/chartutil"
+	"helm.sh/helm/pkg/registry"
 )
 
 // ChartExport performs a chart export operation.

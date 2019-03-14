@@ -1,5 +1,5 @@
 description: Deploy a basic Alpine Linux pod
-home: https://k8s.io/helm
+home: https://helm.sh/helm
 name: chart-bad-type
 sources:
 - https://github.com/helm/helm

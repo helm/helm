@@ -1,7 +1,7 @@
 version: 2
 jobs:
   build:
-    working_directory: /go/src/k8s.io/helm
+    working_directory: /go/src/helm.sh/helm
     parallelism: 3
     docker:
       - image: circleci/golang:1.12
@@ -13,14 +13,14 @@ jobs:
       - restore_cache:
           key: gopkg-{{ .Branch }}-{{ checksum "Gopkg.lock" }}
           paths:
-            - /go/src/k8s.io/helm/vendor
+            - /go/src/helm.sh/helm/vendor
       - run:
           name: install dependencies
           command: .circleci/bootstrap.sh
       - save_cache:
           key: gopkg-{{ .Branch }}-{{ checksum "Gopkg.lock" }}
           paths:
-            - /go/src/k8s.io/helm/vendor
+            - /go/src/helm.sh/helm/vendor
       - restore_cache:
           keys:
             - build-cache-{{ .Branch }}-{{ .Environment.CIRCLE_PREVIOUS_BUILD_NUM }}

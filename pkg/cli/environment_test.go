@@ -23,7 +23,7 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"k8s.io/helm/pkg/helmpath"
+	"helm.sh/helm/pkg/helmpath"
 )
 
 func TestEnvSettings(t *testing.T) {

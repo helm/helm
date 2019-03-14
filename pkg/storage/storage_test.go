@@ -14,15 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package storage // import "k8s.io/helm/pkg/storage"
+package storage // import "helm.sh/helm/pkg/storage"
 
 import (
 	"fmt"
 	"reflect"
 	"testing"
 
-	rspb "k8s.io/helm/pkg/release"
-	"k8s.io/helm/pkg/storage/driver"
+	rspb "helm.sh/helm/pkg/release"
+	"helm.sh/helm/pkg/storage/driver"
 )
 
 func TestStorageCreate(t *testing.T) {

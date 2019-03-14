@@ -19,7 +19,7 @@ package action
 import (
 	"io"
 
-	"k8s.io/helm/pkg/registry"
+	"helm.sh/helm/pkg/registry"
 )
 
 // ChartPull performs a chart pull operation.

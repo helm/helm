@@ -24,7 +24,7 @@ import (
 
 	"github.com/ghodss/yaml"
 
-	"k8s.io/helm/pkg/repo"
+	"helm.sh/helm/pkg/repo"
 )
 
 // Young'n, in these here parts, we test our tests.

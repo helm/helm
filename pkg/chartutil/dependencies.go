@@ -19,8 +19,8 @@ import (
 	"log"
 	"strings"
 
-	"k8s.io/helm/pkg/chart"
-	"k8s.io/helm/pkg/version"
+	"helm.sh/helm/pkg/chart"
+	"helm.sh/helm/pkg/version"
 )
 
 // ProcessDependencies checks through this chart's dependencies, processing accordingly.

@@ -94,7 +94,7 @@ Initially, this looks good. But if we run it through the template engine, we'll 
 ```console
 $ helm install --dry-run --debug ./mychart
 SERVER: "localhost:44134"
-CHART PATH: /Users/mattbutcher/Code/Go/src/k8s.io/helm/_scratch/mychart
+CHART PATH: /Users/mattbutcher/Code/Go/src/helm.sh/helm/_scratch/mychart
 Error: YAML parse error on mychart/templates/configmap.yaml: error converting YAML to JSON: yaml: line 9: did not find expected key
 ```
 

@@ -25,11 +25,11 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/kubernetes/fake"
 
-	"k8s.io/helm/cmd/helm/require"
-	"k8s.io/helm/pkg/action"
-	"k8s.io/helm/pkg/kube"
-	"k8s.io/helm/pkg/storage"
-	"k8s.io/helm/pkg/storage/driver"
+	"helm.sh/helm/cmd/helm/require"
+	"helm.sh/helm/pkg/action"
+	"helm.sh/helm/pkg/kube"
+	"helm.sh/helm/pkg/storage"
+	"helm.sh/helm/pkg/storage/driver"
 )
 
 const templateDesc = `

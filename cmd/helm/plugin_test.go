@@ -25,8 +25,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"k8s.io/helm/pkg/helmpath"
-	"k8s.io/helm/pkg/plugin"
+	"helm.sh/helm/pkg/helmpath"
+	"helm.sh/helm/pkg/plugin"
 )
 
 func TestManuallyProcessArgs(t *testing.T) {

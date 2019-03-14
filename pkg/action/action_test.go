@@ -25,11 +25,11 @@ import (
 	"github.com/pkg/errors"
 	"k8s.io/client-go/kubernetes/fake"
 
-	"k8s.io/helm/pkg/chart"
-	"k8s.io/helm/pkg/kube"
-	"k8s.io/helm/pkg/release"
-	"k8s.io/helm/pkg/storage"
-	"k8s.io/helm/pkg/storage/driver"
+	"helm.sh/helm/pkg/chart"
+	"helm.sh/helm/pkg/kube"
+	"helm.sh/helm/pkg/release"
+	"helm.sh/helm/pkg/storage"
+	"helm.sh/helm/pkg/storage/driver"
 )
 
 var verbose = flag.Bool("test.log", false, "enable test logging")

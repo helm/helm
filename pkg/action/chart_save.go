@@ -20,8 +20,8 @@ import (
 	"io"
 	"path/filepath"
 
-	"k8s.io/helm/pkg/chart/loader"
-	"k8s.io/helm/pkg/registry"
+	"helm.sh/helm/pkg/chart/loader"
+	"helm.sh/helm/pkg/registry"
 )
 
 // ChartSave performs a chart save operation.

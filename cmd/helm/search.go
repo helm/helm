@@ -26,9 +26,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"k8s.io/helm/cmd/helm/search"
-	"k8s.io/helm/pkg/helmpath"
-	"k8s.io/helm/pkg/repo"
+	"helm.sh/helm/cmd/helm/search"
+	"helm.sh/helm/pkg/helmpath"
+	"helm.sh/helm/pkg/repo"
 )
 
 const searchDesc = `

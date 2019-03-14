@@ -19,17 +19,17 @@ package main
 import (
 	"io"
 
-	"k8s.io/helm/pkg/release"
+	"helm.sh/helm/pkg/release"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	"k8s.io/helm/cmd/helm/require"
-	"k8s.io/helm/pkg/action"
-	"k8s.io/helm/pkg/chart/loader"
-	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/downloader"
-	"k8s.io/helm/pkg/getter"
+	"helm.sh/helm/cmd/helm/require"
+	"helm.sh/helm/pkg/action"
+	"helm.sh/helm/pkg/chart/loader"
+	"helm.sh/helm/pkg/chartutil"
+	"helm.sh/helm/pkg/downloader"
+	"helm.sh/helm/pkg/getter"
 )
 
 const installDesc = `

@@ -23,11 +23,11 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/helm/pkg/chart"
-	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/provenance"
-	"k8s.io/helm/pkg/repo"
-	"k8s.io/helm/pkg/repo/repotest"
+	"helm.sh/helm/pkg/chart"
+	"helm.sh/helm/pkg/chartutil"
+	"helm.sh/helm/pkg/provenance"
+	"helm.sh/helm/pkg/repo"
+	"helm.sh/helm/pkg/repo/repotest"
 )
 
 func TestDependencyUpdateCmd(t *testing.T) {

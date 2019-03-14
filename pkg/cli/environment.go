@@ -29,7 +29,7 @@ import (
 	"github.com/spf13/pflag"
 	"k8s.io/client-go/util/homedir"
 
-	"k8s.io/helm/pkg/helmpath"
+	"helm.sh/helm/pkg/helmpath"
 )
 
 // defaultHelmHome is the default HELM_HOME.

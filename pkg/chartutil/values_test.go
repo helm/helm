@@ -25,7 +25,7 @@ import (
 
 	kversion "k8s.io/apimachinery/pkg/version"
 
-	"k8s.io/helm/pkg/chart"
+	"helm.sh/helm/pkg/chart"
 )
 
 func TestReadValues(t *testing.T) {
