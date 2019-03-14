@@ -27,7 +27,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"k8s.io/helm/pkg/cli"
+	"k8s.io/helm/pkg/cli/environment"
 	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helmpath"
 	"k8s.io/helm/pkg/plugin/cache"
@@ -79,7 +79,7 @@ func NewHTTPInstaller(source string, home helmpath.Home) (*HTTPInstaller, error)
 		return nil, err
 	}
 
-	getConstructor, err := getter.ByScheme("http", cli.EnvSettings{})
+	getConstructor, err := getter.ByScheme("http", environment.Settings{})
 	if err != nil {
 		return nil, err
 	}

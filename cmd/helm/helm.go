@@ -17,96 +17,19 @@ limitations under the License.
 package main // import "k8s.io/helm/cmd/helm"
 
 import (
-	"fmt"
 	"log"
 	"os"
-	"sync"
 
-	// Import to initialize client auth plugins.
-	"k8s.io/cli-runtime/pkg/genericclioptions"
-	_ "k8s.io/client-go/plugin/pkg/client/auth"
-
-	"k8s.io/helm/pkg/action"
 	"k8s.io/helm/pkg/cli"
-	"k8s.io/helm/pkg/kube"
-	"k8s.io/helm/pkg/storage"
-	"k8s.io/helm/pkg/storage/driver"
-)
-
-var (
-	settings   cli.EnvSettings
-	config     genericclioptions.RESTClientGetter
-	configOnce sync.Once
 )
 
 func init() {
 	log.SetFlags(log.Lshortfile)
 }
 
-func logf(format string, v ...interface{}) {
-	if settings.Debug {
-		format = fmt.Sprintf("[debug] %s\n", format)
-		log.Output(2, fmt.Sprintf(format, v...))
-	}
-}
-
 func main() {
-	cmd := newRootCmd(newActionConfig(false), os.Stdout, os.Args[1:])
+	cmd := cli.New(cli.NewActionConfig(false), os.Stdout, os.Args[1:])
 	if err := cmd.Execute(); err != nil {
-		logf("%+v", err)
 		os.Exit(1)
 	}
-}
-
-func newActionConfig(allNamespaces bool) *action.Configuration {
-	kc := kube.New(kubeConfig())
-	kc.Log = logf
-
-	clientset, err := kc.KubernetesClientSet()
-	if err != nil {
-		// TODO return error
-		log.Fatal(err)
-	}
-	var namespace string
-	if !allNamespaces {
-		namespace = getNamespace()
-	}
-
-	var store *storage.Storage
-	switch os.Getenv("HELM_DRIVER") {
-	case "secret", "secrets", "":
-		d := driver.NewSecrets(clientset.CoreV1().Secrets(namespace))
-		d.Log = logf
-		store = storage.Init(d)
-	case "configmap", "configmaps":
-		d := driver.NewConfigMaps(clientset.CoreV1().ConfigMaps(namespace))
-		d.Log = logf
-		store = storage.Init(d)
-	case "memory":
-		d := driver.NewMemory()
-		store = storage.Init(d)
-	default:
-		// Not sure what to do here.
-		panic("Unknown driver in HELM_DRIVER: " + os.Getenv("HELM_DRIVER"))
-	}
-
-	return &action.Configuration{
-		KubeClient: kc,
-		Releases:   store,
-		Discovery:  clientset.Discovery(),
-	}
-}
-
-func kubeConfig() genericclioptions.RESTClientGetter {
-	configOnce.Do(func() {
-		config = kube.GetConfig(settings.KubeConfig, settings.KubeContext, settings.Namespace)
-	})
-	return config
-}
-
-func getNamespace() string {
-	if ns, _, err := kubeConfig().ToRawKubeConfigLoader().Namespace(); err == nil {
-		return ns
-	}
-	return "default"
 }

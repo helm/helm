@@ -22,17 +22,17 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/helm/pkg/cli"
+	"k8s.io/helm/pkg/cli/environment"
 	"k8s.io/helm/pkg/helmpath"
 )
 
-func hh(debug bool) cli.EnvSettings {
+func hh(debug bool) environment.Settings {
 	apath, err := filepath.Abs("./testdata")
 	if err != nil {
 		panic(err)
 	}
 	hp := helmpath.Home(apath)
-	return cli.EnvSettings{
+	return environment.Settings{
 		Home:  hp,
 		Debug: debug,
 	}

@@ -21,7 +21,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"k8s.io/helm/pkg/cli"
+	"k8s.io/helm/pkg/cli/environment"
 )
 
 // Getter is an interface to support GET to the specified URL.
@@ -71,7 +71,7 @@ func (p Providers) ByScheme(scheme string) (Constructor, error) {
 // All finds all of the registered getters as a list of Provider instances.
 // Currently the build-in http/https getter and the discovered
 // plugins with downloader notations are collected.
-func All(settings cli.EnvSettings) Providers {
+func All(settings environment.Settings) Providers {
 	result := Providers{
 		{
 			Schemes: []string{"http", "https"},
@@ -86,7 +86,7 @@ func All(settings cli.EnvSettings) Providers {
 // ByScheme returns a getter for the given scheme.
 //
 // If the scheme is not supported, this will return an error.
-func ByScheme(scheme string, settings cli.EnvSettings) (Provider, error) {
+func ByScheme(scheme string, settings environment.Settings) (Provider, error) {
 	// Q: What do you call a scheme string who's the boss?
 	// A: Bruce Schemestring, of course.
 	a := All(settings)

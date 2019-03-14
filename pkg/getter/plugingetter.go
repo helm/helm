@@ -23,13 +23,13 @@ import (
 
 	"github.com/pkg/errors"
 
-	"k8s.io/helm/pkg/cli"
+	"k8s.io/helm/pkg/cli/environment"
 	"k8s.io/helm/pkg/plugin"
 )
 
 // collectPlugins scans for getter plugins.
 // This will load plugins according to the cli.
-func collectPlugins(settings cli.EnvSettings) (Providers, error) {
+func collectPlugins(settings environment.Settings) (Providers, error) {
 	plugins, err := plugin.FindPlugins(settings.PluginDirs())
 	if err != nil {
 		return nil, err
@@ -56,7 +56,7 @@ func collectPlugins(settings cli.EnvSettings) (Providers, error) {
 type pluginGetter struct {
 	command                   string
 	certFile, keyFile, cAFile string
-	settings                  cli.EnvSettings
+	settings                  environment.Settings
 	name                      string
 	base                      string
 }
@@ -81,7 +81,7 @@ func (p *pluginGetter) Get(href string) (*bytes.Buffer, error) {
 }
 
 // newPluginGetter constructs a valid plugin getter
-func newPluginGetter(command string, settings cli.EnvSettings, name, base string) Constructor {
+func newPluginGetter(command string, settings environment.Settings, name, base string) Constructor {
 	return func(URL, CertFile, KeyFile, CAFile string) (Getter, error) {
 		result := &pluginGetter{
 			command:  command,

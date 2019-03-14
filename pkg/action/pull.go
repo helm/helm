@@ -26,7 +26,7 @@ import (
 	"github.com/pkg/errors"
 
 	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/cli"
+	"k8s.io/helm/pkg/cli/environment"
 	"k8s.io/helm/pkg/downloader"
 	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/repo"
@@ -38,7 +38,7 @@ import (
 type Pull struct {
 	ChartPathOptions
 
-	Settings cli.EnvSettings // TODO: refactor this out of pkg/action
+	Settings environment.Settings // TODO: refactor this out of pkg/action
 
 	Devel       bool
 	Untar       bool

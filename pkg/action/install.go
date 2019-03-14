@@ -36,7 +36,7 @@ import (
 
 	"k8s.io/helm/pkg/chart"
 	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/cli"
+	"k8s.io/helm/pkg/cli/environment"
 	"k8s.io/helm/pkg/downloader"
 	"k8s.io/helm/pkg/engine"
 	"k8s.io/helm/pkg/getter"
@@ -532,7 +532,7 @@ OUTER:
 // - URL
 //
 // If 'verify' is true, this will attempt to also verify the chart.
-func (c *ChartPathOptions) LocateChart(name string, settings cli.EnvSettings) (string, error) {
+func (c *ChartPathOptions) LocateChart(name string, settings environment.Settings) (string, error) {
 	name = strings.TrimSpace(name)
 	version := strings.TrimSpace(c.Version)
 
@@ -597,7 +597,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings cli.EnvSettings) (s
 
 // MergeValues merges values from files specified via -f/--values and
 // directly via --set or --set-string, marshaling them to YAML
-func (v *ValueOptions) MergeValues(settings cli.EnvSettings) error {
+func (v *ValueOptions) MergeValues(settings environment.Settings) error {
 	base := map[string]interface{}{}
 
 	// User specified a values files via -f/--values
@@ -662,7 +662,7 @@ func MergeValues(dest, src map[string]interface{}) map[string]interface{} {
 }
 
 // readFile load a file from stdin, the local directory, or a remote file with a url.
-func readFile(filePath string, settings cli.EnvSettings) ([]byte, error) {
+func readFile(filePath string, settings environment.Settings) ([]byte, error) {
 	if strings.TrimSpace(filePath) == "-" {
 		return ioutil.ReadAll(os.Stdin)
 	}

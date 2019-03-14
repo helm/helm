@@ -25,7 +25,7 @@ import (
 
 	"github.com/ghodss/yaml"
 
-	helm_env "k8s.io/helm/pkg/cli"
+	"k8s.io/helm/pkg/cli/environment"
 )
 
 const pluginFileName = "plugin.yaml"
@@ -214,7 +214,7 @@ func FindPlugins(plugdirs string) ([]*Plugin, error) {
 // SetupPluginEnv prepares os.Env for plugins. It operates on os.Env because
 // the plugin subsystem itself needs access to the environment variables
 // created here.
-func SetupPluginEnv(settings helm_env.EnvSettings,
+func SetupPluginEnv(settings environment.Settings,
 	shortName, base string) {
 	for key, val := range map[string]string{
 		"HELM_PLUGIN_NAME": shortName,
