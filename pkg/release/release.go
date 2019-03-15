@@ -25,7 +25,7 @@ type Release struct {
 	// Info provides information about a release
 	Info *Info `json:"info,omitempty"`
 	// Chart is the chart that was released.
-	Chart *chart.Chart `json:"-"`
+	Chart *chart.Chart `json:"chart,omitempty"`
 	// Config is the set of extra Values added to the chart.
 	// These values override the default values inside of the chart.
 	Config map[string]interface{} `json:"config,omitempty"`

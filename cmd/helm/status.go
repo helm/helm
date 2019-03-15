@@ -53,6 +53,9 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return err
 			}
 
+			// strip chart metadata from the output
+			rel.Chart = nil
+
 			outfmt, err := action.ParseOutputFormat(client.OutputFormat)
 			// We treat an invalid format type as the default
 			if err != nil && err != action.ErrInvalidFormatType {
