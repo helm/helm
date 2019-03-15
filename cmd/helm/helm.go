@@ -155,6 +155,9 @@ func newRootCmd(args []string) *cobra.Command {
 	// set defaults from environment
 	settings.Init(flags)
 
+	// set defaults for TLS from environment
+	settings.InitTLS(flags)
+
 	// Find and add plugins
 	loadPlugins(cmd, out)
 
