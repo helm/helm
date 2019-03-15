@@ -6,6 +6,15 @@ This page provides help with the most common questions about Helm.
 information, [file an issue](https://github.com/helm/helm/issues) or
 send us a pull request.
 
+## Changes since Helm 2
+
+Here's an exhaustive list of all the major changes introduced in Helm 3.
+
+### Go import path changes
+
+In Helm 3, Helm switched the Go import path over from `k8s.io/helm` to `helm.sh/helm`. If you intend
+to upgrade to the Helm 3 Go client libraries, make sure to change your import paths.
+
 
 ## Installing
 
