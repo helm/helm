@@ -333,9 +333,15 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 		}
 
 		originalInfo := original.Get(info)
+
+		// Resource exists in the current cluster state, but not in the current helm configuration
+		// See: https://github.com/helm/helm/issues/1193 for more info
 		if originalInfo == nil {
-			kind := info.Mapping.GroupVersionKind.Kind
-			return fmt.Errorf("no %s with the name %q found", kind, info.Name)
+			return fmt.Errorf(
+				"%s %q is not managed by Helm; delete the resource from the current cluster state to let Helm manage it",
+				info.Mapping.GroupVersionKind.Kind,
+				info.Name,
+			)
 		}
 
 		if err := updateResource(c, info, originalInfo.Object, force, recreate); err != nil {
