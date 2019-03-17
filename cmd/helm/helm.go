@@ -94,6 +94,7 @@ func newActionConfig(allNamespaces bool) *action.Configuration {
 		KubeClient: kc,
 		Releases:   store,
 		Discovery:  clientset.Discovery(),
+		Log:        logf,
 	}
 }
 
