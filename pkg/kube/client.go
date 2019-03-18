@@ -409,19 +409,13 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 	// returned from ConvertToVersion. Anything that's unstructured should
 	// use the jsonpatch.CreateMergePatch. Strategic Merge Patch is not supported
 	// on objects like CRDs.
-	_, isUnstructured := versionedObject.(runtime.Unstructured)
-
-	switch {
-	case runtime.IsNotRegisteredError(err), isUnstructured:
+	if _, ok := versionedObject.(runtime.Unstructured); ok {
 		// fall back to generic JSON merge patch
 		patch, err := jsonpatch.CreateMergePatch(oldData, newData)
 		return patch, types.MergePatchType, err
-	case err != nil:
-		return nil, types.StrategicMergePatchType, goerrors.Wrap(err, "failed to get versionedObject")
-	default:
-		patch, err := strategicpatch.CreateTwoWayMergePatch(oldData, newData, versionedObject)
-		return patch, types.StrategicMergePatchType, err
 	}
+	patch, err := strategicpatch.CreateTwoWayMergePatch(oldData, newData, versionedObject)
+	return patch, types.StrategicMergePatchType, err
 }
 
 func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force, recreate bool) error {
