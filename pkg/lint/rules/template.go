@@ -117,7 +117,7 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 func validateTemplatesDir(templatesPath string) error {
 	if fi, err := os.Stat(templatesPath); err != nil {
 		return errors.New("directory not found")
-	} else if err == nil && !fi.IsDir() {
+	} else if !fi.IsDir() {
 		return errors.New("not a directory")
 	}
 	return nil

@@ -199,8 +199,7 @@ metadata:
 
 		for _, m := range manifests {
 			var sh SimpleHead
-			err := yaml.Unmarshal([]byte(m), &sh)
-			if err != nil {
+			if err := yaml.Unmarshal([]byte(m), &sh); err != nil {
 				// This is expected for manifests that are corrupt or empty.
 				t.Log(err)
 				continue
@@ -208,8 +207,8 @@ metadata:
 
 			name := sh.Metadata.Name
 
-			//only keep track of non-hook manifests
-			if err == nil && s.hooks[name] == nil {
+			// only keep track of non-hook manifests
+			if s.hooks[name] == nil {
 				another := Manifest{
 					Content: m,
 					Name:    name,
