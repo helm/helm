@@ -195,7 +195,7 @@ func (s *ReleaseServer) uniqName(start string, reuse bool) (string, error) {
 			s.Log("name %s exists but is not in use, reusing name", start)
 			return start, nil
 		} else if reuse {
-			return "", fmt.Errorf("a released named %s is in use, cannot re-use a name that is still in use", start)
+			return "", fmt.Errorf("a release named %s is in use, cannot re-use a name that is still in use", start)
 		}
 
 		return "", fmt.Errorf("a release named %s already exists.\nRun: helm ls --all %s; to check the status of the release\nOr run: helm del --purge %s; to delete it", start, start, start)
