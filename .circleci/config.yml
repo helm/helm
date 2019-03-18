@@ -1,41 +1,42 @@
+---
 version: 2
+
 jobs:
   build:
     working_directory: /go/src/helm.sh/helm
     parallelism: 3
     docker:
       - image: circleci/golang:1.12
+
     environment:
       - PROJECT_NAME: "kubernetes-helm"
       - GOCACHE: "/tmp/go/cache"
+
     steps:
       - checkout
       - restore_cache:
-          key: gopkg-{{ .Branch }}-{{ checksum "Gopkg.lock" }}
-          paths:
-            - /go/src/helm.sh/helm/vendor
-      - run:
-          name: install dependencies
-          command: .circleci/bootstrap.sh
-      - save_cache:
-          key: gopkg-{{ .Branch }}-{{ checksum "Gopkg.lock" }}
-          paths:
-            - /go/src/helm.sh/helm/vendor
+          key: gopkg-{{ checksum "Gopkg.lock" }}
       - restore_cache:
           keys:
-            - build-cache-{{ .Branch }}-{{ .Environment.CIRCLE_PREVIOUS_BUILD_NUM }}
-          paths:
-            - /tmp/go/cache
+            - build-cache-{{ .Environment.CIRCLE_PREVIOUS_BUILD_NUM }}
       - run:
           name: test
-          command: .circleci/test.sh
+          command: make test-coverage
+
       - save_cache:
-          key: build-cache-{{ .Branch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
+          key: gopkg-{{ checksum "Gopkg.lock" }}
+          paths:
+            - /go/src/helm.sh/helm/vendor
+            - /go/pkg/dep
+      - save_cache:
+          key: build-cache-{{ .Environment.CIRCLE_BUILD_NUM }}
           paths:
             - /tmp/go/cache
+
       - deploy:
           name: deploy
           command: .circleci/deploy.sh
+
 workflows:
   version: 2
   build:

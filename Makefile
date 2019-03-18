@@ -70,6 +70,12 @@ test-unit: vendor
 	@echo "==> Running unit tests <=="
 	HELM_HOME=/no_such_dir go test $(GOFLAGS) -run $(TESTS) $(PKG) $(TESTFLAGS)
 
+.PHONY: test-coverage
+test-coverage: vendor
+	@echo
+	@echo "==> Running unit tests with coverage <=="
+	@ HELM_HOME=/no_such_dir ./scripts/coverage.sh
+
 .PHONY: test-style
 test-style: vendor $(GOLANGCI_LINT)
 	$(GOLANGCI_LINT) run
