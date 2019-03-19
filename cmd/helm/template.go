@@ -42,7 +42,7 @@ is done.
 
 To render just one template in a chart, use '-x':
 
-	$ helm template mychart -x templates/deployment.yaml
+	$ helm template foo mychart -x templates/deployment.yaml
 `
 
 func newTemplateCmd(out io.Writer) *cobra.Command {
@@ -59,10 +59,10 @@ func newTemplateCmd(out io.Writer) *cobra.Command {
 	client := action.NewInstall(customConfig)
 
 	cmd := &cobra.Command{
-		Use:   "template CHART",
+		Use:   "template [NAME] [CHART]",
 		Short: fmt.Sprintf("locally render templates"),
 		Long:  templateDesc,
-		Args:  require.ExactArgs(1),
+		Args:  require.MinimumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			client.DryRun = true
 			client.ReleaseName = "RELEASE-NAME"
