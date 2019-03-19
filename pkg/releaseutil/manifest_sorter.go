@@ -85,8 +85,7 @@ func SortManifests(files map[string]string, apis chartutil.VersionSet, sort Kind
 			continue
 		}
 		// Skip empty files and log this.
-		if len(strings.TrimSpace(c)) == 0 {
-			log.Printf("info: manifest %q is empty. Skipping.", filePath)
+		if strings.TrimSpace(c) == "" {
 			continue
 		}
 
