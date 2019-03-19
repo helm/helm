@@ -34,8 +34,7 @@ To run Helm locally, you can run `bin/helm`.
 
 ### Man pages
 
-Man pages and Markdown documentation are already pre-built in `docs/`. You may
-regenerate documentation using `make docs`.
+Man pages and Markdown documentation are already pre-built in `docs/`.
 
 To expose the Helm man pages to your `man` client, you can put the files in your
 `$MANPATH`:
