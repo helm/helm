@@ -35,7 +35,7 @@ import (
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	batch "k8s.io/api/batch/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	extv1beta1 "k8s.io/api/extensions/v1beta1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -370,18 +370,8 @@ func (c *Client) UpdateWithOptions(namespace string, originalReader, targetReade
 
 	cleanupErrors := []string{}
 
-	if opts.CleanupOnFail {
-		if err != nil || len(updateErrors) != 0 {
-			for _, info := range newlyCreatedResources {
-				kind := info.Mapping.GroupVersionKind.Kind
-
-				c.Log("Deleting newly created %s with the name %q in %s...", kind, info.Name, info.Namespace)
-				if err := deleteResource(info); err != nil {
-					c.Log("Error deleting newly created %s with the name %q in %s: %s", kind, info.Name, info.Namespace, err)
-					cleanupErrors = append(cleanupErrors, err.Error())
-				}
-			}
-		}
+	if opts.CleanupOnFail && (err != nil || len(updateErrors) != 0) {
+		cleanupErrors = c.cleanup(newlyCreatedResources)
 	}
 
 	switch {
@@ -412,9 +402,28 @@ func (c *Client) UpdateWithOptions(namespace string, originalReader, targetReade
 		}
 	}
 	if opts.ShouldWait {
-		return c.waitForResources(time.Duration(opts.Timeout)*time.Second, target)
+		err := c.waitForResources(time.Duration(opts.Timeout)*time.Second, target)
+
+		if opts.CleanupOnFail && err != nil {
+			cleanupErrors = c.cleanup(newlyCreatedResources)
+			return fmt.Errorf(strings.Join(append([]string{err.Error()}, cleanupErrors...), " && "))
+		}
+
+		return err
 	}
 	return nil
+}
+
+func (c *Client) cleanup(newlyCreatedResources []*resource.Info) (cleanupErrors []string) {
+	for _, info := range newlyCreatedResources {
+		kind := info.Mapping.GroupVersionKind.Kind
+		c.Log("Deleting newly created %s with the name %q in %s...", kind, info.Name, info.Namespace)
+		if err := deleteResource(info); err != nil {
+			c.Log("Error deleting newly created %s with the name %q in %s: %s", kind, info.Name, info.Namespace, err)
+			cleanupErrors = append(cleanupErrors, err.Error())
+		}
+	}
+	return
 }
 
 // Delete deletes Kubernetes resources from an io.reader.
