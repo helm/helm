@@ -329,7 +329,6 @@ func (i *Install) renderResources(ch *chart.Chart, values chartutil.Values, vs c
 	// Sort hooks, manifests, and partials. Only hooks and manifests are returned,
 	// as partials are not used after renderer.Render. Empty manifests are also
 	// removed here.
-	// TODO: Can we migrate SortManifests out of pkg/tiller?
 	hooks, manifests, err := releaseutil.SortManifests(files, vs, releaseutil.InstallOrder)
 	if err != nil {
 		// By catching parse errors here, we can prevent bogus releases from going
