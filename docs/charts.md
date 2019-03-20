@@ -766,7 +766,7 @@ Also, global variables of parent charts take precedence over the global variable
 
 ### Schema Files
 
-Sometimes, a chart writer might want to define a structure on their values.
+Sometimes, a chart maintainer might want to define a structure on their values.
 This can be done by defining a schema in the `values.schema.yaml` file. A
 schema is the yaml representation of a [JSON Schema](https://json-schema.org/).
 It might look something like this:
@@ -797,7 +797,15 @@ required:
     - port
 ```
 
-This schema will be applied to the values to validate it. An example of a
+This schema will be applied to the values to validate it. Validation occurs
+when any of the following commands are invoked:
+
+* `helm install`
+* `helm upgrade`
+* `helm lint`
+* `helm template`
+
+An example of a
 `values.yaml` file that meets the requirements of this schema might look
 something like this:
 
