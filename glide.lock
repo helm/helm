@@ -1,5 +1,5 @@
-hash: 3a24b27ab669b7bd977526dd455c5739fc2e2c14eace7dab92060ff1a39fd804
-updated: 2019-03-02T10:15:45.243405-07:00
+hash: f86919aea9f9b6df70967eb0b00d8a3807a2f5e924d7bd82d317f7969fddb3ef
+updated: 2019-03-17T20:36:59.222397-07:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -85,7 +85,7 @@ imports:
   subpackages:
   - spdy
 - name: github.com/evanphx/json-patch
-  version: 36442dbdb585210f8d5a1b45e67aa323c197d5c4
+  version: 5858425f75500d40c52783dce87d085a483ce135
 - name: github.com/exponent-io/jsonpath
   version: d6023ce2651d8eafb5c75bb0c7167536102ec9f5
 - name: github.com/fatih/camelcase
@@ -370,7 +370,7 @@ imports:
 - name: gopkg.in/yaml.v2
   version: 670d4cfef0544295bc27a114dbac37980d83185a
 - name: k8s.io/api
-  version: 05914d821849570fba9eacfb29466f2d8d3cd229
+  version: 5cb15d34447165a97c76ed5a60e4e99c8a01ecfe
   subpackages:
   - admission/v1beta1
   - admissionregistration/v1alpha1
@@ -407,11 +407,11 @@ imports:
   - storage/v1alpha1
   - storage/v1beta1
 - name: k8s.io/apiextensions-apiserver
-  version: 0fe22c71c47604641d9aa352c785b7912c200562
+  version: d002e88f6236312f0289d9d1deab106751718ff0
   subpackages:
   - pkg/features
 - name: k8s.io/apimachinery
-  version: 2b1284ed4c93a43499e781493253e2ac5959c4fd
+  version: 86fb29eff6288413d76bd8506874fddd9fccdff0
   subpackages:
   - pkg/api/equality
   - pkg/api/errors
@@ -467,7 +467,7 @@ imports:
   - third_party/forked/golang/netutil
   - third_party/forked/golang/reflect
 - name: k8s.io/apiserver
-  version: 3ccfe8365421eb08e334b195786a2973460741d8
+  version: 79427f02047f9189a75b8cdaadccaf65a126853e
   subpackages:
   - pkg/authentication/authenticator
   - pkg/authentication/serviceaccount
@@ -475,13 +475,13 @@ imports:
   - pkg/features
   - pkg/util/feature
 - name: k8s.io/cli-runtime
-  version: 835b10687cb6556f6b113099ef925146a56d5981
+  version: a9e421a7932607ce4623ff45add8274499cca193
   subpackages:
   - pkg/genericclioptions
   - pkg/genericclioptions/printers
   - pkg/genericclioptions/resource
 - name: k8s.io/client-go
-  version: 8d9ed539ba3134352c586810e749e58df4e94e4f
+  version: b40b2a5939e43f7ffe0028ad67586b7ce50bb675
   subpackages:
   - discovery
   - discovery/fake
@@ -611,7 +611,7 @@ imports:
   - pkg/util/proto/testing
   - pkg/util/proto/validation
 - name: k8s.io/kubernetes
-  version: c6d339953bd4fd8c021a6b5fb46d7952b30be9f9
+  version: f2c8f1cadf1808ec28476682e49a3cce2b09efbf
   subpackages:
   - pkg/api/legacyscheme
   - pkg/api/service
