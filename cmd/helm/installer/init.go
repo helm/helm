@@ -47,11 +47,8 @@ func Initialize(home helmpath.Home, out io.Writer, skipRefresh bool, settings he
 	if err := ensureDefaultRepos(home, out, skipRefresh, settings, stableRepositoryURL, localRepositoryURL); err != nil {
 		return err
 	}
-	if err := ensureRepoFileFormat(home.RepositoryFile(), out); err != nil {
-		return err
-	}
 
-	return nil
+	return ensureRepoFileFormat(home.RepositoryFile(), out)
 }
 
 // ensureDirectories checks to see if $HELM_HOME exists.
