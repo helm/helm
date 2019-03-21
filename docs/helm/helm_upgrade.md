@@ -65,11 +65,8 @@ helm upgrade [RELEASE] [CHART] [flags]
 ### Options
 
 ```
-<<<<<<< HEAD
       --app-version string       specify the app version to use for the upgrade
-=======
       --atomic                   if set, upgrade process rolls back changes made in case of failed upgrade, also sets --wait flag
->>>>>>> master
       --ca-file string           verify certificates of HTTPS-enabled servers using this CA bundle
       --cert-file string         identify HTTPS client using this SSL certificate file
       --description string       specify the description to use for the upgrade, rather than the default

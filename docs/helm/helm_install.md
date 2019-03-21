@@ -78,11 +78,8 @@ helm install [CHART] [flags]
 ### Options
 
 ```
-<<<<<<< HEAD
       --app-version string       specify an app version for the release
-=======
       --atomic                   if set, installation process purges chart on fail, also sets --wait flag
->>>>>>> master
       --ca-file string           verify certificates of HTTPS-enabled servers using this CA bundle
       --cert-file string         identify HTTPS client using this SSL certificate file
       --dep-up                   run helm dependency update before installing the chart
