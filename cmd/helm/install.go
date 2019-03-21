@@ -129,6 +129,7 @@ type installCmd struct {
 	fileValues     []string
 	nameTemplate   string
 	version        string
+	appVersion     string
 	timeout        int64
 	wait           bool
 	repoURL        string
@@ -209,6 +210,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&inst.verify, "verify", false, "verify the package before installing it")
 	f.StringVar(&inst.keyring, "keyring", defaultKeyring(), "location of public keys used for verification")
 	f.StringVar(&inst.version, "version", "", "specify the exact chart version to install. If this is not specified, the latest version is installed")
+	f.StringVar(&inst.appVersion, "app-version", "", "specify an app version for the release")
 	f.Int64Var(&inst.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&inst.wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
 	f.StringVar(&inst.repoURL, "repo", "", "chart repository url where to locate the requested chart")
@@ -289,6 +291,14 @@ func (i *installCmd) run() error {
 		}
 	} else if err != chartutil.ErrRequirementsNotFound {
 		return fmt.Errorf("cannot load requirements: %v", err)
+	}
+
+	if i.appVersion != "" {
+		if !chartRequested.Metadata.OverrideAppVersion {
+			return fmt.Errorf("override app version is not allowed on this chart")
+		}
+
+		chartRequested.Metadata.AppVersion = i.appVersion
 	}
 
 	res, err := i.client.InstallReleaseFromChart(
