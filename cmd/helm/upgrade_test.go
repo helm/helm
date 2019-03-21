@@ -33,7 +33,9 @@ import (
 
 func TestUpgradeCmd(t *testing.T) {
 	tmpChart, _ := ioutil.TempDir("testdata", "tmp")
+	tmpChart2, _ := ioutil.TempDir("testdata", "tmp2")
 	defer os.RemoveAll(tmpChart)
+	defer os.RemoveAll(tmpChart2)
 	cfile := &chart.Metadata{
 		Name:        "testUpgradeChart",
 		Description: "A Helm chart for Kubernetes",
@@ -89,6 +91,23 @@ func TestUpgradeCmd(t *testing.T) {
 	ch3, err = chartutil.Load(originalDepsPath)
 	if err != nil {
 		t.Errorf("Error loading chart with missing dependencies: %v", err)
+	}
+
+	// update chart version
+	cfile = &chart.Metadata{
+		Name:               "testUpgradeChartAppVersion",
+		Description:        "A Helm chart for Kubernetes",
+		Version:            "0.1.0",
+		OverrideAppVersion: true,
+	}
+
+	chartPath, err = chartutil.Create(cfile, tmpChart2)
+	if err != nil {
+		t.Errorf("Error creating chart: %v", err)
+	}
+	ch4, err := chartutil.Load(chartPath)
+	if err != nil {
+		t.Errorf("Error loading updated chart: %v", err)
 	}
 
 	tests := []releaseCase{
@@ -184,13 +203,17 @@ func TestUpgradeCmd(t *testing.T) {
 			err:  true,
 		},
 		{
-			name:  "upgrade with app-version (allow)",
-			args:  []string{"testdata/testcharts/alpine-app-version"},
-			flags: []string{"--app-version", "1.0.1"},
+			name:     "upgrade with app-version (allow)",
+			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "funny-bunny", Version: 2, Chart: ch4}),
+			expected: "Release \"funny-bunny\" has been upgraded. Happy Helming!\n",
+			flags:    []string{"--app-version", "1.0.1"},
+			args:     []string{"funny-bunny", chartPath},
+			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "funny-bunny", Version: 2, Chart: ch4})},
 		},
 		{
 			name:  "upgrade with app-version (not allow)",
 			args:  []string{"testdata/testcharts/alpine"},
+			resp:  helm.ReleaseMock(&helm.MockReleaseOptions{Name: "bonkers-bunny", Version: 2, Chart: ch3}),
 			flags: []string{"--app-version", "1.0.1"},
 			err:   true,
 		},
