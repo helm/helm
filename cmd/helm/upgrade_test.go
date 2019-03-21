@@ -183,6 +183,17 @@ func TestUpgradeCmd(t *testing.T) {
 			resp: helm.ReleaseMock(&helm.MockReleaseOptions{Name: "bonkers-bunny", Version: 1, Chart: ch3}),
 			err:  true,
 		},
+		{
+			name:  "upgrade with app-version (allow)",
+			args:  []string{"testdata/testcharts/alpine-app-version"},
+			flags: []string{"--app-version", "1.0.1"},
+		},
+		{
+			name:  "upgrade with app-version (not allow)",
+			args:  []string{"testdata/testcharts/alpine"},
+			flags: []string{"--app-version", "1.0.1"},
+			err:   true,
+		},
 	}
 
 	cmd := func(c *helm.FakeClient, out io.Writer) *cobra.Command {

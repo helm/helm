@@ -191,6 +191,17 @@ func TestInstall(t *testing.T) {
 			flags: []string{"--name-template", "{{UPPER \"foobar\"}}"},
 			err:   true,
 		},
+		{
+			name:  "install with app-version (allow)",
+			args:  []string{"testdata/testcharts/alpine-app-version"},
+			flags: []string{"--app-version", "1.0.1"},
+		},
+		{
+			name:  "install with app-version (not allow)",
+			args:  []string{"testdata/testcharts/alpine"},
+			flags: []string{"--app-version", "1.0.1"},
+			err:   true,
+		},
 	}
 
 	runReleaseCases(t, tests, func(c *helm.FakeClient, out io.Writer) *cobra.Command {
