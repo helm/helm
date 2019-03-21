@@ -78,6 +78,7 @@ func newGetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	cmd.AddCommand(newGetManifestCmd(nil, out))
 	cmd.AddCommand(newGetHooksCmd(nil, out))
 	cmd.AddCommand(newGetNotesCmd(nil, out))
+	cmd.AddCommand(newGetVersionCmd(nil, out))
 
 	// set defaults from environment
 	settings.InitTLS(f)
