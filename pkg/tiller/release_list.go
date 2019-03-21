@@ -140,7 +140,7 @@ func (s *ReleaseServer) partition(rels []*release.Release, cap int) <-chan []*re
 				// Over-cap, push chunk onto channel to send over gRPC stream
 				s.Log("partitioned at %d with %d releases (cap=%d)", fill, len(chunk), cap)
 				chunks <- chunk
-				// reset paritioning state
+				// reset partitioning state
 				chunk = nil
 				fill = 0
 			}

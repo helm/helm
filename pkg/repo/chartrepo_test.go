@@ -175,7 +175,7 @@ func verifyIndex(t *testing.T, actual *IndexFile) {
 				t.Errorf("Expected %q, got %q", e.Version, g.Version)
 			}
 			if len(g.Keywords) != 3 {
-				t.Error("Expected 3 keyrwords.")
+				t.Error("Expected 3 keywords.")
 			}
 			if len(g.Maintainers) != 2 {
 				t.Error("Expected 2 maintainers.")
@@ -280,6 +280,14 @@ func TestErrorFindChartInRepoURL(t *testing.T) {
 
 func TestResolveReferenceURL(t *testing.T) {
 	chartURL, err := ResolveReferenceURL("http://localhost:8123/charts/", "nginx-0.2.0.tgz")
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	if chartURL != "http://localhost:8123/charts/nginx-0.2.0.tgz" {
+		t.Errorf("%s", chartURL)
+	}
+
+	chartURL, err = ResolveReferenceURL("http://localhost:8123/charts", "nginx-0.2.0.tgz")
 	if err != nil {
 		t.Errorf("%s", err)
 	}

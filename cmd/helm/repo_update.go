@@ -24,6 +24,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/installer"
 	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
@@ -93,21 +94,28 @@ func updateCharts(repos []*repo.ChartRepository, out io.Writer, home helmpath.Ho
 	var (
 		errorCounter int
 		wg           sync.WaitGroup
+		mu           sync.Mutex
 	)
 	for _, re := range repos {
 		wg.Add(1)
 		go func(re *repo.ChartRepository) {
 			defer wg.Done()
-			if re.Config.Name == localRepository {
+			if re.Config.Name == installer.LocalRepository {
+				mu.Lock()
 				fmt.Fprintf(out, "...Skip %s chart repository\n", re.Config.Name)
+				mu.Unlock()
 				return
 			}
 			err := re.DownloadIndexFile(home.Cache())
 			if err != nil {
+				mu.Lock()
 				errorCounter++
 				fmt.Fprintf(out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", re.Config.Name, re.Config.URL, err)
+				mu.Unlock()
 			} else {
+				mu.Lock()
 				fmt.Fprintf(out, "...Successfully got an update from the %q chart repository\n", re.Config.Name)
+				mu.Unlock()
 			}
 		}(re)
 	}
@@ -117,6 +125,6 @@ func updateCharts(repos []*repo.ChartRepository, out io.Writer, home helmpath.Ho
 		return errors.New("Update Failed. Check log for details")
 	}
 
-	fmt.Fprintln(out, "Update Complete. ⎈ Happy Helming!⎈ ")
+	fmt.Fprintln(out, "Update Complete. ⎈ Happy Helming! ⎈")
 	return nil
 }

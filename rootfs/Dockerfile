@@ -22,6 +22,6 @@ COPY helm /helm
 COPY tiller /tiller
 
 EXPOSE 44134
-USER nobody
+USER 65534
 ENTRYPOINT ["/tiller"]
 

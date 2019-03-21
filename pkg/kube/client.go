@@ -24,10 +24,13 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"sort"
 	"strings"
 	"time"
 
-	jsonpatch "github.com/evanphx/json-patch"
+	"k8s.io/apimachinery/pkg/api/meta"
+
+	"github.com/evanphx/json-patch"
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
@@ -48,6 +51,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	watchtools "k8s.io/client-go/tools/watch"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
+	"k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/get"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/validation"
@@ -58,6 +62,8 @@ const MissingGetHeader = "==> MISSING\nKIND\t\tNAME\n"
 
 // ErrNoObjectsVisited indicates that during a visit operation, no matching objects were found.
 var ErrNoObjectsVisited = goerrors.New("no objects visited")
+
+var metadataAccessor = meta.NewAccessor()
 
 // Client represents a client capable of communicating with the Kubernetes API.
 type Client struct {
@@ -150,13 +156,41 @@ func (c *Client) Build(namespace string, reader io.Reader) (Result, error) {
 	return result, scrubValidationError(err)
 }
 
+// Return the resource info as internal
+func resourceInfoToObject(info *resource.Info, c *Client) runtime.Object {
+	internalObj, err := asInternal(info)
+	if err != nil {
+		// If the problem is just that the resource is not registered, don't print any
+		// error. This is normal for custom resources.
+		if !runtime.IsNotRegisteredError(err) {
+			c.Log("Warning: conversion to internal type failed: %v", err)
+		}
+		// Add the unstructured object in this situation. It will still get listed, just
+		// with less information.
+		return info.Object
+	}
+
+	return internalObj
+}
+
+func sortByKey(objs map[string](map[string]runtime.Object)) []string {
+	var keys []string
+	// Create a simple slice, so we can sort it
+	for key := range objs {
+		keys = append(keys, key)
+	}
+	// Sort alphabetically by version/kind keys
+	sort.Strings(keys)
+	return keys
+}
+
 // Get gets Kubernetes resources as pretty-printed string.
 //
 // Namespace will set the namespace.
 func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
-	// Since we don't know what order the objects come in, let's group them by the types, so
+	// Since we don't know what order the objects come in, let's group them by the types and then sort them, so
 	// that when we print them, they come out looking good (headers apply to subgroups, etc.).
-	objs := make(map[string][]runtime.Object)
+	objs := make(map[string](map[string]runtime.Object))
 	infos, err := c.BuildUnstructured(namespace, reader)
 	if err != nil {
 		return "", err
@@ -177,15 +211,15 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		// versions per cluster, but this certainly won't hurt anything, so let's be safe.
 		gvk := info.ResourceMapping().GroupVersionKind
 		vk := gvk.Version + "/" + gvk.Kind
-		internalObj, err := asInternal(info)
-		if err != nil {
-			c.Log("Warning: conversion to internal type failed: %v", err)
-			// Add the unstructured object in this situation. It will still get listed, just
-			// with less information.
-			objs[vk] = append(objs[vk], info.Object)
-		} else {
-			objs[vk] = append(objs[vk], internalObj)
+
+		// Initialize map. The main map groups resources based on version/kind
+		// The second level is a simple 'Name' to 'Object', that will help sort
+		// the individual resource later
+		if objs[vk] == nil {
+			objs[vk] = make(map[string]runtime.Object)
 		}
+		// Map between the resource name to the underlying info object
+		objs[vk][info.Name] = resourceInfoToObject(info, c)
 
 		//Get the relation pods
 		objPods, err = c.getSelectRelationPod(info, objPods)
@@ -202,7 +236,13 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	//here, we will add the objPods to the objs
 	for key, podItems := range objPods {
 		for i := range podItems {
-			objs[key+"(related)"] = append(objs[key+"(related)"], &podItems[i])
+			pod := &core.Pod{}
+
+			legacyscheme.Scheme.Convert(&podItems[i], pod, nil)
+			if objs[key+"(related)"] == nil {
+				objs[key+"(related)"] = make(map[string]runtime.Object)
+			}
+			objs[key+"(related)"][pod.ObjectMeta.Name] = runtime.Object(pod)
 		}
 	}
 
@@ -211,26 +251,35 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	// an object type changes, so we can just rely on that. Problem is it doesn't seem to keep
 	// track of tab widths.
 	buf := new(bytes.Buffer)
-	p, _ := get.NewHumanPrintFlags().ToPrinter("")
-	index := 0
-	for t, ot := range objs {
-		kindHeader := fmt.Sprintf("==> %s", t)
-		if index == 0 {
-			kindHeader = kindHeader + "\n"
-		}
-		if _, err = buf.WriteString(kindHeader); err != nil {
+	printFlags := get.NewHumanPrintFlags()
+
+	// Sort alphabetically by version/kind keys
+	vkKeys := sortByKey(objs)
+	// Iterate on sorted version/kind types
+	for _, t := range vkKeys {
+		if _, err = fmt.Fprintf(buf, "==> %s\n", t); err != nil {
 			return "", err
 		}
-		for _, o := range ot {
-			if err := p.PrintObj(o, buf); err != nil {
-				c.Log("failed to print object type %s, object: %q :\n %v", t, o, err)
+		typePrinter, _ := printFlags.ToPrinter("")
+
+		var sortedResources []string
+		for resource := range objs[t] {
+			sortedResources = append(sortedResources, resource)
+		}
+		sort.Strings(sortedResources)
+
+		// Now that each individual resource within the specific version/kind
+		// is sorted, we print each resource using the k8s printer
+		vk := objs[t]
+		for _, resourceName := range sortedResources {
+			if err := typePrinter.PrintObj(vk[resourceName], buf); err != nil {
+				c.Log("failed to print object type %s, object: %q :\n %v", t, resourceName, err)
 				return "", err
 			}
 		}
 		if _, err := buf.WriteString("\n"); err != nil {
 			return "", err
 		}
-		index += 1
 	}
 	if len(missing) > 0 {
 		buf.WriteString(MissingGetHeader)
@@ -306,6 +355,20 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 
 	for _, info := range original.Difference(target) {
 		c.Log("Deleting %q in %s...", info.Name, info.Namespace)
+
+		if err := info.Get(); err != nil {
+			c.Log("Unable to get obj %q, err: %s", info.Name, err)
+		}
+		annotations, err := metadataAccessor.Annotations(info.Object)
+		if err != nil {
+			c.Log("Unable to get annotations on %q, err: %s", info.Name, err)
+		}
+		if ResourcePolicyIsKeep(annotations) {
+			policy := annotations[ResourcePolicyAnno]
+			c.Log("Skipping delete of %q due to annotation [%s=%s]", info.Name, ResourcePolicyAnno, policy)
+			continue
+		}
+
 		if err := deleteResource(info); err != nil {
 			c.Log("Failed to delete %q, err: %s", info.Name, err)
 		}
@@ -358,7 +421,7 @@ func (c *Client) watchTimeout(t time.Duration) ResourceActorFunc {
 //
 // Handling for other kinds will be added as necessary.
 func (c *Client) WatchUntilReady(namespace string, reader io.Reader, timeout int64, shouldWait bool) error {
-	infos, err := c.Build(namespace, reader)
+	infos, err := c.BuildUnstructured(namespace, reader)
 	if err != nil {
 		return err
 	}
@@ -605,12 +668,13 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 //
 // This operates on an event returned from a watcher.
 func (c *Client) waitForJob(e watch.Event, name string) (bool, error) {
-	o, ok := e.Object.(*batch.Job)
-	if !ok {
-		return true, fmt.Errorf("Expected %s to be a *batch.Job, got %T", name, e.Object)
+	job := &batch.Job{}
+	err := legacyscheme.Scheme.Convert(e.Object, job, nil)
+	if err != nil {
+		return true, err
 	}
 
-	for _, c := range o.Status.Conditions {
+	for _, c := range job.Status.Conditions {
 		if c.Type == batch.JobComplete && c.Status == v1.ConditionTrue {
 			return true, nil
 		} else if c.Type == batch.JobFailed && c.Status == v1.ConditionTrue {
@@ -618,7 +682,7 @@ func (c *Client) waitForJob(e watch.Event, name string) (bool, error) {
 		}
 	}
 
-	c.Log("%s: Jobs active: %d, jobs failed: %d, jobs succeeded: %d", name, o.Status.Active, o.Status.Failed, o.Status.Succeeded)
+	c.Log("%s: Jobs active: %d, jobs failed: %d, jobs succeeded: %d", name, job.Status.Active, job.Status.Failed, job.Status.Succeeded)
 	return false, nil
 }
 

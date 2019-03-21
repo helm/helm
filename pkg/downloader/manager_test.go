@@ -18,6 +18,7 @@ package downloader
 import (
 	"bytes"
 	"reflect"
+	"strings"
 	"testing"
 
 	"k8s.io/helm/pkg/chartutil"
@@ -99,10 +100,11 @@ func TestGetRepoNames(t *testing.T) {
 		HelmHome: helmpath.Home("testdata/helmhome"),
 	}
 	tests := []struct {
-		name   string
-		req    []*chartutil.Dependency
-		expect map[string]string
-		err    bool
+		name        string
+		req         []*chartutil.Dependency
+		expect      map[string]string
+		err         bool
+		expectedErr string
 	}{
 		{
 			name: "no repo definition failure",
@@ -117,6 +119,14 @@ func TestGetRepoNames(t *testing.T) {
 				{Name: "oedipus-rex", Repository: "stable"},
 			},
 			err: true,
+		},
+		{
+			name: "dependency entry missing 'repository' field -- e.g. spelled 'repo'",
+			req: []*chartutil.Dependency{
+				{Name: "dependency-missing-repository-field"},
+			},
+			err:         true,
+			expectedErr: "no 'repository' field specified for dependency: \"dependency-missing-repository-field\"",
 		},
 		{
 			name: "no repo definition failure",
@@ -152,6 +162,9 @@ func TestGetRepoNames(t *testing.T) {
 		l, err := m.getRepoNames(tt.req)
 		if err != nil {
 			if tt.err {
+				if !strings.Contains(err.Error(), tt.expectedErr) {
+					t.Fatalf("%s: expected error: %s, got: %s", tt.name, tt.expectedErr, err.Error())
+				}
 				continue
 			}
 			t.Fatal(err)

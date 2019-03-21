@@ -3,6 +3,15 @@ import:
   - package: golang.org/x/net
     subpackages:
       - context
+  - package: golang.org/x/sync
+    subpackages:
+    - semaphore
+  # This is temporary and can probably be removed the next time gRPC is updated
+  - package: golang.org/x/sys
+    version: b90733256f2e882e81d52f9126de08df5615afd9
+    subpackages:
+    - unix
+    - windows
   - package: github.com/spf13/cobra
     version: fe5e611709b0c57fa4a89136deaa8e1d4004d053
   - package: github.com/spf13/pflag
@@ -12,20 +21,20 @@ import:
   - package: github.com/imdario/mergo
     version: v0.3.5
   - package: github.com/Masterminds/sprig
-    version: ^2.16.0
+    version: ^2.19.0
   - package: github.com/ghodss/yaml
   - package: github.com/Masterminds/semver
     version: ~1.3.1
   - package: github.com/technosophos/moniker
     version: ~0.2
   - package: github.com/golang/protobuf
-    version: 1643683e1b54a9e88ad26d98f81400c8c9d9f4f9
+    version: 1.2.0
     subpackages:
       - proto
       - ptypes/any
       - ptypes/timestamp
   - package: google.golang.org/grpc
-    version: 1.7.2
+    version: 1.18.0
   - package: github.com/gosuri/uitable
   - package: github.com/asaskevich/govalidator
     version: ^4.0.0
@@ -41,19 +50,20 @@ import:
   - package: github.com/prometheus/client_golang
     version: 0.8.0
   - package: github.com/grpc-ecosystem/go-grpc-prometheus
-
   - package: k8s.io/kubernetes
-    version: release-1.12
+    version: release-1.13
   - package: k8s.io/client-go
-    version: kubernetes-1.12.0
+    version: kubernetes-1.13.4
   - package: k8s.io/api
-    version: kubernetes-1.12.0
+    version: kubernetes-1.13.4
   - package: k8s.io/apimachinery
-    version: kubernetes-1.12.0
+    version: kubernetes-1.13.4
   - package: k8s.io/apiserver
-    version: kubernetes-1.12.0
+    version: kubernetes-1.13.4
   - package: k8s.io/cli-runtime
-    version: kubernetes-1.12.0
+    version: kubernetes-1.13.4
+  - package: k8s.io/apiextensions-apiserver
+    version: kubernetes-1.13.4
   - package: github.com/cyphar/filepath-securejoin
     version: ^0.2.1
 

@@ -50,7 +50,7 @@ type Options struct {
 	// AutoMountServiceAccountToken determines whether or not the service account should be added to Tiller.
 	AutoMountServiceAccountToken bool
 
-	// Force allows to force upgrading tiller if deployed version is greater than current version
+	// ForceUpgrade allows to force upgrading tiller if deployed version is greater than current version
 	ForceUpgrade bool
 
 	// ImageSpec identifies the image Tiller will use when deployed.
@@ -105,6 +105,9 @@ func (opts *Options) SelectImage() string {
 	case opts.UseCanary:
 		return defaultImage + ":canary"
 	case opts.ImageSpec == "":
+		if version.BuildMetadata == "unreleased" {
+			return defaultImage + ":canary"
+		}
 		return fmt.Sprintf("%s:%s", defaultImage, version.Version)
 	default:
 		return opts.ImageSpec

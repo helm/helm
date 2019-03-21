@@ -130,7 +130,7 @@ type renderable struct {
 	tpl string
 	// vals are the values to be supplied to the template.
 	vals chartutil.Values
-	// namespace prefix to the templates of the current chart
+	// basePath namespace prefix to the templates of the current chart
 	basePath string
 }
 
@@ -159,9 +159,10 @@ func (e *Engine) alterFuncMap(t *template.Template, referenceTpls map[string]ren
 			if e.LintMode {
 				// Don't fail on missing required values when linting
 				log.Printf("[INFO] Missing required value: %s", warn)
-				return val, nil
+				return "", nil
 			}
-			return val, fmt.Errorf(warn)
+			// Convert nil to "" in case required is piped into other functions
+			return "", fmt.Errorf(warn)
 		} else if _, ok := val.(string); ok {
 			if val == "" {
 				if e.LintMode {

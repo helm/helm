@@ -29,6 +29,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"k8s.io/client-go/util/homedir"
+	"k8s.io/helm/cmd/helm/installer"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/helm/environment"
 	"k8s.io/helm/pkg/helm/helmpath"
@@ -136,7 +138,7 @@ func ensureTestHome(home helmpath.Home, t *testing.T) error {
 		}
 	}
 
-	localRepoIndexFile := home.LocalRepository(localRepositoryIndexFile)
+	localRepoIndexFile := home.LocalRepository(installer.LocalRepositoryIndexFile)
 	if fi, err := os.Stat(localRepoIndexFile); err != nil {
 		i := repo.NewIndexFile()
 		if err := i.WriteFile(localRepoIndexFile, 0644); err != nil {
@@ -167,7 +169,7 @@ func TestRootCmd(t *testing.T) {
 		{
 			name: "defaults",
 			args: []string{"home"},
-			home: filepath.Join(os.Getenv("HOME"), "/.helm"),
+			home: filepath.Join(homedir.HomeDir(), ".helm"),
 		},
 		{
 			name: "with --home set",
@@ -236,7 +238,7 @@ func TestTLSFlags(t *testing.T) {
 
 	homePath := os.Getenv("HELM_HOME")
 	if homePath == "" {
-		homePath = filepath.Join(os.Getenv("HOME"), ".helm")
+		homePath = filepath.Join(homedir.HomeDir(), ".helm")
 	}
 
 	home := helmpath.Home(homePath)

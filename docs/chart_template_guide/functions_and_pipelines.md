@@ -4,7 +4,7 @@ So far, we've seen how to place information into a template. But that informatio
 
 Let's start with a best practice: When injecting strings from the `.Values` object into the template, we ought to quote these strings. We can do that by calling the `quote` function in the template directive:
 
-```
+```yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -104,7 +104,7 @@ drink: {{ .Values.favorite.drink | default "tea" | quote }}
 
 If we run this as normal, we'll get our `coffee`:
 
-```
+```yaml
 # Source: mychart/templates/configmap.yaml
 apiVersion: v1
 kind: ConfigMap
@@ -150,6 +150,19 @@ Template functions and pipelines are a powerful way to transform information and
 
 ## Operators are functions
 
-For templates, the operators (`eq`, `ne`, `lt`, `gt`, `and`, `or` and so on) are all implemented as functions. In pipelines, operations can be grouped with parentheses (`(`, and `)`).
+Operators are implemented as functions that return a boolean value. To use `eq`, `ne`, `lt`, `gt`, `and`, `or`, `not` etcetera place the operator at the front of the statement followed by its parameters just as you would a function. To chain multiple operations together, separate individual functions by surrounding them with parentheses.
+
+```yaml
+{{/* include the body of this if statement when the variable .Values.fooString exists and is set to "foo" */}}
+{{ if and .Values.fooString (eq .Values.fooString "foo") }}
+    {{ ... }}
+{{ end }}
+
+
+{{/* do not include the body of this if statement because unset variables evaluate to false and .Values.setVariable was negated with the not function. */}}
+{{ if or .Values.anUnsetVariable (not .Values.aSetVariable) }}
+   {{ ... }}
+{{ end }}
+```
 
 Now we can turn from functions and pipelines to flow control with conditions, loops, and scope modifiers.

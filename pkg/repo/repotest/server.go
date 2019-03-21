@@ -148,7 +148,7 @@ func (s *Server) URL() string {
 	return s.srv.URL
 }
 
-// LinkIndices links the index created with CreateIndex and makes a symboic link to the repositories/cache directory.
+// LinkIndices links the index created with CreateIndex and makes a symbolic link to the repositories/cache directory.
 //
 // This makes it possible to simulate a local cache of a repository.
 func (s *Server) LinkIndices() error {

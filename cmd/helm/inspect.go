@@ -18,15 +18,13 @@ package main
 
 import (
 	"fmt"
-	"io"
-	"strings"
-
 	"github.com/ghodss/yaml"
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/spf13/cobra"
+	"io"
+	"strings"
 
 	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/kubernetes/pkg/util/slice"
 )
 
 const inspectDesc = `
@@ -61,6 +59,7 @@ type inspectCmd struct {
 	repoURL   string
 	username  string
 	password  string
+	devel     bool
 
 	certFile string
 	keyFile  string
@@ -90,12 +89,9 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
-			cp, err := locateChartPath(insp.repoURL, insp.username, insp.password, args[0], insp.version, insp.verify, insp.keyring,
-				insp.certFile, insp.keyFile, insp.caFile)
-			if err != nil {
+			if err := insp.prepare(args[0]); err != nil {
 				return err
 			}
-			insp.chartpath = cp
 			return insp.run()
 		},
 	}
@@ -109,12 +105,9 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
-			cp, err := locateChartPath(insp.repoURL, insp.username, insp.password, args[0], insp.version, insp.verify, insp.keyring,
-				insp.certFile, insp.keyFile, insp.caFile)
-			if err != nil {
+			if err := insp.prepare(args[0]); err != nil {
 				return err
 			}
-			insp.chartpath = cp
 			return insp.run()
 		},
 	}
@@ -128,12 +121,9 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
-			cp, err := locateChartPath(insp.repoURL, insp.username, insp.password, args[0], insp.version, insp.verify, insp.keyring,
-				insp.certFile, insp.keyFile, insp.caFile)
-			if err != nil {
+			if err := insp.prepare(args[0]); err != nil {
 				return err
 			}
-			insp.chartpath = cp
 			return insp.run()
 		},
 	}
@@ -147,12 +137,9 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
-			cp, err := locateChartPath(insp.repoURL, insp.username, insp.password, args[0], insp.version, insp.verify, insp.keyring,
-				insp.certFile, insp.keyFile, insp.caFile)
-			if err != nil {
+			if err := insp.prepare(args[0]); err != nil {
 				return err
 			}
-			insp.chartpath = cp
 			return insp.run()
 		},
 	}
@@ -195,6 +182,12 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 	valuesSubCmd.Flags().StringVar(&insp.password, password, "", passworddesc)
 	chartSubCmd.Flags().StringVar(&insp.password, password, "", passworddesc)
 
+	develFlag := "devel"
+	develDesc := "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored."
+	for _, subCmd := range cmds {
+		subCmd.Flags().BoolVar(&insp.devel, develFlag, false, develDesc)
+	}
+
 	certFile := "cert-file"
 	certFiledesc := "verify certificates of HTTPS-enabled servers using this CA bundle"
 	for _, subCmd := range cmds {
@@ -218,6 +211,22 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 	}
 
 	return inspectCommand
+}
+
+func (i *inspectCmd) prepare(chart string) error {
+	debug("Original chart version: %q", i.version)
+	if i.version == "" && i.devel {
+		debug("setting version to >0.0.0-0")
+		i.version = ">0.0.0-0"
+	}
+
+	cp, err := locateChartPath(i.repoURL, i.username, i.password, chart, i.version, i.verify, i.keyring,
+		i.certFile, i.keyFile, i.caFile)
+	if err != nil {
+		return err
+	}
+	i.chartpath = cp
+	return nil
 }
 
 func (i *inspectCmd) run() error {
@@ -256,9 +265,23 @@ func (i *inspectCmd) run() error {
 
 func findReadme(files []*any.Any) (file *any.Any) {
 	for _, file := range files {
-		if slice.ContainsString(readmeFileNames, strings.ToLower(file.TypeUrl), nil) {
+		if containsString(readmeFileNames, strings.ToLower(file.TypeUrl), nil) {
 			return file
 		}
 	}
 	return nil
+}
+
+// containsString checks if a given slice of strings contains the provided string.
+// If a modifier func is provided, it is called with the slice item before the comparison.
+func containsString(slice []string, s string, modifier func(s string) string) bool {
+	for _, item := range slice {
+		if item == s {
+			return true
+		}
+		if modifier != nil && modifier(item) == s {
+			return true
+		}
+	}
+	return false
 }

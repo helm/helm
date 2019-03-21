@@ -71,7 +71,7 @@ Other fields will be silently ignored.
 ### Charts and Versioning
 
 Every chart must have a version number. A version must follow the
-[SemVer 2](http://semver.org/) standard. Unlike Helm Classic, Kubernetes
+[SemVer 2](https://semver.org/) standard. Unlike Helm Classic, Kubernetes
 Helm uses version numbers as release markers. Packages in repositories
 are identified by name plus version.
 
@@ -116,15 +116,22 @@ be deprecated. The chart name can later be reused by publishing a newer version
 that is not marked as deprecated. The workflow for deprecating charts, as
 followed by the [helm/charts](https://github.com/helm/charts)
 project is:
-  - Update chart's `Chart.yaml` to mark the chart as deprecated, bumping the
-  version
-  - Release the new chart version in the Chart Repository
-  - Remove the chart from the source repository (e.g. git)
+
+- Update chart's `Chart.yaml` to mark the chart as deprecated, bumping the version
+- Release the new chart version in the Chart Repository
+- Remove the chart from the source repository (e.g. git)
 
 ## Chart LICENSE, README and NOTES
 
 Charts can also contain files that describe the installation, configuration, usage and license of a
-chart. A README for a chart should be formatted in Markdown (README.md), and should generally
+chart.
+
+A LICENSE is a plain text file containing the [license](https://en.wikipedia.org/wiki/Software_license)
+for the chart. The chart can contain a license as it may have programming logic in the templates and
+would therefore not be configuration only. There can also be separate license(s) for the application
+installed by the chart, if required.
+
+A README for a chart should be formatted in Markdown (README.md), and should generally
 contain:
 
 - A description of the application or service the chart provides
@@ -152,7 +159,6 @@ the preferred method of declaring dependencies is by using a
 
 **Note:** The `dependencies:` section of the `Chart.yaml` from Helm
 Classic has been completely removed.
-
 
 ### Managing Dependencies with `requirements.yaml`
 
@@ -233,6 +239,7 @@ dependencies:
 ```
 
 In the above example we will get 3 dependencies in all for `parentchart`
+
 ```
 subchart
 new-subchart-1
@@ -259,27 +266,28 @@ Tags - The tags field is a YAML list of labels to associate with this chart.
 In the top parent's values, all charts with tags can be enabled or disabled by
 specifying the tag and a boolean value.
 
-````
+```yaml
 # parentchart/requirements.yaml
 dependencies:
-      - name: subchart1
-        repository: http://localhost:10191
-        version: 0.1.0
-        condition: subchart1.enabled,global.subchart1.enabled
-        tags:
-          - front-end
-          - subchart1
+  - name: subchart1
+    repository: http://localhost:10191
+    version: 0.1.0
+    condition: subchart1.enabled,global.subchart1.enabled
+    tags:
+      - front-end
+      - subchart1
 
-      - name: subchart2
-        repository: http://localhost:10191
-        version: 0.1.0
-        condition: subchart2.enabled,global.subchart2.enabled
-        tags:
-          - back-end
-          - subchart2
+  - name: subchart2
+    repository: http://localhost:10191
+    version: 0.1.0
+    condition: subchart2.enabled,global.subchart2.enabled
+    tags:
+      - back-end
+      - subchart2
 
-````
-````
+```
+
+```yaml
 # parentchart/values.yaml
 
 subchart1:
@@ -287,7 +295,7 @@ subchart1:
 tags:
   front-end: false
   back-end: true
-````
+```
 
 In the above example all charts with the tag `front-end` would be disabled but since the
 `subchart1.enabled` path evaluates to 'true' in the parent's values, the condition will override the
@@ -307,12 +315,11 @@ helm install --set tags.front-end=true --set subchart2.enabled=false
 
 ##### Tags and Condition Resolution
 
-
-  * **Conditions (when set in values) always override tags.** The first condition
-    path that exists wins and subsequent ones for that chart are ignored.
-  * Tags are evaluated as 'if any of the chart's tags are true then enable the chart'.
-  * Tags and conditions values must be set in the top parent's values.
-  * The `tags:` key in values must be a top level key. Globals and nested `tags:` tables
+- **Conditions (when set in values) always override tags.**
+- The first condition path that exists wins and subsequent ones for that chart are ignored.
+- Tags are evaluated as 'if any of the chart's tags are true then enable the chart'.
+- Tags and conditions values must be set in the top parent's values.
+- The `tags:` key in values must be a top level key. Globals and nested `tags:` tables
     are not currently supported.
 
 #### Importing Child Values via requirements.yaml
@@ -338,6 +345,7 @@ directly into the parent's values by specifying the keys to import as in the exa
     import-values:
       - data
 ```
+
 ```yaml
 # child's values.yaml file
 ...
@@ -381,6 +389,7 @@ dependencies:
       - child: default.data
         parent: myimports
 ```
+
 In the above example, values found at `default.data` in the subchart1's values will be imported
 to the `myimports` key in the parent chart's values as detailed below:
 
@@ -393,6 +402,7 @@ myimports:
   mystring: "helm rocks!"
 
 ```
+
 ```yaml
 # subchart1's values.yaml file
 
@@ -402,6 +412,7 @@ default:
     mybool: true
 
 ```
+
 The parent chart's resulting values would be:
 
 ```yaml
@@ -481,7 +492,7 @@ create/update all of the above Kubernetes objects in the following order:
 This is because when Helm installs/upgrades charts,
 the Kubernetes objects from the charts and all its dependencies are
 
-- aggregrated into a single set; then
+- aggregated into a single set; then
 - sorted by type followed by name; and then
 - created/updated in that order.
 
@@ -504,10 +515,10 @@ through the template engine.
 
 Values for the templates are supplied two ways:
 
-  - Chart developers may supply a file called `values.yaml` inside of a
-    chart. This file can contain default values.
-  - Chart users may supply a YAML file that contains values. This can be
-    provided on the command line with `helm install`.
+- Chart developers may supply a file called `values.yaml` inside of a
+  chart. This file can contain default values.
+- Chart users may supply a YAML file that contains values. This can be
+  provided on the command line with `helm install`.
 
 When a user supplies custom values, these values will override the
 values in the chart's `values.yaml` file.
@@ -781,7 +792,7 @@ standard references that will help you out.
 
 - [Go templates](https://godoc.org/text/template)
 - [Extra template functions](https://godoc.org/github.com/Masterminds/sprig)
-- [The YAML format](http://yaml.org/spec/)
+- [The YAML format](https://yaml.org/spec/)
 
 ## Using Helm to Manage Charts
 

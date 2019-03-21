@@ -19,7 +19,7 @@ To customize the chart values, use any of
  - '--set-string' to provide key=val forcing val to be stored as a string,
  - '--set-file' to provide key=path to read a single large value from a file at path.
 
-To edit or append to the existing customized values, add the 
+To edit or append to the existing customized values, add the
  '--reuse-values' flag, otherwise any existing customized values are ignored.
 
 If no chart value arguments are provided on the command line, any existing customized values are carried
@@ -65,7 +65,11 @@ helm upgrade [RELEASE] [CHART] [flags]
 ### Options
 
 ```
+<<<<<<< HEAD
       --app-version string       specify the app version to use for the upgrade
+=======
+      --atomic                   if set, upgrade process rolls back changes made in case of failed upgrade, also sets --wait flag
+>>>>>>> master
       --ca-file string           verify certificates of HTTPS-enabled servers using this CA bundle
       --cert-file string         identify HTTPS client using this SSL certificate file
       --description string       specify the description to use for the upgrade, rather than the default
@@ -80,6 +84,7 @@ helm upgrade [RELEASE] [CHART] [flags]
       --no-hooks                 disable pre/post upgrade hooks
       --password string          chart repository password where to locate the requested chart
       --recreate-pods            performs pods restart for the resource if applicable
+      --render-subchart-notes    render subchart notes along with parent
       --repo string              chart repository url where to locate the requested chart
       --reset-values             when upgrading, reset the values to the ones built into the chart
       --reuse-values             when upgrading, reuse the last release's values and merge in any overrides from the command line via --set and -f. If '--reset-values' is specified, this is ignored.

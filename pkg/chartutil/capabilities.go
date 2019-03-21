@@ -40,7 +40,7 @@ var (
 
 // Capabilities describes the capabilities of the Kubernetes cluster that Tiller is attached to.
 type Capabilities struct {
-	// List of all supported API versions
+	// APIVersions list of all supported API versions
 	APIVersions VersionSet
 	// KubeVersion is the Kubernetes version
 	KubeVersion *version.Info

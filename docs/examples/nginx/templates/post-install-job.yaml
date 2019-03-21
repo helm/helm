@@ -32,6 +32,6 @@ spec:
       restartPolicy: {{ .Values.restartPolicy }}
       containers:
         - name: post-install-job
-          image: "alpine:3.3"
+          image: "alpine:latest"
           # All we're going to do is sleep for a while, then exit.
           command: ["/bin/sleep", "{{ .Values.sleepyTime }}"]

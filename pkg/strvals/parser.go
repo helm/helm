@@ -393,6 +393,10 @@ func typedVal(v []rune, st bool) interface{} {
 		return nil
 	}
 
+	if strings.EqualFold(val, "0") {
+		return int64(0)
+	}
+
 	// If this value does not start with zero, try parsing it to an int
 	if len(val) != 0 && val[0] != '0' {
 		if iv, err := strconv.ParseInt(val, 10, 64); err == nil {

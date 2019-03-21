@@ -54,8 +54,10 @@ Once you have Helm ready, you can initialize the local CLI and also
 install Tiller into your Kubernetes cluster in one step:
 
 ```console
-$ helm init
+$ helm init --history-max 200
 ```
+
+**TIP:** Setting `--history-max` on helm init is recommended as configmaps and other objects in helm history can grow large in number if not purged by max limit. Without a max history set the history is kept indefinitely, leaving a large number of records for helm and tiller to maintain.
 
 This will install Tiller into the Kubernetes cluster you saw with
 `kubectl config current-context`.

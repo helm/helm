@@ -32,7 +32,7 @@ docker-test`.
 
 To run Helm and Tiller locally, you can run `bin/helm` or `bin/tiller`.
 
-- Helm and Tiller are known to run on macOS and most Linuxes, including
+- Helm and Tiller are known to run on macOS and most Linux distributions, including
   Alpine.
 - Tiller must have access to a Kubernetes cluster. It learns about the
   cluster by examining the Kube config files that `kubectl` uses.
@@ -167,10 +167,10 @@ workflow for doing this is as follows:
 3. Add your repository as a remote for `$GOPATH/src/k8s.io/helm`
 4. Create a new working branch (`git checkout -b feat/my-feature`) and
    do your work on that branch.
-5. When you are ready for us to review, push your branch to GitHub, and
+5. When you are ready for us to review, sign your commit, push your branch to GitHub, and
    then open a new pull request with us.
 
-For Git commit messages, we follow the [Semantic Commit Messages](http://karma-runner.github.io/0.13/dev/git-commit-msg.html):
+For Git commit messages, we follow the [Semantic Commit Messages](https://karma-runner.github.io/0.13/dev/git-commit-msg.html):
 
 ```
 fix(helm): add --foo flag to 'helm install'
@@ -201,7 +201,7 @@ Common scopes:
 Read more:
 - The [Deis Guidelines](https://github.com/deis/workflow/blob/master/src/contributing/submitting-a-pull-request.md)
   were the inspiration for this section.
-- Karma Runner [defines](http://karma-runner.github.io/0.13/dev/git-commit-msg.html) the semantic commit message idea.
+- Karma Runner [defines](https://karma-runner.github.io/0.13/dev/git-commit-msg.html) the semantic commit message idea.
 
 ### Go Conventions
 
