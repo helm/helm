@@ -20,7 +20,7 @@ const (
 	Status_UNKNOWN Status_Code = 0
 	// Status_DEPLOYED indicates that the release has been pushed to Kubernetes.
 	Status_DEPLOYED Status_Code = 1
-	// Status_DELETED indicates that a release has been deleted from Kubermetes.
+	// Status_DELETED indicates that a release has been deleted from Kubernetes.
 	Status_DELETED Status_Code = 2
 	// Status_SUPERSEDED indicates that this release object is outdated and a newer one exists.
 	Status_SUPERSEDED Status_Code = 3
