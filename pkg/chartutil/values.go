@@ -188,11 +188,11 @@ func ValidateAgainstSchema(values Values, schema Schema) error {
 // GenerateSchema will create a JSON Schema (in YAML format) for the given values
 func GenerateSchema(values Values) Schema {
 	schema := Schema{
-		"type":  "object",
-		"title": "Values",
+		gojsonschema.KEY_TYPE:  gojsonschema.TYPE_OBJECT,
+		gojsonschema.KEY_TITLE: "Values",
 	}
 	if len(values) > 0 {
-		schema["properties"] = parsePropertiesFromValues(values)
+		schema[gojsonschema.STRING_PROPERTIES] = parsePropertiesFromValues(values)
 	}
 	return schema
 }
@@ -209,19 +209,19 @@ func parsePropertiesFromValues(values Values) map[string]map[string]interface{} 
 		// the following types are the only types possible from unmarshalling
 		switch v := v.(type) {
 		case bool:
-			properties[k]["type"] = "bool"
+			properties[k][gojsonschema.KEY_TYPE] = gojsonschema.TYPE_BOOLEAN
 		case float64:
-			properties[k]["type"] = "number"
+			properties[k][gojsonschema.KEY_TYPE] = gojsonschema.TYPE_NUMBER
 		case string:
-			properties[k]["type"] = "string"
+			properties[k][gojsonschema.KEY_TYPE] = gojsonschema.TYPE_STRING
 		case []interface{}:
-			properties[k]["type"] = "array"
-			properties[k]["items"] = parseItemsFromValues(v)
+			properties[k][gojsonschema.KEY_TYPE] = gojsonschema.TYPE_ARRAY
+			properties[k][gojsonschema.KEY_ITEMS] = parseItemsFromValues(v)
 		case map[string]interface{}:
-			properties[k]["type"] = "object"
+			properties[k][gojsonschema.KEY_TYPE] = gojsonschema.TYPE_OBJECT
 			object := parsePropertiesFromValues(v)
 			if len(object) > 0 {
-				properties[k]["object"] = object
+				properties[k][gojsonschema.TYPE_OBJECT] = object
 			}
 		}
 	}
@@ -234,19 +234,19 @@ func parseItemsFromValues(items []interface{}) map[string]interface{} {
 	// the following types are the only types possible from unmarshalling
 	switch v := v.(type) {
 	case bool:
-		properties["type"] = "bool"
+		properties[gojsonschema.KEY_TYPE] = gojsonschema.TYPE_BOOLEAN
 	case float64:
-		properties["type"] = "number"
+		properties[gojsonschema.KEY_TYPE] = gojsonschema.TYPE_NUMBER
 	case string:
-		properties["type"] = "string"
+		properties[gojsonschema.KEY_TYPE] = gojsonschema.TYPE_STRING
 	case []interface{}:
-		properties["type"] = "array"
-		properties["items"] = parseItemsFromValues(v)
+		properties[gojsonschema.KEY_TYPE] = gojsonschema.TYPE_ARRAY
+		properties[gojsonschema.KEY_ITEMS] = parseItemsFromValues(v)
 	case map[string]interface{}:
-		properties["type"] = "object"
+		properties[gojsonschema.KEY_TYPE] = gojsonschema.TYPE_OBJECT
 		object := parsePropertiesFromValues(v)
 		if len(object) > 0 {
-			properties["object"] = object
+			properties[gojsonschema.TYPE_OBJECT] = object
 		}
 	}
 	return properties
