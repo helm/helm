@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"testing"
 	"text/template"
 
@@ -196,20 +195,17 @@ func TestValidateAgainstSchemaNegative(t *testing.T) {
 
 	var errString string
 	if err := ValidateAgainstSchema(values, schema); err == nil {
-		t.Errorf("Expected an error, but got nil")
+		t.Fatalf("Expected an error, but got nil")
 	} else {
 		errString = err.Error()
 	}
 
-	if !strings.Contains(errString, "values don't meet the specification of the schema:") {
-		t.Errorf("Error string does not contain expected string: \"values don't meet the specification of the schema:\"")
-	}
-	if !strings.Contains(errString, "- (root): employmentInfo is required") {
-		t.Errorf("Error string does not contain expected string: \"- (root): employmentInfo is required\"")
-	}
-
-	if !strings.Contains(errString, "- age: Must be greater than or equal to 0/1") {
-		t.Errorf("Error string does not contain expected string: \"- age: Must be greater than or equal to 0/1\"")
+	expectedErrString := `values don't meet the specification of the schema:
+- (root): employmentInfo is required
+- age: Must be greater than or equal to 0/1
+`
+	if errString != expectedErrString {
+		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
 	}
 }
 
@@ -600,14 +596,17 @@ phoneNumbers:
   - "(555) 555-5555"
 `
 
-	values, _ := ReadValues([]byte(doc))
+	values, err := ReadValues([]byte(doc))
+	if err != nil {
+		t.Fatalf("Error reading values: %s", err)
+	}
 	schema := GenerateSchema(values)
 	assertEqualProperty(t, ".title", "Values", schema)
 	assertEqualProperty(t, ".type", "object", schema)
 	assertEqualProperty(t, ".properties.firstname.type", "string", schema)
 	assertEqualProperty(t, ".properties.lastname.type", "string", schema)
 	assertEqualProperty(t, ".properties.age.type", "number", schema)
-	assertEqualProperty(t, ".properties.likesCoffee.type", "bool", schema)
+	assertEqualProperty(t, ".properties.likesCoffee.type", "boolean", schema)
 	assertEqualProperty(t, ".properties.employmentInfo.type", "object", schema)
 	assertEqualProperty(t, ".properties.employmentInfo.object.title.type", "string", schema)
 	assertEqualProperty(t, ".properties.employmentInfo.object.salary.type", "number", schema)
