@@ -165,8 +165,8 @@ func ValidateAgainstSchema(values Values, schema Schema) error {
 	if err != nil {
 		return err
 	}
-	schemaLoader := gojsonschema.NewStringLoader(string(schemaJSON))
-	valuesLoader := gojsonschema.NewStringLoader(string(valuesJSON))
+	schemaLoader := gojsonschema.NewBytesLoader(schemaJSON)
+	valuesLoader := gojsonschema.NewBytesLoader(valuesJSON)
 
 	result, err := gojsonschema.Validate(schemaLoader, valuesLoader)
 	if err != nil {
