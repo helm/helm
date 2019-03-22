@@ -41,7 +41,7 @@ import (
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes/scheme"
 	watchtools "k8s.io/client-go/tools/watch"
-	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
+	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 
 // ErrNoObjectsVisited indicates that during a visit operation, no matching objects were found.

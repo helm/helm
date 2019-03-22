@@ -3,18 +3,20 @@ version: 2
 
 jobs:
   build:
-    working_directory: /go/src/helm.sh/helm
+    working_directory: ~/helm.sh/helm
     parallelism: 3
     docker:
       - image: circleci/golang:1.13
 
     environment:
-      - GOCACHE: "/tmp/go/cache"
+      GOCACHE: "/tmp/go/cache"
 
     steps:
       - checkout
       - restore_cache:
-          key: gopkg-{{ checksum "Gopkg.lock" }}
+          keys:
+            - gomod-{{ checksum "go.mod" }}
+            - gomod-
       - restore_cache:
           keys:
             - build-cache-{{ .Environment.CIRCLE_PREVIOUS_BUILD_NUM }}
@@ -25,10 +27,9 @@ jobs:
           name: test
           command: make test-coverage
       - save_cache:
-          key: gopkg-{{ checksum "Gopkg.lock" }}
+          key: gomod-{{ checksum "go.mod" }}
           paths:
-            - /go/src/helm.sh/helm/vendor
-            - /go/pkg/dep
+            - /go/pkg/mod
       - save_cache:
           key: build-cache-{{ .Environment.CIRCLE_BUILD_NUM }}
           paths:
