@@ -772,6 +772,7 @@ schema is the yaml representation of a [JSON Schema](https://json-schema.org/).
 It might look something like this:
 
 ```yaml
+$schema: http://json-schema.org/draft-07/schema#
 title: Values
 type: object
 properties:

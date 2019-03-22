@@ -492,6 +492,7 @@ chapter:
 
 func TestReadSchema(t *testing.T) {
 	schemaTest := `# Test YAML parse
+$schema: http://json-schema.org/draft-07/schema#
 title: Values
 type: object
 properties:
