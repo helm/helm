@@ -77,32 +77,17 @@ verifySupported() {
 
 # checkDesiredVersion checks if the desired version is available.
 checkDesiredVersion() {
-  # Use the GitHub releases webpage for the project to find the desired version for this project.
-  local latest_release_url="https://github.com/helm/helm/releases/latest"
-  local release_url
   if [ "x$DESIRED_VERSION" == "x" ]; then
+    # Get tag from release URL
+    local latest_release_url="https://github.com/helm/helm/releases/latest"
     if type "curl" > /dev/null; then
-      release_url=$(curl -Ls -o /dev/null -w %{url_effective} $latest_release_url)
+      TAG=$(curl -Ls -o /dev/null -w %{url_effective} $latest_release_url | grep -oE "[^/]+$" )
     elif type "wget" > /dev/null; then
-      release_url=$(wget $latest_release_url --server-response -O /dev/null 2>&1 | awk '/^  Location: /{DEST=$2} END{ print DEST}')
+      TAG=$(wget $latest_release_url --server-response -O /dev/null 2>&1 | awk '/^  Location: /{DEST=$2} END{ print DEST}' | grep -oE "[^/]+$")
     fi
   else
-    release_url="https://github.com/helm/helm/releases/${DESIRED_VERSION}"
+    TAG=$DESIRED_VERSION
   fi
-
-  local status_code
-  if type "curl" > /dev/null; then
-    status_code=$(curl --write-out %{http_code} --silent --output /dev/null $release_url)
-  elif type "wget" > /dev/null; then
-    status_code=$(wget --spider -S $release_url -O /dev/null 2>&1 | grep "HTTP/" | awk '{print $2}')
-  fi
-  
-  if [[ "$status_code" -ne 200 ]] ; then
-    echo "Cannot determine ${DESIRED_VERSION} tag."
-    exit 1
-  fi
-  
-  TAG=$(echo $release_url | grep -oE "[^/]+$" )
 }
 
 # checkHelmInstalledVersion checks which version of helm is installed and
