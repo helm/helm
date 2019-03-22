@@ -238,7 +238,7 @@ func (l *List) SetStateMask() {
 
 func FormatList(rels []*release.Release) string {
 	table := uitable.New()
-	table.AddRow("NAME", "REVISION", "UPDATED", "STATUS", "CHART", "NAMESPACE")
+	table.AddRow("NAME", "NAMESPACE", "REVISION", "UPDATED", "STATUS", "CHART")
 	for _, r := range rels {
 		md := r.Chart.Metadata
 		c := fmt.Sprintf("%s-%s", md.Name, md.Version)
@@ -249,7 +249,7 @@ func FormatList(rels []*release.Release) string {
 		s := r.Info.Status.String()
 		v := r.Version
 		n := r.Namespace
-		table.AddRow(r.Name, v, t, s, c, n)
+		table.AddRow(r.Name, n, v, t, s, c)
 	}
 	return table.String()
 }
