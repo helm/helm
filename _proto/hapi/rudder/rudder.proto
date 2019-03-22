@@ -92,6 +92,7 @@ message UpgradeReleaseRequest{
         bool Wait = 4;
         bool Recreate = 5;
         bool Force = 6;
+        bool CleanupOnFail = 7;
 }
 message UpgradeReleaseResponse{
 	hapi.release.Release release = 1;
@@ -105,6 +106,7 @@ message RollbackReleaseRequest{
         bool Wait = 4;
         bool Recreate = 5;
         bool Force = 6;
+        bool CleanupOnFail = 7;
 }
 message RollbackReleaseResponse{
 	hapi.release.Release release = 1;
