@@ -17,7 +17,6 @@ limitations under the License.
 package chartutil
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -158,8 +157,14 @@ func ReadSchemaFile(filename string) (Schema, error) {
 
 // ValidateAgainstSchema checks that values does not violate the structure laid out in schema
 func ValidateAgainstSchema(values Values, schema Schema) error {
-	valuesJSON := convertToJSON(values)
-	schemaJSON := convertToJSON(schema)
+	valuesJSON, err := convertYAMLToJSON(values)
+	if err != nil {
+		return err
+	}
+	schemaJSON, err := convertYAMLToJSON(schema)
+	if err != nil {
+		return err
+	}
 	schemaLoader := gojsonschema.NewStringLoader(string(schemaJSON))
 	valuesLoader := gojsonschema.NewStringLoader(string(valuesJSON))
 
@@ -461,13 +466,13 @@ func istable(v interface{}) bool {
 	return ok
 }
 
-// convertToJSON takes YAML and returns a []byte representation of the same object as JSON
-func convertToJSON(data interface{}) []byte {
-	js, err := json.Marshal(data)
+// convertToJSON takes YAML data and returns a []byte representation of the same object as JSON
+func convertYAMLToJSON(data interface{}) ([]byte, error) {
+	yamlData, err := yaml.Marshal(data)
 	if err != nil {
-		panic(err.Error())
+		return nil, err
 	}
-	return js
+	return yaml.YAMLToJSON(yamlData)
 }
 
 // PathValue takes a path that traverses a YAML structure and returns the value at the end of that path.
