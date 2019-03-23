@@ -11,7 +11,6 @@ But there are many things this guide has not covered when it comes to the practi
 - The Helm [Charts Tips and Tricks](../charts_tips_and_tricks.md) article provides some useful tips for writing charts.
 - The [Sprig documentation](https://github.com/Masterminds/sprig) documents more than sixty of the template functions.
 - The [Go template docs](https://godoc.org/text/template) explain the template syntax in detail.
-- The [Schelm tool](https://github.com/databus23/schelm) is a nice helper utility for debugging charts.
 
 Sometimes it's easier to ask a few questions and get answers from experienced developers. The best place to do this is in the [Kubernetes Slack](https://kubernetes.slack.com) Helm channels:
 
