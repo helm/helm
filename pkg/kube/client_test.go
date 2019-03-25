@@ -224,6 +224,43 @@ func TestUpdate(t *testing.T) {
 	}
 }
 
+func TestUpdateNonManagedResourceError(t *testing.T) {
+	actual := newPodList("starfish")
+	current := newPodList()
+	target := newPodList("starfish")
+
+	tf := cmdtesting.NewTestFactory()
+	defer tf.Cleanup()
+
+	tf.UnstructuredClient = &fake.RESTClient{
+		NegotiatedSerializer: unstructuredSerializer,
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			p, m := req.URL.Path, req.Method
+			t.Logf("got request %s %s", p, m)
+			switch {
+			case p == "/namespaces/default/pods/starfish" && m == "GET":
+				return newResponse(200, &actual.Items[0])
+			default:
+				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
+				return nil, nil
+			}
+		}),
+	}
+
+	c := &Client{
+		Factory: tf,
+		Log:     nopLogger,
+	}
+
+	if err := c.Update(v1.NamespaceDefault, objBody(&current), objBody(&target), false, false, 0, false); err != nil {
+		if err.Error() != "kind Pod with the name \"starfish\" already exists in the cluster and wasn't defined in the previous release. Before upgrading, please either delete the resource from the cluster or remove it from the chart" {
+			t.Fatal(err)
+		}
+	} else {
+		t.Fatalf("error expected")
+	}
+}
+
 func TestBuild(t *testing.T) {
 	tests := []struct {
 		name      string
