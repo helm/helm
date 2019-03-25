@@ -253,7 +253,7 @@ func TestUpdateNonManagedResourceError(t *testing.T) {
 	}
 
 	if err := c.Update(v1.NamespaceDefault, objBody(&current), objBody(&target), false, false, 0, false); err != nil {
-		if err.Error() != "Pod \"starfish\" is not managed by Helm; delete the resource from the current cluster state to let Helm manage it" {
+		if err.Error() != "kind Pod with the name \"starfish\" already exists in the cluster and wasn't defined in the previous release. Before upgrading, please either delete the resource from the cluster or remove it from the chart" {
 			t.Fatal(err)
 		}
 	} else {

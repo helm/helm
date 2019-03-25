@@ -334,11 +334,14 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 
 		originalInfo := original.Get(info)
 
-		// Resource exists in the current cluster state, but not in the current helm configuration
-		// See: https://github.com/helm/helm/issues/1193 for more info
+		// The resource already exists in the cluster, but it wasn't defined in the previous release.
+		// In this case, we consider it to be a resource that was previously un-managed by the release and error out,
+		// asking for the user to intervene.
+		//
+		// See https://github.com/helm/helm/issues/1193 for more info.
 		if originalInfo == nil {
 			return fmt.Errorf(
-				"%s %q is not managed by Helm; delete the resource from the current cluster state to let Helm manage it",
+				"kind %s with the name %q already exists in the cluster and wasn't defined in the previous release. Before upgrading, please either delete the resource from the cluster or remove it from the chart",
 				info.Mapping.GroupVersionKind.Kind,
 				info.Name,
 			)
