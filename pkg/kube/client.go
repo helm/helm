@@ -45,7 +45,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/cli-runtime/pkg/genericclioptions/resource"
+	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes"
 	watchtools "k8s.io/client-go/tools/watch"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
@@ -69,7 +69,7 @@ type Client struct {
 // New creates a new Client.
 func New(getter genericclioptions.RESTClientGetter) *Client {
 	if getter == nil {
-		getter = genericclioptions.NewConfigFlags()
+		getter = genericclioptions.NewConfigFlags(true)
 	}
 	return &Client{
 		Factory: cmdutil.NewFactory(getter),
