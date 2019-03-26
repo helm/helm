@@ -44,7 +44,7 @@ var (
 	errMissingRelease = errors.New("no release provided")
 	// errInvalidRevision indicates that an invalid release revision number was provided.
 	errInvalidRevision = errors.New("invalid release revision")
-	//errInvalidName indicates that an invalid release name was provided
+	// errInvalidName indicates that an invalid release name was provided
 	errInvalidName = errors.New("invalid release name, must match regex ^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+$ and the length must not longer than 53")
 )
 
@@ -126,12 +126,8 @@ func GetVersionSet(client discovery.ServerGroupsInterface) (chartutil.VersionSet
 }
 
 // recordRelease with an update operation in case reuse has been set.
-func (c *Configuration) recordRelease(r *release.Release, reuse bool) {
-	if reuse {
-		if err := c.Releases.Update(r); err != nil {
-			c.Log("warning: Failed to update release %s: %s", r.Name, err)
-		}
-	} else if err := c.Releases.Create(r); err != nil {
-		c.Log("warning: Failed to record release %s: %s", r.Name, err)
+func (c *Configuration) recordRelease(r *release.Release) {
+	if err := c.Releases.Update(r); err != nil {
+		c.Log("warning: Failed to update release %s: %s", r.Name, err)
 	}
 }

@@ -71,7 +71,7 @@ func summarizeKeptManifests(manifests []releaseutil.Manifest, kubeClient kube.Ku
 		if message == "" {
 			message = "These resources were kept due to the resource policy:\n"
 		}
-		message = message + details
+		message += details
 	}
 	return message
 }

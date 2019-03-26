@@ -128,7 +128,7 @@ func (i *Install) Run(chrt *chart.Chart) (*release.Release, error) {
 
 	rel := i.createRelease(chrt, i.rawValues)
 	var manifestDoc *bytes.Buffer
-	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.renderResources(chrt, valuesToRender, caps.APIVersions)
+	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender)
 	// Even for errors, attach this if available
 	if manifestDoc != nil {
 		rel.Manifest = manifestDoc.String()
@@ -172,7 +172,7 @@ func (i *Install) Run(chrt *chart.Chart) (*release.Release, error) {
 	if !i.DisableHooks {
 		if err := i.execHook(rel.Hooks, hooks.PreInstall); err != nil {
 			rel.SetStatus(release.StatusFailed, "failed pre-install: "+err.Error())
-			i.replaceRelease(rel)
+			_ = i.replaceRelease(rel)
 			return rel, err
 		}
 	}
@@ -190,7 +190,7 @@ func (i *Install) Run(chrt *chart.Chart) (*release.Release, error) {
 	if !i.DisableHooks {
 		if err := i.execHook(rel.Hooks, hooks.PostInstall); err != nil {
 			rel.SetStatus(release.StatusFailed, "failed post-install: "+err.Error())
-			i.replaceRelease(rel)
+			_ = i.replaceRelease(rel)
 			return rel, err
 		}
 	}
@@ -291,22 +291,23 @@ func (i *Install) replaceRelease(rel *release.Release) error {
 }
 
 // renderResources renders the templates in a chart
-func (i *Install) renderResources(ch *chart.Chart, values chartutil.Values, vs chartutil.VersionSet) ([]*release.Hook, *bytes.Buffer, string, error) {
-	hooks := []*release.Hook{}
+func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values) ([]*release.Hook, *bytes.Buffer, string, error) {
+	hs := []*release.Hook{}
 	b := bytes.NewBuffer(nil)
 
+	caps := c.capabilities()
+
 	if ch.Metadata.KubeVersion != "" {
-		cap, _ := values["Capabilities"].(*chartutil.Capabilities)
-		gitVersion := cap.KubeVersion.String()
+		gitVersion := caps.KubeVersion.String()
 		k8sVersion := strings.Split(gitVersion, "+")[0]
 		if !version.IsCompatibleRange(ch.Metadata.KubeVersion, k8sVersion) {
-			return hooks, b, "", errors.Errorf("chart requires kubernetesVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, k8sVersion)
+			return hs, b, "", errors.Errorf("chart requires kubernetesVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, k8sVersion)
 		}
 	}
 
 	files, err := engine.Render(ch, values)
 	if err != nil {
-		return hooks, b, "", err
+		return hs, b, "", err
 	}
 
 	// NOTES.txt gets rendered like all the other files, but because it's not a hook nor a resource,
@@ -329,7 +330,7 @@ func (i *Install) renderResources(ch *chart.Chart, values chartutil.Values, vs c
 	// Sort hooks, manifests, and partials. Only hooks and manifests are returned,
 	// as partials are not used after renderer.Render. Empty manifests are also
 	// removed here.
-	hooks, manifests, err := releaseutil.SortManifests(files, vs, releaseutil.InstallOrder)
+	hs, manifests, err := releaseutil.SortManifests(files, caps.APIVersions, releaseutil.InstallOrder)
 	if err != nil {
 		// By catching parse errors here, we can prevent bogus releases from going
 		// to Kubernetes.
@@ -337,12 +338,12 @@ func (i *Install) renderResources(ch *chart.Chart, values chartutil.Values, vs c
 		// We return the files as a big blob of data to help the user debug parser
 		// errors.
 		for name, content := range files {
-			if len(strings.TrimSpace(content)) == 0 {
+			if strings.TrimSpace(content) == "" {
 				continue
 			}
 			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", name, content)
 		}
-		return hooks, b, "", err
+		return hs, b, "", err
 	}
 
 	// Aggregate all valid manifests into one big doc.
@@ -350,7 +351,7 @@ func (i *Install) renderResources(ch *chart.Chart, values chartutil.Values, vs c
 		fmt.Fprintf(b, "---\n# Source: %s\n%s\n", m.Name, m.Content)
 	}
 
-	return hooks, b, notes, nil
+	return hs, b, notes, nil
 }
 
 // validateManifest checks to see whether the given manifest is valid for the current Kubernetes

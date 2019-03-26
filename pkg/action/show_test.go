@@ -49,15 +49,15 @@ func TestShow(t *testing.T) {
 	}
 
 	expect := []string{
-		strings.Replace(strings.TrimSpace(string(cdata)), "\r", "", -1),
-		strings.Replace(strings.TrimSpace(string(data)), "\r", "", -1),
-		strings.Replace(strings.TrimSpace(string(readmeData)), "\r", "", -1),
+		strings.ReplaceAll(strings.TrimSpace(string(cdata)), "\r", ""),
+		strings.ReplaceAll(strings.TrimSpace(string(data)), "\r", ""),
+		strings.ReplaceAll(strings.TrimSpace(string(readmeData)), "\r", ""),
 	}
 
 	// Problem: ghodss/yaml doesn't marshal into struct order. To solve, we
 	// have to carefully craft the Chart.yaml to match.
 	for i, got := range parts {
-		got = strings.Replace(strings.TrimSpace(got), "\r", "", -1)
+		got = strings.ReplaceAll(strings.TrimSpace(got), "\r", "")
 		if got != expect[i] {
 			t.Errorf("Expected\n%q\nGot\n%q\n", expect[i], got)
 		}

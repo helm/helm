@@ -63,12 +63,13 @@ func (d *Dependency) List(chartpath string, out io.Writer) error {
 
 func (d *Dependency) dependencyStatus(chartpath string, dep *chart.Dependency) string {
 	filename := fmt.Sprintf("%s-%s.tgz", dep.Name, "*")
-	archives, err := filepath.Glob(filepath.Join(chartpath, "charts", filename))
-	if err != nil {
+
+	switch archives, err := filepath.Glob(filepath.Join(chartpath, "charts", filename)); {
+	case err != nil:
 		return "bad pattern"
-	} else if len(archives) > 1 {
+	case len(archives) > 1:
 		return "too many matches"
-	} else if len(archives) == 1 {
+	case len(archives) == 1:
 		archive := archives[0]
 		if _, err := os.Stat(archive); err == nil {
 			c, err := loader.Load(archive)
