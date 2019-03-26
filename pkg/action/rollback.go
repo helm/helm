@@ -155,8 +155,8 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		currentRelease.Info.Status = release.StatusSuperseded
 		targetRelease.Info.Status = release.StatusFailed
 		targetRelease.Info.Description = msg
-		r.cfg.recordRelease(currentRelease, true)
-		r.cfg.recordRelease(targetRelease, true)
+		r.cfg.recordRelease(currentRelease)
+		r.cfg.recordRelease(targetRelease)
 		return targetRelease, err
 	}
 
@@ -175,7 +175,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 	for _, rel := range deployed {
 		r.cfg.Log("superseding previous deployment %d", rel.Version)
 		rel.Info.Status = release.StatusSuperseded
-		r.cfg.recordRelease(rel, true)
+		r.cfg.recordRelease(rel)
 	}
 
 	targetRelease.Info.Status = release.StatusDeployed

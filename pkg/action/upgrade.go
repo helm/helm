@@ -19,9 +19,7 @@ package action
 import (
 	"bytes"
 	"fmt"
-	"path"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -29,12 +27,9 @@ import (
 
 	"helm.sh/helm/pkg/chart"
 	"helm.sh/helm/pkg/chartutil"
-	"helm.sh/helm/pkg/engine"
 	"helm.sh/helm/pkg/hooks"
 	"helm.sh/helm/pkg/kube"
 	"helm.sh/helm/pkg/release"
-	"helm.sh/helm/pkg/releaseutil"
-	"helm.sh/helm/pkg/version"
 )
 
 // Upgrade is the action for upgrading releases.
@@ -164,7 +159,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart) (*release.Rele
 		return nil, nil, err
 	}
 
-	hooks, manifestDoc, notesTxt, err := u.renderResources(chart, valuesToRender, caps.APIVersions)
+	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -213,8 +208,8 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 		u.cfg.Log("warning: %s", msg)
 		upgradedRelease.Info.Status = release.StatusFailed
 		upgradedRelease.Info.Description = msg
-		u.cfg.recordRelease(originalRelease, true)
-		u.cfg.recordRelease(upgradedRelease, true)
+		u.cfg.recordRelease(originalRelease)
+		u.cfg.recordRelease(upgradedRelease)
 		return upgradedRelease, err
 	}
 
@@ -226,7 +221,7 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 	}
 
 	originalRelease.Info.Status = release.StatusSuperseded
-	u.cfg.recordRelease(originalRelease, true)
+	u.cfg.recordRelease(originalRelease)
 
 	upgradedRelease.Info.Status = release.StatusDeployed
 	upgradedRelease.Info.Description = "Upgrade complete"
@@ -297,73 +292,8 @@ func newCapabilities(dc discovery.DiscoveryInterface) (*chartutil.Capabilities, 
 	}, nil
 }
 
-func (u *Upgrade) renderResources(ch *chart.Chart, values chartutil.Values, vs chartutil.VersionSet) ([]*release.Hook, *bytes.Buffer, string, error) {
-	if ch.Metadata.KubeVersion != "" {
-		cap, _ := values["Capabilities"].(*chartutil.Capabilities)
-		gitVersion := cap.KubeVersion.String()
-		k8sVersion := strings.Split(gitVersion, "+")[0]
-		if !version.IsCompatibleRange(ch.Metadata.KubeVersion, k8sVersion) {
-			return nil, nil, "", errors.Errorf("chart requires kubernetesVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, k8sVersion)
-		}
-	}
-
-	u.cfg.Log("rendering %s chart using values", ch.Name())
-	files, err := engine.Render(ch, values)
-	if err != nil {
-		return nil, nil, "", err
-	}
-
-	// NOTES.txt gets rendered like all the other files, but because it's not a hook nor a resource,
-	// pull it out of here into a separate file so that we can actually use the output of the rendered
-	// text file. We have to spin through this map because the file contains path information, so we
-	// look for terminating NOTES.txt. We also remove it from the files so that we don't have to skip
-	// it in the sortHooks.
-	notes := ""
-	for k, v := range files {
-		if strings.HasSuffix(k, notesFileSuffix) {
-			// Only apply the notes if it belongs to the parent chart
-			// Note: Do not use filePath.Join since it creates a path with \ which is not expected
-			if k == path.Join(ch.Name(), "templates", notesFileSuffix) {
-				notes = v
-			}
-			delete(files, k)
-		}
-	}
-
-	// Sort hooks, manifests, and partials. Only hooks and manifests are returned,
-	// as partials are not used after renderer.Render. Empty manifests are also
-	// removed here.
-	hooks, manifests, err := releaseutil.SortManifests(files, vs, releaseutil.InstallOrder)
-	if err != nil {
-		// By catching parse errors here, we can prevent bogus releases from going
-		// to Kubernetes.
-		//
-		// We return the files as a big blob of data to help the user debug parser
-		// errors.
-		b := bytes.NewBuffer(nil)
-		for name, content := range files {
-			if len(strings.TrimSpace(content)) == 0 {
-				continue
-			}
-			b.WriteString("\n---\n# Source: " + name + "\n")
-			b.WriteString(content)
-		}
-		return nil, b, "", err
-	}
-
-	// Aggregate all valid manifests into one big doc.
-	b := bytes.NewBuffer(nil)
-	for _, m := range manifests {
-		b.WriteString("\n---\n# Source: " + m.Name + "\n")
-		b.WriteString(m.Content)
-	}
-
-	return hooks, b, notes, nil
-}
-
 func validateManifest(c kube.KubernetesClient, ns string, manifest []byte) error {
-	r := bytes.NewReader(manifest)
-	_, err := c.BuildUnstructured(ns, r)
+	_, err := c.BuildUnstructured(ns, bytes.NewReader(manifest))
 	return err
 }
 

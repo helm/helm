@@ -71,7 +71,7 @@ func (p *Package) Run(path string) (string, error) {
 	ch.Values = combinedVals
 
 	// If version is set, modify the version.
-	if len(p.Version) != 0 {
+	if p.Version != "" {
 		if err := setVersion(ch, p.Version); err != nil {
 			return "", err
 		}

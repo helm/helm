@@ -65,10 +65,10 @@ func Key(repo string) (string, error) {
 	}
 	key = key + u.Host
 	if u.Path != "" {
-		key = key + strings.Replace(u.Path, "/", "-", -1)
+		key = key + strings.ReplaceAll(u.Path, "/", "-")
 	}
 
-	key = strings.Replace(key, ":", "-", -1)
+	key = strings.ReplaceAll(key, ":", "-")
 
 	return key, nil
 }
