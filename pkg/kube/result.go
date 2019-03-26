@@ -16,7 +16,7 @@ limitations under the License.
 
 package kube // import "k8s.io/helm/pkg/kube"
 
-import "k8s.io/cli-runtime/pkg/genericclioptions/resource"
+import "k8s.io/cli-runtime/pkg/resource"
 
 // Result provides convenience methods for comparing collections of Infos.
 type Result []*resource.Info
