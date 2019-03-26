@@ -17,7 +17,7 @@ limitations under the License.
 package kube // import "helm.sh/helm/pkg/kube"
 
 import (
-	"k8s.io/cli-runtime/pkg/genericclioptions/resource"
+	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/kubernetes/pkg/kubectl/validation"
