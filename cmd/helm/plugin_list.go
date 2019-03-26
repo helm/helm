@@ -18,24 +18,31 @@ package main
 import (
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
-
-	"helm.sh/helm/pkg/helmpath"
+	"helm.sh/helm/pkg/plugin"
 )
 
+const pluginListHelp = `
+List all available plugin files on a user's PATH.
+
+Available plugin files are those that are:
+- executable
+- anywhere on the user's PATH
+- begin with "helm-"
+`
+
 type pluginListOptions struct {
-	home helmpath.Home
 }
 
 func newPluginListCmd(out io.Writer) *cobra.Command {
 	o := &pluginListOptions{}
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "list installed Helm plugins",
+		Short: "list all installed Helm plugins",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			o.home = settings.Home
 			return o.run(out)
 		},
 	}
@@ -43,16 +50,15 @@ func newPluginListCmd(out io.Writer) *cobra.Command {
 }
 
 func (o *pluginListOptions) run(out io.Writer) error {
-	debug("pluginDirs: %s", settings.PluginDirs())
-	plugins, err := findPlugins(settings.PluginDirs())
+	plugins, err := plugin.FindAll(os.Getenv("PATH"))
 	if err != nil {
 		return err
 	}
 
 	table := uitable.New()
-	table.AddRow("NAME", "VERSION", "DESCRIPTION")
+	table.AddRow("NAME", "DIRECTORY")
 	for _, p := range plugins {
-		table.AddRow(p.Metadata.Name, p.Metadata.Version, p.Metadata.Description)
+		table.AddRow(p.Name, p.Dir)
 	}
 	fmt.Fprintln(out, table)
 	return nil

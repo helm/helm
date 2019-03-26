@@ -17,56 +17,25 @@ package main
 
 import (
 	"io"
-	"os"
-	"os/exec"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-
-	"helm.sh/helm/pkg/plugin"
 )
 
 const pluginHelp = `
-Manage client-side Helm plugins.
+Provides utilities for interacting with plugins.
+
+Plugins provide extended functionality that is not part of Helm. Please refer to the documentation
+and examples for more information about how write your own plugins.
 `
 
 func newPluginCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "plugin",
-		Short: "add, list, or remove Helm plugins",
+		Short: "utilities for interacting with Helm plugins",
 		Long:  pluginHelp,
 	}
 	cmd.AddCommand(
-		newPluginInstallCmd(out),
 		newPluginListCmd(out),
-		newPluginRemoveCmd(out),
-		newPluginUpdateCmd(out),
 	)
 	return cmd
-}
-
-// runHook will execute a plugin hook.
-func runHook(p *plugin.Plugin, event string) error {
-	hook := p.Metadata.Hooks[event]
-	if hook == "" {
-		return nil
-	}
-
-	prog := exec.Command("sh", "-c", hook)
-	// TODO make this work on windows
-	// I think its ... ¯\_(ツ)_/¯
-	// prog := exec.Command("cmd", "/C", p.Metadata.Hooks.Install())
-
-	debug("running %s hook: %s", event, prog)
-
-	plugin.SetupPluginEnv(settings, p.Metadata.Name, p.Dir)
-	prog.Stdout, prog.Stderr = os.Stdout, os.Stderr
-	if err := prog.Run(); err != nil {
-		if eerr, ok := err.(*exec.ExitError); ok {
-			os.Stderr.Write(eerr.Stderr)
-			return errors.Errorf("plugin %s hook for %q exited with error", event, p.Metadata.Name)
-		}
-		return err
-	}
-	return nil
 }

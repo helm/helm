@@ -20,12 +20,12 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"helm.sh/helm/pkg/getter"
 	"helm.sh/helm/pkg/plugin"
 )
 
@@ -41,8 +41,7 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 		return
 	}
 
-	// debug("HELM_PLUGIN_DIRS=%s", settings.PluginDirs())
-	found, err := findPlugins(settings.PluginDirs())
+	found, err := plugin.FindAll(os.Getenv("PATH"))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to load plugins: %s", err)
 		return
@@ -59,15 +58,19 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 	// Now we create commands for all of these.
 	for _, plug := range found {
 		plug := plug
-		md := plug.Metadata
-		if md.Usage == "" {
-			md.Usage = fmt.Sprintf("the %q plugin", md.Name)
+		// skip downloader plugins
+		if strings.HasPrefix(plug.Name, getter.PluginDownloaderPrefix) {
+			continue
 		}
 
+		// pull out the name using the last hyphen. We want the cobra command to be the
+		// last keyword of the plugin. For example, `helm-plugin-install` should show up
+		// under `helm plugin` as `install`.
+		plugName := plug.Name[strings.LastIndex(plug.Name, "-")+1:]
+
 		c := &cobra.Command{
-			Use:   md.Name,
-			Short: md.Usage,
-			Long:  md.Description,
+			Use:   plugName,
+			Short: fmt.Sprintf("the %q plugin", plugName),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				u, err := processParent(cmd, args)
 				if err != nil {
@@ -77,14 +80,9 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 				// Call setupEnv before PrepareCommand because
 				// PrepareCommand uses os.ExpandEnv and expects the
 				// setupEnv vars.
-				plugin.SetupPluginEnv(settings, md.Name, plug.Dir)
-				main, argv, prepCmdErr := plug.PrepareCommand(u)
-				if prepCmdErr != nil {
-					os.Stderr.WriteString(prepCmdErr.Error())
-					return errors.Errorf("plugin %q exited with error", md.Name)
-				}
+				plugin.SetupPluginEnv(settings, plug.Name, plug.Dir)
 
-				prog := exec.Command(main, argv...)
+				prog := exec.Command(plugin.PluginNamePrefix+plug.Name, u...)
 				prog.Env = os.Environ()
 				prog.Stdin = os.Stdin
 				prog.Stdout = out
@@ -92,7 +90,7 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 				if err := prog.Run(); err != nil {
 					if eerr, ok := err.(*exec.ExitError); ok {
 						os.Stderr.Write(eerr.Stderr)
-						return errors.Errorf("plugin %q exited with error", md.Name)
+						return errors.Errorf("plugin %q exited with error", plug.Name)
 					}
 					return err
 				}
@@ -102,8 +100,22 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 			DisableFlagParsing: true,
 		}
 
-		// TODO: Make sure a command with this name does not already exist.
-		baseCmd.AddCommand(c)
+		// Check if a command with this name does not already exist. If it does, replace it with the plugin
+		cmd, _, err := baseCmd.Find(strings.Split(plug.Name, "-"))
+		if err != nil {
+			panic(err)
+		}
+
+		if cmd == baseCmd {
+			// if we're back at the root, then we never found an existing command. In that case, add
+			// it to the command tree.
+			baseCmd.AddCommand(c)
+		} else if cmd.Name() == c.Name() {
+			baseCmd.RemoveCommand(cmd)
+			baseCmd.AddCommand(c)
+		} else {
+			cmd.AddCommand(c)
+		}
 	}
 }
 
@@ -138,18 +150,4 @@ func manuallyProcessArgs(args []string) ([]string, []string) {
 		}
 	}
 	return known, unknown
-}
-
-// findPlugins returns a list of YAML files that describe plugins.
-func findPlugins(plugdirs string) ([]*plugin.Plugin, error) {
-	found := []*plugin.Plugin{}
-	// Let's get all UNIXy and allow path separators
-	for _, p := range filepath.SplitList(plugdirs) {
-		matches, err := plugin.LoadAll(p)
-		if err != nil {
-			return matches, err
-		}
-		found = append(found, matches...)
-	}
-	return found, nil
 }

@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -27,24 +28,23 @@ import (
 	"helm.sh/helm/pkg/plugin"
 )
 
+// PluginDownloaderPrefix is the command name prefix for all helm downloader plugins.
+const PluginDownloaderPrefix = "downloader-"
+
 // collectPlugins scans for getter plugins.
 // This will load plugins according to the cli.
 func collectPlugins(settings cli.EnvSettings) (Providers, error) {
-	plugins, err := plugin.FindPlugins(settings.PluginDirs())
+	plugins, err := plugin.FindAll(os.Getenv("PATH"))
 	if err != nil {
 		return nil, err
 	}
 	var result Providers
 	for _, plugin := range plugins {
-		for _, downloader := range plugin.Metadata.Downloaders {
+		if strings.HasPrefix(plugin.Name, PluginDownloaderPrefix) {
+			scheme := strings.TrimPrefix(plugin.Name, PluginDownloaderPrefix)
 			result = append(result, Provider{
-				Schemes: downloader.Protocols,
-				New: newPluginGetter(
-					downloader.Command,
-					settings,
-					plugin.Metadata.Name,
-					plugin.Dir,
-				),
+				Schemes: []string{scheme},
+				New:     newPluginGetter(plugin, settings),
 			})
 		}
 	}
@@ -81,16 +81,16 @@ func (p *pluginGetter) Get(href string) (*bytes.Buffer, error) {
 }
 
 // newPluginGetter constructs a valid plugin getter
-func newPluginGetter(command string, settings cli.EnvSettings, name, base string) Constructor {
+func newPluginGetter(plugin *plugin.Plugin, settings cli.EnvSettings) Constructor {
 	return func(URL, CertFile, KeyFile, CAFile string) (Getter, error) {
 		result := &pluginGetter{
-			command:  command,
+			command:  plugin.Name,
 			certFile: CertFile,
 			keyFile:  KeyFile,
 			cAFile:   CAFile,
 			settings: settings,
-			name:     name,
-			base:     base,
+			name:     plugin.Name,
+			base:     plugin.Dir,
 		}
 		return result, nil
 	}
