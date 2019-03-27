@@ -63,6 +63,12 @@ func SaveDir(c *chart.Chart, dest string) error {
 	// Save templates
 	for _, f := range c.Templates {
 		n := filepath.Join(outdir, f.Name)
+
+		d := filepath.Dir(n)
+		if err := os.MkdirAll(d, 0755); err != nil {
+			return err
+		}
+
 		if err := ioutil.WriteFile(n, f.Data, 0644); err != nil {
 			return err
 		}

@@ -1,6 +1,6 @@
 # Contributing Guidelines
 
-The Kubernetes Helm project accepts contributions via GitHub pull requests. This document outlines the process to help get your contribution accepted.
+The Helm project accepts contributions via GitHub pull requests. This document outlines the process to help get your contribution accepted.
 
 ## Reporting a Security Issue
 
@@ -15,7 +15,7 @@ us a chance to try to fix the issue before it is exploited in the wild.
 The sign-off is a simple line at the end of the explanation for a commit. All 
 commits needs to be signed. Your signature certifies that you wrote the patch or
 otherwise have the right to contribute the material. The rules are pretty simple,
-if you can certify the below (from [developercertificate.org](http://developercertificate.org/)):
+if you can certify the below (from [developercertificate.org](https://developercertificate.org/)):
 
 ```
 Developer Certificate of Origin
@@ -242,7 +242,7 @@ Documentation PRs will follow the same lifecycle as other PRs. They will also be
 ## The Triager
 
 Each week, one of the core maintainers will serve as the designated "triager" starting after the
-public standup meetings on Thursday. This person will be in charge triaging new PRs and issues
+public stand-up meetings on Thursday. This person will be in charge triaging new PRs and issues
 throughout the work week.
 
 ## Labels

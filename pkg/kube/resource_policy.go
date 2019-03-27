@@ -19,14 +19,29 @@ package kube
 // ResourcePolicyAnno is the annotation name for a resource policy
 const ResourcePolicyAnno = "helm.sh/resource-policy"
 
-// KeepPolicy is the resource policy type for keep
+// deletePolicy is the resource policy type for delete
 //
-// This resource policy type allows resources to skip being deleted
-//   during an uninstallRelease action.
-const KeepPolicy = "keep"
+// This resource policy type allows explicitly opting in to the default
+//   resource deletion behavior, for example when overriding a chart's
+//   default annotations. Any other value allows resources to skip being
+//   deleted during an uninstallRelease action.
+const deletePolicy = "delete"
 
 // NoUpgradeExistingPolicy is the resource policy type for no-upgrade-existing
 //
 // This resource policy type allows resources to skip upgrading
 // an existing resource if it already exists.
 const NoUpgradeExistingPolicy = "no-upgrade-existing"
+
+// ResourcePolicyIsKeep accepts a map of Kubernetes resource annotations and
+//   returns true if the resource should be kept, otherwise false if it is safe
+//   for Helm to delete.
+func ResourcePolicyIsKeep(annotations map[string]string) bool {
+	if annotations != nil {
+		resourcePolicyType, ok := annotations[ResourcePolicyAnno]
+		if ok && resourcePolicyType != deletePolicy {
+			return true
+		}
+	}
+	return false
+}

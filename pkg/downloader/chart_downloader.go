@@ -65,11 +65,11 @@ type ChartDownloader struct {
 	Keyring string
 	// HelmHome is the $HELM_HOME.
 	HelmHome helmpath.Home
-	// Getter collection for the operation
+	// Getters collection for the operation
 	Getters getter.Providers
-	// Chart repository username
+	// Username chart repository username
 	Username string
-	// Chart repository password
+	// Password chart repository password
 	Password string
 }
 
@@ -213,7 +213,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, ge
 
 	cv, err := i.Get(chartName, version)
 	if err != nil {
-		return u, r.Client, fmt.Errorf("chart %q matching %s not found in %s index. (try 'helm repo update'). %s", chartName, version, r.Config.Name, err)
+		return u, r.Client, fmt.Errorf("chart %q matching version %q not found in %s index. (try 'helm repo update'). %s", chartName, version, r.Config.Name, err)
 	}
 
 	if len(cv.URLs) == 0 {
@@ -243,14 +243,14 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, ge
 	return u, r.Client, nil
 }
 
-// If HttpGetter is used, this method sets the configured repository credentials on the HttpGetter.
+// setCredentials if HttpGetter is used, this method sets the configured repository credentials on the HttpGetter.
 func (c *ChartDownloader) setCredentials(r *repo.ChartRepository) {
 	if t, ok := r.Client.(*getter.HttpGetter); ok {
 		t.SetCredentials(c.getRepoCredentials(r))
 	}
 }
 
-// If this ChartDownloader is not configured to use credentials, and the chart repository sent as an argument is,
+// getRepoCredentials if this ChartDownloader is not configured to use credentials, and the chart repository sent as an argument is,
 // then the repository's configured credentials are returned.
 // Else, this ChartDownloader's credentials are returned.
 func (c *ChartDownloader) getRepoCredentials(r *repo.ChartRepository) (username, password string) {

@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"sort"
 	"strings"
 	"time"
 
@@ -46,7 +47,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/cli-runtime/pkg/genericclioptions/resource"
+	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes/scheme"
 	watchtools "k8s.io/client-go/tools/watch"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
@@ -73,7 +74,7 @@ type Client struct {
 // New creates a new Client.
 func New(getter genericclioptions.RESTClientGetter) *Client {
 	if getter == nil {
-		getter = genericclioptions.NewConfigFlags()
+		getter = genericclioptions.NewConfigFlags(true)
 	}
 	return &Client{
 		Factory: cmdutil.NewFactory(getter),
@@ -155,13 +156,41 @@ func (c *Client) Build(namespace string, reader io.Reader) (Result, error) {
 	return result, scrubValidationError(err)
 }
 
+// Return the resource info as internal
+func resourceInfoToObject(info *resource.Info, c *Client) runtime.Object {
+	internalObj, err := asInternal(info)
+	if err != nil {
+		// If the problem is just that the resource is not registered, don't print any
+		// error. This is normal for custom resources.
+		if !runtime.IsNotRegisteredError(err) {
+			c.Log("Warning: conversion to internal type failed: %v", err)
+		}
+		// Add the unstructured object in this situation. It will still get listed, just
+		// with less information.
+		return info.Object
+	}
+
+	return internalObj
+}
+
+func sortByKey(objs map[string](map[string]runtime.Object)) []string {
+	var keys []string
+	// Create a simple slice, so we can sort it
+	for key := range objs {
+		keys = append(keys, key)
+	}
+	// Sort alphabetically by version/kind keys
+	sort.Strings(keys)
+	return keys
+}
+
 // Get gets Kubernetes resources as pretty-printed string.
 //
 // Namespace will set the namespace.
 func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
-	// Since we don't know what order the objects come in, let's group them by the types, so
+	// Since we don't know what order the objects come in, let's group them by the types and then sort them, so
 	// that when we print them, they come out looking good (headers apply to subgroups, etc.).
-	objs := make(map[string][]runtime.Object)
+	objs := make(map[string](map[string]runtime.Object))
 	infos, err := c.BuildUnstructured(namespace, reader)
 	if err != nil {
 		return "", err
@@ -182,19 +211,15 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		// versions per cluster, but this certainly won't hurt anything, so let's be safe.
 		gvk := info.ResourceMapping().GroupVersionKind
 		vk := gvk.Version + "/" + gvk.Kind
-		internalObj, err := asInternal(info)
-		if err != nil {
-			// If the problem is just that the resource is not registered, don't print any
-			// error. This is normal for custom resources.
-			if !runtime.IsNotRegisteredError(err) {
-				c.Log("Warning: conversion to internal type failed: %v", err)
-			}
-			// Add the unstructured object in this situation. It will still get listed, just
-			// with less information.
-			objs[vk] = append(objs[vk], info.Object)
-		} else {
-			objs[vk] = append(objs[vk], internalObj)
+
+		// Initialize map. The main map groups resources based on version/kind
+		// The second level is a simple 'Name' to 'Object', that will help sort
+		// the individual resource later
+		if objs[vk] == nil {
+			objs[vk] = make(map[string]runtime.Object)
 		}
+		// Map between the resource name to the underlying info object
+		objs[vk][info.Name] = resourceInfoToObject(info, c)
 
 		//Get the relation pods
 		objPods, err = c.getSelectRelationPod(info, objPods)
@@ -212,8 +237,12 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	for key, podItems := range objPods {
 		for i := range podItems {
 			pod := &core.Pod{}
+
 			legacyscheme.Scheme.Convert(&podItems[i], pod, nil)
-			objs[key+"(related)"] = append(objs[key+"(related)"], pod)
+			if objs[key+"(related)"] == nil {
+				objs[key+"(related)"] = make(map[string]runtime.Object)
+			}
+			objs[key+"(related)"][pod.ObjectMeta.Name] = runtime.Object(pod)
 		}
 	}
 
@@ -223,14 +252,28 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	// track of tab widths.
 	buf := new(bytes.Buffer)
 	printFlags := get.NewHumanPrintFlags()
-	for t, ot := range objs {
+
+	// Sort alphabetically by version/kind keys
+	vkKeys := sortByKey(objs)
+	// Iterate on sorted version/kind types
+	for _, t := range vkKeys {
 		if _, err = fmt.Fprintf(buf, "==> %s\n", t); err != nil {
 			return "", err
 		}
 		typePrinter, _ := printFlags.ToPrinter("")
-		for _, o := range ot {
-			if err := typePrinter.PrintObj(o, buf); err != nil {
-				c.Log("failed to print object type %s, object: %q :\n %v", t, o, err)
+
+		var sortedResources []string
+		for resource := range objs[t] {
+			sortedResources = append(sortedResources, resource)
+		}
+		sort.Strings(sortedResources)
+
+		// Now that each individual resource within the specific version/kind
+		// is sorted, we print each resource using the k8s printer
+		vk := objs[t]
+		for _, resourceName := range sortedResources {
+			if err := typePrinter.PrintObj(vk[resourceName], buf); err != nil {
+				c.Log("failed to print object type %s, object: %q :\n %v", t, resourceName, err)
 				return "", err
 			}
 		}
@@ -290,9 +333,18 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 		}
 
 		originalInfo := original.Get(info)
+
+		// The resource already exists in the cluster, but it wasn't defined in the previous release.
+		// In this case, we consider it to be a resource that was previously un-managed by the release and error out,
+		// asking for the user to intervene.
+		//
+		// See https://github.com/helm/helm/issues/1193 for more info.
 		if originalInfo == nil {
-			kind := info.Mapping.GroupVersionKind.Kind
-			return fmt.Errorf("no %s with the name %q found", kind, info.Name)
+			return fmt.Errorf(
+				"kind %s with the name %q already exists in the cluster and wasn't defined in the previous release. Before upgrading, please either delete the resource from the cluster or remove it from the chart",
+				info.Mapping.GroupVersionKind.Kind,
+				info.Name,
+			)
 		}
 
 		if err := updateResource(c, info, originalInfo.Object, force, recreate); err != nil {
@@ -320,8 +372,9 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 		if err != nil {
 			c.Log("Unable to get annotations on %q, err: %s", info.Name, err)
 		}
-		if annotations != nil && annotations[ResourcePolicyAnno] == KeepPolicy {
-			c.Log("Skipping delete of %q due to annotation [%s=%s]", info.Name, ResourcePolicyAnno, KeepPolicy)
+		if ResourcePolicyIsKeep(annotations) {
+			policy := annotations[ResourcePolicyAnno]
+			c.Log("Skipping delete of %q due to annotation [%s=%s]", info.Name, ResourcePolicyAnno, policy)
 			continue
 		}
 

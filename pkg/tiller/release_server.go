@@ -61,7 +61,7 @@ var (
 	// errInvalidRevision indicates that an invalid release revision number was provided.
 	errInvalidRevision = errors.New("invalid release revision")
 	//errInvalidName indicates that an invalid release name was provided
-	errInvalidName = errors.New("invalid release name, must match regex ^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+$ and the length must not longer than 53")
+	errInvalidName = errors.New("invalid release name, must match regex ^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+$ and the length must not be longer than 53")
 )
 
 // ListDefaultLimit is the default limit for number of items returned in a list.
@@ -115,7 +115,7 @@ func NewReleaseServer(env *environment.Environment, clientset kubernetes.Interfa
 // request values are not altered.
 func (s *ReleaseServer) reuseValues(req *services.UpdateReleaseRequest, current *release.Release) error {
 	if req.ResetValues {
-		// If ResetValues is set, we comletely ignore current.Config.
+		// If ResetValues is set, we completely ignore current.Config.
 		s.Log("resetting values to the chart's original version")
 		return nil
 	}
@@ -191,11 +191,11 @@ func (s *ReleaseServer) uniqName(start string, reuse bool) (string, error) {
 		rel := h[0]
 
 		if st := rel.Info.Status.Code; reuse && (st == release.Status_DELETED || st == release.Status_FAILED) {
-			// Allowe re-use of names if the previous release is marked deleted.
+			// Allow re-use of names if the previous release is marked deleted.
 			s.Log("name %s exists but is not in use, reusing name", start)
 			return start, nil
 		} else if reuse {
-			return "", fmt.Errorf("a released named %s is in use, cannot re-use a name that is still in use", start)
+			return "", fmt.Errorf("a release named %s is in use, cannot re-use a name that is still in use", start)
 		}
 
 		return "", fmt.Errorf("a release named %s already exists.\nRun: helm ls --all %s; to check the status of the release\nOr run: helm del --purge %s; to delete it", start, start, start)

@@ -235,6 +235,9 @@ orphaned. Helm will no longer manage it in any way. This can lead to problems
 if using `helm install --replace` on a release that has already been deleted, but
 has kept resources.
 
+To explicitly opt in to resource deletion, for example when overriding a chart's
+default annotations, set the resource policy annotation value to `delete`.
+
 ### Using with Random Secrets
 
 For the case where a chart installs a randomized secret that should not be
@@ -310,7 +313,7 @@ According to the YAML specification, YAML is a superset of JSON. That
 means that any valid JSON structure ought to be valid in YAML.
 
 This has an advantage: Sometimes template developers may find it easier
-to express a datastructure with a JSON-like syntax rather than deal with
+to express a data structure with a JSON-like syntax rather than deal with
 YAML's whitespace sensitivity.
 
 As a best practice, templates should follow a YAML-like syntax _unless_

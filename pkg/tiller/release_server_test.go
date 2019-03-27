@@ -31,8 +31,8 @@ import (
 	"github.com/technosophos/moniker"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/metadata"
-	"k8s.io/api/core/v1"
-	"k8s.io/cli-runtime/pkg/genericclioptions/resource"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes/fake"
 
 	"k8s.io/helm/pkg/helm"
@@ -89,9 +89,18 @@ spec:
 
 var manifestWithKeep = `kind: ConfigMap
 metadata:
-  name: test-cm-keep
+  name: test-cm-keep-a
   annotations:
     "helm.sh/resource-policy": keep
+data:
+  name: value
+`
+
+var manifestWithKeepEmpty = `kind: ConfigMap
+metadata:
+  name: test-cm-keep-b
+  annotations:
+    "helm.sh/resource-policy": ""
 data:
   name: value
 `
@@ -449,23 +458,27 @@ func releaseWithKeepStub(rlsName string) *release.Release {
 			Name: "bunnychart",
 		},
 		Templates: []*chart.Template{
-			{Name: "templates/configmap", Data: []byte(manifestWithKeep)},
+			{Name: "templates/configmap-keep-a", Data: []byte(manifestWithKeep)},
+			{Name: "templates/configmap-keep-b", Data: []byte(manifestWithKeepEmpty)},
 		},
 	}
 
 	date := timestamp.Timestamp{Seconds: 242085845, Nanos: 0}
-	return &release.Release{
+	rl := &release.Release{
 		Name: rlsName,
 		Info: &release.Info{
 			FirstDeployed: &date,
 			LastDeployed:  &date,
 			Status:        &release.Status{Code: release.Status_DEPLOYED},
 		},
-		Chart:    ch,
-		Config:   &chart.Config{Raw: `name: value`},
-		Version:  1,
-		Manifest: manifestWithKeep,
+		Chart:   ch,
+		Config:  &chart.Config{Raw: `name: value`},
+		Version: 1,
 	}
+
+	helm.RenderReleaseMock(rl, false)
+
+	return rl
 }
 
 func MockEnvironment() *environment.Environment {
