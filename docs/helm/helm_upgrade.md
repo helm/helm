@@ -62,6 +62,27 @@ which results in "pwd: 3jk$o2z=f\30with'quote".
 helm upgrade [RELEASE] [CHART] [flags]
 ```
 
+### Gotchas
+
+#### --install
+
+When issuing the helm update command one can specify the `-` / `--install` flag what will install a new release as per the parameters provided. The expectation is that a new release is being created in the namespace passed as paramater. However. As the releases in helm 2 are globally scoped install can have some unintented sideeffects.
+
+*If there is a release deployed already with the given name in any namespaces; the already existing release will be updated irrespective to the namespace parameter.*
+
+Example:
+
+```
+helm upgrade --install product --namespace development helm-charts/product-2.0.0
+
+WARNING: Namespace "development" doesn't match with previous. Release will be deployed to production
+Release "product" has been upgraded. Happy Helming!
+```
+
+To avoid the above it is advised that:
+* don't use the `--install` flag as the above behaviour can't be turned of in helm 2
+* make sure that release names are unique (applying namespace to the name of the release for example)
+
 ### Options
 
 ```
