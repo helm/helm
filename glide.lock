@@ -1,5 +1,5 @@
-hash: 9a8f0b6c906f605bb879fbcdf0c122096f7698fe6a975ec4e6648f2ee85fce3e
-updated: 2019-03-26T10:33:38.977361532-07:00
+hash: a1ca1ebfc69b1ad1cf0891c64fe08dd5e2666c787247108df6d145db291a0901
+updated: 2019-03-28T14:14:49.530900945+01:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -212,9 +212,10 @@ imports:
 - name: github.com/pkg/errors
   version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/prometheus/client_golang
-  version: c5b7fccd204277076155f10851dad72b76a49317
+  version: 505eaef017263e299324067d40ca2c48f6a2cf50
   subpackages:
   - prometheus
+  - prometheus/internal
   - prometheus/promhttp
 - name: github.com/prometheus/client_model
   version: fa8ad6fec33561be4280a8f0514318c79d7f6cb6
@@ -644,7 +645,7 @@ imports:
   - pkg/util/proto/testing
   - pkg/util/proto/validation
 - name: k8s.io/kubernetes
-  version: b805719a99126e54bcbc0a3d9ee8a45cd7e85632
+  version: a9f35a67c8386ad2fc43e1ca9587bd158d16129c
   subpackages:
   - pkg/api/legacyscheme
   - pkg/api/service

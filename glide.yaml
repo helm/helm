@@ -48,7 +48,7 @@ import:
   - package: github.com/BurntSushi/toml
     version: ~0.3.0
   - package: github.com/prometheus/client_golang
-    version: 0.8.0
+    version: 0.9.2
   - package: github.com/grpc-ecosystem/go-grpc-prometheus
   - package: k8s.io/kubernetes
     version: release-1.14
