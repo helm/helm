@@ -158,7 +158,8 @@ the preferred method of declaring dependencies is by using a
 `requirements.yaml` file inside of your chart.
 
 **Note:** The `dependencies:` section of the `Chart.yaml` from Helm
-Classic has been completely removed.
+Classic has been completely removed.  Dependencies are now specified
+in the `dependencies` field of the `requirements.yaml` file.
 
 ### Managing Dependencies with `requirements.yaml`
 
@@ -181,7 +182,7 @@ dependencies:
   that you must also use `helm repo add` to add that repo locally.
 
 Once you have a dependencies file, you can run `helm dependency update`
-and it will use your dependency file to download all the specified
+and it will use the `dependencies` field of your `requirements.yaml` file to download all the specified
 charts into your `charts/` directory for you.
 
 ```console
