@@ -6,7 +6,6 @@ Helm and Tiller.
 ## Prerequisites
 
 - The latest version of Go
-- The latest version of Glide
 - A Kubernetes cluster w/ kubectl (optional)
 - The gRPC toolchain
 - Git
@@ -19,16 +18,11 @@ We use Make to build our programs. The simplest way to get started is:
 $ make bootstrap build
 ```
 
-NOTE: This will fail if not running from the path `$GOPATH/src/k8s.io/helm`. The
-directory `k8s.io` should not be a symlink or `build` will not find the relevant
-packages.
-
 This will build both Helm and Tiller. `make bootstrap` will attempt to
 install certain tools if they are missing.
 
-To run all the tests (without running the tests for `vendor/`), run
-`make test`. To run all tests in a containerized environment, run `make
-docker-test`.
+To run all the tests run `make test`. To run all tests in a containerized
+environment, run `make docker-test`.
 
 To run Helm and Tiller locally, you can run `bin/helm` or `bin/tiller`.
 
@@ -149,9 +143,7 @@ The code for the Helm project is organized as follows:
 - The `rootfs/` folder is used for Docker-specific files.
 - The `docs/` folder is used for documentation and examples.
 
-Go dependencies are managed with
-[Glide](https://github.com/Masterminds/glide) and stored in the
-`vendor/` directory.
+Go dependencies are managed with Go modules, so there is no vendor folder.
 
 ### Git Conventions
 
@@ -161,10 +153,9 @@ home of the current development candidate. Releases are tagged.
 We accept changes to the code via GitHub Pull Requests (PRs). One
 workflow for doing this is as follows:
 
-1. Go to your `$GOPATH/src/k8s.io` directory and `git clone` the
-   `github.com/helm/helm` repository.
+1. `git clone` the `github.com/helm/helm` repository.
 2. Fork that repository into your GitHub account
-3. Add your repository as a remote for `$GOPATH/src/k8s.io/helm`
+3. Add your repository as a remote: `git remote add <username> <your_fork_address>`
 4. Create a new working branch (`git checkout -b feat/my-feature`) and
    do your work on that branch.
 5. When you are ready for us to review, sign your commit, push your branch to GitHub, and

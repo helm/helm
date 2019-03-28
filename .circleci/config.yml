@@ -13,15 +13,15 @@ jobs:
           version: 18.06.0-ce
       - restore_cache:
           keys:
-            - glide-{{ checksum "glide.yaml" }}-{{ checksum "glide.lock" }}
-            - glide- # used as a fall through if the checksum fails to find exact entry
+            - gomod-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
+            - gomod- # used as a fall through if the checksum fails to find exact entry
       - run:
           name: install dependencies
           command: .circleci/bootstrap.sh
       - save_cache:
-          key: glide-{{ checksum "glide.yaml" }}-{{ checksum "glide.lock" }}
+          key: gomod-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
           paths:
-            - /root/.glide  # Where the glide cache is stored
+            - /go/pkg/mod  # Where the package cache is stored
       - run:
           name: test
           command: .circleci/test.sh

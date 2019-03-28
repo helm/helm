@@ -9,7 +9,7 @@ DIST_DIRS         = find * -type d -exec
 
 # go option
 GO        ?= go
-PKG       := $(shell glide novendor)
+PKG       := ./...
 TAGS      :=
 TESTS     := .
 TESTFLAGS :=
@@ -17,6 +17,9 @@ LDFLAGS   := -w -s
 GOFLAGS   :=
 BINDIR    := $(CURDIR)/bin
 BINARIES  := helm tiller
+
+# required for anyone who is doing this in gopath
+export GO111MODULE=on
 
 # Required for globs to work correctly
 SHELL=/usr/bin/env bash
@@ -157,23 +160,21 @@ clean:
 coverage:
 	@scripts/coverage.sh
 
-HAS_GLIDE := $(shell command -v glide;)
 HAS_GOX := $(shell command -v gox;)
 HAS_GIT := $(shell command -v git;)
+PROTOBUF_VERSION := $(shell cat go.mod | grep golang/protobuf | awk '{print $$2}';)
 
 .PHONY: bootstrap
+# Note that because go modules are not user friendly, we can't just do a go get
+# in the current directory because it will add it to the go.mod
 bootstrap:
-ifndef HAS_GLIDE
-	go get -u github.com/Masterminds/glide
-endif
 ifndef HAS_GOX
-	go get -u github.com/mitchellh/gox
+	cd /tmp && GO111MODULE=off go get -u github.com/mitchellh/gox
 endif
-
 ifndef HAS_GIT
 	$(error You must install Git)
 endif
-	glide install --strip-vendor
-	go build -o bin/protoc-gen-go ./vendor/github.com/golang/protobuf/protoc-gen-go
+	cd /tmp && GOBIN=$(BINDIR) go get -u github.com/golang/protobuf/protoc-gen-go@$(PROTOBUF_VERSION)
+	go mod download
 
 include versioning.mk
