@@ -18,6 +18,10 @@ package main // import "helm.sh/helm/cmd/helm"
 
 import (
 	"io"
+	"os"
+	"os/exec"
+	"strings"
+	"syscall"
 
 	"github.com/containerd/containerd/remotes/docker"
 	"github.com/spf13/cobra"
@@ -74,6 +78,20 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 			Resolver: docker.NewResolver(docker.ResolverOptions{}),
 		},
 		CacheRootDir: settings.Home.Registry(),
+	})
+
+	cmd.SetHelpFunc(func(c *cobra.Command, _ []string) {
+		commandName := strings.ReplaceAll(c.CommandPath(), " ", "-")
+		binary, err := exec.LookPath("man")
+		if err != nil {
+			c.Println(err)
+		}
+
+		a := []string{"man", commandName}
+
+		if err := syscall.Exec(binary, a, os.Environ()); err != nil {
+			c.Println(err)
+		}
 	})
 
 	cmd.AddCommand(

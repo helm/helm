@@ -120,17 +120,28 @@ Plugins _should_ display help text and then exit for `-h` and `--help`. In all o
 
 ## Changes from Helm 2
 
-In Helm 2, plugins were installed using the `$ helm plugin install <path|url>` command. You could pass in a path to a plugin on your local file system or a url of a remote VCS repo. `helm plugin install` would clone or copy the plugin into `$(helm home)/plugins`.
+In Helm 2, plugins were installed using the `$ helm plugin install <path|url>` command. Using a path to your local filesystem or a URL to a git repository, it would install that plugin, making it available for use with Helm.
 
-Plugins also included a a `plugin.yaml` file which would define how to install, upgrade and invoke the plugin, along with hooks for the `helm` CLI to integrate the plugin into `helm help`.
+When downloaded, plugins included a `plugin.yaml` file which would tell Helm how to fetch and invoke the plugin binary.
 
-This approach came with a few limitations, however:
+After a few years of developing plugins and testing out the architecture, a few limitations arose:
 
-- `helm plugin install --version 1.0.0` may fetch a plugin.yaml that did not match with the intended version number, leaving Helm in an erroneous state
-- most VCS repositories only contained the source code, but not the binary. Most plugins just invoked a bash/powershell script to fetch the actual binary.
+- Git repositories only contained source code, whereas some plugins relied on a compiled binary. Fetching a plugin meant including a shell script to fetch the binary, meaning that each plugin had to handle the install/fetch logic in-house.
+- because of the first point, `helm plugin install --version 1.0.0` would clone the repository at tag `1.0.0`, but the shell script may not fetch that same version, leaving the user with the improper version they desired
+- `helm plugin upgrade` would only work if
+  - it was a git repository
+  - no `--version` flag was provided
+  - the default branch was always clean (read: the commit history was never rewritten)
 
-We were, in effect, re-building all of the functionality of a traditional package manager.
+After looking closely at the plugin architecture, we also found that many of the use cases required through the `plugin.yaml` had already been solved by other tools, such as `git` with its PATH lookup syntax and how `git help` integrates with [`man(1)`](http://man7.org/linux/man-pages/man1/man.1.html).
 
-In the end, we decided to split out Helm's plugin manager from Helm 3, relying on the community to distribute their plugins through more traditional package managers.
+Instead of re-building another package manager within Helm, we could simply ask plugin maintainers to distribute their plugins through more traditional package managers, integrating through alternative means:
 
-This has the trade-off of plugins being unable to integrate with `helm help`, but the ease of development and ease of integrations with tools like `apt`/`brew` for package management and `man` for documentation made for a simpler plugin development experience.
+- reading plugins from PATH, much like how `git` integrates with plugins
+- fetch `helm help` information using tools like [`man(1)`](http://man7.org/linux/man-pages/man1/man.1.html)
+
+Because of the limitations from Helm 2's plugin management system, we decided to experiment with a few things:
+
+- remove Helm's plugin manager from the core
+- remove the concept of a `plugin.yaml`
+- If a command - or a guide - is given through `helm help`, a manual page for that command or guide is brought up.
