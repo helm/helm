@@ -16,10 +16,13 @@ limitations under the License.
 package chartutil
 
 import (
+	"encoding/json"
 	"fmt"
 	"runtime"
+	"sort"
 
 	"k8s.io/apimachinery/pkg/version"
+
 	"k8s.io/client-go/kubernetes/scheme"
 )
 
@@ -66,7 +69,7 @@ func NewVersionSet(apiVersions ...string) VersionSet {
 
 // Has returns true if the version string is in the set.
 //
-//	vs.Has("extensions/v1beta1")
+//	vs.Has("apps/v1")
 func (v VersionSet) Has(apiVersion string) bool {
 	_, ok := v[apiVersion]
 	return ok
@@ -78,4 +81,24 @@ func allKnownVersions() VersionSet {
 		vs[gv.String()] = struct{}{}
 	}
 	return vs
+}
+
+// MarshalJSON implements the encoding/json.Marshaler interface.
+func (v VersionSet) MarshalJSON() ([]byte, error) {
+	out := make([]string, 0, len(v))
+	for i := range v {
+		out = append(out, i)
+	}
+	sort.Strings(out)
+	return json.Marshal(out)
+}
+
+// UnmarshalJSON implements the encoding/json.Unmarshaler interface.
+func (v *VersionSet) UnmarshalJSON(data []byte) error {
+	var vs []string
+	if err := json.Unmarshal(data, &vs); err != nil {
+		return err
+	}
+	*v = NewVersionSet(vs...)
+	return nil
 }
