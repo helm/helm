@@ -59,4 +59,3 @@ spec:
               port: http
           resources:
             {}
-
