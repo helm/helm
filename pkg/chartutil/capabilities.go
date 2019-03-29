@@ -74,8 +74,8 @@ func (v VersionSet) Has(apiVersion string) bool {
 
 func allKnownVersions() VersionSet {
 	vs := make(VersionSet)
-	for gvk := range scheme.Scheme.AllKnownTypes() {
-		vs[gvk.GroupVersion().String()] = struct{}{}
+	for _, gv := range scheme.Scheme.PrioritizedVersionsAllGroups() {
+		vs[gv.String()] = struct{}{}
 	}
 	return vs
 }
