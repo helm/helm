@@ -78,12 +78,8 @@ The code for the Helm project is organized as follows:
 - The individual programs are located in `cmd/`. Code inside of `cmd/`
   is not designed for library re-use.
 - Shared libraries are stored in `pkg/`.
-- The raw ProtoBuf files are stored in `_proto/hapi` (where `hapi` stands for
-  the Helm Application Programming Interface).
-- The Go files generated from the `proto` definitions are stored in `pkg/proto`.
 - The `scripts/` directory contains a number of utility scripts. Most of these
   are used by the CI/CD pipeline.
-- The `rootfs/` folder is used for Docker-specific files.
 - The `docs/` folder is used for documentation and examples.
 
 Go dependencies are managed with
@@ -150,24 +146,3 @@ Read more:
 
 - Effective Go [introduces formatting](https://golang.org/doc/effective_go.html#formatting).
 - The Go Wiki has a great article on [formatting](https://github.com/golang/go/wiki/CodeReviewComments).
-
-### Protobuf Conventions
-
-Because this project is largely Go code, we format our Protobuf files as
-closely to Go as possible. There are currently no real formatting rules
-or guidelines for Protobuf, but as they emerge, we may opt to follow
-those instead.
-
-Standards:
-- Tabs for indentation, not spaces.
-- Spacing rules follow Go conventions (curly braces at line end, spaces
-  around operators).
-
-Conventions:
-- Files should specify their package with `option go_package = "...";`
-- Comments should translate into good Go code comments (since `protoc`
-  copies comments into the destination source code file).
-- RPC functions are defined in the same file as their request/response
-  messages.
-- Deprecated RPCs, messages, and fields are marked deprecated in the comments (`// UpdateFoo
-  DEPRECATED updates a foo.`).
