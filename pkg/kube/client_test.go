@@ -283,6 +283,54 @@ func TestUpdateNonManagedResourceError(t *testing.T) {
 	}
 }
 
+func TestDeleteWithTimeout(t *testing.T) {
+	testCases := map[string]struct {
+		deleteTimeout int64
+		deleteAfter   time.Duration
+		success       bool
+	}{
+		"resource is deleted within timeout period": {
+			int64((2 * time.Minute).Seconds()),
+			10 * time.Second,
+			true,
+		},
+		"resource is not deleted within the timeout period": {
+			int64((10 * time.Second).Seconds()),
+			20 * time.Second,
+			false,
+		},
+	}
+
+	for tn, tc := range testCases {
+		t.Run(tn, func(t *testing.T) {
+			c := newTestClient()
+			defer c.Cleanup()
+
+			service := newService("my-service")
+			startTime := time.Now()
+			c.TestFactory.UnstructuredClient = &fake.RESTClient{
+				GroupVersion:         schema.GroupVersion{Version: "v1"},
+				NegotiatedSerializer: unstructuredSerializer,
+				Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+					currentTime := time.Now()
+					if startTime.Add(tc.deleteAfter).Before(currentTime) {
+						return newResponse(404, notFoundBody())
+					}
+					return newResponse(200, &service)
+				}),
+			}
+
+			err := c.DeleteWithTimeout(metav1.NamespaceDefault, strings.NewReader(testServiceManifest), tc.deleteTimeout, true)
+			if err != nil && tc.success {
+				t.Errorf("expected no error, but got %v", err)
+			}
+			if err == nil && !tc.success {
+				t.Errorf("expected error, but didn't get one")
+			}
+		})
+	}
+}
+
 func TestBuild(t *testing.T) {
 	tests := []struct {
 		name      string

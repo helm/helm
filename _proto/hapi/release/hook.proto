@@ -56,4 +56,6 @@ message Hook {
 	int32 weight = 7;
 	// DeletePolicies are the policies that indicate when to delete the hook
 	repeated DeletePolicy delete_policies = 8;
+	// DeleteTimeout indicates how long to wait for a resource to be deleted before timing out
+	int64 delete_timeout = 9;
 }

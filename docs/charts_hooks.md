@@ -199,6 +199,10 @@ You can choose one or more defined annotation values:
 * `"hook-failed"` specifies Tiller should delete the hook if the hook failed during execution.
 * `"before-hook-creation"` specifies Tiller should delete the previous hook before the new hook is launched.
 
+By default Tiller will wait for 60 seconds for a deleted hook to no longer exist in the API server before timing out. This
+behavior can be changed using the `helm.sh/hook-delete-timeout` annotation. The value is the number of seconds Tiller
+should wait for the hook to be fully deleted. A value of 0 means Tiller does not wait at all.
+
 ### Defining a CRD with the `crd-install` Hook
 
 Custom Resource Definitions (CRDs) are a special kind in Kubernetes. They provide

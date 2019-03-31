@@ -455,7 +455,8 @@ func (s *ReleaseServer) deleteHookByPolicy(h *release.Hook, policy string, name,
 	b := bytes.NewBufferString(h.Manifest)
 	if hookHasDeletePolicy(h, policy) {
 		s.Log("deleting %s hook %s for release %s due to %q policy", hook, h.Name, name, policy)
-		if errHookDelete := kubeCli.Delete(namespace, b); errHookDelete != nil {
+		waitForDelete := h.DeleteTimeout > 0
+		if errHookDelete := kubeCli.DeleteWithTimeout(namespace, b, h.DeleteTimeout, waitForDelete); errHookDelete != nil {
 			s.Log("warning: Release %s %s %S could not be deleted: %s", name, hook, h.Path, errHookDelete)
 			return errHookDelete
 		}
