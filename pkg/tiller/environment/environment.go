@@ -127,6 +127,16 @@ type KubeClient interface {
 	// by "\n---\n").
 	Delete(namespace string, reader io.Reader) error
 
+	// DeleteWithTimeout destroys one or more resources. If shouldWait is true, the function
+	// will not return until all the resources have been fully deleted or the provided
+	// timeout has expired.
+	//
+	// namespace must contain a valid existing namespace.
+	//
+	// reader must contain a YAML stream (one or more YAML documents separated
+	// by "\n---\n").
+	DeleteWithTimeout(namespace string, reader io.Reader, timeout int64, shouldWait bool) error
+
 	// WatchUntilReady watch the resource in reader until it is "ready".
 	//
 	// For Jobs, "ready" means the job ran to completion (excited without error).
@@ -178,6 +188,14 @@ func (p *PrintingKubeClient) Get(ns string, r io.Reader) (string, error) {
 //
 // It only prints out the content to be deleted.
 func (p *PrintingKubeClient) Delete(ns string, r io.Reader) error {
+	_, err := io.Copy(p.Out, r)
+	return err
+}
+
+// DeleteWithTimeout implements KubeClient DeleteWithTimeout.
+//
+// It only prints out the content to be deleted.
+func (p *PrintingKubeClient) DeleteWithTimeout(ns string, r io.Reader, timeout int64, shouldWait bool) error {
 	_, err := io.Copy(p.Out, r)
 	return err
 }

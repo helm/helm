@@ -27,6 +27,8 @@ const (
 	HookWeightAnno = "helm.sh/hook-weight"
 	// HookDeleteAnno is the label name for the delete policy for a hook
 	HookDeleteAnno = "helm.sh/hook-delete-policy"
+	// HookDeleteTimeoutAnno is the label name for the timeout value for delete policies
+	HookDeleteTimeoutAnno = "helm.sh/hook-delete-timeout"
 )
 
 // Types of hooks
