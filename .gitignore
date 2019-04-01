@@ -4,6 +4,7 @@
 .idea/
 .vimrc
 .vscode/
+/docs/helm
 /docs/man
 _dist/
 bin/

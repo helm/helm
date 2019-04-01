@@ -81,6 +81,10 @@ test-style: vendor $(GOLANGCI_LINT)
 	$(GOLANGCI_LINT) run
 	@scripts/validate-license.sh
 
+.PHONY: verify-docs
+verify-docs: build
+	@scripts/verify-docs.sh
+
 .PHONY: coverage
 coverage:
 	@scripts/coverage.sh
@@ -143,6 +147,10 @@ checksum:
 	done
 
 # ------------------------------------------------------------------------------
+
+.PHONY: docs
+docs: build
+	@scripts/update-docs.sh
 
 .PHONY: clean
 clean:
