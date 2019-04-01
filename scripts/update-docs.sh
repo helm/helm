@@ -34,7 +34,8 @@ export HELM_NO_PLUGINS=1
 # Reset Helm Home because it is used in the generation of docs.
 OLD_HELM_HOME=${HELM_HOME:-}
 HELM_HOME="$HOME/.helm"
-bin/helm init --client-only
+bin/helm init
+mkdir -p docs/helm
 mkdir -p ${KUBE_TEMP}/docs/helm
 bin/helm docs --dir ${KUBE_TEMP}/docs/helm
 HELM_HOME=$OLD_HELM_HOME
