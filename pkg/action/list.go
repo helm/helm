@@ -87,8 +87,10 @@ const ListAll = ListDeployed | ListUninstalled | ListUninstalling | ListPendingI
 type Sorter uint
 
 const (
-	// ByDate sorts by date
-	ByDate Sorter = iota
+	// ByDateAsc sorts by ascending dates (oldest updated release first)
+	ByDateAsc Sorter = iota
+	// ByDateDesc sorts by descending dates (latest updated release first)
+	ByDateDesc
 	// ByNameAsc sorts by ascending lexicographic order
 	ByNameAsc
 	// ByNameDesc sorts by descending lexicographic order
@@ -109,6 +111,9 @@ type List struct {
 	//
 	// see pkg/releaseutil for several useful sorters
 	Sort Sorter
+	// Overrides the default lexicographic sorting
+	ByDate      bool
+	SortReverse bool
 	// StateMask accepts a bitmask of states for items to show.
 	// The default is ListDeployed
 	StateMask ListStates
@@ -119,8 +124,6 @@ type List struct {
 	// Filter is a filter that is applied to the results
 	Filter       string
 	Short        bool
-	ByDate       bool
-	SortDesc     bool
 	Uninstalled  bool
 	Superseded   bool
 	Uninstalling bool
@@ -194,9 +197,23 @@ func (l *List) Run() ([]*release.Release, error) {
 
 // sort is an in-place sort where order is based on the value of a.Sort
 func (l *List) sort(rels []*release.Release) {
+	l.Sort = ByNameAsc
+	if l.SortReverse {
+		l.Sort = ByNameDesc
+	}
+
+	if l.ByDate {
+		l.Sort = ByDateDesc
+		if l.SortReverse {
+			l.Sort = ByDateAsc
+		}
+	}
+
 	switch l.Sort {
-	case ByDate:
+	case ByDateDesc:
 		releaseutil.SortByDate(rels)
+	case ByDateAsc:
+		releaseutil.Reverse(rels, releaseutil.SortByDate)
 	case ByNameDesc:
 		releaseutil.Reverse(rels, releaseutil.SortByName)
 	default:

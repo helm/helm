@@ -86,7 +86,7 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.BoolVarP(&client.Short, "short", "q", false, "output short (quiet) listing format")
 	f.BoolVarP(&client.ByDate, "date", "d", false, "sort by release date")
-	f.BoolVarP(&client.SortDesc, "reverse", "r", false, "reverse the sort order")
+	f.BoolVarP(&client.SortReverse, "reverse", "r", false, "reverse the sort order")
 	f.BoolVarP(&client.All, "all", "a", false, "show all releases, not just the ones marked deployed")
 	f.BoolVar(&client.Uninstalled, "uninstalled", false, "show uninstalled releases")
 	f.BoolVar(&client.Superseded, "superseded", false, "show superseded releases")
