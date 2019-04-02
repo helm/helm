@@ -87,14 +87,14 @@ const ListAll = ListDeployed | ListUninstalled | ListUninstalling | ListPendingI
 type Sorter uint
 
 const (
-	// ByDateAsc sorts by ascending dates (oldest updated release first)
-	ByDateAsc Sorter = iota
-	// ByDateDesc sorts by descending dates (latest updated release first)
-	ByDateDesc
 	// ByNameAsc sorts by ascending lexicographic order
-	ByNameAsc
+	ByNameAsc Sorter = iota
 	// ByNameDesc sorts by descending lexicographic order
 	ByNameDesc
+	// ByDateAsc sorts by ascending dates (oldest updated release first)
+	ByDateAsc
+	// ByDateDesc sorts by descending dates (latest updated release first)
+	ByDateDesc
 )
 
 // List is the action for listing releases.
@@ -197,7 +197,6 @@ func (l *List) Run() ([]*release.Release, error) {
 
 // sort is an in-place sort where order is based on the value of a.Sort
 func (l *List) sort(rels []*release.Release) {
-	l.Sort = ByNameAsc
 	if l.SortReverse {
 		l.Sort = ByNameDesc
 	}
