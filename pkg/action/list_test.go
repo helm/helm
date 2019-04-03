@@ -103,13 +103,10 @@ func TestList_Limit(t *testing.T) {
 	is := assert.New(t)
 	lister := newListFixture(t)
 	lister.Limit = 2
-	// Sort because otherwise there is no guaranteed order
-	lister.Sort = ByNameAsc
 	makeMeSomeReleases(lister.cfg.Releases, t)
 	list, err := lister.Run()
 	is.NoError(err)
 	is.Len(list, 2)
-
 	// Lex order means one, three, two
 	is.Equal("one", list[0].Name)
 	is.Equal("three", list[1].Name)
@@ -119,8 +116,6 @@ func TestList_BigLimit(t *testing.T) {
 	is := assert.New(t)
 	lister := newListFixture(t)
 	lister.Limit = 20
-	// Sort because otherwise there is no guaranteed order
-	lister.Sort = ByNameAsc
 	makeMeSomeReleases(lister.cfg.Releases, t)
 	list, err := lister.Run()
 	is.NoError(err)
@@ -137,8 +132,6 @@ func TestList_LimitOffset(t *testing.T) {
 	lister := newListFixture(t)
 	lister.Limit = 2
 	lister.Offset = 1
-	// Sort because otherwise there is no guaranteed order
-	lister.Sort = ByNameAsc
 	makeMeSomeReleases(lister.cfg.Releases, t)
 	list, err := lister.Run()
 	is.NoError(err)
@@ -154,8 +147,6 @@ func TestList_LimitOffsetOutOfBounds(t *testing.T) {
 	lister := newListFixture(t)
 	lister.Limit = 2
 	lister.Offset = 3 // Last item is index 2
-	// Sort because otherwise there is no guaranteed order
-	lister.Sort = ByNameAsc
 	makeMeSomeReleases(lister.cfg.Releases, t)
 	list, err := lister.Run()
 	is.NoError(err)
@@ -170,8 +161,6 @@ func TestList_LimitOffsetOutOfBounds(t *testing.T) {
 func TestList_StateMask(t *testing.T) {
 	is := assert.New(t)
 	lister := newListFixture(t)
-	// Sort because otherwise there is no guaranteed order
-	lister.Sort = ByNameAsc
 	makeMeSomeReleases(lister.cfg.Releases, t)
 	one, err := lister.cfg.Releases.Get("one", 1)
 	is.NoError(err)
@@ -200,7 +189,6 @@ func TestList_Filter(t *testing.T) {
 	is := assert.New(t)
 	lister := newListFixture(t)
 	lister.Filter = "th."
-	lister.Sort = ByNameAsc
 	makeMeSomeReleases(lister.cfg.Releases, t)
 
 	res, err := lister.Run()

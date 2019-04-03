@@ -87,10 +87,8 @@ const ListAll = ListDeployed | ListUninstalled | ListUninstalling | ListPendingI
 type Sorter uint
 
 const (
-	// ByNameAsc sorts by ascending lexicographic order
-	ByNameAsc Sorter = iota
 	// ByNameDesc sorts by descending lexicographic order
-	ByNameDesc
+	ByNameDesc Sorter = iota + 1
 	// ByDateAsc sorts by ascending dates (oldest updated release first)
 	ByDateAsc
 	// ByDateDesc sorts by descending dates (latest updated release first)
