@@ -248,7 +248,8 @@ func (u *upgradeCmd) run() error {
 	}
 
 	// Check chart requirements to make sure all dependencies are present in /charts
-	if ch, err := chartutil.Load(chartPath); err == nil {
+	ch, err := chartutil.Load(chartPath)
+	if err == nil {
 		if req, err := chartutil.LoadRequirements(ch); err == nil {
 			if err := renderutil.CheckDependencies(ch, req); err != nil {
 				return err
@@ -260,9 +261,9 @@ func (u *upgradeCmd) run() error {
 		return prettyError(err)
 	}
 
-	resp, err := u.client.UpdateRelease(
+	resp, err := u.client.UpdateReleaseFromChart(
 		u.release,
-		chartPath,
+		ch,
 		helm.UpdateValueOverrides(rawVals),
 		helm.UpgradeDryRun(u.dryRun),
 		helm.UpgradeRecreate(u.recreate),
