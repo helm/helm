@@ -217,15 +217,16 @@ func TestExtract(t *testing.T) {
 	tw := tar.NewWriter(&tarbuf)
 	var files = []struct {
 		Name, Body string
+		Mode       int64
 	}{
-		{"../../plugin.yaml", "sneaky plugin metadata"},
-		{"README.md", "some text"},
+		{"../../plugin.yaml", "sneaky plugin metadata", 0600},
+		{"README.md", "some text", 0777},
 	}
 	for _, file := range files {
 		hdr := &tar.Header{
 			Name:     file.Name,
 			Typeflag: tar.TypeReg,
-			Mode:     0600,
+			Mode:     file.Mode,
 			Size:     int64(len(file.Body)),
 		}
 		if err := tw.WriteHeader(hdr); err != nil {
@@ -257,21 +258,25 @@ func TestExtract(t *testing.T) {
 	}
 
 	pluginYAMLFullPath := filepath.Join(cacheDir, "plugin.yaml")
-	if _, err := os.Stat(pluginYAMLFullPath); err != nil {
+	if info, err := os.Stat(pluginYAMLFullPath); err != nil {
 		if os.IsNotExist(err) {
 			t.Errorf("Expected %s to exist but doesn't", pluginYAMLFullPath)
 		} else {
 			t.Error(err)
 		}
+	} else if info.Mode().Perm() != 0600 {
+		t.Errorf("Expected %s to have 0600 mode it but has %o", pluginYAMLFullPath, info.Mode().Perm())
 	}
 
 	readmeFullPath := filepath.Join(cacheDir, "README.md")
-	if _, err := os.Stat(readmeFullPath); err != nil {
+	if info, err := os.Stat(readmeFullPath); err != nil {
 		if os.IsNotExist(err) {
 			t.Errorf("Expected %s to exist but doesn't", readmeFullPath)
 		} else {
 			t.Error(err)
 		}
+	} else if info.Mode().Perm() != 0777 {
+		t.Errorf("Expected %s to have 0777 mode it but has %o", readmeFullPath, info.Mode().Perm())
 	}
 
 }
