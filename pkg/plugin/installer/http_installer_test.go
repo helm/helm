@@ -25,6 +25,7 @@ import (
 	"k8s.io/helm/pkg/helm/helmpath"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 )
 
@@ -212,6 +213,8 @@ func TestExtract(t *testing.T) {
 	//{"plugin.yaml", "plugin metadata up in here"},
 	//{"README.md", "so you know what's upp"},
 	//{"script.sh", "echo script"},
+
+	syscall.Umask(0000)
 
 	var tarbuf bytes.Buffer
 	tw := tar.NewWriter(&tarbuf)
