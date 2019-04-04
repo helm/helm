@@ -371,6 +371,7 @@ func (c *Client) UpdateWithOptions(namespace string, originalReader, targetReade
 	cleanupErrors := []string{}
 
 	if opts.CleanupOnFail && (err != nil || len(updateErrors) != 0) {
+		c.Log("Cleanup on fail enabled: cleaning up newly created resources due to update manifests failures")
 		cleanupErrors = c.cleanup(newlyCreatedResources)
 	}
 
@@ -405,6 +406,7 @@ func (c *Client) UpdateWithOptions(namespace string, originalReader, targetReade
 		err := c.waitForResources(time.Duration(opts.Timeout)*time.Second, target)
 
 		if opts.CleanupOnFail && err != nil {
+			c.Log("Cleanup on fail enabled: cleaning up newly created resources due to wait failure during update")
 			cleanupErrors = c.cleanup(newlyCreatedResources)
 			return fmt.Errorf(strings.Join(append([]string{err.Error()}, cleanupErrors...), " && "))
 		}
