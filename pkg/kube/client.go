@@ -47,7 +47,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/cli-runtime/pkg/genericclioptions/resource"
+	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes/scheme"
 	watchtools "k8s.io/client-go/tools/watch"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
@@ -74,7 +74,7 @@ type Client struct {
 // New creates a new Client.
 func New(getter genericclioptions.RESTClientGetter) *Client {
 	if getter == nil {
-		getter = genericclioptions.NewConfigFlags()
+		getter = genericclioptions.NewConfigFlags(true)
 	}
 	return &Client{
 		Factory: cmdutil.NewFactory(getter),
@@ -333,9 +333,18 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 		}
 
 		originalInfo := original.Get(info)
+
+		// The resource already exists in the cluster, but it wasn't defined in the previous release.
+		// In this case, we consider it to be a resource that was previously un-managed by the release and error out,
+		// asking for the user to intervene.
+		//
+		// See https://github.com/helm/helm/issues/1193 for more info.
 		if originalInfo == nil {
-			kind := info.Mapping.GroupVersionKind.Kind
-			return fmt.Errorf("no %s with the name %q found", kind, info.Name)
+			return fmt.Errorf(
+				"kind %s with the name %q already exists in the cluster and wasn't defined in the previous release. Before upgrading, please either delete the resource from the cluster or remove it from the chart",
+				info.Mapping.GroupVersionKind.Kind,
+				info.Name,
+			)
 		}
 
 		if err := updateResource(c, info, originalInfo.Object, force, recreate); err != nil {

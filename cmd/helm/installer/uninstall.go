@@ -31,13 +31,13 @@ const (
 
 // Uninstall uses Kubernetes client to uninstall Tiller.
 func Uninstall(client kubernetes.Interface, opts *Options) error {
-	if err := deleteService(client.Core(), opts.Namespace); err != nil {
+	if err := deleteService(client.CoreV1(), opts.Namespace); err != nil {
 		return err
 	}
 	if err := deleteDeployment(client, opts.Namespace); err != nil {
 		return err
 	}
-	return deleteSecret(client.Core(), opts.Namespace)
+	return deleteSecret(client.CoreV1(), opts.Namespace)
 }
 
 // deleteService deletes the Tiller Service resource

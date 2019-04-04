@@ -1,6 +1,6 @@
 DOCKER_REGISTRY   ?= gcr.io
 IMAGE_PREFIX      ?= kubernetes-helm
-DEV_IMAGE         ?= golang:1.12
+DEV_IMAGE         ?= golang:1.12.1
 SHORT_NAME        ?= tiller
 SHORT_NAME_RUDDER ?= rudder
 TARGETS           ?= darwin/amd64 linux/amd64 linux/386 linux/arm linux/arm64 linux/ppc64le linux/s390x windows/amd64
