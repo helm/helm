@@ -241,6 +241,9 @@ func (l *List) SetStateMask() {
 	if l.Failed {
 		state |= ListFailed
 	}
+	if l.Superseded {
+		state |= ListSuperseded
+	}
 
 	// Apply a default
 	if state == 0 {
