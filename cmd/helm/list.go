@@ -66,7 +66,6 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if client.AllNamespaces {
 				client.SetConfiguration(newActionConfig(true))
 			}
-			client.All = client.Limit == -1
 			client.SetStateMask()
 
 			results, err := client.Run()
