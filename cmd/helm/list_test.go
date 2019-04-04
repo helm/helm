@@ -65,7 +65,7 @@ func TestListCmd(t *testing.T) {
 			Version:   1,
 			Namespace: defaultNamespace,
 			Info: &release.Info{
-				LastDeployed: timestamp2,
+				LastDeployed: timestamp1,
 				Status:       release.StatusUninstalled,
 			},
 			Chart: chartInfo,

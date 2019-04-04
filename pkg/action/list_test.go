@@ -81,6 +81,7 @@ func TestList_AllNamespaces(t *testing.T) {
 	lister := newListFixture(t)
 	makeMeSomeReleases(lister.cfg.Releases, t)
 	lister.AllNamespaces = true
+	lister.SetStateMask()
 	list, err := lister.Run()
 	is.NoError(err)
 	is.Len(list, 3)
@@ -221,6 +222,11 @@ func makeMeSomeReleases(store *storage.Storage, t *testing.T) {
 	three.Name = "three"
 	three.Namespace = "default"
 	three.Version = 3
+	four := releaseStub()
+	four.Name = "four"
+	four.Namespace = "default"
+	four.Version = 4
+	four.Info.Status = release.StatusSuperseded
 
 	for _, rel := range []*release.Release{one, two, three} {
 		if err := store.Create(rel); err != nil {
