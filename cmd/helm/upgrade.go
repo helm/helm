@@ -276,8 +276,9 @@ func (u *upgradeCmd) run() error {
 		helm.UpgradeWait(u.wait),
 		helm.UpgradeDescription(u.description))
 	if err != nil {
-		fmt.Fprintf(u.out, "UPGRADE FAILED\nROLLING BACK\nError: %v\n", prettyError(err))
+		fmt.Fprintf(u.out, "UPGRADE FAILED\nError: %v\n", prettyError(err))
 		if u.atomic {
+			fmt.Fprint(u.out, "ROLLING BACK")
 			rollback := &rollbackCmd{
 				out:          u.out,
 				client:       u.client,
