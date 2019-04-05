@@ -126,14 +126,17 @@ type KubeClient interface {
 	// error.
 	WatchUntilReady(namespace string, reader io.Reader, timeout int64, shouldWait bool) error
 
-	// Update updates one or more resources or creates the resource
+	// Deprecated; use UpdateWithOptions instead
+	Update(namespace string, originalReader, modifiedReader io.Reader, force bool, recreate bool, timeout int64, shouldWait bool) error
+
+	// UpdateWithOptions updates one or more resources or creates the resource
 	// if it doesn't exist.
 	//
 	// namespace must contain a valid existing namespace.
 	//
 	// reader must contain a YAML stream (one or more YAML documents separated
 	// by "\n---\n").
-	Update(namespace string, originalReader, modifiedReader io.Reader, force bool, recreate bool, timeout int64, shouldWait bool) error
+	UpdateWithOptions(namespace string, originalReader, modifiedReader io.Reader, opts kube.UpdateOptions) error
 
 	Build(namespace string, reader io.Reader) (kube.Result, error)
 	BuildUnstructured(namespace string, reader io.Reader) (kube.Result, error)
@@ -177,6 +180,16 @@ func (p *PrintingKubeClient) WatchUntilReady(ns string, r io.Reader, timeout int
 
 // Update implements KubeClient Update.
 func (p *PrintingKubeClient) Update(ns string, currentReader, modifiedReader io.Reader, force bool, recreate bool, timeout int64, shouldWait bool) error {
+	return p.UpdateWithOptions(ns, currentReader, modifiedReader, kube.UpdateOptions{
+		Force:      force,
+		Recreate:   recreate,
+		Timeout:    timeout,
+		ShouldWait: shouldWait,
+	})
+}
+
+// UpdateWithOptions implements KubeClient UpdateWithOptions.
+func (p *PrintingKubeClient) UpdateWithOptions(ns string, currentReader, modifiedReader io.Reader, opts kube.UpdateOptions) error {
 	_, err := io.Copy(p.Out, modifiedReader)
 	return err
 }

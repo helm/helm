@@ -52,6 +52,9 @@ func (k *mockKubeClient) Delete(ns string, r io.Reader) error {
 func (k *mockKubeClient) Update(ns string, currentReader, modifiedReader io.Reader, force bool, recreate bool, timeout int64, shouldWait bool) error {
 	return nil
 }
+func (k *mockKubeClient) UpdateWithOptions(ns string, currentReader, modifiedReader io.Reader, opts kube.UpdateOptions) error {
+	return nil
+}
 func (k *mockKubeClient) WatchUntilReady(ns string, r io.Reader, timeout int64, shouldWait bool) error {
 	return nil
 }

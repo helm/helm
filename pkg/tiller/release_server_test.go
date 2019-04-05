@@ -500,6 +500,15 @@ type updateFailingKubeClient struct {
 }
 
 func (u *updateFailingKubeClient) Update(namespace string, originalReader, modifiedReader io.Reader, force bool, recreate bool, timeout int64, shouldWait bool) error {
+	return u.UpdateWithOptions(namespace, originalReader, modifiedReader, kube.UpdateOptions{
+		Force:      force,
+		Recreate:   recreate,
+		Timeout:    timeout,
+		ShouldWait: shouldWait,
+	})
+}
+
+func (u *updateFailingKubeClient) UpdateWithOptions(namespace string, originalReader, modifiedReader io.Reader, opts kube.UpdateOptions) error {
 	return errors.New("Failed update in kube client")
 }
 
@@ -630,6 +639,9 @@ func (kc *mockHooksKubeClient) WatchUntilReady(ns string, r io.Reader, timeout i
 	return nil
 }
 func (kc *mockHooksKubeClient) Update(ns string, currentReader, modifiedReader io.Reader, force bool, recreate bool, timeout int64, shouldWait bool) error {
+	return nil
+}
+func (kc *mockHooksKubeClient) UpdateWithOptions(ns string, currentReader, modifiedReader io.Reader, opts kube.UpdateOptions) error {
 	return nil
 }
 func (kc *mockHooksKubeClient) Build(ns string, reader io.Reader) (kube.Result, error) {
