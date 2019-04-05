@@ -67,7 +67,6 @@ const (
 	storageConfigMap = "configmap"
 	storageSecret    = "secret"
 
-	probeAddr = ":44135"
 	traceAddr = ":44136"
 
 	// defaultMaxHistory sets the maximum number of releases to 0: unlimited
@@ -76,6 +75,7 @@ const (
 
 var (
 	grpcAddr             = flag.String("listen", ":44134", "address:port to listen on")
+	probeAddr            = flag.String("probe-listen", ":44135", "address:port to listen on for probes")
 	enableTracing        = flag.Bool("trace", false, "enable rpc tracing")
 	store                = flag.String("storage", storageConfigMap, "storage driver to use. One of 'configmap', 'memory', or 'secret'")
 	remoteReleaseModules = flag.Bool("experimental-release", false, "enable experimental release modules")
@@ -187,7 +187,7 @@ func start() {
 
 	logger.Printf("Starting Tiller %s (tls=%t)", version.GetVersion(), *tlsEnable || *tlsVerify)
 	logger.Printf("GRPC listening on %s", *grpcAddr)
-	logger.Printf("Probes listening on %s", probeAddr)
+	logger.Printf("Probes listening on %s", *probeAddr)
 	logger.Printf("Storage driver is %s", env.Releases.Name())
 	logger.Printf("Max history per release is %d", *maxHistory)
 
@@ -213,7 +213,7 @@ func start() {
 		goprom.Register(rootServer)
 		addPrometheusHandler(mux)
 
-		if err := http.ListenAndServe(probeAddr, mux); err != nil {
+		if err := http.ListenAndServe(*probeAddr, mux); err != nil {
 			probeErrCh <- err
 		}
 	}()
