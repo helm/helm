@@ -228,13 +228,9 @@ func (e *Engine) renderWithReferences(tpls map[string]renderable, referenceTpls 
 		}
 	}()
 	t := template.New("gotpl")
-	if e.Strict {
-		t.Option("missingkey=error")
-	} else {
-		// Not that zero will attempt to add default values for types it knows,
-		// but will still emit <no value> for others. We mitigate that later.
-		t.Option("missingkey=zero")
-	}
+	// Not that zero will attempt to add default values for types it knows,
+	// but will still emit <no value> for others. We mitigate that later.
+	t.Option("missingkey=zero")
 
 	funcMap := e.alterFuncMap(t, referenceTpls)
 
