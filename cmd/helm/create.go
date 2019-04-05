@@ -81,7 +81,7 @@ func (o *createOptions) run(out io.Writer) error {
 		Type:        "application",
 		Version:     "0.1.0",
 		AppVersion:  "1.0",
-		APIVersion:  chart.APIVersionv1,
+		APIVersion:  chart.APIVersionV1,
 	}
 
 	if o.starter != "" {

@@ -109,18 +109,11 @@ func Save(c *chart.Chart, outDir string) (string, error) {
 		return "", errors.Errorf("location %s is not a directory", outDir)
 	}
 
-	if c.Metadata == nil {
-		return "", errors.New("no Chart.yaml data")
+	if err := c.Validate(); err != nil {
+		return "", errors.Wrap(err, "chart validation")
 	}
 
-	cfile := c.Metadata
-	if cfile.Name == "" {
-		return "", errors.New("no chart name specified (Chart.yaml)")
-	} else if cfile.Version == "" {
-		return "", errors.New("no chart version specified (Chart.yaml)")
-	}
-
-	filename := fmt.Sprintf("%s-%s.tgz", cfile.Name, cfile.Version)
+	filename := fmt.Sprintf("%s-%s.tgz", c.Name(), c.Metadata.Version)
 	filename = filepath.Join(outDir, filename)
 	if stat, err := os.Stat(filepath.Dir(filename)); os.IsNotExist(err) {
 		if err := os.MkdirAll(filepath.Dir(filename), 0755); !os.IsExist(err) {

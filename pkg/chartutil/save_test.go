@@ -35,8 +35,9 @@ func TestSave(t *testing.T) {
 
 	c := &chart.Chart{
 		Metadata: &chart.Metadata{
-			Name:    "ahab",
-			Version: "1.2.3.4",
+			APIVersion: chart.APIVersionV1,
+			Name:       "ahab",
+			Version:    "1.2.3",
 		},
 		Files: []*chart.File{
 			{Name: "scheherazade/shahryar.txt", Data: []byte("1,001 Nights")},
@@ -80,8 +81,9 @@ func TestSaveDir(t *testing.T) {
 
 	c := &chart.Chart{
 		Metadata: &chart.Metadata{
-			Name:    "ahab",
-			Version: "1.2.3.4",
+			APIVersion: chart.APIVersionV1,
+			Name:       "ahab",
+			Version:    "1.2.3",
 		},
 		Files: []*chart.File{
 			{Name: "scheherazade/shahryar.txt", Data: []byte("1,001 Nights")},

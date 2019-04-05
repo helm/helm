@@ -15,6 +15,8 @@ limitations under the License.
 
 package chart
 
+import "errors"
+
 // Maintainer describes a Chart maintainer.
 type Maintainer struct {
 	// Name is a user name or organization name
@@ -64,4 +66,21 @@ type Metadata struct {
 	Dependencies []*Dependency `json:"dependencies,omitempty"`
 	// Specifies the chart type: application or library
 	Type string `json:"type,omitempty"`
+}
+
+func (md *Metadata) Validate() error {
+	if md == nil {
+		return errors.New("metadata is required")
+	}
+	if md.APIVersion == "" {
+		return errors.New("metadata apiVersion is required")
+	}
+	if md.Name == "" {
+		return errors.New("metadata name is required")
+	}
+	if md.Version == "" {
+		return errors.New("metadata version is required")
+	}
+	// TODO validate valid semver here?
+	return nil
 }

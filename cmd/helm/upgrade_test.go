@@ -29,6 +29,7 @@ import (
 func TestUpgradeCmd(t *testing.T) {
 	tmpChart := testTempDir(t)
 	cfile := &chart.Metadata{
+		APIVersion:  chart.APIVersionV1,
 		Name:        "testUpgradeChart",
 		Description: "A Helm chart for Kubernetes",
 		Version:     "0.1.0",
