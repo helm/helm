@@ -76,6 +76,7 @@ const (
 var (
 	grpcAddr             = flag.String("listen", ":44134", "address:port to listen on")
 	probeAddr            = flag.String("probe-listen", ":44135", "address:port to listen on for probes")
+	enableProbing        = flag.Bool("probe", true, "enable probing over http")
 	enableTracing        = flag.Bool("trace", false, "enable rpc tracing")
 	store                = flag.String("storage", storageConfigMap, "storage driver to use. One of 'configmap', 'memory', or 'secret'")
 	remoteReleaseModules = flag.Bool("experimental-release", false, "enable experimental release modules")
@@ -187,7 +188,9 @@ func start() {
 
 	logger.Printf("Starting Tiller %s (tls=%t)", version.GetVersion(), *tlsEnable || *tlsVerify)
 	logger.Printf("GRPC listening on %s", *grpcAddr)
-	logger.Printf("Probes listening on %s", *probeAddr)
+	if *enableProbing {
+		logger.Printf("Probes listening on %s", *probeAddr)
+	}
 	logger.Printf("Storage driver is %s", env.Releases.Name())
 	logger.Printf("Max history per release is %d", *maxHistory)
 
@@ -207,6 +210,10 @@ func start() {
 	}()
 
 	go func() {
+		if !*enableProbing {
+			return
+		}
+
 		mux := newProbesMux()
 
 		// Register gRPC server to prometheus to initialized matrix
