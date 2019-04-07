@@ -203,10 +203,10 @@ func TestDownloadAllSubChartsOnly(t *testing.T) {
 	}
 	//create the /charts subdir
 	chartsFolder := filepath.Join(tmp, "charts")
+	err = os.Mkdir(chartsFolder, 0755)
 	if err != nil {
 		t.Fatal(err)
 	}
-	os.Mkdir(chartsFolder, 0755)
 
 	tests := []struct {
 		name   string
@@ -215,7 +215,7 @@ func TestDownloadAllSubChartsOnly(t *testing.T) {
 		err    bool
 	}{
 		{
-			name: "sub char relative no dot",
+			name: "sub chart relative no dot",
 			req: []*chartutil.Dependency{
 				{Name: "foo", Repository: "file://charts/foo"},
 			},
@@ -236,8 +236,7 @@ func TestDownloadAllSubChartsOnly(t *testing.T) {
 
 	for _, tt := range tests {
 		//we only check the downloadAll does not return any error.
-		err := m.downloadAll(tt.req)
-		if err != nil {
+		if err := m.downloadAll(tt.req); err != nil {
 			t.Fatal(err)
 		}
 	}

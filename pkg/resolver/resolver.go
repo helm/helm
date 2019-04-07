@@ -167,7 +167,6 @@ func IsLocalSubChart(repo string, chartpath string) (bool, error) {
 	if !strings.HasPrefix(repo, "file://") {
 		return false, nil
 	}
-	var isSubChart bool
 
 	destPath := filepath.Join(chartpath, "charts")
 	origPath, err := GenerateLocalPath(repo, chartpath)
@@ -178,6 +177,5 @@ func IsLocalSubChart(repo string, chartpath string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	isSubChart = !strings.HasPrefix(relPath, ".")
-	return isSubChart, nil
+	return !strings.HasPrefix(relPath, "."), nil
 }

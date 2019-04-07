@@ -217,13 +217,11 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 	var saveError error
 	for _, dep := range deps {
 		var isSubChart bool
-		if strings.HasPrefix(dep.Repository, "file://") {
-			//check if file repo path does belong to the current chart "/charts" folder
-			isSubChart, err = resolver.IsLocalSubChart(dep.Repository, m.ChartPath)
-			if err != nil {
-				saveError = err
-			} //else everythig is fine.
-		}
+		//check if file repo path does belong to the current chart "/charts" folder
+		isSubChart, err = resolver.IsLocalSubChart(dep.Repository, m.ChartPath)
+		if err != nil {
+			saveError = err
+		} //else everything is fine.
 
 		//Only download or package dependencies that are not sub chart in the "/charts" folder
 		if !isSubChart {
