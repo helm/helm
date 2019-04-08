@@ -241,7 +241,7 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 			fmt.Fprintf(m.Out, "Downloading %s from repo %s\n", dep.Name, dep.Repository)
 
 			// Any failure to resolve/download a chart should fail:
-			// https://github.com/kubernetes/helm/issues/1439
+			// https://github.com/helm/helm/issues/1439
 			churl, username, password, err := findChartURL(dep.Name, dep.Version, dep.Repository, repos)
 			if err != nil {
 				saveError = fmt.Errorf("could not find %s: %s", churl, err)
