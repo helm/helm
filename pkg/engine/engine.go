@@ -17,6 +17,7 @@ limitations under the License.
 package engine
 
 import (
+	"fmt"
 	"path"
 	"sort"
 	"strings"
@@ -150,49 +151,59 @@ func (e Engine) renderWithReferences(tpls, referenceTpls map[string]renderable) 
 	// higher-level (in file system) templates over deeply nested templates.
 	keys := sortTemplates(tpls)
 
-	for _, fname := range keys {
-		r := tpls[fname]
-		if _, err := t.New(fname).Parse(r.tpl); err != nil {
-			return map[string]string{}, errors.Wrapf(err, "parse error in %q", fname)
+	for _, filename := range keys {
+		r := tpls[filename]
+		if _, err := t.New(filename).Parse(r.tpl); err != nil {
+			return map[string]string{}, parseTemplateError(err)
 		}
 	}
 
 	// Adding the reference templates to the template context
 	// so they can be referenced in the tpl function
-	for fname, r := range referenceTpls {
-		if t.Lookup(fname) == nil {
-			if _, err := t.New(fname).Parse(r.tpl); err != nil {
-				return map[string]string{}, errors.Wrapf(err, "parse error in %q", fname)
+	for filename, r := range referenceTpls {
+		if t.Lookup(filename) == nil {
+			if _, err := t.New(filename).Parse(r.tpl); err != nil {
+				return map[string]string{}, parseTemplateError(err)
 			}
 		}
 	}
 
 	rendered = make(map[string]string, len(keys))
-	for _, file := range keys {
+	for _, filename := range keys {
 		// Don't render partials. We don't care out the direct output of partials.
 		// They are only included from other templates.
-		if strings.HasPrefix(path.Base(file), "_") {
+		if strings.HasPrefix(path.Base(filename), "_") {
 			continue
 		}
 		// At render time, add information about the template that is being rendered.
-		vals := tpls[file].vals
-		vals["Template"] = chartutil.Values{"Name": file, "BasePath": tpls[file].basePath}
+		vals := tpls[filename].vals
+		vals["Template"] = chartutil.Values{"Name": filename, "BasePath": tpls[filename].basePath}
 		var buf strings.Builder
-		if err := t.ExecuteTemplate(&buf, file, vals); err != nil {
-			return map[string]string{}, errors.Wrapf(err, "render error in %q", file)
+		if err := t.ExecuteTemplate(&buf, filename, vals); err != nil {
+			return map[string]string{}, parseTemplateError(err)
 		}
 
 		// Work around the issue where Go will emit "<no value>" even if Options(missing=zero)
 		// is set. Since missing=error will never get here, we do not need to handle
 		// the Strict case.
 		f := &chart.File{
-			Name: strings.ReplaceAll(file, "/templates", "/manifests"),
+			Name: strings.ReplaceAll(filename, "/templates", "/manifests"),
 			Data: []byte(strings.ReplaceAll(buf.String(), "<no value>", "")),
 		}
-		rendered[file] = string(f.Data)
+		rendered[filename] = string(f.Data)
 	}
 
 	return rendered, nil
+}
+
+func parseTemplateError(err error) error {
+	tokens := strings.Split(err.Error(), ": ")
+	// The first token is "template"
+	// The second token is either "filename:lineno" or "filename:lineNo:columnNo"
+	location := tokens[1]
+	// The remaining tokens make up a stacktrace-like chain, ending with the relevant error
+	errMsg := tokens[len(tokens)-1]
+	return fmt.Errorf("%s (%s)", errMsg, string(location))
 }
 
 func sortTemplates(tpls map[string]renderable) []string {

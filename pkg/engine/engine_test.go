@@ -187,6 +187,33 @@ func TestParallelRenderInternals(t *testing.T) {
 	wg.Wait()
 }
 
+func TestRenderErrors(t *testing.T) {
+	vals := chartutil.Values{"Values": map[string]interface{}{}}
+
+	tplsMissingRequired := map[string]renderable{
+		"missing_required": {tpl: `{{required "foo is required" .Values.foo}}`, vals: vals},
+	}
+	_, err := new(Engine).render(tplsMissingRequired)
+	if err == nil {
+		t.Fatalf("Expected failures while rendering: %s", err)
+	}
+	expected := `foo is required (missing_required:1:2)`
+	if err.Error() != expected {
+		t.Errorf("Expected '%s', got %q", expected, err.Error())
+	}
+
+	tplsUndefinedFunction := map[string]renderable{
+		"undefined_function": {tpl: `{{foo}}`, vals: vals},
+	}
+	_, err = new(Engine).render(tplsUndefinedFunction)
+	if err == nil {
+		t.Fatalf("Expected failures while rendering: %s", err)
+	}
+	expected = `function "foo" not defined (undefined_function:1)`
+	if err.Error() != expected {
+		t.Errorf("Expected '%s', got %q", expected, err.Error())
+	}
+}
 func TestAllTemplates(t *testing.T) {
 	ch1 := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "ch1"},
