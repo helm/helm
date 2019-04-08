@@ -38,8 +38,8 @@ type ByDate struct{ list }
 
 // Less compares to releases
 func (s ByDate) Less(i, j int) bool {
-	ti := s.list[i].Info.LastDeployed.Second()
-	tj := s.list[j].Info.LastDeployed.Second()
+	ti := s.list[i].Info.LastDeployed.Unix()
+	tj := s.list[j].Info.LastDeployed.Unix()
 	return ti < tj
 }
 
