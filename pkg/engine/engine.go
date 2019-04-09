@@ -154,7 +154,7 @@ func (e Engine) renderWithReferences(tpls, referenceTpls map[string]renderable) 
 	for _, filename := range keys {
 		r := tpls[filename]
 		if _, err := t.New(filename).Parse(r.tpl); err != nil {
-			return map[string]string{}, parseTemplateError(err)
+			return map[string]string{}, parseTemplateError(filename, err)
 		}
 	}
 
@@ -163,7 +163,7 @@ func (e Engine) renderWithReferences(tpls, referenceTpls map[string]renderable) 
 	for filename, r := range referenceTpls {
 		if t.Lookup(filename) == nil {
 			if _, err := t.New(filename).Parse(r.tpl); err != nil {
-				return map[string]string{}, parseTemplateError(err)
+				return map[string]string{}, parseTemplateError(filename, err)
 			}
 		}
 	}
@@ -180,7 +180,7 @@ func (e Engine) renderWithReferences(tpls, referenceTpls map[string]renderable) 
 		vals["Template"] = chartutil.Values{"Name": filename, "BasePath": tpls[filename].basePath}
 		var buf strings.Builder
 		if err := t.ExecuteTemplate(&buf, filename, vals); err != nil {
-			return map[string]string{}, parseTemplateError(err)
+			return map[string]string{}, parseTemplateError(filename, err)
 		}
 
 		// Work around the issue where Go will emit "<no value>" even if Options(missing=zero)
@@ -196,8 +196,12 @@ func (e Engine) renderWithReferences(tpls, referenceTpls map[string]renderable) 
 	return rendered, nil
 }
 
-func parseTemplateError(err error) error {
+func parseTemplateError(filename string, err error) error {
 	tokens := strings.Split(err.Error(), ": ")
+	if len(tokens) == 1 {
+		// This might happen if a non-templating error occurs
+		return fmt.Errorf("render error in %s: %q", filename, err)
+	}
 	// The first token is "template"
 	// The second token is either "filename:lineno" or "filename:lineNo:columnNo"
 	location := tokens[1]
