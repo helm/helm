@@ -197,7 +197,7 @@ func TestRenderErrors(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Expected failures while rendering: %s", err)
 	}
-	expected := `foo is required (missing_required:1:2)`
+	expected := `render error at (missing_required:1:2): foo is required`
 	if err.Error() != expected {
 		t.Errorf("Expected '%s', got %q", expected, err.Error())
 	}
@@ -209,7 +209,7 @@ func TestRenderErrors(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Expected failures while rendering: %s", err)
 	}
-	expected = `function "foo" not defined (undefined_function:1)`
+	expected = `render error at (undefined_function:1): function "foo" not defined`
 	if err.Error() != expected {
 		t.Errorf("Expected '%s', got %q", expected, err.Error())
 	}

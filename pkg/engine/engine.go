@@ -200,14 +200,14 @@ func parseTemplateError(filename string, err error) error {
 	tokens := strings.Split(err.Error(), ": ")
 	if len(tokens) == 1 {
 		// This might happen if a non-templating error occurs
-		return fmt.Errorf("render error in %s: %q", filename, err)
+		return fmt.Errorf("render error in (%s): %s", filename, err)
 	}
 	// The first token is "template"
 	// The second token is either "filename:lineno" or "filename:lineNo:columnNo"
 	location := tokens[1]
 	// The remaining tokens make up a stacktrace-like chain, ending with the relevant error
 	errMsg := tokens[len(tokens)-1]
-	return fmt.Errorf("%s (%s)", errMsg, string(location))
+	return fmt.Errorf("render error at (%s): %s", string(location), errMsg)
 }
 
 func sortTemplates(tpls map[string]renderable) []string {
