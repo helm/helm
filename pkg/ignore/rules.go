@@ -95,7 +95,7 @@ func (r *Rules) Ignore(path string, fi os.FileInfo) bool {
 	}
 	for _, p := range r.patterns {
 		if p.match == nil {
-			log.Printf("ignore: no matcher supplied for %q", p.raw)
+			log.Printf("ignore: no matcher supplied for %q\n", p.raw)
 			return false
 		}
 
@@ -170,7 +170,7 @@ func (r *Rules) parseRule(rule string) error {
 			rule = strings.TrimPrefix(rule, "/")
 			ok, err := filepath.Match(rule, n)
 			if err != nil {
-				log.Printf("Failed to compile %q: %s", rule, err)
+				log.Printf("Failed to compile %q: %s\n", rule, err)
 				return false
 			}
 			return ok
@@ -180,7 +180,7 @@ func (r *Rules) parseRule(rule string) error {
 		p.match = func(n string, fi os.FileInfo) bool {
 			ok, err := filepath.Match(rule, n)
 			if err != nil {
-				log.Printf("Failed to compile %q: %s", rule, err)
+				log.Printf("Failed to compile %q: %s\n", rule, err)
 				return false
 			}
 			return ok
@@ -192,7 +192,7 @@ func (r *Rules) parseRule(rule string) error {
 			n = filepath.Base(n)
 			ok, err := filepath.Match(rule, n)
 			if err != nil {
-				log.Printf("Failed to compile %q: %s", rule, err)
+				log.Printf("Failed to compile %q: %s\n", rule, err)
 				return false
 			}
 			return ok

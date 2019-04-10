@@ -153,11 +153,11 @@ func ProcessRequirementsConditions(reqs *Requirements, cvals Values) {
 								hasFalse = true
 							}
 						} else {
-							log.Printf("Warning: Condition path '%s' for chart %s returned non-bool value", c, r.Name)
+							log.Printf("Warning: Condition path '%s' for chart %s returned non-bool value\n", c, r.Name)
 						}
 					} else if _, ok := err.(ErrNoValue); !ok {
 						// this is a real error
-						log.Printf("Warning: PathValue returned error %v", err)
+						log.Printf("Warning: PathValue returned error %v\n", err)
 
 					}
 					if vv != nil {
@@ -203,7 +203,7 @@ func ProcessRequirementsTags(reqs *Requirements, cvals Values) {
 							hasFalse = true
 						}
 					} else {
-						log.Printf("Warning: Tag '%s' for chart %s returned non-bool value", k, r.Name)
+						log.Printf("Warning: Tag '%s' for chart %s returned non-bool value\n", k, r.Name)
 					}
 				}
 			}
@@ -423,7 +423,7 @@ func processImportValues(c *chart.Chart) error {
 					// get child table
 					vv, err := cvals.Table(s)
 					if err != nil {
-						log.Printf("Warning: ImportValues missing table: %v", err)
+						log.Printf("Warning: ImportValues missing table: %v\n", err)
 						continue
 					}
 					// create value map from child to be merged into parent
@@ -438,7 +438,7 @@ func processImportValues(c *chart.Chart) error {
 					s := name + "." + nm["child"]
 					vm, err := cvals.Table(s)
 					if err != nil {
-						log.Printf("Warning: ImportValues missing table: %v", err)
+						log.Printf("Warning: ImportValues missing table: %v\n", err)
 						continue
 					}
 					b = coalesceTables(b, vm.AsMap(), c.Metadata.Name)

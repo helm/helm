@@ -168,7 +168,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 	// crd-install hooks
 	if !req.DisableHooks && !req.DisableCrdHook {
 		if err := s.execHook(r.Hooks, r.Name, r.Namespace, hooks.CRDInstall, req.Timeout); err != nil {
-			fmt.Printf("Finished installing CRD: %s", err)
+			fmt.Printf("Finished installing CRD: %s\n", err)
 			return res, err
 		}
 	} else {

@@ -575,14 +575,14 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		obj, err := helper.Patch(target.Namespace, target.Name, patchType, patch, nil)
 		if err != nil {
 			kind := target.Mapping.GroupVersionKind.Kind
-			log.Printf("Cannot patch %s: %q (%v)", kind, target.Name, err)
+			log.Printf("Cannot patch %s: %q (%v)\n", kind, target.Name, err)
 
 			if force {
 				// Attempt to delete...
 				if err := deleteResource(target); err != nil {
 					return err
 				}
-				log.Printf("Deleted %s: %q", kind, target.Name)
+				log.Printf("Deleted %s: %q\n", kind, target.Name)
 
 				// ... and recreate
 				if err := createResource(target); err != nil {

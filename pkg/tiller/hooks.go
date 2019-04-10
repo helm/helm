@@ -88,7 +88,7 @@ func sortManifests(files map[string]string, apis chartutil.VersionSet, sort Sort
 		}
 		// Skip empty files and log this.
 		if len(strings.TrimSpace(c)) == 0 {
-			log.Printf("info: manifest %q is empty. Skipping.", filePath)
+			log.Printf("info: manifest %q is empty. Skipping.\n", filePath)
 			continue
 		}
 
@@ -178,7 +178,7 @@ func (file *manifestFile) sort(result *result) error {
 		}
 
 		if isUnknownHook {
-			log.Printf("info: skipping unknown hook: %q", hookTypes)
+			log.Printf("info: skipping unknown hook: %q\n", hookTypes)
 			continue
 		}
 
@@ -189,7 +189,7 @@ func (file *manifestFile) sort(result *result) error {
 			if exist {
 				h.DeletePolicies = append(h.DeletePolicies, policy)
 			} else {
-				log.Printf("info: skipping unknown hook delete policy: %q", value)
+				log.Printf("info: skipping unknown hook delete policy: %q\n", value)
 			}
 		})
 	}

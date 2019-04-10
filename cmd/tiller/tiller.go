@@ -185,11 +185,11 @@ func start() {
 		logger.Fatalf("Server died: %s", err)
 	}
 
-	logger.Printf("Starting Tiller %s (tls=%t)", version.GetVersion(), *tlsEnable || *tlsVerify)
-	logger.Printf("GRPC listening on %s", *grpcAddr)
-	logger.Printf("Probes listening on %s", *probeAddr)
-	logger.Printf("Storage driver is %s", env.Releases.Name())
-	logger.Printf("Max history per release is %d", *maxHistory)
+	logger.Printf("Starting Tiller %s (tls=%t)\n", version.GetVersion(), *tlsEnable || *tlsVerify)
+	logger.Printf("GRPC listening on %s\n", *grpcAddr)
+	logger.Printf("Probes listening on %s\n", *probeAddr)
+	logger.Printf("Storage driver is %s\n", env.Releases.Name())
+	logger.Printf("Max history per release is %d\n", *maxHistory)
 
 	if *enableTracing {
 		startTracing(traceAddr)
@@ -224,7 +224,7 @@ func start() {
 	case err := <-srvErrCh:
 		logger.Fatalf("Server died: %s", err)
 	case err := <-probeErrCh:
-		logger.Printf("Probes server died: %s", err)
+		logger.Printf("Probes server died: %s\n", err)
 	}
 }
 
@@ -283,7 +283,7 @@ func historyMaxFromEnv() int {
 	}
 	ret, err := strconv.Atoi(val)
 	if err != nil {
-		log.Printf("Invalid max history %q. Defaulting to 0.", val)
+		log.Printf("Invalid max history %q. Defaulting to 0.\n", val)
 		return defaultMaxHistory
 	}
 	return ret

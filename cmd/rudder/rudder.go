@@ -93,7 +93,7 @@ func (r *ReleaseModuleServiceServer) InstallRelease(ctx context.Context, in *rud
 	b := bytes.NewBufferString(in.Release.Manifest)
 	err := kubeClient.Create(in.Release.Namespace, b, 500, false)
 	if err != nil {
-		grpclog.Printf("error when creating release: %v", err)
+		grpclog.Printf("error when creating release: %v\n", err)
 	}
 	return &rudderAPI.InstallReleaseResponse{}, err
 }

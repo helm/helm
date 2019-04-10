@@ -225,14 +225,14 @@ func coalesceGlobals(dest, src map[string]interface{}, chartName string) map[str
 	if destglob, ok := dest[GlobalKey]; !ok {
 		dg = map[string]interface{}{}
 	} else if dg, ok = destglob.(map[string]interface{}); !ok {
-		log.Printf("Warning: Skipping globals for chart '%s' because destination '%s' is not a table.", chartName, GlobalKey)
+		log.Printf("Warning: Skipping globals for chart '%s' because destination '%s' is not a table.\n", chartName, GlobalKey)
 		return dg
 	}
 
 	if srcglob, ok := src[GlobalKey]; !ok {
 		sg = map[string]interface{}{}
 	} else if sg, ok = srcglob.(map[string]interface{}); !ok {
-		log.Printf("Warning: skipping globals for chart '%s' because source '%s' is not a table.", chartName, GlobalKey)
+		log.Printf("Warning: skipping globals for chart '%s' because source '%s' is not a table.\n", chartName, GlobalKey)
 		return dg
 	}
 
@@ -251,7 +251,7 @@ func coalesceGlobals(dest, src map[string]interface{}, chartName string) map[str
 					dg[key] = vv
 					continue
 				} else {
-					log.Printf("Warning: For chart '%s', cannot merge map onto non-map for key '%q'. Skipping.", chartName, key)
+					log.Printf("Warning: For chart '%s', cannot merge map onto non-map for key '%q'. Skipping.\n", chartName, key)
 				}
 			} else {
 				// Here there is no merge. We're just adding.
@@ -259,7 +259,7 @@ func coalesceGlobals(dest, src map[string]interface{}, chartName string) map[str
 			}
 		} else if dv, ok := dg[key]; ok && istable(dv) {
 			// It's not clear if this condition can actually ever trigger.
-			log.Printf("Warning: For chart '%s', key '%s' is a table. Skipping.", chartName, key)
+			log.Printf("Warning: For chart '%s', key '%s' is a table. Skipping.\n", chartName, key)
 			continue
 		}
 		// TODO: Do we need to do any additional checking on the value?
@@ -305,7 +305,7 @@ func coalesceValues(c *chart.Chart, v map[string]interface{}) (map[string]interf
 				// if v[key] is a table, merge nv's val table into v[key].
 				src, ok := val.(map[string]interface{})
 				if !ok {
-					log.Printf("Warning: Building values map for chart '%s'. Skipped value (%+v) for '%s', as it is not a table.", c.Metadata.Name, src, key)
+					log.Printf("Warning: Building values map for chart '%s'. Skipped value (%+v) for '%s', as it is not a table.\n", c.Metadata.Name, src, key)
 					continue
 				}
 				// Because v has higher precedence than nv, dest values override src
@@ -333,11 +333,11 @@ func coalesceTables(dst, src map[string]interface{}, chartName string) map[strin
 			} else if istable(innerdst) {
 				coalesceTables(innerdst.(map[string]interface{}), val.(map[string]interface{}), chartName)
 			} else {
-				log.Printf("Warning: Merging destination map for chart '%s'. Cannot overwrite table item '%s', with non table value: %v", chartName, key, val)
+				log.Printf("Warning: Merging destination map for chart '%s'. Cannot overwrite table item '%s', with non table value: %v\n", chartName, key, val)
 			}
 			continue
 		} else if dv, ok := dst[key]; ok && istable(dv) {
-			log.Printf("Warning: Merging destination map for chart '%s'. The destination item '%s' is a table and ignoring the source '%s' as it has a non-table value of: %v", chartName, key, key, val)
+			log.Printf("Warning: Merging destination map for chart '%s'. The destination item '%s' is a table and ignoring the source '%s' as it has a non-table value of: %v\n", chartName, key, key, val)
 			continue
 		} else if !ok { // <- ok is still in scope from preceding conditional.
 			dst[key] = val
