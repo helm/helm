@@ -47,7 +47,7 @@ func newUninstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			for i := 0; i < len(args); i++ {
 
-				res, err := client.Run(args[0])
+				res, err := client.Run(args[i])
 				if err != nil {
 					return err
 				}
