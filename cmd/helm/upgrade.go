@@ -283,17 +283,18 @@ func (u *upgradeCmd) run() error {
 		if u.atomic {
 			fmt.Fprint(u.out, "ROLLING BACK")
 			rollback := &rollbackCmd{
-				out:          u.out,
-				client:       u.client,
-				name:         u.release,
-				dryRun:       u.dryRun,
-				recreate:     u.recreate,
-				force:        u.force,
-				timeout:      u.timeout,
-				wait:         u.wait,
-				description:  "",
-				revision:     releaseHistory.Releases[0].Version,
-				disableHooks: u.disableHooks,
+				out:           u.out,
+				client:        u.client,
+				name:          u.release,
+				dryRun:        u.dryRun,
+				recreate:      u.recreate,
+				force:         u.force,
+				timeout:       u.timeout,
+				wait:          u.wait,
+				description:   "",
+				revision:      releaseHistory.Releases[0].Version,
+				disableHooks:  u.disableHooks,
+				cleanupOnFail: u.cleanupOnFail,
 			}
 			if err := rollback.run(); err != nil {
 				return err
