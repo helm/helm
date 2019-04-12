@@ -93,8 +93,9 @@ func (suite *RegistryClientTestSuite) Test_0_SaveChart() {
 	// valid chart
 	ch := &chart.Chart{}
 	ch.Metadata = &chart.Metadata{
-		Name:    "testchart",
-		Version: "1.2.3",
+		APIVersion: "v1",
+		Name:       "testchart",
+		Version:    "1.2.3",
 	}
 	err = suite.RegistryClient.SaveChart(ch, ref)
 	suite.Nil(err)

@@ -282,11 +282,12 @@ func (c *ChartDownloader) getRepoCredentials(r *repo.ChartRepository) (username,
 // name is the archive file name plus the ".prov" extension.
 func VerifyChart(path, keyring string) (*provenance.Verification, error) {
 	// For now, error out if it's not a tar file.
-	if fi, err := os.Stat(path); err != nil {
+	switch fi, err := os.Stat(path); {
+	case err != nil:
 		return nil, err
-	} else if fi.IsDir() {
+	case fi.IsDir():
 		return nil, errors.New("unpacked charts cannot be verified")
-	} else if !isTar(path) {
+	case !isTar(path):
 		return nil, errors.New("chart must be a tgz file")
 	}
 
@@ -307,7 +308,7 @@ func VerifyChart(path, keyring string) (*provenance.Verification, error) {
 // Currently, this simply checks extension, since a subsequent function will
 // untar the file and validate its binary format.
 func isTar(filename string) bool {
-	return strings.ToLower(filepath.Ext(filename)) == ".tgz"
+	return strings.EqualFold(filepath.Ext(filename), ".tgz")
 }
 
 func pickChartRepositoryConfigByName(name string, cfgs []*repo.Entry) (*repo.Entry, error) {

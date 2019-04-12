@@ -40,8 +40,8 @@ func verifyChartfile(t *testing.T, f *chart.Metadata, name string) {
 	}
 
 	// Api instead of API because it was generated via protobuf.
-	if f.APIVersion != chart.APIVersionv1 {
-		t.Errorf("Expected API Version %q, got %q", chart.APIVersionv1, f.APIVersion)
+	if f.APIVersion != chart.APIVersionV1 {
+		t.Errorf("Expected API Version %q, got %q", chart.APIVersionV1, f.APIVersion)
 	}
 
 	if f.Name != name {
