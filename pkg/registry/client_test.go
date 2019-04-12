@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"golang.org/x/crypto/bcrypt"
 	"io"
 	"io/ioutil"
 	"net"
@@ -35,6 +34,7 @@ import (
 	_ "github.com/docker/distribution/registry/auth/htpasswd"
 	_ "github.com/docker/distribution/registry/storage/driver/inmemory"
 	"github.com/stretchr/testify/suite"
+	"golang.org/x/crypto/bcrypt"
 
 	"helm.sh/helm/pkg/chart"
 )
@@ -83,10 +83,10 @@ func (suite *RegistryClientTestSuite) SetupSuite() {
 
 	// create htpasswd file (w BCrypt, which is required)
 	pwBytes, err := bcrypt.GenerateFromPassword([]byte(testPassword), bcrypt.DefaultCost)
-	suite.Nil(err, "no error generating bcrypt password for test httpasswd file")
-	httpasswdPath := filepath.Join(suite.CacheRootDir, testHtpasswdFileBasename)
-	err = ioutil.WriteFile(httpasswdPath, []byte(fmt.Sprintf("%s:%s\n", testUsername, string(pwBytes))), 0644)
-	suite.Nil(err, "no error creating test httpasswd file")
+	suite.Nil(err, "no error generating bcrypt password for test htpasswd file")
+	htpasswdPath := filepath.Join(suite.CacheRootDir, testHtpasswdFileBasename)
+	err = ioutil.WriteFile(htpasswdPath, []byte(fmt.Sprintf("%s:%s\n", testUsername, string(pwBytes))), 0644)
+	suite.Nil(err, "no error creating test htpasswd file")
 
 	// Registry config
 	config := &configuration.Configuration{}
@@ -97,9 +97,9 @@ func (suite *RegistryClientTestSuite) SetupSuite() {
 	config.HTTP.DrainTimeout = time.Duration(10) * time.Second
 	config.Storage = map[string]configuration.Parameters{"inmemory": map[string]interface{}{}}
 	config.Auth = configuration.Auth{
-		"httpasswd": configuration.Parameters{
+		"htpasswd": configuration.Parameters{
 			"realm": "localhost",
-			"path":  httpasswdPath,
+			"path":  htpasswdPath,
 		},
 	}
 	dockerRegistry, err := registry.NewRegistry(context.Background(), config)
