@@ -17,22 +17,34 @@ limitations under the License.
 package action
 
 import (
+	"context"
+	"fmt"
 	"io"
+
+	auth "github.com/deislabs/oras/pkg/auth/docker"
 )
 
-// ChartLogin performs a chart login operation.
+// ChartLogout performs a chart login operation.
 type ChartLogout struct {
 	cfg *Configuration
 }
 
-// NewChartLogin creates a new ChartLogin object with the given configuration.
+// NewChartLogout creates a new ChartLogout object with the given configuration.
 func NewChartLogout(cfg *Configuration) *ChartLogout {
 	return &ChartLogout{
 		cfg: cfg,
 	}
 }
 
-// Run executes the chart login operation
+// Run executes the chart logout operation
 func (a *ChartLogout) Run(out io.Writer, host string) error {
+	cli, err := auth.NewClient("~/.docker/config")
+	if err != nil {
+		return err
+	}
+	if err := cli.Logout(context.Background(), host); err != nil {
+		return err
+	}
+	fmt.Println("Logout Succeeded")
 	return nil
 }
