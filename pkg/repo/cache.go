@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package registry // import "helm.sh/helm/pkg/registry"
+package repo // import "helm.sh/helm/pkg/repo"
 
 import (
 	"bytes"
@@ -28,9 +28,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/containerd/containerd/reference"
 	orascontent "github.com/deislabs/oras/pkg/content"
 	"github.com/docker/go-units"
-	checksum "github.com/opencontainers/go-digest"
+	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 
@@ -74,6 +75,7 @@ func (cache *filesystemCache) LayersToChart(layers []ocispec.Descriptor) (*chart
 	if err != nil {
 		return nil, err
 	}
+	metadata.APIVersion = chart.APIVersionV1
 	metadata.Name = name
 	metadata.Version = version
 
@@ -96,8 +98,8 @@ func (cache *filesystemCache) LayersToChart(layers []ocispec.Descriptor) (*chart
 func (cache *filesystemCache) ChartToLayers(ch *chart.Chart) ([]ocispec.Descriptor, error) {
 
 	// extract/separate the name and version from other metadata
-	if ch.Metadata == nil {
-		return nil, errors.New("chart does not contain metadata")
+	if err := ch.Validate(); err != nil {
+		return nil, err
 	}
 	name := ch.Metadata.Name
 	version := ch.Metadata.Version
@@ -115,7 +117,11 @@ func (cache *filesystemCache) ChartToLayers(ch *chart.Chart) ([]ocispec.Descript
 	// TODO: something better than this hack. Currently needed for chartutil.Save()
 	// If metadata does not contain Name or Version, an error is returned
 	// such as "no chart name specified (Chart.yaml)"
-	ch.Metadata = &chart.Metadata{Name: "-", Version: "-"}
+	ch.Metadata = &chart.Metadata{
+		APIVersion: chart.APIVersionV1,
+		Name:       "-",
+		Version:    "0.1.0",
+	}
 	destDir := mkdir(filepath.Join(cache.rootDir, "blobs", ".build"))
 	tmpFile, err := chartutil.Save(ch, destDir)
 	defer os.Remove(tmpFile)
@@ -136,8 +142,8 @@ func (cache *filesystemCache) ChartToLayers(ch *chart.Chart) ([]ocispec.Descript
 	return layers, nil
 }
 
-func (cache *filesystemCache) LoadReference(ref *Reference) ([]ocispec.Descriptor, error) {
-	tagDir := filepath.Join(cache.rootDir, "refs", escape(ref.Repo), "tags", tagOrDefault(ref.Tag))
+func (cache *filesystemCache) LoadReference(ref reference.Spec) ([]ocispec.Descriptor, error) {
+	tagDir := filepath.Join(cache.rootDir, "refs", escape(ref.Locator), "tags", tagOrDefault(ref.Object))
 
 	// add meta layer
 	metaJSONRaw, err := getSymlinkDestContent(filepath.Join(tagDir, "meta"))
@@ -164,9 +170,9 @@ func (cache *filesystemCache) LoadReference(ref *Reference) ([]ocispec.Descripto
 	return layers, nil
 }
 
-func (cache *filesystemCache) StoreReference(ref *Reference, layers []ocispec.Descriptor) (bool, error) {
-	tag := tagOrDefault(ref.Tag)
-	tagDir := mkdir(filepath.Join(cache.rootDir, "refs", escape(ref.Repo), "tags", tag))
+func (cache *filesystemCache) StoreReference(ref reference.Spec, layers []ocispec.Descriptor) (bool, error) {
+	tag := tagOrDefault(ref.Object)
+	tagDir := mkdir(filepath.Join(cache.rootDir, "refs", escape(ref.Locator), "tags", tag))
 
 	// Retrieve just the meta and content layers
 	metaLayer, contentLayer, err := extractLayers(layers)
@@ -238,8 +244,8 @@ func (cache *filesystemCache) StoreReference(ref *Reference, layers []ocispec.De
 	return metaExists && contentExists, nil
 }
 
-func (cache *filesystemCache) DeleteReference(ref *Reference) error {
-	tagDir := filepath.Join(cache.rootDir, "refs", escape(ref.Repo), "tags", tagOrDefault(ref.Tag))
+func (cache *filesystemCache) DeleteReference(ref reference.Spec) error {
+	tagDir := filepath.Join(cache.rootDir, "refs", escape(ref.Locator), "tags", tagOrDefault(ref.Object))
 	if _, err := os.Stat(tagDir); os.IsNotExist(err) {
 		return errors.New("ref not found")
 	}
@@ -370,7 +376,7 @@ func createChartFile(chartsRootDir string, name string, version string) (string,
 }
 
 // digestPath returns the path to addressable content, and whether the file exists
-func digestPath(rootDir string, digest checksum.Digest) (bool, string) {
+func digestPath(rootDir string, digest digest.Digest) (bool, string) {
 	path := filepath.Join(rootDir, "sha256", digest.Hex())
 	exists := fileExists(path)
 	return exists, path

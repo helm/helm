@@ -14,15 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package registry // import "helm.sh/helm/pkg/registry"
+package action
 
-import (
-	"github.com/containerd/containerd/remotes"
-)
+import "testing"
 
-type (
-	// Resolver provides remotes based on a locator
-	Resolver struct {
-		remotes.Resolver
+func TestVerifyChart(t *testing.T) {
+	v, err := VerifyChart("testdata/signtest-0.1.0.tgz", "testdata/helm-test-key.pub")
+	if err != nil {
+		t.Fatal(err)
 	}
-)
+	// The verification is tested at length in the provenance package. Here,
+	// we just want a quick sanity check that the v is not empty.
+	if len(v.FileHash) == 0 {
+		t.Error("Digest missing")
+	}
+}

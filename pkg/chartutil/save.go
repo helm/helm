@@ -20,6 +20,7 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -93,6 +94,23 @@ func SaveDir(c *chart.Chart, dest string) error {
 	return nil
 }
 
+// SaveToWriter archives the chart and writes to w.
+func SaveToWriter(c *chart.Chart, w io.Writer) error {
+	// Wrap in gzip writer
+	zipper := gzip.NewWriter(w)
+	zipper.Header.Extra = headerBytes
+	zipper.Header.Comment = "Helm"
+
+	// Wrap in tar writer
+	twriter := tar.NewWriter(zipper)
+	defer func() {
+		twriter.Close()
+		zipper.Close()
+	}()
+
+	return writeTarContents(twriter, c, "")
+}
+
 // Save creates an archived chart to the given directory.
 //
 // This takes an existing chart and a destination directory.
@@ -109,18 +127,11 @@ func Save(c *chart.Chart, outDir string) (string, error) {
 		return "", errors.Errorf("location %s is not a directory", outDir)
 	}
 
-	if c.Metadata == nil {
-		return "", errors.New("no Chart.yaml data")
+	if err := c.Validate(); err != nil {
+		return "", errors.Wrap(err, "chart validation")
 	}
 
-	cfile := c.Metadata
-	if cfile.Name == "" {
-		return "", errors.New("no chart name specified (Chart.yaml)")
-	} else if cfile.Version == "" {
-		return "", errors.New("no chart version specified (Chart.yaml)")
-	}
-
-	filename := fmt.Sprintf("%s-%s.tgz", cfile.Name, cfile.Version)
+	filename := fmt.Sprintf("%s-%s.tgz", c.Name(), c.Metadata.Version)
 	filename = filepath.Join(outDir, filename)
 	if stat, err := os.Stat(filepath.Dir(filename)); os.IsNotExist(err) {
 		if err := os.MkdirAll(filepath.Dir(filename), 0755); !os.IsExist(err) {
@@ -135,27 +146,15 @@ func Save(c *chart.Chart, outDir string) (string, error) {
 		return "", err
 	}
 
-	// Wrap in gzip writer
-	zipper := gzip.NewWriter(f)
-	zipper.Header.Extra = headerBytes
-	zipper.Header.Comment = "Helm"
-
-	// Wrap in tar writer
-	twriter := tar.NewWriter(zipper)
 	rollback := false
 	defer func() {
-		twriter.Close()
-		zipper.Close()
 		f.Close()
 		if rollback {
 			os.Remove(filename)
 		}
 	}()
 
-	if err := writeTarContents(twriter, c, ""); err != nil {
-		rollback = true
-	}
-	return filename, err
+	return filename, SaveToWriter(c, f)
 }
 
 func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {

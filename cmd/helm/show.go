@@ -48,7 +48,7 @@ This command inspects a chart (directory, file, or URL) and displays the content
 of the README file
 `
 
-func newShowCmd(out io.Writer) *cobra.Command {
+func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewShow(action.ShowAll)
 
 	showCommand := &cobra.Command{
@@ -58,11 +58,11 @@ func newShowCmd(out io.Writer) *cobra.Command {
 		Long:    showDesc,
 		Args:    require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cp, err := client.ChartPathOptions.LocateChart(args[0], settings)
+			ch, err := action.LocateChart(args[0], client.ChartPathOptions, settings, cfg.RegistryClient)
 			if err != nil {
 				return err
 			}
-			output, err := client.Run(cp)
+			output, err := client.Run(ch)
 			if err != nil {
 				return err
 			}
@@ -78,11 +78,11 @@ func newShowCmd(out io.Writer) *cobra.Command {
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowValues
-			cp, err := client.ChartPathOptions.LocateChart(args[0], settings)
+			ch, err := action.LocateChart(args[0], client.ChartPathOptions, settings, cfg.RegistryClient)
 			if err != nil {
 				return err
 			}
-			output, err := client.Run(cp)
+			output, err := client.Run(ch)
 			if err != nil {
 				return err
 			}
@@ -98,11 +98,11 @@ func newShowCmd(out io.Writer) *cobra.Command {
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowChart
-			cp, err := client.ChartPathOptions.LocateChart(args[0], settings)
+			ch, err := action.LocateChart(args[0], client.ChartPathOptions, settings, cfg.RegistryClient)
 			if err != nil {
 				return err
 			}
-			output, err := client.Run(cp)
+			output, err := client.Run(ch)
 			if err != nil {
 				return err
 			}
@@ -118,11 +118,11 @@ func newShowCmd(out io.Writer) *cobra.Command {
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowReadme
-			cp, err := client.ChartPathOptions.LocateChart(args[0], settings)
+			ch, err := action.LocateChart(args[0], client.ChartPathOptions, settings, cfg.RegistryClient)
 			if err != nil {
 				return err
 			}
-			output, err := client.Run(cp)
+			output, err := client.Run(ch)
 			if err != nil {
 				return err
 			}

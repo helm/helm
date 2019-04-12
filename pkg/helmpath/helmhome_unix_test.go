@@ -31,9 +31,7 @@ func TestHelmHome(t *testing.T) {
 	}
 
 	isEq(t, hh.String(), "/r/users/helmtest")
-	isEq(t, hh.Registry(), "/r/users/helmtest/registry")
 	isEq(t, hh.Repository(), "/r/users/helmtest/repository")
-	isEq(t, hh.RepositoryFile(), "/r/users/helmtest/repository/repositories.yaml")
 	isEq(t, hh.Cache(), "/r/users/helmtest/repository/cache")
 	isEq(t, hh.CacheIndex("t"), "/r/users/helmtest/repository/cache/t-index.yaml")
 	isEq(t, hh.Starters(), "/r/users/helmtest/starters")

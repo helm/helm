@@ -28,7 +28,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/pkg/downloader"
-	"helm.sh/helm/pkg/getter"
 )
 
 const packageDesc = `
@@ -42,8 +41,8 @@ Chart.yaml file, and (if found) build the current directory into a chart.
 Versioned chart archives are used by Helm package repositories.
 `
 
-func newPackageCmd(out io.Writer) *cobra.Command {
-	client := action.NewPackage()
+func newPackageCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+	client := action.NewPackage(cfg)
 
 	cmd := &cobra.Command{
 		Use:   "package [CHART_PATH] [...]",
@@ -75,9 +74,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 					downloadManager := &downloader.Manager{
 						Out:       ioutil.Discard,
 						ChartPath: path,
-						HelmHome:  settings.Home,
-						Keyring:   client.Keyring,
-						Getters:   getter.All(settings),
+						Client:    cfg.RegistryClient,
 						Debug:     settings.Debug,
 					}
 
@@ -85,11 +82,10 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 						return err
 					}
 				}
-				p, err := client.Run(path)
-				if err != nil {
+				if err := client.Run(path); err != nil {
 					return err
 				}
-				fmt.Fprintf(out, "Successfully packaged chart and saved it to: %s\n", p)
+				fmt.Fprintln(out, "Successfully packaged")
 			}
 			return nil
 		},
@@ -101,7 +97,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&client.Keyring, "keyring", defaultKeyring(), "location of a public keyring")
 	f.StringVar(&client.Version, "version", "", "set the version on the chart to this semver version")
 	f.StringVar(&client.AppVersion, "app-version", "", "set the appVersion on the chart to this version")
-	f.StringVarP(&client.Destination, "destination", "d", ".", "location to write the chart.")
+	f.StringVar(&client.Registry, "registry", "", "name of the registry where this package will be published")
 	f.BoolVarP(&client.DependencyUpdate, "dependency-update", "u", false, `update dependencies from "Chart.yaml" to dir "charts/" before packaging`)
 	addValueOptionsFlags(f, &client.ValueOptions)
 

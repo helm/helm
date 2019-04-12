@@ -27,8 +27,6 @@ import (
 
 	"helm.sh/helm/pkg/chartutil"
 	"helm.sh/helm/pkg/cli"
-	"helm.sh/helm/pkg/downloader"
-	"helm.sh/helm/pkg/getter"
 	"helm.sh/helm/pkg/repo"
 )
 
@@ -36,6 +34,7 @@ import (
 //
 // It provides the implementation of 'helm pull'.
 type Pull struct {
+	cfg *Configuration
 	ChartPathOptions
 
 	Settings cli.EnvSettings // TODO: refactor this out of pkg/action
@@ -48,32 +47,34 @@ type Pull struct {
 }
 
 // NewPull creates a new Pull object with the given configuration.
-func NewPull() *Pull {
-	return &Pull{}
+func NewPull(cfg *Configuration) *Pull {
+	return &Pull{cfg: cfg}
 }
 
 // Run executes 'helm pull' against the given release.
 func (p *Pull) Run(chartRef string) (string, error) {
 	var out strings.Builder
 
-	c := downloader.ChartDownloader{
-		HelmHome: p.Settings.Home,
-		Out:      &out,
-		Keyring:  p.Keyring,
-		Verify:   downloader.VerifyNever,
-		Getters:  getter.All(p.Settings),
-		Username: p.Username,
-		Password: p.Password,
+	ref, err := repo.ParseNameTag(chartRef, p.Version)
+	if err != nil {
+		return out.String(), err
 	}
 
 	if p.Verify {
-		c.Verify = downloader.VerifyAlways
-	} else if p.VerifyLater {
-		c.Verify = downloader.VerifyLater
+		// TODO(bacongobbler): plug into pkg/repo or oras for signing during a pull
+		//
+		// see comment in pkg/repo/client.go#PullChart
 	}
 
-	// If untar is set, we fetch to a tempdir, then untar and copy after
-	// verification.
+	if err := p.cfg.RegistryClient.PullChart(ref); err != nil {
+		return out.String(), fmt.Errorf("failed to download %q: %v", ref.String(), err)
+	}
+
+	ch, err := p.cfg.RegistryClient.LoadChart(ref)
+	if err != nil {
+		return out.String(), err
+	}
+
 	dest := p.DestDir
 	if p.Untar {
 		var err error
@@ -84,21 +85,9 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		defer os.RemoveAll(dest)
 	}
 
-	if p.RepoURL != "" {
-		chartURL, err := repo.FindChartInAuthRepoURL(p.RepoURL, p.Username, p.Password, chartRef, p.Version, p.CertFile, p.KeyFile, p.CaFile, getter.All(p.Settings))
-		if err != nil {
-			return out.String(), err
-		}
-		chartRef = chartURL
-	}
-
-	saved, v, err := c.DownloadTo(chartRef, p.Version, dest)
+	saved, err := chartutil.Save(ch, dest)
 	if err != nil {
 		return out.String(), err
-	}
-
-	if p.Verify {
-		fmt.Fprintf(&out, "Verification: %v\n", v)
 	}
 
 	// After verification, untar the chart into the requested directory.
@@ -118,5 +107,6 @@ func (p *Pull) Run(chartRef string) (string, error) {
 
 		return out.String(), chartutil.ExpandFile(ud, saved)
 	}
+
 	return out.String(), nil
 }

@@ -109,7 +109,7 @@ icon: https://example.com/64x64.png
 	if err == nil {
 		t.Fatal("Expected err to be non-nil")
 	}
-	if err.Error() != "chart metadata (Chart.yaml) missing" {
+	if err.Error() != "metadata is required" {
 		t.Errorf("Expected chart metadata missing error, got '%s'", err.Error())
 	}
 }
@@ -180,8 +180,8 @@ func verifyDependencies(t *testing.T, c *chart.Chart) {
 		t.Errorf("Expected 2 dependencies, got %d", len(c.Metadata.Dependencies))
 	}
 	tests := []*chart.Dependency{
-		{Name: "alpine", Version: "0.1.0", Repository: "https://example.com/charts"},
-		{Name: "mariner", Version: "4.3.2", Repository: "https://example.com/charts"},
+		{Name: "alpine", Version: "0.1.0"},
+		{Name: "mariner", Version: "4.3.2"},
 	}
 	for i, tt := range tests {
 		d := c.Metadata.Dependencies[i]
@@ -190,9 +190,6 @@ func verifyDependencies(t *testing.T, c *chart.Chart) {
 		}
 		if d.Version != tt.Version {
 			t.Errorf("Expected dependency named %q to have version %q, got %q", tt.Name, tt.Version, d.Version)
-		}
-		if d.Repository != tt.Repository {
-			t.Errorf("Expected dependency named %q to have repository %q, got %q", tt.Name, tt.Repository, d.Repository)
 		}
 	}
 }
@@ -202,8 +199,8 @@ func verifyDependenciesLock(t *testing.T, c *chart.Chart) {
 		t.Errorf("Expected 2 dependencies, got %d", len(c.Metadata.Dependencies))
 	}
 	tests := []*chart.Dependency{
-		{Name: "alpine", Version: "0.1.0", Repository: "https://example.com/charts"},
-		{Name: "mariner", Version: "4.3.2", Repository: "https://example.com/charts"},
+		{Name: "alpine", Version: "0.1.0"},
+		{Name: "mariner", Version: "4.3.2"},
 	}
 	for i, tt := range tests {
 		d := c.Metadata.Dependencies[i]
@@ -212,9 +209,6 @@ func verifyDependenciesLock(t *testing.T, c *chart.Chart) {
 		}
 		if d.Version != tt.Version {
 			t.Errorf("Expected dependency named %q to have version %q, got %q", tt.Name, tt.Version, d.Version)
-		}
-		if d.Repository != tt.Repository {
-			t.Errorf("Expected dependency named %q to have repository %q, got %q", tt.Name, tt.Repository, d.Repository)
 		}
 	}
 }

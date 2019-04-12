@@ -25,7 +25,6 @@ import (
 
 	"helm.sh/helm/cmd/helm/require"
 	"helm.sh/helm/pkg/action"
-	"helm.sh/helm/pkg/chart/loader"
 	"helm.sh/helm/pkg/storage/driver"
 )
 
@@ -74,7 +73,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return err
 			}
 
-			chartPath, err := client.ChartPathOptions.LocateChart(args[1], settings)
+			ch, err := action.LocateChart(args[1], client.ChartPathOptions, settings, cfg.RegistryClient)
 			if err != nil {
 				return err
 			}
@@ -96,16 +95,11 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.Devel = client.Devel
 					instClient.Namespace = client.Namespace
 
-					_, err := runInstall(args, instClient, out)
+					_, err := runInstall(args, instClient, cfg, out)
 					return err
 				}
 			}
 
-			// Check chart dependencies to make sure all are present in /charts
-			ch, err := loader.Load(chartPath)
-			if err != nil {
-				return err
-			}
 			if req := ch.Metadata.Dependencies; req != nil {
 				if err := action.CheckDependencies(ch, req); err != nil {
 					return err

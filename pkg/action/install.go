@@ -35,9 +35,9 @@ import (
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/pkg/chart"
+	"helm.sh/helm/pkg/chart/loader"
 	"helm.sh/helm/pkg/chartutil"
 	"helm.sh/helm/pkg/cli"
-	"helm.sh/helm/pkg/downloader"
 	"helm.sh/helm/pkg/engine"
 	"helm.sh/helm/pkg/getter"
 	"helm.sh/helm/pkg/hooks"
@@ -521,78 +521,52 @@ OUTER:
 	return nil
 }
 
-// LocateChart looks for a chart directory in known places, and returns either the full path or an error.
+// LocateChart looks for a chart directory in known places, and returns either the chart or an error.
 //
-// This does not ensure that the chart is well-formed; only that the requested filename exists.
+// This does not ensure that the chart is well-formed; only that the requested chart exists.
 //
 // Order of resolution:
 // - relative to current working directory
 // - if path is absolute or begins with '.', error out here
-// - chart repos in $HELM_HOME
-// - URL
+// - pull from the given URL
 //
 // If 'verify' is true, this will attempt to also verify the chart.
-func (c *ChartPathOptions) LocateChart(name string, settings cli.EnvSettings) (string, error) {
+func LocateChart(name string, c ChartPathOptions, settings cli.EnvSettings, repoClient *repo.Client) (*chart.Chart, error) {
 	name = strings.TrimSpace(name)
 	version := strings.TrimSpace(c.Version)
 
 	if _, err := os.Stat(name); err == nil {
 		abs, err := filepath.Abs(name)
 		if err != nil {
-			return abs, err
+			return nil, err
 		}
 		if c.Verify {
-			if _, err := downloader.VerifyChart(abs, c.Keyring); err != nil {
-				return "", err
+			if _, err := VerifyChart(abs, c.Keyring); err != nil {
+				return nil, err
 			}
 		}
-		return abs, nil
+		return loader.Load(abs)
 	}
 	if filepath.IsAbs(name) || strings.HasPrefix(name, ".") {
-		return name, errors.Errorf("path %q not found", name)
+		return nil, errors.Errorf("path %q not found", name)
 	}
 
-	crepo := filepath.Join(settings.Home.Repository(), name)
-	if _, err := os.Stat(crepo); err == nil {
-		return filepath.Abs(crepo)
+	ref, err := repo.ParseNameTag(name, version)
+	if err != nil {
+		return nil, err
 	}
 
-	dl := downloader.ChartDownloader{
-		HelmHome: settings.Home,
-		Out:      os.Stdout,
-		Keyring:  c.Keyring,
-		Getters:  getter.All(settings),
-		Username: c.Username,
-		Password: c.Password,
-	}
 	if c.Verify {
-		dl.Verify = downloader.VerifyAlways
-	}
-	if c.RepoURL != "" {
-		chartURL, err := repo.FindChartInAuthRepoURL(c.RepoURL, c.Username, c.Password, name, version,
-			c.CertFile, c.KeyFile, c.CaFile, getter.All(settings))
-		if err != nil {
-			return "", err
-		}
-		name = chartURL
+		// TODO(bacongobbler): plug into pkg/repo or oras for signing during a pull
+		//
+		// see comment in pkg/repo/client.go#PullChart
 	}
 
-	if _, err := os.Stat(settings.Home.Archive()); os.IsNotExist(err) {
-		os.MkdirAll(settings.Home.Archive(), 0744)
+	if err := repoClient.PullChart(ref); err != nil {
+		return nil, fmt.Errorf("failed to download %q: %v", ref.String(), err)
 	}
 
-	filename, _, err := dl.DownloadTo(name, version, settings.Home.Archive())
-	if err == nil {
-		lname, err := filepath.Abs(filename)
-		if err != nil {
-			return filename, err
-		}
-		return lname, nil
-	} else if settings.Debug {
-		return filename, err
-	}
-
-	return filename, errors.Errorf("failed to download %q (hint: running `helm repo update` may help)", name)
+	return repoClient.LoadChart(ref)
 }
 
 // MergeValues merges values from files specified via -f/--values and

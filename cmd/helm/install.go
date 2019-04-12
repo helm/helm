@@ -26,10 +26,7 @@ import (
 
 	"helm.sh/helm/cmd/helm/require"
 	"helm.sh/helm/pkg/action"
-	"helm.sh/helm/pkg/chart/loader"
 	"helm.sh/helm/pkg/chartutil"
-	"helm.sh/helm/pkg/downloader"
-	"helm.sh/helm/pkg/getter"
 )
 
 const installDesc = `
@@ -103,7 +100,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Long:  installDesc,
 		Args:  require.MinimumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
-			rel, err := runInstall(args, client, out)
+			rel, err := runInstall(args, client, cfg, out)
 			if err != nil {
 				return err
 			}
@@ -126,7 +123,6 @@ func addInstallFlags(f *pflag.FlagSet, client *action.Install) {
 	f.BoolVarP(&client.GenerateName, "generate-name", "g", false, "generate the name (and omit the NAME parameter)")
 	f.StringVar(&client.NameTemplate, "name-template", "", "specify template used to name the release")
 	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
-	f.BoolVar(&client.DependencyUpdate, "dependency-update", false, "run helm dependency update before installing the chart")
 	addValueOptionsFlags(f, &client.ValueOptions)
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 }
@@ -149,7 +145,7 @@ func addChartPathOptionsFlags(f *pflag.FlagSet, c *action.ChartPathOptions) {
 	f.StringVar(&c.CaFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 }
 
-func runInstall(args []string, client *action.Install, out io.Writer) (*release.Release, error) {
+func runInstall(args []string, client *action.Install, cfg *action.Configuration, out io.Writer) (*release.Release, error) {
 	debug("Original chart version: %q", client.Version)
 	if client.Version == "" && client.Devel {
 		debug("setting version to >0.0.0-0")
@@ -162,20 +158,14 @@ func runInstall(args []string, client *action.Install, out io.Writer) (*release.
 	}
 	client.ReleaseName = name
 
-	cp, err := client.ChartPathOptions.LocateChart(chart, settings)
+	chartRequested, err := action.LocateChart(chart, client.ChartPathOptions, settings, cfg.RegistryClient)
 	if err != nil {
 		return nil, err
 	}
 
-	debug("CHART PATH: %s\n", cp)
+	debug("CHART: %s\n", chartRequested)
 
 	if err := client.ValueOptions.MergeValues(settings); err != nil {
-		return nil, err
-	}
-
-	// Check chart dependencies to make sure all are present in /charts
-	chartRequested, err := loader.Load(cp)
-	if err != nil {
 		return nil, err
 	}
 
@@ -189,21 +179,7 @@ func runInstall(args []string, client *action.Install, out io.Writer) (*release.
 		// As of Helm 2.4.0, this is treated as a stopping condition:
 		// https://github.com/helm/helm/issues/2209
 		if err := action.CheckDependencies(chartRequested, req); err != nil {
-			if client.DependencyUpdate {
-				man := &downloader.Manager{
-					Out:        out,
-					ChartPath:  cp,
-					HelmHome:   settings.Home,
-					Keyring:    client.ChartPathOptions.Keyring,
-					SkipUpdate: false,
-					Getters:    getter.All(settings),
-				}
-				if err := man.Update(); err != nil {
-					return nil, err
-				}
-			} else {
-				return nil, err
-			}
+			return nil, err
 		}
 	}
 

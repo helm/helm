@@ -26,8 +26,8 @@ import (
 
 	"helm.sh/helm/pkg/chartutil"
 	"helm.sh/helm/pkg/kube"
-	"helm.sh/helm/pkg/registry"
 	"helm.sh/helm/pkg/release"
+	"helm.sh/helm/pkg/repo"
 	"helm.sh/helm/pkg/storage"
 )
 
@@ -70,8 +70,8 @@ type Configuration struct {
 	// KubeClient is a Kubernetes API client.
 	KubeClient kube.KubernetesClient
 
-	// RegistryClient is a client for working with registries
-	RegistryClient *registry.Client
+	// RegistryClient is a client for working with repositories
+	RegistryClient *repo.Client
 
 	Capabilities *chartutil.Capabilities
 

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package registry // import "helm.sh/helm/pkg/registry"
+package repo // import "helm.sh/helm/pkg/repo"
 
 const (
 	// HelmChartDefaultTag is the default tag used when storing a chart reference with no tag

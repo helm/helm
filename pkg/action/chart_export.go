@@ -20,8 +20,9 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/containerd/containerd/reference"
+
 	"helm.sh/helm/pkg/chartutil"
-	"helm.sh/helm/pkg/registry"
 )
 
 // ChartExport performs a chart export operation.
@@ -38,7 +39,7 @@ func NewChartExport(cfg *Configuration) *ChartExport {
 
 // Run executes the chart export operation
 func (a *ChartExport) Run(out io.Writer, ref string) error {
-	r, err := registry.ParseReference(ref)
+	r, err := reference.Parse(ref)
 	if err != nil {
 		return err
 	}

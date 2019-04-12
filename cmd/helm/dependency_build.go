@@ -26,7 +26,6 @@ import (
 	"helm.sh/helm/cmd/helm/require"
 	"helm.sh/helm/pkg/action"
 	"helm.sh/helm/pkg/downloader"
-	"helm.sh/helm/pkg/getter"
 )
 
 const dependencyBuildDesc = `
@@ -40,7 +39,7 @@ If no lock file is found, 'helm dependency build' will mirror the behavior
 of 'helm dependency update'.
 `
 
-func newDependencyBuildCmd(out io.Writer) *cobra.Command {
+func newDependencyBuildCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewDependency()
 
 	cmd := &cobra.Command{
@@ -56,12 +55,12 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 			man := &downloader.Manager{
 				Out:       out,
 				ChartPath: chartpath,
-				HelmHome:  settings.Home,
-				Keyring:   client.Keyring,
-				Getters:   getter.All(settings),
+				Client:    cfg.RegistryClient,
 			}
 			if client.Verify {
-				man.Verify = downloader.VerifyIfPossible
+				// TODO(bacongobbler): plug into pkg/repo or oras for signing during a pull
+				//
+				// see comment in pkg/repo/client.go#PullChart
 			}
 			if settings.Debug {
 				man.Debug = true

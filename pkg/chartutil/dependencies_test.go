@@ -27,6 +27,7 @@ import (
 )
 
 func loadChart(t *testing.T, path string) *chart.Chart {
+	t.Helper()
 	c, err := loader.Load(path)
 	if err != nil {
 		t.Fatalf("failed to load testdata: %s", err)
@@ -36,8 +37,8 @@ func loadChart(t *testing.T, path string) *chart.Chart {
 
 func TestLoadDependency(t *testing.T) {
 	tests := []*chart.Dependency{
-		{Name: "alpine", Version: "0.1.0", Repository: "https://example.com/charts"},
-		{Name: "mariner", Version: "4.3.2", Repository: "https://example.com/charts"},
+		{Name: "alpine", Version: "0.1.0"},
+		{Name: "mariner", Version: "4.3.2"},
 	}
 
 	check := func(deps []*chart.Dependency) {
@@ -50,9 +51,6 @@ func TestLoadDependency(t *testing.T) {
 			}
 			if deps[i].Version != tt.Version {
 				t.Errorf("expected dependency named %q to have version %q, got %q", tt.Name, tt.Version, deps[i].Version)
-			}
-			if deps[i].Repository != tt.Repository {
-				t.Errorf("expected dependency named %q to have repository %q, got %q", tt.Name, tt.Repository, deps[i].Repository)
 			}
 		}
 	}

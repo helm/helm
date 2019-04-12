@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*Package repo implements the Helm Chart Repository.
+/*package repo implements the Helm Chart Repository.
 
 A chart repository is an HTTP server that provides information on charts. A local
 repository cache is an on-disk representation of a chart repository.

@@ -205,8 +205,9 @@ func TestDependencyUpdateCmd_DontDeleteOldChartsOnError(t *testing.T) {
 // The baseURL can be used to point to a particular repository server.
 func createTestingMetadata(name, baseURL string) *chart.Metadata {
 	return &chart.Metadata{
-		Name:    name,
-		Version: "1.2.3",
+		APIVersion: chart.APIVersionV1,
+		Name:       name,
+		Version:    "1.2.3",
 		Dependencies: []*chart.Dependency{
 			{Name: "reqtest", Version: "0.1.0", Repository: baseURL},
 			{Name: "compressedchart", Version: "0.1.0", Repository: baseURL},

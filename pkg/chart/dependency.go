@@ -31,11 +31,6 @@ type Dependency struct {
 	// A lock file will always produce a single version, while a dependency
 	// may contain a semantic version range.
 	Version string `json:"version,omitempty"`
-	// The URL to the repository.
-	//
-	// Appending `index.yaml` to this string should result in a URL that can be
-	// used to fetch the repository index.
-	Repository string `json:"repository"`
 	// A yaml path that resolves to a boolean, used for enabling/disabling charts (e.g. subchart1.enabled )
 	Condition string `json:"condition,omitempty"`
 	// Tags can be used to group charts for enabling/disabling together

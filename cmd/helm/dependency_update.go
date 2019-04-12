@@ -24,7 +24,6 @@ import (
 	"helm.sh/helm/cmd/helm/require"
 	"helm.sh/helm/pkg/action"
 	"helm.sh/helm/pkg/downloader"
-	"helm.sh/helm/pkg/getter"
 )
 
 const dependencyUpDesc = `
@@ -43,7 +42,7 @@ in the Chart.yaml file, but (b) at the wrong version.
 `
 
 // newDependencyUpdateCmd creates a new dependency update command.
-func newDependencyUpdateCmd(out io.Writer) *cobra.Command {
+func newDependencyUpdateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewDependency()
 
 	cmd := &cobra.Command{
@@ -58,15 +57,14 @@ func newDependencyUpdateCmd(out io.Writer) *cobra.Command {
 				chartpath = filepath.Clean(args[0])
 			}
 			man := &downloader.Manager{
-				Out:        out,
-				ChartPath:  chartpath,
-				HelmHome:   settings.Home,
-				Keyring:    client.Keyring,
-				SkipUpdate: client.SkipRefresh,
-				Getters:    getter.All(settings),
+				Out:       out,
+				ChartPath: chartpath,
+				Client:    cfg.RegistryClient,
 			}
 			if client.Verify {
-				man.Verify = downloader.VerifyAlways
+				// TODO(bacongobbler): plug into pkg/repo or oras for signing during a pull
+				//
+				// see comment in pkg/repo/client.go#PullChart
 			}
 			if settings.Debug {
 				man.Debug = true

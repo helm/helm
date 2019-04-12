@@ -19,7 +19,6 @@ package action
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
 	"syscall"
 
 	"github.com/Masterminds/semver"
@@ -36,6 +35,7 @@ import (
 //
 // It provides the implementation of 'helm package'.
 type Package struct {
+	cfg *Configuration
 	ValueOptions
 
 	Sign             bool
@@ -43,37 +43,37 @@ type Package struct {
 	Keyring          string
 	Version          string
 	AppVersion       string
-	Destination      string
+	Registry         string
 	DependencyUpdate bool
 }
 
 // NewPackage creates a new Package object with the given configuration.
-func NewPackage() *Package {
-	return &Package{}
+func NewPackage(cfg *Configuration) *Package {
+	return &Package{cfg: cfg}
 }
 
 // Run executes 'helm package' against the given chart and returns the path to the packaged chart.
-func (p *Package) Run(path string) (string, error) {
+func (p *Package) Run(path string) error {
 	ch, err := loader.LoadDir(path)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	validChartType, err := chartutil.IsValidChartType(ch)
 	if !validChartType {
-		return "", err
+		return err
 	}
 
 	combinedVals, err := chartutil.CoalesceValues(ch, p.ValueOptions.rawValues)
 	if err != nil {
-		return "", err
+		return err
 	}
 	ch.Values = combinedVals
 
 	// If version is set, modify the version.
 	if p.Version != "" {
 		if err := setVersion(ch, p.Version); err != nil {
-			return "", err
+			return err
 		}
 	}
 
@@ -83,32 +83,19 @@ func (p *Package) Run(path string) (string, error) {
 
 	if reqs := ch.Metadata.Dependencies; reqs != nil {
 		if err := CheckDependencies(ch, reqs); err != nil {
-			return "", err
+			return err
 		}
 	}
 
-	var dest string
-	if p.Destination == "." {
-		// Save to the current working directory.
-		dest, err = os.Getwd()
-		if err != nil {
-			return "", err
-		}
-	} else {
-		// Otherwise save to set destination
-		dest = p.Destination
-	}
-
-	name, err := chartutil.Save(ch, dest)
-	if err != nil {
-		return "", errors.Wrap(err, "failed to save")
+	if err := p.cfg.RegistryClient.SaveChart(ch, p.Registry); err != nil {
+		return errors.Wrap(err, "failed to save")
 	}
 
 	if p.Sign {
-		err = p.Clearsign(name)
+		// TODO(bacongobbler): tie into oras/notary for signing OCI manifests
 	}
 
-	return "", err
+	return nil
 }
 
 func setVersion(ch *chart.Chart, ver string) error {

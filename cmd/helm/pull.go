@@ -27,7 +27,7 @@ import (
 )
 
 const pullDesc = `
-Retrieve a package from a package repository, and download it locally.
+Retrieve a package from a registry and download it locally.
 
 This is useful for fetching packages to inspect, modify, or repackage. It can
 also be used to perform cryptographic verification of a chart without installing
@@ -41,12 +41,12 @@ file, and MUST pass the verification process. Failure in any part of this will
 result in an error, and the chart will not be saved locally.
 `
 
-func newPullCmd(out io.Writer) *cobra.Command {
-	client := action.NewPull()
+func newPullCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+	client := action.NewPull(cfg)
 
 	cmd := &cobra.Command{
 		Use:     "pull [chart URL | repo/chartname] [...]",
-		Short:   "download a chart from a repository and (optionally) unpack it in local directory",
+		Short:   "download a chart from a registry and (optionally) unpack it in local directory",
 		Aliases: []string{"fetch"},
 		Long:    pullDesc,
 		Args:    require.MinimumNArgs(1),

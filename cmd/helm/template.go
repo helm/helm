@@ -45,7 +45,7 @@ To render just one template in a chart, use '-x':
 	$ helm template foo mychart -x templates/deployment.yaml
 `
 
-func newTemplateCmd(out io.Writer) *cobra.Command {
+func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	customConfig := &action.Configuration{
 		// Add mock objects in here so it doesn't use Kube API server
 		Releases:   storage.Init(driver.NewMemory()),
@@ -67,7 +67,7 @@ func newTemplateCmd(out io.Writer) *cobra.Command {
 			client.DryRun = true
 			client.ReleaseName = "RELEASE-NAME"
 			client.Replace = true // Skip the name check
-			rel, err := runInstall(args, client, out)
+			rel, err := runInstall(args, client, cfg, out)
 			if err != nil {
 				return err
 			}

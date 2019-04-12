@@ -20,12 +20,19 @@ import (
 	"io/ioutil"
 	"strings"
 	"testing"
+
+	"helm.sh/helm/pkg/chart/loader"
 )
 
 func TestShow(t *testing.T) {
 	client := NewShow(ShowAll)
 
-	output, err := client.Run("../../cmd/helm/testdata/testcharts/alpine")
+	ch, err := loader.Load("../../cmd/helm/testdata/testcharts/alpine")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	output, err := client.Run(ch)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +72,13 @@ func TestShow(t *testing.T) {
 
 	// Regression tests for missing values. See issue #1024.
 	client.OutputFormat = ShowValues
-	output, err = client.Run("../../cmd/helm/testdata/testcharts/novals")
+
+	ch2, err := loader.Load("../../cmd/helm/testdata/testcharts/novals")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	output, err = client.Run(ch2)
 	if err != nil {
 		t.Fatal(err)
 	}

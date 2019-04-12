@@ -19,7 +19,7 @@ package action
 import (
 	"io"
 
-	"helm.sh/helm/pkg/registry"
+	"github.com/containerd/containerd/reference"
 )
 
 // ChartPull performs a chart pull operation.
@@ -36,7 +36,7 @@ func NewChartPull(cfg *Configuration) *ChartPull {
 
 // Run executes the chart pull operation
 func (a *ChartPull) Run(out io.Writer, ref string) error {
-	r, err := registry.ParseReference(ref)
+	r, err := reference.Parse(ref)
 	if err != nil {
 		return err
 	}

@@ -23,7 +23,6 @@ import (
 	"github.com/ghodss/yaml"
 
 	"helm.sh/helm/pkg/chart"
-	"helm.sh/helm/pkg/chart/loader"
 )
 
 type ShowOutputFormat string
@@ -57,12 +56,8 @@ func NewShow(output ShowOutputFormat) *Show {
 }
 
 // Run executes 'helm show' against the given release.
-func (s *Show) Run(chartpath string) (string, error) {
+func (s *Show) Run(chrt *chart.Chart) (string, error) {
 	var out strings.Builder
-	chrt, err := loader.Load(chartpath)
-	if err != nil {
-		return "", err
-	}
 	cf, err := yaml.Marshal(chrt.Metadata)
 	if err != nil {
 		return "", err

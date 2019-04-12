@@ -19,12 +19,11 @@ package main // import "helm.sh/helm/cmd/helm"
 import (
 	"io"
 
-	"github.com/containerd/containerd/remotes/docker"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/cmd/helm/require"
 	"helm.sh/helm/pkg/action"
-	"helm.sh/helm/pkg/registry"
+	"helm.sh/helm/pkg/repo"
 )
 
 var globalUsage = `The Kubernetes package manager
@@ -66,26 +65,22 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	// set defaults from environment
 	settings.Init(flags)
 
-	// Add the registry client based on settings
+	// Add the repo client based on settings
 	// TODO: Move this elsewhere (first, settings.Init() must move)
-	actionConfig.RegistryClient = registry.NewClient(&registry.ClientOptions{
-		Out: out,
-		Resolver: registry.Resolver{
-			Resolver: docker.NewResolver(docker.ResolverOptions{}),
-		},
-		CacheRootDir: settings.Home.Registry(),
+	actionConfig.RegistryClient = repo.NewClient(&repo.ClientOptions{
+		Out:          out,
+		CacheRootDir: settings.Home.Repository(),
 	})
 
 	cmd.AddCommand(
 		// chart commands
 		newCreateCmd(out),
-		newDependencyCmd(out),
-		newPullCmd(out),
-		newShowCmd(out),
+		newDependencyCmd(actionConfig, out),
+		newPullCmd(actionConfig, out),
+		newPushCmd(actionConfig, out),
+		newShowCmd(actionConfig, out),
 		newLintCmd(out),
-		newPackageCmd(out),
-		newRepoCmd(out),
-		newSearchCmd(out),
+		newPackageCmd(actionConfig, out),
 		newVerifyCmd(out),
 		newChartCmd(actionConfig, out),
 
@@ -104,7 +99,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		newHomeCmd(out),
 		newInitCmd(out),
 		newPluginCmd(out),
-		newTemplateCmd(out),
+		newTemplateCmd(actionConfig, out),
 		newVersionCmd(out),
 
 		// Hidden documentation generator command: 'helm docs'

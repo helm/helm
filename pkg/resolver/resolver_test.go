@@ -16,12 +16,53 @@ limitations under the License.
 package resolver
 
 import (
+	"io/ioutil"
+	"path"
 	"testing"
 
 	"helm.sh/helm/pkg/chart"
+	"helm.sh/helm/pkg/repo"
+	"helm.sh/helm/pkg/repo/repotest"
 )
 
 func TestResolve(t *testing.T) {
+	cache, err := ioutil.TempDir("", "helm-resolver-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	registryClient := repo.NewClient(&repo.ClientOptions{
+		Out:          ioutil.Discard,
+		CacheRootDir: cache,
+	})
+
+	testRepo := repotest.NewServer()
+	registryURL := testRepo.URL()
+
+	versions := []string{"0.1.0", "0.2.0", "0.3.0"}
+
+	for _, ver := range versions {
+		ch := &chart.Chart{
+			Metadata: &chart.Metadata{
+				Name:    "alpine",
+				Version: ver,
+			},
+		}
+
+		ref, err := repo.ParseNameTag(path.Join(registryURL, ch.Metadata.Name), ch.Metadata.Version)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if err := registryClient.SaveChart(ch, registryURL); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := registryClient.PushChart(ref); err != nil {
+			t.Fatal(err)
+		}
+	}
+
 	tests := []struct {
 		name   string
 		req    []*chart.Dependency
@@ -31,110 +72,120 @@ func TestResolve(t *testing.T) {
 		{
 			name: "version failure",
 			req: []*chart.Dependency{
-				{Name: "oedipus-rex", Repository: "http://example.com", Version: ">a1"},
+				{Name: path.Join(registryURL, "oedipus-rex"), Version: ">a1"},
 			},
 			err: true,
 		},
 		{
 			name: "cache index failure",
 			req: []*chart.Dependency{
-				{Name: "oedipus-rex", Repository: "http://example.com", Version: "1.0.0"},
+				{Name: path.Join(registryURL, "oedipus-rex"), Version: "1.0.0"},
 			},
 			err: true,
 		},
 		{
 			name: "chart not found failure",
 			req: []*chart.Dependency{
-				{Name: "redis", Repository: "http://example.com", Version: "1.0.0"},
+				{Name: path.Join(registryURL, "redis"), Version: "1.0.0"},
 			},
 			err: true,
 		},
 		{
 			name: "constraint not satisfied failure",
 			req: []*chart.Dependency{
-				{Name: "alpine", Repository: "http://example.com", Version: ">=1.0.0"},
+				{Name: path.Join(registryURL, "alpine"), Version: ">=1.0.0"},
 			},
 			err: true,
 		},
 		{
 			name: "valid lock",
 			req: []*chart.Dependency{
-				{Name: "alpine", Repository: "http://example.com", Version: ">=0.1.0"},
+				{Name: path.Join(registryURL, "alpine"), Version: ">=0.1.0"},
 			},
 			expect: &chart.Lock{
 				Dependencies: []*chart.Dependency{
-					{Name: "alpine", Repository: "http://example.com", Version: "0.2.0"},
+					{Name: path.Join(registryURL, "alpine"), Version: "0.3.0"},
+				},
+			},
+		},
+		{
+			name: "exact lock",
+			req: []*chart.Dependency{
+				{Name: path.Join(registryURL, "alpine"), Version: "=0.1.0"},
+			},
+			expect: &chart.Lock{
+				Dependencies: []*chart.Dependency{
+					{Name: path.Join(registryURL, "alpine"), Version: "0.1.0"},
 				},
 			},
 		},
 		{
 			name: "repo from valid local path",
 			req: []*chart.Dependency{
-				{Name: "signtest", Repository: "file://../../../../cmd/helm/testdata/testcharts/signtest", Version: "0.1.0"},
+				{Name: "file://../../../../cmd/helm/testdata/testcharts/signtest", Version: "0.1.0"},
 			},
 			expect: &chart.Lock{
 				Dependencies: []*chart.Dependency{
-					{Name: "signtest", Repository: "file://../../../../cmd/helm/testdata/testcharts/signtest", Version: "0.1.0"},
+					{Name: "file://../../../../cmd/helm/testdata/testcharts/signtest", Version: "0.1.0"},
 				},
 			},
 		},
 		{
 			name: "repo from invalid local path",
 			req: []*chart.Dependency{
-				{Name: "notexist", Repository: "file://../testdata/notexist", Version: "0.1.0"},
+				{Name: "file://../testdata/notexist", Version: "0.1.0"},
 			},
 			err: true,
 		},
 	}
 
-	repoNames := map[string]string{"alpine": "kubernetes-charts", "redis": "kubernetes-charts"}
-	r := New("testdata/chartpath", "testdata/helmhome")
+	r := New("testdata/chartpath", registryClient)
 	for _, tt := range tests {
-		hash, err := HashReq(tt.req)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		l, err := r.Resolve(tt.req, repoNames, hash)
-		if err != nil {
-			if tt.err {
-				continue
+		tt := tt // capture range variable
+		t.Run(tt.name, func(t *testing.T) {
+			hash, err := HashReq(tt.req)
+			if err != nil {
+				t.Fatal(err)
 			}
-			t.Fatal(err)
-		}
 
-		if tt.err {
-			t.Fatalf("Expected error in test %q", tt.name)
-		}
+			l, err := r.Resolve(tt.req, hash)
+			if err != nil {
+				if tt.err {
+					return
+				}
+				t.Fatal(err)
+			}
 
-		if h, err := HashReq(tt.req); err != nil {
-			t.Fatal(err)
-		} else if h != l.Digest {
-			t.Errorf("%q: hashes don't match.", tt.name)
-		}
+			if tt.err {
+				t.Fatalf("Expected error")
+			}
 
-		// Check fields.
-		if len(l.Dependencies) != len(tt.req) {
-			t.Errorf("%s: wrong number of dependencies in lock", tt.name)
-		}
-		d0 := l.Dependencies[0]
-		e0 := tt.expect.Dependencies[0]
-		if d0.Name != e0.Name {
-			t.Errorf("%s: expected name %s, got %s", tt.name, e0.Name, d0.Name)
-		}
-		if d0.Repository != e0.Repository {
-			t.Errorf("%s: expected repo %s, got %s", tt.name, e0.Repository, d0.Repository)
-		}
-		if d0.Version != e0.Version {
-			t.Errorf("%s: expected version %s, got %s", tt.name, e0.Version, d0.Version)
-		}
+			if h, err := HashReq(tt.req); err != nil {
+				t.Fatal(err)
+			} else if h != l.Digest {
+				t.Errorf("hashes don't match. expected '%s', got '%s'", h, l.Digest)
+			}
+
+			// Check fields.
+			if len(l.Dependencies) != len(tt.req) {
+				t.Errorf("wrong number of dependencies in lock. expected %d, got %d", len(tt.req), len(l.Dependencies))
+			}
+			d0 := l.Dependencies[0]
+			e0 := tt.expect.Dependencies[0]
+			if d0.Name != e0.Name {
+				t.Errorf("expected name %s, got %s", e0.Name, d0.Name)
+			}
+			if d0.Version != e0.Version {
+				t.Errorf("expected version %s, got %s", e0.Version, d0.Version)
+			}
+		})
 	}
 }
 
 func TestHashReq(t *testing.T) {
-	expect := "sha256:d661820b01ed7bcf26eed8f01cf16380e0a76326ba33058d3150f919d9b15bc0"
+	expect := "sha256:3aa1f5e784c4609f4db27c175e081e5ffab60ea4a27f87d889bb1ed273e49f75"
 	req := []*chart.Dependency{
-		{Name: "alpine", Version: "0.1.0", Repository: "http://localhost:8879/charts"},
+		{Name: "alpine", Version: "0.1.0"},
 	}
 	h, err := HashReq(req)
 	if err != nil {

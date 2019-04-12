@@ -27,7 +27,6 @@ import (
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/pkg/chart"
-	"helm.sh/helm/pkg/helmpath"
 	"helm.sh/helm/pkg/provenance"
 	"helm.sh/helm/pkg/repo"
 )
@@ -35,34 +34,33 @@ import (
 // Resolver resolves dependencies from semantic version ranges to a particular version.
 type Resolver struct {
 	chartpath string
-	helmhome  helmpath.Home
+	client    *repo.Client
 }
 
 // New creates a new resolver for a given chart and a given helm home.
-func New(chartpath string, helmhome helmpath.Home) *Resolver {
+func New(chartpath string, client *repo.Client) *Resolver {
 	return &Resolver{
 		chartpath: chartpath,
-		helmhome:  helmhome,
+		client:    client,
 	}
 }
 
 // Resolve resolves dependencies and returns a lock file with the resolution.
-func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string, d string) (*chart.Lock, error) {
+func (r *Resolver) Resolve(reqs []*chart.Dependency, d string) (*chart.Lock, error) {
 
 	// Now we clone the dependencies, locking as we go.
 	locked := make([]*chart.Dependency, len(reqs))
 	missing := []string{}
 	for i, d := range reqs {
-		if strings.HasPrefix(d.Repository, "file://") {
+		if strings.HasPrefix(d.Name, "file://") {
 
-			if _, err := GetLocalPath(d.Repository, r.chartpath); err != nil {
+			if _, err := GetLocalPath(d.Name, r.chartpath); err != nil {
 				return nil, err
 			}
 
 			locked[i] = &chart.Dependency{
-				Name:       d.Name,
-				Repository: d.Repository,
-				Version:    d.Version,
+				Name:    d.Name,
+				Version: d.Version,
 			}
 			continue
 		}
@@ -71,25 +69,19 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 			return nil, errors.Wrapf(err, "dependency %q has an invalid version/constraint format", d.Name)
 		}
 
-		repoIndex, err := repo.LoadIndexFile(r.helmhome.CacheIndex(repoNames[d.Name]))
+		tags, err := r.client.FetchTags(d.Name)
 		if err != nil {
-			return nil, errors.Wrap(err, "no cached repo found. (try 'helm repo update')")
-		}
-
-		vs, ok := repoIndex.Entries[d.Name]
-		if !ok {
-			return nil, errors.Errorf("%s chart not found in repo %s", d.Name, d.Repository)
+			return nil, errors.Wrapf(err, "could not fetch tags for dependency %q", d.Name)
 		}
 
 		locked[i] = &chart.Dependency{
-			Name:       d.Name,
-			Repository: d.Repository,
+			Name: d.Name,
 		}
 		found := false
 		// The version are already sorted and hence the first one to satisfy the constraint is used
-		for _, ver := range vs {
-			v, err := semver.NewVersion(ver.Version)
-			if err != nil || len(ver.URLs) == 0 {
+		for _, ver := range tags {
+			v, err := semver.NewVersion(ver)
+			if err != nil {
 				// Not a legit entry.
 				continue
 			}

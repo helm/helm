@@ -113,7 +113,7 @@ func TestInstall(t *testing.T) {
 		},
 		// Install, chart with bad dependencies in Chart.yaml in /charts
 		{
-			name:      "install chart with bad  dependencies in Chart.yaml",
+			name:      "install chart with bad dependencies in Chart.yaml",
 			cmd:       "install badreq testdata/testcharts/chart-bad-requirements",
 			wantError: true,
 		},

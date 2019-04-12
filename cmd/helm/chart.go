@@ -41,10 +41,7 @@ func newChartCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	cmd.AddCommand(
 		newChartListCmd(cfg, out),
 		newChartExportCmd(cfg, out),
-		newChartPullCmd(cfg, out),
-		newChartPushCmd(cfg, out),
 		newChartRemoveCmd(cfg, out),
-		newChartSaveCmd(cfg, out),
 	)
 	return cmd
 }

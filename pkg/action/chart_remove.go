@@ -19,7 +19,7 @@ package action
 import (
 	"io"
 
-	"helm.sh/helm/pkg/registry"
+	"github.com/containerd/containerd/reference"
 )
 
 // ChartRemove performs a chart remove operation.
@@ -36,7 +36,7 @@ func NewChartRemove(cfg *Configuration) *ChartRemove {
 
 // Run executes the chart remove operation
 func (a *ChartRemove) Run(out io.Writer, ref string) error {
-	r, err := registry.ParseReference(ref)
+	r, err := reference.Parse(ref)
 	if err != nil {
 		return err
 	}

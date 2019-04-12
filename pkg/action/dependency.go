@@ -140,9 +140,9 @@ func (d *Dependency) dependencyStatus(chartpath string, dep *chart.Dependency) s
 func (d *Dependency) printDependencies(chartpath string, out io.Writer, reqs []*chart.Dependency) {
 	table := uitable.New()
 	table.MaxColWidth = 80
-	table.AddRow("NAME", "VERSION", "REPOSITORY", "STATUS")
+	table.AddRow("NAME", "VERSION", "STATUS")
 	for _, row := range reqs {
-		table.AddRow(row.Name, row.Version, row.Repository, d.dependencyStatus(chartpath, row))
+		table.AddRow(row.Name, row.Version, d.dependencyStatus(chartpath, row))
 	}
 	fmt.Fprintln(out, table)
 }
