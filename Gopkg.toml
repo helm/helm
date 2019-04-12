@@ -44,7 +44,7 @@
 
 [[constraint]]
   name = "github.com/deislabs/oras"
-  version = "~0.3.3"
+  revision = "12b336a3ea9d5d048f6726adbfc0a8271e75e2a8"
 
 [[constraint]]
   name = "github.com/docker/go-units"

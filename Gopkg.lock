@@ -185,7 +185,7 @@
   revision = "bf70f2a70fb1b1f36d90d671a72795984eab0fcb"
 
 [[projects]]
-  digest = "1:1872596d45cb52913fcdea90d468f3e57435959e9c0d99ccb316ee76de341313"
+  digest = "1:37f8940c4d3c41536ea882b1ca3498e403c04892dfc34bd0d670ed9eafccda9a"
   name = "github.com/containerd/containerd"
   packages = [
     "content",
@@ -198,8 +198,8 @@
     "remotes/docker",
   ]
   pruneopts = "UT"
-  revision = "9b32062dc1f5a7c2564315c269b5059754f12b9d"
-  version = "v1.2.1"
+  revision = "894b81a4b802e4eb2a91d1ce216b8817763c29fb"
+  version = "v1.2.6"
 
 [[projects]]
   digest = "1:7cb4fdca4c251b3ef8027c90ea35f70c7b661a593b9eeae34753c65499098bb1"
@@ -218,15 +218,14 @@
   version = "v1.1.1"
 
 [[projects]]
-  digest = "1:8285cd51b86f5c3af447ad1db7c8572578a422cf9a50f1f07eea1d021151044f"
+  digest = "1:a74c8901dcf32f45e57e82403dd788b1ce0bcf82c62b4d147cdd41f70e65dc1c"
   name = "github.com/deislabs/oras"
   packages = [
     "pkg/content",
     "pkg/oras",
   ]
   pruneopts = "UT"
-  revision = "e8a1fa6ff9a507b99eedd45745959e8c5b826d9f"
-  version = "v0.3.3"
+  revision = "12b336a3ea9d5d048f6726adbfc0a8271e75e2a8"
 
 [[projects]]
   digest = "1:76dc72490af7174349349838f2fe118996381b31ea83243812a97e5a0fd5ed55"
