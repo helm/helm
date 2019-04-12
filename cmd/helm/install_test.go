@@ -191,6 +191,22 @@ func TestInstall(t *testing.T) {
 			flags: []string{"--name-template", "{{UPPER \"foobar\"}}"},
 			err:   true,
 		},
+		// Install, using --output json
+		{
+			name:     "install using output json",
+			args:     []string{"testdata/testcharts/alpine"},
+			flags:    strings.Split("--name virgil --output json", " "),
+			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "virgil"}),
+			expected: regexp.QuoteMeta(`{"name":"virgil","info":{"status":{"code":1},"first_deployed":{"seconds":242085845},"last_deployed":{"seconds":242085845},"Description":"Release mock"},"namespace":"default"}`),
+		},
+		// Install, using --output yaml
+		{
+			name:     "install using output yaml",
+			args:     []string{"testdata/testcharts/alpine"},
+			flags:    strings.Split("--name virgil --output yaml", " "),
+			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "virgil"}),
+			expected: "info:\n  Description: Release mock\n  first_deployed:\n    seconds: 242085845\n  last_deployed:\n    seconds: 242085845\n  status:\n    code: 1\nname: virgil\nnamespace: default\n",
+		},
 	}
 
 	runReleaseCases(t, tests, func(c *helm.FakeClient, out io.Writer) *cobra.Command {

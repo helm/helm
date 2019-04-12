@@ -143,6 +143,7 @@ type installCmd struct {
 	certFile string
 	keyFile  string
 	caFile   string
+	output   string
 }
 
 type valueFiles []string
@@ -226,6 +227,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&inst.depUp, "dep-up", false, "Run helm dependency update before installing the chart")
 	f.BoolVar(&inst.subNotes, "render-subchart-notes", false, "Render subchart notes along with the parent")
 	f.StringVar(&inst.description, "description", "", "Specify a description for the release")
+	f.StringVarP(&inst.output, "output", "o", "table", "Prints the output in the specified format (json|table|yaml)")
 
 	// set defaults from environment
 	settings.InitTLS(f)
@@ -335,7 +337,10 @@ func (i *installCmd) run() error {
 	if rel == nil {
 		return nil
 	}
-	i.printRelease(rel)
+
+	if i.output == "table" {
+		i.printRelease(rel)
+	}
 
 	// If this is a dry run, we can't display status.
 	if i.dryRun {
@@ -351,7 +356,15 @@ func (i *installCmd) run() error {
 	if err != nil {
 		return prettyError(err)
 	}
-	PrintStatus(i.out, status)
+
+	output, err := PrintStatusFormated(i.output, status)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(i.out, output)
+
 	return nil
 }
 
