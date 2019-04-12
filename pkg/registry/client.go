@@ -28,33 +28,60 @@ import (
 	"helm.sh/helm/pkg/chart"
 )
 
+const (
+	CredentialsFileBasename = "config"
+)
+
 type (
 	// ClientOptions is used to construct a new client
 	ClientOptions struct {
 		Out          io.Writer
+		Authorizer   Authorizer
 		Resolver     Resolver
 		CacheRootDir string
 	}
 
 	// Client works with OCI-compliant registries and local Helm chart cache
 	Client struct {
-		out      io.Writer
-		resolver Resolver
-		cache    *filesystemCache // TODO: something more robust
+		out        io.Writer
+		authorizer Authorizer
+		resolver   Resolver
+		cache      *filesystemCache // TODO: something more robust
 	}
 )
 
 // NewClient returns a new registry client with config
 func NewClient(options *ClientOptions) *Client {
 	return &Client{
-		out:      options.Out,
-		resolver: options.Resolver,
+		out:        options.Out,
+		resolver:   options.Resolver,
+		authorizer: options.Authorizer,
 		cache: &filesystemCache{
 			out:     options.Out,
 			rootDir: options.CacheRootDir,
 			store:   orascontent.NewMemoryStore(),
 		},
 	}
+}
+
+// Login logs into a registry
+func (c *Client) Login(hostname string, username string, password string) error {
+	err := c.authorizer.Login(context.Background(), hostname, username, password)
+	if err != nil {
+		return err
+	}
+	fmt.Fprint(c.out, "Login succeeded\n")
+	return nil
+}
+
+// Logout logs out of a registry
+func (c *Client) Logout(hostname string) error {
+	err := c.authorizer.Logout(context.Background(), hostname)
+	if err != nil {
+		return err
+	}
+	fmt.Fprint(c.out, "Logout succeeded\n")
+	return nil
 }
 
 // PushChart uploads a chart to a registry

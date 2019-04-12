@@ -14,25 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package action
+package registry // import "helm.sh/helm/pkg/registry"
 
 import (
-	"io"
+	"github.com/deislabs/oras/pkg/auth"
 )
 
-// ChartLogout performs a chart login operation.
-type ChartLogout struct {
-	cfg *Configuration
-}
-
-// NewChartLogout creates a new ChartLogout object with the given configuration.
-func NewChartLogout(cfg *Configuration) *ChartLogout {
-	return &ChartLogout{
-		cfg: cfg,
+type (
+	// Authorizer handles registry auth operations
+	Authorizer struct {
+		auth.Client
 	}
-}
-
-// Run executes the chart logout operation
-func (a *ChartLogout) Run(out io.Writer, hostname string) error {
-	return a.cfg.RegistryClient.Logout(hostname)
-}
+)

@@ -36,8 +36,8 @@ func newChartLogoutCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 		Long:  chartLogoutDesc,
 		Args:  require.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			host := args[0]
-			return action.NewChartLogout(cfg).Run(out, host)
+			hostname := args[0]
+			return action.NewChartLogout(cfg).Run(out, hostname)
 		},
 	}
 }

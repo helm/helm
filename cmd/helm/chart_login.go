@@ -26,7 +26,7 @@ import (
 )
 
 const chartLoginDesc = `
-Authenticate against a remote registry.
+Authenticate to a remote registry.
 `
 
 func newChartLoginCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
@@ -36,8 +36,8 @@ func newChartLoginCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Long:  chartLoginDesc,
 		Args:  require.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			host := args[0]
-			return action.NewChartLogin(cfg).Run(out, host, "myuser", "mypass")
+			hostname := args[0]
+			return action.NewChartLogin(cfg).Run(out, hostname, "myuser", "mypass")
 		},
 	}
 }
