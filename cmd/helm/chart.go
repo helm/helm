@@ -39,6 +39,8 @@ func newChartCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Long:  chartHelp,
 	}
 	cmd.AddCommand(
+		newChartLoginCmd(cfg, out),
+		newChartLogoutCmd(cfg, out),
 		newChartListCmd(cfg, out),
 		newChartExportCmd(cfg, out),
 		newChartPullCmd(cfg, out),

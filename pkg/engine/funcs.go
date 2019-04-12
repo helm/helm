@@ -25,7 +25,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/Masterminds/sprig"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 // funcMap returns a mapping of all of the functions that Engine has.
