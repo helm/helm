@@ -275,7 +275,7 @@
   version = "v18.09.5"
 
 [[projects]]
-  digest = "1:888aaacf886021e4a0fa6b09a61f1158063bd6c2e2ddefe14f3a7ccbc93ffe27"
+  digest = "1:feaf11ab67fe48ec2712bf9d44e2fb2d4ebdc5da8e5a47bd3ce05bae9f82825b"
   name = "github.com/docker/distribution"
   packages = [
     ".",
@@ -296,6 +296,7 @@
     "registry/api/errcode",
     "registry/api/v2",
     "registry/auth",
+    "registry/auth/htpasswd",
     "registry/client",
     "registry/client/auth",
     "registry/client/auth/challenge",
@@ -983,9 +984,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:599ef9ff10026292c425292ab1d2bb1521cd671fe89a6034df07bf1411daa44b"
+  digest = "1:91e034b0c63a4c747c6e9dc8285f36dc5fe699a78d34de0a663895e52ff673dd"
   name = "golang.org/x/crypto"
   packages = [
+    "bcrypt",
+    "blowfish",
     "cast5",
     "ed25519",
     "ed25519/internal/edwards25519",
@@ -1748,13 +1751,13 @@
     "github.com/asaskevich/govalidator",
     "github.com/containerd/containerd/reference",
     "github.com/containerd/containerd/remotes",
-    "github.com/containerd/containerd/remotes/docker",
     "github.com/deislabs/oras/pkg/auth",
     "github.com/deislabs/oras/pkg/auth/docker",
     "github.com/deislabs/oras/pkg/content",
     "github.com/deislabs/oras/pkg/oras",
     "github.com/docker/distribution/configuration",
     "github.com/docker/distribution/registry",
+    "github.com/docker/distribution/registry/auth/htpasswd",
     "github.com/docker/distribution/registry/storage/driver/inmemory",
     "github.com/docker/go-units",
     "github.com/evanphx/json-patch",
@@ -1772,6 +1775,7 @@
     "github.com/spf13/pflag",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/suite",
+    "golang.org/x/crypto/bcrypt",
     "golang.org/x/crypto/openpgp",
     "golang.org/x/crypto/openpgp/clearsign",
     "golang.org/x/crypto/openpgp/errors",
