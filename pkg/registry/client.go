@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	CredentialsFileBasename = "config"
+	CredentialsFileBasename = "config.json"
 )
 
 type (
