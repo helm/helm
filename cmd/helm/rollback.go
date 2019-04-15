@@ -36,17 +36,18 @@ second is a revision (version) number. To see revision numbers, run
 `
 
 type rollbackCmd struct {
-	name         string
-	revision     int32
-	dryRun       bool
-	recreate     bool
-	force        bool
-	disableHooks bool
-	out          io.Writer
-	client       helm.Interface
-	timeout      int64
-	wait         bool
-	description  string
+	name          string
+	revision      int32
+	dryRun        bool
+	recreate      bool
+	force         bool
+	disableHooks  bool
+	out           io.Writer
+	client        helm.Interface
+	timeout       int64
+	wait          bool
+	description   string
+	cleanupOnFail bool
 }
 
 func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
@@ -87,6 +88,7 @@ func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.Int64Var(&rollback.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&rollback.wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
 	f.StringVar(&rollback.description, "description", "", "specify a description for the release")
+	f.BoolVar(&rollback.cleanupOnFail, "cleanup-on-fail", false, "allow deletion of new resources created in this rollback when rollback failed")
 
 	// set defaults from environment
 	settings.InitTLS(f)
@@ -104,7 +106,8 @@ func (r *rollbackCmd) run() error {
 		helm.RollbackVersion(r.revision),
 		helm.RollbackTimeout(r.timeout),
 		helm.RollbackWait(r.wait),
-		helm.RollbackDescription(r.description))
+		helm.RollbackDescription(r.description),
+		helm.RollbackCleanupOnFail(r.cleanupOnFail))
 	if err != nil {
 		return prettyError(err)
 	}

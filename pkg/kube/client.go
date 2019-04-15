@@ -35,8 +35,9 @@ import (
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	batch "k8s.io/api/batch/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	extv1beta1 "k8s.io/api/extensions/v1beta1"
+	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,6 +46,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
@@ -76,6 +78,12 @@ func New(getter genericclioptions.RESTClientGetter) *Client {
 	if getter == nil {
 		getter = genericclioptions.NewConfigFlags(true)
 	}
+
+	err := apiextv1beta1.AddToScheme(scheme.Scheme)
+	if err != nil {
+		panic(err)
+	}
+
 	return &Client{
 		Factory: cmdutil.NewFactory(getter),
 		Log:     nopLogger,
@@ -142,8 +150,8 @@ func (c *Client) BuildUnstructured(namespace string, reader io.Reader) (Result, 
 		ContinueOnError().
 		NamespaceParam(namespace).
 		DefaultNamespace().
-		Stream(reader, "").
 		Schema(c.validator()).
+		Stream(reader, "").
 		Flatten().
 		Do().Infos()
 	return result, scrubValidationError(err)
@@ -290,13 +298,33 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	return buf.String(), nil
 }
 
-// Update reads in the current configuration and a target configuration from io.reader
+// Deprecated; use UpdateWithOptions instead
+func (c *Client) Update(namespace string, originalReader, targetReader io.Reader, force bool, recreate bool, timeout int64, shouldWait bool) error {
+	return c.UpdateWithOptions(namespace, originalReader, targetReader, UpdateOptions{
+		Force:      force,
+		Recreate:   recreate,
+		Timeout:    timeout,
+		ShouldWait: shouldWait,
+	})
+}
+
+// UpdateOptions provides options to control update behavior
+type UpdateOptions struct {
+	Force      bool
+	Recreate   bool
+	Timeout    int64
+	ShouldWait bool
+	// Allow deletion of new resources created in this update when update failed
+	CleanupOnFail bool
+}
+
+// UpdateWithOptions reads in the current configuration and a target configuration from io.reader
 // and creates resources that don't already exists, updates resources that have been modified
 // in the target configuration and deletes resources from the current configuration that are
 // not present in the target configuration.
 //
 // Namespace will set the namespaces.
-func (c *Client) Update(namespace string, originalReader, targetReader io.Reader, force bool, recreate bool, timeout int64, shouldWait bool) error {
+func (c *Client) UpdateWithOptions(namespace string, originalReader, targetReader io.Reader, opts UpdateOptions) error {
 	original, err := c.BuildUnstructured(namespace, originalReader)
 	if err != nil {
 		return fmt.Errorf("failed decoding reader into objects: %s", err)
@@ -308,6 +336,7 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 		return fmt.Errorf("failed decoding reader into objects: %s", err)
 	}
 
+	newlyCreatedResources := []*resource.Info{}
 	updateErrors := []string{}
 
 	c.Log("checking %d resources for changes", len(target))
@@ -326,6 +355,7 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 			if err := createResource(info); err != nil {
 				return fmt.Errorf("failed to create resource: %s", err)
 			}
+			newlyCreatedResources = append(newlyCreatedResources, info)
 
 			kind := info.Mapping.GroupVersionKind.Kind
 			c.Log("Created a new %s called %q\n", kind, info.Name)
@@ -347,7 +377,7 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 			)
 		}
 
-		if err := updateResource(c, info, originalInfo.Object, force, recreate); err != nil {
+		if err := updateResource(c, info, originalInfo.Object, opts.Force, opts.Recreate); err != nil {
 			c.Log("error updating the resource %q:\n\t %v", info.Name, err)
 			updateErrors = append(updateErrors, err.Error())
 		}
@@ -355,11 +385,18 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 		return nil
 	})
 
+	cleanupErrors := []string{}
+
+	if opts.CleanupOnFail && (err != nil || len(updateErrors) != 0) {
+		c.Log("Cleanup on fail enabled: cleaning up newly created resources due to update manifests failures")
+		cleanupErrors = c.cleanup(newlyCreatedResources)
+	}
+
 	switch {
 	case err != nil:
-		return err
+		return fmt.Errorf(strings.Join(append([]string{err.Error()}, cleanupErrors...), " && "))
 	case len(updateErrors) != 0:
-		return fmt.Errorf(strings.Join(updateErrors, " && "))
+		return fmt.Errorf(strings.Join(append(updateErrors, cleanupErrors...), " && "))
 	}
 
 	for _, info := range original.Difference(target) {
@@ -382,10 +419,30 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 			c.Log("Failed to delete %q, err: %s", info.Name, err)
 		}
 	}
-	if shouldWait {
-		return c.waitForResources(time.Duration(timeout)*time.Second, target)
+	if opts.ShouldWait {
+		err := c.waitForResources(time.Duration(opts.Timeout)*time.Second, target)
+
+		if opts.CleanupOnFail && err != nil {
+			c.Log("Cleanup on fail enabled: cleaning up newly created resources due to wait failure during update")
+			cleanupErrors = c.cleanup(newlyCreatedResources)
+			return fmt.Errorf(strings.Join(append([]string{err.Error()}, cleanupErrors...), " && "))
+		}
+
+		return err
 	}
 	return nil
+}
+
+func (c *Client) cleanup(newlyCreatedResources []*resource.Info) (cleanupErrors []string) {
+	for _, info := range newlyCreatedResources {
+		kind := info.Mapping.GroupVersionKind.Kind
+		c.Log("Deleting newly created %s with the name %q in %s...", kind, info.Name, info.Namespace)
+		if err := deleteResource(info); err != nil {
+			c.Log("Error deleting newly created %s with the name %q in %s: %s", kind, info.Name, info.Namespace, err)
+			cleanupErrors = append(cleanupErrors, err.Error())
+		}
+	}
+	return
 }
 
 // Delete deletes Kubernetes resources from an io.reader.
@@ -437,6 +494,55 @@ func (c *Client) WatchUntilReady(namespace string, reader io.Reader, timeout int
 	// For jobs, there's also the option to do poll c.Jobs(namespace).Get():
 	// https://github.com/adamreese/kubernetes/blob/master/test/e2e/job.go#L291-L300
 	return perform(infos, c.watchTimeout(time.Duration(timeout)*time.Second))
+}
+
+// WatchUntilCRDEstablished polls the given CRD until it reaches the established
+// state. A CRD needs to reach the established state before CRs can be created.
+//
+// If a naming conflict condition is found, this function will return an error.
+func (c *Client) WaitUntilCRDEstablished(reader io.Reader, timeout time.Duration) error {
+	infos, err := c.BuildUnstructured(metav1.NamespaceAll, reader)
+	if err != nil {
+		return err
+	}
+
+	return perform(infos, c.pollCRDEstablished(timeout))
+}
+
+func (c *Client) pollCRDEstablished(t time.Duration) ResourceActorFunc {
+	return func(info *resource.Info) error {
+		return c.pollCRDUntilEstablished(t, info)
+	}
+}
+
+func (c *Client) pollCRDUntilEstablished(timeout time.Duration, info *resource.Info) error {
+	return wait.PollImmediate(time.Second, timeout, func() (bool, error) {
+		err := info.Get()
+		if err != nil {
+			return false, fmt.Errorf("unable to get CRD: %v", err)
+		}
+
+		crd := &apiextv1beta1.CustomResourceDefinition{}
+		err = scheme.Scheme.Convert(info.Object, crd, nil)
+		if err != nil {
+			return false, fmt.Errorf("unable to convert to CRD type: %v", err)
+		}
+
+		for _, cond := range crd.Status.Conditions {
+			switch cond.Type {
+			case apiextv1beta1.Established:
+				if cond.Status == apiextv1beta1.ConditionTrue {
+					return true, nil
+				}
+			case apiextv1beta1.NamesAccepted:
+				if cond.Status == apiextv1beta1.ConditionFalse {
+					return false, fmt.Errorf("naming conflict detected for CRD %s", crd.GetName())
+				}
+			}
+		}
+
+		return false, nil
+	})
 }
 
 func perform(infos Result, fn ResourceActorFunc) error {

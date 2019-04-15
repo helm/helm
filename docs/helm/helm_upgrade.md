@@ -69,6 +69,7 @@ helm upgrade [RELEASE] [CHART] [flags]
       --atomic                   if set, upgrade process rolls back changes made in case of failed upgrade, also sets --wait flag
       --ca-file string           verify certificates of HTTPS-enabled servers using this CA bundle
       --cert-file string         identify HTTPS client using this SSL certificate file
+      --cleanup-on-fail          allow deletion of new resources created in this upgrade when upgrade failed
       --description string       specify the description to use for the upgrade, rather than the default
       --devel                    use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.
       --dry-run                  simulate an upgrade
