@@ -34,13 +34,7 @@ func TestCreate(t *testing.T) {
 	}
 	defer os.RemoveAll(tdir)
 
-	cf := &chart.Metadata{
-		APIVersion: chart.APIVersionV1,
-		Name:       "foo",
-		Version:    "0.1.0",
-	}
-
-	c, err := Create(cf, tdir)
+	c, err := Create("foo", tdir)
 	if err != nil {
 		t.Fatal(err)
 	}

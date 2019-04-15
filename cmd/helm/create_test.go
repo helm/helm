@@ -73,11 +73,7 @@ func TestCreateStarterCmd(t *testing.T) {
 	// Create a starter.
 	starterchart := hh.Starters()
 	os.Mkdir(starterchart, 0755)
-	if dest, err := chartutil.Create(&chart.Metadata{
-		APIVersion: chart.APIVersionV1,
-		Name:       "starterchart",
-		Version:    "0.1.0",
-	}, starterchart); err != nil {
+	if dest, err := chartutil.Create("starterchart", starterchart); err != nil {
 		t.Fatalf("Could not create chart: %s", err)
 	} else {
 		t.Logf("Created %s", dest)
