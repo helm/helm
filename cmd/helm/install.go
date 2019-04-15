@@ -300,8 +300,8 @@ func (i *installCmd) run() error {
 	}
 
 	if i.appVersion != "" {
-		if !chartRequested.Metadata.OverrideAppVersion {
-			return fmt.Errorf("override app version is not allowed on this chart")
+		if !chartRequested.Metadata.OverrideMetadata {
+			return fmt.Errorf("The chart maintainer has disallowed overriding the chart's package metadata. Please contact the maintainer to set `overrideChartMeta` in their Chart.yaml to `true`.")
 		}
 
 		chartRequested.Metadata.AppVersion = i.appVersion

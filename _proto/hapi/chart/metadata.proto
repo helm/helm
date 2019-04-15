@@ -91,6 +91,6 @@ message Metadata {
 	// KubeVersion is a SemVer constraint specifying the version of Kubernetes required.
         string kubeVersion = 17;
 
-	// Whether or not the app version can be override by flag --app-version (during install or update)
-	bool overrideAppVersion = 18;
+	// During chart install or update, this field determines whether or not the metadata can be overridden by flags like --app-version
+	bool overrideMetadata = 18;
 }

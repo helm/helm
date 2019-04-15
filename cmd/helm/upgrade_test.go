@@ -95,10 +95,10 @@ func TestUpgradeCmd(t *testing.T) {
 
 	// update chart version
 	cfile = &chart.Metadata{
-		Name:               "testUpgradeChartAppVersion",
-		Description:        "A Helm chart for Kubernetes",
-		Version:            "0.1.0",
-		OverrideAppVersion: true,
+		Name:             "testUpgradeChartAppVersion",
+		Description:      "A Helm chart for Kubernetes",
+		Version:          "0.1.0",
+		OverrideMetadata: true,
 	}
 
 	chartPath, err = chartutil.Create(cfile, tmpChart2)

@@ -4,4 +4,4 @@ name: alpine
 sources:
 - https://github.com/helm/helm
 version: 0.1.0
-overrideAppVersion: true
+overrideMetadata: true
