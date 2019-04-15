@@ -25,7 +25,11 @@ import (
 	"k8s.io/helm/pkg/lint/support"
 )
 
-const templateTestBasedir = "./testdata/albatross"
+const (
+	strict              = false
+	namespace           = "testNamespace"
+	templateTestBasedir = "./testdata/albatross"
+)
 
 func TestValidateAllowedExtension(t *testing.T) {
 	var failTest = []string{"/foo", "/test.toml"}
@@ -45,9 +49,6 @@ func TestValidateAllowedExtension(t *testing.T) {
 }
 
 var values = []byte("nameOverride: ''\nhttpPort: 80")
-
-const namespace = "testNamespace"
-const strict = false
 
 func TestTemplateParsing(t *testing.T) {
 	linter := support.Linter{ChartDir: templateTestBasedir}
