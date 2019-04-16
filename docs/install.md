@@ -60,7 +60,7 @@ The binary can also be installed via [`scoop`](https://scoop.sh) command-line in
 scoop install helm
 ```
 
-## From Script
+### From Script
 
 Helm now has an installer script that will automatically grab the latest version
 of the Helm client and [install it locally](https://raw.githubusercontent.com/helm/helm/master/scripts/get).
