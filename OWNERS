@@ -5,7 +5,6 @@ maintainers:
   - jascott1
   - mattfarina
   - michelleN
-  - nebril
   - prydonius
   - SlickNik
   - technosophos
@@ -27,6 +26,7 @@ reviewers:
   - viglesiasce
 emeritus:
   - migmartri
+  - nebril
   - seh
   - vaikas-google
   - rimusz
