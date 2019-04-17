@@ -26,7 +26,7 @@ wordpress/
   LICENSE             # OPTIONAL: A plain text file containing the license for the chart
   README.md           # OPTIONAL: A human-readable README file
   values.yaml         # The default configuration values for this chart
-  values.schema.yaml  # OPTIONAL: A JSON Schema for imposing a structure on the values.yaml file
+  values.schema.json  # OPTIONAL: A JSON Schema for imposing a structure on the values.yaml file
   charts/             # A directory containing any charts upon which this chart depends.
   templates/          # A directory of templates that, when combined with values,
                       # will generate valid Kubernetes manifest files.
@@ -767,35 +767,46 @@ Also, global variables of parent charts take precedence over the global variable
 ### Schema Files
 
 Sometimes, a chart maintainer might want to define a structure on their values.
-This can be done by defining a schema in the `values.schema.yaml` file. A
-schema is the yaml representation of a [JSON Schema](https://json-schema.org/).
+This can be done by defining a schema in the `values.schema.json` file. A
+schema is represented as a [JSON Schema](https://json-schema.org/).
 It might look something like this:
 
-```yaml
-$schema: http://json-schema.org/draft-07/schema#
-title: Values
-type: object
-properties:
-    name:
-        description: Service name
-        type: string
-    protocol:
-        type: string
-    port:
-        description: Port
-        type: integer
-        minimum: 0
-    image:
-        description: Container Image
-        type: object
-        properties:
-            repo:
-                type: string
-            tag:
-                type: string
-required:
-    - protocol
-    - port
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "properties": {
+    "image": {
+      "description": "Container Image",
+      "properties": {
+        "repo": {
+          "type": "string"
+        },
+        "tag": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": {
+      "description": "Service name",
+      "type": "string"
+    },
+    "port": {
+      "description": "Port",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "protocol": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "protocol",
+    "port"
+  ],
+  "title": "Values",
+  "type": "object"
+}
 ```
 
 This schema will be applied to the values to validate it. Validation occurs

@@ -80,7 +80,7 @@ icon: https://example.com/64x64.png
 			Data: []byte("var: some values"),
 		},
 		{
-			Name: "values.schema.yaml",
+			Name: "values.schema.json",
 			Data: []byte("type: Values"),
 		},
 		{

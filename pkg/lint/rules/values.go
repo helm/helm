@@ -55,7 +55,7 @@ func validateValuesFile(valuesPath string) error {
 	}
 
 	ext := filepath.Ext(valuesPath)
-	schemaPath := valuesPath[:len(valuesPath)-len(ext)] + ".schema.yaml"
+	schemaPath := valuesPath[:len(valuesPath)-len(ext)] + ".schema.json"
 	schema, err := ioutil.ReadFile(schemaPath)
 	if len(schema) == 0 {
 		return nil

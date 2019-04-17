@@ -166,7 +166,7 @@ func TestValidateAgainstSchema(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error reading YAML file: %s", err)
 	}
-	schema, err := ioutil.ReadFile("./testdata/test-values.schema.yaml")
+	schema, err := ioutil.ReadFile("./testdata/test-values.schema.json")
 	if err != nil {
 		t.Fatalf("Error reading YAML file: %s", err)
 	}
@@ -181,7 +181,7 @@ func TestValidateAgainstSchemaNegative(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error reading YAML file: %s", err)
 	}
-	schema, err := ioutil.ReadFile("./testdata/test-values.schema.yaml")
+	schema, err := ioutil.ReadFile("./testdata/test-values.schema.json")
 	if err != nil {
 		t.Fatalf("Error reading YAML file: %s", err)
 	}
@@ -480,53 +480,73 @@ chapter:
 }
 
 func TestReadSchema(t *testing.T) {
-	schemaTest := `# Test YAML parse
-$schema: http://json-schema.org/draft-07/schema#
-title: Values
-type: object
-properties:
-  firstname:
-    description: First name
-    type: string
-  lastname:
-    type: string
-  likesCoffee:
-    type: boolean
-  age:
-    description: Age
-    type: integer
-    minimum: 0
-  employmentInfo:
-    type: object
-    properties:
-      salary:
-        type: number
-        minimum: 0
-      title:
-        type: string
-    required:
-      - salary
-  addresses:
-    description: List of addresses
-    type: array
-    items:
-      type: object
-      properties:
-        city:
-          type: string
-        street:
-          type: string
-        number:
-          type: number
-  phoneNumbers:
-    type: array
-    items:
-      type: string
-required:
-  - firstname
-  - lastname
-  - addresses
-  - employmentInfo
+	schemaTest := `{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "properties": {
+    "addresses": {
+      "description": "List of addresses",
+      "items": {
+        "properties": {
+          "city": {
+            "type": "string"
+          },
+          "number": {
+            "type": "number"
+          },
+          "street": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "age": {
+      "description": "Age",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "employmentInfo": {
+      "properties": {
+        "salary": {
+          "minimum": 0,
+          "type": "number"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "salary"
+      ],
+      "type": "object"
+    },
+    "firstname": {
+      "description": "First name",
+      "type": "string"
+    },
+    "lastname": {
+      "type": "string"
+    },
+    "likesCoffee": {
+      "type": "boolean"
+    },
+    "phoneNumbers": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "firstname",
+    "lastname",
+    "addresses",
+    "employmentInfo"
+  ],
+  "title": "Values",
+  "type": "object"
+}
 `
 	data, err := ReadValues([]byte(schemaTest))
 	if err != nil {
