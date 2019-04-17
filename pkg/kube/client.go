@@ -273,8 +273,16 @@ func perform(infos ResourceList, fn func(*resource.Info) error) error {
 		return ErrNoObjectsVisited
 	}
 
+	errs := make(chan error)
 	for _, info := range infos {
-		if err := fn(info); err != nil {
+		go func(i *resource.Info) {
+			errs <- fn(i)
+		}(info)
+	}
+
+	for range infos {
+		err := <-errs
+		if err != nil {
 			return err
 		}
 	}
