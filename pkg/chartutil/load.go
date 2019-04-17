@@ -118,7 +118,7 @@ func loadArchiveFiles(in io.Reader) ([]*BufferedFile, error) {
 		n = path.Clean(n)
 		if n == "." {
 			// In this case, the original path was relative when it should have been absolute.
-			return nil, errors.New("chart illegally contains empty path")
+			return nil, fmt.Errorf("chart illegally contains content outside the base directory: %q", hd.Name)
 		}
 		if strings.HasPrefix(n, "..") {
 			return nil, errors.New("chart illegally references parent directory")
