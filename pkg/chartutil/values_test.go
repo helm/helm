@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"testing"
 	"text/template"
 
@@ -160,20 +161,12 @@ func TestReadValuesFile(t *testing.T) {
 	matchValues(t, data)
 }
 
-func TestReadSchemaFile(t *testing.T) {
-	data, err := ReadSchemaFile("./testdata/test-values.schema.yaml")
-	if err != nil {
-		t.Fatalf("Error reading YAML file: %s", err)
-	}
-	matchSchema(t, data)
-}
-
 func TestValidateAgainstSchema(t *testing.T) {
 	values, err := ReadValuesFile("./testdata/test-values.yaml")
 	if err != nil {
 		t.Fatalf("Error reading YAML file: %s", err)
 	}
-	schema, err := ReadSchemaFile("./testdata/test-values.schema.yaml")
+	schema, err := ioutil.ReadFile("./testdata/test-values.schema.yaml")
 	if err != nil {
 		t.Fatalf("Error reading YAML file: %s", err)
 	}
@@ -188,7 +181,7 @@ func TestValidateAgainstSchemaNegative(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error reading YAML file: %s", err)
 	}
-	schema, err := ReadSchemaFile("./testdata/test-values.schema.yaml")
+	schema, err := ioutil.ReadFile("./testdata/test-values.schema.yaml")
 	if err != nil {
 		t.Fatalf("Error reading YAML file: %s", err)
 	}
@@ -535,14 +528,14 @@ required:
   - addresses
   - employmentInfo
 `
-	data, err := ReadSchema([]byte(schemaTest))
+	data, err := ReadValues([]byte(schemaTest))
 	if err != nil {
 		t.Fatalf("Error parsing bytes: %s", err)
 	}
 	matchSchema(t, data)
 }
 
-func matchSchema(t *testing.T, data Schema) {
+func matchSchema(t *testing.T, data map[string]interface{}) {
 	if o, err := ttpl("{{len .required}}", data); err != nil {
 		t.Errorf("len required: %s", err)
 	} else if o != "4" {

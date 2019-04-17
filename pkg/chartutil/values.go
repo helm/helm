@@ -46,9 +46,6 @@ const GlobalKey = "global"
 // Values represents a collection of chart values.
 type Values map[string]interface{}
 
-// Schema represents the document structure to validate the values.yaml file against
-type Schema map[string]interface{}
-
 // YAML encodes the Values into a YAML string.
 func (v Values) YAML() (string, error) {
 	b, err := yaml.Marshal(v)
@@ -128,15 +125,6 @@ func ReadValues(data []byte) (vals Values, err error) {
 	return vals, err
 }
 
-// ReadSchema will parse YAML byte data into a Schema.
-func ReadSchema(data []byte) (schema Schema, err error) {
-	err = yaml.Unmarshal(data, &schema)
-	if len(schema) == 0 {
-		schema = Schema{}
-	}
-	return schema, err
-}
-
 // ReadValuesFile will parse a YAML file into a map of values.
 func ReadValuesFile(filename string) (Values, error) {
 	data, err := ioutil.ReadFile(filename)
@@ -146,22 +134,13 @@ func ReadValuesFile(filename string) (Values, error) {
 	return ReadValues(data)
 }
 
-// ReadSchemaFile will parse a YAML file into a Schema.
-func ReadSchemaFile(filename string) (Schema, error) {
-	data, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return Schema{}, err
-	}
-	return ReadSchema(data)
-}
-
 // ValidateAgainstSchema checks that values does not violate the structure laid out in schema
-func ValidateAgainstSchema(values Values, schema Schema) error {
+func ValidateAgainstSchema(values Values, schema []byte) error {
 	valuesJSON, err := convertYAMLToJSON(values)
 	if err != nil {
 		return err
 	}
-	schemaJSON, err := convertYAMLToJSON(schema)
+	schemaJSON, err := yaml.YAMLToJSON(schema)
 	if err != nil {
 		return err
 	}

@@ -91,10 +91,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 			}
 			c.RawValues = f.Data
 		case f.Name == "values.schema.yaml":
-			c.Schema = make(map[string]interface{})
-			if err := yaml.Unmarshal(f.Data, &c.Schema); err != nil {
-				return c, errors.Wrap(err, "cannot load values.schema.yaml")
-			}
+			c.Schema = f.Data
 		case strings.HasPrefix(f.Name, "templates/"):
 			c.Templates = append(c.Templates, &chart.File{Name: f.Name, Data: f.Data})
 		case strings.HasPrefix(f.Name, "charts/"):
