@@ -574,51 +574,6 @@ func matchSchema(t *testing.T, data Schema) {
 	assertEqualProperty(t, ".required", "[firstname lastname addresses employmentInfo]", data)
 }
 
-func TestGenerateSchema(t *testing.T) {
-	doc := `# Test YAML parse
-firstname: John
-middlename: null
-lastname: Doe
-age: 25
-likesCoffee: true
-employmentInfo:
-  title: Software Developer
-  salary: 100000
-addresses:
-  - city: Springfield
-    street: Main
-    number: 12345
-  - city: New York
-    street: Broadway
-    number: 67890
-phoneNumbers:
-  - "(888) 888-8888"
-  - "(555) 555-5555"
-`
-
-	values, err := ReadValues([]byte(doc))
-	if err != nil {
-		t.Fatalf("Error reading values: %s", err)
-	}
-	schema := GenerateSchema(values)
-	assertEqualProperty(t, ".title", "Values", schema)
-	assertEqualProperty(t, ".type", "object", schema)
-	assertEqualProperty(t, ".properties.firstname.type", "string", schema)
-	assertEqualProperty(t, ".properties.lastname.type", "string", schema)
-	assertEqualProperty(t, ".properties.age.type", "number", schema)
-	assertEqualProperty(t, ".properties.likesCoffee.type", "boolean", schema)
-	assertEqualProperty(t, ".properties.employmentInfo.type", "object", schema)
-	assertEqualProperty(t, ".properties.employmentInfo.object.title.type", "string", schema)
-	assertEqualProperty(t, ".properties.employmentInfo.object.salary.type", "number", schema)
-	assertEqualProperty(t, ".properties.addresses.type", "array", schema)
-	assertEqualProperty(t, ".properties.addresses.items.type", "object", schema)
-	assertEqualProperty(t, ".properties.addresses.items.object.street.type", "string", schema)
-	assertEqualProperty(t, ".properties.addresses.items.object.number.type", "number", schema)
-	assertEqualProperty(t, ".properties.addresses.items.object.city.type", "string", schema)
-	assertEqualProperty(t, ".properties.phoneNumbers.type", "array", schema)
-	assertEqualProperty(t, ".properties.phoneNumbers.items.type", "string", schema)
-}
-
 func assertEqualProperty(t *testing.T, property, expected string, data map[string]interface{}) {
 	if o, err := ttpl("{{"+property+"}}", data); err != nil {
 		t.Errorf("%s: %s", property, err)
