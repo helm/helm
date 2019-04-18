@@ -36,6 +36,7 @@ import (
 	"k8s.io/helm/pkg/version"
 
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/tiller/environment"
 )
 
 // Install uses Kubernetes client to install Tiller.
@@ -226,7 +227,7 @@ func generateDeployment(opts *Options) (*v1beta1.Deployment, error) {
 							Image:           opts.SelectImage(),
 							ImagePullPolicy: opts.pullPolicy(),
 							Ports: []v1.ContainerPort{
-								{ContainerPort: 44134, Name: "tiller"},
+								{ContainerPort: environment.DefaultTillerPort, Name: "tiller"},
 								{ContainerPort: 44135, Name: "http"},
 							},
 							Env: []v1.EnvVar{
@@ -341,7 +342,7 @@ func generateService(namespace string) *v1.Service {
 			Ports: []v1.ServicePort{
 				{
 					Name:       "tiller",
-					Port:       44134,
+					Port:       environment.DefaultTillerPort,
 					TargetPort: intstr.FromString("tiller"),
 				},
 			},

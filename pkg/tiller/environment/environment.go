@@ -41,6 +41,9 @@ const (
 	// DefaultTillerNamespace is the default namespace for Tiller.
 	DefaultTillerNamespace = "kube-system"
 
+	// DefaultTillerPort defines the default port tiller listen on for client traffic
+	DefaultTillerPort = 44134
+
 	// GoTplEngine is the name of the Go template engine, as registered in the EngineYard.
 	GoTplEngine = "gotpl"
 )
