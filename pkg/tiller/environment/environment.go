@@ -44,6 +44,9 @@ const (
 	// DefaultTillerPort defines the default port tiller listen on for client traffic
 	DefaultTillerPort = 44134
 
+	// DefaultTillerProbePort defines the default port to listen on for probes
+	DefaultTillerProbePort = 44135
+
 	// GoTplEngine is the name of the Go template engine, as registered in the EngineYard.
 	GoTplEngine = "gotpl"
 )
