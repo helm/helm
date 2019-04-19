@@ -125,6 +125,6 @@ func updateCharts(repos []*repo.ChartRepository, out io.Writer, home helmpath.Ho
 		return errors.New("Update Failed. Check log for details")
 	}
 
-	fmt.Fprintln(out, "Update Complete. ⎈ Happy Helming! ⎈")
+	fmt.Fprintln(out, "Update Complete.")
 	return nil
 }
