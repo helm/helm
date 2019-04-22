@@ -207,11 +207,10 @@ func (suite *RegistryClientTestSuite) Test_6_RemoveChart() {
 }
 
 func (suite *RegistryClientTestSuite) Test_7_Logout() {
-	// TODO: re-enable once fixed in oras (no error thrown on linux)
-	// err := suite.RegistryClient.Logout("this-host-aint-real-son:5000")
-	// suite.NotNil(err, "error logging out of registry that has no entry")
+	err := suite.RegistryClient.Logout("this-host-aint-real:5000")
+	suite.NotNil(err, "error logging out of registry that has no entry")
 
-	err := suite.RegistryClient.Logout(suite.DockerRegistryHost)
+	err = suite.RegistryClient.Logout(suite.DockerRegistryHost)
 	suite.Nil(err, "no error logging out of registry")
 }
 
