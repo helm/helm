@@ -37,8 +37,11 @@ Plugins are installed using the `$ helm plugin install <path|url>` command. You 
 $ helm plugin install https://github.com/technosophos/helm-template
 ```
 
-If you have a plugin tar distribution, simply untar the plugin into the
-`$(helm home)/plugins` directory.
+If you have a plugin tar distribution downloaded, you can install it directly:
+
+```console
+$ helm plugin install helm-template.tgz
+```
 
 You can also install tarball plugins directly from url by issuing `helm plugin install http://domain/path/to/plugin.tar.gz`
 
@@ -117,6 +120,16 @@ There are some strategies for working with plugin commands:
 - Commands are responsible for implementing specific help text for `-h` and `--help`.
   Helm will use `usage` and `description` for `helm help` and `helm help myplugin`,
   but will not handle `helm myplugin --help`.
+
+## Packaging
+
+If the primary means of plugin distribution will be via a VCS URI, then packaging is not
+necessary and this section can be skipped. If however plugin distribution will be via
+HTTP or a local file, then it is recommended to version and package the plugin. Helm
+supports packages in a gzip compressed tarball format with file extensions of either
+`.tgz` or `.tar.gz`. Additionally, the tarball can either contain a directory or forgo
+one (i.e a [tarbomb](https://en.wikipedia.org/wiki/Tarbomb)). The package should follow a
+naming convention of `<name>-<version>.tgz`.
 
 ## Downloader Plugins
 By default, Helm is able to fetch Charts using HTTP/S. As of Helm 2.4.0, plugins

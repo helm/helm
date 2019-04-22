@@ -16,6 +16,7 @@ limitations under the License.
 package installer // import "k8s.io/helm/pkg/plugin/installer"
 
 import (
+	"encoding/base64"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -54,11 +55,66 @@ func TestLocalInstaller(t *testing.T) {
 		t.Errorf("unexpected error: %s", err)
 	}
 
+	// ensure a LocalInstaller was returned
+	_, ok := i.(*LocalInstaller)
+	if !ok {
+		t.Error("expected a LocalInstaller")
+	}
+
 	if err := Install(i); err != nil {
 		t.Error(err)
 	}
 
 	if i.Path() != home.Path("plugins", "echo") {
 		t.Errorf("expected path '$HELM_HOME/plugins/helm-env', got %q", i.Path())
+	}
+}
+
+func TestLocalInstallerTgz(t *testing.T) {
+	hh, err := ioutil.TempDir("", "helm-home-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(hh)
+
+	home := helmpath.Home(hh)
+	if err := os.MkdirAll(home.Plugins(), 0755); err != nil {
+		t.Fatalf("Could not create %s: %s", home.Plugins(), err)
+	}
+
+	// Make a temp dir
+	tdir, err := ioutil.TempDir("", "helm-installer-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tdir)
+
+	mockTgz, err := base64.StdEncoding.DecodeString(fakePluginB64)
+	if err != nil {
+		t.Fatalf("Could not decode fake tgz plugin: %s", err)
+	}
+
+	source := filepath.Join(tdir, "fake-plugin-0.0.1.tgz")
+	if err := ioutil.WriteFile(source, mockTgz, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	i, err := NewForSource(source, "", home)
+	if err != nil {
+		t.Errorf("unexpected error: %s", err)
+	}
+
+	// ensure a LocalInstaller was returned
+	_, ok := i.(*LocalInstaller)
+	if !ok {
+		t.Error("expected a LocalInstaller")
+	}
+
+	if err := Install(i); err != nil {
+		t.Error(err)
+	}
+
+	if i.Path() != home.Path("plugins", "fake-plugin") {
+		t.Errorf("expected path '$HELM_HOME/plugins/fake-plugin', got %q", i.Path())
 	}
 }

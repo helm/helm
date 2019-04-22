@@ -16,17 +16,9 @@ limitations under the License.
 package installer // import "k8s.io/helm/pkg/plugin/installer"
 
 import (
-	"archive/tar"
-	"bytes"
-	"compress/gzip"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
-	"regexp"
-	"strings"
-
-	fp "github.com/cyphar/filepath-securejoin"
 
 	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/environment"
@@ -41,30 +33,6 @@ type HTTPInstaller struct {
 	base
 	extractor Extractor
 	getter    getter.Getter
-}
-
-// TarGzExtractor extracts gzip compressed tar archives
-type TarGzExtractor struct{}
-
-// Extractor provides an interface for extracting archives
-type Extractor interface {
-	Extract(buffer *bytes.Buffer, targetDir string) error
-}
-
-// Extractors contains a map of suffixes and matching implementations of extractor to return
-var Extractors = map[string]Extractor{
-	".tar.gz": &TarGzExtractor{},
-	".tgz":    &TarGzExtractor{},
-}
-
-// NewExtractor creates a new extractor matching the source file name
-func NewExtractor(source string) (Extractor, error) {
-	for suffix, extractor := range Extractors {
-		if strings.HasSuffix(source, suffix) {
-			return extractor, nil
-		}
-	}
-	return nil, fmt.Errorf("no extractor implemented yet for %s", source)
 }
 
 // NewHTTPInstaller creates a new HttpInstaller.
@@ -100,19 +68,6 @@ func NewHTTPInstaller(source string, home helmpath.Home) (*HTTPInstaller, error)
 	return i, nil
 }
 
-// helper that relies on some sort of convention for plugin name (plugin-name-<version>)
-func stripPluginName(name string) string {
-	var strippedName string
-	for suffix := range Extractors {
-		if strings.HasSuffix(name, suffix) {
-			strippedName = strings.TrimSuffix(name, suffix)
-			break
-		}
-	}
-	re := regexp.MustCompile(`(.*)-[0-9]+\..*`)
-	return re.ReplaceAllString(strippedName, `$1`)
-}
-
 // Install downloads and extracts the tarball into the cache directory and creates a symlink to the plugin directory in $HELM_HOME.
 //
 // Implements Installer.
@@ -123,10 +78,11 @@ func (i *HTTPInstaller) Install() error {
 		return err
 	}
 
-	err = i.extractor.Extract(pluginData, i.CacheDir)
+	pluginDir, err := i.extractor.Extract(pluginData, i.CacheDir)
 	if err != nil {
 		return err
 	}
+	i.CacheDir = pluginDir // plugin.yaml could be in a sub-folder
 
 	if !isPlugin(i.CacheDir) {
 		return ErrMissingMetadata
@@ -158,57 +114,4 @@ func (i HTTPInstaller) Path() string {
 		return ""
 	}
 	return filepath.Join(i.base.HelmHome.Plugins(), i.PluginName)
-}
-
-// Extract extracts compressed archives
-//
-// Implements Extractor.
-func (g *TarGzExtractor) Extract(buffer *bytes.Buffer, targetDir string) error {
-	uncompressedStream, err := gzip.NewReader(buffer)
-	if err != nil {
-		return err
-	}
-
-	tarReader := tar.NewReader(uncompressedStream)
-
-	os.MkdirAll(targetDir, 0755)
-
-	for true {
-		header, err := tarReader.Next()
-
-		if err == io.EOF {
-			break
-		}
-
-		if err != nil {
-			return err
-		}
-
-		path, err := fp.SecureJoin(targetDir, header.Name)
-		if err != nil {
-			return err
-		}
-
-		switch header.Typeflag {
-		case tar.TypeDir:
-			if err := os.Mkdir(path, 0755); err != nil {
-				return err
-			}
-		case tar.TypeReg:
-			outFile, err := os.Create(path)
-			if err != nil {
-				return err
-			}
-			if _, err := io.Copy(outFile, tarReader); err != nil {
-				outFile.Close()
-				return err
-			}
-			outFile.Close()
-		default:
-			return fmt.Errorf("unknown type: %b in %s", header.Typeflag, header.Name)
-		}
-	}
-
-	return nil
-
 }

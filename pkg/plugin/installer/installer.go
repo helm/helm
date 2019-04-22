@@ -26,6 +26,10 @@ import (
 	"k8s.io/helm/pkg/helm/helmpath"
 )
 
+const (
+	pluginFile = "plugin.yaml"
+)
+
 // ErrMissingMetadata indicates that plugin.yaml is missing.
 var ErrMissingMetadata = errors.New("plugin metadata (plugin.yaml) missing")
 
@@ -93,10 +97,8 @@ func isLocalReference(source string) bool {
 // isRemoteHTTPArchive checks if the source is a http/https url and is an archive
 func isRemoteHTTPArchive(source string) bool {
 	if strings.HasPrefix(source, "http://") || strings.HasPrefix(source, "https://") {
-		for suffix := range Extractors {
-			if strings.HasSuffix(source, suffix) {
-				return true
-			}
+		if _, err := NewExtractor(source); err == nil {
+			return true
 		}
 	}
 	return false
@@ -104,7 +106,7 @@ func isRemoteHTTPArchive(source string) bool {
 
 // isPlugin checks if the directory contains a plugin.yaml file.
 func isPlugin(dirname string) bool {
-	_, err := os.Stat(filepath.Join(dirname, "plugin.yaml"))
+	_, err := os.Stat(filepath.Join(dirname, pluginFile))
 	return err == nil
 }
 
