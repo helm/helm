@@ -242,7 +242,7 @@
   version = "v1.1.1"
 
 [[projects]]
-  digest = "1:a841cef1b22bee47aa59c3d9cc4bca4f419c864b03012606fa5b67aef08eab5d"
+  digest = "1:82158435e282da9b23bb1188487fe1c68b17a54ed9dcd557ab6204782ad3ff92"
   name = "github.com/deislabs/oras"
   packages = [
     "pkg/auth",
@@ -251,7 +251,8 @@
     "pkg/oras",
   ]
   pruneopts = "UT"
-  revision = "12b336a3ea9d5d048f6726adbfc0a8271e75e2a8"
+  revision = "9f7669048990b0d0c186985737e6a6c3bb3f7ecc"
+  version = "v0.4.0"
 
 [[projects]]
   digest = "1:76dc72490af7174349349838f2fe118996381b31ea83243812a97e5a0fd5ed55"
@@ -1759,6 +1760,7 @@
     "github.com/docker/distribution/registry",
     "github.com/docker/distribution/registry/auth/htpasswd",
     "github.com/docker/distribution/registry/storage/driver/inmemory",
+    "github.com/docker/docker/pkg/term",
     "github.com/docker/go-units",
     "github.com/evanphx/json-patch",
     "github.com/ghodss/yaml",

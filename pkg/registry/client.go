@@ -92,7 +92,7 @@ func (c *Client) PushChart(ref *Reference) error {
 	if err != nil {
 		return err
 	}
-	err = oras.Push(context.Background(), c.resolver, ref.String(), c.cache.store, layers)
+	_, err = oras.Push(context.Background(), c.resolver, ref.String(), c.cache.store, layers)
 	if err != nil {
 		return err
 	}
@@ -109,7 +109,7 @@ func (c *Client) PushChart(ref *Reference) error {
 func (c *Client) PullChart(ref *Reference) error {
 	c.setDefaultTag(ref)
 	fmt.Fprintf(c.out, "%s: Pulling from %s\n", ref.Tag, ref.Repo)
-	layers, err := oras.Pull(context.Background(), c.resolver, ref.String(), c.cache.store, KnownMediaTypes()...)
+	_, layers, err := oras.Pull(context.Background(), c.resolver, ref.String(), c.cache.store, oras.WithAllowedMediaTypes(KnownMediaTypes()))
 	if err != nil {
 		return err
 	}
