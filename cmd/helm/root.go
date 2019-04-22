@@ -70,10 +70,16 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 
 	// Add the registry client based on settings
 	// TODO: Move this elsewhere (first, settings.Init() must move)
-	// TODO: handle errors
+	// TODO: handle errors, dont panic
 	credentialsFile := filepath.Join(settings.Home.Registry(), registry.CredentialsFileBasename)
-	client, _ := auth.NewClient(credentialsFile)
-	resolver, _ := client.Resolver(context.Background())
+	client, err := auth.NewClient(credentialsFile)
+	if err != nil {
+		panic(err)
+	}
+	resolver, err := client.Resolver(context.Background())
+	if err != nil {
+		panic(err)
+	}
 	actionConfig.RegistryClient = registry.NewClient(&registry.ClientOptions{
 		Out: out,
 		Authorizer: registry.Authorizer{
