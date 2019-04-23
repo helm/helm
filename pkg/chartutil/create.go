@@ -53,6 +53,29 @@ const (
 	HelpersName = "_helpers.tpl"
 )
 
+const defaultChartfile = `apiVersion: v1
+name: %s
+description: A Helm chart for Kubernetes
+
+# A chart can be either an 'application' or a 'library' chart.
+#
+# Application charts are a collection of templates that can be packaged into versioned archives
+# to be deployed.
+#
+# Library charts provide useful utilities or functions for the chart developer. They're included as
+# a dependency of application charts to inject those utilities and functions into the rendering
+# pipeline. Library charts do not define any templates and therefore cannot be deployed.
+type: application
+
+# This is the chart version. This version number should be incremented each time you make changes
+# to the chart and its templates, including the app version.
+version: 0.1.0
+
+# This is the version number of the application being deployed. This version number should be
+# incremented each time you make changes to the application.
+appVersion: 0.1.0
+`
+
 const defaultValues = `# Default values for %s.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
@@ -61,7 +84,6 @@ replicaCount: 1
 
 image:
   repository: nginx
-  tag: stable
   pullPolicy: IfNotPresent
 
 nameOverride: ""
@@ -189,7 +211,7 @@ spec:
     spec:
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: "{{ .Values.image.repository }}:{{ .Release.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
@@ -339,7 +361,7 @@ func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
 // If Chart.yaml or any directories cannot be created, this will return an
 // error. In such a case, this will attempt to clean up by removing the
 // new chart directory.
-func Create(chartfile *chart.Metadata, dir string) (string, error) {
+func Create(name, dir string) (string, error) {
 	path, err := filepath.Abs(dir)
 	if err != nil {
 		return path, err
@@ -351,20 +373,12 @@ func Create(chartfile *chart.Metadata, dir string) (string, error) {
 		return path, errors.Errorf("no such directory %s", path)
 	}
 
-	n := chartfile.Name
-	cdir := filepath.Join(path, n)
+	cdir := filepath.Join(path, name)
 	if fi, err := os.Stat(cdir); err == nil && !fi.IsDir() {
 		return cdir, errors.Errorf("file %s already exists and is not a directory", cdir)
 	}
 	if err := os.MkdirAll(cdir, 0755); err != nil {
 		return cdir, err
-	}
-
-	cf := filepath.Join(cdir, ChartfileName)
-	if _, err := os.Stat(cf); err != nil {
-		if err := SaveChartfile(cf, chartfile); err != nil {
-			return cdir, err
-		}
 	}
 
 	for _, d := range []string{TemplatesDir, ChartsDir} {
@@ -378,9 +392,14 @@ func Create(chartfile *chart.Metadata, dir string) (string, error) {
 		content []byte
 	}{
 		{
+			// Chart.yaml
+			path:    filepath.Join(cdir, ChartfileName),
+			content: []byte(fmt.Sprintf(defaultChartfile, name)),
+		},
+		{
 			// values.yaml
 			path:    filepath.Join(cdir, ValuesfileName),
-			content: []byte(fmt.Sprintf(defaultValues, chartfile.Name)),
+			content: []byte(fmt.Sprintf(defaultValues, name)),
 		},
 		{
 			// .helmignore
@@ -390,27 +409,27 @@ func Create(chartfile *chart.Metadata, dir string) (string, error) {
 		{
 			// ingress.yaml
 			path:    filepath.Join(cdir, TemplatesDir, IngressFileName),
-			content: transform(defaultIngress, chartfile.Name),
+			content: transform(defaultIngress, name),
 		},
 		{
 			// deployment.yaml
 			path:    filepath.Join(cdir, TemplatesDir, DeploymentName),
-			content: transform(defaultDeployment, chartfile.Name),
+			content: transform(defaultDeployment, name),
 		},
 		{
 			// service.yaml
 			path:    filepath.Join(cdir, TemplatesDir, ServiceName),
-			content: transform(defaultService, chartfile.Name),
+			content: transform(defaultService, name),
 		},
 		{
 			// NOTES.txt
 			path:    filepath.Join(cdir, TemplatesDir, NotesName),
-			content: transform(defaultNotes, chartfile.Name),
+			content: transform(defaultNotes, name),
 		},
 		{
 			// _helpers.tpl
 			path:    filepath.Join(cdir, TemplatesDir, HelpersName),
-			content: transform(defaultHelpers, chartfile.Name),
+			content: transform(defaultHelpers, name),
 		},
 	}
 

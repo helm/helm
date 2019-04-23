@@ -80,7 +80,7 @@ func (o *createOptions) run(out io.Writer) error {
 		Description: "A Helm chart for Kubernetes",
 		Type:        "application",
 		Version:     "0.1.0",
-		AppVersion:  "1.0",
+		AppVersion:  "0.1.0",
 		APIVersion:  chart.APIVersionV1,
 	}
 
@@ -90,6 +90,6 @@ func (o *createOptions) run(out io.Writer) error {
 		return chartutil.CreateFrom(cfile, filepath.Dir(o.name), lstarter)
 	}
 
-	_, err := chartutil.Create(cfile, filepath.Dir(o.name))
+	_, err := chartutil.Create(chartname, filepath.Dir(o.name))
 	return err
 }

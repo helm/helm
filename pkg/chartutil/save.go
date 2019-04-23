@@ -36,7 +36,10 @@ var headerBytes = []byte("+aHR0cHM6Ly95b3V0dS5iZS96OVV6MWljandyTQo=")
 func SaveDir(c *chart.Chart, dest string) error {
 	// Create the chart directory
 	outdir := filepath.Join(dest, c.Name())
-	if err := os.Mkdir(outdir, 0755); err != nil {
+	if fi, err := os.Stat(outdir); err == nil && !fi.IsDir() {
+		return errors.Errorf("file %s already exists and is not a directory", outdir)
+	}
+	if err := os.MkdirAll(outdir, 0755); err != nil {
 		return err
 	}
 

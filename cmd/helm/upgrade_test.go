@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 	"testing"
 
 	"helm.sh/helm/pkg/chart"
@@ -28,14 +29,16 @@ import (
 
 func TestUpgradeCmd(t *testing.T) {
 	tmpChart := testTempDir(t)
-	cfile := &chart.Metadata{
-		APIVersion:  chart.APIVersionV1,
-		Name:        "testUpgradeChart",
-		Description: "A Helm chart for Kubernetes",
-		Version:     "0.1.0",
+	cfile := &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion:  chart.APIVersionV1,
+			Name:        "testUpgradeChart",
+			Description: "A Helm chart for Kubernetes",
+			Version:     "0.1.0",
+		},
 	}
-	chartPath, err := chartutil.Create(cfile, tmpChart)
-	if err != nil {
+	chartPath := filepath.Join(tmpChart, cfile.Metadata.Name)
+	if err := chartutil.SaveDir(cfile, tmpChart); err != nil {
 		t.Fatalf("Error creating chart for upgrade: %v", err)
 	}
 	ch, err := loader.Load(chartPath)
@@ -48,14 +51,9 @@ func TestUpgradeCmd(t *testing.T) {
 	})
 
 	// update chart version
-	cfile = &chart.Metadata{
-		Name:        "testUpgradeChart",
-		Description: "A Helm chart for Kubernetes",
-		Version:     "0.1.2",
-	}
+	cfile.Metadata.Version = "0.1.2"
 
-	chartPath, err = chartutil.Create(cfile, tmpChart)
-	if err != nil {
+	if err := chartutil.SaveDir(cfile, tmpChart); err != nil {
 		t.Fatalf("Error creating chart: %v", err)
 	}
 	ch, err = loader.Load(chartPath)
@@ -64,14 +62,9 @@ func TestUpgradeCmd(t *testing.T) {
 	}
 
 	// update chart version again
-	cfile = &chart.Metadata{
-		Name:        "testUpgradeChart",
-		Description: "A Helm chart for Kubernetes",
-		Version:     "0.1.3",
-	}
+	cfile.Metadata.Version = "0.1.3"
 
-	chartPath, err = chartutil.Create(cfile, tmpChart)
-	if err != nil {
+	if err := chartutil.SaveDir(cfile, tmpChart); err != nil {
 		t.Fatalf("Error creating chart: %v", err)
 	}
 	var ch2 *chart.Chart

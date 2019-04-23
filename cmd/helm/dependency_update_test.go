@@ -46,8 +46,9 @@ func TestDependencyUpdateCmd(t *testing.T) {
 	t.Logf("Listening on directory %s", srv.Root())
 
 	chartname := "depup"
-	md := createTestingMetadata(chartname, srv.URL())
-	if _, err := chartutil.Create(md, hh.String()); err != nil {
+	ch := createTestingMetadata(chartname, srv.URL())
+	md := ch.Metadata
+	if err := chartutil.SaveDir(ch, hh.String()); err != nil {
 		t.Fatal(err)
 	}
 
@@ -203,14 +204,16 @@ func TestDependencyUpdateCmd_DontDeleteOldChartsOnError(t *testing.T) {
 // createTestingMetadata creates a basic chart that depends on reqtest-0.1.0
 //
 // The baseURL can be used to point to a particular repository server.
-func createTestingMetadata(name, baseURL string) *chart.Metadata {
-	return &chart.Metadata{
-		APIVersion: chart.APIVersionV1,
-		Name:       name,
-		Version:    "1.2.3",
-		Dependencies: []*chart.Dependency{
-			{Name: "reqtest", Version: "0.1.0", Repository: baseURL},
-			{Name: "compressedchart", Version: "0.1.0", Repository: baseURL},
+func createTestingMetadata(name, baseURL string) *chart.Chart {
+	return &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: chart.APIVersionV1,
+			Name:       name,
+			Version:    "1.2.3",
+			Dependencies: []*chart.Dependency{
+				{Name: "reqtest", Version: "0.1.0", Repository: baseURL},
+				{Name: "compressedchart", Version: "0.1.0", Repository: baseURL},
+			},
 		},
 	}
 }
@@ -220,6 +223,5 @@ func createTestingMetadata(name, baseURL string) *chart.Metadata {
 // The baseURL can be used to point to a particular repository server.
 func createTestingChart(dest, name, baseURL string) error {
 	cfile := createTestingMetadata(name, baseURL)
-	_, err := chartutil.Create(cfile, dest)
-	return err
+	return chartutil.SaveDir(cfile, dest)
 }
