@@ -1,3 +1,3 @@
-REVISION	UPDATED                      	STATUS    	CHART           	APP_VERSION	DESCRIPTION 
+REVISION	UPDATED                      	STATUS    	CHART           	APP VERSION	DESCRIPTION 
 3       	1977-09-02 22:04:05 +0000 UTC	superseded	foo-0.1.0-beta.1	1.0        	Release mock
 4       	1977-09-02 22:04:05 +0000 UTC	deployed  	foo-0.1.0-beta.1	1.0        	Release mock

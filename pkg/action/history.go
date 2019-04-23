@@ -165,7 +165,7 @@ func getReleaseHistory(rls []*release.Release) (history releaseHistory) {
 func formatAsTable(releases releaseHistory) []byte {
 	tbl := uitable.New()
 
-	tbl.AddRow("REVISION", "UPDATED", "STATUS", "CHART", "APP_VERSION", "DESCRIPTION")
+	tbl.AddRow("REVISION", "UPDATED", "STATUS", "CHART", "APP VERSION", "DESCRIPTION")
 	for i := 0; i <= len(releases)-1; i++ {
 		r := releases[i]
 		tbl.AddRow(r.Revision, r.Updated, r.Status, r.Chart, r.AppVersion, r.Description)
