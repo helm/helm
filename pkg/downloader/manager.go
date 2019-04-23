@@ -465,7 +465,7 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 		}(r)
 	}
 	wg.Wait()
-	fmt.Fprintln(out, "Update Complete. ⎈Happy Helming!⎈")
+	fmt.Fprintln(out, "Update Complete.")
 	return nil
 }
 
