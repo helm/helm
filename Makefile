@@ -22,7 +22,7 @@ BINARIES  := helm tiller
 SHELL=/usr/bin/env bash
 
 .PHONY: all
-all: build
+all: bootstrap build
 
 .PHONY: build
 build:
