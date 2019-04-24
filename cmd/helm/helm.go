@@ -72,7 +72,7 @@ __helm_override_flags()
 __helm_list_releases()
 {
     local out
-    if out=$(helm list $(__helm_override_flags) -q 2>/dev/null); then
+    if out=$(helm list $(__helm_override_flags) -a -q 2>/dev/null); then
         COMPREPLY=( $( compgen -W "${out[*]}" -- "$cur" ) )
     fi
 }
