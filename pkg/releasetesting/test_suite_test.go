@@ -19,6 +19,7 @@ package releasetesting
 import (
 	"io"
 	"testing"
+	"time"
 
 	v1 "k8s.io/api/core/v1"
 
@@ -248,18 +249,18 @@ type mockKubeClient struct {
 	err     error
 }
 
-func (c *mockKubeClient) WaitAndGetCompletedPodPhase(_ string, _ string, _ int64) (v1.PodPhase, error) {
+func (c *mockKubeClient) WaitAndGetCompletedPodPhase(_ string, _ time.Duration) (v1.PodPhase, error) {
 	if c.podFail {
 		return v1.PodFailed, nil
 	}
 	return v1.PodSucceeded, nil
 }
-func (c *mockKubeClient) Get(_ string, _ io.Reader) (string, error) {
+func (c *mockKubeClient) Get(_ io.Reader) (string, error) {
 	return "", nil
 }
-func (c *mockKubeClient) Create(_ string, _ io.Reader, _ int64, _ bool) error {
+func (c *mockKubeClient) Create(_ io.Reader) error {
 	return c.err
 }
-func (c *mockKubeClient) Delete(_ string, _ io.Reader) error {
+func (c *mockKubeClient) Delete(_ io.Reader) error {
 	return nil
 }

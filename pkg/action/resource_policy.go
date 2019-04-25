@@ -58,11 +58,11 @@ func filterManifestsToKeep(manifests []releaseutil.Manifest) ([]releaseutil.Mani
 	return keep, remaining
 }
 
-func summarizeKeptManifests(manifests []releaseutil.Manifest, kubeClient kube.KubernetesClient, namespace string) string {
+func summarizeKeptManifests(manifests []releaseutil.Manifest, kubeClient kube.KubernetesClient) string {
 	var message string
 	for _, m := range manifests {
 		// check if m is in fact present from k8s client's POV.
-		output, err := kubeClient.Get(namespace, bytes.NewBufferString(m.Content))
+		output, err := kubeClient.Get(bytes.NewBufferString(m.Content))
 		if err != nil || strings.Contains(output, kube.MissingGetHeader) {
 			continue
 		}

@@ -94,7 +94,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	res := &release.UninstallReleaseResponse{Release: rel}
 
 	if !u.DisableHooks {
-		if err := u.execHook(rel.Hooks, rel.Namespace, hooks.PreDelete); err != nil {
+		if err := u.execHook(rel.Hooks, hooks.PreDelete); err != nil {
 			return res, err
 		}
 	} else {
@@ -111,7 +111,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	res.Info = kept
 
 	if !u.DisableHooks {
-		if err := u.execHook(rel.Hooks, rel.Namespace, hooks.PostDelete); err != nil {
+		if err := u.execHook(rel.Hooks, hooks.PostDelete); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -153,8 +153,7 @@ func joinErrors(errs []error) string {
 }
 
 // execHook executes all of the hooks for the given hook event.
-func (u *Uninstall) execHook(hs []*release.Hook, namespace, hook string) error {
-	timeout := u.Timeout
+func (u *Uninstall) execHook(hs []*release.Hook, hook string) error {
 	executingHooks := []*release.Hook{}
 
 	for _, h := range hs {
@@ -168,21 +167,21 @@ func (u *Uninstall) execHook(hs []*release.Hook, namespace, hook string) error {
 	sort.Sort(hookByWeight(executingHooks))
 
 	for _, h := range executingHooks {
-		if err := deleteHookByPolicy(u.cfg, namespace, h, hooks.BeforeHookCreation, hook); err != nil {
+		if err := deleteHookByPolicy(u.cfg, h, hooks.BeforeHookCreation); err != nil {
 			return err
 		}
 
 		b := bytes.NewBufferString(h.Manifest)
-		if err := u.cfg.KubeClient.Create(namespace, b, timeout, false); err != nil {
+		if err := u.cfg.KubeClient.Create(b); err != nil {
 			return errors.Wrapf(err, "warning: Hook %s %s failed", hook, h.Path)
 		}
 		b.Reset()
 		b.WriteString(h.Manifest)
 
-		if err := u.cfg.KubeClient.WatchUntilReady(namespace, b, timeout, false); err != nil {
+		if err := u.cfg.KubeClient.WatchUntilReady(b, u.Timeout); err != nil {
 			// If a hook is failed, checkout the annotation of the hook to determine whether the hook should be deleted
 			// under failed condition. If so, then clear the corresponding resource object in the hook
-			if err := deleteHookByPolicy(u.cfg, namespace, h, hooks.HookFailed, hook); err != nil {
+			if err := deleteHookByPolicy(u.cfg, h, hooks.HookFailed); err != nil {
 				return err
 			}
 			return err
@@ -192,7 +191,7 @@ func (u *Uninstall) execHook(hs []*release.Hook, namespace, hook string) error {
 	// If all hooks are succeeded, checkout the annotation of each hook to determine whether the hook should be deleted
 	// under succeeded condition. If so, then clear the corresponding resource object in each hook
 	for _, h := range executingHooks {
-		if err := deleteHookByPolicy(u.cfg, namespace, h, hooks.HookSucceeded, hook); err != nil {
+		if err := deleteHookByPolicy(u.cfg, h, hooks.HookSucceeded); err != nil {
 			return err
 		}
 		h.LastRun = time.Now()
@@ -220,7 +219,7 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (kept string, errs []err
 
 	filesToKeep, filesToDelete := filterManifestsToKeep(files)
 	if len(filesToKeep) > 0 {
-		kept = summarizeKeptManifests(filesToKeep, u.cfg.KubeClient, rel.Namespace)
+		kept = summarizeKeptManifests(filesToKeep, u.cfg.KubeClient)
 	}
 
 	for _, file := range filesToDelete {
@@ -228,7 +227,7 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (kept string, errs []err
 		if b.Len() == 0 {
 			continue
 		}
-		if err := u.cfg.KubeClient.Delete(rel.Namespace, b); err != nil {
+		if err := u.cfg.KubeClient.Delete(b); err != nil {
 			u.cfg.Log("uninstall: Failed deletion of %q: %s", rel.Name, err)
 			if err == kube.ErrNoObjectsVisited {
 				// Rewrite the message from "no objects visited"

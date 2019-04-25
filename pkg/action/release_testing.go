@@ -17,6 +17,8 @@ limitations under the License.
 package action
 
 import (
+	"time"
+
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/pkg/release"
@@ -29,7 +31,7 @@ import (
 type ReleaseTesting struct {
 	cfg *Configuration
 
-	Timeout int64
+	Timeout time.Duration
 	Cleanup bool
 }
 
