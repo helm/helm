@@ -26,6 +26,8 @@ type Dependency struct {
 	//
 	// This must mach the name in the dependency's Chart.yaml.
 	Name string `json:"name"`
+	// The URL to the OCI registry.
+	Repository string `json:"repository"`
 	// Version is the version (range) of this chart.
 	//
 	// A lock file will always produce a single version, while a dependency

@@ -17,12 +17,23 @@ limitations under the License.
 package repo // import "helm.sh/helm/pkg/repo"
 
 import (
+	"path"
+
 	"github.com/containerd/containerd/reference"
 )
 
 // ParseNameTag converts a name and a version to a reference
 func ParseNameTag(name, tag string) (reference.Spec, error) {
 	s := name
+	if tag != "" {
+		s += ":" + tag
+	}
+	return reference.Parse(s)
+}
+
+// ParseRepoNameTag converts a name and a version to a reference
+func ParseRepoNameTag(repo, name, tag string) (reference.Spec, error) {
+	s := path.Join(repo, name)
 	if tag != "" {
 		s += ":" + tag
 	}

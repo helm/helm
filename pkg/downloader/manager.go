@@ -184,7 +184,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 
 		fmt.Fprintf(m.Out, "Downloading %s\n", dep.Name)
 
-		ref, err := repo.ParseNameTag(dep.Name, dep.Version)
+		ref, err := repo.ParseRepoNameTag(dep.Repository, dep.Name, dep.Version)
 		if err != nil {
 			saveError = errors.Wrapf(err, "could not parse dependency %q", dep.Name)
 			break
