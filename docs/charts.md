@@ -841,6 +841,12 @@ protocol: https
 helm install --set port=443
 ````
 
+Furthermore, the final `.Values` object is checked against *all* subchart
+schemas. This means that restrictions on a subchart can't be circumvented by a
+parent chart. This also works backwards - if a subchart has a requirement that
+is not met in the subchart's `values.yaml` file, the parent chart *must*
+satisfy those restrictions in order to be valid.
+
 ### References
 
 When it comes to writing templates, values, and schema files, there are several
