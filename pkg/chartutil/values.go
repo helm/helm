@@ -17,6 +17,7 @@ limitations under the License.
 package chartutil
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -135,7 +136,33 @@ func ReadValuesFile(filename string) (Values, error) {
 }
 
 // ValidateAgainstSchema checks that values does not violate the structure laid out in schema
-func ValidateAgainstSchema(values Values, schemaJSON []byte) error {
+func ValidateAgainstSchema(chrt *chart.Chart, values map[string]interface{}) error {
+	var sb strings.Builder
+	if chrt.Schema != nil {
+		err := ValidateAgainstSingleSchema(values, chrt.Schema)
+		if err != nil {
+			sb.WriteString(fmt.Sprintf("%s:\n", chrt.Name()))
+			sb.WriteString(err.Error())
+		}
+	}
+
+	// For each dependency, recurively call this function with the coalesced values
+	for _, subchrt := range chrt.Dependencies() {
+		subchrtValues := values[subchrt.Name()].(map[string]interface{})
+		if err := ValidateAgainstSchema(subchrt, subchrtValues); err != nil {
+			sb.WriteString(err.Error())
+		}
+	}
+
+	if sb.Len() > 0 {
+		return errors.New(sb.String())
+	}
+
+	return nil
+}
+
+// ValidateAgainstSingleSchema checks that values does not violate the structure laid out in this schema
+func ValidateAgainstSingleSchema(values Values, schemaJSON []byte) error {
 	valuesData, err := yaml.Marshal(values)
 	if err != nil {
 		return err
@@ -143,6 +170,9 @@ func ValidateAgainstSchema(values Values, schemaJSON []byte) error {
 	valuesJSON, err := yaml.YAMLToJSON(valuesData)
 	if err != nil {
 		return err
+	}
+	if bytes.Equal(valuesJSON, []byte("null")) {
+		valuesJSON = []byte("{}")
 	}
 	schemaLoader := gojsonschema.NewBytesLoader(schemaJSON)
 	valuesLoader := gojsonschema.NewBytesLoader(valuesJSON)
@@ -154,7 +184,6 @@ func ValidateAgainstSchema(values Values, schemaJSON []byte) error {
 
 	if !result.Valid() {
 		var sb strings.Builder
-		sb.WriteString("values don't meet the specification of the schema:\n")
 		for _, desc := range result.Errors() {
 			sb.WriteString(fmt.Sprintf("- %s\n", desc))
 		}
@@ -362,10 +391,9 @@ func ToRenderValues(chrt *chart.Chart, chrtVals map[string]interface{}, options 
 		return top, err
 	}
 
-	if chrt.Schema != nil {
-		if err := ValidateAgainstSchema(vals, chrt.Schema); err != nil {
-			return top, err
-		}
+	if err := ValidateAgainstSchema(chrt, vals); err != nil {
+		errFmt := "values don't meet the specifications of the schema(s) in the following chart(s):\n%s"
+		return top, fmt.Errorf(errFmt, err.Error())
 	}
 
 	top["Values"] = vals

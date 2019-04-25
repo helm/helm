@@ -63,5 +63,5 @@ func validateValuesFile(valuesPath string) error {
 	if err != nil {
 		return err
 	}
-	return chartutil.ValidateAgainstSchema(values, schema)
+	return chartutil.ValidateAgainstSingleSchema(values, schema)
 }

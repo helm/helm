@@ -161,7 +161,7 @@ func TestReadValuesFile(t *testing.T) {
 	matchValues(t, data)
 }
 
-func TestValidateAgainstSchema(t *testing.T) {
+func TestValidateAgainstSingleSchema(t *testing.T) {
 	values, err := ReadValuesFile("./testdata/test-values.yaml")
 	if err != nil {
 		t.Fatalf("Error reading YAML file: %s", err)
@@ -171,12 +171,12 @@ func TestValidateAgainstSchema(t *testing.T) {
 		t.Fatalf("Error reading YAML file: %s", err)
 	}
 
-	if err := ValidateAgainstSchema(values, schema); err != nil {
+	if err := ValidateAgainstSingleSchema(values, schema); err != nil {
 		t.Errorf("Error validating Values against Schema: %s", err)
 	}
 }
 
-func TestValidateAgainstSchemaNegative(t *testing.T) {
+func TestValidateAgainstSingleSchemaNegative(t *testing.T) {
 	values, err := ReadValuesFile("./testdata/test-values-negative.yaml")
 	if err != nil {
 		t.Fatalf("Error reading YAML file: %s", err)
@@ -187,7 +187,7 @@ func TestValidateAgainstSchemaNegative(t *testing.T) {
 	}
 
 	var errString string
-	if err := ValidateAgainstSchema(values, schema); err == nil {
+	if err := ValidateAgainstSingleSchema(values, schema); err == nil {
 		t.Fatalf("Expected an error, but got nil")
 	} else {
 		errString = err.Error()

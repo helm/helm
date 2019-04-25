@@ -163,6 +163,26 @@ func TestInstall(t *testing.T) {
 			wantError: true,
 			golden:    "output/schema-negative-cli.txt",
 		},
+		// Install with subchart, values from yaml, schematized with errors
+		{
+			name:      "install with schema file and schematized subchart, with errors",
+			cmd:       "install schema testdata/testcharts/chart-with-schema-and-subchart",
+			wantError: true,
+			golden:    "output/subchart-schema-negative.txt",
+		},
+		// Install with subchart, values from yaml, extra values from cli, schematized with errors
+		{
+			name:   "install with schema file and schematized subchart, extra values from cli",
+			cmd:    "install schema testdata/testcharts/chart-with-schema-and-subchart --set lastname=doe --set subchart-with-schema.age=25",
+			golden: "output/subchart-schema-cli.txt",
+		},
+		// Install with subchart, values from yaml, extra values from cli, schematized with errors
+		{
+			name:      "install with schema file and schematized subchart, extra values from cli, with errors",
+			cmd:       "install schema testdata/testcharts/chart-with-schema-and-subchart --set lastname=doe --set subchart-with-schema.age=-25",
+			wantError: true,
+			golden:    "output/subchart-schema-cli-negative.txt",
+		},
 	}
 
 	runTestActionCmd(t, tests)
