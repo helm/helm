@@ -135,12 +135,12 @@ func ReadValuesFile(filename string) (Values, error) {
 }
 
 // ValidateAgainstSchema checks that values does not violate the structure laid out in schema
-func ValidateAgainstSchema(values Values, schema []byte) error {
-	valuesJSON, err := convertYAMLToJSON(values)
+func ValidateAgainstSchema(values Values, schemaJSON []byte) error {
+	valuesData, err := yaml.Marshal(values)
 	if err != nil {
 		return err
 	}
-	schemaJSON, err := yaml.YAMLToJSON(schema)
+	valuesJSON, err := yaml.YAMLToJSON(valuesData)
 	if err != nil {
 		return err
 	}
@@ -376,15 +376,6 @@ func ToRenderValues(chrt *chart.Chart, chrtVals map[string]interface{}, options 
 func istable(v interface{}) bool {
 	_, ok := v.(map[string]interface{})
 	return ok
-}
-
-// convertToJSON takes YAML data and returns a []byte representation of the same object as JSON
-func convertYAMLToJSON(data interface{}) ([]byte, error) {
-	yamlData, err := yaml.Marshal(data)
-	if err != nil {
-		return nil, err
-	}
-	return yaml.YAMLToJSON(yamlData)
 }
 
 // PathValue takes a path that traverses a YAML structure and returns the value at the end of that path.
