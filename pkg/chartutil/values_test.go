@@ -193,9 +193,87 @@ func TestValidateAgainstSingleSchemaNegative(t *testing.T) {
 		errString = err.Error()
 	}
 
-	expectedErrString := `values don't meet the specification of the schema:
-- (root): employmentInfo is required
+	expectedErrString := `- (root): employmentInfo is required
 - age: Must be greater than or equal to 0/1
+`
+	if errString != expectedErrString {
+		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
+	}
+}
+
+const subchrtSchema = `{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Values",
+  "type": "object",
+  "properties": {
+    "age": {
+      "description": "Age",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "age"
+  ]
+}
+`
+
+func TestValidateAgainstSchema(t *testing.T) {
+	subchrtJSON := []byte(subchrtSchema)
+	subchrt := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name: "subchrt",
+		},
+		Schema: subchrtJSON,
+	}
+	chrt := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name: "chrt",
+		},
+	}
+	chrt.AddDependency(subchrt)
+
+	vals := map[string]interface{}{
+		"name": "John",
+		"subchrt": map[string]interface{}{
+			"age": 25,
+		},
+	}
+
+	if err := ValidateAgainstSchema(chrt, vals); err != nil {
+		t.Errorf("Error validating Values against Schema: %s", err)
+	}
+}
+
+func TestValidateAgainstSchemaNegative(t *testing.T) {
+	subchrtJSON := []byte(subchrtSchema)
+	subchrt := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name: "subchrt",
+		},
+		Schema: subchrtJSON,
+	}
+	chrt := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name: "chrt",
+		},
+	}
+	chrt.AddDependency(subchrt)
+
+	vals := map[string]interface{}{
+		"name":    "John",
+		"subchrt": map[string]interface{}{},
+	}
+
+	var errString string
+	if err := ValidateAgainstSchema(chrt, vals); err == nil {
+		t.Fatalf("Expected an error, but got nil")
+	} else {
+		errString = err.Error()
+	}
+
+	expectedErrString := `subchrt:
+- (root): age is required
 `
 	if errString != expectedErrString {
 		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
