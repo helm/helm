@@ -18,7 +18,6 @@ package kube
 
 import (
 	"io"
-	"time"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/cli-runtime/pkg/resource"
@@ -74,7 +73,7 @@ type KubernetesClient interface {
 
 	// WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
 	// and returns said phase (PodSucceeded or PodFailed qualify).
-	WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (v1.PodPhase, error)
+	WaitAndGetCompletedPodPhase(namespace, name string, timeout int64) (v1.PodPhase, error)
 }
 
 // PrintingKubeClient implements KubeClient, but simply prints the reader to
@@ -126,7 +125,6 @@ func (p *PrintingKubeClient) BuildUnstructured(ns string, reader io.Reader) (Res
 }
 
 // WaitAndGetCompletedPodPhase implements KubeClient WaitAndGetCompletedPodPhase.
-func (p *PrintingKubeClient) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (v1.PodPhase, error) {
-	_, err := io.Copy(p.Out, reader)
-	return v1.PodUnknown, err
+func (p *PrintingKubeClient) WaitAndGetCompletedPodPhase(namespace, name string, timeout int64) (v1.PodPhase, error) {
+	return v1.PodSucceeded, nil
 }

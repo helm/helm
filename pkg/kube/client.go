@@ -40,7 +40,6 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/watch"
@@ -621,55 +620,28 @@ func scrubValidationError(err error) error {
 
 // WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
 // and returns said phase (PodSucceeded or PodFailed qualify).
-func (c *Client) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (v1.PodPhase, error) {
-	infos, err := c.Build(namespace, reader)
-	if err != nil {
-		return v1.PodUnknown, err
-	}
-	info := infos[0]
+func (c *Client) WaitAndGetCompletedPodPhase(namespace, name string, timeout int64) (v1.PodPhase, error) {
+	client, _ := c.KubernetesClientSet()
 
-	kind := info.Mapping.GroupVersionKind.Kind
-	if kind != "Pod" {
-		return v1.PodUnknown, goerrors.Errorf("%s is not a Pod", info.Name)
-	}
-
-	if err := c.watchPodUntilComplete(timeout, info); err != nil {
-		return v1.PodUnknown, err
-	}
-
-	if err := info.Get(); err != nil {
-		return v1.PodUnknown, err
-	}
-	status := info.Object.(*v1.Pod).Status.Phase
-
-	return status, nil
-}
-
-func (c *Client) watchPodUntilComplete(timeout time.Duration, info *resource.Info) error {
-	w, err := resource.NewHelper(info.Client, info.Mapping).WatchSingle(info.Namespace, info.Name, info.ResourceVersion)
-	if err != nil {
-		return err
-	}
-
-	c.Log("Watching pod %s for completion with timeout of %v", info.Name, timeout)
-	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), timeout)
-	defer cancel()
-	_, err = watchtools.UntilWithoutRetry(ctx, w, func(e watch.Event) (bool, error) {
-		switch e.Type {
-		case watch.Deleted:
-			return false, errors.NewNotFound(schema.GroupResource{Resource: "pods"}, "")
-		}
-		switch t := e.Object.(type) {
-		case *v1.Pod:
-			switch t.Status.Phase {
-			case v1.PodFailed, v1.PodSucceeded:
-				return true, nil
-			}
-		}
-		return false, nil
+	watcher, err := client.CoreV1().Pods(namespace).Watch(metav1.ListOptions{
+		FieldSelector:  fmt.Sprintf("metadata.name=%s", name),
+		TimeoutSeconds: &timeout,
 	})
 
-	return err
+	for event := range watcher.ResultChan() {
+		p, ok := event.Object.(*v1.Pod)
+		if !ok {
+			return v1.PodUnknown, fmt.Errorf("%s not a pod", name)
+		}
+		switch p.Status.Phase {
+		case v1.PodFailed:
+			return v1.PodFailed, nil
+		case v1.PodSucceeded:
+			return v1.PodSucceeded, nil
+		}
+	}
+
+	return v1.PodUnknown, err
 }
 
 //get a kubernetes resources' relation pods

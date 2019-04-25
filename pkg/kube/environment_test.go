@@ -49,7 +49,7 @@ func (k *mockKubeClient) Build(ns string, reader io.Reader) (Result, error) {
 func (k *mockKubeClient) BuildUnstructured(ns string, reader io.Reader) (Result, error) {
 	return []*resource.Info{}, nil
 }
-func (k *mockKubeClient) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (v1.PodPhase, error) {
+func (k *mockKubeClient) WaitAndGetCompletedPodPhase(namespace, name string, timeout int64) (v1.PodPhase, error) {
 	return v1.PodUnknown, nil
 }
 
