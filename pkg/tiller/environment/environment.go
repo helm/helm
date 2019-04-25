@@ -147,7 +147,19 @@ type KubeClient interface {
 	UpdateWithOptions(namespace string, originalReader, modifiedReader io.Reader, opts kube.UpdateOptions) error
 
 	Build(namespace string, reader io.Reader) (kube.Result, error)
+
+	// BuildUnstructured reads a stream of manifests from a reader and turns them into
+	// info objects. Manifests are not validated against the schema, but it will fail if
+	// any resoures types are not known by the apiserver.
+	//
+	// reader must contain a YAML stream (one or more YAML documents separated by "\n---\n").
 	BuildUnstructured(namespace string, reader io.Reader) (kube.Result, error)
+
+	// Validate reads a stream of manifests from a reader and validates them against
+	// the schema from the apiserver. It returns an error if any of the manifests does not validate.
+	//
+	// reader must contain a YAML stream (one or more YAML documents separated by "\n---\n").
+	Validate(namespace string, reader io.Reader) error
 
 	// WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
 	// and returns said phase (PodSucceeded or PodFailed qualify).
@@ -212,6 +224,11 @@ func (p *PrintingKubeClient) Build(ns string, reader io.Reader) (kube.Result, er
 // BuildUnstructured implements KubeClient BuildUnstructured.
 func (p *PrintingKubeClient) BuildUnstructured(ns string, reader io.Reader) (kube.Result, error) {
 	return []*resource.Info{}, nil
+}
+
+// Validate implements KubeClient Validate
+func (p *PrintingKubeClient) Validate(ns string, reader io.Reader) error {
+	return nil
 }
 
 // WaitAndGetCompletedPodPhase implements KubeClient WaitAndGetCompletedPodPhase.

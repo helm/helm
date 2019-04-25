@@ -436,8 +436,7 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 
 func validateManifest(c environment.KubeClient, ns string, manifest []byte) error {
 	r := bytes.NewReader(manifest)
-	_, err := c.BuildUnstructured(ns, r)
-	return err
+	return c.Validate(ns, r)
 }
 
 func validateReleaseName(releaseName string) error {
