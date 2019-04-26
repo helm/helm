@@ -136,6 +136,53 @@ func TestInstall(t *testing.T) {
 			wantError: true,
 			golden:    "output/install-chart-bad-type.txt",
 		},
+		// Install, values from yaml, schematized
+		{
+			name:   "install with schema file",
+			cmd:    "install schema testdata/testcharts/chart-with-schema",
+			golden: "output/schema.txt",
+		},
+		// Install, values from yaml, schematized with errors
+		{
+			name:      "install with schema file, with errors",
+			cmd:       "install schema testdata/testcharts/chart-with-schema-negative",
+			wantError: true,
+			golden:    "output/schema-negative.txt",
+		},
+		// Install, values from yaml, extra values from yaml, schematized with errors
+		{
+			name:      "install with schema file, extra values from yaml, with errors",
+			cmd:       "install schema testdata/testcharts/chart-with-schema -f testdata/testcharts/chart-with-schema/extra-values.yaml",
+			wantError: true,
+			golden:    "output/schema-negative.txt",
+		},
+		// Install, values from yaml, extra values from cli, schematized with errors
+		{
+			name:      "install with schema file, extra values from cli, with errors",
+			cmd:       "install schema testdata/testcharts/chart-with-schema --set age=-5",
+			wantError: true,
+			golden:    "output/schema-negative-cli.txt",
+		},
+		// Install with subchart, values from yaml, schematized with errors
+		{
+			name:      "install with schema file and schematized subchart, with errors",
+			cmd:       "install schema testdata/testcharts/chart-with-schema-and-subchart",
+			wantError: true,
+			golden:    "output/subchart-schema-negative.txt",
+		},
+		// Install with subchart, values from yaml, extra values from cli, schematized with errors
+		{
+			name:   "install with schema file and schematized subchart, extra values from cli",
+			cmd:    "install schema testdata/testcharts/chart-with-schema-and-subchart --set lastname=doe --set subchart-with-schema.age=25",
+			golden: "output/subchart-schema-cli.txt",
+		},
+		// Install with subchart, values from yaml, extra values from cli, schematized with errors
+		{
+			name:      "install with schema file and schematized subchart, extra values from cli, with errors",
+			cmd:       "install schema testdata/testcharts/chart-with-schema-and-subchart --set lastname=doe --set subchart-with-schema.age=-25",
+			wantError: true,
+			golden:    "output/subchart-schema-cli-negative.txt",
+		},
 	}
 
 	runTestActionCmd(t, tests)

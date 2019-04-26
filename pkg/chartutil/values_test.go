@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"testing"
 	"text/template"
 
@@ -158,6 +159,125 @@ func TestReadValuesFile(t *testing.T) {
 		t.Fatalf("Error reading YAML file: %s", err)
 	}
 	matchValues(t, data)
+}
+
+func TestValidateAgainstSingleSchema(t *testing.T) {
+	values, err := ReadValuesFile("./testdata/test-values.yaml")
+	if err != nil {
+		t.Fatalf("Error reading YAML file: %s", err)
+	}
+	schema, err := ioutil.ReadFile("./testdata/test-values.schema.json")
+	if err != nil {
+		t.Fatalf("Error reading YAML file: %s", err)
+	}
+
+	if err := ValidateAgainstSingleSchema(values, schema); err != nil {
+		t.Errorf("Error validating Values against Schema: %s", err)
+	}
+}
+
+func TestValidateAgainstSingleSchemaNegative(t *testing.T) {
+	values, err := ReadValuesFile("./testdata/test-values-negative.yaml")
+	if err != nil {
+		t.Fatalf("Error reading YAML file: %s", err)
+	}
+	schema, err := ioutil.ReadFile("./testdata/test-values.schema.json")
+	if err != nil {
+		t.Fatalf("Error reading YAML file: %s", err)
+	}
+
+	var errString string
+	if err := ValidateAgainstSingleSchema(values, schema); err == nil {
+		t.Fatalf("Expected an error, but got nil")
+	} else {
+		errString = err.Error()
+	}
+
+	expectedErrString := `- (root): employmentInfo is required
+- age: Must be greater than or equal to 0/1
+`
+	if errString != expectedErrString {
+		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
+	}
+}
+
+const subchrtSchema = `{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Values",
+  "type": "object",
+  "properties": {
+    "age": {
+      "description": "Age",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "age"
+  ]
+}
+`
+
+func TestValidateAgainstSchema(t *testing.T) {
+	subchrtJSON := []byte(subchrtSchema)
+	subchrt := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name: "subchrt",
+		},
+		Schema: subchrtJSON,
+	}
+	chrt := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name: "chrt",
+		},
+	}
+	chrt.AddDependency(subchrt)
+
+	vals := map[string]interface{}{
+		"name": "John",
+		"subchrt": map[string]interface{}{
+			"age": 25,
+		},
+	}
+
+	if err := ValidateAgainstSchema(chrt, vals); err != nil {
+		t.Errorf("Error validating Values against Schema: %s", err)
+	}
+}
+
+func TestValidateAgainstSchemaNegative(t *testing.T) {
+	subchrtJSON := []byte(subchrtSchema)
+	subchrt := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name: "subchrt",
+		},
+		Schema: subchrtJSON,
+	}
+	chrt := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name: "chrt",
+		},
+	}
+	chrt.AddDependency(subchrt)
+
+	vals := map[string]interface{}{
+		"name":    "John",
+		"subchrt": map[string]interface{}{},
+	}
+
+	var errString string
+	if err := ValidateAgainstSchema(chrt, vals); err == nil {
+		t.Fatalf("Expected an error, but got nil")
+	} else {
+		errString = err.Error()
+	}
+
+	expectedErrString := `subchrt:
+- (root): age is required
+`
+	if errString != expectedErrString {
+		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
+	}
 }
 
 func ExampleValues() {
@@ -399,6 +519,7 @@ func TestCoalesceTables(t *testing.T) {
 		t.Errorf("Expected boat string, got %v", dst["boat"])
 	}
 }
+
 func TestPathValue(t *testing.T) {
 	doc := `
 title: "Moby Dick"

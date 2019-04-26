@@ -17,6 +17,7 @@ limitations under the License.
 package rules
 
 import (
+	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -48,6 +49,19 @@ func validateValuesFileExistence(valuesPath string) error {
 }
 
 func validateValuesFile(valuesPath string) error {
-	_, err := chartutil.ReadValuesFile(valuesPath)
-	return errors.Wrap(err, "unable to parse YAML")
+	values, err := chartutil.ReadValuesFile(valuesPath)
+	if err != nil {
+		return errors.Wrap(err, "unable to parse YAML")
+	}
+
+	ext := filepath.Ext(valuesPath)
+	schemaPath := valuesPath[:len(valuesPath)-len(ext)] + ".schema.json"
+	schema, err := ioutil.ReadFile(schemaPath)
+	if len(schema) == 0 {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	return chartutil.ValidateAgainstSingleSchema(values, schema)
 }

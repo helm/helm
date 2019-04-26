@@ -17,6 +17,7 @@ limitations under the License.
 package chartutil
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -25,6 +26,7 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
+	"github.com/xeipuuv/gojsonschema"
 
 	"helm.sh/helm/pkg/chart"
 )
@@ -131,6 +133,64 @@ func ReadValuesFile(filename string) (Values, error) {
 		return map[string]interface{}{}, err
 	}
 	return ReadValues(data)
+}
+
+// ValidateAgainstSchema checks that values does not violate the structure laid out in schema
+func ValidateAgainstSchema(chrt *chart.Chart, values map[string]interface{}) error {
+	var sb strings.Builder
+	if chrt.Schema != nil {
+		err := ValidateAgainstSingleSchema(values, chrt.Schema)
+		if err != nil {
+			sb.WriteString(fmt.Sprintf("%s:\n", chrt.Name()))
+			sb.WriteString(err.Error())
+		}
+	}
+
+	// For each dependency, recurively call this function with the coalesced values
+	for _, subchrt := range chrt.Dependencies() {
+		subchrtValues := values[subchrt.Name()].(map[string]interface{})
+		if err := ValidateAgainstSchema(subchrt, subchrtValues); err != nil {
+			sb.WriteString(err.Error())
+		}
+	}
+
+	if sb.Len() > 0 {
+		return errors.New(sb.String())
+	}
+
+	return nil
+}
+
+// ValidateAgainstSingleSchema checks that values does not violate the structure laid out in this schema
+func ValidateAgainstSingleSchema(values Values, schemaJSON []byte) error {
+	valuesData, err := yaml.Marshal(values)
+	if err != nil {
+		return err
+	}
+	valuesJSON, err := yaml.YAMLToJSON(valuesData)
+	if err != nil {
+		return err
+	}
+	if bytes.Equal(valuesJSON, []byte("null")) {
+		valuesJSON = []byte("{}")
+	}
+	schemaLoader := gojsonschema.NewBytesLoader(schemaJSON)
+	valuesLoader := gojsonschema.NewBytesLoader(valuesJSON)
+
+	result, err := gojsonschema.Validate(schemaLoader, valuesLoader)
+	if err != nil {
+		return err
+	}
+
+	if !result.Valid() {
+		var sb strings.Builder
+		for _, desc := range result.Errors() {
+			sb.WriteString(fmt.Sprintf("- %s\n", desc))
+		}
+		return errors.New(sb.String())
+	}
+
+	return nil
 }
 
 // CoalesceValues coalesces all of the values in a chart (and its subcharts).
@@ -329,6 +389,11 @@ func ToRenderValues(chrt *chart.Chart, chrtVals map[string]interface{}, options 
 	vals, err := CoalesceValues(chrt, chrtVals)
 	if err != nil {
 		return top, err
+	}
+
+	if err := ValidateAgainstSchema(chrt, vals); err != nil {
+		errFmt := "values don't meet the specifications of the schema(s) in the following chart(s):\n%s"
+		return top, fmt.Errorf(errFmt, err.Error())
 	}
 
 	top["Values"] = vals

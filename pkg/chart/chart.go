@@ -31,6 +31,8 @@ type Chart struct {
 	RawValues []byte
 	// Values are default config for this template.
 	Values map[string]interface{}
+	// Schema is an optional JSON schema for imposing structure on Values
+	Schema []byte
 	// Files are miscellaneous files in a chart archive,
 	// e.g. README, LICENSE, etc.
 	Files []*File
