@@ -42,6 +42,8 @@ on getting ready within a small amount of time. For production configurations,
 we urge readers to read [the official documentation](https://www.openssl.org) and
 consult other resources.
 
+Alternatively you can use Terraform to quickly create all the necessary certificates: [Generating Certificate Authorities and Certificates using Terraform](tiller_ssl_terraform.md).
+
 ### Generate a Certificate Authority
 
 The simplest way to generate a certificate authority is to run two commands:
