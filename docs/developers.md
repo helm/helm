@@ -19,7 +19,7 @@ $ make bootstrap build
 ```
 
 NOTE: This will fail if not running from the path `$GOPATH/src/helm.sh/helm`. The
-directory `k8s.io` should not be a symlink or `build` will not find the relevant
+directory `helm.sh` should not be a symlink or `build` will not find the relevant
 packages.
 
 This will build both Helm and the Helm library. `make bootstrap` will attempt to
@@ -94,7 +94,7 @@ home of the current development candidate. Releases are tagged.
 We accept changes to the code via GitHub Pull Requests (PRs). One
 workflow for doing this is as follows:
 
-1. Go to your `$GOPATH/src/k8s.io` directory and `git clone` the
+1. Go to your `$GOPATH/src` directory, then `mkdir helm.sh; cd helm.sh` and `git clone` the
    `github.com/helm/helm` repository.
 2. Fork that repository into your GitHub account
 3. Add your repository as a remote for `$GOPATH/src/helm.sh/helm`
