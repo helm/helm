@@ -29,6 +29,61 @@ import (
 	"helm.sh/helm/pkg/registry"
 )
 
+const (
+	bashCompletionFunc = `
+__helm_override_flag_list=(--kubeconfig --kube-context --home --namespace -n)
+__helm_override_flags()
+{
+    local ${__helm_override_flag_list[*]##*-} two_word_of of var
+    for w in "${words[@]}"; do
+        if [ -n "${two_word_of}" ]; then
+            eval "${two_word_of##*-}=\"${two_word_of}=\${w}\""
+            two_word_of=
+            continue
+        fi
+        for of in "${__helm_override_flag_list[@]}"; do
+            case "${w}" in
+                ${of}=*)
+                    eval "${of##*-}=\"${w}\""
+                    ;;
+                ${of})
+                    two_word_of="${of}"
+                    ;;
+            esac
+        done
+    done
+    for var in "${__helm_override_flag_list[@]##*-}"; do
+        if eval "test -n \"\$${var}\""; then
+            eval "echo \${${var}}"
+        fi
+    done
+}
+__helm_list_releases()
+{
+	__helm_debug "${FUNCNAME[0]}: c is $c words[c] is ${words[c]}"
+	local out filter
+	# Use ^ to map from the start of the release name
+	filter="^${words[c]}"
+    if out=$(helm list $(__helm_override_flags) -a -q -m 1000 -f ${filter} 2>/dev/null); then
+        COMPREPLY=( $( compgen -W "${out[*]}" -- "$cur" ) )
+    fi
+}
+__helm_custom_func()
+{
+	__helm_debug "${FUNCNAME[0]}: last_command is $last_command"
+    case ${last_command} in
+		helm_uninstall | helm_history | helm_status | helm_test_run |\
+	    helm_upgrade | helm_rollback | helm_get_*)
+            __helm_list_releases
+            return
+            ;;
+        *)
+            ;;
+    esac
+}
+`
+)
+
 var globalUsage = `The Kubernetes package manager
 
 To begin working with Helm, run the 'helm init' command:
@@ -53,11 +108,12 @@ Environment:
 
 func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "helm",
-		Short:        "The Helm package manager for Kubernetes.",
-		Long:         globalUsage,
-		SilenceUsage: true,
-		Args:         require.NoArgs,
+		Use:                    "helm",
+		Short:                  "The Helm package manager for Kubernetes.",
+		Long:                   globalUsage,
+		SilenceUsage:           true,
+		Args:                   require.NoArgs,
+		BashCompletionFunction: bashCompletionFunc,
 	}
 	flags := cmd.PersistentFlags()
 
