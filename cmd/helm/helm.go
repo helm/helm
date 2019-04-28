@@ -80,7 +80,8 @@ __helm_list_releases()
 __helm_custom_func()
 {
     case ${last_command} in
-        helm_delete | helm_history | helm_status | helm_test)
+        helm_delete | helm_history | helm_status | helm_test |\
+        helm_upgrade | helm_rollback | helm_get_*)
             __helm_list_releases
             return
             ;;
