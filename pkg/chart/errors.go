@@ -15,9 +15,19 @@ limitations under the License.
 
 package chart
 
-// ValidationError represents a data validation error.
-type ValidationError string
+import "github.com/pkg/errors"
 
-func (v ValidationError) Error() string {
-	return "validation: " + string(v)
-}
+// ErrMissingMetadata indicates that Chart.yaml is missing
+var ErrMissingMetadata = errors.New("validation: chart.metadata (Chart.yaml) is required")
+
+// ErrMissingAPIVersion indicates that chart apiVersion is missing in Chart.yaml
+var ErrMissingAPIVersion = errors.New("validation: chart.metadata.apiVersion is required in Chart.yaml")
+
+// ErrMissingName indicates that chart name is missing in Chart.yaml
+var ErrMissingName = errors.New("validation: chart.metadata.name is required in Chart.yaml")
+
+// ErrMissingVersion indicates that chart version is missing in Chart.yaml
+var ErrMissingVersion = errors.New("validation: chart.metadata.version is required in Chart.yaml")
+
+// ErrInvalidType indicates that chart type is invalid in Chart.yaml
+var ErrInvalidType = errors.New("validation: chart.metadata.type must be 'application' or 'library' in Chart.yaml")

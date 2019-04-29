@@ -64,21 +64,22 @@ type Metadata struct {
 	Type string `json:"type,omitempty"`
 }
 
+// Validate validates the Chart.yaml contents
 func (md *Metadata) Validate() error {
 	if md == nil {
-		return ValidationError("chart.metadata is required")
+		return ErrMissingMetadata
 	}
 	if md.APIVersion == "" {
-		return ValidationError("chart.metadata.apiVersion is required")
+		return ErrMissingAPIVersion
 	}
 	if md.Name == "" {
-		return ValidationError("chart.metadata.name is required")
+		return ErrMissingName
 	}
 	if md.Version == "" {
-		return ValidationError("chart.metadata.version is required")
+		return ErrMissingVersion
 	}
 	if !isValidChartType(md.Type) {
-		return ValidationError("chart.metadata.type must be application or library")
+		return ErrInvalidType
 	}
 	// TODO validate valid semver here?
 	return nil

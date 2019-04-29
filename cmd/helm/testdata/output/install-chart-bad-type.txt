@@ -1,1 +1,1 @@
-Error: validation: chart.metadata.type must be application or library
+Error: validation: chart.metadata.type must be 'application' or 'library' in Chart.yaml

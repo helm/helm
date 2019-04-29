@@ -130,8 +130,8 @@ icon: https://example.com/64x64.png
 	if _, err = LoadFiles([]*BufferedFile{}); err == nil {
 		t.Fatal("Expected err to be non-nil")
 	}
-	if err.Error() != "validation: chart.metadata is required" {
-		t.Errorf("Expected chart metadata missing error, got '%s'", err.Error())
+	if err != chart.ErrMissingMetadata {
+		t.Errorf("Expected '%s', got '%s'", chart.ErrMissingMetadata.Error(), err.Error())
 	}
 }
 
