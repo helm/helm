@@ -314,9 +314,9 @@ Common labels
 app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
 helm.sh/chart: {{ include "<CHARTNAME>.chart" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
-{{- if .Chart.AppVersion -}}
+{{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-{{- end -}}
+{{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end -}}
 `
