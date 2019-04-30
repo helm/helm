@@ -72,8 +72,9 @@ type: application
 version: 0.1.0
 
 # This is the version number of the application being deployed. This version number should be
-# incremented each time you make changes to the application.
-appVersion: 0.1.0
+# incremented each time you make changes to the application. Depending on the application,
+# 'stable' can signify the latest stable version of the application.
+appVersion: stable
 `
 
 const defaultValues = `# Default values for %s.
@@ -211,7 +212,7 @@ spec:
     spec:
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.image.repository }}:{{ .Release.AppVersion }}"
+          image: "{{ .Values.image.repository }}:{{ .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
