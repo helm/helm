@@ -38,7 +38,7 @@ type Uninstall struct {
 
 	DisableHooks bool
 	DryRun       bool
-	Purge        bool
+	KeepHistory  bool
 	Timeout      int64
 }
 
@@ -78,7 +78,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	// TODO: Are there any cases where we want to force a delete even if it's
 	// already marked deleted?
 	if rel.Info.Status == release.StatusUninstalled {
-		if u.Purge {
+		if !u.KeepHistory {
 			if err := u.purgeReleases(rels...); err != nil {
 				return nil, errors.Wrap(err, "uninstall: Failed to purge the release")
 			}
@@ -119,7 +119,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	rel.Info.Status = release.StatusUninstalled
 	rel.Info.Description = "Uninstallation complete"
 
-	if u.Purge {
+	if !u.KeepHistory {
 		u.cfg.Log("purge requested for %s", name)
 		err := u.purgeReleases(rels...)
 		return res, errors.Wrap(err, "uninstall: Failed to purge the release")
