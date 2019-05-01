@@ -51,30 +51,11 @@ func LoadFile(name string) (*chart.Chart, error) {
 	}
 	defer raw.Close()
 
-	isLibChart, err := IsArchiveLibraryChart(raw)
-	if err != nil {
-		return nil, err
-	}
-	_, _ = raw.Seek(0, 0)
-	return LoadArchive(raw, isLibChart)
-}
-
-// IsArchiveLibraryChart return true if it is a library chart
-func IsArchiveLibraryChart(in io.Reader) (bool, error) {
-	var isLibChart = false
-	_, err := traverse(in, false, &isLibChart)
-	if err != nil {
-		return false, err
-	}
-	return isLibChart, nil
+	return LoadArchive(raw)
 }
 
 // LoadArchive loads from a reader containing a compressed tar archive.
-func LoadArchive(in io.Reader, isLibChart bool) (*chart.Chart, error) {
-	return traverse(in, true, &isLibChart)
-}
-
-func traverse(in io.Reader, loadFiles bool, isLibChart *bool) (*chart.Chart, error) {
+func LoadArchive(in io.Reader) (*chart.Chart, error) {
 	unzipped, err := gzip.NewReader(in)
 	if err != nil {
 		return &chart.Chart{}, err
@@ -119,28 +100,12 @@ func traverse(in io.Reader, loadFiles bool, isLibChart *bool) (*chart.Chart, err
 			return &chart.Chart{}, err
 		}
 
-		if !loadFiles && n == "Chart.yaml" {
-			var err error
-			*isLibChart, err = IsLibraryChart(b.Bytes())
-			if err != nil {
-				return nil, errors.Wrapf(err, "cannot load Chart.yaml")
-			}
-			return nil, nil
-		}
-
-		if IsFileValid(n, *isLibChart) {
-			files = append(files, &BufferedFile{Name: n, Data: b.Bytes()})
-		}
-
+		files = append(files, &BufferedFile{Name: n, Data: b.Bytes()})
 		b.Reset()
 	}
 
-	if loadFiles && len(files) == 0 {
+	if len(files) == 0 {
 		return nil, errors.New("no files in chart archive")
-	}
-
-	if !loadFiles {
-		return nil, errors.New("cannot find the chart type")
 	}
 
 	return LoadFiles(files)

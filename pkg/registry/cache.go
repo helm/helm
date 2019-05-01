@@ -85,7 +85,7 @@ func (cache *filesystemCache) LayersToChart(layers []ocispec.Descriptor) (*chart
 	}
 
 	// Construct chart object and attach metadata
-	ch, err := loader.LoadArchive(bytes.NewBuffer(contentRaw), false)
+	ch, err := loader.LoadArchive(bytes.NewBuffer(contentRaw))
 	if err != nil {
 		return nil, err
 	}

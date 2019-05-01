@@ -124,30 +124,8 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 				return c, errors.Errorf("error unpacking tar in %s: expected %s, got %s", c.Name(), n, file.Name)
 			}
 			// Untar the chart and add to c.Dependencies
-			var isLibChart bool
-			isLibChart, err = IsArchiveLibraryChart(bytes.NewBuffer(file.Data))
-			if err == nil {
-				sc, err = LoadArchive(bytes.NewBuffer(file.Data), isLibChart)
-			}
+			sc, err = LoadArchive(bytes.NewBuffer(file.Data))
 		default:
-			// Need to ascertain if the subchart is a library chart as will parse files
-			// differently from a standard application chart
-			var isLibChart = false
-			for _, f := range files {
-				parts := strings.SplitN(f.Name, "/", 2)
-				if len(parts) < 2 {
-					continue
-				}
-				name := parts[1]
-				if name == "Chart.yaml" {
-					isLibChart, err = IsLibraryChart(f.Data)
-					if err != nil {
-						return c, errors.Wrapf(err, "cannot load Chart.yaml for %s in %s", n, c.Name())
-					}
-					break
-				}
-			}
-
 			// We have to trim the prefix off of every file, and ignore any file
 			// that is in charts/, but isn't actually a chart.
 			buff := make([]*BufferedFile, 0, len(files))
@@ -157,12 +135,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 					continue
 				}
 				f.Name = parts[1]
-
-				// If the subchart is a library chart then will only want
-				// to render library and value files, and not any included template files
-				if IsFileValid(f.Name, isLibChart) {
-					buff = append(buff, f)
-				}
+				buff = append(buff, f)
 			}
 			sc, err = LoadFiles(buff)
 		}
@@ -170,34 +143,8 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 		if err != nil {
 			return c, errors.Wrapf(err, "error unpacking %s in %s", n, c.Name())
 		}
-
 		c.AddDependency(sc)
 	}
 
 	return c, nil
-}
-
-// IsLibraryChart return true if it is a library chart
-func IsLibraryChart(data []byte) (bool, error) {
-	var isLibChart = false
-	metadata := new(chart.Metadata)
-	if err := yaml.Unmarshal(data, metadata); err != nil {
-		return false, errors.Wrapf(err, "cannot load data")
-	}
-	if strings.EqualFold(metadata.Type, "library") {
-		isLibChart = true
-	}
-	return isLibChart, nil
-}
-
-// IsFileValid return true if this file is valid for library or
-//  application chart
-func IsFileValid(filename string, isLibChart bool) bool {
-	if isLibChart {
-		if strings.HasPrefix(filepath.Base(filename), "_") || !strings.HasPrefix(filepath.Dir(filename), "template") {
-			return true
-		}
-		return false
-	}
-	return true
 }
