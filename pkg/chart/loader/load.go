@@ -90,6 +90,8 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 				return c, errors.Wrap(err, "cannot load values.yaml")
 			}
 			c.RawValues = f.Data
+		case f.Name == "values.schema.json":
+			c.Schema = f.Data
 		case strings.HasPrefix(f.Name, "templates/"):
 			c.Templates = append(c.Templates, &chart.File{Name: f.Name, Data: f.Data})
 		case strings.HasPrefix(f.Name, "charts/"):
@@ -106,12 +108,8 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 		}
 	}
 
-	// Ensure that we got a Chart.yaml file
-	if c.Metadata == nil {
-		return c, errors.New("chart metadata (Chart.yaml) missing")
-	}
-	if c.Name() == "" {
-		return c, errors.New("invalid chart (Chart.yaml): name must not be empty")
+	if err := c.Validate(); err != nil {
+		return c, err
 	}
 
 	for n, files := range subcharts {

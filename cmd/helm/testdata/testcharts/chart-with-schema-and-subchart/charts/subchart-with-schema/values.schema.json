@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Values",
+  "type": "object",
+  "properties": {
+    "age": {
+      "description": "Age",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "age"
+  ]
+}

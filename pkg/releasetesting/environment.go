@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"time"
 
 	v1 "k8s.io/api/core/v1"
 
@@ -48,8 +47,7 @@ func (env *Environment) createTestPod(test *test) error {
 }
 
 func (env *Environment) getTestPodStatus(test *test) (v1.PodPhase, error) {
-	b := bytes.NewBufferString(test.manifest)
-	status, err := env.KubeClient.WaitAndGetCompletedPodPhase(env.Namespace, b, time.Duration(env.Timeout)*time.Second)
+	status, err := env.KubeClient.WaitAndGetCompletedPodPhase(env.Namespace, test.name, env.Timeout)
 	if err != nil {
 		log.Printf("Error getting status for pod %s: %s", test.result.Name, err)
 		test.result.Info = err.Error()

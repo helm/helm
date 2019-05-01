@@ -34,9 +34,7 @@ func TestCreate(t *testing.T) {
 	}
 	defer os.RemoveAll(tdir)
 
-	cf := &chart.Metadata{Name: "foo"}
-
-	c, err := Create(cf, tdir)
+	c, err := Create("foo", tdir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +83,11 @@ func TestCreateFrom(t *testing.T) {
 	}
 	defer os.RemoveAll(tdir)
 
-	cf := &chart.Metadata{Name: "foo"}
+	cf := &chart.Metadata{
+		APIVersion: chart.APIVersionV1,
+		Name:       "foo",
+		Version:    "0.1.0",
+	}
 	srcdir := "./testdata/mariner"
 
 	if err := CreateFrom(cf, tdir, srcdir); err != nil {

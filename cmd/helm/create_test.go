@@ -55,7 +55,7 @@ func TestCreateCmd(t *testing.T) {
 	if c.Name() != cname {
 		t.Errorf("Expected %q name, got %q", cname, c.Name())
 	}
-	if c.Metadata.APIVersion != chart.APIVersionv1 {
+	if c.Metadata.APIVersion != chart.APIVersionV1 {
 		t.Errorf("Wrong API version: %q", c.Metadata.APIVersion)
 	}
 }
@@ -73,7 +73,7 @@ func TestCreateStarterCmd(t *testing.T) {
 	// Create a starter.
 	starterchart := hh.Starters()
 	os.Mkdir(starterchart, 0755)
-	if dest, err := chartutil.Create(&chart.Metadata{Name: "starterchart"}, starterchart); err != nil {
+	if dest, err := chartutil.Create("starterchart", starterchart); err != nil {
 		t.Fatalf("Could not create chart: %s", err)
 	} else {
 		t.Logf("Created %s", dest)
@@ -106,7 +106,7 @@ func TestCreateStarterCmd(t *testing.T) {
 	if c.Name() != cname {
 		t.Errorf("Expected %q name, got %q", cname, c.Name())
 	}
-	if c.Metadata.APIVersion != chart.APIVersionv1 {
+	if c.Metadata.APIVersion != chart.APIVersionV1 {
 		t.Errorf("Wrong API version: %q", c.Metadata.APIVersion)
 	}
 

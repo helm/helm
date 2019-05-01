@@ -38,6 +38,7 @@ type TestSuite struct {
 }
 
 type test struct {
+	name            string
 	manifest        string
 	expectedSuccess bool
 	result          *release.TestRun
@@ -68,7 +69,7 @@ func (ts *TestSuite) Run(env *Environment) error {
 		}
 
 		test.result.StartedAt = time.Now()
-		if err := env.streamRunning(test.result.Name); err != nil {
+		if err := env.streamRunning(test.name); err != nil {
 			return err
 		}
 		test.result.Status = release.TestRunRunning
@@ -176,6 +177,7 @@ func newTest(testManifest string) (*test, error) {
 
 	name := strings.TrimSuffix(sh.Metadata.Name, ",")
 	return &test{
+		name:            name,
 		manifest:        testManifest,
 		expectedSuccess: expected,
 		result: &release.TestRun{

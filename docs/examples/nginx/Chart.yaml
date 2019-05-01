@@ -1,3 +1,4 @@
+apiVersion: v1
 name: nginx
 description: A basic NGINX HTTP server
 version: 0.1.0

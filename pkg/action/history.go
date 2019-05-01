@@ -34,6 +34,7 @@ type releaseInfo struct {
 	Updated     string `json:"updated"`
 	Status      string `json:"status"`
 	Chart       string `json:"chart"`
+	AppVersion  string `json:"app_version"`
 	Description string `json:"description"`
 }
 
@@ -142,11 +143,13 @@ func getReleaseHistory(rls []*release.Release) (history releaseHistory) {
 		s := r.Info.Status.String()
 		v := r.Version
 		d := r.Info.Description
+		a := formatAppVersion(r.Chart)
 
 		rInfo := releaseInfo{
 			Revision:    v,
 			Status:      s,
 			Chart:       c,
+			AppVersion:  a,
 			Description: d,
 		}
 		if !r.Info.LastDeployed.IsZero() {
@@ -162,10 +165,10 @@ func getReleaseHistory(rls []*release.Release) (history releaseHistory) {
 func formatAsTable(releases releaseHistory) []byte {
 	tbl := uitable.New()
 
-	tbl.AddRow("REVISION", "UPDATED", "STATUS", "CHART", "DESCRIPTION")
+	tbl.AddRow("REVISION", "UPDATED", "STATUS", "CHART", "APP VERSION", "DESCRIPTION")
 	for i := 0; i <= len(releases)-1; i++ {
 		r := releases[i]
-		tbl.AddRow(r.Revision, r.Updated, r.Status, r.Chart, r.Description)
+		tbl.AddRow(r.Revision, r.Updated, r.Status, r.Chart, r.AppVersion, r.Description)
 	}
 	return tbl.Bytes()
 }
@@ -177,4 +180,13 @@ func formatChartname(c *chart.Chart) string {
 		return "MISSING"
 	}
 	return fmt.Sprintf("%s-%s", c.Name(), c.Metadata.Version)
+}
+
+func formatAppVersion(c *chart.Chart) string {
+	if c == nil || c.Metadata == nil {
+		// This is an edge case that has happened in prod, though we don't
+		// know how: https://github.com/helm/helm/issues/1347
+		return "MISSING"
+	}
+	return c.AppVersion()
 }

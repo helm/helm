@@ -1,0 +1,7 @@
+apiVersion: v1
+description: Empty testing chart
+home: https://k8s.io/helm
+name: empty
+sources:
+- https://github.com/kubernetes/helm
+version: 0.1.0

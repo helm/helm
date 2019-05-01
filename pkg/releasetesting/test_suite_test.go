@@ -19,7 +19,6 @@ package releasetesting
 import (
 	"io"
 	"testing"
-	"time"
 
 	v1 "k8s.io/api/core/v1"
 
@@ -249,7 +248,7 @@ type mockKubeClient struct {
 	err     error
 }
 
-func (c *mockKubeClient) WaitAndGetCompletedPodPhase(_ string, _ io.Reader, _ time.Duration) (v1.PodPhase, error) {
+func (c *mockKubeClient) WaitAndGetCompletedPodPhase(_ string, _ string, _ int64) (v1.PodPhase, error) {
 	if c.podFail {
 		return v1.PodFailed, nil
 	}

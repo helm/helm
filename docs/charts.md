@@ -26,6 +26,7 @@ wordpress/
   LICENSE             # OPTIONAL: A plain text file containing the license for the chart
   README.md           # OPTIONAL: A human-readable README file
   values.yaml         # The default configuration values for this chart
+  values.schema.json  # OPTIONAL: A JSON Schema for imposing a structure on the values.yaml file
   charts/             # A directory containing any charts upon which this chart depends.
   templates/          # A directory of templates that, when combined with values,
                       # will generate valid Kubernetes manifest files.
@@ -763,14 +764,98 @@ parent chart.
 
 Also, global variables of parent charts take precedence over the global variables from subcharts.
 
+### Schema Files
+
+Sometimes, a chart maintainer might want to define a structure on their values.
+This can be done by defining a schema in the `values.schema.json` file. A
+schema is represented as a [JSON Schema](https://json-schema.org/).
+It might look something like this:
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "properties": {
+    "image": {
+      "description": "Container Image",
+      "properties": {
+        "repo": {
+          "type": "string"
+        },
+        "tag": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": {
+      "description": "Service name",
+      "type": "string"
+    },
+    "port": {
+      "description": "Port",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "protocol": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "protocol",
+    "port"
+  ],
+  "title": "Values",
+  "type": "object"
+}
+```
+
+This schema will be applied to the values to validate it. Validation occurs
+when any of the following commands are invoked:
+
+* `helm install`
+* `helm upgrade`
+* `helm lint`
+* `helm template`
+
+An example of a
+`values.yaml` file that meets the requirements of this schema might look
+something like this:
+
+```yaml
+name: frontend
+protocol: https
+port: 443
+```
+
+Note that the schema is applied to the final `.Values` object, and not just to
+the `values.yaml` file. This means that the following `yaml` file is valid,
+given that the chart is installed with the appropriate `--set` option shown
+below.
+
+```yaml
+name: frontend
+protocol: https
+```
+
+````
+helm install --set port=443
+````
+
+Furthermore, the final `.Values` object is checked against *all* subchart
+schemas. This means that restrictions on a subchart can't be circumvented by a
+parent chart. This also works backwards - if a subchart has a requirement that
+is not met in the subchart's `values.yaml` file, the parent chart *must*
+satisfy those restrictions in order to be valid.
+
 ### References
 
-When it comes to writing templates and values files, there are several
+When it comes to writing templates, values, and schema files, there are several
 standard references that will help you out.
 
 - [Go templates](https://godoc.org/text/template)
 - [Extra template functions](https://godoc.org/github.com/Masterminds/sprig)
 - [The YAML format](http://yaml.org/spec/)
+- [JSON Schema](https://json-schema.org/)
 
 ## Using Helm to Manage Charts
 

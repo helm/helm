@@ -74,6 +74,7 @@ func (cache *filesystemCache) LayersToChart(layers []ocispec.Descriptor) (*chart
 	if err != nil {
 		return nil, err
 	}
+	metadata.APIVersion = chart.APIVersionV1
 	metadata.Name = name
 	metadata.Version = version
 
@@ -96,8 +97,8 @@ func (cache *filesystemCache) LayersToChart(layers []ocispec.Descriptor) (*chart
 func (cache *filesystemCache) ChartToLayers(ch *chart.Chart) ([]ocispec.Descriptor, error) {
 
 	// extract/separate the name and version from other metadata
-	if ch.Metadata == nil {
-		return nil, errors.New("chart does not contain metadata")
+	if err := ch.Validate(); err != nil {
+		return nil, err
 	}
 	name := ch.Metadata.Name
 	version := ch.Metadata.Version
@@ -115,7 +116,11 @@ func (cache *filesystemCache) ChartToLayers(ch *chart.Chart) ([]ocispec.Descript
 	// TODO: something better than this hack. Currently needed for chartutil.Save()
 	// If metadata does not contain Name or Version, an error is returned
 	// such as "no chart name specified (Chart.yaml)"
-	ch.Metadata = &chart.Metadata{Name: "-", Version: "-"}
+	ch.Metadata = &chart.Metadata{
+		APIVersion: chart.APIVersionV1,
+		Name:       "-",
+		Version:    "0.1.0",
+	}
 	destDir := mkdir(filepath.Join(cache.rootDir, "blobs", ".build"))
 	tmpFile, err := chartutil.Save(ch, destDir)
 	defer os.Remove(tmpFile)

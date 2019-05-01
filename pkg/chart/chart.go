@@ -15,8 +15,8 @@ limitations under the License.
 
 package chart
 
-// APIVersionv1 is the API version number for version 1.
-const APIVersionv1 = "v1"
+// APIVersionV1 is the API version number for version 1.
+const APIVersionV1 = "v1"
 
 // Chart is a helm package that contains metadata, a default config, zero or more
 // optionally parameterizable templates, and zero or more charts (dependencies).
@@ -31,6 +31,8 @@ type Chart struct {
 	RawValues []byte
 	// Values are default config for this template.
 	Values map[string]interface{}
+	// Schema is an optional JSON schema for imposing structure on Values
+	Schema []byte
 	// Files are miscellaneous files in a chart archive,
 	// e.g. README, LICENSE, etc.
 	Files []*File
@@ -95,4 +97,16 @@ func (ch *Chart) ChartFullPath() string {
 		return ch.Parent().ChartFullPath() + "/charts/" + ch.Name()
 	}
 	return ch.Name()
+}
+
+func (ch *Chart) Validate() error {
+	return ch.Metadata.Validate()
+}
+
+// AppVersion returns the appversion of the chart.
+func (ch *Chart) AppVersion() string {
+	if ch.Metadata == nil {
+		return ""
+	}
+	return ch.Metadata.AppVersion
 }

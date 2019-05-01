@@ -71,8 +71,9 @@ func Mock(opts *MockReleaseOptions) *Release {
 	if opts.Chart == nil {
 		ch = &chart.Chart{
 			Metadata: &chart.Metadata{
-				Name:    "foo",
-				Version: "0.1.0-beta.1",
+				Name:       "foo",
+				Version:    "0.1.0-beta.1",
+				AppVersion: "1.0",
 			},
 			Templates: []*chart.File{
 				{Name: "templates/foo.tpl", Data: []byte(MockManifest)},

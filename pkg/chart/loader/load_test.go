@@ -17,6 +17,7 @@ limitations under the License.
 package loader
 
 import (
+	"bytes"
 	"testing"
 
 	"helm.sh/helm/pkg/chart"
@@ -79,6 +80,10 @@ icon: https://example.com/64x64.png
 			Data: []byte("var: some values"),
 		},
 		{
+			Name: "values.schema.json",
+			Data: []byte("type: Values"),
+		},
+		{
 			Name: "templates/deployment.yaml",
 			Data: []byte("some deployment"),
 		},
@@ -101,6 +106,10 @@ icon: https://example.com/64x64.png
 		t.Error("Expected chart values to be populated with default values")
 	}
 
+	if !bytes.Equal(c.Schema, []byte("type: Values")) {
+		t.Error("Expected chart schema to be populated with default values")
+	}
+
 	if len(c.Templates) != 2 {
 		t.Errorf("Expected number of templates == 2, got %d", len(c.Templates))
 	}
@@ -109,7 +118,7 @@ icon: https://example.com/64x64.png
 	if err == nil {
 		t.Fatal("Expected err to be non-nil")
 	}
-	if err.Error() != "chart metadata (Chart.yaml) missing" {
+	if err.Error() != "metadata is required" {
 		t.Errorf("Expected chart metadata missing error, got '%s'", err.Error())
 	}
 }
