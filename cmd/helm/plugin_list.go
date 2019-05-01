@@ -34,7 +34,7 @@ func newPluginListCmd(out io.Writer) *cobra.Command {
 	pcmd := &pluginListCmd{out: out}
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "list installed Helm plugins",
+		Short: "List installed Helm plugins",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pcmd.home = settings.Home
 			return pcmd.run()

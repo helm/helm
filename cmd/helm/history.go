@@ -72,7 +72,7 @@ func newHistoryCmd(c helm.Interface, w io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "history [flags] RELEASE_NAME",
 		Long:    historyHelp,
-		Short:   "fetch release history",
+		Short:   "Fetch release history",
 		Aliases: []string{"hist"},
 		PreRunE: func(_ *cobra.Command, _ []string) error { return setupConnection() },
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -89,9 +89,9 @@ func newHistoryCmd(c helm.Interface, w io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	settings.AddFlagsTLS(f)
-	f.Int32Var(&his.max, "max", 256, "maximum number of revision to include in history")
-	f.UintVar(&his.colWidth, "col-width", 60, "specifies the max column width of output")
-	f.StringVarP(&his.outputFormat, "output", "o", "table", "prints the output in the specified format (json|table|yaml)")
+	f.Int32Var(&his.max, "max", 256, "Maximum number of revisions to include in history")
+	f.UintVar(&his.colWidth, "col-width", 60, "Specifies the max column width of output")
+	f.StringVarP(&his.outputFormat, "output", "o", "table", "Prints the output in the specified format (json|table|yaml)")
 
 	// set defaults from environment
 	settings.InitTLS(f)

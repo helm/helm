@@ -44,7 +44,7 @@ func newGetNotesCmd(client helm.Interface, out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:     "notes [flags] RELEASE_NAME",
-		Short:   "displays the notes of the named release",
+		Short:   "Displays the notes of the named release",
 		Long:    getNotesHelp,
 		PreRunE: func(_ *cobra.Command, _ []string) error { return setupConnection() },
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -61,7 +61,7 @@ func newGetNotesCmd(client helm.Interface, out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	settings.AddFlagsTLS(f)
-	f.Int32Var(&get.version, "revision", 0, "get the notes of the named release with revision")
+	f.Int32Var(&get.version, "revision", 0, "Get the notes of the named release with revision")
 
 	// set defaults from environment
 	settings.InitTLS(f)

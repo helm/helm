@@ -56,7 +56,7 @@ func newGetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:     "get [flags] RELEASE_NAME",
-		Short:   "download a named release",
+		Short:   "Download a named release",
 		Long:    getHelp,
 		PreRunE: func(_ *cobra.Command, _ []string) error { return setupConnection() },
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -73,8 +73,8 @@ func newGetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	settings.AddFlagsTLS(f)
-	f.Int32Var(&get.version, "revision", 0, "get the named release with revision")
-	f.StringVar(&get.template, "template", "", "go template for formatting the output, eg: {{.Release.Name}}")
+	f.Int32Var(&get.version, "revision", 0, "Get the named release with revision")
+	f.StringVar(&get.template, "template", "", "Go template for formatting the output, eg: {{.Release.Name}}")
 
 	cmd.AddCommand(newGetValuesCmd(nil, out))
 	cmd.AddCommand(newGetManifestCmd(nil, out))

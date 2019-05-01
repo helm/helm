@@ -55,25 +55,25 @@ It will also set up any necessary local configuration.
 
 Common actions from this point include:
 
-- helm search:    search for charts
-- helm fetch:     download a chart to your local directory to view
-- helm install:   upload the chart to Kubernetes
-- helm list:      list releases of charts
+- helm search:    Search for charts
+- helm fetch:     Download a chart to your local directory to view
+- helm install:   Upload the chart to Kubernetes
+- helm list:      List releases of charts
 
 Environment:
 
-- $HELM_HOME:           set an alternative location for Helm files. By default, these are stored in ~/.helm
-- $HELM_HOST:           set an alternative Tiller host. The format is host:port
-- $HELM_NO_PLUGINS:     disable plugins. Set HELM_NO_PLUGINS=1 to disable plugins.
-- $TILLER_NAMESPACE:    set an alternative Tiller namespace (default "kube-system")
-- $KUBECONFIG:          set an alternative Kubernetes configuration file (default "~/.kube/config")
-- $HELM_TLS_CA_CERT:    path to TLS CA certificate used to verify the Helm client and Tiller server certificates (default "$HELM_HOME/ca.pem")
-- $HELM_TLS_CERT:       path to TLS client certificate file for authenticating to Tiller (default "$HELM_HOME/cert.pem")
-- $HELM_TLS_KEY:        path to TLS client key file for authenticating to Tiller (default "$HELM_HOME/key.pem")
-- $HELM_TLS_ENABLE:     enable TLS connection between Helm and Tiller (default "false")
-- $HELM_TLS_VERIFY:     enable TLS connection between Helm and Tiller and verify Tiller server certificate (default "false")
-- $HELM_TLS_HOSTNAME:   the hostname or IP address used to verify the Tiller server certificate (default "127.0.0.1")
-- $HELM_KEY_PASSPHRASE: set HELM_KEY_PASSPHRASE to the passphrase of your PGP private key. If set, you will not be prompted for the passphrase while signing helm charts
+- $HELM_HOME:           Set an alternative location for Helm files. By default, these are stored in ~/.helm
+- $HELM_HOST:           Set an alternative Tiller host. The format is host:port
+- $HELM_NO_PLUGINS:     Disable plugins. Set HELM_NO_PLUGINS=1 to disable plugins.
+- $TILLER_NAMESPACE:    Set an alternative Tiller namespace (default "kube-system")
+- $KUBECONFIG:          Set an alternative Kubernetes configuration file (default "~/.kube/config")
+- $HELM_TLS_CA_CERT:    Path to TLS CA certificate used to verify the Helm client and Tiller server certificates (default "$HELM_HOME/ca.pem")
+- $HELM_TLS_CERT:       Path to TLS client certificate file for authenticating to Tiller (default "$HELM_HOME/cert.pem")
+- $HELM_TLS_KEY:        Path to TLS client key file for authenticating to Tiller (default "$HELM_HOME/key.pem")
+- $HELM_TLS_ENABLE:     Enable TLS connection between Helm and Tiller (default "false")
+- $HELM_TLS_VERIFY:     Enable TLS connection between Helm and Tiller and verify Tiller server certificate (default "false")
+- $HELM_TLS_HOSTNAME:   The hostname or IP address used to verify the Tiller server certificate (default "127.0.0.1")
+- $HELM_KEY_PASSPHRASE: Set HELM_KEY_PASSPHRASE to the passphrase of your PGP private key. If set, you will not be prompted for the passphrase while signing helm charts
 
 `
 
@@ -147,7 +147,7 @@ func newRootCmd(args []string) *cobra.Command {
 		newDocsCmd(out),
 
 		// Deprecated
-		markDeprecated(newRepoUpdateCmd(out), "use 'helm repo update'\n"),
+		markDeprecated(newRepoUpdateCmd(out), "Use 'helm repo update'\n"),
 	)
 
 	flags.Parse(args)

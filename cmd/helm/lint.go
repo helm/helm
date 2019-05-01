@@ -61,7 +61,7 @@ func newLintCmd(out io.Writer) *cobra.Command {
 	}
 	cmd := &cobra.Command{
 		Use:   "lint [flags] PATH",
-		Short: "examines a chart for possible issues",
+		Short: "Examines a chart for possible issues",
 		Long:  longLintHelp,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
@@ -71,12 +71,12 @@ func newLintCmd(out io.Writer) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().VarP(&l.valueFiles, "values", "f", "specify values in a YAML file (can specify multiple)")
-	cmd.Flags().StringArrayVar(&l.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
-	cmd.Flags().StringArrayVar(&l.sValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
-	cmd.Flags().StringArrayVar(&l.fValues, "set-file", []string{}, "set values from respective files specified via the command line (can specify multiple or separate values with commas: key1=path1,key2=path2)")
-	cmd.Flags().StringVar(&l.namespace, "namespace", "default", "namespace to put the release into")
-	cmd.Flags().BoolVar(&l.strict, "strict", false, "fail on lint warnings")
+	cmd.Flags().VarP(&l.valueFiles, "values", "f", "Specify values in a YAML file (can specify multiple)")
+	cmd.Flags().StringArrayVar(&l.values, "set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	cmd.Flags().StringArrayVar(&l.sValues, "set-string", []string{}, "Set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	cmd.Flags().StringArrayVar(&l.fValues, "set-file", []string{}, "Set values from respective files specified via the command line (can specify multiple or separate values with commas: key1=path1,key2=path2)")
+	cmd.Flags().StringVar(&l.namespace, "namespace", "default", "Namespace to put the release into")
+	cmd.Flags().BoolVar(&l.strict, "strict", false, "Fail on lint warnings")
 
 	return cmd
 }

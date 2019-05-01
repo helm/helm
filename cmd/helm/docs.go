@@ -59,8 +59,8 @@ func newDocsCmd(out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.StringVar(&dc.dest, "dir", "./", "directory to which documentation is written")
-	f.StringVar(&dc.docTypeString, "type", "markdown", "the type of documentation to generate (markdown, man, bash)")
+	f.StringVar(&dc.dest, "dir", "./", "Directory to which documentation is written")
+	f.StringVar(&dc.docTypeString, "type", "markdown", "The type of documentation to generate (markdown, man, bash)")
 
 	return cmd
 }

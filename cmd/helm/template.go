@@ -86,24 +86,24 @@ func newTemplateCmd(out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "template [flags] CHART",
-		Short: fmt.Sprintf("locally render templates"),
+		Short: "Locally render templates",
 		Long:  templateDesc,
 		RunE:  t.run,
 	}
 
 	f := cmd.Flags()
-	f.BoolVar(&t.showNotes, "notes", false, "show the computed NOTES.txt file as well")
-	f.StringVarP(&t.releaseName, "name", "n", "release-name", "release name")
-	f.BoolVar(&t.releaseIsUpgrade, "is-upgrade", false, "set .Release.IsUpgrade instead of .Release.IsInstall")
-	f.StringArrayVarP(&t.renderFiles, "execute", "x", []string{}, "only execute the given templates")
-	f.VarP(&t.valueFiles, "values", "f", "specify values in a YAML file (can specify multiple)")
-	f.StringVar(&t.namespace, "namespace", "", "namespace to install the release into")
-	f.StringArrayVar(&t.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
-	f.StringArrayVar(&t.stringValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
-	f.StringArrayVar(&t.fileValues, "set-file", []string{}, "set values from respective files specified via the command line (can specify multiple or separate values with commas: key1=path1,key2=path2)")
-	f.StringVar(&t.nameTemplate, "name-template", "", "specify template used to name the release")
-	f.StringVar(&t.kubeVersion, "kube-version", defaultKubeVersion, "kubernetes version used as Capabilities.KubeVersion.Major/Minor")
-	f.StringVar(&t.outputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
+	f.BoolVar(&t.showNotes, "notes", false, "Show the computed NOTES.txt file as well")
+	f.StringVarP(&t.releaseName, "name", "n", "release-name", "Release name")
+	f.BoolVar(&t.releaseIsUpgrade, "is-upgrade", false, "Set .Release.IsUpgrade instead of .Release.IsInstall")
+	f.StringArrayVarP(&t.renderFiles, "execute", "x", []string{}, "Only execute the given templates")
+	f.VarP(&t.valueFiles, "values", "f", "Specify values in a YAML file (can specify multiple)")
+	f.StringVar(&t.namespace, "namespace", "", "Namespace to install the release into")
+	f.StringArrayVar(&t.values, "set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	f.StringArrayVar(&t.stringValues, "set-string", []string{}, "Set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	f.StringArrayVar(&t.fileValues, "set-file", []string{}, "Set values from respective files specified via the command line (can specify multiple or separate values with commas: key1=path1,key2=path2)")
+	f.StringVar(&t.nameTemplate, "name-template", "", "Specify template used to name the release")
+	f.StringVar(&t.kubeVersion, "kube-version", defaultKubeVersion, "Kubernetes version used as Capabilities.KubeVersion.Major/Minor")
+	f.StringVar(&t.outputDir, "output-dir", "", "Writes the executed templates to files in output-dir instead of stdout")
 
 	return cmd
 }

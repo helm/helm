@@ -104,7 +104,7 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:     "list [flags] [FILTER]",
-		Short:   "list releases",
+		Short:   "List releases",
 		Long:    listHelp,
 		Aliases: []string{"ls"},
 		PreRunE: func(_ *cobra.Command, _ []string) error { return setupConnection() },
@@ -121,21 +121,21 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	settings.AddFlagsTLS(f)
-	f.BoolVarP(&list.short, "short", "q", false, "output short (quiet) listing format")
-	f.BoolVarP(&list.byDate, "date", "d", false, "sort by release date")
-	f.BoolVarP(&list.sortDesc, "reverse", "r", false, "reverse the sort order")
-	f.IntVarP(&list.limit, "max", "m", 256, "maximum number of releases to fetch")
-	f.StringVarP(&list.offset, "offset", "o", "", "next release name in the list, used to offset from start value")
-	f.BoolVarP(&list.all, "all", "a", false, "show all releases, not just the ones marked DEPLOYED")
-	f.BoolVar(&list.deleted, "deleted", false, "show deleted releases")
-	f.BoolVar(&list.deleting, "deleting", false, "show releases that are currently being deleted")
-	f.BoolVar(&list.deployed, "deployed", false, "show deployed releases. If no other is specified, this will be automatically enabled")
-	f.BoolVar(&list.failed, "failed", false, "show failed releases")
-	f.BoolVar(&list.pending, "pending", false, "show pending releases")
-	f.StringVar(&list.namespace, "namespace", "", "show releases within a specific namespace")
-	f.UintVar(&list.colWidth, "col-width", 60, "specifies the max column width of output")
-	f.StringVar(&list.output, "output", "", "output the specified format (json or yaml)")
-	f.BoolVarP(&list.byChartName, "chart-name", "c", false, "sort by chart name")
+	f.BoolVarP(&list.short, "short", "q", false, "Output short (quiet) listing format")
+	f.BoolVarP(&list.byDate, "date", "d", false, "Sort by release date")
+	f.BoolVarP(&list.sortDesc, "reverse", "r", false, "Reverse the sort order")
+	f.IntVarP(&list.limit, "max", "m", 256, "Maximum number of releases to fetch")
+	f.StringVarP(&list.offset, "offset", "o", "", "Next release name in the list, used to offset from start value")
+	f.BoolVarP(&list.all, "all", "a", false, "Show all releases, not just the ones marked DEPLOYED")
+	f.BoolVar(&list.deleted, "deleted", false, "Show deleted releases")
+	f.BoolVar(&list.deleting, "deleting", false, "Show releases that are currently being deleted")
+	f.BoolVar(&list.deployed, "deployed", false, "Show deployed releases. If no other is specified, this will be automatically enabled")
+	f.BoolVar(&list.failed, "failed", false, "Show failed releases")
+	f.BoolVar(&list.pending, "pending", false, "Show pending releases")
+	f.StringVar(&list.namespace, "namespace", "", "Show releases within a specific namespace")
+	f.UintVar(&list.colWidth, "col-width", 60, "Specifies the max column width of output")
+	f.StringVar(&list.output, "output", "", "Output the specified format (json or yaml)")
+	f.BoolVarP(&list.byChartName, "chart-name", "c", false, "Sort by chart name")
 
 	// TODO: Do we want this as a feature of 'helm list'?
 	//f.BoolVar(&list.superseded, "history", true, "show historical releases")

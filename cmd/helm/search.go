@@ -55,7 +55,7 @@ func newSearchCmd(out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "search [keyword]",
-		Short: "search for a keyword in charts",
+		Short: "Search for a keyword in charts",
 		Long:  searchDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			sc.helmhome = settings.Home
@@ -64,10 +64,10 @@ func newSearchCmd(out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.BoolVarP(&sc.regexp, "regexp", "r", false, "use regular expressions for searching")
-	f.BoolVarP(&sc.versions, "versions", "l", false, "show the long listing, with each version of each chart on its own line")
-	f.StringVarP(&sc.version, "version", "v", "", "search using semantic versioning constraints")
-	f.UintVar(&sc.colWidth, "col-width", 60, "specifies the max column width of output")
+	f.BoolVarP(&sc.regexp, "regexp", "r", false, "Use regular expressions for searching")
+	f.BoolVarP(&sc.versions, "versions", "l", false, "Show the long listing, with each version of each chart on its own line")
+	f.StringVarP(&sc.version, "version", "v", "", "Search using semantic versioning constraints")
+	f.UintVar(&sc.colWidth, "col-width", 60, "Specifies the max column width of output")
 
 	return cmd
 }
