@@ -72,9 +72,8 @@ type: application
 version: 0.1.0
 
 # This is the version number of the application being deployed. This version number should be
-# incremented each time you make changes to the application. Depending on the application,
-# 'stable' can signify the latest stable version of the application.
-appVersion: stable
+# incremented each time you make changes to the application.
+appVersion: 1.16.0
 `
 
 const defaultValues = `# Default values for %s.
