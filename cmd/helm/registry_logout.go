@@ -14,25 +14,30 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package action
+package main
 
 import (
 	"io"
+
+	"github.com/spf13/cobra"
+
+	"helm.sh/helm/cmd/helm/require"
+	"helm.sh/helm/pkg/action"
 )
 
-// ChartLogout performs a chart login operation.
-type ChartLogout struct {
-	cfg *Configuration
-}
+const registryLogoutDesc = `
+Remove credentials stored for a remote registry.
+`
 
-// NewChartLogout creates a new ChartLogout object with the given configuration.
-func NewChartLogout(cfg *Configuration) *ChartLogout {
-	return &ChartLogout{
-		cfg: cfg,
+func newRegistryLogoutCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+	return &cobra.Command{
+		Use:   "logout [host]",
+		Short: "logout from a registry",
+		Long:  registryLogoutDesc,
+		Args:  require.MinimumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			hostname := args[0]
+			return action.NewRegistryLogout(cfg).Run(out, hostname)
+		},
 	}
-}
-
-// Run executes the chart logout operation
-func (a *ChartLogout) Run(out io.Writer, hostname string) error {
-	return a.cfg.RegistryClient.Logout(hostname)
 }

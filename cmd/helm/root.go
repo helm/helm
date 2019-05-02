@@ -102,6 +102,9 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		newRepoCmd(out),
 		newSearchCmd(out),
 		newVerifyCmd(out),
+
+		// registry/chart cache commands
+		newRegistryCmd(actionConfig, out),
 		newChartCmd(actionConfig, out),
 
 		// release commands

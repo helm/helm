@@ -1,11 +1,10 @@
 /*
 Copyright The Helm Authors.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,23 +20,26 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/cmd/helm/require"
 	"helm.sh/helm/pkg/action"
 )
 
-const chartLogoutDesc = `
-Remove credentials stored for a remote registry.
+const registryHelp = `
+This command consists of multiple subcommands to interact with registries.
+
+It can be used to login to or logout from a registry.
+Example usage:
+    $ helm registry login [URL]
 `
 
-func newChartLogoutCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
-	return &cobra.Command{
-		Use:   "logout [host]",
-		Short: "logout from a registry",
-		Long:  chartLogoutDesc,
-		Args:  require.MinimumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			hostname := args[0]
-			return action.NewChartLogout(cfg).Run(out, hostname)
-		},
+func newRegistryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "registry",
+		Short: "login to or logout from a registry",
+		Long:  registryHelp,
 	}
+	cmd.AddCommand(
+		newRegistryLoginCmd(cfg, out),
+		newRegistryLogoutCmd(cfg, out),
+	)
+	return cmd
 }

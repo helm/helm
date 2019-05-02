@@ -20,19 +20,19 @@ import (
 	"io"
 )
 
-// ChartLogin performs a chart login operation.
-type ChartLogin struct {
+// RegistryLogin performs a registry login operation.
+type RegistryLogin struct {
 	cfg *Configuration
 }
 
-// NewChartLogin creates a new ChartLogin object with the given configuration.
-func NewChartLogin(cfg *Configuration) *ChartLogin {
-	return &ChartLogin{
+// NewRegistryLogin creates a new RegistryLogin object with the given configuration.
+func NewRegistryLogin(cfg *Configuration) *RegistryLogin {
+	return &RegistryLogin{
 		cfg: cfg,
 	}
 }
 
-// Run executes the chart login operation
-func (a *ChartLogin) Run(out io.Writer, hostname string, username string, password string) error {
+// Run executes the registry login operation
+func (a *RegistryLogin) Run(out io.Writer, hostname string, username string, password string) error {
 	return a.cfg.RegistryClient.Login(hostname, username, password)
 }

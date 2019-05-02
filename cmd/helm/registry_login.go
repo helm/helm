@@ -32,18 +32,18 @@ import (
 	"helm.sh/helm/pkg/action"
 )
 
-const chartLoginDesc = `
+const registryLoginDesc = `
 Authenticate to a remote registry.
 `
 
-func newChartLoginCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+func newRegistryLoginCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	var usernameOpt, passwordOpt string
 	var passwordFromStdinOpt bool
 
 	cmd := &cobra.Command{
 		Use:   "login [host]",
 		Short: "login to a registry",
-		Long:  chartLoginDesc,
+		Long:  registryLoginDesc,
 		Args:  require.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hostname := args[0]
@@ -53,7 +53,7 @@ func newChartLoginCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return err
 			}
 
-			return action.NewChartLogin(cfg).Run(out, hostname, username, password)
+			return action.NewRegistryLogin(cfg).Run(out, hostname, username, password)
 		},
 	}
 
@@ -108,10 +108,10 @@ func getUsernamePassword(usernameOpt string, passwordOpt string, passwordFromStd
 	return username, password, nil
 }
 
-// Copied from https://github.com/deislabs/oras
-func readLine(prompt string, slient bool) (string, error) {
+// Copied/adapted from https://github.com/deislabs/oras
+func readLine(prompt string, silent bool) (string, error) {
 	fmt.Print(prompt)
-	if slient {
+	if silent {
 		fd := os.Stdin.Fd()
 		state, err := term.SaveState(fd)
 		if err != nil {
@@ -126,7 +126,7 @@ func readLine(prompt string, slient bool) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if slient {
+	if silent {
 		fmt.Println()
 	}
 

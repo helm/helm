@@ -18,14 +18,13 @@ package main
 import (
 	"io"
 
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/pkg/action"
 )
 
 const chartHelp = `
-This command consists of multiple subcommands to interact with charts and registries.
+This command consists of multiple subcommands to work with the chart cache.
 
 It can be used to push, pull, tag, list, or remove Helm charts.
 Example usage:
@@ -39,8 +38,6 @@ func newChartCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Long:  chartHelp,
 	}
 	cmd.AddCommand(
-		newChartLoginCmd(cfg, out),
-		newChartLogoutCmd(cfg, out),
 		newChartListCmd(cfg, out),
 		newChartExportCmd(cfg, out),
 		newChartPullCmd(cfg, out),
@@ -49,9 +46,4 @@ func newChartCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		newChartSaveCmd(cfg, out),
 	)
 	return cmd
-}
-
-// TODO remove once WARN lines removed from oras or containerd
-func init() {
-	logrus.SetLevel(logrus.ErrorLevel)
 }
