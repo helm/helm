@@ -404,6 +404,8 @@ func DigestFile(filename string) (string, error) {
 // Helm uses SHA256 as its default hash for all non-cryptographic applications.
 func Digest(in io.Reader) (string, error) {
 	hash := crypto.SHA256.New()
-	io.Copy(hash, in)
+	if _, err := io.Copy(hash, in); err != nil {
+		return "", nil
+	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
 }
