@@ -15,7 +15,6 @@ package driver
 
 import (
 	"encoding/base64"
-	"reflect"
 	"testing"
 
 	"github.com/gogo/protobuf/proto"
@@ -46,7 +45,7 @@ func TestSecretGet(t *testing.T) {
 		t.Fatalf("Failed to get release: %s", err)
 	}
 	// compare fetched release with original
-	if !reflect.DeepEqual(rel, got) {
+	if !shallowReleaseEqual(rel, got) {
 		t.Errorf("Expected {%q}, got {%q}", rel, got)
 	}
 }
@@ -78,7 +77,7 @@ func TestUNcompressedSecretGet(t *testing.T) {
 		t.Fatalf("Failed to get release: %s", err)
 	}
 	// compare fetched release with original
-	if !reflect.DeepEqual(rel, got) {
+	if !shallowReleaseEqual(rel, got) {
 		t.Errorf("Expected {%q}, got {%q}", rel, got)
 	}
 }
@@ -151,7 +150,7 @@ func TestSecretCreate(t *testing.T) {
 	}
 
 	// compare created release with original
-	if !reflect.DeepEqual(rel, got) {
+	if !shallowReleaseEqual(rel, got) {
 		t.Errorf("Expected {%q}, got {%q}", rel, got)
 	}
 }

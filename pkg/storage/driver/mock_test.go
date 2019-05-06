@@ -38,6 +38,16 @@ func releaseStub(name string, vers int32, namespace string, code rspb.Status_Cod
 	}
 }
 
+func shallowReleaseEqual(r1 *rspb.Release, r2 *rspb.Release) bool {
+	if r1.Name != r2.Name ||
+		r1.Namespace != r2.Namespace ||
+		r1.Version != r2.Version ||
+		r1.Manifest != r2.Manifest {
+		return false
+	}
+	return true
+}
+
 func testKey(name string, vers int32) string {
 	return fmt.Sprintf("%s.v%d", name, vers)
 }
