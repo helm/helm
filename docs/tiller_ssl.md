@@ -42,7 +42,7 @@ on getting ready within a small amount of time. For production configurations,
 we urge readers to read [the official documentation](https://www.openssl.org) and
 consult other resources.
 
-Alternatively you can use Terraform to quickly create all the necessary certificates: [Generating Certificate Authorities and Certificates using Terraform](tiller_ssl_terraform.md).
+There are other alternative ways to generating SSL CAs in addition to `openssl`, for example Terraform. They are not documented here but you can find links to these alternative means in Related Projects and Documentation.
 
 ### Generate a Certificate Authority
 
