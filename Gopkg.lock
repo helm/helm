@@ -92,6 +92,22 @@
   version = "v1.13.0"
 
 [[projects]]
+  digest = "1:f9ae348e1f793dcf9ed930ed47136a67343dbd6809c5c91391322267f4476892"
+  name = "github.com/Microsoft/go-winio"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "1a8911d1ed007260465c3bfbbc785ac6915a0bb8"
+  version = "v0.4.12"
+
+[[projects]]
+  branch = "master"
+  digest = "1:3721a10686511b80c052323423f0de17a8c06d417dbdd3b392b1578432a33aae"
+  name = "github.com/Nvveen/Gotty"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "cd527374f1e5bff4938207604a14f2e38a9cf512"
+
+[[projects]]
   digest = "1:d1665c44bd5db19aaee18d1b6233c99b0b9a986e8bccb24ef54747547a48027f"
   name = "github.com/PuerkitoBio/purell"
   packages = ["."]
@@ -185,7 +201,7 @@
   revision = "bf70f2a70fb1b1f36d90d671a72795984eab0fcb"
 
 [[projects]]
-  digest = "1:1872596d45cb52913fcdea90d468f3e57435959e9c0d99ccb316ee76de341313"
+  digest = "1:37f8940c4d3c41536ea882b1ca3498e403c04892dfc34bd0d670ed9eafccda9a"
   name = "github.com/containerd/containerd"
   packages = [
     "content",
@@ -198,8 +214,16 @@
     "remotes/docker",
   ]
   pruneopts = "UT"
-  revision = "9b32062dc1f5a7c2564315c269b5059754f12b9d"
-  version = "v1.2.1"
+  revision = "894b81a4b802e4eb2a91d1ce216b8817763c29fb"
+  version = "v1.2.6"
+
+[[projects]]
+  branch = "master"
+  digest = "1:e48c63e818c67fbf3d7afe20bba33134ab1a5bf384847385384fd027652a5a96"
+  name = "github.com/containerd/continuity"
+  packages = ["pathdriver"]
+  pruneopts = "UT"
+  revision = "004b46473808b3e7a4a3049c20e4376c91eb966d"
 
 [[projects]]
   digest = "1:7cb4fdca4c251b3ef8027c90ea35f70c7b661a593b9eeae34753c65499098bb1"
@@ -218,15 +242,17 @@
   version = "v1.1.1"
 
 [[projects]]
-  digest = "1:8285cd51b86f5c3af447ad1db7c8572578a422cf9a50f1f07eea1d021151044f"
+  digest = "1:82158435e282da9b23bb1188487fe1c68b17a54ed9dcd557ab6204782ad3ff92"
   name = "github.com/deislabs/oras"
   packages = [
+    "pkg/auth",
+    "pkg/auth/docker",
     "pkg/content",
     "pkg/oras",
   ]
   pruneopts = "UT"
-  revision = "e8a1fa6ff9a507b99eedd45745959e8c5b826d9f"
-  version = "v0.3.3"
+  revision = "9f7669048990b0d0c186985737e6a6c3bb3f7ecc"
+  version = "v0.4.0"
 
 [[projects]]
   digest = "1:76dc72490af7174349349838f2fe118996381b31ea83243812a97e5a0fd5ed55"
@@ -237,7 +263,20 @@
   version = "v3.2.0"
 
 [[projects]]
-  digest = "1:888aaacf886021e4a0fa6b09a61f1158063bd6c2e2ddefe14f3a7ccbc93ffe27"
+  digest = "1:f65090e4f60dcd4d2de69e8ebca022d59a8c6463a3a4c122e64cec91a83749ff"
+  name = "github.com/docker/cli"
+  packages = [
+    "cli/config",
+    "cli/config/configfile",
+    "cli/config/credentials",
+    "opts",
+  ]
+  pruneopts = "UT"
+  revision = "c89750f836c57ce10386e71669e1b08a54c3caeb"
+  version = "v18.09.5"
+
+[[projects]]
+  digest = "1:feaf11ab67fe48ec2712bf9d44e2fb2d4ebdc5da8e5a47bd3ce05bae9f82825b"
   name = "github.com/docker/distribution"
   packages = [
     ".",
@@ -258,6 +297,7 @@
     "registry/api/errcode",
     "registry/api/v2",
     "registry/auth",
+    "registry/auth/htpasswd",
     "registry/client",
     "registry/client/auth",
     "registry/client/auth/challenge",
@@ -286,14 +326,60 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:8da8bb2b12c31c632e96ca6f15666a36c36cd390326b6c5e1c5e309cf4b5419a"
+  digest = "1:b5be0d9940d8fa3ff7df4949a8e8c47a7f93ea8251239ad074e1a6b0db55876a"
   name = "github.com/docker/docker"
   packages = [
+    "api/types",
+    "api/types/blkiodev",
+    "api/types/container",
+    "api/types/filters",
+    "api/types/mount",
+    "api/types/network",
+    "api/types/registry",
+    "api/types/strslice",
+    "api/types/swarm",
+    "api/types/swarm/runtime",
+    "api/types/versions",
+    "errdefs",
+    "pkg/homedir",
+    "pkg/idtools",
+    "pkg/ioutils",
+    "pkg/jsonmessage",
+    "pkg/longpath",
+    "pkg/mount",
+    "pkg/stringid",
+    "pkg/system",
+    "pkg/tarsum",
     "pkg/term",
     "pkg/term/windows",
+    "registry",
+    "registry/resumable",
   ]
   pruneopts = "UT"
   revision = "2cb26cfe9cbf8a64c5046c74d65f4528b22e67f4"
+
+[[projects]]
+  digest = "1:8866486038791fe65ea1abf660041423954b1f3fb99ea6a0ad8424422e943458"
+  name = "github.com/docker/docker-credential-helpers"
+  packages = [
+    "client",
+    "credentials",
+  ]
+  pruneopts = "UT"
+  revision = "5241b46610f2491efdf9d1c85f1ddf5b02f6d962"
+  version = "v0.6.1"
+
+[[projects]]
+  digest = "1:811c86996b1ca46729bad2724d4499014c4b9effd05ef8c71b852aad90deb0ce"
+  name = "github.com/docker/go-connections"
+  packages = [
+    "nat",
+    "sockets",
+    "tlsconfig",
+  ]
+  pruneopts = "UT"
+  revision = "7395e3f8aa162843a74ed6d48e79627d9792ac55"
+  version = "v0.4.0"
 
 [[projects]]
   branch = "master"
@@ -712,6 +798,14 @@
   version = "v1.0.1"
 
 [[projects]]
+  digest = "1:38ee335aedf4626620f3cf8f605661e71abdcce7b40b38921962beb3980f0a20"
+  name = "github.com/opencontainers/runc"
+  packages = ["libcontainer/user"]
+  pruneopts = "UT"
+  revision = "baf6536d6259209c3edfa2b22237af82942d3dfa"
+  version = "v0.1.1"
+
+[[projects]]
   branch = "master"
   digest = "1:3bf17a6e6eaa6ad24152148a631d18662f7212e21637c2699bff3369b7f00fa2"
   name = "github.com/petar/GoLLRB"
@@ -915,9 +1009,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:599ef9ff10026292c425292ab1d2bb1521cd671fe89a6034df07bf1411daa44b"
+  digest = "1:91e034b0c63a4c747c6e9dc8285f36dc5fe699a78d34de0a663895e52ff673dd"
   name = "golang.org/x/crypto"
   packages = [
+    "bcrypt",
+    "blowfish",
     "cast5",
     "ed25519",
     "ed25519/internal/edwards25519",
@@ -938,7 +1034,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:647b0128e9a9886335bfb6c9a1fc97758b7f846ec42f222933f6fee6730c96e2"
+  digest = "1:80c256dfc14840e13293d6404b7774e497187bd15a53f943f99bfaef4bbb2e42"
   name = "golang.org/x/net"
   packages = [
     "bpf",
@@ -950,9 +1046,11 @@
     "idna",
     "internal/iana",
     "internal/socket",
+    "internal/socks",
     "internal/timeseries",
     "ipv4",
     "ipv6",
+    "proxy",
     "publicsuffix",
     "trace",
   ]
@@ -1678,12 +1776,15 @@
     "github.com/asaskevich/govalidator",
     "github.com/containerd/containerd/reference",
     "github.com/containerd/containerd/remotes",
-    "github.com/containerd/containerd/remotes/docker",
+    "github.com/deislabs/oras/pkg/auth",
+    "github.com/deislabs/oras/pkg/auth/docker",
     "github.com/deislabs/oras/pkg/content",
     "github.com/deislabs/oras/pkg/oras",
     "github.com/docker/distribution/configuration",
     "github.com/docker/distribution/registry",
+    "github.com/docker/distribution/registry/auth/htpasswd",
     "github.com/docker/distribution/registry/storage/driver/inmemory",
+    "github.com/docker/docker/pkg/term",
     "github.com/docker/go-units",
     "github.com/evanphx/json-patch",
     "github.com/ghodss/yaml",
@@ -1701,6 +1802,7 @@
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/suite",
     "github.com/xeipuuv/gojsonschema",
+    "golang.org/x/crypto/bcrypt",
     "golang.org/x/crypto/openpgp",
     "golang.org/x/crypto/openpgp/clearsign",
     "golang.org/x/crypto/openpgp/errors",

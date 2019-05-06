@@ -17,9 +17,11 @@ limitations under the License.
 package main // import "helm.sh/helm/cmd/helm"
 
 import (
+	"context"
 	"io"
+	"path/filepath"
 
-	"github.com/containerd/containerd/remotes/docker"
+	auth "github.com/deislabs/oras/pkg/auth/docker"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/cmd/helm/require"
@@ -68,10 +70,23 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 
 	// Add the registry client based on settings
 	// TODO: Move this elsewhere (first, settings.Init() must move)
+	// TODO: handle errors, dont panic
+	credentialsFile := filepath.Join(settings.Home.Registry(), registry.CredentialsFileBasename)
+	client, err := auth.NewClient(credentialsFile)
+	if err != nil {
+		panic(err)
+	}
+	resolver, err := client.Resolver(context.Background())
+	if err != nil {
+		panic(err)
+	}
 	actionConfig.RegistryClient = registry.NewClient(&registry.ClientOptions{
 		Out: out,
+		Authorizer: registry.Authorizer{
+			Client: client,
+		},
 		Resolver: registry.Resolver{
-			Resolver: docker.NewResolver(docker.ResolverOptions{}),
+			Resolver: resolver,
 		},
 		CacheRootDir: settings.Home.Registry(),
 	})
@@ -87,6 +102,9 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		newRepoCmd(out),
 		newSearchCmd(out),
 		newVerifyCmd(out),
+
+		// registry/chart cache commands
+		newRegistryCmd(actionConfig, out),
 		newChartCmd(actionConfig, out),
 
 		// release commands

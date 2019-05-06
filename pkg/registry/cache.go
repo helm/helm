@@ -29,7 +29,7 @@ import (
 	"time"
 
 	orascontent "github.com/deislabs/oras/pkg/content"
-	"github.com/docker/go-units"
+	units "github.com/docker/go-units"
 	checksum "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
