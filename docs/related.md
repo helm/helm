@@ -19,6 +19,7 @@ or [pull request](https://github.com/helm/helm/pulls).
 - [Writing a Helm Chart](https://www.influxdata.com/packaged-kubernetes-deployments-writing-helm-chart/)
 - [A basic walk through Kubernetes Helm](https://github.com/muffin87/helm-tutorial)
 - [Tillerless Helm v2](https://rimusz.net/tillerless-helm/)
+- [Generating Certificate Authorities and Certificates using Terraform](https://github.com/jbussdieker/tiller-ssl-terraform)
 
 ## Video, Audio, and Podcast
 
