@@ -74,7 +74,7 @@ type Install struct {
 	Wait             bool
 	Devel            bool
 	DependencyUpdate bool
-	Timeout          int64
+	Timeout          time.Duration
 	Namespace        string
 	ReleaseName      string
 	GenerateName     bool

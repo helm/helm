@@ -34,7 +34,7 @@ type KubernetesClient interface {
 	// by "\n---\n").
 	Create(reader io.Reader) error
 
-	Wait(r io.Reader, timeout int64) error
+	Wait(r io.Reader, timeout time.Duration) error
 
 	// Get gets one or more resources. Returned string hsa the format like kubectl
 	// provides with the column headers separating the resource types.
@@ -54,7 +54,7 @@ type KubernetesClient interface {
 	// For Jobs, "ready" means the job ran to completion (excited without error).
 	// For all other kinds, it means the kind was created or modified without
 	// error.
-	WatchUntilReady(reader io.Reader, timeout int64) error
+	WatchUntilReady(reader io.Reader, timeout time.Duration) error
 
 	// Update updates one or more resources or creates the resource
 	// if it doesn't exist.
@@ -83,7 +83,7 @@ func (p *PrintingKubeClient) Create(r io.Reader) error {
 	return err
 }
 
-func (p *PrintingKubeClient) Wait(r io.Reader, timeout int64) error {
+func (p *PrintingKubeClient) Wait(r io.Reader, timeout time.Duration) error {
 	_, err := io.Copy(p.Out, r)
 	return err
 }
@@ -103,7 +103,7 @@ func (p *PrintingKubeClient) Delete(r io.Reader) error {
 }
 
 // WatchUntilReady implements KubeClient WatchUntilReady.
-func (p *PrintingKubeClient) WatchUntilReady(r io.Reader, timeout int64) error {
+func (p *PrintingKubeClient) WatchUntilReady(r io.Reader, timeout time.Duration) error {
 	_, err := io.Copy(p.Out, r)
 	return err
 }

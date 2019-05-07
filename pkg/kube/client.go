@@ -100,7 +100,7 @@ func (c *Client) Create(reader io.Reader) error {
 	return err
 }
 
-func (c *Client) Wait(reader io.Reader, timeout int64) error {
+func (c *Client) Wait(reader io.Reader, timeout time.Duration) error {
 	infos, err := c.BuildUnstructured(reader)
 	if err != nil {
 		return err
@@ -112,7 +112,7 @@ func (c *Client) Wait(reader io.Reader, timeout int64) error {
 	w := waiter{
 		c:       cs,
 		log:     c.Log,
-		timeout: time.Duration(timeout),
+		timeout: timeout,
 	}
 	return w.waitForResources(infos)
 }
@@ -354,14 +354,14 @@ func (c *Client) watchTimeout(t time.Duration) resourceActorFunc {
 //   ascertained by watching the Status fields in a job's output.
 //
 // Handling for other kinds will be added as necessary.
-func (c *Client) WatchUntilReady(reader io.Reader, timeout int64) error {
+func (c *Client) WatchUntilReady(reader io.Reader, timeout time.Duration) error {
 	infos, err := c.Build(reader)
 	if err != nil {
 		return err
 	}
 	// For jobs, there's also the option to do poll c.Jobs(namespace).Get():
 	// https://github.com/adamreese/kubernetes/blob/master/test/e2e/job.go#L291-L300
-	return perform(infos, c.watchTimeout(time.Duration(timeout)*time.Second))
+	return perform(infos, c.watchTimeout(timeout))
 }
 
 func perform(infos Result, fn resourceActorFunc) error {

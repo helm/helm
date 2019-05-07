@@ -121,7 +121,7 @@ func addInstallFlags(f *pflag.FlagSet, client *action.Install) {
 	f.BoolVar(&client.DryRun, "dry-run", false, "simulate an install")
 	f.BoolVar(&client.DisableHooks, "no-hooks", false, "prevent hooks from running during install")
 	f.BoolVar(&client.Replace, "replace", false, "re-use the given name, even if that name is already used. This is unsafe in production")
-	f.Int64Var(&client.Timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
+	f.DurationVar(&client.Timeout, "timeout", 300, "time to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&client.Wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
 	f.BoolVarP(&client.GenerateName, "generate-name", "g", false, "generate the name (and omit the NAME parameter)")
 	f.StringVar(&client.NameTemplate, "name-template", "", "specify template used to name the release")

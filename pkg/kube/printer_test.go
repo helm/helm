@@ -28,7 +28,7 @@ import (
 
 type mockKubeClient struct{}
 
-func (k *mockKubeClient) Wait(r io.Reader, _ int64) error {
+func (k *mockKubeClient) Wait(r io.Reader, _ time.Duration) error {
 	return nil
 }
 func (k *mockKubeClient) Create(r io.Reader) error {
@@ -43,7 +43,7 @@ func (k *mockKubeClient) Delete(r io.Reader) error {
 func (k *mockKubeClient) Update(currentReader, modifiedReader io.Reader, force, recreate bool) error {
 	return nil
 }
-func (k *mockKubeClient) WatchUntilReady(r io.Reader, timeout int64) error {
+func (k *mockKubeClient) WatchUntilReady(r io.Reader, timeout time.Duration) error {
 	return nil
 }
 func (k *mockKubeClient) Build(reader io.Reader) (Result, error) {

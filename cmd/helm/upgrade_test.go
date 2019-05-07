@@ -89,7 +89,7 @@ func TestUpgradeCmd(t *testing.T) {
 		},
 		{
 			name:   "upgrade a release with timeout",
-			cmd:    fmt.Sprintf("upgrade funny-bunny --timeout 120 '%s'", chartPath),
+			cmd:    fmt.Sprintf("upgrade funny-bunny --timeout 120s '%s'", chartPath),
 			golden: "output/upgrade-with-timeout.txt",
 			rels:   []*release.Release{relMock("funny-bunny", 3, ch2)},
 		},
@@ -113,7 +113,7 @@ func TestUpgradeCmd(t *testing.T) {
 		},
 		{
 			name:   "install a release with 'upgrade --install' and timeout",
-			cmd:    fmt.Sprintf("upgrade crazy-bunny -i --timeout 120 '%s'", chartPath),
+			cmd:    fmt.Sprintf("upgrade crazy-bunny -i --timeout 120s '%s'", chartPath),
 			golden: "output/upgrade-with-install-timeout.txt",
 			rels:   []*release.Release{relMock("crazy-bunny", 1, ch)},
 		},

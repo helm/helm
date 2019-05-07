@@ -43,7 +43,7 @@ type Upgrade struct {
 	Install   bool
 	Devel     bool
 	Namespace string
-	Timeout   int64
+	Timeout   time.Duration
 	Wait      bool
 	// Values is a string containing (unparsed) YAML values.
 	Values       map[string]interface{}
@@ -275,8 +275,8 @@ func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release) erro
 	return nil
 }
 
-func validateManifest(c kube.KubernetesClient, ns string, manifest []byte) error {
-	_, err := c.BuildUnstructured(ns, bytes.NewReader(manifest))
+func validateManifest(c kube.KubernetesClient, manifest []byte) error {
+	_, err := c.BuildUnstructured(bytes.NewReader(manifest))
 	return err
 }
 

@@ -41,7 +41,7 @@ func TestUninstall(t *testing.T) {
 		},
 		{
 			name:   "uninstall with timeout",
-			cmd:    "uninstall aeneas --timeout 120",
+			cmd:    "uninstall aeneas --timeout 120s",
 			golden: "output/uninstall-timeout.txt",
 			rels:   []*release.Release{release.Mock(&release.MockReleaseOptions{Name: "aeneas"})},
 		},

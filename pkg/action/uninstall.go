@@ -39,7 +39,7 @@ type Uninstall struct {
 	DisableHooks bool
 	DryRun       bool
 	KeepHistory  bool
-	Timeout      int64
+	Timeout      time.Duration
 }
 
 // NewUninstall creates a new Uninstall object with the given configuration.

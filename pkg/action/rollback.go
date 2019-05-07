@@ -35,7 +35,7 @@ type Rollback struct {
 	cfg *Configuration
 
 	Version      int
-	Timeout      int64
+	Timeout      time.Duration
 	Wait         bool
 	DisableHooks bool
 	DryRun       bool

@@ -184,6 +184,6 @@ type hookFailingKubeClient struct {
 	kube.PrintingKubeClient
 }
 
-func (h *hookFailingKubeClient) WatchUntilReady(r io.Reader, timeout int64) error {
+func (h *hookFailingKubeClient) WatchUntilReady(r io.Reader, timeout time.Duration) error {
 	return errors.New("Failed watch")
 }

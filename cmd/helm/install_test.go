@@ -75,7 +75,7 @@ func TestInstall(t *testing.T) {
 		// Install, with timeout
 		{
 			name:   "install with a timeout",
-			cmd:    "install foobar testdata/testcharts/empty --timeout 120",
+			cmd:    "install foobar testdata/testcharts/empty --timeout 120s",
 			golden: "output/install-with-timeout.txt",
 		},
 		// Install, with wait
