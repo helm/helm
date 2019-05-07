@@ -3,8 +3,8 @@ kind: Service
 metadata:
   name: {{ .Chart.Name }}
   labels:
-    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
-    release-name: "{{ .Release.Name }}"
+    helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    app.kubernetes.io/instance: "{{ .Release.Name }}"
     kube-version/major: "{{ .Capabilities.KubeVersion.Major }}"
     kube-version/minor: "{{ .Capabilities.KubeVersion.Minor }}"
     kube-version/gitversion: "v{{ .Capabilities.KubeVersion.Major }}.{{ .Capabilities.KubeVersion.Minor }}.0"
@@ -16,4 +16,4 @@ spec:
     protocol: TCP
     name: {{ .Values.service.name }}
   selector:
-    app: {{ .Chart.Name }}
+    app.kubernetes.io/name: {{ .Chart.Name }}
