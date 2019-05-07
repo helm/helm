@@ -16,12 +16,11 @@ limitations under the License.
 package chartutil
 
 import (
-	"encoding/json"
 	"testing"
 )
 
 func TestVersionSet(t *testing.T) {
-	vs := NewVersionSet("v1", "apps/v1")
+	vs := VersionSet{"v1", "apps/v1"}
 	if d := len(vs); d != 2 {
 		t.Errorf("Expected 2 versions, got %d", d)
 	}
@@ -41,38 +40,21 @@ func TestDefaultVersionSet(t *testing.T) {
 	}
 }
 
-func TestCapabilities(t *testing.T) {
-	cap := Capabilities{
-		APIVersions: DefaultVersionSet,
+func TestDefaultCapabilities(t *testing.T) {
+	kv := DefaultCapabilities.KubeVersion
+	if kv.String() != "v1.14.0" {
+		t.Errorf("Expected default KubeVersion.String() to be v1.14.0, got %q", kv.String())
 	}
-
-	if !cap.APIVersions.Has("v1") {
-		t.Error("APIVersions should have v1")
+	if kv.Version != "v1.14.0" {
+		t.Errorf("Expected default KubeVersion.Version to be v1.14.0, got %q", kv.Version)
 	}
-}
-
-func TestCapabilitiesJSONMarshal(t *testing.T) {
-	vs := NewVersionSet("v1", "apps/v1")
-	b, err := json.Marshal(vs)
-	if err != nil {
-		t.Fatal(err)
+	if kv.GitVersion() != "v1.14.0" {
+		t.Errorf("Expected default KubeVersion.GitVersion() to be v1.14.0, got %q", kv.Version)
 	}
-
-	expect := `["apps/v1","v1"]`
-	if string(b) != expect {
-		t.Fatalf("JSON marshaled semantic version not equal: expected %q, got %q", expect, string(b))
+	if kv.Major != "1" {
+		t.Errorf("Expected default KubeVersion.Major to be 1, got %q", kv.Major)
 	}
-}
-
-func TestCapabilitiesJSONUnmarshal(t *testing.T) {
-	in := `["apps/v1","v1"]`
-
-	var vs VersionSet
-	if err := json.Unmarshal([]byte(in), &vs); err != nil {
-		t.Fatal(err)
-	}
-
-	if len(vs) != 2 {
-		t.Fatalf("JSON unmarshaled semantic version not equal: expected 2, got %d", len(vs))
+	if kv.Minor != "14" {
+		t.Errorf("Expected default KubeVersion.Minor to be 14, got %q", kv.Minor)
 	}
 }

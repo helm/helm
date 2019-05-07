@@ -86,7 +86,6 @@ func (c *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 	if c.Capabilities != nil {
 		return c.Capabilities, nil
 	}
-
 	dc, err := c.RESTClientGetter.ToDiscoveryClient()
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get Kubernetes discovery client")
@@ -95,15 +94,18 @@ func (c *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get server version from Kubernetes")
 	}
-
 	apiVersions, err := GetVersionSet(dc)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get apiVersions from Kubernetes")
 	}
 
 	c.Capabilities = &chartutil.Capabilities{
-		KubeVersion: kubeVersion,
 		APIVersions: apiVersions,
+		KubeVersion: chartutil.KubeVersion{
+			Version: kubeVersion.GitVersion,
+			Major:   kubeVersion.Major,
+			Minor:   kubeVersion.Minor,
+		},
 	}
 	return c.Capabilities, nil
 }
@@ -144,7 +146,7 @@ func GetVersionSet(client discovery.ServerGroupsInterface) (chartutil.VersionSet
 	}
 
 	versions := metav1.ExtractGroupVersions(groups)
-	return chartutil.NewVersionSet(versions...), nil
+	return chartutil.VersionSet(versions), nil
 }
 
 // recordRelease with an update operation in case reuse has been set.

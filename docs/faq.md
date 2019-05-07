@@ -25,6 +25,11 @@ In Helm 2, in order to purge the release ledger, the `--purge` flag had to be pr
 functionality is now enabled by default. To retain the previous behaviour, use
 `helm uninstall --keep-history`.
 
+### Capabilities
+
+Capabilities built-in has been simplified.
+
+[Built-in Objects](chart_template_guide/builtin_objects.md)
 
 ## Installing
 

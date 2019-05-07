@@ -24,8 +24,6 @@ import (
 	"testing"
 	"text/template"
 
-	kversion "k8s.io/apimachinery/pkg/version"
-
 	"helm.sh/helm/pkg/chart"
 )
 
@@ -105,12 +103,7 @@ func TestToRenderValues(t *testing.T) {
 		IsInstall: true,
 	}
 
-	caps := &Capabilities{
-		APIVersions: DefaultVersionSet,
-		KubeVersion: &kversion.Info{Major: "1"},
-	}
-
-	res, err := ToRenderValues(c, overideValues, o, caps)
+	res, err := ToRenderValues(c, overideValues, o, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
