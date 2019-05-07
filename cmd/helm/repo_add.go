@@ -137,7 +137,7 @@ func addRepository(name, url, username, password string, home helmpath.Home, cer
 
 	// Lock the repository file for concurrent processes synchronization and re-read its content before updating it
 	fileLock := flock.New(home.RepositoryFile())
-	lockCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	lockCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	locked, err := fileLock.TryLockContext(lockCtx, time.Second)
 	if err == nil && locked {
