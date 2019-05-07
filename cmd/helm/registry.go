@@ -23,27 +23,23 @@ import (
 	"helm.sh/helm/pkg/action"
 )
 
-const chartHelp = `
-This command consists of multiple subcommands to work with the chart cache.
+const registryHelp = `
+This command consists of multiple subcommands to interact with registries.
 
-It can be used to push, pull, tag, list, or remove Helm charts.
+It can be used to login to or logout from a registry.
 Example usage:
-    $ helm chart pull [URL]
+    $ helm registry login [URL]
 `
 
-func newChartCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+func newRegistryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "chart",
-		Short: "push, pull, tag, or remove Helm charts",
-		Long:  chartHelp,
+		Use:   "registry",
+		Short: "login to or logout from a registry",
+		Long:  registryHelp,
 	}
 	cmd.AddCommand(
-		newChartListCmd(cfg, out),
-		newChartExportCmd(cfg, out),
-		newChartPullCmd(cfg, out),
-		newChartPushCmd(cfg, out),
-		newChartRemoveCmd(cfg, out),
-		newChartSaveCmd(cfg, out),
+		newRegistryLoginCmd(cfg, out),
+		newRegistryLogoutCmd(cfg, out),
 	)
 	return cmd
 }

@@ -102,3 +102,11 @@ func (ch *Chart) ChartFullPath() string {
 func (ch *Chart) Validate() error {
 	return ch.Metadata.Validate()
 }
+
+// AppVersion returns the appversion of the chart.
+func (ch *Chart) AppVersion() string {
+	if ch.Metadata == nil {
+		return ""
+	}
+	return ch.Metadata.AppVersion
+}

@@ -21,22 +21,29 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/containerd/containerd/remotes/docker"
+	auth "github.com/deislabs/oras/pkg/auth/docker"
 	"github.com/docker/distribution/configuration"
 	"github.com/docker/distribution/registry"
+	_ "github.com/docker/distribution/registry/auth/htpasswd"
 	_ "github.com/docker/distribution/registry/storage/driver/inmemory"
 	"github.com/stretchr/testify/suite"
+	"golang.org/x/crypto/bcrypt"
 
 	"helm.sh/helm/pkg/chart"
 )
 
 var (
-	testCacheRootDir = "helm-registry-test"
+	testCacheRootDir         = "helm-registry-test"
+	testHtpasswdFileBasename = "authtest.htpasswd"
+	testUsername             = "myuser"
+	testPassword             = "mypass"
 )
 
 type RegistryClientTestSuite struct {
@@ -49,28 +56,52 @@ type RegistryClientTestSuite struct {
 
 func (suite *RegistryClientTestSuite) SetupSuite() {
 	suite.CacheRootDir = testCacheRootDir
+	os.RemoveAll(suite.CacheRootDir)
+	os.Mkdir(suite.CacheRootDir, 0700)
 
-	// Init test client
 	var out bytes.Buffer
 	suite.Out = &out
+	credentialsFile := filepath.Join(suite.CacheRootDir, CredentialsFileBasename)
+
+	client, err := auth.NewClient(credentialsFile)
+	suite.Nil(err, "no error creating auth client")
+
+	resolver, err := client.Resolver(context.Background())
+	suite.Nil(err, "no error creating resolver")
+
+	// Init test client
 	suite.RegistryClient = NewClient(&ClientOptions{
 		Out: suite.Out,
+		Authorizer: Authorizer{
+			Client: client,
+		},
 		Resolver: Resolver{
-			Resolver: docker.NewResolver(docker.ResolverOptions{}),
+			Resolver: resolver,
 		},
 		CacheRootDir: suite.CacheRootDir,
 	})
 
+	// create htpasswd file (w BCrypt, which is required)
+	pwBytes, err := bcrypt.GenerateFromPassword([]byte(testPassword), bcrypt.DefaultCost)
+	suite.Nil(err, "no error generating bcrypt password for test htpasswd file")
+	htpasswdPath := filepath.Join(suite.CacheRootDir, testHtpasswdFileBasename)
+	err = ioutil.WriteFile(htpasswdPath, []byte(fmt.Sprintf("%s:%s\n", testUsername, string(pwBytes))), 0644)
+	suite.Nil(err, "no error creating test htpasswd file")
+
 	// Registry config
 	config := &configuration.Configuration{}
 	port, err := getFreePort()
-	if err != nil {
-		suite.Nil(err, "no error finding free port for test registry")
-	}
+	suite.Nil(err, "no error finding free port for test registry")
 	suite.DockerRegistryHost = fmt.Sprintf("localhost:%d", port)
 	config.HTTP.Addr = fmt.Sprintf(":%d", port)
 	config.HTTP.DrainTimeout = time.Duration(10) * time.Second
 	config.Storage = map[string]configuration.Parameters{"inmemory": map[string]interface{}{}}
+	config.Auth = configuration.Auth{
+		"htpasswd": configuration.Parameters{
+			"realm": "localhost",
+			"path":  htpasswdPath,
+		},
+	}
 	dockerRegistry, err := registry.NewRegistry(context.Background(), config)
 	suite.Nil(err, "no error creating test registry")
 
@@ -82,7 +113,15 @@ func (suite *RegistryClientTestSuite) TearDownSuite() {
 	os.RemoveAll(suite.CacheRootDir)
 }
 
-func (suite *RegistryClientTestSuite) Test_0_SaveChart() {
+func (suite *RegistryClientTestSuite) Test_0_Login() {
+	err := suite.RegistryClient.Login(suite.DockerRegistryHost, "badverybad", "ohsobad")
+	suite.NotNil(err, "error logging into registry with bad credentials")
+
+	err = suite.RegistryClient.Login(suite.DockerRegistryHost, testUsername, testPassword)
+	suite.Nil(err, "no error logging into registry with good credentials")
+}
+
+func (suite *RegistryClientTestSuite) Test_1_SaveChart() {
 	ref, err := ParseReference(fmt.Sprintf("%s/testrepo/testchart:1.2.3", suite.DockerRegistryHost))
 	suite.Nil(err)
 
@@ -101,7 +140,7 @@ func (suite *RegistryClientTestSuite) Test_0_SaveChart() {
 	suite.Nil(err)
 }
 
-func (suite *RegistryClientTestSuite) Test_1_LoadChart() {
+func (suite *RegistryClientTestSuite) Test_2_LoadChart() {
 
 	// non-existent ref
 	ref, err := ParseReference(fmt.Sprintf("%s/testrepo/whodis:9.9.9", suite.DockerRegistryHost))
@@ -118,7 +157,7 @@ func (suite *RegistryClientTestSuite) Test_1_LoadChart() {
 	suite.Equal("1.2.3", ch.Metadata.Version)
 }
 
-func (suite *RegistryClientTestSuite) Test_2_PushChart() {
+func (suite *RegistryClientTestSuite) Test_3_PushChart() {
 
 	// non-existent ref
 	ref, err := ParseReference(fmt.Sprintf("%s/testrepo/whodis:9.9.9", suite.DockerRegistryHost))
@@ -133,7 +172,7 @@ func (suite *RegistryClientTestSuite) Test_2_PushChart() {
 	suite.Nil(err)
 }
 
-func (suite *RegistryClientTestSuite) Test_3_PullChart() {
+func (suite *RegistryClientTestSuite) Test_4_PullChart() {
 
 	// non-existent ref
 	ref, err := ParseReference(fmt.Sprintf("%s/testrepo/whodis:9.9.9", suite.DockerRegistryHost))
@@ -148,12 +187,12 @@ func (suite *RegistryClientTestSuite) Test_3_PullChart() {
 	suite.Nil(err)
 }
 
-func (suite *RegistryClientTestSuite) Test_4_PrintChartTable() {
+func (suite *RegistryClientTestSuite) Test_5_PrintChartTable() {
 	err := suite.RegistryClient.PrintChartTable()
 	suite.Nil(err)
 }
 
-func (suite *RegistryClientTestSuite) Test_5_RemoveChart() {
+func (suite *RegistryClientTestSuite) Test_6_RemoveChart() {
 
 	// non-existent ref
 	ref, err := ParseReference(fmt.Sprintf("%s/testrepo/whodis:9.9.9", suite.DockerRegistryHost))
@@ -166,6 +205,14 @@ func (suite *RegistryClientTestSuite) Test_5_RemoveChart() {
 	suite.Nil(err)
 	err = suite.RegistryClient.RemoveChart(ref)
 	suite.Nil(err)
+}
+
+func (suite *RegistryClientTestSuite) Test_7_Logout() {
+	err := suite.RegistryClient.Logout("this-host-aint-real:5000")
+	suite.NotNil(err, "error logging out of registry that has no entry")
+
+	err = suite.RegistryClient.Logout(suite.DockerRegistryHost)
+	suite.Nil(err, "no error logging out of registry")
 }
 
 func TestRegistryClientTestSuite(t *testing.T) {

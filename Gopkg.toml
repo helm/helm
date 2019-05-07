@@ -44,7 +44,7 @@
 
 [[constraint]]
   name = "github.com/deislabs/oras"
-  version = "~0.3.3"
+  version = "0.4.0"
 
 [[constraint]]
   name = "github.com/docker/go-units"
@@ -75,11 +75,6 @@
   name = "rsc.io/letsencrypt"
   branch = "master"
   source = "https://github.com/dmcgowan/letsencrypt.git"
-
-# https://github.com/bugsnag/bugsnag-go/issues/96
-[[override]]
-  name = "github.com/bugsnag/bugsnag-go"
-  version = "=1.3.2"
 
 # gopkg.in is broken
 #

@@ -52,9 +52,9 @@ func TestUninstall(t *testing.T) {
 			rels:   []*release.Release{release.Mock(&release.MockReleaseOptions{Name: "aeneas"})},
 		},
 		{
-			name:   "purge",
-			cmd:    "uninstall aeneas --purge",
-			golden: "output/uninstall-purge.txt",
+			name:   "keep history",
+			cmd:    "uninstall aeneas --keep-history",
+			golden: "output/uninstall-keep-history.txt",
 			rels:   []*release.Release{release.Mock(&release.MockReleaseOptions{Name: "aeneas"})},
 		},
 		{
