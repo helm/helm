@@ -1,5 +1,5 @@
-hash: 9a8f0b6c906f605bb879fbcdf0c122096f7698fe6a975ec4e6648f2ee85fce3e
-updated: 2019-03-26T10:33:38.977361532-07:00
+hash: d92d7faee5c7ecbb241dadcd993e5dd8dfba226739d20d97fabf23168613f3ac
+updated: 2019-04-16T15:32:58.609105-07:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -212,9 +212,10 @@ imports:
 - name: github.com/pkg/errors
   version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/prometheus/client_golang
-  version: c5b7fccd204277076155f10851dad72b76a49317
+  version: 505eaef017263e299324067d40ca2c48f6a2cf50
   subpackages:
   - prometheus
+  - prometheus/internal
   - prometheus/promhttp
 - name: github.com/prometheus/client_model
   version: fa8ad6fec33561be4280a8f0514318c79d7f6cb6
@@ -376,7 +377,7 @@ imports:
 - name: gopkg.in/yaml.v2
   version: 5420a8b6744d3b0345ab293f6fcba19c978f1183
 - name: k8s.io/api
-  version: 40a48860b5abbba9aa891b02b32da429b08d96a0
+  version: 6e4e0e4f393bf5e8bbff570acd13217aa5a770cd
   subpackages:
   - admission/v1beta1
   - admissionregistration/v1beta1
@@ -417,11 +418,13 @@ imports:
   - storage/v1alpha1
   - storage/v1beta1
 - name: k8s.io/apiextensions-apiserver
-  version: 53c4693659ed354d76121458fb819202dd1635fa
+  version: 727a075fdec8319bf095330e344b3ccc668abc73
   subpackages:
+  - pkg/apis/apiextensions
+  - pkg/apis/apiextensions/v1beta1
   - pkg/features
 - name: k8s.io/apimachinery
-  version: d7deff9243b165ee192f5551710ea4285dcfd615
+  version: 6a84e37a896db9780c75367af8d2ed2bb944022e
   subpackages:
   - pkg/api/equality
   - pkg/api/errors
@@ -477,7 +480,7 @@ imports:
   - third_party/forked/golang/netutil
   - third_party/forked/golang/reflect
 - name: k8s.io/apiserver
-  version: 8b27c41bdbb11ff103caa673315e097bf0289171
+  version: 1ec86e4da56ce0573788fc12bb3a5530600c0e5d
   subpackages:
   - pkg/authentication/authenticator
   - pkg/authentication/serviceaccount
@@ -485,7 +488,7 @@ imports:
   - pkg/features
   - pkg/util/feature
 - name: k8s.io/cli-runtime
-  version: 2899ed30580fdbc8286718edb4382b529463099d
+  version: d644b00f3b79346b7627329269bb25f2135f941c
   subpackages:
   - pkg/genericclioptions
   - pkg/kustomize
@@ -500,7 +503,7 @@ imports:
   - pkg/printers
   - pkg/resource
 - name: k8s.io/client-go
-  version: 6ee68ca5fd8355d024d02f9db0b3b667e8357a0f
+  version: 1a26190bd76a9017e289958b9fba936430aa3704
   subpackages:
   - discovery
   - discovery/cached/disk
@@ -644,7 +647,7 @@ imports:
   - pkg/util/proto/testing
   - pkg/util/proto/validation
 - name: k8s.io/kubernetes
-  version: b805719a99126e54bcbc0a3d9ee8a45cd7e85632
+  version: 3c949c7d419670cd99fe92f60e6f4d251898bdf2
   subpackages:
   - pkg/api/legacyscheme
   - pkg/api/service

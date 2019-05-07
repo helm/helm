@@ -317,7 +317,7 @@ func (u *upgradeCmd) run() error {
 		printRelease(u.out, resp.Release)
 	}
 
-	fmt.Fprintf(u.out, "Release %q has been upgraded. Happy Helming!\n", u.release)
+	fmt.Fprintf(u.out, "Release %q has been upgraded.\n", u.release)
 
 	// Print the status like status command does
 	status, err := u.client.ReleaseStatus(u.release)

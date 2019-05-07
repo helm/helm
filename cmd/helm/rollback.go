@@ -112,7 +112,7 @@ func (r *rollbackCmd) run() error {
 		return prettyError(err)
 	}
 
-	fmt.Fprintf(r.out, "Rollback was a success! Happy Helming!\n")
+	fmt.Fprintf(r.out, "Rollback was a success.\n")
 
 	return nil
 }

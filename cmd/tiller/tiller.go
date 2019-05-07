@@ -74,8 +74,8 @@ const (
 )
 
 var (
-	grpcAddr             = flag.String("listen", ":44134", "address:port to listen on")
-	probeAddr            = flag.String("probe-listen", ":44135", "address:port to listen on for probes")
+	grpcAddr             = flag.String("listen", fmt.Sprintf(":%v", environment.DefaultTillerPort), "address:port to listen on")
+	probeAddr            = flag.String("probe-listen", fmt.Sprintf(":%v", environment.DefaultTillerProbePort), "address:port to listen on for probes")
 	enableTracing        = flag.Bool("trace", false, "enable rpc tracing")
 	store                = flag.String("storage", storageConfigMap, "storage driver to use. One of 'configmap', 'memory', or 'secret'")
 	remoteReleaseModules = flag.Bool("experimental-release", false, "enable experimental release modules")
