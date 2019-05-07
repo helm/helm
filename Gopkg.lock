@@ -1404,11 +1404,12 @@
   revision = "44a48934c135b31e4f1c0d12e91d384e1cb2304c"
 
 [[projects]]
-  digest = "1:8774c035808c344c148ba5135b282d487561233ee3be10f6115ea9a9da5e1c56"
+  digest = "1:fe724e5bfc9e388624ccf76b77051c0c7da8695a264b3ab4103de270a8965b18"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
     "discovery/cached/disk",
+    "discovery/cached/memory",
     "discovery/fake",
     "dynamic",
     "dynamic/fake",
@@ -1795,7 +1796,6 @@
     "github.com/opencontainers/go-digest",
     "github.com/opencontainers/image-spec/specs-go/v1",
     "github.com/pkg/errors",
-    "github.com/sirupsen/logrus",
     "github.com/spf13/cobra",
     "github.com/spf13/cobra/doc",
     "github.com/spf13/pflag",
@@ -1832,6 +1832,7 @@
     "k8s.io/cli-runtime/pkg/genericclioptions",
     "k8s.io/cli-runtime/pkg/resource",
     "k8s.io/client-go/discovery",
+    "k8s.io/client-go/discovery/cached/memory",
     "k8s.io/client-go/kubernetes",
     "k8s.io/client-go/kubernetes/fake",
     "k8s.io/client-go/kubernetes/scheme",

@@ -91,10 +91,10 @@ func newActionConfig(allNamespaces bool) *action.Configuration {
 	}
 
 	return &action.Configuration{
-		KubeClient: kc,
-		Releases:   store,
-		Discovery:  clientset.Discovery(),
-		Log:        logf,
+		RESTClientGetter: kubeConfig(),
+		KubeClient:       kc,
+		Releases:         store,
+		Log:              logf,
 	}
 }
 
