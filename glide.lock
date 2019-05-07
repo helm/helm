@@ -1,5 +1,5 @@
-hash: d92d7faee5c7ecbb241dadcd993e5dd8dfba226739d20d97fabf23168613f3ac
-updated: 2019-04-16T15:32:58.609105-07:00
+hash: 8a007d8993bdffd14a1a2d674848bd085a27b09d7f177fab1dc55783059c4dce
+updated: 2019-04-29T12:23:33.902435+01:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -188,7 +188,7 @@ imports:
 - name: github.com/Masterminds/goutils
   version: 41ac8693c5c10a92ea1ff5ac3a7f95646f6123b0
 - name: github.com/Masterminds/semver
-  version: 517734cc7d6470c0d07130e40fd40bdeb9bcd3fd
+  version: c7af12943936e8c39859482e61f0574c2fd7fc75
 - name: github.com/Masterminds/sprig
   version: 9f8fceff796fb9f4e992cd2bece016be0121ab74
 - name: github.com/Masterminds/vcs
@@ -647,7 +647,7 @@ imports:
   - pkg/util/proto/testing
   - pkg/util/proto/validation
 - name: k8s.io/kubernetes
-  version: 3c949c7d419670cd99fe92f60e6f4d251898bdf2
+  version: b8f2b772e38a15165a6247256d650e8b04178318
   subpackages:
   - pkg/api/legacyscheme
   - pkg/api/service
