@@ -135,7 +135,7 @@ func addRepository(name, url, username, password string, home helmpath.Home, cer
 		return fmt.Errorf("Looks like %q is not a valid chart repository or cannot be reached: %s", url, err.Error())
 	}
 
-	// Lock the repository file for concurrent processes synchronization and re-read its content before updating it
+	// Lock the repository file for concurrent goroutines or processes synchronization
 	fileLock := flock.New(home.RepositoryFile())
 	lockCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -147,6 +147,8 @@ func addRepository(name, url, username, password string, home helmpath.Home, cer
 		return err
 	}
 
+	// Re-read the repositories file before updating it as its content may have been changed
+	// by a concurrent execution after the first read and before being locked
 	f, err = repo.LoadRepositoriesFile(home.RepositoryFile())
 	if err != nil {
 		return err
