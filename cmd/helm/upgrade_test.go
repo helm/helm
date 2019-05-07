@@ -205,13 +205,13 @@ func TestUpgradeCmd(t *testing.T) {
 		{
 			name:     "upgrade with app-version (allow)",
 			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "funny-bunny", Version: 2, Chart: ch4}),
-			expected: "Release \"funny-bunny\" has been upgraded. Happy Helming!\n",
+			expected: "Release \"funny-bunny\" has been upgraded.\n",
 			flags:    []string{"--app-version", "1.0.1"},
 			args:     []string{"funny-bunny", chartPath},
 			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "funny-bunny", Version: 2, Chart: ch4})},
 		},
 		{
-			name:  "upgrade with app-version (not allow)",
+			name:  "upgrade with app-version (disallow)",
 			args:  []string{"testdata/testcharts/alpine"},
 			resp:  helm.ReleaseMock(&helm.MockReleaseOptions{Name: "bonkers-bunny", Version: 2, Chart: ch3}),
 			flags: []string{"--app-version", "1.0.1"},
