@@ -6,10 +6,10 @@ kind: Ingress
 metadata:
   name: {{ $fullName }}
   labels:
-    app: {{ template "chart-with-lib-dep.name" . }}
-    chart: {{ template "chart-with-lib-dep.chart" . }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ template "chart-with-lib-dep.name" . }}
+    helm.sh/chart: {{ template "chart-with-lib-dep.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- with .Values.ingress.annotations }}
   annotations:
 {{ toYaml . | indent 4 }}

@@ -3,21 +3,21 @@ kind: Deployment
 metadata:
   name: {{ template "chart-with-lib-dep.fullname" . }}
   labels:
-    app: {{ template "chart-with-lib-dep.name" . }}
-    chart: {{ template "chart-with-lib-dep.chart" . }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ template "chart-with-lib-dep.name" . }}
+    helm.sh/chart: {{ template "chart-with-lib-dep.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: {{ template "chart-with-lib-dep.name" . }}
-      release: {{ .Release.Name }}
+      app.kubernetes.io/name: {{ template "chart-with-lib-dep.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        app: {{ template "chart-with-lib-dep.name" . }}
-        release: {{ .Release.Name }}
+        app.kubernetes.io/name: {{ template "chart-with-lib-dep.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
       containers:
         - name: {{ .Chart.Name }}

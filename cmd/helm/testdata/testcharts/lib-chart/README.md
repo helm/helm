@@ -65,7 +65,7 @@ following defaults:
 
 - Service type (ClusterIP, NodePort, LoadBalancer) made configurable by `.Values.service.type`
 - Named port `http` configured on port 80
-- Selector set to `app: {{ template "common.name" }}, release: {{ .Release.Name | quote }}` to match the default used in the `Deployment` resource
+- Selector set to `app.kubernetes.io/name: {{ template "common.name" }}, app.kubernetes.io/instance: {{ .Release.Name | quote }}` to match the default used in the `Deployment` resource
 
 Example template:
 
@@ -115,11 +115,11 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
-    app: service
-    chart: service-0.1.0
-    heritage: Tiller
+    app.kubernetes.io/name: service
+    helm.sh/chart: service-0.1.0
+    app.kubernetes.io/managed-by: Helm
     protocol: mail
-    release: release-name
+    app.kubernetes.io/instance: release-name
   name: release-name-service-mail
 spec:
   ports:
@@ -130,8 +130,8 @@ spec:
     port: 993
     targetPort: 993
   selector:
-    app: service
-    release: release-name
+    app.kubernetes.io/name: service
+    app.kubernetes.io/instance: release-name
     protocol: mail
   type: ClusterIP
 ---
@@ -139,11 +139,11 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
-    app: service
-    chart: service-0.1.0
-    heritage: Tiller
+    app.kubernetes.io/name: service
+    helm.sh/chart: service-0.1.0
+    app.kubernetes.io/managed-by: Helm
     protocol: www
-    release: release-name
+    app.kubernetes.io/instance: release-name
   name: release-name-service-www
 spec:
   ports:
@@ -250,16 +250,16 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   labels:
-    app: deployment
-    chart: deployment-0.1.0
-    heritage: Tiller
-    release: release-name
+    app.kubernetes.io/name: deployment
+    helm.sh/chart: deployment-0.1.0
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: release-name
   name: release-name-deployment
 spec:
   template:
     metadata:
       labels:
-        app: deployment
+        app.kubernetes.io/name: deployment
     spec:
       containers:
       - image: nginx:stable
@@ -316,10 +316,10 @@ data:
 kind: ConfigMap
 metadata:
   labels:
-    app: configmap
-    chart: configmap-0.1.0
-    heritage: Tiller
-    release: release-name
+    app.kubernetes.io/name: configmap
+    helm.sh/chart: configmap-0.1.0
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: release-name
   name: release-name-configmap
 ```
 
@@ -354,10 +354,10 @@ data:
 kind: Secret
 metadata:
   labels:
-    app: secret
-    chart: secret-0.1.0
-    heritage: Tiller
-    release: release-name
+    app.kubernetes.io/name: secret
+    helm.sh/chart: secret-0.1.0
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: release-name
   name: release-name-secret
 type: Opaque
 ```
@@ -399,10 +399,10 @@ metadata:
     kubernetes.io/ingress.class: nginx
     kubernetes.io/tls-acme: "true"
   labels:
-    app: ingress
-    chart: ingress-0.1.0
-    heritage: Tiller
-    release: release-name
+    app.kubernetes.io/name: ingress
+    helm.sh/chart: ingress-0.1.0
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: release-name
   name: release-name-ingress
 spec:
   rules:
@@ -459,10 +459,10 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   labels:
-    app: persistentvolumeclaim
-    chart: persistentvolumeclaim-0.1.0
-    heritage: Tiller
-    release: release-name
+    app.kubernetes.io/name: persistentvolumeclaim
+    helm.sh/chart: persistentvolumeclaim-0.1.0
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: release-name
   name: release-name-persistentvolumeclaim
 spec:
   accessModes:
@@ -731,10 +731,10 @@ Example output:
 metadata:
   name: release-name-metadata
   labels:
-    app: metadata
-    heritage: "Tiller"
-    release: "RELEASE-NAME"
-    chart: metadata-0.1.0
+    app.kubernetes.io/name: metadata
+    app.kubernetes.io/managed-by: "Helm"
+    app.kubernetes.io/instance: "RELEASE-NAME"
+    helm.sh/chart: metadata-0.1.0
     first: "matt"
     last: "butcher"
     nick: "technosophos"
@@ -746,10 +746,10 @@ metadata:
 metadata:
   name: Zeus
   labels:
-    app: metadata
-    heritage: "Tiller"
-    release: "RELEASE-NAME"
-    chart: metadata-0.1.0
+    app.kubernetes.io/name: metadata
+    app.kubernetes.io/managed-by: "Helm"
+    app.kubernetes.io/instance: "RELEASE-NAME"
+    helm.sh/chart: metadata-0.1.0
   annotations:
 ```
 
@@ -789,10 +789,10 @@ Example usage:
 Example output:
 
 ```yaml
-app: labelizer
-heritage: "Tiller"
-release: "RELEASE-NAME"
-chart: labelizer-0.1.0
+app.kubernetes.io/name: labelizer
+app.kubernetes.io/managed-by: "Tiller"
+app.kubernetes.io/instance: "RELEASE-NAME"
+helm.sh/chart: labelizer-0.1.0
 ```
 
 ### `common.hook`

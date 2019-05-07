@@ -21,8 +21,8 @@ common.labels.standard prints the standard Helm labels.
 The standard labels are frequently used in metadata.
 */ -}}
 {{- define "common.labels.standard" -}}
-app: {{ template "common.name" . }}
-chart: {{ template "common.chartref" . }}
-heritage: {{ .Release.Service | quote }}
-release: {{ .Release.Name | quote }}
+app.kubernetes.io/name: {{ template "common.name" . }}
+helm.sh/chart: {{ template "common.chartref" . }}
+app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+app.kubernetes.io/instance: {{ .Release.Name | quote }}
 {{- end -}}

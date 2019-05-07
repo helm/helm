@@ -6,8 +6,8 @@ spec:
   template:
     metadata:
       labels:
-        app: {{ template "common.name" . }}
-        release: {{ .Release.Name | quote }}
+        app.kubernetes.io/name: {{ template "common.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name | quote }}
     spec:
       containers:
       -
