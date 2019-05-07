@@ -128,6 +128,7 @@ func TestRepoAddConcurrentGoRoutines(t *testing.T) {
 	wg.Add(3)
 	for i := 0; i < 3; i++ {
 		go func(name string) {
+			// TODO: launch repository additions in sub-processes as file locks are bound to processes, not file descriptors
 			defer wg.Done()
 			if err := addRepository(name, ts.URL(), "", "", settings.Home, "", "", "", true); err != nil {
 				t.Error(err)

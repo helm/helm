@@ -22,11 +22,12 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"syscall"
+
 	"golang.org/x/crypto/ssh/terminal"
 	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
-	"syscall"
 )
 
 type repoAddCmd struct {
@@ -129,6 +130,30 @@ func addRepository(name, url, username, password string, home helmpath.Home, cer
 
 	if err := r.DownloadIndexFile(home.Cache()); err != nil {
 		return fmt.Errorf("Looks like %q is not a valid chart repository or cannot be reached: %s", url, err.Error())
+	}
+
+	// Lock the repository file for concurrent processes synchronization and re-read its content before updating it
+	fd, err := syscall.Open(home.RepositoryFile(), syscall.O_CREAT|syscall.O_RDWR|syscall.O_CLOEXEC, 0)
+	if err != nil {
+		return err
+	}
+	defer syscall.Close(fd)
+
+	flock := syscall.Flock_t{
+		Type:   syscall.F_WRLCK,
+		Start:  0,
+		Len:    0,
+		Whence: io.SeekStart,
+	}
+
+	syscall.FcntlFlock(uintptr(fd), syscall.F_SETLK, &flock)
+	if err != nil {
+		return err
+	}
+
+	f, err = repo.LoadRepositoriesFile(home.RepositoryFile())
+	if err != nil {
+		return err
 	}
 
 	f.Update(&c)
