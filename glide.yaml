@@ -67,6 +67,8 @@ import:
   - package: github.com/jmoiron/sqlx
     version: ^1.2.0
   - package: github.com/rubenv/sql-migrate
+  - package: github.com/gofrs/flock
+    version: v0.7.1
 
 testImports:
   - package: github.com/stretchr/testify
