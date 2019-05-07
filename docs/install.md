@@ -82,18 +82,16 @@ You must have a working Go environment with
 
 ```console
 $ cd $GOPATH
-$ mkdir -p src/k8s.io
-$ cd src/k8s.io
+$ mkdir -p src/helm.sh
+$ cd src/helm.sh
 $ git clone https://github.com/helm/helm.git
 $ cd helm
-$ make bootstrap build
+$ make
 ```
 
-The `bootstrap` target will attempt to install dependencies, rebuild the
-`vendor/` tree, and validate configuration.
-
-The `build` target will compile `helm` and place it in `bin/helm`.
-
+If required, it will first install dependencies, rebuild the
+`vendor/` tree, and validate configuration. It will then compile `helm` and
+place it in `bin/helm`.
 
 ## Conclusion
 
