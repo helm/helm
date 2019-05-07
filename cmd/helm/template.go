@@ -23,10 +23,10 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"k8s.io/client-go/kubernetes/fake"
 
 	"helm.sh/helm/cmd/helm/require"
 	"helm.sh/helm/pkg/action"
+	"helm.sh/helm/pkg/chartutil"
 	"helm.sh/helm/pkg/kube"
 	"helm.sh/helm/pkg/storage"
 	"helm.sh/helm/pkg/storage/driver"
@@ -48,9 +48,9 @@ To render just one template in a chart, use '-x':
 func newTemplateCmd(out io.Writer) *cobra.Command {
 	customConfig := &action.Configuration{
 		// Add mock objects in here so it doesn't use Kube API server
-		Releases:   storage.Init(driver.NewMemory()),
-		KubeClient: &kube.PrintingKubeClient{Out: ioutil.Discard},
-		Discovery:  fake.NewSimpleClientset().Discovery(),
+		Releases:     storage.Init(driver.NewMemory()),
+		KubeClient:   &kube.PrintingKubeClient{Out: ioutil.Discard},
+		Capabilities: chartutil.DefaultCapabilities,
 		Log: func(format string, v ...interface{}) {
 			fmt.Fprintf(out, format, v...)
 		},

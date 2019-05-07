@@ -203,7 +203,7 @@ func (u *Uninstall) execHook(hs []*release.Hook, namespace, hook string) error {
 
 // deleteRelease deletes the release and returns manifests that were kept in the deletion process
 func (u *Uninstall) deleteRelease(rel *release.Release) (kept string, errs []error) {
-	caps, err := newCapabilities(u.cfg.Discovery)
+	caps, err := u.cfg.getCapabilities()
 	if err != nil {
 		return rel.Manifest, []error{errors.Wrap(err, "could not get apiVersions from Kubernetes")}
 	}

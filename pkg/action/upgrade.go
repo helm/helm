@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"k8s.io/client-go/discovery"
 
 	"helm.sh/helm/pkg/chart"
 	"helm.sh/helm/pkg/chartutil"
@@ -150,7 +149,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart) (*release.Rele
 		IsUpgrade: true,
 	}
 
-	caps, err := newCapabilities(u.cfg.Discovery)
+	caps, err := u.cfg.getCapabilities()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -273,23 +272,6 @@ func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release) erro
 		u.Values = current.Config
 	}
 	return nil
-}
-
-func newCapabilities(dc discovery.DiscoveryInterface) (*chartutil.Capabilities, error) {
-	kubeVersion, err := dc.ServerVersion()
-	if err != nil {
-		return nil, err
-	}
-
-	apiVersions, err := GetVersionSet(dc)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not get apiVersions from Kubernetes")
-	}
-
-	return &chartutil.Capabilities{
-		KubeVersion: kubeVersion,
-		APIVersions: apiVersions,
-	}, nil
 }
 
 func validateManifest(c kube.KubernetesClient, ns string, manifest []byte) error {
