@@ -21,8 +21,10 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/rest"
 
 	"helm.sh/helm/pkg/chartutil"
 	"helm.sh/helm/pkg/kube"
@@ -61,8 +63,8 @@ var ValidName = regexp.MustCompile("^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+
 
 // Configuration injects the dependencies that all actions share.
 type Configuration struct {
-	// Discovery contains a discovery client
-	Discovery discovery.DiscoveryInterface
+	// RESTClientGetter is an interface that loads Kuberbetes clients.
+	RESTClientGetter RESTClientGetter
 
 	// Releases stores records of releases.
 	Releases *storage.Storage
@@ -73,17 +75,37 @@ type Configuration struct {
 	// RegistryClient is a client for working with registries
 	RegistryClient *registry.Client
 
+	// Capabilities describes the capabilities of the Kubernetes cluster.
 	Capabilities *chartutil.Capabilities
 
 	Log func(string, ...interface{})
 }
 
 // capabilities builds a Capabilities from discovery information.
-func (c *Configuration) capabilities() *chartutil.Capabilities {
-	if c.Capabilities == nil {
-		return chartutil.DefaultCapabilities
+func (c *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
+	if c.Capabilities != nil {
+		return c.Capabilities, nil
 	}
-	return c.Capabilities
+
+	dc, err := c.RESTClientGetter.ToDiscoveryClient()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get Kubernetes discovery client")
+	}
+	kubeVersion, err := dc.ServerVersion()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get server version from Kubernetes")
+	}
+
+	apiVersions, err := GetVersionSet(dc)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get apiVersions from Kubernetes")
+	}
+
+	c.Capabilities = &chartutil.Capabilities{
+		KubeVersion: kubeVersion,
+		APIVersions: apiVersions,
+	}
+	return c.Capabilities, nil
 }
 
 // Now generates a timestamp
@@ -130,4 +152,10 @@ func (c *Configuration) recordRelease(r *release.Release) {
 	if err := c.Releases.Update(r); err != nil {
 		c.Log("warning: Failed to update release %s: %s", r.Name, err)
 	}
+}
+
+type RESTClientGetter interface {
+	ToRESTConfig() (*rest.Config, error)
+	ToDiscoveryClient() (discovery.CachedDiscoveryInterface, error)
+	ToRESTMapper() (meta.RESTMapper, error)
 }

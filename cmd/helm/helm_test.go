@@ -26,10 +26,10 @@ import (
 
 	shellwords "github.com/mattn/go-shellwords"
 	"github.com/spf13/cobra"
-	"k8s.io/client-go/kubernetes/fake"
 
 	"helm.sh/helm/internal/test"
 	"helm.sh/helm/pkg/action"
+	"helm.sh/helm/pkg/chartutil"
 	"helm.sh/helm/pkg/helmpath"
 	"helm.sh/helm/pkg/kube"
 	"helm.sh/helm/pkg/release"
@@ -115,10 +115,10 @@ func executeActionCommandC(store *storage.Storage, cmd string) (*cobra.Command, 
 	buf := new(bytes.Buffer)
 
 	actionConfig := &action.Configuration{
-		Releases:   store,
-		KubeClient: &kube.PrintingKubeClient{Out: ioutil.Discard},
-		Discovery:  fake.NewSimpleClientset().Discovery(),
-		Log:        func(format string, v ...interface{}) {},
+		Releases:     store,
+		KubeClient:   &kube.PrintingKubeClient{Out: ioutil.Discard},
+		Capabilities: chartutil.DefaultCapabilities,
+		Log:          func(format string, v ...interface{}) {},
 	}
 
 	root := newRootCmd(actionConfig, buf, args)

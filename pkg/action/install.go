@@ -115,7 +115,10 @@ func (i *Install) Run(chrt *chart.Chart) (*release.Release, error) {
 		return nil, err
 	}
 
-	caps := i.cfg.capabilities()
+	caps, err := i.cfg.getCapabilities()
+	if err != nil {
+		return nil, err
+	}
 
 	options := chartutil.ReleaseOptions{
 		Name:      i.ReleaseName,
@@ -295,7 +298,10 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 	hs := []*release.Hook{}
 	b := bytes.NewBuffer(nil)
 
-	caps := c.capabilities()
+	caps, err := c.getCapabilities()
+	if err != nil {
+		return hs, b, "", err
+	}
 
 	if ch.Metadata.KubeVersion != "" {
 		gitVersion := caps.KubeVersion.String()

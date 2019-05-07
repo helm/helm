@@ -23,9 +23,9 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"k8s.io/client-go/kubernetes/fake"
 
 	"helm.sh/helm/pkg/chart"
+	"helm.sh/helm/pkg/chartutil"
 	"helm.sh/helm/pkg/kube"
 	"helm.sh/helm/pkg/release"
 	"helm.sh/helm/pkg/storage"
@@ -38,9 +38,9 @@ func actionConfigFixture(t *testing.T) *Configuration {
 	t.Helper()
 
 	return &Configuration{
-		Releases:   storage.Init(driver.NewMemory()),
-		KubeClient: &kube.PrintingKubeClient{Out: ioutil.Discard},
-		Discovery:  fake.NewSimpleClientset().Discovery(),
+		Releases:     storage.Init(driver.NewMemory()),
+		KubeClient:   &kube.PrintingKubeClient{Out: ioutil.Discard},
+		Capabilities: chartutil.DefaultCapabilities,
 		Log: func(format string, v ...interface{}) {
 			t.Helper()
 			if *verbose {
