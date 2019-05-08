@@ -125,6 +125,7 @@ message ListSort{
 		NAME = 1;
 		LAST_RELEASED = 2;
 		CHART_NAME = 3;
+		NAMESPACE = 4;
 	}
 
 	// SortOrder defines sort orders to augment sorting operations.

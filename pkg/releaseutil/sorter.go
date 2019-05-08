@@ -98,3 +98,15 @@ func SortByChartName(list []*rspb.Release) {
 	}
 	sort.Sort(s)
 }
+
+// SortByNamespace sorts the list of releases by a
+// release's namespace name in lexicographical order.
+func SortByNamespace(list []*rspb.Release) {
+	s := &sorter{list: list}
+	s.less = func(i, j int) bool {
+		ni := s.list[i].Namespace
+		nj := s.list[j].Namespace
+		return ni < nj
+	}
+	sort.Sort(s)
+}
