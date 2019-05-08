@@ -23,4 +23,5 @@ message Version {
   string sem_ver = 1;
   string git_commit = 2;
   string git_tree_state = 3;
+  string go_version = 4;
 }

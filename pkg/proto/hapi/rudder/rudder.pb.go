@@ -3,14 +3,15 @@
 
 package rudder
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
-import release "k8s.io/helm/pkg/proto/hapi/release"
-
 import (
-	context "golang.org/x/net/context"
+	context "context"
+	fmt "fmt"
+	proto "github.com/golang/protobuf/proto"
 	grpc "google.golang.org/grpc"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
+	release "k8s.io/helm/pkg/proto/hapi/release"
+	math "math"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -22,7 +23,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 type Result_Status int32
 
@@ -43,6 +44,7 @@ var Result_Status_name = map[int32]string{
 	2: "UNCHANGED",
 	3: "ERROR",
 }
+
 var Result_Status_value = map[string]int32{
 	"UNKNOWN":   0,
 	"SUCCESS":   1,
@@ -53,8 +55,9 @@ var Result_Status_value = map[string]int32{
 func (x Result_Status) String() string {
 	return proto.EnumName(Result_Status_name, int32(x))
 }
+
 func (Result_Status) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_rudder_dd8cdbe38a210d28, []int{0, 0}
+	return fileDescriptor_4bbc9d2b58e34a7d, []int{0, 0}
 }
 
 type Result struct {
@@ -69,16 +72,17 @@ func (m *Result) Reset()         { *m = Result{} }
 func (m *Result) String() string { return proto.CompactTextString(m) }
 func (*Result) ProtoMessage()    {}
 func (*Result) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rudder_dd8cdbe38a210d28, []int{0}
+	return fileDescriptor_4bbc9d2b58e34a7d, []int{0}
 }
+
 func (m *Result) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Result.Unmarshal(m, b)
 }
 func (m *Result) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Result.Marshal(b, m, deterministic)
 }
-func (dst *Result) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Result.Merge(dst, src)
+func (m *Result) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Result.Merge(m, src)
 }
 func (m *Result) XXX_Size() int {
 	return xxx_messageInfo_Result.Size(m)
@@ -113,16 +117,17 @@ func (m *VersionReleaseRequest) Reset()         { *m = VersionReleaseRequest{} }
 func (m *VersionReleaseRequest) String() string { return proto.CompactTextString(m) }
 func (*VersionReleaseRequest) ProtoMessage()    {}
 func (*VersionReleaseRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rudder_dd8cdbe38a210d28, []int{1}
+	return fileDescriptor_4bbc9d2b58e34a7d, []int{1}
 }
+
 func (m *VersionReleaseRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_VersionReleaseRequest.Unmarshal(m, b)
 }
 func (m *VersionReleaseRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_VersionReleaseRequest.Marshal(b, m, deterministic)
 }
-func (dst *VersionReleaseRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_VersionReleaseRequest.Merge(dst, src)
+func (m *VersionReleaseRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_VersionReleaseRequest.Merge(m, src)
 }
 func (m *VersionReleaseRequest) XXX_Size() int {
 	return xxx_messageInfo_VersionReleaseRequest.Size(m)
@@ -145,16 +150,17 @@ func (m *VersionReleaseResponse) Reset()         { *m = VersionReleaseResponse{}
 func (m *VersionReleaseResponse) String() string { return proto.CompactTextString(m) }
 func (*VersionReleaseResponse) ProtoMessage()    {}
 func (*VersionReleaseResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rudder_dd8cdbe38a210d28, []int{2}
+	return fileDescriptor_4bbc9d2b58e34a7d, []int{2}
 }
+
 func (m *VersionReleaseResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_VersionReleaseResponse.Unmarshal(m, b)
 }
 func (m *VersionReleaseResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_VersionReleaseResponse.Marshal(b, m, deterministic)
 }
-func (dst *VersionReleaseResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_VersionReleaseResponse.Merge(dst, src)
+func (m *VersionReleaseResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_VersionReleaseResponse.Merge(m, src)
 }
 func (m *VersionReleaseResponse) XXX_Size() int {
 	return xxx_messageInfo_VersionReleaseResponse.Size(m)
@@ -190,16 +196,17 @@ func (m *InstallReleaseRequest) Reset()         { *m = InstallReleaseRequest{} }
 func (m *InstallReleaseRequest) String() string { return proto.CompactTextString(m) }
 func (*InstallReleaseRequest) ProtoMessage()    {}
 func (*InstallReleaseRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rudder_dd8cdbe38a210d28, []int{3}
+	return fileDescriptor_4bbc9d2b58e34a7d, []int{3}
 }
+
 func (m *InstallReleaseRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_InstallReleaseRequest.Unmarshal(m, b)
 }
 func (m *InstallReleaseRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_InstallReleaseRequest.Marshal(b, m, deterministic)
 }
-func (dst *InstallReleaseRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_InstallReleaseRequest.Merge(dst, src)
+func (m *InstallReleaseRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_InstallReleaseRequest.Merge(m, src)
 }
 func (m *InstallReleaseRequest) XXX_Size() int {
 	return xxx_messageInfo_InstallReleaseRequest.Size(m)
@@ -229,16 +236,17 @@ func (m *InstallReleaseResponse) Reset()         { *m = InstallReleaseResponse{}
 func (m *InstallReleaseResponse) String() string { return proto.CompactTextString(m) }
 func (*InstallReleaseResponse) ProtoMessage()    {}
 func (*InstallReleaseResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rudder_dd8cdbe38a210d28, []int{4}
+	return fileDescriptor_4bbc9d2b58e34a7d, []int{4}
 }
+
 func (m *InstallReleaseResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_InstallReleaseResponse.Unmarshal(m, b)
 }
 func (m *InstallReleaseResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_InstallReleaseResponse.Marshal(b, m, deterministic)
 }
-func (dst *InstallReleaseResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_InstallReleaseResponse.Merge(dst, src)
+func (m *InstallReleaseResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_InstallReleaseResponse.Merge(m, src)
 }
 func (m *InstallReleaseResponse) XXX_Size() int {
 	return xxx_messageInfo_InstallReleaseResponse.Size(m)
@@ -274,16 +282,17 @@ func (m *DeleteReleaseRequest) Reset()         { *m = DeleteReleaseRequest{} }
 func (m *DeleteReleaseRequest) String() string { return proto.CompactTextString(m) }
 func (*DeleteReleaseRequest) ProtoMessage()    {}
 func (*DeleteReleaseRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rudder_dd8cdbe38a210d28, []int{5}
+	return fileDescriptor_4bbc9d2b58e34a7d, []int{5}
 }
+
 func (m *DeleteReleaseRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DeleteReleaseRequest.Unmarshal(m, b)
 }
 func (m *DeleteReleaseRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_DeleteReleaseRequest.Marshal(b, m, deterministic)
 }
-func (dst *DeleteReleaseRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_DeleteReleaseRequest.Merge(dst, src)
+func (m *DeleteReleaseRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DeleteReleaseRequest.Merge(m, src)
 }
 func (m *DeleteReleaseRequest) XXX_Size() int {
 	return xxx_messageInfo_DeleteReleaseRequest.Size(m)
@@ -313,16 +322,17 @@ func (m *DeleteReleaseResponse) Reset()         { *m = DeleteReleaseResponse{} }
 func (m *DeleteReleaseResponse) String() string { return proto.CompactTextString(m) }
 func (*DeleteReleaseResponse) ProtoMessage()    {}
 func (*DeleteReleaseResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rudder_dd8cdbe38a210d28, []int{6}
+	return fileDescriptor_4bbc9d2b58e34a7d, []int{6}
 }
+
 func (m *DeleteReleaseResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DeleteReleaseResponse.Unmarshal(m, b)
 }
 func (m *DeleteReleaseResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_DeleteReleaseResponse.Marshal(b, m, deterministic)
 }
-func (dst *DeleteReleaseResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_DeleteReleaseResponse.Merge(dst, src)
+func (m *DeleteReleaseResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DeleteReleaseResponse.Merge(m, src)
 }
 func (m *DeleteReleaseResponse) XXX_Size() int {
 	return xxx_messageInfo_DeleteReleaseResponse.Size(m)
@@ -364,16 +374,17 @@ func (m *UpgradeReleaseRequest) Reset()         { *m = UpgradeReleaseRequest{} }
 func (m *UpgradeReleaseRequest) String() string { return proto.CompactTextString(m) }
 func (*UpgradeReleaseRequest) ProtoMessage()    {}
 func (*UpgradeReleaseRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rudder_dd8cdbe38a210d28, []int{7}
+	return fileDescriptor_4bbc9d2b58e34a7d, []int{7}
 }
+
 func (m *UpgradeReleaseRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_UpgradeReleaseRequest.Unmarshal(m, b)
 }
 func (m *UpgradeReleaseRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_UpgradeReleaseRequest.Marshal(b, m, deterministic)
 }
-func (dst *UpgradeReleaseRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_UpgradeReleaseRequest.Merge(dst, src)
+func (m *UpgradeReleaseRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UpgradeReleaseRequest.Merge(m, src)
 }
 func (m *UpgradeReleaseRequest) XXX_Size() int {
 	return xxx_messageInfo_UpgradeReleaseRequest.Size(m)
@@ -445,16 +456,17 @@ func (m *UpgradeReleaseResponse) Reset()         { *m = UpgradeReleaseResponse{}
 func (m *UpgradeReleaseResponse) String() string { return proto.CompactTextString(m) }
 func (*UpgradeReleaseResponse) ProtoMessage()    {}
 func (*UpgradeReleaseResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rudder_dd8cdbe38a210d28, []int{8}
+	return fileDescriptor_4bbc9d2b58e34a7d, []int{8}
 }
+
 func (m *UpgradeReleaseResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_UpgradeReleaseResponse.Unmarshal(m, b)
 }
 func (m *UpgradeReleaseResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_UpgradeReleaseResponse.Marshal(b, m, deterministic)
 }
-func (dst *UpgradeReleaseResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_UpgradeReleaseResponse.Merge(dst, src)
+func (m *UpgradeReleaseResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UpgradeReleaseResponse.Merge(m, src)
 }
 func (m *UpgradeReleaseResponse) XXX_Size() int {
 	return xxx_messageInfo_UpgradeReleaseResponse.Size(m)
@@ -496,16 +508,17 @@ func (m *RollbackReleaseRequest) Reset()         { *m = RollbackReleaseRequest{}
 func (m *RollbackReleaseRequest) String() string { return proto.CompactTextString(m) }
 func (*RollbackReleaseRequest) ProtoMessage()    {}
 func (*RollbackReleaseRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rudder_dd8cdbe38a210d28, []int{9}
+	return fileDescriptor_4bbc9d2b58e34a7d, []int{9}
 }
+
 func (m *RollbackReleaseRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RollbackReleaseRequest.Unmarshal(m, b)
 }
 func (m *RollbackReleaseRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_RollbackReleaseRequest.Marshal(b, m, deterministic)
 }
-func (dst *RollbackReleaseRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RollbackReleaseRequest.Merge(dst, src)
+func (m *RollbackReleaseRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RollbackReleaseRequest.Merge(m, src)
 }
 func (m *RollbackReleaseRequest) XXX_Size() int {
 	return xxx_messageInfo_RollbackReleaseRequest.Size(m)
@@ -577,16 +590,17 @@ func (m *RollbackReleaseResponse) Reset()         { *m = RollbackReleaseResponse
 func (m *RollbackReleaseResponse) String() string { return proto.CompactTextString(m) }
 func (*RollbackReleaseResponse) ProtoMessage()    {}
 func (*RollbackReleaseResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rudder_dd8cdbe38a210d28, []int{10}
+	return fileDescriptor_4bbc9d2b58e34a7d, []int{10}
 }
+
 func (m *RollbackReleaseResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RollbackReleaseResponse.Unmarshal(m, b)
 }
 func (m *RollbackReleaseResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_RollbackReleaseResponse.Marshal(b, m, deterministic)
 }
-func (dst *RollbackReleaseResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RollbackReleaseResponse.Merge(dst, src)
+func (m *RollbackReleaseResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RollbackReleaseResponse.Merge(m, src)
 }
 func (m *RollbackReleaseResponse) XXX_Size() int {
 	return xxx_messageInfo_RollbackReleaseResponse.Size(m)
@@ -622,16 +636,17 @@ func (m *ReleaseStatusRequest) Reset()         { *m = ReleaseStatusRequest{} }
 func (m *ReleaseStatusRequest) String() string { return proto.CompactTextString(m) }
 func (*ReleaseStatusRequest) ProtoMessage()    {}
 func (*ReleaseStatusRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rudder_dd8cdbe38a210d28, []int{11}
+	return fileDescriptor_4bbc9d2b58e34a7d, []int{11}
 }
+
 func (m *ReleaseStatusRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ReleaseStatusRequest.Unmarshal(m, b)
 }
 func (m *ReleaseStatusRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_ReleaseStatusRequest.Marshal(b, m, deterministic)
 }
-func (dst *ReleaseStatusRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ReleaseStatusRequest.Merge(dst, src)
+func (m *ReleaseStatusRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ReleaseStatusRequest.Merge(m, src)
 }
 func (m *ReleaseStatusRequest) XXX_Size() int {
 	return xxx_messageInfo_ReleaseStatusRequest.Size(m)
@@ -661,16 +676,17 @@ func (m *ReleaseStatusResponse) Reset()         { *m = ReleaseStatusResponse{} }
 func (m *ReleaseStatusResponse) String() string { return proto.CompactTextString(m) }
 func (*ReleaseStatusResponse) ProtoMessage()    {}
 func (*ReleaseStatusResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rudder_dd8cdbe38a210d28, []int{12}
+	return fileDescriptor_4bbc9d2b58e34a7d, []int{12}
 }
+
 func (m *ReleaseStatusResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ReleaseStatusResponse.Unmarshal(m, b)
 }
 func (m *ReleaseStatusResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_ReleaseStatusResponse.Marshal(b, m, deterministic)
 }
-func (dst *ReleaseStatusResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ReleaseStatusResponse.Merge(dst, src)
+func (m *ReleaseStatusResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ReleaseStatusResponse.Merge(m, src)
 }
 func (m *ReleaseStatusResponse) XXX_Size() int {
 	return xxx_messageInfo_ReleaseStatusResponse.Size(m)
@@ -696,6 +712,7 @@ func (m *ReleaseStatusResponse) GetInfo() *release.Info {
 }
 
 func init() {
+	proto.RegisterEnum("hapi.services.rudder.Result_Status", Result_Status_name, Result_Status_value)
 	proto.RegisterType((*Result)(nil), "hapi.services.rudder.Result")
 	proto.RegisterType((*VersionReleaseRequest)(nil), "hapi.services.rudder.VersionReleaseRequest")
 	proto.RegisterType((*VersionReleaseResponse)(nil), "hapi.services.rudder.VersionReleaseResponse")
@@ -709,7 +726,51 @@ func init() {
 	proto.RegisterType((*RollbackReleaseResponse)(nil), "hapi.services.rudder.RollbackReleaseResponse")
 	proto.RegisterType((*ReleaseStatusRequest)(nil), "hapi.services.rudder.ReleaseStatusRequest")
 	proto.RegisterType((*ReleaseStatusResponse)(nil), "hapi.services.rudder.ReleaseStatusResponse")
-	proto.RegisterEnum("hapi.services.rudder.Result_Status", Result_Status_name, Result_Status_value)
+}
+
+func init() { proto.RegisterFile("hapi/rudder/rudder.proto", fileDescriptor_4bbc9d2b58e34a7d) }
+
+var fileDescriptor_4bbc9d2b58e34a7d = []byte{
+	// 615 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe4, 0x56, 0x4d, 0x6f, 0xd3, 0x40,
+	0x10, 0x8d, 0x9b, 0xc6, 0x69, 0xa6, 0x2a, 0x44, 0xab, 0xba, 0xb5, 0x2c, 0x0e, 0x91, 0x85, 0x50,
+	0x44, 0xa9, 0x2b, 0x15, 0x8e, 0x5c, 0x20, 0xfd, 0x14, 0x22, 0x95, 0x36, 0x84, 0x4a, 0xdc, 0xb6,
+	0xc9, 0x24, 0x18, 0x36, 0xb6, 0x59, 0xaf, 0x7b, 0x04, 0x7e, 0x0d, 0xff, 0x12, 0x84, 0xec, 0xb5,
+	0x23, 0x6c, 0xd6, 0x22, 0x14, 0x29, 0x17, 0x4e, 0xde, 0xd9, 0x79, 0x9d, 0x9d, 0xf7, 0x76, 0xf6,
+	0x35, 0x60, 0xbf, 0x67, 0x91, 0x7f, 0x24, 0x92, 0xe9, 0x14, 0x45, 0xfe, 0xf1, 0x22, 0x11, 0xca,
+	0x90, 0xec, 0xa6, 0x19, 0x2f, 0x46, 0x71, 0xeb, 0x4f, 0x30, 0xf6, 0x54, 0xce, 0xd9, 0x57, 0x78,
+	0xe4, 0xc8, 0x62, 0x3c, 0xf2, 0x83, 0x59, 0xa8, 0xe0, 0x8e, 0x53, 0x4a, 0xe4, 0x5f, 0x95, 0x73,
+	0x39, 0x98, 0x14, 0xe3, 0x84, 0x4b, 0x42, 0x60, 0x33, 0xfd, 0x1b, 0xdb, 0xe8, 0x19, 0xfd, 0x0e,
+	0xcd, 0xd6, 0xa4, 0x0b, 0x4d, 0x1e, 0xce, 0xed, 0x8d, 0x5e, 0xb3, 0xdf, 0xa1, 0xe9, 0xd2, 0x7d,
+	0x0e, 0xe6, 0x48, 0x32, 0x99, 0xc4, 0x64, 0x1b, 0xda, 0xe3, 0xe1, 0xab, 0xe1, 0xd5, 0xf5, 0xb0,
+	0xdb, 0x48, 0x83, 0xd1, 0x78, 0x30, 0x38, 0x1d, 0x8d, 0xba, 0x06, 0xd9, 0x81, 0xce, 0x78, 0x38,
+	0xb8, 0x78, 0x31, 0x3c, 0x3f, 0x3d, 0xe9, 0x6e, 0x90, 0x0e, 0xb4, 0x4e, 0x29, 0xbd, 0xa2, 0xdd,
+	0xa6, 0xbb, 0x0f, 0xd6, 0x5b, 0x14, 0xb1, 0x1f, 0x06, 0x54, 0x75, 0x41, 0xf1, 0x53, 0x82, 0xb1,
+	0x74, 0xcf, 0x60, 0xaf, 0x9a, 0x88, 0xa3, 0x30, 0x88, 0x31, 0x6d, 0x2b, 0x60, 0x0b, 0x2c, 0xda,
+	0x4a, 0xd7, 0xc4, 0x86, 0xf6, 0xad, 0x42, 0xdb, 0x1b, 0xd9, 0x76, 0x11, 0xba, 0x17, 0x60, 0x5d,
+	0x06, 0xb1, 0x64, 0x9c, 0x97, 0x0f, 0x20, 0x47, 0xd0, 0xce, 0x89, 0x67, 0x95, 0xb6, 0x8f, 0x2d,
+	0x2f, 0x13, 0xb1, 0x50, 0xa3, 0x80, 0x17, 0x28, 0xf7, 0x0b, 0xec, 0x55, 0x2b, 0xe5, 0x1d, 0xfd,
+	0x6d, 0x29, 0xf2, 0x0c, 0x4c, 0x91, 0x69, 0x9c, 0x75, 0xbb, 0x7d, 0xfc, 0xc0, 0xd3, 0xdd, 0x9f,
+	0xa7, 0xee, 0x81, 0xe6, 0x58, 0xf7, 0x1c, 0x76, 0x4f, 0x90, 0xa3, 0xc4, 0x7f, 0x65, 0xf2, 0x19,
+	0xac, 0x4a, 0xa1, 0xf5, 0x12, 0xf9, 0x6e, 0x80, 0x35, 0x8e, 0xe6, 0x82, 0x4d, 0x35, 0x54, 0x26,
+	0x89, 0x10, 0x18, 0xc8, 0x3f, 0x34, 0x90, 0xa3, 0xc8, 0x21, 0x98, 0x92, 0x89, 0x39, 0x16, 0x0d,
+	0xd4, 0xe0, 0x73, 0x50, 0x3a, 0x27, 0x6f, 0xfc, 0x05, 0x86, 0x89, 0xb4, 0x9b, 0x3d, 0xa3, 0xdf,
+	0xa4, 0x45, 0x98, 0x4e, 0xd5, 0x35, 0xf3, 0xa5, 0xbd, 0xd9, 0x33, 0xfa, 0x5b, 0x34, 0x5b, 0x13,
+	0x07, 0xb6, 0x28, 0x4e, 0x04, 0x32, 0x89, 0x76, 0x2b, 0xdb, 0x5f, 0xc6, 0x64, 0x17, 0x5a, 0x67,
+	0xa1, 0x98, 0xa0, 0x6d, 0x66, 0x09, 0x15, 0x90, 0x87, 0xb0, 0x33, 0xe0, 0xc8, 0x82, 0x24, 0xba,
+	0x0a, 0xce, 0x98, 0xcf, 0xed, 0x76, 0x96, 0x2d, 0x6f, 0xa6, 0x93, 0x54, 0xa5, 0xbf, 0xde, 0x0b,
+	0xf8, 0x61, 0xc0, 0x1e, 0x0d, 0x39, 0xbf, 0x61, 0x93, 0x8f, 0xff, 0xe5, 0x0d, 0x7c, 0x35, 0x60,
+	0xff, 0x37, 0x01, 0xd6, 0xfe, 0x9a, 0xf3, 0x4a, 0xca, 0x3e, 0xef, 0xfc, 0x9a, 0x23, 0xb0, 0x2a,
+	0x85, 0xee, 0x4a, 0xe4, 0x51, 0x6e, 0xf8, 0x8a, 0x06, 0x29, 0xa3, 0x2f, 0x83, 0x59, 0xa8, 0xfe,
+	0x09, 0x1c, 0x7f, 0x6b, 0x2d, 0x7b, 0x7f, 0x1d, 0x4e, 0x13, 0x8e, 0x23, 0x45, 0x95, 0xcc, 0xa0,
+	0x9d, 0x9b, 0x36, 0x39, 0xd0, 0x8b, 0xa0, 0x35, 0x7b, 0xe7, 0xc9, 0x6a, 0x60, 0xc5, 0xcb, 0x6d,
+	0x90, 0x05, 0xdc, 0x2b, 0x5b, 0x71, 0xdd, 0x71, 0x5a, 0xeb, 0xaf, 0x3b, 0x4e, 0xef, 0xee, 0x6e,
+	0x83, 0x7c, 0x80, 0x9d, 0x92, 0x5f, 0x92, 0xc7, 0xfa, 0x02, 0x3a, 0x77, 0x76, 0x0e, 0x56, 0xc2,
+	0x2e, 0xcf, 0x8a, 0xe0, 0x7e, 0x65, 0x30, 0x49, 0x4d, 0xbb, 0xfa, 0x07, 0xec, 0x1c, 0xae, 0x88,
+	0xfe, 0x55, 0xcc, 0xb2, 0x1b, 0xd5, 0x89, 0xa9, 0xb5, 0xec, 0x3a, 0x31, 0xf5, 0x06, 0xa7, 0xc4,
+	0x2c, 0x8d, 0x6b, 0x9d, 0x98, 0xba, 0xc7, 0x51, 0x27, 0xa6, 0x76, 0xfe, 0xdd, 0xc6, 0xcb, 0xad,
+	0x77, 0xa6, 0x42, 0xdc, 0x98, 0xd9, 0x8f, 0x9b, 0xa7, 0x3f, 0x03, 0x00, 0x00, 0xff, 0xff, 0xe2,
+	0x9e, 0x21, 0x0d, 0x43, 0x09, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -812,6 +873,29 @@ type ReleaseModuleServiceServer interface {
 	UpgradeRelease(context.Context, *UpgradeReleaseRequest) (*UpgradeReleaseResponse, error)
 	// ReleaseStatus retrieves release status.
 	ReleaseStatus(context.Context, *ReleaseStatusRequest) (*ReleaseStatusResponse, error)
+}
+
+// UnimplementedReleaseModuleServiceServer can be embedded to have forward compatible implementations.
+type UnimplementedReleaseModuleServiceServer struct {
+}
+
+func (*UnimplementedReleaseModuleServiceServer) Version(ctx context.Context, req *VersionReleaseRequest) (*VersionReleaseResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Version not implemented")
+}
+func (*UnimplementedReleaseModuleServiceServer) InstallRelease(ctx context.Context, req *InstallReleaseRequest) (*InstallReleaseResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method InstallRelease not implemented")
+}
+func (*UnimplementedReleaseModuleServiceServer) DeleteRelease(ctx context.Context, req *DeleteReleaseRequest) (*DeleteReleaseResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteRelease not implemented")
+}
+func (*UnimplementedReleaseModuleServiceServer) RollbackRelease(ctx context.Context, req *RollbackReleaseRequest) (*RollbackReleaseResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RollbackRelease not implemented")
+}
+func (*UnimplementedReleaseModuleServiceServer) UpgradeRelease(ctx context.Context, req *UpgradeReleaseRequest) (*UpgradeReleaseResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpgradeRelease not implemented")
+}
+func (*UnimplementedReleaseModuleServiceServer) ReleaseStatus(ctx context.Context, req *ReleaseStatusRequest) (*ReleaseStatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReleaseStatus not implemented")
 }
 
 func RegisterReleaseModuleServiceServer(s *grpc.Server, srv ReleaseModuleServiceServer) {
@@ -957,49 +1041,4 @@ var _ReleaseModuleService_serviceDesc = grpc.ServiceDesc{
 	},
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "hapi/rudder/rudder.proto",
-}
-
-func init() { proto.RegisterFile("hapi/rudder/rudder.proto", fileDescriptor_rudder_dd8cdbe38a210d28) }
-
-var fileDescriptor_rudder_dd8cdbe38a210d28 = []byte{
-	// 615 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe4, 0x56, 0x4d, 0x6f, 0xd3, 0x40,
-	0x10, 0x8d, 0x9b, 0xc6, 0x69, 0xa6, 0x2a, 0x44, 0xab, 0xba, 0xb5, 0x2c, 0x0e, 0x91, 0x85, 0x50,
-	0x44, 0xa9, 0x2b, 0x15, 0x8e, 0x5c, 0x20, 0xfd, 0x14, 0x22, 0x95, 0x36, 0x84, 0x4a, 0xdc, 0xb6,
-	0xc9, 0x24, 0x18, 0x36, 0xb6, 0x59, 0xaf, 0x7b, 0x04, 0x7e, 0x0d, 0xff, 0x12, 0x84, 0xec, 0xb5,
-	0x23, 0x6c, 0xd6, 0x22, 0x14, 0x29, 0x17, 0x4e, 0xde, 0xd9, 0x79, 0x9d, 0x9d, 0xf7, 0x76, 0xf6,
-	0x35, 0x60, 0xbf, 0x67, 0x91, 0x7f, 0x24, 0x92, 0xe9, 0x14, 0x45, 0xfe, 0xf1, 0x22, 0x11, 0xca,
-	0x90, 0xec, 0xa6, 0x19, 0x2f, 0x46, 0x71, 0xeb, 0x4f, 0x30, 0xf6, 0x54, 0xce, 0xd9, 0x57, 0x78,
-	0xe4, 0xc8, 0x62, 0x3c, 0xf2, 0x83, 0x59, 0xa8, 0xe0, 0x8e, 0x53, 0x4a, 0xe4, 0x5f, 0x95, 0x73,
-	0x39, 0x98, 0x14, 0xe3, 0x84, 0x4b, 0x42, 0x60, 0x33, 0xfd, 0x1b, 0xdb, 0xe8, 0x19, 0xfd, 0x0e,
-	0xcd, 0xd6, 0xa4, 0x0b, 0x4d, 0x1e, 0xce, 0xed, 0x8d, 0x5e, 0xb3, 0xdf, 0xa1, 0xe9, 0xd2, 0x7d,
-	0x0e, 0xe6, 0x48, 0x32, 0x99, 0xc4, 0x64, 0x1b, 0xda, 0xe3, 0xe1, 0xab, 0xe1, 0xd5, 0xf5, 0xb0,
-	0xdb, 0x48, 0x83, 0xd1, 0x78, 0x30, 0x38, 0x1d, 0x8d, 0xba, 0x06, 0xd9, 0x81, 0xce, 0x78, 0x38,
-	0xb8, 0x78, 0x31, 0x3c, 0x3f, 0x3d, 0xe9, 0x6e, 0x90, 0x0e, 0xb4, 0x4e, 0x29, 0xbd, 0xa2, 0xdd,
-	0xa6, 0xbb, 0x0f, 0xd6, 0x5b, 0x14, 0xb1, 0x1f, 0x06, 0x54, 0x75, 0x41, 0xf1, 0x53, 0x82, 0xb1,
-	0x74, 0xcf, 0x60, 0xaf, 0x9a, 0x88, 0xa3, 0x30, 0x88, 0x31, 0x6d, 0x2b, 0x60, 0x0b, 0x2c, 0xda,
-	0x4a, 0xd7, 0xc4, 0x86, 0xf6, 0xad, 0x42, 0xdb, 0x1b, 0xd9, 0x76, 0x11, 0xba, 0x17, 0x60, 0x5d,
-	0x06, 0xb1, 0x64, 0x9c, 0x97, 0x0f, 0x20, 0x47, 0xd0, 0xce, 0x89, 0x67, 0x95, 0xb6, 0x8f, 0x2d,
-	0x2f, 0x13, 0xb1, 0x50, 0xa3, 0x80, 0x17, 0x28, 0xf7, 0x0b, 0xec, 0x55, 0x2b, 0xe5, 0x1d, 0xfd,
-	0x6d, 0x29, 0xf2, 0x0c, 0x4c, 0x91, 0x69, 0x9c, 0x75, 0xbb, 0x7d, 0xfc, 0xc0, 0xd3, 0xdd, 0x9f,
-	0xa7, 0xee, 0x81, 0xe6, 0x58, 0xf7, 0x1c, 0x76, 0x4f, 0x90, 0xa3, 0xc4, 0x7f, 0x65, 0xf2, 0x19,
-	0xac, 0x4a, 0xa1, 0xf5, 0x12, 0xf9, 0x6e, 0x80, 0x35, 0x8e, 0xe6, 0x82, 0x4d, 0x35, 0x54, 0x26,
-	0x89, 0x10, 0x18, 0xc8, 0x3f, 0x34, 0x90, 0xa3, 0xc8, 0x21, 0x98, 0x92, 0x89, 0x39, 0x16, 0x0d,
-	0xd4, 0xe0, 0x73, 0x50, 0x3a, 0x27, 0x6f, 0xfc, 0x05, 0x86, 0x89, 0xb4, 0x9b, 0x3d, 0xa3, 0xdf,
-	0xa4, 0x45, 0x98, 0x4e, 0xd5, 0x35, 0xf3, 0xa5, 0xbd, 0xd9, 0x33, 0xfa, 0x5b, 0x34, 0x5b, 0x13,
-	0x07, 0xb6, 0x28, 0x4e, 0x04, 0x32, 0x89, 0x76, 0x2b, 0xdb, 0x5f, 0xc6, 0x64, 0x17, 0x5a, 0x67,
-	0xa1, 0x98, 0xa0, 0x6d, 0x66, 0x09, 0x15, 0x90, 0x87, 0xb0, 0x33, 0xe0, 0xc8, 0x82, 0x24, 0xba,
-	0x0a, 0xce, 0x98, 0xcf, 0xed, 0x76, 0x96, 0x2d, 0x6f, 0xa6, 0x93, 0x54, 0xa5, 0xbf, 0xde, 0x0b,
-	0xf8, 0x61, 0xc0, 0x1e, 0x0d, 0x39, 0xbf, 0x61, 0x93, 0x8f, 0xff, 0xe5, 0x0d, 0x7c, 0x35, 0x60,
-	0xff, 0x37, 0x01, 0xd6, 0xfe, 0x9a, 0xf3, 0x4a, 0xca, 0x3e, 0xef, 0xfc, 0x9a, 0x23, 0xb0, 0x2a,
-	0x85, 0xee, 0x4a, 0xe4, 0x51, 0x6e, 0xf8, 0x8a, 0x06, 0x29, 0xa3, 0x2f, 0x83, 0x59, 0xa8, 0xfe,
-	0x09, 0x1c, 0x7f, 0x6b, 0x2d, 0x7b, 0x7f, 0x1d, 0x4e, 0x13, 0x8e, 0x23, 0x45, 0x95, 0xcc, 0xa0,
-	0x9d, 0x9b, 0x36, 0x39, 0xd0, 0x8b, 0xa0, 0x35, 0x7b, 0xe7, 0xc9, 0x6a, 0x60, 0xc5, 0xcb, 0x6d,
-	0x90, 0x05, 0xdc, 0x2b, 0x5b, 0x71, 0xdd, 0x71, 0x5a, 0xeb, 0xaf, 0x3b, 0x4e, 0xef, 0xee, 0x6e,
-	0x83, 0x7c, 0x80, 0x9d, 0x92, 0x5f, 0x92, 0xc7, 0xfa, 0x02, 0x3a, 0x77, 0x76, 0x0e, 0x56, 0xc2,
-	0x2e, 0xcf, 0x8a, 0xe0, 0x7e, 0x65, 0x30, 0x49, 0x4d, 0xbb, 0xfa, 0x07, 0xec, 0x1c, 0xae, 0x88,
-	0xfe, 0x55, 0xcc, 0xb2, 0x1b, 0xd5, 0x89, 0xa9, 0xb5, 0xec, 0x3a, 0x31, 0xf5, 0x06, 0xa7, 0xc4,
-	0x2c, 0x8d, 0x6b, 0x9d, 0x98, 0xba, 0xc7, 0x51, 0x27, 0xa6, 0x76, 0xfe, 0xdd, 0xc6, 0xcb, 0xad,
-	0x77, 0xa6, 0x42, 0xdc, 0x98, 0xd9, 0x8f, 0x9b, 0xa7, 0x3f, 0x03, 0x00, 0x00, 0xff, 0xff, 0xe2,
-	0x9e, 0x21, 0x0d, 0x43, 0x09, 0x00, 0x00,
 }

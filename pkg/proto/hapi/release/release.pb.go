@@ -3,10 +3,12 @@
 
 package release
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
-import chart "k8s.io/helm/pkg/proto/hapi/chart"
+import (
+	fmt "fmt"
+	proto "github.com/golang/protobuf/proto"
+	chart "k8s.io/helm/pkg/proto/hapi/chart"
+	math "math"
+)
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -17,7 +19,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 // Release describes a deployment of a chart, together with the chart
 // and the variables used to deploy that chart.
@@ -48,16 +50,17 @@ func (m *Release) Reset()         { *m = Release{} }
 func (m *Release) String() string { return proto.CompactTextString(m) }
 func (*Release) ProtoMessage()    {}
 func (*Release) Descriptor() ([]byte, []int) {
-	return fileDescriptor_release_4bea5d16ba219619, []int{0}
+	return fileDescriptor_198f298b58c89a97, []int{0}
 }
+
 func (m *Release) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Release.Unmarshal(m, b)
 }
 func (m *Release) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Release.Marshal(b, m, deterministic)
 }
-func (dst *Release) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Release.Merge(dst, src)
+func (m *Release) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Release.Merge(m, src)
 }
 func (m *Release) XXX_Size() int {
 	return xxx_messageInfo_Release.Size(m)
@@ -128,9 +131,9 @@ func init() {
 	proto.RegisterType((*Release)(nil), "hapi.release.Release")
 }
 
-func init() { proto.RegisterFile("hapi/release/release.proto", fileDescriptor_release_4bea5d16ba219619) }
+func init() { proto.RegisterFile("hapi/release/release.proto", fileDescriptor_198f298b58c89a97) }
 
-var fileDescriptor_release_4bea5d16ba219619 = []byte{
+var fileDescriptor_198f298b58c89a97 = []byte{
 	// 256 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x64, 0x90, 0xbf, 0x4e, 0xc3, 0x40,
 	0x0c, 0xc6, 0x95, 0x36, 0x7f, 0x1a, 0xc3, 0x82, 0x07, 0xb0, 0x22, 0x86, 0x88, 0x01, 0x22, 0x86,

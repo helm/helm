@@ -3,10 +3,12 @@
 
 package release
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
-import timestamp "github.com/golang/protobuf/ptypes/timestamp"
+import (
+	fmt "fmt"
+	proto "github.com/golang/protobuf/proto"
+	timestamp "github.com/golang/protobuf/ptypes/timestamp"
+	math "math"
+)
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -17,7 +19,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 // TestSuite comprises of the last run of the pre-defined test suite of a release version
 type TestSuite struct {
@@ -36,16 +38,17 @@ func (m *TestSuite) Reset()         { *m = TestSuite{} }
 func (m *TestSuite) String() string { return proto.CompactTextString(m) }
 func (*TestSuite) ProtoMessage()    {}
 func (*TestSuite) Descriptor() ([]byte, []int) {
-	return fileDescriptor_test_suite_06a0016f2c6417b8, []int{0}
+	return fileDescriptor_b8997a3f965c8cc9, []int{0}
 }
+
 func (m *TestSuite) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TestSuite.Unmarshal(m, b)
 }
 func (m *TestSuite) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_TestSuite.Marshal(b, m, deterministic)
 }
-func (dst *TestSuite) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_TestSuite.Merge(dst, src)
+func (m *TestSuite) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_TestSuite.Merge(m, src)
 }
 func (m *TestSuite) XXX_Size() int {
 	return xxx_messageInfo_TestSuite.Size(m)
@@ -81,11 +84,9 @@ func init() {
 	proto.RegisterType((*TestSuite)(nil), "hapi.release.TestSuite")
 }
 
-func init() {
-	proto.RegisterFile("hapi/release/test_suite.proto", fileDescriptor_test_suite_06a0016f2c6417b8)
-}
+func init() { proto.RegisterFile("hapi/release/test_suite.proto", fileDescriptor_b8997a3f965c8cc9) }
 
-var fileDescriptor_test_suite_06a0016f2c6417b8 = []byte{
+var fileDescriptor_b8997a3f965c8cc9 = []byte{
 	// 207 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x8f, 0xc1, 0x4a, 0x86, 0x40,
 	0x14, 0x85, 0x31, 0x21, 0x71, 0x74, 0x35, 0x10, 0x88, 0x11, 0x49, 0x2b, 0x57, 0x33, 0x60, 0xab,

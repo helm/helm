@@ -16,7 +16,11 @@ limitations under the License.
 
 package version // import "k8s.io/helm/pkg/version"
 
-import "k8s.io/helm/pkg/proto/hapi/version"
+import (
+	"runtime"
+
+	"k8s.io/helm/pkg/proto/hapi/version"
+)
 
 var (
 	// Version is the current version of the Helm.
@@ -50,5 +54,6 @@ func GetVersionProto() *version.Version {
 		SemVer:       GetVersion(),
 		GitCommit:    GitCommit,
 		GitTreeState: GitTreeState,
+		GoVersion:    runtime.Version(),
 	}
 }

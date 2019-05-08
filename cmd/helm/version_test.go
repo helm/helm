@@ -30,8 +30,8 @@ import (
 func TestVersion(t *testing.T) {
 	lver := regexp.QuoteMeta(version.GetVersionProto().SemVer)
 	sver := regexp.QuoteMeta("1.2.3-fakeclient+testonly")
-	clientVersion := fmt.Sprintf("Client: &version\\.Version{SemVer:\"%s\", GitCommit:\"\", GitTreeState:\"\"}\n", lver)
-	serverVersion := fmt.Sprintf("Server: &version\\.Version{SemVer:\"%s\", GitCommit:\"\", GitTreeState:\"\"}\n", sver)
+	clientVersion := fmt.Sprintf("Client: &version\\.Version{SemVer:\"%s\", GitCommit:\"\", GitTreeState:\"\", GoVersion:\"\"}\n", lver)
+	serverVersion := fmt.Sprintf("Server: &version\\.Version{SemVer:\"%s\", GitCommit:\"\", GitTreeState:\"\", GoVersion:\"\"}\n", sver)
 
 	tests := []releaseCase{
 		{

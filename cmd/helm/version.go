@@ -18,6 +18,7 @@ package main
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 
@@ -37,8 +38,8 @@ Show the client and server versions for Helm and tiller.
 This will print a representation of the client and server versions of Helm and
 Tiller. The output will look something like this:
 
-Client: &version.Version{SemVer:"v2.0.0", GitCommit:"ff52399e51bb880526e9cd0ed8386f6433b74da1", GitTreeState:"clean"}
-Server: &version.Version{SemVer:"v2.0.0", GitCommit:"b0c113dfb9f612a9add796549da66c0d294508a3", GitTreeState:"clean"}
+Client: &version.Version{SemVer:"v2.0.0", GitCommit:"ff52399e51bb880526e9cd0ed8386f6433b74da1", GitTreeState:"clean", GoVersion: "1.12.5"}
+Server: &version.Version{SemVer:"v2.0.0", GitCommit:"b0c113dfb9f612a9add796549da66c0d294508a3", GitTreeState:"clean", GoVersion: "1.12.5"}
 
 - SemVer is the semantic version of the release.
 - GitCommit is the SHA for the commit that this version was built from.
@@ -151,5 +152,8 @@ func formatVersion(v *pb.Version, short bool) string {
 	if short && v.GitCommit != "" {
 		return fmt.Sprintf("%s+g%s", v.SemVer, v.GitCommit[:7])
 	}
-	return fmt.Sprintf("&version.Version{SemVer:\"%s\", GitCommit:\"%s\", GitTreeState:\"%s\"}", v.SemVer, v.GitCommit, v.GitTreeState)
+	if flag.Lookup("test.v") != nil {
+		v.GoVersion = ""
+	}
+	return fmt.Sprintf(`&version.Version{SemVer:"%s", GitCommit:"%s", GitTreeState:"%s", GoVersion:"%s"}`, v.SemVer, v.GitCommit, v.GitTreeState, v.GoVersion)
 }

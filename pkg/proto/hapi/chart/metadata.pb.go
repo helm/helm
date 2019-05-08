@@ -3,9 +3,11 @@
 
 package chart
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
+import (
+	fmt "fmt"
+	proto "github.com/golang/protobuf/proto"
+	math "math"
+)
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -16,7 +18,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 type Metadata_Engine int32
 
@@ -29,6 +31,7 @@ var Metadata_Engine_name = map[int32]string{
 	0: "UNKNOWN",
 	1: "GOTPL",
 }
+
 var Metadata_Engine_value = map[string]int32{
 	"UNKNOWN": 0,
 	"GOTPL":   1,
@@ -37,8 +40,9 @@ var Metadata_Engine_value = map[string]int32{
 func (x Metadata_Engine) String() string {
 	return proto.EnumName(Metadata_Engine_name, int32(x))
 }
+
 func (Metadata_Engine) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_metadata_d6c714c73a051dcb, []int{1, 0}
+	return fileDescriptor_f4b22e9a1e6f0bc4, []int{1, 0}
 }
 
 // Maintainer describes a Chart maintainer.
@@ -58,16 +62,17 @@ func (m *Maintainer) Reset()         { *m = Maintainer{} }
 func (m *Maintainer) String() string { return proto.CompactTextString(m) }
 func (*Maintainer) ProtoMessage()    {}
 func (*Maintainer) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metadata_d6c714c73a051dcb, []int{0}
+	return fileDescriptor_f4b22e9a1e6f0bc4, []int{0}
 }
+
 func (m *Maintainer) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Maintainer.Unmarshal(m, b)
 }
 func (m *Maintainer) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Maintainer.Marshal(b, m, deterministic)
 }
-func (dst *Maintainer) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Maintainer.Merge(dst, src)
+func (m *Maintainer) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Maintainer.Merge(m, src)
 }
 func (m *Maintainer) XXX_Size() int {
 	return xxx_messageInfo_Maintainer.Size(m)
@@ -99,7 +104,7 @@ func (m *Maintainer) GetUrl() string {
 	return ""
 }
 
-// 	Metadata for a Chart file. This models the structure of a Chart.yaml file.
+//	Metadata for a Chart file. This models the structure of a Chart.yaml file.
 //
 // 	Spec: https://k8s.io/helm/blob/master/docs/design/chart_format.md#the-chart-file
 type Metadata struct {
@@ -148,16 +153,17 @@ func (m *Metadata) Reset()         { *m = Metadata{} }
 func (m *Metadata) String() string { return proto.CompactTextString(m) }
 func (*Metadata) ProtoMessage()    {}
 func (*Metadata) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metadata_d6c714c73a051dcb, []int{1}
+	return fileDescriptor_f4b22e9a1e6f0bc4, []int{1}
 }
+
 func (m *Metadata) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Metadata.Unmarshal(m, b)
 }
 func (m *Metadata) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Metadata.Marshal(b, m, deterministic)
 }
-func (dst *Metadata) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Metadata.Merge(dst, src)
+func (m *Metadata) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Metadata.Merge(m, src)
 }
 func (m *Metadata) XXX_Size() int {
 	return xxx_messageInfo_Metadata.Size(m)
@@ -288,15 +294,15 @@ func (m *Metadata) GetKubeVersion() string {
 }
 
 func init() {
+	proto.RegisterEnum("hapi.chart.Metadata_Engine", Metadata_Engine_name, Metadata_Engine_value)
 	proto.RegisterType((*Maintainer)(nil), "hapi.chart.Maintainer")
 	proto.RegisterType((*Metadata)(nil), "hapi.chart.Metadata")
 	proto.RegisterMapType((map[string]string)(nil), "hapi.chart.Metadata.AnnotationsEntry")
-	proto.RegisterEnum("hapi.chart.Metadata_Engine", Metadata_Engine_name, Metadata_Engine_value)
 }
 
-func init() { proto.RegisterFile("hapi/chart/metadata.proto", fileDescriptor_metadata_d6c714c73a051dcb) }
+func init() { proto.RegisterFile("hapi/chart/metadata.proto", fileDescriptor_f4b22e9a1e6f0bc4) }
 
-var fileDescriptor_metadata_d6c714c73a051dcb = []byte{
+var fileDescriptor_f4b22e9a1e6f0bc4 = []byte{
 	// 435 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x6c, 0x52, 0x5d, 0x6b, 0xd4, 0x40,
 	0x14, 0x35, 0xcd, 0x66, 0x77, 0x73, 0x63, 0x35, 0x0e, 0x52, 0xc6, 0x22, 0x12, 0x16, 0x85, 0x7d,

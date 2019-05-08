@@ -3,10 +3,12 @@
 
 package release
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
-import timestamp "github.com/golang/protobuf/ptypes/timestamp"
+import (
+	fmt "fmt"
+	proto "github.com/golang/protobuf/proto"
+	timestamp "github.com/golang/protobuf/ptypes/timestamp"
+	math "math"
+)
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -17,7 +19,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 type TestRun_Status int32
 
@@ -34,6 +36,7 @@ var TestRun_Status_name = map[int32]string{
 	2: "FAILURE",
 	3: "RUNNING",
 }
+
 var TestRun_Status_value = map[string]int32{
 	"UNKNOWN": 0,
 	"SUCCESS": 1,
@@ -44,8 +47,9 @@ var TestRun_Status_value = map[string]int32{
 func (x TestRun_Status) String() string {
 	return proto.EnumName(TestRun_Status_name, int32(x))
 }
+
 func (TestRun_Status) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_test_run_31b133e40c63664e, []int{0, 0}
+	return fileDescriptor_942f1817aaf6a453, []int{0, 0}
 }
 
 type TestRun struct {
@@ -63,16 +67,17 @@ func (m *TestRun) Reset()         { *m = TestRun{} }
 func (m *TestRun) String() string { return proto.CompactTextString(m) }
 func (*TestRun) ProtoMessage()    {}
 func (*TestRun) Descriptor() ([]byte, []int) {
-	return fileDescriptor_test_run_31b133e40c63664e, []int{0}
+	return fileDescriptor_942f1817aaf6a453, []int{0}
 }
+
 func (m *TestRun) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TestRun.Unmarshal(m, b)
 }
 func (m *TestRun) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_TestRun.Marshal(b, m, deterministic)
 }
-func (dst *TestRun) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_TestRun.Merge(dst, src)
+func (m *TestRun) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_TestRun.Merge(m, src)
 }
 func (m *TestRun) XXX_Size() int {
 	return xxx_messageInfo_TestRun.Size(m)
@@ -119,15 +124,13 @@ func (m *TestRun) GetCompletedAt() *timestamp.Timestamp {
 }
 
 func init() {
-	proto.RegisterType((*TestRun)(nil), "hapi.release.TestRun")
 	proto.RegisterEnum("hapi.release.TestRun_Status", TestRun_Status_name, TestRun_Status_value)
+	proto.RegisterType((*TestRun)(nil), "hapi.release.TestRun")
 }
 
-func init() {
-	proto.RegisterFile("hapi/release/test_run.proto", fileDescriptor_test_run_31b133e40c63664e)
-}
+func init() { proto.RegisterFile("hapi/release/test_run.proto", fileDescriptor_942f1817aaf6a453) }
 
-var fileDescriptor_test_run_31b133e40c63664e = []byte{
+var fileDescriptor_942f1817aaf6a453 = []byte{
 	// 274 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x8f, 0xc1, 0x4b, 0xfb, 0x30,
 	0x1c, 0xc5, 0x7f, 0xe9, 0xf6, 0x6b, 0x69, 0x3a, 0xa4, 0xe4, 0x54, 0xa6, 0x60, 0xd9, 0xa9, 0xa7,

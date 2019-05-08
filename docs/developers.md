@@ -59,7 +59,7 @@ Helm and Tiller communicate using gRPC. To get started with gRPC, you will need 
 - Run Helm's `make bootstrap` to generate the `protoc-gen-go` plugin and
   place it in `bin/`.
 
-Note that you need to be on protobuf 3.2.0 (`protoc --version`). The
+Note that you need to be on protobuf 3.7.1 (`protoc --version`). The
 version of `protoc-gen-go` is tied to the version of gRPC used in
 Kubernetes. So the plugin is maintained locally.
 

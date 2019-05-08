@@ -3,10 +3,12 @@
 
 package chart
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
-import any "github.com/golang/protobuf/ptypes/any"
+import (
+	fmt "fmt"
+	proto "github.com/golang/protobuf/proto"
+	any "github.com/golang/protobuf/ptypes/any"
+	math "math"
+)
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -17,10 +19,10 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
-// 	Chart is a helm package that contains metadata, a default config, zero or more
-// 	optionally parameterizable templates, and zero or more charts (dependencies).
+//	Chart is a helm package that contains metadata, a default config, zero or more
+//	optionally parameterizable templates, and zero or more charts (dependencies).
 type Chart struct {
 	// Contents of the Chartfile.
 	Metadata *Metadata `protobuf:"bytes,1,opt,name=metadata,proto3" json:"metadata,omitempty"`
@@ -42,16 +44,17 @@ func (m *Chart) Reset()         { *m = Chart{} }
 func (m *Chart) String() string { return proto.CompactTextString(m) }
 func (*Chart) ProtoMessage()    {}
 func (*Chart) Descriptor() ([]byte, []int) {
-	return fileDescriptor_chart_829b474cf208a7f0, []int{0}
+	return fileDescriptor_2e2b98f51e5cac44, []int{0}
 }
+
 func (m *Chart) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Chart.Unmarshal(m, b)
 }
 func (m *Chart) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Chart.Marshal(b, m, deterministic)
 }
-func (dst *Chart) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Chart.Merge(dst, src)
+func (m *Chart) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Chart.Merge(m, src)
 }
 func (m *Chart) XXX_Size() int {
 	return xxx_messageInfo_Chart.Size(m)
@@ -101,9 +104,9 @@ func init() {
 	proto.RegisterType((*Chart)(nil), "hapi.chart.Chart")
 }
 
-func init() { proto.RegisterFile("hapi/chart/chart.proto", fileDescriptor_chart_829b474cf208a7f0) }
+func init() { proto.RegisterFile("hapi/chart/chart.proto", fileDescriptor_2e2b98f51e5cac44) }
 
-var fileDescriptor_chart_829b474cf208a7f0 = []byte{
+var fileDescriptor_2e2b98f51e5cac44 = []byte{
 	// 242 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x6c, 0x90, 0xb1, 0x4e, 0xc3, 0x30,
 	0x10, 0x86, 0x15, 0x4a, 0x0a, 0x1c, 0x2c, 0x58, 0x08, 0x4c, 0xa7, 0x8a, 0x09, 0x75, 0x70, 0x50,

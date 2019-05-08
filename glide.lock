@@ -1,5 +1,5 @@
-hash: 277f7be1b21149bc06b361fa61c0a2ff81a7f00c59a6e35c21b6516f6ddfd9f7
-updated: 2019-07-03T21:59:06.87934+02:00
+hash: 8a89cbe65f10f873765d634aa7fab15f08d0da63884933be0637f922d47c8648
+updated: 2019-07-23T16:29:30.944485-07:00
 imports:
 - name: cloud.google.com/go
   version: 0ebda48a7f143b1cce9eb37a8c1106ac762a3430
@@ -101,7 +101,7 @@ imports:
   subpackages:
   - lru
 - name: github.com/golang/protobuf
-  version: aa810b61a9c79d51363740d207bb46cf8e620ed5
+  version: 6c65a5562fc06764971b7c5d05c76c75e84bdbf7
   subpackages:
   - proto
   - ptypes

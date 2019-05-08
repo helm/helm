@@ -3,10 +3,12 @@
 
 package release
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
-import timestamp "github.com/golang/protobuf/ptypes/timestamp"
+import (
+	fmt "fmt"
+	proto "github.com/golang/protobuf/proto"
+	timestamp "github.com/golang/protobuf/ptypes/timestamp"
+	math "math"
+)
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -17,7 +19,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 type Hook_Event int32
 
@@ -50,6 +52,7 @@ var Hook_Event_name = map[int32]string{
 	10: "RELEASE_TEST_FAILURE",
 	11: "CRD_INSTALL",
 }
+
 var Hook_Event_value = map[string]int32{
 	"UNKNOWN":              0,
 	"PRE_INSTALL":          1,
@@ -68,8 +71,9 @@ var Hook_Event_value = map[string]int32{
 func (x Hook_Event) String() string {
 	return proto.EnumName(Hook_Event_name, int32(x))
 }
+
 func (Hook_Event) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_hook_e64400ca8195038e, []int{0, 0}
+	return fileDescriptor_6c093be892ebf042, []int{0, 0}
 }
 
 type Hook_DeletePolicy int32
@@ -85,6 +89,7 @@ var Hook_DeletePolicy_name = map[int32]string{
 	1: "FAILED",
 	2: "BEFORE_HOOK_CREATION",
 }
+
 var Hook_DeletePolicy_value = map[string]int32{
 	"SUCCEEDED":            0,
 	"FAILED":               1,
@@ -94,8 +99,9 @@ var Hook_DeletePolicy_value = map[string]int32{
 func (x Hook_DeletePolicy) String() string {
 	return proto.EnumName(Hook_DeletePolicy_name, int32(x))
 }
+
 func (Hook_DeletePolicy) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_hook_e64400ca8195038e, []int{0, 1}
+	return fileDescriptor_6c093be892ebf042, []int{0, 1}
 }
 
 // Hook defines a hook object.
@@ -126,16 +132,17 @@ func (m *Hook) Reset()         { *m = Hook{} }
 func (m *Hook) String() string { return proto.CompactTextString(m) }
 func (*Hook) ProtoMessage()    {}
 func (*Hook) Descriptor() ([]byte, []int) {
-	return fileDescriptor_hook_e64400ca8195038e, []int{0}
+	return fileDescriptor_6c093be892ebf042, []int{0}
 }
+
 func (m *Hook) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Hook.Unmarshal(m, b)
 }
 func (m *Hook) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Hook.Marshal(b, m, deterministic)
 }
-func (dst *Hook) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Hook.Merge(dst, src)
+func (m *Hook) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Hook.Merge(m, src)
 }
 func (m *Hook) XXX_Size() int {
 	return xxx_messageInfo_Hook.Size(m)
@@ -210,14 +217,14 @@ func (m *Hook) GetDeleteTimeout() int64 {
 }
 
 func init() {
-	proto.RegisterType((*Hook)(nil), "hapi.release.Hook")
 	proto.RegisterEnum("hapi.release.Hook_Event", Hook_Event_name, Hook_Event_value)
 	proto.RegisterEnum("hapi.release.Hook_DeletePolicy", Hook_DeletePolicy_name, Hook_DeletePolicy_value)
+	proto.RegisterType((*Hook)(nil), "hapi.release.Hook")
 }
 
-func init() { proto.RegisterFile("hapi/release/hook.proto", fileDescriptor_hook_e64400ca8195038e) }
+func init() { proto.RegisterFile("hapi/release/hook.proto", fileDescriptor_6c093be892ebf042) }
 
-var fileDescriptor_hook_e64400ca8195038e = []byte{
+var fileDescriptor_6c093be892ebf042 = []byte{
 	// 473 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x6c, 0x91, 0xdb, 0x8e, 0xda, 0x3c,
 	0x10, 0x80, 0x37, 0x1c, 0x02, 0x0c, 0x87, 0xf5, 0x6f, 0xfd, 0x6a, 0x2d, 0x6e, 0x16, 0x21, 0x55,
