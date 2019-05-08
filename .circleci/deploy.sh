@@ -20,8 +20,8 @@ if [[ -n "${CIRCLE_PR_NUMBER:-}" ]]; then
   exit
 fi
 
-: ${GCLOUD_SERVICE_KEY:?"GCLOUD_SERVICE_KEY environment variable is not set"}
-: ${PROJECT_NAME:?"PROJECT_NAME environment variable is not set"}
+: ${AZURE_STORAGE_CONNECTION_STRING:?"AZURE_STORAGE_CONNECTION_STRING environment variable is not set"}
+: ${AZURE_STORAGE_CONTAINER_NAME:?"AZURE_STORAGE_CONTAINER_NAME environment variable is not set"}
 
 VERSION=
 if [[ -n "${CIRCLE_TAG:-}" ]]; then
@@ -35,19 +35,17 @@ else
   exit
 fi
 
-echo "Install gcloud components"
-export CLOUDSDK_CORE_DISABLE_PROMPTS=1
-curl https://sdk.cloud.google.com | bash
-${HOME}/google-cloud-sdk/bin/gcloud --quiet components update
+echo "Installing Azure CLI"
+AZURE_REPO=$(lsb_release -cs)
+echo “deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ $AZURE_REPO main” | tee /etc/apt/sources.list.d/azure-cli.list
+curl -L https://packages.microsoft.com/keys/microsoft.asc | apt-key add –
+apt install apt-transport-https
+apt update && apt install azure-cli
 
-echo "Configuring gcloud authentication"
-echo "${GCLOUD_SERVICE_KEY}" | base64 --decode >"${HOME}/gcloud-service-key.json"
-${HOME}/google-cloud-sdk/bin/gcloud auth activate-service-account --key-file "${HOME}/gcloud-service-key.json"
-${HOME}/google-cloud-sdk/bin/gcloud config set project "${PROJECT_NAME}"
 
 echo "Building helm binaries"
 make build-cross
 make dist checksum VERSION="${VERSION}"
 
-echo "Pushing binaries to gs bucket"
-${HOME}/google-cloud-sdk/bin/gsutil cp ./_dist/* "gs://${PROJECT_NAME}"
+echo "Pushing binaries to Azure"
+az storage blob upload-batch -s _dist/ -d "$AZURE_STORAGE_CONTAINER_NAME" --connection-string "$AZURE_STORAGE_CONNECTION_STRING"

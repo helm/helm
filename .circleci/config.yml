@@ -9,7 +9,6 @@ jobs:
       - image: circleci/golang:1.12
 
     environment:
-      - PROJECT_NAME: "kubernetes-helm"
       - GOCACHE: "/tmp/go/cache"
 
     steps:
