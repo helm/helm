@@ -174,8 +174,8 @@ func TestRepoAddConcurrentSubProcesses(t *testing.T) {
 		}
 
 		var wg sync.WaitGroup
-		wg.Add(3)
-		for i := 0; i < 3; i++ {
+		wg.Add(2)
+		for i := 0; i < 2; i++ {
 			go func(name string) {
 				defer wg.Done()
 
@@ -195,7 +195,7 @@ func TestRepoAddConcurrentSubProcesses(t *testing.T) {
 		}
 
 		var name string
-		for i := 0; i < 3; i++ {
+		for i := 0; i < 2; i++ {
 			name = fmt.Sprintf("%s-%d", testName, i)
 			if !f.Has(name) {
 				t.Errorf("%s was not successfully inserted into %s", name, settings.Home.RepositoryFile())
