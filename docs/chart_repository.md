@@ -182,6 +182,10 @@ Charts repository hosts its charts, so you may want to take a
 You can also set up chart repositories using JFrog Artifactory.
 Read more about chart repositories with JFrog Artifactory [here](https://www.jfrog.com/confluence/display/RTF/Helm+Chart+Repositories)
 
+### ProGet
+
+Helm chart repositories are supported by ProGet. For more information, visit the [Helm repository documentation](https://inedo.com/support/documentation/proget/feeds/helm) on the Inedo website.
+
 ### Github Pages example
 
 In a similar way you can create charts repository using GitHub Pages.
