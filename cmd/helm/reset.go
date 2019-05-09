@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -59,7 +60,11 @@ func newResetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 		Short: "uninstalls Tiller from a cluster",
 		Long:  resetDesc,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := setupConnection(); !d.force && err != nil {
+			err := setupConnection()
+			if !d.force && err != nil {
+				return err
+			}
+			if d.force && err != nil && strings.EqualFold(err.Error(), "could not find tiller") {
 				return err
 			}
 			return nil

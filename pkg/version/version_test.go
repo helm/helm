@@ -39,9 +39,17 @@ func TestGetVersionProto(t *testing.T) {
 		BuildMetadata = tt.buildMetadata
 		GitCommit = tt.gitCommit
 		GitTreeState = tt.gitTreeState
-		if versionProto := GetVersionProto(); *versionProto != tt.expected {
-			t.Errorf("expected Semver(%s), GitCommit(%s) and GitTreeState(%s) to be %v", tt.expected, tt.gitCommit, tt.gitTreeState, *versionProto)
+		if versionProto := GetVersionProto(); !versionEqual(*versionProto, tt.expected) {
+			t.Errorf("expected Semver(%s+%s), GitCommit(%s) and GitTreeState(%s) to be %v", tt.version, tt.buildMetadata, tt.gitCommit, tt.gitTreeState, *versionProto)
 		}
 	}
+}
 
+func versionEqual(v1 version.Version, v2 version.Version) bool {
+	if v1.SemVer != v2.SemVer ||
+		v1.GitCommit != v2.GitCommit ||
+		v1.GitTreeState != v2.GitTreeState {
+		return false
+	}
+	return true
 }
