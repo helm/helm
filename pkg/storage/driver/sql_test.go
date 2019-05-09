@@ -18,7 +18,6 @@ package driver
 
 import (
 	"fmt"
-	"reflect"
 	"regexp"
 	"testing"
 	"time"
@@ -41,7 +40,10 @@ func TestSQLGet(t *testing.T) {
 	key := testKey(name, vers)
 	rel := releaseStub(name, vers, namespace, rspb.Status_DEPLOYED)
 
-	body, _ := encodeRelease(rel)
+	body, err := encodeRelease(rel)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	sqlDriver, mock := newTestFixtureSQL(t)
 	mock.
@@ -60,7 +62,7 @@ func TestSQLGet(t *testing.T) {
 		t.Fatalf("Failed to get release: %v", err)
 	}
 
-	if !reflect.DeepEqual(rel, got) {
+	if !shallowReleaseEqual(rel, got) {
 		t.Errorf("Expected release {%q}, got {%q}", rel, got)
 	}
 
@@ -275,7 +277,7 @@ func TestSqlQuery(t *testing.T) {
 	}
 
 	for _, res := range results {
-		if !reflect.DeepEqual(res, deployedRelease) {
+		if !shallowReleaseEqual(res, deployedRelease) {
 			t.Errorf("Expected release {%q}, got {%q}", deployedRelease, res)
 		}
 	}
@@ -290,7 +292,7 @@ func TestSqlQuery(t *testing.T) {
 	}
 
 	for _, res := range results {
-		if !reflect.DeepEqual(res, deployedRelease) && !reflect.DeepEqual(res, supersededRelease) {
+		if !shallowReleaseEqual(res, deployedRelease) && !shallowReleaseEqual(res, supersededRelease) {
 			t.Errorf("Expected release {%q} or {%q}, got {%q}", deployedRelease, supersededRelease, res)
 		}
 	}
@@ -334,7 +336,7 @@ func TestSqlDelete(t *testing.T) {
 		t.Fatalf("failed to delete release with key %q: %v", key, err)
 	}
 
-	if !reflect.DeepEqual(rel, deletedRelease) {
+	if !shallowReleaseEqual(rel, deletedRelease) {
 		t.Errorf("Expected release {%q}, got {%q}", rel, deletedRelease)
 	}
 
