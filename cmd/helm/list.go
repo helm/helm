@@ -137,7 +137,7 @@ func newListCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.UintVar(&list.colWidth, "col-width", 60, "specifies the max column width of output")
 	f.StringVar(&list.output, "output", "", "output the specified format (json or yaml)")
 	f.BoolVarP(&list.byChartName, "chart-name", "c", false, "sort by chart name")
-	f.BoolVarP(&list.byNamespace, "namespace-name", "n", false, "sort by namespace name")
+	f.BoolVarP(&list.byNamespace, "namespace-name", "n", false, "sort by release's namespace name")
 
 	// TODO: Do we want this as a feature of 'helm list'?
 	//f.BoolVar(&list.superseded, "history", true, "show historical releases")
