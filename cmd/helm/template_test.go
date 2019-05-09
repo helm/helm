@@ -46,6 +46,12 @@ func TestTemplateCmd(t *testing.T) {
 		expectError string
 	}{
 		{
+			name:        "check_negative_test",
+			desc:        "run a negative check to test verification failures",
+			args:        []string{subchart1ChartPath, "--test-outfile", filepath.Join(fixtureAbsPath, "subpop_fail_service.yaml")},
+			expectError: "verification failed",
+		},
+		{
 			name:        "check_name",
 			desc:        "check for a known name in chart",
 			args:        []string{subchart1ChartPath, "--test-outfile", filepath.Join(fixtureAbsPath, "subpop_service.yaml")},
@@ -62,6 +68,12 @@ func TestTemplateCmd(t *testing.T) {
 			desc:        "verify --execute fails on a template that doesn't exist",
 			args:        []string{subchart1ChartPath, "-x", "templates/thisdoesn'texist.yaml"},
 			expectError: "could not find template",
+		},
+		{
+			name:        "check_execute_non_existent_outfile",
+			desc:        "verify --execute fails on a test file which doesn't exist",
+			args:        []string{subchart1ChartPath, "--test-outfile", filepath.Join(fixtureAbsPath, "does_not_exist.yaml")},
+			expectError: "does not exist",
 		},
 		{
 			name:        "check_execute_absolute",
