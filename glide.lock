@@ -1,5 +1,5 @@
 hash: d92d7faee5c7ecbb241dadcd993e5dd8dfba226739d20d97fabf23168613f3ac
-updated: 2019-04-16T15:32:58.609105-07:00
+updated: 2019-05-05T14:40:30.1915213-04:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -647,7 +647,7 @@ imports:
   - pkg/util/proto/testing
   - pkg/util/proto/validation
 - name: k8s.io/kubernetes
-  version: 3c949c7d419670cd99fe92f60e6f4d251898bdf2
+  version: ebf834b43496a45c6a28552d91c12e4a230e8bc9
   subpackages:
   - pkg/api/legacyscheme
   - pkg/api/service
