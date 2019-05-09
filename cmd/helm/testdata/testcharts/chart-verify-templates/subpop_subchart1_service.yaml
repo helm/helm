@@ -1,0 +1,24 @@
+---
+# Source: subchart1/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: subchart1
+  labels:
+    chart: "subchart1-0.1.0"
+    namespace: "jx"
+    release-name: "release-name"
+    release-is-upgrade: "false"
+    release-is-install: "true"
+    kube-version/major: "1"
+    kube-version/minor: "9"
+    kube-version/gitversion: "v1.9.0"
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: apache
+  selector:
+    app: subchart1

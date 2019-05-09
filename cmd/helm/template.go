@@ -17,9 +17,13 @@ limitations under the License.
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
+	"github.com/ghodss/yaml"
 	"io"
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -28,7 +32,6 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/manifest"
@@ -76,6 +79,7 @@ type templateCmd struct {
 	renderFiles      []string
 	kubeVersion      string
 	outputDir        string
+	testOutputFile    string
 }
 
 func newTemplateCmd(out io.Writer) *cobra.Command {
@@ -104,6 +108,7 @@ func newTemplateCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&t.nameTemplate, "name-template", "", "specify template used to name the release")
 	f.StringVar(&t.kubeVersion, "kube-version", defaultKubeVersion, "kubernetes version used as Capabilities.KubeVersion.Major/Minor")
 	f.StringVar(&t.outputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
+	f.StringVar(&t.testOutputFile, "test-outfile", "", "compares the output against a given file for pass/fail verification")
 
 	return cmd
 }
@@ -119,6 +124,28 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 		}
 	} else {
 		return err
+	}
+
+	// cannot use output-dir if test-outfile provided
+	if t.outputDir != "" && t.testOutputFile != "" {
+		return errors.New("output-dir cannot be used in conjunction with test-outfile")
+	}
+
+	// if test-outfile is provided
+	if t.testOutputFile != "" {
+		// convert test-outfile to absolute path
+		if !filepath.IsAbs(t.testOutputFile) {
+			absTestOutputFile, err := filepath.Abs(t.testOutputFile)
+			if err != nil {
+				return fmt.Errorf("could not turn test-outfile path %s into absolute path: %s", t.testOutputFile, err)
+			}
+			t.testOutputFile = absTestOutputFile
+		}
+		// verify that test-outfile exists if provided
+		_, err := os.Stat(t.testOutputFile)
+		if os.IsNotExist(err) {
+			return fmt.Errorf("test-outfile '%s' does not exist", t.testOutputFile)
+		}
 	}
 
 	// verify that output-dir exists if provided
@@ -226,6 +253,7 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 		manifestsToRender = listManifests
 	}
 
+	var sb strings.Builder
 	for _, m := range tiller.SortByKind(manifestsToRender) {
 		data := m.Content
 		b := filepath.Base(m.Name)
@@ -247,8 +275,31 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 			}
 			continue
 		}
-		fmt.Printf("---\n# Source: %s\n", m.Name)
-		fmt.Println(data)
+
+		if t.testOutputFile != "" {
+			sb.WriteString(fmt.Sprintf("---\n# Source: %s\n", m.Name))
+			sb.WriteString(data)
+		} else {
+			fmt.Printf("---\n# Source: %s\n", m.Name)
+			fmt.Println(data)
+		}
+	}
+
+	if t.testOutputFile != "" {
+		testOutputFile, err := readTestOutputFile(t.testOutputFile)
+		if err != nil {
+			return err
+		}
+		expected := normalizeOutput(testOutputFile)
+		actual := normalizeOutput(sb.String())
+
+		if expected == actual {
+			fmt.Println("verification passed")
+			fmt.Println(sb.String())
+		} else {
+			return fmt.Errorf("verification failed\n%s", sb.String())
+			fmt.Println(sb.String())
+		}
 	}
 	return nil
 }
@@ -288,4 +339,58 @@ func ensureDirectoryForFile(file string) error {
 	}
 
 	return os.MkdirAll(baseDir, defaultDirectoryPermission)
+}
+
+// read the test output file from disk
+func readTestOutputFile(file string) (string, error) {
+	expectedAbsValue, err := filepath.Abs(file)
+	expectedFile, err := ioutil.ReadFile(expectedAbsValue)
+	if err != nil {
+		return "", err
+	}
+	expectedValue := string(expectedFile)
+	return expectedValue, nil
+}
+
+// marshal and unmarshal the string to ease yaml comparison
+func normalizeOutput(o string) string {
+	f := removeNewlineSuffix(o)
+	m := scanIntoMap(f)
+	yaml := mapToYaml(m)
+	return yaml
+}
+
+// remove all trailing newlines to ease string comparisons
+func removeNewlineSuffix(y string) string {
+	if strings.HasSuffix(y, "\n"){
+		y = strings.TrimSuffix(y, "\n")
+		y = removeNewlineSuffix(y)
+	}
+	return y
+}
+
+// convert map[string]string to yaml
+func mapToYaml(m map[string]string) string {
+	yml, err := yaml.Marshal(m)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+	}
+	val := string(yml)
+	return val
+}
+
+// convert yaml to map[string]string
+func scanIntoMap(yaml string) map[string]string {
+	b := bytes.NewBuffer([]byte(yaml))
+	// scan yaml into map[<path>]yaml
+	scanner := bufio.NewScanner(b)
+	lastKey := ""
+	m := map[string]string{}
+	for scanner.Scan() {
+		m[lastKey] = m[lastKey] + scanner.Text() + "\n"
+	}
+	if err := scanner.Err(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+	}
+	return m
 }
