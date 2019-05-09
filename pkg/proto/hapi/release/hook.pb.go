@@ -69,7 +69,7 @@ func (x Hook_Event) String() string {
 	return proto.EnumName(Hook_Event_name, int32(x))
 }
 func (Hook_Event) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_hook_8076b1a80af16030, []int{0, 0}
+	return fileDescriptor_hook_92afaa0d55ac2c11, []int{0, 0}
 }
 
 type Hook_DeletePolicy int32
@@ -95,7 +95,7 @@ func (x Hook_DeletePolicy) String() string {
 	return proto.EnumName(Hook_DeletePolicy_name, int32(x))
 }
 func (Hook_DeletePolicy) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_hook_8076b1a80af16030, []int{0, 1}
+	return fileDescriptor_hook_92afaa0d55ac2c11, []int{0, 1}
 }
 
 // Hook defines a hook object.
@@ -124,7 +124,7 @@ func (m *Hook) Reset()         { *m = Hook{} }
 func (m *Hook) String() string { return proto.CompactTextString(m) }
 func (*Hook) ProtoMessage()    {}
 func (*Hook) Descriptor() ([]byte, []int) {
-	return fileDescriptor_hook_8076b1a80af16030, []int{0}
+	return fileDescriptor_hook_92afaa0d55ac2c11, []int{0}
 }
 func (m *Hook) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Hook.Unmarshal(m, b)
@@ -206,9 +206,9 @@ func init() {
 	proto.RegisterEnum("hapi.release.Hook_DeletePolicy", Hook_DeletePolicy_name, Hook_DeletePolicy_value)
 }
 
-func init() { proto.RegisterFile("hapi/release/hook.proto", fileDescriptor_hook_8076b1a80af16030) }
+func init() { proto.RegisterFile("hapi/release/hook.proto", fileDescriptor_hook_92afaa0d55ac2c11) }
 
-var fileDescriptor_hook_8076b1a80af16030 = []byte{
+var fileDescriptor_hook_92afaa0d55ac2c11 = []byte{
 	// 453 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x6c, 0x91, 0x51, 0x8f, 0x9a, 0x40,
 	0x10, 0x80, 0x8f, 0x53, 0x41, 0x47, 0xcf, 0xdb, 0x6e, 0x9a, 0x76, 0xe3, 0xcb, 0x19, 0x9f, 0x7c,
