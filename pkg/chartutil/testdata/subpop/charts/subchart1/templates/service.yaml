@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/instance: "{{ .Release.Name }}"
     kube-version/major: "{{ .Capabilities.KubeVersion.Major }}"
     kube-version/minor: "{{ .Capabilities.KubeVersion.Minor }}"
-    kube-version/gitversion: "v{{ .Capabilities.KubeVersion.Major }}.{{ .Capabilities.KubeVersion.Minor }}.0"
+    kube-version/version: "v{{ .Capabilities.KubeVersion.Major }}.{{ .Capabilities.KubeVersion.Minor }}.0"
 spec:
   type: {{ .Values.service.type }}
   ports:

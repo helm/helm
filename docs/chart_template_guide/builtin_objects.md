@@ -19,7 +19,10 @@ In the previous section, we use `{{.Release.Name}}` to insert the name of a rele
 - `Capabilities`: This provides information about what capabilities the Kubernetes cluster supports.
   - `Capabilities.APIVersions` is a set of versions.
   - `Capabilities.APIVersions.Has $version` indicates whether a version (`batch/v1`) is enabled on the cluster.
-  - `Capabilities.KubeVersion` provides a way to look up the Kubernetes version. It has the following values: `Major`, `Minor`, `GitVersion`, `GitCommit`, `GitTreeState`, `BuildDate`, `GoVersion`, `Compiler`, and `Platform`.
+  - `Capabilities.Kube.Version` is the Kubernetes version.
+  - `Capabilities.Kube` is a short form for Kubernetes version.
+  - `Capabilities.Kube.Major` is the Kubernetes major version.
+  - `Capabilities.Kube.Minor` is the Kubernetes minor version.
 - `Template`: Contains information about the current template that is being executed
   - `Name`: A namespaced filepath to the current template (e.g. `mychart/templates/mytemplate.yaml`)
   - `BasePath`: The namespaced path to the templates directory of the current chart (e.g. `mychart/templates`).

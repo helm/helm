@@ -304,10 +304,8 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 	}
 
 	if ch.Metadata.KubeVersion != "" {
-		gitVersion := caps.KubeVersion.String()
-		k8sVersion := strings.Split(gitVersion, "+")[0]
-		if !version.IsCompatibleRange(ch.Metadata.KubeVersion, k8sVersion) {
-			return hs, b, "", errors.Errorf("chart requires kubernetesVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, k8sVersion)
+		if !version.IsCompatibleRange(ch.Metadata.KubeVersion, caps.KubeVersion.String()) {
+			return hs, b, "", errors.Errorf("chart requires kubernetesVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, caps.KubeVersion.String())
 		}
 	}
 

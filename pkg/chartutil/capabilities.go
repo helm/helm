@@ -16,13 +16,6 @@ limitations under the License.
 package chartutil
 
 import (
-	"encoding/json"
-	"fmt"
-	"runtime"
-	"sort"
-
-	"k8s.io/apimachinery/pkg/version"
-
 	"k8s.io/client-go/kubernetes/scheme"
 )
 
@@ -30,75 +23,60 @@ var (
 	// DefaultVersionSet is the default version set, which includes only Core V1 ("v1").
 	DefaultVersionSet = allKnownVersions()
 
-	// DefaultKubeVersion is the default kubernetes version
-	DefaultKubeVersion = &version.Info{
-		Major:      "1",
-		Minor:      "9",
-		GitVersion: "v1.9.0",
-		GoVersion:  runtime.Version(),
-		Compiler:   runtime.Compiler,
-		Platform:   fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
-	}
-
 	// DefaultCapabilities is the default set of capabilities.
 	DefaultCapabilities = &Capabilities{
+		KubeVersion: KubeVersion{
+			Version: "v1.14.0",
+			Major:   "1",
+			Minor:   "14",
+		},
 		APIVersions: DefaultVersionSet,
-		KubeVersion: DefaultKubeVersion,
 	}
 )
 
-// Capabilities describes the capabilities of the Kubernetes cluster that Tiller is attached to.
+// Capabilities describes the capabilities of the Kubernetes cluster.
 type Capabilities struct {
-	// List of all supported API versions
+	// KubeVersion is the Kubernetes version.
+	KubeVersion KubeVersion
+	// APIversions are supported Kubernetes API versions.
 	APIVersions VersionSet
-	// KubeVerison is the Kubernetes version
-	KubeVersion *version.Info
 }
+
+// KubeVersion is the Kubernetes version.
+type KubeVersion struct {
+	Version string // Kubernetes version
+	Major   string // Kubernetes major version
+	Minor   string // Kubernetes minor version
+}
+
+// String implements fmt.Stringer
+func (kv *KubeVersion) String() string { return kv.Version }
+
+// GitVersion returns the Kubernetes version string.
+//
+// Deprecated: use KubeVersion.Version.
+func (kv *KubeVersion) GitVersion() string { return kv.Version }
 
 // VersionSet is a set of Kubernetes API versions.
-type VersionSet map[string]struct{}
-
-// NewVersionSet creates a new version set from a list of strings.
-func NewVersionSet(apiVersions ...string) VersionSet {
-	vs := make(VersionSet)
-	for _, v := range apiVersions {
-		vs[v] = struct{}{}
-	}
-	return vs
-}
+type VersionSet []string
 
 // Has returns true if the version string is in the set.
 //
 //	vs.Has("apps/v1")
 func (v VersionSet) Has(apiVersion string) bool {
-	_, ok := v[apiVersion]
-	return ok
+	for _, x := range v {
+		if x == apiVersion {
+			return true
+		}
+	}
+	return false
 }
 
 func allKnownVersions() VersionSet {
-	vs := make(VersionSet)
-	for _, gv := range scheme.Scheme.PrioritizedVersionsAllGroups() {
-		vs[gv.String()] = struct{}{}
+	groups := scheme.Scheme.PrioritizedVersionsAllGroups()
+	vs := make(VersionSet, 0, len(groups))
+	for _, gv := range groups {
+		vs = append(vs, gv.String())
 	}
 	return vs
-}
-
-// MarshalJSON implements the encoding/json.Marshaler interface.
-func (v VersionSet) MarshalJSON() ([]byte, error) {
-	out := make([]string, 0, len(v))
-	for i := range v {
-		out = append(out, i)
-	}
-	sort.Strings(out)
-	return json.Marshal(out)
-}
-
-// UnmarshalJSON implements the encoding/json.Unmarshaler interface.
-func (v *VersionSet) UnmarshalJSON(data []byte) error {
-	var vs []string
-	if err := json.Unmarshal(data, &vs); err != nil {
-		return err
-	}
-	*v = NewVersionSet(vs...)
-	return nil
 }
