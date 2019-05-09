@@ -74,7 +74,7 @@ type Install struct {
 	Wait             bool
 	Devel            bool
 	DependencyUpdate bool
-	Timeout          int64
+	Timeout          time.Duration
 	Namespace        string
 	ReleaseName      string
 	GenerateName     bool
@@ -184,10 +184,19 @@ func (i *Install) Run(chrt *chart.Chart) (*release.Release, error) {
 	// do an update, but it's not clear whether we WANT to do an update if the re-use is set
 	// to true, since that is basically an upgrade operation.
 	buf := bytes.NewBufferString(rel.Manifest)
-	if err := i.cfg.KubeClient.Create(i.Namespace, buf, i.Timeout, i.Wait); err != nil {
+	if err := i.cfg.KubeClient.Create(buf); err != nil {
 		rel.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", i.ReleaseName, err.Error()))
 		i.recordRelease(rel) // Ignore the error, since we have another error to deal with.
 		return rel, errors.Wrapf(err, "release %s failed", i.ReleaseName)
+	}
+
+	if i.Wait {
+		if err := i.cfg.KubeClient.Wait(buf, i.Timeout); err != nil {
+			rel.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", i.ReleaseName, err.Error()))
+			i.recordRelease(rel) // Ignore the error, since we have another error to deal with.
+			return rel, errors.Wrapf(err, "release %s failed", i.ReleaseName)
+		}
+
 	}
 
 	if !i.DisableHooks {
@@ -360,15 +369,12 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 
 // validateManifest checks to see whether the given manifest is valid for the current Kubernetes
 func (i *Install) validateManifest(manifest io.Reader) error {
-	_, err := i.cfg.KubeClient.BuildUnstructured(i.Namespace, manifest)
+	_, err := i.cfg.KubeClient.BuildUnstructured(manifest)
 	return err
 }
 
 // execHook executes all of the hooks for the given hook event.
 func (i *Install) execHook(hs []*release.Hook, hook string) error {
-	name := i.ReleaseName
-	namespace := i.Namespace
-	timeout := i.Timeout
 	executingHooks := []*release.Hook{}
 
 	for _, h := range hs {
@@ -382,21 +388,21 @@ func (i *Install) execHook(hs []*release.Hook, hook string) error {
 	sort.Sort(hookByWeight(executingHooks))
 
 	for _, h := range executingHooks {
-		if err := deleteHookByPolicy(i.cfg, i.Namespace, h, hooks.BeforeHookCreation, hook); err != nil {
+		if err := deleteHookByPolicy(i.cfg, h, hooks.BeforeHookCreation); err != nil {
 			return err
 		}
 
 		b := bytes.NewBufferString(h.Manifest)
-		if err := i.cfg.KubeClient.Create(namespace, b, timeout, false); err != nil {
-			return errors.Wrapf(err, "warning: Release %s %s %s failed", name, hook, h.Path)
+		if err := i.cfg.KubeClient.Create(b); err != nil {
+			return errors.Wrapf(err, "warning: Release %s %s %s failed", i.ReleaseName, hook, h.Path)
 		}
 		b.Reset()
 		b.WriteString(h.Manifest)
 
-		if err := i.cfg.KubeClient.WatchUntilReady(namespace, b, timeout, false); err != nil {
+		if err := i.cfg.KubeClient.WatchUntilReady(b, i.Timeout); err != nil {
 			// If a hook is failed, checkout the annotation of the hook to determine whether the hook should be deleted
 			// under failed condition. If so, then clear the corresponding resource object in the hook
-			if err := deleteHookByPolicy(i.cfg, i.Namespace, h, hooks.HookFailed, hook); err != nil {
+			if err := deleteHookByPolicy(i.cfg, h, hooks.HookFailed); err != nil {
 				return err
 			}
 			return err
@@ -406,7 +412,7 @@ func (i *Install) execHook(hs []*release.Hook, hook string) error {
 	// If all hooks are succeeded, checkout the annotation of each hook to determine whether the hook should be deleted
 	// under succeeded condition. If so, then clear the corresponding resource object in each hook
 	for _, h := range executingHooks {
-		if err := deleteHookByPolicy(i.cfg, i.Namespace, h, hooks.HookSucceeded, hook); err != nil {
+		if err := deleteHookByPolicy(i.cfg, h, hooks.HookSucceeded); err != nil {
 			return err
 		}
 		h.LastRun = time.Now()

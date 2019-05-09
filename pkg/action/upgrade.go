@@ -43,7 +43,7 @@ type Upgrade struct {
 	Install   bool
 	Devel     bool
 	Namespace string
-	Timeout   int64
+	Timeout   time.Duration
 	Wait      bool
 	// Values is a string containing (unparsed) YAML values.
 	Values       map[string]interface{}
@@ -183,7 +183,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart) (*release.Rele
 	if len(notesTxt) > 0 {
 		upgradedRelease.Info.Notes = notesTxt
 	}
-	err = validateManifest(u.cfg.KubeClient, currentRelease.Namespace, manifestDoc.Bytes())
+	err = validateManifest(u.cfg.KubeClient, manifestDoc.Bytes())
 	return currentRelease, upgradedRelease, err
 }
 
@@ -232,7 +232,8 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 func (u *Upgrade) upgradeRelease(current, target *release.Release) error {
 	cm := bytes.NewBufferString(current.Manifest)
 	tm := bytes.NewBufferString(target.Manifest)
-	return u.cfg.KubeClient.Update(target.Namespace, cm, tm, u.Force, u.Recreate, u.Timeout, u.Wait)
+	// TODO add wait
+	return u.cfg.KubeClient.Update(cm, tm, u.Force, u.Recreate)
 }
 
 // reuseValues copies values from the current release to a new release if the
@@ -274,8 +275,8 @@ func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release) erro
 	return nil
 }
 
-func validateManifest(c kube.KubernetesClient, ns string, manifest []byte) error {
-	_, err := c.BuildUnstructured(ns, bytes.NewReader(manifest))
+func validateManifest(c kube.KubernetesClient, manifest []byte) error {
+	_, err := c.BuildUnstructured(bytes.NewReader(manifest))
 	return err
 }
 
@@ -295,21 +296,21 @@ func (u *Upgrade) execHook(hs []*release.Hook, hook string) error {
 	sort.Sort(hookByWeight(executingHooks))
 
 	for _, h := range executingHooks {
-		if err := deleteHookByPolicy(u.cfg, u.Namespace, h, hooks.BeforeHookCreation, hook); err != nil {
+		if err := deleteHookByPolicy(u.cfg, h, hooks.BeforeHookCreation); err != nil {
 			return err
 		}
 
 		b := bytes.NewBufferString(h.Manifest)
-		if err := u.cfg.KubeClient.Create(u.Namespace, b, timeout, false); err != nil {
+		if err := u.cfg.KubeClient.Create(b); err != nil {
 			return errors.Wrapf(err, "warning: Hook %s %s failed", hook, h.Path)
 		}
 		b.Reset()
 		b.WriteString(h.Manifest)
 
-		if err := u.cfg.KubeClient.WatchUntilReady(u.Namespace, b, timeout, false); err != nil {
+		if err := u.cfg.KubeClient.WatchUntilReady(b, timeout); err != nil {
 			// If a hook is failed, checkout the annotation of the hook to determine whether the hook should be deleted
 			// under failed condition. If so, then clear the corresponding resource object in the hook
-			if err := deleteHookByPolicy(u.cfg, u.Namespace, h, hooks.HookFailed, hook); err != nil {
+			if err := deleteHookByPolicy(u.cfg, h, hooks.HookFailed); err != nil {
 				return err
 			}
 			return err
@@ -319,7 +320,7 @@ func (u *Upgrade) execHook(hs []*release.Hook, hook string) error {
 	// If all hooks are succeeded, checkout the annotation of each hook to determine whether the hook should be deleted
 	// under succeeded condition. If so, then clear the corresponding resource object in each hook
 	for _, h := range executingHooks {
-		if err := deleteHookByPolicy(u.cfg, u.Namespace, h, hooks.HookSucceeded, hook); err != nil {
+		if err := deleteHookByPolicy(u.cfg, h, hooks.HookSucceeded); err != nil {
 			return err
 		}
 		h.LastRun = time.Now()

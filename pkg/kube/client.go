@@ -83,26 +83,38 @@ func (c *Client) KubernetesClientSet() (*kubernetes.Clientset, error) {
 
 var nopLogger = func(_ string, _ ...interface{}) {}
 
-// ResourceActorFunc performs an action on a single resource.
-type ResourceActorFunc func(*resource.Info) error
+// resourceActorFunc performs an action on a single resource.
+type resourceActorFunc func(*resource.Info) error
 
 // Create creates Kubernetes resources from an io.reader.
 //
 // Namespace will set the namespace.
-func (c *Client) Create(namespace string, reader io.Reader, timeout int64, shouldWait bool) error {
+func (c *Client) Create(reader io.Reader) error {
 	c.Log("building resources from manifest")
-	infos, err := c.BuildUnstructured(namespace, reader)
+	infos, err := c.BuildUnstructured(reader)
 	if err != nil {
 		return err
 	}
 	c.Log("creating %d resource(s)", len(infos))
-	if err := perform(infos, createResource); err != nil {
+	err = perform(infos, createResource)
+	return err
+}
+
+func (c *Client) Wait(reader io.Reader, timeout time.Duration) error {
+	infos, err := c.BuildUnstructured(reader)
+	if err != nil {
 		return err
 	}
-	if shouldWait {
-		return c.waitForResources(time.Duration(timeout)*time.Second, infos)
+	cs, err := c.KubernetesClientSet()
+	if err != nil {
+		return err
 	}
-	return nil
+	w := waiter{
+		c:       cs,
+		log:     c.Log,
+		timeout: timeout,
+	}
+	return w.waitForResources(infos)
 }
 
 func (c *Client) namespace() string {
@@ -131,7 +143,7 @@ func (c *Client) validator() resource.ContentValidator {
 }
 
 // BuildUnstructured validates for Kubernetes objects and returns unstructured infos.
-func (c *Client) BuildUnstructured(namespace string, reader io.Reader) (Result, error) {
+func (c *Client) BuildUnstructured(reader io.Reader) (Result, error) {
 	var result Result
 
 	result, err := c.newBuilder().
@@ -142,7 +154,7 @@ func (c *Client) BuildUnstructured(namespace string, reader io.Reader) (Result, 
 }
 
 // Build validates for Kubernetes objects and returns resource Infos from a io.Reader.
-func (c *Client) Build(namespace string, reader io.Reader) (Result, error) {
+func (c *Client) Build(reader io.Reader) (Result, error) {
 	var result Result
 	result, err := c.newBuilder().
 		WithScheme(legacyscheme.Scheme).
@@ -156,11 +168,11 @@ func (c *Client) Build(namespace string, reader io.Reader) (Result, error) {
 // Get gets Kubernetes resources as pretty-printed string.
 //
 // Namespace will set the namespace.
-func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
+func (c *Client) Get(reader io.Reader) (string, error) {
 	// Since we don't know what order the objects come in, let's group them by the types, so
 	// that when we print them, they come out looking good (headers apply to subgroups, etc.).
 	objs := make(map[string][]runtime.Object)
-	infos, err := c.BuildUnstructured(namespace, reader)
+	infos, err := c.BuildUnstructured(reader)
 	if err != nil {
 		return "", err
 	}
@@ -182,7 +194,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		vk := gvk.Version + "/" + gvk.Kind
 		objs[vk] = append(objs[vk], asVersioned(info))
 
-		//Get the relation pods
+		// Get the relation pods
 		objPods, err = c.getSelectRelationPod(info, objPods)
 		if err != nil {
 			c.Log("Warning: get the relation pod is failed, err:%s", err)
@@ -194,7 +206,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		return "", err
 	}
 
-	//here, we will add the objPods to the objs
+	// here, we will add the objPods to the objs
 	for key, podItems := range objPods {
 		for i := range podItems {
 			objs[key+"(related)"] = append(objs[key+"(related)"], &podItems[i])
@@ -235,14 +247,14 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 // not present in the target configuration.
 //
 // Namespace will set the namespaces.
-func (c *Client) Update(namespace string, originalReader, targetReader io.Reader, force, recreate bool, timeout int64, shouldWait bool) error {
-	original, err := c.BuildUnstructured(namespace, originalReader)
+func (c *Client) Update(originalReader, targetReader io.Reader, force, recreate bool) error {
+	original, err := c.BuildUnstructured(originalReader)
 	if err != nil {
 		return goerrors.Wrap(err, "failed decoding reader into objects")
 	}
 
 	c.Log("building resources from updated manifest")
-	target, err := c.BuildUnstructured(namespace, targetReader)
+	target, err := c.BuildUnstructured(targetReader)
 	if err != nil {
 		return goerrors.Wrap(err, "failed decoding reader into objects")
 	}
@@ -298,17 +310,14 @@ func (c *Client) Update(namespace string, originalReader, targetReader io.Reader
 			c.Log("Failed to delete %q, err: %s", info.Name, err)
 		}
 	}
-	if shouldWait {
-		return c.waitForResources(time.Duration(timeout)*time.Second, target)
-	}
 	return nil
 }
 
 // Delete deletes Kubernetes resources from an io.reader.
 //
 // Namespace will set the namespace.
-func (c *Client) Delete(namespace string, reader io.Reader) error {
-	infos, err := c.BuildUnstructured(namespace, reader)
+func (c *Client) Delete(reader io.Reader) error {
+	infos, err := c.BuildUnstructured(reader)
 	if err != nil {
 		return err
 	}
@@ -327,7 +336,7 @@ func (c *Client) skipIfNotFound(err error) error {
 	return err
 }
 
-func (c *Client) watchTimeout(t time.Duration) ResourceActorFunc {
+func (c *Client) watchTimeout(t time.Duration) resourceActorFunc {
 	return func(info *resource.Info) error {
 		return c.watchUntilReady(t, info)
 	}
@@ -345,17 +354,17 @@ func (c *Client) watchTimeout(t time.Duration) ResourceActorFunc {
 //   ascertained by watching the Status fields in a job's output.
 //
 // Handling for other kinds will be added as necessary.
-func (c *Client) WatchUntilReady(namespace string, reader io.Reader, timeout int64, shouldWait bool) error {
-	infos, err := c.Build(namespace, reader)
+func (c *Client) WatchUntilReady(reader io.Reader, timeout time.Duration) error {
+	infos, err := c.Build(reader)
 	if err != nil {
 		return err
 	}
 	// For jobs, there's also the option to do poll c.Jobs(namespace).Get():
 	// https://github.com/adamreese/kubernetes/blob/master/test/e2e/job.go#L291-L300
-	return perform(infos, c.watchTimeout(time.Duration(timeout)*time.Second))
+	return perform(infos, c.watchTimeout(timeout))
 }
 
-func perform(infos Result, fn ResourceActorFunc) error {
+func perform(infos Result, fn resourceActorFunc) error {
 	if len(infos) == 0 {
 		return ErrNoObjectsVisited
 	}
@@ -620,12 +629,12 @@ func scrubValidationError(err error) error {
 
 // WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
 // and returns said phase (PodSucceeded or PodFailed qualify).
-func (c *Client) WaitAndGetCompletedPodPhase(namespace, name string, timeout int64) (v1.PodPhase, error) {
+func (c *Client) WaitAndGetCompletedPodPhase(name string, timeout time.Duration) (v1.PodPhase, error) {
 	client, _ := c.KubernetesClientSet()
-
-	watcher, err := client.CoreV1().Pods(namespace).Watch(metav1.ListOptions{
+	to := int64(timeout)
+	watcher, err := client.CoreV1().Pods(c.namespace()).Watch(metav1.ListOptions{
 		FieldSelector:  fmt.Sprintf("metadata.name=%s", name),
-		TimeoutSeconds: &timeout,
+		TimeoutSeconds: &to,
 	})
 
 	for event := range watcher.ResultChan() {
@@ -644,7 +653,7 @@ func (c *Client) WaitAndGetCompletedPodPhase(namespace, name string, timeout int
 	return v1.PodUnknown, err
 }
 
-//get a kubernetes resources' relation pods
+// get a kubernetes resources' relation pods
 // kubernetes resource used select labels to relate pods
 func (c *Client) getSelectRelationPod(info *resource.Info, objPods map[string][]v1.Pod) (map[string][]v1.Pod, error) {
 	if info == nil {

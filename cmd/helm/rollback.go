@@ -60,7 +60,7 @@ func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.Recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
 	f.BoolVar(&client.Force, "force", false, "force resource update through delete/recreate if needed")
 	f.BoolVar(&client.DisableHooks, "no-hooks", false, "prevent hooks from running during rollback")
-	f.Int64Var(&client.Timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
+	f.DurationVar(&client.Timeout, "timeout", 300, "time to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&client.Wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
 
 	return cmd

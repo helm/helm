@@ -35,7 +35,7 @@ type Rollback struct {
 	cfg *Configuration
 
 	Version      int
-	Timeout      int64
+	Timeout      time.Duration
 	Wait         bool
 	DisableHooks bool
 	DryRun       bool
@@ -140,7 +140,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 
 	// pre-rollback hooks
 	if !r.DisableHooks {
-		if err := r.execHook(targetRelease.Hooks, targetRelease.Namespace, hooks.PreRollback); err != nil {
+		if err := r.execHook(targetRelease.Hooks, hooks.PreRollback); err != nil {
 			return targetRelease, err
 		}
 	} else {
@@ -149,7 +149,8 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 
 	cr := bytes.NewBufferString(currentRelease.Manifest)
 	tr := bytes.NewBufferString(targetRelease.Manifest)
-	if err := r.cfg.KubeClient.Update(targetRelease.Namespace, cr, tr, r.Force, r.Recreate, r.Timeout, r.Wait); err != nil {
+	// TODO add wait
+	if err := r.cfg.KubeClient.Update(cr, tr, r.Force, r.Recreate); err != nil {
 		msg := fmt.Sprintf("Rollback %q failed: %s", targetRelease.Name, err)
 		r.cfg.Log("warning: %s", msg)
 		currentRelease.Info.Status = release.StatusSuperseded
@@ -162,7 +163,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 
 	// post-rollback hooks
 	if !r.DisableHooks {
-		if err := r.execHook(targetRelease.Hooks, targetRelease.Namespace, hooks.PostRollback); err != nil {
+		if err := r.execHook(targetRelease.Hooks, hooks.PostRollback); err != nil {
 			return targetRelease, err
 		}
 	}
@@ -184,7 +185,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 }
 
 // execHook executes all of the hooks for the given hook event.
-func (r *Rollback) execHook(hs []*release.Hook, namespace, hook string) error {
+func (r *Rollback) execHook(hs []*release.Hook, hook string) error {
 	timeout := r.Timeout
 	executingHooks := []*release.Hook{}
 
@@ -199,21 +200,21 @@ func (r *Rollback) execHook(hs []*release.Hook, namespace, hook string) error {
 	sort.Sort(hookByWeight(executingHooks))
 
 	for _, h := range executingHooks {
-		if err := deleteHookByPolicy(r.cfg, namespace, h, hooks.BeforeHookCreation, hook); err != nil {
+		if err := deleteHookByPolicy(r.cfg, h, hooks.BeforeHookCreation); err != nil {
 			return err
 		}
 
 		b := bytes.NewBufferString(h.Manifest)
-		if err := r.cfg.KubeClient.Create(namespace, b, timeout, false); err != nil {
+		if err := r.cfg.KubeClient.Create(b); err != nil {
 			return errors.Wrapf(err, "warning: Hook %s %s failed", hook, h.Path)
 		}
 		b.Reset()
 		b.WriteString(h.Manifest)
 
-		if err := r.cfg.KubeClient.WatchUntilReady(namespace, b, timeout, false); err != nil {
+		if err := r.cfg.KubeClient.WatchUntilReady(b, timeout); err != nil {
 			// If a hook is failed, checkout the annotation of the hook to determine whether the hook should be deleted
 			// under failed condition. If so, then clear the corresponding resource object in the hook
-			if err := deleteHookByPolicy(r.cfg, namespace, h, hooks.HookFailed, hook); err != nil {
+			if err := deleteHookByPolicy(r.cfg, h, hooks.HookFailed); err != nil {
 				return err
 			}
 			return err
@@ -223,7 +224,7 @@ func (r *Rollback) execHook(hs []*release.Hook, namespace, hook string) error {
 	// If all hooks are succeeded, checkout the annotation of each hook to determine whether the hook should be deleted
 	// under succeeded condition. If so, then clear the corresponding resource object in each hook
 	for _, h := range executingHooks {
-		if err := deleteHookByPolicy(r.cfg, namespace, h, hooks.HookSucceeded, hook); err != nil {
+		if err := deleteHookByPolicy(r.cfg, h, hooks.HookSucceeded); err != nil {
 			return err
 		}
 		h.LastRun = time.Now()
@@ -233,10 +234,10 @@ func (r *Rollback) execHook(hs []*release.Hook, namespace, hook string) error {
 }
 
 // deleteHookByPolicy deletes a hook if the hook policy instructs it to
-func deleteHookByPolicy(cfg *Configuration, namespace string, h *release.Hook, policy, hook string) error {
+func deleteHookByPolicy(cfg *Configuration, h *release.Hook, policy string) error {
 	b := bytes.NewBufferString(h.Manifest)
 	if hookHasDeletePolicy(h, policy) {
-		if errHookDelete := cfg.KubeClient.Delete(namespace, b); errHookDelete != nil {
+		if errHookDelete := cfg.KubeClient.Delete(b); errHookDelete != nil {
 			return errHookDelete
 		}
 	}

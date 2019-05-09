@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"time"
 
 	v1 "k8s.io/api/core/v1"
 
@@ -32,12 +33,12 @@ type Environment struct {
 	Namespace  string
 	KubeClient kube.KubernetesClient
 	Messages   chan *release.TestReleaseResponse
-	Timeout    int64
+	Timeout    time.Duration
 }
 
 func (env *Environment) createTestPod(test *test) error {
 	b := bytes.NewBufferString(test.manifest)
-	if err := env.KubeClient.Create(env.Namespace, b, env.Timeout, false); err != nil {
+	if err := env.KubeClient.Create(b); err != nil {
 		test.result.Info = err.Error()
 		test.result.Status = release.TestRunFailure
 		return err
@@ -47,7 +48,7 @@ func (env *Environment) createTestPod(test *test) error {
 }
 
 func (env *Environment) getTestPodStatus(test *test) (v1.PodPhase, error) {
-	status, err := env.KubeClient.WaitAndGetCompletedPodPhase(env.Namespace, test.name, env.Timeout)
+	status, err := env.KubeClient.WaitAndGetCompletedPodPhase(test.name, env.Timeout)
 	if err != nil {
 		log.Printf("Error getting status for pod %s: %s", test.result.Name, err)
 		test.result.Info = err.Error()
@@ -111,7 +112,7 @@ func (env *Environment) streamMessage(msg string, status release.TestRunStatus) 
 // DeleteTestPods deletes resources given in testManifests
 func (env *Environment) DeleteTestPods(testManifests []string) {
 	for _, testManifest := range testManifests {
-		err := env.KubeClient.Delete(env.Namespace, bytes.NewBufferString(testManifest))
+		err := env.KubeClient.Delete(bytes.NewBufferString(testManifest))
 		if err != nil {
 			env.streamError(err.Error())
 		}

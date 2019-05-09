@@ -153,7 +153,7 @@ func TestUpdate(t *testing.T) {
 		Factory: tf,
 		Log:     nopLogger,
 	}
-	if err := c.Update(v1.NamespaceDefault, objBody(&listA), objBody(&listB), false, false, 0, false); err != nil {
+	if err := c.Update(objBody(&listA), objBody(&listB), false, false); err != nil {
 		t.Fatal(err)
 	}
 	// TODO: Find a way to test methods that use Client Set
@@ -213,7 +213,7 @@ func TestBuild(t *testing.T) {
 			c.Cleanup()
 
 			// Test for an invalid manifest
-			infos, err := c.Build(tt.namespace, tt.reader)
+			infos, err := c.Build(tt.reader)
 			if err != nil && !tt.err {
 				t.Errorf("Got error message when no error should have occurred: %v", err)
 			} else if err != nil && strings.Contains(err.Error(), "--validate=false") {
@@ -251,7 +251,7 @@ func TestGet(t *testing.T) {
 
 	// Test Success
 	data := strings.NewReader("kind: Pod\napiVersion: v1\nmetadata:\n  name: otter")
-	o, err := c.Get("default", data)
+	o, err := c.Get(data)
 	if err != nil {
 		t.Errorf("Expected missing results, got %q", err)
 	}
@@ -261,7 +261,7 @@ func TestGet(t *testing.T) {
 
 	// Test failure
 	data = strings.NewReader("kind: Pod\napiVersion: v1\nmetadata:\n  name: starfish")
-	o, err = c.Get("default", data)
+	o, err = c.Get(data)
 	if err != nil {
 		t.Errorf("Expected missing results, got %q", err)
 	}
@@ -301,7 +301,7 @@ func TestPerform(t *testing.T) {
 
 			c := newTestClient()
 			defer c.Cleanup()
-			infos, err := c.Build("default", tt.reader)
+			infos, err := c.Build(tt.reader)
 			if err != nil && err.Error() != tt.errMessage {
 				t.Errorf("Error while building manifests: %v", err)
 			}
@@ -324,22 +324,22 @@ func TestPerform(t *testing.T) {
 func TestReal(t *testing.T) {
 	t.Skip("This is a live test, comment this line to run")
 	c := New(nil)
-	if err := c.Create("test", strings.NewReader(guestbookManifest), 300, false); err != nil {
+	if err := c.Create(strings.NewReader(guestbookManifest)); err != nil {
 		t.Fatal(err)
 	}
 
 	testSvcEndpointManifest := testServiceManifest + "\n---\n" + testEndpointManifest
 	c = New(nil)
-	if err := c.Create("test-delete", strings.NewReader(testSvcEndpointManifest), 300, false); err != nil {
+	if err := c.Create(strings.NewReader(testSvcEndpointManifest)); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := c.Delete("test-delete", strings.NewReader(testEndpointManifest)); err != nil {
+	if err := c.Delete(strings.NewReader(testEndpointManifest)); err != nil {
 		t.Fatal(err)
 	}
 
 	// ensures that delete does not fail if a resource is not found
-	if err := c.Delete("test-delete", strings.NewReader(testSvcEndpointManifest)); err != nil {
+	if err := c.Delete(strings.NewReader(testSvcEndpointManifest)); err != nil {
 		t.Fatal(err)
 	}
 }
