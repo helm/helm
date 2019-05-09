@@ -28,13 +28,13 @@ import (
 // note: this test data is shared with filter_test.go.
 
 var releases = []*rspb.Release{
-	tsRelease("quiet-bear", 2, 2000, rspb.Status_SUPERSEDED),
-	tsRelease("angry-bird", 4, 3000, rspb.Status_DEPLOYED),
-	tsRelease("happy-cats", 1, 4000, rspb.Status_DELETED),
-	tsRelease("vocal-dogs", 3, 6000, rspb.Status_DELETED),
+	tsRelease("quiet-bear", 2, 2000, rspb.Status_SUPERSEDED, "default"),
+	tsRelease("angry-bird", 4, 3000, rspb.Status_DEPLOYED, "abc"),
+	tsRelease("happy-cats", 1, 4000, rspb.Status_DELETED, "def"),
+	tsRelease("vocal-dogs", 3, 6000, rspb.Status_DELETED, "cde"),
 }
 
-func tsRelease(name string, vers int32, dur time.Duration, code rspb.Status_Code) *rspb.Release {
+func tsRelease(name string, vers int32, dur time.Duration, code rspb.Status_Code, namespace string) *rspb.Release {
 	tmsp := timeconv.Timestamp(time.Now().Add(time.Duration(dur)))
 	info := &rspb.Info{Status: &rspb.Status{Code: code}, LastDeployed: tmsp}
 	return &rspb.Release{
@@ -46,6 +46,7 @@ func tsRelease(name string, vers int32, dur time.Duration, code rspb.Status_Code
 				Name: name,
 			},
 		},
+		Namespace: namespace,
 	}
 }
 
@@ -93,6 +94,16 @@ func TestSortByChartName(t *testing.T) {
 	check(t, "ByChartName", func(i, j int) bool {
 		ni := releases[i].Chart.Metadata.Name
 		nj := releases[j].Chart.Metadata.Name
+		return ni < nj
+	})
+}
+
+func TestSortByNamespace(t *testing.T) {
+	SortByNamespace(releases)
+
+	check(t, "ByNamespace", func(i, j int) bool {
+		ni := releases[i].Namespace
+		nj := releases[j].Namespace
 		return ni < nj
 	})
 }
