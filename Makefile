@@ -50,7 +50,7 @@ fetch-dist:
 	mkdir -p _dist
 	cd _dist && \
 	for obj in ${TARGET_OBJS} ; do \
-		curl -sSL -o helm-${VERSION}-$${obj} https://storage.googleapis.com/kubernetes-helm/helm-${VERSION}-$${obj} ; \
+		curl -sSL -o helm-${VERSION}-$${obj} https://get.helm.sh/helm-${VERSION}-$${obj} ; \
 	done
 
 .PHONY: sign
