@@ -177,25 +177,24 @@ CircleCI will automatically create a tagged release image and client binary to
 test with.
 
 For testers, the process to start testing after CircleCI finishes building the
-artifacts involves the following steps to grab the client from Google Cloud
-Storage:
+artifacts involves the following steps to grab the client:
 
 linux/amd64, using /bin/bash:
 
 ```shell
-wget https://kubernetes-helm.storage.googleapis.com/helm-$RELEASE_CANDIDATE_NAME-linux-amd64.tar.gz
+wget https://get.helm.sh/helm-$RELEASE_CANDIDATE_NAME-linux-amd64.tar.gz
 ```
 
 darwin/amd64, using Terminal.app:
 
 ```shell
-wget https://kubernetes-helm.storage.googleapis.com/helm-$RELEASE_CANDIDATE_NAME-darwin-amd64.tar.gz
+wget https://get.helm.sh/helm-$RELEASE_CANDIDATE_NAME-darwin-amd64.tar.gz
 ```
 
 windows/amd64, using PowerShell:
 
 ```shell
-PS C:\> Invoke-WebRequest -Uri "https://kubernetes-helm.storage.googleapis.com/helm-$RELEASE_CANDIDATE_NAME-windows-amd64.zip" -OutFile "helm-$ReleaseCandidateName-windows-amd64.zip"
+PS C:\> Invoke-WebRequest -Uri "https://get.helm.sh/helm-$RELEASE_CANDIDATE_NAME-windows-amd64.zip" -OutFile "helm-$ReleaseCandidateName-windows-amd64.zip"
 ```
 
 Then, unpack and move the binary to somewhere on your $PATH, or move it
@@ -304,14 +303,14 @@ The community keeps growing, and we'd love to see you there!
 
 Download Helm X.Y. The common platform binaries are here:
 
-- [MacOS amd64](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-darwin-amd64.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-darwin-amd64.tar.gz.sha256) / CHECKSUM_VAL)
-- [Linux amd64](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-amd64.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-amd64.tar.gz.sha256) / CHECKSUM_VAL)
-- [Linux arm](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-arm.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-arm.tar.gz.sha256) / CHECKSUM_VAL)
-- [Linux arm64](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-arm64.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-arm64.tar.gz.sha256) / CHECKSUM_VAL)
-- [Linux i386](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-386.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-386.tar.gz.sha256) / CHECKSUM_VAL)
-- [Linux ppc64le](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-ppc64le.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-ppc64le.tar.gz.sha256) / CHECKSUM_VAL)
-- [Linux s390x](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-s390x.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-s390x.tar.gz.sha256) / CHECKSUM_VAL)
-- [Windows amd64](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-windows-amd64.zip) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-windows-amd64.zip.sha256) / CHECKSUM_VAL)
+- [MacOS amd64](https://get.helm.sh/helm-vX.Y.Z-darwin-amd64.tar.gz) ([checksum](https://get.helm.sh/helm-vX.Y.Z-darwin-amd64.tar.gz.sha256) / CHECKSUM_VAL)
+- [Linux amd64](https://get.helm.sh/helm-vX.Y.Z-linux-amd64.tar.gz) ([checksum](https://get.helm.sh/helm-vX.Y.Z-linux-amd64.tar.gz.sha256) / CHECKSUM_VAL)
+- [Linux arm](https://get.helm.sh/helm-vX.Y.Z-linux-arm.tar.gz) ([checksum](https://get.helm.sh/helm-vX.Y.Z-linux-arm.tar.gz.sha256) / CHECKSUM_VAL)
+- [Linux arm64](https://get.helm.sh/helm-vX.Y.Z-linux-arm64.tar.gz) ([checksum](https://get.helm.sh/helm-vX.Y.Z-linux-arm64.tar.gz.sha256) / CHECKSUM_VAL)
+- [Linux i386](https://get.helm.sh/helm-vX.Y.Z-linux-386.tar.gz) ([checksum](https://get.helm.sh/helm-vX.Y.Z-linux-386.tar.gz.sha256) / CHECKSUM_VAL)
+- [Linux ppc64le](https://get.helm.sh/helm-vX.Y.Z-linux-ppc64le.tar.gz) ([checksum](https://get.helm.sh/helm-vX.Y.Z-linux-ppc64le.tar.gz.sha256) / CHECKSUM_VAL)
+- [Linux s390x](https://get.helm.sh/helm-vX.Y.Z-linux-s390x.tar.gz) ([checksum](https://get.helm.sh/helm-vX.Y.Z-linux-s390x.tar.gz.sha256) / CHECKSUM_VAL)
+- [Windows amd64](https://get.helm.sh/helm-vX.Y.Z-windows-amd64.zip) ([checksum](https://get.helm.sh/helm-vX.Y.Z-windows-amd64.zip.sha256) / CHECKSUM_VAL)
 
 Once you have the client installed, upgrade Tiller with `helm init --upgrade`.
 
