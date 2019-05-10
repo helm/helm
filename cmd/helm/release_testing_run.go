@@ -18,6 +18,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -68,7 +69,7 @@ func newReleaseTestRunCmd(cfg *action.Configuration, out io.Writer) *cobra.Comma
 	}
 
 	f := cmd.Flags()
-	f.DurationVar(&client.Timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
+	f.DurationVar(&client.Timeout, "timeout", 300*time.Second, "time to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&client.Cleanup, "cleanup", false, "delete test pods upon completion")
 
 	return cmd
