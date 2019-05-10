@@ -147,6 +147,24 @@ git add .
 git commit -m "bump version to $RELEASE_CANDIDATE_NAME"
 ```
 
+This will update it for the $RELEASE_BRANCH_NAME only. You will also need to pull
+this change into the master branch for when the next release is being created.
+
+```shell
+# get the last commit id i.e. commit to bump the version
+git log --format="%H" -n 1
+
+# create new branch off master
+git checkout master
+git checkout -b bump-version-<release_version>
+
+# cherry pick the commit using id from first command
+git cherry-pick -x <commit-id>
+
+# commit the change
+git push upstream bump-version-<release-version>
+```
+
 ## 3. Commit and Push the Release Branch
 
 In order for others to start testing, we can now push the release branch
