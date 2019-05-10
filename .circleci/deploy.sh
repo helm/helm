@@ -36,11 +36,11 @@ else
 fi
 
 echo "Installing Azure CLI"
-AZURE_REPO=$(lsb_release -cs)
-echo “deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ $AZURE_REPO main” | tee /etc/apt/sources.list.d/azure-cli.list
-curl -L https://packages.microsoft.com/keys/microsoft.asc | apt-key add –
-apt install apt-transport-https
-apt update && apt install azure-cli
+echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ stretch main" | sudo tee /etc/apt/sources.list.d/azure-cli.list
+curl -L https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add
+sudo apt install apt-transport-https
+sudo apt update
+sudo apt install azure-cli
 
 
 echo "Building helm binaries"
