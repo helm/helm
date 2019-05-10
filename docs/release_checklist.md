@@ -162,7 +162,7 @@ git checkout -b bump-version-<release_version>
 git cherry-pick -x <commit-id>
 
 # commit the change
-git push upstream bump-version-<release-version>
+git push origin bump-version-<release-version>
 ```
 
 ## 3. Commit and Push the Release Branch
