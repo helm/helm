@@ -22,8 +22,10 @@ import (
 	"io"
 
 	orascontent "github.com/deislabs/oras/pkg/content"
+	orascontext "github.com/deislabs/oras/pkg/context"
 	"github.com/deislabs/oras/pkg/oras"
 	"github.com/gosuri/uitable"
+	"github.com/sirupsen/logrus"
 
 	"helm.sh/helm/pkg/chart"
 )
@@ -35,6 +37,7 @@ const (
 type (
 	// ClientOptions is used to construct a new client
 	ClientOptions struct {
+		Debug        bool
 		Out          io.Writer
 		Authorizer   Authorizer
 		Resolver     Resolver
@@ -43,6 +46,7 @@ type (
 
 	// Client works with OCI-compliant registries and local Helm chart cache
 	Client struct {
+		debug      bool
 		out        io.Writer
 		authorizer Authorizer
 		resolver   Resolver
@@ -53,6 +57,7 @@ type (
 // NewClient returns a new registry client with config
 func NewClient(options *ClientOptions) *Client {
 	return &Client{
+		debug:      options.Debug,
 		out:        options.Out,
 		resolver:   options.Resolver,
 		authorizer: options.Authorizer,
@@ -66,7 +71,7 @@ func NewClient(options *ClientOptions) *Client {
 
 // Login logs into a registry
 func (c *Client) Login(hostname string, username string, password string) error {
-	err := c.authorizer.Login(context.Background(), hostname, username, password)
+	err := c.authorizer.Login(c.newContext(), hostname, username, password)
 	if err != nil {
 		return err
 	}
@@ -76,7 +81,7 @@ func (c *Client) Login(hostname string, username string, password string) error 
 
 // Logout logs out of a registry
 func (c *Client) Logout(hostname string) error {
-	err := c.authorizer.Logout(context.Background(), hostname)
+	err := c.authorizer.Logout(c.newContext(), hostname)
 	if err != nil {
 		return err
 	}
@@ -92,7 +97,7 @@ func (c *Client) PushChart(ref *Reference) error {
 	if err != nil {
 		return err
 	}
-	_, err = oras.Push(context.Background(), c.resolver, ref.String(), c.cache.store, layers)
+	_, err = oras.Push(c.newContext(), c.resolver, ref.String(), c.cache.store, layers)
 	if err != nil {
 		return err
 	}
@@ -109,7 +114,7 @@ func (c *Client) PushChart(ref *Reference) error {
 func (c *Client) PullChart(ref *Reference) error {
 	c.setDefaultTag(ref)
 	fmt.Fprintf(c.out, "%s: Pulling from %s\n", ref.Tag, ref.Repo)
-	_, layers, err := oras.Pull(context.Background(), c.resolver, ref.String(), c.cache.store, oras.WithAllowedMediaTypes(KnownMediaTypes()))
+	_, layers, err := oras.Pull(c.newContext(), c.resolver, ref.String(), c.cache.store, oras.WithAllowedMediaTypes(KnownMediaTypes()))
 	if err != nil {
 		return err
 	}
@@ -183,4 +188,14 @@ func (c *Client) setDefaultTag(ref *Reference) {
 		ref.Tag = HelmChartDefaultTag
 		fmt.Fprintf(c.out, "Using default tag: %s\n", HelmChartDefaultTag)
 	}
+}
+
+// disable verbose logging coming from ORAS unless debug is enabled
+func (c *Client) newContext() context.Context {
+	if !c.debug {
+		return orascontext.Background()
+	}
+	ctx := orascontext.WithLoggerFromWriter(context.Background(), c.out)
+	orascontext.GetLogger(ctx).Logger.SetLevel(logrus.DebugLevel)
+	return ctx
 }
