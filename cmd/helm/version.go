@@ -151,5 +151,5 @@ func formatVersion(v *pb.Version, short bool) string {
 	if short && v.GitCommit != "" {
 		return fmt.Sprintf("%s+g%s", v.SemVer, v.GitCommit[:7])
 	}
-	return fmt.Sprintf("%#v", v)
+	return fmt.Sprintf("&version.Version{SemVer:\"%s\", GitCommit:\"%s\", GitTreeState:\"%s\"}", v.SemVer, v.GitCommit, v.GitTreeState)
 }

@@ -23,6 +23,7 @@ import (
 	"path"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/technosophos/moniker"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -40,18 +41,20 @@ import (
 	"k8s.io/helm/pkg/version"
 )
 
-// releaseNameMaxLen is the maximum length of a release name.
-//
-// As of Kubernetes 1.4, the max limit on a name is 63 chars. We reserve 10 for
-// charts to add data. Effectively, that gives us 53 chars.
-// See https://github.com/kubernetes/helm/issues/1528
-const releaseNameMaxLen = 53
+const (
+	// releaseNameMaxLen is the maximum length of a release name.
+	//
+	// As of Kubernetes 1.4, the max limit on a name is 63 chars. We reserve 10 for
+	// charts to add data. Effectively, that gives us 53 chars.
+	// See https://github.com/kubernetes/helm/issues/1528
+	releaseNameMaxLen = 53
 
-// NOTESFILE_SUFFIX that we want to treat special. It goes through the templating engine
-// but it's not a yaml file (resource) hence can't have hooks, etc. And the user actually
-// wants to see this file after rendering in the status command. However, it must be a suffix
-// since there can be filepath in front of it.
-const notesFileSuffix = "NOTES.txt"
+	// NOTESFILE_SUFFIX that we want to treat special. It goes through the templating engine
+	// but it's not a yaml file (resource) hence can't have hooks, etc. And the user actually
+	// wants to see this file after rendering in the status command. However, it must be a suffix
+	// since there can be filepath in front of it.
+	notesFileSuffix = "NOTES.txt"
+)
 
 var (
 	// errMissingChart indicates that a chart was not provided.
@@ -399,7 +402,7 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 		b.Reset()
 		b.WriteString(h.Manifest)
 
-		// We can't watch CRDs
+		// We can't watch CRDs, but need to wait until they reach the established state before continuing
 		if hook != hooks.CRDInstall {
 			if err := kubeCli.WatchUntilReady(namespace, b, timeout, false); err != nil {
 				s.Log("warning: Release %s %s %s could not complete: %s", name, hook, h.Path, err)
@@ -408,6 +411,11 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 				if err := s.deleteHookByPolicy(h, hooks.HookFailed, name, namespace, hook, kubeCli); err != nil {
 					return err
 				}
+				return err
+			}
+		} else {
+			if err := kubeCli.WaitUntilCRDEstablished(b, time.Duration(timeout)*time.Second); err != nil {
+				s.Log("warning: Release %s %s %s could not complete: %s", name, hook, h.Path, err)
 				return err
 			}
 		}

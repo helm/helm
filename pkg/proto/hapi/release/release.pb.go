@@ -6,40 +6,67 @@ package release
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import hapi_chart "k8s.io/helm/pkg/proto/hapi/chart"
-import hapi_chart3 "k8s.io/helm/pkg/proto/hapi/chart"
+import chart "k8s.io/helm/pkg/proto/hapi/chart"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+
 // Release describes a deployment of a chart, together with the chart
 // and the variables used to deploy that chart.
 type Release struct {
 	// Name is the name of the release
-	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// Info provides information about a release
-	Info *Info `protobuf:"bytes,2,opt,name=info" json:"info,omitempty"`
+	Info *Info `protobuf:"bytes,2,opt,name=info,proto3" json:"info,omitempty"`
 	// Chart is the chart that was released.
-	Chart *hapi_chart3.Chart `protobuf:"bytes,3,opt,name=chart" json:"chart,omitempty"`
+	Chart *chart.Chart `protobuf:"bytes,3,opt,name=chart,proto3" json:"chart,omitempty"`
 	// Config is the set of extra Values added to the chart.
 	// These values override the default values inside of the chart.
-	Config *hapi_chart.Config `protobuf:"bytes,4,opt,name=config" json:"config,omitempty"`
+	Config *chart.Config `protobuf:"bytes,4,opt,name=config,proto3" json:"config,omitempty"`
 	// Manifest is the string representation of the rendered template.
-	Manifest string `protobuf:"bytes,5,opt,name=manifest" json:"manifest,omitempty"`
+	Manifest string `protobuf:"bytes,5,opt,name=manifest,proto3" json:"manifest,omitempty"`
 	// Hooks are all of the hooks declared for this release.
-	Hooks []*Hook `protobuf:"bytes,6,rep,name=hooks" json:"hooks,omitempty"`
+	Hooks []*Hook `protobuf:"bytes,6,rep,name=hooks,proto3" json:"hooks,omitempty"`
 	// Version is an int32 which represents the version of the release.
-	Version int32 `protobuf:"varint,7,opt,name=version" json:"version,omitempty"`
+	Version int32 `protobuf:"varint,7,opt,name=version,proto3" json:"version,omitempty"`
 	// Namespace is the kubernetes namespace of the release.
-	Namespace string `protobuf:"bytes,8,opt,name=namespace" json:"namespace,omitempty"`
+	Namespace            string   `protobuf:"bytes,8,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *Release) Reset()                    { *m = Release{} }
-func (m *Release) String() string            { return proto.CompactTextString(m) }
-func (*Release) ProtoMessage()               {}
-func (*Release) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{0} }
+func (m *Release) Reset()         { *m = Release{} }
+func (m *Release) String() string { return proto.CompactTextString(m) }
+func (*Release) ProtoMessage()    {}
+func (*Release) Descriptor() ([]byte, []int) {
+	return fileDescriptor_release_4bea5d16ba219619, []int{0}
+}
+func (m *Release) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_Release.Unmarshal(m, b)
+}
+func (m *Release) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_Release.Marshal(b, m, deterministic)
+}
+func (dst *Release) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Release.Merge(dst, src)
+}
+func (m *Release) XXX_Size() int {
+	return xxx_messageInfo_Release.Size(m)
+}
+func (m *Release) XXX_DiscardUnknown() {
+	xxx_messageInfo_Release.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Release proto.InternalMessageInfo
 
 func (m *Release) GetName() string {
 	if m != nil {
@@ -55,14 +82,14 @@ func (m *Release) GetInfo() *Info {
 	return nil
 }
 
-func (m *Release) GetChart() *hapi_chart3.Chart {
+func (m *Release) GetChart() *chart.Chart {
 	if m != nil {
 		return m.Chart
 	}
 	return nil
 }
 
-func (m *Release) GetConfig() *hapi_chart.Config {
+func (m *Release) GetConfig() *chart.Config {
 	if m != nil {
 		return m.Config
 	}
@@ -101,9 +128,9 @@ func init() {
 	proto.RegisterType((*Release)(nil), "hapi.release.Release")
 }
 
-func init() { proto.RegisterFile("hapi/release/release.proto", fileDescriptor2) }
+func init() { proto.RegisterFile("hapi/release/release.proto", fileDescriptor_release_4bea5d16ba219619) }
 
-var fileDescriptor2 = []byte{
+var fileDescriptor_release_4bea5d16ba219619 = []byte{
 	// 256 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x64, 0x90, 0xbf, 0x4e, 0xc3, 0x40,
 	0x0c, 0xc6, 0x95, 0x36, 0x7f, 0x1a, 0xc3, 0x82, 0x07, 0xb0, 0x22, 0x86, 0x88, 0x01, 0x22, 0x86,

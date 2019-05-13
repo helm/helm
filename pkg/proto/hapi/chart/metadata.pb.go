@@ -12,6 +12,12 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+
 type Metadata_Engine int32
 
 const (
@@ -31,22 +37,46 @@ var Metadata_Engine_value = map[string]int32{
 func (x Metadata_Engine) String() string {
 	return proto.EnumName(Metadata_Engine_name, int32(x))
 }
-func (Metadata_Engine) EnumDescriptor() ([]byte, []int) { return fileDescriptor2, []int{1, 0} }
+func (Metadata_Engine) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_metadata_d6c714c73a051dcb, []int{1, 0}
+}
 
 // Maintainer describes a Chart maintainer.
 type Maintainer struct {
 	// Name is a user name or organization name
-	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// Email is an optional email address to contact the named maintainer
-	Email string `protobuf:"bytes,2,opt,name=email" json:"email,omitempty"`
+	Email string `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
 	// Url is an optional URL to an address for the named maintainer
-	Url string `protobuf:"bytes,3,opt,name=url" json:"url,omitempty"`
+	Url                  string   `protobuf:"bytes,3,opt,name=url,proto3" json:"url,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *Maintainer) Reset()                    { *m = Maintainer{} }
-func (m *Maintainer) String() string            { return proto.CompactTextString(m) }
-func (*Maintainer) ProtoMessage()               {}
-func (*Maintainer) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{0} }
+func (m *Maintainer) Reset()         { *m = Maintainer{} }
+func (m *Maintainer) String() string { return proto.CompactTextString(m) }
+func (*Maintainer) ProtoMessage()    {}
+func (*Maintainer) Descriptor() ([]byte, []int) {
+	return fileDescriptor_metadata_d6c714c73a051dcb, []int{0}
+}
+func (m *Maintainer) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_Maintainer.Unmarshal(m, b)
+}
+func (m *Maintainer) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_Maintainer.Marshal(b, m, deterministic)
+}
+func (dst *Maintainer) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Maintainer.Merge(dst, src)
+}
+func (m *Maintainer) XXX_Size() int {
+	return xxx_messageInfo_Maintainer.Size(m)
+}
+func (m *Maintainer) XXX_DiscardUnknown() {
+	xxx_messageInfo_Maintainer.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Maintainer proto.InternalMessageInfo
 
 func (m *Maintainer) GetName() string {
 	if m != nil {
@@ -74,47 +104,69 @@ func (m *Maintainer) GetUrl() string {
 // 	Spec: https://k8s.io/helm/blob/master/docs/design/chart_format.md#the-chart-file
 type Metadata struct {
 	// The name of the chart
-	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// The URL to a relevant project page, git repo, or contact person
-	Home string `protobuf:"bytes,2,opt,name=home" json:"home,omitempty"`
+	Home string `protobuf:"bytes,2,opt,name=home,proto3" json:"home,omitempty"`
 	// Source is the URL to the source code of this chart
-	Sources []string `protobuf:"bytes,3,rep,name=sources" json:"sources,omitempty"`
+	Sources []string `protobuf:"bytes,3,rep,name=sources,proto3" json:"sources,omitempty"`
 	// A SemVer 2 conformant version string of the chart
-	Version string `protobuf:"bytes,4,opt,name=version" json:"version,omitempty"`
+	Version string `protobuf:"bytes,4,opt,name=version,proto3" json:"version,omitempty"`
 	// A one-sentence description of the chart
-	Description string `protobuf:"bytes,5,opt,name=description" json:"description,omitempty"`
+	Description string `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
 	// A list of string keywords
-	Keywords []string `protobuf:"bytes,6,rep,name=keywords" json:"keywords,omitempty"`
+	Keywords []string `protobuf:"bytes,6,rep,name=keywords,proto3" json:"keywords,omitempty"`
 	// A list of name and URL/email address combinations for the maintainer(s)
-	Maintainers []*Maintainer `protobuf:"bytes,7,rep,name=maintainers" json:"maintainers,omitempty"`
+	Maintainers []*Maintainer `protobuf:"bytes,7,rep,name=maintainers,proto3" json:"maintainers,omitempty"`
 	// The name of the template engine to use. Defaults to 'gotpl'.
-	Engine string `protobuf:"bytes,8,opt,name=engine" json:"engine,omitempty"`
+	Engine string `protobuf:"bytes,8,opt,name=engine,proto3" json:"engine,omitempty"`
 	// The URL to an icon file.
-	Icon string `protobuf:"bytes,9,opt,name=icon" json:"icon,omitempty"`
+	Icon string `protobuf:"bytes,9,opt,name=icon,proto3" json:"icon,omitempty"`
 	// The API Version of this chart.
-	ApiVersion string `protobuf:"bytes,10,opt,name=apiVersion" json:"apiVersion,omitempty"`
+	ApiVersion string `protobuf:"bytes,10,opt,name=apiVersion,proto3" json:"apiVersion,omitempty"`
 	// The condition to check to enable chart
-	Condition string `protobuf:"bytes,11,opt,name=condition" json:"condition,omitempty"`
+	Condition string `protobuf:"bytes,11,opt,name=condition,proto3" json:"condition,omitempty"`
 	// The tags to check to enable chart
-	Tags string `protobuf:"bytes,12,opt,name=tags" json:"tags,omitempty"`
+	Tags string `protobuf:"bytes,12,opt,name=tags,proto3" json:"tags,omitempty"`
 	// The version of the application enclosed inside of this chart.
-	AppVersion string `protobuf:"bytes,13,opt,name=appVersion" json:"appVersion,omitempty"`
+	AppVersion string `protobuf:"bytes,13,opt,name=appVersion,proto3" json:"appVersion,omitempty"`
 	// Whether or not this chart is deprecated
-	Deprecated bool `protobuf:"varint,14,opt,name=deprecated" json:"deprecated,omitempty"`
+	Deprecated bool `protobuf:"varint,14,opt,name=deprecated,proto3" json:"deprecated,omitempty"`
 	// TillerVersion is a SemVer constraints on what version of Tiller is required.
 	// See SemVer ranges here: https://github.com/Masterminds/semver#basic-comparisons
-	TillerVersion string `protobuf:"bytes,15,opt,name=tillerVersion" json:"tillerVersion,omitempty"`
+	TillerVersion string `protobuf:"bytes,15,opt,name=tillerVersion,proto3" json:"tillerVersion,omitempty"`
 	// Annotations are additional mappings uninterpreted by Tiller,
 	// made available for inspection by other applications.
-	Annotations map[string]string `protobuf:"bytes,16,rep,name=annotations" json:"annotations,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Annotations map[string]string `protobuf:"bytes,16,rep,name=annotations,proto3" json:"annotations,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	// KubeVersion is a SemVer constraint specifying the version of Kubernetes required.
-	KubeVersion string `protobuf:"bytes,17,opt,name=kubeVersion" json:"kubeVersion,omitempty"`
+	KubeVersion          string   `protobuf:"bytes,17,opt,name=kubeVersion,proto3" json:"kubeVersion,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *Metadata) Reset()                    { *m = Metadata{} }
-func (m *Metadata) String() string            { return proto.CompactTextString(m) }
-func (*Metadata) ProtoMessage()               {}
-func (*Metadata) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{1} }
+func (m *Metadata) Reset()         { *m = Metadata{} }
+func (m *Metadata) String() string { return proto.CompactTextString(m) }
+func (*Metadata) ProtoMessage()    {}
+func (*Metadata) Descriptor() ([]byte, []int) {
+	return fileDescriptor_metadata_d6c714c73a051dcb, []int{1}
+}
+func (m *Metadata) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_Metadata.Unmarshal(m, b)
+}
+func (m *Metadata) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_Metadata.Marshal(b, m, deterministic)
+}
+func (dst *Metadata) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Metadata.Merge(dst, src)
+}
+func (m *Metadata) XXX_Size() int {
+	return xxx_messageInfo_Metadata.Size(m)
+}
+func (m *Metadata) XXX_DiscardUnknown() {
+	xxx_messageInfo_Metadata.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Metadata proto.InternalMessageInfo
 
 func (m *Metadata) GetName() string {
 	if m != nil {
@@ -238,12 +290,13 @@ func (m *Metadata) GetKubeVersion() string {
 func init() {
 	proto.RegisterType((*Maintainer)(nil), "hapi.chart.Maintainer")
 	proto.RegisterType((*Metadata)(nil), "hapi.chart.Metadata")
+	proto.RegisterMapType((map[string]string)(nil), "hapi.chart.Metadata.AnnotationsEntry")
 	proto.RegisterEnum("hapi.chart.Metadata_Engine", Metadata_Engine_name, Metadata_Engine_value)
 }
 
-func init() { proto.RegisterFile("hapi/chart/metadata.proto", fileDescriptor2) }
+func init() { proto.RegisterFile("hapi/chart/metadata.proto", fileDescriptor_metadata_d6c714c73a051dcb) }
 
-var fileDescriptor2 = []byte{
+var fileDescriptor_metadata_d6c714c73a051dcb = []byte{
 	// 435 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x6c, 0x52, 0x5d, 0x6b, 0xd4, 0x40,
 	0x14, 0x35, 0xcd, 0x66, 0x77, 0x73, 0x63, 0x35, 0x0e, 0x52, 0xc6, 0x22, 0x12, 0x16, 0x85, 0x7d,

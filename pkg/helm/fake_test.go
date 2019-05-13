@@ -26,7 +26,8 @@ import (
 	rls "k8s.io/helm/pkg/proto/hapi/services"
 )
 
-const cmInputTemplate = `kind: ConfigMap
+const (
+	cmInputTemplate = `kind: ConfigMap
 apiVersion: v1
 metadata:
   name: example
@@ -34,7 +35,7 @@ data:
   Release:
 {{.Release | toYaml | indent 4}}
 `
-const cmOutputTemplate = `
+	cmOutputTemplate = `
 ---
 # Source: installChart/templates/cm.yaml
 kind: ConfigMap
@@ -53,6 +54,7 @@ data:
       seconds: 242085845
     
 `
+)
 
 var installChart *chart.Chart
 

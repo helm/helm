@@ -37,6 +37,7 @@ import (
 	batch "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	extv1beta1 "k8s.io/api/extensions/v1beta1"
+	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,6 +46,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
@@ -76,6 +78,12 @@ func New(getter genericclioptions.RESTClientGetter) *Client {
 	if getter == nil {
 		getter = genericclioptions.NewConfigFlags(true)
 	}
+
+	err := apiextv1beta1.AddToScheme(scheme.Scheme)
+	if err != nil {
+		panic(err)
+	}
+
 	return &Client{
 		Factory: cmdutil.NewFactory(getter),
 		Log:     nopLogger,
@@ -142,8 +150,8 @@ func (c *Client) BuildUnstructured(namespace string, reader io.Reader) (Result, 
 		ContinueOnError().
 		NamespaceParam(namespace).
 		DefaultNamespace().
-		Stream(reader, "").
 		Schema(c.validator()).
+		Stream(reader, "").
 		Flatten().
 		Do().Infos()
 	return result, scrubValidationError(err)
@@ -486,6 +494,55 @@ func (c *Client) WatchUntilReady(namespace string, reader io.Reader, timeout int
 	// For jobs, there's also the option to do poll c.Jobs(namespace).Get():
 	// https://github.com/adamreese/kubernetes/blob/master/test/e2e/job.go#L291-L300
 	return perform(infos, c.watchTimeout(time.Duration(timeout)*time.Second))
+}
+
+// WatchUntilCRDEstablished polls the given CRD until it reaches the established
+// state. A CRD needs to reach the established state before CRs can be created.
+//
+// If a naming conflict condition is found, this function will return an error.
+func (c *Client) WaitUntilCRDEstablished(reader io.Reader, timeout time.Duration) error {
+	infos, err := c.BuildUnstructured(metav1.NamespaceAll, reader)
+	if err != nil {
+		return err
+	}
+
+	return perform(infos, c.pollCRDEstablished(timeout))
+}
+
+func (c *Client) pollCRDEstablished(t time.Duration) ResourceActorFunc {
+	return func(info *resource.Info) error {
+		return c.pollCRDUntilEstablished(t, info)
+	}
+}
+
+func (c *Client) pollCRDUntilEstablished(timeout time.Duration, info *resource.Info) error {
+	return wait.PollImmediate(time.Second, timeout, func() (bool, error) {
+		err := info.Get()
+		if err != nil {
+			return false, fmt.Errorf("unable to get CRD: %v", err)
+		}
+
+		crd := &apiextv1beta1.CustomResourceDefinition{}
+		err = scheme.Scheme.Convert(info.Object, crd, nil)
+		if err != nil {
+			return false, fmt.Errorf("unable to convert to CRD type: %v", err)
+		}
+
+		for _, cond := range crd.Status.Conditions {
+			switch cond.Type {
+			case apiextv1beta1.Established:
+				if cond.Status == apiextv1beta1.ConditionTrue {
+					return true, nil
+				}
+			case apiextv1beta1.NamesAccepted:
+				if cond.Status == apiextv1beta1.ConditionFalse {
+					return false, fmt.Errorf("naming conflict detected for CRD %s", crd.GetName())
+				}
+			}
+		}
+
+		return false, nil
+	})
 }
 
 func perform(infos Result, fn ResourceActorFunc) error {

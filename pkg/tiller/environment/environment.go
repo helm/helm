@@ -37,11 +37,19 @@ import (
 	"k8s.io/helm/pkg/storage/driver"
 )
 
-// DefaultTillerNamespace is the default namespace for Tiller.
-const DefaultTillerNamespace = "kube-system"
+const (
+	// DefaultTillerNamespace is the default namespace for Tiller.
+	DefaultTillerNamespace = "kube-system"
 
-// GoTplEngine is the name of the Go template engine, as registered in the EngineYard.
-const GoTplEngine = "gotpl"
+	// DefaultTillerPort defines the default port tiller listen on for client traffic
+	DefaultTillerPort = 44134
+
+	// DefaultTillerProbePort defines the default port to listen on for probes
+	DefaultTillerProbePort = 44135
+
+	// GoTplEngine is the name of the Go template engine, as registered in the EngineYard.
+	GoTplEngine = "gotpl"
+)
 
 // DefaultEngine points to the engine that the EngineYard should treat as the
 // default. A chart that does not specify an engine may be run through the
@@ -144,6 +152,8 @@ type KubeClient interface {
 	// WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
 	// and returns said phase (PodSucceeded or PodFailed qualify).
 	WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (v1.PodPhase, error)
+
+	WaitUntilCRDEstablished(reader io.Reader, timeout time.Duration) error
 }
 
 // PrintingKubeClient implements KubeClient, but simply prints the reader to
@@ -208,6 +218,11 @@ func (p *PrintingKubeClient) BuildUnstructured(ns string, reader io.Reader) (kub
 func (p *PrintingKubeClient) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (v1.PodPhase, error) {
 	_, err := io.Copy(p.Out, reader)
 	return v1.PodUnknown, err
+}
+
+func (p *PrintingKubeClient) WaitUntilCRDEstablished(reader io.Reader, timeout time.Duration) error {
+	_, err := io.Copy(p.Out, reader)
+	return err
 }
 
 // Environment provides the context for executing a client request.

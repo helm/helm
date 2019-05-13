@@ -76,7 +76,7 @@ hooks, the lifecycle is altered like this:
 5. Tiller sorts hooks by weight (assigning a weight of 0 by default) and by name for those hooks with the same weight in ascending order.
 6. Tiller then loads the hook with the lowest weight first (negative to positive)
 7. Tiller waits until the hook is "Ready" (except for CRDs)
-8. Tiller loads the resulting resources into Kubernetes. Note that if the `--wait` 
+8. Tiller loads the resulting resources into Kubernetes. Note that if the `--wait`
 flag is set, Tiller will wait until all resources are in a ready state
 and will not run the `post-install` hook until they are ready.
 9. Tiller executes the `post-install` hook (loading hook resources)
@@ -129,6 +129,7 @@ metadata:
   labels:
     app.kubernetes.io/managed-by: {{.Release.Service | quote }}
     app.kubernetes.io/instance: {{.Release.Name | quote }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
     helm.sh/chart: "{{.Chart.Name}}-{{.Chart.Version}}"
   annotations:
     # This is what defines this resource as a hook. Without this line, the

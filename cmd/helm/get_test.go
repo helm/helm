@@ -36,6 +36,13 @@ func TestGetCmd(t *testing.T) {
 			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "thomas-guide"})},
 		},
 		{
+			name:     "get with a formatted release",
+			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "elevated-turkey"}),
+			args:     []string{"elevated-turkey", "--template", "{{.Release.Chart.Metadata.Version}}"},
+			expected: "0.1.0-beta.1",
+			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "elevated-turkey"})},
+		},
+		{
 			name: "get requires release name arg",
 			err:  true,
 		},

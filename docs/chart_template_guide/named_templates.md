@@ -215,7 +215,7 @@ data:
   myvalue: "Hello World"
   drink: "coffee"
   food: "pizza"
-  app_name: mychart
+app_name: mychart
 app_version: "0.1.0+1478129847"
 ```
 
