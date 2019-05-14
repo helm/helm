@@ -268,8 +268,12 @@ func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.
 		recAllTpls(child, templates, next)
 	}
 
+	isLibChart := chartutil.IsLibraryChart(c)
 	newParentID := c.ChartFullPath()
 	for _, t := range c.Templates {
+		if !chartutil.IsTemplateValid(t.Name, isLibChart) {
+			continue
+		}
 		templates[path.Join(newParentID, t.Name)] = renderable{
 			tpl:      string(t.Data),
 			vals:     next,

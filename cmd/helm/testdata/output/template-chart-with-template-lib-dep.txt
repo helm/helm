@@ -1,0 +1,61 @@
+---
+# Source: chart-with-template-lib-dep/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: chart-with-template-lib-dep
+    chart: chart-with-template-lib-dep-0.1.0
+    heritage: Helm
+    release: RELEASE-NAME
+  name: release-name-chart-with-template-lib-dep
+spec:
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+  selector:
+    app: chart-with-template-lib-dep
+    release: RELEASE-NAME
+  type: ClusterIP
+---
+# Source: chart-with-template-lib-dep/templates/deployment.yaml
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: RELEASE-NAME-chart-with-template-lib-dep
+  labels:
+    app: chart-with-template-lib-dep
+    chart: chart-with-template-lib-dep-0.1.0
+    release: RELEASE-NAME
+    heritage: Helm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: chart-with-template-lib-dep
+      release: RELEASE-NAME
+  template:
+    metadata:
+      labels:
+        app: chart-with-template-lib-dep
+        release: RELEASE-NAME
+    spec:
+      containers:
+        - name: chart-with-template-lib-dep
+          image: "nginx:stable"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          resources:
+            {}
