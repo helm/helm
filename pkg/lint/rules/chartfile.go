@@ -17,6 +17,7 @@ limitations under the License.
 package rules // import "helm.sh/helm/pkg/lint/rules"
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -48,7 +49,7 @@ func Chartfile(linter *support.Linter) {
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartNameDirMatch(linter.ChartDir, chartFile))
 
 	// Chart metadata
-	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartApiVersion(chartFile))
+	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartAPIVersion(chartFile))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartVersion(chartFile))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartMaintainer(chartFile))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartSources(chartFile))
@@ -86,13 +87,13 @@ func validateChartNameDirMatch(chartDir string, cf *chart.Metadata) error {
 	return nil
 }
 
-func validateChartApiVersion(cf *chart.Metadata) error {
-	if cf.ApiVersion == "" {
+func validateChartAPIVersion(cf *chart.Metadata) error {
+	if cf.APIVersion == "" {
 		return errors.New("apiVersion is required")
 	}
 
-	if cf.ApiVersion != "v1" {
-		return fmt.Errorf("apiVersion '%s' is not valid. The value must be \"v1\"", cf.ApiVersion)
+	if cf.APIVersion != "v1" && cf.APIVersion != "v2" {
+		return fmt.Errorf("apiVersion '%s' is not valid. The value must be either \"v1\" or \"v2\"", cf.APIVersion)
 	}
 
 	return nil
