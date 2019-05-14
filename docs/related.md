@@ -51,6 +51,7 @@ or [pull request](https://github.com/helm/helm/pulls).
 - [helm-plugin-utils](https://github.com/maorfr/helm-plugin-utils) - Utility functions to be used within Helm plugins
 - [helm-restore](https://github.com/maorfr/helm-restore) - Plugin to restore a deployed release to its original state
 - [helm-secrets](https://github.com/futuresimple/helm-secrets) - Plugin to manage and store secrets safely
+- [helm-ssm](https://github.com/codacy/helm-ssm) - Plugin to inject values coming from AWS SSM parameters on the `values.yaml` file
 - [helm-stop](https://github.com/IBM/helm-stop) - Plugin for stopping a release pods
 - [helm-template](https://github.com/technosophos/helm-template) - Debug/render templates client-side
 - [helm-tiller](https://github.com/adamreese/helm-tiller) - Additional commands to work with Tiller
