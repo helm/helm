@@ -1,6 +1,6 @@
 # Contributing Guidelines
 
-The Kubernetes Helm project accepts contributions via GitHub pull requests. This document outlines the process to help get your contribution accepted.
+The Helm project accepts contributions via GitHub pull requests. This document outlines the process to help get your contribution accepted.
 
 ## Reporting a Security Issue
 
@@ -15,7 +15,7 @@ us a chance to try to fix the issue before it is exploited in the wild.
 The sign-off is a simple line at the end of the explanation for a commit. All 
 commits needs to be signed. Your signature certifies that you wrote the patch or
 otherwise have the right to contribute the material. The rules are pretty simple,
-if you can certify the below (from [developercertificate.org](http://developercertificate.org/)):
+if you can certify the below (from [developercertificate.org](https://developercertificate.org/)):
 
 ```
 Developer Certificate of Origin
@@ -172,10 +172,44 @@ contributing to Helm. All issue types follow the same general lifecycle. Differe
 
 ## How to Contribute a Patch
 
-1. Fork the repo, develop and test your code changes.
-1. Use sign-off when making each of your commits (see [above](#sign-your-work)).
+1. **Fork** the repo [helm](https://github.com/helm/helm)  
+
+Go to https://github.com/helm/helm then hit the `Fork` button to fork your own copy of repository **helm** to your github account.
+
+2. **Clone** the forked repo to your local working directory.
+```sh
+$ git clone https://github.com/$your_github_account/helm.git   
+```
+3. Add an `upstream` remote to keep your fork in sync with the main repo.
+```sh
+$ cd helm
+$ git remote add upstream https://github.com/helm/helm.git
+$ git remote -v
+
+origin  https://github.com/$your_github_account/helm.git (fetch)
+origin  https://github.com/$your_github_account/helm.git (push)
+upstream        https://github.com/helm/helm.git (fetch)
+upstream        https://github.com/helm/helm.git (push)
+```
+4. Sync your local `master` branch.
+```sh
+$ git pull upstream master
+```
+5. Create a branch to add a new feature or fix issues.
+```sh
+$ git checkout -b new-feature
+```
+6. Make any change on the branch `new-feature`  then build and test your codes.
+7. Include in what will be committed.
+```sh
+$ git add <file>
+```
+8. Use sign-off when making each of your commits (see [above](#sign-your-work)).
    If you forgot to sign some commits that are part of the contribution, you can ask [git to rewrite your commit history](https://git-scm.com/book/en/v2/Git-Tools-Rewriting-History).
-1. Submit a pull request.
+```sh
+$ git commit --signoff
+```
+9. Submit a pull request.
 
 Coding conventions and standards are explained in the official developer docs:
 [Developers Guide](docs/developers.md)
@@ -242,7 +276,7 @@ Documentation PRs will follow the same lifecycle as other PRs. They will also be
 ## The Triager
 
 Each week, one of the core maintainers will serve as the designated "triager" starting after the
-public standup meetings on Thursday. This person will be in charge triaging new PRs and issues
+public stand-up meetings on Thursday. This person will be in charge triaging new PRs and issues
 throughout the work week.
 
 ## Labels

@@ -329,7 +329,7 @@ data:
     - "Onions"
 ```
 
-Now, in this example we've done something tricky. The `toppings: |-` line is declaring a multi-line string. So our list of toppings is actually not a YAML list. It's a big string. Why would we do this? Because the data in ConfigMaps `data` is composed of key/value pairs, where both the key and the value are simple strings. To understand why this is the case, take a look at the [Kubernetes ConfigMap docs](http://kubernetes.io/docs/user-guide/configmap/). For us, though, this detail doesn't matter much.
+Now, in this example we've done something tricky. The `toppings: |-` line is declaring a multi-line string. So our list of toppings is actually not a YAML list. It's a big string. Why would we do this? Because the data in ConfigMaps `data` is composed of key/value pairs, where both the key and the value are simple strings. To understand why this is the case, take a look at the [Kubernetes ConfigMap docs](https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/). For us, though, this detail doesn't matter much.
 
 > The `|-` marker in YAML takes a multi-line string. This can be a useful technique for embedding big blocks of data inside of your manifests, as exemplified here.
 

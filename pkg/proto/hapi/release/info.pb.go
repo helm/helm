@@ -6,28 +6,56 @@ package release
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import google_protobuf "github.com/golang/protobuf/ptypes/timestamp"
+import timestamp "github.com/golang/protobuf/ptypes/timestamp"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+
 // Info describes release information.
 type Info struct {
-	Status        *Status                    `protobuf:"bytes,1,opt,name=status" json:"status,omitempty"`
-	FirstDeployed *google_protobuf.Timestamp `protobuf:"bytes,2,opt,name=first_deployed,json=firstDeployed" json:"first_deployed,omitempty"`
-	LastDeployed  *google_protobuf.Timestamp `protobuf:"bytes,3,opt,name=last_deployed,json=lastDeployed" json:"last_deployed,omitempty"`
+	Status        *Status              `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+	FirstDeployed *timestamp.Timestamp `protobuf:"bytes,2,opt,name=first_deployed,json=firstDeployed,proto3" json:"first_deployed,omitempty"`
+	LastDeployed  *timestamp.Timestamp `protobuf:"bytes,3,opt,name=last_deployed,json=lastDeployed,proto3" json:"last_deployed,omitempty"`
 	// Deleted tracks when this object was deleted.
-	Deleted *google_protobuf.Timestamp `protobuf:"bytes,4,opt,name=deleted" json:"deleted,omitempty"`
+	Deleted *timestamp.Timestamp `protobuf:"bytes,4,opt,name=deleted,proto3" json:"deleted,omitempty"`
 	// Description is human-friendly "log entry" about this release.
-	Description string `protobuf:"bytes,5,opt,name=Description" json:"Description,omitempty"`
+	Description          string   `protobuf:"bytes,5,opt,name=Description,proto3" json:"Description,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *Info) Reset()                    { *m = Info{} }
-func (m *Info) String() string            { return proto.CompactTextString(m) }
-func (*Info) ProtoMessage()               {}
-func (*Info) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{0} }
+func (m *Info) Reset()         { *m = Info{} }
+func (m *Info) String() string { return proto.CompactTextString(m) }
+func (*Info) ProtoMessage()    {}
+func (*Info) Descriptor() ([]byte, []int) {
+	return fileDescriptor_info_1c62b71ed76c67c1, []int{0}
+}
+func (m *Info) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_Info.Unmarshal(m, b)
+}
+func (m *Info) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_Info.Marshal(b, m, deterministic)
+}
+func (dst *Info) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Info.Merge(dst, src)
+}
+func (m *Info) XXX_Size() int {
+	return xxx_messageInfo_Info.Size(m)
+}
+func (m *Info) XXX_DiscardUnknown() {
+	xxx_messageInfo_Info.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Info proto.InternalMessageInfo
 
 func (m *Info) GetStatus() *Status {
 	if m != nil {
@@ -36,21 +64,21 @@ func (m *Info) GetStatus() *Status {
 	return nil
 }
 
-func (m *Info) GetFirstDeployed() *google_protobuf.Timestamp {
+func (m *Info) GetFirstDeployed() *timestamp.Timestamp {
 	if m != nil {
 		return m.FirstDeployed
 	}
 	return nil
 }
 
-func (m *Info) GetLastDeployed() *google_protobuf.Timestamp {
+func (m *Info) GetLastDeployed() *timestamp.Timestamp {
 	if m != nil {
 		return m.LastDeployed
 	}
 	return nil
 }
 
-func (m *Info) GetDeleted() *google_protobuf.Timestamp {
+func (m *Info) GetDeleted() *timestamp.Timestamp {
 	if m != nil {
 		return m.Deleted
 	}
@@ -68,9 +96,9 @@ func init() {
 	proto.RegisterType((*Info)(nil), "hapi.release.Info")
 }
 
-func init() { proto.RegisterFile("hapi/release/info.proto", fileDescriptor1) }
+func init() { proto.RegisterFile("hapi/release/info.proto", fileDescriptor_info_1c62b71ed76c67c1) }
 
-var fileDescriptor1 = []byte{
+var fileDescriptor_info_1c62b71ed76c67c1 = []byte{
 	// 235 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x8f, 0x31, 0x4f, 0xc3, 0x30,
 	0x10, 0x85, 0x95, 0x52, 0x5a, 0xd5, 0x6d, 0x19, 0x2c, 0x24, 0x42, 0x16, 0x22, 0xa6, 0x0e, 0xc8,

@@ -26,13 +26,14 @@ import (
 
 var values = []byte{}
 
-const namespace = "testNamespace"
-const strict = false
-
-const badChartDir = "rules/testdata/badchartfile"
-const badValuesFileDir = "rules/testdata/badvaluesfile"
-const badYamlFileDir = "rules/testdata/albatross"
-const goodChartDir = "rules/testdata/goodone"
+const (
+	namespace        = "testNamespace"
+	strict           = false
+	badChartDir      = "rules/testdata/badchartfile"
+	badValuesFileDir = "rules/testdata/badvaluesfile"
+	badYamlFileDir   = "rules/testdata/albatross"
+	goodChartDir     = "rules/testdata/goodone"
+)
 
 func TestBadChart(t *testing.T) {
 	m := All(badChartDir, values, namespace, strict).Messages

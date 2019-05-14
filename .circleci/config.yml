@@ -4,13 +4,13 @@ jobs:
     working_directory: /go/src/k8s.io/helm
     parallelism: 3
     docker:
-      - image: golang:1.11
+      - image: golang:1.12.5
     environment:
       PROJECT_NAME: "kubernetes-helm"
     steps:
       - checkout
       - setup_remote_docker:
-          version: 17.09.0-ce
+          version: 18.06.0-ce
       - restore_cache:
           keys:
             - glide-{{ checksum "glide.yaml" }}-{{ checksum "glide.lock" }}

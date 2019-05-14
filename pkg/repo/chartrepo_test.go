@@ -175,7 +175,7 @@ func verifyIndex(t *testing.T, actual *IndexFile) {
 				t.Errorf("Expected %q, got %q", e.Version, g.Version)
 			}
 			if len(g.Keywords) != 3 {
-				t.Error("Expected 3 keyrwords.")
+				t.Error("Expected 3 keywords.")
 			}
 			if len(g.Maintainers) != 2 {
 				t.Error("Expected 2 maintainers.")

@@ -43,7 +43,7 @@ _Note: The cluster-admin role is created by default in a Kubernetes cluster, so 
 $ kubectl create -f rbac-config.yaml
 serviceaccount "tiller" created
 clusterrolebinding "tiller" created
-$ helm init --service-account tiller
+$ helm init --service-account tiller --history-max 200
 ```
 
 ### Example: Deploy Tiller in a namespace, restricted to deploying resources only in that namespace
@@ -106,7 +106,6 @@ $ helm init --service-account tiller --tiller-namespace tiller-world
 $HELM_HOME has been configured at /Users/awesome-user/.helm.
 
 Tiller (the Helm server side component) has been installed into your Kubernetes Cluster.
-Happy Helming!
 
 $ helm install nginx --tiller-namespace tiller-world --namespace tiller-world
 NAME:   wayfaring-yak

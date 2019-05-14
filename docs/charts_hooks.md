@@ -76,7 +76,7 @@ hooks, the lifecycle is altered like this:
 5. Tiller sorts hooks by weight (assigning a weight of 0 by default) and by name for those hooks with the same weight in ascending order.
 6. Tiller then loads the hook with the lowest weight first (negative to positive)
 7. Tiller waits until the hook is "Ready" (except for CRDs)
-8. Tiller loads the resulting resources into Kubernetes. Note that if the `--wait` 
+8. Tiller loads the resulting resources into Kubernetes. Note that if the `--wait`
 flag is set, Tiller will wait until all resources are in a ready state
 and will not run the `post-install` hook until they are ready.
 9. Tiller executes the `post-install` hook (loading hook resources)
@@ -129,6 +129,7 @@ metadata:
   labels:
     app.kubernetes.io/managed-by: {{.Release.Service | quote }}
     app.kubernetes.io/instance: {{.Release.Name | quote }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
     helm.sh/chart: "{{.Chart.Name}}-{{.Chart.Version}}"
   annotations:
     # This is what defines this resource as a hook. Without this line, the
@@ -246,12 +247,10 @@ annotated.
 
 ### Automatically delete hook from previous release
 
-When helm release being updated it is possible, that hook resource already exists in cluster. By default helm will try to create resource and fail with `"... already exists"` error.
+When a helm release, that uses a hook, is being updated, it is possible that the hook resource might already exist in the cluster. In such circumstances, by default, helm will fail trying to install the hook resource with an `"... already exists"` error.
 
-One might choose `"helm.sh/hook-delete-policy": "before-hook-creation"` over `"helm.sh/hook-delete-policy": "hook-succeeded,hook-failed"` because:
+A common reason why the hook resource might already exist is that it was not deleted following use on a previous install/upgrade. There are, in fact, good reasons why one might want to keep the hook: for example, to aid manual debugging in case something went wrong. In this case, the recommended way of ensuring subsequent attempts to create the hook do not fail is to define a `"hook-delete-policy"` that can handle this: `"helm.sh/hook-delete-policy": "before-hook-creation"`. This hook annotation causes any existing hook to be removed, before the new hook is installed.
 
-* It is convenient to keep failed hook job resource in kubernetes for example for manual debug.
-* It may be necessary to keep succeeded hook resource in kubernetes for some reason.
-* At the same time it is not desirable to do manual resource deletion before helm release upgrade.
+If it is preferred to actually delete the hook after each use (rather than have to handle it on a subsequent use, as shown above), then this can be achieved using a delete policy of `"helm.sh/hook-delete-policy": "hook-succeeded,hook-failed"`.
 
-`"helm.sh/hook-delete-policy": "before-hook-creation"` annotation on hook causes tiller to remove the hook from previous release if there is one before the new hook is launched and can be used with another policy.
+
