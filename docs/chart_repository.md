@@ -123,6 +123,35 @@ startup.
 
 This part shows several ways to serve a chart repository.
 
+### ChartMuseum
+
+The Helm project provides an open-source Helm repository server called [ChartMuseum](https://chartmuseum.com) that you can host yourself.
+
+ChartMuseum supports multiple cloud storage backends. Configure it to point to the directory or bucket containing your chart packages, and the index.yaml file will be generated dynamically.
+
+It can be deployed easily as a [Helm chart](https://github.com/helm/charts/tree/master/stable/chartmuseum):
+```
+helm install stable/chartmuseum
+```
+
+and also as a [Docker image](https://hub.docker.com/r/chartmuseum/chartmuseum/tags):
+```
+docker run --rm -it \
+  -p 8080:8080 \
+  -v $(pwd)/charts:/charts \
+  -e DEBUG=true \
+  -e STORAGE=local \
+  -e STORAGE_LOCAL_ROOTDIR=/charts \
+  chartmuseum/chartmuseum
+```
+
+You can then add the repo to your local repository list:
+```
+helm repo add chartmuseum http://localhost:8080
+```
+
+ChartMuseum provides other features, such as an API for chart uploads. Please see the [README](https://github.com/helm/chartmuseum) for more info.
+
 ### Google Cloud Storage
 
 The first step is to **create your GCS bucket**. We'll call ours
@@ -152,6 +181,10 @@ Charts repository hosts its charts, so you may want to take a
 
 You can also set up chart repositories using JFrog Artifactory.
 Read more about chart repositories with JFrog Artifactory [here](https://www.jfrog.com/confluence/display/RTF/Helm+Chart+Repositories)
+
+### ProGet
+
+Helm chart repositories are supported by ProGet. For more information, visit the [Helm repository documentation](https://inedo.com/support/documentation/proget/feeds/helm) on the Inedo website.
 
 ### Github Pages example
 

@@ -88,7 +88,7 @@ data is lost after one parse.
 
 ## Consider How Users Will Use Your Values
 
-There are three potential sources of values:
+There are four potential sources of values:
 
 - A chart's `values.yaml` file
 - A values file supplied by `helm install -f` or `helm upgrade -f`

@@ -37,7 +37,7 @@ are bundled with it.
 ## Chart Version
 
 Charts are versioned according to the [SemVer 2
-spec](http://semver.org). A version number is required on every chart.
+spec](https://semver.org). A version number is required on every chart.
 
 ## Chart.yaml
 

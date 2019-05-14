@@ -84,34 +84,35 @@ which results in "pwd: 3jk$o2z=f\30with'quote".
 `
 
 type upgradeCmd struct {
-	release      string
-	chart        string
-	out          io.Writer
-	client       helm.Interface
-	dryRun       bool
-	recreate     bool
-	force        bool
-	disableHooks bool
-	valueFiles   valueFiles
-	values       []string
-	stringValues []string
-	fileValues   []string
-	verify       bool
-	keyring      string
-	install      bool
-	namespace    string
-	version      string
-	timeout      int64
-	resetValues  bool
-	reuseValues  bool
-	wait         bool
-	atomic       bool
-	repoURL      string
-	username     string
-	password     string
-	devel        bool
-	subNotes     bool
-	description  string
+	release       string
+	chart         string
+	out           io.Writer
+	client        helm.Interface
+	dryRun        bool
+	recreate      bool
+	force         bool
+	disableHooks  bool
+	valueFiles    valueFiles
+	values        []string
+	stringValues  []string
+	fileValues    []string
+	verify        bool
+	keyring       string
+	install       bool
+	namespace     string
+	version       string
+	timeout       int64
+	resetValues   bool
+	reuseValues   bool
+	wait          bool
+	atomic        bool
+	repoURL       string
+	username      string
+	password      string
+	devel         bool
+	subNotes      bool
+	description   string
+	cleanupOnFail bool
 
 	certFile string
 	keyFile  string
@@ -179,6 +180,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&upgrade.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
 	f.BoolVar(&upgrade.subNotes, "render-subchart-notes", false, "render subchart notes along with parent")
 	f.StringVar(&upgrade.description, "description", "", "specify the description to use for the upgrade, rather than the default")
+	f.BoolVar(&upgrade.cleanupOnFail, "cleanup-on-fail", false, "allow deletion of new resources created in this upgrade when upgrade failed")
 
 	f.MarkDeprecated("disable-hooks", "use --no-hooks instead")
 
@@ -248,7 +250,8 @@ func (u *upgradeCmd) run() error {
 	}
 
 	// Check chart requirements to make sure all dependencies are present in /charts
-	if ch, err := chartutil.Load(chartPath); err == nil {
+	ch, err := chartutil.Load(chartPath)
+	if err == nil {
 		if req, err := chartutil.LoadRequirements(ch); err == nil {
 			if err := renderutil.CheckDependencies(ch, req); err != nil {
 				return err
@@ -260,9 +263,9 @@ func (u *upgradeCmd) run() error {
 		return prettyError(err)
 	}
 
-	resp, err := u.client.UpdateRelease(
+	resp, err := u.client.UpdateReleaseFromChart(
 		u.release,
-		chartPath,
+		ch,
 		helm.UpdateValueOverrides(rawVals),
 		helm.UpgradeDryRun(u.dryRun),
 		helm.UpgradeRecreate(u.recreate),
@@ -273,22 +276,25 @@ func (u *upgradeCmd) run() error {
 		helm.ReuseValues(u.reuseValues),
 		helm.UpgradeSubNotes(u.subNotes),
 		helm.UpgradeWait(u.wait),
-		helm.UpgradeDescription(u.description))
+		helm.UpgradeDescription(u.description),
+		helm.UpgradeCleanupOnFail(u.cleanupOnFail))
 	if err != nil {
-		fmt.Fprintf(u.out, "UPGRADE FAILED\nROLLING BACK\nError: %v\n", prettyError(err))
+		fmt.Fprintf(u.out, "UPGRADE FAILED\nError: %v\n", prettyError(err))
 		if u.atomic {
+			fmt.Fprint(u.out, "ROLLING BACK")
 			rollback := &rollbackCmd{
-				out:          u.out,
-				client:       u.client,
-				name:         u.release,
-				dryRun:       u.dryRun,
-				recreate:     u.recreate,
-				force:        u.force,
-				timeout:      u.timeout,
-				wait:         u.wait,
-				description:  "",
-				revision:     releaseHistory.Releases[0].Version,
-				disableHooks: u.disableHooks,
+				out:           u.out,
+				client:        u.client,
+				name:          u.release,
+				dryRun:        u.dryRun,
+				recreate:      u.recreate,
+				force:         u.force,
+				timeout:       u.timeout,
+				wait:          u.wait,
+				description:   "",
+				revision:      releaseHistory.Releases[0].Version,
+				disableHooks:  u.disableHooks,
+				cleanupOnFail: u.cleanupOnFail,
 			}
 			if err := rollback.run(); err != nil {
 				return err
@@ -301,7 +307,7 @@ func (u *upgradeCmd) run() error {
 		printRelease(u.out, resp.Release)
 	}
 
-	fmt.Fprintf(u.out, "Release %q has been upgraded. Happy Helming!\n", u.release)
+	fmt.Fprintf(u.out, "Release %q has been upgraded.\n", u.release)
 
 	// Print the status like status command does
 	status, err := u.client.ReleaseStatus(u.release)

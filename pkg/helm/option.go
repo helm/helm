@@ -297,6 +297,20 @@ func DeleteDescription(description string) DeleteOption {
 	}
 }
 
+// UpgradeCleanupOnFail allows deletion of new resources created in this upgrade when upgrade failed
+func UpgradeCleanupOnFail(cleanupOnFail bool) UpdateOption {
+	return func(opts *options) {
+		opts.updateReq.CleanupOnFail = cleanupOnFail
+	}
+}
+
+// RollbackCleanupOnFail allows deletion of new resources created in this rollback when rollback failed
+func RollbackCleanupOnFail(cleanupOnFail bool) RollbackOption {
+	return func(opts *options) {
+		opts.rollbackReq.CleanupOnFail = cleanupOnFail
+	}
+}
+
 // DeleteDisableHooks will disable hooks for a deletion operation.
 func DeleteDisableHooks(disable bool) DeleteOption {
 	return func(opts *options) {

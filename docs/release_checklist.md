@@ -41,7 +41,7 @@ Just kidding! :trollface:
 
 All releases will be of the form vX.Y.Z where X is the major version number, Y
 is the minor version number and Z is the patch release number. This project
-strictly follows [semantic versioning](http://semver.org/) so following this
+strictly follows [semantic versioning](https://semver.org/) so following this
 step is critical.
 
 It is important to note that this document assumes that the git remote in your
@@ -147,6 +147,24 @@ git add .
 git commit -m "bump version to $RELEASE_CANDIDATE_NAME"
 ```
 
+This will update it for the $RELEASE_BRANCH_NAME only. You will also need to pull
+this change into the master branch for when the next release is being created.
+
+```shell
+# get the last commit id i.e. commit to bump the version
+git log --format="%H" -n 1
+
+# create new branch off master
+git checkout master
+git checkout -b bump-version-<release_version>
+
+# cherry pick the commit using id from first command
+git cherry-pick -x <commit-id>
+
+# commit the change
+git push origin bump-version-<release-version>
+```
+
 ## 3. Commit and Push the Release Branch
 
 In order for others to start testing, we can now push the release branch
@@ -250,7 +268,25 @@ git tag --sign --annotate "${RELEASE_NAME}" --message "Helm release ${RELEASE_NA
 git push upstream $RELEASE_NAME
 ```
 
-## 7. Write the Release Notes
+## 7. PGP Sign the downloads
+
+While hashes provide a signature that the content of the downloads is what it
+was generated, signed packages provide traceability of where the package came
+from.
+
+To do this, run the following `make` commands:
+
+```shell
+make clean
+make fetch-dist
+make sign
+```
+
+This will generate ascii armored signature files for each of the files pushed by CI.
+
+All of the signature files need to be uploaded to the release on GitHub.
+
+## 8. Write the Release Notes
 
 We will auto-generate a changelog based on the commits that occurred during a
 release cycle, but it is usually more beneficial to the end-user if the release
@@ -286,14 +322,14 @@ The community keeps growing, and we'd love to see you there!
 
 Download Helm X.Y. The common platform binaries are here:
 
-- [MacOS amd64](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-darwin-amd64.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-darwin-amd64.tar.gz.sha256))
-- [Linux amd64](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-amd64.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-amd64.tar.gz.sha256))
-- [Linux arm](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-arm.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-arm.tar.gz.sha256))
-- [Linux arm64](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-arm64.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-arm64.tar.gz.sha256))
-- [Linux i386](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-386.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-386.tar.gz.sha256))
-- [Linux ppc64le](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-ppc64le.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-ppc64le.tar.gz.sha256))
-- [Linux s390x](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-s390x.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-s390x.tar.gz.sha256))
-- [Windows amd64](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-windows-amd64.zip) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-windows-amd64.zip.sha256))
+- [MacOS amd64](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-darwin-amd64.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-darwin-amd64.tar.gz.sha256) / CHECKSUM_VAL)
+- [Linux amd64](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-amd64.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-amd64.tar.gz.sha256) / CHECKSUM_VAL)
+- [Linux arm](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-arm.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-arm.tar.gz.sha256) / CHECKSUM_VAL)
+- [Linux arm64](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-arm64.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-arm64.tar.gz.sha256) / CHECKSUM_VAL)
+- [Linux i386](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-386.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-386.tar.gz.sha256) / CHECKSUM_VAL)
+- [Linux ppc64le](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-ppc64le.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-ppc64le.tar.gz.sha256) / CHECKSUM_VAL)
+- [Linux s390x](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-s390x.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-s390x.tar.gz.sha256) / CHECKSUM_VAL)
+- [Windows amd64](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-windows-amd64.zip) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-windows-amd64.zip.sha256) / CHECKSUM_VAL)
 
 Once you have the client installed, upgrade Tiller with `helm init --upgrade`.
 
@@ -308,7 +344,7 @@ The [Quickstart Guide](https://docs.helm.sh/using_helm/#quickstart-guide) will g
 
 ### Features
 - ref(*): kubernetes v1.11 support efadbd88035654b2951f3958167afed014c46bc6 (Adam Reese)
-- feat(helm): add $HELM_KEY_PASSPHRASE environment variable for signing helm charts (#4778) 1e26b5300b5166fabb90002535aacd2f9cc7d787 
+- feat(helm): add $HELM_KEY_PASSPHRASE environment variable for signing helm charts (#4778) 1e26b5300b5166fabb90002535aacd2f9cc7d787
 
 ### Bug fixes
 - fix circle not building tags f4f932fabd197f7e6d608c8672b33a483b4b76fa (Matthew Fisher)
@@ -332,10 +368,11 @@ git log --no-merges --pretty=format:'- %s %H (%aN)' $PREVIOUS_RELEASE..$RELEASE_
 After generating the changelog, you will need to categorize the changes as shown
 in the example above.
 
-Once finished, go into GitHub and edit the release notes for the tagged release
-with the notes written here.
+Once finished, go into GitHub and edit the release notes for the tagged release with the notes written here.
 
-## 8. Evangelize
+Remember to attach the ascii armored signatures generated in the previous step to the release notes.
+
+## 9. Evangelize
 
 Congratulations! You're done. Go grab yourself a $DRINK_OF_CHOICE. You've earned
 it.

@@ -8,9 +8,9 @@ or [pull request](https://github.com/helm/helm/pulls).
 ## Article, Blogs, How-Tos, and Extra Documentation
 
 - [Awesome Helm](https://github.com/cdwv/awesome-helm) - List of awesome Helm resources
-- [CI/CD with Kubernetes, Helm & Wercker ](http://www.slideshare.net/Diacode/cicd-with-kubernetes-helm-wercker-madscalability)
+- [CI/CD with Kubernetes, Helm & Wercker ](https://www.slideshare.net/Diacode/cicd-with-kubernetes-helm-wercker-madscalability)
 - [Creating a Helm Plugin in 3 Steps](http://technosophos.com/2017/03/21/creating-a-helm-plugin.html)
-- [Deploying Kubernetes Applications with Helm](http://cloudacademy.com/blog/deploying-kubernetes-applications-with-helm/)
+- [Deploying Kubernetes Applications with Helm](https://cloudacademy.com/blog/deploying-kubernetes-applications-with-helm/)
 - [GitLab, Consumer Driven Contracts, Helm and Kubernetes](https://medium.com/@enxebre/gitlab-consumer-driven-contracts-helm-and-kubernetes-b7235a60a1cb#.xwp1y4tgi)
 - [Honestbee's Helm Chart Conventions](https://gist.github.com/so0k/f927a4b60003cedd101a0911757c605a)
 - [Releasing backward-incompatible changes: Kubernetes, Jenkins, Prometheus Operator, Helm and Traefik](https://medium.com/@enxebre/releasing-backward-incompatible-changes-kubernetes-jenkins-plugin-prometheus-operator-helm-self-6263ca61a1b1#.e0c7elxhq)
@@ -19,6 +19,7 @@ or [pull request](https://github.com/helm/helm/pulls).
 - [Writing a Helm Chart](https://www.influxdata.com/packaged-kubernetes-deployments-writing-helm-chart/)
 - [A basic walk through Kubernetes Helm](https://github.com/muffin87/helm-tutorial)
 - [Tillerless Helm v2](https://rimusz.net/tillerless-helm/)
+- [Generating Certificate Authorities and Certificates using Terraform](https://github.com/jbussdieker/tiller-ssl-terraform)
 
 ## Video, Audio, and Podcast
 
@@ -68,6 +69,7 @@ Tools layered on top of Helm or Tiller.
 - [Armada](https://github.com/att-comdev/armada) - Manage prefixed releases throughout various Kubernetes namespaces, and removes completed jobs for complex deployments. Used by the [Openstack-Helm](https://github.com/openstack/openstack-helm) team.
 - [ChartMuseum](https://github.com/chartmuseum/chartmuseum) - Helm Chart Repository with support for Amazon S3 and Google Cloud Storage
 - [Chartify](https://github.com/appscode/chartify) - Generate Helm charts from existing Kubernetes resources.
+- [Cloudsmith](https://cloudsmith.io/l/helm-repository/) - Fully managed SaaS offering private Helm Chart Repositories
 - [Codefresh](https://codefresh.io) - Kubernetes native CI/CD and management platform with UI dashboards for managing Helm charts and releases
 - [Cog](https://github.com/ohaiwalt/cog-helm) - Helm chart to deploy Cog on Kubernetes
 - [Drone.io Helm Plugin](http://plugins.drone.io/ipedrazas/drone-helm/) - Run Helm inside of the Drone CI/CD system
@@ -90,7 +92,7 @@ Tools layered on top of Helm or Tiller.
 Platforms, distributions, and services that include Helm support.
 
 - [Fabric8](https://fabric8.io) - Integrated development platform for Kubernetes
-- [Jenkins X](http://jenkins-x.io/) - open source automated CI/CD for Kubernetes which uses Helm for [promoting](http://jenkins-x.io/about/features/#promotion) applications through [environments via GitOps](http://jenkins-x.io/about/features/#environments)
+- [Jenkins X](https://jenkins-x.io/) - open source automated CI/CD for Kubernetes which uses Helm for [promoting](https://jenkins-x.io/about/features/#promotion) applications through [environments via GitOps](https://jenkins-x.io/about/features/#environments)
 - [Kubernetic](https://kubernetic.com/) - Kubernetes Desktop Client
 - [Qstack](https://qstack.com)
 

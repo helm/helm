@@ -1,9 +1,10 @@
 DOCKER_REGISTRY   ?= gcr.io
 IMAGE_PREFIX      ?= kubernetes-helm
-DEV_IMAGE         ?= golang:1.11
+DEV_IMAGE         ?= golang:1.12.5
 SHORT_NAME        ?= tiller
 SHORT_NAME_RUDDER ?= rudder
 TARGETS           ?= darwin/amd64 linux/amd64 linux/386 linux/arm linux/arm64 linux/ppc64le linux/s390x windows/amd64
+TARGET_OBJS       ?= darwin-amd64.tar.gz darwin-amd64.tar.gz.sha256 linux-amd64.tar.gz linux-amd64.tar.gz.sha256 linux-386.tar.gz linux-386.tar.gz.sha256 linux-arm.tar.gz linux-arm.tar.gz.sha256 linux-arm64.tar.gz linux-arm64.tar.gz.sha256 linux-ppc64le.tar.gz linux-ppc64le.tar.gz.sha256 linux-s390x.tar.gz linux-s390x.tar.gz.sha256 windows-amd64.zip windows-amd64.zip.sha256
 DIST_DIRS         = find * -type d -exec
 
 # go option
@@ -44,10 +45,25 @@ dist:
 		$(DIST_DIRS) zip -r helm-${VERSION}-{}.zip {} \; \
 	)
 
+.PHONY: fetch-dist
+fetch-dist:
+	mkdir -p _dist
+	cd _dist && \
+	for obj in ${TARGET_OBJS} ; do \
+		curl -sSL -o helm-${VERSION}-$${obj} https://storage.googleapis.com/kubernetes-helm/helm-${VERSION}-$${obj} ; \
+	done
+
+.PHONY: sign
+sign:
+	for f in _dist/*.{gz,zip,sha256} ; do \
+		gpg --armor --detach-sign $${f} ; \
+	done
+
 .PHONY: checksum
 checksum:
 	for f in _dist/*.{gz,zip} ; do \
 		shasum -a 256 "$${f}"  | awk '{print $$1}' > "$${f}.sha256" ; \
+		echo -n "Checksum: " && cat $${f}.sha256 ; \
 	done
 
 .PHONY: check-docker

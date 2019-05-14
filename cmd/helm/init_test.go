@@ -28,7 +28,7 @@ import (
 
 	"github.com/ghodss/yaml"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -176,51 +176,6 @@ func TestInitCmd_dryRun(t *testing.T) {
 		if err := yaml.Unmarshal(doc, &y); err != nil {
 			t.Errorf("Expected parseable YAML, got %q\n\t%s", doc, err)
 		}
-	}
-}
-
-func TestEnsureHome(t *testing.T) {
-	home, err := ioutil.TempDir("", "helm_home")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(home)
-
-	b := bytes.NewBuffer(nil)
-	hh := helmpath.Home(home)
-	settings.Home = hh
-	if err := ensureDirectories(hh, b); err != nil {
-		t.Error(err)
-	}
-	if err := ensureDefaultRepos(hh, b, false); err != nil {
-		t.Error(err)
-	}
-	if err := ensureDefaultRepos(hh, b, true); err != nil {
-		t.Error(err)
-	}
-	if err := ensureRepoFileFormat(hh.RepositoryFile(), b); err != nil {
-		t.Error(err)
-	}
-
-	expectedDirs := []string{hh.String(), hh.Repository(), hh.Cache(), hh.LocalRepository()}
-	for _, dir := range expectedDirs {
-		if fi, err := os.Stat(dir); err != nil {
-			t.Errorf("%s", err)
-		} else if !fi.IsDir() {
-			t.Errorf("%s is not a directory", fi)
-		}
-	}
-
-	if fi, err := os.Stat(hh.RepositoryFile()); err != nil {
-		t.Error(err)
-	} else if fi.IsDir() {
-		t.Errorf("%s should not be a directory", fi)
-	}
-
-	if fi, err := os.Stat(hh.LocalRepository(localRepositoryIndexFile)); err != nil {
-		t.Errorf("%s", err)
-	} else if fi.IsDir() {
-		t.Errorf("%s should not be a directory", fi)
 	}
 }
 

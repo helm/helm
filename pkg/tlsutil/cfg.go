@@ -40,7 +40,7 @@ type Options struct {
 	ClientAuth tls.ClientAuthType
 }
 
-// ClientConfig retusn a TLS configuration for use by a Helm client.
+// ClientConfig returns a TLS configuration for use by a Helm client.
 func ClientConfig(opts Options) (cfg *tls.Config, err error) {
 	var cert *tls.Certificate
 	var pool *x509.CertPool

@@ -465,7 +465,7 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 		}(r)
 	}
 	wg.Wait()
-	fmt.Fprintln(out, "Update Complete. ⎈Happy Helming!⎈")
+	fmt.Fprintln(out, "Update Complete.")
 	return nil
 }
 
@@ -604,7 +604,7 @@ func writeLock(chartpath string, lock *chartutil.RequirementsLock) error {
 	return ioutil.WriteFile(dest, data, 0644)
 }
 
-// archive a dep chart from local directory and save it into charts/
+// tarFromLocalDir archive a dep chart from local directory and save it into charts/
 func tarFromLocalDir(chartpath string, name string, repo string, version string) (string, error) {
 	destPath := filepath.Join(chartpath, "charts")
 
