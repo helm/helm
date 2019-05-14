@@ -79,6 +79,12 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 			if err := yaml.Unmarshal(f.Data, c.Metadata); err != nil {
 				return c, errors.Wrap(err, "cannot load Chart.yaml")
 			}
+			// NOTE(bacongobbler): while the chart specification says that APIVersion must be set,
+			// Helm 2 accepted charts that did not provide an APIVersion in their chart metadata.
+			// Because of that, if APIVersion is unset, we should assume we're loading a v1 chart.
+			if c.Metadata.APIVersion == "" {
+				c.Metadata.APIVersion = chart.APIVersionV1
+			}
 		case f.Name == "Chart.lock":
 			c.Lock = new(chart.Lock)
 			if err := yaml.Unmarshal(f.Data, &c.Lock); err != nil {
