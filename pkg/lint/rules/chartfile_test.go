@@ -209,8 +209,8 @@ func TestChartfile(t *testing.T) {
 	Chartfile(&linter)
 	msgs := linter.Messages
 
-	if len(msgs) != 4 {
-		t.Errorf("Expected 3 errors, got %d", len(msgs))
+	if len(msgs) != 5 {
+		t.Errorf("Expected 4 errors, got %d", len(msgs))
 	}
 
 	if !strings.Contains(msgs[0].Err.Error(), "name is required") {
@@ -221,12 +221,16 @@ func TestChartfile(t *testing.T) {
 		t.Errorf("Unexpected message 1: %s", msgs[1].Err)
 	}
 
-	if !strings.Contains(msgs[2].Err.Error(), "version 0.0.0 is less than or equal to 0") {
+	if !strings.Contains(msgs[2].Err.Error(), "apiVersion is required") {
 		t.Errorf("Unexpected message 2: %s", msgs[2].Err)
 	}
 
-	if !strings.Contains(msgs[3].Err.Error(), "icon is recommended") {
-		t.Errorf("Unexpected message 3: %s", msgs[3].Err)
+	if !strings.Contains(msgs[3].Err.Error(), "version 0.0.0 is less than or equal to 0") {
+		t.Errorf("Unexpected message 3: %s", msgs[2].Err)
+	}
+
+	if !strings.Contains(msgs[4].Err.Error(), "icon is recommended") {
+		t.Errorf("Unexpected message 4: %s", msgs[3].Err)
 	}
 
 }
