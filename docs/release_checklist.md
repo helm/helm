@@ -94,31 +94,6 @@ index 2109a0a..6f5a1a4 100644
         BuildMetadata = "unreleased"
 ```
 
-The README stores links to the latest release for helm. We want to change the version to the first release candidate which we are releasing (more on that in step 5).
-
-```shell
-$ git diff README.md
-diff --git a/README.md b/README.md
-index 022afd79..547839e2 100644
---- a/README.md
-+++ b/README.md
-@@ -34,10 +34,10 @@ Think of it like apt/yum/homebrew for Kubernetes.
-
- Binary downloads of the Helm client can be found at the following links:
-
--- [OSX](https://kubernetes-helm.storage.googleapis.com/helm-v2.7.0-darwin-amd64.tar.gz)
--- [Linux](https://kubernetes-helm.storage.googleapis.com/helm-v2.7.0-linux-amd64.tar.gz)
--- [Linux 32-bit](https://kubernetes-helm.storage.googleapis.com/helm-v2.7.0-linux-386.tar.gz)
--- [Windows](https://kubernetes-helm.storage.googleapis.com/helm-v2.7.0-windows-amd64.tar.gz)
-+- [OSX](https://kubernetes-helm.storage.googleapis.com/helm-v2.8.0-darwin-amd64.tar.gz)
-+- [Linux](https://kubernetes-helm.storage.googleapis.com/helm-v2.8.0-linux-amd64.tar.gz)
-+- [Linux 32-bit](https://kubernetes-helm.storage.googleapis.com/helm-v2.8.0-linux-386.tar.gz)
-+- [Windows](https://kubernetes-helm.storage.googleapis.com/helm-v2.8.0-windows-amd64.tar.gz)
-
- Unpack the `helm` binary and add it to your PATH and you are good to go!
- macOS/[homebrew](https://brew.sh/) users can also use `brew install kubernetes-helm`.
-```
-
 For patch releases, the old version number will be the latest patch release, so just bump the patch number, incrementing Z by one.
 
 ```shell
@@ -149,24 +124,24 @@ git push upstream $RELEASE_CANDIDATE_NAME
 
 CircleCI will automatically create a tagged release image and client binary to test with.
 
-For testers, the process to start testing after CircleCI finishes building the artifacts involves the following steps to grab the client from Google Cloud Storage:
+After CircleCI finishes building the artifacts, use the following commands to fetch the client for testing:
 
 linux/amd64, using /bin/bash:
 
 ```shell
-wget https://kubernetes-helm.storage.googleapis.com/helm-$RELEASE_CANDIDATE_NAME-linux-amd64.tar.gz
+wget https://get.helm.sh/helm-$RELEASE_CANDIDATE_NAME-linux-amd64.tar.gz
 ```
 
 darwin/amd64, using Terminal.app:
 
 ```shell
-wget https://kubernetes-helm.storage.googleapis.com/helm-$RELEASE_CANDIDATE_NAME-darwin-amd64.tar.gz
+wget https://get.helm.sh/helm-$RELEASE_CANDIDATE_NAME-darwin-amd64.tar.gz
 ```
 
 windows/amd64, using PowerShell:
 
 ```shell
-PS C:\> Invoke-WebRequest -Uri "https://kubernetes-helm.storage.googleapis.com/helm-$RELEASE_CANDIDATE_NAME-windows-amd64.tar.gz" -OutFile "helm-$ReleaseCandidateName-windows-amd64.tar.gz"
+PS C:\> Invoke-WebRequest -Uri "https://get.helm.sh/helm-$RELEASE_CANDIDATE_NAME-windows-amd64.tar.gz" -OutFile "helm-$ReleaseCandidateName-windows-amd64.tar.gz"
 ```
 
 Then, unpack and move the binary to somewhere on your $PATH, or move it somewhere and add it to your $PATH (e.g. /usr/local/bin/helm for linux/macOS, C:\Program Files\helm\helm.exe for Windows).
@@ -230,9 +205,9 @@ The community keeps growing, and we'd love to see you there.
 
 Download Helm X.Y. The common platform binaries are here:
 
-- [OSX](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-darwin-amd64.tar.gz)
-- [Linux](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-amd64.tar.gz)
-- [Windows](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-windows-amd64.tar.gz)
+- [OSX](https://get.helm.sh/helm-vX.Y.Z-darwin-amd64.tar.gz)
+- [Linux](https://get.helm.sh/helm-vX.Y.Z-linux-amd64.tar.gz)
+- [Windows](https://get.helm.sh/helm-vX.Y.Z-windows-amd64.tar.gz)
 
 The [Quickstart Guide](https://docs.helm.sh/using_helm/#quickstart-guide) will get you going from there. For **upgrade instructions** or detailed installation notes, check the [install guide](https://docs.helm.sh/using_helm/#installing-helm). You can also use a [script to install](https://raw.githubusercontent.com/helm/helm/master/scripts/get) on any system with `bash`.
 

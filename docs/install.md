@@ -65,12 +65,12 @@ the latest master branch. They are not official releases, and may not be
 stable. However, they offer the opportunity to test the cutting edge
 features.
 
-Canary Helm binaries are stored in the [Kubernetes Helm GCS bucket](https://kubernetes-helm.storage.googleapis.com).
+Canary Helm binaries are stored at [get.helm.sh](https://get.helm.sh).
 Here are links to the common builds:
 
-- [Linux AMD64](https://kubernetes-helm.storage.googleapis.com/helm-canary-linux-amd64.tar.gz)
-- [macOS AMD64](https://kubernetes-helm.storage.googleapis.com/helm-canary-darwin-amd64.tar.gz)
-- [Experimental Windows AMD64](https://kubernetes-helm.storage.googleapis.com/helm-canary-windows-amd64.zip)
+- [Linux AMD64](https://get.helm.sh/helm-canary-linux-amd64.tar.gz)
+- [macOS AMD64](https://get.helm.sh/helm-canary-darwin-amd64.tar.gz)
+- [Experimental Windows AMD64](https://get.helm.sh/helm-canary-windows-amd64.zip)
 
 ### From Source (Linux, macOS)
 
