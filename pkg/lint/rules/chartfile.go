@@ -89,7 +89,7 @@ func validateChartNameDirMatch(chartDir string, cf *chart.Metadata) error {
 
 func validateChartAPIVersion(cf *chart.Metadata) error {
 	if cf.APIVersion == "" {
-		return errors.New("apiVersion is required")
+		return errors.New("apiVersion is required. The value must be either \"v1\" or \"v2\"")
 	}
 
 	if cf.APIVersion != "v1" && cf.APIVersion != "v2" {

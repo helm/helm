@@ -63,7 +63,7 @@ func TestBadChart(t *testing.T) {
 				e3 = true
 			}
 
-			if strings.Contains(msg.Err.Error(), "apiVersion is required") {
+			if strings.Contains(msg.Err.Error(), "apiVersion is required. The value must be either \"v1\" or \"v2\"") {
 				e4 = true
 			}
 		}

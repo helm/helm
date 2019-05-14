@@ -221,7 +221,7 @@ func TestChartfile(t *testing.T) {
 		t.Errorf("Unexpected message 1: %s", msgs[1].Err)
 	}
 
-	if !strings.Contains(msgs[2].Err.Error(), "apiVersion is required") {
+	if !strings.Contains(msgs[2].Err.Error(), "apiVersion is required. The value must be either \"v1\" or \"v2\"") {
 		t.Errorf("Unexpected message 2: %s", msgs[2].Err)
 	}
 
