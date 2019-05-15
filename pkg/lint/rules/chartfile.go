@@ -17,6 +17,7 @@ limitations under the License.
 package rules // import "helm.sh/helm/pkg/lint/rules"
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -48,6 +49,7 @@ func Chartfile(linter *support.Linter) {
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartNameDirMatch(linter.ChartDir, chartFile))
 
 	// Chart metadata
+	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartAPIVersion(chartFile))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartVersion(chartFile))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartMaintainer(chartFile))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartSources(chartFile))
@@ -82,6 +84,18 @@ func validateChartNameDirMatch(chartDir string, cf *chart.Metadata) error {
 	if cf.Name != filepath.Base(chartDir) {
 		return errors.Errorf("directory name (%s) and chart name (%s) must be the same", filepath.Base(chartDir), cf.Name)
 	}
+	return nil
+}
+
+func validateChartAPIVersion(cf *chart.Metadata) error {
+	if cf.APIVersion == "" {
+		return errors.New("apiVersion is required. The value must be either \"v1\" or \"v2\"")
+	}
+
+	if cf.APIVersion != "v1" && cf.APIVersion != "v2" {
+		return fmt.Errorf("apiVersion '%s' is not valid. The value must be either \"v1\" or \"v2\"", cf.APIVersion)
+	}
+
 	return nil
 }
 
