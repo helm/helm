@@ -367,6 +367,7 @@ func CoalesceTables(dst, src map[string]interface{}) map[string]interface{} {
 // for the composition of the final values struct
 type ReleaseOptions struct {
 	Name      string
+	Namespace string
 	IsUpgrade bool
 	IsInstall bool
 }
@@ -383,6 +384,7 @@ func ToRenderValues(chrt *chart.Chart, chrtVals map[string]interface{}, options 
 		"Capabilities": caps,
 		"Release": map[string]interface{}{
 			"Name":      options.Name,
+			"Namespace": options.Namespace,
 			"IsUpgrade": options.IsUpgrade,
 			"IsInstall": options.IsInstall,
 			"Service":   "Helm",

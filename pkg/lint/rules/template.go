@@ -50,7 +50,10 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 		return
 	}
 
-	options := chartutil.ReleaseOptions{Name: "testRelease"}
+	options := chartutil.ReleaseOptions{
+		Name:      "testRelease",
+		Namespace: namespace,
+	}
 
 	cvals, err := chartutil.CoalesceValues(chart, values)
 	if err != nil {
