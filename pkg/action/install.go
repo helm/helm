@@ -122,6 +122,7 @@ func (i *Install) Run(chrt *chart.Chart) (*release.Release, error) {
 
 	options := chartutil.ReleaseOptions{
 		Name:      i.ReleaseName,
+		Namespace: i.Namespace,
 		IsInstall: true,
 	}
 	valuesToRender, err := chartutil.ToRenderValues(chrt, i.rawValues, options, caps)
