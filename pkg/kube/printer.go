@@ -24,53 +24,6 @@ import (
 	"k8s.io/cli-runtime/pkg/resource"
 )
 
-// KubernetesClient represents a client capable of communicating with the Kubernetes API.
-//
-// A KubernetesClient must be concurrency safe.
-type KubernetesClient interface {
-	// Create creates one or more resources.
-	//
-	// reader must contain a YAML stream (one or more YAML documents separated
-	// by "\n---\n").
-	Create(reader io.Reader) error
-
-	Wait(r io.Reader, timeout time.Duration) error
-
-	// Get gets one or more resources. Returned string hsa the format like kubectl
-	// provides with the column headers separating the resource types.
-	//
-	// reader must contain a YAML stream (one or more YAML documents separated
-	// by "\n---\n").
-	Get(reader io.Reader) (string, error)
-
-	// Delete destroys one or more resources.
-	//
-	// reader must contain a YAML stream (one or more YAML documents separated
-	// by "\n---\n").
-	Delete(reader io.Reader) error
-
-	// Watch the resource in reader until it is "ready".
-	//
-	// For Jobs, "ready" means the job ran to completion (excited without error).
-	// For all other kinds, it means the kind was created or modified without
-	// error.
-	WatchUntilReady(reader io.Reader, timeout time.Duration) error
-
-	// Update updates one or more resources or creates the resource
-	// if it doesn't exist.
-	//
-	// reader must contain a YAML stream (one or more YAML documents separated
-	// by "\n---\n").
-	Update(originalReader, modifiedReader io.Reader, force bool, recreate bool) error
-
-	Build(reader io.Reader) (Result, error)
-	BuildUnstructured(reader io.Reader) (Result, error)
-
-	// WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
-	// and returns said phase (PodSucceeded or PodFailed qualify).
-	WaitAndGetCompletedPodPhase(name string, timeout time.Duration) (v1.PodPhase, error)
-}
-
 // PrintingKubeClient implements KubeClient, but simply prints the reader to
 // the given output.
 type PrintingKubeClient struct {
@@ -83,7 +36,7 @@ func (p *PrintingKubeClient) Create(r io.Reader) error {
 	return err
 }
 
-func (p *PrintingKubeClient) Wait(r io.Reader, timeout time.Duration) error {
+func (p *PrintingKubeClient) Wait(r io.Reader, _ time.Duration) error {
 	_, err := io.Copy(p.Out, r)
 	return err
 }
@@ -103,28 +56,27 @@ func (p *PrintingKubeClient) Delete(r io.Reader) error {
 }
 
 // WatchUntilReady implements KubeClient WatchUntilReady.
-func (p *PrintingKubeClient) WatchUntilReady(r io.Reader, timeout time.Duration) error {
+func (p *PrintingKubeClient) WatchUntilReady(r io.Reader, _ time.Duration) error {
 	_, err := io.Copy(p.Out, r)
 	return err
 }
 
 // Update implements KubeClient Update.
-func (p *PrintingKubeClient) Update(currentReader, modifiedReader io.Reader, force, recreate bool) error {
+func (p *PrintingKubeClient) Update(_, modifiedReader io.Reader, _, _ bool) error {
 	_, err := io.Copy(p.Out, modifiedReader)
 	return err
 }
 
 // Build implements KubeClient Build.
-func (p *PrintingKubeClient) Build(reader io.Reader) (Result, error) {
+func (p *PrintingKubeClient) Build(_ io.Reader) (Result, error) {
 	return []*resource.Info{}, nil
 }
 
-// BuildUnstructured implements KubeClient BuildUnstructured.
-func (p *PrintingKubeClient) BuildUnstructured(reader io.Reader) (Result, error) {
-	return []*resource.Info{}, nil
+func (p *PrintingKubeClient) BuildUnstructured(_ io.Reader) (Result, error) {
+	return p.Build(nil)
 }
 
 // WaitAndGetCompletedPodPhase implements KubeClient WaitAndGetCompletedPodPhase.
-func (p *PrintingKubeClient) WaitAndGetCompletedPodPhase(name string, timeout time.Duration) (v1.PodPhase, error) {
+func (p *PrintingKubeClient) WaitAndGetCompletedPodPhase(_ string, _ time.Duration) (v1.PodPhase, error) {
 	return v1.PodSucceeded, nil
 }

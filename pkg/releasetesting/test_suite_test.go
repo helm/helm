@@ -244,7 +244,7 @@ func testEnvFixture() *Environment {
 }
 
 type mockKubeClient struct {
-	kube.KubernetesClient
+	kube.Interface
 	podFail bool
 	err     error
 }
@@ -255,12 +255,5 @@ func (c *mockKubeClient) WaitAndGetCompletedPodPhase(_ string, _ time.Duration) 
 	}
 	return v1.PodSucceeded, nil
 }
-func (c *mockKubeClient) Get(_ io.Reader) (string, error) {
-	return "", nil
-}
-func (c *mockKubeClient) Create(_ io.Reader) error {
-	return c.err
-}
-func (c *mockKubeClient) Delete(_ io.Reader) error {
-	return nil
-}
+func (c *mockKubeClient) Create(_ io.Reader) error { return c.err }
+func (c *mockKubeClient) Delete(_ io.Reader) error { return nil }

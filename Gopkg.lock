@@ -188,19 +188,6 @@
   version = "v0.1.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:95e08278c876d185ba67533f045e9e63b3c9d02cbd60beb0f4dbaa2344a13ac2"
-  name = "github.com/chai2010/gettext-go"
-  packages = [
-    "gettext",
-    "gettext/mo",
-    "gettext/plural",
-    "gettext/po",
-  ]
-  pruneopts = "UT"
-  revision = "bf70f2a70fb1b1f36d90d671a72795984eab0fcb"
-
-[[projects]]
   digest = "1:37f8940c4d3c41536ea882b1ca3498e403c04892dfc34bd0d670ed9eafccda9a"
   name = "github.com/containerd/containerd"
   packages = [
@@ -703,14 +690,6 @@
   pruneopts = "UT"
   revision = "5c8c8bd35d3832f5d134ae1e1e375b69a4d25242"
   version = "v1.0.1"
-
-[[projects]]
-  branch = "master"
-  digest = "1:10b85f58562d487a3bd7da6ba5b895bc221d5ecbd89df9c7c5a36004e827ade1"
-  name = "github.com/liggitt/tabwriter"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "89fcab3d43de07060e4fd4c1547430ed57e87f24"
 
 [[projects]]
   branch = "master"
@@ -1499,8 +1478,8 @@
     "util/retry",
   ]
   pruneopts = "UT"
-  revision = "6ee68ca5fd8355d024d02f9db0b3b667e8357a0f"
-  version = "kubernetes-1.14.0"
+  revision = "1a26190bd76a9017e289958b9fba936430aa3704"
+  version = "kubernetes-1.14.1"
 
 [[projects]]
   branch = "master"
@@ -1533,42 +1512,14 @@
 
 [[projects]]
   branch = "release-1.14"
-  digest = "1:3e8a09f07ca1d0163720064d0bcb567fdc85338e02bd63c6d84786be8b24ebdb"
+  digest = "1:8e018df756b49f5fdc20e15041486520285829528df043457bb7a91886fa775b"
   name = "k8s.io/kubernetes"
   packages = [
     "pkg/api/legacyscheme",
     "pkg/api/service",
     "pkg/api/v1/pod",
     "pkg/apis/apps",
-    "pkg/apis/apps/install",
-    "pkg/apis/apps/v1",
-    "pkg/apis/apps/v1beta1",
-    "pkg/apis/apps/v1beta2",
-    "pkg/apis/authentication",
-    "pkg/apis/authentication/install",
-    "pkg/apis/authentication/v1",
-    "pkg/apis/authentication/v1beta1",
-    "pkg/apis/authorization",
-    "pkg/apis/authorization/install",
-    "pkg/apis/authorization/v1",
-    "pkg/apis/authorization/v1beta1",
     "pkg/apis/autoscaling",
-    "pkg/apis/autoscaling/install",
-    "pkg/apis/autoscaling/v1",
-    "pkg/apis/autoscaling/v2beta1",
-    "pkg/apis/autoscaling/v2beta2",
-    "pkg/apis/batch",
-    "pkg/apis/batch/install",
-    "pkg/apis/batch/v1",
-    "pkg/apis/batch/v1beta1",
-    "pkg/apis/batch/v2alpha1",
-    "pkg/apis/certificates",
-    "pkg/apis/certificates/install",
-    "pkg/apis/certificates/v1beta1",
-    "pkg/apis/coordination",
-    "pkg/apis/coordination/install",
-    "pkg/apis/coordination/v1",
-    "pkg/apis/coordination/v1beta1",
     "pkg/apis/core",
     "pkg/apis/core/helper",
     "pkg/apis/core/install",
@@ -1576,36 +1527,7 @@
     "pkg/apis/core/v1",
     "pkg/apis/core/v1/helper",
     "pkg/apis/core/validation",
-    "pkg/apis/events",
-    "pkg/apis/events/install",
-    "pkg/apis/events/v1beta1",
-    "pkg/apis/extensions",
-    "pkg/apis/extensions/install",
-    "pkg/apis/extensions/v1beta1",
-    "pkg/apis/networking",
-    "pkg/apis/node",
-    "pkg/apis/policy",
-    "pkg/apis/policy/install",
-    "pkg/apis/policy/v1beta1",
-    "pkg/apis/rbac",
-    "pkg/apis/rbac/install",
-    "pkg/apis/rbac/v1",
-    "pkg/apis/rbac/v1alpha1",
-    "pkg/apis/rbac/v1beta1",
     "pkg/apis/scheduling",
-    "pkg/apis/scheduling/install",
-    "pkg/apis/scheduling/v1",
-    "pkg/apis/scheduling/v1alpha1",
-    "pkg/apis/scheduling/v1beta1",
-    "pkg/apis/settings",
-    "pkg/apis/settings/install",
-    "pkg/apis/settings/v1alpha1",
-    "pkg/apis/storage",
-    "pkg/apis/storage/install",
-    "pkg/apis/storage/util",
-    "pkg/apis/storage/v1",
-    "pkg/apis/storage/v1alpha1",
-    "pkg/apis/storage/v1beta1",
     "pkg/capabilities",
     "pkg/controller",
     "pkg/controller/deployment/util",
@@ -1613,7 +1535,6 @@
     "pkg/fieldpath",
     "pkg/kubectl",
     "pkg/kubectl/apps",
-    "pkg/kubectl/cmd/get",
     "pkg/kubectl/cmd/testing",
     "pkg/kubectl/cmd/util",
     "pkg/kubectl/cmd/util/openapi",
@@ -1621,16 +1542,13 @@
     "pkg/kubectl/cmd/util/openapi/validation",
     "pkg/kubectl/describe",
     "pkg/kubectl/describe/versioned",
-    "pkg/kubectl/generated",
     "pkg/kubectl/scheme",
     "pkg/kubectl/util",
     "pkg/kubectl/util/certificate",
     "pkg/kubectl/util/deployment",
     "pkg/kubectl/util/event",
     "pkg/kubectl/util/fieldpath",
-    "pkg/kubectl/util/i18n",
     "pkg/kubectl/util/podutils",
-    "pkg/kubectl/util/printers",
     "pkg/kubectl/util/qos",
     "pkg/kubectl/util/rbac",
     "pkg/kubectl/util/resource",
@@ -1641,14 +1559,11 @@
     "pkg/kubectl/validation",
     "pkg/kubelet/types",
     "pkg/master/ports",
-    "pkg/printers",
-    "pkg/printers/internalversion",
     "pkg/security/apparmor",
     "pkg/serviceaccount",
     "pkg/util/hash",
     "pkg/util/interrupt",
     "pkg/util/labels",
-    "pkg/util/node",
     "pkg/util/parsers",
     "pkg/util/taints",
     "pkg/version",
@@ -1720,14 +1635,6 @@
   revision = "fd68e9863619f6ec2fdd8625fe1f02e7c877e480"
   version = "v1.1.0"
 
-[[projects]]
-  branch = "master"
-  digest = "1:9132eacc44d9bd1e03145ea2e9d4888800da7773d6edebb401f8cd34c9fb8380"
-  name = "vbom.ml/util"
-  packages = ["sortorder"]
-  pruneopts = "UT"
-  revision = "efcd4e0f97874370259c7d93e12aad57911dea81"
-
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
@@ -1783,7 +1690,6 @@
     "k8s.io/apimachinery/pkg/api/errors",
     "k8s.io/apimachinery/pkg/api/meta",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
-    "k8s.io/apimachinery/pkg/fields",
     "k8s.io/apimachinery/pkg/labels",
     "k8s.io/apimachinery/pkg/runtime",
     "k8s.io/apimachinery/pkg/runtime/schema",
@@ -1805,12 +1711,9 @@
     "k8s.io/client-go/tools/watch",
     "k8s.io/client-go/util/homedir",
     "k8s.io/kubernetes/pkg/api/legacyscheme",
-    "k8s.io/kubernetes/pkg/apis/batch",
     "k8s.io/kubernetes/pkg/controller/deployment/util",
-    "k8s.io/kubernetes/pkg/kubectl/cmd/get",
     "k8s.io/kubernetes/pkg/kubectl/cmd/testing",
     "k8s.io/kubernetes/pkg/kubectl/cmd/util",
-    "k8s.io/kubernetes/pkg/kubectl/scheme",
     "k8s.io/kubernetes/pkg/kubectl/validation",
   ]
   solver-name = "gps-cdcl"

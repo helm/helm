@@ -322,25 +322,25 @@ func TestMergeValues(t *testing.T) {
 		"testing": "fun",
 	}
 
-	testMap := MergeValues(flatMap, nestedMap)
+	testMap := mergeValues(flatMap, nestedMap)
 	equal := reflect.DeepEqual(testMap, nestedMap)
 	if !equal {
 		t.Errorf("Expected a nested map to overwrite a flat value. Expected: %v, got %v", nestedMap, testMap)
 	}
 
-	testMap = MergeValues(nestedMap, flatMap)
+	testMap = mergeValues(nestedMap, flatMap)
 	equal = reflect.DeepEqual(testMap, flatMap)
 	if !equal {
 		t.Errorf("Expected a flat value to overwrite a map. Expected: %v, got %v", flatMap, testMap)
 	}
 
-	testMap = MergeValues(nestedMap, anotherNestedMap)
+	testMap = mergeValues(nestedMap, anotherNestedMap)
 	equal = reflect.DeepEqual(testMap, anotherNestedMap)
 	if !equal {
 		t.Errorf("Expected a nested map to overwrite another nested map. Expected: %v, got %v", anotherNestedMap, testMap)
 	}
 
-	testMap = MergeValues(anotherFlatMap, anotherNestedMap)
+	testMap = mergeValues(anotherFlatMap, anotherNestedMap)
 	expectedMap := map[string]interface{}{
 		"testing": "fun",
 		"foo":     "bar",

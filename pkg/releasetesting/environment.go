@@ -31,7 +31,7 @@ import (
 // Environment encapsulates information about where test suite executes and returns results
 type Environment struct {
 	Namespace  string
-	KubeClient kube.KubernetesClient
+	KubeClient kube.Interface
 	Messages   chan *release.TestReleaseResponse
 	Timeout    time.Duration
 }

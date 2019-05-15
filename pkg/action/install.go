@@ -191,6 +191,7 @@ func (i *Install) Run(chrt *chart.Chart) (*release.Release, error) {
 	}
 
 	if i.Wait {
+		buf := bytes.NewBufferString(rel.Manifest)
 		if err := i.cfg.KubeClient.Wait(buf, i.Timeout); err != nil {
 			rel.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", i.ReleaseName, err.Error()))
 			i.recordRelease(rel) // Ignore the error, since we have another error to deal with.
@@ -623,7 +624,7 @@ func (v *ValueOptions) MergeValues(settings cli.EnvSettings) error {
 			return errors.Wrapf(err, "failed to parse %s", filePath)
 		}
 		// Merge with the previous map
-		base = MergeValues(base, currentMap)
+		base = mergeMaps(base, currentMap)
 	}
 
 	// User specified a value via --set
@@ -644,31 +645,47 @@ func (v *ValueOptions) MergeValues(settings cli.EnvSettings) error {
 	return nil
 }
 
-// MergeValues merges source and destination map, preferring values from the source map
-func MergeValues(dest, src map[string]interface{}) map[string]interface{} {
-	for k, v := range src {
-		// If the key doesn't exist already, then just set the key to that value
-		if _, exists := dest[k]; !exists {
-			dest[k] = v
-			continue
-		}
-		nextMap, ok := v.(map[string]interface{})
-		// If it isn't another map, overwrite the value
-		if !ok {
-			dest[k] = v
-			continue
-		}
-		// Edge case: If the key exists in the destination, but isn't a map
-		destMap, isMap := dest[k].(map[string]interface{})
-		// If the source map has a map for this key, prefer it
-		if !isMap {
-			dest[k] = v
-			continue
-		}
-		// If we got to this point, it is a map in both, so merge them
-		dest[k] = MergeValues(destMap, nextMap)
+// mergeValues merges source and destination map, preferring values from the source map
+func mergeValues(dest, src map[string]interface{}) map[string]interface{} {
+	out := make(map[string]interface{})
+	for k, v := range dest {
+		out[k] = v
 	}
-	return dest
+	for k, v := range src {
+		if _, ok := out[k]; !ok {
+			// If the key doesn't exist already, then just set the key to that value
+		} else if nextMap, ok := v.(map[string]interface{}); !ok {
+			// If it isn't another map, overwrite the value
+		} else if destMap, isMap := out[k].(map[string]interface{}); !isMap {
+			// Edge case: If the key exists in the destination, but isn't a map
+			// If the source map has a map for this key, prefer it
+		} else {
+			// If we got to this point, it is a map in both, so merge them
+			out[k] = mergeValues(destMap, nextMap)
+			continue
+		}
+		out[k] = v
+	}
+	return out
+}
+
+func mergeMaps(a, b map[string]interface{}) map[string]interface{} {
+	out := make(map[string]interface{}, len(a))
+	for k, v := range a {
+		out[k] = v
+	}
+	for k, v := range b {
+		if v, ok := v.(map[string]interface{}); ok {
+			if bv, ok := out[k]; ok {
+				if bv, ok := bv.(map[string]interface{}); ok {
+					out[k] = mergeMaps(bv, v)
+					continue
+				}
+			}
+		}
+		out[k] = v
+	}
+	return out
 }
 
 // readFile load a file from stdin, the local directory, or a remote file with a url.

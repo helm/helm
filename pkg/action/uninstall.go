@@ -218,8 +218,8 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (kept string, errs []err
 	}
 
 	filesToKeep, filesToDelete := filterManifestsToKeep(files)
-	if len(filesToKeep) > 0 {
-		kept = summarizeKeptManifests(filesToKeep, u.cfg.KubeClient)
+	for _, f := range filesToKeep {
+		kept += f.Name + "\n"
 	}
 
 	for _, file := range filesToDelete {

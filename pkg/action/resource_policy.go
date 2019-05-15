@@ -17,10 +17,8 @@ limitations under the License.
 package action
 
 import (
-	"bytes"
 	"strings"
 
-	"helm.sh/helm/pkg/kube"
 	"helm.sh/helm/pkg/releaseutil"
 )
 
@@ -33,10 +31,7 @@ const resourcePolicyAnno = "helm.sh/resource-policy"
 //   during an uninstallRelease action.
 const keepPolicy = "keep"
 
-func filterManifestsToKeep(manifests []releaseutil.Manifest) ([]releaseutil.Manifest, []releaseutil.Manifest) {
-	remaining := []releaseutil.Manifest{}
-	keep := []releaseutil.Manifest{}
-
+func filterManifestsToKeep(manifests []releaseutil.Manifest) (keep, remaining []releaseutil.Manifest) {
 	for _, m := range manifests {
 		if m.Head.Metadata == nil || m.Head.Metadata.Annotations == nil || len(m.Head.Metadata.Annotations) == 0 {
 			remaining = append(remaining, m)
@@ -56,22 +51,4 @@ func filterManifestsToKeep(manifests []releaseutil.Manifest) ([]releaseutil.Mani
 
 	}
 	return keep, remaining
-}
-
-func summarizeKeptManifests(manifests []releaseutil.Manifest, kubeClient kube.KubernetesClient) string {
-	var message string
-	for _, m := range manifests {
-		// check if m is in fact present from k8s client's POV.
-		output, err := kubeClient.Get(bytes.NewBufferString(m.Content))
-		if err != nil || strings.Contains(output, kube.MissingGetHeader) {
-			continue
-		}
-
-		details := "[" + m.Head.Kind + "] " + m.Head.Metadata.Name + "\n"
-		if message == "" {
-			message = "These resources were kept due to the resource policy:\n"
-		}
-		message += details
-	}
-	return message
 }

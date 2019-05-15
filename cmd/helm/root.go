@@ -82,7 +82,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	}
 	actionConfig.RegistryClient = registry.NewClient(&registry.ClientOptions{
 		Debug: settings.Debug,
-		Out: out,
+		Out:   out,
 		Authorizer: registry.Authorizer{
 			Client: client,
 		},

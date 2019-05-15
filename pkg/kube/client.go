@@ -17,7 +17,6 @@ limitations under the License.
 package kube // import "helm.sh/helm/pkg/kube"
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -27,18 +26,12 @@ import (
 	"time"
 
 	jsonpatch "github.com/evanphx/json-patch"
-	goerrors "github.com/pkg/errors"
-	appsv1 "k8s.io/api/apps/v1"
-	appsv1beta1 "k8s.io/api/apps/v1beta1"
-	appsv1beta2 "k8s.io/api/apps/v1beta2"
+	"github.com/pkg/errors"
 	batch "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
-	extv1beta1 "k8s.io/api/extensions/v1beta1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
@@ -46,18 +39,13 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
 	watchtools "k8s.io/client-go/tools/watch"
-	"k8s.io/kubernetes/pkg/api/legacyscheme"
-	batchinternal "k8s.io/kubernetes/pkg/apis/batch"
-	"k8s.io/kubernetes/pkg/kubectl/cmd/get"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 )
 
-// MissingGetHeader is added to Get's output when a resource is not found.
-const MissingGetHeader = "==> MISSING\nKIND\t\tNAME\n"
-
 // ErrNoObjectsVisited indicates that during a visit operation, no matching objects were found.
-var ErrNoObjectsVisited = goerrors.New("no objects visited")
+var ErrNoObjectsVisited = errors.New("no objects visited")
 
 // Client represents a client capable of communicating with the Kubernetes API.
 type Client struct {
@@ -83,9 +71,6 @@ func (c *Client) KubernetesClientSet() (*kubernetes.Clientset, error) {
 
 var nopLogger = func(_ string, _ ...interface{}) {}
 
-// resourceActorFunc performs an action on a single resource.
-type resourceActorFunc func(*resource.Info) error
-
 // Create creates Kubernetes resources from an io.reader.
 //
 // Namespace will set the namespace.
@@ -96,8 +81,7 @@ func (c *Client) Create(reader io.Reader) error {
 		return err
 	}
 	c.Log("creating %d resource(s)", len(infos))
-	err = perform(infos, createResource)
-	return err
+	return perform(infos, createResource)
 }
 
 func (c *Client) Wait(reader io.Reader, timeout time.Duration) error {
@@ -144,8 +128,6 @@ func (c *Client) validator() resource.ContentValidator {
 
 // BuildUnstructured validates for Kubernetes objects and returns unstructured infos.
 func (c *Client) BuildUnstructured(reader io.Reader) (Result, error) {
-	var result Result
-
 	result, err := c.newBuilder().
 		Unstructured().
 		Stream(reader, "").
@@ -155,90 +137,13 @@ func (c *Client) BuildUnstructured(reader io.Reader) (Result, error) {
 
 // Build validates for Kubernetes objects and returns resource Infos from a io.Reader.
 func (c *Client) Build(reader io.Reader) (Result, error) {
-	var result Result
 	result, err := c.newBuilder().
-		WithScheme(legacyscheme.Scheme).
+		WithScheme(scheme.Scheme, scheme.Scheme.PrioritizedVersionsAllGroups()...).
 		Schema(c.validator()).
 		Stream(reader, "").
 		Do().
 		Infos()
 	return result, scrubValidationError(err)
-}
-
-// Get gets Kubernetes resources as pretty-printed string.
-//
-// Namespace will set the namespace.
-func (c *Client) Get(reader io.Reader) (string, error) {
-	// Since we don't know what order the objects come in, let's group them by the types, so
-	// that when we print them, they come out looking good (headers apply to subgroups, etc.).
-	objs := make(map[string][]runtime.Object)
-	infos, err := c.BuildUnstructured(reader)
-	if err != nil {
-		return "", err
-	}
-
-	var objPods = make(map[string][]v1.Pod)
-
-	missing := []string{}
-	err = perform(infos, func(info *resource.Info) error {
-		c.Log("Doing get for %s: %q", info.Mapping.GroupVersionKind.Kind, info.Name)
-		if err := info.Get(); err != nil {
-			c.Log("WARNING: Failed Get for resource %q: %s", info.Name, err)
-			missing = append(missing, fmt.Sprintf("%v\t\t%s", info.Mapping.Resource, info.Name))
-			return nil
-		}
-
-		// Use APIVersion/Kind as grouping mechanism. I'm not sure if you can have multiple
-		// versions per cluster, but this certainly won't hurt anything, so let's be safe.
-		gvk := info.ResourceMapping().GroupVersionKind
-		vk := gvk.Version + "/" + gvk.Kind
-		objs[vk] = append(objs[vk], asVersioned(info))
-
-		// Get the relation pods
-		objPods, err = c.getSelectRelationPod(info, objPods)
-		if err != nil {
-			c.Log("Warning: get the relation pod is failed, err:%s", err)
-		}
-
-		return nil
-	})
-	if err != nil {
-		return "", err
-	}
-
-	// here, we will add the objPods to the objs
-	for key, podItems := range objPods {
-		for i := range podItems {
-			objs[key+"(related)"] = append(objs[key+"(related)"], &podItems[i])
-		}
-	}
-
-	// Ok, now we have all the objects grouped by types (say, by v1/Pod, v1/Service, etc.), so
-	// spin through them and print them. Printer is cool since it prints the header only when
-	// an object type changes, so we can just rely on that. Problem is it doesn't seem to keep
-	// track of tab widths.
-	buf := new(bytes.Buffer)
-	p, _ := get.NewHumanPrintFlags().ToPrinter("")
-	for t, ot := range objs {
-		if _, err = buf.WriteString("==> " + t + "\n"); err != nil {
-			return "", err
-		}
-		for _, o := range ot {
-			if err := p.PrintObj(o, buf); err != nil {
-				return "", goerrors.Wrapf(err, "failed to print object type %s, object: %q", t, o)
-			}
-		}
-		if _, err := buf.WriteString("\n"); err != nil {
-			return "", err
-		}
-	}
-	if len(missing) > 0 {
-		buf.WriteString(MissingGetHeader)
-		for _, s := range missing {
-			fmt.Fprintln(buf, s)
-		}
-	}
-	return buf.String(), nil
 }
 
 // Update reads in the current configuration and a target configuration from io.reader
@@ -250,13 +155,13 @@ func (c *Client) Get(reader io.Reader) (string, error) {
 func (c *Client) Update(originalReader, targetReader io.Reader, force, recreate bool) error {
 	original, err := c.BuildUnstructured(originalReader)
 	if err != nil {
-		return goerrors.Wrap(err, "failed decoding reader into objects")
+		return errors.Wrap(err, "failed decoding reader into objects")
 	}
 
 	c.Log("building resources from updated manifest")
 	target, err := c.BuildUnstructured(targetReader)
 	if err != nil {
-		return goerrors.Wrap(err, "failed decoding reader into objects")
+		return errors.Wrap(err, "failed decoding reader into objects")
 	}
 
 	updateErrors := []string{}
@@ -269,13 +174,13 @@ func (c *Client) Update(originalReader, targetReader io.Reader, force, recreate 
 
 		helper := resource.NewHelper(info.Client, info.Mapping)
 		if _, err := helper.Get(info.Namespace, info.Name, info.Export); err != nil {
-			if !errors.IsNotFound(err) {
-				return goerrors.Wrap(err, "could not get information about the resource")
+			if !apierrors.IsNotFound(err) {
+				return errors.Wrap(err, "could not get information about the resource")
 			}
 
 			// Since the resource does not exist, create it.
 			if err := createResource(info); err != nil {
-				return goerrors.Wrap(err, "failed to create resource")
+				return errors.Wrap(err, "failed to create resource")
 			}
 
 			kind := info.Mapping.GroupVersionKind.Kind
@@ -286,7 +191,7 @@ func (c *Client) Update(originalReader, targetReader io.Reader, force, recreate 
 		originalInfo := original.Get(info)
 		if originalInfo == nil {
 			kind := info.Mapping.GroupVersionKind.Kind
-			return goerrors.Errorf("no %s with the name %q found", kind, info.Name)
+			return errors.Errorf("no %s with the name %q found", kind, info.Name)
 		}
 
 		if err := updateResource(c, info, originalInfo.Object, force, recreate); err != nil {
@@ -301,7 +206,7 @@ func (c *Client) Update(originalReader, targetReader io.Reader, force, recreate 
 	case err != nil:
 		return err
 	case len(updateErrors) != 0:
-		return goerrors.Errorf(strings.Join(updateErrors, " && "))
+		return errors.Errorf(strings.Join(updateErrors, " && "))
 	}
 
 	for _, info := range original.Difference(target) {
@@ -329,14 +234,14 @@ func (c *Client) Delete(reader io.Reader) error {
 }
 
 func (c *Client) skipIfNotFound(err error) error {
-	if errors.IsNotFound(err) {
+	if apierrors.IsNotFound(err) {
 		c.Log("%v", err)
 		return nil
 	}
 	return err
 }
 
-func (c *Client) watchTimeout(t time.Duration) resourceActorFunc {
+func (c *Client) watchTimeout(t time.Duration) func(*resource.Info) error {
 	return func(info *resource.Info) error {
 		return c.watchUntilReady(t, info)
 	}
@@ -364,7 +269,7 @@ func (c *Client) WatchUntilReady(reader io.Reader, timeout time.Duration) error 
 	return perform(infos, c.watchTimeout(timeout))
 }
 
-func perform(infos Result, fn resourceActorFunc) error {
+func perform(infos Result, fn func(*resource.Info) error) error {
 	if len(infos) == 0 {
 		return ErrNoObjectsVisited
 	}
@@ -395,11 +300,11 @@ func deleteResource(info *resource.Info) error {
 func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.PatchType, error) {
 	oldData, err := json.Marshal(current)
 	if err != nil {
-		return nil, types.StrategicMergePatchType, goerrors.Wrap(err, "serializing current configuration")
+		return nil, types.StrategicMergePatchType, errors.Wrap(err, "serializing current configuration")
 	}
 	newData, err := json.Marshal(target.Object)
 	if err != nil {
-		return nil, types.StrategicMergePatchType, goerrors.Wrap(err, "serializing target configuration")
+		return nil, types.StrategicMergePatchType, errors.Wrap(err, "serializing target configuration")
 	}
 
 	// While different objects need different merge types, the parent function
@@ -429,14 +334,14 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force, recreate bool) error {
 	patch, patchType, err := createPatch(target, currentObj)
 	if err != nil {
-		return goerrors.Wrap(err, "failed to create patch")
+		return errors.Wrap(err, "failed to create patch")
 	}
 	if patch == nil {
 		c.Log("Looks like there are no changes for %s %q", target.Mapping.GroupVersionKind.Kind, target.Name)
 		// This needs to happen to make sure that tiller has the latest info from the API
 		// Otherwise there will be no labels and other functions that use labels will panic
 		if err := target.Get(); err != nil {
-			return goerrors.Wrap(err, "error trying to refresh resource information")
+			return errors.Wrap(err, "error trying to refresh resource information")
 		}
 	} else {
 		// send patch to server
@@ -456,7 +361,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 
 				// ... and recreate
 				if err := createResource(target); err != nil {
-					return goerrors.Wrap(err, "failed to recreate resource")
+					return errors.Wrap(err, "failed to recreate resource")
 				}
 				log.Printf("Created a new %s called %q\n", kind, target.Name)
 
@@ -478,7 +383,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 	}
 
 	versioned := asVersioned(target)
-	selector, err := getSelectorFromObject(versioned)
+	selector, err := selectorsForObject(versioned)
 	if err != nil {
 		return nil
 	}
@@ -489,8 +394,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 	}
 
 	pods, err := client.CoreV1().Pods(target.Namespace).List(metav1.ListOptions{
-		FieldSelector: fields.Everything().String(),
-		LabelSelector: labels.Set(selector).AsSelector().String(),
+		LabelSelector: selector.String(),
 	})
 	if err != nil {
 		return err
@@ -506,48 +410,6 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		}
 	}
 	return nil
-}
-
-func getSelectorFromObject(obj runtime.Object) (map[string]string, error) {
-	switch typed := obj.(type) {
-
-	case *v1.ReplicationController:
-		return typed.Spec.Selector, nil
-
-	case *extv1beta1.ReplicaSet:
-		return typed.Spec.Selector.MatchLabels, nil
-	case *appsv1.ReplicaSet:
-		return typed.Spec.Selector.MatchLabels, nil
-
-	case *extv1beta1.Deployment:
-		return typed.Spec.Selector.MatchLabels, nil
-	case *appsv1beta1.Deployment:
-		return typed.Spec.Selector.MatchLabels, nil
-	case *appsv1beta2.Deployment:
-		return typed.Spec.Selector.MatchLabels, nil
-	case *appsv1.Deployment:
-		return typed.Spec.Selector.MatchLabels, nil
-
-	case *extv1beta1.DaemonSet:
-		return typed.Spec.Selector.MatchLabels, nil
-	case *appsv1beta2.DaemonSet:
-		return typed.Spec.Selector.MatchLabels, nil
-	case *appsv1.DaemonSet:
-		return typed.Spec.Selector.MatchLabels, nil
-
-	case *batch.Job:
-		return typed.Spec.Selector.MatchLabels, nil
-
-	case *appsv1beta1.StatefulSet:
-		return typed.Spec.Selector.MatchLabels, nil
-	case *appsv1beta2.StatefulSet:
-		return typed.Spec.Selector.MatchLabels, nil
-	case *appsv1.StatefulSet:
-		return typed.Spec.Selector.MatchLabels, nil
-
-	default:
-		return nil, goerrors.Errorf("unsupported kind when getting selector: %v", obj)
-	}
 }
 
 func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) error {
@@ -585,7 +447,7 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 		case watch.Error:
 			// Handle error and return with an error.
 			c.Log("Error event for %s", info.Name)
-			return true, goerrors.Errorf("failed to deploy %s", info.Name)
+			return true, errors.Errorf("failed to deploy %s", info.Name)
 		default:
 			return false, nil
 		}
@@ -597,16 +459,16 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 //
 // This operates on an event returned from a watcher.
 func (c *Client) waitForJob(e watch.Event, name string) (bool, error) {
-	o, ok := e.Object.(*batchinternal.Job)
+	o, ok := e.Object.(*batch.Job)
 	if !ok {
-		return true, goerrors.Errorf("expected %s to be a *batch.Job, got %T", name, e.Object)
+		return true, errors.Errorf("expected %s to be a *batch.Job, got %T", name, e.Object)
 	}
 
 	for _, c := range o.Status.Conditions {
-		if c.Type == batchinternal.JobComplete && c.Status == "True" {
+		if c.Type == batch.JobComplete && c.Status == "True" {
 			return true, nil
-		} else if c.Type == batchinternal.JobFailed && c.Status == "True" {
-			return true, goerrors.Errorf("job failed: %s", c.Reason)
+		} else if c.Type == batch.JobFailed && c.Status == "True" {
+			return true, errors.Errorf("job failed: %s", c.Reason)
 		}
 	}
 
@@ -622,7 +484,7 @@ func scrubValidationError(err error) error {
 	const stopValidateMessage = "if you choose to ignore these errors, turn validation off with --validate=false"
 
 	if strings.Contains(err.Error(), stopValidateMessage) {
-		return goerrors.New(strings.ReplaceAll(err.Error(), "; "+stopValidateMessage, ""))
+		return errors.New(strings.ReplaceAll(err.Error(), "; "+stopValidateMessage, ""))
 	}
 	return err
 }
@@ -651,62 +513,4 @@ func (c *Client) WaitAndGetCompletedPodPhase(name string, timeout time.Duration)
 	}
 
 	return v1.PodUnknown, err
-}
-
-// get a kubernetes resources' relation pods
-// kubernetes resource used select labels to relate pods
-func (c *Client) getSelectRelationPod(info *resource.Info, objPods map[string][]v1.Pod) (map[string][]v1.Pod, error) {
-	if info == nil {
-		return objPods, nil
-	}
-
-	c.Log("get relation pod of object: %s/%s/%s", info.Namespace, info.Mapping.GroupVersionKind.Kind, info.Name)
-
-	versioned := asVersioned(info)
-
-	// We can ignore this error because it will only error if it isn't a type that doesn't
-	// have pods. In that case, we don't care
-	selector, _ := getSelectorFromObject(versioned)
-
-	selectorString := labels.Set(selector).AsSelector().String()
-
-	// If we have an empty selector, this likely is a service or config map, so bail out now
-	if selectorString == "" {
-		return objPods, nil
-	}
-
-	client, _ := c.KubernetesClientSet()
-
-	pods, err := client.CoreV1().Pods(info.Namespace).List(metav1.ListOptions{
-		FieldSelector: fields.Everything().String(),
-		LabelSelector: labels.Set(selector).AsSelector().String(),
-	})
-	if err != nil {
-		return objPods, err
-	}
-
-	for _, pod := range pods.Items {
-		if pod.APIVersion == "" {
-			pod.APIVersion = "v1"
-		}
-
-		if pod.Kind == "" {
-			pod.Kind = "Pod"
-		}
-		vk := pod.GroupVersionKind().Version + "/" + pod.GroupVersionKind().Kind
-
-		if !isFoundPod(objPods[vk], pod) {
-			objPods[vk] = append(objPods[vk], pod)
-		}
-	}
-	return objPods, nil
-}
-
-func isFoundPod(podItem []v1.Pod, pod v1.Pod) bool {
-	for _, value := range podItem {
-		if (value.Namespace == pod.Namespace) && (value.Name == pod.Name) {
-			return true
-		}
-	}
-	return false
 }
