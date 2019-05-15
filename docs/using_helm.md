@@ -91,7 +91,7 @@ To install a new package, use the `helm install` command. At its
 simplest, it takes only one argument: The name of the chart.
 
 ```
-$ helm install stable/mariadb
+$ helm install --generate-name stable/mariadb
 Fetched stable/mariadb-0.3.0 to /Users/mattbutcher/Code/Go/src/helm.sh/helm/mariadb-0.3.0.tgz
 happy-panda
 Last Deployed: Wed Sep 28 12:32:28 2016
