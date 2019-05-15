@@ -38,6 +38,19 @@ func TestLoadDir(t *testing.T) {
 	verifyDependenciesLock(t, c)
 }
 
+func TestLoadV1(t *testing.T) {
+	l, err := Loader("testdata/frobnitz.v1")
+	if err != nil {
+		t.Fatalf("Failed to load testdata: %s", err)
+	}
+	c, err := l.Load()
+	if err != nil {
+		t.Fatalf("Failed to load testdata: %s", err)
+	}
+	verifyDependencies(t, c)
+	verifyDependenciesLock(t, c)
+}
+
 func TestLoadFile(t *testing.T) {
 	l, err := Loader("testdata/frobnitz-1.2.3.tgz")
 	if err != nil {

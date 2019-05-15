@@ -75,7 +75,9 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 	for _, f := range files {
 		switch {
 		case f.Name == "Chart.yaml":
-			c.Metadata = new(chart.Metadata)
+			if c.Metadata == nil {
+				c.Metadata = new(chart.Metadata)
+			}
 			if err := yaml.Unmarshal(f.Data, c.Metadata); err != nil {
 				return c, errors.Wrap(err, "cannot load Chart.yaml")
 			}
@@ -98,6 +100,23 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 			c.RawValues = f.Data
 		case f.Name == "values.schema.json":
 			c.Schema = f.Data
+
+		// Deprecated: requirements.yaml is deprecated use Chart.yaml.
+		// We will handle it for you because we are nice people
+		case f.Name == "requirements.yaml":
+			if c.Metadata == nil {
+				c.Metadata = new(chart.Metadata)
+			}
+			if err := yaml.Unmarshal(f.Data, c.Metadata); err != nil {
+				return c, errors.Wrap(err, "cannot load requirements.yaml")
+			}
+		// Deprecated: requirements.lock is deprecated use Chart.lock.
+		case f.Name == "requirements.lock":
+			c.Lock = new(chart.Lock)
+			if err := yaml.Unmarshal(f.Data, &c.Lock); err != nil {
+				return c, errors.Wrap(err, "cannot load requirements.lock")
+			}
+
 		case strings.HasPrefix(f.Name, "templates/"):
 			c.Templates = append(c.Templates, &chart.File{Name: f.Name, Data: f.Data})
 		case strings.HasPrefix(f.Name, "charts/"):
