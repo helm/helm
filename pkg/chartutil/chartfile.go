@@ -88,8 +88,7 @@ func IsChartDir(dirName string) (bool, error) {
 //
 // Application chart type is only installable
 func IsChartInstallable(chart *chart.Chart) (bool, error) {
-	chartType := chart.Metadata.Type
-	if strings.EqualFold(chartType, "library") {
+	if IsLibraryChart(chart) {
 		return false, errors.New("Library charts are not installable")
 	}
 	validChartType, _ := IsValidChartType(chart)
@@ -109,4 +108,17 @@ func IsValidChartType(chart *chart.Chart) (bool, error) {
 		return false, errors.New("Invalid chart type. Valid types are: application or library")
 	}
 	return true, nil
+}
+
+// IsLibraryChart returns true if the chart is a library chart
+func IsLibraryChart(c *chart.Chart) bool {
+	return strings.EqualFold(c.Metadata.Type, "library")
+}
+
+// IsTemplateValid returns true if the template is valid for the chart type
+func IsTemplateValid(templateName string, isLibChart bool) bool {
+	if isLibChart {
+		return strings.HasPrefix(filepath.Base(templateName), "_")
+	}
+	return true
 }

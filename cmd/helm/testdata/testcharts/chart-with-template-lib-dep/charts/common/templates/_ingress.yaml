@@ -1,0 +1,27 @@
+{{- define "common.ingress.tpl" -}}
+apiVersion: extensions/v1beta1
+kind: Ingress
+{{ template "common.metadata" . }}
+  {{- if .Values.ingress.annotations }}
+  annotations:
+    {{ include "common.annote" .Values.ingress.annotations | indent 4 }}
+  {{- end }}
+spec:
+  rules:
+  {{- range $host := .Values.ingress.hosts }}
+  - host: {{ $host }}
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: {{ template "common.fullname" $ }}
+          servicePort: 80
+  {{- end }}
+  {{- if .Values.ingress.tls }}
+  tls:
+{{ toYaml .Values.ingress.tls | indent 4 }}
+  {{- end -}}
+{{- end -}}
+{{- define "common.ingress" -}}
+{{- template "common.util.merge" (append . "common.ingress.tpl") -}}
+{{- end -}}

@@ -128,6 +128,10 @@ provides utilities or functions for the chart builder. A library chart differs
 from an application chart because it has no resource object and is therefore not
 installable.
 
+**Note:** An application chart can be used as a library chart. This is enabled by setting the
+type to `library`. The chart will then be rendered as a library chart where all utilities and
+functions can be leveraged. All resource objects of the chart will not be rendered.
+
 ## Chart LICENSE, README and NOTES
 
 Charts can also contain files that describe the installation, configuration, usage and license of a

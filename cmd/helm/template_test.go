@@ -64,6 +64,16 @@ func TestTemplateCmd(t *testing.T) {
 			wantError: true,
 			golden:    "output/install-chart-bad-type.txt",
 		},
+		{
+			name:   "check chart with dependency which is an app chart acting as a library chart",
+			cmd:    fmt.Sprintf("template '%s'", "testdata/testcharts/chart-with-template-lib-dep"),
+			golden: "output/template-chart-with-template-lib-dep.txt",
+		},
+		{
+			name:   "check chart with dependency which is an app chart archive acting as a library chart",
+			cmd:    fmt.Sprintf("template '%s'", "testdata/testcharts/chart-with-template-lib-archive-dep"),
+			golden: "output/template-chart-with-template-lib-archive-dep.txt",
+		},
 	}
 	runTestCmd(t, tests)
 }
