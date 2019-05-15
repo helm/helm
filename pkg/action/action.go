@@ -70,7 +70,7 @@ type Configuration struct {
 	Releases *storage.Storage
 
 	// KubeClient is a Kubernetes API client.
-	KubeClient kube.KubernetesClient
+	KubeClient kube.Interface
 
 	// RegistryClient is a client for working with registries
 	RegistryClient *registry.Client

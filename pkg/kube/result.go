@@ -76,9 +76,7 @@ func (r Result) Difference(rs Result) Result {
 
 // Intersect will return a new Result with objects contained in both Results.
 func (r Result) Intersect(rs Result) Result {
-	return r.Filter(func(info *resource.Info) bool {
-		return rs.Contains(info)
-	})
+	return r.Filter(rs.Contains)
 }
 
 // isMatchingInfo returns true if infos match on Name and GroupVersionKind.

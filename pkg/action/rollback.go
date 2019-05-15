@@ -235,11 +235,9 @@ func (r *Rollback) execHook(hs []*release.Hook, hook string) error {
 
 // deleteHookByPolicy deletes a hook if the hook policy instructs it to
 func deleteHookByPolicy(cfg *Configuration, h *release.Hook, policy string) error {
-	b := bytes.NewBufferString(h.Manifest)
 	if hookHasDeletePolicy(h, policy) {
-		if errHookDelete := cfg.KubeClient.Delete(b); errHookDelete != nil {
-			return errHookDelete
-		}
+		b := bytes.NewBufferString(h.Manifest)
+		return cfg.KubeClient.Delete(b)
 	}
 	return nil
 }

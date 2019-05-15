@@ -27,11 +27,10 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/resource"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest/fake"
 	cmdtesting "k8s.io/kubernetes/pkg/kubectl/cmd/testing"
-	"k8s.io/kubernetes/pkg/kubectl/scheme"
 )
 
 var unstructuredSerializer = resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer
@@ -92,15 +91,11 @@ func newResponse(code int, obj runtime.Object) (*http.Response, error) {
 	return &http.Response{StatusCode: code, Header: header, Body: body}, nil
 }
 
-type testClient struct {
-	*Client
-	*cmdtesting.TestFactory
-}
-
-func newTestClient() *testClient {
-	tf := cmdtesting.NewTestFactory()
-	c := &Client{Factory: tf, Log: nopLogger}
-	return &testClient{Client: c, TestFactory: tf}
+func newTestClient() *Client {
+	return &Client{
+		Factory: cmdtesting.NewTestFactory().WithNamespace("default"),
+		Log:     nopLogger,
+	}
 }
 
 func TestUpdate(t *testing.T) {
@@ -112,9 +107,8 @@ func TestUpdate(t *testing.T) {
 
 	var actions []string
 
-	tf := cmdtesting.NewTestFactory().WithNamespace("default")
-	defer tf.Cleanup()
-	tf.UnstructuredClient = &fake.RESTClient{
+	c := newTestClient()
+	c.Factory.(*cmdtesting.TestFactory).UnstructuredClient = &fake.RESTClient{
 		NegotiatedSerializer: unstructuredSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			p, m := req.URL.Path, req.Method
@@ -147,11 +141,6 @@ func TestUpdate(t *testing.T) {
 				return nil, nil
 			}
 		}),
-	}
-
-	c := &Client{
-		Factory: tf,
-		Log:     nopLogger,
 	}
 	if err := c.Update(objBody(&listA), objBody(&listB), false, false); err != nil {
 		t.Fatal(err)
@@ -210,8 +199,6 @@ func TestBuild(t *testing.T) {
 	c := newTestClient()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c.Cleanup()
-
 			// Test for an invalid manifest
 			infos, err := c.Build(tt.reader)
 			if err != nil && !tt.err {
@@ -224,49 +211,6 @@ func TestBuild(t *testing.T) {
 				t.Errorf("expected %d result objects, got %d", tt.count, len(infos))
 			}
 		})
-	}
-}
-
-func TestGet(t *testing.T) {
-	list := newPodList("starfish", "otter")
-	c := newTestClient()
-	defer c.Cleanup()
-	c.TestFactory.UnstructuredClient = &fake.RESTClient{
-		GroupVersion:         schema.GroupVersion{Version: "v1"},
-		NegotiatedSerializer: unstructuredSerializer,
-		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
-			p, m := req.URL.Path, req.Method
-			t.Logf("got request %s %s", p, m)
-			switch {
-			case p == "/namespaces/default/pods/starfish" && m == "GET":
-				return newResponse(404, notFoundBody())
-			case p == "/namespaces/default/pods/otter" && m == "GET":
-				return newResponse(200, &list.Items[1])
-			default:
-				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
-				return nil, nil
-			}
-		}),
-	}
-
-	// Test Success
-	data := strings.NewReader("kind: Pod\napiVersion: v1\nmetadata:\n  name: otter")
-	o, err := c.Get(data)
-	if err != nil {
-		t.Errorf("Expected missing results, got %q", err)
-	}
-	if !strings.Contains(o, "==> v1/Pod") && !strings.Contains(o, "otter") {
-		t.Errorf("Expected v1/Pod otter, got %s", o)
-	}
-
-	// Test failure
-	data = strings.NewReader("kind: Pod\napiVersion: v1\nmetadata:\n  name: starfish")
-	o, err = c.Get(data)
-	if err != nil {
-		t.Errorf("Expected missing results, got %q", err)
-	}
-	if !strings.Contains(o, "MISSING") && !strings.Contains(o, "pods\t\tstarfish") {
-		t.Errorf("Expected missing starfish, got %s", o)
 	}
 }
 
@@ -300,7 +244,6 @@ func TestPerform(t *testing.T) {
 			}
 
 			c := newTestClient()
-			defer c.Cleanup()
 			infos, err := c.Build(tt.reader)
 			if err != nil && err.Error() != tt.errMessage {
 				t.Errorf("Error while building manifests: %v", err)

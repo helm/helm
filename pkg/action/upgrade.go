@@ -275,8 +275,8 @@ func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release) erro
 	return nil
 }
 
-func validateManifest(c kube.KubernetesClient, manifest []byte) error {
-	_, err := c.BuildUnstructured(bytes.NewReader(manifest))
+func validateManifest(c kube.Interface, manifest []byte) error {
+	_, err := c.Build(bytes.NewReader(manifest))
 	return err
 }
 

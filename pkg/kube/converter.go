@@ -20,17 +20,15 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/resource"
-	"k8s.io/kubernetes/pkg/api/legacyscheme"
+	"k8s.io/client-go/kubernetes/scheme"
 )
 
 func asVersioned(info *resource.Info) runtime.Object {
-	converter := runtime.ObjectConvertor(legacyscheme.Scheme)
-	groupVersioner := runtime.GroupVersioner(schema.GroupVersions(legacyscheme.Scheme.PrioritizedVersionsAllGroups()))
+	gv := runtime.GroupVersioner(schema.GroupVersions(scheme.Scheme.PrioritizedVersionsAllGroups()))
 	if info.Mapping != nil {
-		groupVersioner = info.Mapping.GroupVersionKind.GroupVersion()
+		gv = info.Mapping.GroupVersionKind.GroupVersion()
 	}
-
-	if obj, err := converter.ConvertToVersion(info.Object, groupVersioner); err == nil {
+	if obj, err := runtime.ObjectConvertor(scheme.Scheme).ConvertToVersion(info.Object, gv); err == nil {
 		return obj
 	}
 	return info.Object
