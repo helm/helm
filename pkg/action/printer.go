@@ -57,7 +57,7 @@ func PrintRelease(out io.Writer, rel *release.Release) {
 	}
 
 	if strings.EqualFold(rel.Info.Description, "Dry run complete") {
-	        fmt.Fprintf(out, "MANIFEST:\n%s\n", rel.Manifest)
+		fmt.Fprintf(out, "MANIFEST:\n%s\n", rel.Manifest)
 	}
 
 	if len(rel.Info.Notes) > 0 {
