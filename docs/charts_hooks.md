@@ -49,6 +49,10 @@ The following hooks are defined:
   have been modified.
 - crd-install: Adds CRD resources before any other checks are run. This is used
   only on CRD definitions that are used by other manifests in the chart.
+- test-success: Executes when running `helm test` and expects the pod to
+  return successfully (return code == 0).
+- test-failure: Executes when running `helm test` and expects the pod to
+  fail (return code != 0).
 
 ## Hooks and the Release Lifecycle
 
