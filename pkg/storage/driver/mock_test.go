@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"testing"
 
+	sqlmock "github.com/DATA-DOG/go-sqlmock"
+	"github.com/jmoiron/sqlx"
 	"k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,6 +38,16 @@ func releaseStub(name string, vers int32, namespace string, code rspb.Status_Cod
 		Namespace: namespace,
 		Info:      &rspb.Info{Status: &rspb.Status{Code: code}},
 	}
+}
+
+func shallowReleaseEqual(r1 *rspb.Release, r2 *rspb.Release) bool {
+	if r1.Name != r2.Name ||
+		r1.Namespace != r2.Namespace ||
+		r1.Version != r2.Version ||
+		r1.Manifest != r2.Manifest {
+		return false
+	}
+	return true
 }
 
 func testKey(name string, vers int32) string {
@@ -220,4 +232,18 @@ func (mock *MockSecretsInterface) Delete(name string, opts *metav1.DeleteOptions
 	}
 	delete(mock.objects, name)
 	return nil
+}
+
+// newTestFixtureSQL mocks the SQL database (for testing purposes)
+func newTestFixtureSQL(t *testing.T, releases ...*rspb.Release) (*SQL, sqlmock.Sqlmock) {
+	sqlDB, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("error when opening stub database connection: %v", err)
+	}
+
+	sqlxDB := sqlx.NewDb(sqlDB, "sqlmock")
+	return &SQL{
+		db:  sqlxDB,
+		Log: func(_ string, _ ...interface{}) {},
+	}, mock
 }

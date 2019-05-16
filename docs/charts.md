@@ -71,7 +71,7 @@ Other fields will be silently ignored.
 ### Charts and Versioning
 
 Every chart must have a version number. A version must follow the
-[SemVer 2](http://semver.org/) standard. Unlike Helm Classic, Kubernetes
+[SemVer 2](https://semver.org/) standard. Unlike Helm Classic, Kubernetes
 Helm uses version numbers as release markers. Packages in repositories
 are identified by name plus version.
 
@@ -191,7 +191,7 @@ Hang tight while we grab the latest from your chart repositories...
 ...Successfully got an update from the "stable" chart repository
 ...Successfully got an update from the "example" chart repository
 ...Successfully got an update from the "another" chart repository
-Update Complete. Happy Helming!
+Update Complete.
 Saving 2 charts
 Downloading apache from repo http://example.com/charts
 Downloading mysql from repo http://another.example.com/charts
@@ -492,7 +492,7 @@ create/update all of the above Kubernetes objects in the following order:
 This is because when Helm installs/upgrades charts,
 the Kubernetes objects from the charts and all its dependencies are
 
-- aggregrated into a single set; then
+- aggregated into a single set; then
 - sorted by type followed by name; and then
 - created/updated in that order.
 
@@ -792,7 +792,7 @@ standard references that will help you out.
 
 - [Go templates](https://godoc.org/text/template)
 - [Extra template functions](https://godoc.org/github.com/Masterminds/sprig)
-- [The YAML format](http://yaml.org/spec/)
+- [The YAML format](https://yaml.org/spec/)
 
 ## Using Helm to Manage Charts
 

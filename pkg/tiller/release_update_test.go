@@ -604,7 +604,7 @@ func TestUpdateReleasePendingInstall_Force(t *testing.T) {
 		t.Error("Expected failed update")
 	}
 
-	expectedError := "a released named forceful-luke is in use, cannot re-use a name that is still in use"
+	expectedError := "a release named forceful-luke is in use, cannot re-use a name that is still in use"
 	got := err.Error()
 	if err.Error() != expectedError {
 		t.Errorf("Expected error %q, got %q", expectedError, got)

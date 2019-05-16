@@ -168,6 +168,15 @@ func (i IndexFile) Get(name, version string) (*ChartVersion, error) {
 		}
 	}
 
+	// when customer input exact version, check whether have exact match one first
+	if len(version) != 0 {
+		for _, ver := range vs {
+			if version == ver.Version {
+				return ver, nil
+			}
+		}
+	}
+
 	for _, ver := range vs {
 		test, err := semver.NewVersion(ver.Version)
 		if err != nil {

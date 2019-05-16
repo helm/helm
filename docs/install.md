@@ -60,21 +60,21 @@ The binary can also be installed via [`scoop`](https://scoop.sh) command-line in
 scoop install helm
 ```
 
-## From Script
+### From Script
 
 Helm now has an installer script that will automatically grab the latest version
-of the Helm client and [install it locally](https://raw.githubusercontent.com/helm/helm/master/scripts/get).
+of the Helm client and [install it locally](https://git.io/get_helm.sh).
 
 You can fetch that script, and then execute it locally. It's well documented so
 that you can read through it and understand what it is doing before you run it.
 
 ```
-$ curl https://raw.githubusercontent.com/helm/helm/master/scripts/get > get_helm.sh
+$ curl -LO https://git.io/get_helm.sh
 $ chmod 700 get_helm.sh
 $ ./get_helm.sh
 ```
 
-Yes, you can `curl https://raw.githubusercontent.com/helm/helm/master/scripts/get | bash` that if you want to live on the edge.
+Yes, you can `curl -L https://git.io/get_helm.sh | bash` that if you want to live on the edge.
 
 ### From Canary Builds
 
@@ -353,10 +353,13 @@ in JSON format.
 
 ### Storage backends
 By default, `tiller` stores release information in `ConfigMaps` in the namespace
-where it is running. As of Helm 2.7.0, there is now a beta storage backend that
+where it is running.
+
+#### Secret storage backend
+As of Helm 2.7.0, there is now a beta storage backend that
 uses `Secrets` for storing release information. This was added for additional
-security in protecting charts in conjunction with the release of `Secret` 
-encryption in Kubernetes. 
+security in protecting charts in conjunction with the release of `Secret`
+encryption in Kubernetes.
 
 To enable the secrets backend, you'll need to init Tiller with the following
 options:
@@ -368,6 +371,31 @@ helm init --override 'spec.template.spec.containers[0].command'='{/tiller,--stor
 Currently, if you want to switch from the default backend to the secrets
 backend, you'll have to do the migration for this on your own. When this backend
 graduates from beta, there will be a more official path of migration
+
+#### SQL storage backend
+As of Helm 2.14.0 there is now a beta SQL storage backend that stores release
+information in an SQL database (only postgres has been tested so far).
+
+Using such a storage backend is particularly useful if your release information
+weighs more than 1MB (in which case, it can't be stored in ConfigMaps/Secrets
+because of internal limits in Kubernetes' underlying etcd key-value store).
+
+To enable the SQL backend, you'll need to deploy a SQL database and init Tiller
+with the following options:
+
+```shell
+helm init \
+  --override \
+    'spec.template.spec.containers[0].args'='{--storage=sql,--sql-dialect=postgres,--sql-connection-string=postgresql://tiller-postgres:5432/helm?user=helm&password=changeme}'
+```
+
+**PRODUCTION NOTES**: it's recommended to change the username and password of
+the SQL database in production deployments. Enabling SSL is also a good idea.
+Last, but not least, perform regular backups/snapshots of your SQL database.
+
+Currently, if you want to switch from the default backend to the SQL backend,
+you'll have to do the migration for this on your own. When this backend
+graduates from beta, there will be a more official migration path.
 
 ## Conclusion
 

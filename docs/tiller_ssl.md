@@ -42,6 +42,8 @@ on getting ready within a small amount of time. For production configurations,
 we urge readers to read [the official documentation](https://www.openssl.org) and
 consult other resources.
 
+There are other alternative ways to generating SSL CAs in addition to `openssl`, for example Terraform. They are not documented here but you can find links to these alternative means in [Related Projects and Documentation](https://helm.sh/docs/related/).
+
 ### Generate a Certificate Authority
 
 The simplest way to generate a certificate authority is to run two commands:
@@ -288,7 +290,7 @@ not available for public resolution.
 
 By default, the Helm client connects to Tiller via tunnel (i.e. kube proxy) at 127.0.0.1. During the TLS handshake,
 a target, usually provided as a hostname (e.g. example.com), is checked against the subject and subject alternative
-names of the certificate (i.e. hostname verficiation). However, because of the tunnel, the target is an IP address.
+names of the certificate (i.e. hostname verification). However, because of the tunnel, the target is an IP address.
 Therefore, to validate the certificate, the IP address 127.0.0.1 must be listed as an IP subject alternative name
 (IP SAN) in the Tiller certificate.
 

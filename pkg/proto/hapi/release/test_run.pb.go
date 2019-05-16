@@ -6,12 +6,18 @@ package release
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import google_protobuf "github.com/golang/protobuf/ptypes/timestamp"
+import timestamp "github.com/golang/protobuf/ptypes/timestamp"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
+
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 type TestRun_Status int32
 
@@ -38,20 +44,44 @@ var TestRun_Status_value = map[string]int32{
 func (x TestRun_Status) String() string {
 	return proto.EnumName(TestRun_Status_name, int32(x))
 }
-func (TestRun_Status) EnumDescriptor() ([]byte, []int) { return fileDescriptor4, []int{0, 0} }
-
-type TestRun struct {
-	Name        string                     `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
-	Status      TestRun_Status             `protobuf:"varint,2,opt,name=status,enum=hapi.release.TestRun_Status" json:"status,omitempty"`
-	Info        string                     `protobuf:"bytes,3,opt,name=info" json:"info,omitempty"`
-	StartedAt   *google_protobuf.Timestamp `protobuf:"bytes,4,opt,name=started_at,json=startedAt" json:"started_at,omitempty"`
-	CompletedAt *google_protobuf.Timestamp `protobuf:"bytes,5,opt,name=completed_at,json=completedAt" json:"completed_at,omitempty"`
+func (TestRun_Status) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_test_run_31b133e40c63664e, []int{0, 0}
 }
 
-func (m *TestRun) Reset()                    { *m = TestRun{} }
-func (m *TestRun) String() string            { return proto.CompactTextString(m) }
-func (*TestRun) ProtoMessage()               {}
-func (*TestRun) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{0} }
+type TestRun struct {
+	Name                 string               `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Status               TestRun_Status       `protobuf:"varint,2,opt,name=status,proto3,enum=hapi.release.TestRun_Status" json:"status,omitempty"`
+	Info                 string               `protobuf:"bytes,3,opt,name=info,proto3" json:"info,omitempty"`
+	StartedAt            *timestamp.Timestamp `protobuf:"bytes,4,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	CompletedAt          *timestamp.Timestamp `protobuf:"bytes,5,opt,name=completed_at,json=completedAt,proto3" json:"completed_at,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
+	XXX_unrecognized     []byte               `json:"-"`
+	XXX_sizecache        int32                `json:"-"`
+}
+
+func (m *TestRun) Reset()         { *m = TestRun{} }
+func (m *TestRun) String() string { return proto.CompactTextString(m) }
+func (*TestRun) ProtoMessage()    {}
+func (*TestRun) Descriptor() ([]byte, []int) {
+	return fileDescriptor_test_run_31b133e40c63664e, []int{0}
+}
+func (m *TestRun) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_TestRun.Unmarshal(m, b)
+}
+func (m *TestRun) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_TestRun.Marshal(b, m, deterministic)
+}
+func (dst *TestRun) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_TestRun.Merge(dst, src)
+}
+func (m *TestRun) XXX_Size() int {
+	return xxx_messageInfo_TestRun.Size(m)
+}
+func (m *TestRun) XXX_DiscardUnknown() {
+	xxx_messageInfo_TestRun.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_TestRun proto.InternalMessageInfo
 
 func (m *TestRun) GetName() string {
 	if m != nil {
@@ -74,14 +104,14 @@ func (m *TestRun) GetInfo() string {
 	return ""
 }
 
-func (m *TestRun) GetStartedAt() *google_protobuf.Timestamp {
+func (m *TestRun) GetStartedAt() *timestamp.Timestamp {
 	if m != nil {
 		return m.StartedAt
 	}
 	return nil
 }
 
-func (m *TestRun) GetCompletedAt() *google_protobuf.Timestamp {
+func (m *TestRun) GetCompletedAt() *timestamp.Timestamp {
 	if m != nil {
 		return m.CompletedAt
 	}
@@ -93,9 +123,11 @@ func init() {
 	proto.RegisterEnum("hapi.release.TestRun_Status", TestRun_Status_name, TestRun_Status_value)
 }
 
-func init() { proto.RegisterFile("hapi/release/test_run.proto", fileDescriptor4) }
+func init() {
+	proto.RegisterFile("hapi/release/test_run.proto", fileDescriptor_test_run_31b133e40c63664e)
+}
 
-var fileDescriptor4 = []byte{
+var fileDescriptor_test_run_31b133e40c63664e = []byte{
 	// 274 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x8f, 0xc1, 0x4b, 0xfb, 0x30,
 	0x1c, 0xc5, 0x7f, 0xe9, 0xf6, 0x6b, 0x69, 0x3a, 0xa4, 0xe4, 0x54, 0xa6, 0x60, 0xd9, 0xa9, 0xa7,

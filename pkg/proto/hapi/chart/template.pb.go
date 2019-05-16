@@ -12,21 +12,49 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+
 // Template represents a template as a name/value pair.
 //
 // By convention, name is a relative path within the scope of the chart's
 // base directory.
 type Template struct {
 	// Name is the path-like name of the template.
-	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// Data is the template as byte data.
-	Data []byte `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
+	Data                 []byte   `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *Template) Reset()                    { *m = Template{} }
-func (m *Template) String() string            { return proto.CompactTextString(m) }
-func (*Template) ProtoMessage()               {}
-func (*Template) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{0} }
+func (m *Template) Reset()         { *m = Template{} }
+func (m *Template) String() string { return proto.CompactTextString(m) }
+func (*Template) ProtoMessage()    {}
+func (*Template) Descriptor() ([]byte, []int) {
+	return fileDescriptor_template_051845a7e9227d35, []int{0}
+}
+func (m *Template) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_Template.Unmarshal(m, b)
+}
+func (m *Template) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_Template.Marshal(b, m, deterministic)
+}
+func (dst *Template) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Template.Merge(dst, src)
+}
+func (m *Template) XXX_Size() int {
+	return xxx_messageInfo_Template.Size(m)
+}
+func (m *Template) XXX_DiscardUnknown() {
+	xxx_messageInfo_Template.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Template proto.InternalMessageInfo
 
 func (m *Template) GetName() string {
 	if m != nil {
@@ -46,9 +74,9 @@ func init() {
 	proto.RegisterType((*Template)(nil), "hapi.chart.Template")
 }
 
-func init() { proto.RegisterFile("hapi/chart/template.proto", fileDescriptor3) }
+func init() { proto.RegisterFile("hapi/chart/template.proto", fileDescriptor_template_051845a7e9227d35) }
 
-var fileDescriptor3 = []byte{
+var fileDescriptor_template_051845a7e9227d35 = []byte{
 	// 107 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x92, 0xcc, 0x48, 0x2c, 0xc8,
 	0xd4, 0x4f, 0xce, 0x48, 0x2c, 0x2a, 0xd1, 0x2f, 0x49, 0xcd, 0x2d, 0xc8, 0x49, 0x2c, 0x49, 0xd5,

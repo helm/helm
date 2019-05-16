@@ -24,6 +24,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"k8s.io/helm/cmd/helm/installer"
 	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
@@ -99,7 +100,7 @@ func updateCharts(repos []*repo.ChartRepository, out io.Writer, home helmpath.Ho
 		wg.Add(1)
 		go func(re *repo.ChartRepository) {
 			defer wg.Done()
-			if re.Config.Name == localRepository {
+			if re.Config.Name == installer.LocalRepository {
 				mu.Lock()
 				fmt.Fprintf(out, "...Skip %s chart repository\n", re.Config.Name)
 				mu.Unlock()
@@ -124,6 +125,6 @@ func updateCharts(repos []*repo.ChartRepository, out io.Writer, home helmpath.Ho
 		return errors.New("Update Failed. Check log for details")
 	}
 
-	fmt.Fprintln(out, "Update Complete. ⎈ Happy Helming!⎈ ")
+	fmt.Fprintln(out, "Update Complete.")
 	return nil
 }

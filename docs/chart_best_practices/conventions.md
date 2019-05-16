@@ -22,7 +22,7 @@ The directory that contains a chart MUST have the same name as the chart. Thus, 
 
 ## Version Numbers
 
-Wherever possible, Helm uses [SemVer 2](http://semver.org) to represent version numbers. (Note that Docker image tags do not necessarily follow SemVer, and are thus considered an unfortunate exception to the rule.)
+Wherever possible, Helm uses [SemVer 2](https://semver.org) to represent version numbers. (Note that Docker image tags do not necessarily follow SemVer, and are thus considered an unfortunate exception to the rule.)
 
 When SemVer versions are stored in Kubernetes labels, we conventionally alter the `+` character to an `_` character, as labels do not allow the `+` sign as a value.
 

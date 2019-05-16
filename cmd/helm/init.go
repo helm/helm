@@ -31,11 +31,9 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/helm/cmd/helm/installer"
-	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/helm/portforwarder"
-	"k8s.io/helm/pkg/repo"
 	"k8s.io/helm/pkg/version"
 )
 
@@ -59,12 +57,6 @@ repository on the master branch).
 To dump a manifest containing the Tiller deployment YAML, combine the
 '--dry-run' and '--debug' flags.
 `
-
-const (
-	stableRepository         = "stable"
-	localRepository          = "local"
-	localRepositoryIndexFile = "index.yaml"
-)
 
 var (
 	stableRepositoryURL = "https://kubernetes-charts.storage.googleapis.com"
@@ -266,14 +258,8 @@ func (i *initCmd) run() error {
 		return nil
 	}
 
-	if err := ensureDirectories(i.home, i.out); err != nil {
-		return err
-	}
-	if err := ensureDefaultRepos(i.home, i.out, i.skipRefresh); err != nil {
-		return err
-	}
-	if err := ensureRepoFileFormat(i.home.RepositoryFile(), i.out); err != nil {
-		return err
+	if err := installer.Initialize(i.home, i.out, i.skipRefresh, settings, stableRepositoryURL, localRepositoryURL); err != nil {
+		return fmt.Errorf("error initializing: %s", err)
 	}
 	fmt.Fprintf(i.out, "$HELM_HOME has been configured at %s.\n", settings.Home)
 
@@ -324,7 +310,6 @@ func (i *initCmd) run() error {
 			"$ helm init --tiller-image gcr.io/kubernetes-helm/tiller:v2.8.2\n\n")
 	}
 
-	fmt.Fprintln(i.out, "Happy Helming!")
 	return nil
 }
 
@@ -345,117 +330,6 @@ func (i *initCmd) ping(image string) error {
 		i.client = newClient()
 		if err := i.client.PingTiller(); err != nil {
 			return fmt.Errorf("could not ping Tiller: %s", err)
-		}
-	}
-
-	return nil
-}
-
-// ensureDirectories checks to see if $HELM_HOME exists.
-//
-// If $HELM_HOME does not exist, this function will create it.
-func ensureDirectories(home helmpath.Home, out io.Writer) error {
-	configDirectories := []string{
-		home.String(),
-		home.Repository(),
-		home.Cache(),
-		home.LocalRepository(),
-		home.Plugins(),
-		home.Starters(),
-		home.Archive(),
-	}
-	for _, p := range configDirectories {
-		if fi, err := os.Stat(p); err != nil {
-			fmt.Fprintf(out, "Creating %s \n", p)
-			if err := os.MkdirAll(p, 0755); err != nil {
-				return fmt.Errorf("Could not create %s: %s", p, err)
-			}
-		} else if !fi.IsDir() {
-			return fmt.Errorf("%s must be a directory", p)
-		}
-	}
-
-	return nil
-}
-
-func ensureDefaultRepos(home helmpath.Home, out io.Writer, skipRefresh bool) error {
-	repoFile := home.RepositoryFile()
-	if fi, err := os.Stat(repoFile); err != nil {
-		fmt.Fprintf(out, "Creating %s \n", repoFile)
-		f := repo.NewRepoFile()
-		sr, err := initStableRepo(home.CacheIndex(stableRepository), out, skipRefresh, home)
-		if err != nil {
-			return err
-		}
-		lr, err := initLocalRepo(home.LocalRepository(localRepositoryIndexFile), home.CacheIndex("local"), out, home)
-		if err != nil {
-			return err
-		}
-		f.Add(sr)
-		f.Add(lr)
-		if err := f.WriteFile(repoFile, 0644); err != nil {
-			return err
-		}
-	} else if fi.IsDir() {
-		return fmt.Errorf("%s must be a file, not a directory", repoFile)
-	}
-	return nil
-}
-
-func initStableRepo(cacheFile string, out io.Writer, skipRefresh bool, home helmpath.Home) (*repo.Entry, error) {
-	fmt.Fprintf(out, "Adding %s repo with URL: %s \n", stableRepository, stableRepositoryURL)
-	c := repo.Entry{
-		Name:  stableRepository,
-		URL:   stableRepositoryURL,
-		Cache: cacheFile,
-	}
-	r, err := repo.NewChartRepository(&c, getter.All(settings))
-	if err != nil {
-		return nil, err
-	}
-
-	if skipRefresh {
-		return &c, nil
-	}
-
-	// In this case, the cacheFile is always absolute. So passing empty string
-	// is safe.
-	if err := r.DownloadIndexFile(""); err != nil {
-		return nil, fmt.Errorf("Looks like %q is not a valid chart repository or cannot be reached: %s", stableRepositoryURL, err.Error())
-	}
-
-	return &c, nil
-}
-
-func initLocalRepo(indexFile, cacheFile string, out io.Writer, home helmpath.Home) (*repo.Entry, error) {
-	if fi, err := os.Stat(indexFile); err != nil {
-		fmt.Fprintf(out, "Adding %s repo with URL: %s \n", localRepository, localRepositoryURL)
-		i := repo.NewIndexFile()
-		if err := i.WriteFile(indexFile, 0644); err != nil {
-			return nil, err
-		}
-
-		//TODO: take this out and replace with helm update functionality
-		if err := createLink(indexFile, cacheFile, home); err != nil {
-			return nil, err
-		}
-	} else if fi.IsDir() {
-		return nil, fmt.Errorf("%s must be a file, not a directory", indexFile)
-	}
-
-	return &repo.Entry{
-		Name:  localRepository,
-		URL:   localRepositoryURL,
-		Cache: cacheFile,
-	}, nil
-}
-
-func ensureRepoFileFormat(file string, out io.Writer) error {
-	r, err := repo.LoadRepositoriesFile(file)
-	if err == repo.ErrRepoOutOfDate {
-		fmt.Fprintln(out, "Updating repository file format...")
-		if err := r.WriteFile(file, 0644); err != nil {
-			return err
 		}
 	}
 

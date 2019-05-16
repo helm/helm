@@ -166,7 +166,7 @@ func lintChart(path string, vals []byte, namespace string, strict bool) (support
 		chartPath = path
 	}
 
-	// Guard: Error out of this is not a chart.
+	// Guard: Error out if this is not a chart.
 	if _, err := os.Stat(filepath.Join(chartPath, "Chart.yaml")); err != nil {
 		return linter, errLintNoChart
 	}
@@ -177,7 +177,7 @@ func lintChart(path string, vals []byte, namespace string, strict bool) (support
 // vals merges values from files specified via -f/--values and
 // directly via --set or --set-string or --set-file, marshaling them to YAML
 //
-// This func is implemented intentionally and separately from the `vals` func for the `install` and `upgrade` comammdsn.
+// This func is implemented intentionally and separately from the `vals` func for the `install` and `upgrade` commands.
 // Compared to the alternative func, this func lacks the parameters for tls opts - ca key, cert, and ca cert.
 // That's because this command, `lint`, is explicitly forbidden from making server connections.
 func (l *lintCmd) vals() ([]byte, error) {

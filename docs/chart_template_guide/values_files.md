@@ -29,7 +29,7 @@ data:
   drink: {{ .Values.favoriteDrink }}
 ```
 
-Notice on the last line we access `favoriteDrink` as an attribute of `Values`: `{{ .Values.favoriteDrink}}`.
+Notice on the last line we access `favoriteDrink` as an attribute of `Values`: `{{ .Values.favoriteDrink }}`.
 
 Let's see how this renders.
 

@@ -21,26 +21,49 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"k8s.io/api/core/v1"
+	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/cli-runtime/pkg/genericclioptions/resource"
+	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest/fake"
 	cmdtesting "k8s.io/kubernetes/pkg/kubectl/cmd/testing"
+	kubectlscheme "k8s.io/kubernetes/pkg/kubectl/scheme"
 )
 
+func init() {
+	err := apiextv1beta1.AddToScheme(scheme.Scheme)
+	if err != nil {
+		panic(err)
+	}
+
+	// Tiller use the scheme from go-client, but the cmdtesting
+	// package used here is hardcoded to use the scheme from
+	// kubectl. So for testing, we need to add the CustomResourceDefinition
+	// type to both schemes.
+	err = apiextv1beta1.AddToScheme(kubectlscheme.Scheme)
+	if err != nil {
+		panic(err)
+	}
+}
+
 var (
-	codec                  = scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 	unstructuredSerializer = resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer
 )
 
+func getCodec() runtime.Codec {
+	return scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
+}
+
 func objBody(obj runtime.Object) io.ReadCloser {
-	return ioutil.NopCloser(bytes.NewReader([]byte(runtime.EncodeOrDie(codec, obj))))
+	return ioutil.NopCloser(bytes.NewReader([]byte(runtime.EncodeOrDie(getCodec(), obj))))
 }
 
 func newPod(name string) v1.Pod {
@@ -77,6 +100,18 @@ func newPodList(names ...string) v1.PodList {
 	return list
 }
 
+func newService(name string) v1.Service {
+	ns := v1.NamespaceDefault
+	return v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+			SelfLink:  "/api/v1/namespaces/default/services/" + name,
+		},
+		Spec: v1.ServiceSpec{},
+	}
+}
+
 func notFoundBody() *metav1.Status {
 	return &metav1.Status{
 		Code:    http.StatusNotFound,
@@ -90,7 +125,7 @@ func notFoundBody() *metav1.Status {
 func newResponse(code int, obj runtime.Object) (*http.Response, error) {
 	header := http.Header{}
 	header.Set("Content-Type", runtime.ContentTypeJSON)
-	body := ioutil.NopCloser(bytes.NewReader([]byte(runtime.EncodeOrDie(codec, obj))))
+	body := ioutil.NopCloser(bytes.NewReader([]byte(runtime.EncodeOrDie(getCodec(), obj))))
 	return &http.Response{StatusCode: code, Header: header, Body: body}, nil
 }
 
@@ -200,7 +235,7 @@ func TestUpdate(t *testing.T) {
 
 	// Test resource policy is respected
 	actions = nil
-	listA.Items[2].ObjectMeta.Annotations = map[string]string{ResourcePolicyAnno: KeepPolicy}
+	listA.Items[2].ObjectMeta.Annotations = map[string]string{ResourcePolicyAnno: "keep"}
 	if err := c.Update(v1.NamespaceDefault, objBody(&listA), objBody(&listB), false, false, 0, false); err != nil {
 		t.Fatal(err)
 	}
@@ -208,6 +243,43 @@ func TestUpdate(t *testing.T) {
 		if v == "/namespaces/default/pods/squid:DELETE" {
 			t.Errorf("should not have deleted squid - it has helm.sh/resource-policy=keep")
 		}
+	}
+}
+
+func TestUpdateNonManagedResourceError(t *testing.T) {
+	actual := newPodList("starfish")
+	current := newPodList()
+	target := newPodList("starfish")
+
+	tf := cmdtesting.NewTestFactory()
+	defer tf.Cleanup()
+
+	tf.UnstructuredClient = &fake.RESTClient{
+		NegotiatedSerializer: unstructuredSerializer,
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			p, m := req.URL.Path, req.Method
+			t.Logf("got request %s %s", p, m)
+			switch {
+			case p == "/namespaces/default/pods/starfish" && m == "GET":
+				return newResponse(200, &actual.Items[0])
+			default:
+				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
+				return nil, nil
+			}
+		}),
+	}
+
+	c := &Client{
+		Factory: tf,
+		Log:     nopLogger,
+	}
+
+	if err := c.Update(v1.NamespaceDefault, objBody(&current), objBody(&target), false, false, 0, false); err != nil {
+		if err.Error() != "kind Pod with the name \"starfish\" already exists in the cluster and wasn't defined in the previous release. Before upgrading, please either delete the resource from the cluster or remove it from the chart" {
+			t.Fatal(err)
+		}
+	} else {
+		t.Fatalf("error expected")
 	}
 }
 
@@ -295,6 +367,177 @@ func TestGet(t *testing.T) {
 	}
 }
 
+func TestResourceTypeSortOrder(t *testing.T) {
+	pod := newPod("my-pod")
+	service := newService("my-service")
+	c := newTestClient()
+	defer c.Cleanup()
+	c.TestFactory.UnstructuredClient = &fake.RESTClient{
+		GroupVersion:         schema.GroupVersion{Version: "v1"},
+		NegotiatedSerializer: unstructuredSerializer,
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			p, m := req.URL.Path, req.Method
+			t.Logf("got request %s %s", p, m)
+			switch {
+			case p == "/namespaces/default/pods/my-pod" && m == "GET":
+				return newResponse(200, &pod)
+			case p == "/namespaces/default/services/my-service" && m == "GET":
+				return newResponse(200, &service)
+			default:
+				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
+				return nil, nil
+			}
+		}),
+	}
+
+	// Test sorting order
+	data := strings.NewReader(testResourceTypeSortOrder)
+	o, err := c.Get("default", data)
+	if err != nil {
+		t.Errorf("Expected missing results, got %q", err)
+	}
+	podIndex := strings.Index(o, "my-pod")
+	serviceIndex := strings.Index(o, "my-service")
+	if podIndex == -1 {
+		t.Errorf("Expected v1/Pod my-pod, got %s", o)
+	}
+	if serviceIndex == -1 {
+		t.Errorf("Expected v1/Service my-service, got %s", o)
+	}
+	if !sort.IntsAreSorted([]int{podIndex, serviceIndex}) {
+		t.Errorf("Expected order: [v1/Pod v1/Service], got %s", o)
+	}
+}
+
+func TestResourceSortOrder(t *testing.T) {
+	list := newPodList("albacore", "coral", "beluga")
+	c := newTestClient()
+	defer c.Cleanup()
+	c.TestFactory.UnstructuredClient = &fake.RESTClient{
+		GroupVersion:         schema.GroupVersion{Version: "v1"},
+		NegotiatedSerializer: unstructuredSerializer,
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			p, m := req.URL.Path, req.Method
+			t.Logf("got request %s %s", p, m)
+			switch {
+			case p == "/namespaces/default/pods/albacore" && m == "GET":
+				return newResponse(200, &list.Items[0])
+			case p == "/namespaces/default/pods/coral" && m == "GET":
+				return newResponse(200, &list.Items[1])
+			case p == "/namespaces/default/pods/beluga" && m == "GET":
+				return newResponse(200, &list.Items[2])
+			default:
+				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
+				return nil, nil
+			}
+		}),
+	}
+
+	// Test sorting order
+	data := strings.NewReader(testResourceSortOrder)
+	o, err := c.Get("default", data)
+	if err != nil {
+		t.Errorf("Expected missing results, got %q", err)
+	}
+	albacoreIndex := strings.Index(o, "albacore")
+	belugaIndex := strings.Index(o, "beluga")
+	coralIndex := strings.Index(o, "coral")
+	if albacoreIndex == -1 {
+		t.Errorf("Expected v1/Pod albacore, got %s", o)
+	}
+	if belugaIndex == -1 {
+		t.Errorf("Expected v1/Pod beluga, got %s", o)
+	}
+	if coralIndex == -1 {
+		t.Errorf("Expected v1/Pod coral, got %s", o)
+	}
+	if !sort.IntsAreSorted([]int{albacoreIndex, belugaIndex, coralIndex}) {
+		t.Errorf("Expected order: [albacore beluga coral], got %s", o)
+	}
+}
+
+func TestWaitUntilCRDEstablished(t *testing.T) {
+	testCases := map[string]struct {
+		conditions            []apiextv1beta1.CustomResourceDefinitionCondition
+		returnConditionsAfter int
+		success               bool
+	}{
+		"crd reaches established state after 2 requests": {
+			conditions: []apiextv1beta1.CustomResourceDefinitionCondition{
+				{
+					Type:   apiextv1beta1.Established,
+					Status: apiextv1beta1.ConditionTrue,
+				},
+			},
+			returnConditionsAfter: 2,
+			success:               true,
+		},
+		"crd does not reach established state before timeout": {
+			conditions:            []apiextv1beta1.CustomResourceDefinitionCondition{},
+			returnConditionsAfter: 100,
+			success:               false,
+		},
+		"crd name is not accepted": {
+			conditions: []apiextv1beta1.CustomResourceDefinitionCondition{
+				{
+					Type:   apiextv1beta1.NamesAccepted,
+					Status: apiextv1beta1.ConditionFalse,
+				},
+			},
+			returnConditionsAfter: 1,
+			success:               false,
+		},
+	}
+
+	for tn, tc := range testCases {
+		func(name string) {
+			c := newTestClient()
+			defer c.Cleanup()
+
+			crdWithoutConditions := newCrdWithStatus("name", apiextv1beta1.CustomResourceDefinitionStatus{})
+			crdWithConditions := newCrdWithStatus("name", apiextv1beta1.CustomResourceDefinitionStatus{
+				Conditions: tc.conditions,
+			})
+
+			requestCount := 0
+			c.TestFactory.UnstructuredClient = &fake.RESTClient{
+				GroupVersion:         schema.GroupVersion{Version: "v1"},
+				NegotiatedSerializer: unstructuredSerializer,
+				Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+					var crd apiextv1beta1.CustomResourceDefinition
+					if requestCount < tc.returnConditionsAfter {
+						crd = crdWithoutConditions
+					} else {
+						crd = crdWithConditions
+					}
+					requestCount += 1
+					return newResponse(200, &crd)
+				}),
+			}
+
+			err := c.WaitUntilCRDEstablished(strings.NewReader(crdManifest), 5*time.Second)
+			if err != nil && tc.success {
+				t.Errorf("%s: expected no error, but got %v", name, err)
+			}
+			if err == nil && !tc.success {
+				t.Errorf("%s: expected error, but didn't get one", name)
+			}
+		}(tn)
+	}
+}
+
+func newCrdWithStatus(name string, status apiextv1beta1.CustomResourceDefinitionStatus) apiextv1beta1.CustomResourceDefinition {
+	crd := apiextv1beta1.CustomResourceDefinition{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: metav1.NamespaceDefault,
+		},
+		Spec:   apiextv1beta1.CustomResourceDefinitionSpec{},
+		Status: status,
+	}
+	return crd
+}
+
 func TestPerform(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -375,6 +618,35 @@ func TestReal(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+const testResourceTypeSortOrder = `
+kind: Service
+apiVersion: v1
+metadata:
+  name: my-service
+---
+kind: Pod
+apiVersion: v1
+metadata:
+  name: my-pod
+`
+
+const testResourceSortOrder = `
+kind: Pod
+apiVersion: v1
+metadata:
+  name: albacore
+---
+kind: Pod
+apiVersion: v1
+metadata:
+  name: coral
+---
+kind: Pod
+apiVersion: v1
+metadata:
+  name: beluga
+`
 
 const testServiceManifest = `
 kind: Service
@@ -532,4 +804,42 @@ spec:
           value: dns
         ports:
         - containerPort: 80
+`
+
+const crdManifest = `
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: applications.app.k8s.io
+spec:
+  group: app.k8s.io
+  names:
+    kind: Application
+    plural: applications
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'Description'
+          type: string
+        kind:
+          description: 'Kind'
+          type: string
+        metadata:
+          type: object
+        spec:
+          type: object
+        status:
+          type: object
+  version: v1beta1
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
 `

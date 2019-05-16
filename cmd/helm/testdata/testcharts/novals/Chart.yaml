@@ -4,3 +4,4 @@ name: novals
 sources:
 - https://github.com/helm/helm
 version: 0.2.0
+appVersion: 3.3

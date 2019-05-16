@@ -6,36 +6,64 @@ package release
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import google_protobuf "github.com/golang/protobuf/ptypes/timestamp"
+import timestamp "github.com/golang/protobuf/ptypes/timestamp"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+
 // TestSuite comprises of the last run of the pre-defined test suite of a release version
 type TestSuite struct {
 	// StartedAt indicates the date/time this test suite was kicked off
-	StartedAt *google_protobuf.Timestamp `protobuf:"bytes,1,opt,name=started_at,json=startedAt" json:"started_at,omitempty"`
+	StartedAt *timestamp.Timestamp `protobuf:"bytes,1,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
 	// CompletedAt indicates the date/time this test suite was completed
-	CompletedAt *google_protobuf.Timestamp `protobuf:"bytes,2,opt,name=completed_at,json=completedAt" json:"completed_at,omitempty"`
+	CompletedAt *timestamp.Timestamp `protobuf:"bytes,2,opt,name=completed_at,json=completedAt,proto3" json:"completed_at,omitempty"`
 	// Results are the results of each segment of the test
-	Results []*TestRun `protobuf:"bytes,3,rep,name=results" json:"results,omitempty"`
+	Results              []*TestRun `protobuf:"bytes,3,rep,name=results,proto3" json:"results,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}   `json:"-"`
+	XXX_unrecognized     []byte     `json:"-"`
+	XXX_sizecache        int32      `json:"-"`
 }
 
-func (m *TestSuite) Reset()                    { *m = TestSuite{} }
-func (m *TestSuite) String() string            { return proto.CompactTextString(m) }
-func (*TestSuite) ProtoMessage()               {}
-func (*TestSuite) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{0} }
+func (m *TestSuite) Reset()         { *m = TestSuite{} }
+func (m *TestSuite) String() string { return proto.CompactTextString(m) }
+func (*TestSuite) ProtoMessage()    {}
+func (*TestSuite) Descriptor() ([]byte, []int) {
+	return fileDescriptor_test_suite_06a0016f2c6417b8, []int{0}
+}
+func (m *TestSuite) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_TestSuite.Unmarshal(m, b)
+}
+func (m *TestSuite) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_TestSuite.Marshal(b, m, deterministic)
+}
+func (dst *TestSuite) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_TestSuite.Merge(dst, src)
+}
+func (m *TestSuite) XXX_Size() int {
+	return xxx_messageInfo_TestSuite.Size(m)
+}
+func (m *TestSuite) XXX_DiscardUnknown() {
+	xxx_messageInfo_TestSuite.DiscardUnknown(m)
+}
 
-func (m *TestSuite) GetStartedAt() *google_protobuf.Timestamp {
+var xxx_messageInfo_TestSuite proto.InternalMessageInfo
+
+func (m *TestSuite) GetStartedAt() *timestamp.Timestamp {
 	if m != nil {
 		return m.StartedAt
 	}
 	return nil
 }
 
-func (m *TestSuite) GetCompletedAt() *google_protobuf.Timestamp {
+func (m *TestSuite) GetCompletedAt() *timestamp.Timestamp {
 	if m != nil {
 		return m.CompletedAt
 	}
@@ -53,9 +81,11 @@ func init() {
 	proto.RegisterType((*TestSuite)(nil), "hapi.release.TestSuite")
 }
 
-func init() { proto.RegisterFile("hapi/release/test_suite.proto", fileDescriptor5) }
+func init() {
+	proto.RegisterFile("hapi/release/test_suite.proto", fileDescriptor_test_suite_06a0016f2c6417b8)
+}
 
-var fileDescriptor5 = []byte{
+var fileDescriptor_test_suite_06a0016f2c6417b8 = []byte{
 	// 207 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x8f, 0xc1, 0x4a, 0x86, 0x40,
 	0x14, 0x85, 0x31, 0x21, 0x71, 0x74, 0x35, 0x10, 0x88, 0x11, 0x49, 0x2b, 0x57, 0x33, 0x60, 0xab,

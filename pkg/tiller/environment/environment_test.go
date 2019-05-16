@@ -22,8 +22,8 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/api/core/v1"
-	"k8s.io/cli-runtime/pkg/genericclioptions/resource"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/cli-runtime/pkg/resource"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/kube"
@@ -52,6 +52,9 @@ func (k *mockKubeClient) Delete(ns string, r io.Reader) error {
 func (k *mockKubeClient) Update(ns string, currentReader, modifiedReader io.Reader, force bool, recreate bool, timeout int64, shouldWait bool) error {
 	return nil
 }
+func (k *mockKubeClient) UpdateWithOptions(ns string, currentReader, modifiedReader io.Reader, opts kube.UpdateOptions) error {
+	return nil
+}
 func (k *mockKubeClient) WatchUntilReady(ns string, r io.Reader, timeout int64, shouldWait bool) error {
 	return nil
 }
@@ -67,6 +70,10 @@ func (k *mockKubeClient) WaitAndGetCompletedPodPhase(namespace string, reader io
 
 func (k *mockKubeClient) WaitAndGetCompletedPodStatus(namespace string, reader io.Reader, timeout time.Duration) (v1.PodPhase, error) {
 	return "", nil
+}
+
+func (k *mockKubeClient) WaitUntilCRDEstablished(reader io.Reader, timeout time.Duration) error {
+	return nil
 }
 
 var _ Engine = &mockEngine{}

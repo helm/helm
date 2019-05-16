@@ -29,7 +29,7 @@ message Status {
                 UNKNOWN = 0;
                 // Status_DEPLOYED indicates that the release has been pushed to Kubernetes.
                 DEPLOYED = 1;
-                // Status_DELETED indicates that a release has been deleted from Kubermetes.
+                // Status_DELETED indicates that a release has been deleted from Kubernetes.
                 DELETED = 2;
                 // Status_SUPERSEDED indicates that this release object is outdated and a newer one exists.
                 SUPERSEDED = 3;
