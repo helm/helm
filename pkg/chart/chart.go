@@ -27,8 +27,6 @@ type Chart struct {
 	Lock *Lock
 	// Templates for this chart.
 	Templates []*File
-	// TODO Delete RawValues after unit tests for `create` are refactored.
-	RawValues []byte
 	// Values are default config for this template.
 	Values map[string]interface{}
 	// Schema is an optional JSON schema for imposing structure on Values

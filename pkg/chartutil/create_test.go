@@ -20,7 +20,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"helm.sh/helm/pkg/chart"
@@ -128,10 +127,5 @@ func TestCreateFrom(t *testing.T) {
 		} else if fi.IsDir() {
 			t.Errorf("Expected %s to be a file.", f)
 		}
-	}
-
-	// Ensure we replace `<CHARTNAME>`
-	if strings.Contains(string(mychart.RawValues), "<CHARTNAME>") {
-		t.Errorf("Did not expect %s to be present in %s", "<CHARTNAME>", string(mychart.RawValues))
 	}
 }
