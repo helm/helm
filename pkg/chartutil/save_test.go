@@ -59,14 +59,9 @@ func TestSave(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	if c2.Name() != c.Name() {
 		t.Fatalf("Expected chart archive to have %q, got %q", c.Name(), c2.Name())
 	}
-	// FIXME
-	// if !bytes.Equal(c2.RawValues, c.RawValues) {
-	// 	t.Fatal("Values data did not match")
-	// }
 	if len(c2.Files) != 1 || c2.Files[0].Name != "scheherazade/shahryar.txt" {
 		t.Fatal("Files data did not match")
 	}
@@ -102,10 +97,6 @@ func TestSaveDir(t *testing.T) {
 	if c2.Name() != c.Name() {
 		t.Fatalf("Expected chart archive to have %q, got %q", c.Name(), c2.Name())
 	}
-	// FIXME
-	// if !bytes.Equal(c2.RawValues, c.RawValues) {
-	// 	t.Fatal("Values data did not match")
-	// }
 	if len(c2.Files) != 1 || c2.Files[0].Name != "scheherazade/shahryar.txt" {
 		t.Fatal("Files data did not match")
 	}
