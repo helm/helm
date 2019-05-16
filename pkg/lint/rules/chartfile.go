@@ -51,6 +51,7 @@ func Chartfile(linter *support.Linter) {
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartNameDirMatch(linter.ChartDir, chartFile))
 
 	// Chart metadata
+	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartApiVersion(chartFile))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartVersion(chartFile))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartEngine(chartFile))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartMaintainer(chartFile))
@@ -93,6 +94,18 @@ func validateChartNameDirMatch(chartDir string, cf *chart.Metadata) error {
 	if cf.Name != filepath.Base(chartDir) {
 		return fmt.Errorf("directory name (%s) and chart name (%s) must be the same", filepath.Base(chartDir), cf.Name)
 	}
+	return nil
+}
+
+func validateChartApiVersion(cf *chart.Metadata) error {
+	if cf.ApiVersion == "" {
+		return errors.New("apiVersion is required")
+	}
+
+	if cf.ApiVersion != "v1" {
+		return fmt.Errorf("apiVersion '%s' is not valid. The value must be \"v1\"", cf.ApiVersion)
+	}
+
 	return nil
 }
 
