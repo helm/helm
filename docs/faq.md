@@ -132,6 +132,8 @@ battle-testing.
 Please have a look at `helm help chart` and `helm help registry` for more information on how to package a chart and
 push it to a Docker registry.
 
+For more info, please see [this page](./registries.md).
+
 ### Removal of helm serve
 
 `helm serve` ran a local Chart Repository on your machine for development purposes. However, it didn't receive much
