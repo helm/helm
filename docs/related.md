@@ -19,6 +19,7 @@ or [pull request](https://github.com/helm/helm/pulls).
 - [Writing a Helm Chart](https://www.influxdata.com/packaged-kubernetes-deployments-writing-helm-chart/)
 - [A basic walk through Kubernetes Helm](https://github.com/muffin87/helm-tutorial)
 - [Tillerless Helm v2](https://rimusz.net/tillerless-helm/)
+- [Generating Certificate Authorities and Certificates using Terraform](https://github.com/jbussdieker/tiller-ssl-terraform)
 
 ## Video, Audio, and Podcast
 
@@ -50,6 +51,7 @@ or [pull request](https://github.com/helm/helm/pulls).
 - [helm-plugin-utils](https://github.com/maorfr/helm-plugin-utils) - Utility functions to be used within Helm plugins
 - [helm-restore](https://github.com/maorfr/helm-restore) - Plugin to restore a deployed release to its original state
 - [helm-secrets](https://github.com/futuresimple/helm-secrets) - Plugin to manage and store secrets safely
+- [helm-ssm](https://github.com/codacy/helm-ssm) - Plugin to inject values coming from AWS SSM parameters on the `values.yaml` file
 - [helm-stop](https://github.com/IBM/helm-stop) - Plugin for stopping a release pods
 - [helm-template](https://github.com/technosophos/helm-template) - Debug/render templates client-side
 - [helm-tiller](https://github.com/adamreese/helm-tiller) - Additional commands to work with Tiller
@@ -68,6 +70,7 @@ Tools layered on top of Helm or Tiller.
 - [Armada](https://github.com/att-comdev/armada) - Manage prefixed releases throughout various Kubernetes namespaces, and removes completed jobs for complex deployments. Used by the [Openstack-Helm](https://github.com/openstack/openstack-helm) team.
 - [ChartMuseum](https://github.com/chartmuseum/chartmuseum) - Helm Chart Repository with support for Amazon S3 and Google Cloud Storage
 - [Chartify](https://github.com/appscode/chartify) - Generate Helm charts from existing Kubernetes resources.
+- [Cloudsmith](https://cloudsmith.io/l/helm-repository/) - Fully managed SaaS offering private Helm Chart Repositories
 - [Codefresh](https://codefresh.io) - Kubernetes native CI/CD and management platform with UI dashboards for managing Helm charts and releases
 - [Cog](https://github.com/ohaiwalt/cog-helm) - Helm chart to deploy Cog on Kubernetes
 - [Drone.io Helm Plugin](http://plugins.drone.io/ipedrazas/drone-helm/) - Run Helm inside of the Drone CI/CD system

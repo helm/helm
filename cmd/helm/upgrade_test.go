@@ -96,7 +96,7 @@ func TestUpgradeCmd(t *testing.T) {
 			name:     "upgrade a release",
 			args:     []string{"funny-bunny", chartPath},
 			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "funny-bunny", Version: 2, Chart: ch}),
-			expected: "Release \"funny-bunny\" has been upgraded. Happy Helming!\n",
+			expected: "Release \"funny-bunny\" has been upgraded.\n",
 			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "funny-bunny", Version: 2, Chart: ch})},
 		},
 		{
@@ -104,7 +104,7 @@ func TestUpgradeCmd(t *testing.T) {
 			args:     []string{"funny-bunny", chartPath},
 			flags:    []string{"--timeout", "120"},
 			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "funny-bunny", Version: 3, Chart: ch2}),
-			expected: "Release \"funny-bunny\" has been upgraded. Happy Helming!\n",
+			expected: "Release \"funny-bunny\" has been upgraded.\n",
 			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "funny-bunny", Version: 3, Chart: ch2})},
 		},
 		{
@@ -112,7 +112,7 @@ func TestUpgradeCmd(t *testing.T) {
 			args:     []string{"funny-bunny", chartPath},
 			flags:    []string{"--reset-values", "true"},
 			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "funny-bunny", Version: 4, Chart: ch2}),
-			expected: "Release \"funny-bunny\" has been upgraded. Happy Helming!\n",
+			expected: "Release \"funny-bunny\" has been upgraded.\n",
 			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "funny-bunny", Version: 4, Chart: ch2})},
 		},
 		{
@@ -120,7 +120,7 @@ func TestUpgradeCmd(t *testing.T) {
 			args:     []string{"funny-bunny", chartPath},
 			flags:    []string{"--reuse-values", "true"},
 			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "funny-bunny", Version: 5, Chart: ch2}),
-			expected: "Release \"funny-bunny\" has been upgraded. Happy Helming!\n",
+			expected: "Release \"funny-bunny\" has been upgraded.\n",
 			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "funny-bunny", Version: 5, Chart: ch2})},
 		},
 		{
@@ -128,7 +128,7 @@ func TestUpgradeCmd(t *testing.T) {
 			args:     []string{"funny-bunny", chartPath},
 			flags:    []string{"--atomic"},
 			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "funny-bunny", Version: 6, Chart: ch}),
-			expected: "Release \"funny-bunny\" has been upgraded. Happy Helming!\n",
+			expected: "Release \"funny-bunny\" has been upgraded.\n",
 			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "funny-bunny", Version: 6, Chart: ch})},
 		},
 		{
@@ -136,7 +136,7 @@ func TestUpgradeCmd(t *testing.T) {
 			args:     []string{"zany-bunny", chartPath},
 			flags:    []string{"-i"},
 			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "zany-bunny", Version: 1, Chart: ch}),
-			expected: "Release \"zany-bunny\" has been upgraded. Happy Helming!\n",
+			expected: "Release \"zany-bunny\" has been upgraded.\n",
 			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "zany-bunny", Version: 1, Chart: ch})},
 		},
 		{
@@ -144,7 +144,7 @@ func TestUpgradeCmd(t *testing.T) {
 			args:     []string{"crazy-bunny", chartPath},
 			flags:    []string{"-i", "--timeout", "120"},
 			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "crazy-bunny", Version: 1, Chart: ch}),
-			expected: "Release \"crazy-bunny\" has been upgraded. Happy Helming!\n",
+			expected: "Release \"crazy-bunny\" has been upgraded.\n",
 			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "crazy-bunny", Version: 1, Chart: ch})},
 		},
 		{
@@ -152,7 +152,7 @@ func TestUpgradeCmd(t *testing.T) {
 			args:     []string{"crazy-bunny", chartPath},
 			flags:    []string{"-i", "--description", "foo"},
 			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "crazy-bunny", Version: 1, Chart: ch, Description: "foo"}),
-			expected: "Release \"crazy-bunny\" has been upgraded. Happy Helming!\n",
+			expected: "Release \"crazy-bunny\" has been upgraded.\n",
 			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "crazy-bunny", Version: 1, Chart: ch, Description: "foo"})},
 		},
 		{
@@ -160,7 +160,7 @@ func TestUpgradeCmd(t *testing.T) {
 			args:     []string{"crazy-bunny", chartPath},
 			flags:    []string{"--wait"},
 			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "crazy-bunny", Version: 2, Chart: ch2}),
-			expected: "Release \"crazy-bunny\" has been upgraded. Happy Helming!\n",
+			expected: "Release \"crazy-bunny\" has been upgraded.\n",
 			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "crazy-bunny", Version: 2, Chart: ch2})},
 		},
 		{
@@ -168,7 +168,7 @@ func TestUpgradeCmd(t *testing.T) {
 			args:     []string{"crazy-bunny", chartPath},
 			flags:    []string{"--description", "foo"},
 			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "crazy-bunny", Version: 2, Chart: ch2}),
-			expected: "Release \"crazy-bunny\" has been upgraded. Happy Helming!\n",
+			expected: "Release \"crazy-bunny\" has been upgraded.\n",
 			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "crazy-bunny", Version: 2, Chart: ch2, Description: "foo"})},
 		},
 		{

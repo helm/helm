@@ -27,27 +27,26 @@ import (
 	"k8s.io/helm/pkg/chartutil"
 )
 
-const inspectDesc = `
+const (
+	inspectDesc = `
 This command inspects a chart and displays information. It takes a chart reference
 ('stable/drupal'), a full path to a directory or packaged chart, or a URL.
 
 Inspect prints the contents of the Chart.yaml file and the values.yaml file.
 `
-
-const inspectValuesDesc = `
+	inspectValuesDesc = `
 This command inspects a chart (directory, file, or URL) and displays the contents
 of the values.yaml file
 `
-
-const inspectChartDesc = `
+	inspectChartDesc = `
 This command inspects a chart (directory, file, or URL) and displays the contents
 of the Charts.yaml file
 `
-
-const readmeChartDesc = `
+	readmeChartDesc = `
 This command inspects a chart (directory, file, or URL) and displays the contents
 of the README file
 `
+)
 
 type inspectCmd struct {
 	chartpath string

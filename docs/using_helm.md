@@ -359,7 +359,7 @@ update things that have changed since the last release.
 ```console
 $ helm upgrade -f panda.yaml happy-panda stable/mariadb
 Fetched stable/mariadb-0.3.0.tgz to /Users/mattbutcher/Code/Go/src/k8s.io/helm/mariadb-0.3.0.tgz
-happy-panda has been upgraded. Happy Helming!
+happy-panda has been upgraded.
 Last Deployed: Wed Sep 28 12:47:54 2016
 Namespace: default
 Status: DEPLOYED

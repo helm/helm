@@ -650,8 +650,15 @@ func (kc *mockHooksKubeClient) Build(ns string, reader io.Reader) (kube.Result, 
 func (kc *mockHooksKubeClient) BuildUnstructured(ns string, reader io.Reader) (kube.Result, error) {
 	return []*resource.Info{}, nil
 }
+func (kc *mockHooksKubeClient) Validate(ns string, reader io.Reader) error {
+	return nil
+}
 func (kc *mockHooksKubeClient) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (v1.PodPhase, error) {
 	return v1.PodUnknown, nil
+}
+
+func (kc *mockHooksKubeClient) WaitUntilCRDEstablished(reader io.Reader, timeout time.Duration) error {
+	return nil
 }
 
 func deletePolicyStub(kubeClient *mockHooksKubeClient) *ReleaseServer {

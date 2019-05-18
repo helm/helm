@@ -24,8 +24,10 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
+	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -33,15 +35,35 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest/fake"
 	cmdtesting "k8s.io/kubernetes/pkg/kubectl/cmd/testing"
+	kubectlscheme "k8s.io/kubernetes/pkg/kubectl/scheme"
 )
 
+func init() {
+	err := apiextv1beta1.AddToScheme(scheme.Scheme)
+	if err != nil {
+		panic(err)
+	}
+
+	// Tiller use the scheme from go-client, but the cmdtesting
+	// package used here is hardcoded to use the scheme from
+	// kubectl. So for testing, we need to add the CustomResourceDefinition
+	// type to both schemes.
+	err = apiextv1beta1.AddToScheme(kubectlscheme.Scheme)
+	if err != nil {
+		panic(err)
+	}
+}
+
 var (
-	codec                  = scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 	unstructuredSerializer = resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer
 )
 
+func getCodec() runtime.Codec {
+	return scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
+}
+
 func objBody(obj runtime.Object) io.ReadCloser {
-	return ioutil.NopCloser(bytes.NewReader([]byte(runtime.EncodeOrDie(codec, obj))))
+	return ioutil.NopCloser(bytes.NewReader([]byte(runtime.EncodeOrDie(getCodec(), obj))))
 }
 
 func newPod(name string) v1.Pod {
@@ -103,7 +125,7 @@ func notFoundBody() *metav1.Status {
 func newResponse(code int, obj runtime.Object) (*http.Response, error) {
 	header := http.Header{}
 	header.Set("Content-Type", runtime.ContentTypeJSON)
-	body := ioutil.NopCloser(bytes.NewReader([]byte(runtime.EncodeOrDie(codec, obj))))
+	body := ioutil.NopCloser(bytes.NewReader([]byte(runtime.EncodeOrDie(getCodec(), obj))))
 	return &http.Response{StatusCode: code, Header: header, Body: body}, nil
 }
 
@@ -434,6 +456,88 @@ func TestResourceSortOrder(t *testing.T) {
 	}
 }
 
+func TestWaitUntilCRDEstablished(t *testing.T) {
+	testCases := map[string]struct {
+		conditions            []apiextv1beta1.CustomResourceDefinitionCondition
+		returnConditionsAfter int
+		success               bool
+	}{
+		"crd reaches established state after 2 requests": {
+			conditions: []apiextv1beta1.CustomResourceDefinitionCondition{
+				{
+					Type:   apiextv1beta1.Established,
+					Status: apiextv1beta1.ConditionTrue,
+				},
+			},
+			returnConditionsAfter: 2,
+			success:               true,
+		},
+		"crd does not reach established state before timeout": {
+			conditions:            []apiextv1beta1.CustomResourceDefinitionCondition{},
+			returnConditionsAfter: 100,
+			success:               false,
+		},
+		"crd name is not accepted": {
+			conditions: []apiextv1beta1.CustomResourceDefinitionCondition{
+				{
+					Type:   apiextv1beta1.NamesAccepted,
+					Status: apiextv1beta1.ConditionFalse,
+				},
+			},
+			returnConditionsAfter: 1,
+			success:               false,
+		},
+	}
+
+	for tn, tc := range testCases {
+		func(name string) {
+			c := newTestClient()
+			defer c.Cleanup()
+
+			crdWithoutConditions := newCrdWithStatus("name", apiextv1beta1.CustomResourceDefinitionStatus{})
+			crdWithConditions := newCrdWithStatus("name", apiextv1beta1.CustomResourceDefinitionStatus{
+				Conditions: tc.conditions,
+			})
+
+			requestCount := 0
+			c.TestFactory.UnstructuredClient = &fake.RESTClient{
+				GroupVersion:         schema.GroupVersion{Version: "v1"},
+				NegotiatedSerializer: unstructuredSerializer,
+				Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+					var crd apiextv1beta1.CustomResourceDefinition
+					if requestCount < tc.returnConditionsAfter {
+						crd = crdWithoutConditions
+					} else {
+						crd = crdWithConditions
+					}
+					requestCount += 1
+					return newResponse(200, &crd)
+				}),
+			}
+
+			err := c.WaitUntilCRDEstablished(strings.NewReader(crdManifest), 5*time.Second)
+			if err != nil && tc.success {
+				t.Errorf("%s: expected no error, but got %v", name, err)
+			}
+			if err == nil && !tc.success {
+				t.Errorf("%s: expected error, but didn't get one", name)
+			}
+		}(tn)
+	}
+}
+
+func newCrdWithStatus(name string, status apiextv1beta1.CustomResourceDefinitionStatus) apiextv1beta1.CustomResourceDefinition {
+	crd := apiextv1beta1.CustomResourceDefinition{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: metav1.NamespaceDefault,
+		},
+		Spec:   apiextv1beta1.CustomResourceDefinitionSpec{},
+		Status: status,
+	}
+	return crd
+}
+
 func TestPerform(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -700,4 +804,42 @@ spec:
           value: dns
         ports:
         - containerPort: 80
+`
+
+const crdManifest = `
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: applications.app.k8s.io
+spec:
+  group: app.k8s.io
+  names:
+    kind: Application
+    plural: applications
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'Description'
+          type: string
+        kind:
+          description: 'Kind'
+          type: string
+        metadata:
+          type: object
+        spec:
+          type: object
+        status:
+          type: object
+  version: v1beta1
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
 `

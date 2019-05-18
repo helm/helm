@@ -191,7 +191,7 @@ Hang tight while we grab the latest from your chart repositories...
 ...Successfully got an update from the "stable" chart repository
 ...Successfully got an update from the "example" chart repository
 ...Successfully got an update from the "another" chart repository
-Update Complete. Happy Helming!
+Update Complete.
 Saving 2 charts
 Downloading apache from repo http://example.com/charts
 Downloading mysql from repo http://another.example.com/charts

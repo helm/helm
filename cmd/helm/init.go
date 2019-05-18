@@ -310,7 +310,6 @@ func (i *initCmd) run() error {
 			"$ helm init --tiller-image gcr.io/kubernetes-helm/tiller:v2.8.2\n\n")
 	}
 
-	fmt.Fprintln(i.out, "Happy Helming!")
 	return nil
 }
 
