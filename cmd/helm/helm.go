@@ -71,14 +71,18 @@ __helm_override_flags()
 
 __helm_list_releases()
 {
-    local out
-    if out=$(helm list $(__helm_override_flags) -a -q 2>/dev/null); then
+    __helm_debug "${FUNCNAME[0]}: c is $c words[c] is ${words[c]}"
+    local out filter
+    # Use ^ to map from the start of the release name
+    filter="^${words[c]}"
+    if out=$(helm list $(__helm_override_flags) -a -q ${filter} 2>/dev/null); then
         COMPREPLY=( $( compgen -W "${out[*]}" -- "$cur" ) )
     fi
 }
 
 __helm_custom_func()
 {
+    __helm_debug "${FUNCNAME[0]}: c is $c words[@] is ${words[@]}"
     case ${last_command} in
         helm_delete | helm_history | helm_status | helm_test |\
         helm_upgrade | helm_rollback | helm_get_*)
