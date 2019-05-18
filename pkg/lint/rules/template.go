@@ -99,7 +99,7 @@ func Templates(linter *support.Linter, values []byte, namespace string, strict b
 		fileName, _ := template.Name, template.Data
 		path = fileName
 
-		linter.RunLinterRule(support.ErrorSev, path, validateAllowedExtension(fileName))
+		linter.RunLinterRule(support.WarningSev, path, validateAllowedExtension(fileName))
 
 		// We only apply the following lint rules to yaml files
 		if filepath.Ext(fileName) != ".yaml" || filepath.Ext(fileName) == ".yml" {
