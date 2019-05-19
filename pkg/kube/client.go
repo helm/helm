@@ -157,13 +157,16 @@ func (c *Client) BuildUnstructured(namespace string, reader io.Reader) (Result, 
 }
 
 // Validate reads Kubernetes manifests and validates the content.
+//
+// This function does not actually do schema validation of manifests. Adding
+// validation now breaks existing clients of helm: https://github.com/helm/helm/issues/5750
 func (c *Client) Validate(namespace string, reader io.Reader) error {
 	_, err := c.NewBuilder().
 		Unstructured().
 		ContinueOnError().
 		NamespaceParam(namespace).
 		DefaultNamespace().
-		Schema(c.validator()).
+		// Schema(c.validator()). // No schema validation
 		Stream(reader, "").
 		Flatten().
 		Do().Infos()
