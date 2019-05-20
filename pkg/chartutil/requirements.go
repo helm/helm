@@ -419,7 +419,10 @@ func processImportValues(c *chart.Chart) error {
 						"parent": iv["parent"].(string),
 					}
 					outiv = append(outiv, nm)
-					s := name + "." + nm["child"]
+					s := name
+					if nm["child"] != "." {
+						s = s + "." + nm["child"]
+					}
 					// get child table
 					vv, err := cvals.Table(s)
 					if err != nil {

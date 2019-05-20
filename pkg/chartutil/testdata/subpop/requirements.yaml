@@ -19,6 +19,8 @@ dependencies:
             parent: overridden-chartA-B
           - child: SCBexported1A
             parent: .
+          - child: .
+            parent: imported-chart1-all
           - SCBexported2
           - SC1exported1
 
