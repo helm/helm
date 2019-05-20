@@ -66,6 +66,7 @@ Environment:
 - $HELM_HOST:           set an alternative Tiller host. The format is host:port
 - $HELM_NO_PLUGINS:     disable plugins. Set HELM_NO_PLUGINS=1 to disable plugins.
 - $TILLER_NAMESPACE:    set an alternative Tiller namespace (default "kube-system")
+- $TILLER_PORT:			set an alternative Tiller port (default "44134")
 - $KUBECONFIG:          set an alternative Kubernetes configuration file (default "~/.kube/config")
 - $HELM_TLS_CA_CERT:    path to TLS CA certificate used to verify the Helm client and Tiller server certificates (default "$HELM_HOME/ca.pem")
 - $HELM_TLS_CERT:       path to TLS client certificate file for authenticating to Tiller (default "$HELM_HOME/cert.pem")
@@ -190,7 +191,7 @@ func setupConnection() error {
 			return err
 		}
 
-		tillerTunnel, err = portforwarder.New(settings.TillerNamespace, client, config)
+		tillerTunnel, err = portforwarder.NewWithPort(settings.TillerNamespace, settings.TillerPort, client, config)
 		if err != nil {
 			return err
 		}

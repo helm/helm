@@ -45,6 +45,7 @@ helm get [flags] RELEASE_NAME
       --kubeconfig string               absolute path to the kubeconfig file to use
       --tiller-connection-timeout int   the duration (in seconds) Helm will wait to establish a connection to tiller (default 300)
       --tiller-namespace string         namespace of Tiller (default "kube-system")
+      --tiller-port int                 port of Tiller (default 44134)
 ```
 
 ### SEE ALSO

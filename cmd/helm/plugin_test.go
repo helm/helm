@@ -158,6 +158,7 @@ func TestSetupEnv(t *testing.T) {
 	settings.Home = helmpath.Home("testdata/helmhome")
 	base := filepath.Join(settings.Home.Plugins(), name)
 	settings.Debug = true
+	settings.TillerPort = 44134
 	defer func() {
 		settings.Debug = false
 	}()
@@ -179,6 +180,7 @@ func TestSetupEnv(t *testing.T) {
 		{"HELM_PATH_STARTER", settings.Home.Starters()},
 		{"TILLER_HOST", settings.TillerHost},
 		{"TILLER_NAMESPACE", settings.TillerNamespace},
+		{"TILLER_PORT", string(settings.TillerPort)},
 	} {
 		if got := os.Getenv(tt.name); got != tt.expect {
 			t.Errorf("Expected $%s=%q, got %q", tt.name, tt.expect, got)

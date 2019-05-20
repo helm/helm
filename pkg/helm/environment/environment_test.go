@@ -36,6 +36,7 @@ func TestEnvSettings(t *testing.T) {
 
 		// expected values
 		home, host, ns, kcontext, kconfig, plugins string
+		port                                       int
 		debug, tlsverify                           bool
 	}{
 		{
@@ -44,15 +45,17 @@ func TestEnvSettings(t *testing.T) {
 			home:      DefaultHelmHome,
 			plugins:   helmpath.Home(DefaultHelmHome).Plugins(),
 			ns:        "kube-system",
+			port:      44134,
 			tlsverify: false,
 		},
 		{
 			name:      "with flags set",
-			args:      []string{"--home", "/foo", "--host=here", "--debug", "--tiller-namespace=myns", "--kubeconfig", "/bar"},
+			args:      []string{"--home", "/foo", "--host=here", "--debug", "--tiller-namespace=myns", "--tiller-port=44225", "--kubeconfig", "/bar"},
 			home:      "/foo",
 			plugins:   helmpath.Home("/foo").Plugins(),
 			host:      "here",
 			ns:        "myns",
+			port:      44225,
 			kconfig:   "/bar",
 			debug:     true,
 			tlsverify: false,
@@ -60,33 +63,36 @@ func TestEnvSettings(t *testing.T) {
 		{
 			name:      "with envvars set",
 			args:      []string{},
-			envars:    map[string]string{"HELM_HOME": "/bar", "HELM_HOST": "there", "HELM_DEBUG": "1", "TILLER_NAMESPACE": "yourns"},
+			envars:    map[string]string{"HELM_HOME": "/bar", "HELM_HOST": "there", "HELM_DEBUG": "1", "TILLER_NAMESPACE": "yourns", "TILLER_PORT": "44225"},
 			home:      "/bar",
 			plugins:   helmpath.Home("/bar").Plugins(),
 			host:      "there",
 			ns:        "yourns",
+			port:      44225,
 			debug:     true,
 			tlsverify: false,
 		},
 		{
 			name:      "with TLS envvars set",
 			args:      []string{},
-			envars:    map[string]string{"HELM_HOME": "/bar", "HELM_HOST": "there", "HELM_DEBUG": "1", "TILLER_NAMESPACE": "yourns", "HELM_TLS_VERIFY": "1"},
+			envars:    map[string]string{"HELM_HOME": "/bar", "HELM_HOST": "there", "HELM_DEBUG": "1", "TILLER_NAMESPACE": "yourns", "TILLER_PORT": "44225", "HELM_TLS_VERIFY": "1"},
 			home:      "/bar",
 			plugins:   helmpath.Home("/bar").Plugins(),
 			host:      "there",
 			ns:        "yourns",
+			port:      44225,
 			debug:     true,
 			tlsverify: true,
 		},
 		{
 			name:      "with flags and envvars set",
 			args:      []string{"--home", "/foo", "--host=here", "--debug", "--tiller-namespace=myns"},
-			envars:    map[string]string{"HELM_HOME": "/bar", "HELM_HOST": "there", "HELM_DEBUG": "1", "TILLER_NAMESPACE": "yourns", "HELM_PLUGIN": "glade"},
+			envars:    map[string]string{"HELM_HOME": "/bar", "HELM_HOST": "there", "HELM_DEBUG": "1", "TILLER_NAMESPACE": "yourns", "TILLER_PORT": "44225", "HELM_PLUGIN": "glade"},
 			home:      "/foo",
 			plugins:   "glade",
 			host:      "here",
 			ns:        "myns",
+			port:      44225,
 			debug:     true,
 			tlsverify: false,
 		},
@@ -97,6 +103,7 @@ func TestEnvSettings(t *testing.T) {
 		"HELM_HOME":         "",
 		"HELM_HOST":         "",
 		"TILLER_NAMESPACE":  "",
+		"TILLER_PORT":       "",
 		"HELM_PLUGIN":       "",
 		"HELM_TLS_HOSTNAME": "",
 		"HELM_TLS_CA_CERT":  "",
@@ -139,6 +146,9 @@ func TestEnvSettings(t *testing.T) {
 			}
 			if settings.TillerNamespace != tt.ns {
 				t.Errorf("expected tiller-namespace %q, got %q", tt.ns, settings.TillerNamespace)
+			}
+			if settings.TillerPort != tt.port {
+				t.Errorf("expected tiller-port %d, got %d", tt.port, settings.TillerPort)
 			}
 			if settings.KubeContext != tt.kcontext {
 				t.Errorf("expected kube-context %q, got %q", tt.kcontext, settings.KubeContext)

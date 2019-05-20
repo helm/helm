@@ -190,6 +190,7 @@ func SetupPluginEnv(settings helm_env.EnvSettings,
 
 		"TILLER_HOST":      settings.TillerHost,
 		"TILLER_NAMESPACE": settings.TillerNamespace,
+		"TILLER_PORT":      string(settings.TillerPort),
 	} {
 		os.Setenv(key, val)
 	}

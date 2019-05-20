@@ -19,7 +19,7 @@ package portforwarder
 import (
 	"fmt"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
@@ -27,7 +27,6 @@ import (
 	"k8s.io/client-go/rest"
 
 	"k8s.io/helm/pkg/kube"
-	"k8s.io/helm/pkg/tiller/environment"
 )
 
 var (
@@ -36,11 +35,17 @@ var (
 
 // New creates a new and initialized tunnel.
 func New(namespace string, client kubernetes.Interface, config *rest.Config) (*kube.Tunnel, error) {
+	const tillerPort = 44134
+	return NewWithPort(namespace, tillerPort, client, config)
+}
+
+// NewWithPort creates a new and initialized tunnel on the specified port.
+func NewWithPort(namespace string, port int, client kubernetes.Interface, config *rest.Config) (*kube.Tunnel, error) {
 	podName, err := GetTillerPodName(client.CoreV1(), namespace)
 	if err != nil {
 		return nil, err
 	}
-	t := kube.NewTunnel(client.CoreV1().RESTClient(), config, namespace, podName, environment.DefaultTillerPort)
+	t := kube.NewTunnel(client.CoreV1().RESTClient(), config, namespace, podName, port)
 	return t, t.ForwardPort()
 }
 

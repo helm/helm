@@ -56,6 +56,8 @@ type EnvSettings struct {
 	TillerConnectionTimeout int64
 	// TillerNamespace is the namespace in which Tiller runs.
 	TillerNamespace string
+	// TillerPort is the port on which Tiller runs.
+	TillerPort int
 	// Home is the local path to the Helm home directory.
 	Home helmpath.Home
 	// Debug indicates whether or not Helm is running in Debug mode.
@@ -86,6 +88,7 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.KubeConfig, "kubeconfig", "", "absolute path to the kubeconfig file to use")
 	fs.BoolVar(&s.Debug, "debug", false, "enable verbose output")
 	fs.StringVar(&s.TillerNamespace, "tiller-namespace", "kube-system", "namespace of Tiller")
+	fs.IntVar(&s.TillerPort, "tiller-port", 44134, "port of Tiller")
 	fs.Int64Var(&s.TillerConnectionTimeout, "tiller-connection-timeout", int64(300), "the duration (in seconds) Helm will wait to establish a connection to tiller")
 }
 
@@ -119,6 +122,7 @@ var envMap = map[string]string{
 	"home":             "HELM_HOME",
 	"host":             "HELM_HOST",
 	"tiller-namespace": "TILLER_NAMESPACE",
+	"tiller-port":      "TILLER_PORT",
 }
 
 var tlsEnvMap = map[string]string{
