@@ -20,17 +20,17 @@ import (
 	"io"
 	"time"
 
-	"helm.sh/helm/pkg/release"
-
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
 	"helm.sh/helm/cmd/helm/require"
 	"helm.sh/helm/pkg/action"
+	"helm.sh/helm/pkg/chart"
 	"helm.sh/helm/pkg/chart/loader"
-	"helm.sh/helm/pkg/chartutil"
 	"helm.sh/helm/pkg/downloader"
 	"helm.sh/helm/pkg/getter"
+	"helm.sh/helm/pkg/release"
 )
 
 const installDesc = `
@@ -180,7 +180,7 @@ func runInstall(args []string, client *action.Install, out io.Writer) (*release.
 		return nil, err
 	}
 
-	validInstallableChart, err := chartutil.IsChartInstallable(chartRequested)
+	validInstallableChart, err := isChartInstallable(chartRequested)
 	if !validInstallableChart {
 		return nil, err
 	}
@@ -210,4 +210,15 @@ func runInstall(args []string, client *action.Install, out io.Writer) (*release.
 
 	client.Namespace = getNamespace()
 	return client.Run(chartRequested)
+}
+
+// isChartInstallable validates if a chart can be installed
+//
+// Application chart type is only installable
+func isChartInstallable(ch *chart.Chart) (bool, error) {
+	switch ch.Metadata.Type {
+	case "", "application":
+		return true, nil
+	}
+	return false, errors.Errorf("%s charts are not installable", ch.Metadata.Type)
 }

@@ -22,11 +22,10 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
-	"helm.sh/helm/pkg/action"
-
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"helm.sh/helm/pkg/action"
 	"helm.sh/helm/pkg/downloader"
 	"helm.sh/helm/pkg/getter"
 )
