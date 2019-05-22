@@ -19,6 +19,7 @@ package engine
 import (
 	"fmt"
 	"path"
+	"path/filepath"
 	"sort"
 	"strings"
 	"text/template"
@@ -268,10 +269,9 @@ func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.
 		recAllTpls(child, templates, next)
 	}
 
-	isLibChart := chartutil.IsLibraryChart(c)
 	newParentID := c.ChartFullPath()
 	for _, t := range c.Templates {
-		if !chartutil.IsTemplateValid(t.Name, isLibChart) {
+		if !isTemplateValid(c, t.Name) {
 			continue
 		}
 		templates[path.Join(newParentID, t.Name)] = renderable{
@@ -280,4 +280,17 @@ func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.
 			basePath: path.Join(newParentID, "templates"),
 		}
 	}
+}
+
+// isTemplateValid returns true if the template is valid for the chart type
+func isTemplateValid(ch *chart.Chart, templateName string) bool {
+	if isLibraryChart(ch) {
+		return strings.HasPrefix(filepath.Base(templateName), "_")
+	}
+	return true
+}
+
+// isLibraryChart returns true if the chart is a library chart
+func isLibraryChart(c *chart.Chart) bool {
+	return strings.EqualFold(c.Metadata.Type, "library")
 }

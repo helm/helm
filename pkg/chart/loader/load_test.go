@@ -127,11 +127,10 @@ icon: https://example.com/64x64.png
 		t.Errorf("Expected number of templates == 2, got %d", len(c.Templates))
 	}
 
-	_, err = LoadFiles([]*BufferedFile{})
-	if err == nil {
+	if _, err = LoadFiles([]*BufferedFile{}); err == nil {
 		t.Fatal("Expected err to be non-nil")
 	}
-	if err.Error() != "metadata is required" {
+	if err.Error() != "validation: chart.metadata is required" {
 		t.Errorf("Expected chart metadata missing error, got '%s'", err.Error())
 	}
 }
