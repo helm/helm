@@ -103,7 +103,7 @@ func (p *Package) Run(path string) (string, error) {
 		err = p.Clearsign(name)
 	}
 
-	return "", err
+	return name, err
 }
 
 func setVersion(ch *chart.Chart, ver string) error {
