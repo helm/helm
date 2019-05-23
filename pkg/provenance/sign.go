@@ -405,7 +405,7 @@ func DigestFile(filename string) (string, error) {
 func Digest(in io.Reader) (string, error) {
 	hash := crypto.SHA256.New()
 	if _, err := io.Copy(hash, in); err != nil {
-		return "", nil
+		return "", err
 	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
 }
