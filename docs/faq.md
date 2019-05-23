@@ -175,6 +175,12 @@ Additionally, several other commands were re-named to accommodate the same conve
 
 These commands have also retained their older verbs as aliases, so you can continue to use them in either form.
 
+### Automatically creating namespaces
+
+When creating a release in a namespace that does not exist, Helm 2 created the
+namespace.  Helm 3 follows the behavior of other Kubernetes objects and returns
+an error if the namespace does not exist.
+
 ## Installing
 
 ### Why aren't there Debian/Fedora/... native packages of Helm?
