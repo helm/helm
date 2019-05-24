@@ -280,7 +280,7 @@ helm init --override metadata.annotations."deployment\.kubernetes\.io/revision"=
 Output:
 
 ```
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
@@ -337,7 +337,7 @@ The Tiller installation is skipped and the manifest is output to stdout
 in JSON format.
 
 ```
-"apiVersion": "extensions/v1beta1",
+"apiVersion": "apps/v1",
 "kind": "Deployment",
 "metadata": {
     "creationTimestamp": null,
