@@ -302,7 +302,7 @@ The following tables define all label types used for Helm. It is split up by cat
 | `help wanted` | This issue is one the core maintainers cannot get to right now and would appreciate help with |
 | `proposal` | This issue is a proposal |
 | `question/support` | This issue is a support request or question |
-| `starter` | This issue is a good for someone new to contributing to Helm |
+| `good first issue` | This issue is a good for someone new to contributing to Helm |
 | `wont fix` | The issue has been discussed and will not be implemented (or accepted in the case of a proposal) |
 
 ### PR Specific
@@ -327,6 +327,9 @@ lines is greater than defined below.
 
 | Label | Description |
 | ----- | ----------- |
-| `size/small` | Anything less than or equal to 4 files and 150 lines. Only small amounts of manual testing may be required |
-| `size/medium` | Anything greater than `size/small` and less than or equal to 8 files and 300 lines. Manual validation should be required. |
-| `size/large` | Anything greater than `size/medium`. This should be thoroughly tested before merging and always requires 2 approvals. This also should be applied to anything that is a significant logic change. |
+| `size/XS` | Anything less than or equal to 9 lines ignoring generated files. Only small amounts of manual testing may be required. |
+| `size/S` | Anything greater than `size/XS` less than or equal to 29 lines ignoring the generated files. Only small amounts of manual testing may be required. |
+| `size/M` | Anything greater than `size/S` less than or equal to 99 lines ignoring the generated files. Manual validation should be required. |
+| `size/L` | Anything greater than `size/M` less than or equal to 499 lines ignoring the generated files. This should be thoroughly tested before merging and always requires 2 approvals. This also should be applied to anything that is a significant logic change. |
+| `size/XL` | Anything greater than `size/L` less than or equal to 999 lines ignoring the generated files. This should be thoroughly tested before merging and always requires 2 approvals. This also should be applied to anything that is a significant logic change. |
+| `size/XXL` | Anything greater than `size/XL`. This should be thoroughly tested before merging and always requires 2 approvals. This also should be applied to anything that is a significant logic change. |
