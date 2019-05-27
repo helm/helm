@@ -452,5 +452,5 @@ func Create(name, dir string) (string, error) {
 // transform performs a string replacement of the specified source for
 // a given key with the replacement string
 func transform(src, replacement string) []byte {
-	return []byte(strings.ReplaceAll(src, "<CHARTNAME>", replacement))
+	return []byte(strings.Replace(src, "<CHARTNAME>", replacement, -1))
 }

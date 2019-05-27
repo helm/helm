@@ -187,8 +187,8 @@ func (e Engine) renderWithReferences(tpls, referenceTpls map[string]renderable) 
 		// is set. Since missing=error will never get here, we do not need to handle
 		// the Strict case.
 		f := &chart.File{
-			Name: strings.ReplaceAll(filename, "/templates", "/manifests"),
-			Data: []byte(strings.ReplaceAll(buf.String(), "<no value>", "")),
+			Name: strings.Replace(filename, "/templates", "/manifests", -1),
+			Data: []byte(strings.Replace(buf.String(), "<no value>", "", -1)),
 		}
 		rendered[filename] = string(f.Data)
 	}

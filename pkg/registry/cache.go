@@ -258,12 +258,12 @@ func (cache *filesystemCache) TableRows() ([][]interface{}, error) {
 // escape sanitizes a registry URL to remove characters such as ":"
 // which are illegal on windows
 func escape(s string) string {
-	return strings.ReplaceAll(s, ":", "_")
+	return strings.Replace(s, ":", "_", -1)
 }
 
 // escape reverses escape
 func unescape(s string) string {
-	return strings.ReplaceAll(s, "_", ":")
+	return strings.Replace(s, "_", ":", -1)
 }
 
 // printChartSummary prints details about a chart layers

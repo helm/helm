@@ -484,7 +484,7 @@ func scrubValidationError(err error) error {
 	const stopValidateMessage = "if you choose to ignore these errors, turn validation off with --validate=false"
 
 	if strings.Contains(err.Error(), stopValidateMessage) {
-		return errors.New(strings.ReplaceAll(err.Error(), "; "+stopValidateMessage, ""))
+		return errors.New(strings.Replace(err.Error(), "; "+stopValidateMessage, "", -1))
 	}
 	return err
 }
