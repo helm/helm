@@ -25,6 +25,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"text/template"
@@ -62,6 +63,8 @@ const releaseNameMaxLen = 53
 const notesFileSuffix = "NOTES.txt"
 
 const defaultDirectoryPermission = 0755
+
+var whitespaceRegex = regexp.MustCompile(`^\s*$`)
 
 // Install performs an installation operation.
 type Install struct {
@@ -369,6 +372,10 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 		if outputDir == "" {
 			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", m.Name, m.Content)
 		} else {
+			// blank template after execution
+			if whitespaceRegex.MatchString(m.Content) {
+				continue
+			}
 			err = writeToFile(outputDir, m.Name, m.Content)
 			if err != nil {
 				return hs, b, "", err
