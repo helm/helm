@@ -76,6 +76,18 @@ type templateCmd struct {
 	renderFiles      []string
 	kubeVersion      string
 	outputDir        string
+
+	verify   bool
+	keyring  string
+	version  string
+	repoURL  string
+	username string
+	password string
+	devel    bool
+
+	certFile string
+	keyFile  string
+	caFile   string
 }
 
 func newTemplateCmd(out io.Writer) *cobra.Command {
@@ -104,6 +116,16 @@ func newTemplateCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&t.nameTemplate, "name-template", "", "specify template used to name the release")
 	f.StringVar(&t.kubeVersion, "kube-version", defaultKubeVersion, "kubernetes version used as Capabilities.KubeVersion.Major/Minor")
 	f.StringVar(&t.outputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
+	f.StringVar(&t.version, "version", "", "version of the chart. By default, the newest chart is selected")
+	f.BoolVar(&t.verify, "verify", false, "verify the provenance data for this chart")
+	f.StringVar(&t.keyring, "keyring", defaultKeyring(), "location of public keys used for verification")
+	f.StringVar(&t.repoURL, "repo", "", "chart repository url where to locate the requested chart")
+	f.StringVar(&t.username, "username", "", "chart repository username where to locate the requested chart")
+	f.StringVar(&t.password, "password", "", "chart repository password where to locate the requested chart")
+	f.BoolVar(&t.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
+	f.StringVar(&t.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
+	f.StringVar(&t.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
+	f.StringVar(&t.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 
 	return cmd
 }
@@ -112,12 +134,8 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 	if len(args) < 1 {
 		return errors.New("chart is required")
 	}
-	// verify chart path exists
-	if _, err := os.Stat(args[0]); err == nil {
-		if t.chartPath, err = filepath.Abs(args[0]); err != nil {
-			return err
-		}
-	} else {
+
+	if err := t.prepareChart(args[0]); err != nil {
 		return err
 	}
 
@@ -250,6 +268,30 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 		fmt.Printf("---\n# Source: %s\n", m.Name)
 		fmt.Println(data)
 	}
+	return nil
+}
+
+func (t *templateCmd) prepareChart(chart string) error {
+	// verify chart path exists or can be fetched from remote repo
+	if _, err := os.Stat(chart); err == nil {
+		if t.chartPath, err = filepath.Abs(chart); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	debug("Original chart version: %q", t.version)
+	if t.version == "" && t.devel {
+		debug("setting version to >0.0.0-0")
+		t.version = ">0.0.0-0"
+	}
+
+	cp, err := locateChartPath(t.repoURL, t.username, t.password, chart, t.version, false, t.keyring,
+		t.certFile, t.keyFile, t.caFile)
+	if err != nil {
+		return err
+	}
+	t.chartPath = cp
 	return nil
 }
 
