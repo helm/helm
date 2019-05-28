@@ -369,7 +369,7 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 		if outputDir == "" {
 			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", m.Name, m.Content)
 		} else {
-			err = writeToFile("build", m.Name, m.Content)
+			err = writeToFile(outputDir, m.Name, m.Content)
 			if err != nil {
 				return hs, b, "", err
 			}
