@@ -6,6 +6,8 @@ SHORT_NAME_RUDDER ?= rudder
 TARGETS           ?= darwin/amd64 linux/amd64 linux/386 linux/arm linux/arm64 linux/ppc64le linux/s390x windows/amd64
 TARGET_OBJS       ?= darwin-amd64.tar.gz darwin-amd64.tar.gz.sha256 linux-amd64.tar.gz linux-amd64.tar.gz.sha256 linux-386.tar.gz linux-386.tar.gz.sha256 linux-arm.tar.gz linux-arm.tar.gz.sha256 linux-arm64.tar.gz linux-arm64.tar.gz.sha256 linux-ppc64le.tar.gz linux-ppc64le.tar.gz.sha256 linux-s390x.tar.gz linux-s390x.tar.gz.sha256 windows-amd64.zip windows-amd64.zip.sha256
 DIST_DIRS         = find * -type d -exec
+ARCH              ?= amd64
+DOCKER_ARCH_TARGETS ?= amd64 arm arm64 ppc64le s390x
 
 # go option
 GO        ?= go
@@ -20,6 +22,29 @@ BINARIES  := helm tiller
 
 # Required for globs to work correctly
 SHELL=/usr/bin/env bash
+
+IMAGEARCH ?=
+QEMUARCH  ?=
+ifeq ($(ARCH),amd64)
+	IMAGEARCH =
+	QEMUARCH  = x86_64
+endif
+ifeq ($(ARCH),arm)
+	IMAGEARCH = arm32v7/
+	QEMUARCH  = arm
+endif
+ifeq ($(ARCH),arm64)
+	IMAGEARCH = arm64v8/
+	QEMUARCH  = aarch64
+endif
+ifeq ($(ARCH),ppc64le)
+	IMAGEARCH = ppc64le/
+	QEMUARCH  = ppc64le
+endif
+ifeq ($(ARCH),s390x)
+	IMAGEARCH = s390x/
+	QEMUARCH  = s390x
+endif
 
 .PHONY: all
 all: build
@@ -77,26 +102,43 @@ check-docker:
 docker-binary: BINDIR = ./rootfs
 docker-binary: GOFLAGS += -a -installsuffix cgo
 docker-binary:
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 $(GO) build -o $(BINDIR)/helm $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/helm
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 $(GO) build -o $(BINDIR)/tiller $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/tiller
+	GOOS=linux GOARCH=$(ARCH) CGO_ENABLED=0 $(GO) build -o $(BINDIR)/helm $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/helm
+	GOOS=linux GOARCH=$(ARCH) CGO_ENABLED=0 $(GO) build -o $(BINDIR)/tiller $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/tiller
+
+.PHONY: docker-pre-cross
+docker-pre-cross: check-docker
+	docker run --rm --privileged multiarch/qemu-user-static:register --reset
 
 .PHONY: docker-build
 docker-build: check-docker docker-binary
-	docker build --rm -t ${IMAGE} rootfs
+	docker build --rm --build-arg IMAGEARCH=$(IMAGEARCH) --build-arg QEMUARCH=$(QEMUARCH) -t ${IMAGE} rootfs
 	docker tag ${IMAGE} ${MUTABLE_IMAGE}
+
+# Building multi-arch docker images
+.PHONY: docker-build-all
+docker-build-all: docker-pre-cross
+	for arch in $(DOCKER_ARCH_TARGETS); do \
+		$(MAKE) docker-build ARCH=$$arch; \
+	done
 
 .PHONY: docker-binary-rudder
 docker-binary-rudder: BINDIR = ./rootfs
 docker-binary-rudder: GOFLAGS += -a -installsuffix cgo
 docker-binary-rudder:
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 $(GO) build -o $(BINDIR)/rudder $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/rudder
+	GOOS=linux GOARCH=$(ARCH) CGO_ENABLED=0 $(GO) build -o $(BINDIR)/rudder $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' k8s.io/helm/cmd/rudder
 
 .PHONY: docker-build-experimental
 docker-build-experimental: check-docker docker-binary docker-binary-rudder
-	docker build --rm -t ${IMAGE} rootfs -f rootfs/Dockerfile.experimental
+	docker build --rm --build-arg IMAGEARCH=$(IMAGEARCH) --build-arg QEMUARCH=$(QEMUARCH) -t ${IMAGE} rootfs -f rootfs/Dockerfile.experimental
 	docker tag ${IMAGE} ${MUTABLE_IMAGE}
-	docker build --rm -t ${IMAGE_RUDDER} rootfs -f rootfs/Dockerfile.rudder
+	docker build --rm --build-arg IMAGEARCH=$(IMAGEARCH) --build-arg QEMUARCH=$(QEMUARCH) -t ${IMAGE_RUDDER} rootfs -f rootfs/Dockerfile.rudder
 	docker tag ${IMAGE_RUDDER} ${MUTABLE_IMAGE_RUDDER}
+
+.PHONY: docker-build-experimental-all
+docker-build-experimental-all: docker-pre-cross
+	for arch in $(DOCKER_ARCH_TARGETS); do \
+		$(MAKE) docker-build-experimental ARCH=$$arch; \
+	done
 
 .PHONY: test
 test: build
@@ -151,7 +193,7 @@ verify-docs: build
 
 .PHONY: clean
 clean:
-	@rm -rf $(BINDIR) ./rootfs/tiller ./_dist
+	@rm -rf $(BINDIR) ./rootfs/tiller ./rootfs/helm ./rootfs/rudder ./rootfs/qemu-*-static ./_dist
 
 .PHONY: coverage
 coverage:

@@ -12,7 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM alpine:3.9
+# Get qemu-user-static
+FROM alpine:3.9 as qemu
+RUN apk add --no-cache curl
+ARG QEMUVERSION=2.9.1
+ARG QEMUARCH
+
+SHELL ["/bin/ash", "-o", "pipefail", "-c"]
+
+RUN curl -fsSL https://github.com/multiarch/qemu-user-static/releases/download/v${QEMUVERSION}/qemu-${QEMUARCH}-static.tar.gz | tar zxvf - -C /usr/bin
+RUN chmod +x /usr/bin/qemu-*
+
+ARG IMAGEARCH
+FROM ${IMAGEARCH}alpine:3.9
+
+ARG QEMUARCH
+COPY --from=qemu /usr/bin/qemu-${QEMUARCH}-static /usr/bin/
 
 RUN apk add --no-cache ca-certificates
 
