@@ -56,7 +56,7 @@ func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.IntVarP(&client.Version, "version", "v", 0, "revision number to rollback to (default: rollback to previous release)")
+	f.IntVar(&client.Version, "version", 0, "revision number to rollback to (default: rollback to previous release)")
 	f.BoolVar(&client.DryRun, "dry-run", false, "simulate a rollback")
 	f.BoolVar(&client.Recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
 	f.BoolVar(&client.Force, "force", false, "force resource update through delete/recreate if needed")
