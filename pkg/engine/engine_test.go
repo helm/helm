@@ -62,13 +62,6 @@ func TestSortTemplates(t *testing.T) {
 
 func TestFuncMap(t *testing.T) {
 	fns := funcMap()
-	forbidden := []string{"env", "expandenv"}
-	for _, f := range forbidden {
-		if _, ok := fns[f]; ok {
-			t.Errorf("Forbidden function %s exists in FuncMap.", f)
-		}
-	}
-
 	// Test for Engine-specific template functions.
 	expect := []string{"include", "required", "tpl", "toYaml", "fromYaml", "toToml", "toJson", "fromJson"}
 	for _, f := range expect {

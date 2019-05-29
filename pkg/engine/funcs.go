@@ -44,8 +44,6 @@ import (
 //
 func funcMap() template.FuncMap {
 	f := sprig.TxtFuncMap()
-	delete(f, "env")
-	delete(f, "expandenv")
 
 	// Add some extra functionality
 	extra := template.FuncMap{
