@@ -18,6 +18,7 @@ package registry // import "helm.sh/helm/pkg/registry"
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -38,6 +39,11 @@ type (
 		Repo string
 	}
 )
+
+// String returns the normalized string for the ref.
+func (r Reference) String() string {
+	return fmt.Sprintf("%v:%v", r.Repo, r.Tag)
+}
 
 // ParseReference converts a string to a Reference
 func ParseReference(s string) (*Reference, error) {

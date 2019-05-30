@@ -118,8 +118,8 @@ func (cache *filesystemCache) ChartToLayers(ch *chart.Chart) ([]ocispec.Descript
 	// such as "no chart name specified (Chart.yaml)"
 	ch.Metadata = &chart.Metadata{
 		APIVersion: chart.APIVersionV1,
-		Name:       "-",
-		Version:    "0.1.0",
+		Name:       name,
+		Version:    version,
 	}
 	destDir := mkdir(filepath.Join(cache.rootDir, "blobs", ".build"))
 	tmpFile, err := chartutil.Save(ch, destDir)

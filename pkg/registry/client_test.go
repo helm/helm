@@ -128,12 +128,12 @@ func (suite *RegistryClientTestSuite) Test_1_SaveChart() {
 
 	// empty chart
 	err = suite.RegistryClient.SaveChart(&chart.Chart{}, ref)
-	suite.NotNil(err)
+	suite.NotNil(err, "chart.metadata is required")
 
 	// valid chart
 	ch := &chart.Chart{}
 	ch.Metadata = &chart.Metadata{
-		APIVersion: "v1",
+		APIVersion: chart.APIVersionV1,
 		Name:       "testchart",
 		Version:    "1.2.3",
 	}
@@ -141,6 +141,29 @@ func (suite *RegistryClientTestSuite) Test_1_SaveChart() {
 	suite.Nil(err)
 }
 
+func (suite *RegistryClientTestSuite) TestSaveChartLatest() {
+	ref, err := ParseReference(fmt.Sprintf("%s/testrepo/testchart", suite.DockerRegistryHost))
+	suite.Nil(err)
+
+	ch := &chart.Chart{}
+	ch.Metadata = &chart.Metadata{
+		APIVersion: chart.APIVersionV1,
+		Name:       "testchart",
+		Version:    "latest",
+	}
+	err = suite.RegistryClient.SaveChart(ch, ref)
+	suite.Nil(err)
+	suite.Equal("testchart", ch.Metadata.Name)
+	suite.Equal("latest", ch.Metadata.Version)
+
+	ref, err = ParseReference(fmt.Sprintf("%s/testrepo/testchart:latest", suite.DockerRegistryHost))
+	suite.Nil(err)
+
+	err = suite.RegistryClient.SaveChart(ch, ref)
+	suite.Nil(err)
+	suite.Equal("testchart", ch.Metadata.Name)
+	suite.Equal("latest", ch.Metadata.Version)
+}
 func (suite *RegistryClientTestSuite) Test_2_LoadChart() {
 
 	// non-existent ref
