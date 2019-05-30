@@ -310,14 +310,7 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 		//
 		// We return the files as a big blob of data to help the user debug parser
 		// errors.
-		b := bytes.NewBuffer(nil)
-		for name, content := range files {
-			if len(strings.TrimSpace(content)) == 0 {
-				continue
-			}
-			b.WriteString("\n---\n# Source: " + name + "\n")
-			b.WriteString(content)
-		}
+		b := manifest.FlattenFiles(files)
 		return nil, b, "", err
 	}
 
@@ -336,13 +329,7 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 
 	notes := notesBuffer.String()
 
-	// Aggregate all valid manifests into one big doc.
-	b := bytes.NewBuffer(nil)
-	for _, m := range manifests {
-		b.WriteString("\n---\n# Source: " + m.Name + "\n")
-		b.WriteString(m.Content)
-	}
-
+	b := manifest.FlattenManifests(manifests)
 	return hooks, b, notes, nil
 }
 

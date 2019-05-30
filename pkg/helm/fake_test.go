@@ -247,10 +247,10 @@ func TestFakeClient_InstallReleaseFromChart(t *testing.T) {
 				opts: []InstallOption{ReleaseName("new-release")},
 			},
 			want: &rls.InstallReleaseResponse{
-				Release: withManifest(releaseWithChart(&MockReleaseOptions{Name: "new-release"}), false),
+				Release: withManifest(releaseWithChart(&MockReleaseOptions{Name: "new-release", OmitDefaultHook: true}), false),
 			},
 			relsAfter: []*release.Release{
-				withManifest(releaseWithChart(&MockReleaseOptions{Name: "new-release"}), false),
+				withManifest(releaseWithChart(&MockReleaseOptions{Name: "new-release", OmitDefaultHook: true}), false),
 			},
 			wantErr: false,
 		},
@@ -418,10 +418,10 @@ func TestFakeClient_UpdateReleaseFromChart(t *testing.T) {
 				opts:    []UpdateOption{},
 			},
 			want: &rls.UpdateReleaseResponse{
-				Release: withManifest(releaseWithChart(&MockReleaseOptions{Name: "new-release", Version: 2}), true),
+				Release: withManifest(releaseWithChart(&MockReleaseOptions{Name: "new-release", Version: 2, OmitDefaultHook: true}), true),
 			},
 			relsAfter: []*release.Release{
-				withManifest(releaseWithChart(&MockReleaseOptions{Name: "new-release", Version: 2}), true),
+				withManifest(releaseWithChart(&MockReleaseOptions{Name: "new-release", Version: 2, OmitDefaultHook: true}), true),
 			},
 			wantErr: false,
 		},

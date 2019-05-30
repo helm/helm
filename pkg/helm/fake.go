@@ -17,10 +17,8 @@ limitations under the License.
 package helm // import "k8s.io/helm/pkg/helm"
 
 import (
-	"bytes"
 	"errors"
 	"math/rand"
-	"strings"
 	"sync"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
@@ -279,13 +277,15 @@ metadata:
 
 // MockReleaseOptions allows for user-configurable options on mock release objects.
 type MockReleaseOptions struct {
-	Name        string
-	Version     int32
-	Chart       *chart.Chart
-	Config      *chart.Config
-	StatusCode  release.Status_Code
-	Namespace   string
-	Description string
+	Name            string
+	Version         int32
+	Chart           *chart.Chart
+	Config          *chart.Config
+	StatusCode      release.Status_Code
+	Namespace       string
+	Description     string
+	Hooks           []*release.Hook
+	OmitDefaultHook bool
 }
 
 // ReleaseMock creates a mock release object based on options set by
@@ -327,6 +327,20 @@ func ReleaseMock(opts *MockReleaseOptions) *release.Release {
 		}
 	}
 
+	hooks := opts.Hooks
+	if len(hooks) == 0 && !opts.OmitDefaultHook {
+		hooks = []*release.Hook{
+			{
+				Name:     "pre-install-hook",
+				Kind:     "Job",
+				Path:     "pre-install-hook.yaml",
+				Manifest: MockHookTemplate,
+				LastRun:  &date,
+				Events:   []release.Hook_Event{release.Hook_PRE_INSTALL},
+			},
+		}
+	}
+
 	config := opts.Config
 	if config == nil {
 		config = &chart.Config{Raw: `name: "value"`}
@@ -349,22 +363,15 @@ func ReleaseMock(opts *MockReleaseOptions) *release.Release {
 		Config:    config,
 		Version:   version,
 		Namespace: namespace,
-		Hooks: []*release.Hook{
-			{
-				Name:     "pre-install-hook",
-				Kind:     "Job",
-				Path:     "pre-install-hook.yaml",
-				Manifest: MockHookTemplate,
-				LastRun:  &date,
-				Events:   []release.Hook_Event{release.Hook_PRE_INSTALL},
-			},
-		},
-		Manifest: MockManifest,
+		Hooks:     hooks,
+		Manifest:  MockManifest,
 	}
 }
 
 // RenderReleaseMock will take a release (usually produced by helm.ReleaseMock)
 // and will render the Manifest inside using the local mechanism (no tiller).
+// This will also overwrite any hooks in the release with the ones loaded from
+// the chart.
 // (Compare to renderResources in pkg/tiller)
 func RenderReleaseMock(r *release.Release, asUpgrade bool) error {
 	if r == nil || r.Chart == nil || r.Chart.Metadata == nil {
@@ -386,15 +393,13 @@ func RenderReleaseMock(r *release.Release, asUpgrade bool) error {
 		return err
 	}
 
-	b := bytes.NewBuffer(nil)
-	for _, m := range manifest.SplitManifests(rendered) {
-		// Remove empty manifests
-		if len(strings.TrimSpace(m.Content)) == 0 {
-			continue
-		}
-		b.WriteString("\n---\n# Source: " + m.Name + "\n")
-		b.WriteString(m.Content)
+	hooks, manifests, _, err := manifest.Partition(rendered, chartutil.DefaultVersionSet, manifest.InstallOrder)
+	if err != nil {
+		return err
 	}
+
+	b := manifest.FlattenManifests(manifests)
+	r.Hooks = hooks
 	r.Manifest = b.String()
 	return nil
 }
