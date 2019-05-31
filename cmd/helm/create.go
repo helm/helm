@@ -31,7 +31,8 @@ import (
 
 const createDesc = `
 This command creates a chart directory along with the common files and
-directories used in a chart.
+directories used in a chart. It provides a basic example and is not
+meant to cover all Kubernetes resources.
 
 For example, 'helm create foo' will create a directory structure that looks
 something like this:
@@ -54,6 +55,10 @@ something like this:
 do not exist, Helm will attempt to create them as it goes. If the given
 destination exists and there are files in that directory, conflicting files
 will be overwritten, but other files will be left alone.
+
+The chart that is created by invoking this command contains a Deployment, Ingress
+and a Service. To use other Kubernetes resources with your chart, refer to
+[The Chart Template Developer's Guide](https://helm.sh/docs/chart_template_guide).
 `
 
 type createCmd struct {
