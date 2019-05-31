@@ -49,19 +49,19 @@ import:
     version: 0.9.2
   - package: github.com/grpc-ecosystem/go-grpc-prometheus
   - package: k8s.io/kubernetes
-    version: v1.14.1
+    version: v1.14.2
   - package: k8s.io/client-go
-    version: kubernetes-1.14.1
+    version: kubernetes-1.14.2
   - package: k8s.io/api
-    version: kubernetes-1.14.1
+    version: kubernetes-1.14.2
   - package: k8s.io/apimachinery
-    version: kubernetes-1.14.1
+    version: kubernetes-1.14.2
   - package: k8s.io/apiserver
-    version: kubernetes-1.14.1
+    version: kubernetes-1.14.2
   - package: k8s.io/cli-runtime
-    version: kubernetes-1.14.1
+    version: kubernetes-1.14.2
   - package: k8s.io/apiextensions-apiserver
-    version: kubernetes-1.14.1
+    version: kubernetes-1.14.2
   - package: github.com/cyphar/filepath-securejoin
     version: ^0.2.1
   - package: github.com/jmoiron/sqlx
