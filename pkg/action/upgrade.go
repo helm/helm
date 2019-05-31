@@ -45,8 +45,6 @@ type Upgrade struct {
 	Namespace string
 	Timeout   time.Duration
 	Wait      bool
-	// Values is a string containing (unparsed) YAML values.
-	Values       map[string]interface{}
 	DisableHooks bool
 	DryRun       bool
 	Force        bool
@@ -67,7 +65,7 @@ func NewUpgrade(cfg *Configuration) *Upgrade {
 
 // Run executes the upgrade on the given release.
 func (u *Upgrade) Run(name string, chart *chart.Chart) (*release.Release, error) {
-	if err := chartutil.ProcessDependencies(chart, u.Values); err != nil {
+	if err := chartutil.ProcessDependencies(chart, u.rawValues); err != nil {
 		return nil, err
 	}
 
@@ -154,7 +152,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart) (*release.Rele
 	if err != nil {
 		return nil, nil, err
 	}
-	valuesToRender, err := chartutil.ToRenderValues(chart, u.Values, options, caps)
+	valuesToRender, err := chartutil.ToRenderValues(chart, u.rawValues, options, caps)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -169,7 +167,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart) (*release.Rele
 		Name:      name,
 		Namespace: currentRelease.Namespace,
 		Chart:     chart,
-		Config:    u.Values,
+		Config:    u.rawValues,
 		Info: &release.Info{
 			FirstDeployed: currentRelease.Info.FirstDeployed,
 			LastDeployed:  Timestamper(),
@@ -262,7 +260,7 @@ func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release) erro
 			return errors.Wrap(err, "failed to rebuild old values")
 		}
 
-		u.Values = chartutil.CoalesceTables(current.Config, u.Values)
+		u.rawValues = chartutil.CoalesceTables(current.Config, u.rawValues)
 
 		chart.Values = oldVals
 
@@ -271,7 +269,7 @@ func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release) erro
 
 	if len(u.Values) == 0 && len(current.Config) > 0 {
 		u.cfg.Log("copying values from %s (v%d) to new release.", current.Name, current.Version)
-		u.Values = current.Config
+		u.rawValues = current.Config
 	}
 	return nil
 }

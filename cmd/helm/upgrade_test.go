@@ -18,6 +18,8 @@ package main
 
 import (
 	"fmt"
+	"strings"
+	"io/ioutil"
 	"path/filepath"
 	"testing"
 
@@ -125,7 +127,7 @@ func TestUpgradeCmd(t *testing.T) {
 		},
 		{
 			name:      "upgrade a release with missing dependencies",
-			cmd:       fmt.Sprintf("upgrade bonkers-bunny%s", missingDepsPath),
+			cmd:       fmt.Sprintf("upgrade bonkers-bunny %s", missingDepsPath),
 			golden:    "output/upgrade-with-missing-dependencies.txt",
 			wantError: true,
 		},
@@ -137,4 +139,62 @@ func TestUpgradeCmd(t *testing.T) {
 		},
 	}
 	runTestCmd(t, tests)
+}
+
+func TestUpgradeWithValue(t *testing.T) {
+	tmpChart := testTempDir(t)
+	configmapData, err := ioutil.ReadFile("testdata/testcharts/upgradetest/templates/configmap.yaml")
+	if err != nil {
+		t.Fatalf("Error loading template yaml %v", err)
+	}
+	cfile := &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion:  chart.APIVersionV1,
+			Name:        "testUpgradeChart",
+			Description: "A Helm chart for Kubernetes",
+			Version:     "0.1.0",
+		},
+		Templates: []*chart.File{&chart.File{Name: "templates/configmap.yaml", Data: configmapData}},
+	}
+	chartPath := filepath.Join(tmpChart, cfile.Metadata.Name)
+	if err := chartutil.SaveDir(cfile, tmpChart); err != nil {
+		t.Fatalf("Error creating chart for upgrade: %v", err)
+	}
+	ch, err := loader.Load(chartPath)
+	if err != nil {
+		t.Fatalf("Error loading chart: %v", err)
+	}
+	_ = release.Mock(&release.MockReleaseOptions{
+		Name:  "funny-bunny-v2",
+		Chart: ch,
+	})
+
+
+	relMock := func(n string, v int, ch *chart.Chart) *release.Release {
+		return release.Mock(&release.MockReleaseOptions{Name: n, Version: v, Chart: ch})
+	}
+
+	defer resetEnv()()
+
+	store := storageFixture()
+	
+	store.Create(relMock("funny-bunny-v2", 3, ch))
+	
+	cmd := fmt.Sprintf("upgrade funny-bunny-v2 --set favoriteDrink=tea '%s'", chartPath)
+	_, _, err = executeActionCommandC(store, cmd)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	updatedRel, err := store.Get("funny-bunny-v2", 4)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	if !strings.Contains(updatedRel.Manifest, "drink: tea") {
+		t.Errorf("The value is not set correctly. manifest: %s", updatedRel.Manifest)
+	}
+
+
+
 }
