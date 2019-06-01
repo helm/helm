@@ -57,6 +57,8 @@ There are five different ways you can express the chart you want to install:
 4. By absolute URL: helm install https://example.com/charts/nginx-1.2.3.tgz
 5. By chart reference and repo url: helm install --repo https://example.com/charts/ nginx
 
+> Note: When installing a chart from the local filesystem it is advised that you use an absolute path like `./stable/mariadb/` to avoid the ambiguity of `stable/mariadb` being both a valid chart directory and a valid chart reference. Likewise when installing a chart from a chart reference, ensure you don't have a path in your working directory that matches the chart repo to avoid inadvertently installing from a local chart directory instead.
+
 CHART REFERENCES
 
 A chart reference is a convenient way of reference a chart in a chart repository.
