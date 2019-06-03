@@ -18,6 +18,10 @@ package action
 
 import (
 	"fmt"
+	"io/ioutil"
+	"log"
+	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"testing"
@@ -353,4 +357,35 @@ func TestMergeValues(t *testing.T) {
 	if !equal {
 		t.Errorf("Expected a map with different keys to merge properly with another map. Expected: %v, got %v", expectedMap, testMap)
 	}
+}
+
+func TestInstallReleaseOutputDir(t *testing.T) {
+	is := assert.New(t)
+	instAction := installAction(t)
+	instAction.rawValues = map[string]interface{}{}
+
+	dir, err := ioutil.TempDir("", "output-dir")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	instAction.OutputDir = dir
+
+	_, err = instAction.Run(buildChart(withSampleTemplates()))
+	if err != nil {
+		t.Fatalf("Failed install: %s", err)
+	}
+
+	_, err = os.Stat(filepath.Join(dir, "hello/templates/goodbye"))
+	is.NoError(err)
+
+	_, err = os.Stat(filepath.Join(dir, "hello/templates/hello"))
+	is.NoError(err)
+
+	_, err = os.Stat(filepath.Join(dir, "hello/templates/with-partials"))
+	is.NoError(err)
+
+	_, err = os.Stat(filepath.Join(dir, "hello/templates/empty"))
+	is.True(os.IsNotExist(err))
 }
