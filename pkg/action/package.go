@@ -59,11 +59,6 @@ func (p *Package) Run(path string) (string, error) {
 		return "", err
 	}
 
-	validChartType, err := chartutil.IsValidChartType(ch)
-	if !validChartType {
-		return "", err
-	}
-
 	combinedVals, err := chartutil.CoalesceValues(ch, p.ValueOptions.rawValues)
 	if err != nil {
 		return "", err
@@ -108,7 +103,7 @@ func (p *Package) Run(path string) (string, error) {
 		err = p.Clearsign(name)
 	}
 
-	return "", err
+	return name, err
 }
 
 func setVersion(ch *chart.Chart, ver string) error {

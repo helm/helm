@@ -1,1 +1,1 @@
-Error: Invalid chart types are not installable
+Error: validation: chart.metadata.type must be application or library

@@ -65,7 +65,7 @@ func newSearchCmd(out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.BoolVarP(&o.regexp, "regexp", "r", false, "use regular expressions for searching")
 	f.BoolVarP(&o.versions, "versions", "l", false, "show the long listing, with each version of each chart on its own line")
-	f.StringVarP(&o.version, "version", "v", "", "search using semantic versioning constraints")
+	f.StringVar(&o.version, "version", "", "search using semantic versioning constraints")
 
 	return cmd
 }

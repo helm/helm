@@ -14,17 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kube
+package chartutil
 
 import (
-	"flag"
 	"fmt"
-	"os"
 )
 
-func init() {
-	if level := os.Getenv("KUBE_LOG_LEVEL"); level != "" {
-		flag.Set("vmodule", fmt.Sprintf("loader=%[1]s,round_trippers=%[1]s,request=%[1]s", level))
-		flag.Set("logtostderr", "true")
-	}
-}
+// ErrNoTable indicates that a chart does not have a matching table.
+type ErrNoTable string
+
+func (e ErrNoTable) Error() string { return fmt.Sprintf("%q is not a table", e) }
+
+// ErrNoValue indicates that Values does not contain a key with a value
+type ErrNoValue string
+
+func (e ErrNoValue) Error() string { return fmt.Sprintf("%q is not a value", e) }

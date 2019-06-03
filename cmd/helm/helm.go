@@ -17,13 +17,18 @@ limitations under the License.
 package main // import "helm.sh/helm/cmd/helm"
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"sync"
 
-	// Import to initialize client auth plugins.
+	"github.com/spf13/pflag"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/klog"
+
+	// Import to initialize client auth plugins.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"helm.sh/helm/pkg/action"
@@ -50,7 +55,16 @@ func logf(format string, v ...interface{}) {
 	}
 }
 
+func initKubeLogs() {
+	pflag.CommandLine.SetNormalizeFunc(wordSepNormalizeFunc)
+	gofs := flag.NewFlagSet("klog", flag.ExitOnError)
+	klog.InitFlags(gofs)
+	pflag.CommandLine.AddGoFlagSet(gofs)
+	pflag.CommandLine.Set("logtostderr", "true")
+}
+
 func main() {
+	initKubeLogs()
 	cmd := newRootCmd(newActionConfig(false), os.Stdout, os.Args[1:])
 	if err := cmd.Execute(); err != nil {
 		logf("%+v", err)
@@ -110,4 +124,9 @@ func getNamespace() string {
 		return ns
 	}
 	return "default"
+}
+
+// wordSepNormalizeFunc changes all flags that contain "_" separators
+func wordSepNormalizeFunc(f *pflag.FlagSet, name string) pflag.NormalizedName {
+	return pflag.NormalizedName(strings.ReplaceAll(name, "_", "-"))
 }
