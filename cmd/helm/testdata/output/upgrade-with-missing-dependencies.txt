@@ -1,3 +1,1 @@
-Error: "helm upgrade" requires 2 arguments
-
-Usage:  helm upgrade [RELEASE] [CHART] [flags]
+Error: found in Chart.yaml, but missing in charts/ directory: reqsubchart2

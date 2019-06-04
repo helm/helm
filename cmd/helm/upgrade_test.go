@@ -18,7 +18,9 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"helm.sh/helm/pkg/chart"
@@ -125,7 +127,7 @@ func TestUpgradeCmd(t *testing.T) {
 		},
 		{
 			name:      "upgrade a release with missing dependencies",
-			cmd:       fmt.Sprintf("upgrade bonkers-bunny%s", missingDepsPath),
+			cmd:       fmt.Sprintf("upgrade bonkers-bunny %s", missingDepsPath),
 			golden:    "output/upgrade-with-missing-dependencies.txt",
 			wantError: true,
 		},
@@ -137,4 +139,121 @@ func TestUpgradeCmd(t *testing.T) {
 		},
 	}
 	runTestCmd(t, tests)
+}
+
+func TestUpgradeWithValue(t *testing.T) {
+	releaseName := "funny-bunny-v2"
+	relMock, ch, chartPath := prepareMockRelease(releaseName, t)
+
+	defer resetEnv()()
+
+	store := storageFixture()
+
+	store.Create(relMock(releaseName, 3, ch))
+
+	cmd := fmt.Sprintf("upgrade %s --set favoriteDrink=tea '%s'", releaseName, chartPath)
+	_, _, err := executeActionCommandC(store, cmd)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	updatedRel, err := store.Get(releaseName, 4)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	if !strings.Contains(updatedRel.Manifest, "drink: tea") {
+		t.Errorf("The value is not set correctly. manifest: %s", updatedRel.Manifest)
+	}
+
+}
+
+func TestUpgradeWithStringValue(t *testing.T) {
+	releaseName := "funny-bunny-v3"
+	relMock, ch, chartPath := prepareMockRelease(releaseName, t)
+
+	defer resetEnv()()
+
+	store := storageFixture()
+
+	store.Create(relMock(releaseName, 3, ch))
+
+	cmd := fmt.Sprintf("upgrade %s --set-string favoriteDrink=coffee '%s'", releaseName, chartPath)
+	_, _, err := executeActionCommandC(store, cmd)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	updatedRel, err := store.Get(releaseName, 4)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	if !strings.Contains(updatedRel.Manifest, "drink: coffee") {
+		t.Errorf("The value is not set correctly. manifest: %s", updatedRel.Manifest)
+	}
+
+}
+
+func TestUpgradeWithValuesFile(t *testing.T) {
+
+	releaseName := "funny-bunny-v4"
+	relMock, ch, chartPath := prepareMockRelease(releaseName, t)
+
+	defer resetEnv()()
+
+	store := storageFixture()
+
+	store.Create(relMock(releaseName, 3, ch))
+
+	cmd := fmt.Sprintf("upgrade %s --values testdata/testcharts/upgradetest/values.yaml '%s'", releaseName, chartPath)
+	_, _, err := executeActionCommandC(store, cmd)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	updatedRel, err := store.Get(releaseName, 4)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	if !strings.Contains(updatedRel.Manifest, "drink: beer") {
+		t.Errorf("The value is not set correctly. manifest: %s", updatedRel.Manifest)
+	}
+
+}
+
+func prepareMockRelease(releaseName string, t *testing.T) (func(n string, v int, ch *chart.Chart) *release.Release, *chart.Chart, string) {
+	tmpChart := testTempDir(t)
+	configmapData, err := ioutil.ReadFile("testdata/testcharts/upgradetest/templates/configmap.yaml")
+	if err != nil {
+		t.Fatalf("Error loading template yaml %v", err)
+	}
+	cfile := &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion:  chart.APIVersionV1,
+			Name:        "testUpgradeChart",
+			Description: "A Helm chart for Kubernetes",
+			Version:     "0.1.0",
+		},
+		Templates: []*chart.File{&chart.File{Name: "templates/configmap.yaml", Data: configmapData}},
+	}
+	chartPath := filepath.Join(tmpChart, cfile.Metadata.Name)
+	if err := chartutil.SaveDir(cfile, tmpChart); err != nil {
+		t.Fatalf("Error creating chart for upgrade: %v", err)
+	}
+	ch, err := loader.Load(chartPath)
+	if err != nil {
+		t.Fatalf("Error loading chart: %v", err)
+	}
+	_ = release.Mock(&release.MockReleaseOptions{
+		Name:  releaseName,
+		Chart: ch,
+	})
+
+	relMock := func(n string, v int, ch *chart.Chart) *release.Release {
+		return release.Mock(&release.MockReleaseOptions{Name: n, Version: v, Chart: ch})
+	}
+
+	return relMock, ch, chartPath
 }
