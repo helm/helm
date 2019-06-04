@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"helm.sh/helm/cmd/helm/require"
 	"helm.sh/helm/pkg/action"
@@ -77,6 +78,11 @@ func newTemplateCmd(out io.Writer) *cobra.Command {
 	}
 
 	addInstallFlags(cmd.Flags(), client)
+	addTemplateFlags(cmd.Flags(), client)
 
 	return cmd
+}
+
+func addTemplateFlags(f *pflag.FlagSet, client *action.Install) {
+	f.StringVar(&client.OutputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
 }

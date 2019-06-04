@@ -159,7 +159,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart) (*release.Rele
 		return nil, nil, err
 	}
 
-	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender)
+	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "")
 	if err != nil {
 		return nil, nil, err
 	}

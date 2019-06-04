@@ -61,6 +61,8 @@ const releaseNameMaxLen = 53
 // since there can be filepath in front of it.
 const notesFileSuffix = "NOTES.txt"
 
+const defaultDirectoryPermission = 0755
+
 // Install performs an installation operation.
 type Install struct {
 	cfg *Configuration
@@ -79,6 +81,7 @@ type Install struct {
 	ReleaseName      string
 	GenerateName     bool
 	NameTemplate     string
+	OutputDir        string
 }
 
 type ValueOptions struct {
@@ -132,7 +135,7 @@ func (i *Install) Run(chrt *chart.Chart) (*release.Release, error) {
 
 	rel := i.createRelease(chrt, i.rawValues)
 	var manifestDoc *bytes.Buffer
-	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender)
+	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.OutputDir)
 	// Even for errors, attach this if available
 	if manifestDoc != nil {
 		rel.Manifest = manifestDoc.String()
@@ -305,7 +308,7 @@ func (i *Install) replaceRelease(rel *release.Release) error {
 }
 
 // renderResources renders the templates in a chart
-func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values) ([]*release.Hook, *bytes.Buffer, string, error) {
+func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, outputDir string) ([]*release.Hook, *bytes.Buffer, string, error) {
 	hs := []*release.Hook{}
 	b := bytes.NewBuffer(nil)
 
@@ -363,10 +366,54 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 
 	// Aggregate all valid manifests into one big doc.
 	for _, m := range manifests {
-		fmt.Fprintf(b, "---\n# Source: %s\n%s\n", m.Name, m.Content)
+		if outputDir == "" {
+			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", m.Name, m.Content)
+		} else {
+			err = writeToFile(outputDir, m.Name, m.Content)
+			if err != nil {
+				return hs, b, "", err
+			}
+		}
 	}
 
 	return hs, b, notes, nil
+}
+
+// write the <data> to <output-dir>/<name>
+func writeToFile(outputDir string, name string, data string) error {
+	outfileName := strings.Join([]string{outputDir, name}, string(filepath.Separator))
+
+	err := ensureDirectoryForFile(outfileName)
+	if err != nil {
+		return err
+	}
+
+	f, err := os.Create(outfileName)
+	if err != nil {
+		return err
+	}
+
+	defer f.Close()
+
+	_, err = f.WriteString(fmt.Sprintf("---\n# Source: %s\n%s", name, data))
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("wrote %s\n", outfileName)
+	return nil
+}
+
+// check if the directory exists to create file. creates if don't exists
+func ensureDirectoryForFile(file string) error {
+	baseDir := path.Dir(file)
+	_, err := os.Stat(baseDir)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	return os.MkdirAll(baseDir, defaultDirectoryPermission)
 }
 
 // validateManifest checks to see whether the given manifest is valid for the current Kubernetes
