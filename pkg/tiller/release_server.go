@@ -251,7 +251,7 @@ func capabilities(disc discovery.DiscoveryInterface) (*chartutil.Capabilities, e
 	if err != nil {
 		return nil, err
 	}
-	vs, err := GetVersionSet(disc)
+	vs, err := GetAllVersionSet(disc)
 	if err != nil {
 		return nil, fmt.Errorf("Could not get apiVersions from Kubernetes: %s", err)
 	}
@@ -260,6 +260,59 @@ func capabilities(disc discovery.DiscoveryInterface) (*chartutil.Capabilities, e
 		KubeVersion:   sv,
 		TillerVersion: version.GetVersionProto(),
 	}, nil
+}
+
+// GetAllVersionSet retrieves a set of available k8s API versions and objects
+//
+// This is a different function from GetVersionSet because the signature changed.
+// To keep compatibility through the public functions this needed to be a new
+// function.GetAllVersionSet
+// TODO(mattfarina): In Helm v3 merge with GetVersionSet
+func GetAllVersionSet(client discovery.ServerResourcesInterface) (chartutil.VersionSet, error) {
+	groups, resources, err := client.ServerGroupsAndResources()
+	if err != nil {
+		return chartutil.DefaultVersionSet, err
+	}
+
+	// FIXME: The Kubernetes test fixture for cli appears to always return nil
+	// for calls to Discovery().ServerGroupsAndResources(). So in this case, we
+	// return the default API list. This is also a safe value to return in any
+	// other odd-ball case.
+	if len(groups) == 0 && len(resources) == 0 {
+		return chartutil.DefaultVersionSet, nil
+	}
+
+	versionMap := make(map[string]interface{})
+	versions := []string{}
+
+	// Extract the groups
+	for _, g := range groups {
+		for _, gv := range g.Versions {
+			versionMap[gv.GroupVersion] = struct{}{}
+		}
+	}
+
+	// Extract the resources
+	var id string
+	var ok bool
+	for _, r := range resources {
+		for _, rl := range r.APIResources {
+
+			// A Kind at a GroupVersion can show up more than once. We only want
+			// it displayed once in the final output.
+			id = path.Join(r.GroupVersion, rl.Kind)
+			if _, ok = versionMap[id]; !ok {
+				versionMap[id] = struct{}{}
+			}
+		}
+	}
+
+	// Convert to a form that NewVersionSet can use
+	for k := range versionMap {
+		versions = append(versions, k)
+	}
+
+	return chartutil.NewVersionSet(versions...), nil
 }
 
 // GetVersionSet retrieves a set of available k8s API versions
