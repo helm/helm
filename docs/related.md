@@ -38,7 +38,7 @@ or [pull request](https://github.com/helm/helm/pulls).
 - [helm-cos](https://github.com/imroc/helm-cos) - Plugin to manage repositories on Tencent Cloud Object Storage
 - [helm-edit](https://github.com/mstrzele/helm-edit) - Plugin for editing release's values
 - [helm-env](https://github.com/adamreese/helm-env) - Plugin to show current environment
-- [helm-gcs](https://github.com/nouney/helm-gcs) - Plugin to manage repositories on Google Cloud Storage
+- [helm-gcs](https://github.com/hayorov/helm-gcs) - Plugin to manage repositories on Google Cloud Storage
 - [helm-github](https://github.com/sagansystems/helm-github) - Plugin to install Helm Charts from Github repositories
 - [helm-hashtag](https://github.com/balboah/helm-hashtag) - Plugin for tracking docker tag hash digests as values
 - [helm-inject](https://github.com/maorfr/helm-inject) - Plugin for injecting additional configurations during release upgrade
