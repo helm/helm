@@ -1,6 +1,6 @@
 # Built-in Objects
 
-Objects are passed into a template from the template engine. And your code can pass objects around (we'll see examples when we look at the `with` and `range` statements). There are even a few ways to create new objects within your templates, like with the `tuple` function we'll see later.
+Objects are passed into a template from the template engine. And your code can pass objects around (we'll see examples when we look at the `with` and `range` statements). There are even a few ways to create new objects within your templates, like with the `list` function we'll see later.
 
 Objects can be simple, and have just one value. Or they can contain other objects or functions. For example. the `Release` object contains several objects (like `Release.Name`) and the `Files` object has a few functions.
 
