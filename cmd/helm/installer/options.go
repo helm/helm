@@ -102,6 +102,12 @@ type Options struct {
 
 	// Set merges additional values into the Tiller Deployment manifest.
 	Values []string
+
+	// TillerPort sets the gRPC port Tiller will listen on
+	TillerPort int32
+
+	// TillerProbePort sets the probe port Tiller will listen on
+	TillerProbePort int32
 }
 
 // SelectImage returns the image according to whether UseCanary is true or not

@@ -36,7 +36,6 @@ import (
 	"k8s.io/helm/pkg/version"
 
 	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/tiller/environment"
 )
 
 // Install uses Kubernetes client to install Tiller.
@@ -46,7 +45,7 @@ func Install(client kubernetes.Interface, opts *Options) error {
 	if err := createDeployment(client.ExtensionsV1beta1(), opts); err != nil {
 		return err
 	}
-	if err := createService(client.CoreV1(), opts.Namespace); err != nil {
+	if err := createService(client.CoreV1(), opts); err != nil {
 		return err
 	}
 	if opts.tls() {
@@ -79,7 +78,7 @@ func Upgrade(client kubernetes.Interface, opts *Options) error {
 	// that didn't deploy the service, so install it.
 	_, err = client.CoreV1().Services(opts.Namespace).Get(serviceName, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
-		return createService(client.CoreV1(), opts.Namespace)
+		return createService(client.CoreV1(), opts)
 	}
 	return err
 }
@@ -131,16 +130,16 @@ func Deployment(opts *Options) (*v1beta1.Deployment, error) {
 }
 
 // createService creates the Tiller service resource
-func createService(client corev1.ServicesGetter, namespace string) error {
-	obj := generateService(namespace)
+func createService(client corev1.ServicesGetter, opts *Options) error {
+	obj := generateService(opts)
 	_, err := client.Services(obj.Namespace).Create(obj)
 	return err
 }
 
 // Service gets a service object that can be used to generate a manifest as a
 // string. This object should not be submitted directly to the Kubernetes api
-func Service(namespace string) *v1.Service {
-	svc := generateService(namespace)
+func Service(opts *Options) *v1.Service {
+	svc := generateService(opts)
 	svc.TypeMeta = metav1.TypeMeta{
 		Kind:       "Service",
 		APIVersion: "v1",
@@ -155,7 +154,7 @@ func TillerManifests(opts *Options) ([]string, error) {
 		return []string{}, err
 	}
 
-	svc := Service(opts.Namespace)
+	svc := Service(opts)
 
 	objs := []runtime.Object{dep, svc}
 
@@ -227,8 +226,12 @@ func generateDeployment(opts *Options) (*v1beta1.Deployment, error) {
 							Image:           opts.SelectImage(),
 							ImagePullPolicy: opts.pullPolicy(),
 							Ports: []v1.ContainerPort{
-								{ContainerPort: environment.DefaultTillerPort, Name: "tiller"},
-								{ContainerPort: environment.DefaultTillerProbePort, Name: "http"},
+								{ContainerPort: opts.TillerPort, Name: "tiller"},
+								{ContainerPort: opts.TillerProbePort, Name: "http"},
+							},
+							Args: []string{
+								"-listen", fmt.Sprintf(":%v", opts.TillerPort),
+								"-probe-listen", fmt.Sprintf(":%v", opts.TillerProbePort),
 							},
 							Env: []v1.EnvVar{
 								{Name: "TILLER_NAMESPACE", Value: opts.Namespace},
@@ -238,7 +241,7 @@ func generateDeployment(opts *Options) (*v1beta1.Deployment, error) {
 								Handler: v1.Handler{
 									HTTPGet: &v1.HTTPGetAction{
 										Path: "/liveness",
-										Port: intstr.FromInt(environment.DefaultTillerProbePort),
+										Port: intstr.IntOrString{IntVal: opts.TillerProbePort},
 									},
 								},
 								InitialDelaySeconds: 1,
@@ -248,7 +251,7 @@ func generateDeployment(opts *Options) (*v1beta1.Deployment, error) {
 								Handler: v1.Handler{
 									HTTPGet: &v1.HTTPGetAction{
 										Path: "/readiness",
-										Port: intstr.FromInt(environment.DefaultTillerProbePort),
+										Port: intstr.IntOrString{IntVal: opts.TillerProbePort},
 									},
 								},
 								InitialDelaySeconds: 1,
@@ -329,11 +332,11 @@ func generateDeployment(opts *Options) (*v1beta1.Deployment, error) {
 	return d, nil
 }
 
-func generateService(namespace string) *v1.Service {
+func generateService(opts *Options) *v1.Service {
 	labels := generateLabels(map[string]string{"name": "tiller"})
 	s := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
+			Namespace: opts.Namespace,
 			Name:      serviceName,
 			Labels:    labels,
 		},
@@ -342,7 +345,7 @@ func generateService(namespace string) *v1.Service {
 			Ports: []v1.ServicePort{
 				{
 					Name:       "tiller",
-					Port:       environment.DefaultTillerPort,
+					Port:       opts.TillerPort,
 					TargetPort: intstr.FromString("tiller"),
 				},
 			},

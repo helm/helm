@@ -34,6 +34,7 @@ import (
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/helm/portforwarder"
+	"k8s.io/helm/pkg/tiller/environment"
 	"k8s.io/helm/pkg/version"
 )
 
@@ -143,6 +144,9 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	f.VarP(&i.opts.Output, "output", "o", "Skip installation and output Tiller's manifest in specified format (json or yaml)")
 	f.StringArrayVar(&i.opts.Values, "override", []string{}, "Override values for the Tiller Deployment manifest (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.BoolVar(&i.opts.AutoMountServiceAccountToken, "automount-service-account-token", true, "Auto-mount the given service account to tiller")
+
+	f.Int32Var(&i.opts.TillerPort, "tiller-port", environment.DefaultTillerPort, "Override Tiller port")
+	f.Int32Var(&i.opts.TillerProbePort, "tiller-probe-port", environment.DefaultTillerProbePort, "Override Tiller probe port")
 
 	return cmd
 }

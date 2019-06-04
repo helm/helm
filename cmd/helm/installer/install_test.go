@@ -151,7 +151,7 @@ func TestDeployment_WithTLS(t *testing.T) {
 }
 
 func TestServiceManifest(t *testing.T) {
-	svc := Service(v1.NamespaceDefault)
+	svc := Service(&Options{Namespace: v1.NamespaceDefault})
 
 	if got := svc.ObjectMeta.Namespace; got != v1.NamespaceDefault {
 		t.Errorf("expected namespace %s, got %s", v1.NamespaceDefault, got)
@@ -361,7 +361,7 @@ func TestUpgrade(t *testing.T) {
 		ServiceAccount: "serviceAccountToReplace",
 		UseCanary:      false,
 	})
-	existingService := generateService(v1.NamespaceDefault)
+	existingService := generateService(&Options{Namespace: v1.NamespaceDefault})
 
 	fc := &fake.Clientset{}
 	fc.AddReactor("get", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
@@ -445,7 +445,7 @@ func TestUgrade_newerVersion(t *testing.T) {
 		ServiceAccount: "serviceAccountToReplace",
 		UseCanary:      false,
 	})
-	existingService := generateService(v1.NamespaceDefault)
+	existingService := generateService(&Options{Namespace: v1.NamespaceDefault})
 
 	fc := &fake.Clientset{}
 	fc.AddReactor("get", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
@@ -505,7 +505,7 @@ func TestUpgrade_identical(t *testing.T) {
 		ServiceAccount: "serviceAccountToReplace",
 		UseCanary:      false,
 	})
-	existingService := generateService(v1.NamespaceDefault)
+	existingService := generateService(&Options{Namespace: v1.NamespaceDefault})
 
 	fc := &fake.Clientset{}
 	fc.AddReactor("get", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
@@ -546,7 +546,7 @@ func TestUpgrade_canaryClient(t *testing.T) {
 		ServiceAccount: "serviceAccountToReplace",
 		UseCanary:      false,
 	})
-	existingService := generateService(v1.NamespaceDefault)
+	existingService := generateService(&Options{Namespace: v1.NamespaceDefault})
 
 	fc := &fake.Clientset{}
 	fc.AddReactor("get", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
@@ -587,7 +587,7 @@ func TestUpgrade_canaryServer(t *testing.T) {
 		ServiceAccount: "serviceAccountToReplace",
 		UseCanary:      false,
 	})
-	existingService := generateService(v1.NamespaceDefault)
+	existingService := generateService(&Options{Namespace: v1.NamespaceDefault})
 
 	fc := &fake.Clientset{}
 	fc.AddReactor("get", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
