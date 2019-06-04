@@ -1,6 +1,6 @@
 # Values Files
 
-In the previous section we looked at the built-in objects that Helm templates offer. One of the four built-in objects is `Values`. This object provides access to values passed into the chart. Its contents come from four sources:
+In the previous section we looked at the built-in objects that Helm templates offer. One of these built-in objects is `Values`. This object provides access to values passed into the chart. Its contents come from four sources:
 
 - The `values.yaml` file in the chart
 - If this is a subchart, the `values.yaml` file of a parent chart
