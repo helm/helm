@@ -48,4 +48,4 @@ make build-cross
 make dist checksum VERSION="${VERSION}"
 
 echo "Pushing binaries to Azure"
-az storage blob upload-batch -s _dist/ -d "$AZURE_STORAGE_CONTAINER_NAME" --connection-string "$AZURE_STORAGE_CONNECTION_STRING"
+az storage blob upload-batch -s _dist/ -d "$AZURE_STORAGE_CONTAINER_NAME" --pattern 'helm-*' --connection-string "$AZURE_STORAGE_CONNECTION_STRING"
