@@ -57,7 +57,7 @@ func newDependencyUpdateCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "update [flags] CHART",
 		Aliases: []string{"up"},
-		Short:   "update charts/ based on the contents of requirements.yaml",
+		Short:   "Update charts/ based on the contents of requirements.yaml",
 		Long:    dependencyUpDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cp := "."
@@ -78,9 +78,9 @@ func newDependencyUpdateCmd(out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.BoolVar(&duc.verify, "verify", false, "verify the packages against signatures")
-	f.StringVar(&duc.keyring, "keyring", defaultKeyring(), "keyring containing public keys")
-	f.BoolVar(&duc.skipRefresh, "skip-refresh", false, "do not refresh the local repository cache")
+	f.BoolVar(&duc.verify, "verify", false, "Verify the packages against signatures")
+	f.StringVar(&duc.keyring, "keyring", defaultKeyring(), "Keyring containing public keys")
+	f.BoolVar(&duc.skipRefresh, "skip-refresh", false, "Do not refresh the local repository cache")
 
 	return cmd
 }

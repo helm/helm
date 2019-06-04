@@ -50,7 +50,7 @@ func newReleaseTestCmd(c helm.Interface, out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:     "test [RELEASE]",
-		Short:   "test a release",
+		Short:   "Test a release",
 		Long:    releaseTestDesc,
 		PreRunE: func(_ *cobra.Command, _ []string) error { return setupConnection() },
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -66,9 +66,9 @@ func newReleaseTestCmd(c helm.Interface, out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	settings.AddFlagsTLS(f)
-	f.Int64Var(&rlsTest.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
-	f.BoolVar(&rlsTest.cleanup, "cleanup", false, "delete test pods upon completion")
-	f.BoolVar(&rlsTest.parallel, "parallel", false, "run test pods in parallel")
+	f.Int64Var(&rlsTest.timeout, "timeout", 300, "Time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
+	f.BoolVar(&rlsTest.cleanup, "cleanup", false, "Delete test pods upon completion")
+	f.BoolVar(&rlsTest.parallel, "parallel", false, "Run test pods in parallel")
 
 	// set defaults from environment
 	settings.InitTLS(f)

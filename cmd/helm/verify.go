@@ -47,7 +47,7 @@ func newVerifyCmd(out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "verify [flags] PATH",
-		Short: "verify that a chart at the given path has been signed and is valid",
+		Short: "Verify that a chart at the given path has been signed and is valid",
 		Long:  verifyDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
@@ -59,7 +59,7 @@ func newVerifyCmd(out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.StringVar(&vc.keyring, "keyring", defaultKeyring(), "keyring containing public keys")
+	f.StringVar(&vc.keyring, "keyring", defaultKeyring(), "Keyring containing public keys")
 
 	return cmd
 }

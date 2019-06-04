@@ -68,7 +68,7 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "create NAME",
-		Short: "create a new chart with the given name",
+		Short: "Create a new chart with the given name",
 		Long:  createDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cc.home = settings.Home
@@ -83,7 +83,7 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&cc.starter, "starter", "p", "", "the named Helm starter scaffold")
+	cmd.Flags().StringVarP(&cc.starter, "starter", "p", "", "The named Helm starter scaffold")
 	return cmd
 }
 

@@ -49,7 +49,7 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "add [flags] [NAME] [URL]",
-		Short: "add a chart repository",
+		Short: "Add a chart repository",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := checkArgsLength(len(args), "name for the chart repository", "the url of the chart repository"); err != nil {
 				return err
@@ -64,12 +64,12 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.StringVar(&add.username, "username", "", "chart repository username")
-	f.StringVar(&add.password, "password", "", "chart repository password")
-	f.BoolVar(&add.noupdate, "no-update", false, "raise error if repo is already registered")
-	f.StringVar(&add.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
-	f.StringVar(&add.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
-	f.StringVar(&add.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+	f.StringVar(&add.username, "username", "", "Chart repository username")
+	f.StringVar(&add.password, "password", "", "Chart repository password")
+	f.BoolVar(&add.noupdate, "no-update", false, "Raise error if repo is already registered")
+	f.StringVar(&add.certFile, "cert-file", "", "Identify HTTPS client using this SSL certificate file")
+	f.StringVar(&add.keyFile, "key-file", "", "Identify HTTPS client using this SSL key file")
+	f.StringVar(&add.caFile, "ca-file", "", "Verify certificates of HTTPS-enabled servers using this CA bundle")
 
 	return cmd
 }

@@ -55,7 +55,7 @@ func newRepoUpdateCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "update",
 		Aliases: []string{"up"},
-		Short:   "update information of available charts locally from chart repositories",
+		Short:   "Update information of available charts locally from chart repositories",
 		Long:    updateDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			u.home = settings.Home
@@ -64,7 +64,7 @@ func newRepoUpdateCmd(out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.BoolVar(&u.strict, "strict", false, "fail on update warnings")
+	f.BoolVar(&u.strict, "strict", false, "Fail on update warnings")
 
 	return cmd
 }

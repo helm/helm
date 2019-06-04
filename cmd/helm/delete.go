@@ -56,7 +56,7 @@ func newDeleteCmd(c helm.Interface, out io.Writer) *cobra.Command {
 		Use:        "delete [flags] RELEASE_NAME [...]",
 		Aliases:    []string{"del"},
 		SuggestFor: []string{"remove", "rm"},
-		Short:      "given a release name, delete the release from Kubernetes",
+		Short:      "Given a release name, delete the release from Kubernetes",
 		Long:       deleteDesc,
 		PreRunE:    func(_ *cobra.Command, _ []string) error { return setupConnection() },
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -79,11 +79,11 @@ func newDeleteCmd(c helm.Interface, out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	settings.AddFlagsTLS(f)
-	f.BoolVar(&del.dryRun, "dry-run", false, "simulate a delete")
-	f.BoolVar(&del.disableHooks, "no-hooks", false, "prevent hooks from running during deletion")
-	f.BoolVar(&del.purge, "purge", false, "remove the release from the store and make its name free for later use")
-	f.Int64Var(&del.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
-	f.StringVar(&del.description, "description", "", "specify a description for the release")
+	f.BoolVar(&del.dryRun, "dry-run", false, "Simulate a delete")
+	f.BoolVar(&del.disableHooks, "no-hooks", false, "Prevent hooks from running during deletion")
+	f.BoolVar(&del.purge, "purge", false, "Remove the release from the store and make its name free for later use")
+	f.Int64Var(&del.timeout, "timeout", 300, "Time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
+	f.StringVar(&del.description, "description", "", "Specify a description for the release")
 
 	// set defaults from environment
 	settings.InitTLS(f)
