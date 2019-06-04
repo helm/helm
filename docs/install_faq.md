@@ -13,8 +13,7 @@ I want to know more about my downloading options.
 
 **Q: I can't get to GitHub releases of the newest Helm. Where are they?**
 
-A: We no longer use GitHub releases. Binaries are now stored in a
-[GCS public bucket](https://kubernetes-helm.storage.googleapis.com).
+Binaries are stored at [get.helm.sh](https://get.helm.sh).
 
 **Q: Why aren't there Debian/Fedora/... native packages of Helm?**
 
