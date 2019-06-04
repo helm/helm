@@ -267,7 +267,7 @@ func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release) erro
 		return nil
 	}
 
-	if len(u.Values) == 0 && len(current.Config) > 0 {
+	if len(u.rawValues) == 0 && len(current.Config) > 0 {
 		u.cfg.Log("copying values from %s (v%d) to new release.", current.Name, current.Version)
 		u.rawValues = current.Config
 	}
