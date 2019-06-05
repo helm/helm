@@ -77,6 +77,15 @@ export RELEASE_BRANCH_NAME="release-X.Y"
 export RELEASE_CANDIDATE_NAME="$RELEASE_NAME-rc.1"
 ```
 
+We are also going to be adding security and verification of the release process by
+hashing the binaries and providing signature files. We perform this using
+[GitHub and GPG](https://help.github.com/en/articles/about-commit-signature-verification).
+If you do not have GPG already setup you can follow these steps:
+1. [Install GPG](https://gnupg.org/index.html)
+2. [Generate GPG key](https://help.github.com/en/articles/generating-a-new-gpg-key)
+3. [Add key to GitHub account](https://help.github.com/en/articles/adding-a-new-gpg-key-to-your-github-account)
+4. [Set signing key in Git](https://help.github.com/en/articles/telling-git-about-your-signing-key)
+
 ## 1. Create the Release Branch
 
 ### Major/Minor Releases
@@ -267,6 +276,9 @@ git tag --sign --annotate "${RELEASE_NAME}" --message "Helm release ${RELEASE_NA
 git push upstream $RELEASE_NAME
 ```
 
+Verify that the release succeeded in CI. If not, you will need to fix the 
+release and push the release again.
+
 ## 7. PGP Sign the downloads
 
 While hashes provide a signature that the content of the downloads is what it
@@ -276,6 +288,7 @@ from.
 To do this, run the following `make` commands:
 
 ```shell
+export VERSION="$RELEASE_NAME"
 make clean
 make fetch-dist
 make sign
@@ -371,16 +384,19 @@ Once finished, go into GitHub and edit the release notes for the tagged release 
 
 Remember to attach the ascii armored signatures generated in the previous step to the release notes.
 
+It is now worth getting other people to take a look at the release notes before the release is published. Send
+a request out to [#helm-dev](https://kubernetes.slack.com/messages/C51E88VDG) for review. It is always 
+beneficial as it can be easy to miss something.
+
+When you are ready to go, hit `publish`.
+
 ## 9. Evangelize
 
 Congratulations! You're done. Go grab yourself a $DRINK_OF_CHOICE. You've earned
 it.
 
 After enjoying a nice $DRINK_OF_CHOICE, go forth and announce the glad tidings
-of the new release in Slack and on Twitter. You should also notify any key
-partners in the helm community such as the homebrew formula maintainers, the
-owners of incubator projects (e.g. ChartMuseum) and any other interested
-parties.
+of the new release in Slack and on Twitter.
 
 Optionally, write a blog post about the new release and showcase some of the new
 features on there!
