@@ -39,6 +39,63 @@ import (
 	"k8s.io/helm/pkg/tlsutil"
 )
 
+const (
+	bashCompletionFunc = `
+__helm_override_flag_list=(--kubeconfig --kube-context --host --tiller-namespace)
+__helm_override_flags()
+{
+    local ${__helm_override_flag_list[*]##*-} two_word_of of var
+    for w in "${words[@]}"; do
+        if [ -n "${two_word_of}" ]; then
+            eval "${two_word_of##*-}=\"${two_word_of}=\${w}\""
+            two_word_of=
+            continue
+        fi
+        for of in "${__helm_override_flag_list[@]}"; do
+            case "${w}" in
+                ${of}=*)
+                    eval "${of##*-}=\"${w}\""
+                    ;;
+                ${of})
+                    two_word_of="${of}"
+                    ;;
+            esac
+        done
+    done
+    for var in "${__helm_override_flag_list[@]##*-}"; do
+        if eval "test -n \"\$${var}\""; then
+            eval "echo \${${var}}"
+        fi
+    done
+}
+
+__helm_list_releases()
+{
+    __helm_debug "${FUNCNAME[0]}: c is $c words[c] is ${words[c]}"
+    local out filter
+    # Use ^ to map from the start of the release name
+    filter="^${words[c]}"
+    if out=$(helm list $(__helm_override_flags) -a -q ${filter} 2>/dev/null); then
+        COMPREPLY=( $( compgen -W "${out[*]}" -- "$cur" ) )
+    fi
+}
+
+__helm_custom_func()
+{
+    __helm_debug "${FUNCNAME[0]}: c is $c words[@] is ${words[@]}"
+    case ${last_command} in
+        helm_delete | helm_history | helm_status | helm_test |\
+        helm_upgrade | helm_rollback | helm_get_*)
+            __helm_list_releases
+            return
+            ;;
+        *)
+            ;;
+    esac
+}
+`
+)
+
 var (
 	tillerTunnel *kube.Tunnel
 	settings     helm_env.EnvSettings
@@ -103,6 +160,7 @@ func newRootCmd(args []string) *cobra.Command {
 		PersistentPostRun: func(*cobra.Command, []string) {
 			teardown()
 		},
+		BashCompletionFunction: bashCompletionFunc,
 	}
 	flags := cmd.PersistentFlags()
 
