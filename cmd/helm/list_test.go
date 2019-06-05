@@ -26,14 +26,19 @@ import (
 
 func TestListCmd(t *testing.T) {
 	defaultNamespace := "default"
-	timestamp1 := time.Unix(1452902400, 0).UTC()
-	timestamp2 := time.Unix(1452902401, 0).UTC()
+
+	sampleTimeSeconds := int64(1452902400)
+	timestamp1 := time.Unix(sampleTimeSeconds+1, 0).UTC()
+	timestamp2 := time.Unix(sampleTimeSeconds+2, 0).UTC()
+	timestamp3 := time.Unix(sampleTimeSeconds+3, 0).UTC()
+	timestamp4 := time.Unix(sampleTimeSeconds+4, 0).UTC()
 	chartInfo := &chart.Chart{
 		Metadata: &chart.Metadata{
 			Name:    "chickadee",
 			Version: "1.0.0",
 		},
 	}
+
 	releaseFixture := []*release.Release{
 		{
 			Name:      "starlord",
@@ -60,7 +65,7 @@ func TestListCmd(t *testing.T) {
 			Version:   1,
 			Namespace: defaultNamespace,
 			Info: &release.Info{
-				LastDeployed: timestamp2,
+				LastDeployed: timestamp1,
 				Status:       release.StatusUninstalled,
 			},
 			Chart: chartInfo,
@@ -102,6 +107,26 @@ func TestListCmd(t *testing.T) {
 			Info: &release.Info{
 				LastDeployed: timestamp1,
 				Status:       release.StatusPendingInstall,
+			},
+			Chart: chartInfo,
+		},
+		{
+			Name:      "hummingbird",
+			Version:   1,
+			Namespace: defaultNamespace,
+			Info: &release.Info{
+				LastDeployed: timestamp3,
+				Status:       release.StatusDeployed,
+			},
+			Chart: chartInfo,
+		},
+		{
+			Name:      "iguana",
+			Version:   2,
+			Namespace: defaultNamespace,
+			Info: &release.Info{
+				LastDeployed: timestamp4,
+				Status:       release.StatusDeployed,
 			},
 			Chart: chartInfo,
 		},
@@ -151,6 +176,11 @@ func TestListCmd(t *testing.T) {
 		name:   "list releases in reverse order",
 		cmd:    "list --reverse",
 		golden: "output/list-reverse.txt",
+		rels:   releaseFixture,
+	}, {
+		name:   "list releases sorted by reversed release date",
+		cmd:    "list --date --reverse",
+		golden: "output/list-date-reversed.txt",
 		rels:   releaseFixture,
 	}, {
 		name:   "list releases in short output format",

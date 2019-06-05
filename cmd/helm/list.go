@@ -66,7 +66,6 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if client.AllNamespaces {
 				client.SetConfiguration(newActionConfig(true))
 			}
-			client.All = client.Limit == -1
 			client.SetStateMask()
 
 			results, err := client.Run()
@@ -86,8 +85,8 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.BoolVarP(&client.Short, "short", "q", false, "output short (quiet) listing format")
 	f.BoolVarP(&client.ByDate, "date", "d", false, "sort by release date")
-	f.BoolVarP(&client.SortDesc, "reverse", "r", false, "reverse the sort order")
-	f.BoolVarP(&client.All, "all", "a", false, "show all releases, not just the ones marked deployed")
+	f.BoolVarP(&client.SortReverse, "reverse", "r", false, "reverse the sort order")
+	f.BoolVarP(&client.All, "all", "a", false, "show all releases, not just the ones marked deployed or failed")
 	f.BoolVar(&client.Uninstalled, "uninstalled", false, "show uninstalled releases")
 	f.BoolVar(&client.Superseded, "superseded", false, "show superseded releases")
 	f.BoolVar(&client.Uninstalling, "uninstalling", false, "show releases that are currently being uninstalled")

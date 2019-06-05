@@ -1,2 +1,2 @@
 NAME  	NAMESPACE	REVISION	UPDATED                      	STATUS	CHART          
-rocket	default  	1       	2016-01-16 00:00:01 +0000 UTC	failed	chickadee-1.0.0
+rocket	default  	1       	2016-01-16 00:00:02 +0000 UTC	failed	chickadee-1.0.0
