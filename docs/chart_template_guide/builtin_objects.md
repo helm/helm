@@ -22,7 +22,7 @@ In the previous section, we use `{{.Release.Name}}` to insert the name of a rele
   - `Files.GetBytes` is a function for getting the contents of a file as an array of bytes instead of as a string. This is useful for things like images.
 - `Capabilities`: This provides information about what capabilities the Kubernetes cluster supports.
   - `Capabilities.APIVersions` is a set of versions.
-  - `Capabilities.APIVersions.Has $version` indicates whether a version (`batch/v1`) is enabled on the cluster.
+  - `Capabilities.APIVersions.Has $version` indicates whether a version (e.g., `batch/v1`) or resource (e.g., `apps/v1/Deployment`) is available on the cluster. Note, resources were not available before Helm v2.15.
   - `Capabilities.KubeVersion` provides a way to look up the Kubernetes version. It has the following values: `Major`, `Minor`, `GitVersion`, `GitCommit`, `GitTreeState`, `BuildDate`, `GoVersion`, `Compiler`, and `Platform`.
   - `Capabilities.TillerVersion` provides a way to look up the Tiller version. It has the following values: `SemVer`, `GitCommit`, and `GitTreeState`.
 - `Template`: Contains information about the current template that is being executed

@@ -338,6 +338,20 @@ func TestValidName(t *testing.T) {
 	}
 }
 
+func TestGetAllVersionSet(t *testing.T) {
+	rs := rsFixture()
+	vs, err := GetAllVersionSet(rs.clientset.Discovery())
+	if err != nil {
+		t.Error(err)
+	}
+	if !vs.Has("v1") {
+		t.Errorf("Expected supported versions to at least include v1.")
+	}
+	if vs.Has("nosuchversion/v1") {
+		t.Error("Non-existent version is reported found.")
+	}
+}
+
 func TestGetVersionSet(t *testing.T) {
 	rs := rsFixture()
 	vs, err := GetVersionSet(rs.clientset.Discovery())
