@@ -12,7 +12,7 @@ import:
     - unix
     - windows
   - package: github.com/spf13/cobra
-    version: fe5e611709b0c57fa4a89136deaa8e1d4004d053
+    version: ^0.0.4
   - package: github.com/spf13/pflag
     version: ~1.0.1
   - package: github.com/Masterminds/vcs
