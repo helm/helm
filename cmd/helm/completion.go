@@ -205,6 +205,7 @@ __helm_convert_bash_to_zsh() {
 	-e "s/${LWORD}compopt${RWORD}/__helm_compopt/g" \
 	-e "s/${LWORD}declare${RWORD}/builtin declare/g" \
 	-e "s/\\\$(type${RWORD}/\$(__helm_type/g" \
+	-e 's/aliashash\["\(.\{1,\}\)"\]/aliashash[\1]/g' \
 	-e 's/FUNCNAME/funcstack/g' \
 	<<'BASH_COMPLETION_EOF'
 `
