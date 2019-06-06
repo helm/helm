@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 	"text/template"
 
@@ -300,6 +301,25 @@ pequod:
       sail: true
   ahab:
     scope: whale
+
+# test coalesce with nested null values
+web:
+  livenessProbe:
+    httpGet: null
+    exec:
+      command:
+      - curl
+      - -f
+      - http://localhost:8080/api/v1/info
+    timeoutSeconds: null
+  readinessProbe:
+    httpGet: null
+    exec:
+      command:
+      - curl
+      - -f
+      - http://localhost:8080/api/v1/info
+    timeoutSeconds: null # catches the case where this wasn't defined in the original source...
 `
 
 func TestCoalesceValues(t *testing.T) {
@@ -344,6 +364,13 @@ func TestCoalesceValues(t *testing.T) {
 		{"{{.spouter.global.nested.boat}}", "true"},
 		{"{{.pequod.global.nested.sail}}", "true"},
 		{"{{.spouter.global.nested.sail}}", "<no value>"},
+
+		{"{{.web.livenessProbe.failureThreshold}}", "5"},
+		{"{{.web.livenessProbe.initialDelaySeconds}}", "10"},
+		{"{{.web.livenessProbe.periodSeconds}}", "15"},
+		{"{{.web.livenessProbe.exec}}", "map[command:[curl -f http://localhost:8080/api/v1/info]]"},
+
+		{"{{.web.readinessProbe.exec}}", "map[command:[curl -f http://localhost:8080/api/v1/info]]"},
 	}
 
 	for _, tt := range tests {
@@ -352,10 +379,29 @@ func TestCoalesceValues(t *testing.T) {
 		}
 	}
 
-	nullKeys := []string{"bottom", "right", "left", "front"}
+	nullKeys := []string{"bottom", "right", "left", "front",
+		"web.livenessProbe.httpGet", "web.readinessProbe.httpGet", "web.livenessProbe.timeoutSeconds", "web.readinessProbe.timeoutSeconds"}
 	for _, nullKey := range nullKeys {
-		if _, ok := v[nullKey]; ok {
-			t.Errorf("Expected key %q to be removed, still present", nullKey)
+		parts := strings.Split(nullKey, ".")
+		curMap := v
+		for partIdx, part := range parts {
+			nextVal, ok := curMap[part]
+			if partIdx == len(parts)-1 { // are we the last?
+				if ok {
+					t.Errorf("Expected key %q to be removed, still present", nullKey)
+					break
+				}
+			} else { // we are not the last
+				if !ok {
+					t.Errorf("Expected key %q to be removed, but partial parent path was not found", nullKey)
+					break
+				}
+				curMap, ok = nextVal.(map[string]interface{})
+				if !ok {
+					t.Errorf("Expected key %q to be removed, but partial parent path did not result in a map", nullKey)
+					break
+				}
+			}
 		}
 	}
 }
@@ -386,7 +432,7 @@ func TestCoalesceTables(t *testing.T) {
 
 	// What we expect is that anything in dst overrides anything in src, but that
 	// otherwise the values are coalesced.
-	coalesceTables(dst, src, "")
+	dst = coalesceTables(dst, src, "")
 
 	if dst["name"] != "Ishmael" {
 		t.Errorf("Unexpected name: %s", dst["name"])

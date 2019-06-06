@@ -700,7 +700,7 @@ spec:
     tier: backend
     role: master
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: redis-master
@@ -740,7 +740,7 @@ spec:
     tier: backend
     role: slave
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: redis-slave
@@ -780,7 +780,7 @@ spec:
     app: guestbook
     tier: frontend
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: frontend

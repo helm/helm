@@ -1,6 +1,6 @@
 DOCKER_REGISTRY   ?= gcr.io
 IMAGE_PREFIX      ?= kubernetes-helm
-DEV_IMAGE         ?= golang:1.12.2
+DEV_IMAGE         ?= golang:1.12.5
 SHORT_NAME        ?= tiller
 SHORT_NAME_RUDDER ?= rudder
 TARGETS           ?= darwin/amd64 linux/amd64 linux/386 linux/arm linux/arm64 linux/ppc64le linux/s390x windows/amd64
@@ -50,7 +50,7 @@ fetch-dist:
 	mkdir -p _dist
 	cd _dist && \
 	for obj in ${TARGET_OBJS} ; do \
-		curl -sSL -o helm-${VERSION}-$${obj} https://storage.googleapis.com/kubernetes-helm/helm-${VERSION}-$${obj} ; \
+		curl -sSL -o helm-${VERSION}-$${obj} https://get.helm.sh/helm-${VERSION}-$${obj} ; \
 	done
 
 .PHONY: sign

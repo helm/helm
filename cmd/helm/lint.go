@@ -61,7 +61,7 @@ func newLintCmd(out io.Writer) *cobra.Command {
 	}
 	cmd := &cobra.Command{
 		Use:   "lint [flags] PATH",
-		Short: "examines a chart for possible issues",
+		Short: "Examines a chart for possible issues",
 		Long:  longLintHelp,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
@@ -71,12 +71,12 @@ func newLintCmd(out io.Writer) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().VarP(&l.valueFiles, "values", "f", "specify values in a YAML file (can specify multiple)")
-	cmd.Flags().StringArrayVar(&l.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
-	cmd.Flags().StringArrayVar(&l.sValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
-	cmd.Flags().StringArrayVar(&l.fValues, "set-file", []string{}, "set values from respective files specified via the command line (can specify multiple or separate values with commas: key1=path1,key2=path2)")
-	cmd.Flags().StringVar(&l.namespace, "namespace", "default", "namespace to put the release into")
-	cmd.Flags().BoolVar(&l.strict, "strict", false, "fail on lint warnings")
+	cmd.Flags().VarP(&l.valueFiles, "values", "f", "Specify values in a YAML file (can specify multiple)")
+	cmd.Flags().StringArrayVar(&l.values, "set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	cmd.Flags().StringArrayVar(&l.sValues, "set-string", []string{}, "Set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	cmd.Flags().StringArrayVar(&l.fValues, "set-file", []string{}, "Set values from respective files specified via the command line (can specify multiple or separate values with commas: key1=path1,key2=path2)")
+	cmd.Flags().StringVar(&l.namespace, "namespace", "default", "Namespace to put the release into")
+	cmd.Flags().BoolVar(&l.strict, "strict", false, "Fail on lint warnings")
 
 	return cmd
 }
@@ -166,7 +166,7 @@ func lintChart(path string, vals []byte, namespace string, strict bool) (support
 		chartPath = path
 	}
 
-	// Guard: Error out of this is not a chart.
+	// Guard: Error out if this is not a chart.
 	if _, err := os.Stat(filepath.Join(chartPath, "Chart.yaml")); err != nil {
 		return linter, errLintNoChart
 	}
@@ -177,7 +177,7 @@ func lintChart(path string, vals []byte, namespace string, strict bool) (support
 // vals merges values from files specified via -f/--values and
 // directly via --set or --set-string or --set-file, marshaling them to YAML
 //
-// This func is implemented intentionally and separately from the `vals` func for the `install` and `upgrade` comammdsn.
+// This func is implemented intentionally and separately from the `vals` func for the `install` and `upgrade` commands.
 // Compared to the alternative func, this func lacks the parameters for tls opts - ca key, cert, and ca cert.
 // That's because this command, `lint`, is explicitly forbidden from making server connections.
 func (l *lintCmd) vals() ([]byte, error) {

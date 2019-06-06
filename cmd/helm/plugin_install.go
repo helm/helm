@@ -44,7 +44,7 @@ func newPluginInstallCmd(out io.Writer) *cobra.Command {
 	pcmd := &pluginInstallCmd{out: out}
 	cmd := &cobra.Command{
 		Use:   "install [options] <path|url>...",
-		Short: "install one or more Helm plugins",
+		Short: "Install one or more Helm plugins",
 		Long:  pluginInstallDesc,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			return pcmd.complete(args)
@@ -53,7 +53,7 @@ func newPluginInstallCmd(out io.Writer) *cobra.Command {
 			return pcmd.run()
 		},
 	}
-	cmd.Flags().StringVar(&pcmd.version, "version", "", "specify a version constraint. If this is not specified, the latest version is installed")
+	cmd.Flags().StringVar(&pcmd.version, "version", "", "Specify a version constraint. If this is not specified, the latest version is installed")
 	return cmd
 }
 
