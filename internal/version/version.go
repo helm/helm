@@ -17,6 +17,8 @@ limitations under the License.
 package version // import "helm.sh/helm/internal/version"
 
 import (
+	"runtime"
+
 	hversion "helm.sh/helm/pkg/version"
 )
 
@@ -52,5 +54,6 @@ func Get() hversion.BuildInfo {
 		Version:      GetVersion(),
 		GitCommit:    gitCommit,
 		GitTreeState: gitTreeState,
+		GoVersion:    runtime.Version(),
 	}
 }

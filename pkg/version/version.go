@@ -20,8 +20,10 @@ package version // import "helm.sh/helm/pkg/version"
 type BuildInfo struct {
 	// Version is the current semver.
 	Version string `json:"version,omitempty"`
-	// GitCommit is the git sha1
+	// GitCommit is the git sha1.
 	GitCommit string `json:"git_commit,omitempty"`
-	// GitTreeState is the state of the git tree
+	// GitTreeState is the state of the git tree.
 	GitTreeState string `json:"git_tree_state,omitempty"`
+	// GoVersion is the version of the Go compiler used.
+	GoVersion string `json:"go_version,omitempty"`
 }
