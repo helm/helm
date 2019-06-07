@@ -19,7 +19,7 @@ In the previous section, we use `{{.Release.Name}}` to insert the name of a rele
   - `Files.GetBytes` is a function for getting the contents of a file as an array of bytes instead of as a string. This is useful for things like images.
 - `Capabilities`: This provides information about what capabilities the Kubernetes cluster supports.
   - `Capabilities.APIVersions` is a set of versions.
-  - `Capabilities.APIVersions.Has $version` indicates whether a version (`batch/v1`) is enabled on the cluster.
+  - `Capabilities.APIVersions.Has $version` indicates whether a version (e.g., `batch/v1`) or resource (e.g., `apps/v1/Deployment`) is available on the cluster.
   - `Capabilities.Kube.Version` is the Kubernetes version.
   - `Capabilities.Kube` is a short form for Kubernetes version.
   - `Capabilities.Kube.Major` is the Kubernetes major version.

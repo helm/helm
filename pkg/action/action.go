@@ -17,12 +17,12 @@ limitations under the License.
 package action
 
 import (
+	"path"
 	"regexp"
 	"time"
 
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/rest"
 
@@ -131,21 +131,50 @@ func (c *Configuration) releaseContent(name string, version int) (*release.Relea
 }
 
 // GetVersionSet retrieves a set of available k8s API versions
-func GetVersionSet(client discovery.ServerGroupsInterface) (chartutil.VersionSet, error) {
-	groups, err := client.ServerGroups()
+func GetVersionSet(client discovery.ServerResourcesInterface) (chartutil.VersionSet, error) {
+	groups, resources, err := client.ServerGroupsAndResources()
 	if err != nil {
 		return chartutil.DefaultVersionSet, err
 	}
 
 	// FIXME: The Kubernetes test fixture for cli appears to always return nil
-	// for calls to Discovery().ServerGroups(). So in this case, we return
-	// the default API list. This is also a safe value to return in any other
-	// odd-ball case.
-	if groups.Size() == 0 {
+	// for calls to Discovery().ServerGroupsAndResources(). So in this case, we
+	// return the default API list. This is also a safe value to return in any
+	// other odd-ball case.
+	if len(groups) == 0 && len(resources) == 0 {
 		return chartutil.DefaultVersionSet, nil
 	}
 
-	versions := metav1.ExtractGroupVersions(groups)
+	versionMap := make(map[string]interface{})
+	versions := []string{}
+
+	// Extract the groups
+	for _, g := range groups {
+		for _, gv := range g.Versions {
+			versionMap[gv.GroupVersion] = struct{}{}
+		}
+	}
+
+	// Extract the resources
+	var id string
+	var ok bool
+	for _, r := range resources {
+		for _, rl := range r.APIResources {
+
+			// A Kind at a GroupVersion can show up more than once. We only want
+			// it displayed once in the final output.
+			id = path.Join(r.GroupVersion, rl.Kind)
+			if _, ok = versionMap[id]; !ok {
+				versionMap[id] = struct{}{}
+			}
+		}
+	}
+
+	// Convert to a form that NewVersionSet can use
+	for k := range versionMap {
+		versions = append(versions, k)
+	}
+
 	return chartutil.VersionSet(versions), nil
 }
 
