@@ -132,3 +132,78 @@ func TestUpdateCmdStrictFlag(t *testing.T) {
 		t.Errorf("Expected 'Unable to get an update', got %q", got)
 	}
 }
+
+func TestUpdateCmdWithSingleRepoNameWhichDoesntExist(t *testing.T) {
+	thome, err := tempHelmHome(t)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cleanup := resetEnv()
+	defer func() {
+		os.RemoveAll(thome.String())
+		cleanup()
+	}()
+
+	settings.Home = thome
+
+	out := bytes.NewBuffer(nil)
+	cmd := newRepoUpdateCmd(out)
+
+	if err = cmd.RunE(cmd, []string{"randomRepo"}); err == nil {
+		t.Fatal("expected error due to wrong repo name")
+	}
+
+	if got := fmt.Sprintf("%v", err); !strings.Contains(got, "no repositories found matching the provided name. Verify if the repo exists") {
+		t.Errorf("Expected 'no repositories found matching the provided name. Verify if the repo exists', got %q", got)
+	}
+}
+
+func TestUpdateRepo(t *testing.T) {
+	ts, thome, err := repotest.NewTempServer("testdata/testserver/*.*")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	hh := helmpath.Home(thome)
+	cleanup := resetEnv()
+	defer func() {
+		ts.Stop()
+		os.RemoveAll(thome.String())
+		cleanup()
+	}()
+	if err := ensureTestHome(hh, t); err != nil {
+		t.Fatal(err)
+	}
+
+	settings.Home = thome
+
+	if err := addRepository("repo1", ts.URL(), "", "", hh, "", "", "", true); err != nil {
+		t.Error(err)
+	}
+
+	if err := addRepository("repo2", ts.URL(), "", "", hh, "", "", "", true); err != nil {
+		t.Error(err)
+	}
+
+	out := bytes.NewBuffer(nil)
+	cmd := newRepoUpdateCmd(out)
+
+	if err = cmd.RunE(cmd, []string{"repo1"}); err != nil {
+		t.Fatal("expected to update repo1 correctly")
+	}
+
+	got := out.String()
+
+	if !strings.Contains(got, "Successfully got an update from the \"repo1\"") {
+		t.Errorf("Expected to successfully update \"repo1\" repository, got %q", got)
+	}
+
+	if strings.Contains(got, "Successfully got an update from the \"repo2\"") {
+		t.Errorf("Shouldn't have updated \"repo2\" repository, got %q", got)
+	}
+
+	if !strings.Contains(got, "Update Complete.") {
+		t.Error("Update was not successful")
+	}
+}
