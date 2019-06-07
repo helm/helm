@@ -125,7 +125,7 @@ func (r *ChartRepository) DownloadIndexFile(cachePath string) error {
 	if err != nil {
 		return err
 	}
-	g.SetCredentials(r.Config.Username, r.Config.Password)
+	g.SetBasicAuth(r.Config.Username, r.Config.Password)
 	resp, err := g.Get(indexURL)
 	if err != nil {
 		return err

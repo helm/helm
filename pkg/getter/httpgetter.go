@@ -34,8 +34,8 @@ type HTTPGetter struct {
 	userAgent string
 }
 
-// SetCredentials sets the credentials for the getter
-func (g *HTTPGetter) SetCredentials(username, password string) {
+// SetBasicAuth sets the credentials for the getter
+func (g *HTTPGetter) SetBasicAuth(username, password string) {
 	g.username = username
 	g.password = password
 }
@@ -82,21 +82,21 @@ func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
 }
 
 // newHTTPGetter constructs a valid http/https client as Getter
-func newHTTPGetter(URL, CertFile, KeyFile, CAFile string) (Getter, error) {
-	return NewHTTPGetter(URL, CertFile, KeyFile, CAFile)
+func newHTTPGetter(url, certFile, keyFile, caFile string) (Getter, error) {
+	return NewHTTPGetter(url, certFile, keyFile, caFile)
 }
 
 // NewHTTPGetter constructs a valid http/https client as HTTPGetter
-func NewHTTPGetter(URL, CertFile, KeyFile, CAFile string) (*HTTPGetter, error) {
+func NewHTTPGetter(url, certFile, keyFile, caFile string) (*HTTPGetter, error) {
 	var client HTTPGetter
-	if CertFile != "" && KeyFile != "" {
-		tlsConf, err := tlsutil.NewClientTLS(CertFile, KeyFile, CAFile)
+	if certFile != "" && keyFile != "" {
+		tlsConf, err := tlsutil.NewClientTLS(certFile, keyFile, caFile)
 		if err != nil {
 			return &client, errors.Wrap(err, "can't create TLS config for client")
 		}
 		tlsConf.BuildNameToCertificate()
 
-		sni, err := urlutil.ExtractHostname(URL)
+		sni, err := urlutil.ExtractHostname(url)
 		if err != nil {
 			return &client, err
 		}
