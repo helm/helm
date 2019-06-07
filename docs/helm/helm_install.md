@@ -27,7 +27,8 @@ or
 	$ helm install --set-string long_int=1234567890 ./redis
 
 or
-    $ helm install --set-file multiline_text=path/to/textfile
+
+	$ helm install --set-file multiline_text=path/to/textfile
 
 You can specify the '--values'/'-f' flag multiple times. The priority will be given to the
 last (right-most) file specified. For example, if both myvalues.yaml and override.yaml
