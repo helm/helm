@@ -33,7 +33,7 @@ Example usage:
 func newRepoCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "repo [FLAGS] add|remove|list|index|update [ARGS]",
-		Short: "add, list, remove, update, and index chart repositories",
+		Short: "Add, list, remove, update, and index chart repositories",
 		Long:  repoHelm,
 	}
 

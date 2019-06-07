@@ -70,7 +70,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "package [flags] [CHART_PATH] [...]",
-		Short: "package a chart directory into a chart archive",
+		Short: "Package a chart directory into a chart archive",
 		Long:  packageDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pkg.home = settings.Home
@@ -96,14 +96,14 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.BoolVar(&pkg.save, "save", true, "save packaged chart to local chart repository")
-	f.BoolVar(&pkg.sign, "sign", false, "use a PGP private key to sign this package")
-	f.StringVar(&pkg.key, "key", "", "name of the key to use when signing. Used if --sign is true")
-	f.StringVar(&pkg.keyring, "keyring", defaultKeyring(), "location of a public keyring")
-	f.StringVar(&pkg.version, "version", "", "set the version on the chart to this semver version")
-	f.StringVar(&pkg.appVersion, "app-version", "", "set the appVersion on the chart to this version")
-	f.StringVarP(&pkg.destination, "destination", "d", ".", "location to write the chart.")
-	f.BoolVarP(&pkg.dependencyUpdate, "dependency-update", "u", false, `update dependencies from "requirements.yaml" to dir "charts/" before packaging`)
+	f.BoolVar(&pkg.save, "save", true, "Save packaged chart to local chart repository")
+	f.BoolVar(&pkg.sign, "sign", false, "Use a PGP private key to sign this package")
+	f.StringVar(&pkg.key, "key", "", "Name of the key to use when signing. Used if --sign is true")
+	f.StringVar(&pkg.keyring, "keyring", defaultKeyring(), "Location of a public keyring")
+	f.StringVar(&pkg.version, "version", "", "Set the version on the chart to this semver version")
+	f.StringVar(&pkg.appVersion, "app-version", "", "Set the appVersion on the chart to this version")
+	f.StringVarP(&pkg.destination, "destination", "d", ".", "Location to write the chart.")
+	f.BoolVarP(&pkg.dependencyUpdate, "dependency-update", "u", false, `Update dependencies from "requirements.yaml" to dir "charts/" before packaging`)
 
 	return cmd
 }

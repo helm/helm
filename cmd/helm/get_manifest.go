@@ -47,7 +47,7 @@ func newGetManifestCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	}
 	cmd := &cobra.Command{
 		Use:     "manifest [flags] RELEASE_NAME",
-		Short:   "download the manifest for a named release",
+		Short:   "Download the manifest for a named release",
 		Long:    getManifestHelp,
 		PreRunE: func(_ *cobra.Command, _ []string) error { return setupConnection() },
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -62,7 +62,7 @@ func newGetManifestCmd(client helm.Interface, out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	settings.AddFlagsTLS(f)
-	f.Int32Var(&get.version, "revision", 0, "get the named release with revision")
+	f.Int32Var(&get.version, "revision", 0, "Get the named release with revision")
 
 	// set defaults from environment
 	settings.InitTLS(f)

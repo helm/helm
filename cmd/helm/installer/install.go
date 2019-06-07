@@ -125,7 +125,7 @@ func Deployment(opts *Options) (*v1beta1.Deployment, error) {
 	}
 	dep.TypeMeta = metav1.TypeMeta{
 		Kind:       "Deployment",
-		APIVersion: "extensions/v1beta1",
+		APIVersion: "apps/v1",
 	}
 	return dep, nil
 }

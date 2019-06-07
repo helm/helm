@@ -327,21 +327,32 @@ func coalesceTables(dst, src map[string]interface{}, chartName string) map[strin
 	// Because dest has higher precedence than src, dest values override src
 	// values.
 	for key, val := range src {
+		dv, ok := dst[key]
+		if ok && dv == nil {
+			// skip here, we delete at end
+			continue
+		}
 		if istable(val) {
-			if innerdst, ok := dst[key]; !ok {
+			if !ok {
 				dst[key] = val
-			} else if istable(innerdst) {
-				coalesceTables(innerdst.(map[string]interface{}), val.(map[string]interface{}), chartName)
+			} else if istable(dv) {
+				coalesceTables(dv.(map[string]interface{}), val.(map[string]interface{}), chartName)
 			} else {
 				log.Printf("Warning: Merging destination map for chart '%s'. Cannot overwrite table item '%s', with non table value: %v", chartName, key, val)
 			}
 			continue
-		} else if dv, ok := dst[key]; ok && istable(dv) {
+		} else if ok && istable(dv) {
 			log.Printf("Warning: Merging destination map for chart '%s'. The destination item '%s' is a table and ignoring the source '%s' as it has a non-table value of: %v", chartName, key, key, val)
 			continue
 		} else if !ok { // <- ok is still in scope from preceding conditional.
 			dst[key] = val
 			continue
+		}
+	}
+	// never return a nil value, rather delete the key
+	for k, v := range dst {
+		if v == nil {
+			delete(dst, k)
 		}
 	}
 	return dst

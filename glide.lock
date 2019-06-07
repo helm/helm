@@ -1,5 +1,5 @@
-hash: d92d7faee5c7ecbb241dadcd993e5dd8dfba226739d20d97fabf23168613f3ac
-updated: 2019-04-16T15:32:58.609105-07:00
+hash: 7104a8ce1f0b3f2338d10b102b3ba9bfd308000396cc9edb43095c2a2e133272
+updated: 2019-06-05T21:58:04.295502-04:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -173,8 +173,16 @@ imports:
   version: 9316a62528ac99aaecb4e47eadd6dc8aa6533d58
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
+- name: github.com/jmoiron/sqlx
+  version: d161d7a76b5661016ad0b085869f77fd410f3e6a
+  subpackages:
+  - reflectx
 - name: github.com/json-iterator/go
   version: ab8a2e0c74be9d3be70b3184d9acc634935ded82
+- name: github.com/lib/pq
+  version: 88edab0803230a3898347e77b474f8c1820a1f20
+  subpackages:
+  - oid
 - name: github.com/liggitt/tabwriter
   version: 89fcab3d43de07060e4fd4c1547430ed57e87f24
 - name: github.com/mailru/easyjson
@@ -188,7 +196,7 @@ imports:
 - name: github.com/Masterminds/goutils
   version: 41ac8693c5c10a92ea1ff5ac3a7f95646f6123b0
 - name: github.com/Masterminds/semver
-  version: 517734cc7d6470c0d07130e40fd40bdeb9bcd3fd
+  version: c7af12943936e8c39859482e61f0574c2fd7fc75
 - name: github.com/Masterminds/sprig
   version: 9f8fceff796fb9f4e992cd2bece016be0121ab74
 - name: github.com/Masterminds/vcs
@@ -235,6 +243,10 @@ imports:
   version: 8a290539e2e8629dbc4e6bad948158f790ec31f4
 - name: github.com/PuerkitoBio/urlesc
   version: 5bd2802263f21d8788851d5305584c82a5c75d7e
+- name: github.com/rubenv/sql-migrate
+  version: 1007f53448d75fe14190968f5de4d95ed63ebb83
+  subpackages:
+  - sqlparse
 - name: github.com/russross/blackfriday
   version: 300106c228d52c8941d4b3de6054a6062a86dda3
 - name: github.com/shurcooL/sanitized_anchor_name
@@ -242,7 +254,7 @@ imports:
 - name: github.com/sirupsen/logrus
   version: 89742aefa4b206dcf400792f3bd35b542998eb3b
 - name: github.com/spf13/cobra
-  version: fe5e611709b0c57fa4a89136deaa8e1d4004d053
+  version: 67fc4837d267bc9bfd6e47f77783fcc3dffc68de
   subpackages:
   - doc
 - name: github.com/spf13/pflag
@@ -366,6 +378,8 @@ imports:
   - stats
   - status
   - tap
+- name: gopkg.in/gorp.v1
+  version: 6a667da9c028871f98598d85413e3fc4c6daa52e
 - name: gopkg.in/inf.v0
   version: 3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4
 - name: gopkg.in/square/go-jose.v2
@@ -377,7 +391,7 @@ imports:
 - name: gopkg.in/yaml.v2
   version: 5420a8b6744d3b0345ab293f6fcba19c978f1183
 - name: k8s.io/api
-  version: 6e4e0e4f393bf5e8bbff570acd13217aa5a770cd
+  version: a675ac48af67cf21d815b5f8df288462096eb9c9
   subpackages:
   - admission/v1beta1
   - admissionregistration/v1beta1
@@ -418,7 +432,7 @@ imports:
   - storage/v1alpha1
   - storage/v1beta1
 - name: k8s.io/apiextensions-apiserver
-  version: 727a075fdec8319bf095330e344b3ccc668abc73
+  version: bf6753f2aa24fe1d69a2abeea1c106042bcf3f5f
   subpackages:
   - pkg/apis/apiextensions
   - pkg/apis/apiextensions/v1beta1
@@ -480,7 +494,7 @@ imports:
   - third_party/forked/golang/netutil
   - third_party/forked/golang/reflect
 - name: k8s.io/apiserver
-  version: 1ec86e4da56ce0573788fc12bb3a5530600c0e5d
+  version: f89599b3f64533b7e94fa4d169acbc861b464f2e
   subpackages:
   - pkg/authentication/authenticator
   - pkg/authentication/serviceaccount
@@ -488,7 +502,7 @@ imports:
   - pkg/features
   - pkg/util/feature
 - name: k8s.io/cli-runtime
-  version: d644b00f3b79346b7627329269bb25f2135f941c
+  version: 17bc0b7fcef59215541144136f75284656a789fb
   subpackages:
   - pkg/genericclioptions
   - pkg/kustomize
@@ -503,7 +517,7 @@ imports:
   - pkg/printers
   - pkg/resource
 - name: k8s.io/client-go
-  version: 1a26190bd76a9017e289958b9fba936430aa3704
+  version: ae8359b20417914b73a4b514b7a3d642597700bb
   subpackages:
   - discovery
   - discovery/cached/disk
@@ -647,7 +661,7 @@ imports:
   - pkg/util/proto/testing
   - pkg/util/proto/validation
 - name: k8s.io/kubernetes
-  version: 3c949c7d419670cd99fe92f60e6f4d251898bdf2
+  version: 66049e3b21efe110454d67df4fa62b08ea79a19b
   subpackages:
   - pkg/api/legacyscheme
   - pkg/api/service
@@ -807,6 +821,8 @@ imports:
   subpackages:
   - sortorder
 testImports:
+- name: github.com/DATA-DOG/go-sqlmock
+  version: 472e287dbafe67e526a3797165b64cb14f34705a
 - name: github.com/pmezard/go-difflib
   version: 5d4384ee4fb2527b0a1256a821ebfc92f91efefc
   subpackages:

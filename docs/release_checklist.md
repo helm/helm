@@ -77,6 +77,15 @@ export RELEASE_BRANCH_NAME="release-X.Y"
 export RELEASE_CANDIDATE_NAME="$RELEASE_NAME-rc.1"
 ```
 
+We are also going to be adding security and verification of the release process by
+hashing the binaries and providing signature files. We perform this using
+[GitHub and GPG](https://help.github.com/en/articles/about-commit-signature-verification).
+If you do not have GPG already setup you can follow these steps:
+1. [Install GPG](https://gnupg.org/index.html)
+2. [Generate GPG key](https://help.github.com/en/articles/generating-a-new-gpg-key)
+3. [Add key to GitHub account](https://help.github.com/en/articles/adding-a-new-gpg-key-to-your-github-account)
+4. [Set signing key in Git](https://help.github.com/en/articles/telling-git-about-your-signing-key)
+
 ## 1. Create the Release Branch
 
 ### Major/Minor Releases
@@ -147,6 +156,24 @@ git add .
 git commit -m "bump version to $RELEASE_CANDIDATE_NAME"
 ```
 
+This will update it for the $RELEASE_BRANCH_NAME only. You will also need to pull
+this change into the master branch for when the next release is being created.
+
+```shell
+# get the last commit id i.e. commit to bump the version
+git log --format="%H" -n 1
+
+# create new branch off master
+git checkout master
+git checkout -b bump-version-<release_version>
+
+# cherry pick the commit using id from first command
+git cherry-pick -x <commit-id>
+
+# commit the change
+git push origin bump-version-<release-version>
+```
+
 ## 3. Commit and Push the Release Branch
 
 In order for others to start testing, we can now push the release branch
@@ -177,25 +204,24 @@ CircleCI will automatically create a tagged release image and client binary to
 test with.
 
 For testers, the process to start testing after CircleCI finishes building the
-artifacts involves the following steps to grab the client from Google Cloud
-Storage:
+artifacts involves the following steps to grab the client:
 
 linux/amd64, using /bin/bash:
 
 ```shell
-wget https://kubernetes-helm.storage.googleapis.com/helm-$RELEASE_CANDIDATE_NAME-linux-amd64.tar.gz
+wget https://get.helm.sh/helm-$RELEASE_CANDIDATE_NAME-linux-amd64.tar.gz
 ```
 
 darwin/amd64, using Terminal.app:
 
 ```shell
-wget https://kubernetes-helm.storage.googleapis.com/helm-$RELEASE_CANDIDATE_NAME-darwin-amd64.tar.gz
+wget https://get.helm.sh/helm-$RELEASE_CANDIDATE_NAME-darwin-amd64.tar.gz
 ```
 
 windows/amd64, using PowerShell:
 
 ```shell
-PS C:\> Invoke-WebRequest -Uri "https://kubernetes-helm.storage.googleapis.com/helm-$RELEASE_CANDIDATE_NAME-windows-amd64.zip" -OutFile "helm-$ReleaseCandidateName-windows-amd64.zip"
+PS C:\> Invoke-WebRequest -Uri "https://get.helm.sh/helm-$RELEASE_CANDIDATE_NAME-windows-amd64.zip" -OutFile "helm-$ReleaseCandidateName-windows-amd64.zip"
 ```
 
 Then, unpack and move the binary to somewhere on your $PATH, or move it
@@ -250,6 +276,9 @@ git tag --sign --annotate "${RELEASE_NAME}" --message "Helm release ${RELEASE_NA
 git push upstream $RELEASE_NAME
 ```
 
+Verify that the release succeeded in CI. If not, you will need to fix the 
+release and push the release again.
+
 ## 7. PGP Sign the downloads
 
 While hashes provide a signature that the content of the downloads is what it
@@ -259,6 +288,7 @@ from.
 To do this, run the following `make` commands:
 
 ```shell
+export VERSION="$RELEASE_NAME"
 make clean
 make fetch-dist
 make sign
@@ -304,14 +334,14 @@ The community keeps growing, and we'd love to see you there!
 
 Download Helm X.Y. The common platform binaries are here:
 
-- [MacOS amd64](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-darwin-amd64.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-darwin-amd64.tar.gz.sha256) / CHECKSUM_VAL)
-- [Linux amd64](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-amd64.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-amd64.tar.gz.sha256) / CHECKSUM_VAL)
-- [Linux arm](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-arm.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-arm.tar.gz.sha256) / CHECKSUM_VAL)
-- [Linux arm64](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-arm64.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-arm64.tar.gz.sha256) / CHECKSUM_VAL)
-- [Linux i386](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-386.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-386.tar.gz.sha256) / CHECKSUM_VAL)
-- [Linux ppc64le](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-ppc64le.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-ppc64le.tar.gz.sha256) / CHECKSUM_VAL)
-- [Linux s390x](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-s390x.tar.gz) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-linux-s390x.tar.gz.sha256) / CHECKSUM_VAL)
-- [Windows amd64](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-windows-amd64.zip) ([checksum](https://storage.googleapis.com/kubernetes-helm/helm-vX.Y.Z-windows-amd64.zip.sha256) / CHECKSUM_VAL)
+- [MacOS amd64](https://get.helm.sh/helm-vX.Y.Z-darwin-amd64.tar.gz) ([checksum](https://get.helm.sh/helm-vX.Y.Z-darwin-amd64.tar.gz.sha256) / CHECKSUM_VAL)
+- [Linux amd64](https://get.helm.sh/helm-vX.Y.Z-linux-amd64.tar.gz) ([checksum](https://get.helm.sh/helm-vX.Y.Z-linux-amd64.tar.gz.sha256) / CHECKSUM_VAL)
+- [Linux arm](https://get.helm.sh/helm-vX.Y.Z-linux-arm.tar.gz) ([checksum](https://get.helm.sh/helm-vX.Y.Z-linux-arm.tar.gz.sha256) / CHECKSUM_VAL)
+- [Linux arm64](https://get.helm.sh/helm-vX.Y.Z-linux-arm64.tar.gz) ([checksum](https://get.helm.sh/helm-vX.Y.Z-linux-arm64.tar.gz.sha256) / CHECKSUM_VAL)
+- [Linux i386](https://get.helm.sh/helm-vX.Y.Z-linux-386.tar.gz) ([checksum](https://get.helm.sh/helm-vX.Y.Z-linux-386.tar.gz.sha256) / CHECKSUM_VAL)
+- [Linux ppc64le](https://get.helm.sh/helm-vX.Y.Z-linux-ppc64le.tar.gz) ([checksum](https://get.helm.sh/helm-vX.Y.Z-linux-ppc64le.tar.gz.sha256) / CHECKSUM_VAL)
+- [Linux s390x](https://get.helm.sh/helm-vX.Y.Z-linux-s390x.tar.gz) ([checksum](https://get.helm.sh/helm-vX.Y.Z-linux-s390x.tar.gz.sha256) / CHECKSUM_VAL)
+- [Windows amd64](https://get.helm.sh/helm-vX.Y.Z-windows-amd64.zip) ([checksum](https://get.helm.sh/helm-vX.Y.Z-windows-amd64.zip.sha256) / CHECKSUM_VAL)
 
 Once you have the client installed, upgrade Tiller with `helm init --upgrade`.
 
@@ -354,16 +384,19 @@ Once finished, go into GitHub and edit the release notes for the tagged release 
 
 Remember to attach the ascii armored signatures generated in the previous step to the release notes.
 
+It is now worth getting other people to take a look at the release notes before the release is published. Send
+a request out to [#helm-dev](https://kubernetes.slack.com/messages/C51E88VDG) for review. It is always 
+beneficial as it can be easy to miss something.
+
+When you are ready to go, hit `publish`.
+
 ## 9. Evangelize
 
 Congratulations! You're done. Go grab yourself a $DRINK_OF_CHOICE. You've earned
 it.
 
 After enjoying a nice $DRINK_OF_CHOICE, go forth and announce the glad tidings
-of the new release in Slack and on Twitter. You should also notify any key
-partners in the helm community such as the homebrew formula maintainers, the
-owners of incubator projects (e.g. ChartMuseum) and any other interested
-parties.
+of the new release in Slack and on Twitter.
 
 Optionally, write a blog post about the new release and showcase some of the new
 features on there!

@@ -61,7 +61,7 @@ func newStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:     "status [flags] RELEASE_NAME",
-		Short:   "displays the status of the named release",
+		Short:   "Displays the status of the named release",
 		Long:    statusHelp,
 		PreRunE: func(_ *cobra.Command, _ []string) error { return setupConnection() },
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -78,8 +78,8 @@ func newStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	settings.AddFlagsTLS(f)
-	f.Int32Var(&status.version, "revision", 0, "if set, display the status of the named release with revision")
-	f.StringVarP(&status.outfmt, "output", "o", "", "output the status in the specified format (json or yaml)")
+	f.Int32Var(&status.version, "revision", 0, "If set, display the status of the named release with revision")
+	f.StringVarP(&status.outfmt, "output", "o", "", "Output the status in the specified format (json or yaml)")
 
 	// set defaults from environment
 	settings.InitTLS(f)

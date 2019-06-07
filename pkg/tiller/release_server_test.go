@@ -338,6 +338,20 @@ func TestValidName(t *testing.T) {
 	}
 }
 
+func TestGetAllVersionSet(t *testing.T) {
+	rs := rsFixture()
+	vs, err := GetAllVersionSet(rs.clientset.Discovery())
+	if err != nil {
+		t.Error(err)
+	}
+	if !vs.Has("v1") {
+		t.Errorf("Expected supported versions to at least include v1.")
+	}
+	if vs.Has("nosuchversion/v1") {
+		t.Error("Non-existent version is reported found.")
+	}
+}
+
 func TestGetVersionSet(t *testing.T) {
 	rs := rsFixture()
 	vs, err := GetVersionSet(rs.clientset.Discovery())
@@ -649,6 +663,9 @@ func (kc *mockHooksKubeClient) Build(ns string, reader io.Reader) (kube.Result, 
 }
 func (kc *mockHooksKubeClient) BuildUnstructured(ns string, reader io.Reader) (kube.Result, error) {
 	return []*resource.Info{}, nil
+}
+func (kc *mockHooksKubeClient) Validate(ns string, reader io.Reader) error {
+	return nil
 }
 func (kc *mockHooksKubeClient) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (v1.PodPhase, error) {
 	return v1.PodUnknown, nil
