@@ -735,3 +735,138 @@ func TestDeployment_WithSetValues(t *testing.T) {
 		}
 	}
 }
+
+func TestFindEnv(t *testing.T) {
+	tests := []struct {
+		name           string
+		envVars        []v1.EnvVar
+		findName       string
+		expectedEnvVar v1.EnvVar
+		expectedResult bool
+	}{
+		{
+			name: "name exists",
+			envVars: []v1.EnvVar{
+				{
+					Name: "hello",
+				},
+			},
+			findName: "hello",
+			expectedEnvVar: v1.EnvVar{
+				Name: "hello",
+			},
+			expectedResult: true,
+		},
+		{
+			name: "name does not exist",
+			envVars: []v1.EnvVar{
+				{
+					Name: "missing",
+				},
+			},
+			findName:       "hello",
+			expectedEnvVar: v1.EnvVar{},
+			expectedResult: false,
+		},
+		{
+			name: "name found from multiple env vars",
+			envVars: []v1.EnvVar{
+				{
+					Name: "hello",
+				},
+				{
+					Name: "world",
+				},
+			},
+			expectedEnvVar: v1.EnvVar{
+				Name: "world",
+			},
+			findName:       "world",
+			expectedResult: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			envVar, result := findEnv(tc.envVars, tc.findName)
+			if tc.expectedEnvVar != envVar {
+				t.Errorf("expected env var to be %q but got %q", tc.expectedEnvVar, envVar)
+			}
+			if tc.expectedResult != result {
+				t.Errorf("expected result to be %t but got %t", tc.expectedResult, result)
+			}
+		})
+	}
+}
+
+func TestUpdateEnv(t *testing.T) {
+	var tests = []struct {
+		name            string
+		existingEnvVars []v1.EnvVar
+		newEnvVars      []v1.EnvVar
+		removeStrings   []string
+		expectedEnvVars []v1.EnvVar
+	}{
+		{
+			name: "add env var during update",
+			existingEnvVars: []v1.EnvVar{
+				{Name: "TILLER_NAMESPACE", Value: "kube-system"},
+			},
+			newEnvVars: []v1.EnvVar{
+				{Name: "TILLER_HISTORY_MAX", Value: "5"},
+			},
+			expectedEnvVars: []v1.EnvVar{
+				{Name: "TILLER_NAMESPACE", Value: "kube-system"},
+				{Name: "TILLER_HISTORY_MAX", Value: "5"},
+			},
+		},
+		{
+			name: "add env var and change existing env var",
+			existingEnvVars: []v1.EnvVar{
+				{Name: "TILLER_NAMESPACE", Value: "kube-system"},
+			},
+			newEnvVars: []v1.EnvVar{
+				{Name: "TILLER_NAMESPACE", Value: "default"},
+				{Name: "TILLER_HISTORY_MAX", Value: "5"},
+			},
+			expectedEnvVars: []v1.EnvVar{
+				{Name: "TILLER_NAMESPACE", Value: "default"},
+				{Name: "TILLER_HISTORY_MAX", Value: "5"},
+			},
+		},
+		{
+			name: "remove env var during update",
+			existingEnvVars: []v1.EnvVar{
+				{Name: "remove", Value: "me"},
+				{Name: "TILLER_NAMESPACE", Value: "kube-system"},
+			},
+			removeStrings: []string{"remove"},
+			expectedEnvVars: []v1.EnvVar{
+				{Name: "TILLER_NAMESPACE", Value: "kube-system"},
+			},
+		},
+		{
+			name: "change single env var",
+			existingEnvVars: []v1.EnvVar{
+				{Name: "TILLER_HISTORY_MAX", Value: "5"},
+				{Name: "TILLER_NAMESPACE", Value: "kube-system"},
+			},
+			newEnvVars: []v1.EnvVar{
+				{Name: "TILLER_NAMESPACE", Value: "default"},
+			},
+			expectedEnvVars: []v1.EnvVar{
+				{Name: "TILLER_HISTORY_MAX", Value: "5"},
+				{Name: "TILLER_NAMESPACE", Value: "default"},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := updateEnv(tc.existingEnvVars, tc.newEnvVars, tc.removeStrings)
+			if !reflect.DeepEqual(tc.expectedEnvVars, result) {
+				t.Errorf("expected env vars to be %v but got %v", tc.expectedEnvVars, result)
+			}
+		})
+	}
+}
