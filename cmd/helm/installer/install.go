@@ -30,6 +30,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/kubernetes"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	extensionsclient "k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
@@ -71,6 +72,11 @@ func Upgrade(client kubernetes.Interface, opts *Options) error {
 	}
 	obj.Spec.Template.Spec.Containers[0].Image = opts.SelectImage()
 	obj.Spec.Template.Spec.Containers[0].ImagePullPolicy = opts.pullPolicy()
+	if opts.MaxHistory > 0 {
+		obj.Spec.Template.Spec.Containers[0].Env = updateEnv(obj.Spec.Template.Spec.Containers[0].Env,
+			[]v1.EnvVar{{Name: "TILLER_HISTORY_MAX", Value: fmt.Sprintf("%d", opts.MaxHistory)}},
+			[]string{""})
+	}
 	obj.Spec.Template.Spec.ServiceAccountName = opts.ServiceAccount
 	if _, err := client.ExtensionsV1beta1().Deployments(opts.Namespace).Update(obj); err != nil {
 		return err
@@ -378,6 +384,16 @@ func createSecret(client corev1.SecretsGetter, opts *Options) error {
 	return err
 }
 
+// findEnv searches a slice of env vars for a single env var.
+func findEnv(env []v1.EnvVar, name string) (v1.EnvVar, bool) {
+	for _, e := range env {
+		if e.Name == name {
+			return e, true
+		}
+	}
+	return v1.EnvVar{}, false
+}
+
 // generateSecret builds the secret object that hold Tiller secrets.
 func generateSecret(opts *Options) (*v1.Secret, error) {
 
@@ -407,3 +423,32 @@ func generateSecret(opts *Options) (*v1.Secret, error) {
 }
 
 func read(path string) (b []byte, err error) { return ioutil.ReadFile(path) }
+
+// updateEnv updates the existing env vars and allows env vars to be removed
+// by name.
+func updateEnv(existing []v1.EnvVar, env []v1.EnvVar, remove []string) []v1.EnvVar {
+	out := []v1.EnvVar{}
+	covered := sets.NewString(remove...)
+
+	for _, e := range existing {
+		if covered.Has(e.Name) {
+			continue
+		}
+		newer, ok := findEnv(env, e.Name)
+		if ok {
+			covered.Insert(e.Name)
+			out = append(out, newer)
+			continue
+		}
+		out = append(out, e)
+	}
+
+	for _, e := range env {
+		if covered.Has(e.Name) {
+			continue
+		}
+		covered.Insert(e.Name)
+		out = append(out, e)
+	}
+	return out
+}
