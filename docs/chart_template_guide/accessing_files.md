@@ -54,13 +54,13 @@ metadata:
   name: {{ .Release.Name }}-configmap
 data:
   {{- $files := .Files }}
-  {{- range tuple "config1.toml" "config2.toml" "config3.toml" }}
+  {{- range list "config1.toml" "config2.toml" "config3.toml" }}
   {{ . }}: |-
     {{ $files.Get . }}
   {{- end }}
 ```
 
-This config map uses several of the techniques discussed in previous sections. For example, we create a `$files` variable to hold a reference to the `.Files` object. We also use the `tuple` function to create a list of files that we loop through. Then we print each file name (`{{.}}: |-`) followed by the contents of the file `{{ $files.Get . }}`.
+This config map uses several of the techniques discussed in previous sections. For example, we create a `$files` variable to hold a reference to the `.Files` object. We also use the `list` function to create a list of files that we loop through. Then we print each file name (`{{.}}: |-`) followed by the contents of the file `{{ $files.Get . }}`.
 
 Running this template will produce a single ConfigMap with the contents of all three files:
 
