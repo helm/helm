@@ -128,7 +128,7 @@ func TestDownload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	httpgetter.SetCredentials("username", "password")
+	httpgetter.SetBasicAuth("username", "password")
 	got, err = httpgetter.Get(u.String())
 	if err != nil {
 		t.Fatal(err)
