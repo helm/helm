@@ -80,7 +80,10 @@ func (o *versionOptions) run(out io.Writer) error {
 func formatVersion(short bool) string {
 	v := version.Get()
 	if short {
-		return fmt.Sprintf("%s+g%s", v.Version, v.GitCommit[:7])
+		if len(v.GitCommit) >= 7 {
+			return fmt.Sprintf("%s+g%s", v.Version, v.GitCommit[:7])
+		}
+		return version.GetVersion()
 	}
 	return fmt.Sprintf("%#v", v)
 }
