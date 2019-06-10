@@ -44,8 +44,8 @@ func newReleaseTestRunCmd(cfg *action.Configuration, out io.Writer) *cobra.Comma
 		Long:  releaseTestRunHelp,
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			c, errc := client.Run(args[0])
 			testErr := &testErr{}
+			c, errc := client.Run(args[0])
 
 			for {
 				select {

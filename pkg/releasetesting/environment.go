@@ -110,9 +110,9 @@ func (env *Environment) streamMessage(msg string, status release.TestRunStatus) 
 }
 
 // DeleteTestPods deletes resources given in testManifests
-func (env *Environment) DeleteTestPods(testManifests []string) {
-	for _, testManifest := range testManifests {
-		err := env.KubeClient.Delete(bytes.NewBufferString(testManifest))
+func (env *Environment) DeleteTestPods(ts []*release.Test) {
+	for _, t := range ts {
+		err := env.KubeClient.Delete(bytes.NewBufferString(t.Manifest))
 		if err != nil {
 			env.streamError(err.Error())
 		}

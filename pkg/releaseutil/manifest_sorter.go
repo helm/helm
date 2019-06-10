@@ -48,6 +48,7 @@ type manifestFile struct {
 type result struct {
 	hooks   []*release.Hook
 	generic []Manifest
+	tests   []*release.Test
 }
 
 // TODO: Refactor this out. It's here because naming conventions were not followed through.
@@ -66,7 +67,8 @@ var events = map[string]release.HookEvent{
 }
 
 // SortManifests takes a map of filename/YAML contents, splits the file
-// by manifest entries, and sorts the entries into hook types.
+// by manifest entries, skips partials, skips empty manifests, sorts test
+// and hook entries.
 //
 // The resulting hooks struct will be populated with all of the generated hooks.
 // Any file that does not declare one of the hook types will be placed in the
@@ -74,16 +76,16 @@ var events = map[string]release.HookEvent{
 //
 // Files that do not parse into the expected format are simply placed into a map and
 // returned.
-func SortManifests(files map[string]string, apis chartutil.VersionSet, sort KindSortOrder) ([]*release.Hook, []Manifest, error) {
+func SortManifests(files map[string]string, apis chartutil.VersionSet, sort KindSortOrder) ([]*release.Hook, []Manifest, []*release.Test, error) {
 	result := &result{}
 
-	for filePath, c := range files {
-
+	for filepath, c := range files {
 		// Skip partials. We could return these as a separate map, but there doesn't
 		// seem to be any need for that at this time.
-		if strings.HasPrefix(path.Base(filePath), "_") {
+		if strings.HasPrefix(path.Base(filepath), "_") {
 			continue
 		}
+
 		// Skip empty files and log this.
 		if strings.TrimSpace(c) == "" {
 			continue
@@ -91,21 +93,21 @@ func SortManifests(files map[string]string, apis chartutil.VersionSet, sort Kind
 
 		manifestFile := &manifestFile{
 			entries: SplitManifests(c),
-			path:    filePath,
+			path:    filepath,
 			apis:    apis,
 		}
 
 		if err := manifestFile.sort(result); err != nil {
-			return result.hooks, result.generic, err
+			return result.hooks, result.generic, result.tests, err
 		}
 	}
 
-	return result.hooks, sortByKind(result.generic, sort), nil
+	return result.hooks, sortByKind(result.generic, sort), result.tests, nil
 }
 
 // sort takes a manifestFile object which may contain multiple resource definition
-// entries and sorts each entry by hook types, and saves the resulting hooks and
-// generic manifests (or non-hooks) to the result struct.
+// entries and sorts each entry by hook types, and saves the resulting hooks,
+// generic manifests (or non-hooks), and test manifests to the result struct.
 //
 // To determine hook type, it looks for a YAML structure like this:
 //
@@ -122,6 +124,14 @@ func SortManifests(files map[string]string, apis chartutil.VersionSet, sort Kind
 //  metadata:
 // 		annotations:
 // 			helm.sh/hook-delete-policy: hook-succeeded
+//
+// To determine is manifest is test type, it looks for a YAML structure like this:
+//
+//  kind: Pod
+//  apiVersion: v1
+// 	metadata:
+//		annotations:
+//			helm.sh/test-expect-success: true
 func (file *manifestFile) sort(result *result) error {
 	for _, m := range file.entries {
 		var entry SimpleHead
@@ -139,6 +149,25 @@ func (file *manifestFile) sort(result *result) error {
 				Content: m,
 				Head:    &entry,
 			})
+			continue
+		}
+
+		expectation, ok := entry.Metadata.Annotations["helm.sh/test-expect-success"]
+
+		if ok {
+			expectBool, err := strconv.ParseBool(expectation)
+			if err != nil {
+				return err
+			}
+			t := &release.Test{
+				Name:          entry.Metadata.Name,
+				Kind:          entry.Kind,
+				Path:          file.path,
+				ExpectSuccess: expectBool,
+				Manifest:      m,
+			}
+			result.tests = append(result.tests, t)
+
 			continue
 		}
 

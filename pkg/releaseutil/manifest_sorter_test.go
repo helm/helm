@@ -104,7 +104,8 @@ metadata:
 			kind:     []string{"ReplicaSet"},
 			hooks:    map[string][]release.HookEvent{"sixth": nil},
 			manifest: `invalid manifest`, // This will fail if partial is not skipped.
-		}, {
+		},
+		{
 			// Regression test: files with no content should be skipped.
 			name:     []string{"seventh"},
 			path:     "seven",
@@ -132,6 +133,39 @@ metadata:
     "helm.sh/hook": test-success
 `,
 		},
+		{
+			name:  []string{"ninth"},
+			path:  "tests/ninth",
+			kind:  []string{"Pod"},
+			hooks: nil,
+			manifest: `kind: Pod
+apiVersion: v1
+metadata:
+  name: ninth
+  annotations:
+    "helm.sh/test-expect-success": "true"
+`,
+		},
+		{
+			name:  []string{"tenth"},
+			path:  "tests/tenth",
+			kind:  []string{"Pod"},
+			hooks: nil,
+			manifest: `kind: Pod
+apiVersion: v1
+metadata:
+  name: tenth
+  annotations:
+    "helm.sh/test-expect-success": "true"
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: tenth-second-test
+  annotations:
+    "helm.sh/test-expect-success": "false"
+`,
+		},
 	}
 
 	manifests := make(map[string]string, len(data))
@@ -139,14 +173,18 @@ metadata:
 		manifests[o.path] = o.manifest
 	}
 
-	hs, generic, err := SortManifests(manifests, chartutil.VersionSet{"v1", "v1beta1"}, InstallOrder)
+	hs, generic, ts, err := SortManifests(manifests, chartutil.VersionSet{"v1", "v1beta1"}, InstallOrder)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
 
-	// This test will fail if 'six' or 'seven' was added.
+	// This test will fail if 'six' or 'seven' or 'nine' were added.
 	if len(generic) != 2 {
 		t.Errorf("Expected 2 generic manifests, got %d", len(generic))
+	}
+
+	if len(ts) != 3 {
+		t.Errorf("Expected 3 test manifests, got %d", len(ts))
 	}
 
 	if len(hs) != 4 {

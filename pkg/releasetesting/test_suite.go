@@ -24,17 +24,16 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 
-	"helm.sh/helm/pkg/hooks"
 	"helm.sh/helm/pkg/release"
 	util "helm.sh/helm/pkg/releaseutil"
 )
 
 // TestSuite what tests are run, results, and metadata
 type TestSuite struct {
-	StartedAt     time.Time
-	CompletedAt   time.Time
-	TestManifests []string
-	Results       []*release.TestRun
+	StartedAt   time.Time
+	CompletedAt time.Time
+	Tests       []*release.Test
+	Results     []*release.TestRun
 }
 
 type test struct {
@@ -48,8 +47,8 @@ type test struct {
 //  extracted from the release
 func NewTestSuite(rel *release.Release) *TestSuite {
 	return &TestSuite{
-		TestManifests: extractTestManifestsFromHooks(rel.Hooks),
-		Results:       []*release.TestRun{},
+		Tests:   rel.Tests,
+		Results: []*release.TestRun{},
 	}
 }
 
@@ -57,13 +56,12 @@ func NewTestSuite(rel *release.Release) *TestSuite {
 func (ts *TestSuite) Run(env *Environment) error {
 	ts.StartedAt = time.Now()
 
-	if len(ts.TestManifests) == 0 {
-		// TODO: make this better, adding test run status on test suite is weird
+	if len(ts.Tests) == 0 {
 		env.streamMessage("No Tests Found", release.TestRunUnknown)
 	}
 
-	for _, testManifest := range ts.TestManifests {
-		test, err := newTest(testManifest)
+	for _, t := range ts.Tests {
+		test, err := newTest(t)
 		if err != nil {
 			return err
 		}
@@ -133,34 +131,9 @@ func (t *test) assignTestResult(podStatus v1.PodPhase) error {
 	return nil
 }
 
-func expectedSuccess(hookTypes []string) (bool, error) {
-	for _, hookType := range hookTypes {
-		hookType = strings.ToLower(strings.TrimSpace(hookType))
-		if hookType == hooks.ReleaseTestSuccess {
-			return true, nil
-		} else if hookType == hooks.ReleaseTestFailure {
-			return false, nil
-		}
-	}
-	return false, errors.Errorf("no %s or %s hook found", hooks.ReleaseTestSuccess, hooks.ReleaseTestFailure)
-}
-
-func extractTestManifestsFromHooks(h []*release.Hook) []string {
-	testHooks := hooks.FilterTestHooks(h)
-
-	tests := []string{}
-	for _, h := range testHooks {
-		individualTests := util.SplitManifests(h.Manifest)
-		for _, t := range individualTests {
-			tests = append(tests, t)
-		}
-	}
-	return tests
-}
-
-func newTest(testManifest string) (*test, error) {
+func newTest(ts *release.Test) (*test, error) {
 	var sh util.SimpleHead
-	err := yaml.Unmarshal([]byte(testManifest), &sh)
+	err := yaml.Unmarshal([]byte(ts.Manifest), &sh)
 	if err != nil {
 		return nil, err
 	}
@@ -169,17 +142,11 @@ func newTest(testManifest string) (*test, error) {
 		return nil, errors.Errorf("%s is not a pod", sh.Metadata.Name)
 	}
 
-	hookTypes := sh.Metadata.Annotations[hooks.HookAnno]
-	expected, err := expectedSuccess(strings.Split(hookTypes, ","))
-	if err != nil {
-		return nil, err
-	}
-
 	name := strings.TrimSuffix(sh.Metadata.Name, ",")
 	return &test{
 		name:            name,
-		manifest:        testManifest,
-		expectedSuccess: expected,
+		manifest:        ts.Manifest,
+		expectedSuccess: ts.ExpectSuccess,
 		result: &release.TestRun{
 			Name: name,
 		},

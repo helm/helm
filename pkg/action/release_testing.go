@@ -83,7 +83,7 @@ func (r *ReleaseTesting) Run(name string) (<-chan *release.TestReleaseResponse, 
 		}
 
 		if r.Cleanup {
-			testEnv.DeleteTestPods(tSuite.TestManifests)
+			testEnv.DeleteTestPods(tSuite.Tests)
 		}
 
 		if err := r.cfg.Releases.Update(rel); err != nil {

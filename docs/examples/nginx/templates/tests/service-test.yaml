@@ -8,7 +8,7 @@ metadata:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
     app.kubernetes.io/name: {{ template "nginx.name" . }}
   annotations:
-    "helm.sh/hook": test-success
+    "helm.sh/test-expect-success": "true"
 spec:
   containers:
     - name: curl

@@ -55,7 +55,7 @@ import (
 // See https://github.com/helm/helm/issues/1528
 const releaseNameMaxLen = 53
 
-// NOTESFILE_SUFFIX that we want to treat special. It goes through the templating engine
+// notesFileSuffix that we want to treat special. It goes through the templating engine
 // but it's not a yaml file (resource) hence can't have hooks, etc. And the user actually
 // wants to see this file after rendering in the status command. However, it must be a suffix
 // since there can be filepath in front of it.
@@ -135,7 +135,7 @@ func (i *Install) Run(chrt *chart.Chart) (*release.Release, error) {
 
 	rel := i.createRelease(chrt, i.rawValues)
 	var manifestDoc *bytes.Buffer
-	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.OutputDir)
+	rel.Hooks, manifestDoc, rel.Info.Notes, rel.Tests, err = i.cfg.renderResources(chrt, valuesToRender, i.OutputDir)
 	// Even for errors, attach this if available
 	if manifestDoc != nil {
 		rel.Manifest = manifestDoc.String()
@@ -308,24 +308,25 @@ func (i *Install) replaceRelease(rel *release.Release) error {
 }
 
 // renderResources renders the templates in a chart
-func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, outputDir string) ([]*release.Hook, *bytes.Buffer, string, error) {
+func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, outputDir string) ([]*release.Hook, *bytes.Buffer, string, []*release.Test, error) {
 	hs := []*release.Hook{}
+	ts := []*release.Test{}
 	b := bytes.NewBuffer(nil)
 
 	caps, err := c.getCapabilities()
 	if err != nil {
-		return hs, b, "", err
+		return hs, b, "", ts, err
 	}
 
 	if ch.Metadata.KubeVersion != "" {
 		if !version.IsCompatibleRange(ch.Metadata.KubeVersion, caps.KubeVersion.String()) {
-			return hs, b, "", errors.Errorf("chart requires kubernetesVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, caps.KubeVersion.String())
+			return hs, b, "", ts, errors.Errorf("chart requires kubernetesVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, caps.KubeVersion.String())
 		}
 	}
 
 	files, err := engine.Render(ch, values)
 	if err != nil {
-		return hs, b, "", err
+		return hs, b, "", ts, err
 	}
 
 	// NOTES.txt gets rendered like all the other files, but because it's not a hook nor a resource,
@@ -345,10 +346,10 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 		}
 	}
 
-	// Sort hooks, manifests, and partials. Only hooks and manifests are returned,
-	// as partials are not used after renderer.Render. Empty manifests are also
-	// removed here.
-	hs, manifests, err := releaseutil.SortManifests(files, caps.APIVersions, releaseutil.InstallOrder)
+	// Sort hooks, tests, resource manifests, and partials. Only hooks, tests, and
+	// resource manifests are returned, as partials are not used after renderer.Render.
+	// Empty manifests and test manifests are also removed here.
+	hs, manifests, tests, err := releaseutil.SortManifests(files, caps.APIVersions, releaseutil.InstallOrder)
 	if err != nil {
 		// By catching parse errors here, we can prevent bogus releases from going
 		// to Kubernetes.
@@ -361,7 +362,7 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 			}
 			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", name, content)
 		}
-		return hs, b, "", err
+		return hs, b, "", ts, err
 	}
 
 	// Aggregate all valid manifests into one big doc.
@@ -371,12 +372,12 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 		} else {
 			err = writeToFile(outputDir, m.Name, m.Content)
 			if err != nil {
-				return hs, b, "", err
+				return hs, b, "", ts, err
 			}
 		}
 	}
 
-	return hs, b, notes, nil
+	return hs, b, notes, tests, nil
 }
 
 // write the <data> to <output-dir>/<name>

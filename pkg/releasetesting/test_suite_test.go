@@ -27,13 +27,13 @@ import (
 	"helm.sh/helm/pkg/release"
 )
 
-const manifestWithTestSuccessHook = `
+const manifestTestSuccess = `
 apiVersion: v1
 kind: Pod
 metadata:
   name: finding-nemo,
   annotations:
-    "helm.sh/hook": test-success
+    "helm.sh/test-expect-success": "true"
 spec:
   containers:
   - name: nemo-test
@@ -41,32 +41,38 @@ spec:
     cmd: fake-command
 `
 
-const manifestWithTestFailureHook = `
+const manifestTestFailure = `
 apiVersion: v1
 kind: Pod
 metadata:
   name: gold-rush,
   annotations:
-    "helm.sh/hook": test-failure
+    "helm.sh/test-expect-success": "false"
 spec:
   containers:
   - name: gold-finding-test
     image: fake-gold-finding-image
     cmd: fake-gold-finding-command
 `
-const manifestWithInstallHooks = `apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: test-cm
-  annotations:
-    "helm.sh/hook": post-install,pre-delete
-data:
-  name: value
-`
 
 func TestRun(t *testing.T) {
-	testManifests := []string{manifestWithTestSuccessHook, manifestWithTestFailureHook}
-	ts := testSuiteFixture(testManifests)
+	releaseTests := []*release.Test{
+		{
+			Name:          "finding-nemo",
+			Kind:          "Pod",
+			Path:          "somepath/here",
+			ExpectSuccess: true,
+			Manifest:      manifestTestSuccess,
+		},
+		{
+			Name:          "gold-rush",
+			Kind:          "Pod",
+			Path:          "anotherpath/here",
+			ExpectSuccess: false,
+			Manifest:      manifestTestFailure,
+		},
+	}
+	ts := testSuiteFixture(releaseTests)
 	env := testEnvFixture()
 
 	go func() {
@@ -122,7 +128,7 @@ func TestRun(t *testing.T) {
 }
 
 func TestRunEmptyTestSuite(t *testing.T) {
-	ts := testSuiteFixture([]string{})
+	ts := testSuiteFixture([]*release.Test{})
 	env := testEnvFixture()
 
 	go func() {
@@ -151,8 +157,16 @@ func TestRunEmptyTestSuite(t *testing.T) {
 	}
 }
 
-func TestRunSuccessWithTestFailureHook(t *testing.T) {
-	ts := testSuiteFixture([]string{manifestWithTestFailureHook})
+func TestRunSuccessWithTestFailure(t *testing.T) {
+	ts := testSuiteFixture(
+		[]*release.Test{
+			{
+				Name:          "gold-rus",
+				Kind:          "Pod",
+				Path:          "somepath/here",
+				ExpectSuccess: false,
+				Manifest:      manifestTestFailure,
+			}})
 	env := testEnvFixture()
 	env.KubeClient = &mockKubeClient{podFail: true}
 
@@ -195,41 +209,18 @@ func TestRunSuccessWithTestFailureHook(t *testing.T) {
 	}
 }
 
-func TestExtractTestManifestsFromHooks(t *testing.T) {
-	testManifests := extractTestManifestsFromHooks(hooksStub)
-
-	if len(testManifests) != 1 {
-		t.Errorf("Expected 1 test manifest, Got: %v", len(testManifests))
-	}
-}
-
-var hooksStub = []*release.Hook{
-	{
-		Manifest: manifestWithTestSuccessHook,
-		Events: []release.HookEvent{
-			release.HookReleaseTestSuccess,
-		},
-	},
-	{
-		Manifest: manifestWithInstallHooks,
-		Events: []release.HookEvent{
-			release.HookPostInstall,
-		},
-	},
-}
-
 func testFixture() *test {
 	return &test{
-		manifest: manifestWithTestSuccessHook,
+		manifest: manifestTestSuccess,
 		result:   &release.TestRun{},
 	}
 }
 
-func testSuiteFixture(testManifests []string) *TestSuite {
+func testSuiteFixture(tests []*release.Test) *TestSuite {
 	testResults := []*release.TestRun{}
 	ts := &TestSuite{
-		TestManifests: testManifests,
-		Results:       testResults,
+		Tests:   tests,
+		Results: testResults,
 	}
 	return ts
 }
