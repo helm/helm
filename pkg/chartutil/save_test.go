@@ -83,6 +83,90 @@ func TestSave(t *testing.T) {
 	}
 }
 
+func TestSaveWithChartThatHasMultipleVersionsOfSameDependencies(t *testing.T) {
+	tmp, err := ioutil.TempDir("", "helm-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmp)
+
+	dependency1 := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:    "ahab",
+			Version: "1.2.3.4",
+		},
+		Templates: []*chart.Template{
+			{Name: "templates/scheherazade/file1.txt.tmpl", Data: []byte("{{ \"1,001 Nights\" }}")},
+		},
+	}
+
+	dependency2 := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:    "ahab",
+			Version: "1.2.3.5",
+		},
+		Templates: []*chart.Template{
+			{Name: "templates/scheherazade/file2.txt.tmpl", Data: []byte("{{ \"1,001 Nights\" }}")},
+		},
+	}
+
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:    "ahab",
+			Version: "1.2.3.4",
+		},
+		Dependencies: []*chart.Chart{dependency1, dependency2},
+		Values: &chart.Config{
+			Raw: "ship: Pequod",
+		},
+		Files: []*any.Any{
+			{TypeUrl: "scheherazade/shahryar.txt", Value: []byte("1,001 Nights")},
+		},
+		Templates: []*chart.Template{
+			{Name: "templates/scheherazade/shahryar.txt.tmpl", Data: []byte("{{ \"1,001 Nights\" }}")},
+		},
+	}
+
+	where, err := Save(c, tmp)
+	if err != nil {
+		t.Fatalf("Failed to save: %s", err)
+	}
+	if !strings.HasPrefix(where, tmp) {
+		t.Fatalf("Expected %q to start with %q", where, tmp)
+	}
+	if !strings.HasSuffix(where, ".tgz") {
+		t.Fatalf("Expected %q to end with .tgz", where)
+	}
+
+	c2, err := LoadFile(where)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(c2.Dependencies) != 2 {
+		t.Fatal("All dependencies not added")
+	}
+	if (c2.Dependencies[0].Metadata.Name != dependency1.Metadata.Name) || (c2.Dependencies[0].Metadata.Version != dependency1.Metadata.Version) ||
+		(c2.Dependencies[1].Metadata.Name != dependency2.Metadata.Name) || (c2.Dependencies[1].Metadata.Version != dependency2.Metadata.Version) {
+		t.Fatalf("Chart dependencies Metadata does not match")
+	}
+	if (c2.Dependencies[0].Templates[0].Name != dependency1.Templates[0].Name) || (c2.Dependencies[1].Templates[0].Name != dependency2.Templates[0].Name) {
+		t.Fatalf("Chart dependencies Templates does not match")
+	}
+	if c2.Metadata.Name != c.Metadata.Name {
+		t.Fatalf("Expected chart archive to have %q, got %q", c.Metadata.Name, c2.Metadata.Name)
+	}
+	if c2.Values.Raw != c.Values.Raw {
+		t.Fatal("Values data did not match")
+	}
+	if len(c2.Files) != 1 || c2.Files[0].TypeUrl != "scheherazade/shahryar.txt" {
+		t.Fatal("Files data did not match")
+	}
+	if len(c2.Templates) != 1 || c2.Templates[0].Name != "templates/scheherazade/shahryar.txt.tmpl" {
+		t.Fatal("Templates data did not match")
+	}
+}
+
 func TestSavePreservesTimestamps(t *testing.T) {
 	// Test executes so quickly that if we don't subtract a second, the
 	// check will fail because `initialCreateTime` will be identical to the

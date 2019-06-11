@@ -158,14 +158,19 @@ func Save(c *chart.Chart, outDir string) (string, error) {
 		}
 	}()
 
-	if err := writeTarContents(twriter, c, ""); err != nil {
+	if err := writeTarContents(twriter, c, "", false); err != nil {
 		rollback = true
 	}
 	return filename, err
 }
 
-func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
-	base := filepath.Join(prefix, c.Metadata.Name)
+func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string, isDependency bool) error {
+	var base string
+	if isDependency {
+		base = filepath.Join(prefix, fmt.Sprintf("%s-%s", c.Metadata.Name, c.Metadata.Version))
+	} else {
+		base = filepath.Join(prefix, c.Metadata.Name)
+	}
 
 	// Save Chart.yaml
 	cdata, err := yaml.Marshal(c.Metadata)
@@ -201,7 +206,7 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 
 	// Save dependencies
 	for _, dep := range c.Dependencies {
-		if err := writeTarContents(out, dep, base+"/charts"); err != nil {
+		if err := writeTarContents(out, dep, base+"/charts", true); err != nil {
 			return err
 		}
 	}
