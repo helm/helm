@@ -20,6 +20,7 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -33,6 +34,11 @@ import (
 var headerBytes = []byte("+aHR0cHM6Ly95b3V0dS5iZS96OVV6MWljandyTQo=")
 
 // SaveDir saves a chart as files in a directory.
+//
+// This takes an existing chart and a destination directory.
+//
+// If the directory is /foo, and the chart is named bar, with version 1.0.0, this
+// will generate /foo/bar/Chart.yaml, /foo/bar/values.yaml, etc.
 func SaveDir(c *chart.Chart, dest string) error {
 	// Create the chart directory
 	outdir := filepath.Join(dest, c.Name())
@@ -89,14 +95,28 @@ func SaveDir(c *chart.Chart, dest string) error {
 	base := filepath.Join(outdir, ChartsDir)
 	for _, dep := range c.Dependencies() {
 		// Here, we write each dependency as a tar file.
-		if _, err := Save(dep, base); err != nil {
+		if _, err := SaveArchive(dep, base); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// Save creates an archived chart to the given directory.
+// Save creates an archived chart and writes it to w.
+func Save(c *chart.Chart, w io.Writer) error {
+	zipper := gzip.NewWriter(w)
+	defer zipper.Close()
+	zipper.Header.Extra = headerBytes
+	zipper.Header.Comment = "Helm"
+
+	// Wrap in tar writer
+	twriter := tar.NewWriter(zipper)
+	defer twriter.Close()
+
+	return writeTarContents(twriter, c, "")
+}
+
+// SaveArchive creates an archived chart to the given directory.
 //
 // This takes an existing chart and a destination directory.
 //
@@ -104,7 +124,7 @@ func SaveDir(c *chart.Chart, dest string) error {
 // will generate /foo/bar-1.0.0.tgz.
 //
 // This returns the absolute path to the chart archive file.
-func Save(c *chart.Chart, outDir string) (string, error) {
+func SaveArchive(c *chart.Chart, outDir string) (string, error) {
 	// Create archive
 	if fi, err := os.Stat(outDir); err != nil {
 		return "", err
@@ -131,24 +151,15 @@ func Save(c *chart.Chart, outDir string) (string, error) {
 		return "", err
 	}
 
-	// Wrap in gzip writer
-	zipper := gzip.NewWriter(f)
-	zipper.Header.Extra = headerBytes
-	zipper.Header.Comment = "Helm"
-
-	// Wrap in tar writer
-	twriter := tar.NewWriter(zipper)
 	rollback := false
 	defer func() {
-		twriter.Close()
-		zipper.Close()
 		f.Close()
 		if rollback {
 			os.Remove(filename)
 		}
 	}()
 
-	if err := writeTarContents(twriter, c, ""); err != nil {
+	if err := Save(c, f); err != nil {
 		rollback = true
 	}
 	return filename, err

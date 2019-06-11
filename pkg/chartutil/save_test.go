@@ -17,6 +17,7 @@ limitations under the License.
 package chartutil
 
 import (
+	"bytes"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -27,6 +28,36 @@ import (
 )
 
 func TestSave(t *testing.T) {
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: chart.APIVersionV1,
+			Name:       "ahab",
+			Version:    "1.2.3",
+		},
+		Files: []*chart.File{
+			{Name: "scheherazade/shahryar.txt", Data: []byte("1,001 Nights")},
+		},
+	}
+
+	buf := bytes.NewBuffer(nil)
+
+	if err := Save(c, buf); err != nil {
+		t.Fatalf("Failed to save: %s", err)
+	}
+
+	c2, err := loader.LoadArchive(buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c2.Name() != c.Name() {
+		t.Fatalf("Expected chart archive to have %q, got %q", c.Name(), c2.Name())
+	}
+	if len(c2.Files) != 1 || c2.Files[0].Name != "scheherazade/shahryar.txt" {
+		t.Fatal("Files data did not match")
+	}
+}
+
+func TestSaveArchive(t *testing.T) {
 	tmp, err := ioutil.TempDir("", "helm-")
 	if err != nil {
 		t.Fatal(err)
@@ -44,7 +75,7 @@ func TestSave(t *testing.T) {
 		},
 	}
 
-	where, err := Save(c, tmp)
+	where, err := SaveArchive(c, tmp)
 	if err != nil {
 		t.Fatalf("Failed to save: %s", err)
 	}

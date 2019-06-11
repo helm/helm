@@ -94,7 +94,7 @@ func (p *Package) Run(path string) (string, error) {
 		dest = p.Destination
 	}
 
-	name, err := chartutil.Save(ch, dest)
+	name, err := chartutil.SaveArchive(ch, dest)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to save")
 	}

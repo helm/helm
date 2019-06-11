@@ -623,7 +623,7 @@ func tarFromLocalDir(chartpath, name, repo, version string) (string, error) {
 	}
 
 	if constraint.Check(v) {
-		_, err = chartutil.Save(ch, destPath)
+		_, err = chartutil.SaveArchive(ch, destPath)
 		return ch.Metadata.Version, err
 	}
 

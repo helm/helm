@@ -113,7 +113,7 @@ func (cache *filesystemCache) ChartToLayers(ch *chart.Chart) ([]ocispec.Descript
 	metaLayer := cache.store.Add(HelmChartMetaFileName, HelmChartMetaMediaType, metaJSONRaw)
 
 	// Create content layer
-	// TODO: something better than this hack. Currently needed for chartutil.Save()
+	// TODO: something better than this hack. Currently needed for chartutil.SaveArchive()
 	// If metadata does not contain Name or Version, an error is returned
 	// such as "no chart name specified (Chart.yaml)"
 	ch.Metadata = &chart.Metadata{
@@ -122,7 +122,7 @@ func (cache *filesystemCache) ChartToLayers(ch *chart.Chart) ([]ocispec.Descript
 		Version:    "0.1.0",
 	}
 	destDir := mkdir(filepath.Join(cache.rootDir, "blobs", ".build"))
-	tmpFile, err := chartutil.Save(ch, destDir)
+	tmpFile, err := chartutil.SaveArchive(ch, destDir)
 	defer os.Remove(tmpFile)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to save")
