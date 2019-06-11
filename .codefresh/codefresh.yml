@@ -1,0 +1,23 @@
+version: 1
+steps:
+  build:
+    image : golang:1.12.5
+    steps:
+     main_clone:
+        stage: prepare
+        title: 'Cloning main repository...'
+        type: git-clone
+        repo: codefresh-io/${{CF_REPO_NAME}}
+        revision: ${{CF_BRANCH}}
+        git: cf_github
+     install dependencies:
+        image : golang:1.12.5
+        working_directory:  ${main_clone}
+        environments:
+          -  PROJECT_NAME: "kubernetes-helm"
+        commands: 
+          - cd go/src/k8s.io/helm
+          - sh .codefresh/bootstrap.sh
+          - sh .codefresh/test.sh
+
+
