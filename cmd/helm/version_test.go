@@ -25,6 +25,10 @@ func TestVersion(t *testing.T) {
 		cmd:    "version",
 		golden: "output/version.txt",
 	}, {
+		name:   "short",
+		cmd:    "version --short",
+		golden: "output/version-short.txt",
+	}, {
 		name:   "template",
 		cmd:    "version --template='Version: {{.Version}}'",
 		golden: "output/version-template.txt",

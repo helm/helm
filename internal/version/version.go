@@ -17,6 +17,7 @@ limitations under the License.
 package version // import "helm.sh/helm/internal/version"
 
 import (
+	"flag"
 	"runtime"
 
 	hversion "helm.sh/helm/pkg/version"
@@ -50,10 +51,16 @@ func GetVersion() string {
 
 // Get returns build info
 func Get() hversion.BuildInfo {
-	return hversion.BuildInfo{
+	v := hversion.BuildInfo{
 		Version:      GetVersion(),
 		GitCommit:    gitCommit,
 		GitTreeState: gitTreeState,
 		GoVersion:    runtime.Version(),
 	}
+
+	// HACK(bacongobbler): strip out GoVersion during a test run for consistent test output
+	if flag.Lookup("test.v") != nil {
+		v.GoVersion = ""
+	}
+	return v
 }
