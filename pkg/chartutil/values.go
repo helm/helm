@@ -296,8 +296,7 @@ func coalesceTables(dst, src map[string]interface{}, chartName string) map[strin
 		case srcIsTable && dstIsTable: // both tables, we coalesce
 			rv[key] = coalesceTables(dstTable, srcTable, chartName)
 		case srcIsTable && !dstIsTable:
-			log.Printf("Warning: Merging destination map for chart '%s'. Cannot overwrite table item '%s', with non table value: %v", chartName, key, val)
-			// despite message in warning, we appear to do exactly that, and do take the dst value
+			log.Printf("Warning: Merging destination map for chart '%s'. Overwriting table item '%s', with non table value: %v", chartName, key, dv)
 			rv[key] = dv
 		case !srcIsTable && dstIsTable:
 			log.Printf("Warning: Merging destination map for chart '%s'. The destination item '%s' is a table and ignoring the source '%s' as it has a non-table value of: %v", chartName, key, key, val)
