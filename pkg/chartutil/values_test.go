@@ -585,3 +585,27 @@ anotherNewKey:
 		}
 	}
 }
+
+func TestOverriteTableItemWithNonTableValue(t *testing.T) {
+	// src has a table value for "foo"
+	src := map[string]interface{}{
+		"foo": map[string]interface{}{
+			"baz": "boz",
+		},
+	}
+
+	// dst has a non-table value for "foo"
+	dst := map[string]interface{}{
+		"foo": "bar",
+	}
+
+	// result - this may print a warning, but we has always "worked"
+	result := coalesceTables(dst, src, "")
+	expected := map[string]interface{}{
+		"foo": "bar",
+	}
+
+	if !reflect.DeepEqual(result, expected) {
+		t.Errorf("Expected %v, but got %v", expected, result)
+	}
+}

@@ -391,7 +391,7 @@ func processImportValues(c *chart.Chart) error {
 	if err != nil {
 		return err
 	}
-	b := make(map[string]interface{}, 0)
+	b := cvals.AsMap()
 	// import values from each dependency if specified in import-values
 	for _, r := range reqs.Dependencies {
 		// only process raw requirement that is found in chart's dependencies (enabled)
@@ -428,7 +428,7 @@ func processImportValues(c *chart.Chart) error {
 					}
 					// create value map from child to be merged into parent
 					vm := pathToMap(nm["parent"], vv.AsMap())
-					b = coalesceTables(cvals, vm, c.Metadata.Name)
+					b = coalesceTables(b, vm, c.Metadata.Name)
 				case string:
 					nm := map[string]string{
 						"child":  "exports." + iv,
@@ -448,7 +448,6 @@ func processImportValues(c *chart.Chart) error {
 			r.ImportValues = outiv
 		}
 	}
-	b = coalesceTables(b, cvals, c.Metadata.Name)
 	y, err := yaml.Marshal(b)
 	if err != nil {
 		return err
