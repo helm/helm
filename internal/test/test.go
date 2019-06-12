@@ -58,6 +58,17 @@ func AssertGoldenString(t TestingT, actual, filename string) {
 	}
 }
 
+// AssertGoldenFile assers that the content of the actual file matches the contents of the expected file
+func AssertGoldenFile(t TestingT, actualFileName string, expectedFilename string) {
+	t.Helper()
+
+	actual, err := ioutil.ReadFile(actualFileName)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	AssertGoldenBytes(t, actual, expectedFilename)
+}
+
 func path(filename string) string {
 	if filepath.IsAbs(filename) {
 		return filename
