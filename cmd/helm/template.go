@@ -40,10 +40,6 @@ This does not require Helm. However, any values that would normally be
 looked up or retrieved in-cluster will be faked locally. Additionally, none
 of the server-side testing of chart validity (e.g. whether an API is supported)
 is done.
-
-To render just one template in a chart, use '-x':
-
-	$ helm template foo mychart -x templates/deployment.yaml
 `
 
 func newTemplateCmd(out io.Writer) *cobra.Command {
