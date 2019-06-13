@@ -15,22 +15,22 @@ Helm.
 We use Make to build our programs. The simplest way to get started is:
 
 ```console
-$ make bootstrap build
+$ make
 ```
 
 NOTE: This will fail if not running from the path `$GOPATH/src/helm.sh/helm`. The
 directory `helm.sh` should not be a symlink or `build` will not find the relevant
 packages.
 
-This will build both Helm and the Helm library. `make bootstrap` will attempt to
-install certain tools if they are missing.
+If required, this will first install dependencies, rebuild the `vendor/` tree, and 
+validate configuration. It will then compile `helm` and place it in `bin/helm`.
 
 To run all the tests (without running the tests for `vendor/`), run
 `make test`.
 
 To run Helm locally, you can run `bin/helm`.
 
-- Helm is known to run on macOS and most Linuxes, including Alpine.
+- Helm is known to run on macOS and most Linux distributions, including Alpine.
 
 ### Man pages
 
