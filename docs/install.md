@@ -30,7 +30,7 @@ The Snap package for Helm is maintained by
 [Snapcrafters](https://github.com/snapcrafters/helm).
 
 ```
-$ sudo snap install helm --classic
+sudo snap install helm --classic
 ```
 
 ### From Homebrew (macOS)
