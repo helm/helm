@@ -18,6 +18,7 @@ package engine
 
 import (
 	"fmt"
+	"log"
 	"path"
 	"path/filepath"
 	"sort"
@@ -35,6 +36,8 @@ type Engine struct {
 	// If strict is enabled, template rendering will fail if a template references
 	// a value that was not passed in.
 	Strict bool
+	// In LintMode, some 'required' template values may be missing, so don't fail
+	LintMode bool
 }
 
 // Render takes a chart, optional values, and value overrides, and attempts to render the Go templates.
@@ -114,6 +117,29 @@ func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]render
 		}
 		return result[templateName.(string)], nil
 	}
+
+	// Add the `required` function here so we can use lintMode
+	funcMap["required"] = func(warn string, val interface{}) (interface{}, error) {
+		if val == nil {
+			if e.LintMode {
+				// Don't fail on missing required values when linting
+				log.Printf("[INFO] Missing required value: %s", warn)
+				return "", nil
+			}
+			return val, errors.Errorf(warn)
+		} else if _, ok := val.(string); ok {
+			if val == "" {
+				if e.LintMode {
+					// Don't fail on missing required values when linting
+					log.Printf("[INFO] Missing required value: %s", warn)
+					return "", nil
+				}
+				return val, errors.Errorf(warn)
+			}
+		}
+		return val, nil
+	}
+
 	t.Funcs(funcMap)
 }
 

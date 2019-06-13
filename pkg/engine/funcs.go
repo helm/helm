@@ -24,7 +24,6 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/Masterminds/sprig"
-	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -54,13 +53,13 @@ func funcMap() template.FuncMap {
 		"fromYaml": fromYAML,
 		"toJson":   toJSON,
 		"fromJson": fromJSON,
-		"required": required,
 
 		// This is a placeholder for the "include" function, which is
 		// late-bound to a template. By declaring it here, we preserve the
 		// integrity of the linter.
-		"include": func(string, interface{}) string { return "not implemented" },
-		"tpl":     func(string, interface{}) interface{} { return "not implemented" },
+		"include":  func(string, interface{}) string { return "not implemented" },
+		"tpl":      func(string, interface{}) interface{} { return "not implemented" },
+		"required": func(string, interface{}) (interface{}, error) { return "not implemented", nil },
 	}
 
 	for k, v := range extra {
@@ -68,17 +67,6 @@ func funcMap() template.FuncMap {
 	}
 
 	return f
-}
-
-func required(warn string, val interface{}) (interface{}, error) {
-	if val == nil {
-		return val, errors.Errorf(warn)
-	} else if _, ok := val.(string); ok {
-		if val == "" {
-			return val, errors.Errorf(warn)
-		}
-	}
-	return val, nil
 }
 
 // toYAML takes an interface, marshals it to yaml, and returns a string. It will

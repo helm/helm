@@ -30,10 +30,6 @@ func TestFuncs(t *testing.T) {
 		tpl, expect string
 		vars        interface{}
 	}{{
-		tpl:    `All {{ required "A valid 'bases' is required" .bases }} of them!`,
-		expect: `All 2 of them!`,
-		vars:   map[string]interface{}{"bases": 2},
-	}, {
 		tpl:    `{{ toYaml . }}`,
 		expect: `foo: bar`,
 		vars:   map[string]interface{}{"foo": "bar"},
