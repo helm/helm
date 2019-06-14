@@ -254,7 +254,7 @@ kind: ServiceAccount
 metadata:
   name: {{ template "<CHARTNAME>.serviceAccountName" . }}
   labels:
-  {{ include "<CHARTNAME>.labels" . | indent 4 }}
+{{ include "<CHARTNAME>.labels" . | indent 4 }}
 {{- end -}}
 `
 
