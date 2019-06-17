@@ -17,16 +17,20 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
-
-	"github.com/spf13/cobra"
+	"syscall"
+	"time"
 
 	"golang.org/x/crypto/ssh/terminal"
+
+	"github.com/gofrs/flock"
+	"github.com/spf13/cobra"
+
 	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/repo"
-	"syscall"
 )
 
 type repoAddCmd struct {
@@ -129,6 +133,25 @@ func addRepository(name, url, username, password string, home helmpath.Home, cer
 
 	if err := r.DownloadIndexFile(home.Cache()); err != nil {
 		return fmt.Errorf("Looks like %q is not a valid chart repository or cannot be reached: %s", url, err.Error())
+	}
+
+	// Lock the repository file for concurrent goroutines or processes synchronization
+	fileLock := flock.New(home.RepositoryFile())
+	lockCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	locked, err := fileLock.TryLockContext(lockCtx, time.Second)
+	if err == nil && locked {
+		defer fileLock.Unlock()
+	}
+	if err != nil {
+		return err
+	}
+
+	// Re-read the repositories file before updating it as its content may have been changed
+	// by a concurrent execution after the first read and before being locked
+	f, err = repo.LoadRepositoriesFile(home.RepositoryFile())
+	if err != nil {
+		return err
 	}
 
 	f.Update(&c)
