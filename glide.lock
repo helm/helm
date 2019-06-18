@@ -1,5 +1,5 @@
-hash: 7104a8ce1f0b3f2338d10b102b3ba9bfd308000396cc9edb43095c2a2e133272
-updated: 2019-06-05T21:58:04.295502-04:00
+hash: 9e12e35a6ad263380590ad000d9013499107f3ed47a454e2f96133156b6f09d5
+updated: 2019-06-18T12:14:56.802884-04:00
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -200,7 +200,7 @@ imports:
 - name: github.com/Masterminds/semver
   version: c7af12943936e8c39859482e61f0574c2fd7fc75
 - name: github.com/Masterminds/sprig
-  version: 9f8fceff796fb9f4e992cd2bece016be0121ab74
+  version: 258b00ffa7318e8b109a141349980ffbd30a35db
 - name: github.com/Masterminds/vcs
   version: 3084677c2c188840777bff30054f2b553729d329
 - name: github.com/mattn/go-runewidth
@@ -256,7 +256,7 @@ imports:
 - name: github.com/sirupsen/logrus
   version: 89742aefa4b206dcf400792f3bd35b542998eb3b
 - name: github.com/spf13/cobra
-  version: 67fc4837d267bc9bfd6e47f77783fcc3dffc68de
+  version: f2b07da1e2c38d5f12845a4f607e2e1018cbb1f5
   subpackages:
   - doc
 - name: github.com/spf13/pflag
