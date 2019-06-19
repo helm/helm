@@ -68,10 +68,6 @@ type ChartDownloader struct {
 	HelmHome helmpath.Home
 	// Getter collection for the operation
 	Getters getter.Providers
-	// Chart repository username
-	Username string
-	// Chart repository password
-	Password string
 }
 
 // DownloadTo retrieves a chart. Depending on the settings, it may also download a provenance file.
@@ -255,15 +251,9 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, ge
 // then the repository's configured credentials are returned.
 // Else, this ChartDownloader's credentials are returned.
 func (c *ChartDownloader) getRepoCredentials(r *repo.ChartRepository) (username, password string) {
-	username = c.Username
-	password = c.Password
 	if r != nil && r.Config != nil {
-		if username == "" {
-			username = r.Config.Username
-		}
-		if password == "" {
-			password = r.Config.Password
-		}
+		username = r.Config.Username
+		password = r.Config.Password
 	}
 	return
 }

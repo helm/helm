@@ -231,7 +231,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 
 		// Any failure to resolve/download a chart should fail:
 		// https://github.com/helm/helm/issues/1439
-		churl, username, password, err := findChartURL(dep.Name, dep.Version, dep.Repository, repos)
+		churl, err := findChartURL(dep.Name, dep.Version, dep.Repository, repos)
 		if err != nil {
 			saveError = errors.Wrapf(err, "could not find %s", churl)
 			break
@@ -243,8 +243,6 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			Keyring:  m.Keyring,
 			HelmHome: m.HelmHome,
 			Getters:  m.Getters,
-			Username: username,
-			Password: password,
 		}
 
 		if _, _, err := dl.DownloadTo(churl, "", destPath); err != nil {
@@ -467,7 +465,7 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 // repoURL is the repository to search
 //
 // If it finds a URL that is "relative", it will prepend the repoURL.
-func findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRepository) (url, username, password string, err error) {
+func findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRepository) (url string, err error) {
 	for _, cr := range repos {
 		if urlutil.Equal(repoURL, cr.Config.URL) {
 			var entry repo.ChartVersions
@@ -484,8 +482,6 @@ func findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRep
 			if err != nil {
 				return
 			}
-			username = cr.Config.Username
-			password = cr.Config.Password
 			return
 		}
 	}

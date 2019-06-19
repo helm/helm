@@ -621,8 +621,6 @@ func (c *ChartPathOptions) LocateChart(name string, settings cli.EnvSettings) (s
 		Out:      os.Stdout,
 		Keyring:  c.Keyring,
 		Getters:  getter.All(settings),
-		Username: c.Username,
-		Password: c.Password,
 	}
 	if c.Verify {
 		dl.Verify = downloader.VerifyAlways
