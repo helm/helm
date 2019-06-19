@@ -30,7 +30,7 @@ The Snap package for Helm is maintained by
 [Snapcrafters](https://github.com/snapcrafters/helm).
 
 ```
-$ sudo snap install helm --classic
+sudo snap install helm --classic
 ```
 
 ### From Homebrew (macOS)
@@ -83,12 +83,12 @@ the latest master branch. They are not official releases, and may not be
 stable. However, they offer the opportunity to test the cutting edge
 features.
 
-Canary Helm binaries are stored in the [Kubernetes Helm GCS bucket](https://kubernetes-helm.storage.googleapis.com).
+Canary Helm binaries are stored at [get.helm.sh](https://get.helm.sh).
 Here are links to the common builds:
 
-- [Linux AMD64](https://kubernetes-helm.storage.googleapis.com/helm-canary-linux-amd64.tar.gz)
-- [macOS AMD64](https://kubernetes-helm.storage.googleapis.com/helm-canary-darwin-amd64.tar.gz)
-- [Experimental Windows AMD64](https://kubernetes-helm.storage.googleapis.com/helm-canary-windows-amd64.zip)
+- [Linux AMD64](https://get.helm.sh/helm-canary-linux-amd64.tar.gz)
+- [macOS AMD64](https://get.helm.sh/helm-canary-darwin-amd64.tar.gz)
+- [Experimental Windows AMD64](https://get.helm.sh/helm-canary-windows-amd64.zip)
 
 ### From Source (Linux, macOS)
 
@@ -280,7 +280,7 @@ helm init --override metadata.annotations."deployment\.kubernetes\.io/revision"=
 Output:
 
 ```
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
@@ -337,7 +337,7 @@ The Tiller installation is skipped and the manifest is output to stdout
 in JSON format.
 
 ```
-"apiVersion": "extensions/v1beta1",
+"apiVersion": "apps/v1",
 "kind": "Deployment",
 "metadata": {
     "creationTimestamp": null,
@@ -353,10 +353,13 @@ in JSON format.
 
 ### Storage backends
 By default, `tiller` stores release information in `ConfigMaps` in the namespace
-where it is running. As of Helm 2.7.0, there is now a beta storage backend that
+where it is running.
+
+#### Secret storage backend
+As of Helm 2.7.0, there is now a beta storage backend that
 uses `Secrets` for storing release information. This was added for additional
-security in protecting charts in conjunction with the release of `Secret` 
-encryption in Kubernetes. 
+security in protecting charts in conjunction with the release of `Secret`
+encryption in Kubernetes.
 
 To enable the secrets backend, you'll need to init Tiller with the following
 options:
@@ -368,6 +371,31 @@ helm init --override 'spec.template.spec.containers[0].command'='{/tiller,--stor
 Currently, if you want to switch from the default backend to the secrets
 backend, you'll have to do the migration for this on your own. When this backend
 graduates from beta, there will be a more official path of migration
+
+#### SQL storage backend
+As of Helm 2.14.0 there is now a beta SQL storage backend that stores release
+information in an SQL database (only postgres has been tested so far).
+
+Using such a storage backend is particularly useful if your release information
+weighs more than 1MB (in which case, it can't be stored in ConfigMaps/Secrets
+because of internal limits in Kubernetes' underlying etcd key-value store).
+
+To enable the SQL backend, you'll need to deploy a SQL database and init Tiller
+with the following options:
+
+```shell
+helm init \
+  --override \
+    'spec.template.spec.containers[0].args'='{--storage=sql,--sql-dialect=postgres,--sql-connection-string=postgresql://tiller-postgres:5432/helm?user=helm&password=changeme}'
+```
+
+**PRODUCTION NOTES**: it's recommended to change the username and password of
+the SQL database in production deployments. Enabling SSL is also a good idea.
+Last, but not least, perform regular backups/snapshots of your SQL database.
+
+Currently, if you want to switch from the default backend to the SQL backend,
+you'll have to do the migration for this on your own. When this backend
+graduates from beta, there will be a more official migration path.
 
 ## Conclusion
 

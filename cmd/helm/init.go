@@ -96,7 +96,7 @@ func newInitCmd(out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "init",
-		Short: "initialize Helm on both client and server",
+		Short: "Initialize Helm on both client and server",
 		Long:  initDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) != 0 {
@@ -111,38 +111,38 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.StringVarP(&i.image, "tiller-image", "i", "", "override Tiller image")
-	f.BoolVar(&i.canary, "canary-image", false, "use the canary Tiller image")
-	f.BoolVar(&i.upgrade, "upgrade", false, "upgrade if Tiller is already installed")
-	f.BoolVar(&i.forceUpgrade, "force-upgrade", false, "force upgrade of Tiller to the current helm version")
-	f.BoolVarP(&i.clientOnly, "client-only", "c", false, "if set does not install Tiller")
-	f.BoolVar(&i.dryRun, "dry-run", false, "do not install local or remote")
-	f.BoolVar(&i.skipRefresh, "skip-refresh", false, "do not refresh (download) the local repository cache")
-	f.BoolVar(&i.wait, "wait", false, "block until Tiller is running and ready to receive requests")
+	f.StringVarP(&i.image, "tiller-image", "i", "", "Override Tiller image")
+	f.BoolVar(&i.canary, "canary-image", false, "Use the canary Tiller image")
+	f.BoolVar(&i.upgrade, "upgrade", false, "Upgrade if Tiller is already installed")
+	f.BoolVar(&i.forceUpgrade, "force-upgrade", false, "Force upgrade of Tiller to the current helm version")
+	f.BoolVarP(&i.clientOnly, "client-only", "c", false, "If set does not install Tiller")
+	f.BoolVar(&i.dryRun, "dry-run", false, "Do not install local or remote")
+	f.BoolVar(&i.skipRefresh, "skip-refresh", false, "Do not refresh (download) the local repository cache")
+	f.BoolVar(&i.wait, "wait", false, "Block until Tiller is running and ready to receive requests")
 
 	// TODO: replace TLS flags with pkg/helm/environment.AddFlagsTLS() in Helm 3
 	//
 	// NOTE (bacongobbler): we can't do this in Helm 2 because the flag names differ, and `helm init --tls-ca-cert`
 	// doesn't conform with the rest of the TLS flag names (should be --tiller-tls-ca-cert in Helm 3)
-	f.BoolVar(&tlsEnable, "tiller-tls", false, "install Tiller with TLS enabled")
-	f.BoolVar(&tlsVerify, "tiller-tls-verify", false, "install Tiller with TLS enabled and to verify remote certificates")
-	f.StringVar(&tlsKeyFile, "tiller-tls-key", "", "path to TLS key file to install with Tiller")
-	f.StringVar(&tlsCertFile, "tiller-tls-cert", "", "path to TLS certificate file to install with Tiller")
-	f.StringVar(&tlsCaCertFile, "tls-ca-cert", "", "path to CA root certificate")
-	f.StringVar(&tlsServerName, "tiller-tls-hostname", settings.TillerHost, "the server name used to verify the hostname on the returned certificates from Tiller")
+	f.BoolVar(&tlsEnable, "tiller-tls", false, "Install Tiller with TLS enabled")
+	f.BoolVar(&tlsVerify, "tiller-tls-verify", false, "Install Tiller with TLS enabled and to verify remote certificates")
+	f.StringVar(&tlsKeyFile, "tiller-tls-key", "", "Path to TLS key file to install with Tiller")
+	f.StringVar(&tlsCertFile, "tiller-tls-cert", "", "Path to TLS certificate file to install with Tiller")
+	f.StringVar(&tlsCaCertFile, "tls-ca-cert", "", "Path to CA root certificate")
+	f.StringVar(&tlsServerName, "tiller-tls-hostname", settings.TillerHost, "The server name used to verify the hostname on the returned certificates from Tiller")
 
 	f.StringVar(&stableRepositoryURL, "stable-repo-url", stableRepositoryURL, "URL for stable repository")
 	f.StringVar(&localRepositoryURL, "local-repo-url", localRepositoryURL, "URL for local repository")
 
-	f.BoolVar(&i.opts.EnableHostNetwork, "net-host", false, "install Tiller with net=host")
-	f.StringVar(&i.serviceAccount, "service-account", "", "name of service account")
-	f.IntVar(&i.maxHistory, "history-max", 0, "limit the maximum number of revisions saved per release. Use 0 for no limit.")
-	f.IntVar(&i.replicas, "replicas", 1, "amount of tiller instances to run on the cluster")
+	f.BoolVar(&i.opts.EnableHostNetwork, "net-host", false, "Install Tiller with net=host")
+	f.StringVar(&i.serviceAccount, "service-account", "", "Name of service account")
+	f.IntVar(&i.maxHistory, "history-max", 0, "Limit the maximum number of revisions saved per release. Use 0 for no limit.")
+	f.IntVar(&i.replicas, "replicas", 1, "Amount of tiller instances to run on the cluster")
 
-	f.StringVar(&i.opts.NodeSelectors, "node-selectors", "", "labels to specify the node on which Tiller is installed (app=tiller,helm=rocks)")
-	f.VarP(&i.opts.Output, "output", "o", "skip installation and output Tiller's manifest in specified format (json or yaml)")
-	f.StringArrayVar(&i.opts.Values, "override", []string{}, "override values for the Tiller Deployment manifest (can specify multiple or separate values with commas: key1=val1,key2=val2)")
-	f.BoolVar(&i.opts.AutoMountServiceAccountToken, "automount-service-account-token", true, "auto-mount the given service account to tiller")
+	f.StringVar(&i.opts.NodeSelectors, "node-selectors", "", "Labels to specify the node on which Tiller is installed (app=tiller,helm=rocks)")
+	f.VarP(&i.opts.Output, "output", "o", "Skip installation and output Tiller's manifest in specified format (json or yaml)")
+	f.StringArrayVar(&i.opts.Values, "override", []string{}, "Override values for the Tiller Deployment manifest (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	f.BoolVar(&i.opts.AutoMountServiceAccountToken, "automount-service-account-token", true, "Auto-mount the given service account to tiller")
 
 	return cmd
 }

@@ -29,8 +29,11 @@ import (
 
 func TestGetValuesCmd(t *testing.T) {
 	releaseWithValues := helm.ReleaseMock(&helm.MockReleaseOptions{
-		Name:   "thomas-guide",
-		Chart:  &chart.Chart{Values: &chart.Config{Raw: `foo2: "bar2"`}},
+		Name: "thomas-guide",
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "thomas-guide-chart-name"},
+			Values:   &chart.Config{Raw: `foo2: "bar2"`},
+		},
 		Config: &chart.Config{Raw: `foo: "bar"`},
 	})
 

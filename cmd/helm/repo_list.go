@@ -38,7 +38,7 @@ func newRepoListCmd(out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "list [flags]",
-		Short: "list chart repositories",
+		Short: "List chart repositories",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			list.home = settings.Home
 			return list.run()

@@ -333,11 +333,11 @@ Now, in this example we've done something tricky. The `toppings: |-` line is dec
 
 > The `|-` marker in YAML takes a multi-line string. This can be a useful technique for embedding big blocks of data inside of your manifests, as exemplified here.
 
-Sometimes it's useful to be able to quickly make a list inside of your template, and then iterate over that list. Helm templates have a function to make this easy: `tuple`. In computer science, a tuple is a list-like collection of fixed size, but with arbitrary data types. This roughly conveys the way a `tuple` is used.
+Sometimes it's useful to be able to quickly make a list inside of your template, and then iterate over that list. Helm templates have a function that's called just that: `list`.
 
 ```yaml
   sizes: |-
-    {{- range tuple "small" "medium" "large" }}
+    {{- range list "small" "medium" "large" }}
     - {{ . }}
     {{- end }}
 ```
@@ -351,4 +351,4 @@ The above will produce this:
     - large
 ```
 
-In addition to lists and tuples, `range` can be used to iterate over collections that have a key and a value (like a `map` or `dict`). We'll see how to do that in the next section when we introduce template variables.
+In addition to lists, `range` can be used to iterate over collections that have a key and a value (like a `map` or `dict`). We'll see how to do that in the next section when we introduce template variables.

@@ -80,23 +80,23 @@ type EnvSettings struct {
 
 // AddFlags binds flags to the given flagset.
 func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
-	fs.StringVar((*string)(&s.Home), "home", DefaultHelmHome, "location of your Helm config. Overrides $HELM_HOME")
-	fs.StringVar(&s.TillerHost, "host", "", "address of Tiller. Overrides $HELM_HOST")
-	fs.StringVar(&s.KubeContext, "kube-context", "", "name of the kubeconfig context to use")
-	fs.StringVar(&s.KubeConfig, "kubeconfig", "", "absolute path to the kubeconfig file to use")
-	fs.BoolVar(&s.Debug, "debug", false, "enable verbose output")
-	fs.StringVar(&s.TillerNamespace, "tiller-namespace", "kube-system", "namespace of Tiller")
-	fs.Int64Var(&s.TillerConnectionTimeout, "tiller-connection-timeout", int64(300), "the duration (in seconds) Helm will wait to establish a connection to tiller")
+	fs.StringVar((*string)(&s.Home), "home", DefaultHelmHome, "Location of your Helm config. Overrides $HELM_HOME")
+	fs.StringVar(&s.TillerHost, "host", "", "Address of Tiller. Overrides $HELM_HOST")
+	fs.StringVar(&s.KubeContext, "kube-context", "", "Name of the kubeconfig context to use")
+	fs.StringVar(&s.KubeConfig, "kubeconfig", "", "Absolute path of the kubeconfig file to be used")
+	fs.BoolVar(&s.Debug, "debug", false, "Enable verbose output")
+	fs.StringVar(&s.TillerNamespace, "tiller-namespace", "kube-system", "Namespace of Tiller")
+	fs.Int64Var(&s.TillerConnectionTimeout, "tiller-connection-timeout", int64(300), "The duration (in seconds) Helm will wait to establish a connection to Tiller")
 }
 
 // AddFlagsTLS adds the flags for supporting client side TLS to the given flagset.
 func (s *EnvSettings) AddFlagsTLS(fs *pflag.FlagSet) {
-	fs.StringVar(&s.TLSServerName, "tls-hostname", s.TillerHost, "the server name used to verify the hostname on the returned certificates from the server")
-	fs.StringVar(&s.TLSCaCertFile, "tls-ca-cert", DefaultTLSCaCert, "path to TLS CA certificate file")
-	fs.StringVar(&s.TLSCertFile, "tls-cert", DefaultTLSCert, "path to TLS certificate file")
-	fs.StringVar(&s.TLSKeyFile, "tls-key", DefaultTLSKeyFile, "path to TLS key file")
-	fs.BoolVar(&s.TLSVerify, "tls-verify", DefaultTLSVerify, "enable TLS for request and verify remote")
-	fs.BoolVar(&s.TLSEnable, "tls", DefaultTLSEnable, "enable TLS for request")
+	fs.StringVar(&s.TLSServerName, "tls-hostname", s.TillerHost, "The server name used to verify the hostname on the returned certificates from the server")
+	fs.StringVar(&s.TLSCaCertFile, "tls-ca-cert", DefaultTLSCaCert, "Path to TLS CA certificate file")
+	fs.StringVar(&s.TLSCertFile, "tls-cert", DefaultTLSCert, "Path to TLS certificate file")
+	fs.StringVar(&s.TLSKeyFile, "tls-key", DefaultTLSKeyFile, "Path to TLS key file")
+	fs.BoolVar(&s.TLSVerify, "tls-verify", DefaultTLSVerify, "Enable TLS for request and verify remote")
+	fs.BoolVar(&s.TLSEnable, "tls", DefaultTLSEnable, "Enable TLS for request")
 }
 
 // Init sets values from the environment.

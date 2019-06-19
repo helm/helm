@@ -42,6 +42,8 @@ const (
 	DeploymentName = "deployment.yaml"
 	// ServiceName is the name of the example service file.
 	ServiceName = "service.yaml"
+	// ServiceAccountName is the name of the example serviceaccount file.
+	ServiceAccountName = "serviceaccount.yaml"
 	// NotesName is the name of the example NOTES.txt file.
 	NotesName = "NOTES.txt"
 	// HelpersName is the name of the example helpers file.
@@ -66,6 +68,13 @@ image:
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name:
 
 service:
   type: ClusterIP
@@ -130,6 +139,7 @@ const defaultIgnore = `# Patterns to ignore when building packages.
 
 const defaultIngress = `{{- if .Values.ingress.enabled -}}
 {{- $fullName := include "<CHARTNAME>.fullname" . -}}
+{{- $svcPort := .Values.service.port -}}
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
@@ -160,7 +170,7 @@ spec:
           - path: {{ . }}
             backend:
               serviceName: {{ $fullName }}
-              servicePort: http
+              servicePort: {{ $svcPort }}
         {{- end }}
   {{- end }}
 {{- end }}
@@ -188,6 +198,7 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
     {{- end }}
+      serviceAccountName: {{ template "<CHARTNAME>.serviceAccountName" . }}
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -236,6 +247,15 @@ spec:
   selector:
     app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
+`
+const defaultServiceAccount = `{{- if .Values.serviceAccount.create -}}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ template "<CHARTNAME>.serviceAccountName" . }}
+  labels:
+{{ include "<CHARTNAME>.labels" . | indent 4 }}
+{{- end -}}
 `
 
 const defaultNotes = `1. Get the application URL by running these commands:
@@ -305,6 +325,17 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end -}}
+
+{{/*
+Create the name of the service account to use
+*/}}
+{{- define "<CHARTNAME>.serviceAccountName" -}}
+{{- if .Values.serviceAccount.create -}}
+    {{ default (include "<CHARTNAME>.fullname" .) .Values.serviceAccount.name }}
+{{- else -}}
+    {{ default "default" .Values.serviceAccount.name }}
+{{- end -}}
 {{- end -}}
 `
 
@@ -423,6 +454,11 @@ func Create(chartfile *chart.Metadata, dir string) (string, error) {
 			// service.yaml
 			path:    filepath.Join(cdir, TemplatesDir, ServiceName),
 			content: Transform(defaultService, "<CHARTNAME>", chartfile.Name),
+		},
+		{
+			// serviceaccount.yaml
+			path:    filepath.Join(cdir, TemplatesDir, ServiceAccountName),
+			content: Transform(defaultServiceAccount, "<CHARTNAME>", chartfile.Name),
 		},
 		{
 			// NOTES.txt

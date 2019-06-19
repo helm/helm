@@ -73,7 +73,7 @@ func newFetchCmd(out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "fetch [flags] [chart URL | repo/chartname] [...]",
-		Short: "download a chart from a repository and (optionally) unpack it in local directory",
+		Short: "Download a chart from a repository and (optionally) unpack it in local directory",
 		Long:  fetchDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
@@ -96,20 +96,20 @@ func newFetchCmd(out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.BoolVar(&fch.untar, "untar", false, "if set to true, will untar the chart after downloading it")
-	f.StringVar(&fch.untardir, "untardir", ".", "if untar is specified, this flag specifies the name of the directory into which the chart is expanded")
-	f.BoolVar(&fch.verify, "verify", false, "verify the package against its signature")
-	f.BoolVar(&fch.verifyLater, "prov", false, "fetch the provenance file, but don't perform verification")
-	f.StringVar(&fch.version, "version", "", "specific version of a chart. Without this, the latest version is fetched")
-	f.StringVar(&fch.keyring, "keyring", defaultKeyring(), "keyring containing public keys")
-	f.StringVarP(&fch.destdir, "destination", "d", ".", "location to write the chart. If this and tardir are specified, tardir is appended to this")
-	f.StringVar(&fch.repoURL, "repo", "", "chart repository url where to locate the requested chart")
-	f.StringVar(&fch.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
-	f.StringVar(&fch.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
-	f.StringVar(&fch.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
-	f.BoolVar(&fch.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
-	f.StringVar(&fch.username, "username", "", "chart repository username")
-	f.StringVar(&fch.password, "password", "", "chart repository password")
+	f.BoolVar(&fch.untar, "untar", false, "If set to true, will untar the chart after downloading it")
+	f.StringVar(&fch.untardir, "untardir", ".", "If untar is specified, this flag specifies the name of the directory into which the chart is expanded")
+	f.BoolVar(&fch.verify, "verify", false, "Verify the package against its signature")
+	f.BoolVar(&fch.verifyLater, "prov", false, "Fetch the provenance file, but don't perform verification")
+	f.StringVar(&fch.version, "version", "", "Specific version of a chart. Without this, the latest version is fetched")
+	f.StringVar(&fch.keyring, "keyring", defaultKeyring(), "Keyring containing public keys")
+	f.StringVarP(&fch.destdir, "destination", "d", ".", "Location to write the chart. If this and tardir are specified, tardir is appended to this")
+	f.StringVar(&fch.repoURL, "repo", "", "Chart repository url where to locate the requested chart")
+	f.StringVar(&fch.certFile, "cert-file", "", "Identify HTTPS client using this SSL certificate file")
+	f.StringVar(&fch.keyFile, "key-file", "", "Identify HTTPS client using this SSL key file")
+	f.StringVar(&fch.caFile, "ca-file", "", "Verify certificates of HTTPS-enabled servers using this CA bundle")
+	f.BoolVar(&fch.devel, "devel", false, "Use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
+	f.StringVar(&fch.username, "username", "", "Chart repository username")
+	f.StringVar(&fch.password, "password", "", "Chart repository password")
 
 	return cmd
 }

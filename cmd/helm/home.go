@@ -31,7 +31,7 @@ any helm configuration files live.
 func newHomeCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "home",
-		Short: "displays the location of HELM_HOME",
+		Short: "Displays the location of HELM_HOME",
 		Long:  longHomeHelp,
 		Run: func(cmd *cobra.Command, args []string) {
 			h := settings.Home

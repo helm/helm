@@ -19,6 +19,7 @@ or [pull request](https://github.com/helm/helm/pulls).
 - [Writing a Helm Chart](https://www.influxdata.com/packaged-kubernetes-deployments-writing-helm-chart/)
 - [A basic walk through Kubernetes Helm](https://github.com/muffin87/helm-tutorial)
 - [Tillerless Helm v2](https://rimusz.net/tillerless-helm/)
+- [Generating Certificate Authorities and Certificates using Terraform](https://github.com/jbussdieker/tiller-ssl-terraform)
 
 ## Video, Audio, and Podcast
 
@@ -37,7 +38,7 @@ or [pull request](https://github.com/helm/helm/pulls).
 - [helm-cos](https://github.com/imroc/helm-cos) - Plugin to manage repositories on Tencent Cloud Object Storage
 - [helm-edit](https://github.com/mstrzele/helm-edit) - Plugin for editing release's values
 - [helm-env](https://github.com/adamreese/helm-env) - Plugin to show current environment
-- [helm-gcs](https://github.com/nouney/helm-gcs) - Plugin to manage repositories on Google Cloud Storage
+- [helm-gcs](https://github.com/hayorov/helm-gcs) - Plugin to manage repositories on Google Cloud Storage
 - [helm-github](https://github.com/sagansystems/helm-github) - Plugin to install Helm Charts from Github repositories
 - [helm-hashtag](https://github.com/balboah/helm-hashtag) - Plugin for tracking docker tag hash digests as values
 - [helm-inject](https://github.com/maorfr/helm-inject) - Plugin for injecting additional configurations during release upgrade
@@ -50,6 +51,7 @@ or [pull request](https://github.com/helm/helm/pulls).
 - [helm-plugin-utils](https://github.com/maorfr/helm-plugin-utils) - Utility functions to be used within Helm plugins
 - [helm-restore](https://github.com/maorfr/helm-restore) - Plugin to restore a deployed release to its original state
 - [helm-secrets](https://github.com/futuresimple/helm-secrets) - Plugin to manage and store secrets safely
+- [helm-ssm](https://github.com/codacy/helm-ssm) - Plugin to inject values coming from AWS SSM parameters on the `values.yaml` file
 - [helm-stop](https://github.com/IBM/helm-stop) - Plugin for stopping a release pods
 - [helm-template](https://github.com/technosophos/helm-template) - Debug/render templates client-side
 - [helm-tiller](https://github.com/adamreese/helm-tiller) - Additional commands to work with Tiller

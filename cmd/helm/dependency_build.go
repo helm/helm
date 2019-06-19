@@ -49,7 +49,7 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "build [flags] CHART",
-		Short: "rebuild the charts/ directory based on the requirements.lock file",
+		Short: "Rebuild the charts/ directory based on the requirements.lock file",
 		Long:  dependencyBuildDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			dbc.helmhome = settings.Home
@@ -63,8 +63,8 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.BoolVar(&dbc.verify, "verify", false, "verify the packages against signatures")
-	f.StringVar(&dbc.keyring, "keyring", defaultKeyring(), "keyring containing public keys")
+	f.BoolVar(&dbc.verify, "verify", false, "Verify the packages against signatures")
+	f.StringVar(&dbc.keyring, "keyring", defaultKeyring(), "Keyring containing public keys")
 
 	return cmd
 }
