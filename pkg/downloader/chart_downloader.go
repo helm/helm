@@ -156,7 +156,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, ge
 	}
 
 	// TODO add user-agent
-	g, err := getter.NewHTTPGetter(ref, "", "", "")
+	g, err := getter.NewHTTPGetter(getter.WithURL(ref))
 	if err != nil {
 		return u, nil, err
 	}
@@ -240,7 +240,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, ge
 		u = repoURL.ResolveReference(u)
 		u.RawQuery = q.Encode()
 		// TODO add user-agent
-		g, err := getter.NewHTTPGetter(rc.URL, "", "", "")
+		g, err := getter.NewHTTPGetter(getter.WithURL(rc.URL))
 		if err != nil {
 			return repoURL, nil, err
 		}

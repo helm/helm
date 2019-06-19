@@ -54,16 +54,16 @@ func collectPlugins(settings cli.EnvSettings) (Providers, error) {
 // pluginGetter is a generic type to invoke custom downloaders,
 // implemented in plugins.
 type pluginGetter struct {
-	command                   string
-	certFile, keyFile, cAFile string
-	settings                  cli.EnvSettings
-	name                      string
-	base                      string
+	command  string
+	settings cli.EnvSettings
+	name     string
+	base     string
+	opts     options
 }
 
 // Get runs downloader plugin command
 func (p *pluginGetter) Get(href string) (*bytes.Buffer, error) {
-	argv := []string{p.certFile, p.keyFile, p.cAFile, href}
+	argv := []string{p.opts.certFile, p.opts.keyFile, p.opts.caFile, href}
 	prog := exec.Command(filepath.Join(p.base, p.command), argv...)
 	plugin.SetupPluginEnv(p.settings, p.name, p.base)
 	prog.Env = os.Environ()
@@ -82,15 +82,15 @@ func (p *pluginGetter) Get(href string) (*bytes.Buffer, error) {
 
 // newPluginGetter constructs a valid plugin getter
 func newPluginGetter(command string, settings cli.EnvSettings, name, base string) Constructor {
-	return func(URL, CertFile, KeyFile, CAFile string) (Getter, error) {
+	return func(options ...Option) (Getter, error) {
 		result := &pluginGetter{
 			command:  command,
-			certFile: CertFile,
-			keyFile:  KeyFile,
-			cAFile:   CAFile,
 			settings: settings,
 			name:     name,
 			base:     base,
+		}
+		for _, opt := range options {
+			opt(&result.opts)
 		}
 		return result, nil
 	}

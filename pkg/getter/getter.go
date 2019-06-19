@@ -24,6 +24,55 @@ import (
 	"helm.sh/helm/pkg/cli"
 )
 
+// options are generic parameters to be provided to the getter during instantiation.
+//
+// Getters may or may not ignore these parameters as they are passed in.
+type options struct {
+	url       string
+	certFile  string
+	keyFile   string
+	caFile    string
+	username  string
+	password  string
+	userAgent string
+}
+
+// Option allows specifying various settings configurable by the user for overriding the defaults
+// used when performing Get operations with the Getter.
+type Option func(*options)
+
+// WithURL informs the getter the server name that will be used when fetching objects. Used in conjunction with
+// WithTLSClientConfig to set the TLSClientConfig's server name.
+func WithURL(url string) Option {
+	return func(opts *options) {
+		opts.url = url
+	}
+}
+
+// WithBasicAuth sets the request's Authorization header to use the provided credentials
+func WithBasicAuth(username, password string) Option {
+	return func(opts *options) {
+		opts.username = username
+		opts.password = password
+	}
+}
+
+// WithUserAgent sets the request's User-Agent header to use the provided agent name.
+func WithUserAgent(userAgent string) Option {
+	return func(opts *options) {
+		opts.userAgent = userAgent
+	}
+}
+
+// WithTLSClientConfig sets the client client auth with the provided credentials.
+func WithTLSClientConfig(certFile, keyFile, caFile string) Option {
+	return func(opts *options) {
+		opts.certFile = certFile
+		opts.keyFile = keyFile
+		opts.caFile = caFile
+	}
+}
+
 // Getter is an interface to support GET to the specified URL.
 type Getter interface {
 	//Get file content by url string
@@ -32,7 +81,7 @@ type Getter interface {
 
 // Constructor is the function for every getter which creates a specific instance
 // according to the configuration
-type Constructor func(URL, CertFile, KeyFile, CAFile string) (Getter, error)
+type Constructor func(options ...Option) (Getter, error)
 
 // Provider represents any getter and the schemes that it supports.
 //
@@ -69,8 +118,8 @@ func (p Providers) ByScheme(scheme string) (Constructor, error) {
 }
 
 // All finds all of the registered getters as a list of Provider instances.
-// Currently the build-in http/https getter and the discovered
-// plugins with downloader notations are collected.
+// Currently, the built-in getters and the discovered plugins with downloader
+// notations are collected.
 func All(settings cli.EnvSettings) Providers {
 	result := Providers{
 		{

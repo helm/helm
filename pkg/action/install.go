@@ -751,7 +751,7 @@ func readFile(filePath string, settings cli.EnvSettings) ([]byte, error) {
 		return ioutil.ReadFile(filePath)
 	}
 
-	getter, err := getterConstructor(filePath, "", "", "")
+	getter, err := getterConstructor(getter.WithURL(filePath))
 	if err != nil {
 		return []byte{}, err
 	}
