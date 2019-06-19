@@ -152,7 +152,6 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	settings.AddFlagsTLS(f)
-	f.StringVar(&upgrade.appVersion, "app-version", "", "Specify the app version to use for the upgrade")
 	f.VarP(&upgrade.valueFiles, "values", "f", "Specify values in a YAML file or a URL(can specify multiple)")
 	f.BoolVar(&upgrade.dryRun, "dry-run", false, "Simulate an upgrade")
 	f.BoolVar(&upgrade.recreate, "recreate-pods", false, "Performs pods restart for the resource if applicable")
@@ -167,6 +166,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVarP(&upgrade.install, "install", "i", false, "If a release by this name doesn't already exist, run an install")
 	f.StringVar(&upgrade.namespace, "namespace", "", "Namespace to install the release into (only used if --install is set). Defaults to the current kube config namespace")
 	f.StringVar(&upgrade.version, "version", "", "Specify the exact chart version to use. If this is not specified, the latest version is used")
+	f.StringVar(&upgrade.appVersion, "app-version", "", "Specify the app version to use for the upgrade")
 	f.Int64Var(&upgrade.timeout, "timeout", 300, "Time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&upgrade.resetValues, "reset-values", false, "When upgrading, reset the values to the ones built into the chart")
 	f.BoolVar(&upgrade.reuseValues, "reuse-values", false, "When upgrading, reuse the last release's values and merge in any overrides from the command line via --set and -f. If '--reset-values' is specified, this is ignored.")

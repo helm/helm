@@ -200,7 +200,6 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	settings.AddFlagsTLS(f)
-	f.StringVar(&inst.appVersion, "app-version", "", "Specify an app version for the release")
 	f.VarP(&inst.valueFiles, "values", "f", "Specify values in a YAML file or a URL(can specify multiple)")
 	f.StringVarP(&inst.name, "name", "n", "", "The release name. If unspecified, it will autogenerate one for you")
 	f.StringVar(&inst.namespace, "namespace", "", "Namespace to install the release into. Defaults to the current kube config namespace.")
@@ -215,6 +214,7 @@ func newInstallCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&inst.verify, "verify", false, "Verify the package before installing it")
 	f.StringVar(&inst.keyring, "keyring", defaultKeyring(), "Location of public keys used for verification")
 	f.StringVar(&inst.version, "version", "", "Specify the exact chart version to install. If this is not specified, the latest version is installed")
+	f.StringVar(&inst.appVersion, "app-version", "", "Specify an app version for the release")
 	f.Int64Var(&inst.timeout, "timeout", 300, "Time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&inst.wait, "wait", false, "If set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
 	f.BoolVar(&inst.atomic, "atomic", false, "If set, installation process purges chart on fail, also sets --wait flag")
