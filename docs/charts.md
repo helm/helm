@@ -575,6 +575,7 @@ cannot be overridden. As with all values, the names are _case
 sensitive_.
 
 - `Release.Name`: The name of the release (not the chart)
+- `Release.Namespace`: The namespace the chart was released to.
 - `Release.Service`: The service that conducted the release.
 - `Release.IsUpgrade`: This is set to true if the current operation is an upgrade or rollback.
 - `Release.IsInstall`: This is set to true if the current operation is an
