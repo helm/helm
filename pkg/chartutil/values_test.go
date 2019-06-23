@@ -285,6 +285,7 @@ right: Null
 left: NULL
 front: ~
 back: ""
+tag: 20190612073634
 
 global:
   name: Ishmael
@@ -342,6 +343,7 @@ func TestCoalesceValues(t *testing.T) {
 		tpl    string
 		expect string
 	}{
+		{"{{.tag}}", "20190612073634"},
 		{"{{.top}}", "yup"},
 		{"{{.back}}", ""},
 		{"{{.name}}", "moby"},
