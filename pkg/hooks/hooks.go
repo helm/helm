@@ -31,14 +31,15 @@ const HookDeleteAnno = "helm.sh/hook-delete-policy"
 
 // Types of hooks
 const (
-	PreInstall         = "pre-install"
-	PostInstall        = "post-install"
-	PreDelete          = "pre-delete"
-	PostDelete         = "post-delete"
-	PreUpgrade         = "pre-upgrade"
-	PostUpgrade        = "post-upgrade"
-	PreRollback        = "pre-rollback"
-	PostRollback       = "post-rollback"
+	PreInstall   = "pre-install"
+	PostInstall  = "post-install"
+	PreDelete    = "pre-delete"
+	PostDelete   = "post-delete"
+	PreUpgrade   = "pre-upgrade"
+	PostUpgrade  = "post-upgrade"
+	PreRollback  = "pre-rollback"
+	PostRollback = "post-rollback"
+	//TODO: remove test hooks entirely when release helm v3.0.0-beta
 	ReleaseTestSuccess = "test-success"
 	ReleaseTestFailure = "test-failure"
 )

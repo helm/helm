@@ -54,14 +54,17 @@ type result struct {
 // TODO: Refactor this out. It's here because naming conventions were not followed through.
 // So fix the Test hook names and then remove this.
 var events = map[string]release.HookEvent{
-	hooks.PreInstall:         release.HookPreInstall,
-	hooks.PostInstall:        release.HookPostInstall,
-	hooks.PreDelete:          release.HookPreDelete,
-	hooks.PostDelete:         release.HookPostDelete,
-	hooks.PreUpgrade:         release.HookPreUpgrade,
-	hooks.PostUpgrade:        release.HookPostUpgrade,
-	hooks.PreRollback:        release.HookPreRollback,
-	hooks.PostRollback:       release.HookPostRollback,
+	hooks.PreInstall:   release.HookPreInstall,
+	hooks.PostInstall:  release.HookPostInstall,
+	hooks.PreDelete:    release.HookPreDelete,
+	hooks.PostDelete:   release.HookPostDelete,
+	hooks.PreUpgrade:   release.HookPreUpgrade,
+	hooks.PostUpgrade:  release.HookPostUpgrade,
+	hooks.PreRollback:  release.HookPreRollback,
+	hooks.PostRollback: release.HookPostRollback,
+}
+
+var DepricatedHookEvents = map[string]release.HookEvent{
 	hooks.ReleaseTestSuccess: release.HookReleaseTestSuccess,
 	hooks.ReleaseTestFailure: release.HookReleaseTestFailure,
 }
@@ -194,11 +197,17 @@ func (file *manifestFile) sort(result *result) error {
 		}
 
 		isUnknownHook := false
+		isDepricatedHook := false
 		for _, hookType := range strings.Split(hookTypes, ",") {
 			hookType = strings.ToLower(strings.TrimSpace(hookType))
 			e, ok := events[hookType]
 			if !ok {
-				isUnknownHook = true
+				_, depricated := DepricatedHookEvents[hookType]
+				if depricated {
+					isDepricatedHook = true
+				} else {
+					isUnknownHook = true
+				}
 				break
 			}
 			h.Events = append(h.Events, e)
@@ -206,6 +215,11 @@ func (file *manifestFile) sort(result *result) error {
 
 		if isUnknownHook {
 			log.Printf("info: skipping unknown hook: %q", hookTypes)
+			continue
+		}
+
+		if isDepricatedHook {
+			log.Printf("info: skipping depricated hook: %q", hookTypes)
 			continue
 		}
 

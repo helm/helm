@@ -187,12 +187,13 @@ metadata:
 		t.Errorf("Expected 3 test manifests, got %d", len(ts))
 	}
 
-	if len(hs) != 4 {
-		t.Errorf("Expected 4 hooks, got %d", len(hs))
+	if len(hs) != 3 {
+		t.Errorf("Expected 3 hook manifests, got %d", len(hs))
 	}
 
 	for _, out := range hs {
 		found := false
+
 		for _, expect := range data {
 			if out.Path == expect.path {
 				found = true

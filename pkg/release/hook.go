@@ -22,14 +22,15 @@ type HookEvent string
 
 // Hook event types
 const (
-	HookPreInstall         HookEvent = "pre-install"
-	HookPostInstall        HookEvent = "post-install"
-	HookPreDelete          HookEvent = "pre-delete"
-	HookPostDelete         HookEvent = "post-delete"
-	HookPreUpgrade         HookEvent = "pre-upgrade"
-	HookPostUpgrade        HookEvent = "post-upgrade"
-	HookPreRollback        HookEvent = "pre-rollback"
-	HookPostRollback       HookEvent = "post-rollback"
+	HookPreInstall   HookEvent = "pre-install"
+	HookPostInstall  HookEvent = "post-install"
+	HookPreDelete    HookEvent = "pre-delete"
+	HookPostDelete   HookEvent = "post-delete"
+	HookPreUpgrade   HookEvent = "pre-upgrade"
+	HookPostUpgrade  HookEvent = "post-upgrade"
+	HookPreRollback  HookEvent = "pre-rollback"
+	HookPostRollback HookEvent = "post-rollback"
+	//TODO: remove depricated test hooks entirely with helm v3.0.0-beta
 	HookReleaseTestSuccess HookEvent = "release-test-success"
 	HookReleaseTestFailure HookEvent = "release-test-failure"
 )
