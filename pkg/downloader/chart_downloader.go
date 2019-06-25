@@ -176,7 +176,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, ge
 				r := &repo.ChartRepository{}
 				r.Client = g
 				g.SetBasicAuth(c.getRepoCredentials(r))
-				return u, g, err
+				return u, g, nil
 			}
 			return u, nil, err
 		}
