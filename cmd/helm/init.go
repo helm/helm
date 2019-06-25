@@ -284,6 +284,7 @@ func (i *initCmd) run() error {
 				}
 				fmt.Fprintln(i.out, "\nTiller (the Helm server-side component) has been upgraded to the current version.")
 			} else {
+				debug("The error received while trying to init: %s", err)
 				fmt.Fprintln(i.out, "Warning: Tiller is already installed in the cluster.\n"+
 					"(Use --client-only to suppress this message, or --upgrade to upgrade Tiller to the current version.)")
 			}
