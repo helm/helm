@@ -40,11 +40,11 @@ type Upgrade struct {
 	ChartPathOptions
 	ValueOptions
 
-	Install   bool
-	Devel     bool
-	Namespace string
-	Timeout   time.Duration
-	Wait      bool
+	Install      bool
+	Devel        bool
+	Namespace    string
+	Timeout      time.Duration
+	Wait         bool
 	DisableHooks bool
 	DryRun       bool
 	Force        bool

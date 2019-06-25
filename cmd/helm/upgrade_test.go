@@ -236,7 +236,7 @@ func prepareMockRelease(releaseName string, t *testing.T) (func(n string, v int,
 			Description: "A Helm chart for Kubernetes",
 			Version:     "0.1.0",
 		},
-		Templates: []*chart.File{&chart.File{Name: "templates/configmap.yaml", Data: configmapData}},
+		Templates: []*chart.File{{Name: "templates/configmap.yaml", Data: configmapData}},
 	}
 	chartPath := filepath.Join(tmpChart, cfile.Metadata.Name)
 	if err := chartutil.SaveDir(cfile, tmpChart); err != nil {
