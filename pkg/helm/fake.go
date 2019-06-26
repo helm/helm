@@ -19,6 +19,7 @@ package helm // import "k8s.io/helm/pkg/helm"
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"math/rand"
 	"strings"
 	"sync"
@@ -139,6 +140,29 @@ func (c *FakeClient) DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.U
 	}
 
 	return nil, storageerrors.ErrReleaseNotFound(rlsName)
+}
+
+func (c *FakeClient) PruneReleases(opts ...DeleteOption) ([]*rls.UninstallReleaseResponse, []error) {
+	relsToDelete := make([]*release.Release, 0)
+	for _, rel := range c.Rels {
+		if rel.Info.GetStatus().Code == release.Status_DELETED {
+			relsToDelete = append(relsToDelete, rel)
+		}
+	}
+	res := &rls.ListReleasesResponse{Releases: relsToDelete}
+
+	if res != nil && res.Releases != nil {
+		resps := make([]*rls.UninstallReleaseResponse, len(res.Releases))
+		errs := make([]error, len(res.Releases))
+		for _, rel := range res.Releases {
+			res, err := c.DeleteRelease(rel.Name, append(opts, DeletePurge(true))...)
+			resps = append(resps, res)
+			errs = append(errs, err)
+		}
+		return resps, errs
+	} else {
+		return nil, []error{fmt.Errorf("No deleted releases to prune")}
+	}
 }
 
 // GetVersion returns a fake version

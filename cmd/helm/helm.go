@@ -190,6 +190,7 @@ func newRootCmd(args []string) *cobra.Command {
 		newRollbackCmd(nil, out),
 		newStatusCmd(nil, out),
 		newUpgradeCmd(nil, out),
+		newPruneCmd(nil, out),
 
 		newReleaseTestCmd(nil, out),
 		newResetCmd(nil, out),

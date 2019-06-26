@@ -29,6 +29,7 @@ import (
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
+	"k8s.io/helm/pkg/proto/hapi/release"
 	rls "k8s.io/helm/pkg/proto/hapi/services"
 )
 
@@ -146,6 +147,25 @@ func (h *Client) DeleteRelease(rlsName string, opts ...DeleteOption) (*rls.Unins
 		}
 	}
 	return h.delete(ctx, req)
+}
+
+func (h *Client) PruneReleases(opts ...DeleteOption) ([]*rls.UninstallReleaseResponse, []error) {
+	res, err := h.ListReleases(ReleaseListStatuses([]release.Status_Code{release.Status_DELETED}))
+	if err != nil {
+		return nil, []error{err}
+	}
+	if res != nil && res.Releases != nil {
+		resps := make([]*rls.UninstallReleaseResponse, len(res.Releases))
+		errs := make([]error, len(res.Releases))
+		for _, rel := range res.Releases {
+			res, err := h.DeleteRelease(rel.Name, append(opts, DeletePurge(true))...)
+			resps = append(resps, res)
+			errs = append(errs, err)
+		}
+		return resps, errs
+	} else {
+		return nil, []error{fmt.Errorf("No deleted releases to prune")}
+	}
 }
 
 // UpdateRelease loads a chart from chstr and updates a release to a new/different chart.
