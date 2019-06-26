@@ -97,7 +97,8 @@ func (c *Client) PushChart(ref *Reference) error {
 	if err != nil {
 		return err
 	}
-	_, err = oras.Push(c.newContext(), c.resolver, ref.String(), c.cache.store, layers)
+	pushOpt := oras.WithConfig(c.cache.store.Add("", HelmChartConfigMediaType, []byte("{}")))
+	_, err = oras.Push(c.newContext(), c.resolver, ref.String(), c.cache.store, layers, pushOpt)
 	if err != nil {
 		return err
 	}

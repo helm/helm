@@ -20,6 +20,9 @@ const (
 	// HelmChartDefaultTag is the default tag used when storing a chart reference with no tag
 	HelmChartDefaultTag = "latest"
 
+	// HelmChartConfigMediaType is the reserved media type for Helm chart config
+	HelmChartConfigMediaType = "application/vnd.cncf.helm.config.v1+json"
+
 	// HelmChartMetaMediaType is the reserved media type for Helm chart metadata
 	HelmChartMetaMediaType = "application/vnd.cncf.helm.chart.meta.v1+json"
 
