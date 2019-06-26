@@ -47,7 +47,7 @@ func New(chartpath string, helmhome helmpath.Home) *Resolver {
 }
 
 // Resolve resolves dependencies and returns a lock file with the resolution.
-func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string, d string) (*chart.Lock, error) {
+func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string) (*chart.Lock, error) {
 
 	// Now we clone the dependencies, locking as we go.
 	locked := make([]*chart.Dependency, len(reqs))
@@ -107,9 +107,15 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 	if len(missing) > 0 {
 		return nil, errors.Errorf("can't get a valid version for repositories %s. Try changing the version constraint in Chart.yaml", strings.Join(missing, ", "))
 	}
+
+	digest, err := HashReq(locked)
+	if err != nil {
+		return nil, err
+	}
+
 	return &chart.Lock{
 		Generated:    time.Now(),
-		Digest:       d,
+		Digest:       digest,
 		Dependencies: locked,
 	}, nil
 }

@@ -90,12 +90,7 @@ func TestResolve(t *testing.T) {
 	repoNames := map[string]string{"alpine": "kubernetes-charts", "redis": "kubernetes-charts"}
 	r := New("testdata/chartpath", "testdata/helmhome")
 	for _, tt := range tests {
-		hash, err := HashReq(tt.req)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		l, err := r.Resolve(tt.req, repoNames, hash)
+		l, err := r.Resolve(tt.req, repoNames)
 		if err != nil {
 			if tt.err {
 				continue
@@ -107,7 +102,7 @@ func TestResolve(t *testing.T) {
 			t.Fatalf("Expected error in test %q", tt.name)
 		}
 
-		if h, err := HashReq(tt.req); err != nil {
+		if h, err := HashReq(tt.expect.Dependencies); err != nil {
 			t.Fatal(err)
 		} else if h != l.Digest {
 			t.Errorf("%q: hashes don't match.", tt.name)
