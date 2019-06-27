@@ -27,6 +27,12 @@ import (
 
 const pruneDesc = `
 This command purges all deleted releases, cleaning them from removing them permanently so they can't be rolled back.
+Internally, it performs the 'helm list --deleted' command to find all releases with the stats 'Status_DELETED',
+and then runs the 'helm delete --purge' command on those releases.
+
+The prune command is designed to encourage a workflow of not immediately purging releases.
+This gives users the opportunity to 'rollback' a delete if necessary, and then 'prune' their releases
+when they are sure that they are not necessary anymore. 
 `
 
 type pruneCmd struct {
