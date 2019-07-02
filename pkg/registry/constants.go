@@ -21,7 +21,7 @@ const (
 	HelmChartDefaultTag = "latest"
 
 	// HelmChartConfigMediaType is the reserved media type for the Helm chart manifest config
-	HelmChartConfigMediaType = "application/vnd.cncf.helm.chart.config.v1+json"
+	HelmChartConfigMediaType = "application/vnd.cncf.helm.config.v1+json"
 
 	// HelmChartMetaLayerMediaType is the reserved media type for Helm chart metadata
 	HelmChartMetaLayerMediaType = "application/vnd.cncf.helm.chart.meta.layer.v1+json"
