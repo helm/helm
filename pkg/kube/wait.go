@@ -47,9 +47,12 @@ func (w *waiter) waitForResources(created Result) error {
 	w.log("beginning wait for %d resources with timeout of %v", len(created), w.timeout)
 
 	return wait.Poll(2*time.Second, w.timeout, func() (bool, error) {
-		for _, v := range created[:0] {
+		for _, v := range created {
 			var (
-				ok  bool
+				// This defaults to true, otherwise we get to a point where
+				// things will always return false unless one of the objects
+				// that manages pods has been hit
+				ok  = true
 				err error
 			)
 			switch value := asVersioned(v).(type) {
@@ -128,6 +131,10 @@ func (w *waiter) waitForResources(created Result) error {
 				}
 			case *corev1.ReplicationController:
 				ok, err = w.podsReadyForObject(value.Namespace, value)
+			// TODO(Taylor): This works, but ends up with a possible race 
+			// condition if some pods have not been scheduled yet. This logic
+			// should be refactored to do similar checks to what is done for
+			// Deployments
 			case *extensionsv1beta1.DaemonSet:
 				ok, err = w.podsReadyForObject(value.Namespace, value)
 			case *appsv1.DaemonSet:
@@ -193,20 +200,15 @@ func (w *waiter) serviceReady(s *corev1.Service) bool {
 	if s.Spec.Type == corev1.ServiceTypeExternalName {
 		return true
 	}
+
 	// Make sure the service is not explicitly set to "None" before checking the IP
-	if s.Spec.ClusterIP != corev1.ClusterIPNone && !isServiceIPSet(s) ||
+	if (s.Spec.ClusterIP != corev1.ClusterIPNone && s.Spec.ClusterIP == "") ||
 		// This checks if the service has a LoadBalancer and that balancer has an Ingress defined
-		s.Spec.Type == corev1.ServiceTypeLoadBalancer && s.Status.LoadBalancer.Ingress == nil {
+		(s.Spec.Type == corev1.ServiceTypeLoadBalancer && s.Status.LoadBalancer.Ingress == nil) {
 		w.log("Service is not ready: %s/%s", s.GetNamespace(), s.GetName())
 		return false
 	}
 	return true
-}
-
-// isServiceIPSet aims to check if the service's ClusterIP is set or not
-// the objective is not to perform validation here
-func isServiceIPSet(service *corev1.Service) bool {
-	return service.Spec.ClusterIP != corev1.ClusterIPNone && service.Spec.ClusterIP != ""
 }
 
 func (w *waiter) volumeReady(v *corev1.PersistentVolumeClaim) bool {
