@@ -480,6 +480,33 @@ func TestAlterFuncMap_require(t *testing.T) {
 	if gotNum := out["conan/templates/bases"]; gotNum != expectNum {
 		t.Errorf("Expected %q, got %q (%v)", expectNum, gotNum, out)
 	}
+
+	// test required without passing in needed values with lint mode on
+	// verifies lint replaces required with an empty string (should not fail)
+	lintValues := chartutil.Values{
+		"Values": chartutil.Values{
+			"who": "us",
+		},
+		"Chart": c.Metadata,
+		"Release": chartutil.Values{
+			"Name": "That 90s meme",
+		},
+	}
+	var e Engine
+	e.LintMode = true
+	out, err = e.Render(c, lintValues)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectStr = "All your base are belong to us"
+	if gotStr := out["conan/templates/quote"]; gotStr != expectStr {
+		t.Errorf("Expected %q, got %q (%v)", expectStr, gotStr, out)
+	}
+	expectNum = "All  of them!"
+	if gotNum := out["conan/templates/bases"]; gotNum != expectNum {
+		t.Errorf("Expected %q, got %q (%v)", expectNum, gotNum, out)
+	}
 }
 
 func TestAlterFuncMap_tpl(t *testing.T) {
