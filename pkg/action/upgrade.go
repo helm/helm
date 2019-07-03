@@ -211,6 +211,16 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 		return upgradedRelease, err
 	}
 
+	if u.Wait {
+		buf := bytes.NewBufferString(upgradedRelease.Manifest)
+		if err := u.cfg.KubeClient.Wait(buf, u.Timeout); err != nil {
+			upgradedRelease.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", upgradedRelease.Name, err.Error()))
+			u.cfg.recordRelease(originalRelease)
+			u.cfg.recordRelease(upgradedRelease)
+			return upgradedRelease, errors.Wrapf(err, "release %s failed", upgradedRelease.Name)
+		}
+	}
+
 	// post-upgrade hooks
 	if !u.DisableHooks {
 		if err := u.execHook(upgradedRelease.Hooks, hooks.PostUpgrade); err != nil {
