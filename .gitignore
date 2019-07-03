@@ -1,5 +1,6 @@
 *.exe
 .DS_Store
+.acceptance/
 .coverage/
 .idea/
 .vimrc

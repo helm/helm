@@ -85,6 +85,10 @@ test-style: vendor $(GOLANGCI_LINT)
 verify-docs: build
 	@scripts/verify-docs.sh
 
+.PHONY: acceptance
+acceptance: build
+	@scripts/acceptance.sh
+
 .PHONY: coverage
 coverage:
 	@scripts/coverage.sh
