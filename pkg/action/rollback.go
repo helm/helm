@@ -149,7 +149,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 
 	cr := bytes.NewBufferString(currentRelease.Manifest)
 	tr := bytes.NewBufferString(targetRelease.Manifest)
-	// TODO add wait
+
 	if err := r.cfg.KubeClient.Update(cr, tr, r.Force, r.Recreate); err != nil {
 		msg := fmt.Sprintf("Rollback %q failed: %s", targetRelease.Name, err)
 		r.cfg.Log("warning: %s", msg)
@@ -159,6 +159,16 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		r.cfg.recordRelease(currentRelease)
 		r.cfg.recordRelease(targetRelease)
 		return targetRelease, err
+	}
+
+	if r.Wait {
+		buf := bytes.NewBufferString(targetRelease.Manifest)
+		if err := r.cfg.KubeClient.Wait(buf, r.Timeout); err != nil {
+			targetRelease.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", targetRelease.Name, err.Error()))
+			r.cfg.recordRelease(currentRelease)
+			r.cfg.recordRelease(targetRelease)
+			return targetRelease, errors.Wrapf(err, "release %s failed", targetRelease.Name)
+		}
 	}
 
 	// post-rollback hooks
