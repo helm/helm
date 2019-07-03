@@ -32,17 +32,6 @@ type HTTPGetter struct {
 	opts   options
 }
 
-// SetBasicAuth sets the request's Authorization header to use the provided credentials.
-func (g *HTTPGetter) SetBasicAuth(username, password string) {
-	g.opts.username = username
-	g.opts.password = password
-}
-
-// SetUserAgent sets the request's User-Agent header to use the provided agent name.
-func (g *HTTPGetter) SetUserAgent(userAgent string) {
-	g.opts.userAgent = userAgent
-}
-
 //Get performs a Get from repo.Getter and returns the body.
 func (g *HTTPGetter) Get(href string) (*bytes.Buffer, error) {
 	return g.get(href)
@@ -79,13 +68,8 @@ func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
 	return buf, err
 }
 
-// newHTTPGetter constructs a valid http/https client as Getter
-func newHTTPGetter(options ...Option) (Getter, error) {
-	return NewHTTPGetter(options...)
-}
-
-// NewHTTPGetter constructs a valid http/https client as HTTPGetter
-func NewHTTPGetter(options ...Option) (*HTTPGetter, error) {
+// NewHTTPGetter constructs a valid http/https client as a Getter
+func NewHTTPGetter(options ...Option) (Getter, error) {
 	var client HTTPGetter
 
 	for _, opt := range options {

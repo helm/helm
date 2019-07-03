@@ -40,7 +40,7 @@ func collectPlugins(settings cli.EnvSettings) (Providers, error) {
 		for _, downloader := range plugin.Metadata.Downloaders {
 			result = append(result, Provider{
 				Schemes: downloader.Protocols,
-				New: newPluginGetter(
+				New: NewPluginGetter(
 					downloader.Command,
 					settings,
 					plugin.Metadata.Name,
@@ -82,8 +82,8 @@ func (p *pluginGetter) Get(href string) (*bytes.Buffer, error) {
 	return buf, nil
 }
 
-// newPluginGetter constructs a valid plugin getter
-func newPluginGetter(command string, settings cli.EnvSettings, name, base string) Constructor {
+// NewPluginGetter constructs a valid plugin getter
+func NewPluginGetter(command string, settings cli.EnvSettings, name, base string) Constructor {
 	return func(options ...Option) (Getter, error) {
 		result := &pluginGetter{
 			command:  command,

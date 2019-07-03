@@ -28,22 +28,22 @@ import (
 )
 
 func TestHTTPGetter(t *testing.T) {
-	g, err := newHTTPGetter(WithURL("http://example.com"))
+	g, err := NewHTTPGetter(WithURL("http://example.com"))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	if hg, ok := g.(*HTTPGetter); !ok {
-		t.Fatal("Expected newHTTPGetter to produce an httpGetter")
+		t.Fatal("Expected NewHTTPGetter to produce an *HTTPGetter")
 	} else if hg.client != http.DefaultClient {
-		t.Fatal("Expected newHTTPGetter to return a default HTTP client.")
+		t.Fatal("Expected NewHTTPGetter to return a default HTTP client.")
 	}
 
 	// Test with SSL:
 	cd := "../../testdata"
 	join := filepath.Join
 	ca, pub, priv := join(cd, "ca.pem"), join(cd, "crt.pem"), join(cd, "key.pem")
-	g, err = newHTTPGetter(
+	g, err = NewHTTPGetter(
 		WithURL("http://example.com"),
 		WithTLSClientConfig(pub, priv, ca),
 	)
@@ -53,23 +53,28 @@ func TestHTTPGetter(t *testing.T) {
 
 	hg, ok := g.(*HTTPGetter)
 	if !ok {
-		t.Fatal("Expected newHTTPGetter to produce an httpGetter")
+		t.Fatal("Expected NewHTTPGetter to produce an *HTTPGetter")
 	}
 
 	transport, ok := hg.client.Transport.(*http.Transport)
 	if !ok {
-		t.Errorf("Expected newHTTPGetter to set up an HTTP transport")
+		t.Errorf("Expected NewHTTPGetter to set up an HTTP transport")
 	}
 
 	test.AssertGoldenString(t, transport.TLSClientConfig.ServerName, "output/httpgetter-servername.txt")
 
 	// Test other options
-	hg, err = NewHTTPGetter(
+	g, err = NewHTTPGetter(
 		WithBasicAuth("I", "Am"),
 		WithUserAgent("Groot"),
 	)
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	hg, ok = g.(*HTTPGetter)
+	if !ok {
+		t.Fatal("expected NewHTTPGetter to produce an *HTTPGetter")
 	}
 
 	if hg.opts.username != "I" {

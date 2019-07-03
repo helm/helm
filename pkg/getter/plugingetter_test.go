@@ -77,7 +77,7 @@ func TestPluginGetter(t *testing.T) {
 	os.Setenv("HELM_HOME", "")
 
 	env := hh(false)
-	pg := newPluginGetter("echo", env, "test", ".")
+	pg := NewPluginGetter("echo", env, "test", ".")
 	g, err := pg()
 	if err != nil {
 		t.Fatal(err)
@@ -105,7 +105,7 @@ func TestPluginSubCommands(t *testing.T) {
 	os.Setenv("HELM_HOME", "")
 
 	env := hh(false)
-	pg := newPluginGetter("echo -n", env, "test", ".")
+	pg := NewPluginGetter("echo -n", env, "test", ".")
 	g, err := pg()
 	if err != nil {
 		t.Fatal(err)
