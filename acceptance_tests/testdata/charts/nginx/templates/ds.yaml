@@ -32,5 +32,4 @@ spec:
               command:
               - sh
               - "-c"
-              - "echo bar | grep bar"
-      
+              - "echo bar | grep {{ if .Values.breakme }}foo{{ else }}bar{{ end }}"
