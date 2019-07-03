@@ -84,7 +84,7 @@ func NewHTTPInstaller(source string, home helmpath.Home) (*HTTPInstaller, error)
 		return nil, err
 	}
 
-	get, err := getConstructor.New(source, "", "", "")
+	get, err := getConstructor.New(getter.WithURL(source))
 	if err != nil {
 		return nil, err
 	}

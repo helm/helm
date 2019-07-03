@@ -63,7 +63,10 @@ func NewChartRepository(cfg *Entry, getters getter.Providers) (*ChartRepository,
 	if err != nil {
 		return nil, errors.Errorf("could not find protocol handler for: %s", u.Scheme)
 	}
-	client, err := getterConstructor(cfg.URL, cfg.CertFile, cfg.KeyFile, cfg.CAFile)
+	client, err := getterConstructor(
+		getter.WithURL(cfg.URL),
+		getter.WithTLSClientConfig(cfg.CertFile, cfg.KeyFile, cfg.CAFile),
+	)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not construct protocol handler for: %s", u.Scheme)
 	}
@@ -121,11 +124,14 @@ func (r *ChartRepository) DownloadIndexFile(cachePath string) error {
 
 	indexURL = parsedURL.String()
 	// TODO add user-agent
-	g, err := getter.NewHTTPGetter(indexURL, r.Config.CertFile, r.Config.KeyFile, r.Config.CAFile)
+	g, err := getter.NewHTTPGetter(
+		getter.WithURL(indexURL),
+		getter.WithTLSClientConfig(r.Config.CertFile, r.Config.KeyFile, r.Config.CAFile),
+		getter.WithBasicAuth(r.Config.Username, r.Config.Password),
+	)
 	if err != nil {
 		return err
 	}
-	g.SetBasicAuth(r.Config.Username, r.Config.Password)
 	resp, err := g.Get(indexURL)
 	if err != nil {
 		return err

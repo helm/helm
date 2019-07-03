@@ -19,10 +19,12 @@ import (
 	"net/http"
 	"path/filepath"
 	"testing"
+
+	"helm.sh/helm/internal/test"
 )
 
 func TestHTTPGetter(t *testing.T) {
-	g, err := newHTTPGetter("http://example.com", "", "", "")
+	g, err := newHTTPGetter(WithURL("http://example.com"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,12 +39,44 @@ func TestHTTPGetter(t *testing.T) {
 	cd := "../../testdata"
 	join := filepath.Join
 	ca, pub, priv := join(cd, "ca.pem"), join(cd, "crt.pem"), join(cd, "key.pem")
-	g, err = newHTTPGetter("http://example.com/", pub, priv, ca)
+	g, err = newHTTPGetter(
+		WithURL("http://example.com"),
+		WithTLSClientConfig(pub, priv, ca),
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if _, ok := g.(*HTTPGetter); !ok {
+	hg, ok := g.(*HTTPGetter)
+	if !ok {
 		t.Fatal("Expected newHTTPGetter to produce an httpGetter")
+	}
+
+	transport, ok := hg.client.Transport.(*http.Transport)
+	if !ok {
+		t.Errorf("Expected newHTTPGetter to set up an HTTP transport")
+	}
+
+	test.AssertGoldenString(t, transport.TLSClientConfig.ServerName, "output/httpgetter-servername.txt")
+
+	// Test other options
+	hg, err = NewHTTPGetter(
+		WithBasicAuth("I", "Am"),
+		WithUserAgent("Groot"),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if hg.opts.username != "I" {
+		t.Errorf("Expected NewHTTPGetter to contain %q as the username, got %q", "I", hg.opts.username)
+	}
+
+	if hg.opts.password != "Am" {
+		t.Errorf("Expected NewHTTPGetter to contain %q as the password, got %q", "Am", hg.opts.password)
+	}
+
+	if hg.opts.userAgent != "Groot" {
+		t.Errorf("Expected NewHTTPGetter to contain %q as the user agent, got %q", "Groot", hg.opts.userAgent)
 	}
 }

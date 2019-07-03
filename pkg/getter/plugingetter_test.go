@@ -78,7 +78,7 @@ func TestPluginGetter(t *testing.T) {
 
 	env := hh(false)
 	pg := newPluginGetter("echo", env, "test", ".")
-	g, err := pg("test://foo/bar", "", "", "")
+	g, err := pg()
 	if err != nil {
 		t.Fatal(err)
 	}
