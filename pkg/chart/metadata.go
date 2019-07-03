@@ -26,8 +26,6 @@ type Maintainer struct {
 }
 
 // Metadata for a Chart file. This models the structure of a Chart.yaml file.
-//
-// Spec: https://helm.sh/helm/blob/master/docs/design/chart_format.md#the-chart-file
 type Metadata struct {
 	// The name of the chart
 	Name string `json:"name,omitempty"`
