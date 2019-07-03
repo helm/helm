@@ -1,0 +1,18 @@
+# Uncomment/set this in order to cause deployment readiness probes to fail
+#
+# breakme: true
+#
+
+image:
+  pullPolicy: IfNotPresent
+replicaCount: 3
+restartPolicy: Never
+service:
+  annotations: {}
+  clusterIP: ""
+  externalIPs: []
+  loadBalancerIP: ""
+  loadBalancerSourceRanges: []
+  nodePort: ""
+  port: 8888
+  type: ClusterIP

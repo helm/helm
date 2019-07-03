@@ -1,0 +1,155 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ template "nginx.fullname" . }}-ext
+  labels:
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    app.kubernetes.io/name: {{ template "nginx.name" . }}-ext
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ template "nginx.name" . }}-ext
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ template "nginx.name" . }}-ext
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: {{ template "nginx.name" . }}
+          image: "alpine:latest"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+          - sleep
+          - "50000"
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          readinessProbe:
+            exec:
+              command:
+              - sh
+              - "-c"
+              - "echo bar | grep {{ if .Values.breakme }}foo{{ else }}bar{{ end }}"
+
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: {{ template "nginx.fullname" . }}-v1beta1
+  labels:
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    app.kubernetes.io/name: {{ template "nginx.name" . }}-v1beta1
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ template "nginx.name" . }}-v1beta1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ template "nginx.name" . }}-v1beta1
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: {{ template "nginx.name" . }}
+          image: "alpine:latest"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+          - sleep
+          - "50000"
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          readinessProbe:
+            exec:
+              command:
+              - sh
+              - "-c"
+
+              - "echo bar | grep {{ if .Values.breakme }}foo{{ else }}bar{{ end }}"
+
+---
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: {{ template "nginx.fullname" . }}-v1beta2
+  labels:
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    app.kubernetes.io/name: {{ template "nginx.name" . }}-v1beta2
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ template "nginx.name" . }}-v1beta2
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ template "nginx.name" . }}-v1beta2
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: {{ template "nginx.name" . }}
+          image: "alpine:latest"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+          - sleep
+          - "50000"
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          readinessProbe:
+            exec:
+              command:
+              - sh
+              - "-c"
+              - "echo bar | grep {{ if .Values.breakme }}foo{{ else }}bar{{ end }}"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "nginx.fullname" . }}-v1
+  labels:
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    app.kubernetes.io/name: {{ template "nginx.name" . }}-v1
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ template "nginx.name" . }}-v1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ template "nginx.name" . }}-v1
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: {{ template "nginx.name" . }}
+          image: "alpine:latest"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+          - sleep
+          - "50000"
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          readinessProbe:
+            exec:
+              command:
+              - sh
+              - "-c"
+              - "echo bar | grep {{ if .Values.breakme }}foo{{ else }}bar{{ end }}"

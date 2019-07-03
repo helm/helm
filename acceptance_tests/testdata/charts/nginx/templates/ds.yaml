@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: fluentd-elasticsearch
+  labels:
+    k8s-app: fluentd-logging
+spec:
+  selector:
+    matchLabels:
+      name: fluentd-elasticsearch
+  template:
+    metadata:
+      labels:
+        name: fluentd-elasticsearch
+    spec:
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      containers:
+        - name: {{ template "nginx.name" . }}
+          image: "alpine:latest"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+          - sleep
+          - "50000"
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          readinessProbe:
+            exec:
+              command:
+              - sh
+              - "-c"
+              - "echo bar | grep bar"
+      

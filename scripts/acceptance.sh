@@ -2,6 +2,7 @@
 
 REQUIRED_SYSTEM_COMMANDS=(
     "kind"
+    "kubectl"
     "python3"
     "virtualenv"
     "pip"

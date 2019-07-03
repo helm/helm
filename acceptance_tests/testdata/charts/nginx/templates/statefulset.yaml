@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: web
+spec:
+  selector:
+    matchLabels:
+      app: foobar # has to match .spec.template.metadata.labels
+  serviceName: "nginx"
+  replicas: 3 # by default is 1
+  template:
+    metadata:
+      labels:
+        app: foobar # has to match .spec.selector.matchLabels
+    spec:
+      containers:
+        - name: {{ template "nginx.name" . }}
+          image: "alpine:latest"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+          - sleep
+          - "50000"
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          readinessProbe:
+            exec:
+              command:
+              - sh
+              - "-c"
+              - "echo bar | grep bar"
