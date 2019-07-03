@@ -110,7 +110,7 @@ func (cache *filesystemCache) ChartToLayers(ch *chart.Chart) ([]ocispec.Descript
 	if err != nil {
 		return nil, err
 	}
-	metaLayer := cache.store.Add(HelmChartMetaFileName, HelmChartMetaMediaType, metaJSONRaw)
+	metaLayer := cache.store.Add(HelmChartMetaFileName, HelmChartMetaLayerMediaType, metaJSONRaw)
 
 	// Create content layer
 	// TODO: something better than this hack. Currently needed for chartutil.Save()
@@ -131,7 +131,7 @@ func (cache *filesystemCache) ChartToLayers(ch *chart.Chart) ([]ocispec.Descript
 	if err != nil {
 		return nil, err
 	}
-	contentLayer := cache.store.Add(HelmChartContentFileName, HelmChartContentMediaType, contentRaw)
+	contentLayer := cache.store.Add(HelmChartContentFileName, HelmChartContentLayerMediaType, contentRaw)
 
 	// Set annotations
 	contentLayer.Annotations[HelmChartNameAnnotation] = name
@@ -149,14 +149,14 @@ func (cache *filesystemCache) LoadReference(ref *Reference) ([]ocispec.Descripto
 	if err != nil {
 		return nil, err
 	}
-	metaLayer := cache.store.Add(HelmChartMetaFileName, HelmChartMetaMediaType, metaJSONRaw)
+	metaLayer := cache.store.Add(HelmChartMetaFileName, HelmChartMetaLayerMediaType, metaJSONRaw)
 
 	// add content layer
 	contentRaw, err := getSymlinkDestContent(filepath.Join(tagDir, "content"))
 	if err != nil {
 		return nil, err
 	}
-	contentLayer := cache.store.Add(HelmChartContentFileName, HelmChartContentMediaType, contentRaw)
+	contentLayer := cache.store.Add(HelmChartContentFileName, HelmChartContentLayerMediaType, contentRaw)
 
 	// set annotations on content layer (chart name and version)
 	err = setLayerAnnotationsFromChartLink(contentLayer, filepath.Join(tagDir, "chart"))
@@ -329,9 +329,9 @@ func extractLayers(layers []ocispec.Descriptor) (ocispec.Descriptor, ocispec.Des
 
 	for _, layer := range layers {
 		switch layer.MediaType {
-		case HelmChartMetaMediaType:
+		case HelmChartMetaLayerMediaType:
 			metaLayer = layer
-		case HelmChartContentMediaType:
+		case HelmChartContentLayerMediaType:
 			contentLayer = layer
 		}
 	}

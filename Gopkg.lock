@@ -229,7 +229,7 @@
   version = "v1.1.1"
 
 [[projects]]
-  digest = "1:32b33e550e9fba29158153b1881dd46b86593e045564746dcb56557b9061668f"
+  digest = "1:5bed34759ca1dd43ff92383caedd16f006d3b6c4b73c7690a24ae0a5627294fa"
   name = "github.com/deislabs/oras"
   packages = [
     "pkg/auth",
@@ -239,8 +239,8 @@
     "pkg/oras",
   ]
   pruneopts = "UT"
-  revision = "9f7669048990b0d0c186985737e6a6c3bb3f7ecc"
-  version = "v0.4.0"
+  revision = "b3b6ce7eeb31a5c0d891d33f585c84ae3dcc9046"
+  version = "v0.5.0"
 
 [[projects]]
   digest = "1:76dc72490af7174349349838f2fe118996381b31ea83243812a97e5a0fd5ed55"
@@ -251,17 +251,17 @@
   version = "v3.2.0"
 
 [[projects]]
-  digest = "1:f65090e4f60dcd4d2de69e8ebca022d59a8c6463a3a4c122e64cec91a83749ff"
+  digest = "1:238ba9f81f5f913de38bd4c5dab90c4b5eea90a5ee32a986e5416267adec4f67"
   name = "github.com/docker/cli"
   packages = [
     "cli/config",
     "cli/config/configfile",
     "cli/config/credentials",
-    "opts",
+    "cli/config/types",
   ]
   pruneopts = "UT"
-  revision = "c89750f836c57ce10386e71669e1b08a54c3caeb"
-  version = "v18.09.5"
+  revision = "f28d9cc92972044feb72ab6833699102992d40a2"
+  version = "v19.03.0-beta3"
 
 [[projects]]
   digest = "1:feaf11ab67fe48ec2712bf9d44e2fb2d4ebdc5da8e5a47bd3ce05bae9f82825b"

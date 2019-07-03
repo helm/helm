@@ -24,6 +24,6 @@ import (
 
 func TestConstants(t *testing.T) {
 	knownMediaTypes := KnownMediaTypes()
-	assert.Contains(t, knownMediaTypes, HelmChartMetaMediaType)
-	assert.Contains(t, knownMediaTypes, HelmChartContentMediaType)
+	assert.Contains(t, knownMediaTypes, HelmChartMetaLayerMediaType)
+	assert.Contains(t, knownMediaTypes, HelmChartContentLayerMediaType)
 }
