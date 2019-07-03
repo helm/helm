@@ -92,6 +92,7 @@ Tools layered on top of Helm or Tiller.
 
 Platforms, distributions, and services that include Helm support.
 
+- [Codefresh](https://codefresh.io/) - A CI/CD solution designed specifically for Docker/Kubernetes/Helm. Includes a private Helm repository and graphical dashboards for Helm charts, Helm releases and Helm environments.
 - [Fabric8](https://fabric8.io) - Integrated development platform for Kubernetes
 - [Jenkins X](https://jenkins-x.io/) - open source automated CI/CD for Kubernetes which uses Helm for [promoting](https://jenkins-x.io/about/features/#promotion) applications through [environments via GitOps](https://jenkins-x.io/about/features/#environments)
 - [Kubernetic](https://kubernetic.com/) - Kubernetes Desktop Client
