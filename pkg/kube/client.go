@@ -187,7 +187,7 @@ func resourceInfoToObject(info *resource.Info, c *Client) runtime.Object {
 		// If the problem is just that the resource is not registered, don't print any
 		// error. This is normal for custom resources.
 		if !runtime.IsNotRegisteredError(err) {
-			c.Log("Warning: conversion to internal type failed: %v", err)
+			c.Log("warning: conversion to internal type failed: %v", err)
 		}
 		// Add the unstructured object in this situation. It will still get listed, just
 		// with less information.
@@ -224,9 +224,9 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 
 	missing := []string{}
 	err = perform(infos, func(info *resource.Info) error {
-		c.Log("Doing get for %s: %q", info.Mapping.GroupVersionKind.Kind, info.Name)
+		c.Log("doing get for %s: %q", info.Mapping.GroupVersionKind.Kind, info.Name)
 		if err := info.Get(); err != nil {
-			c.Log("WARNING: Failed Get for resource %q: %s", info.Name, err)
+			c.Log("warning: failed get for resource %q: %s", info.Name, err)
 			missing = append(missing, fmt.Sprintf("%v\t\t%s", info.Mapping.Resource, info.Name))
 			return nil
 		}
@@ -248,7 +248,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		//Get the relation pods
 		objPods, err = c.getSelectRelationPod(info, objPods)
 		if err != nil {
-			c.Log("Warning: get the relation pod is failed, err:%s", err.Error())
+			c.Log("warning: get the relation pod is failed, err:%s", err.Error())
 		}
 
 		return nil
@@ -374,7 +374,7 @@ func (c *Client) UpdateWithOptions(namespace string, originalReader, targetReade
 			newlyCreatedResources = append(newlyCreatedResources, info)
 
 			kind := info.Mapping.GroupVersionKind.Kind
-			c.Log("Created a new %s called %q\n", kind, info.Name)
+			c.Log("created a new %s called %q\n", kind, info.Name)
 			return nil
 		}
 
@@ -404,7 +404,7 @@ func (c *Client) UpdateWithOptions(namespace string, originalReader, targetReade
 	cleanupErrors := []string{}
 
 	if opts.CleanupOnFail && (err != nil || len(updateErrors) != 0) {
-		c.Log("Cleanup on fail enabled: cleaning up newly created resources due to update manifests failures")
+		c.Log("cleanup on fail enabled: cleaning up newly created resources due to update manifests failures")
 		cleanupErrors = c.cleanup(newlyCreatedResources)
 	}
 
@@ -416,30 +416,30 @@ func (c *Client) UpdateWithOptions(namespace string, originalReader, targetReade
 	}
 
 	for _, info := range original.Difference(target) {
-		c.Log("Deleting %q in %s...", info.Name, info.Namespace)
+		c.Log("deleting %q in %s...", info.Name, info.Namespace)
 
 		if err := info.Get(); err != nil {
-			c.Log("Unable to get obj %q, err: %s", info.Name, err)
+			c.Log("unable to get obj %q, err: %s", info.Name, err)
 		}
 		annotations, err := metadataAccessor.Annotations(info.Object)
 		if err != nil {
-			c.Log("Unable to get annotations on %q, err: %s", info.Name, err)
+			c.Log("unable to get annotations on %q, err: %s", info.Name, err)
 		}
 		if ResourcePolicyIsKeep(annotations) {
 			policy := annotations[ResourcePolicyAnno]
-			c.Log("Skipping delete of %q due to annotation [%s=%s]", info.Name, ResourcePolicyAnno, policy)
+			c.Log("skipping delete of %q due to annotation [%s=%s]", info.Name, ResourcePolicyAnno, policy)
 			continue
 		}
 
 		if err := deleteResource(info); err != nil {
-			c.Log("Failed to delete %q, err: %s", info.Name, err)
+			c.Log("failed to delete %q, err: %s", info.Name, err)
 		}
 	}
 	if opts.ShouldWait {
 		err := c.waitForResources(time.Duration(opts.Timeout)*time.Second, target)
 
 		if opts.CleanupOnFail && err != nil {
-			c.Log("Cleanup on fail enabled: cleaning up newly created resources due to wait failure during update")
+			c.Log("cleanup on fail enabled: cleaning up newly created resources due to wait failure during update")
 			cleanupErrors = c.cleanup(newlyCreatedResources)
 			return fmt.Errorf(strings.Join(append([]string{err.Error()}, cleanupErrors...), " && "))
 		}
@@ -452,9 +452,9 @@ func (c *Client) UpdateWithOptions(namespace string, originalReader, targetReade
 func (c *Client) cleanup(newlyCreatedResources []*resource.Info) (cleanupErrors []string) {
 	for _, info := range newlyCreatedResources {
 		kind := info.Mapping.GroupVersionKind.Kind
-		c.Log("Deleting newly created %s with the name %q in %s...", kind, info.Name, info.Namespace)
+		c.Log("deleting newly created %s with the name %q in %s...", kind, info.Name, info.Namespace)
 		if err := deleteResource(info); err != nil {
-			c.Log("Error deleting newly created %s with the name %q in %s: %s", kind, info.Name, info.Namespace, err)
+			c.Log("error deleting newly created %s with the name %q in %s: %s", kind, info.Name, info.Namespace, err)
 			cleanupErrors = append(cleanupErrors, err.Error())
 		}
 	}
@@ -479,7 +479,7 @@ func (c *Client) DeleteWithTimeout(namespace string, reader io.Reader, timeout i
 		return err
 	}
 	err = perform(infos, func(info *resource.Info) error {
-		c.Log("Starting delete for %q %s", info.Name, info.Mapping.GroupVersionKind.Kind)
+		c.Log("starting delete for %q %s", info.Name, info.Mapping.GroupVersionKind.Kind)
 		err := deleteResource(info)
 		return c.skipIfNotFound(err)
 	})
@@ -488,7 +488,7 @@ func (c *Client) DeleteWithTimeout(namespace string, reader io.Reader, timeout i
 	}
 
 	if shouldWait {
-		c.Log("Waiting for %d seconds for delete to be completed", timeout)
+		c.Log("waiting for %d seconds for delete to be completed", timeout)
 		return waitUntilAllResourceDeleted(infos, time.Duration(timeout)*time.Second)
 	}
 
@@ -675,7 +675,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		return fmt.Errorf("failed to create patch: %s", err)
 	}
 	if patch == nil {
-		c.Log("Looks like there are no changes for %s %q", target.Mapping.GroupVersionKind.Kind, target.Name)
+		c.Log("looks like there are no changes for %s %q", target.Mapping.GroupVersionKind.Kind, target.Name)
 		// This needs to happen to make sure that tiller has the latest info from the API
 		// Otherwise there will be no labels and other functions that use labels will panic
 		if err := target.Get(); err != nil {
@@ -740,7 +740,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 
 	// Restart pods
 	for _, pod := range pods.Items {
-		c.Log("Restarting pod: %v/%v", pod.Namespace, pod.Name)
+		c.Log("restarting pod: %v/%v", pod.Namespace, pod.Name)
 
 		// Delete each pod for get them restarted with changed spec.
 		if err := client.CoreV1().Pods(pod.Namespace).Delete(pod.Name, metav1.NewPreconditionDeleteOptions(string(pod.UID))); err != nil {
@@ -799,7 +799,7 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 	}
 
 	kind := info.Mapping.GroupVersionKind.Kind
-	c.Log("Watching for changes to %s %s with timeout of %v", kind, info.Name, timeout)
+	c.Log("watching for changes to %s %s with timeout of %v", kind, info.Name, timeout)
 
 	// What we watch for depends on the Kind.
 	// - For a Job, we watch for completion.
@@ -816,17 +816,17 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 			// we get. We care mostly about jobs, where what we want to see is
 			// the status go into a good state. For other types, like ReplicaSet
 			// we don't really do anything to support these as hooks.
-			c.Log("Add/Modify event for %s: %v", info.Name, e.Type)
+			c.Log("add/modify event for %s: %v", info.Name, e.Type)
 			if kind == "Job" {
 				return c.waitForJob(e, info.Name)
 			}
 			return true, nil
 		case watch.Deleted:
-			c.Log("Deleted event for %s", info.Name)
+			c.Log("deleted event for %s", info.Name)
 			return true, nil
 		case watch.Error:
 			// Handle error and return with an error.
-			c.Log("Error event for %s", info.Name)
+			c.Log("error event for %s", info.Name)
 			return true, fmt.Errorf("Failed to deploy %s", info.Name)
 		default:
 			return false, nil
@@ -853,7 +853,7 @@ func (c *Client) waitForJob(e watch.Event, name string) (bool, error) {
 		}
 	}
 
-	c.Log("%s: Jobs active: %d, jobs failed: %d, jobs succeeded: %d", name, job.Status.Active, job.Status.Failed, job.Status.Succeeded)
+	c.Log("%s: jobs active: %d, jobs failed: %d, jobs succeeded: %d", name, job.Status.Active, job.Status.Failed, job.Status.Succeeded)
 	return false, nil
 }
 
@@ -902,7 +902,7 @@ func (c *Client) watchPodUntilComplete(timeout time.Duration, info *resource.Inf
 		return err
 	}
 
-	c.Log("Watching pod %s for completion with timeout of %v", info.Name, timeout)
+	c.Log("watching pod %s for completion with timeout of %v", info.Name, timeout)
 	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), timeout)
 	defer cancel()
 	_, err = watchtools.UntilWithoutRetry(ctx, w, func(e watch.Event) (bool, error) {

@@ -29,7 +29,7 @@ import (
 // GetReleaseStatus gets the status information for a named release.
 func (s *ReleaseServer) GetReleaseStatus(c ctx.Context, req *services.GetReleaseStatusRequest) (*services.GetReleaseStatusResponse, error) {
 	if err := validateReleaseName(req.Name); err != nil {
-		s.Log("getStatus: Release name is invalid: %s", req.Name)
+		s.Log("getstatus: release name is invalid: %s", req.Name)
 		return nil, err
 	}
 
@@ -69,7 +69,7 @@ func (s *ReleaseServer) GetReleaseStatus(c ctx.Context, req *services.GetRelease
 		// Skip errors if this is already deleted or failed.
 		return statusResp, nil
 	} else if err != nil {
-		s.Log("warning: Get for %s failed: %v", rel.Name, err)
+		s.Log("warning: get for %s failed: %v", rel.Name, err)
 		return nil, err
 	}
 	rel.Info.Status.Resources = resp

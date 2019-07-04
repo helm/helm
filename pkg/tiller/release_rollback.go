@@ -63,7 +63,7 @@ func (s *ReleaseServer) RollbackRelease(c ctx.Context, req *services.RollbackRel
 // the previous release's configuration
 func (s *ReleaseServer) prepareRollback(req *services.RollbackReleaseRequest) (*release.Release, *release.Release, error) {
 	if err := validateReleaseName(req.Name); err != nil {
-		s.Log("prepareRollback: Release name is invalid: %s", req.Name)
+		s.Log("preparerollback: release name is invalid: %s", req.Name)
 		return nil, nil, err
 	}
 

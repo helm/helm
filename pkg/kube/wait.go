@@ -202,7 +202,7 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 func (c *Client) podsReady(pods []v1.Pod) bool {
 	for _, pod := range pods {
 		if !isPodReady(&pod) {
-			c.Log("Pod is not ready: %s/%s", pod.GetNamespace(), pod.GetName())
+			c.Log("pod is not ready: %s/%s", pod.GetNamespace(), pod.GetName())
 			return false
 		}
 	}
@@ -218,12 +218,12 @@ func (c *Client) servicesReady(svc []v1.Service) bool {
 
 		// Make sure the service is not explicitly set to "None" before checking the IP
 		if s.Spec.ClusterIP != v1.ClusterIPNone && s.Spec.ClusterIP == "" {
-			c.Log("Service is not ready: %s/%s", s.GetNamespace(), s.GetName())
+			c.Log("service is not ready: %s/%s", s.GetNamespace(), s.GetName())
 			return false
 		}
 		// This checks if the service has a LoadBalancer and that balancer has an Ingress defined
 		if s.Spec.Type == v1.ServiceTypeLoadBalancer && s.Status.LoadBalancer.Ingress == nil {
-			c.Log("Service is not ready: %s/%s", s.GetNamespace(), s.GetName())
+			c.Log("service is not ready: %s/%s", s.GetNamespace(), s.GetName())
 			return false
 		}
 	}
@@ -233,7 +233,7 @@ func (c *Client) servicesReady(svc []v1.Service) bool {
 func (c *Client) volumesReady(vols []v1.PersistentVolumeClaim) bool {
 	for _, v := range vols {
 		if v.Status.Phase != v1.ClaimBound {
-			c.Log("PersistentVolumeClaim is not ready: %s/%s", v.GetNamespace(), v.GetName())
+			c.Log("persistentvolumeclaim is not ready: %s/%s", v.GetNamespace(), v.GetName())
 			return false
 		}
 	}
@@ -243,7 +243,7 @@ func (c *Client) volumesReady(vols []v1.PersistentVolumeClaim) bool {
 func (c *Client) deploymentsReady(deployments []deployment) bool {
 	for _, v := range deployments {
 		if !(v.replicaSets.Status.ReadyReplicas >= *v.deployment.Spec.Replicas-deploymentutil.MaxUnavailable(*v.deployment)) {
-			c.Log("Deployment is not ready: %s/%s", v.deployment.GetNamespace(), v.deployment.GetName())
+			c.Log("deployment is not ready: %s/%s", v.deployment.GetNamespace(), v.deployment.GetName())
 			return false
 		}
 	}

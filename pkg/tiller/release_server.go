@@ -210,7 +210,7 @@ func (s *ReleaseServer) uniqName(start string, reuse bool) (string, error) {
 		return "ERROR", err
 	}
 
-	s.Log("info: Created new release name %s", newname)
+	s.Log("info: created new release name %s", newname)
 	return newname, nil
 
 }
@@ -227,9 +227,9 @@ func (s *ReleaseServer) createUniqName(m moniker.Namer) (string, error) {
 				return name, nil
 			}
 		}
-		s.Log("info: generated name %s is taken. Searching again.", name)
+		s.Log("info: generated name %s is taken. searching again.", name)
 	}
-	s.Log("warning: No available release names found after %d tries", maxTries)
+	s.Log("warning: no available release names found after %d tries", maxTries)
 	return "ERROR", errors.New("no available release name found")
 }
 
@@ -415,10 +415,10 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 func (s *ReleaseServer) recordRelease(r *release.Release, reuse bool) {
 	if reuse {
 		if err := s.env.Releases.Update(r); err != nil {
-			s.Log("warning: Failed to update release %s: %s", r.Name, err)
+			s.Log("warning: failed to update release %s: %s", r.Name, err)
 		}
 	} else if err := s.env.Releases.Create(r); err != nil {
-		s.Log("warning: Failed to record release %s: %s", r.Name, err)
+		s.Log("warning: failed to record release %s: %s", r.Name, err)
 	}
 }
 
@@ -448,7 +448,7 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 
 		b := bytes.NewBufferString(h.Manifest)
 		if err := kubeCli.Create(namespace, b, timeout, false); err != nil {
-			s.Log("warning: Release %s %s %s failed: %s", name, hook, h.Path, err)
+			s.Log("warning: release %s %s %s failed: %s", name, hook, h.Path, err)
 			return err
 		}
 		// No way to rewind a bytes.Buffer()?
@@ -458,7 +458,7 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 		// We can't watch CRDs, but need to wait until they reach the established state before continuing
 		if hook != hooks.CRDInstall {
 			if err := kubeCli.WatchUntilReady(namespace, b, timeout, false); err != nil {
-				s.Log("warning: Release %s %s %s could not complete: %s", name, hook, h.Path, err)
+				s.Log("warning: release %s %s %s could not complete: %s", name, hook, h.Path, err)
 				// If a hook is failed, checkout the annotation of the hook to determine whether the hook should be deleted
 				// under failed condition. If so, then clear the corresponding resource object in the hook
 				if err := s.deleteHookByPolicy(h, hooks.HookFailed, name, namespace, hook, kubeCli); err != nil {
@@ -468,7 +468,7 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 			}
 		} else {
 			if err := kubeCli.WaitUntilCRDEstablished(b, time.Duration(timeout)*time.Second); err != nil {
-				s.Log("warning: Release %s %s %s could not complete: %s", name, hook, h.Path, err)
+				s.Log("warning: release %s %s %s could not complete: %s", name, hook, h.Path, err)
 				return err
 			}
 		}
@@ -510,7 +510,7 @@ func (s *ReleaseServer) deleteHookByPolicy(h *release.Hook, policy string, name,
 		s.Log("deleting %s hook %s for release %s due to %q policy", hook, h.Name, name, policy)
 		waitForDelete := h.DeleteTimeout > 0
 		if errHookDelete := kubeCli.DeleteWithTimeout(namespace, b, h.DeleteTimeout, waitForDelete); errHookDelete != nil {
-			s.Log("warning: Release %s %s %S could not be deleted: %s", name, hook, h.Path, errHookDelete)
+			s.Log("warning: release %s %s %s could not be deleted: %s", name, hook, h.Path, errHookDelete)
 			return errHookDelete
 		}
 	}

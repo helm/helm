@@ -150,7 +150,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 		s.Log("dry run for %s", r.Name)
 
 		if !req.DisableCrdHook && hasCRDHook(r.Hooks) {
-			s.Log("validation skipped because CRD hook is present")
+			s.Log("validation skipped because crd hook is present")
 			res.Release.Info.Description = "Validation skipped because CRDs are not installed"
 			return res, nil
 		}
@@ -172,7 +172,7 @@ func (s *ReleaseServer) performRelease(r *release.Release, req *services.Install
 			return res, err
 		}
 	} else {
-		s.Log("CRD install hooks disabled for %s", req.Name)
+		s.Log("crd install hooks disabled for %s", req.Name)
 	}
 
 	// Because the CRDs are installed, they are used for validation during this step.

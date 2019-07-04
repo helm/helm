@@ -216,7 +216,7 @@ func (s *Storage) removeLeastRecent(name string, max int) error {
 		}
 	}
 
-	s.Log("Pruned %d record(s) from %s with %d error(s)", len(toDelete), name, len(errors))
+	s.Log("pruned %d record(s) from %s with %d error(s)", len(toDelete), name, len(errors))
 	switch c := len(errors); c {
 	case 0:
 		return nil

@@ -32,13 +32,13 @@ import (
 // UninstallRelease deletes all of the resources associated with this release, and marks the release DELETED.
 func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallReleaseRequest) (*services.UninstallReleaseResponse, error) {
 	if err := validateReleaseName(req.Name); err != nil {
-		s.Log("uninstallRelease: Release name is invalid: %s", req.Name)
+		s.Log("uninstallrelease: release name is invalid: %s", req.Name)
 		return nil, err
 	}
 
 	rels, err := s.env.Releases.History(req.Name)
 	if err != nil {
-		s.Log("uninstall: Release not loaded: %s", req.Name)
+		s.Log("uninstall: release not loaded: %s", req.Name)
 		return nil, err
 	}
 	if len(rels) < 1 {
@@ -53,7 +53,7 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 	if rel.Info.Status.Code == release.Status_DELETED {
 		if req.Purge {
 			if err := s.purgeReleases(rels...); err != nil {
-				s.Log("uninstall: Failed to purge the release: %s", err)
+				s.Log("uninstall: failed to purge the release: %s", err)
 				return nil, err
 			}
 			return &services.UninstallReleaseResponse{Release: rel}, nil
@@ -61,7 +61,7 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		return nil, fmt.Errorf("the release named %q is already deleted", req.Name)
 	}
 
-	s.Log("uninstall: Deleting %s", req.Name)
+	s.Log("uninstall: deleting %s", req.Name)
 	rel.Info.Status.Code = release.Status_DELETING
 	rel.Info.Deleted = timeconv.Now()
 	rel.Info.Description = "Deletion in progress (or silently failed)"
@@ -78,7 +78,7 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 	// From here on out, the release is currently considered to be in Status_DELETING
 	// state.
 	if err := s.env.Releases.Update(rel); err != nil {
-		s.Log("uninstall: Failed to store updated release: %s", err)
+		s.Log("uninstall: failed to store updated release: %s", err)
 	}
 
 	kept, errs := s.ReleaseModule.Delete(rel, req, s.env)
@@ -107,13 +107,13 @@ func (s *ReleaseServer) UninstallRelease(c ctx.Context, req *services.UninstallR
 		s.Log("purge requested for %s", req.Name)
 		err := s.purgeReleases(rels...)
 		if err != nil {
-			s.Log("uninstall: Failed to purge the release: %s", err)
+			s.Log("uninstall: failed to purge the release: %s", err)
 		}
 		return res, err
 	}
 
 	if err := s.env.Releases.Update(rel); err != nil {
-		s.Log("uninstall: Failed to store updated release: %s", err)
+		s.Log("uninstall: failed to store updated release: %s", err)
 	}
 
 	if len(es) > 0 {

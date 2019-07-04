@@ -28,7 +28,7 @@ const maxParallelism = 20
 func (s *ReleaseServer) RunReleaseTest(req *services.TestReleaseRequest, stream services.ReleaseService_RunReleaseTestServer) error {
 
 	if err := validateReleaseName(req.Name); err != nil {
-		s.Log("releaseTest: Release name is invalid: %s", req.Name)
+		s.Log("releasetest: release name is invalid: %s", req.Name)
 		return err
 	}
 
@@ -69,7 +69,7 @@ func (s *ReleaseServer) RunReleaseTest(req *services.TestReleaseRequest, stream 
 	}
 
 	if err := s.env.Releases.Update(rel); err != nil {
-		s.Log("test: Failed to store updated release: %s", err)
+		s.Log("test: failed to store updated release: %s", err)
 	}
 
 	return nil

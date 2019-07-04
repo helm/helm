@@ -150,7 +150,7 @@ func (s *SQL) Get(key string) (*rspb.Release, error) {
 	// Get will return an error if the result is empty
 	err := s.db.Get(&record, "SELECT body FROM releases WHERE key = $1", key)
 	if err != nil {
-		s.Log("got SQL error when getting release %s: %v", key, err)
+		s.Log("got sql error when getting release %s: %v", key, err)
 		return nil, storageerrors.ErrReleaseNotFound(key)
 	}
 
@@ -250,7 +250,7 @@ func (s *SQL) Create(key string, rls *rspb.Release) error {
 
 	transaction, err := s.db.Beginx()
 	if err != nil {
-		s.Log("failed to start SQL transaction: %v", err)
+		s.Log("failed to start sql transaction: %v", err)
 		return fmt.Errorf("error beginning transaction: %v", err)
 	}
 
@@ -273,7 +273,7 @@ func (s *SQL) Create(key string, rls *rspb.Release) error {
 			return storageerrors.ErrReleaseExists(key)
 		}
 
-		s.Log("failed to store release %s in SQL database: %v", key, err)
+		s.Log("failed to store release %s in sql database: %v", key, err)
 		return err
 	}
 	defer transaction.Commit()
@@ -301,7 +301,7 @@ func (s *SQL) Update(key string, rls *rspb.Release) error {
 			ModifiedAt: int(time.Now().Unix()),
 		},
 	); err != nil {
-		s.Log("failed to update release %s in SQL database: %v", key, err)
+		s.Log("failed to update release %s in sql database: %v", key, err)
 		return err
 	}
 
@@ -312,7 +312,7 @@ func (s *SQL) Update(key string, rls *rspb.Release) error {
 func (s *SQL) Delete(key string) (*rspb.Release, error) {
 	transaction, err := s.db.Beginx()
 	if err != nil {
-		s.Log("failed to start SQL transaction: %v", err)
+		s.Log("failed to start sql transaction: %v", err)
 		return nil, fmt.Errorf("error beginning transaction: %v", err)
 	}
 
