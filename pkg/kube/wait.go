@@ -131,7 +131,7 @@ func (w *waiter) waitForResources(created Result) error {
 				}
 			case *corev1.ReplicationController:
 				ok, err = w.podsReadyForObject(value.Namespace, value)
-			// TODO(Taylor): This works, but ends up with a possible race 
+			// TODO(Taylor): This works, but ends up with a possible race
 			// condition if some pods have not been scheduled yet. This logic
 			// should be refactored to do similar checks to what is done for
 			// Deployments
