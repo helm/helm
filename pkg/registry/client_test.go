@@ -71,7 +71,7 @@ func (suite *RegistryClientTestSuite) SetupSuite() {
 
 	// Init test client
 	suite.RegistryClient = NewClient(&ClientOptions{
-		Out:   suite.Out,
+		Out: suite.Out,
 		Authorizer: Authorizer{
 			Client: client,
 		},
