@@ -17,10 +17,8 @@ limitations under the License.
 package main
 
 import (
-	"encoding/json"
 	"io"
 
-	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -66,17 +64,10 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			case "":
 				action.PrintRelease(out, rel)
 				return nil
-			case action.JSON:
-				data, err := json.Marshal(rel)
+			case action.JSON, action.YAML:
+				data, err := outfmt.Marshal(rel)
 				if err != nil {
-					return errors.Wrap(err, "failed to Marshal JSON output")
-				}
-				out.Write(data)
-				return nil
-			case action.YAML:
-				data, err := yaml.Marshal(rel)
-				if err != nil {
-					return errors.Wrap(err, "failed to Marshal YAML output")
+					return errors.Wrap(err, "failed to Marshal output")
 				}
 				out.Write(data)
 				return nil
