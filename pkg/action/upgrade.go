@@ -29,6 +29,7 @@ import (
 	"helm.sh/helm/pkg/hooks"
 	"helm.sh/helm/pkg/kube"
 	"helm.sh/helm/pkg/release"
+	"helm.sh/helm/pkg/releaseutil"
 )
 
 // Upgrade is the action for upgrading releases.
@@ -54,6 +55,7 @@ type Upgrade struct {
 	Recreate bool
 	// MaxHistory limits the maximum number of revisions saved per release
 	MaxHistory int
+	Atomic     bool
 }
 
 // NewUpgrade creates a new Upgrade object with the given configuration.
@@ -68,6 +70,10 @@ func (u *Upgrade) Run(name string, chart *chart.Chart) (*release.Release, error)
 	if err := chartutil.ProcessDependencies(chart, u.rawValues); err != nil {
 		return nil, err
 	}
+
+	// Make sure if Atomic is set, that wait is set as well. This makes it so
+	// the user doesn't have to specify both
+	u.Wait = u.Wait || u.Atomic
 
 	if err := validateReleaseName(name); err != nil {
 		return nil, errors.Errorf("upgradeRelease: Release name is invalid: %s", name)
@@ -196,35 +202,28 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 	// pre-upgrade hooks
 	if !u.DisableHooks {
 		if err := u.execHook(upgradedRelease.Hooks, hooks.PreUpgrade); err != nil {
-			return upgradedRelease, err
+			return u.failRelease(upgradedRelease, fmt.Errorf("pre-upgrade hooks failed: %s", err))
 		}
 	} else {
 		u.cfg.Log("upgrade hooks disabled for %s", upgradedRelease.Name)
 	}
 	if err := u.upgradeRelease(originalRelease, upgradedRelease); err != nil {
-		msg := fmt.Sprintf("Upgrade %q failed: %s", upgradedRelease.Name, err)
-		u.cfg.Log("warning: %s", msg)
-		upgradedRelease.Info.Status = release.StatusFailed
-		upgradedRelease.Info.Description = msg
 		u.cfg.recordRelease(originalRelease)
-		u.cfg.recordRelease(upgradedRelease)
-		return upgradedRelease, err
+		return u.failRelease(upgradedRelease, err)
 	}
 
 	if u.Wait {
 		buf := bytes.NewBufferString(upgradedRelease.Manifest)
 		if err := u.cfg.KubeClient.Wait(buf, u.Timeout); err != nil {
-			upgradedRelease.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", upgradedRelease.Name, err.Error()))
 			u.cfg.recordRelease(originalRelease)
-			u.cfg.recordRelease(upgradedRelease)
-			return upgradedRelease, errors.Wrapf(err, "release %s failed", upgradedRelease.Name)
+			return u.failRelease(upgradedRelease, err)
 		}
 	}
 
 	// post-upgrade hooks
 	if !u.DisableHooks {
 		if err := u.execHook(upgradedRelease.Hooks, hooks.PostUpgrade); err != nil {
-			return upgradedRelease, err
+			return u.failRelease(upgradedRelease, fmt.Errorf("post-upgrade hooks failed: %s", err))
 		}
 	}
 
@@ -235,6 +234,51 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 	upgradedRelease.Info.Description = "Upgrade complete"
 
 	return upgradedRelease, nil
+}
+
+func (u *Upgrade) failRelease(rel *release.Release, err error) (*release.Release, error) {
+	msg := fmt.Sprintf("Upgrade %q failed: %s", rel.Name, err)
+	u.cfg.Log("warning: %s", msg)
+
+	rel.Info.Status = release.StatusFailed
+	rel.Info.Description = msg
+	u.cfg.recordRelease(rel)
+	if u.Atomic {
+		u.cfg.Log("Upgrade failed and atomic is set, rolling back to last successful release")
+
+		// As a protection, get the last successful release before rollback.
+		// If there are no successful releases, bail out
+		hist := NewHistory(u.cfg)
+		fullHistory, herr := hist.Run(rel.Name)
+		if herr != nil {
+			return rel, errors.Wrapf(herr, "an error occurred while finding last successful release. original upgrade error: %s", err)
+		}
+
+		// There isn't a way to tell if a previous release was successful, but
+		// generally failed releases do not get superseded unless the next
+		// release is successful, so this should be relatively safe
+		filteredHistory := releaseutil.StatusFilter(release.StatusSuperseded).Filter(fullHistory)
+		if len(filteredHistory) == 0 {
+			return rel, errors.Wrap(err, "unable to find a previously successful release when attempting to rollback. original upgrade error")
+		}
+
+		releaseutil.Reverse(filteredHistory, releaseutil.SortByRevision)
+
+		rollin := NewRollback(u.cfg)
+		rollin.Version = filteredHistory[0].Version
+		rollin.Wait = u.Wait
+		rollin.DisableHooks = u.DisableHooks
+		rollin.Recreate = u.Recreate
+		rollin.Force = u.Force
+		rollin.Timeout = u.Timeout
+
+		if _, rollErr := rollin.Run(rel.Name); err != nil {
+			return rel, errors.Wrapf(rollErr, "an error occurred while rolling back the release. original upgrade error: %s", err)
+		}
+		return rel, errors.Wrapf(err, "release %s failed, and has been rolled back due to atomic being set", rel.Name)
+	}
+
+	return rel, err
 }
 
 // upgradeRelease performs an upgrade from current to target release

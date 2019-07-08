@@ -235,6 +235,14 @@ func TestInstallRelease_KubeVersion(t *testing.T) {
 	is.Contains(err.Error(), "chart requires kubernetesVersion")
 }
 
+func TestInstallRelease_Wait(t *testing.T) {
+	t.Fail("Implement me")
+}
+
+func TestInstallRelease_Atomic(t *testing.T) {
+	t.Fail("Implement me")
+}
+
 func TestNameTemplate(t *testing.T) {
 	testCases := []nameTemplateTestCase{
 		// Just a straight up nop please

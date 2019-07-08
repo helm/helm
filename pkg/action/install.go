@@ -82,6 +82,7 @@ type Install struct {
 	GenerateName     bool
 	NameTemplate     string
 	OutputDir        string
+	Atomic           bool
 }
 
 type ValueOptions struct {
@@ -117,6 +118,10 @@ func (i *Install) Run(chrt *chart.Chart) (*release.Release, error) {
 	if err := i.availableName(); err != nil {
 		return nil, err
 	}
+
+	// Make sure if Atomic is set, that wait is set as well. This makes it so
+	// the user doesn't have to specify both
+	i.Wait = i.Wait || i.Atomic
 
 	caps, err := i.cfg.getCapabilities()
 	if err != nil {
@@ -178,9 +183,7 @@ func (i *Install) Run(chrt *chart.Chart) (*release.Release, error) {
 	// pre-install hooks
 	if !i.DisableHooks {
 		if err := i.execHook(rel.Hooks, hooks.PreInstall); err != nil {
-			rel.SetStatus(release.StatusFailed, "failed pre-install: "+err.Error())
-			_ = i.replaceRelease(rel)
-			return rel, err
+			return i.failRelease(rel, fmt.Errorf("failed pre-install: %s", err))
 		}
 	}
 
@@ -189,26 +192,20 @@ func (i *Install) Run(chrt *chart.Chart) (*release.Release, error) {
 	// to true, since that is basically an upgrade operation.
 	buf := bytes.NewBufferString(rel.Manifest)
 	if err := i.cfg.KubeClient.Create(buf); err != nil {
-		rel.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", i.ReleaseName, err.Error()))
-		i.recordRelease(rel) // Ignore the error, since we have another error to deal with.
-		return rel, errors.Wrapf(err, "release %s failed", i.ReleaseName)
+		return i.failRelease(rel, err)
 	}
 
 	if i.Wait {
 		buf := bytes.NewBufferString(rel.Manifest)
 		if err := i.cfg.KubeClient.Wait(buf, i.Timeout); err != nil {
-			rel.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", i.ReleaseName, err.Error()))
-			i.recordRelease(rel) // Ignore the error, since we have another error to deal with.
-			return rel, errors.Wrapf(err, "release %s failed", i.ReleaseName)
+			return i.failRelease(rel, err)
 		}
 
 	}
 
 	if !i.DisableHooks {
 		if err := i.execHook(rel.Hooks, hooks.PostInstall); err != nil {
-			rel.SetStatus(release.StatusFailed, "failed post-install: "+err.Error())
-			_ = i.replaceRelease(rel)
-			return rel, err
+			return i.failRelease(rel, fmt.Errorf("failed post-install: %s", err))
 		}
 	}
 
@@ -224,6 +221,23 @@ func (i *Install) Run(chrt *chart.Chart) (*release.Release, error) {
 	i.recordRelease(rel)
 
 	return rel, nil
+}
+
+func (i *Install) failRelease(rel *release.Release, err error) (*release.Release, error) {
+	rel.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", i.ReleaseName, err.Error()))
+	if i.Atomic {
+		i.cfg.Log("Install failed and atomic is set, purging release")
+		uninstall := NewUninstall(i.cfg)
+		uninstall.DisableHooks = i.DisableHooks
+		uninstall.KeepHistory = false
+		uninstall.Timeout = i.Timeout
+		if _, uninstallErr := uninstall.Run(i.ReleaseName); uninstallErr != nil {
+			return rel, errors.Wrapf(uninstallErr, "an error occurred while purging the release. original install error: %s", err)
+		}
+		return rel, errors.Wrapf(err, "release %s failed, and has been purged due to atomic being set", i.ReleaseName)
+	}
+	i.recordRelease(rel) // Ignore the error, since we have another error to deal with.
+	return rel, err
 }
 
 // availableName tests whether a name is available
