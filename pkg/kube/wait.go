@@ -30,6 +30,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	deploymentutil "k8s.io/kubernetes/pkg/controller/deployment/util"
@@ -129,23 +130,24 @@ func (w *waiter) waitForResources(created Result) error {
 				if !w.serviceReady(svc) {
 					return false, nil
 				}
+			case *extensionsv1beta1.DaemonSet, *appsv1.DaemonSet, *appsv1beta2.DaemonSet:
+				ds, err := w.c.AppsV1().DaemonSets(v.Namespace).Get(v.Name, metav1.GetOptions{})
+				if err != nil {
+					return false, err
+				}
+				if !w.daemonSetReady(ds) {
+					return false, nil
+				}
+			case *appsv1.StatefulSet, *appsv1beta1.StatefulSet, *appsv1beta2.StatefulSet:
+				sts, err := w.c.AppsV1().StatefulSets(v.Namespace).Get(v.Name, metav1.GetOptions{})
+				if err != nil {
+					return false, err
+				}
+				if !w.statefulSetReady(sts) {
+					return false, nil
+				}
+
 			case *corev1.ReplicationController:
-				ok, err = w.podsReadyForObject(value.Namespace, value)
-			// TODO(Taylor): This works, but ends up with a possible race
-			// condition if some pods have not been scheduled yet. This logic
-			// should be refactored to do similar checks to what is done for
-			// Deployments
-			case *extensionsv1beta1.DaemonSet:
-				ok, err = w.podsReadyForObject(value.Namespace, value)
-			case *appsv1.DaemonSet:
-				ok, err = w.podsReadyForObject(value.Namespace, value)
-			case *appsv1beta2.DaemonSet:
-				ok, err = w.podsReadyForObject(value.Namespace, value)
-			case *appsv1.StatefulSet:
-				ok, err = w.podsReadyForObject(value.Namespace, value)
-			case *appsv1beta1.StatefulSet:
-				ok, err = w.podsReadyForObject(value.Namespace, value)
-			case *appsv1beta2.StatefulSet:
 				ok, err = w.podsReadyForObject(value.Namespace, value)
 			case *extensionsv1beta1.ReplicaSet:
 				ok, err = w.podsReadyForObject(value.Namespace, value)
@@ -205,7 +207,7 @@ func (w *waiter) serviceReady(s *corev1.Service) bool {
 	if (s.Spec.ClusterIP != corev1.ClusterIPNone && s.Spec.ClusterIP == "") ||
 		// This checks if the service has a LoadBalancer and that balancer has an Ingress defined
 		(s.Spec.Type == corev1.ServiceTypeLoadBalancer && s.Status.LoadBalancer.Ingress == nil) {
-		w.log("Service is not ready: %s/%s", s.GetNamespace(), s.GetName())
+		w.log("Service does not have IP address: %s/%s", s.GetNamespace(), s.GetName())
 		return false
 	}
 	return true
@@ -213,15 +215,79 @@ func (w *waiter) serviceReady(s *corev1.Service) bool {
 
 func (w *waiter) volumeReady(v *corev1.PersistentVolumeClaim) bool {
 	if v.Status.Phase != corev1.ClaimBound {
-		w.log("PersistentVolumeClaim is not ready: %s/%s", v.GetNamespace(), v.GetName())
+		w.log("PersistentVolumeClaim is not bound: %s/%s", v.GetNamespace(), v.GetName())
 		return false
 	}
 	return true
 }
 
-func (w *waiter) deploymentReady(replicaSet *appsv1.ReplicaSet, deployment *appsv1.Deployment) bool {
-	if !(replicaSet.Status.ReadyReplicas >= *deployment.Spec.Replicas-deploymentutil.MaxUnavailable(*deployment)) {
-		w.log("Deployment is not ready: %s/%s", deployment.GetNamespace(), deployment.GetName())
+func (w *waiter) deploymentReady(rs *appsv1.ReplicaSet, dep *appsv1.Deployment) bool {
+	expectedReady := *dep.Spec.Replicas - deploymentutil.MaxUnavailable(*dep)
+	if !(rs.Status.ReadyReplicas >= expectedReady) {
+		w.log("Deployment is not ready: %s/%s. %d out of %d expected pods are ready", dep.Namespace, dep.Name, rs.Status.ReadyReplicas, expectedReady)
+		return false
+	}
+	return true
+}
+
+func (w *waiter) daemonSetReady(ds *appsv1.DaemonSet) bool {
+	// If the update strategy is not a rolling update, there will be nothing to wait for
+	if ds.Spec.UpdateStrategy.Type != appsv1.RollingUpdateDaemonSetStrategyType {
+		return true
+	}
+
+	// Make sure all the updated pods have been scheduled
+	if ds.Status.UpdatedNumberScheduled != ds.Status.DesiredNumberScheduled {
+		w.log("DaemonSet is not ready: %s/%s. %d out of %d expected pods have been scheduled", ds.Namespace, ds.Name, ds.Status.UpdatedNumberScheduled, ds.Status.DesiredNumberScheduled)
+		return false
+	}
+	maxUnavailable, err := intstr.GetValueFromIntOrPercent(ds.Spec.UpdateStrategy.RollingUpdate.MaxUnavailable, int(ds.Status.DesiredNumberScheduled), true)
+	if err != nil {
+		// If for some reason the value is invalid, set max unavailable to the
+		// number of desired replicas. This is the same behavior as the
+		// `MaxUnavailable` function in deploymentutil
+		maxUnavailable = int(ds.Status.DesiredNumberScheduled)
+	}
+
+	expectedReady := int(ds.Status.DesiredNumberScheduled) - maxUnavailable
+	if !(int(ds.Status.NumberReady) >= expectedReady) {
+		w.log("DaemonSet is not ready: %s/%s. %d out of %d expected pods are ready", ds.Namespace, ds.Name, ds.Status.NumberReady, expectedReady)
+		return false
+	}
+	return true
+}
+
+func (w *waiter) statefulSetReady(sts *appsv1.StatefulSet) bool {
+	// If the update strategy is not a rolling update, there will be nothing to wait for
+	if sts.Spec.UpdateStrategy.Type != appsv1.RollingUpdateStatefulSetStrategyType {
+		return true
+	}
+
+	// Dereference all the pointers because StatefulSets like them
+	var partition int
+	// 1 is the default for replicas if not set
+	var replicas = 1
+	if sts.Spec.UpdateStrategy.RollingUpdate.Partition != nil {
+		partition = int(*sts.Spec.UpdateStrategy.RollingUpdate.Partition)
+	}
+	if sts.Spec.Replicas != nil {
+		replicas = int(*sts.Spec.Replicas)
+	}
+
+	// Because an update strategy can use partitioning, we need to calculate the
+	// number of updated replicas we should have. For example, if the replicas
+	// is set to 3 and the partition is 2, we'd expect only one pod to be
+	// updated
+	expectedReplicas := replicas - partition
+
+	// Make sure all the updated pods have been scheduled
+	if int(sts.Status.UpdatedReplicas) != expectedReplicas {
+		w.log("StatefulSet is not ready: %s/%s. %d out of %d expected pods have been scheduled", sts.Namespace, sts.Name, sts.Status.UpdatedReplicas, expectedReplicas)
+		return false
+	}
+
+	if int(sts.Status.ReadyReplicas) != replicas {
+		w.log("StatefulSet is not ready: %s/%s. %d out of %d expected pods are ready", sts.Namespace, sts.Name, sts.Status.ReadyReplicas, replicas)
 		return false
 	}
 	return true
