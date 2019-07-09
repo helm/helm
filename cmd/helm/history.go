@@ -21,9 +21,13 @@ import (
 	"io"
 
 	"github.com/spf13/cobra"
+	"github.com/gosuri/uitable"
 
 	"helm.sh/helm/cmd/helm/require"
 	"helm.sh/helm/pkg/action"
+	"helm.sh/helm/pkg/releaseutil"
+	"helm.sh/helm/pkg/chart"
+	"helm.sh/helm/pkg/release"
 )
 
 var historyHelp = `
@@ -52,7 +56,7 @@ func newHistoryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Aliases: []string{"hist"},
 		Args:    require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			history, err := client.Run(args[0])
+			history, err := getHistory(client, args[0])
 			if err != nil {
 				return err
 			}
@@ -66,4 +70,116 @@ func newHistoryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.IntVar(&client.Max, "max", 256, "maximum number of revision to include in history")
 
 	return cmd
+}
+
+type releaseInfo struct {
+	Revision    int    `json:"revision"`
+	Updated     string `json:"updated"`
+	Status      string `json:"status"`
+	Chart       string `json:"chart"`
+	AppVersion  string `json:"app_version"`
+	Description string `json:"description"`
+}
+
+type releaseHistory []releaseInfo
+
+func marshalHistory(format action.OutputFormat, hist releaseHistory) (byt []byte, err error) {
+	switch format {
+	case action.YAML, action.JSON:
+		byt, err = format.Marshal(hist)
+	case action.Table:
+		byt, err = format.MarshalTable(func(tbl *uitable.Table) {
+			tbl.AddRow("REVISION", "UPDATED", "STATUS", "CHART", "APP VERSION", "DESCRIPTION")
+			for i := 0; i <= len(hist)-1; i++ {
+				r := hist[i]
+				tbl.AddRow(r.Revision, r.Updated, r.Status, r.Chart, r.AppVersion, r.Description)
+			}
+		})
+	default:
+		err = action.ErrInvalidFormatType
+	}
+	return
+}
+
+func getHistory(client *action.History, name string) (string, error) {
+	hist, err := client.Run(name)
+	if err != nil {
+		return "", err
+	}
+
+	releaseutil.Reverse(hist, releaseutil.SortByRevision)
+
+	var rels []*release.Release
+	for i := 0; i < min(len(hist), client.Max); i++ {
+		rels = append(rels, hist[i])
+	}
+
+	if len(rels) == 0 {
+		return "", nil
+	}
+
+	releaseHistory := getReleaseHistory(rels)
+
+	outputFormat, err := action.ParseOutputFormat(client.OutputFormat)
+	if err != nil {
+		return "", err
+	}
+	history, formattingError := marshalHistory(outputFormat, releaseHistory)
+	if formattingError != nil {
+		return "", formattingError
+	}
+
+	return string(history), nil
+}
+
+
+func getReleaseHistory(rls []*release.Release) (history releaseHistory) {
+	for i := len(rls) - 1; i >= 0; i-- {
+		r := rls[i]
+		c := formatChartname(r.Chart)
+		s := r.Info.Status.String()
+		v := r.Version
+		d := r.Info.Description
+		a := formatAppVersion(r.Chart)
+
+		rInfo := releaseInfo{
+			Revision:    v,
+			Status:      s,
+			Chart:       c,
+			AppVersion:  a,
+			Description: d,
+		}
+		if !r.Info.LastDeployed.IsZero() {
+			rInfo.Updated = r.Info.LastDeployed.String()
+
+		}
+		history = append(history, rInfo)
+	}
+
+	return history
+}
+
+func formatChartname(c *chart.Chart) string {
+	if c == nil || c.Metadata == nil {
+		// This is an edge case that has happened in prod, though we don't
+		// know how: https://github.com/helm/helm/issues/1347
+		return "MISSING"
+	}
+	return fmt.Sprintf("%s-%s", c.Name(), c.Metadata.Version)
+}
+
+func formatAppVersion(c *chart.Chart) string {
+	if c == nil || c.Metadata == nil {
+		// This is an edge case that has happened in prod, though we don't
+		// know how: https://github.com/helm/helm/issues/1347
+		return "MISSING"
+	}
+	return c.AppVersion()
+}
+
+func min(x, y int) int {
+	if x < y {
+		return x
+	}
+	return y
 }
