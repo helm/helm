@@ -1,5 +1,5 @@
-hash: 277f7be1b21149bc06b361fa61c0a2ff81a7f00c59a6e35c21b6516f6ddfd9f7
-updated: 2019-07-03T21:59:06.87934+02:00
+hash: 3f737ac62232d999f6a6c4add3446d4577119dde597827068b88fe4cbe8eaa76
+updated: 2019-07-09T22:03:19.229818+01:00
 imports:
 - name: cloud.google.com/go
   version: 0ebda48a7f143b1cce9eb37a8c1106ac762a3430
@@ -285,7 +285,7 @@ imports:
   - jws
   - jwt
 - name: golang.org/x/sync
-  version: 1d60e4601c6fd243af51cc01ddf169918a5407ca
+  version: 42b317875d0fa942474b76e1b46a6060d720ae6e
   subpackages:
   - semaphore
 - name: golang.org/x/sys
@@ -730,7 +730,7 @@ imports:
   - pkg/util/proto/testing
   - pkg/util/proto/validation
 - name: k8s.io/kubernetes
-  version: e8462b5b5dc2584fdcd18e6bcfe9f1e4d970a529
+  version: 7e199be93b39d9f87b9cf7a20c0179bb59c5c726
   subpackages:
   - pkg/api/legacyscheme
   - pkg/api/service
