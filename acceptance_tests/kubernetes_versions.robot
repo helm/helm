@@ -17,8 +17,8 @@ Suite Setup       Suite Setup
 Suite Teardown    Suite Teardown
 
 *** Test Cases ***
-#Helm works with Kubernetes 1.14.3
-#    Test Helm on Kubernetes version   1.14.3
+Helm works with Kubernetes 1.14.3
+    Test Helm on Kubernetes version   1.14.3
 
 Helm works with Kubernetes 1.15.0
     Test Helm on Kubernetes version   1.15.0
