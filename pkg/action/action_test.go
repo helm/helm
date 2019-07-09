@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	fakeclientset "k8s.io/client-go/kubernetes/fake"
 
 	"helm.sh/helm/pkg/chart"
 	"helm.sh/helm/pkg/chartutil"
@@ -186,4 +187,20 @@ type hookFailingKubeClient struct {
 
 func (h *hookFailingKubeClient) WatchUntilReady(r io.Reader, timeout time.Duration) error {
 	return errors.New("Failed watch")
+}
+
+func TestGetVersionSet(t *testing.T) {
+	client := fakeclientset.NewSimpleClientset()
+
+	vs, err := GetVersionSet(client.Discovery())
+	if err != nil {
+		t.Error(err)
+	}
+
+	if !vs.Has("v1") {
+		t.Errorf("Expected supported versions to at least include v1.")
+	}
+	if vs.Has("nosuchversion/v1") {
+		t.Error("Non-existent version is reported found.")
+	}
 }
