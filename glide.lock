@@ -1,5 +1,5 @@
 hash: 277f7be1b21149bc06b361fa61c0a2ff81a7f00c59a6e35c21b6516f6ddfd9f7
-updated: 2019-07-03T21:59:06.87934+02:00
+updated: 2019-07-09T20:14:59.993671+01:00
 imports:
 - name: cloud.google.com/go
   version: 0ebda48a7f143b1cce9eb37a8c1106ac762a3430
@@ -285,7 +285,7 @@ imports:
   - jws
   - jwt
 - name: golang.org/x/sync
-  version: 1d60e4601c6fd243af51cc01ddf169918a5407ca
+  version: 42b317875d0fa942474b76e1b46a6060d720ae6e
   subpackages:
   - semaphore
 - name: golang.org/x/sys
