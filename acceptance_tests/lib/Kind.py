@@ -1,5 +1,6 @@
 import common
 import time
+import os
 
 DOCKER_HUB_REPO='kindest/node'
 CLUSTER_PREFIX = 'helm-acceptance-test'
@@ -14,6 +15,7 @@ KIND_POD_INTERVAL_SECONDS = 2
 KIND_POD_EXPECTED_NUMBER = 8
 
 LAST_CLUSTER_NAME = 'UNSET'
+LAST_CLUSTER_EXISTING = False
 
 def kind_auth_wrap(cmd):
     c = 'export KUBECONFIG="$(kind get kubeconfig-path'
@@ -22,17 +24,28 @@ def kind_auth_wrap(cmd):
 
 class Kind(common.CommandRunner):
     def create_test_cluster_with_kubernetes_version(self, kube_version):
-        global LAST_CLUSTER_NAME
-        LAST_CLUSTER_NAME = CLUSTER_PREFIX+'-'+common.NOW+'-'+kube_version
-        cmd = 'kind create cluster --loglevel='+LOG_LEVEL
-        cmd += ' --name='+LAST_CLUSTER_NAME
-        cmd += ' --image='+DOCKER_HUB_REPO+':v'+kube_version
-        self.run_command(cmd)
+        global LAST_CLUSTER_NAME, LAST_CLUSTER_EXISTING
+        existing_cluster_name = os.getenv('KIND_CLUSTER_'+kube_version.replace('.', '_'))
+        if existing_cluster_name:
+            print('Using existing kind cluster for '+kube_version+', "'+existing_cluster_name+'"')
+            LAST_CLUSTER_NAME = existing_cluster_name
+            LAST_CLUSTER_EXISTING = True
+        else:
+            new_cluster_name = CLUSTER_PREFIX+'-'+common.NOW+'-'+kube_version
+            print('Creating new kind cluster for '+kube_version+', "'+new_cluster_name+'"')
+            LAST_CLUSTER_NAME = new_cluster_name
+            cmd = 'kind create cluster --loglevel='+LOG_LEVEL
+            cmd += ' --name='+new_cluster_name
+            cmd += ' --image='+DOCKER_HUB_REPO+':v'+kube_version
+            self.run_command(cmd)
 
     def delete_test_cluster(self):
-        cmd = 'kind delete cluster --loglevel='+LOG_LEVEL
-        cmd += ' --name='+LAST_CLUSTER_NAME
-        self.run_command(cmd)
+        if LAST_CLUSTER_EXISTING:
+            print('Not deleting cluster (cluster existed prior to test run)')
+        else:
+            cmd = 'kind delete cluster --loglevel='+LOG_LEVEL
+            cmd += ' --name='+LAST_CLUSTER_NAME
+            self.run_command(cmd)
 
     def cleanup_all_test_clusters(self):
         cmd = 'for i in `kind get clusters| grep ^'+CLUSTER_PREFIX+'-'+common.NOW+'`;'

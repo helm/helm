@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: myclaim
+  name: {{ template "nginx.fullname" . }}
 spec:
   accessModes:
     - ReadWriteOnce

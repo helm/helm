@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: fluentd-elasticsearch
+  name: {{ template "nginx.fullname" . }}-fluentd-es
   labels:
     k8s-app: fluentd-logging
 spec:
