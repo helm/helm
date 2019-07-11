@@ -257,7 +257,9 @@ func (u *Upgrade) failRelease(rel *release.Release, err error) (*release.Release
 		// There isn't a way to tell if a previous release was successful, but
 		// generally failed releases do not get superseded unless the next
 		// release is successful, so this should be relatively safe
-		filteredHistory := releaseutil.StatusFilter(release.StatusSuperseded).Filter(fullHistory)
+		filteredHistory := releaseutil.FilterFunc(func(r *release.Release) bool {
+			return r.Info.Status == release.StatusSuperseded || r.Info.Status == release.StatusDeployed
+		}).Filter(fullHistory)
 		if len(filteredHistory) == 0 {
 			return rel, errors.Wrap(err, "unable to find a previously successful release when attempting to rollback. original upgrade error")
 		}
@@ -266,13 +268,12 @@ func (u *Upgrade) failRelease(rel *release.Release, err error) (*release.Release
 
 		rollin := NewRollback(u.cfg)
 		rollin.Version = filteredHistory[0].Version
-		rollin.Wait = u.Wait
+		rollin.Wait = true
 		rollin.DisableHooks = u.DisableHooks
 		rollin.Recreate = u.Recreate
 		rollin.Force = u.Force
 		rollin.Timeout = u.Timeout
-
-		if _, rollErr := rollin.Run(rel.Name); err != nil {
+		if _, rollErr := rollin.Run(rel.Name); rollErr != nil {
 			return rel, errors.Wrapf(rollErr, "an error occurred while rolling back the release. original upgrade error: %s", err)
 		}
 		return rel, errors.Wrapf(err, "release %s failed, and has been rolled back due to atomic being set", rel.Name)
@@ -347,7 +348,6 @@ func (u *Upgrade) execHook(hs []*release.Hook, hook string) error {
 	}
 
 	sort.Sort(hookByWeight(executingHooks))
-
 	for _, h := range executingHooks {
 		if err := deleteHookByPolicy(u.cfg, h, hooks.BeforeHookCreation); err != nil {
 			return err

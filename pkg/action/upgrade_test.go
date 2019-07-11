@@ -1,0 +1,109 @@
+/*
+Copyright The Helm Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package action
+
+import (
+	"fmt"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	kubefake "helm.sh/helm/pkg/kube/fake"
+	"helm.sh/helm/pkg/release"
+)
+
+func upgradeAction(t *testing.T) *Upgrade {
+	config := actionConfigFixture(t)
+	upAction := NewUpgrade(config)
+	upAction.Namespace = "spaced"
+
+	return upAction
+}
+
+func TestUpgradeRelease_Wait(t *testing.T) {
+	is := assert.New(t)
+	req := require.New(t)
+
+	upAction := upgradeAction(t)
+	rel := releaseStub()
+	rel.Name = "come-fail-away"
+	rel.Info.Status = release.StatusDeployed
+	upAction.cfg.Releases.Create(rel)
+
+	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+	failer.WaitError = fmt.Errorf("I timed out")
+	upAction.cfg.KubeClient = failer
+	upAction.Wait = true
+	upAction.rawValues = map[string]interface{}{}
+
+	res, err := upAction.Run(rel.Name, buildChart())
+	req.Error(err)
+	is.Contains(res.Info.Description, "I timed out")
+	is.Equal(res.Info.Status, release.StatusFailed)
+}
+
+func TestUpgradeRelease_Atomic(t *testing.T) {
+	is := assert.New(t)
+	req := require.New(t)
+
+	t.Run("atomic rollback succeeds", func(t *testing.T) {
+		upAction := upgradeAction(t)
+
+		rel := releaseStub()
+		rel.Name = "nuketown"
+		rel.Info.Status = release.StatusDeployed
+		upAction.cfg.Releases.Create(rel)
+
+		failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+		// We can't make Update error because then the rollback won't work
+		failer.WatchUntilReadyError = fmt.Errorf("arming key removed")
+		upAction.cfg.KubeClient = failer
+		upAction.Atomic = true
+		upAction.rawValues = map[string]interface{}{}
+
+		res, err := upAction.Run(rel.Name, buildChart())
+		req.Error(err)
+		is.Contains(err.Error(), "arming key removed")
+		is.Contains(err.Error(), "atomic")
+
+		// Now make sure it is actually upgraded
+		updatedRes, err := upAction.cfg.Releases.Get(res.Name, 3)
+		is.NoError(err)
+		// Should have rolled back to the previous
+		is.Equal(updatedRes.Info.Status, release.StatusDeployed)
+	})
+
+	t.Run("atomic uninstall fails", func(t *testing.T) {
+		upAction := upgradeAction(t)
+		rel := releaseStub()
+		rel.Name = "fallout"
+		rel.Info.Status = release.StatusDeployed
+		upAction.cfg.Releases.Create(rel)
+
+		failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+		failer.UpdateError = fmt.Errorf("update fail")
+		upAction.cfg.KubeClient = failer
+		upAction.Atomic = true
+		upAction.rawValues = map[string]interface{}{}
+
+		_, err := upAction.Run(rel.Name, buildChart())
+		req.Error(err)
+		is.Contains(err.Error(), "update fail")
+		is.Contains(err.Error(), "an error occurred while rolling back the release")
+	})
+}

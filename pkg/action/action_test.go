@@ -17,17 +17,15 @@ package action
 
 import (
 	"flag"
-	"io"
 	"io/ioutil"
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
 
 	"helm.sh/helm/pkg/chart"
 	"helm.sh/helm/pkg/chartutil"
-	"helm.sh/helm/pkg/kube"
+	kubefake "helm.sh/helm/pkg/kube/fake"
 	"helm.sh/helm/pkg/release"
 	"helm.sh/helm/pkg/storage"
 	"helm.sh/helm/pkg/storage/driver"
@@ -40,7 +38,7 @@ func actionConfigFixture(t *testing.T) *Configuration {
 
 	return &Configuration{
 		Releases:     storage.Init(driver.NewMemory()),
-		KubeClient:   &kube.PrintingKubeClient{Out: ioutil.Discard},
+		KubeClient:   &kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: ioutil.Discard}},
 		Capabilities: chartutil.DefaultCapabilities,
 		Log: func(format string, v ...interface{}) {
 			t.Helper()
@@ -55,7 +53,7 @@ var manifestWithHook = `kind: ConfigMap
 metadata:
   name: test-cm
   annotations:
-    "helm.sh/hook": post-install,pre-delete
+    "helm.sh/hook": post-install,pre-delete,post-upgrade
 data:
   name: value`
 
@@ -173,20 +171,6 @@ func namedReleaseStub(name string, status release.Status) *release.Release {
 			},
 		},
 	}
-}
-
-func newHookFailingKubeClient() *hookFailingKubeClient {
-	return &hookFailingKubeClient{
-		PrintingKubeClient: kube.PrintingKubeClient{Out: ioutil.Discard},
-	}
-}
-
-type hookFailingKubeClient struct {
-	kube.PrintingKubeClient
-}
-
-func (h *hookFailingKubeClient) WatchUntilReady(r io.Reader, timeout time.Duration) error {
-	return errors.New("Failed watch")
 }
 
 func TestGetVersionSet(t *testing.T) {

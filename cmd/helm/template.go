@@ -28,7 +28,7 @@ import (
 	"helm.sh/helm/cmd/helm/require"
 	"helm.sh/helm/pkg/action"
 	"helm.sh/helm/pkg/chartutil"
-	"helm.sh/helm/pkg/kube"
+	kubefake "helm.sh/helm/pkg/kube/fake"
 	"helm.sh/helm/pkg/storage"
 	"helm.sh/helm/pkg/storage/driver"
 )
@@ -46,7 +46,7 @@ func newTemplateCmd(out io.Writer) *cobra.Command {
 	customConfig := &action.Configuration{
 		// Add mock objects in here so it doesn't use Kube API server
 		Releases:     storage.Init(driver.NewMemory()),
-		KubeClient:   &kube.PrintingKubeClient{Out: ioutil.Discard},
+		KubeClient:   &kubefake.PrintingKubeClient{Out: ioutil.Discard},
 		Capabilities: chartutil.DefaultCapabilities,
 		Log: func(format string, v ...interface{}) {
 			fmt.Fprintf(out, format, v...)

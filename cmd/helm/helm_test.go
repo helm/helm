@@ -31,7 +31,7 @@ import (
 	"helm.sh/helm/pkg/action"
 	"helm.sh/helm/pkg/chartutil"
 	"helm.sh/helm/pkg/helmpath"
-	"helm.sh/helm/pkg/kube"
+	kubefake "helm.sh/helm/pkg/kube/fake"
 	"helm.sh/helm/pkg/release"
 	"helm.sh/helm/pkg/repo"
 	"helm.sh/helm/pkg/storage"
@@ -116,7 +116,7 @@ func executeActionCommandC(store *storage.Storage, cmd string) (*cobra.Command, 
 
 	actionConfig := &action.Configuration{
 		Releases:     store,
-		KubeClient:   &kube.PrintingKubeClient{Out: ioutil.Discard},
+		KubeClient:   &kubefake.PrintingKubeClient{Out: ioutil.Discard},
 		Capabilities: chartutil.DefaultCapabilities,
 		Log:          func(format string, v ...interface{}) {},
 	}

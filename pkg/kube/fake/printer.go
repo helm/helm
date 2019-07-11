@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kube
+package fake
 
 import (
 	"io"
@@ -22,6 +22,8 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/cli-runtime/pkg/resource"
+
+	"helm.sh/helm/pkg/kube"
 )
 
 // PrintingKubeClient implements KubeClient, but simply prints the reader to
@@ -68,11 +70,11 @@ func (p *PrintingKubeClient) Update(_, modifiedReader io.Reader, _, _ bool) erro
 }
 
 // Build implements KubeClient Build.
-func (p *PrintingKubeClient) Build(_ io.Reader) (Result, error) {
+func (p *PrintingKubeClient) Build(_ io.Reader) (kube.Result, error) {
 	return []*resource.Info{}, nil
 }
 
-func (p *PrintingKubeClient) BuildUnstructured(_ io.Reader) (Result, error) {
+func (p *PrintingKubeClient) BuildUnstructured(_ io.Reader) (kube.Result, error) {
 	return p.Build(nil)
 }
 

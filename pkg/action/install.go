@@ -226,15 +226,15 @@ func (i *Install) Run(chrt *chart.Chart) (*release.Release, error) {
 func (i *Install) failRelease(rel *release.Release, err error) (*release.Release, error) {
 	rel.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", i.ReleaseName, err.Error()))
 	if i.Atomic {
-		i.cfg.Log("Install failed and atomic is set, purging release")
+		i.cfg.Log("Install failed and atomic is set, uninstalling release")
 		uninstall := NewUninstall(i.cfg)
 		uninstall.DisableHooks = i.DisableHooks
 		uninstall.KeepHistory = false
 		uninstall.Timeout = i.Timeout
 		if _, uninstallErr := uninstall.Run(i.ReleaseName); uninstallErr != nil {
-			return rel, errors.Wrapf(uninstallErr, "an error occurred while purging the release. original install error: %s", err)
+			return rel, errors.Wrapf(uninstallErr, "an error occurred while uninstalling the release. original install error: %s", err)
 		}
-		return rel, errors.Wrapf(err, "release %s failed, and has been purged due to atomic being set", i.ReleaseName)
+		return rel, errors.Wrapf(err, "release %s failed, and has been uninstalled due to atomic being set", i.ReleaseName)
 	}
 	i.recordRelease(rel) // Ignore the error, since we have another error to deal with.
 	return rel, err

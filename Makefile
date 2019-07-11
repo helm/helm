@@ -113,11 +113,11 @@ $(GOIMPORTS):
 
 # install vendored dependencies
 vendor: Gopkg.lock
-	$(DEP) ensure -v --vendor-only
+	$(DEP) ensure --vendor-only
 
 # update vendored dependencies
 Gopkg.lock: Gopkg.toml
-	$(DEP) ensure -v --no-vendor
+	$(DEP) ensure --no-vendor
 
 Gopkg.toml: $(DEP)
 
