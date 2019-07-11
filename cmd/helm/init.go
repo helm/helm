@@ -53,7 +53,9 @@ When installing Tiller, 'helm init' will attempt to install the latest released
 version. You can specify an alternative image with '--tiller-image'. For those
 frequently working on the latest code, the flag '--canary-image' will install
 the latest pre-release version of Tiller (e.g. the HEAD commit in the GitHub
-repository on the master branch).
+repository on the master branch). If you wish to use Tiller on alternative
+ports, you can specify so by using the flags '--tiller-port' and
+'--tiller-probe-port' respectively.
 
 To dump a manifest containing the Tiller deployment YAML, combine the
 '--dry-run' and '--debug' flags.
