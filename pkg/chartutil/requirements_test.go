@@ -15,6 +15,7 @@ limitations under the License.
 package chartutil
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"sort"
@@ -302,6 +303,10 @@ func verifyRequirementsImportValues(t *testing.T, c *chart.Chart, v *chart.Confi
 		}
 
 		switch pv.(type) {
+		case json.Number:
+			if s := pv.(json.Number).String(); s != vv {
+				t.Errorf("Failed to match imported number value %v with expected %v", s, vv)
+			}
 		case float64:
 			s := strconv.FormatFloat(pv.(float64), 'f', -1, 64)
 			if s != vv {
