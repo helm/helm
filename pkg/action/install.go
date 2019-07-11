@@ -693,6 +693,12 @@ func (v *ValueOptions) MergeValues(settings cli.EnvSettings) error {
 	return nil
 }
 
+func NewValueOptions(values map[string]interface{}) ValueOptions {
+	return ValueOptions{
+		rawValues: values,
+	}
+}
+
 // mergeValues merges source and destination map, preferring values from the source map
 func mergeValues(dest, src map[string]interface{}) map[string]interface{} {
 	out := make(map[string]interface{})
