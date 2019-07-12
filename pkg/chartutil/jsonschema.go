@@ -21,9 +21,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	"github.com/xeipuuv/gojsonschema"
+	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/pkg/chart"
 )

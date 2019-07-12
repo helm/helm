@@ -25,11 +25,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/clearsign"
 	"golang.org/x/crypto/openpgp/packet"
+	"sigs.k8s.io/yaml"
 
 	hapi "helm.sh/helm/pkg/chart"
 	"helm.sh/helm/pkg/chart/loader"

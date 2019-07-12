@@ -18,7 +18,7 @@ package strvals
 import (
 	"testing"
 
-	"github.com/ghodss/yaml"
+	"sigs.k8s.io/yaml"
 )
 
 func TestSetIndex(t *testing.T) {

@@ -20,9 +20,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/pkg/hooks"
 	"helm.sh/helm/pkg/release"

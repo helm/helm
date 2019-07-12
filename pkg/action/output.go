@@ -1,11 +1,11 @@
 package action
 
 import (
-	"fmt"
 	"encoding/json"
+	"fmt"
 
-	"github.com/ghodss/yaml"
 	"github.com/gosuri/uitable"
+	"sigs.k8s.io/yaml"
 )
 
 // OutputFormat is a type for capturing supported output formats
