@@ -10,4 +10,4 @@ spec:
     requests:
       storage: 8Gi
   # Change this to a non-existent name to force it to never provision
-  storageClassName: standard
+  storageClassName: "{{ if .Values.breakme }}nonexistant{{ else }}standard{{ end }}"

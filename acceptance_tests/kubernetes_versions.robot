@@ -88,6 +88,9 @@ Verify --wait flag works as expected
     Kubectl.Get services    default
     Kubectl.Get persistent volume claims    default
 
+    Kubectl.Persistent volume claim is bound    default    wait-flag-bad-nginx
+    Kubectl.Return code should not be   0
+
     Kubectl.Pods with prefix are running    default    wait-flag-bad-nginx-ext-    3
     Kubectl.Return code should not be   0
     Kubectl.Pods with prefix are running    default    wait-flag-bad-nginx-fluentd-es-    1
