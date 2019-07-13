@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -63,8 +64,9 @@ type pluginGetter struct {
 
 // Get runs downloader plugin command
 func (p *pluginGetter) Get(href string) (*bytes.Buffer, error) {
-	argv := []string{p.opts.certFile, p.opts.keyFile, p.opts.caFile, href}
-	prog := exec.Command(filepath.Join(p.base, p.command), argv...)
+	commands := strings.Split(p.command, " ")
+	argv := append(commands[1:], p.opts.certFile, p.opts.keyFile, p.opts.caFile, href)
+	prog := exec.Command(filepath.Join(p.base, commands[0]), argv...)
 	plugin.SetupPluginEnv(p.settings, p.name, p.base)
 	prog.Env = os.Environ()
 	buf := bytes.NewBuffer(nil)
