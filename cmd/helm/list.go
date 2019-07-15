@@ -64,7 +64,7 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Args:    require.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if client.AllNamespaces {
-				client.SetConfiguration(newActionConfig(true))
+				initActionConfig(cfg, true)
 			}
 			client.SetStateMask()
 
