@@ -22,8 +22,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
+	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/pkg/chartutil"
 	"helm.sh/helm/pkg/hooks"

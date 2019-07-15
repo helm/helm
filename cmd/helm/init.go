@@ -23,9 +23,9 @@ import (
 	"os"
 
 	"github.com/Masterminds/semver"
-	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/cmd/helm/require"
 	"helm.sh/helm/pkg/getter"

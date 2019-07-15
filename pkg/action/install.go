@@ -31,8 +31,8 @@ import (
 	"time"
 
 	"github.com/Masterminds/sprig"
-	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
+	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/pkg/chart"
 	"helm.sh/helm/pkg/chartutil"

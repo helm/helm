@@ -22,8 +22,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
+	"sigs.k8s.io/yaml"
 )
 
 // ErrRepoOutOfDate indicates that the repository file is out of date, but

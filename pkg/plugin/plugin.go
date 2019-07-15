@@ -23,7 +23,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/ghodss/yaml"
+	"sigs.k8s.io/yaml"
 
 	helm_env "helm.sh/helm/pkg/cli"
 )

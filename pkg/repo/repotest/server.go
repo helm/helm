@@ -22,7 +22,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ghodss/yaml"
+	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/pkg/helmpath"
 	"helm.sh/helm/pkg/repo"
