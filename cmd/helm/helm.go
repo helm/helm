@@ -65,14 +65,20 @@ func initKubeLogs() {
 
 func main() {
 	initKubeLogs()
-	cmd := newRootCmd(newActionConfig(false), os.Stdout, os.Args[1:])
+
+	actionConfig := new(action.Configuration)
+	cmd := newRootCmd(actionConfig, os.Stdout, os.Args[1:])
+
+	// Initialize the rest of the actionConfig
+	initActionConfig(actionConfig, false)
+
 	if err := cmd.Execute(); err != nil {
 		logf("%+v", err)
 		os.Exit(1)
 	}
 }
 
-func newActionConfig(allNamespaces bool) *action.Configuration {
+func initActionConfig(actionConfig *action.Configuration, allNamespaces bool) {
 	kc := kube.New(kubeConfig())
 	kc.Log = logf
 
@@ -104,12 +110,10 @@ func newActionConfig(allNamespaces bool) *action.Configuration {
 		panic("Unknown driver in HELM_DRIVER: " + os.Getenv("HELM_DRIVER"))
 	}
 
-	return &action.Configuration{
-		RESTClientGetter: kubeConfig(),
-		KubeClient:       kc,
-		Releases:         store,
-		Log:              logf,
-	}
+	actionConfig.RESTClientGetter = kubeConfig()
+	actionConfig.KubeClient = kc
+	actionConfig.Releases = store
+	actionConfig.Log = logf
 }
 
 func kubeConfig() genericclioptions.RESTClientGetter {
