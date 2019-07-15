@@ -59,8 +59,6 @@ var events = map[string]release.HookEvent{
 	hooks.PostDelete:         release.HookPostDelete,
 	hooks.PreUpgrade:         release.HookPreUpgrade,
 	hooks.PostUpgrade:        release.HookPostUpgrade,
-	hooks.PreRollback:        release.HookPreRollback,
-	hooks.PostRollback:       release.HookPostRollback,
 	hooks.ReleaseTestSuccess: release.HookReleaseTestSuccess,
 	hooks.ReleaseTestFailure: release.HookReleaseTestFailure,
 }

@@ -28,8 +28,6 @@ const (
 	HookPostDelete         HookEvent = "post-delete"
 	HookPreUpgrade         HookEvent = "pre-upgrade"
 	HookPostUpgrade        HookEvent = "post-upgrade"
-	HookPreRollback        HookEvent = "pre-rollback"
-	HookPostRollback       HookEvent = "post-rollback"
 	HookReleaseTestSuccess HookEvent = "release-test-success"
 	HookReleaseTestFailure HookEvent = "release-test-failure"
 )

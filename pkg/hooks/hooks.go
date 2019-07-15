@@ -37,8 +37,6 @@ const (
 	PostDelete         = "post-delete"
 	PreUpgrade         = "pre-upgrade"
 	PostUpgrade        = "post-upgrade"
-	PreRollback        = "pre-rollback"
-	PostRollback       = "post-rollback"
 	ReleaseTestSuccess = "test-success"
 	ReleaseTestFailure = "test-failure"
 )

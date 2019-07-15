@@ -24,42 +24,50 @@ import (
 )
 
 func TestRollbackCmd(t *testing.T) {
-	rels := []*release.Release{
-		{
-			Name:    "funny-honey",
-			Info:    &release.Info{Status: release.StatusSuperseded},
-			Chart:   &chart.Chart{},
-			Version: 1,
-		},
-		{
-			Name:    "funny-honey",
-			Info:    &release.Info{Status: release.StatusDeployed},
-			Chart:   &chart.Chart{},
-			Version: 2,
-		},
+
+	relMock := func(n string, v int, ch *chart.Chart) *release.Release {
+		return release.Mock(&release.MockReleaseOptions{Name: n, Version: v, Chart: ch})
 	}
 
-	tests := []cmdTestCase{{
-		name:   "rollback a release",
-		cmd:    "rollback funny-honey 1",
-		golden: "output/rollback.txt",
-		rels:   rels,
-	}, {
-		name:   "rollback a release with timeout",
-		cmd:    "rollback funny-honey 1 --timeout 120s",
-		golden: "output/rollback-timeout.txt",
-		rels:   rels,
-	}, {
-		name:   "rollback a release with wait",
-		cmd:    "rollback funny-honey 1 --wait",
-		golden: "output/rollback-wait.txt",
-		rels:   rels,
-	}, {
-		name:      "rollback a release without revision",
-		cmd:       "rollback funny-honey",
-		golden:    "output/rollback-no-args.txt",
-		rels:      rels,
-		wantError: true,
-	}}
+	ch := &chart.Chart{
+		Metadata: &chart.Metadata{},
+	}
+
+	tests := []cmdTestCase{
+		{
+			name:   "rollback a release",
+			cmd:    "rollback funny-honey 1",
+			golden: "output/rollback.txt",
+			rels: []*release.Release{
+				relMock("funny-honey", 1, ch),
+				relMock("funny-honey", 2, ch),
+			},
+		}, {
+			name:   "rollback a release with timeout",
+			cmd:    "rollback funny-honey 1 --timeout 120s",
+			golden: "output/rollback-timeout.txt",
+			rels: []*release.Release{
+				relMock("funny-honey", 1, ch),
+				relMock("funny-honey", 2, ch),
+			},
+		}, {
+			name:   "rollback a release with wait",
+			cmd:    "rollback funny-honey 1 --wait",
+			golden: "output/rollback-wait.txt",
+			rels: []*release.Release{
+				relMock("funny-honey", 1, ch),
+				relMock("funny-honey", 2, ch),
+			},
+		}, {
+			name:   "rollback a release without revision",
+			cmd:    "rollback funny-honey",
+			golden: "output/rollback-no-args.txt",
+			rels: []*release.Release{
+				relMock("funny-honey", 1, ch),
+				relMock("funny-honey", 2, ch),
+			},
+			wantError: true,
+		},
+	}
 	runTestCmd(t, tests)
 }

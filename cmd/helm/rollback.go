@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"strconv"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -36,7 +37,7 @@ second is a revision (version) number. To see revision numbers, run
 `
 
 func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
-	client := action.NewRollback(cfg)
+	client := action.NewUpgrade(cfg)
 
 	cmd := &cobra.Command{
 		Use:   "rollback [RELEASE] [REVISION]",
@@ -44,7 +45,22 @@ func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Long:  rollbackDesc,
 		Args:  require.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			_, err := client.Run(args[0])
+
+			version, err := strconv.Atoi(args[1])
+			if err != nil {
+				return fmt.Errorf("could not convert revision to a number: %v", err)
+			}
+
+			releaseToRollbackTo, err := cfg.Releases.Get(args[0], version)
+			if err != nil {
+				return err
+			}
+
+			if err := client.ValueOptions.MergeValues(settings); err != nil {
+				return err
+			}
+
+			_, err = client.Run(args[0], releaseToRollbackTo.Chart)
 			if err != nil {
 				return err
 			}
@@ -56,13 +72,15 @@ func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.IntVar(&client.Version, "version", 0, "revision number to rollback to (default: rollback to previous release)")
 	f.BoolVar(&client.DryRun, "dry-run", false, "simulate a rollback")
 	f.BoolVar(&client.Recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
 	f.BoolVar(&client.Force, "force", false, "force resource update through delete/recreate if needed")
-	f.BoolVar(&client.DisableHooks, "no-hooks", false, "prevent hooks from running during rollback")
+	f.BoolVar(&client.DisableHooks, "no-hooks", false, "disable pre/post upgrade hooks")
 	f.DurationVar(&client.Timeout, "timeout", 300*time.Second, "time to wait for any individual Kubernetes operation (like Jobs for hooks)")
+	f.BoolVar(&client.ResetValues, "reset-values", false, "when upgrading, reset the values to the ones built into the chart")
+	f.BoolVar(&client.ReuseValues, "reuse-values", false, "when upgrading, reuse the last release's values and merge in any overrides from the command line via --set and -f. If '--reset-values' is specified, this is ignored.")
 	f.BoolVar(&client.Wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
+	f.IntVar(&client.MaxHistory, "history-max", 0, "limit the maximum number of revisions saved per release. Use 0 for no limit.")
 
 	return cmd
 }

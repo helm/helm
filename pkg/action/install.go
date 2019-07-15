@@ -764,3 +764,12 @@ func readFile(filePath string, settings cli.EnvSettings) ([]byte, error) {
 	data, err := getter.Get(filePath)
 	return data.Bytes(), err
 }
+
+// deleteHookByPolicy deletes a hook if the hook policy instructs it to
+func deleteHookByPolicy(cfg *Configuration, h *release.Hook, policy string) error {
+	if hookHasDeletePolicy(h, policy) {
+		b := bytes.NewBufferString(h.Manifest)
+		return cfg.KubeClient.Delete(b)
+	}
+	return nil
+}
