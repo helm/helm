@@ -128,3 +128,73 @@ func TestCreateStarterCmd(t *testing.T) {
 	}
 
 }
+
+func TestCreateStarterAbsoluteCmd(t *testing.T) {
+	defer resetEnv()()
+
+	cname := "testchart"
+	// Make a temp dir
+	tdir := testTempDir(t)
+
+	hh := testHelmHome(t)
+	settings.Home = hh
+
+	// Create a starter.
+	starterchart := hh.Starters()
+	os.Mkdir(starterchart, 0755)
+	if dest, err := chartutil.Create("starterchart", starterchart); err != nil {
+		t.Fatalf("Could not create chart: %s", err)
+	} else {
+		t.Logf("Created %s", dest)
+	}
+	tplpath := filepath.Join(starterchart, "starterchart", "templates", "foo.tpl")
+	if err := ioutil.WriteFile(tplpath, []byte("test"), 0755); err != nil {
+		t.Fatalf("Could not write template: %s", err)
+	}
+
+	defer testChdir(t, tdir)()
+
+	starterChartPath := filepath.Join(starterchart, "starterchart")
+
+	// Run a create
+	if _, _, err := executeActionCommand(fmt.Sprintf("--home='%s' create --starter=%s %s", hh.String(), starterChartPath, cname)); err != nil {
+		t.Errorf("Failed to run create: %s", err)
+		return
+	}
+
+	// Test that the chart is there
+	if fi, err := os.Stat(cname); err != nil {
+		t.Fatalf("no chart directory: %s", err)
+	} else if !fi.IsDir() {
+		t.Fatalf("chart is not directory")
+	}
+
+	c, err := loader.LoadDir(cname)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if c.Name() != cname {
+		t.Errorf("Expected %q name, got %q", cname, c.Name())
+	}
+	if c.Metadata.APIVersion != chart.APIVersionV1 {
+		t.Errorf("Wrong API version: %q", c.Metadata.APIVersion)
+	}
+
+	if l := len(c.Templates); l != 6 {
+		t.Errorf("Expected 5 templates, got %d", l)
+	}
+
+	found := false
+	for _, tpl := range c.Templates {
+		if tpl.Name == "templates/foo.tpl" {
+			found = true
+			if data := string(tpl.Data); data != "test" {
+				t.Errorf("Expected template 'test', got %q", data)
+			}
+		}
+	}
+	if !found {
+		t.Error("Did not find foo.tpl")
+	}
+}

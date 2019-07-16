@@ -67,7 +67,7 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&o.starter, "starter", "p", "", "the named Helm starter scaffold")
+	cmd.Flags().StringVarP(&o.starter, "starter", "p", "", "The name or absolute path to Helm starter scaffold")
 	return cmd
 }
 
@@ -87,6 +87,10 @@ func (o *createOptions) run(out io.Writer) error {
 	if o.starter != "" {
 		// Create from the starter
 		lstarter := filepath.Join(settings.Home.Starters(), o.starter)
+		// If path is absolute, we dont want to prefix it with helm starters folder
+		if filepath.IsAbs(o.starter) {
+			lstarter = o.starter
+		}
 		return chartutil.CreateFrom(cfile, filepath.Dir(o.name), lstarter)
 	}
 
