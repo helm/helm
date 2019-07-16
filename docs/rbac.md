@@ -107,7 +107,7 @@ $HELM_HOME has been configured at /Users/awesome-user/.helm.
 
 Tiller (the Helm server side component) has been installed into your Kubernetes Cluster.
 
-$ helm install nginx --tiller-namespace tiller-world --namespace tiller-world
+$ helm install stable/lamp --tiller-namespace tiller-world --namespace tiller-world
 NAME:   wayfaring-yak
 LAST DEPLOYED: Mon Aug  7 16:00:16 2017
 NAMESPACE: tiller-world
