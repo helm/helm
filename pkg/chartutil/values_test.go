@@ -45,6 +45,7 @@ water:
   water:
     where: "everywhere"
     nor: "any drop to drink"
+    temperature: 1234567890
 `
 
 	data, err := ReadValues([]byte(doc))
@@ -236,6 +237,12 @@ func matchValues(t *testing.T, data map[string]interface{}) {
 		t.Errorf(".water.water.where: %s", err)
 	} else if o != "everywhere" {
 		t.Errorf("Expected water water everywhere")
+	}
+
+	if o, err := ttpl("{{.water.water.temperature}}", data); err != nil {
+		t.Errorf(".water.water.temperature: %s", err)
+	} else if o != "1234567890" {
+		t.Errorf("Expected water water temperature: 1234567890, got: %s", o)
 	}
 }
 
