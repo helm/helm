@@ -17,6 +17,7 @@ limitations under the License.
 package installer // import "k8s.io/helm/cmd/helm/installer"
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -716,9 +717,32 @@ func TestDeployment_WithSetValues(t *testing.T) {
 
 		// convert our expected value to match the result type for comparison
 		ev := tt.expect
+		intType := reflect.TypeOf(int64(0))
+		floatType := reflect.TypeOf(float64(0))
+
 		switch pvt := pv.(type) {
+		case json.Number:
+			evv := reflect.ValueOf(ev)
+			evv = reflect.Indirect(evv)
+			switch ev.(type) {
+			case float32, float64:
+				evv = evv.Convert(floatType)
+				if fpv, err := pv.(json.Number).Float64(); err != nil {
+					t.Errorf("Failed to convert json number to float: %s", err)
+				} else if fpv != evv.Float() {
+					t.Errorf("%s: expected float value %q, got %f", tt.name, tt.expect, fpv)
+				}
+			case byte, int, int32, int64:
+				evv = evv.Convert(intType)
+				if ipv, err := pv.(json.Number).Int64(); err != nil {
+					t.Errorf("Failed to convert json number to int: %s", err)
+				} else if ipv != evv.Int() {
+					t.Errorf("%s: expected int value %q, got %d", tt.name, tt.expect, ipv)
+				}
+			default:
+				t.Errorf("Unknown primitive type: %s", reflect.TypeOf(ev))
+			}
 		case float64:
-			floatType := reflect.TypeOf(float64(0))
 			v := reflect.ValueOf(ev)
 			v = reflect.Indirect(v)
 			if !v.Type().ConvertibleTo(floatType) {
