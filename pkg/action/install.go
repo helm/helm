@@ -365,22 +365,24 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 	}
 
 	// Aggregate all valid manifests into one big doc.
+	fileWritten := make(map[string]bool)
 	for _, m := range manifests {
 		if outputDir == "" {
 			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", m.Name, m.Content)
 		} else {
-			err = writeToFile(outputDir, m.Name, m.Content)
+			err = writeToFile(outputDir, m.Name, m.Content, fileWritten[m.Name])
 			if err != nil {
 				return hs, b, "", err
 			}
+			fileWritten[m.Name] = true
 		}
 	}
 
 	return hs, b, notes, nil
 }
 
-// write the <data> to <output-dir>/<name>
-func writeToFile(outputDir string, name string, data string) error {
+// write the <data> to <output-dir>/<name>. <append> controls if the file is created or content will be appended
+func writeToFile(outputDir string, name string, data string, append bool) error {
 	outfileName := strings.Join([]string{outputDir, name}, string(filepath.Separator))
 
 	err := ensureDirectoryForFile(outfileName)
@@ -388,14 +390,14 @@ func writeToFile(outputDir string, name string, data string) error {
 		return err
 	}
 
-	f, err := os.Create(outfileName)
+	f, err := createOrOpenFile(outfileName, append)
 	if err != nil {
 		return err
 	}
 
 	defer f.Close()
 
-	_, err = f.WriteString(fmt.Sprintf("---\n# Source: %s\n%s", name, data))
+	_, err = f.WriteString(fmt.Sprintf("---\n# Source: %s\n%s\n", name, data))
 
 	if err != nil {
 		return err
@@ -403,6 +405,13 @@ func writeToFile(outputDir string, name string, data string) error {
 
 	fmt.Printf("wrote %s\n", outfileName)
 	return nil
+}
+
+func createOrOpenFile(filename string, append bool) (*os.File, error) {
+	if append {
+		return os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0600)
+	}
+	return os.Create(filename)
 }
 
 // check if the directory exists to create file. creates if don't exists

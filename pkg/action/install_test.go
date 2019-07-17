@@ -28,6 +28,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"helm.sh/helm/internal/test"
 	"helm.sh/helm/pkg/release"
 )
 
@@ -372,7 +373,7 @@ func TestInstallReleaseOutputDir(t *testing.T) {
 
 	instAction.OutputDir = dir
 
-	_, err = instAction.Run(buildChart(withSampleTemplates()))
+	_, err = instAction.Run(buildChart(withSampleTemplates(), withMultipleManifestTemplate()))
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
 	}
@@ -385,6 +386,11 @@ func TestInstallReleaseOutputDir(t *testing.T) {
 
 	_, err = os.Stat(filepath.Join(dir, "hello/templates/with-partials"))
 	is.NoError(err)
+
+	_, err = os.Stat(filepath.Join(dir, "hello/templates/rbac"))
+	is.NoError(err)
+
+	test.AssertGoldenFile(t, filepath.Join(dir, "hello/templates/rbac"), "rbac.txt")
 
 	_, err = os.Stat(filepath.Join(dir, "hello/templates/empty"))
 	is.True(os.IsNotExist(err))

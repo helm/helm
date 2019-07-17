@@ -71,6 +71,32 @@ var manifestWithTestHook = `kind: Pod
 	  cmd: fake-command
   `
 
+var rbacManifests = `apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: schedule-agents
+rules:
+- apiGroups: [""]
+  resources: ["pods", "pods/exec", "pods/log"]
+  verbs: ["*"]
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: schedule-agents
+  namespace: {{ default .Release.Namespace}}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: schedule-agents
+subjects:
+- kind: ServiceAccount
+  name: schedule-agents
+  namespace: {{ .Release.Namespace }}
+`
+
 type chartOptions struct {
 	*chart.Chart
 }
@@ -122,6 +148,15 @@ func withSampleTemplates() chartOption {
 			{Name: "templates/empty", Data: []byte("")},
 			{Name: "templates/with-partials", Data: []byte(`hello: {{ template "_planet" . }}`)},
 			{Name: "templates/partials/_planet", Data: []byte(`{{define "_planet"}}Earth{{end}}`)},
+		}
+		opts.Templates = append(opts.Templates, sampleTemplates...)
+	}
+}
+
+func withMultipleManifestTemplate() chartOption {
+	return func(opts *chartOptions) {
+		sampleTemplates := []*chart.File{
+			{Name: "templates/rbac", Data: []byte(rbacManifests)},
 		}
 		opts.Templates = append(opts.Templates, sampleTemplates...)
 	}
