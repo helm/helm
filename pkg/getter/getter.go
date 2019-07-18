@@ -124,7 +124,7 @@ func All(settings cli.EnvSettings) Providers {
 	result := Providers{
 		{
 			Schemes: []string{"http", "https"},
-			New:     newHTTPGetter,
+			New:     NewHTTPGetter,
 		},
 	}
 	pluginDownloaders, _ := collectPlugins(settings)

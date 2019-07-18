@@ -236,8 +236,9 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			Keyring:  m.Keyring,
 			HelmHome: m.HelmHome,
 			Getters:  m.Getters,
-			Username: username,
-			Password: password,
+			Options: []getter.Option{
+				getter.WithBasicAuth(username, password),
+			},
 		}
 
 		if _, _, err := dl.DownloadTo(churl, "", destPath); err != nil {

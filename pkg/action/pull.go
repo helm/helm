@@ -62,8 +62,9 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		Keyring:  p.Keyring,
 		Verify:   downloader.VerifyNever,
 		Getters:  getter.All(p.Settings),
-		Username: p.Username,
-		Password: p.Password,
+		Options: []getter.Option{
+			getter.WithBasicAuth(p.Username, p.Password),
+		},
 	}
 
 	if p.Verify {

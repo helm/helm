@@ -16,11 +16,8 @@ limitations under the License.
 package downloader
 
 import (
-	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/http/httptest"
-	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
@@ -61,7 +58,7 @@ func TestResolveChartRef(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		u, _, err := c.ResolveChartVersion(tt.ref, tt.version)
+		u, err := c.ResolveChartVersion(tt.ref, tt.version)
 		if err != nil {
 			if tt.fail {
 				continue
@@ -84,60 +81,6 @@ func TestVerifyChart(t *testing.T) {
 	// we just want a quick sanity check that the v is not empty.
 	if len(v.FileHash) == 0 {
 		t.Error("Digest missing")
-	}
-}
-
-func TestDownload(t *testing.T) {
-	expect := "Call me Ishmael"
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, expect)
-	}))
-	defer srv.Close()
-
-	provider, err := getter.ByScheme("http", cli.EnvSettings{})
-	if err != nil {
-		t.Fatal("No http provider found")
-	}
-
-	g, err := provider.New(getter.WithURL(srv.URL))
-	if err != nil {
-		t.Fatal(err)
-	}
-	got, err := g.Get(srv.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if got.String() != expect {
-		t.Errorf("Expected %q, got %q", expect, got.String())
-	}
-
-	// test with server backed by basic auth
-	basicAuthSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		username, password, ok := r.BasicAuth()
-		if !ok || username != "username" || password != "password" {
-			t.Errorf("Expected request to use basic auth and for username == 'username' and password == 'password', got '%v', '%s', '%s'", ok, username, password)
-		}
-		fmt.Fprint(w, expect)
-	}))
-
-	defer basicAuthSrv.Close()
-
-	u, _ := url.ParseRequestURI(basicAuthSrv.URL)
-	httpgetter, err := getter.NewHTTPGetter(
-		getter.WithURL(u.String()),
-		getter.WithBasicAuth("username", "password"),
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got, err = httpgetter.Get(u.String())
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if got.String() != expect {
-		t.Errorf("Expected %q, got %q", expect, got.String())
 	}
 }
 
@@ -200,6 +143,81 @@ func TestDownloadTo(t *testing.T) {
 		Verify:   VerifyAlways,
 		Keyring:  "testdata/helm-test-key.pub",
 		Getters:  getter.All(cli.EnvSettings{}),
+	}
+	cname := "/signtest-0.1.0.tgz"
+	where, v, err := c.DownloadTo(srv.URL()+cname, "", dest)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if expect := filepath.Join(dest, cname); where != expect {
+		t.Errorf("Expected download to %s, got %s", expect, where)
+	}
+
+	if v.FileHash == "" {
+		t.Error("File hash was empty, but verification is required.")
+	}
+
+	if _, err := os.Stat(filepath.Join(dest, cname)); err != nil {
+		t.Error(err)
+		return
+	}
+}
+
+func TestDownloadTo_WithOptions(t *testing.T) {
+	tmp, err := ioutil.TempDir("", "helm-downloadto-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmp)
+
+	hh := helmpath.Home(tmp)
+	dest := filepath.Join(hh.String(), "dest")
+	configDirectories := []string{
+		hh.String(),
+		hh.Repository(),
+		hh.Cache(),
+		dest,
+	}
+	for _, p := range configDirectories {
+		if fi, err := os.Stat(p); err != nil {
+			if err := os.MkdirAll(p, 0755); err != nil {
+				t.Fatalf("Could not create %s: %s", p, err)
+			}
+		} else if !fi.IsDir() {
+			t.Fatalf("%s must be a directory", p)
+		}
+	}
+
+	// Set up a fake repo with basic auth enabled
+	srv := repotest.NewServer(tmp)
+	srv.Stop()
+	srv.WithMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		username, password, ok := r.BasicAuth()
+		if !ok || username != "username" || password != "password" {
+			t.Errorf("Expected request to use basic auth and for username == 'username' and password == 'password', got '%v', '%s', '%s'", ok, username, password)
+		}
+	}))
+	srv.Start()
+	defer srv.Stop()
+	if _, err := srv.CopyCharts("testdata/*.tgz*"); err != nil {
+		t.Error(err)
+		return
+	}
+	if err := srv.LinkIndices(); err != nil {
+		t.Fatal(err)
+	}
+
+	c := ChartDownloader{
+		HelmHome: hh,
+		Out:      os.Stderr,
+		Verify:   VerifyAlways,
+		Keyring:  "testdata/helm-test-key.pub",
+		Getters:  getter.All(cli.EnvSettings{}),
+		Options: []getter.Option{
+			getter.WithBasicAuth("username", "password"),
+		},
 	}
 	cname := "/signtest-0.1.0.tgz"
 	where, v, err := c.DownloadTo(srv.URL()+cname, "", dest)

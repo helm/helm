@@ -16,30 +16,34 @@ limitations under the License.
 package getter
 
 import (
+	"fmt"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"path/filepath"
 	"testing"
 
 	"helm.sh/helm/internal/test"
+	"helm.sh/helm/pkg/cli"
 )
 
 func TestHTTPGetter(t *testing.T) {
-	g, err := newHTTPGetter(WithURL("http://example.com"))
+	g, err := NewHTTPGetter(WithURL("http://example.com"))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	if hg, ok := g.(*HTTPGetter); !ok {
-		t.Fatal("Expected newHTTPGetter to produce an httpGetter")
+		t.Fatal("Expected NewHTTPGetter to produce an *HTTPGetter")
 	} else if hg.client != http.DefaultClient {
-		t.Fatal("Expected newHTTPGetter to return a default HTTP client.")
+		t.Fatal("Expected NewHTTPGetter to return a default HTTP client.")
 	}
 
 	// Test with SSL:
 	cd := "../../testdata"
 	join := filepath.Join
 	ca, pub, priv := join(cd, "ca.pem"), join(cd, "crt.pem"), join(cd, "key.pem")
-	g, err = newHTTPGetter(
+	g, err = NewHTTPGetter(
 		WithURL("http://example.com"),
 		WithTLSClientConfig(pub, priv, ca),
 	)
@@ -49,23 +53,28 @@ func TestHTTPGetter(t *testing.T) {
 
 	hg, ok := g.(*HTTPGetter)
 	if !ok {
-		t.Fatal("Expected newHTTPGetter to produce an httpGetter")
+		t.Fatal("Expected NewHTTPGetter to produce an *HTTPGetter")
 	}
 
 	transport, ok := hg.client.Transport.(*http.Transport)
 	if !ok {
-		t.Errorf("Expected newHTTPGetter to set up an HTTP transport")
+		t.Errorf("Expected NewHTTPGetter to set up an HTTP transport")
 	}
 
 	test.AssertGoldenString(t, transport.TLSClientConfig.ServerName, "output/httpgetter-servername.txt")
 
 	// Test other options
-	hg, err = NewHTTPGetter(
+	g, err = NewHTTPGetter(
 		WithBasicAuth("I", "Am"),
 		WithUserAgent("Groot"),
 	)
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	hg, ok = g.(*HTTPGetter)
+	if !ok {
+		t.Fatal("expected NewHTTPGetter to produce an *HTTPGetter")
 	}
 
 	if hg.opts.username != "I" {
@@ -78,5 +87,59 @@ func TestHTTPGetter(t *testing.T) {
 
 	if hg.opts.userAgent != "Groot" {
 		t.Errorf("Expected NewHTTPGetter to contain %q as the user agent, got %q", "Groot", hg.opts.userAgent)
+	}
+}
+
+func TestDownload(t *testing.T) {
+	expect := "Call me Ishmael"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, expect)
+	}))
+	defer srv.Close()
+
+	provider, err := ByScheme("http", cli.EnvSettings{})
+	if err != nil {
+		t.Fatal("No http provider found")
+	}
+
+	g, err := provider.New(WithURL(srv.URL))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := g.Get(srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got.String() != expect {
+		t.Errorf("Expected %q, got %q", expect, got.String())
+	}
+
+	// test with server backed by basic auth
+	basicAuthSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		username, password, ok := r.BasicAuth()
+		if !ok || username != "username" || password != "password" {
+			t.Errorf("Expected request to use basic auth and for username == 'username' and password == 'password', got '%v', '%s', '%s'", ok, username, password)
+		}
+		fmt.Fprint(w, expect)
+	}))
+
+	defer basicAuthSrv.Close()
+
+	u, _ := url.ParseRequestURI(basicAuthSrv.URL)
+	httpgetter, err := NewHTTPGetter(
+		WithURL(u.String()),
+		WithBasicAuth("username", "password"),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err = httpgetter.Get(u.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got.String() != expect {
+		t.Errorf("Expected %q, got %q", expect, got.String())
 	}
 }
