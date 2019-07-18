@@ -122,7 +122,16 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	if !u.KeepHistory {
 		u.cfg.Log("purge requested for %s", name)
 		err := u.purgeReleases(rels...)
-		return res, errors.Wrap(err, "uninstall: Failed to purge the release")
+		if err != nil {
+			errs = append(errs, errors.Wrap(err, "uninstall: Failed to purge the release"))
+		}
+		
+		// Return the errors that occurred while deleting the release, if any
+		if len(errs) > 0 {
+			return res, errors.Errorf("uninstallation completed with %d error(s): %s", len(errs), joinErrors(errs))
+		}
+		
+		return res, nil
 	}
 
 	if err := u.cfg.Releases.Update(rel); err != nil {

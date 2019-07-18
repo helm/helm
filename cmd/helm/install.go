@@ -128,6 +128,7 @@ func addInstallFlags(f *pflag.FlagSet, client *action.Install) {
 	f.StringVar(&client.NameTemplate, "name-template", "", "specify template used to name the release")
 	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
 	f.BoolVar(&client.DependencyUpdate, "dependency-update", false, "run helm dependency update before installing the chart")
+	f.BoolVar(&client.Atomic, "atomic", false, "if set, installation process purges chart on fail. The --wait flag will be set automatically if --atomic is used")
 	addValueOptionsFlags(f, &client.ValueOptions)
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 }

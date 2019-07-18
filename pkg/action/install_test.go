@@ -30,6 +30,8 @@ import (
 
 	"helm.sh/helm/internal/test"
 	"helm.sh/helm/pkg/release"
+	"helm.sh/helm/pkg/storage/driver"
+	kubefake "helm.sh/helm/pkg/kube/fake"
 )
 
 type nameTemplateTestCase struct {
@@ -189,7 +191,9 @@ func TestInstallRelease_FailedHooks(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "failed-hooks"
-	instAction.cfg.KubeClient = newHookFailingKubeClient()
+	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+	failer.WatchUntilReadyError = fmt.Errorf("Failed watch")
+	instAction.cfg.KubeClient = failer
 
 	instAction.rawValues = map[string]interface{}{}
 	res, err := instAction.Run(buildChart())
@@ -234,6 +238,63 @@ func TestInstallRelease_KubeVersion(t *testing.T) {
 	_, err = instAction.Run(buildChart(withKube(">=99.0.0")))
 	is.Error(err)
 	is.Contains(err.Error(), "chart requires kubernetesVersion")
+}
+
+func TestInstallRelease_Wait(t *testing.T) {
+	is := assert.New(t)
+	instAction := installAction(t)
+	instAction.ReleaseName = "come-fail-away"
+	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+	failer.WaitError = fmt.Errorf("I timed out")
+	instAction.cfg.KubeClient = failer
+	instAction.Wait = true
+	instAction.rawValues = map[string]interface{}{}
+
+	res, err := instAction.Run(buildChart())
+	is.Error(err)
+	is.Contains(res.Info.Description, "I timed out")
+	is.Equal(res.Info.Status, release.StatusFailed)
+}
+
+func TestInstallRelease_Atomic(t *testing.T) {
+	is := assert.New(t)
+
+	t.Run("atomic uninstall succeeds", func(t *testing.T) {
+		instAction := installAction(t)
+		instAction.ReleaseName = "come-fail-away"
+		failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+		failer.WaitError = fmt.Errorf("I timed out")
+		instAction.cfg.KubeClient = failer
+		instAction.Atomic = true
+		instAction.rawValues = map[string]interface{}{}
+
+		res, err := instAction.Run(buildChart())
+		is.Error(err)
+		is.Contains(err.Error(), "I timed out")
+		is.Contains(err.Error(), "atomic")
+
+		// Now make sure it isn't in storage any more
+		_, err = instAction.cfg.Releases.Get(res.Name, res.Version)
+		is.Error(err)
+		is.Equal(err, driver.ErrReleaseNotFound)
+	})
+	
+	t.Run("atomic uninstall fails", func(t *testing.T) {
+		instAction := installAction(t)
+		instAction.ReleaseName = "come-fail-away-with-me"
+		failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+		failer.WaitError = fmt.Errorf("I timed out")
+		failer.DeleteError = fmt.Errorf("uninstall fail")
+		instAction.cfg.KubeClient = failer
+		instAction.Atomic = true
+		instAction.rawValues = map[string]interface{}{}
+
+		_, err := instAction.Run(buildChart())
+		is.Error(err)
+		is.Contains(err.Error(), "I timed out")
+		is.Contains(err.Error(), "uninstall fail")
+		is.Contains(err.Error(), "an error occurred while uninstalling the release")
+	})
 }
 
 func TestNameTemplate(t *testing.T) {
