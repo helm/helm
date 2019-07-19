@@ -29,9 +29,10 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"helm.sh/helm/internal/test"
+	"helm.sh/helm/pkg/chartutil"
+	kubefake "helm.sh/helm/pkg/kube/fake"
 	"helm.sh/helm/pkg/release"
 	"helm.sh/helm/pkg/storage/driver"
-	kubefake "helm.sh/helm/pkg/kube/fake"
 )
 
 type nameTemplateTestCase struct {
@@ -72,6 +73,16 @@ func TestInstallRelease(t *testing.T) {
 	is.NotEqual(len(rel.Manifest), 0)
 	is.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world")
 	is.Equal(rel.Info.Description, "Install complete")
+}
+
+func TestInstallReleaseClientOnly(t *testing.T) {
+	is := assert.New(t)
+	instAction := installAction(t)
+	instAction.ClientOnly = true
+	instAction.Run(buildChart()) // disregard output
+
+	is.Equal(instAction.cfg.Capabilities, chartutil.DefaultCapabilities)
+	is.Equal(instAction.cfg.KubeClient, &kubefake.PrintingKubeClient{Out: ioutil.Discard})
 }
 
 func TestInstallRelease_NoName(t *testing.T) {
@@ -278,7 +289,7 @@ func TestInstallRelease_Atomic(t *testing.T) {
 		is.Error(err)
 		is.Equal(err, driver.ErrReleaseNotFound)
 	})
-	
+
 	t.Run("atomic uninstall fails", func(t *testing.T) {
 		instAction := installAction(t)
 		instAction.ReleaseName = "come-fail-away-with-me"
