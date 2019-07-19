@@ -114,7 +114,6 @@ func (c *Client) newBuilder() *resource.Builder {
 		ContinueOnError().
 		NamespaceParam(c.namespace()).
 		DefaultNamespace().
-		RequireNamespace().
 		Flatten()
 }
 
