@@ -193,6 +193,11 @@ func TestBuild(t *testing.T) {
 			namespace: "test",
 			reader:    strings.NewReader(testInvalidServiceManifest),
 			err:       true,
+		}, {
+			name:      "Valid input, deploying resources into different namespaces",
+			namespace: "test",
+			reader:    strings.NewReader(namespacedGuestbookManifest),
+			count:     1,
 		},
 	}
 
@@ -423,6 +428,34 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   name: frontend
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: guestbook
+        tier: frontend
+    spec:
+      containers:
+      - name: php-redis
+        image: gcr.io/google-samples/gb-frontend:v4
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        env:
+        - name: GET_HOSTS_FROM
+          value: dns
+        ports:
+        - containerPort: 80
+`
+
+const namespacedGuestbookManifest = `
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: guestbook
 spec:
   replicas: 3
   template:
