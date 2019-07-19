@@ -233,6 +233,46 @@ func TestInstall(t *testing.T) {
 	}
 }
 
+func TestInstallAlternatePorts(t *testing.T) {
+	image := "gcr.io/kubernetes-helm/tiller:v2.0.0"
+
+	opts := &Options{Namespace: v1.NamespaceDefault, ImageSpec: image}
+	opts.TillerPort++
+	opts.TillerProbePort++
+
+	fc := &fake.Clientset{}
+	fc.AddReactor("create", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
+		obj := action.(testcore.CreateAction).GetObject().(*v1beta1.Deployment)
+		ports := obj.Spec.Template.Spec.Containers[0].Ports
+		if len(ports) != 2 {
+			t.Errorf("expected ports = 2, got '%d'", len(ports))
+		}
+		if ports[0].ContainerPort != opts.TillerPort {
+			t.Errorf("expected Tiller port = %d, got '%d'", opts.TillerPort, ports[0].ContainerPort)
+		}
+		if ports[1].ContainerPort != opts.TillerProbePort {
+			t.Errorf("expected Tiller probe port = %d, got '%d'", opts.TillerProbePort, ports[1].ContainerPort)
+		}
+		return true, obj, nil
+	})
+	fc.AddReactor("create", "services", func(action testcore.Action) (bool, runtime.Object, error) {
+		obj := action.(testcore.CreateAction).GetObject().(*v1.Service)
+		ports := obj.Spec.Ports
+		if ports[0].Port != opts.TillerPort {
+			t.Errorf("expected Tiller port = %d, got '%d'", opts.TillerPort, ports[0].Port)
+		}
+		return true, obj, nil
+	})
+
+	if err := Install(fc, opts); err != nil {
+		t.Errorf("unexpected error: %#+v", err)
+	}
+
+	if actions := fc.Actions(); len(actions) != 2 {
+		t.Errorf("unexpected actions: %v, expected 2 actions got %d", actions, len(actions))
+	}
+}
+
 func TestInstallHA(t *testing.T) {
 	image := "gcr.io/kubernetes-helm/tiller:v2.0.0"
 
