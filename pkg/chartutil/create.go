@@ -88,6 +88,7 @@ securityContext: {}
   # runAsUser: 1000
 
 service:
+  annotations: {}
   type: ClusterIP
   port: 80
 
@@ -252,6 +253,8 @@ metadata:
   name: {{ include "<CHARTNAME>.fullname" . }}
   labels:
 {{ include "<CHARTNAME>.labels" . | indent 4 }}
+  annotations:
+    {{- toYaml .Values.service.annotations | nindent 4 }}
 spec:
   type: {{ .Values.service.type }}
   ports:
