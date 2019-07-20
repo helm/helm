@@ -118,6 +118,8 @@ resources: {}
   #   cpu: 100m
   #   memory: 128Mi
 
+podAnnotations: {}
+
 nodeSelector: {}
 
 tolerations: []
@@ -205,6 +207,8 @@ spec:
       labels:
         app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
         app.kubernetes.io/instance: {{ .Release.Name }}
+      annotations:
+        {{- toYaml .Values.podAnnotations | nindent 8 }}
     spec:
     {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
