@@ -16,16 +16,13 @@ limitations under the License.
 package main
 
 import (
-	"fmt"
 	"io"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/cmd/helm/require"
 	"helm.sh/helm/pkg/action"
-	"helm.sh/helm/pkg/release"
 )
 
 const releaseTestRunHelp = `
@@ -44,27 +41,7 @@ func newReleaseTestRunCmd(cfg *action.Configuration, out io.Writer) *cobra.Comma
 		Long:  releaseTestRunHelp,
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			c, errc := client.Run(args[0])
-			testErr := &testErr{}
-
-			for {
-				select {
-				case err := <-errc:
-					if err != nil && testErr.failed > 0 {
-						return testErr.Error()
-					}
-					return err
-				case res, ok := <-c:
-					if !ok {
-						break
-					}
-
-					if res.Status == release.TestRunFailure {
-						testErr.failed++
-					}
-					fmt.Fprintf(out, res.Msg+"\n")
-				}
-			}
+			return client.Run(args[0])
 		},
 	}
 
@@ -73,12 +50,4 @@ func newReleaseTestRunCmd(cfg *action.Configuration, out io.Writer) *cobra.Comma
 	f.BoolVar(&client.Cleanup, "cleanup", false, "delete test pods upon completion")
 
 	return cmd
-}
-
-type testErr struct {
-	failed int
-}
-
-func (err *testErr) Error() error {
-	return errors.Errorf("%v test(s) failed", err.failed)
 }

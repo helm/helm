@@ -89,7 +89,7 @@ var manifestWithTestHook = `kind: Pod
   metadata:
 	name: finding-nemo,
 	annotations:
-	  "helm.sh/hook": test-success
+	  "helm.sh/hook": test
   spec:
 	containers:
 	- name: nemo-test
@@ -231,7 +231,7 @@ func namedReleaseStub(name string, status release.Status) *release.Release {
 				Path:     "finding-nemo",
 				Manifest: manifestWithTestHook,
 				Events: []release.HookEvent{
-					release.HookReleaseTestSuccess,
+					release.HookTest,
 				},
 			},
 		},

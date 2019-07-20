@@ -20,7 +20,6 @@ import (
 	"io"
 	"time"
 
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/cli-runtime/pkg/resource"
 
 	"helm.sh/helm/pkg/kube"
@@ -76,9 +75,4 @@ func (p *PrintingKubeClient) Build(_ io.Reader) (kube.Result, error) {
 
 func (p *PrintingKubeClient) BuildUnstructured(_ io.Reader) (kube.Result, error) {
 	return p.Build(nil)
-}
-
-// WaitAndGetCompletedPodPhase implements KubeClient WaitAndGetCompletedPodPhase.
-func (p *PrintingKubeClient) WaitAndGetCompletedPodPhase(_ string, _ time.Duration) (v1.PodPhase, error) {
-	return v1.PodSucceeded, nil
 }

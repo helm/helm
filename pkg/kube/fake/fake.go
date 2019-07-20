@@ -21,7 +21,6 @@ import (
 	"io"
 	"time"
 
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/cli-runtime/pkg/resource"
 
 	"helm.sh/helm/pkg/kube"
@@ -32,15 +31,14 @@ import (
 // delegates all its calls to `PrintingKubeClient`
 type FailingKubeClient struct {
 	PrintingKubeClient
-	CreateError                      error
-	WaitError                        error
-	GetError                         error
-	DeleteError                      error
-	WatchUntilReadyError             error
-	UpdateError                      error
-	BuildError                       error
-	BuildUnstructuredError           error
-	WaitAndGetCompletedPodPhaseError error
+	DeleteError            error
+	WatchUntilReadyError   error
+	UpdateError            error
+	BuildError             error
+	BuildUnstructuredError error
+	CreateError            error
+	WaitError              error
+	GetError               error
 }
 
 // Create returns the configured error if set or prints
@@ -105,12 +103,4 @@ func (f *FailingKubeClient) BuildUnstructured(r io.Reader) (kube.Result, error) 
 		return []*resource.Info{}, f.BuildUnstructuredError
 	}
 	return f.PrintingKubeClient.Build(r)
-}
-
-// WaitAndGetCompletedPodPhase returns the configured error if set or prints
-func (f *FailingKubeClient) WaitAndGetCompletedPodPhase(s string, d time.Duration) (v1.PodPhase, error) {
-	if f.WaitAndGetCompletedPodPhaseError != nil {
-		return v1.PodSucceeded, f.WaitAndGetCompletedPodPhaseError
-	}
-	return f.PrintingKubeClient.WaitAndGetCompletedPodPhase(s, d)
 }

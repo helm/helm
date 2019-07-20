@@ -19,8 +19,6 @@ package kube
 import (
 	"io"
 	"time"
-
-	v1 "k8s.io/api/core/v1"
 )
 
 // KubernetesClient represents a client capable of communicating with the Kubernetes API.
@@ -57,10 +55,6 @@ type Interface interface {
 
 	Build(reader io.Reader) (Result, error)
 	BuildUnstructured(reader io.Reader) (Result, error)
-
-	// WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
-	// and returns said phase (PodSucceeded or PodFailed qualify).
-	WaitAndGetCompletedPodPhase(name string, timeout time.Duration) (v1.PodPhase, error)
 }
 
 var _ Interface = (*Client)(nil)

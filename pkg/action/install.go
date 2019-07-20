@@ -25,7 +25,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"sort"
 	"strings"
 	"text/template"
 	"time"
@@ -40,7 +39,6 @@ import (
 	"helm.sh/helm/pkg/downloader"
 	"helm.sh/helm/pkg/engine"
 	"helm.sh/helm/pkg/getter"
-	"helm.sh/helm/pkg/hooks"
 	kubefake "helm.sh/helm/pkg/kube/fake"
 	"helm.sh/helm/pkg/release"
 	"helm.sh/helm/pkg/releaseutil"
@@ -198,7 +196,7 @@ func (i *Install) Run(chrt *chart.Chart) (*release.Release, error) {
 
 	// pre-install hooks
 	if !i.DisableHooks {
-		if err := i.execHook(rel.Hooks, hooks.PreInstall); err != nil {
+		if err := i.execHook(rel.Hooks, release.HookPreInstall); err != nil {
 			return i.failRelease(rel, fmt.Errorf("failed pre-install: %s", err))
 		}
 	}
@@ -220,7 +218,7 @@ func (i *Install) Run(chrt *chart.Chart) (*release.Release, error) {
 	}
 
 	if !i.DisableHooks {
-		if err := i.execHook(rel.Hooks, hooks.PostInstall); err != nil {
+		if err := i.execHook(rel.Hooks, release.HookPostInstall); err != nil {
 			return i.failRelease(rel, fmt.Errorf("failed post-install: %s", err))
 		}
 	}
@@ -466,86 +464,8 @@ func (i *Install) validateManifest(manifest io.Reader) error {
 }
 
 // execHook executes all of the hooks for the given hook event.
-func (i *Install) execHook(hs []*release.Hook, hook string) error {
-	executingHooks := []*release.Hook{}
-
-	for _, h := range hs {
-		for _, e := range h.Events {
-			if string(e) == hook {
-				executingHooks = append(executingHooks, h)
-			}
-		}
-	}
-
-	sort.Sort(hookByWeight(executingHooks))
-
-	for _, h := range executingHooks {
-		if err := deleteHookByPolicy(i.cfg, h, hooks.BeforeHookCreation); err != nil {
-			return err
-		}
-
-		b := bytes.NewBufferString(h.Manifest)
-		if err := i.cfg.KubeClient.Create(b); err != nil {
-			return errors.Wrapf(err, "warning: Release %s %s %s failed", i.ReleaseName, hook, h.Path)
-		}
-		b.Reset()
-		b.WriteString(h.Manifest)
-
-		if err := i.cfg.KubeClient.WatchUntilReady(b, i.Timeout); err != nil {
-			// If a hook is failed, checkout the annotation of the hook to determine whether the hook should be deleted
-			// under failed condition. If so, then clear the corresponding resource object in the hook
-			if err := deleteHookByPolicy(i.cfg, h, hooks.HookFailed); err != nil {
-				return err
-			}
-			return err
-		}
-	}
-
-	// If all hooks are succeeded, checkout the annotation of each hook to determine whether the hook should be deleted
-	// under succeeded condition. If so, then clear the corresponding resource object in each hook
-	for _, h := range executingHooks {
-		if err := deleteHookByPolicy(i.cfg, h, hooks.HookSucceeded); err != nil {
-			return err
-		}
-		h.LastRun = time.Now()
-	}
-
-	return nil
-}
-
-// deletePolices represents a mapping between the key in the annotation for label deleting policy and its real meaning
-// FIXME: Can we refactor this out?
-var deletePolices = map[string]release.HookDeletePolicy{
-	hooks.HookSucceeded:      release.HookSucceeded,
-	hooks.HookFailed:         release.HookFailed,
-	hooks.BeforeHookCreation: release.HookBeforeHookCreation,
-}
-
-// hookHasDeletePolicy determines whether the defined hook deletion policy matches the hook deletion polices
-// supported by helm. If so, mark the hook as one should be deleted.
-func hookHasDeletePolicy(h *release.Hook, policy string) bool {
-	dp, ok := deletePolices[policy]
-	if !ok {
-		return false
-	}
-	for _, v := range h.DeletePolicies {
-		if dp == v {
-			return true
-		}
-	}
-	return false
-}
-
-// hookByWeight is a sorter for hooks
-type hookByWeight []*release.Hook
-
-func (x hookByWeight) Len() int      { return len(x) }
-func (x hookByWeight) Swap(i, j int) { x[i], x[j] = x[j], x[i] }
-func (x hookByWeight) Less(i, j int) bool {
-	if x[i].Weight == x[j].Weight {
-		return x[i].Name < x[j].Name
-	}
-	return x[i].Weight < x[j].Weight
+func (i *Install) execHook(hs []*release.Hook, hook release.HookEvent) error {
+	return i.cfg.execHook(hs, hook, i.Timeout)
 }
 
 // NameAndChart returns the name and chart that should be used.

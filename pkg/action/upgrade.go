@@ -19,14 +19,12 @@ package action
 import (
 	"bytes"
 	"fmt"
-	"sort"
 	"time"
 
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/pkg/chart"
 	"helm.sh/helm/pkg/chartutil"
-	"helm.sh/helm/pkg/hooks"
 	"helm.sh/helm/pkg/kube"
 	"helm.sh/helm/pkg/release"
 	"helm.sh/helm/pkg/releaseutil"
@@ -201,7 +199,7 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 
 	// pre-upgrade hooks
 	if !u.DisableHooks {
-		if err := u.execHook(upgradedRelease.Hooks, hooks.PreUpgrade); err != nil {
+		if err := u.execHook(upgradedRelease.Hooks, release.HookPreUpgrade); err != nil {
 			return u.failRelease(upgradedRelease, fmt.Errorf("pre-upgrade hooks failed: %s", err))
 		}
 	} else {
@@ -222,7 +220,7 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 
 	// post-upgrade hooks
 	if !u.DisableHooks {
-		if err := u.execHook(upgradedRelease.Hooks, hooks.PostUpgrade); err != nil {
+		if err := u.execHook(upgradedRelease.Hooks, release.HookPostUpgrade); err != nil {
 			return u.failRelease(upgradedRelease, fmt.Errorf("post-upgrade hooks failed: %s", err))
 		}
 	}
@@ -335,49 +333,6 @@ func validateManifest(c kube.Interface, manifest []byte) error {
 }
 
 // execHook executes all of the hooks for the given hook event.
-func (u *Upgrade) execHook(hs []*release.Hook, hook string) error {
-	timeout := u.Timeout
-	executingHooks := []*release.Hook{}
-
-	for _, h := range hs {
-		for _, e := range h.Events {
-			if string(e) == hook {
-				executingHooks = append(executingHooks, h)
-			}
-		}
-	}
-
-	sort.Sort(hookByWeight(executingHooks))
-	for _, h := range executingHooks {
-		if err := deleteHookByPolicy(u.cfg, h, hooks.BeforeHookCreation); err != nil {
-			return err
-		}
-
-		b := bytes.NewBufferString(h.Manifest)
-		if err := u.cfg.KubeClient.Create(b); err != nil {
-			return errors.Wrapf(err, "warning: Hook %s %s failed", hook, h.Path)
-		}
-		b.Reset()
-		b.WriteString(h.Manifest)
-
-		if err := u.cfg.KubeClient.WatchUntilReady(b, timeout); err != nil {
-			// If a hook is failed, checkout the annotation of the hook to determine whether the hook should be deleted
-			// under failed condition. If so, then clear the corresponding resource object in the hook
-			if err := deleteHookByPolicy(u.cfg, h, hooks.HookFailed); err != nil {
-				return err
-			}
-			return err
-		}
-	}
-
-	// If all hooks are succeeded, checkout the annotation of each hook to determine whether the hook should be deleted
-	// under succeeded condition. If so, then clear the corresponding resource object in each hook
-	for _, h := range executingHooks {
-		if err := deleteHookByPolicy(u.cfg, h, hooks.HookSucceeded); err != nil {
-			return err
-		}
-		h.LastRun = time.Now()
-	}
-
-	return nil
+func (u *Upgrade) execHook(hs []*release.Hook, hook release.HookEvent) error {
+	return u.cfg.execHook(hs, hook, u.Timeout)
 }

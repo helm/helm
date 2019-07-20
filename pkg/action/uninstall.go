@@ -18,13 +18,11 @@ package action
 
 import (
 	"bytes"
-	"sort"
 	"strings"
 	"time"
 
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/pkg/hooks"
 	"helm.sh/helm/pkg/kube"
 	"helm.sh/helm/pkg/release"
 	"helm.sh/helm/pkg/releaseutil"
@@ -94,7 +92,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	res := &release.UninstallReleaseResponse{Release: rel}
 
 	if !u.DisableHooks {
-		if err := u.execHook(rel.Hooks, hooks.PreDelete); err != nil {
+		if err := u.execHook(rel.Hooks, release.HookPreDelete); err != nil {
 			return res, err
 		}
 	} else {
@@ -111,7 +109,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	res.Info = kept
 
 	if !u.DisableHooks {
-		if err := u.execHook(rel.Hooks, hooks.PostDelete); err != nil {
+		if err := u.execHook(rel.Hooks, release.HookPostDelete); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -162,51 +160,8 @@ func joinErrors(errs []error) string {
 }
 
 // execHook executes all of the hooks for the given hook event.
-func (u *Uninstall) execHook(hs []*release.Hook, hook string) error {
-	executingHooks := []*release.Hook{}
-
-	for _, h := range hs {
-		for _, e := range h.Events {
-			if string(e) == hook {
-				executingHooks = append(executingHooks, h)
-			}
-		}
-	}
-
-	sort.Sort(hookByWeight(executingHooks))
-
-	for _, h := range executingHooks {
-		if err := deleteHookByPolicy(u.cfg, h, hooks.BeforeHookCreation); err != nil {
-			return err
-		}
-
-		b := bytes.NewBufferString(h.Manifest)
-		if err := u.cfg.KubeClient.Create(b); err != nil {
-			return errors.Wrapf(err, "warning: Hook %s %s failed", hook, h.Path)
-		}
-		b.Reset()
-		b.WriteString(h.Manifest)
-
-		if err := u.cfg.KubeClient.WatchUntilReady(b, u.Timeout); err != nil {
-			// If a hook is failed, checkout the annotation of the hook to determine whether the hook should be deleted
-			// under failed condition. If so, then clear the corresponding resource object in the hook
-			if err := deleteHookByPolicy(u.cfg, h, hooks.HookFailed); err != nil {
-				return err
-			}
-			return err
-		}
-	}
-
-	// If all hooks are succeeded, checkout the annotation of each hook to determine whether the hook should be deleted
-	// under succeeded condition. If so, then clear the corresponding resource object in each hook
-	for _, h := range executingHooks {
-		if err := deleteHookByPolicy(u.cfg, h, hooks.HookSucceeded); err != nil {
-			return err
-		}
-		h.LastRun = time.Now()
-	}
-
-	return nil
+func (u *Uninstall) execHook(hs []*release.Hook, hook release.HookEvent) error {
+	return u.cfg.execHook(hs, hook, u.Timeout)
 }
 
 // deleteRelease deletes the release and returns manifests that were kept in the deletion process
