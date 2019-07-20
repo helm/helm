@@ -1,0 +1,4 @@
+dependencies:
+  - name: depchart
+    version: 0.1.0
+    repository: "https://example.com/charts"

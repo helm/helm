@@ -36,7 +36,7 @@ import (
 
 var longLintHelp = `
 This command takes a path to a chart and runs a series of tests to verify that
-the chart is well-formed.
+the chart and its dependent charts are well-formed.
 
 If the linter encounters things that will cause the chart to fail installation,
 it will emit [ERROR] messages. If it encounters issues that break with convention
@@ -100,29 +100,32 @@ func (l *lintCmd) run() error {
 	var total int
 	var failures int
 	for _, path := range l.paths {
-		if linter, err := lintChart(path, rvals, l.namespace, l.strict); err != nil {
-			fmt.Println("==> Skipping", path)
-			fmt.Println(err)
-			if err == errLintNoChart {
-				failures = failures + 1
-			}
-		} else {
-			fmt.Println("==> Linting", path)
+		chartPaths := getChartPaths(path)
+		for _, chartPath := range chartPaths {
+			if linter, err := lintChart(chartPath, rvals, l.namespace, l.strict); err != nil {
+				fmt.Println("==> Skipping", chartPath)
+				fmt.Println(err)
+				if err == errLintNoChart {
+					failures = failures + 1
+				}
+			} else {
+				fmt.Println("==> Linting", chartPath)
 
-			if len(linter.Messages) == 0 {
-				fmt.Println("Lint OK")
-			}
+				if len(linter.Messages) == 0 {
+					fmt.Println("Lint OK")
+				}
 
-			for _, msg := range linter.Messages {
-				fmt.Println(msg)
-			}
+				for _, msg := range linter.Messages {
+					fmt.Println(msg)
+				}
 
-			total = total + 1
-			if linter.HighestSeverity >= lowestTolerance {
-				failures = failures + 1
+				total = total + 1
+				if linter.HighestSeverity >= lowestTolerance {
+					failures = failures + 1
+				}
 			}
+			fmt.Println("")
 		}
-		fmt.Println("")
 	}
 
 	msg := fmt.Sprintf("%d chart(s) linted", total)
@@ -133,6 +136,17 @@ func (l *lintCmd) run() error {
 	fmt.Fprintf(l.out, "%s, no failures\n", msg)
 
 	return nil
+}
+
+func getChartPaths(root string) []string {
+	charts := []string{root}
+	filepath.Walk(filepath.Join(root, "charts"), func(path string, info os.FileInfo, err error) error {
+		if info != nil && (info.Name() == "Chart.yaml" || strings.HasSuffix(path, ".tgz")) {
+			charts = append(charts, filepath.Dir(path))
+		}
+		return nil
+	})
+	return charts
 }
 
 func lintChart(path string, vals []byte, namespace string, strict bool) (support.Linter, error) {

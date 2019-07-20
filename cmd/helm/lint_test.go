@@ -17,6 +17,8 @@ limitations under the License.
 package main
 
 import (
+	"io/ioutil"
+	"os"
 	"testing"
 )
 
@@ -29,6 +31,7 @@ var (
 	invalidArchivedChartPath     = "testdata/testcharts/invalidcompressedchart0.1.0.tgz"
 	chartDirPath                 = "testdata/testcharts/decompressedchart/"
 	chartMissingManifest         = "testdata/testcharts/chart-missing-manifest"
+	invalidDepChart              = "testdata/testcharts/invaliddepchart"
 )
 
 func TestLintChart(t *testing.T) {
@@ -49,6 +52,22 @@ func TestLintChart(t *testing.T) {
 	}
 
 	if _, err := lintChart(chartMissingManifest, values, namespace, strict); err == nil {
+		t.Errorf("Expected a chart parsing error")
+	}
+}
+
+func TestLintDependentCharts(t *testing.T) {
+	pwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(invalidDepChart); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(pwd)
+
+	linter := newLintCmd(ioutil.Discard)
+	if err := linter.Execute(); err == nil {
 		t.Errorf("Expected a chart parsing error")
 	}
 }
