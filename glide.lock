@@ -251,6 +251,10 @@ imports:
   version: 10ef21a441db47d8b13ebcc5fd2310f636973c77
 - name: github.com/sirupsen/logrus
   version: 89742aefa4b206dcf400792f3bd35b542998eb3b
+- name: github.com/spf13/afero
+  version: 588a75ec4f32903aa5e39a2619ba6a4631e28424
+  subpackages:
+  - mem
 - name: github.com/spf13/cobra
   version: c439c4fa093711d42e1b01acb1235b52004753c1
   subpackages:
@@ -778,6 +782,8 @@ imports:
   subpackages:
   - sortorder
 testImports:
+- name: github.com/golang/mock
+  version: 9fa652df1129bef0e734c9cf9bf6dbae9ef3b9fa
 - name: github.com/pmezard/go-difflib
   version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
   subpackages:

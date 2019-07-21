@@ -19,6 +19,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/spf13/afero"
 	"io"
 	"sync"
 
@@ -96,7 +97,7 @@ func updateCharts(repos []*repo.ChartRepository, out io.Writer, home helmpath.Ho
 				fmt.Fprintf(out, "...Skip %s chart repository\n", re.Config.Name)
 				return
 			}
-			err := re.DownloadIndexFile(home.Cache())
+			err := re.DownloadIndexFile(home.Cache(), afero.NewOsFs())
 			if err != nil {
 				fmt.Fprintf(out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", re.Config.Name, re.Config.URL, err)
 			} else {

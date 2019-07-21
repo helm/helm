@@ -18,9 +18,11 @@ package repo // import "k8s.io/helm/pkg/repo"
 
 import (
 	"fmt"
+	"github.com/spf13/afero"
 	"io/ioutil"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -110,15 +112,14 @@ func (r *ChartRepository) Load() error {
 //
 // cachePath is prepended to any index that does not have an absolute path. This
 // is for pre-2.2.0 repo files.
-func (r *ChartRepository) DownloadIndexFile(cachePath string) error {
-	var indexURL string
+func (r *ChartRepository) DownloadIndexFile(cachePath string, fs afero.Fs) error {
 	parsedURL, err := url.Parse(r.Config.URL)
 	if err != nil {
 		return err
 	}
-	parsedURL.Path = strings.TrimSuffix(parsedURL.Path, "/") + "/index.yaml"
-
-	indexURL = parsedURL.String()
+	parsedURL.RawPath = path.Join(parsedURL.RawPath, "index.yaml")
+	parsedURL.Path = path.Join(parsedURL.Path, "index.yaml")
+	indexURL := parsedURL.String()
 
 	r.setCredentials()
 	resp, err := r.Client.Get(indexURL)
@@ -146,7 +147,7 @@ func (r *ChartRepository) DownloadIndexFile(cachePath string) error {
 		cp = filepath.Join(cachePath, cp)
 	}
 
-	return ioutil.WriteFile(cp, index, 0644)
+	return afero.WriteFile(fs, cp, index, 0644)
 }
 
 // If HttpGetter is used, this method sets the configured repository credentials on the HttpGetter.
@@ -224,7 +225,7 @@ func FindChartInAuthRepoURL(repoURL, username, password, chartName, chartVersion
 	if err != nil {
 		return "", err
 	}
-	if err := r.DownloadIndexFile(tempIndexFile.Name()); err != nil {
+	if err := r.DownloadIndexFile(tempIndexFile.Name(), afero.NewOsFs()); err != nil {
 		return "", fmt.Errorf("Looks like %q is not a valid chart repository or cannot be reached: %s", repoURL, err)
 	}
 

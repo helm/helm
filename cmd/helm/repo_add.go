@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/spf13/afero"
 	"io"
 
 	"github.com/spf13/cobra"
@@ -127,7 +128,7 @@ func addRepository(name, url, username, password string, home helmpath.Home, cer
 		return err
 	}
 
-	if err := r.DownloadIndexFile(home.Cache()); err != nil {
+	if err := r.DownloadIndexFile(home.Cache(), afero.NewOsFs()); err != nil {
 		return fmt.Errorf("Looks like %q is not a valid chart repository or cannot be reached: %s", url, err.Error())
 	}
 

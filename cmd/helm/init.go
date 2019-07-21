@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/spf13/afero"
 	"io"
 	"os"
 	"time"
@@ -411,7 +412,7 @@ func initStableRepo(cacheFile string, out io.Writer, skipRefresh bool, home helm
 
 	// In this case, the cacheFile is always absolute. So passing empty string
 	// is safe.
-	if err := r.DownloadIndexFile(""); err != nil {
+	if err := r.DownloadIndexFile("", afero.NewOsFs()); err != nil {
 		return nil, fmt.Errorf("Looks like %q is not a valid chart repository or cannot be reached: %s", stableRepositoryURL, err.Error())
 	}
 

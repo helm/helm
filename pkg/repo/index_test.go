@@ -17,6 +17,7 @@ limitations under the License.
 package repo
 
 import (
+	"github.com/spf13/afero"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -151,7 +152,7 @@ func TestDownloadIndexFile(t *testing.T) {
 		t.Errorf("Problem creating chart repository from %s: %v", testRepo, err)
 	}
 
-	if err := r.DownloadIndexFile(""); err != nil {
+	if err := r.DownloadIndexFile("", afero.NewOsFs()); err != nil {
 		t.Errorf("%#v", err)
 	}
 

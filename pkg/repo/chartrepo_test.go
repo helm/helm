@@ -17,7 +17,12 @@ limitations under the License.
 package repo
 
 import (
+	"bytes"
+	"github.com/golang/mock/gomock"
+	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
 	"io/ioutil"
+	"k8s.io/helm/pkg/getter/mocks"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -310,4 +315,49 @@ func TestResolveReferenceURL(t *testing.T) {
 	if chartURL != "https://kubernetes-charts.storage.googleapis.com/nginx-0.2.0.tgz" {
 		t.Errorf("%s contains query string from base URL when it shouldn't", chartURL)
 	}
+}
+
+func TestChartRepository_DownloadIndexFile(t *testing.T) {
+	t.Run("should not decode the path in the repo url", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		r, err := NewChartRepository(&Entry{
+			Name:  "testrepo",
+			URL:   "http://example-charts.com/some%2Fpath/test",
+			Cache: "/repository/cache/testrepo-index.yaml",
+		}, getter.All(environment.EnvSettings{}))
+		if err != nil {
+			t.Errorf("Problem creating chart repository from %s: %v", "testrepo", err)
+		}
+
+		fs := afero.NewMemMapFs()
+		err = fs.MkdirAll("/repository/cache/", 0644)
+		assert.NoError(t, err, "problem creating test repository cache")
+
+		mockGetter := mocks.NewMockGetter(ctrl)
+		r.Client = mockGetter
+		indexYamlContent := `apiVersion: v1
+entries:
+  testchart:
+  - apiVersion: v1
+    appVersion: 1.2.3
+    created: 2019-07-06T17:56:26.384768233Z
+    description: test
+    digest: 93f924d4498d588bcdda88c7401e27c6fa0f50ff0601e78885eca13eb683c1e2
+    home: https://github.com/test/test
+    icon: https://github.com/test/test/test.png
+    name: testchart
+    sources:
+    - https://github.com/test/test
+    urls:
+    - https://test.com/test-1.0.0.tgz
+    version: 1.0.0`
+
+		mockGetter.EXPECT().Get("http://example-charts.com/some%2Fpath/test/index.yaml").
+			Return(bytes.NewBufferString(indexYamlContent), nil)
+
+		err = r.DownloadIndexFile("", fs)
+		assert.NoError(t, err, "problem downloading index file")
+	})
 }

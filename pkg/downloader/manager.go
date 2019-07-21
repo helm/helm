@@ -18,6 +18,7 @@ package downloader
 import (
 	"errors"
 	"fmt"
+	"github.com/spf13/afero"
 	"io"
 	"io/ioutil"
 	"net/url"
@@ -453,7 +454,7 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 		}
 		wg.Add(1)
 		go func(r *repo.ChartRepository) {
-			if err := r.DownloadIndexFile(m.HelmHome.Cache()); err != nil {
+			if err := r.DownloadIndexFile(m.HelmHome.Cache(), afero.NewOsFs()); err != nil {
 				fmt.Fprintf(out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", r.Config.Name, r.Config.URL, err)
 			} else {
 				fmt.Fprintf(out, "...Successfully got an update from the %q chart repository\n", r.Config.Name)
