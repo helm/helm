@@ -158,12 +158,12 @@ Like any good open source project, we use Pull Requests to track code changes.
     - Once a Reviewer has completed a review and the code looks ready to merge, an "Approve" review is used
     to signal to the contributor and to other maintainers that you have reviewed the code and feel that it is
     ready to be merged.
-    - Any PR against Helm 3 requires 2 review approvals from maintainers before it can be merged, regardless
-    of PR size. This is to ensure multiple maintainers are aware of any changes going into Helm 3.
 7. Merge or close
     - PRs should stay open until merged or if they have not been active for more than 30 days.
     This will help keep the PR queue to a manageable size and reduce noise. Should the PR need
     to stay open (like in the case of a WIP), the `keep open` or `WIP` label can be added.
+    - Before merging a PR, refer to the topic on [Size Labels](#size-labels) below to determine if
+      the PR requires more than one LGTM to merge.
     - If the owner of the PR is listed in the `OWNERS` file, that user **must** merge their own PRs
     or explicitly request another OWNER do that for them.
     - If the owner of a PR is _not_ listed in `OWNERS`, any core maintainer may merge the PR.
@@ -220,10 +220,14 @@ The following tables define all label types used for Helm. It is split up by cat
 
 Size labels are used to indicate how "dangerous" a PR is. The guidelines below are used to assign the
 labels, but ultimately this can be changed by the maintainers. For example, even if a PR only makes
-30 lines of changes in 1 file, but it changes key functionality, it will likely be labeled as `size/large`
+30 lines of changes in 1 file, but it changes key functionality, it will likely be labeled as `size/L`
 because it requires sign off from multiple people. Conversely, a PR that adds a small feature, but requires
-another 150 lines of tests to cover all cases, could be labeled as `size/small` even though the number of
+another 150 lines of tests to cover all cases, could be labeled as `size/S` even though the number of
 lines is greater than defined below.
+
+PRs submitted by a core maintainer, regardless of size, only requires approval from one additional
+maintainer. This ensures there are at least two maintainers who are aware of any significant PRs
+introduced to the codebase.
 
 | Label | Description |
 | ----- | ----------- |
