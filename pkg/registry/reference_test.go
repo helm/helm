@@ -20,9 +20,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"helm.sh/helm/pkg/chart"
 )
 
-func TestReference(t *testing.T) {
+func TestParseReference(t *testing.T) {
 	is := assert.New(t)
 
 	// bad refs
@@ -86,4 +88,29 @@ func TestReference(t *testing.T) {
 	is.NoError(err)
 	is.Equal("my.host.com/my/nested/repo", ref.Repo)
 	is.Equal("1.2.3", ref.Tag)
+}
+
+func TestParseReferenceWithChartDefaults(t *testing.T) {
+	is := assert.New(t)
+
+	ch := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:    "mychart",
+			Version: "1.5.0",
+		},
+	}
+
+	// If tag provided, use tag (1.2.3)
+	s := "my.host.com/my/nested/repo:1.2.3"
+	ref, err := ParseReferenceWithChartDefaults(s, ch)
+	is.NoError(err)
+	is.Equal("my.host.com/my/nested/repo", ref.Repo)
+	is.Equal("1.2.3", ref.Tag)
+
+	// If tag NOT provided, use version from chart (1.5.0)
+	s = "my.host.com/my/nested/repo"
+	ref, err = ParseReferenceWithChartDefaults(s, ch)
+	is.NoError(err)
+	is.Equal("my.host.com/my/nested/repo", ref.Repo)
+	is.Equal("1.5.0", ref.Tag)
 }

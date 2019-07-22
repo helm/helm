@@ -91,7 +91,6 @@ func (c *Client) Logout(hostname string) error {
 
 // PushChart uploads a chart to a registry
 func (c *Client) PushChart(ref *Reference) error {
-	c.setDefaultTag(ref)
 	fmt.Fprintf(c.out, "The push refers to repository [%s]\n", ref.Repo)
 	layers, err := c.cache.LoadReference(ref)
 	if err != nil {
@@ -113,7 +112,6 @@ func (c *Client) PushChart(ref *Reference) error {
 
 // PullChart downloads a chart from a registry
 func (c *Client) PullChart(ref *Reference) error {
-	c.setDefaultTag(ref)
 	fmt.Fprintf(c.out, "%s: Pulling from %s\n", ref.Tag, ref.Repo)
 	_, layers, err := oras.Pull(c.newContext(), c.resolver, ref.String(), c.cache.store, oras.WithAllowedMediaTypes(KnownMediaTypes()))
 	if err != nil {
@@ -133,7 +131,6 @@ func (c *Client) PullChart(ref *Reference) error {
 
 // SaveChart stores a copy of chart in local cache
 func (c *Client) SaveChart(ch *chart.Chart, ref *Reference) error {
-	c.setDefaultTag(ref)
 	layers, err := c.cache.ChartToLayers(ch)
 	if err != nil {
 		return err
@@ -148,7 +145,6 @@ func (c *Client) SaveChart(ch *chart.Chart, ref *Reference) error {
 
 // LoadChart retrieves a chart object by reference
 func (c *Client) LoadChart(ref *Reference) (*chart.Chart, error) {
-	c.setDefaultTag(ref)
 	layers, err := c.cache.LoadReference(ref)
 	if err != nil {
 		return nil, err
@@ -159,7 +155,6 @@ func (c *Client) LoadChart(ref *Reference) (*chart.Chart, error) {
 
 // RemoveChart deletes a locally saved chart
 func (c *Client) RemoveChart(ref *Reference) error {
-	c.setDefaultTag(ref)
 	err := c.cache.DeleteReference(ref)
 	if err != nil {
 		return err
@@ -182,13 +177,6 @@ func (c *Client) PrintChartTable() error {
 	}
 	fmt.Fprintln(c.out, table.String())
 	return nil
-}
-
-func (c *Client) setDefaultTag(ref *Reference) {
-	if ref.Tag == "" {
-		ref.Tag = HelmChartDefaultTag
-		fmt.Fprintf(c.out, "Using default tag: %s\n", HelmChartDefaultTag)
-	}
 }
 
 // disable verbose logging coming from ORAS unless debug is enabled

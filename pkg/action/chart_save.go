@@ -48,10 +48,9 @@ func (a *ChartSave) Run(out io.Writer, path, ref string) error {
 		return err
 	}
 
-	r, err := registry.ParseReference(ref)
+	r, err := registry.ParseReferenceWithChartDefaults(ref, ch)
 	if err != nil {
 		return err
 	}
-
 	return a.cfg.RegistryClient.SaveChart(ch, r)
 }
