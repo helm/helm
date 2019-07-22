@@ -28,19 +28,19 @@
 
 [[constraint]]
   name = "k8s.io/api"
-  branch = "release-1.14"
+  branch = "release-1.15"
 
 [[constraint]]
   name = "k8s.io/apimachinery"
-  branch = "release-1.14"
+  branch = "release-1.15"
 
 [[constraint]]
   name = "k8s.io/client-go"
-  version = "kubernetes-1.14.1"
+  version = "kubernetes-1.15.1"
 
 [[constraint]]
   name = "k8s.io/kubernetes"
-  branch = "release-1.14"
+  branch = "release-1.15"
 
 [[constraint]]
   name = "github.com/deislabs/oras"
@@ -64,11 +64,11 @@
 
 [[override]]
   name = "k8s.io/apiserver"
-  branch = "release-1.14"
+  branch = "release-1.15"
 
 [[override]]
   name = "k8s.io/apiextensions-apiserver"
-  branch = "release-1.14"
+  branch = "release-1.15"
 
 [[override]]
   name = "github.com/imdario/mergo"
