@@ -92,7 +92,7 @@ func (f *FailingKubeClient) Update(r, modifiedReader io.Reader, not, needed bool
 }
 
 // Build returns the configured error if set or prints
-func (f *FailingKubeClient) Build(r io.Reader) (kube.Result, error) {
+func (f *FailingKubeClient) Build(r io.Reader) (kube.ResourceList, error) {
 	if f.BuildError != nil {
 		return []*resource.Info{}, f.BuildError
 	}
@@ -100,7 +100,7 @@ func (f *FailingKubeClient) Build(r io.Reader) (kube.Result, error) {
 }
 
 // BuildUnstructured returns the configured error if set or prints
-func (f *FailingKubeClient) BuildUnstructured(r io.Reader) (kube.Result, error) {
+func (f *FailingKubeClient) BuildUnstructured(r io.Reader) (kube.ResourceList, error) {
 	if f.BuildUnstructuredError != nil {
 		return []*resource.Info{}, f.BuildUnstructuredError
 	}

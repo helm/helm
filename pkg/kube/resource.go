@@ -18,16 +18,16 @@ package kube // import "helm.sh/helm/pkg/kube"
 
 import "k8s.io/cli-runtime/pkg/resource"
 
-// Result provides convenience methods for comparing collections of Infos.
-type Result []*resource.Info
+// ResourceList provides convenience methods for comparing collections of Infos.
+type ResourceList []*resource.Info
 
 // Append adds an Info to the Result.
-func (r *Result) Append(val *resource.Info) {
+func (r *ResourceList) Append(val *resource.Info) {
 	*r = append(*r, val)
 }
 
 // Visit implements resource.Visitor.
-func (r Result) Visit(fn resource.VisitorFunc) error {
+func (r ResourceList) Visit(fn resource.VisitorFunc) error {
 	for _, i := range r {
 		if err := fn(i, nil); err != nil {
 			return err
@@ -37,8 +37,8 @@ func (r Result) Visit(fn resource.VisitorFunc) error {
 }
 
 // Filter returns a new Result with Infos that satisfy the predicate fn.
-func (r Result) Filter(fn func(*resource.Info) bool) Result {
-	var result Result
+func (r ResourceList) Filter(fn func(*resource.Info) bool) ResourceList {
+	var result ResourceList
 	for _, i := range r {
 		if fn(i) {
 			result.Append(i)
@@ -48,7 +48,7 @@ func (r Result) Filter(fn func(*resource.Info) bool) Result {
 }
 
 // Get returns the Info from the result that matches the name and kind.
-func (r Result) Get(info *resource.Info) *resource.Info {
+func (r ResourceList) Get(info *resource.Info) *resource.Info {
 	for _, i := range r {
 		if isMatchingInfo(i, info) {
 			return i
@@ -58,7 +58,7 @@ func (r Result) Get(info *resource.Info) *resource.Info {
 }
 
 // Contains checks to see if an object exists.
-func (r Result) Contains(info *resource.Info) bool {
+func (r ResourceList) Contains(info *resource.Info) bool {
 	for _, i := range r {
 		if isMatchingInfo(i, info) {
 			return true
@@ -68,14 +68,14 @@ func (r Result) Contains(info *resource.Info) bool {
 }
 
 // Difference will return a new Result with objects not contained in rs.
-func (r Result) Difference(rs Result) Result {
+func (r ResourceList) Difference(rs ResourceList) ResourceList {
 	return r.Filter(func(info *resource.Info) bool {
 		return !rs.Contains(info)
 	})
 }
 
 // Intersect will return a new Result with objects contained in both Results.
-func (r Result) Intersect(rs Result) Result {
+func (r ResourceList) Intersect(rs ResourceList) ResourceList {
 	return r.Filter(rs.Contains)
 }
 

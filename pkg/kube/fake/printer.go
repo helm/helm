@@ -70,11 +70,11 @@ func (p *PrintingKubeClient) Update(_, modifiedReader io.Reader, _, _ bool) erro
 }
 
 // Build implements KubeClient Build.
-func (p *PrintingKubeClient) Build(_ io.Reader) (kube.Result, error) {
+func (p *PrintingKubeClient) Build(_ io.Reader) (kube.ResourceList, error) {
 	return []*resource.Info{}, nil
 }
 
-func (p *PrintingKubeClient) BuildUnstructured(_ io.Reader) (kube.Result, error) {
+func (p *PrintingKubeClient) BuildUnstructured(_ io.Reader) (kube.ResourceList, error) {
 	return p.Build(nil)
 }
 

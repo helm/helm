@@ -126,7 +126,7 @@ func (c *Client) validator() resource.ContentValidator {
 }
 
 // BuildUnstructured validates for Kubernetes objects and returns unstructured infos.
-func (c *Client) BuildUnstructured(reader io.Reader) (Result, error) {
+func (c *Client) BuildUnstructured(reader io.Reader) (ResourceList, error) {
 	result, err := c.newBuilder().
 		Unstructured().
 		Stream(reader, "").
@@ -135,7 +135,7 @@ func (c *Client) BuildUnstructured(reader io.Reader) (Result, error) {
 }
 
 // Build validates for Kubernetes objects and returns resource Infos from a io.Reader.
-func (c *Client) Build(reader io.Reader) (Result, error) {
+func (c *Client) Build(reader io.Reader) (ResourceList, error) {
 	result, err := c.newBuilder().
 		WithScheme(scheme.Scheme, scheme.Scheme.PrioritizedVersionsAllGroups()...).
 		Schema(c.validator()).
@@ -268,7 +268,7 @@ func (c *Client) WatchUntilReady(reader io.Reader, timeout time.Duration) error 
 	return perform(infos, c.watchTimeout(timeout))
 }
 
-func perform(infos Result, fn func(*resource.Info) error) error {
+func perform(infos ResourceList, fn func(*resource.Info) error) error {
 	if len(infos) == 0 {
 		return ErrNoObjectsVisited
 	}

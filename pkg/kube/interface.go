@@ -55,8 +55,8 @@ type Interface interface {
 	// by "\n---\n").
 	Update(originalReader, modifiedReader io.Reader, force bool, recreate bool) error
 
-	Build(reader io.Reader) (Result, error)
-	BuildUnstructured(reader io.Reader) (Result, error)
+	Build(reader io.Reader) (ResourceList, error)
+	BuildUnstructured(reader io.Reader) (ResourceList, error)
 
 	// WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
 	// and returns said phase (PodSucceeded or PodFailed qualify).

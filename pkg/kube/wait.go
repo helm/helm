@@ -44,7 +44,7 @@ type waiter struct {
 
 // waitForResources polls to get the current status of all pods, PVCs, and Services
 // until all are ready or a timeout is reached
-func (w *waiter) waitForResources(created Result) error {
+func (w *waiter) waitForResources(created ResourceList) error {
 	w.log("beginning wait for %d resources with timeout of %v", len(created), w.timeout)
 
 	return wait.Poll(2*time.Second, w.timeout, func() (bool, error) {
