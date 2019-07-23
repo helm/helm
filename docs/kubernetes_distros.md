@@ -22,6 +22,10 @@ Google's GKE hosted Kubernetes platform enables RBAC by default. You will need t
 
 See [Tiller and role-based access control](https://docs.helm.sh/using_helm/#role-based-access-control) for more information.
 
+## AKS
+
+Helm works with [Azure Kubernetes Service](https://docs.microsoft.com/en-us/azure/aks/kubernetes-helm). If using an RBAC-enabled AKS cluster, you need [a service account and role binding for the Tiller service](https://docs.microsoft.com/en-us/azure/aks/kubernetes-helm#create-a-service-account).
+
 ## Ubuntu with 'kubeadm'
 
 Kubernetes bootstrapped with `kubeadm` is known to work on the following Linux
