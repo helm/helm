@@ -16,16 +16,19 @@ limitations under the License.
 package action
 
 import (
+	"context"
 	"flag"
 	"io/ioutil"
 	"testing"
 	"time"
 
+	dockerauth "github.com/deislabs/oras/pkg/auth/docker"
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
 
 	"helm.sh/helm/pkg/chart"
 	"helm.sh/helm/pkg/chartutil"
 	kubefake "helm.sh/helm/pkg/kube/fake"
+	"helm.sh/helm/pkg/registry"
 	"helm.sh/helm/pkg/release"
 	"helm.sh/helm/pkg/storage"
 	"helm.sh/helm/pkg/storage/driver"
@@ -36,10 +39,35 @@ var verbose = flag.Bool("test.log", false, "enable test logging")
 func actionConfigFixture(t *testing.T) *Configuration {
 	t.Helper()
 
+	client, err := dockerauth.NewClient()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	resolver, err := client.Resolver(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tdir, err := ioutil.TempDir("", "helm-action-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	return &Configuration{
 		Releases:     storage.Init(driver.NewMemory()),
 		KubeClient:   &kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: ioutil.Discard}},
 		Capabilities: chartutil.DefaultCapabilities,
+		RegistryClient: registry.NewClient(&registry.ClientOptions{
+			Out: ioutil.Discard,
+			Authorizer: registry.Authorizer{
+				Client: client,
+			},
+			Resolver: registry.Resolver{
+				Resolver: resolver,
+			},
+			CacheRootDir: tdir,
+		}),
 		Log: func(format string, v ...interface{}) {
 			t.Helper()
 			if *verbose {
@@ -106,7 +134,9 @@ func buildChart(opts ...chartOption) *chart.Chart {
 		Chart: &chart.Chart{
 			// TODO: This should be more complete.
 			Metadata: &chart.Metadata{
-				Name: "hello",
+				APIVersion: "v1",
+				Name:       "hello",
+				Version:    "0.1.0",
 			},
 			// This adds a basic template and hooks.
 			Templates: []*chart.File{

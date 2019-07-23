@@ -22,8 +22,6 @@ import (
 	"strings"
 
 	"github.com/containerd/containerd/reference"
-
-	"helm.sh/helm/pkg/chart"
 )
 
 var (
@@ -59,22 +57,6 @@ func ParseReference(s string) (*Reference, error) {
 	}
 
 	return &ref, nil
-}
-
-// ParseReferenceWithChartDefaults converts a string to a Reference,
-// using values from a given chart as defaults
-func ParseReferenceWithChartDefaults(s string, ch *chart.Chart) (*Reference, error) {
-	ref, err := ParseReference(s)
-	if err != nil {
-		return nil, err
-	}
-
-	// If no tag is present, use the chart version
-	if ref.Tag == "" {
-		ref.Tag = ch.Metadata.Version
-	}
-
-	return ref, nil
 }
 
 // setExtraFields adds the Repo and Tag fields to a Reference

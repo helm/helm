@@ -18,11 +18,13 @@ package main
 
 import (
 	"io"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/cmd/helm/require"
 	"helm.sh/helm/pkg/action"
+	"helm.sh/helm/pkg/chart/loader"
 )
 
 const chartSaveDesc = `
@@ -41,7 +43,18 @@ func newChartSaveCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			path := args[0]
 			ref := args[1]
-			return action.NewChartSave(cfg).Run(out, path, ref)
+
+			path, err := filepath.Abs(path)
+			if err != nil {
+				return err
+			}
+
+			ch, err := loader.LoadDir(path)
+			if err != nil {
+				return err
+			}
+
+			return action.NewChartSave(cfg).Run(out, ch, ref)
 		},
 	}
 }
