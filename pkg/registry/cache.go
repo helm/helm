@@ -142,7 +142,7 @@ func (cache *filesystemCache) ChartToLayers(ch *chart.Chart) ([]ocispec.Descript
 }
 
 func (cache *filesystemCache) LoadReference(ref *Reference) ([]ocispec.Descriptor, error) {
-	tagDir := filepath.Join(cache.rootDir, "refs", escape(ref.Repo), "tags", tagOrDefault(ref.Tag))
+	tagDir := filepath.Join(cache.rootDir, "refs", escape(ref.Repo), "tags", ref.Tag)
 
 	// add meta layer
 	metaJSONRaw, err := getSymlinkDestContent(filepath.Join(tagDir, "meta"))
@@ -170,8 +170,7 @@ func (cache *filesystemCache) LoadReference(ref *Reference) ([]ocispec.Descripto
 }
 
 func (cache *filesystemCache) StoreReference(ref *Reference, layers []ocispec.Descriptor) (bool, error) {
-	tag := tagOrDefault(ref.Tag)
-	tagDir := mkdir(filepath.Join(cache.rootDir, "refs", escape(ref.Repo), "tags", tag))
+	tagDir := mkdir(filepath.Join(cache.rootDir, "refs", escape(ref.Repo), "tags", ref.Tag))
 
 	// Retrieve just the meta and content layers
 	metaLayer, contentLayer, err := extractLayers(layers)
@@ -244,7 +243,7 @@ func (cache *filesystemCache) StoreReference(ref *Reference, layers []ocispec.De
 }
 
 func (cache *filesystemCache) DeleteReference(ref *Reference) error {
-	tagDir := filepath.Join(cache.rootDir, "refs", escape(ref.Repo), "tags", tagOrDefault(ref.Tag))
+	tagDir := filepath.Join(cache.rootDir, "refs", escape(ref.Repo), "tags", ref.Tag)
 	if _, err := os.Stat(tagDir); os.IsNotExist(err) {
 		return errors.New("ref not found")
 	}
@@ -399,14 +398,6 @@ func byteCountBinary(b int64) string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f %ciB", float64(b)/float64(div), "KMGTPE"[exp])
-}
-
-// tagOrDefault returns the tag if present, if not the default tag
-func tagOrDefault(tag string) string {
-	if tag != "" {
-		return tag
-	}
-	return HelmChartDefaultTag
 }
 
 // shortDigest returns first 7 characters of a sha256 digest

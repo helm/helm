@@ -17,9 +17,6 @@ limitations under the License.
 package registry // import "helm.sh/helm/pkg/registry"
 
 const (
-	// HelmChartDefaultTag is the default tag used when storing a chart reference with no tag
-	HelmChartDefaultTag = "latest"
-
 	// HelmChartConfigMediaType is the reserved media type for the Helm chart manifest config
 	HelmChartConfigMediaType = "application/vnd.cncf.helm.config.v1+json"
 

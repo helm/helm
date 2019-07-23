@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestReference(t *testing.T) {
+func TestParseReference(t *testing.T) {
 	is := assert.New(t)
 
 	// bad refs
