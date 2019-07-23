@@ -24,7 +24,7 @@ See [Tiller and role-based access control](https://docs.helm.sh/using_helm/#role
 
 ## AKS
 
-Helm works with [Azure Kubernetes Service](https://docs.microsoft.com/en-us/azure/aks/kubernetes-helm). If using an RBAC-enabled AKS cluster, you need [a service account and role binding for the Tiller service](https://helm.sh/docs/using_helm/#tiller-namespaces-and-rbac).
+Helm works with [Azure Kubernetes Service](https://docs.microsoft.com/en-us/azure/aks/kubernetes-helm). If using an RBAC-enabled AKS cluster, you need [a service account and role binding for the Tiller service](https://docs.microsoft.com/en-us/azure/aks/kubernetes-helm#create-a-service-account).
 
 ## Ubuntu with 'kubeadm'
 

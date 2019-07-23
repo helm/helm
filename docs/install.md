@@ -123,7 +123,7 @@ configured to talk to a remote Kubernetes cluster.
 
 Most cloud providers enable a feature called Role-Based Access Control - RBAC for short. If your cloud provider enables this feature, you will need to create a service account for Tiller with the right roles and permissions to access resources.
 
-Check the [Kubernetes Distribution Guide](kubernetes-distribution-guide) to see if there's any further points of interest on using Helm with your cloud provider. Also check out the guide on [Tiller and Role-Based Access Control](rbac.md) for more information on how to run Tiller in an RBAC-enabled Kubernetes cluster.
+Check the [Kubernetes Distribution Guide](#kubernetes-distribution-guide) to see if there's any further points of interest on using Helm with your cloud provider. Also check out the guide on [Tiller and Role-Based Access Control](rbac.md) for more information on how to run Tiller in an RBAC-enabled Kubernetes cluster.
 
 ### Easy In-Cluster Installation
 
