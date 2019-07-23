@@ -41,9 +41,12 @@ import (
 	"helm.sh/helm/pkg/engine"
 	"helm.sh/helm/pkg/getter"
 	"helm.sh/helm/pkg/hooks"
+	kubefake "helm.sh/helm/pkg/kube/fake"
 	"helm.sh/helm/pkg/release"
 	"helm.sh/helm/pkg/releaseutil"
 	"helm.sh/helm/pkg/repo"
+	"helm.sh/helm/pkg/storage"
+	"helm.sh/helm/pkg/storage/driver"
 	"helm.sh/helm/pkg/strvals"
 	"helm.sh/helm/pkg/version"
 )
@@ -70,6 +73,7 @@ type Install struct {
 	ChartPathOptions
 	ValueOptions
 
+	ClientOnly       bool
 	DryRun           bool
 	DisableHooks     bool
 	Replace          bool
@@ -117,6 +121,14 @@ func NewInstall(cfg *Configuration) *Install {
 func (i *Install) Run(chrt *chart.Chart) (*release.Release, error) {
 	if err := i.availableName(); err != nil {
 		return nil, err
+	}
+
+	if i.ClientOnly {
+		// Add mock objects in here so it doesn't use Kube API server
+		// NOTE(bacongobbler): used for `helm template`
+		i.cfg.Capabilities = chartutil.DefaultCapabilities
+		i.cfg.KubeClient = &kubefake.PrintingKubeClient{Out: ioutil.Discard}
+		i.cfg.Releases = storage.Init(driver.NewMemory())
 	}
 
 	// Make sure if Atomic is set, that wait is set as well. This makes it so

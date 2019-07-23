@@ -19,18 +19,12 @@ package main
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 
 	"helm.sh/helm/cmd/helm/require"
 	"helm.sh/helm/pkg/action"
-	"helm.sh/helm/pkg/chartutil"
-	kubefake "helm.sh/helm/pkg/kube/fake"
-	"helm.sh/helm/pkg/storage"
-	"helm.sh/helm/pkg/storage/driver"
 )
 
 const templateDesc = `
@@ -42,18 +36,9 @@ of the server-side testing of chart validity (e.g. whether an API is supported)
 is done.
 `
 
-func newTemplateCmd(out io.Writer) *cobra.Command {
-	customConfig := &action.Configuration{
-		// Add mock objects in here so it doesn't use Kube API server
-		Releases:     storage.Init(driver.NewMemory()),
-		KubeClient:   &kubefake.PrintingKubeClient{Out: ioutil.Discard},
-		Capabilities: chartutil.DefaultCapabilities,
-		Log: func(format string, v ...interface{}) {
-			fmt.Fprintf(out, format, v...)
-		},
-	}
-
-	client := action.NewInstall(customConfig)
+func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+	var validate bool
+	client := action.NewInstall(cfg)
 
 	cmd := &cobra.Command{
 		Use:   "template [NAME] [CHART]",
@@ -64,6 +49,7 @@ func newTemplateCmd(out io.Writer) *cobra.Command {
 			client.DryRun = true
 			client.ReleaseName = "RELEASE-NAME"
 			client.Replace = true // Skip the name check
+			client.ClientOnly = !validate
 			rel, err := runInstall(args, client, out)
 			if err != nil {
 				return err
@@ -73,12 +59,10 @@ func newTemplateCmd(out io.Writer) *cobra.Command {
 		},
 	}
 
-	addInstallFlags(cmd.Flags(), client)
-	addTemplateFlags(cmd.Flags(), client)
+	f := cmd.Flags()
+	addInstallFlags(f, client)
+	f.StringVar(&client.OutputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
+	f.BoolVar(&validate, "validate", false, "establish a connection to Kubernetes for schema validation")
 
 	return cmd
-}
-
-func addTemplateFlags(f *pflag.FlagSet, client *action.Install) {
-	f.StringVar(&client.OutputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
 }

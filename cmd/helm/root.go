@@ -172,6 +172,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		newReleaseTestCmd(actionConfig, out),
 		newRollbackCmd(actionConfig, out),
 		newStatusCmd(actionConfig, out),
+		newTemplateCmd(actionConfig, out),
 		newUninstallCmd(actionConfig, out),
 		newUpgradeCmd(actionConfig, out),
 
@@ -179,7 +180,6 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		newHomeCmd(out),
 		newInitCmd(out),
 		newPluginCmd(out),
-		newTemplateCmd(out),
 		newVersionCmd(out),
 
 		// Hidden documentation generator command: 'helm docs'
