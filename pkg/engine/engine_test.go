@@ -187,7 +187,23 @@ func TestParallelRenderInternals(t *testing.T) {
 	wg.Wait()
 }
 
-func TestRenderErrors(t *testing.T) {
+func TestParseErrors(t *testing.T) {
+	vals := chartutil.Values{"Values": map[string]interface{}{}}
+
+	tplsUndefinedFunction := map[string]renderable{
+		"undefined_function": {tpl: `{{foo}}`, vals: vals},
+	}
+	_, err := new(Engine).render(tplsUndefinedFunction)
+	if err == nil {
+		t.Fatalf("Expected failures while rendering: %s", err)
+	}
+	expected := `parse error at (undefined_function:1): function "foo" not defined`
+	if err.Error() != expected {
+		t.Errorf("Expected '%s', got %q", expected, err.Error())
+	}
+}
+
+func TestExecErrors(t *testing.T) {
 	vals := chartutil.Values{"Values": map[string]interface{}{}}
 
 	tplsMissingRequired := map[string]renderable{
@@ -197,23 +213,39 @@ func TestRenderErrors(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Expected failures while rendering: %s", err)
 	}
-	expected := `render error at (missing_required:1:2): foo is required`
+	expected := `execution error at (missing_required:1:2): foo is required`
 	if err.Error() != expected {
 		t.Errorf("Expected '%s', got %q", expected, err.Error())
 	}
 
-	tplsUndefinedFunction := map[string]renderable{
-		"undefined_function": {tpl: `{{foo}}`, vals: vals},
+	tplsMissingRequired = map[string]renderable{
+		"missing_required_with_colons": {tpl: `{{required ":this: message: has many: colons:" .Values.foo}}`, vals: vals},
 	}
-	_, err = new(Engine).render(tplsUndefinedFunction)
+	_, err = new(Engine).render(tplsMissingRequired)
 	if err == nil {
 		t.Fatalf("Expected failures while rendering: %s", err)
 	}
-	expected = `render error at (undefined_function:1): function "foo" not defined`
+	expected = `execution error at (missing_required_with_colons:1:2): :this: message: has many: colons:`
+	if err.Error() != expected {
+		t.Errorf("Expected '%s', got %q", expected, err.Error())
+	}
+
+	issue6044tpl := `{{ $someEmptyValue := "" }}
+{{ $myvar := "abc" }}
+{{- required (printf "%s: something is missing" $myvar) $someEmptyValue | repeat 0 }}`
+	tplsMissingRequired = map[string]renderable{
+		"issue6044": {tpl: issue6044tpl, vals: vals},
+	}
+	_, err = new(Engine).render(tplsMissingRequired)
+	if err == nil {
+		t.Fatalf("Expected failures while rendering: %s", err)
+	}
+	expected = `execution error at (issue6044:3:4): abc: something is missing`
 	if err.Error() != expected {
 		t.Errorf("Expected '%s', got %q", expected, err.Error())
 	}
 }
+
 func TestAllTemplates(t *testing.T) {
 	ch1 := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "ch1"},
