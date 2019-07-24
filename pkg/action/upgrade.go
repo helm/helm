@@ -19,10 +19,10 @@ package action
 import (
 	"bytes"
 	"fmt"
-	"sort"
 	"time"
 
 	"github.com/pkg/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"helm.sh/helm/pkg/chart"
 	"helm.sh/helm/pkg/chartutil"
@@ -76,7 +76,7 @@ func (u *Upgrade) Run(name string, chart *chart.Chart) (*release.Release, error)
 	u.Wait = u.Wait || u.Atomic
 
 	if err := validateReleaseName(name); err != nil {
-		return nil, errors.Errorf("upgradeRelease: Release name is invalid: %s", name)
+		return nil, errors.Errorf("release name is invalid: %s", name)
 	}
 	u.cfg.Log("preparing upgrade for %s", name)
 	currentRelease, upgradedRelease, err := u.prepareUpgrade(name, chart)
@@ -199,22 +199,42 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 		return upgradedRelease, nil
 	}
 
+	current, err := u.cfg.KubeClient.Build(bytes.NewBufferString(originalRelease.Manifest))
+	if err != nil {
+		return upgradedRelease, errors.Wrap(err, "unable to build kubernetes objects from current release manifest")
+	}
+	target, err := u.cfg.KubeClient.Build(bytes.NewBufferString(upgradedRelease.Manifest))
+	if err != nil {
+		return upgradedRelease, errors.Wrap(err, "unable to build kubernetes objects from new release manifest")
+	}
+
 	// pre-upgrade hooks
 	if !u.DisableHooks {
-		if err := u.execHook(upgradedRelease.Hooks, hooks.PreUpgrade); err != nil {
+		if err := execHooks(u.cfg.KubeClient, upgradedRelease.Hooks, hooks.PreUpgrade, u.Timeout); err != nil {
 			return u.failRelease(upgradedRelease, fmt.Errorf("pre-upgrade hooks failed: %s", err))
 		}
 	} else {
 		u.cfg.Log("upgrade hooks disabled for %s", upgradedRelease.Name)
 	}
-	if err := u.upgradeRelease(originalRelease, upgradedRelease); err != nil {
+
+	results, err := u.cfg.KubeClient.Update(current, target, u.Force)
+	if err != nil {
 		u.cfg.recordRelease(originalRelease)
 		return u.failRelease(upgradedRelease, err)
 	}
 
+	if u.Recreate {
+		// NOTE: Because this is not critical for a release to succeed, we just
+		// log if an error occurs and continue onward. If we ever introduce log
+		// levels, we should make these error level logs so users are notified
+		// that they'll need to go do the cleanup on their own
+		if err := recreate(u.cfg.KubeClient, results.Updated); err != nil {
+			u.cfg.Log(err.Error())
+		}
+	}
+
 	if u.Wait {
-		buf := bytes.NewBufferString(upgradedRelease.Manifest)
-		if err := u.cfg.KubeClient.Wait(buf, u.Timeout); err != nil {
+		if err := u.cfg.KubeClient.Wait(target, u.Timeout); err != nil {
 			u.cfg.recordRelease(originalRelease)
 			return u.failRelease(upgradedRelease, err)
 		}
@@ -222,7 +242,7 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 
 	// post-upgrade hooks
 	if !u.DisableHooks {
-		if err := u.execHook(upgradedRelease.Hooks, hooks.PostUpgrade); err != nil {
+		if err := execHooks(u.cfg.KubeClient, upgradedRelease.Hooks, hooks.PostUpgrade, u.Timeout); err != nil {
 			return u.failRelease(upgradedRelease, fmt.Errorf("post-upgrade hooks failed: %s", err))
 		}
 	}
@@ -282,14 +302,6 @@ func (u *Upgrade) failRelease(rel *release.Release, err error) (*release.Release
 	return rel, err
 }
 
-// upgradeRelease performs an upgrade from current to target release
-func (u *Upgrade) upgradeRelease(current, target *release.Release) error {
-	cm := bytes.NewBufferString(current.Manifest)
-	tm := bytes.NewBufferString(target.Manifest)
-	// TODO add wait
-	return u.cfg.KubeClient.Update(cm, tm, u.Force, u.Recreate)
-}
-
 // reuseValues copies values from the current release to a new release if the
 // new release does not have any values.
 //
@@ -334,50 +346,38 @@ func validateManifest(c kube.Interface, manifest []byte) error {
 	return err
 }
 
-// execHook executes all of the hooks for the given hook event.
-func (u *Upgrade) execHook(hs []*release.Hook, hook string) error {
-	timeout := u.Timeout
-	executingHooks := []*release.Hook{}
+// recreate captures all the logic for recreating pods for both upgrade and
+// rollback. If we end up refactoring rollback to use upgrade, this can just be
+// made an unexported method on the upgrade action.
+func recreate(client kube.Interface, resources kube.ResourceList) error {
+	for _, res := range resources {
+		versioned := kube.AsVersioned(res)
+		selector, err := kube.SelectorsForObject(versioned)
+		if err != nil {
+			// If no selector is returned, it means this object is
+			// definitely not a pod, so continue onward
+			continue
+		}
 
-	for _, h := range hs {
-		for _, e := range h.Events {
-			if string(e) == hook {
-				executingHooks = append(executingHooks, h)
+		client, err := client.KubernetesClientSet()
+		if err != nil {
+			return errors.Wrapf(err, "unable to recreate pods for object %s/%s because an error occurred", res.Namespace, res.Name)
+		}
+
+		pods, err := client.CoreV1().Pods(res.Namespace).List(metav1.ListOptions{
+			LabelSelector: selector.String(),
+		})
+		if err != nil {
+			return errors.Wrapf(err, "unable to recreate pods for object %s/%s because an error occurred", res.Namespace, res.Name)
+		}
+
+		// Restart pods
+		for _, pod := range pods.Items {
+			// Delete each pod for get them restarted with changed spec.
+			if err := client.CoreV1().Pods(pod.Namespace).Delete(pod.Name, metav1.NewPreconditionDeleteOptions(string(pod.UID))); err != nil {
+				return errors.Wrapf(err, "unable to recreate pods for object %s/%s because an error occurred", res.Namespace, res.Name)
 			}
 		}
 	}
-
-	sort.Sort(hookByWeight(executingHooks))
-	for _, h := range executingHooks {
-		if err := deleteHookByPolicy(u.cfg, h, hooks.BeforeHookCreation); err != nil {
-			return err
-		}
-
-		b := bytes.NewBufferString(h.Manifest)
-		if err := u.cfg.KubeClient.Create(b); err != nil {
-			return errors.Wrapf(err, "warning: Hook %s %s failed", hook, h.Path)
-		}
-		b.Reset()
-		b.WriteString(h.Manifest)
-
-		if err := u.cfg.KubeClient.WatchUntilReady(b, timeout); err != nil {
-			// If a hook is failed, checkout the annotation of the hook to determine whether the hook should be deleted
-			// under failed condition. If so, then clear the corresponding resource object in the hook
-			if err := deleteHookByPolicy(u.cfg, h, hooks.HookFailed); err != nil {
-				return err
-			}
-			return err
-		}
-	}
-
-	// If all hooks are succeeded, checkout the annotation of each hook to determine whether the hook should be deleted
-	// under succeeded condition. If so, then clear the corresponding resource object in each hook
-	for _, h := range executingHooks {
-		if err := deleteHookByPolicy(u.cfg, h, hooks.HookSucceeded); err != nil {
-			return err
-		}
-		h.LastRun = time.Now()
-	}
-
 	return nil
 }

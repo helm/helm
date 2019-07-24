@@ -19,13 +19,11 @@ package action
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/url"
 	"os"
 	"path"
 	"path/filepath"
-	"sort"
 	"strings"
 	"text/template"
 	"time"
@@ -170,8 +168,10 @@ func (i *Install) Run(chrt *chart.Chart) (*release.Release, error) {
 
 	// Mark this release as in-progress
 	rel.SetStatus(release.StatusPendingInstall, "Initial install underway")
-	if err := i.validateManifest(manifestDoc); err != nil {
-		return rel, err
+
+	resources, err := i.cfg.KubeClient.Build(bytes.NewBufferString(rel.Manifest))
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to build kubernetes objects from release manifest")
 	}
 
 	// Bail out here if it is a dry run
@@ -198,7 +198,7 @@ func (i *Install) Run(chrt *chart.Chart) (*release.Release, error) {
 
 	// pre-install hooks
 	if !i.DisableHooks {
-		if err := i.execHook(rel.Hooks, hooks.PreInstall); err != nil {
+		if err := execHooks(i.cfg.KubeClient, rel.Hooks, hooks.PreInstall, i.Timeout); err != nil {
 			return i.failRelease(rel, fmt.Errorf("failed pre-install: %s", err))
 		}
 	}
@@ -206,21 +206,19 @@ func (i *Install) Run(chrt *chart.Chart) (*release.Release, error) {
 	// At this point, we can do the install. Note that before we were detecting whether to
 	// do an update, but it's not clear whether we WANT to do an update if the re-use is set
 	// to true, since that is basically an upgrade operation.
-	buf := bytes.NewBufferString(rel.Manifest)
-	if err := i.cfg.KubeClient.Create(buf); err != nil {
+	if _, err := i.cfg.KubeClient.Create(resources); err != nil {
 		return i.failRelease(rel, err)
 	}
 
 	if i.Wait {
-		buf := bytes.NewBufferString(rel.Manifest)
-		if err := i.cfg.KubeClient.Wait(buf, i.Timeout); err != nil {
+		if err := i.cfg.KubeClient.Wait(resources, i.Timeout); err != nil {
 			return i.failRelease(rel, err)
 		}
 
 	}
 
 	if !i.DisableHooks {
-		if err := i.execHook(rel.Hooks, hooks.PostInstall); err != nil {
+		if err := execHooks(i.cfg.KubeClient, rel.Hooks, hooks.PostInstall, i.Timeout); err != nil {
 			return i.failRelease(rel, fmt.Errorf("failed post-install: %s", err))
 		}
 	}
@@ -453,60 +451,6 @@ func ensureDirectoryForFile(file string) error {
 	}
 
 	return os.MkdirAll(baseDir, defaultDirectoryPermission)
-}
-
-// validateManifest checks to see whether the given manifest is valid for the current Kubernetes
-func (i *Install) validateManifest(manifest io.Reader) error {
-	_, err := i.cfg.KubeClient.BuildUnstructured(manifest)
-	return err
-}
-
-// execHook executes all of the hooks for the given hook event.
-func (i *Install) execHook(hs []*release.Hook, hook string) error {
-	executingHooks := []*release.Hook{}
-
-	for _, h := range hs {
-		for _, e := range h.Events {
-			if string(e) == hook {
-				executingHooks = append(executingHooks, h)
-			}
-		}
-	}
-
-	sort.Sort(hookByWeight(executingHooks))
-
-	for _, h := range executingHooks {
-		if err := deleteHookByPolicy(i.cfg, h, hooks.BeforeHookCreation); err != nil {
-			return err
-		}
-
-		b := bytes.NewBufferString(h.Manifest)
-		if err := i.cfg.KubeClient.Create(b); err != nil {
-			return errors.Wrapf(err, "warning: Release %s %s %s failed", i.ReleaseName, hook, h.Path)
-		}
-		b.Reset()
-		b.WriteString(h.Manifest)
-
-		if err := i.cfg.KubeClient.WatchUntilReady(b, i.Timeout); err != nil {
-			// If a hook is failed, checkout the annotation of the hook to determine whether the hook should be deleted
-			// under failed condition. If so, then clear the corresponding resource object in the hook
-			if err := deleteHookByPolicy(i.cfg, h, hooks.HookFailed); err != nil {
-				return err
-			}
-			return err
-		}
-	}
-
-	// If all hooks are succeeded, checkout the annotation of each hook to determine whether the hook should be deleted
-	// under succeeded condition. If so, then clear the corresponding resource object in each hook
-	for _, h := range executingHooks {
-		if err := deleteHookByPolicy(i.cfg, h, hooks.HookSucceeded); err != nil {
-			return err
-		}
-		h.LastRun = time.Now()
-	}
-
-	return nil
 }
 
 // deletePolices represents a mapping between the key in the annotation for label deleting policy and its real meaning

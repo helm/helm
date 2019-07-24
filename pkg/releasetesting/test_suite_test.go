@@ -17,13 +17,14 @@ limitations under the License.
 package releasetesting
 
 import (
-	"io"
+	"io/ioutil"
 	"testing"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
 
 	"helm.sh/helm/pkg/kube"
+	"helm.sh/helm/pkg/kube/fake"
 	"helm.sh/helm/pkg/release"
 )
 
@@ -237,14 +238,14 @@ func testSuiteFixture(testManifests []string) *TestSuite {
 func testEnvFixture() *Environment {
 	return &Environment{
 		Namespace:  "default",
-		KubeClient: &mockKubeClient{},
+		KubeClient: &mockKubeClient{PrintingKubeClient: fake.PrintingKubeClient{Out: ioutil.Discard}},
 		Timeout:    1,
 		Messages:   make(chan *release.TestReleaseResponse, 1),
 	}
 }
 
 type mockKubeClient struct {
-	kube.Interface
+	fake.PrintingKubeClient
 	podFail bool
 	err     error
 }
@@ -255,5 +256,4 @@ func (c *mockKubeClient) WaitAndGetCompletedPodPhase(_ string, _ time.Duration) 
 	}
 	return v1.PodSucceeded, nil
 }
-func (c *mockKubeClient) Create(_ io.Reader) error { return c.err }
-func (c *mockKubeClient) Delete(_ io.Reader) error { return nil }
+func (c *mockKubeClient) Create(_ kube.ResourceList) (*kube.Result, error) { return nil, c.err }

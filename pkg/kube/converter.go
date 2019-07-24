@@ -23,7 +23,9 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 )
 
-func asVersioned(info *resource.Info) runtime.Object {
+// AsVersioned converts the given info into a runtime.Object with the correct
+// group and version set
+func AsVersioned(info *resource.Info) runtime.Object {
 	gv := runtime.GroupVersioner(schema.GroupVersions(scheme.Scheme.PrioritizedVersionsAllGroups()))
 	if info.Mapping != nil {
 		gv = info.Mapping.GroupVersionKind.GroupVersion()

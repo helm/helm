@@ -39,7 +39,6 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
 	watchtools "k8s.io/client-go/tools/watch"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 )
@@ -65,30 +64,23 @@ func New(getter genericclioptions.RESTClientGetter) *Client {
 }
 
 // KubernetesClientSet returns a client set from the client factory.
-func (c *Client) KubernetesClientSet() (*kubernetes.Clientset, error) {
+func (c *Client) KubernetesClientSet() (kubernetes.Interface, error) {
 	return c.Factory.KubernetesClientSet()
 }
 
 var nopLogger = func(_ string, _ ...interface{}) {}
 
-// Create creates Kubernetes resources from an io.reader.
-//
-// Namespace will set the namespace.
-func (c *Client) Create(reader io.Reader) error {
-	c.Log("building resources from manifest")
-	infos, err := c.BuildUnstructured(reader)
-	if err != nil {
-		return err
+// Create creates Kubernetes resources specified in the resource list.
+func (c *Client) Create(resources ResourceList) (*Result, error) {
+	c.Log("creating %d resource(s)", len(resources))
+	if err := perform(resources, createResource); err != nil {
+		return nil, err
 	}
-	c.Log("creating %d resource(s)", len(infos))
-	return perform(infos, createResource)
+	return &Result{Created: resources}, nil
 }
 
-func (c *Client) Wait(reader io.Reader, timeout time.Duration) error {
-	infos, err := c.BuildUnstructured(reader)
-	if err != nil {
-		return err
-	}
+// Wait up to the given timeout for the specified resources to be ready
+func (c *Client) Wait(resources ResourceList, timeout time.Duration) error {
 	cs, err := c.KubernetesClientSet()
 	if err != nil {
 		return err
@@ -98,7 +90,7 @@ func (c *Client) Wait(reader io.Reader, timeout time.Duration) error {
 		log:     c.Log,
 		timeout: timeout,
 	}
-	return w.waitForResources(infos)
+	return w.waitForResources(resources)
 }
 
 func (c *Client) namespace() string {
@@ -125,8 +117,8 @@ func (c *Client) validator() resource.ContentValidator {
 	return schema
 }
 
-// BuildUnstructured validates for Kubernetes objects and returns unstructured infos.
-func (c *Client) BuildUnstructured(reader io.Reader) (ResourceList, error) {
+// Build validates for Kubernetes objects and returns unstructured infos.
+func (c *Client) Build(reader io.Reader) (ResourceList, error) {
 	result, err := c.newBuilder().
 		Unstructured().
 		Stream(reader, "").
@@ -134,39 +126,16 @@ func (c *Client) BuildUnstructured(reader io.Reader) (ResourceList, error) {
 	return result, scrubValidationError(err)
 }
 
-// Build validates for Kubernetes objects and returns resource Infos from a io.Reader.
-func (c *Client) Build(reader io.Reader) (ResourceList, error) {
-	result, err := c.newBuilder().
-		WithScheme(scheme.Scheme, scheme.Scheme.PrioritizedVersionsAllGroups()...).
-		Schema(c.validator()).
-		Stream(reader, "").
-		Do().
-		Infos()
-	return result, scrubValidationError(err)
-}
-
 // Update reads in the current configuration and a target configuration from io.reader
 // and creates resources that don't already exists, updates resources that have been modified
 // in the target configuration and deletes resources from the current configuration that are
 // not present in the target configuration.
-//
-// Namespace will set the namespaces.
-func (c *Client) Update(originalReader, targetReader io.Reader, force, recreate bool) error {
-	original, err := c.BuildUnstructured(originalReader)
-	if err != nil {
-		return errors.Wrap(err, "failed decoding reader into objects")
-	}
-
-	c.Log("building resources from updated manifest")
-	target, err := c.BuildUnstructured(targetReader)
-	if err != nil {
-		return errors.Wrap(err, "failed decoding reader into objects")
-	}
-
+func (c *Client) Update(original, target ResourceList, force bool) (*Result, error) {
 	updateErrors := []string{}
+	res := &Result{}
 
 	c.Log("checking %d resources for changes", len(target))
-	err = target.Visit(func(info *resource.Info, err error) error {
+	err := target.Visit(func(info *resource.Info, err error) error {
 		if err != nil {
 			return err
 		}
@@ -182,6 +151,9 @@ func (c *Client) Update(originalReader, targetReader io.Reader, force, recreate 
 				return errors.Wrap(err, "failed to create resource")
 			}
 
+			// Append the created resource to the results
+			res.Created = append(res.Created, info)
+
 			kind := info.Mapping.GroupVersionKind.Kind
 			c.Log("Created a new %s called %q\n", kind, info.Name)
 			return nil
@@ -193,43 +165,64 @@ func (c *Client) Update(originalReader, targetReader io.Reader, force, recreate 
 			return errors.Errorf("no %s with the name %q found", kind, info.Name)
 		}
 
-		if err := updateResource(c, info, originalInfo.Object, force, recreate); err != nil {
+		if err := updateResource(c, info, originalInfo.Object, force); err != nil {
 			c.Log("error updating the resource %q:\n\t %v", info.Name, err)
 			updateErrors = append(updateErrors, err.Error())
 		}
+		// Because we check for errors later, append the info regardless
+		res.Updated = append(res.Updated, info)
 
 		return nil
 	})
 
 	switch {
 	case err != nil:
-		return err
+		return nil, err
 	case len(updateErrors) != 0:
-		return errors.Errorf(strings.Join(updateErrors, " && "))
+		return nil, errors.Errorf(strings.Join(updateErrors, " && "))
 	}
 
 	for _, info := range original.Difference(target) {
 		c.Log("Deleting %q in %s...", info.Name, info.Namespace)
 		if err := deleteResource(info); err != nil {
 			c.Log("Failed to delete %q, err: %s", info.Name, err)
+		} else {
+			// Only append ones we succeeded in deleting
+			res.Deleted = append(res.Deleted, info)
 		}
 	}
-	return nil
+	return res, nil
 }
 
-// Delete deletes Kubernetes resources from an io.reader.
-//
-// Namespace will set the namespace.
-func (c *Client) Delete(reader io.Reader) error {
-	infos, err := c.BuildUnstructured(reader)
-	if err != nil {
-		return err
-	}
-	return perform(infos, func(info *resource.Info) error {
+// Delete deletes Kubernetes resources specified in the resources list. It will
+// attempt to delete all resources even if one or more fail and collect any
+// errors. All successfully deleted items will be returned in the `Deleted`
+// ResourceList that is part of the result.
+func (c *Client) Delete(resources ResourceList) (*Result, []error) {
+	var errs []error
+	res := &Result{}
+	err := perform(resources, func(info *resource.Info) error {
 		c.Log("Starting delete for %q %s", info.Name, info.Mapping.GroupVersionKind.Kind)
-		err := deleteResource(info)
-		return c.skipIfNotFound(err)
+		if err := c.skipIfNotFound(deleteResource(info)); err != nil {
+			// Collect the error and continue on
+			errs = append(errs, err)
+		} else {
+			res.Deleted = append(res.Deleted, info)
+		}
+		return nil
 	})
+	if err != nil {
+		// Rewrite the message from "no objects visited" if that is what we got
+		// back
+		if err == ErrNoObjectsVisited {
+			err = errors.New("object not found, skipping delete")
+		}
+		errs = append(errs, err)
+	}
+	if errs != nil {
+		return nil, errs
+	}
+	return res, nil
 }
 
 func (c *Client) skipIfNotFound(err error) error {
@@ -246,7 +239,7 @@ func (c *Client) watchTimeout(t time.Duration) func(*resource.Info) error {
 	}
 }
 
-// WatchUntilReady watches the resource given in the reader, and waits until it is ready.
+// WatchUntilReady watches the resources given and waits until it is ready.
 //
 // This function is mainly for hook implementations. It watches for a resource to
 // hit a particular milestone. The milestone depends on the Kind.
@@ -258,14 +251,10 @@ func (c *Client) watchTimeout(t time.Duration) func(*resource.Info) error {
 //   ascertained by watching the Status fields in a job's output.
 //
 // Handling for other kinds will be added as necessary.
-func (c *Client) WatchUntilReady(reader io.Reader, timeout time.Duration) error {
-	infos, err := c.Build(reader)
-	if err != nil {
-		return err
-	}
+func (c *Client) WatchUntilReady(resources ResourceList, timeout time.Duration) error {
 	// For jobs, there's also the option to do poll c.Jobs(namespace).Get():
 	// https://github.com/adamreese/kubernetes/blob/master/test/e2e/job.go#L291-L300
-	return perform(infos, c.watchTimeout(timeout))
+	return perform(resources, c.watchTimeout(timeout))
 }
 
 func perform(infos ResourceList, fn func(*resource.Info) error) error {
@@ -315,7 +304,7 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 	}
 
 	// Get a versioned object
-	versionedObject := asVersioned(target)
+	versionedObject := AsVersioned(target)
 
 	// Unstructured objects, such as CRDs, may not have an not registered error
 	// returned from ConvertToVersion. Anything that's unstructured should
@@ -330,7 +319,7 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 	return patch, types.StrategicMergePatchType, err
 }
 
-func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force, recreate bool) error {
+func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force bool) error {
 	patch, patchType, err := createPatch(target, currentObj)
 	if err != nil {
 		return errors.Wrap(err, "failed to create patch")
@@ -377,37 +366,6 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		}
 	}
 
-	if !recreate {
-		return nil
-	}
-
-	versioned := asVersioned(target)
-	selector, err := selectorsForObject(versioned)
-	if err != nil {
-		return nil
-	}
-
-	client, err := c.KubernetesClientSet()
-	if err != nil {
-		return err
-	}
-
-	pods, err := client.CoreV1().Pods(target.Namespace).List(metav1.ListOptions{
-		LabelSelector: selector.String(),
-	})
-	if err != nil {
-		return err
-	}
-
-	// Restart pods
-	for _, pod := range pods.Items {
-		c.Log("Restarting pod: %v/%v", pod.Namespace, pod.Name)
-
-		// Delete each pod for get them restarted with changed spec.
-		if err := client.CoreV1().Pods(pod.Namespace).Delete(pod.Name, metav1.NewPreconditionDeleteOptions(string(pod.UID))); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
