@@ -255,6 +255,7 @@ func (p *PrintingKubeClient) WaitAndGetCompletedPodPhase(namespace string, reade
 	return v1.PodUnknown, err
 }
 
+// WaitUntilCRDEstablished implements KubeClient WaitUntilCRDEstablished.
 func (p *PrintingKubeClient) WaitUntilCRDEstablished(reader io.Reader, timeout time.Duration) error {
 	_, err := io.Copy(p.Out, reader)
 	return err

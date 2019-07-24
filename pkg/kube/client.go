@@ -314,7 +314,14 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	return buf.String(), nil
 }
 
-// Deprecated; use UpdateWithOptions instead
+// Update reads the current configuration and a target configuration from io.reader
+// and creates resources that don't already exist, updates resources that have been modified
+// in the target configuration and deletes resources from the current configuration that are
+// not present in the target configuration.
+//
+// Namespace will set the namespaces.
+//
+// Deprecated: use UpdateWithOptions instead.
 func (c *Client) Update(namespace string, originalReader, targetReader io.Reader, force bool, recreate bool, timeout int64, shouldWait bool) error {
 	return c.UpdateWithOptions(namespace, originalReader, targetReader, UpdateOptions{
 		Force:      force,
@@ -334,12 +341,13 @@ type UpdateOptions struct {
 	CleanupOnFail bool
 }
 
-// UpdateWithOptions reads in the current configuration and a target configuration from io.reader
-// and creates resources that don't already exists, updates resources that have been modified
+// UpdateWithOptions reads the current configuration and a target configuration from io.reader
+// and creates resources that don't already exist, updates resources that have been modified
 // in the target configuration and deletes resources from the current configuration that are
 // not present in the target configuration.
 //
-// Namespace will set the namespaces.
+// Namespace will set the namespaces. UpdateOptions provides additional parameters to control
+// update behavior.
 func (c *Client) UpdateWithOptions(namespace string, originalReader, targetReader io.Reader, opts UpdateOptions) error {
 	original, err := c.BuildUnstructured(namespace, originalReader)
 	if err != nil {
@@ -552,7 +560,7 @@ func (c *Client) WatchUntilReady(namespace string, reader io.Reader, timeout int
 	return perform(infos, c.watchTimeout(time.Duration(timeout)*time.Second))
 }
 
-// WatchUntilCRDEstablished polls the given CRD until it reaches the established
+// WaitUntilCRDEstablished polls the given CRD until it reaches the established
 // state. A CRD needs to reach the established state before CRs can be created.
 //
 // If a naming conflict condition is found, this function will return an error.

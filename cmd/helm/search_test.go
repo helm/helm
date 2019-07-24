@@ -84,6 +84,12 @@ func TestSearchCmd(t *testing.T) {
 			flags: []string{"--regexp"},
 			err:   true,
 		},
+		{
+			name:  "search for 'alpine', expect two matches in json",
+			args:  []string{"alpine"},
+			flags: []string{"--output", "json"},
+			expected: "{\n    \"searchResults\": \\[\n        {\n            \"name\": \"testing/alpine\",\n            \"chartVersion\": \"0.2.0\",\n            \"appVersion\": \"2.3.4\",\n            \"description\": \"Deploy a basic Alpine Linux pod\"\n        }\n    \\]\n}",
+		},
 	}
 
 	cleanup := resetEnv()

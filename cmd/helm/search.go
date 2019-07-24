@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
@@ -48,6 +49,18 @@ type searchCmd struct {
 	regexp   bool
 	version  string
 	colWidth uint
+	output   string
+}
+
+type resultEntry struct {
+	Name			string `json:"name"`
+	ChartVersion 	string `json:"chartVersion"`
+	AppVersion 		string `json:"appVersion"`
+	Description 	string `json:"description"`
+}
+
+type results struct {
+	SearchResults []resultEntry `json:"searchResults"`
 }
 
 func newSearchCmd(out io.Writer) *cobra.Command {
@@ -68,6 +81,7 @@ func newSearchCmd(out io.Writer) *cobra.Command {
 	f.BoolVarP(&sc.versions, "versions", "l", false, "Show the long listing, with each version of each chart on its own line")
 	f.StringVarP(&sc.version, "version", "v", "", "Search using semantic versioning constraints")
 	f.UintVar(&sc.colWidth, "col-width", 60, "Specifies the max column width of output")
+	f.StringVarP(&sc.output, "output", "o", "", "Show the output in specified format")
 
 	return cmd
 }
@@ -93,6 +107,16 @@ func (s *searchCmd) run(args []string) error {
 	data, err := s.applyConstraint(res)
 	if err != nil {
 		return err
+	}
+
+	if s.output == "json" {
+		formattedResults, err := s.formatSearchResultsJSON(data, s.colWidth)
+		if err != nil {
+			return err
+		}
+
+		fmt.Fprintln(s.out, formattedResults)
+		return nil
 	}
 
 	fmt.Fprintln(s.out, s.formatSearchResults(data, s.colWidth))
@@ -139,6 +163,30 @@ func (s *searchCmd) formatSearchResults(res []*search.Result, colWidth uint) str
 		table.AddRow(r.Name, r.Chart.Version, r.Chart.AppVersion, r.Chart.Description)
 	}
 	return table.String()
+}
+
+func (s *searchCmd) formatSearchResultsJSON(res []*search.Result, colWidth uint) (string, error) {
+	var resultJSON []resultEntry
+
+	if len(res) == 0 {
+		return "No results found", nil
+	}
+
+	for _, r := range res {
+		resultRow := resultEntry{
+			Name: r.Name,
+			ChartVersion: r.Chart.Version,
+			AppVersion: r.Chart.AppVersion,
+			Description: r.Chart.Description,
+		}
+		resultJSON = append(resultJSON, resultRow)
+	}
+	jsonSearchResults, err := json.MarshalIndent(results{SearchResults: resultJSON}, "", "    ")
+	if err != nil {
+		return "", err
+	}
+
+	return string(jsonSearchResults), nil
 }
 
 func (s *searchCmd) buildIndex() (*search.Index, error) {

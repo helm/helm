@@ -558,7 +558,7 @@ func TestWaitUntilCRDEstablished(t *testing.T) {
 					} else {
 						crd = crdWithConditions
 					}
-					requestCount += 1
+					requestCount++
 					return newResponse(200, &crd)
 				}),
 			}
