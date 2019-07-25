@@ -131,6 +131,10 @@ func (i *Install) Run(chrt *chart.Chart) (*release.Release, error) {
 		i.cfg.Releases = storage.Init(driver.NewMemory())
 	}
 
+	if err := chartutil.ProcessDependencies(chrt, i.rawValues); err != nil {
+		return nil, err
+	}
+
 	// Make sure if Atomic is set, that wait is set as well. This makes it so
 	// the user doesn't have to specify both
 	i.Wait = i.Wait || i.Atomic
