@@ -61,7 +61,8 @@ var events = map[string]release.HookEvent{
 	release.HookPreRollback.String():  release.HookPreRollback,
 	release.HookPostRollback.String(): release.HookPostRollback,
 	release.HookTest.String():         release.HookTest,
-	"test-success":                    release.HookTest,
+	// Support test-success for backward compatibility with Helm 2 tests
+	"test-success": release.HookTest,
 }
 
 // SortManifests takes a map of filename/YAML contents, splits the file
