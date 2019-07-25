@@ -71,9 +71,19 @@ type Hook struct {
 	// Events are the events that this hook fires on.
 	Events []HookEvent `json:"events,omitempty"`
 	// LastRun indicates the date/time this was last run.
-	LastRun time.Time `json:"last_run,omitempty"`
+	LastRun HookExecution `json:"last_run,omitempty"`
 	// Weight indicates the sort order for execution among similar Hook type
 	Weight int `json:"weight,omitempty"`
 	// DeletePolicies are the policies that indicate when to delete the hook
 	DeletePolicies []HookDeletePolicy `json:"delete_policies,omitempty"`
+}
+
+// A HookExecution records the result for the last execution of a hook for a given release.
+type HookExecution struct {
+	// StartedAt indicates the date/time this hook was started
+	StartedAt time.Time `json:"started_at,omitempty"`
+	// CompletedAt indicates the date/time this hook was completed
+	CompletedAt time.Time `json:"completed_at,omitempty"`
+	// Successful indicates whether the hook completed successfully
+	Successful bool `json:"successful"`
 }

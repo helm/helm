@@ -40,12 +40,11 @@ metadata:
 
 // MockReleaseOptions allows for user-configurable options on mock release objects.
 type MockReleaseOptions struct {
-	Name             string
-	Version          int
-	Chart            *chart.Chart
-	Status           Status
-	Namespace        string
-	TestSuiteResults []*TestRun
+	Name      string
+	Version   int
+	Chart     *chart.Chart
+	Status    Status
+	Namespace string
 }
 
 // Mock creates a mock release object based on options set by MockReleaseOptions. This function should typically not be used outside of testing.
@@ -93,14 +92,6 @@ func Mock(opts *MockReleaseOptions) *Release {
 		Description:   "Release mock",
 	}
 
-	if len(opts.TestSuiteResults) > 0 {
-		info.LastTestSuiteRun = &TestSuite{
-			StartedAt:   date,
-			CompletedAt: date,
-			Results:     opts.TestSuiteResults,
-		}
-	}
-
 	return &Release{
 		Name:      name,
 		Info:      info,
@@ -114,7 +105,7 @@ func Mock(opts *MockReleaseOptions) *Release {
 				Kind:     "Job",
 				Path:     "pre-install-hook.yaml",
 				Manifest: MockHookTemplate,
-				LastRun:  date,
+				LastRun:  HookExecution{},
 				Events:   []HookEvent{HookPreInstall},
 			},
 		},

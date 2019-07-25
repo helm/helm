@@ -26,10 +26,10 @@ import (
 )
 
 // execHook executes all of the hooks for the given hook event.
-func (cfg *Configuration) execHook(hs []*release.Hook, hook release.HookEvent, timeout time.Duration) error {
+func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, timeout time.Duration) error {
 	executingHooks := []*release.Hook{}
 
-	for _, h := range hs {
+	for _, h := range rl.Hooks {
 		for _, e := range h.Events {
 			if e == hook {
 				executingHooks = append(executingHooks, h)
@@ -51,7 +51,15 @@ func (cfg *Configuration) execHook(hs []*release.Hook, hook release.HookEvent, t
 		b.Reset()
 		b.WriteString(h.Manifest)
 
-		if err := cfg.KubeClient.WatchUntilReady(b, timeout); err != nil {
+		// Get the time at which the hook was applied to the cluster
+		start := time.Now()
+		err := cfg.KubeClient.WatchUntilReady(b, timeout)
+		h.LastRun = release.HookExecution{
+			StartedAt:   start,
+			CompletedAt: time.Now(),
+			Successful:  err == nil,
+		}
+		if err != nil {
 			// If a hook is failed, checkout the annotation of the hook to determine whether the hook should be deleted
 			// under failed condition. If so, then clear the corresponding resource object in the hook
 			if err := deleteHookByPolicy(cfg, h, release.HookFailed); err != nil {
@@ -67,7 +75,6 @@ func (cfg *Configuration) execHook(hs []*release.Hook, hook release.HookEvent, t
 		if err := deleteHookByPolicy(cfg, h, release.HookSucceeded); err != nil {
 			return err
 		}
-		h.LastRun = time.Now()
 	}
 
 	return nil

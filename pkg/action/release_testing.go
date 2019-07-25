@@ -53,5 +53,5 @@ func (r *ReleaseTesting) Run(name string) error {
 		return err
 	}
 
-	return r.cfg.execHook(rel.Hooks, release.HookTest, r.Timeout)
+	return r.cfg.execHook(rel, release.HookTest, r.Timeout)
 }

@@ -92,7 +92,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	res := &release.UninstallReleaseResponse{Release: rel}
 
 	if !u.DisableHooks {
-		if err := u.execHook(rel.Hooks, release.HookPreDelete); err != nil {
+		if err := u.cfg.execHook(rel, release.HookPreDelete, u.Timeout); err != nil {
 			return res, err
 		}
 	} else {
@@ -109,7 +109,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	res.Info = kept
 
 	if !u.DisableHooks {
-		if err := u.execHook(rel.Hooks, release.HookPostDelete); err != nil {
+		if err := u.cfg.execHook(rel, release.HookPostDelete, u.Timeout); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -157,11 +157,6 @@ func joinErrors(errs []error) string {
 		es = append(es, e.Error())
 	}
 	return strings.Join(es, "; ")
-}
-
-// execHook executes all of the hooks for the given hook event.
-func (u *Uninstall) execHook(hs []*release.Hook, hook release.HookEvent) error {
-	return u.cfg.execHook(hs, hook, u.Timeout)
 }
 
 // deleteRelease deletes the release and returns manifests that were kept in the deletion process

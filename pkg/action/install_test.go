@@ -178,7 +178,7 @@ func TestInstallRelease_DryRun(t *testing.T) {
 	_, err = instAction.cfg.Releases.Get(res.Name, res.Version)
 	is.Error(err)
 	is.Len(res.Hooks, 1)
-	is.True(res.Hooks[0].LastRun.IsZero(), "expect hook to not be marked as run")
+	is.True(res.Hooks[0].LastRun.CompletedAt.IsZero(), "expect hook to not be marked as run")
 	is.Equal(res.Info.Description, "Dry run complete")
 }
 
@@ -195,7 +195,7 @@ func TestInstallRelease_NoHooks(t *testing.T) {
 		t.Fatalf("Failed install: %s", err)
 	}
 
-	is.True(res.Hooks[0].LastRun.IsZero(), "hooks should not run with no-hooks")
+	is.True(res.Hooks[0].LastRun.CompletedAt.IsZero(), "hooks should not run with no-hooks")
 }
 
 func TestInstallRelease_FailedHooks(t *testing.T) {
@@ -210,7 +210,7 @@ func TestInstallRelease_FailedHooks(t *testing.T) {
 	res, err := instAction.Run(buildChart())
 	is.Error(err)
 	is.Contains(res.Info.Description, "failed post-install")
-	is.Equal(res.Info.Status, release.StatusFailed)
+	is.Equal(release.StatusFailed, res.Info.Status)
 }
 
 func TestInstallRelease_ReplaceRelease(t *testing.T) {

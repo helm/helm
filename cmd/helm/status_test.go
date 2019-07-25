@@ -25,12 +25,14 @@ import (
 )
 
 func TestStatusCmd(t *testing.T) {
-	releasesMockWithStatus := func(info *release.Info) []*release.Release {
+	releasesMockWithStatus := func(info *release.Info, hooks ...*release.Hook) []*release.Release {
 		info.LastDeployed = time.Unix(1452902400, 0).UTC()
 		return []*release.Release{{
-			Name:  "flummoxed-chickadee",
-			Info:  info,
-			Chart: &chart.Chart{},
+			Name:      "flummoxed-chickadee",
+			Namespace: "default",
+			Info:      info,
+			Chart:     &chart.Chart{},
+			Hooks:     hooks,
 		}}
 	}
 
@@ -77,19 +79,19 @@ func TestStatusCmd(t *testing.T) {
 		name:   "get status of a deployed release with test suite",
 		cmd:    "status flummoxed-chickadee",
 		golden: "output/status-with-test-suite.txt",
-		rels: releasesMockWithStatus(&release.Info{
-			Status: release.StatusDeployed,
-			LastTestSuiteRun: &release.TestSuite{
-				Results: []*release.TestRun{{
-					Name:   "test run 1",
-					Status: release.TestRunSuccess,
-					Info:   "extra info",
-				}, {
-					Name:   "test run 2",
-					Status: release.TestRunFailure,
-				}},
+		rels: releasesMockWithStatus(
+			&release.Info{
+				Status: release.StatusDeployed,
 			},
-		}),
+			&release.Hook{
+				Name:   "foo",
+				Events: []release.HookEvent{release.HookTest},
+			},
+			&release.Hook{
+				Name:   "bar",
+				Events: []release.HookEvent{release.HookTest},
+			},
+		),
 	}}
 	runTestCmd(t, tests)
 }

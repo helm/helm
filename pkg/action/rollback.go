@@ -138,7 +138,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 
 	// pre-rollback hooks
 	if !r.DisableHooks {
-		if err := r.execHook(targetRelease.Hooks, release.HookPreRollback); err != nil {
+		if err := r.cfg.execHook(targetRelease, release.HookPreRollback, r.Timeout); err != nil {
 			return targetRelease, err
 		}
 	} else {
@@ -171,7 +171,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 
 	// post-rollback hooks
 	if !r.DisableHooks {
-		if err := r.execHook(targetRelease.Hooks, release.HookPostRollback); err != nil {
+		if err := r.cfg.execHook(targetRelease, release.HookPostRollback, r.Timeout); err != nil {
 			return targetRelease, err
 		}
 	}
@@ -190,9 +190,4 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 	targetRelease.Info.Status = release.StatusDeployed
 
 	return targetRelease, nil
-}
-
-// execHook executes all of the hooks for the given hook event.
-func (r *Rollback) execHook(hs []*release.Hook, hook release.HookEvent) error {
-	return r.cfg.execHook(hs, hook, r.Timeout)
 }

@@ -19,6 +19,7 @@ package kube // import "helm.sh/helm/pkg/kube"
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"strings"

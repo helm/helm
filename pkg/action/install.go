@@ -178,7 +178,7 @@ func (i *Install) Run(chrt *chart.Chart) (*release.Release, error) {
 		return rel, nil
 	}
 
-	// If Replace is true, we need to supersede the last release.
+	// If Replace is true, we need to supercede the last release.
 	if i.Replace {
 		if err := i.replaceRelease(rel); err != nil {
 			return nil, err
@@ -196,7 +196,7 @@ func (i *Install) Run(chrt *chart.Chart) (*release.Release, error) {
 
 	// pre-install hooks
 	if !i.DisableHooks {
-		if err := i.execHook(rel.Hooks, release.HookPreInstall); err != nil {
+		if err := i.cfg.execHook(rel, release.HookPreInstall, i.Timeout); err != nil {
 			return i.failRelease(rel, fmt.Errorf("failed pre-install: %s", err))
 		}
 	}
@@ -218,7 +218,7 @@ func (i *Install) Run(chrt *chart.Chart) (*release.Release, error) {
 	}
 
 	if !i.DisableHooks {
-		if err := i.execHook(rel.Hooks, release.HookPostInstall); err != nil {
+		if err := i.cfg.execHook(rel, release.HookPostInstall, i.Timeout); err != nil {
 			return i.failRelease(rel, fmt.Errorf("failed post-install: %s", err))
 		}
 	}
@@ -461,11 +461,6 @@ func ensureDirectoryForFile(file string) error {
 func (i *Install) validateManifest(manifest io.Reader) error {
 	_, err := i.cfg.KubeClient.BuildUnstructured(manifest)
 	return err
-}
-
-// execHook executes all of the hooks for the given hook event.
-func (i *Install) execHook(hs []*release.Hook, hook release.HookEvent) error {
-	return i.cfg.execHook(hs, hook, i.Timeout)
 }
 
 // NameAndChart returns the name and chart that should be used.

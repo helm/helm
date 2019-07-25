@@ -199,7 +199,7 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 
 	// pre-upgrade hooks
 	if !u.DisableHooks {
-		if err := u.execHook(upgradedRelease.Hooks, release.HookPreUpgrade); err != nil {
+		if err := u.cfg.execHook(upgradedRelease, release.HookPreUpgrade, u.Timeout); err != nil {
 			return u.failRelease(upgradedRelease, fmt.Errorf("pre-upgrade hooks failed: %s", err))
 		}
 	} else {
@@ -220,7 +220,7 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 
 	// post-upgrade hooks
 	if !u.DisableHooks {
-		if err := u.execHook(upgradedRelease.Hooks, release.HookPostUpgrade); err != nil {
+		if err := u.cfg.execHook(upgradedRelease, release.HookPostUpgrade, u.Timeout); err != nil {
 			return u.failRelease(upgradedRelease, fmt.Errorf("post-upgrade hooks failed: %s", err))
 		}
 	}
@@ -330,9 +330,4 @@ func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release) erro
 func validateManifest(c kube.Interface, manifest []byte) error {
 	_, err := c.Build(bytes.NewReader(manifest))
 	return err
-}
-
-// execHook executes all of the hooks for the given hook event.
-func (u *Upgrade) execHook(hs []*release.Hook, hook release.HookEvent) error {
-	return u.cfg.execHook(hs, hook, u.Timeout)
 }

@@ -33,6 +33,4 @@ type Info struct {
 	Resources string `json:"resources,omitempty"`
 	// Contains the rendered templates/NOTES.txt if available
 	Notes string `json:"notes,omitempty"`
-	// LastTestSuiteRun provides results on the last test run on a release
-	LastTestSuiteRun *TestSuite `json:"last_test_suite_run,omitempty"`
 }
