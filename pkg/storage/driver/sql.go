@@ -199,7 +199,7 @@ func (s *SQL) Query(labels map[string]string) ([]*rspb.Release, error) {
 			sqlFilter[dbField] = val
 		} else {
 			s.Log("unknown label %s", key)
-			return nil, fmt.Errorf("unknow label %s", key)
+			return nil, fmt.Errorf("unknown label %s", key)
 		}
 	}
 	sort.Strings(sqlFilterKeys)
