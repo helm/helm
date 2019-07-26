@@ -17,6 +17,7 @@ limitations under the License.
 package repo
 
 import (
+	"bytes"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -30,6 +31,8 @@ import (
 	"helm.sh/helm/pkg/chart"
 	"helm.sh/helm/pkg/cli"
 	"helm.sh/helm/pkg/getter"
+
+	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -106,6 +109,64 @@ func TestIndex(t *testing.T) {
 		t.Errorf("Error re-loading index file %v", err)
 	}
 	verifyIndex(t, second)
+}
+
+type CustomGetter struct {
+	repoUrls []string
+}
+
+func (g *CustomGetter) Get(href string) (*bytes.Buffer, error) {
+	index := &IndexFile{
+		APIVersion: "v1",
+		Generated:  time.Now(),
+	}
+	indexBytes, err := yaml.Marshal(index)
+	if err != nil {
+		return nil, err
+	}
+	g.repoUrls = append(g.repoUrls, href)
+	return bytes.NewBuffer(indexBytes), nil
+}
+
+func TestIndexCustomSchemeDownload(t *testing.T) {
+	repoName := "gcs-repo"
+	repoURL := "gs://some-gcs-bucket"
+	myCustomGetter := &CustomGetter{}
+	customGetterConstructor := func(options ...getter.Option) (getter.Getter, error) {
+		return myCustomGetter, nil
+	}
+	providers := getter.Providers{
+		{
+			Schemes: []string{"gs"},
+			New:     customGetterConstructor,
+		},
+	}
+	repo, err := NewChartRepository(&Entry{
+		Name: repoName,
+		URL:  repoURL,
+	}, providers)
+	if err != nil {
+		t.Fatalf("Problem loading chart repository from %s: %v", repoURL, err)
+	}
+
+	tempIndexFile, err := ioutil.TempFile("", "test-repo")
+	if err != nil {
+		t.Fatalf("Failed to create temp index file: %v", err)
+	}
+	defer os.Remove(tempIndexFile.Name())
+
+	if err := repo.DownloadIndexFile(tempIndexFile.Name()); err != nil {
+		t.Fatalf("Failed to download index file: %v", err)
+	}
+
+	if len(myCustomGetter.repoUrls) != 1 {
+		t.Fatalf("Custom Getter.Get should be called once")
+	}
+
+	expectedRepoIndexURL := repoURL + "/index.yaml"
+	if myCustomGetter.repoUrls[0] != expectedRepoIndexURL {
+		t.Fatalf("Custom Getter.Get should be called with %s", expectedRepoIndexURL)
+	}
 }
 
 func verifyIndex(t *testing.T, actual *IndexFile) {
