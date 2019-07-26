@@ -59,6 +59,10 @@ type ResultEntry struct {
 	Description 	string `json:"description"`
 }
 
+type Results struct {
+	SearchResults []ResultEntry `json:"searchResults"`
+}
+
 func newSearchCmd(out io.Writer) *cobra.Command {
 	sc := &searchCmd{out: out}
 
@@ -171,7 +175,7 @@ func (s *searchCmd) formatSearchResultsJson(res []*search.Result, colWidth uint)
 		}
 		resultJson = append(resultJson, resultRow)
 	}
-	json, err := json.MarshalIndent(resultJson, "", "    ")
+	json, err := json.MarshalIndent(Results{SearchResults: resultJson}, "", "    ")
 	if err != nil {
 		return "", err
 	}
