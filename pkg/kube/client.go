@@ -387,6 +387,9 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), timeout)
 	defer cancel()
 	_, err = watchtools.UntilWithoutRetry(ctx, w, func(e watch.Event) (bool, error) {
+		// Make sure the incoming object is versioned as we use unstructured
+		// objects when we build manifests
+		obj := convertWithMapper(e.Object, info.Mapping)
 		switch e.Type {
 		case watch.Added, watch.Modified:
 			// For things like a secret or a config map, this is the best indicator
@@ -395,7 +398,7 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 			// we don't really do anything to support these as hooks.
 			c.Log("Add/Modify event for %s: %v", info.Name, e.Type)
 			if kind == "Job" {
-				return c.waitForJob(e, info.Name)
+				return c.waitForJob(obj, info.Name)
 			}
 			return true, nil
 		case watch.Deleted:
@@ -415,10 +418,10 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 // waitForJob is a helper that waits for a job to complete.
 //
 // This operates on an event returned from a watcher.
-func (c *Client) waitForJob(e watch.Event, name string) (bool, error) {
-	o, ok := e.Object.(*batch.Job)
+func (c *Client) waitForJob(obj runtime.Object, name string) (bool, error) {
+	o, ok := obj.(*batch.Job)
 	if !ok {
-		return true, errors.Errorf("expected %s to be a *batch.Job, got %T", name, e.Object)
+		return true, errors.Errorf("expected %s to be a *batch.Job, got %T", name, obj)
 	}
 
 	for _, c := range o.Status.Conditions {
