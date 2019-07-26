@@ -175,7 +175,7 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (string, []error) {
 
 	var builder strings.Builder
 	for _, file := range filesToDelete {
-		builder.WriteString(file.Content)
+		builder.WriteString("\n---\n" + file.Content)
 	}
 	resources, err := u.cfg.KubeClient.Build(strings.NewReader(builder.String()))
 	if err != nil {
