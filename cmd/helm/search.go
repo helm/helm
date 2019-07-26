@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
@@ -48,6 +49,14 @@ type searchCmd struct {
 	regexp   bool
 	version  string
 	colWidth uint
+	output   string
+}
+
+type ResultEntry struct {
+	Name			string `json:"name"`
+	ChartVersion 	string `json:"chartVersion"`
+	AppVersion 		string `json:"appVersion"`
+	Description 	string `json:"description"`
 }
 
 func newSearchCmd(out io.Writer) *cobra.Command {
@@ -68,6 +77,7 @@ func newSearchCmd(out io.Writer) *cobra.Command {
 	f.BoolVarP(&sc.versions, "versions", "l", false, "Show the long listing, with each version of each chart on its own line")
 	f.StringVarP(&sc.version, "version", "v", "", "Search using semantic versioning constraints")
 	f.UintVar(&sc.colWidth, "col-width", 60, "Specifies the max column width of output")
+	f.StringVarP(&sc.output, "output", "o", "", "Show the output in specified format")
 
 	return cmd
 }
@@ -93,6 +103,12 @@ func (s *searchCmd) run(args []string) error {
 	data, err := s.applyConstraint(res)
 	if err != nil {
 		return err
+	}
+
+	if s.output == "json" {
+		formattedResults, _ := s.formatSearchResultsJson(data, s.colWidth)
+		fmt.Fprintln(s.out, formattedResults)
+		return nil
 	}
 
 	fmt.Fprintln(s.out, s.formatSearchResults(data, s.colWidth))
@@ -139,6 +155,28 @@ func (s *searchCmd) formatSearchResults(res []*search.Result, colWidth uint) str
 		table.AddRow(r.Name, r.Chart.Version, r.Chart.AppVersion, r.Chart.Description)
 	}
 	return table.String()
+}
+
+func (s *searchCmd) formatSearchResultsJson(res []*search.Result, colWidth uint) (string, error) {
+	if len(res) == 0 {
+		return "No results found", nil
+	}
+	resultJson := []ResultEntry{}
+	for _, r := range res {
+		resultRow := ResultEntry{
+			Name: r.Name,
+			ChartVersion: r.Chart.Version,
+			AppVersion: r.Chart.AppVersion,
+			Description: r.Chart.Description,
+		}
+		resultJson = append(resultJson, resultRow)
+	}
+	json, err := json.MarshalIndent(resultJson, "", "    ")
+	if err != nil {
+		return "", err
+	}
+
+	return string(json), nil
 }
 
 func (s *searchCmd) buildIndex() (*search.Index, error) {
