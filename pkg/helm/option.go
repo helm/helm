@@ -234,6 +234,13 @@ func ReleaseTestParallel(parallel bool) ReleaseTestOption {
 	}
 }
 
+// ReleaseTestMaxParallel specifies the maximum number of test pods to run in parallel
+func ReleaseTestMaxParallel(max uint32) ReleaseTestOption {
+	return func(opts *options) {
+		opts.testReq.MaxParallel = max
+	}
+}
+
 // RollbackTimeout specifies the number of seconds before kubernetes calls timeout
 func RollbackTimeout(timeout int64) RollbackOption {
 	return func(opts *options) {
