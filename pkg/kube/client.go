@@ -648,7 +648,7 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 	}
 
 	// Get a versioned object
-	versionedObject := asVersioned(target)
+	versionedObject, err := asVersioned(target)
 
 	// Unstructured objects, such as CRDs, may not have an not registered error
 	// returned from ConvertToVersion. Anything that's unstructured should
@@ -656,16 +656,25 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 	// on objects like CRDs.
 	_, isUnstructured := versionedObject.(runtime.Unstructured)
 
+	// On newer K8s versions, CRDs aren't unstructured but has this dedicated type
+	_, isCRD := versionedObject.(*apiextv1beta1.CustomResourceDefinition)
+
 	switch {
-	case runtime.IsNotRegisteredError(err), isUnstructured:
+	case runtime.IsNotRegisteredError(err), isUnstructured, isCRD:
 		// fall back to generic JSON merge patch
 		patch, err := jsonpatch.CreateMergePatch(oldData, newData)
-		return patch, types.MergePatchType, err
+		if err != nil {
+			return nil, types.MergePatchType, fmt.Errorf("failed to create merge patch: %v", err)
+		}
+		return patch, types.MergePatchType, nil
 	case err != nil:
 		return nil, types.StrategicMergePatchType, fmt.Errorf("failed to get versionedObject: %s", err)
 	default:
 		patch, err := strategicpatch.CreateTwoWayMergePatch(oldData, newData, versionedObject)
-		return patch, types.StrategicMergePatchType, err
+		if err != nil {
+			return nil, types.StrategicMergePatchType, fmt.Errorf("failed to create two-way merge patch: %v", err)
+		}
+		return patch, types.StrategicMergePatchType, nil
 	}
 }
 
@@ -720,7 +729,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		return nil
 	}
 
-	versioned := asVersioned(target)
+	versioned := asVersionedOrUnstructured(target)
 	selector, ok := getSelectorFromObject(versioned)
 	if !ok {
 		return nil
@@ -936,7 +945,7 @@ func (c *Client) getSelectRelationPod(info *resource.Info, objPods map[string][]
 
 	c.Log("get relation pod of object: %s/%s/%s", info.Namespace, info.Mapping.GroupVersionKind.Kind, info.Name)
 
-	versioned := asVersioned(info)
+	versioned := asVersionedOrUnstructured(info)
 	selector, ok := getSelectorFromObject(versioned)
 	if !ok {
 		return objPods, nil
@@ -969,17 +978,23 @@ func isFoundPod(podItem []v1.Pod, pod v1.Pod) bool {
 	return false
 }
 
-func asVersioned(info *resource.Info) runtime.Object {
+func asVersionedOrUnstructured(info *resource.Info) runtime.Object {
+	obj, _ := asVersioned(info)
+	return obj
+}
+
+func asVersioned(info *resource.Info) (runtime.Object, error) {
 	converter := runtime.ObjectConvertor(scheme.Scheme)
 	groupVersioner := runtime.GroupVersioner(schema.GroupVersions(scheme.Scheme.PrioritizedVersionsAllGroups()))
 	if info.Mapping != nil {
 		groupVersioner = info.Mapping.GroupVersionKind.GroupVersion()
 	}
 
-	if obj, err := converter.ConvertToVersion(info.Object, groupVersioner); err == nil {
-		return obj
+	obj, err := converter.ConvertToVersion(info.Object, groupVersioner)
+	if err != nil {
+		return info.Object, err
 	}
-	return info.Object
+	return obj, nil
 }
 
 func asInternal(info *resource.Info) (runtime.Object, error) {
