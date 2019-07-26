@@ -34,7 +34,7 @@ const upgradeDesc = `
 This command upgrades a release to a new version of a chart.
 
 The upgrade arguments must be a release and chart. The chart
-argument can be either: a chart reference('stable/mariadb'), a path to a chart directory,
+argument can be either: a chart reference('example/mariadb'), a path to a chart directory,
 a packaged chart, or a fully qualified URL. For chart references, the latest
 version will be specified unless the '--version' flag is set.
 

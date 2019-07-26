@@ -28,7 +28,6 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/cmd/helm/require"
-	"helm.sh/helm/pkg/getter"
 	"helm.sh/helm/pkg/helmpath"
 	"helm.sh/helm/pkg/plugin"
 	"helm.sh/helm/pkg/plugin/installer"
@@ -39,15 +38,9 @@ const initDesc = `
 This command sets up local configuration in $HELM_HOME (default ~/.helm/).
 `
 
-const (
-	stableRepository           = "stable"
-	defaultStableRepositoryURL = "https://kubernetes-charts.storage.googleapis.com"
-)
-
 type initOptions struct {
-	skipRefresh         bool   // --skip-refresh
-	stableRepositoryURL string // --stable-repo-url
-	pluginsFilename     string // --plugins
+	skipRefresh     bool   // --skip-refresh
+	pluginsFilename string // --plugins
 
 	home helmpath.Home
 }
@@ -77,7 +70,6 @@ func newInitCmd(out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	f.BoolVar(&o.skipRefresh, "skip-refresh", false, "do not refresh (download) the local repository cache")
-	f.StringVar(&o.stableRepositoryURL, "stable-repo-url", defaultStableRepositoryURL, "URL for stable repository")
 	f.StringVar(&o.pluginsFilename, "plugins", "", "a YAML file specifying plugins to install")
 
 	return cmd
@@ -88,7 +80,7 @@ func (o *initOptions) run(out io.Writer) error {
 	if err := ensureDirectories(o.home, out); err != nil {
 		return err
 	}
-	if err := ensureDefaultRepos(o.home, out, o.skipRefresh, o.stableRepositoryURL); err != nil {
+	if err := ensureReposFile(o.home, out, o.skipRefresh); err != nil {
 		return err
 	}
 	if err := ensureRepoFileFormat(o.home.RepositoryFile(), out); err != nil {
@@ -130,16 +122,11 @@ func ensureDirectories(home helmpath.Home, out io.Writer) error {
 	return nil
 }
 
-func ensureDefaultRepos(home helmpath.Home, out io.Writer, skipRefresh bool, url string) error {
+func ensureReposFile(home helmpath.Home, out io.Writer, skipRefresh bool) error {
 	repoFile := home.RepositoryFile()
 	if fi, err := os.Stat(repoFile); err != nil {
 		fmt.Fprintf(out, "Creating %s \n", repoFile)
 		f := repo.NewFile()
-		sr, err := initRepo(url, home.CacheIndex(stableRepository), out, skipRefresh, home)
-		if err != nil {
-			return err
-		}
-		f.Add(sr)
 		if err := f.WriteFile(repoFile, 0644); err != nil {
 			return err
 		}
@@ -147,31 +134,6 @@ func ensureDefaultRepos(home helmpath.Home, out io.Writer, skipRefresh bool, url
 		return errors.Errorf("%s must be a file, not a directory", repoFile)
 	}
 	return nil
-}
-
-func initRepo(url, cacheFile string, out io.Writer, skipRefresh bool, home helmpath.Home) (*repo.Entry, error) {
-	fmt.Fprintf(out, "Adding %s repo with URL: %s \n", stableRepository, url)
-	c := repo.Entry{
-		Name:  stableRepository,
-		URL:   url,
-		Cache: cacheFile,
-	}
-	r, err := repo.NewChartRepository(&c, getter.All(settings))
-	if err != nil {
-		return nil, err
-	}
-
-	if skipRefresh {
-		return &c, nil
-	}
-
-	// In this case, the cacheFile is always absolute. So passing empty string
-	// is safe.
-	if err := r.DownloadIndexFile(""); err != nil {
-		return nil, errors.Wrapf(err, "%s is not a valid chart repository or cannot be reached", url)
-	}
-
-	return &c, nil
 }
 
 func ensureRepoFileFormat(file string, out io.Writer) error {

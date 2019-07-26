@@ -75,7 +75,7 @@ file MUST pass all verification steps.
 
 There are five different ways you can express the chart you want to install:
 
-1. By chart reference: helm install stable/mariadb
+1. By chart reference: helm install example/mariadb
 2. By path to a packaged chart: helm install ./nginx-1.2.3.tgz
 3. By path to an unpacked chart directory: helm install ./nginx
 4. By absolute URL: helm install https://example.com/charts/nginx-1.2.3.tgz
@@ -85,8 +85,8 @@ CHART REFERENCES
 
 A chart reference is a convenient way of reference a chart in a chart repository.
 
-When you use a chart reference with a repo prefix ('stable/mariadb'), Helm will look in the local
-configuration for a chart repository named 'stable', and will then look for a
+When you use a chart reference with a repo prefix ('example/mariadb'), Helm will look in the local
+configuration for a chart repository named 'example', and will then look for a
 chart in that repository whose name is 'mariadb'. It will install the latest
 version of that chart unless you also supply a version number with the
 '--version' flag.
