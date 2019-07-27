@@ -110,7 +110,11 @@ func (s *searchCmd) run(args []string) error {
 	}
 
 	if s.output == "json" {
-		formattedResults, _ := s.formatSearchResultsJson(data, s.colWidth)
+		formattedResults, err := s.formatSearchResultsJson(data, s.colWidth)
+		if err != nil {
+			return err
+		}
+
 		fmt.Fprintln(s.out, formattedResults)
 		return nil
 	}
