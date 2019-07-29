@@ -32,14 +32,14 @@ import (
 // delegates all its calls to `PrintingKubeClient`
 type FailingKubeClient struct {
 	PrintingKubeClient
-	CreateError error
-	WaitError error
-	GetError error
-	DeleteError error
-	WatchUntilReadyError error
-	UpdateError error
-	BuildError error
-	BuildUnstructuredError error
+	CreateError                      error
+	WaitError                        error
+	GetError                         error
+	DeleteError                      error
+	WatchUntilReadyError             error
+	UpdateError                      error
+	BuildError                       error
+	BuildUnstructuredError           error
 	WaitAndGetCompletedPodPhaseError error
 }
 

@@ -20,14 +20,14 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/spf13/cobra"
 	"github.com/gosuri/uitable"
+	"github.com/spf13/cobra"
 
 	"helm.sh/helm/cmd/helm/require"
 	"helm.sh/helm/pkg/action"
-	"helm.sh/helm/pkg/releaseutil"
 	"helm.sh/helm/pkg/chart"
 	"helm.sh/helm/pkg/release"
+	"helm.sh/helm/pkg/releaseutil"
 )
 
 var historyHelp = `
@@ -131,7 +131,6 @@ func getHistory(client *action.History, name string) (string, error) {
 
 	return string(history), nil
 }
-
 
 func getReleaseHistory(rls []*release.Release) (history releaseHistory) {
 	for i := len(rls) - 1; i >= 0; i-- {
