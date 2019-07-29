@@ -28,8 +28,16 @@ func TestKindSorter(t *testing.T) {
 			Head: &SimpleHead{Kind: "ClusterRole"},
 		},
 		{
+			Name: "I",
+			Head: &SimpleHead{Kind: "ClusterRoleList"},
+		},
+		{
 			Name: "j",
 			Head: &SimpleHead{Kind: "ClusterRoleBinding"},
+		},
+		{
+			Name: "J",
+			Head: &SimpleHead{Kind: "ClusterRoleBindingList"},
 		},
 		{
 			Name: "e",
@@ -100,8 +108,16 @@ func TestKindSorter(t *testing.T) {
 			Head: &SimpleHead{Kind: "Role"},
 		},
 		{
+			Name: "K",
+			Head: &SimpleHead{Kind: "RoleList"},
+		},
+		{
 			Name: "l",
 			Head: &SimpleHead{Kind: "RoleBinding"},
+		},
+		{
+			Name: "L",
+			Head: &SimpleHead{Kind: "RoleBindingList"},
 		},
 		{
 			Name: "d",
@@ -138,8 +154,8 @@ func TestKindSorter(t *testing.T) {
 		order       KindSortOrder
 		expected    string
 	}{
-		{"install", InstallOrder, "abcde1fgh2ijklmnopqrxstuvw!"},
-		{"uninstall", UninstallOrder, "wvmutsxrqponlkji2hgf1edcba!"},
+		{"install", InstallOrder, "abcde1fgh2iIjJkKlLmnopqrxstuvw!"},
+		{"uninstall", UninstallOrder, "wvmutsxrqponLlKkJjIi2hgf1edcba!"},
 	} {
 		var buf bytes.Buffer
 		t.Run(test.description, func(t *testing.T) {
