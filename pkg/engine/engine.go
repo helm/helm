@@ -81,10 +81,12 @@ type renderable struct {
 	basePath string
 }
 
-var warnRegex = regexp.MustCompile(`HELM\[(.*)\]HELM`)
+const warnStartDelim = "HELM_ERR_START"
+const warnEndDelim = "HELM_ERR_END"
+var warnRegex = regexp.MustCompile(warnStartDelim + `(.*)` + warnEndDelim)
 
 func warnWrap(warn string) string {
-	return fmt.Sprintf("HELM[%s]HELM", warn)
+	return warnStartDelim + warn + warnEndDelim
 }
 
 // initFunMap creates the Engine's FuncMap and adds context-specific functions.
