@@ -53,7 +53,7 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 		pvc := []v1.PersistentVolumeClaim{}
 		deployments := []deployment{}
 		for _, v := range created {
-			switch value := asVersioned(v).(type) {
+			switch value := asVersionedOrUnstructured(v).(type) {
 			case *v1.ReplicationController:
 				list, err := getPods(kcs, value.Namespace, value.Spec.Selector)
 				if err != nil {
