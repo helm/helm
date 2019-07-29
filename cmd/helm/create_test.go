@@ -55,7 +55,7 @@ func TestCreateCmd(t *testing.T) {
 	if c.Name() != cname {
 		t.Errorf("Expected %q name, got %q", cname, c.Name())
 	}
-	if c.Metadata.APIVersion != chart.APIVersionV1 {
+	if c.Metadata.APIVersion != chart.APIVersionV2 {
 		t.Errorf("Wrong API version: %q", c.Metadata.APIVersion)
 	}
 }
@@ -106,7 +106,7 @@ func TestCreateStarterCmd(t *testing.T) {
 	if c.Name() != cname {
 		t.Errorf("Expected %q name, got %q", cname, c.Name())
 	}
-	if c.Metadata.APIVersion != chart.APIVersionV1 {
+	if c.Metadata.APIVersion != chart.APIVersionV2 {
 		t.Errorf("Wrong API version: %q", c.Metadata.APIVersion)
 	}
 
@@ -177,7 +177,7 @@ func TestCreateStarterAbsoluteCmd(t *testing.T) {
 	if c.Name() != cname {
 		t.Errorf("Expected %q name, got %q", cname, c.Name())
 	}
-	if c.Metadata.APIVersion != chart.APIVersionV1 {
+	if c.Metadata.APIVersion != chart.APIVersionV2 {
 		t.Errorf("Wrong API version: %q", c.Metadata.APIVersion)
 	}
 

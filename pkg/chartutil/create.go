@@ -53,7 +53,7 @@ const (
 	HelpersName = "_helpers.tpl"
 )
 
-const defaultChartfile = `apiVersion: v1
+const defaultChartfile = `apiVersion: v2
 name: %s
 description: A Helm chart for Kubernetes
 
