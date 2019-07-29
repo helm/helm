@@ -28,7 +28,7 @@ import (
 
 const showDesc = `
 This command inspects a chart and displays information. It takes a chart reference
-('stable/drupal'), a full path to a directory or packaged chart, or a URL.
+('example/drupal'), a full path to a directory or packaged chart, or a URL.
 
 Inspect prints the contents of the Chart.yaml file and the values.yaml file.
 `
