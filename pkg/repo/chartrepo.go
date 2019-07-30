@@ -267,5 +267,7 @@ func ResolveReferenceURL(baseURL, refURL string) (string, error) {
 		return "", errors.Wrapf(err, "failed to parse %s as URL", refURL)
 	}
 
+	// We need a trailing slash for ResolveReference to work, but make sure there isn't already one
+	parsedBaseURL.Path = strings.TrimSuffix(parsedBaseURL.Path, "/") + "/"
 	return parsedBaseURL.ResolveReference(parsedRefURL).String(), nil
 }
