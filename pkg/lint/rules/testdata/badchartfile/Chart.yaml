@@ -1,3 +1,11 @@
 description: A Helm chart for Kubernetes
 version: 0.0.0
 home: ""
+type: application
+dependencies:
+- name: mariadb
+  version: 5.x.x
+  repository: https://kubernetes-charts.storage.googleapis.com/
+  condition: mariadb.enabled
+  tags:
+    - database
