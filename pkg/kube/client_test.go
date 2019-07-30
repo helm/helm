@@ -119,6 +119,17 @@ func TestUpdate(t *testing.T) {
 				return newResponse(200, &listA.Items[0])
 			case p == "/namespaces/default/pods/otter" && m == "GET":
 				return newResponse(200, &listA.Items[1])
+			case p == "/namespaces/default/pods/otter" && m == "PATCH":
+				data, err := ioutil.ReadAll(req.Body)
+				if err != nil {
+					t.Fatalf("could not dump request: %s", err)
+				}
+				req.Body.Close()
+				expected := `{}`
+				if string(data) != expected {
+					t.Errorf("expected patch\n%s\ngot\n%s", expected, string(data))
+				}
+				return newResponse(200, &listB.Items[0])
 			case p == "/namespaces/default/pods/dolphin" && m == "GET":
 				return newResponse(404, notFoundBody())
 			case p == "/namespaces/default/pods/starfish" && m == "PATCH":
@@ -166,9 +177,11 @@ func TestUpdate(t *testing.T) {
 	// }
 	expectedActions := []string{
 		"/namespaces/default/pods/starfish:GET",
+		"/namespaces/default/pods/starfish:GET",
 		"/namespaces/default/pods/starfish:PATCH",
 		"/namespaces/default/pods/otter:GET",
 		"/namespaces/default/pods/otter:GET",
+		"/namespaces/default/pods/otter:PATCH",
 		"/namespaces/default/pods/dolphin:GET",
 		"/namespaces/default/pods:POST",
 		"/namespaces/default/pods/squid:DELETE",
