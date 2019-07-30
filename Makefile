@@ -81,6 +81,12 @@ test-style: vendor $(GOLANGCI_LINT)
 	$(GOLANGCI_LINT) run
 	@scripts/validate-license.sh
 
+.PHONY: test-completion
+test-completion: TARGETS = linux/amd64
+test-completion: build build-cross
+test-completion:
+	scripts/completion-tests/test-completion.sh
+
 .PHONY: verify-docs
 verify-docs: build
 	@scripts/verify-docs.sh
