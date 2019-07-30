@@ -83,6 +83,7 @@ type renderable struct {
 
 const warnStartDelim = "HELM_ERR_START"
 const warnEndDelim = "HELM_ERR_END"
+
 var warnRegex = regexp.MustCompile(warnStartDelim + `(.*)` + warnEndDelim)
 
 func warnWrap(warn string) string {
