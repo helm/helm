@@ -257,7 +257,7 @@ func generateDeployment(opts *Options) (*v1beta1.Deployment, error) {
 						},
 					},
 					Tolerations: []v1.Toleration{
-		                		{Operator: v1.TolerationOpExists}
+		                		{Operator: v1.TolerationOpExists},
 	                		},
 					HostNetwork:  opts.EnableHostNetwork,
 					NodeSelector: nodeSelectors,
