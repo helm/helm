@@ -23,7 +23,6 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/cli-runtime/pkg/resource"
-	"k8s.io/client-go/kubernetes"
 
 	"helm.sh/helm/pkg/kube"
 )
@@ -89,11 +88,6 @@ func (f *FailingKubeClient) Build(r io.Reader) (kube.ResourceList, error) {
 		return []*resource.Info{}, f.BuildError
 	}
 	return f.PrintingKubeClient.Build(r)
-}
-
-// KubernetesClientSet implements the KubeClient interface
-func (f *FailingKubeClient) KubernetesClientSet() (kubernetes.Interface, error) {
-	return f.PrintingKubeClient.KubernetesClientSet()
 }
 
 // WaitAndGetCompletedPodPhase returns the configured error if set or prints

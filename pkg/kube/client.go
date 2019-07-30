@@ -38,7 +38,6 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
-	"k8s.io/client-go/kubernetes"
 	watchtools "k8s.io/client-go/tools/watch"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 )
@@ -63,11 +62,6 @@ func New(getter genericclioptions.RESTClientGetter) *Client {
 	}
 }
 
-// KubernetesClientSet returns a client set from the client factory.
-func (c *Client) KubernetesClientSet() (kubernetes.Interface, error) {
-	return c.Factory.KubernetesClientSet()
-}
-
 var nopLogger = func(_ string, _ ...interface{}) {}
 
 // Create creates Kubernetes resources specified in the resource list.
@@ -81,7 +75,7 @@ func (c *Client) Create(resources ResourceList) (*Result, error) {
 
 // Wait up to the given timeout for the specified resources to be ready
 func (c *Client) Wait(resources ResourceList, timeout time.Duration) error {
-	cs, err := c.KubernetesClientSet()
+	cs, err := c.Factory.KubernetesClientSet()
 	if err != nil {
 		return err
 	}
@@ -107,14 +101,6 @@ func (c *Client) newBuilder() *resource.Builder {
 		NamespaceParam(c.namespace()).
 		DefaultNamespace().
 		Flatten()
-}
-
-func (c *Client) validator() resource.ContentValidator {
-	schema, err := c.Factory.Validator(true)
-	if err != nil {
-		c.Log("warning: failed to load schema: %s", err)
-	}
-	return schema
 }
 
 // Build validates for Kubernetes objects and returns unstructured infos.
@@ -452,7 +438,7 @@ func scrubValidationError(err error) error {
 // WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
 // and returns said phase (PodSucceeded or PodFailed qualify).
 func (c *Client) WaitAndGetCompletedPodPhase(name string, timeout time.Duration) (v1.PodPhase, error) {
-	client, _ := c.KubernetesClientSet()
+	client, _ := c.Factory.KubernetesClientSet()
 	to := int64(timeout)
 	watcher, err := client.CoreV1().Pods(c.namespace()).Watch(metav1.ListOptions{
 		FieldSelector:  fmt.Sprintf("metadata.name=%s", name),

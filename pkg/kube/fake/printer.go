@@ -23,8 +23,6 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/cli-runtime/pkg/resource"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/fake"
 
 	"helm.sh/helm/pkg/kube"
 )
@@ -86,11 +84,6 @@ func (p *PrintingKubeClient) Build(_ io.Reader) (kube.ResourceList, error) {
 // WaitAndGetCompletedPodPhase implements KubeClient WaitAndGetCompletedPodPhase.
 func (p *PrintingKubeClient) WaitAndGetCompletedPodPhase(_ string, _ time.Duration) (v1.PodPhase, error) {
 	return v1.PodSucceeded, nil
-}
-
-// KubernetesClientSet implements the KubeClient interface
-func (p *PrintingKubeClient) KubernetesClientSet() (kubernetes.Interface, error) {
-	return fake.NewSimpleClientset(), nil
 }
 
 func bufferize(resources kube.ResourceList) io.Reader {

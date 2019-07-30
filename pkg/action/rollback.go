@@ -172,7 +172,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		// log if an error occurs and continue onward. If we ever introduce log
 		// levels, we should make these error level logs so users are notified
 		// that they'll need to go do the cleanup on their own
-		if err := recreate(r.cfg.KubeClient, results.Updated); err != nil {
+		if err := recreate(r.cfg, results.Updated); err != nil {
 			r.cfg.Log(err.Error())
 		}
 	}

@@ -82,7 +82,7 @@ func initActionConfig(actionConfig *action.Configuration, allNamespaces bool) {
 	kc := kube.New(kubeConfig())
 	kc.Log = logf
 
-	clientset, err := kc.KubernetesClientSet()
+	clientset, err := kc.Factory.KubernetesClientSet()
 	if err != nil {
 		// TODO return error
 		log.Fatal(err)

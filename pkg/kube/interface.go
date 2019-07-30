@@ -21,7 +21,6 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/kubernetes"
 )
 
 // KubernetesClient represents a client capable of communicating with the Kubernetes API.
@@ -56,9 +55,6 @@ type Interface interface {
 	// WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
 	// and returns said phase (PodSucceeded or PodFailed qualify).
 	WaitAndGetCompletedPodPhase(name string, timeout time.Duration) (v1.PodPhase, error)
-
-	// KubernetesClientSet returns the underlying kubernetes clientset
-	KubernetesClientSet() (kubernetes.Interface, error)
 }
 
 var _ Interface = (*Client)(nil)

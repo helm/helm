@@ -228,7 +228,7 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 		// log if an error occurs and continue onward. If we ever introduce log
 		// levels, we should make these error level logs so users are notified
 		// that they'll need to go do the cleanup on their own
-		if err := recreate(u.cfg.KubeClient, results.Updated); err != nil {
+		if err := recreate(u.cfg, results.Updated); err != nil {
 			u.cfg.Log(err.Error())
 		}
 	}
@@ -349,7 +349,7 @@ func validateManifest(c kube.Interface, manifest []byte) error {
 // recreate captures all the logic for recreating pods for both upgrade and
 // rollback. If we end up refactoring rollback to use upgrade, this can just be
 // made an unexported method on the upgrade action.
-func recreate(client kube.Interface, resources kube.ResourceList) error {
+func recreate(cfg *Configuration, resources kube.ResourceList) error {
 	for _, res := range resources {
 		versioned := kube.AsVersioned(res)
 		selector, err := kube.SelectorsForObject(versioned)
@@ -359,7 +359,7 @@ func recreate(client kube.Interface, resources kube.ResourceList) error {
 			continue
 		}
 
-		client, err := client.KubernetesClientSet()
+		client, err := cfg.KubernetesClientSet()
 		if err != nil {
 			return errors.Wrapf(err, "unable to recreate pods for object %s/%s because an error occurred", res.Namespace, res.Name)
 		}

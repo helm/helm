@@ -327,14 +327,6 @@ spec:
       targetPort: 9376
 `
 
-const testInvalidServiceManifest = `
-kind: Service
-apiVersion: v1
-spec:
-  ports:
-    - port: "80"
-`
-
 const testEndpointManifest = `
 kind: Endpoints
 apiVersion: v1
