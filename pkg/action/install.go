@@ -262,7 +262,7 @@ func (i *Install) failRelease(rel *release.Release, err error) (*release.Release
 //
 //	- empty
 //	- too long
-// 	- already in use, and not deleted
+//	- already in use, and not deleted
 //	- used by a deleted release, and i.Replace is false
 func (i *Install) availableName() error {
 	start := i.ReleaseName
@@ -272,6 +272,10 @@ func (i *Install) availableName() error {
 
 	if len(start) > releaseNameMaxLen {
 		return errors.Errorf("release name %q exceeds max length of %d", start, releaseNameMaxLen)
+	}
+
+	if i.DryRun {
+		return nil
 	}
 
 	h, err := i.cfg.Releases.History(start)
