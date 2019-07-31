@@ -19,9 +19,11 @@ jobs:
           keys:
             - build-cache-{{ .Environment.CIRCLE_PREVIOUS_BUILD_NUM }}
       - run:
+          name: test style
+          command: make test-style
+      - run:
           name: test
           command: make test-coverage
-
       - save_cache:
           key: gopkg-{{ checksum "Gopkg.lock" }}
           paths:
@@ -31,7 +33,6 @@ jobs:
           key: build-cache-{{ .Environment.CIRCLE_BUILD_NUM }}
           paths:
             - /tmp/go/cache
-
       - deploy:
           name: deploy
           command: .circleci/deploy.sh
