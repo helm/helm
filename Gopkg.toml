@@ -58,6 +58,18 @@
   name = "github.com/stretchr/testify"
   version = "^1.3.0"
 
+[[constraint]]
+  name = "github.com/xeipuuv/gojsonschema"
+  version = "1.1.0"
+
+[[constraint]]
+  name = "github.com/spf13/cobra"
+  version = "0.0.4"
+
+[[constraint]]
+  name = "sigs.k8s.io/yaml"
+  version = "1.1.0"
+
 [[override]]
   name = "sigs.k8s.io/kustomize"
   version = "2.0.3"
@@ -104,15 +116,3 @@
 
 [prune]
   go-tests = true
-
-[[constraint]]
-  name = "github.com/xeipuuv/gojsonschema"
-  version = "1.1.0"
-
-[[constraint]]
-  name = "github.com/spf13/cobra"
-  version = "0.0.4"
-
-[[constraint]]
-  name = "sigs.k8s.io/yaml"
-  version = "1.1.0"

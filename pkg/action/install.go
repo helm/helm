@@ -19,7 +19,6 @@ package action
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -168,8 +167,10 @@ func (i *Install) Run(chrt *chart.Chart) (*release.Release, error) {
 
 	// Mark this release as in-progress
 	rel.SetStatus(release.StatusPendingInstall, "Initial install underway")
-	if err := i.validateManifest(manifestDoc); err != nil {
-		return rel, err
+
+	resources, err := i.cfg.KubeClient.Build(bytes.NewBufferString(rel.Manifest))
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to build kubernetes objects from release manifest")
 	}
 
 	// Bail out here if it is a dry run
@@ -204,14 +205,12 @@ func (i *Install) Run(chrt *chart.Chart) (*release.Release, error) {
 	// At this point, we can do the install. Note that before we were detecting whether to
 	// do an update, but it's not clear whether we WANT to do an update if the re-use is set
 	// to true, since that is basically an upgrade operation.
-	buf := bytes.NewBufferString(rel.Manifest)
-	if err := i.cfg.KubeClient.Create(buf); err != nil {
+	if _, err := i.cfg.KubeClient.Create(resources); err != nil {
 		return i.failRelease(rel, err)
 	}
 
 	if i.Wait {
-		buf := bytes.NewBufferString(rel.Manifest)
-		if err := i.cfg.KubeClient.Wait(buf, i.Timeout); err != nil {
+		if err := i.cfg.KubeClient.Wait(resources, i.Timeout); err != nil {
 			return i.failRelease(rel, err)
 		}
 
@@ -455,12 +454,6 @@ func ensureDirectoryForFile(file string) error {
 	}
 
 	return os.MkdirAll(baseDir, defaultDirectoryPermission)
-}
-
-// validateManifest checks to see whether the given manifest is valid for the current Kubernetes
-func (i *Install) validateManifest(manifest io.Reader) error {
-	_, err := i.cfg.KubeClient.BuildUnstructured(manifest)
-	return err
 }
 
 // NameAndChart returns the name and chart that should be used.

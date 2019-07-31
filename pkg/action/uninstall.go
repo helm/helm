@@ -17,13 +17,11 @@ limitations under the License.
 package action
 
 import (
-	"bytes"
 	"strings"
 	"time"
 
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/pkg/kube"
 	"helm.sh/helm/pkg/release"
 	"helm.sh/helm/pkg/releaseutil"
 )
@@ -160,7 +158,7 @@ func joinErrors(errs []error) string {
 }
 
 // deleteRelease deletes the release and returns manifests that were kept in the deletion process
-func (u *Uninstall) deleteRelease(rel *release.Release) (kept string, errs []error) {
+func (u *Uninstall) deleteRelease(rel *release.Release) (string, []error) {
 	caps, err := u.cfg.getCapabilities()
 	if err != nil {
 		return rel.Manifest, []error{errors.Wrap(err, "could not get apiVersions from Kubernetes")}
@@ -177,23 +175,20 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (kept string, errs []err
 	}
 
 	filesToKeep, filesToDelete := filterManifestsToKeep(files)
+	var kept string
 	for _, f := range filesToKeep {
 		kept += f.Name + "\n"
 	}
 
+	var builder strings.Builder
 	for _, file := range filesToDelete {
-		b := bytes.NewBufferString(strings.TrimSpace(file.Content))
-		if b.Len() == 0 {
-			continue
-		}
-		if err := u.cfg.KubeClient.Delete(b); err != nil {
-			u.cfg.Log("uninstall: Failed deletion of %q: %s", rel.Name, err)
-			if err == kube.ErrNoObjectsVisited {
-				// Rewrite the message from "no objects visited"
-				err = errors.New("object not found, skipping delete")
-			}
-			errs = append(errs, err)
-		}
+		builder.WriteString("\n---\n" + file.Content)
 	}
+	resources, err := u.cfg.KubeClient.Build(strings.NewReader(builder.String()))
+	if err != nil {
+		return "", []error{errors.Wrap(err, "unable to build kubernetes objects for delete")}
+	}
+
+	_, errs := u.cfg.KubeClient.Delete(resources)
 	return kept, errs
 }

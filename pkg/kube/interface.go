@@ -19,43 +19,42 @@ package kube
 import (
 	"io"
 	"time"
+
+	v1 "k8s.io/api/core/v1"
 )
 
-// Interface represents a client capable of communicating with the Kubernetes API.
+// KubernetesClient represents a client capable of communicating with the Kubernetes API.
 //
 // A KubernetesClient must be concurrency safe.
 type Interface interface {
 	// Create creates one or more resources.
-	//
-	// reader must contain a YAML stream (one or more YAML documents separated
-	// by "\n---\n").
-	Create(reader io.Reader) error
+	Create(resources ResourceList) (*Result, error)
 
-	Wait(r io.Reader, timeout time.Duration) error
+	Wait(resources ResourceList, timeout time.Duration) error
 
 	// Delete destroys one or more resources.
-	//
-	// reader must contain a YAML stream (one or more YAML documents separated
-	// by "\n---\n").
-	Delete(io.Reader) error
+	Delete(resources ResourceList) (*Result, []error)
 
-	// Watch the resource in reader until it is "ready".
+	// Watch the resource in reader until it is "ready". This method
 	//
-	// For Jobs, "ready" means the Job ran to completion (exited without error).
-	// For Pods, "ready" means the Pod phase is marked "succeeded".
+	// For Jobs, "ready" means the job ran to completion (excited without error).
 	// For all other kinds, it means the kind was created or modified without
 	// error.
-	WatchUntilReady(reader io.Reader, timeout time.Duration) error
+	WatchUntilReady(resources ResourceList, timeout time.Duration) error
 
 	// Update updates one or more resources or creates the resource
 	// if it doesn't exist.
+	Update(original, target ResourceList, force bool) (*Result, error)
+
+	// Build creates a resource list from a Reader
 	//
 	// reader must contain a YAML stream (one or more YAML documents separated
-	// by "\n---\n").
-	Update(originalReader, modifiedReader io.Reader, force bool, recreate bool) error
+	// by "\n---\n")
+	Build(reader io.Reader) (ResourceList, error)
 
-	Build(reader io.Reader) (Result, error)
-	BuildUnstructured(reader io.Reader) (Result, error)
+	// WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
+	// and returns said phase (PodSucceeded or PodFailed qualify).
+	WaitAndGetCompletedPodPhase(name string, timeout time.Duration) (v1.PodPhase, error)
 }
 
 var _ Interface = (*Client)(nil)

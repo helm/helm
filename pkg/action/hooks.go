@@ -40,20 +40,21 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 	sort.Sort(hookByWeight(executingHooks))
 
 	for _, h := range executingHooks {
-		if err := deleteHookByPolicy(cfg, h, release.HookBeforeHookCreation); err != nil {
+		if err := cfg.deleteHookByPolicy(h, release.HookBeforeHookCreation); err != nil {
 			return err
 		}
 
-		b := bytes.NewBufferString(h.Manifest)
-		if err := cfg.KubeClient.Create(b); err != nil {
+		resources, err := cfg.KubeClient.Build(bytes.NewBufferString(h.Manifest))
+		if err != nil {
+			return errors.Wrapf(err, "unable to build kubernetes object for %s hook %s", hook, h.Path)
+		}
+		if _, err := cfg.KubeClient.Create(resources); err != nil {
 			return errors.Wrapf(err, "warning: Hook %s %s failed", hook, h.Path)
 		}
-		b.Reset()
-		b.WriteString(h.Manifest)
 
 		// Get the time at which the hook was applied to the cluster
 		start := time.Now()
-		err := cfg.KubeClient.WatchUntilReady(b, timeout)
+		err = cfg.KubeClient.WatchUntilReady(resources, timeout)
 		h.LastRun = release.HookExecution{
 			StartedAt:   start,
 			CompletedAt: time.Now(),
@@ -62,7 +63,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		if err != nil {
 			// If a hook is failed, checkout the annotation of the hook to determine whether the hook should be deleted
 			// under failed condition. If so, then clear the corresponding resource object in the hook
-			if err := deleteHookByPolicy(cfg, h, release.HookFailed); err != nil {
+			if err := cfg.deleteHookByPolicy(h, release.HookFailed); err != nil {
 				return err
 			}
 			return err
@@ -72,7 +73,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 	// If all hooks are succeeded, checkout the annotation of each hook to determine whether the hook should be deleted
 	// under succeeded condition. If so, then clear the corresponding resource object in each hook
 	for _, h := range executingHooks {
-		if err := deleteHookByPolicy(cfg, h, release.HookSucceeded); err != nil {
+		if err := cfg.deleteHookByPolicy(h, release.HookSucceeded); err != nil {
 			return err
 		}
 	}
@@ -93,10 +94,14 @@ func (x hookByWeight) Less(i, j int) bool {
 }
 
 // deleteHookByPolicy deletes a hook if the hook policy instructs it to
-func deleteHookByPolicy(cfg *Configuration, h *release.Hook, policy release.HookDeletePolicy) error {
+func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.HookDeletePolicy) error {
 	if hookHasDeletePolicy(h, policy) {
-		b := bytes.NewBufferString(h.Manifest)
-		return cfg.KubeClient.Delete(b)
+		resources, err := cfg.KubeClient.Build(bytes.NewBufferString(h.Manifest))
+		if err != nil {
+			return errors.Wrapf(err, "unable to build kubernetes object for deleting hook %s", h.Path)
+		}
+		_, errs := cfg.KubeClient.Delete(resources)
+		return errors.New(joinErrors(errs))
 	}
 	return nil
 }

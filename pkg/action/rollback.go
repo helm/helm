@@ -130,10 +130,18 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 }
 
 func (r *Rollback) performRollback(currentRelease, targetRelease *release.Release) (*release.Release, error) {
-
 	if r.DryRun {
 		r.cfg.Log("dry run for %s", targetRelease.Name)
 		return targetRelease, nil
+	}
+
+	current, err := r.cfg.KubeClient.Build(bytes.NewBufferString(currentRelease.Manifest))
+	if err != nil {
+		return targetRelease, errors.Wrap(err, "unable to build kubernetes objects from current release manifest")
+	}
+	target, err := r.cfg.KubeClient.Build(bytes.NewBufferString(targetRelease.Manifest))
+	if err != nil {
+		return targetRelease, errors.Wrap(err, "unable to build kubernetes objects from new release manifest")
 	}
 
 	// pre-rollback hooks
@@ -145,10 +153,9 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		r.cfg.Log("rollback hooks disabled for %s", targetRelease.Name)
 	}
 
-	cr := bytes.NewBufferString(currentRelease.Manifest)
-	tr := bytes.NewBufferString(targetRelease.Manifest)
+	results, err := r.cfg.KubeClient.Update(current, target, r.Force)
 
-	if err := r.cfg.KubeClient.Update(cr, tr, r.Force, r.Recreate); err != nil {
+	if err != nil {
 		msg := fmt.Sprintf("Rollback %q failed: %s", targetRelease.Name, err)
 		r.cfg.Log("warning: %s", msg)
 		currentRelease.Info.Status = release.StatusSuperseded
@@ -159,9 +166,18 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		return targetRelease, err
 	}
 
+	if r.Recreate {
+		// NOTE: Because this is not critical for a release to succeed, we just
+		// log if an error occurs and continue onward. If we ever introduce log
+		// levels, we should make these error level logs so users are notified
+		// that they'll need to go do the cleanup on their own
+		if err := recreate(r.cfg, results.Updated); err != nil {
+			r.cfg.Log(err.Error())
+		}
+	}
+
 	if r.Wait {
-		buf := bytes.NewBufferString(targetRelease.Manifest)
-		if err := r.cfg.KubeClient.Wait(buf, r.Timeout); err != nil {
+		if err := r.cfg.KubeClient.Wait(target, r.Timeout); err != nil {
 			targetRelease.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", targetRelease.Name, err.Error()))
 			r.cfg.recordRelease(currentRelease)
 			r.cfg.recordRelease(targetRelease)
