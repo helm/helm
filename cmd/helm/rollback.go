@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"strconv"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -31,32 +32,39 @@ const rollbackDesc = `
 This command rolls back a release to a previous revision.
 
 The first argument of the rollback command is the name of a release, and the
-second is a revision (version) number. To see revision numbers, run
-'helm history RELEASE'.
+second is a revision (version) number. If this argument is omitted, it will
+roll back to the previous release.
+
+To see revision numbers, run 'helm history RELEASE'.
 `
 
 func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewRollback(cfg)
 
 	cmd := &cobra.Command{
-		Use:   "rollback [RELEASE] [REVISION]",
+		Use:   "rollback <RELEASE> [REVISION]",
 		Short: "roll back a release to a previous revision",
 		Long:  rollbackDesc,
-		Args:  require.ExactArgs(2),
+		Args:  require.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			_, err := client.Run(args[0])
-			if err != nil {
+			if len(args) > 1 {
+				ver, err := strconv.Atoi(args[1])
+				if err != nil {
+					return fmt.Errorf("could not convert revision to a number: %v", err)
+				}
+				client.Version = ver
+			}
+
+			if _, err := client.Run(args[0]); err != nil {
 				return err
 			}
 
 			fmt.Fprintf(out, "Rollback was a success! Happy Helming!\n")
-
 			return nil
 		},
 	}
 
 	f := cmd.Flags()
-	f.IntVar(&client.Version, "version", 0, "revision number to rollback to (default: rollback to previous release)")
 	f.BoolVar(&client.DryRun, "dry-run", false, "simulate a rollback")
 	f.BoolVar(&client.Recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
 	f.BoolVar(&client.Force, "force", false, "force resource update through delete/recreate if needed")
