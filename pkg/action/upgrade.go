@@ -300,7 +300,7 @@ func (u *Upgrade) upgradeRelease(current, target *release.Release) error {
 // request values are not altered.
 func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release) error {
 	if u.ResetValues {
-		// If ResetValues is set, we comletely ignore current.Config.
+		// If ResetValues is set, we completely ignore current.Config.
 		u.cfg.Log("resetting values to the chart's original version")
 		return nil
 	}
@@ -315,7 +315,7 @@ func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release) erro
 			return errors.Wrap(err, "failed to rebuild old values")
 		}
 
-		u.rawValues = chartutil.CoalesceTables(current.Config, u.rawValues)
+		u.rawValues = chartutil.CoalesceTables(u.rawValues, current.Config)
 
 		chart.Values = oldVals
 
