@@ -34,7 +34,6 @@ type FailingKubeClient struct {
 	PrintingKubeClient
 	CreateError                      error
 	WaitError                        error
-	GetError                         error
 	DeleteError                      error
 	WatchUntilReadyError             error
 	UpdateError                      error
@@ -44,65 +43,49 @@ type FailingKubeClient struct {
 }
 
 // Create returns the configured error if set or prints
-func (f *FailingKubeClient) Create(r io.Reader) error {
+func (f *FailingKubeClient) Create(resources kube.ResourceList) (*kube.Result, error) {
 	if f.CreateError != nil {
-		return f.CreateError
+		return nil, f.CreateError
 	}
-	return f.PrintingKubeClient.Create(r)
+	return f.PrintingKubeClient.Create(resources)
 }
 
 // Wait returns the configured error if set or prints
-func (f *FailingKubeClient) Wait(r io.Reader, d time.Duration) error {
+func (f *FailingKubeClient) Wait(resources kube.ResourceList, d time.Duration) error {
 	if f.WaitError != nil {
 		return f.WaitError
 	}
-	return f.PrintingKubeClient.Wait(r, d)
-}
-
-// Create returns the configured error if set or prints
-func (f *FailingKubeClient) Get(r io.Reader) (string, error) {
-	if f.GetError != nil {
-		return "", f.GetError
-	}
-	return f.PrintingKubeClient.Get(r)
+	return f.PrintingKubeClient.Wait(resources, d)
 }
 
 // Delete returns the configured error if set or prints
-func (f *FailingKubeClient) Delete(r io.Reader) error {
+func (f *FailingKubeClient) Delete(resources kube.ResourceList) (*kube.Result, []error) {
 	if f.DeleteError != nil {
-		return f.DeleteError
+		return nil, []error{f.DeleteError}
 	}
-	return f.PrintingKubeClient.Delete(r)
+	return f.PrintingKubeClient.Delete(resources)
 }
 
 // WatchUntilReady returns the configured error if set or prints
-func (f *FailingKubeClient) WatchUntilReady(r io.Reader, d time.Duration) error {
+func (f *FailingKubeClient) WatchUntilReady(resources kube.ResourceList, d time.Duration) error {
 	if f.WatchUntilReadyError != nil {
 		return f.WatchUntilReadyError
 	}
-	return f.PrintingKubeClient.WatchUntilReady(r, d)
+	return f.PrintingKubeClient.WatchUntilReady(resources, d)
 }
 
 // Update returns the configured error if set or prints
-func (f *FailingKubeClient) Update(r, modifiedReader io.Reader, not, needed bool) error {
+func (f *FailingKubeClient) Update(r, modified kube.ResourceList, ignoreMe bool) (*kube.Result, error) {
 	if f.UpdateError != nil {
-		return f.UpdateError
+		return nil, f.UpdateError
 	}
-	return f.PrintingKubeClient.Update(r, modifiedReader, not, needed)
+	return f.PrintingKubeClient.Update(r, modified, ignoreMe)
 }
 
 // Build returns the configured error if set or prints
-func (f *FailingKubeClient) Build(r io.Reader) (kube.Result, error) {
+func (f *FailingKubeClient) Build(r io.Reader) (kube.ResourceList, error) {
 	if f.BuildError != nil {
 		return []*resource.Info{}, f.BuildError
-	}
-	return f.PrintingKubeClient.Build(r)
-}
-
-// BuildUnstructured returns the configured error if set or prints
-func (f *FailingKubeClient) BuildUnstructured(r io.Reader) (kube.Result, error) {
-	if f.BuildUnstructuredError != nil {
-		return []*resource.Info{}, f.BuildUnstructuredError
 	}
 	return f.PrintingKubeClient.Build(r)
 }

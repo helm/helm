@@ -142,7 +142,16 @@ func TestUpdate(t *testing.T) {
 			}
 		}),
 	}
-	if err := c.Update(objBody(&listA), objBody(&listB), false, false); err != nil {
+	first, err := c.Build(objBody(&listA))
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := c.Build(objBody(&listB))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := c.Update(first, second, false); err != nil {
 		t.Fatal(err)
 	}
 	// TODO: Find a way to test methods that use Client Set
@@ -188,11 +197,6 @@ func TestBuild(t *testing.T) {
 			namespace: "test",
 			reader:    strings.NewReader(guestbookManifest),
 			count:     6,
-		}, {
-			name:      "Invalid schema",
-			namespace: "test",
-			reader:    strings.NewReader(testInvalidServiceManifest),
-			err:       true,
 		}, {
 			name:      "Valid input, deploying resources into different namespaces",
 			namespace: "test",
@@ -272,23 +276,40 @@ func TestPerform(t *testing.T) {
 func TestReal(t *testing.T) {
 	t.Skip("This is a live test, comment this line to run")
 	c := New(nil)
-	if err := c.Create(strings.NewReader(guestbookManifest)); err != nil {
+	resources, err := c.Build(strings.NewReader(guestbookManifest))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Create(resources); err != nil {
 		t.Fatal(err)
 	}
 
 	testSvcEndpointManifest := testServiceManifest + "\n---\n" + testEndpointManifest
 	c = New(nil)
-	if err := c.Create(strings.NewReader(testSvcEndpointManifest)); err != nil {
+	resources, err = c.Build(strings.NewReader(testSvcEndpointManifest))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Create(resources); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := c.Delete(strings.NewReader(testEndpointManifest)); err != nil {
+	resources, err = c.Build(strings.NewReader(testEndpointManifest))
+	if err != nil {
 		t.Fatal(err)
 	}
 
+	if _, errs := c.Delete(resources); errs != nil {
+		t.Fatal(errs)
+	}
+
+	resources, err = c.Build(strings.NewReader(testSvcEndpointManifest))
+	if err != nil {
+		t.Fatal(err)
+	}
 	// ensures that delete does not fail if a resource is not found
-	if err := c.Delete(strings.NewReader(testSvcEndpointManifest)); err != nil {
-		t.Fatal(err)
+	if _, errs := c.Delete(resources); errs != nil {
+		t.Fatal(errs)
 	}
 }
 
@@ -304,14 +325,6 @@ spec:
     - port: 80
       protocol: TCP
       targetPort: 9376
-`
-
-const testInvalidServiceManifest = `
-kind: Service
-apiVersion: v1
-spec:
-  ports:
-    - port: "80"
 `
 
 const testEndpointManifest = `

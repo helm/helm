@@ -37,8 +37,11 @@ type Environment struct {
 }
 
 func (env *Environment) createTestPod(test *test) error {
-	b := bytes.NewBufferString(test.manifest)
-	if err := env.KubeClient.Create(b); err != nil {
+	resources, err := env.KubeClient.Build(bytes.NewBufferString(test.manifest))
+	if err != nil {
+		return err
+	}
+	if _, err := env.KubeClient.Create(resources); err != nil {
 		test.result.Info = err.Error()
 		test.result.Status = release.TestRunFailure
 		return err
@@ -112,9 +115,15 @@ func (env *Environment) streamMessage(msg string, status release.TestRunStatus) 
 // DeleteTestPods deletes resources given in testManifests
 func (env *Environment) DeleteTestPods(testManifests []string) {
 	for _, testManifest := range testManifests {
-		err := env.KubeClient.Delete(bytes.NewBufferString(testManifest))
+		resources, err := env.KubeClient.Build(bytes.NewBufferString(testManifest))
 		if err != nil {
 			env.streamError(err.Error())
+		}
+		_, errs := env.KubeClient.Delete(resources)
+		if err != nil {
+			for _, e := range errs {
+				env.streamError(e.Error())
+			}
 		}
 	}
 }

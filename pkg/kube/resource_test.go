@@ -24,7 +24,7 @@ import (
 	"k8s.io/cli-runtime/pkg/resource"
 )
 
-func TestResult(t *testing.T) {
+func TestResourceList(t *testing.T) {
 	mapping := &meta.RESTMapping{
 		Resource: schema.GroupVersionResource{Group: "group", Version: "version", Resource: "pod"},
 	}
@@ -33,7 +33,7 @@ func TestResult(t *testing.T) {
 		return &resource.Info{Name: name, Mapping: mapping}
 	}
 
-	var r1, r2 Result
+	var r1, r2 ResourceList
 	r1 = []*resource.Info{info("foo"), info("bar")}
 	r2 = []*resource.Info{info("bar")}
 

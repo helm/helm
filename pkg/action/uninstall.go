@@ -17,15 +17,12 @@ limitations under the License.
 package action
 
 import (
-	"bytes"
-	"sort"
 	"strings"
 	"time"
 
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/pkg/hooks"
-	"helm.sh/helm/pkg/kube"
 	"helm.sh/helm/pkg/release"
 	"helm.sh/helm/pkg/releaseutil"
 )
@@ -94,7 +91,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	res := &release.UninstallReleaseResponse{Release: rel}
 
 	if !u.DisableHooks {
-		if err := u.execHook(rel.Hooks, hooks.PreDelete); err != nil {
+		if err := execHooks(u.cfg.KubeClient, rel.Hooks, hooks.PreDelete, u.Timeout); err != nil {
 			return res, err
 		}
 	} else {
@@ -111,7 +108,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	res.Info = kept
 
 	if !u.DisableHooks {
-		if err := u.execHook(rel.Hooks, hooks.PostDelete); err != nil {
+		if err := execHooks(u.cfg.KubeClient, rel.Hooks, hooks.PostDelete, u.Timeout); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -153,64 +150,8 @@ func (u *Uninstall) purgeReleases(rels ...*release.Release) error {
 	return nil
 }
 
-func joinErrors(errs []error) string {
-	es := make([]string, 0, len(errs))
-	for _, e := range errs {
-		es = append(es, e.Error())
-	}
-	return strings.Join(es, "; ")
-}
-
-// execHook executes all of the hooks for the given hook event.
-func (u *Uninstall) execHook(hs []*release.Hook, hook string) error {
-	executingHooks := []*release.Hook{}
-
-	for _, h := range hs {
-		for _, e := range h.Events {
-			if string(e) == hook {
-				executingHooks = append(executingHooks, h)
-			}
-		}
-	}
-
-	sort.Sort(hookByWeight(executingHooks))
-
-	for _, h := range executingHooks {
-		if err := deleteHookByPolicy(u.cfg, h, hooks.BeforeHookCreation); err != nil {
-			return err
-		}
-
-		b := bytes.NewBufferString(h.Manifest)
-		if err := u.cfg.KubeClient.Create(b); err != nil {
-			return errors.Wrapf(err, "warning: Hook %s %s failed", hook, h.Path)
-		}
-		b.Reset()
-		b.WriteString(h.Manifest)
-
-		if err := u.cfg.KubeClient.WatchUntilReady(b, u.Timeout); err != nil {
-			// If a hook is failed, checkout the annotation of the hook to determine whether the hook should be deleted
-			// under failed condition. If so, then clear the corresponding resource object in the hook
-			if err := deleteHookByPolicy(u.cfg, h, hooks.HookFailed); err != nil {
-				return err
-			}
-			return err
-		}
-	}
-
-	// If all hooks are succeeded, checkout the annotation of each hook to determine whether the hook should be deleted
-	// under succeeded condition. If so, then clear the corresponding resource object in each hook
-	for _, h := range executingHooks {
-		if err := deleteHookByPolicy(u.cfg, h, hooks.HookSucceeded); err != nil {
-			return err
-		}
-		h.LastRun = time.Now()
-	}
-
-	return nil
-}
-
 // deleteRelease deletes the release and returns manifests that were kept in the deletion process
-func (u *Uninstall) deleteRelease(rel *release.Release) (kept string, errs []error) {
+func (u *Uninstall) deleteRelease(rel *release.Release) (string, []error) {
 	caps, err := u.cfg.getCapabilities()
 	if err != nil {
 		return rel.Manifest, []error{errors.Wrap(err, "could not get apiVersions from Kubernetes")}
@@ -227,23 +168,20 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (kept string, errs []err
 	}
 
 	filesToKeep, filesToDelete := filterManifestsToKeep(files)
+	var kept string
 	for _, f := range filesToKeep {
 		kept += f.Name + "\n"
 	}
 
+	var builder strings.Builder
 	for _, file := range filesToDelete {
-		b := bytes.NewBufferString(strings.TrimSpace(file.Content))
-		if b.Len() == 0 {
-			continue
-		}
-		if err := u.cfg.KubeClient.Delete(b); err != nil {
-			u.cfg.Log("uninstall: Failed deletion of %q: %s", rel.Name, err)
-			if err == kube.ErrNoObjectsVisited {
-				// Rewrite the message from "no objects visited"
-				err = errors.New("object not found, skipping delete")
-			}
-			errs = append(errs, err)
-		}
+		builder.WriteString("\n---\n" + file.Content)
 	}
+	resources, err := u.cfg.KubeClient.Build(strings.NewReader(builder.String()))
+	if err != nil {
+		return "", []error{errors.Wrap(err, "unable to build kubernetes objects for delete")}
+	}
+
+	_, errs := u.cfg.KubeClient.Delete(resources)
 	return kept, errs
 }
