@@ -55,7 +55,7 @@ use `gpg --list-secret-keys` to list the keys you have.
 **Warning:**  the GnuPG v2.1 store your secret keyring using a new format 'kbx' on the default location  '~/.gnupg/pubring.kbx'. Please use the following command to convert your keyring to the legacy gpg format:
 
 ```
-$ gpg --export-secret-keys >~/.gnupg/secring.gpg
+$ gpg --export-secret-keys > ~/.gnupg/pubring.gpg
 ```
 
 At this point, you should see both `mychart-0.1.0.tgz` and `mychart-0.1.0.tgz.prov`.
