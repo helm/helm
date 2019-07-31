@@ -107,3 +107,53 @@ func TestUpgradeRelease_Atomic(t *testing.T) {
 		is.Contains(err.Error(), "an error occurred while rolling back the release")
 	})
 }
+
+func TestUpgradeRelease_ReuseValues(t *testing.T) {
+	is := assert.New(t)
+
+	t.Run("reuse values should work with values", func(t *testing.T) {
+		upAction := upgradeAction(t)
+
+		existingValues := map[string]interface{}{
+			"name":        "value",
+			"maxHeapSize": "128m",
+			"replicas":    2,
+		}
+		newValues := map[string]interface{}{
+			"name":        "newValue",
+			"maxHeapSize": "512m",
+			"cpu":         "12m",
+		}
+		expectedValues := map[string]interface{}{
+			"name":        "newValue",
+			"maxHeapSize": "512m",
+			"cpu":         "12m",
+			"replicas":    2,
+		}
+
+		rel := releaseStub()
+		rel.Name = "nuketown"
+		rel.Info.Status = release.StatusDeployed
+		rel.Config = existingValues
+
+		err := upAction.cfg.Releases.Create(rel)
+		is.NoError(err)
+
+		upAction.ReuseValues = true
+		// setting newValues and upgrading
+		upAction.rawValues = newValues
+		res, err := upAction.Run(rel.Name, buildChart())
+		is.NoError(err)
+
+		// Now make sure it is actually upgraded
+		updatedRes, err := upAction.cfg.Releases.Get(res.Name, 2)
+		is.NoError(err)
+
+		if updatedRes == nil {
+			is.Fail("Updated Release is nil")
+			return
+		}
+		is.Equal(release.StatusDeployed, updatedRes.Info.Status)
+		is.Equal(expectedValues, updatedRes.Config)
+	})
+}
