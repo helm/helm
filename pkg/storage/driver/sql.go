@@ -25,7 +25,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	migrate "github.com/rubenv/sql-migrate"
 
-	// Import pq for potgres dialect
+	// Import pq for postgres dialect
 	_ "github.com/lib/pq"
 
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
