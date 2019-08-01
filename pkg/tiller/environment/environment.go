@@ -110,7 +110,7 @@ type KubeClient interface {
 	// by "\n---\n").
 	Create(namespace string, reader io.Reader, timeout int64, shouldWait bool) error
 
-	// Get gets one or more resources. Returned string hsa the format like kubectl
+	// Get gets one or more resources. Returned string has the format like kubectl
 	// provides with the column headers separating the resource types.
 	//
 	// namespace must contain a valid existing namespace.
