@@ -57,6 +57,7 @@ set for a key called 'foo', the 'newbar' value would take precedence:
 
 func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewUpgrade(cfg)
+	valueOpts := &ValueOptions{}
 
 	cmd := &cobra.Command{
 		Use:   "upgrade [RELEASE] [CHART]",
@@ -71,7 +72,8 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				client.Version = ">0.0.0-0"
 			}
 
-			if err := client.ValueOptions.MergeValues(settings); err != nil {
+			vals, err := valueOpts.MergeValues(settings)
+			if err != nil {
 				return err
 			}
 
@@ -89,7 +91,6 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					fmt.Fprintf(out, "Release %q does not exist. Installing it now.\n", args[0])
 					instClient := action.NewInstall(cfg)
 					instClient.ChartPathOptions = client.ChartPathOptions
-					instClient.ValueOptions = client.ValueOptions
 					instClient.DryRun = client.DryRun
 					instClient.DisableHooks = client.DisableHooks
 					instClient.Timeout = client.Timeout
@@ -98,7 +99,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.Namespace = client.Namespace
 					instClient.Atomic = client.Atomic
 
-					_, err := runInstall(args, instClient, out)
+					_, err := runInstall(args, instClient, valueOpts, out)
 					return err
 				}
 			}
@@ -114,7 +115,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				}
 			}
 
-			resp, err := client.Run(args[0], ch)
+			resp, err := client.Run(args[0], ch, vals)
 			if err != nil {
 				return errors.Wrap(err, "UPGRADE FAILED")
 			}
@@ -151,7 +152,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.Atomic, "atomic", false, "if set, upgrade process rolls back changes made in case of failed upgrade. The --wait flag will be set automatically if --atomic is used")
 	f.IntVar(&client.MaxHistory, "history-max", 0, "limit the maximum number of revisions saved per release. Use 0 for no limit.")
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
-	addValueOptionsFlags(f, &client.ValueOptions)
+	addValueOptionsFlags(f, valueOpts)
 
 	return cmd
 }

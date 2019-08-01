@@ -49,9 +49,9 @@ func TestUpgradeRelease_Wait(t *testing.T) {
 	failer.WaitError = fmt.Errorf("I timed out")
 	upAction.cfg.KubeClient = failer
 	upAction.Wait = true
-	upAction.rawValues = map[string]interface{}{}
+	vals := map[string]interface{}{}
 
-	res, err := upAction.Run(rel.Name, buildChart())
+	res, err := upAction.Run(rel.Name, buildChart(), vals)
 	req.Error(err)
 	is.Contains(res.Info.Description, "I timed out")
 	is.Equal(res.Info.Status, release.StatusFailed)
@@ -74,9 +74,9 @@ func TestUpgradeRelease_Atomic(t *testing.T) {
 		failer.WatchUntilReadyError = fmt.Errorf("arming key removed")
 		upAction.cfg.KubeClient = failer
 		upAction.Atomic = true
-		upAction.rawValues = map[string]interface{}{}
+		vals := map[string]interface{}{}
 
-		res, err := upAction.Run(rel.Name, buildChart())
+		res, err := upAction.Run(rel.Name, buildChart(), vals)
 		req.Error(err)
 		is.Contains(err.Error(), "arming key removed")
 		is.Contains(err.Error(), "atomic")
@@ -99,9 +99,9 @@ func TestUpgradeRelease_Atomic(t *testing.T) {
 		failer.UpdateError = fmt.Errorf("update fail")
 		upAction.cfg.KubeClient = failer
 		upAction.Atomic = true
-		upAction.rawValues = map[string]interface{}{}
+		vals := map[string]interface{}{}
 
-		_, err := upAction.Run(rel.Name, buildChart())
+		_, err := upAction.Run(rel.Name, buildChart(), vals)
 		req.Error(err)
 		is.Contains(err.Error(), "update fail")
 		is.Contains(err.Error(), "an error occurred while rolling back the release")
@@ -141,8 +141,7 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 
 		upAction.ReuseValues = true
 		// setting newValues and upgrading
-		upAction.rawValues = newValues
-		res, err := upAction.Run(rel.Name, buildChart())
+		res, err := upAction.Run(rel.Name, buildChart(), newValues)
 		is.NoError(err)
 
 		// Now make sure it is actually upgraded

@@ -18,19 +18,26 @@ package main
 
 import (
 	"io"
+	"io/ioutil"
+	"net/url"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/cmd/helm/require"
 	"helm.sh/helm/pkg/action"
 	"helm.sh/helm/pkg/chart"
 	"helm.sh/helm/pkg/chart/loader"
+	"helm.sh/helm/pkg/cli"
 	"helm.sh/helm/pkg/downloader"
 	"helm.sh/helm/pkg/getter"
 	"helm.sh/helm/pkg/release"
+	"helm.sh/helm/pkg/strvals"
 )
 
 const installDesc = `
@@ -97,6 +104,7 @@ charts in a repository, use 'helm search'.
 
 func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewInstall(cfg)
+	valueOpts := &ValueOptions{}
 
 	cmd := &cobra.Command{
 		Use:   "install [NAME] [CHART]",
@@ -104,7 +112,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Long:  installDesc,
 		Args:  require.MinimumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
-			rel, err := runInstall(args, client, out)
+			rel, err := runInstall(args, client, valueOpts, out)
 			if err != nil {
 				return err
 			}
@@ -113,12 +121,12 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		},
 	}
 
-	addInstallFlags(cmd.Flags(), client)
+	addInstallFlags(cmd.Flags(), client, valueOpts)
 
 	return cmd
 }
 
-func addInstallFlags(f *pflag.FlagSet, client *action.Install) {
+func addInstallFlags(f *pflag.FlagSet, client *action.Install, valueOpts *ValueOptions) {
 	f.BoolVar(&client.DryRun, "dry-run", false, "simulate an install")
 	f.BoolVar(&client.DisableHooks, "no-hooks", false, "prevent hooks from running during install")
 	f.BoolVar(&client.Replace, "replace", false, "re-use the given name, even if that name is already used. This is unsafe in production")
@@ -129,11 +137,11 @@ func addInstallFlags(f *pflag.FlagSet, client *action.Install) {
 	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
 	f.BoolVar(&client.DependencyUpdate, "dependency-update", false, "run helm dependency update before installing the chart")
 	f.BoolVar(&client.Atomic, "atomic", false, "if set, installation process purges chart on fail. The --wait flag will be set automatically if --atomic is used")
-	addValueOptionsFlags(f, &client.ValueOptions)
+	addValueOptionsFlags(f, valueOpts)
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 }
 
-func addValueOptionsFlags(f *pflag.FlagSet, v *action.ValueOptions) {
+func addValueOptionsFlags(f *pflag.FlagSet, v *ValueOptions) {
 	f.StringSliceVarP(&v.ValueFiles, "values", "f", []string{}, "specify values in a YAML file or a URL(can specify multiple)")
 	f.StringArrayVar(&v.Values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.StringArrayVar(&v.StringValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
@@ -151,7 +159,7 @@ func addChartPathOptionsFlags(f *pflag.FlagSet, c *action.ChartPathOptions) {
 	f.StringVar(&c.CaFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 }
 
-func runInstall(args []string, client *action.Install, out io.Writer) (*release.Release, error) {
+func runInstall(args []string, client *action.Install, valueOpts *ValueOptions, out io.Writer) (*release.Release, error) {
 	debug("Original chart version: %q", client.Version)
 	if client.Version == "" && client.Devel {
 		debug("setting version to >0.0.0-0")
@@ -171,7 +179,8 @@ func runInstall(args []string, client *action.Install, out io.Writer) (*release.
 
 	debug("CHART PATH: %s\n", cp)
 
-	if err := client.ValueOptions.MergeValues(settings); err != nil {
+	vals, err := valueOpts.MergeValues(settings)
+	if err != nil {
 		return nil, err
 	}
 
@@ -210,7 +219,7 @@ func runInstall(args []string, client *action.Install, out io.Writer) (*release.
 	}
 
 	client.Namespace = getNamespace()
-	return client.Run(chartRequested)
+	return client.Run(chartRequested, vals)
 }
 
 // isChartInstallable validates if a chart can be installed
@@ -222,4 +231,90 @@ func isChartInstallable(ch *chart.Chart) (bool, error) {
 		return true, nil
 	}
 	return false, errors.Errorf("%s charts are not installable", ch.Metadata.Type)
+}
+
+type ValueOptions struct {
+	ValueFiles   []string
+	StringValues []string
+	Values       []string
+}
+
+// MergeValues merges values from files specified via -f/--values and
+// directly via --set or --set-string, marshaling them to YAML
+func (v *ValueOptions) MergeValues(settings cli.EnvSettings) (map[string]interface{}, error) {
+	base := map[string]interface{}{}
+
+	// User specified a values files via -f/--values
+	for _, filePath := range v.ValueFiles {
+		currentMap := map[string]interface{}{}
+
+		bytes, err := readFile(filePath, settings)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := yaml.Unmarshal(bytes, &currentMap); err != nil {
+			return nil, errors.Wrapf(err, "failed to parse %s", filePath)
+		}
+		// Merge with the previous map
+		base = mergeMaps(base, currentMap)
+	}
+
+	// User specified a value via --set
+	for _, value := range v.Values {
+		if err := strvals.ParseInto(value, base); err != nil {
+			return nil, errors.Wrap(err, "failed parsing --set data")
+		}
+	}
+
+	// User specified a value via --set-string
+	for _, value := range v.StringValues {
+		if err := strvals.ParseIntoString(value, base); err != nil {
+			return nil, errors.Wrap(err, "failed parsing --set-string data")
+		}
+	}
+
+	return base, nil
+}
+
+func mergeMaps(a, b map[string]interface{}) map[string]interface{} {
+	out := make(map[string]interface{}, len(a))
+	for k, v := range a {
+		out[k] = v
+	}
+	for k, v := range b {
+		if v, ok := v.(map[string]interface{}); ok {
+			if bv, ok := out[k]; ok {
+				if bv, ok := bv.(map[string]interface{}); ok {
+					out[k] = mergeMaps(bv, v)
+					continue
+				}
+			}
+		}
+		out[k] = v
+	}
+	return out
+}
+
+// readFile load a file from stdin, the local directory, or a remote file with a url.
+func readFile(filePath string, settings cli.EnvSettings) ([]byte, error) {
+	if strings.TrimSpace(filePath) == "-" {
+		return ioutil.ReadAll(os.Stdin)
+	}
+	u, _ := url.Parse(filePath)
+	p := getter.All(settings)
+
+	// FIXME: maybe someone handle other protocols like ftp.
+	getterConstructor, err := p.ByScheme(u.Scheme)
+
+	if err != nil {
+		return ioutil.ReadFile(filePath)
+	}
+
+	getter, err := getterConstructor(getter.WithURL(filePath))
+	if err != nil {
+		return []byte{}, err
+	}
+	data, err := getter.Get(filePath)
+	return data.Bytes(), err
 }

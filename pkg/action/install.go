@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
-	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -30,7 +29,6 @@ import (
 
 	"github.com/Masterminds/sprig"
 	"github.com/pkg/errors"
-	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/pkg/chart"
 	"helm.sh/helm/pkg/chartutil"
@@ -45,7 +43,6 @@ import (
 	"helm.sh/helm/pkg/repo"
 	"helm.sh/helm/pkg/storage"
 	"helm.sh/helm/pkg/storage/driver"
-	"helm.sh/helm/pkg/strvals"
 	"helm.sh/helm/pkg/version"
 )
 
@@ -69,7 +66,6 @@ type Install struct {
 	cfg *Configuration
 
 	ChartPathOptions
-	ValueOptions
 
 	ClientOnly       bool
 	DryRun           bool
@@ -85,13 +81,6 @@ type Install struct {
 	NameTemplate     string
 	OutputDir        string
 	Atomic           bool
-}
-
-type ValueOptions struct {
-	ValueFiles   []string
-	StringValues []string
-	Values       []string
-	rawValues    map[string]interface{}
 }
 
 type ChartPathOptions struct {
@@ -116,7 +105,7 @@ func NewInstall(cfg *Configuration) *Install {
 // Run executes the installation
 //
 // If DryRun is set to true, this will prepare the release, but not install it
-func (i *Install) Run(chrt *chart.Chart) (*release.Release, error) {
+func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
 	if err := i.availableName(); err != nil {
 		return nil, err
 	}
@@ -129,7 +118,7 @@ func (i *Install) Run(chrt *chart.Chart) (*release.Release, error) {
 		i.cfg.Releases = storage.Init(driver.NewMemory())
 	}
 
-	if err := chartutil.ProcessDependencies(chrt, i.rawValues); err != nil {
+	if err := chartutil.ProcessDependencies(chrt, vals); err != nil {
 		return nil, err
 	}
 
@@ -147,12 +136,12 @@ func (i *Install) Run(chrt *chart.Chart) (*release.Release, error) {
 		Namespace: i.Namespace,
 		IsInstall: true,
 	}
-	valuesToRender, err := chartutil.ToRenderValues(chrt, i.rawValues, options, caps)
+	valuesToRender, err := chartutil.ToRenderValues(chrt, vals, options, caps)
 	if err != nil {
 		return nil, err
 	}
 
-	rel := i.createRelease(chrt, i.rawValues)
+	rel := i.createRelease(chrt, vals)
 	var manifestDoc *bytes.Buffer
 	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.OutputDir)
 	// Even for errors, attach this if available
@@ -640,115 +629,4 @@ func (c *ChartPathOptions) LocateChart(name string, settings cli.EnvSettings) (s
 	}
 
 	return filename, errors.Errorf("failed to download %q (hint: running `helm repo update` may help)", name)
-}
-
-// MergeValues merges values from files specified via -f/--values and
-// directly via --set or --set-string, marshaling them to YAML
-func (v *ValueOptions) MergeValues(settings cli.EnvSettings) error {
-	base := map[string]interface{}{}
-
-	// User specified a values files via -f/--values
-	for _, filePath := range v.ValueFiles {
-		currentMap := map[string]interface{}{}
-
-		bytes, err := readFile(filePath, settings)
-		if err != nil {
-			return err
-		}
-
-		if err := yaml.Unmarshal(bytes, &currentMap); err != nil {
-			return errors.Wrapf(err, "failed to parse %s", filePath)
-		}
-		// Merge with the previous map
-		base = mergeMaps(base, currentMap)
-	}
-
-	// User specified a value via --set
-	for _, value := range v.Values {
-		if err := strvals.ParseInto(value, base); err != nil {
-			return errors.Wrap(err, "failed parsing --set data")
-		}
-	}
-
-	// User specified a value via --set-string
-	for _, value := range v.StringValues {
-		if err := strvals.ParseIntoString(value, base); err != nil {
-			return errors.Wrap(err, "failed parsing --set-string data")
-		}
-	}
-
-	v.rawValues = base
-	return nil
-}
-
-func NewValueOptions(values map[string]interface{}) ValueOptions {
-	return ValueOptions{
-		rawValues: values,
-	}
-}
-
-// mergeValues merges source and destination map, preferring values from the source map
-func mergeValues(dest, src map[string]interface{}) map[string]interface{} {
-	out := make(map[string]interface{})
-	for k, v := range dest {
-		out[k] = v
-	}
-	for k, v := range src {
-		if _, ok := out[k]; !ok {
-			// If the key doesn't exist already, then just set the key to that value
-		} else if nextMap, ok := v.(map[string]interface{}); !ok {
-			// If it isn't another map, overwrite the value
-		} else if destMap, isMap := out[k].(map[string]interface{}); !isMap {
-			// Edge case: If the key exists in the destination, but isn't a map
-			// If the source map has a map for this key, prefer it
-		} else {
-			// If we got to this point, it is a map in both, so merge them
-			out[k] = mergeValues(destMap, nextMap)
-			continue
-		}
-		out[k] = v
-	}
-	return out
-}
-
-func mergeMaps(a, b map[string]interface{}) map[string]interface{} {
-	out := make(map[string]interface{}, len(a))
-	for k, v := range a {
-		out[k] = v
-	}
-	for k, v := range b {
-		if v, ok := v.(map[string]interface{}); ok {
-			if bv, ok := out[k]; ok {
-				if bv, ok := bv.(map[string]interface{}); ok {
-					out[k] = mergeMaps(bv, v)
-					continue
-				}
-			}
-		}
-		out[k] = v
-	}
-	return out
-}
-
-// readFile load a file from stdin, the local directory, or a remote file with a url.
-func readFile(filePath string, settings cli.EnvSettings) ([]byte, error) {
-	if strings.TrimSpace(filePath) == "-" {
-		return ioutil.ReadAll(os.Stdin)
-	}
-	u, _ := url.Parse(filePath)
-	p := getter.All(settings)
-
-	// FIXME: maybe someone handle other protocols like ftp.
-	getterConstructor, err := p.ByScheme(u.Scheme)
-
-	if err != nil {
-		return ioutil.ReadFile(filePath)
-	}
-
-	getter, err := getterConstructor(getter.WithURL(filePath))
-	if err != nil {
-		return []byte{}, err
-	}
-	data, err := getter.Get(filePath)
-	return data.Bytes(), err
 }
