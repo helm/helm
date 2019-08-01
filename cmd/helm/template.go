@@ -25,6 +25,7 @@ import (
 
 	"helm.sh/helm/cmd/helm/require"
 	"helm.sh/helm/pkg/action"
+	"helm.sh/helm/pkg/cli/values"
 )
 
 const templateDesc = `
@@ -39,7 +40,7 @@ is done.
 func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	var validate bool
 	client := action.NewInstall(cfg)
-	valueOpts := &ValueOptions{}
+	valueOpts := &values.Options{}
 
 	cmd := &cobra.Command{
 		Use:   "template [NAME] [CHART]",

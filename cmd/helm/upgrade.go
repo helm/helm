@@ -27,6 +27,7 @@ import (
 	"helm.sh/helm/cmd/helm/require"
 	"helm.sh/helm/pkg/action"
 	"helm.sh/helm/pkg/chart/loader"
+	"helm.sh/helm/pkg/cli/values"
 	"helm.sh/helm/pkg/storage/driver"
 )
 
@@ -57,7 +58,7 @@ set for a key called 'foo', the 'newbar' value would take precedence:
 
 func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewUpgrade(cfg)
-	valueOpts := &ValueOptions{}
+	valueOpts := &values.Options{}
 
 	cmd := &cobra.Command{
 		Use:   "upgrade [RELEASE] [CHART]",

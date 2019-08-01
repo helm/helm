@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/pkg/action"
+	"helm.sh/helm/pkg/cli/values"
 )
 
 var longLintHelp = `
@@ -38,7 +39,7 @@ or recommendation, it will emit [WARNING] messages.
 
 func newLintCmd(out io.Writer) *cobra.Command {
 	client := action.NewLint()
-	valueOpts := &ValueOptions{}
+	valueOpts := &values.Options{}
 
 	cmd := &cobra.Command{
 		Use:   "lint PATH",

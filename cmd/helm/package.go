@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/pkg/action"
+	"helm.sh/helm/pkg/cli/values"
 	"helm.sh/helm/pkg/downloader"
 	"helm.sh/helm/pkg/getter"
 )
@@ -43,7 +44,7 @@ Versioned chart archives are used by Helm package repositories.
 
 func newPackageCmd(out io.Writer) *cobra.Command {
 	client := action.NewPackage()
-	valueOpts := &ValueOptions{}
+	valueOpts := &values.Options{}
 
 	cmd := &cobra.Command{
 		Use:   "package [CHART_PATH] [...]",
