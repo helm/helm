@@ -49,6 +49,10 @@ func PrintRelease(out io.Writer, rel *release.Release) {
 	executions := executionsByHookEvent(rel)
 	if tests, ok := executions[release.HookTest]; ok {
 		for _, h := range tests {
+			// Don't print anything if hook has not been initiated
+			if h.LastRun.StartedAt.IsZero() {
+				continue
+			}
 			fmt.Fprintf(out, "TEST SUITE:     %s\n%s\n%s\n%s\n\n",
 				h.Name,
 				fmt.Sprintf("Last Started:   %s", h.LastRun.StartedAt),

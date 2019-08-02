@@ -53,5 +53,10 @@ func (r *ReleaseTesting) Run(name string) error {
 		return err
 	}
 
-	return r.cfg.execHook(rel, release.HookTest, r.Timeout)
+	if err := r.cfg.execHook(rel, release.HookTest, r.Timeout); err != nil {
+		r.cfg.Releases.Update(rel)
+		return err
+	}
+
+	return r.cfg.Releases.Update(rel)
 }

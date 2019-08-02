@@ -90,8 +90,18 @@ func TestStatusCmd(t *testing.T) {
 			&release.Hook{
 				Name:   "bar",
 				Events: []release.HookEvent{release.HookTest},
+				LastRun: release.HookExecution{
+					StartedAt:   mustParseTime("2006-01-02T15:04:05Z"),
+					CompletedAt: mustParseTime("2006-01-02T15:04:07Z"),
+					Successful:  true,
+				},
 			},
 		),
 	}}
 	runTestCmd(t, tests)
+}
+
+func mustParseTime(t string) time.Time {
+	res, _ := time.Parse(time.RFC3339, t)
+	return res
 }
