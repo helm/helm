@@ -26,7 +26,7 @@ import (
 	"k8s.io/helm/pkg/version"
 )
 
-//HttpGetter is the efault HTTP(/S) backend handler
+//HttpGetter is the default HTTP(/S) backend handler
 // TODO: change the name to HTTPGetter in Helm 3
 type HttpGetter struct { //nolint
 	client   *http.Client
