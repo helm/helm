@@ -230,6 +230,7 @@ func SetupPluginEnv(settings helm_env.EnvSettings,
 		"HELM_PATH_CACHE":            helmpath.CachePath(),
 		"HELM_PATH_CONFIG":           helmpath.ConfigPath(),
 		"HELM_PATH_DATA":             helmpath.DataPath(),
+		"HELM_HOME":                  helmpath.DataPath(), // for backwards compatibility with Helm 2 plugins
 	} {
 		os.Setenv(key, val)
 	}
