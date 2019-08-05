@@ -96,7 +96,7 @@ func (env *Environment) streamError(info string) error {
 }
 
 func (env *Environment) streamFailed(name string) error {
-	msg := fmt.Sprintf("FAILED: %s, run `kubectl logs %s --namespace %s` for more info", name, name, env.Namespace)
+	msg := "FAILED: " + name
 	return env.streamMessage(msg, release.TestRun_FAILURE)
 }
 
@@ -124,5 +124,23 @@ func (env *Environment) DeleteTestPods(testManifests []string) {
 		if err != nil {
 			env.streamError(err.Error())
 		}
+	}
+}
+
+func (env *Environment) GetLogs(testManifests []string) {
+	for _, testManifest := range testManifests {
+		infos, err := env.KubeClient.Build(env.Namespace, bytes.NewBufferString(testManifest))
+		if err != nil {
+			env.streamError(err.Error())
+			continue
+		}
+		podName := infos[0].Object.(*v1.Pod).Name
+		logs, err := env.KubeClient.GetPodLogs(podName, env.Namespace)
+		if err != nil {
+			env.streamError(err.Error())
+			continue
+		}
+		msg := fmt.Sprintf("\nPOD LOGS: %s\n%s", podName, logs)
+		env.streamMessage(msg, release.TestRun_UNKNOWN)
 	}
 }

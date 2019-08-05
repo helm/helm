@@ -241,6 +241,13 @@ func ReleaseTestMaxParallel(max uint32) ReleaseTestOption {
 	}
 }
 
+// ReleaseTestLogs is a boolean value representing whether to dump the logs from test pods
+func ReleaseTestLogs(logs bool) ReleaseTestOption {
+	return func(opts *options) {
+		opts.testReq.Logs = logs
+	}
+}
+
 // RollbackTimeout specifies the number of seconds before kubernetes calls timeout
 func RollbackTimeout(timeout int64) RollbackOption {
 	return func(opts *options) {

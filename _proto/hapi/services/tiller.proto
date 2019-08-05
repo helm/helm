@@ -352,6 +352,8 @@ message TestReleaseRequest {
 	bool parallel = 4;
 	// maximum number of test pods to run in parallel
 	uint32 max_parallel = 5;
+	// logs specifies whether or not to dump the logs from the test pods
+	bool logs = 6;
 }
 
 // TestReleaseResponse represents a message from executing a test

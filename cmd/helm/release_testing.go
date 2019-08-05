@@ -41,6 +41,7 @@ type releaseTestCmd struct {
 	cleanup     bool
 	parallel    bool
 	maxParallel uint32
+	logs     bool
 }
 
 func newReleaseTestCmd(c helm.Interface, out io.Writer) *cobra.Command {
@@ -71,6 +72,7 @@ func newReleaseTestCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&rlsTest.cleanup, "cleanup", false, "Delete test pods upon completion")
 	f.BoolVar(&rlsTest.parallel, "parallel", false, "Run test pods in parallel")
 	f.Uint32Var(&rlsTest.maxParallel, "max", 20, "Maximum number of test pods to run in parallel")
+	f.BoolVar(&rlsTest.logs, "logs", false, "Dump the logs from test pods (this runs after all tests are complete, but before any cleanup")
 
 	// set defaults from environment
 	settings.InitTLS(f)
@@ -85,6 +87,7 @@ func (t *releaseTestCmd) run() (err error) {
 		helm.ReleaseTestCleanup(t.cleanup),
 		helm.ReleaseTestParallel(t.parallel),
 		helm.ReleaseTestMaxParallel(t.maxParallel),
+		helm.ReleaseTestLogs(t.logs),
 	)
 	testErr := &testErr{}
 
