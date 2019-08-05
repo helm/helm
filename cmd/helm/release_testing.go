@@ -40,6 +40,7 @@ type releaseTestCmd struct {
 	timeout  int64
 	cleanup  bool
 	parallel bool
+	logs     bool
 }
 
 func newReleaseTestCmd(c helm.Interface, out io.Writer) *cobra.Command {
@@ -69,6 +70,7 @@ func newReleaseTestCmd(c helm.Interface, out io.Writer) *cobra.Command {
 	f.Int64Var(&rlsTest.timeout, "timeout", 300, "Time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&rlsTest.cleanup, "cleanup", false, "Delete test pods upon completion")
 	f.BoolVar(&rlsTest.parallel, "parallel", false, "Run test pods in parallel")
+	f.BoolVar(&rlsTest.logs, "logs", false, "Dump the logs from test pods (this runs after all tests are complete, but before any cleanup")
 
 	// set defaults from environment
 	settings.InitTLS(f)
@@ -82,6 +84,7 @@ func (t *releaseTestCmd) run() (err error) {
 		helm.ReleaseTestTimeout(t.timeout),
 		helm.ReleaseTestCleanup(t.cleanup),
 		helm.ReleaseTestParallel(t.parallel),
+		helm.ReleaseTestLogs(t.logs),
 	)
 	testErr := &testErr{}
 

@@ -350,6 +350,8 @@ message TestReleaseRequest {
 	bool cleanup = 3;
 	// parallel specifies whether or not to run test pods in parallel
 	bool parallel = 4;
+	// logs specifies whether or not to dump the logs from the test pods
+	bool logs = 5;
 }
 
 // TestReleaseResponse represents a message from executing a test
