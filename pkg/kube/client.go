@@ -29,7 +29,6 @@ import (
 	"github.com/pkg/errors"
 	batch "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -281,12 +280,17 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 		return nil, types.StrategicMergePatchType, errors.Wrap(err, "serializing target configuration")
 	}
 
-	// While different objects need different merge types, the parent function
-	// that calls this does not try to create a patch when the data (first
-	// returned object) is nil. We can skip calculating the merge type as
-	// the returned merge type is ignored.
-	if apiequality.Semantic.DeepEqual(oldData, newData) {
-		return nil, types.StrategicMergePatchType, nil
+	// Fetch the current object for the three way merge
+	helper := resource.NewHelper(target.Client, target.Mapping)
+	currentObj, err := helper.Get(target.Namespace, target.Name, target.Export)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return nil, types.StrategicMergePatchType, errors.Wrapf(err, "unable to get data for current object %s/%s", target.Namespace, target.Name)
+	}
+
+	// Even if currentObj is nil (because it was not found), it will marshal just fine
+	currentData, err := json.Marshal(currentObj)
+	if err != nil {
+		return nil, types.StrategicMergePatchType, errors.Wrap(err, "serializing live configuration")
 	}
 
 	// Get a versioned object
@@ -301,7 +305,13 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 		patch, err := jsonpatch.CreateMergePatch(oldData, newData)
 		return patch, types.MergePatchType, err
 	}
-	patch, err := strategicpatch.CreateTwoWayMergePatch(oldData, newData, versionedObject)
+
+	patchMeta, err := strategicpatch.NewPatchMetaFromStruct(versionedObject)
+	if err != nil {
+		return nil, types.StrategicMergePatchType, errors.Wrap(err, "unable to create patch metadata from object")
+	}
+
+	patch, err := strategicpatch.CreateThreeWayMergePatch(oldData, newData, currentData, patchMeta, true)
 	return patch, types.StrategicMergePatchType, err
 }
 
