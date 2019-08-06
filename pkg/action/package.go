@@ -36,8 +36,6 @@ import (
 //
 // It provides the implementation of 'helm package'.
 type Package struct {
-	ValueOptions
-
 	Sign             bool
 	Key              string
 	Keyring          string
@@ -53,13 +51,13 @@ func NewPackage() *Package {
 }
 
 // Run executes 'helm package' against the given chart and returns the path to the packaged chart.
-func (p *Package) Run(path string) (string, error) {
+func (p *Package) Run(path string, vals map[string]interface{}) (string, error) {
 	ch, err := loader.LoadDir(path)
 	if err != nil {
 		return "", err
 	}
 
-	combinedVals, err := chartutil.CoalesceValues(ch, p.ValueOptions.rawValues)
+	combinedVals, err := chartutil.CoalesceValues(ch, vals)
 	if err != nil {
 		return "", err
 	}

@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/pkg/action"
+	"helm.sh/helm/pkg/cli/values"
 	"helm.sh/helm/pkg/downloader"
 	"helm.sh/helm/pkg/getter"
 )
@@ -43,6 +44,7 @@ Versioned chart archives are used by Helm package repositories.
 
 func newPackageCmd(out io.Writer) *cobra.Command {
 	client := action.NewPackage()
+	valueOpts := &values.Options{}
 
 	cmd := &cobra.Command{
 		Use:   "package [CHART_PATH] [...]",
@@ -60,7 +62,8 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 					return errors.New("--keyring is required for signing a package")
 				}
 			}
-			if err := client.ValueOptions.MergeValues(settings); err != nil {
+			vals, err := valueOpts.MergeValues(settings)
+			if err != nil {
 				return err
 			}
 
@@ -83,7 +86,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 						return err
 					}
 				}
-				p, err := client.Run(path)
+				p, err := client.Run(path, vals)
 				if err != nil {
 					return err
 				}
@@ -101,7 +104,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&client.AppVersion, "app-version", "", "set the appVersion on the chart to this version")
 	f.StringVarP(&client.Destination, "destination", "d", ".", "location to write the chart.")
 	f.BoolVarP(&client.DependencyUpdate, "dependency-update", "u", false, `update dependencies from "Chart.yaml" to dir "charts/" before packaging`)
-	addValueOptionsFlags(f, &client.ValueOptions)
+	addValueOptionsFlags(f, valueOpts)
 
 	return cmd
 }

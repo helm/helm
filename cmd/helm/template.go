@@ -25,6 +25,7 @@ import (
 
 	"helm.sh/helm/cmd/helm/require"
 	"helm.sh/helm/pkg/action"
+	"helm.sh/helm/pkg/cli/values"
 )
 
 const templateDesc = `
@@ -39,6 +40,7 @@ is done.
 func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	var validate bool
 	client := action.NewInstall(cfg)
+	valueOpts := &values.Options{}
 
 	cmd := &cobra.Command{
 		Use:   "template [NAME] [CHART]",
@@ -50,7 +52,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			client.ReleaseName = "RELEASE-NAME"
 			client.Replace = true // Skip the name check
 			client.ClientOnly = !validate
-			rel, err := runInstall(args, client, out)
+			rel, err := runInstall(args, client, valueOpts, out)
 			if err != nil {
 				return err
 			}
@@ -60,7 +62,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	addInstallFlags(f, client)
+	addInstallFlags(f, client, valueOpts)
 	f.StringVar(&client.OutputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
 	f.BoolVar(&validate, "validate", false, "establish a connection to Kubernetes for schema validation")
 
