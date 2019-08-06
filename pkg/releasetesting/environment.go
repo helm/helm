@@ -23,7 +23,7 @@ import (
 	"sync"
 	"time"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
@@ -127,11 +127,16 @@ func (env *Environment) DeleteTestPods(testManifests []string) {
 	}
 }
 
+// GetLogs collects the logs from the pods created in testManifests
 func (env *Environment) GetLogs(testManifests []string) {
 	for _, testManifest := range testManifests {
 		infos, err := env.KubeClient.Build(env.Namespace, bytes.NewBufferString(testManifest))
 		if err != nil {
 			env.streamError(err.Error())
+			continue
+		}
+		if len(infos) < 1 {
+			env.streamError(fmt.Sprint("Pod manifest is invalid. Unable to obtain the logs"))
 			continue
 		}
 		podName := infos[0].Object.(*v1.Pod).Name
