@@ -147,6 +147,19 @@ func TestLoadFileBackslash(t *testing.T) {
 	verifyDependencies(t, c)
 }
 
+func TestLoadV2WithReqs(t *testing.T) {
+	l, err := Loader("testdata/frobnitz.v2.reqs")
+	if err != nil {
+		t.Fatalf("Failed to load testdata: %s", err)
+	}
+	c, err := l.Load()
+	if err != nil {
+		t.Fatalf("Failed to load testdata: %s", err)
+	}
+	verifyDependencies(t, c)
+	verifyDependenciesLock(t, c)
+}
+
 func verifyChart(t *testing.T, c *chart.Chart) {
 	t.Helper()
 	if c.Name() == "" {

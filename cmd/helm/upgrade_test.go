@@ -23,6 +23,7 @@ import (
 	"strings"
 	"testing"
 
+	"helm.sh/helm/internal/test/ensure"
 	"helm.sh/helm/pkg/chart"
 	"helm.sh/helm/pkg/chart/loader"
 	"helm.sh/helm/pkg/chartutil"
@@ -30,7 +31,7 @@ import (
 )
 
 func TestUpgradeCmd(t *testing.T) {
-	tmpChart := testTempDir(t)
+	tmpChart := ensure.TempDir(t)
 	cfile := &chart.Chart{
 		Metadata: &chart.Metadata{
 			APIVersion:  chart.APIVersionV1,
@@ -224,7 +225,7 @@ func TestUpgradeWithValuesFile(t *testing.T) {
 }
 
 func prepareMockRelease(releaseName string, t *testing.T) (func(n string, v int, ch *chart.Chart) *release.Release, *chart.Chart, string) {
-	tmpChart := testTempDir(t)
+	tmpChart := ensure.TempDir(t)
 	configmapData, err := ioutil.ReadFile("testdata/testcharts/upgradetest/templates/configmap.yaml")
 	if err != nil {
 		t.Fatalf("Error loading template yaml %v", err)

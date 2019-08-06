@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	helm_env "helm.sh/helm/pkg/cli"
+	"helm.sh/helm/pkg/helmpath"
 )
 
 const pluginFileName = "plugin.yaml"
@@ -220,17 +221,16 @@ func SetupPluginEnv(settings helm_env.EnvSettings,
 		"HELM_PLUGIN_NAME": shortName,
 		"HELM_PLUGIN_DIR":  base,
 		"HELM_BIN":         os.Args[0],
-
-		// Set vars that may not have been set, and save client the
-		// trouble of re-parsing.
-		"HELM_PLUGIN": settings.PluginDirs(),
-		"HELM_HOME":   settings.Home.String(),
+		"HELM_PLUGIN":      helmpath.Plugins(),
 
 		// Set vars that convey common information.
-		"HELM_PATH_REPOSITORY":      settings.Home.Repository(),
-		"HELM_PATH_REPOSITORY_FILE": settings.Home.RepositoryFile(),
-		"HELM_PATH_CACHE":           settings.Home.Cache(),
-		"HELM_PATH_STARTER":         settings.Home.Starters(),
+		"HELM_PATH_REPOSITORY_FILE":  helmpath.RepositoryFile(),
+		"HELM_PATH_REPOSITORY_CACHE": helmpath.RepositoryCache(),
+		"HELM_PATH_STARTER":          helmpath.Starters(),
+		"HELM_PATH_CACHE":            helmpath.CachePath(),
+		"HELM_PATH_CONFIG":           helmpath.ConfigPath(),
+		"HELM_PATH_DATA":             helmpath.DataPath(),
+		"HELM_HOME":                  helmpath.DataPath(), // for backwards compatibility with Helm 2 plugins
 	} {
 		os.Setenv(key, val)
 	}

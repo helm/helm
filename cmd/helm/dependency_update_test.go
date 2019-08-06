@@ -23,8 +23,10 @@ import (
 	"strings"
 	"testing"
 
+	"helm.sh/helm/internal/test/ensure"
 	"helm.sh/helm/pkg/chart"
 	"helm.sh/helm/pkg/chartutil"
+	"helm.sh/helm/pkg/helmpath"
 	"helm.sh/helm/pkg/provenance"
 	"helm.sh/helm/pkg/repo"
 	"helm.sh/helm/pkg/repo/repotest"
@@ -33,10 +35,10 @@ import (
 func TestDependencyUpdateCmd(t *testing.T) {
 	defer resetEnv()()
 
-	hh := testHelmHome(t)
-	settings.Home = hh
+	ensure.HelmHome(t)
+	defer ensure.CleanHomeDirs(t)
 
-	srv := repotest.NewServer(hh.String())
+	srv := repotest.NewServer(helmpath.ConfigPath())
 	defer srv.Stop()
 	copied, err := srv.CopyCharts("testdata/testcharts/*.tgz")
 	if err != nil {
@@ -48,11 +50,11 @@ func TestDependencyUpdateCmd(t *testing.T) {
 	chartname := "depup"
 	ch := createTestingMetadata(chartname, srv.URL())
 	md := ch.Metadata
-	if err := chartutil.SaveDir(ch, hh.String()); err != nil {
+	if err := chartutil.SaveDir(ch, helmpath.DataPath()); err != nil {
 		t.Fatal(err)
 	}
 
-	_, out, err := executeActionCommand(fmt.Sprintf("--home='%s' dependency update '%s'", hh.String(), hh.Path(chartname)))
+	_, out, err := executeActionCommand(fmt.Sprintf("dependency update '%s'", filepath.Join(helmpath.DataPath(), chartname)))
 	if err != nil {
 		t.Logf("Output: %s", out)
 		t.Fatal(err)
@@ -64,7 +66,7 @@ func TestDependencyUpdateCmd(t *testing.T) {
 	}
 
 	// Make sure the actual file got downloaded.
-	expect := hh.Path(chartname, "charts/reqtest-0.1.0.tgz")
+	expect := filepath.Join(helmpath.DataPath(), chartname, "charts/reqtest-0.1.0.tgz")
 	if _, err := os.Stat(expect); err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +76,7 @@ func TestDependencyUpdateCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	i, err := repo.LoadIndexFile(hh.CacheIndex("test"))
+	i, err := repo.LoadIndexFile(helmpath.CacheIndex("test"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,12 +92,12 @@ func TestDependencyUpdateCmd(t *testing.T) {
 		{Name: "reqtest", Version: "0.1.0", Repository: srv.URL()},
 		{Name: "compressedchart", Version: "0.3.0", Repository: srv.URL()},
 	}
-	dir := hh.Path(chartname, "Chart.yaml")
+	dir := filepath.Join(helmpath.DataPath(), chartname, "Chart.yaml")
 	if err := chartutil.SaveChartfile(dir, md); err != nil {
 		t.Fatal(err)
 	}
 
-	_, out, err = executeActionCommand(fmt.Sprintf("--home='%s' dependency update '%s'", hh, hh.Path(chartname)))
+	_, out, err = executeActionCommand(fmt.Sprintf("dependency update '%s'", filepath.Join(helmpath.DataPath(), chartname)))
 	if err != nil {
 		t.Logf("Output: %s", out)
 		t.Fatal(err)
@@ -103,11 +105,11 @@ func TestDependencyUpdateCmd(t *testing.T) {
 
 	// In this second run, we should see compressedchart-0.3.0.tgz, and not
 	// the 0.1.0 version.
-	expect = hh.Path(chartname, "charts/compressedchart-0.3.0.tgz")
+	expect = filepath.Join(helmpath.DataPath(), chartname, "charts/compressedchart-0.3.0.tgz")
 	if _, err := os.Stat(expect); err != nil {
 		t.Fatalf("Expected %q: %s", expect, err)
 	}
-	dontExpect := hh.Path(chartname, "charts/compressedchart-0.1.0.tgz")
+	dontExpect := filepath.Join(helmpath.DataPath(), chartname, "charts/compressedchart-0.1.0.tgz")
 	if _, err := os.Stat(dontExpect); err == nil {
 		t.Fatalf("Unexpected %q", dontExpect)
 	}
@@ -116,10 +118,10 @@ func TestDependencyUpdateCmd(t *testing.T) {
 func TestDependencyUpdateCmd_SkipRefresh(t *testing.T) {
 	defer resetEnv()()
 
-	hh := testHelmHome(t)
-	settings.Home = hh
+	ensure.HelmHome(t)
+	defer ensure.CleanHomeDirs(t)
 
-	srv := repotest.NewServer(hh.String())
+	srv := repotest.NewServer(helmpath.ConfigPath())
 	defer srv.Stop()
 	copied, err := srv.CopyCharts("testdata/testcharts/*.tgz")
 	if err != nil {
@@ -129,11 +131,11 @@ func TestDependencyUpdateCmd_SkipRefresh(t *testing.T) {
 	t.Logf("Listening on directory %s", srv.Root())
 
 	chartname := "depup"
-	if err := createTestingChart(hh.String(), chartname, srv.URL()); err != nil {
+	if err := createTestingChart(helmpath.DataPath(), chartname, srv.URL()); err != nil {
 		t.Fatal(err)
 	}
 
-	_, out, err := executeActionCommand(fmt.Sprintf("--home='%s' dependency update --skip-refresh %s", hh, hh.Path(chartname)))
+	_, out, err := executeActionCommand(fmt.Sprintf("dependency update --skip-refresh %s", filepath.Join(helmpath.DataPath(), chartname)))
 	if err == nil {
 		t.Fatal("Expected failure to find the repo with skipRefresh")
 	}
@@ -147,10 +149,10 @@ func TestDependencyUpdateCmd_SkipRefresh(t *testing.T) {
 func TestDependencyUpdateCmd_DontDeleteOldChartsOnError(t *testing.T) {
 	defer resetEnv()()
 
-	hh := testHelmHome(t)
-	settings.Home = hh
+	ensure.HelmHome(t)
+	defer ensure.CleanHomeDirs(t)
 
-	srv := repotest.NewServer(hh.String())
+	srv := repotest.NewServer(helmpath.ConfigPath())
 	defer srv.Stop()
 	copied, err := srv.CopyCharts("testdata/testcharts/*.tgz")
 	if err != nil {
@@ -160,11 +162,11 @@ func TestDependencyUpdateCmd_DontDeleteOldChartsOnError(t *testing.T) {
 	t.Logf("Listening on directory %s", srv.Root())
 
 	chartname := "depupdelete"
-	if err := createTestingChart(hh.String(), chartname, srv.URL()); err != nil {
+	if err := createTestingChart(helmpath.DataPath(), chartname, srv.URL()); err != nil {
 		t.Fatal(err)
 	}
 
-	_, output, err := executeActionCommand(fmt.Sprintf("--home='%s' dependency update %s", hh, hh.Path(chartname)))
+	_, output, err := executeActionCommand(fmt.Sprintf("dependency update %s", filepath.Join(helmpath.DataPath(), chartname)))
 	if err != nil {
 		t.Logf("Output: %s", output)
 		t.Fatal(err)
@@ -173,14 +175,14 @@ func TestDependencyUpdateCmd_DontDeleteOldChartsOnError(t *testing.T) {
 	// Chart repo is down
 	srv.Stop()
 
-	_, output, err = executeActionCommand(fmt.Sprintf("--home='%s' dependency update %s", hh, hh.Path(chartname)))
+	_, output, err = executeActionCommand(fmt.Sprintf("dependency update %s", filepath.Join(helmpath.DataPath(), chartname)))
 	if err == nil {
 		t.Logf("Output: %s", output)
 		t.Fatal("Expected error, got nil")
 	}
 
 	// Make sure charts dir still has dependencies
-	files, err := ioutil.ReadDir(filepath.Join(hh.Path(chartname), "charts"))
+	files, err := ioutil.ReadDir(filepath.Join(filepath.Join(helmpath.DataPath(), chartname), "charts"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -196,7 +198,7 @@ func TestDependencyUpdateCmd_DontDeleteOldChartsOnError(t *testing.T) {
 	}
 
 	// Make sure tmpcharts is deleted
-	if _, err := os.Stat(filepath.Join(hh.Path(chartname), "tmpcharts")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(filepath.Join(helmpath.DataPath(), chartname), "tmpcharts")); !os.IsNotExist(err) {
 		t.Fatalf("tmpcharts dir still exists")
 	}
 }

@@ -28,6 +28,7 @@ import (
 	"helm.sh/helm/pkg/action"
 	"helm.sh/helm/pkg/chart"
 	"helm.sh/helm/pkg/chart/loader"
+	"helm.sh/helm/pkg/cli/values"
 	"helm.sh/helm/pkg/downloader"
 	"helm.sh/helm/pkg/getter"
 	"helm.sh/helm/pkg/release"
@@ -97,6 +98,7 @@ charts in a repository, use 'helm search'.
 
 func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewInstall(cfg)
+	valueOpts := &values.Options{}
 
 	cmd := &cobra.Command{
 		Use:   "install [NAME] [CHART]",
@@ -104,7 +106,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Long:  installDesc,
 		Args:  require.MinimumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
-			rel, err := runInstall(args, client, out)
+			rel, err := runInstall(args, client, valueOpts, out)
 			if err != nil {
 				return err
 			}
@@ -113,12 +115,12 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		},
 	}
 
-	addInstallFlags(cmd.Flags(), client)
+	addInstallFlags(cmd.Flags(), client, valueOpts)
 
 	return cmd
 }
 
-func addInstallFlags(f *pflag.FlagSet, client *action.Install) {
+func addInstallFlags(f *pflag.FlagSet, client *action.Install, valueOpts *values.Options) {
 	f.BoolVar(&client.DryRun, "dry-run", false, "simulate an install")
 	f.BoolVar(&client.DisableHooks, "no-hooks", false, "prevent hooks from running during install")
 	f.BoolVar(&client.Replace, "replace", false, "re-use the given name, even if that name is already used. This is unsafe in production")
@@ -129,11 +131,11 @@ func addInstallFlags(f *pflag.FlagSet, client *action.Install) {
 	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
 	f.BoolVar(&client.DependencyUpdate, "dependency-update", false, "run helm dependency update before installing the chart")
 	f.BoolVar(&client.Atomic, "atomic", false, "if set, installation process purges chart on fail. The --wait flag will be set automatically if --atomic is used")
-	addValueOptionsFlags(f, &client.ValueOptions)
+	addValueOptionsFlags(f, valueOpts)
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 }
 
-func addValueOptionsFlags(f *pflag.FlagSet, v *action.ValueOptions) {
+func addValueOptionsFlags(f *pflag.FlagSet, v *values.Options) {
 	f.StringSliceVarP(&v.ValueFiles, "values", "f", []string{}, "specify values in a YAML file or a URL(can specify multiple)")
 	f.StringArrayVar(&v.Values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.StringArrayVar(&v.StringValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
@@ -151,7 +153,7 @@ func addChartPathOptionsFlags(f *pflag.FlagSet, c *action.ChartPathOptions) {
 	f.StringVar(&c.CaFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 }
 
-func runInstall(args []string, client *action.Install, out io.Writer) (*release.Release, error) {
+func runInstall(args []string, client *action.Install, valueOpts *values.Options, out io.Writer) (*release.Release, error) {
 	debug("Original chart version: %q", client.Version)
 	if client.Version == "" && client.Devel {
 		debug("setting version to >0.0.0-0")
@@ -171,7 +173,8 @@ func runInstall(args []string, client *action.Install, out io.Writer) (*release.
 
 	debug("CHART PATH: %s\n", cp)
 
-	if err := client.ValueOptions.MergeValues(settings); err != nil {
+	vals, err := valueOpts.MergeValues(settings)
+	if err != nil {
 		return nil, err
 	}
 
@@ -195,7 +198,6 @@ func runInstall(args []string, client *action.Install, out io.Writer) (*release.
 				man := &downloader.Manager{
 					Out:        out,
 					ChartPath:  cp,
-					HelmHome:   settings.Home,
 					Keyring:    client.ChartPathOptions.Keyring,
 					SkipUpdate: false,
 					Getters:    getter.All(settings),
@@ -210,7 +212,7 @@ func runInstall(args []string, client *action.Install, out io.Writer) (*release.
 	}
 
 	client.Namespace = getNamespace()
-	return client.Run(chartRequested)
+	return client.Run(chartRequested, vals)
 }
 
 // isChartInstallable validates if a chart can be installed

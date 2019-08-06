@@ -39,7 +39,6 @@ type Upgrade struct {
 	cfg *Configuration
 
 	ChartPathOptions
-	ValueOptions
 
 	Install      bool
 	Devel        bool
@@ -66,8 +65,8 @@ func NewUpgrade(cfg *Configuration) *Upgrade {
 }
 
 // Run executes the upgrade on the given release.
-func (u *Upgrade) Run(name string, chart *chart.Chart) (*release.Release, error) {
-	if err := chartutil.ProcessDependencies(chart, u.rawValues); err != nil {
+func (u *Upgrade) Run(name string, chart *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
+	if err := chartutil.ProcessDependencies(chart, vals); err != nil {
 		return nil, err
 	}
 
@@ -79,7 +78,7 @@ func (u *Upgrade) Run(name string, chart *chart.Chart) (*release.Release, error)
 		return nil, errors.Errorf("release name is invalid: %s", name)
 	}
 	u.cfg.Log("preparing upgrade for %s", name)
-	currentRelease, upgradedRelease, err := u.prepareUpgrade(name, chart)
+	currentRelease, upgradedRelease, err := u.prepareUpgrade(name, chart, vals)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +121,7 @@ func validateReleaseName(releaseName string) error {
 }
 
 // prepareUpgrade builds an upgraded release for an upgrade operation.
-func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart) (*release.Release, *release.Release, error) {
+func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[string]interface{}) (*release.Release, *release.Release, error) {
 	if chart == nil {
 		return nil, nil, errMissingChart
 	}
@@ -134,7 +133,8 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart) (*release.Rele
 	}
 
 	// determine if values will be reused
-	if err := u.reuseValues(chart, currentRelease); err != nil {
+	vals, err = u.reuseValues(chart, currentRelease, vals)
+	if err != nil {
 		return nil, nil, err
 	}
 
@@ -158,7 +158,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart) (*release.Rele
 	if err != nil {
 		return nil, nil, err
 	}
-	valuesToRender, err := chartutil.ToRenderValues(chart, u.rawValues, options, caps)
+	valuesToRender, err := chartutil.ToRenderValues(chart, vals, options, caps)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -173,7 +173,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart) (*release.Rele
 		Name:      name,
 		Namespace: currentRelease.Namespace,
 		Chart:     chart,
-		Config:    u.rawValues,
+		Config:    vals,
 		Info: &release.Info{
 			FirstDeployed: currentRelease.Info.FirstDeployed,
 			LastDeployed:  Timestamper(),
@@ -310,11 +310,11 @@ func (u *Upgrade) failRelease(rel *release.Release, err error) (*release.Release
 //
 // This is skipped if the u.ResetValues flag is set, in which case the
 // request values are not altered.
-func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release) error {
+func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release, newVals map[string]interface{}) (map[string]interface{}, error) {
 	if u.ResetValues {
 		// If ResetValues is set, we completely ignore current.Config.
 		u.cfg.Log("resetting values to the chart's original version")
-		return nil
+		return newVals, nil
 	}
 
 	// If the ReuseValues flag is set, we always copy the old values over the new config's values.
@@ -324,21 +324,21 @@ func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release) erro
 		// We have to regenerate the old coalesced values:
 		oldVals, err := chartutil.CoalesceValues(current.Chart, current.Config)
 		if err != nil {
-			return errors.Wrap(err, "failed to rebuild old values")
+			return nil, errors.Wrap(err, "failed to rebuild old values")
 		}
 
-		u.rawValues = chartutil.CoalesceTables(u.rawValues, current.Config)
+		newVals = chartutil.CoalesceTables(newVals, current.Config)
 
 		chart.Values = oldVals
 
-		return nil
+		return newVals, nil
 	}
 
-	if len(u.rawValues) == 0 && len(current.Config) > 0 {
+	if len(newVals) == 0 && len(current.Config) > 0 {
 		u.cfg.Log("copying values from %s (v%d) to new release.", current.Name, current.Version)
-		u.rawValues = current.Config
+		newVals = current.Config
 	}
-	return nil
+	return newVals, nil
 }
 
 func validateManifest(c kube.Interface, manifest []byte) error {

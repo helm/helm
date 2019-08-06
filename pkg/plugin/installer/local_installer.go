@@ -19,8 +19,6 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
-
-	"helm.sh/helm/pkg/helmpath"
 )
 
 // LocalInstaller installs plugins from the filesystem.
@@ -29,18 +27,18 @@ type LocalInstaller struct {
 }
 
 // NewLocalInstaller creates a new LocalInstaller.
-func NewLocalInstaller(source string, home helmpath.Home) (*LocalInstaller, error) {
+func NewLocalInstaller(source string) (*LocalInstaller, error) {
 	src, err := filepath.Abs(source)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to get absolute path to plugin")
 	}
 	i := &LocalInstaller{
-		base: newBase(src, home),
+		base: newBase(src),
 	}
 	return i, nil
 }
 
-// Install creates a symlink to the plugin directory in $HELM_HOME.
+// Install creates a symlink to the plugin directory.
 //
 // Implements Installer.
 func (i *LocalInstaller) Install() error {

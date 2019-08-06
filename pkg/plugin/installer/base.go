@@ -25,15 +25,13 @@ import (
 type base struct {
 	// Source is the reference to a plugin
 	Source string
-	// HelmHome is the $HELM_HOME directory
-	HelmHome helmpath.Home
 }
 
-func newBase(source string, home helmpath.Home) base {
-	return base{source, home}
+func newBase(source string) base {
+	return base{source}
 }
 
-// link creates a symlink from the plugin source to $HELM_HOME.
+// link creates a symlink from the plugin source to the base path.
 func (b *base) link(from string) error {
 	debug("symlinking %s to %s", from, b.Path())
 	return os.Symlink(from, b.Path())
@@ -44,5 +42,5 @@ func (b *base) Path() string {
 	if b.Source == "" {
 		return ""
 	}
-	return filepath.Join(b.HelmHome.Plugins(), filepath.Base(b.Source))
+	return filepath.Join(helmpath.Plugins(), filepath.Base(b.Source))
 }

@@ -17,6 +17,7 @@ package installer // import "helm.sh/helm/pkg/plugin/installer"
 
 import (
 	"os"
+	"path/filepath"
 	"sort"
 
 	"github.com/Masterminds/semver"
@@ -34,25 +35,25 @@ type VCSInstaller struct {
 	base
 }
 
-func existingVCSRepo(location string, home helmpath.Home) (Installer, error) {
+func existingVCSRepo(location string) (Installer, error) {
 	repo, err := vcs.NewRepo("", location)
 	if err != nil {
 		return nil, err
 	}
 	i := &VCSInstaller{
 		Repo: repo,
-		base: newBase(repo.Remote(), home),
+		base: newBase(repo.Remote()),
 	}
 	return i, err
 }
 
 // NewVCSInstaller creates a new VCSInstaller.
-func NewVCSInstaller(source, version string, home helmpath.Home) (*VCSInstaller, error) {
+func NewVCSInstaller(source, version string) (*VCSInstaller, error) {
 	key, err := cache.Key(source)
 	if err != nil {
 		return nil, err
 	}
-	cachedpath := home.Path("cache", "plugins", key)
+	cachedpath := filepath.Join(helmpath.PluginCache(), key)
 	repo, err := vcs.NewRepo(source, cachedpath)
 	if err != nil {
 		return nil, err
@@ -60,12 +61,12 @@ func NewVCSInstaller(source, version string, home helmpath.Home) (*VCSInstaller,
 	i := &VCSInstaller{
 		Repo:    repo,
 		Version: version,
-		base:    newBase(source, home),
+		base:    newBase(source),
 	}
 	return i, err
 }
 
-// Install clones a remote repository and creates a symlink to the plugin directory in HELM_HOME.
+// Install clones a remote repository and creates a symlink to the plugin directory.
 //
 // Implements Installer.
 func (i *VCSInstaller) Install() error {

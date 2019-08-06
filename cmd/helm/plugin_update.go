@@ -31,7 +31,6 @@ import (
 
 type pluginUpdateOptions struct {
 	names []string
-	home  helmpath.Home
 }
 
 func newPluginUpdateCmd(out io.Writer) *cobra.Command {
@@ -54,14 +53,13 @@ func (o *pluginUpdateOptions) complete(args []string) error {
 		return errors.New("please provide plugin name to update")
 	}
 	o.names = args
-	o.home = settings.Home
 	return nil
 }
 
 func (o *pluginUpdateOptions) run(out io.Writer) error {
 	installer.Debug = settings.Debug
-	debug("loading installed plugins from %s", settings.PluginDirs())
-	plugins, err := findPlugins(settings.PluginDirs())
+	debug("loading installed plugins from %s", helmpath.Plugins())
+	plugins, err := findPlugins(helmpath.Plugins())
 	if err != nil {
 		return err
 	}
@@ -69,7 +67,7 @@ func (o *pluginUpdateOptions) run(out io.Writer) error {
 
 	for _, name := range o.names {
 		if found := findPlugin(plugins, name); found != nil {
-			if err := updatePlugin(found, o.home); err != nil {
+			if err := updatePlugin(found); err != nil {
 				errorPlugins = append(errorPlugins, fmt.Sprintf("Failed to update plugin %s, got error (%v)", name, err))
 			} else {
 				fmt.Fprintf(out, "Updated plugin: %s\n", name)
@@ -84,7 +82,7 @@ func (o *pluginUpdateOptions) run(out io.Writer) error {
 	return nil
 }
 
-func updatePlugin(p *plugin.Plugin, home helmpath.Home) error {
+func updatePlugin(p *plugin.Plugin) error {
 	exactLocation, err := filepath.EvalSymlinks(p.Dir)
 	if err != nil {
 		return err
@@ -94,7 +92,7 @@ func updatePlugin(p *plugin.Plugin, home helmpath.Home) error {
 		return err
 	}
 
-	i, err := installer.FindSource(absExactLocation, home)
+	i, err := installer.FindSource(absExactLocation)
 	if err != nil {
 		return err
 	}

@@ -27,14 +27,12 @@ func TestFile(t *testing.T) {
 	rf := NewFile()
 	rf.Add(
 		&Entry{
-			Name:  "stable",
-			URL:   "https://example.com/stable/charts",
-			Cache: "stable-index.yaml",
+			Name: "stable",
+			URL:  "https://example.com/stable/charts",
 		},
 		&Entry{
-			Name:  "incubator",
-			URL:   "https://example.com/incubator",
-			Cache: "incubator-index.yaml",
+			Name: "incubator",
+			URL:  "https://example.com/incubator",
 		},
 	)
 
@@ -56,23 +54,18 @@ func TestFile(t *testing.T) {
 	if stable.URL != "https://example.com/stable/charts" {
 		t.Error("Wrong URL for stable")
 	}
-	if stable.Cache != "stable-index.yaml" {
-		t.Error("Wrong cache name for stable")
-	}
 }
 
 func TestNewFile(t *testing.T) {
 	expects := NewFile()
 	expects.Add(
 		&Entry{
-			Name:  "stable",
-			URL:   "https://example.com/stable/charts",
-			Cache: "stable-index.yaml",
+			Name: "stable",
+			URL:  "https://example.com/stable/charts",
 		},
 		&Entry{
-			Name:  "incubator",
-			URL:   "https://example.com/incubator",
-			Cache: "incubator-index.yaml",
+			Name: "incubator",
+			URL:  "https://example.com/incubator",
 		},
 	)
 
@@ -92,9 +85,6 @@ func TestNewFile(t *testing.T) {
 		}
 		if expect.URL != got.URL {
 			t.Errorf("Expected url %q, got %q", expect.URL, got.URL)
-		}
-		if expect.Cache != got.Cache {
-			t.Errorf("Expected cache %q, got %q", expect.Cache, got.Cache)
 		}
 	}
 }
@@ -124,14 +114,12 @@ func TestRemoveRepository(t *testing.T) {
 	sampleRepository := NewFile()
 	sampleRepository.Add(
 		&Entry{
-			Name:  "stable",
-			URL:   "https://example.com/stable/charts",
-			Cache: "stable-index.yaml",
+			Name: "stable",
+			URL:  "https://example.com/stable/charts",
 		},
 		&Entry{
-			Name:  "incubator",
-			URL:   "https://example.com/incubator",
-			Cache: "incubator-index.yaml",
+			Name: "incubator",
+			URL:  "https://example.com/incubator",
 		},
 	)
 
@@ -151,20 +139,17 @@ func TestUpdateRepository(t *testing.T) {
 	sampleRepository := NewFile()
 	sampleRepository.Add(
 		&Entry{
-			Name:  "stable",
-			URL:   "https://example.com/stable/charts",
-			Cache: "stable-index.yaml",
+			Name: "stable",
+			URL:  "https://example.com/stable/charts",
 		},
 		&Entry{
-			Name:  "incubator",
-			URL:   "https://example.com/incubator",
-			Cache: "incubator-index.yaml",
+			Name: "incubator",
+			URL:  "https://example.com/incubator",
 		},
 	)
 	newRepoName := "sample"
 	sampleRepository.Update(&Entry{Name: newRepoName,
-		URL:   "https://example.com/sample",
-		Cache: "sample-index.yaml",
+		URL: "https://example.com/sample",
 	})
 
 	if !sampleRepository.Has(newRepoName) {
@@ -173,8 +158,7 @@ func TestUpdateRepository(t *testing.T) {
 	repoCount := len(sampleRepository.Repositories)
 
 	sampleRepository.Update(&Entry{Name: newRepoName,
-		URL:   "https://example.com/sample",
-		Cache: "sample-index.yaml",
+		URL: "https://example.com/sample",
 	})
 
 	if repoCount != len(sampleRepository.Repositories) {
@@ -186,14 +170,12 @@ func TestWriteFile(t *testing.T) {
 	sampleRepository := NewFile()
 	sampleRepository.Add(
 		&Entry{
-			Name:  "stable",
-			URL:   "https://example.com/stable/charts",
-			Cache: "stable-index.yaml",
+			Name: "stable",
+			URL:  "https://example.com/stable/charts",
 		},
 		&Entry{
-			Name:  "incubator",
-			URL:   "https://example.com/incubator",
-			Cache: "incubator-index.yaml",
+			Name: "incubator",
+			URL:  "https://example.com/incubator",
 		},
 	)
 

@@ -28,6 +28,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"helm.sh/helm/internal/test/ensure"
 	"helm.sh/helm/pkg/chart"
 	"helm.sh/helm/pkg/chart/loader"
 	"helm.sh/helm/pkg/chartutil"
@@ -137,18 +138,15 @@ func TestPackage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tmp := testTempDir(t)
 
-	t.Logf("Running tests in %s", tmp)
-	defer testChdir(t, tmp)()
+	ensure.HelmHome(t)
+	defer ensure.CleanHomeDirs(t)
+	t.Logf("Running tests in %s", helmpath.CachePath())
+	defer testChdir(t, helmpath.CachePath())()
 
 	if err := os.Mkdir("toot", 0777); err != nil {
 		t.Fatal(err)
 	}
-
-	ensureTestHome(t, helmpath.Home(tmp))
-
-	settings.Home = helmpath.Home(tmp)
 
 	for _, tt := range tests {
 		buf := bytes.NewBuffer(nil)
@@ -203,14 +201,13 @@ func TestSetAppVersion(t *testing.T) {
 
 	var ch *chart.Chart
 	expectedAppVersion := "app-version-foo"
-	tmp := testTempDir(t)
 
-	hh := testHelmHome(t)
-	settings.Home = hh
+	ensure.HelmHome(t)
+	defer ensure.CleanHomeDirs(t)
 
 	c := newPackageCmd(&bytes.Buffer{})
 	flags := map[string]string{
-		"destination": tmp,
+		"destination": helmpath.CachePath(),
 		"app-version": expectedAppVersion,
 	}
 	setFlags(c, flags)
@@ -218,7 +215,7 @@ func TestSetAppVersion(t *testing.T) {
 		t.Errorf("unexpected error %q", err)
 	}
 
-	chartPath := filepath.Join(tmp, "alpine-0.1.0.tgz")
+	chartPath := filepath.Join(helmpath.CachePath(), "alpine-0.1.0.tgz")
 	if fi, err := os.Stat(chartPath); err != nil {
 		t.Errorf("expected file %q, got err %q", chartPath, err)
 	} else if fi.Size() == 0 {
@@ -270,8 +267,8 @@ func TestPackageValues(t *testing.T) {
 		},
 	}
 
-	hh := testHelmHome(t)
-	settings.Home = hh
+	ensure.HelmHome(t)
+	defer ensure.CleanHomeDirs(t)
 
 	for _, tc := range testCases {
 		var files []string
@@ -292,7 +289,7 @@ func TestPackageValues(t *testing.T) {
 
 func runAndVerifyPackageCommandValues(t *testing.T, args []string, flags map[string]string, valueFiles string, expected chartutil.Values) {
 	t.Helper()
-	outputDir := testTempDir(t)
+	outputDir := ensure.TempDir(t)
 
 	if len(flags) == 0 {
 		flags = make(map[string]string)
@@ -321,7 +318,7 @@ func runAndVerifyPackageCommandValues(t *testing.T, args []string, flags map[str
 }
 
 func createValuesFile(t *testing.T, data string) string {
-	outputDir := testTempDir(t)
+	outputDir := ensure.TempDir(t)
 
 	outputFile := filepath.Join(outputDir, "values.yaml")
 	if err := ioutil.WriteFile(outputFile, []byte(data), 0755); err != nil {

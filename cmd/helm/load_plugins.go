@@ -26,6 +26,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"helm.sh/helm/pkg/helmpath"
 	"helm.sh/helm/pkg/plugin"
 )
 
@@ -41,8 +42,7 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 		return
 	}
 
-	// debug("HELM_PLUGIN_DIRS=%s", settings.PluginDirs())
-	found, err := findPlugins(settings.PluginDirs())
+	found, err := findPlugins(helmpath.Plugins())
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to load plugins: %s", err)
 		return
@@ -113,7 +113,7 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 func manuallyProcessArgs(args []string) ([]string, []string) {
 	known := []string{}
 	unknown := []string{}
-	kvargs := []string{"--context", "--home", "--namespace"}
+	kvargs := []string{"--context", "--namespace"}
 	knownArg := func(a string) bool {
 		for _, pre := range kvargs {
 			if strings.HasPrefix(a, pre+"=") {
@@ -126,7 +126,7 @@ func manuallyProcessArgs(args []string) ([]string, []string) {
 		switch a := args[i]; a {
 		case "--debug":
 			known = append(known, a)
-		case "--context", "--home", "--namespace":
+		case "--context", "--namespace":
 			known = append(known, a, args[i+1])
 			i++
 		default:

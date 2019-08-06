@@ -26,6 +26,7 @@ import (
 
 	"helm.sh/helm/cmd/helm/require"
 	"helm.sh/helm/pkg/action"
+	"helm.sh/helm/pkg/helmpath"
 	"helm.sh/helm/pkg/registry"
 )
 
@@ -100,7 +101,9 @@ Common actions from this point include:
 - helm list:      list releases of charts
 
 Environment:
-  $HELM_HOME          set an alternative location for Helm files. By default, these are stored in ~/.helm
+  $XDG_CACHE_HOME     set an alternative location for storing cached files.
+  $XDG_CONFIG_HOME    set an alternative location for storing Helm configuration.
+  $XDG_DATA_HOME      set an alternative location for storing Helm data.
   $HELM_DRIVER        set the backend storage driver. Values are: configmap, secret, memory
   $HELM_NO_PLUGINS    disable plugins. Set HELM_NO_PLUGINS=1 to disable plugins.
   $KUBECONFIG         set an alternative Kubernetes configuration file (default "~/.kube/config")
@@ -127,7 +130,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	// Add the registry client based on settings
 	// TODO: Move this elsewhere (first, settings.Init() must move)
 	// TODO: handle errors, dont panic
-	credentialsFile := filepath.Join(settings.Home.Registry(), registry.CredentialsFileBasename)
+	credentialsFile := filepath.Join(helmpath.Registry(), registry.CredentialsFileBasename)
 	client, err := auth.NewClient(credentialsFile)
 	if err != nil {
 		panic(err)
@@ -145,7 +148,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		Resolver: registry.Resolver{
 			Resolver: resolver,
 		},
-		CacheRootDir: settings.Home.Registry(),
+		CacheRootDir: helmpath.Registry(),
 	})
 
 	cmd.AddCommand(
@@ -177,7 +180,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		newUpgradeCmd(actionConfig, out),
 
 		newCompletionCmd(out),
-		newHomeCmd(out),
+		newPathCmd(out),
 		newInitCmd(out),
 		newPluginCmd(out),
 		newVersionCmd(out),

@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/pkg/action"
+	"helm.sh/helm/pkg/cli/values"
 )
 
 var longLintHelp = `
@@ -38,6 +39,7 @@ or recommendation, it will emit [WARNING] messages.
 
 func newLintCmd(out io.Writer) *cobra.Command {
 	client := action.NewLint()
+	valueOpts := &values.Options{}
 
 	cmd := &cobra.Command{
 		Use:   "lint PATH",
@@ -49,10 +51,11 @@ func newLintCmd(out io.Writer) *cobra.Command {
 				paths = args
 			}
 			client.Namespace = getNamespace()
-			if err := client.ValueOptions.MergeValues(settings); err != nil {
+			vals, err := valueOpts.MergeValues(settings)
+			if err != nil {
 				return err
 			}
-			result := client.Run(paths)
+			result := client.Run(paths, vals)
 			var message strings.Builder
 			fmt.Fprintf(&message, "%d chart(s) linted, %d chart(s) failed\n", result.TotalChartsLinted, len(result.Errors))
 			for _, err := range result.Errors {
@@ -72,7 +75,7 @@ func newLintCmd(out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	f.BoolVar(&client.Strict, "strict", false, "fail on lint warnings")
-	addValueOptionsFlags(f, &client.ValueOptions)
+	addValueOptionsFlags(f, valueOpts)
 
 	return cmd
 }

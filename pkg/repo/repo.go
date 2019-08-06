@@ -17,7 +17,6 @@ limitations under the License.
 package repo // import "helm.sh/helm/pkg/repo"
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"time"
@@ -30,7 +29,7 @@ import (
 // is fixable.
 var ErrRepoOutOfDate = errors.New("repository file is out of date")
 
-// File represents the repositories.yaml file in $HELM_HOME
+// File represents the repositories.yaml file
 type File struct {
 	APIVersion   string    `json:"apiVersion"`
 	Generated    time.Time `json:"generated"`
@@ -76,9 +75,8 @@ func LoadFile(path string) (*File, error) {
 		r := NewFile()
 		for k, v := range m {
 			r.Add(&Entry{
-				Name:  k,
-				URL:   v,
-				Cache: fmt.Sprintf("%s-index.yaml", k),
+				Name: k,
+				URL:  v,
 			})
 		}
 		return r, ErrRepoOutOfDate

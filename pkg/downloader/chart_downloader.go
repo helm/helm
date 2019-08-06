@@ -64,8 +64,6 @@ type ChartDownloader struct {
 	Verify VerificationStrategy
 	// Keyring is the keyring file used for verification.
 	Keyring string
-	// HelmHome is the $HELM_HOME.
-	HelmHome helmpath.Home
 	// Getter collection for the operation
 	Getters getter.Providers
 	// Options provide parameters to be passed along to the Getter being initialized.
@@ -159,7 +157,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 	}
 	c.Options = append(c.Options, getter.WithURL(ref))
 
-	rf, err := repo.LoadFile(c.HelmHome.RepositoryFile())
+	rf, err := repo.LoadFile(helmpath.RepositoryFile())
 	if err != nil {
 		return u, err
 	}
@@ -220,7 +218,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 	}
 
 	// Next, we need to load the index, and actually look up the chart.
-	i, err := repo.LoadIndexFile(c.HelmHome.CacheIndex(r.Config.Name))
+	i, err := repo.LoadIndexFile(helmpath.CacheIndex(r.Config.Name))
 	if err != nil {
 		return u, errors.Wrap(err, "no cached repo found. (try 'helm repo update')")
 	}
@@ -339,7 +337,7 @@ func (c *ChartDownloader) scanReposForURL(u string, rf *repo.File) (*repo.Entry,
 			return nil, err
 		}
 
-		i, err := repo.LoadIndexFile(c.HelmHome.CacheIndex(r.Config.Name))
+		i, err := repo.LoadIndexFile(helmpath.CacheIndex(r.Config.Name))
 		if err != nil {
 			return nil, errors.Wrap(err, "no cached repo found. (try 'helm repo update')")
 		}

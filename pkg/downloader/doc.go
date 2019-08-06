@@ -16,8 +16,8 @@ limitations under the License.
 /*Package downloader provides a library for downloading charts.
 
 This package contains various tools for downloading charts from repository
-servers, and then storing them in Helm-specific directory structures (like
-HELM_HOME). This library contains many functions that depend on a specific
+servers, and then storing them in Helm-specific directory structures. This
+library contains many functions that depend on a specific
 filesystem layout.
 */
 package downloader

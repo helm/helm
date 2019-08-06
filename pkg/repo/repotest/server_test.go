@@ -18,25 +18,23 @@ package repotest
 import (
 	"io/ioutil"
 	"net/http"
-	"os"
 	"path/filepath"
 	"testing"
 
 	"sigs.k8s.io/yaml"
 
+	"helm.sh/helm/internal/test/ensure"
+	"helm.sh/helm/pkg/helmpath"
 	"helm.sh/helm/pkg/repo"
 )
 
 // Young'n, in these here parts, we test our tests.
 
 func TestServer(t *testing.T) {
-	docroot, err := ioutil.TempDir("", "helm-repotest-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(docroot)
+	ensure.HelmHome(t)
+	defer ensure.CleanHomeDirs(t)
 
-	srv := NewServer(docroot)
+	srv := NewServer(helmpath.CachePath())
 	defer srv.Stop()
 
 	c, err := srv.CopyCharts("testdata/*.tgz")
@@ -104,18 +102,16 @@ func TestServer(t *testing.T) {
 }
 
 func TestNewTempServer(t *testing.T) {
-	srv, tdir, err := NewTempServer("testdata/examplechart-0.1.0.tgz")
+	ensure.HelmHome(t)
+	defer ensure.CleanHomeDirs(t)
+
+	srv, err := NewTempServer("testdata/examplechart-0.1.0.tgz")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
 		srv.Stop()
-		os.RemoveAll(tdir.String())
 	}()
-
-	if _, err := os.Stat(tdir.String()); err != nil {
-		t.Fatal(err)
-	}
 
 	res, err := http.Head(srv.URL() + "/examplechart-0.1.0.tgz")
 	if err != nil {

@@ -23,16 +23,18 @@ import (
 	"path/filepath"
 	"testing"
 
+	"helm.sh/helm/internal/test/ensure"
 	"helm.sh/helm/pkg/chart"
 	"helm.sh/helm/pkg/chart/loader"
 	"helm.sh/helm/pkg/chartutil"
+	"helm.sh/helm/pkg/helmpath"
 )
 
 func TestCreateCmd(t *testing.T) {
-	tdir := testTempDir(t)
-	defer testChdir(t, tdir)()
-
 	cname := "testchart"
+	ensure.HelmHome(t)
+	defer ensure.CleanHomeDirs(t)
+	defer testChdir(t, helmpath.CachePath())()
 
 	// Run a create
 	if _, _, err := executeActionCommand("create " + cname); err != nil {
@@ -61,17 +63,14 @@ func TestCreateCmd(t *testing.T) {
 }
 
 func TestCreateStarterCmd(t *testing.T) {
-	defer resetEnv()()
-
 	cname := "testchart"
-	// Make a temp dir
-	tdir := testTempDir(t)
-
-	hh := testHelmHome(t)
-	settings.Home = hh
+	defer resetEnv()()
+	ensure.HelmHome(t)
+	defer ensure.CleanHomeDirs(t)
+	defer testChdir(t, helmpath.CachePath())()
 
 	// Create a starter.
-	starterchart := hh.Starters()
+	starterchart := helmpath.Starters()
 	os.Mkdir(starterchart, 0755)
 	if dest, err := chartutil.Create("starterchart", starterchart); err != nil {
 		t.Fatalf("Could not create chart: %s", err)
@@ -83,10 +82,8 @@ func TestCreateStarterCmd(t *testing.T) {
 		t.Fatalf("Could not write template: %s", err)
 	}
 
-	defer testChdir(t, tdir)()
-
 	// Run a create
-	if _, _, err := executeActionCommand(fmt.Sprintf("--home='%s' create --starter=starterchart %s", hh.String(), cname)); err != nil {
+	if _, _, err := executeActionCommand(fmt.Sprintf("create --starter=starterchart %s", cname)); err != nil {
 		t.Errorf("Failed to run create: %s", err)
 		return
 	}
@@ -131,16 +128,12 @@ func TestCreateStarterCmd(t *testing.T) {
 
 func TestCreateStarterAbsoluteCmd(t *testing.T) {
 	defer resetEnv()()
-
+	ensure.HelmHome(t)
+	defer ensure.CleanHomeDirs(t)
 	cname := "testchart"
-	// Make a temp dir
-	tdir := testTempDir(t)
-
-	hh := testHelmHome(t)
-	settings.Home = hh
 
 	// Create a starter.
-	starterchart := hh.Starters()
+	starterchart := helmpath.Starters()
 	os.Mkdir(starterchart, 0755)
 	if dest, err := chartutil.Create("starterchart", starterchart); err != nil {
 		t.Fatalf("Could not create chart: %s", err)
@@ -152,12 +145,12 @@ func TestCreateStarterAbsoluteCmd(t *testing.T) {
 		t.Fatalf("Could not write template: %s", err)
 	}
 
-	defer testChdir(t, tdir)()
+	defer testChdir(t, helmpath.CachePath())()
 
 	starterChartPath := filepath.Join(starterchart, "starterchart")
 
 	// Run a create
-	if _, _, err := executeActionCommand(fmt.Sprintf("--home='%s' create --starter=%s %s", hh.String(), starterChartPath, cname)); err != nil {
+	if _, _, err := executeActionCommand(fmt.Sprintf("create --starter=%s %s", starterChartPath, cname)); err != nil {
 		t.Errorf("Failed to run create: %s", err)
 		return
 	}

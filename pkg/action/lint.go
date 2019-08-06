@@ -35,8 +35,6 @@ var errLintNoChart = errors.New("no chart found for linting (missing Chart.yaml)
 //
 // It provides the implementation of 'helm lint'.
 type Lint struct {
-	ValueOptions
-
 	Strict    bool
 	Namespace string
 }
@@ -53,7 +51,7 @@ func NewLint() *Lint {
 }
 
 // Run executes 'helm Lint' against the given chart.
-func (l *Lint) Run(paths []string) *LintResult {
+func (l *Lint) Run(paths []string, vals map[string]interface{}) *LintResult {
 	lowestTolerance := support.ErrorSev
 	if l.Strict {
 		lowestTolerance = support.WarningSev
@@ -61,7 +59,7 @@ func (l *Lint) Run(paths []string) *LintResult {
 
 	result := &LintResult{}
 	for _, path := range paths {
-		if linter, err := lintChart(path, l.ValueOptions.rawValues, l.Namespace, l.Strict); err != nil {
+		if linter, err := lintChart(path, vals, l.Namespace, l.Strict); err != nil {
 			if err == errLintNoChart {
 				result.Errors = append(result.Errors, err)
 			}
