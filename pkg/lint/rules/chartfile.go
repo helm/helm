@@ -55,6 +55,8 @@ func Chartfile(linter *support.Linter) {
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartSources(chartFile))
 	linter.RunLinterRule(support.InfoSev, chartFileName, validateChartIconPresence(chartFile))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartIconURL(chartFile))
+	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartType(chartFile))
+	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartDependencies(chartFile))
 }
 
 func validateChartYamlNotDirectory(chartPath string) error {
@@ -92,7 +94,7 @@ func validateChartAPIVersion(cf *chart.Metadata) error {
 		return errors.New("apiVersion is required. The value must be either \"v1\" or \"v2\"")
 	}
 
-	if cf.APIVersion != "v1" && cf.APIVersion != "v2" {
+	if cf.APIVersion != chart.APIVersionV1 && cf.APIVersion != chart.APIVersionV2 {
 		return fmt.Errorf("apiVersion '%s' is not valid. The value must be either \"v1\" or \"v2\"", cf.APIVersion)
 	}
 
@@ -155,6 +157,20 @@ func validateChartIconPresence(cf *chart.Metadata) error {
 func validateChartIconURL(cf *chart.Metadata) error {
 	if cf.Icon != "" && !govalidator.IsRequestURL(cf.Icon) {
 		return errors.Errorf("invalid icon URL '%s'", cf.Icon)
+	}
+	return nil
+}
+
+func validateChartDependencies(cf *chart.Metadata) error {
+	if len(cf.Dependencies) > 0 && cf.APIVersion != chart.APIVersionV2 {
+		return fmt.Errorf("dependencies are not valid in the Chart file with apiVersion '%s'. They are valid in apiVersion '%s'", cf.APIVersion, chart.APIVersionV2)
+	}
+	return nil
+}
+
+func validateChartType(cf *chart.Metadata) error {
+	if len(cf.Type) > 0 && cf.APIVersion != chart.APIVersionV2 {
+		return fmt.Errorf("chart type is not valid in apiVersion '%s'. It is valid in apiVersion '%s'", cf.APIVersion, chart.APIVersionV2)
 	}
 	return nil
 }

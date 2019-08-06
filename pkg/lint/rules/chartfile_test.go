@@ -209,8 +209,8 @@ func TestChartfile(t *testing.T) {
 	Chartfile(&linter)
 	msgs := linter.Messages
 
-	if len(msgs) != 5 {
-		t.Errorf("Expected 4 errors, got %d", len(msgs))
+	if len(msgs) != 7 {
+		t.Errorf("Expected 7 errors, got %d", len(msgs))
 	}
 
 	if !strings.Contains(msgs[0].Err.Error(), "name is required") {
@@ -226,11 +226,19 @@ func TestChartfile(t *testing.T) {
 	}
 
 	if !strings.Contains(msgs[3].Err.Error(), "version 0.0.0 is less than or equal to 0") {
-		t.Errorf("Unexpected message 3: %s", msgs[2].Err)
+		t.Errorf("Unexpected message 3: %s", msgs[3].Err)
 	}
 
 	if !strings.Contains(msgs[4].Err.Error(), "icon is recommended") {
-		t.Errorf("Unexpected message 4: %s", msgs[3].Err)
+		t.Errorf("Unexpected message 4: %s", msgs[4].Err)
+	}
+
+	if !strings.Contains(msgs[5].Err.Error(), "chart type is not valid in apiVersion") {
+		t.Errorf("Unexpected message 5: %s", msgs[5].Err)
+	}
+
+	if !strings.Contains(msgs[6].Err.Error(), "dependencies are not valid in the Chart file with apiVersion") {
+		t.Errorf("Unexpected message 6: %s", msgs[6].Err)
 	}
 
 }
