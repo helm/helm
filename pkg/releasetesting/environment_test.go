@@ -89,6 +89,14 @@ func TestDeleteTestPodsFailingDelete(t *testing.T) {
 	}
 }
 
+func TestGetTestPodLogs(t *testing.T) {
+	mockTestSuite := testSuiteFixture([]string{manifestWithTestSuccessHook})
+	mockTestEnv := newMockTestingEnvironment()
+	mockTestEnv.KubeClient = newGetLogKubeClient()
+
+	mockTestEnv.GetLogs(mockTestSuite.TestManifests)
+}
+
 func TestStreamMessage(t *testing.T) {
 	mockTestEnv := newMockTestingEnvironment()
 
@@ -180,4 +188,14 @@ func newCreateFailingKubeClient() *createFailingKubeClient {
 
 func (p *createFailingKubeClient) Create(ns string, r io.Reader, t int64, shouldWait bool) error {
 	return errors.New("We ran out of budget and couldn't create finding-nemo")
+}
+
+type getLogKubeClient struct {
+	tillerEnv.PrintingKubeClient
+}
+
+func newGetLogKubeClient() *getLogKubeClient {
+	return &getLogKubeClient{
+		PrintingKubeClient: tillerEnv.PrintingKubeClient{Out: ioutil.Discard},
+	}
 }
