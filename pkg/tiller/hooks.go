@@ -53,7 +53,7 @@ var deletePolices = map[string]release.Hook_DeletePolicy{
 	hooks.BeforeHookCreation: release.Hook_BEFORE_HOOK_CREATION,
 }
 
-// Timout used when deleting resources with a hook-delete-policy.
+// Timeout used when deleting resources with a hook-delete-policy.
 const defaultHookDeleteTimeoutInSeconds = int64(60)
 
 // Manifest represents a manifest file, which has a name and some content.
