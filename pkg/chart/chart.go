@@ -18,7 +18,7 @@ package chart
 // APIVersionV1 is the API version number for version 1.
 const APIVersionV1 = "v1"
 
-// APIVersionV1 is the API version number for version 2.
+// APIVersionV2 is the API version number for version 2.
 const APIVersionV2 = "v2"
 
 // Chart is a helm package that contains metadata, a default config, zero or more
