@@ -67,7 +67,7 @@ func NewExtractor(source string) (Extractor, error) {
 }
 
 // NewHTTPInstaller creates a new HttpInstaller.
-func NewHTTPInstaller(source string, home helmpath.Home) (*HTTPInstaller, error) {
+func NewHTTPInstaller(source string) (*HTTPInstaller, error) {
 
 	key, err := cache.Key(source)
 	if err != nil {
@@ -90,9 +90,9 @@ func NewHTTPInstaller(source string, home helmpath.Home) (*HTTPInstaller, error)
 	}
 
 	i := &HTTPInstaller{
-		CacheDir:   home.Path("cache", "plugins", key),
+		CacheDir:   filepath.Join(helmpath.PluginCache(), key),
 		PluginName: stripPluginName(filepath.Base(source)),
-		base:       newBase(source, home),
+		base:       newBase(source),
 		extractor:  extractor,
 		getter:     get,
 	}
@@ -112,7 +112,8 @@ func stripPluginName(name string) string {
 	return re.ReplaceAllString(strippedName, `$1`)
 }
 
-// Install downloads and extracts the tarball into the cache directory and creates a symlink to the plugin directory in $HELM_HOME.
+// Install downloads and extracts the tarball into the cache directory
+// and creates a symlink to the plugin directory.
 //
 // Implements Installer.
 func (i *HTTPInstaller) Install() error {
@@ -156,7 +157,7 @@ func (i HTTPInstaller) Path() string {
 	if i.base.Source == "" {
 		return ""
 	}
-	return filepath.Join(i.base.HelmHome.Plugins(), i.PluginName)
+	return filepath.Join(helmpath.Plugins(), i.PluginName)
 }
 
 // Extract extracts compressed archives

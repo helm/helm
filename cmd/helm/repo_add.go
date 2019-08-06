@@ -34,7 +34,6 @@ type repoAddOptions struct {
 	url      string
 	username string
 	password string
-	home     helmpath.Home
 	noupdate bool
 
 	certFile string
@@ -52,7 +51,6 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.name = args[0]
 			o.url = args[1]
-			o.home = settings.Home
 
 			return o.run(out)
 		},
@@ -70,15 +68,15 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 }
 
 func (o *repoAddOptions) run(out io.Writer) error {
-	if err := addRepository(o.name, o.url, o.username, o.password, o.home, o.certFile, o.keyFile, o.caFile, o.noupdate); err != nil {
+	if err := addRepository(o.name, o.url, o.username, o.password, o.certFile, o.keyFile, o.caFile, o.noupdate); err != nil {
 		return err
 	}
 	fmt.Fprintf(out, "%q has been added to your repositories\n", o.name)
 	return nil
 }
 
-func addRepository(name, url, username, password string, home helmpath.Home, certFile, keyFile, caFile string, noUpdate bool) error {
-	f, err := repo.LoadFile(home.RepositoryFile())
+func addRepository(name, url, username, password string, certFile, keyFile, caFile string, noUpdate bool) error {
+	f, err := repo.LoadFile(helmpath.RepositoryFile())
 	if err != nil {
 		return err
 	}
@@ -87,10 +85,8 @@ func addRepository(name, url, username, password string, home helmpath.Home, cer
 		return errors.Errorf("repository name (%s) already exists, please specify a different name", name)
 	}
 
-	cif := home.CacheIndex(name)
 	c := repo.Entry{
 		Name:     name,
-		Cache:    cif,
 		URL:      url,
 		Username: username,
 		Password: password,
@@ -104,11 +100,11 @@ func addRepository(name, url, username, password string, home helmpath.Home, cer
 		return err
 	}
 
-	if err := r.DownloadIndexFile(home.Cache()); err != nil {
+	if err := r.DownloadIndexFile(); err != nil {
 		return errors.Wrapf(err, "looks like %q is not a valid chart repository or cannot be reached", url)
 	}
 
 	f.Update(&c)
 
-	return f.WriteFile(home.RepositoryFile(), 0644)
+	return f.WriteFile(helmpath.RepositoryFile(), 0644)
 }

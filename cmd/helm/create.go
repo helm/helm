@@ -26,6 +26,7 @@ import (
 	"helm.sh/helm/cmd/helm/require"
 	"helm.sh/helm/pkg/chart"
 	"helm.sh/helm/pkg/chartutil"
+	"helm.sh/helm/pkg/helmpath"
 )
 
 const createDesc = `
@@ -86,7 +87,7 @@ func (o *createOptions) run(out io.Writer) error {
 
 	if o.starter != "" {
 		// Create from the starter
-		lstarter := filepath.Join(settings.Home.Starters(), o.starter)
+		lstarter := filepath.Join(helmpath.Starters(), o.starter)
 		// If path is absolute, we dont want to prefix it with helm starters folder
 		if filepath.IsAbs(o.starter) {
 			lstarter = o.starter

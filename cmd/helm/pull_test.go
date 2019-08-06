@@ -24,19 +24,27 @@ import (
 	"strings"
 	"testing"
 
+	"helm.sh/helm/internal/test/ensure"
+	"helm.sh/helm/pkg/helmpath"
 	"helm.sh/helm/pkg/repo/repotest"
 )
 
 func TestPullCmd(t *testing.T) {
 	defer resetEnv()()
+	ensure.HelmHome(t)
+	defer ensure.CleanHomeDirs(t)
 
-	hh := testHelmHome(t)
-	settings.Home = hh
-
-	srv := repotest.NewServer(hh.String())
+	srv, err := repotest.NewTempServer("testdata/testcharts/*.tgz*")
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer srv.Stop()
 
-	// all flags will get "--home=TMDIR -d outdir" appended.
+	if err := srv.LinkIndices(); err != nil {
+		t.Fatal(err)
+	}
+
+	// all flags will get "-d outdir" appended.
 	tests := []struct {
 		name         string
 		args         []string
@@ -117,19 +125,12 @@ func TestPullCmd(t *testing.T) {
 		},
 	}
 
-	if _, err := srv.CopyCharts("testdata/testcharts/*.tgz*"); err != nil {
-		t.Fatal(err)
-	}
-	if err := srv.LinkIndices(); err != nil {
-		t.Fatal(err)
-	}
-
 	for _, tt := range tests {
-		outdir := hh.Path("testout")
+		outdir := filepath.Join(helmpath.DataPath(), "testout")
 		os.RemoveAll(outdir)
 		os.Mkdir(outdir, 0755)
 
-		cmd := strings.Join(append(tt.args, "-d", "'"+outdir+"'", "--home", "'"+hh.String()+"'"), " ")
+		cmd := strings.Join(append(tt.args, "-d", "'"+outdir+"'"), " ")
 		_, out, err := executeActionCommand("fetch " + cmd)
 		if err != nil {
 			if tt.wantError {

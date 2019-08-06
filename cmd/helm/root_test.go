@@ -21,74 +21,77 @@ import (
 	"path/filepath"
 	"testing"
 
-	"k8s.io/client-go/util/homedir"
+	"helm.sh/helm/internal/test/ensure"
+	"helm.sh/helm/pkg/helmpath"
+	"helm.sh/helm/pkg/helmpath/xdg"
 )
 
 func TestRootCmd(t *testing.T) {
 	defer resetEnv()()
 
 	tests := []struct {
-		name, args, home string
-		envars           map[string]string
+		name, args, cachePath, configPath, dataPath string
+		envars                                      map[string]string
 	}{
 		{
 			name: "defaults",
 			args: "home",
-			home: filepath.Join(homedir.HomeDir(), ".helm"),
 		},
 		{
-			name: "with --home set",
-			args: "--home /foo",
-			home: "/foo",
+			name:      "with $XDG_CACHE_HOME set",
+			args:      "home",
+			envars:    map[string]string{xdg.CacheHomeEnvVar: "/bar"},
+			cachePath: "/bar/helm",
 		},
 		{
-			name: "subcommands with --home set",
-			args: "home --home /foo",
-			home: "/foo",
+			name:       "with $XDG_CONFIG_HOME set",
+			args:       "home",
+			envars:     map[string]string{xdg.ConfigHomeEnvVar: "/bar"},
+			configPath: "/bar/helm",
 		},
 		{
-			name:   "with $HELM_HOME set",
-			args:   "home",
-			envars: map[string]string{"HELM_HOME": "/bar"},
-			home:   "/bar",
-		},
-		{
-			name:   "subcommands with $HELM_HOME set",
-			args:   "home",
-			envars: map[string]string{"HELM_HOME": "/bar"},
-			home:   "/bar",
-		},
-		{
-			name:   "with $HELM_HOME and --home set",
-			args:   "home --home /foo",
-			envars: map[string]string{"HELM_HOME": "/bar"},
-			home:   "/foo",
+			name:     "with $XDG_DATA_HOME set",
+			args:     "home",
+			envars:   map[string]string{xdg.DataHomeEnvVar: "/bar"},
+			dataPath: "/bar/helm",
 		},
 	}
 
-	// ensure not set locally
-	os.Unsetenv("HELM_HOME")
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			defer os.Unsetenv("HELM_HOME")
+			ensure.HelmHome(t)
+			defer ensure.CleanHomeDirs(t)
 
 			for k, v := range tt.envars {
 				os.Setenv(k, v)
 			}
 
-			cmd, _, err := executeActionCommand(tt.args)
-			if err != nil {
+			if _, _, err := executeActionCommand(tt.args); err != nil {
 				t.Fatalf("unexpected error: %s", err)
 			}
 
-			if settings.Home.String() != tt.home {
-				t.Errorf("expected home %q, got %q", tt.home, settings.Home)
+			// NOTE(bacongobbler): we need to check here after calling ensure.HelmHome so we
+			// load the proper paths after XDG_*_HOME is set
+			if tt.cachePath == "" {
+				tt.cachePath = filepath.Join(os.Getenv(xdg.CacheHomeEnvVar), "helm")
 			}
-			homeFlag := cmd.Flag("home").Value.String()
-			homeFlag = os.ExpandEnv(homeFlag)
-			if homeFlag != tt.home {
-				t.Errorf("expected home %q, got %q", tt.home, homeFlag)
+
+			if tt.configPath == "" {
+				tt.configPath = filepath.Join(os.Getenv(xdg.ConfigHomeEnvVar), "helm")
+			}
+
+			if tt.dataPath == "" {
+				tt.dataPath = filepath.Join(os.Getenv(xdg.DataHomeEnvVar), "helm")
+			}
+
+			if helmpath.CachePath() != tt.cachePath {
+				t.Errorf("expected cache path %q, got %q", tt.cachePath, helmpath.CachePath())
+			}
+			if helmpath.ConfigPath() != tt.configPath {
+				t.Errorf("expected config path %q, got %q", tt.configPath, helmpath.ConfigPath())
+			}
+			if helmpath.DataPath() != tt.dataPath {
+				t.Errorf("expected data path %q, got %q", tt.dataPath, helmpath.DataPath())
 			}
 		})
 	}

@@ -21,33 +21,34 @@ import (
 	"os"
 	"testing"
 
+	"helm.sh/helm/internal/test/ensure"
 	"helm.sh/helm/pkg/helmpath"
 )
 
 const testPluginsFile = "testdata/plugins.yaml"
 
 func TestEnsureHome(t *testing.T) {
-	hh := helmpath.Home(testTempDir(t))
+	ensure.HelmHome(t)
+	defer ensure.CleanHomeDirs(t)
 
 	b := bytes.NewBuffer(nil)
-	settings.Home = hh
-	if err := ensureDirectories(hh, b); err != nil {
+	if err := ensureDirectories(b); err != nil {
 		t.Error(err)
 	}
-	if err := ensureReposFile(hh, b, false); err != nil {
+	if err := ensureReposFile(b, false); err != nil {
 		t.Error(err)
 	}
-	if err := ensureReposFile(hh, b, true); err != nil {
+	if err := ensureReposFile(b, true); err != nil {
 		t.Error(err)
 	}
-	if err := ensureRepoFileFormat(hh.RepositoryFile(), b); err != nil {
+	if err := ensureRepoFileFormat(helmpath.RepositoryFile(), b); err != nil {
 		t.Error(err)
 	}
 	if err := ensurePluginsInstalled(testPluginsFile, b); err != nil {
 		t.Error(err)
 	}
 
-	expectedDirs := []string{hh.String(), hh.Repository(), hh.Cache()}
+	expectedDirs := []string{helmpath.CachePath(), helmpath.ConfigPath(), helmpath.DataPath()}
 	for _, dir := range expectedDirs {
 		if fi, err := os.Stat(dir); err != nil {
 			t.Errorf("%s", err)
@@ -56,13 +57,13 @@ func TestEnsureHome(t *testing.T) {
 		}
 	}
 
-	if fi, err := os.Stat(hh.RepositoryFile()); err != nil {
+	if fi, err := os.Stat(helmpath.RepositoryFile()); err != nil {
 		t.Error(err)
 	} else if fi.IsDir() {
 		t.Errorf("%s should not be a directory", fi)
 	}
 
-	if plugins, err := findPlugins(settings.PluginDirs()); err != nil {
+	if plugins, err := findPlugins(helmpath.Plugins()); err != nil {
 		t.Error(err)
 	} else if len(plugins) != 1 {
 		t.Errorf("Expected 1 plugin, got %d", len(plugins))

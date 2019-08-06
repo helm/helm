@@ -29,36 +29,22 @@ import (
 	"helm.sh/helm/pkg/repo"
 )
 
-type repoRemoveOptions struct {
-	name string
-	home helmpath.Home
-}
-
 func newRepoRemoveCmd(out io.Writer) *cobra.Command {
-	o := &repoRemoveOptions{}
-
 	cmd := &cobra.Command{
 		Use:     "remove [NAME]",
 		Aliases: []string{"rm"},
 		Short:   "remove a chart repository",
 		Args:    require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			o.name = args[0]
-			o.home = settings.Home
-
-			return o.run(out)
+			return removeRepoLine(out, args[0])
 		},
 	}
 
 	return cmd
 }
 
-func (r *repoRemoveOptions) run(out io.Writer) error {
-	return removeRepoLine(out, r.name, r.home)
-}
-
-func removeRepoLine(out io.Writer, name string, home helmpath.Home) error {
-	repoFile := home.RepositoryFile()
+func removeRepoLine(out io.Writer, name string) error {
+	repoFile := helmpath.RepositoryFile()
 	r, err := repo.LoadFile(repoFile)
 	if err != nil {
 		return err
@@ -71,7 +57,7 @@ func removeRepoLine(out io.Writer, name string, home helmpath.Home) error {
 		return err
 	}
 
-	if err := removeRepoCache(name, home); err != nil {
+	if err := removeRepoCache(name); err != nil {
 		return err
 	}
 
@@ -80,9 +66,9 @@ func removeRepoLine(out io.Writer, name string, home helmpath.Home) error {
 	return nil
 }
 
-func removeRepoCache(name string, home helmpath.Home) error {
-	if _, err := os.Stat(home.CacheIndex(name)); err == nil {
-		err = os.Remove(home.CacheIndex(name))
+func removeRepoCache(name string) error {
+	if _, err := os.Stat(helmpath.CacheIndex(name)); err == nil {
+		err = os.Remove(helmpath.CacheIndex(name))
 		if err != nil {
 			return err
 		}

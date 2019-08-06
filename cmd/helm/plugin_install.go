@@ -22,7 +22,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/cmd/helm/require"
-	"helm.sh/helm/pkg/helmpath"
 	"helm.sh/helm/pkg/plugin"
 	"helm.sh/helm/pkg/plugin/installer"
 )
@@ -30,7 +29,6 @@ import (
 type pluginInstallOptions struct {
 	source  string
 	version string
-	home    helmpath.Home
 }
 
 const pluginInstallDesc = `
@@ -60,14 +58,13 @@ func newPluginInstallCmd(out io.Writer) *cobra.Command {
 
 func (o *pluginInstallOptions) complete(args []string) error {
 	o.source = args[0]
-	o.home = settings.Home
 	return nil
 }
 
 func (o *pluginInstallOptions) run(out io.Writer) error {
 	installer.Debug = settings.Debug
 
-	i, err := installer.NewForSource(o.source, o.version, o.home)
+	i, err := installer.NewForSource(o.source, o.version)
 	if err != nil {
 		return err
 	}

@@ -23,12 +23,13 @@ import (
 	"path/filepath"
 	"testing"
 
+	"helm.sh/helm/internal/test/ensure"
 	"helm.sh/helm/pkg/repo"
 )
 
 func TestRepoIndexCmd(t *testing.T) {
 
-	dir := testTempDir(t)
+	dir := ensure.TempDir(t)
 
 	comp := filepath.Join(dir, "compressedchart-0.1.0.tgz")
 	if err := linkOrCopy("testdata/testcharts/compressedchart-0.1.0.tgz", comp); err != nil {

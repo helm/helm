@@ -21,6 +21,8 @@ import (
 	"os"
 	"testing"
 
+	"helm.sh/helm/internal/test/ensure"
+	"helm.sh/helm/pkg/helmpath"
 	"helm.sh/helm/pkg/repo"
 	"helm.sh/helm/pkg/repo/repotest"
 )
@@ -28,21 +30,35 @@ import (
 func TestRepoAddCmd(t *testing.T) {
 	defer resetEnv()()
 
-	srv, hh, err := repotest.NewTempServer("testdata/testserver/*.*")
+	ensure.HelmHome(t)
+	defer ensure.CleanHomeDirs(t)
+
+	srv, err := repotest.NewTempServer("testdata/testserver/*.*")
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer srv.Stop()
 
-	defer func() {
-		srv.Stop()
-		os.RemoveAll(hh.String())
-	}()
-	ensureTestHome(t, hh)
-	settings.Home = hh
+	repoFile := helmpath.RepositoryFile()
+	if _, err := os.Stat(repoFile); err != nil {
+		rf := repo.NewFile()
+		rf.Add(&repo.Entry{
+			Name: "charts",
+			URL:  "http://example.com/foo",
+		})
+		if err := rf.WriteFile(repoFile, 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if r, err := repo.LoadFile(repoFile); err == repo.ErrRepoOutOfDate {
+		if err := r.WriteFile(repoFile, 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
 
 	tests := []cmdTestCase{{
 		name:   "add a repository",
-		cmd:    fmt.Sprintf("repo add test-name %s --home '%s'", srv.URL(), hh),
+		cmd:    fmt.Sprintf("repo add test-name %s", srv.URL()),
 		golden: "output/repo-add.txt",
 	}}
 
@@ -52,38 +68,52 @@ func TestRepoAddCmd(t *testing.T) {
 func TestRepoAdd(t *testing.T) {
 	defer resetEnv()()
 
-	ts, hh, err := repotest.NewTempServer("testdata/testserver/*.*")
+	ensure.HelmHome(t)
+	defer ensure.CleanHomeDirs(t)
+
+	ts, err := repotest.NewTempServer("testdata/testserver/*.*")
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer ts.Stop()
 
-	defer func() {
-		ts.Stop()
-		os.RemoveAll(hh.String())
-	}()
-	ensureTestHome(t, hh)
-	settings.Home = hh
+	repoFile := helmpath.RepositoryFile()
+	if _, err := os.Stat(repoFile); err != nil {
+		rf := repo.NewFile()
+		rf.Add(&repo.Entry{
+			Name: "charts",
+			URL:  "http://example.com/foo",
+		})
+		if err := rf.WriteFile(repoFile, 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if r, err := repo.LoadFile(repoFile); err == repo.ErrRepoOutOfDate {
+		if err := r.WriteFile(repoFile, 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
 
 	const testRepoName = "test-name"
 
-	if err := addRepository(testRepoName, ts.URL(), "", "", hh, "", "", "", true); err != nil {
+	if err := addRepository(testRepoName, ts.URL(), "", "", "", "", "", true); err != nil {
 		t.Error(err)
 	}
 
-	f, err := repo.LoadFile(hh.RepositoryFile())
+	f, err := repo.LoadFile(helmpath.RepositoryFile())
 	if err != nil {
 		t.Error(err)
 	}
 
 	if !f.Has(testRepoName) {
-		t.Errorf("%s was not successfully inserted into %s", testRepoName, hh.RepositoryFile())
+		t.Errorf("%s was not successfully inserted into %s", testRepoName, helmpath.RepositoryFile())
 	}
 
-	if err := addRepository(testRepoName, ts.URL(), "", "", hh, "", "", "", false); err != nil {
+	if err := addRepository(testRepoName, ts.URL(), "", "", "", "", "", false); err != nil {
 		t.Errorf("Repository was not updated: %s", err)
 	}
 
-	if err := addRepository(testRepoName, ts.URL(), "", "", hh, "", "", "", false); err != nil {
+	if err := addRepository(testRepoName, ts.URL(), "", "", "", "", "", false); err != nil {
 		t.Errorf("Duplicate repository name was added")
 	}
 }

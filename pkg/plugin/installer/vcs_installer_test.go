@@ -17,13 +17,13 @@ package installer // import "helm.sh/helm/pkg/plugin/installer"
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/Masterminds/vcs"
 
+	"helm.sh/helm/internal/test/ensure"
 	"helm.sh/helm/pkg/helmpath"
 )
 
@@ -49,15 +49,11 @@ func (r *testRepo) UpdateVersion(version string) error {
 }
 
 func TestVCSInstaller(t *testing.T) {
-	hh, err := ioutil.TempDir("", "helm-home-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(hh)
+	ensure.HelmHome(t)
+	defer ensure.CleanHomeDirs(t)
 
-	home := helmpath.Home(hh)
-	if err := os.MkdirAll(home.Plugins(), 0755); err != nil {
-		t.Fatalf("Could not create %s: %s", home.Plugins(), err)
+	if err := os.MkdirAll(helmpath.Plugins(), 0755); err != nil {
+		t.Fatalf("Could not create %s: %s", helmpath.Plugins(), err)
 	}
 
 	source := "https://github.com/adamreese/helm-env"
@@ -67,7 +63,7 @@ func TestVCSInstaller(t *testing.T) {
 		tags:  []string{"0.1.0", "0.1.1"},
 	}
 
-	i, err := NewForSource(source, "~0.1.0", home)
+	i, err := NewForSource(source, "~0.1.0")
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
@@ -87,8 +83,8 @@ func TestVCSInstaller(t *testing.T) {
 	if repo.current != "0.1.1" {
 		t.Errorf("expected version '0.1.1', got %q", repo.current)
 	}
-	if i.Path() != home.Path("plugins", "helm-env") {
-		t.Errorf("expected path '$HELM_HOME/plugins/helm-env', got %q", i.Path())
+	if i.Path() != filepath.Join(helmpath.Plugins(), "helm-env") {
+		t.Errorf("expected path '$XDG_CONFIG_HOME/helm/plugins/helm-env', got %q", i.Path())
 	}
 
 	// Install again to test plugin exists error
@@ -99,7 +95,7 @@ func TestVCSInstaller(t *testing.T) {
 	}
 
 	//Testing FindSource method, expect error because plugin code is not a cloned repository
-	if _, err := FindSource(i.Path(), home); err == nil {
+	if _, err := FindSource(i.Path()); err == nil {
 		t.Error("expected error for inability to find plugin source, got none")
 	} else if err.Error() != "cannot get information about plugin source" {
 		t.Errorf("expected error for inability to find plugin source, got (%v)", err)
@@ -107,21 +103,13 @@ func TestVCSInstaller(t *testing.T) {
 }
 
 func TestVCSInstallerNonExistentVersion(t *testing.T) {
-	hh, err := ioutil.TempDir("", "helm-home-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(hh)
-
-	home := helmpath.Home(hh)
-	if err := os.MkdirAll(home.Plugins(), 0755); err != nil {
-		t.Fatalf("Could not create %s: %s", home.Plugins(), err)
-	}
+	ensure.HelmHome(t)
+	defer ensure.CleanHomeDirs(t)
 
 	source := "https://github.com/adamreese/helm-env"
 	version := "0.2.0"
 
-	i, err := NewForSource(source, version, home)
+	i, err := NewForSource(source, version)
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
@@ -139,21 +127,12 @@ func TestVCSInstallerNonExistentVersion(t *testing.T) {
 	}
 }
 func TestVCSInstallerUpdate(t *testing.T) {
-
-	hh, err := ioutil.TempDir("", "helm-home-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(hh)
-
-	home := helmpath.Home(hh)
-	if err := os.MkdirAll(home.Plugins(), 0755); err != nil {
-		t.Fatalf("Could not create %s: %s", home.Plugins(), err)
-	}
+	ensure.HelmHome(t)
+	defer ensure.CleanHomeDirs(t)
 
 	source := "https://github.com/adamreese/helm-env"
 
-	i, err := NewForSource(source, "", home)
+	i, err := NewForSource(source, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
@@ -176,7 +155,7 @@ func TestVCSInstallerUpdate(t *testing.T) {
 	}
 
 	// Test FindSource method for positive result
-	pluginInfo, err := FindSource(i.Path(), home)
+	pluginInfo, err := FindSource(i.Path())
 	if err != nil {
 		t.Fatal(err)
 	}

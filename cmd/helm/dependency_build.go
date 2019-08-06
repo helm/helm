@@ -56,7 +56,6 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 			man := &downloader.Manager{
 				Out:       out,
 				ChartPath: chartpath,
-				HelmHome:  settings.Home,
 				Keyring:   client.Keyring,
 				Getters:   getter.All(settings),
 			}

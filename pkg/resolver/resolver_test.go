@@ -16,12 +16,15 @@ limitations under the License.
 package resolver
 
 import (
+	"os"
 	"testing"
 
 	"helm.sh/helm/pkg/chart"
+	"helm.sh/helm/pkg/helmpath/xdg"
 )
 
 func TestResolve(t *testing.T) {
+	os.Setenv(xdg.CacheHomeEnvVar, "testdata")
 	tests := []struct {
 		name   string
 		req    []*chart.Dependency
@@ -88,7 +91,7 @@ func TestResolve(t *testing.T) {
 	}
 
 	repoNames := map[string]string{"alpine": "kubernetes-charts", "redis": "kubernetes-charts"}
-	r := New("testdata/chartpath", "testdata/helmhome")
+	r := New("testdata/chartpath")
 	for _, tt := range tests {
 		l, err := r.Resolve(tt.req, repoNames)
 		if err != nil {

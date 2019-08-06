@@ -24,21 +24,12 @@ package cli
 
 import (
 	"os"
-	"path/filepath"
 
 	"github.com/spf13/pflag"
-	"k8s.io/client-go/util/homedir"
-
-	"helm.sh/helm/pkg/helmpath"
 )
-
-// defaultHelmHome is the default HELM_HOME.
-var defaultHelmHome = filepath.Join(homedir.HomeDir(), ".helm")
 
 // EnvSettings describes all of the environment settings.
 type EnvSettings struct {
-	// Home is the local path to the Helm home directory.
-	Home helmpath.Home
 	// Namespace is the namespace scope.
 	Namespace string
 	// KubeConfig is the path to the kubeconfig file.
@@ -51,7 +42,6 @@ type EnvSettings struct {
 
 // AddFlags binds flags to the given flagset.
 func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
-	fs.StringVar((*string)(&s.Home), "home", defaultHelmHome, "location of your Helm config. Overrides $HELM_HOME")
 	fs.StringVarP(&s.Namespace, "namespace", "n", "", "namespace scope for this request")
 	fs.StringVar(&s.KubeConfig, "kubeconfig", "", "path to the kubeconfig file")
 	fs.StringVar(&s.KubeContext, "kube-context", "", "name of the kubeconfig context to use")
@@ -65,18 +55,9 @@ func (s *EnvSettings) Init(fs *pflag.FlagSet) {
 	}
 }
 
-// PluginDirs is the path to the plugin directories.
-func (s EnvSettings) PluginDirs() string {
-	if d, ok := os.LookupEnv("HELM_PLUGIN"); ok {
-		return d
-	}
-	return s.Home.Plugins()
-}
-
 // envMap maps flag names to envvars
 var envMap = map[string]string{
 	"debug":     "HELM_DEBUG",
-	"home":      "HELM_HOME",
 	"namespace": "HELM_NAMESPACE",
 }
 

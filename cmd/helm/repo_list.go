@@ -29,39 +29,28 @@ import (
 	"helm.sh/helm/pkg/repo"
 )
 
-type repoListOptions struct {
-	home helmpath.Home
-}
-
 func newRepoListCmd(out io.Writer) *cobra.Command {
-	o := &repoListOptions{}
-
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "list chart repositories",
 		Args:  require.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			o.home = settings.Home
-			return o.run(out)
+			f, err := repo.LoadFile(helmpath.RepositoryFile())
+			if err != nil {
+				return err
+			}
+			if len(f.Repositories) == 0 {
+				return errors.New("no repositories to show")
+			}
+			table := uitable.New()
+			table.AddRow("NAME", "URL")
+			for _, re := range f.Repositories {
+				table.AddRow(re.Name, re.URL)
+			}
+			fmt.Fprintln(out, table)
+			return nil
 		},
 	}
 
 	return cmd
-}
-
-func (o *repoListOptions) run(out io.Writer) error {
-	f, err := repo.LoadFile(o.home.RepositoryFile())
-	if err != nil {
-		return err
-	}
-	if len(f.Repositories) == 0 {
-		return errors.New("no repositories to show")
-	}
-	table := uitable.New()
-	table.AddRow("NAME", "URL")
-	for _, re := range f.Repositories {
-		table.AddRow(re.Name, re.URL)
-	}
-	fmt.Fprintln(out, table)
-	return nil
 }

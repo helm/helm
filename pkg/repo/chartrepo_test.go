@@ -28,11 +28,14 @@ import (
 	"testing"
 	"time"
 
+	"sigs.k8s.io/yaml"
+
+	"helm.sh/helm/internal/test/ensure"
 	"helm.sh/helm/pkg/chart"
 	"helm.sh/helm/pkg/cli"
 	"helm.sh/helm/pkg/getter"
-
-	"sigs.k8s.io/yaml"
+	"helm.sh/helm/pkg/helmpath"
+	"helm.sh/helm/pkg/helmpath/xdg"
 )
 
 const (
@@ -129,6 +132,9 @@ func (g *CustomGetter) Get(href string) (*bytes.Buffer, error) {
 }
 
 func TestIndexCustomSchemeDownload(t *testing.T) {
+	ensure.HelmHome(t)
+	defer ensure.CleanHomeDirs(t)
+
 	repoName := "gcs-repo"
 	repoURL := "gs://some-gcs-bucket"
 	myCustomGetter := &CustomGetter{}
@@ -155,7 +161,7 @@ func TestIndexCustomSchemeDownload(t *testing.T) {
 	}
 	defer os.Remove(tempIndexFile.Name())
 
-	if err := repo.DownloadIndexFile(tempIndexFile.Name()); err != nil {
+	if err := repo.DownloadIndexFile(); err != nil {
 		t.Fatalf("Failed to download index file: %v", err)
 	}
 
@@ -276,6 +282,8 @@ func startLocalServerForTests(handler http.Handler) (*httptest.Server, error) {
 }
 
 func TestFindChartInRepoURL(t *testing.T) {
+	setupCacheHome(t)
+
 	srv, err := startLocalServerForTests(nil)
 	if err != nil {
 		t.Fatal(err)
@@ -300,6 +308,8 @@ func TestFindChartInRepoURL(t *testing.T) {
 }
 
 func TestErrorFindChartInRepoURL(t *testing.T) {
+	setupCacheHome(t)
+
 	_, err := FindChartInRepoURL("http://someserver/something", "nginx", "", "", "", "", getter.All(cli.EnvSettings{}))
 	if err == nil {
 		t.Errorf("Expected error for bad chart URL, but did not get any errors")
@@ -362,5 +372,18 @@ func TestResolveReferenceURL(t *testing.T) {
 	}
 	if chartURL != "https://kubernetes-charts.storage.googleapis.com/nginx-0.2.0.tgz" {
 		t.Errorf("%s", chartURL)
+	}
+}
+
+func setupCacheHome(t *testing.T) {
+	t.Helper()
+	d, err := ioutil.TempDir("", "helm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Setenv(xdg.CacheHomeEnvVar, d)
+
+	if err := os.MkdirAll(helmpath.RepositoryCache(), 0755); err != nil {
+		t.Fatal(err)
 	}
 }

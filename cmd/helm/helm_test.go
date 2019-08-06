@@ -30,10 +30,8 @@ import (
 	"helm.sh/helm/internal/test"
 	"helm.sh/helm/pkg/action"
 	"helm.sh/helm/pkg/chartutil"
-	"helm.sh/helm/pkg/helmpath"
 	kubefake "helm.sh/helm/pkg/kube/fake"
 	"helm.sh/helm/pkg/release"
-	"helm.sh/helm/pkg/repo"
 	"helm.sh/helm/pkg/storage"
 	"helm.sh/helm/pkg/storage/driver"
 )
@@ -45,18 +43,8 @@ func init() {
 }
 
 func TestMain(m *testing.M) {
-	os.Unsetenv("HELM_HOME")
 	exitCode := m.Run()
 	os.Exit(exitCode)
-}
-
-func testTempDir(t *testing.T) string {
-	t.Helper()
-	d, err := ioutil.TempDir("", "helm")
-	if err != nil {
-		t.Fatal(err)
-	}
-	return d
 }
 
 func runTestCmd(t *testing.T, tests []cmdTestCase) {
@@ -142,48 +130,6 @@ type cmdTestCase struct {
 
 func executeActionCommand(cmd string) (*cobra.Command, string, error) {
 	return executeActionCommandC(storageFixture(), cmd)
-}
-
-// ensureTestHome creates a home directory like ensureHome, but without remote references.
-func ensureTestHome(t *testing.T, home helmpath.Home) {
-	t.Helper()
-	for _, p := range []string{
-		home.String(),
-		home.Repository(),
-		home.Cache(),
-		home.Plugins(),
-		home.Starters(),
-	} {
-		if err := os.MkdirAll(p, 0755); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	repoFile := home.RepositoryFile()
-	if _, err := os.Stat(repoFile); err != nil {
-		rf := repo.NewFile()
-		rf.Add(&repo.Entry{
-			Name:  "charts",
-			URL:   "http://example.com/foo",
-			Cache: "charts-index.yaml",
-		})
-		if err := rf.WriteFile(repoFile, 0644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if r, err := repo.LoadFile(repoFile); err == repo.ErrRepoOutOfDate {
-		if err := r.WriteFile(repoFile, 0644); err != nil {
-			t.Fatal(err)
-		}
-	}
-}
-
-// testHelmHome sets up a Helm Home in a temp dir.
-func testHelmHome(t *testing.T) helmpath.Home {
-	t.Helper()
-	dir := helmpath.Home(testTempDir(t))
-	ensureTestHome(t, dir)
-	return dir
 }
 
 func resetEnv() func() {

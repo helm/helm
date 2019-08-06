@@ -17,34 +17,18 @@ package getter
 
 import (
 	"os"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
 
 	"helm.sh/helm/pkg/cli"
-	"helm.sh/helm/pkg/helmpath"
+	"helm.sh/helm/pkg/helmpath/xdg"
 )
 
-func hh(debug bool) cli.EnvSettings {
-	apath, err := filepath.Abs("./testdata")
-	if err != nil {
-		panic(err)
-	}
-	hp := helmpath.Home(apath)
-	return cli.EnvSettings{
-		Home:  hp,
-		Debug: debug,
-	}
-}
-
 func TestCollectPlugins(t *testing.T) {
-	// Reset HELM HOME to testdata.
-	oldhh := os.Getenv("HELM_HOME")
-	defer os.Setenv("HELM_HOME", oldhh)
-	os.Setenv("HELM_HOME", "")
+	os.Setenv(xdg.DataHomeEnvVar, "testdata")
 
-	env := hh(false)
+	env := cli.EnvSettings{}
 	p, err := collectPlugins(env)
 	if err != nil {
 		t.Fatal(err)
@@ -72,11 +56,9 @@ func TestPluginGetter(t *testing.T) {
 		t.Skip("TODO: refactor this test to work on windows")
 	}
 
-	oldhh := os.Getenv("HELM_HOME")
-	defer os.Setenv("HELM_HOME", oldhh)
-	os.Setenv("HELM_HOME", "")
+	os.Setenv(xdg.DataHomeEnvVar, "testdata")
 
-	env := hh(false)
+	env := cli.EnvSettings{}
 	pg := NewPluginGetter("echo", env, "test", ".")
 	g, err := pg()
 	if err != nil {
@@ -104,7 +86,7 @@ func TestPluginSubCommands(t *testing.T) {
 	defer os.Setenv("HELM_HOME", oldhh)
 	os.Setenv("HELM_HOME", "")
 
-	env := hh(false)
+	env := cli.EnvSettings{}
 	pg := NewPluginGetter("echo -n", env, "test", ".")
 	g, err := pg()
 	if err != nil {

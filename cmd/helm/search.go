@@ -42,8 +42,6 @@ Repositories are managed with 'helm repo' commands.
 const searchMaxScore = 25
 
 type searchOptions struct {
-	helmhome helmpath.Home
-
 	versions bool
 	regexp   bool
 	version  string
@@ -57,7 +55,6 @@ func newSearchCmd(out io.Writer) *cobra.Command {
 		Short: "search for a keyword in charts",
 		Long:  searchDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			o.helmhome = settings.Home
 			return o.run(out, args)
 		},
 	}
@@ -141,7 +138,7 @@ func (o *searchOptions) formatSearchResults(res []*search.Result) string {
 
 func (o *searchOptions) buildIndex(out io.Writer) (*search.Index, error) {
 	// Load the repositories.yaml
-	rf, err := repo.LoadFile(o.helmhome.RepositoryFile())
+	rf, err := repo.LoadFile(helmpath.RepositoryFile())
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +146,7 @@ func (o *searchOptions) buildIndex(out io.Writer) (*search.Index, error) {
 	i := search.NewIndex()
 	for _, re := range rf.Repositories {
 		n := re.Name
-		f := o.helmhome.CacheIndex(n)
+		f := helmpath.CacheIndex(n)
 		ind, err := repo.LoadIndexFile(f)
 		if err != nil {
 			// TODO should print to stderr

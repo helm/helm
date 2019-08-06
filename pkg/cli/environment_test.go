@@ -22,8 +22,6 @@ import (
 	"testing"
 
 	"github.com/spf13/pflag"
-
-	"helm.sh/helm/pkg/helmpath"
 )
 
 func TestEnvSettings(t *testing.T) {
@@ -35,39 +33,31 @@ func TestEnvSettings(t *testing.T) {
 		envars map[string]string
 
 		// expected values
-		home, ns, kcontext, plugins string
-		debug                       bool
+		ns, kcontext string
+		debug        bool
 	}{
 		{
-			name:    "defaults",
-			home:    defaultHelmHome,
-			plugins: helmpath.Home(defaultHelmHome).Plugins(),
-			ns:      "",
+			name: "defaults",
+			ns:   "",
 		},
 		{
-			name:    "with flags set",
-			args:    "--home /foo --debug --namespace=myns",
-			home:    "/foo",
-			plugins: helmpath.Home("/foo").Plugins(),
-			ns:      "myns",
-			debug:   true,
+			name:  "with flags set",
+			args:  "--debug --namespace=myns",
+			ns:    "myns",
+			debug: true,
 		},
 		{
-			name:    "with envvars set",
-			envars:  map[string]string{"HELM_HOME": "/bar", "HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns"},
-			home:    "/bar",
-			plugins: helmpath.Home("/bar").Plugins(),
-			ns:      "yourns",
-			debug:   true,
+			name:   "with envvars set",
+			envars: map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns"},
+			ns:     "yourns",
+			debug:  true,
 		},
 		{
-			name:    "with flags and envvars set",
-			args:    "--home /foo --debug --namespace=myns",
-			envars:  map[string]string{"HELM_HOME": "/bar", "HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_PLUGIN": "glade"},
-			home:    "/foo",
-			plugins: "glade",
-			ns:      "myns",
-			debug:   true,
+			name:   "with flags and envvars set",
+			args:   "--debug --namespace=myns",
+			envars: map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns"},
+			ns:     "myns",
+			debug:  true,
 		},
 	}
 
@@ -87,12 +77,6 @@ func TestEnvSettings(t *testing.T) {
 
 			settings.Init(flags)
 
-			if settings.Home != helmpath.Home(tt.home) {
-				t.Errorf("expected home %q, got %q", tt.home, settings.Home)
-			}
-			if settings.PluginDirs() != tt.plugins {
-				t.Errorf("expected plugins %q, got %q", tt.plugins, settings.PluginDirs())
-			}
 			if settings.Debug != tt.debug {
 				t.Errorf("expected debug %t, got %t", tt.debug, settings.Debug)
 			}

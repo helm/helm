@@ -30,7 +30,6 @@ import (
 
 type pluginRemoveOptions struct {
 	names []string
-	home  helmpath.Home
 }
 
 func newPluginRemoveCmd(out io.Writer) *cobra.Command {
@@ -53,13 +52,12 @@ func (o *pluginRemoveOptions) complete(args []string) error {
 		return errors.New("please provide plugin name to remove")
 	}
 	o.names = args
-	o.home = settings.Home
 	return nil
 }
 
 func (o *pluginRemoveOptions) run(out io.Writer) error {
-	debug("loading installed plugins from %s", settings.PluginDirs())
-	plugins, err := findPlugins(settings.PluginDirs())
+	debug("loading installed plugins from %s", helmpath.Plugins())
+	plugins, err := findPlugins(helmpath.Plugins())
 	if err != nil {
 		return err
 	}
