@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"helm.sh/helm/pkg/helmpath/xdg"
+
 	"k8s.io/client-go/util/homedir"
 )
 
