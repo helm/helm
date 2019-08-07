@@ -267,7 +267,10 @@ func (w *waiter) statefulSetReady(sts *appsv1.StatefulSet) bool {
 	var partition int
 	// 1 is the default for replicas if not set
 	var replicas = 1
-	if sts.Spec.UpdateStrategy.RollingUpdate.Partition != nil {
+	// For some reason, even if the update strategy is a rolling update, the
+	// actual rollingUpdate field can be nil. If it is, we can safely assume
+	// there is no partition value
+	if sts.Spec.UpdateStrategy.RollingUpdate != nil && sts.Spec.UpdateStrategy.RollingUpdate.Partition != nil {
 		partition = int(*sts.Spec.UpdateStrategy.RollingUpdate.Partition)
 	}
 	if sts.Spec.Replicas != nil {
