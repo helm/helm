@@ -160,10 +160,10 @@ metadata:
   name: {{ $fullName }}
   labels:
 {{ include "<CHARTNAME>.labels" . | indent 4 }}
-  {{- with .Values.ingress.annotations }}
+{{- with .Values.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
-  {{- end }}
+{{- end }}
 spec:
 {{- if .Values.ingress.tls }}
   tls:
@@ -207,20 +207,26 @@ spec:
       labels:
         app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
         app.kubernetes.io/instance: {{ .Release.Name }}
+    {{- with .Values.podAnnotations }}
       annotations:
-        {{- toYaml .Values.podAnnotations | nindent 8 }}
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
     spec:
     {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
     {{- end }}
       serviceAccountName: {{ template "<CHARTNAME>.serviceAccountName" . }}
+    {{- with .Values.podSecurityContext }}
       securityContext:
-        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
       containers:
         - name: {{ .Chart.Name }}
+        {{- with .Values.securityContext }}
           securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
+            {{- toYaml . | nindent 12 }}
+        {{- end }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
@@ -235,12 +241,14 @@ spec:
             httpGet:
               path: /
               port: http
+        {{- with .Values.resources }}
           resources:
-            {{- toYaml .Values.resources | nindent 12 }}
-      {{- with .Values.nodeSelector }}
+            {{- toYaml . | nindent 12 }}
+        {{- end }}
+    {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
-      {{- end }}
+    {{- end }}
     {{- with .Values.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
@@ -257,8 +265,10 @@ metadata:
   name: {{ include "<CHARTNAME>.fullname" . }}
   labels:
 {{ include "<CHARTNAME>.labels" . | indent 4 }}
+{{- with .Values.service.annotations  }}
   annotations:
-    {{- toYaml .Values.service.annotations | nindent 4 }}
+    {{- toYaml .| nindent 4 }}
+{{- end }}
 spec:
   type: {{ .Values.service.type }}
   ports:
