@@ -1,6 +1,6 @@
 /*
-Copyright The Helm Authors.go are held by The Go Authors, 2009 and are provided under
-the BSD license.
+Copyright (c) for portions of walk_test.go are held by The Go Authors, 2009 and are
+provided under the BSD license.
 
 https://github.com/golang/go/blob/master/LICENSE
 

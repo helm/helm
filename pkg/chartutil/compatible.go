@@ -14,16 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package version // import "helm.sh/helm/pkg/version"
+package chartutil
 
-// BuildInfo describes the compile time information.
-type BuildInfo struct {
-	// Version is the current semver.
-	Version string `json:"version,omitempty"`
-	// GitCommit is the git sha1.
-	GitCommit string `json:"git_commit,omitempty"`
-	// GitTreeState is the state of the git tree.
-	GitTreeState string `json:"git_tree_state,omitempty"`
-	// GoVersion is the version of the Go compiler used.
-	GoVersion string `json:"go_version,omitempty"`
+import "github.com/Masterminds/semver"
+
+// IsCompatibleRange compares a version to a constraint.
+// It returns true if the version matches the constraint, and false in all other cases.
+func IsCompatibleRange(constraint, ver string) bool {
+	sv, err := semver.NewVersion(ver)
+	if err != nil {
+		return false
+	}
+
+	c, err := semver.NewConstraint(constraint)
+	if err != nil {
+		return false
+	}
+	return c.Check(sv)
 }

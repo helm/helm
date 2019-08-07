@@ -15,32 +15,9 @@ limitations under the License.
 */
 
 // Package version represents the current version of the project.
-package version // import "helm.sh/helm/pkg/version"
+package chartutil
 
 import "testing"
-
-func TestIsCompatible(t *testing.T) {
-	tests := []struct {
-		client   string
-		server   string
-		expected bool
-	}{
-		{"v2.0.0-alpha.4", "v2.0.0-alpha.4", true},
-		{"v2.0.0-alpha.3", "v2.0.0-alpha.4", false},
-		{"v2.0.0", "v2.0.0-alpha.4", false},
-		{"v2.0.0-alpha.4", "v2.0.0", false},
-		{"v2.0.0", "v2.0.1", true},
-		{"v2.0.1", "v2.0.0", true},
-		{"v2.0.0", "v2.1.1", true},
-		{"v2.1.0", "v2.0.1", false},
-	}
-
-	for _, tt := range tests {
-		if IsCompatible(tt.client, tt.server) != tt.expected {
-			t.Errorf("expected client(%s) and server(%s) to be %v", tt.client, tt.server, tt.expected)
-		}
-	}
-}
 
 func TestIsCompatibleRange(t *testing.T) {
 	tests := []struct {

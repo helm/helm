@@ -44,7 +44,6 @@ import (
 	"helm.sh/helm/pkg/repo"
 	"helm.sh/helm/pkg/storage"
 	"helm.sh/helm/pkg/storage/driver"
-	"helm.sh/helm/pkg/version"
 )
 
 // releaseNameMaxLen is the maximum length of a release name.
@@ -340,7 +339,7 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 	}
 
 	if ch.Metadata.KubeVersion != "" {
-		if !version.IsCompatibleRange(ch.Metadata.KubeVersion, caps.KubeVersion.String()) {
+		if !chartutil.IsCompatibleRange(ch.Metadata.KubeVersion, caps.KubeVersion.String()) {
 			return hs, b, "", errors.Errorf("chart requires kubernetesVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, caps.KubeVersion.String())
 		}
 	}

@@ -31,10 +31,9 @@ import (
 const templateDesc = `
 Render chart templates locally and display the output.
 
-This does not require Helm. However, any values that would normally be
-looked up or retrieved in-cluster will be faked locally. Additionally, none
-of the server-side testing of chart validity (e.g. whether an API is supported)
-is done.
+Any values that would normally be looked up or retrieved in-cluster will be
+faked locally. Additionally, none of the server-side testing of chart validity
+(e.g. whether an API is supported) is done.
 `
 
 func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
