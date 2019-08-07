@@ -32,9 +32,3 @@ type UninstallReleaseResponse struct {
 	// Info is an uninstall message
 	Info string `json:"info,omitempty"`
 }
-
-// TestReleaseResponse represents a message from executing a test
-type TestReleaseResponse struct {
-	Msg    string        `json:"msg,omitempty"`
-	Status TestRunStatus `json:"status,omitempty"`
-}

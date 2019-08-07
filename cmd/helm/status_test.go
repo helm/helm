@@ -84,16 +84,34 @@ func TestStatusCmd(t *testing.T) {
 				Status: release.StatusDeployed,
 			},
 			&release.Hook{
-				Name:   "foo",
+				Name:   "never-run-test",
 				Events: []release.HookEvent{release.HookTest},
 			},
 			&release.Hook{
-				Name:   "bar",
+				Name:   "passing-test",
 				Events: []release.HookEvent{release.HookTest},
 				LastRun: release.HookExecution{
 					StartedAt:   mustParseTime("2006-01-02T15:04:05Z"),
 					CompletedAt: mustParseTime("2006-01-02T15:04:07Z"),
-					Successful:  true,
+					Phase:       release.HookPhaseSucceeded,
+				},
+			},
+			&release.Hook{
+				Name:   "failing-test",
+				Events: []release.HookEvent{release.HookTest},
+				LastRun: release.HookExecution{
+					StartedAt:   mustParseTime("2006-01-02T15:10:05Z"),
+					CompletedAt: mustParseTime("2006-01-02T15:10:07Z"),
+					Phase:       release.HookPhaseFailed,
+				},
+			},
+			&release.Hook{
+				Name:   "passing-pre-install",
+				Events: []release.HookEvent{release.HookPreInstall},
+				LastRun: release.HookExecution{
+					StartedAt:   mustParseTime("2006-01-02T15:00:05Z"),
+					CompletedAt: mustParseTime("2006-01-02T15:00:07Z"),
+					Phase:       release.HookPhaseSucceeded,
 				},
 			},
 		),

@@ -57,7 +57,7 @@ func PrintRelease(out io.Writer, rel *release.Release) {
 				h.Name,
 				fmt.Sprintf("Last Started:   %s", h.LastRun.StartedAt),
 				fmt.Sprintf("Last Completed: %s", h.LastRun.CompletedAt),
-				fmt.Sprintf("Successful:     %t", h.LastRun.Successful),
+				fmt.Sprintf("Phase:          %s", h.LastRun.Phase),
 			)
 		}
 	}

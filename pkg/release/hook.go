@@ -82,8 +82,23 @@ type Hook struct {
 type HookExecution struct {
 	// StartedAt indicates the date/time this hook was started
 	StartedAt time.Time `json:"started_at,omitempty"`
-	// CompletedAt indicates the date/time this hook was completed
+	// CompletedAt indicates the date/time this hook was completed.
 	CompletedAt time.Time `json:"completed_at,omitempty"`
-	// Successful indicates whether the hook completed successfully
-	Successful bool `json:"successful"`
+	// Phase indicates whether the hook completed successfully
+	Phase HookPhase `json:"phase"`
 }
+
+// A HookPhase indicates the state of a hook execution
+type HookPhase string
+
+const (
+	// HookPhaseUnknown indicates that a hook is in an unknown state
+	HookPhaseUnknown HookPhase = "Unknown"
+	// HookPhaseSucceeded indicates that hook execution succeeded
+	HookPhaseSucceeded HookPhase = "Succeeded"
+	// HookPhaseFailed indicates that hook execution failed
+	HookPhaseFailed HookPhase = "Failed"
+)
+
+// Strng converts a hook phase to a printable string
+func (x HookPhase) String() string { return string(x) }
