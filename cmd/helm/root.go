@@ -122,6 +122,11 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 
 	settings.AddFlags(flags)
 
+	// We can safely ignore any errors that flags.Parse encounters since
+	// those errors will be caught later during the call to cmd.Execution.
+	// This call is required to gather configuration information prior to
+	// execution.
+	flags.ParseErrorsWhitelist.UnknownFlags = true
 	flags.Parse(args)
 
 	// set defaults from environment
