@@ -357,7 +357,7 @@ func (m *Manager) hasAllRepos(deps []*chartutil.Dependency) error {
 	return nil
 }
 
-// getRepoNames returns the repo names of the referenced deps which can be used to fetch the cahced index file.
+// getRepoNames returns the repo names of the referenced deps which can be used to fetch the cached index file.
 func (m *Manager) getRepoNames(deps []*chartutil.Dependency) (map[string]string, error) {
 	rf, err := repo.LoadRepositoriesFile(m.HelmHome.RepositoryFile())
 	if err != nil {
