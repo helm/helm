@@ -83,6 +83,9 @@ func TestSaveDir(t *testing.T) {
 		Files: []*chart.File{
 			{Name: "scheherazade/shahryar.txt", Data: []byte("1,001 Nights")},
 		},
+		Templates: []*chart.File{
+			{Name: "templates/nested/dir/thing.yaml", Data: []byte("abc: {{ .Values.abc }}")},
+		},
 	}
 
 	if err := SaveDir(c, tmp); err != nil {
@@ -97,6 +100,11 @@ func TestSaveDir(t *testing.T) {
 	if c2.Name() != c.Name() {
 		t.Fatalf("Expected chart archive to have %q, got %q", c.Name(), c2.Name())
 	}
+
+	if len(c2.Templates) != 1 || c2.Templates[0].Name != "templates/nested/dir/thing.yaml" {
+		t.Fatal("Templates data did not match")
+	}
+
 	if len(c2.Files) != 1 || c2.Files[0].Name != "scheherazade/shahryar.txt" {
 		t.Fatal("Files data did not match")
 	}
