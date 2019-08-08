@@ -17,14 +17,8 @@ package helmpath
 
 import "os"
 
-func dataHome() string {
-	return configHome()
-}
+func dataHome() string { return configHome() }
 
-func configHome() string {
-	return os.Getenv("APPDATA")
-}
+func configHome() string { return os.Getenv("APPDATA") }
 
-func cacheHome() string {
-	return os.Getenv("TEMP")
-}
+func cacheHome() string { return os.Getenv("TEMP") }

@@ -19,7 +19,7 @@ import (
 )
 
 // This helper builds paths to Helm's configuration, cache and data paths.
-var lp = lazypath{name: "helm"}
+const lp = lazypath("helm")
 
 // ConfigPath returns the path where Helm stores configuration.
 func ConfigPath() string {
