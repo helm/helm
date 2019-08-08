@@ -33,9 +33,11 @@ Example usage:
 
 func newChartCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "chart",
-		Short: "push, pull, tag, or remove Helm charts",
-		Long:  chartHelp,
+		Use:               "chart",
+		Short:             "push, pull, tag, or remove Helm charts",
+		Long:              chartHelp,
+		Hidden:            !FeatureGateOCI.IsEnabled(),
+		PersistentPreRunE: checkOCIFeatureGate(),
 	}
 	cmd.AddCommand(
 		newChartListCmd(cfg, out),

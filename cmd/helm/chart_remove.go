@@ -41,6 +41,7 @@ func newChartRemoveCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 		Short:   "remove a chart",
 		Long:    chartRemoveDesc,
 		Args:    require.MinimumNArgs(1),
+		Hidden:  !FeatureGateOCI.IsEnabled(),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ref := args[0]
 			return action.NewChartRemove(cfg).Run(out, ref)

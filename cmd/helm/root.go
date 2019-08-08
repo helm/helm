@@ -25,9 +25,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/cmd/helm/require"
+	"helm.sh/helm/internal/experimental/registry"
 	"helm.sh/helm/pkg/action"
 	"helm.sh/helm/pkg/helmpath"
-	"helm.sh/helm/pkg/registry"
 )
 
 const (

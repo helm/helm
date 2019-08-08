@@ -35,10 +35,11 @@ and check into source control if desired.
 
 func newChartExportCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	return &cobra.Command{
-		Use:   "export [ref]",
-		Short: "export a chart to directory",
-		Long:  chartExportDesc,
-		Args:  require.MinimumNArgs(1),
+		Use:    "export [ref]",
+		Short:  "export a chart to directory",
+		Long:   chartExportDesc,
+		Args:   require.MinimumNArgs(1),
+		Hidden: !FeatureGateOCI.IsEnabled(),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ref := args[0]
 			return action.NewChartExport(cfg).Run(out, ref)

@@ -24,6 +24,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/klog"
@@ -33,10 +34,14 @@ import (
 
 	"helm.sh/helm/pkg/action"
 	"helm.sh/helm/pkg/cli"
+	"helm.sh/helm/pkg/gates"
 	"helm.sh/helm/pkg/kube"
 	"helm.sh/helm/pkg/storage"
 	"helm.sh/helm/pkg/storage/driver"
 )
+
+// FeatureGateOCI is the feature gate for checking if `helm chart` and `helm registry` commands should work
+const FeatureGateOCI = gates.Gate("HELM_EXPERIMENTAL_OCI")
 
 var (
 	settings   cli.EnvSettings
@@ -133,4 +138,13 @@ func getNamespace() string {
 // wordSepNormalizeFunc changes all flags that contain "_" separators
 func wordSepNormalizeFunc(f *pflag.FlagSet, name string) pflag.NormalizedName {
 	return pflag.NormalizedName(strings.ReplaceAll(name, "_", "-"))
+}
+
+func checkOCIFeatureGate() func(_ *cobra.Command, _ []string) error {
+	return func(_ *cobra.Command, _ []string) error {
+		if !FeatureGateOCI.IsEnabled() {
+			return FeatureGateOCI.Error()
+		}
+		return nil
+	}
 }
