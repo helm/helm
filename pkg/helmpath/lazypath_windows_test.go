@@ -21,14 +21,15 @@ import (
 	"testing"
 
 	"k8s.io/client-go/util/homedir"
+
+	"helm.sh/helm/pkg/helmpath/xdg"
 )
 
 const (
-	appName  string = "helm"
-	testFile string = "test.txt"
+	appName  = "helm"
+	testFile = "test.txt"
+	lazy     = lazypath(appName)
 )
-
-var lazy = lazypath{name: appName}
 
 func TestDataPath(t *testing.T) {
 	os.Unsetenv(DataHomeEnvVar)
@@ -40,9 +41,9 @@ func TestDataPath(t *testing.T) {
 		t.Errorf("expected '%s', got '%s'", expected, lazy.dataPath(testFile))
 	}
 
-	os.Setenv(DataHomeEnvVar, filepath.Join(homedir.HomeDir(), "xdg")))
+	os.Setenv(DataHomeEnvVar, filepath.Join(homedir.HomeDir(), "xdg"))
 
-	expected = filepath.Join(homedir.HomeDir(), "xdg" appName, testFile)
+	expected = filepath.Join(homedir.HomeDir(), "xdg", appName, testFile)
 
 	if lazy.dataPath(testFile) != expected {
 		t.Errorf("expected '%s', got '%s'", expected, lazy.dataPath(testFile))
@@ -59,9 +60,9 @@ func TestConfigPath(t *testing.T) {
 		t.Errorf("expected '%s', got '%s'", expected, lazy.configPath(testFile))
 	}
 
-	os.Setenv(xdg.ConfigHomeEnvVar, filepath.Join(homedir.HomeDir(), "xdg")))
+	os.Setenv(xdg.ConfigHomeEnvVar, filepath.Join(homedir.HomeDir(), "xdg"))
 
-	expected = filepath.Join(homedir.HomeDir(), "xdg" appName, testFile)
+	expected = filepath.Join(homedir.HomeDir(), "xdg", appName, testFile)
 
 	if lazy.configPath(testFile) != expected {
 		t.Errorf("expected '%s', got '%s'", expected, lazy.configPath(testFile))
@@ -78,9 +79,9 @@ func TestCachePath(t *testing.T) {
 		t.Errorf("expected '%s', got '%s'", expected, lazy.cachePath(testFile))
 	}
 
-	os.Setenv(CacheHomeEnvVar, filepath.Join(homedir.HomeDir(), "xdg")))
+	os.Setenv(CacheHomeEnvVar, filepath.Join(homedir.HomeDir(), "xdg"))
 
-	expected = filepath.Join(homedir.HomeDir(), "xdg" appName, testFile)
+	expected = filepath.Join(homedir.HomeDir(), "xdg", appName, testFile)
 
 	if lazy.cachePath(testFile) != expected {
 		t.Errorf("expected '%s', got '%s'", expected, lazy.cachePath(testFile))
