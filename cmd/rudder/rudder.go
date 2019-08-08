@@ -63,7 +63,7 @@ func main() {
 	if err != nil {
 		grpclog.Fatalf("Cannot initialize Kubernetes connection: %s", err)
 	}
-	grpclog.Printf("Creating tcp socket on %s\n", opts.listen)
+	grpclog.Infof("Creating tcp socket on %s\n", opts.listen)
 	lis, err := net.Listen("tcp", opts.listen)
 	if err != nil {
 		grpclog.Fatalf("failed to listen: %v", err)
@@ -71,7 +71,7 @@ func main() {
 	grpcServer := grpc.NewServer()
 	rudderAPI.RegisterReleaseModuleServiceServer(grpcServer, &ReleaseModuleServiceServer{})
 
-	grpclog.Printf("Starting server on %s\n", opts.listen)
+	grpclog.Infof("Starting server on %s\n", opts.listen)
 	grpcServer.Serve(lis)
 }
 
@@ -93,7 +93,7 @@ func (r *ReleaseModuleServiceServer) InstallRelease(ctx context.Context, in *rud
 	b := bytes.NewBufferString(in.Release.Manifest)
 	err := kubeClient.Create(in.Release.Namespace, b, 500, false)
 	if err != nil {
-		grpclog.Printf("error when creating release: %v", err)
+		grpclog.Infof("error when creating release: %v", err)
 	}
 	return &rudderAPI.InstallReleaseResponse{}, err
 }
