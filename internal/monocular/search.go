@@ -28,6 +28,9 @@ import (
 	"helm.sh/helm/pkg/chart"
 )
 
+// SearchPath is the url path to the search API in monocular.
+const SearchPath = "api/chartsvc/v1/charts/search"
+
 // The structs below represent the structure of the response from the monocular
 // search API. The structs were not imported from monocular because monocular
 // imports from Helm v2 (avoiding circular version dependency) and the mappings
@@ -100,7 +103,7 @@ func (c *Client) Search(term string) ([]SearchResult, error) {
 	}
 
 	// Set the path to the monocular API endpoint for search
-	p.Path = path.Join(p.Path, "api/chartsvc/v1/charts/search")
+	p.Path = path.Join(p.Path, SearchPath)
 
 	p.RawQuery = "q=" + url.QueryEscape(term)
 
