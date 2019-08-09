@@ -19,8 +19,6 @@ package version // import "helm.sh/helm/internal/version"
 import (
 	"flag"
 	"runtime"
-
-	hversion "helm.sh/helm/pkg/version"
 )
 
 var (
@@ -41,6 +39,18 @@ var (
 	gitTreeState = ""
 )
 
+// BuildInfo describes the compile time information.
+type BuildInfo struct {
+	// Version is the current semver.
+	Version string `json:"version,omitempty"`
+	// GitCommit is the git sha1.
+	GitCommit string `json:"git_commit,omitempty"`
+	// GitTreeState is the state of the git tree.
+	GitTreeState string `json:"git_tree_state,omitempty"`
+	// GoVersion is the version of the Go compiler used.
+	GoVersion string `json:"go_version,omitempty"`
+}
+
 // GetVersion returns the semver string of the version
 func GetVersion() string {
 	if metadata == "" {
@@ -50,8 +60,8 @@ func GetVersion() string {
 }
 
 // Get returns build info
-func Get() hversion.BuildInfo {
-	v := hversion.BuildInfo{
+func Get() BuildInfo {
+	v := BuildInfo{
 		Version:      GetVersion(),
 		GitCommit:    gitCommit,
 		GitTreeState: gitTreeState,

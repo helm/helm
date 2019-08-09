@@ -24,9 +24,9 @@ import (
 
 	"github.com/pkg/errors"
 
+	"helm.sh/helm/internal/ignore"
+	"helm.sh/helm/internal/sympath"
 	"helm.sh/helm/pkg/chart"
-	"helm.sh/helm/pkg/ignore"
-	"helm.sh/helm/pkg/sympath"
 )
 
 // DirLoader loads a chart from a directory

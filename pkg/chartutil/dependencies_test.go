@@ -23,7 +23,6 @@ import (
 
 	"helm.sh/helm/pkg/chart"
 	"helm.sh/helm/pkg/chart/loader"
-	"helm.sh/helm/pkg/version"
 )
 
 func loadChart(t *testing.T, path string) *chart.Chart {
@@ -258,7 +257,7 @@ func TestGetAliasDependency(t *testing.T) {
 	}
 
 	if req[0].Version != "" {
-		if !version.IsCompatibleRange(req[0].Version, aliasChart.Metadata.Version) {
+		if !IsCompatibleRange(req[0].Version, aliasChart.Metadata.Version) {
 			t.Fatalf("dependency chart version is not in the compatible range")
 		}
 	}
@@ -270,7 +269,7 @@ func TestGetAliasDependency(t *testing.T) {
 	}
 
 	req[0].Version = "something else which is not in the compatible range"
-	if version.IsCompatibleRange(req[0].Version, aliasChart.Metadata.Version) {
+	if IsCompatibleRange(req[0].Version, aliasChart.Metadata.Version) {
 		t.Fatalf("dependency chart version which is not in the compatible range should cause a failure other than a success ")
 	}
 }

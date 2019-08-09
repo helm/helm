@@ -23,9 +23,9 @@ import (
 
 	"github.com/pkg/errors"
 
+	"helm.sh/helm/internal/tlsutil"
+	"helm.sh/helm/internal/urlutil"
 	"helm.sh/helm/internal/version"
-	"helm.sh/helm/pkg/tlsutil"
-	"helm.sh/helm/pkg/urlutil"
 )
 
 // HTTPGetter is the efault HTTP(/S) backend handler

@@ -31,10 +31,10 @@ import (
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
+	"helm.sh/helm/internal/urlutil"
 	"helm.sh/helm/pkg/chart"
 	"helm.sh/helm/pkg/chart/loader"
 	"helm.sh/helm/pkg/provenance"
-	"helm.sh/helm/pkg/urlutil"
 )
 
 var indexPath = "index.yaml"
