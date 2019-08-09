@@ -19,7 +19,6 @@ import (
 	"bytes"
 	"io"
 	"net/http"
-	"strings"
 
 	"github.com/pkg/errors"
 
@@ -49,7 +48,7 @@ func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
 		return buf, err
 	}
 
-	req.Header.Set("User-Agent", "Helm/"+strings.TrimPrefix(version.GetVersion(), "v"))
+	req.Header.Set("User-Agent", version.GetUserAgent())
 	if g.opts.userAgent != "" {
 		req.Header.Set("User-Agent", g.opts.userAgent)
 	}
