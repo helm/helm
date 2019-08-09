@@ -17,10 +17,7 @@ limitations under the License.
 package monocular
 
 import (
-	"strings"
 	"testing"
-
-	"helm.sh/helm/internal/version"
 )
 
 func TestNew(t *testing.T) {
@@ -30,10 +27,5 @@ func TestNew(t *testing.T) {
 	}
 	if c.BaseURL != "https://hub.helm.sh" {
 		t.Errorf("incorrect BaseURL. Expected \"https://hub.helm.sh\" but got %q", c.BaseURL)
-	}
-
-	ua := "Helm/" + strings.TrimPrefix(version.GetVersion(), "v")
-	if c.UserAgent != ua {
-		t.Errorf("incorrect user agent. Expected %q but got %q", ua, c.UserAgent)
 	}
 }

@@ -19,9 +19,6 @@ package monocular
 import (
 	"errors"
 	"net/url"
-	"strings"
-
-	"helm.sh/helm/internal/version"
 )
 
 // ErrHostnameNotProvided indicates the url is missing a hostname
@@ -29,8 +26,6 @@ var ErrHostnameNotProvided = errors.New("no hostname provided")
 
 // Client represents a client capable of communicating with the Monocular API.
 type Client struct {
-	// The user agent to identify as when making requests
-	UserAgent string
 
 	// The base URL for requests
 	BaseURL string
@@ -48,9 +43,8 @@ func New(u string) (*Client, error) {
 	}
 
 	return &Client{
-		UserAgent: "Helm/" + strings.TrimPrefix(version.GetVersion(), "v"),
-		BaseURL:   u,
-		Log:       nopLogger,
+		BaseURL: u,
+		Log:     nopLogger,
 	}, nil
 }
 

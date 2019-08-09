@@ -24,23 +24,27 @@ import (
 	"path"
 	"time"
 
+	"helm.sh/helm/internal/version"
 	"helm.sh/helm/pkg/chart"
 )
 
 // The structs below represent the structure of the response from the monocular
-// search API.
+// search API. The structs were not imported from monocular because monocular
+// imports from Helm v2 (avoiding circular version dependency) and the mappings
+// are slightly different (monocular search results do not directly reflect
+// the struct definitions).
 
 // SearchResult represents an individual chart result
 type SearchResult struct {
 	ID            string        `json:"id"`
 	Type          string        `json:"type"`
-	Attributes    Attributes    `json:"attributes"`
+	Attributes    Chart         `json:"attributes"`
 	Links         Links         `json:"links"`
 	Relationships Relationships `json:"relationships"`
 }
 
-// Attributes is the attributes for the chart
-type Attributes struct {
+// Chart is the attributes for the chart
+type Chart struct {
 	Name        string             `json:"name"`
 	Repo        Repo               `json:"repo"`
 	Description string             `json:"description"`
@@ -69,12 +73,12 @@ type Relationships struct {
 
 // LatestChartVersion provides the details on the latest version of the chart
 type LatestChartVersion struct {
-	Data  Data  `json:"data"`
-	Links Links `json:"links"`
+	Data  ChartVersion `json:"data"`
+	Links Links        `json:"links"`
 }
 
-// Data provides the specific data on the chart version
-type Data struct {
+// ChartVersion provides the specific data on the chart version
+type ChartVersion struct {
 	Version    string    `json:"version"`
 	AppVersion string    `json:"app_version"`
 	Created    time.Time `json:"created"`
@@ -108,7 +112,7 @@ func (c *Client) Search(term string) ([]SearchResult, error) {
 
 	// Set the user agent so that monocular can identify where the request
 	// is coming from
-	req.Header.Set("User-Agent", c.UserAgent)
+	req.Header.Set("User-Agent", version.GetUserAgent())
 
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
