@@ -34,5 +34,5 @@ func (g Gate) IsEnabled() bool {
 }
 
 func (g Gate) Error() error {
-	return fmt.Errorf("this feature has been marked as experimental and is not enabled by default. Please set $%s in your environment to use this feature", g.String())
+	return fmt.Errorf("this feature has been marked as experimental and is not enabled by default. Please set %s=1 in your environment to use this feature", g.String())
 }
