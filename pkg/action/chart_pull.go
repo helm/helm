@@ -19,7 +19,7 @@ package action
 import (
 	"io"
 
-	"helm.sh/helm/pkg/registry"
+	"helm.sh/helm/internal/experimental/registry"
 )
 
 // ChartPull performs a chart pull operation.

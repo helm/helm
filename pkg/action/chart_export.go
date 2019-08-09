@@ -19,14 +19,17 @@ package action
 import (
 	"fmt"
 	"io"
+	"path/filepath"
 
+	"helm.sh/helm/internal/experimental/registry"
 	"helm.sh/helm/pkg/chartutil"
-	"helm.sh/helm/pkg/registry"
 )
 
 // ChartExport performs a chart export operation.
 type ChartExport struct {
 	cfg *Configuration
+
+	Destination string
 }
 
 // NewChartExport creates a new ChartExport object with the given configuration.
@@ -48,13 +51,13 @@ func (a *ChartExport) Run(out io.Writer, ref string) error {
 		return err
 	}
 
-	// Save the chart to local directory
-	// TODO: make destination dir configurable
-	err = chartutil.SaveDir(ch, ".")
+	// Save the chart to local destination directory
+	err = chartutil.SaveDir(ch, a.Destination)
 	if err != nil {
 		return err
 	}
 
-	fmt.Fprintf(out, "Exported to %s/\n", ch.Metadata.Name)
+	d := filepath.Join(a.Destination, ch.Metadata.Name)
+	fmt.Fprintf(out, "Exported chart to %s/\n", d)
 	return nil
 }

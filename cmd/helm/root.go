@@ -25,9 +25,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/cmd/helm/require"
+	"helm.sh/helm/internal/experimental/registry"
 	"helm.sh/helm/pkg/action"
 	"helm.sh/helm/pkg/helmpath"
-	"helm.sh/helm/pkg/registry"
 )
 
 const (
@@ -122,6 +122,11 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 
 	settings.AddFlags(flags)
 
+	// We can safely ignore any errors that flags.Parse encounters since
+	// those errors will be caught later during the call to cmd.Execution.
+	// This call is required to gather configuration information prior to
+	// execution.
+	flags.ParseErrorsWhitelist.UnknownFlags = true
 	flags.Parse(args)
 
 	// set defaults from environment

@@ -20,18 +20,14 @@ import (
 )
 
 // lazypath is an lazy-loaded path buffer for the XDG base directory specification.
-//
-// name is the base name of the application referenced in the base directories.
-type lazypath struct {
-	name string
-}
+type lazypath string
 
 func (l lazypath) path(envVar string, defaultFn func() string, file string) string {
 	base := os.Getenv(envVar)
 	if base == "" {
 		base = defaultFn()
 	}
-	return filepath.Join(base, l.name, file)
+	return filepath.Join(base, string(l), file)
 }
 
 // cachePath defines the base directory relative to which user specific non-essential data files

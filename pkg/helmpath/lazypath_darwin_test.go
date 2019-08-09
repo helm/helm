@@ -20,17 +20,16 @@ import (
 	"path/filepath"
 	"testing"
 
-	"helm.sh/helm/pkg/helmpath/xdg"
-
 	"k8s.io/client-go/util/homedir"
+
+	"helm.sh/helm/pkg/helmpath/xdg"
 )
 
 const (
-	appName  string = "helm"
-	testFile string = "test.txt"
+	appName  = "helm"
+	testFile = "test.txt"
+	lazy     = lazypath(appName)
 )
-
-var lazy = lazypath{name: appName}
 
 func TestDataPath(t *testing.T) {
 	os.Unsetenv(xdg.DataHomeEnvVar)
