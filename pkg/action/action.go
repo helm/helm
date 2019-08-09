@@ -262,7 +262,9 @@ func deleteHookByPolicy(client kube.Interface, h *release.Hook, policy string) e
 			return errors.Wrapf(err, "unable to build kubernetes object for deleting hook %s", h.Path)
 		}
 		_, errs := client.Delete(resources)
-		return errors.New(joinErrors(errs))
+		if len(errs) > 0 {
+			return errors.New(joinErrors(errs))
+		}
 	}
 	return nil
 }
