@@ -94,6 +94,8 @@ type HookPhase string
 const (
 	// HookPhaseUnknown indicates that a hook is in an unknown state
 	HookPhaseUnknown HookPhase = "Unknown"
+	// HookPhaseRunning indicates that a hook is currently executing
+	HookPhaseRunning HookPhase = "Running"
 	// HookPhaseSucceeded indicates that hook execution succeeded
 	HookPhaseSucceeded HookPhase = "Succeeded"
 	// HookPhaseFailed indicates that hook execution failed

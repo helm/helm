@@ -48,16 +48,27 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		if err != nil {
 			return errors.Wrapf(err, "unable to build kubernetes object for %s hook %s", hook, h.Path)
 		}
+
+		// Record the time at which the hook was applied to the cluster
+		h.LastRun = release.HookExecution{
+			StartedAt: time.Now(),
+			Phase:     release.HookPhaseRunning,
+		}
+		cfg.recordRelease(rl)
+
+		// As long as the implementation of WatchUntilReady does not panic, HookPhaseFailed or HookPhaseSucceeded
+		// should always be set by this function. If we fail to do that for any reason, then HookPhaseUnknown is
+		// the most appropriate value to surface.
+		h.LastRun.Phase = release.HookPhaseUnknown
+
+		// Create hook resources
 		if _, err := cfg.KubeClient.Create(resources); err != nil {
+			h.LastRun.CompletedAt = time.Now()
+			h.LastRun.Phase = release.HookPhaseFailed
 			return errors.Wrapf(err, "warning: Hook %s %s failed", hook, h.Path)
 		}
 
-		// Get the time at which the hook was applied to the cluster
-		h.LastRun = release.HookExecution{
-			StartedAt: time.Now(),
-			Phase:     release.HookPhaseUnknown,
-		}
-		// Execute the hook
+		// Watch hook resources until they have completed
 		err = cfg.KubeClient.WatchUntilReady(resources, timeout)
 		// Note the time of success/failure
 		h.LastRun.CompletedAt = time.Now()
