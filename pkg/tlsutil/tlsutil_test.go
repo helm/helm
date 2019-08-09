@@ -47,7 +47,7 @@ func TestClientConfig(t *testing.T) {
 		t.Fatalf("expecting 1 client certificates, got %d", got)
 	}
 	if cfg.InsecureSkipVerify {
-		t.Fatalf("insecure skip verify mistmatch, expecting false")
+		t.Fatalf("insecure skip verify mismatch, expecting false")
 	}
 	if cfg.RootCAs == nil {
 		t.Fatalf("mismatch tls RootCAs, expecting non-nil")
