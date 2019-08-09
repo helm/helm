@@ -35,10 +35,11 @@ Must first run "helm chart save" or "helm chart pull".
 
 func newChartPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	return &cobra.Command{
-		Use:   "push [ref]",
-		Short: "push a chart to remote",
-		Long:  chartPushDesc,
-		Args:  require.MinimumNArgs(1),
+		Use:    "push [ref]",
+		Short:  "push a chart to remote",
+		Long:   chartPushDesc,
+		Args:   require.MinimumNArgs(1),
+		Hidden: !FeatureGateOCI.IsEnabled(),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ref := args[0]
 			return action.NewChartPush(cfg).Run(out, ref)

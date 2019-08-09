@@ -36,6 +36,7 @@ func newChartListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Aliases: []string{"ls"},
 		Short:   "list all saved charts",
 		Long:    chartListDesc,
+		Hidden:  !FeatureGateOCI.IsEnabled(),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return action.NewChartList(cfg).Run(out)
 		},
