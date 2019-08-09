@@ -50,7 +50,7 @@ func newChartSaveCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return err
 			}
 
-			ch, err := loader.LoadDir(path)
+			ch, err := loader.Load(path)
 			if err != nil {
 				return err
 			}
