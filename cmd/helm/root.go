@@ -185,7 +185,6 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		newUpgradeCmd(actionConfig, out),
 
 		newCompletionCmd(out),
-		newPathCmd(out),
 		newInitCmd(out),
 		newPluginCmd(out),
 		newVersionCmd(out),
