@@ -19,9 +19,11 @@ import (
 	"bytes"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/pkg/errors"
 
+	"helm.sh/helm/internal/version"
 	"helm.sh/helm/pkg/tlsutil"
 	"helm.sh/helm/pkg/urlutil"
 )
@@ -46,7 +48,8 @@ func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
 	if err != nil {
 		return buf, err
 	}
-	// req.Header.Set("User-Agent", "Helm/"+strings.TrimPrefix(version.GetVersion(), "v"))
+
+	req.Header.Set("User-Agent", "Helm/"+strings.TrimPrefix(version.GetVersion(), "v"))
 	if g.opts.userAgent != "" {
 		req.Header.Set("User-Agent", g.opts.userAgent)
 	}

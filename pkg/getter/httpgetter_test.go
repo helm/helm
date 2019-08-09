@@ -21,9 +21,11 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"helm.sh/helm/internal/test"
+	"helm.sh/helm/internal/version"
 	"helm.sh/helm/pkg/cli"
 )
 
@@ -92,7 +94,12 @@ func TestHTTPGetter(t *testing.T) {
 
 func TestDownload(t *testing.T) {
 	expect := "Call me Ishmael"
+	expectedUserAgent := "I am Groot"
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defaultUserAgent := "Helm/" + strings.TrimPrefix(version.GetVersion(), "v")
+		if r.UserAgent() != defaultUserAgent {
+			t.Errorf("Expected '%s', got '%s'", defaultUserAgent, r.UserAgent())
+		}
 		fmt.Fprint(w, expect)
 	}))
 	defer srv.Close()
@@ -115,11 +122,14 @@ func TestDownload(t *testing.T) {
 		t.Errorf("Expected %q, got %q", expect, got.String())
 	}
 
-	// test with server backed by basic auth
+	// test with http server
 	basicAuthSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		username, password, ok := r.BasicAuth()
 		if !ok || username != "username" || password != "password" {
 			t.Errorf("Expected request to use basic auth and for username == 'username' and password == 'password', got '%v', '%s', '%s'", ok, username, password)
+		}
+		if r.UserAgent() != expectedUserAgent {
+			t.Errorf("Expected '%s', got '%s'", expectedUserAgent, r.UserAgent())
 		}
 		fmt.Fprint(w, expect)
 	}))
@@ -130,6 +140,7 @@ func TestDownload(t *testing.T) {
 	httpgetter, err := NewHTTPGetter(
 		WithURL(u.String()),
 		WithBasicAuth("username", "password"),
+		WithUserAgent(expectedUserAgent),
 	)
 	if err != nil {
 		t.Fatal(err)
