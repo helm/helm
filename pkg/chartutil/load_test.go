@@ -23,6 +23,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -37,6 +38,17 @@ func TestLoadDir(t *testing.T) {
 	verifyFrobnitz(t, c)
 	verifyChart(t, c)
 	verifyRequirements(t, c)
+}
+
+func TestLoadNonV1Chart(t *testing.T) {
+	_, err := Load("testdata/frobnitz.v2")
+	if err != nil {
+		if strings.Compare(err.Error(), "apiVersion 'v2' is not valid. The value must be \"v1\"") != 0 {
+			t.Errorf("Unexpected message: %s", err)
+		}
+		return
+	}
+	t.Fatalf("chart with v2 apiVersion should not load")
 }
 
 func TestLoadFile(t *testing.T) {
