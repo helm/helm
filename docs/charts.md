@@ -302,7 +302,7 @@ In the above example all charts with the tag `front-end` would be disabled but s
 `front-end` tag and `subchart1` will be enabled.
 
 Since `subchart2` is tagged with `back-end` and that tag evaluates to `true`, `subchart2` will be
-enabled. Also notes that although `subchart2` has a condition specified in `requirements.yaml`, there
+enabled. Also note that although `subchart2` has a condition specified in `requirements.yaml`, there
 is no corresponding path and value in the parent's values so that condition has no effect.
 
 ##### Using the CLI with Tags and Conditions

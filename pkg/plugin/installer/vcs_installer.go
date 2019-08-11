@@ -136,7 +136,7 @@ func (i *VCSInstaller) solveVersion(repo vcs.Repo) (string, error) {
 	sort.Sort(sort.Reverse(semver.Collection(semvers)))
 	for _, v := range semvers {
 		if constraint.Check(v) {
-			// If the constrint passes get the original reference
+			// If the constraint passes get the original reference
 			ver := v.Original()
 			debug("setting to %s", ver)
 			return ver, nil
