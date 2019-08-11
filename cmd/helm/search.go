@@ -52,15 +52,15 @@ type searchCmd struct {
 	output   string
 }
 
-type ResultEntry struct {
+type resultEntry struct {
 	Name			string `json:"name"`
 	ChartVersion 	string `json:"chartVersion"`
 	AppVersion 		string `json:"appVersion"`
 	Description 	string `json:"description"`
 }
 
-type Results struct {
-	SearchResults []ResultEntry `json:"searchResults"`
+type results struct {
+	SearchResults []resultEntry `json:"searchResults"`
 }
 
 func newSearchCmd(out io.Writer) *cobra.Command {
@@ -110,7 +110,7 @@ func (s *searchCmd) run(args []string) error {
 	}
 
 	if s.output == "json" {
-		formattedResults, err := s.formatSearchResultsJson(data, s.colWidth)
+		formattedResults, err := s.formatSearchResultsJSON(data, s.colWidth)
 		if err != nil {
 			return err
 		}
@@ -165,23 +165,23 @@ func (s *searchCmd) formatSearchResults(res []*search.Result, colWidth uint) str
 	return table.String()
 }
 
-func (s *searchCmd) formatSearchResultsJson(res []*search.Result, colWidth uint) (string, error) {
-	var resultJson []ResultEntry
+func (s *searchCmd) formatSearchResultsJSON(res []*search.Result, colWidth uint) (string, error) {
+	var resultJSON []resultEntry
 
 	if len(res) == 0 {
 		return "No results found", nil
 	}
 
 	for _, r := range res {
-		resultRow := ResultEntry{
+		resultRow := resultEntry{
 			Name: r.Name,
 			ChartVersion: r.Chart.Version,
 			AppVersion: r.Chart.AppVersion,
 			Description: r.Chart.Description,
 		}
-		resultJson = append(resultJson, resultRow)
+		resultJSON = append(resultJSON, resultRow)
 	}
-	jsonSearchResults, err := json.MarshalIndent(Results{SearchResults: resultJson}, "", "    ")
+	jsonSearchResults, err := json.MarshalIndent(results{SearchResults: resultJSON}, "", "    ")
 	if err != nil {
 		return "", err
 	}
