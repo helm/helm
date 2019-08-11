@@ -166,10 +166,12 @@ func (s *searchCmd) formatSearchResults(res []*search.Result, colWidth uint) str
 }
 
 func (s *searchCmd) formatSearchResultsJson(res []*search.Result, colWidth uint) (string, error) {
+	var resultJson []ResultEntry
+
 	if len(res) == 0 {
 		return "No results found", nil
 	}
-	resultJson := []ResultEntry{}
+
 	for _, r := range res {
 		resultRow := ResultEntry{
 			Name: r.Name,
@@ -179,12 +181,12 @@ func (s *searchCmd) formatSearchResultsJson(res []*search.Result, colWidth uint)
 		}
 		resultJson = append(resultJson, resultRow)
 	}
-	json, err := json.MarshalIndent(Results{SearchResults: resultJson}, "", "    ")
+	jsonSearchResults, err := json.MarshalIndent(Results{SearchResults: resultJson}, "", "    ")
 	if err != nil {
 		return "", err
 	}
 
-	return string(json), nil
+	return string(jsonSearchResults), nil
 }
 
 func (s *searchCmd) buildIndex() (*search.Index, error) {
