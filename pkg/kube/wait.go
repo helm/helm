@@ -27,6 +27,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
+	storagev1 "k8s.io/api/storage/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -114,6 +115,14 @@ func (w *waiter) waitForResources(created ResourceList) error {
 				if !w.deploymentReady(newReplicaSet, currentDeployment) {
 					return false, nil
 				}
+			case *storagev1.StorageClass:
+				sc, err := w.c.StorageV1().StorageClasses().Get(value.Name, metav1.GetOptions{})
+				if err != nil {
+					return false, err
+				}
+				if !w.storageClassReady(sc) {
+					return false, nil
+				}
 			case *corev1.PersistentVolumeClaim:
 				claim, err := w.c.CoreV1().PersistentVolumeClaims(value.Namespace).Get(value.Name, metav1.GetOptions{})
 				if err != nil {
@@ -155,6 +164,7 @@ func (w *waiter) waitForResources(created ResourceList) error {
 				ok, err = w.podsReadyForObject(value.Namespace, value)
 			case *appsv1.ReplicaSet:
 				ok, err = w.podsReadyForObject(value.Namespace, value)
+
 			}
 			if !ok || err != nil {
 				return false, err
@@ -216,6 +226,14 @@ func (w *waiter) serviceReady(s *corev1.Service) bool {
 func (w *waiter) volumeReady(v *corev1.PersistentVolumeClaim) bool {
 	if v.Status.Phase != corev1.ClaimBound {
 		w.log("PersistentVolumeClaim is not bound: %s/%s", v.GetNamespace(), v.GetName())
+		return false
+	}
+	return true
+}
+
+func (w *waiter) storageClassReady(sc *storagev1.StorageClass) bool {
+	if len(sc.Provisioner) <= 0 {
+		w.log("Provisioner is not allocated: %s/%s", sc.GetNamespace(), sc.GetName())
 		return false
 	}
 	return true
