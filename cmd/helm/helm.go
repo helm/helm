@@ -53,7 +53,7 @@ func init() {
 	log.SetFlags(log.Lshortfile)
 }
 
-func logf(format string, v ...interface{}) {
+func debug(format string, v ...interface{}) {
 	if settings.Debug {
 		format = fmt.Sprintf("[debug] %s\n", format)
 		log.Output(2, fmt.Sprintf(format, v...))
@@ -78,14 +78,14 @@ func main() {
 	initActionConfig(actionConfig, false)
 
 	if err := cmd.Execute(); err != nil {
-		logf("%+v", err)
+		debug("%+v", err)
 		os.Exit(1)
 	}
 }
 
 func initActionConfig(actionConfig *action.Configuration, allNamespaces bool) {
 	kc := kube.New(kubeConfig())
-	kc.Log = logf
+	kc.Log = debug
 
 	clientset, err := kc.Factory.KubernetesClientSet()
 	if err != nil {
@@ -101,11 +101,11 @@ func initActionConfig(actionConfig *action.Configuration, allNamespaces bool) {
 	switch os.Getenv("HELM_DRIVER") {
 	case "secret", "secrets", "":
 		d := driver.NewSecrets(clientset.CoreV1().Secrets(namespace))
-		d.Log = logf
+		d.Log = debug
 		store = storage.Init(d)
 	case "configmap", "configmaps":
 		d := driver.NewConfigMaps(clientset.CoreV1().ConfigMaps(namespace))
-		d.Log = logf
+		d.Log = debug
 		store = storage.Init(d)
 	case "memory":
 		d := driver.NewMemory()
@@ -118,7 +118,7 @@ func initActionConfig(actionConfig *action.Configuration, allNamespaces bool) {
 	actionConfig.RESTClientGetter = kubeConfig()
 	actionConfig.KubeClient = kc
 	actionConfig.Releases = store
-	actionConfig.Log = logf
+	actionConfig.Log = debug
 }
 
 func kubeConfig() genericclioptions.RESTClientGetter {
