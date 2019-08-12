@@ -27,6 +27,7 @@ type HookEvent string
 const (
 	HookPreInstall   HookEvent = "pre-install"
 	HookPostInstall  HookEvent = "post-install"
+	HookCRDInstall   HookEvent = "crd-install"
 	HookPreDelete    HookEvent = "pre-delete"
 	HookPostDelete   HookEvent = "post-delete"
 	HookPreUpgrade   HookEvent = "pre-upgrade"

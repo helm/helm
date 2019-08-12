@@ -61,6 +61,7 @@ var events = map[string]release.HookEvent{
 	release.HookPreRollback.String():  release.HookPreRollback,
 	release.HookPostRollback.String(): release.HookPostRollback,
 	release.HookTest.String():         release.HookTest,
+	release.HookCRDInstall.String():   release.HookCRDInstall,
 	// Support test-success for backward compatibility with Helm 2 tests
 	"test-success": release.HookTest,
 }
