@@ -7,3 +7,4 @@ info:
     resource B
   status: deployed
 name: flummoxed-chickadee
+namespace: default

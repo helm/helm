@@ -116,7 +116,7 @@ metadata:
 			name:  []string{"eighth", "example-test"},
 			path:  "eight",
 			kind:  []string{"ConfigMap", "Pod"},
-			hooks: map[string][]release.HookEvent{"eighth": nil, "example-test": {release.HookReleaseTestSuccess}},
+			hooks: map[string][]release.HookEvent{"eighth": nil, "example-test": {release.HookTest}},
 			manifest: `kind: ConfigMap
 apiVersion: v1
 metadata:
@@ -129,7 +129,7 @@ kind: Pod
 metadata:
   name: example-test
   annotations:
-    "helm.sh/hook": test-success
+    "helm.sh/hook": test
 `,
 		},
 	}

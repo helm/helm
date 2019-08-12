@@ -25,12 +25,14 @@ import (
 )
 
 func TestStatusCmd(t *testing.T) {
-	releasesMockWithStatus := func(info *release.Info) []*release.Release {
+	releasesMockWithStatus := func(info *release.Info, hooks ...*release.Hook) []*release.Release {
 		info.LastDeployed = time.Unix(1452902400, 0).UTC()
 		return []*release.Release{{
-			Name:  "flummoxed-chickadee",
-			Info:  info,
-			Chart: &chart.Chart{},
+			Name:      "flummoxed-chickadee",
+			Namespace: "default",
+			Info:      info,
+			Chart:     &chart.Chart{},
+			Hooks:     hooks,
 		}}
 	}
 
@@ -77,19 +79,47 @@ func TestStatusCmd(t *testing.T) {
 		name:   "get status of a deployed release with test suite",
 		cmd:    "status flummoxed-chickadee",
 		golden: "output/status-with-test-suite.txt",
-		rels: releasesMockWithStatus(&release.Info{
-			Status: release.StatusDeployed,
-			LastTestSuiteRun: &release.TestSuite{
-				Results: []*release.TestRun{{
-					Name:   "test run 1",
-					Status: release.TestRunSuccess,
-					Info:   "extra info",
-				}, {
-					Name:   "test run 2",
-					Status: release.TestRunFailure,
-				}},
+		rels: releasesMockWithStatus(
+			&release.Info{
+				Status: release.StatusDeployed,
 			},
-		}),
+			&release.Hook{
+				Name:   "never-run-test",
+				Events: []release.HookEvent{release.HookTest},
+			},
+			&release.Hook{
+				Name:   "passing-test",
+				Events: []release.HookEvent{release.HookTest},
+				LastRun: release.HookExecution{
+					StartedAt:   mustParseTime("2006-01-02T15:04:05Z"),
+					CompletedAt: mustParseTime("2006-01-02T15:04:07Z"),
+					Phase:       release.HookPhaseSucceeded,
+				},
+			},
+			&release.Hook{
+				Name:   "failing-test",
+				Events: []release.HookEvent{release.HookTest},
+				LastRun: release.HookExecution{
+					StartedAt:   mustParseTime("2006-01-02T15:10:05Z"),
+					CompletedAt: mustParseTime("2006-01-02T15:10:07Z"),
+					Phase:       release.HookPhaseFailed,
+				},
+			},
+			&release.Hook{
+				Name:   "passing-pre-install",
+				Events: []release.HookEvent{release.HookPreInstall},
+				LastRun: release.HookExecution{
+					StartedAt:   mustParseTime("2006-01-02T15:00:05Z"),
+					CompletedAt: mustParseTime("2006-01-02T15:00:07Z"),
+					Phase:       release.HookPhaseSucceeded,
+				},
+			},
+		),
 	}}
 	runTestCmd(t, tests)
+}
+
+func mustParseTime(t string) time.Time {
+	res, _ := time.Parse(time.RFC3339, t)
+	return res
 }

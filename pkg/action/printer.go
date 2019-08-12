@@ -23,9 +23,6 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/gosuri/uitable"
-	"github.com/gosuri/uitable/util/strutil"
-
 	"helm.sh/helm/pkg/release"
 )
 
@@ -48,12 +45,21 @@ func PrintRelease(out io.Writer, rel *release.Release) {
 		fmt.Fprintf(w, "RESOURCES:\n%s\n", re.ReplaceAllString(rel.Info.Resources, "\t"))
 		w.Flush()
 	}
-	if rel.Info.LastTestSuiteRun != nil {
-		lastRun := rel.Info.LastTestSuiteRun
-		fmt.Fprintf(out, "TEST SUITE:\n%s\n%s\n\n%s\n",
-			fmt.Sprintf("Last Started: %s", lastRun.StartedAt),
-			fmt.Sprintf("Last Completed: %s", lastRun.CompletedAt),
-			formatTestResults(lastRun.Results))
+
+	executions := executionsByHookEvent(rel)
+	if tests, ok := executions[release.HookTest]; ok {
+		for _, h := range tests {
+			// Don't print anything if hook has not been initiated
+			if h.LastRun.StartedAt.IsZero() {
+				continue
+			}
+			fmt.Fprintf(out, "TEST SUITE:     %s\n%s\n%s\n%s\n\n",
+				h.Name,
+				fmt.Sprintf("Last Started:   %s", h.LastRun.StartedAt),
+				fmt.Sprintf("Last Completed: %s", h.LastRun.CompletedAt),
+				fmt.Sprintf("Phase:          %s", h.LastRun.Phase),
+			)
+		}
 	}
 
 	if strings.EqualFold(rel.Info.Description, "Dry run complete") {
@@ -65,18 +71,16 @@ func PrintRelease(out io.Writer, rel *release.Release) {
 	}
 }
 
-func formatTestResults(results []*release.TestRun) string {
-	tbl := uitable.New()
-	tbl.MaxColWidth = 50
-	tbl.AddRow("TEST", "STATUS", "INFO", "STARTED", "COMPLETED")
-	for i := 0; i < len(results); i++ {
-		r := results[i]
-		n := r.Name
-		s := strutil.PadRight(r.Status.String(), 10, ' ')
-		i := r.Info
-		ts := r.StartedAt
-		tc := r.CompletedAt
-		tbl.AddRow(n, s, i, ts, tc)
+func executionsByHookEvent(rel *release.Release) map[release.HookEvent][]*release.Hook {
+	result := make(map[release.HookEvent][]*release.Hook)
+	for _, h := range rel.Hooks {
+		for _, e := range h.Events {
+			executions, ok := result[e]
+			if !ok {
+				executions = []*release.Hook{}
+			}
+			result[e] = append(executions, h)
+		}
 	}
-	return tbl.String()
+	return result
 }

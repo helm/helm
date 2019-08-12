@@ -25,7 +25,7 @@ func TestInstall(t *testing.T) {
 		// Install, base case
 		{
 			name:   "basic install",
-			cmd:    "install aeneas testdata/testcharts/empty",
+			cmd:    "install aeneas testdata/testcharts/empty --namespace default",
 			golden: "output/install.txt",
 		},
 

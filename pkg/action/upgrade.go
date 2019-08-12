@@ -26,7 +26,6 @@ import (
 
 	"helm.sh/helm/pkg/chart"
 	"helm.sh/helm/pkg/chartutil"
-	"helm.sh/helm/pkg/hooks"
 	"helm.sh/helm/pkg/kube"
 	"helm.sh/helm/pkg/release"
 	"helm.sh/helm/pkg/releaseutil"
@@ -210,7 +209,7 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 
 	// pre-upgrade hooks
 	if !u.DisableHooks {
-		if err := execHooks(u.cfg.KubeClient, upgradedRelease.Hooks, hooks.PreUpgrade, u.Timeout); err != nil {
+		if err := u.cfg.execHook(upgradedRelease, release.HookPreUpgrade, u.Timeout); err != nil {
 			return u.failRelease(upgradedRelease, fmt.Errorf("pre-upgrade hooks failed: %s", err))
 		}
 	} else {
@@ -242,7 +241,7 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 
 	// post-upgrade hooks
 	if !u.DisableHooks {
-		if err := execHooks(u.cfg.KubeClient, upgradedRelease.Hooks, hooks.PostUpgrade, u.Timeout); err != nil {
+		if err := u.cfg.execHook(upgradedRelease, release.HookPostUpgrade, u.Timeout); err != nil {
 			return u.failRelease(upgradedRelease, fmt.Errorf("post-upgrade hooks failed: %s", err))
 		}
 	}

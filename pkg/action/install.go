@@ -37,7 +37,6 @@ import (
 	"helm.sh/helm/pkg/engine"
 	"helm.sh/helm/pkg/getter"
 	"helm.sh/helm/pkg/helmpath"
-	"helm.sh/helm/pkg/hooks"
 	kubefake "helm.sh/helm/pkg/kube/fake"
 	"helm.sh/helm/pkg/release"
 	"helm.sh/helm/pkg/releaseutil"
@@ -169,7 +168,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 		return rel, nil
 	}
 
-	// If Replace is true, we need to supersede the last release.
+	// If Replace is true, we need to supercede the last release.
 	if i.Replace {
 		if err := i.replaceRelease(rel); err != nil {
 			return nil, err
@@ -187,7 +186,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 
 	// pre-install hooks
 	if !i.DisableHooks {
-		if err := execHooks(i.cfg.KubeClient, rel.Hooks, hooks.PreInstall, i.Timeout); err != nil {
+		if err := i.cfg.execHook(rel, release.HookPreInstall, i.Timeout); err != nil {
 			return i.failRelease(rel, fmt.Errorf("failed pre-install: %s", err))
 		}
 	}
@@ -207,7 +206,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	}
 
 	if !i.DisableHooks {
-		if err := execHooks(i.cfg.KubeClient, rel.Hooks, hooks.PostInstall, i.Timeout); err != nil {
+		if err := i.cfg.execHook(rel, release.HookPostInstall, i.Timeout); err != nil {
 			return i.failRelease(rel, fmt.Errorf("failed post-install: %s", err))
 		}
 	}
@@ -444,41 +443,6 @@ func ensureDirectoryForFile(file string) error {
 	}
 
 	return os.MkdirAll(baseDir, defaultDirectoryPermission)
-}
-
-// deletePolices represents a mapping between the key in the annotation for label deleting policy and its real meaning
-// FIXME: Can we refactor this out?
-var deletePolices = map[string]release.HookDeletePolicy{
-	hooks.HookSucceeded:      release.HookSucceeded,
-	hooks.HookFailed:         release.HookFailed,
-	hooks.BeforeHookCreation: release.HookBeforeHookCreation,
-}
-
-// hookHasDeletePolicy determines whether the defined hook deletion policy matches the hook deletion polices
-// supported by helm. If so, mark the hook as one should be deleted.
-func hookHasDeletePolicy(h *release.Hook, policy string) bool {
-	dp, ok := deletePolices[policy]
-	if !ok {
-		return false
-	}
-	for _, v := range h.DeletePolicies {
-		if dp == v {
-			return true
-		}
-	}
-	return false
-}
-
-// hookByWeight is a sorter for hooks
-type hookByWeight []*release.Hook
-
-func (x hookByWeight) Len() int      { return len(x) }
-func (x hookByWeight) Swap(i, j int) { x[i], x[j] = x[j], x[i] }
-func (x hookByWeight) Less(i, j int) bool {
-	if x[i].Weight == x[j].Weight {
-		return x[i].Name < x[j].Name
-	}
-	return x[i].Weight < x[j].Weight
 }
 
 // NameAndChart returns the name and chart that should be used.

@@ -22,7 +22,6 @@ import (
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/pkg/release"
-	reltesting "helm.sh/helm/pkg/releasetesting"
 )
 
 // ReleaseTesting is the action for testing a release.
@@ -43,52 +42,21 @@ func NewReleaseTesting(cfg *Configuration) *ReleaseTesting {
 }
 
 // Run executes 'helm test' against the given release.
-func (r *ReleaseTesting) Run(name string) (<-chan *release.TestReleaseResponse, <-chan error) {
-	errc := make(chan error, 1)
+func (r *ReleaseTesting) Run(name string) error {
 	if err := validateReleaseName(name); err != nil {
-		errc <- errors.Errorf("releaseTest: Release name is invalid: %s", name)
-		return nil, errc
+		return errors.Errorf("releaseTest: Release name is invalid: %s", name)
 	}
 
 	// finds the non-deleted release with the given name
 	rel, err := r.cfg.Releases.Last(name)
 	if err != nil {
-		errc <- err
-		return nil, errc
+		return err
 	}
 
-	ch := make(chan *release.TestReleaseResponse, 1)
-	testEnv := &reltesting.Environment{
-		Namespace:  rel.Namespace,
-		KubeClient: r.cfg.KubeClient,
-		Timeout:    r.Timeout,
-		Messages:   ch,
+	if err := r.cfg.execHook(rel, release.HookTest, r.Timeout); err != nil {
+		r.cfg.Releases.Update(rel)
+		return err
 	}
-	r.cfg.Log("running tests for release %s", rel.Name)
-	tSuite := reltesting.NewTestSuite(rel)
 
-	go func() {
-		defer close(errc)
-		defer close(ch)
-
-		if err := tSuite.Run(testEnv); err != nil {
-			errc <- errors.Wrapf(err, "error running test suite for %s", rel.Name)
-			return
-		}
-
-		rel.Info.LastTestSuiteRun = &release.TestSuite{
-			StartedAt:   tSuite.StartedAt,
-			CompletedAt: tSuite.CompletedAt,
-			Results:     tSuite.Results,
-		}
-
-		if r.Cleanup {
-			testEnv.DeleteTestPods(tSuite.TestManifests)
-		}
-
-		if err := r.cfg.Releases.Update(rel); err != nil {
-			r.cfg.Log("test: Failed to store updated release: %s", err)
-		}
-	}()
-	return ch, errc
+	return r.cfg.Releases.Update(rel)
 }

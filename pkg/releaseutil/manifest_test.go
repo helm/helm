@@ -29,7 +29,7 @@ kind: Pod
 metadata:
   name: finding-nemo,
   annotations:
-    "helm.sh/hook": test-success
+    "helm.sh/hook": test
 spec:
   containers:
   - name: nemo-test
@@ -42,7 +42,7 @@ kind: Pod
 metadata:
   name: finding-nemo,
   annotations:
-    "helm.sh/hook": test-success
+    "helm.sh/hook": test
 spec:
   containers:
   - name: nemo-test

@@ -234,6 +234,8 @@ func (c *Client) watchTimeout(t time.Duration) func(*resource.Info) error {
 //
 // - Jobs: A job is marked "Ready" when it has successfully completed. This is
 //   ascertained by watching the Status fields in a job's output.
+// - Pods: A pod is marked "Ready" when it has successfully completed. This is
+//   ascertained by watching the status.phase field in a pod's output.
 //
 // Handling for other kinds will be added as necessary.
 func (c *Client) WatchUntilReady(resources ResourceList, timeout time.Duration) error {
@@ -393,8 +395,11 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 			// the status go into a good state. For other types, like ReplicaSet
 			// we don't really do anything to support these as hooks.
 			c.Log("Add/Modify event for %s: %v", info.Name, e.Type)
-			if kind == "Job" {
+			switch kind {
+			case "Job":
 				return c.waitForJob(obj, info.Name)
+			case "Pod":
+				return c.waitForPodSuccess(obj, info.Name)
 			}
 			return true, nil
 		case watch.Deleted:
@@ -429,6 +434,30 @@ func (c *Client) waitForJob(obj runtime.Object, name string) (bool, error) {
 	}
 
 	c.Log("%s: Jobs active: %d, jobs failed: %d, jobs succeeded: %d", name, o.Status.Active, o.Status.Failed, o.Status.Succeeded)
+	return false, nil
+}
+
+// waitForPodSuccess is a helper that waits for a pod to complete.
+//
+// This operates on an event returned from a watcher.
+func (c *Client) waitForPodSuccess(obj runtime.Object, name string) (bool, error) {
+	o, ok := obj.(*v1.Pod)
+	if !ok {
+		return true, errors.Errorf("expected %s to be a *v1.Pod, got %T", name, obj)
+	}
+
+	switch o.Status.Phase {
+	case v1.PodSucceeded:
+		fmt.Printf("Pod %s succeeded\n", o.Name)
+		return true, nil
+	case v1.PodFailed:
+		return true, errors.Errorf("pod %s failed", o.Name)
+	case v1.PodPending:
+		fmt.Printf("Pod %s pending\n", o.Name)
+	case v1.PodRunning:
+		fmt.Printf("Pod %s running\n", o.Name)
+	}
+
 	return false, nil
 }
 

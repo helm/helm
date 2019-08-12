@@ -23,7 +23,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
-// KubernetesClient represents a client capable of communicating with the Kubernetes API.
+// Interface represents a client capable of communicating with the Kubernetes API.
 //
 // A KubernetesClient must be concurrency safe.
 type Interface interface {
@@ -37,7 +37,8 @@ type Interface interface {
 
 	// Watch the resource in reader until it is "ready". This method
 	//
-	// For Jobs, "ready" means the job ran to completion (excited without error).
+	// For Jobs, "ready" means the Job ran to completion (exited without error).
+	// For Pods, "ready" means the Pod phase is marked "succeeded".
 	// For all other kinds, it means the kind was created or modified without
 	// error.
 	WatchUntilReady(resources ResourceList, timeout time.Duration) error

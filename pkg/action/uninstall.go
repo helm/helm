@@ -22,7 +22,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/pkg/hooks"
 	"helm.sh/helm/pkg/release"
 	"helm.sh/helm/pkg/releaseutil"
 )
@@ -91,7 +90,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	res := &release.UninstallReleaseResponse{Release: rel}
 
 	if !u.DisableHooks {
-		if err := execHooks(u.cfg.KubeClient, rel.Hooks, hooks.PreDelete, u.Timeout); err != nil {
+		if err := u.cfg.execHook(rel, release.HookPreDelete, u.Timeout); err != nil {
 			return res, err
 		}
 	} else {
@@ -108,7 +107,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	res.Info = kept
 
 	if !u.DisableHooks {
-		if err := execHooks(u.cfg.KubeClient, rel.Hooks, hooks.PostDelete, u.Timeout); err != nil {
+		if err := u.cfg.execHook(rel, release.HookPostDelete, u.Timeout); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -148,6 +147,14 @@ func (u *Uninstall) purgeReleases(rels ...*release.Release) error {
 		}
 	}
 	return nil
+}
+
+func joinErrors(errs []error) string {
+	es := make([]string, 0, len(errs))
+	for _, e := range errs {
+		es = append(es, e.Error())
+	}
+	return strings.Join(es, "; ")
 }
 
 // deleteRelease deletes the release and returns manifests that were kept in the deletion process

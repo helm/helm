@@ -17,11 +17,8 @@ limitations under the License.
 package action
 
 import (
-	"bytes"
 	"path"
 	"regexp"
-	"sort"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -32,7 +29,6 @@ import (
 
 	"helm.sh/helm/internal/experimental/registry"
 	"helm.sh/helm/pkg/chartutil"
-	"helm.sh/helm/pkg/hooks"
 	"helm.sh/helm/pkg/kube"
 	"helm.sh/helm/pkg/release"
 	"helm.sh/helm/pkg/storage"
@@ -203,76 +199,4 @@ type RESTClientGetter interface {
 	ToRESTConfig() (*rest.Config, error)
 	ToDiscoveryClient() (discovery.CachedDiscoveryInterface, error)
 	ToRESTMapper() (meta.RESTMapper, error)
-}
-
-// execHooks is a method for exec-ing all hooks of the given type. This is to
-// avoid duplicate code in various actions
-func execHooks(client kube.Interface, hs []*release.Hook, hook string, timeout time.Duration) error {
-	executingHooks := []*release.Hook{}
-
-	for _, h := range hs {
-		for _, e := range h.Events {
-			if string(e) == hook {
-				executingHooks = append(executingHooks, h)
-			}
-		}
-	}
-
-	sort.Sort(hookByWeight(executingHooks))
-	for _, h := range executingHooks {
-		if err := deleteHookByPolicy(client, h, hooks.BeforeHookCreation); err != nil {
-			return err
-		}
-
-		resources, err := client.Build(bytes.NewBufferString(h.Manifest))
-		if err != nil {
-			return errors.Wrapf(err, "unable to build kubernetes object for %s hook %s", hook, h.Path)
-		}
-		if _, err := client.Create(resources); err != nil {
-			return errors.Wrapf(err, "warning: Hook %s %s failed", hook, h.Path)
-		}
-
-		if err := client.WatchUntilReady(resources, timeout); err != nil {
-			// If a hook is failed, checkout the annotation of the hook to determine whether the hook should be deleted
-			// under failed condition. If so, then clear the corresponding resource object in the hook
-			if err := deleteHookByPolicy(client, h, hooks.HookFailed); err != nil {
-				return err
-			}
-			return err
-		}
-	}
-
-	// If all hooks are succeeded, checkout the annotation of each hook to determine whether the hook should be deleted
-	// under succeeded condition. If so, then clear the corresponding resource object in each hook
-	for _, h := range executingHooks {
-		if err := deleteHookByPolicy(client, h, hooks.HookSucceeded); err != nil {
-			return err
-		}
-		h.LastRun = time.Now()
-	}
-
-	return nil
-}
-
-// deleteHookByPolicy deletes a hook if the hook policy instructs it to
-func deleteHookByPolicy(client kube.Interface, h *release.Hook, policy string) error {
-	if hookHasDeletePolicy(h, policy) {
-		resources, err := client.Build(bytes.NewBufferString(h.Manifest))
-		if err != nil {
-			return errors.Wrapf(err, "unable to build kubernetes object for deleting hook %s", h.Path)
-		}
-		_, errs := client.Delete(resources)
-		if len(errs) > 0 {
-			return errors.New(joinErrors(errs))
-		}
-	}
-	return nil
-}
-
-func joinErrors(errs []error) string {
-	es := make([]string, 0, len(errs))
-	for _, e := range errs {
-		es = append(es, e.Error())
-	}
-	return strings.Join(es, "; ")
 }

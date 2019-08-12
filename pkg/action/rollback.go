@@ -23,7 +23,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/pkg/hooks"
 	"helm.sh/helm/pkg/release"
 )
 
@@ -147,7 +146,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 
 	// pre-rollback hooks
 	if !r.DisableHooks {
-		if err := execHooks(r.cfg.KubeClient, targetRelease.Hooks, hooks.PreRollback, r.Timeout); err != nil {
+		if err := r.cfg.execHook(targetRelease, release.HookPreRollback, r.Timeout); err != nil {
 			return targetRelease, err
 		}
 	} else {
@@ -188,7 +187,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 
 	// post-rollback hooks
 	if !r.DisableHooks {
-		if err := execHooks(r.cfg.KubeClient, targetRelease.Hooks, hooks.PostRollback, r.Timeout); err != nil {
+		if err := r.cfg.execHook(targetRelease, release.HookPostRollback, r.Timeout); err != nil {
 			return targetRelease, err
 		}
 	}
