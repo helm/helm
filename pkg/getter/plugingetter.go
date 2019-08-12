@@ -51,22 +51,33 @@ func collectPlugins(settings environment.EnvSettings) (Providers, error) {
 	return result, nil
 }
 
-// pluginGetter is a generic type to invoke custom downloaders,
+// PluginGetter is a generic type to invoke custom downloaders,
 // implemented in plugins.
-type pluginGetter struct {
+type PluginGetter struct {
 	command                   string
+	username, password        string
 	certFile, keyFile, cAFile string
 	settings                  environment.EnvSettings
 	name                      string
 	base                      string
 }
 
+//SetCredentials sets the credentials for the getter
+func (p *PluginGetter) SetCredentials(username, password string) {
+	p.username = username
+	p.password = password
+}
+
 // Get runs downloader plugin command
-func (p *pluginGetter) Get(href string) (*bytes.Buffer, error) {
+func (p *PluginGetter) Get(href string) (*bytes.Buffer, error) {
 	commands := strings.Split(p.command, " ")
 	argv := append(commands[1:], p.certFile, p.keyFile, p.cAFile, href)
 	prog := exec.Command(filepath.Join(p.base, commands[0]), argv...)
 	plugin.SetupPluginEnv(p.settings, p.name, p.base)
+	if p.username != "" && p.password != "" {
+		os.Setenv("HELM_REPO_USERNAME", p.username)
+		os.Setenv("HELM_REPO_PASSWORD", p.password)
+	}
 	prog.Env = os.Environ()
 	buf := bytes.NewBuffer(nil)
 	prog.Stdout = buf
@@ -85,7 +96,7 @@ func (p *pluginGetter) Get(href string) (*bytes.Buffer, error) {
 // newPluginGetter constructs a valid plugin getter
 func newPluginGetter(command string, settings environment.EnvSettings, name, base string) Constructor {
 	return func(URL, CertFile, KeyFile, CAFile string) (Getter, error) {
-		result := &pluginGetter{
+		result := &PluginGetter{
 			command:  command,
 			certFile: CertFile,
 			keyFile:  KeyFile,

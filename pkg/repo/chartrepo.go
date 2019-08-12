@@ -154,6 +154,9 @@ func (r *ChartRepository) setCredentials() {
 	if t, ok := r.Client.(*getter.HttpGetter); ok {
 		t.SetCredentials(r.Config.Username, r.Config.Password)
 	}
+	if t, ok := r.Client.(*getter.PluginGetter); ok {
+		t.SetCredentials(r.Config.Username, r.Config.Password)
+	}
 }
 
 // Index generates an index for the chart repository and writes an index.yaml file.
