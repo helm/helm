@@ -27,6 +27,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/cmd/helm/search"
+	"helm.sh/helm/internal/monocular"
 	"helm.sh/helm/pkg/helmpath"
 	"helm.sh/helm/pkg/repo"
 )
@@ -42,9 +43,12 @@ Repositories are managed with 'helm repo' commands.
 const searchMaxScore = 25
 
 type searchOptions struct {
-	versions bool
-	regexp   bool
-	version  string
+	versions       bool
+	regexp         bool
+	version        string
+	searchEndpoint string
+	repositories   bool
+	maxColWidth    uint
 }
 
 func newSearchCmd(out io.Writer) *cobra.Command {
@@ -60,14 +64,62 @@ func newSearchCmd(out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.BoolVarP(&o.regexp, "regexp", "r", false, "use regular expressions for searching")
-	f.BoolVarP(&o.versions, "versions", "l", false, "show the long listing, with each version of each chart on its own line")
-	f.StringVar(&o.version, "version", "", "search using semantic versioning constraints")
+	f.StringVar(&o.searchEndpoint, "endpoint", "https://hub.helm.sh", "monocular instance to query for charts")
+	f.BoolVarP(&o.repositories, "repositories", "r", false, "search repositories you have added instead of monocular")
+	f.BoolVarP(&o.regexp, "regexp", "", false, "use regular expressions for searching repositories you have added")
+	f.BoolVarP(&o.versions, "versions", "l", false, "show the long listing, with each version of each chart on its own line, for repositories you have added")
+	f.StringVar(&o.version, "version", "", "search using semantic versioning constraints on repositories you have added")
+	f.UintVar(&o.maxColWidth, "maxColumnWidth", 50, "maximum column width for output table")
 
 	return cmd
 }
 
 func (o *searchOptions) run(out io.Writer, args []string) error {
+
+	// If searching the repositories added via helm repo add follow that path
+	if o.repositories {
+		debug("searching repositories")
+		// If an endpoint was passed in but searching repositories the user should
+		// know the option is being skipped
+		if o.searchEndpoint != "https://hub.helm.sh" {
+			fmt.Fprintln(out, "Notice: Setting the \"endpoint\" flag has no effect when searching repositories you have added")
+		}
+
+		return o.runRepositories(out, args)
+	}
+
+	// Search the Helm Hub or other monocular instance
+	debug("searching monocular")
+	// If an an option used against repository searches is used the user should
+	// know the option is being skipped
+	if o.regexp {
+		fmt.Fprintln(out, "Notice: Setting the \"regexp\" flag has no effect when searching monocular (e.g., Helm Hub)")
+	}
+	if o.versions {
+		fmt.Fprintln(out, "Notice: Setting the \"versions\" flag has no effect when searching monocular (e.g., Helm Hub)")
+	}
+	if o.version != "" {
+		fmt.Fprintln(out, "Notice: Setting the \"version\" flag has no effect when searching monocular (e.g., Helm Hub)")
+	}
+
+	c, err := monocular.New(o.searchEndpoint)
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("unable to create connection to %q", o.searchEndpoint))
+	}
+
+	q := strings.Join(args, " ")
+	results, err := c.Search(q)
+	if err != nil {
+		debug("%s", err)
+		return fmt.Errorf("unable to perform search against %q", o.searchEndpoint)
+	}
+
+	fmt.Fprintln(out, o.formatSearchResults(o.searchEndpoint, results))
+
+	return nil
+}
+
+func (o *searchOptions) runRepositories(out io.Writer, args []string) error {
 	index, err := o.buildIndex(out)
 	if err != nil {
 		return err
@@ -90,7 +142,7 @@ func (o *searchOptions) run(out io.Writer, args []string) error {
 		return err
 	}
 
-	fmt.Fprintln(out, o.formatSearchResults(data))
+	fmt.Fprintln(out, o.formatRepoSearchResults(data))
 
 	return nil
 }
@@ -123,12 +175,27 @@ func (o *searchOptions) applyConstraint(res []*search.Result) ([]*search.Result,
 	return data, nil
 }
 
-func (o *searchOptions) formatSearchResults(res []*search.Result) string {
+func (o *searchOptions) formatSearchResults(endpoint string, res []monocular.SearchResult) string {
 	if len(res) == 0 {
 		return "No results found"
 	}
 	table := uitable.New()
-	table.MaxColWidth = 50
+	table.MaxColWidth = o.maxColWidth
+	table.AddRow("URL", "CHART VERSION", "APP VERSION", "DESCRIPTION")
+	var url string
+	for _, r := range res {
+		url = endpoint + "/charts/" + r.ID
+		table.AddRow(url, r.Relationships.LatestChartVersion.Data.Version, r.Relationships.LatestChartVersion.Data.AppVersion, r.Attributes.Description)
+	}
+	return table.String()
+}
+
+func (o *searchOptions) formatRepoSearchResults(res []*search.Result) string {
+	if len(res) == 0 {
+		return "No results found"
+	}
+	table := uitable.New()
+	table.MaxColWidth = o.maxColWidth
 	table.AddRow("NAME", "CHART VERSION", "APP VERSION", "DESCRIPTION")
 	for _, r := range res {
 		table.AddRow(r.Name, r.Chart.Version, r.Chart.AppVersion, r.Chart.Description)
