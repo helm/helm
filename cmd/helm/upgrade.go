@@ -100,7 +100,8 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.Namespace = client.Namespace
 					instClient.Atomic = client.Atomic
 
-					_, err := runInstall(args, instClient, valueOpts, out)
+					rel, err := runInstall(args, instClient, valueOpts, out)
+					action.PrintRelease(out, rel)
 					return err
 				}
 			}
