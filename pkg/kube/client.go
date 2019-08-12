@@ -368,13 +368,19 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 }
 
 func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) error {
+	kind := info.Mapping.GroupVersionKind.Kind
+	switch kind {
+	case "Job", "Pod":
+	default:
+		return nil
+	}
+
+	c.Log("Watching for changes to %s %s with timeout of %v", kind, info.Name, timeout)
+
 	w, err := resource.NewHelper(info.Client, info.Mapping).WatchSingle(info.Namespace, info.Name, info.ResourceVersion)
 	if err != nil {
 		return err
 	}
-
-	kind := info.Mapping.GroupVersionKind.Kind
-	c.Log("Watching for changes to %s %s with timeout of %v", kind, info.Name, timeout)
 
 	// What we watch for depends on the Kind.
 	// - For a Job, we watch for completion.
