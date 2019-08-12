@@ -18,6 +18,7 @@ package registry // import "helm.sh/helm/internal/experimental/registry"
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -57,6 +58,14 @@ func ParseReference(s string) (*Reference, error) {
 	}
 
 	return &ref, nil
+}
+
+// FullName the full name of a reference (repo:tag)
+func (ref *Reference) FullName() string {
+	if ref.Tag == "" {
+		return ref.Repo
+	}
+	return fmt.Sprintf("%s:%s", ref.Repo, ref.Tag)
 }
 
 // setExtraFields adds the Repo and Tag fields to a Reference

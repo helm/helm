@@ -20,147 +20,201 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"path/filepath"
+	"sort"
 
-	orascontent "github.com/deislabs/oras/pkg/content"
-	orascontext "github.com/deislabs/oras/pkg/context"
+	auth "github.com/deislabs/oras/pkg/auth/docker"
 	"github.com/deislabs/oras/pkg/oras"
 	"github.com/gosuri/uitable"
-	"github.com/sirupsen/logrus"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/pkg/errors"
 
 	"helm.sh/helm/pkg/chart"
+	"helm.sh/helm/pkg/helmpath"
 )
 
 const (
+	// CredentialsFileBasename is the filename for auth credentials file
 	CredentialsFileBasename = "config.json"
 )
 
 type (
-	// ClientOptions is used to construct a new client
-	ClientOptions struct {
-		Debug        bool
-		Out          io.Writer
-		Authorizer   Authorizer
-		Resolver     Resolver
-		CacheRootDir string
-	}
-
 	// Client works with OCI-compliant registries and local Helm chart cache
 	Client struct {
 		debug      bool
 		out        io.Writer
-		authorizer Authorizer
-		resolver   Resolver
-		cache      *filesystemCache // TODO: something more robust
+		authorizer *Authorizer
+		resolver   *Resolver
+		cache      *Cache
 	}
 )
 
 // NewClient returns a new registry client with config
-func NewClient(options *ClientOptions) *Client {
-	return &Client{
-		debug:      options.Debug,
-		out:        options.Out,
-		resolver:   options.Resolver,
-		authorizer: options.Authorizer,
-		cache: &filesystemCache{
-			out:     options.Out,
-			rootDir: options.CacheRootDir,
-			store:   orascontent.NewMemoryStore(),
-		},
+func NewClient(opts ...ClientOption) (*Client, error) {
+	client := &Client{
+		out: ioutil.Discard,
 	}
+	for _, opt := range opts {
+		opt(client)
+	}
+	// set defaults if fields are missing
+	if client.authorizer == nil {
+		credentialsFile := filepath.Join(helmpath.Registry(), CredentialsFileBasename)
+		authClient, err := auth.NewClient(credentialsFile)
+		if err != nil {
+			return nil, err
+		}
+		client.authorizer = &Authorizer{
+			Client: authClient,
+		}
+	}
+	if client.resolver == nil {
+		resolver, err := client.authorizer.Resolver(context.Background())
+		if err != nil {
+			return nil, err
+		}
+		client.resolver = &Resolver{
+			Resolver: resolver,
+		}
+	}
+	if client.cache == nil {
+		cache, err := NewCache(
+			CacheOptDebug(client.debug),
+			CacheOptWriter(client.out),
+			CacheOptRoot(filepath.Join(helmpath.Registry(), CacheRootDir)),
+		)
+		if err != nil {
+			return nil, err
+		}
+		client.cache = cache
+	}
+	return client, nil
 }
 
 // Login logs into a registry
 func (c *Client) Login(hostname string, username string, password string) error {
-	err := c.authorizer.Login(c.newContext(), hostname, username, password)
+	err := c.authorizer.Login(ctx(c.out, c.debug), hostname, username, password)
 	if err != nil {
 		return err
 	}
-	fmt.Fprint(c.out, "Login succeeded\n")
+	fmt.Fprintf(c.out, "Login succeeded\n")
 	return nil
 }
 
 // Logout logs out of a registry
 func (c *Client) Logout(hostname string) error {
-	err := c.authorizer.Logout(c.newContext(), hostname)
+	err := c.authorizer.Logout(ctx(c.out, c.debug), hostname)
 	if err != nil {
 		return err
 	}
-	fmt.Fprint(c.out, "Logout succeeded\n")
+	fmt.Fprintln(c.out, "Logout succeeded")
 	return nil
 }
 
 // PushChart uploads a chart to a registry
 func (c *Client) PushChart(ref *Reference) error {
-	fmt.Fprintf(c.out, "The push refers to repository [%s]\n", ref.Repo)
-	layers, err := c.cache.LoadReference(ref)
+	r, err := c.cache.FetchReference(ref)
 	if err != nil {
 		return err
 	}
-	_, err = oras.Push(c.newContext(), c.resolver, ref.String(), c.cache.store, layers,
-		oras.WithConfigMediaType(HelmChartConfigMediaType))
+	if !r.Exists {
+		return errors.New(fmt.Sprintf("Chart not found: %s", r.Name))
+	}
+	fmt.Fprintf(c.out, "The push refers to repository [%s]\n", r.Repo)
+	c.printCacheRefSummary(r)
+	layers := []ocispec.Descriptor{*r.ContentLayer}
+	_, err = oras.Push(ctx(c.out, c.debug), c.resolver, r.Name, c.cache.Provider(), layers,
+		oras.WithConfig(*r.Config), oras.WithNameValidation(nil))
 	if err != nil {
 		return err
 	}
-	var totalSize int64
-	for _, layer := range layers {
-		totalSize += layer.Size
+	s := ""
+	numLayers := len(layers)
+	if 1 < numLayers {
+		s = "s"
 	}
 	fmt.Fprintf(c.out,
-		"%s: pushed to remote (%d layers, %s total)\n", ref.Tag, len(layers), byteCountBinary(totalSize))
+		"%s: pushed to remote (%d layer%s, %s total)\n", r.Tag, numLayers, s, byteCountBinary(r.Size))
 	return nil
 }
 
 // PullChart downloads a chart from a registry
 func (c *Client) PullChart(ref *Reference) error {
+	if ref.Tag == "" {
+		return errors.New("tag explicitly required")
+	}
+	existing, err := c.cache.FetchReference(ref)
+	if err != nil {
+		return err
+	}
 	fmt.Fprintf(c.out, "%s: Pulling from %s\n", ref.Tag, ref.Repo)
-	_, layers, err := oras.Pull(c.newContext(), c.resolver, ref.String(), c.cache.store, oras.WithAllowedMediaTypes(KnownMediaTypes()))
+	manifest, _, err := oras.Pull(ctx(c.out, c.debug), c.resolver, ref.FullName(), c.cache.Ingester(),
+		oras.WithPullEmptyNameAllowed(),
+		oras.WithAllowedMediaTypes(KnownMediaTypes()),
+		oras.WithContentProvideIngester(c.cache.ProvideIngester()))
 	if err != nil {
 		return err
 	}
-	exists, err := c.cache.StoreReference(ref, layers)
+	err = c.cache.AddManifest(ref, &manifest)
 	if err != nil {
 		return err
 	}
-	if !exists {
-		fmt.Fprintf(c.out, "Status: Downloaded newer chart for %s:%s\n", ref.Repo, ref.Tag)
+	r, err := c.cache.FetchReference(ref)
+	if err != nil {
+		return err
+	}
+	if !r.Exists {
+		return errors.New(fmt.Sprintf("Chart not found: %s", r.Name))
+	}
+	c.printCacheRefSummary(r)
+	if !existing.Exists {
+		fmt.Fprintf(c.out, "Status: Downloaded newer chart for %s\n", ref.FullName())
 	} else {
-		fmt.Fprintf(c.out, "Status: Chart is up to date for %s:%s\n", ref.Repo, ref.Tag)
+		fmt.Fprintf(c.out, "Status: Chart is up to date for %s\n", ref.FullName())
 	}
-	return nil
+	return err
 }
 
 // SaveChart stores a copy of chart in local cache
 func (c *Client) SaveChart(ch *chart.Chart, ref *Reference) error {
-	layers, err := c.cache.ChartToLayers(ch)
+	r, err := c.cache.StoreReference(ref, ch)
 	if err != nil {
 		return err
 	}
-	_, err = c.cache.StoreReference(ref, layers)
+	c.printCacheRefSummary(r)
+	err = c.cache.AddManifest(ref, r.Manifest)
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(c.out, "%s: saved\n", ref.Tag)
+	fmt.Fprintf(c.out, "%s: saved\n", r.Tag)
 	return nil
 }
 
 // LoadChart retrieves a chart object by reference
 func (c *Client) LoadChart(ref *Reference) (*chart.Chart, error) {
-	layers, err := c.cache.LoadReference(ref)
+	r, err := c.cache.FetchReference(ref)
 	if err != nil {
 		return nil, err
 	}
-	ch, err := c.cache.LayersToChart(layers)
-	return ch, err
+	if !r.Exists {
+		return nil, errors.New(fmt.Sprintf("Chart not found: %s", ref.FullName()))
+	}
+	c.printCacheRefSummary(r)
+	return r.Chart, nil
 }
 
 // RemoveChart deletes a locally saved chart
 func (c *Client) RemoveChart(ref *Reference) error {
-	err := c.cache.DeleteReference(ref)
+	r, err := c.cache.DeleteReference(ref)
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(c.out, "%s: removed\n", ref.Tag)
-	return err
+	if !r.Exists {
+		return errors.New(fmt.Sprintf("Chart not found: %s", ref.FullName()))
+	}
+	fmt.Fprintf(c.out, "%s: removed\n", r.Tag)
+	return nil
 }
 
 // PrintChartTable prints a list of locally stored charts
@@ -168,7 +222,7 @@ func (c *Client) PrintChartTable() error {
 	table := uitable.New()
 	table.MaxColWidth = 60
 	table.AddRow("REF", "NAME", "VERSION", "DIGEST", "SIZE", "CREATED")
-	rows, err := c.cache.TableRows()
+	rows, err := c.getChartTableRows()
 	if err != nil {
 		return err
 	}
@@ -179,12 +233,45 @@ func (c *Client) PrintChartTable() error {
 	return nil
 }
 
-// disable verbose logging coming from ORAS unless debug is enabled
-func (c *Client) newContext() context.Context {
-	if !c.debug {
-		return orascontext.Background()
+// printCacheRefSummary prints out chart ref summary
+func (c *Client) printCacheRefSummary(r *CacheRefSummary) {
+	fmt.Fprintf(c.out, "ref:     %s\n", r.Name)
+	fmt.Fprintf(c.out, "digest:  %s\n", r.Digest.Hex())
+	fmt.Fprintf(c.out, "size:    %s\n", byteCountBinary(r.Size))
+	fmt.Fprintf(c.out, "name:    %s\n", r.Chart.Metadata.Name)
+	fmt.Fprintf(c.out, "version: %s\n", r.Chart.Metadata.Version)
+}
+
+// getChartTableRows returns rows in uitable-friendly format
+func (c *Client) getChartTableRows() ([][]interface{}, error) {
+	rr, err := c.cache.ListReferences()
+	if err != nil {
+		return nil, err
 	}
-	ctx := orascontext.WithLoggerFromWriter(context.Background(), c.out)
-	orascontext.GetLogger(ctx).Logger.SetLevel(logrus.DebugLevel)
-	return ctx
+	refsMap := map[string]map[string]string{}
+	for _, r := range rr {
+		refsMap[r.Name] = map[string]string{
+			"name":    r.Chart.Metadata.Name,
+			"version": r.Chart.Metadata.Version,
+			"digest":  shortDigest(r.Digest.Hex()),
+			"size":    byteCountBinary(r.Size),
+			"created": timeAgo(r.CreatedAt),
+		}
+	}
+	// Sort and convert to format expected by uitable
+	rows := make([][]interface{}, len(refsMap))
+	keys := make([]string, 0, len(refsMap))
+	for key := range refsMap {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for i, key := range keys {
+		rows[i] = make([]interface{}, 6)
+		rows[i][0] = key
+		ref := refsMap[key]
+		for j, k := range []string{"name", "version", "digest", "size", "created"} {
+			rows[i][j+1] = ref[k]
+		}
+	}
+	return rows, nil
 }

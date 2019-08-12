@@ -44,46 +44,54 @@ func TestParseReference(t *testing.T) {
 	is.NoError(err)
 	is.Equal("mychart", ref.Repo)
 	is.Equal("", ref.Tag)
+	is.Equal("mychart", ref.FullName())
 
 	s = "mychart:1.5.0"
 	ref, err = ParseReference(s)
 	is.NoError(err)
 	is.Equal("mychart", ref.Repo)
 	is.Equal("1.5.0", ref.Tag)
+	is.Equal("mychart:1.5.0", ref.FullName())
 
 	s = "myrepo/mychart"
 	ref, err = ParseReference(s)
 	is.NoError(err)
 	is.Equal("myrepo/mychart", ref.Repo)
 	is.Equal("", ref.Tag)
+	is.Equal("myrepo/mychart", ref.FullName())
 
 	s = "myrepo/mychart:1.5.0"
 	ref, err = ParseReference(s)
 	is.NoError(err)
 	is.Equal("myrepo/mychart", ref.Repo)
 	is.Equal("1.5.0", ref.Tag)
+	is.Equal("myrepo/mychart:1.5.0", ref.FullName())
 
 	s = "mychart:5001:1.5.0"
 	ref, err = ParseReference(s)
 	is.NoError(err)
 	is.Equal("mychart:5001", ref.Repo)
 	is.Equal("1.5.0", ref.Tag)
+	is.Equal("mychart:5001:1.5.0", ref.FullName())
 
 	s = "myrepo:5001/mychart:1.5.0"
 	ref, err = ParseReference(s)
 	is.NoError(err)
 	is.Equal("myrepo:5001/mychart", ref.Repo)
 	is.Equal("1.5.0", ref.Tag)
+	is.Equal("myrepo:5001/mychart:1.5.0", ref.FullName())
 
 	s = "localhost:5000/mychart:latest"
 	ref, err = ParseReference(s)
 	is.NoError(err)
 	is.Equal("localhost:5000/mychart", ref.Repo)
 	is.Equal("latest", ref.Tag)
+	is.Equal("localhost:5000/mychart:latest", ref.FullName())
 
 	s = "my.host.com/my/nested/repo:1.2.3"
 	ref, err = ParseReference(s)
 	is.NoError(err)
 	is.Equal("my.host.com/my/nested/repo", ref.Repo)
 	is.Equal("1.2.3", ref.Tag)
+	is.Equal("my.host.com/my/nested/repo:1.2.3", ref.FullName())
 }
