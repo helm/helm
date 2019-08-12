@@ -19,6 +19,7 @@ package version // import "helm.sh/helm/internal/version"
 import (
 	"flag"
 	"runtime"
+	"strings"
 )
 
 var (
@@ -57,6 +58,11 @@ func GetVersion() string {
 		return version
 	}
 	return version + "+" + metadata
+}
+
+// GetUserAgent returns a user agent for user with an HTTP client
+func GetUserAgent() string {
+	return "Helm/" + strings.TrimPrefix(GetVersion(), "v")
 }
 
 // Get returns build info
