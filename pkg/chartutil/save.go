@@ -52,7 +52,7 @@ func SaveDir(c *chart.Chart, dest string) error {
 	if c.Values != nil {
 		vf := filepath.Join(outdir, ValuesfileName)
 		b, _ := yaml.Marshal(c.Values)
-		if err := ioutil.WriteFile(vf, b, 0755); err != nil {
+		if err := ioutil.WriteFile(vf, b, 0644); err != nil {
 			return err
 		}
 	}
@@ -73,7 +73,7 @@ func SaveDir(c *chart.Chart, dest string) error {
 				return err
 			}
 
-			if err := ioutil.WriteFile(n, f.Data, 0755); err != nil {
+			if err := ioutil.WriteFile(n, f.Data, 0644); err != nil {
 				return err
 			}
 		}
