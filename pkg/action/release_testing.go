@@ -66,10 +66,10 @@ func (r *ReleaseTesting) Run(name string) error {
 				if e == release.HookTest {
 					hookResource, err := r.cfg.KubeClient.Build(bytes.NewBufferString(h.Manifest))
 					if err != nil {
-						return errors.Wrapf(err, "unable to build kubernetes object for %s hook %s", h, h.Path)
+						return errors.Wrapf(err, "unable to build kubernetes object for %v hook %s", h, h.Path)
 					}
 					if _, errs := r.cfg.KubeClient.Delete(hookResource); errs != nil {
-						return fmt.Errorf("unable to delete kubernetes object for %s hook %s: %s", h, h.Path, joinErrors(errs))
+						return fmt.Errorf("unable to delete kubernetes object for %v hook %s: %s", h, h.Path, joinErrors(errs))
 					}
 				}
 			}
