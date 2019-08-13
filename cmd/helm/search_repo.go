@@ -54,7 +54,7 @@ func newSearchRepoCmd(out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "repo [keyword]",
-		Short: "search for a keyword in charts",
+		Short: "search repositories for a keyword in charts",
 		Long:  searchRepoDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return o.run(out, args)
@@ -65,7 +65,7 @@ func newSearchRepoCmd(out io.Writer) *cobra.Command {
 	f.BoolVarP(&o.regexp, "regexp", "r", false, "use regular expressions for searching repositories you have added")
 	f.BoolVarP(&o.versions, "versions", "l", false, "show the long listing, with each version of each chart on its own line, for repositories you have added")
 	f.StringVar(&o.version, "version", "", "search using semantic versioning constraints on repositories you have added")
-	f.UintVar(&o.maxColWidth, "maxColumnWidth", 50, "maximum column width for output table")
+	f.UintVar(&o.maxColWidth, "max-col-width", 50, "maximum column width for output table")
 
 	return cmd
 }

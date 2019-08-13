@@ -50,7 +50,7 @@ func newSearchHubCmd(out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "hub [keyword]",
-		Short: "search for a keyword in charts",
+		Short: "search for charts in the Helm Hub or an instance of Monocular",
 		Long:  searchHubDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return o.run(out, args)
@@ -59,7 +59,7 @@ func newSearchHubCmd(out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	f.StringVar(&o.searchEndpoint, "endpoint", "https://hub.helm.sh", "monocular instance to query for charts")
-	f.UintVar(&o.maxColWidth, "maxColumnWidth", 50, "maximum column width for output table")
+	f.UintVar(&o.maxColWidth, "max-col-width", 50, "maximum column width for output table")
 
 	return cmd
 }
