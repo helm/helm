@@ -116,7 +116,9 @@ func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.Hoo
 			return errors.Wrapf(err, "unable to build kubernetes object for deleting hook %s", h.Path)
 		}
 		_, errs := cfg.KubeClient.Delete(resources)
-		return errors.New(joinErrors(errs))
+		if len(errs) > 0 {
+			return errors.New(joinErrors(errs))
+		}
 	}
 	return nil
 }
