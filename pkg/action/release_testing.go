@@ -17,6 +17,8 @@ limitations under the License.
 package action
 
 import (
+	"bytes"
+	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
@@ -56,6 +58,22 @@ func (r *ReleaseTesting) Run(name string) error {
 	if err := r.cfg.execHook(rel, release.HookTest, r.Timeout); err != nil {
 		r.cfg.Releases.Update(rel)
 		return err
+	}
+
+	if r.Cleanup {
+		for _, h := range rel.Hooks {
+			for _, e := range h.Events {
+				if e == release.HookTest {
+					hookResource, err := r.cfg.KubeClient.Build(bytes.NewBufferString(h.Manifest))
+					if err != nil {
+						return errors.Wrapf(err, "unable to build kubernetes object for %s hook %s", h, h.Path)
+					}
+					if _, errs := r.cfg.KubeClient.Delete(hookResource); errs != nil {
+						return fmt.Errorf("unable to delete kubernetes object for %s hook %s: %s", h, h.Path, joinErrors(errs))
+					}
+				}
+			}
+		}
 	}
 
 	return r.cfg.Releases.Update(rel)
