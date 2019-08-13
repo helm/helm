@@ -20,13 +20,10 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
-
-	"helm.sh/helm/pkg/helmpath/xdg"
 )
 
-func TestSearchMonocularCmd(t *testing.T) {
+func TestSearchHubCmd(t *testing.T) {
 
 	// Setup a mock search service
 	var searchResult = `{"data":[{"id":"stable/phpmyadmin","type":"chart","attributes":{"name":"phpmyadmin","repo":{"name":"stable","url":"https://kubernetes-charts.storage.googleapis.com"},"description":"phpMyAdmin is an mysql administration frontend","home":"https://www.phpmyadmin.net/","keywords":["mariadb","mysql","phpmyadmin"],"maintainers":[{"name":"Bitnami","email":"containers@bitnami.com"}],"sources":["https://github.com/bitnami/bitnami-docker-phpmyadmin"],"icon":""},"links":{"self":"/v1/charts/stable/phpmyadmin"},"relationships":{"latestChartVersion":{"data":{"version":"3.0.0","app_version":"4.9.0-1","created":"2019-08-08T17:57:31.38Z","digest":"119c499251bffd4b06ff0cd5ac98c2ce32231f84899fb4825be6c2d90971c742","urls":["https://kubernetes-charts.storage.googleapis.com/phpmyadmin-3.0.0.tgz"],"readme":"/v1/assets/stable/phpmyadmin/versions/3.0.0/README.md","values":"/v1/assets/stable/phpmyadmin/versions/3.0.0/values.yaml"},"links":{"self":"/v1/charts/stable/phpmyadmin/versions/3.0.0"}}}},{"id":"bitnami/phpmyadmin","type":"chart","attributes":{"name":"phpmyadmin","repo":{"name":"bitnami","url":"https://charts.bitnami.com"},"description":"phpMyAdmin is an mysql administration frontend","home":"https://www.phpmyadmin.net/","keywords":["mariadb","mysql","phpmyadmin"],"maintainers":[{"name":"Bitnami","email":"containers@bitnami.com"}],"sources":["https://github.com/bitnami/bitnami-docker-phpmyadmin"],"icon":""},"links":{"self":"/v1/charts/bitnami/phpmyadmin"},"relationships":{"latestChartVersion":{"data":{"version":"3.0.0","app_version":"4.9.0-1","created":"2019-08-08T18:34:13.341Z","digest":"66d77cf6d8c2b52c488d0a294cd4996bd5bad8dc41d3829c394498fb401c008a","urls":["https://charts.bitnami.com/bitnami/phpmyadmin-3.0.0.tgz"],"readme":"/v1/assets/bitnami/phpmyadmin/versions/3.0.0/README.md","values":"/v1/assets/bitnami/phpmyadmin/versions/3.0.0/values.yaml"},"links":{"self":"/v1/charts/bitnami/phpmyadmin/versions/3.0.0"}}}}]}`
@@ -41,7 +38,7 @@ func TestSearchMonocularCmd(t *testing.T) {
 %s/charts/bitnami/phpmyadmin	3.0.0        	4.9.0-1    	phpMyAdmin is an mysql administration frontend
 `, ts.URL, ts.URL)
 
-	testcmd := "search --endpoint " + ts.URL + " maria"
+	testcmd := "search hub --endpoint " + ts.URL + " maria"
 	storage := storageFixture()
 	_, out, err := executeActionCommandC(storage, testcmd)
 	if err != nil {
@@ -53,55 +50,4 @@ func TestSearchMonocularCmd(t *testing.T) {
 		t.Log(expected)
 	}
 
-}
-
-func TestSearchRepositoriesCmd(t *testing.T) {
-	defer resetEnv()()
-
-	os.Setenv(xdg.CacheHomeEnvVar, "testdata/helmhome")
-	os.Setenv(xdg.ConfigHomeEnvVar, "testdata/helmhome")
-	os.Setenv(xdg.DataHomeEnvVar, "testdata/helmhome")
-
-	tests := []cmdTestCase{{
-		name:   "search for 'maria', expect one match",
-		cmd:    "search -r maria",
-		golden: "output/search-single.txt",
-	}, {
-		name:   "search for 'alpine', expect two matches",
-		cmd:    "search -r alpine",
-		golden: "output/search-multiple.txt",
-	}, {
-		name:   "search for 'alpine' with versions, expect three matches",
-		cmd:    "search -r alpine --versions",
-		golden: "output/search-multiple-versions.txt",
-	}, {
-		name:   "search for 'alpine' with version constraint, expect one match with version 0.1.0",
-		cmd:    "search -r alpine --version '>= 0.1, < 0.2'",
-		golden: "output/search-constraint.txt",
-	}, {
-		name:   "search for 'alpine' with version constraint, expect one match with version 0.1.0",
-		cmd:    "search -r alpine --versions --version '>= 0.1, < 0.2'",
-		golden: "output/search-versions-constraint.txt",
-	}, {
-		name:   "search for 'alpine' with version constraint, expect one match with version 0.2.0",
-		cmd:    "search -r alpine --version '>= 0.1'",
-		golden: "output/search-constraint-single.txt",
-	}, {
-		name:   "search for 'alpine' with version constraint and --versions, expect two matches",
-		cmd:    "search -r alpine --versions --version '>= 0.1'",
-		golden: "output/search-multiple-versions-constraints.txt",
-	}, {
-		name:   "search for 'syzygy', expect no matches",
-		cmd:    "search -r syzygy",
-		golden: "output/search-not-found.txt",
-	}, {
-		name:   "search for 'alp[a-z]+', expect two matches",
-		cmd:    "search -r alp[a-z]+ --regexp",
-		golden: "output/search-regex.txt",
-	}, {
-		name:      "search for 'alp[', expect failure to compile regexp",
-		cmd:       "search -r alp[ --regexp",
-		wantError: true,
-	}}
-	runTestCmd(t, tests)
 }
