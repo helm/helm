@@ -19,6 +19,7 @@ package action
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -61,18 +62,20 @@ func (r *ReleaseTesting) Run(name string) error {
 	}
 
 	if r.Cleanup {
+		var manifestsToDelete strings.Builder
 		for _, h := range rel.Hooks {
 			for _, e := range h.Events {
 				if e == release.HookTest {
-					hookResource, err := r.cfg.KubeClient.Build(bytes.NewBufferString(h.Manifest))
-					if err != nil {
-						return errors.Wrapf(err, "unable to build kubernetes object for %v hook %s", h, h.Path)
-					}
-					if _, errs := r.cfg.KubeClient.Delete(hookResource); errs != nil {
-						return fmt.Errorf("unable to delete kubernetes object for %v hook %s: %s", h, h.Path, joinErrors(errs))
-					}
+					fmt.Fprintf(&manifestsToDelete, "\n---\n%s", h.Manifest)
 				}
 			}
+		}
+		hooks, err := r.cfg.KubeClient.Build(bytes.NewBufferString(manifestsToDelete.String()))
+		if err != nil {
+			return fmt.Errorf("unable to build test hooks: %v", err)
+		}
+		if _, errs := r.cfg.KubeClient.Delete(hooks); errs != nil {
+			return fmt.Errorf("unable to delete test hooks: %v", joinErrors(errs))
 		}
 	}
 
