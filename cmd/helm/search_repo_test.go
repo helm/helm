@@ -23,7 +23,7 @@ import (
 	"helm.sh/helm/pkg/helmpath/xdg"
 )
 
-func TestSearchCmd(t *testing.T) {
+func TestSearchRepositoriesCmd(t *testing.T) {
 	defer resetEnv()()
 
 	os.Setenv(xdg.CacheHomeEnvVar, "testdata/helmhome")
@@ -32,43 +32,43 @@ func TestSearchCmd(t *testing.T) {
 
 	tests := []cmdTestCase{{
 		name:   "search for 'maria', expect one match",
-		cmd:    "search maria",
+		cmd:    "search repo maria",
 		golden: "output/search-single.txt",
 	}, {
 		name:   "search for 'alpine', expect two matches",
-		cmd:    "search alpine",
+		cmd:    "search repo alpine",
 		golden: "output/search-multiple.txt",
 	}, {
 		name:   "search for 'alpine' with versions, expect three matches",
-		cmd:    "search alpine --versions",
+		cmd:    "search repo alpine --versions",
 		golden: "output/search-multiple-versions.txt",
 	}, {
 		name:   "search for 'alpine' with version constraint, expect one match with version 0.1.0",
-		cmd:    "search alpine --version '>= 0.1, < 0.2'",
+		cmd:    "search repo alpine --version '>= 0.1, < 0.2'",
 		golden: "output/search-constraint.txt",
 	}, {
 		name:   "search for 'alpine' with version constraint, expect one match with version 0.1.0",
-		cmd:    "search alpine --versions --version '>= 0.1, < 0.2'",
+		cmd:    "search repo alpine --versions --version '>= 0.1, < 0.2'",
 		golden: "output/search-versions-constraint.txt",
 	}, {
 		name:   "search for 'alpine' with version constraint, expect one match with version 0.2.0",
-		cmd:    "search alpine --version '>= 0.1'",
+		cmd:    "search repo alpine --version '>= 0.1'",
 		golden: "output/search-constraint-single.txt",
 	}, {
 		name:   "search for 'alpine' with version constraint and --versions, expect two matches",
-		cmd:    "search alpine --versions --version '>= 0.1'",
+		cmd:    "search repo alpine --versions --version '>= 0.1'",
 		golden: "output/search-multiple-versions-constraints.txt",
 	}, {
 		name:   "search for 'syzygy', expect no matches",
-		cmd:    "search syzygy",
+		cmd:    "search repo syzygy",
 		golden: "output/search-not-found.txt",
 	}, {
 		name:   "search for 'alp[a-z]+', expect two matches",
-		cmd:    "search alp[a-z]+ --regexp",
+		cmd:    "search repo alp[a-z]+ --regexp",
 		golden: "output/search-regex.txt",
 	}, {
 		name:      "search for 'alp[', expect failure to compile regexp",
-		cmd:       "search alp[ --regexp",
+		cmd:       "search repo alp[ --regexp",
 		wantError: true,
 	}}
 	runTestCmd(t, tests)
