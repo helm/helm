@@ -19,22 +19,25 @@ package registry // import "helm.sh/helm/internal/experimental/registry"
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"regexp"
 	"strings"
-
-	"github.com/containerd/containerd/reference"
 )
 
 var (
-	validPortRegEx   = regexp.MustCompile(`^([1-9]\d{0,3}|0|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$`) // adapted from https://stackoverflow.com/a/12968117
-	errEmptyRepo     = errors.New("parsed repo was empty")
-	errTooManyColons = errors.New("ref may only contain a single colon character (:) unless specifying a port number")
+	validPortRegEx = regexp.MustCompile(`^([1-9]\d{0,3}|0|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$`) // adapted from https://stackoverflow.com/a/12968117
+	// TODO: Currently we don't support digests, so we are only splitting on the
+	// colon. However, when we add support for digests, we'll need to use the
+	// regexp anyway to split on both colons and @, so leaving it like this for
+	// now
+	referenceDelimiter = regexp.MustCompile(`[:]`)
+	errEmptyRepo       = errors.New("parsed repo was empty")
+	errTooManyColons   = errors.New("ref may only contain a single colon character (:) unless specifying a port number")
 )
 
 type (
 	// Reference defines the main components of a reference specification
 	Reference struct {
-		*reference.Spec
 		Tag  string
 		Repo string
 	}
@@ -42,22 +45,34 @@ type (
 
 // ParseReference converts a string to a Reference
 func ParseReference(s string) (*Reference, error) {
-	spec, err := reference.Parse(s)
-	if err != nil {
-		return nil, err
+	if s == "" {
+		return nil, errEmptyRepo
+	}
+	// Split the components of the string on the colon or @, if it is more than 3,
+	// immediately return an error. Other validation will be performed later in
+	// the function
+	splitComponents := referenceDelimiter.Split(s, -1)
+	if len(splitComponents) > 3 {
+		return nil, errTooManyColons
 	}
 
-	// convert to our custom type and make necessary mods
-	ref := Reference{Spec: &spec}
-	ref.setExtraFields()
+	var ref *Reference
+	switch len(splitComponents) {
+	case 1:
+		ref = &Reference{Repo: splitComponents[0]}
+	case 2:
+		ref = &Reference{Repo: splitComponents[0], Tag: splitComponents[1]}
+	case 3:
+		ref = &Reference{Repo: strings.Join(splitComponents[:2], ":"), Tag: splitComponents[2]}
+	}
 
 	// ensure the reference is valid
-	err = ref.validate()
+	err := ref.validate()
 	if err != nil {
 		return nil, err
 	}
 
-	return &ref, nil
+	return ref, nil
 }
 
 // FullName the full name of a reference (repo:tag)
@@ -66,38 +81,6 @@ func (ref *Reference) FullName() string {
 		return ref.Repo
 	}
 	return fmt.Sprintf("%s:%s", ref.Repo, ref.Tag)
-}
-
-// setExtraFields adds the Repo and Tag fields to a Reference
-func (ref *Reference) setExtraFields() {
-	ref.Tag = ref.Object
-	ref.Repo = ref.Locator
-	ref.fixNoTag()
-	ref.fixNoRepo()
-}
-
-// fixNoTag is a fix for ref strings such as "mychart:1.0.0", which result in missing tag
-func (ref *Reference) fixNoTag() {
-	if ref.Tag == "" {
-		parts := strings.Split(ref.Repo, ":")
-		numParts := len(parts)
-		if 0 < numParts {
-			lastIndex := numParts - 1
-			lastPart := parts[lastIndex]
-			if !strings.Contains(lastPart, "/") {
-				ref.Repo = strings.Join(parts[:lastIndex], ":")
-				ref.Tag = lastPart
-			}
-		}
-	}
-}
-
-// fixNoRepo is a fix for ref strings such as "mychart", which have the repo swapped with tag
-func (ref *Reference) fixNoRepo() {
-	if ref.Repo == "" {
-		ref.Repo = ref.Tag
-		ref.Tag = ""
-	}
 }
 
 // validate makes sure the ref meets our criteria
@@ -114,7 +97,10 @@ func (ref *Reference) validateRepo() error {
 	if ref.Repo == "" {
 		return errEmptyRepo
 	}
-	return nil
+	// Makes sure the repo results in a parsable URL (similar to what is done
+	// with containerd reference parsing)
+	_, err := url.Parse(ref.Repo)
+	return err
 }
 
 // validateNumColon ensures the ref only contains a single colon character (:)

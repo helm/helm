@@ -52,7 +52,7 @@ func TestChartSave(t *testing.T) {
 		t.Error(err)
 	}
 
-	ref, err = registry.ParseReference("localhost:5000/test:0.1.0")
+	ref, err = registry.ParseReference("localhost:5000/test")
 	if err != nil {
 		t.Fatal(err)
 	}
