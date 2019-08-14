@@ -479,7 +479,7 @@ Furthermore, A is dependent on chart B that creates objects
 - replicaset "B-ReplicaSet"
 - service "B-Service"
 
-After installation/upgrade of chart A a single Helm release is created/modified. The release will
+After installation/upgrade of charting A a single Helm release is created/modified. The release will
 create/update all of the above Kubernetes objects in the following order:
 
 - A-Namespace
