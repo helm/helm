@@ -475,6 +475,33 @@ func TestCoalesceTables(t *testing.T) {
 		t.Errorf("Expected boat string, got %v", dst["boat"])
 	}
 }
+
+func TestCoalesceSubchart(t *testing.T) {
+	tchart := "testdata/moby"
+	c, err := LoadDir(tchart)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tvals := &chart.Config{}
+
+	v, err := CoalesceValues(c, tvals)
+	if err != nil {
+		t.Fatal(err)
+	}
+	j, _ := json.MarshalIndent(v, "", "  ")
+	t.Logf("Coalesced Values: %s", string(j))
+
+	subchartValues, ok := v["spouter"].(map[string]interface{})
+	if !ok {
+		t.Errorf("Subchart values not found")
+	}
+
+	if _, ok := subchartValues["foo"]; ok {
+		t.Errorf("Expected key foo to be removed, still present")
+	}
+}
+
 func TestPathValue(t *testing.T) {
 	doc := `
 title: "Moby Dick"

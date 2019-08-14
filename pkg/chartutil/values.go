@@ -170,10 +170,7 @@ func CoalesceValues(chrt *chart.Chart, vals *chart.Config) (Values, error) {
 		if err != nil {
 			return cvals, err
 		}
-		cvals, err = coalesce(chrt, evals)
-		if err != nil {
-			return cvals, err
-		}
+		return coalesce(chrt, evals)
 	}
 
 	return coalesceDeps(chrt, cvals)
