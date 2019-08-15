@@ -85,7 +85,8 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 
 	u.cfg.Log("uninstall: Deleting %s", name)
 	rel.Info.Status = release.StatusUninstalling
-	rel.Info.Deleted = time.Now()
+	deleted := time.Now()
+	rel.Info.Deleted = &deleted
 	rel.Info.Description = "Deletion in progress (or silently failed)"
 	res := &release.UninstallReleaseResponse{Release: rel}
 

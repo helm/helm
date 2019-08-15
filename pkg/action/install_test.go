@@ -72,6 +72,7 @@ func TestInstallRelease(t *testing.T) {
 	is.NotEqual(len(rel.Manifest), 0)
 	is.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world")
 	is.Equal(rel.Info.Description, "Install complete")
+	is.Nil(rel.Info.Deleted)
 }
 
 func TestInstallReleaseClientOnly(t *testing.T) {

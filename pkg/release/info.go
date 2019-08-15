@@ -24,7 +24,7 @@ type Info struct {
 	// LastDeployed is when the release was last deployed.
 	LastDeployed time.Time `json:"last_deployed,omitempty"`
 	// Deleted tracks when this object was deleted.
-	Deleted time.Time `json:"deleted,omitempty"`
+	Deleted *time.Time `json:"deleted,omitempty"`
 	// Description is human-friendly "log entry" about this release.
 	Description string `json:"Description,omitempty"`
 	// Status is the current state of the release

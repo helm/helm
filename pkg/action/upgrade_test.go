@@ -55,6 +55,7 @@ func TestUpgradeRelease_Wait(t *testing.T) {
 	req.Error(err)
 	is.Contains(res.Info.Description, "I timed out")
 	is.Equal(res.Info.Status, release.StatusFailed)
+	is.Nil(res.Info.Deleted)
 }
 
 func TestUpgradeRelease_Atomic(t *testing.T) {
