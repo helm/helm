@@ -64,6 +64,7 @@ type Metadata struct {
 	Type string `json:"type,omitempty"`
 }
 
+// Validate checks the metadata for known issues, returning an error if metadata is not correct
 func (md *Metadata) Validate() error {
 	if md == nil {
 		return ValidationError("chart.metadata is required")

@@ -29,6 +29,7 @@ import (
 
 	"github.com/Masterminds/sprig"
 	"github.com/pkg/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"helm.sh/helm/pkg/chart"
 	"helm.sh/helm/pkg/chartutil"
@@ -80,8 +81,10 @@ type Install struct {
 	NameTemplate     string
 	OutputDir        string
 	Atomic           bool
+	SkipCRDs         bool
 }
 
+// ChartPathOptions captures common options used for controlling chart paths
 type ChartPathOptions struct {
 	CaFile   string // --ca-file
 	CertFile string // --cert-file
@@ -141,6 +144,35 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	}
 
 	rel := i.createRelease(chrt, vals)
+
+	// Pre-install anything in the crd/ directory
+	if crds := chrt.CRDs(); !i.SkipCRDs && len(crds) > 0 {
+		// We do these one at a time in the order they were read.
+		for _, obj := range crds {
+			// Read in the resources
+			res, err := i.cfg.KubeClient.Build(bytes.NewBuffer(obj.Data))
+			if err != nil {
+				// We bail out immediately
+				return nil, errors.Wrapf(err, "failed to install CRD %s", obj.Name)
+			}
+			// On dry run, bail here
+			if i.DryRun {
+				i.cfg.Log("WARNING: This chart or one of its subcharts contains CRDs. Rendering may fail or contain inaccuracies.")
+				continue
+			}
+			// Send them to Kube
+			if _, err := i.cfg.KubeClient.Create(res); err != nil {
+				// If the error is CRD already exists, continue.
+				if apierrors.IsAlreadyExists(err) {
+					crdName := res[0].Name
+					i.cfg.Log("CRD %s is already present. Skipping.", crdName)
+					continue
+				}
+				return i.failRelease(rel, err)
+			}
+		}
+	}
+
 	var manifestDoc *bytes.Buffer
 	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.OutputDir)
 	// Even for errors, attach this if available
@@ -484,6 +516,7 @@ func (i *Install) NameAndChart(args []string) (string, string, error) {
 	return fmt.Sprintf("%s-%d", base, time.Now().Unix()), args[0], nil
 }
 
+// TemplateName renders a name template, returning the name or an error.
 func TemplateName(nameTemplate string) (string, error) {
 	if nameTemplate == "" {
 		return "", nil
@@ -501,6 +534,7 @@ func TemplateName(nameTemplate string) (string, error) {
 	return b.String(), nil
 }
 
+// CheckDependencies checks the dependencies for a chart.
 func CheckDependencies(ch *chart.Chart, reqs []*chart.Dependency) error {
 	var missing []string
 
