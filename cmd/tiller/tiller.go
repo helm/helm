@@ -95,7 +95,7 @@ var (
 
 	// rootServer is the root gRPC server.
 	//
-	// Each gRPC service registers itself to this server during start().
+	// Each gRPC service register itself to this server during start().
 	rootServer *grpc.Server
 
 	// env is the default environment.
