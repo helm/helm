@@ -28,7 +28,7 @@ import (
 
 const (
 	bashCompletionFunc = `
-__helm_override_flag_list=(--kubeconfig --kube-context --home --namespace -n)
+__helm_override_flag_list=(--kubeconfig --kube-context --namespace -n)
 __helm_override_flags()
 {
     local ${__helm_override_flag_list[*]##*-} two_word_of of var
