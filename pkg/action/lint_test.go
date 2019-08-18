@@ -62,8 +62,15 @@ func TestLintChart(t *testing.T) {
 func TestLint_MultipleCharts(t *testing.T) {
 	testCharts := []string{chart2MultipleChartLint, chart1MultipleChartLint}
 	testLint := NewLint()
-	if result := testLint.Run(testCharts, values); len(result.Errors) == 0 {
+	if result := testLint.Run(testCharts, values); len(result.Errors) > 0 {
 		t.Error(result.Errors)
 	}
+}
 
+func TestLint_EmptyResultErrors(t *testing.T) {
+	testCharts := []string{chart2MultipleChartLint}
+	testLint := NewLint()
+	if result := testLint.Run(testCharts, values); len(result.Errors) > 0 {
+		t.Error("Expected no error, got more")
+	}
 }

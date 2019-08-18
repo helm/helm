@@ -59,15 +59,22 @@ func (l *Lint) Run(paths []string, vals map[string]interface{}) *LintResult {
 
 	result := &LintResult{}
 	for _, path := range paths {
-		if linter, err := lintChart(path, vals, l.Namespace, l.Strict); err != nil {
+		linter, err := lintChart(path, vals, l.Namespace, l.Strict)
+		if err != nil {
 			if err == errLintNoChart {
+				result.Errors = append(result.Errors, err)
+			}
+			if linter.HighestSeverity >= lowestTolerance {
 				result.Errors = append(result.Errors, err)
 			}
 		} else {
 			result.Messages = append(result.Messages, linter.Messages...)
 			result.TotalChartsLinted++
-			if linter.HighestSeverity >= lowestTolerance {
-				result.Errors = append(result.Errors, err)
+			for _, msg := range linter.Messages {
+				if msg.Severity == support.ErrorSev {
+					result.Errors = append(result.Errors, msg.Err)
+					result.Messages = append(result.Messages, msg)
+				}
 			}
 		}
 	}
