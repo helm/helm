@@ -33,9 +33,6 @@ import (
 const updateDesc = `
 Update gets the latest information about charts from the respective chart repositories.
 Information is cached locally, where it is used by commands like 'helm search'.
-
-'helm update' is the deprecated form of 'helm repo update'. It will be removed in
-future releases.
 `
 
 var errNoRepositories = errors.New("no repositories found. You must add one before updating")
