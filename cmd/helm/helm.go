@@ -41,7 +41,7 @@ import (
 
 const (
 	bashCompletionFunc = `
-__helm_override_flag_list=(--kubeconfig --kube-context --host --tiller-namespace)
+__helm_override_flag_list=(--kubeconfig --kube-context --host --tiller-namespace --home)
 __helm_override_flags()
 {
     local ${__helm_override_flag_list[*]##*-} two_word_of of var
@@ -80,6 +80,18 @@ __helm_list_releases()
     fi
 }
 
+
+__helm_list_repos()
+{
+    __helm_debug "${FUNCNAME[0]}: c is $c words[c] is ${words[c]}"
+    local out oflags
+    oflags=$(__helm_override_flags)
+    __helm_debug "${FUNCNAME[0]}: __helm_override_flags are ${oflags}"
+    if out=$(helm repo list ${oflags} | tail +2 | cut -f1 2>/dev/null); then
+        COMPREPLY=( $( compgen -W "${out[*]}" -- "$cur" ) )
+    fi
+}
+
 __helm_custom_func()
 {
     __helm_debug "${FUNCNAME[0]}: c is $c words[@] is ${words[@]}"
@@ -87,6 +99,10 @@ __helm_custom_func()
         helm_delete | helm_history | helm_status | helm_test |\
         helm_upgrade | helm_rollback | helm_get_*)
             __helm_list_releases
+            return
+			;;
+        helm_repo_remove)
+            __helm_list_repos
             return
             ;;
         *)
