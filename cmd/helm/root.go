@@ -65,6 +65,14 @@ __helm_list_releases()
         COMPREPLY=( $( compgen -W "${out[*]}" -- "$cur" ) )
     fi
 }
+__helm_list_repos()
+{
+    __helm_debug "${FUNCNAME[0]}: c is $c words[c] is ${words[c]}"
+    local out
+    if out=$(helm repo list | tail +2 | cut -f1 2>/dev/null); then
+        COMPREPLY=( $( compgen -W "${out[*]}" -- "$cur" ) )
+    fi
+}
 __helm_custom_func()
 {
 	__helm_debug "${FUNCNAME[0]}: last_command is $last_command"
@@ -73,6 +81,9 @@ __helm_custom_func()
 	    helm_upgrade | helm_rollback | helm_get_*)
             __helm_list_releases
             return
+			;;
+        helm_repo_remove)
+            __helm_list_repos
             ;;
         *)
             ;;
