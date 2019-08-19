@@ -29,7 +29,6 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver"
-	"github.com/pkg/errors"
 
 	"helm.sh/helm/pkg/repo"
 )
@@ -176,15 +175,6 @@ func (i *Index) SearchRegexp(re string, threshold int) ([]*Result, error) {
 		}
 	}
 	return buf, nil
-}
-
-// Chart returns the ChartVersion for a particular name.
-func (i *Index) Chart(name string) (*repo.ChartVersion, error) {
-	c, ok := i.charts[name]
-	if !ok {
-		return nil, errors.New("no such chart")
-	}
-	return c, nil
 }
 
 // SortScore does an in-place sort of the results.

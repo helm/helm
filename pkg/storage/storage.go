@@ -100,26 +100,6 @@ func (s *Storage) ListDeployed() ([]*rspb.Release, error) {
 	})
 }
 
-// ListFilterAll returns the set of releases satisfying the predicate
-// (filter0 && filter1 && ... && filterN), i.e. a Release is included in the results
-// if and only if all filters return true.
-func (s *Storage) ListFilterAll(fns ...relutil.FilterFunc) ([]*rspb.Release, error) {
-	s.Log("listing all releases with filter")
-	return s.Driver.List(func(rls *rspb.Release) bool {
-		return relutil.All(fns...).Check(rls)
-	})
-}
-
-// ListFilterAny returns the set of releases satisfying the predicate
-// (filter0 || filter1 || ... || filterN), i.e. a Release is included in the results
-// if at least one of the filters returns true.
-func (s *Storage) ListFilterAny(fns ...relutil.FilterFunc) ([]*rspb.Release, error) {
-	s.Log("listing any releases with filter")
-	return s.Driver.List(func(rls *rspb.Release) bool {
-		return relutil.Any(fns...).Check(rls)
-	})
-}
-
 // Deployed returns the last deployed release with the provided release name, or
 // returns ErrReleaseNotFound if not found.
 func (s *Storage) Deployed(name string) (*rspb.Release, error) {

@@ -81,9 +81,6 @@ func (ch *Chart) IsRoot() bool { return ch.parent == nil }
 // Parent returns a subchart's parent chart.
 func (ch *Chart) Parent() *Chart { return ch.parent }
 
-// SetParent sets a subchart's parent chart.
-func (ch *Chart) SetParent(chart *Chart) { ch.parent = chart }
-
 // ChartPath returns the full path to this chart in dot notation.
 func (ch *Chart) ChartPath() string {
 	if !ch.IsRoot() {
