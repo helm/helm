@@ -138,10 +138,6 @@ func NewList(cfg *Configuration) *List {
 	}
 }
 
-func (l *List) SetConfiguration(cfg *Configuration) {
-	l.cfg = cfg
-}
-
 // Run executes the list command, returning a set of matches.
 func (l *List) Run() ([]*release.Release, error) {
 	var filter *regexp.Regexp

@@ -60,22 +60,6 @@ func TestStatusCmd(t *testing.T) {
 			Notes:  "release notes",
 		}),
 	}, {
-		name:   "get status of a deployed release with resources",
-		cmd:    "status flummoxed-chickadee",
-		golden: "output/status-with-resource.txt",
-		rels: releasesMockWithStatus(&release.Info{
-			Status:    release.StatusDeployed,
-			Resources: "resource A\nresource B\n",
-		}),
-	}, {
-		name:   "get status of a deployed release with resources in YAML",
-		cmd:    "status flummoxed-chickadee -o yaml",
-		golden: "output/status.yaml",
-		rels: releasesMockWithStatus(&release.Info{
-			Status:    release.StatusDeployed,
-			Resources: "resource A\nresource B\n",
-		}),
-	}, {
 		name:   "get status of a deployed release with test suite",
 		cmd:    "status flummoxed-chickadee",
 		golden: "output/status-with-test-suite.txt",

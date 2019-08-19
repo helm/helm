@@ -73,11 +73,6 @@ func Parse(file io.Reader) (*Rules, error) {
 	return r, s.Err()
 }
 
-// Len returns the number of patterns in this rule set.
-func (r *Rules) Len() int {
-	return len(r.patterns)
-}
-
 // Ignore evalutes the file at the given path, and returns true if it should be ignored.
 //
 // Ignore evaluates path against the rules in order. Evaluation stops when a match

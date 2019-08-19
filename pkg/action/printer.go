@@ -19,9 +19,7 @@ package action
 import (
 	"fmt"
 	"io"
-	"regexp"
 	"strings"
-	"text/tabwriter"
 
 	"helm.sh/helm/pkg/release"
 )
@@ -37,14 +35,6 @@ func PrintRelease(out io.Writer, rel *release.Release) {
 	}
 	fmt.Fprintf(out, "NAMESPACE: %s\n", rel.Namespace)
 	fmt.Fprintf(out, "STATUS: %s\n", rel.Info.Status.String())
-	fmt.Fprintf(out, "\n")
-	if len(rel.Info.Resources) > 0 {
-		re := regexp.MustCompile("  +")
-
-		w := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.TabIndent)
-		fmt.Fprintf(w, "RESOURCES:\n%s\n", re.ReplaceAllString(rel.Info.Resources, "\t"))
-		w.Flush()
-	}
 
 	executions := executionsByHookEvent(rel)
 	if tests, ok := executions[release.HookTest]; ok {

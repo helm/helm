@@ -93,16 +93,6 @@ func (rs *records) Replace(key string, rec *record) *record {
 	return nil
 }
 
-func (rs records) FindByVersion(vers int) (int, bool) {
-	i := sort.Search(len(rs), func(i int) bool {
-		return rs[i].rls.Version == vers
-	})
-	if i < len(rs) && rs[i].rls.Version == vers {
-		return i, true
-	}
-	return i, false
-}
-
 func (rs *records) removeAt(index int) *record {
 	r := (*rs)[index]
 	(*rs)[index] = nil

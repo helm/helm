@@ -55,7 +55,7 @@ func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				client.Version = ver
 			}
 
-			if _, err := client.Run(args[0]); err != nil {
+			if err := client.Run(args[0]); err != nil {
 				return err
 			}
 

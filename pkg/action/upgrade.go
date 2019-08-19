@@ -292,7 +292,7 @@ func (u *Upgrade) failRelease(rel *release.Release, err error) (*release.Release
 		rollin.Recreate = u.Recreate
 		rollin.Force = u.Force
 		rollin.Timeout = u.Timeout
-		if _, rollErr := rollin.Run(rel.Name); rollErr != nil {
+		if rollErr := rollin.Run(rel.Name); rollErr != nil {
 			return rel, errors.Wrapf(rollErr, "an error occurred while rolling back the release. original upgrade error: %s", err)
 		}
 		return rel, errors.Wrapf(err, "release %s failed, and has been rolled back due to atomic being set", rel.Name)

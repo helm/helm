@@ -49,33 +49,31 @@ func NewRollback(cfg *Configuration) *Rollback {
 }
 
 // Run executes 'helm rollback' against the given release.
-func (r *Rollback) Run(name string) (*release.Release, error) {
+func (r *Rollback) Run(name string) error {
 	r.cfg.Log("preparing rollback of %s", name)
 	currentRelease, targetRelease, err := r.prepareRollback(name)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if !r.DryRun {
 		r.cfg.Log("creating rolled back release for %s", name)
 		if err := r.cfg.Releases.Create(targetRelease); err != nil {
-			return nil, err
+			return err
 		}
 	}
 	r.cfg.Log("performing rollback of %s", name)
-	res, err := r.performRollback(currentRelease, targetRelease)
-	if err != nil {
-		return res, err
+	if _, err := r.performRollback(currentRelease, targetRelease); err != nil {
+		return err
 	}
 
 	if !r.DryRun {
 		r.cfg.Log("updating status for rolled back release for %s", name)
 		if err := r.cfg.Releases.Update(targetRelease); err != nil {
-			return res, err
+			return err
 		}
 	}
-
-	return res, nil
+	return nil
 }
 
 // prepareRollback finds the previous release and prepares a new release object with
