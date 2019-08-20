@@ -92,7 +92,7 @@ test-acceptance: build build-cross
 		cd ${ACCEPTANCE_DIR} && \
 			ROBOT_RUN_TESTS=$(ACCEPTANCE_RUN_TESTS) ROBOT_HELM_PATH=$(BINDIR) make acceptance; \
 	else \
-		echo "You must install the acceptance_testing repo under $(ACCEPTANCE_DIR)"; \
+		echo "You must clone the acceptance_testing repo under $(ACCEPTANCE_DIR)"; \
 		echo "You can find the acceptance_testing repo at https://github.com/helm/acceptance-testing"; \
 	fi
 
