@@ -96,6 +96,10 @@ test-acceptance: build build-cross
 		echo "You can find the acceptance_testing repo at https://github.com/helm/acceptance-testing"; \
 	fi
 
+.PHONY: test-completion
+test-completion: ACCEPTANCE_RUN_TESTS = shells.robot
+test-completion: test-acceptance
+
 .PHONY: verify-docs
 verify-docs: build
 	@scripts/verify-docs.sh
