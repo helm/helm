@@ -31,6 +31,8 @@ var (
 	chartMissingManifest         = "../../cmd/helm/testdata/testcharts/chart-missing-manifest"
 	chartSchema                  = "../../cmd/helm/testdata/testcharts/chart-with-schema"
 	chartSchemaNegative          = "../../cmd/helm/testdata/testcharts/chart-with-schema-negative"
+	chart1MultipleChartLint      = "../../cmd/helm/testdata/testcharts/multiplecharts-lint-chart-1"
+	chart2MultipleChartLint      = "../../cmd/helm/testdata/testcharts/multiplecharts-lint-chart-2"
 )
 
 func TestLintChart(t *testing.T) {
@@ -54,5 +56,21 @@ func TestLintChart(t *testing.T) {
 	}
 	if _, err := lintChart(chartSchemaNegative, values, namespace, strict); err != nil {
 		t.Error(err)
+	}
+}
+
+func TestLint_MultipleCharts(t *testing.T) {
+	testCharts := []string{chart2MultipleChartLint, chart1MultipleChartLint}
+	testLint := NewLint()
+	if result := testLint.Run(testCharts, values); len(result.Errors) > 0 {
+		t.Error(result.Errors)
+	}
+}
+
+func TestLint_EmptyResultErrors(t *testing.T) {
+	testCharts := []string{chart2MultipleChartLint}
+	testLint := NewLint()
+	if result := testLint.Run(testCharts, values); len(result.Errors) > 0 {
+		t.Error("Expected no error, got more")
 	}
 }

@@ -59,15 +59,22 @@ func (l *Lint) Run(paths []string, vals map[string]interface{}) *LintResult {
 
 	result := &LintResult{}
 	for _, path := range paths {
-		if linter, err := lintChart(path, vals, l.Namespace, l.Strict); err != nil {
+		linter, err := lintChart(path, vals, l.Namespace, l.Strict)
+		if err != nil {
 			if err == errLintNoChart {
+				result.Errors = append(result.Errors, err)
+			}
+			if linter.HighestSeverity >= lowestTolerance {
 				result.Errors = append(result.Errors, err)
 			}
 		} else {
 			result.Messages = append(result.Messages, linter.Messages...)
 			result.TotalChartsLinted++
-			if linter.HighestSeverity >= lowestTolerance {
-				result.Errors = append(result.Errors, err)
+			for _, msg := range linter.Messages {
+				if msg.Severity == support.ErrorSev {
+					result.Errors = append(result.Errors, msg.Err)
+					result.Messages = append(result.Messages, msg)
+				}
 			}
 		}
 	}
@@ -77,6 +84,10 @@ func (l *Lint) Run(paths []string, vals map[string]interface{}) *LintResult {
 func lintChart(path string, vals map[string]interface{}, namespace string, strict bool) (support.Linter, error) {
 	var chartPath string
 	linter := support.Linter{}
+	currentVals := make(map[string]interface{}, len(vals))
+	for key, value := range vals {
+		currentVals[key] = value
+	}
 
 	if strings.HasSuffix(path, ".tgz") {
 		tempDir, err := ioutil.TempDir("", "helm-lint")
@@ -110,5 +121,5 @@ func lintChart(path string, vals map[string]interface{}, namespace string, stric
 		return linter, errLintNoChart
 	}
 
-	return lint.All(chartPath, vals, namespace, strict), nil
+	return lint.All(chartPath, currentVals, namespace, strict), nil
 }
