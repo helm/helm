@@ -15,6 +15,8 @@ limitations under the License.
 
 package chart
 
+import "strings"
+
 // APIVersionV1 is the API version number for version 1.
 const APIVersionV1 = "v1"
 
@@ -97,6 +99,7 @@ func (ch *Chart) ChartFullPath() string {
 	return ch.Name()
 }
 
+// Validate validates the metadata.
 func (ch *Chart) Validate() error {
 	return ch.Metadata.Validate()
 }
@@ -107,4 +110,20 @@ func (ch *Chart) AppVersion() string {
 		return ""
 	}
 	return ch.Metadata.AppVersion
+}
+
+// CRDs returns a list of File objects in the 'crds/' directory of a Helm chart.
+func (ch *Chart) CRDs() []*File {
+	files := []*File{}
+	// Find all resources in the crds/ directory
+	for _, f := range ch.Files {
+		if strings.HasPrefix(f.Name, "crds/") {
+			files = append(files, f)
+		}
+	}
+	// Get CRDs from dependencies, too.
+	for _, dep := range ch.Dependencies() {
+		files = append(files, dep.CRDs()...)
+	}
+	return files
 }
