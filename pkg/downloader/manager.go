@@ -407,24 +407,22 @@ func (m *Manager) getRepoNames(deps []*chartutil.Dependency) (map[string]string,
 		}
 	}
 	if len(missing) > 0 {
-		if len(missing) > 0 {
-			errorMessage := fmt.Sprintf("no repository definition for %s. Please add them via 'helm repo add'", strings.Join(missing, ", "))
-			// It is common for people to try to enter "stable" as a repository instead of the actual URL.
-			// For this case, let's give them a suggestion.
-			containsNonURL := false
-			for _, repo := range missing {
-				if !strings.Contains(repo, "//") && !strings.HasPrefix(repo, "@") && !strings.HasPrefix(repo, "alias:") {
-					containsNonURL = true
-				}
+		errorMessage := fmt.Sprintf("no repository definition for %s. Please add them via 'helm repo add'", strings.Join(missing, ", "))
+		// It is common for people to try to enter "stable" as a repository instead of the actual URL.
+		// For this case, let's give them a suggestion.
+		containsNonURL := false
+		for _, repo := range missing {
+			if !strings.Contains(repo, "//") && !strings.HasPrefix(repo, "@") && !strings.HasPrefix(repo, "alias:") {
+				containsNonURL = true
 			}
-			if containsNonURL {
-				errorMessage += `
+		}
+		if containsNonURL {
+			errorMessage += `
 Note that repositories must be URLs or aliases. For example, to refer to the stable
 repository, use "https://kubernetes-charts.storage.googleapis.com/" or "@stable" instead of
 "stable". Don't forget to add the repo, too ('helm repo add').`
-			}
-			return nil, errors.New(errorMessage)
 		}
+		return nil, errors.New(errorMessage)
 	}
 	return reposMap, nil
 }
