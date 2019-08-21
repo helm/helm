@@ -205,6 +205,11 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, ge
 	}
 	c.setCredentials(r)
 
+	// Skip if dependency not contain name
+	if len(r.Config.Name) == 0 {
+		return u, r.Client, nil
+	}
+
 	// Next, we need to load the index, and actually look up the chart.
 	i, err := repo.LoadIndexFile(c.HelmHome.CacheIndex(r.Config.Name))
 	if err != nil {

@@ -78,7 +78,7 @@ func TestFindChartURL(t *testing.T) {
 	version := "0.1.0"
 	repoURL := "http://example.com/charts"
 
-	churl, username, password, err := findChartURL(name, version, repoURL, repos)
+	churl, username, password, err := m.findChartURL(name, version, repoURL, repos)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,13 +107,6 @@ func TestGetRepoNames(t *testing.T) {
 		expectedErr string
 	}{
 		{
-			name: "no repo definition failure",
-			req: []*chartutil.Dependency{
-				{Name: "oedipus-rex", Repository: "http://example.com/test"},
-			},
-			err: true,
-		},
-		{
 			name: "no repo definition failure -- stable repo",
 			req: []*chartutil.Dependency{
 				{Name: "oedipus-rex", Repository: "stable"},
@@ -127,6 +120,13 @@ func TestGetRepoNames(t *testing.T) {
 			},
 			err:         true,
 			expectedErr: "no 'repository' field specified for dependency: \"dependency-missing-repository-field\"",
+		},
+		{
+			name: "dependency repository is url but not exist in repos",
+			req: []*chartutil.Dependency{
+				{Name: "oedipus-rex", Repository: "http://example.com/test"},
+			},
+			expect: map[string]string{"http://example.com/test": "http://example.com/test"},
 		},
 		{
 			name: "no repo definition failure",
