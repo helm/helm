@@ -145,10 +145,10 @@ func ensureReposFile(out io.Writer, skipRefresh bool) error {
 	repoFile := helmpath.RepositoryFile()
 	if fi, err := os.Stat(repoFile); err != nil {
 		fmt.Fprintf(out, "Creating %s \n", repoFile)
-		//f := repo.NewFile()
-		//if err := f.WriteFile(repoFile, 0644); err != nil {
-		//	return err
-		//}
+		f := repo.NewFile()
+		if err := f.WriteFile(repoFile, 0644); err != nil {
+			return err
+		}
 	} else if fi.IsDir() {
 		return errors.Errorf("%s must be a file, not a directory", repoFile)
 	}
