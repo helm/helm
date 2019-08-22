@@ -51,6 +51,7 @@ func (l lazypath) dataPath(file string) string {
 	return l.path(xdg.DataHomeEnvVar, dataHome, file)
 }
 
+// ensurePathExist creates directory if not exist, this lazily loads config and cache directories
 func (l lazypath) ensurePathExist(path string) {
 	if fi, err := os.Stat(path); err != nil {
 		if err := os.MkdirAll(path, 0755); err != nil {
