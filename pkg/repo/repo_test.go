@@ -16,7 +16,9 @@ limitations under the License.
 
 package repo
 
-import "testing"
+import (
+	"testing"
+)
 import "io/ioutil"
 import "os"
 
@@ -198,6 +200,7 @@ func TestWriteFile(t *testing.T) {
 	}
 }
 
+// FIXME: Do we need this test ? It's failing since we don't need helm init.
 //func TestRepoNotExists(t *testing.T) {
 //	_, err := LoadFile("/this/path/does/not/exist.yaml")
 //	if err == nil {
