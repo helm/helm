@@ -24,9 +24,9 @@ import (
 )
 
 func TestHelmHome(t *testing.T) {
-	os.Setenv(xdg.CacheHomeEnvVar, "/cache")
-	os.Setenv(xdg.ConfigHomeEnvVar, "/config")
-	os.Setenv(xdg.DataHomeEnvVar, "/data")
+	os.Setenv(xdg.CacheHomeEnvVar, os.TempDir()+"cache")
+	os.Setenv(xdg.ConfigHomeEnvVar, os.TempDir()+"config")
+	os.Setenv(xdg.DataHomeEnvVar, os.TempDir()+"data")
 	isEq := func(t *testing.T, got, expected string) {
 		t.Helper()
 		if expected != got {
@@ -35,18 +35,18 @@ func TestHelmHome(t *testing.T) {
 		}
 	}
 
-	isEq(t, CachePath(), "/cache/helm")
-	isEq(t, ConfigPath(), "/config/helm")
-	isEq(t, DataPath(), "/data/helm")
-	isEq(t, RepositoryFile(), "/config/helm/repositories.yaml")
-	isEq(t, RepositoryCache(), "/cache/helm/repository")
-	isEq(t, CacheIndex("t"), "/cache/helm/repository/t-index.yaml")
-	isEq(t, CacheIndex(""), "/cache/helm/repository/index.yaml")
-	isEq(t, Starters(), "/data/helm/starters")
-	isEq(t, Archive(), "/cache/helm/archive")
+	isEq(t, CachePath(), os.TempDir()+"cache/helm")
+	isEq(t, ConfigPath(), os.TempDir()+"config/helm")
+	isEq(t, DataPath(), os.TempDir()+"data/helm")
+	isEq(t, RepositoryFile(), os.TempDir()+"config/helm/repositories.yaml")
+	isEq(t, RepositoryCache(), os.TempDir()+"cache/helm/repository")
+	isEq(t, CacheIndex("t"), os.TempDir()+"cache/helm/repository/t-index.yaml")
+	isEq(t, CacheIndex(""), os.TempDir()+"cache/helm/repository/index.yaml")
+	isEq(t, Starters(), os.TempDir()+"data/helm/starters")
+	isEq(t, Archive(), os.TempDir()+"cache/helm/archive")
 
 	// test to see if lazy-loading environment variables at runtime works
-	os.Setenv(xdg.CacheHomeEnvVar, "/cache2")
+	os.Setenv(xdg.CacheHomeEnvVar, os.TempDir()+"cache2")
 
-	isEq(t, CachePath(), "/cache2/helm")
+	isEq(t, CachePath(), os.TempDir()+"cache2/helm")
 }

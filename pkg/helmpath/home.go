@@ -43,7 +43,9 @@ func Registry() string {
 
 // RepositoryFile returns the path to the repositories.yaml file.
 func RepositoryFile() string {
-	return lp.configPath("repositories.yaml")
+	configPath := lp.configPath("")
+	repoFile := filepath.Join(configPath, "repositories.yaml")
+	return repoFile
 }
 
 // RepositoryCache returns the cache path for repository metadata.

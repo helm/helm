@@ -22,6 +22,8 @@ import (
 	"io/ioutil"
 	"os"
 
+	"helm.sh/helm/pkg/repo"
+
 	"github.com/Masterminds/semver"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -31,7 +33,6 @@ import (
 	"helm.sh/helm/pkg/helmpath"
 	"helm.sh/helm/pkg/plugin"
 	"helm.sh/helm/pkg/plugin/installer"
-	"helm.sh/helm/pkg/repo"
 )
 
 const initDesc = `
@@ -144,10 +145,10 @@ func ensureReposFile(out io.Writer, skipRefresh bool) error {
 	repoFile := helmpath.RepositoryFile()
 	if fi, err := os.Stat(repoFile); err != nil {
 		fmt.Fprintf(out, "Creating %s \n", repoFile)
-		f := repo.NewFile()
-		if err := f.WriteFile(repoFile, 0644); err != nil {
-			return err
-		}
+		//f := repo.NewFile()
+		//if err := f.WriteFile(repoFile, 0644); err != nil {
+		//	return err
+		//}
 	} else if fi.IsDir() {
 		return errors.Errorf("%s must be a file, not a directory", repoFile)
 	}

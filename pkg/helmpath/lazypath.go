@@ -13,6 +13,7 @@
 package helmpath
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -27,7 +28,10 @@ func (l lazypath) path(envVar string, defaultFn func() string, file string) stri
 	if base == "" {
 		base = defaultFn()
 	}
-	return filepath.Join(base, string(l), file)
+	path := filepath.Join(base, string(l), file)
+	// Create directory if not exist.
+	l.ensurePathExist(path)
+	return path
 }
 
 // cachePath defines the base directory relative to which user specific non-essential data files
@@ -45,4 +49,19 @@ func (l lazypath) configPath(file string) string {
 // dataPath defines the base directory relative to which user specific data files should be stored.
 func (l lazypath) dataPath(file string) string {
 	return l.path(xdg.DataHomeEnvVar, dataHome, file)
+}
+
+func (l lazypath) ensurePathExist(path string) {
+	if fi, err := os.Stat(path); err != nil {
+		if err := os.MkdirAll(path, 0755); err != nil {
+			// FIXME - Need to discuss best way to log error message in this package,
+			//  otherwise would need to refactor path() method. That would be huge refactor :(
+			fmt.Printf("creation of directory %s failed with error %s \n", path, err.Error())
+			// FIXME - os.Exit() seems like anti-pattern to exit, any suggestion here ?
+			os.Exit(1)
+		}
+	} else if !fi.IsDir() {
+		fmt.Printf("%s must be a directory. \n", path)
+		os.Exit(1)
+	}
 }
