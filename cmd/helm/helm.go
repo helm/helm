@@ -111,7 +111,7 @@ __helm_custom_func()
             __helm_list_releases
             return
             ;;
-        helm_repo_remove)
+        helm_repo_remove | helm_repo_update)
             __helm_list_repos
             return
             ;;
