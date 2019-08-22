@@ -80,7 +80,6 @@ __helm_list_releases()
     fi
 }
 
-
 __helm_list_repos()
 {
     __helm_debug "${FUNCNAME[0]}: c is $c words[c] is ${words[c]}"
@@ -88,6 +87,17 @@ __helm_list_repos()
     oflags=$(__helm_override_flags)
     __helm_debug "${FUNCNAME[0]}: __helm_override_flags are ${oflags}"
     if out=$(helm repo list ${oflags} | tail +2 | cut -f1 2>/dev/null); then
+        COMPREPLY=( $( compgen -W "${out[*]}" -- "$cur" ) )
+    fi
+}
+
+__helm_list_plugins()
+{
+    __helm_debug "${FUNCNAME[0]}: c is $c words[c] is ${words[c]}"
+    local out oflags
+    oflags=$(__helm_override_flags)
+    __helm_debug "${FUNCNAME[0]}: __helm_override_flags are ${oflags}"
+    if out=$(helm plugin list ${oflags} | tail +2 | cut -f1 2>/dev/null); then
         COMPREPLY=( $( compgen -W "${out[*]}" -- "$cur" ) )
     fi
 }
@@ -100,9 +110,13 @@ __helm_custom_func()
         helm_upgrade | helm_rollback | helm_get_*)
             __helm_list_releases
             return
-			;;
+            ;;
         helm_repo_remove)
             __helm_list_repos
+            return
+            ;;
+        helm_plugin_remove | helm_plugin_update)
+            __helm_list_plugins
             return
             ;;
         *)
