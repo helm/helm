@@ -106,8 +106,8 @@ func TestEnvSettings(t *testing.T) {
 		"HELM_TLS_ENABLE":   "",
 	}
 
-	resetEnv(allEnvvars)
-	defer resetEnv(allEnvvars)
+	reset := resetEnv(allEnvvars)
+	defer reset()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
