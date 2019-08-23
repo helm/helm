@@ -21,16 +21,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"helm.sh/helm/internal/test/ensure"
 	"helm.sh/helm/pkg/helmpath"
 )
 
 var _ Installer = new(LocalInstaller)
 
 func TestLocalInstaller(t *testing.T) {
-	ensure.HelmHome(t)
-	defer ensure.CleanHomeDirs(t)
-
 	// Make a temp dir
 	tdir, err := ioutil.TempDir("", "helm-installer-")
 	if err != nil {
@@ -48,10 +44,10 @@ func TestLocalInstaller(t *testing.T) {
 	}
 
 	if err := Install(i); err != nil {
-		t.Error(err)
+		t.Fatalf("%+v", err)
 	}
 
-	if i.Path() != filepath.Join(helmpath.Plugins(), "echo") {
+	if i.Path() != helmpath.DataPath("plugins", "echo") {
 		t.Errorf("expected path '$XDG_CONFIG_HOME/helm/plugins/helm-env', got %q", i.Path())
 	}
 }

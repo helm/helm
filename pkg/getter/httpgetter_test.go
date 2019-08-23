@@ -104,16 +104,11 @@ func TestDownload(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	provider, err := ByScheme("http", cli.EnvSettings{})
-	if err != nil {
-		t.Fatal("No http provider found")
-	}
-
-	g, err := provider.New(WithURL(srv.URL))
+	g, err := All(new(cli.EnvSettings)).ByScheme("http")
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := g.Get(srv.URL)
+	got, err := g.Get(srv.URL, WithURL(srv.URL))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -31,7 +31,6 @@ import (
 	"helm.sh/helm/pkg/helmpath"
 	"helm.sh/helm/pkg/plugin"
 	"helm.sh/helm/pkg/plugin/installer"
-	"helm.sh/helm/pkg/repo"
 )
 
 const initDesc = `
@@ -93,12 +92,6 @@ func (o *initOptions) run(out io.Writer) error {
 	if err := ensureDirectories(out); err != nil {
 		return err
 	}
-	if err := ensureReposFile(out, o.skipRefresh); err != nil {
-		return err
-	}
-	if err := ensureRepoFileFormat(helmpath.RepositoryFile(), out); err != nil {
-		return err
-	}
 	if o.pluginsFilename != "" {
 		if err := ensurePluginsInstalled(o.pluginsFilename, out); err != nil {
 			return err
@@ -120,11 +113,9 @@ func ensureDirectories(out io.Writer) error {
 		helmpath.CachePath(),
 		helmpath.ConfigPath(),
 		helmpath.DataPath(),
-		helmpath.RepositoryCache(),
-		helmpath.Plugins(),
-		helmpath.PluginCache(),
-		helmpath.Starters(),
-		helmpath.Archive(),
+		helmpath.CachePath("repository"),
+		helmpath.DataPath("plugins"),
+		helmpath.CachePath("plugins"),
 	}
 	for _, p := range directories {
 		if fi, err := os.Stat(p); err != nil {
@@ -137,31 +128,6 @@ func ensureDirectories(out io.Writer) error {
 		}
 	}
 
-	return nil
-}
-
-func ensureReposFile(out io.Writer, skipRefresh bool) error {
-	repoFile := helmpath.RepositoryFile()
-	if fi, err := os.Stat(repoFile); err != nil {
-		fmt.Fprintf(out, "Creating %s \n", repoFile)
-		f := repo.NewFile()
-		if err := f.WriteFile(repoFile, 0644); err != nil {
-			return err
-		}
-	} else if fi.IsDir() {
-		return errors.Errorf("%s must be a file, not a directory", repoFile)
-	}
-	return nil
-}
-
-func ensureRepoFileFormat(file string, out io.Writer) error {
-	r, err := repo.LoadFile(file)
-	if err == repo.ErrRepoOutOfDate {
-		fmt.Fprintln(out, "Updating repository file format...")
-		if err := r.WriteFile(file, 0644); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 

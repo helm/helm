@@ -25,14 +25,13 @@ import (
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/pkg/cli"
-	"helm.sh/helm/pkg/helmpath"
 	"helm.sh/helm/pkg/plugin"
 )
 
 // collectPlugins scans for getter plugins.
 // This will load plugins according to the cli.
-func collectPlugins(settings cli.EnvSettings) (Providers, error) {
-	plugins, err := plugin.FindPlugins(helmpath.Plugins())
+func collectPlugins(settings *cli.EnvSettings) (Providers, error) {
+	plugins, err := plugin.FindPlugins(settings.PluginsDirectory)
 	if err != nil {
 		return nil, err
 	}
@@ -57,14 +56,17 @@ func collectPlugins(settings cli.EnvSettings) (Providers, error) {
 // implemented in plugins.
 type pluginGetter struct {
 	command  string
-	settings cli.EnvSettings
+	settings *cli.EnvSettings
 	name     string
 	base     string
 	opts     options
 }
 
 // Get runs downloader plugin command
-func (p *pluginGetter) Get(href string) (*bytes.Buffer, error) {
+func (p *pluginGetter) Get(href string, options ...Option) (*bytes.Buffer, error) {
+	for _, opt := range options {
+		opt(&p.opts)
+	}
 	commands := strings.Split(p.command, " ")
 	argv := append(commands[1:], p.opts.certFile, p.opts.keyFile, p.opts.caFile, href)
 	prog := exec.Command(filepath.Join(p.base, commands[0]), argv...)
@@ -84,7 +86,7 @@ func (p *pluginGetter) Get(href string) (*bytes.Buffer, error) {
 }
 
 // NewPluginGetter constructs a valid plugin getter
-func NewPluginGetter(command string, settings cli.EnvSettings, name, base string) Constructor {
+func NewPluginGetter(command string, settings *cli.EnvSettings, name, base string) Constructor {
 	return func(options ...Option) (Getter, error) {
 		result := &pluginGetter{
 			command:  command,

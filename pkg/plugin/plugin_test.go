@@ -87,7 +87,6 @@ func TestPlatformPrepareCommand(t *testing.T) {
 			},
 		},
 	}
-	argv := []string{"--debug", "--foo", "bar"}
 	var osStrCmp string
 	os := runtime.GOOS
 	arch := runtime.GOARCH
@@ -101,6 +100,7 @@ func TestPlatformPrepareCommand(t *testing.T) {
 		osStrCmp = "os-arch"
 	}
 
+	argv := []string{"--debug", "--foo", "bar"}
 	checkCommand(p, argv, osStrCmp, t)
 }
 
@@ -116,7 +116,6 @@ func TestPartialPlatformPrepareCommand(t *testing.T) {
 			},
 		},
 	}
-	argv := []string{"--debug", "--foo", "bar"}
 	var osStrCmp string
 	os := runtime.GOOS
 	arch := runtime.GOARCH
@@ -128,6 +127,7 @@ func TestPartialPlatformPrepareCommand(t *testing.T) {
 		osStrCmp = "os-arch"
 	}
 
+	argv := []string{"--debug", "--foo", "bar"}
 	checkCommand(p, argv, osStrCmp, t)
 }
 
@@ -158,8 +158,7 @@ func TestNoMatchPrepareCommand(t *testing.T) {
 	}
 	argv := []string{"--debug", "--foo", "bar"}
 
-	_, _, err := p.PrepareCommand(argv)
-	if err == nil {
+	if _, _, err := p.PrepareCommand(argv); err == nil {
 		t.Errorf("Expected error to be returned")
 	}
 }

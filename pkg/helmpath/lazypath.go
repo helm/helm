@@ -22,27 +22,27 @@ import (
 // lazypath is an lazy-loaded path buffer for the XDG base directory specification.
 type lazypath string
 
-func (l lazypath) path(envVar string, defaultFn func() string, file string) string {
+func (l lazypath) path(envVar string, defaultFn func() string, elem ...string) string {
 	base := os.Getenv(envVar)
 	if base == "" {
 		base = defaultFn()
 	}
-	return filepath.Join(base, string(l), file)
+	return filepath.Join(base, string(l), filepath.Join(elem...))
 }
 
 // cachePath defines the base directory relative to which user specific non-essential data files
 // should be stored.
-func (l lazypath) cachePath(file string) string {
-	return l.path(xdg.CacheHomeEnvVar, cacheHome, file)
+func (l lazypath) cachePath(elem ...string) string {
+	return l.path(xdg.CacheHomeEnvVar, cacheHome, filepath.Join(elem...))
 }
 
 // configPath defines the base directory relative to which user specific configuration files should
 // be stored.
-func (l lazypath) configPath(file string) string {
-	return l.path(xdg.ConfigHomeEnvVar, configHome, file)
+func (l lazypath) configPath(elem ...string) string {
+	return l.path(xdg.ConfigHomeEnvVar, configHome, filepath.Join(elem...))
 }
 
 // dataPath defines the base directory relative to which user specific data files should be stored.
-func (l lazypath) dataPath(file string) string {
-	return l.path(xdg.DataHomeEnvVar, dataHome, file)
+func (l lazypath) dataPath(elem ...string) string {
+	return l.path(xdg.DataHomeEnvVar, dataHome, filepath.Join(elem...))
 }

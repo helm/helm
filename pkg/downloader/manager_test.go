@@ -17,12 +17,10 @@ package downloader
 
 import (
 	"bytes"
-	"os"
 	"reflect"
 	"testing"
 
 	"helm.sh/helm/pkg/chart"
-	"helm.sh/helm/pkg/helmpath/xdg"
 )
 
 func TestVersionEquals(t *testing.T) {
@@ -64,12 +62,11 @@ func TestNormalizeURL(t *testing.T) {
 }
 
 func TestFindChartURL(t *testing.T) {
-	os.Setenv(xdg.CacheHomeEnvVar, "testdata/helmhome")
-	os.Setenv(xdg.ConfigHomeEnvVar, "testdata/helmhome")
-
-	b := bytes.NewBuffer(nil)
+	var b bytes.Buffer
 	m := &Manager{
-		Out: b,
+		Out:              &b,
+		RepositoryConfig: repoConfig,
+		RepositoryCache:  repoCache,
 	}
 	repos, err := m.loadChartRepositories()
 	if err != nil {
@@ -96,12 +93,11 @@ func TestFindChartURL(t *testing.T) {
 }
 
 func TestGetRepoNames(t *testing.T) {
-	os.Setenv(xdg.CacheHomeEnvVar, "testdata/helmhome")
-	os.Setenv(xdg.ConfigHomeEnvVar, "testdata/helmhome")
-
 	b := bytes.NewBuffer(nil)
 	m := &Manager{
-		Out: b,
+		Out:              b,
+		RepositoryConfig: repoConfig,
+		RepositoryCache:  repoCache,
 	}
 	tests := []struct {
 		name   string

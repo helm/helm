@@ -50,8 +50,9 @@ will be overwritten, but other files will be left alone.
 `
 
 type createOptions struct {
-	starter string // --starter
-	name    string
+	starter    string // --starter
+	name       string
+	starterDir string
 }
 
 func newCreateCmd(out io.Writer) *cobra.Command {
@@ -64,6 +65,7 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.name = args[0]
+			o.starterDir = helmpath.DataPath("starters")
 			return o.run(out)
 		},
 	}
@@ -87,7 +89,7 @@ func (o *createOptions) run(out io.Writer) error {
 
 	if o.starter != "" {
 		// Create from the starter
-		lstarter := filepath.Join(helmpath.Starters(), o.starter)
+		lstarter := filepath.Join(o.starterDir, o.starter)
 		// If path is absolute, we dont want to prefix it with helm starters folder
 		if filepath.IsAbs(o.starter) {
 			lstarter = o.starter

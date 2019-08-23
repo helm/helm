@@ -62,7 +62,10 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 					return errors.New("--keyring is required for signing a package")
 				}
 			}
-			vals, err := valueOpts.MergeValues(settings)
+			client.RepositoryConfig = settings.RepositoryConfig
+			client.RepositoryCache = settings.RepositoryCache
+			p := getter.All(settings)
+			vals, err := valueOpts.MergeValues(p)
 			if err != nil {
 				return err
 			}
@@ -75,11 +78,13 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 
 				if client.DependencyUpdate {
 					downloadManager := &downloader.Manager{
-						Out:       ioutil.Discard,
-						ChartPath: path,
-						Keyring:   client.Keyring,
-						Getters:   getter.All(settings),
-						Debug:     settings.Debug,
+						Out:              ioutil.Discard,
+						ChartPath:        path,
+						Keyring:          client.Keyring,
+						Getters:          p,
+						Debug:            settings.Debug,
+						RepositoryConfig: settings.RepositoryConfig,
+						RepositoryCache:  settings.RepositoryCache,
 					}
 
 					if err := downloadManager.Update(); err != nil {

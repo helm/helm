@@ -13,69 +13,54 @@
 
 package helmpath
 
-import (
-	"fmt"
-	"path/filepath"
-)
-
 // This helper builds paths to Helm's configuration, cache and data paths.
 const lp = lazypath("helm")
 
 // ConfigPath returns the path where Helm stores configuration.
-func ConfigPath() string {
-	return lp.configPath("")
+func ConfigPath(elem ...string) string {
+	return lp.configPath(elem...)
 }
 
 // CachePath returns the path where Helm stores cached objects.
-func CachePath() string {
-	return lp.cachePath("")
+func CachePath(elem ...string) string {
+	return lp.cachePath(elem...)
 }
 
 // DataPath returns the path where Helm stores data.
-func DataPath() string {
-	return lp.dataPath("")
+func DataPath(elem ...string) string {
+	return lp.dataPath(elem...)
 }
 
 // Registry returns the path to the local registry cache.
-func Registry() string {
-	return lp.cachePath("registry")
-}
+// func Registry() string { return CachePath("registry") }
 
 // RepositoryFile returns the path to the repositories.yaml file.
-func RepositoryFile() string {
-	return lp.configPath("repositories.yaml")
-}
+// func RepositoryFile() string { return ConfigPath("repositories.yaml") }
 
 // RepositoryCache returns the cache path for repository metadata.
-func RepositoryCache() string {
-	return lp.cachePath("repository")
-}
+// func RepositoryCache() string { return CachePath("repository") }
 
 // CacheIndex returns the path to an index for the given named repository.
-func CacheIndex(name string) string {
-	target := fmt.Sprintf("%s-index.yaml", name)
-	if name == "" {
-		target = "index.yaml"
+func CacheIndexFile(name string) string {
+	if name != "" {
+		name += "-"
 	}
-	return filepath.Join(RepositoryCache(), target)
+	return name + "index.yaml"
+}
+
+func CacheIndex(name string) string {
+	if name != "" {
+		name += "-"
+	}
+	name += "index.yaml"
+	return CachePath("repository", name)
 }
 
 // Starters returns the path to the Helm starter packs.
-func Starters() string {
-	return lp.dataPath("starters")
-}
+// func Starters() string { return DataPath("starters") }
 
 // PluginCache returns the cache path for plugins.
-func PluginCache() string {
-	return lp.cachePath("plugins")
-}
+// func PluginCache() string { return CachePath("plugins") }
 
 // Plugins returns the path to the plugins directory.
-func Plugins() string {
-	return lp.dataPath("plugins")
-}
-
-// Archive returns the path to download chart archives.
-func Archive() string {
-	return lp.cachePath("archive")
-}
+// func Plugins() string { return DataPath("plugins") }

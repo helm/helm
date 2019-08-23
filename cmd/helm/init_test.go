@@ -28,20 +28,10 @@ import (
 const testPluginsFile = "testdata/plugins.yaml"
 
 func TestEnsureHome(t *testing.T) {
-	ensure.HelmHome(t)
-	defer ensure.CleanHomeDirs(t)
+	defer ensure.HelmHome(t)()
 
 	b := bytes.NewBuffer(nil)
 	if err := ensureDirectories(b); err != nil {
-		t.Error(err)
-	}
-	if err := ensureReposFile(b, false); err != nil {
-		t.Error(err)
-	}
-	if err := ensureReposFile(b, true); err != nil {
-		t.Error(err)
-	}
-	if err := ensureRepoFileFormat(helmpath.RepositoryFile(), b); err != nil {
 		t.Error(err)
 	}
 	if err := ensurePluginsInstalled(testPluginsFile, b); err != nil {
@@ -57,13 +47,7 @@ func TestEnsureHome(t *testing.T) {
 		}
 	}
 
-	if fi, err := os.Stat(helmpath.RepositoryFile()); err != nil {
-		t.Error(err)
-	} else if fi.IsDir() {
-		t.Errorf("%s should not be a directory", fi)
-	}
-
-	if plugins, err := findPlugins(helmpath.Plugins()); err != nil {
+	if plugins, err := findPlugins(helmpath.DataPath("plugins")); err != nil {
 		t.Error(err)
 	} else if len(plugins) != 1 {
 		t.Errorf("Expected 1 plugin, got %d", len(plugins))

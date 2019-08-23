@@ -17,7 +17,6 @@ package installer // import "helm.sh/helm/pkg/plugin/installer"
 
 import (
 	"os"
-	"path/filepath"
 	"sort"
 
 	"github.com/Masterminds/semver"
@@ -53,7 +52,7 @@ func NewVCSInstaller(source, version string) (*VCSInstaller, error) {
 	if err != nil {
 		return nil, err
 	}
-	cachedpath := filepath.Join(helmpath.PluginCache(), key)
+	cachedpath := helmpath.CachePath("plugins", key)
 	repo, err := vcs.NewRepo(source, cachedpath)
 	if err != nil {
 		return nil, err

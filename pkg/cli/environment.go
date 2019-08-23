@@ -26,6 +26,8 @@ import (
 	"os"
 
 	"github.com/spf13/pflag"
+
+	"helm.sh/helm/pkg/helmpath"
 )
 
 // EnvSettings describes all of the environment settings.
@@ -38,6 +40,21 @@ type EnvSettings struct {
 	KubeContext string
 	// Debug indicates whether or not Helm is running in Debug mode.
 	Debug bool
+
+	// RegistryConfig is the path to the registry config file.
+	RegistryConfig string
+	// RepositoryConfig is the path to the repositories file.
+	RepositoryConfig string
+	// Repositoryache is the path to the repositories cache directory.
+	RepositoryCache string
+	// PluginsDirectory is the path to the plugins directory.
+	PluginsDirectory string
+}
+
+func New() *EnvSettings {
+	return &EnvSettings{
+		PluginsDirectory: helmpath.DataPath("plugins"),
+	}
 }
 
 // AddFlags binds flags to the given flagset.
@@ -46,6 +63,10 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.KubeConfig, "kubeconfig", "", "path to the kubeconfig file")
 	fs.StringVar(&s.KubeContext, "kube-context", "", "name of the kubeconfig context to use")
 	fs.BoolVar(&s.Debug, "debug", false, "enable verbose output")
+
+	fs.StringVar(&s.RegistryConfig, "registry-config", helmpath.ConfigPath("registry.json"), "path to the registry config file")
+	fs.StringVar(&s.RepositoryConfig, "repository-config", helmpath.ConfigPath("repositories.yaml"), "path to the repositories config file")
+	fs.StringVar(&s.RepositoryCache, "repository-cache", helmpath.CachePath("repository"), "path to the repositories config file")
 }
 
 // Init sets values from the environment.
@@ -57,8 +78,10 @@ func (s *EnvSettings) Init(fs *pflag.FlagSet) {
 
 // envMap maps flag names to envvars
 var envMap = map[string]string{
-	"debug":     "HELM_DEBUG",
-	"namespace": "HELM_NAMESPACE",
+	"debug":             "HELM_DEBUG",
+	"namespace":         "HELM_NAMESPACE",
+	"registry-config":   "HELM_REGISTRY_CONFIG",
+	"repository-config": "HELM_REPOSITORY_CONFIG",
 }
 
 func setFlagFromEnv(name, envar string, fs *pflag.FlagSet) {

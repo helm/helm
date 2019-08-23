@@ -91,14 +91,14 @@ func TestResolve(t *testing.T) {
 	}
 
 	repoNames := map[string]string{"alpine": "kubernetes-charts", "redis": "kubernetes-charts"}
-	r := New("testdata/chartpath")
+	r := New("testdata/chartpath", "testdata/helm/repository")
 	for _, tt := range tests {
 		l, err := r.Resolve(tt.req, repoNames)
 		if err != nil {
 			if tt.err {
 				continue
 			}
-			t.Fatal(err)
+			t.Fatalf("%+v", err)
 		}
 
 		if tt.err {

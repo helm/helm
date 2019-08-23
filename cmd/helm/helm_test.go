@@ -59,9 +59,10 @@ func runTestCmd(t *testing.T, tests []cmdTestCase) {
 					t.Fatal(err)
 				}
 			}
+			t.Log("running cmd: ", tt.cmd)
 			_, out, err := executeActionCommandC(storage, tt.cmd)
 			if (err != nil) != tt.wantError {
-				t.Errorf("expected error, got '%v'", err)
+				t.Errorf("expected error, got '%+v'", err)
 			}
 			if tt.golden != "" {
 				test.AssertGoldenString(t, out, tt.golden)

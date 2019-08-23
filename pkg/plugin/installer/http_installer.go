@@ -79,18 +79,13 @@ func NewHTTPInstaller(source string) (*HTTPInstaller, error) {
 		return nil, err
 	}
 
-	getConstructor, err := getter.ByScheme("http", cli.EnvSettings{})
-	if err != nil {
-		return nil, err
-	}
-
-	get, err := getConstructor.New(getter.WithURL(source))
+	get, err := getter.All(new(cli.EnvSettings)).ByScheme("http")
 	if err != nil {
 		return nil, err
 	}
 
 	i := &HTTPInstaller{
-		CacheDir:   filepath.Join(helmpath.PluginCache(), key),
+		CacheDir:   helmpath.CachePath("plugins", key),
 		PluginName: stripPluginName(filepath.Base(source)),
 		base:       newBase(source),
 		extractor:  extractor,
@@ -157,7 +152,7 @@ func (i HTTPInstaller) Path() string {
 	if i.base.Source == "" {
 		return ""
 	}
-	return filepath.Join(helmpath.Plugins(), i.PluginName)
+	return helmpath.DataPath("plugins", i.PluginName)
 }
 
 // Extract extracts compressed archives

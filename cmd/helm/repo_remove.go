@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -29,49 +30,55 @@ import (
 	"helm.sh/helm/pkg/repo"
 )
 
+type repoRemoveOptions struct {
+	name      string
+	repoFile  string
+	repoCache string
+}
+
 func newRepoRemoveCmd(out io.Writer) *cobra.Command {
+	o := &repoRemoveOptions{}
 	cmd := &cobra.Command{
 		Use:     "remove [NAME]",
 		Aliases: []string{"rm"},
 		Short:   "remove a chart repository",
 		Args:    require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return removeRepoLine(out, args[0])
+			o.repoFile = settings.RepositoryConfig
+			o.repoCache = settings.RepositoryCache
+			o.name = args[0]
+			return o.run(out)
 		},
 	}
 
 	return cmd
 }
 
-func removeRepoLine(out io.Writer, name string) error {
-	repoFile := helmpath.RepositoryFile()
-	r, err := repo.LoadFile(repoFile)
+func (o *repoRemoveOptions) run(out io.Writer) error {
+	r, err := repo.LoadFile(o.repoFile)
 	if err != nil {
 		return err
 	}
 
-	if !r.Remove(name) {
-		return errors.Errorf("no repo named %q found", name)
+	if !r.Remove(o.name) {
+		return errors.Errorf("no repo named %q found", o.name)
 	}
-	if err := r.WriteFile(repoFile, 0644); err != nil {
+	if err := r.WriteFile(o.repoFile, 0644); err != nil {
 		return err
 	}
 
-	if err := removeRepoCache(name); err != nil {
+	if err := removeRepoCache(o.repoCache, o.name); err != nil {
 		return err
 	}
 
-	fmt.Fprintf(out, "%q has been removed from your repositories\n", name)
-
+	fmt.Fprintf(out, "%q has been removed from your repositories\n", o.name)
 	return nil
 }
 
-func removeRepoCache(name string) error {
-	if _, err := os.Stat(helmpath.CacheIndex(name)); err == nil {
-		err = os.Remove(helmpath.CacheIndex(name))
-		if err != nil {
-			return err
-		}
+func removeRepoCache(root, name string) error {
+	idx := filepath.Join(root, helmpath.CacheIndexFile(name))
+	if _, err := os.Stat(idx); err != nil {
+		return nil
 	}
-	return nil
+	return os.Remove(idx)
 }

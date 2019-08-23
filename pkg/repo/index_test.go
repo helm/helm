@@ -24,7 +24,6 @@ import (
 	"helm.sh/helm/pkg/chart"
 	"helm.sh/helm/pkg/cli"
 	"helm.sh/helm/pkg/getter"
-	"helm.sh/helm/pkg/helmpath"
 )
 
 const (
@@ -135,35 +134,32 @@ func TestDownloadIndexFile(t *testing.T) {
 	}
 	defer srv.Close()
 
-	setupCacheHome(t)
-
 	r, err := NewChartRepository(&Entry{
 		Name: testRepo,
 		URL:  srv.URL,
-	}, getter.All(cli.EnvSettings{}))
+	}, getter.All(&cli.EnvSettings{}))
 	if err != nil {
 		t.Errorf("Problem creating chart repository from %s: %v", testRepo, err)
 	}
 
-	if err := r.DownloadIndexFile(); err != nil {
-		t.Errorf("%#v", err)
-	}
-
-	if _, err := os.Stat(helmpath.CacheIndex(testRepo)); err != nil {
-		t.Errorf("error finding created index file: %#v", err)
-	}
-
-	b, err := ioutil.ReadFile(helmpath.CacheIndex(testRepo))
+	idx, err := r.DownloadIndexFile()
 	if err != nil {
-		t.Errorf("error reading index file: %#v", err)
+		t.Fatalf("Failed to download index file to %s: %+v", idx, err)
+	}
+
+	if _, err := os.Stat(idx); err != nil {
+		t.Fatalf("error finding created index file: %#v", err)
+	}
+
+	b, err := ioutil.ReadFile(idx)
+	if err != nil {
+		t.Fatalf("error reading index file: %#v", err)
 	}
 
 	i, err := loadIndex(b)
 	if err != nil {
-		t.Errorf("Index %q failed to parse: %s", testfile, err)
-		return
+		t.Fatalf("Index %q failed to parse: %s", testfile, err)
 	}
-
 	verifyLocalIndex(t, i)
 }
 
@@ -175,19 +171,16 @@ func verifyLocalIndex(t *testing.T, i *IndexFile) {
 
 	alpine, ok := i.Entries["alpine"]
 	if !ok {
-		t.Errorf("'alpine' section not found.")
-		return
+		t.Fatalf("'alpine' section not found.")
 	}
 
 	if l := len(alpine); l != 1 {
-		t.Errorf("'alpine' should have 1 chart, got %d", l)
-		return
+		t.Fatalf("'alpine' should have 1 chart, got %d", l)
 	}
 
 	nginx, ok := i.Entries["nginx"]
 	if !ok || len(nginx) != 2 {
-		t.Error("Expected 2 nginx entries")
-		return
+		t.Fatalf("Expected 2 nginx entries")
 	}
 
 	expects := []*ChartVersion{
@@ -292,7 +285,7 @@ func TestIndexDirectory(t *testing.T) {
 		}
 
 		frob := frobs[0]
-		if len(frob.Digest) == 0 {
+		if frob.Digest == "" {
 			t.Errorf("Missing digest of file %s.", frob.Name)
 		}
 		if frob.URLs[0] != test.downloadLink {

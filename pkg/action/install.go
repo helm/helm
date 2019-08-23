@@ -564,7 +564,7 @@ OUTER:
 // - URL
 //
 // If 'verify' is true, this will attempt to also verify the chart.
-func (c *ChartPathOptions) LocateChart(name string, settings cli.EnvSettings) (string, error) {
+func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (string, error) {
 	name = strings.TrimSpace(name)
 	version := strings.TrimSpace(c.Version)
 
@@ -604,11 +604,12 @@ func (c *ChartPathOptions) LocateChart(name string, settings cli.EnvSettings) (s
 		name = chartURL
 	}
 
-	if _, err := os.Stat(helmpath.Archive()); os.IsNotExist(err) {
-		os.MkdirAll(helmpath.Archive(), 0744)
+	archivePath := helmpath.CachePath("archive")
+	if err := os.MkdirAll(archivePath, 0744); err != nil {
+		return "", err
 	}
 
-	filename, _, err := dl.DownloadTo(name, version, helmpath.Archive())
+	filename, _, err := dl.DownloadTo(name, version, archivePath)
 	if err == nil {
 		lname, err := filepath.Abs(filename)
 		if err != nil {

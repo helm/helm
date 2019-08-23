@@ -24,7 +24,6 @@ import (
 
 	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/pkg/helmpath"
 	"helm.sh/helm/pkg/repo"
 )
 
@@ -70,7 +69,7 @@ func NewServer(docroot string) *Server {
 	}
 	srv.Start()
 	// Add the testing repository as the only repo.
-	if err := setTestingRepository(srv.URL()); err != nil {
+	if err := setTestingRepository(srv.URL(), filepath.Join(root, "repositories.yaml")); err != nil {
 		panic(err)
 	}
 	return srv
@@ -108,7 +107,7 @@ func (s *Server) CopyCharts(origin string) ([]string, error) {
 		if err != nil {
 			return []string{}, err
 		}
-		if err := ioutil.WriteFile(newname, data, 0755); err != nil {
+		if err := ioutil.WriteFile(newname, data, 0644); err != nil {
 			return []string{}, err
 		}
 		copied[i] = newname
@@ -132,7 +131,7 @@ func (s *Server) CreateIndex() error {
 	}
 
 	ifile := filepath.Join(s.docroot, "index.yaml")
-	return ioutil.WriteFile(ifile, d, 0755)
+	return ioutil.WriteFile(ifile, d, 0644)
 }
 
 func (s *Server) Start() {
@@ -164,16 +163,16 @@ func (s *Server) URL() string {
 // This makes it possible to simulate a local cache of a repository.
 func (s *Server) LinkIndices() error {
 	lstart := filepath.Join(s.docroot, "index.yaml")
-	ldest := helmpath.CacheIndex("test")
+	ldest := filepath.Join(s.docroot, "test-index.yaml")
 	return os.Symlink(lstart, ldest)
 }
 
 // setTestingRepository sets up a testing repository.yaml with only the given URL.
-func setTestingRepository(url string) error {
+func setTestingRepository(url, fname string) error {
 	r := repo.NewFile()
 	r.Add(&repo.Entry{
 		Name: "test",
 		URL:  url,
 	})
-	return r.WriteFile(helmpath.RepositoryFile(), 0644)
+	return r.WriteFile(fname, 0644)
 }

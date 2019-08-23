@@ -42,5 +42,5 @@ func (b *base) Path() string {
 	if b.Source == "" {
 		return ""
 	}
-	return filepath.Join(helmpath.Plugins(), filepath.Base(b.Source))
+	return helmpath.DataPath("plugins", filepath.Base(b.Source))
 }

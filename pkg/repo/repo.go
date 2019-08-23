@@ -19,15 +19,12 @@ package repo // import "helm.sh/helm/pkg/repo"
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 )
-
-// ErrRepoOutOfDate indicates that the repository file is out of date, but
-// is fixable.
-var ErrRepoOutOfDate = errors.New("repository file is out of date")
 
 // File represents the repositories.yaml file
 type File struct {
@@ -48,41 +45,18 @@ func NewFile() *File {
 }
 
 // LoadFile takes a file at the given path and returns a File object
-//
-// If this returns ErrRepoOutOfDate, it also returns a recovered File that
-// can be saved as a replacement to the out of date file.
 func LoadFile(path string) (*File, error) {
 	b, err := ioutil.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, errors.Errorf("couldn't load repositories file (%s).\nYou might need to run `helm init`", path)
+			return nil, errors.Wrapf(err, "couldn't load repositories file (%s).\nYou might need to run `helm init`", path)
 		}
 		return nil, err
 	}
 
 	r := &File{}
 	err = yaml.Unmarshal(b, r)
-	if err != nil {
-		return nil, err
-	}
-
-	// File is either corrupt, or is from before v2.0.0-Alpha.5
-	if r.APIVersion == "" {
-		m := map[string]string{}
-		if err = yaml.Unmarshal(b, &m); err != nil {
-			return nil, err
-		}
-		r := NewFile()
-		for k, v := range m {
-			r.Add(&Entry{
-				Name: k,
-				URL:  v,
-			})
-		}
-		return r, ErrRepoOutOfDate
-	}
-
-	return r, nil
+	return r, err
 }
 
 // Add adds one or more repo entries to a repo file.
@@ -94,18 +68,18 @@ func (r *File) Add(re ...*Entry) {
 // entry with the same name doesn't exist in the repo file it will add it.
 func (r *File) Update(re ...*Entry) {
 	for _, target := range re {
-		found := false
-		for j, repo := range r.Repositories {
-			if repo.Name == target.Name {
-				r.Repositories[j] = target
-				found = true
-				break
-			}
-		}
-		if !found {
-			r.Add(target)
+		r.update(target)
+	}
+}
+
+func (r *File) update(e *Entry) {
+	for j, repo := range r.Repositories {
+		if repo.Name == e.Name {
+			r.Repositories[j] = e
+			return
 		}
 	}
+	r.Add(e)
 }
 
 // Has returns true if the given name is already a repository name.
@@ -137,6 +111,9 @@ func (r *File) Remove(name string) bool {
 func (r *File) WriteFile(path string, perm os.FileMode) error {
 	data, err := yaml.Marshal(r)
 	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err
 	}
 	return ioutil.WriteFile(path, data, perm)

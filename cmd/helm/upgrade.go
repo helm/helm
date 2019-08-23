@@ -28,6 +28,7 @@ import (
 	"helm.sh/helm/pkg/action"
 	"helm.sh/helm/pkg/chart/loader"
 	"helm.sh/helm/pkg/cli/values"
+	"helm.sh/helm/pkg/getter"
 	"helm.sh/helm/pkg/storage/driver"
 )
 
@@ -73,7 +74,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				client.Version = ">0.0.0-0"
 			}
 
-			vals, err := valueOpts.MergeValues(settings)
+			vals, err := valueOpts.MergeValues(getter.All(settings))
 			if err != nil {
 				return err
 			}

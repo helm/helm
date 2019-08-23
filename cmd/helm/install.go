@@ -174,7 +174,8 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 
 	debug("CHART PATH: %s\n", cp)
 
-	vals, err := valueOpts.MergeValues(settings)
+	p := getter.All(settings)
+	vals, err := valueOpts.MergeValues(p)
 	if err != nil {
 		return nil, err
 	}
@@ -197,11 +198,13 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		if err := action.CheckDependencies(chartRequested, req); err != nil {
 			if client.DependencyUpdate {
 				man := &downloader.Manager{
-					Out:        out,
-					ChartPath:  cp,
-					Keyring:    client.ChartPathOptions.Keyring,
-					SkipUpdate: false,
-					Getters:    getter.All(settings),
+					Out:              out,
+					ChartPath:        cp,
+					Keyring:          client.ChartPathOptions.Keyring,
+					SkipUpdate:       false,
+					Getters:          p,
+					RepositoryConfig: settings.RepositoryConfig,
+					RepositoryCache:  settings.RepositoryCache,
 				}
 				if err := man.Update(); err != nil {
 					return nil, err

@@ -25,7 +25,7 @@ import (
 
 	"sigs.k8s.io/yaml"
 
-	helm_env "helm.sh/helm/pkg/cli"
+	"helm.sh/helm/pkg/cli"
 	"helm.sh/helm/pkg/helmpath"
 )
 
@@ -215,21 +215,18 @@ func FindPlugins(plugdirs string) ([]*Plugin, error) {
 // SetupPluginEnv prepares os.Env for plugins. It operates on os.Env because
 // the plugin subsystem itself needs access to the environment variables
 // created here.
-func SetupPluginEnv(settings helm_env.EnvSettings,
+func SetupPluginEnv(settings *cli.EnvSettings,
 	shortName, base string) {
 	for key, val := range map[string]string{
 		"HELM_PLUGIN_NAME": shortName,
 		"HELM_PLUGIN_DIR":  base,
 		"HELM_BIN":         os.Args[0],
-		"HELM_PLUGIN":      helmpath.Plugins(),
+		"HELM_PLUGIN":      settings.PluginsDirectory,
 
 		// Set vars that convey common information.
-		"HELM_PATH_REPOSITORY_FILE":  helmpath.RepositoryFile(),
-		"HELM_PATH_REPOSITORY_CACHE": helmpath.RepositoryCache(),
-		"HELM_PATH_STARTER":          helmpath.Starters(),
-		"HELM_PATH_CACHE":            helmpath.CachePath(),
-		"HELM_PATH_CONFIG":           helmpath.ConfigPath(),
-		"HELM_PATH_DATA":             helmpath.DataPath(),
+		"HELM_PATH_REPOSITORY_FILE":  settings.RepositoryConfig,
+		"HELM_PATH_REPOSITORY_CACHE": helmpath.CachePath("repository"),
+		"HELM_PATH_STARTER":          helmpath.DataPath("starters"),
 		"HELM_HOME":                  helmpath.DataPath(), // for backwards compatibility with Helm 2 plugins
 	} {
 		os.Setenv(key, val)

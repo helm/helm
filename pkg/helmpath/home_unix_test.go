@@ -38,12 +38,8 @@ func TestHelmHome(t *testing.T) {
 	isEq(t, CachePath(), "/cache/helm")
 	isEq(t, ConfigPath(), "/config/helm")
 	isEq(t, DataPath(), "/data/helm")
-	isEq(t, RepositoryFile(), "/config/helm/repositories.yaml")
-	isEq(t, RepositoryCache(), "/cache/helm/repository")
 	isEq(t, CacheIndex("t"), "/cache/helm/repository/t-index.yaml")
 	isEq(t, CacheIndex(""), "/cache/helm/repository/index.yaml")
-	isEq(t, Starters(), "/data/helm/starters")
-	isEq(t, Archive(), "/cache/helm/archive")
 
 	// test to see if lazy-loading environment variables at runtime works
 	os.Setenv(xdg.CacheHomeEnvVar, "/cache2")
