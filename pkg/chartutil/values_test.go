@@ -643,3 +643,35 @@ func TestOverriteTableItemWithNonTableValue(t *testing.T) {
 		t.Errorf("Expected %v, but got %v", expected, result)
 	}
 }
+
+func TestSubchartCoaleseWithNullValue(t *testing.T) {
+	v, err := CoalesceValues(&chart.Chart{
+		Metadata: &chart.Metadata{Name: "demo"},
+		Dependencies: []*chart.Chart{
+			{
+				Metadata: &chart.Metadata{Name: "logstash"},
+				Values: &chart.Config{
+					Raw: `livenessProbe: {httpGet: {path: "/", port: monitor}}`,
+				},
+			},
+		},
+		Values: &chart.Config{
+			Raw: `logstash: {livenessProbe: {httpGet: null, exec: "/bin/true"}}`,
+		},
+	}, &chart.Config{})
+	if err != nil {
+		t.Errorf("Failed with %s", err)
+	}
+	result := v.AsMap()
+	expected := map[string]interface{}{
+		"logstash": map[string]interface{}{
+			"global": map[string]interface{}{},
+			"livenessProbe": map[string]interface{}{
+				"exec": "/bin/true",
+			},
+		},
+	}
+	if !reflect.DeepEqual(result, expected) {
+		t.Errorf("got %+v, expected %+v", result, expected)
+	}
+}
