@@ -156,6 +156,17 @@
   revision = "577dee27f20dd8f1a529f82210094af593be12bd"
 
 [[projects]]
+  branch = "master"
+  digest = "1:7996950d6e7d367ff77af55a45a5f59aba0d15ecd4ae74697b1bda8e9f2e66ab"
+  name = "github.com/agl/ed25519"
+  packages = [
+    ".",
+    "edwards25519",
+  ]
+  pruneopts = "T"
+  revision = "5312a61534124124185d41f09206b9fef1d88403"
+
+[[projects]]
   digest = "1:297a3c21bf1d3b4695a222e43e982bb52b4b9e156ca2eadbe32b898d0a1ae551"
   name = "github.com/asaskevich/govalidator"
   packages = ["."]
@@ -391,6 +402,14 @@
   pruneopts = "T"
   revision = "5241b46610f2491efdf9d1c85f1ddf5b02f6d962"
   version = "v0.6.1"
+
+[[projects]]
+  digest = "1:78d55c8a6d82624d6518995a14e872265166e4bca8b53f92c970740664571638"
+  name = "github.com/docker/go"
+  packages = ["canonical/json"]
+  pruneopts = "T"
+  revision = "62e5ec7cf43f795986ec658df7cb317255772993"
+  version = "v1.5.1-1"
 
 [[projects]]
   digest = "1:b64eea95d41af3792092af9c951efcd2d8d8bfd2335c851f7afaf54d6be12c66"
@@ -784,6 +803,14 @@
   revision = "0d29b283ac0f967dd3a02739bf26a22702210d7a"
 
 [[projects]]
+  digest = "1:99baec2d9e1a471dd5f9196447a2cf46202111456deaf34834967ab644dd91fb"
+  name = "github.com/miekg/pkcs11"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "210dc1e16747c5ba98a03bcbcf728c38086ea357"
+  version = "v1.0.3"
+
+[[projects]]
   digest = "1:abf08734a6527df70ed361d7c369fb580e6840d8f7a6012e5f609fdfd93b4e48"
   name = "github.com/mitchellh/go-wordwrap"
   packages = ["."]
@@ -960,6 +987,29 @@
   pruneopts = "T"
   revision = "ffdc059bfe9ce6a4e144ba849dbedead332c6053"
   version = "v1.3.0"
+
+[[projects]]
+  digest = "1:d30c1fb06a1564b78447922a70b18026612ef4a56dc50ab63333e060fd81a666"
+  name = "github.com/theupdateframework/notary"
+  packages = [
+    ".",
+    "client",
+    "client/changelist",
+    "cryptoservice",
+    "passphrase",
+    "storage",
+    "trustmanager",
+    "trustmanager/yubikey",
+    "trustpinning",
+    "tuf",
+    "tuf/data",
+    "tuf/signed",
+    "tuf/utils",
+    "tuf/validation",
+  ]
+  pruneopts = "T"
+  revision = "d6e1431feb32348e0650bf7551ac5cffd01d857b"
+  version = "v0.6.1"
 
 [[projects]]
   branch = "master"
@@ -1821,23 +1871,26 @@
     "github.com/asaskevich/govalidator",
     "github.com/containerd/containerd/content",
     "github.com/containerd/containerd/errdefs",
-    "github.com/containerd/containerd/reference",
     "github.com/containerd/containerd/remotes",
     "github.com/deislabs/oras/pkg/auth",
     "github.com/deislabs/oras/pkg/auth/docker",
     "github.com/deislabs/oras/pkg/content",
     "github.com/deislabs/oras/pkg/context",
     "github.com/deislabs/oras/pkg/oras",
+    "github.com/docker/cli/cli/config",
+    "github.com/docker/cli/cli/config/types",
     "github.com/docker/distribution/configuration",
     "github.com/docker/distribution/registry",
     "github.com/docker/distribution/registry/auth/htpasswd",
+    "github.com/docker/distribution/registry/client/auth",
+    "github.com/docker/distribution/registry/client/auth/challenge",
+    "github.com/docker/distribution/registry/client/transport",
     "github.com/docker/distribution/registry/storage/driver/inmemory",
     "github.com/docker/docker/pkg/term",
     "github.com/docker/go-units",
     "github.com/evanphx/json-patch",
     "github.com/gobwas/glob",
     "github.com/gosuri/uitable",
-    "github.com/gosuri/uitable/util/strutil",
     "github.com/mattn/go-shellwords",
     "github.com/opencontainers/go-digest",
     "github.com/opencontainers/image-spec/specs-go",
@@ -1850,6 +1903,13 @@
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/require",
     "github.com/stretchr/testify/suite",
+    "github.com/theupdateframework/notary",
+    "github.com/theupdateframework/notary/client",
+    "github.com/theupdateframework/notary/cryptoservice",
+    "github.com/theupdateframework/notary/passphrase",
+    "github.com/theupdateframework/notary/trustmanager",
+    "github.com/theupdateframework/notary/tuf/data",
+    "github.com/theupdateframework/notary/tuf/utils",
     "github.com/xeipuuv/gojsonschema",
     "golang.org/x/crypto/bcrypt",
     "golang.org/x/crypto/openpgp",

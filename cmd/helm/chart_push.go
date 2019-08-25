@@ -18,12 +18,23 @@ package main
 
 import (
 	"io"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/cmd/helm/require"
 	"helm.sh/helm/pkg/action"
+	"helm.sh/helm/pkg/helmpath"
 )
+
+type signOpts struct {
+	trustDir    string
+	trustServer string
+	tlscacert   string
+	rootkey     string
+
+	signature bool
+}
 
 const chartPushDesc = `
 Upload a chart to a remote registry.
@@ -34,7 +45,8 @@ Must first run "helm chart save" or "helm chart pull".
 `
 
 func newChartPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
-	return &cobra.Command{
+	opts := &signOpts{}
+	cmd := &cobra.Command{
 		Use:    "push [ref]",
 		Short:  "push a chart to remote",
 		Long:   chartPushDesc,
@@ -42,7 +54,29 @@ func newChartPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Hidden: !FeatureGateOCI.IsEnabled(),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ref := args[0]
+
+			if opts.signature {
+				err := action.NewChartSign(
+					cfg, opts.trustDir,
+					opts.trustServer,
+					ref,
+					opts.tlscacert,
+					opts.rootkey).Run(out, ref)
+				if err != nil {
+					return err
+				}
+			}
+
 			return action.NewChartPush(cfg).Run(out, ref)
 		},
 	}
+
+	td := filepath.Join(helmpath.Registry(), "trust")
+	cmd.Flags().StringVarP(&opts.trustDir, "trustdir", "", td, "Directory where the trust data is persisted to")
+	cmd.Flags().StringVarP(&opts.trustServer, "server", "", "", "The trust server to use")
+	cmd.Flags().StringVarP(&opts.tlscacert, "tlscacert", "", "", "Trust certs signed only by this CA")
+	cmd.Flags().StringVarP(&opts.rootkey, "rootkey", "", "", "Root key to initialize the repository with")
+	cmd.Flags().BoolVarP(&opts.signature, "signature", "", false, "Root key to initialize the repository with")
+
+	return cmd
 }
