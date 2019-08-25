@@ -107,6 +107,10 @@ func NewInstall(cfg *Configuration) *Install {
 //
 // If DryRun is set to true, this will prepare the release, but not install it
 func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
+	if err := i.cfg.KubeClient.IsReachable(); err != nil {
+		return nil, err
+	}
+
 	if err := i.availableName(); err != nil {
 		return nil, err
 	}

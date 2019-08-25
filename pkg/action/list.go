@@ -140,6 +140,10 @@ func NewList(cfg *Configuration) *List {
 
 // Run executes the list command, returning a set of matches.
 func (l *List) Run() ([]*release.Release, error) {
+	if err := l.cfg.KubeClient.IsReachable(); err != nil {
+		return nil, err
+	}
+
 	var filter *regexp.Regexp
 	if l.Filter != "" {
 		var err error
