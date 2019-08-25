@@ -56,6 +56,9 @@ type Interface interface {
 	// WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
 	// and returns said phase (PodSucceeded or PodFailed qualify).
 	WaitAndGetCompletedPodPhase(name string, timeout time.Duration) (v1.PodPhase, error)
+
+	// isReachable checks whether the client is able to connect to the cluster
+	IsReachable() error
 }
 
 var _ Interface = (*Client)(nil)
