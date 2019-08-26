@@ -25,10 +25,6 @@ import (
 	"helm.sh/helm/pkg/helmpath"
 	"helm.sh/helm/pkg/helmpath/xdg"
 
-	"helm.sh/helm/pkg/cli"
-
-	"helm.sh/helm/pkg/plugin"
-
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/cmd/helm/require"
@@ -45,7 +41,7 @@ func newEnvCmd(out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "env",
-		Short: "environment information in use the Helm client",
+		Short: "Helm client environment information",
 		Long:  envHelp,
 		Args:  require.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -59,15 +55,12 @@ func newEnvCmd(out io.Writer) *cobra.Command {
 type envOptions struct {
 }
 
-// run .
 func (o *envOptions) run(out io.Writer) error {
-	plugin.SetupPluginEnv(&cli.EnvSettings{}, "", "")
+	o.setHelmPaths()
 	o.setXdgPaths()
-	o.setGoPaths()
 	for _, prefix := range []string{
 		"HELM_",
 		"XDG_",
-		"GO",
 	} {
 		for _, e := range os.Environ() {
 			if strings.HasPrefix(e, prefix) {
@@ -78,11 +71,15 @@ func (o *envOptions) run(out io.Writer) error {
 	return nil
 }
 
-func (o *envOptions) setXdgPaths() {
+func (o *envOptions) setHelmPaths() {
 	for key, val := range map[string]string{
-		xdg.CacheHomeEnvVar:  helmpath.CachePath(),
-		xdg.ConfigHomeEnvVar: helmpath.ConfigPath(),
-		xdg.DataHomeEnvVar:   helmpath.DataPath(),
+		"HELM_HOME":                  helmpath.DataPath(),
+		"HELM_PATH_STARTER":          helmpath.DataPath("starters"),
+		"HELM_DEBUG":                 fmt.Sprint(settings.Debug),
+		"HELM_REGISTRY_CONFIG":       settings.RegistryConfig,
+		"HELM_PATH_REPOSITORY_FILE":  settings.RepositoryConfig,
+		"HELM_PATH_REPOSITORY_CACHE": settings.RepositoryCache,
+		"HELM_PLUGIN":                settings.PluginsDirectory,
 	} {
 		if eVal := os.Getenv(key); len(eVal) <= 0 {
 			os.Setenv(key, val)
@@ -90,10 +87,11 @@ func (o *envOptions) setXdgPaths() {
 	}
 }
 
-func (o *envOptions) setGoPaths() {
+func (o *envOptions) setXdgPaths() {
 	for key, val := range map[string]string{
-		"GOPATH": "~/go",
-		"GOBIN":  "~/go/bin",
+		xdg.CacheHomeEnvVar:  helmpath.CachePath(),
+		xdg.ConfigHomeEnvVar: helmpath.ConfigPath(),
+		xdg.DataHomeEnvVar:   helmpath.DataPath(),
 	} {
 		if eVal := os.Getenv(key); len(eVal) <= 0 {
 			os.Setenv(key, val)
