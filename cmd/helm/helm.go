@@ -44,7 +44,7 @@ import (
 const FeatureGateOCI = gates.Gate("HELM_EXPERIMENTAL_OCI")
 
 var (
-	settings   cli.EnvSettings
+	settings   = cli.New()
 	config     genericclioptions.RESTClientGetter
 	configOnce sync.Once
 )

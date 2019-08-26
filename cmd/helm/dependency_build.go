@@ -54,16 +54,16 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 				chartpath = filepath.Clean(args[0])
 			}
 			man := &downloader.Manager{
-				Out:       out,
-				ChartPath: chartpath,
-				Keyring:   client.Keyring,
-				Getters:   getter.All(settings),
+				Out:              out,
+				ChartPath:        chartpath,
+				Keyring:          client.Keyring,
+				Getters:          getter.All(settings),
+				RepositoryConfig: settings.RepositoryConfig,
+				RepositoryCache:  settings.RepositoryCache,
+				Debug:            settings.Debug,
 			}
 			if client.Verify {
 				man.Verify = downloader.VerifyIfPossible
-			}
-			if settings.Debug {
-				man.Debug = true
 			}
 			return man.Build()
 		},

@@ -19,11 +19,8 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 	"testing"
-
-	"helm.sh/helm/pkg/helmpath"
 
 	"helm.sh/helm/internal/test/ensure"
 	"helm.sh/helm/pkg/getter"
@@ -32,29 +29,7 @@ import (
 )
 
 func TestUpdateCmd(t *testing.T) {
-	defer resetEnv()()
-
-	ensure.HelmHome(t)
-	defer ensure.CleanHomeDirs(t)
-
-	repoFile := helmpath.RepositoryFile()
-	if _, err := os.Stat(repoFile); err != nil {
-		rf := repo.NewFile()
-		rf.Add(&repo.Entry{
-			Name: "charts",
-			URL:  "http://example.com/foo",
-		})
-		if err := rf.WriteFile(repoFile, 0644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if r, err := repo.LoadFile(repoFile); err == repo.ErrRepoOutOfDate {
-		if err := r.WriteFile(repoFile, 0644); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	out := bytes.NewBuffer(nil)
+	var out bytes.Buffer
 	// Instead of using the HTTP updater, we provide our own for this test.
 	// The TestUpdateCharts test verifies the HTTP behavior independently.
 	updater := func(repos []*repo.ChartRepository, out io.Writer) {
@@ -63,9 +38,10 @@ func TestUpdateCmd(t *testing.T) {
 		}
 	}
 	o := &repoUpdateOptions{
-		update: updater,
+		update:   updater,
+		repoFile: "testdata/repositories.yaml",
 	}
-	if err := o.run(out); err != nil {
+	if err := o.run(&out); err != nil {
 		t.Fatal(err)
 	}
 
@@ -76,9 +52,7 @@ func TestUpdateCmd(t *testing.T) {
 
 func TestUpdateCharts(t *testing.T) {
 	defer resetEnv()()
-
-	ensure.HelmHome(t)
-	defer ensure.CleanHomeDirs(t)
+	defer ensure.HelmHome(t)()
 
 	ts, err := repotest.NewTempServer("testdata/testserver/*.*")
 	if err != nil {

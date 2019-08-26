@@ -67,7 +67,9 @@ type ChartDownloader struct {
 	// Getter collection for the operation
 	Getters getter.Providers
 	// Options provide parameters to be passed along to the Getter being initialized.
-	Options []getter.Option
+	Options          []getter.Option
+	RepositoryConfig string
+	RepositoryCache  string
 }
 
 // DownloadTo retrieves a chart. Depending on the settings, it may also download a provenance file.
@@ -87,17 +89,12 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 		return "", nil, err
 	}
 
-	constructor, err := c.Getters.ByScheme(u.Scheme)
+	g, err := c.Getters.ByScheme(u.Scheme)
 	if err != nil {
 		return "", nil, err
 	}
 
-	g, err := constructor(c.Options...)
-	if err != nil {
-		return "", nil, err
-	}
-
-	data, err := g.Get(u.String())
+	data, err := g.Get(u.String(), c.Options...)
 	if err != nil {
 		return "", nil, err
 	}
@@ -157,7 +154,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 	}
 	c.Options = append(c.Options, getter.WithURL(ref))
 
-	rf, err := repo.LoadFile(helmpath.RepositoryFile())
+	rf, err := repo.LoadFile(c.RepositoryConfig)
 	if err != nil {
 		return u, err
 	}
@@ -218,7 +215,8 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 	}
 
 	// Next, we need to load the index, and actually look up the chart.
-	i, err := repo.LoadIndexFile(helmpath.CacheIndex(r.Config.Name))
+	idxFile := filepath.Join(c.RepositoryCache, helmpath.CacheIndexFile(r.Config.Name))
+	i, err := repo.LoadIndexFile(idxFile)
 	if err != nil {
 		return u, errors.Wrap(err, "no cached repo found. (try 'helm repo update')")
 	}
@@ -337,7 +335,8 @@ func (c *ChartDownloader) scanReposForURL(u string, rf *repo.File) (*repo.Entry,
 			return nil, err
 		}
 
-		i, err := repo.LoadIndexFile(helmpath.CacheIndex(r.Config.Name))
+		idxFile := filepath.Join(c.RepositoryCache, helmpath.CacheIndexFile(r.Config.Name))
+		i, err := repo.LoadIndexFile(idxFile)
 		if err != nil {
 			return nil, errors.Wrap(err, "no cached repo found. (try 'helm repo update')")
 		}

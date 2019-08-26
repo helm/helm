@@ -25,7 +25,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/cmd/helm/require"
-	"helm.sh/helm/pkg/helmpath"
 	"helm.sh/helm/pkg/repo"
 )
 
@@ -35,7 +34,7 @@ func newRepoListCmd(out io.Writer) *cobra.Command {
 		Short: "list chart repositories",
 		Args:  require.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			f, err := repo.LoadFile(helmpath.RepositoryFile())
+			f, err := repo.LoadFile(settings.RepositoryConfig)
 			if err != nil {
 				return err
 			}

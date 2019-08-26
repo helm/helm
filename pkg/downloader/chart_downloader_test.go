@@ -24,16 +24,16 @@ import (
 	"helm.sh/helm/internal/test/ensure"
 	"helm.sh/helm/pkg/cli"
 	"helm.sh/helm/pkg/getter"
-	"helm.sh/helm/pkg/helmpath"
-	"helm.sh/helm/pkg/helmpath/xdg"
 	"helm.sh/helm/pkg/repo"
 	"helm.sh/helm/pkg/repo/repotest"
 )
 
-func TestResolveChartRef(t *testing.T) {
-	os.Setenv(xdg.CacheHomeEnvVar, "testdata/helmhome")
-	os.Setenv(xdg.ConfigHomeEnvVar, "testdata/helmhome")
+const (
+	repoConfig = "testdata/repositories.yaml"
+	repoCache  = "testdata/repository"
+)
 
+func TestResolveChartRef(t *testing.T) {
 	tests := []struct {
 		name, ref, expect, version string
 		fail                       bool
@@ -56,8 +56,13 @@ func TestResolveChartRef(t *testing.T) {
 	}
 
 	c := ChartDownloader{
-		Out:     os.Stderr,
-		Getters: getter.All(cli.EnvSettings{}),
+		Out:              os.Stderr,
+		RepositoryConfig: repoConfig,
+		RepositoryCache:  repoCache,
+		Getters: getter.All(&cli.EnvSettings{
+			RepositoryConfig: repoConfig,
+			RepositoryCache:  repoCache,
+		}),
 	}
 
 	for _, tt := range tests {
@@ -105,16 +110,11 @@ func TestIsTar(t *testing.T) {
 }
 
 func TestDownloadTo(t *testing.T) {
-	ensure.HelmHome(t)
-	defer ensure.CleanHomeDirs(t)
-	dest := helmpath.CachePath()
-
 	// Set up a fake repo with basic auth enabled
-	srv := repotest.NewServer(helmpath.CachePath())
+	srv, err := repotest.NewTempServer("testdata/*.tgz*")
 	srv.Stop()
-	if _, err := srv.CopyCharts("testdata/*.tgz*"); err != nil {
-		t.Error(err)
-		return
+	if err != nil {
+		t.Fatal(err)
 	}
 	srv.WithMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		username, password, ok := r.BasicAuth()
@@ -133,15 +133,21 @@ func TestDownloadTo(t *testing.T) {
 	}
 
 	c := ChartDownloader{
-		Out:     os.Stderr,
-		Verify:  VerifyAlways,
-		Keyring: "testdata/helm-test-key.pub",
-		Getters: getter.All(cli.EnvSettings{}),
+		Out:              os.Stderr,
+		Verify:           VerifyAlways,
+		Keyring:          "testdata/helm-test-key.pub",
+		RepositoryConfig: repoConfig,
+		RepositoryCache:  repoCache,
+		Getters: getter.All(&cli.EnvSettings{
+			RepositoryConfig: repoConfig,
+			RepositoryCache:  repoCache,
+		}),
 		Options: []getter.Option{
 			getter.WithBasicAuth("username", "password"),
 		},
 	}
 	cname := "/signtest-0.1.0.tgz"
+	dest := srv.Root()
 	where, v, err := c.DownloadTo(srv.URL()+cname, "", dest)
 	if err != nil {
 		t.Fatal(err)
@@ -161,10 +167,9 @@ func TestDownloadTo(t *testing.T) {
 }
 
 func TestDownloadTo_VerifyLater(t *testing.T) {
-	ensure.HelmHome(t)
-	defer ensure.CleanHomeDirs(t)
+	defer ensure.HelmHome(t)()
 
-	dest := helmpath.CachePath()
+	dest := ensure.TempDir(t)
 
 	// Set up a fake repo
 	srv, err := repotest.NewTempServer("testdata/*.tgz*")
@@ -177,9 +182,14 @@ func TestDownloadTo_VerifyLater(t *testing.T) {
 	}
 
 	c := ChartDownloader{
-		Out:     os.Stderr,
-		Verify:  VerifyLater,
-		Getters: getter.All(cli.EnvSettings{}),
+		Out:              os.Stderr,
+		Verify:           VerifyLater,
+		RepositoryConfig: repoConfig,
+		RepositoryCache:  repoCache,
+		Getters: getter.All(&cli.EnvSettings{
+			RepositoryConfig: repoConfig,
+			RepositoryCache:  repoCache,
+		}),
 	}
 	cname := "/signtest-0.1.0.tgz"
 	where, _, err := c.DownloadTo(srv.URL()+cname, "", dest)
@@ -200,17 +210,19 @@ func TestDownloadTo_VerifyLater(t *testing.T) {
 }
 
 func TestScanReposForURL(t *testing.T) {
-	os.Setenv(xdg.CacheHomeEnvVar, "testdata/helmhome")
-	os.Setenv(xdg.ConfigHomeEnvVar, "testdata/helmhome")
-
 	c := ChartDownloader{
-		Out:     os.Stderr,
-		Verify:  VerifyLater,
-		Getters: getter.All(cli.EnvSettings{}),
+		Out:              os.Stderr,
+		Verify:           VerifyLater,
+		RepositoryConfig: repoConfig,
+		RepositoryCache:  repoCache,
+		Getters: getter.All(&cli.EnvSettings{
+			RepositoryConfig: repoConfig,
+			RepositoryCache:  repoCache,
+		}),
 	}
 
 	u := "http://example.com/alpine-0.2.0.tgz"
-	rf, err := repo.LoadFile(helmpath.RepositoryFile())
+	rf, err := repo.LoadFile(repoConfig)
 	if err != nil {
 		t.Fatal(err)
 	}

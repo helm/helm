@@ -22,31 +22,26 @@ import (
 	"strings"
 	"testing"
 
-	"helm.sh/helm/internal/test/ensure"
-	"helm.sh/helm/pkg/helmpath"
 	"helm.sh/helm/pkg/provenance"
 	"helm.sh/helm/pkg/repo"
 	"helm.sh/helm/pkg/repo/repotest"
 )
 
 func TestDependencyBuildCmd(t *testing.T) {
-	defer resetEnv()()
-
-	ensure.HelmHome(t)
-	defer ensure.CleanHomeDirs(t)
-
-	srv := repotest.NewServer(helmpath.ConfigPath())
+	srv, err := repotest.NewTempServer("testdata/testcharts/*.tgz")
 	defer srv.Stop()
-	if _, err := srv.CopyCharts("testdata/testcharts/*.tgz"); err != nil {
+	if err != nil {
 		t.Fatal(err)
 	}
+
+	rootDir := srv.Root()
+	srv.LinkIndices()
 
 	chartname := "depbuild"
-	if err := createTestingChart(helmpath.DataPath(), chartname, srv.URL()); err != nil {
-		t.Fatal(err)
-	}
+	createTestingChart(t, rootDir, chartname, srv.URL())
+	repoFile := filepath.Join(rootDir, "repositories.yaml")
 
-	cmd := fmt.Sprintf("dependency build '%s'", filepath.Join(helmpath.DataPath(), chartname))
+	cmd := fmt.Sprintf("dependency build '%s' --repository-config %s --repository-cache %s", filepath.Join(rootDir, chartname), repoFile, rootDir)
 	_, out, err := executeActionCommand(cmd)
 
 	// In the first pass, we basically want the same results as an update.
@@ -60,14 +55,14 @@ func TestDependencyBuildCmd(t *testing.T) {
 	}
 
 	// Make sure the actual file got downloaded.
-	expect := filepath.Join(helmpath.DataPath(), chartname, "charts/reqtest-0.1.0.tgz")
+	expect := filepath.Join(rootDir, chartname, "charts/reqtest-0.1.0.tgz")
 	if _, err := os.Stat(expect); err != nil {
 		t.Fatal(err)
 	}
 
 	// In the second pass, we want to remove the chart's request dependency,
 	// then see if it restores from the lock.
-	lockfile := filepath.Join(helmpath.DataPath(), chartname, "Chart.lock")
+	lockfile := filepath.Join(rootDir, chartname, "Chart.lock")
 	if _, err := os.Stat(lockfile); err != nil {
 		t.Fatal(err)
 	}
@@ -82,7 +77,6 @@ func TestDependencyBuildCmd(t *testing.T) {
 	}
 
 	// Now repeat the test that the dependency exists.
-	expect = filepath.Join(helmpath.DataPath(), chartname, "charts/reqtest-0.1.0.tgz")
 	if _, err := os.Stat(expect); err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +87,7 @@ func TestDependencyBuildCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	i, err := repo.LoadIndexFile(helmpath.CacheIndex("test"))
+	i, err := repo.LoadIndexFile(filepath.Join(rootDir, "index.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}

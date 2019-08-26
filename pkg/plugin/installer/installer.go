@@ -18,7 +18,6 @@ package installer
 import (
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 
@@ -43,14 +42,12 @@ type Installer interface {
 
 // Install installs a plugin.
 func Install(i Installer) error {
-	if _, pathErr := os.Stat(path.Dir(i.Path())); os.IsNotExist(pathErr) {
-		return errors.New(`plugin home "$XDG_CONFIG_HOME/helm/plugins" does not exist`)
+	if err := os.MkdirAll(filepath.Dir(i.Path()), 0755); err != nil {
+		return err
 	}
-
 	if _, pathErr := os.Stat(i.Path()); !os.IsNotExist(pathErr) {
 		return errors.New("plugin already exists")
 	}
-
 	return i.Install()
 }
 
@@ -59,7 +56,6 @@ func Update(i Installer) error {
 	if _, pathErr := os.Stat(i.Path()); os.IsNotExist(pathErr) {
 		return errors.New("plugin does not exist")
 	}
-
 	return i.Update()
 }
 

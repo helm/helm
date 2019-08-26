@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"path/filepath"
 	"strings"
 
 	"github.com/Masterminds/semver"
@@ -43,10 +44,12 @@ Repositories are managed with 'helm repo' commands.
 const searchMaxScore = 25
 
 type searchRepoOptions struct {
-	versions    bool
-	regexp      bool
-	version     string
-	maxColWidth uint
+	versions     bool
+	regexp       bool
+	version      string
+	maxColWidth  uint
+	repoFile     string
+	repoCacheDir string
 }
 
 func newSearchRepoCmd(out io.Writer) *cobra.Command {
@@ -57,6 +60,8 @@ func newSearchRepoCmd(out io.Writer) *cobra.Command {
 		Short: "search repositories for a keyword in charts",
 		Long:  searchRepoDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			o.repoFile = settings.RepositoryConfig
+			o.repoCacheDir = settings.RepositoryCache
 			return o.run(out, args)
 		},
 	}
@@ -141,15 +146,15 @@ func (o *searchRepoOptions) formatSearchResults(res []*search.Result) string {
 
 func (o *searchRepoOptions) buildIndex(out io.Writer) (*search.Index, error) {
 	// Load the repositories.yaml
-	rf, err := repo.LoadFile(helmpath.RepositoryFile())
+	rf, err := repo.LoadFile(o.repoFile)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "loading repository config")
 	}
 
 	i := search.NewIndex()
 	for _, re := range rf.Repositories {
 		n := re.Name
-		f := helmpath.CacheIndex(n)
+		f := filepath.Join(o.repoCacheDir, helmpath.CacheIndexFile(n))
 		ind, err := repo.LoadIndexFile(f)
 		if err != nil {
 			// TODO should print to stderr

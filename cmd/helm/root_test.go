@@ -59,8 +59,7 @@ func TestRootCmd(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ensure.HelmHome(t)
-			defer ensure.CleanHomeDirs(t)
+			defer ensure.HelmHome(t)()
 
 			for k, v := range tt.envars {
 				os.Setenv(k, v)

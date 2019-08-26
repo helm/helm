@@ -24,7 +24,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/pkg/helmpath"
 	"helm.sh/helm/pkg/plugin"
 )
 
@@ -56,8 +55,8 @@ func (o *pluginRemoveOptions) complete(args []string) error {
 }
 
 func (o *pluginRemoveOptions) run(out io.Writer) error {
-	debug("loading installed plugins from %s", helmpath.Plugins())
-	plugins, err := findPlugins(helmpath.Plugins())
+	debug("loading installed plugins from %s", settings.PluginsDirectory)
+	plugins, err := findPlugins(settings.PluginsDirectory)
 	if err != nil {
 		return err
 	}

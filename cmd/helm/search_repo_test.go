@@ -17,23 +17,17 @@ limitations under the License.
 package main
 
 import (
-	"os"
 	"testing"
-
-	"helm.sh/helm/pkg/helmpath/xdg"
 )
 
 func TestSearchRepositoriesCmd(t *testing.T) {
-	defer resetEnv()()
-
-	os.Setenv(xdg.CacheHomeEnvVar, "testdata/helmhome")
-	os.Setenv(xdg.ConfigHomeEnvVar, "testdata/helmhome")
-	os.Setenv(xdg.DataHomeEnvVar, "testdata/helmhome")
+	repoFile := "testdata/helmhome/helm/repositories.yaml"
+	repoCache := "testdata/helmhome/helm/repository"
 
 	tests := []cmdTestCase{{
-		name:   "search for 'maria', expect one match",
-		cmd:    "search repo maria",
-		golden: "output/search-single.txt",
+		name:   "search for 'alpine', expect two matches",
+		cmd:    "search repo alpine",
+		golden: "output/search-multiple.txt",
 	}, {
 		name:   "search for 'alpine', expect two matches",
 		cmd:    "search repo alpine",
@@ -71,5 +65,13 @@ func TestSearchRepositoriesCmd(t *testing.T) {
 		cmd:       "search repo alp[ --regexp",
 		wantError: true,
 	}}
+
+	settings.Debug = true
+	defer func() { settings.Debug = false }()
+
+	for i := range tests {
+		tests[i].cmd += " --repository-config " + repoFile
+		tests[i].cmd += " --repository-cache " + repoCache
+	}
 	runTestCmd(t, tests)
 }

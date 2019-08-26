@@ -19,13 +19,15 @@ package main
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
+	"os"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 
 	"helm.sh/helm/cmd/helm/require"
 	"helm.sh/helm/pkg/getter"
-	"helm.sh/helm/pkg/helmpath"
 	"helm.sh/helm/pkg/repo"
 )
 
@@ -34,11 +36,14 @@ type repoAddOptions struct {
 	url      string
 	username string
 	password string
-	noupdate bool
+	noUpdate bool
 
 	certFile string
 	keyFile  string
 	caFile   string
+
+	repoFile  string
+	repoCache string
 }
 
 func newRepoAddCmd(out io.Writer) *cobra.Command {
@@ -51,6 +56,8 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.name = args[0]
 			o.url = args[1]
+			o.repoFile = settings.RepositoryConfig
+			o.repoCache = settings.RepositoryCache
 
 			return o.run(out)
 		},
@@ -59,7 +66,7 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.StringVar(&o.username, "username", "", "chart repository username")
 	f.StringVar(&o.password, "password", "", "chart repository password")
-	f.BoolVar(&o.noupdate, "no-update", false, "raise error if repo is already registered")
+	f.BoolVar(&o.noUpdate, "no-update", false, "raise error if repo is already registered")
 	f.StringVar(&o.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
 	f.StringVar(&o.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.StringVar(&o.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
@@ -68,31 +75,28 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 }
 
 func (o *repoAddOptions) run(out io.Writer) error {
-	if err := addRepository(o.name, o.url, o.username, o.password, o.certFile, o.keyFile, o.caFile, o.noupdate); err != nil {
-		return err
-	}
-	fmt.Fprintf(out, "%q has been added to your repositories\n", o.name)
-	return nil
-}
-
-func addRepository(name, url, username, password string, certFile, keyFile, caFile string, noUpdate bool) error {
-	f, err := repo.LoadFile(helmpath.RepositoryFile())
-	if err != nil {
+	b, err := ioutil.ReadFile(o.repoFile)
+	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
 
-	if noUpdate && f.Has(name) {
-		return errors.Errorf("repository name (%s) already exists, please specify a different name", name)
+	var f repo.File
+	if err := yaml.Unmarshal(b, &f); err != nil {
+		return err
+	}
+
+	if o.noUpdate && f.Has(o.name) {
+		return errors.Errorf("repository name (%s) already exists, please specify a different name", o.name)
 	}
 
 	c := repo.Entry{
-		Name:     name,
-		URL:      url,
-		Username: username,
-		Password: password,
-		CertFile: certFile,
-		KeyFile:  keyFile,
-		CAFile:   caFile,
+		Name:     o.name,
+		URL:      o.url,
+		Username: o.username,
+		Password: o.password,
+		CertFile: o.certFile,
+		KeyFile:  o.keyFile,
+		CAFile:   o.caFile,
 	}
 
 	r, err := repo.NewChartRepository(&c, getter.All(settings))
@@ -100,11 +104,15 @@ func addRepository(name, url, username, password string, certFile, keyFile, caFi
 		return err
 	}
 
-	if err := r.DownloadIndexFile(); err != nil {
-		return errors.Wrapf(err, "looks like %q is not a valid chart repository or cannot be reached", url)
+	if _, err := r.DownloadIndexFile(); err != nil {
+		return errors.Wrapf(err, "looks like %q is not a valid chart repository or cannot be reached", o.url)
 	}
 
 	f.Update(&c)
 
-	return f.WriteFile(helmpath.RepositoryFile(), 0644)
+	if err := f.WriteFile(o.repoFile, 0644); err != nil {
+		return err
+	}
+	fmt.Fprintf(out, "%q has been added to your repositories\n", o.name)
+	return nil
 }

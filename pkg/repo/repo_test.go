@@ -16,10 +16,12 @@ limitations under the License.
 
 package repo
 
-import "testing"
-import "io/ioutil"
-import "os"
-import "strings"
+import (
+	"io/ioutil"
+	"os"
+	"strings"
+	"testing"
+)
 
 const testRepositoriesFile = "testdata/repositories.yaml"
 
@@ -86,27 +88,6 @@ func TestNewFile(t *testing.T) {
 		if expect.URL != got.URL {
 			t.Errorf("Expected url %q, got %q", expect.URL, got.URL)
 		}
-	}
-}
-
-func TestNewPreV1File(t *testing.T) {
-	r, err := LoadFile("testdata/old-repositories.yaml")
-	if err != nil && err != ErrRepoOutOfDate {
-		t.Fatal(err)
-	}
-	if len(r.Repositories) != 3 {
-		t.Fatalf("Expected 3 repos: %#v", r)
-	}
-
-	// Because they are parsed as a map, we lose ordering.
-	found := false
-	for _, rr := range r.Repositories {
-		if rr.Name == "best-charts-ever" {
-			found = true
-		}
-	}
-	if !found {
-		t.Errorf("expected the best charts ever. Got %#v", r.Repositories)
 	}
 }
 
@@ -184,7 +165,7 @@ func TestWriteFile(t *testing.T) {
 		t.Errorf("failed to create test-file (%v)", err)
 	}
 	defer os.Remove(file.Name())
-	if err := sampleRepository.WriteFile(file.Name(), 0744); err != nil {
+	if err := sampleRepository.WriteFile(file.Name(), 0644); err != nil {
 		t.Errorf("failed to write file (%v)", err)
 	}
 
@@ -200,10 +181,9 @@ func TestWriteFile(t *testing.T) {
 }
 
 func TestRepoNotExists(t *testing.T) {
-	_, err := LoadFile("/this/path/does/not/exist.yaml")
-	if err == nil {
+	if _, err := LoadFile("/this/path/does/not/exist.yaml"); err == nil {
 		t.Errorf("expected err to be non-nil when path does not exist")
-	} else if !strings.Contains(err.Error(), "You might need to run `helm init`") {
-		t.Errorf("expected prompt to run `helm init` when repositories file does not exist")
+	} else if !strings.Contains(err.Error(), "couldn't load repositories file") {
+		t.Errorf("expected prompt `couldn't load repositories file`")
 	}
 }

@@ -38,7 +38,7 @@ import (
 type Pull struct {
 	ChartPathOptions
 
-	Settings cli.EnvSettings // TODO: refactor this out of pkg/action
+	Settings *cli.EnvSettings // TODO: refactor this out of pkg/action
 
 	Devel       bool
 	Untar       bool
@@ -64,6 +64,8 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		Options: []getter.Option{
 			getter.WithBasicAuth(p.Username, p.Password),
 		},
+		RepositoryConfig: p.Settings.RepositoryConfig,
+		RepositoryCache:  p.Settings.RepositoryCache,
 	}
 
 	if p.Verify {

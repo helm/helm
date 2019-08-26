@@ -25,7 +25,6 @@ import (
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/pkg/cli"
 	"helm.sh/helm/pkg/getter"
 	"helm.sh/helm/pkg/strvals"
 )
@@ -38,14 +37,14 @@ type Options struct {
 
 // MergeValues merges values from files specified via -f/--values and
 // directly via --set or --set-string, marshaling them to YAML
-func (opts *Options) MergeValues(settings cli.EnvSettings) (map[string]interface{}, error) {
+func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, error) {
 	base := map[string]interface{}{}
 
 	// User specified a values files via -f/--values
 	for _, filePath := range opts.ValueFiles {
 		currentMap := map[string]interface{}{}
 
-		bytes, err := readFile(filePath, settings)
+		bytes, err := readFile(filePath, p)
 		if err != nil {
 			return nil, err
 		}
@@ -94,24 +93,17 @@ func mergeMaps(a, b map[string]interface{}) map[string]interface{} {
 }
 
 // readFile load a file from stdin, the local directory, or a remote file with a url.
-func readFile(filePath string, settings cli.EnvSettings) ([]byte, error) {
+func readFile(filePath string, p getter.Providers) ([]byte, error) {
 	if strings.TrimSpace(filePath) == "-" {
 		return ioutil.ReadAll(os.Stdin)
 	}
 	u, _ := url.Parse(filePath)
-	p := getter.All(settings)
 
 	// FIXME: maybe someone handle other protocols like ftp.
-	getterConstructor, err := p.ByScheme(u.Scheme)
-
+	g, err := p.ByScheme(u.Scheme)
 	if err != nil {
 		return ioutil.ReadFile(filePath)
 	}
-
-	getter, err := getterConstructor(getter.WithURL(filePath))
-	if err != nil {
-		return []byte{}, err
-	}
-	data, err := getter.Get(filePath)
+	data, err := g.Get(filePath, getter.WithURL(filePath))
 	return data.Bytes(), err
 }

@@ -16,12 +16,12 @@ limitations under the License.
 package getter
 
 import (
-	"os"
 	"testing"
 
 	"helm.sh/helm/pkg/cli"
-	"helm.sh/helm/pkg/helmpath/xdg"
 )
+
+const pluginDir = "testdata/plugins"
 
 func TestProvider(t *testing.T) {
 	p := Provider{
@@ -53,9 +53,9 @@ func TestProviders(t *testing.T) {
 }
 
 func TestAll(t *testing.T) {
-	os.Setenv(xdg.DataHomeEnvVar, "testdata")
-
-	all := All(cli.EnvSettings{})
+	all := All(&cli.EnvSettings{
+		PluginsDirectory: pluginDir,
+	})
 	if len(all) != 3 {
 		t.Errorf("expected 3 providers (default plus two plugins), got %d", len(all))
 	}
@@ -66,12 +66,13 @@ func TestAll(t *testing.T) {
 }
 
 func TestByScheme(t *testing.T) {
-	os.Setenv(xdg.DataHomeEnvVar, "testdata")
-
-	if _, err := ByScheme("test", cli.EnvSettings{}); err != nil {
+	g := All(&cli.EnvSettings{
+		PluginsDirectory: pluginDir,
+	})
+	if _, err := g.ByScheme("test"); err != nil {
 		t.Error(err)
 	}
-	if _, err := ByScheme("https", cli.EnvSettings{}); err != nil {
+	if _, err := g.ByScheme("https"); err != nil {
 		t.Error(err)
 	}
 }

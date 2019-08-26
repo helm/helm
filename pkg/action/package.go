@@ -43,6 +43,9 @@ type Package struct {
 	AppVersion       string
 	Destination      string
 	DependencyUpdate bool
+
+	RepositoryConfig string
+	RepositoryCache  string
 }
 
 // NewPackage creates a new Package object with the given configuration.
@@ -131,7 +134,7 @@ func (p *Package) Clearsign(filename string) error {
 		return err
 	}
 
-	return ioutil.WriteFile(filename+".prov", []byte(sig), 0755)
+	return ioutil.WriteFile(filename+".prov", []byte(sig), 0644)
 }
 
 // promptUser implements provenance.PassphraseFetcher

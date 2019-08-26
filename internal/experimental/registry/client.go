@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"path/filepath"
 	"sort"
 
 	auth "github.com/deislabs/oras/pkg/auth/docker"
@@ -60,7 +59,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 	}
 	// set defaults if fields are missing
 	if client.authorizer == nil {
-		credentialsFile := filepath.Join(helmpath.Registry(), CredentialsFileBasename)
+		credentialsFile := helmpath.CachePath("registry", CredentialsFileBasename)
 		authClient, err := auth.NewClient(credentialsFile)
 		if err != nil {
 			return nil, err
@@ -82,7 +81,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 		cache, err := NewCache(
 			CacheOptDebug(client.debug),
 			CacheOptWriter(client.out),
-			CacheOptRoot(filepath.Join(helmpath.Registry(), CacheRootDir)),
+			CacheOptRoot(helmpath.CachePath("registry", CacheRootDir)),
 		)
 		if err != nil {
 			return nil, err
