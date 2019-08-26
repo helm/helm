@@ -44,11 +44,15 @@
 
 [[constraint]]
   name = "github.com/deislabs/oras"
-  version = "0.6.0"
+  version = "0.7.0"
+
+[[constraint]]
+  name = "github.com/containerd/containerd"
+  version = "1.3.0-beta.2"
 
 [[constraint]]
   name = "github.com/sirupsen/logrus"
-  version = "1.3.0"
+  version = "1.4.2"
 
 [[constraint]]
   name = "github.com/docker/go-units"

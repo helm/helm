@@ -212,38 +212,34 @@
   version = "v0.1.0"
 
 [[projects]]
-  digest = "1:b5f139796b532342966b835fb26fe41b6b488e94b914f1af1aba4cd3a9fee6dc"
+  digest = "1:9d535dbb6316d0227c1335649d12161b0832f6fa60d5754c559a9ba82859fc1e"
   name = "github.com/containerd/containerd"
   packages = [
+    "archive/compression",
     "content",
     "content/local",
     "errdefs",
     "filters",
     "images",
+    "labels",
     "log",
     "platforms",
     "reference",
     "remotes",
     "remotes/docker",
+    "remotes/docker/schema1",
     "sys",
+    "version",
   ]
   pruneopts = "T"
-  revision = "894b81a4b802e4eb2a91d1ce216b8817763c29fb"
-  version = "v1.2.6"
+  revision = "640860a042b93c26c0a33081ee02230def486f81"
+  version = "v1.3.0-beta.2"
 
 [[projects]]
   branch = "master"
   digest = "1:1271f7f8cc5f5b2eb0c683f92c7adf8fca1813b9da5218d6df1c9cf4bdc3f8d5"
   name = "github.com/containerd/continuity"
-  packages = [
-    ".",
-    "devices",
-    "driver",
-    "pathdriver",
-    "proto",
-    "syscallx",
-    "sysx",
-  ]
+  packages = ["pathdriver"]
   pruneopts = "T"
   revision = "004b46473808b3e7a4a3049c20e4376c91eb966d"
 
@@ -264,7 +260,7 @@
   version = "v1.1.1"
 
 [[projects]]
-  digest = "1:543d5301a51341bbdaba9ddf14ae52ffcc8302fc5e79b01f1954c31f02a4aac5"
+  digest = "1:8b5f943c7eec36fe9341e1bd9de2b2c0f0bee16374fe461ed0837b4dcdcea711"
   name = "github.com/deislabs/oras"
   packages = [
     "pkg/auth",
@@ -274,8 +270,8 @@
     "pkg/oras",
   ]
   pruneopts = "T"
-  revision = "b285197778e05cd348abb8ff50faf0ef7e3554a2"
-  version = "v0.6.0"
+  revision = "7467008b2683c5eff5fb13fe91c5b17b2eec75a3"
+  version = "v0.7.0"
 
 [[projects]]
   digest = "1:6b014c67cb522566c30ef02116f9acb50cd60954708cf92c6654e2985696db18"
@@ -923,12 +919,12 @@
   version = "v1.5.2"
 
 [[projects]]
-  digest = "1:c3498d1186a4f84897812aa2dccfbd5d805955846f2cd020aa384bf0b218e9e9"
+  digest = "1:425d221445ea27aaad740ed99e2be7cb463528526e63f6c599ad7d28f7ecea45"
   name = "github.com/sirupsen/logrus"
   packages = ["."]
   pruneopts = "T"
-  revision = "8bdbc7bcc01dcbb8ec23dc8a28e332258d25251f"
-  version = "v1.4.1"
+  revision = "839c75faf7f98a33d445d181f3018b5c3409a45e"
+  version = "v1.4.2"
 
 [[projects]]
   digest = "1:674fedb5641490b913f0f01e4f97f3f578f7a1c5f106cd47cfd5394eca8155db"
@@ -1821,7 +1817,6 @@
     "github.com/asaskevich/govalidator",
     "github.com/containerd/containerd/content",
     "github.com/containerd/containerd/errdefs",
-    "github.com/containerd/containerd/reference",
     "github.com/containerd/containerd/remotes",
     "github.com/deislabs/oras/pkg/auth",
     "github.com/deislabs/oras/pkg/auth/docker",
@@ -1837,7 +1832,6 @@
     "github.com/evanphx/json-patch",
     "github.com/gobwas/glob",
     "github.com/gosuri/uitable",
-    "github.com/gosuri/uitable/util/strutil",
     "github.com/mattn/go-shellwords",
     "github.com/opencontainers/go-digest",
     "github.com/opencontainers/image-spec/specs-go",
