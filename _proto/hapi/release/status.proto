@@ -41,7 +41,7 @@ message Status {
                 PENDING_INSTALL = 6;
                 // Status_PENDING_UPGRADE indicates that an upgrade operation is underway.
                 PENDING_UPGRADE = 7;
-                // Status_PENDING_ROLLBACK indicates that an rollback operation is underway.
+                // Status_PENDING_ROLLBACK indicates that a rollback operation is underway.
                 PENDING_ROLLBACK = 8;
         }
 

@@ -658,7 +658,7 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 	// Get a versioned object
 	versionedObject, err := asVersioned(target)
 
-	// Unstructured objects, such as CRDs, may not have an not registered error
+	// Unstructured objects, such as CRDs, may not have a not registered error
 	// returned from ConvertToVersion. Anything that's unstructured should
 	// use the jsonpatch.CreateMergePatch. Strategic Merge Patch is not supported
 	// on objects like CRDs.
