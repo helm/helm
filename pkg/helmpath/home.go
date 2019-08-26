@@ -17,28 +17,13 @@ package helmpath
 const lp = lazypath("helm")
 
 // ConfigPath returns the path where Helm stores configuration.
-func ConfigPath(elem ...string) string {
-	return lp.configPath(elem...)
-}
+func ConfigPath(elem ...string) string { return lp.configPath(elem...) }
 
 // CachePath returns the path where Helm stores cached objects.
-func CachePath(elem ...string) string {
-	return lp.cachePath(elem...)
-}
+func CachePath(elem ...string) string { return lp.cachePath(elem...) }
 
 // DataPath returns the path where Helm stores data.
-func DataPath(elem ...string) string {
-	return lp.dataPath(elem...)
-}
-
-// Registry returns the path to the local registry cache.
-// func Registry() string { return CachePath("registry") }
-
-// RepositoryFile returns the path to the repositories.yaml file.
-// func RepositoryFile() string { return ConfigPath("repositories.yaml") }
-
-// RepositoryCache returns the cache path for repository metadata.
-// func RepositoryCache() string { return CachePath("repository") }
+func DataPath(elem ...string) string { return lp.dataPath(elem...) }
 
 // CacheIndex returns the path to an index for the given named repository.
 func CacheIndexFile(name string) string {
@@ -47,20 +32,3 @@ func CacheIndexFile(name string) string {
 	}
 	return name + "index.yaml"
 }
-
-func CacheIndex(name string) string {
-	if name != "" {
-		name += "-"
-	}
-	name += "index.yaml"
-	return CachePath("repository", name)
-}
-
-// Starters returns the path to the Helm starter packs.
-// func Starters() string { return DataPath("starters") }
-
-// PluginCache returns the cache path for plugins.
-// func PluginCache() string { return CachePath("plugins") }
-
-// Plugins returns the path to the plugins directory.
-// func Plugins() string { return DataPath("plugins") }

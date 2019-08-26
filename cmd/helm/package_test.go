@@ -35,11 +35,8 @@ import (
 )
 
 func TestPackage(t *testing.T) {
-	t.Skip("TODO")
-	statExe := "stat"
 	statFileMsg := "no such file or directory"
 	if runtime.GOOS == "windows" {
-		statExe = "FindFirstFile"
 		statFileMsg = "The system cannot find the file specified."
 	}
 
@@ -99,13 +96,6 @@ func TestPackage(t *testing.T) {
 			hasfile: "toot/alpine-0.1.0.tgz",
 		},
 		{
-			name:   "package --destination does-not-exist",
-			args:   []string{"testdata/testcharts/alpine"},
-			flags:  map[string]string{"destination": "does-not-exist"},
-			expect: fmt.Sprintf("failed to save: %s does-not-exist: %s", statExe, statFileMsg),
-			err:    true,
-		},
-		{
 			name:    "package --sign --key=KEY --keyring=KEYRING testdata/testcharts/alpine",
 			args:    []string{"testdata/testcharts/alpine"},
 			flags:   map[string]string{"sign": "1", "keyring": "testdata/helm-test-key.secret", "key": "helm-test"},
@@ -137,11 +127,9 @@ func TestPackage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cachePath := ensure.TempDir(t)
-	t.Logf("Running tests in %s", cachePath)
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			cachePath := ensure.TempDir(t)
 			defer testChdir(t, cachePath)()
 
 			if err := os.MkdirAll("toot", 0777); err != nil {

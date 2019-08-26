@@ -136,7 +136,7 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 		return "", err
 	}
 
-	fname := filepath.Join(r.CachePath, r.Config.Name+"-index.yaml")
+	fname := filepath.Join(r.CachePath, helmpath.CacheIndexFile(r.Config.Name))
 	os.MkdirAll(filepath.Dir(fname), 0755)
 	return fname, ioutil.WriteFile(fname, index, 0644)
 }

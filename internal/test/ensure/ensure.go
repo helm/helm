@@ -21,52 +21,25 @@ import (
 	"os"
 	"testing"
 
-	"helm.sh/helm/pkg/helmpath"
 	"helm.sh/helm/pkg/helmpath/xdg"
 )
 
 // HelmHome sets up a Helm Home in a temp dir.
 func HelmHome(t *testing.T) func() {
 	t.Helper()
-	cachePath := TempDir(t)
-	configPath := TempDir(t)
-	dataPath := TempDir(t)
-	os.Setenv(xdg.CacheHomeEnvVar, cachePath)
-	os.Setenv(xdg.ConfigHomeEnvVar, configPath)
-	os.Setenv(xdg.DataHomeEnvVar, dataPath)
-	return HomeDirs(t)
-}
-
-var dirs = [...]string{
-	helmpath.CachePath(),
-	helmpath.ConfigPath(),
-	helmpath.DataPath(),
-	helmpath.CachePath("repository"),
-}
-
-// HomeDirs creates a home directory like ensureHome, but without remote references.
-func HomeDirs(t *testing.T) func() {
-	return func() {}
-	t.Helper()
-	for _, p := range dirs {
-		if err := os.MkdirAll(p, 0755); err != nil {
-			t.Fatal(err)
-		}
+	base := TempDir(t)
+	os.Setenv(xdg.CacheHomeEnvVar, base)
+	os.Setenv(xdg.ConfigHomeEnvVar, base)
+	os.Setenv(xdg.DataHomeEnvVar, base)
+	return func() {
+		os.RemoveAll(base)
 	}
-	cleanup := func() {
-		for _, p := range dirs {
-			if err := os.RemoveAll(p); err != nil {
-				t.Log(err)
-			}
-		}
-	}
-	return cleanup
 }
 
 // TempDir ensures a scratch test directory for unit testing purposes.
 func TempDir(t *testing.T) string {
 	t.Helper()
-	d, err := ioutil.TempDir("helm", "")
+	d, err := ioutil.TempDir("", "helm")
 	if err != nil {
 		t.Fatal(err)
 	}

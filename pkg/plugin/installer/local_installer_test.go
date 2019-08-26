@@ -44,7 +44,7 @@ func TestLocalInstaller(t *testing.T) {
 	}
 
 	if err := Install(i); err != nil {
-		t.Fatalf("%+v", err)
+		t.Fatal(err)
 	}
 
 	if i.Path() != helmpath.DataPath("plugins", "echo") {

@@ -80,7 +80,7 @@ func TestCreateFrom(t *testing.T) {
 	srcdir := "./testdata/mariner"
 
 	if err := CreateFrom(cf, tdir, srcdir); err != nil {
-		t.Fatalf("%+v", err)
+		t.Fatal(err)
 	}
 
 	dir := filepath.Join(tdir, "foo")

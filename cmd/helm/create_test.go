@@ -33,8 +33,8 @@ import (
 func TestCreateCmd(t *testing.T) {
 	defer ensure.HelmHome(t)()
 	cname := "testchart"
-	os.MkdirAll(helmpath.CachePath(), 0755)
-	defer testChdir(t, helmpath.CachePath())()
+	dir := ensure.TempDir(t)
+	defer testChdir(t, dir)()
 
 	// Run a create
 	if _, _, err := executeActionCommand("create " + cname); err != nil {

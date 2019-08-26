@@ -26,7 +26,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/pkg/helmpath"
 	"helm.sh/helm/pkg/plugin"
 )
 
@@ -77,7 +76,7 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 				// Call setupEnv before PrepareCommand because
 				// PrepareCommand uses os.ExpandEnv and expects the
 				// setupEnv vars.
-				SetupPluginEnv(md.Name, plug.Dir)
+				plugin.SetupPluginEnv(settings, md.Name, plug.Dir)
 				main, argv, prepCmdErr := plug.PrepareCommand(u)
 				if prepCmdErr != nil {
 					os.Stderr.WriteString(prepCmdErr.Error())
@@ -152,28 +151,4 @@ func findPlugins(plugdirs string) ([]*plugin.Plugin, error) {
 		found = append(found, matches...)
 	}
 	return found, nil
-}
-
-// SetupPluginEnv prepares os.Env for plugins. It operates on os.Env because
-// the plugin subsystem itself needs access to the environment variables
-// created here.
-func SetupPluginEnv(shortName, base string) {
-	for key, val := range map[string]string{
-		"HELM_PLUGIN_NAME": shortName,
-		"HELM_PLUGIN_DIR":  base,
-		"HELM_BIN":         os.Args[0],
-		"HELM_PLUGIN":      settings.PluginsDirectory,
-
-		// Set vars that convey common information.
-		"HELM_PATH_REPOSITORY_FILE":  settings.RepositoryConfig,
-		"HELM_PATH_REPOSITORY_CACHE": settings.RepositoryCache,
-		"HELM_PATH_STARTER":          helmpath.DataPath("starters"),
-		"HELM_HOME":                  helmpath.DataPath(), // for backwards compatibility with Helm 2 plugins
-	} {
-		os.Setenv(key, val)
-	}
-
-	if settings.Debug {
-		os.Setenv("HELM_DEBUG", "1")
-	}
 }

@@ -45,7 +45,7 @@ type EnvSettings struct {
 	RegistryConfig string
 	// RepositoryConfig is the path to the repositories file.
 	RepositoryConfig string
-	// Repositoryache is the path to the repositories cache directory.
+	// Repositoryache is the path to the repository cache directory.
 	RepositoryCache string
 	// PluginsDirectory is the path to the plugins directory.
 	PluginsDirectory string
@@ -54,6 +54,9 @@ type EnvSettings struct {
 func New() *EnvSettings {
 	return &EnvSettings{
 		PluginsDirectory: helmpath.DataPath("plugins"),
+		RegistryConfig:   helmpath.ConfigPath("registry.json"),
+		RepositoryConfig: helmpath.ConfigPath("repositories.yaml"),
+		RepositoryCache:  helmpath.CachePath("repository"),
 	}
 }
 
@@ -64,9 +67,9 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.KubeContext, "kube-context", "", "name of the kubeconfig context to use")
 	fs.BoolVar(&s.Debug, "debug", false, "enable verbose output")
 
-	fs.StringVar(&s.RegistryConfig, "registry-config", helmpath.ConfigPath("registry.json"), "path to the registry config file")
-	fs.StringVar(&s.RepositoryConfig, "repository-config", helmpath.ConfigPath("repositories.yaml"), "path to the repositories config file")
-	fs.StringVar(&s.RepositoryCache, "repository-cache", helmpath.CachePath("repository"), "path to the repositories config file")
+	fs.StringVar(&s.RegistryConfig, "registry-config", s.RegistryConfig, "path to the registry config file")
+	fs.StringVar(&s.RepositoryConfig, "repository-config", s.RepositoryConfig, "path to the repositories config file")
+	fs.StringVar(&s.RepositoryCache, "repository-cache", s.RepositoryCache, "path to the repositories config file")
 }
 
 // Init sets values from the environment.

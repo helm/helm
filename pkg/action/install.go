@@ -37,7 +37,6 @@ import (
 	"helm.sh/helm/pkg/downloader"
 	"helm.sh/helm/pkg/engine"
 	"helm.sh/helm/pkg/getter"
-	"helm.sh/helm/pkg/helmpath"
 	kubefake "helm.sh/helm/pkg/kube/fake"
 	"helm.sh/helm/pkg/release"
 	"helm.sh/helm/pkg/releaseutil"
@@ -563,7 +562,7 @@ OUTER:
 // - if path is absolute or begins with '.', error out here
 // - URL
 //
-// If 'verify' is true, this will attempt to also verify the chart.
+// If 'verify' was set on ChartPathOptions, this will attempt to also verify the chart.
 func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (string, error) {
 	name = strings.TrimSpace(name)
 	version := strings.TrimSpace(c.Version)
@@ -604,12 +603,11 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		name = chartURL
 	}
 
-	archivePath := helmpath.CachePath("archive")
-	if err := os.MkdirAll(archivePath, 0744); err != nil {
+	if err := os.MkdirAll(settings.RepositoryCache, 0755); err != nil {
 		return "", err
 	}
 
-	filename, _, err := dl.DownloadTo(name, version, archivePath)
+	filename, _, err := dl.DownloadTo(name, version, settings.RepositoryCache)
 	if err == nil {
 		lname, err := filepath.Abs(filename)
 		if err != nil {

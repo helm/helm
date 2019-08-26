@@ -24,15 +24,13 @@ import (
 	"helm.sh/helm/internal/test/ensure"
 	"helm.sh/helm/pkg/cli"
 	"helm.sh/helm/pkg/getter"
-	"helm.sh/helm/pkg/helmpath"
-	"helm.sh/helm/pkg/helmpath/xdg"
 	"helm.sh/helm/pkg/repo"
 	"helm.sh/helm/pkg/repo/repotest"
 )
 
 const (
-	repoConfig = "testdata/helmhome/helm/repositories.yaml"
-	repoCache  = "testdata/helmhome/helm/repository"
+	repoConfig = "testdata/repositories.yaml"
+	repoCache  = "testdata/repository"
 )
 
 func TestResolveChartRef(t *testing.T) {
@@ -196,7 +194,7 @@ func TestDownloadTo_VerifyLater(t *testing.T) {
 	cname := "/signtest-0.1.0.tgz"
 	where, _, err := c.DownloadTo(srv.URL()+cname, "", dest)
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Fatal(err)
 	}
 
 	if expect := filepath.Join(dest, cname); where != expect {
@@ -212,19 +210,19 @@ func TestDownloadTo_VerifyLater(t *testing.T) {
 }
 
 func TestScanReposForURL(t *testing.T) {
-	os.Setenv(xdg.CacheHomeEnvVar, "testdata/helmhome")
-	os.Setenv(xdg.ConfigHomeEnvVar, "testdata/helmhome")
-
 	c := ChartDownloader{
 		Out:              os.Stderr,
 		Verify:           VerifyLater,
 		RepositoryConfig: repoConfig,
 		RepositoryCache:  repoCache,
-		Getters:          getter.All(&cli.EnvSettings{}),
+		Getters: getter.All(&cli.EnvSettings{
+			RepositoryConfig: repoConfig,
+			RepositoryCache:  repoCache,
+		}),
 	}
 
 	u := "http://example.com/alpine-0.2.0.tgz"
-	rf, err := repo.LoadFile(helmpath.ConfigPath("repositories.yaml"))
+	rf, err := repo.LoadFile(repoConfig)
 	if err != nil {
 		t.Fatal(err)
 	}

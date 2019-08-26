@@ -77,8 +77,10 @@ func (o *repoRemoveOptions) run(out io.Writer) error {
 
 func removeRepoCache(root, name string) error {
 	idx := filepath.Join(root, helmpath.CacheIndexFile(name))
-	if _, err := os.Stat(idx); err != nil {
+	if _, err := os.Stat(idx); os.IsNotExist(err) {
 		return nil
+	} else if err != nil {
+		return errors.Wrapf(err, "can't remove index file %s", idx)
 	}
 	return os.Remove(idx)
 }

@@ -49,7 +49,7 @@ func LoadFile(path string) (*File, error) {
 	b, err := ioutil.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, errors.Wrapf(err, "couldn't load repositories file (%s).\nYou might need to run `helm init`", path)
+			return nil, errors.Wrapf(err, "couldn't load repositories file (%s)", path)
 		}
 		return nil, err
 	}

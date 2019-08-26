@@ -64,6 +64,8 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		Options: []getter.Option{
 			getter.WithBasicAuth(p.Username, p.Password),
 		},
+		RepositoryConfig: p.Settings.RepositoryConfig,
+		RepositoryCache:  p.Settings.RepositoryCache,
 	}
 
 	if p.Verify {

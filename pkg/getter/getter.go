@@ -108,7 +108,7 @@ type Providers []Provider
 // ByScheme returns a Provider that handles the given scheme.
 //
 // If no provider handles this scheme, this will return an error.
-func (p Providers) ByScheme(scheme string, options ...Option) (Getter, error) {
+func (p Providers) ByScheme(scheme string) (Getter, error) {
 	for _, pp := range p {
 		if pp.Provides(scheme) {
 			return pp.New()

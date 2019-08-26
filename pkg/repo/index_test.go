@@ -144,7 +144,7 @@ func TestDownloadIndexFile(t *testing.T) {
 
 	idx, err := r.DownloadIndexFile()
 	if err != nil {
-		t.Fatalf("Failed to download index file to %s: %+v", idx, err)
+		t.Fatalf("Failed to download index file to %s: %#v", idx, err)
 	}
 
 	if _, err := os.Stat(idx); err != nil {

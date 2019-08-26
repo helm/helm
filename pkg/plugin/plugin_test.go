@@ -16,9 +16,13 @@ limitations under the License.
 package plugin // import "helm.sh/helm/pkg/plugin"
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"testing"
+
+	"helm.sh/helm/pkg/cli"
 )
 
 func checkCommand(p *Plugin, extraArgs []string, osStrCmp string, t *testing.T) {
@@ -248,5 +252,26 @@ func TestLoadAll(t *testing.T) {
 	}
 	if plugs[2].Metadata.Name != "hello" {
 		t.Errorf("Expected second plugin to be hello, got %q", plugs[1].Metadata.Name)
+	}
+}
+
+func TestSetupEnv(t *testing.T) {
+	name := "pequod"
+	base := filepath.Join("testdata/helmhome/helm/plugins", name)
+
+	s := &cli.EnvSettings{
+		PluginsDirectory: "testdata/helmhome/helm/plugins",
+	}
+
+	SetupPluginEnv(s, name, base)
+	for _, tt := range []struct {
+		name, expect string
+	}{
+		{"HELM_PLUGIN_NAME", name},
+		{"HELM_PLUGIN_DIR", base},
+	} {
+		if got := os.Getenv(tt.name); got != tt.expect {
+			t.Errorf("Expected $%s=%q, got %q", tt.name, tt.expect, got)
+		}
 	}
 }

@@ -183,7 +183,7 @@ func TestWriteFile(t *testing.T) {
 func TestRepoNotExists(t *testing.T) {
 	if _, err := LoadFile("/this/path/does/not/exist.yaml"); err == nil {
 		t.Errorf("expected err to be non-nil when path does not exist")
-	} else if !strings.Contains(err.Error(), "You might need to run `helm init`") {
-		t.Errorf("expected prompt to run `helm init` when repositories file does not exist")
+	} else if !strings.Contains(err.Error(), "couldn't load repositories file") {
+		t.Errorf("expected prompt `couldn't load repositories file`")
 	}
 }

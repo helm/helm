@@ -18,14 +18,11 @@ package main
 import (
 	"bytes"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
-
-	"helm.sh/helm/pkg/helmpath"
 )
 
 func TestManuallyProcessArgs(t *testing.T) {
@@ -62,7 +59,8 @@ func TestManuallyProcessArgs(t *testing.T) {
 
 func TestLoadPlugins(t *testing.T) {
 	settings.PluginsDirectory = "testdata/helmhome/helm/plugins"
-	settings.RepositoryConfig = "testdata/helmhome/helm/repository"
+	settings.RepositoryConfig = "testdata/helmhome/helm/repositories.yaml"
+	settings.RepositoryCache = "testdata/helmhome/helm/repository"
 
 	var (
 		out bytes.Buffer
@@ -74,8 +72,8 @@ func TestLoadPlugins(t *testing.T) {
 		"fullenv",
 		"testdata/helmhome/helm/plugins/fullenv",
 		"testdata/helmhome/helm/plugins",
+		"testdata/helmhome/helm/repositories.yaml",
 		"testdata/helmhome/helm/repository",
-		helmpath.CachePath("repository"),
 		os.Args[0],
 	}, "\n")
 
@@ -117,7 +115,7 @@ func TestLoadPlugins(t *testing.T) {
 		// tests until this is fixed
 		if runtime.GOOS != "windows" {
 			if err := pp.RunE(pp, tt.args); err != nil {
-				t.Errorf("Error running %s: %s", tt.use, err)
+				t.Errorf("Error running %s: %+v", tt.use, err)
 			}
 			if out.String() != tt.expect {
 				t.Errorf("Expected %s to output:\n%s\ngot\n%s", tt.use, tt.expect, out.String())
@@ -139,23 +137,5 @@ func TestLoadPlugins_HelmNoPlugins(t *testing.T) {
 
 	if len(plugins) != 0 {
 		t.Fatalf("Expected 0 plugins, got %d", len(plugins))
-	}
-}
-
-func TestSetupEnv(t *testing.T) {
-	name := "pequod"
-	base := filepath.Join("testdata/helmhome/helm/plugins", name)
-
-	SetupPluginEnv(name, base)
-	for _, tt := range []struct {
-		name   string
-		expect string
-	}{
-		{"HELM_PLUGIN_NAME", name},
-		{"HELM_PLUGIN_DIR", base},
-	} {
-		if got := os.Getenv(tt.name); got != tt.expect {
-			t.Errorf("Expected $%s=%q, got %q", tt.name, tt.expect, got)
-		}
 	}
 }

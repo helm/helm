@@ -42,11 +42,6 @@ func init() {
 	action.Timestamper = testTimestamper
 }
 
-func TestMain(m *testing.M) {
-	exitCode := m.Run()
-	os.Exit(exitCode)
-}
-
 func runTestCmd(t *testing.T, tests []cmdTestCase) {
 	t.Helper()
 	for _, tt := range tests {
@@ -62,7 +57,7 @@ func runTestCmd(t *testing.T, tests []cmdTestCase) {
 			t.Log("running cmd: ", tt.cmd)
 			_, out, err := executeActionCommandC(storage, tt.cmd)
 			if (err != nil) != tt.wantError {
-				t.Errorf("expected error, got '%+v'", err)
+				t.Errorf("expected error, got '%v'", err)
 			}
 			if tt.golden != "" {
 				test.AssertGoldenString(t, out, tt.golden)
