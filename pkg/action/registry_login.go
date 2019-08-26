@@ -33,6 +33,6 @@ func NewRegistryLogin(cfg *Configuration) *RegistryLogin {
 }
 
 // Run executes the registry login operation
-func (a *RegistryLogin) Run(out io.Writer, hostname string, username string, password string) error {
-	return a.cfg.RegistryClient.Login(hostname, username, password)
+func (a *RegistryLogin) Run(out io.Writer, hostname string, username string, password string, insecure bool) error {
+	return a.cfg.RegistryClient.Login(hostname, username, password, insecure)
 }

@@ -94,4 +94,26 @@ func TestParseReference(t *testing.T) {
 	is.Equal("my.host.com/my/nested/repo", ref.Repo)
 	is.Equal("1.2.3", ref.Tag)
 	is.Equal("my.host.com/my/nested/repo:1.2.3", ref.FullName())
+
+	s = "localhost:5000/x/y/z"
+	ref, err = ParseReference(s)
+	is.NoError(err)
+	is.Equal("localhost:5000/x/y/z", ref.Repo)
+	is.Equal("", ref.Tag)
+	is.Equal("localhost:5000/x/y/z", ref.FullName())
+
+	s = "localhost:5000/x/y/z:123"
+	ref, err = ParseReference(s)
+	is.NoError(err)
+	is.Equal("localhost:5000/x/y/z", ref.Repo)
+	is.Equal("123", ref.Tag)
+	is.Equal("localhost:5000/x/y/z:123", ref.FullName())
+
+	s = "localhost:5000/x/y/z:123:x"
+	_, err = ParseReference(s)
+	is.Error(err, "ref contains too many colons (3)")
+
+	s = "localhost:5000/x/y/z:123:x:y"
+	_, err = ParseReference(s)
+	is.Error(err, "ref contains too many colons (4)")
 }

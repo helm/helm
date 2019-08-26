@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -51,7 +52,7 @@ func ParseReference(s string) (*Reference, error) {
 	// Split the components of the string on the colon or @, if it is more than 3,
 	// immediately return an error. Other validation will be performed later in
 	// the function
-	splitComponents := referenceDelimiter.Split(s, -1)
+	splitComponents := fixSplitComponents(referenceDelimiter.Split(s, -1))
 	if len(splitComponents) > 3 {
 		return nil, errTooManyColons
 	}
@@ -126,4 +127,19 @@ func (ref *Reference) validateNumColons() error {
 // isValidPort returns whether or not a string looks like a valid port
 func isValidPort(s string) bool {
 	return validPortRegEx.MatchString(s)
+}
+
+// fixSplitComponents this will modify reference parts based on presence of port
+// Example: {localhost, 5000/x/y/z, 0.1.0} => {localhost:5000/x/y/z, 0.1.0}
+func fixSplitComponents(c []string) []string {
+	if len(c) <= 1 {
+		return c
+	}
+	possiblePortParts := strings.Split(c[1], "/")
+	if _, err := strconv.Atoi(possiblePortParts[0]); err == nil {
+		components := []string{strings.Join(c[:2], ":")}
+		components = append(components, c[2:]...)
+		return components
+	}
+	return c
 }

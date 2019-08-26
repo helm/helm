@@ -93,8 +93,8 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 }
 
 // Login logs into a registry
-func (c *Client) Login(hostname string, username string, password string) error {
-	err := c.authorizer.Login(ctx(c.out, c.debug), hostname, username, password)
+func (c *Client) Login(hostname string, username string, password string, insecure bool) error {
+	err := c.authorizer.Login(ctx(c.out, c.debug), hostname, username, password, insecure)
 	if err != nil {
 		return err
 	}
