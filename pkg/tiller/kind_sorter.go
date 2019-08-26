@@ -28,6 +28,7 @@ type SortOrder []string
 // Those occurring earlier in the list get installed before those occurring later in the list.
 var InstallOrder SortOrder = []string{
 	"Namespace",
+	"NetworkPolicy",
 	"ResourceQuota",
 	"LimitRange",
 	"PodSecurityPolicy",
@@ -96,6 +97,7 @@ var UninstallOrder SortOrder = []string{
 	"PodSecurityPolicy",
 	"LimitRange",
 	"ResourceQuota",
+	"NetworkPolicy",
 	"Namespace",
 }
 
