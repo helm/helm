@@ -243,12 +243,19 @@ func (t *parser) listItem(list []interface{}, i int) ([]interface{}, error) {
 		// We have a nested object. Send to t.key
 		inner := map[string]interface{}{}
 		if len(list) > i {
-			inner = list[i].(map[string]interface{})
+			switch list[i].(type) {
+			case []interface{}:
+				for _, v := range list[i].([]interface{}) {
+					inner = v.(map[string]interface{})
+				}
+			default:
+				inner = list[i].(map[string]interface{})
+			}
 		}
 
 		// Recurse
-		e := t.key(inner)
-		return setIndex(list, i, inner), e
+		err := t.key(inner)
+		return setIndex(list, i, inner), err
 	default:
 		return nil, errors.Errorf("parse error: unexpected token %v", last)
 	}
