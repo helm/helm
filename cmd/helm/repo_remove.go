@@ -55,7 +55,7 @@ func newRepoRemoveCmd(out io.Writer) *cobra.Command {
 }
 
 func (o *repoRemoveOptions) run(out io.Writer) error {
-	r, err := repo.LoadFile(o.repoFile)
+	r, err := repo.LoadFile(o.repoFile, true)
 	if err != nil {
 		return err
 	}

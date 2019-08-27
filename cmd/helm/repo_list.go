@@ -34,7 +34,7 @@ func newRepoListCmd(out io.Writer) *cobra.Command {
 		Short: "list chart repositories",
 		Args:  require.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			f, err := repo.LoadFile(settings.RepositoryConfig)
+			f, err := repo.LoadFile(settings.RepositoryConfig, true)
 			if err != nil {
 				return err
 			}

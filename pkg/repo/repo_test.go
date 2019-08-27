@@ -71,7 +71,7 @@ func TestNewFile(t *testing.T) {
 		},
 	)
 
-	file, err := LoadFile(testRepositoriesFile)
+	file, err := LoadFile(testRepositoriesFile, false)
 	if err != nil {
 		t.Errorf("%q could not be loaded: %s", testRepositoriesFile, err)
 	}
@@ -169,7 +169,7 @@ func TestWriteFile(t *testing.T) {
 		t.Errorf("failed to write file (%v)", err)
 	}
 
-	repos, err := LoadFile(file.Name())
+	repos, err := LoadFile(file.Name(), false)
 	if err != nil {
 		t.Errorf("failed to load file (%v)", err)
 	}
@@ -181,9 +181,21 @@ func TestWriteFile(t *testing.T) {
 }
 
 func TestRepoNotExists(t *testing.T) {
-	if _, err := LoadFile("/this/path/does/not/exist.yaml"); err == nil {
+	if _, err := LoadFile("/this/path/does/not/exist.yaml", false); err == nil {
 		t.Errorf("expected err to be non-nil when path does not exist")
 	} else if !strings.Contains(err.Error(), "couldn't load repositories file") {
 		t.Errorf("expected prompt `couldn't load repositories file`")
 	}
+}
+
+func TestRepoLazyCreate(t *testing.T) {
+	f, err := LoadFile("testdata/helm-repo-lazy-tst.yaml", true)
+	if err != nil {
+		t.Errorf("expected err to be nil when path does not exist and create repo file flag set")
+	}
+	if len(f.Repositories) != 0 {
+		os.Remove("testdata/helm-repo-lazy-tst.yaml")
+		t.Errorf("expected no rep[ositories to be returned")
+	}
+	os.Remove("testdata/helm-repo-lazy-tst.yaml")
 }

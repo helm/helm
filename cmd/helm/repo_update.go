@@ -59,7 +59,7 @@ func newRepoUpdateCmd(out io.Writer) *cobra.Command {
 }
 
 func (o *repoUpdateOptions) run(out io.Writer) error {
-	f, err := repo.LoadFile(o.repoFile)
+	f, err := repo.LoadFile(o.repoFile, true)
 	if err != nil {
 		return err
 	}

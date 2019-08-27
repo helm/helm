@@ -154,7 +154,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 	}
 	c.Options = append(c.Options, getter.WithURL(ref))
 
-	rf, err := repo.LoadFile(c.RepositoryConfig)
+	rf, err := repo.LoadFile(c.RepositoryConfig, false)
 	if err != nil {
 		return u, err
 	}
