@@ -590,6 +590,8 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		Options: []getter.Option{
 			getter.WithBasicAuth(c.Username, c.Password),
 		},
+		RepositoryConfig: settings.RepositoryConfig,
+		RepositoryCache:  settings.RepositoryCache,
 	}
 	if c.Verify {
 		dl.Verify = downloader.VerifyAlways
