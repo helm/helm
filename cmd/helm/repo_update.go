@@ -51,6 +51,7 @@ func newRepoUpdateCmd(out io.Writer) *cobra.Command {
 		Long:    updateDesc,
 		Args:    require.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			o.repoFile = settings.RepositoryConfig
 			return o.run(out)
 		},
 	}
