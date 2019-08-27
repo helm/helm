@@ -83,13 +83,7 @@ __helm_custom_func()
 
 var globalUsage = `The Kubernetes package manager
 
-To begin working with Helm, run the 'helm init' command:
-
-	$ helm init
-
-This will set up any necessary local configuration.
-
-Common actions from this point include:
+Common actions for Helm:
 
 - helm search:    search for charts
 - helm fetch:     download a chart to your local directory to view
