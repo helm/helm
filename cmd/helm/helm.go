@@ -129,6 +129,10 @@ func kubeConfig() genericclioptions.RESTClientGetter {
 }
 
 func getNamespace() string {
+	if settings.Namespace != "" {
+		return settings.Namespace
+	}
+
 	if ns, _, err := kubeConfig().ToRawKubeConfigLoader().Namespace(); err == nil {
 		return ns
 	}
