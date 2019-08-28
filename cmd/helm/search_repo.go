@@ -147,8 +147,8 @@ func (o *searchRepoOptions) formatSearchResults(res []*search.Result) string {
 func (o *searchRepoOptions) buildIndex(out io.Writer) (*search.Index, error) {
 	// Load the repositories.yaml
 	rf, err := repo.LoadFile(o.repoFile)
-	if isNotExist(err) || len(rf.Repositories) == 0 {
-		return nil, errors.New("no repositories configured")
+	if err != nil {
+		return nil, errors.Wrap(err, "loading repository config")
 	}
 
 	i := search.NewIndex()

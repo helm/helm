@@ -35,7 +35,10 @@ func newRepoListCmd(out io.Writer) *cobra.Command {
 		Args:  require.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			f, err := repo.LoadFile(settings.RepositoryConfig)
-			if isNotExist(err) || len(f.Repositories) == 0 {
+			if err != nil {
+				return err
+			}
+			if len(f.Repositories) == 0 {
 				return errors.New("no repositories to show")
 			}
 			table := uitable.New()

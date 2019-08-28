@@ -56,8 +56,8 @@ func newRepoRemoveCmd(out io.Writer) *cobra.Command {
 
 func (o *repoRemoveOptions) run(out io.Writer) error {
 	r, err := repo.LoadFile(o.repoFile)
-	if isNotExist(err) || len(r.Repositories) == 0 {
-		return errors.New("no repositories configured")
+	if err != nil {
+		return err
 	}
 
 	if !r.Remove(o.name) {
