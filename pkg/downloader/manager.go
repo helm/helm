@@ -311,7 +311,7 @@ func (m *Manager) safeDeleteDep(name, dir string) error {
 
 // hasAllRepos ensures that all of the referenced deps are in the local repo cache.
 func (m *Manager) hasAllRepos(deps []*chart.Dependency) error {
-	rf, err := repo.LoadFile(m.RepositoryConfig)
+	rf, err := loadRepoConfig(m.RepositoryConfig)
 	if err != nil {
 		return err
 	}
@@ -345,7 +345,7 @@ Loop:
 
 // getRepoNames returns the repo names of the referenced deps which can be used to fetch the cahced index file.
 func (m *Manager) getRepoNames(deps []*chart.Dependency) (map[string]string, error) {
-	rf, err := repo.LoadFile(m.RepositoryConfig)
+	rf, err := loadRepoConfig(m.RepositoryConfig)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return make(map[string]string), nil
@@ -415,7 +415,7 @@ repository, use "https://charts.example.com/" or "@example" instead of
 
 // UpdateRepositories updates all of the local repos to the latest.
 func (m *Manager) UpdateRepositories() error {
-	rf, err := repo.LoadFile(m.RepositoryConfig)
+	rf, err := loadRepoConfig(m.RepositoryConfig)
 	if err != nil {
 		return err
 	}
@@ -553,7 +553,7 @@ func (m *Manager) loadChartRepositories() (map[string]*repo.ChartRepository, err
 	indices := map[string]*repo.ChartRepository{}
 
 	// Load repositories.yaml file
-	rf, err := repo.LoadFile(m.RepositoryConfig)
+	rf, err := loadRepoConfig(m.RepositoryConfig)
 	if err != nil {
 		return indices, errors.Wrapf(err, "failed to load %s", m.RepositoryConfig)
 	}
