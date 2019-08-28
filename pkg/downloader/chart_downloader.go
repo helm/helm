@@ -154,7 +154,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 	}
 	c.Options = append(c.Options, getter.WithURL(ref))
 
-	rf, err := repo.LoadFile(c.RepositoryConfig)
+	rf, err := loadRepoConfig(c.RepositoryConfig)
 	if err != nil {
 		return u, err
 	}
@@ -353,4 +353,12 @@ func (c *ChartDownloader) scanReposForURL(u string, rf *repo.File) (*repo.Entry,
 	}
 	// This means that there is no repo file for the given URL.
 	return nil, ErrNoOwnerRepo
+}
+
+func loadRepoConfig(file string) (*repo.File, error) {
+	r, err := repo.LoadFile(file)
+	if err != nil && !os.IsNotExist(errors.Cause(err)) {
+		return nil, err
+	}
+	return r, nil
 }

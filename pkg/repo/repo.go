@@ -46,15 +46,12 @@ func NewFile() *File {
 
 // LoadFile takes a file at the given path and returns a File object
 func LoadFile(path string) (*File, error) {
+	r := new(File)
 	b, err := ioutil.ReadFile(path)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, errors.Wrapf(err, "couldn't load repositories file (%s)", path)
-		}
-		return nil, err
+		return r, errors.Wrapf(err, "couldn't load repositories file (%s)", path)
 	}
 
-	r := &File{}
 	err = yaml.Unmarshal(b, r)
 	return r, err
 }
