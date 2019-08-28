@@ -45,21 +45,15 @@ func NewFile() *File {
 }
 
 // LoadFile takes a file at the given path and returns a File object
-// createRepoFile parameter when set to true, will create repo file if
-// it doesn't exist. The parameter is useful for lazy create when
-// running some commands.
-func LoadFile(path string, createRepoFile bool) (*File, error) {
+func LoadFile(path string) (*File, error) {
 	b, err := ioutil.ReadFile(path)
 	if err != nil {
-		if os.IsNotExist(err) && createRepoFile {
+		if os.IsNotExist(err) {
 			f := &File{}
 			if err := f.WriteFile(path, 0644); err != nil {
 				return nil, errors.Wrapf(err, "couldn't load repositories file (%s)", path)
 			}
 			return f, nil
-		}
-		if os.IsNotExist(err) {
-			return nil, errors.Wrapf(err, "couldn't load repositories file (%s)", path)
 		}
 		return nil, err
 	}

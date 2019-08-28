@@ -222,7 +222,7 @@ func TestScanReposForURL(t *testing.T) {
 	}
 
 	u := "http://example.com/alpine-0.2.0.tgz"
-	rf, err := repo.LoadFile(repoConfig, false)
+	rf, err := repo.LoadFile(repoConfig)
 	if err != nil {
 		t.Fatal(err)
 	}

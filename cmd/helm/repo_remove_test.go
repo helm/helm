@@ -80,7 +80,7 @@ func TestRepoRemove(t *testing.T) {
 		t.Errorf("Error cache file was not removed for repository %s", testRepoName)
 	}
 
-	f, err := repo.LoadFile(repoFile, false)
+	f, err := repo.LoadFile(repoFile)
 	if err != nil {
 		t.Error(err)
 	}
