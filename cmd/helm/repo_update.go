@@ -59,13 +59,9 @@ func newRepoUpdateCmd(out io.Writer) *cobra.Command {
 }
 
 func (o *repoUpdateOptions) run(out io.Writer) error {
-	f, err := repo.LoadFile(o.repoFile)
-	if err != nil {
-		return err
-	}
-
-	if len(f.Repositories) == 0 {
-		return errNoRepositories
+	f, err := repo.LoadFile(settings.RepositoryConfig)
+	if isNotExist(err) || len(f.Repositories) == 0 {
+		return errors.New("no repositories to update")
 	}
 	var repos []*repo.ChartRepository
 	for _, cfg := range f.Repositories {
