@@ -584,9 +584,11 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 	}
 
 	dl := downloader.ChartDownloader{
-		Out:     os.Stdout,
-		Keyring: c.Keyring,
-		Getters: getter.All(settings),
+		Out:              os.Stdout,
+		Keyring:          c.Keyring,
+		Getters:          getter.All(settings),
+		RepositoryConfig: settings.RepositoryConfig,
+		RepositoryCache:  settings.RepositoryCache,
 		Options: []getter.Option{
 			getter.WithBasicAuth(c.Username, c.Password),
 		},
