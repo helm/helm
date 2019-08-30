@@ -169,6 +169,15 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 				}
 				return i.failRelease(rel, err)
 			}
+
+			// Invalidate the local cache.
+			if discoveryClient, err := i.cfg.RESTClientGetter.ToDiscoveryClient(); err != nil {
+				// On error, we don't want to bail out, since this is unlikely
+				// to impact the majority of charts.
+				i.cfg.Log("Could not clear the discovery cache: %s", err)
+			} else {
+				discoveryClient.Invalidate()
+			}
 		}
 	}
 
