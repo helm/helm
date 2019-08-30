@@ -23,11 +23,13 @@ These dependencies are expressed as interfaces so that alternate implementations
 package cli
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/spf13/pflag"
 
 	"helm.sh/helm/pkg/helmpath"
+	"helm.sh/helm/pkg/helmpath/xdg"
 )
 
 // EnvSettings describes all of the environment settings.
@@ -49,15 +51,26 @@ type EnvSettings struct {
 	RepositoryCache string
 	// PluginsDirectory is the path to the plugins directory.
 	PluginsDirectory string
+
+	// Environment Variables Store
+	EnvironmentVariables []EnvironmentVariable
+}
+
+type EnvironmentVariable struct {
+	Name  string
+	Value string
 }
 
 func New() *EnvSettings {
-	return &EnvSettings{
-		PluginsDirectory: helmpath.DataPath("plugins"),
-		RegistryConfig:   helmpath.ConfigPath("registry.json"),
-		RepositoryConfig: helmpath.ConfigPath("repositories.yaml"),
-		RepositoryCache:  helmpath.CachePath("repository"),
+	envSettings := EnvSettings{
+		PluginsDirectory:     helmpath.DataPath("plugins"),
+		RegistryConfig:       helmpath.ConfigPath("registry.json"),
+		RepositoryConfig:     helmpath.ConfigPath("repositories.yaml"),
+		RepositoryCache:      helmpath.CachePath("repository"),
+		EnvironmentVariables: []EnvironmentVariable{},
 	}
+	envSettings.setHelmEnvVars()
+	return &envSettings
 }
 
 // AddFlags binds flags to the given flagset.
@@ -70,13 +83,6 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.RegistryConfig, "registry-config", s.RegistryConfig, "path to the registry config file")
 	fs.StringVar(&s.RepositoryConfig, "repository-config", s.RepositoryConfig, "path to the repositories config file")
 	fs.StringVar(&s.RepositoryCache, "repository-cache", s.RepositoryCache, "path to the repositories config file")
-}
-
-// Init sets values from the environment.
-func (s *EnvSettings) Init(fs *pflag.FlagSet) {
-	for name, envar := range envMap {
-		setFlagFromEnv(name, envar, fs)
-	}
 }
 
 // envMap maps flag names to envvars
@@ -93,5 +99,36 @@ func setFlagFromEnv(name, envar string, fs *pflag.FlagSet) {
 	}
 	if v, ok := os.LookupEnv(envar); ok {
 		fs.Set(name, v)
+	}
+}
+
+func (s *EnvSettings) setHelmEnvVars() {
+	for key, val := range map[string]string{
+		"HELM_HOME":                  helmpath.DataPath(),
+		"HELM_PATH_STARTER":          helmpath.DataPath("starters"),
+		"HELM_DEBUG":                 fmt.Sprint(s.Debug),
+		"HELM_REGISTRY_CONFIG":       s.RegistryConfig,
+		"HELM_PATH_REPOSITORY_FILE":  s.RepositoryConfig,
+		"HELM_PATH_REPOSITORY_CACHE": s.RepositoryCache,
+		"HELM_PLUGIN":                s.PluginsDirectory,
+		xdg.CacheHomeEnvVar:          helmpath.CachePath(),
+		xdg.ConfigHomeEnvVar:         helmpath.ConfigPath(),
+		xdg.DataHomeEnvVar:           helmpath.DataPath(),
+	} {
+		if eVal := os.Getenv(key); len(eVal) > 0 {
+			val = eVal
+		}
+		s.EnvironmentVariables = append(s.EnvironmentVariables,
+			EnvironmentVariable{
+				Name:  key,
+				Value: val,
+			})
+	}
+}
+
+// Init sets values from the environment.
+func (s *EnvSettings) Init(fs *pflag.FlagSet) {
+	for name, envar := range envMap {
+		setFlagFromEnv(name, envar, fs)
 	}
 }
