@@ -6,6 +6,10 @@ environments.
 We are trying to add more details to this document. Please contribute via Pull
 Requests if you can.
 
+## MicroK8s
+
+Helm can be enabled in [MicroK8s](https://microk8s.io) using the command: `microk8s.enable helm`
+
 ## MiniKube
 
 Helm is tested and known to work with [minikube](https://github.com/kubernetes/minikube).
