@@ -68,8 +68,8 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&s.Debug, "debug", false, "enable verbose output")
 
 	fs.StringVar(&s.RegistryConfig, "registry-config", s.RegistryConfig, "path to the registry config file")
-	fs.StringVar(&s.RepositoryConfig, "repository-config", s.RepositoryConfig, "path to the repositories config file")
-	fs.StringVar(&s.RepositoryCache, "repository-cache", s.RepositoryCache, "path to the repositories config file")
+	fs.StringVar(&s.RepositoryConfig, "repository-config", s.RepositoryConfig, "path to the file containing repository names and URLs")
+	fs.StringVar(&s.RepositoryCache, "repository-cache", s.RepositoryCache, "path to the file containing cached repository indexes")
 }
 
 // Init sets values from the environment.
