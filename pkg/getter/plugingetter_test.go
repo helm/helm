@@ -16,19 +16,17 @@ limitations under the License.
 package getter
 
 import (
-	"os"
 	"runtime"
 	"strings"
 	"testing"
 
 	"helm.sh/helm/pkg/cli"
-	"helm.sh/helm/pkg/helmpath/xdg"
 )
 
 func TestCollectPlugins(t *testing.T) {
-	os.Setenv(xdg.DataHomeEnvVar, "testdata")
-
-	env := cli.EnvSettings{}
+	env := &cli.EnvSettings{
+		PluginsDirectory: pluginDir,
+	}
 	p, err := collectPlugins(env)
 	if err != nil {
 		t.Fatal(err)
@@ -56,9 +54,9 @@ func TestPluginGetter(t *testing.T) {
 		t.Skip("TODO: refactor this test to work on windows")
 	}
 
-	os.Setenv(xdg.DataHomeEnvVar, "testdata")
-
-	env := cli.EnvSettings{}
+	env := &cli.EnvSettings{
+		PluginsDirectory: pluginDir,
+	}
 	pg := NewPluginGetter("echo", env, "test", ".")
 	g, err := pg()
 	if err != nil {
@@ -82,11 +80,9 @@ func TestPluginSubCommands(t *testing.T) {
 		t.Skip("TODO: refactor this test to work on windows")
 	}
 
-	oldhh := os.Getenv("HELM_HOME")
-	defer os.Setenv("HELM_HOME", oldhh)
-	os.Setenv("HELM_HOME", "")
-
-	env := cli.EnvSettings{}
+	env := &cli.EnvSettings{
+		PluginsDirectory: pluginDir,
+	}
 	pg := NewPluginGetter("echo -n", env, "test", ".")
 	g, err := pg()
 	if err != nil {

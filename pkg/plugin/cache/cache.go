@@ -30,21 +30,19 @@ var scpSyntaxRe = regexp.MustCompile(`^([a-zA-Z0-9_]+)@([a-zA-Z0-9._-]+):(.*)$`)
 // Key generates a cache key based on a url or scp string. The key is file
 // system safe.
 func Key(repo string) (string, error) {
-
-	var u *url.URL
-	var err error
-	var strip bool
+	var (
+		u   *url.URL
+		err error
+	)
 	if m := scpSyntaxRe.FindStringSubmatch(repo); m != nil {
 		// Match SCP-like syntax and convert it to a URL.
 		// Eg, "git@github.com:user/repo" becomes
 		// "ssh://git@github.com/user/repo".
 		u = &url.URL{
-			Scheme: "ssh",
-			User:   url.User(m[1]),
-			Host:   m[2],
-			Path:   "/" + m[3],
+			User: url.User(m[1]),
+			Host: m[2],
+			Path: "/" + m[3],
 		}
-		strip = true
 	} else {
 		u, err = url.Parse(repo)
 		if err != nil {
@@ -52,23 +50,18 @@ func Key(repo string) (string, error) {
 		}
 	}
 
-	if strip {
-		u.Scheme = ""
-	}
-
-	var key string
+	var key strings.Builder
 	if u.Scheme != "" {
-		key = u.Scheme + "-"
+		key.WriteString(u.Scheme)
+		key.WriteString("-")
 	}
 	if u.User != nil && u.User.Username() != "" {
-		key = key + u.User.Username() + "-"
+		key.WriteString(u.User.Username())
+		key.WriteString("-")
 	}
-	key = key + u.Host
+	key.WriteString(u.Host)
 	if u.Path != "" {
-		key = key + strings.ReplaceAll(u.Path, "/", "-")
+		key.WriteString(strings.ReplaceAll(u.Path, "/", "-"))
 	}
-
-	key = strings.ReplaceAll(key, ":", "-")
-
-	return key, nil
+	return strings.ReplaceAll(key.String(), ":", "-"), nil
 }

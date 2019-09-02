@@ -35,12 +35,14 @@ import (
 // Resolver resolves dependencies from semantic version ranges to a particular version.
 type Resolver struct {
 	chartpath string
+	cachepath string
 }
 
 // New creates a new resolver for a given chart and a given helm home.
-func New(chartpath string) *Resolver {
+func New(chartpath, cachepath string) *Resolver {
 	return &Resolver{
 		chartpath: chartpath,
+		cachepath: cachepath,
 	}
 }
 
@@ -69,9 +71,11 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 			return nil, errors.Wrapf(err, "dependency %q has an invalid version/constraint format", d.Name)
 		}
 
-		repoIndex, err := repo.LoadIndexFile(helmpath.CacheIndex(repoNames[d.Name]))
+		idx := filepath.Join(r.cachepath, helmpath.CacheIndexFile(repoNames[d.Name]))
+
+		repoIndex, err := repo.LoadIndexFile(idx)
 		if err != nil {
-			return nil, errors.Wrap(err, "no cached repo found. (try 'helm repo update')")
+			return nil, errors.Wrapf(err, "no cached repo found. (try 'helm repo update') %s", idx)
 		}
 
 		vs, ok := repoIndex.Entries[d.Name]

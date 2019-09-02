@@ -28,7 +28,7 @@ import (
 
 const (
 	bashCompletionFunc = `
-__helm_override_flag_list=(--kubeconfig --kube-context --home --namespace -n)
+__helm_override_flag_list=(--kubeconfig --kube-context --namespace -n)
 __helm_override_flags()
 {
     local ${__helm_override_flag_list[*]##*-} two_word_of of var
@@ -65,6 +65,22 @@ __helm_list_releases()
         COMPREPLY=( $( compgen -W "${out[*]}" -- "$cur" ) )
     fi
 }
+__helm_list_repos()
+{
+    __helm_debug "${FUNCNAME[0]}: c is $c words[c] is ${words[c]}"
+    local out
+    if out=$(helm repo list | tail +2 | cut -f1 2>/dev/null); then
+        COMPREPLY=( $( compgen -W "${out[*]}" -- "$cur" ) )
+    fi
+}
+__helm_list_plugins()
+{
+    __helm_debug "${FUNCNAME[0]}: c is $c words[c] is ${words[c]}"
+    local out
+    if out=$(helm plugin list | tail +2 | cut -f1 2>/dev/null); then
+        COMPREPLY=( $( compgen -W "${out[*]}" -- "$cur" ) )
+    fi
+}
 __helm_custom_func()
 {
 	__helm_debug "${FUNCNAME[0]}: last_command is $last_command"
@@ -73,7 +89,15 @@ __helm_custom_func()
 	    helm_upgrade | helm_rollback | helm_get_*)
             __helm_list_releases
             return
-            ;;
+			;;
+		helm_repo_remove)
+			__helm_list_repos
+			return
+			;;
+		helm_plugin_remove | helm_plugin_update)
+			__helm_list_plugins
+			return
+			;;
         *)
             ;;
     esac
@@ -83,13 +107,7 @@ __helm_custom_func()
 
 var globalUsage = `The Kubernetes package manager
 
-To begin working with Helm, run the 'helm init' command:
-
-	$ helm init
-
-This will set up any necessary local configuration.
-
-Common actions from this point include:
+Common actions for Helm:
 
 - helm search:    search for charts
 - helm fetch:     download a chart to your local directory to view
@@ -154,7 +172,6 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		newUpgradeCmd(actionConfig, out),
 
 		newCompletionCmd(out),
-		newInitCmd(out),
 		newPluginCmd(out),
 		newVersionCmd(out),
 

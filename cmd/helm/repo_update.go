@@ -26,7 +26,6 @@ import (
 
 	"helm.sh/helm/cmd/helm/require"
 	"helm.sh/helm/pkg/getter"
-	"helm.sh/helm/pkg/helmpath"
 	"helm.sh/helm/pkg/repo"
 )
 
@@ -38,7 +37,8 @@ Information is cached locally, where it is used by commands like 'helm search'.
 var errNoRepositories = errors.New("no repositories found. You must add one before updating")
 
 type repoUpdateOptions struct {
-	update func([]*repo.ChartRepository, io.Writer)
+	update   func([]*repo.ChartRepository, io.Writer)
+	repoFile string
 }
 
 func newRepoUpdateCmd(out io.Writer) *cobra.Command {
@@ -51,6 +51,7 @@ func newRepoUpdateCmd(out io.Writer) *cobra.Command {
 		Long:    updateDesc,
 		Args:    require.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			o.repoFile = settings.RepositoryConfig
 			return o.run(out)
 		},
 	}
@@ -58,12 +59,8 @@ func newRepoUpdateCmd(out io.Writer) *cobra.Command {
 }
 
 func (o *repoUpdateOptions) run(out io.Writer) error {
-	f, err := repo.LoadFile(helmpath.RepositoryFile())
-	if err != nil {
-		return err
-	}
-
-	if len(f.Repositories) == 0 {
+	f, err := repo.LoadFile(o.repoFile)
+	if isNotExist(err) || len(f.Repositories) == 0 {
 		return errNoRepositories
 	}
 	var repos []*repo.ChartRepository
@@ -86,7 +83,7 @@ func updateCharts(repos []*repo.ChartRepository, out io.Writer) {
 		wg.Add(1)
 		go func(re *repo.ChartRepository) {
 			defer wg.Done()
-			if err := re.DownloadIndexFile(); err != nil {
+			if _, err := re.DownloadIndexFile(); err != nil {
 				fmt.Fprintf(out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", re.Config.Name, re.Config.URL, err)
 			} else {
 				fmt.Fprintf(out, "...Successfully got an update from the %q chart repository\n", re.Config.Name)

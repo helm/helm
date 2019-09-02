@@ -20,7 +20,6 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -52,13 +51,7 @@ func SaveDir(c *chart.Chart, dest string) error {
 	if c.Values != nil {
 		vf := filepath.Join(outdir, ValuesfileName)
 		b, _ := yaml.Marshal(c.Values)
-		if err := ioutil.WriteFile(vf, b, 0644); err != nil {
-			return err
-		}
-	}
-
-	for _, d := range []string{TemplatesDir, ChartsDir} {
-		if err := os.MkdirAll(filepath.Join(outdir, d), 0755); err != nil {
+		if err := writeFile(vf, b); err != nil {
 			return err
 		}
 	}
@@ -67,13 +60,7 @@ func SaveDir(c *chart.Chart, dest string) error {
 	for _, o := range [][]*chart.File{c.Templates, c.Files} {
 		for _, f := range o {
 			n := filepath.Join(outdir, f.Name)
-
-			d := filepath.Dir(n)
-			if err := os.MkdirAll(d, 0755); err != nil {
-				return err
-			}
-
-			if err := ioutil.WriteFile(n, f.Data, 0644); err != nil {
+			if err := writeFile(n, f.Data); err != nil {
 				return err
 			}
 		}
@@ -84,7 +71,7 @@ func SaveDir(c *chart.Chart, dest string) error {
 	for _, dep := range c.Dependencies() {
 		// Here, we write each dependency as a tar file.
 		if _, err := Save(dep, base); err != nil {
-			return err
+			return errors.Wrapf(err, "saving %s", dep.ChartFullPath())
 		}
 	}
 	return nil
@@ -99,13 +86,6 @@ func SaveDir(c *chart.Chart, dest string) error {
 //
 // This returns the absolute path to the chart archive file.
 func Save(c *chart.Chart, outDir string) (string, error) {
-	// Create archive
-	if fi, err := os.Stat(outDir); err != nil {
-		return "", err
-	} else if !fi.IsDir() {
-		return "", errors.Errorf("location %s is not a directory", outDir)
-	}
-
 	if err := c.Validate(); err != nil {
 		return "", errors.Wrap(err, "chart validation")
 	}
@@ -199,7 +179,7 @@ func writeToTar(out *tar.Writer, name string, body []byte) error {
 	// TODO: Do we need to create dummy parent directory names if none exist?
 	h := &tar.Header{
 		Name: name,
-		Mode: 0755,
+		Mode: 0644,
 		Size: int64(len(body)),
 	}
 	if err := out.WriteHeader(h); err != nil {

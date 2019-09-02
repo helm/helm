@@ -75,8 +75,8 @@ func WithTLSClientConfig(certFile, keyFile, caFile string) Option {
 
 // Getter is an interface to support GET to the specified URL.
 type Getter interface {
-	//Get file content by url string
-	Get(url string) (*bytes.Buffer, error)
+	// Get file content by url string
+	Get(url string, options ...Option) (*bytes.Buffer, error)
 }
 
 // Constructor is the function for every getter which creates a specific instance
@@ -108,41 +108,26 @@ type Providers []Provider
 // ByScheme returns a Provider that handles the given scheme.
 //
 // If no provider handles this scheme, this will return an error.
-func (p Providers) ByScheme(scheme string) (Constructor, error) {
+func (p Providers) ByScheme(scheme string) (Getter, error) {
 	for _, pp := range p {
 		if pp.Provides(scheme) {
-			return pp.New, nil
+			return pp.New()
 		}
 	}
 	return nil, errors.Errorf("scheme %q not supported", scheme)
 }
 
+var httpProvider = Provider{
+	Schemes: []string{"http", "https"},
+	New:     NewHTTPGetter,
+}
+
 // All finds all of the registered getters as a list of Provider instances.
 // Currently, the built-in getters and the discovered plugins with downloader
 // notations are collected.
-func All(settings cli.EnvSettings) Providers {
-	result := Providers{
-		{
-			Schemes: []string{"http", "https"},
-			New:     NewHTTPGetter,
-		},
-	}
+func All(settings *cli.EnvSettings) Providers {
+	result := Providers{httpProvider}
 	pluginDownloaders, _ := collectPlugins(settings)
 	result = append(result, pluginDownloaders...)
 	return result
-}
-
-// ByScheme returns a getter for the given scheme.
-//
-// If the scheme is not supported, this will return an error.
-func ByScheme(scheme string, settings cli.EnvSettings) (Provider, error) {
-	// Q: What do you call a scheme string who's the boss?
-	// A: Bruce Schemestring, of course.
-	a := All(settings)
-	for _, p := range a {
-		if p.Provides(scheme) {
-			return p, nil
-		}
-	}
-	return Provider{}, errors.Errorf("scheme %q not supported", scheme)
 }

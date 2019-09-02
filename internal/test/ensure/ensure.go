@@ -21,55 +21,18 @@ import (
 	"os"
 	"testing"
 
-	"helm.sh/helm/pkg/helmpath"
 	"helm.sh/helm/pkg/helmpath/xdg"
 )
 
 // HelmHome sets up a Helm Home in a temp dir.
-func HelmHome(t *testing.T) {
+func HelmHome(t *testing.T) func() {
 	t.Helper()
-	cachePath := TempDir(t)
-	configPath := TempDir(t)
-	dataPath := TempDir(t)
-	os.Setenv(xdg.CacheHomeEnvVar, cachePath)
-	os.Setenv(xdg.ConfigHomeEnvVar, configPath)
-	os.Setenv(xdg.DataHomeEnvVar, dataPath)
-	HomeDirs(t)
-}
-
-// HomeDirs creates a home directory like ensureHome, but without remote references.
-func HomeDirs(t *testing.T) {
-	t.Helper()
-	for _, p := range []string{
-		helmpath.CachePath(),
-		helmpath.ConfigPath(),
-		helmpath.DataPath(),
-		helmpath.RepositoryCache(),
-		helmpath.Plugins(),
-		helmpath.PluginCache(),
-		helmpath.Starters(),
-	} {
-		if err := os.MkdirAll(p, 0755); err != nil {
-			t.Fatal(err)
-		}
-	}
-}
-
-// CleanHomeDirs removes the directories created by HomeDirs.
-func CleanHomeDirs(t *testing.T) {
-	t.Helper()
-	for _, p := range []string{
-		helmpath.CachePath(),
-		helmpath.ConfigPath(),
-		helmpath.DataPath(),
-		helmpath.RepositoryCache(),
-		helmpath.Plugins(),
-		helmpath.PluginCache(),
-		helmpath.Starters(),
-	} {
-		if err := os.RemoveAll(p); err != nil {
-			t.Log(err)
-		}
+	base := TempDir(t)
+	os.Setenv(xdg.CacheHomeEnvVar, base)
+	os.Setenv(xdg.ConfigHomeEnvVar, base)
+	os.Setenv(xdg.DataHomeEnvVar, base)
+	return func() {
+		os.RemoveAll(base)
 	}
 }
 

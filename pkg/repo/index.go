@@ -158,7 +158,7 @@ func (i IndexFile) Get(name, version string) (*ChartVersion, error) {
 	}
 
 	var constraint *semver.Constraints
-	if len(version) == 0 {
+	if version == "" {
 		constraint, _ = semver.NewConstraint("*")
 	} else {
 		var err error
@@ -276,10 +276,7 @@ func loadIndex(data []byte) (*IndexFile, error) {
 	}
 	i.SortEntries()
 	if i.APIVersion == "" {
-		// When we leave Beta, we should remove legacy support and just
-		// return this error:
-		//return i, ErrNoAPIVersion
-		return loadUnversionedIndex(data)
+		return i, ErrNoAPIVersion
 	}
 	return i, nil
 }

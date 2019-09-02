@@ -19,12 +19,12 @@ import (
 	"bytes"
 	"encoding/base64"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/internal/test/ensure"
+	"helm.sh/helm/pkg/getter"
 	"helm.sh/helm/pkg/helmpath"
 )
 
@@ -36,7 +36,9 @@ type TestHTTPGetter struct {
 	MockError    error
 }
 
-func (t *TestHTTPGetter) Get(href string) (*bytes.Buffer, error) { return t.MockResponse, t.MockError }
+func (t *TestHTTPGetter) Get(href string, _ ...getter.Option) (*bytes.Buffer, error) {
+	return t.MockResponse, t.MockError
+}
 
 // Fake plugin tarball data
 var fakePluginB64 = "H4sIAKRj51kAA+3UX0vCUBgGcC9jn+Iwuk3Peza3GeyiUlJQkcogCOzgli7dJm4TvYk+a5+k479UqquUCJ/fLs549sLO2TnvWnJa9aXnjwujYdYLovxMhsPcfnHOLdNkOXthM/IVQQYjg2yyLLJ4kXGhLp5j0z3P41tZksqxmspL3B/O+j/XtZu1y8rdYzkOZRCxduKPk53ny6Wwz/GfIIf1As8lxzGJSmoHNLJZphKHG4YpTCE0wVk3DULfpSJ3DMMqkj3P5JfMYLdX1Vr9Ie/5E5cstcdC8K04iGLX5HaJuKpWL17F0TCIBi5pf/0pjtLhun5j3f9v6r7wfnI/H0eNp9d1/5P6Gez0vzo7wsoxfrAZbTny/o9k6J8z/VkO/LPlWdC1iVpbEEcq5nmeJ13LEtmbV0k2r2PrOs9PuuNglC5rL1Y5S/syXRQmutaNw1BGnnp8Wq3UG51WvX1da3bKtZtCN/R09DwAAAAAAAAAAAAAAAAAAADAb30AoMczDwAoAAA="
@@ -57,12 +59,11 @@ func TestStripName(t *testing.T) {
 }
 
 func TestHTTPInstaller(t *testing.T) {
+	defer ensure.HelmHome(t)()
 	source := "https://repo.localdomain/plugins/fake-plugin-0.0.1.tar.gz"
-	ensure.HelmHome(t)
-	defer ensure.CleanHomeDirs(t)
 
-	if err := os.MkdirAll(helmpath.Plugins(), 0755); err != nil {
-		t.Fatalf("Could not create %s: %s", helmpath.Plugins(), err)
+	if err := os.MkdirAll(helmpath.DataPath("plugins"), 0755); err != nil {
+		t.Fatalf("Could not create %s: %s", helmpath.DataPath("plugins"), err)
 	}
 
 	i, err := NewForSource(source, "0.0.1")
@@ -90,7 +91,7 @@ func TestHTTPInstaller(t *testing.T) {
 	if err := Install(i); err != nil {
 		t.Error(err)
 	}
-	if i.Path() != filepath.Join(helmpath.Plugins(), "fake-plugin") {
+	if i.Path() != helmpath.DataPath("plugins", "fake-plugin") {
 		t.Errorf("expected path '$XDG_CONFIG_HOME/helm/plugins/fake-plugin', got %q", i.Path())
 	}
 
@@ -104,12 +105,11 @@ func TestHTTPInstaller(t *testing.T) {
 }
 
 func TestHTTPInstallerNonExistentVersion(t *testing.T) {
+	defer ensure.HelmHome(t)()
 	source := "https://repo.localdomain/plugins/fake-plugin-0.0.2.tar.gz"
-	ensure.HelmHome(t)
-	defer ensure.CleanHomeDirs(t)
 
-	if err := os.MkdirAll(helmpath.Plugins(), 0755); err != nil {
-		t.Fatalf("Could not create %s: %s", helmpath.Plugins(), err)
+	if err := os.MkdirAll(helmpath.DataPath("plugins"), 0755); err != nil {
+		t.Fatalf("Could not create %s: %s", helmpath.DataPath("plugins"), err)
 	}
 
 	i, err := NewForSource(source, "0.0.2")
@@ -137,11 +137,10 @@ func TestHTTPInstallerNonExistentVersion(t *testing.T) {
 
 func TestHTTPInstallerUpdate(t *testing.T) {
 	source := "https://repo.localdomain/plugins/fake-plugin-0.0.1.tar.gz"
-	ensure.HelmHome(t)
-	defer ensure.CleanHomeDirs(t)
+	defer ensure.HelmHome(t)()
 
-	if err := os.MkdirAll(helmpath.Plugins(), 0755); err != nil {
-		t.Fatalf("Could not create %s: %s", helmpath.Plugins(), err)
+	if err := os.MkdirAll(helmpath.DataPath("plugins"), 0755); err != nil {
+		t.Fatalf("Could not create %s: %s", helmpath.DataPath("plugins"), err)
 	}
 
 	i, err := NewForSource(source, "0.0.1")
@@ -169,7 +168,7 @@ func TestHTTPInstallerUpdate(t *testing.T) {
 	if err := Install(i); err != nil {
 		t.Error(err)
 	}
-	if i.Path() != filepath.Join(helmpath.Plugins(), "fake-plugin") {
+	if i.Path() != helmpath.DataPath("plugins", "fake-plugin") {
 		t.Errorf("expected path '$XDG_CONFIG_HOME/helm/plugins/fake-plugin', got %q", i.Path())
 	}
 

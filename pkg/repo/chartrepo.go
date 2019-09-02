@@ -52,6 +52,7 @@ type ChartRepository struct {
 	ChartPaths []string
 	IndexFile  *IndexFile
 	Client     getter.Getter
+	CachePath  string
 }
 
 // NewChartRepository constructs ChartRepository
@@ -61,23 +62,16 @@ func NewChartRepository(cfg *Entry, getters getter.Providers) (*ChartRepository,
 		return nil, errors.Errorf("invalid chart URL format: %s", cfg.URL)
 	}
 
-	getterConstructor, err := getters.ByScheme(u.Scheme)
+	client, err := getters.ByScheme(u.Scheme)
 	if err != nil {
 		return nil, errors.Errorf("could not find protocol handler for: %s", u.Scheme)
-	}
-	client, err := getterConstructor(
-		getter.WithURL(cfg.URL),
-		getter.WithTLSClientConfig(cfg.CertFile, cfg.KeyFile, cfg.CAFile),
-		getter.WithBasicAuth(cfg.Username, cfg.Password),
-	)
-	if err != nil {
-		return nil, errors.Wrapf(err, "could not construct protocol handler for: %s", u.Scheme)
 	}
 
 	return &ChartRepository{
 		Config:    cfg,
 		IndexFile: NewIndexFile(),
 		Client:    client,
+		CachePath: helmpath.CachePath("repository"),
 	}, nil
 }
 
@@ -114,31 +108,37 @@ func (r *ChartRepository) Load() error {
 }
 
 // DownloadIndexFile fetches the index from a repository.
-func (r *ChartRepository) DownloadIndexFile() error {
+func (r *ChartRepository) DownloadIndexFile() (string, error) {
 	var indexURL string
 	parsedURL, err := url.Parse(r.Config.URL)
 	if err != nil {
-		return err
+		return "", err
 	}
 	parsedURL.Path = strings.TrimSuffix(parsedURL.Path, "/") + "/index.yaml"
 
 	indexURL = parsedURL.String()
 	// TODO add user-agent
-	resp, err := r.Client.Get(indexURL)
+	resp, err := r.Client.Get(indexURL,
+		getter.WithURL(r.Config.URL),
+		getter.WithTLSClientConfig(r.Config.CertFile, r.Config.KeyFile, r.Config.CAFile),
+		getter.WithBasicAuth(r.Config.Username, r.Config.Password),
+	)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	index, err := ioutil.ReadAll(resp)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	if _, err := loadIndex(index); err != nil {
-		return err
+		return "", err
 	}
 
-	return ioutil.WriteFile(helmpath.CacheIndex(r.Config.Name), index, 0644)
+	fname := filepath.Join(r.CachePath, helmpath.CacheIndexFile(r.Config.Name))
+	os.MkdirAll(filepath.Dir(fname), 0755)
+	return fname, ioutil.WriteFile(fname, index, 0644)
 }
 
 // Index generates an index for the chart repository and writes an index.yaml file.
@@ -208,12 +208,13 @@ func FindChartInAuthRepoURL(repoURL, username, password, chartName, chartVersion
 	if err != nil {
 		return "", err
 	}
-	if err := r.DownloadIndexFile(); err != nil {
+	idx, err := r.DownloadIndexFile()
+	if err != nil {
 		return "", errors.Wrapf(err, "looks like %q is not a valid chart repository or cannot be reached", repoURL)
 	}
 
 	// Read the index file for the repository to get chart information and return chart URL
-	repoIndex, err := LoadIndexFile(helmpath.CacheIndex(name))
+	repoIndex, err := LoadIndexFile(idx)
 	if err != nil {
 		return "", err
 	}

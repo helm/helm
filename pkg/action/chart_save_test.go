@@ -57,6 +57,13 @@ func TestChartSave(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// TODO: guess latest based on semver?
+	_, err = action.cfg.RegistryClient.LoadChart(ref)
+	if err == nil {
+		t.Error("Expected error parsing ref without tag")
+	}
+
+	ref.Tag = "0.1.0"
 	if _, err := action.cfg.RegistryClient.LoadChart(ref); err != nil {
 		t.Error(err)
 	}

@@ -19,6 +19,7 @@ package main
 import (
 	"bytes"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -29,60 +30,57 @@ import (
 )
 
 func TestRepoRemove(t *testing.T) {
-	defer resetEnv()()
-
-	ensure.HelmHome(t)
-	defer ensure.CleanHomeDirs(t)
-
 	ts, err := repotest.NewTempServer("testdata/testserver/*.*")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer ts.Stop()
 
-	repoFile := helmpath.RepositoryFile()
-	if _, err := os.Stat(repoFile); err != nil {
-		rf := repo.NewFile()
-		rf.Add(&repo.Entry{
-			Name: "charts",
-			URL:  "http://example.com/foo",
-		})
-		if err := rf.WriteFile(repoFile, 0644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if r, err := repo.LoadFile(repoFile); err == repo.ErrRepoOutOfDate {
-		if err := r.WriteFile(repoFile, 0644); err != nil {
-			t.Fatal(err)
-		}
-	}
+	rootDir := ensure.TempDir(t)
+	repoFile := filepath.Join(rootDir, "repositories.yaml")
 
 	const testRepoName = "test-name"
 
 	b := bytes.NewBuffer(nil)
-	if err := removeRepoLine(b, testRepoName); err == nil {
+
+	rmOpts := repoRemoveOptions{
+		name:      testRepoName,
+		repoFile:  repoFile,
+		repoCache: rootDir,
+	}
+
+	if err := rmOpts.run(os.Stderr); err == nil {
 		t.Errorf("Expected error removing %s, but did not get one.", testRepoName)
 	}
-	if err := addRepository(testRepoName, ts.URL(), "", "", "", "", "", true); err != nil {
+	o := &repoAddOptions{
+		name:     testRepoName,
+		url:      ts.URL(),
+		repoFile: repoFile,
+	}
+
+	if err := o.run(os.Stderr); err != nil {
 		t.Error(err)
 	}
 
-	mf, _ := os.Create(helmpath.CacheIndex(testRepoName))
+	idx := filepath.Join(rootDir, helmpath.CacheIndexFile(testRepoName))
+
+	mf, _ := os.Create(idx)
 	mf.Close()
 
 	b.Reset()
-	if err := removeRepoLine(b, testRepoName); err != nil {
+
+	if err := rmOpts.run(b); err != nil {
 		t.Errorf("Error removing %s from repositories", testRepoName)
 	}
 	if !strings.Contains(b.String(), "has been removed") {
 		t.Errorf("Unexpected output: %s", b.String())
 	}
 
-	if _, err := os.Stat(helmpath.CacheIndex(testRepoName)); err == nil {
+	if _, err := os.Stat(idx); err == nil {
 		t.Errorf("Error cache file was not removed for repository %s", testRepoName)
 	}
 
-	f, err := repo.LoadFile(helmpath.RepositoryFile())
+	f, err := repo.LoadFile(repoFile)
 	if err != nil {
 		t.Error(err)
 	}

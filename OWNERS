@@ -3,7 +3,7 @@ maintainers:
   - bacongobbler
   - fibonacci1729
   - hickeyma
-  - jascott1
+  - jdolitsky
   - mattfarina
   - michelleN
   - prydonius
@@ -12,6 +12,7 @@ maintainers:
   - thomastaylor312
   - viglesiasce
 emeritus:
+  - jascott1
   - migmartri
   - nebril
   - seh
