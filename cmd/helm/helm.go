@@ -23,6 +23,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -55,7 +56,8 @@ func init() {
 
 func debug(format string, v ...interface{}) {
 	if settings.Debug {
-		format = fmt.Sprintf("[debug] %s\n", format)
+		timeNow := time.Now().UTC().String()
+		format = fmt.Sprintf("%s [debug] %s\n", timeNow, format)
 		log.Output(2, fmt.Sprintf(format, v...))
 	}
 }
