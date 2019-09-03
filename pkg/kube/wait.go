@@ -27,12 +27,14 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
+	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
 	deploymentutil "k8s.io/kubernetes/pkg/controller/deployment/util"
 )
 
@@ -46,6 +48,9 @@ type waiter struct {
 // until all are ready or a timeout is reached
 func (w *waiter) waitForResources(created ResourceList) error {
 	w.log("beginning wait for %d resources with timeout of %v", len(created), w.timeout)
+	if err := apiextv1beta1.AddToScheme(scheme.Scheme); err != nil {
+		w.log("error adding CRDs to schema: %s", err)
+	}
 
 	return wait.Poll(2*time.Second, w.timeout, func() (bool, error) {
 		for _, v := range created {
@@ -136,6 +141,17 @@ func (w *waiter) waitForResources(created ResourceList) error {
 					return false, err
 				}
 				if !w.daemonSetReady(ds) {
+					return false, nil
+				}
+			case *apiextv1beta1.CustomResourceDefinition:
+				if err := v.Get(); err != nil {
+					return false, err
+				}
+				crd := &apiextv1beta1.CustomResourceDefinition{}
+				if err := scheme.Scheme.Convert(v.Object, crd, nil); err != nil {
+					return false, err
+				}
+				if !w.crdReady(*crd) {
 					return false, nil
 				}
 			case *appsv1.StatefulSet, *appsv1beta1.StatefulSet, *appsv1beta2.StatefulSet:
@@ -255,6 +271,26 @@ func (w *waiter) daemonSetReady(ds *appsv1.DaemonSet) bool {
 		return false
 	}
 	return true
+}
+
+func (w *waiter) crdReady(crd apiextv1beta1.CustomResourceDefinition) bool {
+	for _, cond := range crd.Status.Conditions {
+		switch cond.Type {
+		case apiextv1beta1.Established:
+			if cond.Status == apiextv1beta1.ConditionTrue {
+				return true
+			}
+		case apiextv1beta1.NamesAccepted:
+			if cond.Status == apiextv1beta1.ConditionFalse {
+				// This indicates a naming conflict, but it's probably not the
+				// job of this function to faile because of that. Instead,
+				// we treat it as a success, since the process should be able to
+				// continue.
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (w *waiter) statefulSetReady(sts *appsv1.StatefulSet) bool {

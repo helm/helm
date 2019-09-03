@@ -103,6 +103,50 @@ func NewInstall(cfg *Configuration) *Install {
 	}
 }
 
+func (i *Install) installCRDs(crds []*chart.File) error {
+	// We do these one at a time in the order they were read.
+	for _, obj := range crds {
+		// Read in the resources
+		res, err := i.cfg.KubeClient.Build(bytes.NewBuffer(obj.Data))
+		if err != nil {
+			// We bail out immediately
+			return errors.Wrapf(err, "failed to install CRD %s", obj.Name)
+		}
+		// On dry run, bail here
+		if i.DryRun {
+			i.cfg.Log("WARNING: This chart or one of its subcharts contains CRDs. Rendering may fail or contain inaccuracies.")
+			continue
+		}
+		// Send them to Kube
+		if _, err := i.cfg.KubeClient.Create(res); err != nil {
+			// If the error is CRD already exists, continue.
+			if apierrors.IsAlreadyExists(err) {
+				crdName := res[0].Name
+				i.cfg.Log("CRD %s is already present. Skipping.", crdName)
+				continue
+			}
+			return errors.Wrapf(err, "failed to instal CRD %s", obj.Name)
+		}
+
+		// Invalidate the local cache.
+		if discoveryClient, err := i.cfg.RESTClientGetter.ToDiscoveryClient(); err != nil {
+			// On error, we don't want to bail out, since this is unlikely
+			// to impact the majority of charts.
+			i.cfg.Log("Could not clear the discovery cache: %s", err)
+		} else {
+			i.cfg.Log("Clearing discovery cache")
+			discoveryClient.Invalidate()
+			// Give time for the CRD to be recognized.
+			if err := i.cfg.KubeClient.Wait(res, 60*time.Second); err != nil {
+				i.cfg.Log("Error waiting for CRD. Continuing blindly. %s", err)
+			}
+			// Make sure to force a rebuild of the cache.
+			discoveryClient.ServerGroups()
+		}
+	}
+	return nil
+}
+
 // Run executes the installation
 //
 // If DryRun is set to true, this will prepare the release, but not install it
@@ -114,43 +158,8 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	// Pre-install anything in the crd/ directory. We do this before Helm
 	// contacts the upstream server and builds the capabilities object.
 	if crds := chrt.CRDs(); !i.ClientOnly && !i.SkipCRDs && len(crds) > 0 {
-		// We do these one at a time in the order they were read.
-		for _, obj := range crds {
-			// Read in the resources
-			res, err := i.cfg.KubeClient.Build(bytes.NewBuffer(obj.Data))
-			if err != nil {
-				// We bail out immediately
-				return nil, errors.Wrapf(err, "failed to install CRD %s", obj.Name)
-			}
-			// On dry run, bail here
-			if i.DryRun {
-				i.cfg.Log("WARNING: This chart or one of its subcharts contains CRDs. Rendering may fail or contain inaccuracies.")
-				continue
-			}
-			// Send them to Kube
-			if _, err := i.cfg.KubeClient.Create(res); err != nil {
-				// If the error is CRD already exists, continue.
-				if apierrors.IsAlreadyExists(err) {
-					crdName := res[0].Name
-					i.cfg.Log("CRD %s is already present. Skipping.", crdName)
-					continue
-				}
-				return nil, err
-			}
-
-			// Invalidate the local cache.
-			if discoveryClient, err := i.cfg.RESTClientGetter.ToDiscoveryClient(); err != nil {
-				// On error, we don't want to bail out, since this is unlikely
-				// to impact the majority of charts.
-				i.cfg.Log("Could not clear the discovery cache: %s", err)
-			} else {
-				i.cfg.Log("Clearing discovery cache")
-				discoveryClient.Invalidate()
-				// Give time for the CRD to be recognized.
-				time.Sleep(5 * time.Second)
-				// Make sure to force a rebuild of the cache.
-				discoveryClient.ServerGroups()
-			}
+		if err := i.installCRDs(crds); err != nil {
+			return nil, err
 		}
 	}
 
