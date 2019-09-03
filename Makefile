@@ -7,6 +7,10 @@ TARGETS           ?= darwin/amd64 linux/amd64 linux/386 linux/arm linux/arm64 li
 TARGET_OBJS       ?= darwin-amd64.tar.gz darwin-amd64.tar.gz.sha256 linux-amd64.tar.gz linux-amd64.tar.gz.sha256 linux-386.tar.gz linux-386.tar.gz.sha256 linux-arm.tar.gz linux-arm.tar.gz.sha256 linux-arm64.tar.gz linux-arm64.tar.gz.sha256 linux-ppc64le.tar.gz linux-ppc64le.tar.gz.sha256 linux-s390x.tar.gz linux-s390x.tar.gz.sha256 windows-amd64.zip windows-amd64.zip.sha256
 DIST_DIRS         = find * -type d -exec
 
+ACCEPTANCE_DIR:=$(GOPATH)/src/helm.sh/acceptance-testing
+# To specify the subset of acceptance tests to run. '.' means all tests
+ACCEPTANCE_RUN_TESTS=.
+
 # go option
 GO        ?= go
 PKG       := $(shell glide novendor)
@@ -103,6 +107,21 @@ test: build
 test: TESTFLAGS += -race -v
 test: test-style
 test: test-unit
+
+.PHONY: test-acceptance
+test-acceptance: TARGETS = linux/amd64
+test-acceptance: build build-cross
+	@if [ -d "${ACCEPTANCE_DIR}" ]; then \
+		cd ${ACCEPTANCE_DIR} && \
+			ROBOT_RUN_TESTS=$(ACCEPTANCE_RUN_TESTS) ROBOT_HELM_PATH=$(BINDIR) make acceptance; \
+	else \
+		echo "You must clone the acceptance_testing repo under $(ACCEPTANCE_DIR)"; \
+		echo "You can find the acceptance_testing repo at https://github.com/helm/acceptance-testing"; \
+	fi
+
+.PHONY: test-acceptance-completion
+test-acceptance-completion: ACCEPTANCE_RUN_TESTS = shells.robot
+test-acceptance-completion: test-acceptance
 
 .PHONY: docker-test
 docker-test: docker-binary
