@@ -59,7 +59,7 @@ func TestReleaseTesting(t *testing.T) {
 			name:      "test running",
 			args:      []string{"example-running"},
 			flags:     []string{},
-			responses: map[string]release.TestRun_Status{"RUNNING: things are happpeningggg": release.TestRun_RUNNING},
+			responses: map[string]release.TestRun_Status{"RUNNING: things are happening": release.TestRun_RUNNING},
 			err:       false,
 		},
 		{
@@ -67,11 +67,11 @@ func TestReleaseTesting(t *testing.T) {
 			args:  []string{"example-suite"},
 			flags: []string{},
 			responses: map[string]release.TestRun_Status{
-				"RUNNING: things are happpeningggg":           release.TestRun_RUNNING,
+				"RUNNING: things are happening":           release.TestRun_RUNNING,
 				"PASSED: party time":                          release.TestRun_SUCCESS,
 				"RUNNING: things are happening again":         release.TestRun_RUNNING,
 				"FAILURE: good thing u checked :)":            release.TestRun_FAILURE,
-				"RUNNING: things are happpeningggg yet again": release.TestRun_RUNNING,
+				"RUNNING: things are happening yet again": release.TestRun_RUNNING,
 				"PASSED: feel free to party again":            release.TestRun_SUCCESS},
 			err: true,
 		},
