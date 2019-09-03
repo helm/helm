@@ -9,6 +9,10 @@ GOX           = $(GOPATH)/bin/gox
 GOIMPORTS     = $(GOPATH)/bin/goimports
 GOLANGCI_LINT = $(GOPATH)/bin/golangci-lint
 
+ACCEPTANCE_DIR:=$(GOPATH)/src/helm.sh/acceptance-testing
+# To specify the subset of acceptance tests to run. '.' means all tests
+ACCEPTANCE_RUN_TESTS=.
+
 # go option
 PKG        := ./...
 TAGS       :=
@@ -80,6 +84,21 @@ test-coverage: vendor
 test-style: vendor $(GOLANGCI_LINT)
 	$(GOLANGCI_LINT) run
 	@scripts/validate-license.sh
+
+.PHONY: test-acceptance
+test-acceptance: TARGETS = linux/amd64
+test-acceptance: build build-cross
+	@if [ -d "${ACCEPTANCE_DIR}" ]; then \
+		cd ${ACCEPTANCE_DIR} && \
+			ROBOT_RUN_TESTS=$(ACCEPTANCE_RUN_TESTS) ROBOT_HELM_PATH=$(BINDIR) make acceptance; \
+	else \
+		echo "You must clone the acceptance_testing repo under $(ACCEPTANCE_DIR)"; \
+		echo "You can find the acceptance_testing repo at https://github.com/helm/acceptance-testing"; \
+	fi
+
+.PHONY: test-acceptance-completion
+test-acceptance-completion: ACCEPTANCE_RUN_TESTS = shells.robot
+test-acceptance-completion: test-acceptance
 
 .PHONY: verify-docs
 verify-docs: build
