@@ -52,13 +52,8 @@ type EnvSettings struct {
 	// PluginsDirectory is the path to the plugins directory.
 	PluginsDirectory string
 
-	// Environment Variables Store
-	EnvironmentVariables []EnvironmentVariable
-}
-
-type EnvironmentVariable struct {
-	Name  string
-	Value string
+	// Environment Variables Store.
+	EnvironmentVariables map[string]string
 }
 
 func New() *EnvSettings {
@@ -67,7 +62,7 @@ func New() *EnvSettings {
 		RegistryConfig:       helmpath.ConfigPath("registry.json"),
 		RepositoryConfig:     helmpath.ConfigPath("repositories.yaml"),
 		RepositoryCache:      helmpath.CachePath("repository"),
-		EnvironmentVariables: []EnvironmentVariable{},
+		EnvironmentVariables: make(map[string]string),
 	}
 	envSettings.setHelmEnvVars()
 	return &envSettings
@@ -104,25 +99,21 @@ func setFlagFromEnv(name, envar string, fs *pflag.FlagSet) {
 
 func (s *EnvSettings) setHelmEnvVars() {
 	for key, val := range map[string]string{
-		"HELM_HOME":                  helmpath.DataPath(),
-		"HELM_PATH_STARTER":          helmpath.DataPath("starters"),
-		"HELM_DEBUG":                 fmt.Sprint(s.Debug),
-		"HELM_REGISTRY_CONFIG":       s.RegistryConfig,
-		"HELM_PATH_REPOSITORY_FILE":  s.RepositoryConfig,
-		"HELM_PATH_REPOSITORY_CACHE": s.RepositoryCache,
-		"HELM_PLUGIN":                s.PluginsDirectory,
-		xdg.CacheHomeEnvVar:          helmpath.CachePath(),
-		xdg.ConfigHomeEnvVar:         helmpath.ConfigPath(),
-		xdg.DataHomeEnvVar:           helmpath.DataPath(),
+		"HELM_HOME":              helmpath.DataPath(),
+		"HELM_PATH_STARTER":      helmpath.DataPath("starters"),
+		"HELM_DEBUG":             fmt.Sprint(s.Debug),
+		"HELM_REGISTRY_CONFIG":   s.RegistryConfig,
+		"HELM_REPOSITORY_CONFIG": s.RepositoryConfig,
+		"HELM_REPOSITORY_CACHE":  s.RepositoryCache,
+		"HELM_PLUGIN":            s.PluginsDirectory,
+		xdg.CacheHomeEnvVar:      helmpath.CachePath(),
+		xdg.ConfigHomeEnvVar:     helmpath.ConfigPath(),
+		xdg.DataHomeEnvVar:       helmpath.DataPath(),
 	} {
 		if eVal := os.Getenv(key); len(eVal) > 0 {
 			val = eVal
 		}
-		s.EnvironmentVariables = append(s.EnvironmentVariables,
-			EnvironmentVariable{
-				Name:  key,
-				Value: val,
-			})
+		s.EnvironmentVariables[key] = val
 	}
 }
 

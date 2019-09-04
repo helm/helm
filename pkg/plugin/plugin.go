@@ -224,11 +224,12 @@ func SetupPluginEnv(settings *cli.EnvSettings, name, base string) {
 		"HELM_PLUGIN":      settings.PluginsDirectory,
 
 		// Set vars that convey common information.
-		"HELM_PATH_REPOSITORY_FILE":  settings.RepositoryConfig,
-		"HELM_PATH_REPOSITORY_CACHE": settings.RepositoryCache,
-		"HELM_PATH_STARTER":          helmpath.DataPath("starters"),
-		"HELM_HOME":                  helmpath.DataPath(), // for backwards compatibility with Helm 2 plugins
-		"HELM_DEBUG":                 fmt.Sprint(settings.Debug),
+		"HELM_REGISTRY_CONFIG":   settings.RegistryConfig,
+		"HELM_REPOSITORY_CONFIG": settings.RepositoryConfig,
+		"HELM_REPOSITORY_CACHE":  settings.RepositoryCache,
+		"HELM_PATH_STARTER":      helmpath.DataPath("starters"),
+		"HELM_HOME":              helmpath.DataPath(), // for backwards compatibility with Helm 2 plugins
+		"HELM_DEBUG":             fmt.Sprint(settings.Debug),
 	} {
 		os.Setenv(key, val)
 	}
