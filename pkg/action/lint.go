@@ -73,7 +73,6 @@ func (l *Lint) Run(paths []string, vals map[string]interface{}) *LintResult {
 			for _, msg := range linter.Messages {
 				if msg.Severity == support.ErrorSev {
 					result.Errors = append(result.Errors, msg.Err)
-					result.Messages = append(result.Messages, msg)
 				}
 			}
 		}
