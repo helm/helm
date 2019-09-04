@@ -30,6 +30,7 @@ import (
 	"github.com/Masterminds/sprig"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/cli-runtime/pkg/resource"
 
 	"helm.sh/helm/pkg/chart"
 	"helm.sh/helm/pkg/chartutil"
@@ -103,6 +104,45 @@ func NewInstall(cfg *Configuration) *Install {
 	}
 }
 
+func (i *Install) installCRDs(crds []*chart.File) error {
+	// We do these one file at a time in the order they were read.
+	totalItems := []*resource.Info{}
+	for _, obj := range crds {
+		// Read in the resources
+		res, err := i.cfg.KubeClient.Build(bytes.NewBuffer(obj.Data))
+		if err != nil {
+			return errors.Wrapf(err, "failed to install CRD %s", obj.Name)
+		}
+
+		// Send them to Kube
+		if _, err := i.cfg.KubeClient.Create(res); err != nil {
+			// If the error is CRD already exists, continue.
+			if apierrors.IsAlreadyExists(err) {
+				crdName := res[0].Name
+				i.cfg.Log("CRD %s is already present. Skipping.", crdName)
+				continue
+			}
+			return errors.Wrapf(err, "failed to instal CRD %s", obj.Name)
+		}
+		totalItems = append(totalItems, res...)
+	}
+	// Invalidate the local cache, since it will not have the new CRDs
+	// present.
+	discoveryClient, err := i.cfg.RESTClientGetter.ToDiscoveryClient()
+	if err != nil {
+		return err
+	}
+	i.cfg.Log("Clearing discovery cache")
+	discoveryClient.Invalidate()
+	// Give time for the CRD to be recognized.
+	if err := i.cfg.KubeClient.Wait(totalItems, 60*time.Second); err != nil {
+		return err
+	}
+	// Make sure to force a rebuild of the cache.
+	discoveryClient.ServerGroups()
+	return nil
+}
+
 // Run executes the installation
 //
 // If DryRun is set to true, this will prepare the release, but not install it
@@ -113,6 +153,17 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 
 	if err := i.availableName(); err != nil {
 		return nil, err
+	}
+
+	// Pre-install anything in the crd/ directory. We do this before Helm
+	// contacts the upstream server and builds the capabilities object.
+	if crds := chrt.CRDs(); !i.ClientOnly && !i.SkipCRDs && len(crds) > 0 {
+		// On dry run, bail here
+		if i.DryRun {
+			i.cfg.Log("WARNING: This chart or one of its subcharts contains CRDs. Rendering may fail or contain inaccuracies.")
+		} else if err := i.installCRDs(crds); err != nil {
+			return nil, err
+		}
 	}
 
 	if i.ClientOnly {
@@ -147,34 +198,6 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	}
 
 	rel := i.createRelease(chrt, vals)
-
-	// Pre-install anything in the crd/ directory
-	if crds := chrt.CRDs(); !i.SkipCRDs && len(crds) > 0 {
-		// We do these one at a time in the order they were read.
-		for _, obj := range crds {
-			// Read in the resources
-			res, err := i.cfg.KubeClient.Build(bytes.NewBuffer(obj.Data))
-			if err != nil {
-				// We bail out immediately
-				return nil, errors.Wrapf(err, "failed to install CRD %s", obj.Name)
-			}
-			// On dry run, bail here
-			if i.DryRun {
-				i.cfg.Log("WARNING: This chart or one of its subcharts contains CRDs. Rendering may fail or contain inaccuracies.")
-				continue
-			}
-			// Send them to Kube
-			if _, err := i.cfg.KubeClient.Create(res); err != nil {
-				// If the error is CRD already exists, continue.
-				if apierrors.IsAlreadyExists(err) {
-					crdName := res[0].Name
-					i.cfg.Log("CRD %s is already present. Skipping.", crdName)
-					continue
-				}
-				return i.failRelease(rel, err)
-			}
-		}
-	}
 
 	var manifestDoc *bytes.Buffer
 	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.OutputDir)
