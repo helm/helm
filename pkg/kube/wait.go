@@ -48,9 +48,6 @@ type waiter struct {
 // until all are ready or a timeout is reached
 func (w *waiter) waitForResources(created ResourceList) error {
 	w.log("beginning wait for %d resources with timeout of %v", len(created), w.timeout)
-	if err := apiextv1beta1.AddToScheme(scheme.Scheme); err != nil {
-		w.log("error adding CRDs to schema: %s", err)
-	}
 
 	return wait.Poll(2*time.Second, w.timeout, func() (bool, error) {
 		for _, v := range created {
