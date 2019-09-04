@@ -33,6 +33,11 @@ type PrintingKubeClient struct {
 	Out io.Writer
 }
 
+// isReachable checks if the cluster is reachable
+func (p *PrintingKubeClient) IsReachable() error {
+	return nil
+}
+
 // Create prints the values of what would be created with a real KubeClient.
 func (p *PrintingKubeClient) Create(resources kube.ResourceList) (*kube.Result, error) {
 	_, err := io.Copy(p.Out, bufferize(resources))

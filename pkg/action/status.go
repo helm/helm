@@ -39,5 +39,9 @@ func NewStatus(cfg *Configuration) *Status {
 
 // Run executes 'helm status' against the given release.
 func (s *Status) Run(name string) (*release.Release, error) {
+	if err := s.cfg.KubeClient.IsReachable(); err != nil {
+		return nil, err
+	}
+
 	return s.cfg.releaseContent(name, s.Version)
 }

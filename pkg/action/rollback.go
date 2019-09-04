@@ -50,6 +50,10 @@ func NewRollback(cfg *Configuration) *Rollback {
 
 // Run executes 'helm rollback' against the given release.
 func (r *Rollback) Run(name string) error {
+	if err := r.cfg.KubeClient.IsReachable(); err != nil {
+		return err
+	}
+
 	r.cfg.Log("preparing rollback of %s", name)
 	currentRelease, targetRelease, err := r.prepareRollback(name)
 	if err != nil {

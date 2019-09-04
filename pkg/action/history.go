@@ -41,6 +41,10 @@ func NewHistory(cfg *Configuration) *History {
 
 // Run executes 'helm history' against the given release.
 func (h *History) Run(name string) ([]*release.Release, error) {
+	if err := h.cfg.KubeClient.IsReachable(); err != nil {
+		return nil, err
+	}
+
 	if err := validateReleaseName(name); err != nil {
 		return nil, errors.Errorf("release name is invalid: %s", name)
 	}

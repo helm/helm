@@ -63,6 +63,16 @@ func New(getter genericclioptions.RESTClientGetter) *Client {
 
 var nopLogger = func(_ string, _ ...interface{}) {}
 
+// Test connectivity to the Client
+func (c *Client) IsReachable() error {
+	client, _ := c.Factory.KubernetesClientSet()
+	_, err := client.ServerVersion()
+	if err != nil {
+		return errors.New("Kubernetes cluster unreachable")
+	}
+	return nil
+}
+
 // Create creates Kubernetes resources specified in the resource list.
 func (c *Client) Create(resources ResourceList) (*Result, error) {
 	c.Log("creating %d resource(s)", len(resources))
