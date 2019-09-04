@@ -99,16 +99,16 @@ func setFlagFromEnv(name, envar string, fs *pflag.FlagSet) {
 
 func (s *EnvSettings) setHelmEnvVars() {
 	for key, val := range map[string]string{
-		"HELM_HOME":                  helmpath.DataPath(),
-		"HELM_PATH_STARTER":          helmpath.DataPath("starters"),
-		"HELM_DEBUG":                 fmt.Sprint(s.Debug),
-		"HELM_REGISTRY_CONFIG":       s.RegistryConfig,
-		"HELM_PATH_REPOSITORY_FILE":  s.RepositoryConfig,
-		"HELM_PATH_REPOSITORY_CACHE": s.RepositoryCache,
-		"HELM_PLUGIN":                s.PluginsDirectory,
-		xdg.CacheHomeEnvVar:          helmpath.CachePath(),
-		xdg.ConfigHomeEnvVar:         helmpath.ConfigPath(),
-		xdg.DataHomeEnvVar:           helmpath.DataPath(),
+		"HELM_HOME":              helmpath.DataPath(),
+		"HELM_PATH_STARTER":      helmpath.DataPath("starters"),
+		"HELM_DEBUG":             fmt.Sprint(s.Debug),
+		"HELM_REGISTRY_CONFIG":   s.RegistryConfig,
+		"HELM_REPOSITORY_CONFIG": s.RepositoryConfig,
+		"HELM_REPOSITORY_CACHE":  s.RepositoryCache,
+		"HELM_PLUGIN":            s.PluginsDirectory,
+		xdg.CacheHomeEnvVar:      helmpath.CachePath(),
+		xdg.ConfigHomeEnvVar:     helmpath.ConfigPath(),
+		xdg.DataHomeEnvVar:       helmpath.DataPath(),
 	} {
 		if eVal := os.Getenv(key); len(eVal) > 0 {
 			val = eVal
