@@ -52,13 +52,8 @@ type EnvSettings struct {
 	// PluginsDirectory is the path to the plugins directory.
 	PluginsDirectory string
 
-	// Environment Variables Store
-	EnvironmentVariables []EnvironmentVariable
-}
-
-type EnvironmentVariable struct {
-	Name  string
-	Value string
+	// Environment Variables Store.
+	EnvironmentVariables map[string]string
 }
 
 func New() *EnvSettings {
@@ -67,7 +62,7 @@ func New() *EnvSettings {
 		RegistryConfig:       helmpath.ConfigPath("registry.json"),
 		RepositoryConfig:     helmpath.ConfigPath("repositories.yaml"),
 		RepositoryCache:      helmpath.CachePath("repository"),
-		EnvironmentVariables: []EnvironmentVariable{},
+		EnvironmentVariables: make(map[string]string),
 	}
 	envSettings.setHelmEnvVars()
 	return &envSettings
@@ -118,11 +113,7 @@ func (s *EnvSettings) setHelmEnvVars() {
 		if eVal := os.Getenv(key); len(eVal) > 0 {
 			val = eVal
 		}
-		s.EnvironmentVariables = append(s.EnvironmentVariables,
-			EnvironmentVariable{
-				Name:  key,
-				Value: val,
-			})
+		s.EnvironmentVariables[key] = val
 	}
 }
 

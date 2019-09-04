@@ -55,8 +55,8 @@ type envOptions struct {
 }
 
 func (o *envOptions) run(out io.Writer) error {
-	for _, e := range o.settings.EnvironmentVariables {
-		fmt.Printf("%s=\"%s\" \n", e.Name, e.Value)
+	for k, v := range o.settings.EnvironmentVariables {
+		fmt.Printf("%s=\"%s\" \n", k, v)
 	}
 	return nil
 }
