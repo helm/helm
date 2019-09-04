@@ -280,7 +280,7 @@ func (w *waiter) crdReady(crd apiextv1beta1.CustomResourceDefinition) bool {
 		case apiextv1beta1.NamesAccepted:
 			if cond.Status == apiextv1beta1.ConditionFalse {
 				// This indicates a naming conflict, but it's probably not the
-				// job of this function to faile because of that. Instead,
+				// job of this function to fail because of that. Instead,
 				// we treat it as a success, since the process should be able to
 				// continue.
 				return true
