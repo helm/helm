@@ -24,6 +24,7 @@ import (
 
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/cli/output"
 )
 
 const releaseTestHelp = `
@@ -35,6 +36,7 @@ The tests to be run are defined in the chart that was installed.
 
 func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewReleaseTesting(cfg)
+	var outfmt output.Format
 
 	cmd := &cobra.Command{
 		Use:   "test [RELEASE]",
@@ -42,7 +44,12 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 		Long:  releaseTestHelp,
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return client.Run(args[0])
+			rel, err := client.Run(args[0])
+			if err != nil {
+				return err
+			}
+
+			return outfmt.Write(out, &statusPrinter{rel, settings.Debug})
 		},
 	}
 

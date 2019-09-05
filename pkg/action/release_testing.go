@@ -40,25 +40,25 @@ func NewReleaseTesting(cfg *Configuration) *ReleaseTesting {
 }
 
 // Run executes 'helm test' against the given release.
-func (r *ReleaseTesting) Run(name string) error {
+func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
 	if err := r.cfg.KubeClient.IsReachable(); err != nil {
-		return err
+		return nil, err
 	}
 
 	if err := validateReleaseName(name); err != nil {
-		return errors.Errorf("releaseTest: Release name is invalid: %s", name)
+		return nil, errors.Errorf("releaseTest: Release name is invalid: %s", name)
 	}
 
 	// finds the non-deleted release with the given name
 	rel, err := r.cfg.Releases.Last(name)
 	if err != nil {
-		return err
+		return rel, err
 	}
 
 	if err := r.cfg.execHook(rel, release.HookTest, r.Timeout); err != nil {
 		r.cfg.Releases.Update(rel)
-		return err
+		return rel, err
 	}
 
-	return r.cfg.Releases.Update(rel)
+	return rel, r.cfg.Releases.Update(rel)
 }

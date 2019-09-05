@@ -97,13 +97,15 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 	fmt.Fprintf(out, "REVISION: %d\n", s.release.Version)
 
 	executions := executionsByHookEvent(s.release)
-	if tests, ok := executions[release.HookTest]; ok {
+	if tests, ok := executions[release.HookTest]; !ok || len(tests) == 0 {
+		fmt.Fprintln(out, "TEST SUITE: None")
+	} else {
 		for _, h := range tests {
 			// Don't print anything if hook has not been initiated
 			if h.LastRun.StartedAt.IsZero() {
 				continue
 			}
-			fmt.Fprintf(out, "TEST SUITE:     %s\n%s\n%s\n%s\n\n",
+			fmt.Fprintf(out, "TEST SUITE:     %s\n%s\n%s\n%s\n",
 				h.Name,
 				fmt.Sprintf("Last Started:   %s", h.LastRun.StartedAt.Format(time.ANSIC)),
 				fmt.Sprintf("Last Completed: %s", h.LastRun.CompletedAt.Format(time.ANSIC)),
