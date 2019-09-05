@@ -29,7 +29,6 @@ import (
 	"github.com/spf13/pflag"
 
 	"helm.sh/helm/pkg/helmpath"
-	"helm.sh/helm/pkg/helmpath/xdg"
 )
 
 // EnvSettings describes all of the environment settings.
@@ -106,9 +105,6 @@ func (s *EnvSettings) setHelmEnvVars() {
 		"HELM_REPOSITORY_CONFIG": s.RepositoryConfig,
 		"HELM_REPOSITORY_CACHE":  s.RepositoryCache,
 		"HELM_PLUGIN":            s.PluginsDirectory,
-		xdg.CacheHomeEnvVar:      helmpath.CachePath(),
-		xdg.ConfigHomeEnvVar:     helmpath.ConfigPath(),
-		xdg.DataHomeEnvVar:       helmpath.DataPath(),
 	} {
 		if eVal := os.Getenv(key); len(eVal) > 0 {
 			val = eVal
