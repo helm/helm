@@ -43,6 +43,7 @@ version.BuildInfo{Version:"v2.0.0", GitCommit:"ff52399e51bb880526e9cd0ed8386f643
 
 type versionOptions struct {
 	short    bool
+	client   bool
 	template string
 }
 
@@ -60,6 +61,7 @@ func newVersionCmd(out io.Writer) *cobra.Command {
 	}
 	f := cmd.Flags()
 	f.BoolVar(&o.short, "short", false, "print the version number")
+	f.BoolVarP(&o.client, "client", "c", false, "print the version number")
 	f.StringVar(&o.template, "template", "", "template for version string format")
 
 	return cmd
@@ -73,17 +75,21 @@ func (o *versionOptions) run(out io.Writer) error {
 		}
 		return tt.Execute(out, version.Get())
 	}
-	fmt.Fprintln(out, formatVersion(o.short))
+	fmt.Fprintln(out, formatVersion(o.short, o.client))
 	return nil
 }
 
-func formatVersion(short bool) string {
+func formatVersion(short bool, client bool) string {
 	v := version.Get()
+	pre := ""
+	if client {
+		pre = "Client: "
+	}
 	if short {
 		if len(v.GitCommit) >= 7 {
-			return fmt.Sprintf("%s+g%s", v.Version, v.GitCommit[:7])
+			return fmt.Sprintf("%s%s+g%s", pre, v.Version, v.GitCommit[:7])
 		}
-		return version.GetVersion()
+		return fmt.Sprintf("%s%s", pre, version.GetVersion())
 	}
-	return fmt.Sprintf("%#v", v)
+	return fmt.Sprintf("%s%#v", pre, v)
 }
