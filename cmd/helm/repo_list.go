@@ -17,12 +17,8 @@ limitations under the License.
 package main
 
 import (
-	"encoding/json"
-	"fmt"
 	"io"
-	"strings"
 
-	"github.com/ghodss/yaml"
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 
@@ -41,10 +37,6 @@ type repositoryElement struct {
 	URL  string
 }
 
-type repositories struct {
-	Repositories []*repositoryElement
-}
-
 func newRepoListCmd(out io.Writer) *cobra.Command {
 	list := &repoListCmd{out: out}
 
@@ -57,8 +49,7 @@ func newRepoListCmd(out io.Writer) *cobra.Command {
 		},
 	}
 
-	f := cmd.Flags()
-	f.StringVarP(&list.output, "output", "o", "table", "Prints the output in the specified format (json|table|yaml)")
+	bindOutputFlag(cmd, &list.output)
 	return cmd
 }
 
@@ -68,59 +59,46 @@ func (a *repoListCmd) run() error {
 		return err
 	}
 
-	output, err := formatRepoListResult(a.output, repoFile)
-
-	if err != nil {
-		return err
-	}
-	fmt.Fprintln(a.out, output)
-
-	return nil
+	return write(a.out, &repoListWriter{repoFile.Repositories}, outputFormat(a.output))
 }
 
-func formatRepoListResult(format string, repoFile *repo.RepoFile) (string, error) {
-	var output string
-	var err error
+//////////// Printer implementation below here
+type repoListWriter struct {
+	repos []*repo.Entry
+}
 
-	if len(repoFile.Repositories) == 0 {
-		err = fmt.Errorf("no repositories to show")
-		return output, err
+func (r *repoListWriter) WriteTable(out io.Writer) error {
+	table := uitable.New()
+	table.AddRow("NAME", "URL")
+	for _, re := range r.repos {
+		table.AddRow(re.Name, re.URL)
+	}
+	return encodeTable(out, table)
+}
+
+func (r *repoListWriter) WriteJSON(out io.Writer) error {
+	return r.encodeByFormat(out, outputJSON)
+}
+
+func (r *repoListWriter) WriteYAML(out io.Writer) error {
+	return r.encodeByFormat(out, outputYAML)
+}
+
+func (r *repoListWriter) encodeByFormat(out io.Writer, format outputFormat) error {
+	var repolist []repositoryElement
+
+	for _, re := range r.repos {
+		repolist = append(repolist, repositoryElement{Name: re.Name, URL: re.URL})
 	}
 
 	switch format {
-	case "table":
-		table := uitable.New()
-		table.AddRow("NAME", "URL")
-		for _, re := range repoFile.Repositories {
-			table.AddRow(re.Name, re.URL)
-		}
-		output = table.String()
-
-	case "json":
-		output, err = printFormatedRepoFile(format, repoFile, json.Marshal)
-
-	case "yaml":
-		output, err = printFormatedRepoFile(format, repoFile, yaml.Marshal)
+	case outputJSON:
+		return encodeJSON(out, repolist)
+	case outputYAML:
+		return encodeYAML(out, repolist)
 	}
 
-	return output, err
-}
-
-func printFormatedRepoFile(format string, repoFile *repo.RepoFile, obj func(v interface{}) ([]byte, error)) (string, error) {
-	var output string
-	var err error
-	var repolist repositories
-
-	for _, re := range repoFile.Repositories {
-		repolist.Repositories = append(repolist.Repositories, &repositoryElement{Name: re.Name, URL: re.URL})
-	}
-
-	o, e := obj(repolist)
-	if e != nil {
-		err = fmt.Errorf("Failed to Marshal %s output: %s", strings.ToUpper(format), e)
-	} else {
-		output = string(o)
-	}
-
-	return output, err
+	// Because this is a non-exported function and only called internally by
+	// WriteJSON and WriteYAML, we shouldn't get invalid types
+	return nil
 }

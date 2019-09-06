@@ -17,13 +17,11 @@ limitations under the License.
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
 
 	"github.com/Masterminds/semver"
-	"github.com/ghodss/yaml"
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 
@@ -60,10 +58,6 @@ type chartElement struct {
 	Description string
 }
 
-type searchResult struct {
-	Charts []*chartElement
-}
-
 func newSearchCmd(out io.Writer) *cobra.Command {
 	sc := &searchCmd{out: out}
 
@@ -82,7 +76,7 @@ func newSearchCmd(out io.Writer) *cobra.Command {
 	f.BoolVarP(&sc.versions, "versions", "l", false, "Show the long listing, with each version of each chart on its own line")
 	f.StringVarP(&sc.version, "version", "v", "", "Search using semantic versioning constraints")
 	f.UintVar(&sc.colWidth, "col-width", 60, "Specifies the max column width of output")
-	f.StringVarP(&sc.output, "output", "o", "table", "Prints the output in the specified format (json|table|yaml)")
+	bindOutputFlag(cmd, &sc.output)
 
 	return cmd
 }
@@ -110,14 +104,7 @@ func (s *searchCmd) run(args []string) error {
 		return err
 	}
 
-	o, err := s.formatSearchResults(s.output, data, s.colWidth)
-	if err != nil {
-		return err
-	}
-
-	fmt.Fprintln(s.out, o)
-
-	return nil
+	return write(s.out, &searchWriter{data, s.colWidth}, outputFormat(s.output))
 }
 
 func (s *searchCmd) applyConstraint(res []*search.Result) ([]*search.Result, error) {
@@ -148,55 +135,6 @@ func (s *searchCmd) applyConstraint(res []*search.Result) ([]*search.Result, err
 	return data, nil
 }
 
-func (s *searchCmd) formatSearchResults(format string, res []*search.Result, colWidth uint) (string, error) {
-	var output string
-	var err error
-
-	switch format {
-	case "table":
-		if len(res) == 0 {
-			return "No results found", nil
-		}
-		table := uitable.New()
-		table.MaxColWidth = colWidth
-		table.AddRow("NAME", "CHART VERSION", "APP VERSION", "DESCRIPTION")
-		for _, r := range res {
-			table.AddRow(r.Name, r.Chart.Version, r.Chart.AppVersion, r.Chart.Description)
-		}
-		output = table.String()
-
-	case "json":
-		output, err = s.printFormated(format, res, json.Marshal)
-
-	case "yaml":
-		output, err = s.printFormated(format, res, yaml.Marshal)
-	}
-
-	return output, err
-}
-
-func (s *searchCmd) printFormated(format string, res []*search.Result, obj func(v interface{}) ([]byte, error)) (string, error) {
-	var sResult searchResult
-	var output string
-	var err error
-
-	if len(res) == 0 {
-		return "[]", nil
-	}
-
-	for _, r := range res {
-		sResult.Charts = append(sResult.Charts, &chartElement{r.Name, r.Chart.Version, r.Chart.AppVersion, r.Chart.Description})
-	}
-
-	o, e := obj(sResult)
-	if e != nil {
-		err = fmt.Errorf("Failed to Marshal %s output: %s", strings.ToUpper(format), e)
-	} else {
-		output = string(o)
-	}
-	return output, err
-}
-
 func (s *searchCmd) buildIndex() (*search.Index, error) {
 	// Load the repositories.yaml
 	rf, err := repo.LoadRepositoriesFile(s.helmhome.RepositoryFile())
@@ -217,4 +155,54 @@ func (s *searchCmd) buildIndex() (*search.Index, error) {
 		i.AddRepo(n, ind, s.versions || len(s.version) > 0)
 	}
 	return i, nil
+}
+
+//////////// Printer implementation below here
+type searchWriter struct {
+	results     []*search.Result
+	columnWidth uint
+}
+
+func (r *searchWriter) WriteTable(out io.Writer) error {
+	if len(r.results) == 0 {
+		_, err := out.Write([]byte("No results found\n"))
+		if err != nil {
+			return fmt.Errorf("unable to write results: %s", err)
+		}
+		return nil
+	}
+	table := uitable.New()
+	table.MaxColWidth = r.columnWidth
+	table.AddRow("NAME", "CHART VERSION", "APP VERSION", "DESCRIPTION")
+	for _, r := range r.results {
+		table.AddRow(r.Name, r.Chart.Version, r.Chart.AppVersion, r.Chart.Description)
+	}
+	return encodeTable(out, table)
+}
+
+func (r *searchWriter) WriteJSON(out io.Writer) error {
+	return r.encodeByFormat(out, outputJSON)
+}
+
+func (r *searchWriter) WriteYAML(out io.Writer) error {
+	return r.encodeByFormat(out, outputYAML)
+}
+
+func (r *searchWriter) encodeByFormat(out io.Writer, format outputFormat) error {
+	var chartList []chartElement
+
+	for _, r := range r.results {
+		chartList = append(chartList, chartElement{r.Name, r.Chart.Version, r.Chart.AppVersion, r.Chart.Description})
+	}
+
+	switch format {
+	case outputJSON:
+		return encodeJSON(out, chartList)
+	case outputYAML:
+		return encodeYAML(out, chartList)
+	}
+
+	// Because this is a non-exported function and only called internally by
+	// WriteJSON and WriteYAML, we shouldn't get invalid types
+	return nil
 }

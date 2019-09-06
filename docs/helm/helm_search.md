@@ -20,7 +20,7 @@ helm search [keyword] [flags]
 ```
       --col-width uint   Specifies the max column width of output (default 60)
   -h, --help             help for search
-  -o, --output string    Prints the output in the specified format (json|table|yaml) (default "table")
+  -o, --output string    Prints the output in the specified format. Allowed values: table, json, yaml (default "table")
   -r, --regexp           Use regular expressions for searching
   -v, --version string   Search using semantic versioning constraints
   -l, --versions         Show the long listing, with each version of each chart on its own line

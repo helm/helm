@@ -23,7 +23,7 @@ helm status [flags] RELEASE_NAME
 
 ```
   -h, --help                  help for status
-  -o, --output string         Prints the output in the specified format (json|table|yaml) (default "table")
+  -o, --output string         Prints the output in the specified format. Allowed values: table, json, yaml (default "table")
       --revision int32        If set, display the status of the named release with revision
       --tls                   Enable TLS for request
       --tls-ca-cert string    Path to TLS CA certificate file (default "$HELM_HOME/ca.pem")
