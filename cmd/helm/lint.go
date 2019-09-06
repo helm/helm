@@ -91,12 +91,11 @@ func newLintCmd(out io.Writer) *cobra.Command {
 
 			fmt.Fprintf(out, message.String())
 
-			var summary strings.Builder
-			fmt.Fprintf(&summary, "%d chart(s) linted, %d chart(s) failed", len(paths), failed)
+			summary := fmt.Sprintf("%d chart(s) linted, %d chart(s) failed", len(paths), failed)
 			if failed > 0 {
-				return errors.New(summary.String())
+				return errors.New(summary)
 			}
-			fmt.Fprintf(out, "%s\n", summary.String())
+			fmt.Fprintln(out, summary)
 			return nil
 		},
 	}
