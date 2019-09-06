@@ -96,7 +96,8 @@ type RESTClientGetter interface {
 	ToRESTMapper() (meta.RESTMapper, error)
 }
 
-type debug func(format string, v ...interface{})
+// DebugLog sets the logger that writes debug strings
+type DebugLog func(format string, v ...interface{})
 
 // capabilities builds a Capabilities from discovery information.
 func (c *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
@@ -214,7 +215,7 @@ func (c *Configuration) recordRelease(r *release.Release) {
 }
 
 // InitActionConfig initializes the action configuration
-func InitActionConfig(envSettings *cli.EnvSettings, allNamespaces bool, helmDriver string, log debug) (*Configuration, error) {
+func InitActionConfig(envSettings *cli.EnvSettings, allNamespaces bool, helmDriver string, log DebugLog) (*Configuration, error) {
 
 	var actionConfig Configuration
 	kubeconfig := kubeConfig(envSettings)
