@@ -55,6 +55,40 @@ __helm_override_flags()
         fi
     done
 }
+
+__helm_override_flags_to_kubectl_flags()
+{
+    # --kubeconfig, -n, --namespace stay the same for kubectl
+    # --kube-context becomes --context for kubectl
+    __helm_debug "${FUNCNAME[0]}: flags to convert: $1"
+    echo "$1" | sed s/kube-context/context/
+}
+
+__helm_get_contexts()
+{
+    __helm_debug "${FUNCNAME[0]}: c is $c words[c] is ${words[c]}"
+    local template out
+    template="{{ range .contexts  }}{{ .name }} {{ end }}"
+    if out=$(kubectl config -o template --template="${template}" view 2>/dev/null); then
+        COMPREPLY=( $( compgen -W "${out[*]}" -- "$cur" ) )
+    fi
+}
+
+__helm_get_namespaces()
+{
+    __helm_debug "${FUNCNAME[0]}: c is $c words[c] is ${words[c]}"
+    local template out
+    template="{{ range .items  }}{{ .metadata.name }} {{ end }}"
+
+    flags=$(__helm_override_flags_to_kubectl_flags "$(__helm_override_flags)")
+    __helm_debug "${FUNCNAME[0]}: override flags for kubectl are: $flags"
+
+    # Must use eval in case the flags contain a variable such as $HOME
+    if out=$(eval kubectl get ${flags} -o template --template=\"${template}\" namespace 2>/dev/null); then
+        COMPREPLY+=( $( compgen -W "${out[*]}" -- "$cur" ) )
+    fi
+}
+
 __helm_list_releases()
 {
 	__helm_debug "${FUNCNAME[0]}: c is $c words[c] is ${words[c]}"
@@ -103,6 +137,15 @@ __helm_custom_func()
     esac
 }
 `
+)
+
+var (
+	// Mapping of global flags that can have dynamic completion and the
+	// completion function to be used.
+	bashCompletionFlags = map[string]string{
+		"namespace":    "__helm_get_namespaces",
+		"kube-context": "__helm_get_contexts",
+	}
 )
 
 var globalUsage = `The Kubernetes package manager
@@ -195,6 +238,19 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		// Hidden documentation generator command: 'helm docs'
 		newDocsCmd(out),
 	)
+
+	// Add annotation to flags for which we can generate completion choices
+	for name, completion := range bashCompletionFlags {
+		if cmd.Flag(name) != nil {
+			if cmd.Flag(name).Annotations == nil {
+				cmd.Flag(name).Annotations = map[string][]string{}
+			}
+			cmd.Flag(name).Annotations[cobra.BashCompCustom] = append(
+				cmd.Flag(name).Annotations[cobra.BashCompCustom],
+				completion,
+			)
+		}
+	}
 
 	// Add *experimental* subcommands
 	registryClient, err := registry.NewClient(
