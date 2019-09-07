@@ -46,6 +46,10 @@ func NewReleaseTesting(cfg *Configuration) *ReleaseTesting {
 
 // Run executes 'helm test' against the given release.
 func (r *ReleaseTesting) Run(name string) error {
+	if err := r.cfg.KubeClient.IsReachable(); err != nil {
+		return err
+	}
+
 	if err := validateReleaseName(name); err != nil {
 		return errors.Errorf("releaseTest: Release name is invalid: %s", name)
 	}
