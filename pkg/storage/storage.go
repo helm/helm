@@ -75,14 +75,14 @@ func (s *Storage) Delete(name string, version int) (*rspb.Release, error) {
 	return s.Driver.Delete(makeKey(name, version))
 }
 
-// ListReleases returns all releases from storage. An error is returned if the
+// ListReleases returns all latest releases from storage. An error is returned if the
 // storage backend fails to retrieve the releases.
 func (s *Storage) ListReleases() ([]*rspb.Release, error) {
-	s.Log("listing all releases in storage")
+	s.Log("listing all latest releases in storage")
 	return s.Driver.List(func(_ *rspb.Release) bool { return true })
 }
 
-// ListUninstalled returns all releases with Status == UNINSTALLED. An error is returned
+// ListUninstalled returns all latest releases with Status == UNINSTALLED. An error is returned
 // if the storage backend fails to retrieve the releases.
 func (s *Storage) ListUninstalled() ([]*rspb.Release, error) {
 	s.Log("listing uninstalled releases in storage")
@@ -91,10 +91,10 @@ func (s *Storage) ListUninstalled() ([]*rspb.Release, error) {
 	})
 }
 
-// ListDeployed returns all releases with Status == DEPLOYED. An error is returned
+// ListDeployed returns all latest releases with Status == DEPLOYED. An error is returned
 // if the storage backend fails to retrieve the releases.
 func (s *Storage) ListDeployed() ([]*rspb.Release, error) {
-	s.Log("listing all deployed releases in storage")
+	s.Log("listing all latest deployed releases in storage")
 	return s.Driver.List(func(rls *rspb.Release) bool {
 		return relutil.StatusFilter(rspb.StatusDeployed).Check(rls)
 	})

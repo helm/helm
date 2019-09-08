@@ -83,3 +83,21 @@ func decodeRelease(data string) (*rspb.Release, error) {
 	}
 	return &rls, nil
 }
+
+// getLatestReleases returns the latest releases from the list of releases
+func getLatestReleases(releases []*rspb.Release) []*rspb.Release {
+	latestReleases := make(map[string]*rspb.Release)
+
+	for _, rls := range releases {
+		if latestRelease, exists := latestReleases[rls.Name]; exists && latestRelease.Version > rls.Version {
+			continue
+		}
+		latestReleases[rls.Name] = rls
+	}
+
+	var list = make([]*rspb.Release, 0, len(latestReleases))
+	for _, rls := range latestReleases {
+		list = append(list, rls)
+	}
+	return list
+}

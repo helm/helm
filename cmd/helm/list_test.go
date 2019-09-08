@@ -56,6 +56,16 @@ func TestListCmd(t *testing.T) {
 			Namespace: defaultNamespace,
 			Info: &release.Info{
 				LastDeployed: timestamp1,
+				Status:       release.StatusFailed,
+			},
+			Chart: chartInfo,
+		},
+		{
+			Name:      "starlord",
+			Version:   3,
+			Namespace: defaultNamespace,
+			Info: &release.Info{
+				LastDeployed: timestamp1,
 				Status:       release.StatusDeployed,
 			},
 			Chart: chartInfo,

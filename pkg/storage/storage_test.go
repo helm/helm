@@ -126,9 +126,10 @@ func TestStorageList(t *testing.T) {
 		rls1 := ReleaseTestData{Name: "livid-human", Status: rspb.StatusSuperseded}.ToRelease()
 		rls2 := ReleaseTestData{Name: "relaxed-cat", Status: rspb.StatusSuperseded}.ToRelease()
 		rls3 := ReleaseTestData{Name: "hungry-hippo", Status: rspb.StatusDeployed}.ToRelease()
-		rls4 := ReleaseTestData{Name: "angry-beaver", Status: rspb.StatusDeployed}.ToRelease()
-		rls5 := ReleaseTestData{Name: "opulent-frog", Status: rspb.StatusUninstalled}.ToRelease()
-		rls6 := ReleaseTestData{Name: "happy-liger", Status: rspb.StatusUninstalled}.ToRelease()
+		rls4 := ReleaseTestData{Name: "angry-beaver", Version: 1, Status: rspb.StatusFailed}.ToRelease()
+		rls5 := ReleaseTestData{Name: "angry-beaver", Version: 2, Status: rspb.StatusDeployed}.ToRelease()
+		rls6 := ReleaseTestData{Name: "opulent-frog", Status: rspb.StatusUninstalled}.ToRelease()
+		rls7 := ReleaseTestData{Name: "happy-liger", Status: rspb.StatusUninstalled}.ToRelease()
 
 		// create the release records in the storage
 		assertErrNil(t.Fatal, storage.Create(rls0), "Storing release 'rls0'")
@@ -138,6 +139,7 @@ func TestStorageList(t *testing.T) {
 		assertErrNil(t.Fatal, storage.Create(rls4), "Storing release 'rls4'")
 		assertErrNil(t.Fatal, storage.Create(rls5), "Storing release 'rls5'")
 		assertErrNil(t.Fatal, storage.Create(rls6), "Storing release 'rls6'")
+		assertErrNil(t.Fatal, storage.Create(rls7), "Storing release 'rls7'")
 	}
 
 	var listTests = []struct {

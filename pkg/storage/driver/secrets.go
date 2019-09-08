@@ -74,7 +74,7 @@ func (secrets *Secrets) Get(key string) (*rspb.Release, error) {
 	return r, errors.Wrapf(err, "get: failed to decode data %q", key)
 }
 
-// List fetches all releases and returns the list releases such
+// List fetches all the latest releases and returns the list releases such
 // that filter(release) == true. An error is returned if the
 // secret fails to retrieve the releases.
 func (secrets *Secrets) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
@@ -86,7 +86,7 @@ func (secrets *Secrets) List(filter func(*rspb.Release) bool) ([]*rspb.Release, 
 		return nil, errors.Wrap(err, "list: failed to list")
 	}
 
-	var results []*rspb.Release
+	releases := make([]*rspb.Release, 0, len(list.Items))
 
 	// iterate over the secrets object list
 	// and decode each release
@@ -96,6 +96,13 @@ func (secrets *Secrets) List(filter func(*rspb.Release) bool) ([]*rspb.Release, 
 			secrets.Log("list: failed to decode release: %v: %s", item, err)
 			continue
 		}
+		releases = append(releases, rls)
+	}
+
+	latestReleases := getLatestReleases(releases)
+
+	results := make([]*rspb.Release, 0, len(latestReleases))
+	for _, rls := range latestReleases {
 		if filter(rls) {
 			results = append(results, rls)
 		}

@@ -66,19 +66,28 @@ func (mem *Memory) Get(key string) (*rspb.Release, error) {
 	}
 }
 
-// List returns the list of all releases such that filter(release) == true
+// List returns the list of all latest releases such that filter(release) == true
 func (mem *Memory) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
 	defer unlock(mem.rlock())
 
-	var ls []*rspb.Release
+	var releases []*rspb.Release
 	for _, recs := range mem.cache {
 		recs.Iter(func(_ int, rec *record) bool {
-			if filter(rec.rls) {
-				ls = append(ls, rec.rls)
-			}
+			rls := rec.rls
+			releases = append(releases, rls)
 			return true
 		})
 	}
+
+	latestReleases := getLatestReleases(releases)
+
+	var ls = make([]*rspb.Release, 0, len(latestReleases))
+	for _, rls := range latestReleases {
+		if filter(rls) {
+			ls = append(ls, rls)
+		}
+	}
+
 	return ls, nil
 }
 

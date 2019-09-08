@@ -163,7 +163,7 @@ func TestList_StateMask(t *testing.T) {
 	is := assert.New(t)
 	lister := newListFixture(t)
 	makeMeSomeReleases(lister.cfg.Releases, t)
-	one, err := lister.cfg.Releases.Get("one", 1)
+	one, err := lister.cfg.Releases.Get("one", 3)
 	is.NoError(err)
 	one.SetStatus(release.StatusUninstalled, "uninstalled")
 	lister.cfg.Releases.Update(one)
@@ -210,10 +210,20 @@ func TestList_FilterFailsCompile(t *testing.T) {
 
 func makeMeSomeReleases(store *storage.Storage, t *testing.T) {
 	t.Helper()
+	oldOne := releaseStub()
+	oldOne.Namespace = "default"
+	oldOne.Name = "one"
+	oldOne.Version = 1
+	oldOne.Info.Status = release.StatusSuperseded
+	anotherOldOne := releaseStub()
+	anotherOldOne.Namespace = oldOne.Namespace
+	anotherOldOne.Name = oldOne.Name
+	anotherOldOne.Version = 2
+	anotherOldOne.Info.Status = release.StatusFailed
 	one := releaseStub()
-	one.Name = "one"
-	one.Namespace = "default"
-	one.Version = 1
+	one.Name = oldOne.Name
+	one.Namespace = oldOne.Namespace
+	one.Version = 3
 	two := releaseStub()
 	two.Name = "two"
 	two.Namespace = "default"
@@ -222,13 +232,8 @@ func makeMeSomeReleases(store *storage.Storage, t *testing.T) {
 	three.Name = "three"
 	three.Namespace = "default"
 	three.Version = 3
-	four := releaseStub()
-	four.Name = "four"
-	four.Namespace = "default"
-	four.Version = 4
-	four.Info.Status = release.StatusSuperseded
 
-	for _, rel := range []*release.Release{one, two, three} {
+	for _, rel := range []*release.Release{oldOne, anotherOldOne, one, two, three} {
 		if err := store.Create(rel); err != nil {
 			t.Fatal(err)
 		}
@@ -236,5 +241,5 @@ func makeMeSomeReleases(store *storage.Storage, t *testing.T) {
 
 	all, err := store.ListReleases()
 	assert.NoError(t, err)
-	assert.Len(t, all, 3, "sanity test: three items added")
+	assert.Len(t, all, 3, "sanity test: three latest releases present")
 }

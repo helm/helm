@@ -81,7 +81,7 @@ func (cfgmaps *ConfigMaps) Get(key string) (*rspb.Release, error) {
 	return r, nil
 }
 
-// List fetches all releases and returns the list releases such
+// List fetches all latest releases and returns the list releases such
 // that filter(release) == true. An error is returned if the
 // configmap fails to retrieve the releases.
 func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
@@ -94,7 +94,7 @@ func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Releas
 		return nil, err
 	}
 
-	var results []*rspb.Release
+	releases := make([]*rspb.Release, 0, len(list.Items))
 
 	// iterate over the configmaps object list
 	// and decode each release
@@ -104,6 +104,13 @@ func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Releas
 			cfgmaps.Log("list: failed to decode release: %v: %s", item, err)
 			continue
 		}
+		releases = append(releases, rls)
+	}
+
+	latestReleases := getLatestReleases(releases)
+
+	results := make([]*rspb.Release, 0, len(latestReleases))
+	for _, rls := range latestReleases {
 		if filter(rls) {
 			results = append(results, rls)
 		}

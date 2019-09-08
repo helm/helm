@@ -194,3 +194,31 @@ func TestMemoryDelete(t *testing.T) {
 	}
 
 }
+
+func TestMemory_List(t *testing.T) {
+	var tests = []struct {
+		desc       string
+		xlen       int
+		filterFunc func(*rspb.Release) bool
+	}{
+		{
+			desc: "should be 2 list results",
+			xlen: 2,
+			filterFunc: func(rls *rspb.Release) bool {
+				return true
+			},
+		},
+	}
+
+	ts := tsFixtureMemory(t)
+	for _, tt := range tests {
+		l, err := ts.List(tt.filterFunc)
+		if err != nil {
+			t.Fatalf("Failed to list: %s\n", err)
+		}
+
+		if tt.xlen != len(l) {
+			t.Fatalf("Expected %d results, actual %d\n", tt.xlen, len(l))
+		}
+	}
+}

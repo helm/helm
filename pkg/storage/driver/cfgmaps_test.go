@@ -87,7 +87,9 @@ func TestConfigMapList(t *testing.T) {
 	cfgmaps := newTestFixtureCfgMaps(t, []*rspb.Release{
 		releaseStub("key-1", 1, "default", rspb.StatusUninstalled),
 		releaseStub("key-2", 1, "default", rspb.StatusUninstalled),
-		releaseStub("key-3", 1, "default", rspb.StatusDeployed),
+		releaseStub("key-3", 1, "default", rspb.StatusSuperseded),
+		releaseStub("key-3", 2, "default", rspb.StatusFailed),
+		releaseStub("key-3", 3, "default", rspb.StatusDeployed),
 		releaseStub("key-4", 1, "default", rspb.StatusDeployed),
 		releaseStub("key-5", 1, "default", rspb.StatusSuperseded),
 		releaseStub("key-6", 1, "default", rspb.StatusSuperseded),
@@ -127,6 +129,18 @@ func TestConfigMapList(t *testing.T) {
 	}
 	if len(ssd) != 2 {
 		t.Errorf("Expected 2 superseded, got %d", len(ssd))
+	}
+
+	// list all deployed or failed releases
+	dplAndFail, err := cfgmaps.List(func(rel *rspb.Release) bool {
+		return rel.Info.Status == rspb.StatusDeployed || rel.Info.Status == rspb.StatusFailed
+	})
+	// check
+	if err != nil {
+		t.Errorf("Failed to list deployed/failed: %s", err)
+	}
+	if len(dplAndFail) != 2 {
+		t.Errorf("Expected 2 deployed/failed, got %d", len(dplAndFail))
 	}
 }
 

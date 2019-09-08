@@ -46,13 +46,13 @@ func tsFixtureMemory(t *testing.T) *Memory {
 		// rls-a
 		releaseStub("rls-a", 4, "default", rspb.StatusDeployed),
 		releaseStub("rls-a", 1, "default", rspb.StatusSuperseded),
-		releaseStub("rls-a", 3, "default", rspb.StatusSuperseded),
+		releaseStub("rls-a", 3, "default", rspb.StatusFailed),
 		releaseStub("rls-a", 2, "default", rspb.StatusSuperseded),
 		// rls-b
 		releaseStub("rls-b", 4, "default", rspb.StatusDeployed),
 		releaseStub("rls-b", 1, "default", rspb.StatusSuperseded),
 		releaseStub("rls-b", 3, "default", rspb.StatusSuperseded),
-		releaseStub("rls-b", 2, "default", rspb.StatusSuperseded),
+		releaseStub("rls-b", 2, "default", rspb.StatusFailed),
 	}
 
 	mem := NewMemory()
