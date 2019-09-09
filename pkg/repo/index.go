@@ -17,6 +17,7 @@ limitations under the License.
 package repo
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -209,6 +210,28 @@ func (i *IndexFile) Merge(f *IndexFile) {
 			}
 		}
 	}
+}
+
+func (i IndexFile) SecondaryIndex() (*SecondaryIndexFile, error) {
+	s := NewSecondaryIndexFile()
+	digest, err := i.digest()
+	if err != nil {
+		return nil, err
+	}
+	s.Digest = digest
+	if err := s.buildURLIndex(&i); err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
+func (i IndexFile) digest() (string, error) {
+	b, err := yaml.Marshal(i)
+	if err != nil {
+		return "", err
+	}
+	h := sha256.Sum256(b)
+	return fmt.Sprintf("sha256:%x", h[:8]), nil
 }
 
 // ChartVersion represents a chart entry in the IndexFile

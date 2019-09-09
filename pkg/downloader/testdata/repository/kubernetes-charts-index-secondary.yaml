@@ -1,0 +1,14 @@
+apiVersion: v1
+generated: "2019-09-10T09:57:59.406483+02:00"
+indexes:
+  byURL:
+    https://kubernetes-charts.storage.googleapis.com/alpine-0.1.0.tgz:
+      name: alpine
+      version: 0.1.0
+    https://kubernetes-charts.storage.googleapis.com/alpine-0.2.0.tgz:
+      name: alpine
+      version: 0.2.0
+    https://kubernetes-charts.storage.googleapis.com/mariadb-0.3.0.tgz:
+      name: mariadb
+      version: 0.3.0
+digest: sha256:a78bb76c183f8cbb

@@ -127,18 +127,34 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 		return "", err
 	}
 
-	index, err := ioutil.ReadAll(resp)
+	ixData, err := ioutil.ReadAll(resp)
 	if err != nil {
 		return "", err
 	}
 
-	if _, err := loadIndex(index); err != nil {
+	ix, err := loadIndex(ixData)
+	if err != nil {
 		return "", err
 	}
 
 	fname := filepath.Join(r.CachePath, helmpath.CacheIndexFile(r.Config.Name))
 	os.MkdirAll(filepath.Dir(fname), 0755)
-	return fname, ioutil.WriteFile(fname, index, 0644)
+
+	if err := ioutil.WriteFile(fname, ixData, 0644); err != nil {
+		return "", err
+	}
+
+	secIx, err := ix.SecondaryIndex()
+	if err != nil {
+		return "", err
+	}
+
+	secFname := filepath.Join(r.CachePath, helmpath.CacheSecondaryIndexFile(r.Config.Name))
+	if err := secIx.WriteFile(secFname, 0644); err != nil {
+		return "", err
+	}
+
+	return fname, nil
 }
 
 // Index generates an index for the chart repository and writes an index.yaml file.

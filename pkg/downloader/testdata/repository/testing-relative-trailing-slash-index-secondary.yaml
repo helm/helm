@@ -1,0 +1,11 @@
+apiVersion: v1
+generated: "2019-09-10T09:57:59.410396+02:00"
+indexes:
+  byURL:
+    bar-1.2.3.tgz:
+      name: bar
+      version: 1.2.3
+    charts/foo-1.2.3.tgz:
+      name: foo
+      version: 1.2.3
+digest: sha256:99c8c16d33565af5

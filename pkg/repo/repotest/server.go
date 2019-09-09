@@ -130,8 +130,20 @@ func (s *Server) CreateIndex() error {
 		return err
 	}
 
-	ifile := filepath.Join(s.docroot, "index.yaml")
-	return ioutil.WriteFile(ifile, d, 0644)
+	ixFile := filepath.Join(s.docroot, "index.yaml")
+	if err := ioutil.WriteFile(ixFile, d, 0644); err != nil {
+		return err
+	}
+
+	secIxFile := filepath.Join(s.docroot, "index-secondary.yaml")
+	secIx, err := index.SecondaryIndex()
+	if err != nil {
+		return err
+	}
+	if err := secIx.WriteFile(secIxFile, 0644); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *Server) Start() {
@@ -162,9 +174,16 @@ func (s *Server) URL() string {
 //
 // This makes it possible to simulate a local cache of a repository.
 func (s *Server) LinkIndices() error {
-	lstart := filepath.Join(s.docroot, "index.yaml")
-	ldest := filepath.Join(s.docroot, "test-index.yaml")
-	return os.Symlink(lstart, ldest)
+	symlinks := map[string]string{
+		filepath.Join(s.docroot, "index.yaml"):           filepath.Join(s.docroot, "test-index.yaml"),
+		filepath.Join(s.docroot, "index-secondary.yaml"): filepath.Join(s.docroot, "test-index-secondary.yaml"),
+	}
+	for lstart, ldest := range symlinks {
+		if err := os.Symlink(lstart, ldest); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // setTestingRepository sets up a testing repository.yaml with only the given URL.

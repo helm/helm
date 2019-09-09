@@ -32,3 +32,10 @@ func CacheIndexFile(name string) string {
 	}
 	return name + "index.yaml"
 }
+
+func CacheSecondaryIndexFile(name string) string {
+	if name != "" {
+		name += "-"
+	}
+	return name + "index-secondary.yaml"
+}

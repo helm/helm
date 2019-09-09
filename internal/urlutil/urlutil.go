@@ -40,27 +40,21 @@ func URLJoin(baseURL string, paths ...string) (string, error) {
 	return u.String(), nil
 }
 
+func Canonical(s string) string {
+	u, err := url.Parse(s)
+	if err != nil {
+		return filepath.Clean(s)
+	}
+	if u.Path == "" {
+		u.Path = "/"
+	}
+	u.Path = filepath.Clean(u.Path)
+	return u.String()
+}
+
 // Equal normalizes two URLs and then compares for equality.
 func Equal(a, b string) bool {
-	au, err := url.Parse(a)
-	if err != nil {
-		a = filepath.Clean(a)
-		b = filepath.Clean(b)
-		// If urls are paths, return true only if they are an exact match
-		return a == b
-	}
-	bu, err := url.Parse(b)
-	if err != nil {
-		return false
-	}
-
-	for _, u := range []*url.URL{au, bu} {
-		if u.Path == "" {
-			u.Path = "/"
-		}
-		u.Path = filepath.Clean(u.Path)
-	}
-	return au.String() == bu.String()
+	return Canonical(a) == Canonical(b)
 }
 
 // ExtractHostname returns hostname from URL
