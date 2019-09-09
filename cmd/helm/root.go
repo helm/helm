@@ -216,9 +216,6 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	flags.ParseErrorsWhitelist.UnknownFlags = true
 	flags.Parse(args)
 
-	// set defaults from environment
-	settings.Init(flags)
-
 	// Add subcommands
 	cmd.AddCommand(
 		// chart commands

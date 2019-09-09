@@ -19,7 +19,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"sort"
 
 	"helm.sh/helm/pkg/cli"
 
@@ -56,16 +55,8 @@ type envOptions struct {
 }
 
 func (o *envOptions) run(out io.Writer) error {
-
-	// Sorting keys to display in alphabetical order
-	var keys []string
-	for k := range o.settings.EnvironmentVariables {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	for _, k := range keys {
-		fmt.Printf("%s=\"%s\" \n", k, o.settings.EnvironmentVariables[k])
+	for k, v := range o.settings.EnvVars() {
+		fmt.Printf("%s=\"%s\" \n", k, v)
 	}
 	return nil
 }

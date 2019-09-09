@@ -71,11 +71,9 @@ func TestEnvSettings(t *testing.T) {
 
 			flags := pflag.NewFlagSet("testing", pflag.ContinueOnError)
 
-			settings := &EnvSettings{}
+			settings := New()
 			settings.AddFlags(flags)
 			flags.Parse(strings.Split(tt.args, " "))
-
-			settings.Init(flags)
 
 			if settings.Debug != tt.debug {
 				t.Errorf("expected debug %t, got %t", tt.debug, settings.Debug)
@@ -94,7 +92,7 @@ func resetEnv() func() {
 	origEnv := os.Environ()
 
 	// ensure any local envvars do not hose us
-	for _, e := range envMap {
+	for e := range New().EnvVars() {
 		os.Unsetenv(e)
 	}
 
