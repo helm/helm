@@ -18,6 +18,7 @@ package main
 
 import (
 	"bytes"
+    "fmt"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -49,15 +50,22 @@ func TestInspect(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	parts := strings.SplitN(b.String(), "---", 3)
-	if len(parts) != 3 {
-		t.Fatalf("Expected 2 parts, got %d", len(parts))
+	templatesData, err := ioutil.ReadFile("testdata/testcharts/alpine/templates/alpine-pod.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	templatesOutput := fmt.Sprintf("templates/alpine-pod.yaml\n%s", string(templatesData))
+
+	parts := strings.SplitN(b.String(), "---", 4)
+	if len(parts) != 4 {
+		t.Fatalf("Expected 4 parts, got %d", len(parts))
 	}
 
 	expect := []string{
 		strings.Replace(strings.TrimSpace(string(cdata)), "\r", "", -1),
 		strings.Replace(strings.TrimSpace(string(data)), "\r", "", -1),
 		strings.Replace(strings.TrimSpace(string(readmeData)), "\r", "", -1),
+		strings.Replace(strings.TrimSpace(templatesOutput), "\r", "", -1),
 	}
 
 	// Problem: ghodss/yaml doesn't marshal into struct order. To solve, we
@@ -144,3 +152,4 @@ func TestInspectPreReleaseChart(t *testing.T) {
 		})
 	}
 }
+

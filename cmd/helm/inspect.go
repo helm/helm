@@ -46,6 +46,10 @@ of the Charts.yaml file
 This command inspects a chart (directory, file, or URL) and displays the contents
 of the README file
 `
+	inspectTemplatesDesc = `
+This command inspects a chart (directory, file, or URL) and displays the contents
+of all templates file
+`
 )
 
 type inspectCmd struct {
@@ -66,10 +70,11 @@ type inspectCmd struct {
 }
 
 const (
-	chartOnly  = "chart"
-	valuesOnly = "values"
-	readmeOnly = "readme"
-	all        = "all"
+	chartOnly     = "chart"
+	valuesOnly    = "values"
+	readmeOnly    = "readme"
+	templatesOnly = "templates"
+	all           = "all"
 )
 
 var readmeFileNames = []string{"readme.md", "readme.txt", "readme"}
@@ -143,7 +148,23 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 		},
 	}
 
-	cmds := []*cobra.Command{inspectCommand, readmeSubCmd, valuesSubCmd, chartSubCmd}
+	templatesSubCmd := &cobra.Command{
+		Use:   "templates [CHART]",
+		Short: "shows inspect templates",
+		Long:  inspectTemplatesDesc,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			insp.output = templatesOnly
+			if err := checkArgsLength(len(args), "chart name"); err != nil {
+				return err
+			}
+			if err := insp.prepare(args[0]); err != nil {
+				return err
+			}
+			return insp.run()
+		},
+	}
+
+	cmds := []*cobra.Command{inspectCommand, readmeSubCmd, valuesSubCmd, chartSubCmd, templatesSubCmd}
 	vflag := "verify"
 	vdesc := "Verify the provenance data for this chart"
 	for _, subCmd := range cmds {
@@ -259,6 +280,19 @@ func (i *inspectCmd) run() error {
 		}
 		fmt.Fprintln(i.out, string(readme.Value))
 	}
+	
+	if (i.output == templatesOnly || i.output == all) && chrt.Templates != nil {
+		for index, template := range chrt.Templates {
+			if index != 0 || i.output == all {
+				fmt.Fprintln(i.out, "---")
+			}
+
+			fmt.Fprintln(i.out, template.Name)
+			fmt.Fprintln(i.out, string(template.Data))
+		}
+	}
+	
+
 	return nil
 }
 
@@ -284,3 +318,4 @@ func containsString(slice []string, s string, modifier func(s string) string) bo
 	}
 	return false
 }
+
