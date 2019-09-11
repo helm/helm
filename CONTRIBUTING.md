@@ -199,7 +199,7 @@ $ git pull upstream master
 ```sh
 $ git checkout -b new-feature
 ```
-6. Make any change on the branch `new-feature`  then build and test your codes.
+6. Make any change on the branch `new-feature` then build and test your codes.
 7. Include in what will be committed.
 ```sh
 $ git add <file>
