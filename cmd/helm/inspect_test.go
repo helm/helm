@@ -18,7 +18,7 @@ package main
 
 import (
 	"bytes"
-    "fmt"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -152,4 +152,3 @@ func TestInspectPreReleaseChart(t *testing.T) {
 		})
 	}
 }
-

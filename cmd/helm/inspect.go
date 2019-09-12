@@ -280,7 +280,7 @@ func (i *inspectCmd) run() error {
 		}
 		fmt.Fprintln(i.out, string(readme.Value))
 	}
-	
+
 	if (i.output == templatesOnly || i.output == all) && chrt.Templates != nil {
 		for index, template := range chrt.Templates {
 			if index != 0 || i.output == all {
@@ -291,7 +291,6 @@ func (i *inspectCmd) run() error {
 			fmt.Fprintln(i.out, string(template.Data))
 		}
 	}
-	
 
 	return nil
 }
@@ -318,4 +317,3 @@ func containsString(slice []string, s string, modifier func(s string) string) bo
 	}
 	return false
 }
-
