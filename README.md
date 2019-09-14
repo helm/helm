@@ -46,6 +46,10 @@ If you want to use a package manager:
 - [Snap](https://snapcraft.io/) users can use `sudo snap install helm
   --classic`.
 
+If you want to install helm from script:
+
+- [Script](https://github.com/helm/helm/blob/master/docs/install.md#from-script) instructions to install from script on a new instance without Helm. For example, you want to install on a container, cluster, etc. Note: GCP console comes with `Helm` installed by default.
+
 To rapidly get Helm up and running, start with the [Quick Start Guide](https://docs.helm.sh/using_helm/#quickstart-guide).
 
 See the [installation guide](https://docs.helm.sh/using_helm/#installing-helm) for more options,
