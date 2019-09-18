@@ -65,58 +65,7 @@ func (w *waiter) waitForResources(created ResourceList) error {
 				if err != nil || !w.isPodReady(pod) {
 					return false, err
 				}
-			case *appsv1.Deployment:
-				currentDeployment, err := w.c.AppsV1().Deployments(value.Namespace).Get(value.Name, metav1.GetOptions{})
-				if err != nil {
-					return false, err
-				}
-				// If paused deployment will never be ready
-				if currentDeployment.Spec.Paused {
-					continue
-				}
-				// Find RS associated with deployment
-				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, w.c.AppsV1())
-				if err != nil || newReplicaSet == nil {
-					return false, err
-				}
-				if !w.deploymentReady(newReplicaSet, currentDeployment) {
-					return false, nil
-				}
-			case *appsv1beta1.Deployment:
-				currentDeployment, err := w.c.AppsV1().Deployments(value.Namespace).Get(value.Name, metav1.GetOptions{})
-				if err != nil {
-					return false, err
-				}
-				// If paused deployment will never be ready
-				if currentDeployment.Spec.Paused {
-					continue
-				}
-				// Find RS associated with deployment
-				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, w.c.AppsV1())
-				if err != nil || newReplicaSet == nil {
-					return false, err
-				}
-				if !w.deploymentReady(newReplicaSet, currentDeployment) {
-					return false, nil
-				}
-			case *appsv1beta2.Deployment:
-				currentDeployment, err := w.c.AppsV1().Deployments(value.Namespace).Get(value.Name, metav1.GetOptions{})
-				if err != nil {
-					return false, err
-				}
-				// If paused deployment will never be ready
-				if currentDeployment.Spec.Paused {
-					continue
-				}
-				// Find RS associated with deployment
-				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, w.c.AppsV1())
-				if err != nil || newReplicaSet == nil {
-					return false, err
-				}
-				if !w.deploymentReady(newReplicaSet, currentDeployment) {
-					return false, nil
-				}
-			case *extensionsv1beta1.Deployment:
+			case *appsv1.Deployment, *appsv1beta1.Deployment, *appsv1beta2.Deployment, *extensionsv1beta1.Deployment:
 				currentDeployment, err := w.c.AppsV1().Deployments(value.Namespace).Get(value.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
