@@ -137,7 +137,7 @@ func (mock *MockConfigMapsInterface) Create(cfgmap *v1.ConfigMap) (*v1.ConfigMap
 	return cfgmap, nil
 }
 
-// Update updates a ConfigMap.
+// Update a ConfigMap.
 func (mock *MockConfigMapsInterface) Update(cfgmap *v1.ConfigMap) (*v1.ConfigMap, error) {
 	name := cfgmap.ObjectMeta.Name
 	if _, ok := mock.objects[name]; !ok {
@@ -147,7 +147,7 @@ func (mock *MockConfigMapsInterface) Update(cfgmap *v1.ConfigMap) (*v1.ConfigMap
 	return cfgmap, nil
 }
 
-// Delete deletes a ConfigMap by name.
+// Delete a ConfigMap by name.
 func (mock *MockConfigMapsInterface) Delete(name string, opts *metav1.DeleteOptions) error {
 	if _, ok := mock.objects[name]; !ok {
 		return apierrors.NewNotFound(v1.Resource("tests"), name)
@@ -215,7 +215,7 @@ func (mock *MockSecretsInterface) Create(secret *v1.Secret) (*v1.Secret, error) 
 	return secret, nil
 }
 
-// Update updates a Secret.
+// Update a Secret.
 func (mock *MockSecretsInterface) Update(secret *v1.Secret) (*v1.Secret, error) {
 	name := secret.ObjectMeta.Name
 	if _, ok := mock.objects[name]; !ok {
@@ -225,7 +225,7 @@ func (mock *MockSecretsInterface) Update(secret *v1.Secret) (*v1.Secret, error) 
 	return secret, nil
 }
 
-// Delete deletes a Secret by name.
+// Delete a Secret by name.
 func (mock *MockSecretsInterface) Delete(name string, opts *metav1.DeleteOptions) error {
 	if _, ok := mock.objects[name]; !ok {
 		return apierrors.NewNotFound(schema.GroupResource{Resource: "tests"}, name)

@@ -85,7 +85,7 @@ func (m *LocalReleaseModule) Status(r *release.Release, req *services.GetRelease
 	return env.KubeClient.Get(r.Namespace, bytes.NewBufferString(r.Manifest))
 }
 
-// Delete deletes the release and returns manifests that were kept in the deletion process
+// Delete the release and returns manifests that were kept in the deletion process
 func (m *LocalReleaseModule) Delete(rel *release.Release, req *services.UninstallReleaseRequest, env *environment.Environment) (kept string, errs []error) {
 	vs, err := GetVersionSet(m.clientset.Discovery())
 	if err != nil {

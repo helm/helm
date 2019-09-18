@@ -49,7 +49,7 @@ func (i *LocalInstaller) Install() error {
 	return i.link(i.Source)
 }
 
-// Update updates a local repository
+// Update a local repository
 func (i *LocalInstaller) Update() error {
 	debug("local repository is auto-updated")
 	return nil

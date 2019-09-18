@@ -40,7 +40,7 @@ type Creator interface {
 
 // Updator is the interface that wraps the Update method.
 //
-// Update updates an existing release or returns
+// Update an existing release or returns
 // ErrReleaseNotFound if the release does not exist.
 type Updator interface {
 	Update(key string, rls *rspb.Release) error
@@ -48,7 +48,7 @@ type Updator interface {
 
 // Deletor is the interface that wraps the Delete method.
 //
-// Delete deletes the release named by key or returns
+// Delete the release named by key or returns
 // ErrReleaseNotFound if the release does not exist.
 type Deletor interface {
 	Delete(key string) (*rspb.Release, error)

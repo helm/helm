@@ -174,7 +174,7 @@ func (cfgmaps *ConfigMaps) Create(key string, rls *rspb.Release) error {
 	return nil
 }
 
-// Update updates the ConfigMap holding the release. If not found
+// Update the ConfigMap holding the release. If not found
 // the ConfigMap is created to hold the release.
 func (cfgmaps *ConfigMaps) Update(key string, rls *rspb.Release) error {
 	// set labels for configmaps object meta data
@@ -198,7 +198,7 @@ func (cfgmaps *ConfigMaps) Update(key string, rls *rspb.Release) error {
 	return nil
 }
 
-// Delete deletes the ConfigMap holding the release named by key.
+// Delete the ConfigMap holding the release named by key.
 func (cfgmaps *ConfigMaps) Delete(key string) (rls *rspb.Release, err error) {
 	// fetch the release to check existence
 	if rls, err = cfgmaps.Get(key); err != nil {

@@ -38,7 +38,7 @@ type Installer interface {
 	Install() error
 	// Path is the directory of the installed plugin.
 	Path() string
-	// Update updates a plugin to $HELM_HOME.
+	// Update a plugin to $HELM_HOME.
 	Update() error
 }
 
@@ -55,7 +55,7 @@ func Install(i Installer) error {
 	return i.Install()
 }
 
-// Update updates a plugin in $HELM_HOME.
+// Update a plugin in $HELM_HOME.
 func Update(i Installer) error {
 	if _, pathErr := os.Stat(i.Path()); os.IsNotExist(pathErr) {
 		return errors.New("plugin does not exist")

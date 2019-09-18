@@ -174,7 +174,7 @@ func (secrets *Secrets) Create(key string, rls *rspb.Release) error {
 	return nil
 }
 
-// Update updates the Secret holding the release. If not found
+// Update the Secret holding the release. If not found
 // the Secret is created to hold the release.
 func (secrets *Secrets) Update(key string, rls *rspb.Release) error {
 	// set labels for secrets object meta data
@@ -198,7 +198,7 @@ func (secrets *Secrets) Update(key string, rls *rspb.Release) error {
 	return nil
 }
 
-// Delete deletes the Secret holding the release named by key.
+// Delete the Secret holding the release named by key.
 func (secrets *Secrets) Delete(key string) (rls *rspb.Release, err error) {
 	// fetch the release to check existence
 	if rls, err = secrets.Get(key); err != nil {

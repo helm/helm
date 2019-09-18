@@ -140,7 +140,7 @@ func (i *HTTPInstaller) Install() error {
 	return i.link(src)
 }
 
-// Update updates a local repository
+// Update a local repository
 // Not implemented for now since tarball most likely will be packaged by version
 func (i *HTTPInstaller) Update() error {
 	return fmt.Errorf("method Update() not implemented for HttpInstaller")

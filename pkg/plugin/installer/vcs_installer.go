@@ -91,7 +91,7 @@ func (i *VCSInstaller) Install() error {
 	return i.link(i.Repo.LocalPath())
 }
 
-// Update updates a remote repository
+// Update a remote repository
 func (i *VCSInstaller) Update() error {
 	debug("updating %s", i.Repo.Remote())
 	if i.Repo.IsDirty() {

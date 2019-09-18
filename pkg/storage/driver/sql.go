@@ -281,7 +281,7 @@ func (s *SQL) Create(key string, rls *rspb.Release) error {
 	return nil
 }
 
-// Update updates a release.
+// Update a release.
 func (s *SQL) Update(key string, rls *rspb.Release) error {
 	body, err := encodeRelease(rls)
 	if err != nil {
@@ -308,7 +308,7 @@ func (s *SQL) Update(key string, rls *rspb.Release) error {
 	return nil
 }
 
-// Delete deletes a release or returns ErrReleaseNotFound.
+// Delete a release or returns ErrReleaseNotFound.
 func (s *SQL) Delete(key string) (*rspb.Release, error) {
 	transaction, err := s.db.Beginx()
 	if err != nil {

@@ -124,7 +124,7 @@ func (mem *Memory) Create(key string, rls *rspb.Release) error {
 	return nil
 }
 
-// Update updates a release or returns ErrReleaseNotFound.
+// Update a release or returns ErrReleaseNotFound.
 func (mem *Memory) Update(key string, rls *rspb.Release) error {
 	defer unlock(mem.wlock())
 
@@ -135,7 +135,7 @@ func (mem *Memory) Update(key string, rls *rspb.Release) error {
 	return storageerrors.ErrReleaseNotFound(rls.Name)
 }
 
-// Delete deletes a release or returns ErrReleaseNotFound.
+// Delete a release or returns ErrReleaseNotFound.
 func (mem *Memory) Delete(key string) (*rspb.Release, error) {
 	defer unlock(mem.wlock())
 

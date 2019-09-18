@@ -102,7 +102,7 @@ func (m *Manager) Build() error {
 	return m.downloadAll(lock.Dependencies)
 }
 
-// Update updates a local charts directory.
+// Update a local charts directory.
 //
 // It first reads the requirements.yaml file, and then attempts to
 // negotiate versions based on that. It will download the versions

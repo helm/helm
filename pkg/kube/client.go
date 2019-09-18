@@ -471,7 +471,7 @@ func (c *Client) cleanup(newlyCreatedResources []*resource.Info) (cleanupErrors 
 	return
 }
 
-// Delete deletes Kubernetes resources from an io.reader.
+// Delete Kubernetes resources from an io.reader.
 //
 // Namespace will set the namespace.
 func (c *Client) Delete(namespace string, reader io.Reader) error {
