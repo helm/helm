@@ -105,9 +105,9 @@ ingress:
       paths: []
 
   tls: []
-  #  - secretName: chart-example-tls
-  #    hosts:
-  #      - chart-example.local
+    # - secretName: chart-example-tls
+    #   hosts:
+    #     - chart-example.local
 
 resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious
@@ -115,11 +115,11 @@ resources: {}
   # resources, such as Minikube. If you do want to specify resources, uncomment the following
   # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
   # limits:
-  #  cpu: 100m
-  #  memory: 128Mi
+  #   cpu: 100m
+  #   memory: 128Mi
   # requests:
-  #  cpu: 100m
-  #  memory: 128Mi
+  #   cpu: 100m
+  #   memory: 128Mi
 
 nodeSelector: {}
 
@@ -159,7 +159,7 @@ kind: Ingress
 metadata:
   name: {{ $fullName }}
   labels:
-{{ include "<CHARTNAME>.labels" . | indent 4 }}
+    {{- include "<CHARTNAME>.labels" . | nindent 4 }}
   {{- with .Values.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -190,23 +190,21 @@ spec:
 {{- end }}
 `
 
-const defaultDeployment = `apiVersion: apps/v1beta2
+const defaultDeployment = `apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ template "<CHARTNAME>.fullname" . }}
+  name: {{ include "<CHARTNAME>.fullname" . }}
   labels:
-{{ include "<CHARTNAME>.labels" . | indent 4 }}
+    {{- include "<CHARTNAME>.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
-      app.kubernetes.io/instance: {{ .Release.Name }}
+      {{- include "<CHARTNAME>.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
-        app.kubernetes.io/instance: {{ .Release.Name }}
+        {{- include "<CHARTNAME>.selectorLabels" . | nindent 8 }}
     spec:
       containers:
         - name: {{ .Chart.Name }}
@@ -225,27 +223,27 @@ spec:
               path: /
               port: http
           resources:
-{{ toYaml .Values.resources | indent 12 }}
+            {{- toYaml .Values.resources | nindent 12 }}
     {{- with .Values.nodeSelector }}
       nodeSelector:
-{{ toYaml . | indent 8 }}
+        {{- toYaml . | nindent 8 }}
     {{- end }}
     {{- with .Values.affinity }}
       affinity:
-{{ toYaml . | indent 8 }}
+        {{- toYaml . | nindent 8 }}
     {{- end }}
     {{- with .Values.tolerations }}
       tolerations:
-{{ toYaml . | indent 8 }}
+        {{- toYaml . | nindent 8 }}
     {{- end }}
 `
 
 const defaultService = `apiVersion: v1
 kind: Service
 metadata:
-  name: {{ template "<CHARTNAME>.fullname" . }}
+  name: {{ include "<CHARTNAME>.fullname" . }}
   labels:
-{{ include "<CHARTNAME>.labels" . | indent 4 }}
+    {{- include "<CHARTNAME>.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.service.type }}
   ports:
@@ -254,8 +252,7 @@ spec:
       protocol: TCP
       name: http
   selector:
-    app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
+    {{- include "<CHARTNAME>.selectorLabels" . | nindent 4 }}
 `
 
 const defaultNotes = `1. Get the application URL by running these commands:
@@ -266,16 +263,16 @@ const defaultNotes = `1. Get the application URL by running these commands:
   {{- end }}
 {{- end }}
 {{- else if contains "NodePort" .Values.service.type }}
-  export NODE_PORT=$(kubectl get -o jsonpath="{.spec.ports[0].nodePort}" services {{ template "<CHARTNAME>.fullname" . }})
+  export NODE_PORT=$(kubectl get -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "<CHARTNAME>.fullname" . }})
   export NODE_IP=$(kubectl get nodes -o jsonpath="{.items[0].status.addresses[0].address}")
   echo http://$NODE_IP:$NODE_PORT
 {{- else if contains "LoadBalancer" .Values.service.type }}
      NOTE: It may take a few minutes for the LoadBalancer IP to be available.
-           You can watch the status of by running 'kubectl get svc -w {{ template "<CHARTNAME>.fullname" . }}'
-  export SERVICE_IP=$(kubectl get svc {{ template "<CHARTNAME>.fullname" . }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+           You can watch the status of by running 'kubectl get svc -w {{ include "<CHARTNAME>.fullname" . }}'
+  export SERVICE_IP=$(kubectl get svc {{ include "<CHARTNAME>.fullname" . }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
   echo http://$SERVICE_IP:{{ .Values.service.port }}
 {{- else if contains "ClusterIP" .Values.service.type }}
-  export POD_NAME=$(kubectl get pods -l "app={{ template "<CHARTNAME>.name" . }},release={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
+  export POD_NAME=$(kubectl get pods -l "app.kubernetes.io/name={{ include "<CHARTNAME>.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
   echo "Visit http://127.0.0.1:8080 to use your application"
   kubectl port-forward $POD_NAME 8080:80
 {{- end }}
@@ -318,13 +315,20 @@ Create chart name and version as used by the chart label.
 Common labels
 */}}
 {{- define "<CHARTNAME>.labels" -}}
-app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
 helm.sh/chart: {{ include "<CHARTNAME>.chart" . }}
-app.kubernetes.io/instance: {{ .Release.Name }}
+{{ include "<CHARTNAME>.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end -}}
+
+{{/*
+Selector labels
+*/}}
+{{- define "<CHARTNAME>.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
 `
 

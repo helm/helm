@@ -20,7 +20,7 @@ spec:
   type: ClusterIP
 ---
 # Source: chart-with-template-lib-dep/templates/deployment.yaml
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: RELEASE-NAME-chart-with-template-lib-dep
