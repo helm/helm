@@ -233,7 +233,7 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 
 		// Any failure to resolve/download a chart should fail:
 		// https://github.com/kubernetes/helm/issues/1439
-		churl, username, password, err := findChartURL(dep.Name, dep.Version, dep.Repository, repos)
+		churl, username, password, err := m.findChartURL(dep.Name, dep.Version, dep.Repository, repos)
 		if err != nil {
 			saveError = fmt.Errorf("could not find %s: %s", churl, err)
 			break
@@ -403,9 +403,17 @@ func (m *Manager) getRepoNames(deps []*chartutil.Dependency) (map[string]string,
 			}
 		}
 		if !found {
-			missing = append(missing, dd.Repository)
+			repository := dd.Repository
+			// Add if URL
+			_, err := url.ParseRequestURI(repository)
+			if err == nil {
+				reposMap[repository] = repository
+				continue
+			}
+			missing = append(missing, repository)
 		}
 	}
+
 	if len(missing) > 0 {
 		errorMessage := fmt.Sprintf("no repository definition for %s. Please add them via 'helm repo add'", strings.Join(missing, ", "))
 		// It is common for people to try to enter "stable" as a repository instead of the actual URL.
@@ -424,6 +432,7 @@ repository, use "https://kubernetes-charts.storage.googleapis.com/" or "@stable"
 		}
 		return nil, errors.New(errorMessage)
 	}
+
 	return reposMap, nil
 }
 
@@ -475,7 +484,7 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 // repoURL is the repository to search
 //
 // If it finds a URL that is "relative", it will prepend the repoURL.
-func findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRepository) (url, username, password string, err error) {
+func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRepository) (url, username, password string, err error) {
 	for _, cr := range repos {
 		if urlutil.Equal(repoURL, cr.Config.URL) {
 			var entry repo.ChartVersions
@@ -496,6 +505,10 @@ func findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRep
 			password = cr.Config.Password
 			return
 		}
+	}
+	url, err = repo.FindChartInRepoURL(repoURL, name, version, "", "", "", m.Getters)
+	if err == nil {
+		return
 	}
 	err = fmt.Errorf("chart %s not found in %s", name, repoURL)
 	return
