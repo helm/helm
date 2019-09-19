@@ -17,7 +17,6 @@ limitations under the License.
 package installer // import "k8s.io/helm/cmd/helm/installer"
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"strings"
@@ -34,7 +33,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/helm/pkg/version"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/tiller/environment"
@@ -64,11 +62,17 @@ func Install(client kubernetes.Interface, opts *Options) error {
 func Upgrade(client kubernetes.Interface, opts *Options) error {
 	appsobj, err := client.AppsV1().Deployments(opts.Namespace).Get(deploymentName, metav1.GetOptions{})
 	if err == nil {
+		// Can happen in two cases:
+		// 1. helm init inserted an apps/v1 Deployment up front in Kubernetes
+		// 2. helm init inserted an extensions/v1beta1 Deployment against a K8s cluster already
+		//    supporting apps/v1 Deployment. In such a case K8s is returning the apps/v1 object anyway.`
+		//    (for the same reason "kubectl convert" is being deprecated)
 		return upgradeAppsTillerDeployment(client, opts, appsobj)
 	}
 
 	extensionsobj, err := client.ExtensionsV1beta1().Deployments(opts.Namespace).Get(deploymentName, metav1.GetOptions{})
 	if err == nil {
+		// User performed helm init against older version of kubernetes (Previous to 1.9)
 		return upgradeExtensionsTillerDeployment(client, opts, extensionsobj)
 	}
 
@@ -76,63 +80,84 @@ func Upgrade(client kubernetes.Interface, opts *Options) error {
 }
 
 func upgradeAppsTillerDeployment(client kubernetes.Interface, opts *Options, obj *appsv1.Deployment) error {
-	tillerImage := obj.Spec.Template.Spec.Containers[0].Image
-	if semverCompare(tillerImage) == -1 && !opts.ForceUpgrade {
-		return errors.New("current Tiller version is newer, use --force-upgrade to downgrade")
+	// Update the PodTemplateSpec section of the deployment
+	if err := updatePodTemplate(&obj.Spec.Template.Spec, opts); err != nil {
+		return err
 	}
-	obj.Spec.Template.Spec.Containers[0].Image = opts.SelectImage()
-	obj.Spec.Template.Spec.Containers[0].ImagePullPolicy = opts.pullPolicy()
-	obj.Spec.Template.Spec.ServiceAccountName = opts.ServiceAccount
+
 	if _, err := client.AppsV1().Deployments(opts.Namespace).Update(obj); err != nil {
 		return err
 	}
+
 	// If the service does not exist that would mean we are upgrading from a Tiller version
 	// that didn't deploy the service, so install it.
 	_, err := client.CoreV1().Services(opts.Namespace).Get(serviceName, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		return createService(client.CoreV1(), opts.Namespace)
 	}
+
 	return err
 }
 
 func upgradeExtensionsTillerDeployment(client kubernetes.Interface, opts *Options, obj *extensionsv1beta1.Deployment) error {
-	tillerImage := obj.Spec.Template.Spec.Containers[0].Image
-	if semverCompare(tillerImage) == -1 && !opts.ForceUpgrade {
-		return errors.New("current Tiller version is newer, use --force-upgrade to downgrade")
+	// Update the PodTemplateSpec section of the deployment
+	if err := updatePodTemplate(&obj.Spec.Template.Spec, opts); err != nil {
+		return err
 	}
-	obj.Spec.Template.Spec.Containers[0].Image = opts.SelectImage()
-	obj.Spec.Template.Spec.Containers[0].ImagePullPolicy = opts.pullPolicy()
-	obj.Spec.Template.Spec.ServiceAccountName = opts.ServiceAccount
+
 	if _, err := client.ExtensionsV1beta1().Deployments(opts.Namespace).Update(obj); err != nil {
 		return err
 	}
+
 	// If the service does not exist that would mean we are upgrading from a Tiller version
 	// that didn't deploy the service, so install it.
 	_, err := client.CoreV1().Services(opts.Namespace).Get(serviceName, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		return createService(client.CoreV1(), opts.Namespace)
 	}
+
 	return err
 }
 
-// semverCompare returns whether the client's version is older, equal or newer than the given image's version.
-func semverCompare(image string) int {
-	split := strings.Split(image, ":")
-	if len(split) < 2 {
-		// If we don't know the version, we consider the client version newer.
-		return 1
+func updatePodTemplate(podSpec *v1.PodSpec, opts *Options) error {
+	tillerImage := podSpec.Containers[0].Image
+	clientImage := opts.SelectImage()
+
+	if semverCompare(tillerImage, clientImage) == -1 && !opts.ForceUpgrade {
+		return fmt.Errorf("current Tiller version %s is newer than client version %s, use --force-upgrade to downgrade", tillerImage, clientImage)
 	}
-	tillerVersion, err := semver.NewVersion(split[1])
+	podSpec.Containers[0].Image = clientImage
+	podSpec.Containers[0].ImagePullPolicy = opts.pullPolicy()
+	podSpec.ServiceAccountName = opts.ServiceAccount
+
+	return nil
+}
+
+// semverCompare returns whether the client's version is older, equal or newer than the given image's version.
+func semverCompare(tillerImage, clientImage string) int {
+	tillerVersion, err := string2semver(tillerImage)
 	if err != nil {
 		// same thing with unparsable tiller versions (e.g. canary releases).
 		return 1
 	}
-	clientVersion, err := semver.NewVersion(version.Version)
+
+	// clientVersion, err := semver.NewVersion(currentVersion)
+	clientVersion, err := string2semver(clientImage)
 	if err != nil {
 		// aaaaaand same thing with unparsable helm versions (e.g. canary releases).
 		return 1
 	}
+
 	return clientVersion.Compare(tillerVersion)
+}
+
+func string2semver(image string) (*semver.Version, error) {
+	split := strings.Split(image, ":")
+	if len(split) < 2 {
+		// If we don't know the version, we consider the client version newer.
+		return nil, fmt.Errorf("no repository in image %s", image)
+	}
+	return semver.NewVersion(split[1])
 }
 
 // createDeployment creates the Tiller Deployment resource.
