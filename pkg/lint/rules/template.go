@@ -106,7 +106,8 @@ func Templates(linter *support.Linter, values []byte, namespace string, strict b
 			continue
 		}
 
-		renderedContent := renderedContentMap[filepath.Join(chart.GetMetadata().Name, fileName)]
+		templatePath := filepath.Join(chart.GetMetadata().Name, fileName)
+		renderedContent := renderedContentMap[filepath.ToSlash(templatePath)]
 		var yamlStruct K8sYamlStruct
 		// Even though K8sYamlStruct only defines Metadata namespace, an error in any other
 		// key will be raised as well
