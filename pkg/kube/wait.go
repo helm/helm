@@ -66,7 +66,7 @@ func (w *waiter) waitForResources(created ResourceList) error {
 					return false, err
 				}
 			case *appsv1.Deployment, *appsv1beta1.Deployment, *appsv1beta2.Deployment, *extensionsv1beta1.Deployment:
-				currentDeployment, err := w.c.AppsV1().Deployments(value.Namespace).Get(value.Name, metav1.GetOptions{})
+				currentDeployment, err := w.c.AppsV1().Deployments(v.Namespace).Get(v.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
 				}
