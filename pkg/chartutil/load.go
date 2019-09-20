@@ -171,6 +171,10 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 				return c, err
 			}
 			c.Metadata = m
+			var apiVersion = c.Metadata.ApiVersion
+			if apiVersion != "" && apiVersion != ApiVersionV1 {
+				return c, fmt.Errorf("apiVersion '%s' is not valid. The value must be \"v1\"", apiVersion)
+			}
 		} else if f.Name == "values.toml" {
 			return c, errors.New("values.toml is illegal as of 2.0.0-alpha.2")
 		} else if f.Name == "values.yaml" {

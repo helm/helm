@@ -42,6 +42,8 @@ const (
 	DeploymentName = "deployment.yaml"
 	// ServiceName is the name of the example service file.
 	ServiceName = "service.yaml"
+	// ServiceAccountName is the name of the example serviceaccount file.
+	ServiceAccountName = "serviceaccount.yaml"
 	// NotesName is the name of the example NOTES.txt file.
 	NotesName = "NOTES.txt"
 	// HelpersName is the name of the example helpers file.
@@ -66,6 +68,24 @@ image:
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name:
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
 
 service:
   type: ClusterIP
@@ -189,8 +209,13 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
     {{- end }}
+      serviceAccountName: {{ template "<CHARTNAME>.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
@@ -238,6 +263,15 @@ spec:
     app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
 `
+const defaultServiceAccount = `{{- if .Values.serviceAccount.create -}}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ template "<CHARTNAME>.serviceAccountName" . }}
+  labels:
+{{ include "<CHARTNAME>.labels" . | indent 4 }}
+{{- end -}}
+`
 
 const defaultNotes = `1. Get the application URL by running these commands:
 {{- if .Values.ingress.enabled }}
@@ -253,7 +287,7 @@ const defaultNotes = `1. Get the application URL by running these commands:
 {{- else if contains "LoadBalancer" .Values.service.type }}
      NOTE: It may take a few minutes for the LoadBalancer IP to be available.
            You can watch the status of by running 'kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "<CHARTNAME>.fullname" . }}'
-  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "<CHARTNAME>.fullname" . }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "<CHARTNAME>.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
   echo http://$SERVICE_IP:{{ .Values.service.port }}
 {{- else if contains "ClusterIP" .Values.service.type }}
   export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "<CHARTNAME>.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
@@ -306,6 +340,17 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end -}}
+
+{{/*
+Create the name of the service account to use
+*/}}
+{{- define "<CHARTNAME>.serviceAccountName" -}}
+{{- if .Values.serviceAccount.create -}}
+    {{ default (include "<CHARTNAME>.fullname" .) .Values.serviceAccount.name }}
+{{- else -}}
+    {{ default "default" .Values.serviceAccount.name }}
+{{- end -}}
 {{- end -}}
 `
 
@@ -424,6 +469,11 @@ func Create(chartfile *chart.Metadata, dir string) (string, error) {
 			// service.yaml
 			path:    filepath.Join(cdir, TemplatesDir, ServiceName),
 			content: Transform(defaultService, "<CHARTNAME>", chartfile.Name),
+		},
+		{
+			// serviceaccount.yaml
+			path:    filepath.Join(cdir, TemplatesDir, ServiceAccountName),
+			content: Transform(defaultServiceAccount, "<CHARTNAME>", chartfile.Name),
 		},
 		{
 			// NOTES.txt

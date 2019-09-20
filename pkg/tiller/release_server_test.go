@@ -338,6 +338,20 @@ func TestValidName(t *testing.T) {
 	}
 }
 
+func TestGetAllVersionSet(t *testing.T) {
+	rs := rsFixture()
+	vs, err := GetAllVersionSet(rs.clientset.Discovery())
+	if err != nil {
+		t.Error(err)
+	}
+	if !vs.Has("v1") {
+		t.Errorf("Expected supported versions to at least include v1.")
+	}
+	if vs.Has("nosuchversion/v1") {
+		t.Error("Non-existent version is reported found.")
+	}
+}
+
 func TestGetVersionSet(t *testing.T) {
 	rs := rsFixture()
 	vs, err := GetVersionSet(rs.clientset.Discovery())
@@ -540,6 +554,10 @@ func (d *deleteFailingKubeClient) Delete(ns string, r io.Reader) error {
 	return kube.ErrNoObjectsVisited
 }
 
+func (d *deleteFailingKubeClient) DeleteWithTimeout(ns string, r io.Reader, timeout int64, shouldWait bool) error {
+	return kube.ErrNoObjectsVisited
+}
+
 type mockListServer struct {
 	val *services.ListReleasesResponse
 }
@@ -612,6 +630,9 @@ func (kc *mockHooksKubeClient) Get(ns string, r io.Reader) (string, error) {
 	return "", nil
 }
 func (kc *mockHooksKubeClient) Delete(ns string, r io.Reader) error {
+	return kc.DeleteWithTimeout(ns, r, 0, false)
+}
+func (kc *mockHooksKubeClient) DeleteWithTimeout(ns string, r io.Reader, timeout int64, shouldWait bool) error {
 	manifest, err := kc.makeManifest(r)
 	if err != nil {
 		return err

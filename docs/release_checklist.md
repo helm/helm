@@ -86,6 +86,11 @@ If you do not have GPG already setup you can follow these steps:
 3. [Add key to GitHub account](https://help.github.com/en/articles/adding-a-new-gpg-key-to-your-github-account)
 4. [Set signing key in Git](https://help.github.com/en/articles/telling-git-about-your-signing-key)
 
+Once you have a signing key you need to add it to the KEYS file at the root of
+the repository. The instructions for adding it to the KEYS file are in the file.
+If you have not done so already, you need to add your public key to the keyserver
+network. If you use GnuPG you can follow the [instructions provided by Debian](https://debian-administration.org/article/451/Submitting_your_GPG_key_to_a_keyserver).
+
 ## 1. Create the Release Branch
 
 ### Major/Minor Releases

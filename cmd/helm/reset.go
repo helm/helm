@@ -115,7 +115,7 @@ func (d *resetCmd) run() error {
 	}
 
 	if err := installer.Uninstall(d.kubeClient, &installer.Options{Namespace: d.namespace}); err != nil {
-		return fmt.Errorf("error unstalling Tiller: %s", err)
+		return fmt.Errorf("error uninstalling Tiller: %s", err)
 	}
 
 	if d.removeHelmHome {

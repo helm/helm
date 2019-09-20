@@ -103,7 +103,7 @@ helm init --canary-image
 
 For developing on Tiller, it is sometimes more expedient to run Tiller locally
 instead of packaging it into an image and running it in-cluster. You can do
-this by telling the Helm client to us a local instance.
+this by telling the Helm client to use a local instance.
 
 ```console
 $ make build

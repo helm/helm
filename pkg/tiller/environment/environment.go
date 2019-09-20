@@ -127,6 +127,16 @@ type KubeClient interface {
 	// by "\n---\n").
 	Delete(namespace string, reader io.Reader) error
 
+	// DeleteWithTimeout destroys one or more resources. If shouldWait is true, the function
+	// will not return until all the resources have been fully deleted or the provided
+	// timeout has expired.
+	//
+	// namespace must contain a valid existing namespace.
+	//
+	// reader must contain a YAML stream (one or more YAML documents separated
+	// by "\n---\n").
+	DeleteWithTimeout(namespace string, reader io.Reader, timeout int64, shouldWait bool) error
+
 	// WatchUntilReady watch the resource in reader until it is "ready".
 	//
 	// For Jobs, "ready" means the job ran to completion (excited without error).
@@ -150,7 +160,7 @@ type KubeClient interface {
 
 	// BuildUnstructured reads a stream of manifests from a reader and turns them into
 	// info objects. Manifests are not validated against the schema, but it will fail if
-	// any resoures types are not known by the apiserver.
+	// any resources types are not known by the apiserver.
 	//
 	// reader must contain a YAML stream (one or more YAML documents separated by "\n---\n").
 	BuildUnstructured(namespace string, reader io.Reader) (kube.Result, error)
@@ -190,6 +200,14 @@ func (p *PrintingKubeClient) Get(ns string, r io.Reader) (string, error) {
 //
 // It only prints out the content to be deleted.
 func (p *PrintingKubeClient) Delete(ns string, r io.Reader) error {
+	_, err := io.Copy(p.Out, r)
+	return err
+}
+
+// DeleteWithTimeout implements KubeClient DeleteWithTimeout.
+//
+// It only prints out the content to be deleted.
+func (p *PrintingKubeClient) DeleteWithTimeout(ns string, r io.Reader, timeout int64, shouldWait bool) error {
 	_, err := io.Copy(p.Out, r)
 	return err
 }
@@ -237,6 +255,7 @@ func (p *PrintingKubeClient) WaitAndGetCompletedPodPhase(namespace string, reade
 	return v1.PodUnknown, err
 }
 
+// WaitUntilCRDEstablished implements KubeClient WaitUntilCRDEstablished.
 func (p *PrintingKubeClient) WaitUntilCRDEstablished(reader io.Reader, timeout time.Duration) error {
 	_, err := io.Copy(p.Out, reader)
 	return err

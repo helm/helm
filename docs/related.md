@@ -14,7 +14,7 @@ or [pull request](https://github.com/helm/helm/pulls).
 - [GitLab, Consumer Driven Contracts, Helm and Kubernetes](https://medium.com/@enxebre/gitlab-consumer-driven-contracts-helm-and-kubernetes-b7235a60a1cb#.xwp1y4tgi)
 - [Honestbee's Helm Chart Conventions](https://gist.github.com/so0k/f927a4b60003cedd101a0911757c605a)
 - [Releasing backward-incompatible changes: Kubernetes, Jenkins, Prometheus Operator, Helm and Traefik](https://medium.com/@enxebre/releasing-backward-incompatible-changes-kubernetes-jenkins-plugin-prometheus-operator-helm-self-6263ca61a1b1#.e0c7elxhq)
-- [The Missing CI/CD Kubernetes Component: Helm package manager](https://hackernoon.com/the-missing-ci-cd-kubernetes-component-helm-package-manager-1fe002aac680#.691sk2zhu)
+- [The Missing CI/CD Kubernetes Component: Helm package manager](https://medium.com/@gajus/the-missing-ci-cd-kubernetes-component-helm-package-manager-1fe002aac680)
 - [Using Helm to Deploy to Kubernetes](https://daemonza.github.io/2017/02/20/using-helm-to-deploy-to-kubernetes/)
 - [Writing a Helm Chart](https://www.influxdata.com/packaged-kubernetes-deployments-writing-helm-chart/)
 - [A basic walk through Kubernetes Helm](https://github.com/muffin87/helm-tutorial)
@@ -92,6 +92,7 @@ Tools layered on top of Helm or Tiller.
 
 Platforms, distributions, and services that include Helm support.
 
+- [Codefresh](https://codefresh.io/) - A CI/CD solution designed specifically for Docker/Kubernetes/Helm. Includes a private Helm repository and graphical dashboards for Helm charts, Helm releases and Helm environments.
 - [Fabric8](https://fabric8.io) - Integrated development platform for Kubernetes
 - [Jenkins X](https://jenkins-x.io/) - open source automated CI/CD for Kubernetes which uses Helm for [promoting](https://jenkins-x.io/about/features/#promotion) applications through [environments via GitOps](https://jenkins-x.io/about/features/#environments)
 - [Kubernetic](https://kubernetic.com/) - Kubernetes Desktop Client

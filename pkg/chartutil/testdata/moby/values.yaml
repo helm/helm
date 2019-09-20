@@ -22,3 +22,7 @@ web:
     httpGet:
       path: /api/v1/info
       port: atc
+
+# for testing deleting default values in sub charts
+spouter:
+  foo: null

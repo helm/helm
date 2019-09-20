@@ -94,3 +94,30 @@ func TestPluginGetter(t *testing.T) {
 		t.Errorf("Expected %q, got %q", expect, got)
 	}
 }
+func TestPluginSubCommands(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TODO: refactor this test to work on windows")
+	}
+
+	oldhh := os.Getenv("HELM_HOME")
+	defer os.Setenv("HELM_HOME", oldhh)
+	os.Setenv("HELM_HOME", "")
+
+	env := hh(false)
+	pg := newPluginGetter("echo -n", env, "test", ".")
+	g, err := pg("test://foo/bar", "", "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	data, err := g.Get("test://foo/bar")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expect := "   test://foo/bar"
+	got := data.String()
+	if got != expect {
+		t.Errorf("Expected %q, got %q", expect, got)
+	}
+}

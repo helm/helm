@@ -53,6 +53,7 @@ water:
   water:
     where: "everywhere"
     nor: "any drop to drink"
+    temperature: 1234567890
 `
 
 	data, err := ReadValues([]byte(doc))
@@ -266,6 +267,12 @@ func matchValues(t *testing.T, data map[string]interface{}) {
 	} else if o != "everywhere" {
 		t.Errorf("Expected water water everywhere")
 	}
+
+	if o, err := ttpl("{{.water.water.temperature}}", data); err != nil {
+		t.Errorf(".water.water.temperature: %s", err)
+	} else if o != "1234567890" {
+		t.Errorf("Expected water water temperature: 1234567890, got: %s", o)
+	}
 }
 
 func ttpl(tpl string, v map[string]interface{}) (string, error) {
@@ -468,6 +475,33 @@ func TestCoalesceTables(t *testing.T) {
 		t.Errorf("Expected boat string, got %v", dst["boat"])
 	}
 }
+
+func TestCoalesceSubchart(t *testing.T) {
+	tchart := "testdata/moby"
+	c, err := LoadDir(tchart)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tvals := &chart.Config{}
+
+	v, err := CoalesceValues(c, tvals)
+	if err != nil {
+		t.Fatal(err)
+	}
+	j, _ := json.MarshalIndent(v, "", "  ")
+	t.Logf("Coalesced Values: %s", string(j))
+
+	subchartValues, ok := v["spouter"].(map[string]interface{})
+	if !ok {
+		t.Errorf("Subchart values not found")
+	}
+
+	if _, ok := subchartValues["foo"]; ok {
+		t.Errorf("Expected key foo to be removed, still present")
+	}
+}
+
 func TestPathValue(t *testing.T) {
 	doc := `
 title: "Moby Dick"
@@ -583,5 +617,61 @@ anotherNewKey:
 		if !reflect.DeepEqual(expectedRes, d) {
 			t.Errorf("%s: Expected %v, but got %v", name, expectedRes, d)
 		}
+	}
+}
+
+func TestOverriteTableItemWithNonTableValue(t *testing.T) {
+	// src has a table value for "foo"
+	src := map[string]interface{}{
+		"foo": map[string]interface{}{
+			"baz": "boz",
+		},
+	}
+
+	// dst has a non-table value for "foo"
+	dst := map[string]interface{}{
+		"foo": "bar",
+	}
+
+	// result - this may print a warning, but we has always "worked"
+	result := coalesceTables(dst, src, "")
+	expected := map[string]interface{}{
+		"foo": "bar",
+	}
+
+	if !reflect.DeepEqual(result, expected) {
+		t.Errorf("Expected %v, but got %v", expected, result)
+	}
+}
+
+func TestSubchartCoaleseWithNullValue(t *testing.T) {
+	v, err := CoalesceValues(&chart.Chart{
+		Metadata: &chart.Metadata{Name: "demo"},
+		Dependencies: []*chart.Chart{
+			{
+				Metadata: &chart.Metadata{Name: "logstash"},
+				Values: &chart.Config{
+					Raw: `livenessProbe: {httpGet: {path: "/", port: monitor}}`,
+				},
+			},
+		},
+		Values: &chart.Config{
+			Raw: `logstash: {livenessProbe: {httpGet: null, exec: "/bin/true"}}`,
+		},
+	}, &chart.Config{})
+	if err != nil {
+		t.Errorf("Failed with %s", err)
+	}
+	result := v.AsMap()
+	expected := map[string]interface{}{
+		"logstash": map[string]interface{}{
+			"global": map[string]interface{}{},
+			"livenessProbe": map[string]interface{}{
+				"exec": "/bin/true",
+			},
+		},
+	}
+	if !reflect.DeepEqual(result, expected) {
+		t.Errorf("got %+v, expected %+v", result, expected)
 	}
 }

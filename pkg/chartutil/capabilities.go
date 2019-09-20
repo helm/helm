@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+//go:generate go run generator/capabilities_default_versions_generate.go
 
 package chartutil
 
@@ -24,14 +25,15 @@ import (
 )
 
 var (
-	// DefaultVersionSet is the default version set, which includes only Core V1 ("v1").
-	DefaultVersionSet = NewVersionSet("v1")
+	// DefaultVersionSet is the default version set in included in Kubernetes for workloads
+	// Default versions as of Kubernetes 1.14
+	DefaultVersionSet = NewVersionSet(defaultVersions()...)
 
 	// DefaultKubeVersion is the default kubernetes version
 	DefaultKubeVersion = &version.Info{
 		Major:      "1",
-		Minor:      "9",
-		GitVersion: "v1.9.0",
+		Minor:      "14",
+		GitVersion: "v1.14.0",
 		GoVersion:  runtime.Version(),
 		Compiler:   runtime.Compiler,
 		Platform:   fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),

@@ -38,7 +38,7 @@ const (
 	Status_PENDING_INSTALL Status_Code = 6
 	// Status_PENDING_UPGRADE indicates that an upgrade operation is underway.
 	Status_PENDING_UPGRADE Status_Code = 7
-	// Status_PENDING_ROLLBACK indicates that an rollback operation is underway.
+	// Status_PENDING_ROLLBACK indicates that a rollback operation is underway.
 	Status_PENDING_ROLLBACK Status_Code = 8
 )
 

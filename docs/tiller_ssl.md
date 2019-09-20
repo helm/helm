@@ -312,6 +312,6 @@ If your tiller certificate has expired, you'll need to sign a new certificate, b
 
 ## References
 
-https://github.com/denji/golang-tls
-https://www.openssl.org/docs/
-https://jamielinux.com/docs/openssl-certificate-authority/sign-server-and-client-certificates.html
+- https://github.com/denji/golang-tls  
+- https://www.openssl.org/docs/
+- https://jamielinux.com/docs/openssl-certificate-authority/sign-server-and-client-certificates.html

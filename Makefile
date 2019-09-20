@@ -141,6 +141,10 @@ docker-test-style: check-docker
 protoc:
 	$(MAKE) -C _proto/ all
 
+.PHONY: generate
+generate:
+	$(GO) generate ./...
+
 .PHONY: docs
 docs: build
 	@scripts/update-docs.sh

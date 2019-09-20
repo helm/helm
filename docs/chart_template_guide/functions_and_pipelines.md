@@ -159,7 +159,7 @@ Operators are implemented as functions that return a boolean value. To use `eq`,
 {{ end }}
 
 
-{{/* do not include the body of this if statement because unset variables evaluate to false and .Values.setVariable was negated with the not function. */}}
+{{/* include the body of this if statement when the variable .Values.anUnsetVariable is set or .values.aSetVariable is not set */}}
 {{ if or .Values.anUnsetVariable (not .Values.aSetVariable) }}
    {{ ... }}
 {{ end }}

@@ -25,7 +25,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	migrate "github.com/rubenv/sql-migrate"
 
-	// Import pq for potgres dialect
+	// Import pq for postgres dialect
 	_ "github.com/lib/pq"
 
 	rspb "k8s.io/helm/pkg/proto/hapi/release"
@@ -199,7 +199,7 @@ func (s *SQL) Query(labels map[string]string) ([]*rspb.Release, error) {
 			sqlFilter[dbField] = val
 		} else {
 			s.Log("unknown label %s", key)
-			return nil, fmt.Errorf("unknow label %s", key)
+			return nil, fmt.Errorf("unknown label %s", key)
 		}
 	}
 	sort.Strings(sqlFilterKeys)
