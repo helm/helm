@@ -26,6 +26,7 @@ or [pull request](https://github.com/helm/helm/pulls).
 - [CI/CD with Jenkins, Kubernetes, and Helm](https://www.youtube.com/watch?v=NVoln4HdZOY): AKA "The Infamous Croc Hunter Video".
 - [Helm with Michelle Noorali and Matthew Butcher](https://gcppodcast.com/post/episode-50-helm-with-michelle-noorali-and-matthew-butcher/): The official Google CloudPlatform Podcast interviews Michelle and Matt about Helm.
 - [KubeCon2016: Delivering Kubernetes-Native Applications by Michelle Noorali](https://www.youtube.com/watch?v=zBc1goRfk3k&index=49&list=PLj6h78yzYM2PqgIGU1Qmi8nY7dqn9PCr4)
+- [Helm - The Kubernetes Package Manager](https://www.udemy.com/course/helm-the-kubernetes-package-manager-course/?couponCode=HELM15)
 
 ## Helm Plugins
 
