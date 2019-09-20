@@ -134,14 +134,8 @@ func (w *waiter) waitForResources(created ResourceList) error {
 					return false, nil
 				}
 
-			case *corev1.ReplicationController:
-				ok, err = w.podsReadyForObject(value.Namespace, value)
-			case *extensionsv1beta1.ReplicaSet:
-				ok, err = w.podsReadyForObject(value.Namespace, value)
-			case *appsv1beta2.ReplicaSet:
-				ok, err = w.podsReadyForObject(value.Namespace, value)
-			case *appsv1.ReplicaSet:
-				ok, err = w.podsReadyForObject(value.Namespace, value)
+			case *corev1.ReplicationController, *extensionsv1beta1.ReplicaSet, *appsv1beta2.ReplicaSet, *appsv1.ReplicaSet:
+				ok, err = w.podsReadyForObject(v.Namespace, value)
 			}
 			if !ok || err != nil {
 				return false, err
