@@ -19,6 +19,7 @@ package action
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -52,8 +53,9 @@ type Upgrade struct {
 	// Recreate will (if true) recreate pods after a rollback.
 	Recreate bool
 	// MaxHistory limits the maximum number of revisions saved per release
-	MaxHistory int
-	Atomic     bool
+	MaxHistory    int
+	Atomic        bool
+	CleanupOnFail bool
 }
 
 // NewUpgrade creates a new Upgrade object with the given configuration.
@@ -210,7 +212,7 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 	// pre-upgrade hooks
 	if !u.DisableHooks {
 		if err := u.cfg.execHook(upgradedRelease, release.HookPreUpgrade, u.Timeout); err != nil {
-			return u.failRelease(upgradedRelease, fmt.Errorf("pre-upgrade hooks failed: %s", err))
+			return u.failRelease(upgradedRelease, kube.ResourceList{}, fmt.Errorf("pre-upgrade hooks failed: %s", err))
 		}
 	} else {
 		u.cfg.Log("upgrade hooks disabled for %s", upgradedRelease.Name)
@@ -219,7 +221,7 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 	results, err := u.cfg.KubeClient.Update(current, target, u.Force)
 	if err != nil {
 		u.cfg.recordRelease(originalRelease)
-		return u.failRelease(upgradedRelease, err)
+		return u.failRelease(upgradedRelease, results.Created, err)
 	}
 
 	if u.Recreate {
@@ -235,14 +237,14 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 	if u.Wait {
 		if err := u.cfg.KubeClient.Wait(target, u.Timeout); err != nil {
 			u.cfg.recordRelease(originalRelease)
-			return u.failRelease(upgradedRelease, err)
+			return u.failRelease(upgradedRelease, results.Created, err)
 		}
 	}
 
 	// post-upgrade hooks
 	if !u.DisableHooks {
 		if err := u.cfg.execHook(upgradedRelease, release.HookPostUpgrade, u.Timeout); err != nil {
-			return u.failRelease(upgradedRelease, fmt.Errorf("post-upgrade hooks failed: %s", err))
+			return u.failRelease(upgradedRelease, results.Created, fmt.Errorf("post-upgrade hooks failed: %s", err))
 		}
 	}
 
@@ -255,13 +257,25 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 	return upgradedRelease, nil
 }
 
-func (u *Upgrade) failRelease(rel *release.Release, err error) (*release.Release, error) {
+func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, err error) (*release.Release, error) {
 	msg := fmt.Sprintf("Upgrade %q failed: %s", rel.Name, err)
 	u.cfg.Log("warning: %s", msg)
 
 	rel.Info.Status = release.StatusFailed
 	rel.Info.Description = msg
 	u.cfg.recordRelease(rel)
+	if u.CleanupOnFail {
+		u.cfg.Log("Cleanup on fail set, cleaning up %d resources", len(created))
+		_, errs := u.cfg.KubeClient.Delete(created)
+		if errs != nil {
+			var errorList []string
+			for _, e := range errs {
+				errorList = append(errorList, e.Error())
+			}
+			return rel, errors.Wrapf(fmt.Errorf("unable to cleanup resources: %s", strings.Join(errorList, ", ")), "an error occurred while cleaning up resources. original upgrade error: %s", err)
+		}
+		u.cfg.Log("Resource cleanup complete")
+	}
 	if u.Atomic {
 		u.cfg.Log("Upgrade failed and atomic is set, rolling back to last successful release")
 

@@ -19,6 +19,7 @@ package action
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -32,13 +33,14 @@ import (
 type Rollback struct {
 	cfg *Configuration
 
-	Version      int
-	Timeout      time.Duration
-	Wait         bool
-	DisableHooks bool
-	DryRun       bool
-	Recreate     bool // will (if true) recreate pods after a rollback.
-	Force        bool // will (if true) force resource upgrade through uninstall/recreate if needed
+	Version       int
+	Timeout       time.Duration
+	Wait          bool
+	DisableHooks  bool
+	DryRun        bool
+	Recreate      bool // will (if true) recreate pods after a rollback.
+	Force         bool // will (if true) force resource upgrade through uninstall/recreate if needed
+	CleanupOnFail bool
 }
 
 // NewRollback creates a new Rollback object with the given configuration.
@@ -66,6 +68,7 @@ func (r *Rollback) Run(name string) error {
 			return err
 		}
 	}
+
 	r.cfg.Log("performing rollback of %s", name)
 	if _, err := r.performRollback(currentRelease, targetRelease); err != nil {
 		return err
@@ -165,6 +168,18 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		targetRelease.Info.Description = msg
 		r.cfg.recordRelease(currentRelease)
 		r.cfg.recordRelease(targetRelease)
+		if r.CleanupOnFail {
+			r.cfg.Log("Cleanup on fail set, cleaning up %d resources", len(results.Created))
+			_, errs := r.cfg.KubeClient.Delete(results.Created)
+			if errs != nil {
+				var errorList []string
+				for _, e := range errs {
+					errorList = append(errorList, e.Error())
+				}
+				return targetRelease, errors.Wrapf(fmt.Errorf("unable to cleanup resources: %s", strings.Join(errorList, ", ")), "an error occurred while cleaning up resources. original rollback error: %s", err)
+			}
+			r.cfg.Log("Resource cleanup complete")
+		}
 		return targetRelease, err
 	}
 

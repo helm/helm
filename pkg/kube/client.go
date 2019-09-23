@@ -129,10 +129,13 @@ func (c *Client) Build(reader io.Reader) (ResourceList, error) {
 	return result, scrubValidationError(err)
 }
 
-// Update reads in the current configuration and a target configuration from io.reader
-// and creates resources that don't already exists, updates resources that have been modified
-// in the target configuration and deletes resources from the current configuration that are
-// not present in the target configuration.
+// Update takes the current list of objects and target list of objects and
+// creates resources that don't already exists, updates resources that have been
+// modified in the target configuration, and deletes resources from the current
+// configuration that are not present in the target configuration. If an error
+// occurs, a Result will still be returned with the error, containing all
+// resource updates, creations, and deletions that were attempted. These can be
+// used for cleanup or other logging purposes.
 func (c *Client) Update(original, target ResourceList, force bool) (*Result, error) {
 	updateErrors := []string{}
 	res := &Result{}
@@ -149,13 +152,13 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 				return errors.Wrap(err, "could not get information about the resource")
 			}
 
+			// Append the created resource to the results, even if something fails
+			res.Created = append(res.Created, info)
+
 			// Since the resource does not exist, create it.
 			if err := createResource(info); err != nil {
 				return errors.Wrap(err, "failed to create resource")
 			}
-
-			// Append the created resource to the results
-			res.Created = append(res.Created, info)
 
 			kind := info.Mapping.GroupVersionKind.Kind
 			c.Log("Created a new %s called %q\n", kind, info.Name)
@@ -180,18 +183,17 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 
 	switch {
 	case err != nil:
-		return nil, err
+		return res, err
 	case len(updateErrors) != 0:
-		return nil, errors.Errorf(strings.Join(updateErrors, " && "))
+		return res, errors.Errorf(strings.Join(updateErrors, " && "))
 	}
 
 	for _, info := range original.Difference(target) {
 		c.Log("Deleting %q in %s...", info.Name, info.Namespace)
+		res.Deleted = append(res.Deleted, info)
 		if err := deleteResource(info); err != nil {
 			c.Log("Failed to delete %q, err: %s", info.Name, err)
-		} else {
-			// Only append ones we succeeded in deleting
-			res.Deleted = append(res.Deleted, info)
+			return res, errors.Wrapf(err, "Failed to delete %q", info.Name)
 		}
 	}
 	return res, nil
