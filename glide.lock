@@ -1,5 +1,5 @@
-hash: 277f7be1b21149bc06b361fa61c0a2ff81a7f00c59a6e35c21b6516f6ddfd9f7
-updated: 2019-07-03T21:59:06.87934+02:00
+hash: 13c07a8e64f0777d08cd03d5edba6f254621ec1ee8e3c7b3ef26efc682b643ce
+updated: 2019-09-18T12:07:21.888497-04:00
 imports:
 - name: cloud.google.com/go
   version: 0ebda48a7f143b1cce9eb37a8c1106ac762a3430
@@ -121,7 +121,7 @@ imports:
 - name: github.com/google/gofuzz
   version: 24818f796faf91cd76ec7bddd72458fbced7a6c1
 - name: github.com/google/uuid
-  version: 064e2069ce9c359c118179501254f67d7d37ba24
+  version: 0cd6bf5da1e1c83f8b45653022c74f71af0538a4
 - name: github.com/googleapis/gnostic
   version: 0c5108395e2debce0d731cf0287ddf7242066aba
   subpackages:
@@ -183,11 +183,11 @@ imports:
 - name: github.com/Masterminds/goutils
   version: 41ac8693c5c10a92ea1ff5ac3a7f95646f6123b0
 - name: github.com/Masterminds/semver
-  version: c7af12943936e8c39859482e61f0574c2fd7fc75
+  version: 805c489aa98f412e79eb308a37996bf9d8b1c91e
 - name: github.com/Masterminds/sprig
-  version: 258b00ffa7318e8b109a141349980ffbd30a35db
+  version: 2691a9cba2adee8d9a60100a1bc49e770f97b7db
 - name: github.com/Masterminds/vcs
-  version: 3084677c2c188840777bff30054f2b553729d329
+  version: f94282d8632a0620f79f0c6ff0e82604e8c5c85b
 - name: github.com/mattn/go-runewidth
   version: d6bea18f789704b5f83375793155289da36a3c7f
 - name: github.com/matttproud/golang_protobuf_extensions
@@ -247,7 +247,7 @@ imports:
   subpackages:
   - doc
 - name: github.com/spf13/pflag
-  version: 298182f68c66c05229eb03ac171abe6e309ee79a
+  version: e8f29969b682c41a730f8f08b76033b120498464
 - name: github.com/technosophos/moniker
   version: a5dbd03a2245d554160e3ae6bfdcf969fe58b431
 - name: golang.org/x/crypto
