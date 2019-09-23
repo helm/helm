@@ -171,6 +171,8 @@ func (l *List) Run() ([]*release.Release, error) {
 		return results, nil
 	}
 
+	results = filterList(results)
+
 	// Unfortunately, we have to sort before truncating, which can incur substantial overhead
 	l.sort(results)
 
@@ -216,6 +218,30 @@ func (l *List) sort(rels []*release.Release) {
 	default:
 		releaseutil.SortByName(rels)
 	}
+}
+
+// filterList returns a list scrubbed of old releases.
+func filterList(rels []*release.Release) []*release.Release {
+	idx := map[string]int{}
+
+	for _, r := range rels {
+		name, version := r.Name, r.Version
+		if max, ok := idx[name]; ok {
+			// check if we have a greater version already
+			if max > version {
+				continue
+			}
+		}
+		idx[name] = version
+	}
+
+	uniq := make([]*release.Release, 0, len(idx))
+	for _, r := range rels {
+		if idx[r.Name] == r.Version {
+			uniq = append(uniq, r)
+		}
+	}
+	return uniq
 }
 
 // setStateMask calculates the state mask based on parameters.
