@@ -103,7 +103,7 @@ __helm_list_repos()
 {
     __helm_debug "${FUNCNAME[0]}: c is $c words[c] is ${words[c]}"
     local out
-    if out=$(helm repo list | tail +2 | cut -f1 2>/dev/null); then
+    if out=$(helm repo list 2>/dev/null | tail +2 | cut -f1); then
         COMPREPLY=( $( compgen -W "${out[*]}" -- "$cur" ) )
     fi
 }
@@ -111,7 +111,7 @@ __helm_list_plugins()
 {
     __helm_debug "${FUNCNAME[0]}: c is $c words[c] is ${words[c]}"
     local out
-    if out=$(helm plugin list | tail +2 | cut -f1 2>/dev/null); then
+    if out=$(helm plugin list 2>/dev/null | tail +2 | cut -f1); then
         COMPREPLY=( $( compgen -W "${out[*]}" -- "$cur" ) )
     fi
 }
