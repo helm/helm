@@ -91,6 +91,8 @@ func (c *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get Kubernetes discovery client")
 	}
+	// force a discovery cache invalidation to always fetch the latest server version/capabilities.
+	dc.Invalidate()
 	kubeVersion, err := dc.ServerVersion()
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get server version from Kubernetes")
