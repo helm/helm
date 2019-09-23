@@ -27,9 +27,11 @@ import (
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/cli/values"
+	"helm.sh/helm/v3/pkg/postrender"
 )
 
 const outputFlag = "output"
+const postRenderFlag = "post-renderer"
 
 func addValueOptionsFlags(f *pflag.FlagSet, v *values.Options) {
 	f.StringSliceVarP(&v.ValueFiles, "values", "f", []string{}, "specify values in a YAML file or a URL (can specify multiple)")
@@ -92,5 +94,35 @@ func (o *outputValue) Set(s string) error {
 		return err
 	}
 	*o = outputValue(outfmt)
+	return nil
+}
+
+func bindPostRenderFlag(cmd *cobra.Command, varRef *postrender.PostRenderer) {
+	cmd.Flags().Var(&postRenderer{varRef}, postRenderFlag, "the path to an executable to be used for post rendering. If a non-absolute path is provided, the plugin directory and $PATH will be searched")
+	// Setup shell completion for the flag
+	cmd.MarkFlagCustom(outputFlag, "__helm_output_options")
+}
+
+type postRenderer struct {
+	renderer *postrender.PostRenderer
+}
+
+func (p postRenderer) String() string {
+	return "exec"
+}
+
+func (p postRenderer) Type() string {
+	return "postrenderer"
+}
+
+func (p postRenderer) Set(s string) error {
+	if s == "" {
+		return nil
+	}
+	pr, err := postrender.NewExec(s)
+	if err != nil {
+		return err
+	}
+	*p.renderer = pr
 	return nil
 }

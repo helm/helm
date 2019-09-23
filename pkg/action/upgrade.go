@@ -29,6 +29,7 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/kube"
+	"helm.sh/helm/v3/pkg/postrender"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/releaseutil"
 )
@@ -59,6 +60,7 @@ type Upgrade struct {
 	CleanupOnFail bool
 	SubNotes      bool
 	Description   string
+	PostRenderer  postrender.PostRenderer
 }
 
 // NewUpgrade creates a new Upgrade object with the given configuration.
@@ -161,7 +163,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		return nil, nil, err
 	}
 
-	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false)
+	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer)
 	if err != nil {
 		return nil, nil, err
 	}
