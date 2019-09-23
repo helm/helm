@@ -34,13 +34,13 @@ import (
 //	- A chart has access to all of the variables for it, as well as all of
 //		the values destined for its dependencies.
 func CoalesceValues(chrt *chart.Chart, vals map[string]interface{}) (Values, error) {
-	if vals == nil {
-		vals = make(map[string]interface{})
+	// create a copy of vals and then pass it to coalesce
+	// and coalesceDeps, as both will mutate the passed values
+	valsCopy := copyMap(vals)
+	if _, err := coalesce(chrt, valsCopy); err != nil {
+		return valsCopy, err
 	}
-	if _, err := coalesce(chrt, vals); err != nil {
-		return vals, err
-	}
-	return coalesceDeps(chrt, vals)
+	return coalesceDeps(chrt, valsCopy)
 }
 
 // coalesce coalesces the dest values and the chart values, giving priority to the dest values.

@@ -19,6 +19,8 @@ package chartutil
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // ref: http://www.yaml.org/spec/1.2/spec.html#id2803362
@@ -48,11 +50,20 @@ pequod:
 `)
 
 func TestCoalesceValues(t *testing.T) {
+	is := assert.New(t)
 	c := loadChart(t, "testdata/moby")
 
 	vals, err := ReadValues(testCoalesceValuesYaml)
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	// taking a copy of the values before passing it
+	// to CoalesceValues as argument, so that we can
+	// use it for asserting later
+	valsCopy := make(Values, len(vals))
+	for key, value := range vals {
+		valsCopy[key] = value
 	}
 
 	v, err := CoalesceValues(c, vals)
@@ -102,6 +113,9 @@ func TestCoalesceValues(t *testing.T) {
 			t.Errorf("Expected key %q to be removed, still present", nullKey)
 		}
 	}
+
+	// CoalesceValues should not mutate the passed arguments
+	is.Equal(valsCopy, vals)
 }
 
 func TestCoalesceTables(t *testing.T) {

@@ -166,6 +166,13 @@ func buildChart(opts ...chartOption) *chart.Chart {
 	return c.Chart
 }
 
+func withSampleValues() chartOption {
+	values := map[string]interface{}{"someKey": "someValue"}
+	return func(opts *chartOptions) {
+		opts.Values = values
+	}
+}
+
 func withNotes(notes string) chartOption {
 	return func(opts *chartOptions) {
 		opts.Templates = append(opts.Templates, &chart.File{

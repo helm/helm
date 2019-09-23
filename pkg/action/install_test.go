@@ -74,6 +74,33 @@ func TestInstallRelease(t *testing.T) {
 	is.Equal(rel.Info.Description, "Install complete")
 }
 
+func TestInstallReleaseWithValues(t *testing.T) {
+	is := assert.New(t)
+	instAction := installAction(t)
+	userVals := map[string]interface{}{}
+	expectedUserValues := map[string]interface{}{}
+	res, err := instAction.Run(buildChart(withSampleValues()), userVals)
+	if err != nil {
+		t.Fatalf("Failed install: %s", err)
+	}
+	is.Equal(res.Name, "test-install-release", "Expected release name.")
+	is.Equal(res.Namespace, "spaced")
+
+	rel, err := instAction.cfg.Releases.Get(res.Name, res.Version)
+	is.NoError(err)
+
+	is.Len(rel.Hooks, 1)
+	is.Equal(rel.Hooks[0].Manifest, manifestWithHook)
+	is.Equal(rel.Hooks[0].Events[0], release.HookPostInstall)
+	is.Equal(rel.Hooks[0].Events[1], release.HookPreDelete, "Expected event 0 is pre-delete")
+
+	is.NotEqual(len(res.Manifest), 0)
+	is.NotEqual(len(rel.Manifest), 0)
+	is.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world")
+	is.Equal("Install complete", rel.Info.Description)
+	is.Equal(expectedUserValues, rel.Config)
+}
+
 func TestInstallReleaseClientOnly(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
