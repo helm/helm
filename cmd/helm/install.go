@@ -42,7 +42,9 @@ a path to an unpacked chart directory or a URL.
 
 To override values in a chart, use either the '--values' flag and pass in a file
 or use the '--set' flag and pass configuration from the command line, to force
-a string value use '--set-string'.
+a string value use '--set-string'. In case a value is large and therefore
+you want not to use neither '--values' nor '--set', use '--set-file' to read the
+single large value from file.
 
 	$ helm install -f myvalues.yaml myredis ./redis
 
@@ -53,6 +55,9 @@ or
 or
 
 	$ helm install --set-string long_int=1234567890 myredis ./redis
+
+or
+	$ helm install --set-file my_script=dothings.sh myredis ./redis
 
 You can specify the '--values'/'-f' flag multiple times. The priority will be given to the
 last (right-most) file specified. For example, if both myvalues.yaml and override.yaml
@@ -140,6 +145,7 @@ func addValueOptionsFlags(f *pflag.FlagSet, v *values.Options) {
 	f.StringSliceVarP(&v.ValueFiles, "values", "f", []string{}, "specify values in a YAML file or a URL(can specify multiple)")
 	f.StringArrayVar(&v.Values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.StringArrayVar(&v.StringValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	f.StringArrayVar(&v.FileValues, "set-file", []string{}, "set values from respective files specified via the command line (can specify multiple or separate values with commas: key1=path1,key2=path2)")
 }
 
 func addChartPathOptionsFlags(f *pflag.FlagSet, c *action.ChartPathOptions) {
