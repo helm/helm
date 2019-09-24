@@ -17,6 +17,8 @@ package main
 
 import (
 	"io"
+	"os"
+	"path/filepath"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -76,7 +78,25 @@ func runCompletion(out io.Writer, cmd *cobra.Command, args []string) error {
 }
 
 func runCompletionBash(out io.Writer, cmd *cobra.Command) error {
-	return cmd.Root().GenBashCompletion(out)
+	err := cmd.Root().GenBashCompletion(out)
+
+	// In case the user renamed the helm binary (e.g., to be able to run
+	// both helm2 and helm3), we hook the new binary name to the completion function
+	if binary := filepath.Base(os.Args[0]); binary != "helm" {
+		renamedBinaryHook := `
+# Hook the command used to generate the completion script
+# to the helm completion function to handle the case where
+# the user renamed the helm binary
+if [[ $(type -t compopt) = "builtin" ]]; then
+    complete -o default -F __start_helm ` + binary + `
+else
+    complete -o default -o nospace -F __start_helm ` + binary + `
+fi
+`
+		out.Write([]byte(renamedBinaryHook))
+	}
+
+	return err
 }
 
 func runCompletionZsh(out io.Writer, cmd *cobra.Command) error {
