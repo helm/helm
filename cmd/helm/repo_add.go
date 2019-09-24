@@ -17,11 +17,14 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
+	"time"
 
+	"github.com/gofrs/flock"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -75,6 +78,18 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 }
 
 func (o *repoAddOptions) run(out io.Writer) error {
+	// Lock the repository file for concurrent goroutines or processes synchronization
+	fileLock := flock.New(o.repoFile)
+	lockCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	locked, err := fileLock.TryLockContext(lockCtx, time.Second)
+	if err == nil && locked {
+		defer fileLock.Unlock()
+	}
+	if err != nil {
+		return err
+	}
+
 	b, err := ioutil.ReadFile(o.repoFile)
 	if err != nil && !os.IsNotExist(err) {
 		return err
