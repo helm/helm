@@ -16,7 +16,6 @@ limitations under the License.
 package main
 
 import (
-	"bytes"
 	"io"
 
 	"github.com/pkg/errors"
@@ -211,9 +210,7 @@ __helm_convert_bash_to_zsh() {
 `
 	out.Write([]byte(zshInitialization))
 
-	buf := new(bytes.Buffer)
-	cmd.Root().GenBashCompletion(buf)
-	out.Write(buf.Bytes())
+	runCompletionBash(out, cmd)
 
 	zshTail := `
 BASH_COMPLETION_EOF
