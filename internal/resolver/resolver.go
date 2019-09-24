@@ -71,11 +71,20 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 			return nil, errors.Wrapf(err, "dependency %q has an invalid version/constraint format", d.Name)
 		}
 
-		idx := filepath.Join(r.cachepath, helmpath.CacheIndexFile(repoNames[d.Name]))
+		repoName := repoNames[d.Name]
+		// if the repository was not defined, but the dependency defines a repository url, bypass the cache
+		if repoName == "" && d.Repository != "" {
+			locked[i] = &chart.Dependency{
+				Name:       d.Name,
+				Repository: d.Repository,
+				Version:    d.Version,
+			}
+			continue
+		}
 
-		repoIndex, err := repo.LoadIndexFile(idx)
+		repoIndex, err := repo.LoadIndexFile(filepath.Join(r.cachepath, helmpath.CacheIndexFile(repoName)))
 		if err != nil {
-			return nil, errors.Wrapf(err, "no cached repo found. (try 'helm repo update') %s", idx)
+			return nil, errors.Wrapf(err, "no cached repository for %s found. (try 'helm repo update')", repoName)
 		}
 
 		vs, ok := repoIndex.Entries[d.Name]

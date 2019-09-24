@@ -77,7 +77,7 @@ func TestFindChartURL(t *testing.T) {
 	version := "0.1.0"
 	repoURL := "http://example.com/charts"
 
-	churl, username, password, err := findChartURL(name, version, repoURL, repos)
+	churl, username, password, err := m.findChartURL(name, version, repoURL, repos)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,11 +106,11 @@ func TestGetRepoNames(t *testing.T) {
 		err    bool
 	}{
 		{
-			name: "no repo definition failure",
+			name: "no repo definition, but references a url",
 			req: []*chart.Dependency{
 				{Name: "oedipus-rex", Repository: "http://example.com/test"},
 			},
-			err: true,
+			expect: map[string]string{"http://example.com/test": "http://example.com/test"},
 		},
 		{
 			name: "no repo definition failure -- stable repo",

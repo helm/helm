@@ -40,7 +40,11 @@ func TestResolve(t *testing.T) {
 			req: []*chart.Dependency{
 				{Name: "oedipus-rex", Repository: "http://example.com", Version: "1.0.0"},
 			},
-			err: true,
+			expect: &chart.Lock{
+				Dependencies: []*chart.Dependency{
+					{Name: "oedipus-rex", Repository: "http://example.com", Version: "1.0.0"},
+				},
+			},
 		},
 		{
 			name: "chart not found failure",
@@ -90,39 +94,41 @@ func TestResolve(t *testing.T) {
 	repoNames := map[string]string{"alpine": "kubernetes-charts", "redis": "kubernetes-charts"}
 	r := New("testdata/chartpath", "testdata/repository")
 	for _, tt := range tests {
-		l, err := r.Resolve(tt.req, repoNames)
-		if err != nil {
-			if tt.err {
-				continue
+		t.Run(tt.name, func(t *testing.T) {
+			l, err := r.Resolve(tt.req, repoNames)
+			if err != nil {
+				if tt.err {
+					return
+				}
+				t.Fatal(err)
 			}
-			t.Fatal(err)
-		}
 
-		if tt.err {
-			t.Fatalf("Expected error in test %q", tt.name)
-		}
+			if tt.err {
+				t.Fatalf("Expected error in test %q", tt.name)
+			}
 
-		if h, err := HashReq(tt.expect.Dependencies); err != nil {
-			t.Fatal(err)
-		} else if h != l.Digest {
-			t.Errorf("%q: hashes don't match.", tt.name)
-		}
+			if h, err := HashReq(tt.expect.Dependencies); err != nil {
+				t.Fatal(err)
+			} else if h != l.Digest {
+				t.Errorf("%q: hashes don't match.", tt.name)
+			}
 
-		// Check fields.
-		if len(l.Dependencies) != len(tt.req) {
-			t.Errorf("%s: wrong number of dependencies in lock", tt.name)
-		}
-		d0 := l.Dependencies[0]
-		e0 := tt.expect.Dependencies[0]
-		if d0.Name != e0.Name {
-			t.Errorf("%s: expected name %s, got %s", tt.name, e0.Name, d0.Name)
-		}
-		if d0.Repository != e0.Repository {
-			t.Errorf("%s: expected repo %s, got %s", tt.name, e0.Repository, d0.Repository)
-		}
-		if d0.Version != e0.Version {
-			t.Errorf("%s: expected version %s, got %s", tt.name, e0.Version, d0.Version)
-		}
+			// Check fields.
+			if len(l.Dependencies) != len(tt.req) {
+				t.Errorf("%s: wrong number of dependencies in lock", tt.name)
+			}
+			d0 := l.Dependencies[0]
+			e0 := tt.expect.Dependencies[0]
+			if d0.Name != e0.Name {
+				t.Errorf("%s: expected name %s, got %s", tt.name, e0.Name, d0.Name)
+			}
+			if d0.Repository != e0.Repository {
+				t.Errorf("%s: expected repo %s, got %s", tt.name, e0.Repository, d0.Repository)
+			}
+			if d0.Version != e0.Version {
+				t.Errorf("%s: expected version %s, got %s", tt.name, e0.Version, d0.Version)
+			}
+		})
 	}
 }
 
