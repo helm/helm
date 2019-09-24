@@ -39,6 +39,8 @@ const (
 	TemplatesDir = "templates"
 	// ChartsDir is the relative directory name for charts dependencies.
 	ChartsDir = "charts"
+	// TemplatesTestsDir is the relative directory name for tests.
+	TemplatesTestsDir = TemplatesDir + sep + "tests"
 	// IgnorefileName is the name of the Helm ignore file.
 	IgnorefileName = ".helmignore"
 	// IngressFileName is the name of the example ingress file.
@@ -47,10 +49,14 @@ const (
 	DeploymentName = TemplatesDir + sep + "deployment.yaml"
 	// ServiceName is the name of the example service file.
 	ServiceName = TemplatesDir + sep + "service.yaml"
+	// ServiceAccountName is the name of the example serviceaccount file.
+	ServiceAccountName = TemplatesDir + sep + "serviceaccount.yaml"
 	// NotesName is the name of the example NOTES.txt file.
 	NotesName = TemplatesDir + sep + "NOTES.txt"
-	// HelpersName is the name of the example NOTES.txt file.
+	// HelpersName is the name of the example helpers file.
 	HelpersName = TemplatesDir + sep + "_helpers.tpl"
+	// TestConnectionName is the name of the example test file.
+	TestConnectionName = TemplatesTestsDir + sep + "test-connection.yaml"
 )
 
 const sep = string(filepath.Separator)
@@ -88,8 +94,27 @@ image:
   repository: nginx
   pullPolicy: IfNotPresent
 
+imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name:
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
 
 service:
   type: ClusterIP
@@ -103,11 +128,10 @@ ingress:
   hosts:
     - host: chart-example.local
       paths: []
-
   tls: []
-    # - secretName: chart-example-tls
-    #   hosts:
-    #     - chart-example.local
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
 
 resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious
@@ -149,16 +173,13 @@ const defaultIgnore = `# Patterns to ignore when building packages.
 .project
 .idea/
 *.tmproj
+.vscode/
 `
 
 const defaultIngress = `{{- if .Values.ingress.enabled -}}
 {{- $fullName := include "<CHARTNAME>.fullname" . -}}
 {{- $svcPort := .Values.service.port -}}
-{{- if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion -}}
 apiVersion: networking.k8s.io/v1
-{{- else -}}
-apiVersion: extensions/v1beta1
-{{- end }}
 kind: Ingress
 metadata:
   name: {{ $fullName }}
@@ -210,8 +231,17 @@ spec:
       labels:
         {{- include "<CHARTNAME>.selectorLabels" . | nindent 8 }}
     spec:
+    {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      serviceAccountName: {{ include "<CHARTNAME>.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
@@ -228,10 +258,10 @@ spec:
               port: http
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-    {{- with .Values.nodeSelector }}
+      {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
-    {{- end }}
+      {{- end }}
     {{- with .Values.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
@@ -259,6 +289,16 @@ spec:
     {{- include "<CHARTNAME>.selectorLabels" . | nindent 4 }}
 `
 
+const defaultServiceAccount = `{{- if .Values.serviceAccount.create -}}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "<CHARTNAME>.serviceAccountName" . }}
+  labels:
+{{ include "<CHARTNAME>.labels" . | nindent 4 }}
+{{- end -}}
+`
+
 const defaultNotes = `1. Get the application URL by running these commands:
 {{- if .Values.ingress.enabled }}
 {{- range $host := .Values.ingress.hosts }}
@@ -267,16 +307,16 @@ const defaultNotes = `1. Get the application URL by running these commands:
   {{- end }}
 {{- end }}
 {{- else if contains "NodePort" .Values.service.type }}
-  export NODE_PORT=$(kubectl get -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "<CHARTNAME>.fullname" . }})
-  export NODE_IP=$(kubectl get nodes -o jsonpath="{.items[0].status.addresses[0].address}")
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "<CHARTNAME>.fullname" . }})
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
   echo http://$NODE_IP:$NODE_PORT
 {{- else if contains "LoadBalancer" .Values.service.type }}
      NOTE: It may take a few minutes for the LoadBalancer IP to be available.
-           You can watch the status of by running 'kubectl get svc -w {{ include "<CHARTNAME>.fullname" . }}'
-  export SERVICE_IP=$(kubectl get svc {{ include "<CHARTNAME>.fullname" . }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+           You can watch the status of by running 'kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "<CHARTNAME>.fullname" . }}'
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "<CHARTNAME>.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
   echo http://$SERVICE_IP:{{ .Values.service.port }}
 {{- else if contains "ClusterIP" .Values.service.type }}
-  export POD_NAME=$(kubectl get pods -l "app.kubernetes.io/name={{ include "<CHARTNAME>.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
+  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "<CHARTNAME>.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
   echo "Visit http://127.0.0.1:8080 to use your application"
   kubectl port-forward $POD_NAME 8080:80
 {{- end }}
@@ -334,6 +374,34 @@ Selector labels
 app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
+
+{{/*
+Create the name of the service account to use
+*/}}
+{{- define "<CHARTNAME>.serviceAccountName" -}}
+{{- if .Values.serviceAccount.create -}}
+    {{ default (include "<CHARTNAME>.fullname" .) .Values.serviceAccount.name }}
+{{- else -}}
+    {{ default "default" .Values.serviceAccount.name }}
+{{- end -}}
+{{- end -}}
+`
+
+const defaultTestConnection = `apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "<CHARTNAME>.fullname" . }}-test-connection"
+  labels:
+{{ include "<CHARTNAME>.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test-success
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ['wget']
+      args:  ['{{ include "<CHARTNAME>.fullname" . }}:{{ .Values.service.port }}']
+  restartPolicy: Never
 `
 
 // CreateFrom creates a new chart, but scaffolds it from the src chart.
@@ -432,6 +500,11 @@ func Create(name, dir string) (string, error) {
 			content: transform(defaultService, name),
 		},
 		{
+			// serviceaccount.yaml
+			path:    filepath.Join(cdir, ServiceAccountName),
+			content: transform(defaultServiceAccount, name),
+		},
+		{
 			// NOTES.txt
 			path:    filepath.Join(cdir, NotesName),
 			content: transform(defaultNotes, name),
@@ -440,6 +513,11 @@ func Create(name, dir string) (string, error) {
 			// _helpers.tpl
 			path:    filepath.Join(cdir, HelpersName),
 			content: transform(defaultHelpers, name),
+		},
+		{
+			// test-connection.yaml
+			path:    filepath.Join(cdir, TestConnectionName),
+			content: transform(defaultTestConnection, name),
 		},
 	}
 
