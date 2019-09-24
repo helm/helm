@@ -39,6 +39,7 @@ chart, the supplied values, and the generated manifest file.
 `
 
 func newGetCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+	var template string
 	client := action.NewGet(cfg)
 
 	cmd := &cobra.Command{
@@ -51,11 +52,19 @@ func newGetCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if template != "" {
+				data := map[string]interface{}{
+					"Release": res,
+				}
+				return tpl(template, data, out)
+			}
 			return printRelease(out, res)
 		},
 	}
 
-	cmd.Flags().IntVar(&client.Version, "revision", 0, "get the named release with revision")
+	f := cmd.Flags()
+	f.IntVar(&client.Version, "revision", 0, "get the named release with revision")
+	f.StringVar(&template, "template", "", "go template for formatting the output, eg: {{.Release.Name}}")
 
 	cmd.AddCommand(newGetValuesCmd(cfg, out))
 	cmd.AddCommand(newGetManifestCmd(cfg, out))
