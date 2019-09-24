@@ -83,10 +83,6 @@ func (l *Lint) Run(paths []string, vals map[string]interface{}) *LintResult {
 func lintChart(path string, vals map[string]interface{}, namespace string, strict bool) (support.Linter, error) {
 	var chartPath string
 	linter := support.Linter{}
-	currentVals := make(map[string]interface{}, len(vals))
-	for key, value := range vals {
-		currentVals[key] = value
-	}
 
 	if strings.HasSuffix(path, ".tgz") {
 		tempDir, err := ioutil.TempDir("", "helm-lint")
@@ -120,5 +116,5 @@ func lintChart(path string, vals map[string]interface{}, namespace string, stric
 		return linter, errLintNoChart
 	}
 
-	return lint.All(chartPath, currentVals, namespace, strict), nil
+	return lint.All(chartPath, vals, namespace, strict), nil
 }
