@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/ghodss/yaml"
@@ -79,7 +80,7 @@ func newStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	settings.AddFlagsTLS(f)
 	f.Int32Var(&status.version, "revision", 0, "If set, display the status of the named release with revision")
-	f.StringVarP(&status.outfmt, "output", "o", "", "Output the status in the specified format (json or yaml)")
+	f.StringVarP(&status.outfmt, "output", "o", "table", "Prints the output in the specified format (json|table|yaml)")
 
 	// set defaults from environment
 	settings.InitTLS(f)
@@ -93,56 +94,82 @@ func (s *statusCmd) run() error {
 		return prettyError(err)
 	}
 
-	switch s.outfmt {
-	case "":
-		PrintStatus(s.out, res)
-		return nil
-	case "json":
-		data, err := json.Marshal(res)
-		if err != nil {
-			return fmt.Errorf("Failed to Marshal JSON output: %s", err)
-		}
-		s.out.Write(data)
-		return nil
-	case "yaml":
-		data, err := yaml.Marshal(res)
-		if err != nil {
-			return fmt.Errorf("Failed to Marshal YAML output: %s", err)
-		}
-		s.out.Write(data)
-		return nil
+	output, err := PrintStatusFormated(s.outfmt, res)
+
+	if err != nil {
+		return err
 	}
 
-	return fmt.Errorf("Unknown output format %q", s.outfmt)
+	fmt.Fprintf(s.out, output)
+
+	return nil
 }
 
-// PrintStatus prints out the status of a release. Shared because also used by
+// PrintStatusFormated prints out the status of a release. Shared because also used by
 // install / upgrade
-func PrintStatus(out io.Writer, res *services.GetReleaseStatusResponse) {
-	if res.Info.LastDeployed != nil {
-		fmt.Fprintf(out, "LAST DEPLOYED: %s\n", timeconv.String(res.Info.LastDeployed))
+func PrintStatusFormated(format string, res *services.GetReleaseStatusResponse) (string, error) {
+	var output string
+	var err error
+
+	switch format {
+	case "table":
+		output = printStatus(res)
+
+	case "json":
+		output, err = printFormatedReleaseStatus(format, res, json.Marshal)
+
+	case "yaml":
+		output, err = printFormatedReleaseStatus(format, res, yaml.Marshal)
+
+	default:
+		err = fmt.Errorf("Unknown output format %q", err)
 	}
-	fmt.Fprintf(out, "NAMESPACE: %s\n", res.Namespace)
-	fmt.Fprintf(out, "STATUS: %s\n", res.Info.Status.Code)
-	fmt.Fprintf(out, "\n")
+
+	return output, err
+}
+
+func printFormatedReleaseStatus(format string, res *services.GetReleaseStatusResponse, obj func(v interface{}) ([]byte, error)) (string, error) {
+	var output string
+	var err error
+
+	o, err := obj(res)
+	if err != nil {
+		return "", fmt.Errorf("Failed to Marshal %s output: %s", strings.ToUpper(format), err)
+	}
+	output = string(o)
+
+	return output, err
+}
+
+func printStatus(res *services.GetReleaseStatusResponse) string {
+	var out strings.Builder
+
+	if res.Info.LastDeployed != nil {
+		fmt.Fprintf(&out, "LAST DEPLOYED: %s\n", timeconv.String(res.Info.LastDeployed))
+	}
+	fmt.Fprintf(&out, "NAMESPACE: %s\n", res.Namespace)
+	fmt.Fprintf(&out, "STATUS: %s\n", res.Info.Status.Code)
+	fmt.Fprintf(&out, "\n")
 	if len(res.Info.Status.Resources) > 0 {
 		re := regexp.MustCompile("  +")
 
-		w := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.TabIndent)
+		w := tabwriter.NewWriter(&out, 0, 0, 2, ' ', tabwriter.TabIndent)
 		fmt.Fprintf(w, "RESOURCES:\n%s\n", re.ReplaceAllString(res.Info.Status.Resources, "\t"))
 		w.Flush()
 	}
 	if res.Info.Status.LastTestSuiteRun != nil {
 		lastRun := res.Info.Status.LastTestSuiteRun
-		fmt.Fprintf(out, "TEST SUITE:\n%s\n%s\n\n%s\n",
+		fmt.Fprintf(&out, "TEST SUITE:\n%s\n%s\n\n%s\n",
 			fmt.Sprintf("Last Started: %s", timeconv.String(lastRun.StartedAt)),
 			fmt.Sprintf("Last Completed: %s", timeconv.String(lastRun.CompletedAt)),
 			formatTestResults(lastRun.Results))
 	}
 
 	if len(res.Info.Status.Notes) > 0 {
-		fmt.Fprintf(out, "NOTES:\n%s\n", res.Info.Status.Notes)
+		fmt.Fprintf(&out, "NOTES:\n%s\n", res.Info.Status.Notes)
 	}
+
+	return out.String()
 }
 
 func formatTestResults(results []*release.TestRun) string {

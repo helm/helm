@@ -17,11 +17,13 @@ limitations under the License.
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
 
 	"github.com/Masterminds/semver"
+	"github.com/ghodss/yaml"
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 
@@ -48,6 +50,18 @@ type searchCmd struct {
 	regexp   bool
 	version  string
 	colWidth uint
+	output   string
+}
+
+type chartElement struct {
+	Name        string
+	Version     string
+	AppVersion  string
+	Description string
+}
+
+type searchResult struct {
+	Charts []*chartElement
 }
 
 func newSearchCmd(out io.Writer) *cobra.Command {
@@ -68,6 +82,7 @@ func newSearchCmd(out io.Writer) *cobra.Command {
 	f.BoolVarP(&sc.versions, "versions", "l", false, "Show the long listing, with each version of each chart on its own line")
 	f.StringVarP(&sc.version, "version", "v", "", "Search using semantic versioning constraints")
 	f.UintVar(&sc.colWidth, "col-width", 60, "Specifies the max column width of output")
+	f.StringVarP(&sc.output, "output", "o", "table", "Prints the output in the specified format (json|table|yaml)")
 
 	return cmd
 }
@@ -95,7 +110,12 @@ func (s *searchCmd) run(args []string) error {
 		return err
 	}
 
-	fmt.Fprintln(s.out, s.formatSearchResults(data, s.colWidth))
+	o, err := s.formatSearchResults(s.output, data, s.colWidth)
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintln(s.out, o)
 
 	return nil
 }
@@ -128,17 +148,53 @@ func (s *searchCmd) applyConstraint(res []*search.Result) ([]*search.Result, err
 	return data, nil
 }
 
-func (s *searchCmd) formatSearchResults(res []*search.Result, colWidth uint) string {
+func (s *searchCmd) formatSearchResults(format string, res []*search.Result, colWidth uint) (string, error) {
+	var output string
+	var err error
+
+	switch format {
+	case "table":
+		if len(res) == 0 {
+			return "No results found", nil
+		}
+		table := uitable.New()
+		table.MaxColWidth = colWidth
+		table.AddRow("NAME", "CHART VERSION", "APP VERSION", "DESCRIPTION")
+		for _, r := range res {
+			table.AddRow(r.Name, r.Chart.Version, r.Chart.AppVersion, r.Chart.Description)
+		}
+		output = table.String()
+
+	case "json":
+		output, err = s.printFormated(format, res, json.Marshal)
+
+	case "yaml":
+		output, err = s.printFormated(format, res, yaml.Marshal)
+	}
+
+	return output, err
+}
+
+func (s *searchCmd) printFormated(format string, res []*search.Result, obj func(v interface{}) ([]byte, error)) (string, error) {
+	var sResult searchResult
+	var output string
+	var err error
+
 	if len(res) == 0 {
-		return "No results found"
+		return "[]", nil
 	}
-	table := uitable.New()
-	table.MaxColWidth = colWidth
-	table.AddRow("NAME", "CHART VERSION", "APP VERSION", "DESCRIPTION")
+
 	for _, r := range res {
-		table.AddRow(r.Name, r.Chart.Version, r.Chart.AppVersion, r.Chart.Description)
+		sResult.Charts = append(sResult.Charts, &chartElement{r.Name, r.Chart.Version, r.Chart.AppVersion, r.Chart.Description})
 	}
-	return table.String()
+
+	o, e := obj(sResult)
+	if e != nil {
+		err = fmt.Errorf("Failed to Marshal %s output: %s", strings.ToUpper(format), e)
+	} else {
+		output = string(o)
+	}
+	return output, err
 }
 
 func (s *searchCmd) buildIndex() (*search.Index, error) {

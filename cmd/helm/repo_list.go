@@ -17,10 +17,12 @@ limitations under the License.
 package main
 
 import (
-	"errors"
+	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 
+	"github.com/ghodss/yaml"
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 
@@ -29,8 +31,18 @@ import (
 )
 
 type repoListCmd struct {
-	out  io.Writer
-	home helmpath.Home
+	out    io.Writer
+	home   helmpath.Home
+	output string
+}
+
+type repositoryElement struct {
+	Name string
+	URL  string
+}
+
+type repositories struct {
+	Repositories []*repositoryElement
 }
 
 func newRepoListCmd(out io.Writer) *cobra.Command {
@@ -45,22 +57,70 @@ func newRepoListCmd(out io.Writer) *cobra.Command {
 		},
 	}
 
+	f := cmd.Flags()
+	f.StringVarP(&list.output, "output", "o", "table", "Prints the output in the specified format (json|table|yaml)")
 	return cmd
 }
 
 func (a *repoListCmd) run() error {
-	f, err := repo.LoadRepositoriesFile(a.home.RepositoryFile())
+	repoFile, err := repo.LoadRepositoriesFile(a.home.RepositoryFile())
 	if err != nil {
 		return err
 	}
-	if len(f.Repositories) == 0 {
-		return errors.New("no repositories to show")
+
+	output, err := formatRepoListResult(a.output, repoFile)
+
+	if err != nil {
+		return err
 	}
-	table := uitable.New()
-	table.AddRow("NAME", "URL")
-	for _, re := range f.Repositories {
-		table.AddRow(re.Name, re.URL)
-	}
-	fmt.Fprintln(a.out, table)
+	fmt.Fprintln(a.out, output)
+
 	return nil
+}
+
+func formatRepoListResult(format string, repoFile *repo.RepoFile) (string, error) {
+	var output string
+	var err error
+
+	if len(repoFile.Repositories) == 0 {
+		err = fmt.Errorf("no repositories to show")
+		return output, err
+	}
+
+	switch format {
+	case "table":
+		table := uitable.New()
+		table.AddRow("NAME", "URL")
+		for _, re := range repoFile.Repositories {
+			table.AddRow(re.Name, re.URL)
+		}
+		output = table.String()
+
+	case "json":
+		output, err = printFormatedRepoFile(format, repoFile, json.Marshal)
+
+	case "yaml":
+		output, err = printFormatedRepoFile(format, repoFile, yaml.Marshal)
+	}
+
+	return output, err
+}
+
+func printFormatedRepoFile(format string, repoFile *repo.RepoFile, obj func(v interface{}) ([]byte, error)) (string, error) {
+	var output string
+	var err error
+	var repolist repositories
+
+	for _, re := range repoFile.Repositories {
+		repolist.Repositories = append(repolist.Repositories, &repositoryElement{Name: re.Name, URL: re.URL})
+	}
+
+	o, e := obj(repolist)
+	if e != nil {
+		err = fmt.Errorf("Failed to Marshal %s output: %s", strings.ToUpper(format), e)
+	} else {
+		output = string(o)
+	}
+
+	return output, err
 }
