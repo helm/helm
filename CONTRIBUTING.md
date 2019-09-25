@@ -1,13 +1,13 @@
 # Contributing Guidelines
 
-The Kubernetes Helm project accepts contributions via GitHub pull requests. This document outlines the process to help get your contribution accepted.
+The Helm project accepts contributions via GitHub pull requests. This document outlines the process to help get your contribution accepted.
 
 ## Reporting a Security Issue
 
 Most of the time, when you find a bug in Helm, it should be reported
 using [GitHub issues](https://github.com/helm/helm/issues). However, if
 you are reporting a _security vulnerability_, please email a report to
-[helm-security@deis.com](mailto:helm-security@deis.com). This will give
+[cncf-kubernetes-helm-security@lists.cncf.io](mailto:cncf-kubernetes-helm-security@lists.cncf.io). This will give
 us a chance to try to fix the issue before it is exploited in the wild.
 
 ## Sign Your Work
@@ -15,7 +15,7 @@ us a chance to try to fix the issue before it is exploited in the wild.
 The sign-off is a simple line at the end of the explanation for a commit. All 
 commits needs to be signed. Your signature certifies that you wrote the patch or
 otherwise have the right to contribute the material. The rules are pretty simple,
-if you can certify the below (from [developercertificate.org](http://developercertificate.org/)):
+if you can certify the below (from [developercertificate.org](https://developercertificate.org/)):
 
 ```
 Developer Certificate of Origin
@@ -84,10 +84,12 @@ your PR will be rejected by the automated DCO check.
 
 Whether you are a user or contributor, official support channels include:
 
-- GitHub [issues](https://github.com/helm/helm/issues/new)
-- Slack: #Helm room in the [Kubernetes Slack](http://slack.kubernetes.io/)
+- [Issues](https://github.com/helm/helm/issues)
+- Slack:
+  - User: [#helm-users](https://kubernetes.slack.com/messages/C0NH30761/details/)
+  - Contributor: [#helm-dev](https://kubernetes.slack.com/messages/C51E88VDG/)
 
-Before opening a new issue or submitting a new pull request, it's helpful to search the project - it's likely that another user has already reported the issue you're facing, or it's a known issue that we're already aware of.
+Before opening a new issue or submitting a new pull request, it's helpful to search the project - it's likely that another user has already reported the issue you're facing, or it's a known issue that we're already aware of. It is also worth asking on the Slack channels.
 
 ## Milestones
 
@@ -107,7 +109,7 @@ An issue that we are not sure we will be doing will not be added to any mileston
 
 A milestone (and hence release) is considered done when all outstanding issues/PRs have been closed or moved to another milestone.
 
-## Semver
+## Semantic Versioning
 
 Helm maintains a strong commitment to backward compatibility. All of our changes to protocols and formats are backward compatible from Helm 3.0 until Helm 4.0. No features, flags, or commands are removed or substantially modified (other than bug fixes).
 
@@ -152,7 +154,7 @@ contributing to Helm. All issue types follow the same general lifecycle. Differe
 1. Issue creation
 2. Triage
     - The maintainer in charge of triaging will apply the proper labels for the issue. This
-    includes labels for priority, type, and metadata (such as "good first issue"). The only issue
+    includes labels for priority, type, and metadata (such as `good first issue`). The only issue
     priority we will be tracking is whether or not the issue is "critical." If additional
     levels are needed in the future, we will add them.
     - (If needed) Clean up the title to succinctly and clearly state the issue. Also ensure
@@ -180,27 +182,29 @@ Coding conventions and standards are explained in the [official developer docs](
 
 ## Pull Requests
 
-Like any good open source project, we use Pull Requests to track code changes.
+Like any good open source project, we use Pull Requests (PRs) to track code changes.
 
 ### PR Lifecycle
 
 1. PR creation
+    - PRs are usually created to fix or else be a subset of other PRs that fix a particular issue.
     - We more than welcome PRs that are currently in progress. They are a great way to keep track of
     important work that is in-flight, but useful for others to see. If a PR is a work in progress,
-    it **must** be prefaced with "WIP: [the rest of the title]". Once the PR is ready for review,
-    remove "WIP" from the title.
-    - It is preferred, but not required, to have a PR tied to a specific issue.
+    it **must** be prefaced with "WIP: [title]". Once the PR is ready for review, remove "WIP" from
+    the title.
+    - It is preferred, but not required, to have a PR tied to a specific issue. There can be
+    circumstances where if it is a quick fix then an issue might be overkill. The details provided
+    in the PR description would suffice in this case.
 2. Triage
     - The maintainer in charge of triaging will apply the proper labels for the issue. This should
     include at least a size label, `bug` or `feature`, and `awaiting review` once all labels are applied.
-    See the [Labels section](#labels) for full details on the definitions of labels
+    See the [Labels section](#labels) for full details on the definitions of labels.
     - Add the PR to the correct milestone. This should be the same as the issue the PR closes.
 3. Assigning reviews
     - Once a review has the `awaiting review` label, maintainers will review them as schedule permits.
     The maintainer who takes the issue should self-request a review.
-    - Reviews from others in the community, especially those who have encountered a bug or have
-    requested a feature, are highly encouraged, but not required. Maintainer reviews **are** required
-    before any merge
+    - Any PR with the `size/large` label requires 2 review approvals from maintainers before it can be
+    merged. Those with `size/medium` or `size/small` are per the judgement of the maintainers. 
 4. Reviewing/Discussion
     - All reviews will be completed using Github review tool.
     - A "Comment" review should be used when there are questions about the code that should be
@@ -215,7 +219,7 @@ Like any good open source project, we use Pull Requests to track code changes.
 7. Merge or close
     - PRs should stay open until merged or if they have not been active for more than 30 days.
     This will help keep the PR queue to a manageable size and reduce noise. Should the PR need
-    to stay open (like in the case of a WIP), the `keep open` or `WIP` label can be added.
+    to stay open (like in the case of a WIP), the `keep open` label can be added.
     - Before merging a PR, refer to the topic on [Size Labels](#size-labels) below to determine if
       the PR requires more than one LGTM to merge.
     - If the owner of the PR is listed in the `OWNERS` file, that user **must** merge their own PRs
@@ -231,7 +235,7 @@ Documentation PRs will follow the same lifecycle as other PRs. They will also be
 ## The Triager
 
 Each week, one of the core maintainers will serve as the designated "triager" starting after the
-public standup meetings on Thursday. This person will be in charge triaging new PRs and issues
+public stand-up meetings on Thursday. This person will be in charge triaging new PRs and issues
 throughout the work week.
 
 ## Labels
