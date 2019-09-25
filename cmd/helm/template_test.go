@@ -158,7 +158,7 @@ func TestTemplateCmd(t *testing.T) {
 		},
 		{
 			name:        "check_invalid_name_template",
-			desc:        "verify the relase name generate by template is invalid",
+			desc:        "verify the release name generate by template is invalid",
 			args:        []string{subchart1ChartPath, "--name-template", "foobar-{{ b64enc \"abc\" }}-baz"},
 			expectError: "is invalid",
 		},
