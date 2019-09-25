@@ -17,7 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/gosuri/uitable"
@@ -25,28 +24,79 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/cmd/helm/require"
+	"helm.sh/helm/pkg/action"
 	"helm.sh/helm/pkg/repo"
 )
 
 func newRepoListCmd(out io.Writer) *cobra.Command {
+	var output string
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "list chart repositories",
 		Args:  require.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// validate the output format first so we don't waste time running a
+			// request that we'll throw away
+			outfmt, err := action.ParseOutputFormat(output)
+			if err != nil {
+				return err
+			}
 			f, err := repo.LoadFile(settings.RepositoryConfig)
 			if isNotExist(err) || len(f.Repositories) == 0 {
 				return errors.New("no repositories to show")
 			}
-			table := uitable.New()
-			table.AddRow("NAME", "URL")
-			for _, re := range f.Repositories {
-				table.AddRow(re.Name, re.URL)
-			}
-			fmt.Fprintln(out, table)
-			return nil
+
+			return outfmt.Write(out, &repoListWriter{f.Repositories})
 		},
 	}
 
+	bindOutputFlag(cmd, &output)
+
 	return cmd
+}
+
+type repositoryElement struct {
+	Name string
+	URL  string
+}
+
+type repoListWriter struct {
+	repos []*repo.Entry
+}
+
+func (r *repoListWriter) WriteTable(out io.Writer) error {
+	table := uitable.New()
+	table.AddRow("NAME", "URL")
+	for _, re := range r.repos {
+		table.AddRow(re.Name, re.URL)
+	}
+	return action.EncodeTable(out, table)
+}
+
+func (r *repoListWriter) WriteJSON(out io.Writer) error {
+	return r.encodeByFormat(out, action.JSON)
+}
+
+func (r *repoListWriter) WriteYAML(out io.Writer) error {
+	return r.encodeByFormat(out, action.YAML)
+}
+
+func (r *repoListWriter) encodeByFormat(out io.Writer, format action.OutputFormat) error {
+	// Initialize the array so no results returns an empty array instead of null
+	repolist := make([]repositoryElement, 0, len(r.repos))
+
+	for _, re := range r.repos {
+		repolist = append(repolist, repositoryElement{Name: re.Name, URL: re.URL})
+	}
+
+	switch format {
+	case action.JSON:
+		return action.EncodeJSON(out, repolist)
+	case action.YAML:
+		return action.EncodeYAML(out, repolist)
+	}
+
+	// Because this is a non-exported function and only called internally by
+	// WriteJSON and WriteYAML, we shouldn't get invalid types
+	return nil
 }

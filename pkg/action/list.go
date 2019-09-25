@@ -17,10 +17,7 @@ limitations under the License.
 package action
 
 import (
-	"fmt"
 	"regexp"
-
-	"github.com/gosuri/uitable"
 
 	"helm.sh/helm/pkg/release"
 	"helm.sh/helm/pkg/releaseutil"
@@ -128,6 +125,7 @@ type List struct {
 	Deployed     bool
 	Failed       bool
 	Pending      bool
+	OutputFormat string
 }
 
 // NewList constructs a new *List
@@ -277,22 +275,4 @@ func (l *List) SetStateMask() {
 	}
 
 	l.StateMask = state
-}
-
-func FormatList(rels []*release.Release) string {
-	table := uitable.New()
-	table.AddRow("NAME", "NAMESPACE", "REVISION", "UPDATED", "STATUS", "CHART")
-	for _, r := range rels {
-		md := r.Chart.Metadata
-		c := fmt.Sprintf("%s-%s", md.Name, md.Version)
-		t := "-"
-		if tspb := r.Info.LastDeployed; !tspb.IsZero() {
-			t = tspb.String()
-		}
-		s := r.Info.Status.String()
-		v := r.Version
-		n := r.Namespace
-		table.AddRow(r.Name, n, v, t, s, c)
-	}
-	return table.String()
 }

@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/internal/monocular"
+	"helm.sh/helm/pkg/action"
 )
 
 const searchHubDesc = `
@@ -43,6 +44,7 @@ Helm Hub. You can find it at https://github.com/helm/monocular
 type searchHubOptions struct {
 	searchEndpoint string
 	maxColWidth    uint
+	outputFormat   string
 }
 
 func newSearchHubCmd(out io.Writer) *cobra.Command {
@@ -60,11 +62,18 @@ func newSearchHubCmd(out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.StringVar(&o.searchEndpoint, "endpoint", "https://hub.helm.sh", "monocular instance to query for charts")
 	f.UintVar(&o.maxColWidth, "max-col-width", 50, "maximum column width for output table")
+	bindOutputFlag(cmd, &o.outputFormat)
 
 	return cmd
 }
 
 func (o *searchHubOptions) run(out io.Writer, args []string) error {
+	// validate the output format first so we don't waste time running a
+	// request that we'll throw away
+	outfmt, err := action.ParseOutputFormat(o.outputFormat)
+	if err != nil {
+		return err
+	}
 
 	c, err := monocular.New(o.searchEndpoint)
 	if err != nil {
@@ -78,25 +87,71 @@ func (o *searchHubOptions) run(out io.Writer, args []string) error {
 		return fmt.Errorf("unable to perform search against %q", o.searchEndpoint)
 	}
 
-	fmt.Fprintln(out, o.formatSearchResults(o.searchEndpoint, results))
-
-	return nil
+	return outfmt.Write(out, newHubSearchWriter(results, o.searchEndpoint, o.maxColWidth))
 }
 
-func (o *searchHubOptions) formatSearchResults(endpoint string, res []monocular.SearchResult) string {
-	if len(res) == 0 {
-		return "No results found"
+type hubChartElement struct {
+	URL         string
+	Version     string
+	AppVersion  string
+	Description string
+}
+
+type hubSearchWriter struct {
+	elements    []hubChartElement
+	columnWidth uint
+}
+
+func newHubSearchWriter(results []monocular.SearchResult, endpoint string, columnWidth uint) *hubSearchWriter {
+	var elements []hubChartElement
+	for _, r := range results {
+		url := endpoint + "/charts/" + r.ID
+		elements = append(elements, hubChartElement{url, r.Relationships.LatestChartVersion.Data.Version, r.Relationships.LatestChartVersion.Data.AppVersion, r.Attributes.Description})
+	}
+	return &hubSearchWriter{elements, columnWidth}
+}
+
+func (h *hubSearchWriter) WriteTable(out io.Writer) error {
+	if len(h.elements) == 0 {
+		_, err := out.Write([]byte("No results found\n"))
+		if err != nil {
+			return fmt.Errorf("unable to write results: %s", err)
+		}
+		return nil
 	}
 	table := uitable.New()
-
-	// The max column width is configurable because a URL could be longer than the
-	// max value and we want the user to have the ability to display the whole url
-	table.MaxColWidth = o.maxColWidth
+	table.MaxColWidth = h.columnWidth
 	table.AddRow("URL", "CHART VERSION", "APP VERSION", "DESCRIPTION")
-	var url string
-	for _, r := range res {
-		url = endpoint + "/charts/" + r.ID
-		table.AddRow(url, r.Relationships.LatestChartVersion.Data.Version, r.Relationships.LatestChartVersion.Data.AppVersion, r.Attributes.Description)
+	for _, r := range h.elements {
+		table.AddRow(r.URL, r.Version, r.AppVersion, r.Description)
 	}
-	return table.String()
+	return action.EncodeTable(out, table)
+}
+
+func (h *hubSearchWriter) WriteJSON(out io.Writer) error {
+	return h.encodeByFormat(out, action.JSON)
+}
+
+func (h *hubSearchWriter) WriteYAML(out io.Writer) error {
+	return h.encodeByFormat(out, action.YAML)
+}
+
+func (h *hubSearchWriter) encodeByFormat(out io.Writer, format action.OutputFormat) error {
+	// Initialize the array so no results returns an empty array instead of null
+	chartList := make([]hubChartElement, 0, len(h.elements))
+
+	for _, r := range h.elements {
+		chartList = append(chartList, hubChartElement{r.URL, r.Version, r.AppVersion, r.Description})
+	}
+
+	switch format {
+	case action.JSON:
+		return action.EncodeJSON(out, chartList)
+	case action.YAML:
+		return action.EncodeYAML(out, chartList)
+	}
+
+	// Because this is a non-exported function and only called internally by
+	// WriteJSON and WriteYAML, we shouldn't get invalid types
+	return nil
 }

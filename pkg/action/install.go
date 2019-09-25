@@ -82,6 +82,7 @@ type Install struct {
 	OutputDir        string
 	Atomic           bool
 	SkipCRDs         bool
+	OutputFormat     string
 }
 
 // ChartPathOptions captures common options used for controlling chart paths

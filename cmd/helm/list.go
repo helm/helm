@@ -19,11 +19,14 @@ package main
 import (
 	"fmt"
 	"io"
+	"strconv"
 
+	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/cmd/helm/require"
 	"helm.sh/helm/pkg/action"
+	"helm.sh/helm/pkg/release"
 )
 
 var listHelp = `
@@ -63,6 +66,13 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Aliases: []string{"ls"},
 		Args:    require.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// validate the output format first so we don't waste time running a
+			// request that we'll throw away
+			output, err := action.ParseOutputFormat(client.OutputFormat)
+			if err != nil {
+				return err
+			}
+
 			if client.AllNamespaces {
 				initActionConfig(cfg, true)
 			}
@@ -77,8 +87,7 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return err
 			}
 
-			fmt.Fprintln(out, action.FormatList(results))
-			return err
+			return output.Write(out, newReleaseListWriter(results))
 		},
 	}
 
@@ -95,8 +104,60 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.Pending, "pending", false, "show pending releases")
 	f.BoolVar(&client.AllNamespaces, "all-namespaces", false, "list releases across all namespaces")
 	f.IntVarP(&client.Limit, "max", "m", 256, "maximum number of releases to fetch")
-	f.IntVarP(&client.Offset, "offset", "o", 0, "next release name in the list, used to offset from start value")
+	f.IntVar(&client.Offset, "offset", 0, "next release name in the list, used to offset from start value")
 	f.StringVarP(&client.Filter, "filter", "f", "", "a regular expression (Perl compatible). Any releases that match the expression will be included in the results")
+	bindOutputFlag(cmd, &client.OutputFormat)
 
 	return cmd
+}
+
+type releaseElement struct {
+	Name      string
+	Namespace string
+	Revision  string
+	Updated   string
+	Status    string
+	Chart     string
+}
+
+type releaseListWriter struct {
+	releases []releaseElement
+}
+
+func newReleaseListWriter(releases []*release.Release) *releaseListWriter {
+	// Initialize the array so no results returns an empty array instead of null
+	elements := make([]releaseElement, 0, len(releases))
+	for _, r := range releases {
+		element := releaseElement{
+			Name:      r.Name,
+			Namespace: r.Namespace,
+			Revision:  strconv.Itoa(r.Version),
+			Status:    r.Info.Status.String(),
+			Chart:     fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version),
+		}
+		t := "-"
+		if tspb := r.Info.LastDeployed; !tspb.IsZero() {
+			t = tspb.String()
+		}
+		element.Updated = t
+		elements = append(elements, element)
+	}
+	return &releaseListWriter{elements}
+}
+
+func (r *releaseListWriter) WriteTable(out io.Writer) error {
+	table := uitable.New()
+	table.AddRow("NAME", "NAMESPACE", "REVISION", "UPDATED", "STATUS", "CHART")
+	for _, r := range r.releases {
+		table.AddRow(r.Name, r.Namespace, r.Revision, r.Updated, r.Status, r.Chart)
+	}
+	return action.EncodeTable(out, table)
+}
+
+func (r *releaseListWriter) WriteJSON(out io.Writer) error {
+	return action.EncodeJSON(out, r.releases)
+}
+
+func (r *releaseListWriter) WriteYAML(out io.Writer) error {
+	return action.EncodeYAML(out, r.releases)
 }

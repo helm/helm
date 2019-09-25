@@ -64,6 +64,14 @@ func TestSearchRepositoriesCmd(t *testing.T) {
 		name:      "search for 'alp[', expect failure to compile regexp",
 		cmd:       "search repo alp[ --regexp",
 		wantError: true,
+	}, {
+		name:   "search for 'maria', expect valid json output",
+		cmd:    "search repo maria --output json",
+		golden: "output/search-output-json.txt",
+	}, {
+		name:   "search for 'alpine', expect valid yaml output",
+		cmd:    "search repo alpine --output yaml",
+		golden: "output/search-output-yaml.txt",
 	}}
 
 	settings.Debug = true

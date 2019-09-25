@@ -69,6 +69,13 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Long:  upgradeDesc,
 		Args:  require.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// validate the output format first so we don't waste time running a
+			// request that we'll throw away
+			output, err := action.ParseOutputFormat(client.OutputFormat)
+			if err != nil {
+				return err
+			}
+
 			client.Namespace = getNamespace()
 
 			if client.Version == "" && client.Devel {
@@ -104,8 +111,10 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.Atomic = client.Atomic
 
 					rel, err := runInstall(args, instClient, valueOpts, out)
-					action.PrintRelease(out, rel)
-					return err
+					if err != nil {
+						return err
+					}
+					return output.Write(out, &statusPrinter{rel})
 				}
 			}
 
@@ -129,7 +138,9 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				action.PrintRelease(out, resp)
 			}
 
-			fmt.Fprintf(out, "Release %q has been upgraded. Happy Helming!\n", args[0])
+			if output == action.Table {
+				fmt.Fprintf(out, "Release %q has been upgraded. Happy Helming!\n", args[0])
+			}
 
 			// Print the status like status command does
 			statusClient := action.NewStatus(cfg)
@@ -137,9 +148,8 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			action.PrintRelease(out, rel)
 
-			return nil
+			return output.Write(out, &statusPrinter{rel})
 		},
 	}
 
@@ -160,6 +170,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.CleanupOnFail, "cleanup-on-fail", false, "allow deletion of new resources created in this upgrade when upgrade fails")
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 	addValueOptionsFlags(f, valueOpts)
+	bindOutputFlag(cmd, &client.OutputFormat)
 
 	return cmd
 }

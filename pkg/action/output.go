@@ -19,16 +19,15 @@ package action
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 
 	"github.com/gosuri/uitable"
+	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 )
 
 // OutputFormat is a type for capturing supported output formats
 type OutputFormat string
-
-// TableFunc is a function that can be used to add rows to a table
-type TableFunc func(tbl *uitable.Table)
 
 const (
 	Table OutputFormat = "table"
@@ -44,32 +43,18 @@ func (o OutputFormat) String() string {
 	return string(o)
 }
 
-// Marshal uses the specified output format to marshal out the given data. It
-// does not support tabular output. For tabular output, use MarshalTable
-func (o OutputFormat) Marshal(data interface{}) (byt []byte, err error) {
+// Write the output in the given format to the io.Writer. Unsupported formats
+// will return an error
+func (o OutputFormat) Write(out io.Writer, w Writer) error {
 	switch o {
-	case YAML:
-		byt, err = yaml.Marshal(data)
+	case Table:
+		return w.WriteTable(out)
 	case JSON:
-		byt, err = json.Marshal(data)
-	default:
-		err = ErrInvalidFormatType
+		return w.WriteJSON(out)
+	case YAML:
+		return w.WriteYAML(out)
 	}
-	return
-}
-
-// MarshalTable returns a formatted table using the given headers. Rows can be
-// added to the table using the given TableFunc
-func (o OutputFormat) MarshalTable(f TableFunc) ([]byte, error) {
-	if o != Table {
-		return nil, ErrInvalidFormatType
-	}
-	tbl := uitable.New()
-	if f == nil {
-		return []byte{}, nil
-	}
-	f(tbl)
-	return tbl.Bytes(), nil
+	return ErrInvalidFormatType
 }
 
 // ParseOutputFormat takes a raw string and returns the matching OutputFormat.
@@ -86,4 +71,55 @@ func ParseOutputFormat(s string) (out OutputFormat, err error) {
 		out, err = "", ErrInvalidFormatType
 	}
 	return
+}
+
+// Writer is an interface that any type can implement to write supported formats
+type Writer interface {
+	// WriteTable will write tabular output into the given io.Writer, returning
+	// an error if any occur
+	WriteTable(out io.Writer) error
+	// WriteJSON will write JSON formatted output into the given io.Writer,
+	// returning an error if any occur
+	WriteJSON(out io.Writer) error
+	// WriteYAML will write YAML formatted output into the given io.Writer,
+	// returning an error if any occur
+	WriteYAML(out io.Writer) error
+}
+
+// EncodeJSON is a helper function to decorate any error message with a bit more
+// context and avoid writing the same code over and over for printers.
+func EncodeJSON(out io.Writer, obj interface{}) error {
+	enc := json.NewEncoder(out)
+	err := enc.Encode(obj)
+	if err != nil {
+		return errors.Wrap(err, "unable to write JSON output")
+	}
+	return nil
+}
+
+// EncodeYAML is a helper function to decorate any error message with a bit more
+// context and avoid writing the same code over and over for printers
+func EncodeYAML(out io.Writer, obj interface{}) error {
+	raw, err := yaml.Marshal(obj)
+	if err != nil {
+		return errors.Wrap(err, "unable to write YAML output")
+	}
+
+	_, err = out.Write(raw)
+	if err != nil {
+		return errors.Wrap(err, "unable to write YAML output")
+	}
+	return nil
+}
+
+// EncodeTable is a helper function to decorate any error message with a bit
+// more context and avoid writing the same code over and over for printers
+func EncodeTable(out io.Writer, table *uitable.Table) error {
+	raw := table.Bytes()
+	raw = append(raw, []byte("\n")...)
+	_, err := out.Write(raw)
+	if err != nil {
+		return errors.Wrap(err, "unable to write table output")
+	}
+	return nil
 }
