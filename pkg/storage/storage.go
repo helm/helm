@@ -27,6 +27,8 @@ import (
 	"helm.sh/helm/pkg/storage/driver"
 )
 
+const HelmStorageType = "sh.helm.release.v1"
+
 // Storage represents a storage engine for a Release.
 type Storage struct {
 	driver.Driver
@@ -205,11 +207,14 @@ func (s *Storage) Last(name string) (*rspb.Release, error) {
 	return h[0], nil
 }
 
-// makeKey concatenates a release name and version into
-// a string with format ```<release_name>#v<version>```.
+// makeKey concatenates the helm type, a release name and version into a
+// string with format:```<helm_storage_type>.<release_name>.v<version>```.
+// The Helm type is prepended to keep name uniqueness between different
+// release storage types. An example of clash when not using the type:
+// https://github.com/helm/helm/issues/6435.
 // This key is used to uniquely identify storage objects.
 func makeKey(rlsname string, version int) string {
-	return fmt.Sprintf("%s.v%d", rlsname, version)
+	return fmt.Sprintf("%s.%s.v%d", HelmStorageType, rlsname, version)
 }
 
 // Init initializes a new storage backend with the driver d.
