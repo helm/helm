@@ -29,6 +29,11 @@ func TestGetCmd(t *testing.T) {
 		golden: "output/get-release.txt",
 		rels:   []*release.Release{release.Mock(&release.MockReleaseOptions{Name: "thomas-guide"})},
 	}, {
+		name:   "get with a formatted release",
+		cmd:    "get elevated-turkey --template {{.Release.Chart.Metadata.Version}}",
+		golden: "output/get-release-template.txt",
+		rels:   []*release.Release{release.Mock(&release.MockReleaseOptions{Name: "elevated-turkey"})},
+	}, {
 		name:      "get requires release name arg",
 		cmd:       "get",
 		golden:    "output/get-no-args.txt",
