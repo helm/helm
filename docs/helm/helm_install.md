@@ -93,7 +93,7 @@ helm install [CHART] [flags]
       --namespace string         Namespace to install the release into. Defaults to the current kube config namespace.
       --no-crd-hook              Prevent CRD hooks from running, but run other hooks
       --no-hooks                 Prevent hooks from running during install
-  -o, --output string            Prints the output in the specified format (json|table|yaml) (default "table")
+  -o, --output string            Prints the output in the specified format. Allowed values: table, json, yaml (default "table")
       --password string          Chart repository password where to locate the requested chart
       --render-subchart-notes    Render subchart notes along with the parent
       --replace                  Re-use the given name, even if that name is already used. This is unsafe in production

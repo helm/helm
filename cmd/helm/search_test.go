@@ -18,7 +18,6 @@ package main
 
 import (
 	"io"
-	"regexp"
 	"strings"
 	"testing"
 
@@ -90,25 +89,25 @@ func TestSearchCmd(t *testing.T) {
 			name:     "search for 'maria', expect one match output json",
 			args:     []string{"maria"},
 			flags:    strings.Split("--output json", " "),
-			expected: regexp.QuoteMeta(`{"Charts":[{"Name":"testing/mariadb","Version":"0.3.0","AppVersion":"","Description":"Chart for MariaDB"}]}`),
+			expected: `[{"Name":"testing/mariadb","Version":"0.3.0","Appversion":"","Description":"Chart for MariaDB"}]`,
 		},
 		{
 			name:     "search for 'alpine', expect two matches output json",
 			args:     []string{"alpine"},
 			flags:    strings.Split("--output json", " "),
-			expected: regexp.QuoteMeta(`{"Charts":[{"Name":"testing/alpine","Version":"0.2.0","AppVersion":"2.3.4","Description":"Deploy a basic Alpine Linux pod"}]}`),
+			expected: `[{"Name":"testing/alpine","Version":"0.2.0","Appversion":"2.3.4","Description":"Deploy a basic Alpine Linux pod"}]`,
 		},
 		{
 			name:     "search for 'maria', expect one match output yaml",
 			args:     []string{"maria"},
 			flags:    strings.Split("--output yaml", " "),
-			expected: "Charts:\n- AppVersion: \"\"\n  Description: Chart for MariaDB\n  Name: testing/mariadb\n  Version: 0.3.0\n\n",
+			expected: "- AppVersion: \"\"\n  Description: Chart for MariaDB\n  Name: testing/mariadb\n  Version: 0.3.0\n\n",
 		},
 		{
 			name:     "search for 'alpine', expect two matches output yaml",
 			args:     []string{"alpine"},
 			flags:    strings.Split("--output yaml", " "),
-			expected: "Charts:\n- AppVersion: 2.3.4\n  Description: Deploy a basic Alpine Linux pod\n  Name: testing/alpine\n  Version: 0.2.0\n\n",
+			expected: "- AppVersion: 2.3.4\n  Description: Deploy a basic Alpine Linux pod\n  Name: testing/alpine\n  Version: 0.2.0\n\n",
 		},
 	}
 

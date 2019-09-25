@@ -79,7 +79,7 @@ helm upgrade [RELEASE] [CHART] [flags]
       --keyring string           Path to the keyring that contains public signing keys (default "~/.gnupg/pubring.gpg")
       --namespace string         Namespace to install the release into (only used if --install is set). Defaults to the current kube config namespace
       --no-hooks                 Disable pre/post upgrade hooks
-  -o, --output string            Prints the output in the specified format (json|table|yaml) (default "table")
+  -o, --output string            Prints the output in the specified format. Allowed values: table, json, yaml (default "table")
       --password string          Chart repository password where to locate the requested chart
       --recreate-pods            Performs pods restart for the resource if applicable
       --render-subchart-notes    Render subchart notes along with parent

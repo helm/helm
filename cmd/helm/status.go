@@ -17,14 +17,11 @@ limitations under the License.
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"regexp"
-	"strings"
 	"text/tabwriter"
 
-	"github.com/ghodss/yaml"
 	"github.com/gosuri/uitable"
 	"github.com/gosuri/uitable/util/strutil"
 	"github.com/spf13/cobra"
@@ -80,7 +77,7 @@ func newStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	settings.AddFlagsTLS(f)
 	f.Int32Var(&status.version, "revision", 0, "If set, display the status of the named release with revision")
-	f.StringVarP(&status.outfmt, "output", "o", "table", "Prints the output in the specified format (json|table|yaml)")
+	bindOutputFlag(cmd, &status.outfmt)
 
 	// set defaults from environment
 	settings.InitTLS(f)
@@ -94,82 +91,55 @@ func (s *statusCmd) run() error {
 		return prettyError(err)
 	}
 
-	output, err := PrintStatusFormated(s.outfmt, res)
+	return write(s.out, &statusWriter{res}, outputFormat(s.outfmt))
+}
 
-	if err != nil {
-		return err
-	}
+type statusWriter struct {
+	status *services.GetReleaseStatusResponse
+}
 
-	fmt.Fprintf(s.out, output)
-
+func (s *statusWriter) WriteTable(out io.Writer) error {
+	PrintStatus(out, s.status)
+	// There is no error handling here due to backwards compatibility with
+	// PrintStatus
 	return nil
 }
 
-// PrintStatusFormated prints out the status of a release. Shared because also used by
+func (s *statusWriter) WriteJSON(out io.Writer) error {
+	return encodeJSON(out, s.status)
+}
+
+func (s *statusWriter) WriteYAML(out io.Writer) error {
+	return encodeYAML(out, s.status)
+}
+
+// PrintStatus prints out the status of a release. Shared because also used by
 // install / upgrade
-func PrintStatusFormated(format string, res *services.GetReleaseStatusResponse) (string, error) {
-	var output string
-	var err error
-
-	switch format {
-	case "table":
-		output = printStatus(res)
-
-	case "json":
-		output, err = printFormatedReleaseStatus(format, res, json.Marshal)
-
-	case "yaml":
-		output, err = printFormatedReleaseStatus(format, res, yaml.Marshal)
-
-	default:
-		err = fmt.Errorf("Unknown output format %q", err)
-	}
-
-	return output, err
-}
-
-func printFormatedReleaseStatus(format string, res *services.GetReleaseStatusResponse, obj func(v interface{}) ([]byte, error)) (string, error) {
-	var output string
-	var err error
-
-	o, err := obj(res)
-	if err != nil {
-		return "", fmt.Errorf("Failed to Marshal %s output: %s", strings.ToUpper(format), err)
-	}
-	output = string(o)
-
-	return output, err
-}
-
-func printStatus(res *services.GetReleaseStatusResponse) string {
-	var out strings.Builder
-
+func PrintStatus(out io.Writer, res *services.GetReleaseStatusResponse) {
 	if res.Info.LastDeployed != nil {
-		fmt.Fprintf(&out, "LAST DEPLOYED: %s\n", timeconv.String(res.Info.LastDeployed))
+		fmt.Fprintf(out, "LAST DEPLOYED: %s\n", timeconv.String(res.Info.LastDeployed))
 	}
-	fmt.Fprintf(&out, "NAMESPACE: %s\n", res.Namespace)
-	fmt.Fprintf(&out, "STATUS: %s\n", res.Info.Status.Code)
-	fmt.Fprintf(&out, "\n")
+	fmt.Fprintf(out, "NAMESPACE: %s\n", res.Namespace)
+	fmt.Fprintf(out, "STATUS: %s\n", res.Info.Status.Code)
+	fmt.Fprintf(out, "\n")
 	if len(res.Info.Status.Resources) > 0 {
 		re := regexp.MustCompile("  +")
 
-		w := tabwriter.NewWriter(&out, 0, 0, 2, ' ', tabwriter.TabIndent)
+		w := tabwriter.NewWriter(out, 0, 0, 2, ' ', tabwriter.TabIndent)
 		fmt.Fprintf(w, "RESOURCES:\n%s\n", re.ReplaceAllString(res.Info.Status.Resources, "\t"))
 		w.Flush()
 	}
 	if res.Info.Status.LastTestSuiteRun != nil {
 		lastRun := res.Info.Status.LastTestSuiteRun
-		fmt.Fprintf(&out, "TEST SUITE:\n%s\n%s\n\n%s\n",
+		fmt.Fprintf(out, "TEST SUITE:\n%s\n%s\n\n%s\n",
 			fmt.Sprintf("Last Started: %s", timeconv.String(lastRun.StartedAt)),
 			fmt.Sprintf("Last Completed: %s", timeconv.String(lastRun.CompletedAt)),
 			formatTestResults(lastRun.Results))
 	}
 
 	if len(res.Info.Status.Notes) > 0 {
-		fmt.Fprintf(&out, "NOTES:\n%s\n", res.Info.Status.Notes)
+		fmt.Fprintf(out, "NOTES:\n%s\n", res.Info.Status.Notes)
 	}
-
-	return out.String()
 }
 
 func formatTestResults(results []*release.TestRun) string {
