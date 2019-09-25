@@ -17,7 +17,7 @@ limitations under the License.
 /*Package chartutil contains tools for working with charts.
 
 Charts are described in the protocol buffer definition (pkg/proto/hapi/charts).
-This packe provides utilities for serializing and deserializing charts.
+This package provides utilities for serializing and deserializing charts.
 
 A chart can be represented on the file system in one of two ways:
 

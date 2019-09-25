@@ -106,7 +106,7 @@ func (c *createCmd) run() error {
 	if c.starter != "" {
 		// Create from the starter
 		lstarter := filepath.Join(c.home.Starters(), c.starter)
-		// If path is absolute, we dont want to prefix it with helm starters folder
+		// If path is absolute, we don't want to prefix it with helm starters folder
 		if filepath.IsAbs(c.starter) {
 			lstarter = c.starter
 		}

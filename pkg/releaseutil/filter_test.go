@@ -54,6 +54,6 @@ func TestFilterAll(t *testing.T) {
 	case r0.Version == 4:
 		t.Fatal("got release with status revision 4")
 	case r0.Info.Status.Code == rspb.Status_DELETED:
-		t.Fatal("got release with status DELTED")
+		t.Fatal("got release with status DELETED")
 	}
 }
