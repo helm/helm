@@ -33,10 +33,11 @@ type Options struct {
 	ValueFiles   []string
 	StringValues []string
 	Values       []string
+	FileValues   []string
 }
 
-// MergeValues merges values from files specified via -f/--values and
-// directly via --set or --set-string, marshaling them to YAML
+// MergeValues merges values from files specified via -f/--values and directly
+// via --set, --set-string, or --set-file, marshaling them to YAML
 func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, error) {
 	base := map[string]interface{}{}
 
@@ -67,6 +68,17 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 	for _, value := range opts.StringValues {
 		if err := strvals.ParseIntoString(value, base); err != nil {
 			return nil, errors.Wrap(err, "failed parsing --set-string data")
+		}
+	}
+
+	// User specified a value via --set-file
+	for _, value := range opts.FileValues {
+		reader := func(rs []rune) (interface{}, error) {
+			bytes, err := readFile(string(rs), p)
+			return string(bytes), err
+		}
+		if err := strvals.ParseIntoFile(value, base, reader); err != nil {
+			return nil, errors.Wrap(err, "failed parsing --set-file data")
 		}
 	}
 
