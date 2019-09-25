@@ -539,6 +539,14 @@
   version = "v0.2.3"
 
 [[projects]]
+  digest = "1:d7b2d6ad2a9768bb5c9e3bfa4d9ceaa635ca2737cca288507986f116fa4b8da2"
+  name = "github.com/gofrs/flock"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "392e7fae8f1b0bdbd67dad7237d23f618feb6dbb"
+  version = "v0.7.1"
+
+[[projects]]
   digest = "1:f5ccd717b5f093cbabc51ee2e7a5979b92f17d217f9031d6d64f337101c408e4"
   name = "github.com/gogo/protobuf"
   packages = [
@@ -1330,7 +1338,11 @@
   branch = "release-1.15"
   digest = "1:dffbde7aabb4d8c613f9dd53317fd5b3aa0b2722cd4d7159772be68637116793"
   name = "k8s.io/apiextensions-apiserver"
-  packages = ["pkg/features"]
+  packages = [
+    "pkg/apis/apiextensions",
+    "pkg/apis/apiextensions/v1beta1",
+    "pkg/features",
+  ]
   pruneopts = "T"
   revision = "23f08c7096c0273b53178de488b95473d5cd3808"
 
@@ -1831,6 +1843,7 @@
     "github.com/docker/go-units",
     "github.com/evanphx/json-patch",
     "github.com/gobwas/glob",
+    "github.com/gofrs/flock",
     "github.com/gosuri/uitable",
     "github.com/mattn/go-shellwords",
     "github.com/opencontainers/go-digest",
@@ -1858,6 +1871,7 @@
     "k8s.io/api/batch/v1",
     "k8s.io/api/core/v1",
     "k8s.io/api/extensions/v1beta1",
+    "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1",
     "k8s.io/apimachinery/pkg/api/errors",
     "k8s.io/apimachinery/pkg/api/meta",
     "k8s.io/apimachinery/pkg/apis/meta/v1",

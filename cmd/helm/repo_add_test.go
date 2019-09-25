@@ -20,7 +20,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"sync"
 	"testing"
+
+	"gopkg.in/yaml.v2"
 
 	"helm.sh/helm/internal/test/ensure"
 	"helm.sh/helm/pkg/repo"
@@ -84,5 +87,53 @@ func TestRepoAdd(t *testing.T) {
 
 	if err := o.run(ioutil.Discard); err != nil {
 		t.Errorf("Duplicate repository name was added")
+	}
+}
+
+func TestRepoAddConcurrentGoRoutines(t *testing.T) {
+	const testName = "test-name"
+
+	ts, err := repotest.NewTempServer("testdata/testserver/*.*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ts.Stop()
+
+	repoFile := filepath.Join(ensure.TempDir(t), "repositories.yaml")
+
+	var wg sync.WaitGroup
+	wg.Add(3)
+	for i := 0; i < 3; i++ {
+		go func(name string) {
+			defer wg.Done()
+			o := &repoAddOptions{
+				name:     name,
+				url:      ts.URL(),
+				noUpdate: true,
+				repoFile: repoFile,
+			}
+			if err := o.run(ioutil.Discard); err != nil {
+				t.Error(err)
+			}
+		}(fmt.Sprintf("%s-%d", testName, i))
+	}
+	wg.Wait()
+
+	b, err := ioutil.ReadFile(repoFile)
+	if err != nil {
+		t.Error(err)
+	}
+
+	var f repo.File
+	if err := yaml.Unmarshal(b, &f); err != nil {
+		t.Error(err)
+	}
+
+	var name string
+	for i := 0; i < 3; i++ {
+		name = fmt.Sprintf("%s-%d", testName, i)
+		if !f.Has(name) {
+			t.Errorf("%s was not successfully inserted into %s: %s", name, repoFile, f.Repositories[0])
+		}
 	}
 }
