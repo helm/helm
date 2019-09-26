@@ -56,6 +56,7 @@ type Upgrade struct {
 	MaxHistory    int
 	Atomic        bool
 	CleanupOnFail bool
+	OutputFormat  string
 }
 
 // NewUpgrade creates a new Upgrade object with the given configuration.

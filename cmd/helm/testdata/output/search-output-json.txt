@@ -1,0 +1,1 @@
+[{"Name":"testing/mariadb","Version":"0.3.0","AppVersion":"","Description":"Chart for MariaDB"}]

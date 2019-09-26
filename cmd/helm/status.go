@@ -19,11 +19,11 @@ package main
 import (
 	"io"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/cmd/helm/require"
 	"helm.sh/helm/pkg/action"
+	"helm.sh/helm/pkg/release"
 )
 
 var statusHelp = `
@@ -46,6 +46,13 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Long:  statusHelp,
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// validate the output format first so we don't waste time running a
+			// request that we'll throw away
+			outfmt, err := action.ParseOutputFormat(client.OutputFormat)
+			if err != nil {
+				return err
+			}
+
 			rel, err := client.Run(args[0])
 			if err != nil {
 				return err
@@ -54,32 +61,30 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			// strip chart metadata from the output
 			rel.Chart = nil
 
-			outfmt, err := action.ParseOutputFormat(client.OutputFormat)
-			// We treat an invalid format type as the default
-			if err != nil && err != action.ErrInvalidFormatType {
-				return err
-			}
-
-			switch outfmt {
-			case "":
-				action.PrintRelease(out, rel)
-				return nil
-			case action.JSON, action.YAML:
-				data, err := outfmt.Marshal(rel)
-				if err != nil {
-					return errors.Wrap(err, "failed to Marshal output")
-				}
-				out.Write(data)
-				return nil
-			default:
-				return errors.Errorf("unknown output format %q", outfmt)
-			}
+			return outfmt.Write(out, &statusPrinter{rel})
 		},
 	}
 
 	f := cmd.PersistentFlags()
 	f.IntVar(&client.Version, "revision", 0, "if set, display the status of the named release with revision")
-	f.StringVarP(&client.OutputFormat, "output", "o", "", "output the status in the specified format (json or yaml)")
+	bindOutputFlag(cmd, &client.OutputFormat)
 
 	return cmd
+}
+
+type statusPrinter struct {
+	release *release.Release
+}
+
+func (s statusPrinter) WriteJSON(out io.Writer) error {
+	return action.EncodeJSON(out, s.release)
+}
+
+func (s statusPrinter) WriteYAML(out io.Writer) error {
+	return action.EncodeYAML(out, s.release)
+}
+
+func (s statusPrinter) WriteTable(out io.Writer) error {
+	action.PrintRelease(out, s.release)
+	return nil
 }

@@ -111,16 +111,24 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Long:  installDesc,
 		Args:  require.MinimumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
+			// validate the output format first so we don't waste time running a
+			// request that we'll throw away
+			output, err := action.ParseOutputFormat(client.OutputFormat)
+			if err != nil {
+				return err
+			}
+
 			rel, err := runInstall(args, client, valueOpts, out)
 			if err != nil {
 				return err
 			}
-			action.PrintRelease(out, rel)
-			return nil
+
+			return output.Write(out, &statusPrinter{rel})
 		},
 	}
 
 	addInstallFlags(cmd.Flags(), client, valueOpts)
+	bindOutputFlag(cmd, &client.OutputFormat)
 
 	return cmd
 }
@@ -139,25 +147,6 @@ func addInstallFlags(f *pflag.FlagSet, client *action.Install, valueOpts *values
 	f.BoolVar(&client.SkipCRDs, "skip-crds", false, "if set, no CRDs will be installed. By default, CRDs are installed if not already present.")
 	addValueOptionsFlags(f, valueOpts)
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
-}
-
-func addValueOptionsFlags(f *pflag.FlagSet, v *values.Options) {
-	f.StringSliceVarP(&v.ValueFiles, "values", "f", []string{}, "specify values in a YAML file or a URL(can specify multiple)")
-	f.StringArrayVar(&v.Values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
-	f.StringArrayVar(&v.StringValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
-	f.StringArrayVar(&v.FileValues, "set-file", []string{}, "set values from respective files specified via the command line (can specify multiple or separate values with commas: key1=path1,key2=path2)")
-}
-
-func addChartPathOptionsFlags(f *pflag.FlagSet, c *action.ChartPathOptions) {
-	f.StringVar(&c.Version, "version", "", "specify the exact chart version to install. If this is not specified, the latest version is installed")
-	f.BoolVar(&c.Verify, "verify", false, "verify the package before installing it")
-	f.StringVar(&c.Keyring, "keyring", defaultKeyring(), "location of public keys used for verification")
-	f.StringVar(&c.RepoURL, "repo", "", "chart repository url where to locate the requested chart")
-	f.StringVar(&c.Username, "username", "", "chart repository username where to locate the requested chart")
-	f.StringVar(&c.Password, "password", "", "chart repository password where to locate the requested chart")
-	f.StringVar(&c.CertFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
-	f.StringVar(&c.KeyFile, "key-file", "", "identify HTTPS client using this SSL key file")
-	f.StringVar(&c.CaFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 }
 
 func runInstall(args []string, client *action.Install, valueOpts *values.Options, out io.Writer) (*release.Release, error) {

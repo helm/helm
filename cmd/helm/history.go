@@ -56,12 +56,19 @@ func newHistoryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Aliases: []string{"hist"},
 		Args:    require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// validate the output format first so we don't waste time running a
+			// request that we'll throw away
+			output, err := action.ParseOutputFormat(client.OutputFormat)
+			if err != nil {
+				return err
+			}
+
 			history, err := getHistory(client, args[0])
 			if err != nil {
 				return err
 			}
-			fmt.Fprintln(out, history)
-			return nil
+
+			return output.Write(out, history)
 		},
 	}
 
@@ -83,28 +90,27 @@ type releaseInfo struct {
 
 type releaseHistory []releaseInfo
 
-func marshalHistory(format action.OutputFormat, hist releaseHistory) (byt []byte, err error) {
-	switch format {
-	case action.YAML, action.JSON:
-		byt, err = format.Marshal(hist)
-	case action.Table:
-		byt, err = format.MarshalTable(func(tbl *uitable.Table) {
-			tbl.AddRow("REVISION", "UPDATED", "STATUS", "CHART", "APP VERSION", "DESCRIPTION")
-			for i := 0; i <= len(hist)-1; i++ {
-				r := hist[i]
-				tbl.AddRow(r.Revision, r.Updated, r.Status, r.Chart, r.AppVersion, r.Description)
-			}
-		})
-	default:
-		err = action.ErrInvalidFormatType
-	}
-	return
+func (r releaseHistory) WriteJSON(out io.Writer) error {
+	return action.EncodeJSON(out, r)
 }
 
-func getHistory(client *action.History, name string) (string, error) {
+func (r releaseHistory) WriteYAML(out io.Writer) error {
+	return action.EncodeYAML(out, r)
+}
+
+func (r releaseHistory) WriteTable(out io.Writer) error {
+	tbl := uitable.New()
+	tbl.AddRow("REVISION", "UPDATED", "STATUS", "CHART", "APP VERSION", "DESCRIPTION")
+	for _, item := range r {
+		tbl.AddRow(item.Revision, item.Updated, item.Status, item.Chart, item.AppVersion, item.Description)
+	}
+	return action.EncodeTable(out, tbl)
+}
+
+func getHistory(client *action.History, name string) (releaseHistory, error) {
 	hist, err := client.Run(name)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	releaseutil.Reverse(hist, releaseutil.SortByRevision)
@@ -115,21 +121,12 @@ func getHistory(client *action.History, name string) (string, error) {
 	}
 
 	if len(rels) == 0 {
-		return "", nil
+		return releaseHistory{}, nil
 	}
 
 	releaseHistory := getReleaseHistory(rels)
 
-	outputFormat, err := action.ParseOutputFormat(client.OutputFormat)
-	if err != nil {
-		return "", err
-	}
-	history, formattingError := marshalHistory(outputFormat, releaseHistory)
-	if formattingError != nil {
-		return "", formattingError
-	}
-
-	return string(history), nil
+	return releaseHistory, nil
 }
 
 func getReleaseHistory(rls []*release.Release) (history releaseHistory) {
