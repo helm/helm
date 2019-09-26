@@ -25,6 +25,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/spf13/pflag"
 
@@ -50,72 +51,45 @@ type EnvSettings struct {
 	RepositoryCache string
 	// PluginsDirectory is the path to the plugins directory.
 	PluginsDirectory string
-
-	// Environment Variables Store.
-	EnvironmentVariables map[string]string
 }
 
 func New() *EnvSettings {
-	envSettings := EnvSettings{
-		PluginsDirectory:     helmpath.DataPath("plugins"),
-		RegistryConfig:       helmpath.ConfigPath("registry.json"),
-		RepositoryConfig:     helmpath.ConfigPath("repositories.yaml"),
-		RepositoryCache:      helmpath.CachePath("repository"),
-		EnvironmentVariables: make(map[string]string),
+	env := EnvSettings{
+		Namespace:        os.Getenv("HELM_NAMESPACE"),
+		PluginsDirectory: envOr("HELM_PLUGINS", helmpath.DataPath("plugins")),
+		RegistryConfig:   envOr("HELM_REGISTRY_CONFIG", helmpath.ConfigPath("registry.json")),
+		RepositoryConfig: envOr("HELM_REPOSITORY_CONFIG", helmpath.ConfigPath("repositories.yaml")),
+		RepositoryCache:  envOr("HELM_REPOSITORY_CACHE", helmpath.CachePath("repository")),
 	}
-	envSettings.setHelmEnvVars()
-	return &envSettings
+	env.Debug, _ = strconv.ParseBool(os.Getenv("HELM_DEBUG"))
+	return &env
 }
 
 // AddFlags binds flags to the given flagset.
 func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
-	fs.StringVarP(&s.Namespace, "namespace", "n", "", "namespace scope for this request")
+	fs.StringVarP(&s.Namespace, "namespace", "n", s.Namespace, "namespace scope for this request")
 	fs.StringVar(&s.KubeConfig, "kubeconfig", "", "path to the kubeconfig file")
 	fs.StringVar(&s.KubeContext, "kube-context", "", "name of the kubeconfig context to use")
-	fs.BoolVar(&s.Debug, "debug", false, "enable verbose output")
-
+	fs.BoolVar(&s.Debug, "debug", s.Debug, "enable verbose output")
 	fs.StringVar(&s.RegistryConfig, "registry-config", s.RegistryConfig, "path to the registry config file")
 	fs.StringVar(&s.RepositoryConfig, "repository-config", s.RepositoryConfig, "path to the file containing repository names and URLs")
 	fs.StringVar(&s.RepositoryCache, "repository-cache", s.RepositoryCache, "path to the file containing cached repository indexes")
 }
 
-// envMap maps flag names to envvars
-var envMap = map[string]string{
-	"debug":             "HELM_DEBUG",
-	"namespace":         "HELM_NAMESPACE",
-	"registry-config":   "HELM_REGISTRY_CONFIG",
-	"repository-config": "HELM_REPOSITORY_CONFIG",
+func envOr(name, def string) string {
+	if v, ok := os.LookupEnv(name); ok {
+		return v
+	}
+	return def
 }
 
-func setFlagFromEnv(name, envar string, fs *pflag.FlagSet) {
-	if fs.Changed(name) {
-		return
-	}
-	if v, ok := os.LookupEnv(envar); ok {
-		fs.Set(name, v)
-	}
-}
-
-func (s *EnvSettings) setHelmEnvVars() {
-	for key, val := range map[string]string{
-		"HELM_HOME":              helmpath.DataPath(),
-		"HELM_PATH_STARTER":      helmpath.DataPath("starters"),
+func (s *EnvSettings) EnvVars() map[string]string {
+	return map[string]string{
+		"HELM_BIN":               os.Args[0],
 		"HELM_DEBUG":             fmt.Sprint(s.Debug),
+		"HELM_PLUGINS":           s.PluginsDirectory,
 		"HELM_REGISTRY_CONFIG":   s.RegistryConfig,
-		"HELM_REPOSITORY_CONFIG": s.RepositoryConfig,
 		"HELM_REPOSITORY_CACHE":  s.RepositoryCache,
-		"HELM_PLUGIN":            s.PluginsDirectory,
-	} {
-		if eVal := os.Getenv(key); len(eVal) > 0 {
-			val = eVal
-		}
-		s.EnvironmentVariables[key] = val
-	}
-}
-
-// Init sets values from the environment.
-func (s *EnvSettings) Init(fs *pflag.FlagSet) {
-	for name, envar := range envMap {
-		setFlagFromEnv(name, envar, fs)
+		"HELM_REPOSITORY_CONFIG": s.RepositoryConfig,
 	}
 }

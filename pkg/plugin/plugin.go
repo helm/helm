@@ -26,7 +26,6 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/pkg/cli"
-	"helm.sh/helm/pkg/helmpath"
 )
 
 const pluginFileName = "plugin.yaml"
@@ -217,20 +216,10 @@ func FindPlugins(plugdirs string) ([]*Plugin, error) {
 // the plugin subsystem itself needs access to the environment variables
 // created here.
 func SetupPluginEnv(settings *cli.EnvSettings, name, base string) {
-	for key, val := range map[string]string{
-		"HELM_PLUGIN_NAME": name,
-		"HELM_PLUGIN_DIR":  base,
-		"HELM_BIN":         os.Args[0],
-		"HELM_PLUGIN":      settings.PluginsDirectory,
-
-		// Set vars that convey common information.
-		"HELM_REGISTRY_CONFIG":   settings.RegistryConfig,
-		"HELM_REPOSITORY_CONFIG": settings.RepositoryConfig,
-		"HELM_REPOSITORY_CACHE":  settings.RepositoryCache,
-		"HELM_PATH_STARTER":      helmpath.DataPath("starters"),
-		"HELM_HOME":              helmpath.DataPath(), // for backwards compatibility with Helm 2 plugins
-		"HELM_DEBUG":             fmt.Sprint(settings.Debug),
-	} {
+	env := settings.EnvVars()
+	env["HELM_PLUGIN_NAME"] = name
+	env["HELM_PLUGIN_DIR"] = base
+	for key, val := range env {
 		os.Setenv(key, val)
 	}
 }

@@ -89,8 +89,13 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 					return errors.Errorf("plugin %q exited with error", md.Name)
 				}
 
+				env := os.Environ()
+				for k, v := range settings.EnvVars() {
+					env = append(env, fmt.Sprintf("%s=%s", k, v))
+				}
+
 				prog := exec.Command(main, argv...)
-				prog.Env = os.Environ()
+				prog.Env = env
 				prog.Stdin = os.Stdin
 				prog.Stdout = out
 				prog.Stderr = os.Stderr
