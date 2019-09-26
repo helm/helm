@@ -228,13 +228,23 @@ func newSecretsObject(key string, rls *rspb.Release, lbs labels) (*v1.Secret, er
 	lbs.set("status", rls.Info.Status.String())
 	lbs.set("version", strconv.Itoa(rls.Version))
 
-	// create and return secret object
+	// create and return secret object.
+	// Helm 3 introduced setting the 'Type' field
+	// in the Kubernetes storage object.
+	// Helm defines the field content as follows:
+	// <helm_domain>/<helm_object>.v<helm_object_version>
+	// Type field for Helm 3: helm.sh/release.v1
+	// Note: Version starts at 'v1' for Helm 3 and
+	// should be incremented if the release object
+	// metadata is modified.
+	// This would potentially be a breaking change
+	// and should only happen between major versions.
 	return &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   key,
 			Labels: lbs.toMap(),
 		},
-		Type: "helm.sh/release",
+		Type: "helm.sh/release.v1",
 		Data: map[string][]byte{"release": []byte(s)},
 	}, nil
 }

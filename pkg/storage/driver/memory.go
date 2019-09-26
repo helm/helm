@@ -49,7 +49,8 @@ func (mem *Memory) Name() string {
 func (mem *Memory) Get(key string) (*rspb.Release, error) {
 	defer unlock(mem.rlock())
 
-	switch elems := strings.Split(key, ".v"); len(elems) {
+	keyWithoutPrefix := strings.TrimPrefix(key, "sh.helm.release.v1.")
+	switch elems := strings.Split(keyWithoutPrefix, ".v"); len(elems) {
 	case 2:
 		name, ver := elems[0], elems[1]
 		if _, err := strconv.Atoi(ver); err != nil {
@@ -138,7 +139,8 @@ func (mem *Memory) Update(key string, rls *rspb.Release) error {
 func (mem *Memory) Delete(key string) (*rspb.Release, error) {
 	defer unlock(mem.wlock())
 
-	elems := strings.Split(key, ".v")
+	keyWithoutPrefix := strings.TrimPrefix(key, "sh.helm.release.v1.")
+	elems := strings.Split(keyWithoutPrefix, ".v")
 
 	if len(elems) != 2 {
 		return nil, ErrInvalidKey
