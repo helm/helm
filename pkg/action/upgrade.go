@@ -57,6 +57,7 @@ type Upgrade struct {
 	Atomic        bool
 	CleanupOnFail bool
 	OutputFormat  string
+	SubNotes      bool
 }
 
 // NewUpgrade creates a new Upgrade object with the given configuration.
@@ -165,7 +166,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		return nil, nil, err
 	}
 
-	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "")
+	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", u.SubNotes)
 	if err != nil {
 		return nil, nil, err
 	}
