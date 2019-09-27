@@ -452,6 +452,10 @@ func Create(name, dir string) (string, error) {
 			return cdir, err
 		}
 	}
+	// Need to add the ChartsDir explicitly as it does not contain any file OOTB
+	if err := os.MkdirAll(filepath.Join(cdir, ChartsDir), 0755); err != nil {
+		return cdir, err
+	}
 	return cdir, nil
 }
 
