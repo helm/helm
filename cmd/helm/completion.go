@@ -16,6 +16,7 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -88,12 +89,12 @@ func runCompletionBash(out io.Writer, cmd *cobra.Command) error {
 # to the helm completion function to handle the case where
 # the user renamed the helm binary
 if [[ $(type -t compopt) = "builtin" ]]; then
-    complete -o default -F __start_helm ` + binary + `
+    complete -o default -F __start_helm %[1]s
 else
-    complete -o default -o nospace -F __start_helm ` + binary + `
+    complete -o default -o nospace -F __start_helm %[1]s
 fi
 `
-		out.Write([]byte(renamedBinaryHook))
+		fmt.Fprintf(out, renamedBinaryHook, binary)
 	}
 
 	return err
