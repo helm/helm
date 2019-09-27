@@ -136,7 +136,7 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 	if err != nil {
 		return err
 	}
-	if err := writeToTar(out, base+"/Chart.yaml", cdata); err != nil {
+	if err := writeToTar(out, filepath.Join(base, ChartfileName), cdata); err != nil {
 		return err
 	}
 
@@ -145,7 +145,7 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 	if err != nil {
 		return err
 	}
-	if err := writeToTar(out, base+"/values.yaml", ydata); err != nil {
+	if err := writeToTar(out, filepath.Join(base, ValuesfileName), ydata); err != nil {
 		return err
 	}
 
@@ -167,7 +167,7 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 
 	// Save dependencies
 	for _, dep := range c.Dependencies() {
-		if err := writeTarContents(out, dep, base+"/charts"); err != nil {
+		if err := writeTarContents(out, dep, filepath.Join(base, ChartsDir)); err != nil {
 			return err
 		}
 	}
