@@ -267,7 +267,7 @@ func (e *Engine) renderWithReferences(tpls map[string]renderable, referenceTpls 
 	rendered = make(map[string]string, len(files))
 	var buf bytes.Buffer
 	for _, file := range files {
-		// Don't render partials. We don't care out the direct output of partials.
+		// Don't render partials. We don't care about the direct output of partials.
 		// They are only included from other templates.
 		if strings.HasPrefix(path.Base(file), "_") {
 			continue
