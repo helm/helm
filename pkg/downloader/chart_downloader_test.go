@@ -33,6 +33,13 @@ const (
 	repoCache  = "testdata/repository"
 )
 
+func testGetters() getter.Providers {
+	env := cli.New()
+	env.RepositoryConfig = repoConfig
+	env.RepositoryCache = repoCache
+	return getter.All(env)
+}
+
 func TestResolveChartRef(t *testing.T) {
 	tests := []struct {
 		name, ref, expect, version string
@@ -59,10 +66,7 @@ func TestResolveChartRef(t *testing.T) {
 		Out:              os.Stderr,
 		RepositoryConfig: repoConfig,
 		RepositoryCache:  repoCache,
-		Getters: getter.All(&cli.EnvSettings{
-			RepositoryConfig: repoConfig,
-			RepositoryCache:  repoCache,
-		}),
+		Getters:          testGetters(),
 	}
 
 	for _, tt := range tests {
@@ -138,10 +142,7 @@ func TestDownloadTo(t *testing.T) {
 		Keyring:          "testdata/helm-test-key.pub",
 		RepositoryConfig: repoConfig,
 		RepositoryCache:  repoCache,
-		Getters: getter.All(&cli.EnvSettings{
-			RepositoryConfig: repoConfig,
-			RepositoryCache:  repoCache,
-		}),
+		Getters:          testGetters(),
 		Options: []getter.Option{
 			getter.WithBasicAuth("username", "password"),
 		},
@@ -186,10 +187,7 @@ func TestDownloadTo_VerifyLater(t *testing.T) {
 		Verify:           VerifyLater,
 		RepositoryConfig: repoConfig,
 		RepositoryCache:  repoCache,
-		Getters: getter.All(&cli.EnvSettings{
-			RepositoryConfig: repoConfig,
-			RepositoryCache:  repoCache,
-		}),
+		Getters:          testGetters(),
 	}
 	cname := "/signtest-0.1.0.tgz"
 	where, _, err := c.DownloadTo(srv.URL()+cname, "", dest)
@@ -215,10 +213,7 @@ func TestScanReposForURL(t *testing.T) {
 		Verify:           VerifyLater,
 		RepositoryConfig: repoConfig,
 		RepositoryCache:  repoCache,
-		Getters: getter.All(&cli.EnvSettings{
-			RepositoryConfig: repoConfig,
-			RepositoryCache:  repoCache,
-		}),
+		Getters:          testGetters(),
 	}
 
 	u := "http://example.com/alpine-0.2.0.tgz"

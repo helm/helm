@@ -108,15 +108,22 @@ type Plugin struct {
 // - If both OS and Arch match the current platform, search will stop and the command will be prepared for execution
 // - If OS matches and there is no more specific match, the command will be prepared for execution
 // - If no OS/Arch match is found, return nil
-func getPlatformCommand(cmds []PlatformCommand) []string {
+func getPlatformCommand(cmds []PlatformCommand, env map[string]string) []string {
+	getenv := func(name string) string {
+		if v, ok := env[name]; ok {
+			return v
+		}
+		return os.Getenv(name)
+	}
+
 	var command []string
 	eq := strings.EqualFold
 	for _, c := range cmds {
 		if eq(c.OperatingSystem, runtime.GOOS) {
-			command = strings.Split(os.ExpandEnv(c.Command), " ")
+			command = strings.Split(os.Expand(c.Command, getenv), " ")
 		}
 		if eq(c.OperatingSystem, runtime.GOOS) && eq(c.Architecture, runtime.GOARCH) {
-			return strings.Split(os.ExpandEnv(c.Command), " ")
+			return strings.Split(os.Expand(c.Command, getenv), " ")
 		}
 	}
 	return command
@@ -133,11 +140,11 @@ func getPlatformCommand(cmds []PlatformCommand) []string {
 // returns the name of the command and an args array.
 //
 // The result is suitable to pass to exec.Command.
-func (p *Plugin) PrepareCommand(extraArgs []string) (string, []string, error) {
+func (p *Plugin) PrepareCommand(extraArgs []string, env map[string]string) (string, []string, error) {
 	var parts []string
 	platCmdLen := len(p.Metadata.PlatformCommand)
 	if platCmdLen > 0 {
-		parts = getPlatformCommand(p.Metadata.PlatformCommand)
+		parts = getPlatformCommand(p.Metadata.PlatformCommand, env)
 	}
 	if platCmdLen == 0 || parts == nil {
 		parts = strings.Split(os.ExpandEnv(p.Metadata.Command), " ")
@@ -215,11 +222,12 @@ func FindPlugins(plugdirs string) ([]*Plugin, error) {
 // SetupPluginEnv prepares os.Env for plugins. It operates on os.Env because
 // the plugin subsystem itself needs access to the environment variables
 // created here.
-func SetupPluginEnv(settings *cli.EnvSettings, name, base string) {
+func SetupPluginEnv(settings *cli.EnvSettings, name, base string) map[string]string {
 	env := settings.EnvVars()
 	env["HELM_PLUGIN_NAME"] = name
 	env["HELM_PLUGIN_DIR"] = base
 	for key, val := range env {
 		os.Setenv(key, val)
 	}
+	return env
 }

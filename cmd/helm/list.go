@@ -65,6 +65,13 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Long:    listHelp,
 		Aliases: []string{"ls"},
 		Args:    require.NoArgs,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if err := initActionConfig(cfg, client.AllNamespaces); err != nil {
+				return err
+			}
+			client.SetStateMask()
+			return nil
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// validate the output format first so we don't waste time running a
 			// request that we'll throw away
@@ -72,12 +79,6 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-
-			if client.AllNamespaces {
-				initActionConfig(cfg, true)
-			}
-			client.SetStateMask()
-
 			results, err := client.Run()
 
 			if client.Short {

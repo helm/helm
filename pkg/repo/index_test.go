@@ -137,7 +137,7 @@ func TestDownloadIndexFile(t *testing.T) {
 	r, err := NewChartRepository(&Entry{
 		Name: testRepo,
 		URL:  srv.URL,
-	}, getter.All(&cli.EnvSettings{}))
+	}, getter.All(cli.New()))
 	if err != nil {
 		t.Errorf("Problem creating chart repository from %s: %v", testRepo, err)
 	}

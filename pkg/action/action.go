@@ -22,10 +22,9 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 
 	"helm.sh/helm/internal/experimental/registry"
 	"helm.sh/helm/pkg/chartutil"
@@ -65,7 +64,7 @@ var ValidName = regexp.MustCompile("^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+
 // Configuration injects the dependencies that all actions share.
 type Configuration struct {
 	// RESTClientGetter is an interface that loads Kuberbetes clients.
-	RESTClientGetter RESTClientGetter
+	RESTClientGetter genericclioptions.RESTClientGetter
 
 	// Releases stores records of releases.
 	Releases *storage.Storage
@@ -195,10 +194,4 @@ func (c *Configuration) recordRelease(r *release.Release) {
 	if err := c.Releases.Update(r); err != nil {
 		c.Log("warning: Failed to update release %s: %s", r.Name, err)
 	}
-}
-
-type RESTClientGetter interface {
-	ToRESTConfig() (*rest.Config, error)
-	ToDiscoveryClient() (discovery.CachedDiscoveryInterface, error)
-	ToRESTMapper() (meta.RESTMapper, error)
 }

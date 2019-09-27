@@ -56,11 +56,12 @@ func NewPull() *Pull {
 func (p *Pull) Run(chartRef string) (string, error) {
 	var out strings.Builder
 
+	getters := getter.All(p.Settings)
 	c := downloader.ChartDownloader{
 		Out:     &out,
 		Keyring: p.Keyring,
 		Verify:  downloader.VerifyNever,
-		Getters: getter.All(p.Settings),
+		Getters: getters,
 		Options: []getter.Option{
 			getter.WithBasicAuth(p.Username, p.Password),
 		},
@@ -87,7 +88,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 	}
 
 	if p.RepoURL != "" {
-		chartURL, err := repo.FindChartInAuthRepoURL(p.RepoURL, p.Username, p.Password, chartRef, p.Version, p.CertFile, p.KeyFile, p.CaFile, getter.All(p.Settings))
+		chartURL, err := repo.FindChartInAuthRepoURL(p.RepoURL, p.Username, p.Password, chartRef, p.Version, p.CertFile, p.KeyFile, p.CaFile, getters)
 		if err != nil {
 			return out.String(), err
 		}

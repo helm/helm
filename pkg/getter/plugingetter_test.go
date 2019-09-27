@@ -19,15 +19,10 @@ import (
 	"runtime"
 	"strings"
 	"testing"
-
-	"helm.sh/helm/pkg/cli"
 )
 
 func TestCollectPlugins(t *testing.T) {
-	env := &cli.EnvSettings{
-		PluginsDirectory: pluginDir,
-	}
-	p, err := collectPlugins(env)
+	p, err := collectPlugins(testEnv())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,10 +49,7 @@ func TestPluginGetter(t *testing.T) {
 		t.Skip("TODO: refactor this test to work on windows")
 	}
 
-	env := &cli.EnvSettings{
-		PluginsDirectory: pluginDir,
-	}
-	pg := NewPluginGetter("echo", env, "test", ".")
+	pg := NewPluginGetter("echo", testEnv(), "test", ".")
 	g, err := pg()
 	if err != nil {
 		t.Fatal(err)
@@ -80,10 +72,7 @@ func TestPluginSubCommands(t *testing.T) {
 		t.Skip("TODO: refactor this test to work on windows")
 	}
 
-	env := &cli.EnvSettings{
-		PluginsDirectory: pluginDir,
-	}
-	pg := NewPluginGetter("echo -n", env, "test", ".")
+	pg := NewPluginGetter("echo -n", testEnv(), "test", ".")
 	g, err := pg()
 	if err != nil {
 		t.Fatal(err)

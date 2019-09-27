@@ -1,0 +1,6 @@
+fullenv
+testdata/helmhome/helm/plugins/fullenv
+testdata/helmhome/helm/plugins
+testdata/helmhome/helm/repositories.yaml
+testdata/helmhome/helm/repository
+/var/folders/sr/3jkq42_d5fgbvdfwh05rrnlw0000gp/T/go-build387531407/b001/helm.test

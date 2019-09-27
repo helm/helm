@@ -75,8 +75,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-
-			client.Namespace = getNamespace()
+			client.Namespace = settings.Namespace()
 
 			if client.Version == "" && client.Devel {
 				debug("setting version to >0.0.0-0")

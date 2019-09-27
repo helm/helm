@@ -26,7 +26,7 @@ import (
 )
 
 func checkCommand(p *Plugin, extraArgs []string, osStrCmp string, t *testing.T) {
-	cmd, args, err := p.PrepareCommand(extraArgs)
+	cmd, args, err := p.PrepareCommand(extraArgs, map[string]string{})
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -47,7 +47,7 @@ func checkCommand(p *Plugin, extraArgs []string, osStrCmp string, t *testing.T) 
 
 	// Test with IgnoreFlags. This should omit --debug, --foo, bar
 	p.Metadata.IgnoreFlags = true
-	cmd, args, err = p.PrepareCommand(extraArgs)
+	cmd, args, err = p.PrepareCommand(extraArgs, map[string]string{})
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -144,7 +144,7 @@ func TestNoPrepareCommand(t *testing.T) {
 	}
 	argv := []string{"--debug", "--foo", "bar"}
 
-	_, _, err := p.PrepareCommand(argv)
+	_, _, err := p.PrepareCommand(argv, map[string]string{})
 	if err == nil {
 		t.Errorf("Expected error to be returned")
 	}
@@ -162,7 +162,7 @@ func TestNoMatchPrepareCommand(t *testing.T) {
 	}
 	argv := []string{"--debug", "--foo", "bar"}
 
-	if _, _, err := p.PrepareCommand(argv); err == nil {
+	if _, _, err := p.PrepareCommand(argv, map[string]string{}); err == nil {
 		t.Errorf("Expected error to be returned")
 	}
 }
@@ -259,11 +259,10 @@ func TestSetupEnv(t *testing.T) {
 	name := "pequod"
 	base := filepath.Join("testdata/helmhome/helm/plugins", name)
 
-	s := &cli.EnvSettings{
-		PluginsDirectory: "testdata/helmhome/helm/plugins",
-	}
+	env := cli.New()
+	env.PluginsDirectory = "testdata/helmhome/helm/plugins"
 
-	SetupPluginEnv(s, name, base)
+	SetupPluginEnv(env, name, base)
 	for _, tt := range []struct {
 		name, expect string
 	}{
