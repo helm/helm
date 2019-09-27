@@ -69,13 +69,22 @@ __helm_override_flags()
     done
 }
 
+__helm_binary_name()
+{
+    local helm_binary
+    helm_binary="${words[0]}"
+    __helm_debug "${FUNCNAME[0]}: helm_binary is ${helm_binary}"
+    echo ${helm_binary}
+}
+
 __helm_list_releases()
 {
     __helm_debug "${FUNCNAME[0]}: c is $c words[c] is ${words[c]}"
     local out filter
     # Use ^ to map from the start of the release name
     filter="^${words[c]}"
-    if out=$(helm list $(__helm_override_flags) -a -q ${filter} 2>/dev/null); then
+    # Use eval in case helm_binary_name or __helm_override_flags contains a variable (e.g., $HOME/bin/h2)
+    if out=$(eval $(__helm_binary_name) list $(__helm_override_flags) -a -q -m 1000 ${filter} 2>/dev/null); then
         COMPREPLY=( $( compgen -W "${out[*]}" -- "$cur" ) )
     fi
 }
@@ -86,7 +95,8 @@ __helm_list_repos()
     local out oflags
     oflags=$(__helm_override_flags)
     __helm_debug "${FUNCNAME[0]}: __helm_override_flags are ${oflags}"
-    if out=$(helm repo list ${oflags} | tail +2 | cut -f1 2>/dev/null); then
+    # Use eval in case helm_binary_name contains a variable (e.g., $HOME/bin/h2)
+    if out=$(eval $(__helm_binary_name) repo list ${oflags} 2>/dev/null | tail +2 | cut -f1); then
         COMPREPLY=( $( compgen -W "${out[*]}" -- "$cur" ) )
     fi
 }
@@ -97,7 +107,8 @@ __helm_list_plugins()
     local out oflags
     oflags=$(__helm_override_flags)
     __helm_debug "${FUNCNAME[0]}: __helm_override_flags are ${oflags}"
-    if out=$(helm plugin list ${oflags} | tail +2 | cut -f1 2>/dev/null); then
+    # Use eval in case helm_binary_name contains a variable (e.g., $HOME/bin/h2)
+    if out=$(eval $(__helm_binary_name) plugin list ${oflags} 2>/dev/null | tail +2 | cut -f1); then
         COMPREPLY=( $( compgen -W "${out[*]}" -- "$cur" ) )
     fi
 }
