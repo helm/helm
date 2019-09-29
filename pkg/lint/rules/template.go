@@ -119,7 +119,8 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 		// NOTE: disabled for now, Refs https://github.com/helm/helm/issues/1037
 		// linter.RunLinterRule(support.WarningSev, path, validateQuotes(string(preExecutedTemplate)))
 
-		renderedContent := renderedContentMap[filepath.Join(chart.Name(), fileName)]
+		templatePath := filepath.Join(chart.Name(), fileName)
+		renderedContent := renderedContentMap[filepath.ToSlash(templatePath)]
 		if strings.TrimSpace(renderedContent) != "" {
 			var yamlStruct K8sYamlStruct
 			// Even though K8sYamlStruct only defines a few fields, an error in any other
