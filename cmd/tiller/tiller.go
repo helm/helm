@@ -75,11 +75,11 @@ const (
 )
 
 var (
-	grpcAddr             = flag.String("listen", fmt.Sprintf(":%v", environment.DefaultTillerPort), "address:port to listen on")
-	probeAddr            = flag.String("probe-listen", fmt.Sprintf(":%v", environment.DefaultTillerProbePort), "address:port to listen on for probes")
-	enableProbing        = flag.Bool("probe", true, "enable probing over http")
-	enableTracing        = flag.Bool("trace", false, "enable rpc tracing")
-	store                = flag.String("storage", storageConfigMap, "storage driver to use. One of 'configmap', 'memory', 'sql' or 'secret'")
+	grpcAddr      = flag.String("listen", fmt.Sprintf(":%v", environment.DefaultTillerPort), "address:port to listen on")
+	probeAddr     = flag.String("probe-listen", fmt.Sprintf(":%v", environment.DefaultTillerProbePort), "address:port to listen on for probes")
+	enableProbing = flag.Bool("probe", true, "enable probing over http")
+	enableTracing = flag.Bool("trace", false, "enable rpc tracing")
+	store         = flag.String("storage", storageConfigMap, "storage driver to use. One of 'configmap', 'memory', 'sql' or 'secret'")
 
 	sqlDialect          = flag.String("sql-dialect", "postgres", "SQL dialect to use (only postgres is supported for now")
 	sqlConnectionString = flag.String("sql-connection-string", "", "SQL connection string to use")
