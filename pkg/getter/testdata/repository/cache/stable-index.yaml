@@ -412,7 +412,7 @@ entries:
       companies. All data is stored in plain text files, so no database is required.
     digest: 5cfff9542341a391abf9029dd9b42e7c44813c520ef0301ce62e9c08586ceca2
     engine: gotpl
-    home: http://www.dokuwiki.org/
+    home: https://www.dokuwiki.org/
     icon: https://bitnami.com/assets/stacks/dokuwiki/img/dokuwiki-stack-110x117.png
     keywords:
     - dokuwiki
@@ -433,7 +433,7 @@ entries:
       companies. All data is stored in plain text files, so no database is required.
     digest: 3c46f9d9196bbf975711b2bb7c889fd3df1976cc57c3c120c7374d721da0e240
     engine: gotpl
-    home: http://www.dokuwiki.org/
+    home: https://www.dokuwiki.org/
     icon: https://bitnami.com/assets/stacks/dokuwiki/img/dokuwiki-stack-110x117.png
     keywords:
     - dokuwiki
@@ -454,7 +454,7 @@ entries:
       companies. All data is stored in plain text files, so no database is required.
     digest: f533bc20e08179a49cca77b175f897087dc3f2c57e6c89ecbd7264ab5975d66a
     engine: gotpl
-    home: http://www.dokuwiki.org/
+    home: https://www.dokuwiki.org/
     icon: https://bitnami.com/assets/stacks/dokuwiki/img/dokuwiki-stack-110x117.png
     keywords:
     - dokuwiki
@@ -475,7 +475,7 @@ entries:
       companies. All data is stored in plain text files, so no database is required.
     digest: 34a926398cfafbf426ff468167ef49577252e260ebce5df33380e6e67b79fe59
     engine: gotpl
-    home: http://www.dokuwiki.org/
+    home: https://www.dokuwiki.org/
     icon: https://bitnami.com/assets/stacks/dokuwiki/img/dokuwiki-stack-110x117.png
     keywords:
     - dokuwiki
@@ -496,7 +496,7 @@ entries:
       companies. All data is stored in plain text files, so no database is required.
     digest: 6825fbacb709cf05901985561be10ba9473a379488d99b71d1590d33f5a81374
     engine: gotpl
-    home: http://www.dokuwiki.org/
+    home: https://www.dokuwiki.org/
     icon: https://bitnami.com/assets/stacks/dokuwiki/img/dokuwiki-stack-110x117.png
     keywords:
     - dokuwiki
@@ -516,7 +516,7 @@ entries:
     description: One of the most versatile open source content management systems.
     digest: db95c255b19164c5051eb75a6860f3775a1011399a62b27e474cd9ebee0cb578
     engine: gotpl
-    home: http://www.drupal.org/
+    home: https://www.drupal.org/
     icon: https://bitnami.com/assets/stacks/drupal/img/drupal-stack-220x234.png
     keywords:
     - drupal
@@ -539,7 +539,7 @@ entries:
     description: One of the most versatile open source content management systems.
     digest: 84c13154a9aeb7215dc0d98e9825207207e69ca870f3d54b273bfc2d34699f61
     engine: gotpl
-    home: http://www.drupal.org/
+    home: https://www.drupal.org/
     icon: https://bitnami.com/assets/stacks/drupal/img/drupal-stack-220x234.png
     keywords:
     - drupal
@@ -562,7 +562,7 @@ entries:
     description: One of the most versatile open source content management systems.
     digest: 17d0bfdcdf5a1a650941343c76b6b928d76d3332fece127c502e91f9597f419e
     engine: gotpl
-    home: http://www.drupal.org/
+    home: https://www.drupal.org/
     icon: https://bitnami.com/assets/stacks/drupal/img/drupal-stack-220x234.png
     keywords:
     - drupal
@@ -585,7 +585,7 @@ entries:
     description: One of the most versatile open source content management systems.
     digest: 317674c89762e0b54156b734203ee93638dd7a25df35120c5cab45546814d89b
     engine: gotpl
-    home: http://www.drupal.org/
+    home: https://www.drupal.org/
     icon: https://bitnami.com/assets/stacks/drupal/img/drupal-stack-220x234.png
     keywords:
     - drupal
@@ -608,7 +608,7 @@ entries:
     description: One of the most versatile open source content management systems.
     digest: 24c4f187b50c0e961cc2cacf6e6b2ce6d6b225c73637c578e001bebd9b3f5d48
     engine: gotpl
-    home: http://www.drupal.org/
+    home: https://www.drupal.org/
     icon: https://bitnami.com/assets/stacks/drupal/img/drupal-stack-220x234.png
     keywords:
     - drupal
@@ -631,7 +631,7 @@ entries:
     description: One of the most versatile open source content management systems.
     digest: 7fcea4684a3d520454aeaa10beb9f9b1789c09c097680fc484954084f283feb3
     engine: gotpl
-    home: http://www.drupal.org/
+    home: https://www.drupal.org/
     icon: https://bitnami.com/assets/stacks/drupal/img/drupal-stack-220x234.png
     keywords:
     - drupal
@@ -654,7 +654,7 @@ entries:
     description: One of the most versatile open source content management systems.
     digest: adb23bc71125b9691b407a47dadf4298de3516805218813b56067967e39db7d8
     engine: gotpl
-    home: http://www.drupal.org/
+    home: https://www.drupal.org/
     icon: https://bitnami.com/assets/stacks/drupal/img/drupal-stack-220x234.png
     keywords:
     - drupal
@@ -677,7 +677,7 @@ entries:
     description: One of the most versatile open source content management systems.
     digest: 5de529e25767e8a37b8d6f413daa0fe99f5c304e48ddcfa8adb4d8c7a0496aa7
     engine: gotpl
-    home: http://www.drupal.org/
+    home: https://www.drupal.org/
     keywords:
     - drupal
     - cms
@@ -699,7 +699,7 @@ entries:
     description: One of the most versatile open source content management systems.
     digest: a35dbf9d470972cc2461de3e0a8fcf2fec8d0adc04f5a0f1e924505f22c714d7
     engine: gotpl
-    home: http://www.drupal.org/
+    home: https://www.drupal.org/
     keywords:
     - drupal
     - cms
@@ -721,7 +721,7 @@ entries:
     description: One of the most versatile open source content management systems.
     digest: a62d686d6bd47643dfa489e395dda89286954f785123a43a88db7ef34f3ea48d
     engine: gotpl
-    home: http://www.drupal.org/
+    home: https://www.drupal.org/
     keywords:
     - drupal
     - cms
@@ -743,7 +743,7 @@ entries:
     description: One of the most versatile open source content management systems.
     digest: 2c189424bda94eeebb7e6370e96884f09bdfa81498cb93ac4723d24c92a3938e
     engine: gotpl
-    home: http://www.drupal.org/
+    home: https://www.drupal.org/
     keywords:
     - drupal
     - cms
@@ -765,7 +765,7 @@ entries:
     description: One of the most versatile open source content management systems.
     digest: 3596f47c5dcaa7a975d1c4cb7bf7ef6790c9ad8dda41a5a329e30c1ea8a40d11
     engine: gotpl
-    home: http://www.drupal.org/
+    home: https://www.drupal.org/
     keywords:
     - drupal
     - cms
@@ -787,7 +787,7 @@ entries:
     description: One of the most versatile open source content management systems.
     digest: 78b2bb3717be63dccb02ea06b711ca7cf7869848b296b880099c6264e86d86d3
     engine: gotpl
-    home: http://www.drupal.org/
+    home: https://www.drupal.org/
     keywords:
     - drupal
     - cms
@@ -809,7 +809,7 @@ entries:
     description: One of the most versatile open source content management systems.
     digest: 5508b29e20a5d609f76319869774f008dcc4bed13bbbc7ed40546bc9af8c7cd7
     engine: gotpl
-    home: http://www.drupal.org/
+    home: https://www.drupal.org/
     keywords:
     - drupal
     - cms
@@ -831,7 +831,7 @@ entries:
     description: One of the most versatile open source content management systems.
     digest: 023a282c93f8411fb81bb4fff7820c1337aad0586ccf7dae55bdbed515ad8b05
     engine: gotpl
-    home: http://www.drupal.org/
+    home: https://www.drupal.org/
     keywords:
     - drupal
     - cms
@@ -853,7 +853,7 @@ entries:
     description: One of the most versatile open source content management systems.
     digest: 9bdaa53f7a9e82c9b32c7ac9b34b84fd142671732a54423a2dcdc893c4162801
     engine: gotpl
-    home: http://www.drupal.org/
+    home: https://www.drupal.org/
     keywords:
     - drupal
     - cms
@@ -875,7 +875,7 @@ entries:
     description: One of the most versatile open source content management systems.
     digest: 25650526abc1036398dbb314d77a0062cbb644b2c5791a258fb863fdaad5093d
     engine: gotpl
-    home: http://www.drupal.org/
+    home: https://www.drupal.org/
     keywords:
     - drupal
     - cms
@@ -897,7 +897,7 @@ entries:
     description: One of the most versatile open source content management systems.
     digest: 13d5d32d316c08359221d230004dd2adc0152362e87abcc0d61ea191241fa69f
     engine: gotpl
-    home: http://www.drupal.org/
+    home: https://www.drupal.org/
     keywords:
     - drupal
     - cms
@@ -919,7 +919,7 @@ entries:
     description: One of the most versatile open source content management systems.
     digest: b3f09ecd191f8c06275c96d9af4d77a97c94355525864201e9baf151b17bd5a7
     engine: gotpl
-    home: http://www.drupal.org/
+    home: https://www.drupal.org/
     keywords:
     - drupal
     - cms
@@ -941,7 +941,7 @@ entries:
     description: One of the most versatile open source content management systems.
     digest: c56fc55b93b0dead65af7b81bbd54befd5115860698ca475baa5acb178a12e5a
     engine: gotpl
-    home: http://www.drupal.org/
+    home: https://www.drupal.org/
     keywords:
     - drupal
     - cms
@@ -1154,7 +1154,7 @@ entries:
       stories with the world
     digest: 91d195c99e00b2801eafef5c23fcf9ced218bb29c7097f08139e2bdc80e38a0f
     engine: gotpl
-    home: http://www.ghost.org/
+    home: https://www.ghost.org/
     icon: https://bitnami.com/assets/stacks/ghost/img/ghost-stack-220x234.png
     keywords:
     - ghost
@@ -1178,7 +1178,7 @@ entries:
       stories with the world
     digest: 6342a95aeef40690430c2e80b167fbb116a632746cdca49cfac4cbd535eadb22
     engine: gotpl
-    home: http://www.ghost.org/
+    home: https://www.ghost.org/
     icon: https://bitnami.com/assets/stacks/ghost/img/ghost-stack-220x234.png
     keywords:
     - ghost
@@ -1202,7 +1202,7 @@ entries:
       stories with the world
     digest: 8998a9a4e75e777edb6f06c05b45d461daebba09021161af3bef523efd193b15
     engine: gotpl
-    home: http://www.ghost.org/
+    home: https://www.ghost.org/
     icon: https://bitnami.com/assets/stacks/ghost/img/ghost-stack-220x234.png
     keywords:
     - ghost
@@ -1226,7 +1226,7 @@ entries:
       stories with the world
     digest: e44c9a53355086ded1832f769dca515b863337ad118ba618ef97f37b3ef84030
     engine: gotpl
-    home: http://www.ghost.org/
+    home: https://www.ghost.org/
     icon: https://bitnami.com/assets/stacks/ghost/img/ghost-stack-220x234.png
     keywords:
     - ghost
@@ -1250,7 +1250,7 @@ entries:
       stories with the world
     digest: b0c94a93c88fde68bb4fc78e92691d46cd2eb4d32cbac011e034565fbd35d46b
     engine: gotpl
-    home: http://www.ghost.org/
+    home: https://www.ghost.org/
     keywords:
     - ghost
     - blog
@@ -1273,7 +1273,7 @@ entries:
       stories with the world
     digest: 791ccb42b62d56d50c72b37db3282eb3f2af75d667a25542d76c7991004eb822
     engine: gotpl
-    home: http://www.ghost.org/
+    home: https://www.ghost.org/
     keywords:
     - ghost
     - blog
@@ -1296,7 +1296,7 @@ entries:
       stories with the world
     digest: 331a2b145bfdb39b626313cda7dc539f32dbda5149893957589c5406317fca53
     engine: gotpl
-    home: http://www.ghost.org/
+    home: https://www.ghost.org/
     keywords:
     - ghost
     - blog
@@ -1319,7 +1319,7 @@ entries:
       stories with the world
     digest: 804227af037082a0f5c3c579feb9e24eb3682449e78876971c93a109bc716f40
     engine: gotpl
-    home: http://www.ghost.org/
+    home: https://www.ghost.org/
     keywords:
     - ghost
     - blog
@@ -1758,7 +1758,7 @@ entries:
       visualization, and a dashboard feature for compiling multiple custom views
     digest: 8a649026f55b2fa1e743c93fd331e127e66b49c4d7f20116a2bb06e5937f4828
     engine: gotpl
-    home: http://community.jaspersoft.com/project/jasperreports-server
+    home: https://community.jaspersoft.com/project/jasperreports-server
     icon: https://bitnami.com/assets/stacks/jasperserver/img/jasperserver-stack-110x117.png
     keywords:
     - business intelligence
@@ -1782,7 +1782,7 @@ entries:
       visualization, and a dashboard feature for compiling multiple custom views
     digest: d4a62f7ace55256852e5c650a56ccf671633c4f223180d304cfb03b9cd7993aa
     engine: gotpl
-    home: http://community.jaspersoft.com/project/jasperreports-server
+    home: https://community.jaspersoft.com/project/jasperreports-server
     icon: https://bitnami.com/assets/stacks/jasperserver/img/jasperserver-stack-110x117.png
     keywords:
     - business intelligence
@@ -1806,7 +1806,7 @@ entries:
       visualization, and a dashboard feature for compiling multiple custom views
     digest: 99af0fca7ef1c475b239f2c8fc2dee6b040ea76b3c30bba1431f358df873aa49
     engine: gotpl
-    home: http://community.jaspersoft.com/project/jasperreports-server
+    home: https://community.jaspersoft.com/project/jasperreports-server
     icon: https://bitnami.com/assets/stacks/jasperserver/img/jasperserver-stack-110x117.png
     keywords:
     - business intelligence
@@ -1830,7 +1830,7 @@ entries:
       visualization, and a dashboard feature for compiling multiple custom views
     digest: f01e53d1b89c4fb1fcd9702cd5f4e48d77607aed65f249e1f94b8b21f7eef3f4
     engine: gotpl
-    home: http://community.jaspersoft.com/project/jasperreports-server
+    home: https://community.jaspersoft.com/project/jasperreports-server
     icon: https://bitnami.com/assets/stacks/jasperserver/img/jasperserver-stack-110x117.png
     keywords:
     - business intelligence
@@ -1854,7 +1854,7 @@ entries:
       visualization, and a dashboard feature for compiling multiple custom views
     digest: 5cc4af8c88691d7030602c97be2ccbc125ef11129b361da0aa236a127c31b965
     engine: gotpl
-    home: http://community.jaspersoft.com/project/jasperreports-server
+    home: https://community.jaspersoft.com/project/jasperreports-server
     icon: https://bitnami.com/assets/stacks/jasperserver/img/jasperserver-stack-110x117.png
     keywords:
     - business intelligence
@@ -2265,7 +2265,7 @@ entries:
     description: PHP content management system (CMS) for publishing web content
     digest: 6f9934487533f325515f4877b3af1306c87d64bf3ece9d4bd875289cd73b340d
     engine: gotpl
-    home: http://www.joomla.org/
+    home: https://www.joomla.org/
     icon: https://bitnami.com/assets/stacks/joomla/img/joomla-stack-220x234.png
     keywords:
     - joomla
@@ -2286,7 +2286,7 @@ entries:
     description: PHP content management system (CMS) for publishing web content
     digest: f9dedab2fc2dbf170cf45b2c230baa6d20aad9a6f8ccfcb09c459602fc5213dc
     engine: gotpl
-    home: http://www.joomla.org/
+    home: https://www.joomla.org/
     icon: https://bitnami.com/assets/stacks/joomla/img/joomla-stack-220x234.png
     keywords:
     - joomla
@@ -2307,7 +2307,7 @@ entries:
     description: PHP content management system (CMS) for publishing web content
     digest: 1e067e459873ae832d54ff516a3420f7f0e16ecd8f72f4c4f02be22e47702077
     engine: gotpl
-    home: http://www.joomla.org/
+    home: https://www.joomla.org/
     icon: https://bitnami.com/assets/stacks/joomla/img/joomla-stack-220x234.png
     keywords:
     - joomla
@@ -2328,7 +2328,7 @@ entries:
     description: PHP content management system (CMS) for publishing web content
     digest: 9a99b15e83e18955eb364985cd545659f1176ef203ac730876dfe39499edfb18
     engine: gotpl
-    home: http://www.joomla.org/
+    home: https://www.joomla.org/
     icon: https://bitnami.com/assets/stacks/joomla/img/joomla-stack-220x234.png
     keywords:
     - joomla
@@ -2349,7 +2349,7 @@ entries:
     description: PHP content management system (CMS) for publishing web content
     digest: 07c3a16eb674ffc74fe5b2b16191b8bb24c63bdae9bce9710bda1999920c46fc
     engine: gotpl
-    home: http://www.joomla.org/
+    home: https://www.joomla.org/
     keywords:
     - joomla
     - cms
@@ -2369,7 +2369,7 @@ entries:
     description: PHP content management system (CMS) for publishing web content
     digest: 95fbe272015941544609eee90b3bffd5172bfdec10be13636510caa8478a879e
     engine: gotpl
-    home: http://www.joomla.org/
+    home: https://www.joomla.org/
     keywords:
     - joomla
     - cms
@@ -2389,7 +2389,7 @@ entries:
     description: PHP content management system (CMS) for publishing web content
     digest: 0a01ea051ec15274932c8d82076c1a9fd62584b0fb916a81372319bef223c20e
     engine: gotpl
-    home: http://www.joomla.org/
+    home: https://www.joomla.org/
     keywords:
     - joomla
     - cms
@@ -2771,7 +2771,7 @@ entries:
   - created: 2017-04-28T00:18:30.087097677Z
     description: A modern load testing framework
     digest: eb91b0e3c0b618cf5ad0f24d2685fe4086bc6f497685e58ad8a64032c4e82b7a
-    home: http://locust.io
+    home: https://locust.io
     icon: https://pbs.twimg.com/profile_images/1867636195/locust-logo-orignal.png
     maintainers:
     - email: vincent.drl@gmail.com
@@ -3351,7 +3351,7 @@ entries:
       that uses PHP to process and display data stored in a database.
     digest: 0e51822c5547895109a5b41ce426c77f62d0434b40f3021afee8471ab976a6f5
     engine: gotpl
-    home: http://www.mediawiki.org/
+    home: https://www.mediawiki.org/
     icon: https://bitnami.com/assets/stacks/mediawiki/img/mediawiki-stack-220x234.png
     keywords:
     - mediawiki
@@ -3372,7 +3372,7 @@ entries:
       that uses PHP to process and display data stored in a database.
     digest: 0e419c2c5d87997f94a32da6597af3f3b52120dc1ec682dcbb6b238fb4825e06
     engine: gotpl
-    home: http://www.mediawiki.org/
+    home: https://www.mediawiki.org/
     icon: https://bitnami.com/assets/stacks/mediawiki/img/mediawiki-stack-220x234.png
     keywords:
     - mediawiki
@@ -3393,7 +3393,7 @@ entries:
       that uses PHP to process and display data stored in a database.
     digest: 6f4dde26737f7f1aa63ffda6c259ce388e3a3509225f90f334bfc3f0f7617bc1
     engine: gotpl
-    home: http://www.mediawiki.org/
+    home: https://www.mediawiki.org/
     icon: https://bitnami.com/assets/stacks/mediawiki/img/mediawiki-stack-220x234.png
     keywords:
     - mediawiki
@@ -3414,7 +3414,7 @@ entries:
       that uses PHP to process and display data stored in a database.
     digest: 0ba52b8c4c9e0bee3eb76fe625d2dc88729a1cdf41ace9d13cd4abc5b477cfb8
     engine: gotpl
-    home: http://www.mediawiki.org/
+    home: https://www.mediawiki.org/
     keywords:
     - mediawiki
     - wiki
@@ -3434,7 +3434,7 @@ entries:
       that uses PHP to process and display data stored in a database.
     digest: f49df3e17f97b238743aad0376eb9db7e4a9bca3829a3a65d7bbb349344a73be
     engine: gotpl
-    home: http://www.mediawiki.org/
+    home: https://www.mediawiki.org/
     keywords:
     - mediawiki
     - wiki
@@ -3454,7 +3454,7 @@ entries:
       that uses PHP to process and display data stored in a database.
     digest: 339a90050d5cf4216140409349a356aa7cd8dc95e2cbdca06e4fdd11e87aa963
     engine: gotpl
-    home: http://www.mediawiki.org/
+    home: https://www.mediawiki.org/
     keywords:
     - mediawiki
     - wiki
@@ -3474,7 +3474,7 @@ entries:
       that uses PHP to process and display data stored in a database.
     digest: 9617f13f51f5bb016a072f2a026c627420721a1c5b7cd22f32d6cd0c90f34eda
     engine: gotpl
-    home: http://www.mediawiki.org/
+    home: https://www.mediawiki.org/
     keywords:
     - mediawiki
     - wiki
@@ -3495,7 +3495,7 @@ entries:
       system.
     digest: 36ceb2767094598171b2851ecda54bd43d862b9b81aa4b294f3d8c8d59ddd79c
     engine: gotpl
-    home: http://memcached.org/
+    home: https://memcached.org/
     icon: https://upload.wikimedia.org/wikipedia/en/thumb/2/27/Memcached.svg/1024px-Memcached.svg.png
     keywords:
     - memcached
@@ -3513,7 +3513,7 @@ entries:
     description: Chart for Memcached
     digest: 2b918dd8129a9d706e58b3de459004e3367c05a162d3e3cdb031cb6818d5f820
     engine: gotpl
-    home: http://memcached.org/
+    home: https://memcached.org/
     keywords:
     - memcached
     - cache
@@ -3911,7 +3911,7 @@ entries:
       learning environments
     digest: 386bff8ce61cf61961daf8ed6d68a76cd3a360560a08c1fca80bcbd897f11270
     engine: gotpl
-    home: http://www.moodle.org/
+    home: https://www.moodle.org/
     icon: https://bitnami.com/assets/stacks/moodle/img/moodle-stack-110x117.png
     keywords:
     - moodle
@@ -3932,7 +3932,7 @@ entries:
       learning environments
     digest: bd85420a7cefd82e9d96088591601f832ecc60016d6389dbcde51a2050327a66
     engine: gotpl
-    home: http://www.moodle.org/
+    home: https://www.moodle.org/
     icon: https://bitnami.com/assets/stacks/moodle/img/moodle-stack-110x117.png
     keywords:
     - moodle
@@ -3953,7 +3953,7 @@ entries:
       learning environments
     digest: 8656c544a71fa8cc4ac23380e999e072740ec8e481a22aff86517d8362e70121
     engine: gotpl
-    home: http://www.moodle.org/
+    home: https://www.moodle.org/
     icon: https://bitnami.com/assets/stacks/moodle/img/moodle-stack-110x117.png
     keywords:
     - moodle
