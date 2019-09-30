@@ -128,7 +128,6 @@ release:
 git log --oneline
 # cherry-pick the commits starting from the oldest one, without including merge commits
 git cherry-pick -x <commit-id>
-git cherry-pick -x <commit-id>
 ```
 
 This new branch is going to be the base for the release, which we are going to
