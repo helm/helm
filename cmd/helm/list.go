@@ -112,13 +112,13 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 }
 
 type releaseElement struct {
-	Name        string
-	Namespace   string
-	Revision    string
-	Updated     string
-	Status      string
-	Chart       string
-	AppVersion  string
+	Name       string
+	Namespace  string
+	Revision   string
+	Updated    string
+	Status     string
+	Chart      string
+	AppVersion string
 }
 
 type releaseListWriter struct {
@@ -130,12 +130,12 @@ func newReleaseListWriter(releases []*release.Release) *releaseListWriter {
 	elements := make([]releaseElement, 0, len(releases))
 	for _, r := range releases {
 		element := releaseElement{
-			Name:           r.Name,
-			Namespace:      r.Namespace,
-			Revision:       strconv.Itoa(r.Version),
-			Status:         r.Info.Status.String(),
-			Chart:          fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version),
-			AppVersion:     r.Chart.Metadata.AppVersion,
+			Name:       r.Name,
+			Namespace:  r.Namespace,
+			Revision:   strconv.Itoa(r.Version),
+			Status:     r.Info.Status.String(),
+			Chart:      fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version),
+			AppVersion: r.Chart.Metadata.AppVersion,
 		}
 		t := "-"
 		if tspb := r.Info.LastDeployed; !tspb.IsZero() {
