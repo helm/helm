@@ -101,18 +101,22 @@ func TestDependencyEnabled(t *testing.T) {
 		[]string{"parentchart", "parentchart.subchart1", "parentchart.subchart1.subchartb"},
 	}, {
 		"tags enabling a parent/child group with condition disabling one child",
-		M{"subchartc": M{"enabled": false}, "tags": M{"back-end": true}},
+		M{"subchart2": M{"subchartc": M{"enabled": false}}, "tags": M{"back-end": true}},
 		[]string{"parentchart", "parentchart.subchart1", "parentchart.subchart1.subcharta", "parentchart.subchart1.subchartb", "parentchart.subchart2", "parentchart.subchart2.subchartb"},
 	}, {
 		"tags will not enable a child if parent is explicitly disabled with condition",
 		M{"subchart1": M{"enabled": false}, "tags": M{"front-end": true}},
 		[]string{"parentchart"},
+	}, {
+		"subcharts with alias also respect conditions",
+		M{"subchart1": M{"enabled": false}, "subchart2alias": M{"enabled": true, "subchartb": M{"enabled": true}}},
+		[]string{"parentchart", "parentchart.subchart2alias", "parentchart.subchart2alias.subchartb"},
 	}}
 
 	for _, tc := range tests {
 		c := loadChart(t, "testdata/subpop")
 		t.Run(tc.name, func(t *testing.T) {
-			if err := processDependencyEnabled(c, tc.v); err != nil {
+			if err := processDependencyEnabled(c, tc.v, ""); err != nil {
 				t.Fatalf("error processing enabled dependencies %v", err)
 			}
 
@@ -281,7 +285,7 @@ func TestDependentChartAliases(t *testing.T) {
 		t.Fatalf("expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
 	}
 
-	if err := processDependencyEnabled(c, c.Values); err != nil {
+	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
 		t.Fatalf("expected no errors but got %q", err)
 	}
 
@@ -302,7 +306,7 @@ func TestDependentChartWithSubChartsAbsentInDependency(t *testing.T) {
 		t.Fatalf("expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
 	}
 
-	if err := processDependencyEnabled(c, c.Values); err != nil {
+	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
 		t.Fatalf("expected no errors but got %q", err)
 	}
 
@@ -339,7 +343,7 @@ func TestDependentChartsWithSubchartsAllSpecifiedInDependency(t *testing.T) {
 		t.Fatalf("expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
 	}
 
-	if err := processDependencyEnabled(c, c.Values); err != nil {
+	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
 		t.Fatalf("expected no errors but got %q", err)
 	}
 
@@ -359,7 +363,7 @@ func TestDependentChartsWithSomeSubchartsSpecifiedInDependency(t *testing.T) {
 		t.Fatalf("expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
 	}
 
-	if err := processDependencyEnabled(c, c.Values); err != nil {
+	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
 		t.Fatalf("expected no errors but got %q", err)
 	}
 
