@@ -20,7 +20,6 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -178,14 +177,9 @@ func TestTemplateCmd(t *testing.T) {
 		},
 	}
 
-	var buf bytes.Buffer
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			// capture stdout
-			old := os.Stdout
-			r, w, _ := os.Pipe()
-			os.Stdout = w
 			// execute template command
 			out := bytes.NewBuffer(nil)
 			cmd := newTemplateCmd(out)
@@ -206,14 +200,8 @@ func TestTemplateCmd(t *testing.T) {
 			} else if err != nil {
 				t.Errorf("expected no error, got %v", err)
 			}
-			// restore stdout
-			w.Close()
-			os.Stdout = old
-			var b bytes.Buffer
-			io.Copy(&b, r)
-			r.Close()
 			// scan yaml into map[<path>]yaml
-			scanner := bufio.NewScanner(&b)
+			scanner := bufio.NewScanner(out)
 			next := false
 			lastKey := ""
 			m := map[string]string{}
@@ -239,7 +227,6 @@ func TestTemplateCmd(t *testing.T) {
 			} else {
 				t.Errorf("could not find key %s", tt.expectKey)
 			}
-			buf.Reset()
 		})
 	}
 }
