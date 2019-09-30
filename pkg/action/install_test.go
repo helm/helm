@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -167,7 +168,7 @@ func TestInstallRelease_WithNotesRendered(t *testing.T) {
 	is.Equal(rel.Info.Description, "Install complete")
 }
 
-func TestInstallRelease_WithChartAndDependencyNotes(t *testing.T) {
+func TestInstallRelease_WithChartAndDependencyParentNotes(t *testing.T) {
 	// Regression: Make sure that the child's notes don't override the parent's
 	is := assert.New(t)
 	instAction := installAction(t)
@@ -182,6 +183,28 @@ func TestInstallRelease_WithChartAndDependencyNotes(t *testing.T) {
 	is.Equal("with-notes", rel.Name)
 	is.NoError(err)
 	is.Equal("parent", rel.Info.Notes)
+	is.Equal(rel.Info.Description, "Install complete")
+}
+
+func TestInstallRelease_WithChartAndDependencyAllNotes(t *testing.T) {
+	// Regression: Make sure that the child's notes don't override the parent's
+	is := assert.New(t)
+	instAction := installAction(t)
+	instAction.ReleaseName = "with-notes"
+	instAction.SubNotes = true
+	vals := map[string]interface{}{}
+	res, err := instAction.Run(buildChart(withNotes("parent"), withDependency(withNotes("child"))), vals)
+	if err != nil {
+		t.Fatalf("Failed install: %s", err)
+	}
+
+	rel, err := instAction.cfg.Releases.Get(res.Name, res.Version)
+	is.Equal("with-notes", rel.Name)
+	is.NoError(err)
+	// test run can return as either 'parent\nchild' or 'child\nparent'
+	if !strings.Contains(rel.Info.Notes, "parent") && !strings.Contains(rel.Info.Notes, "child") {
+		t.Fatalf("Expected 'parent\nchild' or 'child\nparent', got '%s'", rel.Info.Notes)
+	}
 	is.Equal(rel.Info.Description, "Install complete")
 }
 
