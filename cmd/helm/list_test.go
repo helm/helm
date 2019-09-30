@@ -36,6 +36,7 @@ func TestListCmd(t *testing.T) {
 		Metadata: &chart.Metadata{
 			Name:    "chickadee",
 			Version: "1.0.0",
+			AppVersion: "0.0.1",
 		},
 	}
 
