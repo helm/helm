@@ -56,6 +56,12 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return err
 			}
 			fmt.Fprintln(out, strings.TrimSpace(rel.Manifest))
+			if !client.DisableHooks {
+				for _, m := range rel.Hooks {
+					fmt.Fprintf(out, "---\n# Source: %s\n%s\n", m.Path, m.Manifest)
+				}
+			}
+
 			return nil
 		},
 	}
