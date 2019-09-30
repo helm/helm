@@ -17,6 +17,8 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
+	"fmt"
 	"testing"
 )
 
@@ -69,4 +71,39 @@ func TestLintChart(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestLinRunForNonExistentChart(t *testing.T) {
+	t.Run("should error out for non existent tgz chart", func(t *testing.T) {
+		testCharts := []string{"non-existent-chart.tgz"}
+		testLint := &lintCmd{
+			paths: testCharts,
+			out:   bytes.NewBufferString(""),
+		}
+		expectedErr := fmt.Errorf("0 chart(s) linted, 1 chart(s) failed")
+		err := testLint.run()
+		if err == nil {
+			t.Errorf("expected error but got no error")
+		}
+		if err != nil && (err.Error() != expectedErr.Error()) {
+			t.Errorf("expected: \"%v\" , but got: \"%v\"", expectedErr, err)
+		}
+	})
+
+	t.Run("should error out for corrupted tgz chart", func(t *testing.T) {
+		var corruptedTgzChart = "testdata/testcharts/corrupted-compressed-chart.tgz"
+		testCharts := []string{corruptedTgzChart}
+		testLint := &lintCmd{
+			paths: testCharts,
+			out:   bytes.NewBufferString(""),
+		}
+		expectedErr := fmt.Errorf("0 chart(s) linted, 1 chart(s) failed")
+		err := testLint.run()
+		if err == nil {
+			t.Errorf("expected error but got no error")
+		}
+		if err != nil && (err.Error() != expectedErr.Error()) {
+			t.Errorf("expected: \"%v\" , but got: \"%v\"", expectedErr, err)
+		}
+	})
 }

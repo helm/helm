@@ -17,7 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -81,8 +80,6 @@ func newLintCmd(out io.Writer) *cobra.Command {
 	return cmd
 }
 
-var errLintNoChart = errors.New("No chart found for linting (missing Chart.yaml)")
-
 func (l *lintCmd) run() error {
 	var lowestTolerance int
 	if l.strict {
@@ -100,27 +97,27 @@ func (l *lintCmd) run() error {
 	var total int
 	var failures int
 	for _, path := range l.paths {
-		if linter, err := lintChart(path, rvals, l.namespace, l.strict); err != nil {
+		linter, err := lintChart(path, rvals, l.namespace, l.strict)
+		if err != nil {
+			failures = failures + 1
 			fmt.Println("==> Skipping", path)
 			fmt.Println(err)
-			if err == errLintNoChart {
-				failures = failures + 1
-			}
-		} else {
-			fmt.Println("==> Linting", path)
+			fmt.Println("")
+			continue
+		}
 
-			if len(linter.Messages) == 0 {
-				fmt.Println("Lint OK")
-			}
+		fmt.Println("==> Linting", path)
+		if len(linter.Messages) == 0 {
+			fmt.Println("Lint OK")
+		}
 
-			for _, msg := range linter.Messages {
-				fmt.Println(msg)
-			}
+		for _, msg := range linter.Messages {
+			fmt.Println(msg)
+		}
 
-			total = total + 1
-			if linter.HighestSeverity >= lowestTolerance {
-				failures = failures + 1
-			}
+		total = total + 1
+		if linter.HighestSeverity >= lowestTolerance {
+			failures = failures + 1
 		}
 		fmt.Println("")
 	}
@@ -148,12 +145,12 @@ func lintChart(path string, vals []byte, namespace string, strict bool) (support
 
 		file, err := os.Open(path)
 		if err != nil {
-			return linter, err
+			return linter, fmt.Errorf("unable to open tar ball %s: %s", path, err.Error())
 		}
 		defer file.Close()
 
 		if err = chartutil.Expand(tempDir, file); err != nil {
-			return linter, err
+			return linter, fmt.Errorf("unable to extract tar ball: %s", err.Error())
 		}
 
 		files, err := ioutil.ReadDir(tempDir)
@@ -171,7 +168,7 @@ func lintChart(path string, vals []byte, namespace string, strict bool) (support
 
 	// Guard: Error out if this is not a chart.
 	if _, err := os.Stat(filepath.Join(chartPath, "Chart.yaml")); err != nil {
-		return linter, errLintNoChart
+		return linter, fmt.Errorf("unable to check Chart.yaml file in chart: %s", err.Error())
 	}
 
 	return lint.All(chartPath, vals, namespace, strict), nil
