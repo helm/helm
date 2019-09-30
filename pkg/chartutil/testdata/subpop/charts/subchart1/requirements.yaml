@@ -2,7 +2,7 @@ dependencies:
       - name: subcharta
         repository: http://localhost:10191
         version: 0.1.0
-        condition: subcharta.enabled,subchart1.subcharta.enabled
+        condition: subcharta.enabled
         tags:
           - front-end
           - subcharta

@@ -158,7 +158,7 @@ func TestRequirementsCombinedDisabledL2(t *testing.T) {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
 	// tags enabling a parent/child group with condition disabling one child
-	v := &chart.Config{Raw: "subchartc:\n  enabled: false\ntags:\n  back-end: true\n"}
+	v := &chart.Config{Raw: "subchart2:\n  subchartc:\n    enabled: false\ntags:\n  back-end: true\n"}
 	// expected charts including duplicates in alphanumeric order
 	e := []string{"parentchart", "subchart1", "subchart2", "subcharta", "subchartb", "subchartb"}
 
@@ -174,6 +174,15 @@ func TestRequirementsCombinedDisabledL1(t *testing.T) {
 	// expected charts including duplicates in alphanumeric order
 	e := []string{"parentchart"}
 
+	verifyRequirementsEnabled(t, c, v, e)
+}
+func TestRequirementsAliasCondition(t *testing.T) {
+	c, err := Load("testdata/subpop")
+	if err != nil {
+		t.Fatalf("Failed to load testdata: %s", err)
+	}
+	v := &chart.Config{Raw: "subchart1:\n  enabled: false\nsubchart2alias:\n  enabled: true\n  subchartb:\n    enabled: true\n"}
+	e := []string{"parentchart", "subchart2alias", "subchartb"}
 	verifyRequirementsEnabled(t, c, v, e)
 }
 
