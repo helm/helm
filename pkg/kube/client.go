@@ -191,7 +191,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 	for _, info := range original.Difference(target) {
 		c.Log("Deleting %q in %s...", info.Name, info.Namespace)
 		res.Deleted = append(res.Deleted, info)
-		if err := deleteResource(info); err != nil {
+		if err := deleteResource(info); err != nil && !apierrors.IsNotFound(err) {
 			c.Log("Failed to delete %q, err: %s", info.Name, err)
 			return res, errors.Wrapf(err, "Failed to delete %q", info.Name)
 		}

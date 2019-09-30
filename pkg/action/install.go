@@ -231,6 +231,16 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 		return rel, nil
 	}
 
+	// Install requires an extra validation step of checking that resources
+	// don't already exist before we actually create resources. If we continue
+	// forward and create the release object with resources that already exist,
+	// we'll end up in a state where we will delete those resources upon
+	// deleting the release because the manifest will be pointing at that
+	// resource
+	if err := existingResourceConflict(resources); err != nil {
+		return nil, errors.Wrap(err, "rendered manifests contain a resource that already exists. Unable to continue with install")
+	}
+
 	// If Replace is true, we need to supercede the last release.
 	if i.Replace {
 		if err := i.replaceRelease(rel); err != nil {
