@@ -931,7 +931,10 @@ func (c *Client) watchPodUntilComplete(timeout time.Duration, info *resource.Inf
 
 // GetPodLogs takes pod name and namespace and returns the current logs (streaming is NOT enabled).
 func (c *Client) GetPodLogs(name, ns string) (string, error) {
-	client, _ := c.KubernetesClientSet()
+	client, err := c.KubernetesClientSet()
+	if err != nil {
+		return "", err
+	}
 	req := client.CoreV1().Pods(ns).GetLogs(name, &v1.PodLogOptions{})
 	podLogs, err := req.Stream()
 	if err != nil {
