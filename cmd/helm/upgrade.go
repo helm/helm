@@ -99,7 +99,10 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				histClient := action.NewHistory(cfg)
 				histClient.Max = 1
 				if _, err := histClient.Run(args[0]); err == driver.ErrReleaseNotFound {
-					fmt.Fprintf(out, "Release %q does not exist. Installing it now.\n", args[0])
+					// Only print this to stdout for table output
+					if output == action.Table {
+						fmt.Fprintf(out, "Release %q does not exist. Installing it now.\n", args[0])
+					}
 					instClient := action.NewInstall(cfg)
 					instClient.ChartPathOptions = client.ChartPathOptions
 					instClient.DryRun = client.DryRun
@@ -114,7 +117,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					if err != nil {
 						return err
 					}
-					return output.Write(out, &statusPrinter{rel})
+					return output.Write(out, &statusPrinter{rel, settings.Debug})
 				}
 			}
 
@@ -129,27 +132,16 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				}
 			}
 
-			resp, err := client.Run(args[0], ch, vals)
+			rel, err := client.Run(args[0], ch, vals)
 			if err != nil {
 				return errors.Wrap(err, "UPGRADE FAILED")
-			}
-
-			if settings.Debug {
-				action.PrintRelease(out, resp)
 			}
 
 			if output == action.Table {
 				fmt.Fprintf(out, "Release %q has been upgraded. Happy Helming!\n", args[0])
 			}
 
-			// Print the status like status command does
-			statusClient := action.NewStatus(cfg)
-			rel, err := statusClient.Run(args[0])
-			if err != nil {
-				return err
-			}
-
-			return output.Write(out, &statusPrinter{rel})
+			return output.Write(out, &statusPrinter{rel, settings.Debug})
 		},
 	}
 

@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
@@ -80,12 +81,12 @@ func newHistoryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 }
 
 type releaseInfo struct {
-	Revision    int    `json:"revision"`
-	Updated     string `json:"updated"`
-	Status      string `json:"status"`
-	Chart       string `json:"chart"`
-	AppVersion  string `json:"app_version"`
-	Description string `json:"description"`
+	Revision    int       `json:"revision"`
+	Updated     time.Time `json:"updated"`
+	Status      string    `json:"status"`
+	Chart       string    `json:"chart"`
+	AppVersion  string    `json:"app_version"`
+	Description string    `json:"description"`
 }
 
 type releaseHistory []releaseInfo
@@ -102,7 +103,7 @@ func (r releaseHistory) WriteTable(out io.Writer) error {
 	tbl := uitable.New()
 	tbl.AddRow("REVISION", "UPDATED", "STATUS", "CHART", "APP VERSION", "DESCRIPTION")
 	for _, item := range r {
-		tbl.AddRow(item.Revision, item.Updated, item.Status, item.Chart, item.AppVersion, item.Description)
+		tbl.AddRow(item.Revision, item.Updated.Format(time.ANSIC), item.Status, item.Chart, item.AppVersion, item.Description)
 	}
 	return action.EncodeTable(out, tbl)
 }
@@ -146,7 +147,7 @@ func getReleaseHistory(rls []*release.Release) (history releaseHistory) {
 			Description: d,
 		}
 		if !r.Info.LastDeployed.IsZero() {
-			rInfo.Updated = r.Info.LastDeployed.String()
+			rInfo.Updated = r.Info.LastDeployed
 
 		}
 		history = append(history, rInfo)

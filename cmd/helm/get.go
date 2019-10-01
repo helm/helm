@@ -58,7 +58,7 @@ func newGetCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				}
 				return tpl(template, data, out)
 			}
-			return printRelease(out, res)
+			return action.PrintRelease(out, res, true)
 		},
 	}
 
