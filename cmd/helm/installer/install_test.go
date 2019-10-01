@@ -24,8 +24,8 @@ import (
 	"testing"
 
 	"github.com/ghodss/yaml"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/core/v1"
-	"k8s.io/api/extensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
@@ -192,7 +192,7 @@ func TestInstall(t *testing.T) {
 
 	fc := &fake.Clientset{}
 	fc.AddReactor("create", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
-		obj := action.(testcore.CreateAction).GetObject().(*v1beta1.Deployment)
+		obj := action.(testcore.CreateAction).GetObject().(*appsv1.Deployment)
 		l := obj.GetLabels()
 		if reflect.DeepEqual(l, map[string]string{"app": "helm"}) {
 			t.Errorf("expected labels = '', got '%s'", l)
@@ -239,7 +239,7 @@ func TestInstallHA(t *testing.T) {
 
 	fc := &fake.Clientset{}
 	fc.AddReactor("create", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
-		obj := action.(testcore.CreateAction).GetObject().(*v1beta1.Deployment)
+		obj := action.(testcore.CreateAction).GetObject().(*appsv1.Deployment)
 		replicas := obj.Spec.Replicas
 		if int(*replicas) != 2 {
 			t.Errorf("expected replicas = 2, got '%d'", replicas)
@@ -263,7 +263,7 @@ func TestInstall_WithTLS(t *testing.T) {
 
 	fc := &fake.Clientset{}
 	fc.AddReactor("create", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
-		obj := action.(testcore.CreateAction).GetObject().(*v1beta1.Deployment)
+		obj := action.(testcore.CreateAction).GetObject().(*appsv1.Deployment)
 		l := obj.GetLabels()
 		if reflect.DeepEqual(l, map[string]string{"app": "helm"}) {
 			t.Errorf("expected labels = '', got '%s'", l)
@@ -331,7 +331,7 @@ func TestInstall_WithTLS(t *testing.T) {
 func TestInstall_canary(t *testing.T) {
 	fc := &fake.Clientset{}
 	fc.AddReactor("create", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
-		obj := action.(testcore.CreateAction).GetObject().(*v1beta1.Deployment)
+		obj := action.(testcore.CreateAction).GetObject().(*appsv1.Deployment)
 		i := obj.Spec.Template.Spec.Containers[0].Image
 		if i != "gcr.io/kubernetes-helm/tiller:canary" {
 			t.Errorf("expected canary image, got '%s'", i)
@@ -369,7 +369,7 @@ func TestUpgrade(t *testing.T) {
 		return true, existingDeployment, nil
 	})
 	fc.AddReactor("update", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
-		obj := action.(testcore.UpdateAction).GetObject().(*v1beta1.Deployment)
+		obj := action.(testcore.UpdateAction).GetObject().(*appsv1.Deployment)
 		i := obj.Spec.Template.Spec.Containers[0].Image
 		if i != image {
 			t.Errorf("expected image = '%s', got '%s'", image, i)
@@ -408,7 +408,7 @@ func TestUpgrade_serviceNotFound(t *testing.T) {
 		return true, existingDeployment, nil
 	})
 	fc.AddReactor("update", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
-		obj := action.(testcore.UpdateAction).GetObject().(*v1beta1.Deployment)
+		obj := action.(testcore.UpdateAction).GetObject().(*appsv1.Deployment)
 		i := obj.Spec.Template.Spec.Containers[0].Image
 		if i != image {
 			t.Errorf("expected image = '%s', got '%s'", image, i)
@@ -453,7 +453,7 @@ func TestUgrade_newerVersion(t *testing.T) {
 		return true, existingDeployment, nil
 	})
 	fc.AddReactor("update", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
-		obj := action.(testcore.UpdateAction).GetObject().(*v1beta1.Deployment)
+		obj := action.(testcore.UpdateAction).GetObject().(*appsv1.Deployment)
 		i := obj.Spec.Template.Spec.Containers[0].Image
 		if i != image {
 			t.Errorf("expected image = '%s', got '%s'", image, i)
@@ -513,7 +513,7 @@ func TestUpgrade_identical(t *testing.T) {
 		return true, existingDeployment, nil
 	})
 	fc.AddReactor("update", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
-		obj := action.(testcore.UpdateAction).GetObject().(*v1beta1.Deployment)
+		obj := action.(testcore.UpdateAction).GetObject().(*appsv1.Deployment)
 		i := obj.Spec.Template.Spec.Containers[0].Image
 		if i != image {
 			t.Errorf("expected image = '%s', got '%s'", image, i)
@@ -554,7 +554,7 @@ func TestUpgrade_canaryClient(t *testing.T) {
 		return true, existingDeployment, nil
 	})
 	fc.AddReactor("update", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
-		obj := action.(testcore.UpdateAction).GetObject().(*v1beta1.Deployment)
+		obj := action.(testcore.UpdateAction).GetObject().(*appsv1.Deployment)
 		i := obj.Spec.Template.Spec.Containers[0].Image
 		if i != image {
 			t.Errorf("expected image = '%s', got '%s'", image, i)
@@ -595,7 +595,7 @@ func TestUpgrade_canaryServer(t *testing.T) {
 		return true, existingDeployment, nil
 	})
 	fc.AddReactor("update", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
-		obj := action.(testcore.UpdateAction).GetObject().(*v1beta1.Deployment)
+		obj := action.(testcore.UpdateAction).GetObject().(*appsv1.Deployment)
 		i := obj.Spec.Template.Spec.Containers[0].Image
 		if i != image {
 			t.Errorf("expected image = '%s', got '%s'", image, i)

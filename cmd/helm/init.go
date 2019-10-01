@@ -282,7 +282,7 @@ func (i *initCmd) run() error {
 				if err := i.ping(i.opts.SelectImage()); err != nil {
 					return err
 				}
-				fmt.Fprintln(i.out, "\nTiller (the Helm server-side component) has been upgraded to the current version.")
+				fmt.Fprintln(i.out, "\nTiller (the Helm server-side component) has been updated to", i.opts.SelectImage(), ".")
 			} else {
 				debug("The error received while trying to init: %s", err)
 				fmt.Fprintln(i.out, "Warning: Tiller is already installed in the cluster.\n"+
