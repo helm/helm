@@ -24,6 +24,7 @@ import (
 
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/cli-runtime/pkg/resource"
 
 	"helm.sh/helm/pkg/chart"
 	"helm.sh/helm/pkg/chartutil"
@@ -87,13 +88,6 @@ func (u *Upgrade) Run(name string, chart *chart.Chart, vals map[string]interface
 	}
 
 	u.cfg.Releases.MaxHistory = u.MaxHistory
-
-	if !u.DryRun {
-		u.cfg.Log("creating upgraded release for %s", name)
-		if err := u.cfg.Releases.Create(upgradedRelease); err != nil {
-			return nil, err
-		}
-	}
 
 	u.cfg.Log("performing update for %s", name)
 	res, err := u.performUpgrade(currentRelease, upgradedRelease)
@@ -196,12 +190,6 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 }
 
 func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Release) (*release.Release, error) {
-	if u.DryRun {
-		u.cfg.Log("dry run for %s", upgradedRelease.Name)
-		upgradedRelease.Info.Description = "Dry run complete"
-		return upgradedRelease, nil
-	}
-
 	current, err := u.cfg.KubeClient.Build(bytes.NewBufferString(originalRelease.Manifest))
 	if err != nil {
 		return upgradedRelease, errors.Wrap(err, "unable to build kubernetes objects from current release manifest")
@@ -209,6 +197,34 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 	target, err := u.cfg.KubeClient.Build(bytes.NewBufferString(upgradedRelease.Manifest))
 	if err != nil {
 		return upgradedRelease, errors.Wrap(err, "unable to build kubernetes objects from new release manifest")
+	}
+
+	// Do a basic diff using gvk + name to figure out what new resources are being created so we can validate they don't already exist
+	existingResources := make(map[string]bool)
+	for _, r := range current {
+		existingResources[objectKey(r)] = true
+	}
+
+	var toBeCreated kube.ResourceList
+	for _, r := range target {
+		if !existingResources[objectKey(r)] {
+			toBeCreated = append(toBeCreated, r)
+		}
+	}
+
+	if err := existingResourceConflict(toBeCreated); err != nil {
+		return nil, errors.Wrap(err, "rendered manifests contain a new resource that already exists. Unable to continue with update")
+	}
+
+	if u.DryRun {
+		u.cfg.Log("dry run for %s", upgradedRelease.Name)
+		upgradedRelease.Info.Description = "Dry run complete"
+		return upgradedRelease, nil
+	}
+
+	u.cfg.Log("creating upgraded release for %s", upgradedRelease.Name)
+	if err := u.cfg.Releases.Create(upgradedRelease); err != nil {
+		return nil, err
 	}
 
 	// pre-upgrade hooks
@@ -395,4 +411,9 @@ func recreate(cfg *Configuration, resources kube.ResourceList) error {
 		}
 	}
 	return nil
+}
+
+func objectKey(r *resource.Info) string {
+	gvk := r.Object.GetObjectKind().GroupVersionKind()
+	return fmt.Sprintf("%s/%s/%s", gvk.GroupVersion().String(), gvk.Kind, r.Name)
 }

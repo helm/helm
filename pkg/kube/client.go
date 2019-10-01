@@ -192,8 +192,12 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 		c.Log("Deleting %q in %s...", info.Name, info.Namespace)
 		res.Deleted = append(res.Deleted, info)
 		if err := deleteResource(info); err != nil {
-			c.Log("Failed to delete %q, err: %s", info.Name, err)
-			return res, errors.Wrapf(err, "Failed to delete %q", info.Name)
+			if apierrors.IsNotFound(err) {
+				c.Log("Attempted to delete %q, but the resource was missing", info.Name)
+			} else {
+				c.Log("Failed to delete %q, err: %s", info.Name, err)
+				return res, errors.Wrapf(err, "Failed to delete %q", info.Name)
+			}
 		}
 	}
 	return res, nil
