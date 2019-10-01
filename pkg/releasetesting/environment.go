@@ -19,6 +19,7 @@ package releasetesting
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"sync"
 	"time"
@@ -140,7 +141,12 @@ func (env *Environment) GetLogs(testManifests []string) {
 			continue
 		}
 		podName := infos[0].Object.(*v1.Pod).Name
-		logs, err := env.KubeClient.GetPodLogs(podName, env.Namespace)
+		lr, err := env.KubeClient.GetPodLogs(podName, env.Namespace)
+		if err != nil {
+			env.streamError(err.Error())
+			continue
+		}
+		logs, err := ioutil.ReadAll(lr)
 		if err != nil {
 			env.streamError(err.Error())
 			continue

@@ -175,7 +175,7 @@ type KubeClient interface {
 	// and returns said phase (PodSucceeded or PodFailed qualify).
 	WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (v1.PodPhase, error)
 
-	GetPodLogs(name, namespace string) (string, error)
+	GetPodLogs(name, namespace string) (io.ReadCloser, error)
 
 	WaitUntilCRDEstablished(reader io.Reader, timeout time.Duration) error
 }
@@ -258,8 +258,8 @@ func (p *PrintingKubeClient) WaitAndGetCompletedPodPhase(namespace string, reade
 }
 
 // GetPodLogs implements KubeClient GetPodLogs.
-func (p *PrintingKubeClient) GetPodLogs(name, ns string) (string, error) {
-	return "", nil
+func (p *PrintingKubeClient) GetPodLogs(name, ns string) (io.ReadCloser, error) {
+	return nil, nil
 }
 
 // WaitUntilCRDEstablished implements KubeClient WaitUntilCRDEstablished.
