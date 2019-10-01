@@ -133,6 +133,7 @@ func Save(c *chart.Chart, outDir string) (string, error) {
 
 	if err := writeTarContents(twriter, c, ""); err != nil {
 		rollback = true
+		return filename, err
 	}
 	return filename, err
 }
