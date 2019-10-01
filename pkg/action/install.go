@@ -225,20 +225,22 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 		return nil, errors.Wrap(err, "unable to build kubernetes objects from release manifest")
 	}
 
-	// Bail out here if it is a dry run
-	if i.DryRun {
-		rel.Info.Description = "Dry run complete"
-		return rel, nil
-	}
-
 	// Install requires an extra validation step of checking that resources
 	// don't already exist before we actually create resources. If we continue
 	// forward and create the release object with resources that already exist,
 	// we'll end up in a state where we will delete those resources upon
 	// deleting the release because the manifest will be pointing at that
 	// resource
-	if err := existingResourceConflict(resources); err != nil {
-		return nil, errors.Wrap(err, "rendered manifests contain a resource that already exists. Unable to continue with install")
+	if !i.ClientOnly {
+		if err := existingResourceConflict(resources); err != nil {
+			return nil, errors.Wrap(err, "rendered manifests contain a resource that already exists. Unable to continue with install")
+		}
+	}
+
+	// Bail out here if it is a dry run
+	if i.DryRun {
+		rel.Info.Description = "Dry run complete"
+		return rel, nil
 	}
 
 	// If Replace is true, we need to supercede the last release.

@@ -199,12 +199,6 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 		return upgradedRelease, errors.Wrap(err, "unable to build kubernetes objects from new release manifest")
 	}
 
-	if u.DryRun {
-		u.cfg.Log("dry run for %s", upgradedRelease.Name)
-		upgradedRelease.Info.Description = "Dry run complete"
-		return upgradedRelease, nil
-	}
-
 	// Do a basic diff using gvk + name to figure out what new resources are being created so we can validate they don't already exist
 	existingResources := make(map[string]bool)
 	for _, r := range current {
@@ -220,6 +214,12 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 
 	if err := existingResourceConflict(toBeCreated); err != nil {
 		return nil, errors.Wrap(err, "rendered manifests contain a new resource that already exists. Unable to continue with update")
+	}
+
+	if u.DryRun {
+		u.cfg.Log("dry run for %s", upgradedRelease.Name)
+		upgradedRelease.Info.Description = "Dry run complete"
+		return upgradedRelease, nil
 	}
 
 	u.cfg.Log("creating upgraded release for %s", upgradedRelease.Name)
