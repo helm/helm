@@ -563,6 +563,10 @@ func perform(infos Result, fn ResourceActorFunc) error {
 }
 
 func batchPerform(infos Result, fn ResourceActorFunc, errs chan<- error) {
+	if len(infos) == 0 {
+		return
+	}
+
 	finished := make(chan bool, 10000)
 	kind := infos[0].Object.GetObjectKind().GroupVersionKind().Kind
 	counter := 0
