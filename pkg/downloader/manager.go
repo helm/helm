@@ -442,8 +442,7 @@ func (m *Manager) UpdateRepositories() error {
 	if err != nil {
 		return err
 	}
-	repos := rf.Repositories
-	if len(repos) > 0 {
+	if repos := rf.Repositories; len(repos) > 0 {
 		// This prints warnings straight to out.
 		if err := m.parallelRepoUpdate(repos); err != nil {
 			return err
@@ -616,7 +615,7 @@ func writeLock(chartpath string, lock *chartutil.RequirementsLock) error {
 }
 
 // tarFromLocalDir archive a dep chart from local directory and save it into charts/
-func tarFromLocalDir(chartpath string, name string, repo string, version string) (string, error) {
+func tarFromLocalDir(chartpath, name, repo, version string) (string, error) {
 	destPath := filepath.Join(chartpath, "charts")
 
 	if !strings.HasPrefix(repo, "file://") {
