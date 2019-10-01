@@ -78,8 +78,8 @@ func (k *mockKubeClient) WaitAndGetCompletedPodStatus(namespace string, reader i
 	return "", nil
 }
 
-func (k *mockKubeClient) GetPodLogs(name, namespace string) (string, error) {
-	return "", nil
+func (k *mockKubeClient) GetPodLogs(name, namespace string) (io.ReadCloser, error) {
+	return nil, nil
 }
 
 func (k *mockKubeClient) WaitUntilCRDEstablished(reader io.Reader, timeout time.Duration) error {

@@ -679,8 +679,8 @@ func (kc *mockHooksKubeClient) Validate(ns string, reader io.Reader) error {
 func (kc *mockHooksKubeClient) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (v1.PodPhase, error) {
 	return v1.PodUnknown, nil
 }
-func (kc *mockHooksKubeClient) GetPodLogs(name, namespace string) (string, error) {
-	return "", nil
+func (kc *mockHooksKubeClient) GetPodLogs(name, namespace string) (io.ReadCloser, error) {
+	return nil, nil
 }
 
 func (kc *mockHooksKubeClient) WaitUntilCRDEstablished(reader io.Reader, timeout time.Duration) error {
