@@ -35,6 +35,7 @@ Helm works with [Azure Kubernetes Service](https://docs.microsoft.com/en-us/azur
 Kubernetes bootstrapped with `kubeadm` is known to work on the following Linux
 distributions:
 
+- Arch Linux
 - Ubuntu 16.04
 - Fedora release 25
 
@@ -57,3 +58,11 @@ Helm Client and Helm Server (Tiller) are pre-installed with [Platform9 Managed K
 
 Helm (both client and server) has been tested and is working on Mesospheres DC/OS 1.11 Kubernetes platform, and requires
 no additional configuration.
+
+## Kubermatic
+
+Helm works in user clusters that are created by Kubermatic without caveats. Since seed cluster can be setup up in different ways Helm support depends on them.
+
+## KubeOne
+
+Helm works in clusters that are set up by KubeOne without caveats.
