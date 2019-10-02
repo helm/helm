@@ -69,6 +69,10 @@ func (w *waiter) waitForResources(created ResourceList) error {
 				if err != nil {
 					return false, err
 				}
+				// If paused deployment will never be ready
+				if currentDeployment.Spec.Paused {
+					continue
+				}
 				// Find RS associated with deployment
 				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, w.c.AppsV1())
 				if err != nil || newReplicaSet == nil {
@@ -81,6 +85,10 @@ func (w *waiter) waitForResources(created ResourceList) error {
 				currentDeployment, err := w.c.AppsV1().Deployments(value.Namespace).Get(value.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
+				}
+				// If paused deployment will never be ready
+				if currentDeployment.Spec.Paused {
+					continue
 				}
 				// Find RS associated with deployment
 				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, w.c.AppsV1())
@@ -95,6 +103,10 @@ func (w *waiter) waitForResources(created ResourceList) error {
 				if err != nil {
 					return false, err
 				}
+				// If paused deployment will never be ready
+				if currentDeployment.Spec.Paused {
+					continue
+				}
 				// Find RS associated with deployment
 				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, w.c.AppsV1())
 				if err != nil || newReplicaSet == nil {
@@ -107,6 +119,10 @@ func (w *waiter) waitForResources(created ResourceList) error {
 				currentDeployment, err := w.c.AppsV1().Deployments(value.Namespace).Get(value.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
+				}
+				// If paused deployment will never be ready
+				if currentDeployment.Spec.Paused {
+					continue
 				}
 				// Find RS associated with deployment
 				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, w.c.AppsV1())
