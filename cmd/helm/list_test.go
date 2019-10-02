@@ -34,8 +34,9 @@ func TestListCmd(t *testing.T) {
 	timestamp4 := time.Unix(sampleTimeSeconds+4, 0).UTC()
 	chartInfo := &chart.Chart{
 		Metadata: &chart.Metadata{
-			Name:    "chickadee",
-			Version: "1.0.0",
+			Name:       "chickadee",
+			Version:    "1.0.0",
+			AppVersion: "0.0.1",
 		},
 	}
 
