@@ -36,7 +36,6 @@ func processDependencyConditions(reqs []*chart.Dependency, cvals Values, cpath s
 		return
 	}
 	for _, r := range reqs {
-		var hasTrue, hasFalse bool
 		for _, c := range strings.Split(strings.TrimSpace(r.Condition), ",") {
 			if len(c) > 0 {
 				// retrieve value
@@ -44,11 +43,8 @@ func processDependencyConditions(reqs []*chart.Dependency, cvals Values, cpath s
 				if err == nil {
 					// if not bool, warn
 					if bv, ok := vv.(bool); ok {
-						if bv {
-							hasTrue = true
-						} else {
-							hasFalse = true
-						}
+						r.Enabled = bv
+						break
 					} else {
 						log.Printf("Warning: Condition path '%s' for chart %s returned non-bool value", c, r.Name)
 					}
@@ -56,17 +52,7 @@ func processDependencyConditions(reqs []*chart.Dependency, cvals Values, cpath s
 					// this is a real error
 					log.Printf("Warning: PathValue returned error %v", err)
 				}
-				if vv != nil {
-					// got first value, break loop
-					break
-				}
 			}
-		}
-		if !hasTrue && hasFalse {
-			r.Enabled = false
-		} else if hasTrue {
-			r.Enabled = true
-
 		}
 	}
 }
