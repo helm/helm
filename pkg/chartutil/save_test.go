@@ -19,6 +19,7 @@ package chartutil
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -84,7 +85,7 @@ func TestSaveDir(t *testing.T) {
 			{Name: "scheherazade/shahryar.txt", Data: []byte("1,001 Nights")},
 		},
 		Templates: []*chart.File{
-			{Name: "templates/nested/dir/thing.yaml", Data: []byte("abc: {{ .Values.abc }}")},
+			{Name: filepath.Join(TemplatesDir, "nested", "dir", "thing.yaml"), Data: []byte("abc: {{ .Values.abc }}")},
 		},
 	}
 
@@ -101,7 +102,7 @@ func TestSaveDir(t *testing.T) {
 		t.Fatalf("Expected chart archive to have %q, got %q", c.Name(), c2.Name())
 	}
 
-	if len(c2.Templates) != 1 || c2.Templates[0].Name != "templates/nested/dir/thing.yaml" {
+	if len(c2.Templates) != 1 || c2.Templates[0].Name != filepath.Join(TemplatesDir, "nested", "dir", "thing.yaml") {
 		t.Fatal("Templates data did not match")
 	}
 
