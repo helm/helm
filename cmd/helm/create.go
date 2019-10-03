@@ -36,13 +36,13 @@ directories used in a chart.
 For example, 'helm create foo' will create a directory structure that looks
 something like this:
 
-	foo/
-	├── .helmignore   # Contains patterns to ignore when packaging Helm charts.
-	├── Chart.yaml    # Information about your chart
-	├── values.yaml   # The default values for your templates
-	├── charts/       # Charts that this chart depends on
-	└── templates/    # The template files
-		└── tests/    # The test files
+    foo/
+    ├── .helmignore   # Contains patterns to ignore when packaging Helm charts.
+    ├── Chart.yaml    # Information about your chart
+    ├── values.yaml   # The default values for your templates
+    ├── charts/       # Charts that this chart depends on
+    └── templates/    # The template files
+        └── tests/    # The test files
 
 'helm create' takes a path for an argument. If directories in the given path
 do not exist, Helm will attempt to create them as it goes. If the given
