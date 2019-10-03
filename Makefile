@@ -120,13 +120,13 @@ format: $(GOIMPORTS)
 # when downloading the following dependencies
 
 $(GOX):
-	(cd /; GO111MODULE=on GO111MODULE=on go get -u github.com/mitchellh/gox)
+	(cd /; GO111MODULE=on go get -u github.com/mitchellh/gox)
 
 $(GOLANGCI_LINT):
 	(cd /; GO111MODULE=on go get -u github.com/golangci/golangci-lint/cmd/golangci-lint)
 
 $(GOIMPORTS):
-	(cd /; GO111MODULE=on GO111MODULE=on go get -u golang.org/x/tools/cmd/goimports)
+	(cd /; GO111MODULE=on go get -u golang.org/x/tools/cmd/goimports)
 
 # ------------------------------------------------------------------------------
 #  release
