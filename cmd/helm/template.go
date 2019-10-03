@@ -91,6 +91,7 @@ func newTemplateCmd(out io.Writer) *cobra.Command {
 		RunE:  t.run,
 	}
 
+	cmd.SetOutput(out)
 	f := cmd.Flags()
 	f.BoolVar(&t.showNotes, "notes", false, "Show the computed NOTES.txt file as well")
 	f.StringVarP(&t.releaseName, "name", "n", "release-name", "Release name")
@@ -241,20 +242,20 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 			if whitespaceRegex.MatchString(data) {
 				continue
 			}
-			err = writeToFile(t.outputDir, m.Name, data)
+			err = writeToFile(t.outputDir, m.Name, data, t.out)
 			if err != nil {
 				return err
 			}
 			continue
 		}
-		fmt.Printf("---\n# Source: %s\n", m.Name)
-		fmt.Println(data)
+		fmt.Fprintf(t.out, "---\n# Source: %s\n", m.Name)
+		fmt.Fprintln(t.out, data)
 	}
 	return nil
 }
 
 // write the <data> to <output-dir>/<name>
-func writeToFile(outputDir string, name string, data string) error {
+func writeToFile(outputDir string, name string, data string, out io.Writer) error {
 	outfileName := strings.Join([]string{outputDir, name}, string(filepath.Separator))
 
 	err := ensureDirectoryForFile(outfileName)
@@ -275,7 +276,7 @@ func writeToFile(outputDir string, name string, data string) error {
 		return err
 	}
 
-	fmt.Printf("wrote %s\n", outfileName)
+	fmt.Fprintf(out, "wrote %s\n", outfileName)
 	return nil
 }
 

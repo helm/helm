@@ -129,6 +129,7 @@ You have multiple options with Globs:
 Or
 
 ```yaml
+{{ $root := . }}
 {{ range $path, $bytes := .Files.Glob "foo/*" }}
 {{ base $path }}: '{{ $root.Files.Get $path | b64enc }}'
 {{ end }}

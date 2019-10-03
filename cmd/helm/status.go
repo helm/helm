@@ -17,13 +17,11 @@ limitations under the License.
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"regexp"
 	"text/tabwriter"
 
-	"github.com/ghodss/yaml"
 	"github.com/gosuri/uitable"
 	"github.com/gosuri/uitable/util/strutil"
 	"github.com/spf13/cobra"
@@ -79,7 +77,7 @@ func newStatusCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	settings.AddFlagsTLS(f)
 	f.Int32Var(&status.version, "revision", 0, "If set, display the status of the named release with revision")
-	f.StringVarP(&status.outfmt, "output", "o", "", "Output the status in the specified format (json or yaml)")
+	bindOutputFlag(cmd, &status.outfmt)
 
 	// set defaults from environment
 	settings.InitTLS(f)
@@ -93,27 +91,26 @@ func (s *statusCmd) run() error {
 		return prettyError(err)
 	}
 
-	switch s.outfmt {
-	case "":
-		PrintStatus(s.out, res)
-		return nil
-	case "json":
-		data, err := json.Marshal(res)
-		if err != nil {
-			return fmt.Errorf("Failed to Marshal JSON output: %s", err)
-		}
-		s.out.Write(data)
-		return nil
-	case "yaml":
-		data, err := yaml.Marshal(res)
-		if err != nil {
-			return fmt.Errorf("Failed to Marshal YAML output: %s", err)
-		}
-		s.out.Write(data)
-		return nil
-	}
+	return write(s.out, &statusWriter{res}, outputFormat(s.outfmt))
+}
 
-	return fmt.Errorf("Unknown output format %q", s.outfmt)
+type statusWriter struct {
+	status *services.GetReleaseStatusResponse
+}
+
+func (s *statusWriter) WriteTable(out io.Writer) error {
+	PrintStatus(out, s.status)
+	// There is no error handling here due to backwards compatibility with
+	// PrintStatus
+	return nil
+}
+
+func (s *statusWriter) WriteJSON(out io.Writer) error {
+	return encodeJSON(out, s.status)
+}
+
+func (s *statusWriter) WriteYAML(out io.Writer) error {
+	return encodeYAML(out, s.status)
 }
 
 // PrintStatus prints out the status of a release. Shared because also used by

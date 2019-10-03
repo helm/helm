@@ -117,6 +117,7 @@ type upgradeCmd struct {
 	certFile string
 	keyFile  string
 	caFile   string
+	output   string
 }
 
 func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
@@ -181,6 +182,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&upgrade.subNotes, "render-subchart-notes", false, "Render subchart notes along with parent")
 	f.StringVar(&upgrade.description, "description", "", "Specify the description to use for the upgrade, rather than the default")
 	f.BoolVar(&upgrade.cleanupOnFail, "cleanup-on-fail", false, "Allow deletion of new resources created in this upgrade when upgrade failed")
+	bindOutputFlag(cmd, &upgrade.output)
 
 	f.MarkDeprecated("disable-hooks", "Use --no-hooks instead")
 
@@ -307,14 +309,14 @@ func (u *upgradeCmd) run() error {
 		printRelease(u.out, resp.Release)
 	}
 
-	fmt.Fprintf(u.out, "Release %q has been upgraded.\n", u.release)
-
+	if outputFormat(u.output) == outputTable {
+		fmt.Fprintf(u.out, "Release %q has been upgraded.\n", u.release)
+	}
 	// Print the status like status command does
 	status, err := u.client.ReleaseStatus(u.release)
 	if err != nil {
 		return prettyError(err)
 	}
-	PrintStatus(u.out, status)
 
-	return nil
+	return write(u.out, &statusWriter{status}, outputFormat(u.output))
 }

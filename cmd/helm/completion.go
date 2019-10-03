@@ -126,13 +126,6 @@ __helm_compgen() {
 __helm_compopt() {
 	true # don't do anything. Not supported by bashcompinit in zsh
 }
-__helm_declare() {
-	if [ "$1" == "-F" ]; then
-		whence -w "$@"
-	else
-		builtin declare "$@"
-	fi
-}
 __helm_ltrim_colon_completions()
 {
 	if [[ "$1" == *:* && "$COMP_WORDBREAKS" == *:* ]]; then
@@ -194,7 +187,7 @@ autoload -U +X bashcompinit && bashcompinit
 # use word boundary patterns for BSD or GNU sed
 LWORD='[[:<:]]'
 RWORD='[[:>:]]'
-if sed --help 2>&1 | grep -q GNU; then
+if sed --help 2>&1 | grep -q 'GNU\|BusyBox'; then
 	LWORD='\<'
 	RWORD='\>'
 fi
@@ -210,7 +203,7 @@ __helm_convert_bash_to_zsh() {
 	-e "s/${LWORD}__ltrim_colon_completions${RWORD}/__helm_ltrim_colon_completions/g" \
 	-e "s/${LWORD}compgen${RWORD}/__helm_compgen/g" \
 	-e "s/${LWORD}compopt${RWORD}/__helm_compopt/g" \
-	-e "s/${LWORD}declare${RWORD}/__helm_declare/g" \
+	-e "s/${LWORD}declare${RWORD}/builtin declare/g" \
 	-e "s/\\\$(type${RWORD}/\$(__helm_type/g" \
 	-e 's/aliashash\["\(.\{1,\}\)"\]/aliashash[\1]/g' \
 	-e 's/FUNCNAME/funcstack/g' \

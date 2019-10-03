@@ -502,7 +502,7 @@ func TestInstallRelease_KubeVersion(t *testing.T) {
 	rs := rsFixture()
 
 	req := installRequest(
-		withChart(withKube(">=0.0.0")),
+		withChart(withKube(">=0.0.0-0")),
 	)
 	_, err := rs.InstallRelease(c, req)
 	if err != nil {

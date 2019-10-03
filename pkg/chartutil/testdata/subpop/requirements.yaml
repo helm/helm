@@ -29,3 +29,9 @@ dependencies:
         tags:
           - back-end
           - subchart2
+
+      - name: subchart2
+        alias: subchart2alias
+        repository: http://localhost:10191
+        version: 0.1.0
+        condition: subchart2alias.enabled

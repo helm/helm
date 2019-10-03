@@ -126,7 +126,7 @@ func (s *ReleaseServer) ListReleases(req *services.ListReleasesRequest, stream s
 	return nil
 }
 
-// partition packs releases into slices upto the capacity cap in bytes.
+// partition packs releases into slices up to the capacity cap in bytes.
 func (s *ReleaseServer) partition(rels []*release.Release, cap int) <-chan []*release.Release {
 	chunks := make(chan []*release.Release, 1)
 	go func() {

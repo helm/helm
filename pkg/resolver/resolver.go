@@ -71,7 +71,18 @@ func (r *Resolver) Resolve(reqs *chartutil.Requirements, repoNames map[string]st
 			return nil, fmt.Errorf("dependency %q has an invalid version/constraint format: %s", d.Name, err)
 		}
 
-		repoIndex, err := repo.LoadIndexFile(r.helmhome.CacheIndex(repoNames[d.Name]))
+		// repo does not exist in cache but has url info
+		cacheRepoName := repoNames[d.Name]
+		if cacheRepoName == "" && d.Repository != "" {
+			locked[i] = &chartutil.Dependency{
+				Name:       d.Name,
+				Repository: d.Repository,
+				Version:    d.Version,
+			}
+			continue
+		}
+
+		repoIndex, err := repo.LoadIndexFile(r.helmhome.CacheIndex(cacheRepoName))
 		if err != nil {
 			return nil, fmt.Errorf("no cached repo found. (try 'helm repo update'). %s", err)
 		}
