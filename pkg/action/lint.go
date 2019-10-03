@@ -84,7 +84,7 @@ func lintChart(path string, vals map[string]interface{}, namespace string, stric
 	var chartPath string
 	linter := support.Linter{}
 
-	if strings.HasSuffix(path, ".tgz") {
+	if strings.HasSuffix(path, ".tgz") || strings.HasSuffix(path, ".tar.gz") {
 		tempDir, err := ioutil.TempDir("", "helm-lint")
 		if err != nil {
 			return linter, err

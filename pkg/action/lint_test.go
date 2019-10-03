@@ -26,6 +26,7 @@ var (
 	strict                       = false
 	archivedChartPath            = "../../cmd/helm/testdata/testcharts/compressedchart-0.1.0.tgz"
 	archivedChartPathWithHyphens = "../../cmd/helm/testdata/testcharts/compressedchart-with-hyphens-0.1.0.tgz"
+	archivedTarGzChartPath       = "../../cmd/helm/testdata/testcharts/compressedchart-0.1.0.tar.gz"
 	invalidArchivedChartPath     = "../../cmd/helm/testdata/testcharts/invalidcompressedchart0.1.0.tgz"
 	chartDirPath                 = "../../cmd/helm/testdata/testcharts/decompressedchart/"
 	chartMissingManifest         = "../../cmd/helm/testdata/testcharts/chart-missing-manifest"
@@ -40,6 +41,9 @@ func TestLintChart(t *testing.T) {
 		t.Error(err)
 	}
 	if _, err := lintChart(archivedChartPath, values, namespace, strict); err != nil {
+		t.Error(err)
+	}
+	if _, err := lintChart(archivedTarGzChartPath, values, namespace, strict); err != nil {
 		t.Error(err)
 	}
 	if _, err := lintChart(archivedChartPathWithHyphens, values, namespace, strict); err != nil {
