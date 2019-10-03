@@ -1,5 +1,5 @@
 description: A Helm chart for Kubernetes
-version: 0.0.0
+version: 0.0.0.0
 home: ""
 type: application
 dependencies:

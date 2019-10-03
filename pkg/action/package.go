@@ -22,7 +22,7 @@ import (
 	"os"
 	"syscall"
 
-	"github.com/Masterminds/semver"
+	"github.com/Masterminds/semver/v3"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh/terminal"
 

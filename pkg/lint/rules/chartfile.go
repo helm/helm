@@ -21,7 +21,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Masterminds/semver"
+	"github.com/Masterminds/semver/v3"
 	"github.com/asaskevich/govalidator"
 	"github.com/pkg/errors"
 
@@ -112,7 +112,7 @@ func validateChartVersion(cf *chart.Metadata) error {
 		return errors.Errorf("version '%s' is not a valid SemVer", cf.Version)
 	}
 
-	c, err := semver.NewConstraint("> 0")
+	c, err := semver.NewConstraint(">0.0.0-0")
 	if err != nil {
 		return err
 	}
