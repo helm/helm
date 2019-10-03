@@ -17,7 +17,7 @@ limitations under the License.
 package action
 
 import (
-	"helm.sh/helm/pkg/downloader"
+	"helm.sh/helm/v3/pkg/downloader"
 )
 
 // Verify is the action for building a given chart's Verify tree.

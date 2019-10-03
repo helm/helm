@@ -1,4 +1,4 @@
-module helm.sh/helm
+module helm.sh/helm/v3
 
 go 1.13
 
@@ -10,7 +10,9 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/MakeNowJust/heredoc v0.0.0-20171113091838-e9091a26100e
 	github.com/Masterminds/goutils v1.1.0
+	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/Masterminds/semver/v3 v3.0.1
+	github.com/Masterminds/sprig v2.22.0+incompatible // indirect
 	github.com/Masterminds/sprig/v3 v3.0.0
 	github.com/Masterminds/vcs v1.13.0
 	github.com/Microsoft/go-winio v0.4.12
@@ -71,9 +73,11 @@ require (
 	github.com/huandu/xstrings v1.2.0
 	github.com/imdario/mergo v0.3.7
 	github.com/inconshreveable/mousetrap v1.0.0
+	github.com/jmoiron/sqlx v1.2.0 // indirect
 	github.com/json-iterator/go v1.1.7
 	github.com/kardianos/osext v0.0.0-20170510131534-ae77be60afb1
 	github.com/konsorten/go-windows-terminal-sequences v1.0.1
+	github.com/lib/pq v1.2.0 // indirect
 	github.com/mailru/easyjson v0.0.0-20190614124828-94de47d64c63
 	github.com/mattn/go-runewidth v0.0.4
 	github.com/mattn/go-shellwords v1.0.5
@@ -93,6 +97,7 @@ require (
 	github.com/prometheus/client_model v0.0.0-20190129233127-fd36f4220a90
 	github.com/prometheus/common v0.2.0
 	github.com/prometheus/procfs v0.0.0-20190129233650-316cf8ccfec5
+	github.com/rubenv/sql-migrate v0.0.0-20190902133344-8926f37f0bc1 // indirect
 	github.com/russross/blackfriday v1.5.2
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cobra v0.0.5
@@ -118,6 +123,7 @@ require (
 	google.golang.org/appengine v1.5.0
 	google.golang.org/genproto v0.0.0-20190502173448-54afdca5d873
 	google.golang.org/grpc v1.23.0
+	gopkg.in/gorp.v1 v1.7.2 // indirect
 	gopkg.in/yaml.v2 v2.2.2
 	k8s.io/api v0.0.0
 	k8s.io/apiextensions-apiserver v0.0.0

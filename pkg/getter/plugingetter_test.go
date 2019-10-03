@@ -20,7 +20,7 @@ import (
 	"strings"
 	"testing"
 
-	"helm.sh/helm/pkg/cli"
+	"helm.sh/helm/v3/pkg/cli"
 )
 
 func TestCollectPlugins(t *testing.T) {

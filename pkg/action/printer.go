@@ -21,7 +21,7 @@ import (
 	"io"
 	"strings"
 
-	"helm.sh/helm/pkg/release"
+	"helm.sh/helm/v3/pkg/release"
 )
 
 // PrintRelease prints info about a release

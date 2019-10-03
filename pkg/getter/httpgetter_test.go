@@ -24,9 +24,9 @@ import (
 	"strings"
 	"testing"
 
-	"helm.sh/helm/internal/test"
-	"helm.sh/helm/internal/version"
-	"helm.sh/helm/pkg/cli"
+	"helm.sh/helm/v3/internal/test"
+	"helm.sh/helm/v3/internal/version"
+	"helm.sh/helm/v3/pkg/cli"
 )
 
 func TestHTTPGetter(t *testing.T) {

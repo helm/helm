@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"testing"
 
-	"helm.sh/helm/pkg/chart"
+	"helm.sh/helm/v3/pkg/chart"
 )
 
 func TestLoadDir(t *testing.T) {

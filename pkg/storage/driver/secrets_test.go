@@ -21,7 +21,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 
-	rspb "helm.sh/helm/pkg/release"
+	rspb "helm.sh/helm/v3/pkg/release"
 )
 
 func TestSecretName(t *testing.T) {

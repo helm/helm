@@ -14,16 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main // import "helm.sh/helm/cmd/helm"
+package main // import "helm.sh/helm/v3/cmd/helm"
 
 import (
 	"io"
 
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/cmd/helm/require"
-	"helm.sh/helm/internal/experimental/registry"
-	"helm.sh/helm/pkg/action"
+	"helm.sh/helm/v3/cmd/helm/require"
+	"helm.sh/helm/v3/internal/experimental/registry"
+	"helm.sh/helm/v3/pkg/action"
 )
 
 const (

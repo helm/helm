@@ -27,13 +27,13 @@ import (
 	shellwords "github.com/mattn/go-shellwords"
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/internal/test"
-	"helm.sh/helm/pkg/action"
-	"helm.sh/helm/pkg/chartutil"
-	kubefake "helm.sh/helm/pkg/kube/fake"
-	"helm.sh/helm/pkg/release"
-	"helm.sh/helm/pkg/storage"
-	"helm.sh/helm/pkg/storage/driver"
+	"helm.sh/helm/v3/internal/test"
+	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/chartutil"
+	kubefake "helm.sh/helm/v3/pkg/kube/fake"
+	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/storage"
+	"helm.sh/helm/v3/pkg/storage/driver"
 )
 
 func testTimestamper() time.Time { return time.Unix(242085845, 0).UTC() }

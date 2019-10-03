@@ -19,7 +19,7 @@ package main
 import (
 	"testing"
 
-	"helm.sh/helm/pkg/release"
+	"helm.sh/helm/v3/pkg/release"
 )
 
 func TestHistoryCmd(t *testing.T) {

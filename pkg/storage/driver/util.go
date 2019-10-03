@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package driver // import "helm.sh/helm/pkg/storage/driver"
+package driver // import "helm.sh/helm/v3/pkg/storage/driver"
 
 import (
 	"bytes"
@@ -23,7 +23,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 
-	rspb "helm.sh/helm/pkg/release"
+	rspb "helm.sh/helm/v3/pkg/release"
 )
 
 var b64 = base64.StdEncoding

@@ -21,7 +21,7 @@ import (
 	"os"
 	"testing"
 
-	"helm.sh/helm/pkg/helmpath/xdg"
+	"helm.sh/helm/v3/pkg/helmpath/xdg"
 )
 
 // HelmHome sets up a Helm Home in a temp dir.

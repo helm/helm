@@ -23,8 +23,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	kubefake "helm.sh/helm/pkg/kube/fake"
-	"helm.sh/helm/pkg/release"
+	kubefake "helm.sh/helm/v3/pkg/kube/fake"
+	"helm.sh/helm/v3/pkg/release"
 )
 
 func upgradeAction(t *testing.T) *Upgrade {

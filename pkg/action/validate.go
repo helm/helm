@@ -23,7 +23,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/cli-runtime/pkg/resource"
 
-	"helm.sh/helm/pkg/kube"
+	"helm.sh/helm/v3/pkg/kube"
 )
 
 func existingResourceConflict(resources kube.ResourceList) error {

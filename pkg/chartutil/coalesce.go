@@ -21,7 +21,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/pkg/chart"
+	"helm.sh/helm/v3/pkg/chart"
 )
 
 // CoalesceValues coalesces all of the values in a chart (and its subcharts).

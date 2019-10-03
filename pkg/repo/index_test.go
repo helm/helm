@@ -21,9 +21,9 @@ import (
 	"os"
 	"testing"
 
-	"helm.sh/helm/pkg/chart"
-	"helm.sh/helm/pkg/cli"
-	"helm.sh/helm/pkg/getter"
+	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v3/pkg/getter"
 )
 
 const (

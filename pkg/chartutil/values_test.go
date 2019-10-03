@@ -22,7 +22,7 @@ import (
 	"testing"
 	"text/template"
 
-	"helm.sh/helm/pkg/chart"
+	"helm.sh/helm/v3/pkg/chart"
 )
 
 func TestReadValues(t *testing.T) {

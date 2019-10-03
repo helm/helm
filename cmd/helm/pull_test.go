@@ -23,7 +23,7 @@ import (
 	"regexp"
 	"testing"
 
-	"helm.sh/helm/pkg/repo/repotest"
+	"helm.sh/helm/v3/pkg/repo/repotest"
 )
 
 func TestPullCmd(t *testing.T) {

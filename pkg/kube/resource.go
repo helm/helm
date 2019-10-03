@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kube // import "helm.sh/helm/pkg/kube"
+package kube // import "helm.sh/helm/v3/pkg/kube"
 
 import "k8s.io/cli-runtime/pkg/resource"
 

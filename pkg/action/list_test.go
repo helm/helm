@@ -21,8 +21,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"helm.sh/helm/pkg/release"
-	"helm.sh/helm/pkg/storage"
+	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/storage"
 )
 
 func TestListStates(t *testing.T) {

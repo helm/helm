@@ -22,10 +22,10 @@ import (
 	"strings"
 	"testing"
 
-	"helm.sh/helm/internal/test/ensure"
-	"helm.sh/helm/pkg/getter"
-	"helm.sh/helm/pkg/repo"
-	"helm.sh/helm/pkg/repo/repotest"
+	"helm.sh/helm/v3/internal/test/ensure"
+	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/repo"
+	"helm.sh/helm/v3/pkg/repo/repotest"
 )
 
 func TestUpdateCmd(t *testing.T) {

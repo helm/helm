@@ -23,8 +23,8 @@ import (
 	"strings"
 	"testing"
 
-	"helm.sh/helm/pkg/chart"
-	"helm.sh/helm/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/chart/loader"
 )
 
 func TestSave(t *testing.T) {

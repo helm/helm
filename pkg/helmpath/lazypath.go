@@ -16,7 +16,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"helm.sh/helm/pkg/helmpath/xdg"
+	"helm.sh/helm/v3/pkg/helmpath/xdg"
 )
 
 // lazypath is an lazy-loaded path buffer for the XDG base directory specification.
