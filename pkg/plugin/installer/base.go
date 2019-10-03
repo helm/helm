@@ -13,13 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package installer // import "helm.sh/helm/pkg/plugin/installer"
+package installer // import "helm.sh/helm/v3/pkg/plugin/installer"
 
 import (
 	"os"
 	"path/filepath"
 
-	"helm.sh/helm/pkg/helmpath"
+	"helm.sh/helm/v3/pkg/helmpath"
 )
 
 type base struct {

@@ -14,13 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kube // import "helm.sh/helm/pkg/kube"
+package kube // import "helm.sh/helm/v3/pkg/kube"
 
 import (
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/kubernetes/pkg/kubectl/validation"
+	"k8s.io/kubectl/pkg/validation"
 )
 
 // Factory provides abstractions that allow the Kubectl command to be extended across multiple types

@@ -16,7 +16,7 @@ limitations under the License.
 
 package chartutil
 
-import "github.com/Masterminds/semver"
+import "github.com/Masterminds/semver/v3"
 
 // IsCompatibleRange compares a version to a constraint.
 // It returns true if the version matches the constraint, and false in all other cases.

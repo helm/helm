@@ -15,7 +15,7 @@ limitations under the License.
 
 package release
 
-import "helm.sh/helm/pkg/chart"
+import "helm.sh/helm/v3/pkg/chart"
 
 // Release describes a deployment of a chart, together with the chart
 // and the variables used to deploy that chart.

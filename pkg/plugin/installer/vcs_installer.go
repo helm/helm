@@ -13,18 +13,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package installer // import "helm.sh/helm/pkg/plugin/installer"
+package installer // import "helm.sh/helm/v3/pkg/plugin/installer"
 
 import (
 	"os"
 	"sort"
 
-	"github.com/Masterminds/semver"
+	"github.com/Masterminds/semver/v3"
 	"github.com/Masterminds/vcs"
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/pkg/helmpath"
-	"helm.sh/helm/pkg/plugin/cache"
+	"helm.sh/helm/v3/pkg/helmpath"
+	"helm.sh/helm/v3/pkg/plugin/cache"
 )
 
 // VCSInstaller installs plugins from remote a repository.

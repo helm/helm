@@ -19,8 +19,8 @@ package action
 import (
 	"regexp"
 
-	"helm.sh/helm/pkg/release"
-	"helm.sh/helm/pkg/releaseutil"
+	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/releaseutil"
 )
 
 // ListStates represents zero or more status codes that a list item may have set

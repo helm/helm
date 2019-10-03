@@ -24,9 +24,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/pkg/chart"
-	"helm.sh/helm/pkg/chartutil"
-	"helm.sh/helm/pkg/lint/support"
+	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/lint/support"
 )
 
 const (
@@ -97,7 +97,7 @@ func TestValidateChartVersion(t *testing.T) {
 		ErrorMsg string
 	}{
 		{"", "version is required"},
-		{"0", "0 is less than or equal to 0"},
+		{"1.2.3.4", "version '1.2.3.4' is not a valid SemVer"},
 		{"waps", "'waps' is not a valid SemVer"},
 		{"-3", "'-3' is not a valid SemVer"},
 	}
@@ -225,7 +225,7 @@ func TestChartfile(t *testing.T) {
 		t.Errorf("Unexpected message 2: %s", msgs[2].Err)
 	}
 
-	if !strings.Contains(msgs[3].Err.Error(), "version 0.0.0 is less than or equal to 0") {
+	if !strings.Contains(msgs[3].Err.Error(), "version '0.0.0.0' is not a valid SemVer") {
 		t.Errorf("Unexpected message 3: %s", msgs[3].Err)
 	}
 

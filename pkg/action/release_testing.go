@@ -24,7 +24,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/pkg/release"
+	"helm.sh/helm/v3/pkg/release"
 )
 
 // ReleaseTesting is the action for testing a release.

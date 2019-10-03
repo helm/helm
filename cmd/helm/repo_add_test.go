@@ -25,9 +25,9 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"helm.sh/helm/internal/test/ensure"
-	"helm.sh/helm/pkg/repo"
-	"helm.sh/helm/pkg/repo/repotest"
+	"helm.sh/helm/v3/internal/test/ensure"
+	"helm.sh/helm/v3/pkg/repo"
+	"helm.sh/helm/v3/pkg/repo/repotest"
 )
 
 func TestRepoAddCmd(t *testing.T) {

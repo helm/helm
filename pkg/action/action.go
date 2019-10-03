@@ -27,11 +27,11 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
-	"helm.sh/helm/internal/experimental/registry"
-	"helm.sh/helm/pkg/chartutil"
-	"helm.sh/helm/pkg/kube"
-	"helm.sh/helm/pkg/release"
-	"helm.sh/helm/pkg/storage"
+	"helm.sh/helm/v3/internal/experimental/registry"
+	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/kube"
+	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/storage"
 )
 
 // Timestamper is a function capable of producing a timestamp.Timestamper.

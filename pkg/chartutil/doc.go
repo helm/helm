@@ -41,4 +41,4 @@ into a Chart.
 When creating charts in memory, use the 'helm.sh/helm/pkg/proto/chart'
 package directly.
 */
-package chartutil // import "helm.sh/helm/pkg/chartutil"
+package chartutil // import "helm.sh/helm/v3/pkg/chartutil"

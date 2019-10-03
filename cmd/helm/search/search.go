@@ -28,9 +28,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/Masterminds/semver"
+	"github.com/Masterminds/semver/v3"
 
-	"helm.sh/helm/pkg/repo"
+	"helm.sh/helm/v3/pkg/repo"
 )
 
 // Result is a search result.

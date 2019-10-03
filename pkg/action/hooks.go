@@ -22,7 +22,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/pkg/release"
+	"helm.sh/helm/v3/pkg/release"
 )
 
 // execHook executes all of the hooks for the given hook event.

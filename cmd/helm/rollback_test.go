@@ -19,8 +19,8 @@ package main
 import (
 	"testing"
 
-	"helm.sh/helm/pkg/chart"
-	"helm.sh/helm/pkg/release"
+	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/release"
 )
 
 func TestRollbackCmd(t *testing.T) {

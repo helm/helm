@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package registry // import "helm.sh/helm/internal/experimental/registry"
+package registry // import "helm.sh/helm/v3/internal/experimental/registry"
 
 const (
 	// HelmChartConfigMediaType is the reserved media type for the Helm chart manifest config

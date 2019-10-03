@@ -14,9 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package releaseutil // import "helm.sh/helm/pkg/releaseutil"
+package releaseutil // import "helm.sh/helm/v3/pkg/releaseutil"
 
-import rspb "helm.sh/helm/pkg/release"
+import rspb "helm.sh/helm/v3/pkg/release"
 
 // FilterFunc returns true if the release object satisfies
 // the predicate of the underlying filter func.

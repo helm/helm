@@ -14,7 +14,7 @@ limitations under the License.
 */
 
 // Package cache provides a key generator for vcs urls.
-package cache // import "helm.sh/helm/pkg/plugin/cache"
+package cache // import "helm.sh/helm/v3/pkg/plugin/cache"
 
 import (
 	"net/url"

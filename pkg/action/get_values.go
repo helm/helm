@@ -19,7 +19,7 @@ package action
 import (
 	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/chartutil"
 )
 
 // GetValues is the action for checking a given release's values.

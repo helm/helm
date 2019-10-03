@@ -23,8 +23,8 @@ import (
 
 	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/pkg/chartutil"
-	"helm.sh/helm/pkg/release"
+	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/release"
 )
 
 var printReleaseTemplate = `REVISION: {{.Release.Version}}

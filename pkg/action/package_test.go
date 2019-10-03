@@ -19,7 +19,7 @@ package action
 import (
 	"testing"
 
-	"helm.sh/helm/pkg/chart"
+	"helm.sh/helm/v3/pkg/chart"
 )
 
 func TestSetVersion(t *testing.T) {

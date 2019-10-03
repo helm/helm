@@ -29,9 +29,9 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
-	"helm.sh/helm/cmd/helm/require"
-	"helm.sh/helm/pkg/getter"
-	"helm.sh/helm/pkg/repo"
+	"helm.sh/helm/v3/cmd/helm/require"
+	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/repo"
 )
 
 type repoAddOptions struct {

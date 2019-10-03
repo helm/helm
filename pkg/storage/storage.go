@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package storage // import "helm.sh/helm/pkg/storage"
+package storage // import "helm.sh/helm/v3/pkg/storage"
 
 import (
 	"fmt"
@@ -22,9 +22,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	rspb "helm.sh/helm/pkg/release"
-	relutil "helm.sh/helm/pkg/releaseutil"
-	"helm.sh/helm/pkg/storage/driver"
+	rspb "helm.sh/helm/v3/pkg/release"
+	relutil "helm.sh/helm/v3/pkg/releaseutil"
+	"helm.sh/helm/v3/pkg/storage/driver"
 )
 
 // The type field of the Kubernetes storage object which stores the Helm release

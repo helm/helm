@@ -26,7 +26,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/pkg/chart"
+	"helm.sh/helm/v3/pkg/chart"
 )
 
 // FileLoader loads a chart from a file

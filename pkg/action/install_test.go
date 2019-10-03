@@ -28,11 +28,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"helm.sh/helm/internal/test"
-	"helm.sh/helm/pkg/chartutil"
-	kubefake "helm.sh/helm/pkg/kube/fake"
-	"helm.sh/helm/pkg/release"
-	"helm.sh/helm/pkg/storage/driver"
+	"helm.sh/helm/v3/internal/test"
+	"helm.sh/helm/v3/pkg/chartutil"
+	kubefake "helm.sh/helm/v3/pkg/kube/fake"
+	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/storage/driver"
 )
 
 type nameTemplateTestCase struct {

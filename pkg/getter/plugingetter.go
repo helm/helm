@@ -24,8 +24,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/pkg/cli"
-	"helm.sh/helm/pkg/plugin"
+	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v3/pkg/plugin"
 )
 
 // collectPlugins scans for getter plugins.

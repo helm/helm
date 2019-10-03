@@ -20,7 +20,7 @@ import (
 	"strings"
 	"testing"
 
-	"helm.sh/helm/pkg/lint/support"
+	"helm.sh/helm/v3/pkg/lint/support"
 )
 
 var values map[string]interface{}
@@ -53,7 +53,7 @@ func TestBadChart(t *testing.T) {
 			}
 		}
 		if msg.Severity == support.ErrorSev {
-			if strings.Contains(msg.Err.Error(), "version 0.0.0 is less than or equal to 0") {
+			if strings.Contains(msg.Err.Error(), "version '0.0.0.0' is not a valid SemVer") {
 				e = true
 			}
 			if strings.Contains(msg.Err.Error(), "name is required") {

@@ -20,11 +20,11 @@ import (
 	"fmt"
 	"io"
 
-	"helm.sh/helm/pkg/cli"
+	"helm.sh/helm/v3/pkg/cli"
 
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/cmd/helm/require"
+	"helm.sh/helm/v3/cmd/helm/require"
 )
 
 var (

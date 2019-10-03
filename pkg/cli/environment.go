@@ -29,7 +29,7 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"helm.sh/helm/pkg/helmpath"
+	"helm.sh/helm/v3/pkg/helmpath"
 )
 
 // EnvSettings describes all of the environment settings.
