@@ -11,3 +11,9 @@ rootfs/rudder
 vendor/
 *.exe
 .idea/
+*.iml
+*.swp
+*~
+.classpath
+.project
+.settings/**

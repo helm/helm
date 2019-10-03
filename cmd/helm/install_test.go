@@ -113,6 +113,14 @@ func TestInstall(t *testing.T) {
 			expected: "apollo",
 			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "apollo"}),
 		},
+		// Install, with atomic
+		{
+			name:     "install with a atomic",
+			args:     []string{"testdata/testcharts/alpine"},
+			flags:    strings.Split("--name apollo", " "),
+			expected: "apollo",
+			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "apollo"}),
+		},
 		// Install, using the name-template
 		{
 			name:     "install with name-template",
@@ -169,7 +177,6 @@ func TestInstall(t *testing.T) {
 			name:  "install chart with release name using periods",
 			args:  []string{"testdata/testcharts/alpine"},
 			flags: []string{"--name", "foo.bar"},
-			err:   true,
 		},
 		{
 			name:  "install chart with release name using underscores",
@@ -183,6 +190,22 @@ func TestInstall(t *testing.T) {
 			args:  []string{"testdata/testcharts/alpine"},
 			flags: []string{"--name-template", "{{UPPER \"foobar\"}}"},
 			err:   true,
+		},
+		// Install, using --output json
+		{
+			name:     "install using output json",
+			args:     []string{"testdata/testcharts/alpine"},
+			flags:    strings.Split("--name virgil --output json", " "),
+			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "virgil"}),
+			expected: regexp.QuoteMeta(`{"name":"virgil","info":{"status":{"code":1},"first_deployed":{"seconds":242085845},"last_deployed":{"seconds":242085845},"Description":"Release mock"},"namespace":"default"}`),
+		},
+		// Install, using --output yaml
+		{
+			name:     "install using output yaml",
+			args:     []string{"testdata/testcharts/alpine"},
+			flags:    strings.Split("--name virgil --output yaml", " "),
+			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "virgil"}),
+			expected: "info:\n  Description: Release mock\n  first_deployed:\n    seconds: 242085845\n  last_deployed:\n    seconds: 242085845\n  status:\n    code: 1\nname: virgil\nnamespace: default\n",
 		},
 	}
 

@@ -29,11 +29,11 @@ const dependencyBuildDesc = `
 Build out the charts/ directory from the requirements.lock file.
 
 Build is used to reconstruct a chart's dependencies to the state specified in
-the lock file. This will not re-negotiate dependencies, as 'helm dependency update'
-does.
+the lock file.
 
-If no lock file is found, 'helm dependency build' will mirror the behavior
-of 'helm dependency update'.
+If no lock file is found, 'helm dependency build' will mirror the behavior of
+the 'helm dependency update' command. This means it will update the on-disk
+dependencies to mirror the requirements.yaml file and generate a lock file.
 `
 
 type dependencyBuildCmd struct {
@@ -49,7 +49,7 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "build [flags] CHART",
-		Short: "rebuild the charts/ directory based on the requirements.lock file",
+		Short: "Rebuild the charts/ directory based on the requirements.lock file",
 		Long:  dependencyBuildDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			dbc.helmhome = settings.Home
@@ -63,8 +63,8 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.BoolVar(&dbc.verify, "verify", false, "verify the packages against signatures")
-	f.StringVar(&dbc.keyring, "keyring", defaultKeyring(), "keyring containing public keys")
+	f.BoolVar(&dbc.verify, "verify", false, "Verify the packages against signatures")
+	f.StringVar(&dbc.keyring, "keyring", defaultKeyring(), "Keyring containing public keys")
 
 	return cmd
 }

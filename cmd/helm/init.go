@@ -31,11 +31,10 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/helm/cmd/helm/installer"
-	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/helm/portforwarder"
-	"k8s.io/helm/pkg/repo"
+	"k8s.io/helm/pkg/version"
 )
 
 const initDesc = `
@@ -58,12 +57,6 @@ repository on the master branch).
 To dump a manifest containing the Tiller deployment YAML, combine the
 '--dry-run' and '--debug' flags.
 `
-
-const (
-	stableRepository         = "stable"
-	localRepository          = "local"
-	localRepositoryIndexFile = "index.yaml"
-)
 
 var (
 	stableRepositoryURL = "https://kubernetes-charts.storage.googleapis.com"
@@ -103,7 +96,7 @@ func newInitCmd(out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "init",
-		Short: "initialize Helm on both client and server",
+		Short: "Initialize Helm on both client and server",
 		Long:  initDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) != 0 {
@@ -118,38 +111,38 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.StringVarP(&i.image, "tiller-image", "i", "", "override Tiller image")
-	f.BoolVar(&i.canary, "canary-image", false, "use the canary Tiller image")
-	f.BoolVar(&i.upgrade, "upgrade", false, "upgrade if Tiller is already installed")
-	f.BoolVar(&i.forceUpgrade, "force-upgrade", false, "force upgrade of Tiller to the current helm version")
-	f.BoolVarP(&i.clientOnly, "client-only", "c", false, "if set does not install Tiller")
-	f.BoolVar(&i.dryRun, "dry-run", false, "do not install local or remote")
-	f.BoolVar(&i.skipRefresh, "skip-refresh", false, "do not refresh (download) the local repository cache")
-	f.BoolVar(&i.wait, "wait", false, "block until Tiller is running and ready to receive requests")
+	f.StringVarP(&i.image, "tiller-image", "i", "", "Override Tiller image")
+	f.BoolVar(&i.canary, "canary-image", false, "Use the canary Tiller image")
+	f.BoolVar(&i.upgrade, "upgrade", false, "Upgrade if Tiller is already installed")
+	f.BoolVar(&i.forceUpgrade, "force-upgrade", false, "Force upgrade of Tiller to the current helm version")
+	f.BoolVarP(&i.clientOnly, "client-only", "c", false, "If set does not install Tiller")
+	f.BoolVar(&i.dryRun, "dry-run", false, "Do not install local or remote")
+	f.BoolVar(&i.skipRefresh, "skip-refresh", false, "Do not refresh (download) the local repository cache")
+	f.BoolVar(&i.wait, "wait", false, "Block until Tiller is running and ready to receive requests")
 
 	// TODO: replace TLS flags with pkg/helm/environment.AddFlagsTLS() in Helm 3
 	//
 	// NOTE (bacongobbler): we can't do this in Helm 2 because the flag names differ, and `helm init --tls-ca-cert`
 	// doesn't conform with the rest of the TLS flag names (should be --tiller-tls-ca-cert in Helm 3)
-	f.BoolVar(&tlsEnable, "tiller-tls", false, "install Tiller with TLS enabled")
-	f.BoolVar(&tlsVerify, "tiller-tls-verify", false, "install Tiller with TLS enabled and to verify remote certificates")
-	f.StringVar(&tlsKeyFile, "tiller-tls-key", "", "path to TLS key file to install with Tiller")
-	f.StringVar(&tlsCertFile, "tiller-tls-cert", "", "path to TLS certificate file to install with Tiller")
-	f.StringVar(&tlsCaCertFile, "tls-ca-cert", "", "path to CA root certificate")
-	f.StringVar(&tlsServerName, "tiller-tls-hostname", settings.TillerHost, "the server name used to verify the hostname on the returned certificates from Tiller")
+	f.BoolVar(&tlsEnable, "tiller-tls", false, "Install Tiller with TLS enabled")
+	f.BoolVar(&tlsVerify, "tiller-tls-verify", false, "Install Tiller with TLS enabled and to verify remote certificates")
+	f.StringVar(&tlsKeyFile, "tiller-tls-key", "", "Path to TLS key file to install with Tiller")
+	f.StringVar(&tlsCertFile, "tiller-tls-cert", "", "Path to TLS certificate file to install with Tiller")
+	f.StringVar(&tlsCaCertFile, "tls-ca-cert", "", "Path to CA root certificate")
+	f.StringVar(&tlsServerName, "tiller-tls-hostname", settings.TillerHost, "The server name used to verify the hostname on the returned certificates from Tiller")
 
 	f.StringVar(&stableRepositoryURL, "stable-repo-url", stableRepositoryURL, "URL for stable repository")
 	f.StringVar(&localRepositoryURL, "local-repo-url", localRepositoryURL, "URL for local repository")
 
-	f.BoolVar(&i.opts.EnableHostNetwork, "net-host", false, "install Tiller with net=host")
-	f.StringVar(&i.serviceAccount, "service-account", "", "name of service account")
-	f.IntVar(&i.maxHistory, "history-max", 0, "limit the maximum number of revisions saved per release. Use 0 for no limit.")
-	f.IntVar(&i.replicas, "replicas", 1, "amount of tiller instances to run on the cluster")
+	f.BoolVar(&i.opts.EnableHostNetwork, "net-host", false, "Install Tiller with net=host")
+	f.StringVar(&i.serviceAccount, "service-account", "", "Name of service account")
+	f.IntVar(&i.maxHistory, "history-max", 0, "Limit the maximum number of revisions saved per release. Use 0 for no limit.")
+	f.IntVar(&i.replicas, "replicas", 1, "Amount of tiller instances to run on the cluster")
 
-	f.StringVar(&i.opts.NodeSelectors, "node-selectors", "", "labels to specify the node on which Tiller is installed (app=tiller,helm=rocks)")
-	f.VarP(&i.opts.Output, "output", "o", "skip installation and output Tiller's manifest in specified format (json or yaml)")
-	f.StringArrayVar(&i.opts.Values, "override", []string{}, "override values for the Tiller Deployment manifest (can specify multiple or separate values with commas: key1=val1,key2=val2)")
-	f.BoolVar(&i.opts.AutoMountServiceAccountToken, "automount-service-account-token", true, "auto-mount the given service account to tiller")
+	f.StringVar(&i.opts.NodeSelectors, "node-selectors", "", "Labels to specify the node on which Tiller is installed (app=tiller,helm=rocks)")
+	f.VarP(&i.opts.Output, "output", "o", "Skip installation and output Tiller's manifest in specified format (json or yaml)")
+	f.StringArrayVar(&i.opts.Values, "override", []string{}, "Override values for the Tiller Deployment manifest (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	f.BoolVar(&i.opts.AutoMountServiceAccountToken, "automount-service-account-token", true, "Auto-mount the given service account to tiller")
 
 	return cmd
 }
@@ -265,14 +258,8 @@ func (i *initCmd) run() error {
 		return nil
 	}
 
-	if err := ensureDirectories(i.home, i.out); err != nil {
-		return err
-	}
-	if err := ensureDefaultRepos(i.home, i.out, i.skipRefresh); err != nil {
-		return err
-	}
-	if err := ensureRepoFileFormat(i.home.RepositoryFile(), i.out); err != nil {
-		return err
+	if err := installer.Initialize(i.home, i.out, i.skipRefresh, settings, stableRepositoryURL, localRepositoryURL); err != nil {
+		return fmt.Errorf("error initializing: %s", err)
 	}
 	fmt.Fprintf(i.out, "$HELM_HOME has been configured at %s.\n", settings.Home)
 
@@ -295,8 +282,9 @@ func (i *initCmd) run() error {
 				if err := i.ping(i.opts.SelectImage()); err != nil {
 					return err
 				}
-				fmt.Fprintln(i.out, "\nTiller (the Helm server-side component) has been upgraded to the current version.")
+				fmt.Fprintln(i.out, "\nTiller (the Helm server-side component) has been updated to", i.opts.SelectImage(), ".")
 			} else {
+				debug("The error received while trying to init: %s", err)
 				fmt.Fprintln(i.out, "Warning: Tiller is already installed in the cluster.\n"+
 					"(Use --client-only to suppress this message, or --upgrade to upgrade Tiller to the current version.)")
 			}
@@ -315,7 +303,14 @@ func (i *initCmd) run() error {
 		fmt.Fprintln(i.out, "Not installing Tiller due to 'client-only' flag having been set")
 	}
 
-	fmt.Fprintln(i.out, "Happy Helming!")
+	needsDefaultImage := !i.clientOnly && !i.opts.UseCanary && len(i.opts.ImageSpec) == 0 && version.BuildMetadata == "unreleased"
+	if needsDefaultImage {
+		fmt.Fprintf(i.out, "\nWarning: You appear to be using an unreleased version of Helm. Please either use the\n"+
+			"--canary-image flag, or specify your desired tiller version with --tiller-image.\n\n"+
+			"Ex:\n"+
+			"$ helm init --tiller-image gcr.io/kubernetes-helm/tiller:v2.8.2\n\n")
+	}
+
 	return nil
 }
 
@@ -336,117 +331,6 @@ func (i *initCmd) ping(image string) error {
 		i.client = newClient()
 		if err := i.client.PingTiller(); err != nil {
 			return fmt.Errorf("could not ping Tiller: %s", err)
-		}
-	}
-
-	return nil
-}
-
-// ensureDirectories checks to see if $HELM_HOME exists.
-//
-// If $HELM_HOME does not exist, this function will create it.
-func ensureDirectories(home helmpath.Home, out io.Writer) error {
-	configDirectories := []string{
-		home.String(),
-		home.Repository(),
-		home.Cache(),
-		home.LocalRepository(),
-		home.Plugins(),
-		home.Starters(),
-		home.Archive(),
-	}
-	for _, p := range configDirectories {
-		if fi, err := os.Stat(p); err != nil {
-			fmt.Fprintf(out, "Creating %s \n", p)
-			if err := os.MkdirAll(p, 0755); err != nil {
-				return fmt.Errorf("Could not create %s: %s", p, err)
-			}
-		} else if !fi.IsDir() {
-			return fmt.Errorf("%s must be a directory", p)
-		}
-	}
-
-	return nil
-}
-
-func ensureDefaultRepos(home helmpath.Home, out io.Writer, skipRefresh bool) error {
-	repoFile := home.RepositoryFile()
-	if fi, err := os.Stat(repoFile); err != nil {
-		fmt.Fprintf(out, "Creating %s \n", repoFile)
-		f := repo.NewRepoFile()
-		sr, err := initStableRepo(home.CacheIndex(stableRepository), out, skipRefresh, home)
-		if err != nil {
-			return err
-		}
-		lr, err := initLocalRepo(home.LocalRepository(localRepositoryIndexFile), home.CacheIndex("local"), out, home)
-		if err != nil {
-			return err
-		}
-		f.Add(sr)
-		f.Add(lr)
-		if err := f.WriteFile(repoFile, 0644); err != nil {
-			return err
-		}
-	} else if fi.IsDir() {
-		return fmt.Errorf("%s must be a file, not a directory", repoFile)
-	}
-	return nil
-}
-
-func initStableRepo(cacheFile string, out io.Writer, skipRefresh bool, home helmpath.Home) (*repo.Entry, error) {
-	fmt.Fprintf(out, "Adding %s repo with URL: %s \n", stableRepository, stableRepositoryURL)
-	c := repo.Entry{
-		Name:  stableRepository,
-		URL:   stableRepositoryURL,
-		Cache: cacheFile,
-	}
-	r, err := repo.NewChartRepository(&c, getter.All(settings))
-	if err != nil {
-		return nil, err
-	}
-
-	if skipRefresh {
-		return &c, nil
-	}
-
-	// In this case, the cacheFile is always absolute. So passing empty string
-	// is safe.
-	if err := r.DownloadIndexFile(""); err != nil {
-		return nil, fmt.Errorf("Looks like %q is not a valid chart repository or cannot be reached: %s", stableRepositoryURL, err.Error())
-	}
-
-	return &c, nil
-}
-
-func initLocalRepo(indexFile, cacheFile string, out io.Writer, home helmpath.Home) (*repo.Entry, error) {
-	if fi, err := os.Stat(indexFile); err != nil {
-		fmt.Fprintf(out, "Adding %s repo with URL: %s \n", localRepository, localRepositoryURL)
-		i := repo.NewIndexFile()
-		if err := i.WriteFile(indexFile, 0644); err != nil {
-			return nil, err
-		}
-
-		//TODO: take this out and replace with helm update functionality
-		if err := createLink(indexFile, cacheFile, home); err != nil {
-			return nil, err
-		}
-	} else if fi.IsDir() {
-		return nil, fmt.Errorf("%s must be a file, not a directory", indexFile)
-	}
-
-	return &repo.Entry{
-		Name:  localRepository,
-		URL:   localRepositoryURL,
-		Cache: cacheFile,
-	}, nil
-}
-
-func ensureRepoFileFormat(file string, out io.Writer) error {
-	r, err := repo.LoadRepositoriesFile(file)
-	if err == repo.ErrRepoOutOfDate {
-		fmt.Fprintln(out, "Updating repository file format...")
-		if err := r.WriteFile(file, 0644); err != nil {
-			return err
 		}
 	}
 

@@ -1,31 +1,20 @@
 maintainers:
   - adamreese
   - bacongobbler
-  - jascott1
-  - mattfarina
-  - michelleN
-  - nebril
-  - prydonius
-  - SlickNik
-  - technosophos
-  - thomastaylor312
-  - viglesiasce
-reviewers:
-  - adamreese
-  - bacongobbler
   - fibonacci1729
-  - jascott1
+  - hickeyma
+  - jdolitsky
   - mattfarina
   - michelleN
-  - migmartri
-  - nebril
   - prydonius
   - SlickNik
   - technosophos
   - thomastaylor312
   - viglesiasce
 emeritus:
+  - jascott1
   - migmartri
+  - nebril
   - seh
   - vaikas-google
   - rimusz

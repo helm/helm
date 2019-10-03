@@ -76,7 +76,7 @@ service ReleaseService {
     rpc RollbackRelease(RollbackReleaseRequest) returns (RollbackReleaseResponse) {
     }
 
-    // ReleaseHistory retrieves a releasse's history.
+    // ReleaseHistory retrieves a release's history.
     rpc GetHistory(GetHistoryRequest) returns (GetHistoryResponse) {
     }
 
@@ -212,6 +212,10 @@ message UpdateReleaseRequest {
 	bool force = 11;
 	// Description, if set, will set the description for the updated release
 	string description = 12;
+	// Render subchart notes if enabled
+	bool subNotes = 13;
+	// Allow deletion of new resources created in this update when update failed
+	bool cleanup_on_fail = 14;
 }
 
 // UpdateReleaseResponse is the response to an update request.
@@ -239,6 +243,8 @@ message RollbackReleaseRequest {
 	bool force = 8;
 	// Description, if set, will set the description for the rollback
 	string description = 9;
+	// Allow deletion of new resources created in this rollback when rollback failed
+	bool cleanup_on_fail = 10;
 }
 
 // RollbackReleaseResponse is the response to an update request.
@@ -281,6 +287,9 @@ message InstallReleaseRequest {
 
 	// Description, if set, will set the description for the installed release
 	string description = 11;
+
+	bool subNotes = 12;
+
 }
 
 // InstallReleaseResponse is the response from a release installation.
@@ -298,7 +307,7 @@ message UninstallReleaseRequest {
 	bool purge = 3;
 	// timeout specifies the max amount of time any kubernetes client command can run.
 	int64 timeout = 4;
-	// Description, if set, will set the description for the uninnstalled release
+	// Description, if set, will set the description for the uninstalled release
 	string description = 5;
 }
 

@@ -36,6 +36,12 @@ is required, and will print an error message when that entry is missing:
 value: {{ required "A valid .Values.who entry required!" .Values.who }}
 ```
 
+When using the `include` function, you can pass it a custom object tree built from the current context by using the `dict` function:
+
+```yaml
+{{- include "mytpl" (dict "key1" .Values.originalKey1 "key2" .Values.originalKey2) }}
+```
+
 ## Quote Strings, Don't Quote Integers
 
 When you are working with string data, you are always safer quoting the
@@ -229,6 +235,9 @@ orphaned. Helm will no longer manage it in any way. This can lead to problems
 if using `helm install --replace` on a release that has already been deleted, but
 has kept resources.
 
+To explicitly opt in to resource deletion, for example when overriding a chart's
+default annotations, set the resource policy annotation value to `delete`.
+
 ## Using "Partials" and Template Includes
 
 Sometimes you want to create some reusable parts in your chart, whether
@@ -255,9 +264,9 @@ embed each of the components.
 
 Two strong design patterns are illustrated by these projects:
 
-**SAP's [OpenStack chart](https://github.com/sapcc/openstack-helm):** This chart
-installs a full OpenStack IaaS on Kubernetes. All of the charts are collected
-together in one GitHub repository.
+**SAP's [Converged charts](https://github.com/sapcc/helm-charts):** These charts
+install SAP Converged Cloud a full OpenStack IaaS on Kubernetes. All of the charts are collected
+together in one GitHub repository, except for a few submodules.
 
 **Deis's [Workflow](https://github.com/deis/workflow/tree/master/charts/workflow):**
 This chart exposes the entire Deis PaaS system with one chart. But it's different
@@ -275,7 +284,7 @@ According to the YAML specification, YAML is a superset of JSON. That
 means that any valid JSON structure ought to be valid in YAML.
 
 This has an advantage: Sometimes template developers may find it easier
-to express a datastructure with a JSON-like syntax rather than deal with
+to express a data structure with a JSON-like syntax rather than deal with
 YAML's whitespace sensitivity.
 
 As a best practice, templates should follow a YAML-like syntax _unless_

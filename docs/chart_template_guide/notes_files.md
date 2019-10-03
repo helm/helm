@@ -1,6 +1,6 @@
 # Creating a NOTES.txt File
 
-In this section we are going to look at Helm's tool for providing instructions to your chart users. At the end of a `chart install` or `chart upgrade`, Helm can print out a block of helpful information for users. This information is highly customizable using templates.
+In this section we are going to look at Helm's tool for providing instructions to your chart users. At the end of a `helm install` or `helm upgrade`, Helm can print out a block of helpful information for users. This information is highly customizable using templates.
 
 To add installation notes to your chart, simply create a `templates/NOTES.txt` file. This file is plain text, but it is processed like as a template, and has all the normal template functions and objects available.
 

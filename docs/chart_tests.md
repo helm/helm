@@ -64,7 +64,7 @@ spec:
 ```
 
 ## Steps to Run a Test Suite on a Release
-1. `$ helm install wordpress`
+1. `$ helm install stable/wordpress`
 ```
 NAME:   quirky-walrus
 LAST DEPLOYED: Mon Feb 13 13:50:43 2017

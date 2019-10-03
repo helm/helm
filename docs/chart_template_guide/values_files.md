@@ -1,6 +1,6 @@
 # Values Files
 
-In the previous section we looked at the built-in objects that Helm templates offer. One of the four built-in objects is `Values`. This object provides access to values passed into the chart. Its contents come from four sources:
+In the previous section we looked at the built-in objects that Helm templates offer. One of these built-in objects is `Values`. This object provides access to values passed into the chart. Its contents come from four sources:
 
 - The `values.yaml` file in the chart
 - If this is a subchart, the `values.yaml` file of a parent chart
@@ -29,7 +29,7 @@ data:
   drink: {{ .Values.favoriteDrink }}
 ```
 
-Notice on the last line we access `favoriteDrink` as an attribute of `Values`: `{{ .Values.favoriteDrink}}`.
+Notice on the last line we access `favoriteDrink` as an attribute of `Values`: `{{ .Values.favoriteDrink }}`.
 
 Let's see how this renders.
 
@@ -54,7 +54,7 @@ data:
 
 Because `favoriteDrink` is set in the default `values.yaml` file to `coffee`, that's the value displayed in the template. We can easily override that by adding a `--set` flag in our call to `helm install`:
 
-```
+```console
 helm install --dry-run --debug --set favoriteDrink=slurm ./mychart
 SERVER: "localhost:44134"
 CHART PATH: /Users/mattbutcher/Code/Go/src/k8s.io/helm/_scratch/mychart
@@ -85,7 +85,7 @@ favorite:
 
 Now we would have to modify the template slightly:
 
-```
+```yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:

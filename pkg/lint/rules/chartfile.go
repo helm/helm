@@ -46,10 +46,12 @@ func Chartfile(linter *support.Linter) {
 		return
 	}
 
-	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartName(chartFile))
+	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartNamePresence(chartFile))
+	linter.RunLinterRule(support.WarningSev, chartFileName, validateChartNameFormat(chartFile))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartNameDirMatch(linter.ChartDir, chartFile))
 
 	// Chart metadata
+	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartAPIVersion(chartFile))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartVersion(chartFile))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartEngine(chartFile))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartMaintainer(chartFile))
@@ -74,9 +76,16 @@ func validateChartYamlFormat(chartFileError error) error {
 	return nil
 }
 
-func validateChartName(cf *chart.Metadata) error {
+func validateChartNamePresence(cf *chart.Metadata) error {
 	if cf.Name == "" {
 		return errors.New("name is required")
+	}
+	return nil
+}
+
+func validateChartNameFormat(cf *chart.Metadata) error {
+	if strings.Contains(cf.Name, ".") {
+		return errors.New("name should be lower case letters and numbers. Words may be separated with dashes")
 	}
 	return nil
 }
@@ -85,6 +94,18 @@ func validateChartNameDirMatch(chartDir string, cf *chart.Metadata) error {
 	if cf.Name != filepath.Base(chartDir) {
 		return fmt.Errorf("directory name (%s) and chart name (%s) must be the same", filepath.Base(chartDir), cf.Name)
 	}
+	return nil
+}
+
+func validateChartAPIVersion(cf *chart.Metadata) error {
+	if cf.ApiVersion == "" {
+		return errors.New("apiVersion is required")
+	}
+
+	if cf.ApiVersion != "v1" {
+		return fmt.Errorf("apiVersion '%s' is not valid. The value must be \"v1\"", cf.ApiVersion)
+	}
+
 	return nil
 }
 
@@ -99,7 +120,7 @@ func validateChartVersion(cf *chart.Metadata) error {
 		return fmt.Errorf("version '%s' is not a valid SemVer", cf.Version)
 	}
 
-	c, err := semver.NewConstraint("> 0")
+	c, err := semver.NewConstraint(">0.0.0-0")
 	if err != nil {
 		return err
 	}

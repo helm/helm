@@ -27,27 +27,26 @@ import (
 	"k8s.io/helm/pkg/chartutil"
 )
 
-const inspectDesc = `
+const (
+	inspectDesc = `
 This command inspects a chart and displays information. It takes a chart reference
 ('stable/drupal'), a full path to a directory or packaged chart, or a URL.
 
 Inspect prints the contents of the Chart.yaml file and the values.yaml file.
 `
-
-const inspectValuesDesc = `
+	inspectValuesDesc = `
 This command inspects a chart (directory, file, or URL) and displays the contents
 of the values.yaml file
 `
-
-const inspectChartDesc = `
+	inspectChartDesc = `
 This command inspects a chart (directory, file, or URL) and displays the contents
 of the Charts.yaml file
 `
-
-const readmeChartDesc = `
+	readmeChartDesc = `
 This command inspects a chart (directory, file, or URL) and displays the contents
 of the README file
 `
+)
 
 type inspectCmd struct {
 	chartpath string
@@ -59,6 +58,7 @@ type inspectCmd struct {
 	repoURL   string
 	username  string
 	password  string
+	devel     bool
 
 	certFile string
 	keyFile  string
@@ -82,18 +82,15 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 
 	inspectCommand := &cobra.Command{
 		Use:   "inspect [CHART]",
-		Short: "inspect a chart",
+		Short: "Inspect a chart",
 		Long:  inspectDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
-			cp, err := locateChartPath(insp.repoURL, insp.username, insp.password, args[0], insp.version, insp.verify, insp.keyring,
-				insp.certFile, insp.keyFile, insp.caFile)
-			if err != nil {
+			if err := insp.prepare(args[0]); err != nil {
 				return err
 			}
-			insp.chartpath = cp
 			return insp.run()
 		},
 	}
@@ -107,12 +104,9 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
-			cp, err := locateChartPath(insp.repoURL, insp.username, insp.password, args[0], insp.version, insp.verify, insp.keyring,
-				insp.certFile, insp.keyFile, insp.caFile)
-			if err != nil {
+			if err := insp.prepare(args[0]); err != nil {
 				return err
 			}
-			insp.chartpath = cp
 			return insp.run()
 		},
 	}
@@ -126,12 +120,9 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
-			cp, err := locateChartPath(insp.repoURL, insp.username, insp.password, args[0], insp.version, insp.verify, insp.keyring,
-				insp.certFile, insp.keyFile, insp.caFile)
-			if err != nil {
+			if err := insp.prepare(args[0]); err != nil {
 				return err
 			}
-			insp.chartpath = cp
 			return insp.run()
 		},
 	}
@@ -145,68 +136,71 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 			if err := checkArgsLength(len(args), "chart name"); err != nil {
 				return err
 			}
-			cp, err := locateChartPath(insp.repoURL, insp.username, insp.password, args[0], insp.version, insp.verify, insp.keyring,
-				insp.certFile, insp.keyFile, insp.caFile)
-			if err != nil {
+			if err := insp.prepare(args[0]); err != nil {
 				return err
 			}
-			insp.chartpath = cp
 			return insp.run()
 		},
 	}
 
 	cmds := []*cobra.Command{inspectCommand, readmeSubCmd, valuesSubCmd, chartSubCmd}
 	vflag := "verify"
-	vdesc := "verify the provenance data for this chart"
+	vdesc := "Verify the provenance data for this chart"
 	for _, subCmd := range cmds {
 		subCmd.Flags().BoolVar(&insp.verify, vflag, false, vdesc)
 	}
 
 	kflag := "keyring"
-	kdesc := "path to the keyring containing public verification keys"
+	kdesc := "Path to the keyring containing public verification keys"
 	kdefault := defaultKeyring()
 	for _, subCmd := range cmds {
 		subCmd.Flags().StringVar(&insp.keyring, kflag, kdefault, kdesc)
 	}
 
 	verflag := "version"
-	verdesc := "version of the chart. By default, the newest chart is shown"
+	verdesc := "Version of the chart. By default, the newest chart is shown"
 	for _, subCmd := range cmds {
 		subCmd.Flags().StringVar(&insp.version, verflag, "", verdesc)
 	}
 
 	repoURL := "repo"
-	repoURLdesc := "chart repository url where to locate the requested chart"
+	repoURLdesc := "Chart repository url where to locate the requested chart"
 	for _, subCmd := range cmds {
 		subCmd.Flags().StringVar(&insp.repoURL, repoURL, "", repoURLdesc)
 	}
 
 	username := "username"
-	usernamedesc := "chart repository username where to locate the requested chart"
+	usernamedesc := "Chart repository username where to locate the requested chart"
 	inspectCommand.Flags().StringVar(&insp.username, username, "", usernamedesc)
 	valuesSubCmd.Flags().StringVar(&insp.username, username, "", usernamedesc)
 	chartSubCmd.Flags().StringVar(&insp.username, username, "", usernamedesc)
 
 	password := "password"
-	passworddesc := "chart repository password where to locate the requested chart"
+	passworddesc := "Chart repository password where to locate the requested chart"
 	inspectCommand.Flags().StringVar(&insp.password, password, "", passworddesc)
 	valuesSubCmd.Flags().StringVar(&insp.password, password, "", passworddesc)
 	chartSubCmd.Flags().StringVar(&insp.password, password, "", passworddesc)
 
+	develFlag := "devel"
+	develDesc := "Use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored."
+	for _, subCmd := range cmds {
+		subCmd.Flags().BoolVar(&insp.devel, develFlag, false, develDesc)
+	}
+
 	certFile := "cert-file"
-	certFiledesc := "verify certificates of HTTPS-enabled servers using this CA bundle"
+	certFiledesc := "Verify certificates of HTTPS-enabled servers using this CA bundle"
 	for _, subCmd := range cmds {
 		subCmd.Flags().StringVar(&insp.certFile, certFile, "", certFiledesc)
 	}
 
 	keyFile := "key-file"
-	keyFiledesc := "identify HTTPS client using this SSL key file"
+	keyFiledesc := "Identify HTTPS client using this SSL key file"
 	for _, subCmd := range cmds {
 		subCmd.Flags().StringVar(&insp.keyFile, keyFile, "", keyFiledesc)
 	}
 
 	caFile := "ca-file"
-	caFiledesc := "chart repository url where to locate the requested chart"
+	caFiledesc := "Chart repository url where to locate the requested chart"
 	for _, subCmd := range cmds {
 		subCmd.Flags().StringVar(&insp.caFile, caFile, "", caFiledesc)
 	}
@@ -216,6 +210,22 @@ func newInspectCmd(out io.Writer) *cobra.Command {
 	}
 
 	return inspectCommand
+}
+
+func (i *inspectCmd) prepare(chart string) error {
+	debug("Original chart version: %q", i.version)
+	if i.version == "" && i.devel {
+		debug("setting version to >0.0.0-0")
+		i.version = ">0.0.0-0"
+	}
+
+	cp, err := locateChartPath(i.repoURL, i.username, i.password, chart, i.version, i.verify, i.keyring,
+		i.certFile, i.keyFile, i.caFile)
+	if err != nil {
+		return err
+	}
+	i.chartpath = cp
+	return nil
 }
 
 func (i *inspectCmd) run() error {

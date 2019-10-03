@@ -51,8 +51,8 @@ already there.
 
 - `NOTES.txt`: The "help text" for your chart. This will be displayed to your users
   when they run `helm install`.
-- `deployment.yaml`: A basic manifest for creating a Kubernetes [deployment](http://kubernetes.io/docs/user-guide/deployments/)
-- `service.yaml`: A basic manifest for creating a [service endpoint](http://kubernetes.io/docs/user-guide/services/) for your deployment
+- `deployment.yaml`: A basic manifest for creating a Kubernetes [deployment](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
+- `service.yaml`: A basic manifest for creating a [service endpoint](https://kubernetes.io/docs/concepts/services-networking/service/) for your deployment
 - `_helpers.tpl`: A place to put template helpers that you can re-use throughout the chart
 
 And what we're going to do is... _remove them all!_ That way we can work through our tutorial from scratch. We'll actually create our own `NOTES.txt` and `_helpers.tpl` as we go.
@@ -187,10 +187,10 @@ instead of `mychart-configmap`.
 
 You can run `helm get manifest clunky-serval` to see the entire generated YAML.
 
-At this point, we've seen templates at their most basic: YAML files that have template directives embedded in `{{` and `}}`. In the next part, we'll take a deeper look into templates. But before moving on, there's one quick trick that can make building templates faster: When you want to test the template rendering, but not actually install anything, you can use `helm install --debug --dry-run ./mychart`. This will send the chart to the Tiller server, which will render the templates. But instead of installing the chart, it will return the rendered template to you so you can see the output:
+At this point, we've seen templates at their most basic: YAML files that have template directives embedded in `{{` and `}}`. In the next part, we'll take a deeper look into templates. But before moving on, there's one quick trick that can make building templates faster: When you want to test the template rendering, but not actually install anything, you can use `helm install ./mychart --debug --dry-run`. This will send the chart to the Tiller server, which will render the templates. But instead of installing the chart, it will return the rendered template to you so you can see the output:
 
 ```console
-$ helm install --debug --dry-run ./mychart
+$ helm install ./mychart --debug --dry-run
 SERVER: "localhost:44134"
 CHART PATH: /Users/mattbutcher/Code/Go/src/k8s.io/helm/_scratch/mychart
 NAME:   goodly-guppy

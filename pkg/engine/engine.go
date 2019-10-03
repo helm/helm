@@ -130,7 +130,7 @@ type renderable struct {
 	tpl string
 	// vals are the values to be supplied to the template.
 	vals chartutil.Values
-	// namespace prefix to the templates of the current chart
+	// basePath namespace prefix to the templates of the current chart
 	basePath string
 }
 
@@ -267,7 +267,7 @@ func (e *Engine) renderWithReferences(tpls map[string]renderable, referenceTpls 
 	rendered = make(map[string]string, len(files))
 	var buf bytes.Buffer
 	for _, file := range files {
-		// Don't render partials. We don't care out the direct output of partials.
+		// Don't render partials. We don't care about the direct output of partials.
 		// They are only included from other templates.
 		if strings.HasPrefix(path.Base(file), "_") {
 			continue

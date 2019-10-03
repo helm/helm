@@ -31,21 +31,23 @@ This command rolls back a release to a previous revision.
 
 The first argument of the rollback command is the name of a release, and the
 second is a revision (version) number. To see revision numbers, run
-'helm history RELEASE'.
+'helm history RELEASE'. If you'd like to rollback to the previous release use
+'helm rollback [RELEASE] 0'.
 `
 
 type rollbackCmd struct {
-	name         string
-	revision     int32
-	dryRun       bool
-	recreate     bool
-	force        bool
-	disableHooks bool
-	out          io.Writer
-	client       helm.Interface
-	timeout      int64
-	wait         bool
-	description  string
+	name          string
+	revision      int32
+	dryRun        bool
+	recreate      bool
+	force         bool
+	disableHooks  bool
+	out           io.Writer
+	client        helm.Interface
+	timeout       int64
+	wait          bool
+	description   string
+	cleanupOnFail bool
 }
 
 func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
@@ -56,7 +58,7 @@ func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:     "rollback [flags] [RELEASE] [REVISION]",
-		Short:   "roll back a release to a previous revision",
+		Short:   "Rollback a release to a previous revision",
 		Long:    rollbackDesc,
 		PreRunE: func(_ *cobra.Command, _ []string) error { return setupConnection() },
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -79,13 +81,14 @@ func newRollbackCmd(c helm.Interface, out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	settings.AddFlagsTLS(f)
-	f.BoolVar(&rollback.dryRun, "dry-run", false, "simulate a rollback")
-	f.BoolVar(&rollback.recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
-	f.BoolVar(&rollback.force, "force", false, "force resource update through delete/recreate if needed")
-	f.BoolVar(&rollback.disableHooks, "no-hooks", false, "prevent hooks from running during rollback")
-	f.Int64Var(&rollback.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
-	f.BoolVar(&rollback.wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
-	f.StringVar(&rollback.description, "description", "", "specify a description for the release")
+	f.BoolVar(&rollback.dryRun, "dry-run", false, "Simulate a rollback")
+	f.BoolVar(&rollback.recreate, "recreate-pods", false, "Performs pods restart for the resource if applicable")
+	f.BoolVar(&rollback.force, "force", false, "Force resource update through delete/recreate if needed")
+	f.BoolVar(&rollback.disableHooks, "no-hooks", false, "Prevent hooks from running during rollback")
+	f.Int64Var(&rollback.timeout, "timeout", 300, "Time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
+	f.BoolVar(&rollback.wait, "wait", false, "If set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
+	f.StringVar(&rollback.description, "description", "", "Specify a description for the release")
+	f.BoolVar(&rollback.cleanupOnFail, "cleanup-on-fail", false, "Allow deletion of new resources created in this rollback when rollback failed")
 
 	// set defaults from environment
 	settings.InitTLS(f)
@@ -103,12 +106,13 @@ func (r *rollbackCmd) run() error {
 		helm.RollbackVersion(r.revision),
 		helm.RollbackTimeout(r.timeout),
 		helm.RollbackWait(r.wait),
-		helm.RollbackDescription(r.description))
+		helm.RollbackDescription(r.description),
+		helm.RollbackCleanupOnFail(r.cleanupOnFail))
 	if err != nil {
 		return prettyError(err)
 	}
 
-	fmt.Fprintf(r.out, "Rollback was a success! Happy Helming!\n")
+	fmt.Fprintf(r.out, "Rollback was a success.\n")
 
 	return nil
 }

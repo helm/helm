@@ -31,8 +31,8 @@ import (
 	"github.com/technosophos/moniker"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/metadata"
-	"k8s.io/api/core/v1"
-	"k8s.io/cli-runtime/pkg/genericclioptions/resource"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes/fake"
 
 	"k8s.io/helm/pkg/helm"
@@ -89,9 +89,18 @@ spec:
 
 var manifestWithKeep = `kind: ConfigMap
 metadata:
-  name: test-cm-keep
+  name: test-cm-keep-a
   annotations:
     "helm.sh/resource-policy": keep
+data:
+  name: value
+`
+
+var manifestWithKeepEmpty = `kind: ConfigMap
+metadata:
+  name: test-cm-keep-b
+  annotations:
+    "helm.sh/resource-policy": ""
 data:
   name: value
 `
@@ -221,6 +230,12 @@ func withChart(chartOpts ...chartOption) installOption {
 	}
 }
 
+func withSubNotes() installOption {
+	return func(opts *installOptions) {
+		opts.SubNotes = true
+	}
+}
+
 func installRequest(opts ...installOption) *services.InstallReleaseRequest {
 	reqOpts := &installOptions{
 		&services.InstallReleaseRequest{
@@ -320,6 +335,20 @@ func TestValidName(t *testing.T) {
 		if valid != validateReleaseName(name) {
 			t.Errorf("Expected %q to be %t", name, valid)
 		}
+	}
+}
+
+func TestGetAllVersionSet(t *testing.T) {
+	rs := rsFixture()
+	vs, err := GetAllVersionSet(rs.clientset.Discovery())
+	if err != nil {
+		t.Error(err)
+	}
+	if !vs.Has("v1") {
+		t.Errorf("Expected supported versions to at least include v1.")
+	}
+	if vs.Has("nosuchversion/v1") {
+		t.Error("Non-existent version is reported found.")
 	}
 }
 
@@ -443,23 +472,27 @@ func releaseWithKeepStub(rlsName string) *release.Release {
 			Name: "bunnychart",
 		},
 		Templates: []*chart.Template{
-			{Name: "templates/configmap", Data: []byte(manifestWithKeep)},
+			{Name: "templates/configmap-keep-a", Data: []byte(manifestWithKeep)},
+			{Name: "templates/configmap-keep-b", Data: []byte(manifestWithKeepEmpty)},
 		},
 	}
 
 	date := timestamp.Timestamp{Seconds: 242085845, Nanos: 0}
-	return &release.Release{
+	rl := &release.Release{
 		Name: rlsName,
 		Info: &release.Info{
 			FirstDeployed: &date,
 			LastDeployed:  &date,
 			Status:        &release.Status{Code: release.Status_DEPLOYED},
 		},
-		Chart:    ch,
-		Config:   &chart.Config{Raw: `name: value`},
-		Version:  1,
-		Manifest: manifestWithKeep,
+		Chart:   ch,
+		Config:  &chart.Config{Raw: `name: value`},
+		Version: 1,
 	}
+
+	helm.RenderReleaseMock(rl, false)
+
+	return rl
 }
 
 func MockEnvironment() *environment.Environment {
@@ -481,6 +514,15 @@ type updateFailingKubeClient struct {
 }
 
 func (u *updateFailingKubeClient) Update(namespace string, originalReader, modifiedReader io.Reader, force bool, recreate bool, timeout int64, shouldWait bool) error {
+	return u.UpdateWithOptions(namespace, originalReader, modifiedReader, kube.UpdateOptions{
+		Force:      force,
+		Recreate:   recreate,
+		Timeout:    timeout,
+		ShouldWait: shouldWait,
+	})
+}
+
+func (u *updateFailingKubeClient) UpdateWithOptions(namespace string, originalReader, modifiedReader io.Reader, opts kube.UpdateOptions) error {
 	return errors.New("Failed update in kube client")
 }
 
@@ -509,6 +551,10 @@ type deleteFailingKubeClient struct {
 }
 
 func (d *deleteFailingKubeClient) Delete(ns string, r io.Reader) error {
+	return kube.ErrNoObjectsVisited
+}
+
+func (d *deleteFailingKubeClient) DeleteWithTimeout(ns string, r io.Reader, timeout int64, shouldWait bool) error {
 	return kube.ErrNoObjectsVisited
 }
 
@@ -584,6 +630,9 @@ func (kc *mockHooksKubeClient) Get(ns string, r io.Reader) (string, error) {
 	return "", nil
 }
 func (kc *mockHooksKubeClient) Delete(ns string, r io.Reader) error {
+	return kc.DeleteWithTimeout(ns, r, 0, false)
+}
+func (kc *mockHooksKubeClient) DeleteWithTimeout(ns string, r io.Reader, timeout int64, shouldWait bool) error {
 	manifest, err := kc.makeManifest(r)
 	if err != nil {
 		return err
@@ -613,14 +662,24 @@ func (kc *mockHooksKubeClient) WatchUntilReady(ns string, r io.Reader, timeout i
 func (kc *mockHooksKubeClient) Update(ns string, currentReader, modifiedReader io.Reader, force bool, recreate bool, timeout int64, shouldWait bool) error {
 	return nil
 }
+func (kc *mockHooksKubeClient) UpdateWithOptions(ns string, currentReader, modifiedReader io.Reader, opts kube.UpdateOptions) error {
+	return nil
+}
 func (kc *mockHooksKubeClient) Build(ns string, reader io.Reader) (kube.Result, error) {
 	return []*resource.Info{}, nil
 }
 func (kc *mockHooksKubeClient) BuildUnstructured(ns string, reader io.Reader) (kube.Result, error) {
 	return []*resource.Info{}, nil
 }
+func (kc *mockHooksKubeClient) Validate(ns string, reader io.Reader) error {
+	return nil
+}
 func (kc *mockHooksKubeClient) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (v1.PodPhase, error) {
 	return v1.PodUnknown, nil
+}
+
+func (kc *mockHooksKubeClient) WaitUntilCRDEstablished(reader io.Reader, timeout time.Duration) error {
+	return nil
 }
 
 func deletePolicyStub(kubeClient *mockHooksKubeClient) *ReleaseServer {

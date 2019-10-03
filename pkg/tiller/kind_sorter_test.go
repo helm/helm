@@ -30,8 +30,16 @@ func TestKindSorter(t *testing.T) {
 			Head: &util.SimpleHead{Kind: "ClusterRole"},
 		},
 		{
+			Name: "I",
+			Head: &util.SimpleHead{Kind: "ClusterRoleList"},
+		},
+		{
 			Name: "j",
 			Head: &util.SimpleHead{Kind: "ClusterRoleBinding"},
+		},
+		{
+			Name: "J",
+			Head: &util.SimpleHead{Kind: "ClusterRoleBindingList"},
 		},
 		{
 			Name: "e",
@@ -106,8 +114,16 @@ func TestKindSorter(t *testing.T) {
 			Head: &util.SimpleHead{Kind: "Role"},
 		},
 		{
+			Name: "K",
+			Head: &util.SimpleHead{Kind: "RoleList"},
+		},
+		{
 			Name: "l",
 			Head: &util.SimpleHead{Kind: "RoleBinding"},
+		},
+		{
+			Name: "L",
+			Head: &util.SimpleHead{Kind: "RoleBindingList"},
 		},
 		{
 			Name: "d",
@@ -137,6 +153,14 @@ func TestKindSorter(t *testing.T) {
 			Name: "z",
 			Head: &util.SimpleHead{Kind: "PodDisruptionBudget"},
 		},
+		{
+			Name: "x",
+			Head: &util.SimpleHead{Kind: "HorizontalPodAutoscaler"},
+		},
+		{
+			Name: "B",
+			Head: &util.SimpleHead{Kind: "NetworkPolicy"},
+		},
 	}
 
 	for _, test := range []struct {
@@ -144,8 +168,8 @@ func TestKindSorter(t *testing.T) {
 		order       SortOrder
 		expected    string
 	}{
-		{"install", InstallOrder, "abc3zde1fgh2ijklmnopqrstuvw!"},
-		{"uninstall", UninstallOrder, "wvmutsrqponlkji2hgf1edz3cba!"},
+		{"install", InstallOrder, "aBbc3zde1fgh2iIjJkKlLmnopqrxstuvw!"},
+		{"uninstall", UninstallOrder, "wvmutsxrqponLlKkJjIi2hgf1edz3cbBa!"},
 	} {
 		var buf bytes.Buffer
 		t.Run(test.description, func(t *testing.T) {
@@ -221,5 +245,26 @@ func TestKindSorterSubSort(t *testing.T) {
 				t.Errorf("Expected %q, got %q", test.expected, got)
 			}
 		})
+	}
+}
+
+func TestKindSorterNamespaceAgainstUnknown(t *testing.T) {
+	unknown := Manifest{
+		Name: "a",
+		Head: &util.SimpleHead{Kind: "Unknown"},
+	}
+	namespace := Manifest{
+		Name: "b",
+		Head: &util.SimpleHead{Kind: "Namespace"},
+	}
+
+	manifests := []Manifest{unknown, namespace}
+	sortByKind(manifests, InstallOrder)
+
+	expectedOrder := []Manifest{namespace, unknown}
+	for i, manifest := range manifests {
+		if expectedOrder[i].Name != manifest.Name {
+			t.Errorf("Expected %s, got %s", expectedOrder[i].Name, manifest.Name)
+		}
 	}
 }

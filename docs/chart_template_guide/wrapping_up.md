@@ -5,7 +5,7 @@ This guide is intended to give you, the chart developer, a strong understanding 
 But there are many things this guide has not covered when it comes to the practical day-to-day development of charts. Here are some useful pointers to other documentation that will help you as you create new charts:
 
 - The [Helm Charts project](https://github.com/helm/charts) is an indispensable source of charts. That project is also sets the standard for best practices in chart development.
-- The Kubernetes [User's Guide](http://kubernetes.io/docs/user-guide/) provides detailed examples of the various resource kinds that you can use, from ConfigMaps and Secrets to DaemonSets and Deployments.
+- The Kubernetes [Documentation](https://kubernetes.io/docs/home/) provides detailed examples of the various resource kinds that you can use, from ConfigMaps and Secrets to DaemonSets and Deployments.
 - The Helm [Charts Guide](../charts.md) explains the workflow of using charts.
 - The Helm [Chart Hooks Guide](../charts_hooks.md) explains how to create lifecycle hooks.
 - The Helm [Charts Tips and Tricks](../charts_tips_and_tricks.md) article provides some useful tips for writing charts.

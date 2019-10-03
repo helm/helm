@@ -31,25 +31,25 @@ func TestRollbackCmd(t *testing.T) {
 		{
 			name:     "rollback a release",
 			args:     []string{"funny-honey", "1"},
-			expected: "Rollback was a success! Happy Helming!",
+			expected: "Rollback was a success.",
 		},
 		{
 			name:     "rollback a release with timeout",
 			args:     []string{"funny-honey", "1"},
 			flags:    []string{"--timeout", "120"},
-			expected: "Rollback was a success! Happy Helming!",
+			expected: "Rollback was a success.",
 		},
 		{
 			name:     "rollback a release with wait",
 			args:     []string{"funny-honey", "1"},
 			flags:    []string{"--wait"},
-			expected: "Rollback was a success! Happy Helming!",
+			expected: "Rollback was a success.",
 		},
 		{
 			name:     "rollback a release with description",
 			args:     []string{"funny-honey", "1"},
 			flags:    []string{"--description", "foo"},
-			expected: "Rollback was a success! Happy Helming!",
+			expected: "Rollback was a success.",
 		},
 		{
 			name: "rollback a release without revision",

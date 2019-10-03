@@ -233,7 +233,7 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 
 		// Any failure to resolve/download a chart should fail:
 		// https://github.com/kubernetes/helm/issues/1439
-		churl, username, password, err := findChartURL(dep.Name, dep.Version, dep.Repository, repos)
+		churl, username, password, err := m.findChartURL(dep.Name, dep.Version, dep.Repository, repos)
 		if err != nil {
 			saveError = fmt.Errorf("could not find %s: %s", churl, err)
 			break
@@ -357,7 +357,7 @@ func (m *Manager) hasAllRepos(deps []*chartutil.Dependency) error {
 	return nil
 }
 
-// getRepoNames returns the repo names of the referenced deps which can be used to fetch the cahced index file.
+// getRepoNames returns the repo names of the referenced deps which can be used to fetch the cached index file.
 func (m *Manager) getRepoNames(deps []*chartutil.Dependency) (map[string]string, error) {
 	rf, err := repo.LoadRepositoriesFile(m.HelmHome.RepositoryFile())
 	if err != nil {
@@ -371,6 +371,9 @@ func (m *Manager) getRepoNames(deps []*chartutil.Dependency) (map[string]string,
 	// by Helm.
 	missing := []string{}
 	for _, dd := range deps {
+		if dd.Repository == "" {
+			return nil, fmt.Errorf("no 'repository' field specified for dependency: %q", dd.Name)
+		}
 		// if dep chart is from local path, verify the path is valid
 		if strings.HasPrefix(dd.Repository, "file://") {
 			if _, err := resolver.GetLocalPath(dd.Repository, m.ChartPath); err != nil {
@@ -400,29 +403,36 @@ func (m *Manager) getRepoNames(deps []*chartutil.Dependency) (map[string]string,
 			}
 		}
 		if !found {
-			missing = append(missing, dd.Repository)
+			repository := dd.Repository
+			// Add if URL
+			_, err := url.ParseRequestURI(repository)
+			if err == nil {
+				reposMap[repository] = repository
+				continue
+			}
+			missing = append(missing, repository)
 		}
 	}
+
 	if len(missing) > 0 {
-		if len(missing) > 0 {
-			errorMessage := fmt.Sprintf("no repository definition for %s. Please add them via 'helm repo add'", strings.Join(missing, ", "))
-			// It is common for people to try to enter "stable" as a repository instead of the actual URL.
-			// For this case, let's give them a suggestion.
-			containsNonURL := false
-			for _, repo := range missing {
-				if !strings.Contains(repo, "//") && !strings.HasPrefix(repo, "@") && !strings.HasPrefix(repo, "alias:") {
-					containsNonURL = true
-				}
+		errorMessage := fmt.Sprintf("no repository definition for %s. Please add them via 'helm repo add'", strings.Join(missing, ", "))
+		// It is common for people to try to enter "stable" as a repository instead of the actual URL.
+		// For this case, let's give them a suggestion.
+		containsNonURL := false
+		for _, repo := range missing {
+			if !strings.Contains(repo, "//") && !strings.HasPrefix(repo, "@") && !strings.HasPrefix(repo, "alias:") {
+				containsNonURL = true
 			}
-			if containsNonURL {
-				errorMessage += `
+		}
+		if containsNonURL {
+			errorMessage += `
 Note that repositories must be URLs or aliases. For example, to refer to the stable
 repository, use "https://kubernetes-charts.storage.googleapis.com/" or "@stable" instead of
 "stable". Don't forget to add the repo, too ('helm repo add').`
-			}
-			return nil, errors.New(errorMessage)
 		}
+		return nil, errors.New(errorMessage)
 	}
+
 	return reposMap, nil
 }
 
@@ -432,8 +442,7 @@ func (m *Manager) UpdateRepositories() error {
 	if err != nil {
 		return err
 	}
-	repos := rf.Repositories
-	if len(repos) > 0 {
+	if repos := rf.Repositories; len(repos) > 0 {
 		// This prints warnings straight to out.
 		if err := m.parallelRepoUpdate(repos); err != nil {
 			return err
@@ -462,7 +471,7 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 		}(r)
 	}
 	wg.Wait()
-	fmt.Fprintln(out, "Update Complete. ⎈Happy Helming!⎈")
+	fmt.Fprintln(out, "Update Complete.")
 	return nil
 }
 
@@ -474,7 +483,7 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 // repoURL is the repository to search
 //
 // If it finds a URL that is "relative", it will prepend the repoURL.
-func findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRepository) (url, username, password string, err error) {
+func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRepository) (url, username, password string, err error) {
 	for _, cr := range repos {
 		if urlutil.Equal(repoURL, cr.Config.URL) {
 			var entry repo.ChartVersions
@@ -495,6 +504,10 @@ func findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRep
 			password = cr.Config.Password
 			return
 		}
+	}
+	url, err = repo.FindChartInRepoURL(repoURL, name, version, "", "", "", m.Getters)
+	if err == nil {
+		return
 	}
 	err = fmt.Errorf("chart %s not found in %s", name, repoURL)
 	return
@@ -601,8 +614,8 @@ func writeLock(chartpath string, lock *chartutil.RequirementsLock) error {
 	return ioutil.WriteFile(dest, data, 0644)
 }
 
-// archive a dep chart from local directory and save it into charts/
-func tarFromLocalDir(chartpath string, name string, repo string, version string) (string, error) {
+// tarFromLocalDir archive a dep chart from local directory and save it into charts/
+func tarFromLocalDir(chartpath, name, repo, version string) (string, error) {
 	destPath := filepath.Join(chartpath, "charts")
 
 	if !strings.HasPrefix(repo, "file://") {

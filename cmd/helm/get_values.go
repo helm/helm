@@ -47,7 +47,7 @@ func newGetValuesCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	}
 	cmd := &cobra.Command{
 		Use:     "values [flags] RELEASE_NAME",
-		Short:   "download the values file for a named release",
+		Short:   "Download the values file for a named release",
 		Long:    getValuesHelp,
 		PreRunE: func(_ *cobra.Command, _ []string) error { return setupConnection() },
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -62,9 +62,9 @@ func newGetValuesCmd(client helm.Interface, out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	settings.AddFlagsTLS(f)
-	f.Int32Var(&get.version, "revision", 0, "get the named release with revision")
-	f.BoolVarP(&get.allValues, "all", "a", false, "dump all (computed) values")
-	f.StringVar(&get.output, "output", "yaml", "output the specified format (json or yaml)")
+	f.Int32Var(&get.version, "revision", 0, "Get the named release with revision")
+	f.BoolVarP(&get.allValues, "all", "a", false, "Dump all (computed) values")
+	f.StringVar(&get.output, "output", "yaml", "Output the specified format (json or yaml)")
 
 	// set defaults from environment
 	settings.InitTLS(f)

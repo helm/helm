@@ -18,6 +18,7 @@ package main
 
 import (
 	"io"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -83,6 +84,30 @@ func TestSearchCmd(t *testing.T) {
 			args:  []string{"alp["},
 			flags: []string{"--regexp"},
 			err:   true,
+		},
+		{
+			name:     "search for 'maria', expect one match output json",
+			args:     []string{"maria"},
+			flags:    strings.Split("--output json", " "),
+			expected: `[{"Name":"testing/mariadb","Version":"0.3.0","Appversion":"","Description":"Chart for MariaDB"}]`,
+		},
+		{
+			name:     "search for 'alpine', expect two matches output json",
+			args:     []string{"alpine"},
+			flags:    strings.Split("--output json", " "),
+			expected: `[{"Name":"testing/alpine","Version":"0.2.0","Appversion":"2.3.4","Description":"Deploy a basic Alpine Linux pod"}]`,
+		},
+		{
+			name:     "search for 'maria', expect one match output yaml",
+			args:     []string{"maria"},
+			flags:    strings.Split("--output yaml", " "),
+			expected: "- AppVersion: \"\"\n  Description: Chart for MariaDB\n  Name: testing/mariadb\n  Version: 0.3.0\n\n",
+		},
+		{
+			name:     "search for 'alpine', expect two matches output yaml",
+			args:     []string{"alpine"},
+			flags:    strings.Split("--output yaml", " "),
+			expected: "- AppVersion: 2.3.4\n  Description: Deploy a basic Alpine Linux pod\n  Name: testing/alpine\n  Version: 0.2.0\n\n",
 		},
 	}
 

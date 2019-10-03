@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 	"text/template"
 
@@ -52,6 +53,7 @@ water:
   water:
     where: "everywhere"
     nor: "any drop to drink"
+    temperature: 1234567890
 `
 
 	data, err := ReadValues([]byte(doc))
@@ -265,6 +267,12 @@ func matchValues(t *testing.T, data map[string]interface{}) {
 	} else if o != "everywhere" {
 		t.Errorf("Expected water water everywhere")
 	}
+
+	if o, err := ttpl("{{.water.water.temperature}}", data); err != nil {
+		t.Errorf(".water.water.temperature: %s", err)
+	} else if o != "1234567890" {
+		t.Errorf("Expected water water temperature: 1234567890, got: %s", o)
+	}
 }
 
 func ttpl(tpl string, v map[string]interface{}) (string, error) {
@@ -300,6 +308,25 @@ pequod:
       sail: true
   ahab:
     scope: whale
+
+# test coalesce with nested null values
+web:
+  livenessProbe:
+    httpGet: null
+    exec:
+      command:
+      - curl
+      - -f
+      - http://localhost:8080/api/v1/info
+    timeoutSeconds: null
+  readinessProbe:
+    httpGet: null
+    exec:
+      command:
+      - curl
+      - -f
+      - http://localhost:8080/api/v1/info
+    timeoutSeconds: null # catches the case where this wasn't defined in the original source...
 `
 
 func TestCoalesceValues(t *testing.T) {
@@ -344,6 +371,13 @@ func TestCoalesceValues(t *testing.T) {
 		{"{{.spouter.global.nested.boat}}", "true"},
 		{"{{.pequod.global.nested.sail}}", "true"},
 		{"{{.spouter.global.nested.sail}}", "<no value>"},
+
+		{"{{.web.livenessProbe.failureThreshold}}", "5"},
+		{"{{.web.livenessProbe.initialDelaySeconds}}", "10"},
+		{"{{.web.livenessProbe.periodSeconds}}", "15"},
+		{"{{.web.livenessProbe.exec}}", "map[command:[curl -f http://localhost:8080/api/v1/info]]"},
+
+		{"{{.web.readinessProbe.exec}}", "map[command:[curl -f http://localhost:8080/api/v1/info]]"},
 	}
 
 	for _, tt := range tests {
@@ -352,10 +386,29 @@ func TestCoalesceValues(t *testing.T) {
 		}
 	}
 
-	nullKeys := []string{"bottom", "right", "left", "front"}
+	nullKeys := []string{"bottom", "right", "left", "front",
+		"web.livenessProbe.httpGet", "web.readinessProbe.httpGet", "web.livenessProbe.timeoutSeconds", "web.readinessProbe.timeoutSeconds"}
 	for _, nullKey := range nullKeys {
-		if _, ok := v[nullKey]; ok {
-			t.Errorf("Expected key %q to be removed, still present", nullKey)
+		parts := strings.Split(nullKey, ".")
+		curMap := v
+		for partIdx, part := range parts {
+			nextVal, ok := curMap[part]
+			if partIdx == len(parts)-1 { // are we the last?
+				if ok {
+					t.Errorf("Expected key %q to be removed, still present", nullKey)
+					break
+				}
+			} else { // we are not the last
+				if !ok {
+					t.Errorf("Expected key %q to be removed, but partial parent path was not found", nullKey)
+					break
+				}
+				curMap, ok = nextVal.(map[string]interface{})
+				if !ok {
+					t.Errorf("Expected key %q to be removed, but partial parent path did not result in a map", nullKey)
+					break
+				}
+			}
 		}
 	}
 }
@@ -386,7 +439,7 @@ func TestCoalesceTables(t *testing.T) {
 
 	// What we expect is that anything in dst overrides anything in src, but that
 	// otherwise the values are coalesced.
-	coalesceTables(dst, src, "")
+	dst = coalesceTables(dst, src, "")
 
 	if dst["name"] != "Ishmael" {
 		t.Errorf("Unexpected name: %s", dst["name"])
@@ -422,6 +475,33 @@ func TestCoalesceTables(t *testing.T) {
 		t.Errorf("Expected boat string, got %v", dst["boat"])
 	}
 }
+
+func TestCoalesceSubchart(t *testing.T) {
+	tchart := "testdata/moby"
+	c, err := LoadDir(tchart)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tvals := &chart.Config{}
+
+	v, err := CoalesceValues(c, tvals)
+	if err != nil {
+		t.Fatal(err)
+	}
+	j, _ := json.MarshalIndent(v, "", "  ")
+	t.Logf("Coalesced Values: %s", string(j))
+
+	subchartValues, ok := v["spouter"].(map[string]interface{})
+	if !ok {
+		t.Errorf("Subchart values not found")
+	}
+
+	if _, ok := subchartValues["foo"]; ok {
+		t.Errorf("Expected key foo to be removed, still present")
+	}
+}
+
 func TestPathValue(t *testing.T) {
 	doc := `
 title: "Moby Dick"
@@ -537,5 +617,61 @@ anotherNewKey:
 		if !reflect.DeepEqual(expectedRes, d) {
 			t.Errorf("%s: Expected %v, but got %v", name, expectedRes, d)
 		}
+	}
+}
+
+func TestOverriteTableItemWithNonTableValue(t *testing.T) {
+	// src has a table value for "foo"
+	src := map[string]interface{}{
+		"foo": map[string]interface{}{
+			"baz": "boz",
+		},
+	}
+
+	// dst has a non-table value for "foo"
+	dst := map[string]interface{}{
+		"foo": "bar",
+	}
+
+	// result - this may print a warning, but we has always "worked"
+	result := coalesceTables(dst, src, "")
+	expected := map[string]interface{}{
+		"foo": "bar",
+	}
+
+	if !reflect.DeepEqual(result, expected) {
+		t.Errorf("Expected %v, but got %v", expected, result)
+	}
+}
+
+func TestSubchartCoaleseWithNullValue(t *testing.T) {
+	v, err := CoalesceValues(&chart.Chart{
+		Metadata: &chart.Metadata{Name: "demo"},
+		Dependencies: []*chart.Chart{
+			{
+				Metadata: &chart.Metadata{Name: "logstash"},
+				Values: &chart.Config{
+					Raw: `livenessProbe: {httpGet: {path: "/", port: monitor}}`,
+				},
+			},
+		},
+		Values: &chart.Config{
+			Raw: `logstash: {livenessProbe: {httpGet: null, exec: "/bin/true"}}`,
+		},
+	}, &chart.Config{})
+	if err != nil {
+		t.Errorf("Failed with %s", err)
+	}
+	result := v.AsMap()
+	expected := map[string]interface{}{
+		"logstash": map[string]interface{}{
+			"global": map[string]interface{}{},
+			"livenessProbe": map[string]interface{}{
+				"exec": "/bin/true",
+			},
+		},
+	}
+	if !reflect.DeepEqual(result, expected) {
+		t.Errorf("got %+v, expected %+v", result, expected)
 	}
 }

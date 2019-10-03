@@ -1,6 +1,6 @@
 # Contributing Guidelines
 
-The Kubernetes Helm project accepts contributions via GitHub pull requests. This document outlines the process to help get your contribution accepted.
+The Helm project accepts contributions via GitHub pull requests. This document outlines the process to help get your contribution accepted.
 
 ## Reporting a Security Issue
 
@@ -15,7 +15,7 @@ us a chance to try to fix the issue before it is exploited in the wild.
 The sign-off is a simple line at the end of the explanation for a commit. All 
 commits needs to be signed. Your signature certifies that you wrote the patch or
 otherwise have the right to contribute the material. The rules are pretty simple,
-if you can certify the below (from [developercertificate.org](http://developercertificate.org/)):
+if you can certify the below (from [developercertificate.org](https://developercertificate.org/)):
 
 ```
 Developer Certificate of Origin
@@ -84,12 +84,12 @@ your PR will be rejected by the automated DCO check.
 
 Whether you are a user or contributor, official support channels include:
 
-- GitHub [issues](https://github.com/helm/helm/issues/new)
-- Slack [Kubernetes Slack](http://slack.kubernetes.io/):
-  - User: #helm-users
-  - Contributor: #helm-dev
+- [Issues](https://github.com/helm/helm/issues)
+- Slack:
+  - User: [#helm-users](https://kubernetes.slack.com/messages/C0NH30761/details/)
+  - Contributor: [#helm-dev](https://kubernetes.slack.com/messages/C51E88VDG/)
 
-Before opening a new issue or submitting a new pull request, it's helpful to search the project - it's likely that another user has already reported the issue you're facing, or it's a known issue that we're already aware of.
+Before opening a new issue or submitting a new pull request, it's helpful to search the project - it's likely that another user has already reported the issue you're facing, or it's a known issue that we're already aware of. It is also worth asking on the Slack channels.
 
 ## Milestones
 
@@ -172,41 +172,75 @@ contributing to Helm. All issue types follow the same general lifecycle. Differe
 
 ## How to Contribute a Patch
 
-1. Fork the repo, develop and test your code changes.
-1. Use sign-off when making each of your commits (see [above](#sign-your-work)).
+1. **Fork** the repo [helm](https://github.com/helm/helm)  
+
+Go to https://github.com/helm/helm then hit the `Fork` button to fork your own copy of repository **helm** to your github account.
+
+2. **Clone** the forked repo to your local working directory.
+```sh
+$ git clone https://github.com/$your_github_account/helm.git   
+```
+3. Add an `upstream` remote to keep your fork in sync with the main repo.
+```sh
+$ cd helm
+$ git remote add upstream https://github.com/helm/helm.git
+$ git remote -v
+
+origin  https://github.com/$your_github_account/helm.git (fetch)
+origin  https://github.com/$your_github_account/helm.git (push)
+upstream        https://github.com/helm/helm.git (fetch)
+upstream        https://github.com/helm/helm.git (push)
+```
+4. Sync your local `master` branch.
+```sh
+$ git pull upstream master
+```
+5. Create a branch to add a new feature or fix issues.
+```sh
+$ git checkout -b new-feature
+```
+6. Make any change on the branch `new-feature` then build and test your codes.
+7. Include in what will be committed.
+```sh
+$ git add <file>
+```
+8. Use sign-off when making each of your commits (see [above](#sign-your-work)).
    If you forgot to sign some commits that are part of the contribution, you can ask [git to rewrite your commit history](https://git-scm.com/book/en/v2/Git-Tools-Rewriting-History).
-1. Submit a pull request.
+```sh
+$ git commit --signoff
+```
+9. Submit a pull request.
 
 Coding conventions and standards are explained in the official developer docs:
 [Developers Guide](docs/developers.md)
 
-The next section contains more information on the workflow followed for PRs
+The next section contains more information on the workflow followed for Pull Requests.
 
 ## Pull Requests
 
-Like any good open source project, we use Pull Requests to track code changes
+Like any good open source project, we use Pull Requests (PRs) to track code changes.
 
 ### PR Lifecycle
 
 1. PR creation
+    - PRs are usually created to fix or else be a subset of other PRs that fix a particular issue.
     - We more than welcome PRs that are currently in progress. They are a great way to keep track of
     important work that is in-flight, but useful for others to see. If a PR is a work in progress,
     it **must** be prefaced with "WIP: [title]". Once the PR is ready for review, remove "WIP" from
     the title.
-    - It is preferred, but not required, to have a PR tied to a specific issue.
+    - It is preferred, but not required, to have a PR tied to a specific issue. There can be
+    circumstances where if it is a quick fix then an issue might be overkill. The details provided
+    in the PR description would suffice in this case.
 2. Triage
     - The maintainer in charge of triaging will apply the proper labels for the issue. This should
     include at least a size label, `bug` or `feature`, and `awaiting review` once all labels are applied.
-    See the [Labels section](#labels) for full details on the definitions of labels
+    See the [Labels section](#labels) for full details on the definitions of labels.
     - Add the PR to the correct milestone. This should be the same as the issue the PR closes.
 3. Assigning reviews
     - Once a review has the `awaiting review` label, maintainers will review them as schedule permits.
     The maintainer who takes the issue should self-request a review.
-    - Reviews from others in the community, especially those who have encountered a bug or have
-    requested a feature, are highly encouraged, but not required. Maintainer reviews **are** required
-    before any merge
     - Any PR with the `size/large` label requires 2 review approvals from maintainers before it can be
-    merged. Those with `size/medium` are per the judgement of the maintainers
+    merged. Those with `size/medium` or `size/small` are per the judgement of the maintainers. 
 4. Reviewing/Discussion
     - Once a maintainer begins reviewing a PR, they will remove the `awaiting review` label and add
     the `in progress` label so the person submitting knows that it is being worked on. This is
@@ -214,17 +248,26 @@ Like any good open source project, we use Pull Requests to track code changes
     - All reviews will be completed using Github review tool.
     - A "Comment" review should be used when there are questions about the code that should be
     answered, but that don't involve code changes. This type of review does not count as approval.
-    - A "Changes Requested" review indicates that changes to the code need to be made before they will be merged.
-    - Reviewers should update labels as needed (such as `needs rebase`)
-5. Address comments by answering questions or changing code
+    - A "Changes Requested" review indicates that changes to the code need to be made before they will be
+    merged.
+    - Reviewers (maintainers) should update labels as needed (such as `needs rebase`).
+    - Reviews are also welcome from others in the community, especially those who have encountered a bug or
+    have requested a feature. In the code review, a message can be added, as well as `LGTM` if the PR is
+    good to merge. It’s also possible to add comments to specific lines in a file, for giving context
+    to the comment. 
+5. PR owner should try to be responsive to comments by answering questions or changing code. If the
+   owner is unsure of any comment, reach out to the person who added the comment in
+   [#helm-dev](https://kubernetes.slack.com/messages/C51E88VDG/). Once all comments have been addressed,
+   the PR is ready to be merged.
 6. Merge or close
     - PRs should stay open until merged or if they have not been active for more than 30 days.
     This will help keep the PR queue to a manageable size and reduce noise. Should the PR need
     to stay open (like in the case of a WIP), the `keep open` label can be added.
-    - If the owner of the PR is listed in `OWNERS`, that user **must** merge their own PRs
-    or explicitly request another OWNER do that for them.
-    - If the owner of a PR is _not_ listed in `OWNERS`, any core committer may
-    merge the PR once it is approved.
+    - Before merging a PR, refer to the topic on [Size Labels](#size-labels) below to determine if
+      the PR requires more than one LGTM to merge.
+    - If the owner of the PR is listed in `OWNERS`, that user **must** merge their own PRs or explicitly
+    request another OWNER do that for them.
+    - If the owner of a PR is _not_ listed in `OWNERS`, any maintainer may merge the PR once it is approved.
 
 #### Documentation PRs
 
@@ -235,7 +278,7 @@ Documentation PRs will follow the same lifecycle as other PRs. They will also be
 ## The Triager
 
 Each week, one of the core maintainers will serve as the designated "triager" starting after the
-public standup meetings on Thursday. This person will be in charge triaging new PRs and issues
+public stand-up meetings on Thursday. This person will be in charge triaging new PRs and issues
 throughout the work week.
 
 ## Labels
@@ -261,7 +304,7 @@ The following tables define all label types used for Helm. It is split up by cat
 | `help wanted` | This issue is one the core maintainers cannot get to right now and would appreciate help with |
 | `proposal` | This issue is a proposal |
 | `question/support` | This issue is a support request or question |
-| `starter` | This issue is a good for someone new to contributing to Helm |
+| `good first issue` | This issue is a good for someone new to contributing to Helm |
 | `wont fix` | The issue has been discussed and will not be implemented (or accepted in the case of a proposal) |
 
 ### PR Specific
@@ -279,13 +322,20 @@ The following tables define all label types used for Helm. It is split up by cat
 
 Size labels are used to indicate how "dangerous" a PR is. The guidelines below are used to assign the
 labels, but ultimately this can be changed by the maintainers. For example, even if a PR only makes
-30 lines of changes in 1 file, but it changes key functionality, it will likely be labeled as `size/large`
+30 lines of changes in 1 file, but it changes key functionality, it will likely be labeled as `size/L`
 because it requires sign off from multiple people. Conversely, a PR that adds a small feature, but requires
-another 150 lines of tests to cover all cases, could be labeled as `size/small` even though the number
+another 150 lines of tests to cover all cases, could be labeled as `size/S` even though the number
 lines is greater than defined below.
+
+PRs submitted by a core maintainer, regardless of size, only requires approval from one additional
+maintainer. This ensures there are at least two maintainers who are aware of any significant PRs
+introduced to the codebase.
 
 | Label | Description |
 | ----- | ----------- |
-| `size/small` | Anything less than or equal to 4 files and 150 lines. Only small amounts of manual testing may be required |
-| `size/medium` | Anything greater than `size/small` and less than or equal to 8 files and 300 lines. Manual validation should be required. |
-| `size/large` | Anything greater than `size/medium`. This should be thoroughly tested before merging and always requires 2 approvals. This also should be applied to anything that is a significant logic change. |
+| `size/XS` | Anything less than or equal to 9 lines ignoring generated files. Only small amounts of manual testing may be required. |
+| `size/S` | Anything greater than `size/XS` less than or equal to 29 lines ignoring the generated files. Only small amounts of manual testing may be required. |
+| `size/M` | Anything greater than `size/S` less than or equal to 99 lines ignoring the generated files. Manual validation should be required. |
+| `size/L` | Anything greater than `size/M` less than or equal to 499 lines ignoring the generated files. This should be thoroughly tested before merging and always requires 2 approvals. This also should be applied to anything that is a significant logic change. |
+| `size/XL` | Anything greater than `size/L` less than or equal to 999 lines ignoring the generated files. This should be thoroughly tested before merging and always requires 2 approvals. This also should be applied to anything that is a significant logic change. |
+| `size/XXL` | Anything greater than `size/XL`. This should be thoroughly tested before merging and always requires 2 approvals. This also should be applied to anything that is a significant logic change. |

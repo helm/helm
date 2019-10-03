@@ -2,7 +2,7 @@ dependencies:
       - name: subchartb
         repository: http://localhost:10191
         version: 0.1.0
-        condition: subchartb.enabled,subchart2.subchartb.enabled
+        condition: subchartb.enabled
         tags:
           - back-end
           - subchartb

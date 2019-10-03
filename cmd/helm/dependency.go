@@ -73,7 +73,7 @@ the dependency charts stored locally. The path should start with a prefix of
       repository: "file://../dependency_chart/nginx"
 
 If the dependency chart is retrieved locally, it is not required to have the
-repository added to helm by "helm add repo". Version matching is also supported
+repository added to helm by "helm repo add". Version matching is also supported
 for this case.
 `
 
@@ -91,7 +91,7 @@ func newDependencyCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "dependency update|build|list",
 		Aliases: []string{"dep", "dependencies"},
-		Short:   "manage a chart's dependencies",
+		Short:   "Manage a chart's dependencies",
 		Long:    dependencyDesc,
 	}
 
@@ -113,7 +113,7 @@ func newDependencyListCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "list [flags] CHART",
 		Aliases: []string{"ls"},
-		Short:   "list the dependencies for the given chart",
+		Short:   "List the dependencies for the given chart",
 		Long:    dependencyListDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cp := "."

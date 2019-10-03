@@ -52,8 +52,9 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 		services := []v1.Service{}
 		pvc := []v1.PersistentVolumeClaim{}
 		deployments := []deployment{}
+		ingresses := []extensions.Ingress{}
 		for _, v := range created {
-			switch value := asVersioned(v).(type) {
+			switch value := asVersionedOrUnstructured(v).(type) {
 			case *v1.ReplicationController:
 				list, err := getPods(kcs, value.Namespace, value.Spec.Selector)
 				if err != nil {
@@ -71,6 +72,10 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 				if err != nil {
 					return false, err
 				}
+				// If paused deployment will never be ready
+				if currentDeployment.Spec.Paused {
+					continue
+				}
 				// Find RS associated with deployment
 				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, kcs.AppsV1())
 				if err != nil || newReplicaSet == nil {
@@ -85,6 +90,10 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 				currentDeployment, err := kcs.AppsV1().Deployments(value.Namespace).Get(value.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
+				}
+				// If paused deployment will never be ready
+				if currentDeployment.Spec.Paused {
+					continue
 				}
 				// Find RS associated with deployment
 				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, kcs.AppsV1())
@@ -101,6 +110,10 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 				if err != nil {
 					return false, err
 				}
+				// If paused deployment will never be ready
+				if currentDeployment.Spec.Paused {
+					continue
+				}
 				// Find RS associated with deployment
 				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, kcs.AppsV1())
 				if err != nil || newReplicaSet == nil {
@@ -115,6 +128,10 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 				currentDeployment, err := kcs.AppsV1().Deployments(value.Namespace).Get(value.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
+				}
+				// If paused deployment will never be ready
+				if currentDeployment.Spec.Paused {
+					continue
 				}
 				// Find RS associated with deployment
 				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, kcs.AppsV1())
@@ -192,9 +209,15 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 					return false, err
 				}
 				services = append(services, *svc)
+			case *extensions.Ingress:
+				ingress, err := kcs.ExtensionsV1beta1().Ingresses(value.Namespace).Get(value.Name, metav1.GetOptions{})
+				if err != nil {
+					return false, err
+				}
+				ingresses = append(ingresses, *ingress)
 			}
 		}
-		isReady := c.podsReady(pods) && c.servicesReady(services) && c.volumesReady(pvc) && c.deploymentsReady(deployments)
+		isReady := c.podsReady(pods) && c.servicesReady(services) && c.volumesReady(pvc) && c.deploymentsReady(deployments) && c.ingressesReady(ingresses)
 		return isReady, nil
 	})
 }
@@ -268,4 +291,14 @@ func isPodReady(pod *v1.Pod) bool {
 		}
 	}
 	return false
+}
+
+func (c *Client) ingressesReady(ingresses []extensions.Ingress) bool {
+	for _, ingress := range ingresses {
+		if &ingress.Status == nil || len(ingress.Status.LoadBalancer.Ingress) == 0 {
+			c.Log("Ingress is not ready: %s/%s", ingress.GetNamespace(), ingress.GetName())
+			return false
+		}
+	}
+	return true
 }

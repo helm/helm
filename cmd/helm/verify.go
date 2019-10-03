@@ -27,7 +27,7 @@ import (
 const verifyDesc = `
 Verify that the given chart has a valid provenance file.
 
-Provenance files provide crytographic verification that a chart has not been
+Provenance files provide cryptographic verification that a chart has not been
 tampered with, and was packaged by a trusted provider.
 
 This command can be used to verify a local chart. Several other commands provide
@@ -47,7 +47,7 @@ func newVerifyCmd(out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "verify [flags] PATH",
-		Short: "verify that a chart at the given path has been signed and is valid",
+		Short: "Verify that a chart at the given path has been signed and is valid",
 		Long:  verifyDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
@@ -59,7 +59,7 @@ func newVerifyCmd(out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.StringVar(&vc.keyring, "keyring", defaultKeyring(), "keyring containing public keys")
+	f.StringVar(&vc.keyring, "keyring", defaultKeyring(), "Keyring containing public keys")
 
 	return cmd
 }

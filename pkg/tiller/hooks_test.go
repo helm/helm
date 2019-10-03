@@ -17,8 +17,10 @@ limitations under the License.
 package tiller
 
 import (
+	"bytes"
 	"reflect"
 	"testing"
+	"text/template"
 
 	"github.com/ghodss/yaml"
 
@@ -133,21 +135,6 @@ metadata:
     "helm.sh/hook": test-success
 `,
 		},
-		{
-			name:  []string{"ninth"},
-			path:  "nine",
-			kind:  []string{"CustomResourceDefinition"},
-			hooks: map[string][]release.Hook_Event{"ninth": {release.Hook_CRD_INSTALL}},
-			manifest: `apiVersion: apiextensions.k8s.io/v1beta1
-kind: CustomResourceDefinition
-metadata:
-  name: ninth
-  labels:
-    doesnot: matter
-  annotations:
-    "helm.sh/hook": crd-install
-`,
-		},
 	}
 
 	manifests := make(map[string]string, len(data))
@@ -161,22 +148,22 @@ metadata:
 	}
 
 	// This test will fail if 'six' or 'seven' was added.
-	// changed to account for CustomResourceDefinition with crd-install hook being added to generic list of manifests
-	if len(generic) != 3 {
-		t.Errorf("Expected 3 generic manifests, got %d", len(generic))
+	if len(generic) != 2 {
+		t.Errorf("Expected 2 generic manifests, got %d", len(generic))
 	}
 
-	// changed to account for 5 hooks now that there is a crd-install hook added as member 9 of the data list.  It was 4 before.
-	if len(hs) != 5 {
-		t.Errorf("Expected 5 hooks, got %d", len(hs))
+	if len(hs) != 4 {
+		t.Errorf("Expected 4 hooks, got %d", len(hs))
 	}
 
 	for _, out := range hs {
-		t.Logf("Checking name %s path %s and kind %s", out.Name, out.Path, out.Kind)
 		found := false
 		for _, expect := range data {
 			if out.Path == expect.path {
 				found = true
+				if out.Path != expect.path {
+					t.Errorf("Expected path %s, got %s", expect.path, out.Path)
+				}
 				nameFound := false
 				for _, expectedName := range expect.name {
 					if out.Name == expectedName {
@@ -224,8 +211,8 @@ metadata:
 
 			name := sh.Metadata.Name
 
-			//only keep track of non-hook manifests, that are not CustomResourceDefinitions with crd-install
-			if err == nil && (s.hooks[name] == nil || s.hooks[name][0] == release.Hook_CRD_INSTALL) {
+			//only keep track of non-hook manifests
+			if err == nil && s.hooks[name] == nil {
 				another := Manifest{
 					Content: m,
 					Name:    name,
@@ -241,6 +228,110 @@ metadata:
 		if m.Content != sorted[i].Content {
 			t.Errorf("Expected %q, got %q", m.Content, sorted[i].Content)
 		}
+	}
+}
+
+var manifestTemplate = `
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: example.com
+  labels:
+    app: example-crd
+  annotations:
+    helm.sh/hook: crd-install
+{{- if .HookDeletePolicy}}
+    {{ .HookDeletePolicy }}
+{{- end }}
+{{- if .HookDeleteTimeout}}
+    {{ .HookDeleteTimeout }}
+{{- end }}
+spec:
+  group: example.com
+  version: v1alpha1
+  names:
+    kind: example
+    plural: examples
+  scope: Cluster
+`
+
+type manifestTemplateData struct {
+	HookDeletePolicy, HookDeleteTimeout string
+}
+
+func TestSortManifestsHookDeletion(t *testing.T) {
+	testCases := map[string]struct {
+		templateData    manifestTemplateData
+		hasDeletePolicy bool
+		deletePolicy    release.Hook_DeletePolicy
+		deleteTimeout   int64
+	}{
+		"No delete policy": {
+			templateData:    manifestTemplateData{},
+			hasDeletePolicy: false,
+			deletePolicy:    release.Hook_BEFORE_HOOK_CREATION,
+			deleteTimeout:   0,
+		},
+		"Delete policy, no delete timeout": {
+			templateData: manifestTemplateData{
+				HookDeletePolicy: "helm.sh/hook-delete-policy: before-hook-creation",
+			},
+			hasDeletePolicy: true,
+			deletePolicy:    release.Hook_BEFORE_HOOK_CREATION,
+			deleteTimeout:   defaultHookDeleteTimeoutInSeconds,
+		},
+		"Delete policy and delete timeout": {
+			templateData: manifestTemplateData{
+				HookDeletePolicy:  "helm.sh/hook-delete-policy: hook-succeeded",
+				HookDeleteTimeout: `helm.sh/hook-delete-timeout: "420"`,
+			},
+			hasDeletePolicy: true,
+			deletePolicy:    release.Hook_SUCCEEDED,
+			deleteTimeout:   420,
+		},
+	}
+
+	for tn, tc := range testCases {
+		t.Run(tn, func(t *testing.T) {
+			tmpl := template.Must(template.New("manifest").Parse(manifestTemplate))
+			var buf bytes.Buffer
+			err := tmpl.Execute(&buf, tc.templateData)
+			if err != nil {
+				t.Error(err)
+			}
+
+			manifests := map[string]string{
+				"exampleManifest": buf.String(),
+			}
+
+			hs, _, err := sortManifests(manifests, chartutil.NewVersionSet("v1", "v1beta1"), InstallOrder)
+			if err != nil {
+				t.Error(err)
+			}
+
+			if got, want := len(hs), 1; got != want {
+				t.Errorf("expected %d hooks, but got %d", want, got)
+			}
+			hook := hs[0]
+
+			if len(hook.DeletePolicies) == 0 {
+				if tc.hasDeletePolicy {
+					t.Errorf("expected a policy, but got zero")
+				}
+			} else {
+				if !tc.hasDeletePolicy {
+					t.Errorf("expected no delete policies, but got one")
+				}
+				policy := hook.DeletePolicies[0]
+				if got, want := policy, tc.deletePolicy; got != want {
+					t.Errorf("expected delete policy %q, but got %q", want, got)
+				}
+			}
+
+			if got, want := hook.DeleteTimeout, tc.deleteTimeout; got != want {
+				t.Errorf("expected timeout %d, but got %d", want, got)
+			}
+		})
 	}
 }
 

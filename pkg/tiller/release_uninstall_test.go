@@ -150,7 +150,10 @@ func TestUninstallReleaseWithKeepPolicy(t *testing.T) {
 	if res.Info == "" {
 		t.Errorf("Expected response info to not be empty")
 	} else {
-		if !strings.Contains(res.Info, "[ConfigMap] test-cm-keep") {
+		if !strings.Contains(res.Info, "[ConfigMap] test-cm-keep-a") {
+			t.Errorf("unexpected output: %s", res.Info)
+		}
+		if !strings.Contains(res.Info, "[ConfigMap] test-cm-keep-b") {
 			t.Errorf("unexpected output: %s", res.Info)
 		}
 	}

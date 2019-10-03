@@ -27,6 +27,7 @@ import (
 	"k8s.io/client-go/rest"
 
 	"k8s.io/helm/pkg/kube"
+	"k8s.io/helm/pkg/tiller/environment"
 )
 
 var (
@@ -39,8 +40,7 @@ func New(namespace string, client kubernetes.Interface, config *rest.Config) (*k
 	if err != nil {
 		return nil, err
 	}
-	const tillerPort = 44134
-	t := kube.NewTunnel(client.CoreV1().RESTClient(), config, namespace, podName, tillerPort)
+	t := kube.NewTunnel(client.CoreV1().RESTClient(), config, namespace, podName, environment.DefaultTillerPort)
 	return t, t.ForwardPort()
 }
 

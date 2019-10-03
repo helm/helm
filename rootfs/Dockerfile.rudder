@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM alpine:3.3
+FROM alpine:3.10
 
-RUN apk update && apk add ca-certificates && rm -rf /var/cache/apk/*
+RUN apk add --no-cache ca-certificates
 
 ENV HOME /tmp
 

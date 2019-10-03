@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -56,10 +57,14 @@ func newResetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "reset",
-		Short: "uninstalls Tiller from a cluster",
+		Short: "Uninstalls Tiller from a cluster",
 		Long:  resetDesc,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := setupConnection(); !d.force && err != nil {
+			err := setupConnection()
+			if !d.force && err != nil {
+				return err
+			}
+			if d.force && err != nil && strings.EqualFold(err.Error(), "could not find tiller") {
 				return err
 			}
 			return nil
@@ -79,8 +84,8 @@ func newResetCmd(client helm.Interface, out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	settings.AddFlagsTLS(f)
-	f.BoolVarP(&d.force, "force", "f", false, "forces Tiller uninstall even if there are releases installed, or if Tiller is not in ready state. Releases are not deleted.)")
-	f.BoolVar(&d.removeHelmHome, "remove-helm-home", false, "if set deletes $HELM_HOME")
+	f.BoolVarP(&d.force, "force", "f", false, "Forces Tiller uninstall even if there are releases installed, or if Tiller is not in ready state. Releases are not deleted.)")
+	f.BoolVar(&d.removeHelmHome, "remove-helm-home", false, "If set, deletes $HELM_HOME")
 
 	// set defaults from environment
 	settings.InitTLS(f)
@@ -110,7 +115,7 @@ func (d *resetCmd) run() error {
 	}
 
 	if err := installer.Uninstall(d.kubeClient, &installer.Options{Namespace: d.namespace}); err != nil {
-		return fmt.Errorf("error unstalling Tiller: %s", err)
+		return fmt.Errorf("error uninstalling Tiller: %s", err)
 	}
 
 	if d.removeHelmHome {

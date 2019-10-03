@@ -1,4 +1,4 @@
-# Using Helm
+﻿# Using Helm
 
 This guide explains the basics of using Helm (and Tiller) to manage
 packages on your Kubernetes cluster. It assumes that you have already
@@ -17,9 +17,9 @@ cluster. Think of it like the Kubernetes equivalent of a Homebrew formula,
 an Apt dpkg, or a Yum RPM file.
 
 A *Repository* is the place where charts can be collected and shared.
-It's like Perl's [CPAN archive](http://www.cpan.org) or the
-[Fedora Package Database](https://admin.fedoraproject.org/pkgdb/), but for
-Kubernetes packages.
+It's like Perl's [CPAN archive](https://www.cpan.org) or the
+[Fedora Package Database](https://apps.fedoraproject.org/packages/s/pkgdb), but
+for Kubernetes packages.
 
 A *Release* is an instance of a chart running in a Kubernetes cluster.
 One chart can often be installed many times into the same cluster. And
@@ -190,7 +190,7 @@ imageTag: 10.1.14-r3
 
 ## Specify a imagePullPolicy
 ## Default to 'Always' if imageTag is 'latest', else set to 'IfNotPresent'
-## ref: http://kubernetes.io/docs/user-guide/images/#pre-pulling-images
+## ref: https://kubernetes.io/docs/user-guide/images/#pre-pulling-images
 ##
 # imagePullPolicy:
 
@@ -215,7 +215,10 @@ You can then override any of these settings in a YAML formatted file,
 and then pass that file during installation.
 
 ```console
-$ echo '{mariadbUser: user0, mariadbDatabase: user0db}' > config.yaml
+$ cat << EOF > config.yaml
+mariadbUser: user0
+mariadbDatabase: user0db
+EOF
 $ helm install -f config.yaml stable/mariadb
 ```
 
@@ -356,7 +359,7 @@ update things that have changed since the last release.
 ```console
 $ helm upgrade -f panda.yaml happy-panda stable/mariadb
 Fetched stable/mariadb-0.3.0.tgz to /Users/mattbutcher/Code/Go/src/k8s.io/helm/mariadb-0.3.0.tgz
-happy-panda has been upgraded. Happy Helming!
+happy-panda has been upgraded.
 Last Deployed: Wed Sep 28 12:47:54 2016
 Namespace: default
 Status: DEPLOYED

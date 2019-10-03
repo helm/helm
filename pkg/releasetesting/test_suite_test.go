@@ -37,7 +37,8 @@ import (
 	tillerEnv "k8s.io/helm/pkg/tiller/environment"
 )
 
-const manifestWithTestSuccessHook = `
+const (
+	manifestWithTestSuccessHook = `
 apiVersion: v1
 kind: Pod
 metadata:
@@ -51,7 +52,7 @@ spec:
     cmd: fake-command
 `
 
-const manifestWithTestFailureHook = `
+	manifestWithTestFailureHook = `
 apiVersion: v1
 kind: Pod
 metadata:
@@ -64,7 +65,7 @@ spec:
     image: fake-gold-finding-image
     cmd: fake-gold-finding-command
 `
-const manifestWithInstallHooks = `apiVersion: v1
+	manifestWithInstallHooks = `apiVersion: v1
 kind: ConfigMap
 metadata:
   name: test-cm
@@ -73,6 +74,7 @@ metadata:
 data:
   name: value
 `
+)
 
 func TestNewTestSuite(t *testing.T) {
 	rel := releaseStub()

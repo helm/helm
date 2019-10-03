@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # bash completion for helm                                 -*- shell-script -*-
 
 __debug()

@@ -31,13 +31,13 @@ const (
 
 // Uninstall uses Kubernetes client to uninstall Tiller.
 func Uninstall(client kubernetes.Interface, opts *Options) error {
-	if err := deleteService(client.Core(), opts.Namespace); err != nil {
+	if err := deleteService(client.CoreV1(), opts.Namespace); err != nil {
 		return err
 	}
 	if err := deleteDeployment(client, opts.Namespace); err != nil {
 		return err
 	}
-	return deleteSecret(client.Core(), opts.Namespace)
+	return deleteSecret(client.CoreV1(), opts.Namespace)
 }
 
 // deleteService deletes the Tiller Service resource
@@ -47,10 +47,11 @@ func deleteService(client corev1.ServicesGetter, namespace string) error {
 }
 
 // deleteDeployment deletes the Tiller Deployment resource
-// We need to use the reaper instead of the kube API because GC for deployment dependents
-// is not yet supported at the k8s server level (<= 1.5)
 func deleteDeployment(client kubernetes.Interface, namespace string) error {
-	err := client.Extensions().Deployments(namespace).Delete(deploymentName, &metav1.DeleteOptions{})
+	policy := metav1.DeletePropagationBackground
+	err := client.AppsV1().Deployments(namespace).Delete(deploymentName, &metav1.DeleteOptions{
+		PropagationPolicy: &policy,
+	})
 	return ingoreNotFound(err)
 }
 

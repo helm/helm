@@ -26,22 +26,23 @@ import (
 
 var values = []byte{}
 
-const namespace = "testNamespace"
-const strict = false
-
-const badChartDir = "rules/testdata/badchartfile"
-const badValuesFileDir = "rules/testdata/badvaluesfile"
-const badYamlFileDir = "rules/testdata/albatross"
-const goodChartDir = "rules/testdata/goodone"
+const (
+	namespace        = "testNamespace"
+	strict           = false
+	badChartDir      = "rules/testdata/badchartfile"
+	badValuesFileDir = "rules/testdata/badvaluesfile"
+	badYamlFileDir   = "rules/testdata/albatross"
+	goodChartDir     = "rules/testdata/goodone"
+)
 
 func TestBadChart(t *testing.T) {
 	m := All(badChartDir, values, namespace, strict).Messages
-	if len(m) != 5 {
+	if len(m) != 6 {
 		t.Errorf("Number of errors %v", len(m))
 		t.Errorf("All didn't fail with expected errors, got %#v", m)
 	}
 	// There should be one INFO, 2 WARNINGs and one ERROR messages, check for them
-	var i, w, e, e2, e3 bool
+	var i, w, e, e2, e3, e4 bool
 	for _, msg := range m {
 		if msg.Severity == support.InfoSev {
 			if strings.Contains(msg.Err.Error(), "icon is recommended") {
@@ -54,7 +55,7 @@ func TestBadChart(t *testing.T) {
 			}
 		}
 		if msg.Severity == support.ErrorSev {
-			if strings.Contains(msg.Err.Error(), "version 0.0.0 is less than or equal to 0") {
+			if strings.Contains(msg.Err.Error(), "version '0.0.0.0' is not a valid SemVer") {
 				e = true
 			}
 			if strings.Contains(msg.Err.Error(), "name is required") {
@@ -63,9 +64,13 @@ func TestBadChart(t *testing.T) {
 			if strings.Contains(msg.Err.Error(), "directory name (badchartfile) and chart name () must be the same") {
 				e3 = true
 			}
+
+			if strings.Contains(msg.Err.Error(), "apiVersion is required") {
+				e4 = true
+			}
 		}
 	}
-	if !e || !e2 || !e3 || !w || !i {
+	if !e || !e2 || !e3 || !e4 || !w || !i {
 		t.Errorf("Didn't find all the expected errors, got %#v", m)
 	}
 }

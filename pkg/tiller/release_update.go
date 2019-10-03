@@ -38,8 +38,10 @@ func (s *ReleaseServer) UpdateRelease(c ctx.Context, req *services.UpdateRelease
 	s.Log("preparing update for %s", req.Name)
 	currentRelease, updatedRelease, err := s.prepareUpdate(req)
 	if err != nil {
+		s.Log("failed to prepare update: %s", err)
 		if req.Force {
 			// Use the --force, Luke.
+			s.Log("performing force update for %s", req.Name)
 			return s.performUpdateForce(req)
 		}
 		return nil, err
@@ -113,7 +115,7 @@ func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 		return nil, nil, err
 	}
 
-	hooks, manifestDoc, notesTxt, err := s.renderResources(req.Chart, valuesToRender, caps.APIVersions)
+	hooks, manifestDoc, notesTxt, err := s.renderResources(req.Chart, valuesToRender, req.SubNotes, caps.APIVersions)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -30,6 +30,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"k8s.io/client-go/util/homedir"
+	"k8s.io/helm/cmd/helm/installer"
 	"k8s.io/helm/pkg/helm"
 	"k8s.io/helm/pkg/helm/environment"
 	"k8s.io/helm/pkg/helm/helmpath"
@@ -137,7 +138,7 @@ func ensureTestHome(home helmpath.Home, t *testing.T) error {
 		}
 	}
 
-	localRepoIndexFile := home.LocalRepository(localRepositoryIndexFile)
+	localRepoIndexFile := home.LocalRepository(installer.LocalRepositoryIndexFile)
 	if fi, err := os.Stat(localRepoIndexFile); err != nil {
 		i := repo.NewIndexFile()
 		if err := i.WriteFile(localRepoIndexFile, 0644); err != nil {

@@ -33,6 +33,12 @@ import (
 	"k8s.io/helm/pkg/repo"
 )
 
+const (
+	sep = "\v"
+	// verSep is a separator for version fields in map keys.
+	verSep = "$$"
+)
+
 // Result is a search result.
 //
 // Score indicates how close it is to match. The higher the score, the longer
@@ -49,15 +55,10 @@ type Index struct {
 	charts map[string]*repo.ChartVersion
 }
 
-const sep = "\v"
-
-// NewIndex creats a new Index.
+// NewIndex creates a new Index.
 func NewIndex() *Index {
 	return &Index{lines: map[string]string{}, charts: map[string]*repo.ChartVersion{}}
 }
-
-// verSep is a separator for version fields in map keys.
-const verSep = "$$"
 
 // AddRepo adds a repository index to the search index.
 func (i *Index) AddRepo(rname string, ind *repo.IndexFile, all bool) {

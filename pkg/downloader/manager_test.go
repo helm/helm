@@ -18,6 +18,7 @@ package downloader
 import (
 	"bytes"
 	"reflect"
+	"strings"
 	"testing"
 
 	"k8s.io/helm/pkg/chartutil"
@@ -77,7 +78,7 @@ func TestFindChartURL(t *testing.T) {
 	version := "0.1.0"
 	repoURL := "http://example.com/charts"
 
-	churl, username, password, err := findChartURL(name, version, repoURL, repos)
+	churl, username, password, err := m.findChartURL(name, version, repoURL, repos)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,24 +100,33 @@ func TestGetRepoNames(t *testing.T) {
 		HelmHome: helmpath.Home("testdata/helmhome"),
 	}
 	tests := []struct {
-		name   string
-		req    []*chartutil.Dependency
-		expect map[string]string
-		err    bool
+		name        string
+		req         []*chartutil.Dependency
+		expect      map[string]string
+		err         bool
+		expectedErr string
 	}{
-		{
-			name: "no repo definition failure",
-			req: []*chartutil.Dependency{
-				{Name: "oedipus-rex", Repository: "http://example.com/test"},
-			},
-			err: true,
-		},
 		{
 			name: "no repo definition failure -- stable repo",
 			req: []*chartutil.Dependency{
 				{Name: "oedipus-rex", Repository: "stable"},
 			},
 			err: true,
+		},
+		{
+			name: "dependency entry missing 'repository' field -- e.g. spelled 'repo'",
+			req: []*chartutil.Dependency{
+				{Name: "dependency-missing-repository-field"},
+			},
+			err:         true,
+			expectedErr: "no 'repository' field specified for dependency: \"dependency-missing-repository-field\"",
+		},
+		{
+			name: "dependency repository is url but not exist in repos",
+			req: []*chartutil.Dependency{
+				{Name: "oedipus-rex", Repository: "http://example.com/test"},
+			},
+			expect: map[string]string{"http://example.com/test": "http://example.com/test"},
 		},
 		{
 			name: "no repo definition failure",
@@ -152,6 +162,9 @@ func TestGetRepoNames(t *testing.T) {
 		l, err := m.getRepoNames(tt.req)
 		if err != nil {
 			if tt.err {
+				if !strings.Contains(err.Error(), tt.expectedErr) {
+					t.Fatalf("%s: expected error: %s, got: %s", tt.name, tt.expectedErr, err.Error())
+				}
 				continue
 			}
 			t.Fatal(err)

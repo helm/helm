@@ -20,14 +20,16 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/release"
 )
 
-// HookAnno is the label name for a hook
-const HookAnno = "helm.sh/hook"
-
-// HookWeightAnno is the label name for a hook weight
-const HookWeightAnno = "helm.sh/hook-weight"
-
-// HookDeleteAnno is the label name for the delete policy for a hook
-const HookDeleteAnno = "helm.sh/hook-delete-policy"
+const (
+	// HookAnno is the label name for a hook
+	HookAnno = "helm.sh/hook"
+	// HookWeightAnno is the label name for a hook weight
+	HookWeightAnno = "helm.sh/hook-weight"
+	// HookDeleteAnno is the label name for the delete policy for a hook
+	HookDeleteAnno = "helm.sh/hook-delete-policy"
+	// HookDeleteTimeoutAnno is the label name for the timeout value for delete policies
+	HookDeleteTimeoutAnno = "helm.sh/hook-delete-timeout"
+)
 
 // Types of hooks
 const (

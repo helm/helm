@@ -131,7 +131,13 @@ func (r *ReleaseModuleServiceServer) RollbackRelease(ctx context.Context, in *ru
 	grpclog.Print("rollback")
 	c := bytes.NewBufferString(in.Current.Manifest)
 	t := bytes.NewBufferString(in.Target.Manifest)
-	err := kubeClient.Update(in.Target.Namespace, c, t, in.Force, in.Recreate, in.Timeout, in.Wait)
+	err := kubeClient.UpdateWithOptions(in.Target.Namespace, c, t, kube.UpdateOptions{
+		Force:         in.Force,
+		Recreate:      in.Recreate,
+		Timeout:       in.Timeout,
+		ShouldWait:    in.Wait,
+		CleanupOnFail: in.CleanupOnFail,
+	})
 	return &rudderAPI.RollbackReleaseResponse{}, err
 }
 
@@ -140,7 +146,13 @@ func (r *ReleaseModuleServiceServer) UpgradeRelease(ctx context.Context, in *rud
 	grpclog.Print("upgrade")
 	c := bytes.NewBufferString(in.Current.Manifest)
 	t := bytes.NewBufferString(in.Target.Manifest)
-	err := kubeClient.Update(in.Target.Namespace, c, t, in.Force, in.Recreate, in.Timeout, in.Wait)
+	err := kubeClient.UpdateWithOptions(in.Target.Namespace, c, t, kube.UpdateOptions{
+		Force:         in.Force,
+		Recreate:      in.Recreate,
+		Timeout:       in.Timeout,
+		ShouldWait:    in.Wait,
+		CleanupOnFail: in.CleanupOnFail,
+	})
 	// upgrade response object should be changed to include status
 	return &rudderAPI.UpgradeReleaseResponse{}, err
 }

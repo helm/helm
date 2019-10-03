@@ -38,7 +38,7 @@ func newPluginRemoveCmd(out io.Writer) *cobra.Command {
 	pcmd := &pluginRemoveCmd{out: out}
 	cmd := &cobra.Command{
 		Use:   "remove <plugin>...",
-		Short: "remove one or more Helm plugins",
+		Short: "Remove one or more Helm plugins",
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			return pcmd.complete(args)
 		},

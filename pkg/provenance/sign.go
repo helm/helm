@@ -122,7 +122,7 @@ func NewFromKeyring(keyringfile, id string) (*Signatory, error) {
 		return s, nil
 	}
 
-	// We're gonna go all GnuPG on this and look for a string that _contains_. If
+	// We're going to go all GnuPG on this and look for a string that _contains_. If
 	// two or more keys contain the string and none are a direct match, we error
 	// out.
 	var candidate *openpgp.Entity
@@ -404,6 +404,8 @@ func DigestFile(filename string) (string, error) {
 // Helm uses SHA256 as its default hash for all non-cryptographic applications.
 func Digest(in io.Reader) (string, error) {
 	hash := crypto.SHA256.New()
-	io.Copy(hash, in)
+	if _, err := io.Copy(hash, in); err != nil {
+		return "", err
+	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
 }

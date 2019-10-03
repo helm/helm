@@ -24,7 +24,12 @@ import (
 	"k8s.io/helm/pkg/version"
 )
 
-const defaultImage = "gcr.io/kubernetes-helm/tiller"
+const (
+	defaultImage = "gcr.io/kubernetes-helm/tiller"
+
+	fmtJSON OutputFormat = "json"
+	fmtYAML OutputFormat = "yaml"
+)
 
 // Options control how to install Tiller into a cluster, upgrade, and uninstall Tiller from a cluster.
 type Options struct {
@@ -50,7 +55,7 @@ type Options struct {
 	// AutoMountServiceAccountToken determines whether or not the service account should be added to Tiller.
 	AutoMountServiceAccountToken bool
 
-	// Force allows to force upgrading tiller if deployed version is greater than current version
+	// ForceUpgrade allows to force upgrading tiller if deployed version is greater than current version
 	ForceUpgrade bool
 
 	// ImageSpec identifies the image Tiller will use when deployed.
@@ -105,6 +110,9 @@ func (opts *Options) SelectImage() string {
 	case opts.UseCanary:
 		return defaultImage + ":canary"
 	case opts.ImageSpec == "":
+		if version.BuildMetadata == "unreleased" {
+			return defaultImage + ":canary"
+		}
 		return fmt.Sprintf("%s:%s", defaultImage, version.Version)
 	default:
 		return opts.ImageSpec
@@ -150,11 +158,6 @@ func (f *OutputFormat) String() string {
 func (f *OutputFormat) Type() string {
 	return "OutputFormat"
 }
-
-const (
-	fmtJSON OutputFormat = "json"
-	fmtYAML OutputFormat = "yaml"
-)
 
 // Set validates and sets the value of the OutputFormat
 func (f *OutputFormat) Set(s string) error {

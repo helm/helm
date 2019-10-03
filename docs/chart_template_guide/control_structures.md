@@ -20,7 +20,7 @@ The first control structure we'll look at is for conditionally including blocks 
 
 The basic structure for a conditional looks like this:
 
-```
+```yaml
 {{ if PIPELINE }}
   # Do something
 {{ else if OTHER PIPELINE }}
@@ -53,7 +53,7 @@ data:
   myvalue: "Hello World"
   drink: {{ .Values.favorite.drink | default "tea" | quote }}
   food: {{ .Values.favorite.food | upper | quote }}
-  {{ if and (.Values.favorite.drink) (eq .Values.favorite.drink "coffee") }}mug: true{{ end }}
+  {{ if and .Values.favorite.drink (eq .Values.favorite.drink "coffee") }}mug: true{{ end }}
 ```
 
 Note that `.Values.favorite.drink` must be defined or else it will throw an error when comparing it to "coffee". Since we commented out `drink: coffee` in our last example, the output should not include a `mug: true` flag. But if we add that line back into our `values.yaml` file, the output should look like this:
@@ -115,7 +115,7 @@ data:
 
 `mug` is incorrectly indented. Let's simply out-dent that one line, and re-run:
 
-```
+```yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -224,7 +224,7 @@ The next control structure to look at is the `with` action. This controls variab
 
 The syntax for `with` is similar to a simple `if` statement:
 
-```
+```yaml
 {{ with PIPELINE }}
   # restricted scope
 {{ end }}
@@ -329,15 +329,15 @@ data:
     - "Onions"
 ```
 
-Now, in this example we've done something tricky. The `toppings: |-` line is declaring a multi-line string. So our list of toppings is actually not a YAML list. It's a big string. Why would we do this? Because the data in ConfigMaps `data` is composed of key/value pairs, where both the key and the value are simple strings. To understand why this is the case, take a look at the [Kubernetes ConfigMap docs](http://kubernetes.io/docs/user-guide/configmap/). For us, though, this detail doesn't matter much.
+Now, in this example we've done something tricky. The `toppings: |-` line is declaring a multi-line string. So our list of toppings is actually not a YAML list. It's a big string. Why would we do this? Because the data in ConfigMaps `data` is composed of key/value pairs, where both the key and the value are simple strings. To understand why this is the case, take a look at the [Kubernetes ConfigMap docs](https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/). For us, though, this detail doesn't matter much.
 
 > The `|-` marker in YAML takes a multi-line string. This can be a useful technique for embedding big blocks of data inside of your manifests, as exemplified here.
 
-Sometimes it's useful to be able to quickly make a list inside of your template, and then iterate over that list. Helm templates have a function to make this easy: `tuple`. In computer science, a tuple is a list-like collection of fixed size, but with arbitrary data types. This roughly conveys the way a `tuple` is used.
+Sometimes it's useful to be able to quickly make a list inside of your template, and then iterate over that list. Helm templates have a function that's called just that: `list`.
 
 ```yaml
   sizes: |-
-    {{- range tuple "small" "medium" "large" }}
+    {{- range list "small" "medium" "large" }}
     - {{ . }}
     {{- end }}
 ```
@@ -351,4 +351,4 @@ The above will produce this:
     - large
 ```
 
-In addition to lists and tuples, `range` can be used to iterate over collections that have a key and a value (like a `map` or `dict`). We'll see how to do that in the next section when we introduce template variables.
+In addition to lists, `range` can be used to iterate over collections that have a key and a value (like a `map` or `dict`). We'll see how to do that in the next section when we introduce template variables.

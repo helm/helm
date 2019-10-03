@@ -68,7 +68,7 @@ func (p Providers) ByScheme(scheme string) (Constructor, error) {
 }
 
 // All finds all of the registered getters as a list of Provider instances.
-// Currently the build-in http/https getter and the discovered
+// Currently the built-in http/https getter and the discovered
 // plugins with downloader notations are collected.
 func All(settings environment.EnvSettings) Providers {
 	result := Providers{

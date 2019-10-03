@@ -297,6 +297,20 @@ func DeleteDescription(description string) DeleteOption {
 	}
 }
 
+// UpgradeCleanupOnFail allows deletion of new resources created in this upgrade when upgrade failed
+func UpgradeCleanupOnFail(cleanupOnFail bool) UpdateOption {
+	return func(opts *options) {
+		opts.updateReq.CleanupOnFail = cleanupOnFail
+	}
+}
+
+// RollbackCleanupOnFail allows deletion of new resources created in this rollback when rollback failed
+func RollbackCleanupOnFail(cleanupOnFail bool) RollbackOption {
+	return func(opts *options) {
+		opts.rollbackReq.CleanupOnFail = cleanupOnFail
+	}
+}
+
 // DeleteDisableHooks will disable hooks for a deletion operation.
 func DeleteDisableHooks(disable bool) DeleteOption {
 	return func(opts *options) {
@@ -343,6 +357,20 @@ func InstallDisableCRDHook(disable bool) InstallOption {
 func InstallReuseName(reuse bool) InstallOption {
 	return func(opts *options) {
 		opts.reuseName = reuse
+	}
+}
+
+// InstallSubNotes will (if true) instruct Tiller to render SubChart Notes
+func InstallSubNotes(enable bool) InstallOption {
+	return func(opts *options) {
+		opts.instReq.SubNotes = enable
+	}
+}
+
+// UpgradeSubNotes will (if true) instruct Tiller to render SubChart Notes
+func UpgradeSubNotes(enable bool) UpdateOption {
+	return func(opts *options) {
+		opts.updateReq.SubNotes = enable
 	}
 }
 
@@ -460,7 +488,7 @@ type VersionOption func(*options)
 // the defaults used when running the `helm upgrade` command.
 type UpdateOption func(*options)
 
-// RollbackOption allows specififying various settings configurable
+// RollbackOption allows specifying various settings configurable
 // by the helm client user for overriding the defaults used when
 // running the `helm rollback` command.
 type RollbackOption func(*options)

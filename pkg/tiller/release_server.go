@@ -23,6 +23,7 @@ import (
 	"path"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/technosophos/moniker"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -40,18 +41,20 @@ import (
 	"k8s.io/helm/pkg/version"
 )
 
-// releaseNameMaxLen is the maximum length of a release name.
-//
-// As of Kubernetes 1.4, the max limit on a name is 63 chars. We reserve 10 for
-// charts to add data. Effectively, that gives us 53 chars.
-// See https://github.com/kubernetes/helm/issues/1528
-const releaseNameMaxLen = 53
+const (
+	// releaseNameMaxLen is the maximum length of a release name.
+	//
+	// As of Kubernetes 1.4, the max limit on a name is 63 chars. We reserve 10 for
+	// charts to add data. Effectively, that gives us 53 chars.
+	// See https://github.com/kubernetes/helm/issues/1528
+	releaseNameMaxLen = 53
 
-// NOTESFILE_SUFFIX that we want to treat special. It goes through the templating engine
-// but it's not a yaml file (resource) hence can't have hooks, etc. And the user actually
-// wants to see this file after rendering in the status command. However, it must be a suffix
-// since there can be filepath in front of it.
-const notesFileSuffix = "NOTES.txt"
+	// NOTESFILE_SUFFIX that we want to treat special. It goes through the templating engine
+	// but it's not a yaml file (resource) hence can't have hooks, etc. And the user actually
+	// wants to see this file after rendering in the status command. However, it must be a suffix
+	// since there can be filepath in front of it.
+	notesFileSuffix = "NOTES.txt"
+)
 
 var (
 	// errMissingChart indicates that a chart was not provided.
@@ -61,7 +64,7 @@ var (
 	// errInvalidRevision indicates that an invalid release revision number was provided.
 	errInvalidRevision = errors.New("invalid release revision")
 	//errInvalidName indicates that an invalid release name was provided
-	errInvalidName = errors.New("invalid release name, must match regex ^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+$ and the length must not longer than 53")
+	errInvalidName = errors.New("invalid release name, must match regex ^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+$ and the length must not be longer than 53")
 )
 
 // ListDefaultLimit is the default limit for number of items returned in a list.
@@ -115,7 +118,7 @@ func NewReleaseServer(env *environment.Environment, clientset kubernetes.Interfa
 // request values are not altered.
 func (s *ReleaseServer) reuseValues(req *services.UpdateReleaseRequest, current *release.Release) error {
 	if req.ResetValues {
-		// If ResetValues is set, we comletely ignore current.Config.
+		// If ResetValues is set, we completely ignore current.Config.
 		s.Log("resetting values to the chart's original version")
 		return nil
 	}
@@ -191,11 +194,11 @@ func (s *ReleaseServer) uniqName(start string, reuse bool) (string, error) {
 		rel := h[0]
 
 		if st := rel.Info.Status.Code; reuse && (st == release.Status_DELETED || st == release.Status_FAILED) {
-			// Allowe re-use of names if the previous release is marked deleted.
+			// Allow re-use of names if the previous release is marked deleted.
 			s.Log("name %s exists but is not in use, reusing name", start)
 			return start, nil
 		} else if reuse {
-			return "", fmt.Errorf("a released named %s is in use, cannot re-use a name that is still in use", start)
+			return "", fmt.Errorf("a release named %s is in use, cannot re-use a name that is still in use", start)
 		}
 
 		return "", fmt.Errorf("a release named %s already exists.\nRun: helm ls --all %s; to check the status of the release\nOr run: helm del --purge %s; to delete it", start, start, start)
@@ -248,7 +251,7 @@ func capabilities(disc discovery.DiscoveryInterface) (*chartutil.Capabilities, e
 	if err != nil {
 		return nil, err
 	}
-	vs, err := GetVersionSet(disc)
+	vs, err := GetAllVersionSet(disc)
 	if err != nil {
 		return nil, fmt.Errorf("Could not get apiVersions from Kubernetes: %s", err)
 	}
@@ -257,6 +260,59 @@ func capabilities(disc discovery.DiscoveryInterface) (*chartutil.Capabilities, e
 		KubeVersion:   sv,
 		TillerVersion: version.GetVersionProto(),
 	}, nil
+}
+
+// GetAllVersionSet retrieves a set of available k8s API versions and objects
+//
+// This is a different function from GetVersionSet because the signature changed.
+// To keep compatibility through the public functions this needed to be a new
+// function.GetAllVersionSet
+// TODO(mattfarina): In Helm v3 merge with GetVersionSet
+func GetAllVersionSet(client discovery.ServerResourcesInterface) (chartutil.VersionSet, error) {
+	groups, resources, err := client.ServerGroupsAndResources()
+	if err != nil {
+		return chartutil.DefaultVersionSet, err
+	}
+
+	// FIXME: The Kubernetes test fixture for cli appears to always return nil
+	// for calls to Discovery().ServerGroupsAndResources(). So in this case, we
+	// return the default API list. This is also a safe value to return in any
+	// other odd-ball case.
+	if len(groups) == 0 && len(resources) == 0 {
+		return chartutil.DefaultVersionSet, nil
+	}
+
+	versionMap := make(map[string]interface{})
+	versions := []string{}
+
+	// Extract the groups
+	for _, g := range groups {
+		for _, gv := range g.Versions {
+			versionMap[gv.GroupVersion] = struct{}{}
+		}
+	}
+
+	// Extract the resources
+	var id string
+	var ok bool
+	for _, r := range resources {
+		for _, rl := range r.APIResources {
+
+			// A Kind at a GroupVersion can show up more than once. We only want
+			// it displayed once in the final output.
+			id = path.Join(r.GroupVersion, rl.Kind)
+			if _, ok = versionMap[id]; !ok {
+				versionMap[id] = struct{}{}
+			}
+		}
+	}
+
+	// Convert to a form that NewVersionSet can use
+	for k := range versionMap {
+		versions = append(versions, k)
+	}
+
+	return chartutil.NewVersionSet(versions...), nil
 }
 
 // GetVersionSet retrieves a set of available k8s API versions
@@ -278,7 +334,7 @@ func GetVersionSet(client discovery.ServerGroupsInterface) (chartutil.VersionSet
 	return chartutil.NewVersionSet(versions...), nil
 }
 
-func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values, vs chartutil.VersionSet) ([]*release.Hook, *bytes.Buffer, string, error) {
+func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values, subNotes bool, vs chartutil.VersionSet) ([]*release.Hook, *bytes.Buffer, string, error) {
 	// Guard to make sure Tiller is at the right version to handle this chart.
 	sver := version.GetVersion()
 	if ch.Metadata.TillerVersion != "" &&
@@ -307,17 +363,22 @@ func (s *ReleaseServer) renderResources(ch *chart.Chart, values chartutil.Values
 	// text file. We have to spin through this map because the file contains path information, so we
 	// look for terminating NOTES.txt. We also remove it from the files so that we don't have to skip
 	// it in the sortHooks.
-	notes := ""
+	var notesBuffer bytes.Buffer
 	for k, v := range files {
 		if strings.HasSuffix(k, notesFileSuffix) {
-			// Only apply the notes if it belongs to the parent chart
-			// Note: Do not use filePath.Join since it creates a path with \ which is not expected
-			if k == path.Join(ch.Metadata.Name, "templates", notesFileSuffix) {
-				notes = v
+			if subNotes || (k == path.Join(ch.Metadata.Name, "templates", notesFileSuffix)) {
+
+				// If buffer contains data, add newline before adding more
+				if notesBuffer.Len() > 0 {
+					notesBuffer.WriteString("\n")
+				}
+				notesBuffer.WriteString(v)
 			}
 			delete(files, k)
 		}
 	}
+
+	notes := notesBuffer.String()
 
 	// Sort hooks, manifests, and partials. Only hooks and manifests are returned,
 	// as partials are not used after renderer.Render. Empty manifests are also
@@ -394,7 +455,7 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 		b.Reset()
 		b.WriteString(h.Manifest)
 
-		// We can't watch CRDs
+		// We can't watch CRDs, but need to wait until they reach the established state before continuing
 		if hook != hooks.CRDInstall {
 			if err := kubeCli.WatchUntilReady(namespace, b, timeout, false); err != nil {
 				s.Log("warning: Release %s %s %s could not complete: %s", name, hook, h.Path, err)
@@ -403,6 +464,11 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 				if err := s.deleteHookByPolicy(h, hooks.HookFailed, name, namespace, hook, kubeCli); err != nil {
 					return err
 				}
+				return err
+			}
+		} else {
+			if err := kubeCli.WaitUntilCRDEstablished(b, time.Duration(timeout)*time.Second); err != nil {
+				s.Log("warning: Release %s %s %s could not complete: %s", name, hook, h.Path, err)
 				return err
 			}
 		}
@@ -423,8 +489,7 @@ func (s *ReleaseServer) execHook(hs []*release.Hook, name, namespace, hook strin
 
 func validateManifest(c environment.KubeClient, ns string, manifest []byte) error {
 	r := bytes.NewReader(manifest)
-	_, err := c.BuildUnstructured(ns, r)
-	return err
+	return c.Validate(ns, r)
 }
 
 func validateReleaseName(releaseName string) error {
@@ -443,7 +508,8 @@ func (s *ReleaseServer) deleteHookByPolicy(h *release.Hook, policy string, name,
 	b := bytes.NewBufferString(h.Manifest)
 	if hookHasDeletePolicy(h, policy) {
 		s.Log("deleting %s hook %s for release %s due to %q policy", hook, h.Name, name, policy)
-		if errHookDelete := kubeCli.Delete(namespace, b); errHookDelete != nil {
+		waitForDelete := h.DeleteTimeout > 0
+		if errHookDelete := kubeCli.DeleteWithTimeout(namespace, b, h.DeleteTimeout, waitForDelete); errHookDelete != nil {
 			s.Log("warning: Release %s %s %S could not be deleted: %s", name, hook, h.Path, errHookDelete)
 			return errHookDelete
 		}
@@ -451,7 +517,7 @@ func (s *ReleaseServer) deleteHookByPolicy(h *release.Hook, policy string, name,
 	return nil
 }
 
-// hookShouldBeDeleted determines whether the defined hook deletion policy matches the hook deletion polices
+// hookHasDeletePolicy determines whether the defined hook deletion policy matches the hook deletion polices
 // supported by helm. If so, mark the hook as one should be deleted.
 func hookHasDeletePolicy(h *release.Hook, policy string) bool {
 	if dp, ok := deletePolices[policy]; ok {
