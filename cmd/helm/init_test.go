@@ -28,8 +28,8 @@ import (
 
 	"github.com/ghodss/yaml"
 
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/api/extensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -83,7 +83,7 @@ func TestInitCmd_exists(t *testing.T) {
 	defer os.RemoveAll(home)
 
 	var buf bytes.Buffer
-	fc := fake.NewSimpleClientset(&v1beta1.Deployment{
+	fc := fake.NewSimpleClientset(&appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: v1.NamespaceDefault,
 			Name:      "tiller-deploy",

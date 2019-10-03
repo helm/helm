@@ -117,6 +117,7 @@ type upgradeCmd struct {
 	certFile string
 	keyFile  string
 	caFile   string
+	output   string
 }
 
 func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
@@ -128,7 +129,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:     "upgrade [RELEASE] [CHART]",
-		Short:   "upgrade a release",
+		Short:   "Upgrade a release",
 		Long:    upgradeDesc,
 		PreRunE: func(_ *cobra.Command, _ []string) error { return setupConnection() },
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -152,37 +153,38 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	settings.AddFlagsTLS(f)
-	f.VarP(&upgrade.valueFiles, "values", "f", "specify values in a YAML file or a URL(can specify multiple)")
-	f.BoolVar(&upgrade.dryRun, "dry-run", false, "simulate an upgrade")
-	f.BoolVar(&upgrade.recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
-	f.BoolVar(&upgrade.force, "force", false, "force resource update through delete/recreate if needed")
-	f.StringArrayVar(&upgrade.values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
-	f.StringArrayVar(&upgrade.stringValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
-	f.StringArrayVar(&upgrade.fileValues, "set-file", []string{}, "set values from respective files specified via the command line (can specify multiple or separate values with commas: key1=path1,key2=path2)")
-	f.BoolVar(&upgrade.disableHooks, "disable-hooks", false, "disable pre/post upgrade hooks. DEPRECATED. Use no-hooks")
-	f.BoolVar(&upgrade.disableHooks, "no-hooks", false, "disable pre/post upgrade hooks")
-	f.BoolVar(&upgrade.verify, "verify", false, "verify the provenance of the chart before upgrading")
-	f.StringVar(&upgrade.keyring, "keyring", defaultKeyring(), "path to the keyring that contains public signing keys")
-	f.BoolVarP(&upgrade.install, "install", "i", false, "if a release by this name doesn't already exist, run an install")
-	f.StringVar(&upgrade.namespace, "namespace", "", "namespace to install the release into (only used if --install is set). Defaults to the current kube config namespace")
-	f.StringVar(&upgrade.version, "version", "", "specify the exact chart version to use. If this is not specified, the latest version is used")
-	f.Int64Var(&upgrade.timeout, "timeout", 300, "time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
-	f.BoolVar(&upgrade.resetValues, "reset-values", false, "when upgrading, reset the values to the ones built into the chart")
-	f.BoolVar(&upgrade.reuseValues, "reuse-values", false, "when upgrading, reuse the last release's values and merge in any overrides from the command line via --set and -f. If '--reset-values' is specified, this is ignored.")
-	f.BoolVar(&upgrade.wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
-	f.BoolVar(&upgrade.atomic, "atomic", false, "if set, upgrade process rolls back changes made in case of failed upgrade, also sets --wait flag")
-	f.StringVar(&upgrade.repoURL, "repo", "", "chart repository url where to locate the requested chart")
-	f.StringVar(&upgrade.username, "username", "", "chart repository username where to locate the requested chart")
-	f.StringVar(&upgrade.password, "password", "", "chart repository password where to locate the requested chart")
-	f.StringVar(&upgrade.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
-	f.StringVar(&upgrade.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
-	f.StringVar(&upgrade.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
-	f.BoolVar(&upgrade.devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
-	f.BoolVar(&upgrade.subNotes, "render-subchart-notes", false, "render subchart notes along with parent")
-	f.StringVar(&upgrade.description, "description", "", "specify the description to use for the upgrade, rather than the default")
-	f.BoolVar(&upgrade.cleanupOnFail, "cleanup-on-fail", false, "allow deletion of new resources created in this upgrade when upgrade failed")
+	f.VarP(&upgrade.valueFiles, "values", "f", "Specify values in a YAML file or a URL(can specify multiple)")
+	f.BoolVar(&upgrade.dryRun, "dry-run", false, "Simulate an upgrade")
+	f.BoolVar(&upgrade.recreate, "recreate-pods", false, "Performs pods restart for the resource if applicable")
+	f.BoolVar(&upgrade.force, "force", false, "Force resource update through delete/recreate if needed")
+	f.StringArrayVar(&upgrade.values, "set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	f.StringArrayVar(&upgrade.stringValues, "set-string", []string{}, "Set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	f.StringArrayVar(&upgrade.fileValues, "set-file", []string{}, "Set values from respective files specified via the command line (can specify multiple or separate values with commas: key1=path1,key2=path2)")
+	f.BoolVar(&upgrade.disableHooks, "disable-hooks", false, "Disable pre/post upgrade hooks. DEPRECATED. Use no-hooks")
+	f.BoolVar(&upgrade.disableHooks, "no-hooks", false, "Disable pre/post upgrade hooks")
+	f.BoolVar(&upgrade.verify, "verify", false, "Verify the provenance of the chart before upgrading")
+	f.StringVar(&upgrade.keyring, "keyring", defaultKeyring(), "Path to the keyring that contains public signing keys")
+	f.BoolVarP(&upgrade.install, "install", "i", false, "If a release by this name doesn't already exist, run an install")
+	f.StringVar(&upgrade.namespace, "namespace", "", "Namespace to install the release into (only used if --install is set). Defaults to the current kube config namespace")
+	f.StringVar(&upgrade.version, "version", "", "Specify the exact chart version to use. If this is not specified, the latest version is used")
+	f.Int64Var(&upgrade.timeout, "timeout", 300, "Time in seconds to wait for any individual Kubernetes operation (like Jobs for hooks)")
+	f.BoolVar(&upgrade.resetValues, "reset-values", false, "When upgrading, reset the values to the ones built into the chart")
+	f.BoolVar(&upgrade.reuseValues, "reuse-values", false, "When upgrading, reuse the last release's values and merge in any overrides from the command line via --set and -f. If '--reset-values' is specified, this is ignored.")
+	f.BoolVar(&upgrade.wait, "wait", false, "If set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful. It will wait for as long as --timeout")
+	f.BoolVar(&upgrade.atomic, "atomic", false, "If set, upgrade process rolls back changes made in case of failed upgrade, also sets --wait flag")
+	f.StringVar(&upgrade.repoURL, "repo", "", "Chart repository url where to locate the requested chart")
+	f.StringVar(&upgrade.username, "username", "", "Chart repository username where to locate the requested chart")
+	f.StringVar(&upgrade.password, "password", "", "Chart repository password where to locate the requested chart")
+	f.StringVar(&upgrade.certFile, "cert-file", "", "Identify HTTPS client using this SSL certificate file")
+	f.StringVar(&upgrade.keyFile, "key-file", "", "Identify HTTPS client using this SSL key file")
+	f.StringVar(&upgrade.caFile, "ca-file", "", "Verify certificates of HTTPS-enabled servers using this CA bundle")
+	f.BoolVar(&upgrade.devel, "devel", false, "Use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
+	f.BoolVar(&upgrade.subNotes, "render-subchart-notes", false, "Render subchart notes along with parent")
+	f.StringVar(&upgrade.description, "description", "", "Specify the description to use for the upgrade, rather than the default")
+	f.BoolVar(&upgrade.cleanupOnFail, "cleanup-on-fail", false, "Allow deletion of new resources created in this upgrade when upgrade failed")
+	bindOutputFlag(cmd, &upgrade.output)
 
-	f.MarkDeprecated("disable-hooks", "use --no-hooks instead")
+	f.MarkDeprecated("disable-hooks", "Use --no-hooks instead")
 
 	// set defaults from environment
 	settings.InitTLS(f)
@@ -307,14 +309,14 @@ func (u *upgradeCmd) run() error {
 		printRelease(u.out, resp.Release)
 	}
 
-	fmt.Fprintf(u.out, "Release %q has been upgraded. Happy Helming!\n", u.release)
-
+	if outputFormat(u.output) == outputTable {
+		fmt.Fprintf(u.out, "Release %q has been upgraded.\n", u.release)
+	}
 	// Print the status like status command does
 	status, err := u.client.ReleaseStatus(u.release)
 	if err != nil {
 		return prettyError(err)
 	}
-	PrintStatus(u.out, status)
 
-	return nil
+	return write(u.out, &statusWriter{status}, outputFormat(u.output))
 }

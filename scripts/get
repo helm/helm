@@ -94,7 +94,7 @@ checkDesiredVersion() {
 # if it needs to be changed.
 checkHelmInstalledVersion() {
   if [[ -f "${HELM_INSTALL_DIR}/${PROJECT_NAME}" ]]; then
-    local version=$(helm version -c | grep '^Client' | cut -d'"' -f2)
+    local version=$("${HELM_INSTALL_DIR}/${PROJECT_NAME}" version -c | grep '^Client' | cut -d'"' -f2)
     if [[ "$version" == "$TAG" ]]; then
       echo "Helm ${version} is already ${DESIRED_VERSION:-latest}"
       return 0
@@ -111,7 +111,7 @@ checkHelmInstalledVersion() {
 # for that binary.
 downloadFile() {
   HELM_DIST="helm-$TAG-$OS-$ARCH.tar.gz"
-  DOWNLOAD_URL="https://kubernetes-helm.storage.googleapis.com/$HELM_DIST"
+  DOWNLOAD_URL="https://get.helm.sh/$HELM_DIST"
   CHECKSUM_URL="$DOWNLOAD_URL.sha256"
   HELM_TMP_ROOT="$(mktemp -dt helm-installer-XXXXXX)"
   HELM_TMP_FILE="$HELM_TMP_ROOT/$HELM_DIST"

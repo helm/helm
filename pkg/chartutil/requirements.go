@@ -124,7 +124,7 @@ func LoadRequirementsLock(c *chart.Chart) (*RequirementsLock, error) {
 }
 
 // ProcessRequirementsConditions disables charts based on condition path value in values
-func ProcessRequirementsConditions(reqs *Requirements, cvals Values) {
+func ProcessRequirementsConditions(reqs *Requirements, cvals Values, cpath string) {
 	var cond string
 	var conds []string
 	if reqs == nil || len(reqs.Dependencies) == 0 {
@@ -143,7 +143,7 @@ func ProcessRequirementsConditions(reqs *Requirements, cvals Values) {
 			for _, c := range conds {
 				if len(c) > 0 {
 					// retrieve value
-					vv, err := cvals.PathValue(c)
+					vv, err := cvals.PathValue(cpath + c)
 					if err == nil {
 						// if not bool, warn
 						if bv, ok := vv.(bool); ok {
@@ -247,6 +247,10 @@ func getAliasDependency(charts []*chart.Chart, aliasChart *Dependency) *chart.Ch
 
 // ProcessRequirementsEnabled removes disabled charts from dependencies
 func ProcessRequirementsEnabled(c *chart.Chart, v *chart.Config) error {
+	return doProcessRequirementsEnabled(c, v, "")
+}
+
+func doProcessRequirementsEnabled(c *chart.Chart, v *chart.Config, path string) error {
 	reqs, err := LoadRequirements(c)
 	if err != nil {
 		// if not just missing requirements file, return error
@@ -303,7 +307,7 @@ func ProcessRequirementsEnabled(c *chart.Chart, v *chart.Config) error {
 	cc := chart.Config{Raw: yvals}
 	// flag dependencies as enabled/disabled
 	ProcessRequirementsTags(reqs, cvals)
-	ProcessRequirementsConditions(reqs, cvals)
+	ProcessRequirementsConditions(reqs, cvals, path)
 	// make a map of charts to remove
 	rm := map[string]bool{}
 	for _, r := range reqs.Dependencies {
@@ -323,7 +327,8 @@ func ProcessRequirementsEnabled(c *chart.Chart, v *chart.Config) error {
 	}
 	// recursively call self to process sub dependencies
 	for _, t := range cd {
-		err := ProcessRequirementsEnabled(t, &cc)
+		subpath := path + t.Metadata.Name + "."
+		err := doProcessRequirementsEnabled(t, &cc, subpath)
 		// if its not just missing requirements file, return error
 		if nerr, ok := err.(ErrNoRequirementsFile); !ok && err != nil {
 			return nerr
@@ -391,7 +396,7 @@ func processImportValues(c *chart.Chart) error {
 	if err != nil {
 		return err
 	}
-	b := make(map[string]interface{}, 0)
+	b := cvals.AsMap()
 	// import values from each dependency if specified in import-values
 	for _, r := range reqs.Dependencies {
 		// only process raw requirement that is found in chart's dependencies (enabled)
@@ -428,7 +433,7 @@ func processImportValues(c *chart.Chart) error {
 					}
 					// create value map from child to be merged into parent
 					vm := pathToMap(nm["parent"], vv.AsMap())
-					b = coalesceTables(cvals, vm, c.Metadata.Name)
+					b = coalesceTables(b, vm, c.Metadata.Name)
 				case string:
 					nm := map[string]string{
 						"child":  "exports." + iv,
@@ -448,7 +453,6 @@ func processImportValues(c *chart.Chart) error {
 			r.ImportValues = outiv
 		}
 	}
-	b = coalesceTables(b, cvals, c.Metadata.Name)
 	y, err := yaml.Marshal(b)
 	if err != nil {
 		return err

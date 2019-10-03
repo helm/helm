@@ -39,6 +39,104 @@ import (
 	"k8s.io/helm/pkg/tlsutil"
 )
 
+const (
+	bashCompletionFunc = `
+__helm_override_flag_list=(--kubeconfig --kube-context --host --tiller-namespace --home)
+__helm_override_flags()
+{
+    local ${__helm_override_flag_list[*]##*-} two_word_of of var
+    for w in "${words[@]}"; do
+        if [ -n "${two_word_of}" ]; then
+            eval "${two_word_of##*-}=\"${two_word_of}=\${w}\""
+            two_word_of=
+            continue
+        fi
+        for of in "${__helm_override_flag_list[@]}"; do
+            case "${w}" in
+                ${of}=*)
+                    eval "${of##*-}=\"${w}\""
+                    ;;
+                ${of})
+                    two_word_of="${of}"
+                    ;;
+            esac
+        done
+    done
+    for var in "${__helm_override_flag_list[@]##*-}"; do
+        if eval "test -n \"\$${var}\""; then
+            eval "echo \${${var}}"
+        fi
+    done
+}
+
+__helm_binary_name()
+{
+    local helm_binary
+    helm_binary="${words[0]}"
+    __helm_debug "${FUNCNAME[0]}: helm_binary is ${helm_binary}"
+    echo ${helm_binary}
+}
+
+__helm_list_releases()
+{
+    __helm_debug "${FUNCNAME[0]}: c is $c words[c] is ${words[c]}"
+    local out filter
+    # Use ^ to map from the start of the release name
+    filter="^${words[c]}"
+    # Use eval in case helm_binary_name or __helm_override_flags contains a variable (e.g., $HOME/bin/h2)
+    if out=$(eval $(__helm_binary_name) list $(__helm_override_flags) -a -q -m 1000 ${filter} 2>/dev/null); then
+        COMPREPLY=( $( compgen -W "${out[*]}" -- "$cur" ) )
+    fi
+}
+
+__helm_list_repos()
+{
+    __helm_debug "${FUNCNAME[0]}: c is $c words[c] is ${words[c]}"
+    local out oflags
+    oflags=$(__helm_override_flags)
+    __helm_debug "${FUNCNAME[0]}: __helm_override_flags are ${oflags}"
+    # Use eval in case helm_binary_name contains a variable (e.g., $HOME/bin/h2)
+    if out=$(eval $(__helm_binary_name) repo list ${oflags} 2>/dev/null | tail +2 | cut -f1); then
+        COMPREPLY=( $( compgen -W "${out[*]}" -- "$cur" ) )
+    fi
+}
+
+__helm_list_plugins()
+{
+    __helm_debug "${FUNCNAME[0]}: c is $c words[c] is ${words[c]}"
+    local out oflags
+    oflags=$(__helm_override_flags)
+    __helm_debug "${FUNCNAME[0]}: __helm_override_flags are ${oflags}"
+    # Use eval in case helm_binary_name contains a variable (e.g., $HOME/bin/h2)
+    if out=$(eval $(__helm_binary_name) plugin list ${oflags} 2>/dev/null | tail +2 | cut -f1); then
+        COMPREPLY=( $( compgen -W "${out[*]}" -- "$cur" ) )
+    fi
+}
+
+__helm_custom_func()
+{
+    __helm_debug "${FUNCNAME[0]}: c is $c words[@] is ${words[@]}"
+    case ${last_command} in
+        helm_delete | helm_history | helm_status | helm_test |\
+        helm_upgrade | helm_rollback | helm_get_*)
+            __helm_list_releases
+            return
+            ;;
+        helm_repo_remove | helm_repo_update)
+            __helm_list_repos
+            return
+            ;;
+        helm_plugin_remove | helm_plugin_update)
+            __helm_list_plugins
+            return
+            ;;
+        *)
+            ;;
+    esac
+}
+`
+)
+
 var (
 	tillerTunnel *kube.Tunnel
 	settings     helm_env.EnvSettings
@@ -55,25 +153,25 @@ It will also set up any necessary local configuration.
 
 Common actions from this point include:
 
-- helm search:    search for charts
-- helm fetch:     download a chart to your local directory to view
-- helm install:   upload the chart to Kubernetes
-- helm list:      list releases of charts
+- helm search:    Search for charts
+- helm fetch:     Download a chart to your local directory to view
+- helm install:   Upload the chart to Kubernetes
+- helm list:      List releases of charts
 
 Environment:
-  $HELM_HOME           set an alternative location for Helm files. By default, these are stored in ~/.helm
-  $HELM_HOST           set an alternative Tiller host. The format is host:port
-  $HELM_NO_PLUGINS     disable plugins. Set HELM_NO_PLUGINS=1 to disable plugins.
-  $TILLER_NAMESPACE    set an alternative Tiller namespace (default "kube-system")
-  $KUBECONFIG          set an alternative Kubernetes configuration file (default "~/.kube/config")
-  $HELM_TLS_CA_CERT    path to TLS CA certificate used to verify the Helm client and Tiller server certificates (default "$HELM_HOME/ca.pem")
-  $HELM_TLS_CERT       path to TLS client certificate file for authenticating to Tiller (default "$HELM_HOME/cert.pem")
-  $HELM_TLS_KEY        path to TLS client key file for authenticating to Tiller (default "$HELM_HOME/key.pem")
-  $HELM_TLS_ENABLE     enable TLS connection between Helm and Tiller (default "false")
-  $HELM_TLS_VERIFY     enable TLS connection between Helm and Tiller and verify Tiller server certificate (default "false")
-  $HELM_TLS_HOSTNAME   the hostname or IP address used to verify the Tiller server certificate (default "127.0.0.1")
-  $HELM_KEY_PASSPHRASE set HELM_KEY_PASSPHRASE to the passphrase of your PGP private key. If set, you will not be prompted for
-                       the passphrase while signing helm charts
+
+- $HELM_HOME:           Set an alternative location for Helm files. By default, these are stored in ~/.helm
+- $HELM_HOST:           Set an alternative Tiller host. The format is host:port
+- $HELM_NO_PLUGINS:     Disable plugins. Set HELM_NO_PLUGINS=1 to disable plugins.
+- $TILLER_NAMESPACE:    Set an alternative Tiller namespace (default "kube-system")
+- $KUBECONFIG:          Set an alternative Kubernetes configuration file (default "~/.kube/config")
+- $HELM_TLS_CA_CERT:    Path to TLS CA certificate used to verify the Helm client and Tiller server certificates (default "$HELM_HOME/ca.pem")
+- $HELM_TLS_CERT:       Path to TLS client certificate file for authenticating to Tiller (default "$HELM_HOME/cert.pem")
+- $HELM_TLS_KEY:        Path to TLS client key file for authenticating to Tiller (default "$HELM_HOME/key.pem")
+- $HELM_TLS_ENABLE:     Enable TLS connection between Helm and Tiller (default "false")
+- $HELM_TLS_VERIFY:     Enable TLS connection between Helm and Tiller and verify Tiller server certificate (default "false")
+- $HELM_TLS_HOSTNAME:   The hostname or IP address used to verify the Tiller server certificate (default "127.0.0.1")
+- $HELM_KEY_PASSPHRASE: Set HELM_KEY_PASSPHRASE to the passphrase of your PGP private key. If set, you will not be prompted for the passphrase while signing helm charts
 
 `
 
@@ -103,6 +201,7 @@ func newRootCmd(args []string) *cobra.Command {
 		PersistentPostRun: func(*cobra.Command, []string) {
 			teardown()
 		},
+		BashCompletionFunction: bashCompletionFunc,
 	}
 	flags := cmd.PersistentFlags()
 
@@ -147,7 +246,7 @@ func newRootCmd(args []string) *cobra.Command {
 		newDocsCmd(out),
 
 		// Deprecated
-		markDeprecated(newRepoUpdateCmd(out), "use 'helm repo update'\n"),
+		markDeprecated(newRepoUpdateCmd(out), "Use 'helm repo update'\n"),
 	)
 
 	flags.Parse(args)

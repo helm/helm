@@ -191,7 +191,7 @@ Hang tight while we grab the latest from your chart repositories...
 ...Successfully got an update from the "stable" chart repository
 ...Successfully got an update from the "example" chart repository
 ...Successfully got an update from the "another" chart repository
-Update Complete. Happy Helming!
+Update Complete.
 Saving 2 charts
 Downloading apache from repo http://example.com/charts
 Downloading mysql from repo http://another.example.com/charts
@@ -258,9 +258,11 @@ All charts are loaded by default. If `tags` or `condition` fields are present,
 they will be evaluated and used to control loading for the chart(s) they are applied to.
 
 Condition - The condition field holds one or more YAML paths (delimited by commas).
-If this path exists in the top parent's values and resolves to a boolean value,
-the chart will be enabled or disabled based on that boolean value.  Only the first
-valid path found in the list is evaluated and if no paths exist then the condition has no effect.
+If this path exists in the parent's values and resolves to a boolean value,
+the chart will be enabled or disabled based on that boolean value. Only the first
+valid path found in the list is evaluated and if no paths exist then the condition 
+has no effect. For multiple level dependencies the condition is prependend by the 
+path to the parent chart.
 
 Tags - The tags field is a YAML list of labels to associate with this chart.
 In the top parent's values, all charts with tags can be enabled or disabled by
@@ -272,7 +274,7 @@ dependencies:
   - name: subchart1
     repository: http://localhost:10191
     version: 0.1.0
-    condition: subchart1.enabled,global.subchart1.enabled
+    condition: subchart1.enabled
     tags:
       - front-end
       - subchart1
@@ -280,11 +282,19 @@ dependencies:
   - name: subchart2
     repository: http://localhost:10191
     version: 0.1.0
-    condition: subchart2.enabled,global.subchart2.enabled
+    condition: subchart2.enabled
     tags:
       - back-end
       - subchart2
+```
 
+```yaml
+# subchart2/requirements.yaml
+dependencies:
+  - name: subsubchart
+    repository: http://localhost:10191
+    version: 0.1.0
+    condition: subsubchart.enabled
 ```
 
 ```yaml
@@ -292,6 +302,9 @@ dependencies:
 
 subchart1:
   enabled: true
+subchart2:
+  subsubchart:
+    enabled: false
 tags:
   front-end: false
   back-end: true
@@ -302,8 +315,11 @@ In the above example all charts with the tag `front-end` would be disabled but s
 `front-end` tag and `subchart1` will be enabled.
 
 Since `subchart2` is tagged with `back-end` and that tag evaluates to `true`, `subchart2` will be
-enabled. Also notes that although `subchart2` has a condition specified in `requirements.yaml`, there
+enabled. Also note that although `subchart2` has a condition specified in `requirements.yaml`, there
 is no corresponding path and value in the parent's values so that condition has no effect.
+
+`subsubchart` is disabled by default but can be enabled by setting `subchart2.subsubchart.enabled=true`.
+Hint: disabling `subchart2` via tag will also disable all sub-charts (even if overriding the value `subchart2.subsubchart.enabled=true`).
 
 ##### Using the CLI with Tags and Conditions
 
@@ -479,7 +495,7 @@ Furthermore, A is dependent on chart B that creates objects
 - replicaset "B-ReplicaSet"
 - service "B-Service"
 
-After installation/upgrade of chart A a single Helm release is created/modified. The release will
+After installation/upgrade of chart A, a single Helm release is created/modified. The release will
 create/update all of the above Kubernetes objects in the following order:
 
 - A-Namespace

@@ -144,6 +144,11 @@ The defined command will be invoked with the following scheme:
 repo definition, stored in `$HELM_HOME/repository/repositories.yaml`. Downloader
 plugin is expected to dump the raw content to stdout and report errors on stderr.
 
+The downloader command also supports sub-commands or arguments, allowing you to specify
+for example `bin/mydownloader subcommand -d` in the `plugin.yaml`. This is useful
+if you want to use the same executable for the main plugin command and the downloader
+command, but with a different sub-command for each.
+
 ## Environment Variables
 
 When Helm executes a plugin, it passes the outer environment to the plugin, and

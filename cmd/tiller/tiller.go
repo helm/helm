@@ -66,6 +66,7 @@ const (
 	storageMemory    = "memory"
 	storageConfigMap = "configmap"
 	storageSecret    = "secret"
+	storageSQL       = "sql"
 
 	traceAddr = ":44136"
 
@@ -74,18 +75,24 @@ const (
 )
 
 var (
-	grpcAddr             = flag.String("listen", ":44134", "address:port to listen on")
-	probeAddr            = flag.String("probe-listen", ":44135", "address:port to listen on for probes")
-	enableTracing        = flag.Bool("trace", false, "enable rpc tracing")
-	store                = flag.String("storage", storageConfigMap, "storage driver to use. One of 'configmap', 'memory', or 'secret'")
+	grpcAddr      = flag.String("listen", fmt.Sprintf(":%v", environment.DefaultTillerPort), "address:port to listen on")
+	probeAddr     = flag.String("probe-listen", fmt.Sprintf(":%v", environment.DefaultTillerProbePort), "address:port to listen on for probes")
+	enableProbing = flag.Bool("probe", true, "enable probing over http")
+	enableTracing = flag.Bool("trace", false, "enable rpc tracing")
+	store         = flag.String("storage", storageConfigMap, "storage driver to use. One of 'configmap', 'memory', 'sql' or 'secret'")
+
+	sqlDialect          = flag.String("sql-dialect", "postgres", "SQL dialect to use (only postgres is supported for now")
+	sqlConnectionString = flag.String("sql-connection-string", "", "SQL connection string to use")
+
 	remoteReleaseModules = flag.Bool("experimental-release", false, "enable experimental release modules")
-	tlsEnable            = flag.Bool("tls", tlsEnableEnvVarDefault(), "enable TLS")
-	tlsVerify            = flag.Bool("tls-verify", tlsVerifyEnvVarDefault(), "enable TLS and verify remote certificate")
-	keyFile              = flag.String("tls-key", tlsDefaultsFromEnv("tls-key"), "path to TLS private key file")
-	certFile             = flag.String("tls-cert", tlsDefaultsFromEnv("tls-cert"), "path to TLS certificate file")
-	caCertFile           = flag.String("tls-ca-cert", tlsDefaultsFromEnv("tls-ca-cert"), "trust certificates signed by this CA")
-	maxHistory           = flag.Int("history-max", historyMaxFromEnv(), "maximum number of releases kept in release history, with 0 meaning no limit")
-	printVersion         = flag.Bool("version", false, "print the version number")
+
+	tlsEnable    = flag.Bool("tls", tlsEnableEnvVarDefault(), "enable TLS")
+	tlsVerify    = flag.Bool("tls-verify", tlsVerifyEnvVarDefault(), "enable TLS and verify remote certificate")
+	keyFile      = flag.String("tls-key", tlsDefaultsFromEnv("tls-key"), "path to TLS private key file")
+	certFile     = flag.String("tls-cert", tlsDefaultsFromEnv("tls-cert"), "path to TLS certificate file")
+	caCertFile   = flag.String("tls-ca-cert", tlsDefaultsFromEnv("tls-ca-cert"), "trust certificates signed by this CA")
+	maxHistory   = flag.Int("history-max", historyMaxFromEnv(), "maximum number of releases kept in release history, with 0 meaning no limit")
+	printVersion = flag.Bool("version", false, "print the version number")
 
 	// rootServer is the root gRPC server.
 	//
@@ -143,6 +150,18 @@ func start() {
 
 		env.Releases = storage.Init(secrets)
 		env.Releases.Log = newLogger("storage").Printf
+	case storageSQL:
+		sqlDriver, err := driver.NewSQL(
+			*sqlDialect,
+			*sqlConnectionString,
+			newLogger("storage/driver").Printf,
+		)
+		if err != nil {
+			logger.Fatalf("Cannot initialize SQL storage driver: %v", err)
+		}
+
+		env.Releases = storage.Init(sqlDriver)
+		env.Releases.Log = newLogger("storage").Printf
 	}
 
 	if *maxHistory > 0 {
@@ -187,7 +206,9 @@ func start() {
 
 	logger.Printf("Starting Tiller %s (tls=%t)", version.GetVersion(), *tlsEnable || *tlsVerify)
 	logger.Printf("GRPC listening on %s", *grpcAddr)
-	logger.Printf("Probes listening on %s", *probeAddr)
+	if *enableProbing {
+		logger.Printf("Probes listening on %s", *probeAddr)
+	}
 	logger.Printf("Storage driver is %s", env.Releases.Name())
 	logger.Printf("Max history per release is %d", *maxHistory)
 
@@ -207,6 +228,10 @@ func start() {
 	}()
 
 	go func() {
+		if !*enableProbing {
+			return
+		}
+
 		mux := newProbesMux()
 
 		// Register gRPC server to prometheus to initialized matrix

@@ -114,6 +114,8 @@ metadata:
     # I cannot reference .Chart.Name, but I can do $.Chart.Name
     helm.sh/chart: "{{ $.Chart.Name }}-{{ $.Chart.Version }}"
     app.kubernetes.io/instance: "{{ $.Release.Name }}"
+    # Value from appVersion in Chart.yaml
+    app.kubernetes.io/version: "{{ $.Chart.AppVersion }}"
     app.kubernetes.io/managed-by: "{{ $.Release.Service }}"
 type: kubernetes.io/tls
 data:

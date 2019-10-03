@@ -51,6 +51,7 @@ func Chartfile(linter *support.Linter) {
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartNameDirMatch(linter.ChartDir, chartFile))
 
 	// Chart metadata
+	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartAPIVersion(chartFile))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartVersion(chartFile))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartEngine(chartFile))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartMaintainer(chartFile))
@@ -96,6 +97,18 @@ func validateChartNameDirMatch(chartDir string, cf *chart.Metadata) error {
 	return nil
 }
 
+func validateChartAPIVersion(cf *chart.Metadata) error {
+	if cf.ApiVersion == "" {
+		return errors.New("apiVersion is required")
+	}
+
+	if cf.ApiVersion != "v1" {
+		return fmt.Errorf("apiVersion '%s' is not valid. The value must be \"v1\"", cf.ApiVersion)
+	}
+
+	return nil
+}
+
 func validateChartVersion(cf *chart.Metadata) error {
 	if cf.Version == "" {
 		return errors.New("version is required")
@@ -107,7 +120,7 @@ func validateChartVersion(cf *chart.Metadata) error {
 		return fmt.Errorf("version '%s' is not a valid SemVer", cf.Version)
 	}
 
-	c, err := semver.NewConstraint("> 0")
+	c, err := semver.NewConstraint(">0.0.0-0")
 	if err != nil {
 		return err
 	}

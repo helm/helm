@@ -39,7 +39,7 @@ func newPluginUpdateCmd(out io.Writer) *cobra.Command {
 	pcmd := &pluginUpdateCmd{out: out}
 	cmd := &cobra.Command{
 		Use:   "update <plugin>...",
-		Short: "update one or more Helm plugins",
+		Short: "Update one or more Helm plugins",
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			return pcmd.complete(args)
 		},

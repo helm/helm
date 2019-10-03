@@ -36,15 +36,24 @@ Information is cached locally, where it is used by commands like 'helm search'.
 
 'helm update' is the deprecated form of 'helm repo update'. It will be removed in
 future releases.
+
+You can specify the name of a repository you want to update.
+
+	$ helm repo update <repo_name>
+
+To update all the repositories, use 'helm repo update'.
+
 `
 
 var errNoRepositories = errors.New("no repositories found. You must add one before updating")
+var errNoRepositoriesMatchingRepoName = errors.New("no repositories found matching the provided name. Verify if the repo exists")
 
 type repoUpdateCmd struct {
 	update func([]*repo.ChartRepository, io.Writer, helmpath.Home, bool) error
 	home   helmpath.Home
 	out    io.Writer
 	strict bool
+	name   string
 }
 
 func newRepoUpdateCmd(out io.Writer) *cobra.Command {
@@ -53,18 +62,21 @@ func newRepoUpdateCmd(out io.Writer) *cobra.Command {
 		update: updateCharts,
 	}
 	cmd := &cobra.Command{
-		Use:     "update",
+		Use:     "update [REPO_NAME]",
 		Aliases: []string{"up"},
-		Short:   "update information of available charts locally from chart repositories",
+		Short:   "Update information of available charts locally from chart repositories",
 		Long:    updateDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			u.home = settings.Home
+			if len(args) != 0 {
+				u.name = args[0]
+			}
 			return u.run()
 		},
 	}
 
 	f := cmd.Flags()
-	f.BoolVar(&u.strict, "strict", false, "fail on update warnings")
+	f.BoolVar(&u.strict, "strict", false, "Fail on update warnings")
 
 	return cmd
 }
@@ -84,8 +96,22 @@ func (u *repoUpdateCmd) run() error {
 		if err != nil {
 			return err
 		}
-		repos = append(repos, r)
+		if len(u.name) != 0 {
+			if cfg.Name == u.name {
+				repos = append(repos, r)
+				break
+			} else {
+				continue
+			}
+		} else {
+			repos = append(repos, r)
+		}
 	}
+
+	if len(repos) == 0 {
+		return errNoRepositoriesMatchingRepoName
+	}
+
 	return u.update(repos, u.out, u.home, u.strict)
 }
 
@@ -125,6 +151,6 @@ func updateCharts(repos []*repo.ChartRepository, out io.Writer, home helmpath.Ho
 		return errors.New("Update Failed. Check log for details")
 	}
 
-	fmt.Fprintln(out, "Update Complete. ⎈ Happy Helming! ⎈")
+	fmt.Fprintln(out, "Update Complete.")
 	return nil
 }

@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"k8s.io/helm/pkg/helm/environment"
 	"k8s.io/helm/pkg/plugin"
@@ -62,8 +63,9 @@ type pluginGetter struct {
 
 // Get runs downloader plugin command
 func (p *pluginGetter) Get(href string) (*bytes.Buffer, error) {
-	argv := []string{p.certFile, p.keyFile, p.cAFile, href}
-	prog := exec.Command(filepath.Join(p.base, p.command), argv...)
+	commands := strings.Split(p.command, " ")
+	argv := append(commands[1:], p.certFile, p.keyFile, p.cAFile, href)
+	prog := exec.Command(filepath.Join(p.base, commands[0]), argv...)
 	plugin.SetupPluginEnv(p.settings, p.name, p.base)
 	prog.Env = os.Environ()
 	buf := bytes.NewBuffer(nil)

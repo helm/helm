@@ -117,12 +117,18 @@ func (r *RepoFile) Update(re ...*Entry) {
 
 // Has returns true if the given name is already a repository name.
 func (r *RepoFile) Has(name string) bool {
-	for _, rf := range r.Repositories {
-		if rf.Name == name {
-			return true
+	_, ok := r.Get(name)
+	return ok
+}
+
+// Get returns entry by the given name if it exists.
+func (r *RepoFile) Get(name string) (*Entry, bool) {
+	for _, entry := range r.Repositories {
+		if entry.Name == name {
+			return entry, true
 		}
 	}
-	return false
+	return nil, false
 }
 
 // Remove removes the entry from the list of repositories.

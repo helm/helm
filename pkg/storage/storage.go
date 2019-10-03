@@ -50,7 +50,7 @@ func (s *Storage) Get(name string, version int32) (*rspb.Release, error) {
 
 // Create creates a new storage entry holding the release. An
 // error is returned if the storage driver failed to store the
-// release, or a release with identical an key already exists.
+// release, or a release with identical key already exists.
 func (s *Storage) Create(rls *rspb.Release) error {
 	s.Log("creating release %q", makeKey(rls.Name, rls.Version))
 	if s.MaxHistory > 0 {

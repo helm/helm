@@ -17,8 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"errors"
-	"fmt"
 	"io"
 
 	"github.com/gosuri/uitable"
@@ -29,8 +27,14 @@ import (
 )
 
 type repoListCmd struct {
-	out  io.Writer
-	home helmpath.Home
+	out    io.Writer
+	home   helmpath.Home
+	output string
+}
+
+type repositoryElement struct {
+	Name string
+	URL  string
 }
 
 func newRepoListCmd(out io.Writer) *cobra.Command {
@@ -38,29 +42,63 @@ func newRepoListCmd(out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "list [flags]",
-		Short: "list chart repositories",
+		Short: "List chart repositories",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			list.home = settings.Home
 			return list.run()
 		},
 	}
 
+	bindOutputFlag(cmd, &list.output)
 	return cmd
 }
 
 func (a *repoListCmd) run() error {
-	f, err := repo.LoadRepositoriesFile(a.home.RepositoryFile())
+	repoFile, err := repo.LoadRepositoriesFile(a.home.RepositoryFile())
 	if err != nil {
 		return err
 	}
-	if len(f.Repositories) == 0 {
-		return errors.New("no repositories to show")
-	}
+
+	return write(a.out, &repoListWriter{repoFile.Repositories}, outputFormat(a.output))
+}
+
+//////////// Printer implementation below here
+type repoListWriter struct {
+	repos []*repo.Entry
+}
+
+func (r *repoListWriter) WriteTable(out io.Writer) error {
 	table := uitable.New()
 	table.AddRow("NAME", "URL")
-	for _, re := range f.Repositories {
+	for _, re := range r.repos {
 		table.AddRow(re.Name, re.URL)
 	}
-	fmt.Fprintln(a.out, table)
+	return encodeTable(out, table)
+}
+
+func (r *repoListWriter) WriteJSON(out io.Writer) error {
+	return r.encodeByFormat(out, outputJSON)
+}
+
+func (r *repoListWriter) WriteYAML(out io.Writer) error {
+	return r.encodeByFormat(out, outputYAML)
+}
+
+func (r *repoListWriter) encodeByFormat(out io.Writer, format outputFormat) error {
+	var repolist []repositoryElement
+
+	for _, re := range r.repos {
+		repolist = append(repolist, repositoryElement{Name: re.Name, URL: re.URL})
+	}
+
+	switch format {
+	case outputJSON:
+		return encodeJSON(out, repolist)
+	case outputYAML:
+		return encodeYAML(out, repolist)
+	}
+
+	// Because this is a non-exported function and only called internally by
+	// WriteJSON and WriteYAML, we shouldn't get invalid types
 	return nil
 }

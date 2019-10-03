@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM alpine:3.7
+FROM alpine:3.10
 
-RUN apk update && apk add ca-certificates socat && rm -rf /var/cache/apk/*
+RUN apk add --no-cache ca-certificates socat
 
 ENV HOME /tmp
 
@@ -24,4 +24,3 @@ COPY tiller /tiller
 EXPOSE 44134
 USER 65534
 ENTRYPOINT ["/tiller"]
-

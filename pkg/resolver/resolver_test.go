@@ -38,15 +38,6 @@ func TestResolve(t *testing.T) {
 			err: true,
 		},
 		{
-			name: "cache index failure",
-			req: &chartutil.Requirements{
-				Dependencies: []*chartutil.Dependency{
-					{Name: "oedipus-rex", Repository: "http://example.com", Version: "1.0.0"},
-				},
-			},
-			err: true,
-		},
-		{
 			name: "chart not found failure",
 			req: &chartutil.Requirements{
 				Dependencies: []*chartutil.Dependency{

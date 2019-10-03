@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path"
 	"path/filepath"
@@ -118,7 +119,7 @@ func loadArchiveFiles(in io.Reader) ([]*BufferedFile, error) {
 		n = path.Clean(n)
 		if n == "." {
 			// In this case, the original path was relative when it should have been absolute.
-			return nil, errors.New("chart illegally contains empty path")
+			return nil, fmt.Errorf("chart illegally contains content outside the base directory: %q", hd.Name)
 		}
 		if strings.HasPrefix(n, "..") {
 			return nil, errors.New("chart illegally references parent directory")
@@ -171,6 +172,10 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 				return c, err
 			}
 			c.Metadata = m
+			var apiVersion = c.Metadata.ApiVersion
+			if apiVersion != "" && apiVersion != ApiVersionV1 {
+				return c, fmt.Errorf("apiVersion '%s' is not valid. The value must be \"v1\"", apiVersion)
+			}
 		} else if f.Name == "values.toml" {
 			return c, errors.New("values.toml is illegal as of 2.0.0-alpha.2")
 		} else if f.Name == "values.yaml" {
@@ -255,7 +260,45 @@ func LoadFile(name string) (*chart.Chart, error) {
 	}
 	defer raw.Close()
 
-	return LoadArchive(raw)
+	err = ensureArchive(name, raw)
+	if err != nil {
+		return nil, err
+	}
+
+	c, err := LoadArchive(raw)
+	if err != nil {
+		if err == gzip.ErrHeader {
+			return nil, fmt.Errorf("file '%s' does not appear to be a valid chart file (details: %s)", name, err)
+		}
+	}
+	return c, err
+}
+
+// ensureArchive's job is to return an informative error if the file does not appear to be a gzipped archive.
+//
+// Sometimes users will provide a values.yaml for an argument where a chart is expected. One common occurrence
+// of this is invoking `helm template values.yaml mychart` which would otherwise produce a confusing error
+// if we didn't check for this.
+func ensureArchive(name string, raw *os.File) error {
+	defer raw.Seek(0, 0) // reset read offset to allow archive loading to proceed.
+
+	// Check the file format to give us a chance to provide the user with more actionable feedback.
+	buffer := make([]byte, 512)
+	_, err := raw.Read(buffer)
+	if err != nil && err != io.EOF {
+		return fmt.Errorf("file '%s' cannot be read: %s", name, err)
+	}
+	if contentType := http.DetectContentType(buffer); contentType != "application/x-gzip" {
+		// TODO: Is there a way to reliably test if a file content is YAML? ghodss/yaml accepts a wide
+		//       variety of content (Makefile, .zshrc) as valid YAML without errors.
+
+		// Wrong content type. Let's check if it's yaml and give an extra hint?
+		if strings.HasSuffix(name, ".yml") || strings.HasSuffix(name, ".yaml") {
+			return fmt.Errorf("file '%s' seems to be a YAML file, but I expected a gzipped archive", name)
+		}
+		return fmt.Errorf("file '%s' does not appear to be a gzipped archive; got '%s'", name, contentType)
+	}
+	return nil
 }
 
 // LoadDir loads from a directory.

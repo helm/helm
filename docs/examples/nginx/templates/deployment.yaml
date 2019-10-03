@@ -1,4 +1,4 @@
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   # This uses a "fullname" template (see _helpers)
@@ -19,6 +19,10 @@ metadata:
     app.kubernetes.io/name: {{ template "nginx.name" . }}
 spec:
   replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ template "nginx.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
   template:
     metadata:
       {{- if .Values.podAnnotations }}

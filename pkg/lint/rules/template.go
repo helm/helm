@@ -99,19 +99,12 @@ func Templates(linter *support.Linter, values []byte, namespace string, strict b
 		fileName, _ := template.Name, template.Data
 		path = fileName
 
-		linter.RunLinterRule(support.ErrorSev, path, validateAllowedExtension(fileName))
+		linter.RunLinterRule(support.WarningSev, path, validateAllowedExtension(fileName))
 
 		// We only apply the following lint rules to yaml files
 		if filepath.Ext(fileName) != ".yaml" || filepath.Ext(fileName) == ".yml" {
 			continue
 		}
-
-		// NOTE: disabled for now, Refs https://github.com/kubernetes/helm/issues/1463
-		// Check that all the templates have a matching value
-		//linter.RunLinterRule(support.WarningSev, path, validateNoMissingValues(templatesPath, valuesToRender, preExecutedTemplate))
-
-		// NOTE: disabled for now, Refs https://github.com/kubernetes/helm/issues/1037
-		// linter.RunLinterRule(support.WarningSev, path, validateQuotes(string(preExecutedTemplate)))
 
 		renderedContent := renderedContentMap[filepath.Join(chart.GetMetadata().Name, fileName)]
 		var yamlStruct K8sYamlStruct

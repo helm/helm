@@ -53,6 +53,9 @@ var deletePolices = map[string]release.Hook_DeletePolicy{
 	hooks.BeforeHookCreation: release.Hook_BEFORE_HOOK_CREATION,
 }
 
+// Timeout used when deleting resources with a hook-delete-policy.
+const defaultHookDeleteTimeoutInSeconds = int64(60)
+
 // Manifest represents a manifest file, which has a name and some content.
 type Manifest = manifest.Manifest
 
@@ -192,6 +195,18 @@ func (file *manifestFile) sort(result *result) error {
 				log.Printf("info: skipping unknown hook delete policy: %q", value)
 			}
 		})
+
+		// Only check for delete timeout annotation if there is a deletion policy.
+		if len(h.DeletePolicies) > 0 {
+			h.DeleteTimeout = defaultHookDeleteTimeoutInSeconds
+			operateAnnotationValues(entry, hooks.HookDeleteTimeoutAnno, func(value string) {
+				timeout, err := strconv.ParseInt(value, 10, 64)
+				if err != nil || timeout < 0 {
+					log.Printf("info: ignoring invalid hook delete timeout value: %q", value)
+				}
+				h.DeleteTimeout = timeout
+			})
+		}
 	}
 	return nil
 }

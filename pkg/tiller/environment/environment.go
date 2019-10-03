@@ -41,6 +41,12 @@ const (
 	// DefaultTillerNamespace is the default namespace for Tiller.
 	DefaultTillerNamespace = "kube-system"
 
+	// DefaultTillerPort defines the default port tiller listen on for client traffic
+	DefaultTillerPort = 44134
+
+	// DefaultTillerProbePort defines the default port to listen on for probes
+	DefaultTillerProbePort = 44135
+
 	// GoTplEngine is the name of the Go template engine, as registered in the EngineYard.
 	GoTplEngine = "gotpl"
 )
@@ -121,6 +127,16 @@ type KubeClient interface {
 	// by "\n---\n").
 	Delete(namespace string, reader io.Reader) error
 
+	// DeleteWithTimeout destroys one or more resources. If shouldWait is true, the function
+	// will not return until all the resources have been fully deleted or the provided
+	// timeout has expired.
+	//
+	// namespace must contain a valid existing namespace.
+	//
+	// reader must contain a YAML stream (one or more YAML documents separated
+	// by "\n---\n").
+	DeleteWithTimeout(namespace string, reader io.Reader, timeout int64, shouldWait bool) error
+
 	// WatchUntilReady watch the resource in reader until it is "ready".
 	//
 	// For Jobs, "ready" means the job ran to completion (excited without error).
@@ -141,7 +157,19 @@ type KubeClient interface {
 	UpdateWithOptions(namespace string, originalReader, modifiedReader io.Reader, opts kube.UpdateOptions) error
 
 	Build(namespace string, reader io.Reader) (kube.Result, error)
+
+	// BuildUnstructured reads a stream of manifests from a reader and turns them into
+	// info objects. Manifests are not validated against the schema, but it will fail if
+	// any resources types are not known by the apiserver.
+	//
+	// reader must contain a YAML stream (one or more YAML documents separated by "\n---\n").
 	BuildUnstructured(namespace string, reader io.Reader) (kube.Result, error)
+
+	// Validate reads a stream of manifests from a reader and validates them against
+	// the schema from the apiserver. It returns an error if any of the manifests does not validate.
+	//
+	// reader must contain a YAML stream (one or more YAML documents separated by "\n---\n").
+	Validate(namespace string, reader io.Reader) error
 
 	// WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
 	// and returns said phase (PodSucceeded or PodFailed qualify).
@@ -172,6 +200,14 @@ func (p *PrintingKubeClient) Get(ns string, r io.Reader) (string, error) {
 //
 // It only prints out the content to be deleted.
 func (p *PrintingKubeClient) Delete(ns string, r io.Reader) error {
+	_, err := io.Copy(p.Out, r)
+	return err
+}
+
+// DeleteWithTimeout implements KubeClient DeleteWithTimeout.
+//
+// It only prints out the content to be deleted.
+func (p *PrintingKubeClient) DeleteWithTimeout(ns string, r io.Reader, timeout int64, shouldWait bool) error {
 	_, err := io.Copy(p.Out, r)
 	return err
 }
@@ -208,12 +244,18 @@ func (p *PrintingKubeClient) BuildUnstructured(ns string, reader io.Reader) (kub
 	return []*resource.Info{}, nil
 }
 
+// Validate implements KubeClient Validate
+func (p *PrintingKubeClient) Validate(ns string, reader io.Reader) error {
+	return nil
+}
+
 // WaitAndGetCompletedPodPhase implements KubeClient WaitAndGetCompletedPodPhase.
 func (p *PrintingKubeClient) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader, timeout time.Duration) (v1.PodPhase, error) {
 	_, err := io.Copy(p.Out, reader)
 	return v1.PodUnknown, err
 }
 
+// WaitUntilCRDEstablished implements KubeClient WaitUntilCRDEstablished.
 func (p *PrintingKubeClient) WaitUntilCRDEstablished(reader io.Reader, timeout time.Duration) error {
 	_, err := io.Copy(p.Out, reader)
 	return err

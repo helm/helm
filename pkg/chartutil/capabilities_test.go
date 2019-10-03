@@ -38,9 +38,6 @@ func TestDefaultVersionSet(t *testing.T) {
 	if !DefaultVersionSet.Has("v1") {
 		t.Error("Expected core v1 version set")
 	}
-	if d := len(DefaultVersionSet); d != 1 {
-		t.Errorf("Expected only one version, got %d", d)
-	}
 }
 
 func TestCapabilities(t *testing.T) {
@@ -50,5 +47,9 @@ func TestCapabilities(t *testing.T) {
 
 	if !cap.APIVersions.Has("v1") {
 		t.Error("APIVersions should have v1")
+	}
+
+	if !cap.APIVersions.Has("apps/v1/Deployment") {
+		t.Error("APIVersions should have apps/v1/Deployment")
 	}
 }

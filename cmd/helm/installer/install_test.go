@@ -17,14 +17,15 @@ limitations under the License.
 package installer // import "k8s.io/helm/cmd/helm/installer"
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
 
 	"github.com/ghodss/yaml"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/core/v1"
-	"k8s.io/api/extensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
@@ -191,7 +192,7 @@ func TestInstall(t *testing.T) {
 
 	fc := &fake.Clientset{}
 	fc.AddReactor("create", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
-		obj := action.(testcore.CreateAction).GetObject().(*v1beta1.Deployment)
+		obj := action.(testcore.CreateAction).GetObject().(*appsv1.Deployment)
 		l := obj.GetLabels()
 		if reflect.DeepEqual(l, map[string]string{"app": "helm"}) {
 			t.Errorf("expected labels = '', got '%s'", l)
@@ -238,7 +239,7 @@ func TestInstallHA(t *testing.T) {
 
 	fc := &fake.Clientset{}
 	fc.AddReactor("create", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
-		obj := action.(testcore.CreateAction).GetObject().(*v1beta1.Deployment)
+		obj := action.(testcore.CreateAction).GetObject().(*appsv1.Deployment)
 		replicas := obj.Spec.Replicas
 		if int(*replicas) != 2 {
 			t.Errorf("expected replicas = 2, got '%d'", replicas)
@@ -262,7 +263,7 @@ func TestInstall_WithTLS(t *testing.T) {
 
 	fc := &fake.Clientset{}
 	fc.AddReactor("create", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
-		obj := action.(testcore.CreateAction).GetObject().(*v1beta1.Deployment)
+		obj := action.(testcore.CreateAction).GetObject().(*appsv1.Deployment)
 		l := obj.GetLabels()
 		if reflect.DeepEqual(l, map[string]string{"app": "helm"}) {
 			t.Errorf("expected labels = '', got '%s'", l)
@@ -330,7 +331,7 @@ func TestInstall_WithTLS(t *testing.T) {
 func TestInstall_canary(t *testing.T) {
 	fc := &fake.Clientset{}
 	fc.AddReactor("create", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
-		obj := action.(testcore.CreateAction).GetObject().(*v1beta1.Deployment)
+		obj := action.(testcore.CreateAction).GetObject().(*appsv1.Deployment)
 		i := obj.Spec.Template.Spec.Containers[0].Image
 		if i != "gcr.io/kubernetes-helm/tiller:canary" {
 			t.Errorf("expected canary image, got '%s'", i)
@@ -368,7 +369,7 @@ func TestUpgrade(t *testing.T) {
 		return true, existingDeployment, nil
 	})
 	fc.AddReactor("update", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
-		obj := action.(testcore.UpdateAction).GetObject().(*v1beta1.Deployment)
+		obj := action.(testcore.UpdateAction).GetObject().(*appsv1.Deployment)
 		i := obj.Spec.Template.Spec.Containers[0].Image
 		if i != image {
 			t.Errorf("expected image = '%s', got '%s'", image, i)
@@ -407,7 +408,7 @@ func TestUpgrade_serviceNotFound(t *testing.T) {
 		return true, existingDeployment, nil
 	})
 	fc.AddReactor("update", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
-		obj := action.(testcore.UpdateAction).GetObject().(*v1beta1.Deployment)
+		obj := action.(testcore.UpdateAction).GetObject().(*appsv1.Deployment)
 		i := obj.Spec.Template.Spec.Containers[0].Image
 		if i != image {
 			t.Errorf("expected image = '%s', got '%s'", image, i)
@@ -452,7 +453,7 @@ func TestUgrade_newerVersion(t *testing.T) {
 		return true, existingDeployment, nil
 	})
 	fc.AddReactor("update", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
-		obj := action.(testcore.UpdateAction).GetObject().(*v1beta1.Deployment)
+		obj := action.(testcore.UpdateAction).GetObject().(*appsv1.Deployment)
 		i := obj.Spec.Template.Spec.Containers[0].Image
 		if i != image {
 			t.Errorf("expected image = '%s', got '%s'", image, i)
@@ -512,7 +513,7 @@ func TestUpgrade_identical(t *testing.T) {
 		return true, existingDeployment, nil
 	})
 	fc.AddReactor("update", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
-		obj := action.(testcore.UpdateAction).GetObject().(*v1beta1.Deployment)
+		obj := action.(testcore.UpdateAction).GetObject().(*appsv1.Deployment)
 		i := obj.Spec.Template.Spec.Containers[0].Image
 		if i != image {
 			t.Errorf("expected image = '%s', got '%s'", image, i)
@@ -553,7 +554,7 @@ func TestUpgrade_canaryClient(t *testing.T) {
 		return true, existingDeployment, nil
 	})
 	fc.AddReactor("update", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
-		obj := action.(testcore.UpdateAction).GetObject().(*v1beta1.Deployment)
+		obj := action.(testcore.UpdateAction).GetObject().(*appsv1.Deployment)
 		i := obj.Spec.Template.Spec.Containers[0].Image
 		if i != image {
 			t.Errorf("expected image = '%s', got '%s'", image, i)
@@ -594,7 +595,7 @@ func TestUpgrade_canaryServer(t *testing.T) {
 		return true, existingDeployment, nil
 	})
 	fc.AddReactor("update", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
-		obj := action.(testcore.UpdateAction).GetObject().(*v1beta1.Deployment)
+		obj := action.(testcore.UpdateAction).GetObject().(*appsv1.Deployment)
 		i := obj.Spec.Template.Spec.Containers[0].Image
 		if i != image {
 			t.Errorf("expected image = '%s', got '%s'", image, i)
@@ -716,9 +717,32 @@ func TestDeployment_WithSetValues(t *testing.T) {
 
 		// convert our expected value to match the result type for comparison
 		ev := tt.expect
+		intType := reflect.TypeOf(int64(0))
+		floatType := reflect.TypeOf(float64(0))
+
 		switch pvt := pv.(type) {
+		case json.Number:
+			evv := reflect.ValueOf(ev)
+			evv = reflect.Indirect(evv)
+			switch ev.(type) {
+			case float32, float64:
+				evv = evv.Convert(floatType)
+				if fpv, err := pv.(json.Number).Float64(); err != nil {
+					t.Errorf("Failed to convert json number to float: %s", err)
+				} else if fpv != evv.Float() {
+					t.Errorf("%s: expected float value %q, got %f", tt.name, tt.expect, fpv)
+				}
+			case byte, int, int32, int64:
+				evv = evv.Convert(intType)
+				if ipv, err := pv.(json.Number).Int64(); err != nil {
+					t.Errorf("Failed to convert json number to int: %s", err)
+				} else if ipv != evv.Int() {
+					t.Errorf("%s: expected int value %q, got %d", tt.name, tt.expect, ipv)
+				}
+			default:
+				t.Errorf("Unknown primitive type: %s", reflect.TypeOf(ev))
+			}
 		case float64:
-			floatType := reflect.TypeOf(float64(0))
 			v := reflect.ValueOf(ev)
 			v = reflect.Indirect(v)
 			if !v.Type().ConvertibleTo(floatType) {

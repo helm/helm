@@ -23,6 +23,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -37,6 +38,17 @@ func TestLoadDir(t *testing.T) {
 	verifyFrobnitz(t, c)
 	verifyChart(t, c)
 	verifyRequirements(t, c)
+}
+
+func TestLoadNonV1Chart(t *testing.T) {
+	_, err := Load("testdata/frobnitz.v2")
+	if err != nil {
+		if strings.Compare(err.Error(), "apiVersion 'v2' is not valid. The value must be \"v1\"") != 0 {
+			t.Errorf("Unexpected message: %s", err)
+		}
+		return
+	}
+	t.Fatalf("chart with v2 apiVersion should not load")
 }
 
 func TestLoadFile(t *testing.T) {
@@ -90,9 +102,10 @@ func TestLoadArchive_InvalidArchive(t *testing.T) {
 		{"illegal-dots2.tgz", "/foo/../../malformed-helm-test", "chart illegally references parent directory"},
 		{"illegal-dots3.tgz", "/../../malformed-helm-test", "chart illegally references parent directory"},
 		{"illegal-dots4.tgz", "./../../malformed-helm-test", "chart illegally references parent directory"},
-		{"illegal-name.tgz", "./.", "chart illegally contains empty path"},
-		{"illegal-name2.tgz", "/./.", "chart illegally contains empty path"},
-		{"illegal-name3.tgz", "missing-leading-slash", "chart illegally contains empty path"},
+		{"illegal-name.tgz", "./.", "chart illegally contains content outside the base directory: \"./.\""},
+		{"illegal-name2.tgz", "/./.", "chart illegally contains content outside the base directory: \"/./.\""},
+		{"illegal-name3.tgz", "missing-leading-slash", "chart illegally contains content outside the base directory: \"missing-leading-slash\""},
+		{"illegal-name5.tgz", "content-outside-base-dir", "chart illegally contains content outside the base directory: \"content-outside-base-dir\""},
 		{"illegal-name4.tgz", "/missing-leading-slash", "chart metadata (Chart.yaml) missing"},
 		{"illegal-abspath.tgz", "//foo", "chart illegally contains absolute paths"},
 		{"illegal-abspath2.tgz", "///foo", "chart illegally contains absolute paths"},

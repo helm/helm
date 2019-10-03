@@ -172,10 +172,44 @@ contributing to Helm. All issue types follow the same general lifecycle. Differe
 
 ## How to Contribute a Patch
 
-1. Fork the repo, develop and test your code changes.
-1. Use sign-off when making each of your commits (see [above](#sign-your-work)).
+1. **Fork** the repo [helm](https://github.com/helm/helm)  
+
+Go to https://github.com/helm/helm then hit the `Fork` button to fork your own copy of repository **helm** to your github account.
+
+2. **Clone** the forked repo to your local working directory.
+```sh
+$ git clone https://github.com/$your_github_account/helm.git   
+```
+3. Add an `upstream` remote to keep your fork in sync with the main repo.
+```sh
+$ cd helm
+$ git remote add upstream https://github.com/helm/helm.git
+$ git remote -v
+
+origin  https://github.com/$your_github_account/helm.git (fetch)
+origin  https://github.com/$your_github_account/helm.git (push)
+upstream        https://github.com/helm/helm.git (fetch)
+upstream        https://github.com/helm/helm.git (push)
+```
+4. Sync your local `master` branch.
+```sh
+$ git pull upstream master
+```
+5. Create a branch to add a new feature or fix issues.
+```sh
+$ git checkout -b new-feature
+```
+6. Make any change on the branch `new-feature` then build and test your codes.
+7. Include in what will be committed.
+```sh
+$ git add <file>
+```
+8. Use sign-off when making each of your commits (see [above](#sign-your-work)).
    If you forgot to sign some commits that are part of the contribution, you can ask [git to rewrite your commit history](https://git-scm.com/book/en/v2/Git-Tools-Rewriting-History).
-1. Submit a pull request.
+```sh
+$ git commit --signoff
+```
+9. Submit a pull request.
 
 Coding conventions and standards are explained in the official developer docs:
 [Developers Guide](docs/developers.md)
@@ -229,6 +263,8 @@ Like any good open source project, we use Pull Requests (PRs) to track code chan
     - PRs should stay open until merged or if they have not been active for more than 30 days.
     This will help keep the PR queue to a manageable size and reduce noise. Should the PR need
     to stay open (like in the case of a WIP), the `keep open` label can be added.
+    - Before merging a PR, refer to the topic on [Size Labels](#size-labels) below to determine if
+      the PR requires more than one LGTM to merge.
     - If the owner of the PR is listed in `OWNERS`, that user **must** merge their own PRs or explicitly
     request another OWNER do that for them.
     - If the owner of a PR is _not_ listed in `OWNERS`, any maintainer may merge the PR once it is approved.
@@ -268,7 +304,7 @@ The following tables define all label types used for Helm. It is split up by cat
 | `help wanted` | This issue is one the core maintainers cannot get to right now and would appreciate help with |
 | `proposal` | This issue is a proposal |
 | `question/support` | This issue is a support request or question |
-| `starter` | This issue is a good for someone new to contributing to Helm |
+| `good first issue` | This issue is a good for someone new to contributing to Helm |
 | `wont fix` | The issue has been discussed and will not be implemented (or accepted in the case of a proposal) |
 
 ### PR Specific
@@ -286,13 +322,20 @@ The following tables define all label types used for Helm. It is split up by cat
 
 Size labels are used to indicate how "dangerous" a PR is. The guidelines below are used to assign the
 labels, but ultimately this can be changed by the maintainers. For example, even if a PR only makes
-30 lines of changes in 1 file, but it changes key functionality, it will likely be labeled as `size/large`
+30 lines of changes in 1 file, but it changes key functionality, it will likely be labeled as `size/L`
 because it requires sign off from multiple people. Conversely, a PR that adds a small feature, but requires
-another 150 lines of tests to cover all cases, could be labeled as `size/small` even though the number
+another 150 lines of tests to cover all cases, could be labeled as `size/S` even though the number
 lines is greater than defined below.
+
+PRs submitted by a core maintainer, regardless of size, only requires approval from one additional
+maintainer. This ensures there are at least two maintainers who are aware of any significant PRs
+introduced to the codebase.
 
 | Label | Description |
 | ----- | ----------- |
-| `size/small` | Anything less than or equal to 4 files and 150 lines. Only small amounts of manual testing may be required |
-| `size/medium` | Anything greater than `size/small` and less than or equal to 8 files and 300 lines. Manual validation should be required. |
-| `size/large` | Anything greater than `size/medium`. This should be thoroughly tested before merging and always requires 2 approvals. This also should be applied to anything that is a significant logic change. |
+| `size/XS` | Anything less than or equal to 9 lines ignoring generated files. Only small amounts of manual testing may be required. |
+| `size/S` | Anything greater than `size/XS` less than or equal to 29 lines ignoring the generated files. Only small amounts of manual testing may be required. |
+| `size/M` | Anything greater than `size/S` less than or equal to 99 lines ignoring the generated files. Manual validation should be required. |
+| `size/L` | Anything greater than `size/M` less than or equal to 499 lines ignoring the generated files. This should be thoroughly tested before merging and always requires 2 approvals. This also should be applied to anything that is a significant logic change. |
+| `size/XL` | Anything greater than `size/L` less than or equal to 999 lines ignoring the generated files. This should be thoroughly tested before merging and always requires 2 approvals. This also should be applied to anything that is a significant logic change. |
+| `size/XXL` | Anything greater than `size/XL`. This should be thoroughly tested before merging and always requires 2 approvals. This also should be applied to anything that is a significant logic change. |

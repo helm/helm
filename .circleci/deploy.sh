@@ -22,6 +22,8 @@ fi
 
 : ${GCLOUD_SERVICE_KEY:?"GCLOUD_SERVICE_KEY environment variable is not set"}
 : ${PROJECT_NAME:?"PROJECT_NAME environment variable is not set"}
+: ${AZURE_STORAGE_CONNECTION_STRING:?"AZURE_STORAGE_CONNECTION_STRING environment variable is not set"}
+: ${AZURE_STORAGE_CONTAINER_NAME:?"AZURE_STORAGE_CONTAINER_NAME environment variable is not set"}
 
 VERSION=
 if [[ -n "${CIRCLE_TAG:-}" ]]; then
@@ -50,6 +52,14 @@ ${HOME}/google-cloud-sdk/bin/gcloud auth activate-service-account --key-file "${
 ${HOME}/google-cloud-sdk/bin/gcloud config set project "${PROJECT_NAME}"
 docker login -u _json_key -p "$(cat ${HOME}/gcloud-service-key.json)" https://gcr.io
 
+echo "Installing Azure CLI"
+apt update
+apt install -y apt-transport-https
+echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ stretch main" | tee /etc/apt/sources.list.d/azure-cli.list
+curl -L https://packages.microsoft.com/keys/microsoft.asc | apt-key add
+apt update
+apt install -y azure-cli
+
 echo "Building the tiller image"
 make docker-build VERSION="${VERSION}"
 
@@ -62,3 +72,9 @@ make dist checksum VERSION="${VERSION}"
 
 echo "Pushing binaries to gs bucket"
 ${HOME}/google-cloud-sdk/bin/gsutil cp ./_dist/* "gs://${PROJECT_NAME}"
+
+echo "Pushing binaries to Azure"
+az storage blob upload-batch -s _dist/ -d "$AZURE_STORAGE_CONTAINER_NAME" --pattern 'helm-*' --connection-string "$AZURE_STORAGE_CONNECTION_STRING"
+
+echo "Pushing KEYS file to Azure"
+az storage blob upload -f "KEYS" -n "KEYS" -c "$AZURE_STORAGE_CONTAINER_NAME" --connection-string "$AZURE_STORAGE_CONNECTION_STRING"

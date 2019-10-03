@@ -30,19 +30,19 @@ With those caveats behind, let's write a template that reads three files into ou
 `config1.toml`:
 
 ```toml
-message = Hello from config 1
+message = "Hello from config 1"
 ```
 
 `config2.toml`:
 
 ```toml
-message = This is config 2
+message = "This is config 2"
 ```
 
 `config3.toml`:
 
 ```toml
-message = Goodbye from config 3
+message = "Goodbye from config 3"
 ```
 
 Each of these is a simple TOML file (think old-school Windows INI files). We know the names of these files, so we can use a `range` function to loop through them and inject their contents into our ConfigMap.
@@ -54,13 +54,13 @@ metadata:
   name: {{ .Release.Name }}-configmap
 data:
   {{- $files := .Files }}
-  {{- range tuple "config1.toml" "config2.toml" "config3.toml" }}
+  {{- range list "config1.toml" "config2.toml" "config3.toml" }}
   {{ . }}: |-
     {{ $files.Get . }}
   {{- end }}
 ```
 
-This config map uses several of the techniques discussed in previous sections. For example, we create a `$files` variable to hold a reference to the `.Files` object. We also use the `tuple` function to create a list of files that we loop through. Then we print each file name (`{{.}}: |-`) followed by the contents of the file `{{ $files.Get . }}`.
+This config map uses several of the techniques discussed in previous sections. For example, we create a `$files` variable to hold a reference to the `.Files` object. We also use the `list` function to create a list of files that we loop through. Then we print each file name (`{{.}}: |-`) followed by the contents of the file `{{ $files.Get . }}`.
 
 Running this template will produce a single ConfigMap with the contents of all three files:
 
@@ -72,13 +72,13 @@ metadata:
   name: quieting-giraf-configmap
 data:
   config1.toml: |-
-    message = Hello from config 1
+    message = "Hello from config 1"
 
   config2.toml: |-
-    message = This is config 2
+    message = "This is config 2"
 
   config3.toml: |-
-    message = Goodbye from config 3
+    message = "Goodbye from config 3"
 ```
 
 ## Path helpers
@@ -129,6 +129,7 @@ You have multiple options with Globs:
 Or
 
 ```yaml
+{{ $root := . }}
 {{ range $path, $bytes := .Files.Glob "foo/*" }}
 {{ base $path }}: '{{ $root.Files.Get $path | b64enc }}'
 {{ end }}

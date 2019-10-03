@@ -49,6 +49,10 @@ The following hooks are defined:
   have been modified.
 - crd-install: Adds CRD resources before any other checks are run. This is used
   only on CRD definitions that are used by other manifests in the chart.
+- test-success: Executes when running `helm test` and expects the pod to
+  return successfully (return code == 0).
+- test-failure: Executes when running `helm test` and expects the pod to
+  fail (return code != 0).
 
 ## Hooks and the Release Lifecycle
 
@@ -76,7 +80,7 @@ hooks, the lifecycle is altered like this:
 5. Tiller sorts hooks by weight (assigning a weight of 0 by default) and by name for those hooks with the same weight in ascending order.
 6. Tiller then loads the hook with the lowest weight first (negative to positive)
 7. Tiller waits until the hook is "Ready" (except for CRDs)
-8. Tiller loads the resulting resources into Kubernetes. Note that if the `--wait` 
+8. Tiller loads the resulting resources into Kubernetes. Note that if the `--wait`
 flag is set, Tiller will wait until all resources are in a ready state
 and will not run the `post-install` hook until they are ready.
 9. Tiller executes the `post-install` hook (loading hook resources)
@@ -129,6 +133,7 @@ metadata:
   labels:
     app.kubernetes.io/managed-by: {{.Release.Service | quote }}
     app.kubernetes.io/instance: {{.Release.Name | quote }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
     helm.sh/chart: "{{.Chart.Name}}-{{.Chart.Version}}"
   annotations:
     # This is what defines this resource as a hook. Without this line, the
@@ -197,6 +202,10 @@ You can choose one or more defined annotation values:
 * `"hook-succeeded"` specifies Tiller should delete the hook after the hook is successfully executed.
 * `"hook-failed"` specifies Tiller should delete the hook if the hook failed during execution.
 * `"before-hook-creation"` specifies Tiller should delete the previous hook before the new hook is launched.
+
+By default Tiller will wait for 60 seconds for a deleted hook to no longer exist in the API server before timing out. This
+behavior can be changed using the `helm.sh/hook-delete-timeout` annotation. The value is the number of seconds Tiller
+should wait for the hook to be fully deleted. A value of 0 means Tiller does not wait at all.
 
 ### Defining a CRD with the `crd-install` Hook
 
