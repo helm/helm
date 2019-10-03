@@ -27,7 +27,7 @@ find_files() {
   \( -name '*.go' -o -name '*.sh' -o -name 'Dockerfile' \)
 }
 
-failed_license_header=($(find_files | xargs grep -L 'Licensed under the Apache License, Version 2.0 (the "License");'))
+failed_license_header=($(grep -L 'Licensed under the Apache License, Version 2.0 (the "License");' $(find_files))) || :
 if (( ${#failed_license_header[@]} > 0 )); then
   echo "Some source files are missing license headers."
   for f in "${failed_license_header[@]}"; do
@@ -36,7 +36,7 @@ if (( ${#failed_license_header[@]} > 0 )); then
   exit 1
 fi
 
-failed_copyright_header=($(find_files | xargs grep -L 'Copyright The Helm Authors.'))
+failed_copyright_header=($(grep -L 'Copyright The Helm Authors.' $(find_files))) || :
 if (( ${#failed_copyright_header[@]} > 0 )); then
   echo "Some source files are missing the copyright header."
   for f in "${failed_copyright_header[@]}"; do
