@@ -103,12 +103,9 @@ This new branch is going to be the base for the release, which we are going to i
 ### Patch releases
 
 Patch releases are a few critical cherry-picked fixes to existing releases. Start by creating a `release-vX.Y.Z` branch
-from the latest patch release.
 
 ```shell
-git fetch upstream --tags
-git checkout $PREVIOUS_PATCH_RELEASE
-git checkout -b $RELEASE_BRANCH_NAME
+git checkout -b $RELEASE_BRANCH_NAME upstream/$RELEASE_BRANCH_NAME
 ```
 
 From here, we can cherry-pick the commits we want to bring into the patch release:
@@ -120,9 +117,16 @@ git log --oneline
 git cherry-pick -x <commit-id>
 ```
 
-This new branch is going to be the base for the release, which we are going to iterate upon later.
+Finally, we create the tag for the patch on the branch and push upstream:
 
-## 2. Change the Version Number in Git
+```shell
+git tag --sign --annotate "$RELEASE_NAME" --message "Helm release $RELEASE_NAME"
+git push upstream "$RELEASE_NAME"
+```
+
+This new tag is going to be the base for the release, which we are going to iterate upon later.
+
+## 2. Major/Minor releases: Change the Version Number in Git
 
 When doing a minor release, make sure to update pkg/version/version.go with the new release version.
 
@@ -180,7 +184,7 @@ proceeding.
 If anyone is available, let others peer-review the branch before continuing to ensure that all the proper changes have
 been made and all of the commits for the release are there.
 
-## 4. Create a Release Candidate
+## 4. Major/Minor release: Create a Release Candidate
 
 Now that the release branch is out and ready, it is time to start creating and iterating on release candidates.
 
@@ -215,7 +219,7 @@ PS C:\> Invoke-WebRequest -Uri "https://get.helm.sh/helm-$RELEASE_CANDIDATE_NAME
 Then, unpack and move the binary to somewhere on your $PATH, or move it somewhere and add it to your $PATH
 (e.g. /usr/local/bin/helm for linux/macOS, C:\Program Files\helm\helm.exe for Windows).
 
-## 5. Iterate on Successive Release Candidates
+## 5. Major/Minor release: Iterate on Successive Release Candidates
 
 Spend several days explicitly investing time and resources to try and break helm in every possible way, documenting any
 findings pertinent to the release. This time should be spent testing and finding ways in which the release might have
@@ -246,7 +250,7 @@ git push upstream $RELEASE_CANDIDATE_NAME
 
 From here on just repeat this process, continuously testing until you're happy with the release candidate.
 
-## 6. Finalize the Release
+## 6. Major/Minor release: Finalize the Release
 
 When you're finally happy with the quality of a release candidate, you can move on and create the real thing.
 Double-check one last time to make sure everything is in order, then finally push the release tag.
@@ -349,13 +353,6 @@ When you are ready to go, hit `publish`.
 
 Congratulations! You're done. Go grab yourself a $DRINK_OF_CHOICE. You've earned it.
 
-<<<<<<< HEAD
-After enjoying a nice $DRINK_OF_CHOICE, go forth and announce the glad tidings
-of the new release in Slack and on Twitter.
-=======
-After enjoying a nice $DRINK_OF_CHOICE, go forth and announce the glad tidings of the new release in Slack and on
-Twitter. You should also notify any key partners in the helm community such as the homebrew formula maintainers, the
-owners of incubator projects (e.g. ChartMuseum) and any other interested parties.
->>>>>>> doc(release_checklist): remove steps for categorizing changelogs
+After enjoying a nice $DRINK_OF_CHOICE, go forth and announce the glad tidings of the new release in Slack and on Twitter.
 
 Optionally, write a blog post about the new release and showcase some of the new features on there!
