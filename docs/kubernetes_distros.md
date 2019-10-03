@@ -30,6 +30,10 @@ See [Tiller and role-based access control](https://docs.helm.sh/using_helm/#role
 
 Helm works with [Azure Kubernetes Service](https://docs.microsoft.com/en-us/azure/aks/kubernetes-helm). If using an RBAC-enabled AKS cluster, you need [a service account and role binding for the Tiller service](https://docs.microsoft.com/en-us/azure/aks/kubernetes-helm#create-a-service-account).
 
+## IKS
+
+Helm works with [IBM Cloud Kubernetes Service](https://cloud.ibm.com/docs/containers?topic=containers-getting-started). IKS cluster enables RBAC by default and this means you will need [a service account and role binding for the Tiller service](https://cloud.ibm.com/docs/containers?topic=containers-helm#public_helm_install).
+
 ## Ubuntu with 'kubeadm'
 
 Kubernetes bootstrapped with `kubeadm` is known to work on the following Linux
