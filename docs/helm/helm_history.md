@@ -13,11 +13,11 @@ configures the maximum length of the revision list returned.
 The historical release set is printed as a formatted table, e.g:
 
     $ helm history angry-bird --max=4
-    REVISION   UPDATED                      STATUS           CHART        DESCRIPTION
-    1           Mon Oct 3 10:15:13 2016     SUPERSEDED      alpine-0.1.0  Initial install
-    2           Mon Oct 3 10:15:13 2016     SUPERSEDED      alpine-0.1.0  Upgraded successfully
-    3           Mon Oct 3 10:15:13 2016     SUPERSEDED      alpine-0.1.0  Rolled back to 2
-    4           Mon Oct 3 10:15:13 2016     DEPLOYED        alpine-0.1.0  Upgraded successfully
+    REVISION   UPDATED                      STATUS           CHART        APP VERSION	DESCRIPTION
+    1           Mon Oct 3 10:15:13 2016     SUPERSEDED      alpine-0.1.0  1.1		Initial install
+    2           Mon Oct 3 10:15:13 2016     SUPERSEDED      alpine-0.1.0  1.2		Upgraded successfully
+    3           Mon Oct 3 10:15:13 2016     SUPERSEDED      alpine-0.1.0  1.1		Rolled back to 2
+    4           Mon Oct 3 10:15:13 2016     DEPLOYED        alpine-0.1.0  1.3		Upgraded successfully
 
 
 ```
