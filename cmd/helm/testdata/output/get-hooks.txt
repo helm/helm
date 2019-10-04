@@ -1,7 +1,8 @@
 ---
-# pre-install-hook
+# Source: pre-install-hook.yaml
 apiVersion: v1
 kind: Job
 metadata:
   annotations:
     "helm.sh/hook": pre-install
+
