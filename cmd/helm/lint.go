@@ -156,12 +156,15 @@ func lintChart(path string, vals []byte, namespace string, strict bool) (support
 			return linter, err
 		}
 
-		lastHyphenIndex := strings.LastIndex(filepath.Base(path), "-")
-		if lastHyphenIndex <= 0 {
-			return linter, fmt.Errorf("unable to parse chart archive %q, missing '-'", filepath.Base(path))
+		files, err := ioutil.ReadDir(tempDir)
+		if err != nil {
+			return linter, fmt.Errorf("unable to read temporary output directory %s", tempDir)
 		}
-		base := filepath.Base(path)[:lastHyphenIndex]
-		chartPath = filepath.Join(tempDir, base)
+		if !files[0].IsDir() {
+			return linter, fmt.Errorf("unexpected file %s in temporary output directory %s", files[0].Name(), tempDir)
+		}
+
+		chartPath = filepath.Join(tempDir, files[0].Name())
 	} else {
 		chartPath = path
 	}
