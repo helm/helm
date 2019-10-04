@@ -584,7 +584,9 @@ func (rs mockRunReleaseTestServer) SendHeader(m metadata.MD) error { return nil 
 func (rs mockRunReleaseTestServer) SetTrailer(m metadata.MD)       {}
 func (rs mockRunReleaseTestServer) SendMsg(v interface{}) error    { return nil }
 func (rs mockRunReleaseTestServer) RecvMsg(v interface{}) error    { return nil }
-func (rs mockRunReleaseTestServer) Context() context.Context       { return helm.NewContext() }
+func (rs mockRunReleaseTestServer) Context() context.Context {
+	return helm.NewContext()
+}
 
 type mockHooksManifest struct {
 	Metadata struct {

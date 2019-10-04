@@ -18,6 +18,7 @@ package tiller
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -28,7 +29,6 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
-	"reflect"
 )
 
 func TestUpdateRelease(t *testing.T) {
