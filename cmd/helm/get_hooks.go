@@ -46,7 +46,7 @@ func newGetHooksCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return err
 			}
 			for _, hook := range res.Hooks {
-				fmt.Fprintf(out, "---\n# %s\n%s", hook.Name, hook.Manifest)
+				fmt.Fprintf(out, "---\n# Source: %s\n%s\n", hook.Path, hook.Manifest)
 			}
 			return nil
 		},
