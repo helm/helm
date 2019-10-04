@@ -23,6 +23,7 @@ import (
 	"io"
 	"log"
 	"strings"
+	"sync"
 	"time"
 
 	jsonpatch "github.com/evanphx/json-patch"
@@ -273,12 +274,33 @@ func perform(infos ResourceList, fn func(*resource.Info) error) error {
 		return ErrNoObjectsVisited
 	}
 
-	for _, info := range infos {
-		if err := fn(info); err != nil {
+	errs := make(chan error)
+	go batchPerform(infos, fn, errs)
+
+	for range infos {
+		err := <-errs
+		if err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func batchPerform(infos ResourceList, fn func(*resource.Info) error, errs chan<- error) {
+	var kind string
+	var wg sync.WaitGroup
+	for _, info := range infos {
+		currentKind := info.Object.GetObjectKind().GroupVersionKind().Kind
+		if kind != currentKind {
+			wg.Wait()
+			kind = currentKind
+		}
+		wg.Add(1)
+		go func(i *resource.Info) {
+			errs <- fn(i)
+			wg.Done()
+		}(info)
+	}
 }
 
 func createResource(info *resource.Info) error {
