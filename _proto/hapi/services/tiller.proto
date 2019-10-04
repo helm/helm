@@ -350,6 +350,8 @@ message TestReleaseRequest {
 	bool cleanup = 3;
 	// parallel specifies whether or not to run test pods in parallel
 	bool parallel = 4;
+	// maximum number of test pods to run in parallel
+	uint32 max_parallel = 5;
 }
 
 // TestReleaseResponse represents a message from executing a test

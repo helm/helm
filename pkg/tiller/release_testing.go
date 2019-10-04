@@ -38,13 +38,18 @@ func (s *ReleaseServer) RunReleaseTest(req *services.TestReleaseRequest, stream 
 		return err
 	}
 
+	parallelism := uint32(maxParallelism)
+	if req.MaxParallel != 0 {
+		parallelism = req.MaxParallel
+	}
+
 	testEnv := &reltesting.Environment{
 		Namespace:   rel.Namespace,
 		KubeClient:  s.env.KubeClient,
 		Timeout:     req.Timeout,
 		Stream:      stream,
 		Parallel:    req.Parallel,
-		Parallelism: maxParallelism,
+		Parallelism: parallelism,
 	}
 	s.Log("running tests for release %s", rel.Name)
 	tSuite, err := reltesting.NewTestSuite(rel)
