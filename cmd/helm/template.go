@@ -75,6 +75,7 @@ type templateCmd struct {
 	releaseIsUpgrade bool
 	renderFiles      []string
 	kubeVersion      string
+	apiVersions      []string
 	outputDir        string
 }
 
@@ -104,6 +105,7 @@ func newTemplateCmd(out io.Writer) *cobra.Command {
 	f.StringArrayVar(&t.fileValues, "set-file", []string{}, "Set values from respective files specified via the command line (can specify multiple or separate values with commas: key1=path1,key2=path2)")
 	f.StringVar(&t.nameTemplate, "name-template", "", "Specify template used to name the release")
 	f.StringVar(&t.kubeVersion, "kube-version", defaultKubeVersion, "Kubernetes version used as Capabilities.KubeVersion.Major/Minor")
+	f.StringArrayVarP(&t.apiVersions, "api-versions", "a", []string{}, "Kubernetes api versions used for Capabilities.APIVersions")
 	f.StringVar(&t.outputDir, "output-dir", "", "Writes the executed templates to files in output-dir instead of stdout")
 
 	return cmd
@@ -167,6 +169,7 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 			Namespace: t.namespace,
 		},
 		KubeVersion: t.kubeVersion,
+		APIVersions: t.apiVersions,
 	}
 
 	renderedTemplates, err := renderutil.Render(c, config, renderOpts)

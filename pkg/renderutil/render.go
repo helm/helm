@@ -31,6 +31,7 @@ import (
 type Options struct {
 	ReleaseOptions chartutil.ReleaseOptions
 	KubeVersion    string
+	APIVersions    []string
 }
 
 // Render chart templates locally and display the output.
@@ -77,6 +78,10 @@ func Render(c *chart.Chart, config *chart.Config, opts Options) (map[string]stri
 		caps.KubeVersion.Major = fmt.Sprint(kv.Major())
 		caps.KubeVersion.Minor = fmt.Sprint(kv.Minor())
 		caps.KubeVersion.GitVersion = fmt.Sprintf("v%d.%d.0", kv.Major(), kv.Minor())
+	}
+
+	if len(opts.APIVersions) > 0 {
+		caps.APIVersions = chartutil.NewVersionSet(append(opts.APIVersions, "v1")...)
 	}
 
 	vals, err := chartutil.ToRenderValuesCaps(c, config, opts.ReleaseOptions, caps)

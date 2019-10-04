@@ -11,6 +11,9 @@ metadata:
     kube-version/major: "{{ .Capabilities.KubeVersion.Major }}"
     kube-version/minor: "{{ .Capabilities.KubeVersion.Minor }}"
     kube-version/gitversion: "v{{ .Capabilities.KubeVersion.Major }}.{{ .Capabilities.KubeVersion.Minor }}.0"
+{{ if .Capabilities.APIVersions.Has "helm.k8s.io/test" }}
+    kube-api-version/test: v1
+{{ end }}
 spec:
   type: {{ .Values.service.type }}
   ports:
