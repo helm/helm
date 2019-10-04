@@ -286,7 +286,7 @@ func perform(infos ResourceList, fn func(*resource.Info) error) error {
 	return nil
 }
 
-func batchPerform(infos Result, fn ResourceActorFunc, errs chan<- error) {
+func batchPerform(infos ResourceList, fn func(*resource.Info) error, errs chan<- error) {
 	var kind string
 	var wg sync.WaitGroup
 	for _, info := range infos {
