@@ -92,14 +92,22 @@ func TestRepoAdd(t *testing.T) {
 
 func TestRepoAddConcurrentGoRoutines(t *testing.T) {
 	const testName = "test-name"
+	repoFile := filepath.Join(ensure.TempDir(t), "repositories.yaml")
+	repoAddConcurrent(t, testName, repoFile)
+}
 
+func TestRepoAddConcurrentDirNotExist(t *testing.T) {
+	const testName = "test-name-2"
+	repoFile := filepath.Join(ensure.TempDir(t), "foo", "repositories.yaml")
+	repoAddConcurrent(t, testName, repoFile)
+}
+
+func repoAddConcurrent(t *testing.T, testName, repoFile string) {
 	ts, err := repotest.NewTempServer("testdata/testserver/*.*")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer ts.Stop()
-
-	repoFile := filepath.Join(ensure.TempDir(t), "repositories.yaml")
 
 	var wg sync.WaitGroup
 	wg.Add(3)

@@ -22,6 +22,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/gofrs/flock"
@@ -78,6 +79,12 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 }
 
 func (o *repoAddOptions) run(out io.Writer) error {
+	//Ensure the file directory exists as it is required for file locking
+	err := os.MkdirAll(filepath.Dir(o.repoFile), os.ModePerm)
+	if err != nil && !os.IsExist(err) {
+		return err
+	}
+
 	// Lock the repository file for concurrent goroutines or processes synchronization
 	fileLock := flock.New(o.repoFile)
 	lockCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
