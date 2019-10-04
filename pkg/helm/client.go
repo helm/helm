@@ -85,8 +85,29 @@ func (h *Client) InstallRelease(chstr, ns string, opts ...InstallOption) (*rls.I
 	return h.InstallReleaseFromChart(chart, ns, opts...)
 }
 
+// InstallReleaseWithContext loads a chart from chstr, installs it, and returns the release response while accepting a context.
+func (h *Client) InstallReleaseWithContext(ctx context.Context, chstr, ns string, opts ...InstallOption) (*rls.InstallReleaseResponse, error) {
+	// load the chart to install
+	chart, err := chartutil.Load(chstr)
+	if err != nil {
+		return nil, err
+	}
+
+	return h.installReleaseFromChartWithContext(ctx, chart, ns, opts...)
+}
+
 // InstallReleaseFromChart installs a new chart and returns the release response.
 func (h *Client) InstallReleaseFromChart(chart *chart.Chart, ns string, opts ...InstallOption) (*rls.InstallReleaseResponse, error) {
+	return h.installReleaseFromChartWithContext(NewContext(), chart, ns, opts...)
+}
+
+// InstallReleaseFromChartWithContext installs a new chart and returns the release response while accepting a context.
+func (h *Client) InstallReleaseFromChartWithContext(ctx context.Context, chart *chart.Chart, ns string, opts ...InstallOption) (*rls.InstallReleaseResponse, error) {
+	return h.installReleaseFromChartWithContext(ctx, chart, ns, opts...)
+}
+
+// InstallReleaseFromChartWithContext installs a new chart and returns the release response while accepting a context.
+func (h *Client) installReleaseFromChartWithContext(ctx context.Context, chart *chart.Chart, ns string, opts ...InstallOption) (*rls.InstallReleaseResponse, error) {
 	// apply the install options
 	reqOpts := h.opts
 	for _, opt := range opts {
@@ -99,7 +120,7 @@ func (h *Client) InstallReleaseFromChart(chart *chart.Chart, ns string, opts ...
 	req.DisableHooks = reqOpts.disableHooks
 	req.DisableCrdHook = reqOpts.disableCRDHook
 	req.ReuseName = reqOpts.reuseName
-	ctx := NewContext()
+	ctx = FromContext(ctx)
 
 	if reqOpts.before != nil {
 		if err := reqOpts.before(ctx, req); err != nil {
@@ -159,8 +180,29 @@ func (h *Client) UpdateRelease(rlsName string, chstr string, opts ...UpdateOptio
 	return h.UpdateReleaseFromChart(rlsName, chart, opts...)
 }
 
+// UpdateReleaseWithContext loads a chart from chstr and updates a release to a new/different chart while accepting a context.
+func (h *Client) UpdateReleaseWithContext(ctx context.Context, rlsName string, chstr string, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
+	// load the chart to update
+	chart, err := chartutil.Load(chstr)
+	if err != nil {
+		return nil, err
+	}
+
+	return h.updateReleaseFromChartWithContext(ctx, rlsName, chart, opts...)
+}
+
 // UpdateReleaseFromChart updates a release to a new/different chart.
 func (h *Client) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
+	return h.updateReleaseFromChartWithContext(NewContext(), rlsName, chart, opts...)
+}
+
+// UpdateReleaseFromChartWithContext updates a release to a new/different chart while accepting a context.
+func (h *Client) UpdateReleaseFromChartWithContext(ctx context.Context, rlsName string, chart *chart.Chart, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
+	return h.updateReleaseFromChartWithContext(ctx, rlsName, chart, opts...)
+}
+
+// updateReleaseFromChartWithContext updates a release to a new/different chart and accepts a context.
+func (h *Client) updateReleaseFromChartWithContext(ctx context.Context, rlsName string, chart *chart.Chart, opts ...UpdateOption) (*rls.UpdateReleaseResponse, error) {
 	// apply the update options
 	reqOpts := h.opts
 	for _, opt := range opts {
@@ -175,7 +217,7 @@ func (h *Client) UpdateReleaseFromChart(rlsName string, chart *chart.Chart, opts
 	req.Force = reqOpts.force
 	req.ResetValues = reqOpts.resetValues
 	req.ReuseValues = reqOpts.reuseValues
-	ctx := NewContext()
+	ctx = FromContext(ctx)
 
 	if reqOpts.before != nil {
 		if err := reqOpts.before(ctx, req); err != nil {
