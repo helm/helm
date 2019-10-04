@@ -26,6 +26,7 @@ import (
 	"log"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -616,12 +617,33 @@ func perform(infos Result, fn ResourceActorFunc) error {
 		return ErrNoObjectsVisited
 	}
 
-	for _, info := range infos {
-		if err := fn(info); err != nil {
+	errs := make(chan error)
+	go batchPerform(infos, fn, errs)
+
+	for range infos {
+		err := <-errs
+		if err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func batchPerform(infos Result, fn ResourceActorFunc, errs chan<- error) {
+	var kind string
+	var wg sync.WaitGroup
+	for _, info := range infos {
+		currentKind := info.Object.GetObjectKind().GroupVersionKind().Kind
+		if kind != currentKind {
+			wg.Wait()
+			kind = currentKind
+		}
+		wg.Add(1)
+		go func(i *resource.Info) {
+			errs <- fn(i)
+			wg.Done()
+		}(info)
+	}
 }
 
 func createResource(info *resource.Info) error {
