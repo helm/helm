@@ -63,16 +63,15 @@ func readDirNames(dirname string) ([]string, error) {
 
 // symwalk recursively descends path, calling walkFn.
 func symwalk(path string, info os.FileInfo, walkFn filepath.WalkFunc) error {
-	// Recursively walk symlinked directories.
+	// When a symlink is encountered, only replace the resolved info, don't
+	// walk the resolved symlink path since the walk should be as if path
+	// were the actual linked to path.
 	if IsSymlink(info) {
 		resolved, err := filepath.EvalSymlinks(path)
 		if err != nil {
 			return fmt.Errorf("error evaluating symlink %s: %s", path, err)
 		}
 		if info, err = os.Lstat(resolved); err != nil {
-			return err
-		}
-		if err := symwalk(resolved, info, walkFn); err != nil && err != filepath.SkipDir {
 			return err
 		}
 	}
