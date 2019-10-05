@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	"helm.sh/helm/pkg/chart"
+	"helm.sh/helm/v3/pkg/chart"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
