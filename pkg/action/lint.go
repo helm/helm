@@ -29,8 +29,6 @@ import (
 	"helm.sh/helm/v3/pkg/lint/support"
 )
 
-var errLintNoChart = errors.New("no chart found for linting (missing Chart.yaml)")
-
 // Lint is the action for checking that the semantics of a chart are well-formed.
 //
 // It provides the implementation of 'helm lint'.
@@ -56,24 +54,19 @@ func (l *Lint) Run(paths []string, vals map[string]interface{}) *LintResult {
 	if l.Strict {
 		lowestTolerance = support.WarningSev
 	}
-
 	result := &LintResult{}
 	for _, path := range paths {
 		linter, err := lintChart(path, vals, l.Namespace, l.Strict)
 		if err != nil {
-			if err == errLintNoChart {
-				result.Errors = append(result.Errors, err)
-			}
-			if linter.HighestSeverity >= lowestTolerance {
-				result.Errors = append(result.Errors, err)
-			}
-		} else {
-			result.Messages = append(result.Messages, linter.Messages...)
-			result.TotalChartsLinted++
-			for _, msg := range linter.Messages {
-				if msg.Severity == support.ErrorSev {
-					result.Errors = append(result.Errors, msg.Err)
-				}
+			result.Errors = append(result.Errors, err)
+			continue
+		}
+
+		result.Messages = append(result.Messages, linter.Messages...)
+		result.TotalChartsLinted++
+		for _, msg := range linter.Messages {
+			if msg.Severity >= lowestTolerance {
+				result.Errors = append(result.Errors, msg.Err)
 			}
 		}
 	}
@@ -87,18 +80,18 @@ func lintChart(path string, vals map[string]interface{}, namespace string, stric
 	if strings.HasSuffix(path, ".tgz") {
 		tempDir, err := ioutil.TempDir("", "helm-lint")
 		if err != nil {
-			return linter, err
+			return linter, errors.Wrap(err, "unable to create temp dir to extract tarball")
 		}
 		defer os.RemoveAll(tempDir)
 
 		file, err := os.Open(path)
 		if err != nil {
-			return linter, err
+			return linter, errors.Wrap(err, "unable to open tarball")
 		}
 		defer file.Close()
 
 		if err = chartutil.Expand(tempDir, file); err != nil {
-			return linter, err
+			return linter, errors.Wrap(err, "unable to extract tarball")
 		}
 
 		lastHyphenIndex := strings.LastIndex(filepath.Base(path), "-")
@@ -113,7 +106,7 @@ func lintChart(path string, vals map[string]interface{}, namespace string, stric
 
 	// Guard: Error out if this is not a chart.
 	if _, err := os.Stat(filepath.Join(chartPath, "Chart.yaml")); err != nil {
-		return linter, errLintNoChart
+		return linter, errors.Wrap(err, "unable to check Chart.yaml file in chart")
 	}
 
 	return lint.All(chartPath, vals, namespace, strict), nil

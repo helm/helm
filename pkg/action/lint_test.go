@@ -33,6 +33,8 @@ var (
 	chartSchemaNegative          = "../../cmd/helm/testdata/testcharts/chart-with-schema-negative"
 	chart1MultipleChartLint      = "../../cmd/helm/testdata/testcharts/multiplecharts-lint-chart-1"
 	chart2MultipleChartLint      = "../../cmd/helm/testdata/testcharts/multiplecharts-lint-chart-2"
+	corruptedTgzChart            = "../../cmd/helm/testdata/testcharts/corrupted-compressed-chart.tgz"
+	chartWithNoTemplatesDir      = "../../cmd/helm/testdata/testcharts/chart-with-no-templates-dir"
 )
 
 func TestLintChart(t *testing.T) {
@@ -59,6 +61,40 @@ func TestLintChart(t *testing.T) {
 	}
 }
 
+func TestNonExistentChart(t *testing.T) {
+	t.Run("should error out for non existent tgz chart", func(t *testing.T) {
+		testCharts := []string{"non-existent-chart.tgz"}
+		expectedError := "unable to open tarball: open non-existent-chart.tgz: no such file or directory"
+		testLint := NewLint()
+
+		result := testLint.Run(testCharts, values)
+		if len(result.Errors) != 1 {
+			t.Error("expected one error, but got", len(result.Errors))
+		}
+
+		actual := result.Errors[0].Error()
+		if actual != expectedError {
+			t.Errorf("expected '%s', but got '%s'", expectedError, actual)
+		}
+	})
+
+	t.Run("should error out for corrupted tgz chart", func(t *testing.T) {
+		testCharts := []string{corruptedTgzChart}
+		expectedEOFError := "unable to extract tarball: EOF"
+		testLint := NewLint()
+
+		result := testLint.Run(testCharts, values)
+		if len(result.Errors) != 1 {
+			t.Error("expected one error, but got", len(result.Errors))
+		}
+
+		actual := result.Errors[0].Error()
+		if actual != expectedEOFError {
+			t.Errorf("expected '%s', but got '%s'", expectedEOFError, actual)
+		}
+	})
+}
+
 func TestLint_MultipleCharts(t *testing.T) {
 	testCharts := []string{chart2MultipleChartLint, chart1MultipleChartLint}
 	testLint := NewLint()
@@ -73,4 +109,24 @@ func TestLint_EmptyResultErrors(t *testing.T) {
 	if result := testLint.Run(testCharts, values); len(result.Errors) > 0 {
 		t.Error("Expected no error, got more")
 	}
+}
+
+func TestLint_ChartWithWarnings(t *testing.T) {
+	t.Run("should pass when not strict", func(t *testing.T) {
+		testCharts := []string{chartWithNoTemplatesDir}
+		testLint := NewLint()
+		testLint.Strict = false
+		if result := testLint.Run(testCharts, values); len(result.Errors) > 0 {
+			t.Error("Expected no error, got more")
+		}
+	})
+
+	t.Run("should fail with errors when strict", func(t *testing.T) {
+		testCharts := []string{chartWithNoTemplatesDir}
+		testLint := NewLint()
+		testLint.Strict = true
+		if result := testLint.Run(testCharts, values); len(result.Errors) != 1 {
+			t.Error("expected one error, but got", len(result.Errors))
+		}
+	})
 }
