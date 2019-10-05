@@ -55,8 +55,11 @@ func TestCreate(t *testing.T) {
 		HelpersName,
 		IgnorefileName,
 		NotesName,
+		ServiceAccountName,
 		ServiceName,
 		TemplatesDir,
+		TemplatesTestsDir,
+		TestConnectionName,
 		ValuesfileName,
 	} {
 		if _, err := os.Stat(filepath.Join(dir, f)); err != nil {
