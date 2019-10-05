@@ -19,6 +19,9 @@ package action
 import (
 	"fmt"
 	"testing"
+	"time"
+
+	"helm.sh/helm/pkg/chart"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -153,6 +156,76 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 			return
 		}
 		is.Equal(release.StatusDeployed, updatedRes.Info.Status)
+		is.Equal(expectedValues, updatedRes.Config)
+	})
+
+	t.Run("reuse values should not install disabled charts", func(t *testing.T) {
+		upAction := upgradeAction(t)
+		chartDefaultValues := map[string]interface{}{
+			"subchart": map[string]interface{}{
+				"enabled": true,
+			},
+		}
+		dependency := chart.Dependency{
+			Name:       "subchart",
+			Version:    "0.1.0",
+			Repository: "http://some-repo.com",
+			Condition:  "subchart.enabled",
+		}
+		sampleChart := buildChart(
+			withName("sample"),
+			withValues(chartDefaultValues),
+			withMetadataDependency(dependency),
+		)
+		now := time.Now()
+		existingValues := map[string]interface{}{
+			"subchart": map[string]interface{}{
+				"enabled": false,
+			},
+		}
+		rel := &release.Release{
+			Name: "nuketown",
+			Info: &release.Info{
+				FirstDeployed: now,
+				LastDeployed:  now,
+				Status:        release.StatusDeployed,
+				Description:   "Named Release Stub",
+			},
+			Chart:   sampleChart,
+			Config:  existingValues,
+			Version: 1,
+		}
+		err := upAction.cfg.Releases.Create(rel)
+		is.NoError(err)
+
+		upAction.ReuseValues = true
+		sampleChartWithSubChart := buildChart(
+			withName(sampleChart.Name()),
+			withValues(sampleChart.Values),
+			withDependency(withName("subchart")),
+			withMetadataDependency(dependency),
+		)
+		// reusing values and upgrading
+		res, err := upAction.Run(rel.Name, sampleChartWithSubChart, map[string]interface{}{})
+		is.NoError(err)
+
+		// Now get the upgraded release
+		updatedRes, err := upAction.cfg.Releases.Get(res.Name, 2)
+		is.NoError(err)
+
+		if updatedRes == nil {
+			is.Fail("Updated Release is nil")
+			return
+		}
+		is.Equal(release.StatusDeployed, updatedRes.Info.Status)
+		is.Equal(0, len(updatedRes.Chart.Dependencies()), "expected 0 dependencies")
+
+		expectedValues := map[string]interface{}{
+			"subchart": map[string]interface{}{
+				"enabled": false,
+				"global":  map[string]interface{}{},
+			},
+		}
 		is.Equal(expectedValues, updatedRes.Config)
 	})
 }

@@ -166,8 +166,20 @@ func buildChart(opts ...chartOption) *chart.Chart {
 	return c.Chart
 }
 
+func withName(name string) chartOption {
+	return func(opts *chartOptions) {
+		opts.Metadata.Name = name
+	}
+}
+
 func withSampleValues() chartOption {
 	values := map[string]interface{}{"someKey": "someValue"}
+	return func(opts *chartOptions) {
+		opts.Values = values
+	}
+}
+
+func withValues(values map[string]interface{}) chartOption {
 	return func(opts *chartOptions) {
 		opts.Values = values
 	}
@@ -185,6 +197,12 @@ func withNotes(notes string) chartOption {
 func withDependency(dependencyOpts ...chartOption) chartOption {
 	return func(opts *chartOptions) {
 		opts.AddDependency(buildChart(dependencyOpts...))
+	}
+}
+
+func withMetadataDependency(dependency chart.Dependency) chartOption {
+	return func(opts *chartOptions) {
+		opts.Metadata.Dependencies = append(opts.Metadata.Dependencies, &dependency)
 	}
 }
 
