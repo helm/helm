@@ -25,7 +25,7 @@ import (
 
 func newPluginListCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "list",		
+		Use:   "list",
 		Aliases: []string{"ls"},
 		Short: "list installed Helm plugins",
 		RunE: func(cmd *cobra.Command, args []string) error {
