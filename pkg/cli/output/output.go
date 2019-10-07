@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package action
+package output
 
 import (
 	"encoding/json"
@@ -26,26 +26,26 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-// OutputFormat is a type for capturing supported output formats
-type OutputFormat string
+// Format is a type for capturing supported output formats
+type Format string
 
 const (
-	Table OutputFormat = "table"
-	JSON  OutputFormat = "json"
-	YAML  OutputFormat = "yaml"
+	Table Format = "table"
+	JSON  Format = "json"
+	YAML  Format = "yaml"
 )
 
 // ErrInvalidFormatType is returned when an unsupported format type is used
 var ErrInvalidFormatType = fmt.Errorf("invalid format type")
 
-// String returns the string reprsentation of the OutputFormat
-func (o OutputFormat) String() string {
+// String returns the string reprsentation of the Format
+func (o Format) String() string {
 	return string(o)
 }
 
 // Write the output in the given format to the io.Writer. Unsupported formats
 // will return an error
-func (o OutputFormat) Write(out io.Writer, w Writer) error {
+func (o Format) Write(out io.Writer, w Writer) error {
 	switch o {
 	case Table:
 		return w.WriteTable(out)
@@ -57,9 +57,9 @@ func (o OutputFormat) Write(out io.Writer, w Writer) error {
 	return ErrInvalidFormatType
 }
 
-// ParseOutputFormat takes a raw string and returns the matching OutputFormat.
+// ParseFormat takes a raw string and returns the matching Format.
 // If the format does not exists, ErrInvalidFormatType is returned
-func ParseOutputFormat(s string) (out OutputFormat, err error) {
+func ParseFormat(s string) (out Format, err error) {
 	switch s {
 	case Table.String():
 		out, err = Table, nil

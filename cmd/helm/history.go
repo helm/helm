@@ -27,6 +27,7 @@ import (
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/releaseutil"
 )
@@ -59,7 +60,7 @@ func newHistoryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// validate the output format first so we don't waste time running a
 			// request that we'll throw away
-			output, err := action.ParseOutputFormat(client.OutputFormat)
+			output, err := output.ParseFormat(client.OutputFormat)
 			if err != nil {
 				return err
 			}
@@ -92,11 +93,11 @@ type releaseInfo struct {
 type releaseHistory []releaseInfo
 
 func (r releaseHistory) WriteJSON(out io.Writer) error {
-	return action.EncodeJSON(out, r)
+	return output.EncodeJSON(out, r)
 }
 
 func (r releaseHistory) WriteYAML(out io.Writer) error {
-	return action.EncodeYAML(out, r)
+	return output.EncodeYAML(out, r)
 }
 
 func (r releaseHistory) WriteTable(out io.Writer) error {
@@ -105,7 +106,7 @@ func (r releaseHistory) WriteTable(out io.Writer) error {
 	for _, item := range r {
 		tbl.AddRow(item.Revision, item.Updated.Format(time.ANSIC), item.Status, item.Chart, item.AppVersion, item.Description)
 	}
-	return action.EncodeTable(out, tbl)
+	return output.EncodeTable(out, tbl)
 }
 
 func getHistory(client *action.History, name string) (releaseHistory, error) {

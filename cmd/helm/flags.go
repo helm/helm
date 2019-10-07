@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/cli/values"
 )
 
@@ -53,5 +54,5 @@ func bindOutputFlag(cmd *cobra.Command, varRef *string) {
 	// NOTE(taylor): A possible refactor here is that we can implement all the
 	// validation for the OutputFormat type here so we don't have to do the
 	// parsing and checking in the command
-	cmd.Flags().StringVarP(varRef, outputFlag, "o", string(action.Table), fmt.Sprintf("prints the output in the specified format. Allowed values: %s, %s, %s", action.Table, action.JSON, action.YAML))
+	cmd.Flags().StringVarP(varRef, outputFlag, "o", output.Table.String(), fmt.Sprintf("prints the output in the specified format. Allowed values: %s, %s, %s", output.Table, output.JSON, output.YAML))
 }

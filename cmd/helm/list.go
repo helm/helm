@@ -26,6 +26,7 @@ import (
 
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/release"
 )
 
@@ -68,7 +69,7 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// validate the output format first so we don't waste time running a
 			// request that we'll throw away
-			output, err := action.ParseOutputFormat(client.OutputFormat)
+			output, err := output.ParseFormat(client.OutputFormat)
 			if err != nil {
 				return err
 			}
@@ -153,13 +154,13 @@ func (r *releaseListWriter) WriteTable(out io.Writer) error {
 	for _, r := range r.releases {
 		table.AddRow(r.Name, r.Namespace, r.Revision, r.Updated, r.Status, r.Chart, r.AppVersion)
 	}
-	return action.EncodeTable(out, table)
+	return output.EncodeTable(out, table)
 }
 
 func (r *releaseListWriter) WriteJSON(out io.Writer) error {
-	return action.EncodeJSON(out, r.releases)
+	return output.EncodeJSON(out, r.releases)
 }
 
 func (r *releaseListWriter) WriteYAML(out io.Writer) error {
-	return action.EncodeYAML(out, r.releases)
+	return output.EncodeYAML(out, r.releases)
 }

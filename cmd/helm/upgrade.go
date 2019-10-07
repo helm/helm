@@ -27,6 +27,7 @@ import (
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/storage/driver"
@@ -71,7 +72,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// validate the output format first so we don't waste time running a
 			// request that we'll throw away
-			output, err := action.ParseOutputFormat(client.OutputFormat)
+			outfmt, err := output.ParseFormat(client.OutputFormat)
 			if err != nil {
 				return err
 			}
@@ -100,7 +101,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				histClient.Max = 1
 				if _, err := histClient.Run(args[0]); err == driver.ErrReleaseNotFound {
 					// Only print this to stdout for table output
-					if output == action.Table {
+					if outfmt == output.Table {
 						fmt.Fprintf(out, "Release %q does not exist. Installing it now.\n", args[0])
 					}
 					instClient := action.NewInstall(cfg)
@@ -117,7 +118,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					if err != nil {
 						return err
 					}
-					return output.Write(out, &statusPrinter{rel, settings.Debug})
+					return outfmt.Write(out, &statusPrinter{rel, settings.Debug})
 				}
 			}
 
@@ -137,11 +138,11 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return errors.Wrap(err, "UPGRADE FAILED")
 			}
 
-			if output == action.Table {
+			if outfmt == output.Table {
 				fmt.Fprintf(out, "Release %q has been upgraded. Happy Helming!\n", args[0])
 			}
 
-			return output.Write(out, &statusPrinter{rel, settings.Debug})
+			return outfmt.Write(out, &statusPrinter{rel, settings.Debug})
 		},
 	}
 
