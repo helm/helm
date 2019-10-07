@@ -216,6 +216,31 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 	fmt.Fprintf(m.Out, "Saving %d charts\n", len(deps))
 	var saveError error
 	for _, dep := range deps {
+		// No repository means the chart is in charts directory
+		if dep.Repository == "" {
+			fmt.Fprintf(m.Out, "Dependency %s did not declare a repository. Assuming it exists in the charts directory\n", dep.Name)
+			chartPath := filepath.Join(tmpPath, dep.Name)
+			ch, err := chartutil.LoadDir(chartPath)
+			if err != nil {
+				return fmt.Errorf("Unable to load chart: %v", err)
+			}
+
+			constraint, err := semver.NewConstraint(dep.Version)
+			if err != nil {
+				return fmt.Errorf("Dependency %s has an invalid version/constraint format: %s", dep.Name, err)
+			}
+
+			v, err := semver.NewVersion(ch.Metadata.Version)
+			if err != nil {
+				return fmt.Errorf("Invalid version %s for dependency %s: %s", dep.Version, dep.Name, err)
+			}
+
+			if !constraint.Check(v) {
+				saveError = fmt.Errorf("Dependency %s at version %s does not satisfy the constraint %s", dep.Name, ch.Metadata.Version, dep.Version)
+				break
+			}
+			continue
+		}
 		if strings.HasPrefix(dep.Repository, "file://") {
 			if m.Debug {
 				fmt.Fprintf(m.Out, "Archiving %s from repo %s\n", dep.Name, dep.Repository)
@@ -258,8 +283,11 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 	if saveError == nil {
 		fmt.Fprintln(m.Out, "Deleting outdated charts")
 		for _, dep := range deps {
-			if err := m.safeDeleteDep(dep.Name, tmpPath); err != nil {
-				return err
+			// Chart from local charts directory stays in place
+			if dep.Repository != "" {
+				if err := m.safeDeleteDep(dep.Name, tmpPath); err != nil {
+					return err
+				}
 			}
 		}
 		if err := move(tmpPath, destPath); err != nil {
@@ -371,8 +399,9 @@ func (m *Manager) getRepoNames(deps []*chartutil.Dependency) (map[string]string,
 	// by Helm.
 	missing := []string{}
 	for _, dd := range deps {
+		// Don't map the repository, we don't need to download chart from charts directory
 		if dd.Repository == "" {
-			return nil, fmt.Errorf("no 'repository' field specified for dependency: %q", dd.Name)
+			continue
 		}
 		// if dep chart is from local path, verify the path is valid
 		if strings.HasPrefix(dd.Repository, "file://") {
@@ -662,4 +691,61 @@ func move(tmpPath, destPath string) error {
 		}
 	}
 	return nil
+}
+
+func copyFile(source string, destination string) (err error) {
+	sourceFile, err := os.Open(source)
+	if err != nil {
+		return err
+	}
+	defer sourceFile.Close()
+	destinationFile, err := os.Create(destination)
+	if err != nil {
+		return err
+	}
+	defer destinationFile.Close()
+	_, err = io.Copy(destinationFile, sourceFile)
+	if err == nil {
+		stats, err := os.Stat(source)
+		if err == nil {
+			return os.Chmod(destination, stats.Mode())
+		}
+	}
+	return err
+}
+
+func copyDir(source string, destination string) (err error) {
+	fi, err := os.Stat(source)
+	if err != nil {
+		return err
+	}
+	if !fi.IsDir() {
+		return fmt.Errorf("Source is not a directory")
+	}
+	_, err = os.Open(destination)
+	if !os.IsNotExist(err) {
+		return fmt.Errorf("Destination already exists")
+	}
+	err = os.MkdirAll(destination, fi.Mode())
+	if err != nil {
+		return err
+	}
+
+	entries, err := ioutil.ReadDir(source)
+	for _, entry := range entries {
+		sourceFile := source + "/" + entry.Name()
+		destinationFile := destination + "/" + entry.Name()
+		if entry.IsDir() {
+			err = copyDir(sourceFile, destinationFile)
+			if err != nil {
+				return err
+			}
+		} else {
+			err = copyFile(sourceFile, destinationFile)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return
 }

@@ -114,14 +114,6 @@ func TestGetRepoNames(t *testing.T) {
 			err: true,
 		},
 		{
-			name: "dependency entry missing 'repository' field -- e.g. spelled 'repo'",
-			req: []*chartutil.Dependency{
-				{Name: "dependency-missing-repository-field"},
-			},
-			err:         true,
-			expectedErr: "no 'repository' field specified for dependency: \"dependency-missing-repository-field\"",
-		},
-		{
 			name: "dependency repository is url but not exist in repos",
 			req: []*chartutil.Dependency{
 				{Name: "oedipus-rex", Repository: "http://example.com/test"},
@@ -155,6 +147,13 @@ func TestGetRepoNames(t *testing.T) {
 				{Name: "oedipus-rex", Repository: "@testing"},
 			},
 			expect: map[string]string{"oedipus-rex": "testing"},
+		},
+		{
+			name: "repo from local chart under charts path",
+			req: []*chartutil.Dependency{
+				{Name: "local-subchart", Repository: ""},
+			},
+			expect: map[string]string{},
 		},
 	}
 

@@ -53,6 +53,19 @@ func (r *Resolver) Resolve(reqs *chartutil.Requirements, repoNames map[string]st
 	locked := make([]*chartutil.Dependency, len(reqs.Dependencies))
 	missing := []string{}
 	for i, d := range reqs.Dependencies {
+		if d.Repository == "" {
+			// Local chart subfolder
+			if _, err := GetLocalPath(filepath.Join("charts", d.Name), r.chartpath); err != nil {
+				return nil, err
+			}
+
+			locked[i] = &chartutil.Dependency{
+				Name:       d.Name,
+				Repository: "",
+				Version:    d.Version,
+			}
+			continue
+		}
 		if strings.HasPrefix(d.Repository, "file://") {
 
 			if _, err := GetLocalPath(d.Repository, r.chartpath); err != nil {
