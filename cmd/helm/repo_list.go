@@ -32,6 +32,7 @@ func newRepoListCmd(out io.Writer) *cobra.Command {
 	var output string
 	cmd := &cobra.Command{
 		Use:   "list",
+		Aliases: []string{"ls"},
 		Short: "list chart repositories",
 		Args:  require.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
