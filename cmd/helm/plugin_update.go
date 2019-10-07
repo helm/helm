@@ -35,8 +35,9 @@ type pluginUpdateOptions struct {
 func newPluginUpdateCmd(out io.Writer) *cobra.Command {
 	o := &pluginUpdateOptions{}
 	cmd := &cobra.Command{
-		Use:   "update <plugin>...",
-		Short: "update one or more Helm plugins",
+		Use:     "update <plugin>...",
+		Aliases: []string{"up"},
+		Short:   "update one or more Helm plugins",
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			return o.complete(args)
 		},
