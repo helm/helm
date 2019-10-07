@@ -29,18 +29,12 @@ import (
 )
 
 func newRepoListCmd(out io.Writer) *cobra.Command {
-	var outputFormat string
+	var outfmt output.Format
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "list chart repositories",
 		Args:  require.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// validate the output format first so we don't waste time running a
-			// request that we'll throw away
-			outfmt, err := output.ParseFormat(outputFormat)
-			if err != nil {
-				return err
-			}
 			f, err := repo.LoadFile(settings.RepositoryConfig)
 			if isNotExist(err) || len(f.Repositories) == 0 {
 				return errors.New("no repositories to show")
@@ -50,7 +44,7 @@ func newRepoListCmd(out io.Writer) *cobra.Command {
 		},
 	}
 
-	bindOutputFlag(cmd, &outputFormat)
+	bindOutputFlag(cmd, &outfmt)
 
 	return cmd
 }

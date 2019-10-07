@@ -44,6 +44,7 @@ The status consists of:
 
 func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewStatus(cfg)
+	var outfmt output.Format
 
 	cmd := &cobra.Command{
 		Use:   "status RELEASE_NAME",
@@ -51,13 +52,6 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Long:  statusHelp,
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// validate the output format first so we don't waste time running a
-			// request that we'll throw away
-			outfmt, err := output.ParseFormat(client.OutputFormat)
-			if err != nil {
-				return err
-			}
-
 			rel, err := client.Run(args[0])
 			if err != nil {
 				return err
@@ -72,7 +66,7 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 	f := cmd.PersistentFlags()
 	f.IntVar(&client.Version, "revision", 0, "if set, display the status of the named release with revision")
-	bindOutputFlag(cmd, &client.OutputFormat)
+	bindOutputFlag(cmd, &outfmt)
 
 	return cmd
 }

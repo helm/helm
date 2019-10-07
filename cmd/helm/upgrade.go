@@ -63,6 +63,7 @@ set for a key called 'foo', the 'newbar' value would take precedence:
 func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewUpgrade(cfg)
 	valueOpts := &values.Options{}
+	var outfmt output.Format
 
 	cmd := &cobra.Command{
 		Use:   "upgrade [RELEASE] [CHART]",
@@ -70,13 +71,6 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Long:  upgradeDesc,
 		Args:  require.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// validate the output format first so we don't waste time running a
-			// request that we'll throw away
-			outfmt, err := output.ParseFormat(client.OutputFormat)
-			if err != nil {
-				return err
-			}
-
 			client.Namespace = getNamespace()
 
 			if client.Version == "" && client.Devel {
@@ -164,7 +158,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.SubNotes, "render-subchart-notes", false, "if set, render subchart notes along with the parent")
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 	addValueOptionsFlags(f, valueOpts)
-	bindOutputFlag(cmd, &client.OutputFormat)
+	bindOutputFlag(cmd, &outfmt)
 
 	return cmd
 }

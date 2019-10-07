@@ -49,10 +49,34 @@ func addChartPathOptionsFlags(f *pflag.FlagSet, c *action.ChartPathOptions) {
 }
 
 // bindOutputFlag will add the output flag to the given command and bind the
-// value to the given string pointer
-func bindOutputFlag(cmd *cobra.Command, varRef *string) {
-	// NOTE(taylor): A possible refactor here is that we can implement all the
-	// validation for the OutputFormat type here so we don't have to do the
-	// parsing and checking in the command
-	cmd.Flags().StringVarP(varRef, outputFlag, "o", output.Table.String(), fmt.Sprintf("prints the output in the specified format. Allowed values: %s, %s, %s", output.Table, output.JSON, output.YAML))
+// value to the given format pointer
+func bindOutputFlag(cmd *cobra.Command, varRef *output.Format) {
+	cmd.Flags().VarP(newOutputValue(output.Table, varRef), outputFlag, "o", fmt.Sprintf("prints the output in the specified format. Allowed values: %s, %s, %s", output.Table, output.JSON, output.YAML))
+}
+
+type outputValue output.Format
+
+func newOutputValue(defaultValue output.Format, p *output.Format) *outputValue {
+	*p = defaultValue
+	return (*outputValue)(p)
+}
+
+func (o *outputValue) String() string {
+	// It is much cleaner looking (and technically less allocations) to just
+	// convert to a string rather than type asserting to the underlying
+	// output.Format
+	return string(*o)
+}
+
+func (o *outputValue) Type() string {
+	return "format"
+}
+
+func (o *outputValue) Set(s string) error {
+	outfmt, err := output.ParseFormat(s)
+	if err != nil {
+		return err
+	}
+	*o = outputValue(outfmt)
+	return nil
 }

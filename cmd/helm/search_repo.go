@@ -51,7 +51,7 @@ type searchRepoOptions struct {
 	maxColWidth  uint
 	repoFile     string
 	repoCacheDir string
-	outputFormat string
+	outputFormat output.Format
 }
 
 func newSearchRepoCmd(out io.Writer) *cobra.Command {
@@ -79,13 +79,6 @@ func newSearchRepoCmd(out io.Writer) *cobra.Command {
 }
 
 func (o *searchRepoOptions) run(out io.Writer, args []string) error {
-	// validate the output format first so we don't waste time running a
-	// request that we'll throw away
-	outfmt, err := output.ParseFormat(o.outputFormat)
-	if err != nil {
-		return err
-	}
-
 	index, err := o.buildIndex(out)
 	if err != nil {
 		return err
@@ -108,7 +101,7 @@ func (o *searchRepoOptions) run(out io.Writer, args []string) error {
 		return err
 	}
 
-	return outfmt.Write(out, &repoSearchWriter{data, o.maxColWidth})
+	return o.outputFormat.Write(out, &repoSearchWriter{data, o.maxColWidth})
 }
 
 func (o *searchRepoOptions) applyConstraint(res []*search.Result) ([]*search.Result, error) {

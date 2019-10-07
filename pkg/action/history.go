@@ -28,8 +28,8 @@ import (
 type History struct {
 	cfg *Configuration
 
-	Max          int
-	OutputFormat string
+	Max     int
+	Version int
 }
 
 // NewHistory creates a new History object with the given configuration.

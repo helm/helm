@@ -44,7 +44,7 @@ Helm Hub. You can find it at https://github.com/helm/monocular
 type searchHubOptions struct {
 	searchEndpoint string
 	maxColWidth    uint
-	outputFormat   string
+	outputFormat   output.Format
 }
 
 func newSearchHubCmd(out io.Writer) *cobra.Command {
@@ -68,13 +68,6 @@ func newSearchHubCmd(out io.Writer) *cobra.Command {
 }
 
 func (o *searchHubOptions) run(out io.Writer, args []string) error {
-	// validate the output format first so we don't waste time running a
-	// request that we'll throw away
-	outfmt, err := output.ParseFormat(o.outputFormat)
-	if err != nil {
-		return err
-	}
-
 	c, err := monocular.New(o.searchEndpoint)
 	if err != nil {
 		return errors.Wrap(err, fmt.Sprintf("unable to create connection to %q", o.searchEndpoint))
@@ -87,7 +80,7 @@ func (o *searchHubOptions) run(out io.Writer, args []string) error {
 		return fmt.Errorf("unable to perform search against %q", o.searchEndpoint)
 	}
 
-	return outfmt.Write(out, newHubSearchWriter(results, o.searchEndpoint, o.maxColWidth))
+	return o.outputFormat.Write(out, newHubSearchWriter(results, o.searchEndpoint, o.maxColWidth))
 }
 
 type hubChartElement struct {

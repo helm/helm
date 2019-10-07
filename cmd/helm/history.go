@@ -50,6 +50,7 @@ The historical release set is printed as a formatted table, e.g:
 
 func newHistoryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewHistory(cfg)
+	var outfmt output.Format
 
 	cmd := &cobra.Command{
 		Use:     "history RELEASE_NAME",
@@ -58,25 +59,18 @@ func newHistoryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Aliases: []string{"hist"},
 		Args:    require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// validate the output format first so we don't waste time running a
-			// request that we'll throw away
-			output, err := output.ParseFormat(client.OutputFormat)
-			if err != nil {
-				return err
-			}
-
 			history, err := getHistory(client, args[0])
 			if err != nil {
 				return err
 			}
 
-			return output.Write(out, history)
+			return outfmt.Write(out, history)
 		},
 	}
 
 	f := cmd.Flags()
 	f.IntVar(&client.Max, "max", 256, "maximum number of revision to include in history")
-	bindOutputFlag(cmd, &client.OutputFormat)
+	bindOutputFlag(cmd, &outfmt)
 
 	return cmd
 }
