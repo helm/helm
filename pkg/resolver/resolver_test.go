@@ -107,12 +107,12 @@ func TestResolve(t *testing.T) {
 			name: "repo from valid path under charts path",
 			req: &chartutil.Requirements{
 				Dependencies: []*chartutil.Dependency{
-					{Name: "inexistentdependency", Repository: "", Version: "0.1.0"},
+					{Name: "nonexistentdependency", Repository: "", Version: "0.1.0"},
 				},
 			},
 			expect: &chartutil.RequirementsLock{
 				Dependencies: []*chartutil.Dependency{
-					{Name: "inexistentlocaldependency", Repository: "", Version: "0.1.0"},
+					{Name: "nonexistentlocaldependency", Repository: "", Version: "0.1.0"},
 				},
 			},
 			err: true,
