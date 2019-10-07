@@ -218,10 +218,11 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 	for _, dep := range deps {
 		// No repository means the chart is in charts directory
 		if dep.Repository == "" {
+			fmt.Fprintf(m.Out, "Dependency %s did not declare a repository. Assuming it exists in the charts directory\n", dep.Name)
 			chartPath := filepath.Join(tmpPath, dep.Name)
 			ch, err := chartutil.LoadDir(chartPath)
 			if err != nil {
-				return fmt.Errorf("Unable to load local chart: %v", err)
+				return fmt.Errorf("Unable to load chart: %v", err)
 			}
 
 			constraint, err := semver.NewConstraint(dep.Version)
@@ -231,11 +232,11 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 
 			v, err := semver.NewVersion(ch.Metadata.Version)
 			if err != nil {
-				return fmt.Errorf("Chart %s has an invalid version format: %s", dep.Name, err)
+				return fmt.Errorf("Invalid version %s for dependency %s: %s", dep.Version, dep.Name, err)
 			}
 
 			if !constraint.Check(v) {
-				saveError = fmt.Errorf("Can't get a valid version for dependency %s", dep.Name)
+				saveError = fmt.Errorf("Dependency %s at version %s does not satisfy the constraint %s", dep.Name, ch.Metadata.Version, dep.Version)
 				break
 			}
 			continue
