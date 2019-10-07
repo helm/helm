@@ -31,10 +31,10 @@ import (
 func newRepoListCmd(out io.Writer) *cobra.Command {
 	var output string
 	cmd := &cobra.Command{
-		Use:   "list",
+		Use:     "list",
 		Aliases: []string{"ls"},
-		Short: "list chart repositories",
-		Args:  require.NoArgs,
+		Short:   "list chart repositories",
+		Args:    require.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// validate the output format first so we don't waste time running a
 			// request that we'll throw away
