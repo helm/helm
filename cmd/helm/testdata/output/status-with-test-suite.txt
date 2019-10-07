@@ -1,14 +1,15 @@
 NAME: flummoxed-chickadee
-LAST DEPLOYED: 2016-01-16 00:00:00 +0000 UTC
+LAST DEPLOYED: Sat Jan 16 00:00:00 2016
 NAMESPACE: default
 STATUS: deployed
+REVISION: 0
 TEST SUITE:     passing-test
-Last Started:   2006-01-02 15:04:05 +0000 UTC
-Last Completed: 2006-01-02 15:04:07 +0000 UTC
+Last Started:   Mon Jan  2 15:04:05 2006
+Last Completed: Mon Jan  2 15:04:07 2006
 Phase:          Succeeded
 
 TEST SUITE:     failing-test
-Last Started:   2006-01-02 15:10:05 +0000 UTC
-Last Completed: 2006-01-02 15:10:07 +0000 UTC
+Last Started:   Mon Jan  2 15:10:05 2006
+Last Completed: Mon Jan  2 15:10:07 2006
 Phase:          Failed
 

@@ -19,58 +19,7 @@ package main
 import (
 	"io"
 	"text/template"
-	"time"
-
-	"sigs.k8s.io/yaml"
-
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/release"
 )
-
-var printReleaseTemplate = `REVISION: {{.Release.Version}}
-RELEASED: {{.ReleaseDate}}
-CHART: {{.Release.Chart.Metadata.Name}}-{{.Release.Chart.Metadata.Version}}
-USER-SUPPLIED VALUES:
-{{.Config}}
-COMPUTED VALUES:
-{{.ComputedValues}}
-HOOKS:
-{{- range .Release.Hooks }}
----
-# {{.Name}}
-{{.Manifest}}
-{{- end }}
-MANIFEST:
-{{.Release.Manifest}}
-`
-
-func printRelease(out io.Writer, rel *release.Release) error {
-	if rel == nil {
-		return nil
-	}
-
-	cfg, err := chartutil.CoalesceValues(rel.Chart, rel.Config)
-	if err != nil {
-		return err
-	}
-	computed, err := cfg.YAML()
-	if err != nil {
-		return err
-	}
-
-	config, err := yaml.Marshal(rel.Config)
-	if err != nil {
-		return err
-	}
-
-	data := map[string]interface{}{
-		"Release":        rel,
-		"Config":         string(config),
-		"ComputedValues": computed,
-		"ReleaseDate":    rel.Info.LastDeployed.Format(time.ANSIC),
-	}
-	return tpl(printReleaseTemplate, data, out)
-}
 
 func tpl(t string, vals map[string]interface{}, out io.Writer) error {
 	tt, err := template.New("_").Parse(t)

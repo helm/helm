@@ -27,6 +27,7 @@ import (
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/storage/driver"
@@ -62,6 +63,7 @@ set for a key called 'foo', the 'newbar' value would take precedence:
 func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewUpgrade(cfg)
 	valueOpts := &values.Options{}
+	var outfmt output.Format
 
 	cmd := &cobra.Command{
 		Use:   "upgrade [RELEASE] [CHART]",
@@ -69,13 +71,6 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Long:  upgradeDesc,
 		Args:  require.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// validate the output format first so we don't waste time running a
-			// request that we'll throw away
-			output, err := action.ParseOutputFormat(client.OutputFormat)
-			if err != nil {
-				return err
-			}
-
 			client.Namespace = getNamespace()
 
 			if client.Version == "" && client.Devel {
@@ -99,7 +94,10 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				histClient := action.NewHistory(cfg)
 				histClient.Max = 1
 				if _, err := histClient.Run(args[0]); err == driver.ErrReleaseNotFound {
-					fmt.Fprintf(out, "Release %q does not exist. Installing it now.\n", args[0])
+					// Only print this to stdout for table output
+					if outfmt == output.Table {
+						fmt.Fprintf(out, "Release %q does not exist. Installing it now.\n", args[0])
+					}
 					instClient := action.NewInstall(cfg)
 					instClient.ChartPathOptions = client.ChartPathOptions
 					instClient.DryRun = client.DryRun
@@ -114,7 +112,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					if err != nil {
 						return err
 					}
-					return output.Write(out, &statusPrinter{rel})
+					return outfmt.Write(out, &statusPrinter{rel, settings.Debug})
 				}
 			}
 
@@ -129,27 +127,16 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				}
 			}
 
-			resp, err := client.Run(args[0], ch, vals)
+			rel, err := client.Run(args[0], ch, vals)
 			if err != nil {
 				return errors.Wrap(err, "UPGRADE FAILED")
 			}
 
-			if settings.Debug {
-				action.PrintRelease(out, resp)
-			}
-
-			if output == action.Table {
+			if outfmt == output.Table {
 				fmt.Fprintf(out, "Release %q has been upgraded. Happy Helming!\n", args[0])
 			}
 
-			// Print the status like status command does
-			statusClient := action.NewStatus(cfg)
-			rel, err := statusClient.Run(args[0])
-			if err != nil {
-				return err
-			}
-
-			return output.Write(out, &statusPrinter{rel})
+			return outfmt.Write(out, &statusPrinter{rel, settings.Debug})
 		},
 	}
 
@@ -171,7 +158,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.SubNotes, "render-subchart-notes", false, "if set, render subchart notes along with the parent")
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 	addValueOptionsFlags(f, valueOpts)
-	bindOutputFlag(cmd, &client.OutputFormat)
+	bindOutputFlag(cmd, &outfmt)
 
 	return cmd
 }

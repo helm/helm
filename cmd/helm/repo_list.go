@@ -24,24 +24,18 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/repo"
 )
 
 func newRepoListCmd(out io.Writer) *cobra.Command {
-	var output string
+	var outfmt output.Format
 	cmd := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"ls"},
 		Short:   "list chart repositories",
 		Args:    require.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// validate the output format first so we don't waste time running a
-			// request that we'll throw away
-			outfmt, err := action.ParseOutputFormat(output)
-			if err != nil {
-				return err
-			}
 			f, err := repo.LoadFile(settings.RepositoryConfig)
 			if isNotExist(err) || len(f.Repositories) == 0 {
 				return errors.New("no repositories to show")
@@ -51,7 +45,7 @@ func newRepoListCmd(out io.Writer) *cobra.Command {
 		},
 	}
 
-	bindOutputFlag(cmd, &output)
+	bindOutputFlag(cmd, &outfmt)
 
 	return cmd
 }
@@ -71,18 +65,18 @@ func (r *repoListWriter) WriteTable(out io.Writer) error {
 	for _, re := range r.repos {
 		table.AddRow(re.Name, re.URL)
 	}
-	return action.EncodeTable(out, table)
+	return output.EncodeTable(out, table)
 }
 
 func (r *repoListWriter) WriteJSON(out io.Writer) error {
-	return r.encodeByFormat(out, action.JSON)
+	return r.encodeByFormat(out, output.JSON)
 }
 
 func (r *repoListWriter) WriteYAML(out io.Writer) error {
-	return r.encodeByFormat(out, action.YAML)
+	return r.encodeByFormat(out, output.YAML)
 }
 
-func (r *repoListWriter) encodeByFormat(out io.Writer, format action.OutputFormat) error {
+func (r *repoListWriter) encodeByFormat(out io.Writer, format output.Format) error {
 	// Initialize the array so no results returns an empty array instead of null
 	repolist := make([]repositoryElement, 0, len(r.repos))
 
@@ -91,10 +85,10 @@ func (r *repoListWriter) encodeByFormat(out io.Writer, format action.OutputForma
 	}
 
 	switch format {
-	case action.JSON:
-		return action.EncodeJSON(out, repolist)
-	case action.YAML:
-		return action.EncodeYAML(out, repolist)
+	case output.JSON:
+		return output.EncodeJSON(out, repolist)
+	case output.YAML:
+		return output.EncodeYAML(out, repolist)
 	}
 
 	// Because this is a non-exported function and only called internally by

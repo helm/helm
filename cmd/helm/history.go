@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
@@ -26,6 +27,7 @@ import (
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/releaseutil"
 )
@@ -48,6 +50,7 @@ The historical release set is printed as a formatted table, e.g:
 
 func newHistoryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewHistory(cfg)
+	var outfmt output.Format
 
 	cmd := &cobra.Command{
 		Use:     "history RELEASE_NAME",
@@ -56,55 +59,48 @@ func newHistoryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Aliases: []string{"hist"},
 		Args:    require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// validate the output format first so we don't waste time running a
-			// request that we'll throw away
-			output, err := action.ParseOutputFormat(client.OutputFormat)
-			if err != nil {
-				return err
-			}
-
 			history, err := getHistory(client, args[0])
 			if err != nil {
 				return err
 			}
 
-			return output.Write(out, history)
+			return outfmt.Write(out, history)
 		},
 	}
 
 	f := cmd.Flags()
 	f.IntVar(&client.Max, "max", 256, "maximum number of revision to include in history")
-	bindOutputFlag(cmd, &client.OutputFormat)
+	bindOutputFlag(cmd, &outfmt)
 
 	return cmd
 }
 
 type releaseInfo struct {
-	Revision    int    `json:"revision"`
-	Updated     string `json:"updated"`
-	Status      string `json:"status"`
-	Chart       string `json:"chart"`
-	AppVersion  string `json:"app_version"`
-	Description string `json:"description"`
+	Revision    int       `json:"revision"`
+	Updated     time.Time `json:"updated"`
+	Status      string    `json:"status"`
+	Chart       string    `json:"chart"`
+	AppVersion  string    `json:"app_version"`
+	Description string    `json:"description"`
 }
 
 type releaseHistory []releaseInfo
 
 func (r releaseHistory) WriteJSON(out io.Writer) error {
-	return action.EncodeJSON(out, r)
+	return output.EncodeJSON(out, r)
 }
 
 func (r releaseHistory) WriteYAML(out io.Writer) error {
-	return action.EncodeYAML(out, r)
+	return output.EncodeYAML(out, r)
 }
 
 func (r releaseHistory) WriteTable(out io.Writer) error {
 	tbl := uitable.New()
 	tbl.AddRow("REVISION", "UPDATED", "STATUS", "CHART", "APP VERSION", "DESCRIPTION")
 	for _, item := range r {
-		tbl.AddRow(item.Revision, item.Updated, item.Status, item.Chart, item.AppVersion, item.Description)
+		tbl.AddRow(item.Revision, item.Updated.Format(time.ANSIC), item.Status, item.Chart, item.AppVersion, item.Description)
 	}
-	return action.EncodeTable(out, tbl)
+	return output.EncodeTable(out, tbl)
 }
 
 func getHistory(client *action.History, name string) (releaseHistory, error) {
@@ -146,7 +142,7 @@ func getReleaseHistory(rls []*release.Release) (history releaseHistory) {
 			Description: d,
 		}
 		if !r.Info.LastDeployed.IsZero() {
-			rInfo.Updated = r.Info.LastDeployed.String()
+			rInfo.Updated = r.Info.LastDeployed
 
 		}
 		history = append(history, rInfo)

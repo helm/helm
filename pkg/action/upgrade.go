@@ -57,7 +57,6 @@ type Upgrade struct {
 	MaxHistory    int
 	Atomic        bool
 	CleanupOnFail bool
-	OutputFormat  string
 	SubNotes      bool
 }
 

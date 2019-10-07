@@ -28,6 +28,7 @@ import (
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/downloader"
 	"helm.sh/helm/v3/pkg/getter"
@@ -104,6 +105,7 @@ charts in a repository, use 'helm search'.
 func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewInstall(cfg)
 	valueOpts := &values.Options{}
+	var outfmt output.Format
 
 	cmd := &cobra.Command{
 		Use:   "install [NAME] [CHART]",
@@ -111,24 +113,17 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Long:  installDesc,
 		Args:  require.MinimumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
-			// validate the output format first so we don't waste time running a
-			// request that we'll throw away
-			output, err := action.ParseOutputFormat(client.OutputFormat)
-			if err != nil {
-				return err
-			}
-
 			rel, err := runInstall(args, client, valueOpts, out)
 			if err != nil {
 				return err
 			}
 
-			return output.Write(out, &statusPrinter{rel})
+			return outfmt.Write(out, &statusPrinter{rel, settings.Debug})
 		},
 	}
 
 	addInstallFlags(cmd.Flags(), client, valueOpts)
-	bindOutputFlag(cmd, &client.OutputFormat)
+	bindOutputFlag(cmd, &outfmt)
 
 	return cmd
 }

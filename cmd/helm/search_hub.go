@@ -26,7 +26,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/internal/monocular"
-	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/cli/output"
 )
 
 const searchHubDesc = `
@@ -44,7 +44,7 @@ Helm Hub. You can find it at https://github.com/helm/monocular
 type searchHubOptions struct {
 	searchEndpoint string
 	maxColWidth    uint
-	outputFormat   string
+	outputFormat   output.Format
 }
 
 func newSearchHubCmd(out io.Writer) *cobra.Command {
@@ -68,13 +68,6 @@ func newSearchHubCmd(out io.Writer) *cobra.Command {
 }
 
 func (o *searchHubOptions) run(out io.Writer, args []string) error {
-	// validate the output format first so we don't waste time running a
-	// request that we'll throw away
-	outfmt, err := action.ParseOutputFormat(o.outputFormat)
-	if err != nil {
-		return err
-	}
-
 	c, err := monocular.New(o.searchEndpoint)
 	if err != nil {
 		return errors.Wrap(err, fmt.Sprintf("unable to create connection to %q", o.searchEndpoint))
@@ -87,7 +80,7 @@ func (o *searchHubOptions) run(out io.Writer, args []string) error {
 		return fmt.Errorf("unable to perform search against %q", o.searchEndpoint)
 	}
 
-	return outfmt.Write(out, newHubSearchWriter(results, o.searchEndpoint, o.maxColWidth))
+	return o.outputFormat.Write(out, newHubSearchWriter(results, o.searchEndpoint, o.maxColWidth))
 }
 
 type hubChartElement struct {
@@ -125,18 +118,18 @@ func (h *hubSearchWriter) WriteTable(out io.Writer) error {
 	for _, r := range h.elements {
 		table.AddRow(r.URL, r.Version, r.AppVersion, r.Description)
 	}
-	return action.EncodeTable(out, table)
+	return output.EncodeTable(out, table)
 }
 
 func (h *hubSearchWriter) WriteJSON(out io.Writer) error {
-	return h.encodeByFormat(out, action.JSON)
+	return h.encodeByFormat(out, output.JSON)
 }
 
 func (h *hubSearchWriter) WriteYAML(out io.Writer) error {
-	return h.encodeByFormat(out, action.YAML)
+	return h.encodeByFormat(out, output.YAML)
 }
 
-func (h *hubSearchWriter) encodeByFormat(out io.Writer, format action.OutputFormat) error {
+func (h *hubSearchWriter) encodeByFormat(out io.Writer, format output.Format) error {
 	// Initialize the array so no results returns an empty array instead of null
 	chartList := make([]hubChartElement, 0, len(h.elements))
 
@@ -145,10 +138,10 @@ func (h *hubSearchWriter) encodeByFormat(out io.Writer, format action.OutputForm
 	}
 
 	switch format {
-	case action.JSON:
-		return action.EncodeJSON(out, chartList)
-	case action.YAML:
-		return action.EncodeYAML(out, chartList)
+	case output.JSON:
+		return output.EncodeJSON(out, chartList)
+	case output.YAML:
+		return output.EncodeYAML(out, chartList)
 	}
 
 	// Because this is a non-exported function and only called internally by

@@ -82,7 +82,6 @@ type Install struct {
 	OutputDir        string
 	Atomic           bool
 	SkipCRDs         bool
-	OutputFormat     string
 	SubNotes         bool
 }
 

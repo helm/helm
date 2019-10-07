@@ -26,8 +26,7 @@ import (
 type Status struct {
 	cfg *Configuration
 
-	Version      int
-	OutputFormat string
+	Version int
 }
 
 // NewStatus creates a new Status object with the given configuration.

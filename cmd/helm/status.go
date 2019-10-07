@@ -17,12 +17,17 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"io"
+	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/release"
 )
 
@@ -39,6 +44,7 @@ The status consists of:
 
 func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewStatus(cfg)
+	var outfmt output.Format
 
 	cmd := &cobra.Command{
 		Use:   "status RELEASE_NAME",
@@ -46,13 +52,6 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Long:  statusHelp,
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// validate the output format first so we don't waste time running a
-			// request that we'll throw away
-			outfmt, err := action.ParseOutputFormat(client.OutputFormat)
-			if err != nil {
-				return err
-			}
-
 			rel, err := client.Run(args[0])
 			if err != nil {
 				return err
@@ -61,30 +60,105 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			// strip chart metadata from the output
 			rel.Chart = nil
 
-			return outfmt.Write(out, &statusPrinter{rel})
+			return outfmt.Write(out, &statusPrinter{rel, false})
 		},
 	}
 
 	f := cmd.PersistentFlags()
 	f.IntVar(&client.Version, "revision", 0, "if set, display the status of the named release with revision")
-	bindOutputFlag(cmd, &client.OutputFormat)
+	bindOutputFlag(cmd, &outfmt)
 
 	return cmd
 }
 
 type statusPrinter struct {
 	release *release.Release
+	debug   bool
 }
 
 func (s statusPrinter) WriteJSON(out io.Writer) error {
-	return action.EncodeJSON(out, s.release)
+	return output.EncodeJSON(out, s.release)
 }
 
 func (s statusPrinter) WriteYAML(out io.Writer) error {
-	return action.EncodeYAML(out, s.release)
+	return output.EncodeYAML(out, s.release)
 }
 
 func (s statusPrinter) WriteTable(out io.Writer) error {
-	action.PrintRelease(out, s.release)
+	if s.release == nil {
+		return nil
+	}
+	fmt.Fprintf(out, "NAME: %s\n", s.release.Name)
+	if !s.release.Info.LastDeployed.IsZero() {
+		fmt.Fprintf(out, "LAST DEPLOYED: %s\n", s.release.Info.LastDeployed.Format(time.ANSIC))
+	}
+	fmt.Fprintf(out, "NAMESPACE: %s\n", s.release.Namespace)
+	fmt.Fprintf(out, "STATUS: %s\n", s.release.Info.Status.String())
+	fmt.Fprintf(out, "REVISION: %d\n", s.release.Version)
+
+	executions := executionsByHookEvent(s.release)
+	if tests, ok := executions[release.HookTest]; ok {
+		for _, h := range tests {
+			// Don't print anything if hook has not been initiated
+			if h.LastRun.StartedAt.IsZero() {
+				continue
+			}
+			fmt.Fprintf(out, "TEST SUITE:     %s\n%s\n%s\n%s\n\n",
+				h.Name,
+				fmt.Sprintf("Last Started:   %s", h.LastRun.StartedAt.Format(time.ANSIC)),
+				fmt.Sprintf("Last Completed: %s", h.LastRun.CompletedAt.Format(time.ANSIC)),
+				fmt.Sprintf("Phase:          %s", h.LastRun.Phase),
+			)
+		}
+	}
+
+	if s.debug {
+		fmt.Fprintln(out, "USER-SUPPLIED VALUES:")
+		err := output.EncodeYAML(out, s.release.Config)
+		if err != nil {
+			return err
+		}
+		// Print an extra newline
+		fmt.Fprintln(out)
+
+		cfg, err := chartutil.CoalesceValues(s.release.Chart, s.release.Config)
+		if err != nil {
+			return err
+		}
+
+		fmt.Fprintln(out, "COMPUTED VALUES:")
+		err = output.EncodeYAML(out, cfg.AsMap())
+		if err != nil {
+			return err
+		}
+		// Print an extra newline
+		fmt.Fprintln(out)
+	}
+
+	if strings.EqualFold(s.release.Info.Description, "Dry run complete") || s.debug {
+		fmt.Fprintln(out, "HOOKS:")
+		for _, h := range s.release.Hooks {
+			fmt.Fprintf(out, "---\n# Source: %s\n%s\n", h.Path, h.Manifest)
+		}
+		fmt.Fprintf(out, "MANIFEST:\n%s\n", s.release.Manifest)
+	}
+
+	if len(s.release.Info.Notes) > 0 {
+		fmt.Fprintf(out, "NOTES:\n%s\n", strings.TrimSpace(s.release.Info.Notes))
+	}
 	return nil
+}
+
+func executionsByHookEvent(rel *release.Release) map[release.HookEvent][]*release.Hook {
+	result := make(map[release.HookEvent][]*release.Hook)
+	for _, h := range rel.Hooks {
+		for _, e := range h.Events {
+			executions, ok := result[e]
+			if !ok {
+				executions = []*release.Hook{}
+			}
+			result[e] = append(executions, h)
+		}
+	}
+	return result
 }

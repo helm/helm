@@ -26,6 +26,7 @@ import (
 
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/release"
 )
 
@@ -58,6 +59,7 @@ flag with the '--offset' flag allows you to page through results.
 
 func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewList(cfg)
+	var outfmt output.Format
 
 	cmd := &cobra.Command{
 		Use:     "list",
@@ -66,13 +68,6 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Aliases: []string{"ls"},
 		Args:    require.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// validate the output format first so we don't waste time running a
-			// request that we'll throw away
-			output, err := action.ParseOutputFormat(client.OutputFormat)
-			if err != nil {
-				return err
-			}
-
 			if client.AllNamespaces {
 				initActionConfig(cfg, true)
 			}
@@ -87,7 +82,7 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return err
 			}
 
-			return output.Write(out, newReleaseListWriter(results))
+			return outfmt.Write(out, newReleaseListWriter(results))
 		},
 	}
 
@@ -106,7 +101,7 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.IntVarP(&client.Limit, "max", "m", 256, "maximum number of releases to fetch")
 	f.IntVar(&client.Offset, "offset", 0, "next release name in the list, used to offset from start value")
 	f.StringVarP(&client.Filter, "filter", "f", "", "a regular expression (Perl compatible). Any releases that match the expression will be included in the results")
-	bindOutputFlag(cmd, &client.OutputFormat)
+	bindOutputFlag(cmd, &outfmt)
 
 	return cmd
 }
@@ -153,13 +148,13 @@ func (r *releaseListWriter) WriteTable(out io.Writer) error {
 	for _, r := range r.releases {
 		table.AddRow(r.Name, r.Namespace, r.Revision, r.Updated, r.Status, r.Chart, r.AppVersion)
 	}
-	return action.EncodeTable(out, table)
+	return output.EncodeTable(out, table)
 }
 
 func (r *releaseListWriter) WriteJSON(out io.Writer) error {
-	return action.EncodeJSON(out, r.releases)
+	return output.EncodeJSON(out, r.releases)
 }
 
 func (r *releaseListWriter) WriteYAML(out io.Writer) error {
-	return action.EncodeYAML(out, r.releases)
+	return output.EncodeYAML(out, r.releases)
 }

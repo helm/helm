@@ -125,7 +125,6 @@ type List struct {
 	Deployed     bool
 	Failed       bool
 	Pending      bool
-	OutputFormat string
 }
 
 // NewList constructs a new *List

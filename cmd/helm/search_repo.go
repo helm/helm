@@ -28,7 +28,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/search"
-	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/helmpath"
 	"helm.sh/helm/v3/pkg/repo"
 )
@@ -51,7 +51,7 @@ type searchRepoOptions struct {
 	maxColWidth  uint
 	repoFile     string
 	repoCacheDir string
-	outputFormat string
+	outputFormat output.Format
 }
 
 func newSearchRepoCmd(out io.Writer) *cobra.Command {
@@ -79,13 +79,6 @@ func newSearchRepoCmd(out io.Writer) *cobra.Command {
 }
 
 func (o *searchRepoOptions) run(out io.Writer, args []string) error {
-	// validate the output format first so we don't waste time running a
-	// request that we'll throw away
-	outfmt, err := action.ParseOutputFormat(o.outputFormat)
-	if err != nil {
-		return err
-	}
-
 	index, err := o.buildIndex(out)
 	if err != nil {
 		return err
@@ -108,7 +101,7 @@ func (o *searchRepoOptions) run(out io.Writer, args []string) error {
 		return err
 	}
 
-	return outfmt.Write(out, &repoSearchWriter{data, o.maxColWidth})
+	return o.outputFormat.Write(out, &repoSearchWriter{data, o.maxColWidth})
 }
 
 func (o *searchRepoOptions) applyConstraint(res []*search.Result) ([]*search.Result, error) {
@@ -188,18 +181,18 @@ func (r *repoSearchWriter) WriteTable(out io.Writer) error {
 	for _, r := range r.results {
 		table.AddRow(r.Name, r.Chart.Version, r.Chart.AppVersion, r.Chart.Description)
 	}
-	return action.EncodeTable(out, table)
+	return output.EncodeTable(out, table)
 }
 
 func (r *repoSearchWriter) WriteJSON(out io.Writer) error {
-	return r.encodeByFormat(out, action.JSON)
+	return r.encodeByFormat(out, output.JSON)
 }
 
 func (r *repoSearchWriter) WriteYAML(out io.Writer) error {
-	return r.encodeByFormat(out, action.YAML)
+	return r.encodeByFormat(out, output.YAML)
 }
 
-func (r *repoSearchWriter) encodeByFormat(out io.Writer, format action.OutputFormat) error {
+func (r *repoSearchWriter) encodeByFormat(out io.Writer, format output.Format) error {
 	// Initialize the array so no results returns an empty array instead of null
 	chartList := make([]repoChartElement, 0, len(r.results))
 
@@ -208,10 +201,10 @@ func (r *repoSearchWriter) encodeByFormat(out io.Writer, format action.OutputFor
 	}
 
 	switch format {
-	case action.JSON:
-		return action.EncodeJSON(out, chartList)
-	case action.YAML:
-		return action.EncodeYAML(out, chartList)
+	case output.JSON:
+		return output.EncodeJSON(out, chartList)
+	case output.YAML:
+		return output.EncodeYAML(out, chartList)
 	}
 
 	// Because this is a non-exported function and only called internally by

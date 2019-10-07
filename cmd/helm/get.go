@@ -23,6 +23,7 @@ import (
 
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/cli/output"
 )
 
 var getHelp = `
@@ -58,7 +59,8 @@ func newGetCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				}
 				return tpl(template, data, out)
 			}
-			return printRelease(out, res)
+
+			return output.Table.Write(out, &statusPrinter{res, true})
 		},
 	}
 
