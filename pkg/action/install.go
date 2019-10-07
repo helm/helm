@@ -84,6 +84,9 @@ type Install struct {
 	SkipCRDs         bool
 	OutputFormat     string
 	SubNotes         bool
+	// APIVersions allows a manual set of supported API Versions to be passed
+	// (for things like templating). These are ignored if ClientOnly is false
+	APIVersions chartutil.VersionSet
 }
 
 // ChartPathOptions captures common options used for controlling chart paths
@@ -175,8 +178,11 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 		// Add mock objects in here so it doesn't use Kube API server
 		// NOTE(bacongobbler): used for `helm template`
 		i.cfg.Capabilities = chartutil.DefaultCapabilities
+		i.cfg.Capabilities.APIVersions = append(i.cfg.Capabilities.APIVersions, i.APIVersions...)
 		i.cfg.KubeClient = &kubefake.PrintingKubeClient{Out: ioutil.Discard}
 		i.cfg.Releases = storage.Init(driver.NewMemory())
+	} else if !i.ClientOnly && len(i.APIVersions) > 0 {
+		i.cfg.Log("API Version list given outside of client only mode, this list will be ignored")
 	}
 
 	if err := chartutil.ProcessDependencies(chrt, vals); err != nil {
