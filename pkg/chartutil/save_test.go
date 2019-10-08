@@ -19,6 +19,7 @@ package chartutil
 import (
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -34,37 +35,41 @@ func TestSave(t *testing.T) {
 	}
 	defer os.RemoveAll(tmp)
 
-	c := &chart.Chart{
-		Metadata: &chart.Metadata{
-			APIVersion: chart.APIVersionV1,
-			Name:       "ahab",
-			Version:    "1.2.3",
-		},
-		Files: []*chart.File{
-			{Name: "scheherazade/shahryar.txt", Data: []byte("1,001 Nights")},
-		},
-	}
+	for _, dest := range []string{tmp, path.Join(tmp, "newdir")} {
+		t.Run("outDir="+dest, func(t *testing.T) {
+			c := &chart.Chart{
+				Metadata: &chart.Metadata{
+					APIVersion: chart.APIVersionV1,
+					Name:       "ahab",
+					Version:    "1.2.3",
+				},
+				Files: []*chart.File{
+					{Name: "scheherazade/shahryar.txt", Data: []byte("1,001 Nights")},
+				},
+			}
 
-	where, err := Save(c, tmp)
-	if err != nil {
-		t.Fatalf("Failed to save: %s", err)
-	}
-	if !strings.HasPrefix(where, tmp) {
-		t.Fatalf("Expected %q to start with %q", where, tmp)
-	}
-	if !strings.HasSuffix(where, ".tgz") {
-		t.Fatalf("Expected %q to end with .tgz", where)
-	}
+			where, err := Save(c, dest)
+			if err != nil {
+				t.Fatalf("Failed to save: %s", err)
+			}
+			if !strings.HasPrefix(where, dest) {
+				t.Fatalf("Expected %q to start with %q", where, dest)
+			}
+			if !strings.HasSuffix(where, ".tgz") {
+				t.Fatalf("Expected %q to end with .tgz", where)
+			}
 
-	c2, err := loader.LoadFile(where)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if c2.Name() != c.Name() {
-		t.Fatalf("Expected chart archive to have %q, got %q", c.Name(), c2.Name())
-	}
-	if len(c2.Files) != 1 || c2.Files[0].Name != "scheherazade/shahryar.txt" {
-		t.Fatal("Files data did not match")
+			c2, err := loader.LoadFile(where)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if c2.Name() != c.Name() {
+				t.Fatalf("Expected chart archive to have %q, got %q", c.Name(), c2.Name())
+			}
+			if len(c2.Files) != 1 || c2.Files[0].Name != "scheherazade/shahryar.txt" {
+				t.Fatal("Files data did not match")
+			}
+		})
 	}
 }
 

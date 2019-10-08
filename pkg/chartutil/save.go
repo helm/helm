@@ -93,7 +93,7 @@ func Save(c *chart.Chart, outDir string) (string, error) {
 	filename := fmt.Sprintf("%s-%s.tgz", c.Name(), c.Metadata.Version)
 	filename = filepath.Join(outDir, filename)
 	if stat, err := os.Stat(filepath.Dir(filename)); os.IsNotExist(err) {
-		if err := os.MkdirAll(filepath.Dir(filename), 0755); !os.IsExist(err) {
+		if err := os.MkdirAll(filepath.Dir(filename), 0755); err != nil {
 			return "", err
 		}
 	} else if !stat.IsDir() {
