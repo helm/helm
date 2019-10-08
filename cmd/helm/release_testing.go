@@ -41,7 +41,7 @@ type releaseTestCmd struct {
 	cleanup     bool
 	parallel    bool
 	maxParallel uint32
-	logs     bool
+	logs        bool
 }
 
 func newReleaseTestCmd(c helm.Interface, out io.Writer) *cobra.Command {
