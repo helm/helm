@@ -28,6 +28,7 @@ require (
 	github.com/containerd/containerd v1.3.0-beta.2.0.20190823190603-4a2f61c4f2b4
 	github.com/containerd/continuity v0.0.0-20181203112020-004b46473808
 	github.com/cpuguy83/go-md2man v1.0.10
+	github.com/cyphar/filepath-securejoin v0.2.2
 	github.com/davecgh/go-spew v1.1.1
 	github.com/deislabs/oras v0.7.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible

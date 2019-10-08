@@ -22,12 +22,16 @@ import (
 	"compress/gzip"
 	"io"
 	"os"
+	"path"
+	"regexp"
 	"strings"
 
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/pkg/chart"
 )
+
+var drivePathPattern = regexp.MustCompile(`^[a-zA-Z]:/`)
 
 // FileLoader loads a chart from a file
 type FileLoader string
@@ -54,11 +58,13 @@ func LoadFile(name string) (*chart.Chart, error) {
 	return LoadArchive(raw)
 }
 
-// LoadArchive loads from a reader containing a compressed tar archive.
-func LoadArchive(in io.Reader) (*chart.Chart, error) {
+// LoadArchiveFiles reads in files out of an archive into memory. This function
+// performs important path security checks and should always be used before
+// expanding a tarball
+func LoadArchiveFiles(in io.Reader) ([]*BufferedFile, error) {
 	unzipped, err := gzip.NewReader(in)
 	if err != nil {
-		return &chart.Chart{}, err
+		return nil, err
 	}
 	defer unzipped.Close()
 
@@ -71,7 +77,7 @@ func LoadArchive(in io.Reader) (*chart.Chart, error) {
 			break
 		}
 		if err != nil {
-			return &chart.Chart{}, err
+			return nil, err
 		}
 
 		if hd.FileInfo().IsDir() {
@@ -92,12 +98,33 @@ func LoadArchive(in io.Reader) (*chart.Chart, error) {
 		// Normalize the path to the / delimiter
 		n = strings.ReplaceAll(n, delimiter, "/")
 
+		if path.IsAbs(n) {
+			return nil, errors.New("chart illegally contains absolute paths")
+		}
+
+		n = path.Clean(n)
+		if n == "." {
+			// In this case, the original path was relative when it should have been absolute.
+			return nil, errors.Errorf("chart illegally contains content outside the base directory: %q", hd.Name)
+		}
+		if strings.HasPrefix(n, "..") {
+			return nil, errors.New("chart illegally references parent directory")
+		}
+
+		// In some particularly arcane acts of path creativity, it is possible to intermix
+		// UNIX and Windows style paths in such a way that you produce a result of the form
+		// c:/foo even after all the built-in absolute path checks. So we explicitly check
+		// for this condition.
+		if drivePathPattern.MatchString(n) {
+			return nil, errors.New("chart contains illegally named files")
+		}
+
 		if parts[0] == "Chart.yaml" {
 			return nil, errors.New("chart yaml not in base directory")
 		}
 
 		if _, err := io.Copy(b, tr); err != nil {
-			return &chart.Chart{}, err
+			return nil, err
 		}
 
 		files = append(files, &BufferedFile{Name: n, Data: b.Bytes()})
@@ -106,6 +133,15 @@ func LoadArchive(in io.Reader) (*chart.Chart, error) {
 
 	if len(files) == 0 {
 		return nil, errors.New("no files in chart archive")
+	}
+	return files, nil
+}
+
+// LoadArchive loads from a reader containing a compressed tar archive.
+func LoadArchive(in io.Reader) (*chart.Chart, error) {
+	files, err := LoadArchiveFiles(in)
+	if err != nil {
+		return nil, err
 	}
 
 	return LoadFiles(files)

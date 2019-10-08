@@ -17,58 +17,69 @@ limitations under the License.
 package chartutil
 
 import (
-	"archive/tar"
-	"compress/gzip"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+
+	securejoin "github.com/cyphar/filepath-securejoin"
+	"github.com/pkg/errors"
+	"sigs.k8s.io/yaml"
+
+	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/chart/loader"
 )
 
 // Expand uncompresses and extracts a chart into the specified directory.
 func Expand(dir string, r io.Reader) error {
-	gr, err := gzip.NewReader(r)
+	files, err := loader.LoadArchiveFiles(r)
 	if err != nil {
 		return err
 	}
-	defer gr.Close()
-	tr := tar.NewReader(gr)
-	for {
-		header, err := tr.Next()
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			return err
-		}
 
-		// split header name and create missing directories
-		d := filepath.Dir(header.Name)
-		fullDir := filepath.Join(dir, d)
-		_, err = os.Stat(fullDir)
-		if err != nil && d != "" {
-			if err := os.MkdirAll(fullDir, 0700); err != nil {
+	// Get the name of the chart
+	var chartName string
+	for _, file := range files {
+		if file.Name == "Chart.yaml" {
+			ch := &chart.Metadata{}
+			if err := yaml.Unmarshal(file.Data, ch); err != nil {
+				return errors.Wrap(err, "cannot load Chart.yaml")
+			}
+			if err != nil {
 				return err
 			}
+			chartName = ch.Name
 		}
+	}
+	if chartName == "" {
+		return errors.New("chart name not specified")
+	}
 
-		path := filepath.Clean(filepath.Join(dir, header.Name))
-		info := header.FileInfo()
-		if info.IsDir() {
-			if err = os.MkdirAll(path, info.Mode()); err != nil {
-				return err
-			}
-			continue
-		}
+	// Find the base directory
+	chartdir, err := securejoin.SecureJoin(dir, chartName)
+	if err != nil {
+		return err
+	}
 
-		file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, info.Mode())
+	// Copy all files verbatim. We don't parse these files because parsing can remove
+	// comments.
+	for _, file := range files {
+		outpath, err := securejoin.SecureJoin(chartdir, file.Name)
 		if err != nil {
 			return err
 		}
-		if _, err = io.Copy(file, tr); err != nil {
-			file.Close()
+
+		// Make sure the necessary subdirs get created.
+		basedir := filepath.Dir(outpath)
+		if err := os.MkdirAll(basedir, 0755); err != nil {
 			return err
 		}
-		file.Close()
+
+		if err := ioutil.WriteFile(outpath, file.Data, 0644); err != nil {
+			return err
+		}
 	}
+
 	return nil
 }
 
