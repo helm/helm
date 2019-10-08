@@ -61,7 +61,7 @@ func (w *waiter) waitForResources(created ResourceList) error {
 			)
 			switch value := AsVersioned(v).(type) {
 			case *corev1.Pod:
-				pod, err := w.c.CoreV1().Pods(value.Namespace).Get(value.Name, metav1.GetOptions{})
+				pod, err := w.c.CoreV1().Pods(v.Namespace).Get(v.Name, metav1.GetOptions{})
 				if err != nil || !w.isPodReady(pod) {
 					return false, err
 				}
@@ -83,7 +83,7 @@ func (w *waiter) waitForResources(created ResourceList) error {
 					return false, nil
 				}
 			case *corev1.PersistentVolumeClaim:
-				claim, err := w.c.CoreV1().PersistentVolumeClaims(value.Namespace).Get(value.Name, metav1.GetOptions{})
+				claim, err := w.c.CoreV1().PersistentVolumeClaims(v.Namespace).Get(v.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
 				}
@@ -91,7 +91,7 @@ func (w *waiter) waitForResources(created ResourceList) error {
 					return false, nil
 				}
 			case *corev1.Service:
-				svc, err := w.c.CoreV1().Services(value.Namespace).Get(value.Name, metav1.GetOptions{})
+				svc, err := w.c.CoreV1().Services(v.Namespace).Get(v.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
 				}
