@@ -56,7 +56,6 @@ var (
 
 	config     genericclioptions.RESTClientGetter
 	configOnce sync.Once
-	settings   *cli.EnvSettings
 )
 
 // ValidName is a regular expression for names.
@@ -215,11 +214,10 @@ func (c *Configuration) recordRelease(r *release.Release) {
 }
 
 // InitActionConfig initializes the action configuration
-func InitActionConfig(envsettings *cli.EnvSettings, allNamespaces bool, helmDriver string, log debug) (*Configuration, error) {
-	settings = envsettings
+func InitActionConfig(envSettings *cli.EnvSettings, allNamespaces bool, helmDriver string, log debug) (*Configuration, error) {
 
 	var actionConfig Configuration
-	kubeconfig := kubeConfig()
+	kubeconfig := kubeConfig(envSettings)
 
 	kc := kube.New(kubeconfig)
 	kc.Log = log
@@ -230,7 +228,7 @@ func InitActionConfig(envsettings *cli.EnvSettings, allNamespaces bool, helmDriv
 	}
 	var namespace string
 	if !allNamespaces {
-		namespace = GetNamespace()
+		namespace = GetNamespace(envSettings)
 	}
 
 	var store *storage.Storage
@@ -259,15 +257,15 @@ func InitActionConfig(envsettings *cli.EnvSettings, allNamespaces bool, helmDriv
 	return &actionConfig, nil
 }
 
-func kubeConfig() genericclioptions.RESTClientGetter {
+func kubeConfig(envSettings *cli.EnvSettings) genericclioptions.RESTClientGetter {
 	configOnce.Do(func() {
-		config = kube.GetConfig(settings.KubeConfig, settings.KubeContext, settings.Namespace)
+		config = kube.GetConfig(envSettings.KubeConfig, envSettings.KubeContext, envSettings.Namespace)
 	})
 	return config
 }
 
 //GetNamespace gets the namespace from the configuration
-func GetNamespace() string {
+func GetNamespace(envSettings *cli.EnvSettings) string {
 	if envSettings.Namespace != "" {
 		return envSettings.Namespace
 	}
