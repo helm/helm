@@ -36,6 +36,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
+
+	deploymentutil "helm.sh/helm/v3/internal/third_party/k8s.io/kubernetes/deployment/util"
 )
 
 type waiter struct {
@@ -74,7 +76,7 @@ func (w *waiter) waitForResources(created ResourceList) error {
 					continue
 				}
 				// Find RS associated with deployment
-				newReplicaSet, err := GetNewReplicaSet(currentDeployment, w.c.AppsV1())
+				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, w.c.AppsV1())
 				if err != nil || newReplicaSet == nil {
 					return false, err
 				}
@@ -91,7 +93,7 @@ func (w *waiter) waitForResources(created ResourceList) error {
 					continue
 				}
 				// Find RS associated with deployment
-				newReplicaSet, err := GetNewReplicaSet(currentDeployment, w.c.AppsV1())
+				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, w.c.AppsV1())
 				if err != nil || newReplicaSet == nil {
 					return false, err
 				}
@@ -108,7 +110,7 @@ func (w *waiter) waitForResources(created ResourceList) error {
 					continue
 				}
 				// Find RS associated with deployment
-				newReplicaSet, err := GetNewReplicaSet(currentDeployment, w.c.AppsV1())
+				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, w.c.AppsV1())
 				if err != nil || newReplicaSet == nil {
 					return false, err
 				}
@@ -125,7 +127,7 @@ func (w *waiter) waitForResources(created ResourceList) error {
 					continue
 				}
 				// Find RS associated with deployment
-				newReplicaSet, err := GetNewReplicaSet(currentDeployment, w.c.AppsV1())
+				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, w.c.AppsV1())
 				if err != nil || newReplicaSet == nil {
 					return false, err
 				}
@@ -259,7 +261,7 @@ func (w *waiter) volumeReady(v *corev1.PersistentVolumeClaim) bool {
 }
 
 func (w *waiter) deploymentReady(rs *appsv1.ReplicaSet, dep *appsv1.Deployment) bool {
-	expectedReady := *dep.Spec.Replicas - MaxUnavailable(*dep)
+	expectedReady := *dep.Spec.Replicas - deploymentutil.MaxUnavailable(*dep)
 	if !(rs.Status.ReadyReplicas >= expectedReady) {
 		w.log("Deployment is not ready: %s/%s. %d out of %d expected pods are ready", dep.Namespace, dep.Name, rs.Status.ReadyReplicas, expectedReady)
 		return false

@@ -1,5 +1,5 @@
 /*
-Copyright The Helm Authors.
+Copyright 2016 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kube
+package util
 
 import (
 	"sort"
@@ -27,8 +27,9 @@ import (
 	appsclient "k8s.io/client-go/kubernetes/typed/apps/v1"
 )
 
-// deploymentutil contains a copy of a few functions from Kubernetes controller code to avoid a dependency
-// on k8s.io/kubernetes.
+// deploymentutil contains a copy of a few functions from Kubernetes controller code to avoid a dependency on k8s.io/kubernetes.
+// This code is copied from https://github.com/kubernetes/kubernetes/blob/e856613dd5bb00bcfaca6974431151b5c06cbed5/pkg/controller/deployment/util/deployment_util.go
+// No changes to the code were made other than removing some unused functions
 
 // RsListFunc returns the ReplicaSet from the ReplicaSet namespace and the List metav1.ListOptions.
 type RsListFunc func(string, metav1.ListOptions) ([]*apps.ReplicaSet, error)
