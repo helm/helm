@@ -18,12 +18,14 @@ package repo
 
 import (
 	"io/ioutil"
+	"net/http"
 	"os"
 	"testing"
 
-	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/getter"
+
+	"helm.sh/helm/v3/pkg/chart"
 )
 
 const (
@@ -128,39 +130,87 @@ func TestMerge(t *testing.T) {
 }
 
 func TestDownloadIndexFile(t *testing.T) {
-	srv, err := startLocalServerForTests(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer srv.Close()
+	t.Run("should  download index file", func(t *testing.T) {
+		srv, err := startLocalServerForTests(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer srv.Close()
 
-	r, err := NewChartRepository(&Entry{
-		Name: testRepo,
-		URL:  srv.URL,
-	}, getter.All(&cli.EnvSettings{}))
-	if err != nil {
-		t.Errorf("Problem creating chart repository from %s: %v", testRepo, err)
-	}
+		r, err := NewChartRepository(&Entry{
+			Name: testRepo,
+			URL:  srv.URL,
+		}, getter.All(&cli.EnvSettings{}))
+		if err != nil {
+			t.Errorf("Problem creating chart repository from %s: %v", testRepo, err)
+		}
 
-	idx, err := r.DownloadIndexFile()
-	if err != nil {
-		t.Fatalf("Failed to download index file to %s: %#v", idx, err)
-	}
+		idx, err := r.DownloadIndexFile()
+		if err != nil {
+			t.Fatalf("Failed to download index file to %s: %#v", idx, err)
+		}
 
-	if _, err := os.Stat(idx); err != nil {
-		t.Fatalf("error finding created index file: %#v", err)
-	}
+		if _, err := os.Stat(idx); err != nil {
+			t.Fatalf("error finding created index file: %#v", err)
+		}
 
-	b, err := ioutil.ReadFile(idx)
-	if err != nil {
-		t.Fatalf("error reading index file: %#v", err)
-	}
+		b, err := ioutil.ReadFile(idx)
+		if err != nil {
+			t.Fatalf("error reading index file: %#v", err)
+		}
 
-	i, err := loadIndex(b)
-	if err != nil {
-		t.Fatalf("Index %q failed to parse: %s", testfile, err)
-	}
-	verifyLocalIndex(t, i)
+		i, err := loadIndex(b)
+		if err != nil {
+			t.Fatalf("Index %q failed to parse: %s", testfile, err)
+		}
+		verifyLocalIndex(t, i)
+	})
+
+	t.Run("should not decode the path in the repo url while downloading index", func(t *testing.T) {
+		chartRepoURLPath := "/some%2Fpath/test"
+		fileBytes, err := ioutil.ReadFile("testdata/local-index.yaml")
+		if err != nil {
+			t.Fatal(err)
+		}
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.RawPath == chartRepoURLPath+"/index.yaml" {
+				w.Write(fileBytes)
+			}
+		})
+		srv, err := startLocalServerForTests(handler)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer srv.Close()
+
+		r, err := NewChartRepository(&Entry{
+			Name: testRepo,
+			URL:  srv.URL + chartRepoURLPath,
+		}, getter.All(&cli.EnvSettings{}))
+		if err != nil {
+			t.Errorf("Problem creating chart repository from %s: %v", testRepo, err)
+		}
+
+		idx, err := r.DownloadIndexFile()
+		if err != nil {
+			t.Fatalf("Failed to download index file to %s: %#v", idx, err)
+		}
+
+		if _, err := os.Stat(idx); err != nil {
+			t.Fatalf("error finding created index file: %#v", err)
+		}
+
+		b, err := ioutil.ReadFile(idx)
+		if err != nil {
+			t.Fatalf("error reading index file: %#v", err)
+		}
+
+		i, err := loadIndex(b)
+		if err != nil {
+			t.Fatalf("Index %q failed to parse: %s", testfile, err)
+		}
+		verifyLocalIndex(t, i)
+	})
 }
 
 func verifyLocalIndex(t *testing.T, i *IndexFile) {

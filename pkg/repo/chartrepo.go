@@ -23,6 +23,7 @@ import (
 	"io/ioutil"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -109,14 +110,14 @@ func (r *ChartRepository) Load() error {
 
 // DownloadIndexFile fetches the index from a repository.
 func (r *ChartRepository) DownloadIndexFile() (string, error) {
-	var indexURL string
 	parsedURL, err := url.Parse(r.Config.URL)
 	if err != nil {
 		return "", err
 	}
-	parsedURL.Path = strings.TrimSuffix(parsedURL.Path, "/") + "/index.yaml"
+	parsedURL.RawPath = path.Join(parsedURL.RawPath, "index.yaml")
+	parsedURL.Path = path.Join(parsedURL.Path, "index.yaml")
 
-	indexURL = parsedURL.String()
+	indexURL := parsedURL.String()
 	// TODO add user-agent
 	resp, err := r.Client.Get(indexURL,
 		getter.WithURL(r.Config.URL),
