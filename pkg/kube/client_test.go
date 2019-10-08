@@ -153,11 +153,11 @@ func TestUpdate(t *testing.T) {
 			}
 		}),
 	}
-	first, err := c.Build(objBody(&listA))
+	first, err := c.Build(objBody(&listA), false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := c.Build(objBody(&listB))
+	second, err := c.Build(objBody(&listB), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -222,7 +222,7 @@ func TestBuild(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Test for an invalid manifest
-			infos, err := c.Build(tt.reader)
+			infos, err := c.Build(tt.reader, false)
 			if err != nil && !tt.err {
 				t.Errorf("Got error message when no error should have occurred: %v", err)
 			} else if err != nil && strings.Contains(err.Error(), "--validate=false") {
@@ -266,7 +266,7 @@ func TestPerform(t *testing.T) {
 			}
 
 			c := newTestClient()
-			infos, err := c.Build(tt.reader)
+			infos, err := c.Build(tt.reader, false)
 			if err != nil && err.Error() != tt.errMessage {
 				t.Errorf("Error while building manifests: %v", err)
 			}
@@ -289,7 +289,7 @@ func TestPerform(t *testing.T) {
 func TestReal(t *testing.T) {
 	t.Skip("This is a live test, comment this line to run")
 	c := New(nil)
-	resources, err := c.Build(strings.NewReader(guestbookManifest))
+	resources, err := c.Build(strings.NewReader(guestbookManifest), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -299,7 +299,7 @@ func TestReal(t *testing.T) {
 
 	testSvcEndpointManifest := testServiceManifest + "\n---\n" + testEndpointManifest
 	c = New(nil)
-	resources, err = c.Build(strings.NewReader(testSvcEndpointManifest))
+	resources, err = c.Build(strings.NewReader(testSvcEndpointManifest), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -307,7 +307,7 @@ func TestReal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	resources, err = c.Build(strings.NewReader(testEndpointManifest))
+	resources, err = c.Build(strings.NewReader(testEndpointManifest), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -316,7 +316,7 @@ func TestReal(t *testing.T) {
 		t.Fatal(errs)
 	}
 
-	resources, err = c.Build(strings.NewReader(testSvcEndpointManifest))
+	resources, err = c.Build(strings.NewReader(testSvcEndpointManifest), false)
 	if err != nil {
 		t.Fatal(err)
 	}

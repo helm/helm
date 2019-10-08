@@ -82,7 +82,7 @@ func (p *PrintingKubeClient) Update(_, modified kube.ResourceList, _ bool) (*kub
 }
 
 // Build implements KubeClient Build.
-func (p *PrintingKubeClient) Build(_ io.Reader) (kube.ResourceList, error) {
+func (p *PrintingKubeClient) Build(_ io.Reader, _ bool) (kube.ResourceList, error) {
 	return []*resource.Info{}, nil
 }
 

@@ -122,9 +122,14 @@ func (c *Client) newBuilder() *resource.Builder {
 }
 
 // Build validates for Kubernetes objects and returns unstructured infos.
-func (c *Client) Build(reader io.Reader) (ResourceList, error) {
+func (c *Client) Build(reader io.Reader, validate bool) (ResourceList, error) {
+	schema, err := c.Factory.Validator(validate)
+	if err != nil {
+		return nil, err
+	}
 	result, err := c.newBuilder().
 		Unstructured().
+		Schema(schema).
 		Stream(reader, "").
 		Do().Infos()
 	return result, scrubValidationError(err)

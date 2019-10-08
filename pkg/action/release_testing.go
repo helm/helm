@@ -74,7 +74,7 @@ func (r *ReleaseTesting) Run(name string) error {
 				}
 			}
 		}
-		hooks, err := r.cfg.KubeClient.Build(bytes.NewBufferString(manifestsToDelete.String()))
+		hooks, err := r.cfg.KubeClient.Build(bytes.NewBufferString(manifestsToDelete.String()), false)
 		if err != nil {
 			return fmt.Errorf("unable to build test hooks: %v", err)
 		}
