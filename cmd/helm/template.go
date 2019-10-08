@@ -25,6 +25,7 @@ import (
 
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli/values"
 )
 
@@ -40,6 +41,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	var validate bool
 	client := action.NewInstall(cfg)
 	valueOpts := &values.Options{}
+	var extraAPIs []string
 
 	cmd := &cobra.Command{
 		Use:   "template [NAME] [CHART]",
@@ -51,6 +53,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			client.ReleaseName = "RELEASE-NAME"
 			client.Replace = true // Skip the name check
 			client.ClientOnly = !validate
+			client.APIVersions = chartutil.VersionSet(extraAPIs)
 			rel, err := runInstall(args, client, valueOpts, out)
 			if err != nil {
 				return err
@@ -70,6 +73,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	addInstallFlags(f, client, valueOpts)
 	f.StringVar(&client.OutputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
 	f.BoolVar(&validate, "validate", false, "establish a connection to Kubernetes for schema validation")
+	f.StringArrayVarP(&extraAPIs, "api-versions", "a", []string{}, "Kubernetes api versions used for Capabilities.APIVersions")
 
 	return cmd
 }

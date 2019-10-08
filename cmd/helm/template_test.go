@@ -74,6 +74,11 @@ func TestTemplateCmd(t *testing.T) {
 			cmd:    fmt.Sprintf("template '%s'", "testdata/testcharts/chart-with-template-lib-archive-dep"),
 			golden: "output/template-chart-with-template-lib-archive-dep.txt",
 		},
+		{
+			name:   "check kube api versions",
+			cmd:    fmt.Sprintf("template --api-versions helm.k8s.io/test '%s'", chartPath),
+			golden: "output/template-with-api-version.txt",
+		},
 	}
 	runTestCmd(t, tests)
 }

@@ -42,8 +42,8 @@ metadata:
     helm.sh/chart: "subchart1-0.1.0"
     app.kubernetes.io/instance: "foobar-YWJj-baz"
     kube-version/major: "1"
-    kube-version/minor: "14"
-    kube-version/version: "v1.14.0"
+    kube-version/minor: "16"
+    kube-version/version: "v1.16.0"
 spec:
   type: ClusterIP
   ports:
