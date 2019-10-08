@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -111,14 +112,13 @@ func (r *ChartRepository) Load() error {
 // cachePath is prepended to any index that does not have an absolute path. This
 // is for pre-2.2.0 repo files.
 func (r *ChartRepository) DownloadIndexFile(cachePath string) error {
-	var indexURL string
 	parsedURL, err := url.Parse(r.Config.URL)
 	if err != nil {
 		return err
 	}
-	parsedURL.Path = strings.TrimSuffix(parsedURL.Path, "/") + "/index.yaml"
-
-	indexURL = parsedURL.String()
+	parsedURL.RawPath = path.Join(parsedURL.RawPath, "index.yaml")
+	parsedURL.Path = path.Join(parsedURL.Path, "index.yaml")
+	indexURL := parsedURL.String()
 
 	r.setCredentials()
 	resp, err := r.Client.Get(indexURL)
