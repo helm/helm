@@ -97,7 +97,7 @@ func (env *Environment) streamError(info string) error {
 }
 
 func (env *Environment) streamFailed(name string) error {
-	msg := "FAILED: " + name
+	msg := fmt.Sprintf("FAILED: %s, run `kubectl logs %s --namespace %s` for more info", name, name, env.Namespace)
 	return env.streamMessage(msg, release.TestRun_FAILURE)
 }
 
