@@ -26,7 +26,6 @@ require (
 	github.com/googleapis/gnostic v0.2.0 // indirect
 	github.com/gosuri/uitable v0.0.1
 	github.com/gregjones/httpcache v0.0.0-20181110185634-c63ab54fda8f // indirect
-	github.com/grpc-ecosystem/grpc-gateway v1.5.0 // indirect
 	github.com/mattn/go-runewidth v0.0.4 // indirect
 	github.com/mattn/go-shellwords v1.0.5
 	github.com/opencontainers/go-digest v1.0.0-rc1
@@ -49,7 +48,6 @@ require (
 	k8s.io/client-go v0.0.0
 	k8s.io/klog v0.4.0
 	k8s.io/kubectl v0.0.0
-	k8s.io/kubernetes v1.16.1
 	sigs.k8s.io/yaml v1.1.0
 )
 
