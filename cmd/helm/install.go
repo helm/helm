@@ -74,8 +74,7 @@ set for a key called 'foo', the 'newbar' value would take precedence:
 
 
 To check the generated manifests of a release without installing the chart,
-the '--debug' and '--dry-run' flags can be combined. This will still require a
-round-trip to the Tiller server.
+the '--debug' and '--dry-run' flags can be combined.
 
 If --verify is set, the chart MUST have a provenance file, and the provenance
 file MUST pass all verification steps.
