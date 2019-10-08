@@ -147,6 +147,13 @@ func TestGetRepoNames(t *testing.T) {
 			},
 			expect: map[string]string{"oedipus-rex": "testing"},
 		},
+		{
+			name: "repo from local chart under charts path",
+			req: []*chart.Dependency{
+				{Name: "local-subchart", Repository: ""},
+			},
+			expect: map[string]string{},
+		},
 	}
 
 	for _, tt := range tests {
