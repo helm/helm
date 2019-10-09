@@ -80,6 +80,10 @@ func TestKindSorter(t *testing.T) {
 			Head: &SimpleHead{Kind: "Namespace"},
 		},
 		{
+			Name: "A",
+			Head: &SimpleHead{Kind: "NetworkPolicy"},
+		},
+		{
 			Name: "f",
 			Head: &SimpleHead{Kind: "PersistentVolume"},
 		},
@@ -90,6 +94,14 @@ func TestKindSorter(t *testing.T) {
 		{
 			Name: "o",
 			Head: &SimpleHead{Kind: "Pod"},
+		},
+		{
+			Name: "3",
+			Head: &SimpleHead{Kind: "PodDisruptionBudget"},
+		},
+		{
+			Name: "C",
+			Head: &SimpleHead{Kind: "PodSecurityPolicy"},
 		},
 		{
 			Name: "q",
@@ -154,8 +166,8 @@ func TestKindSorter(t *testing.T) {
 		order       KindSortOrder
 		expected    string
 	}{
-		{"install", InstallOrder, "abcde1fgh2iIjJkKlLmnopqrxstuvw!"},
-		{"uninstall", UninstallOrder, "wvmutsxrqponLlKkJjIi2hgf1edcba!"},
+		{"install", InstallOrder, "aAbcC3de1fgh2iIjJkKlLmnopqrxstuvw!"},
+		{"uninstall", UninstallOrder, "wvmutsxrqponLlKkJjIi2hgf1ed3CcbAa!"},
 	} {
 		var buf bytes.Buffer
 		t.Run(test.description, func(t *testing.T) {
