@@ -97,7 +97,7 @@ func TestResolve(t *testing.T) {
 			},
 		},
 		{
-			name: "repo from valid path under charts path",
+			name: "repo from invalid path under charts path",
 			req: []*chart.Dependency{
 				{Name: "nonexistentdependency", Repository: "", Version: "0.1.0"},
 			},
