@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/spf13/cobra"
@@ -31,7 +32,8 @@ This command downloads a values file for a given release.
 `
 
 type valuesWriter struct {
-	vals map[string]interface{}
+	vals      map[string]interface{}
+	allValues bool
 }
 
 func newGetValuesCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
@@ -48,17 +50,7 @@ func newGetValuesCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-
-			if outfmt == output.Table && client.AllValues {
-				_, err = out.Write([]byte("COMPUTED VALUES:\n"))
-			} else if outfmt == output.Table {
-				_, err = out.Write([]byte("USER-SUPPLIED VALUES:\n"))
-			}
-			if err != nil {
-				return err
-			}
-
-			return outfmt.Write(out, &valuesWriter{vals})
+			return outfmt.Write(out, &valuesWriter{vals, client.AllValues})
 		},
 	}
 
@@ -71,6 +63,11 @@ func newGetValuesCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 }
 
 func (v valuesWriter) WriteTable(out io.Writer) error {
+	if v.allValues {
+		fmt.Fprintln(out, "COMPUTED VALUES:")
+	} else {
+		fmt.Fprintln(out, "USER-SUPPLIED VALUES:")
+	}
 	return output.EncodeYAML(out, v.vals)
 }
 
