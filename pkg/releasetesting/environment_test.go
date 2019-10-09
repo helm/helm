@@ -95,6 +95,16 @@ func TestGetTestPodLogs(t *testing.T) {
 	mockTestEnv.KubeClient = newGetLogKubeClient()
 
 	mockTestEnv.GetLogs(mockTestSuite.TestManifests)
+
+	expectedMessage := "ERROR: Pod manifest is invalid. Unable to obtain the logs"
+
+	stream := mockTestEnv.Stream.(*mockStream)
+	if len(stream.messages) != 1 {
+		t.Errorf("Expected 1 message, got: %v", len(stream.messages))
+	}
+	if stream.messages[0].Msg != expectedMessage {
+		t.Errorf("Expected message '%s', got: %v", expectedMessage, stream.messages[0].Msg)
+	}
 }
 
 func TestStreamMessage(t *testing.T) {

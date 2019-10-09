@@ -935,7 +935,7 @@ func (c *Client) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader,
 }
 
 func (c *Client) watchPodUntilComplete(timeout time.Duration, info *resource.Info) error {
-	lw := cachetools.NewListWatchFromClient(info.Client, info.Mapping.Resource.Resource, info.Namespace, fields.Everything())
+	lw := cachetools.NewListWatchFromClient(info.Client, info.Mapping.Resource.Resource, info.Namespace, fields.ParseSelectorOrDie(fmt.Sprintf("metadata.name=%s", info.Name)))
 
 	c.Log("Watching pod %s for completion with timeout of %v", info.Name, timeout)
 	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), timeout)

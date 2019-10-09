@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -30,6 +31,9 @@ import (
 	"k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/tiller/environment"
 )
+
+// logEscaper is necessary for escaping control characters found in the log stream.
+var logEscaper = strings.NewReplacer("%", "%%")
 
 // Environment encapsulates information about where test suite executes and returns results
 type Environment struct {
@@ -136,7 +140,7 @@ func (env *Environment) GetLogs(testManifests []string) {
 			env.streamError(err.Error())
 			continue
 		}
-		if len(infos) < 1 {
+		if len(infos) == 0 {
 			env.streamError(fmt.Sprint("Pod manifest is invalid. Unable to obtain the logs"))
 			continue
 		}
@@ -151,7 +155,7 @@ func (env *Environment) GetLogs(testManifests []string) {
 			env.streamError(err.Error())
 			continue
 		}
-		msg := fmt.Sprintf("\nPOD LOGS: %s\n%s", podName, logs)
-		env.streamMessage(msg, release.TestRun_UNKNOWN)
+		msg := fmt.Sprintf("\nPOD LOGS: %s\n%s", podName, logEscaper.Replace(string(logs)))
+		env.streamMessage(msg, release.TestRun_RUNNING)
 	}
 }
