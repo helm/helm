@@ -32,7 +32,23 @@ func TestGetValuesCmd(t *testing.T) {
 		name:      "get values requires release name arg",
 		cmd:       "get values",
 		golden:    "output/get-values-args.txt",
+		rels:      []*release.Release{release.Mock(&release.MockReleaseOptions{Name: "thomas-guide"})},
 		wantError: true,
+	}, {
+		name:   "get values thomas-guide (all)",
+		cmd:    "get values thomas-guide --all",
+		golden: "output/get-values-all.txt",
+		rels:   []*release.Release{release.Mock(&release.MockReleaseOptions{Name: "thomas-guide"})},
+	}, {
+		name:   "get values to json",
+		cmd:    "get values thomas-guide --output json",
+		golden: "output/values.json",
+		rels:   []*release.Release{release.Mock(&release.MockReleaseOptions{Name: "thomas-guide"})},
+	}, {
+		name:   "get values to yaml",
+		cmd:    "get values thomas-guide --output yaml",
+		golden: "output/values.yaml",
+		rels:   []*release.Release{release.Mock(&release.MockReleaseOptions{Name: "thomas-guide"})},
 	}}
 	runTestCmd(t, tests)
 }
