@@ -52,6 +52,8 @@ func addChartPathOptionsFlags(f *pflag.FlagSet, c *action.ChartPathOptions) {
 // value to the given format pointer
 func bindOutputFlag(cmd *cobra.Command, varRef *output.Format) {
 	cmd.Flags().VarP(newOutputValue(output.Table, varRef), outputFlag, "o", fmt.Sprintf("prints the output in the specified format. Allowed values: %s, %s, %s", output.Table, output.JSON, output.YAML))
+	// Setup shell completion for the flag
+	cmd.MarkFlagCustom(outputFlag, "__helm_output_options")
 }
 
 type outputValue output.Format
