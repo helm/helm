@@ -17,20 +17,26 @@ limitations under the License.
 package main
 
 import (
-	"fmt"
 	"io"
 
+	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/cli/output"
 )
 
 var getValuesHelp = `
 This command downloads a values file for a given release.
 `
 
+type valuesWriter struct {
+	vals map[string]interface{}
+}
+
 func newGetValuesCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+	var outfmt output.Format
 	client := action.NewGetValues(cfg)
 
 	cmd := &cobra.Command{
@@ -39,17 +45,35 @@ func newGetValuesCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Long:  getValuesHelp,
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			res, err := client.Run(args[0])
+			vals, err := client.Run(args[0])
 			if err != nil {
 				return err
 			}
-			fmt.Fprintln(out, res)
-			return nil
+			return outfmt.Write(out, &valuesWriter{vals})
 		},
 	}
 
 	f := cmd.Flags()
 	f.IntVar(&client.Version, "revision", 0, "get the named release with revision")
 	f.BoolVarP(&client.AllValues, "all", "a", false, "dump all (computed) values")
+	bindOutputFlag(cmd, &outfmt)
+
 	return cmd
+}
+
+func (v valuesWriter) WriteTable(out io.Writer) error {
+	table := uitable.New()
+	table.AddRow("USER-SUPPLIED VALUES:")
+	for k, v := range v.vals {
+		table.AddRow(k, v)
+	}
+	return output.EncodeTable(out, table)
+}
+
+func (v valuesWriter) WriteJSON(out io.Writer) error {
+	return output.EncodeJSON(out, v)
+}
+
+func (v valuesWriter) WriteYAML(out io.Writer) error {
+	return output.EncodeYAML(out, v)
 }
