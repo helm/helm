@@ -85,6 +85,29 @@ func TestResolve(t *testing.T) {
 			},
 			err: true,
 		},
+		{
+			name: "repo from valid path under charts path",
+			req: []*chart.Dependency{
+				{Name: "localdependency", Repository: "", Version: "0.1.0"},
+			},
+			expect: &chart.Lock{
+				Dependencies: []*chart.Dependency{
+					{Name: "localdependency", Repository: "", Version: "0.1.0"},
+				},
+			},
+		},
+		{
+			name: "repo from invalid path under charts path",
+			req: []*chart.Dependency{
+				{Name: "nonexistentdependency", Repository: "", Version: "0.1.0"},
+			},
+			expect: &chart.Lock{
+				Dependencies: []*chart.Dependency{
+					{Name: "nonexistentlocaldependency", Repository: "", Version: "0.1.0"},
+				},
+			},
+			err: true,
+		},
 	}
 
 	repoNames := map[string]string{"alpine": "kubernetes-charts", "redis": "kubernetes-charts"}

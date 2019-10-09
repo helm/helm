@@ -203,6 +203,31 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	fmt.Fprintf(m.Out, "Saving %d charts\n", len(deps))
 	var saveError error
 	for _, dep := range deps {
+		// No repository means the chart is in charts directory
+		if dep.Repository == "" {
+			fmt.Fprintf(m.Out, "Dependency %s did not declare a repository. Assuming it exists in the charts directory\n", dep.Name)
+			chartPath := filepath.Join(tmpPath, dep.Name)
+			ch, err := loader.LoadDir(chartPath)
+			if err != nil {
+				return fmt.Errorf("Unable to load chart: %v", err)
+			}
+
+			constraint, err := semver.NewConstraint(dep.Version)
+			if err != nil {
+				return fmt.Errorf("Dependency %s has an invalid version/constraint format: %s", dep.Name, err)
+			}
+
+			v, err := semver.NewVersion(ch.Metadata.Version)
+			if err != nil {
+				return fmt.Errorf("Invalid version %s for dependency %s: %s", dep.Version, dep.Name, err)
+			}
+
+			if !constraint.Check(v) {
+				saveError = fmt.Errorf("Dependency %s at version %s does not satisfy the constraint %s", dep.Name, ch.Metadata.Version, dep.Version)
+				break
+			}
+			continue
+		}
 		if strings.HasPrefix(dep.Repository, "file://") {
 			if m.Debug {
 				fmt.Fprintf(m.Out, "Archiving %s from repo %s\n", dep.Name, dep.Repository)
@@ -247,8 +272,11 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	if saveError == nil {
 		fmt.Fprintln(m.Out, "Deleting outdated charts")
 		for _, dep := range deps {
-			if err := m.safeDeleteDep(dep.Name, tmpPath); err != nil {
-				return err
+			// Chart from local charts directory stays in place
+			if dep.Repository != "" {
+				if err := m.safeDeleteDep(dep.Name, tmpPath); err != nil {
+					return err
+				}
 			}
 		}
 		if err := move(tmpPath, destPath); err != nil {
@@ -360,6 +388,10 @@ func (m *Manager) getRepoNames(deps []*chart.Dependency) (map[string]string, err
 	// by Helm.
 	missing := []string{}
 	for _, dd := range deps {
+		// Don't map the repository, we don't need to download chart from charts directory
+		if dd.Repository == "" {
+			continue
+		}
 		// if dep chart is from local path, verify the path is valid
 		if strings.HasPrefix(dd.Repository, "file://") {
 			if _, err := resolver.GetLocalPath(dd.Repository, m.ChartPath); err != nil {
