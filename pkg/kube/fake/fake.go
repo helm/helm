@@ -83,11 +83,11 @@ func (f *FailingKubeClient) Update(r, modified kube.ResourceList, ignoreMe bool)
 }
 
 // Build returns the configured error if set or prints
-func (f *FailingKubeClient) Build(r io.Reader) (kube.ResourceList, error) {
+func (f *FailingKubeClient) Build(r io.Reader, _ bool) (kube.ResourceList, error) {
 	if f.BuildError != nil {
 		return []*resource.Info{}, f.BuildError
 	}
-	return f.PrintingKubeClient.Build(r)
+	return f.PrintingKubeClient.Build(r, false)
 }
 
 // WaitAndGetCompletedPodPhase returns the configured error if set or prints

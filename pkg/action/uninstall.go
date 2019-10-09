@@ -188,7 +188,7 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (string, []error) {
 	for _, file := range filesToDelete {
 		builder.WriteString("\n---\n" + file.Content)
 	}
-	resources, err := u.cfg.KubeClient.Build(strings.NewReader(builder.String()))
+	resources, err := u.cfg.KubeClient.Build(strings.NewReader(builder.String()), false)
 	if err != nil {
 		return "", []error{errors.Wrap(err, "unable to build kubernetes objects for delete")}
 	}
