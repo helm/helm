@@ -19,7 +19,6 @@ package main
 import (
 	"io"
 
-	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
@@ -49,6 +48,16 @@ func newGetValuesCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
+
+			if outfmt == output.Table && client.AllValues {
+				_, err = out.Write([]byte("COMPUTED VALUES:\n"))
+			} else if outfmt == output.Table {
+				_, err = out.Write([]byte("USER-SUPPLIED VALUES:\n"))
+			}
+			if err != nil {
+				return err
+			}
+
 			return outfmt.Write(out, &valuesWriter{vals})
 		},
 	}
@@ -62,18 +71,13 @@ func newGetValuesCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 }
 
 func (v valuesWriter) WriteTable(out io.Writer) error {
-	table := uitable.New()
-	table.AddRow("USER-SUPPLIED VALUES:")
-	for k, v := range v.vals {
-		table.AddRow(k, v)
-	}
-	return output.EncodeTable(out, table)
+	return output.EncodeYAML(out, v.vals)
 }
 
 func (v valuesWriter) WriteJSON(out io.Writer) error {
-	return output.EncodeJSON(out, v)
+	return output.EncodeJSON(out, v.vals)
 }
 
 func (v valuesWriter) WriteYAML(out io.Writer) error {
-	return output.EncodeYAML(out, v)
+	return output.EncodeYAML(out, v.vals)
 }

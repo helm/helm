@@ -39,19 +39,18 @@ func NewGetValues(cfg *Configuration) *GetValues {
 
 // Run executes 'helm get values' against the given release.
 func (g *GetValues) Run(name string) (map[string]interface{}, error) {
-	res, err := g.cfg.releaseContent(name, g.Version)
+	rel, err := g.cfg.releaseContent(name, g.Version)
 	if err != nil {
 		return nil, err
 	}
 
 	// If the user wants all values, compute the values and return.
 	if g.AllValues {
-		cfg, err := chartutil.CoalesceValues(res.Chart, res.Config)
+		cfg, err := chartutil.CoalesceValues(rel.Chart, rel.Config)
 		if err != nil {
 			return nil, err
 		}
 		return cfg, nil
 	}
-
-	return res.Chart.Values, nil
+	return rel.Config, nil
 }
