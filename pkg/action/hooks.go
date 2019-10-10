@@ -119,6 +119,11 @@ func (x hookByWeight) Less(i, j int) bool {
 
 // deleteHookByPolicy deletes a hook if the hook policy instructs it to
 func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.HookDeletePolicy) error {
+	// Never delete CustomResourceDefinitions; this could cause lots of
+	// cascading garbage collection.
+	if h.Kind == "CustomResourceDefinition" {
+		return nil
+	}
 	if hookHasDeletePolicy(h, policy) {
 		resources, err := cfg.KubeClient.Build(bytes.NewBufferString(h.Manifest), false)
 		if err != nil {
