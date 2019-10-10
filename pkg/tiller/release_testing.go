@@ -69,6 +69,10 @@ func (s *ReleaseServer) RunReleaseTest(req *services.TestReleaseRequest, stream 
 		Results:     tSuite.Results,
 	}
 
+	if req.Logs {
+		testEnv.GetLogs(tSuite.TestManifests)
+	}
+
 	if req.Cleanup {
 		testEnv.DeleteTestPods(tSuite.TestManifests)
 	}

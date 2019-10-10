@@ -19,16 +19,21 @@ package releasetesting
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
 	"k8s.io/helm/pkg/tiller/environment"
 )
+
+// logEscaper is necessary for escaping control characters found in the log stream.
+var logEscaper = strings.NewReplacer("%", "%%")
 
 // Environment encapsulates information about where test suite executes and returns results
 type Environment struct {
@@ -124,5 +129,33 @@ func (env *Environment) DeleteTestPods(testManifests []string) {
 		if err != nil {
 			env.streamError(err.Error())
 		}
+	}
+}
+
+// GetLogs collects the logs from the pods created in testManifests
+func (env *Environment) GetLogs(testManifests []string) {
+	for _, testManifest := range testManifests {
+		infos, err := env.KubeClient.Build(env.Namespace, bytes.NewBufferString(testManifest))
+		if err != nil {
+			env.streamError(err.Error())
+			continue
+		}
+		if len(infos) == 0 {
+			env.streamError(fmt.Sprint("Pod manifest is invalid. Unable to obtain the logs"))
+			continue
+		}
+		podName := infos[0].Object.(*v1.Pod).Name
+		lr, err := env.KubeClient.GetPodLogs(podName, env.Namespace)
+		if err != nil {
+			env.streamError(err.Error())
+			continue
+		}
+		logs, err := ioutil.ReadAll(lr)
+		if err != nil {
+			env.streamError(err.Error())
+			continue
+		}
+		msg := fmt.Sprintf("\nPOD LOGS: %s\n%s", podName, logEscaper.Replace(string(logs)))
+		env.streamMessage(msg, release.TestRun_RUNNING)
 	}
 }

@@ -31,7 +31,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/meta"
 
-	"github.com/evanphx/json-patch"
+	jsonpatch "github.com/evanphx/json-patch"
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
@@ -935,7 +935,7 @@ func (c *Client) WaitAndGetCompletedPodPhase(namespace string, reader io.Reader,
 }
 
 func (c *Client) watchPodUntilComplete(timeout time.Duration, info *resource.Info) error {
-	lw := cachetools.NewListWatchFromClient(info.Client, info.Mapping.Resource.Resource, info.Namespace, fields.Everything())
+	lw := cachetools.NewListWatchFromClient(info.Client, info.Mapping.Resource.Resource, info.Namespace, fields.ParseSelectorOrDie(fmt.Sprintf("metadata.name=%s", info.Name)))
 
 	c.Log("Watching pod %s for completion with timeout of %v", info.Name, timeout)
 	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), timeout)
@@ -945,6 +945,20 @@ func (c *Client) watchPodUntilComplete(timeout time.Duration, info *resource.Inf
 	})
 
 	return err
+}
+
+// GetPodLogs takes pod name and namespace and returns the current logs (streaming is NOT enabled).
+func (c *Client) GetPodLogs(name, ns string) (io.ReadCloser, error) {
+	client, err := c.KubernetesClientSet()
+	if err != nil {
+		return nil, err
+	}
+	req := client.CoreV1().Pods(ns).GetLogs(name, &v1.PodLogOptions{})
+	logReader, err := req.Stream()
+	if err != nil {
+		return nil, fmt.Errorf("error in opening log stream, got: %s", err)
+	}
+	return logReader, nil
 }
 
 func isPodComplete(event watch.Event) (bool, error) {
