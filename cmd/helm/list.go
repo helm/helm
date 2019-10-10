@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 
 	"github.com/gosuri/uitable"
@@ -69,7 +70,7 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Args:    require.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if client.AllNamespaces {
-				initActionConfig(cfg, true)
+				action.InitActionConfig(settings, true, os.Getenv("HELM_DRIVER"), debug)
 			}
 			client.SetStateMask()
 

@@ -205,7 +205,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		}
 	}
 
-	client.Namespace = getNamespace()
+	client.Namespace = settings.Namespace()
 	return client.Run(chartRequested, vals)
 }
 

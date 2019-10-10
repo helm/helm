@@ -51,7 +51,7 @@ func newLintCmd(out io.Writer) *cobra.Command {
 			if len(args) > 0 {
 				paths = args
 			}
-			client.Namespace = getNamespace()
+			client.Namespace = settings.Namespace()
 			vals, err := valueOpts.MergeValues(getter.All(settings))
 			if err != nil {
 				return err

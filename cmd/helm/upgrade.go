@@ -71,7 +71,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Long:  upgradeDesc,
 		Args:  require.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client.Namespace = getNamespace()
+			client.Namespace = settings.Namespace()
 
 			if client.Version == "" && client.Devel {
 				debug("setting version to >0.0.0-0")

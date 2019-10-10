@@ -22,11 +22,9 @@ import (
 	"log"
 	"os"
 	"strings"
-	"sync"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/klog"
 
 	// Import to initialize client auth plugins.
@@ -35,18 +33,13 @@ import (
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/gates"
-	"helm.sh/helm/v3/pkg/kube"
-	"helm.sh/helm/v3/pkg/storage"
-	"helm.sh/helm/v3/pkg/storage/driver"
 )
 
 // FeatureGateOCI is the feature gate for checking if `helm chart` and `helm registry` commands should work
 const FeatureGateOCI = gates.Gate("HELM_EXPERIMENTAL_OCI")
 
 var (
-	settings   = cli.New()
-	config     genericclioptions.RESTClientGetter
-	configOnce sync.Once
+	settings = cli.New()
 )
 
 func init() {
@@ -71,13 +64,9 @@ func initKubeLogs() {
 func main() {
 	initKubeLogs()
 
-	actionConfig := new(action.Configuration)
-	cmd := newRootCmd(actionConfig, os.Stdout, os.Args[1:])
+	actionConfig, err := action.InitActionConfig(settings, false, os.Getenv("HELM_DRIVER"), debug)
 
-	// Initialize the rest of the actionConfig
-	initActionConfig(actionConfig, false)
-
-	if err := cmd.Execute(); err != nil {
+	if err != nil {
 		debug("%+v", err)
 		switch e := err.(type) {
 		case pluginError:
@@ -86,62 +75,13 @@ func main() {
 			os.Exit(1)
 		}
 	}
-}
 
-func initActionConfig(actionConfig *action.Configuration, allNamespaces bool) {
-	kc := kube.New(kubeConfig())
-	kc.Log = debug
+	cmd := newRootCmd(actionConfig, os.Stdout, os.Args[1:])
 
-	clientset, err := kc.Factory.KubernetesClientSet()
-	if err != nil {
-		// TODO return error
-		log.Fatal(err)
+	if err := cmd.Execute(); err != nil {
+		debug("%+v", err)
+		os.Exit(1)
 	}
-	var namespace string
-	if !allNamespaces {
-		namespace = getNamespace()
-	}
-
-	var store *storage.Storage
-	switch os.Getenv("HELM_DRIVER") {
-	case "secret", "secrets", "":
-		d := driver.NewSecrets(clientset.CoreV1().Secrets(namespace))
-		d.Log = debug
-		store = storage.Init(d)
-	case "configmap", "configmaps":
-		d := driver.NewConfigMaps(clientset.CoreV1().ConfigMaps(namespace))
-		d.Log = debug
-		store = storage.Init(d)
-	case "memory":
-		d := driver.NewMemory()
-		store = storage.Init(d)
-	default:
-		// Not sure what to do here.
-		panic("Unknown driver in HELM_DRIVER: " + os.Getenv("HELM_DRIVER"))
-	}
-
-	actionConfig.RESTClientGetter = kubeConfig()
-	actionConfig.KubeClient = kc
-	actionConfig.Releases = store
-	actionConfig.Log = debug
-}
-
-func kubeConfig() genericclioptions.RESTClientGetter {
-	configOnce.Do(func() {
-		config = kube.GetConfig(settings.KubeConfig, settings.KubeContext, settings.Namespace)
-	})
-	return config
-}
-
-func getNamespace() string {
-	if settings.Namespace != "" {
-		return settings.Namespace
-	}
-
-	if ns, _, err := kubeConfig().ToRawKubeConfigLoader().Namespace(); err == nil {
-		return ns
-	}
-	return "default"
 }
 
 // wordSepNormalizeFunc changes all flags that contain "_" separators

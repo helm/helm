@@ -29,9 +29,11 @@ import (
 
 	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/kube"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage"
+	"helm.sh/helm/v3/pkg/storage/driver"
 )
 
 // Timestamper is a function capable of producing a timestamp.Timestamper.
@@ -81,6 +83,16 @@ type Configuration struct {
 
 	Log func(string, ...interface{})
 }
+
+// RESTClientGetter gets the rest client
+type RESTClientGetter interface {
+	ToRESTConfig() (*rest.Config, error)
+	ToDiscoveryClient() (discovery.CachedDiscoveryInterface, error)
+	ToRESTMapper() (meta.RESTMapper, error)
+}
+
+// DebugLog sets the logger that writes debug strings
+type DebugLog func(format string, v ...interface{})
 
 // capabilities builds a Capabilities from discovery information.
 func (c *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
@@ -197,8 +209,46 @@ func (c *Configuration) recordRelease(r *release.Release) {
 	}
 }
 
-type RESTClientGetter interface {
-	ToRESTConfig() (*rest.Config, error)
-	ToDiscoveryClient() (discovery.CachedDiscoveryInterface, error)
-	ToRESTMapper() (meta.RESTMapper, error)
+// InitActionConfig initializes the action configuration
+func InitActionConfig(envSettings *cli.EnvSettings, allNamespaces bool, helmDriver string, log DebugLog) (*Configuration, error) {
+
+	var actionConfig Configuration
+	kubeconfig := envSettings.KubeConfig()
+
+	kc := kube.New(kubeconfig)
+	kc.Log = log
+
+	clientset, err := kc.Factory.KubernetesClientSet()
+	if err != nil {
+		return nil, err
+	}
+	var namespace string
+	if !allNamespaces {
+		namespace = envSettings.Namespace()
+	}
+
+	var store *storage.Storage
+	switch helmDriver {
+	case "secret", "secrets", "":
+		d := driver.NewSecrets(clientset.CoreV1().Secrets(namespace))
+		d.Log = log
+		store = storage.Init(d)
+	case "configmap", "configmaps":
+		d := driver.NewConfigMaps(clientset.CoreV1().ConfigMaps(namespace))
+		d.Log = log
+		store = storage.Init(d)
+	case "memory":
+		d := driver.NewMemory()
+		store = storage.Init(d)
+	default:
+		// Not sure what to do here.
+		panic("Unknown driver in HELM_DRIVER: " + helmDriver)
+	}
+
+	actionConfig.RESTClientGetter = kubeconfig
+	actionConfig.KubeClient = kc
+	actionConfig.Releases = store
+	actionConfig.Log = log
+
+	return &actionConfig, nil
 }

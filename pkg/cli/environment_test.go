@@ -38,7 +38,7 @@ func TestEnvSettings(t *testing.T) {
 	}{
 		{
 			name: "defaults",
-			ns:   "",
+			ns:   "default",
 		},
 		{
 			name:  "with flags set",
@@ -78,8 +78,8 @@ func TestEnvSettings(t *testing.T) {
 			if settings.Debug != tt.debug {
 				t.Errorf("expected debug %t, got %t", tt.debug, settings.Debug)
 			}
-			if settings.Namespace != tt.ns {
-				t.Errorf("expected namespace %q, got %q", tt.ns, settings.Namespace)
+			if settings.Namespace() != tt.ns {
+				t.Errorf("expected namespace %q, got %q", tt.ns, settings.Namespace())
 			}
 			if settings.KubeContext != tt.kcontext {
 				t.Errorf("expected kube-context %q, got %q", tt.kcontext, settings.KubeContext)
