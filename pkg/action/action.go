@@ -35,7 +35,7 @@ import (
 	"helm.sh/helm/v3/pkg/kube"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage"
-	"helm.sh/helm/pkg/storage/driver"
+	"helm.sh/helm/v3/pkg/storage/driver"
 )
 
 // Timestamper is a function capable of producing a timestamp.Timestamper.
