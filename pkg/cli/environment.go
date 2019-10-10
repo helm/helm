@@ -40,6 +40,8 @@ import (
 type EnvSettings struct {
 	namespace  string
 	kubeConfig string
+	config     genericclioptions.RESTClientGetter
+	configOnce sync.Once
 	// KubeContext is the name of the kubeconfig context.
 	KubeContext string
 	// Debug indicates whether or not Helm is running in Debug mode.
@@ -53,11 +55,6 @@ type EnvSettings struct {
 	// PluginsDirectory is the path to the plugins directory.
 	PluginsDirectory string
 }
-
-var (
-	config     genericclioptions.RESTClientGetter
-	configOnce sync.Once
-)
 
 func New() *EnvSettings {
 
@@ -115,8 +112,8 @@ func (s *EnvSettings) Namespace() string {
 
 //KubeConfig gets the kubeconfig from EnvSettings
 func (s *EnvSettings) KubeConfig() genericclioptions.RESTClientGetter {
-	configOnce.Do(func() {
-		config = kube.GetConfig(s.kubeConfig, s.KubeContext, s.namespace)
+	s.configOnce.Do(func() {
+		s.config = kube.GetConfig(s.kubeConfig, s.KubeContext, s.namespace)
 	})
-	return config
+	return s.config
 }
