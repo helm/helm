@@ -84,12 +84,20 @@ func envOr(name, def string) string {
 }
 
 func (s *EnvSettings) EnvVars() map[string]string {
-	return map[string]string{
+	envvars := map[string]string{
 		"HELM_BIN":               os.Args[0],
 		"HELM_DEBUG":             fmt.Sprint(s.Debug),
 		"HELM_PLUGINS":           s.PluginsDirectory,
 		"HELM_REGISTRY_CONFIG":   s.RegistryConfig,
 		"HELM_REPOSITORY_CACHE":  s.RepositoryCache,
 		"HELM_REPOSITORY_CONFIG": s.RepositoryConfig,
+		"HELM_NAMESPACE":         s.Namespace,
+		"HELM_KUBECONTEXT":       s.KubeContext,
 	}
+
+	if s.KubeConfig != "" {
+		envvars["KUBECONFIG"] = s.KubeConfig
+	}
+
+	return envvars
 }
