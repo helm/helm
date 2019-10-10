@@ -19,19 +19,23 @@ package action
 import (
 	"path"
 	"regexp"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
 	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/kube"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage"
+	"helm.sh/helm/pkg/storage/driver"
 )
 
 // Timestamper is a function capable of producing a timestamp.Timestamper.
@@ -49,6 +53,10 @@ var (
 	errInvalidRevision = errors.New("invalid release revision")
 	// errInvalidName indicates that an invalid release name was provided
 	errInvalidName = errors.New("invalid release name, must match regex ^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+$ and the length must not longer than 53")
+
+	config     genericclioptions.RESTClientGetter
+	configOnce sync.Once
+	settings   *cli.EnvSettings
 )
 
 // ValidName is a regular expression for names.
@@ -81,6 +89,15 @@ type Configuration struct {
 
 	Log func(string, ...interface{})
 }
+
+// RESTClientGetter gets the rest client
+type RESTClientGetter interface {
+	ToRESTConfig() (*rest.Config, error)
+	ToDiscoveryClient() (discovery.CachedDiscoveryInterface, error)
+	ToRESTMapper() (meta.RESTMapper, error)
+}
+
+type debug func(format string, v ...interface{})
 
 // capabilities builds a Capabilities from discovery information.
 func (c *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
@@ -197,8 +214,66 @@ func (c *Configuration) recordRelease(r *release.Release) {
 	}
 }
 
-type RESTClientGetter interface {
-	ToRESTConfig() (*rest.Config, error)
-	ToDiscoveryClient() (discovery.CachedDiscoveryInterface, error)
-	ToRESTMapper() (meta.RESTMapper, error)
+// InitActionConfig initializes the action configuration
+func InitActionConfig(envsettings *cli.EnvSettings, allNamespaces bool, helmDriver string, log debug) (*Configuration, error) {
+	settings = envsettings
+
+	var actionConfig Configuration
+	kubeconfig := kubeConfig()
+
+	kc := kube.New(kubeconfig)
+	kc.Log = log
+
+	clientset, err := kc.Factory.KubernetesClientSet()
+	if err != nil {
+		return nil, err
+	}
+	var namespace string
+	if !allNamespaces {
+		namespace = GetNamespace()
+	}
+
+	var store *storage.Storage
+	switch helmDriver {
+	case "secret", "secrets", "":
+		d := driver.NewSecrets(clientset.CoreV1().Secrets(namespace))
+		d.Log = log
+		store = storage.Init(d)
+	case "configmap", "configmaps":
+		d := driver.NewConfigMaps(clientset.CoreV1().ConfigMaps(namespace))
+		d.Log = log
+		store = storage.Init(d)
+	case "memory":
+		d := driver.NewMemory()
+		store = storage.Init(d)
+	default:
+		// Not sure what to do here.
+		panic("Unknown driver in HELM_DRIVER: " + helmDriver)
+	}
+
+	actionConfig.RESTClientGetter = kubeconfig
+	actionConfig.KubeClient = kc
+	actionConfig.Releases = store
+	actionConfig.Log = log
+
+	return &actionConfig, nil
+}
+
+func kubeConfig() genericclioptions.RESTClientGetter {
+	configOnce.Do(func() {
+		config = kube.GetConfig(settings.KubeConfig, settings.KubeContext, settings.Namespace)
+	})
+	return config
+}
+
+//GetNamespace gets the namespace from the configuration
+func GetNamespace() string {
+	if envSettings.Namespace != "" {
+		return envSettings.Namespace
+	}
+
+	if ns, _, err := kubeConfig(envSettings).ToRawKubeConfigLoader().Namespace(); err == nil {
+		return ns
+	}
+	return "default"
 }
