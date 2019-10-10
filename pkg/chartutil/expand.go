@@ -45,9 +45,6 @@ func Expand(dir string, r io.Reader) error {
 			if err := yaml.Unmarshal(file.Data, ch); err != nil {
 				return errors.Wrap(err, "cannot load Chart.yaml")
 			}
-			if err != nil {
-				return err
-			}
 			chartName = ch.Name
 		}
 	}
