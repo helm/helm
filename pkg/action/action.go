@@ -19,12 +19,10 @@ package action
 import (
 	"path"
 	"regexp"
-	"sync"
 	"time"
 
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -53,9 +51,6 @@ var (
 	errInvalidRevision = errors.New("invalid release revision")
 	// errInvalidName indicates that an invalid release name was provided
 	errInvalidName = errors.New("invalid release name, must match regex ^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+$ and the length must not longer than 53")
-
-	config     genericclioptions.RESTClientGetter
-	configOnce sync.Once
 )
 
 // ValidName is a regular expression for names.
@@ -218,7 +213,7 @@ func (c *Configuration) recordRelease(r *release.Release) {
 func InitActionConfig(envSettings *cli.EnvSettings, allNamespaces bool, helmDriver string, log DebugLog) (*Configuration, error) {
 
 	var actionConfig Configuration
-	kubeconfig := kubeConfig(envSettings)
+	kubeconfig := envSettings.KubeConfig()
 
 	kc := kube.New(kubeconfig)
 	kc.Log = log
@@ -229,7 +224,7 @@ func InitActionConfig(envSettings *cli.EnvSettings, allNamespaces bool, helmDriv
 	}
 	var namespace string
 	if !allNamespaces {
-		namespace = GetNamespace(envSettings)
+		namespace = envSettings.Namespace()
 	}
 
 	var store *storage.Storage
@@ -256,23 +251,4 @@ func InitActionConfig(envSettings *cli.EnvSettings, allNamespaces bool, helmDriv
 	actionConfig.Log = log
 
 	return &actionConfig, nil
-}
-
-func kubeConfig(envSettings *cli.EnvSettings) genericclioptions.RESTClientGetter {
-	configOnce.Do(func() {
-		config = kube.GetConfig(envSettings.KubeConfig, envSettings.KubeContext, envSettings.Namespace)
-	})
-	return config
-}
-
-//GetNamespace gets the namespace from the configuration
-func GetNamespace(envSettings *cli.EnvSettings) string {
-	if envSettings.Namespace != "" {
-		return envSettings.Namespace
-	}
-
-	if ns, _, err := kubeConfig(envSettings).ToRawKubeConfigLoader().Namespace(); err == nil {
-		return ns
-	}
-	return "default"
 }
