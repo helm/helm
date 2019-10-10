@@ -52,7 +52,7 @@ func TestFuncs(t *testing.T) {
 		vars:   map[string]map[string]string{"mast": {"sail": "white"}},
 	}, {
 		tpl:    `{{ fromYaml . }}`,
-		expect: "map[Error:yaml: unmarshal errors:\n  line 1: cannot unmarshal !!seq into map[string]interface {}]",
+		expect: "map[Error:error unmarshaling JSON: while decoding JSON: json: cannot unmarshal array into Go value of type map[string]interface {}]",
 		vars:   "- one\n- two\n",
 	}, {
 		tpl:    `{{ fromJson .}}`,
@@ -61,6 +61,18 @@ func TestFuncs(t *testing.T) {
 	}, {
 		tpl:    `{{ fromJson . }}`,
 		expect: `map[Error:json: cannot unmarshal array into Go value of type map[string]interface {}]`,
+		vars:   `["one", "two"]`,
+	}, {
+		tpl:    `{{ merge .dict (fromYaml .yaml) }}`,
+		expect: `map[a:map[b:c]]`,
+		vars:   map[string]interface{}{"dict": map[string]interface{}{"a": map[string]interface{}{"b": "c"}}, "yaml": `{"a":{"b":"d"}}`},
+	}, {
+		tpl:    `{{ merge (fromYaml .yaml) .dict }}`,
+		expect: `map[a:map[b:d]]`,
+		vars:   map[string]interface{}{"dict": map[string]interface{}{"a": map[string]interface{}{"b": "c"}}, "yaml": `{"a":{"b":"d"}}`},
+	}, {
+		tpl:    `{{ fromYaml . }}`,
+		expect: `map[Error:error unmarshaling JSON: while decoding JSON: json: cannot unmarshal array into Go value of type map[string]interface {}]`,
 		vars:   `["one", "two"]`,
 	}}
 
