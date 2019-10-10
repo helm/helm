@@ -17,9 +17,14 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
+	"path/filepath"
+	"regexp"
 	"strings"
+
+	"helm.sh/helm/v3/pkg/releaseutil"
 
 	"github.com/spf13/cobra"
 
@@ -42,6 +47,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewInstall(cfg)
 	valueOpts := &values.Options{}
 	var extraAPIs []string
+	var renderFiles []string
 
 	cmd := &cobra.Command{
 		Use:   "template [NAME] [CHART]",
@@ -58,11 +64,51 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Fprintln(out, strings.TrimSpace(rel.Manifest))
+
+			var manifests bytes.Buffer
+
+			fmt.Fprintln(&manifests, strings.TrimSpace(rel.Manifest))
 			if !client.DisableHooks {
 				for _, m := range rel.Hooks {
-					fmt.Fprintf(out, "---\n# Source: %s\n%s\n", m.Path, m.Manifest)
+					fmt.Fprintf(&manifests, "---\n# Source: %s\n%s\n", m.Path, m.Manifest)
 				}
+			}
+
+			// if we have a list of files to render, then check that each of the
+			// provided files exists in the chart.
+			if len(renderFiles) > 0 {
+				splitManifests := releaseutil.SplitManifests(manifests.String())
+				manifestNameRegex := regexp.MustCompile("# Source: [^/]+/(.+)")
+				var manifestsToRender []string
+				for _, f := range renderFiles {
+					missing := true
+					for _, manifest := range splitManifests {
+						submatch := manifestNameRegex.FindStringSubmatch(manifest)
+						if len(submatch) == 0 {
+							continue
+						}
+						manifestName := submatch[1]
+						// manifest.Name is rendered using linux-style filepath separators on Windows as
+						// well as macOS/linux.
+						manifestPathSplit := strings.Split(manifestName, "/")
+						manifestPath := filepath.Join(manifestPathSplit...)
+
+						// if the filepath provided matches a manifest path in the
+						// chart, render that manifest
+						if f == manifestPath {
+							manifestsToRender = append(manifestsToRender, manifest)
+							missing = false
+						}
+					}
+					if missing {
+						return fmt.Errorf("could not find template %s in chart", f)
+					}
+					for _, m := range manifestsToRender {
+						fmt.Fprintf(out, "---\n%s\n", m)
+					}
+				}
+			} else {
+				fmt.Fprintf(out, "%s", manifests.String())
 			}
 
 			return nil
@@ -71,6 +117,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	addInstallFlags(f, client, valueOpts)
+	f.StringArrayVarP(&renderFiles, "execute", "x", []string{}, "only execute the given templates")
 	f.StringVar(&client.OutputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
 	f.BoolVar(&validate, "validate", false, "establish a connection to Kubernetes for schema validation")
 	f.StringArrayVarP(&extraAPIs, "api-versions", "a", []string{}, "Kubernetes api versions used for Capabilities.APIVersions")
