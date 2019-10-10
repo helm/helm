@@ -139,7 +139,7 @@ __helm_custom_func()
 {
 	__helm_debug "${FUNCNAME[0]}: last_command is $last_command"
     case ${last_command} in
-		helm_uninstall | helm_history | helm_status | helm_test_run |\
+		helm_uninstall | helm_history | helm_status | helm_test |\
 	    helm_upgrade | helm_rollback | helm_get_*)
             __helm_list_releases
             return

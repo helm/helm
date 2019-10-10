@@ -18,28 +18,43 @@ package main
 
 import (
 	"io"
+	"time"
 
 	"github.com/spf13/cobra"
 
+	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/cli/output"
 )
 
 const releaseTestHelp = `
-The test command consists of multiple subcommands around running tests on a release.
+The test command runs the tests for a release.
 
-Example usage:
-    $ helm test run [RELEASE]
-
+The argument this command takes is the name of a deployed release.
+The tests to be run are defined in the chart that was installed.
 `
 
 func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+	client := action.NewReleaseTesting(cfg)
+	var outfmt output.Format
+
 	cmd := &cobra.Command{
-		Use:   "test",
-		Short: "test a release or cleanup test artifacts",
+		Use:   "test [RELEASE]",
+		Short: "run tests for a release",
 		Long:  releaseTestHelp,
+		Args:  require.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			rel, err := client.Run(args[0])
+			if err != nil {
+				return err
+			}
+
+			return outfmt.Write(out, &statusPrinter{rel, settings.Debug})
+		},
 	}
-	cmd.AddCommand(
-		newReleaseTestRunCmd(cfg, out),
-	)
+
+	f := cmd.Flags()
+	f.DurationVar(&client.Timeout, "timeout", 300*time.Second, "time to wait for any individual Kubernetes operation (like Jobs for hooks)")
+
 	return cmd
 }
