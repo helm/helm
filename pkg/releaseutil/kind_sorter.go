@@ -26,8 +26,11 @@ type KindSortOrder []string
 // Those occurring earlier in the list get installed before those occurring later in the list.
 var InstallOrder KindSortOrder = []string{
 	"Namespace",
+	"NetworkPolicy",
 	"ResourceQuota",
 	"LimitRange",
+	"PodSecurityPolicy",
+	"PodDisruptionBudget",
 	"Secret",
 	"ConfigMap",
 	"StorageClass",
@@ -88,8 +91,11 @@ var UninstallOrder KindSortOrder = []string{
 	"StorageClass",
 	"ConfigMap",
 	"Secret",
+	"PodDisruptionBudget",
+	"PodSecurityPolicy",
 	"LimitRange",
 	"ResourceQuota",
+	"NetworkPolicy",
 	"Namespace",
 }
 
