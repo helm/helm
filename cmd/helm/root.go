@@ -89,6 +89,12 @@ __helm_get_namespaces()
     fi
 }
 
+__helm_output_options()
+{
+    __helm_debug "${FUNCNAME[0]}: c is $c words[c] is ${words[c]}"
+    COMPREPLY+=( $( compgen -W "table json yaml" -- "$cur" ) )
+}
+
 __helm_binary_name()
 {
     local helm_binary
