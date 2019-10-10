@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -51,7 +52,14 @@ func addChartPathOptionsFlags(f *pflag.FlagSet, c *action.ChartPathOptions) {
 // bindOutputFlag will add the output flag to the given command and bind the
 // value to the given format pointer
 func bindOutputFlag(cmd *cobra.Command, varRef *output.Format) {
-	cmd.Flags().VarP(newOutputValue(output.Table, varRef), outputFlag, "o", fmt.Sprintf("prints the output in the specified format. Allowed values: %s, %s, %s", output.Table, output.JSON, output.YAML))
+	var formats strings.Builder
+	for index, format := range output.Formats() {
+		if index != 0 {
+			formats.WriteString(", ")
+		}
+		formats.WriteString(format.String())
+	}
+	cmd.Flags().VarP(newOutputValue(output.Table, varRef), outputFlag, "o", fmt.Sprintf("prints the output in the specified format. Allowed values: %s", formats.String()))
 	// Setup shell completion for the flag
 	cmd.MarkFlagCustom(outputFlag, "__helm_output_options")
 }

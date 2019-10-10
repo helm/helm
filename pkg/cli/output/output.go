@@ -35,6 +35,11 @@ const (
 	YAML  Format = "yaml"
 )
 
+// Formats returns a list of supported formats
+func Formats() []Format {
+	return []Format{Table, JSON, YAML}
+}
+
 // ErrInvalidFormatType is returned when an unsupported format type is used
 var ErrInvalidFormatType = fmt.Errorf("invalid format type")
 

@@ -17,13 +17,16 @@ limitations under the License.
 package main // import "helm.sh/helm/v3/cmd/helm"
 
 import (
+	"fmt"
 	"io"
+	"strings"
 
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/cli/output"
 )
 
 const (
@@ -92,7 +95,7 @@ __helm_get_namespaces()
 __helm_output_options()
 {
     __helm_debug "${FUNCNAME[0]}: c is $c words[c] is ${words[c]}"
-    COMPREPLY+=( $( compgen -W "table json yaml" -- "$cur" ) )
+    COMPREPLY+=( $( compgen -W "%[1]s" -- "$cur" ) )
 }
 
 __helm_binary_name()
@@ -203,13 +206,19 @@ By default, the default directories depend on the Operating System. The defaults
 `
 
 func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string) *cobra.Command {
+	var formats strings.Builder
+	for _, format := range output.Formats() {
+		formats.WriteString(format.String())
+		formats.WriteByte(' ')
+	}
+
 	cmd := &cobra.Command{
 		Use:                    "helm",
 		Short:                  "The Helm package manager for Kubernetes.",
 		Long:                   globalUsage,
 		SilenceUsage:           true,
 		Args:                   require.NoArgs,
-		BashCompletionFunction: bashCompletionFunc,
+		BashCompletionFunction: fmt.Sprintf(bashCompletionFunc, formats.String()),
 	}
 	flags := cmd.PersistentFlags()
 
