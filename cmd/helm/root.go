@@ -206,19 +206,13 @@ By default, the default directories depend on the Operating System. The defaults
 `
 
 func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string) *cobra.Command {
-	var formats strings.Builder
-	for _, format := range output.Formats() {
-		formats.WriteString(format.String())
-		formats.WriteByte(' ')
-	}
-
 	cmd := &cobra.Command{
 		Use:                    "helm",
 		Short:                  "The Helm package manager for Kubernetes.",
 		Long:                   globalUsage,
 		SilenceUsage:           true,
 		Args:                   require.NoArgs,
-		BashCompletionFunction: fmt.Sprintf(bashCompletionFunc, formats.String()),
+		BashCompletionFunction: fmt.Sprintf(bashCompletionFunc, strings.Join(output.Formats(), " ")),
 	}
 	flags := cmd.PersistentFlags()
 
