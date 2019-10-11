@@ -40,6 +40,15 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 	sort.Sort(hookByWeight(executingHooks))
 
 	for _, h := range executingHooks {
+		// Set default delete policy to before-hook-creation
+		if h.DeletePolicies == nil || len(h.DeletePolicies) == 0 {
+			// TODO(jlegrone): Only apply before-hook-creation delete policy to run to completion
+			//                 resources. For all other resource types update in place if a
+			//                 resource with the same name already exists and is owned by the
+			//                 current release.
+			h.DeletePolicies = []release.HookDeletePolicy{release.HookBeforeHookCreation}
+		}
+
 		if err := cfg.deleteHookByPolicy(h, release.HookBeforeHookCreation); err != nil {
 			return err
 		}
@@ -110,6 +119,11 @@ func (x hookByWeight) Less(i, j int) bool {
 
 // deleteHookByPolicy deletes a hook if the hook policy instructs it to
 func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.HookDeletePolicy) error {
+	// Never delete CustomResourceDefinitions; this could cause lots of
+	// cascading garbage collection.
+	if h.Kind == "CustomResourceDefinition" {
+		return nil
+	}
 	if hookHasDeletePolicy(h, policy) {
 		resources, err := cfg.KubeClient.Build(bytes.NewBufferString(h.Manifest), false)
 		if err != nil {
