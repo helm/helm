@@ -45,6 +45,7 @@ type MockReleaseOptions struct {
 	Chart     *chart.Chart
 	Status    Status
 	Namespace string
+	Notes     string
 }
 
 // Mock creates a mock release object based on options set by MockReleaseOptions. This function should typically not be used outside of testing.
@@ -90,6 +91,7 @@ func Mock(opts *MockReleaseOptions) *Release {
 		LastDeployed:  date,
 		Status:        scode,
 		Description:   "Release mock",
+		Notes:         opts.Notes,
 	}
 
 	return &Release{
