@@ -46,6 +46,8 @@ If you want to use a package manager:
 - [Snap](https://snapcraft.io/) users can use `sudo snap install helm
   --classic`.
 
+Information can be found in the ["From Script" guide](https://helm.sh/docs/using_helm/#from-script) if you want to install Helm using an installer script.
+
 To rapidly get Helm up and running, start with the [Quick Start Guide](https://docs.helm.sh/using_helm/#quickstart-guide).
 
 See the [installation guide](https://docs.helm.sh/using_helm/#installing-helm) for more options,
