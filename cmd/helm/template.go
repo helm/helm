@@ -47,7 +47,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewInstall(cfg)
 	valueOpts := &values.Options{}
 	var extraAPIs []string
-	var renderFiles []string
+	var showFiles []string
 
 	cmd := &cobra.Command{
 		Use:   "template [NAME] [CHART]",
@@ -76,11 +76,11 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 			// if we have a list of files to render, then check that each of the
 			// provided files exists in the chart.
-			if len(renderFiles) > 0 {
+			if len(showFiles) > 0 {
 				splitManifests := releaseutil.SplitManifests(manifests.String())
 				manifestNameRegex := regexp.MustCompile("# Source: [^/]+/(.+)")
 				var manifestsToRender []string
-				for _, f := range renderFiles {
+				for _, f := range showFiles {
 					missing := true
 					for _, manifest := range splitManifests {
 						submatch := manifestNameRegex.FindStringSubmatch(manifest)
@@ -117,7 +117,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	addInstallFlags(f, client, valueOpts)
-	f.StringArrayVarP(&renderFiles, "execute", "x", []string{}, "only execute the given templates")
+	f.StringArrayVarP(&showFiles, "show-only", "s", []string{}, "only show manifests rendered from the given templates")
 	f.StringVar(&client.OutputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
 	f.BoolVar(&validate, "validate", false, "establish a connection to Kubernetes for schema validation")
 	f.StringArrayVarP(&extraAPIs, "api-versions", "a", []string{}, "Kubernetes api versions used for Capabilities.APIVersions")
