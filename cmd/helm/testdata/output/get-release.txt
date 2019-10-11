@@ -25,3 +25,5 @@ kind: Secret
 metadata:
   name: fixture
 
+NOTES:
+Some mock release notes!

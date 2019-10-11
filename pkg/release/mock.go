@@ -90,6 +90,7 @@ func Mock(opts *MockReleaseOptions) *Release {
 		LastDeployed:  date,
 		Status:        scode,
 		Description:   "Release mock",
+		Notes:         "Some mock release notes!",
 	}
 
 	return &Release{
