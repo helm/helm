@@ -35,6 +35,8 @@ const (
 	ChartfileName = "Chart.yaml"
 	// ValuesfileName is the default values file name.
 	ValuesfileName = "values.yaml"
+	// SchemafileName is the default values schema file name.
+	SchemafileName = "values.schema.json"
 	// TemplatesDir is the relative directory name for templates.
 	TemplatesDir = "templates"
 	// ChartsDir is the relative directory name for charts dependencies.

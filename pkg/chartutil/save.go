@@ -19,6 +19,7 @@ package chartutil
 import (
 	"archive/tar"
 	"compress/gzip"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -52,6 +53,14 @@ func SaveDir(c *chart.Chart, dest string) error {
 		vf := filepath.Join(outdir, ValuesfileName)
 		b, _ := yaml.Marshal(c.Values)
 		if err := writeFile(vf, b); err != nil {
+			return err
+		}
+	}
+
+	// Save values.schema.json if it exists
+	if c.Schema != nil {
+		filename := filepath.Join(outdir, SchemafileName)
+		if err := writeFile(filename, c.Schema); err != nil {
 			return err
 		}
 	}
@@ -124,6 +133,7 @@ func Save(c *chart.Chart, outDir string) (string, error) {
 
 	if err := writeTarContents(twriter, c, ""); err != nil {
 		rollback = true
+		return filename, err
 	}
 	return filename, err
 }
@@ -147,6 +157,16 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 	}
 	if err := writeToTar(out, filepath.Join(base, ValuesfileName), ydata); err != nil {
 		return err
+	}
+
+	// Save values.schema.json if it exists
+	if c.Schema != nil {
+		if !json.Valid(c.Schema) {
+			return errors.New("Invalid JSON in " + SchemafileName)
+		}
+		if err := writeToTar(out, filepath.Join(base, SchemafileName), c.Schema); err != nil {
+			return err
+		}
 	}
 
 	// Save templates

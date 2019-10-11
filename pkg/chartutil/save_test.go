@@ -17,10 +17,12 @@ limitations under the License.
 package chartutil
 
 import (
+	"bytes"
 	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -46,7 +48,9 @@ func TestSave(t *testing.T) {
 				Files: []*chart.File{
 					{Name: "scheherazade/shahryar.txt", Data: []byte("1,001 Nights")},
 				},
+				Schema: []byte("{\n  \"title\": \"Values\"\n}"),
 			}
+			chartWithInvalidJSON := withSchema(*c, []byte("{"))
 
 			where, err := Save(c, dest)
 			if err != nil {
@@ -69,8 +73,30 @@ func TestSave(t *testing.T) {
 			if len(c2.Files) != 1 || c2.Files[0].Name != "scheherazade/shahryar.txt" {
 				t.Fatal("Files data did not match")
 			}
+
+			if !bytes.Equal(c.Schema, c2.Schema) {
+				indentation := 4
+				formattedExpected := Indent(indentation, string(c.Schema))
+				formattedActual := Indent(indentation, string(c2.Schema))
+				t.Fatalf("Schema data did not match.\nExpected:\n%s\nActual:\n%s", formattedExpected, formattedActual)
+			}
+			if _, err := Save(&chartWithInvalidJSON, dest); err == nil {
+				t.Fatalf("Invalid JSON was not caught while saving chart")
+			}
 		})
 	}
+}
+
+// Creates a copy with a different schema; does not modify anything.
+func withSchema(chart chart.Chart, schema []byte) chart.Chart {
+	chart.Schema = schema
+	return chart
+}
+
+func Indent(n int, text string) string {
+	startOfLine := regexp.MustCompile(`(?m)^`)
+	indentation := strings.Repeat(" ", n)
+	return startOfLine.ReplaceAllLiteralString(text, indentation)
 }
 
 func TestSaveDir(t *testing.T) {
