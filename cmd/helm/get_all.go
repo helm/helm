@@ -17,41 +17,48 @@ limitations under the License.
 package main
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/cli/output"
 )
 
-var getNotesHelp = `
-This command shows notes provided by the chart of a named release.
+var getAllHelp = `
+This command prints a human readable collection of information about the
+notes, hooks, supplied values, and generated manifest file of the given release.
 `
 
-func newGetNotesCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+func newGetAllCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+	var template string
 	client := action.NewGet(cfg)
 
 	cmd := &cobra.Command{
-		Use:   "notes RELEASE_NAME",
-		Short: "download the notes for a named release",
-		Long:  getNotesHelp,
+		Use:   "all RELEASE_NAME",
+		Short: "download all information for a named release",
+		Long:  getAllHelp,
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			res, err := client.Run(args[0])
 			if err != nil {
 				return err
 			}
-			if len(res.Info.Notes) > 0 {
-				fmt.Fprintf(out, "NOTES:\n%s\n", res.Info.Notes)
+			if template != "" {
+				data := map[string]interface{}{
+					"Release": res,
+				}
+				return tpl(template, data, out)
 			}
-			return nil
+
+			return output.Table.Write(out, &statusPrinter{res, true})
 		},
 	}
 
 	f := cmd.Flags()
 	f.IntVar(&client.Version, "revision", 0, "get the named release with revision")
+	f.StringVar(&template, "template", "", "go template for formatting the output, eg: {{.Release.Name}}")
 
 	return cmd
 }

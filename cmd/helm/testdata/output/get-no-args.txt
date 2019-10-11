@@ -1,3 +1,0 @@
-Error: "helm get" requires 1 argument
-
-Usage:  helm get RELEASE_NAME [flags]
