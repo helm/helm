@@ -21,43 +21,67 @@ import (
 )
 
 var (
-	values                       = make(map[string]interface{})
-	namespace                    = "testNamespace"
-	strict                       = false
-	archivedChartPath            = "../../cmd/helm/testdata/testcharts/compressedchart-0.1.0.tgz"
-	archivedChartPathWithHyphens = "../../cmd/helm/testdata/testcharts/compressedchart-with-hyphens-0.1.0.tgz"
-	invalidArchivedChartPath     = "../../cmd/helm/testdata/testcharts/invalidcompressedchart0.1.0.tgz"
-	chartDirPath                 = "../../cmd/helm/testdata/testcharts/decompressedchart/"
-	chartMissingManifest         = "../../cmd/helm/testdata/testcharts/chart-missing-manifest"
-	chartSchema                  = "../../cmd/helm/testdata/testcharts/chart-with-schema"
-	chartSchemaNegative          = "../../cmd/helm/testdata/testcharts/chart-with-schema-negative"
-	chart1MultipleChartLint      = "../../cmd/helm/testdata/testcharts/multiplecharts-lint-chart-1"
-	chart2MultipleChartLint      = "../../cmd/helm/testdata/testcharts/multiplecharts-lint-chart-2"
-	corruptedTgzChart            = "../../cmd/helm/testdata/testcharts/corrupted-compressed-chart.tgz"
-	chartWithNoTemplatesDir      = "../../cmd/helm/testdata/testcharts/chart-with-no-templates-dir"
+	values                  = make(map[string]interface{})
+	namespace               = "testNamespace"
+	strict                  = false
+	chart1MultipleChartLint = "../../cmd/helm/testdata/testcharts/multiplecharts-lint-chart-1"
+	chart2MultipleChartLint = "../../cmd/helm/testdata/testcharts/multiplecharts-lint-chart-2"
+	corruptedTgzChart       = "../../cmd/helm/testdata/testcharts/corrupted-compressed-chart.tgz"
+	chartWithNoTemplatesDir = "../../cmd/helm/testdata/testcharts/chart-with-no-templates-dir"
 )
 
 func TestLintChart(t *testing.T) {
-	if _, err := lintChart(chartDirPath, values, namespace, strict); err != nil {
-		t.Error(err)
+	tests := []struct {
+		name      string
+		chartPath string
+		err       bool
+	}{
+		{
+			name:      "decompressed-chart",
+			chartPath: "../../cmd/helm/testdata/testcharts/decompressedchart/",
+		},
+		{
+			name:      "archived-chart-path",
+			chartPath: "../../cmd/helm/testdata/testcharts/compressedchart-0.1.0.tgz",
+		},
+		{
+			name:      "archived-chart-path-with-hyphens",
+			chartPath: "../../cmd/helm/testdata/testcharts/compressedchart-with-hyphens-0.1.0.tgz",
+		},
+		{
+			name:      "invalid-archived-chart-path",
+			chartPath: "../../cmd/helm/testdata/testcharts/invalidcompressedchart0.1.0.tgz",
+			err:       true,
+		},
+		{
+			name:      "chart-missing-manifest",
+			chartPath: "../../cmd/helm/testdata/testcharts/chart-missing-manifest",
+			err:       true,
+		},
+		{
+			name:      "chart-with-schema",
+			chartPath: "../../cmd/helm/testdata/testcharts/chart-with-schema",
+		},
+		{
+			name:      "chart-with-schema-negative",
+			chartPath: "../../cmd/helm/testdata/testcharts/chart-with-schema-negative",
+		},
+		{
+			name:      "pre-release-chart",
+			chartPath: "../../cmd/helm/testdata/testcharts/pre-release-chart-0.1.0-alpha.tgz",
+		},
 	}
-	if _, err := lintChart(archivedChartPath, values, namespace, strict); err != nil {
-		t.Error(err)
-	}
-	if _, err := lintChart(archivedChartPathWithHyphens, values, namespace, strict); err != nil {
-		t.Error(err)
-	}
-	if _, err := lintChart(invalidArchivedChartPath, values, namespace, strict); err == nil {
-		t.Error("Expected a chart parsing error")
-	}
-	if _, err := lintChart(chartMissingManifest, values, namespace, strict); err == nil {
-		t.Error("Expected a chart parsing error")
-	}
-	if _, err := lintChart(chartSchema, values, namespace, strict); err != nil {
-		t.Error(err)
-	}
-	if _, err := lintChart(chartSchemaNegative, values, namespace, strict); err != nil {
-		t.Error(err)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := lintChart(tt.chartPath, map[string]interface{}{}, namespace, strict)
+			switch {
+			case err != nil && !tt.err:
+				t.Errorf("%s", err)
+			case err == nil && tt.err:
+				t.Errorf("Expected a chart parsing error")
+			}
+		})
 	}
 }
 

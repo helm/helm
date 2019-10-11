@@ -94,12 +94,15 @@ func lintChart(path string, vals map[string]interface{}, namespace string, stric
 			return linter, errors.Wrap(err, "unable to extract tarball")
 		}
 
-		lastHyphenIndex := strings.LastIndex(filepath.Base(path), "-")
-		if lastHyphenIndex <= 0 {
-			return linter, errors.Errorf("unable to parse chart archive %q, missing '-'", filepath.Base(path))
+		files, err := ioutil.ReadDir(tempDir)
+		if err != nil {
+			return linter, errors.Wrapf(err, "unable to read temporary output directory %s", tempDir)
 		}
-		base := filepath.Base(path)[:lastHyphenIndex]
-		chartPath = filepath.Join(tempDir, base)
+		if !files[0].IsDir() {
+			return linter, errors.Errorf("unexpected file %s in temporary output directory %s", files[0].Name(), tempDir)
+		}
+
+		chartPath = filepath.Join(tempDir, files[0].Name())
 	} else {
 		chartPath = path
 	}
