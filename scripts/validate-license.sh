@@ -21,6 +21,7 @@ find_files() {
     \( \
       -wholename './vendor' \
       -o -wholename '*testdata*' \
+      -o -wholename '*third_party*' \
     \) -prune \
   \) \
   \( -name '*.go' -o -name '*.sh' \)
