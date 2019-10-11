@@ -17,13 +17,16 @@ limitations under the License.
 package main // import "helm.sh/helm/v3/cmd/helm"
 
 import (
+	"fmt"
 	"io"
+	"strings"
 
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/cli/output"
 )
 
 const (
@@ -92,7 +95,7 @@ __helm_get_namespaces()
 __helm_output_options()
 {
     __helm_debug "${FUNCNAME[0]}: c is $c words[c] is ${words[c]}"
-    COMPREPLY+=( $( compgen -W "table json yaml" -- "$cur" ) )
+    COMPREPLY+=( $( compgen -W "%[1]s" -- "$cur" ) )
 }
 
 __helm_binary_name()
@@ -209,7 +212,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		Long:                   globalUsage,
 		SilenceUsage:           true,
 		Args:                   require.NoArgs,
-		BashCompletionFunction: bashCompletionFunc,
+		BashCompletionFunction: fmt.Sprintf(bashCompletionFunc, strings.Join(output.Formats(), " ")),
 	}
 	flags := cmd.PersistentFlags()
 
