@@ -176,8 +176,16 @@ func (w *waiter) waitForResources(created ResourceList) error {
 				if !w.statefulSetReady(sts) {
 					return false, nil
 				}
-			case *extensionsv1beta1.Ingress, *networkingv1beta1.Ingress:
+			case *networkingv1beta1.Ingress:
 				ing, err := w.c.NetworkingV1beta1().Ingresses(v.Namespace).Get(v.Name, metav1.GetOptions{})
+				if err != nil {
+					return false, err
+				}
+				if !w.ingressReady(ing) {
+					return false, nil
+				}
+			case *extensionsv1beta1.Ingress:
+				ing, err := w.c.ExtensionsV1beta1().Ingresses(v.Namespace).Get(v.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
 				}
