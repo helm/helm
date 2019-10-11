@@ -27,10 +27,12 @@ import (
 )
 
 const showDesc = `
-This command inspects a chart and displays information. It takes a chart reference
-('example/drupal'), a full path to a directory or packaged chart, or a URL.
+This command consists of multiple subcommands to display information about a chart
+`
 
-Inspect prints the contents of the Chart.yaml file and the values.yaml file.
+const showAllDesc = `
+This command inspects a chart (directory, file, or URL) and displays all its content
+(values.yaml, Charts.yaml, README)
 `
 
 const showValuesDesc = `
@@ -52,12 +54,20 @@ func newShowCmd(out io.Writer) *cobra.Command {
 	client := action.NewShow(action.ShowAll)
 
 	showCommand := &cobra.Command{
-		Use:     "show [CHART]",
-		Short:   "inspect a chart",
+		Use:     "show",
+		Short:   "show information of a chart",
 		Aliases: []string{"inspect"},
 		Long:    showDesc,
-		Args:    require.ExactArgs(1),
+		Args:    require.NoArgs,
+	}
+
+	all := &cobra.Command{
+		Use:   "all [CHART]",
+		Short: "shows all information of the chart",
+		Long:  showAllDesc,
+		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			client.OutputFormat = action.ShowAll
 			cp, err := client.ChartPathOptions.LocateChart(args[0], settings)
 			if err != nil {
 				return err
@@ -73,7 +83,7 @@ func newShowCmd(out io.Writer) *cobra.Command {
 
 	valuesSubCmd := &cobra.Command{
 		Use:   "values [CHART]",
-		Short: "shows values for this chart",
+		Short: "shows the chart's values",
 		Long:  showValuesDesc,
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -93,7 +103,7 @@ func newShowCmd(out io.Writer) *cobra.Command {
 
 	chartSubCmd := &cobra.Command{
 		Use:   "chart [CHART]",
-		Short: "shows the chart",
+		Short: "shows the chart's definition",
 		Long:  showChartDesc,
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -131,12 +141,9 @@ func newShowCmd(out io.Writer) *cobra.Command {
 		},
 	}
 
-	cmds := []*cobra.Command{showCommand, readmeSubCmd, valuesSubCmd, chartSubCmd}
+	cmds := []*cobra.Command{all, readmeSubCmd, valuesSubCmd, chartSubCmd}
 	for _, subCmd := range cmds {
 		addChartPathOptionsFlags(subCmd.Flags(), &client.ChartPathOptions)
-	}
-
-	for _, subCmd := range cmds[1:] {
 		showCommand.AddCommand(subCmd)
 	}
 
