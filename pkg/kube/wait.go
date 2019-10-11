@@ -62,63 +62,12 @@ func (w *waiter) waitForResources(created ResourceList) error {
 			)
 			switch value := AsVersioned(v).(type) {
 			case *corev1.Pod:
-				pod, err := w.c.CoreV1().Pods(value.Namespace).Get(value.Name, metav1.GetOptions{})
+				pod, err := w.c.CoreV1().Pods(v.Namespace).Get(v.Name, metav1.GetOptions{})
 				if err != nil || !w.isPodReady(pod) {
 					return false, err
 				}
-			case *appsv1.Deployment:
-				currentDeployment, err := w.c.AppsV1().Deployments(value.Namespace).Get(value.Name, metav1.GetOptions{})
-				if err != nil {
-					return false, err
-				}
-				// If paused deployment will never be ready
-				if currentDeployment.Spec.Paused {
-					continue
-				}
-				// Find RS associated with deployment
-				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, w.c.AppsV1())
-				if err != nil || newReplicaSet == nil {
-					return false, err
-				}
-				if !w.deploymentReady(newReplicaSet, currentDeployment) {
-					return false, nil
-				}
-			case *appsv1beta1.Deployment:
-				currentDeployment, err := w.c.AppsV1().Deployments(value.Namespace).Get(value.Name, metav1.GetOptions{})
-				if err != nil {
-					return false, err
-				}
-				// If paused deployment will never be ready
-				if currentDeployment.Spec.Paused {
-					continue
-				}
-				// Find RS associated with deployment
-				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, w.c.AppsV1())
-				if err != nil || newReplicaSet == nil {
-					return false, err
-				}
-				if !w.deploymentReady(newReplicaSet, currentDeployment) {
-					return false, nil
-				}
-			case *appsv1beta2.Deployment:
-				currentDeployment, err := w.c.AppsV1().Deployments(value.Namespace).Get(value.Name, metav1.GetOptions{})
-				if err != nil {
-					return false, err
-				}
-				// If paused deployment will never be ready
-				if currentDeployment.Spec.Paused {
-					continue
-				}
-				// Find RS associated with deployment
-				newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, w.c.AppsV1())
-				if err != nil || newReplicaSet == nil {
-					return false, err
-				}
-				if !w.deploymentReady(newReplicaSet, currentDeployment) {
-					return false, nil
-				}
-			case *extensionsv1beta1.Deployment:
-				currentDeployment, err := w.c.AppsV1().Deployments(value.Namespace).Get(value.Name, metav1.GetOptions{})
+			case *appsv1.Deployment, *appsv1beta1.Deployment, *appsv1beta2.Deployment, *extensionsv1beta1.Deployment:
+				currentDeployment, err := w.c.AppsV1().Deployments(v.Namespace).Get(v.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
 				}
@@ -135,7 +84,7 @@ func (w *waiter) waitForResources(created ResourceList) error {
 					return false, nil
 				}
 			case *corev1.PersistentVolumeClaim:
-				claim, err := w.c.CoreV1().PersistentVolumeClaims(value.Namespace).Get(value.Name, metav1.GetOptions{})
+				claim, err := w.c.CoreV1().PersistentVolumeClaims(v.Namespace).Get(v.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
 				}
@@ -143,7 +92,7 @@ func (w *waiter) waitForResources(created ResourceList) error {
 					return false, nil
 				}
 			case *corev1.Service:
-				svc, err := w.c.CoreV1().Services(value.Namespace).Get(value.Name, metav1.GetOptions{})
+				svc, err := w.c.CoreV1().Services(v.Namespace).Get(v.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
 				}
@@ -186,14 +135,8 @@ func (w *waiter) waitForResources(created ResourceList) error {
 					return false, nil
 				}
 
-			case *corev1.ReplicationController:
-				ok, err = w.podsReadyForObject(value.Namespace, value)
-			case *extensionsv1beta1.ReplicaSet:
-				ok, err = w.podsReadyForObject(value.Namespace, value)
-			case *appsv1beta2.ReplicaSet:
-				ok, err = w.podsReadyForObject(value.Namespace, value)
-			case *appsv1.ReplicaSet:
-				ok, err = w.podsReadyForObject(value.Namespace, value)
+			case *corev1.ReplicationController, *extensionsv1beta1.ReplicaSet, *appsv1beta2.ReplicaSet, *appsv1.ReplicaSet:
+				ok, err = w.podsReadyForObject(v.Namespace, value)
 			}
 			if !ok || err != nil {
 				return false, err
