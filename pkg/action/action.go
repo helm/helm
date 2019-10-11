@@ -210,9 +210,7 @@ func (c *Configuration) recordRelease(r *release.Release) {
 }
 
 // InitActionConfig initializes the action configuration
-func InitActionConfig(envSettings *cli.EnvSettings, allNamespaces bool, helmDriver string, log DebugLog) (*Configuration, error) {
-
-	var actionConfig Configuration
+func (c *Configuration) Init(envSettings *cli.EnvSettings, allNamespaces bool, helmDriver string, log DebugLog) error {
 	kubeconfig := envSettings.KubeConfig()
 
 	kc := kube.New(kubeconfig)
@@ -220,7 +218,7 @@ func InitActionConfig(envSettings *cli.EnvSettings, allNamespaces bool, helmDriv
 
 	clientset, err := kc.Factory.KubernetesClientSet()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	var namespace string
 	if !allNamespaces {
@@ -245,10 +243,10 @@ func InitActionConfig(envSettings *cli.EnvSettings, allNamespaces bool, helmDriv
 		panic("Unknown driver in HELM_DRIVER: " + helmDriver)
 	}
 
-	actionConfig.RESTClientGetter = kubeconfig
-	actionConfig.KubeClient = kc
-	actionConfig.Releases = store
-	actionConfig.Log = log
+	c.RESTClientGetter = kubeconfig
+	c.KubeClient = kc
+	c.Releases = store
+	c.Log = log
 
-	return &actionConfig, nil
+	return nil
 }

@@ -70,7 +70,9 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Args:    require.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if client.AllNamespaces {
-				action.InitActionConfig(settings, true, os.Getenv("HELM_DRIVER"), debug)
+				if err := cfg.Init(settings, true, os.Getenv("HELM_DRIVER"), debug); err != nil {
+					return err
+				}
 			}
 			client.SetStateMask()
 

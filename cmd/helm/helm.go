@@ -64,9 +64,10 @@ func initKubeLogs() {
 func main() {
 	initKubeLogs()
 
-	actionConfig, err := action.InitActionConfig(settings, false, os.Getenv("HELM_DRIVER"), debug)
+	actionConfig := new(action.Configuration)
+	cmd := newRootCmd(actionConfig, os.Stdout, os.Args[1:])
 
-	if err != nil {
+	if err := actionConfig.Init(settings, false, os.Getenv("HELM_DRIVER"), debug); err != nil {
 		debug("%+v", err)
 		switch e := err.(type) {
 		case pluginError:
@@ -75,8 +76,6 @@ func main() {
 			os.Exit(1)
 		}
 	}
-
-	cmd := newRootCmd(actionConfig, os.Stdout, os.Args[1:])
 
 	if err := cmd.Execute(); err != nil {
 		debug("%+v", err)
