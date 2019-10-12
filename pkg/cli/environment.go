@@ -60,6 +60,7 @@ func New() *EnvSettings {
 
 	env := EnvSettings{
 		namespace:        os.Getenv("HELM_NAMESPACE"),
+		KubeContext:      os.Getenv("HELM_KUBECONTEXT"),
 		PluginsDirectory: envOr("HELM_PLUGINS", helmpath.DataPath("plugins")),
 		RegistryConfig:   envOr("HELM_REGISTRY_CONFIG", helmpath.ConfigPath("registry.json")),
 		RepositoryConfig: envOr("HELM_REPOSITORY_CONFIG", helmpath.ConfigPath("repositories.yaml")),
@@ -73,7 +74,7 @@ func New() *EnvSettings {
 func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&s.namespace, "namespace", "n", s.namespace, "namespace scope for this request")
 	fs.StringVar(&s.kubeConfig, "kubeconfig", "", "path to the kubeconfig file")
-	fs.StringVar(&s.KubeContext, "kube-context", "", "name of the kubeconfig context to use")
+	fs.StringVar(&s.KubeContext, "kube-context", s.KubeContext, "name of the kubeconfig context to use")
 	fs.BoolVar(&s.Debug, "debug", s.Debug, "enable verbose output")
 	fs.StringVar(&s.RegistryConfig, "registry-config", s.RegistryConfig, "path to the registry config file")
 	fs.StringVar(&s.RepositoryConfig, "repository-config", s.RepositoryConfig, "path to the file containing repository names and URLs")
