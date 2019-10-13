@@ -77,7 +77,7 @@ func actionConfigFixture(t *testing.T) *Configuration {
 	}
 
 	return &Configuration{
-		Releases:       storage.Init(driver.NewMemory()),
+		Releases:       storage.Init(driver.NewMemory("default")),
 		KubeClient:     &kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: ioutil.Discard}},
 		Capabilities:   chartutil.DefaultCapabilities,
 		RegistryClient: registryClient,

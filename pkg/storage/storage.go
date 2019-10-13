@@ -227,7 +227,7 @@ func makeKey(rlsname string, version int) string {
 func Init(d driver.Driver) *Storage {
 	// default driver is in memory
 	if d == nil {
-		d = driver.NewMemory()
+		d = driver.NewMemory("default")
 	}
 	return &Storage{
 		Driver: d,

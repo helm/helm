@@ -88,7 +88,7 @@ func runTestActionCmd(t *testing.T, tests []cmdTestCase) {
 }
 
 func storageFixture() *storage.Storage {
-	return storage.Init(driver.NewMemory())
+	return storage.Init(driver.NewMemory("default"))
 }
 
 func executeActionCommandC(store *storage.Storage, cmd string) (*cobra.Command, string, error) {

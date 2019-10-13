@@ -55,13 +55,25 @@ func tsFixtureMemory(t *testing.T) *Memory {
 		releaseStub("rls-b", 2, "default", rspb.StatusSuperseded),
 	}
 
-	mem := NewMemory()
+	mem := NewMemory("default")
 	for _, tt := range hs {
 		err := mem.Create(testKey(tt.Name, tt.Version), tt)
 		if err != nil {
 			t.Fatalf("Test setup failed to create: %s\n", err)
 		}
 	}
+
+	mem.namespace = "testing"
+	err := mem.CreateNamespace(mem.namespace)
+	if err != nil {
+		t.Fatalf("Test setup failed to create: %s\n", err)
+	}
+	anotherRls := releaseStub("rls-a", 1, "testing", rspb.StatusDeployed)
+	err = mem.Create(testKey(anotherRls.Name, anotherRls.Version), anotherRls)
+	if err != nil {
+		t.Fatalf("Test setup failed to create: %s\n", err)
+	}
+
 	return mem
 }
 

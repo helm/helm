@@ -17,6 +17,7 @@ limitations under the License.
 package driver
 
 import (
+	"github.com/pkg/errors"
 	"strconv"
 	"strings"
 	"sync"
@@ -29,15 +30,53 @@ var _ Driver = (*Memory)(nil)
 // MemoryDriverName is the string name of this driver.
 const MemoryDriverName = "Memory"
 
+var (
+	// ErrNamespaceNotFound indicates that a namespace is not found.
+	ErrNamespaceNotFound      = errors.New("namespace not found")
+	// ErrNamespaceAlreadyExists indicates that a namespace already exists.
+	ErrNamespaceAlreadyExists = errors.New("namespace already exists")
+)
+
 // Memory is the in-memory storage driver implementation.
 type Memory struct {
 	sync.RWMutex
-	cache map[string]records
+	allNamespacesCache map[string]map[string]records
+	namespace          string
 }
 
 // NewMemory initializes a new memory driver.
-func NewMemory() *Memory {
-	return &Memory{cache: map[string]records{}}
+func NewMemory(namespace string) *Memory {
+	memory := &Memory{
+		allNamespacesCache: map[string]map[string]records{},
+		namespace:          namespace,
+	}
+	if namespace != "" {
+		_ = memory.CreateNamespace(namespace)
+	}
+
+	return memory
+}
+
+// SetNamespace sets the current namespace of the memory driver
+func (mem *Memory) SetNamespace(namespace string) {
+	defer unlock(mem.wlock())
+	mem.namespace = namespace
+}
+
+// GetNamespace returns the current namespace of the memory driver
+func (mem *Memory) GetNamespace() string {
+	defer unlock(mem.rlock())
+	return mem.namespace
+}
+
+// Namespace creates a namespace for the memory driver
+func (mem *Memory) CreateNamespace(namespace string) error {
+	_, exists := mem.allNamespacesCache[namespace]
+	if exists {
+		return ErrNamespaceAlreadyExists
+	}
+	mem.allNamespacesCache[namespace] = make(map[string]records)
+	return nil
 }
 
 // Name returns the name of the driver.
@@ -56,7 +95,11 @@ func (mem *Memory) Get(key string) (*rspb.Release, error) {
 		if _, err := strconv.Atoi(ver); err != nil {
 			return nil, ErrInvalidKey
 		}
-		if recs, ok := mem.cache[name]; ok {
+		cache, exists := mem.allNamespacesCache[mem.namespace]
+		if !exists {
+			return nil, ErrNamespaceNotFound
+		}
+		if recs, ok := cache[name]; ok {
 			if r := recs.Get(key); r != nil {
 				return r.rls, nil
 			}
@@ -72,13 +115,17 @@ func (mem *Memory) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error
 	defer unlock(mem.rlock())
 
 	var ls []*rspb.Release
-	for _, recs := range mem.cache {
-		recs.Iter(func(_ int, rec *record) bool {
-			if filter(rec.rls) {
-				ls = append(ls, rec.rls)
+	for namespace, cache := range mem.allNamespacesCache {
+		if mem.namespace == namespace || mem.namespace == "" {
+			for _, recs := range cache {
+				recs.Iter(func(_ int, rec *record) bool {
+					if filter(rec.rls) {
+						ls = append(ls, rec.rls)
+					}
+					return true
+				})
 			}
-			return true
-		})
+		}
 	}
 	return ls, nil
 }
@@ -93,18 +140,22 @@ func (mem *Memory) Query(keyvals map[string]string) ([]*rspb.Release, error) {
 	lbs.fromMap(keyvals)
 
 	var ls []*rspb.Release
-	for _, recs := range mem.cache {
-		recs.Iter(func(_ int, rec *record) bool {
-			// A query for a release name that doesn't exist (has been deleted)
-			// can cause rec to be nil.
-			if rec == nil {
-				return false
+	for namespace, cache := range mem.allNamespacesCache {
+		if mem.namespace == namespace || mem.namespace == "" {
+			for _, recs := range cache {
+				recs.Iter(func(_ int, rec *record) bool {
+					// A query for a release name that doesn't exist (has been deleted)
+					// can cause rec to be nil.
+					if rec == nil {
+						return false
+					}
+					if rec.lbs.match(lbs) {
+						ls = append(ls, rec.rls)
+					}
+					return true
+				})
 			}
-			if rec.lbs.match(lbs) {
-				ls = append(ls, rec.rls)
-			}
-			return true
-		})
+		}
 	}
 	return ls, nil
 }
@@ -113,14 +164,18 @@ func (mem *Memory) Query(keyvals map[string]string) ([]*rspb.Release, error) {
 func (mem *Memory) Create(key string, rls *rspb.Release) error {
 	defer unlock(mem.wlock())
 
-	if recs, ok := mem.cache[rls.Name]; ok {
+	cache, exists := mem.allNamespacesCache[mem.namespace]
+	if !exists {
+		return ErrNamespaceNotFound
+	}
+	if recs, ok := cache[rls.Name]; ok {
 		if err := recs.Add(newRecord(key, rls)); err != nil {
 			return err
 		}
-		mem.cache[rls.Name] = recs
+		cache[rls.Name] = recs
 		return nil
 	}
-	mem.cache[rls.Name] = records{newRecord(key, rls)}
+	cache[rls.Name] = records{newRecord(key, rls)}
 	return nil
 }
 
@@ -128,7 +183,11 @@ func (mem *Memory) Create(key string, rls *rspb.Release) error {
 func (mem *Memory) Update(key string, rls *rspb.Release) error {
 	defer unlock(mem.wlock())
 
-	if rs, ok := mem.cache[rls.Name]; ok && rs.Exists(key) {
+	cache, exists := mem.allNamespacesCache[mem.namespace]
+	if !exists {
+		return ErrNamespaceNotFound
+	}
+	if rs, ok := cache[rls.Name]; ok && rs.Exists(key) {
 		rs.Replace(key, newRecord(key, rls))
 		return nil
 	}
@@ -146,14 +205,19 @@ func (mem *Memory) Delete(key string) (*rspb.Release, error) {
 		return nil, ErrInvalidKey
 	}
 
+	cache, exists := mem.allNamespacesCache[mem.namespace]
+	if !exists {
+		return nil, ErrNamespaceNotFound
+	}
+
 	name, ver := elems[0], elems[1]
 	if _, err := strconv.Atoi(ver); err != nil {
 		return nil, ErrInvalidKey
 	}
-	if recs, ok := mem.cache[name]; ok {
+	if recs, ok := cache[name]; ok {
 		if r := recs.Remove(key); r != nil {
 			// recs.Remove changes the slice reference, so we have to re-assign it.
-			mem.cache[name] = recs
+			cache[name] = recs
 			return r.rls, nil
 		}
 	}

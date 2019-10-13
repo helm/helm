@@ -27,7 +27,7 @@ import (
 
 func TestStorageCreate(t *testing.T) {
 	// initialize storage
-	storage := Init(driver.NewMemory())
+	storage := Init(driver.NewMemory("default"))
 
 	// create fake release
 	rls := ReleaseTestData{
@@ -49,7 +49,7 @@ func TestStorageCreate(t *testing.T) {
 
 func TestStorageUpdate(t *testing.T) {
 	// initialize storage
-	storage := Init(driver.NewMemory())
+	storage := Init(driver.NewMemory("default"))
 
 	// create fake release
 	rls := ReleaseTestData{
@@ -76,7 +76,7 @@ func TestStorageUpdate(t *testing.T) {
 
 func TestStorageDelete(t *testing.T) {
 	// initialize storage
-	storage := Init(driver.NewMemory())
+	storage := Init(driver.NewMemory("default"))
 
 	// create fake release
 	rls := ReleaseTestData{
@@ -117,7 +117,7 @@ func TestStorageDelete(t *testing.T) {
 
 func TestStorageList(t *testing.T) {
 	// initialize storage
-	storage := Init(driver.NewMemory())
+	storage := Init(driver.NewMemory("default"))
 
 	// setup storage with test releases
 	setup := func() {
@@ -166,7 +166,7 @@ func TestStorageList(t *testing.T) {
 }
 
 func TestStorageDeployed(t *testing.T) {
-	storage := Init(driver.NewMemory())
+	storage := Init(driver.NewMemory("default"))
 
 	const name = "angry-bird"
 	const vers = 4
@@ -206,7 +206,7 @@ func TestStorageDeployed(t *testing.T) {
 }
 
 func TestStorageHistory(t *testing.T) {
-	storage := Init(driver.NewMemory())
+	storage := Init(driver.NewMemory("default"))
 
 	const name = "angry-bird"
 
@@ -237,7 +237,7 @@ func TestStorageHistory(t *testing.T) {
 }
 
 func TestStorageRemoveLeastRecent(t *testing.T) {
-	storage := Init(driver.NewMemory())
+	storage := Init(driver.NewMemory("default"))
 	storage.Log = t.Logf
 
 	// Make sure that specifying this at the outset doesn't cause any bugs.
@@ -294,7 +294,7 @@ func TestStorageRemoveLeastRecent(t *testing.T) {
 }
 
 func TestStorageLast(t *testing.T) {
-	storage := Init(driver.NewMemory())
+	storage := Init(driver.NewMemory("default"))
 
 	const name = "angry-bird"
 

@@ -236,7 +236,7 @@ func (c *Configuration) Init(envSettings *cli.EnvSettings, allNamespaces bool, h
 		d.Log = log
 		store = storage.Init(d)
 	case "memory":
-		d := driver.NewMemory()
+		d := driver.NewMemory(namespace)
 		store = storage.Init(d)
 	default:
 		// Not sure what to do here.
