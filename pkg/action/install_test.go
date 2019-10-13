@@ -78,8 +78,16 @@ func TestInstallRelease(t *testing.T) {
 func TestInstallReleaseWithValues(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
-	userVals := map[string]interface{}{}
-	expectedUserValues := map[string]interface{}{}
+	userVals := map[string]interface{}{
+		"nestedKey": map[string]interface{}{
+			"simpleKey": "simpleValue",
+		},
+	}
+	expectedUserValues := map[string]interface{}{
+		"nestedKey": map[string]interface{}{
+			"simpleKey": "simpleValue",
+		},
+	}
 	res, err := instAction.Run(buildChart(withSampleValues()), userVals)
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)

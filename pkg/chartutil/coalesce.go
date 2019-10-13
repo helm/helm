@@ -19,6 +19,8 @@ package chartutil
 import (
 	"log"
 
+	"helm.sh/helm/v3/internal/third_party/deepcopy"
+
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/pkg/chart"
@@ -36,7 +38,10 @@ import (
 func CoalesceValues(chrt *chart.Chart, vals map[string]interface{}) (Values, error) {
 	// create a copy of vals and then pass it to coalesce
 	// and coalesceDeps, as both will mutate the passed values
-	valsCopy := copyMap(vals)
+	valsCopy, err := deepcopy.Map(vals)
+	if err != nil {
+		return vals, err
+	}
 	if _, err := coalesce(chrt, valsCopy); err != nil {
 		return valsCopy, err
 	}
