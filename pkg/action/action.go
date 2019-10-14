@@ -19,7 +19,6 @@ package action
 import (
 	"path"
 	"regexp"
-	"time"
 
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -34,12 +33,13 @@ import (
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage"
 	"helm.sh/helm/v3/pkg/storage/driver"
+	"helm.sh/helm/v3/pkg/time"
 )
 
 // Timestamper is a function capable of producing a timestamp.Timestamper.
 //
-// By default, this is a time.Time function. This can be overridden for testing,
-// though, so that timestamps are predictable.
+// By default, this is a time.Time function from the Helm time package. This can
+// be overridden for testing though, so that timestamps are predictable.
 var Timestamper = time.Now
 
 var (

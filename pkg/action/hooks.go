@@ -18,15 +18,16 @@ package action
 import (
 	"bytes"
 	"sort"
-	"time"
+	stdtime "time"
 
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/time"
 )
 
 // execHook executes all of the hooks for the given hook event.
-func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, timeout time.Duration) error {
+func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, timeout stdtime.Duration) error {
 	executingHooks := []*release.Hook{}
 
 	for _, h := range rl.Hooks {

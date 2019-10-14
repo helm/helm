@@ -19,7 +19,6 @@ package action
 import (
 	"fmt"
 	"testing"
-	"time"
 
 	"helm.sh/helm/v3/pkg/chart"
 
@@ -28,6 +27,7 @@ import (
 
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
 	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/time"
 )
 
 func upgradeAction(t *testing.T) *Upgrade {

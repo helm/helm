@@ -18,12 +18,13 @@ package action
 
 import (
 	"strings"
-	"time"
+	stdtime "time"
 
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/releaseutil"
+	"helm.sh/helm/v3/pkg/time"
 )
 
 // Uninstall is the action for uninstalling releases.
@@ -35,7 +36,7 @@ type Uninstall struct {
 	DisableHooks bool
 	DryRun       bool
 	KeepHistory  bool
-	Timeout      time.Duration
+	Timeout      stdtime.Duration
 }
 
 // NewUninstall creates a new Uninstall object with the given configuration.

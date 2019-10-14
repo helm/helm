@@ -20,11 +20,12 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
-	"time"
+	stdtime "time"
 
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/time"
 )
 
 // Rollback is the action for rolling back to a given release.
@@ -34,7 +35,7 @@ type Rollback struct {
 	cfg *Configuration
 
 	Version       int
-	Timeout       time.Duration
+	Timeout       stdtime.Duration
 	Wait          bool
 	DisableHooks  bool
 	DryRun        bool

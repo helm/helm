@@ -19,7 +19,7 @@ package main
 import (
 	"fmt"
 	"io"
-	"time"
+	stdtime "time"
 
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
@@ -30,6 +30,7 @@ import (
 	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/releaseutil"
+	"helm.sh/helm/v3/pkg/time"
 )
 
 var historyHelp = `
@@ -98,7 +99,7 @@ func (r releaseHistory) WriteTable(out io.Writer) error {
 	tbl := uitable.New()
 	tbl.AddRow("REVISION", "UPDATED", "STATUS", "CHART", "APP VERSION", "DESCRIPTION")
 	for _, item := range r {
-		tbl.AddRow(item.Revision, item.Updated.Format(time.ANSIC), item.Status, item.Chart, item.AppVersion, item.Description)
+		tbl.AddRow(item.Revision, item.Updated.Format(stdtime.ANSIC), item.Status, item.Chart, item.AppVersion, item.Description)
 	}
 	return output.EncodeTable(out, tbl)
 }

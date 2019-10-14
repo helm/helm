@@ -21,7 +21,6 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"testing"
-	"time"
 
 	dockerauth "github.com/deislabs/oras/pkg/auth/docker"
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
@@ -33,6 +32,7 @@ import (
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage"
 	"helm.sh/helm/v3/pkg/storage/driver"
+	"helm.sh/helm/v3/pkg/time"
 )
 
 var verbose = flag.Bool("test.log", false, "enable test logging")
