@@ -17,10 +17,14 @@ package downloader
 
 import (
 	"bytes"
+	"path/filepath"
 	"reflect"
 	"testing"
 
 	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/repo/repotest"
 )
 
 func TestVersionEquals(t *testing.T) {
@@ -175,4 +179,107 @@ func TestGetRepoNames(t *testing.T) {
 			t.Errorf("%s: expected map %v, got %v", tt.name, l, tt.name)
 		}
 	}
+}
+
+// This function is the skeleton test code of failing tests for #6416 and bugs due to #5874.
+// This function is used by below tests that ensures success of build operation
+// with optional fields, alias, condition, tags, and even with ranged version.
+// Parent chart includes local-subchart 0.1.0 subchart from a fake repository, by default.
+// If each of these main fields (name, version, repository) is not supplied by dep param, default value will be used.
+func checkBuildWithOptionalFields(t *testing.T, chartName string, dep chart.Dependency) {
+	// Set up a fake repo
+	srv, err := repotest.NewTempServer("testdata/*.tgz*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer srv.Stop()
+	if err := srv.LinkIndices(); err != nil {
+		t.Fatal(err)
+	}
+	dir := func(p ...string) string {
+		return filepath.Join(append([]string{srv.Root()}, p...)...)
+	}
+
+	// Set main fields if not exist
+	if dep.Name == "" {
+		dep.Name = "local-subchart"
+	}
+	if dep.Version == "" {
+		dep.Version = "0.1.0"
+	}
+	if dep.Repository == "" {
+		dep.Repository = srv.URL()
+	}
+
+	// Save a chart
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:         chartName,
+			Version:      "0.1.0",
+			APIVersion:   "v1",
+			Dependencies: []*chart.Dependency{&dep},
+		},
+	}
+	if err := chartutil.SaveDir(c, dir()); err != nil {
+		t.Fatal(err)
+	}
+
+	// Set-up a manager
+	b := bytes.NewBuffer(nil)
+	g := getter.Providers{getter.Provider{
+		Schemes: []string{"http", "https"},
+		New:     getter.NewHTTPGetter,
+	}}
+	m := &Manager{
+		ChartPath:        dir(chartName),
+		Out:              b,
+		Getters:          g,
+		RepositoryConfig: dir("repositories.yaml"),
+		RepositoryCache:  dir(),
+	}
+
+	// First build will update dependencies and create Chart.lock file.
+	err = m.Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Second build should be passed. See PR #6655.
+	err = m.Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestBuild_WithoutOptionalFields(t *testing.T) {
+	// Dependency has main fields only (name/version/repository)
+	checkBuildWithOptionalFields(t, "without-optional-fields", chart.Dependency{})
+}
+
+func TestBuild_WithSemVerRange(t *testing.T) {
+	// Dependency version is the form of SemVer range
+	checkBuildWithOptionalFields(t, "with-semver-range", chart.Dependency{
+		Version: ">=0.1.0",
+	})
+}
+
+func TestBuild_WithAlias(t *testing.T) {
+	// Dependency has an alias
+	checkBuildWithOptionalFields(t, "with-alias", chart.Dependency{
+		Alias: "local-subchart-alias",
+	})
+}
+
+func TestBuild_WithCondition(t *testing.T) {
+	// Dependency has a condition
+	checkBuildWithOptionalFields(t, "with-condition", chart.Dependency{
+		Condition: "some.condition",
+	})
+}
+
+func TestBuild_WithTags(t *testing.T) {
+	// Dependency has several tags
+	checkBuildWithOptionalFields(t, "with-tags", chart.Dependency{
+		Tags: []string{"tag1", "tag2"},
+	})
 }
