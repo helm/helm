@@ -29,13 +29,15 @@ func TestManuallyProcessArgs(t *testing.T) {
 	input := []string{
 		"--debug",
 		"--foo", "bar",
-		"--context", "test1",
+		"--kubeconfig=/home/foo",
+		"--kube-context", "test1",
+		"-n", "test2",
 		"--home=/tmp",
 		"command",
 	}
 
 	expectKnown := []string{
-		"--debug", "--context", "test1",
+		"--debug", "--kubeconfig=/home/foo", "--kube-context", "test1", "-n", "test2",
 	}
 
 	expectUnknown := []string{
