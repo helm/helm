@@ -211,7 +211,7 @@ func (c *Configuration) recordRelease(r *release.Release) {
 
 // InitActionConfig initializes the action configuration
 func (c *Configuration) Init(envSettings *cli.EnvSettings, allNamespaces bool, helmDriver string, log DebugLog) error {
-	getter := envSettings.RestClientGetter()
+	getter := envSettings.RESTClientGetter()
 
 	kc := kube.New(getter)
 	kc.Log = log

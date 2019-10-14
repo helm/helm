@@ -38,8 +38,7 @@ import (
 
 // EnvSettings describes all of the environment settings.
 type EnvSettings struct {
-	namespace string
-	//kubeConfig string
+	namespace  string
 	config     genericclioptions.RESTClientGetter
 	configOnce sync.Once
 
@@ -116,14 +115,14 @@ func (s *EnvSettings) Namespace() string {
 		return s.namespace
 	}
 
-	if ns, _, err := s.RestClientGetter().ToRawKubeConfigLoader().Namespace(); err == nil {
+	if ns, _, err := s.RESTClientGetter().ToRawKubeConfigLoader().Namespace(); err == nil {
 		return ns
 	}
 	return "default"
 }
 
-//KubeConfig gets the kubeconfig from EnvSettings
-func (s *EnvSettings) RestClientGetter() genericclioptions.RESTClientGetter {
+//RESTClientGetter gets the kubeconfig from EnvSettings
+func (s *EnvSettings) RESTClientGetter() genericclioptions.RESTClientGetter {
 	s.configOnce.Do(func() {
 		s.config = kube.GetConfig(s.KubeConfig, s.KubeContext, s.namespace)
 	})
