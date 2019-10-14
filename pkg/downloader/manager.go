@@ -23,6 +23,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 
@@ -76,6 +77,11 @@ func (m *Manager) Build() error {
 	lock := c.Lock
 	if lock == nil {
 		return m.Update()
+	}
+
+	// Ensure that the lock file is up-to-date with Chart.yaml dependencies.
+	if err := ensureLock(c.Metadata.Dependencies, lock.Dependencies); err != nil {
+		return err
 	}
 
 	// Check that all of the repos we're dependent on actually exist.
@@ -601,6 +607,82 @@ func (m *Manager) loadChartRepositories() (map[string]*repo.ChartRepository, err
 		indices[lname] = cr
 	}
 	return indices, nil
+}
+
+// ensureLock compares Chart.yaml and Chart.lock dependencies, and then ensures
+// the lock file is still up-to-date.
+func ensureLock(chartDeps []*chart.Dependency, lockDeps []*chart.Dependency) error {
+	var (
+		vSorted  = make([]*semver.Version, 0, len(lockDeps))
+		vm       = make(map[*semver.Version]*chart.Dependency, len(lockDeps))
+		lm       = make(map[*chart.Dependency]bool, len(lockDeps))
+		cMissing []string
+		lMissing []string
+	)
+
+	// Filter & sort Chart.lock dependencies in desc order.
+	for _, ld := range lockDeps {
+		v, err := semver.NewVersion(ld.Version)
+		if err != nil || ld.Repository == "" {
+			continue
+		}
+		vm[v] = ld
+		vSorted = append(vSorted, v)
+	}
+	sort.Sort(sort.Reverse(semver.Collection(vSorted)))
+
+	lSorted := make([]*chart.Dependency, len(vSorted))
+	for i, v := range vSorted {
+		lSorted[i] = vm[v]
+	}
+
+	// Filter dependencies in Chart.yaml which is not in Chart.lock.
+	for _, cd := range chartDeps {
+		if cd.Repository == "" {
+			// Don't care about local subcharts during building dependencies.
+			continue
+		}
+
+		// Chart.yaml can have SemVer range.
+		constraint, err := semver.NewConstraint(cd.Version)
+		if err != nil {
+			return errors.Wrapf(err, "dependency %q in Chart.yaml has an invalid version/constraint format", cd.Name)
+		}
+
+		found := false
+		for _, ld := range lSorted {
+			if cd.Name != ld.Name || cd.Repository != ld.Repository {
+				continue
+			}
+			ldVer, err := semver.NewVersion(ld.Version)
+			if err != nil {
+				return errors.Wrapf(err, "dependency %q in Chart.lock has an invalid version format", ld.Name)
+			} else if constraint.Check(ldVer) {
+				// Lock dependencies are sorted, so the matched version is the highest version among available candidates.
+				found = true
+				lm[ld] = true
+				break
+			}
+		}
+		if !found {
+			cMissing = append(cMissing, cd.Name)
+		}
+	}
+	if len(cMissing) > 0 {
+		return errors.Errorf("dependencies %s in Chart.yaml don't have a valid version resolution in Chart.lock. Try updating Chart.lock", strings.Join(cMissing, ", "))
+	}
+
+	// All Chart.yaml dependencies are resolved in Chart.lock.
+	// But we should check whether all Chart.lock dependencies are needed by Chart.yaml.
+	for _, ld := range lSorted {
+		if _, ok := lm[ld]; !ok {
+			lMissing = append(lMissing, ld.Name)
+		}
+	}
+	if len(lMissing) > 0 {
+		return errors.Errorf("dependencies %s in Chart.lock are not required by Chart.yaml. Try updating Chart.lock", strings.Join(lMissing, ", "))
+	}
+	return nil
 }
 
 // writeLock writes a lockfile to disk

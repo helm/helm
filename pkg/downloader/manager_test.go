@@ -17,6 +17,7 @@ package downloader
 
 import (
 	"bytes"
+	"fmt"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -181,9 +182,172 @@ func TestGetRepoNames(t *testing.T) {
 	}
 }
 
+func TestEnsureLock(t *testing.T) {
+	repo := "http://example.com/charts"
+	tests := []struct {
+		name  string
+		cDeps []*chart.Dependency
+		lDeps []*chart.Dependency
+		err   bool
+	}{
+		{
+			name: "no dep",
+			err:  false,
+		},
+		{
+			name: "extra lock dep",
+			cDeps: []*chart.Dependency{
+				{Name: "subchart", Version: "0.1.0", Repository: repo},
+			},
+			lDeps: []*chart.Dependency{
+				{Name: "subchart", Version: "0.1.0", Repository: repo},
+				{Name: "extra-subchart", Version: "0.1.0", Repository: repo},
+			},
+			err: true,
+		},
+		{
+			name: "extra lock dep without repo",
+			cDeps: []*chart.Dependency{
+				{Name: "with-repo", Version: "0.1.0", Repository: repo},
+			},
+			lDeps: []*chart.Dependency{
+				{Name: "with-repo", Version: "0.1.0", Repository: repo},
+				{Name: "without-repo", Version: "0.1.0"},
+			},
+			err: false,
+		},
+		{
+			name: "extra chart dep",
+			cDeps: []*chart.Dependency{
+				{Name: "subchart", Version: "0.1.0", Repository: repo},
+				{Name: "extra-subchart", Version: "0.1.0", Repository: repo},
+			},
+			lDeps: []*chart.Dependency{
+				{Name: "subchart", Version: "0.1.0", Repository: repo},
+			},
+			err: true,
+		},
+		{
+			name: "extra chart dep without repo",
+			cDeps: []*chart.Dependency{
+				{Name: "subchart", Version: "0.1.0", Repository: repo},
+				{Name: "extra-subchart", Version: "0.1.0"},
+			},
+			lDeps: []*chart.Dependency{
+				{Name: "subchart", Version: "0.1.0", Repository: repo},
+			},
+			err: false,
+		},
+		{
+			name: "lock version outdated",
+			cDeps: []*chart.Dependency{
+				{Name: "subchart", Version: "^1.3.4", Repository: repo},
+			},
+			lDeps: []*chart.Dependency{
+				{Name: "subchart", Version: "1.2.3", Repository: repo},
+			},
+			err: true,
+		},
+		{
+			name: "resolution matched",
+			cDeps: []*chart.Dependency{
+				{Name: "subchart", Version: ">=0.1.0", Repository: repo},
+			},
+			lDeps: []*chart.Dependency{
+				{Name: "subchart", Version: "0.1.2", Repository: repo},
+			},
+			err: false,
+		},
+		{
+			name: "chart deps of same chart that only one resolved",
+			cDeps: []*chart.Dependency{
+				{Name: "subchart", Version: "0.1.0", Repository: repo, Alias: "subchart1"},
+				{Name: "subchart", Version: "0.2.0", Repository: repo, Alias: "subchart2"},
+			},
+			lDeps: []*chart.Dependency{
+				{Name: "subchart", Version: "0.1.0", Repository: repo},
+			},
+			err: true,
+		},
+		{
+			name: "chart deps of same chart resolved to common version",
+			cDeps: []*chart.Dependency{
+				{Name: "subchart", Version: ">=0.1.0", Repository: repo, Alias: "subchart1"},
+				{Name: "subchart", Version: ">=0.2.0", Repository: repo, Alias: "subchart2"},
+			},
+			lDeps: []*chart.Dependency{
+				{Name: "subchart", Version: "0.3.0", Repository: repo},
+			},
+			err: false,
+		},
+		{
+			name: "chart deps of same chart with intersected version as smaller version of lock deps",
+			cDeps: []*chart.Dependency{
+				{Name: "subchart", Version: "0.2.0", Repository: repo, Alias: "subchart1"},
+				{Name: "subchart", Version: "~0.2.0", Repository: repo, Alias: "subchart2"},
+			},
+			lDeps: []*chart.Dependency{
+				{Name: "subchart", Version: "0.2.0", Repository: repo},
+				{Name: "subchart", Version: "0.2.1", Repository: repo},
+			},
+			err: false,
+		},
+		{
+			name: "chart deps of same chart with intersected version as bigger version of lock deps",
+			cDeps: []*chart.Dependency{
+				{Name: "subchart", Version: "~0.2.0", Repository: repo, Alias: "subchart2"},
+				{Name: "subchart", Version: "~0.2.1", Repository: repo, Alias: "subchart2"},
+			},
+			lDeps: []*chart.Dependency{
+				{Name: "subchart", Version: "0.2.0", Repository: repo},
+				{Name: "subchart", Version: "0.2.1", Repository: repo},
+			},
+			err: true,
+		},
+		{
+			name: "multiple lock deps of single chart dep resolutions",
+			cDeps: []*chart.Dependency{
+				{Name: "subchart", Version: ">=0.1.0", Repository: repo},
+			},
+			lDeps: []*chart.Dependency{
+				{Name: "subchart", Version: "0.1.0", Repository: repo},
+				{Name: "subchart", Version: "0.2.0", Repository: repo},
+			},
+			err: true,
+		},
+		{
+			name: "wrong version format",
+			cDeps: []*chart.Dependency{
+				{Name: "subchart", Version: "wrong-version", Repository: repo},
+			},
+			lDeps: []*chart.Dependency{
+				{Name: "subchart", Version: "wrong-version", Repository: repo},
+			},
+			err: true,
+		},
+	}
+
+	for _, tt := range tests {
+		err := ensureLock(tt.cDeps, tt.lDeps)
+
+		if err != nil {
+			if tt.err {
+				continue
+			}
+			t.Fatal(fmt.Sprintf("Expected no error in test %q but:", tt.name), err)
+		}
+
+		if tt.err {
+			t.Fatalf("Expected error in test %q", tt.name)
+		}
+	}
+}
+
 // This function is the skeleton test code of failing tests for #6416 and bugs due to #5874.
+//
 // This function is used by below tests that ensures success of build operation
 // with optional fields, alias, condition, tags, and even with ranged version.
+//
 // Parent chart includes local-subchart 0.1.0 subchart from a fake repository, by default.
 // If each of these main fields (name, version, repository) is not supplied by dep param, default value will be used.
 func checkBuildWithOptionalFields(t *testing.T, chartName string, dep chart.Dependency) {
