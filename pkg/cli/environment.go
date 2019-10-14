@@ -39,9 +39,11 @@ import (
 // EnvSettings describes all of the environment settings.
 type EnvSettings struct {
 	namespace  string
-	kubeConfig string
 	config     genericclioptions.RESTClientGetter
 	configOnce sync.Once
+
+	// KubeConfig is the path to the kubeconfig file
+	KubeConfig string
 	// KubeContext is the name of the kubeconfig context.
 	KubeContext string
 	// Debug indicates whether or not Helm is running in Debug mode.
@@ -73,7 +75,7 @@ func New() *EnvSettings {
 // AddFlags binds flags to the given flagset.
 func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&s.namespace, "namespace", "n", s.namespace, "namespace scope for this request")
-	fs.StringVar(&s.kubeConfig, "kubeconfig", "", "path to the kubeconfig file")
+	fs.StringVar(&s.KubeConfig, "kubeconfig", "", "path to the kubeconfig file")
 	fs.StringVar(&s.KubeContext, "kube-context", s.KubeContext, "name of the kubeconfig context to use")
 	fs.BoolVar(&s.Debug, "debug", s.Debug, "enable verbose output")
 	fs.StringVar(&s.RegistryConfig, "registry-config", s.RegistryConfig, "path to the registry config file")
@@ -100,8 +102,8 @@ func (s *EnvSettings) EnvVars() map[string]string {
 		"HELM_KUBECONTEXT":       s.KubeContext,
 	}
 
-	if s.kubeConfig != "" {
-		envvars["KUBECONFIG"] = s.kubeConfig
+	if s.KubeConfig != "" {
+		envvars["KUBECONFIG"] = s.KubeConfig
 	}
 
 	return envvars
@@ -113,16 +115,16 @@ func (s *EnvSettings) Namespace() string {
 		return s.namespace
 	}
 
-	if ns, _, err := s.KubeConfig().ToRawKubeConfigLoader().Namespace(); err == nil {
+	if ns, _, err := s.RESTClientGetter().ToRawKubeConfigLoader().Namespace(); err == nil {
 		return ns
 	}
 	return "default"
 }
 
-//KubeConfig gets the kubeconfig from EnvSettings
-func (s *EnvSettings) KubeConfig() genericclioptions.RESTClientGetter {
+//RESTClientGetter gets the kubeconfig from EnvSettings
+func (s *EnvSettings) RESTClientGetter() genericclioptions.RESTClientGetter {
 	s.configOnce.Do(func() {
-		s.config = kube.GetConfig(s.kubeConfig, s.KubeContext, s.namespace)
+		s.config = kube.GetConfig(s.KubeConfig, s.KubeContext, s.namespace)
 	})
 	return s.config
 }

@@ -211,9 +211,9 @@ func (c *Configuration) recordRelease(r *release.Release) {
 
 // InitActionConfig initializes the action configuration
 func (c *Configuration) Init(envSettings *cli.EnvSettings, allNamespaces bool, helmDriver string, log DebugLog) error {
-	kubeconfig := envSettings.KubeConfig()
+	getter := envSettings.RESTClientGetter()
 
-	kc := kube.New(kubeconfig)
+	kc := kube.New(getter)
 	kc.Log = log
 
 	clientset, err := kc.Factory.KubernetesClientSet()
@@ -243,7 +243,7 @@ func (c *Configuration) Init(envSettings *cli.EnvSettings, allNamespaces bool, h
 		panic("Unknown driver in HELM_DRIVER: " + helmDriver)
 	}
 
-	c.RESTClientGetter = kubeconfig
+	c.RESTClientGetter = getter
 	c.KubeClient = kc
 	c.Releases = store
 	c.Log = log
