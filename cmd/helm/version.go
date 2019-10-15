@@ -59,8 +59,10 @@ func newVersionCmd(out io.Writer) *cobra.Command {
 		},
 	}
 	f := cmd.Flags()
+	f.BoolP("client", "c", true, "display client version information")
 	f.BoolVar(&o.short, "short", false, "print the version number")
 	f.StringVar(&o.template, "template", "", "template for version string format")
+	f.MarkHidden("client")
 
 	return cmd
 }
