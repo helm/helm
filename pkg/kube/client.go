@@ -218,6 +218,8 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	// Since we don't know what order the objects come in, let's group them by the types and then sort them, so
 	// that when we print them, they come out looking good (headers apply to subgroups, etc.).
 	objs := make(map[string](map[string]runtime.Object))
+	mux := &sync.Mutex{}
+
 	infos, err := c.BuildUnstructured(namespace, reader)
 	if err != nil {
 		return "", err
@@ -227,6 +229,8 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 
 	missing := []string{}
 	err = perform(infos, func(info *resource.Info) error {
+		mux.Lock()
+		defer mux.Unlock()
 		c.Log("Doing get for %s: %q", info.Mapping.GroupVersionKind.Kind, info.Name)
 		if err := info.Get(); err != nil {
 			c.Log("WARNING: Failed Get for resource %q: %s", info.Name, err)
