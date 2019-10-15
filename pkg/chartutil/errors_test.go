@@ -1,5 +1,3 @@
-package chartutil
-
 /*
 Copyright The Helm Authors.
 
@@ -16,28 +14,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+package chartutil
+
 import (
 	"testing"
 )
 
 func TestErrorNoTableDoesntPanic(t *testing.T) {
-
-	defer recover()
-
 	x := "empty"
 
-	y := ErrNoTable(x)
+	y := ErrNoTable{x}
 
 	t.Logf("error is: %s", y)
 }
 
 func TestErrorNoValueDoesntPanic(t *testing.T) {
-
-	defer recover()
-
 	x := "empty"
 
-	y := ErrNoValue(x)
+	y := ErrNoValue{x}
 
 	t.Logf("error is: %s", y)
 }
