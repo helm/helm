@@ -72,7 +72,7 @@ func New(getter genericclioptions.RESTClientGetter) *Client {
 
 var nopLogger = func(_ string, _ ...interface{}) {}
 
-// Test connectivity to the Client
+// IsReachable tests connectivity to the cluster
 func (c *Client) IsReachable() error {
 	client, _ := c.Factory.KubernetesClientSet()
 	_, err := client.ServerVersion()
@@ -369,52 +369,43 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 }
 
 func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force bool) error {
+	var (
+		obj    runtime.Object
+		helper = resource.NewHelper(target.Client, target.Mapping)
+		kind   = target.Mapping.GroupVersionKind.Kind
+	)
+
 	patch, patchType, err := createPatch(target, currentObj)
 	if err != nil {
 		return errors.Wrap(err, "failed to create patch")
 	}
-	if patch == nil {
+
+	if patch == nil || string(patch) == "{}" {
 		c.Log("Looks like there are no changes for %s %q", target.Mapping.GroupVersionKind.Kind, target.Name)
 		// This needs to happen to make sure that tiller has the latest info from the API
 		// Otherwise there will be no labels and other functions that use labels will panic
 		if err := target.Get(); err != nil {
-			return errors.Wrap(err, "error trying to refresh resource information")
+			return errors.Wrap(err, "failed to refresh resource information")
 		}
+		return nil
+	}
+
+	// if --force is applied, attempt to replace the existing resource with the new object.
+	if force {
+		obj, err = helper.Replace(target.Namespace, target.Name, true, target.Object)
+		if err != nil {
+			return errors.Wrap(err, "failed to replace object")
+		}
+		log.Printf("Replaced %q with kind %s for kind %s\n", target.Name, currentObj.GetObjectKind().GroupVersionKind().Kind, kind)
 	} else {
 		// send patch to server
-		helper := resource.NewHelper(target.Client, target.Mapping)
-
-		obj, err := helper.Patch(target.Namespace, target.Name, patchType, patch, nil)
+		obj, err = helper.Patch(target.Namespace, target.Name, patchType, patch, nil)
 		if err != nil {
-			kind := target.Mapping.GroupVersionKind.Kind
 			log.Printf("Cannot patch %s: %q (%v)", kind, target.Name, err)
-
-			if force {
-				// Attempt to delete...
-				if err := deleteResource(target); err != nil {
-					return err
-				}
-				log.Printf("Deleted %s: %q", kind, target.Name)
-
-				// ... and recreate
-				if err := createResource(target); err != nil {
-					return errors.Wrap(err, "failed to recreate resource")
-				}
-				log.Printf("Created a new %s called %q\n", kind, target.Name)
-
-				// No need to refresh the target, as we recreated the resource based
-				// on it. In addition, it might not exist yet and a call to `Refresh`
-				// may fail.
-			} else {
-				log.Print("Use --force to force recreation of the resource")
-				return err
-			}
-		} else {
-			// When patch succeeds without needing to recreate, refresh target.
-			target.Refresh(obj, true)
 		}
 	}
 
+	target.Refresh(obj, true)
 	return nil
 }
 

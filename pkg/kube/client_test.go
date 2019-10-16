@@ -181,7 +181,7 @@ func TestUpdate(t *testing.T) {
 		"/namespaces/default/pods/starfish:PATCH",
 		"/namespaces/default/pods/otter:GET",
 		"/namespaces/default/pods/otter:GET",
-		"/namespaces/default/pods/otter:PATCH",
+		"/namespaces/default/pods/otter:GET",
 		"/namespaces/default/pods/dolphin:GET",
 		"/namespaces/default/pods:POST",
 		"/namespaces/default/pods/squid:DELETE",
