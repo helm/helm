@@ -117,33 +117,6 @@ func TestDependencyUpdateCmd(t *testing.T) {
 	}
 }
 
-func TestDependencyUpdateCmd_SkipRefresh(t *testing.T) {
-	defer resetEnv()()
-	defer ensure.HelmHome(t)()
-
-	srv := repotest.NewServer(helmpath.ConfigPath())
-	defer srv.Stop()
-	copied, err := srv.CopyCharts("testdata/testcharts/*.tgz")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Logf("Copied charts:\n%s", strings.Join(copied, "\n"))
-	t.Logf("Listening on directory %s", srv.Root())
-
-	chartname := "depup"
-	createTestingChart(t, helmpath.DataPath(), chartname, srv.URL())
-
-	_, out, err := executeActionCommand(fmt.Sprintf("dependency update --skip-refresh %s", helmpath.DataPath(chartname)))
-	if err == nil {
-		t.Fatal("Expected failure to find the repo with skipRefresh")
-	}
-
-	// This is written directly to stdout, so we have to capture as is.
-	if strings.Contains(out, `update from the "test" chart repository`) {
-		t.Errorf("Repo was unexpectedly updated\n%s", out)
-	}
-}
-
 func TestDependencyUpdateCmd_DontDeleteOldChartsOnError(t *testing.T) {
 	defer resetEnv()()
 	defer ensure.HelmHome(t)()
