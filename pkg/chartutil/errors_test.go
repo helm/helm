@@ -17,19 +17,21 @@ limitations under the License.
 package chartutil
 
 import (
-	"fmt"
+	"testing"
 )
 
-// ErrNoTable indicates that a chart does not have a matching table.
-type ErrNoTable struct {
-	Key string
+func TestErrorNoTableDoesntPanic(t *testing.T) {
+	x := "empty"
+
+	y := ErrNoTable{x}
+
+	t.Logf("error is: %s", y)
 }
 
-func (e ErrNoTable) Error() string { return fmt.Sprintf("%q is not a table", e.Key) }
+func TestErrorNoValueDoesntPanic(t *testing.T) {
+	x := "empty"
 
-// ErrNoValue indicates that Values does not contain a key with a value
-type ErrNoValue struct {
-	Key string
+	y := ErrNoValue{x}
+
+	t.Logf("error is: %s", y)
 }
-
-func (e ErrNoValue) Error() string { return fmt.Sprintf("%q is not a value", e.Key) }
