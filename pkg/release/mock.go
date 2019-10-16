@@ -18,7 +18,6 @@ package release
 
 import (
 	"math/rand"
-	stdtime "time"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/time"
@@ -50,7 +49,7 @@ type MockReleaseOptions struct {
 
 // Mock creates a mock release object based on options set by MockReleaseOptions. This function should typically not be used outside of testing.
 func Mock(opts *MockReleaseOptions) *Release {
-	date := time.Time{Time: stdtime.Unix(242085845, 0).UTC()}
+	date := time.Unix(242085845, 0).UTC()
 
 	name := opts.Name
 	if name == "" {

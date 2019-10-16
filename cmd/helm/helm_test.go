@@ -22,7 +22,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-	stdtime "time"
 
 	shellwords "github.com/mattn/go-shellwords"
 	"github.com/spf13/cobra"
@@ -37,7 +36,7 @@ import (
 	"helm.sh/helm/v3/pkg/time"
 )
 
-func testTimestamper() time.Time { return time.Time{Time: stdtime.Unix(242085845, 0).UTC()} }
+func testTimestamper() time.Time { return time.Unix(242085845, 0).UTC() }
 
 func init() {
 	action.Timestamper = testTimestamper

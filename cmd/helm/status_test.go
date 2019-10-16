@@ -27,7 +27,7 @@ import (
 
 func TestStatusCmd(t *testing.T) {
 	releasesMockWithStatus := func(info *release.Info, hooks ...*release.Hook) []*release.Release {
-		info.LastDeployed = time.Time{Time: stdtime.Unix(1452902400, 0).UTC()}
+		info.LastDeployed = time.Unix(1452902400, 0).UTC()
 		return []*release.Release{{
 			Name:      "flummoxed-chickadee",
 			Namespace: "default",
@@ -105,6 +105,6 @@ func TestStatusCmd(t *testing.T) {
 }
 
 func mustParseTime(t string) time.Time {
-	res, _ := stdtime.Parse(stdtime.RFC3339, t)
-	return time.Time{Time: res}
+	res, _ := time.Parse(stdtime.RFC3339, t)
+	return res
 }

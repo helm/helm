@@ -18,7 +18,6 @@ package main
 
 import (
 	"testing"
-	stdtime "time"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/release"
@@ -29,10 +28,10 @@ func TestListCmd(t *testing.T) {
 	defaultNamespace := "default"
 
 	sampleTimeSeconds := int64(1452902400)
-	timestamp1 := time.Time{Time: stdtime.Unix(sampleTimeSeconds+1, 0).UTC()}
-	timestamp2 := time.Time{Time: stdtime.Unix(sampleTimeSeconds+2, 0).UTC()}
-	timestamp3 := time.Time{Time: stdtime.Unix(sampleTimeSeconds+3, 0).UTC()}
-	timestamp4 := time.Time{Time: stdtime.Unix(sampleTimeSeconds+4, 0).UTC()}
+	timestamp1 := time.Unix(sampleTimeSeconds+1, 0).UTC()
+	timestamp2 := time.Unix(sampleTimeSeconds+2, 0).UTC()
+	timestamp3 := time.Unix(sampleTimeSeconds+3, 0).UTC()
+	timestamp4 := time.Unix(sampleTimeSeconds+4, 0).UTC()
 	chartInfo := &chart.Chart{
 		Metadata: &chart.Metadata{
 			Name:       "chickadee",

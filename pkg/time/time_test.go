@@ -23,13 +23,12 @@ import (
 )
 
 var (
-	testingTime, _    = time.Parse(time.RFC3339, "1977-09-02T22:04:05Z")
+	testingTime, _    = Parse(time.RFC3339, "1977-09-02T22:04:05Z")
 	testingTimeString = `"1977-09-02T22:04:05Z"`
 )
 
 func TestNonZeroValueMarshal(t *testing.T) {
-	myTime := Time{testingTime}
-	res, err := json.Marshal(myTime)
+	res, err := json.Marshal(testingTime)
 	if err != nil {
 		t.Fatal(err)
 	}
