@@ -36,7 +36,7 @@ generate_cover_data() {
 }
 
 push_to_coveralls() {
-  goveralls -coverprofile="${profile}" -service=circle-ci
+  goveralls -coverprofile="${profile}" -service=circle-ci -shallow
 }
 
 generate_cover_data
