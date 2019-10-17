@@ -25,6 +25,7 @@ import (
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/pkg/release"
+	helmtime "helm.sh/helm/v3/pkg/time"
 )
 
 // Rollback is the action for rolling back to a given release.
@@ -119,7 +120,7 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 		Config:    previousRelease.Config,
 		Info: &release.Info{
 			FirstDeployed: currentRelease.Info.FirstDeployed,
-			LastDeployed:  time.Now(),
+			LastDeployed:  helmtime.Now(),
 			Status:        release.StatusPendingRollback,
 			Notes:         previousRelease.Info.Notes,
 			// Because we lose the reference to previous version elsewhere, we set the

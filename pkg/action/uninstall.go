@@ -24,6 +24,7 @@ import (
 
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/releaseutil"
+	helmtime "helm.sh/helm/v3/pkg/time"
 )
 
 // Uninstall is the action for uninstalling releases.
@@ -89,7 +90,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 
 	u.cfg.Log("uninstall: Deleting %s", name)
 	rel.Info.Status = release.StatusUninstalling
-	rel.Info.Deleted = time.Now()
+	rel.Info.Deleted = helmtime.Now()
 	rel.Info.Description = "Deletion in progress (or silently failed)"
 	res := &release.UninstallReleaseResponse{Release: rel}
 

@@ -18,9 +18,9 @@ package release
 
 import (
 	"math/rand"
-	"time"
 
 	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/time"
 )
 
 // MockHookTemplate is the hook template used for all mock release objects.
