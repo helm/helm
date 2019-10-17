@@ -147,6 +147,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 	options := chartutil.ReleaseOptions{
 		Name:      name,
 		Namespace: currentRelease.Namespace,
+		Revision:  revision,
 		IsUpgrade: true,
 	}
 

@@ -130,6 +130,7 @@ func ReadValuesFile(filename string) (Values, error) {
 type ReleaseOptions struct {
 	Name      string
 	Namespace string
+	Revision  int
 	IsUpgrade bool
 	IsInstall bool
 }
@@ -149,6 +150,7 @@ func ToRenderValues(chrt *chart.Chart, chrtVals map[string]interface{}, options 
 			"Namespace": options.Namespace,
 			"IsUpgrade": options.IsUpgrade,
 			"IsInstall": options.IsInstall,
+			"Revision":  options.Revision,
 			"Service":   "Helm",
 		},
 	}

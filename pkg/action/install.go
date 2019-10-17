@@ -200,6 +200,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	options := chartutil.ReleaseOptions{
 		Name:      i.ReleaseName,
 		Namespace: i.Namespace,
+		Revision:  1,
 		IsInstall: true,
 	}
 	valuesToRender, err := chartutil.ToRenderValues(chrt, vals, options, caps)
