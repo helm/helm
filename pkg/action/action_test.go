@@ -173,7 +173,17 @@ func withName(name string) chartOption {
 }
 
 func withSampleValues() chartOption {
-	values := map[string]interface{}{"someKey": "someValue"}
+	values := map[string]interface{}{
+		"someKey": "someValue",
+		"nestedKey": map[string]interface{}{
+			"simpleKey": "simpleValue",
+			"anotherNestedKey": map[string]interface{}{
+				"yetAnotherNestedKey": map[string]interface{}{
+					"youReadyForAnotherNestedKey": "No",
+				},
+			},
+		},
+	}
 	return func(opts *chartOptions) {
 		opts.Values = values
 	}

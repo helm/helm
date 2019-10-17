@@ -223,7 +223,6 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 		expectedValues := map[string]interface{}{
 			"subchart": map[string]interface{}{
 				"enabled": false,
-				"global":  map[string]interface{}{},
 			},
 		}
 		is.Equal(expectedValues, updatedRes.Config)
