@@ -19,6 +19,7 @@ package rules
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
@@ -27,6 +28,11 @@ import (
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/engine"
 	"helm.sh/helm/v3/pkg/lint/support"
+)
+
+var (
+	crdHookSearch     = regexp.MustCompile(`"?helm\.sh/hook"?:\s+crd-install`)
+	releaseTimeSearch = regexp.MustCompile(`\.Release\.Time`)
 )
 
 // Templates lints the templates in the Linter.
@@ -83,10 +89,14 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 	- Metadata.Namespace is not set
 	*/
 	for _, template := range chart.Templates {
-		fileName, _ := template.Name, template.Data
+		fileName, data := template.Name, template.Data
 		path = fileName
 
 		linter.RunLinterRule(support.ErrorSev, path, validateAllowedExtension(fileName))
+		// These are v3 specific checks to make sure and warn people if their
+		// chart is not compatible with v3
+		linter.RunLinterRule(support.WarningSev, path, validateNoCRDHooks(data))
+		linter.RunLinterRule(support.ErrorSev, path, validateNoReleaseTime(data))
 
 		// We only apply the following lint rules to yaml files
 		if filepath.Ext(fileName) != ".yaml" || filepath.Ext(fileName) == ".yml" {
@@ -139,6 +149,20 @@ func validateAllowedExtension(fileName string) error {
 
 func validateYamlContent(err error) error {
 	return errors.Wrap(err, "unable to parse YAML")
+}
+
+func validateNoCRDHooks(manifest []byte) error {
+	if crdHookSearch.Match(manifest) {
+		return errors.New("manifest is a crd-install hook. This hook is no longer supported in v3 and all CRDs should also exist the crds/ directory at the top level of the chart")
+	}
+	return nil
+}
+
+func validateNoReleaseTime(manifest []byte) error {
+	if releaseTimeSearch.Match(manifest) {
+		return errors.New(".Release.Time has been removed in v3, please replace with the `now` function in your templates")
+	}
+	return nil
 }
 
 // K8sYamlStruct stubs a Kubernetes YAML file.

@@ -81,3 +81,23 @@ func TestTemplateIntegrationHappyPath(t *testing.T) {
 		t.Fatalf("Expected no error, got %d, %v", len(res), res)
 	}
 }
+
+func TestV3Fail(t *testing.T) {
+	linter := support.Linter{ChartDir: "./testdata/v3-fail"}
+	Templates(&linter, values, namespace, strict)
+	res := linter.Messages
+
+	if len(res) != 3 {
+		t.Fatalf("Expected 3 errors, got %d, %v", len(res), res)
+	}
+
+	if !strings.Contains(res[0].Err.Error(), ".Release.Time has been removed in v3") {
+		t.Errorf("Unexpected error: %s", res[0].Err)
+	}
+	if !strings.Contains(res[1].Err.Error(), "manifest is a crd-install hook") {
+		t.Errorf("Unexpected error: %s", res[1].Err)
+	}
+	if !strings.Contains(res[2].Err.Error(), "manifest is a crd-install hook") {
+		t.Errorf("Unexpected error: %s", res[2].Err)
+	}
+}
