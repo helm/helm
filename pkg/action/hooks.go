@@ -18,16 +18,16 @@ package action
 import (
 	"bytes"
 	"sort"
-	stdtime "time"
+	"time"
 
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/pkg/release"
-	"helm.sh/helm/v3/pkg/time"
+	helmtime "helm.sh/helm/v3/pkg/time"
 )
 
 // execHook executes all of the hooks for the given hook event.
-func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, timeout stdtime.Duration) error {
+func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, timeout time.Duration) error {
 	executingHooks := []*release.Hook{}
 
 	for _, h := range rl.Hooks {
@@ -61,7 +61,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 
 		// Record the time at which the hook was applied to the cluster
 		h.LastRun = release.HookExecution{
-			StartedAt: time.Now(),
+			StartedAt: helmtime.Now(),
 			Phase:     release.HookPhaseRunning,
 		}
 		cfg.recordRelease(rl)
@@ -73,7 +73,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 
 		// Create hook resources
 		if _, err := cfg.KubeClient.Create(resources); err != nil {
-			h.LastRun.CompletedAt = time.Now()
+			h.LastRun.CompletedAt = helmtime.Now()
 			h.LastRun.Phase = release.HookPhaseFailed
 			return errors.Wrapf(err, "warning: Hook %s %s failed", hook, h.Path)
 		}
@@ -81,7 +81,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		// Watch hook resources until they have completed
 		err = cfg.KubeClient.WatchUntilReady(resources, timeout)
 		// Note the time of success/failure
-		h.LastRun.CompletedAt = time.Now()
+		h.LastRun.CompletedAt = helmtime.Now()
 		// Mark hook as succeeded or failed
 		if err != nil {
 			h.LastRun.Phase = release.HookPhaseFailed

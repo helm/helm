@@ -20,12 +20,12 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
-	stdtime "time"
+	"time"
 
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/pkg/release"
-	"helm.sh/helm/v3/pkg/time"
+	helmtime "helm.sh/helm/v3/pkg/time"
 )
 
 // Rollback is the action for rolling back to a given release.
@@ -35,7 +35,7 @@ type Rollback struct {
 	cfg *Configuration
 
 	Version       int
-	Timeout       stdtime.Duration
+	Timeout       time.Duration
 	Wait          bool
 	DisableHooks  bool
 	DryRun        bool
@@ -120,7 +120,7 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 		Config:    previousRelease.Config,
 		Info: &release.Info{
 			FirstDeployed: currentRelease.Info.FirstDeployed,
-			LastDeployed:  time.Now(),
+			LastDeployed:  helmtime.Now(),
 			Status:        release.StatusPendingRollback,
 			Notes:         previousRelease.Info.Notes,
 			// Because we lose the reference to previous version elsewhere, we set the

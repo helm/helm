@@ -19,7 +19,7 @@ package main
 import (
 	"fmt"
 	"io"
-	stdtime "time"
+	"time"
 
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
@@ -30,7 +30,7 @@ import (
 	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/releaseutil"
-	"helm.sh/helm/v3/pkg/time"
+	helmtime "helm.sh/helm/v3/pkg/time"
 )
 
 var historyHelp = `
@@ -77,12 +77,12 @@ func newHistoryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 }
 
 type releaseInfo struct {
-	Revision    int       `json:"revision"`
-	Updated     time.Time `json:"updated"`
-	Status      string    `json:"status"`
-	Chart       string    `json:"chart"`
-	AppVersion  string    `json:"app_version"`
-	Description string    `json:"description"`
+	Revision    int           `json:"revision"`
+	Updated     helmtime.Time `json:"updated"`
+	Status      string        `json:"status"`
+	Chart       string        `json:"chart"`
+	AppVersion  string        `json:"app_version"`
+	Description string        `json:"description"`
 }
 
 type releaseHistory []releaseInfo
@@ -99,7 +99,7 @@ func (r releaseHistory) WriteTable(out io.Writer) error {
 	tbl := uitable.New()
 	tbl.AddRow("REVISION", "UPDATED", "STATUS", "CHART", "APP VERSION", "DESCRIPTION")
 	for _, item := range r {
-		tbl.AddRow(item.Revision, item.Updated.Format(stdtime.ANSIC), item.Status, item.Chart, item.AppVersion, item.Description)
+		tbl.AddRow(item.Revision, item.Updated.Format(time.ANSIC), item.Status, item.Chart, item.AppVersion, item.Description)
 	}
 	return output.EncodeTable(out, tbl)
 }

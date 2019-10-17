@@ -18,10 +18,10 @@ package releaseutil // import "helm.sh/helm/v3/pkg/releaseutil"
 
 import (
 	"testing"
-	stdtime "time"
+	"time"
 
 	rspb "helm.sh/helm/v3/pkg/release"
-	"helm.sh/helm/v3/pkg/time"
+	helmtime "helm.sh/helm/v3/pkg/time"
 )
 
 // note: this test data is shared with filter_test.go.
@@ -33,8 +33,8 @@ var releases = []*rspb.Release{
 	tsRelease("vocal-dogs", 3, 6000, rspb.StatusUninstalled),
 }
 
-func tsRelease(name string, vers int, dur stdtime.Duration, status rspb.Status) *rspb.Release {
-	info := &rspb.Info{Status: status, LastDeployed: time.Now().Add(dur)}
+func tsRelease(name string, vers int, dur time.Duration, status rspb.Status) *rspb.Release {
+	info := &rspb.Info{Status: status, LastDeployed: helmtime.Now().Add(dur)}
 	return &rspb.Release{
 		Name:    name,
 		Version: vers,

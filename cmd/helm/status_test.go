@@ -18,16 +18,16 @@ package main
 
 import (
 	"testing"
-	stdtime "time"
+	"time"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/release"
-	"helm.sh/helm/v3/pkg/time"
+	helmtime "helm.sh/helm/v3/pkg/time"
 )
 
 func TestStatusCmd(t *testing.T) {
 	releasesMockWithStatus := func(info *release.Info, hooks ...*release.Hook) []*release.Release {
-		info.LastDeployed = time.Unix(1452902400, 0).UTC()
+		info.LastDeployed = helmtime.Unix(1452902400, 0).UTC()
 		return []*release.Release{{
 			Name:      "flummoxed-chickadee",
 			Namespace: "default",
@@ -104,7 +104,7 @@ func TestStatusCmd(t *testing.T) {
 	runTestCmd(t, tests)
 }
 
-func mustParseTime(t string) time.Time {
-	res, _ := time.Parse(stdtime.RFC3339, t)
+func mustParseTime(t string) helmtime.Time {
+	res, _ := helmtime.Parse(time.RFC3339, t)
 	return res
 }
