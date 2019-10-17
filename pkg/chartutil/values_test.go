@@ -99,6 +99,8 @@ func TestToRenderValues(t *testing.T) {
 
 	o := ReleaseOptions{
 		Name:      "Seven Voyages",
+		Namespace: "default",
+		Revision:  1,
 		IsInstall: true,
 	}
 
@@ -114,6 +116,12 @@ func TestToRenderValues(t *testing.T) {
 	relmap := res["Release"].(map[string]interface{})
 	if name := relmap["Name"]; name.(string) != "Seven Voyages" {
 		t.Errorf("Expected release name 'Seven Voyages', got %q", name)
+	}
+	if namespace := relmap["Namespace"]; namespace.(string) != "default" {
+		t.Errorf("Expected namespace 'default', got %q", namespace)
+	}
+	if revision := relmap["Revision"]; revision.(int) != 1 {
+		t.Errorf("Expected revision '1', got %d", revision)
 	}
 	if relmap["IsUpgrade"].(bool) {
 		t.Error("Expected upgrade to be false.")
