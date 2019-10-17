@@ -23,6 +23,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gofrs/flock"
@@ -85,8 +86,8 @@ func (o *repoAddOptions) run(out io.Writer) error {
 		return err
 	}
 
-	// Lock the repository file for concurrent goroutines or processes synchronization
-	fileLock := flock.New(o.repoFile)
+	// Acquire a file lock for process synchronization
+	fileLock := flock.New(strings.Replace(o.repoFile, filepath.Ext(o.repoFile), ".lock", 1))
 	lockCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	locked, err := fileLock.TryLockContext(lockCtx, time.Second)
