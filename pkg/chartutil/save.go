@@ -135,7 +135,7 @@ func Save(c *chart.Chart, outDir string) (string, error) {
 		rollback = true
 		return filename, err
 	}
-	return filename, err
+	return filename, nil
 }
 
 func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
