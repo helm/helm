@@ -20,6 +20,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -135,8 +137,10 @@ func addRepository(name, url, username, password string, home helmpath.Home, cer
 		return fmt.Errorf("Looks like %q is not a valid chart repository or cannot be reached: %s", url, err.Error())
 	}
 
-	// Lock the repository file for concurrent goroutines or processes synchronization
-	fileLock := flock.New(home.RepositoryFile())
+	repoFile := home.RepositoryFile()
+
+	// Acquire a file lock for process synchronization
+	fileLock := flock.New(strings.Replace(repoFile, filepath.Ext(repoFile), ".lock", 1))
 	lockCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	locked, err := fileLock.TryLockContext(lockCtx, time.Second)
@@ -149,12 +153,12 @@ func addRepository(name, url, username, password string, home helmpath.Home, cer
 
 	// Re-read the repositories file before updating it as its content may have been changed
 	// by a concurrent execution after the first read and before being locked
-	f, err = repo.LoadRepositoriesFile(home.RepositoryFile())
+	f, err = repo.LoadRepositoriesFile(repoFile)
 	if err != nil {
 		return err
 	}
 
 	f.Update(&c)
 
-	return f.WriteFile(home.RepositoryFile(), 0644)
+	return f.WriteFile(repoFile, 0644)
 }
