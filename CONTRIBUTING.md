@@ -12,7 +12,7 @@ us a chance to try to fix the issue before it is exploited in the wild.
 
 ## Sign Your Work
 
-The sign-off is a simple line at the end of the explanation for a commit. All 
+The sign-off is a simple line at the end of the explanation for a commit. All
 commits needs to be signed. Your signature certifies that you wrote the patch or
 otherwise have the right to contribute the material. The rules are pretty simple,
 if you can certify the below (from [developercertificate.org](https://developercertificate.org/)):
@@ -111,7 +111,7 @@ A milestone (and hence release) is considered done when all outstanding issues/P
 
 ## Semantic Versioning
 
-Helm maintains a strong commitment to backward compatibility. All of our changes to protocols and formats are backward compatible from Helm 3.0 until Helm 4.0. No features, flags, or commands are removed or substantially modified (other than bug fixes).
+Helm maintains a strong commitment to backward compatibility. All of our changes to protocols and formats are backward compatible from one major release to the next. No features, flags, or commands are removed or substantially modified (unless we need to fix a security issue).
 
 We also try very hard to not change publicly accessible Go library definitions inside of the `pkg/` directory of our source code.
 
@@ -122,6 +122,16 @@ For a quick summary of our backward compatibility guidelines for releases betwee
 - Any chart that worked on a previous version of Helm 3 MUST work on a new version of Helm 3 (barring the cases where (a) Kubernetes itself changed, and (b) the chart worked because it exploited a bug)
 - Chart repository functionality MUST be backward compatible
 - Go libraries inside of `pkg/` SHOULD remain backward compatible, though code inside of `cmd/` and `internal/` may be changed from release to release without notice.
+
+## Support Contract for Helm 2
+
+With Helm 2's current release schedule, we want to take into account any migration issues for users due to the upcoming holiday shopping season and tax season. We also want to clarify what actions may occur after the support contract ends for Helm 2, so that users will not be surprised or caught off guard.
+
+After Helm 2.15.0 is released, Helm 2 will go into "maintenance mode". We will continue to accept bug fixes and fix any security issues that arise, but no new features will be accepted for Helm 2. All feature development will be moved over to Helm 3.
+
+6 months after Helm 3.0.0's public release, Helm 2 will stop accepting bug fixes. Only security issues will be accepted.
+
+12 months after Helm 3.0.0's public release, support for Helm 2 will formally end. Download links for the Helm 2 client through Google Cloud Storage, the Docker image for Tiller stored in Google Container Registry, and the Google Cloud buckets for the stable and incubator chart repositories may no longer work at any point. Client downloads through `get.helm.sh` will continue to work, and we will distribute a Tiller image that will be made available at an alternative location which can be updated with `helm init --tiller-image`.
 
 ## Issues
 
@@ -204,7 +214,7 @@ Like any good open source project, we use Pull Requests (PRs) to track code chan
     - Once a review has the `awaiting review` label, maintainers will review them as schedule permits.
     The maintainer who takes the issue should self-request a review.
     - Any PR with the `size/large` label requires 2 review approvals from maintainers before it can be
-    merged. Those with `size/medium` or `size/small` are per the judgement of the maintainers. 
+    merged. Those with `size/medium` or `size/small` are per the judgement of the maintainers.
 4. Reviewing/Discussion
     - All reviews will be completed using Github review tool.
     - A "Comment" review should be used when there are questions about the code that should be
