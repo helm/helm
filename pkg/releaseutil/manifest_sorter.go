@@ -74,7 +74,7 @@ var events = map[string]release.HookEvent{
 //
 // Files that do not parse into the expected format are simply placed into a map and
 // returned.
-func SortManifests(files map[string]string, apis chartutil.VersionSet, sort KindSortOrder) ([]*release.Hook, []Manifest, error) {
+func SortManifests(files map[string]string, apis chartutil.VersionSet, sort KindSortOrder, clientOnly bool) ([]*release.Hook, []Manifest, error) {
 	result := &result{}
 
 	for filePath, c := range files {
@@ -95,7 +95,7 @@ func SortManifests(files map[string]string, apis chartutil.VersionSet, sort Kind
 			apis:    apis,
 		}
 
-		if err := manifestFile.sort(result); err != nil {
+		if err := manifestFile.sort(result, clientOnly); err != nil {
 			return result.hooks, result.generic, err
 		}
 	}
@@ -122,14 +122,14 @@ func SortManifests(files map[string]string, apis chartutil.VersionSet, sort Kind
 //  metadata:
 // 		annotations:
 // 			helm.sh/hook-delete-policy: hook-succeeded
-func (file *manifestFile) sort(result *result) error {
+func (file *manifestFile) sort(result *result, clientOnly bool) error {
 	for _, m := range file.entries {
 		var entry SimpleHead
 		if err := yaml.Unmarshal([]byte(m), &entry); err != nil {
 			return errors.Wrapf(err, "YAML parse error on %s", file.path)
 		}
 
-		if entry.Version != "" && !file.apis.Has(entry.Version) {
+		if !clientOnly && (entry.Version != "" && !file.apis.Has(entry.Version)) {
 			return errors.Errorf("apiVersion %q in %s is not available", entry.Version, file.path)
 		}
 

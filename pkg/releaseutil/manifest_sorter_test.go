@@ -257,7 +257,7 @@ metadata:
 		manifests[o.path] = o.manifest
 	}
 
-	_, _, err := SortManifests(manifests, chartutil.VersionSet{"v1", "v1beta1"}, InstallOrder)
+	_, _, err := SortManifests(manifests, chartutil.VersionSet{"v1", "v1beta1"}, InstallOrder, true)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}

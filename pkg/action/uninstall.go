@@ -170,7 +170,8 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (string, []error) {
 	}
 
 	manifests := releaseutil.SplitManifests(rel.Manifest)
-	_, files, err := releaseutil.SortManifests(manifests, caps.APIVersions, releaseutil.UninstallOrder)
+
+	_, files, err := releaseutil.SortManifests(manifests, caps.APIVersions, releaseutil.UninstallOrder, false)
 	if err != nil {
 		// We could instead just delete everything in no particular order.
 		// FIXME: One way to delete at this point would be to try a label-based
