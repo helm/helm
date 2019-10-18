@@ -139,7 +139,7 @@ metadata:
 		manifests[o.path] = o.manifest
 	}
 
-	hs, generic, err := SortManifests(manifests, chartutil.VersionSet{"v1", "v1beta1"}, InstallOrder)
+	hs, generic, err := SortManifests(manifests, chartutil.VersionSet{"v1", "v1beta1"}, InstallOrder, false)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
@@ -224,5 +224,41 @@ metadata:
 		if m.Content != sorted[i].Content {
 			t.Errorf("Expected %q, got %q", m.Content, sorted[i].Content)
 		}
+	}
+}
+
+func TestSortManifestsWithCustomAPIs(t *testing.T) {
+	data := []struct {
+		name     []string
+		path     string
+		kind     []string
+		hooks    map[string][]release.HookEvent
+		manifest string
+	}{
+		{
+			name:  []string{"first"},
+			path:  "one",
+			kind:  []string{"Custom"},
+			hooks: map[string][]release.HookEvent{"first": {release.HookPreInstall}},
+			manifest: `apiVersion: custom.example.com/v1
+kind: Custom
+metadata:
+  name: first
+  labels:
+    doesnot: matter
+  annotations:
+    "helm.sh/hook": pre-install
+`,
+		},
+	}
+
+	manifests := make(map[string]string, len(data))
+	for _, o := range data {
+		manifests[o.path] = o.manifest
+	}
+
+	_, _, err := SortManifests(manifests, chartutil.VersionSet{"v1", "v1beta1"}, InstallOrder)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
 	}
 }
