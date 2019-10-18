@@ -47,6 +47,7 @@ or [pull request](https://github.com/helm/helm/pulls).
 - [helm-local](https://github.com/adamreese/helm-local) - Plugin to run Tiller as a local daemon
 - [helm-logs](https://github.com/maorfr/helm-logs) - Plugin to view changed releases over time
 - [helm-monitor](https://github.com/ContainerSolutions/helm-monitor) - Plugin to monitor a release and rollback based on Prometheus/ElasticSearch query
+- [helm-nexus](https://github.com/yisiqi/helm-nexus) - Plugin to use Sonatype Nexus OSS as your own charts repository.
 - [helm-nuke](https://github.com/adamreese/helm-nuke) - Plugin to destroy all releases
 - [helm-plugin-utils](https://github.com/maorfr/helm-plugin-utils) - Utility functions to be used within Helm plugins
 - [helm-restore](https://github.com/maorfr/helm-restore) - Plugin to restore a deployed release to its original state
