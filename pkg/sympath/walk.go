@@ -72,9 +72,10 @@ func symwalk(path string, info os.FileInfo, walkFn filepath.WalkFunc) error {
 		if info, err = os.Lstat(resolved); err != nil {
 			return err
 		}
-		if err := symwalk(resolved, info, walkFn); err != nil && err != filepath.SkipDir {
+		if err := symwalk(path, info, walkFn); err != nil && err != filepath.SkipDir {
 			return err
 		}
+		return nil
 	}
 
 	if err := walkFn(path, info, nil); err != nil {
