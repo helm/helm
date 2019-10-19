@@ -96,7 +96,7 @@ func FuncMap() template.FuncMap {
 		f[k] = v
 	}
 
-	return f
+	return OverloadJsonNumberFuncs(f)
 }
 
 // Render takes a chart, optional values, and value overrides, and attempts to render the Go templates.
