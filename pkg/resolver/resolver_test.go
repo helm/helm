@@ -21,7 +21,16 @@ import (
 	"k8s.io/helm/pkg/chartutil"
 )
 
+func fakeGetRefs(gitRepoURL string) (map[string]string, error) {
+	refs := map[string]string{
+		"master": "9668ad4d90c5e95bd520e58e7387607be6b63bb6",
+		"v1.0.0": "9ad53aac42165a5fadc6c87be0dea6b115f93090",
+	}
+	return refs, nil
+}
+
 func TestResolve(t *testing.T) {
+	gitGetRefs = fakeGetRefs
 	tests := []struct {
 		name   string
 		req    *chartutil.Requirements
@@ -116,6 +125,19 @@ func TestResolve(t *testing.T) {
 				},
 			},
 			err: true,
+		},
+		{
+			name: "repo from git url",
+			req: &chartutil.Requirements{
+				Dependencies: []*chartutil.Dependency{
+					{Name: "gitdependency", Repository: "git:git@github.com:helm/gitdependency.git", Version: "master"},
+				},
+			},
+			expect: &chartutil.RequirementsLock{
+				Dependencies: []*chartutil.Dependency{
+					{Name: "gitdependency", Repository: "git:git@github.com:helm/gitdependency.git", Version: "9668ad4d90c5e95bd520e58e7387607be6b63bb6"},
+				},
+			},
 		},
 	}
 

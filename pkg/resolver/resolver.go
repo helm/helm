@@ -27,10 +27,14 @@ import (
 	"github.com/Masterminds/semver"
 
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/gitutil"
 	"k8s.io/helm/pkg/helm/helmpath"
 	"k8s.io/helm/pkg/provenance"
 	"k8s.io/helm/pkg/repo"
 )
+
+// Assigned here so it can be overidden in tests.
+var gitGetRefs = gitutil.GetRefs
 
 // Resolver resolves dependencies from semantic version ranges to a particular version.
 type Resolver struct {
@@ -67,9 +71,30 @@ func (r *Resolver) Resolve(reqs *chartutil.Requirements, repoNames map[string]st
 			continue
 		}
 		if strings.HasPrefix(d.Repository, "file://") {
-
 			if _, err := GetLocalPath(d.Repository, r.chartpath); err != nil {
 				return nil, err
+			}
+
+			locked[i] = &chartutil.Dependency{
+				Name:       d.Name,
+				Repository: d.Repository,
+				Version:    d.Version,
+			}
+			continue
+		}
+		if strings.HasPrefix(d.Repository, "git:") {
+
+			refs, err := gitGetRefs(strings.TrimPrefix(d.Repository, "git:"))
+
+			if err != nil {
+				return nil, err
+			}
+
+			_, found := refs[d.Version]
+
+			if !found {
+				return nil, fmt.Errorf(`dependency %q is missing git branch or tag: %s.
+When using a "git:" type repository, the "version" should be a valid branch or tag name`, d.Name, d.Version)
 			}
 
 			locked[i] = &chartutil.Dependency{

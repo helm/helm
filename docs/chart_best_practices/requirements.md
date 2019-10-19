@@ -22,6 +22,11 @@ If the repository has been added to the repository index file, the repository na
 
 File URLs (`file://...`) are considered a "special case" for charts that are assembled by a fixed deployment pipeline. Charts that use `file://` in a `requirements.yaml` file are not allowed in the official Helm repository.
 
+
+### Requiring a Chart from a Git Repo
+
+
+
 ## Conditions and Tags
 
 Conditions or tags should be added to any dependencies that _are optional_.
