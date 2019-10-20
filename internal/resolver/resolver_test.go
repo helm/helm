@@ -125,7 +125,7 @@ func TestResolve(t *testing.T) {
 			t.Fatalf("Expected error in test %q", tt.name)
 		}
 
-		if h, err := HashReq(tt.expect.Dependencies); err != nil {
+		if h, err := HashReq(tt.req, tt.expect.Dependencies); err != nil {
 			t.Fatal(err)
 		} else if h != l.Digest {
 			t.Errorf("%q: hashes don't match.", tt.name)
@@ -150,11 +150,14 @@ func TestResolve(t *testing.T) {
 }
 
 func TestHashReq(t *testing.T) {
-	expect := "sha256:d661820b01ed7bcf26eed8f01cf16380e0a76326ba33058d3150f919d9b15bc0"
+	expect := "sha256:96045f8dfd8769a3a1af6202449fa620c900992277803e799fe31c3897f179e8"
 	req := []*chart.Dependency{
-		{Name: "alpine", Version: "0.1.0", Repository: "http://localhost:8879/charts"},
+		{Name: "alpine", Version: "^0.1.0", Repository: "http://localhost:8879/charts"},
 	}
-	h, err := HashReq(req)
+	lock := []*chart.Dependency{
+		{Name: "alpine", Version: "0.1.2", Repository: "http://localhost:8879/charts"},
+	}
+	h, err := HashReq(req, lock)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -162,8 +165,21 @@ func TestHashReq(t *testing.T) {
 		t.Errorf("Expected %q, got %q", expect, h)
 	}
 
-	req = []*chart.Dependency{}
-	h, err = HashReq(req)
+	req2 := []*chart.Dependency{
+		{Name: "alpine", Version: "^0.1.2", Repository: "http://localhost:8879/charts"},
+	}
+	h, err = HashReq(req2, lock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if expect == h {
+		t.Errorf("Expected %q !=  %q", expect, h)
+	}
+
+	lock2 := []*chart.Dependency{
+		{Name: "alpine", Version: "0.1.3", Repository: "http://localhost:8879/charts"},
+	}
+	h, err = HashReq(req, lock2)
 	if err != nil {
 		t.Fatal(err)
 	}

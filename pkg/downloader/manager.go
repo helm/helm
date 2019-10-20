@@ -79,7 +79,7 @@ func (m *Manager) Build() error {
 	}
 
 	req := c.Metadata.Dependencies
-	if sum, err := resolver.HashReq(req); err != nil || sum != lock.Digest {
+	if sum, err := resolver.HashReq(req, lock.Dependencies); err != nil || sum != lock.Digest {
 		return errors.New("Chart.lock is out of sync with Chart.yaml")
 	}
 
