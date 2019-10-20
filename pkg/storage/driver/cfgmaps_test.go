@@ -51,7 +51,7 @@ func TestConfigMapGet(t *testing.T) {
 	}
 }
 
-func TestUNcompressedConfigMapGet(t *testing.T) {
+func TestUncompressedConfigMapGet(t *testing.T) {
 	vers := 1
 	name := "smug-pigeon"
 	namespace := "default"

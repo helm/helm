@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"path"
 	"regexp"
 
 	"helm.sh/helm/v3/pkg/release"
@@ -218,27 +219,23 @@ func (l *List) sort(rels []*release.Release) {
 }
 
 // filterList returns a list scrubbed of old releases.
-func filterList(rels []*release.Release) []*release.Release {
-	idx := map[string]int{}
+func filterList(releases []*release.Release) []*release.Release {
+	latestReleases := make(map[string]*release.Release)
 
-	for _, r := range rels {
-		name, version := r.Name, r.Version
-		if max, ok := idx[name]; ok {
-			// check if we have a greater version already
-			if max > version {
-				continue
-			}
+	for _, rls := range releases {
+		name, namespace := rls.Name, rls.Namespace
+		key := path.Join(namespace, name)
+		if latestRelease, exists := latestReleases[key]; exists && latestRelease.Version > rls.Version {
+			continue
 		}
-		idx[name] = version
+		latestReleases[key] = rls
 	}
 
-	uniq := make([]*release.Release, 0, len(idx))
-	for _, r := range rels {
-		if idx[r.Name] == r.Version {
-			uniq = append(uniq, r)
-		}
+	var list = make([]*release.Release, 0, len(latestReleases))
+	for _, rls := range latestReleases {
+		list = append(list, rls)
 	}
-	return uniq
+	return list
 }
 
 // setStateMask calculates the state mask based on parameters.
