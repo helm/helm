@@ -78,6 +78,11 @@ func (m *Manager) Build() error {
 		return m.Update()
 	}
 
+	req := c.Metadata.Dependencies
+	if sum, err := resolver.HashReq(req); err != nil || sum != lock.Digest {
+		return errors.New("Chart.lock is out of sync with Chart.yaml")
+	}
+
 	// Check that all of the repos we're dependent on actually exist.
 	if err := m.hasAllRepos(lock.Dependencies); err != nil {
 		return err
