@@ -30,6 +30,7 @@ import (
 	"github.com/Masterminds/semver"
 	"github.com/ghodss/yaml"
 
+	"k8s.io/helm/internal/third_party/dep/fs"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/helmpath"
@@ -37,7 +38,6 @@ import (
 	"k8s.io/helm/pkg/repo"
 	"k8s.io/helm/pkg/resolver"
 	"k8s.io/helm/pkg/urlutil"
-	"k8s.io/helm/third_party/dep/fs"
 )
 
 // Manager handles the lifecycle of fetching, resolving, and storing dependencies.
