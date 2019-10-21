@@ -28,10 +28,8 @@ fi
 VERSION=
 if [[ -n "${CIRCLE_TAG:-}" ]]; then
   VERSION="${CIRCLE_TAG}"
-elif [[ "${CIRCLE_BRANCH:-}" == "master" ]]; then
-  VERSION="canary"
 else
-  echo "Skipping deploy step; this is neither master or a tag"
+  echo "Skipping deploy step; this is not a tag"
   exit
 fi
 
