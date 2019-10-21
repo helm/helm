@@ -198,7 +198,7 @@ func (l *lintCmd) vals() ([]byte, error) {
 			return []byte{}, fmt.Errorf("failed to parse %s: %s", filePath, err)
 		}
 		// Merge with the previous map
-		base = mergeValues(base, currentMap)
+		base = chartutil.MergeValues(base, currentMap)
 	}
 
 	// User specified a value via --set

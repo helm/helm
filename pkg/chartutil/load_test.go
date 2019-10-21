@@ -23,10 +23,12 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/ghodss/yaml"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 )
 
@@ -199,8 +201,14 @@ icon: https://example.com/64x64.png
 		t.Errorf("Expected chart name to be 'frobnitz', got %s", c.Metadata.Name)
 	}
 
-	if c.Values.Raw != defaultValues {
-		t.Error("Expected chart values to be populated with default values")
+	values := Values{}
+	yaml.Unmarshal([]byte(c.Values.Raw), &values)
+	expectedValues := Values{}
+	yaml.Unmarshal([]byte(c.Values.Raw), &expectedValues)
+	equal := reflect.DeepEqual(values, expectedValues)
+	if !equal {
+		t.Errorf("Expected chart values to be populated with default values. Expected: %v, got %v", values, expectedValues)
+		//	t.Error("Expected chart values to be populated with default values")
 	}
 
 	if len(c.Templates) != 2 {

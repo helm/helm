@@ -56,7 +56,7 @@ func TestInspect(t *testing.T) {
 
 	expect := []string{
 		strings.Replace(strings.TrimSpace(string(cdata)), "\r", "", -1),
-		strings.Replace(strings.TrimSpace(string(data)), "\r", "", -1),
+		strings.Replace(strings.Split(string(data), "\n")[1], "\r", "", -1),
 		strings.Replace(strings.TrimSpace(string(readmeData)), "\r", "", -1),
 	}
 

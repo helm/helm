@@ -31,6 +31,9 @@ import (
 	"regexp"
 	"strings"
 
+	"runtime/debug"
+
+	"github.com/ghodss/yaml"
 	"github.com/golang/protobuf/ptypes/any"
 
 	"k8s.io/helm/pkg/ignore"
@@ -46,6 +49,17 @@ import (
 // If a .helmignore file is present, the directory loader will skip loading any files
 // matching it. But .helmignore is not evaluated when reading out of an archive.
 func Load(name string) (*chart.Chart, error) {
+	return LoadWithEnvValuesFile(name, "")
+}
+
+// LoadWithEnvValuesFile takes a string name and a file name, tries to resolve it to a file or directory, and then loads it.
+//
+// This is the preferred way to load a chart. It will discover the chart encoding
+// and hand off to the appropriate chart reader.
+//
+// If a .helmignore file is present, the directory loader will skip loading any files
+// matching it. But .helmignore is not evaluated when reading out of an archive.
+func LoadWithEnvValuesFile(name string, envValuesFile string) (*chart.Chart, error) {
 	name = filepath.FromSlash(name)
 	fi, err := os.Stat(name)
 	if err != nil {
@@ -55,9 +69,9 @@ func Load(name string) (*chart.Chart, error) {
 		if validChart, err := IsChartDir(name); !validChart {
 			return nil, err
 		}
-		return LoadDir(name)
+		return LoadDirWithEnvValuesFiles(name, envValuesFile)
 	}
-	return LoadFile(name)
+	return LoadFileWithEnvValuesFile(name, envValuesFile)
 }
 
 // BufferedFile represents an archive file buffered for later processing.
@@ -153,17 +167,30 @@ func loadArchiveFiles(in io.Reader) ([]*BufferedFile, error) {
 
 // LoadArchive loads from a reader containing a compressed tar archive.
 func LoadArchive(in io.Reader) (*chart.Chart, error) {
+	return LoadArchiveWithEnvValuesFile(in, "")
+}
+
+// LoadArchiveWithEnvValuesFile loads from a reader containing a compressed tar archive.
+func LoadArchiveWithEnvValuesFile(in io.Reader, envValuesFile string) (*chart.Chart, error) {
 	files, err := loadArchiveFiles(in)
 	if err != nil {
 		return nil, err
 	}
-	return LoadFiles(files)
+	return LoadFilesWithEnvValues(files, envValuesFile)
 }
 
 // LoadFiles loads from in-memory files.
 func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
+	debug.PrintStack()
+	return LoadFilesWithEnvValues(files, "None")
+}
+
+// LoadFilesWithEnvValues loads from in-memory files and loads an Environment File
+func LoadFilesWithEnvValues(files []*BufferedFile, envValuesFile string) (*chart.Chart, error) {
 	c := &chart.Chart{}
 	subcharts := map[string][]*BufferedFile{}
+	values := Values{}
+	environment := Values{}
 
 	for _, f := range files {
 		if f.Name == "Chart.yaml" {
@@ -179,7 +206,9 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 		} else if f.Name == "values.toml" {
 			return c, errors.New("values.toml is illegal as of 2.0.0-alpha.2")
 		} else if f.Name == "values.yaml" {
-			c.Values = &chart.Config{Raw: string(f.Data)}
+			yaml.Unmarshal(f.Data, &values)
+		} else if f.Name == envValuesFile {
+			yaml.Unmarshal(f.Data, &environment)
 		} else if strings.HasPrefix(f.Name, "templates/") {
 			c.Templates = append(c.Templates, &chart.Template{Name: f.Name, Data: f.Data})
 		} else if strings.HasPrefix(f.Name, "charts/") {
@@ -198,6 +227,15 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 		} else {
 			c.Files = append(c.Files, &any.Any{TypeUrl: f.Name, Value: f.Data})
 		}
+	}
+	MergeValues(values, environment)
+	valuesYml, err := values.YAML()
+	if err == nil {
+		if len(values) != 0 {
+			c.Values = &chart.Config{Raw: strings.TrimSpace(valuesYml)}
+		}
+	} else {
+		return c, fmt.Errorf("Unable to marshall values back to yaml")
 	}
 
 	// Ensure that we got a Chart.yaml file
@@ -233,7 +271,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 				f.Name = parts[1]
 				buff = append(buff, f)
 			}
-			sc, err = LoadFiles(buff)
+			sc, err = LoadFilesWithEnvValues(buff, envValuesFile)
 		}
 
 		if err != nil {
@@ -248,6 +286,11 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 
 // LoadFile loads from an archive file.
 func LoadFile(name string) (*chart.Chart, error) {
+	return LoadFileWithEnvValuesFile(name, "")
+}
+
+// LoadFileWithEnvValuesFile loads from an archive file.
+func LoadFileWithEnvValuesFile(name string, envValuesFile string) (*chart.Chart, error) {
 	if fi, err := os.Stat(name); err != nil {
 		return nil, err
 	} else if fi.IsDir() {
@@ -265,7 +308,7 @@ func LoadFile(name string) (*chart.Chart, error) {
 		return nil, err
 	}
 
-	c, err := LoadArchive(raw)
+	c, err := LoadArchiveWithEnvValuesFile(raw, envValuesFile)
 	if err != nil {
 		if err == gzip.ErrHeader {
 			return nil, fmt.Errorf("file '%s' does not appear to be a valid chart file (details: %s)", name, err)
@@ -305,6 +348,13 @@ func ensureArchive(name string, raw *os.File) error {
 //
 // This loads charts only from directories.
 func LoadDir(dir string) (*chart.Chart, error) {
+	return LoadDirWithEnvValuesFiles(dir, "")
+}
+
+// LoadDirWithEnvValuesFiles loads from a directory.
+//
+// This loads charts only from directories.
+func LoadDirWithEnvValuesFiles(dir string, envValueFiles string) (*chart.Chart, error) {
 	topdir, err := filepath.Abs(dir)
 	if err != nil {
 		return nil, err
@@ -367,5 +417,5 @@ func LoadDir(dir string) (*chart.Chart, error) {
 		return c, err
 	}
 
-	return LoadFiles(files)
+	return LoadFilesWithEnvValues(files, envValueFiles)
 }

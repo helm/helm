@@ -17,3 +17,4 @@ vendor/
 .classpath
 .project
 .settings/**
+cmd/helm/debug.test

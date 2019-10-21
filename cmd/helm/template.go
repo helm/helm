@@ -69,6 +69,7 @@ type templateCmd struct {
 	values           []string
 	stringValues     []string
 	fileValues       []string
+	envValuesFile    string
 	nameTemplate     string
 	showNotes        bool
 	releaseName      string
@@ -103,6 +104,7 @@ func newTemplateCmd(out io.Writer) *cobra.Command {
 	f.StringArrayVar(&t.values, "set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.StringArrayVar(&t.stringValues, "set-string", []string{}, "Set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.StringArrayVar(&t.fileValues, "set-file", []string{}, "Set values from respective files specified via the command line (can specify multiple or separate values with commas: key1=path1,key2=path2)")
+	f.StringVar(&t.envValuesFile, "environment", "", "Use an environment values file inside the chart and the subcharts")
 	f.StringVar(&t.nameTemplate, "name-template", "", "Specify template used to name the release")
 	f.StringVar(&t.kubeVersion, "kube-version", defaultKubeVersion, "Kubernetes version used as Capabilities.KubeVersion.Major/Minor")
 	f.StringArrayVarP(&t.apiVersions, "api-versions", "a", []string{}, "Kubernetes api versions used for Capabilities.APIVersions")
@@ -112,6 +114,7 @@ func newTemplateCmd(out io.Writer) *cobra.Command {
 }
 
 func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
+	println("Running template cmd")
 	if len(args) < 1 {
 		return errors.New("chart is required")
 	}
@@ -135,6 +138,7 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 	if t.namespace == "" {
 		t.namespace = defaultNamespace()
 	}
+
 	// get combined values and create config
 	rawVals, err := vals(t.valueFiles, t.values, t.stringValues, t.fileValues, "", "", "")
 	if err != nil {
@@ -155,7 +159,7 @@ func (t *templateCmd) run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Check chart requirements to make sure all dependencies are present in /charts
-	c, err := chartutil.Load(t.chartPath)
+	c, err := chartutil.LoadWithEnvValuesFile(t.chartPath, t.envValuesFile)
 	if err != nil {
 		return prettyError(err)
 	}

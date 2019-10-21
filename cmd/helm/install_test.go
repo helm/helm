@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/helm"
 )
 
@@ -290,47 +291,47 @@ func TestNameTemplate(t *testing.T) {
 }
 
 func TestMergeValues(t *testing.T) {
-	nestedMap := map[string]interface{}{
+	nestedMap := chartutil.Values{
 		"foo": "bar",
 		"baz": map[string]string{
 			"cool": "stuff",
 		},
 	}
-	anotherNestedMap := map[string]interface{}{
+	anotherNestedMap := chartutil.Values{
 		"foo": "bar",
 		"baz": map[string]string{
 			"cool":    "things",
 			"awesome": "stuff",
 		},
 	}
-	flatMap := map[string]interface{}{
+	flatMap := chartutil.Values{
 		"foo": "bar",
 		"baz": "stuff",
 	}
-	anotherFlatMap := map[string]interface{}{
+	anotherFlatMap := chartutil.Values{
 		"testing": "fun",
 	}
 
-	testMap := mergeValues(flatMap, nestedMap)
+	testMap := chartutil.MergeValues(flatMap, nestedMap)
 	equal := reflect.DeepEqual(testMap, nestedMap)
 	if !equal {
 		t.Errorf("Expected a nested map to overwrite a flat value. Expected: %v, got %v", nestedMap, testMap)
 	}
 
-	testMap = mergeValues(nestedMap, flatMap)
+	testMap = chartutil.MergeValues(nestedMap, flatMap)
 	equal = reflect.DeepEqual(testMap, flatMap)
 	if !equal {
 		t.Errorf("Expected a flat value to overwrite a map. Expected: %v, got %v", flatMap, testMap)
 	}
 
-	testMap = mergeValues(nestedMap, anotherNestedMap)
+	testMap = chartutil.MergeValues(nestedMap, anotherNestedMap)
 	equal = reflect.DeepEqual(testMap, anotherNestedMap)
 	if !equal {
 		t.Errorf("Expected a nested map to overwrite another nested map. Expected: %v, got %v", anotherNestedMap, testMap)
 	}
 
-	testMap = mergeValues(anotherFlatMap, anotherNestedMap)
-	expectedMap := map[string]interface{}{
+	testMap = chartutil.MergeValues(anotherFlatMap, anotherNestedMap)
+	expectedMap := chartutil.Values{
 		"testing": "fun",
 		"foo":     "bar",
 		"baz": map[string]string{
