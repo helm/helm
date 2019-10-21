@@ -42,6 +42,47 @@ func TestLoadDir(t *testing.T) {
 	verifyRequirements(t, c)
 }
 
+func TestLoadDirWithEnvValuesFile(t *testing.T) {
+	expectedDev1 := Values{
+		"albatross": "true",
+		"env":       "dev1",
+		"global": map[string]interface{}{
+			"author": "Coleridge",
+		},
+	}
+
+	expectedDev2 := Values{
+		"albatross": "true",
+		"env":       "dev2",
+		"global": map[string]interface{}{
+			"author": "Coleridge",
+		},
+	}
+
+	dev1, err := LoadWithEnvValuesFile("testdata/albatross", "dev1.yaml")
+	if err != nil {
+		t.Fatalf("Failed to load testdata: %s", err)
+	}
+	dev1values := Values{}
+	yaml.Unmarshal([]byte(dev1.Values.Raw), &dev1values)
+	equal := reflect.DeepEqual(expectedDev1, dev1values)
+	if !equal {
+		t.Errorf("Expected chart values to be populated with default values. Expected: %v, got %v", expectedDev1, dev1values)
+	}
+
+	dev2, err := LoadWithEnvValuesFile("testdata/albatross", "dev2.yaml")
+	if err != nil {
+		t.Fatalf("Failed to load testdata: %s", err)
+	}
+	dev2values := Values{}
+	yaml.Unmarshal([]byte(dev2.Values.Raw), &dev2values)
+	equal = reflect.DeepEqual(expectedDev2, dev2values)
+	if !equal {
+		t.Errorf("Expected chart values to be populated with default values. Expected: %v, got %v", expectedDev2, dev2values)
+	}
+
+}
+
 func TestLoadNonV1Chart(t *testing.T) {
 	_, err := Load("testdata/frobnitz.v2")
 	if err != nil {
@@ -208,7 +249,6 @@ icon: https://example.com/64x64.png
 	equal := reflect.DeepEqual(values, expectedValues)
 	if !equal {
 		t.Errorf("Expected chart values to be populated with default values. Expected: %v, got %v", values, expectedValues)
-		//	t.Error("Expected chart values to be populated with default values")
 	}
 
 	if len(c.Templates) != 2 {
