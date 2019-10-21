@@ -28,8 +28,6 @@ if [[ -n "${CIRCLE_TAG:-}" ]]; then
   VERSION="${CIRCLE_TAG}"
 elif [[ "${CIRCLE_BRANCH:-}" == "master" ]]; then
   VERSION="canary"
-elif [[ "${CIRCLE_BRANCH:-}" == "dev-v3" ]]; then
-  VERSION="dev-v3"
 else
   echo "Skipping deploy step; this is neither a releasable branch or a tag"
   exit
