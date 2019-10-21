@@ -241,6 +241,7 @@ func (u *upgradeCmd) run() error {
 				wait:         u.wait,
 				description:  u.description,
 				atomic:       u.atomic,
+				output:       u.output,
 			}
 			return ic.run()
 		}
