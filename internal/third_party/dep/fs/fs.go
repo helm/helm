@@ -42,6 +42,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+// fs contains a copy of a few functions from dep tool code to avoid a dependency on golang/dep.
+// This code is copied from https://github.com/golang/dep/blob/37d6c560cdf407be7b6cd035b23dba89df9275cf/internal/fs/fs.go
+// No changes to the code were made other than removing some unused functions
+
 // RenameWithFallback attempts to rename a file or directory, but falls back to
 // copying in the event of a cross-device link error. If the fallback copy
 // succeeds, src is still removed, emulating normal rename behavior.
