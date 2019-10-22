@@ -240,7 +240,19 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			dep.Version = ver
 			continue
 		}
-
+		if strings.HasPrefix(dep.Repository, "git:") {
+			destPath := filepath.Join(m.ChartPath, "charts")
+			gitURL := strings.TrimPrefix(dep.Repository, "git:")
+			if m.Debug {
+				fmt.Fprintf(m.Out, "Downloading %s from git repo %s\n", dep.Name, gitURL)
+			}
+			dl := GitDownloader{}
+			if err := dl.DownloadTo(gitURL, dep.Version, destPath); err != nil {
+				saveError = fmt.Errorf("could not download %s: %s", gitURL, err)
+				break
+			}
+			continue
+		}
 		fmt.Fprintf(m.Out, "Downloading %s from repo %s\n", dep.Name, dep.Repository)
 
 		// Any failure to resolve/download a chart should fail:
@@ -400,6 +412,17 @@ func (m *Manager) getRepoNames(deps []*chart.Dependency) (map[string]string, err
 
 			if m.Debug {
 				fmt.Fprintf(m.Out, "Repository from local path: %s\n", dd.Repository)
+			}
+			reposMap[dd.Name] = dd.Repository
+			continue
+		}
+
+		// if dep chart is from a git url, assume it is valid for now.
+		// if the repo does not exist then it will later error when we try to fetch branches and tags.
+		// we could check for the repo existence here, but trying to avoid anotehr git request.
+		if strings.HasPrefix(dd.Repository, "git:") {
+			if m.Debug {
+				fmt.Fprintf(m.Out, "Repository from git url: %s\n", strings.TrimPrefix(dd.Repository, "git:"))
 			}
 			reposMap[dd.Name] = dd.Repository
 			continue
