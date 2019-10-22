@@ -35,6 +35,7 @@ type options struct {
 	username  string
 	password  string
 	userAgent string
+	cachePath string
 }
 
 // Option allows specifying various settings configurable by the user for overriding the defaults
@@ -70,6 +71,14 @@ func WithTLSClientConfig(certFile, keyFile, caFile string) Option {
 		opts.certFile = certFile
 		opts.keyFile = keyFile
 		opts.caFile = caFile
+	}
+}
+
+// WithCache will wrap all HTTP requests through the local file system cache.
+// Charts are cached in a flat structure with name equal to the chart digest.
+func WithCache(digest string) Option {
+	return func(opts *options) {
+		opts.cachePath = path.Join(helmpath.ChartCachePath(), digest) // new?
 	}
 }
 
