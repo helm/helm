@@ -130,7 +130,7 @@ func TestResolve(t *testing.T) {
 				t.Fatalf("Expected error in test %q", tt.name)
 			}
 
-			if h, err := HashReq(tt.expect.Dependencies); err != nil {
+			if h, err := HashReq(tt.req, tt.expect.Dependencies); err != nil {
 				t.Fatal(err)
 			} else if h != l.Digest {
 				t.Errorf("%q: hashes don't match.", tt.name)
@@ -156,24 +156,63 @@ func TestResolve(t *testing.T) {
 }
 
 func TestHashReq(t *testing.T) {
-	expect := "sha256:d661820b01ed7bcf26eed8f01cf16380e0a76326ba33058d3150f919d9b15bc0"
-	req := []*chart.Dependency{
-		{Name: "alpine", Version: "0.1.0", Repository: "http://localhost:8879/charts"},
-	}
-	h, err := HashReq(req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if expect != h {
-		t.Errorf("Expected %q, got %q", expect, h)
+	expect := "sha256:fb239e836325c5fa14b29d1540a13b7d3ba13151b67fe719f820e0ef6d66aaaf"
+
+	tests := []struct {
+		name         string
+		chartVersion string
+		lockVersion  string
+		wantError    bool
+	}{
+		{
+			name:         "chart with the expected digest",
+			chartVersion: "0.1.0",
+			lockVersion:  "0.1.0",
+			wantError:    false,
+		},
+		{
+			name:         "ranged version but same resolved lock version",
+			chartVersion: "^0.1.0",
+			lockVersion:  "0.1.0",
+			wantError:    true,
+		},
+		{
+			name:         "ranged version resolved as higher version",
+			chartVersion: "^0.1.0",
+			lockVersion:  "0.1.2",
+			wantError:    true,
+		},
+		{
+			name:         "different version",
+			chartVersion: "0.1.2",
+			lockVersion:  "0.1.2",
+			wantError:    true,
+		},
+		{
+			name:         "different version with a range",
+			chartVersion: "^0.1.2",
+			lockVersion:  "0.1.2",
+			wantError:    true,
+		},
 	}
 
-	req = []*chart.Dependency{}
-	h, err = HashReq(req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if expect == h {
-		t.Errorf("Expected %q !=  %q", expect, h)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := []*chart.Dependency{
+				{Name: "alpine", Version: tt.chartVersion, Repository: "http://localhost:8879/charts"},
+			}
+			lock := []*chart.Dependency{
+				{Name: "alpine", Version: tt.lockVersion, Repository: "http://localhost:8879/charts"},
+			}
+			h, err := HashReq(req, lock)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !tt.wantError && expect != h {
+				t.Errorf("Expected %q, got %q", expect, h)
+			} else if tt.wantError && expect == h {
+				t.Errorf("Expected not %q, but same", expect)
+			}
+		})
 	}
 }
