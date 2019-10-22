@@ -27,36 +27,45 @@ import (
 )
 
 type Node struct {
-	name    string
-	entries []*Node // nil if the entry is a file
-	mark    int
+	name          string
+	entries       []*Node // nil if the entry is a file
+	marks         int
+	expectedMarks int
+	symLinkedTo   string
 }
 
 var tree = &Node{
 	"testdata",
 	[]*Node{
-		{"a", nil, 0},
-		{"b", []*Node{}, 0},
-		{"c", nil, 0},
+		{"a", nil, 0, 1, ""},
+		{"b", []*Node{}, 0, 1, ""},
+		{"c", nil, 0, 2, ""},
+		{"d", nil, 0, 0, "c"},
 		{
-			"d",
+			"e",
 			[]*Node{
-				{"x", nil, 0},
-				{"y", []*Node{}, 0},
+				{"x", nil, 0, 1, ""},
+				{"y", []*Node{}, 0, 1, ""},
 				{
 					"z",
 					[]*Node{
-						{"u", nil, 0},
-						{"v", nil, 0},
-						{"w", nil, 0},
+						{"u", nil, 0, 1, ""},
+						{"v", nil, 0, 1, ""},
+						{"w", nil, 0, 1, ""},
 					},
 					0,
+					1,
+					"",
 				},
 			},
 			0,
+			1,
+			"",
 		},
 	},
 	0,
+	1,
+	"",
 }
 
 func walkTree(n *Node, path string, f func(path string, n *Node)) {
@@ -69,24 +78,32 @@ func walkTree(n *Node, path string, f func(path string, n *Node)) {
 func makeTree(t *testing.T) {
 	walkTree(tree, tree.name, func(path string, n *Node) {
 		if n.entries == nil {
-			fd, err := os.Create(path)
-			if err != nil {
-				t.Errorf("makeTree: %v", err)
-				return
+			if n.symLinkedTo != "" {
+				if err := os.Symlink(n.symLinkedTo, path); err != nil {
+					t.Fatalf("makeTree: %v", err)
+				}
+			} else {
+				fd, err := os.Create(path)
+				if err != nil {
+					t.Fatalf("makeTree: %v", err)
+					return
+				}
+				fd.Close()
 			}
-			fd.Close()
 		} else {
-			os.Mkdir(path, 0770)
+			if err := os.Mkdir(path, 0770); err != nil {
+				t.Fatalf("makeTree: %v", err)
+			}
 		}
 	})
 }
 
 func checkMarks(t *testing.T, report bool) {
 	walkTree(tree, tree.name, func(path string, n *Node) {
-		if n.mark != 1 && report {
-			t.Errorf("node %s mark = %d; expected 1", path, n.mark)
+		if n.marks != n.expectedMarks && report {
+			t.Errorf("node %s mark = %d; expected %d", path, n.marks, n.expectedMarks)
 		}
-		n.mark = 0
+		n.marks = 0
 	})
 }
 
@@ -104,7 +121,7 @@ func mark(info os.FileInfo, err error, errors *[]error, clear bool) error {
 	name := info.Name()
 	walkTree(tree, tree.name, func(path string, n *Node) {
 		if n.name == name {
-			n.mark++
+			n.marks++
 		}
 	})
 	return nil
