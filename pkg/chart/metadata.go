@@ -67,7 +67,8 @@ type Metadata struct {
 // Validate checks the metadata for known issues, returning an error if metadata is not correct
 func (md *Metadata) Validate() error {
 	if md == nil {
-		return ValidationError("chart.metadata is required")
+		// if md == nil, it mean 'Chart.yaml' file is not present in the directory.
+		return ValidationError("Chart.yaml file is missing")
 	}
 	if md.APIVersion == "" {
 		return ValidationError("chart.metadata.apiVersion is required")

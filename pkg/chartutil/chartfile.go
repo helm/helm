@@ -74,7 +74,7 @@ func IsChartDir(dirName string) (bool, error) {
 		return false, err
 	}
 	if chartContent == nil {
-		return false, errors.Errorf("chart metadata (%s) missing", ChartfileName)
+		return false, errors.Errorf("(%s) : No such file or directory", ChartfileName)
 	}
 	if chartContent.Name == "" {
 		return false, errors.Errorf("invalid chart (%s): name must not be empty", ChartfileName)
