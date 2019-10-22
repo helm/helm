@@ -20,11 +20,12 @@ covermode=${COVERMODE:-atomic}
 coverdir=$(mktemp -d /tmp/coverage.XXXXXXXXXX)
 profile="${coverdir}/cover.out"
 
+pushd /
 hash goveralls 2>/dev/null || go get github.com/mattn/goveralls
-hash godir 2>/dev/null || go get github.com/Masterminds/godir
+popd
 
 generate_cover_data() {
-  for d in $(godir) ; do
+  for d in $(go list ./...) ; do
     (
       local output="${coverdir}/${d//\//-}.cover"
       go test -coverprofile="${output}" -covermode="$covermode" "$d"
