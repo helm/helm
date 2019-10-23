@@ -105,6 +105,7 @@ This new branch is going to be the base for the release, which we are going to i
 Patch releases are a few critical cherry-picked fixes to existing releases. Start by creating a `release-vX.Y.Z` branch
 
 ```shell
+git fetch upstream
 git checkout -b $RELEASE_BRANCH_NAME upstream/$RELEASE_BRANCH_NAME
 ```
 
@@ -124,7 +125,10 @@ git tag --sign --annotate "$RELEASE_NAME" --message "Helm release $RELEASE_NAME"
 git push upstream "$RELEASE_NAME"
 ```
 
-This new tag is going to be the base for the release, which we are going to iterate upon later.
+This new tag is going to be the base for the patch release.
+
+Make sure to check [helm on CircleCI](https://circleci.com/gh/helm/helm) and make sure the release passed CI before
+proceeding.
 
 ## 2. Major/Minor releases: Change the Version Number in Git
 
@@ -170,7 +174,7 @@ git cherry-pick -x <commit-id>
 git push origin bump-version-<release-version>
 ```
 
-## 3. Commit and Push the Release Branch
+## 3. Major/Minor releases: Commit and Push the Release Branch
 
 In order for others to start testing, we can now push the release branch upstream and start the test process.
 
@@ -280,7 +284,7 @@ make sign
 
 This will generate ascii armored signature files for each of the files pushed by CI.
 
-All of the signature files need to be uploaded to the release on GitHub.
+All of the signature files (`*.asc`) need to be uploaded to the release on GitHub.
 
 ## 8. Write the Release Notes
 
