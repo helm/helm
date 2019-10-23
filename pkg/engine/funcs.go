@@ -53,7 +53,7 @@ func funcMap() template.FuncMap {
 		"fromYaml": fromYAML,
 		"toJson":   toJSON,
 		"fromJson": fromJSON,
-		"lookup" : lookup,
+		"lookup":   lookup,
 
 		// This is a placeholder for the "include" function, which is
 		// late-bound to a template. By declaring it here, we preserve the

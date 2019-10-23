@@ -16,7 +16,6 @@ import (
 )
 
 var config *rest.Config
-var addLookupFunction = false
 
 func init() {
 	// try the out-cluster config, this will default to the in-cluster config is not successful
@@ -31,10 +30,8 @@ func init() {
 	// use the current context in kubeconfig
 	config1, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
 	if err == nil {
-		addLookupFunction = true
 		config = config1
 	}
-	return
 }
 
 func homeDir() string {
@@ -103,7 +100,7 @@ func getAPIReourceForGVK(gvk schema.GroupVersionKind) (metav1.APIResource, error
 	}
 	resList, err := discoveryClient.ServerResourcesForGroupVersion(gvk.GroupVersion().String())
 	if err != nil {
-		log.Printf("[ERROR] unable to retrieve resouce list for: %s , error: %s", gvk.GroupVersion().String(), err)
+		log.Printf("[ERROR] unable to retrieve resource list for: %s , error: %s", gvk.GroupVersion().String(), err)
 		return res, err
 	}
 	for _, resource := range resList.APIResources {
