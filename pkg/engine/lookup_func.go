@@ -46,11 +46,11 @@ func homeDir() string {
 
 func lookup(apiversion string, resource string, namespace string, name string) (map[string]interface{}, error) {
 	var client dynamic.ResourceInterface
-	c, err := getDynamicClientOnKind(apiversion, resource)
+	c, namespaced, err := getDynamicClientOnKind(apiversion, resource)
 	if err != nil {
 		return map[string]interface{}{}, err
 	}
-	if namespace != "" {
+	if namespaced && namespace != "" {
 		client = c.Namespace(namespace)
 	} else {
 		client = c
@@ -73,12 +73,12 @@ func lookup(apiversion string, resource string, namespace string, name string) (
 }
 
 // GetDynamicClientOnUnstructured returns a dynamic client on an Unstructured type. This client can be further namespaced.
-func getDynamicClientOnKind(apiversion string, kind string) (dynamic.NamespaceableResourceInterface, error) {
+func getDynamicClientOnKind(apiversion string, kind string) (dynamic.NamespaceableResourceInterface, bool, error) {
 	gvk := schema.FromAPIVersionAndKind(apiversion, kind)
 	apiRes, err := getAPIReourceForGVK(gvk)
 	if err != nil {
 		log.Printf("[ERROR] unable to get apiresource from unstructured: %s , error %s", gvk.String(), err)
-		return nil, err
+		return nil, false, err
 	}
 	gvr := schema.GroupVersionResource{
 		Group:    apiRes.Group,
@@ -88,10 +88,10 @@ func getDynamicClientOnKind(apiversion string, kind string) (dynamic.Namespaceab
 	intf, err := dynamic.NewForConfig(config)
 	if err != nil {
 		log.Printf("[ERROR] unable to get dynamic client %s", err)
-		return nil, err
+		return nil, false, err
 	}
 	res := intf.Resource(gvr)
-	return res, nil
+	return res, apiRes.Namespaced, nil
 }
 
 func getAPIReourceForGVK(gvk schema.GroupVersionKind) (metav1.APIResource, error) {
