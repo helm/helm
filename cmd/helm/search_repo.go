@@ -44,13 +44,13 @@ supply a version number with the '--version' flag.
 
 Examples: 
 	# Searches only for stable releases, prerelease versions will be skipped
-	helm repo search 
+	helm search repo 
  
 	# Searches for releases and prereleases (alpha, beta, and release candidate releases)
-	helm repo search --devel
+	helm search repo --devel
 
-	# searches only for release in version 1.0.0
-	helm repo search --version 1.0.0
+	# Searches only for release in version 1.0.0
+	helm search repo --version 1.0.0
 
 Repositories are managed with 'helm repo' commands.
 `
