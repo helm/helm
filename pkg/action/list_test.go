@@ -159,6 +159,7 @@ func TestList_LimitOffsetOutOfBounds(t *testing.T) {
 	is.NoError(err)
 	is.Len(list, 2)
 }
+
 func TestList_StateMask(t *testing.T) {
 	is := assert.New(t)
 	lister := newListFixture(t)
@@ -166,7 +167,8 @@ func TestList_StateMask(t *testing.T) {
 	one, err := lister.cfg.Releases.Get("one", 1)
 	is.NoError(err)
 	one.SetStatus(release.StatusUninstalled, "uninstalled")
-	lister.cfg.Releases.Update(one)
+	err = lister.cfg.Releases.Update(one)
+	is.NoError(err)
 
 	res, err := lister.Run()
 	is.NoError(err)
@@ -222,11 +224,6 @@ func makeMeSomeReleases(store *storage.Storage, t *testing.T) {
 	three.Name = "three"
 	three.Namespace = "default"
 	three.Version = 3
-	four := releaseStub()
-	four.Name = "four"
-	four.Namespace = "default"
-	four.Version = 4
-	four.Info.Status = release.StatusSuperseded
 
 	for _, rel := range []*release.Release{one, two, three} {
 		if err := store.Create(rel); err != nil {
@@ -237,4 +234,30 @@ func makeMeSomeReleases(store *storage.Storage, t *testing.T) {
 	all, err := store.ListReleases()
 	assert.NoError(t, err)
 	assert.Len(t, all, 3, "sanity test: three items added")
+}
+
+func TestFilterList(t *testing.T) {
+	one := releaseStub()
+	one.Name = "one"
+	one.Namespace = "default"
+	one.Version = 1
+	two := releaseStub()
+	two.Name = "two"
+	two.Namespace = "default"
+	two.Version = 1
+	anotherOldOne := releaseStub()
+	anotherOldOne.Name = "one"
+	anotherOldOne.Namespace = "testing"
+	anotherOldOne.Version = 1
+	anotherOne := releaseStub()
+	anotherOne.Name = "one"
+	anotherOne.Namespace = "testing"
+	anotherOne.Version = 2
+
+	list := []*release.Release{one, two, anotherOne}
+	expectedFilteredList := []*release.Release{one, two, anotherOne}
+
+	filteredList := filterList(list)
+
+	assert.ElementsMatch(t, expectedFilteredList, filteredList)
 }
