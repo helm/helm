@@ -100,10 +100,6 @@ test-acceptance: build build-cross
 test-acceptance-completion: ACCEPTANCE_RUN_TESTS = shells.robot
 test-acceptance-completion: test-acceptance
 
-.PHONY: verify-docs
-verify-docs: build
-	@scripts/verify-docs.sh
-
 .PHONY: coverage
 coverage:
 	@scripts/coverage.sh
@@ -153,10 +149,6 @@ checksum:
 	done
 
 # ------------------------------------------------------------------------------
-
-.PHONY: docs
-docs: build
-	@scripts/update-docs.sh
 
 .PHONY: clean
 clean:
