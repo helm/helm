@@ -21,7 +21,7 @@ const (
 	HelmChartConfigMediaType = "application/vnd.cncf.helm.config.v1+json"
 
 	// HelmChartContentLayerMediaType is the reserved media type for Helm chart package content
-	HelmChartContentLayerMediaType = "application/vnd.cncf.helm.chart.content.layer.v1+tar"
+	HelmChartContentLayerMediaType = "application/tar+gzip"
 )
 
 // KnownMediaTypes returns a list of layer mediaTypes that the Helm client knows about
