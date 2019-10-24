@@ -38,19 +38,20 @@ Search reads through all of the repositories configured on the system, and
 looks for matches. Search of these repositories uses the metadata stored on
 the system.
 
-It will display the latest stable versions of that chart until you specify '--devel' flag 
-to also include development versions (alpha, beta, and release candidate releases), or  
-supply a version number with the '--version' flag.
+It will display the latest stable versions of the charts found. If you
+specify the --devel flag, the output will include pre-release versions.
+If you want to search using a version constraint, use --version.
 
-Examples: 
-	# Searches only for stable releases, prerelease versions will be skipped
-	helm repo search 
- 
-	# Searches for releases and prereleases (alpha, beta, and release candidate releases)
-	helm repo search --devel
+Examples:
 
-	# searches only for release in version 1.0.0
-	helm repo search --version 1.0.0
+    # Search for stable release versions matching the keyword "nginx"
+    $ helm search repo nginx
+
+    # Search for release versions matching the keyword "nginx", including pre-release versions
+    $ helm search repo nginx --devel
+
+    # Search for the latest patch release for nginx-ingress 1.x
+    $ helm search repo nginx-ingress --version ^1.0.0
 
 Repositories are managed with 'helm repo' commands.
 `
