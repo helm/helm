@@ -25,13 +25,13 @@ func TestSearchRepositoriesCmd(t *testing.T) {
 	repoCache := "testdata/helmhome/helm/repository"
 
 	tests := []cmdTestCase{{
-		name:   "search for 'alpine', expect two matches",
+		name:   "search for 'alpine', expect one match with latest stable version",
 		cmd:    "search repo alpine",
-		golden: "output/search-multiple.txt",
+		golden: "output/search-multiple-stable-release.txt",
 	}, {
-		name:   "search for 'alpine', expect two matches",
-		cmd:    "search repo alpine",
-		golden: "output/search-multiple.txt",
+		name:   "search for 'alpine', expect one match with newest development version",
+		cmd:    "search repo alpine --devel",
+		golden: "output/search-multiple-devel-release.txt",
 	}, {
 		name:   "search for 'alpine' with versions, expect three matches",
 		cmd:    "search repo alpine --versions",

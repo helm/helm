@@ -38,6 +38,20 @@ Search reads through all of the repositories configured on the system, and
 looks for matches. Search of these repositories uses the metadata stored on
 the system.
 
+It will display the latest stable versions of that chart until you specify '--devel' flag 
+to also include development versions (alpha, beta, and release candidate releases), or  
+supply a version number with the '--version' flag.
+
+Examples: 
+	# Searches only for stable releases, prerelease versions will be skipped
+	helm repo search 
+ 
+	# Searches for releases and prereleases (alpha, beta, and release candidate releases)
+	helm repo search --devel
+
+	# searches only for release in version 1.0.0
+	helm repo search --version 1.0.0
+
 Repositories are managed with 'helm repo' commands.
 `
 
@@ -47,6 +61,7 @@ const searchMaxScore = 25
 type searchRepoOptions struct {
 	versions     bool
 	regexp       bool
+	devel        bool
 	version      string
 	maxColWidth  uint
 	repoFile     string
@@ -71,6 +86,7 @@ func newSearchRepoCmd(out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.BoolVarP(&o.regexp, "regexp", "r", false, "use regular expressions for searching repositories you have added")
 	f.BoolVarP(&o.versions, "versions", "l", false, "show the long listing, with each version of each chart on its own line, for repositories you have added")
+	f.BoolVar(&o.devel, "devel", false, "use development versions (alpha, beta, and release candidate releases), too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored")
 	f.StringVar(&o.version, "version", "", "search using semantic versioning constraints on repositories you have added")
 	f.UintVar(&o.maxColWidth, "max-col-width", 50, "maximum column width for output table")
 	bindOutputFlag(cmd, &o.outputFormat)
@@ -79,6 +95,8 @@ func newSearchRepoCmd(out io.Writer) *cobra.Command {
 }
 
 func (o *searchRepoOptions) run(out io.Writer, args []string) error {
+	o.setupSearchedVersion()
+
 	index, err := o.buildIndex(out)
 	if err != nil {
 		return err
@@ -102,6 +120,22 @@ func (o *searchRepoOptions) run(out io.Writer, args []string) error {
 	}
 
 	return o.outputFormat.Write(out, &repoSearchWriter{data, o.maxColWidth})
+}
+
+func (o *searchRepoOptions) setupSearchedVersion() {
+	debug("Original chart version: %q", o.version)
+
+	if o.version != "" {
+		return
+	}
+
+	if o.devel { // search for releases and prereleases (alpha, beta, and release candidate releases).
+		debug("setting version to >0.0.0-0")
+		o.version = ">0.0.0-0"
+	} else { // search only for stable releases, prerelease versions will be skip
+		debug("setting version to >0.0.0")
+		o.version = ">0.0.0"
+	}
 }
 
 func (o *searchRepoOptions) applyConstraint(res []*search.Result) ([]*search.Result, error) {

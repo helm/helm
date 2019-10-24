@@ -93,9 +93,9 @@ A chart reference is a convenient way of referencing a chart in a chart reposito
 
 When you use a chart reference with a repo prefix ('example/mariadb'), Helm will look in the local
 configuration for a chart repository named 'example', and will then look for a
-chart in that repository whose name is 'mariadb'. It will install the latest
-version of that chart unless you also supply a version number with the
-'--version' flag.
+chart in that repository whose name is 'mariadb'. It will install the latest stable version of that chart 
+until you specify '--devel' flag to also include development version (alpha, beta, and release candidate releases), or  
+supply a version number with the '--version' flag.
 
 To see the list of chart repositories, use 'helm repo list'. To search for
 charts in a repository, use 'helm search'.
