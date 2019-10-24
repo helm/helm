@@ -25,6 +25,18 @@ entries:
       keywords: []
       maintainers: []
       icon: ""
+    - name: alpine
+      url: https://kubernetes-charts.storage.googleapis.com/alpine-0.3.0-rc.1.tgz
+      checksum: 0e6661f193211d7a5206918d42f5c2a9470b737d
+      home: https://helm.sh/helm
+      sources:
+        - https://github.com/helm/helm
+      version: 0.3.0-rc.1
+      appVersion: 3.0.0
+      description: Deploy a basic Alpine Linux pod
+      keywords: []
+      maintainers: []
+      icon: ""
   mariadb:
     - name: mariadb
       url: https://kubernetes-charts.storage.googleapis.com/mariadb-0.3.0.tgz
