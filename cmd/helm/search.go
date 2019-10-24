@@ -34,6 +34,21 @@ const searchDesc = `
 Search reads through all of the repositories configured on the system, and
 looks for matches.
 
+It will display the latest stable versions of the charts found. If you
+specify the --devel flag, the output will include pre-release versions.
+If you want to search using a version constraint, use --version.
+
+Examples:
+
+    # Search for stable release versions matching the keyword "nginx"
+    helm search nginx
+
+    # Search for release versions matching the keyword "nginx", including pre-release versions
+    helm search nginx --devel
+
+    # Search for the latest patch release for nginx-ingress 1.x
+    helm search nginx-ingress --version ^1.0.0
+
 Repositories are managed with 'helm repo' commands.
 
 To look for charts with a particular name (such as stable/mysql), try
@@ -59,6 +74,7 @@ type searchCmd struct {
 	out      io.Writer
 	helmhome helmpath.Home
 
+	devel    bool
 	versions bool
 	regexp   bool
 	version  string
@@ -89,6 +105,7 @@ func newSearchCmd(out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.BoolVarP(&sc.regexp, "regexp", "r", false, "Use regular expressions for searching")
 	f.BoolVarP(&sc.versions, "versions", "l", false, "Show the long listing, with each version of each chart on its own line")
+	f.BoolVar(&sc.devel, "devel", false, "use development versions (alpha, beta, and release candidate releases), too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored")
 	f.StringVarP(&sc.version, "version", "v", "", "Search using semantic versioning constraints")
 	f.UintVar(&sc.colWidth, "col-width", 60, "Specifies the max column width of output")
 	bindOutputFlag(cmd, &sc.output)
@@ -97,6 +114,7 @@ func newSearchCmd(out io.Writer) *cobra.Command {
 }
 
 func (s *searchCmd) run(args []string) error {
+	s.setupSearchedVersion()
 	index, err := s.buildIndex()
 	if err != nil {
 		return err
@@ -120,6 +138,22 @@ func (s *searchCmd) run(args []string) error {
 	}
 
 	return write(s.out, &searchWriter{data, s.colWidth}, outputFormat(s.output))
+}
+
+func (s *searchCmd) setupSearchedVersion() {
+	debug("Original chart version: %q", s.version)
+
+	if s.version != "" {
+		return
+	}
+
+	if s.devel { // search for releases and prereleases (alpha, beta, and release candidate releases).
+		debug("setting version to >0.0.0-0")
+		s.version = ">0.0.0-0"
+	} else { // search only for stable releases, prerelease versions will be skip
+		debug("setting version to >0.0.0")
+		s.version = ">0.0.0"
+	}
 }
 
 func (s *searchCmd) applyConstraint(res []*search.Result) ([]*search.Result, error) {
