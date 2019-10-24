@@ -20,8 +20,7 @@ Use Helm to:
 Helm is a tool that streamlines installing and managing Kubernetes applications.
 Think of it like apt/yum/homebrew for Kubernetes.
 
-- Helm has two parts: a client (`helm`) and a library
-- The library renders your templates and communicates with the Kubernetes API
+- Helm renders your templates and communicates with the Kubernetes API
 - Helm runs on your laptop, CI/CD, or wherever you want it to run.
 - Charts are Helm packages that contain at least two things:
   - A description of the package (`Chart.yaml`)
