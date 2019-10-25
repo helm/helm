@@ -27,7 +27,6 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
-	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -126,15 +125,6 @@ func (w *waiter) waitForResources(created ResourceList) error {
 				if !w.statefulSetReady(sts) {
 					return false, nil
 				}
-			case *extensionsv1beta1.Ingress, *networkingv1beta1.Ingress:
-				ing, err := w.c.NetworkingV1beta1().Ingresses(v.Namespace).Get(v.Name, metav1.GetOptions{})
-				if err != nil {
-					return false, err
-				}
-				if !w.ingressReady(ing) {
-					return false, nil
-				}
-
 			case *corev1.ReplicationController, *extensionsv1beta1.ReplicaSet, *appsv1beta2.ReplicaSet, *appsv1.ReplicaSet:
 				ok, err = w.podsReadyForObject(v.Namespace, value)
 			}
@@ -293,14 +283,6 @@ func (w *waiter) statefulSetReady(sts *appsv1.StatefulSet) bool {
 
 	if int(sts.Status.ReadyReplicas) != replicas {
 		w.log("StatefulSet is not ready: %s/%s. %d out of %d expected pods are ready", sts.Namespace, sts.Name, sts.Status.ReadyReplicas, replicas)
-		return false
-	}
-	return true
-}
-
-func (w *waiter) ingressReady(ing *networkingv1beta1.Ingress) bool {
-	if len(ing.Status.LoadBalancer.Ingress) == 0 {
-		w.log("Ingress is not ready: %s/%s", ing.GetNamespace(), ing.GetName())
 		return false
 	}
 	return true
