@@ -10,7 +10,7 @@ require (
 	github.com/Masterminds/vcs v1.13.0
 	github.com/Microsoft/go-winio v0.4.12 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a
-	github.com/containerd/containerd v1.3.0-beta.2.0.20190823190603-4a2f61c4f2b4
+	github.com/containerd/containerd v1.3.0
 	github.com/cyphar/filepath-securejoin v0.2.2
 	github.com/deislabs/oras v0.7.0
 	github.com/docker/distribution v2.7.1+incompatible
