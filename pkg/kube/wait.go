@@ -22,7 +22,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -52,7 +52,6 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 		services := []v1.Service{}
 		pvc := []v1.PersistentVolumeClaim{}
 		deployments := []deployment{}
-		ingresses := []extensions.Ingress{}
 		for _, v := range created {
 			switch value := asVersionedOrUnstructured(v).(type) {
 			case *v1.ReplicationController:
@@ -209,15 +208,9 @@ func (c *Client) waitForResources(timeout time.Duration, created Result) error {
 					return false, err
 				}
 				services = append(services, *svc)
-			case *extensions.Ingress:
-				ingress, err := kcs.ExtensionsV1beta1().Ingresses(value.Namespace).Get(value.Name, metav1.GetOptions{})
-				if err != nil {
-					return false, err
-				}
-				ingresses = append(ingresses, *ingress)
 			}
 		}
-		isReady := c.podsReady(pods) && c.servicesReady(services) && c.volumesReady(pvc) && c.deploymentsReady(deployments) && c.ingressesReady(ingresses)
+		isReady := c.podsReady(pods) && c.servicesReady(services) && c.volumesReady(pvc) && c.deploymentsReady(deployments)
 		return isReady, nil
 	})
 }
@@ -291,14 +284,4 @@ func isPodReady(pod *v1.Pod) bool {
 		}
 	}
 	return false
-}
-
-func (c *Client) ingressesReady(ingresses []extensions.Ingress) bool {
-	for _, ingress := range ingresses {
-		if &ingress.Status == nil || len(ingress.Status.LoadBalancer.Ingress) == 0 {
-			c.Log("Ingress is not ready: %s/%s", ingress.GetNamespace(), ingress.GetName())
-			return false
-		}
-	}
-	return true
 }
