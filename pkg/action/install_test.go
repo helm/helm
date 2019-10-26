@@ -26,10 +26,18 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/cli-runtime/pkg/resource"
 
 	"helm.sh/helm/v3/internal/test"
 	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/kube"
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage/driver"
@@ -611,6 +619,130 @@ func TestNameAndChartGenerateName(t *testing.T) {
 
 			is.Equal(tc.ExpectedName, name)
 			is.Equal(tc.Chart, chrt)
+		})
+	}
+}
+
+func Test_checkReleaseNamespace(t *testing.T) {
+	type args struct {
+		kubeClient kube.Interface
+		resources  kube.ResourceList
+		namespace  string
+	}
+	type want struct {
+		err       error
+		resources kube.ResourceList
+	}
+
+	testResource := func(o runtime.Object, name string) *resource.Info {
+		gvk := o.GetObjectKind().GroupVersionKind()
+		return &resource.Info{
+			Name: name,
+			Mapping: &meta.RESTMapping{
+				Resource: schema.GroupVersionResource{Group: gvk.Group, Version: gvk.Version, Resource: gvk.Kind},
+			},
+			Object: o,
+		}
+	}
+
+	tests := map[string]struct {
+		args args
+		want want
+	}{
+		"NilResourceList": {
+			args: args{
+				kubeClient: nil,
+				resources:  nil,
+				namespace:  "test",
+			},
+			want: want{
+				resources: nil,
+			},
+		},
+		"EmptyResourceList": {
+			args: args{
+				kubeClient: nil,
+				resources:  kube.ResourceList{},
+				namespace:  "test",
+			},
+			want: want{
+				resources: kube.ResourceList{},
+			},
+		},
+		"ReleaseNamespaceIsNotDefined": {
+			args: args{
+				kubeClient: nil,
+				resources:  kube.ResourceList{testResource(&corev1.Pod{}, "test")},
+				namespace:  "test",
+			},
+			want: want{
+				resources: kube.ResourceList{testResource(&corev1.Pod{}, "test")},
+			},
+		},
+		"ReleaseNamespaceIsDefinedButNotTheRelease": {
+			args: args{
+				kubeClient: nil,
+				resources: kube.ResourceList{
+					testResource(&corev1.Pod{}, "test"),
+					testResource(&corev1.Namespace{TypeMeta: metav1.TypeMeta{Kind: "Namespace"}}, "foo"),
+				},
+				namespace: "test",
+			},
+			want: want{
+				resources: kube.ResourceList{
+					testResource(&corev1.Pod{}, "test"),
+					testResource(&corev1.Namespace{TypeMeta: metav1.TypeMeta{Kind: "Namespace"}}, "foo"),
+				},
+			},
+		},
+		"ReleaseNamespaceIsDefinedButFailedToCreate": {
+			args: args{
+				kubeClient: &kubefake.FailingKubeClient{CreateError: errors.New("create-error")},
+				resources: kube.ResourceList{
+					testResource(&corev1.Pod{}, "test"),
+					testResource(&corev1.Namespace{TypeMeta: metav1.TypeMeta{Kind: "Namespace"}}, "foo"),
+					testResource(&corev1.Namespace{TypeMeta: metav1.TypeMeta{Kind: "Namespace"}}, "test"),
+				},
+				namespace: "test",
+			},
+			want: want{
+				err: errors.New("create-error"),
+				resources: kube.ResourceList{
+					testResource(&corev1.Pod{}, "test"),
+					testResource(&corev1.Namespace{TypeMeta: metav1.TypeMeta{Kind: "Namespace"}}, "foo"),
+					testResource(&corev1.Namespace{TypeMeta: metav1.TypeMeta{Kind: "Namespace"}}, "test"),
+				},
+			},
+		},
+		"ReleaseNamespaceIsDefinedSuccessfulCreate": {
+			args: args{
+				kubeClient: &kubefake.PrintingKubeClient{Out: ioutil.Discard},
+				resources: kube.ResourceList{
+					testResource(&corev1.Pod{}, "test"),
+					testResource(&corev1.Namespace{TypeMeta: metav1.TypeMeta{Kind: "Namespace"}}, "foo"),
+					testResource(&corev1.Namespace{TypeMeta: metav1.TypeMeta{Kind: "Namespace"}}, "test"),
+				},
+				namespace: "test",
+			},
+			want: want{
+				resources: kube.ResourceList{
+					testResource(&corev1.Pod{}, "test"),
+					testResource(&corev1.Namespace{TypeMeta: metav1.TypeMeta{Kind: "Namespace"}}, "foo"),
+				},
+			},
+		},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			is := assert.New(t)
+			res, err := checkReleaseNamespace(tt.args.kubeClient, tt.args.resources, tt.args.namespace)
+
+			if tt.want.err == nil {
+				is.Nil(err)
+			} else {
+				is.EqualError(err, tt.want.err.Error())
+			}
+			is.Equal(tt.want.resources, res)
 		})
 	}
 }

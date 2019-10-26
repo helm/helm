@@ -38,6 +38,7 @@ import (
 	"helm.sh/helm/v3/pkg/downloader"
 	"helm.sh/helm/v3/pkg/engine"
 	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/kube"
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/releaseutil"
@@ -259,6 +260,11 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 		return rel, nil
 	}
 
+	// Check if chart contains definition for namespace resource which matches release namespace
+	if resources, err = checkReleaseNamespace(i.cfg.KubeClient, resources, i.Namespace); err != nil {
+		return i.failRelease(rel, err)
+	}
+
 	// If Replace is true, we need to supercede the last release.
 	if i.Replace {
 		if err := i.replaceRelease(rel); err != nil {
@@ -320,6 +326,25 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	}
 
 	return rel, nil
+}
+
+// checkReleaseNamepace checks if the release namespace is included as template resource.
+// if it is:
+//   1. attempt to create a namespace returning any/all errors
+//   2. upon successful creation - remove release namespace template resource from the provided list
+// if it is not: noop
+func checkReleaseNamespace(kubeClient kube.Interface, resources kube.ResourceList, namespace string) (kube.ResourceList, error) {
+	for i, r := range resources {
+		ok := r.Object.GetObjectKind()
+		if gvk := ok.GroupVersionKind(); gvk.Kind == "Namespace" && r.Name == namespace {
+			// If matching namespace resource found create namespace and remove this resource from the resource list
+			if _, err := kubeClient.Create(kube.ResourceList{r}); err != nil {
+				return resources, err
+			}
+			return append(resources[:i], resources[i+1:]...), nil
+		}
+	}
+	return resources, nil
 }
 
 func (i *Install) failRelease(rel *release.Release, err error) (*release.Release, error) {
