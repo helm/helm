@@ -222,7 +222,7 @@ func (c *Configuration) Init(envSettings *cli.EnvSettings, allNamespaces bool, h
 	}
 	var namespace string
 	if !allNamespaces {
-		namespace = envSettings.Namespace()
+		namespace = envSettings.GetNamespace()
 	}
 
 	var store *storage.Storage

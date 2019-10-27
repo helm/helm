@@ -38,10 +38,11 @@ import (
 
 // EnvSettings describes all of the environment settings.
 type EnvSettings struct {
-	namespace  string
 	config     genericclioptions.RESTClientGetter
 	configOnce sync.Once
 
+	// Namespace is the namespace used by storage drivers
+	Namespace string
 	// KubeConfig is the path to the kubeconfig file
 	KubeConfig string
 	// KubeContext is the name of the kubeconfig context.
@@ -61,7 +62,7 @@ type EnvSettings struct {
 func New() *EnvSettings {
 
 	env := EnvSettings{
-		namespace:        os.Getenv("HELM_NAMESPACE"),
+		Namespace:        os.Getenv("HELM_NAMESPACE"),
 		KubeContext:      os.Getenv("HELM_KUBECONTEXT"),
 		PluginsDirectory: envOr("HELM_PLUGINS", helmpath.DataPath("plugins")),
 		RegistryConfig:   envOr("HELM_REGISTRY_CONFIG", helmpath.ConfigPath("registry.json")),
@@ -74,7 +75,7 @@ func New() *EnvSettings {
 
 // AddFlags binds flags to the given flagset.
 func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
-	fs.StringVarP(&s.namespace, "namespace", "n", s.namespace, "namespace scope for this request")
+	fs.StringVarP(&s.Namespace, "namespace", "n", s.Namespace, "namespace scope for this request")
 	fs.StringVar(&s.KubeConfig, "kubeconfig", "", "path to the kubeconfig file")
 	fs.StringVar(&s.KubeContext, "kube-context", s.KubeContext, "name of the kubeconfig context to use")
 	fs.BoolVar(&s.Debug, "debug", s.Debug, "enable verbose output")
@@ -98,7 +99,7 @@ func (s *EnvSettings) EnvVars() map[string]string {
 		"HELM_REGISTRY_CONFIG":   s.RegistryConfig,
 		"HELM_REPOSITORY_CACHE":  s.RepositoryCache,
 		"HELM_REPOSITORY_CONFIG": s.RepositoryConfig,
-		"HELM_NAMESPACE":         s.Namespace(),
+		"HELM_NAMESPACE":         s.GetNamespace(),
 		"HELM_KUBECONTEXT":       s.KubeContext,
 	}
 
@@ -110,9 +111,9 @@ func (s *EnvSettings) EnvVars() map[string]string {
 }
 
 //Namespace gets the namespace from the configuration
-func (s *EnvSettings) Namespace() string {
-	if s.namespace != "" {
-		return s.namespace
+func (s *EnvSettings) GetNamespace() string {
+	if s.Namespace != "" {
+		return s.Namespace
 	}
 
 	if ns, _, err := s.RESTClientGetter().ToRawKubeConfigLoader().Namespace(); err == nil {
@@ -124,7 +125,7 @@ func (s *EnvSettings) Namespace() string {
 //RESTClientGetter gets the kubeconfig from EnvSettings
 func (s *EnvSettings) RESTClientGetter() genericclioptions.RESTClientGetter {
 	s.configOnce.Do(func() {
-		s.config = kube.GetConfig(s.KubeConfig, s.KubeContext, s.namespace)
+		s.config = kube.GetConfig(s.KubeConfig, s.KubeContext, s.Namespace)
 	})
 	return s.config
 }
