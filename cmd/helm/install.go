@@ -47,30 +47,30 @@ a string value use '--set-string'. In case a value is large and therefore
 you want not to use neither '--values' nor '--set', use '--set-file' to read the
 single large value from file.
 
-	$ helm install -f myvalues.yaml myredis ./redis
+    $ helm install -f myvalues.yaml myredis ./redis
 
 or
 
-	$ helm install --set name=prod myredis ./redis
+    $ helm install --set name=prod myredis ./redis
 
 or
 
-	$ helm install --set-string long_int=1234567890 myredis ./redis
+    $ helm install --set-string long_int=1234567890 myredis ./redis
 
 or
-	$ helm install --set-file my_script=dothings.sh myredis ./redis
+    $ helm install --set-file my_script=dothings.sh myredis ./redis
 
 You can specify the '--values'/'-f' flag multiple times. The priority will be given to the
 last (right-most) file specified. For example, if both myvalues.yaml and override.yaml
 contained a key called 'Test', the value set in override.yaml would take precedence:
 
-	$ helm install -f myvalues.yaml -f override.yaml  myredis ./redis
+    $ helm install -f myvalues.yaml -f override.yaml  myredis ./redis
 
 You can specify the '--set' flag multiple times. The priority will be given to the
 last (right-most) set specified. For example, if both 'bar' and 'newbar' values are
 set for a key called 'foo', the 'newbar' value would take precedence:
 
-	$ helm install --set foo=bar --set foo=newbar  myredis ./redis
+    $ helm install --set foo=bar --set foo=newbar  myredis ./redis
 
 
 To check the generated manifests of a release without installing the chart,
@@ -93,8 +93,8 @@ A chart reference is a convenient way of referencing a chart in a chart reposito
 
 When you use a chart reference with a repo prefix ('example/mariadb'), Helm will look in the local
 configuration for a chart repository named 'example', and will then look for a
-chart in that repository whose name is 'mariadb'. It will install the latest stable version of that chart 
-until you specify '--devel' flag to also include development version (alpha, beta, and release candidate releases), or  
+chart in that repository whose name is 'mariadb'. It will install the latest stable version of that chart
+until you specify '--devel' flag to also include development version (alpha, beta, and release candidate releases), or
 supply a version number with the '--version' flag.
 
 To see the list of chart repositories, use 'helm repo list'. To search for

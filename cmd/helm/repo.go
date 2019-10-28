@@ -30,8 +30,6 @@ var repoHelm = `
 This command consists of multiple subcommands to interact with chart repositories.
 
 It can be used to add, remove, list, and index chart repositories.
-Example usage:
-    $ helm repo add [NAME] [REPO_URL]
 `
 
 func newRepoCmd(out io.Writer) *cobra.Command {

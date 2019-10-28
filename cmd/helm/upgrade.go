@@ -51,13 +51,13 @@ You can specify the '--values'/'-f' flag multiple times. The priority will be gi
 last (right-most) file specified. For example, if both myvalues.yaml and override.yaml
 contained a key called 'Test', the value set in override.yaml would take precedence:
 
-	$ helm upgrade -f myvalues.yaml -f override.yaml redis ./redis
+    $ helm upgrade -f myvalues.yaml -f override.yaml redis ./redis
 
 You can specify the '--set' flag multiple times. The priority will be given to the
 last (right-most) set specified. For example, if both 'bar' and 'newbar' values are
 set for a key called 'foo', the 'newbar' value would take precedence:
 
-	$ helm upgrade --set foo=bar --set foo=newbar redis ./redis
+    $ helm upgrade --set foo=bar --set foo=newbar redis ./redis
 `
 
 func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {

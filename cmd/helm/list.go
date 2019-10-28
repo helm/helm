@@ -45,9 +45,9 @@ If the --filter flag is provided, it will be treated as a filter. Filters are
 regular expressions (Perl compatible) that are applied to the list of releases.
 Only items that match the filter will be returned.
 
-	$ helm list --filter 'ara[a-z]+'
-	NAME            	UPDATED                 	CHART
-	maudlin-arachnid	Mon May  9 16:07:08 2016	alpine-0.1.0
+    $ helm list --filter 'ara[a-z]+'
+    NAME                UPDATED                     CHART
+    maudlin-arachnid    Mon May  9 16:07:08 2016    alpine-0.1.0
 
 If no results are found, 'helm list' will exit 0, but with no output (or in
 the case of no '-q' flag, only headers).
