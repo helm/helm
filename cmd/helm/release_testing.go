@@ -46,7 +46,7 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 		Long:  releaseTestHelp,
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client.Namespace = settings.GetNamespace()
+			client.Namespace = settings.Namespace()
 			rel, runErr := client.Run(args[0])
 			// We only return an error if we weren't even able to get the
 			// release, otherwise we keep going so we can print status and logs
