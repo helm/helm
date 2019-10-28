@@ -67,7 +67,7 @@ func main() {
 	actionConfig := new(action.Configuration)
 	cmd := newRootCmd(actionConfig, os.Stdout, os.Args[1:])
 
-	if err := actionConfig.Init(settings, false, os.Getenv("HELM_DRIVER"), debug); err != nil {
+	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), os.Getenv("HELM_DRIVER"), debug); err != nil {
 		debug("%+v", err)
 		os.Exit(1)
 	}
