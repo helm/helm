@@ -86,11 +86,13 @@ func TestLoadPlugins(t *testing.T) {
 		long   string
 		expect string
 		args   []string
+		code   int
 	}{
-		{"args", "echo args", "This echos args", "-a -b -c\n", []string{"-a", "-b", "-c"}},
-		{"echo", "echo stuff", "This echos stuff", "hello\n", []string{}},
-		{"env", "env stuff", "show the env", "env\n", []string{}},
-		{"fullenv", "show env vars", "show all env vars", envs + "\n", []string{}},
+		{"args", "echo args", "This echos args", "-a -b -c\n", []string{"-a", "-b", "-c"}, 0},
+		{"echo", "echo stuff", "This echos stuff", "hello\n", []string{}, 0},
+		{"env", "env stuff", "show the env", "env\n", []string{}, 0},
+		{"exitwith", "exitwith code", "This exits with the specified exit code", "", []string{"2"}, 2},
+		{"fullenv", "show env vars", "show all env vars", envs + "\n", []string{}, 0},
 	}
 
 	plugins := cmd.Commands()
@@ -117,7 +119,17 @@ func TestLoadPlugins(t *testing.T) {
 		// tests until this is fixed
 		if runtime.GOOS != "windows" {
 			if err := pp.RunE(pp, tt.args); err != nil {
-				t.Errorf("Error running %s: %+v", tt.use, err)
+				if tt.code > 0 {
+					perr, ok := err.(pluginError)
+					if !ok {
+						t.Errorf("Expected %s to return pluginError: got %v(%T)", tt.use, err, err)
+					}
+					if perr.code != tt.code {
+						t.Errorf("Expected %s to return %d: got %d", tt.use, tt.code, perr.code)
+					}
+				} else {
+					t.Errorf("Error running %s: %+v", tt.use, err)
+				}
 			}
 			if out.String() != tt.expect {
 				t.Errorf("Expected %s to output:\n%s\ngot\n%s", tt.use, tt.expect, out.String())

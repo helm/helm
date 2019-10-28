@@ -69,17 +69,17 @@ func main() {
 
 	if err := actionConfig.Init(settings, false, os.Getenv("HELM_DRIVER"), debug); err != nil {
 		debug("%+v", err)
+		os.Exit(1)
+	}
+
+	if err := cmd.Execute(); err != nil {
+		debug("%+v", err)
 		switch e := err.(type) {
 		case pluginError:
 			os.Exit(e.code)
 		default:
 			os.Exit(1)
 		}
-	}
-
-	if err := cmd.Execute(); err != nil {
-		debug("%+v", err)
-		os.Exit(1)
 	}
 }
 
