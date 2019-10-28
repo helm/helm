@@ -22,13 +22,13 @@ import (
 
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
 	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/kube"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage"
@@ -210,19 +210,13 @@ func (c *Configuration) recordRelease(r *release.Release) {
 }
 
 // InitActionConfig initializes the action configuration
-func (c *Configuration) Init(envSettings *cli.EnvSettings, allNamespaces bool, helmDriver string, log DebugLog) error {
-	getter := envSettings.RESTClientGetter()
-
+func (c *Configuration) Init(getter genericclioptions.RESTClientGetter, namespace string, helmDriver string, log DebugLog) error {
 	kc := kube.New(getter)
 	kc.Log = log
 
 	clientset, err := kc.Factory.KubernetesClientSet()
 	if err != nil {
 		return err
-	}
-	var namespace string
-	if !allNamespaces {
-		namespace = envSettings.Namespace()
 	}
 
 	var store *storage.Storage
