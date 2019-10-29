@@ -19,7 +19,7 @@ import:
   - package: github.com/imdario/mergo
     version: v0.3.5
   - package: github.com/Masterminds/sprig
-    version: ^2.20.0
+    version: ^2.22.0
   - package: github.com/ghodss/yaml
     version: c7ce16629ff4cd059ed96ed06419dd3856fd3577
   - package: github.com/Masterminds/semver

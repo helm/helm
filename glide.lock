@@ -1,5 +1,5 @@
-hash: ac5ff6bfe50536fa733d160b064d05691909e1d796c6d9284ce2eb4deb998db9
-updated: 2019-10-29T19:02:24.996035Z
+hash: ae30ff515e0d63b991a2079670b9a428ad49e3f29f1ab6c26988af22a407e99d
+updated: 2019-10-29T22:33:27.104690372-04:00
 imports:
 - name: cloud.google.com/go
   version: 8c41231e01b2085512d98153bcffb847ff9b4b9f
@@ -216,7 +216,7 @@ imports:
 - name: github.com/peterbourgon/diskv
   version: 5f041e8faa004a95c88a202771f4cc3e991971e6
 - name: github.com/pkg/errors
-  version: 27936f6d90f9c8e1145f11ed52ffffbfdb9e0af7
+  version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/prometheus/client_golang
   version: 505eaef017263e299324067d40ca2c48f6a2cf50
   subpackages:
@@ -294,7 +294,7 @@ imports:
   - jws
   - jwt
 - name: golang.org/x/sync
-  version: 42b317875d0fa942474b76e1b46a6060d720ae6e
+  version: cd5d95a43a6e21273425c7ae415d3df9ea832eeb
   subpackages:
   - semaphore
 - name: golang.org/x/sys
@@ -340,7 +340,7 @@ imports:
   - internal/urlfetch
   - urlfetch
 - name: google.golang.org/genproto
-  version: 919d9bdd9fe6f1a5dd95ce5d5e4cdb8fd3c516d0
+  version: e7d98fc518a78c9f8b5ee77be7b0b317475d89e1
   subpackages:
   - googleapis/rpc/status
 - name: google.golang.org/grpc
