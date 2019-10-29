@@ -23,6 +23,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -35,6 +36,45 @@ func TestLoadDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
+	c, err := l.Load()
+	if err != nil {
+		t.Fatalf("Failed to load testdata: %s", err)
+	}
+	verifyFrobnitz(t, c)
+	verifyChart(t, c)
+	verifyDependencies(t, c)
+	verifyDependenciesLock(t, c)
+}
+
+func TestLoadDirWithDevNull(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("test only works on unix systems with /dev/null present")
+	}
+
+	l, err := Loader("testdata/frobnitz_with_dev_null")
+	if err != nil {
+		t.Fatalf("Failed to load testdata: %s", err)
+	}
+	if _, err := l.Load(); err == nil {
+		t.Errorf("packages with an irregular file (/dev/null) should not load")
+	}
+}
+
+func TestLoadDirWithSymlink(t *testing.T) {
+	sym := filepath.Join("..", "LICENSE")
+	link := filepath.Join("testdata", "frobnitz_with_symlink", "LICENSE")
+
+	if err := os.Symlink(sym, link); err != nil {
+		t.Fatal(err)
+	}
+
+	defer os.Remove(link)
+
+	l, err := Loader("testdata/frobnitz_with_symlink")
+	if err != nil {
+		t.Fatalf("Failed to load testdata: %s", err)
+	}
+
 	c, err := l.Load()
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
