@@ -36,7 +36,7 @@ func (m *TestSuite) Reset()         { *m = TestSuite{} }
 func (m *TestSuite) String() string { return proto.CompactTextString(m) }
 func (*TestSuite) ProtoMessage()    {}
 func (*TestSuite) Descriptor() ([]byte, []int) {
-	return fileDescriptor_test_suite_06a0016f2c6417b8, []int{0}
+	return fileDescriptor_test_suite_97a98e0ba80794de, []int{0}
 }
 func (m *TestSuite) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TestSuite.Unmarshal(m, b)
@@ -82,10 +82,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("hapi/release/test_suite.proto", fileDescriptor_test_suite_06a0016f2c6417b8)
+	proto.RegisterFile("hapi/release/test_suite.proto", fileDescriptor_test_suite_97a98e0ba80794de)
 }
 
-var fileDescriptor_test_suite_06a0016f2c6417b8 = []byte{
+var fileDescriptor_test_suite_97a98e0ba80794de = []byte{
 	// 207 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x8f, 0xc1, 0x4a, 0x86, 0x40,
 	0x14, 0x85, 0x31, 0x21, 0x71, 0x74, 0x35, 0x10, 0x88, 0x11, 0x49, 0x2b, 0x57, 0x33, 0x60, 0xab,

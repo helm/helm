@@ -32,7 +32,7 @@ func (m *Version) Reset()         { *m = Version{} }
 func (m *Version) String() string { return proto.CompactTextString(m) }
 func (*Version) ProtoMessage()    {}
 func (*Version) Descriptor() ([]byte, []int) {
-	return fileDescriptor_version_227db6d1d83f2c17, []int{0}
+	return fileDescriptor_version_10859f2d56ed17fa, []int{0}
 }
 func (m *Version) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Version.Unmarshal(m, b)
@@ -77,9 +77,9 @@ func init() {
 	proto.RegisterType((*Version)(nil), "hapi.version.Version")
 }
 
-func init() { proto.RegisterFile("hapi/version/version.proto", fileDescriptor_version_227db6d1d83f2c17) }
+func init() { proto.RegisterFile("hapi/version/version.proto", fileDescriptor_version_10859f2d56ed17fa) }
 
-var fileDescriptor_version_227db6d1d83f2c17 = []byte{
+var fileDescriptor_version_10859f2d56ed17fa = []byte{
 	// 151 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x92, 0xca, 0x48, 0x2c, 0xc8,
 	0xd4, 0x2f, 0x4b, 0x2d, 0x2a, 0xce, 0xcc, 0xcf, 0x83, 0xd1, 0x7a, 0x05, 0x45, 0xf9, 0x25, 0xf9,

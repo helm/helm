@@ -48,7 +48,7 @@ func (m *Release) Reset()         { *m = Release{} }
 func (m *Release) String() string { return proto.CompactTextString(m) }
 func (*Release) ProtoMessage()    {}
 func (*Release) Descriptor() ([]byte, []int) {
-	return fileDescriptor_release_4bea5d16ba219619, []int{0}
+	return fileDescriptor_release_fa600adfb1fffc82, []int{0}
 }
 func (m *Release) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Release.Unmarshal(m, b)
@@ -128,9 +128,9 @@ func init() {
 	proto.RegisterType((*Release)(nil), "hapi.release.Release")
 }
 
-func init() { proto.RegisterFile("hapi/release/release.proto", fileDescriptor_release_4bea5d16ba219619) }
+func init() { proto.RegisterFile("hapi/release/release.proto", fileDescriptor_release_fa600adfb1fffc82) }
 
-var fileDescriptor_release_4bea5d16ba219619 = []byte{
+var fileDescriptor_release_fa600adfb1fffc82 = []byte{
 	// 256 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x64, 0x90, 0xbf, 0x4e, 0xc3, 0x40,
 	0x0c, 0xc6, 0x95, 0x36, 0x7f, 0x1a, 0xc3, 0x82, 0x07, 0xb0, 0x22, 0x86, 0x88, 0x01, 0x22, 0x86,

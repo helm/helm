@@ -38,7 +38,7 @@ func (x Metadata_Engine) String() string {
 	return proto.EnumName(Metadata_Engine_name, int32(x))
 }
 func (Metadata_Engine) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_metadata_d6c714c73a051dcb, []int{1, 0}
+	return fileDescriptor_metadata_bafee76586953fd5, []int{1, 0}
 }
 
 // Maintainer describes a Chart maintainer.
@@ -58,7 +58,7 @@ func (m *Maintainer) Reset()         { *m = Maintainer{} }
 func (m *Maintainer) String() string { return proto.CompactTextString(m) }
 func (*Maintainer) ProtoMessage()    {}
 func (*Maintainer) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metadata_d6c714c73a051dcb, []int{0}
+	return fileDescriptor_metadata_bafee76586953fd5, []int{0}
 }
 func (m *Maintainer) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Maintainer.Unmarshal(m, b)
@@ -148,7 +148,7 @@ func (m *Metadata) Reset()         { *m = Metadata{} }
 func (m *Metadata) String() string { return proto.CompactTextString(m) }
 func (*Metadata) ProtoMessage()    {}
 func (*Metadata) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metadata_d6c714c73a051dcb, []int{1}
+	return fileDescriptor_metadata_bafee76586953fd5, []int{1}
 }
 func (m *Metadata) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Metadata.Unmarshal(m, b)
@@ -294,9 +294,9 @@ func init() {
 	proto.RegisterEnum("hapi.chart.Metadata_Engine", Metadata_Engine_name, Metadata_Engine_value)
 }
 
-func init() { proto.RegisterFile("hapi/chart/metadata.proto", fileDescriptor_metadata_d6c714c73a051dcb) }
+func init() { proto.RegisterFile("hapi/chart/metadata.proto", fileDescriptor_metadata_bafee76586953fd5) }
 
-var fileDescriptor_metadata_d6c714c73a051dcb = []byte{
+var fileDescriptor_metadata_bafee76586953fd5 = []byte{
 	// 435 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x6c, 0x52, 0x5d, 0x6b, 0xd4, 0x40,
 	0x14, 0x35, 0xcd, 0x66, 0x77, 0x73, 0x63, 0x35, 0x0e, 0x52, 0xc6, 0x22, 0x12, 0x16, 0x85, 0x7d,
