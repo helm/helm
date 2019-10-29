@@ -23,6 +23,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -49,6 +50,40 @@ func TestLoadNonV1Chart(t *testing.T) {
 		return
 	}
 	t.Fatalf("chart with v2 apiVersion should not load")
+}
+
+func TestLoadDirWithSymlinks(t *testing.T) {
+	sym := filepath.Join("..", "frobnitz", "README.md")
+	link := filepath.Join("testdata", "frobnitz_symlinks", "README.md")
+
+	if err := os.Symlink(sym, link); err != nil {
+		t.Fatal(err)
+	}
+
+	defer os.Remove(link)
+
+	c, err := Load("testdata/frobnitz_symlinks")
+	if err != nil {
+		t.Fatalf("Failed to load testdata: %s", err)
+	}
+	verifyFrobnitz(t, c)
+	verifyChart(t, c)
+	verifyRequirements(t, c)
+}
+
+func TestLoadDirWithBadSymlinks(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("test only works on unix systems with /dev/null present")
+	}
+
+	_, err := Load("testdata/bad_symlink")
+	if err == nil {
+		t.Fatal("Failed to detect bad symlink")
+	}
+
+	if !strings.HasPrefix(err.Error(), "cannot load irregular file") {
+		t.Errorf("Expected bad symlink error got %q", err)
+	}
 }
 
 func TestLoadFile(t *testing.T) {
