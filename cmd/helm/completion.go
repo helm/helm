@@ -30,11 +30,11 @@ Generate autocompletions script for Helm for the specified shell (bash or zsh).
 
 This command can generate shell autocompletions. e.g.
 
-	$ helm completion bash
+    $ helm completion bash
 
 Can be sourced as such
 
-	$ source <(helm completion bash)
+    $ source <(helm completion bash)
 `
 
 var (

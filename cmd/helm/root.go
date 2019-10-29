@@ -282,14 +282,14 @@ __helm_custom_func()
             __helm_list_releases
             return
             ;;
-		helm_repo_remove)
-			__helm_list_repos
-			return
-			;;
-		helm_plugin_remove | helm_plugin_update)
-			__helm_list_plugins
-			return
-			;;
+        helm_repo_remove)
+            __helm_list_repos
+            return
+            ;;
+        helm_plugin_remove | helm_plugin_update)
+            __helm_list_plugins
+            return
+            ;;
         *)
             ;;
     esac
@@ -311,17 +311,22 @@ var globalUsage = `The Kubernetes package manager
 Common actions for Helm:
 
 - helm search:    search for charts
-- helm fetch:     download a chart to your local directory to view
+- helm pull:      download a chart to your local directory to view
 - helm install:   upload the chart to Kubernetes
 - helm list:      list releases of charts
 
-Environment:
-  $XDG_CACHE_HOME     set an alternative location for storing cached files.
-  $XDG_CONFIG_HOME    set an alternative location for storing Helm configuration.
-  $XDG_DATA_HOME      set an alternative location for storing Helm data.
-  $HELM_DRIVER        set the backend storage driver. Values are: configmap, secret, memory
-  $HELM_NO_PLUGINS    disable plugins. Set HELM_NO_PLUGINS=1 to disable plugins.
-  $KUBECONFIG         set an alternative Kubernetes configuration file (default "~/.kube/config")
+Environment variables:
+
++------------------+-----------------------------------------------------------------------------+
+| Name             | Description                                                                 |
++------------------+-----------------------------------------------------------------------------+
+| $XDG_CACHE_HOME  | set an alternative location for storing cached files.                       |
+| $XDG_CONFIG_HOME | set an alternative location for storing Helm configuration.                 |
+| $XDG_DATA_HOME   | set an alternative location for storing Helm data.                          |
+| $HELM_DRIVER     | set the backend storage driver. Values are: configmap, secret, memory       |
+| $HELM_NO_PLUGINS | disable plugins. Set HELM_NO_PLUGINS=1 to disable plugins.                  |
+| $KUBECONFIG      | set an alternative Kubernetes configuration file (default "~/.kube/config") |
++------------------+-----------------------------------------------------------------------------+
 
 Helm stores configuration based on the XDG base directory specification, so
 

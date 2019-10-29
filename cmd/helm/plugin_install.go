@@ -33,9 +33,6 @@ type pluginInstallOptions struct {
 
 const pluginInstallDesc = `
 This command allows you to install a plugin from a url to a VCS repo or a local path.
-
-Example usage:
-    $ helm plugin install https://github.com/technosophos/helm-template
 `
 
 func newPluginInstallCmd(out io.Writer) *cobra.Command {

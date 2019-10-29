@@ -35,8 +35,6 @@ This command can generate documentation for Helm in the following formats:
 - Man pages
 
 It can also generate bash autocompletions.
-
-	$ helm docs markdown -dir mydocs/
 `
 
 type docsOptions struct {
