@@ -67,23 +67,24 @@ type Install struct {
 
 	ChartPathOptions
 
-	ClientOnly       bool
-	DryRun           bool
-	DisableHooks     bool
-	Replace          bool
-	Wait             bool
-	Devel            bool
-	DependencyUpdate bool
-	Timeout          time.Duration
-	Namespace        string
-	ReleaseName      string
-	GenerateName     bool
-	NameTemplate     string
-	Description      string
-	OutputDir        string
-	Atomic           bool
-	SkipCRDs         bool
-	SubNotes         bool
+	ClientOnly               bool
+	DryRun                   bool
+	DisableHooks             bool
+	Replace                  bool
+	Wait                     bool
+	Devel                    bool
+	DependencyUpdate         bool
+	Timeout                  time.Duration
+	Namespace                string
+	ReleaseName              string
+	GenerateName             bool
+	NameTemplate             string
+	Description              string
+	OutputDir                string
+	Atomic                   bool
+	SkipCRDs                 bool
+	SubNotes                 bool
+	DisableOpenAPIValidation bool
 	// APIVersions allows a manual set of supported API Versions to be passed
 	// (for things like templating). These are ignored if ClientOnly is false
 	APIVersions chartutil.VersionSet
@@ -232,7 +233,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	// Mark this release as in-progress
 	rel.SetStatus(release.StatusPendingInstall, "Initial install underway")
 
-	resources, err := i.cfg.KubeClient.Build(bytes.NewBufferString(rel.Manifest), true)
+	resources, err := i.cfg.KubeClient.Build(bytes.NewBufferString(rel.Manifest), !i.DisableOpenAPIValidation)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to build kubernetes objects from release manifest")
 	}
