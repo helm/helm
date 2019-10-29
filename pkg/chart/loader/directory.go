@@ -17,6 +17,7 @@ limitations under the License.
 package loader
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -89,6 +90,13 @@ func LoadDir(dir string) (*chart.Chart, error) {
 		// If a .helmignore file matches, skip this file.
 		if rules.Ignore(n, fi) {
 			return nil
+		}
+
+		// Irregular files include devices, sockets, and other uses of files that
+		// are not regular files. In Go they have a file mode type bit set.
+		// See https://golang.org/pkg/os/#FileMode for examples.
+		if !fi.Mode().IsRegular() {
+			return fmt.Errorf("cannot load irregular file %s as it has file mode type bits set", name)
 		}
 
 		data, err := ioutil.ReadFile(name)
