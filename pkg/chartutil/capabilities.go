@@ -17,6 +17,8 @@ package chartutil
 
 import (
 	"k8s.io/client-go/kubernetes/scheme"
+
+	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 )
 
 var (
@@ -73,6 +75,10 @@ func (v VersionSet) Has(apiVersion string) bool {
 }
 
 func allKnownVersions() VersionSet {
+	// Otherwise `helm template` fails validating due to an error like the below:
+	//   Error: apiVersion "apiextensions.k8s.io/v1beta1" in mychart/templates/crd.yaml is not available
+	apiextensionsv1beta1.AddToScheme(scheme.Scheme)
+
 	groups := scheme.Scheme.PrioritizedVersionsAllGroups()
 	vs := make(VersionSet, 0, len(groups))
 	for _, gv := range groups {
