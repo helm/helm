@@ -1,1 +1,1 @@
-Version: v3.0+unreleased
+Version: v3.0
