@@ -36,7 +36,7 @@ func (m *Template) Reset()         { *m = Template{} }
 func (m *Template) String() string { return proto.CompactTextString(m) }
 func (*Template) ProtoMessage()    {}
 func (*Template) Descriptor() ([]byte, []int) {
-	return fileDescriptor_template_051845a7e9227d35, []int{0}
+	return fileDescriptor_template_926c98477d6df5e9, []int{0}
 }
 func (m *Template) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Template.Unmarshal(m, b)
@@ -74,9 +74,9 @@ func init() {
 	proto.RegisterType((*Template)(nil), "hapi.chart.Template")
 }
 
-func init() { proto.RegisterFile("hapi/chart/template.proto", fileDescriptor_template_051845a7e9227d35) }
+func init() { proto.RegisterFile("hapi/chart/template.proto", fileDescriptor_template_926c98477d6df5e9) }
 
-var fileDescriptor_template_051845a7e9227d35 = []byte{
+var fileDescriptor_template_926c98477d6df5e9 = []byte{
 	// 107 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x92, 0xcc, 0x48, 0x2c, 0xc8,
 	0xd4, 0x4f, 0xce, 0x48, 0x2c, 0x2a, 0xd1, 0x2f, 0x49, 0xcd, 0x2d, 0xc8, 0x49, 0x2c, 0x49, 0xd5,

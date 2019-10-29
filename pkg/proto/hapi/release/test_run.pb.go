@@ -45,7 +45,7 @@ func (x TestRun_Status) String() string {
 	return proto.EnumName(TestRun_Status_name, int32(x))
 }
 func (TestRun_Status) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_test_run_31b133e40c63664e, []int{0, 0}
+	return fileDescriptor_test_run_3a2eb78f132e5146, []int{0, 0}
 }
 
 type TestRun struct {
@@ -63,7 +63,7 @@ func (m *TestRun) Reset()         { *m = TestRun{} }
 func (m *TestRun) String() string { return proto.CompactTextString(m) }
 func (*TestRun) ProtoMessage()    {}
 func (*TestRun) Descriptor() ([]byte, []int) {
-	return fileDescriptor_test_run_31b133e40c63664e, []int{0}
+	return fileDescriptor_test_run_3a2eb78f132e5146, []int{0}
 }
 func (m *TestRun) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TestRun.Unmarshal(m, b)
@@ -124,10 +124,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("hapi/release/test_run.proto", fileDescriptor_test_run_31b133e40c63664e)
+	proto.RegisterFile("hapi/release/test_run.proto", fileDescriptor_test_run_3a2eb78f132e5146)
 }
 
-var fileDescriptor_test_run_31b133e40c63664e = []byte{
+var fileDescriptor_test_run_3a2eb78f132e5146 = []byte{
 	// 274 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x8f, 0xc1, 0x4b, 0xfb, 0x30,
 	0x1c, 0xc5, 0x7f, 0xe9, 0xf6, 0x6b, 0x69, 0x3a, 0xa4, 0xe4, 0x54, 0xa6, 0x60, 0xd9, 0xa9, 0xa7,

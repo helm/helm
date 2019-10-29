@@ -42,7 +42,7 @@ func (m *Chart) Reset()         { *m = Chart{} }
 func (m *Chart) String() string { return proto.CompactTextString(m) }
 func (*Chart) ProtoMessage()    {}
 func (*Chart) Descriptor() ([]byte, []int) {
-	return fileDescriptor_chart_829b474cf208a7f0, []int{0}
+	return fileDescriptor_chart_3948302f7486cf3d, []int{0}
 }
 func (m *Chart) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Chart.Unmarshal(m, b)
@@ -101,9 +101,9 @@ func init() {
 	proto.RegisterType((*Chart)(nil), "hapi.chart.Chart")
 }
 
-func init() { proto.RegisterFile("hapi/chart/chart.proto", fileDescriptor_chart_829b474cf208a7f0) }
+func init() { proto.RegisterFile("hapi/chart/chart.proto", fileDescriptor_chart_3948302f7486cf3d) }
 
-var fileDescriptor_chart_829b474cf208a7f0 = []byte{
+var fileDescriptor_chart_3948302f7486cf3d = []byte{
 	// 242 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x6c, 0x90, 0xb1, 0x4e, 0xc3, 0x30,
 	0x10, 0x86, 0x15, 0x4a, 0x0a, 0x1c, 0x2c, 0x58, 0x08, 0x4c, 0xa7, 0x8a, 0x09, 0x75, 0x70, 0x50,

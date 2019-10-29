@@ -54,7 +54,7 @@ func (x Result_Status) String() string {
 	return proto.EnumName(Result_Status_name, int32(x))
 }
 func (Result_Status) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_rudder_dd8cdbe38a210d28, []int{0, 0}
+	return fileDescriptor_rudder_e24437e8a4b0f17e, []int{0, 0}
 }
 
 type Result struct {
@@ -69,7 +69,7 @@ func (m *Result) Reset()         { *m = Result{} }
 func (m *Result) String() string { return proto.CompactTextString(m) }
 func (*Result) ProtoMessage()    {}
 func (*Result) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rudder_dd8cdbe38a210d28, []int{0}
+	return fileDescriptor_rudder_e24437e8a4b0f17e, []int{0}
 }
 func (m *Result) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Result.Unmarshal(m, b)
@@ -113,7 +113,7 @@ func (m *VersionReleaseRequest) Reset()         { *m = VersionReleaseRequest{} }
 func (m *VersionReleaseRequest) String() string { return proto.CompactTextString(m) }
 func (*VersionReleaseRequest) ProtoMessage()    {}
 func (*VersionReleaseRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rudder_dd8cdbe38a210d28, []int{1}
+	return fileDescriptor_rudder_e24437e8a4b0f17e, []int{1}
 }
 func (m *VersionReleaseRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_VersionReleaseRequest.Unmarshal(m, b)
@@ -145,7 +145,7 @@ func (m *VersionReleaseResponse) Reset()         { *m = VersionReleaseResponse{}
 func (m *VersionReleaseResponse) String() string { return proto.CompactTextString(m) }
 func (*VersionReleaseResponse) ProtoMessage()    {}
 func (*VersionReleaseResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rudder_dd8cdbe38a210d28, []int{2}
+	return fileDescriptor_rudder_e24437e8a4b0f17e, []int{2}
 }
 func (m *VersionReleaseResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_VersionReleaseResponse.Unmarshal(m, b)
@@ -190,7 +190,7 @@ func (m *InstallReleaseRequest) Reset()         { *m = InstallReleaseRequest{} }
 func (m *InstallReleaseRequest) String() string { return proto.CompactTextString(m) }
 func (*InstallReleaseRequest) ProtoMessage()    {}
 func (*InstallReleaseRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rudder_dd8cdbe38a210d28, []int{3}
+	return fileDescriptor_rudder_e24437e8a4b0f17e, []int{3}
 }
 func (m *InstallReleaseRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_InstallReleaseRequest.Unmarshal(m, b)
@@ -229,7 +229,7 @@ func (m *InstallReleaseResponse) Reset()         { *m = InstallReleaseResponse{}
 func (m *InstallReleaseResponse) String() string { return proto.CompactTextString(m) }
 func (*InstallReleaseResponse) ProtoMessage()    {}
 func (*InstallReleaseResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rudder_dd8cdbe38a210d28, []int{4}
+	return fileDescriptor_rudder_e24437e8a4b0f17e, []int{4}
 }
 func (m *InstallReleaseResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_InstallReleaseResponse.Unmarshal(m, b)
@@ -274,7 +274,7 @@ func (m *DeleteReleaseRequest) Reset()         { *m = DeleteReleaseRequest{} }
 func (m *DeleteReleaseRequest) String() string { return proto.CompactTextString(m) }
 func (*DeleteReleaseRequest) ProtoMessage()    {}
 func (*DeleteReleaseRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rudder_dd8cdbe38a210d28, []int{5}
+	return fileDescriptor_rudder_e24437e8a4b0f17e, []int{5}
 }
 func (m *DeleteReleaseRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DeleteReleaseRequest.Unmarshal(m, b)
@@ -313,7 +313,7 @@ func (m *DeleteReleaseResponse) Reset()         { *m = DeleteReleaseResponse{} }
 func (m *DeleteReleaseResponse) String() string { return proto.CompactTextString(m) }
 func (*DeleteReleaseResponse) ProtoMessage()    {}
 func (*DeleteReleaseResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rudder_dd8cdbe38a210d28, []int{6}
+	return fileDescriptor_rudder_e24437e8a4b0f17e, []int{6}
 }
 func (m *DeleteReleaseResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DeleteReleaseResponse.Unmarshal(m, b)
@@ -364,7 +364,7 @@ func (m *UpgradeReleaseRequest) Reset()         { *m = UpgradeReleaseRequest{} }
 func (m *UpgradeReleaseRequest) String() string { return proto.CompactTextString(m) }
 func (*UpgradeReleaseRequest) ProtoMessage()    {}
 func (*UpgradeReleaseRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rudder_dd8cdbe38a210d28, []int{7}
+	return fileDescriptor_rudder_e24437e8a4b0f17e, []int{7}
 }
 func (m *UpgradeReleaseRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_UpgradeReleaseRequest.Unmarshal(m, b)
@@ -445,7 +445,7 @@ func (m *UpgradeReleaseResponse) Reset()         { *m = UpgradeReleaseResponse{}
 func (m *UpgradeReleaseResponse) String() string { return proto.CompactTextString(m) }
 func (*UpgradeReleaseResponse) ProtoMessage()    {}
 func (*UpgradeReleaseResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rudder_dd8cdbe38a210d28, []int{8}
+	return fileDescriptor_rudder_e24437e8a4b0f17e, []int{8}
 }
 func (m *UpgradeReleaseResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_UpgradeReleaseResponse.Unmarshal(m, b)
@@ -496,7 +496,7 @@ func (m *RollbackReleaseRequest) Reset()         { *m = RollbackReleaseRequest{}
 func (m *RollbackReleaseRequest) String() string { return proto.CompactTextString(m) }
 func (*RollbackReleaseRequest) ProtoMessage()    {}
 func (*RollbackReleaseRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rudder_dd8cdbe38a210d28, []int{9}
+	return fileDescriptor_rudder_e24437e8a4b0f17e, []int{9}
 }
 func (m *RollbackReleaseRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RollbackReleaseRequest.Unmarshal(m, b)
@@ -577,7 +577,7 @@ func (m *RollbackReleaseResponse) Reset()         { *m = RollbackReleaseResponse
 func (m *RollbackReleaseResponse) String() string { return proto.CompactTextString(m) }
 func (*RollbackReleaseResponse) ProtoMessage()    {}
 func (*RollbackReleaseResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rudder_dd8cdbe38a210d28, []int{10}
+	return fileDescriptor_rudder_e24437e8a4b0f17e, []int{10}
 }
 func (m *RollbackReleaseResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RollbackReleaseResponse.Unmarshal(m, b)
@@ -622,7 +622,7 @@ func (m *ReleaseStatusRequest) Reset()         { *m = ReleaseStatusRequest{} }
 func (m *ReleaseStatusRequest) String() string { return proto.CompactTextString(m) }
 func (*ReleaseStatusRequest) ProtoMessage()    {}
 func (*ReleaseStatusRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rudder_dd8cdbe38a210d28, []int{11}
+	return fileDescriptor_rudder_e24437e8a4b0f17e, []int{11}
 }
 func (m *ReleaseStatusRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ReleaseStatusRequest.Unmarshal(m, b)
@@ -661,7 +661,7 @@ func (m *ReleaseStatusResponse) Reset()         { *m = ReleaseStatusResponse{} }
 func (m *ReleaseStatusResponse) String() string { return proto.CompactTextString(m) }
 func (*ReleaseStatusResponse) ProtoMessage()    {}
 func (*ReleaseStatusResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rudder_dd8cdbe38a210d28, []int{12}
+	return fileDescriptor_rudder_e24437e8a4b0f17e, []int{12}
 }
 func (m *ReleaseStatusResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ReleaseStatusResponse.Unmarshal(m, b)
@@ -959,9 +959,9 @@ var _ReleaseModuleService_serviceDesc = grpc.ServiceDesc{
 	Metadata: "hapi/rudder/rudder.proto",
 }
 
-func init() { proto.RegisterFile("hapi/rudder/rudder.proto", fileDescriptor_rudder_dd8cdbe38a210d28) }
+func init() { proto.RegisterFile("hapi/rudder/rudder.proto", fileDescriptor_rudder_e24437e8a4b0f17e) }
 
-var fileDescriptor_rudder_dd8cdbe38a210d28 = []byte{
+var fileDescriptor_rudder_e24437e8a4b0f17e = []byte{
 	// 615 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe4, 0x56, 0x4d, 0x6f, 0xd3, 0x40,
 	0x10, 0x8d, 0x9b, 0xc6, 0x69, 0xa6, 0x2a, 0x44, 0xab, 0xba, 0xb5, 0x2c, 0x0e, 0x91, 0x85, 0x50,
