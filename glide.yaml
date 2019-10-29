@@ -75,9 +75,8 @@ import:
   - package: github.com/Azure/go-autorest
     version: autorest/v0.9.1
 
-ignore:
-  - github.com/cpuguy83/go-md2man
-  - github.com/russross/blackfriday/v2
+  - package: github.com/cpuguy83/go-md2man
+    version: ^1.0.10
 
 testImports:
   - package: github.com/stretchr/testify

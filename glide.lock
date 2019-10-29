@@ -1,5 +1,5 @@
-hash: af933496eb176b0aefcaba293e734f2e814f47eafc8589bd11c6bbc011788e76
-updated: 2019-10-29T04:43:10.222887Z
+hash: ac5ff6bfe50536fa733d160b064d05691909e1d796c6d9284ce2eb4deb998db9
+updated: 2019-10-29T19:02:24.996035Z
 imports:
 - name: cloud.google.com/go
   version: 8c41231e01b2085512d98153bcffb847ff9b4b9f
@@ -33,6 +33,10 @@ imports:
   - gettext/mo
   - gettext/plural
   - gettext/po
+- name: github.com/cpuguy83/go-md2man
+  version: 7762f7e404f8416dfa1d9bb6a8c192aa9acb4d19
+  subpackages:
+  - md2man
 - name: github.com/cyphar/filepath-securejoin
   version: a261ee33d7a517f054effbf451841abaafe3e0fd
 - name: github.com/davecgh/go-spew
