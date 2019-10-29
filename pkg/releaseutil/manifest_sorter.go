@@ -38,9 +38,10 @@ type Manifest struct {
 
 // manifestFile represents a file that contains a manifest.
 type manifestFile struct {
-	entries map[string]string
-	path    string
-	apis    chartutil.VersionSet
+	entries  map[string]string
+	path     string
+	apis     chartutil.VersionSet
+	validate bool
 }
 
 // result is an intermediate structure used during sorting.
@@ -65,6 +66,10 @@ var events = map[string]release.HookEvent{
 	"test-success": release.HookTest,
 }
 
+type SortOptions struct {
+	NoValidate bool
+}
+
 // SortManifests takes a map of filename/YAML contents, splits the file
 // by manifest entries, and sorts the entries into hook types.
 //
@@ -74,7 +79,12 @@ var events = map[string]release.HookEvent{
 //
 // Files that do not parse into the expected format are simply placed into a map and
 // returned.
-func SortManifests(files map[string]string, apis chartutil.VersionSet, sort KindSortOrder) ([]*release.Hook, []Manifest, error) {
+func SortManifests(files map[string]string, apis chartutil.VersionSet, sort KindSortOrder, opts ...SortOptions) ([]*release.Hook, []Manifest, error) {
+	var opt SortOptions
+	if len(opts) > 0 {
+		opt = opts[0]
+	}
+
 	result := &result{}
 
 	for filePath, c := range files {
@@ -90,9 +100,10 @@ func SortManifests(files map[string]string, apis chartutil.VersionSet, sort Kind
 		}
 
 		manifestFile := &manifestFile{
-			entries: SplitManifests(c),
-			path:    filePath,
-			apis:    apis,
+			entries:  SplitManifests(c),
+			path:     filePath,
+			apis:     apis,
+			validate: !opt.NoValidate,
 		}
 
 		if err := manifestFile.sort(result); err != nil {
@@ -129,7 +140,7 @@ func (file *manifestFile) sort(result *result) error {
 			return errors.Wrapf(err, "YAML parse error on %s", file.path)
 		}
 
-		if entry.Version != "" && !file.apis.Has(entry.Version) {
+		if file.validate && entry.Version != "" && !file.apis.Has(entry.Version) {
 			return errors.Errorf("apiVersion %q in %s is not available", entry.Version, file.path)
 		}
 

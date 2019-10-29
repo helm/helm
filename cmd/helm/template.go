@@ -44,6 +44,7 @@ faked locally. Additionally, none of the server-side testing of chart validity
 
 func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	var validate bool
+	var clientOnly bool
 	client := action.NewInstall(cfg)
 	valueOpts := &values.Options{}
 	var extraAPIs []string
@@ -58,7 +59,8 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			client.DryRun = true
 			client.ReleaseName = "RELEASE-NAME"
 			client.Replace = true // Skip the name check
-			client.ClientOnly = !validate
+			client.NoValidate = !validate
+			client.ClientOnly = clientOnly
 			client.APIVersions = chartutil.VersionSet(extraAPIs)
 			rel, err := runInstall(args, client, valueOpts, out)
 			if err != nil {
@@ -119,7 +121,8 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	addInstallFlags(f, client, valueOpts)
 	f.StringArrayVarP(&showFiles, "show-only", "s", []string{}, "only show manifests rendered from the given templates")
 	f.StringVar(&client.OutputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
-	f.BoolVar(&validate, "validate", false, "establish a connection to Kubernetes for schema validation")
+	f.BoolVar(&validate, "validate", true, "Runs schema validation")
+	f.BoolVar(&clientOnly, "client-only", true, "Prevents establishing a connection to Kubernetes for schema validation")
 	f.StringArrayVarP(&extraAPIs, "api-versions", "a", []string{}, "Kubernetes api versions used for Capabilities.APIVersions")
 
 	return cmd
