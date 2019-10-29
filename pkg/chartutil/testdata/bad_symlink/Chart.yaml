@@ -1,0 +1,4 @@
+apiVersion: v1
+name: badsymlink
+description: A bad symlink is in here
+version: "1.0.0"

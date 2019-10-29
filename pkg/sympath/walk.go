@@ -22,6 +22,7 @@ package sympath
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -69,6 +70,7 @@ func symwalk(path string, info os.FileInfo, walkFn filepath.WalkFunc) error {
 		if err != nil {
 			return fmt.Errorf("error evaluating symlink %s: %s", path, err)
 		}
+		log.Printf("found symbolic link in path: %s resolves to %s", path, resolved)
 		if info, err = os.Lstat(resolved); err != nil {
 			return err
 		}
