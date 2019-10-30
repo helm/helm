@@ -47,24 +47,26 @@ func init() {
 func runTestCmd(t *testing.T, tests []cmdTestCase) {
 	t.Helper()
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			defer resetEnv()()
+		for i := 0; i <= tt.repeat; i++ {
+			t.Run(tt.name, func(t *testing.T) {
+				defer resetEnv()()
 
-			storage := storageFixture()
-			for _, rel := range tt.rels {
-				if err := storage.Create(rel); err != nil {
-					t.Fatal(err)
+				storage := storageFixture()
+				for _, rel := range tt.rels {
+					if err := storage.Create(rel); err != nil {
+						t.Fatal(err)
+					}
 				}
-			}
-			t.Log("running cmd: ", tt.cmd)
-			_, out, err := executeActionCommandC(storage, tt.cmd)
-			if (err != nil) != tt.wantError {
-				t.Errorf("expected error, got '%v'", err)
-			}
-			if tt.golden != "" {
-				test.AssertGoldenString(t, out, tt.golden)
-			}
-		})
+				t.Logf("running cmd (attempt %d): %s", i+1, tt.cmd)
+				_, out, err := executeActionCommandC(storage, tt.cmd)
+				if (err != nil) != tt.wantError {
+					t.Errorf("expected error, got '%v'", err)
+				}
+				if tt.golden != "" {
+					test.AssertGoldenString(t, out, tt.golden)
+				}
+			})
+		}
 	}
 }
 
@@ -124,6 +126,9 @@ type cmdTestCase struct {
 	wantError bool
 	// Rels are the available releases at the start of the test.
 	rels []*release.Release
+	// Number of repeats (in case a feature was previously flaky and the test checks
+	// it's now stably producing identical results). 0 means test is run exactly once.
+	repeat int
 }
 
 func executeActionCommand(cmd string) (*cobra.Command, string, error) {

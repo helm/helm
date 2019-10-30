@@ -19,6 +19,7 @@ package releaseutil
 import (
 	"log"
 	"path"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -74,10 +75,17 @@ var events = map[string]release.HookEvent{
 //
 // Files that do not parse into the expected format are simply placed into a map and
 // returned.
-func SortManifests(files map[string]string, apis chartutil.VersionSet, sort KindSortOrder) ([]*release.Hook, []Manifest, error) {
+func SortManifests(files map[string]string, apis chartutil.VersionSet, ordering KindSortOrder) ([]*release.Hook, []Manifest, error) {
 	result := &result{}
 
-	for filePath, c := range files {
+	var sortedFilePaths []string
+	for filePath := range files {
+		sortedFilePaths = append(sortedFilePaths, filePath)
+	}
+	sort.Strings(sortedFilePaths)
+
+	for _, filePath := range sortedFilePaths {
+		content := files[filePath]
 
 		// Skip partials. We could return these as a separate map, but there doesn't
 		// seem to be any need for that at this time.
@@ -85,12 +93,12 @@ func SortManifests(files map[string]string, apis chartutil.VersionSet, sort Kind
 			continue
 		}
 		// Skip empty files and log this.
-		if strings.TrimSpace(c) == "" {
+		if strings.TrimSpace(content) == "" {
 			continue
 		}
 
 		manifestFile := &manifestFile{
-			entries: SplitManifests(c),
+			entries: SplitManifests(content),
 			path:    filePath,
 			apis:    apis,
 		}
@@ -100,7 +108,7 @@ func SortManifests(files map[string]string, apis chartutil.VersionSet, sort Kind
 		}
 	}
 
-	return result.hooks, sortByKind(result.generic, sort), nil
+	return result.hooks, sortByKind(result.generic, ordering), nil
 }
 
 // sort takes a manifestFile object which may contain multiple resource definition
@@ -123,7 +131,16 @@ func SortManifests(files map[string]string, apis chartutil.VersionSet, sort Kind
 // 		annotations:
 // 			helm.sh/hook-delete-policy: hook-succeeded
 func (file *manifestFile) sort(result *result) error {
-	for _, m := range file.entries {
+	// Go through manifests in order found in file (function `SplitManifests` creates integer-sortable keys)
+	var sortedEntryKeys []string
+	for entryKey := range file.entries {
+		sortedEntryKeys = append(sortedEntryKeys, entryKey)
+	}
+	sort.Sort(BySplitManifestsOrder(sortedEntryKeys))
+
+	for _, entryKey := range sortedEntryKeys {
+		m := file.entries[entryKey]
+
 		var entry SimpleHead
 		if err := yaml.Unmarshal([]byte(m), &entry); err != nil {
 			return errors.Wrapf(err, "YAML parse error on %s", file.path)
