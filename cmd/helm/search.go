@@ -46,7 +46,7 @@ Examples:
     # Search for release versions matching the keyword "nginx", including pre-release versions
     helm search nginx --devel
 
-    # Search for the latest patch release for nginx-ingress 1.x
+    # Search for the latest stable release for nginx-ingress with a major version of 1
     helm search nginx-ingress --version ^1.0.0
 
 Repositories are managed with 'helm repo' commands.
