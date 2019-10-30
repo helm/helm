@@ -34,6 +34,12 @@ func TestSearchCmd(t *testing.T) {
 			expected: "NAME           \tCHART VERSION\tAPP VERSION\tDESCRIPTION      \ntesting/mariadb\t0.3.0        \t           \tChart for MariaDB",
 		},
 		{
+			name:     "search for 'alpine' with --devel, expect one match with newest development version",
+			args:     []string{"alpine"},
+			flags:    []string{"--devel"},
+			expected: "NAME          \tCHART VERSION\tAPP VERSION\tDESCRIPTION                    \ntesting/alpine\t0.3.0-rc.1   \t3.0.0      \tDeploy a basic Alpine Linux pod\n",
+		},
+		{
 			name:     "search for 'alpine', expect two matches",
 			args:     []string{"alpine"},
 			expected: "NAME          \tCHART VERSION\tAPP VERSION\tDESCRIPTION                    \ntesting/alpine\t0.2.0        \t2.3.4      \tDeploy a basic Alpine Linux pod",
