@@ -564,6 +564,10 @@ func (i *Install) NameAndChart(args []string) (string, string, error) {
 	if base == "." || base == "" {
 		base = "chart"
 	}
+	// if present, strip out the file extension from the name
+	if idx := strings.Index(base, "."); idx != -1 {
+		base = base[0:idx]
+	}
 
 	return fmt.Sprintf("%s-%d", base, time.Now().Unix()), args[0], nil
 }

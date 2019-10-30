@@ -33,6 +33,7 @@ import (
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage/driver"
+	"helm.sh/helm/v3/pkg/time"
 )
 
 type nameTemplateTestCase struct {
@@ -468,4 +469,100 @@ func TestInstallReleaseOutputDir(t *testing.T) {
 
 	_, err = os.Stat(filepath.Join(dir, "hello/templates/empty"))
 	is.True(os.IsNotExist(err))
+}
+
+func TestNameAndChart(t *testing.T) {
+	is := assert.New(t)
+	instAction := installAction(t)
+	chartName := "./foo"
+
+	name, chrt, err := instAction.NameAndChart([]string{chartName})
+	if err != nil {
+		t.Fatal(err)
+	}
+	is.Equal(instAction.ReleaseName, name)
+	is.Equal(chartName, chrt)
+
+	instAction.GenerateName = true
+	_, _, err = instAction.NameAndChart([]string{"foo", chartName})
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	is.Equal("cannot set --generate-name and also specify a name", err.Error())
+
+	instAction.GenerateName = false
+	instAction.NameTemplate = "{{ . }}"
+	_, _, err = instAction.NameAndChart([]string{"foo", chartName})
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	is.Equal("cannot set --name-template and also specify a name", err.Error())
+
+	instAction.NameTemplate = ""
+	instAction.ReleaseName = ""
+	_, _, err = instAction.NameAndChart([]string{chartName})
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	is.Equal("must either provide a name or specify --generate-name", err.Error())
+}
+
+func TestNameAndChartGenerateName(t *testing.T) {
+	is := assert.New(t)
+	instAction := installAction(t)
+
+	instAction.ReleaseName = ""
+	instAction.GenerateName = true
+
+	tests := []struct {
+		Name         string
+		Chart        string
+		ExpectedName string
+	}{
+		{
+			"local filepath",
+			"./chart",
+			fmt.Sprintf("chart-%d", time.Now().Unix()),
+		},
+		{
+			"dot filepath",
+			".",
+			fmt.Sprintf("chart-%d", time.Now().Unix()),
+		},
+		{
+			"empty filepath",
+			"",
+			fmt.Sprintf("chart-%d", time.Now().Unix()),
+		},
+		{
+			"packaged chart",
+			"chart.tgz",
+			fmt.Sprintf("chart-%d", time.Now().Unix()),
+		},
+		{
+			"packaged chart with .tar.gz extension",
+			"chart.tar.gz",
+			fmt.Sprintf("chart-%d", time.Now().Unix()),
+		},
+		{
+			"packaged chart with local extension",
+			"./chart.tgz",
+			fmt.Sprintf("chart-%d", time.Now().Unix()),
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.Name, func(t *testing.T) {
+			t.Parallel()
+
+			name, chrt, err := instAction.NameAndChart([]string{tc.Chart})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			is.Equal(tc.ExpectedName, name)
+			is.Equal(tc.Chart, chrt)
+		})
+	}
 }
