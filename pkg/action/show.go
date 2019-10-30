@@ -24,6 +24,7 @@ import (
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/chartutil"
 )
 
 type ShowOutputFormat string
@@ -76,11 +77,11 @@ func (s *Show) Run(chartpath string) (string, error) {
 		if s.OutputFormat == ShowAll {
 			fmt.Fprintln(&out, "---")
 		}
-		b, err := yaml.Marshal(chrt.Values)
-		if err != nil {
-			return "", err
+		for _, f := range chrt.Raw {
+			if f.Name == chartutil.ValuesfileName {
+				fmt.Fprintln(&out, string(f.Data))
+			}
 		}
-		fmt.Fprintf(&out, "%s\n", b)
 	}
 
 	if s.OutputFormat == ShowReadme || s.OutputFormat == ShowAll {
