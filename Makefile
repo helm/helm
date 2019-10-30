@@ -19,7 +19,7 @@ TAGS       :=
 TESTS      := .
 TESTFLAGS  :=
 LDFLAGS    := -w -s
-GOFLAGS    := -trimpath
+GOFLAGS    :=
 SRC        := $(shell find . -type f -name '*.go' -print)
 
 # Required for globs to work correctly
