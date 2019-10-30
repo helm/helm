@@ -20,6 +20,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 	"testing"
 
 	"helm.sh/helm/v3/pkg/cli"
@@ -40,14 +41,17 @@ func TestIndexFile(t *testing.T) {
 	i.Add(&chart.Metadata{Name: "cutter", Version: "0.1.1"}, "cutter-0.1.1.tgz", "http://example.com/charts", "sha256:1234567890abc")
 	i.Add(&chart.Metadata{Name: "cutter", Version: "0.1.0"}, "cutter-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890abc")
 	i.Add(&chart.Metadata{Name: "cutter", Version: "0.2.0"}, "cutter-0.2.0.tgz", "http://example.com/charts", "sha256:1234567890abc")
+	i.Add(&chart.Metadata{Name: "setter", Version: "0.1.9+alpha"}, "setter-0.1.9+alpha.tgz", "http://example.com/charts", "sha256:1234567890abc")
+	i.Add(&chart.Metadata{Name: "setter", Version: "0.1.9+beta"}, "setter-0.1.9+beta.tgz", "http://example.com/charts", "sha256:1234567890abc")
+
 	i.SortEntries()
 
 	if i.APIVersion != APIVersionV1 {
 		t.Error("Expected API version v1")
 	}
 
-	if len(i.Entries) != 2 {
-		t.Errorf("Expected 2 charts. Got %d", len(i.Entries))
+	if len(i.Entries) != 3 {
+		t.Errorf("Expected 3 charts. Got %d", len(i.Entries))
 	}
 
 	if i.Entries["clipper"][0].Name != "clipper" {
@@ -55,12 +59,22 @@ func TestIndexFile(t *testing.T) {
 	}
 
 	if len(i.Entries["cutter"]) != 3 {
-		t.Error("Expected two cutters.")
+		t.Error("Expected three cutters.")
 	}
 
 	// Test that the sort worked. 0.2 should be at the first index for Cutter.
 	if v := i.Entries["cutter"][0].Version; v != "0.2.0" {
 		t.Errorf("Unexpected first version: %s", v)
+	}
+
+	cv, err := i.Get("setter", "0.1.9")
+	if err == nil && !strings.Contains(cv.Metadata.Version, "0.1.9") {
+		t.Errorf("Unexpected version: %s", cv.Metadata.Version)
+	}
+
+	cv, err = i.Get("setter", "0.1.9+alpha")
+	if err != nil || cv.Metadata.Version != "0.1.9+alpha" {
+		t.Errorf("Expected version: 0.1.9+alpha")
 	}
 }
 
