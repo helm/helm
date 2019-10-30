@@ -101,14 +101,14 @@ func ensureArchive(name string, raw *os.File) error {
 // LoadArchiveFiles reads in files out of an archive into memory. This function
 // performs important path security checks and should always be used before
 // expanding a tarball
-func LoadArchiveFiles(in io.Reader) ([]*BufferedFile, error) {
+func LoadArchiveFiles(in io.Reader) ([]*chart.File, error) {
 	unzipped, err := gzip.NewReader(in)
 	if err != nil {
 		return nil, err
 	}
 	defer unzipped.Close()
 
-	files := []*BufferedFile{}
+	files := []*chart.File{}
 	tr := tar.NewReader(unzipped)
 	for {
 		b := bytes.NewBuffer(nil)
@@ -167,7 +167,7 @@ func LoadArchiveFiles(in io.Reader) ([]*BufferedFile, error) {
 			return nil, err
 		}
 
-		files = append(files, &BufferedFile{Name: n, Data: b.Bytes()})
+		files = append(files, &chart.File{Name: n, Data: b.Bytes()})
 		b.Reset()
 	}
 

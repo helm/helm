@@ -61,7 +61,7 @@ func LoadDir(dir string) (*chart.Chart, error) {
 	}
 	rules.AddDefaults()
 
-	files := []*BufferedFile{}
+	files := []*chart.File{}
 	topdir += string(filepath.Separator)
 
 	walk := func(name string, fi os.FileInfo, err error) error {
@@ -104,7 +104,7 @@ func LoadDir(dir string) (*chart.Chart, error) {
 			return errors.Wrapf(err, "error reading %s", n)
 		}
 
-		files = append(files, &BufferedFile{Name: n, Data: data})
+		files = append(files, &chart.File{Name: n, Data: data})
 		return nil
 	}
 	if err = sympath.Walk(topdir, walk); err != nil {

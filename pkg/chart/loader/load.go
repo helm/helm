@@ -29,6 +29,12 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 )
 
+// BufferedFile represents a file as a name/value pair.
+//
+// By convention, name is a relative path within the scope of the chart's
+// base directory.
+type BufferedFile = chart.File
+
 // ChartLoader loads a chart.
 type ChartLoader interface {
 	Load() (*chart.Chart, error)
@@ -62,16 +68,10 @@ func Load(name string) (*chart.Chart, error) {
 	return l.Load()
 }
 
-// BufferedFile represents an archive file buffered for later processing.
-type BufferedFile struct {
-	Name string
-	Data []byte
-}
-
 // LoadFiles loads from in-memory files.
-func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
+func LoadFiles(files []*chart.File) (*chart.Chart, error) {
 	c := new(chart.Chart)
-	subcharts := make(map[string][]*BufferedFile)
+	subcharts := make(map[string][]*chart.File)
 
 	for _, f := range files {
 		switch {
@@ -130,7 +130,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 
 			fname := strings.TrimPrefix(f.Name, "charts/")
 			cname := strings.SplitN(fname, "/", 2)[0]
-			subcharts[cname] = append(subcharts[cname], &BufferedFile{Name: fname, Data: f.Data})
+			subcharts[cname] = append(subcharts[cname], &chart.File{Name: fname, Data: f.Data})
 		default:
 			c.Files = append(c.Files, &chart.File{Name: f.Name, Data: f.Data})
 		}
@@ -156,7 +156,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 		default:
 			// We have to trim the prefix off of every file, and ignore any file
 			// that is in charts/, but isn't actually a chart.
-			buff := make([]*BufferedFile, 0, len(files))
+			buff := make([]*chart.File, 0, len(files))
 			for _, f := range files {
 				parts := strings.SplitN(f.Name, "/", 2)
 				if len(parts) < 2 {

@@ -15,7 +15,9 @@ limitations under the License.
 
 package chart
 
-import "strings"
+import (
+	"strings"
+)
 
 // APIVersionV1 is the API version number for version 1.
 const APIVersionV1 = "v1"
