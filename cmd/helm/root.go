@@ -286,7 +286,7 @@ __helm_custom_func()
             __helm_list_repos
             return
             ;;
-        helm_plugin_remove | helm_plugin_update)
+        helm_plugin_uninstall | helm_plugin_update)
             __helm_list_plugins
             return
             ;;
