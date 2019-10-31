@@ -29,8 +29,7 @@ import (
 
 // HTTPGetter is the efault HTTP(/S) backend handler
 type HTTPGetter struct {
-	client *http.Client
-	opts   options
+	opts options
 }
 
 //Get performs a Get from repo.Getter and returns the body.
@@ -60,7 +59,12 @@ func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
 		req.SetBasicAuth(g.opts.username, g.opts.password)
 	}
 
-	resp, err := g.client.Do(req)
+	client, err := g.httpClient()
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return buf, err
 	}
@@ -81,28 +85,31 @@ func NewHTTPGetter(options ...Option) (Getter, error) {
 		opt(&client.opts)
 	}
 
-	if client.opts.certFile != "" && client.opts.keyFile != "" {
-		tlsConf, err := tlsutil.NewClientTLS(client.opts.certFile, client.opts.keyFile, client.opts.caFile)
+	return &client, nil
+}
+
+func (g *HTTPGetter) httpClient() (*http.Client, error) {
+	if g.opts.certFile != "" && g.opts.keyFile != "" {
+		tlsConf, err := tlsutil.NewClientTLS(g.opts.certFile, g.opts.keyFile, g.opts.caFile)
 		if err != nil {
-			return &client, errors.Wrap(err, "can't create TLS config for client")
+			return nil, errors.Wrap(err, "can't create TLS config for client")
 		}
 		tlsConf.BuildNameToCertificate()
 
-		sni, err := urlutil.ExtractHostname(client.opts.url)
+		sni, err := urlutil.ExtractHostname(g.opts.url)
 		if err != nil {
-			return &client, err
+			return nil, err
 		}
 		tlsConf.ServerName = sni
 
-		client.client = &http.Client{
+		client := &http.Client{
 			Transport: &http.Transport{
 				TLSClientConfig: tlsConf,
 				Proxy:           http.ProxyFromEnvironment,
 			},
 		}
-	} else {
-		client.client = http.DefaultClient
-	}
 
-	return &client, nil
+		return client, nil
+	}
+	return http.DefaultClient, nil
 }
