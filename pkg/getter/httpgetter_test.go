@@ -24,7 +24,9 @@ import (
 	"strings"
 	"testing"
 
-	"helm.sh/helm/v3/internal/test"
+	"github.com/pkg/errors"
+
+	"helm.sh/helm/v3/internal/tlsutil"
 	"helm.sh/helm/v3/internal/version"
 	"helm.sh/helm/v3/pkg/cli"
 )
@@ -35,18 +37,18 @@ func TestHTTPGetter(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if hg, ok := g.(*HTTPGetter); !ok {
+	if _, ok := g.(*HTTPGetter); !ok {
 		t.Fatal("Expected NewHTTPGetter to produce an *HTTPGetter")
-	} else if hg.client != http.DefaultClient {
-		t.Fatal("Expected NewHTTPGetter to return a default HTTP client.")
 	}
 
-	// Test with SSL:
 	cd := "../../testdata"
 	join := filepath.Join
-	ca, pub, priv := join(cd, "ca.pem"), join(cd, "crt.pem"), join(cd, "key.pem")
+	ca, pub, priv := join(cd, "rootca.crt"), join(cd, "crt.pem"), join(cd, "key.pem")
+
+	// Test with options
 	g, err = NewHTTPGetter(
-		WithURL("http://example.com"),
+		WithBasicAuth("I", "Am"),
+		WithUserAgent("Groot"),
 		WithTLSClientConfig(pub, priv, ca),
 	)
 	if err != nil {
@@ -54,27 +56,6 @@ func TestHTTPGetter(t *testing.T) {
 	}
 
 	hg, ok := g.(*HTTPGetter)
-	if !ok {
-		t.Fatal("Expected NewHTTPGetter to produce an *HTTPGetter")
-	}
-
-	transport, ok := hg.client.Transport.(*http.Transport)
-	if !ok {
-		t.Errorf("Expected NewHTTPGetter to set up an HTTP transport")
-	}
-
-	test.AssertGoldenString(t, transport.TLSClientConfig.ServerName, "output/httpgetter-servername.txt")
-
-	// Test other options
-	g, err = NewHTTPGetter(
-		WithBasicAuth("I", "Am"),
-		WithUserAgent("Groot"),
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	hg, ok = g.(*HTTPGetter)
 	if !ok {
 		t.Fatal("expected NewHTTPGetter to produce an *HTTPGetter")
 	}
@@ -89,6 +70,18 @@ func TestHTTPGetter(t *testing.T) {
 
 	if hg.opts.userAgent != "Groot" {
 		t.Errorf("Expected NewHTTPGetter to contain %q as the user agent, got %q", "Groot", hg.opts.userAgent)
+	}
+
+	if hg.opts.certFile != pub {
+		t.Errorf("Expected NewHTTPGetter to contain %q as the public key file, got %q", pub, hg.opts.certFile)
+	}
+
+	if hg.opts.keyFile != priv {
+		t.Errorf("Expected NewHTTPGetter to contain %q as the private key file, got %q", priv, hg.opts.keyFile)
+	}
+
+	if hg.opts.caFile != ca {
+		t.Errorf("Expected NewHTTPGetter to contain %q as the CA file, got %q", ca, hg.opts.caFile)
 	}
 }
 
@@ -147,5 +140,44 @@ func TestDownload(t *testing.T) {
 
 	if got.String() != expect {
 		t.Errorf("Expected %q, got %q", expect, got.String())
+	}
+}
+
+func TestDownloadTLS(t *testing.T) {
+	cd := "../../testdata"
+	ca, pub, priv := filepath.Join(cd, "rootca.crt"), filepath.Join(cd, "crt.pem"), filepath.Join(cd, "key.pem")
+
+	tlsSrv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	tlsConf, err := tlsutil.NewClientTLS(pub, priv, ca)
+	if err != nil {
+		t.Fatal(errors.Wrap(err, "can't create TLS config for client"))
+	}
+	tlsConf.BuildNameToCertificate()
+	tlsConf.ServerName = "helm.sh"
+	tlsSrv.TLS = tlsConf
+	tlsSrv.StartTLS()
+	defer tlsSrv.Close()
+
+	u, _ := url.ParseRequestURI(tlsSrv.URL)
+	g, err := NewHTTPGetter(
+		WithURL(u.String()),
+		WithTLSClientConfig(pub, priv, ca),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := g.Get(u.String()); err != nil {
+		t.Error(err)
+	}
+
+	// now test with TLS config being passed along in .Get (see #6635)
+	g, err = NewHTTPGetter()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := g.Get(u.String(), WithURL(u.String()), WithTLSClientConfig(pub, priv, ca)); err != nil {
+		t.Error(err)
 	}
 }
