@@ -100,7 +100,7 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.Deployed, "deployed", false, "show deployed releases. If no other is specified, this will be automatically enabled")
 	f.BoolVar(&client.Failed, "failed", false, "show failed releases")
 	f.BoolVar(&client.Pending, "pending", false, "show pending releases")
-	f.BoolVar(&client.AllNamespaces, "all-namespaces", false, "list releases across all namespaces")
+	f.BoolVarP(&client.AllNamespaces, "all-namespaces", "A", false, "list releases across all namespaces")
 	f.IntVarP(&client.Limit, "max", "m", 256, "maximum number of releases to fetch")
 	f.IntVar(&client.Offset, "offset", 0, "next release name in the list, used to offset from start value")
 	f.StringVarP(&client.Filter, "filter", "f", "", "a regular expression (Perl compatible). Any releases that match the expression will be included in the results")
