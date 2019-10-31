@@ -30,6 +30,7 @@ import (
 	"github.com/Masterminds/semver"
 	"github.com/ghodss/yaml"
 
+	"k8s.io/helm/internal/third_party/dep/fs"
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/getter"
 	"k8s.io/helm/pkg/helm/helmpath"
@@ -205,7 +206,7 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 		return fmt.Errorf("%q is not a directory", destPath)
 	}
 
-	if err := os.Rename(destPath, tmpPath); err != nil {
+	if err := fs.RenameWithFallback(destPath, tmpPath); err != nil {
 		return fmt.Errorf("Unable to move current charts to tmp dir: %v", err)
 	}
 
@@ -307,7 +308,7 @@ func (m *Manager) downloadAll(deps []*chartutil.Dependency) error {
 		if err := os.RemoveAll(destPath); err != nil {
 			return fmt.Errorf("Failed to remove %v: %v", destPath, err)
 		}
-		if err := os.Rename(tmpPath, destPath); err != nil {
+		if err := fs.RenameWithFallback(tmpPath, destPath); err != nil {
 			return fmt.Errorf("Unable to move current charts to tmp dir: %v", err)
 		}
 		return saveError
@@ -686,7 +687,7 @@ func move(tmpPath, destPath string) error {
 		filename := file.Name()
 		tmpfile := filepath.Join(tmpPath, filename)
 		destfile := filepath.Join(destPath, filename)
-		if err := os.Rename(tmpfile, destfile); err != nil {
+		if err := fs.RenameWithFallback(tmpfile, destfile); err != nil {
 			return fmt.Errorf("Unable to move local charts to charts dir: %v", err)
 		}
 	}
