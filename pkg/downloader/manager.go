@@ -31,6 +31,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/internal/resolver"
+	"helm.sh/helm/v3/internal/third_party/dep/fs"
 	"helm.sh/helm/v3/internal/urlutil"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -192,7 +193,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		return errors.Errorf("%q is not a directory", destPath)
 	}
 
-	if err := os.Rename(destPath, tmpPath); err != nil {
+	if err := fs.RenameWithFallback(destPath, tmpPath); err != nil {
 		return errors.Wrap(err, "unable to move current charts to tmp dir")
 	}
 
@@ -296,7 +297,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		if err := os.RemoveAll(destPath); err != nil {
 			return errors.Wrapf(err, "failed to remove %v", destPath)
 		}
-		if err := os.Rename(tmpPath, destPath); err != nil {
+		if err := fs.RenameWithFallback(tmpPath, destPath); err != nil {
 			return errors.Wrap(err, "unable to move current charts to tmp dir")
 		}
 		return saveError
@@ -672,7 +673,7 @@ func move(tmpPath, destPath string) error {
 		filename := file.Name()
 		tmpfile := filepath.Join(tmpPath, filename)
 		destfile := filepath.Join(destPath, filename)
-		if err := os.Rename(tmpfile, destfile); err != nil {
+		if err := fs.RenameWithFallback(tmpfile, destfile); err != nil {
 			return errors.Wrap(err, "unable to move local charts to charts dir")
 		}
 	}
