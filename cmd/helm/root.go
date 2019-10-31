@@ -64,12 +64,12 @@ __helm_override_flags_to_kubectl_flags()
     # --kubeconfig, -n, --namespace stay the same for kubectl
     # --kube-context becomes --context for kubectl
     __helm_debug "${FUNCNAME[0]}: flags to convert: $1"
-    echo "$1" | sed s/kube-context/context/
+    echo "$1" | \sed s/kube-context/context/
 }
 
 __helm_get_repos()
 {
-    eval $(__helm_binary_name) repo list 2>/dev/null | tail +2 | cut -f1
+    eval $(__helm_binary_name) repo list 2>/dev/null | \tail +2 | \cut -f1
 }
 
 __helm_get_contexts()
@@ -125,7 +125,7 @@ __helm_zsh_comp_nospace() {
     # We only do this if there is a single choice left for completion
     # to reduce the times the user could be presented with the fake completion choice.
 
-    out=($(echo ${in[*]} | tr " " "\n" | \grep "^${cur}"))
+    out=($(echo ${in[*]} | \tr " " "\n" | \grep "^${cur}"))
     __helm_debug "${FUNCNAME[0]}: out is ${out[*]}"
 
     [ ${#out[*]} -eq 1 ] && out+=("${out}.")
@@ -145,7 +145,7 @@ __helm_list_charts()
     for repo in $(__helm_get_repos); do
         if [[ "${cur}" =~ ^${repo}/.* ]]; then
             # We are doing completion from within a repo
-            out=$(eval $(__helm_binary_name) search repo ${cur} 2>/dev/null | cut -f1 | \grep ^${cur})
+            out=$(eval $(__helm_binary_name) search repo ${cur} 2>/dev/null | \cut -f1 | \grep ^${cur})
             nospace=0
         elif [[ ${repo} =~ ^${cur}.* ]]; then
             # We are completing a repo name
@@ -236,7 +236,7 @@ __helm_list_plugins()
     __helm_debug "${FUNCNAME[0]}: c is $c words[c] is ${words[c]}"
     local out
     # Use eval in case helm_binary_name contains a variable (e.g., $HOME/bin/h3)
-    if out=$(eval $(__helm_binary_name) plugin list 2>/dev/null | tail +2 | cut -f1); then
+    if out=$(eval $(__helm_binary_name) plugin list 2>/dev/null | \tail +2 | \cut -f1); then
         COMPREPLY=( $( compgen -W "${out[*]}" -- "$cur" ) )
     fi
 }
