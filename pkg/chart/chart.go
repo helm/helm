@@ -27,18 +27,18 @@ const APIVersionV2 = "v2"
 // optionally parameterizable templates, and zero or more charts (dependencies).
 type Chart struct {
 	// Metadata is the contents of the Chartfile.
-	Metadata *Metadata
+	Metadata *Metadata `json:"metadata"`
 	// LocK is the contents of Chart.lock.
-	Lock *Lock
+	Lock *Lock `json:"lock"`
 	// Templates for this chart.
-	Templates []*File
+	Templates []*File `json:"templates"`
 	// Values are default config for this template.
-	Values map[string]interface{}
+	Values map[string]interface{} `json:"values"`
 	// Schema is an optional JSON schema for imposing structure on Values
-	Schema []byte
+	Schema []byte `json:"schema"`
 	// Files are miscellaneous files in a chart archive,
 	// e.g. README, LICENSE, etc.
-	Files []*File
+	Files []*File `json:"files"`
 
 	parent       *Chart
 	dependencies []*Chart
