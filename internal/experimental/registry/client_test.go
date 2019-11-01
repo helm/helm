@@ -23,6 +23,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
@@ -66,7 +67,7 @@ func (suite *RegistryClientTestSuite) SetupSuite() {
 	client, err := auth.NewClient(credentialsFile)
 	suite.Nil(err, "no error creating auth client")
 
-	resolver, err := client.Resolver(context.Background())
+	resolver, err := client.Resolver(context.Background(), http.DefaultClient, false)
 	suite.Nil(err, "no error creating resolver")
 
 	// create cache

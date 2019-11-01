@@ -19,6 +19,7 @@ import (
 	"context"
 	"flag"
 	"io/ioutil"
+	"net/http"
 	"path/filepath"
 	"testing"
 
@@ -45,7 +46,7 @@ func actionConfigFixture(t *testing.T) *Configuration {
 		t.Fatal(err)
 	}
 
-	resolver, err := client.Resolver(context.Background())
+	resolver, err := client.Resolver(context.Background(), http.DefaultClient, false)
 	if err != nil {
 		t.Fatal(err)
 	}
