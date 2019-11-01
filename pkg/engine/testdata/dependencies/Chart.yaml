@@ -1,0 +1,37 @@
+apiVersion: v2
+description: A Helm chart for Kubernetes
+name: parentchart
+version: 0.1.0
+dependencies:
+- name: condition_true
+  repository: http://localhost:10191
+  version: 0.1.0
+  condition: condition.true
+- name: condition_false
+  repository: http://localhost:10191
+  version: 0.1.0
+  condition: condition.false
+- name: condition_null
+  repository: http://localhost:10191
+  version: 0.1.0
+  condition: condition.null
+- name: tags_true
+  repository: http://localhost:10191
+  version: 0.1.0
+  tags:
+  - true_tag
+- name: tags_false
+  repository: http://localhost:10191
+  version: 0.1.0
+  tags:
+  - false_tag
+- name: import_values
+  repository: http://localhost:10191
+  version: 0.1.0
+  import-values:
+  - child: importValues
+    parent: importValues
+  - child: importTemplate
+    parent: importTemplate
+  - child: import
+    parent: subImport

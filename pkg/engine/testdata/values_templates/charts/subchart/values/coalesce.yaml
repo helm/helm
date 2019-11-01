@@ -1,0 +1,5 @@
+# should cloalesce with both values.yaml
+coalesce:
+  value3: "subchart/values/coalesce.yaml"
+  value5: "subchart/values/coalesce.yaml"
+  value6: "subchart/values/coalesce.yaml"

@@ -314,9 +314,9 @@ func getChartValues(chartPath string) (chartutil.Values, error) {
 	return chart.Values, nil
 }
 
-func verifyValues(t *testing.T, actual, expected chartutil.Values) {
+func verifyValues(t *testing.T, actual, expected map[string]interface{}) {
 	t.Helper()
-	for key, value := range expected.AsMap() {
+	for key, value := range expected {
 		if got := actual[key]; got != value {
 			t.Errorf("Expected %q, got %q (%v)", value, got, actual)
 		}

@@ -184,10 +184,6 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 		i.cfg.Log("API Version list given outside of client only mode, this list will be ignored")
 	}
 
-	if err := chartutil.ProcessDependencies(chrt, vals); err != nil {
-		return nil, err
-	}
-
 	// Make sure if Atomic is set, that wait is set as well. This makes it so
 	// the user doesn't have to specify both
 	i.Wait = i.Wait || i.Atomic

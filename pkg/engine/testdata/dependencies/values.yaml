@@ -1,0 +1,7 @@
+condition:
+  "true": false
+  "false": true
+  "null": false
+tags:
+  true_tag: false
+  false_tag: true

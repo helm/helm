@@ -18,7 +18,10 @@ package chartutil
 
 import (
 	"encoding/json"
+	"reflect"
 	"testing"
+
+	"helm.sh/helm/v3/pkg/chart"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -61,7 +64,7 @@ func TestCoalesceValues(t *testing.T) {
 	// taking a copy of the values before passing it
 	// to CoalesceValues as argument, so that we can
 	// use it for asserting later
-	valsCopy := make(Values, len(vals))
+	valsCopy := make(map[string]interface{}, len(vals))
 	for key, value := range vals {
 		valsCopy[key] = value
 	}
@@ -118,8 +121,9 @@ func TestCoalesceValues(t *testing.T) {
 	is.Equal(valsCopy, vals)
 }
 
-func TestCoalesceTables(t *testing.T) {
-	dst := map[string]interface{}{
+// Returns authoritative values
+func getMainData() map[string]interface{} {
+	return map[string]interface{}{
 		"name": "Ishmael",
 		"address": map[string]interface{}{
 			"street": "123 Spouter Inn Ct.",
@@ -130,7 +134,11 @@ func TestCoalesceTables(t *testing.T) {
 		},
 		"boat": "pequod",
 	}
-	src := map[string]interface{}{
+}
+
+// Returns non-authoritative values
+func getSecondaryData() map[string]interface{} {
+	return map[string]interface{}{
 		"occupation": "whaler",
 		"address": map[string]interface{}{
 			"state":  "MA",
@@ -141,11 +149,12 @@ func TestCoalesceTables(t *testing.T) {
 			"mast": true,
 		},
 	}
+}
 
-	// What we expect is that anything in dst overrides anything in src, but that
-	// otherwise the values are coalesced.
-	CoalesceTables(dst, src)
-
+// Tests the coalessing of getMainData() and getSecondaryData()
+func testCoalescedData(t *testing.T, dst map[string]interface{}) {
+	// What we expect is that anything in getMainData() overrides anything in
+	// getSecondaryData(), but that otherwise the values are coalesced.
 	if dst["name"] != "Ishmael" {
 		t.Errorf("Unexpected name: %s", dst["name"])
 	}
@@ -176,7 +185,106 @@ func TestCoalesceTables(t *testing.T) {
 		t.Error("Could not find your friends. Maybe you don't have any. :-(")
 	}
 
-	if dst["boat"].(string) != "pequod" {
+	if bo, ok := dst["boat"].(string); !ok {
+		t.Fatalf("boat is the wrong type: %v", dst["boat"])
+	} else if bo != "pequod" {
 		t.Errorf("Expected boat string, got %v", dst["boat"])
 	}
+}
+
+func TestCoalesceTables(t *testing.T) {
+	dst := getMainData()
+	src := getSecondaryData()
+
+	CoalesceTables(dst, src)
+
+	testCoalescedData(t, dst)
+}
+
+func TestCoalesceTablesUpdate(t *testing.T) {
+	src := getMainData()
+	dst := getSecondaryData()
+
+	CoalesceTablesUpdate(dst, src)
+
+	testCoalescedData(t, dst)
+}
+
+func TestCoalesceDep(t *testing.T) {
+	src := map[string]interface{}{
+		// global object should be transferred to subchart
+		"global": map[string]interface{}{
+			"IP":   "192.168.0.1",
+			"port": 8080,
+		},
+		// subchart object should be coallesced with chart values and returned
+		"subchart": getMainData(),
+		// any other field should be ignored
+		"other": map[string]interface{}{
+			"type": "car",
+		},
+	}
+	subchart := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name: "subchart",
+		},
+		Values: getSecondaryData(),
+	}
+	subchart.Values["global"] = map[string]interface{}{
+		"port":    80,
+		"service": "users",
+	}
+
+	dst, err := CoalesceDep(subchart, src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d, ok := src["subchart"]; !ok {
+		t.Fatal("subchart went away.")
+	} else if dm, ok := d.(map[string]interface{}); !ok {
+		t.Fatalf("subchart has now wrong type: %t", d)
+	} else if reflect.ValueOf(dst).Pointer() != reflect.ValueOf(dm).Pointer() {
+		t.Error("CoalesceDep must return subchart map.")
+	}
+
+	testCoalescedData(t, dst)
+
+	glob, ok := dst["global"].(map[string]interface{})
+	if !ok {
+		t.Fatal("global went away.")
+	}
+
+	if glob["IP"].(string) != "192.168.0.1" {
+		t.Errorf("Unexpected IP: %v", glob["IP"])
+	}
+
+	if glob["port"].(int) != 8080 {
+		t.Errorf("Unexpected port: %v", glob["port"])
+	}
+
+	if glob["service"].(string) != "users" {
+		t.Errorf("Unexpected service: %v", glob["service"])
+	}
+
+	if _, ok := dst["other"]; ok {
+		t.Error("Unexpected field other.")
+	}
+
+	if _, ok := dst["type"]; ok {
+		t.Error("Unexpected field type.")
+	}
+}
+
+func TestCoalesceRoot(t *testing.T) {
+	dst := getMainData()
+	chart := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name: "root",
+		},
+		Values: getSecondaryData(),
+	}
+
+	CoalesceRoot(chart, dst)
+
+	testCoalescedData(t, dst)
 }

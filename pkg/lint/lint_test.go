@@ -35,12 +35,12 @@ const goodChartDir = "rules/testdata/goodone"
 
 func TestBadChart(t *testing.T) {
 	m := All(badChartDir, values, namespace, strict).Messages
-	if len(m) != 8 {
+	if len(m) != 9 {
 		t.Errorf("Number of errors %v", len(m))
 		t.Errorf("All didn't fail with expected errors, got %#v", m)
 	}
 	// There should be one INFO, 2 WARNINGs and one ERROR messages, check for them
-	var i, w, e, e2, e3, e4, e5, e6 bool
+	var i, w, e, e2, e3, e4, e5, e6, e7 bool
 	for _, msg := range m {
 		if msg.Severity == support.InfoSev {
 			if strings.Contains(msg.Err.Error(), "icon is recommended") {
@@ -74,9 +74,13 @@ func TestBadChart(t *testing.T) {
 			if strings.Contains(msg.Err.Error(), "dependencies are not valid in the Chart file with apiVersion") {
 				e6 = true
 			}
+
+			if strings.Contains(msg.Err.Error(), "chart.metadata.name is required") {
+				e7 = true
+			}
 		}
 	}
-	if !e || !e2 || !e3 || !e4 || !e5 || !e6 || !w || !i {
+	if !e || !e2 || !e3 || !e4 || !e5 || !e6 || !e7 || !w || !i {
 		t.Errorf("Didn't find all the expected errors, got %#v", m)
 	}
 }

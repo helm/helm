@@ -1,0 +1,4 @@
+# shoud be the final value
+replaced: "values/replaced2.yaml"
+# should still be "values.yaml"
+currentReplaced2: "{{ .Values.replaced }}"

@@ -34,7 +34,7 @@ import (
 //	- Scalar values and arrays are replaced, maps are merged
 //	- A chart has access to all of the variables for it, as well as all of
 //		the values destined for its dependencies.
-func CoalesceValues(chrt *chart.Chart, vals map[string]interface{}) (Values, error) {
+func CoalesceValues(chrt *chart.Chart, vals map[string]interface{}) (map[string]interface{}, error) {
 	// create a copy of vals and then pass it to coalesce
 	// and coalesceDeps, as both will mutate the passed values
 	v, err := copystructure.Copy(vals)
@@ -202,4 +202,59 @@ func CoalesceTables(dst, src map[string]interface{}) map[string]interface{} {
 		}
 	}
 	return dst
+}
+
+// CoalesceTablesUpdate merges a source map into a destination map.
+//
+// src is considered authoritative.
+func CoalesceTablesUpdate(dst, src map[string]interface{}) map[string]interface{} {
+	if dst == nil || src == nil {
+		return dst
+	}
+	// src values override dest values.
+	for key, val := range src {
+		if istable(val) {
+			switch innerdst, ok := dst[key]; {
+			case !ok:
+			case istable(innerdst):
+				CoalesceTablesUpdate(innerdst.(map[string]interface{}),
+					val.(map[string]interface{}))
+				continue
+			default:
+				log.Printf("warning: overwriting not table with table for %s (%v)", key, innerdst)
+			}
+		} else if dv, ok := dst[key]; ok && istable(dv) {
+			log.Printf("warning: overwriting table with non table for %s (%v)", key, dv)
+		}
+		dst[key] = val
+	}
+	return dst
+}
+
+// CoalesceDep returns the render values for subch,
+// merged with subch values and dest global
+func CoalesceDep(subch *chart.Chart, dest map[string]interface{}) (map[string]interface{}, error) {
+	dv, ok := dest[subch.Name()]
+	if !ok {
+		// If dest doesn't already have the key, create it.
+		dv = make(map[string]interface{})
+		dest[subch.Name()] = dv
+	} else if !istable(dv) {
+		return dest, errors.Errorf("type mismatch on %s: %t", subch.Name(), dv)
+	}
+	dvmap := dv.(map[string]interface{})
+
+	// Get globals out of dest and merge them into dvmap.
+	coalesceGlobals(dvmap, dest)
+
+	// Now coalesce the rest of the values.
+	coalesceValues(subch, dvmap)
+	return dvmap, nil
+}
+
+// CoalesceRoot merges dest with chrt values,
+// it returns dest for a similar behavior with CoalesceDep
+func CoalesceRoot(chrt *chart.Chart, dest map[string]interface{}) (map[string]interface{}, error) {
+	coalesceValues(chrt, dest)
+	return dest, nil
 }

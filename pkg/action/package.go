@@ -60,7 +60,7 @@ func (p *Package) Run(path string, vals map[string]interface{}) (string, error) 
 		return "", err
 	}
 
-	combinedVals, err := chartutil.CoalesceValues(ch, vals)
+	combinedVals, err := chartutil.CoalesceRoot(ch, vals)
 	if err != nil {
 		return "", err
 	}

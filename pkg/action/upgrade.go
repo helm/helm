@@ -130,10 +130,6 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		return nil, nil, err
 	}
 
-	if err := chartutil.ProcessDependencies(chart, vals); err != nil {
-		return nil, nil, err
-	}
-
 	// finds the non-deleted release with the given name
 	lastRelease, err := u.cfg.Releases.Last(name)
 	if err != nil {
@@ -353,7 +349,7 @@ func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release, newV
 		u.cfg.Log("reusing the old release's values")
 
 		// We have to regenerate the old coalesced values:
-		oldVals, err := chartutil.CoalesceValues(current.Chart, current.Config)
+		oldVals, err := chartutil.CoalesceRoot(current.Chart, current.Config)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to rebuild old values")
 		}

@@ -39,6 +39,8 @@ const (
 	SchemafileName = "values.schema.json"
 	// TemplatesDir is the relative directory name for templates.
 	TemplatesDir = "templates"
+	// ValuesTemplatesDir is the relative directory name for values templates.
+	ValuesTemplatesDir = "values"
 	// ChartsDir is the relative directory name for charts dependencies.
 	ChartsDir = "charts"
 	// TemplatesTestsDir is the relative directory name for tests.
@@ -426,7 +428,15 @@ func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
 		updatedTemplates = append(updatedTemplates, &chart.File{Name: template.Name, Data: newData})
 	}
 
+	var updatedValuesTemplates []*chart.File
+
+	for _, template := range schart.ValuesTemplates {
+		newData := transform(string(template.Data), schart.Name())
+		updatedValuesTemplates = append(updatedValuesTemplates, &chart.File{Name: template.Name, Data: newData})
+	}
+
 	schart.Templates = updatedTemplates
+	schart.ValuesTemplates = updatedValuesTemplates
 	b, err := yaml.Marshal(schart.Values)
 	if err != nil {
 		return errors.Wrap(err, "reading values file")
@@ -536,10 +546,21 @@ func Create(name, dir string) (string, error) {
 			return cdir, err
 		}
 	}
-	// Need to add the ChartsDir explicitly as it does not contain any file OOTB
-	if err := os.MkdirAll(filepath.Join(cdir, ChartsDir), 0755); err != nil {
-		return cdir, err
+
+	// Need to add empty directories explicitly
+	edirs := []string{
+		// values/
+		filepath.Join(cdir, ValuesTemplatesDir),
+		// charts/
+		filepath.Join(cdir, ChartsDir),
 	}
+
+	for _, edir := range edirs {
+		if err := os.MkdirAll(edir, 0755); err != nil {
+			return cdir, err
+		}
+	}
+
 	return cdir, nil
 }
 

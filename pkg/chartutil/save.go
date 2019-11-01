@@ -65,8 +65,8 @@ func SaveDir(c *chart.Chart, dest string) error {
 		}
 	}
 
-	// Save templates and files
-	for _, o := range [][]*chart.File{c.Templates, c.Files} {
+	// Save values templates, templates and files
+	for _, o := range [][]*chart.File{c.ValuesTemplates, c.Templates, c.Files} {
 		for _, f := range o {
 			n := filepath.Join(outdir, f.Name)
 			if err := writeFile(n, f.Data); err != nil {
@@ -165,6 +165,14 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 			return errors.New("Invalid JSON in " + SchemafileName)
 		}
 		if err := writeToTar(out, filepath.Join(base, SchemafileName), c.Schema); err != nil {
+			return err
+		}
+	}
+
+	// Save values templates
+	for _, f := range c.ValuesTemplates {
+		n := filepath.Join(base, f.Name)
+		if err := writeToTar(out, n, f.Data); err != nil {
 			return err
 		}
 	}

@@ -164,6 +164,10 @@ icon: https://example.com/64x64.png
 			Name: "templates/service.yaml",
 			Data: []byte("some service"),
 		},
+		{
+			Name: "values/test.yaml",
+			Data: []byte("some other values"),
+		},
 	}
 
 	c, err := LoadFiles(goodFiles)
@@ -185,6 +189,10 @@ icon: https://example.com/64x64.png
 
 	if len(c.Templates) != 2 {
 		t.Errorf("Expected number of templates == 2, got %d", len(c.Templates))
+	}
+
+	if len(c.ValuesTemplates) != 1 {
+		t.Errorf("Expected number of values templates == 1, got %d", len(c.ValuesTemplates))
 	}
 
 	if _, err = LoadFiles([]*BufferedFile{}); err == nil {
@@ -320,6 +328,9 @@ func verifyChart(t *testing.T, c *chart.Chart) {
 	if len(c.Templates) != 1 {
 		t.Errorf("Expected 1 template, got %d", len(c.Templates))
 	}
+	if len(c.ValuesTemplates) != 1 {
+		t.Errorf("Expected 1 values template, got %d", len(c.ValuesTemplates))
+	}
 
 	numfiles := 6
 	if len(c.Files) != numfiles {
@@ -423,6 +434,15 @@ func verifyChartFileAndTemplate(t *testing.T, c *chart.Chart, name string) {
 	}
 	if len(c.Templates[0].Data) == 0 {
 		t.Error("No template data.")
+	}
+	if len(c.ValuesTemplates) != 1 {
+		t.Fatalf("Expected 1 values template, got %d", len(c.ValuesTemplates))
+	}
+	if c.ValuesTemplates[0].Name != "values/value.yaml" {
+		t.Errorf("Unexpected values template: %s", c.ValuesTemplates[0].Name)
+	}
+	if len(c.ValuesTemplates[0].Data) == 0 {
+		t.Error("No values template data.")
 	}
 	if len(c.Files) != 6 {
 		t.Fatalf("Expected 6 Files, got %d", len(c.Files))

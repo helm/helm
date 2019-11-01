@@ -1,0 +1,4 @@
+apiVersion: v2
+description: A Helm chart for Kubernetes
+name: import_values
+version: 0.1.0

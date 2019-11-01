@@ -1,0 +1,3 @@
+# should appear in subcharts too
+global:
+  parentTemplate: true

@@ -1,0 +1,9 @@
+# should coalesce with parent global
+global:
+  subTeamplate: true
+# should capture everything except subTeamplate
+globalEvaluated:
+  parentValues: {{ .Values.global.parentValues }}
+  parentTemplate: {{ .Values.global.parentTemplate }}
+  subValues: {{ .Values.global.subValues }}
+  subTeamplate: {{ .Values.global.subTeamplate }}

@@ -22,16 +22,8 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 )
 
-// ProcessDependencies checks through this chart's dependencies, processing accordingly.
-func ProcessDependencies(c *chart.Chart, v Values) error {
-	if err := processDependencyEnabled(c, v, ""); err != nil {
-		return err
-	}
-	return processDependencyImportValues(c)
-}
-
 // processDependencyConditions disables charts based on condition path value in values
-func processDependencyConditions(reqs []*chart.Dependency, cvals Values, cpath string) {
+func processDependencyConditions(reqs []*chart.Dependency, cvals Values) {
 	if reqs == nil {
 		return
 	}
@@ -39,7 +31,7 @@ func processDependencyConditions(reqs []*chart.Dependency, cvals Values, cpath s
 		for _, c := range strings.Split(strings.TrimSpace(r.Condition), ",") {
 			if len(c) > 0 {
 				// retrieve value
-				vv, err := cvals.PathValue(cpath + c)
+				vv, err := cvals.PathValue(c)
 				if err == nil {
 					// if not bool, warn
 					if bv, ok := vv.(bool); ok {
@@ -58,18 +50,14 @@ func processDependencyConditions(reqs []*chart.Dependency, cvals Values, cpath s
 }
 
 // processDependencyTags disables charts based on tags in values
-func processDependencyTags(reqs []*chart.Dependency, cvals Values) {
-	if reqs == nil {
-		return
-	}
-	vt, err := cvals.Table("tags")
-	if err != nil {
+func processDependencyTags(reqs []*chart.Dependency, tags map[string]interface{}) {
+	if reqs == nil || tags == nil {
 		return
 	}
 	for _, r := range reqs {
 		var hasTrue, hasFalse bool
 		for _, k := range r.Tags {
-			if b, ok := vt[k]; ok {
+			if b, ok := tags[k]; ok {
 				// if not bool, warn
 				if bv, ok := b.(bool); ok {
 					if bv {
@@ -88,6 +76,14 @@ func processDependencyTags(reqs []*chart.Dependency, cvals Values) {
 			r.Enabled = true
 		}
 	}
+}
+
+func GetTags(cvals Values) map[string]interface{} {
+	vt, err := cvals.Table("tags")
+	if err != nil {
+		return nil
+	}
+	return vt
 }
 
 func getAliasDependency(charts []*chart.Chart, dep *chart.Dependency) *chart.Chart {
@@ -115,7 +111,7 @@ func getAliasDependency(charts []*chart.Chart, dep *chart.Dependency) *chart.Cha
 }
 
 // processDependencyEnabled removes disabled charts from dependencies
-func processDependencyEnabled(c *chart.Chart, v map[string]interface{}, path string) error {
+func ProcessDependencyEnabled(c *chart.Chart, v map[string]interface{}, tags map[string]interface{}) error {
 	if c.Metadata.Dependencies == nil {
 		return nil
 	}
@@ -150,13 +146,9 @@ Loop:
 	for _, lr := range c.Metadata.Dependencies {
 		lr.Enabled = true
 	}
-	cvals, err := CoalesceValues(c, v)
-	if err != nil {
-		return err
-	}
 	// flag dependencies as enabled/disabled
-	processDependencyTags(c.Metadata.Dependencies, cvals)
-	processDependencyConditions(c.Metadata.Dependencies, cvals, path)
+	processDependencyTags(c.Metadata.Dependencies, tags)
+	processDependencyConditions(c.Metadata.Dependencies, v)
 	// make a map of charts to remove
 	rm := map[string]struct{}{}
 	for _, r := range c.Metadata.Dependencies {
@@ -171,14 +163,6 @@ Loop:
 	for _, n := range c.Dependencies() {
 		if _, ok := rm[n.Metadata.Name]; !ok {
 			cd = append(cd, n)
-		}
-	}
-
-	// recursively call self to process sub dependencies
-	for _, t := range cd {
-		subpath := path + t.Metadata.Name + "."
-		if err := processDependencyEnabled(t, cvals, subpath); err != nil {
-			return err
 		}
 	}
 	c.SetDependencies(cd...)
@@ -206,15 +190,11 @@ func set(path []string, data map[string]interface{}) map[string]interface{} {
 }
 
 // processImportValues merges values from child to parent based on the chart's dependencies' ImportValues field.
-func processImportValues(c *chart.Chart) error {
+func processImportValues(c *chart.Chart, cvals Values) error {
 	if c.Metadata.Dependencies == nil {
 		return nil
 	}
-	// combine chart values and empty config to get Values
-	cvals, err := CoalesceValues(c, nil)
-	if err != nil {
-		return err
-	}
+
 	b := make(map[string]interface{})
 	// import values from each dependency if specified in import-values
 	for _, r := range c.Metadata.Dependencies {
@@ -237,7 +217,7 @@ func processImportValues(c *chart.Chart) error {
 					continue
 				}
 				// create value map from child to be merged into parent
-				b = CoalesceTables(cvals, pathToMap(parent, vv.AsMap()))
+				b = CoalesceTables(cvals, pathToMap(parent, vv))
 			case string:
 				child := "exports." + iv
 				outiv = append(outiv, map[string]string{
@@ -249,7 +229,7 @@ func processImportValues(c *chart.Chart) error {
 					log.Printf("Warning: ImportValues missing table: %v", err)
 					continue
 				}
-				b = CoalesceTables(b, vm.AsMap())
+				b = CoalesceTables(b, vm)
 			}
 		}
 		// set our formatted import values
@@ -257,18 +237,21 @@ func processImportValues(c *chart.Chart) error {
 	}
 
 	// set the new values
-	c.Values = CoalesceTables(b, cvals)
+	CoalesceTables(b, cvals)
 
 	return nil
 }
 
-// processDependencyImportValues imports specified chart values from child to parent.
-func processDependencyImportValues(c *chart.Chart) error {
+// ProcessDependencyImportValues imports specified chart values from child to parent.
+//
+// v is expected to have existing path for every sub chart
+func ProcessDependencyImportValues(c *chart.Chart, v map[string]interface{}) error {
 	for _, d := range c.Dependencies() {
 		// recurse
-		if err := processDependencyImportValues(d); err != nil {
+		dv := v[d.Name()].(map[string]interface{})
+		if err := ProcessDependencyImportValues(d, dv); err != nil {
 			return err
 		}
 	}
-	return processImportValues(c)
+	return processImportValues(c, v)
 }

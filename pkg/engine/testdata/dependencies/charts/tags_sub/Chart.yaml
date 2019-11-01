@@ -1,0 +1,15 @@
+apiVersion: v2
+description: A Helm chart for Kubernetes
+name: tags_sub
+version: 0.1.0
+dependencies:
+- name: tags_sub_true
+  repository: http://localhost:10191
+  version: 0.1.0
+  tags:
+  - true_tag
+- name: tags_sub_false
+  repository: http://localhost:10191
+  version: 0.1.0
+  tags:
+  - false_tag
