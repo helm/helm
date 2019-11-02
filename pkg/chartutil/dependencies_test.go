@@ -15,6 +15,7 @@ limitations under the License.
 package chartutil
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"sort"
@@ -230,6 +231,10 @@ func TestProcessDependencyImportValues(t *testing.T) {
 		case bool:
 			if b := strconv.FormatBool(pv); b != vv {
 				t.Errorf("failed to match imported bool value %v with expected %v", b, vv)
+			}
+		case json.Number:
+			if n := pv.String(); n != vv {
+				t.Errorf("failed to match imported json.Number value %v with expected %v", n, vv)
 			}
 		default:
 			if pv != vv {

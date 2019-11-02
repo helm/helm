@@ -68,6 +68,22 @@ func funcMap() template.FuncMap {
 		f[k] = v
 	}
 
+	for k, v := range f {
+		f[k] = overloadFunc(v)
+	}
+
+	stdTmplOverloads := map[string]interface{}{
+		"eq": _templateBuiltinEq,
+		"ge": _templateBuiltinGe,
+		"gt": _templateBuiltinGt,
+		"le": _templateBuiltinLe,
+		"lt": _templateBuiltinLt,
+		"ne": _templateBuiltinNe,
+	}
+	for fn, fun := range stdTmplOverloads {
+		f[fn] = overloadFunc(fun)
+	}
+
 	return f
 }
 

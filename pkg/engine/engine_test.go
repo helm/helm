@@ -698,3 +698,386 @@ func TestRenderRecursionLimit(t *testing.T) {
 	}
 
 }
+
+func TestTemplateFuncs(t *testing.T) {
+	tests := []struct {
+		Name         string
+		Templates    []*chart.File
+		Values       string
+		ExpectTplStr string
+	}{
+		{
+			Name: "TplIntFunction",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "Value: {{ .Values.value | int}}" .}}`)},
+			},
+			Values:       `value: 42`,
+			ExpectTplStr: "Evaluate tpl Value: 42",
+		},
+		{
+			Name: "TplInt64Function",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "Value: {{ .Values.value | int64}}" .}}`)},
+			},
+			Values:       `value: 42`,
+			ExpectTplStr: "Evaluate tpl Value: 42",
+		},
+		{
+			Name: "TplFloat64Function",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "Value: {{ .Values.value | float64}}" .}}`)},
+			},
+			Values:       `value: 3.14159265359`,
+			ExpectTplStr: "Evaluate tpl Value: 3.14159265359",
+		},
+		{
+			Name: "TplAdd1Function",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "Value: {{ .Values.value | add1}}" .}}`)},
+			},
+			Values:       `value: 42`,
+			ExpectTplStr: "Evaluate tpl Value: 43",
+		},
+		{
+			Name: "TplAddFunction",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "Value: {{ add .Values.value 1 2 3}}" .}}`)},
+			},
+			Values:       `value: 42`,
+			ExpectTplStr: "Evaluate tpl Value: 48",
+		},
+		{
+			Name: "TplSubFunction",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "Value: {{ sub .Values.value 20}}" .}}`)},
+			},
+			Values:       `value: 42`,
+			ExpectTplStr: "Evaluate tpl Value: 22",
+		},
+		{
+			Name: "TplDivFunction",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "Value: {{ div .Values.value 2}}" .}}`)},
+			},
+			Values:       `value: 42`,
+			ExpectTplStr: "Evaluate tpl Value: 21",
+		},
+		{
+			Name: "TplModFunction",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "Value: {{ mod .Values.value 5}}" .}}`)},
+			},
+			Values:       `value: 42`,
+			ExpectTplStr: "Evaluate tpl Value: 2",
+		},
+		{
+			Name: "TplMulFunction",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "Value: {{ mul .Values.value 1 2 3}}" .}}`)},
+			},
+			Values:       `value: 42`,
+			ExpectTplStr: "Evaluate tpl Value: 252",
+		},
+		{
+			Name: "TplMaxFunction",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "Value: {{ max .Values.value 100 1 0 -1}}" .}}`)},
+			},
+			Values:       `value: 42`,
+			ExpectTplStr: "Evaluate tpl Value: 100",
+		},
+		{
+			Name: "TplMinFunction",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "Value: {{ min .Values.value 100 1 0 -1}}" .}}`)},
+			},
+			Values:       `value: 42`,
+			ExpectTplStr: "Evaluate tpl Value: -1",
+		},
+		{
+			Name: "TplCeilFunction",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "Value: {{ ceil .Values.value }}" .}}`)},
+			},
+			Values:       `value: 3.14159265359`,
+			ExpectTplStr: "Evaluate tpl Value: 4",
+		},
+		{
+			Name: "TplFloorFunction",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "Value: {{ floor .Values.value }}" .}}`)},
+			},
+			Values:       `value: 3.14159265359`,
+			ExpectTplStr: "Evaluate tpl Value: 3",
+		},
+		{
+			Name: "TplRoundFunction",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "Value: {{ round .Values.value 2 }}" .}}`)},
+			},
+			Values:       `value: 3.14159265359`,
+			ExpectTplStr: "Evaluate tpl Value: 3.14",
+		},
+		{
+			Name: "TplEqFunctionInt",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "{{ if eq .Values.value 42 }}Value: {{ .Values.value }}{{ end }}" .}}`)},
+			},
+			Values:       `value: 42`,
+			ExpectTplStr: "Evaluate tpl Value: 42",
+		},
+		{
+			Name: "TplEqFunctionFloat",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "{{ if eq .Values.value 42.0 }}Value: {{ .Values.value }}{{ end }}" .}}`)},
+			},
+			Values:       `value: 42`,
+			ExpectTplStr: "Evaluate tpl Value: 42",
+		},
+		{
+			Name: "TplGtFunctionInt",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "{{ if gt .Values.value 41 }}Value: {{ .Values.value }}{{ end }}" .}}`)},
+			},
+			Values:       `value: 42`,
+			ExpectTplStr: "Evaluate tpl Value: 42",
+		},
+		{
+			Name: "TplGtFunctionFloat",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "{{ if gt .Values.value 41.0 }}Value: {{ .Values.value }}{{ end }}" .}}`)},
+			},
+			Values:       `value: 42`,
+			ExpectTplStr: "Evaluate tpl Value: 42",
+		},
+		{
+			Name: "TplGeFunctionInt",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "{{ if ge .Values.value 42 }}Value: {{ .Values.value }}{{ end }}" .}}`)},
+			},
+			Values:       `value: 42`,
+			ExpectTplStr: "Evaluate tpl Value: 42",
+		},
+		{
+			Name: "TplGeFunctionFloat",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "{{ if ge .Values.value 42.0 }}Value: {{ .Values.value }}{{ end }}" .}}`)},
+			},
+			Values:       `value: 42`,
+			ExpectTplStr: "Evaluate tpl Value: 42",
+		},
+		{
+			Name: "TplLtFunctionInt",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "{{ if lt .Values.value 43 }}Value: {{ .Values.value }}{{ end }}" .}}`)},
+			},
+			Values:       `value: 42`,
+			ExpectTplStr: "Evaluate tpl Value: 42",
+		},
+		{
+			Name: "TplLtFunctionFloat",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "{{ if lt .Values.value 43.0 }}Value: {{ .Values.value }}{{ end }}" .}}`)},
+			},
+			Values:       `value: 42`,
+			ExpectTplStr: "Evaluate tpl Value: 42",
+		},
+		{
+			Name: "TplLeFunctionInt",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "{{ if le .Values.value 42 }}Value: {{ .Values.value }}{{ end }}" .}}`)},
+			},
+			Values:       `value: 42`,
+			ExpectTplStr: "Evaluate tpl Value: 42",
+		},
+		{
+			Name: "TplLeFunctionFloat",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "{{ if le .Values.value 42.0 }}Value: {{ .Values.value }}{{ end }}" .}}`)},
+			},
+			Values:       `value: 42`,
+			ExpectTplStr: "Evaluate tpl Value: 42",
+		},
+		{
+			Name: "TplNeFunctionInt",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "{{ if ne .Values.value 43 }}Value: {{ .Values.value }}{{ end }}" .}}`)},
+			},
+			Values:       `value: 42`,
+			ExpectTplStr: "Evaluate tpl Value: 42",
+		},
+		{
+			Name: "TplNeFunctionFloat",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "{{ if ne .Values.value 43.0 }}Value: {{ .Values.value }}{{ end }}" .}}`)},
+			},
+			Values:       `value: 42`,
+			ExpectTplStr: "Evaluate tpl Value: 42",
+		},
+		{
+			Name: "TplUntilFunction",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "{{ range $ix := until .Values.value }}{{ $ix }}{{ end }}" .}}`)},
+			},
+			Values:       `value: 5`,
+			ExpectTplStr: "Evaluate tpl 01234",
+		},
+		{
+			Name: "TplUntilStepFunction",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "{{ range $ix := untilStep 0 .Values.value 7 }}{{ $ix }} {{ end }}" .}}`)},
+			},
+			Values:       `value: 42`,
+			ExpectTplStr: "Evaluate tpl 0 7 14 21 28 35 ",
+		},
+		{
+			Name: "TplSplitnFunction",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "{{ range $s := splitn \".\" .Values.value \"foo.bar.baz.boo\" }}{{ $s }}{{ end }}" .}}`)},
+			},
+			Values:       `value: 3`,
+			ExpectTplStr: "Evaluate tpl foobarbaz.boo",
+		},
+		{
+			Name: "TplAbbrevFunction",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "{{ abbrev .Values.value \"hello world\" }}" .}}`)},
+			},
+			Values:       `value: 5`,
+			ExpectTplStr: "Evaluate tpl he...",
+		},
+		{
+			Name: "TplAbbrevBothFunction",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "{{ abbrevboth .Values.value 10 \"1234 5678 9123\" }}" .}}`)},
+			},
+			Values:       `value: 5`,
+			ExpectTplStr: "Evaluate tpl ...5678...",
+		},
+		{
+			Name: "TplTruncFunction",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "{{ trunc .Values.value \"hello world\" }}" .}}`)},
+			},
+			Values:       `value: 5`,
+			ExpectTplStr: "Evaluate tpl hello",
+		},
+		{
+			Name: "TplSubstrFunction",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "{{ substr 0 .Values.value \"hello world\" }}" .}}`)},
+			},
+			Values:       `value: 5`,
+			ExpectTplStr: "Evaluate tpl hello",
+		},
+		{
+			Name: "TplRepeatFunction",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "{{ repeat .Values.value \"hello\" }}" .}}`)},
+			},
+			Values:       `value: 3`,
+			ExpectTplStr: "Evaluate tpl hellohellohello",
+		},
+		{
+			Name: "TplWrapFunction",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "{{ wrap .Values.value \"hello world\" }}" .}}`)},
+			},
+			Values:       `value: 5`,
+			ExpectTplStr: "Evaluate tpl hello\nworld",
+		},
+		{
+			Name: "TplWrapWithFunction",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "{{ wrapWith .Values.value \"\t\" \"hello world\" }}" .}}`)},
+			},
+			Values:       `value: 5`,
+			ExpectTplStr: "Evaluate tpl hello\tworld",
+		},
+		{
+			Name: "TplIndentFunction",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "{{ indent .Values.value \"hello world\" }}" .}}`)},
+			},
+			Values:       `value: 4`,
+			ExpectTplStr: "Evaluate tpl     hello world",
+		},
+		{
+			Name: "TplNindentFunction",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "{{ nindent .Values.value \"hello world\" }}" .}}`)},
+			},
+			Values:       `value: 4`,
+			ExpectTplStr: "Evaluate tpl \n    hello world",
+		},
+		{
+			Name: "TplPluralFunctionSingular",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "{{ plural \"one anchovy\" \"many anchovies\" .Values.value }}" .}}`)},
+			},
+			Values:       `value: 1`,
+			ExpectTplStr: "Evaluate tpl one anchovy",
+		},
+		{
+			Name: "TplPluralFunctionPlural",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "{{ plural \"one anchovy\" \"many anchovies\" .Values.value }}" .}}`)},
+			},
+			Values:       `value: 42`,
+			ExpectTplStr: "Evaluate tpl many anchovies",
+		},
+		{
+			Name: "TplSliceFunctionNoOffset",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "{{ slice .Values.slice .Values.value }}" .}}`)},
+			},
+			Values: `
+value: 2
+slice: [1,2,3,4,5]`,
+			ExpectTplStr: "Evaluate tpl [3 4 5]",
+		},
+		{
+			Name: "TplSliceFunctionWithOffset",
+			Templates: []*chart.File{
+				{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "{{ slice .Values.slice .Values.start .Values.end }}" .}}`)},
+			},
+			Values: `
+slice: [1,2,3,4,5]
+start: 2
+end: 4`,
+			ExpectTplStr: "Evaluate tpl [3 4]",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tplChart := &chart.Chart{
+				Metadata:  &chart.Metadata{Name: tt.Name},
+				Templates: tt.Templates,
+			}
+
+			values, err := chartutil.ReadValues([]byte(tt.Values))
+			if err != nil {
+				t.Fatalf(err.Error())
+			}
+
+			tplValues := chartutil.Values{
+				"Values": values,
+				"Chart":  tplChart.Metadata,
+				"Release": chartutil.Values{
+					"Name": "TestRelease",
+				},
+			}
+
+			e := &Engine{}
+			outTpl, err := e.Render(tplChart, tplValues)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if gotTplStr := outTpl[tt.Name+"/templates/base"]; gotTplStr != tt.ExpectTplStr {
+				t.Errorf("Expected %q, got %q (%v)", tt.ExpectTplStr, gotTplStr, outTpl)
+			}
+		})
+	}
+}

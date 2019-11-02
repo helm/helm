@@ -25,6 +25,7 @@ import (
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
+	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/strvals"
 )
@@ -50,7 +51,7 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 			return nil, err
 		}
 
-		if err := yaml.Unmarshal(bytes, &currentMap); err != nil {
+		if err := yaml.Unmarshal(bytes, &currentMap, chartutil.JSONNumberOn); err != nil {
 			return nil, errors.Wrapf(err, "failed to parse %s", filePath)
 		}
 		// Merge with the previous map

@@ -17,6 +17,7 @@ limitations under the License.
 package chartutil
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -30,6 +31,13 @@ import (
 
 // GlobalKey is the name of the Values key that is used for storing global vars.
 const GlobalKey = "global"
+
+// JSONNumberOn is a JSON parser option enforcing parsing numeric values to
+// json.JSONNumber instead of numeric golang primitives.
+var JSONNumberOn yaml.JSONOpt = func(d *json.Decoder) *json.Decoder {
+	d.UseNumber()
+	return d
+}
 
 // Values represents a collection of chart values.
 type Values map[string]interface{}
@@ -105,7 +113,7 @@ func tableLookup(v Values, simple string) (Values, error) {
 
 // ReadValues will parse YAML byte data into a Values.
 func ReadValues(data []byte) (vals Values, err error) {
-	err = yaml.Unmarshal(data, &vals)
+	err = yaml.Unmarshal(data, &vals, JSONNumberOn)
 	if len(vals) == 0 {
 		vals = Values{}
 	}

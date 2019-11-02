@@ -20,6 +20,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"encoding/json"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -196,6 +197,50 @@ icon: https://example.com/64x64.png
 	}
 	if err.Error() != "validation: chart.metadata is required" {
 		t.Errorf("Expected chart metadata missing error, got '%s'", err.Error())
+	}
+}
+
+// This test case covers some special numeric values
+func TestLoadNumericValuesAsJsonNumber(t *testing.T) {
+	files := []*BufferedFile{
+		{
+			Name: "Chart.yaml",
+			Data: []byte(`apiVersion: v1
+name: frobnitz
+description: This is a frobnitz.
+version: "1.2.3"
+`),
+		},
+		{
+			Name: "values.yaml",
+			Data: []byte(`varInt: 1234567890
+varIntNeg: -987654321
+varFloat: 3.141593
+varFloatSci: 5.e-6
+varString: "2.71828"`),
+		},
+	}
+	expected := map[string]interface{}{
+		"varInt":    json.Number("1234567890"),
+		"varIntNeg": json.Number("-987654321"),
+		"varFloat":  json.Number("3.141593"),
+		// varFloatSci case is quite unpleasant: with all the dancing we do
+		// around formatting numbers, we can't preserve the original scientific
+		// notation without deep-hacking into yaml parser. This case sounds like
+		// something a user should expect if they provide a float number in
+		// scientific notation that it would be interpreted and re-formatted.
+		"varFloatSci": json.Number("0.000005"),
+		"varString":   "2.71828",
+	}
+	c, err := LoadFiles(files)
+	if err != nil {
+		t.Errorf("Expected files to be loaded, got %v", err)
+	}
+	for varName, expVal := range expected {
+		if c.Values[varName] != expVal {
+			t.Errorf("Unexpected loaded value %s: got (%T)%+[2]v, want: (%T)%+[3]v",
+				varName, c.Values[varName], expVal)
+		}
 	}
 }
 
