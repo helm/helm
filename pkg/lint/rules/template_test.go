@@ -51,7 +51,7 @@ const strict = false
 
 func TestTemplateParsing(t *testing.T) {
 	linter := support.Linter{ChartDir: templateTestBasedir}
-	Templates(&linter, values, namespace, strict)
+	Templates(&linter, values, namespace, strict, "")
 	res := linter.Messages
 
 	if len(res) != 1 {
@@ -74,7 +74,7 @@ func TestTemplateIntegrationHappyPath(t *testing.T) {
 	defer os.Rename(ignoredTemplatePath, wrongTemplatePath)
 
 	linter := support.Linter{ChartDir: templateTestBasedir}
-	Templates(&linter, values, namespace, strict)
+	Templates(&linter, values, namespace, strict, "")
 	res := linter.Messages
 
 	if len(res) != 0 {
@@ -84,7 +84,7 @@ func TestTemplateIntegrationHappyPath(t *testing.T) {
 
 func TestV3Fail(t *testing.T) {
 	linter := support.Linter{ChartDir: "./testdata/v3-fail"}
-	Templates(&linter, values, namespace, strict)
+	Templates(&linter, values, namespace, strict, "")
 	res := linter.Messages
 
 	if len(res) != 3 {

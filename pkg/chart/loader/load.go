@@ -31,7 +31,7 @@ import (
 
 // ChartLoader loads a chart.
 type ChartLoader interface {
-	Load() (*chart.Chart, error)
+	Load(envYaml string) (*chart.Chart, error)
 }
 
 // Loader returns a new ChartLoader appropriate for the given chart name
@@ -55,11 +55,22 @@ func Loader(name string) (ChartLoader, error) {
 // If a .helmignore file is present, the directory loader will skip loading any files
 // matching it. But .helmignore is not evaluated when reading out of an archive.
 func Load(name string) (*chart.Chart, error) {
+	return LoadWithEnvValues(name, "")
+}
+
+// LoadWithEnvValues takes a string name, tries to resolve it to a file or directory, and then loads it.
+//
+// This is the preferred way to load a chart. It will discover the chart encoding
+// and hand off to the appropriate chart reader.
+//
+// If a .helmignore file is present, the directory loader will skip loading any files
+// matching it. But .helmignore is not evaluated when reading out of an archive.
+func LoadWithEnvValues(name string, envYaml string) (*chart.Chart, error) {
 	l, err := Loader(name)
 	if err != nil {
 		return nil, err
 	}
-	return l.Load()
+	return l.Load(envYaml)
 }
 
 // BufferedFile represents an archive file buffered for later processing.
@@ -70,8 +81,15 @@ type BufferedFile struct {
 
 // LoadFiles loads from in-memory files.
 func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
+	return LoadFilesWithEnvValues(files, "")
+}
+
+// LoadFilesWithEnvValues loads from in-memory files.
+func LoadFilesWithEnvValues(files []*BufferedFile, envYaml string) (*chart.Chart, error) {
 	c := new(chart.Chart)
 	subcharts := make(map[string][]*BufferedFile)
+	values := make(map[string]interface{})
+	env := make(map[string]interface{})
 
 	for _, f := range files {
 		switch {
@@ -94,9 +112,12 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 				return c, errors.Wrap(err, "cannot load Chart.lock")
 			}
 		case f.Name == "values.yaml":
-			c.Values = make(map[string]interface{})
-			if err := yaml.Unmarshal(f.Data, &c.Values); err != nil {
+			if err := yaml.Unmarshal(f.Data, &values); err != nil {
 				return c, errors.Wrap(err, "cannot load values.yaml")
+			}
+		case f.Name == envYaml:
+			if err := yaml.Unmarshal(f.Data, &env); err != nil {
+				return c, errors.Wrapf(err, "cannot load %s", envYaml)
 			}
 		case f.Name == "values.schema.json":
 			c.Schema = f.Data
@@ -136,6 +157,9 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 		}
 	}
 
+	if len(values) != 0 || len(env) != 0 {
+		c.Values = chart.MergeValues(values, env)
+	}
 	if err := c.Validate(); err != nil {
 		return c, err
 	}
@@ -152,7 +176,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 				return c, errors.Errorf("error unpacking tar in %s: expected %s, got %s", c.Name(), n, file.Name)
 			}
 			// Untar the chart and add to c.Dependencies
-			sc, err = LoadArchive(bytes.NewBuffer(file.Data))
+			sc, err = LoadArchiveWithEnvValues(bytes.NewBuffer(file.Data), envYaml)
 		default:
 			// We have to trim the prefix off of every file, and ignore any file
 			// that is in charts/, but isn't actually a chart.
@@ -165,7 +189,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 				f.Name = parts[1]
 				buff = append(buff, f)
 			}
-			sc, err = LoadFiles(buff)
+			sc, err = LoadFilesWithEnvValues(buff, envYaml)
 		}
 
 		if err != nil {

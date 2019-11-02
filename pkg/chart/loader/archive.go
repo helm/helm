@@ -39,12 +39,17 @@ var drivePathPattern = regexp.MustCompile(`^[a-zA-Z]:/`)
 type FileLoader string
 
 // Load loads a chart
-func (l FileLoader) Load() (*chart.Chart, error) {
-	return LoadFile(string(l))
+func (l FileLoader) Load(envYaml string) (*chart.Chart, error) {
+	return LoadFileWithEnvValues(string(l), envYaml)
 }
 
 // LoadFile loads from an archive file.
 func LoadFile(name string) (*chart.Chart, error) {
+	return LoadFileWithEnvValues(name, "")
+}
+
+// LoadFileWithEnvValues loads from an archive file.
+func LoadFileWithEnvValues(name string, envYaml string) (*chart.Chart, error) {
 	if fi, err := os.Stat(name); err != nil {
 		return nil, err
 	} else if fi.IsDir() {
@@ -62,7 +67,7 @@ func LoadFile(name string) (*chart.Chart, error) {
 		return nil, err
 	}
 
-	c, err := LoadArchive(raw)
+	c, err := LoadArchiveWithEnvValues(raw, envYaml)
 	if err != nil {
 		if err == gzip.ErrHeader {
 			return nil, fmt.Errorf("file '%s' does not appear to be a valid chart file (details: %s)", name, err)
@@ -179,10 +184,16 @@ func LoadArchiveFiles(in io.Reader) ([]*BufferedFile, error) {
 
 // LoadArchive loads from a reader containing a compressed tar archive.
 func LoadArchive(in io.Reader) (*chart.Chart, error) {
+	return LoadArchiveWithEnvValues(in, "")
+}
+
+// LoadArchiveWithEnvValues loads from a reader containing a compressed tar archive,
+// overriding the default values with the values from the environment file in the chart.
+func LoadArchiveWithEnvValues(in io.Reader, envYaml string) (*chart.Chart, error) {
 	files, err := LoadArchiveFiles(in)
 	if err != nil {
 		return nil, err
 	}
 
-	return LoadFiles(files)
+	return LoadFilesWithEnvValues(files, envYaml)
 }

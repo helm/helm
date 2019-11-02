@@ -36,7 +36,7 @@ var (
 )
 
 // Templates lints the templates in the Linter.
-func Templates(linter *support.Linter, values map[string]interface{}, namespace string, strict bool) {
+func Templates(linter *support.Linter, values map[string]interface{}, namespace string, strict bool, envYaml string) {
 	path := "templates/"
 	templatesPath := filepath.Join(linter.ChartDir, path)
 
@@ -48,7 +48,7 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 	}
 
 	// Load chart and parse templates, based on tiller/release_server
-	chart, err := loader.Load(linter.ChartDir)
+	chart, err := loader.LoadWithEnvValues(linter.ChartDir, envYaml)
 
 	chartLoaded := linter.RunLinterRule(support.ErrorSev, path, err)
 

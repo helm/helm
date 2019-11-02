@@ -30,10 +30,11 @@ import (
 )
 
 type Options struct {
-	ValueFiles   []string
-	StringValues []string
-	Values       []string
-	FileValues   []string
+	ValueFiles    []string
+	StringValues  []string
+	Values        []string
+	FileValues    []string
+	EnvValuesFile string
 }
 
 // MergeValues merges values from files specified via -f/--values and directly

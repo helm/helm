@@ -117,7 +117,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 
 			// Check chart dependencies to make sure all are present in /charts
-			ch, err := loader.Load(chartPath)
+			ch, err := loader.LoadWithEnvValues(chartPath, valueOpts.EnvValuesFile)
 			if err != nil {
 				return err
 			}

@@ -36,7 +36,7 @@ func TestLoadDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
-	c, err := l.Load()
+	c, err := l.Load("")
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
@@ -55,7 +55,7 @@ func TestLoadDirWithDevNull(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
-	if _, err := l.Load(); err == nil {
+	if _, err := l.Load(""); err == nil {
 		t.Errorf("packages with an irregular file (/dev/null) should not load")
 	}
 }
@@ -75,7 +75,7 @@ func TestLoadDirWithSymlink(t *testing.T) {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
 
-	c, err := l.Load()
+	c, err := l.Load("")
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
@@ -90,7 +90,7 @@ func TestLoadV1(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
-	c, err := l.Load()
+	c, err := l.Load("")
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
@@ -103,7 +103,7 @@ func TestLoadFileV1(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
-	c, err := l.Load()
+	c, err := l.Load("")
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
@@ -116,7 +116,7 @@ func TestLoadFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
-	c, err := l.Load()
+	c, err := l.Load("")
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
@@ -212,7 +212,7 @@ func TestLoadV2WithReqs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
-	c, err := l.Load()
+	c, err := l.Load("")
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}

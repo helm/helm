@@ -59,6 +59,12 @@ func TestInstall(t *testing.T) {
 			cmd:    "install virgil testdata/testcharts/alpine -f testdata/testcharts/alpine/extra_values.yaml -f testdata/testcharts/alpine/more_values.yaml",
 			golden: "output/install-with-multiple-values-files.txt",
 		},
+		// Install, values environment values yaml
+		{
+			name:   "install with environment values",
+			cmd:    "install virgil testdata/testcharts/alpine -e more_values.yaml",
+			golden: "output/install-with-multiple-values-files.txt",
+		},
 		// Install, no charts
 		{
 			name:      "install with no chart specified",

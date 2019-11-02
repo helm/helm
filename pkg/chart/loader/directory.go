@@ -34,14 +34,22 @@ import (
 type DirLoader string
 
 // Load loads the chart
-func (l DirLoader) Load() (*chart.Chart, error) {
-	return LoadDir(string(l))
+func (l DirLoader) Load(envYaml string) (*chart.Chart, error) {
+	return LoadDirWithEnvValues(string(l), envYaml)
 }
 
 // LoadDir loads from a directory.
 //
 // This loads charts only from directories.
 func LoadDir(dir string) (*chart.Chart, error) {
+	return LoadDirWithEnvValues(dir, "")
+}
+
+// LoadDirWithEnvValues loads from a directory,
+// overriding the default values with the values from the environment file in the chart.
+//
+// This loads charts only from directories.
+func LoadDirWithEnvValues(dir string, envYaml string) (*chart.Chart, error) {
 	topdir, err := filepath.Abs(dir)
 	if err != nil {
 		return nil, err
@@ -111,5 +119,5 @@ func LoadDir(dir string) (*chart.Chart, error) {
 		return c, err
 	}
 
-	return LoadFiles(files)
+	return LoadFilesWithEnvValues(files, envYaml)
 }

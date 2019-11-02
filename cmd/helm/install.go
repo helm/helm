@@ -171,7 +171,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	}
 
 	// Check chart dependencies to make sure all are present in /charts
-	chartRequested, err := loader.Load(cp)
+	chartRequested, err := loader.LoadWithEnvValues(cp, valueOpts.EnvValuesFile)
 	if err != nil {
 		return nil, err
 	}
