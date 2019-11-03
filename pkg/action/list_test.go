@@ -237,27 +237,36 @@ func makeMeSomeReleases(store *storage.Storage, t *testing.T) {
 }
 
 func TestFilterList(t *testing.T) {
-	one := releaseStub()
-	one.Name = "one"
-	one.Namespace = "default"
-	one.Version = 1
-	two := releaseStub()
-	two.Name = "two"
-	two.Namespace = "default"
-	two.Version = 1
-	anotherOldOne := releaseStub()
-	anotherOldOne.Name = "one"
-	anotherOldOne.Namespace = "testing"
-	anotherOldOne.Version = 1
-	anotherOne := releaseStub()
-	anotherOne.Name = "one"
-	anotherOne.Namespace = "testing"
-	anotherOne.Version = 2
+	t.Run("should filter old versions of the same release", func(t *testing.T) {
+		r1 := releaseStub()
+		r1.Name = "r"
+		r1.Version = 1
+		r2 := releaseStub()
+		r2.Name = "r"
+		r2.Version = 2
+		another := releaseStub()
+		another.Name = "another"
+		another.Version = 1
 
-	list := []*release.Release{one, two, anotherOne}
-	expectedFilteredList := []*release.Release{one, two, anotherOne}
+		filteredList := filterList([]*release.Release{r1, r2, another})
+		expectedFilteredList := []*release.Release{r2, another}
 
-	filteredList := filterList(list)
+		assert.ElementsMatch(t, expectedFilteredList, filteredList)
+	})
 
-	assert.ElementsMatch(t, expectedFilteredList, filteredList)
+	t.Run("should not filter out any version across namespaces", func(t *testing.T) {
+		r1 := releaseStub()
+		r1.Name = "r"
+		r1.Namespace = "default"
+		r1.Version = 1
+		r2 := releaseStub()
+		r2.Name = "r"
+		r2.Namespace = "testing"
+		r2.Version = 2
+
+		filteredList := filterList([]*release.Release{r1, r2})
+		expectedFilteredList := []*release.Release{r1, r2}
+
+		assert.ElementsMatch(t, expectedFilteredList, filteredList)
+	})
 }
