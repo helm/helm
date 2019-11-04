@@ -17,10 +17,7 @@ limitations under the License.
 package engine
 
 import (
-	"flag"
 	"log"
-	"os"
-	"path/filepath"
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,67 +25,50 @@ import (
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
-var config *rest.Config
+type lookupFunc = func(apiversion string, resource string, namespace string, name string) (map[string]interface{}, error)
 
-func init() {
-	// try the out-cluster config, this will default to the in-cluster config is not successful
-	var kubeconfig *string
-	if home := homeDir(); home != "" {
-		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
-	} else {
-		kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
-	}
-	flag.Parse()
-
-	// use the current context in kubeconfig
-	config1, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
-	if err == nil {
-		config = config1
-	}
-}
-
-func homeDir() string {
-	if h := os.Getenv("HOME"); h != "" {
-		return h
-	}
-	return os.Getenv("USERPROFILE") // windows
-}
-
-func lookup(apiversion string, resource string, namespace string, name string) (map[string]interface{}, error) {
-	var client dynamic.ResourceInterface
-	c, namespaced, err := getDynamicClientOnKind(apiversion, resource)
-	if err != nil {
-		return map[string]interface{}{}, err
-	}
-	if namespaced && namespace != "" {
-		client = c.Namespace(namespace)
-	} else {
-		client = c
-	}
-	if name != "" {
-		//this will return a single object
-		obj, err := client.Get(name, metav1.GetOptions{})
+func NewLookupFunction(config *rest.Config) lookupFunc {
+	return func(apiversion string, resource string, namespace string, name string) (map[string]interface{}, error) {
+		var client dynamic.ResourceInterface
+		c, namespaced, err := getDynamicClientOnKind(apiversion, resource, config)
+		if err != nil {
+			return map[string]interface{}{}, err
+		}
+		if namespaced && namespace != "" {
+			client = c.Namespace(namespace)
+		} else {
+			client = c
+		}
+		if name != "" {
+			//this will return a single object
+			obj, err := client.Get(name, metav1.GetOptions{})
+			if err != nil {
+				return map[string]interface{}{}, err
+			}
+			return obj.Object, nil
+		}
+		//this will return a list
+		obj, err := client.List(metav1.ListOptions{})
 		if err != nil {
 			return map[string]interface{}{}, err
 		}
 		return obj.Object, nil
 	}
-	//this will return a list
-	obj, err := client.List(metav1.ListOptions{})
-	if err != nil {
-		return map[string]interface{}{}, err
-	}
-	return obj.Object, nil
-
 }
 
+// func homeDir() string {
+// 	if h := os.Getenv("HOME"); h != "" {
+// 		return h
+// 	}
+// 	return os.Getenv("USERPROFILE") // windows
+// }
+
 // GetDynamicClientOnUnstructured returns a dynamic client on an Unstructured type. This client can be further namespaced.
-func getDynamicClientOnKind(apiversion string, kind string) (dynamic.NamespaceableResourceInterface, bool, error) {
+func getDynamicClientOnKind(apiversion string, kind string, config *rest.Config) (dynamic.NamespaceableResourceInterface, bool, error) {
 	gvk := schema.FromAPIVersionAndKind(apiversion, kind)
-	apiRes, err := getAPIReourceForGVK(gvk)
+	apiRes, err := getAPIReourceForGVK(gvk, config)
 	if err != nil {
 		log.Printf("[ERROR] unable to get apiresource from unstructured: %s , error %s", gvk.String(), err)
 		return nil, false, err
@@ -107,7 +87,7 @@ func getDynamicClientOnKind(apiversion string, kind string) (dynamic.Namespaceab
 	return res, apiRes.Namespaced, nil
 }
 
-func getAPIReourceForGVK(gvk schema.GroupVersionKind) (metav1.APIResource, error) {
+func getAPIReourceForGVK(gvk schema.GroupVersionKind, config *rest.Config) (metav1.APIResource, error) {
 	res := metav1.APIResource{}
 	discoveryClient, err := discovery.NewDiscoveryClientForConfig(config)
 	if err != nil {

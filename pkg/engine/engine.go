@@ -27,6 +27,7 @@ import (
 	"text/template"
 
 	"github.com/pkg/errors"
+	"k8s.io/client-go/rest"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -39,6 +40,8 @@ type Engine struct {
 	Strict bool
 	// In LintMode, some 'required' template values may be missing, so don't fail
 	LintMode bool
+	// the rest config to connect to te kubernetes api
+	config *rest.Config
 }
 
 // Render takes a chart, optional values, and value overrides, and attempts to render the Go templates.
@@ -69,6 +72,15 @@ func (e Engine) Render(chrt *chart.Chart, values chartutil.Values) (map[string]s
 // render the Go templates using the default options.
 func Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, error) {
 	return new(Engine).Render(chrt, values)
+}
+
+// RenderWithClient takes a chart, optional values, and value overrides, and attempts to
+// render the Go templates using the default options. This engine is client aware and so can have template
+// functions that interact with the client
+func RenderWithClient(chrt *chart.Chart, values chartutil.Values, config *rest.Config) (map[string]string, error) {
+	return Engine{
+		config: config,
+	}.Render(chrt, values)
 }
 
 // renderable is an object that can be rendered.
@@ -156,6 +168,9 @@ func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]render
 			}
 		}
 		return val, nil
+	}
+	if e.config != nil {
+		funcMap["lookup"] = NewLookupFunction(e.config)
 	}
 
 	t.Funcs(funcMap)

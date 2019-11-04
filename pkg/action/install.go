@@ -436,7 +436,12 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 		}
 	}
 
-	files, err := engine.Render(ch, values)
+	rest, err := c.RESTClientGetter.ToRESTConfig()
+	if err != nil {
+		return hs, b, "", err
+	}
+
+	files, err := engine.RenderWithClient(ch, values, rest)
 	if err != nil {
 		return hs, b, "", err
 	}
