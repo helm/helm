@@ -167,7 +167,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			}
 
 			kind := info.Mapping.GroupVersionKind.Kind
-			c.Log("Created a new %s called %q\n", kind, info.Name)
+			c.Log("Created a new %s called %q in %s\n", kind, info.Name, info.Namespace)
 			return nil
 		}
 
