@@ -436,13 +436,21 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 		}
 	}
 
-	rest, err := c.RESTClientGetter.ToRESTConfig()
-	if err != nil {
-		return hs, b, "", err
+	var files map[string]string
+	var err2 error
+
+	if c.RESTClientGetter != nil {
+		rest, err := c.RESTClientGetter.ToRESTConfig()
+		if err != nil {
+			files, err2 = engine.Render(ch, values)
+		} else {
+			files, err2 = engine.RenderWithClient(ch, values, rest)
+		}
+	} else {
+		files, err2 = engine.Render(ch, values)
 	}
 
-	files, err := engine.RenderWithClient(ch, values, rest)
-	if err != nil {
+	if err2 != nil {
 		return hs, b, "", err
 	}
 
