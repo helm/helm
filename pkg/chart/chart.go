@@ -26,13 +26,18 @@ const APIVersionV2 = "v2"
 // Chart is a helm package that contains metadata, a default config, zero or more
 // optionally parameterizable templates, and zero or more charts (dependencies).
 type Chart struct {
+	// Raw contains the raw contents of the files originally contained in the chart archive.
+	//
+	// This should not be used except in special cases like `helm show values`,
+	// where we want to display the raw values, comments and all.
+	Raw []*File `json:"-"`
 	// Metadata is the contents of the Chartfile.
 	Metadata *Metadata `json:"metadata"`
 	// LocK is the contents of Chart.lock.
 	Lock *Lock `json:"lock"`
 	// Templates for this chart.
 	Templates []*File `json:"templates"`
-	// Values are default config for this template.
+	// Values are default config for this chart.
 	Values map[string]interface{} `json:"values"`
 	// Schema is an optional JSON schema for imposing structure on Values
 	Schema []byte `json:"schema"`
