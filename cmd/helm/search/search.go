@@ -51,7 +51,7 @@ type Index struct {
 
 const sep = "\v"
 
-// NewIndex creats a new Index.
+// NewIndex creates a new Index.
 func NewIndex() *Index {
 	return &Index{lines: map[string]string{}, charts: map[string]*repo.ChartVersion{}}
 }
