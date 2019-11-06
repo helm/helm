@@ -183,7 +183,7 @@ icon: https://example.com/64x64.png
 		t.Error("Expected chart values to be populated with default values")
 	}
 
-	if len(c.Raw) != 5 {
+	if len(c.Raw) != 6 {
 		t.Errorf("Expected %d files, got %d", 5, len(c.Raw))
 	}
 
