@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/spf13/pflag"
@@ -33,6 +34,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"helm.sh/helm/v3/pkg/helmpath"
+	"helm.sh/helm/v3/pkg/helmpath/xdg"
 	"helm.sh/helm/v3/pkg/kube"
 )
 
@@ -100,6 +102,9 @@ func (s *EnvSettings) EnvVars() map[string]string {
 		"HELM_REPOSITORY_CONFIG": s.RepositoryConfig,
 		"HELM_NAMESPACE":         s.Namespace(),
 		"HELM_KUBECONTEXT":       s.KubeContext,
+		xdg.CacheHomeEnvVar:      strings.TrimSuffix(helmpath.CachePath(), "/helm"),
+		xdg.ConfigHomeEnvVar:     strings.TrimSuffix(helmpath.ConfigPath(), "/helm"),
+		xdg.DataHomeEnvVar:       strings.TrimSuffix(helmpath.DataPath(), "/helm"),
 	}
 
 	if s.KubeConfig != "" {
