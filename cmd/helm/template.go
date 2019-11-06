@@ -119,7 +119,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	addInstallFlags(f, client, valueOpts)
 	f.StringArrayVarP(&showFiles, "show-only", "s", []string{}, "only show manifests rendered from the given templates")
 	f.StringVar(&client.OutputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
-	f.BoolVar(&validate, "validate", false, "establish a connection to Kubernetes for schema validation")
+	f.BoolVar(&validate, "validate", false, "validate your manifests against the Kubernetes cluster you are currently pointing at. This is the same validation performed on an install")
 	f.StringArrayVarP(&extraAPIs, "api-versions", "a", []string{}, "Kubernetes api versions used for Capabilities.APIVersions")
 
 	return cmd

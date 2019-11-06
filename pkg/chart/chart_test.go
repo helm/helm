@@ -16,6 +16,7 @@ limitations under the License.
 package chart
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -48,4 +49,28 @@ func TestCRDs(t *testing.T) {
 	is.Equal(2, len(crds))
 	is.Equal("crds/foo.yaml", crds[0].Name)
 	is.Equal("crds/foo/bar/baz.yaml", crds[1].Name)
+}
+
+func TestSaveChartNoRawData(t *testing.T) {
+	chrt := Chart{
+		Raw: []*File{
+			{
+				Name: "fhqwhgads.yaml",
+				Data: []byte("Everybody to the Limit"),
+			},
+		},
+	}
+
+	is := assert.New(t)
+	data, err := json.Marshal(chrt)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res := &Chart{}
+	if err := json.Unmarshal(data, res); err != nil {
+		t.Fatal(err)
+	}
+
+	is.Equal([]*File(nil), res.Raw)
 }

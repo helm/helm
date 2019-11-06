@@ -175,7 +175,7 @@ __helm_list_charts()
     #   1- There are other completions found (if there are no completions,
     #      the shell will do file completion itself)
     #   2- If there is some input from the user (or else we will end up
-    #      lising the entire content of the current directory which will
+    #      listing the entire content of the current directory which will
     #      be too many choices for the user to find the real repos)
     if [ $wantFiles -eq 1 ] && [ -n "${out[*]}" ] && [ -n "${cur}" ]; then
         for file in $(\ls); do

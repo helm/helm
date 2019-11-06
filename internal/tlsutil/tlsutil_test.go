@@ -25,7 +25,7 @@ import (
 const tlsTestDir = "../../testdata"
 
 const (
-	testCaCertFile = "ca.pem"
+	testCaCertFile = "rootca.crt"
 	testCertFile   = "crt.pem"
 	testKeyFile    = "key.pem"
 )

@@ -92,7 +92,7 @@ func (o *createOptions) run(out io.Writer) error {
 	if o.starter != "" {
 		// Create from the starter
 		lstarter := filepath.Join(o.starterDir, o.starter)
-		// If path is absolute, we dont want to prefix it with helm starters folder
+		// If path is absolute, we don't want to prefix it with helm starters folder
 		if filepath.IsAbs(o.starter) {
 			lstarter = o.starter
 		}
