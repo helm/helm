@@ -838,7 +838,13 @@ func getSelectorFromObject(obj runtime.Object) (map[string]string, bool) {
 }
 
 func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) error {
-	lw := cachetools.NewListWatchFromClient(info.Client, info.Mapping.Resource.Resource, info.Namespace, fields.Everything())
+	// Use a selector on the name of the resource. This should be unique for the
+	// given version and kind
+	selector, err := fields.ParseSelector(fmt.Sprintf("metadata.name=%s", info.Name))
+	if err != nil {
+		return err
+	}
+	lw := cachetools.NewListWatchFromClient(info.Client, info.Mapping.Resource.Resource, info.Namespace, selector)
 
 	kind := info.Mapping.GroupVersionKind.Kind
 	c.Log("Watching for changes to %s %s with timeout of %v", kind, info.Name, timeout)
@@ -851,7 +857,7 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 
 	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), timeout)
 	defer cancel()
-	_, err := watchtools.ListWatchUntil(ctx, lw, func(e watch.Event) (bool, error) {
+	_, err = watchtools.ListWatchUntil(ctx, lw, func(e watch.Event) (bool, error) {
 		switch e.Type {
 		case watch.Added, watch.Modified:
 			// For things like a secret or a config map, this is the best indicator
