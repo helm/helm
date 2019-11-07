@@ -57,7 +57,6 @@ import (
 	watchtools "k8s.io/client-go/tools/watch"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/validation"
-	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	"k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/get"
 )
@@ -269,7 +268,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 		for i := range podItems {
 			pod := &core.Pod{}
 
-			legacyscheme.Scheme.Convert(&podItems[i], pod, nil)
+			scheme.Scheme.Convert(&podItems[i], pod, nil)
 			if objs[key+"(related)"] == nil {
 				objs[key+"(related)"] = make(map[string]runtime.Object)
 			}
@@ -882,7 +881,7 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 // This operates on an event returned from a watcher.
 func (c *Client) waitForJob(e watch.Event, name string) (bool, error) {
 	job := &batch.Job{}
-	err := legacyscheme.Scheme.Convert(e.Object, job, nil)
+	err := scheme.Scheme.Convert(e.Object, job, nil)
 	if err != nil {
 		return true, err
 	}
@@ -1043,5 +1042,5 @@ func asVersioned(info *resource.Info) (runtime.Object, error) {
 
 func asInternal(info *resource.Info) (runtime.Object, error) {
 	groupVersioner := info.Mapping.GroupVersionKind.GroupKind().WithVersion(runtime.APIVersionInternal).GroupVersion()
-	return legacyscheme.Scheme.ConvertToVersion(info.Object, groupVersioner)
+	return scheme.Scheme.ConvertToVersion(info.Object, groupVersioner)
 }
