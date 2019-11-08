@@ -245,7 +245,7 @@ func (c *Configuration) Init(getter genericclioptions.RESTClientGetter, namespac
 	return nil
 }
 
-func ActionConfigRequired(command string) bool {
+func ConfigRequired(command string) bool {
 	var actionConfigRequired = map[string]bool{
 		// release commands
 		"get":         true,

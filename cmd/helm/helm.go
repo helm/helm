@@ -71,7 +71,7 @@ func main() {
 	if err != nil {
 		os.Exit(1)
 	}
-	actionConfigRequired := action.ActionConfigRequired(subCmd.Use)
+	actionConfigRequired := action.ConfigRequired(subCmd.Use)
 	if actionConfigRequired {
 		if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), os.Getenv("HELM_DRIVER"), debug); err != nil {
 			log.Fatalf("%+v", err)
