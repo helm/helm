@@ -81,3 +81,54 @@ func testfile(t *testing.T, file string) (path string) {
 	}
 	return path
 }
+
+func TestNewClientTLS(t *testing.T) {
+	certFile := testfile(t, testCertFile)
+	keyFile := testfile(t, testKeyFile)
+	caCertFile := testfile(t, testCaCertFile)
+
+	cfg, err := NewClientTLS(certFile, keyFile, caCertFile)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if got := len(cfg.Certificates); got != 1 {
+		t.Fatalf("expecting 1 client certificates, got %d", got)
+	}
+	if cfg.InsecureSkipVerify {
+		t.Fatalf("insecure skip verify mistmatch, expecting false")
+	}
+	if cfg.RootCAs == nil {
+		t.Fatalf("mismatch tls RootCAs, expecting non-nil")
+	}
+
+	cfg, err = NewClientTLS("", "", caCertFile)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if got := len(cfg.Certificates); got != 0 {
+		t.Fatalf("expecting 0 client certificates, got %d", got)
+	}
+	if cfg.InsecureSkipVerify {
+		t.Fatalf("insecure skip verify mistmatch, expecting false")
+	}
+	if cfg.RootCAs == nil {
+		t.Fatalf("mismatch tls RootCAs, expecting non-nil")
+	}
+
+	cfg, err = NewClientTLS(certFile, keyFile, "")
+	if err != nil {
+		t.Error(err)
+	}
+
+	if got := len(cfg.Certificates); got != 1 {
+		t.Fatalf("expecting 1 client certificates, got %d", got)
+	}
+	if cfg.InsecureSkipVerify {
+		t.Fatalf("insecure skip verify mistmatch, expecting false")
+	}
+	if cfg.RootCAs != nil {
+		t.Fatalf("mismatch tls RootCAs, expecting nil")
+	}
+}
