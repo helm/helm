@@ -77,12 +77,15 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			client.SetStateMask()
 
 			results, err := client.Run()
+			if err != nil {
+				return err
+			}
 
 			if client.Short {
 				for _, res := range results {
 					fmt.Fprintln(out, res.Name)
 				}
-				return err
+				return nil
 			}
 
 			return outfmt.Write(out, newReleaseListWriter(results))
