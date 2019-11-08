@@ -180,7 +180,10 @@ func coalesceValues(c *chart.Chart, v map[string]interface{}) {
 //
 // dest is considered authoritative.
 func CoalesceTables(dst, src map[string]interface{}) map[string]interface{} {
-	if dst == nil || src == nil {
+	if src == nil {
+		return dst
+	}
+	if dst == nil {
 		return src
 	}
 	// Because dest has higher precedence than src, dest values override src
