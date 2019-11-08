@@ -67,9 +67,15 @@ func main() {
 	actionConfig := new(action.Configuration)
 	cmd := newRootCmd(actionConfig, os.Stdout, os.Args[1:])
 
-	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), os.Getenv("HELM_DRIVER"), debug); err != nil {
-		debug("%+v", err)
+	subCmd, _, err := cmd.Find(os.Args[1:])
+	if err != nil {
 		os.Exit(1)
+	}
+	actionConfigRequired := action.ActionConfigRequired(subCmd.Use)
+	if actionConfigRequired {
+		if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), os.Getenv("HELM_DRIVER"), debug); err != nil {
+			log.Fatalf("%+v", err)
+		}
 	}
 
 	if err := cmd.Execute(); err != nil {

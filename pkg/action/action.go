@@ -244,3 +244,44 @@ func (c *Configuration) Init(getter genericclioptions.RESTClientGetter, namespac
 
 	return nil
 }
+
+func ActionConfigRequired(command string) bool {
+	var actionConfigRequired = map[string]bool{
+		// release commands
+		"get":         true,
+		"history":     true,
+		"install":     true,
+		"list":        true,
+		"releaseTest": true,
+		"rollback":    true,
+		"status":      true,
+		"template":    true,
+		"uninstall":   true,
+		"upgrade":     true,
+
+		//registry commands
+		"registry": true,
+		"chart":    true,
+
+		// chart commands
+		"create":     false,
+		"dependency": false,
+		"pull":       false,
+		"show":       false,
+		"lint":       false,
+		"package":    false,
+		"repo":       false,
+		"search":     false,
+		"verify":     false,
+		"completion": false,
+		"env":        false,
+		"plugin":     false,
+		"version":    false,
+		"docs":       false,
+
+		//root
+		"helm": false,
+	}
+
+	return actionConfigRequired[command]
+}
