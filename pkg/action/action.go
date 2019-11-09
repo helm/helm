@@ -283,5 +283,9 @@ func ConfigRequired(command string) bool {
 		"helm": false,
 	}
 
-	return actionConfigRequired[command]
+	if val, ok := actionConfigRequired[command]; ok {
+		return val
+	}
+	// Assume commands not present in the map require the config by default
+	return true
 }
