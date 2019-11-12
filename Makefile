@@ -7,7 +7,6 @@ GOPATH        = $(shell go env GOPATH)
 DEP           = $(GOPATH)/bin/dep
 GOX           = $(GOPATH)/bin/gox
 GOIMPORTS     = $(GOPATH)/bin/goimports
-GOLANGCI_LINT = $(GOPATH)/bin/golangci-lint
 
 ACCEPTANCE_DIR:=$(GOPATH)/src/helm.sh/acceptance-testing
 # To specify the subset of acceptance tests to run. '.' means all tests
@@ -81,8 +80,8 @@ test-coverage:
 	@ ./scripts/coverage.sh
 
 .PHONY: test-style
-test-style: $(GOLANGCI_LINT)
-	GO111MODULE=on $(GOLANGCI_LINT) run
+test-style:
+	GO111MODULE=on golangci-lint run
 	@scripts/validate-license.sh
 
 .PHONY: test-acceptance
@@ -117,9 +116,6 @@ format: $(GOIMPORTS)
 
 $(GOX):
 	(cd /; GO111MODULE=on go get -u github.com/mitchellh/gox)
-
-$(GOLANGCI_LINT):
-	(cd /; GO111MODULE=on go get -u github.com/golangci/golangci-lint/cmd/golangci-lint)
 
 $(GOIMPORTS):
 	(cd /; GO111MODULE=on go get -u golang.org/x/tools/cmd/goimports)
