@@ -131,9 +131,8 @@ func (s *Storage) DeployedAll(name string) ([]*rspb.Release, error) {
 	s.Log("getting deployed releases from %q history", name)
 
 	ls, err := s.Driver.Query(map[string]string{
-		"name":   name,
-		"owner":  "helm",
-		"status": "deployed",
+		"name":  name,
+		"owner": "helm",
 	})
 	if err == nil {
 		return ls, nil

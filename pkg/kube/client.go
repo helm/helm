@@ -389,22 +389,20 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		}
 		return nil
 	}
-
-	// if --force is applied, attempt to replace the existing resource with the new object.
-	if force {
-		obj, err = helper.Replace(target.Namespace, target.Name, true, target.Object)
-		if err != nil {
-			return errors.Wrap(err, "failed to replace object")
-		}
-		log.Printf("Replaced %q with kind %s for kind %s\n", target.Name, currentObj.GetObjectKind().GroupVersionKind().Kind, kind)
-	} else {
-		// send patch to server
-		obj, err = helper.Patch(target.Namespace, target.Name, patchType, patch, nil)
-		if err != nil {
+	// send patch to server
+	obj, err = helper.Patch(target.Namespace, target.Name, patchType, patch, nil)
+	if err != nil {
+		// if --force is applied, attempt to replace the existing resource, that is not patchable with the new object.
+		if force {
+			obj, err = helper.Replace(target.Namespace, target.Name, true, target.Object)
+			if err != nil {
+				return errors.Wrap(err, "failed to replace object")
+			}
+			log.Printf("Replaced %q with kind %s for kind %s\n", target.Name, currentObj.GetObjectKind().GroupVersionKind().Kind, kind)
+		} else {
 			return errors.Wrapf(err, "cannot patch %q with kind %s", target.Name, kind)
 		}
 	}
-
 	target.Refresh(obj, true)
 	return nil
 }
