@@ -169,7 +169,7 @@ func (s *Signatory) DecryptKey(fn PassphraseFetcher) error {
 	if s.Entity == nil {
 		return errors.New("private key not found")
 	} else if s.Entity.PrivateKey == nil {
-		return errors.New("provided key is not a private key")
+		return errors.New("provided key is not a private key. Try providing a keyring with secret keys")
 	}
 
 	// Nothing else to do if key is not encrypted.
@@ -203,7 +203,7 @@ func (s *Signatory) ClearSign(chartpath string) (string, error) {
 	if s.Entity == nil {
 		return "", errors.New("private key not found")
 	} else if s.Entity.PrivateKey == nil {
-		return "", errors.New("provided key is not a private key")
+		return "", errors.New("provided key is not a private key. Try providing a keyring with secret keys")
 	}
 
 	if fi, err := os.Stat(chartpath); err != nil {
