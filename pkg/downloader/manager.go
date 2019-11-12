@@ -79,7 +79,12 @@ func (m *Manager) Build() error {
 		return m.Update()
 	}
 
+	// Check that all of the repos we're dependent on actually exist.
 	req := c.Metadata.Dependencies
+	if _, err := m.resolveRepoNames(req); err != nil {
+		return err
+	}
+
 	if sum, err := resolver.HashReq(req, lock.Dependencies); err != nil || sum != lock.Digest {
 		return errors.New("Chart.lock is out of sync with Chart.yaml")
 	}
@@ -120,7 +125,7 @@ func (m *Manager) Update() error {
 
 	// Check that all of the repos we're dependent on actually exist and
 	// the repo index names.
-	repoNames, err := m.getRepoNames(req)
+	repoNames, err := m.resolveRepoNames(req)
 	if err != nil {
 		return err
 	}
@@ -372,8 +377,9 @@ Loop:
 	return nil
 }
 
-// getRepoNames returns the repo names of the referenced deps which can be used to fetch the cahced index file.
-func (m *Manager) getRepoNames(deps []*chart.Dependency) (map[string]string, error) {
+// resolveRepoNames returns the repo names of the referenced deps which can be used to fetch the cached index file
+// and replaces aliased repository URLs into resolved URLs in dependencies.
+func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string, error) {
 	rf, err := loadRepoConfig(m.RepositoryConfig)
 	if err != nil {
 		if os.IsNotExist(err) {

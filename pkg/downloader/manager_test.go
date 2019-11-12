@@ -161,7 +161,7 @@ func TestGetRepoNames(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		l, err := m.getRepoNames(tt.req)
+		l, err := m.resolveRepoNames(tt.req)
 		if err != nil {
 			if tt.err {
 				continue
