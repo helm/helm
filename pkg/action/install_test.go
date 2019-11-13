@@ -306,7 +306,7 @@ func TestInstallRelease_KubeVersion(t *testing.T) {
 	vals = map[string]interface{}{}
 	_, err = instAction.Run(buildChart(withKube(">=99.0.0")), vals)
 	is.Error(err)
-	is.Contains(err.Error(), "chart requires kubernetesVersion")
+	is.Contains(err.Error(), "chart requires kubeVersion")
 }
 
 func TestInstallRelease_Wait(t *testing.T) {
