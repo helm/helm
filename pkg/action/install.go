@@ -126,7 +126,7 @@ func (i *Install) installCRDs(crds []*chart.File) error {
 				i.cfg.Log("CRD %s is already present. Skipping.", crdName)
 				continue
 			}
-			return errors.Wrapf(err, "failed to instal CRD %s", obj.Name)
+			return errors.Wrapf(err, "failed to install CRD %s", obj.Name)
 		}
 		totalItems = append(totalItems, res...)
 	}
