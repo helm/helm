@@ -187,7 +187,7 @@ testVersion() {
 help () {
   echo "Accepted cli arguments are:"
   echo -e "\t[--help|-h ] ->> prints this help"
-  echo -e "\t[--version|-v <desired_version>]"
+  echo -e "\t[--version|-v <desired_version>] . When not defined it defaults to latest"
   echo -e "\te.g. --version v2.4.0  or -v latest"
   echo -e "\t[--no-sudo]  ->> install without sudo"
 }
@@ -213,9 +213,7 @@ while [[ $# -gt 0 ]]; do
     '--version'|-v)
        shift
        if [[ $# -ne 0 ]]; then
-          # FIXME(bacongobbler): hard code the desired version for the time being.
-          # A better fix would be to filter for Helm 2 release pages.
-           export DESIRED_VERSION="${1:="v2.16.1"}"
+           export DESIRED_VERSION="${1}"
        else
            echo -e "Please provide the desired version. e.g. --version v2.4.0 or -v latest"
            exit 0
