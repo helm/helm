@@ -54,15 +54,18 @@ type Client struct {
 	Log     func(string, ...interface{})
 }
 
+// At every startup add CRDs to the scheme. They are missing by default.
+func init() {
+	if err := apiextv1beta1.AddToScheme(scheme.Scheme); err != nil {
+		// This should never happen.
+		panic(err)
+	}
+}
+
 // New creates a new Client.
 func New(getter genericclioptions.RESTClientGetter) *Client {
 	if getter == nil {
 		getter = genericclioptions.NewConfigFlags(true)
-	}
-	// Add CRDs to the scheme. They are missing by default.
-	if err := apiextv1beta1.AddToScheme(scheme.Scheme); err != nil {
-		// This should never happen.
-		panic(err)
 	}
 	return &Client{
 		Factory: cmdutil.NewFactory(getter),
