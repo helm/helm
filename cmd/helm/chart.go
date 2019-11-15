@@ -32,12 +32,13 @@ The subcommands can be used to push, pull, tag, list, or remove Helm charts.
 func newChartCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "chart",
-		Short:             "push, pull, tag, or remove Helm charts",
+		Short:             "install, push, pull, tag, or remove Helm charts",
 		Long:              chartHelp,
 		Hidden:            !FeatureGateOCI.IsEnabled(),
 		PersistentPreRunE: checkOCIFeatureGate(),
 	}
 	cmd.AddCommand(
+		newChartInstallCmd(cfg, out),
 		newChartListCmd(cfg, out),
 		newChartExportCmd(cfg, out),
 		newChartPullCmd(cfg, out),

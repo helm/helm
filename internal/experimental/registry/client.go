@@ -274,3 +274,19 @@ func (c *Client) getChartTableRows() ([][]interface{}, error) {
 	}
 	return rows, nil
 }
+
+// InstallChart installs chart from registry
+func (c *Client) InstallChart(name string, ref *Reference) error {
+	// TODO:
+	// 1. Add some initial flags ;)
+	// TODO:
+	// 1. Read name valid and not already exists
+	// 2. Check in local registry if ref exists
+	//  2.1 Exists -> next
+	//  2.2 Not exists
+	//   2.2.1 Pull from repository
+	//    2.2.1.1 Exist -> next
+	//    2.2.1.1 Not exist -> error
+	// 3. Install chart as usual
+	return nil
+}
