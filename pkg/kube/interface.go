@@ -45,7 +45,7 @@ type Interface interface {
 
 	// Update updates one or more resources or creates the resource
 	// if it doesn't exist.
-	Update(original, target ResourceList, force bool) (*Result, error)
+	Update(original, target ResourceList, force bool, overwrite bool) (*Result, error)
 
 	// Build creates a resource list from a Reader
 	//

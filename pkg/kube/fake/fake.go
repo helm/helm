@@ -75,11 +75,11 @@ func (f *FailingKubeClient) WatchUntilReady(resources kube.ResourceList, d time.
 }
 
 // Update returns the configured error if set or prints
-func (f *FailingKubeClient) Update(r, modified kube.ResourceList, ignoreMe bool) (*kube.Result, error) {
+func (f *FailingKubeClient) Update(r, modified kube.ResourceList, ignoreMe bool, ignoreMeToo bool) (*kube.Result, error) {
 	if f.UpdateError != nil {
 		return &kube.Result{}, f.UpdateError
 	}
-	return f.PrintingKubeClient.Update(r, modified, ignoreMe)
+	return f.PrintingKubeClient.Update(r, modified, ignoreMe, ignoreMeToo)
 }
 
 // Build returns the configured error if set or prints

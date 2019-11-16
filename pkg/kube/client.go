@@ -31,6 +31,7 @@ import (
 	batch "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -142,7 +143,7 @@ func (c *Client) Build(reader io.Reader, validate bool) (ResourceList, error) {
 // occurs, a Result will still be returned with the error, containing all
 // resource updates, creations, and deletions that were attempted. These can be
 // used for cleanup or other logging purposes.
-func (c *Client) Update(original, target ResourceList, force bool) (*Result, error) {
+func (c *Client) Update(original, target ResourceList, force bool, overwrite bool) (*Result, error) {
 	updateErrors := []string{}
 	res := &Result{}
 
@@ -177,7 +178,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			return errors.Errorf("no %s with the name %q found", kind, info.Name)
 		}
 
-		if err := updateResource(c, info, originalInfo.Object, force); err != nil {
+		if err := updateResource(c, info, originalInfo.Object, force, overwrite); err != nil {
 			c.Log("error updating the resource %q:\n\t %v", info.Name, err)
 			updateErrors = append(updateErrors, err.Error())
 		}
@@ -323,7 +324,7 @@ func deleteResource(info *resource.Info) error {
 	return err
 }
 
-func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.PatchType, error) {
+func createPatch(target *resource.Info, current runtime.Object, overwrite bool) ([]byte, types.PatchType, error) {
 	oldData, err := json.Marshal(current)
 	if err != nil {
 		return nil, types.StrategicMergePatchType, errors.Wrap(err, "serializing current configuration")
@@ -359,6 +360,19 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 		return patch, types.MergePatchType, err
 	}
 
+	if !overwrite {
+		// While different objects need different merge types, the parent function
+		// that calls this does not try to create a patch when the data (first
+		// returned object) is nil. We can skip calculating the merge type as
+		// the returned merge type is ignored.
+		if apiequality.Semantic.DeepEqual(oldData, newData) {
+			return nil, types.StrategicMergePatchType, nil
+		}
+
+		patch, err := strategicpatch.CreateTwoWayMergePatch(oldData, newData, versionedObject)
+		return patch, types.StrategicMergePatchType, err
+	}
+
 	patchMeta, err := strategicpatch.NewPatchMetaFromStruct(versionedObject)
 	if err != nil {
 		return nil, types.StrategicMergePatchType, errors.Wrap(err, "unable to create patch metadata from object")
@@ -368,14 +382,14 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 	return patch, types.StrategicMergePatchType, err
 }
 
-func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force bool) error {
+func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force bool, overwrite bool) error {
 	var (
 		obj    runtime.Object
 		helper = resource.NewHelper(target.Client, target.Mapping)
 		kind   = target.Mapping.GroupVersionKind.Kind
 	)
 
-	patch, patchType, err := createPatch(target, currentObj)
+	patch, patchType, err := createPatch(target, currentObj, overwrite)
 	if err != nil {
 		return errors.Wrap(err, "failed to create patch")
 	}

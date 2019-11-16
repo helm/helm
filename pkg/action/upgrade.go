@@ -49,6 +49,7 @@ type Upgrade struct {
 	DisableHooks bool
 	DryRun       bool
 	Force        bool
+	Overwrite    bool
 	ResetValues  bool
 	ReuseValues  bool
 	// Recreate will (if true) recreate pods after a rollback.
@@ -236,7 +237,7 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 		u.cfg.Log("upgrade hooks disabled for %s", upgradedRelease.Name)
 	}
 
-	results, err := u.cfg.KubeClient.Update(current, target, u.Force)
+	results, err := u.cfg.KubeClient.Update(current, target, u.Force, u.Overwrite)
 	if err != nil {
 		u.cfg.recordRelease(originalRelease)
 		return u.failRelease(upgradedRelease, results.Created, err)

@@ -162,7 +162,7 @@ func TestUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := c.Update(first, second, false); err != nil {
+	if _, err := c.Update(first, second, false, true); err != nil {
 		t.Fatal(err)
 	}
 	// TODO: Find a way to test methods that use Client Set
