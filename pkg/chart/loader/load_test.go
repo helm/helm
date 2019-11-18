@@ -194,7 +194,7 @@ icon: https://example.com/64x64.png
 	if _, err = LoadFiles([]*BufferedFile{}); err == nil {
 		t.Fatal("Expected err to be non-nil")
 	}
-	if err.Error() != "validation: chart.metadata is required" {
+	if err.Error() != "validation: Chart.yaml file is missing" {
 		t.Errorf("Expected chart metadata missing error, got '%s'", err.Error())
 	}
 }
@@ -268,7 +268,7 @@ func TestLoadInvalidArchive(t *testing.T) {
 		{"illegal-name.tgz", "./.", "chart illegally contains content outside the base directory"},
 		{"illegal-name2.tgz", "/./.", "chart illegally contains content outside the base directory"},
 		{"illegal-name3.tgz", "missing-leading-slash", "chart illegally contains content outside the base directory"},
-		{"illegal-name4.tgz", "/missing-leading-slash", "validation: chart.metadata is required"},
+		{"illegal-name4.tgz", "/missing-leading-slash", "validation: Chart.yaml file is missing"},
 		{"illegal-abspath.tgz", "//foo", "chart illegally contains absolute paths"},
 		{"illegal-abspath2.tgz", "///foo", "chart illegally contains absolute paths"},
 		{"illegal-abspath3.tgz", "\\\\foo", "chart illegally contains absolute paths"},
@@ -302,7 +302,7 @@ func TestLoadInvalidArchive(t *testing.T) {
 	illegalChart = filepath.Join(tmpdir, "abs-path2.tgz")
 	writeTar(illegalChart, "files/whatever.yaml", []byte("hello: world"))
 	_, err = Load(illegalChart)
-	if err.Error() != "validation: chart.metadata is required" {
+	if err.Error() != "validation: Chart.yaml file is missing" {
 		t.Error(err)
 	}
 
