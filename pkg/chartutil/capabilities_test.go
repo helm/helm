@@ -58,3 +58,11 @@ func TestDefaultCapabilities(t *testing.T) {
 		t.Errorf("Expected default KubeVersion.Minor to be 16, got %q", kv.Minor)
 	}
 }
+
+func TestDefaultCapabilitiesHelmVersion(t *testing.T) {
+	hv := DefaultCapabilities.HelmVersion
+
+	if hv.Version != "v3.2" {
+		t.Errorf("Expected default HelmVerison to be v3.2, got %q", hv.Version)
+	}
+}
