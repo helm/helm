@@ -37,7 +37,7 @@ Unpack the `helm` binary and add it to your PATH and you are good to go!
 
 If you want to use a package manager:
 
-- [Homebrew](https://brew.sh/) users can use `brew install helm`.
+- [Homebrew](https://brew.sh/) users can use `brew installhelm`.
 - [Chocolatey](https://chocolatey.org/) users can use `choco install kubernetes-helm`.
 - [Scoop](https://scoop.sh/) users can use `scoop install helm`.
 - [GoFish](https://gofi.sh/) users can use `gofish install helm`.
