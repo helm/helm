@@ -148,7 +148,7 @@ func initSearch(out io.Writer, o *searchRepoOptions) (*search.Index, error) {
 func searchChart(r []*search.Result, name string) (*search.Result, error) {
 	// TODO: implement a better Searchalgorithm.
 	for _, result := range r {
-		if strings.ToLower(result.Name) == strings.ToLower(name) {
+		if strings.Contains(strings.ToLower(result.Name), strings.ToLower(name)) {
 			return result, nil
 		}
 	}
