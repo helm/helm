@@ -46,7 +46,6 @@ func Chartfile(linter *support.Linter) {
 	}
 
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartName(chartFile))
-	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartNameDirMatch(linter.ChartDir, chartFile))
 
 	// Chart metadata
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartAPIVersion(chartFile))
@@ -78,13 +77,6 @@ func validateChartYamlFormat(chartFileError error) error {
 func validateChartName(cf *chart.Metadata) error {
 	if cf.Name == "" {
 		return errors.New("name is required")
-	}
-	return nil
-}
-
-func validateChartNameDirMatch(chartDir string, cf *chart.Metadata) error {
-	if cf.Name != filepath.Base(chartDir) {
-		return errors.Errorf("directory name (%s) and chart name (%s) must be the same", filepath.Base(chartDir), cf.Name)
 	}
 	return nil
 }

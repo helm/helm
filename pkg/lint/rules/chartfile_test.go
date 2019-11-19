@@ -73,24 +73,6 @@ func TestValidateChartName(t *testing.T) {
 	}
 }
 
-func TestValidateChartNameDirMatch(t *testing.T) {
-	err := validateChartNameDirMatch(goodChartDir, goodChart)
-	if err != nil {
-		t.Errorf("validateChartNameDirMatch to return no error, gor a linter error")
-	}
-	// It has not name
-	err = validateChartNameDirMatch(badChartDir, badChart)
-	if err == nil {
-		t.Errorf("validatechartnamedirmatch to return a linter error, got no error")
-	}
-
-	// Wrong path
-	err = validateChartNameDirMatch(badChartDir, goodChart)
-	if err == nil {
-		t.Errorf("validatechartnamedirmatch to return a linter error, got no error")
-	}
-}
-
 func TestValidateChartVersion(t *testing.T) {
 	var failTest = []struct {
 		Version  string
