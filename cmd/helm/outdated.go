@@ -104,7 +104,8 @@ func newOutdatedListWriter(releases []*release.Release, cfg *action.Configuratio
 	index, err := initSearch(out, &searchRepo)
 	if err != nil {
 		// TODO: Find a better way to exit
-		fmt.Errorf("%w", errors.Wrap(err, "ERROR: Could not initialize search index."))
+		fmt.Fprintf(out, "%s", errors.Wrap(err, "ERROR: Could not initialize search index").Error())
+		os.Exit(1)
 	}
 
 	results := index.All()
@@ -112,7 +113,8 @@ func newOutdatedListWriter(releases []*release.Release, cfg *action.Configuratio
 		// search if it exists a newer Chart in the Chart-Repository
 		repoResult, err := searchChart(results, r.Name)
 		if err != nil {
-			fmt.Errorf("%w", errors.Wrap(err, "ERROR: Could not initialize search index."))
+			fmt.Fprintf(out, "%s", errors.Wrap(err, "ERROR: Could not initialize search index").Error())
+			os.Exit(1)
 		}
 
 		outdated = append(outdated, outdatedElement{
