@@ -93,11 +93,13 @@ func newOutdatedListWriter(releases []*release.Release, cfg *action.Configuratio
 	// we initialize the Struct with default Options but the 'devel' option
 	// can be set by the User, all the other ones are not relevant.
 	searchRepo := searchRepoOptions{
-		versions:    false,
-		regexp:      false,
-		devel:       devel,
-		maxColWidth: 50,
-		version:     "",
+		versions:     false,
+		regexp:       false,
+		devel:        devel,
+		maxColWidth:  50,
+		version:      "",
+		repoFile:     settings.RepositoryConfig,
+		repoCacheDir: settings.RepositoryCache,
 	}
 
 	// initialize Repo index first
