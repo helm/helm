@@ -188,36 +188,32 @@ func TestChartfile(t *testing.T) {
 	Chartfile(&linter)
 	msgs := linter.Messages
 
-	if len(msgs) != 7 {
-		t.Errorf("Expected 7 errors, got %d", len(msgs))
+	if len(msgs) != 6 {
+		t.Errorf("Expected 6 errors, got %d", len(msgs))
 	}
 
 	if !strings.Contains(msgs[0].Err.Error(), "name is required") {
 		t.Errorf("Unexpected message 0: %s", msgs[0].Err)
 	}
 
-	if !strings.Contains(msgs[1].Err.Error(), "directory name (badchartfile) and chart name () must be the same") {
+	if !strings.Contains(msgs[1].Err.Error(), "apiVersion is required. The value must be either \"v1\" or \"v2\"") {
 		t.Errorf("Unexpected message 1: %s", msgs[1].Err)
 	}
 
-	if !strings.Contains(msgs[2].Err.Error(), "apiVersion is required. The value must be either \"v1\" or \"v2\"") {
+	if !strings.Contains(msgs[2].Err.Error(), "version '0.0.0.0' is not a valid SemVer") {
 		t.Errorf("Unexpected message 2: %s", msgs[2].Err)
 	}
 
-	if !strings.Contains(msgs[3].Err.Error(), "version '0.0.0.0' is not a valid SemVer") {
+	if !strings.Contains(msgs[3].Err.Error(), "icon is recommended") {
 		t.Errorf("Unexpected message 3: %s", msgs[3].Err)
 	}
 
-	if !strings.Contains(msgs[4].Err.Error(), "icon is recommended") {
+	if !strings.Contains(msgs[4].Err.Error(), "chart type is not valid in apiVersion") {
 		t.Errorf("Unexpected message 4: %s", msgs[4].Err)
 	}
 
-	if !strings.Contains(msgs[5].Err.Error(), "chart type is not valid in apiVersion") {
+	if !strings.Contains(msgs[5].Err.Error(), "dependencies are not valid in the Chart file with apiVersion") {
 		t.Errorf("Unexpected message 5: %s", msgs[5].Err)
-	}
-
-	if !strings.Contains(msgs[6].Err.Error(), "dependencies are not valid in the Chart file with apiVersion") {
-		t.Errorf("Unexpected message 6: %s", msgs[6].Err)
 	}
 
 }
