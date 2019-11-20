@@ -30,18 +30,15 @@ import (
 )
 
 const (
-	badChartDir  = "testdata/badchartfile"
-	goodChartDir = "testdata/goodone"
+	badChartDir = "testdata/badchartfile"
 )
 
 var (
 	badChartFilePath         = filepath.Join(badChartDir, "Chart.yaml")
-	goodChartFilePath        = filepath.Join(goodChartDir, "Chart.yaml")
 	nonExistingChartFilePath = filepath.Join(os.TempDir(), "Chart.yaml")
 )
 
 var badChart, _ = chartutil.LoadChartfile(badChartFilePath)
-var goodChart, _ = chartutil.LoadChartfile(goodChartFilePath)
 
 // Validation functions Test
 func TestValidateChartYamlNotDirectory(t *testing.T) {
