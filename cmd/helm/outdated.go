@@ -71,6 +71,19 @@ func newOutdatedCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 	flags := cmd.Flags()
 	flags.Bool("devel", false, "use development versions (alpha, beta, and release candidate releases), too. Equivalent to version '>0.0.0-0'.")
+	flags.BoolVarP(&client.Short, "short", "q", false, "output short (quiet) listing format")
+	flags.BoolVarP(&client.ByDate, "date", "d", false, "sort by release date")
+	flags.BoolVarP(&client.SortReverse, "reverse", "r", false, "reverse the sort order")
+	flags.BoolVarP(&client.All, "all", "a", false, "show all releases, not just the ones marked deployed or failed")
+	flags.BoolVar(&client.Uninstalled, "uninstalled", false, "show uninstalled releases")
+	flags.BoolVar(&client.Superseded, "superseded", false, "show superseded releases")
+	flags.BoolVar(&client.Uninstalling, "uninstalling", false, "show releases that are currently being uninstalled")
+	flags.BoolVar(&client.Deployed, "deployed", false, "show deployed releases. If no other is specified, this will be automatically enabled")
+	flags.BoolVar(&client.Failed, "failed", false, "show failed releases")
+	flags.BoolVar(&client.Pending, "pending", false, "show pending releases")
+	flags.BoolVarP(&client.AllNamespaces, "all-namespaces", "A", false, "list releases across all namespaces")
+	flags.IntVarP(&client.Limit, "max", "m", 256, "maximum number of releases to fetch")
+	flags.IntVar(&client.Offset, "offset", 0, "next release name in the list, used to offset from start value")
 	bindOutputFlag(cmd, &outfmt)
 
 	return cmd
@@ -114,7 +127,7 @@ func newOutdatedListWriter(releases []*release.Release, cfg *action.Configuratio
 	results := index.All()
 	for _, r := range releases {
 		// search if it exists a newer Chart in the Chart-Repository
-		repoResult, err := searchChart(results, r.Name, r.Chart.Metadata.Version, devel)
+		repoResult, err := searchChart(results, r.Chart.Name(), r.Chart.Metadata.Version, devel)
 		if err != nil {
 			fmt.Fprintf(out, "%s", errors.Wrap(err, "ERROR: Could not initialize search index").Error())
 			os.Exit(1)
