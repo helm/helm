@@ -1,0 +1,6 @@
+NAME: halo
+LAST DEPLOYED: Fri Sep  2 22:04:05 1977
+NAMESPACE: halo
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None

@@ -186,4 +186,17 @@ func TestInstall(t *testing.T) {
 	}
 
 	runTestActionCmd(t, tests)
+
+	settings.Namespace = "halo"
+	nsTests := []cmdTestCase{
+		// Install to halo ns without --namespace flag
+		{
+			name: "install to halo ns without --namespace flag",
+			cmd:  "install halo testdata/testcharts/empty",
+			//wantError: true,
+			golden: "output/install-with-ns-setting.txt",
+		},
+	}
+
+	runTestActionCmd(t, nsTests)
 }
