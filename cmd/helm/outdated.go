@@ -195,12 +195,12 @@ func searchChart(r []*search.Result, name string, chartVersion string, devel boo
 			debug("Using '%s' as constrain against '%s'", constrainStr, result.Chart.Metadata.Version)
 			if constrain.Check(version) {
 				return result, nil
-			} else {
-				// set 'found' to true because a Repository contains
-				// the Chart but the Version is not newer than
-				// the installed one.
-				found = true
 			}
+
+			// set 'found' to true because a Repository contains
+			// the Chart but the Version is not newer than
+			// the installed one.
+			found = true
 		}
 	}
 
