@@ -31,12 +31,13 @@ import (
 	"helm.sh/helm/v3/pkg/release"
 )
 
+// NOTE: Keep the list of statuses up-to-date with pkg/release/status.go.
 var statusHelp = `
 This command shows the status of a named release.
 The status consists of:
 - last deployment time
 - k8s namespace in which the release lives
-- state of the release (can be: unknown, deployed, deleted, superseded, failed or deleting)
+- state of the release (can be: unknown, deployed, uninstalled, superseded, failed, uninstalling, pending-install, pending-upgrade or pending-rollback)
 - list of resources that this release consists of, sorted by kind
 - details on last test suite run, if applicable
 - additional notes provided by the chart
