@@ -19,6 +19,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/gosuri/uitable"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -113,10 +114,15 @@ func newOutdatedListWriter(releases []*release.Release, cfg *action.Configuratio
 	results := index.All()
 	for _, r := range releases {
 		// search if it exists a newer Chart in the Chart-Repository
-		repoResult, err := searchChart(results, r.Name)
+		repoResult, err := searchChart(results, r.Name, r.Chart.Metadata.Version, devel)
 		if err != nil {
 			fmt.Fprintf(out, "%s", errors.Wrap(err, "ERROR: Could not initialize search index").Error())
 			os.Exit(1)
+		}
+
+		// skip if no newer Chart was found
+		if repoResult == nil {
+			continue
 		}
 
 		outdated = append(outdated, outdatedElement{
@@ -145,16 +151,53 @@ func initSearch(out io.Writer, o *searchRepoOptions) (*search.Index, error) {
 // It will return a Pointer to the Chart Result (the Pointer points to the
 // Result of the Index).
 // If no results are found, nil will be returned instead of type *Result.
-func searchChart(r []*search.Result, name string) (*search.Result, error) {
-	// TODO: implement a better Searchalgorithm.
+func searchChart(r []*search.Result, name string, chartVersion string, devel bool) (*search.Result, error) {
+	found := false // found describres if Charts where found but no one is newer than the actual one
+
+	// TODO: implement a better Searchalgorithm. Because this is an
+	// linear search algorithm so it takes O(len(r)) steps in the worst case
 	for _, result := range r {
-		if strings.Contains(strings.ToLower(result.Name), strings.ToLower(name)) {
-			return result, nil
+		// check if the Chart-Result Name is that one we are searching for.
+		if strings.HasSuffix(strings.ToLower(result.Name), strings.ToLower(name)) {
+			// check if Version is newer than the actual one
+			version, err := semver.NewVersion(result.Chart.Metadata.Version)
+			if err != nil {
+				return nil, err
+			}
+
+			var constrainStr string
+			if devel {
+				constrainStr = "> " + chartVersion + "-0" + " != " + chartVersion
+			} else {
+				constrainStr = "> " + chartVersion
+			}
+
+			constrain, err := semver.NewConstraint(constrainStr)
+			if err != nil {
+				return nil, err
+			}
+
+			debug("Comparing version of original chart '%s' => %s with version (%s) %s",
+				name, chartVersion, result.Name, result.Chart.Metadata.Version)
+			debug("Using '%s' as constrain against '%s'", constrainStr, result.Chart.Metadata.Version)
+			if constrain.Check(version) {
+				return result, nil
+			} else {
+				// set 'found' to true because a Repository contains
+				// the Chart but the Version is not newer than
+				// the installed one.
+				found = true
+			}
 		}
 	}
 
-	debug("Could not find any Repo which contains %s", name)
-	return nil, errors.New(fmt.Sprintf("Could not find any Repo which contains %s", name))
+	if !found {
+		debug("Could not find any Repo which contains %s", name)
+		return nil, errors.New(fmt.Sprintf("Could not find any Repo which contains %s", name))
+	}
+
+	debug("No newer Chart was found for '%s'", name)
+	return nil, nil
 }
 
 func (r *outdatedListWriter) WriteTable(out io.Writer) error {
