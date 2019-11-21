@@ -25,7 +25,6 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/action"
@@ -100,8 +99,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		Short:                  "The Helm package manager for Kubernetes.",
 		Long:                   globalUsage,
 		SilenceUsage:           true,
-		Args:                   require.NoArgs,
-		BashCompletionFunction: fmt.Sprintf("%s%s", contextCompFunc, completion.GetBashCustomFunction()),
+		BashCompletionFunction: completion.GetBashCustomFunction(),
 	}
 	flags := cmd.PersistentFlags()
 
