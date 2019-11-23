@@ -441,12 +441,15 @@ func processImportValues(c *chart.Chart) error {
 					}
 					outiv = append(outiv, nm)
 					s := name + "." + nm["child"]
-					vm, err := cvals.Table(s)
+					// get child table
+					vv, err := cvals.Table(s)
 					if err != nil {
 						log.Printf("Warning: ImportValues missing table: %v", err)
 						continue
 					}
-					b = coalesceTables(b, vm.AsMap(), c.Metadata.Name)
+					// create value map from child to be merged into parent
+					vm := pathToMap(nm["parent"], vv.AsMap())
+					b = coalesceTables(b, vm, c.Metadata.Name)
 				}
 			}
 			// set our formatted import values
