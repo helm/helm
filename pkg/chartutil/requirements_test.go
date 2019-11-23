@@ -295,6 +295,9 @@ func TestProcessRequirementsImportValues(t *testing.T) {
 	e["SCBexported2A"] = "blaster"
 	e["global.SC1exported2.all.SC1exported3"] = "SC1expstr"
 
+	e["SCCdata.SCCstring"] = "mugwort"
+	e["SCCdata.SCCint"] = "42"
+
 	verifyRequirementsImportValues(t, c, v, e)
 }
 func verifyRequirementsImportValues(t *testing.T, c *chart.Chart, v *chart.Config, e map[string]string) {

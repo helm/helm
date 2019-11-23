@@ -35,9 +35,16 @@ overridden-chartA-B:
   SCBstring: "jango"
   SPextra6: 111
 
+SCCdata:
+  SCCstring: "jaberwocky"
+  SCCint: 42
+
 tags:
   front-end: true
   back-end: false
+
+subchart3:
+  enabled: false
 
 subchart2alias:
   enabled: false
