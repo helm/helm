@@ -1,4 +1,4 @@
-apiVersion: v1
+apiVersion: v2
 name: alpine
 description: Deploy a basic Alpine Linux pod
 version: 0.1.0

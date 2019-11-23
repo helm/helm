@@ -1,4 +1,4 @@
-apiVersion: v1
+apiVersion: v2
 appVersion: 0.0.5
 description: Common chartbuilding components and helpers
 home: https://helm.sh

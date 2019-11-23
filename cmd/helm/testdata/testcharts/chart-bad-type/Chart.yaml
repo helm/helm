@@ -1,4 +1,4 @@
-apiVersion: v1
+apiVersion: v2
 description: Deploy a basic Alpine Linux pod
 home: https://helm.sh/helm
 name: chart-bad-type

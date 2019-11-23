@@ -1,4 +1,4 @@
-apiVersion: v1
+apiVersion: v2
 name: chart-without-schema
 description: A Helm chart for Kubernetes
 type: application

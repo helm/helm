@@ -1,4 +1,4 @@
-apiVersion: v1
+apiVersion: v2
 description: Common chartbuilding components and helpers
 name: lib-chart
 version: 0.0.5
