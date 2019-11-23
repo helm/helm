@@ -259,26 +259,31 @@ func TestProcessRequirementsImportValues(t *testing.T) {
 	e["imported-chartA-B.SPextra5"] = "k8s"
 	e["imported-chartA-B.SC1extra5"] = "tiller"
 
-	e["overridden-chart1.SC1bool"] = "false"
-	e["overridden-chart1.SC1float"] = "3.141592"
-	e["overridden-chart1.SC1int"] = "99"
-	e["overridden-chart1.SC1string"] = "pollywog"
+	e["overridden-chart1.SC1bool"] = "true"
+	e["overridden-chart1.SC1float"] = "3.14"
+	e["overridden-chart1.SC1int"] = "100"
+	e["overridden-chart1.SC1string"] = "dollywood"
 	e["overridden-chart1.SPextra2"] = "42"
+
+	e["overridden-chartA.SCAbool"] = "false"
+	e["overridden-chartA.SCAfloat"] = "3.1"
+	e["overridden-chartA.SCAint"] = "55"
+	e["overridden-chartA.SCAstring"] = "jabba"
+	e["overridden-chartA.SPextra4"] = "true"
 
 	e["overridden-chartA.SCAbool"] = "true"
 	e["overridden-chartA.SCAfloat"] = "41.3"
 	e["overridden-chartA.SCAint"] = "808"
 	e["overridden-chartA.SCAstring"] = "jaberwocky"
-	e["overridden-chartA.SPextra4"] = "true"
 
 	e["overridden-chartA-B.SCAbool"] = "true"
-	e["overridden-chartA-B.SCAfloat"] = "41.3"
-	e["overridden-chartA-B.SCAint"] = "808"
-	e["overridden-chartA-B.SCAstring"] = "jaberwocky"
-	e["overridden-chartA-B.SCBbool"] = "false"
-	e["overridden-chartA-B.SCBfloat"] = "1.99"
-	e["overridden-chartA-B.SCBint"] = "77"
-	e["overridden-chartA-B.SCBstring"] = "jango"
+	e["overridden-chartA-B.SCAfloat"] = "3.33"
+	e["overridden-chartA-B.SCAint"] = "555"
+	e["overridden-chartA-B.SCAstring"] = "wormwood"
+	e["overridden-chartA-B.SCBbool"] = "true"
+	e["overridden-chartA-B.SCBfloat"] = "0.25"
+	e["overridden-chartA-B.SCBint"] = "98"
+	e["overridden-chartA-B.SCBstring"] = "murkwood"
 	e["overridden-chartA-B.SPextra6"] = "111"
 	e["overridden-chartA-B.SCAextra1"] = "23"
 	e["overridden-chartA-B.SCBextra1"] = "13"
@@ -314,18 +319,18 @@ func verifyRequirementsImportValues(t *testing.T, c *chart.Chart, v *chart.Confi
 		case float64:
 			s := strconv.FormatFloat(pv.(float64), 'f', -1, 64)
 			if s != vv {
-				t.Errorf("Failed to match imported float value %v with expected %v", s, vv)
+				t.Errorf("Failed to match imported float field %v with value %v with expected %v", kk, s, vv)
 				return
 			}
 		case bool:
 			b := strconv.FormatBool(pv.(bool))
 			if b != vv {
-				t.Errorf("Failed to match imported bool value %v with expected %v", b, vv)
+				t.Errorf("Failed to match imported bool field %v with value %v with expected %v", kk, b, vv)
 				return
 			}
 		default:
 			if pv.(string) != vv {
-				t.Errorf("Failed to match imported string value %v with expected %v", pv, vv)
+				t.Errorf("Failed to match imported string field %v with value %v with expected %v", kk, pv, vv)
 				return
 			}
 		}
