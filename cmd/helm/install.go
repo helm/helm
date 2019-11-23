@@ -113,11 +113,15 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Args:  require.MinimumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			rel, err := runInstall(args, client, valueOpts, out)
-			if err != nil {
+			if rel == nil && err != nil {
 				return err
 			}
 
-			return outfmt.Write(out, &statusPrinter{rel, settings.Debug})
+			if werr := outfmt.Write(out, &statusPrinter{rel, settings.Debug}); werr != nil {
+				err = werr
+			}
+
+			return err
 		},
 	}
 

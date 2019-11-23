@@ -228,7 +228,10 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 
 	resources, err := i.cfg.KubeClient.Build(bytes.NewBufferString(rel.Manifest), true)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to build kubernetes objects from release manifest")
+		err = errors.Wrap(err, "unable to build kubernetes objects from release manifest")
+		rel.SetStatus(release.StatusFailed, err.Error())
+		// Return a release with partial data so that the client can show debugging information.
+		return rel, err
 	}
 
 	// Install requires an extra validation step of checking that resources
