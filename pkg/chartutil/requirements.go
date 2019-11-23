@@ -396,7 +396,7 @@ func processImportValues(c *chart.Chart) error {
 	if err != nil {
 		return err
 	}
-	b := cvals.AsMap()
+	b := make(map[string]interface{}, 0)
 	// import values from each dependency if specified in import-values
 	for _, r := range reqs.Dependencies {
 		// only process raw requirement that is found in chart's dependencies (enabled)
@@ -453,6 +453,7 @@ func processImportValues(c *chart.Chart) error {
 			r.ImportValues = outiv
 		}
 	}
+	b = coalesceTables(b, cvals, c.Metadata.Name)
 	y, err := yaml.Marshal(b)
 	if err != nil {
 		return err
