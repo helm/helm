@@ -265,16 +265,11 @@ func TestProcessRequirementsImportValues(t *testing.T) {
 	e["overridden-chart1.SC1string"] = "dollywood"
 	e["overridden-chart1.SPextra2"] = "42"
 
-	e["overridden-chartA.SCAbool"] = "false"
-	e["overridden-chartA.SCAfloat"] = "3.1"
-	e["overridden-chartA.SCAint"] = "55"
-	e["overridden-chartA.SCAstring"] = "jabba"
-	e["overridden-chartA.SPextra4"] = "true"
-
 	e["overridden-chartA.SCAbool"] = "true"
 	e["overridden-chartA.SCAfloat"] = "41.3"
 	e["overridden-chartA.SCAint"] = "808"
 	e["overridden-chartA.SCAstring"] = "jaberwocky"
+	e["overridden-chartA.SPextra4"] = "true"
 
 	e["overridden-chartA-B.SCAbool"] = "true"
 	e["overridden-chartA-B.SCAfloat"] = "3.33"
