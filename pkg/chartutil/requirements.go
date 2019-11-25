@@ -417,40 +417,28 @@ func processImportValues(c *chart.Chart) error {
 		if len(r.ImportValues) > 0 {
 			var outiv []interface{}
 			for _, riv := range r.ImportValues {
+				nm := make(map[string]string, 0)
 				switch iv := riv.(type) {
 				case map[string]interface{}:
-					nm := map[string]string{
-						"child":  iv["child"].(string),
-						"parent": iv["parent"].(string),
-					}
-					outiv = append(outiv, nm)
-					s := name + "." + nm["child"]
-					// get child table
-					vv, err := cvals.Table(s)
-					if err != nil {
-						log.Printf("Warning: ImportValues missing table: %v", err)
-						continue
-					}
-					// create value map from child to be merged into parent
-					vm := pathToMap(nm["parent"], vv.AsMap())
-					b = coalesceTables(b, vm, c.Metadata.Name)
+					nm["child"] = iv["child"].(string)
+					nm["parent"] = iv["parent"].(string)
 				case string:
-					nm := map[string]string{
-						"child":  "exports." + iv,
-						"parent": ".",
-					}
-					outiv = append(outiv, nm)
-					s := name + "." + nm["child"]
-					// get child table
-					vv, err := cvals.Table(s)
-					if err != nil {
-						log.Printf("Warning: ImportValues missing table: %v", err)
-						continue
-					}
-					// create value map from child to be merged into parent
-					vm := pathToMap(nm["parent"], vv.AsMap())
-					b = coalesceTables(b, vm, c.Metadata.Name)
+					nm["child"] = "exports." + iv
+					nm["parent"] = "."
 				}
+
+				outiv = append(outiv, nm)
+				s := name + "." + nm["child"]
+				// get child table
+				vv, err := cvals.Table(s)
+				if err != nil {
+					log.Printf("Warning: ImportValues missing table: %v", err)
+					continue
+				}
+				// create value map from child to be merged into parent
+				vm := pathToMap(nm["parent"], vv.AsMap())
+				b = coalesceTables(b, vm, c.Metadata.Name)
+
 			}
 			// set our formatted import values
 			r.ImportValues = outiv
