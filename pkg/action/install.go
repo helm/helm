@@ -301,7 +301,9 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	//
 	// One possible strategy would be to do a timed retry to see if we can get
 	// this stored in the future.
-	i.recordRelease(rel)
+	if err := i.recordRelease(rel); err != nil {
+		i.cfg.Log("failed to record the release: %s", err)
+	}
 
 	return rel, nil
 }
