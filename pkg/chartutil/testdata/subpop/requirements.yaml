@@ -42,5 +42,3 @@ dependencies:
         condition: subchart3.enabled
         import-values:
           - data
-
-
