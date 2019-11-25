@@ -135,7 +135,7 @@ func TestResolveChartOpts(t *testing.T) {
 			continue
 		}
 
-		if got != expect {
+		if *(got.(*getter.HTTPGetter)) != *(expect.(*getter.HTTPGetter)) {
 			t.Errorf("%s: expected %s, got %s", tt.name, expect, got)
 		}
 	}
