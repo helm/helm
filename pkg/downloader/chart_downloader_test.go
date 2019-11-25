@@ -80,6 +80,67 @@ func TestResolveChartRef(t *testing.T) {
 	}
 }
 
+func TestResolveChartOpts(t *testing.T) {
+	tests := []struct {
+		name, ref, version string
+		expect             []getter.Option
+	}{
+		{
+			name: "repo with CA-file",
+			ref: "testing-ca-file/foo",
+			expect: []getter.Option{
+				getter.WithURL("https://example.com/foo-1.2.3.tgz"),
+				getter.WithTLSClientConfig("cert", "key", "ca"),
+			},
+		},
+	}
+
+	c := ChartDownloader{
+		Out:              os.Stderr,
+		RepositoryConfig: repoConfig,
+		RepositoryCache:  repoCache,
+		Getters: getter.All(&cli.EnvSettings{
+			RepositoryConfig: repoConfig,
+			RepositoryCache:  repoCache,
+		}),
+	}
+
+	// snapshot options
+	snapshot_opts := c.Options
+
+	for _, tt := range tests {
+		// reset chart downloader options for each test case
+		c.Options = snapshot_opts
+
+		expect, err := getter.NewHTTPGetter(tt.expect...)
+		if err != nil {
+			t.Errorf("%s: failed to setup http client: %s", tt.name, err)
+			continue
+		}
+
+		u, err := c.ResolveChartVersion(tt.ref, tt.version)
+		if err != nil {
+			t.Errorf("%s: failed with error %s", tt.name, err)
+			continue
+		}
+
+		got, err := getter.NewHTTPGetter(
+			append(
+				c.Options,
+				getter.WithURL(u.String()),
+			)...
+		)
+		if err != nil {
+			t.Errorf("%s: failed to create http client: %s", tt.name, err)
+			continue
+		}
+
+		if got != expect {
+			t.Errorf("%s: expected %s, got %s", tt.name, expect, got)
+		}
+	}
+}
+
 func TestVerifyChart(t *testing.T) {
 	v, err := VerifyChart("testdata/signtest-0.1.0.tgz", "testdata/helm-test-key.pub")
 	if err != nil {
