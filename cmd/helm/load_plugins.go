@@ -137,11 +137,21 @@ func manuallyProcessArgs(args []string) ([]string, []string) {
 		}
 		return false
 	}
+
+	isKnown := func(v string) string {
+		for _, i := range kvargs {
+			if i == v {
+				return v
+			}
+		}
+		return ""
+	}
+
 	for i := 0; i < len(args); i++ {
 		switch a := args[i]; a {
 		case "--debug":
 			known = append(known, a)
-		case "--host", "--kube-context", "--home", "--tiller-namespace":
+		case isKnown(a):
 			known = append(known, a, args[i+1])
 			i++
 		default:
