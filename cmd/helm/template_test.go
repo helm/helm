@@ -47,6 +47,11 @@ func TestTemplateCmd(t *testing.T) {
 			golden: "output/template-name-template.txt",
 		},
 		{
+			name:   "check custom description",
+			cmd:    fmt.Sprintf(`template '%s' --description='foobar-{{ b64enc "abc" }}-baz'`, chartPath),
+			golden: "output/template-description.txt",
+		},
+		{
 			name:      "check no args",
 			cmd:       "template",
 			wantError: true,
