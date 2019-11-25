@@ -87,7 +87,7 @@ func TestResolveChartOpts(t *testing.T) {
 	}{
 		{
 			name: "repo with CA-file",
-			ref: "testing-ca-file/foo",
+			ref:  "testing-ca-file/foo",
 			expect: []getter.Option{
 				getter.WithURL("https://example.com/foo-1.2.3.tgz"),
 				getter.WithTLSClientConfig("cert", "key", "ca"),
@@ -106,11 +106,11 @@ func TestResolveChartOpts(t *testing.T) {
 	}
 
 	// snapshot options
-	snapshot_opts := c.Options
+	snapshotOpts := c.Options
 
 	for _, tt := range tests {
 		// reset chart downloader options for each test case
-		c.Options = snapshot_opts
+		c.Options = snapshotOpts
 
 		expect, err := getter.NewHTTPGetter(tt.expect...)
 		if err != nil {
@@ -128,7 +128,7 @@ func TestResolveChartOpts(t *testing.T) {
 			append(
 				c.Options,
 				getter.WithURL(u.String()),
-			)...
+			)...,
 		)
 		if err != nil {
 			t.Errorf("%s: failed to create http client: %s", tt.name, err)
