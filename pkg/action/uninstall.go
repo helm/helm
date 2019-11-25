@@ -121,7 +121,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	rel.Info.Status = release.StatusUninstalled
 	if len(u.Description) > 0 {
 		rel.Info.Description = u.Description
-	}else{
+	} else {
 		rel.Info.Description = "Uninstallation complete"
 	}
 

@@ -79,7 +79,7 @@ type Install struct {
 	ReleaseName      string
 	GenerateName     bool
 	NameTemplate     string
-        Description      string
+	Description      string
 	OutputDir        string
 	Atomic           bool
 	SkipCRDs         bool
@@ -295,7 +295,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 
 	if len(i.Description) > 0 {
 		rel.SetStatus(release.StatusDeployed, i.Description)
-	}else{
+	} else {
 		rel.SetStatus(release.StatusDeployed, "Install complete")
 	}
 
