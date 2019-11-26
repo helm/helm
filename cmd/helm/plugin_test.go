@@ -242,6 +242,34 @@ func checkCommand(t *testing.T, plugins []*cobra.Command, tests []staticCompleti
 	}
 }
 
+func TestExecuteCompletionCall(t *testing.T) {
+	settings.PluginsDirectory = "testdata/helmhome/helm/plugins"
+
+	var (
+		out bytes.Buffer
+		cmd cobra.Command
+	)
+	loadPlugins(&cmd, &out)
+
+	pluginCmd, _, err := cmd.Find([]string{"env"})
+	if err != nil {
+		t.Errorf("Unexpected error %s", err)
+	}
+
+	// Currently, plugins assume a Linux subsystem. Skip the execution
+	// tests until this is fixed
+	if runtime.GOOS != "windows" {
+		if err := pluginCmd.RunE(pluginCmd, []string{pluginDynamicCompletionIndicator}); err == nil {
+			expected := "plugin.complete was called\n"
+			if out.String() != expected {
+				t.Errorf("Expected %s to output:\n%s\ngot\n%s", pluginCmd.Name(), expected, out.String())
+			}
+		} else {
+			t.Errorf("Unexpected error %s", err.Error())
+		}
+	}
+}
+
 func TestLoadPlugins_HelmNoPlugins(t *testing.T) {
 	settings.PluginsDirectory = "testdata/helmhome/helm/plugins"
 	settings.RepositoryConfig = "testdata/helmhome/helm/repository"

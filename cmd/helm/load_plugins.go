@@ -33,7 +33,11 @@ import (
 	"helm.sh/helm/v3/pkg/plugin"
 )
 
-const pluginStaticCompletionFile = "completion.yaml"
+const (
+	pluginStaticCompletionFile        = "completion.yaml"
+	pluginDynamicCompletionExecutable = "plugin.complete"
+	pluginDynamicCompletionIndicator  = "__complete__"
+)
 
 type pluginError struct {
 	error
@@ -105,6 +109,9 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 				for k, v := range settings.EnvVars() {
 					env = append(env, fmt.Sprintf("%s=%s", k, v))
 				}
+
+				// Check if the plugin has been called to provide completions
+				main, argv = checkForCompletionRequest(plug, main, argv)
 
 				prog := exec.Command(main, argv...)
 				prog.Env = env
@@ -304,4 +311,19 @@ func loadFile(path string) (*pluginCommand, error) {
 
 	err = yaml.Unmarshal(b, cmds)
 	return cmds, err
+}
+
+func checkForCompletionRequest(plug *plugin.Plugin, main string, args []string) (string, []string) {
+	if len(args) > 0 && args[len(args)-1] == pluginDynamicCompletionIndicator {
+		// The plugin was called to request completion choices.
+		// Call the dynamic completion script of the plugin instead of the main plugin script
+		newMain := strings.Join([]string{plug.Dir, pluginDynamicCompletionExecutable}, string(filepath.Separator))
+		// Remove the temporary pluginDynamicCompletionIndicator parameter
+		newArgs := args[:len(args)-1]
+		if settings.Debug {
+			log.Output(2, fmt.Sprintf("[info] calling %s with args %v\n", newMain, newArgs))
+		}
+		return newMain, newArgs
+	}
+	return main, args
 }

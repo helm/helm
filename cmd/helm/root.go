@@ -257,6 +257,35 @@ __helm_list_releases_then_charts() {
     fi
 }
 
+__helm_call_plugin_completion()
+{
+    __helm_debug "${FUNCNAME[0]}: c is $c #words is ${#words[@]} words[@] is ${words[@]}"
+    __helm_debug "${FUNCNAME[0]}: last_command is $last_command"
+
+    # Need to split the following into two operations for bash 3
+    local pluginName=${last_command#*_}
+    pluginName=${pluginName%%%%_*}
+
+    # We double cut. The first is to separate by tabs, and the second trims trailing whitespaces.
+    if ! eval $(__helm_binary_name) plugin list 2>/dev/null | tail +2 | cut -f1 | cut -f1 -d" " | \grep -q ^${pluginName}$; then
+        # Not a plugin.
+        return
+    fi
+
+    # If the last parameter is complete (there is a space following it), we
+    # add an extra fake parameter at the end to indicate this to the plugin.
+    # For example "helm 2to3 convert <TAB>" should complete differently than "helm 2to3 con<TAB>"
+    extraParam="__complete__"
+    [ $c -eq ${#words[@]} ] && extraParam="_ $extraParam"
+
+    toExec="${words[@]} $extraParam"
+    __helm_debug "${FUNCNAME[0]}: Executing the following to get plugin completions: $toExec"
+    if out=$(eval $toExec 2>/dev/null); then
+        __helm_debug "${FUNCNAME[0]}: plugin returned: ${out[*]}"
+        COMPREPLY+=( $( compgen -W "${out[*]}" -- "$cur" ) )
+    fi
+}
+
 __helm_custom_func()
 {
     __helm_debug "${FUNCNAME[0]}: last_command is $last_command"
@@ -291,6 +320,8 @@ __helm_custom_func()
             return
             ;;
         *)
+            __helm_call_plugin_completion
+            return
             ;;
     esac
 }
