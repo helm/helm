@@ -1,0 +1,19 @@
+name: wrongname
+commands:
+  - name: empty
+  - name: full
+    commands:
+    - name: more
+      validArgs:
+      - one
+      - two
+      flags:
+      - b
+      - ball
+    - name: less
+      flags:
+      - a
+      - all
+flags:
+- z
+- q

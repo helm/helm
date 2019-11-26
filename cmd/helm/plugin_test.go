@@ -19,10 +19,12 @@ import (
 	"bytes"
 	"os"
 	"runtime"
+	"sort"
 	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 func TestManuallyProcessArgs(t *testing.T) {
@@ -148,6 +150,95 @@ func TestLoadPlugins(t *testing.T) {
 				t.Errorf("Expected %s to output:\n%s\ngot\n%s", tt.use, tt.expect, out.String())
 			}
 		}
+	}
+}
+
+type staticCompletionDetails struct {
+	use       string
+	validArgs []string
+	flags     []string
+	next      []staticCompletionDetails
+}
+
+func TestLoadPluginsForCompletion(t *testing.T) {
+	settings.PluginsDirectory = "testdata/helmhome/helm/plugins"
+
+	var out bytes.Buffer
+
+	cmd := &cobra.Command{
+		Use: "completion",
+	}
+
+	loadPlugins(cmd, &out)
+
+	tests := []staticCompletionDetails{
+		{"args", []string{}, []string{}, []staticCompletionDetails{}},
+		{"echo", []string{}, []string{}, []staticCompletionDetails{}},
+		{"env", []string{}, []string{"global"}, []staticCompletionDetails{
+			{"list", []string{}, []string{"a", "all", "log"}, []staticCompletionDetails{}},
+			{"remove", []string{"all", "one"}, []string{}, []staticCompletionDetails{}},
+		}},
+		{"exitwith", []string{}, []string{}, []staticCompletionDetails{
+			{"code", []string{}, []string{"a", "b"}, []staticCompletionDetails{}},
+		}},
+		{"fullenv", []string{}, []string{"q", "z"}, []staticCompletionDetails{
+			{"empty", []string{}, []string{}, []staticCompletionDetails{}},
+			{"full", []string{}, []string{}, []staticCompletionDetails{
+				{"less", []string{}, []string{"a", "all"}, []staticCompletionDetails{}},
+				{"more", []string{"one", "two"}, []string{"b", "ball"}, []staticCompletionDetails{}},
+			}},
+		}},
+	}
+	checkCommand(t, cmd.Commands(), tests)
+}
+
+func checkCommand(t *testing.T, plugins []*cobra.Command, tests []staticCompletionDetails) {
+	if len(plugins) != len(tests) {
+		t.Fatalf("Expected commands %v, got %v", tests, plugins)
+	}
+
+	for i := 0; i < len(plugins); i++ {
+		pp := plugins[i]
+		tt := tests[i]
+		if pp.Use != tt.use {
+			t.Errorf("%s: Expected Use=%q, got %q", pp.Name(), tt.use, pp.Use)
+		}
+
+		targs := tt.validArgs
+		pargs := pp.ValidArgs
+		if len(targs) != len(pargs) {
+			t.Fatalf("%s: expected args %v, got %v", pp.Name(), targs, pargs)
+		}
+
+		sort.Strings(targs)
+		sort.Strings(pargs)
+		for j := range targs {
+			if targs[j] != pargs[j] {
+				t.Errorf("%s: expected validArg=%q, got %q", pp.Name(), targs[j], pargs[j])
+			}
+		}
+
+		tflags := tt.flags
+		var pflags []string
+		pp.LocalFlags().VisitAll(func(flag *pflag.Flag) {
+			pflags = append(pflags, flag.Name)
+			if len(flag.Shorthand) > 0 && flag.Shorthand != flag.Name {
+				pflags = append(pflags, flag.Shorthand)
+			}
+		})
+		if len(tflags) != len(pflags) {
+			t.Fatalf("%s: expected flags %v, got %v", pp.Name(), tflags, pflags)
+		}
+
+		sort.Strings(tflags)
+		sort.Strings(pflags)
+		for j := range tflags {
+			if tflags[j] != pflags[j] {
+				t.Errorf("%s: expected flag=%q, got %q", pp.Name(), tflags[j], pflags[j])
+			}
+		}
+		// Check the next level
+		checkCommand(t, pp.Commands(), tt.next)
 	}
 }
 
