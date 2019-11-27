@@ -17,14 +17,108 @@ limitations under the License.
 package releaseutil
 
 import (
+	"bytes"
+	"log"
 	"reflect"
+	"strings"
 	"testing"
 
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v3/pkg/logs"
 	"helm.sh/helm/v3/pkg/release"
 )
+
+func TestSortManifestErrorLog(t *testing.T) {
+
+	logs.Init(&cli.EnvSettings{Debug: true})
+
+	yamlWithError := `kind: ReplicaSet
+apiVersion: v1beta1
+metadata:
+  name: second_with_error
+  #indentation on next line is invalid
+ namespace: second
+`
+
+	data := []struct {
+		name     []string
+		path     string
+		kind     []string
+		hooks    map[string][]release.HookEvent
+		manifest string
+	}{
+		{
+			name:  []string{"first"},
+			path:  "one",
+			kind:  []string{"Job"},
+			hooks: map[string][]release.HookEvent{},
+			manifest: `apiVersion: v1
+kind: Job
+metadata:
+  name: first
+  labels:
+    doesnot: matter
+`,
+		},
+		{
+			name:  []string{"second", "second_with_error", "last"},
+			path:  "yaml_with_error",
+			kind:  []string{"ReplicaSet", "ReplicaSet", "Job"},
+			hooks: map[string][]release.HookEvent{},
+			manifest: `kind: ReplicaSet
+apiVersion: v1beta1
+metadata:
+  name: second
+  namespace: second
+---
+` + yamlWithError + `---
+apiVersion: v1
+kind: Job
+metadata:
+  name: last
+  labels:
+    doesnot: matter
+`,
+		},
+	}
+
+	manifests := make(map[string]string, len(data))
+	for _, o := range data {
+		manifests[o.path] = o.manifest
+	}
+
+	origWriter := log.Writer()
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+
+	SortManifests(manifests, chartutil.VersionSet{"v1", "v1beta1"}, InstallOrder)
+
+	log.SetOutput(origWriter)
+
+	s := buf.String()
+	if !strings.Contains(s, "YAML parse error on yaml_with_error (in yaml document 2)") || !strings.Contains(s, yamlWithError) {
+		t.Log("Error log should contain the problematic yaml content")
+		t.Log(s)
+		t.FailNow()
+	}
+
+	buf.Reset()
+	logs.Init(&cli.EnvSettings{Debug: false})
+
+	SortManifests(manifests, chartutil.VersionSet{"v1", "v1beta1"}, InstallOrder)
+
+	log.SetOutput(origWriter)
+
+	s = buf.String()
+	if strings.Contains(s, "YAML parse error on yaml_with_error") || strings.Contains(s, yamlWithError) {
+		t.Log("Error log should NOT contain the problematic yaml content")
+		t.Log(s)
+		t.FailNow()
+	}
+}
 
 func TestSortManifests(t *testing.T) {
 

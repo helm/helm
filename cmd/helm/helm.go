@@ -33,6 +33,7 @@ import (
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/gates"
+	"helm.sh/helm/v3/pkg/logs"
 )
 
 // FeatureGateOCI is the feature gate for checking if `helm chart` and `helm registry` commands should work
@@ -62,6 +63,8 @@ func initKubeLogs() {
 }
 
 func main() {
+	logs.Init(settings)
+
 	initKubeLogs()
 
 	actionConfig := new(action.Configuration)

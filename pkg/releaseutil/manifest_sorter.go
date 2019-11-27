@@ -17,6 +17,7 @@ limitations under the License.
 package releaseutil
 
 import (
+	"fmt"
 	"log"
 	"path"
 	"sort"
@@ -27,6 +28,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/logs"
 	"helm.sh/helm/v3/pkg/release"
 )
 
@@ -140,9 +142,19 @@ func (file *manifestFile) sort(result *result) error {
 
 	for _, entryKey := range sortedEntryKeys {
 		m := file.entries[entryKey]
-
 		var entry SimpleHead
 		if err := yaml.Unmarshal([]byte(m), &entry); err != nil {
+			mname := ""
+			if len(file.entries) > 1 {
+				index, err := strconv.Atoi(entryKey[9:])
+				if err != nil {
+					index = 0
+				} else {
+					index++
+				}
+				mname = fmt.Sprintf(" (in yaml document %d)", index)
+			}
+			logs.Debug("YAML parse error on %s%s\n---\n%s\n---\n", file.path, mname, m)
 			return errors.Wrapf(err, "YAML parse error on %s", file.path)
 		}
 
