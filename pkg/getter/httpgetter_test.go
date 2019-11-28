@@ -180,4 +180,14 @@ func TestDownloadTLS(t *testing.T) {
 	if _, err := g.Get(u.String(), WithURL(u.String()), WithTLSClientConfig(pub, priv, ca)); err != nil {
 		t.Error(err)
 	}
+
+	// test with only the CA file (see also #6635)
+	g, err = NewHTTPGetter()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := g.Get(u.String(), WithURL(u.String()), WithTLSClientConfig("", "", ca)); err != nil {
+		t.Error(err)
+	}
 }

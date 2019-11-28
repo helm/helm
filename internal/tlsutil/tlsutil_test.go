@@ -17,7 +17,6 @@ limitations under the License.
 package tlsutil
 
 import (
-	"crypto/tls"
 	"path/filepath"
 	"testing"
 )
@@ -54,30 +53,61 @@ func TestClientConfig(t *testing.T) {
 	}
 }
 
-func TestServerConfig(t *testing.T) {
-	opts := Options{
-		CaCertFile: testfile(t, testCaCertFile),
-		CertFile:   testfile(t, testCertFile),
-		KeyFile:    testfile(t, testKeyFile),
-		ClientAuth: tls.RequireAndVerifyClientCert,
-	}
-
-	cfg, err := ServerConfig(opts)
-	if err != nil {
-		t.Fatalf("error building tls server config: %v", err)
-	}
-	if got := cfg.MinVersion; got != tls.VersionTLS12 {
-		t.Errorf("expecting TLS version 1.2, got %d", got)
-	}
-	if got := cfg.ClientCAs; got == nil {
-		t.Errorf("expecting non-nil CA pool")
-	}
-}
-
 func testfile(t *testing.T, file string) (path string) {
 	var err error
 	if path, err = filepath.Abs(filepath.Join(tlsTestDir, file)); err != nil {
 		t.Fatalf("error getting absolute path to test file %q: %v", file, err)
 	}
 	return path
+}
+
+func TestNewClientTLS(t *testing.T) {
+	certFile := testfile(t, testCertFile)
+	keyFile := testfile(t, testKeyFile)
+	caCertFile := testfile(t, testCaCertFile)
+
+	cfg, err := NewClientTLS(certFile, keyFile, caCertFile)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if got := len(cfg.Certificates); got != 1 {
+		t.Fatalf("expecting 1 client certificates, got %d", got)
+	}
+	if cfg.InsecureSkipVerify {
+		t.Fatalf("insecure skip verify mistmatch, expecting false")
+	}
+	if cfg.RootCAs == nil {
+		t.Fatalf("mismatch tls RootCAs, expecting non-nil")
+	}
+
+	cfg, err = NewClientTLS("", "", caCertFile)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if got := len(cfg.Certificates); got != 0 {
+		t.Fatalf("expecting 0 client certificates, got %d", got)
+	}
+	if cfg.InsecureSkipVerify {
+		t.Fatalf("insecure skip verify mistmatch, expecting false")
+	}
+	if cfg.RootCAs == nil {
+		t.Fatalf("mismatch tls RootCAs, expecting non-nil")
+	}
+
+	cfg, err = NewClientTLS(certFile, keyFile, "")
+	if err != nil {
+		t.Error(err)
+	}
+
+	if got := len(cfg.Certificates); got != 1 {
+		t.Fatalf("expecting 1 client certificates, got %d", got)
+	}
+	if cfg.InsecureSkipVerify {
+		t.Fatalf("insecure skip verify mistmatch, expecting false")
+	}
+	if cfg.RootCAs != nil {
+		t.Fatalf("mismatch tls RootCAs, expecting nil")
+	}
 }

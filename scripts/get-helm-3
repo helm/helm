@@ -18,7 +18,6 @@
 # the package manager for Go: https://github.com/Masterminds/glide.sh/blob/master/get
 
 PROJECT_NAME="helm"
-TILLER_NAME="tiller"
 
 : ${USE_SUDO:="true"}
 : ${HELM_INSTALL_DIR:="/usr/local/bin"}
@@ -78,16 +77,13 @@ verifySupported() {
 # checkDesiredVersion checks if the desired version is available.
 checkDesiredVersion() {
   if [ "x$DESIRED_VERSION" == "x" ]; then
-    # FIXME(bacongobbler): hard code the desired version for the time being.
-    # A better fix would be to filter for Helm 2 release pages.
-    TAG="v2.16.1"
     # Get tag from release URL
-    # local latest_release_url="https://github.com/helm/helm/releases/latest"
-    # if type "curl" > /dev/null; then
-    #   TAG=$(curl -Ls -o /dev/null -w %{url_effective} $latest_release_url | grep -oE "[^/]+$" )
-    # elif type "wget" > /dev/null; then
-    #   TAG=$(wget $latest_release_url --server-response -O /dev/null 2>&1 | awk '/^  Location: /{DEST=$2} END{ print DEST}' | grep -oE "[^/]+$")
-    # fi
+    local latest_release_url="https://github.com/helm/helm/releases/latest"
+    if type "curl" > /dev/null; then
+      TAG=$(curl -Ls -o /dev/null -w %{url_effective} $latest_release_url | grep -oE "[^/]+$" )
+    elif type "wget" > /dev/null; then
+      TAG=$(wget $latest_release_url --server-response -O /dev/null 2>&1 | awk '/^  Location: /{DEST=$2} END{ print DEST}' | grep -oE "[^/]+$")
+    fi
   else
     TAG=$DESIRED_VERSION
   fi
@@ -97,7 +93,7 @@ checkDesiredVersion() {
 # if it needs to be changed.
 checkHelmInstalledVersion() {
   if [[ -f "${HELM_INSTALL_DIR}/${PROJECT_NAME}" ]]; then
-    local version=$("${HELM_INSTALL_DIR}/${PROJECT_NAME}" version -c | grep '^Client' | cut -d'"' -f2)
+    local version=$("${HELM_INSTALL_DIR}/${PROJECT_NAME}" version --template="{{ .Version }}")
     if [[ "$version" == "$TAG" ]]; then
       echo "Helm ${version} is already ${DESIRED_VERSION:-latest}"
       return 0
@@ -146,16 +142,9 @@ installFile() {
   mkdir -p "$HELM_TMP"
   tar xf "$HELM_TMP_FILE" -C "$HELM_TMP"
   HELM_TMP_BIN="$HELM_TMP/$OS-$ARCH/$PROJECT_NAME"
-  TILLER_TMP_BIN="$HELM_TMP/$OS-$ARCH/$TILLER_NAME"
-  echo "Preparing to install $PROJECT_NAME and $TILLER_NAME into ${HELM_INSTALL_DIR}"
+  echo "Preparing to install $PROJECT_NAME into ${HELM_INSTALL_DIR}"
   runAsRoot cp "$HELM_TMP_BIN" "$HELM_INSTALL_DIR"
   echo "$PROJECT_NAME installed into $HELM_INSTALL_DIR/$PROJECT_NAME"
-  if [ -x "$TILLER_TMP_BIN" ]; then
-    runAsRoot cp "$TILLER_TMP_BIN" "$HELM_INSTALL_DIR"
-    echo "$TILLER_NAME installed into $HELM_INSTALL_DIR/$TILLER_NAME"
-  else
-    echo "info: $TILLER_NAME binary was not found in this release; skipping $TILLER_NAME installation"
-  fi
 }
 
 # fail_trap is executed if an error occurs.
@@ -183,15 +172,14 @@ testVersion() {
     exit 1
   fi
   set -e
-  echo "Run '$PROJECT_NAME init' to configure $PROJECT_NAME."
 }
 
 # help provides possible cli installation arguments
 help () {
   echo "Accepted cli arguments are:"
   echo -e "\t[--help|-h ] ->> prints this help"
-  echo -e "\t[--version|-v <desired_version>]"
-  echo -e "\te.g. --version v2.4.0  or -v latest"
+  echo -e "\t[--version|-v <desired_version>] . When not defined it fetches the latest release from GitHub"
+  echo -e "\te.g. --version v3.0.0 or -v canary"
   echo -e "\t[--no-sudo]  ->> install without sudo"
 }
 
@@ -218,7 +206,7 @@ while [[ $# -gt 0 ]]; do
        if [[ $# -ne 0 ]]; then
            export DESIRED_VERSION="${1}"
        else
-           echo -e "Please provide the desired version. e.g. --version v2.4.0 or -v latest"
+           echo -e "Please provide the desired version. e.g. --version v3.0.0 or -v canary"
            exit 0
        fi
        ;;

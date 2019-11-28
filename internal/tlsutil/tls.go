@@ -26,13 +26,16 @@ import (
 
 // NewClientTLS returns tls.Config appropriate for client auth.
 func NewClientTLS(certFile, keyFile, caFile string) (*tls.Config, error) {
-	cert, err := CertFromFilePair(certFile, keyFile)
-	if err != nil {
-		return nil, err
+	config := tls.Config{}
+
+	if certFile != "" && keyFile != "" {
+		cert, err := CertFromFilePair(certFile, keyFile)
+		if err != nil {
+			return nil, err
+		}
+		config.Certificates = []tls.Certificate{*cert}
 	}
-	config := tls.Config{
-		Certificates: []tls.Certificate{*cert},
-	}
+
 	if caFile != "" {
 		cp, err := CertPoolFromFile(caFile)
 		if err != nil {
@@ -40,6 +43,7 @@ func NewClientTLS(certFile, keyFile, caFile string) (*tls.Config, error) {
 		}
 		config.RootCAs = cp
 	}
+
 	return &config, nil
 }
 

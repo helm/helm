@@ -126,7 +126,7 @@ func (i *Install) installCRDs(crds []*chart.File) error {
 				i.cfg.Log("CRD %s is already present. Skipping.", crdName)
 				continue
 			}
-			return errors.Wrapf(err, "failed to instal CRD %s", obj.Name)
+			return errors.Wrapf(err, "failed to install CRD %s", obj.Name)
 		}
 		totalItems = append(totalItems, res...)
 	}
@@ -301,7 +301,9 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	//
 	// One possible strategy would be to do a timed retry to see if we can get
 	// this stored in the future.
-	i.recordRelease(rel)
+	if err := i.recordRelease(rel); err != nil {
+		i.cfg.Log("failed to record the release: %s", err)
+	}
 
 	return rel, nil
 }
@@ -420,7 +422,7 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 
 	if ch.Metadata.KubeVersion != "" {
 		if !chartutil.IsCompatibleRange(ch.Metadata.KubeVersion, caps.KubeVersion.String()) {
-			return hs, b, "", errors.Errorf("chart requires kubernetesVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, caps.KubeVersion.String())
+			return hs, b, "", errors.Errorf("chart requires kubeVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, caps.KubeVersion.String())
 		}
 	}
 
