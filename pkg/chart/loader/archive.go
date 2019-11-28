@@ -126,6 +126,12 @@ func LoadArchiveFiles(in io.Reader) ([]*BufferedFile, error) {
 			continue
 		}
 
+		switch hd.Typeflag {
+		// We don't want to process these extension header files.
+		case tar.TypeXGlobalHeader, tar.TypeXHeader:
+			continue
+		}
+
 		// Archive could contain \ if generated on Windows
 		delimiter := "/"
 		if strings.ContainsRune(hd.Name, '\\') {
