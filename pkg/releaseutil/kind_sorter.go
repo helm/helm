@@ -140,7 +140,11 @@ func (k *kindSorter) Less(i, j int) bool {
 		if a.Head.Kind != b.Head.Kind {
 			return a.Head.Kind < b.Head.Kind
 		}
-		return first < second
+		if a.Name != b.Name {
+			return a.Name < b.Name
+		}
+		// if same kind in same file, then sort by name to ensure a stable order
+		return a.Head.Metadata.Name < b.Head.Metadata.Name
 	}
 	// unknown kind is last
 	if !aok {
