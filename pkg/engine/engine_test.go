@@ -487,7 +487,7 @@ func TestAlterFuncMap_include(t *testing.T) {
 		t.Errorf("Expected %q, got %q (%v)", expect, got, out)
 	}
 
-	out, err = Render(d, v)
+	_, err = Render(d, v)
 	expectErrName := "nested/templates/quote"
 	if err == nil {
 		t.Errorf("Expected err of nested reference name: %v", expectErrName)
