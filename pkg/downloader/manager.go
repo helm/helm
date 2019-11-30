@@ -149,6 +149,13 @@ func (m *Manager) Update() error {
 		return err
 	}
 
+	// downloadAll might overwrite dependency version, recalculate lock digest
+	newDigest, err := resolver.HashReq(req, lock.Dependencies)
+	if err != nil {
+		return err
+	}
+	lock.Digest = newDigest
+
 	// If the lock file hasn't changed, don't write a new one.
 	oldLock := c.Lock
 	if oldLock != nil && oldLock.Digest == lock.Digest {
