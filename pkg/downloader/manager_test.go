@@ -209,13 +209,13 @@ func TestUpdate_BeforeBuild(t *testing.T) {
 	// Save a chart
 	c := &chart.Chart{
 		Metadata: &chart.Metadata{
-			Name:         "local-chart",
-			Version:      "0.1.0",
-			APIVersion:   "v1",
+			Name:       "with-dependency",
+			Version:    "0.1.0",
+			APIVersion: "v1",
 			Dependencies: []*chart.Dependency{{
-				Name:         d.Metadata.Name,
-				Version:      ">=0.1.0",
-				Repository:   "file://../dep-chart",
+				Name:       d.Metadata.Name,
+				Version:    ">=0.1.0",
+				Repository: "file://../dep-chart",
 			}},
 		},
 	}
