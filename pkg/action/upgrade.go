@@ -190,11 +190,11 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 }
 
 func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Release) (*release.Release, error) {
-	current, err := u.cfg.KubeClient.Build(bytes.NewBufferString(originalRelease.Manifest), false)
+	current, err := u.cfg.KubeClient.Build(bytes.NewBufferString(originalRelease.Manifest), false, u.Namespace)
 	if err != nil {
 		return upgradedRelease, errors.Wrap(err, "unable to build kubernetes objects from current release manifest")
 	}
-	target, err := u.cfg.KubeClient.Build(bytes.NewBufferString(upgradedRelease.Manifest), true)
+	target, err := u.cfg.KubeClient.Build(bytes.NewBufferString(upgradedRelease.Manifest), true, u.Namespace)
 	if err != nil {
 		return upgradedRelease, errors.Wrap(err, "unable to build kubernetes objects from new release manifest")
 	}
@@ -373,7 +373,7 @@ func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release, newV
 }
 
 func validateManifest(c kube.Interface, manifest []byte) error {
-	_, err := c.Build(bytes.NewReader(manifest), true)
+	_, err := c.Build(bytes.NewReader(manifest), true, "")
 	return err
 }
 

@@ -113,7 +113,7 @@ func (i *Install) installCRDs(crds []*chart.File) error {
 	totalItems := []*resource.Info{}
 	for _, obj := range crds {
 		// Read in the resources
-		res, err := i.cfg.KubeClient.Build(bytes.NewBuffer(obj.Data), false)
+		res, err := i.cfg.KubeClient.Build(bytes.NewBuffer(obj.Data), false, i.Namespace)
 		if err != nil {
 			return errors.Wrapf(err, "failed to install CRD %s", obj.Name)
 		}
@@ -226,7 +226,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	// Mark this release as in-progress
 	rel.SetStatus(release.StatusPendingInstall, "Initial install underway")
 
-	resources, err := i.cfg.KubeClient.Build(bytes.NewBufferString(rel.Manifest), true)
+	resources, err := i.cfg.KubeClient.Build(bytes.NewBufferString(rel.Manifest), true, i.Namespace)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to build kubernetes objects from release manifest")
 	}

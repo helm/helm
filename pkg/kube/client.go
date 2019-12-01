@@ -122,16 +122,21 @@ func (c *Client) newBuilder() *resource.Builder {
 }
 
 // Build validates for Kubernetes objects and returns unstructured infos.
-func (c *Client) Build(reader io.Reader, validate bool) (ResourceList, error) {
+func (c *Client) Build(reader io.Reader, validate bool, namespace string) (ResourceList, error) {
 	schema, err := c.Factory.Validator(validate)
 	if err != nil {
 		return nil, err
 	}
-	result, err := c.newBuilder().
+	builder := c.newBuilder().
 		Unstructured().
 		Schema(schema).
-		Stream(reader, "").
-		Do().Infos()
+		Stream(reader, "")
+
+	if namespace != "" {
+		builder = builder.NamespaceParam(namespace)
+	}
+
+	result, err := builder.Do().Infos()
 	return result, scrubValidationError(err)
 }
 

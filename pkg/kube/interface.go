@@ -53,7 +53,7 @@ type Interface interface {
 	// by "\n---\n")
 	//
 	// Validates against OpenAPI schema if validate is true.
-	Build(reader io.Reader, validate bool) (ResourceList, error)
+	Build(reader io.Reader, validate bool, namespace string) (ResourceList, error)
 
 	// WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
 	// and returns said phase (PodSucceeded or PodFailed qualify).

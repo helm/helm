@@ -54,7 +54,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 			return err
 		}
 
-		resources, err := cfg.KubeClient.Build(bytes.NewBufferString(h.Manifest), true)
+		resources, err := cfg.KubeClient.Build(bytes.NewBufferString(h.Manifest), true, "")
 		if err != nil {
 			return errors.Wrapf(err, "unable to build kubernetes object for %s hook %s", hook, h.Path)
 		}
@@ -126,7 +126,7 @@ func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.Hoo
 		return nil
 	}
 	if hookHasDeletePolicy(h, policy) {
-		resources, err := cfg.KubeClient.Build(bytes.NewBufferString(h.Manifest), false)
+		resources, err := cfg.KubeClient.Build(bytes.NewBufferString(h.Manifest), false, "")
 		if err != nil {
 			return errors.Wrapf(err, "unable to build kubernetes object for deleting hook %s", h.Path)
 		}
