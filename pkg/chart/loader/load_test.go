@@ -302,7 +302,7 @@ func TestLoadInvalidArchive(t *testing.T) {
 	illegalChart = filepath.Join(tmpdir, "abs-path2.tgz")
 	writeTar(illegalChart, "files/whatever.yaml", []byte("hello: world"))
 	_, err = Load(illegalChart)
-	if err.Error() != "validation: No such Chart foundg" {
+	if err.Error() != "validation: No such Chart found" {
 		t.Error(err)
 	}
 
