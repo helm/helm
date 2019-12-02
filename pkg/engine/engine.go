@@ -26,6 +26,7 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig"
+	"github.com/pkg/errors"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
@@ -144,12 +145,21 @@ func (e *Engine) alterFuncMap(t *template.Template, referenceTpls map[string]ren
 		funcMap[k] = v
 	}
 
+	includedNames := make([]string, 0)
+
 	// Add the 'include' function here so we can close over t.
 	funcMap["include"] = func(name string, data interface{}) (string, error) {
 		buf := bytes.NewBuffer(nil)
+		for _, n := range includedNames {
+			if n == name {
+				return "", errors.Wrapf(fmt.Errorf("unable to excute template"), "rendering template has a nested reference name: %s", name)
+			}
+		}
+		includedNames = append(includedNames, name)
 		if err := t.ExecuteTemplate(buf, name, data); err != nil {
 			return "", err
 		}
+		includedNames = includedNames[:len(includedNames)-1]
 		return buf.String(), nil
 	}
 
