@@ -93,11 +93,19 @@ func warnWrap(warn string) string {
 // initFunMap creates the Engine's FuncMap and adds context-specific functions.
 func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]renderable) {
 	funcMap := funcMap()
+	includedNames := make([]string, 0)
 
 	// Add the 'include' function here so we can close over t.
 	funcMap["include"] = func(name string, data interface{}) (string, error) {
 		var buf strings.Builder
+		for _, n := range includedNames {
+			if n == name {
+				return "", errors.Wrapf(fmt.Errorf("unable to excute template"), "rendering template has a nested reference name: %s", name)
+			}
+		}
+		includedNames = append(includedNames, name)
 		err := t.ExecuteTemplate(&buf, name, data)
+		includedNames = includedNames[:len(includedNames)-1]
 		return buf.String(), err
 	}
 
