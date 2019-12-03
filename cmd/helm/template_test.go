@@ -79,6 +79,11 @@ func TestTemplateCmd(t *testing.T) {
 			cmd:    fmt.Sprintf("template --api-versions helm.k8s.io/test '%s'", chartPath),
 			golden: "output/template-with-api-version.txt",
 		},
+		{
+			name:   "template with CRDs",
+			cmd:    fmt.Sprintf("template '%s' --include-crds", chartPath),
+			golden: "output/template-with-crds.txt",
+		},
 	}
 	runTestCmd(t, tests)
 }
