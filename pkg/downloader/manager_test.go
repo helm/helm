@@ -161,7 +161,7 @@ func TestGetRepoNames(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		l, err := m.getRepoNames(tt.req)
+		l, err := m.resolveRepoNames(tt.req)
 		if err != nil {
 			if tt.err {
 				continue
@@ -181,7 +181,8 @@ func TestGetRepoNames(t *testing.T) {
 	}
 }
 
-// This function is the skeleton test code of failing tests for #6416 and bugs due to #5874.
+// This function is the skeleton test code of failing tests for #6416 and #6871 and bugs due to #5874.
+//
 // This function is used by below tests that ensures success of build operation
 // with optional fields, alias, condition, tags, and even with ranged version.
 // Parent chart includes local-subchart 0.1.0 subchart from a fake repository, by default.
@@ -281,5 +282,13 @@ func TestBuild_WithTags(t *testing.T) {
 	// Dependency has several tags
 	checkBuildWithOptionalFields(t, "with-tags", chart.Dependency{
 		Tags: []string{"tag1", "tag2"},
+	})
+}
+
+// Failing test for #6871
+func TestBuild_WithRepositoryAlias(t *testing.T) {
+	// Dependency repository is aliased in Chart.yaml
+	checkBuildWithOptionalFields(t, "with-repository-alias", chart.Dependency{
+		Repository: "@test",
 	})
 }

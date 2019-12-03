@@ -84,10 +84,10 @@ func (o *searchHubOptions) run(out io.Writer, args []string) error {
 }
 
 type hubChartElement struct {
-	URL         string
-	Version     string
-	AppVersion  string
-	Description string
+	URL         string `json:"url"`
+	Version     string `json:"version"`
+	AppVersion  string `json:"app_version"`
+	Description string `json:"description"`
 }
 
 type hubSearchWriter struct {

@@ -74,6 +74,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 	subcharts := make(map[string][]*BufferedFile)
 
 	for _, f := range files {
+		c.Raw = append(c.Raw, &chart.File{Name: f.Name, Data: f.Data})
 		switch {
 		case f.Name == "Chart.yaml":
 			if c.Metadata == nil {

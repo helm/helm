@@ -37,19 +37,19 @@ Unpack the `helm` binary and add it to your PATH and you are good to go!
 
 If you want to use a package manager:
 
-- [Homebrew](https://brew.sh/) users can use `brew install kubernetes-helm`.
+- [Homebrew](https://brew.sh/) users can use `brew install helm`.
 - [Chocolatey](https://chocolatey.org/) users can use `choco install kubernetes-helm`.
 - [Scoop](https://scoop.sh/) users can use `scoop install helm`.
 - [GoFish](https://gofi.sh/) users can use `gofish install helm`.
 
 To rapidly get Helm up and running, start with the [Quick Start Guide](https://docs.helm.sh/using_helm/#quickstart-guide).
 
-See the [installation guide](https://docs.helm.sh/using_helm/#installing-helm) for more options,
+See the [installation guide](https://helm.sh/docs/intro/install/) for more options,
 including installing pre-releases.
 
 ## Docs
 
-Get started with the [Quick Start guide](https://docs.helm.sh/using_helm/#quickstart-guide) or plunge into the [complete documentation](https://docs.helm.sh)
+Get started with the [Quick Start guide](https://helm.sh/docs/intro/quickstart/) or plunge into the [complete documentation](https://helm.sh/docs)
 
 ## Roadmap
 
