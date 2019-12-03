@@ -4,22 +4,25 @@ go 1.13
 
 require (
 	github.com/BurntSushi/toml v0.3.1
-	github.com/Masterminds/semver/v3 v3.0.1
+	github.com/Masterminds/semver/v3 v3.0.2
 	github.com/Masterminds/sprig/v3 v3.0.0
-	github.com/Masterminds/vcs v1.13.0
+	github.com/Masterminds/vcs v1.13.1
 	github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a
-	github.com/containerd/containerd v1.3.0
+	github.com/containerd/containerd v1.3.1
 	github.com/cyphar/filepath-securejoin v0.2.2
 	github.com/deislabs/oras v0.8.0
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/docker/docker v0.7.3-0.20190826074503-38ab9da00309
 	github.com/docker/go-units v0.4.0
 	github.com/evanphx/json-patch v4.5.0+incompatible
+	github.com/fatih/color v1.7.0 // indirect
 	github.com/gobwas/glob v0.2.3
 	github.com/gofrs/flock v0.7.1
-	github.com/gosuri/uitable v0.0.1
-	github.com/mattn/go-runewidth v0.0.5 // indirect
-	github.com/mattn/go-shellwords v1.0.5
+	github.com/gosuri/uitable v0.0.4
+	github.com/mattn/go-colorable v0.1.4 // indirect
+	github.com/mattn/go-isatty v0.0.10 // indirect
+	github.com/mattn/go-runewidth v0.0.7 // indirect
+	github.com/mattn/go-shellwords v1.0.6
 	github.com/mitchellh/copystructure v1.0.0
 	github.com/opencontainers/go-digest v1.0.0-rc1
 	github.com/opencontainers/image-spec v1.0.1
