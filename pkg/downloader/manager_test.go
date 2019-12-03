@@ -181,7 +181,7 @@ func TestGetRepoNames(t *testing.T) {
 	}
 }
 
-func TestUpdate_BeforeBuild(t *testing.T) {
+func TestUpdateBeforeBuild(t *testing.T) {
 	// Set up a fake repo
 	srv, err := repotest.NewTempServer("testdata/*.tgz*")
 	if err != nil {
