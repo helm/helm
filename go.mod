@@ -87,6 +87,7 @@ replace (
 	github.com/miekg/dns => github.com/miekg/dns v0.0.0-20181005163659-0d29b283ac0f
 	gopkg.in/inf.v0 v0.9.1 => github.com/go-inf/inf v0.9.1
 	gopkg.in/square/go-jose.v2 v2.3.0 => github.com/square/go-jose v2.3.0+incompatible
+	gopkg.in/yaml.v2 => gopkg.in/yaml.v2 v2.2.7
 
 	rsc.io/letsencrypt => github.com/dmcgowan/letsencrypt v0.0.0-20160928181947-1847a81d2087
 )
