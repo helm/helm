@@ -181,6 +181,74 @@ func TestGetRepoNames(t *testing.T) {
 	}
 }
 
+func TestUpdateBeforeBuild(t *testing.T) {
+	// Set up a fake repo
+	srv, err := repotest.NewTempServer("testdata/*.tgz*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer srv.Stop()
+	if err := srv.LinkIndices(); err != nil {
+		t.Fatal(err)
+	}
+	dir := func(p ...string) string {
+		return filepath.Join(append([]string{srv.Root()}, p...)...)
+	}
+
+	// Save dep
+	d := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:       "dep-chart",
+			Version:    "0.1.0",
+			APIVersion: "v1",
+		},
+	}
+	if err := chartutil.SaveDir(d, dir()); err != nil {
+		t.Fatal(err)
+	}
+	// Save a chart
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:       "with-dependency",
+			Version:    "0.1.0",
+			APIVersion: "v1",
+			Dependencies: []*chart.Dependency{{
+				Name:       d.Metadata.Name,
+				Version:    ">=0.1.0",
+				Repository: "file://../dep-chart",
+			}},
+		},
+	}
+	if err := chartutil.SaveDir(c, dir()); err != nil {
+		t.Fatal(err)
+	}
+
+	// Set-up a manager
+	b := bytes.NewBuffer(nil)
+	g := getter.Providers{getter.Provider{
+		Schemes: []string{"http", "https"},
+		New:     getter.NewHTTPGetter,
+	}}
+	m := &Manager{
+		ChartPath:        dir(c.Metadata.Name),
+		Out:              b,
+		Getters:          g,
+		RepositoryConfig: dir("repositories.yaml"),
+		RepositoryCache:  dir(),
+	}
+
+	// Update before Build. see issue: https://github.com/helm/helm/issues/7101
+	err = m.Update()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = m.Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 // This function is the skeleton test code of failing tests for #6416 and #6871 and bugs due to #5874.
 //
 // This function is used by below tests that ensures success of build operation
