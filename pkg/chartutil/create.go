@@ -119,6 +119,9 @@ securityContext: {}
   # runAsUser: 1000
 
 service:
+  annotations: {}
+    # prometheus.io/scrape: "true"
+    # prometheus.io/port: "9090"
   type: ClusterIP
   port: 80
 
@@ -146,6 +149,8 @@ resources: {}
   # requests:
   #   cpu: 100m
   #   memory: 128Mi
+
+podAnnotations: {}
 
 nodeSelector: {}
 
@@ -191,10 +196,10 @@ metadata:
   name: {{ $fullName }}
   labels:
     {{- include "<CHARTNAME>.labels" . | nindent 4 }}
-  {{- with .Values.ingress.annotations }}
+{{- with .Values.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
-  {{- end }}
+{{- end }}
 spec:
 {{- if .Values.ingress.tls }}
   tls:
@@ -236,18 +241,26 @@ spec:
     metadata:
       labels:
         {{- include "<CHARTNAME>.selectorLabels" . | nindent 8 }}
+      {{- with .Values.podAnnotations }}
+        annotations:
+          {{- toYaml . | nindent 8 }}
+      {{- end }}
     spec:
     {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
     {{- end }}
       serviceAccountName: {{ include "<CHARTNAME>.serviceAccountName" . }}
+    {{- with .Values.podSecurityContext }}
       securityContext:
-        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
       containers:
         - name: {{ .Chart.Name }}
+        {{- with .Values.securityContext }}
           securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
+            {{- toYaml . | nindent 12 }}
+        {{- end }}
           image: "{{ .Values.image.repository }}:{{ .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
@@ -262,12 +275,14 @@ spec:
             httpGet:
               path: /
               port: http
+        {{- with .Values.resources }}
           resources:
-            {{- toYaml .Values.resources | nindent 12 }}
-      {{- with .Values.nodeSelector }}
+            {{- toYaml . | nindent 12 }}
+        {{- end }}
+    {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
-      {{- end }}
+    {{- end }}
     {{- with .Values.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
