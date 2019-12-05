@@ -36,9 +36,6 @@ This command packages a chart into a versioned chart archive file. If a path
 is given, this will look at that path for a chart (which must contain a
 Chart.yaml file) and then package that directory.
 
-If no path is given, this will look in the present working directory for a
-Chart.yaml file, and (if found) build the current directory into a chart.
-
 Versioned chart archives are used by Helm package repositories.
 `
 
