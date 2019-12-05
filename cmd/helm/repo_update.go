@@ -66,6 +66,7 @@ func (o *repoUpdateOptions) run(out io.Writer) error {
 	var repos []*repo.ChartRepository
 	for _, cfg := range f.Repositories {
 		r, err := repo.NewChartRepository(cfg, getter.All(settings))
+		r.CachePath = settings.RepositoryCache
 		if err != nil {
 			return err
 		}
@@ -82,6 +83,7 @@ func updateCharts(repos []*repo.ChartRepository, out io.Writer) {
 	for _, re := range repos {
 		wg.Add(1)
 		go func(re *repo.ChartRepository) {
+			debug("using path %s for cache", re.CachePath)
 			defer wg.Done()
 			if _, err := re.DownloadIndexFile(); err != nil {
 				fmt.Fprintf(out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", re.Config.Name, re.Config.URL, err)
