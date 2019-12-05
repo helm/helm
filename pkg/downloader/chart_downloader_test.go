@@ -227,6 +227,58 @@ func TestDownloadTo(t *testing.T) {
 	}
 }
 
+func TestDownloadTo_TLS(t *testing.T) {
+	// Set up mock server w/ tls enabled
+	srv, err := repotest.NewTempServer("testdata/*.tgz*")
+	srv.Stop()
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv.StartTLS()
+	defer srv.Stop()
+	if err := srv.CreateIndex(); err != nil {
+		t.Fatal(err)
+	}
+	if err := srv.LinkIndices(); err != nil {
+		t.Fatal(err)
+	}
+
+	repoConfig := filepath.Join(srv.Root(), "repositories.yaml")
+	repoCache := srv.Root()
+
+	c := ChartDownloader{
+		Out:              os.Stderr,
+		Verify:           VerifyAlways,
+		Keyring:          "testdata/helm-test-key.pub",
+		RepositoryConfig: repoConfig,
+		RepositoryCache:  repoCache,
+		Getters: getter.All(&cli.EnvSettings{
+			RepositoryConfig: repoConfig,
+			RepositoryCache:  repoCache,
+		}),
+		Options: []getter.Option{},
+	}
+	cname := "test/signtest"
+	dest := srv.Root()
+	where, v, err := c.DownloadTo(cname, "", dest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	target := filepath.Join(dest, "signtest-0.1.0.tgz")
+	if expect := target; where != expect {
+		t.Errorf("Expected download to %s, got %s", expect, where)
+	}
+
+	if v.FileHash == "" {
+		t.Error("File hash was empty, but verification is required.")
+	}
+
+	if _, err := os.Stat(target); err != nil {
+		t.Error(err)
+	}
+}
+
 func TestDownloadTo_VerifyLater(t *testing.T) {
 	defer ensure.HelmHome(t)()
 
