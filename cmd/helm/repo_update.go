@@ -66,10 +66,10 @@ func (o *repoUpdateOptions) run(out io.Writer) error {
 	var repos []*repo.ChartRepository
 	for _, cfg := range f.Repositories {
 		r, err := repo.NewChartRepository(cfg, getter.All(settings))
-		r.CachePath = settings.RepositoryCache
 		if err != nil {
 			return err
 		}
+		r.CachePath = settings.RepositoryCache
 		repos = append(repos, r)
 	}
 
