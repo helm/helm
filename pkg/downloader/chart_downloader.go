@@ -214,6 +214,10 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 		c.Options = append(c.Options, getter.WithBasicAuth(r.Config.Username, r.Config.Password))
 	}
 
+	if r.Config.CertFile != "" || r.Config.KeyFile != "" || r.Config.CAFile != "" {
+		c.Options = append(c.Options, getter.WithTLSClientConfig(r.Config.CertFile, r.Config.KeyFile, r.Config.CAFile))
+	}
+
 	// Next, we need to load the index, and actually look up the chart.
 	idxFile := filepath.Join(c.RepositoryCache, helmpath.CacheIndexFile(r.Config.Name))
 	i, err := repo.LoadIndexFile(idxFile)
