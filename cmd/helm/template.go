@@ -44,6 +44,7 @@ faked locally. Additionally, none of the server-side testing of chart validity
 
 func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	var validate bool
+	var includeCrds bool
 	client := action.NewInstall(cfg)
 	valueOpts := &values.Options{}
 	var extraAPIs []string
@@ -67,7 +68,14 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 			var manifests bytes.Buffer
 
+			if includeCrds {
+				for _, f := range rel.Chart.CRDs() {
+					fmt.Fprintf(&manifests, "---\n# Source: %s\n%s\n", f.Name, f.Data)
+				}
+			}
+
 			fmt.Fprintln(&manifests, strings.TrimSpace(rel.Manifest))
+
 			if !client.DisableHooks {
 				for _, m := range rel.Hooks {
 					fmt.Fprintf(&manifests, "---\n# Source: %s\n%s\n", m.Path, m.Manifest)
@@ -120,6 +128,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.StringArrayVarP(&showFiles, "show-only", "s", []string{}, "only show manifests rendered from the given templates")
 	f.StringVar(&client.OutputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
 	f.BoolVar(&validate, "validate", false, "validate your manifests against the Kubernetes cluster you are currently pointing at. This is the same validation performed on an install")
+	f.BoolVar(&includeCrds, "include-crds", false, "include CRDs in the templated output")
 	f.StringArrayVarP(&extraAPIs, "api-versions", "a", []string{}, "Kubernetes api versions used for Capabilities.APIVersions")
 
 	return cmd
