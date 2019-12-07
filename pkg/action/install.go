@@ -86,6 +86,8 @@ type Install struct {
 	// APIVersions allows a manual set of supported API Versions to be passed
 	// (for things like templating). These are ignored if ClientOnly is false
 	APIVersions chartutil.VersionSet
+	// Used by helm template to render charts with .Relase.IsUpgrade. Ignored if Dry-Run is false
+	IsUpgrade bool
 }
 
 // ChartPathOptions captures common options used for controlling chart paths
@@ -197,11 +199,14 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 		return nil, err
 	}
 
+	//special case for helm template --is-upgrade
+	isUpgrade := i.IsUpgrade && i.DryRun
 	options := chartutil.ReleaseOptions{
 		Name:      i.ReleaseName,
 		Namespace: i.Namespace,
 		Revision:  1,
-		IsInstall: true,
+		IsInstall: !isUpgrade,
+		IsUpgrade: isUpgrade,
 	}
 	valuesToRender, err := chartutil.ToRenderValues(chrt, vals, options, caps)
 	if err != nil {
@@ -237,7 +242,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	// we'll end up in a state where we will delete those resources upon
 	// deleting the release because the manifest will be pointing at that
 	// resource
-	if !i.ClientOnly {
+	if !i.ClientOnly && !isUpgrade {
 		if err := existingResourceConflict(resources); err != nil {
 			return nil, errors.Wrap(err, "rendered manifests contain a resource that already exists. Unable to continue with install")
 		}
