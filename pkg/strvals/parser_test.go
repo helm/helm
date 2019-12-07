@@ -427,7 +427,7 @@ func TestParseInto(t *testing.T) {
 			"inner2": "value2",
 		},
 	}
-	input := "outer.inner1=value1,outer.inner3=value3,outer.inner4=4"
+	input := "outer.inner1=value1,outer.inner3=value3,outer.inner4=4,listOuter[0][0].type=listValue"
 	expect := map[string]interface{}{
 		"outer": map[string]interface{}{
 			"inner1": "value1",
@@ -435,9 +435,19 @@ func TestParseInto(t *testing.T) {
 			"inner3": "value3",
 			"inner4": 4,
 		},
+		"listOuter": [][]interface{}{{map[string]string{
+			"type":   "listValue",
+			"status": "alive",
+		}},
+		},
 	}
 
 	if err := ParseInto(input, got); err != nil {
+		t.Fatal(err)
+	}
+
+	input2 := "listOuter[0][0].status=alive"
+	if err := ParseInto(input2, got); err != nil {
 		t.Fatal(err)
 	}
 
