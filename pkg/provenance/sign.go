@@ -322,6 +322,18 @@ func messageBlock(chartpath string) (*bytes.Buffer, error) {
 		return b, err
 	}
 
+	// validate chart
+	if err = chart.Validate(); err != nil {
+		return b, err
+	}
+
+	// validate sub charts
+	for _, subChart := range chart.Dependencies() {
+		if err = subChart.Validate(); err != nil {
+			return b, err
+		}
+	}
+
 	// Buffer a hash + checksums YAML file
 	data, err := yaml.Marshal(chart.Metadata)
 	if err != nil {

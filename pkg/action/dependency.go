@@ -50,6 +50,18 @@ func (d *Dependency) List(chartpath string, out io.Writer) error {
 		return err
 	}
 
+	// validate chart
+	if err = c.Validate(); err != nil {
+		return err
+	}
+
+	// validate sub charts
+	for _, subChart := range c.Dependencies() {
+		if err = subChart.Validate(); err != nil {
+			return err
+		}
+	}
+
 	if c.Metadata.Dependencies == nil {
 		fmt.Fprintf(out, "WARNING: no dependencies at %s\n", filepath.Join(chartpath, "charts"))
 		return nil
@@ -76,6 +88,19 @@ func (d *Dependency) dependencyStatus(chartpath string, dep *chart.Dependency) s
 			if err != nil {
 				return "corrupt"
 			}
+
+			// validate chart
+			if err = c.Validate(); err != nil {
+				return "corrupt"
+			}
+
+			// validate sub charts
+			for _, subChart := range c.Dependencies() {
+				if err = subChart.Validate(); err != nil {
+					return "corrupt"
+				}
+			}
+
 			if c.Name() != dep.Name {
 				return "misnamed"
 			}
@@ -110,6 +135,18 @@ func (d *Dependency) dependencyStatus(chartpath string, dep *chart.Dependency) s
 	c, err := loader.Load(folder)
 	if err != nil {
 		return "corrupt"
+	}
+
+	// validate chart
+	if err = c.Validate(); err != nil {
+		return "corrupt"
+	}
+
+	// validate sub charts
+	for _, subChart := range c.Dependencies() {
+		if err = subChart.Validate(); err != nil {
+			return "corrupt"
+		}
 	}
 
 	if c.Name() != dep.Name {
@@ -171,6 +208,21 @@ func (d *Dependency) printMissing(chartpath string, out io.Writer, reqs []*chart
 			fmt.Fprintf(out, "WARNING: %q is not a chart.\n", f)
 			continue
 		}
+
+		// validate chart
+		if err = c.Validate(); err != nil {
+			fmt.Fprintf(out, "WARNING: %q is not a chart.\n", f)
+			continue
+		}
+
+		// validate sub charts
+		for _, subChart := range c.Dependencies() {
+			if err = subChart.Validate(); err != nil {
+				fmt.Fprintf(out, "WARNING: %q is not a chart.\n", f)
+				continue
+			}
+		}
+
 		found := false
 		for _, d := range reqs {
 			if d.Name == c.Name() {

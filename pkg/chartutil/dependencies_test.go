@@ -31,6 +31,20 @@ func loadChart(t *testing.T, path string) *chart.Chart {
 	if err != nil {
 		t.Fatalf("failed to load testdata: %s", err)
 	}
+
+	// validate chart
+	if err = c.Validate(); err != nil {
+		t.Fatalf("failed to load testdata: %s", err)
+
+	}
+
+	// validate sub charts
+	for _, subChart := range c.Dependencies() {
+		if err = subChart.Validate(); err != nil {
+			t.Fatalf("failed to load testdata: %s", err)
+		}
+	}
+
 	return c
 }
 

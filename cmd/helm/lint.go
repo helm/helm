@@ -121,6 +121,7 @@ func newLintCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&client.Strict, "strict", false, "fail on lint warnings")
 	f.BoolVar(&client.WithSubcharts, "with-subcharts", false, "lint dependent charts")
 	addValueOptionsFlags(f, valueOpts)
+	f.StringVar(&client.Version, "version", "", "version of the chart")
 
 	return cmd
 }

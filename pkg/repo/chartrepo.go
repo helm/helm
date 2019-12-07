@@ -177,6 +177,18 @@ func (r *ChartRepository) generateIndex() error {
 			return err
 		}
 
+		// validate chart
+		if err = ch.Validate(); err != nil {
+			return err
+		}
+
+		// validate sub charts
+		for _, subChart := range ch.Dependencies() {
+			if err = subChart.Validate(); err != nil {
+				return err
+			}
+		}
+
 		digest, err := provenance.DigestFile(path)
 		if err != nil {
 			return err

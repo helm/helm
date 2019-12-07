@@ -36,7 +36,7 @@ var (
 )
 
 // Templates lints the templates in the Linter.
-func Templates(linter *support.Linter, values map[string]interface{}, namespace string, strict bool) {
+func Templates(linter *support.Linter, values map[string]interface{}, namespace string, strict bool, version string) {
 	path := "templates/"
 	templatesPath := filepath.Join(linter.ChartDir, path)
 
@@ -54,6 +54,26 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 
 	if !chartLoaded {
 		return
+	}
+
+	if chart.Metadata.Version == "" && version != "" {
+		chart.Metadata.Version = version
+	}
+
+	// validate chart
+	err = chart.Validate()
+	validChart := linter.RunLinterRule(support.ErrorSev, path, err)
+	if !validChart {
+		return
+	}
+
+	// validate sub charts
+	for _, subChart := range chart.Dependencies() {
+		err = subChart.Validate()
+		validChart := linter.RunLinterRule(support.ErrorSev, path, err)
+		if !validChart {
+			return
+		}
 	}
 
 	options := chartutil.ReleaseOptions{

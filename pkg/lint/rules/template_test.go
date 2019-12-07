@@ -26,6 +26,7 @@ import (
 )
 
 const templateTestBasedir = "./testdata/albatross"
+const templateMissingVersionTestBasedir = "./testdata/missingversionchartfile"
 
 func TestValidateAllowedExtension(t *testing.T) {
 	var failTest = []string{"/foo", "/test.toml"}
@@ -51,7 +52,7 @@ const strict = false
 
 func TestTemplateParsing(t *testing.T) {
 	linter := support.Linter{ChartDir: templateTestBasedir}
-	Templates(&linter, values, namespace, strict)
+	Templates(&linter, values, namespace, strict, "")
 	res := linter.Messages
 
 	if len(res) != 1 {
@@ -74,7 +75,7 @@ func TestTemplateIntegrationHappyPath(t *testing.T) {
 	defer os.Rename(ignoredTemplatePath, wrongTemplatePath)
 
 	linter := support.Linter{ChartDir: templateTestBasedir}
-	Templates(&linter, values, namespace, strict)
+	Templates(&linter, values, namespace, strict, "")
 	res := linter.Messages
 
 	if len(res) != 0 {
@@ -82,9 +83,23 @@ func TestTemplateIntegrationHappyPath(t *testing.T) {
 	}
 }
 
+func TestMissingVersionTemplateParsing(t *testing.T) {
+	linter := support.Linter{ChartDir: templateMissingVersionTestBasedir}
+	Templates(&linter, values, namespace, strict, "")
+	res := linter.Messages
+
+	if len(res) != 1 {
+		t.Fatalf("Expected one error, got %d, %v", len(res), res)
+	}
+
+	if !strings.Contains(res[0].Err.Error(), "chart.metadata.version is required") {
+		t.Errorf("Unexpected error: %s", res[0])
+	}
+}
+
 func TestV3Fail(t *testing.T) {
 	linter := support.Linter{ChartDir: "./testdata/v3-fail"}
-	Templates(&linter, values, namespace, strict)
+	Templates(&linter, values, namespace, strict, "")
 	res := linter.Messages
 
 	if len(res) != 3 {

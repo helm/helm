@@ -190,5 +190,10 @@ func LoadArchive(in io.Reader) (*chart.Chart, error) {
 		return nil, err
 	}
 
-	return LoadFiles(files)
+	chart, err := LoadFiles(files)
+	if err != nil {
+		return chart, err
+	}
+
+	return chart, nil
 }

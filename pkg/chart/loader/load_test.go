@@ -123,6 +123,19 @@ func TestLoadFile(t *testing.T) {
 	verifyFrobnitz(t, c)
 	verifyChart(t, c)
 	verifyDependencies(t, c)
+
+	l, err = Loader("testdata/chart-missing-version.tgz")
+	if err != nil {
+		t.Fatalf("Failed to load testdata: %s", err)
+	}
+	c, err = l.Load()
+	if err != nil {
+		t.Fatalf("Failed to load testdata: %s", err)
+	}
+
+	if err = c.Validate(); err == nil {
+		t.Fatalf("expected a error due to missing version number")
+	}
 }
 
 func TestLoadFiles(t *testing.T) {
@@ -189,13 +202,6 @@ icon: https://example.com/64x64.png
 
 	if len(c.Templates) != 2 {
 		t.Errorf("Expected number of templates == 2, got %d", len(c.Templates))
-	}
-
-	if _, err = LoadFiles([]*BufferedFile{}); err == nil {
-		t.Fatal("Expected err to be non-nil")
-	}
-	if err.Error() != "validation: chart.metadata is required" {
-		t.Errorf("Expected chart metadata missing error, got '%s'", err.Error())
 	}
 }
 
@@ -281,9 +287,16 @@ func TestLoadInvalidArchive(t *testing.T) {
 	} {
 		illegalChart := filepath.Join(tmpdir, tt.chartname)
 		writeTar(illegalChart, tt.internal, []byte("hello: world"))
-		_, err = Load(illegalChart)
+		c, err := Load(illegalChart)
+
 		if err == nil {
-			t.Fatal("expected error when unpacking illegal files")
+			if c != nil {
+				if err = c.Validate(); err == nil {
+					t.Fatalf("expected error when unpacking illegal files %s", tt.chartname)
+				}
+			} else {
+				t.Fatalf("expected error when unpacking illegal files %s", tt.chartname)
+			}
 		}
 		if !strings.Contains(err.Error(), tt.expectError) {
 			t.Errorf("Expected error to contain %q, got %q for %s", tt.expectError, err.Error(), tt.chartname)
@@ -293,7 +306,11 @@ func TestLoadInvalidArchive(t *testing.T) {
 	// Make sure that absolute path gets interpreted as relative
 	illegalChart := filepath.Join(tmpdir, "abs-path.tgz")
 	writeTar(illegalChart, "/Chart.yaml", []byte("hello: world"))
-	_, err = Load(illegalChart)
+	// Load only loads the chartFile. Validation will be explicit
+	c, err := Load(illegalChart)
+	if err == nil {
+		err = c.Validate()
+	}
 	if err.Error() != "validation: chart.metadata.name is required" {
 		t.Error(err)
 	}
@@ -301,7 +318,11 @@ func TestLoadInvalidArchive(t *testing.T) {
 	// And just to validate that the above was not spurious
 	illegalChart = filepath.Join(tmpdir, "abs-path2.tgz")
 	writeTar(illegalChart, "files/whatever.yaml", []byte("hello: world"))
-	_, err = Load(illegalChart)
+	// Load only loads the chartFile. Validation will be explicit
+	c, err = Load(illegalChart)
+	if err == nil {
+		err = c.Validate()
+	}
 	if err.Error() != "validation: chart.metadata is required" {
 		t.Error(err)
 	}
@@ -309,7 +330,11 @@ func TestLoadInvalidArchive(t *testing.T) {
 	// Finally, test that drive letter gets stripped off on Windows
 	illegalChart = filepath.Join(tmpdir, "abs-winpath.tgz")
 	writeTar(illegalChart, "c:\\Chart.yaml", []byte("hello: world"))
-	_, err = Load(illegalChart)
+	// Load only loads the chartFile. Validation will be explicit
+	c, err = Load(illegalChart)
+	if err == nil {
+		err = c.Validate()
+	}
 	if err.Error() != "validation: chart.metadata.name is required" {
 		t.Error(err)
 	}

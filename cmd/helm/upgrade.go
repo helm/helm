@@ -124,6 +124,19 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
+
+			// validate chart
+			if err = ch.Validate(); err != nil {
+				return err
+			}
+
+			// validate sub charts
+			for _, subChart := range ch.Dependencies() {
+				if err = subChart.Validate(); err != nil {
+					return err
+				}
+			}
+
 			if req := ch.Metadata.Dependencies; req != nil {
 				if err := action.CheckDependencies(ch, req); err != nil {
 					return err

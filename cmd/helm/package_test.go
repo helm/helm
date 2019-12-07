@@ -191,6 +191,19 @@ func TestSetAppVersion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error loading packaged chart: %v", err)
 	}
+
+	// validate chart
+	if err = ch.Validate(); err != nil {
+		t.Fatalf("unexpected error loading packaged chart: %v", err)
+	}
+
+	// validate sub charts
+	for _, subChart := range ch.Dependencies() {
+		if err = subChart.Validate(); err != nil {
+			t.Fatalf("unexpected error loading packaged chart: %v", err)
+		}
+	}
+
 	if ch.Metadata.AppVersion != expectedAppVersion {
 		t.Errorf("expected app-version %q, found %q", expectedAppVersion, ch.Metadata.AppVersion)
 	}

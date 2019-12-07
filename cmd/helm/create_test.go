@@ -53,6 +53,18 @@ func TestCreateCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// validate chart
+	if err = c.Validate(); err != nil {
+		t.Fatal(err)
+	}
+
+	// validate sub charts
+	for _, subChart := range c.Dependencies() {
+		if err = subChart.Validate(); err != nil {
+			t.Fatal(err)
+		}
+	}
+
 	if c.Name() != cname {
 		t.Errorf("Expected %q name, got %q", cname, c.Name())
 	}
@@ -97,6 +109,18 @@ func TestCreateStarterCmd(t *testing.T) {
 	c, err := loader.LoadDir(cname)
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	// validate chart
+	if err = c.Validate(); err != nil {
+		t.Fatal(err)
+	}
+
+	// validate sub charts
+	for _, subChart := range c.Dependencies() {
+		if err = subChart.Validate(); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	if c.Name() != cname {
@@ -165,6 +189,18 @@ func TestCreateStarterAbsoluteCmd(t *testing.T) {
 	c, err := loader.LoadDir(cname)
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	// validate chart
+	if err = c.Validate(); err != nil {
+		t.Fatal(err)
+	}
+
+	// validate sub charts
+	for _, subChart := range c.Dependencies() {
+		if err = subChart.Validate(); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	if c.Name() != cname {

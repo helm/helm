@@ -30,7 +30,8 @@ import (
 )
 
 const (
-	badChartDir = "testdata/badchartfile"
+	badChartDir         = "testdata/badchartfile"
+	chartMissingVersion = "testdata/missingversionchartfile"
 )
 
 var (
@@ -185,7 +186,7 @@ func TestValidateChartIconURL(t *testing.T) {
 
 func TestChartfile(t *testing.T) {
 	linter := support.Linter{ChartDir: badChartDir}
-	Chartfile(&linter)
+	Chartfile(&linter, "")
 	msgs := linter.Messages
 
 	if len(msgs) != 6 {
@@ -215,5 +216,18 @@ func TestChartfile(t *testing.T) {
 	if !strings.Contains(msgs[5].Err.Error(), "dependencies are not valid in the Chart file with apiVersion") {
 		t.Errorf("Unexpected message 5: %s", msgs[5].Err)
 	}
+}
 
+func TestChartfileMissingVersion(t *testing.T) {
+	linter := support.Linter{ChartDir: chartMissingVersion}
+	Chartfile(&linter, "")
+	msgs := linter.Messages
+
+	if len(msgs) != 1 {
+		t.Errorf("Expected 1 errors, got %d", len(msgs))
+	}
+
+	if !strings.Contains(msgs[0].Err.Error(), "version is required") {
+		t.Errorf("Unexpected message 0: %s", msgs[0].Err)
+	}
 }

@@ -183,7 +183,25 @@ func (m *Manager) loadChartDir() (*chart.Chart, error) {
 	} else if !fi.IsDir() {
 		return nil, errors.New("only unpacked charts can be updated")
 	}
-	return loader.LoadDir(m.ChartPath)
+
+	chart, err := loader.LoadDir(m.ChartPath)
+	if err != nil {
+		return chart, err
+	}
+
+	// validate chart
+	if err = chart.Validate(); err != nil {
+		return chart, err
+	}
+
+	// validate sub charts
+	for _, subChart := range chart.Dependencies() {
+		if err = subChart.Validate(); err != nil {
+			return chart, err
+		}
+	}
+
+	return chart, nil
 }
 
 // resolve takes a list of dependencies and translates them into an exact version to download.
@@ -234,6 +252,18 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			ch, err := loader.LoadDir(chartPath)
 			if err != nil {
 				return fmt.Errorf("Unable to load chart: %v", err)
+			}
+
+			// validate chart
+			if err = ch.Validate(); err != nil {
+				return fmt.Errorf("validation on chart failed: %v", err)
+			}
+
+			// validate sub charts
+			for _, subChart := range ch.Dependencies() {
+				if err = subChart.Validate(); err != nil {
+					return fmt.Errorf("validation on subchart failed: %v", err)
+				}
 			}
 
 			constraint, err := semver.NewConstraint(dep.Version)
@@ -674,6 +704,18 @@ func tarFromLocalDir(chartpath, name, repo, version string) (string, error) {
 	ch, err := loader.LoadDir(origPath)
 	if err != nil {
 		return "", err
+	}
+
+	// validate chart
+	if err = ch.Validate(); err != nil {
+		return "", err
+	}
+
+	// validate sub charts
+	for _, subChart := range ch.Dependencies() {
+		if err = subChart.Validate(); err != nil {
+			return "", err
+		}
 	}
 
 	constraint, err := semver.NewConstraint(version)

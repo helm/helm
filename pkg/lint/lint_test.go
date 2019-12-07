@@ -29,12 +29,13 @@ const namespace = "testNamespace"
 const strict = false
 
 const badChartDir = "rules/testdata/badchartfile"
+const missingVersionOnChart = "rules/testdata/missingversionchartfile"
 const badValuesFileDir = "rules/testdata/badvaluesfile"
 const badYamlFileDir = "rules/testdata/albatross"
 const goodChartDir = "rules/testdata/goodone"
 
 func TestBadChart(t *testing.T) {
-	m := All(badChartDir, values, namespace, strict).Messages
+	m := All(badChartDir, values, namespace, strict, "").Messages
 	if len(m) != 7 {
 		t.Errorf("Number of errors %v", len(m))
 		t.Errorf("All didn't fail with expected errors, got %#v", m)
@@ -79,7 +80,7 @@ func TestBadChart(t *testing.T) {
 }
 
 func TestInvalidYaml(t *testing.T) {
-	m := All(badYamlFileDir, values, namespace, strict).Messages
+	m := All(badYamlFileDir, values, namespace, strict, "").Messages
 	if len(m) != 1 {
 		t.Fatalf("All didn't fail with expected errors, got %#v", m)
 	}
@@ -89,7 +90,7 @@ func TestInvalidYaml(t *testing.T) {
 }
 
 func TestBadValues(t *testing.T) {
-	m := All(badValuesFileDir, values, namespace, strict).Messages
+	m := All(badValuesFileDir, values, namespace, strict, "").Messages
 	if len(m) < 1 {
 		t.Fatalf("All didn't fail with expected errors, got %#v", m)
 	}
@@ -99,7 +100,24 @@ func TestBadValues(t *testing.T) {
 }
 
 func TestGoodChart(t *testing.T) {
-	m := All(goodChartDir, values, namespace, strict).Messages
+	m := All(goodChartDir, values, namespace, strict, "").Messages
+	if len(m) != 0 {
+		t.Errorf("All failed but shouldn't have: %#v", m)
+	}
+}
+
+func TestMissingVersionChart(t *testing.T) {
+	// version not provided in param
+	m := All(missingVersionOnChart, values, namespace, strict, "").Messages
+	if len(m) < 1 {
+		t.Fatalf("All didn't fail with expected errors, got %#v", m)
+	}
+	if !strings.Contains(m[0].Err.Error(), "version is required") {
+		t.Errorf("All didn't have the error for invalid key format: %s", m[0].Err)
+	}
+
+	// version provided in param
+	m = All(missingVersionOnChart, values, namespace, strict, "1.0").Messages
 	if len(m) != 0 {
 		t.Errorf("All failed but shouldn't have: %#v", m)
 	}

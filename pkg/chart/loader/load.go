@@ -143,10 +143,6 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 		}
 	}
 
-	if err := c.Validate(); err != nil {
-		return c, err
-	}
-
 	for n, files := range subcharts {
 		var sc *chart.Chart
 		var err error

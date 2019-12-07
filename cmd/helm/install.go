@@ -186,6 +186,18 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		return nil, err
 	}
 
+	// validate chart
+	if err = chartRequested.Validate(); err != nil {
+		return nil, err
+	}
+
+	// validate sub charts
+	for _, subChart := range chartRequested.Dependencies() {
+		if err = subChart.Validate(); err != nil {
+			return nil, err
+		}
+	}
+
 	validInstallableChart, err := isChartInstallable(chartRequested)
 	if !validInstallableChart {
 		return nil, err

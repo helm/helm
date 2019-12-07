@@ -1,0 +1,4 @@
+apiVersion: v1
+name: goodone
+description: good testing chart
+icon: http://riverrun.io

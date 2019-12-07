@@ -28,12 +28,14 @@ var (
 	chart2MultipleChartLint = "../../cmd/helm/testdata/testcharts/multiplecharts-lint-chart-2"
 	corruptedTgzChart       = "../../cmd/helm/testdata/testcharts/corrupted-compressed-chart.tgz"
 	chartWithNoTemplatesDir = "../../cmd/helm/testdata/testcharts/chart-with-no-templates-dir"
+	chartMissingVersion     = "../../cmd/helm/testdata/testcharts/chart-missing-version"
 )
 
 func TestLintChart(t *testing.T) {
 	tests := []struct {
 		name      string
 		chartPath string
+		version   string
 		err       bool
 	}{
 		{
@@ -74,16 +76,21 @@ func TestLintChart(t *testing.T) {
 			name:      "pre-release-chart",
 			chartPath: "../../cmd/helm/testdata/testcharts/pre-release-chart-0.1.0-alpha.tgz",
 		},
+		{
+			name:      "chart missing version and version provided",
+			chartPath: chartMissingVersion,
+			version:   "1.0",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := lintChart(tt.chartPath, map[string]interface{}{}, namespace, strict)
+			_, err := lintChart(tt.chartPath, map[string]interface{}{}, namespace, strict, tt.version)
 			switch {
 			case err != nil && !tt.err:
 				t.Errorf("%s", err)
 			case err == nil && tt.err:
-				t.Errorf("Expected a chart parsing error")
+				t.Errorf("Expected a chart parsing error %s ww", tt.version)
 			}
 		})
 	}

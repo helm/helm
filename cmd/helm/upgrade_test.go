@@ -48,6 +48,19 @@ func TestUpgradeCmd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error loading chart: %v", err)
 	}
+
+	// validate chart
+	if err = ch.Validate(); err != nil {
+		t.Fatalf("Error loading chart: %v", err)
+	}
+
+	// validate sub charts
+	for _, subChart := range ch.Dependencies() {
+		if err = subChart.Validate(); err != nil {
+			t.Fatalf("Error loading chart: %v", err)
+		}
+	}
+
 	_ = release.Mock(&release.MockReleaseOptions{
 		Name:  "funny-bunny",
 		Chart: ch,
@@ -64,6 +77,18 @@ func TestUpgradeCmd(t *testing.T) {
 		t.Fatalf("Error loading updated chart: %v", err)
 	}
 
+	// validate chart
+	if err = ch.Validate(); err != nil {
+		t.Fatalf("Error loading chart: %v", err)
+	}
+
+	// validate sub charts
+	for _, subChart := range ch.Dependencies() {
+		if err = subChart.Validate(); err != nil {
+			t.Fatalf("Error loading chart: %v", err)
+		}
+	}
+
 	// update chart version again
 	cfile.Metadata.Version = "0.1.3"
 
@@ -74,6 +99,18 @@ func TestUpgradeCmd(t *testing.T) {
 	ch2, err = loader.Load(chartPath)
 	if err != nil {
 		t.Fatalf("Error loading updated chart: %v", err)
+	}
+
+	// validate chart
+	if err = ch.Validate(); err != nil {
+		t.Fatalf("Error loading chart: %v", err)
+	}
+
+	// validate sub charts
+	for _, subChart := range ch.Dependencies() {
+		if err = subChart.Validate(); err != nil {
+			t.Fatalf("Error loading chart: %v", err)
+		}
 	}
 
 	missingDepsPath := "testdata/testcharts/chart-missing-deps"
@@ -247,6 +284,19 @@ func prepareMockRelease(releaseName string, t *testing.T) (func(n string, v int,
 	if err != nil {
 		t.Fatalf("Error loading chart: %v", err)
 	}
+
+	// validate chart
+	if err = ch.Validate(); err != nil {
+		t.Fatalf("Error loading chart: %v", err)
+	}
+
+	// validate sub charts
+	for _, subChart := range ch.Dependencies() {
+		if err = subChart.Validate(); err != nil {
+			t.Fatalf("Error loading chart: %v", err)
+		}
+	}
+
 	_ = release.Mock(&release.MockReleaseOptions{
 		Name:  releaseName,
 		Chart: ch,

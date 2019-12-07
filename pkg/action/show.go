@@ -69,6 +69,19 @@ func (s *Show) Run(chartpath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	// validate chart
+	if err = chrt.Validate(); err != nil {
+		return "", err
+	}
+
+	// validate sub charts
+	for _, subChart := range chrt.Dependencies() {
+		if err = subChart.Validate(); err != nil {
+			return "", err
+		}
+	}
+
 	cf, err := yaml.Marshal(chrt.Metadata)
 	if err != nil {
 		return "", err

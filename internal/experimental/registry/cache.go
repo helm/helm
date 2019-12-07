@@ -146,6 +146,19 @@ func (cache *Cache) FetchReference(ref *Reference) (*CacheRefSummary, error) {
 			if err != nil {
 				return &r, err
 			}
+
+			// validate chart
+			if err = ch.Validate(); err != nil {
+				return &r, err
+			}
+
+			// validate sub charts
+			for _, subChart := range ch.Dependencies() {
+				if err = subChart.Validate(); err != nil {
+					return &r, err
+				}
+			}
+
 			r.Chart = ch
 		}
 	}

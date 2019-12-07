@@ -31,7 +31,7 @@ import (
 )
 
 // Chartfile runs a set of linter rules related to Chart.yaml file
-func Chartfile(linter *support.Linter) {
+func Chartfile(linter *support.Linter, version string) {
 	chartFileName := "Chart.yaml"
 	chartPath := filepath.Join(linter.ChartDir, chartFileName)
 
@@ -43,6 +43,10 @@ func Chartfile(linter *support.Linter) {
 	// Guard clause. Following linter rules require a parsable ChartFile
 	if !validChartFile {
 		return
+	}
+
+	if chartFile.Version == "" && version != "" {
+		chartFile.Version = version
 	}
 
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartName(chartFile))
