@@ -172,7 +172,7 @@ func (f *fetchCmd) run() error {
 			}
 
 		} else {
-			return fmt.Errorf("ailed to untar: a file or directory with the name %s already exists", ud)
+			return fmt.Errorf("failed to untar: a file or directory with the name %s already exists", ud)
 		}
 
 		return chartutil.ExpandFile(ud, saved)
