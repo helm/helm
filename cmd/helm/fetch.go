@@ -166,13 +166,13 @@ func (f *fetchCmd) run() error {
 		if !filepath.IsAbs(ud) {
 			ud = filepath.Join(f.destdir, ud)
 		}
-		if fi, err := os.Stat(ud); err != nil {
+		if _, err := os.Stat(ud); err != nil {
 			if err := os.MkdirAll(ud, 0755); err != nil {
 				return fmt.Errorf("Failed to untar (mkdir): %s", err)
 			}
 
-		} else if !fi.IsDir() {
-			return fmt.Errorf("Failed to untar: %s is not a directory", ud)
+		} else {
+			return fmt.Errorf("ailed to untar: a file or directory with the name %s already exists", ud)
 		}
 
 		return chartutil.ExpandFile(ud, saved)
