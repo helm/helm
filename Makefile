@@ -1,7 +1,8 @@
-BINDIR     := $(CURDIR)/bin
-DIST_DIRS  := find * -type d -exec
-TARGETS    := darwin/amd64 linux/amd64 linux/386 linux/arm linux/arm64 linux/ppc64le windows/amd64
-BINNAME    ?= helm
+BINDIR      := $(CURDIR)/bin
+DIST_DIRS   := find * -type d -exec
+TARGETS     := darwin/amd64 linux/amd64 linux/386 linux/arm linux/arm64 linux/ppc64le windows/amd64
+TARGET_OBJS ?= darwin-amd64.tar.gz darwin-amd64.tar.gz.sha256 linux-amd64.tar.gz linux-amd64.tar.gz.sha256 linux-386.tar.gz linux-386.tar.gz.sha256 linux-arm.tar.gz linux-arm.tar.gz.sha256 linux-arm64.tar.gz linux-arm64.tar.gz.sha256 linux-ppc64le.tar.gz linux-ppc64le.tar.gz.sha256 windows-amd64.zip windows-amd64.zip.sha256
+BINNAME     ?= helm
 
 GOPATH        = $(shell go env GOPATH)
 DEP           = $(GOPATH)/bin/dep
@@ -137,6 +138,20 @@ dist:
 		$(DIST_DIRS) tar -zcf helm-${VERSION}-{}.tar.gz {} \; && \
 		$(DIST_DIRS) zip -r helm-${VERSION}-{}.zip {} \; \
 	)
+
+.PHONY: fetch-dist
+fetch-dist:
+	mkdir -p _dist
+	cd _dist && \
+	for obj in ${TARGET_OBJS} ; do \
+		curl -sSL -o helm-${VERSION}-$${obj} https://get.helm.sh/helm-${VERSION}-$${obj} ; \
+	done
+
+.PHONY: sign
+sign:
+	for f in _dist/*.{gz,zip,sha256} ; do \
+		gpg --armor --detach-sign $${f} ; \
+	done
 
 .PHONY: checksum
 checksum:
