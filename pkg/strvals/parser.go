@@ -308,7 +308,10 @@ func (t *parser) listItem(list []interface{}, i int) ([]interface{}, error) {
 		var crtList []interface{}
 		if len(list) > i {
 			// If nested list already exists, take the value of list to next cycle.
-			crtList = list[i].([]interface{})
+			existed := list[i]
+			if existed != nil {
+				crtList = list[i].([]interface{})
+			}
 		}
 		// Now we need to get the value after the ].
 <<<<<<< HEAD
