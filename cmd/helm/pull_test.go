@@ -93,6 +93,8 @@ func TestPullCmd(t *testing.T) {
 			expectFile:   "./signtest",
 			expectDir:    true,
 			expectVerify: true,
+			failExpect:   "Failed to untar signtest",
+			wantError:    true,
 		},
 		{
 			name:       "Chart fetch using repo URL",
