@@ -109,13 +109,13 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		if !filepath.IsAbs(ud) {
 			ud = filepath.Join(p.DestDir, ud)
 		}
-		if fi, err := os.Stat(ud); err != nil {
+		if _, err := os.Stat(ud); err != nil {
 			if err := os.MkdirAll(ud, 0755); err != nil {
 				return out.String(), errors.Wrap(err, "failed to untar (mkdir)")
 			}
 
-		} else if !fi.IsDir() {
-			return out.String(), errors.Errorf("failed to untar: %s is not a directory", ud)
+		} else {
+			return out.String(), errors.Errorf("failed to untar: %s already exited", ud)
 		}
 
 		return out.String(), chartutil.ExpandFile(ud, saved)
