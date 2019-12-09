@@ -79,6 +79,7 @@ type Install struct {
 	ReleaseName      string
 	GenerateName     bool
 	NameTemplate     string
+	Description      string
 	OutputDir        string
 	Atomic           bool
 	SkipCRDs         bool
@@ -297,7 +298,11 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 		}
 	}
 
-	rel.SetStatus(release.StatusDeployed, "Install complete")
+	if len(i.Description) > 0 {
+		rel.SetStatus(release.StatusDeployed, i.Description)
+	} else {
+		rel.SetStatus(release.StatusDeployed, "Install complete")
+	}
 
 	// This is a tricky case. The release has been created, but the result
 	// cannot be recorded. The truest thing to tell the user is that the

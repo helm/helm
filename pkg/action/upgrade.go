@@ -58,6 +58,7 @@ type Upgrade struct {
 	Atomic        bool
 	CleanupOnFail bool
 	SubNotes      bool
+	Description   string
 }
 
 // NewUpgrade creates a new Upgrade object with the given configuration.
@@ -218,7 +219,11 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 
 	if u.DryRun {
 		u.cfg.Log("dry run for %s", upgradedRelease.Name)
-		upgradedRelease.Info.Description = "Dry run complete"
+		if len(u.Description) > 0 {
+			upgradedRelease.Info.Description = u.Description
+		} else {
+			upgradedRelease.Info.Description = "Dry run complete"
+		}
 		return upgradedRelease, nil
 	}
 
@@ -270,7 +275,11 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 	u.cfg.recordRelease(originalRelease)
 
 	upgradedRelease.Info.Status = release.StatusDeployed
-	upgradedRelease.Info.Description = "Upgrade complete"
+	if len(u.Description) > 0 {
+		upgradedRelease.Info.Description = u.Description
+	} else {
+		upgradedRelease.Info.Description = "Upgrade complete"
+	}
 
 	return upgradedRelease, nil
 }
