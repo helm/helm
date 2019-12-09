@@ -39,19 +39,6 @@ func TestExpand(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	files, err := ioutil.ReadDir(dest)
-	if err != nil {
-		t.Fatalf("error reading output directory %s: %s", dest, err)
-	}
-
-	if len(files) != 1 {
-		t.Fatalf("expected a single chart directory in output directory %s", dest)
-	}
-
-	if !files[0].IsDir() {
-		t.Fatalf("expected a chart directory in output directory %s", dest)
-	}
-
 	expectedChartPath := filepath.Join(dest, "frobnitz")
 	fi, err := os.Stat(expectedChartPath)
 	if err != nil {
@@ -81,8 +68,14 @@ func TestExpand(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if fi.Size() != expect.Size() {
-			t.Errorf("Expected %s to have size %d, got %d", fi.Name(), expect.Size(), fi.Size())
+		// os.Stat can return different values for directories, based on the OS
+		// for Linux, for example, os.Stat alwaty returns the size of the directory
+		// (value-4096) regardless of the size of the contents of the directory
+		mode := expect.Mode()
+		if !mode.IsDir() {
+			if fi.Size() != expect.Size() {
+				t.Errorf("Expected %s to have size %d, got %d", fi.Name(), expect.Size(), fi.Size())
+			}
 		}
 	}
 }
@@ -127,8 +120,14 @@ func TestExpandFile(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if fi.Size() != expect.Size() {
-			t.Errorf("Expected %s to have size %d, got %d", fi.Name(), expect.Size(), fi.Size())
+		// os.Stat can return different values for directories, based on the OS
+		// for Linux, for example, os.Stat alwaty returns the size of the directory
+		// (value-4096) regardless of the size of the contents of the directory
+		mode := expect.Mode()
+		if !mode.IsDir() {
+			if fi.Size() != expect.Size() {
+				t.Errorf("Expected %s to have size %d, got %d", fi.Name(), expect.Size(), fi.Size())
+			}
 		}
 	}
 }
