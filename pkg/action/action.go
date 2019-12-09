@@ -109,9 +109,19 @@ func (c *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get server version from Kubernetes")
 	}
+	// Issue #6361:
+	// Client-Go emits an error when an API service is registered but unimplemented.
+	// We trap that error here and print a warning. But since the discovery client continues
+	// building the API object, it is correctly populated with all valid APIs.
+	// See https://github.com/kubernetes/kubernetes/issues/72051#issuecomment-521157642
 	apiVersions, err := GetVersionSet(dc)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not get apiVersions from Kubernetes")
+		if discovery.IsGroupDiscoveryFailedError(err) {
+			c.Log("WARNING: The Kubernetes server has an orphaned API service. Server reports: %s", err)
+			c.Log("WARNING: To fix this, kubectl delete apiservice <service-name>")
+		} else {
+			return nil, errors.Wrap(err, "could not get apiVersions from Kubernetes")
+		}
 	}
 
 	c.Capabilities = &chartutil.Capabilities{

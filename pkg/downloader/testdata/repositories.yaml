@@ -16,3 +16,8 @@ repositories:
     url: "http://example.com/helm"
   - name: testing-relative-trailing-slash
     url: "http://example.com/helm/"
+  - name: testing-ca-file
+    url: "https://example.com"
+    certFile: "cert"
+    keyFile: "key"
+    caFile: "ca"
