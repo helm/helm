@@ -19,9 +19,12 @@ package main // import "helm.sh/helm/v3/cmd/helm"
 import (
 	"fmt"
 	"io"
+	"reflect"
 	"strings"
+	"unicode"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/internal/experimental/registry"
@@ -430,5 +433,77 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	// Find and add plugins
 	loadPlugins(cmd, out)
 
+	// Add template functions which will be used in the usage template
+	cobra.AddTemplateFunc("LoggingFlags", LoggingFlags)
+	cobra.AddTemplateFunc("CapitalizeFlagDescriptions", CapitalizeFlagDescriptions)
+	cmd.SetUsageTemplate(CmdUsageTemplate)
 	return cmd
 }
+
+// LoggingFlags will go through all the logging flags which have the annotation: "log":"flag" and
+// get the appropriate usage
+func LoggingFlags(cmd *cobra.Command) string {
+
+	globalFlags := cmd.Flags()
+	loggingFlags := &pflag.FlagSet{}
+
+	// Retrieve all the flags that have that particular annotation
+	globalFlags.VisitAll(func(f *pflag.Flag) {
+		if reflect.DeepEqual(f.Annotations["log"], []string{"flag"}) {
+			loggingFlags.AddFlag(f)
+		}
+	})
+
+	// Weird hack with cobra13. Essentially, cobra doesn't have a function to return a non-pointer-set of flags
+	// so we'll set the flags as non-hidden, get the descriptions, then set them back to hidden
+	loggingFlags.VisitAll(func(f *pflag.Flag) {
+		f.Hidden = false
+	})
+	usage := CapitalizeFlagDescriptions(loggingFlags)
+	loggingFlags.VisitAll(func(f *pflag.Flag) {
+		f.Hidden = true
+	})
+
+	return usage
+}
+
+// CapitalizeFlagDescriptions adds capitalization to each flag
+func CapitalizeFlagDescriptions(f *pflag.FlagSet) string {
+	f.VisitAll(func(f *pflag.Flag) {
+		cap := []rune(f.Usage)
+		cap[0] = unicode.ToUpper(cap[0])
+		f.Usage = string(cap)
+	})
+	return f.FlagUsages()
+}
+
+// CmdUsageTemplate uses the default usage template but slightly modifies for capitalization as well as
+// putting logging flags in their own section.
+// See: https://github.com/spf13/cobra/blob/993cc5372a05240dfd59e3ba952748b36b2cd117/command.go#L464
+var CmdUsageTemplate = `Usage:{{if .Runnable}}
+  {{.UseLine}}{{end}}{{if .HasAvailableSubCommands}}
+  {{.CommandPath}} [command]{{end}}{{if gt (len .Aliases) 0}}
+
+Aliases:
+  {{.NameAndAliases}}{{end}}{{if .HasExample}}
+
+Examples:
+{{.Example}}{{end}}{{if .HasAvailableSubCommands}}
+
+Available Commands:{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
+
+Flags:
+{{CapitalizeFlagDescriptions .LocalFlags | trimRightSpace }}{{end}}{{if .HasAvailableInheritedFlags}}
+
+Global Flags:
+{{CapitalizeFlagDescriptions .InheritedFlags | trimTrailingWhitespaces}}{{end}}
+
+Logging Flags:
+{{LoggingFlags . | trimRightSpace }}{{if .HasHelpSubCommands}}
+
+Additional help topics:{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
+  {{rpad .CommandPath .CommandPathPadding}} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
+
+Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}
+`

@@ -59,6 +59,34 @@ func initKubeLogs() {
 	klog.InitFlags(gofs)
 	pflag.CommandLine.AddGoFlagSet(gofs)
 	pflag.CommandLine.Set("logtostderr", "true")
+
+	// List of logging parameters used by Helm and klog, see:
+	// https://github.com/kubernetes/klog/blob/master/klog.go#L422
+	var loggingFlags = []string{
+		"log_dir",
+		"log_file",
+		"log_file_max_size",
+		"logtostderr",
+		"alsologtostderr",
+		"v",
+		"add_dir_header",
+		"skip_headers",
+		"skip_log_headers",
+		"stderrthreshold",
+		"vmodule",
+		"log_backtrace_at",
+	}
+	setLoggingFlagAnnotations(loggingFlags)
+
+}
+
+// setLoggingFlagAnnotations sets all the logging flags to hidden as well as "hiding" the parameter from the normal
+// --help output. The flags are then shown using a custom usage template
+func setLoggingFlagAnnotations(flags []string) {
+	for _, flag := range flags {
+		pflag.CommandLine.SetAnnotation(flag, "log", []string{"flag"})
+		pflag.CommandLine.MarkHidden(flag)
+	}
 }
 
 func main() {
