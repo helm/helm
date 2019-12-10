@@ -270,7 +270,9 @@ func capabilities(disc discovery.DiscoveryInterface) (*chartutil.Capabilities, e
 // TODO(mattfarina): In Helm v3 merge with GetVersionSet
 func GetAllVersionSet(client discovery.ServerResourcesInterface) (chartutil.VersionSet, error) {
 	groups, resources, err := client.ServerGroupsAndResources()
-	if err != nil {
+	// It is okay to silently swallow a GroupDiscoveryFailedError, which is actually just
+	// a warning. The 'groups' will still have all of the valid data.
+	if err != nil && !discovery.IsGroupDiscoveryFailedError(err) {
 		return chartutil.DefaultVersionSet, err
 	}
 
@@ -318,7 +320,9 @@ func GetAllVersionSet(client discovery.ServerResourcesInterface) (chartutil.Vers
 // GetVersionSet retrieves a set of available k8s API versions
 func GetVersionSet(client discovery.ServerGroupsInterface) (chartutil.VersionSet, error) {
 	groups, err := client.ServerGroups()
-	if err != nil {
+	// It is okay to silently swallow a GroupDiscoveryFailedError, which is actually just
+	// a warning. The 'groups' will still have all of the valid data.
+	if err != nil && !discovery.IsGroupDiscoveryFailedError(err) {
 		return chartutil.DefaultVersionSet, err
 	}
 
