@@ -118,7 +118,6 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&client.AppVersion, "app-version", "", "set the appVersion on the chart to this version")
 	f.StringVarP(&client.Destination, "destination", "d", ".", "location to write the chart.")
 	f.BoolVarP(&client.DependencyUpdate, "dependency-update", "u", false, `update dependencies from "Chart.yaml" to dir "charts/" before packaging`)
-	addValueOptionsFlags(f, valueOpts)
 
 	return cmd
 }
