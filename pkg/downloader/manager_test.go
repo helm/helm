@@ -211,7 +211,7 @@ func TestUpdateBeforeBuild(t *testing.T) {
 		Metadata: &chart.Metadata{
 			Name:       "with-dependency",
 			Version:    "0.1.0",
-			APIVersion: "v1",
+			APIVersion: "v2",
 			Dependencies: []*chart.Dependency{{
 				Name:       d.Metadata.Name,
 				Version:    ">=0.1.0",
@@ -285,7 +285,7 @@ func checkBuildWithOptionalFields(t *testing.T, chartName string, dep chart.Depe
 		Metadata: &chart.Metadata{
 			Name:         chartName,
 			Version:      "0.1.0",
-			APIVersion:   "v1",
+			APIVersion:   "v2",
 			Dependencies: []*chart.Dependency{&dep},
 		},
 	}
