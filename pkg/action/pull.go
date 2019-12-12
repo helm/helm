@@ -114,7 +114,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 				return out.String(), errors.Wrap(err, "failed to untar (mkdir)")
 			}
 
-		} else {
+		} else if ud != "." {
 			return out.String(), errors.Errorf("failed to untar: a file or directory with the name %s already exists", ud)
 		}
 

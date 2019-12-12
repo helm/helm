@@ -21,7 +21,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strings"
 	"testing"
 
 	"helm.sh/helm/v3/pkg/repo/repotest"
@@ -96,14 +95,14 @@ func TestPullCmd(t *testing.T) {
 			args:         "test/test1 --untar --untardir test1",
 			existFile:    "test1",
 			wantError:    true,
-			wantErrorMsg: "failed to untar",
+			wantErrorMsg: fmt.Sprintf("failed to untar: a file or directory with the name %s already exists", filepath.Join(srv.Root(), "test1")),
 		},
 		{
 			name:         "Fetch untar when dir with same name existed",
 			args:         "test/test2 --untar --untardir test2",
 			existDir:     "test2",
 			wantError:    true,
-			wantErrorMsg: "failed to untar",
+			wantErrorMsg: fmt.Sprintf("failed to untar: a file or directory with the name %s already exists", filepath.Join(srv.Root(), "test2")),
 		},
 		{
 			name:         "Fetch, verify, untar",
@@ -163,7 +162,7 @@ func TestPullCmd(t *testing.T) {
 			_, out, err := executeActionCommand(cmd)
 			if err != nil {
 				if tt.wantError {
-					if tt.wantErrorMsg != "" && strings.Contains(tt.wantErrorMsg, err.Error()) {
+					if tt.wantErrorMsg != "" && tt.wantErrorMsg == err.Error() {
 						t.Fatalf("%q reported error not equel wantErr, reported: %s, wanted: %s", tt.name, err, tt.wantErrorMsg)
 					}
 					return
