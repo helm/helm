@@ -47,25 +47,18 @@ func NewLookupFunction(config *rest.Config) lookupFunc {
 			if err != nil {
 				return map[string]interface{}{}, err
 			}
-			return obj.Object, nil
+			return obj.UnstructuredContent(), nil
 		}
 		//this will return a list
 		obj, err := client.List(metav1.ListOptions{})
 		if err != nil {
 			return map[string]interface{}{}, err
 		}
-		return obj.Object, nil
+		return obj.UnstructuredContent(), nil
 	}
 }
 
-// func homeDir() string {
-// 	if h := os.Getenv("HOME"); h != "" {
-// 		return h
-// 	}
-// 	return os.Getenv("USERPROFILE") // windows
-// }
-
-// GetDynamicClientOnUnstructured returns a dynamic client on an Unstructured type. This client can be further namespaced.
+// getDynamicClientOnUnstructured returns a dynamic client on an Unstructured type. This client can be further namespaced.
 func getDynamicClientOnKind(apiversion string, kind string, config *rest.Config) (dynamic.NamespaceableResourceInterface, bool, error) {
 	gvk := schema.FromAPIVersionAndKind(apiversion, kind)
 	apiRes, err := getAPIReourceForGVK(gvk, config)
@@ -100,6 +93,7 @@ func getAPIReourceForGVK(gvk schema.GroupVersionKind, config *rest.Config) (meta
 		return res, err
 	}
 	for _, resource := range resList.APIResources {
+		//if a resource contains a "/" it's referencing a subresource. we don't support suberesource for now.
 		if resource.Kind == gvk.Kind && !strings.Contains(resource.Name, "/") {
 			res = resource
 			res.Group = gvk.Group
