@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"io"
 	"time"
 
@@ -180,6 +181,10 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	validInstallableChart, err := isChartInstallable(chartRequested)
 	if !validInstallableChart {
 		return nil, err
+	}
+
+	if chartRequested.Metadata.Deprecated {
+		fmt.Fprintln(out, "WARNING: This chart is deprecated")
 	}
 
 	if req := chartRequested.Metadata.Dependencies; req != nil {
