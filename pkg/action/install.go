@@ -669,15 +669,12 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 	}
 
 	filename, _, err := dl.DownloadTo(name, version, settings.RepositoryCache)
-	if err == nil {
-		lname, err := filepath.Abs(filename)
-		if err != nil {
-			return filename, err
-		}
-		return lname, nil
-	} else if settings.Debug {
+	if err != nil {
 		return filename, err
 	}
-
-	return filename, errors.Errorf("failed to download %q (hint: running `helm repo update` may help)", name)
+	lname, err := filepath.Abs(filename)
+	if err != nil {
+		return filename, err
+	}
+	return lname, nil
 }

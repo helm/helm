@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -29,9 +30,12 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"helm.sh/helm/v3/internal/test"
+	"helm.sh/helm/v3/internal/test/ensure"
 	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/cli"
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
 	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/repo/repotest"
 	"helm.sh/helm/v3/pkg/storage/driver"
 	"helm.sh/helm/v3/pkg/time"
 )
@@ -563,6 +567,72 @@ func TestNameAndChartGenerateName(t *testing.T) {
 
 			is.Equal(tc.ExpectedName, name)
 			is.Equal(tc.Chart, chrt)
+		})
+	}
+}
+
+func Test_LocateChart_WithURL_WithVerify(t *testing.T) {
+	rootDir := ensure.TempDir(t)
+	srv := repotest.NewServer(rootDir)
+	defer srv.Stop()
+
+	srv.LinkIndices()
+
+	_, err := srv.CopyCharts("testdata/charts/*")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := http.Get(srv.URL() + "/chart.tgz")
+	res.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		chartName     string
+		keyRingFile   string
+		name          string
+		wantErr       bool
+		wantErrString string
+	}{
+		{
+			chartName:     "chartTest-0.1.0.tgz",
+			keyRingFile:   "./testdata/pubring.gpg",
+			name:          "correct keyring",
+			wantErr:       false,
+			wantErrString: "",
+		},
+		{
+			chartName:     "chartTest-0.1.0.tgz",
+			keyRingFile:   "./testdata/keyring/pubringtemp.gpg",
+			name:          "bad keyring",
+			wantErr:       true,
+			wantErrString: "failed to load keyring:",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			absKeyRing, _ := filepath.Abs(tc.keyRingFile)
+
+			chartOptions := &ChartPathOptions{Keyring: absKeyRing, Verify: true}
+
+			downloader := cli.New()
+			downloader.RepositoryConfig = rootDir + "/repositories.yaml"
+			downloader.RepositoryCache = rootDir
+
+			var err error
+			_, err = chartOptions.LocateChart(srv.URL()+"/"+tc.chartName, downloader)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("LocateChart() wantErr: %v, gotErr: %v", tc.wantErr, err)
+				return
+			}
+			if err != nil {
+				if !strings.Contains(err.Error(), tc.wantErrString) {
+					t.Errorf("LocateChart() improver error message received, got: %v, expected: %v*", err.Error(), tc.wantErrString)
+				}
+			}
 		})
 	}
 }
