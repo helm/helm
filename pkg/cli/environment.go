@@ -46,6 +46,8 @@ type EnvSettings struct {
 	KubeConfig string
 	// KubeContext is the name of the kubeconfig context.
 	KubeContext string
+	// Bearer Token used for authentication
+	Token string
 	// Debug indicates whether or not Helm is running in Debug mode.
 	Debug bool
 	// RegistryConfig is the path to the registry config file.
@@ -77,6 +79,7 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&s.namespace, "namespace", "n", s.namespace, "namespace scope for this request")
 	fs.StringVar(&s.KubeConfig, "kubeconfig", "", "path to the kubeconfig file")
 	fs.StringVar(&s.KubeContext, "kube-context", s.KubeContext, "name of the kubeconfig context to use")
+	fs.StringVar(&s.Token, "token", s.Token, "bearer token used for authentication")
 	fs.BoolVar(&s.Debug, "debug", s.Debug, "enable verbose output")
 	fs.StringVar(&s.RegistryConfig, "registry-config", s.RegistryConfig, "path to the registry config file")
 	fs.StringVar(&s.RepositoryConfig, "repository-config", s.RepositoryConfig, "path to the file containing repository names and URLs")
@@ -100,6 +103,7 @@ func (s *EnvSettings) EnvVars() map[string]string {
 		"HELM_REPOSITORY_CONFIG": s.RepositoryConfig,
 		"HELM_NAMESPACE":         s.Namespace(),
 		"HELM_KUBECONTEXT":       s.KubeContext,
+		"HELM_KUBETOKEN":         s.Token,
 	}
 
 	if s.KubeConfig != "" {
@@ -124,7 +128,9 @@ func (s *EnvSettings) Namespace() string {
 //RESTClientGetter gets the kubeconfig from EnvSettings
 func (s *EnvSettings) RESTClientGetter() genericclioptions.RESTClientGetter {
 	s.configOnce.Do(func() {
-		s.config = kube.GetConfig(s.KubeConfig, s.KubeContext, s.namespace)
+		clientConfig := kube.GetConfig(s.KubeConfig, s.KubeContext, s.namespace)
+		clientConfig.BearerToken = &s.Token
+		s.config = clientConfig
 	})
 	return s.config
 }
