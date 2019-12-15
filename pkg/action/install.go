@@ -23,6 +23,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"text/template"
 	"time"
@@ -218,6 +219,11 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	}
 	// Check error from render
 	if err != nil {
+		if chrt.Values == nil && reflect.DeepEqual(vals, map[string]interface{}{}) {
+			rel.SetStatus(release.StatusFailed, fmt.Sprint("failed to render resource: lack of values.yaml"))
+			// Return a release with partial data so that the client can show debugging information.
+			return rel, errors.New("failed to render resource: lack of values.yaml")
+		}
 		rel.SetStatus(release.StatusFailed, fmt.Sprintf("failed to render resource: %s", err.Error()))
 		// Return a release with partial data so that the client can show debugging information.
 		return rel, err
