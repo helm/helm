@@ -505,6 +505,14 @@ func TestNameAndChart(t *testing.T) {
 		t.Fatal("expected an error")
 	}
 	is.Equal("must either provide a name or specify --generate-name", err.Error())
+
+	instAction.NameTemplate = ""
+	instAction.ReleaseName = ""
+	_, _, err = instAction.NameAndChart([]string{"foo", chartName, "bar"})
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	is.Equal("expected at most two arguments, unexpected arguments: bar", err.Error())
 }
 
 func TestNameAndChartGenerateName(t *testing.T) {
