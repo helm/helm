@@ -46,8 +46,10 @@ type EnvSettings struct {
 	KubeConfig string
 	// KubeContext is the name of the kubeconfig context.
 	KubeContext string
-	// Bearer Token used for authentication
-	Token string
+	// Bearer KubeToken used for authentication
+	KubeToken string
+	// Kubernetes API Server Endpoint for authentication
+	KubeAPIServer string
 	// Debug indicates whether or not Helm is running in Debug mode.
 	Debug bool
 	// RegistryConfig is the path to the registry config file.
@@ -65,6 +67,8 @@ func New() *EnvSettings {
 	env := EnvSettings{
 		namespace:        os.Getenv("HELM_NAMESPACE"),
 		KubeContext:      os.Getenv("HELM_KUBECONTEXT"),
+		KubeToken:        os.Getenv("HELM_KUBETOKEN"),
+		KubeAPIServer:    os.Getenv("HELM_KUBEAPISERVER"),
 		PluginsDirectory: envOr("HELM_PLUGINS", helmpath.DataPath("plugins")),
 		RegistryConfig:   envOr("HELM_REGISTRY_CONFIG", helmpath.ConfigPath("registry.json")),
 		RepositoryConfig: envOr("HELM_REPOSITORY_CONFIG", helmpath.ConfigPath("repositories.yaml")),
@@ -79,7 +83,8 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&s.namespace, "namespace", "n", s.namespace, "namespace scope for this request")
 	fs.StringVar(&s.KubeConfig, "kubeconfig", "", "path to the kubeconfig file")
 	fs.StringVar(&s.KubeContext, "kube-context", s.KubeContext, "name of the kubeconfig context to use")
-	fs.StringVar(&s.Token, "token", s.Token, "bearer token used for authentication")
+	fs.StringVar(&s.KubeToken, "kube-token", s.KubeToken, "bearer token used for authentication")
+	fs.StringVar(&s.KubeAPIServer, "kube-apiserver", s.KubeAPIServer, "the address and the port for the Kubernetes API server")
 	fs.BoolVar(&s.Debug, "debug", s.Debug, "enable verbose output")
 	fs.StringVar(&s.RegistryConfig, "registry-config", s.RegistryConfig, "path to the registry config file")
 	fs.StringVar(&s.RepositoryConfig, "repository-config", s.RepositoryConfig, "path to the file containing repository names and URLs")
@@ -103,7 +108,8 @@ func (s *EnvSettings) EnvVars() map[string]string {
 		"HELM_REPOSITORY_CONFIG": s.RepositoryConfig,
 		"HELM_NAMESPACE":         s.Namespace(),
 		"HELM_KUBECONTEXT":       s.KubeContext,
-		"HELM_KUBETOKEN":         s.Token,
+		"HELM_KUBETOKEN":         s.KubeToken,
+		"HELM_KUBEAPISERVER":     s.KubeAPIServer,
 	}
 
 	if s.KubeConfig != "" {
@@ -129,7 +135,13 @@ func (s *EnvSettings) Namespace() string {
 func (s *EnvSettings) RESTClientGetter() genericclioptions.RESTClientGetter {
 	s.configOnce.Do(func() {
 		clientConfig := kube.GetConfig(s.KubeConfig, s.KubeContext, s.namespace)
-		clientConfig.BearerToken = &s.Token
+		if len(s.KubeToken) > 0 {
+			clientConfig.BearerToken = &s.KubeToken
+		}
+		if len(s.KubeAPIServer) > 0 {
+			clientConfig.APIServer = &s.KubeAPIServer
+		}
+
 		s.config = clientConfig
 	})
 	return s.config
