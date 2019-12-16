@@ -275,10 +275,10 @@ chapter:
 	} else if v != "Loomings" {
 		t.Errorf("No error but got wrong value for title: %s\n%v", err, d)
 	}
-	if _, err := d.PathValue("chapter.one.doesntexist"); err == nil {
+	if _, err := d.PathValue("chapter.one.doesnotexist"); err == nil {
 		t.Errorf("Non-existent key should return error: %s\n%v", err, d)
 	}
-	if _, err := d.PathValue("chapter.doesntexist.one"); err == nil {
+	if _, err := d.PathValue("chapter.doesnotexist.one"); err == nil {
 		t.Errorf("Non-existent key in middle of path should return error: %s\n%v", err, d)
 	}
 	if _, err := d.PathValue(""); err == nil {
