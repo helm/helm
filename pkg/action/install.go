@@ -555,6 +555,10 @@ func (i *Install) NameAndChart(args []string) (string, string, error) {
 		return nil
 	}
 
+	if len(args) > 2 {
+		return args[0], args[1], errors.Errorf("expected at most two arguments, unexpected arguments: %v", strings.Join(args[2:], ", "))
+	}
+
 	if len(args) == 2 {
 		return args[0], args[1], flagsNotSet()
 	}
