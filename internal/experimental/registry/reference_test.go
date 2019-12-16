@@ -109,6 +109,13 @@ func TestParseReference(t *testing.T) {
 	is.Equal("123", ref.Tag)
 	is.Equal("localhost:5000/x/y/z:123", ref.FullName())
 
+	s = "10.21.134.123:5000/x/y/z:latest"
+	ref, err = ParseReference(s)
+	is.NoError(err)
+	is.Equal("10.21.134.123:5000/x/y/z", ref.Repo)
+	is.Equal("latest", ref.Tag)
+	is.Equal("10.21.134.123:5000/x/y/z:latest", ref.FullName())
+
 	s = "localhost:5000/x/y/z:123:x"
 	_, err = ParseReference(s)
 	is.Error(err, "ref contains too many colons (3)")
