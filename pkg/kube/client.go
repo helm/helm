@@ -30,6 +30,7 @@ import (
 	"github.com/pkg/errors"
 	batch "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
+	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
@@ -60,6 +61,10 @@ func New(getter genericclioptions.RESTClientGetter) *Client {
 		getter = genericclioptions.NewConfigFlags(true)
 	}
 	// Add CRDs to the scheme. They are missing by default.
+	if err := apiextv1.AddToScheme(scheme.Scheme); err != nil {
+		// This should never happen.
+		panic(err)
+	}
 	if err := apiextv1beta1.AddToScheme(scheme.Scheme); err != nil {
 		// This should never happen.
 		panic(err)
