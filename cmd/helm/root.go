@@ -418,7 +418,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		registry.ClientOptWriter(out),
 	)
 	if err != nil {
-		// TODO: dont panic here, refactor newRootCmd to return error
+		// TODO: don't panic here, refactor newRootCmd to return error
 		panic(err)
 	}
 	actionConfig.RegistryClient = registryClient
