@@ -111,9 +111,9 @@ func TestDependencyUpdateCmd(t *testing.T) {
 	if _, err := os.Stat(expect); err != nil {
 		t.Fatalf("Expected %q: %s", expect, err)
 	}
-	dontExpect := dir(chartname, "charts/compressedchart-0.1.0.tgz")
-	if _, err := os.Stat(dontExpect); err == nil {
-		t.Fatalf("Unexpected %q", dontExpect)
+	unexpected := dir(chartname, "charts/compressedchart-0.1.0.tgz")
+	if _, err := os.Stat(unexpected); err == nil {
+		t.Fatalf("Unexpected %q", unexpected)
 	}
 }
 
