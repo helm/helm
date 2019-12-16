@@ -122,7 +122,7 @@ func (s *Storage) Deployed(name string) (*rspb.Release, error) {
 		return nil, errors.Errorf("%q has no deployed releases", name)
 	}
 
-	return ls[0], err
+	return ls[len(ls)-1], err
 }
 
 // DeployedAll returns all deployed releases with the provided name, or
