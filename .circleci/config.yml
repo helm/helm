@@ -9,9 +9,13 @@ jobs:
 
     environment:
       GOCACHE: "/tmp/go/cache"
+      GOLANGCI_LINT_VERSION: "1.21.0"
 
     steps:
       - checkout
+      - run:
+          name: install test dependencies
+          command: .circleci/bootstrap.sh
       - run:
           name: test style
           command: make test-style

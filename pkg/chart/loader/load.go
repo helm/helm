@@ -74,6 +74,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 	subcharts := make(map[string][]*BufferedFile)
 
 	for _, f := range files {
+		c.Raw = append(c.Raw, &chart.File{Name: f.Name, Data: f.Data})
 		switch {
 		case f.Name == "Chart.yaml":
 			if c.Metadata == nil {
@@ -113,11 +114,17 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 			if err := yaml.Unmarshal(f.Data, c.Metadata); err != nil {
 				return c, errors.Wrap(err, "cannot load requirements.yaml")
 			}
+			if c.Metadata.APIVersion == chart.APIVersionV1 {
+				c.Files = append(c.Files, &chart.File{Name: f.Name, Data: f.Data})
+			}
 		// Deprecated: requirements.lock is deprecated use Chart.lock.
 		case f.Name == "requirements.lock":
 			c.Lock = new(chart.Lock)
 			if err := yaml.Unmarshal(f.Data, &c.Lock); err != nil {
 				return c, errors.Wrap(err, "cannot load requirements.lock")
+			}
+			if c.Metadata.APIVersion == chart.APIVersionV1 {
+				c.Files = append(c.Files, &chart.File{Name: f.Name, Data: f.Data})
 			}
 
 		case strings.HasPrefix(f.Name, "templates/"):

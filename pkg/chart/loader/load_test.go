@@ -179,6 +179,10 @@ icon: https://example.com/64x64.png
 		t.Error("Expected chart values to be populated with default values")
 	}
 
+	if len(c.Raw) != 5 {
+		t.Errorf("Expected %d files, got %d", 5, len(c.Raw))
+	}
+
 	if !bytes.Equal(c.Schema, []byte("type: Values")) {
 		t.Error("Expected chart schema to be populated with default values")
 	}

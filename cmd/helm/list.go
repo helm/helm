@@ -77,12 +77,15 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			client.SetStateMask()
 
 			results, err := client.Run()
+			if err != nil {
+				return err
+			}
 
 			if client.Short {
 				for _, res := range results {
 					fmt.Fprintln(out, res.Name)
 				}
-				return err
+				return nil
 			}
 
 			return outfmt.Write(out, newReleaseListWriter(results))
@@ -94,7 +97,7 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVarP(&client.ByDate, "date", "d", false, "sort by release date")
 	f.BoolVarP(&client.SortReverse, "reverse", "r", false, "reverse the sort order")
 	f.BoolVarP(&client.All, "all", "a", false, "show all releases, not just the ones marked deployed or failed")
-	f.BoolVar(&client.Uninstalled, "uninstalled", false, "show uninstalled releases")
+	f.BoolVar(&client.Uninstalled, "uninstalled", false, "show uninstalled releases (if 'helm uninstall --keep-history' was used)")
 	f.BoolVar(&client.Superseded, "superseded", false, "show superseded releases")
 	f.BoolVar(&client.Uninstalling, "uninstalling", false, "show releases that are currently being uninstalled")
 	f.BoolVar(&client.Deployed, "deployed", false, "show deployed releases. If no other is specified, this will be automatically enabled")
@@ -110,13 +113,13 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 }
 
 type releaseElement struct {
-	Name       string
-	Namespace  string
-	Revision   string
-	Updated    string
-	Status     string
-	Chart      string
-	AppVersion string
+	Name       string `json:"name"`
+	Namespace  string `json:"namespace"`
+	Revision   string `json:"revision"`
+	Updated    string `json:"updated"`
+	Status     string `json:"status"`
+	Chart      string `json:"chart"`
+	AppVersion string `json:"app_version"`
 }
 
 type releaseListWriter struct {

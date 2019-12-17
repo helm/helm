@@ -75,12 +75,32 @@ func TestParseSet(t *testing.T) {
 			expect: map[string]interface{}{"long_int_string": "1234567890"},
 			err:    false,
 		},
+		{
+			str:    "boolean=true",
+			expect: map[string]interface{}{"boolean": "true"},
+			err:    false,
+		},
+		{
+			str:    "is_null=null",
+			expect: map[string]interface{}{"is_null": "null"},
+			err:    false,
+		},
+		{
+			str:    "zero=0",
+			expect: map[string]interface{}{"zero": "0"},
+			err:    false,
+		},
 	}
 	tests := []struct {
 		str    string
 		expect map[string]interface{}
 		err    bool
 	}{
+		{
+			"name1=null,f=false,t=true",
+			map[string]interface{}{"name1": nil, "f": false, "t": true},
+			false,
+		},
 		{
 			"name1=value1",
 			map[string]interface{}{"name1": "value1"},
@@ -109,8 +129,21 @@ func TestParseSet(t *testing.T) {
 			expect: map[string]interface{}{"leading_zeros": "00009"},
 		},
 		{
+			str:    "zero_int=0",
+			expect: map[string]interface{}{"zero_int": 0},
+		},
+		{
 			str:    "long_int=1234567890",
 			expect: map[string]interface{}{"long_int": 1234567890},
+		},
+		{
+			str:    "boolean=true",
+			expect: map[string]interface{}{"boolean": true},
+		},
+		{
+			str:    "is_null=null",
+			expect: map[string]interface{}{"is_null": nil},
+			err:    false,
 		},
 		{
 			str: "name1,name2=",
@@ -270,6 +303,30 @@ func TestParseSet(t *testing.T) {
 			str:    "nested[1][1]=1",
 			expect: map[string]interface{}{"nested": []interface{}{nil, []interface{}{nil, 1}}},
 		},
+		{
+			str: "name1.name2[0].foo=bar,name1.name2[1].foo=bar",
+			expect: map[string]interface{}{
+				"name1": map[string]interface{}{
+					"name2": []map[string]interface{}{{"foo": "bar"}, {"foo": "bar"}},
+				},
+			},
+		},
+		{
+			str: "name1.name2[1].foo=bar,name1.name2[0].foo=bar",
+			expect: map[string]interface{}{
+				"name1": map[string]interface{}{
+					"name2": []map[string]interface{}{{"foo": "bar"}, {"foo": "bar"}},
+				},
+			},
+		},
+		{
+			str: "name1.name2[1].foo=bar",
+			expect: map[string]interface{}{
+				"name1": map[string]interface{}{
+					"name2": []map[string]interface{}{nil, {"foo": "bar"}},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -331,16 +388,50 @@ func TestParseInto(t *testing.T) {
 			"inner2": "value2",
 		},
 	}
-	input := "outer.inner1=value1,outer.inner3=value3"
+	input := "outer.inner1=value1,outer.inner3=value3,outer.inner4=4"
 	expect := map[string]interface{}{
 		"outer": map[string]interface{}{
 			"inner1": "value1",
 			"inner2": "value2",
 			"inner3": "value3",
+			"inner4": 4,
 		},
 	}
 
 	if err := ParseInto(input, got); err != nil {
+		t.Fatal(err)
+	}
+
+	y1, err := yaml.Marshal(expect)
+	if err != nil {
+		t.Fatal(err)
+	}
+	y2, err := yaml.Marshal(got)
+	if err != nil {
+		t.Fatalf("Error serializing parsed value: %s", err)
+	}
+
+	if string(y1) != string(y2) {
+		t.Errorf("%s: Expected:\n%s\nGot:\n%s", input, y1, y2)
+	}
+}
+func TestParseIntoString(t *testing.T) {
+	got := map[string]interface{}{
+		"outer": map[string]interface{}{
+			"inner1": "overwrite",
+			"inner2": "value2",
+		},
+	}
+	input := "outer.inner1=1,outer.inner3=3"
+	expect := map[string]interface{}{
+		"outer": map[string]interface{}{
+			"inner1": "1",
+			"inner2": "value2",
+			"inner3": "3",
+		},
+	}
+
+	if err := ParseIntoString(input, got); err != nil {
 		t.Fatal(err)
 	}
 
@@ -367,7 +458,7 @@ func TestParseIntoFile(t *testing.T) {
 	rs2v := func(rs []rune) (interface{}, error) {
 		v := string(rs)
 		if v != "path1" {
-			t.Errorf("%s: RunesValueReader: Expected value path1, got %s", input, v)
+			t.Errorf("%s: runesToVal: Expected value path1, got %s", input, v)
 			return "", nil
 		}
 		return "value1", nil

@@ -191,10 +191,10 @@ func (o *searchRepoOptions) buildIndex(out io.Writer) (*search.Index, error) {
 }
 
 type repoChartElement struct {
-	Name        string
-	Version     string
-	AppVersion  string
-	Description string
+	Name        string `json:"name"`
+	Version     string `json:"version"`
+	AppVersion  string `json:"app_version"`
+	Description string `json:"description"`
 }
 
 type repoSearchWriter struct {

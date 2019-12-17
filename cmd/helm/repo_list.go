@@ -51,8 +51,8 @@ func newRepoListCmd(out io.Writer) *cobra.Command {
 }
 
 type repositoryElement struct {
-	Name string
-	URL  string
+	Name string `json:"name"`
+	URL  string `json:"url"`
 }
 
 type repoListWriter struct {

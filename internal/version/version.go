@@ -33,7 +33,7 @@ var (
 	version = "v3.0"
 
 	// metadata is extra build time data
-	metadata = "unreleased"
+	metadata = ""
 	// gitCommit is the git sha1
 	gitCommit = ""
 	// gitTreeState is the state of the git tree

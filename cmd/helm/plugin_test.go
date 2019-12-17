@@ -30,14 +30,27 @@ func TestManuallyProcessArgs(t *testing.T) {
 		"--debug",
 		"--foo", "bar",
 		"--kubeconfig=/home/foo",
+		"--kubeconfig", "/home/foo",
+		"--kube-context=test1",
 		"--kube-context", "test1",
+		"-n=test2",
 		"-n", "test2",
+		"--namespace=test2",
+		"--namespace", "test2",
 		"--home=/tmp",
 		"command",
 	}
 
 	expectKnown := []string{
-		"--debug", "--kubeconfig=/home/foo", "--kube-context", "test1", "-n", "test2",
+		"--debug",
+		"--kubeconfig=/home/foo",
+		"--kubeconfig", "/home/foo",
+		"--kube-context=test1",
+		"--kube-context", "test1",
+		"-n=test2",
+		"-n", "test2",
+		"--namespace=test2",
+		"--namespace", "test2",
 	}
 
 	expectUnknown := []string{

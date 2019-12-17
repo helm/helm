@@ -79,7 +79,12 @@ func (m *Manager) Build() error {
 		return m.Update()
 	}
 
+	// Check that all of the repos we're dependent on actually exist.
 	req := c.Metadata.Dependencies
+	if _, err := m.resolveRepoNames(req); err != nil {
+		return err
+	}
+
 	if sum, err := resolver.HashReq(req, lock.Dependencies); err != nil || sum != lock.Digest {
 		return errors.New("Chart.lock is out of sync with Chart.yaml")
 	}
@@ -120,7 +125,7 @@ func (m *Manager) Update() error {
 
 	// Check that all of the repos we're dependent on actually exist and
 	// the repo index names.
-	repoNames, err := m.getRepoNames(req)
+	repoNames, err := m.resolveRepoNames(req)
 	if err != nil {
 		return err
 	}
@@ -144,6 +149,13 @@ func (m *Manager) Update() error {
 		return err
 	}
 
+	// downloadAll might overwrite dependency version, recalculate lock digest
+	newDigest, err := resolver.HashReq(req, lock.Dependencies)
+	if err != nil {
+		return err
+	}
+	lock.Digest = newDigest
+
 	// If the lock file hasn't changed, don't write a new one.
 	oldLock := c.Lock
 	if oldLock != nil && oldLock.Digest == lock.Digest {
@@ -151,7 +163,7 @@ func (m *Manager) Update() error {
 	}
 
 	// Finally, we need to write the lockfile.
-	return writeLock(m.ChartPath, lock)
+	return writeLock(m.ChartPath, lock, c.Metadata.APIVersion == chart.APIVersionV1)
 }
 
 func (m *Manager) loadChartDir() (*chart.Chart, error) {
@@ -372,8 +384,9 @@ Loop:
 	return nil
 }
 
-// getRepoNames returns the repo names of the referenced deps which can be used to fetch the cahced index file.
-func (m *Manager) getRepoNames(deps []*chart.Dependency) (map[string]string, error) {
+// resolveRepoNames returns the repo names of the referenced deps which can be used to fetch the cached index file
+// and replaces aliased repository URLs into resolved URLs in dependencies.
+func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string, error) {
 	rf, err := loadRepoConfig(m.RepositoryConfig)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -621,12 +634,16 @@ func (m *Manager) loadChartRepositories() (map[string]*repo.ChartRepository, err
 }
 
 // writeLock writes a lockfile to disk
-func writeLock(chartpath string, lock *chart.Lock) error {
+func writeLock(chartpath string, lock *chart.Lock, legacyLockfile bool) error {
 	data, err := yaml.Marshal(lock)
 	if err != nil {
 		return err
 	}
-	dest := filepath.Join(chartpath, "Chart.lock")
+	lockfileName := "Chart.lock"
+	if legacyLockfile {
+		lockfileName = "requirements.lock"
+	}
+	dest := filepath.Join(chartpath, lockfileName)
 	return ioutil.WriteFile(dest, data, 0644)
 }
 

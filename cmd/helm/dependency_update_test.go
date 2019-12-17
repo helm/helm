@@ -182,7 +182,7 @@ func TestDependencyUpdateCmd_DontDeleteOldChartsOnError(t *testing.T) {
 func createTestingMetadata(name, baseURL string) *chart.Chart {
 	return &chart.Chart{
 		Metadata: &chart.Metadata{
-			APIVersion: chart.APIVersionV1,
+			APIVersion: chart.APIVersionV2,
 			Name:       name,
 			Version:    "1.2.3",
 			Dependencies: []*chart.Dependency{

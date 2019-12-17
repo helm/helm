@@ -27,6 +27,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
+	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -111,6 +112,17 @@ func (w *waiter) waitForResources(created ResourceList) error {
 					return false, err
 				}
 				crd := &apiextv1beta1.CustomResourceDefinition{}
+				if err := scheme.Scheme.Convert(v.Object, crd, nil); err != nil {
+					return false, err
+				}
+				if !w.crdBetaReady(*crd) {
+					return false, nil
+				}
+			case *apiextv1.CustomResourceDefinition:
+				if err := v.Get(); err != nil {
+					return false, err
+				}
+				crd := &apiextv1.CustomResourceDefinition{}
 				if err := scheme.Scheme.Convert(v.Object, crd, nil); err != nil {
 					return false, err
 				}
@@ -229,7 +241,10 @@ func (w *waiter) daemonSetReady(ds *appsv1.DaemonSet) bool {
 	return true
 }
 
-func (w *waiter) crdReady(crd apiextv1beta1.CustomResourceDefinition) bool {
+// Because the v1 extensions API is not available on all supported k8s versions
+// yet and because Go doesn't support generics, we need to have a duplicate
+// function to support the v1beta1 types
+func (w *waiter) crdBetaReady(crd apiextv1beta1.CustomResourceDefinition) bool {
 	for _, cond := range crd.Status.Conditions {
 		switch cond.Type {
 		case apiextv1beta1.Established:
@@ -238,6 +253,26 @@ func (w *waiter) crdReady(crd apiextv1beta1.CustomResourceDefinition) bool {
 			}
 		case apiextv1beta1.NamesAccepted:
 			if cond.Status == apiextv1beta1.ConditionFalse {
+				// This indicates a naming conflict, but it's probably not the
+				// job of this function to fail because of that. Instead,
+				// we treat it as a success, since the process should be able to
+				// continue.
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (w *waiter) crdReady(crd apiextv1.CustomResourceDefinition) bool {
+	for _, cond := range crd.Status.Conditions {
+		switch cond.Type {
+		case apiextv1.Established:
+			if cond.Status == apiextv1.ConditionTrue {
+				return true
+			}
+		case apiextv1.NamesAccepted:
+			if cond.Status == apiextv1.ConditionFalse {
 				// This indicates a naming conflict, but it's probably not the
 				// job of this function to fail because of that. Instead,
 				// we treat it as a success, since the process should be able to

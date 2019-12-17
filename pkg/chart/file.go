@@ -21,7 +21,7 @@ package chart
 // base directory.
 type File struct {
 	// Name is the path-like name of the template.
-	Name string
+	Name string `json:"name"`
 	// Data is the template as byte data.
-	Data []byte
+	Data []byte `json:"data"`
 }
