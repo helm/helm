@@ -66,7 +66,7 @@ var ValidName = regexp.MustCompile("^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+
 
 // Configuration injects the dependencies that all actions share.
 type Configuration struct {
-	// RESTClientGetter is an interface that loads Kuberbetes clients.
+	// RESTClientGetter is an interface that loads Kubernetes clients.
 	RESTClientGetter RESTClientGetter
 
 	// Releases stores records of releases.
