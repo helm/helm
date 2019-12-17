@@ -65,7 +65,7 @@ func getDynamicClientOnKind(apiversion string, kind string, config *rest.Config)
 	apiRes, err := getAPIReourceForGVK(gvk, config)
 	if err != nil {
 		log.Printf("[ERROR] unable to get apiresource from unstructured: %s , error %s", gvk.String(), err)
-		return nil, false, errors.Wrapf(err, "unable to get apiresource from unstructured: %s , error %s", gvk.String())
+		return nil, false, errors.Wrapf(err, "unable to get apiresource from unstructured: %s", gvk.String())
 	}
 	gvr := schema.GroupVersionResource{
 		Group:    apiRes.Group,
