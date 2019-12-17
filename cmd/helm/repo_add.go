@@ -115,13 +115,14 @@ func (o *repoAddOptions) run(out io.Writer) error {
 	}
 
 	c := repo.Entry{
-		Name:     o.name,
-		URL:      o.url,
-		Username: o.username,
-		Password: o.password,
-		CertFile: o.certFile,
-		KeyFile:  o.keyFile,
-		CAFile:   o.caFile,
+		Name:                  o.name,
+		URL:                   o.url,
+		Username:              o.username,
+		Password:              o.password,
+		CertFile:              o.certFile,
+		KeyFile:               o.keyFile,
+		CAFile:                o.caFile,
+		InsecureSkipTLSverify: o.insecureSkipTLSverify,
 	}
 
 	r, err := repo.NewChartRepository(&c, getter.All(settings))
