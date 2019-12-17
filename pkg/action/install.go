@@ -87,7 +87,7 @@ type Install struct {
 	// APIVersions allows a manual set of supported API Versions to be passed
 	// (for things like templating). These are ignored if ClientOnly is false
 	APIVersions chartutil.VersionSet
-	// Used by helm template to render charts with .Relase.IsUpgrade. Ignored if Dry-Run is false
+	// Used by helm template to render charts with .Release.IsUpgrade. Ignored if Dry-Run is false
 	IsUpgrade bool
 }
 
