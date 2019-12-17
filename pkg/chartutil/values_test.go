@@ -76,7 +76,7 @@ func TestToRenderValues(t *testing.T) {
 		},
 	}
 
-	overideValues := map[string]interface{}{
+	overrideValues := map[string]interface{}{
 		"name": "Haroun",
 		"where": map[string]interface{}{
 			"city": "Baghdad",
@@ -103,7 +103,7 @@ func TestToRenderValues(t *testing.T) {
 		IsInstall: true,
 	}
 
-	res, err := ToRenderValues(c, overideValues, o, nil)
+	res, err := ToRenderValues(c, overrideValues, o, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
