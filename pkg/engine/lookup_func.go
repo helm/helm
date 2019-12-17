@@ -20,6 +20,7 @@ import (
 	"log"
 	"strings"
 
+	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
@@ -64,7 +65,7 @@ func getDynamicClientOnKind(apiversion string, kind string, config *rest.Config)
 	apiRes, err := getAPIReourceForGVK(gvk, config)
 	if err != nil {
 		log.Printf("[ERROR] unable to get apiresource from unstructured: %s , error %s", gvk.String(), err)
-		return nil, false, err
+		return nil, false, errors.Wrapf(err, "unable to get apiresource from unstructured: %s , error %s", gvk.String())
 	}
 	gvr := schema.GroupVersionResource{
 		Group:    apiRes.Group,
