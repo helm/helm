@@ -131,7 +131,7 @@ func TestMerge(t *testing.T) {
 
 	if len(ind1.Entries) != 2 {
 		t.Errorf("Expected 2 entries, got %d", len(ind1.Entries))
-		vs := ind1.Entries["dreadnaught"]
+		vs := ind1.Entries["dreadnought"]
 		if len(vs) != 2 {
 			t.Errorf("Expected 2 versions, got %d", len(vs))
 		}
