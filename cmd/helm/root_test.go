@@ -31,7 +31,7 @@ func TestRootCmd(t *testing.T) {
 
 	tests := []struct {
 		name, args, cachePath, configPath, dataPath string
-		envars                                      map[string]string
+		envvars                                     map[string]string
 	}{
 		{
 			name: "defaults",
@@ -40,19 +40,19 @@ func TestRootCmd(t *testing.T) {
 		{
 			name:      "with $XDG_CACHE_HOME set",
 			args:      "home",
-			envars:    map[string]string{xdg.CacheHomeEnvVar: "/bar"},
+			envvars:   map[string]string{xdg.CacheHomeEnvVar: "/bar"},
 			cachePath: "/bar/helm",
 		},
 		{
 			name:       "with $XDG_CONFIG_HOME set",
 			args:       "home",
-			envars:     map[string]string{xdg.ConfigHomeEnvVar: "/bar"},
+			envvars:    map[string]string{xdg.ConfigHomeEnvVar: "/bar"},
 			configPath: "/bar/helm",
 		},
 		{
 			name:     "with $XDG_DATA_HOME set",
 			args:     "home",
-			envars:   map[string]string{xdg.DataHomeEnvVar: "/bar"},
+			envvars:  map[string]string{xdg.DataHomeEnvVar: "/bar"},
 			dataPath: "/bar/helm",
 		},
 	}
@@ -61,7 +61,7 @@ func TestRootCmd(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			defer ensure.HelmHome(t)()
 
-			for k, v := range tt.envars {
+			for k, v := range tt.envvars {
 				os.Setenv(k, v)
 			}
 
