@@ -43,9 +43,10 @@ type repoAddOptions struct {
 	password string
 	noUpdate bool
 
-	certFile string
-	keyFile  string
-	caFile   string
+	certFile              string
+	keyFile               string
+	caFile                string
+	insecureSkipTLSverify bool
 
 	repoFile  string
 	repoCache string
@@ -75,6 +76,7 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&o.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
 	f.StringVar(&o.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.StringVar(&o.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+	f.BoolVar(&o.insecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the repository")
 
 	return cmd
 }

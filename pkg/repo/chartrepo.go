@@ -38,13 +38,14 @@ import (
 
 // Entry represents a collection of parameters for chart repository
 type Entry struct {
-	Name     string `json:"name"`
-	URL      string `json:"url"`
-	Username string `json:"username"`
-	Password string `json:"password"`
-	CertFile string `json:"certFile"`
-	KeyFile  string `json:"keyFile"`
-	CAFile   string `json:"caFile"`
+	Name                  string `json:"name"`
+	URL                   string `json:"url"`
+	Username              string `json:"username"`
+	Password              string `json:"password"`
+	CertFile              string `json:"certFile"`
+	KeyFile               string `json:"keyFile"`
+	CAFile                string `json:"caFile"`
+	InsecureSkipTLSverify bool   `json:"insecure_skip_tls_verify"`
 }
 
 // ChartRepository represents a chart repository
@@ -121,6 +122,7 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 	// TODO add user-agent
 	resp, err := r.Client.Get(indexURL,
 		getter.WithURL(r.Config.URL),
+		getter.WithInsecureSkipVerifyTLS(r.Config.InsecureSkipTLSverify),
 		getter.WithTLSClientConfig(r.Config.CertFile, r.Config.KeyFile, r.Config.CAFile),
 		getter.WithBasicAuth(r.Config.Username, r.Config.Password),
 	)
