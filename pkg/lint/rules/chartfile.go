@@ -40,7 +40,7 @@ func Chartfile(linter *support.Linter) {
 	chartFile, err := chartutil.LoadChartfile(chartPath)
 	validChartFile := linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartYamlFormat(err))
 
-	// Guard clause. Following linter rules require a parseable ChartFile
+	// Guard clause. Following linter rules require a parsable ChartFile
 	if !validChartFile {
 		return
 	}
