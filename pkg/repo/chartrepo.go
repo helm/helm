@@ -19,6 +19,7 @@ package repo // import "helm.sh/helm/v3/pkg/repo"
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/url"
@@ -261,4 +262,9 @@ func ResolveReferenceURL(baseURL, refURL string) (string, error) {
 	// We need a trailing slash for ResolveReference to work, but make sure there isn't already one
 	parsedBaseURL.Path = strings.TrimSuffix(parsedBaseURL.Path, "/") + "/"
 	return parsedBaseURL.ResolveReference(parsedRefURL).String(), nil
+}
+
+func (e *Entry) String() string {
+	buf, _ := json.Marshal(e)
+	return string(buf)
 }
