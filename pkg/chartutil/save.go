@@ -142,7 +142,7 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 	base := filepath.Join(prefix, c.Name())
 
 	// Pull out the dependencies of a v1 Chart, since there's no way
-	// to tell the serialiser to skip a field for just this use case
+	// to tell the serializer to skip a field for just this use case
 	savedDependencies := c.Metadata.Dependencies
 	if c.Metadata.APIVersion == chart.APIVersionV1 {
 		c.Metadata.Dependencies = nil
