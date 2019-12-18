@@ -86,6 +86,11 @@ func (m *Manager) Build() error {
 	}
 
 	if sum, err := resolver.HashReq(req, lock.Dependencies); err != nil || sum != lock.Digest {
+		// If lock digest differs and chart is apiVersion v1, it maybe because the lock was built
+		// with Helm 2 and should therefore be regenerated
+		if c.Metadata.APIVersion == chart.APIVersionV1 {
+			return m.Update()
+		}
 		return errors.New("Chart.lock is out of sync with Chart.yaml")
 	}
 
