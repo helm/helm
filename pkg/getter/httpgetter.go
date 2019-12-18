@@ -119,6 +119,7 @@ func (g *HTTPGetter) httpClient() (*http.Client, error) {
 				TLSClientConfig: &tls.Config{
 					InsecureSkipVerify: true,
 				},
+				Proxy: http.ProxyFromEnvironment,
 			},
 		}
 
