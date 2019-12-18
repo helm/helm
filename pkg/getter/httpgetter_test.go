@@ -96,6 +96,9 @@ func TestHTTPGetter(t *testing.T) {
 	g, err = NewHTTPGetter(
 		WithInsecureSkipVerifyTLS(insecure),
 	)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	hg, ok = g.(*HTTPGetter)
 	if !ok {
@@ -240,7 +243,7 @@ func TestDownloadInsecureSkipTLSVerify(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if _, err := g.Get(u.String()); err != nil {
+	if _, err = g.Get(u.String()); err != nil {
 		t.Error(err)
 	}
 
