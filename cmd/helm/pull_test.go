@@ -163,7 +163,7 @@ func TestPullCmd(t *testing.T) {
 			if err != nil {
 				if tt.wantError {
 					if tt.wantErrorMsg != "" && tt.wantErrorMsg == err.Error() {
-						t.Fatalf("%q reported error not equel wantErr, reported: %s, wanted: %s", tt.name, err, tt.wantErrorMsg)
+						t.Fatalf("Actual error %s, not equal to expected error %s", err, tt.wantErrorMsg)
 					}
 					return
 				}
