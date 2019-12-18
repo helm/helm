@@ -39,6 +39,10 @@ func NewGetValues(cfg *Configuration) *GetValues {
 
 // Run executes 'helm get values' against the given release.
 func (g *GetValues) Run(name string) (map[string]interface{}, error) {
+	if err := g.cfg.KubeClient.IsReachable(); err != nil {
+		return nil, err
+	}
+
 	rel, err := g.cfg.releaseContent(name, g.Version)
 	if err != nil {
 		return nil, err

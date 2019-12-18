@@ -306,7 +306,7 @@ func TestInstallRelease_KubeVersion(t *testing.T) {
 	vals = map[string]interface{}{}
 	_, err = instAction.Run(buildChart(withKube(">=99.0.0")), vals)
 	is.Error(err)
-	is.Contains(err.Error(), "chart requires kubernetesVersion")
+	is.Contains(err.Error(), "chart requires kubeVersion")
 }
 
 func TestInstallRelease_Wait(t *testing.T) {
@@ -505,6 +505,14 @@ func TestNameAndChart(t *testing.T) {
 		t.Fatal("expected an error")
 	}
 	is.Equal("must either provide a name or specify --generate-name", err.Error())
+
+	instAction.NameTemplate = ""
+	instAction.ReleaseName = ""
+	_, _, err = instAction.NameAndChart([]string{"foo", chartName, "bar"})
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	is.Equal("expected at most two arguments, unexpected arguments: bar", err.Error())
 }
 
 func TestNameAndChartGenerateName(t *testing.T) {

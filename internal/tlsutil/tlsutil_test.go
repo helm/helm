@@ -17,7 +17,6 @@ limitations under the License.
 package tlsutil
 
 import (
-	"crypto/tls"
 	"path/filepath"
 	"testing"
 )
@@ -51,26 +50,6 @@ func TestClientConfig(t *testing.T) {
 	}
 	if cfg.RootCAs == nil {
 		t.Fatalf("mismatch tls RootCAs, expecting non-nil")
-	}
-}
-
-func TestServerConfig(t *testing.T) {
-	opts := Options{
-		CaCertFile: testfile(t, testCaCertFile),
-		CertFile:   testfile(t, testCertFile),
-		KeyFile:    testfile(t, testKeyFile),
-		ClientAuth: tls.RequireAndVerifyClientCert,
-	}
-
-	cfg, err := ServerConfig(opts)
-	if err != nil {
-		t.Fatalf("error building tls server config: %v", err)
-	}
-	if got := cfg.MinVersion; got != tls.VersionTLS12 {
-		t.Errorf("expecting TLS version 1.2, got %d", got)
-	}
-	if got := cfg.ClientCAs; got == nil {
-		t.Errorf("expecting non-nil CA pool")
 	}
 }
 

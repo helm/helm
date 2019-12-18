@@ -460,6 +460,15 @@ func TestAlterFuncMap_include(t *testing.T) {
 		},
 	}
 
+	// Check nested reference in include FuncMap
+	d := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "nested"},
+		Templates: []*chart.File{
+			{Name: "templates/quote", Data: []byte(`{{include "nested/templates/quote" . | indent 2}} dead.`)},
+			{Name: "templates/_partial", Data: []byte(`{{.Release.Name}} - he`)},
+		},
+	}
+
 	v := chartutil.Values{
 		"Values": "",
 		"Chart":  c.Metadata,
@@ -476,6 +485,12 @@ func TestAlterFuncMap_include(t *testing.T) {
 	expect := "  Mistah Kurtz - he dead."
 	if got := out["conrad/templates/quote"]; got != expect {
 		t.Errorf("Expected %q, got %q (%v)", expect, got, out)
+	}
+
+	_, err = Render(d, v)
+	expectErrName := "nested/templates/quote"
+	if err == nil {
+		t.Errorf("Expected err of nested reference name: %v", expectErrName)
 	}
 }
 

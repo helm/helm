@@ -149,6 +149,13 @@ func (m *Manager) Update() error {
 		return err
 	}
 
+	// downloadAll might overwrite dependency version, recalculate lock digest
+	newDigest, err := resolver.HashReq(req, lock.Dependencies)
+	if err != nil {
+		return err
+	}
+	lock.Digest = newDigest
+
 	// If the lock file hasn't changed, don't write a new one.
 	oldLock := c.Lock
 	if oldLock != nil && oldLock.Digest == lock.Digest {
@@ -156,7 +163,7 @@ func (m *Manager) Update() error {
 	}
 
 	// Finally, we need to write the lockfile.
-	return writeLock(m.ChartPath, lock)
+	return writeLock(m.ChartPath, lock, c.Metadata.APIVersion == chart.APIVersionV1)
 }
 
 func (m *Manager) loadChartDir() (*chart.Chart, error) {
@@ -627,12 +634,16 @@ func (m *Manager) loadChartRepositories() (map[string]*repo.ChartRepository, err
 }
 
 // writeLock writes a lockfile to disk
-func writeLock(chartpath string, lock *chart.Lock) error {
+func writeLock(chartpath string, lock *chart.Lock, legacyLockfile bool) error {
 	data, err := yaml.Marshal(lock)
 	if err != nil {
 		return err
 	}
-	dest := filepath.Join(chartpath, "Chart.lock")
+	lockfileName := "Chart.lock"
+	if legacyLockfile {
+		lockfileName = "requirements.lock"
+	}
+	dest := filepath.Join(chartpath, lockfileName)
 	return ioutil.WriteFile(dest, data, 0644)
 }
 

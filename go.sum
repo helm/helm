@@ -27,8 +27,12 @@ github.com/Masterminds/goutils v1.1.0 h1:zukEsf/1JZwCMgHiK3GZftabmxiCw4apj3a28RP
 github.com/Masterminds/goutils v1.1.0/go.mod h1:8cTjp+g8YejhMuvIA5y2vz3BpJxksy863GQaJW2MFNU=
 github.com/Masterminds/semver/v3 v3.0.1 h1:2kKm5lb7dKVrt5TYUiAavE6oFc1cFT0057UVGT+JqLk=
 github.com/Masterminds/semver/v3 v3.0.1/go.mod h1:VPu/7SZ7ePZ3QOrcuXROw5FAcLl4a0cBrbBpGY/8hQs=
+github.com/Masterminds/semver/v3 v3.0.3 h1:znjIyLfpXEDQjOIEWh+ehwpTU14UzUPub3c3sm36u14=
+github.com/Masterminds/semver/v3 v3.0.3/go.mod h1:VPu/7SZ7ePZ3QOrcuXROw5FAcLl4a0cBrbBpGY/8hQs=
 github.com/Masterminds/sprig/v3 v3.0.0 h1:KSQz7Nb08/3VU9E4ns29dDxcczhOD1q7O1UfM4G3t3g=
 github.com/Masterminds/sprig/v3 v3.0.0/go.mod h1:NEUY/Qq8Gdm2xgYA+NwJM6wmfdRV9xkh8h/Rld20R0U=
+github.com/Masterminds/sprig/v3 v3.0.2 h1:wz22D0CiSctrliXiI9ZO3HoNApweeRGftyDN+BQa3B8=
+github.com/Masterminds/sprig/v3 v3.0.2/go.mod h1:oesJ8kPONMONaZgtiHNzUShJbksypC5kWczhZAf6+aU=
 github.com/Masterminds/vcs v1.13.0 h1:USF5TvZGYgIpcbNAEMLfFhHqP08tFZVlUVrmTSpqnyA=
 github.com/Masterminds/vcs v1.13.0/go.mod h1:N09YCmOQr6RLxC6UNHzuVwAdodYbbnycGHSmwVJjcKA=
 github.com/Microsoft/go-winio v0.4.11/go.mod h1:VhR8bwka0BXejwEJY73c50VrPtXAaKcyvVC4A4RozmA=

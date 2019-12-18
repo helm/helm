@@ -34,6 +34,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
@@ -41,6 +42,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes/scheme"
+	cachetools "k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
@@ -419,10 +421,13 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 
 	c.Log("Watching for changes to %s %s with timeout of %v", kind, info.Name, timeout)
 
-	w, err := resource.NewHelper(info.Client, info.Mapping).WatchSingle(info.Namespace, info.Name, info.ResourceVersion)
+	// Use a selector on the name of the resource. This should be unique for the
+	// given version and kind
+	selector, err := fields.ParseSelector(fmt.Sprintf("metadata.name=%s", info.Name))
 	if err != nil {
 		return err
 	}
+	lw := cachetools.NewListWatchFromClient(info.Client, info.Mapping.Resource.Resource, info.Namespace, selector)
 
 	// What we watch for depends on the Kind.
 	// - For a Job, we watch for completion.
@@ -432,7 +437,7 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 
 	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), timeout)
 	defer cancel()
-	_, err = watchtools.UntilWithoutRetry(ctx, w, func(e watch.Event) (bool, error) {
+	_, err = watchtools.ListWatchUntil(ctx, lw, func(e watch.Event) (bool, error) {
 		// Make sure the incoming object is versioned as we use unstructured
 		// objects when we build manifests
 		obj := convertWithMapper(e.Object, info.Mapping)
