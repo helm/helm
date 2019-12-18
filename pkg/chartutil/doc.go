@@ -17,7 +17,7 @@ limitations under the License.
 /*Package chartutil contains tools for working with charts.
 
 Charts are described in the protocol buffer definition (pkg/proto/charts).
-This packe provides utilities for serializing and deserializing charts.
+This package provides utilities for serializing and deserializing charts.
 
 A chart can be represented on the file system in one of two ways:
 
@@ -25,7 +25,7 @@ A chart can be represented on the file system in one of two ways:
 	- As a tarred gzipped file containing a directory that then contains a
 	Chart.yaml file.
 
-This package provides utilitites for working with those file formats.
+This package provides utilities for working with those file formats.
 
 The preferred way of loading a chart is using 'loader.Load`:
 

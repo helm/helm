@@ -100,7 +100,7 @@ func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]render
 		var buf strings.Builder
 		for _, n := range includedNames {
 			if n == name {
-				return "", errors.Wrapf(fmt.Errorf("unable to excute template"), "rendering template has a nested reference name: %s", name)
+				return "", errors.Wrapf(fmt.Errorf("unable to execute template"), "rendering template has a nested reference name: %s", name)
 			}
 		}
 		includedNames = append(includedNames, name)
