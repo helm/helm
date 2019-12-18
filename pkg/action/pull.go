@@ -109,7 +109,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		if !filepath.IsAbs(ud) {
 			ud = filepath.Join(p.DestDir, ud)
 		}
-		// Let udCheck to check conflict file/dir without replacing ud when untarDir is .
+		// Let udCheck to check conflict file/dir without replacing ud when untarDir is the current directory(.).
 		udCheck := ud
 		if udCheck == "." {
 			_, udCheck = filepath.Split(chartRef)
