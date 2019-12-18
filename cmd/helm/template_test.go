@@ -84,16 +84,16 @@ func TestTemplateCmd(t *testing.T) {
 			cmd:    fmt.Sprintf("template '%s' --include-crds", chartPath),
 			golden: "output/template-with-crds.txt",
 		},
-        {
-            name:   "template with show-only one",
-            cmd:    fmt.Sprintf("template '%s' --show-only templates/service.yaml", chartPath),
-            golden: "output/template-show-only-one.txt",
-        },
-        {
-            name:   "template with show-only multiple",
-            cmd:    fmt.Sprintf("template '%s' --show-only templates/service.yaml --show-only charts/subcharta/templates/service.yaml", chartPath),
-            golden: "output/template-show-only-multiple.txt",
-        },
+		{
+			name:   "template with show-only one",
+			cmd:    fmt.Sprintf("template '%s' --show-only templates/service.yaml", chartPath),
+			golden: "output/template-show-only-one.txt",
+		},
+		{
+			name:   "template with show-only multiple",
+			cmd:    fmt.Sprintf("template '%s' --show-only templates/service.yaml --show-only charts/subcharta/templates/service.yaml", chartPath),
+			golden: "output/template-show-only-multiple.txt",
+		},
 	}
 	runTestCmd(t, tests)
 }
