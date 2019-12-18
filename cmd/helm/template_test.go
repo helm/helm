@@ -91,7 +91,8 @@ func TestTemplateCmd(t *testing.T) {
         },
         {
             name:   "template with show-only multiple",
-            cmd:    fmt.Sprintf("template '%s' --show-only templates/service.yaml --show-only charts/subcharta/templates/service.yaml", chartPath),
+            cmd:    fmt.Sprintf("template '%s' --show-only templates/service.yaml "+
+                        "--show-only charts/subcharta/templates/service.yaml", chartPath),
             golden: "output/template-show-only-multiple.txt",
         },
 	}
