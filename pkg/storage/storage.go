@@ -122,6 +122,9 @@ func (s *Storage) Deployed(name string) (*rspb.Release, error) {
 		return nil, errors.Errorf("%q has no deployed releases", name)
 	}
 
+	// We want oldest to newest
+	relutil.SortByRevision(ls)
+
 	return ls[len(ls)-1], err
 }
 
