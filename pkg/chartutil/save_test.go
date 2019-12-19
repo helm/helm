@@ -17,7 +17,10 @@ limitations under the License.
 package chartutil
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
+	"io"
 	"io/ioutil"
 	"os"
 	"path"
@@ -25,6 +28,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -97,6 +101,85 @@ func Indent(n int, text string) string {
 	startOfLine := regexp.MustCompile(`(?m)^`)
 	indentation := strings.Repeat(" ", n)
 	return startOfLine.ReplaceAllLiteralString(text, indentation)
+}
+
+func TestSavePreservesTimestamps(t *testing.T) {
+	// Test executes so quickly that if we don't subtract a second, the
+	// check will fail because `initialCreateTime` will be identical to the
+	// written timestamp for the files.
+	initialCreateTime := time.Now().Add(-1 * time.Second)
+
+	tmp, err := ioutil.TempDir("", "helm-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmp)
+
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: chart.APIVersionV1,
+			Name:       "ahab",
+			Version:    "1.2.3.4",
+		},
+		Values: map[string]interface{}{
+			"imageName": "testimage",
+			"imageId":   42,
+		},
+		Files: []*chart.File{
+			{Name: "scheherazade/shahryar.txt", Data: []byte("1,001 Nights")},
+		},
+		Schema: []byte("{\n  \"title\": \"Values\"\n}"),
+	}
+
+	where, err := Save(c, tmp)
+	if err != nil {
+		t.Fatalf("Failed to save: %s", err)
+	}
+
+	allHeaders, err := retrieveAllHeadersFromTar(where)
+	if err != nil {
+		t.Fatalf("Failed to parse tar: %v", err)
+	}
+
+	for _, header := range allHeaders {
+		if header.ModTime.Before(initialCreateTime) {
+			t.Fatalf("File timestamp not preserved: %v", header.ModTime)
+		}
+	}
+}
+
+// We could refactor `load.go` to use this `retrieveAllHeadersFromTar` function
+// as well, so we are not duplicating components of the code which iterate
+// through the tar.
+func retrieveAllHeadersFromTar(path string) ([]*tar.Header, error) {
+	raw, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer raw.Close()
+
+	unzipped, err := gzip.NewReader(raw)
+	if err != nil {
+		return nil, err
+	}
+	defer unzipped.Close()
+
+	tr := tar.NewReader(unzipped)
+	headers := []*tar.Header{}
+	for {
+		hd, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		headers = append(headers, hd)
+	}
+
+	return headers, nil
 }
 
 func TestSaveDir(t *testing.T) {

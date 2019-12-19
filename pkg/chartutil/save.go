@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
@@ -207,9 +208,10 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 func writeToTar(out *tar.Writer, name string, body []byte) error {
 	// TODO: Do we need to create dummy parent directory names if none exist?
 	h := &tar.Header{
-		Name: name,
-		Mode: 0644,
-		Size: int64(len(body)),
+		Name:    name,
+		Mode:    0644,
+		Size:    int64(len(body)),
+		ModTime: time.Now(),
 	}
 	if err := out.WriteHeader(h); err != nil {
 		return err
