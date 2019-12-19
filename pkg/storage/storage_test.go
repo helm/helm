@@ -169,7 +169,7 @@ func TestStorageDeployed(t *testing.T) {
 	storage := Init(driver.NewMemory())
 
 	const name = "angry-bird"
-	const vers = 4
+	const vers = 5
 
 	// setup storage with test releases
 	setup := func() {
@@ -178,17 +178,19 @@ func TestStorageDeployed(t *testing.T) {
 		rls1 := ReleaseTestData{Name: name, Version: 2, Status: rspb.StatusSuperseded}.ToRelease()
 		rls2 := ReleaseTestData{Name: name, Version: 3, Status: rspb.StatusSuperseded}.ToRelease()
 		rls3 := ReleaseTestData{Name: name, Version: 4, Status: rspb.StatusDeployed}.ToRelease()
+		rls4 := ReleaseTestData{Name: name, Version: 5, Status: rspb.StatusDeployed}.ToRelease()
 
 		// create the release records in the storage
 		assertErrNil(t.Fatal, storage.Create(rls0), "Storing release 'angry-bird' (v1)")
 		assertErrNil(t.Fatal, storage.Create(rls1), "Storing release 'angry-bird' (v2)")
 		assertErrNil(t.Fatal, storage.Create(rls2), "Storing release 'angry-bird' (v3)")
 		assertErrNil(t.Fatal, storage.Create(rls3), "Storing release 'angry-bird' (v4)")
+		assertErrNil(t.Fatal, storage.Create(rls4), "Storing release 'angry-bird' (v5)")
 	}
 
 	setup()
 
-	rls, err := storage.Last(name)
+	rls, err := storage.Deployed(name)
 	if err != nil {
 		t.Fatalf("Failed to query for deployed release: %s\n", err)
 	}
