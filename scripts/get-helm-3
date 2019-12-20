@@ -133,7 +133,7 @@ downloadFile() {
 installFile() {
   HELM_TMP="$HELM_TMP_ROOT/$PROJECT_NAME"
   local sum=$(openssl sha1 -sha256 ${HELM_TMP_FILE} | awk '{print $2}')
-  local expected_sum=$(cat ${HELM_SUM_FILE})
+  local expected_sum=$(cat ${HELM_SUM_FILE} | awk '{print $1}')
   if [ "$sum" != "$expected_sum" ]; then
     echo "SHA sum of ${HELM_TMP_FILE} does not match. Aborting."
     exit 1
