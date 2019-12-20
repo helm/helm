@@ -156,7 +156,7 @@ sign:
 .PHONY: checksum
 checksum:
 	for f in _dist/*.{gz,zip} ; do \
-		shasum -a 256 "$${f}"  > "$${f}.sha256" ; \
+		shasum -a 256 "$${f}"  | tee "$${f}.sha256sum" | awk '{print $$1}' > "$${f}.sha256" ; \
 	done
 
 # ------------------------------------------------------------------------------
