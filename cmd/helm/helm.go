@@ -68,7 +68,7 @@ func main() {
 	cmd := newRootCmd(actionConfig, os.Stdout, os.Args[1:])
 
 	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), os.Getenv("HELM_DRIVER"), debug); err != nil {
-		log.Fatalf("%+v", err)
+		log.Fatal(err)
 	}
 
 	if err := cmd.Execute(); err != nil {
