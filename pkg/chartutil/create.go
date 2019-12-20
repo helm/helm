@@ -170,6 +170,7 @@ const defaultIgnore = `# Patterns to ignore when building packages.
 *.swp
 *.bak
 *.tmp
+*.orig
 *~
 # Various IDEs
 .project
