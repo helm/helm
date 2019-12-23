@@ -37,6 +37,10 @@ func TestResourceList(t *testing.T) {
 	r1 = []*resource.Info{info("foo"), info("bar")}
 	r2 = []*resource.Info{info("bar")}
 
+	if r1.Get(info("bar")).Mapping.Resource.Resource != "pod" {
+		t.Error("expected get pod")
+	}
+
 	diff := r1.Difference(r2)
 	if len(diff) != 1 {
 		t.Error("expected 1 result")
