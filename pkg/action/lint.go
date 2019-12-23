@@ -33,8 +33,9 @@ import (
 //
 // It provides the implementation of 'helm lint'.
 type Lint struct {
-	Strict    bool
-	Namespace string
+	Strict        bool
+	Namespace     string
+	WithSubcharts bool
 }
 
 type LintResult struct {

@@ -19,6 +19,8 @@ package main
 import (
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -51,6 +53,21 @@ func newLintCmd(out io.Writer) *cobra.Command {
 			if len(args) > 0 {
 				paths = args
 			}
+			if client.WithSubcharts {
+				for _, p := range paths {
+					filepath.Walk(filepath.Join(p, "/charts"), func(path string, info os.FileInfo, err error) error {
+						if info != nil {
+							if info.Name() == "Chart.yaml" {
+								paths = append(paths, filepath.Dir(path))
+							} else if strings.HasSuffix(path, ".tgz") || strings.HasSuffix(path, ".tar.gz") {
+								paths = append(paths, path)
+							}
+						}
+						return nil
+					})
+				}
+			}
+
 			client.Namespace = settings.Namespace()
 			vals, err := valueOpts.MergeValues(getter.All(settings))
 			if err != nil {
@@ -102,6 +119,7 @@ func newLintCmd(out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	f.BoolVar(&client.Strict, "strict", false, "fail on lint warnings")
+	f.BoolVar(&client.WithSubcharts, "with-subcharts", false, "lint dependent charts")
 	addValueOptionsFlags(f, valueOpts)
 
 	return cmd
