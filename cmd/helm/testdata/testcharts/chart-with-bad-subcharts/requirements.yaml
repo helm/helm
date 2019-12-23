@@ -1,0 +1,5 @@
+dependencies:
+  - name: good-subchart
+    version: 0.0.1
+  - name: bad-subchart
+    version: 0.0.1
