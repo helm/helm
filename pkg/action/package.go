@@ -36,13 +36,14 @@ import (
 //
 // It provides the implementation of 'helm package'.
 type Package struct {
-	Sign             bool
-	Key              string
-	Keyring          string
-	Version          string
-	AppVersion       string
-	Destination      string
-	DependencyUpdate bool
+	Sign               bool
+	Key                string
+	Keyring            string
+	Version            string
+	AppVersion         string
+	Destination        string
+	DependencyUpdate   bool
+	DependencyVersions map[string]string
 
 	RepositoryConfig string
 	RepositoryCache  string
@@ -75,6 +76,15 @@ func (p *Package) Run(path string, vals map[string]interface{}) (string, error) 
 
 	if p.AppVersion != "" {
 		ch.Metadata.AppVersion = p.AppVersion
+	}
+
+	if p.DependencyUpdate {
+		// only alter these upon successful update
+		for _, d := range ch.Metadata.Dependencies {
+			if v, ok := p.DependencyVersions[d.Name]; ok {
+				d.Version = v
+			}
+		}
 	}
 
 	if reqs := ch.Metadata.Dependencies; reqs != nil {

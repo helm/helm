@@ -83,13 +83,14 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 
 				if client.DependencyUpdate {
 					downloadManager := &downloader.Manager{
-						Out:              ioutil.Discard,
-						ChartPath:        path,
-						Keyring:          client.Keyring,
-						Getters:          p,
-						Debug:            settings.Debug,
-						RepositoryConfig: settings.RepositoryConfig,
-						RepositoryCache:  settings.RepositoryCache,
+						Out:                ioutil.Discard,
+						ChartPath:          path,
+						Keyring:            client.Keyring,
+						Getters:            p,
+						Debug:              settings.Debug,
+						DependencyVersions: client.DependencyVersions,
+						RepositoryConfig:   settings.RepositoryConfig,
+						RepositoryCache:    settings.RepositoryCache,
 					}
 
 					if err := downloadManager.Update(); err != nil {
@@ -114,6 +115,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&client.AppVersion, "app-version", "", "set the appVersion on the chart to this version")
 	f.StringVarP(&client.Destination, "destination", "d", ".", "location to write the chart.")
 	f.BoolVarP(&client.DependencyUpdate, "dependency-update", "u", false, `update dependencies from "Chart.yaml" to dir "charts/" before packaging`)
+	f.StringToStringVar(&client.DependencyVersions, "set-dependency-version", make(map[string]string), "set dependency versions. Used if --dependency-update is true")
 	addValueOptionsFlags(f, valueOpts)
 
 	return cmd

@@ -56,9 +56,11 @@ type Manager struct {
 	// SkipUpdate indicates that the repository should not be updated first.
 	SkipUpdate bool
 	// Getter collection for the operation
-	Getters          []getter.Provider
-	RepositoryConfig string
-	RepositoryCache  string
+	Getters []getter.Provider
+	// DependencyVersions allows us to explicitly set versions
+	DependencyVersions map[string]string
+	RepositoryConfig   string
+	RepositoryCache    string
 }
 
 // Build rebuilds a local charts directory from a lockfile.
@@ -121,6 +123,13 @@ func (m *Manager) Update() error {
 	req := c.Metadata.Dependencies
 	if req == nil {
 		return nil
+	}
+
+	// Allow dependency versions to be overwritten.
+	for _, d := range c.Metadata.Dependencies {
+		if v, ok := m.DependencyVersions[d.Name]; ok {
+			d.Version = v
+		}
 	}
 
 	// Check that all of the repos we're dependent on actually exist and
