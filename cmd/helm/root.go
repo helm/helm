@@ -69,7 +69,7 @@ __helm_override_flags_to_kubectl_flags()
 
 __helm_get_repos()
 {
-    eval $(__helm_binary_name) repo list 2>/dev/null | \tail +2 | \cut -f1
+    eval $(__helm_binary_name) repo list 2>/dev/null | \tail -n +2 | \cut -f1
 }
 
 __helm_get_contexts()
@@ -236,7 +236,7 @@ __helm_list_plugins()
     __helm_debug "${FUNCNAME[0]}: c is $c words[c] is ${words[c]}"
     local out
     # Use eval in case helm_binary_name contains a variable (e.g., $HOME/bin/h3)
-    if out=$(eval $(__helm_binary_name) plugin list 2>/dev/null | \tail +2 | \cut -f1); then
+    if out=$(eval $(__helm_binary_name) plugin list 2>/dev/null | \tail -n +2 | \cut -f1); then
         COMPREPLY=( $( compgen -W "${out[*]}" -- "$cur" ) )
     fi
 }
