@@ -125,7 +125,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 	// Function providing dynamic auto-completion
 	completion.RegisterValidArgsFunc(cmd, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
-		return compInstall(args, toComplete)
+		return compInstall(args, toComplete, client)
 	})
 
 	addInstallFlags(cmd.Flags(), client, valueOpts)
@@ -233,8 +233,12 @@ func isChartInstallable(ch *chart.Chart) (bool, error) {
 }
 
 // Provide dynamic auto-completion for the install and template commands
-func compInstall(args []string, toComplete string) ([]string, completion.BashCompDirective) {
-	if len(args) == 1 {
+func compInstall(args []string, toComplete string, client *action.Install) ([]string, completion.BashCompDirective) {
+	requiredArgs := 1
+	if client.GenerateName {
+		requiredArgs = 0
+	}
+	if len(args) == requiredArgs {
 		return compListCharts(toComplete, true)
 	}
 	return nil, completion.BashCompDirectiveNoFileComp

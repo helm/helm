@@ -126,7 +126,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 	// Function providing dynamic auto-completion
 	completion.RegisterValidArgsFunc(cmd, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
-		return compInstall(args, toComplete)
+		return compInstall(args, toComplete, client)
 	})
 
 	f := cmd.Flags()
