@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
+	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/pkg/action"
 )
 
@@ -67,6 +68,14 @@ func newPullCmd(out io.Writer) *cobra.Command {
 			return nil
 		},
 	}
+
+	// Function providing dynamic auto-completion
+	completion.RegisterValidArgsFunc(cmd, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
+		if len(args) != 0 {
+			return nil, completion.BashCompDirectiveNoFileComp
+		}
+		return compListCharts(toComplete, false)
+	})
 
 	f := cmd.Flags()
 	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
