@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/cli"
@@ -36,8 +37,8 @@ import (
 // Used by the shell completion script.
 const CompRequestCmd = "__complete"
 
-// Global map allowing to find completion functions for commands.
-var validArgsFunctions = map[*cobra.Command]func(cmd *cobra.Command, args []string, toComplete string) ([]string, BashCompDirective){}
+// Global map allowing to find completion functions for commands or flags.
+var validArgsFunctions = map[interface{}]func(cmd *cobra.Command, args []string, toComplete string) ([]string, BashCompDirective){}
 
 // BashCompDirective is a bit map representing the different behaviors the shell
 // can be instructed to have once completions have been provided.
@@ -67,6 +68,21 @@ func RegisterValidArgsFunc(cmd *cobra.Command, f func(cmd *cobra.Command, args [
 		log.Fatal(fmt.Sprintf("RegisterValidArgsFunc: command '%s' already registered", cmd.Name()))
 	}
 	validArgsFunctions[cmd] = f
+}
+
+// RegisterFlagCompletionFunc should be called to register a function to provide completion for a flag
+func RegisterFlagCompletionFunc(flag *pflag.Flag, f func(cmd *cobra.Command, args []string, toComplete string) ([]string, BashCompDirective)) {
+	if _, exists := validArgsFunctions[flag]; exists {
+		log.Fatal(fmt.Sprintf("RegisterFlagCompletionFunc: flag '%s' already registered", flag.Name))
+	}
+	validArgsFunctions[flag] = f
+
+	// Make sure the completion script call the __helm_custom_func for the registered flag.
+	// This is essential to make the = form work. E.g., helm -n=<TAB> or helm status --output=<TAB>
+	if flag.Annotations == nil {
+		flag.Annotations = map[string][]string{}
+	}
+	flag.Annotations[cobra.BashCompCustom] = []string{"__helm_custom_func"}
 }
 
 var debug = true
@@ -101,15 +117,14 @@ func NewCompleteCmd(settings *cli.EnvSettings) *cobra.Command {
 		DisableFlagsInUseLine: true,
 		Hidden:                true,
 		DisableFlagParsing:    true,
-		Args:                  require.MinimumNArgs(2),
+		Args:                  require.MinimumNArgs(1),
 		Short:                 "Request shell completion choices for the specified command-line",
 		Long: fmt.Sprintf("%s is a special command that is used by the shell completion logic\n%s",
 			CompRequestCmd, "to request completion choices for the specified command-line."),
 		Run: func(cmd *cobra.Command, args []string) {
 			CompDebugln(fmt.Sprintf("%s was called with args %v", cmd.Name(), args))
 
-			trimmedArgs := args[:len(args)-1]
-			toComplete := args[len(args)-1]
+			flag, trimmedArgs, toComplete := checkIfFlagCompletion(cmd.Root(), args[:len(args)-1], args[len(args)-1])
 
 			// Find the real command for which completion must be performed
 			finalCmd, finalArgs, err := cmd.Root().Find(trimmedArgs)
@@ -128,10 +143,20 @@ func NewCompleteCmd(settings *cli.EnvSettings) *cobra.Command {
 			argsWoFlags := finalCmd.Flags().Args()
 			CompDebugln(fmt.Sprintf("Args without flags are '%v' with length %d", argsWoFlags, len(argsWoFlags)))
 
-			// Find completion function for the command
-			completionFn, ok := validArgsFunctions[finalCmd]
+			var key interface{}
+			var keyStr string
+			if flag != nil {
+				key = flag
+				keyStr = flag.Name
+			} else {
+				key = finalCmd
+				keyStr = finalCmd.Name()
+			}
+
+			// Find completion function for the flag or command
+			completionFn, ok := validArgsFunctions[key]
 			if !ok {
-				CompErrorln(fmt.Sprintf("Dynamic completion not supported/needed for flag or command: %s", finalCmd.Name()))
+				CompErrorln(fmt.Sprintf("Dynamic completion not supported/needed for flag or command: %s", keyStr))
 				return
 			}
 
@@ -148,6 +173,96 @@ func NewCompleteCmd(settings *cli.EnvSettings) *cobra.Command {
 			os.Exit(int(directive))
 		},
 	}
+}
+
+func isFlag(arg string) bool {
+	return len(arg) > 0 && arg[0] == '-'
+}
+
+func checkIfFlagCompletion(rootCmd *cobra.Command, args []string, lastArg string) (*pflag.Flag, []string, string) {
+	var flagName string
+	trimmedArgs := args
+	flagWithEqual := false
+	if isFlag(lastArg) {
+		if index := strings.Index(lastArg, "="); index >= 0 {
+			flagName = strings.TrimLeft(lastArg[:index], "-")
+			lastArg = lastArg[index+1:]
+			flagWithEqual = true
+		} else {
+			CompErrorln("Unexpected completion request for flag")
+			os.Exit(int(BashCompDirectiveError))
+		}
+	}
+
+	if len(flagName) == 0 {
+		if len(args) > 0 {
+			prevArg := args[len(args)-1]
+			if isFlag(prevArg) {
+				// If the flag contains an = it means it has already been fully processed
+				if index := strings.Index(prevArg, "="); index < 0 {
+					flagName = strings.TrimLeft(prevArg, "-")
+
+					// Remove the uncompleted flag or else Cobra could complain about
+					// an invalid value for that flag e.g., helm status --output j<TAB>
+					trimmedArgs = args[:len(args)-1]
+				}
+			}
+		}
+	}
+
+	if len(flagName) == 0 {
+		// Not doing flag completion
+		return nil, trimmedArgs, lastArg
+	}
+
+	// Find the real command for which completion must be performed
+	finalCmd, _, err := rootCmd.Find(trimmedArgs)
+	if err != nil {
+		// Unable to find the real command. E.g., helm invalidCmd <TAB>
+		os.Exit(int(BashCompDirectiveError))
+	}
+
+	CompDebugln(fmt.Sprintf("checkIfFlagCompletion: found final command '%s'", finalCmd.Name()))
+
+	flag := findFlag(finalCmd, flagName)
+	if flag == nil {
+		// Flag not supported by this command, nothing to complete
+		CompDebugln(fmt.Sprintf("Subcommand '%s' does not support flag '%s'", finalCmd.Name(), flagName))
+		os.Exit(int(BashCompDirectiveNoFileComp))
+	}
+
+	if !flagWithEqual {
+		if len(flag.NoOptDefVal) != 0 {
+			// We had assumed dealing with a two-word flag but the flag is a boolean flag.
+			// In that case, there is no value following it, so we are not really doing flag completion.
+			// Reset everything to do argument completion.
+			trimmedArgs = args
+			flag = nil
+		}
+	}
+
+	return flag, trimmedArgs, lastArg
+}
+
+func findFlag(cmd *cobra.Command, name string) *pflag.Flag {
+	flagSet := cmd.Flags()
+	if len(name) == 1 {
+		// First convert the short flag into a long flag
+		// as the cmd.Flag() search only accepts long flags
+		if short := flagSet.ShorthandLookup(name); short != nil {
+			CompDebugln(fmt.Sprintf("checkIfFlagCompletion: found flag '%s' which we will change to '%s'", name, short.Name))
+			name = short.Name
+		} else {
+			set := cmd.InheritedFlags()
+			if short = set.ShorthandLookup(name); short != nil {
+				CompDebugln(fmt.Sprintf("checkIfFlagCompletion: found inherited flag '%s' which we will change to '%s'", name, short.Name))
+				name = short.Name
+			} else {
+				return nil
+			}
+		}
+	}
+	return cmd.Flag(name)
 }
 
 // CompDebug prints the specified string to the same file as where the

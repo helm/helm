@@ -23,51 +23,16 @@ import (
 
 	"github.com/spf13/cobra"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/cli/output"
 )
 
 const (
 	bashCompletionFunc = `
-__helm_override_flag_list=(--kubeconfig --kube-context --namespace -n)
-__helm_override_flags()
-{
-    local ${__helm_override_flag_list[*]##*-} two_word_of of var
-    for w in "${words[@]}"; do
-        if [ -n "${two_word_of}" ]; then
-            eval "${two_word_of##*-}=\"${two_word_of}=\${w}\""
-            two_word_of=
-            continue
-        fi
-        for of in "${__helm_override_flag_list[@]}"; do
-            case "${w}" in
-                ${of}=*)
-                    eval "${of##*-}=\"${w}\""
-                    ;;
-                ${of})
-                    two_word_of="${of}"
-                    ;;
-            esac
-        done
-    done
-    for var in "${__helm_override_flag_list[@]##*-}"; do
-        if eval "test -n \"\$${var}\""; then
-            eval "echo \${${var}}"
-        fi
-    done
-}
-
-__helm_override_flags_to_kubectl_flags()
-{
-    # --kubeconfig, -n, --namespace stay the same for kubectl
-    # --kube-context becomes --context for kubectl
-    __helm_debug "${FUNCNAME[0]}: flags to convert: $1"
-    echo "$1" | \sed s/kube-context/context/
-}
-
 __helm_get_contexts()
 {
     __helm_debug "${FUNCNAME[0]}: c is $c words[c] is ${words[c]}"
@@ -78,36 +43,19 @@ __helm_get_contexts()
     fi
 }
 
-__helm_get_namespaces()
-{
-    __helm_debug "${FUNCNAME[0]}: c is $c words[c] is ${words[c]}"
-    local template out
-    template="{{ range .items  }}{{ .metadata.name }} {{ end }}"
-
-    flags=$(__helm_override_flags_to_kubectl_flags "$(__helm_override_flags)")
-    __helm_debug "${FUNCNAME[0]}: override flags for kubectl are: $flags"
-
-    # Must use eval in case the flags contain a variable such as $HOME
-    if out=$(eval kubectl get ${flags} -o template --template=\"${template}\" namespace 2>/dev/null); then
-        COMPREPLY+=( $( compgen -W "${out[*]}" -- "$cur" ) )
-    fi
-}
-
-__helm_output_options()
-{
-    __helm_debug "${FUNCNAME[0]}: c is $c words[c] is ${words[c]}"
-    COMPREPLY+=( $( compgen -W "%[1]s" -- "$cur" ) )
-}
-
 __helm_custom_func()
 {
     __helm_debug "${FUNCNAME[0]}: c is $c, words[@] is ${words[@]}, #words[@] is ${#words[@]}"
     __helm_debug "${FUNCNAME[0]}: cur is ${cur}, cword is ${cword}, words is ${words}"
 
-    local out requestComp
-    requestComp="${words[0]} %[2]s ${words[@]:1}"
+    local out requestComp lastParam lastChar
+    requestComp="${words[0]} %[1]s ${words[@]:1}"
 
-    if [ -z "${cur}" ]; then
+    lastParam=${words[$((${#words[@]}-1))]}
+    lastChar=${lastParam:$((${#lastParam}-1)):1}
+    __helm_debug "${FUNCNAME[0]}: lastParam ${lastParam}, lastChar ${lastChar}"
+
+    if [ -z "${cur}" ] && [ "${lastChar}" != "=" ]; then
         # If the last parameter is complete (there is a space following it)
         # We add an extra empty parameter so we can indicate this to the go method.
         __helm_debug "${FUNCNAME[0]}: Adding extra empty parameter"
@@ -119,15 +67,15 @@ __helm_custom_func()
     out=$(eval ${requestComp} 2>/dev/null)
     directive=$?
 
-    if [ $((${directive} & %[3]d)) -ne 0 ]; then
+    if [ $((${directive} & %[2]d)) -ne 0 ]; then
         __helm_debug "${FUNCNAME[0]}: received error, completion failed"
     else
-        if [ $((${directive} & %[4]d)) -ne 0 ]; then
+        if [ $((${directive} & %[3]d)) -ne 0 ]; then
             if [[ $(type -t compopt) = "builtin" ]]; then
                 compopt -o nospace
             fi
         fi
-        if [ $((${directive} & %[5]d)) -ne 0 ]; then
+        if [ $((${directive} & %[4]d)) -ne 0 ]; then
             if [[ $(type -t compopt) = "builtin" ]]; then
                 compopt +o default
             fi
@@ -145,7 +93,8 @@ var (
 	// Mapping of global flags that can have dynamic completion and the
 	// completion function to be used.
 	bashCompletionFlags = map[string]string{
-		"namespace":    "__helm_get_namespaces",
+		// Cannot convert the kube-context flag to Go completion yet because
+		// an incomplete kube-context will make actionConfig.Init() fail at the very start
 		"kube-context": "__helm_get_contexts",
 	}
 )
@@ -198,7 +147,6 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		Args:         require.NoArgs,
 		BashCompletionFunction: fmt.Sprintf(
 			bashCompletionFunc,
-			strings.Join(output.Formats(), " "),
 			completion.CompRequestCmd,
 			completion.BashCompDirectiveError,
 			completion.BashCompDirectiveNoSpace,
@@ -207,6 +155,29 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	flags := cmd.PersistentFlags()
 
 	settings.AddFlags(flags)
+
+	flag := flags.Lookup("namespace")
+	// Setup shell completion for the namespace flag
+	completion.RegisterFlagCompletionFunc(flag, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
+		if client, err := actionConfig.KubernetesClientSet(); err == nil {
+			// Choose a long enough timeout that the user notices somethings is not working
+			// but short enough that the user is not made to wait very long
+			to := int64(3)
+			completion.CompDebugln(fmt.Sprintf("About to call kube client for namespaces with timeout of: %d", to))
+
+			nsNames := []string{}
+			// TODO can we request only the namespace with request.prefix?
+			if namespaces, err := client.CoreV1().Namespaces().List(metav1.ListOptions{TimeoutSeconds: &to}); err == nil {
+				for _, ns := range namespaces.Items {
+					if strings.HasPrefix(ns.Name, toComplete) {
+						nsNames = append(nsNames, ns.Name)
+					}
+				}
+				return nsNames, completion.BashCompDirectiveNoFileComp
+			}
+		}
+		return nil, completion.BashCompDirectiveDefault
+	})
 
 	// We can safely ignore any errors that flags.Parse encounters since
 	// those errors will be caught later during the call to cmd.Execution.
