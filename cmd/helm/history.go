@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"strconv"
 	"time"
 
 	"github.com/gosuri/uitable"
@@ -184,4 +185,17 @@ func min(x, y int) int {
 		return x
 	}
 	return y
+}
+
+func compListRevisions(cfg *action.Configuration, releaseName string) ([]string, completion.BashCompDirective) {
+	client := action.NewHistory(cfg)
+
+	var revisions []string
+	if hist, err := client.Run(releaseName); err == nil {
+		for _, release := range hist {
+			revisions = append(revisions, strconv.Itoa(release.Version))
+		}
+		return revisions, completion.BashCompDirectiveDefault
+	}
+	return nil, completion.BashCompDirectiveError
 }

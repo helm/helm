@@ -67,6 +67,14 @@ func newGetAllCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	f.IntVar(&client.Version, "revision", 0, "get the named release with revision")
+	flag := f.Lookup("revision")
+	completion.RegisterFlagCompletionFunc(flag, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
+		if len(args) == 1 {
+			return compListRevisions(cfg, args[0])
+		}
+		return nil, completion.BashCompDirectiveNoFileComp
+	})
+
 	f.StringVar(&template, "template", "", "go template for formatting the output, eg: {{.Release.Name}}")
 
 	return cmd
