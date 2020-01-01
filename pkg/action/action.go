@@ -60,6 +60,8 @@ var (
 	errInvalidRevision = errors.New("invalid release revision")
 	// errInvalidName indicates that an invalid release name was provided
 	errInvalidName = errors.New("invalid release name, must match regex ^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+$ and the length must not longer than 53")
+	// errPending indicates that another instance of Helm is already applying an operation on a release.
+	errPending = errors.New("another operation (install/upgrade/rollback) is in progress")
 )
 
 // ValidName is a regular expression for resource names.
