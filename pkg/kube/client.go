@@ -197,6 +197,11 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 	}
 
 	for _, info := range original.Difference(target) {
+		if info.Mapping.GroupVersionKind.Kind == "CustomResourceDefinition" {
+			c.Log("Skipping the deletion of CustomResourceDefinition %q", info.Name)
+			continue
+		}
+
 		c.Log("Deleting %q in %s...", info.Name, info.Namespace)
 		res.Deleted = append(res.Deleted, info)
 		if err := deleteResource(info); err != nil {
@@ -219,6 +224,11 @@ func (c *Client) Delete(resources ResourceList) (*Result, []error) {
 	var errs []error
 	res := &Result{}
 	err := perform(resources, func(info *resource.Info) error {
+		if info.Mapping.GroupVersionKind.Kind == "CustomResourceDefinition" {
+			c.Log("Skipping the deletion of CustomResourceDefinition %q", info.Name)
+			return nil
+		}
+
 		c.Log("Starting delete for %q %s", info.Name, info.Mapping.GroupVersionKind.Kind)
 		if err := c.skipIfNotFound(deleteResource(info)); err != nil {
 			// Collect the error and continue on
