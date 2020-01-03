@@ -90,13 +90,24 @@ const defaultValues = `# Default values for %s.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+# Default values for images used in the chart; all these values can be overridden in the 
+# 'images' section for individual images
+global:
+  imageRegistry: docker.io # Allows for easy re-location of all the images to a private registry
+  imagePullPolicy: IfNotPresent
+  imagePullSecrets: []
+
 replicaCount: 1
 
-image:
-  repository: nginx
-  pullPolicy: IfNotPresent
+images:
+  nginx:
+    name: bitnami/nginx
+    tag: 1.16.1-debian-9-r105
+    digest: sha256:582aa10676417e79995989c0e06ffa8d48ced0cc2b9883669b0379ec9a7f45fb # Optional, to ensure image authenticity
+  metrics:
+    name: bitnami/nginx-exporter
+    tag: 0.4.2-debian-9-r129
 
-imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
@@ -238,10 +249,8 @@ spec:
       labels:
         {{- include "<CHARTNAME>.selectorLabels" . | nindent 8 }}
     spec:
-    {{- with .Values.imagePullSecrets }}
-      imagePullSecrets:
-        {{- toYaml . | nindent 8 }}
-    {{- end }}
+      {{- $nginxImage :=  (dict "image" .Values.images.nginx "global" .Values.global) -}}
+      {{- include "imagePullSecrets" $nginxImage | indent 6 }}
       serviceAccountName: {{ include "<CHARTNAME>.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
@@ -249,8 +258,8 @@ spec:
         - name: {{ .Chart.Name }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.image.repository }}:{{ .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          image: "{{ include "registryImage" $nginxImage }}"
+          imagePullPolicy: {{ include "imagePullPolicy" $nginxImage }}
           ports:
             - name: http
               containerPort: 80
@@ -392,7 +401,37 @@ Create the name of the service account to use
     {{ default "default" .Values.serviceAccount.name }}
 {{- end -}}
 {{- end -}}
-`
+
+{{/*
+Create an image reference
+*/}}
+{{- define "registryImage" -}}
+    {{ $registry := default .global.imageRegistry .image.registry }}
+    {{- printf "%s/%s:%s" $registry .image.name .image.tag -}}
+    {{- if .image.digest -}}
+        {{- printf "@%s" .image.digest -}}
+    {{- end -}}
+{{- end -}}
+
+{{/*
+Specify the image pull policy
+*/}}
+{{- define "imagePullPolicy" -}}
+    {{- printf "%s" (default .global.imagePullPolicy .image.pullPolicy) -}}
+{{- end -}}
+
+{{/*
+Use the image pull secrets
+*/}}
+{{- define "imagePullSecrets" -}}
+    {{- $secrets := default .global.imagePullSecrets .image.pullSecrets -}}
+    {{- if $secrets -}}
+        imagePullSecrets:
+        {{- range $secrets }}
+            - name: {{ . }}
+        {{- end }}
+    {{- end -}}
+{{- end -}}`
 
 const defaultTestConnection = `apiVersion: v1
 kind: Pod
