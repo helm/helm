@@ -37,8 +37,9 @@ Information is cached locally, where it is used by commands like 'helm search'.
 var errNoRepositories = errors.New("no repositories found. You must add one before updating")
 
 type repoUpdateOptions struct {
-	update   func([]*repo.ChartRepository, io.Writer)
+	update   func([]*repo.ChartRepository, io.Writer, bool) error
 	repoFile string
+	strict   bool
 }
 
 func newRepoUpdateCmd(out io.Writer) *cobra.Command {
@@ -55,6 +56,10 @@ func newRepoUpdateCmd(out io.Writer) *cobra.Command {
 			return o.run(out)
 		},
 	}
+
+	f := cmd.Flags()
+	f.BoolVar(&o.strict, "strict", false, "fail on update warnings")
+
 	return cmd
 }
 
@@ -72,24 +77,39 @@ func (o *repoUpdateOptions) run(out io.Writer) error {
 		repos = append(repos, r)
 	}
 
-	o.update(repos, out)
-	return nil
+	return o.update(repos, out, o.strict)
 }
 
-func updateCharts(repos []*repo.ChartRepository, out io.Writer) {
+func updateCharts(repos []*repo.ChartRepository, out io.Writer, strict bool) error {
 	fmt.Fprintln(out, "Hang tight while we grab the latest from your chart repositories...")
-	var wg sync.WaitGroup
+	var (
+		errorCounter int
+		wg           sync.WaitGroup
+		mu           sync.Mutex
+	)
+
 	for _, re := range repos {
 		wg.Add(1)
 		go func(re *repo.ChartRepository) {
 			defer wg.Done()
 			if _, err := re.DownloadIndexFile(); err != nil {
+				mu.Lock()
+				errorCounter++
 				fmt.Fprintf(out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", re.Config.Name, re.Config.URL, err)
+				mu.Unlock()
 			} else {
+				mu.Lock()
 				fmt.Fprintf(out, "...Successfully got an update from the %q chart repository\n", re.Config.Name)
+				mu.Unlock()
 			}
 		}(re)
 	}
 	wg.Wait()
+
+	if errorCounter != 0 && strict {
+		return errors.New("Update Failed. Check log for details")
+	}
+
 	fmt.Fprintln(out, "Update Complete. ⎈ Happy Helming!⎈ ")
+	return nil
 }

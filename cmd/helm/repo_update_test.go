@@ -32,10 +32,12 @@ func TestUpdateCmd(t *testing.T) {
 	var out bytes.Buffer
 	// Instead of using the HTTP updater, we provide our own for this test.
 	// The TestUpdateCharts test verifies the HTTP behavior independently.
-	updater := func(repos []*repo.ChartRepository, out io.Writer) {
+
+	updater := func(repos []*repo.ChartRepository, out io.Writer, strict bool) error {
 		for _, re := range repos {
 			fmt.Fprintln(out, re.Config.Name)
 		}
+		return nil
 	}
 	o := &repoUpdateOptions{
 		update:   updater,
@@ -64,18 +66,37 @@ func TestUpdateCharts(t *testing.T) {
 		Name: "charts",
 		URL:  ts.URL(),
 	}, getter.All(settings))
+
 	if err != nil {
 		t.Error(err)
 	}
 
 	b := bytes.NewBuffer(nil)
-	updateCharts([]*repo.ChartRepository{r}, b)
+	updateCharts([]*repo.ChartRepository{r}, b, false)
 
 	got := b.String()
+
 	if strings.Contains(got, "Unable to get an update") {
 		t.Errorf("Failed to get a repo: %q", got)
 	}
 	if !strings.Contains(got, "Update Complete.") {
 		t.Error("Update was not successful")
+	}
+}
+
+func TestUpdateCmdStrictFlag(t *testing.T) {
+	defer resetEnv()()
+	defer ensure.HelmHome(t)()
+
+	out := bytes.NewBuffer(nil)
+	cmd := newRepoUpdateCmd(out)
+	cmd.ParseFlags([]string{"--strict"})
+
+	if err := cmd.RunE(cmd, []string{}); err == nil {
+		t.Fatal("expected error due to strict flag")
+	}
+
+	if got := out.String(); !strings.Contains(got, "Unable to get an update") {
+		t.Errorf("Expected 'Unable to get an update', got %q", got)
 	}
 }
