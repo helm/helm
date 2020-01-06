@@ -32,7 +32,7 @@ import (
 )
 
 var listHelp = `
-This command lists all of the releases.
+This command lists all of the releases for a specified namespace (uses current namespace context if namespace not specified).
 
 By default, it lists only releases that are deployed or failed. Flags like
 '--uninstalled' and '--all' will alter this behavior. Such flags can be combined:
@@ -96,7 +96,7 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVarP(&client.Short, "short", "q", false, "output short (quiet) listing format")
 	f.BoolVarP(&client.ByDate, "date", "d", false, "sort by release date")
 	f.BoolVarP(&client.SortReverse, "reverse", "r", false, "reverse the sort order")
-	f.BoolVarP(&client.All, "all", "a", false, "show all releases, not just the ones marked deployed or failed")
+	f.BoolVarP(&client.All, "all", "a", false, "show all releases without any filter applied")
 	f.BoolVar(&client.Uninstalled, "uninstalled", false, "show uninstalled releases (if 'helm uninstall --keep-history' was used)")
 	f.BoolVar(&client.Superseded, "superseded", false, "show superseded releases")
 	f.BoolVar(&client.Uninstalling, "uninstalling", false, "show releases that are currently being uninstalled")
