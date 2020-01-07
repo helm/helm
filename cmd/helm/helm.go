@@ -80,6 +80,9 @@ func main() {
 			loadReleasesInMemory(actionConfig)
 		}
 	})
+	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), os.Getenv("HELM_DRIVER"), debug); err != nil {
+		log.Fatal(err)
+	}
 
 	if err := cmd.Execute(); err != nil {
 		debug("%+v", err)
