@@ -7,3 +7,6 @@
 _dist/
 bin/
 vendor/
+.project
+*.swp
+*~
