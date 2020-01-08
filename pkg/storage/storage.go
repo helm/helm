@@ -66,7 +66,7 @@ func (s *Storage) Create(rls *rspb.Release) error {
 	return s.Driver.Create(makeKey(rls.Name, rls.Version), rls)
 }
 
-// Update update the release in storage. An error is returned if the
+// Update updates the release in storage. An error is returned if the
 // storage backend fails to update the release or if the release
 // does not exist.
 func (s *Storage) Update(rls *rspb.Release) error {
