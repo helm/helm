@@ -416,6 +416,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	registryClient, err := registry.NewClient(
 		registry.ClientOptDebug(settings.Debug),
 		registry.ClientOptWriter(out),
+		registry.ClientOptCredentialsFile(settings.RepositoryConfig),
 	)
 	if err != nil {
 		// TODO: don't panic here, refactor newRootCmd to return error
