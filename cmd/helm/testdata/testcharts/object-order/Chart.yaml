@@ -1,0 +1,5 @@
+apiVersion: v2
+name: object-order
+description: Test ordering of manifests in output
+type: application
+version: 0.1.0

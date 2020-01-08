@@ -185,8 +185,8 @@ func TestKindSorter(t *testing.T) {
 	}
 }
 
-// TestKindSorterSubSort verifies manifests of same kind are also sorted alphanumeric
-func TestKindSorterSubSort(t *testing.T) {
+// TestKindSorterKeepOriginalOrder verifies manifests of same kind are kept in original order
+func TestKindSorterKeepOriginalOrder(t *testing.T) {
 	manifests := []Manifest{
 		{
 			Name: "a",
@@ -230,8 +230,8 @@ func TestKindSorterSubSort(t *testing.T) {
 		order       KindSortOrder
 		expected    string
 	}{
-		// expectation is sorted by kind (unknown is last) and then sub sorted alphabetically within each group
-		{"cm,clusterRole,clusterRoleBinding,Unknown,Unknown2", InstallOrder, "01Aa!zu1u2t3"},
+		// expectation is sorted by kind (unknown is last) and within each group of same kind, the order is kept
+		{"cm,clusterRole,clusterRoleBinding,Unknown,Unknown2", InstallOrder, "01aAz!u2u1t3"},
 	} {
 		var buf bytes.Buffer
 		t.Run(test.description, func(t *testing.T) {
