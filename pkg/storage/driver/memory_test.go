@@ -81,6 +81,46 @@ func TestMemoryGet(t *testing.T) {
 	}
 }
 
+func TestMemoryList(t *testing.T) {
+	ts := tsFixtureMemory(t)
+
+	// list all deployed releases
+	dpl, err := ts.List(func(rel *rspb.Release) bool {
+		return rel.Info.Status == rspb.StatusDeployed
+	})
+	// check
+	if err != nil {
+		t.Errorf("Failed to list deployed releases: %s", err)
+	}
+	if len(dpl) != 2 {
+		t.Errorf("Expected 2 deployed, got %d", len(dpl))
+	}
+
+	// list all superseded releases
+	ssd, err := ts.List(func(rel *rspb.Release) bool {
+		return rel.Info.Status == rspb.StatusSuperseded
+	})
+	// check
+	if err != nil {
+		t.Errorf("Failed to list superseded releases: %s", err)
+	}
+	if len(ssd) != 6 {
+		t.Errorf("Expected 6 superseded, got %d", len(ssd))
+	}
+
+	// list all deleted releases
+	del, err := ts.List(func(rel *rspb.Release) bool {
+		return rel.Info.Status == rspb.StatusUninstalled
+	})
+	// check
+	if err != nil {
+		t.Errorf("Failed to list deleted releases: %s", err)
+	}
+	if len(del) != 0 {
+		t.Errorf("Expected 0 deleted, got %d", len(del))
+	}
+}
+
 func TestMemoryQuery(t *testing.T) {
 	var tests = []struct {
 		desc string
