@@ -42,7 +42,7 @@ func existingResourceConflict(resources kube.ResourceList) error {
 			return errors.Wrap(err, "could not get information about the resource")
 		}
 
-		return fmt.Errorf("existing resource conflict: namespace: %s, name: %s, existing: [gvk: %s, ] / new: [gvk: %s]", info.Namespace, info.Name, existing.GetObjectKind().GroupVersionKind(), info.Mapping.GroupVersionKind)
+		return fmt.Errorf("existing resource conflict: namespace: %s, name: %s, existing_kind: %s, new_kind: %s", info.Namespace, info.Name, existing.GetObjectKind().GroupVersionKind(), info.Mapping.GroupVersionKind)
 	})
 	return err
 }
