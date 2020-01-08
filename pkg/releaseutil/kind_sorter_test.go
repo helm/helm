@@ -40,7 +40,7 @@ func TestKindSorter(t *testing.T) {
 			Head: &SimpleHead{Kind: "ClusterRoleBindingList"},
 		},
 		{
-			Name: "e",
+			Name: "f",
 			Head: &SimpleHead{Kind: "ConfigMap"},
 		},
 		{
@@ -84,11 +84,11 @@ func TestKindSorter(t *testing.T) {
 			Head: &SimpleHead{Kind: "NetworkPolicy"},
 		},
 		{
-			Name: "f",
+			Name: "g",
 			Head: &SimpleHead{Kind: "PersistentVolume"},
 		},
 		{
-			Name: "g",
+			Name: "h",
 			Head: &SimpleHead{Kind: "PersistentVolumeClaim"},
 		},
 		{
@@ -132,7 +132,7 @@ func TestKindSorter(t *testing.T) {
 			Head: &SimpleHead{Kind: "RoleBindingList"},
 		},
 		{
-			Name: "d",
+			Name: "e",
 			Head: &SimpleHead{Kind: "Secret"},
 		},
 		{
@@ -140,7 +140,7 @@ func TestKindSorter(t *testing.T) {
 			Head: &SimpleHead{Kind: "Service"},
 		},
 		{
-			Name: "h",
+			Name: "d",
 			Head: &SimpleHead{Kind: "ServiceAccount"},
 		},
 		{
@@ -166,8 +166,8 @@ func TestKindSorter(t *testing.T) {
 		order       KindSortOrder
 		expected    string
 	}{
-		{"install", InstallOrder, "aAbcC3de1fgh2iIjJkKlLmnopqrxstuvw!"},
-		{"uninstall", UninstallOrder, "wvmutsxrqponLlKkJjIi2hgf1ed3CcbAa!"},
+		{"install", InstallOrder, "aAbcC3def1gh2iIjJkKlLmnopqrxstuvw!"},
+		{"uninstall", UninstallOrder, "wvmutsxrqponLlKkJjIi2hg1fed3CcbAa!"},
 	} {
 		var buf bytes.Buffer
 		t.Run(test.description, func(t *testing.T) {
