@@ -68,7 +68,7 @@ By default, the default directories depend on the Operating System. The defaults
 | Windows          | %TEMP%\helm               | %APPDATA%\helm                 | %APPDATA%\helm          |
 `
 
-func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string) *cobra.Command {
+func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string) (*cobra.Command, error) {
 	cmd := &cobra.Command{
 		Use:                    "helm",
 		Short:                  "The Helm package manager for Kubernetes.",
@@ -176,8 +176,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		registry.ClientOptCredentialsFile(settings.RegistryConfig),
 	)
 	if err != nil {
-		// TODO: don't panic here, refactor newRootCmd to return error
-		panic(err)
+		return nil, err
 	}
 	actionConfig.RegistryClient = registryClient
 	cmd.AddCommand(
@@ -188,5 +187,5 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	// Find and add plugins
 	loadPlugins(cmd, out)
 
-	return cmd
+	return cmd, nil
 }
