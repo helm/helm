@@ -136,6 +136,9 @@ func (s *Storage) Deployed(name string) (*rspb.Release, error) {
 		return nil, fmt.Errorf("%q %s", name, NoReleasesErr)
 	}
 
+	// Sometimes Tiller's database gets corrupted and multiple releases are DEPLOYED. Take the latest.
+	relutil.Reverse(ls, relutil.SortByRevision)
+
 	return ls[0], err
 }
 
