@@ -253,3 +253,23 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 		is.Equal(expectedValues, updatedRes.Config)
 	})
 }
+
+func TestUpgradeRelease_Pending(t *testing.T) {
+	req := require.New(t)
+
+	upAction := upgradeAction(t)
+	rel := releaseStub()
+	rel.Name = "come-fail-away"
+	rel.Info.Status = release.StatusDeployed
+	upAction.cfg.Releases.Create(rel)
+	rel2 := releaseStub()
+	rel2.Name = "come-fail-away"
+	rel2.Info.Status = release.StatusPendingUpgrade
+	rel2.Version = 2
+	upAction.cfg.Releases.Create(rel2)
+
+	vals := map[string]interface{}{}
+
+	_, err := upAction.Run(rel.Name, buildChart(), vals)
+	req.Contains(err.Error(), "progress", err)
+}
