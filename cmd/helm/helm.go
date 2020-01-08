@@ -65,7 +65,10 @@ func main() {
 	initKubeLogs()
 
 	actionConfig := new(action.Configuration)
-	cmd := newRootCmd(actionConfig, os.Stdout, os.Args[1:])
+	cmd, err := newRootCmd(actionConfig, os.Stdout, os.Args[1:])
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), os.Getenv("HELM_DRIVER"), debug); err != nil {
 		log.Fatal(err)

@@ -107,7 +107,11 @@ func executeActionCommandC(store *storage.Storage, cmd string) (*cobra.Command, 
 		Log:          func(format string, v ...interface{}) {},
 	}
 
-	root := newRootCmd(actionConfig, buf, args)
+	root, err := newRootCmd(actionConfig, buf, args)
+	if err != nil {
+		return nil, "", err
+	}
+
 	root.SetOutput(buf)
 	root.SetArgs(args)
 
