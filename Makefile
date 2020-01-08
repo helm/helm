@@ -9,7 +9,7 @@ DEP           = $(GOPATH)/bin/dep
 GOX           = $(GOPATH)/bin/gox
 GOIMPORTS     = $(GOPATH)/bin/goimports
 
-ACCEPTANCE_DIR:=$(GOPATH)/src/helm.sh/acceptance-testing
+ACCEPTANCE_DIR:=../acceptance-testing
 # To specify the subset of acceptance tests to run. '.' means all tests
 ACCEPTANCE_RUN_TESTS=.
 
