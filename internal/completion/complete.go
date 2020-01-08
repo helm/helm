@@ -18,6 +18,7 @@ package completion
 import (
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strings"
@@ -111,7 +112,7 @@ func (d BashCompDirective) string() string {
 }
 
 // NewCompleteCmd add a special hidden command that an be used to request completions
-func NewCompleteCmd(settings *cli.EnvSettings) *cobra.Command {
+func NewCompleteCmd(settings *cli.EnvSettings, out io.Writer) *cobra.Command {
 	debug = settings.Debug
 	return &cobra.Command{
 		Use:                   fmt.Sprintf("%s [command-line]", CompRequestCmd),
@@ -169,14 +170,14 @@ func NewCompleteCmd(settings *cli.EnvSettings) *cobra.Command {
 			completions, directive := completionFn(finalCmd, argsWoFlags, toComplete)
 			for _, comp := range completions {
 				// Print each possible completion to stdout for the completion script to consume.
-				fmt.Println(comp)
+				fmt.Fprintln(out, comp)
 			}
 
 			// As the last printout, print the completion directive for the
 			// completion script to parse.
 			// The directive integer must be that last character following a single :
 			// The completion script expects :directive
-			fmt.Printf("\n:%d\n", directive)
+			fmt.Fprintln(out, fmt.Sprintf(":%d", directive))
 
 			// Print some helpful info to stderr for the user to understand.
 			// Output from stderr should be ignored from the completion script.

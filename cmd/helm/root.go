@@ -232,7 +232,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		newDocsCmd(out),
 
 		// Setup the special hidden __complete command to allow for dynamic auto-completion
-		completion.NewCompleteCmd(settings),
+		completion.NewCompleteCmd(settings, out),
 	)
 
 	// Add annotation to flags for which we can generate completion choices

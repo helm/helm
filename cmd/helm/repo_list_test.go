@@ -18,25 +18,8 @@ package main
 
 import (
 	"testing"
-
-	"helm.sh/helm/v3/pkg/release"
 )
 
-func TestGetHooks(t *testing.T) {
-	tests := []cmdTestCase{{
-		name:   "get hooks with release",
-		cmd:    "get hooks aeneas",
-		golden: "output/get-hooks.txt",
-		rels:   []*release.Release{release.Mock(&release.MockReleaseOptions{Name: "aeneas"})},
-	}, {
-		name:      "get hooks without args",
-		cmd:       "get hooks",
-		golden:    "output/get-hooks-no-args.txt",
-		wantError: true,
-	}}
-	runTestCmd(t, tests)
-}
-
-func TestGetHooksRevisionCompletion(t *testing.T) {
-	revisionFlagCompletionTest(t, "get hooks")
+func TestRepoListOutputCompletion(t *testing.T) {
+	outputFlagCompletionTest(t, "repo list")
 }
