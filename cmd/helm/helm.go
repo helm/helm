@@ -70,7 +70,8 @@ func main() {
 	actionConfig := new(action.Configuration)
 	cmd, err := newRootCmd(actionConfig, os.Stdout, os.Args[1:])
 	if err != nil {
-		log.Fatal(err)
+		debug("%+v", err)
+		os.Exit(1)
 	}
 
 	// run when each command's execute method is called
@@ -84,7 +85,8 @@ func main() {
 		}
 	})
 	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), os.Getenv("HELM_DRIVER"), debug); err != nil {
-		log.Fatal(err)
+		debug("%+v", err)
+		os.Exit(1)
 	}
 
 	if err := cmd.Execute(); err != nil {
