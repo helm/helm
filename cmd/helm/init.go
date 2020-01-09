@@ -293,7 +293,7 @@ func (i *initCmd) run() error {
 			if !tlsVerify {
 				fmt.Fprintln(i.out, "\nPlease note: by default, Tiller is deployed with an insecure 'allow unauthenticated users' policy.\n"+
 					"To prevent this, run `helm init` with the --tiller-tls-verify flag.\n"+
-					"For more information on securing your installation see: https://docs.helm.sh/using_helm/#securing-your-helm-installation")
+					"For more information on securing your installation see: https://v2.helm.sh/docs/securing_installation/")
 			}
 		}
 		if err := i.ping(i.opts.SelectImage()); err != nil {
