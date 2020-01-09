@@ -103,6 +103,8 @@ fullnameOverride: ""
 serviceAccount:
   # Specifies whether a service account should be created
   create: true
+  # Annotations to add to the service account
+  annotations: {}
   # The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
   name:
@@ -303,6 +305,10 @@ metadata:
   name: {{ include "<CHARTNAME>.serviceAccountName" . }}
   labels:
 {{ include "<CHARTNAME>.labels" . | nindent 4 }}
+  {{- with .Values.serviceAccount.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 {{- end -}}
 `
 
