@@ -110,3 +110,54 @@ func TestRecordsRemoveAt(t *testing.T) {
 		t.Fatalf("Expected length of rs to be 1, got %d", len(rs))
 	}
 }
+
+func TestRecordsIndex(t *testing.T) {
+	rs := records([]*record{
+		newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", rspb.StatusSuperseded)),
+		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", rspb.StatusDeployed)),
+		newRecord("rls-b.v2", releaseStub("rls-b", 2, "default", rspb.StatusDeployed)),
+	})
+
+	if len(rs) != 3 {
+		t.Fatal("Expected len=3 for mock")
+	}
+
+	// get index of a non-existent record
+	idx, exists := rs.Index("nonexistent")
+	if idx != -1 || exists {
+		t.Fatalf("Expected record not found, got index %d", idx)
+	}
+
+	// get index of an existing record
+	idx, exists = rs.Index("rls-a.v2")
+	if idx != 1 || !exists {
+		t.Fatalf("Expected record \"rls-a.v2\" is at index 1, got index %d", idx)
+	}
+}
+
+func TestRecordsReplace(t *testing.T) {
+	rs := records([]*record{
+		newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", rspb.StatusSuperseded)),
+		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", rspb.StatusDeployed)),
+		newRecord("rls-b.v2", releaseStub("rls-b", 2, "default", rspb.StatusDeployed)),
+	})
+
+	if len(rs) != 3 {
+		t.Fatal("Expected len=3 for mock")
+	}
+
+	key := "rls-b.v2"
+	newKey := "rls-c.v2"
+	old := rs.Replace(key, newRecord(newKey, releaseStub("rls-c", 2, "default", rspb.StatusDeployed)))
+	if old == nil {
+		t.Fatalf("Expected record \"%s\" to be existent", key)
+	}
+
+	// check
+	if rs.Exists(key) {
+		t.Fatalf("Expected record \"%s\" to be removed", key)
+	}
+	if !rs.Exists(newKey) {
+		t.Fatalf("Expected record \"%s\" to be existent", newKey)
+	}
+}
