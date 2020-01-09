@@ -27,7 +27,7 @@ func TestGetNotesCmd(t *testing.T) {
 		name:   "get notes of a deployed release",
 		cmd:    "get notes the-limerick",
 		golden: "output/get-notes.txt",
-		rels:   []*release.Release{release.Mock(&release.MockReleaseOptions{Name: "the-limerick"})},
+		rels:   []release.Release{release.Mock(&release.MockReleaseOptions{Name: "the-limerick"})},
 	}, {
 		name:      "get notes without args",
 		cmd:       "get notes",

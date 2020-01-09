@@ -23,7 +23,7 @@ import (
 )
 
 func TestHistoryCmd(t *testing.T) {
-	mk := func(name string, vers int, status release.Status) *release.Release {
+	mk := func(name string, vers int, status release.Status) release.Release {
 		return release.Mock(&release.MockReleaseOptions{
 			Name:    name,
 			Version: vers,
@@ -34,7 +34,7 @@ func TestHistoryCmd(t *testing.T) {
 	tests := []cmdTestCase{{
 		name: "get history for release",
 		cmd:  "history angry-bird",
-		rels: []*release.Release{
+		rels: []release.Release{
 			mk("angry-bird", 4, release.StatusDeployed),
 			mk("angry-bird", 3, release.StatusSuperseded),
 			mk("angry-bird", 2, release.StatusSuperseded),
@@ -44,7 +44,7 @@ func TestHistoryCmd(t *testing.T) {
 	}, {
 		name: "get history with max limit set",
 		cmd:  "history angry-bird --max 2",
-		rels: []*release.Release{
+		rels: []release.Release{
 			mk("angry-bird", 4, release.StatusDeployed),
 			mk("angry-bird", 3, release.StatusSuperseded),
 		},
@@ -52,7 +52,7 @@ func TestHistoryCmd(t *testing.T) {
 	}, {
 		name: "get history with yaml output format",
 		cmd:  "history angry-bird --output yaml",
-		rels: []*release.Release{
+		rels: []release.Release{
 			mk("angry-bird", 4, release.StatusDeployed),
 			mk("angry-bird", 3, release.StatusSuperseded),
 		},
@@ -60,7 +60,7 @@ func TestHistoryCmd(t *testing.T) {
 	}, {
 		name: "get history with json output format",
 		cmd:  "history angry-bird --output json",
-		rels: []*release.Release{
+		rels: []release.Release{
 			mk("angry-bird", 4, release.StatusDeployed),
 			mk("angry-bird", 3, release.StatusSuperseded),
 		},

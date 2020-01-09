@@ -48,7 +48,7 @@ type MockReleaseOptions struct {
 }
 
 // Mock creates a mock release object based on options set by MockReleaseOptions. This function should typically not be used outside of testing.
-func Mock(opts *MockReleaseOptions) *Release {
+func Mock(opts *MockReleaseOptions) Release {
 	date := time.Unix(242085845, 0).UTC()
 
 	name := opts.Name
@@ -93,7 +93,7 @@ func Mock(opts *MockReleaseOptions) *Release {
 		Notes:         "Some mock release notes!",
 	}
 
-	return &Release{
+	return Release{
 		Name:      name,
 		Info:      info,
 		Chart:     ch,

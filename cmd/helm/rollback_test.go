@@ -24,7 +24,7 @@ import (
 )
 
 func TestRollbackCmd(t *testing.T) {
-	rels := []*release.Release{
+	rels := []release.Release{
 		{
 			Name:    "funny-honey",
 			Info:    &release.Info{Status: release.StatusSuperseded},

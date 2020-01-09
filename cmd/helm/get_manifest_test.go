@@ -27,7 +27,7 @@ func TestGetManifest(t *testing.T) {
 		name:   "get manifest with release",
 		cmd:    "get manifest juno",
 		golden: "output/get-manifest.txt",
-		rels:   []*release.Release{release.Mock(&release.MockReleaseOptions{Name: "juno"})},
+		rels:   []release.Release{release.Mock(&release.MockReleaseOptions{Name: "juno"})},
 	}, {
 		name:      "get manifest without args",
 		cmd:       "get manifest",

@@ -27,7 +27,7 @@ func TestGetHooks(t *testing.T) {
 		name:   "get hooks with release",
 		cmd:    "get hooks aeneas",
 		golden: "output/get-hooks.txt",
-		rels:   []*release.Release{release.Mock(&release.MockReleaseOptions{Name: "aeneas"})},
+		rels:   []release.Release{release.Mock(&release.MockReleaseOptions{Name: "aeneas"})},
 	}, {
 		name:      "get hooks without args",
 		cmd:       "get hooks",

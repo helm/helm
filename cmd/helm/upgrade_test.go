@@ -79,7 +79,7 @@ func TestUpgradeCmd(t *testing.T) {
 	missingDepsPath := "testdata/testcharts/chart-missing-deps"
 	badDepsPath := "testdata/testcharts/chart-bad-requirements"
 
-	relMock := func(n string, v int, ch *chart.Chart) *release.Release {
+	relMock := func(n string, v int, ch *chart.Chart) release.Release {
 		return release.Mock(&release.MockReleaseOptions{Name: n, Version: v, Chart: ch})
 	}
 
@@ -88,43 +88,43 @@ func TestUpgradeCmd(t *testing.T) {
 			name:   "upgrade a release",
 			cmd:    fmt.Sprintf("upgrade funny-bunny '%s'", chartPath),
 			golden: "output/upgrade.txt",
-			rels:   []*release.Release{relMock("funny-bunny", 2, ch)},
+			rels:   []release.Release{relMock("funny-bunny", 2, ch)},
 		},
 		{
 			name:   "upgrade a release with timeout",
 			cmd:    fmt.Sprintf("upgrade funny-bunny --timeout 120s '%s'", chartPath),
 			golden: "output/upgrade-with-timeout.txt",
-			rels:   []*release.Release{relMock("funny-bunny", 3, ch2)},
+			rels:   []release.Release{relMock("funny-bunny", 3, ch2)},
 		},
 		{
 			name:   "upgrade a release with --reset-values",
 			cmd:    fmt.Sprintf("upgrade funny-bunny --reset-values '%s'", chartPath),
 			golden: "output/upgrade-with-reset-values.txt",
-			rels:   []*release.Release{relMock("funny-bunny", 4, ch2)},
+			rels:   []release.Release{relMock("funny-bunny", 4, ch2)},
 		},
 		{
 			name:   "upgrade a release with --reuse-values",
 			cmd:    fmt.Sprintf("upgrade funny-bunny --reuse-values '%s'", chartPath),
 			golden: "output/upgrade-with-reset-values2.txt",
-			rels:   []*release.Release{relMock("funny-bunny", 5, ch2)},
+			rels:   []release.Release{relMock("funny-bunny", 5, ch2)},
 		},
 		{
 			name:   "install a release with 'upgrade --install'",
 			cmd:    fmt.Sprintf("upgrade zany-bunny -i '%s'", chartPath),
 			golden: "output/upgrade-with-install.txt",
-			rels:   []*release.Release{relMock("zany-bunny", 1, ch)},
+			rels:   []release.Release{relMock("zany-bunny", 1, ch)},
 		},
 		{
 			name:   "install a release with 'upgrade --install' and timeout",
 			cmd:    fmt.Sprintf("upgrade crazy-bunny -i --timeout 120s '%s'", chartPath),
 			golden: "output/upgrade-with-install-timeout.txt",
-			rels:   []*release.Release{relMock("crazy-bunny", 1, ch)},
+			rels:   []release.Release{relMock("crazy-bunny", 1, ch)},
 		},
 		{
 			name:   "upgrade a release with wait",
 			cmd:    fmt.Sprintf("upgrade crazy-bunny --wait '%s'", chartPath),
 			golden: "output/upgrade-with-wait.txt",
-			rels:   []*release.Release{relMock("crazy-bunny", 2, ch2)},
+			rels:   []release.Release{relMock("crazy-bunny", 2, ch2)},
 		},
 		{
 			name:      "upgrade a release with missing dependencies",
@@ -150,7 +150,8 @@ func TestUpgradeWithValue(t *testing.T) {
 
 	store := storageFixture()
 
-	store.Create(relMock(releaseName, 3, ch))
+	releaseMock := relMock(releaseName, 3, ch)
+	store.Create(&releaseMock)
 
 	cmd := fmt.Sprintf("upgrade %s --set favoriteDrink=tea '%s'", releaseName, chartPath)
 	_, _, err := executeActionCommandC(store, cmd)
@@ -177,7 +178,8 @@ func TestUpgradeWithStringValue(t *testing.T) {
 
 	store := storageFixture()
 
-	store.Create(relMock(releaseName, 3, ch))
+	releaseMock := relMock(releaseName, 3, ch)
+	store.Create(&releaseMock)
 
 	cmd := fmt.Sprintf("upgrade %s --set-string favoriteDrink=coffee '%s'", releaseName, chartPath)
 	_, _, err := executeActionCommandC(store, cmd)
@@ -205,7 +207,8 @@ func TestUpgradeWithValuesFile(t *testing.T) {
 
 	store := storageFixture()
 
-	store.Create(relMock(releaseName, 3, ch))
+	releaseMock := relMock(releaseName, 3, ch)
+	store.Create(&releaseMock)
 
 	cmd := fmt.Sprintf("upgrade %s --values testdata/testcharts/upgradetest/values.yaml '%s'", releaseName, chartPath)
 	_, _, err := executeActionCommandC(store, cmd)
@@ -224,7 +227,7 @@ func TestUpgradeWithValuesFile(t *testing.T) {
 
 }
 
-func prepareMockRelease(releaseName string, t *testing.T) (func(n string, v int, ch *chart.Chart) *release.Release, *chart.Chart, string) {
+func prepareMockRelease(releaseName string, t *testing.T) (func(n string, v int, ch *chart.Chart) release.Release, *chart.Chart, string) {
 	tmpChart := ensure.TempDir(t)
 	configmapData, err := ioutil.ReadFile("testdata/testcharts/upgradetest/templates/configmap.yaml")
 	if err != nil {
@@ -252,7 +255,7 @@ func prepareMockRelease(releaseName string, t *testing.T) (func(n string, v int,
 		Chart: ch,
 	})
 
-	relMock := func(n string, v int, ch *chart.Chart) *release.Release {
+	relMock := func(n string, v int, ch *chart.Chart) release.Release {
 		return release.Mock(&release.MockReleaseOptions{Name: n, Version: v, Chart: ch})
 	}
 

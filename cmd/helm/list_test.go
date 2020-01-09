@@ -40,7 +40,7 @@ func TestListCmd(t *testing.T) {
 		},
 	}
 
-	releaseFixture := []*release.Release{
+	releaseFixture := []release.Release{
 		{
 			Name:      "starlord",
 			Version:   1,

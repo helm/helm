@@ -26,9 +26,9 @@ import (
 )
 
 func TestStatusCmd(t *testing.T) {
-	releasesMockWithStatus := func(info *release.Info, hooks ...*release.Hook) []*release.Release {
+	releasesMockWithStatus := func(info *release.Info, hooks ...*release.Hook) []release.Release {
 		info.LastDeployed = helmtime.Unix(1452902400, 0).UTC()
-		return []*release.Release{{
+		return []release.Release{{
 			Name:      "flummoxed-chickadee",
 			Namespace: "default",
 			Info:      info,

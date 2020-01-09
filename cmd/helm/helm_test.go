@@ -52,8 +52,11 @@ func runTestCmd(t *testing.T, tests []cmdTestCase) {
 				defer resetEnv()()
 
 				storage := storageFixture()
-				for _, rel := range tt.rels {
-					if err := storage.Create(rel); err != nil {
+				for i := range tt.rels {
+					// Shouldn't do `for _, rel := range tt.rels`, because we pass the _address_ of `rel` to `storage.Create`.
+					// See: https://github.com/golang/go/wiki/CommonMistakes#using-reference-to-loop-iterator-variable
+					rel := tt.rels[i]
+					if err := storage.Create(&rel); err != nil {
 						t.Fatal(err)
 					}
 				}
@@ -77,8 +80,11 @@ func runTestActionCmd(t *testing.T, tests []cmdTestCase) {
 			defer resetEnv()()
 
 			store := storageFixture()
-			for _, rel := range tt.rels {
-				store.Create(rel)
+			for i := range tt.rels {
+				// Shouldn't do `for _, rel := range tt.rels`, because we pass the _address_ of `rel` to `store.Create`.
+				// See: https://github.com/golang/go/wiki/CommonMistakes#using-reference-to-loop-iterator-variable
+				rel := tt.rels[i]
+				store.Create(&rel)
 			}
 			_, out, err := executeActionCommandC(store, tt.cmd)
 			if (err != nil) != tt.wantError {
@@ -125,7 +131,7 @@ type cmdTestCase struct {
 	golden    string
 	wantError bool
 	// Rels are the available releases at the start of the test.
-	rels []*release.Release
+	rels []release.Release
 	// Number of repeats (in case a feature was previously flaky and the test checks
 	// it's now stably producing identical results). 0 means test is run exactly once.
 	repeat int
