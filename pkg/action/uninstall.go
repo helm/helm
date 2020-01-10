@@ -70,9 +70,6 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	if err != nil {
 		return nil, errors.Wrapf(err, "uninstall: Release not loaded: %s", name)
 	}
-	if len(rels) < 1 {
-		return nil, errMissingRelease
-	}
 
 	releaseutil.SortByRevision(rels)
 	rel := rels[len(rels)-1]
