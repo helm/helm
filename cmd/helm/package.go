@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -73,6 +74,10 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 			for i := 0; i < len(args); i++ {
 				path, err := filepath.Abs(args[i])
 				if err != nil {
+					return err
+				}
+				if _, err := os.Stat(path); os.IsNotExist(err) {
+					_, err := os.Stat(args[i])
 					return err
 				}
 
