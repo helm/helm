@@ -16,6 +16,7 @@ limitations under the License.
 package completion
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -124,13 +125,17 @@ func NewCompleteCmd(settings *cli.EnvSettings) *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			CompDebugln(fmt.Sprintf("%s was called with args %v", cmd.Name(), args))
 
-			flag, trimmedArgs, toComplete := checkIfFlagCompletion(cmd.Root(), args[:len(args)-1], args[len(args)-1])
-
+			flag, trimmedArgs, toComplete, err := checkIfFlagCompletion(cmd.Root(), args[:len(args)-1], args[len(args)-1])
+			if err != nil {
+				// Error while attempting to parse flags
+				CompErrorln(err.Error())
+				return
+			}
 			// Find the real command for which completion must be performed
 			finalCmd, finalArgs, err := cmd.Root().Find(trimmedArgs)
 			if err != nil {
 				// Unable to find the real command. E.g., helm invalidCmd <TAB>
-				os.Exit(int(BashCompDirectiveError))
+				return
 			}
 
 			CompDebugln(fmt.Sprintf("Found final command '%s', with finalArgs %v", finalCmd.Name(), finalArgs))
@@ -167,10 +172,15 @@ func NewCompleteCmd(settings *cli.EnvSettings) *cobra.Command {
 				fmt.Println(comp)
 			}
 
-			// Print some helpful info to stderr for the user to see.
+			// As the last printout, print the completion directive for the
+			// completion script to parse.
+			// The directive integer must be that last character following a single :
+			// The completion script expects :directive
+			fmt.Printf("\n:%d\n", directive)
+
+			// Print some helpful info to stderr for the user to understand.
 			// Output from stderr should be ignored from the completion script.
 			fmt.Fprintf(os.Stderr, "Completion ended with directive: %s\n", directive.string())
-			os.Exit(int(directive))
 		},
 	}
 }
@@ -179,7 +189,7 @@ func isFlag(arg string) bool {
 	return len(arg) > 0 && arg[0] == '-'
 }
 
-func checkIfFlagCompletion(rootCmd *cobra.Command, args []string, lastArg string) (*pflag.Flag, []string, string) {
+func checkIfFlagCompletion(rootCmd *cobra.Command, args []string, lastArg string) (*pflag.Flag, []string, string, error) {
 	var flagName string
 	trimmedArgs := args
 	flagWithEqual := false
@@ -189,8 +199,7 @@ func checkIfFlagCompletion(rootCmd *cobra.Command, args []string, lastArg string
 			lastArg = lastArg[index+1:]
 			flagWithEqual = true
 		} else {
-			CompErrorln("Unexpected completion request for flag")
-			os.Exit(int(BashCompDirectiveError))
+			return nil, nil, "", errors.New("Unexpected completion request for flag")
 		}
 	}
 
@@ -212,14 +221,14 @@ func checkIfFlagCompletion(rootCmd *cobra.Command, args []string, lastArg string
 
 	if len(flagName) == 0 {
 		// Not doing flag completion
-		return nil, trimmedArgs, lastArg
+		return nil, trimmedArgs, lastArg, nil
 	}
 
 	// Find the real command for which completion must be performed
 	finalCmd, _, err := rootCmd.Find(trimmedArgs)
 	if err != nil {
 		// Unable to find the real command. E.g., helm invalidCmd <TAB>
-		os.Exit(int(BashCompDirectiveError))
+		return nil, nil, "", errors.New("Unable to find final command for completion")
 	}
 
 	CompDebugln(fmt.Sprintf("checkIfFlagCompletion: found final command '%s'", finalCmd.Name()))
@@ -227,8 +236,8 @@ func checkIfFlagCompletion(rootCmd *cobra.Command, args []string, lastArg string
 	flag := findFlag(finalCmd, flagName)
 	if flag == nil {
 		// Flag not supported by this command, nothing to complete
-		CompDebugln(fmt.Sprintf("Subcommand '%s' does not support flag '%s'", finalCmd.Name(), flagName))
-		os.Exit(int(BashCompDirectiveNoFileComp))
+		err = fmt.Errorf("Subcommand '%s' does not support flag '%s'", finalCmd.Name(), flagName)
+		return nil, nil, "", err
 	}
 
 	if !flagWithEqual {
@@ -241,7 +250,7 @@ func checkIfFlagCompletion(rootCmd *cobra.Command, args []string, lastArg string
 		}
 	}
 
-	return flag, trimmedArgs, lastArg
+	return flag, trimmedArgs, lastArg, nil
 }
 
 func findFlag(cmd *cobra.Command, name string) *pflag.Flag {

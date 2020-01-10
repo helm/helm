@@ -65,18 +65,30 @@ __helm_custom_func()
     __helm_debug "${FUNCNAME[0]}: calling ${requestComp}"
     # Use eval to handle any environment variables and such
     out=$(eval ${requestComp} 2>/dev/null)
-    directive=$?
+
+    # Extract the directive int at the very end of the output following a :
+    directive=${out##*:}
+    # Remove the directive
+    out=${out%%:*}
+    if [ "${directive}" = "${out}" ]; then
+        # There is not directive specified
+        directive=0
+    fi
+    __helm_debug "${FUNCNAME[0]}: the completion directive is: ${directive}"
+    __helm_debug "${FUNCNAME[0]}: the completions are: ${out[*]}"
 
     if [ $((${directive} & %[2]d)) -ne 0 ]; then
         __helm_debug "${FUNCNAME[0]}: received error, completion failed"
     else
         if [ $((${directive} & %[3]d)) -ne 0 ]; then
             if [[ $(type -t compopt) = "builtin" ]]; then
+                __helm_debug "${FUNCNAME[0]}: activating no space"
                 compopt -o nospace
             fi
         fi
         if [ $((${directive} & %[4]d)) -ne 0 ]; then
             if [[ $(type -t compopt) = "builtin" ]]; then
+                __helm_debug "${FUNCNAME[0]}: activating no file completion"
                 compopt +o default
             fi
         fi
