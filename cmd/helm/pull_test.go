@@ -41,7 +41,10 @@ func TestPullCmd(t *testing.T) {
 	tests := []struct {
 		name         string
 		args         string
+		existFile    string
+		existDir     string
 		wantError    bool
+		wantErrorMsg string
 		failExpect   string
 		expectFile   string
 		expectDir    bool
@@ -88,9 +91,23 @@ func TestPullCmd(t *testing.T) {
 			expectDir:  true,
 		},
 		{
+			name:         "Fetch untar when file with same name existed",
+			args:         "test/test1 --untar --untardir test1",
+			existFile:    "test1",
+			wantError:    true,
+			wantErrorMsg: fmt.Sprintf("failed to untar: a file or directory with the name %s already exists", filepath.Join(srv.Root(), "test1")),
+		},
+		{
+			name:         "Fetch untar when dir with same name existed",
+			args:         "test/test2 --untar --untardir test2",
+			existDir:     "test2",
+			wantError:    true,
+			wantErrorMsg: fmt.Sprintf("failed to untar: a file or directory with the name %s already exists", filepath.Join(srv.Root(), "test2")),
+		},
+		{
 			name:         "Fetch, verify, untar",
-			args:         "test/signtest --verify --keyring=testdata/helm-test-key.pub --untar --untardir signtest",
-			expectFile:   "./signtest",
+			args:         "test/signtest --verify --keyring=testdata/helm-test-key.pub --untar --untardir signtest2",
+			expectFile:   "./signtest2",
 			expectDir:    true,
 			expectVerify: true,
 		},
@@ -127,9 +144,27 @@ func TestPullCmd(t *testing.T) {
 				filepath.Join(outdir, "repositories.yaml"),
 				outdir,
 			)
+			// Create file or Dir before helm pull --untar, see: https://github.com/helm/helm/issues/7182
+			if tt.existFile != "" {
+				file := filepath.Join(outdir, tt.existFile)
+				_, err := os.Create(file)
+				if err != nil {
+					t.Fatal("err")
+				}
+			}
+			if tt.existDir != "" {
+				file := filepath.Join(outdir, tt.existDir)
+				err := os.Mkdir(file, 0755)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
 			_, out, err := executeActionCommand(cmd)
 			if err != nil {
 				if tt.wantError {
+					if tt.wantErrorMsg != "" && tt.wantErrorMsg == err.Error() {
+						t.Fatalf("Actual error %s, not equal to expected error %s", err, tt.wantErrorMsg)
+					}
 					return
 				}
 				t.Fatalf("%q reported error: %s", tt.name, err)
