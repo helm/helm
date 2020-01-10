@@ -83,22 +83,30 @@ func TestMemoryGet(t *testing.T) {
 
 func TestMemoryQuery(t *testing.T) {
 	var tests = []struct {
-		desc string
-		xlen int
-		lbs  map[string]string
+		desc          string
+		xlen          int
+		lbs           map[string]string
+		expectedError error
 	}{
 		{
 			"should be 2 query results",
 			2,
 			map[string]string{"status": "deployed"},
+			nil,
+		},
+		{
+			"should return ErrReleaseNotFound",
+			0,
+			map[string]string{"status": "pending"},
+			ErrReleaseNotFound,
 		},
 	}
 
 	ts := tsFixtureMemory(t)
 	for _, tt := range tests {
 		l, err := ts.Query(tt.lbs)
-		if err != nil {
-			t.Fatalf("Failed to query: %s\n", err)
+		if got, want := err, tt.expectedError; got != want {
+			t.Fatalf("got: %v, want %v", got, want)
 		}
 
 		if tt.xlen != len(l) {
