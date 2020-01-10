@@ -229,6 +229,16 @@ func withSampleTemplates() chartOption {
 	}
 }
 
+func withTemplatesValues() chartOption {
+	return func(opts *chartOptions) {
+		sampleTemplates := []*chart.File{
+			// This adds basic templates and partials.
+			{Name: "templates/with-values", Data: []byte("hello: {{ .Values.test.value }}")},
+		}
+		opts.Templates = append(opts.Templates, sampleTemplates...)
+	}
+}
+
 func withMultipleManifestTemplate() chartOption {
 	return func(opts *chartOptions) {
 		sampleTemplates := []*chart.File{

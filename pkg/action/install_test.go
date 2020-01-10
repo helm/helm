@@ -111,6 +111,17 @@ func TestInstallReleaseWithValues(t *testing.T) {
 	is.Equal(expectedUserValues, rel.Config)
 }
 
+func TestInstallReleaseWithoutValues(t *testing.T) {
+	instAction := installAction(t)
+	chrt := buildChart(withTemplatesValues())
+	_, err := instAction.Run(chrt, nil)
+	if err == nil {
+		t.Fatal("expected failure when no name is specified")
+	}
+
+	assert.Contains(t, err.Error(), "failed to render resource: lack of values.yaml")
+}
+
 func TestInstallReleaseClientOnly(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
