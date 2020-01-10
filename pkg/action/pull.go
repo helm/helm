@@ -113,6 +113,9 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		udCheck := ud
 		if udCheck == "." {
 			_, udCheck = filepath.Split(chartRef)
+		} else {
+			_, chartName := filepath.Split(chartRef)
+			udCheck = filepath.Join(udCheck, chartName)
 		}
 		if _, err := os.Stat(udCheck); err != nil {
 			if err := os.MkdirAll(udCheck, 0755); err != nil {
