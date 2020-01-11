@@ -189,7 +189,17 @@ func TestInstall(t *testing.T) {
 			cmd:    "install aeneas testdata/testcharts/deprecated --namespace default",
 			golden: "output/deprecated-chart.txt",
 		},
+		// Install using v2 name flags (--name)
+		{
+			name:   "basic install using name flag no arguments",
+			cmd:    "install --name aeneas --namespace default testdata/testcharts/empty",
+			golden: "output/install.txt",
+		},
+		{
+			name:      "basic install using name flag and name argument no arguments",
+			cmd:       "install --name aeneas --namespace default aeneas testdata/testcharts/empty",
+			wantError: true,
+		},
 	}
-
 	runTestActionCmd(t, tests)
 }
