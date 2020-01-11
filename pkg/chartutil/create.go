@@ -53,6 +53,8 @@ const (
 	ServiceName = TemplatesDir + sep + "service.yaml"
 	// ServiceAccountName is the name of the example serviceaccount file.
 	ServiceAccountName = TemplatesDir + sep + "serviceaccount.yaml"
+	// HorizontalPodAutoscalerName is the name of the example hpa file.
+	HorizontalPodAutoscalerName = TemplatesDir + sep + "hpa.yaml"
 	// NotesName is the name of the example NOTES.txt file.
 	NotesName = TemplatesDir + sep + "NOTES.txt"
 	// HelpersName is the name of the example helpers file.
@@ -149,6 +151,13 @@ resources: {}
   #   cpu: 100m
   #   memory: 128Mi
 
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
 nodeSelector: {}
 
 tolerations: []
@@ -231,7 +240,9 @@ metadata:
   labels:
     {{- include "<CHARTNAME>.labels" . | nindent 4 }}
 spec:
+{{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
+{{- end }}
   selector:
     matchLabels:
       {{- include "<CHARTNAME>.selectorLabels" . | nindent 6 }}
@@ -310,6 +321,36 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 {{- end -}}
+`
+
+const defaultHorizontalPodAutoscaler = `{{- if .Values.autoscaling.enabled }}
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "<CHARTNAME>.fullname" . }}
+  labels:
+    {{- include "<CHARTNAME>.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "<CHARTNAME>.fullname" . }}
+  minReplicas: {{ .Values.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.maxReplicas }}
+  metrics:
+  {{- if .Values.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        targetAverageUtilization: {{ .Values.autoscaling.targetCPUUtilizationPercentage }}
+  {{- end }}
+  {{- if .Values.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        targetAverageUtilization: {{ .Values.autoscaling.targetMemoryUtilizationPercentage }}
+  {{- end }}
+{{- end }}
 `
 
 const defaultNotes = `1. Get the application URL by running these commands:
@@ -516,6 +557,11 @@ func Create(name, dir string) (string, error) {
 			// serviceaccount.yaml
 			path:    filepath.Join(cdir, ServiceAccountName),
 			content: transform(defaultServiceAccount, name),
+		},
+		{
+			// hpa.yaml
+			path:    filepath.Join(cdir, HorizontalPodAutoscalerName),
+			content: transform(defaultHorizontalPodAutoscaler, name),
 		},
 		{
 			// NOTES.txt
