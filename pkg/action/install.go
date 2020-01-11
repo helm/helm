@@ -553,7 +553,7 @@ func (i *Install) NameAndChart(args []string) (string, string, error) {
 			return errors.New("cannot set --name-template and also specify a name")
 		}
 		if i.ReleaseName != "" {
-			return errors.New("cannot set --name and also specify specify a name argument")
+			return errors.New("cannot set --name and also specify a name argument")
 		}
 		return nil
 	}
