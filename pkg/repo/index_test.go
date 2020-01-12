@@ -361,26 +361,6 @@ func TestIndexDirectory(t *testing.T) {
 	}
 }
 
-func TestLoadUnversionedIndex(t *testing.T) {
-	data, err := ioutil.ReadFile("testdata/unversioned-index.yaml")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ind, err := loadUnversionedIndex(data)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if l := len(ind.Entries); l != 2 {
-		t.Fatalf("Expected 2 entries, got %d", l)
-	}
-
-	if l := len(ind.Entries["mysql"]); l != 3 {
-		t.Fatalf("Expected 3 mysql versions, got %d", l)
-	}
-}
-
 func TestIndexAdd(t *testing.T) {
 	i := NewIndexFile()
 	i.Add(&chart.Metadata{Name: "clipper", Version: "0.1.0"}, "clipper-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890")
