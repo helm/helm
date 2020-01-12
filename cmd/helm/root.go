@@ -139,13 +139,25 @@ __helm_zsh_comp_nospace() {
 __helm_list_charts()
 {
     __helm_debug "${FUNCNAME[0]}: c is $c words[c] is ${words[c]}"
-    local repo url file out=() nospace=0 wantFiles=$1
+    local prefix chart repo url file out=() nospace=0 wantFiles=$1
 
     # Handle completions for repos
     for repo in $(__helm_get_repos); do
         if [[ "${cur}" =~ ^${repo}/.* ]]; then
             # We are doing completion from within a repo
-            out=$(eval $(__helm_binary_name) search repo ${cur} 2>/dev/null | \cut -f1 | \grep ^${cur})
+            local cacheFile=$(eval $(__helm_binary_name) env 2>/dev/null | \grep HELM_REPOSITORY_CACHE | \cut -d= -f2 | \sed s/\"//g)/${repo}-charts.txt
+            if [ -f "$cacheFile" ]; then
+                # Get the list of charts from the cached file
+                prefix=${cur#${repo}/}
+                for chart in $(\grep ^$prefix $cacheFile); do
+                    out+=(${repo}/${chart})
+                done
+            else
+                # If there is no cached list file, fallback to helm search, which is much slower
+                # This will happen after the caching feature is first installed but before the user
+                # does a 'helm repo update' to generate the cached list file.
+				out=$(eval $(__helm_binary_name) search repo ${cur} 2>/dev/null | \cut -f1 | \grep ^${cur})
+            fi
             nospace=0
         elif [[ ${repo} =~ ^${cur}.* ]]; then
             # We are completing a repo name

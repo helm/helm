@@ -76,7 +76,12 @@ func (o *repoRemoveOptions) run(out io.Writer) error {
 }
 
 func removeRepoCache(root, name string) error {
-	idx := filepath.Join(root, helmpath.CacheIndexFile(name))
+	idx := filepath.Join(root, helmpath.CacheChartsFile(name))
+	if _, err := os.Stat(idx); err == nil {
+		os.Remove(idx)
+	}
+
+	idx = filepath.Join(root, helmpath.CacheIndexFile(name))
 	if _, err := os.Stat(idx); os.IsNotExist(err) {
 		return nil
 	} else if err != nil {
