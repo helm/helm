@@ -31,6 +31,7 @@ import (
 	"helm.sh/helm/v3/internal/test"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/cli"
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage"
@@ -136,14 +137,14 @@ func executeActionCommand(cmd string) (*cobra.Command, string, error) {
 }
 
 func resetEnv() func() {
-	origSettings, origEnv := settings, os.Environ()
+	origEnv := os.Environ()
 	return func() {
 		os.Clearenv()
-		settings = origSettings
 		for _, pair := range origEnv {
 			kv := strings.SplitN(pair, "=", 2)
 			os.Setenv(kv[0], kv[1])
 		}
+		settings = cli.New()
 	}
 }
 
