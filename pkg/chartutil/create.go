@@ -249,17 +249,15 @@ spec:
       labels:
         {{- include "<CHARTNAME>.selectorLabels" . | nindent 8 }}
     spec:
-      {{- $nginxImage :=  (dict "image" .Values.images.nginx "global" .Values.global) -}}
-      {{- include "imagePullSecrets" $nginxImage | indent 6 }}
+{{ include "imagePullSecrets" . | indent 6 }}
       serviceAccountName: {{ include "<CHARTNAME>.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: {{ .Chart.Name }}
+{{ include "registryImage" (dict "image" .Values.images.nginx "global" .Values.global) | indent 10 }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ include "registryImage" $nginxImage }}"
-          imagePullPolicy: {{ include "imagePullPolicy" $nginxImage }}
           ports:
             - name: http
               containerPort: 80
@@ -403,34 +401,56 @@ Create the name of the service account to use
 {{- end -}}
 
 {{/*
-Create an image reference
+Create a registry image reference for use in a spec.
+Includes the 'image' and 'imagePullPolicy' keys.
 */}}
 {{- define "registryImage" -}}
-    {{ $registry := default .global.imageRegistry .image.registry }}
-    {{- printf "%s/%s:%s" $registry .image.name .image.tag -}}
-    {{- if .image.digest -}}
-        {{- printf "@%s" .image.digest -}}
-    {{- end -}}
+image: {{ include "imageReference" . }}
+{{ include "imagePullPolicy" . }}
+{{- end -}}
+
+{{/*
+The most complete image reference, including the
+registry address, repository, tag and digest when available.
+*/}}
+{{- define "imageReference" -}}
+{{ $registry := coalesce .image.registry .global.imageRegistry "docker.io" }}
+{{- printf "%s/%s:%s" $registry .image.name .image.tag -}}
+{{- if .image.digest -}}
+{{- printf "@%s" .image.digest -}}
+{{- end -}}
 {{- end -}}
 
 {{/*
 Specify the image pull policy
 */}}
 {{- define "imagePullPolicy" -}}
-    {{- printf "%s" (default .global.imagePullPolicy .image.pullPolicy) -}}
+{{ $policy := coalesce .image.pullPolicy .global.imagePullPolicy }}
+{{- if $policy -}}
+imagePullPolicy: "{{ printf "%s" $policy -}}"
+{{- end -}}
 {{- end -}}
 
 {{/*
-Use the image pull secrets
+Use the image pull secrets. All of the specified secrets will be used
 */}}
 {{- define "imagePullSecrets" -}}
-    {{- $secrets := default .global.imagePullSecrets .image.pullSecrets -}}
-    {{- if $secrets -}}
-        imagePullSecrets:
-        {{- range $secrets }}
-            - name: {{ . }}
-        {{- end }}
-    {{- end -}}
+{{- $secrets := .Values.global.imagePullSecrets -}}
+{{- range $_, $image := .Values.images -}}
+{{- range $_, $s := $image.pullSecrets -}}
+{{- if not $secrets -}}
+{{- $secrets = list $s -}}
+{{- else -}}
+{{- $secrets = append $secrets $s -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- if $secrets -}}
+imagePullSecrets:
+{{- range $secrets }}
+- name: {{ . }}
+{{- end -}}
+{{- end -}}
 {{- end -}}`
 
 const defaultTestConnection = `apiVersion: v1
