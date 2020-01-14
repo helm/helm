@@ -17,8 +17,6 @@ limitations under the License.
 package repo
 
 import (
-	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -289,49 +287,4 @@ func loadIndex(data []byte) (*IndexFile, error) {
 		return i, ErrNoAPIVersion
 	}
 	return i, nil
-}
-
-// unversionedEntry represents a deprecated pre-Alpha.5 format.
-//
-// This will be removed prior to v2.0.0
-type unversionedEntry struct {
-	Checksum  string          `json:"checksum"`
-	URL       string          `json:"url"`
-	Chartfile *chart.Metadata `json:"chartfile"`
-}
-
-// loadUnversionedIndex loads a pre-Alpha.5 index.yaml file.
-//
-// This format is deprecated. This function will be removed prior to v2.0.0.
-func loadUnversionedIndex(data []byte) (*IndexFile, error) {
-	fmt.Fprintln(os.Stderr, "WARNING: Deprecated index file format. Try 'helm repo update'")
-	i := map[string]unversionedEntry{}
-
-	// This gets around an error in the YAML parser. Instead of parsing as YAML,
-	// we convert to JSON, and then decode again.
-	var err error
-	data, err = yaml.YAMLToJSON(data)
-	if err != nil {
-		return nil, err
-	}
-	if err := json.Unmarshal(data, &i); err != nil {
-		return nil, err
-	}
-
-	if len(i) == 0 {
-		return nil, ErrNoAPIVersion
-	}
-	ni := NewIndexFile()
-	for n, item := range i {
-		if item.Chartfile == nil || item.Chartfile.Name == "" {
-			parts := strings.Split(n, "-")
-			ver := ""
-			if len(parts) > 1 {
-				ver = strings.TrimSuffix(parts[1], ".tgz")
-			}
-			item.Chartfile = &chart.Metadata{Name: parts[0], Version: ver}
-		}
-		ni.Add(item.Chartfile, item.URL, "", item.Checksum)
-	}
-	return ni, nil
 }
