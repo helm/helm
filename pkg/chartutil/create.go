@@ -249,13 +249,13 @@ spec:
       labels:
         {{- include "<CHARTNAME>.selectorLabels" . | nindent 8 }}
     spec:
-{{ include "imagePullSecrets" . | indent 6 }}
+{{ include "<CHARTNAME>.imagePullSecrets" . | indent 6 }}
       serviceAccountName: {{ include "<CHARTNAME>.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: {{ .Chart.Name }}
-{{ include "registryImage" (dict "image" .Values.images.nginx "global" .Values.global) | indent 10 }}
+{{ include "<CHARTNAME>.registryImage" (dict "image" .Values.images.nginx "global" .Values.global) | indent 10 }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           ports:
@@ -404,16 +404,16 @@ Create the name of the service account to use
 Create a registry image reference for use in a spec.
 Includes the 'image' and 'imagePullPolicy' keys.
 */}}
-{{- define "registryImage" -}}
-image: {{ include "imageReference" . }}
-{{ include "imagePullPolicy" . }}
+{{- define "<CHARTNAME>.registryImage" -}}
+image: {{ include "<CHARTNAME>.imageReference" . }}
+{{ include "<CHARTNAME>.imagePullPolicy" . }}
 {{- end -}}
 
 {{/*
 The most complete image reference, including the
 registry address, repository, tag and digest when available.
 */}}
-{{- define "imageReference" -}}
+{{- define "<CHARTNAME>.imageReference" -}}
 {{ $registry := coalesce .image.registry .global.imageRegistry "docker.io" }}
 {{- printf "%s/%s:%s" $registry .image.name .image.tag -}}
 {{- if .image.digest -}}
@@ -424,7 +424,7 @@ registry address, repository, tag and digest when available.
 {{/*
 Specify the image pull policy
 */}}
-{{- define "imagePullPolicy" -}}
+{{- define "<CHARTNAME>.imagePullPolicy" -}}
 {{ $policy := coalesce .image.pullPolicy .global.imagePullPolicy }}
 {{- if $policy -}}
 imagePullPolicy: "{{ printf "%s" $policy -}}"
@@ -434,7 +434,7 @@ imagePullPolicy: "{{ printf "%s" $policy -}}"
 {{/*
 Use the image pull secrets. All of the specified secrets will be used
 */}}
-{{- define "imagePullSecrets" -}}
+{{- define "<CHARTNAME>.imagePullSecrets" -}}
 {{- $secrets := .Values.global.imagePullSecrets -}}
 {{- range $_, $image := .Values.images -}}
 {{- range $_, $s := $image.pullSecrets -}}
