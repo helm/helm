@@ -245,3 +245,24 @@ func TestKindSorterKeepOriginalOrder(t *testing.T) {
 		})
 	}
 }
+
+func TestKindSorterNamespaceAgainstUnknown(t *testing.T) {
+	unknown := Manifest{
+		Name: "a",
+		Head: &SimpleHead{Kind: "Unknown"},
+	}
+	namespace := Manifest{
+		Name: "b",
+		Head: &SimpleHead{Kind: "Namespace"},
+	}
+
+	manifests := []Manifest{unknown, namespace}
+	sortByKind(manifests, InstallOrder)
+
+	expectedOrder := []Manifest{namespace, unknown}
+	for i, manifest := range manifests {
+		if expectedOrder[i].Name != manifest.Name {
+			t.Errorf("Expected %s, got %s", expectedOrder[i].Name, manifest.Name)
+		}
+	}
+}
