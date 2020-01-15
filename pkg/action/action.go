@@ -241,7 +241,18 @@ func (c *Configuration) Init(getter genericclioptions.RESTClientGetter, namespac
 		d.Log = log
 		store = storage.Init(d)
 	case "memory":
-		d := driver.NewMemory()
+		var d *driver.Memory
+		if c.Releases != nil {
+			if mem, ok := c.Releases.Driver.(*driver.Memory); ok {
+				// This function can be called more than once (e.g., helm list --all-namespaces).
+				// If a memory driver was already initialized, re-use it but set the possibly new namespace.
+				// We re-use it in case some releases where already created in the existing memory driver.
+				d = mem
+			}
+		}
+		if d == nil {
+			d = driver.NewMemory()
+		}
 		d.SetNamespace(namespace)
 		store = storage.Init(d)
 	default:
