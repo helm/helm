@@ -52,13 +52,13 @@ require (
 	google.golang.org/appengine v1.6.5 // indirect
 	google.golang.org/genproto v0.0.0-20191028173616-919d9bdd9fe6 // indirect
 	google.golang.org/grpc v1.24.0 // indirect
-	k8s.io/api v0.17.0
-	k8s.io/apiextensions-apiserver v0.17.0
-	k8s.io/apimachinery v0.17.1-beta.0
-	k8s.io/cli-runtime v0.17.0
-	k8s.io/client-go v0.17.0
+	k8s.io/api v0.17.1
+	k8s.io/apiextensions-apiserver v0.17.1
+	k8s.io/apimachinery v0.17.1
+	k8s.io/cli-runtime v0.17.1
+	k8s.io/client-go v0.17.1
 	k8s.io/klog v1.0.0
-	k8s.io/kubectl v0.17.0
+	k8s.io/kubectl v0.17.1
 	sigs.k8s.io/yaml v1.1.0
 )
 
