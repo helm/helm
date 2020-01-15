@@ -453,6 +453,10 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 		return hs, b, "", err
 	}
 
+	for _, f := range ch.Manifests {
+		files[f.Name] = string(f.Data)
+	}
+
 	// NOTES.txt gets rendered like all the other files, but because it's not a hook nor a resource,
 	// pull it out of here into a separate file so that we can actually use the output of the rendered
 	// text file. We have to spin through this map because the file contains path information, so we

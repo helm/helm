@@ -37,6 +37,8 @@ type Chart struct {
 	Lock *Lock `json:"lock"`
 	// Templates for this chart.
 	Templates []*File `json:"templates"`
+	// Manifests which won't be passed through the rendering engine.
+	Manifests []*File `json:"manifests"`
 	// Values are default config for this chart.
 	Values map[string]interface{} `json:"values"`
 	// Schema is an optional JSON schema for imposing structure on Values
