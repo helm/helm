@@ -16,7 +16,11 @@ limitations under the License.
 
 package releaseutil
 
-import "sort"
+import (
+	"sort"
+
+	"helm.sh/helm/v3/pkg/release"
+)
 
 // KindSortOrder is an ordering of Kinds.
 type KindSortOrder []string
@@ -99,46 +103,84 @@ var UninstallOrder KindSortOrder = []string{
 	"Namespace",
 }
 
-// sortByKind does an in-place sort of manifests by Kind.
+// sort manifests by kind (out of place sort)
 //
 // Results are sorted by 'ordering', keeping order of items with equal kind/priority
-func sortByKind(manifests []Manifest, ordering KindSortOrder) []Manifest {
-	ks := newKindSorter(manifests, ordering)
+func manifestsSortedByKind(manifests []Manifest, ordering KindSortOrder) []Manifest {
+	k := make([]string, len(manifests))
+	for i, h := range manifests {
+		k[i] = h.Head.Kind
+	}
+	ks := newKindSorter(k, ordering)
 	sort.Stable(ks)
-	return ks.manifests
+
+	// apply permutation
+	sorted := make([]Manifest, len(manifests))
+	for i, p := range ks.permutation {
+		sorted[i] = manifests[p]
+	}
+	return sorted
+}
+
+// sort hooks by kind (out of place sort)
+//
+// Results are sorted by 'ordering', keeping order of items with equal kind/priority
+func hooksSortedByKind(hooks []*release.Hook, ordering KindSortOrder) []*release.Hook {
+	k := make([]string, len(hooks))
+	for i, h := range hooks {
+		k[i] = h.Kind
+	}
+
+	ks := newKindSorter(k, ordering)
+	sort.Stable(ks)
+
+	// apply permutation
+	sorted := make([]*release.Hook, len(hooks))
+	for i, p := range ks.permutation {
+		sorted[i] = hooks[p]
+	}
+	return sorted
 }
 
 type kindSorter struct {
-	ordering  map[string]int
-	manifests []Manifest
+	permutation []int
+	ordering    map[string]int
+	kinds       []string
 }
 
-func newKindSorter(m []Manifest, s KindSortOrder) *kindSorter {
+func newKindSorter(kinds []string, s KindSortOrder) *kindSorter {
 	o := make(map[string]int, len(s))
 	for v, k := range s {
 		o[k] = v
 	}
 
+	p := make([]int, len(kinds))
+	for i := range p {
+		p[i] = i
+	}
 	return &kindSorter{
-		manifests: m,
-		ordering:  o,
+		permutation: p,
+		kinds:       kinds,
+		ordering:    o,
 	}
 }
 
-func (k *kindSorter) Len() int { return len(k.manifests) }
+func (k *kindSorter) Len() int { return len(k.kinds) }
 
-func (k *kindSorter) Swap(i, j int) { k.manifests[i], k.manifests[j] = k.manifests[j], k.manifests[i] }
+func (k *kindSorter) Swap(i, j int) {
+	k.permutation[i], k.permutation[j] = k.permutation[j], k.permutation[i]
+}
 
 func (k *kindSorter) Less(i, j int) bool {
-	a := k.manifests[i]
-	b := k.manifests[j]
-	first, aok := k.ordering[a.Head.Kind]
-	second, bok := k.ordering[b.Head.Kind]
+	a := k.kinds[k.permutation[i]]
+	b := k.kinds[k.permutation[j]]
+	first, aok := k.ordering[a]
+	second, bok := k.ordering[b]
 
 	if !aok && !bok {
 		// if both are unknown then sort alphabetically by kind, keep original order if same kind
-		if a.Head.Kind != b.Head.Kind {
-			return a.Head.Kind < b.Head.Kind
+		if a != b {
+			return a < b
 		}
 		return first < second
 	}

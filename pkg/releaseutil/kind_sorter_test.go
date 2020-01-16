@@ -19,6 +19,8 @@ package releaseutil
 import (
 	"bytes"
 	"testing"
+
+	"helm.sh/helm/v3/pkg/release"
 )
 
 func TestKindSorter(t *testing.T) {
@@ -175,7 +177,7 @@ func TestKindSorter(t *testing.T) {
 				t.Fatalf("Expected %d names in order, got %d", want, got)
 			}
 			defer buf.Reset()
-			for _, r := range sortByKind(manifests, test.order) {
+			for _, r := range manifestsSortedByKind(manifests, test.order) {
 				buf.WriteString(r.Name)
 			}
 			if got := buf.String(); got != test.expected {
@@ -236,7 +238,7 @@ func TestKindSorterKeepOriginalOrder(t *testing.T) {
 		var buf bytes.Buffer
 		t.Run(test.description, func(t *testing.T) {
 			defer buf.Reset()
-			for _, r := range sortByKind(manifests, test.order) {
+			for _, r := range manifestsSortedByKind(manifests, test.order) {
 				buf.WriteString(r.Name)
 			}
 			if got := buf.String(); got != test.expected {
@@ -257,12 +259,57 @@ func TestKindSorterNamespaceAgainstUnknown(t *testing.T) {
 	}
 
 	manifests := []Manifest{unknown, namespace}
-	sortByKind(manifests, InstallOrder)
+	manifests = manifestsSortedByKind(manifests, InstallOrder)
 
 	expectedOrder := []Manifest{namespace, unknown}
 	for i, manifest := range manifests {
 		if expectedOrder[i].Name != manifest.Name {
 			t.Errorf("Expected %s, got %s", expectedOrder[i].Name, manifest.Name)
 		}
+	}
+}
+
+// test hook sorting with a small subset of kinds, since it uses the same algorithm as manifestsSortedByKind
+func TestKindSorterForHooks(t *testing.T) {
+	hooks := []*release.Hook{
+		{
+			Name: "i",
+			Kind: "ClusterRole",
+		},
+		{
+			Name: "j",
+			Kind: "ClusterRoleBinding",
+		},
+		{
+			Name: "c",
+			Kind: "LimitRange",
+		},
+		{
+			Name: "a",
+			Kind: "Namespace",
+		},
+	}
+
+	for _, test := range []struct {
+		description string
+		order       KindSortOrder
+		expected    string
+	}{
+		{"install", InstallOrder, "acij"},
+		{"uninstall", UninstallOrder, "jica"},
+	} {
+		var buf bytes.Buffer
+		t.Run(test.description, func(t *testing.T) {
+			if got, want := len(test.expected), len(hooks); got != want {
+				t.Fatalf("Expected %d names in order, got %d", want, got)
+			}
+			defer buf.Reset()
+			for _, r := range hooksSortedByKind(hooks, test.order) {
+				buf.WriteString(r.Name)
+			}
+			if got := buf.String(); got != test.expected {
+				t.Errorf("Expected %q, got %q", test.expected, got)
+			}
+		})
 	}
 }
