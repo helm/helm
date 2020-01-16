@@ -14,23 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package lint // import "helm.sh/helm/v3/pkg/lint"
+package main
 
 import (
-	"path/filepath"
-
-	"helm.sh/helm/v3/pkg/lint/rules"
-	"helm.sh/helm/v3/pkg/lint/support"
+	"fmt"
+	"testing"
 )
 
-// All runs all of the available linters on the given base directory.
-func All(basedir string, values map[string]interface{}, namespace string, strict bool) support.Linter {
-	// Using abs path to get directory context
-	chartDir, _ := filepath.Abs(basedir)
-
-	linter := support.Linter{ChartDir: chartDir}
-	rules.Chartfile(&linter)
-	rules.Values(&linter, values)
-	rules.Templates(&linter, values, namespace, strict)
-	return linter
+func TestLintCmd(t *testing.T) {
+	chart := "testdata/testcharts/chart-with-schema-negative"
+	tests := []cmdTestCase{
+		{
+			name:      "check fails without value option flags",
+			cmd:       fmt.Sprintf("lint %s", chart),
+			wantError: true,
+		},
+		{
+			name: "check passes with value option flags",
+			cmd:  fmt.Sprintf("lint %s --set age=25,employmentInfo.salary=100000", chart),
+		},
+	}
+	runTestCmd(t, tests)
 }

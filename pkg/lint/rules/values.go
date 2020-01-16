@@ -28,7 +28,7 @@ import (
 )
 
 // Values lints a chart's values.yaml file.
-func Values(linter *support.Linter) {
+func Values(linter *support.Linter, values map[string]interface{}) {
 	file := "values.yaml"
 	vf := filepath.Join(linter.ChartDir, file)
 	fileExists := linter.RunLinterRule(support.InfoSev, file, validateValuesFileExistence(vf))
@@ -37,7 +37,7 @@ func Values(linter *support.Linter) {
 		return
 	}
 
-	linter.RunLinterRule(support.ErrorSev, file, validateValuesFile(vf))
+	linter.RunLinterRule(support.ErrorSev, file, validateValues(vf, values))
 }
 
 func validateValuesFileExistence(valuesPath string) error {
@@ -48,8 +48,8 @@ func validateValuesFileExistence(valuesPath string) error {
 	return nil
 }
 
-func validateValuesFile(valuesPath string) error {
-	values, err := chartutil.ReadValuesFile(valuesPath)
+func validateValues(valuesPath string, values map[string]interface{}) error {
+	fv, err := chartutil.ReadValuesFile(valuesPath)
 	if err != nil {
 		return errors.Wrap(err, "unable to parse YAML")
 	}
@@ -63,5 +63,5 @@ func validateValuesFile(valuesPath string) error {
 	if err != nil {
 		return err
 	}
-	return chartutil.ValidateAgainstSingleSchema(values, schema)
+	return chartutil.ValidateAgainstSingleSchema(chartutil.CoalesceTables(values, fv), schema)
 }
