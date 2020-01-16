@@ -131,6 +131,16 @@ func TestListCmd(t *testing.T) {
 			},
 			Chart: chartInfo,
 		},
+		{
+			Name:      "starlord",
+			Version:   2,
+			Namespace: "milano",
+			Info: &release.Info{
+				LastDeployed: timestamp1,
+				Status:       release.StatusDeployed,
+			},
+			Chart: chartInfo,
+		},
 	}
 
 	tests := []cmdTestCase{{
@@ -202,6 +212,11 @@ func TestListCmd(t *testing.T) {
 		name:   "list releases currently uninstalling",
 		cmd:    "list --uninstalling",
 		golden: "output/list-uninstalling.txt",
+		rels:   releaseFixture,
+	}, {
+		name:   "list releases in another namespace",
+		cmd:    "list -n milano",
+		golden: "output/list-namespace.txt",
 		rels:   releaseFixture,
 	}}
 	runTestCmd(t, tests)

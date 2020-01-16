@@ -241,6 +241,7 @@ func (c *Configuration) Init(getter genericclioptions.RESTClientGetter, namespac
 		store = storage.Init(d)
 	case "memory":
 		d := driver.NewMemory()
+		d.SetNamespace(namespace)
 		store = storage.Init(d)
 	default:
 		// Not sure what to do here.

@@ -143,6 +143,9 @@ func executeActionCommandC(store *storage.Storage, cmd string) (*cobra.Command, 
 	root.SetOutput(buf)
 	root.SetArgs(args)
 
+	if mem, ok := store.Driver.(*driver.Memory); ok {
+		mem.SetNamespace(settings.Namespace())
+	}
 	c, err := root.ExecuteC()
 
 	return c, buf.String(), err
