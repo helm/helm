@@ -40,10 +40,13 @@ ifneq ($(BINARY_VERSION),)
 	LDFLAGS += -X helm.sh/helm/v3/internal/version.version=${BINARY_VERSION}
 endif
 
+VERSION_METADATA = unreleased
 # Clear the "unreleased" string in BuildMetadata
 ifneq ($(GIT_TAG),)
-	LDFLAGS += -X helm.sh/helm/v3/internal/version.metadata=
+	VERSION_METADATA =
 endif
+
+LDFLAGS += -X helm.sh/helm/v3/internal/version.metadata=${VERSION_METADATA}
 LDFLAGS += -X helm.sh/helm/v3/internal/version.gitCommit=${GIT_COMMIT}
 LDFLAGS += -X helm.sh/helm/v3/internal/version.gitTreeState=${GIT_DIRTY}
 
