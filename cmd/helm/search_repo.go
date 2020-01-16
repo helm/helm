@@ -17,6 +17,8 @@ limitations under the License.
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -251,17 +253,39 @@ func (r *repoSearchWriter) encodeByFormat(out io.Writer, format output.Format) e
 
 // Provides the list of charts that are part of the specified repo, and that starts with 'prefix'.
 func compListChartsOfRepo(repoName string, prefix string) []string {
-	f := filepath.Join(settings.RepositoryCache, helmpath.CacheIndexFile(repoName))
 	var charts []string
-	if indexFile, err := repo.LoadIndexFile(f); err == nil {
-		for name := range indexFile.Entries {
-			fullName := fmt.Sprintf("%s/%s", repoName, name)
+
+	path := filepath.Join(settings.RepositoryCache, helmpath.CacheChartsFile(repoName))
+	content, err := ioutil.ReadFile(path)
+	if err == nil {
+		scanner := bufio.NewScanner(bytes.NewReader(content))
+		for scanner.Scan() {
+			fullName := fmt.Sprintf("%s/%s", repoName, scanner.Text())
 			if strings.HasPrefix(fullName, prefix) {
 				charts = append(charts, fullName)
 			}
 		}
+		return charts
 	}
-	return charts
+
+	if isNotExist(err) {
+		// If there is no cached charts file, fallback to the full index file.
+		// This is much slower but can happen after the caching feature is first
+		// installed but before the user  does a 'helm repo update' to generate the
+		// first cached charts file.
+		path = filepath.Join(settings.RepositoryCache, helmpath.CacheIndexFile(repoName))
+		if indexFile, err := repo.LoadIndexFile(path); err == nil {
+			for name := range indexFile.Entries {
+				fullName := fmt.Sprintf("%s/%s", repoName, name)
+				if strings.HasPrefix(fullName, prefix) {
+					charts = append(charts, fullName)
+				}
+			}
+			return charts
+		}
+	}
+
+	return []string{}
 }
 
 // Provide dynamic auto-completion for commands that operate on charts (e.g., helm show)
