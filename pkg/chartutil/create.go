@@ -255,7 +255,7 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: {{ .Chart.Name }}
-{{ include "<CHARTNAME>.registryImage" (dict "image" .Values.images.nginx "global" .Values.global) | indent 10 }}
+{{ include "<CHARTNAME>.registryImage" (dict "image" .Values.images.nginx "values" .Values) | indent 10 }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           ports:
@@ -414,8 +414,9 @@ The most complete image reference, including the
 registry address, repository, tag and digest when available.
 */}}
 {{- define "<CHARTNAME>.imageReference" -}}
-{{ $registry := coalesce .image.registry .global.imageRegistry "docker.io" }}
-{{- printf "%s/%s:%s" $registry .image.name .image.tag -}}
+{{- $registry := coalesce .image.registry .values.global.imageRegistry "docker.io" -}}
+{{- $namespace := coalesce .image.namespace .values.imageNamespace .values.global.imageNamespace "library" -}}
+{{- printf "%s/%s/%s:%s" $registry $namespace .image.name .image.tag -}}
 {{- if .image.digest -}}
 {{- printf "@%s" .image.digest -}}
 {{- end -}}
@@ -425,7 +426,7 @@ registry address, repository, tag and digest when available.
 Specify the image pull policy
 */}}
 {{- define "<CHARTNAME>.imagePullPolicy" -}}
-{{ $policy := coalesce .image.pullPolicy .global.imagePullPolicy }}
+{{ $policy := coalesce .image.pullPolicy .values.global.imagePullPolicy }}
 {{- if $policy -}}
 imagePullPolicy: "{{ printf "%s" $policy -}}"
 {{- end -}}
