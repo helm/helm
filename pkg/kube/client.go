@@ -26,6 +26,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/pkg/errors"
 	batch "k8s.io/api/batch/v1"
@@ -52,8 +53,9 @@ var ErrNoObjectsVisited = errors.New("no objects visited")
 
 // Client represents a client capable of communicating with the Kubernetes API.
 type Client struct {
-	Factory Factory
-	Log     func(string, ...interface{})
+	Factory       Factory
+	Log           func(string, ...interface{})
+	serverVersion *semver.Version
 }
 
 // New creates a new Client.
@@ -77,10 +79,18 @@ var nopLogger = func(_ string, _ ...interface{}) {}
 // IsReachable tests connectivity to the cluster
 func (c *Client) IsReachable() error {
 	client, _ := c.Factory.KubernetesClientSet()
-	_, err := client.ServerVersion()
+	sv, err := client.ServerVersion()
 	if err != nil {
 		return errors.New("Kubernetes cluster unreachable")
 	}
+
+	version, err := semver.NewVersion(sv.GitVersion)
+	if err != nil {
+		return fmt.Errorf("illegal server version %s", version)
+	}
+
+	c.serverVersion = version
+
 	return nil
 }
 
@@ -99,10 +109,12 @@ func (c *Client) Wait(resources ResourceList, timeout time.Duration) error {
 	if err != nil {
 		return err
 	}
+
 	w := waiter{
-		c:       cs,
-		log:     c.Log,
-		timeout: timeout,
+		c:             cs,
+		log:           c.Log,
+		timeout:       timeout,
+		serverVersion: c.serverVersion,
 	}
 	return w.waitForResources(resources)
 }

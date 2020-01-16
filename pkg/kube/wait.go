@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
@@ -40,9 +41,10 @@ import (
 )
 
 type waiter struct {
-	c       kubernetes.Interface
-	timeout time.Duration
-	log     func(string, ...interface{})
+	c             kubernetes.Interface
+	timeout       time.Duration
+	log           func(string, ...interface{})
+	serverVersion *semver.Version
 }
 
 // waitForResources polls to get the current status of all pods, PVCs, and Services
@@ -249,6 +251,8 @@ func (w *waiter) crdReady(crd apiextv1beta1.CustomResourceDefinition) bool {
 	return false
 }
 
+var V112 = semver.MustParse("v1.12.0")
+
 func (w *waiter) statefulSetReady(sts *appsv1.StatefulSet) bool {
 	// If the update strategy is not a rolling update, there will be nothing to wait for
 	if sts.Spec.UpdateStrategy.Type != appsv1.RollingUpdateStatefulSetStrategyType {
@@ -275,10 +279,15 @@ func (w *waiter) statefulSetReady(sts *appsv1.StatefulSet) bool {
 	// updated
 	expectedReplicas := replicas - partition
 
-	// Make sure all the updated pods have been scheduled
-	if int(sts.Status.UpdatedReplicas) != expectedReplicas {
-		w.log("StatefulSet is not ready: %s/%s. %d out of %d expected pods have been scheduled", sts.Namespace, sts.Name, sts.Status.UpdatedReplicas, expectedReplicas)
-		return false
+	// https://github.com/kubernetes/kubernetes/issues/52653
+	if w.serverVersion != nil && w.serverVersion.LessThan(V112) {
+		// do nothing
+	} else {
+		// Make sure all the updated pods have been scheduled
+		if int(sts.Status.UpdatedReplicas) != expectedReplicas {
+			w.log("StatefulSet is not ready: %s/%s. %d out of %d expected pods have been scheduled", sts.Namespace, sts.Name, sts.Status.UpdatedReplicas, expectedReplicas)
+			return false
+		}
 	}
 
 	if int(sts.Status.ReadyReplicas) != replicas {
