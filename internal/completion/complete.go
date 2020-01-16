@@ -35,9 +35,9 @@ import (
 // This should ultimately be pushed down into Cobra.
 // ==================================================================================
 
-// CompRequestCmd Hidden command to request completion results from the program.
+// compRequestCmd Hidden command to request completion results from the program.
 // Used by the shell completion script.
-const CompRequestCmd = "__complete"
+const compRequestCmd = "__complete"
 
 // Global map allowing to find completion functions for commands or flags.
 var validArgsFunctions = map[interface{}]func(cmd *cobra.Command, args []string, toComplete string) ([]string, BashCompDirective){}
@@ -63,6 +63,68 @@ const (
 	// behavior after completions have been provided.
 	BashCompDirectiveDefault BashCompDirective = 0
 )
+
+// GetBashCustomFunction returns the bash code to handle custom go completion
+// This should eventually be provided by Cobra
+func GetBashCustomFunction() string {
+	return fmt.Sprintf(`
+__helm_custom_func()
+{
+    __helm_debug "${FUNCNAME[0]}: c is $c, words[@] is ${words[@]}, #words[@] is ${#words[@]}"
+    __helm_debug "${FUNCNAME[0]}: cur is ${cur}, cword is ${cword}, words is ${words}"
+
+    local out requestComp lastParam lastChar
+    requestComp="${words[0]} %[1]s ${words[@]:1}"
+
+    lastParam=${words[$((${#words[@]}-1))]}
+    lastChar=${lastParam:$((${#lastParam}-1)):1}
+    __helm_debug "${FUNCNAME[0]}: lastParam ${lastParam}, lastChar ${lastChar}"
+
+    if [ -z "${cur}" ] && [ "${lastChar}" != "=" ]; then
+        # If the last parameter is complete (there is a space following it)
+        # We add an extra empty parameter so we can indicate this to the go method.
+        __helm_debug "${FUNCNAME[0]}: Adding extra empty parameter"
+        requestComp="${requestComp} \"\""
+    fi
+
+    __helm_debug "${FUNCNAME[0]}: calling ${requestComp}"
+    # Use eval to handle any environment variables and such
+    out=$(eval ${requestComp} 2>/dev/null)
+
+    # Extract the directive int at the very end of the output following a :
+    directive=${out##*:}
+    # Remove the directive
+    out=${out%%:*}
+    if [ "${directive}" = "${out}" ]; then
+        # There is not directive specified
+        directive=0
+    fi
+    __helm_debug "${FUNCNAME[0]}: the completion directive is: ${directive}"
+    __helm_debug "${FUNCNAME[0]}: the completions are: ${out[*]}"
+
+    if [ $((${directive} & %[2]d)) -ne 0 ]; then
+        __helm_debug "${FUNCNAME[0]}: received error, completion failed"
+    else
+        if [ $((${directive} & %[3]d)) -ne 0 ]; then
+            if [[ $(type -t compopt) = "builtin" ]]; then
+                __helm_debug "${FUNCNAME[0]}: activating no space"
+                compopt -o nospace
+            fi
+        fi
+        if [ $((${directive} & %[4]d)) -ne 0 ]; then
+            if [[ $(type -t compopt) = "builtin" ]]; then
+                __helm_debug "${FUNCNAME[0]}: activating no file completion"
+                compopt +o default
+            fi
+        fi
+
+        while IFS='' read -r comp; do
+            COMPREPLY+=("$comp")
+        done < <(compgen -W "${out[*]}" -- "$cur")
+    fi
+}
+`, compRequestCmd, BashCompDirectiveError, BashCompDirectiveNoSpace, BashCompDirectiveNoFileComp)
+}
 
 // RegisterValidArgsFunc should be called to register a function to provide argument completion for a command
 func RegisterValidArgsFunc(cmd *cobra.Command, f func(cmd *cobra.Command, args []string, toComplete string) ([]string, BashCompDirective)) {
@@ -115,14 +177,14 @@ func (d BashCompDirective) string() string {
 func NewCompleteCmd(settings *cli.EnvSettings, out io.Writer) *cobra.Command {
 	debug = settings.Debug
 	return &cobra.Command{
-		Use:                   fmt.Sprintf("%s [command-line]", CompRequestCmd),
+		Use:                   fmt.Sprintf("%s [command-line]", compRequestCmd),
 		DisableFlagsInUseLine: true,
 		Hidden:                true,
 		DisableFlagParsing:    true,
 		Args:                  require.MinimumNArgs(1),
 		Short:                 "Request shell completion choices for the specified command-line",
 		Long: fmt.Sprintf("%s is a special command that is used by the shell completion logic\n%s",
-			CompRequestCmd, "to request completion choices for the specified command-line."),
+			compRequestCmd, "to request completion choices for the specified command-line."),
 		Run: func(cmd *cobra.Command, args []string) {
 			CompDebugln(fmt.Sprintf("%s was called with args %v", cmd.Name(), args))
 

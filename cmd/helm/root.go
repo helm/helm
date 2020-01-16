@@ -32,7 +32,7 @@ import (
 )
 
 const (
-	bashCompletionFunc = `
+	contextCompFunc = `
 __helm_get_contexts()
 {
     __helm_debug "${FUNCNAME[0]}: c is $c words[c] is ${words[c]}"
@@ -40,62 +40,6 @@ __helm_get_contexts()
     template="{{ range .contexts  }}{{ .name }} {{ end }}"
     if out=$(kubectl config -o template --template="${template}" view 2>/dev/null); then
         COMPREPLY=( $( compgen -W "${out[*]}" -- "$cur" ) )
-    fi
-}
-
-__helm_custom_func()
-{
-    __helm_debug "${FUNCNAME[0]}: c is $c, words[@] is ${words[@]}, #words[@] is ${#words[@]}"
-    __helm_debug "${FUNCNAME[0]}: cur is ${cur}, cword is ${cword}, words is ${words}"
-
-    local out requestComp lastParam lastChar
-    requestComp="${words[0]} %[1]s ${words[@]:1}"
-
-    lastParam=${words[$((${#words[@]}-1))]}
-    lastChar=${lastParam:$((${#lastParam}-1)):1}
-    __helm_debug "${FUNCNAME[0]}: lastParam ${lastParam}, lastChar ${lastChar}"
-
-    if [ -z "${cur}" ] && [ "${lastChar}" != "=" ]; then
-        # If the last parameter is complete (there is a space following it)
-        # We add an extra empty parameter so we can indicate this to the go method.
-        __helm_debug "${FUNCNAME[0]}: Adding extra empty parameter"
-        requestComp="${requestComp} \"\""
-    fi
-
-    __helm_debug "${FUNCNAME[0]}: calling ${requestComp}"
-    # Use eval to handle any environment variables and such
-    out=$(eval ${requestComp} 2>/dev/null)
-
-    # Extract the directive int at the very end of the output following a :
-    directive=${out##*:}
-    # Remove the directive
-    out=${out%%:*}
-    if [ "${directive}" = "${out}" ]; then
-        # There is not directive specified
-        directive=0
-    fi
-    __helm_debug "${FUNCNAME[0]}: the completion directive is: ${directive}"
-    __helm_debug "${FUNCNAME[0]}: the completions are: ${out[*]}"
-
-    if [ $((${directive} & %[2]d)) -ne 0 ]; then
-        __helm_debug "${FUNCNAME[0]}: received error, completion failed"
-    else
-        if [ $((${directive} & %[3]d)) -ne 0 ]; then
-            if [[ $(type -t compopt) = "builtin" ]]; then
-                __helm_debug "${FUNCNAME[0]}: activating no space"
-                compopt -o nospace
-            fi
-        fi
-        if [ $((${directive} & %[4]d)) -ne 0 ]; then
-            if [[ $(type -t compopt) = "builtin" ]]; then
-                __helm_debug "${FUNCNAME[0]}: activating no file completion"
-                compopt +o default
-            fi
-        fi
-
-        while IFS='' read -r comp; do
-            COMPREPLY+=("$comp")
-        done < <(compgen -W "${out[*]}" -- "$cur")
     fi
 }
 `
@@ -152,17 +96,12 @@ By default, the default directories depend on the Operating System. The defaults
 
 func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "helm",
-		Short:        "The Helm package manager for Kubernetes.",
-		Long:         globalUsage,
-		SilenceUsage: true,
-		Args:         require.NoArgs,
-		BashCompletionFunction: fmt.Sprintf(
-			bashCompletionFunc,
-			completion.CompRequestCmd,
-			completion.BashCompDirectiveError,
-			completion.BashCompDirectiveNoSpace,
-			completion.BashCompDirectiveNoFileComp),
+		Use:                    "helm",
+		Short:                  "The Helm package manager for Kubernetes.",
+		Long:                   globalUsage,
+		SilenceUsage:           true,
+		Args:                   require.NoArgs,
+		BashCompletionFunction: fmt.Sprintf("%s%s", contextCompFunc, completion.GetBashCustomFunction()),
 	}
 	flags := cmd.PersistentFlags()
 
