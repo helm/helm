@@ -81,6 +81,11 @@ func (p *PrintingKubeClient) Update(_, modified kube.ResourceList, _ bool) (*kub
 	return &kube.Result{Updated: modified}, nil
 }
 
+// UpdateRecreate falls back to Update
+func (p *PrintingKubeClient) UpdateRecreate(original, target kube.ResourceList, force bool, _ time.Duration) (*kube.Result, error) {
+	return p.Update(original, target, force)
+}
+
 // Build implements KubeClient Build.
 func (p *PrintingKubeClient) Build(_ io.Reader, _ bool) (kube.ResourceList, error) {
 	return []*resource.Info{}, nil
@@ -98,3 +103,5 @@ func bufferize(resources kube.ResourceList) io.Reader {
 	}
 	return strings.NewReader(builder.String())
 }
+
+var _ kube.InterfaceV2 = (*PrintingKubeClient)(nil)

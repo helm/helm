@@ -63,4 +63,25 @@ type Interface interface {
 	IsReachable() error
 }
 
-var _ Interface = (*Client)(nil)
+// Extended Kubernetes client interface
+//
+// Version 2 interface adds new methods in a backward compatible way.
+// In the next API breaking release it could be merged with the base interface.
+type InterfaceV2 interface {
+	Interface
+
+	// Update updates one or more resources or creates the resource if it doesn't exist.
+	//
+	// Force controls how to perform the update of a resource:
+	//
+	// force: false
+	//   Patch a resource, if that fails due to an StatusReasonInvalid or StatusReasonConflict error,
+	//   delete it and recreate it afterwards.
+	// force: true
+	//   Delete and recreated without trying to patch it first.
+	//
+	// After deleting a resource poll and wait until resource was deleted, fails if server does not delete resource within timeout.
+	UpdateRecreate(original, target ResourceList, force bool, timeout time.Duration) (*Result, error)
+}
+
+var _ InterfaceV2 = (*Client)(nil)

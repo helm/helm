@@ -97,3 +97,13 @@ func (f *FailingKubeClient) WaitAndGetCompletedPodPhase(s string, d time.Duratio
 	}
 	return f.PrintingKubeClient.WaitAndGetCompletedPodPhase(s, d)
 }
+
+// UpdateRecreate returns the configured error if set or prints
+func (f *FailingKubeClient) UpdateRecreate(r, modified kube.ResourceList, force bool, timeout time.Duration) (*kube.Result, error) {
+	if f.UpdateError != nil {
+		return &kube.Result{}, f.UpdateError
+	}
+	return f.PrintingKubeClient.UpdateRecreate(r, modified, force, timeout)
+}
+
+var _ kube.InterfaceV2 = (*FailingKubeClient)(nil)

@@ -253,3 +253,42 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 		is.Equal(expectedValues, updatedRes.Config)
 	})
 }
+
+func TestUpgradeRelease_RecreateResources(t *testing.T) {
+	is := assert.New(t)
+
+	upAction := upgradeAction(t)
+	upAction.Timeout = 0
+	upAction.RecreateResources = true
+
+	cfg := upAction.cfg
+	kubeClient := cfg.KubeClientV2
+
+	rel := releaseStub()
+	rel.Info.Status = release.StatusDeployed
+	rel.Name = "my-release"
+	err := cfg.Releases.Create(rel)
+	is.NoError(err)
+
+	t.Run("recreate should work when kubeClient and kubeClientV2 is set", func(t *testing.T) {
+		verifiableKubeClient := kubefake.NewKubeClientSpy(kubeClient)
+		cfg.KubeClient = verifiableKubeClient
+		cfg.KubeClientV2 = verifiableKubeClient
+
+		_, err := upAction.Run(rel.Name, buildChart(), map[string]interface{}{})
+		is.NoError(err)
+		is.Equal(verifiableKubeClient.Calls["Update"], 0)
+		is.Equal(verifiableKubeClient.Calls["UpdateRecreate"], 1)
+	})
+
+	t.Run("recreate should fallback to Update when only kubeClient is set", func(t *testing.T) {
+		kubeClientSpy := kubefake.NewKubeClientSpy(kubeClient)
+		cfg.KubeClient = kubeClientSpy
+		cfg.KubeClientV2 = nil
+
+		_, err := upAction.Run(rel.Name, buildChart(), map[string]interface{}{})
+		is.NoError(err)
+		is.Equal(kubeClientSpy.Calls["Update"], 1)
+		is.Equal(kubeClientSpy.Calls["UpdateRecreate"], 0)
+	})
+}

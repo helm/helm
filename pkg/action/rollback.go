@@ -22,6 +22,8 @@ import (
 	"strings"
 	"time"
 
+	"helm.sh/helm/v3/pkg/kube"
+
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/pkg/release"
@@ -34,14 +36,18 @@ import (
 type Rollback struct {
 	cfg *Configuration
 
-	Version       int
-	Timeout       time.Duration
-	Wait          bool
-	DisableHooks  bool
-	DryRun        bool
-	Recreate      bool // will (if true) recreate pods after a rollback.
-	Force         bool // will (if true) force resource upgrade through uninstall/recreate if needed
-	CleanupOnFail bool
+	Version      int
+	Timeout      time.Duration
+	Wait         bool
+	DisableHooks bool
+	DryRun       bool
+	// Recreate will (if true) recreate pods after a rollback. (not to be confused with RecreateResources)
+	Recreate bool
+	// recreate resources on update
+	// for compatibility reasons this field cannot be named "Recreate", since "Recreate" is referring to the "recreate-pods" flag.
+	RecreateResources bool
+	Force             bool // will (if true) force resource upgrade through uninstall/recreate if needed
+	CleanupOnFail     bool
 }
 
 // NewRollback creates a new Rollback object with the given configuration.
@@ -159,9 +165,18 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		r.cfg.Log("rollback hooks disabled for %s", targetRelease.Name)
 	}
 
-	results, err := r.cfg.KubeClient.Update(current, target, r.Force)
-
-	if err != nil {
+	var result *kube.Result
+	kubeClientV2 := r.cfg.KubeClientV2
+	switch {
+	case r.RecreateResources && kubeClientV2 != nil:
+		result, err = kubeClientV2.UpdateRecreate(current, target, r.Force, r.Timeout)
+	case r.RecreateResources:
+		r.cfg.Log("warning: kubeClient does not support recreate flag, ignoring it.")
+		fallthrough
+	default:
+		result, err = r.cfg.KubeClient.Update(current, target, r.Force)
+	}
+	if err != nil && result != nil {
 		msg := fmt.Sprintf("Rollback %q failed: %s", targetRelease.Name, err)
 		r.cfg.Log("warning: %s", msg)
 		currentRelease.Info.Status = release.StatusSuperseded
@@ -170,8 +185,8 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		r.cfg.recordRelease(currentRelease)
 		r.cfg.recordRelease(targetRelease)
 		if r.CleanupOnFail {
-			r.cfg.Log("Cleanup on fail set, cleaning up %d resources", len(results.Created))
-			_, errs := r.cfg.KubeClient.Delete(results.Created)
+			r.cfg.Log("Cleanup on fail set, cleaning up %d resources", len(result.Created))
+			_, errs := r.cfg.KubeClient.Delete(result.Created)
 			if errs != nil {
 				var errorList []string
 				for _, e := range errs {
@@ -189,7 +204,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		// log if an error occurs and continue onward. If we ever introduce log
 		// levels, we should make these error level logs so users are notified
 		// that they'll need to go do the cleanup on their own
-		if err := recreate(r.cfg, results.Updated); err != nil {
+		if err := recreate(r.cfg, result.Updated); err != nil {
 			r.cfg.Log(err.Error())
 		}
 	}

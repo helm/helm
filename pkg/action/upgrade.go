@@ -73,11 +73,14 @@ type Upgrade struct {
 	//
 	// This should be used with caution.
 	Force bool
+	// recreate resources on update
+	// for compatibility reasons this field cannot be named "Recreate", since "Recreate" is referring to the "recreate-pods" flag.
+	RecreateResources bool
 	// ResetValues will reset the values to the chart's built-ins rather than merging with existing.
 	ResetValues bool
 	// ReuseValues will re-use the user's last supplied values.
 	ReuseValues bool
-	// Recreate will (if true) recreate pods after a rollback.
+	// Recreate will (if true) recreate pods after a upgrade. (not to be confused with RecreateResources)
 	Recreate bool
 	// MaxHistory limits the maximum number of revisions saved per release
 	MaxHistory int
@@ -319,10 +322,20 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 		u.cfg.Log("upgrade hooks disabled for %s", upgradedRelease.Name)
 	}
 
-	results, err := u.cfg.KubeClient.Update(current, target, u.Force)
-	if err != nil {
+	var result *kube.Result
+	kubeClientV2 := u.cfg.KubeClientV2
+	switch {
+	case u.RecreateResources && kubeClientV2 != nil:
+		result, err = kubeClientV2.UpdateRecreate(current, target, u.Force, u.Timeout)
+	case u.RecreateResources:
+		u.cfg.Log("warning: kubeClient does not support recreate flag, ignoring it.")
+		fallthrough
+	default:
+		result, err = u.cfg.KubeClient.Update(current, target, u.Force)
+	}
+	if err != nil && result != nil {
 		u.cfg.recordRelease(originalRelease)
-		return u.failRelease(upgradedRelease, results.Created, err)
+		return u.failRelease(upgradedRelease, result.Created, err)
 	}
 
 	if u.Recreate {
@@ -330,7 +343,7 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 		// log if an error occurs and continue onward. If we ever introduce log
 		// levels, we should make these error level logs so users are notified
 		// that they'll need to go do the cleanup on their own
-		if err := recreate(u.cfg, results.Updated); err != nil {
+		if err := recreate(u.cfg, result.Updated); err != nil {
 			u.cfg.Log(err.Error())
 		}
 	}
@@ -338,14 +351,14 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 	if u.Wait {
 		if err := u.cfg.KubeClient.Wait(target, u.Timeout); err != nil {
 			u.cfg.recordRelease(originalRelease)
-			return u.failRelease(upgradedRelease, results.Created, err)
+			return u.failRelease(upgradedRelease, result.Created, err)
 		}
 	}
 
 	// post-upgrade hooks
 	if !u.DisableHooks {
 		if err := u.cfg.execHook(upgradedRelease, release.HookPostUpgrade, u.Timeout); err != nil {
-			return u.failRelease(upgradedRelease, results.Created, fmt.Errorf("post-upgrade hooks failed: %s", err))
+			return u.failRelease(upgradedRelease, result.Created, fmt.Errorf("post-upgrade hooks failed: %s", err))
 		}
 	}
 
