@@ -117,7 +117,6 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 			completion.CompDebugln(fmt.Sprintf("About to call kube client for namespaces with timeout of: %d", to))
 
 			nsNames := []string{}
-			// TODO can we request only the namespace with request.prefix?
 			if namespaces, err := client.CoreV1().Namespaces().List(metav1.ListOptions{TimeoutSeconds: &to}); err == nil {
 				for _, ns := range namespaces.Items {
 					if strings.HasPrefix(ns.Name, toComplete) {

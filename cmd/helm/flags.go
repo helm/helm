@@ -54,10 +54,9 @@ func addChartPathOptionsFlags(f *pflag.FlagSet, c *action.ChartPathOptions) {
 // value to the given format pointer
 func bindOutputFlag(cmd *cobra.Command, varRef *output.Format) {
 	f := cmd.Flags()
-	f.VarP(newOutputValue(output.Table, varRef), outputFlag, "o",
+	flag := f.VarPF(newOutputValue(output.Table, varRef), outputFlag, "o",
 		fmt.Sprintf("prints the output in the specified format. Allowed values: %s", strings.Join(output.Formats(), ", ")))
 
-	flag := f.Lookup(outputFlag)
 	completion.RegisterFlagCompletionFunc(flag, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
 		var formatNames []string
 		for _, format := range output.Formats() {
