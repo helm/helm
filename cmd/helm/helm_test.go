@@ -18,6 +18,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -96,11 +97,39 @@ func storageFixture() *storage.Storage {
 	return storage.Init(driver.NewMemory())
 }
 
+// go-shellwords does not handle empty arguments properly
+// https://github.com/mattn/go-shellwords/issues/5#issuecomment-573431458
+//
+// This method checks if the last argument was an empty one,
+// and if go-shellwords missed it, we add it ourselves.
+//
+// This is important for completion tests as completion often
+// uses an empty last parameter.
+func checkLastEmpty(in string, out []string) []string {
+	lastIndex := len(in) - 1
+
+	if lastIndex >= 1 && (in[lastIndex] == '"' && in[lastIndex-1] == '"' ||
+		in[lastIndex] == '\'' && in[lastIndex-1] == '\'') {
+		// The last parameter of 'in' was empty ("" or ''), let's make sure it was detected.
+		if len(out) > 0 && out[len(out)-1] != "" {
+			// Bug from go-shellwords:
+			// 'out' does not have the empty parameter.  We add it ourselves as a workaround.
+			out = append(out, "")
+		} else {
+			fmt.Println("WARNING: go-shellwords seems to have been fixed.  This workaround can be removed.")
+		}
+	}
+	return out
+}
+
 func executeActionCommandC(store *storage.Storage, cmd string) (*cobra.Command, string, error) {
 	args, err := shellwords.Parse(cmd)
 	if err != nil {
 		return nil, "", err
 	}
+	// Workaround the bug in shellwords
+	args = checkLastEmpty(cmd, args)
+
 	buf := new(bytes.Buffer)
 
 	actionConfig := &action.Configuration{

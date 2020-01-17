@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
+	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli/output"
@@ -65,8 +66,25 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		},
 	}
 
+	// Function providing dynamic auto-completion
+	completion.RegisterValidArgsFunc(cmd, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
+		if len(args) != 0 {
+			return nil, completion.BashCompDirectiveNoFileComp
+		}
+		return compListReleases(toComplete, cfg)
+	})
+
 	f := cmd.PersistentFlags()
+
 	f.IntVar(&client.Version, "revision", 0, "if set, display the status of the named release with revision")
+	flag := f.Lookup("revision")
+	completion.RegisterFlagCompletionFunc(flag, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
+		if len(args) == 1 {
+			return compListRevisions(cfg, args[0])
+		}
+		return nil, completion.BashCompDirectiveNoFileComp
+	})
+
 	bindOutputFlag(cmd, &outfmt)
 
 	return cmd
