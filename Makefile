@@ -24,7 +24,7 @@ GOFLAGS    :=
 SRC        := $(shell find . -type f -name '*.go' -print)
 
 # Required for globs to work correctly
-SHELL      = /bin/bash
+SHELL      = /usr/bin/env bash
 
 GIT_COMMIT = $(shell git rev-parse HEAD)
 GIT_SHA    = $(shell git rev-parse --short HEAD)
