@@ -217,14 +217,14 @@ func (cfgmaps *ConfigMaps) Delete(key string) (rls *rspb.Release, err error) {
 
 // newConfigMapsObject constructs a kubernetes ConfigMap object
 // to store a release. Each configmap data entry is the base64
-// encoded string of a release's binary protobuf encoding.
+// encoded gzipped string of a release.
 //
 // The following labels are used within each configmap:
 //
 //    "modifiedAt"     - timestamp indicating when this configmap was last modified. (set in Update)
 //    "createdAt"      - timestamp indicating when this configmap was created. (set in Create)
 //    "version"        - version of the release.
-//    "status"         - status of the release (see proto/hapi/release.status.pb.go for variants)
+//    "status"         - status of the release (see pkg/release/status.go for variants)
 //    "owner"          - owner of the configmap, currently "helm".
 //    "name"           - name of the release.
 //
