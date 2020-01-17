@@ -87,6 +87,7 @@ func TestPlatformPrepareCommand(t *testing.T) {
 			PlatformCommand: []PlatformCommand{
 				{OperatingSystem: "linux", Architecture: "i386", Command: "echo -n linux-i386"},
 				{OperatingSystem: "linux", Architecture: "amd64", Command: "echo -n linux-amd64"},
+				{OperatingSystem: "linux", Architecture: "s390x", Command: "echo -n linux-s390x"},
 				{OperatingSystem: "windows", Architecture: "amd64", Command: "echo -n win-64"},
 			},
 		},
@@ -98,6 +99,8 @@ func TestPlatformPrepareCommand(t *testing.T) {
 		osStrCmp = "linux-i386"
 	} else if os == "linux" && arch == "amd64" {
 		osStrCmp = "linux-amd64"
+	} else if os == "linux" && arch == "s390x" {
+		osStrCmp = "linux-s390x"
 	} else if os == "windows" && arch == "amd64" {
 		osStrCmp = "win-64"
 	} else {
