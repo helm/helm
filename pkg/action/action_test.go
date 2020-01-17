@@ -24,7 +24,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"helm.sh/helm/v3/pkg/cli"
+
 	dockerauth "github.com/deislabs/oras/pkg/auth/docker"
+	"github.com/stretchr/testify/assert"
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
 
 	"helm.sh/helm/v3/internal/experimental/registry"
@@ -80,9 +83,11 @@ func actionConfigFixture(t *testing.T) *Configuration {
 		t.Fatal(err)
 	}
 
+	kubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: ioutil.Discard}}
 	return &Configuration{
 		Releases:       storage.Init(driver.NewMemory()),
-		KubeClient:     &kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: ioutil.Discard}},
+		KubeClient:     &kubeClient,
+		KubeClientV2:   &kubeClient,
 		Capabilities:   chartutil.DefaultCapabilities,
 		RegistryClient: registryClient,
 		Log: func(format string, v ...interface{}) {
@@ -318,4 +323,16 @@ func TestGetVersionSet(t *testing.T) {
 	if vs.Has("nosuchversion/v1") {
 		t.Error("Non-existent version is reported found.")
 	}
+}
+
+func TestKubeClientSet(t *testing.T) {
+	is := assert.New(t)
+	config := new(Configuration)
+	settings := cli.New()
+	if err := config.Init(settings.RESTClientGetter(), settings.Namespace(), os.Getenv("HELM_DRIVER"), func(_ string, v ...interface{}) {}); err != nil {
+		t.Error(err)
+	}
+	is.NotNil(config.KubeClient, "KubeClient not set")
+	is.NotNil(config.KubeClientV2, "KubeClientV2 not set")
+	is.Equal(config.KubeClient, config.KubeClientV2, "KubeClientV2 not set")
 }

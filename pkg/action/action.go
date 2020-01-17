@@ -88,6 +88,9 @@ type Configuration struct {
 	// KubeClient is a Kubernetes API client.
 	KubeClient kube.Interface
 
+	// KubeClient is a Kubernetes API client (version 2)
+	KubeClientV2 kube.InterfaceV2
+
 	// RegistryClient is a client for working with registries
 	RegistryClient *registry.Client
 
@@ -413,6 +416,7 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 
 	cfg.RESTClientGetter = getter
 	cfg.KubeClient = kc
+	cfg.KubeClientV2 = kc
 	cfg.Releases = store
 	cfg.Log = log
 
