@@ -296,8 +296,10 @@ func TestPackageValues(t *testing.T) {
 	}
 }
 
-func TestNonExistentDir(t *testing.T) {
+func TestNonExistentDirAndBadPermission(t *testing.T) {
 	nonExistentDir := "testdata/testcharts/non-existent-directory"
+	badPermissionChart := "testdata/testcharts/chart-with-bad-permission/chart-dir"
+
 	tests := []struct {
 		name    string
 		flags   map[string]string
@@ -310,6 +312,12 @@ func TestNonExistentDir(t *testing.T) {
 			name:   "package testdata/testcharts/non-existent-directory",
 			args:   []string{"testdata/testcharts/non-existent-directory"},
 			expect: fmt.Sprintf("stat %s: no such file or directory", nonExistentDir),
+			err:    true,
+		},
+		{
+			name:   "package testdata/testcharts/non-existent-directory",
+			args:   []string{"testdata/testcharts/chart-with-bad-permission/chart-dir"},
+			expect: fmt.Sprintf("stat %s: permission denied", badPermissionChart),
 			err:    true,
 		},
 	}

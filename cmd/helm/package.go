@@ -76,8 +76,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 				if err != nil {
 					return err
 				}
-				if _, err := os.Stat(path); os.IsNotExist(err) {
-					_, err := os.Stat(args[i])
+				if _, err := os.Stat(args[i]); err != nil {
 					return err
 				}
 
