@@ -62,19 +62,13 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			client.Replace = true // Skip the name check
 			client.ClientOnly = !validate
 			client.APIVersions = chartutil.VersionSet(extraAPIs)
+			client.IncludeCRDs = includeCrds
 			rel, err := runInstall(args, client, valueOpts, out)
 			if err != nil {
 				return err
 			}
 
 			var manifests bytes.Buffer
-
-			if includeCrds {
-				for _, f := range rel.Chart.CRDs() {
-					fmt.Fprintf(&manifests, "---\n# Source: %s\n%s\n", f.Name, f.Data)
-				}
-			}
-
 			fmt.Fprintln(&manifests, strings.TrimSpace(rel.Manifest))
 
 			if !client.DisableHooks {

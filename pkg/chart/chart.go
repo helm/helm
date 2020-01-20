@@ -15,7 +15,10 @@ limitations under the License.
 
 package chart
 
-import "strings"
+import (
+	"path/filepath"
+	"strings"
+)
 
 // APIVersionV1 is the API version number for version 1.
 const APIVersionV1 = "v1"
@@ -47,6 +50,15 @@ type Chart struct {
 
 	parent       *Chart
 	dependencies []*Chart
+}
+
+type CRD struct {
+	// Name is the File.Name for the crd file
+	Name string
+	// Filename is the File obj Name including (sub-)chart.ChartFullPath
+	Filename string
+	// File is the File obj for the crd
+	File *File
 }
 
 // SetDependencies replaces the chart dependencies.
@@ -117,18 +129,19 @@ func (ch *Chart) AppVersion() string {
 	return ch.Metadata.AppVersion
 }
 
-// CRDs returns a list of File objects in the 'crds/' directory of a Helm chart.
-func (ch *Chart) CRDs() []*File {
-	files := []*File{}
+// CRDs returns a list of CRD objects in the 'crds/' directory of a Helm chart & subcharts
+func (ch *Chart) CRDs() []CRD {
+	crds := []CRD{}
 	// Find all resources in the crds/ directory
 	for _, f := range ch.Files {
 		if strings.HasPrefix(f.Name, "crds/") {
-			files = append(files, f)
+			mycrd := CRD{Name: f.Name, Filename: filepath.Join(ch.ChartFullPath(), f.Name), File: f}
+			crds = append(crds, mycrd)
 		}
 	}
 	// Get CRDs from dependencies, too.
 	for _, dep := range ch.Dependencies() {
-		files = append(files, dep.CRDs()...)
+		crds = append(crds, dep.CRDs()...)
 	}
-	return files
+	return crds
 }
