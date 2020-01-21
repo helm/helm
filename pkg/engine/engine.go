@@ -103,7 +103,7 @@ func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]render
 			if v > recursionMaxNums {
 				return "", errors.Wrapf(fmt.Errorf("unable to execute template"), "rendering template has a nested reference name: %s", name)
 			}
-			includedNames[name] ++
+			includedNames[name]++
 		} else {
 			includedNames[name] = 1
 		}
