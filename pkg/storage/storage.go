@@ -119,6 +119,10 @@ func (s *Storage) Deployed(name string) (*rspb.Release, error) {
 		return nil, errors.Errorf("%q has no deployed releases", name)
 	}
 
+	// If executed concurrently, Helm's database gets corrupted
+	// and multiple releases are DEPLOYED. Take the latest.
+	relutil.Reverse(ls, relutil.SortByRevision)
+
 	return ls[0], nil
 }
 
