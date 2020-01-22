@@ -25,6 +25,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+
+	"helm.sh/helm/v3/pkg/release"
 )
 
 func TestManuallyProcessArgs(t *testing.T) {
@@ -239,6 +241,45 @@ func checkCommand(t *testing.T, plugins []*cobra.Command, tests []staticCompleti
 		}
 		// Check the next level
 		checkCommand(t, pp.Commands(), tt.next)
+	}
+}
+
+func TestPluginDynamicCompletion(t *testing.T) {
+
+	tests := []cmdTestCase{{
+		name:   "completion for plugin",
+		cmd:    "__complete args ''",
+		golden: "output/plugin_args_comp.txt",
+		rels:   []*release.Release{},
+	}, {
+		name:   "completion for plugin with flag",
+		cmd:    "__complete args --myflag ''",
+		golden: "output/plugin_args_flag_comp.txt",
+		rels:   []*release.Release{},
+	}, {
+		name:   "completion for plugin with global flag",
+		cmd:    "__complete args --namespace mynamespace ''",
+		golden: "output/plugin_args_ns_comp.txt",
+		rels:   []*release.Release{},
+	}, {
+		name:   "completion for plugin with multiple args",
+		cmd:    "__complete args --myflag --namespace mynamespace start",
+		golden: "output/plugin_args_many_args_comp.txt",
+		rels:   []*release.Release{},
+	}, {
+		name:   "completion for plugin no directive",
+		cmd:    "__complete echo -n mynamespace ''",
+		golden: "output/plugin_echo_no_directive.txt",
+		rels:   []*release.Release{},
+	}, {
+		name:   "completion for plugin bad directive",
+		cmd:    "__complete echo ''",
+		golden: "output/plugin_echo_bad_directive.txt",
+		rels:   []*release.Release{},
+	}}
+	for _, test := range tests {
+		settings.PluginsDirectory = "testdata/helmhome/helm/plugins"
+		runTestCmd(t, []cmdTestCase{test})
 	}
 }
 
