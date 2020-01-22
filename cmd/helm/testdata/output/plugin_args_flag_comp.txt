@@ -1,0 +1,5 @@
+plugin.complete was called
+Namespace: default
+Num args received: 2
+Args received: --myflag 
+:4

@@ -16,6 +16,7 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -23,6 +24,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -30,10 +32,14 @@ import (
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/yaml"
 
+	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/pkg/plugin"
 )
 
-const pluginStaticCompletionFile = "completion.yaml"
+const (
+	pluginStaticCompletionFile        = "completion.yaml"
+	pluginDynamicCompletionExecutable = "plugin.complete"
+)
 
 type pluginError struct {
 	error
@@ -81,6 +87,33 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 			md.Usage = fmt.Sprintf("the %q plugin", md.Name)
 		}
 
+		// This function is used to setup the environment for the plugin and then
+		// call the executable specified by the parameter 'main'
+		callPluginExecutable := func(cmd *cobra.Command, main string, argv []string, out io.Writer) error {
+			env := os.Environ()
+			for k, v := range settings.EnvVars() {
+				env = append(env, fmt.Sprintf("%s=%s", k, v))
+			}
+
+			prog := exec.Command(main, argv...)
+			prog.Env = env
+			prog.Stdin = os.Stdin
+			prog.Stdout = out
+			prog.Stderr = os.Stderr
+			if err := prog.Run(); err != nil {
+				if eerr, ok := err.(*exec.ExitError); ok {
+					os.Stderr.Write(eerr.Stderr)
+					status := eerr.Sys().(syscall.WaitStatus)
+					return pluginError{
+						error: errors.Errorf("plugin %q exited with error", md.Name),
+						code:  status.ExitStatus(),
+					}
+				}
+				return err
+			}
+			return nil
+		}
+
 		c := &cobra.Command{
 			Use:   md.Name,
 			Short: md.Usage,
@@ -101,32 +134,58 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 					return errors.Errorf("plugin %q exited with error", md.Name)
 				}
 
-				env := os.Environ()
-				for k, v := range settings.EnvVars() {
-					env = append(env, fmt.Sprintf("%s=%s", k, v))
-				}
-
-				prog := exec.Command(main, argv...)
-				prog.Env = env
-				prog.Stdin = os.Stdin
-				prog.Stdout = out
-				prog.Stderr = os.Stderr
-				if err := prog.Run(); err != nil {
-					if eerr, ok := err.(*exec.ExitError); ok {
-						os.Stderr.Write(eerr.Stderr)
-						status := eerr.Sys().(syscall.WaitStatus)
-						return pluginError{
-							error: errors.Errorf("plugin %q exited with error", md.Name),
-							code:  status.ExitStatus(),
-						}
-					}
-					return err
-				}
-				return nil
+				return callPluginExecutable(cmd, main, argv, out)
 			},
 			// This passes all the flags to the subcommand.
 			DisableFlagParsing: true,
 		}
+
+		// Setup dynamic completion for the plugin
+		completion.RegisterValidArgsFunc(c, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
+			u, err := processParent(cmd, args)
+			if err != nil {
+				return nil, completion.BashCompDirectiveError
+			}
+
+			// We will call the dynamic completion script of the plugin
+			main := strings.Join([]string{plug.Dir, pluginDynamicCompletionExecutable}, string(filepath.Separator))
+
+			argv := []string{}
+			if !md.IgnoreFlags {
+				argv = append(argv, u...)
+				argv = append(argv, toComplete)
+			}
+			plugin.SetupPluginEnv(settings, md.Name, plug.Dir)
+
+			completion.CompDebugln(fmt.Sprintf("calling %s with args %v", main, argv))
+			buf := new(bytes.Buffer)
+			if err := callPluginExecutable(cmd, main, argv, buf); err != nil {
+				return nil, completion.BashCompDirectiveError
+			}
+
+			var completions []string
+			for _, comp := range strings.Split(buf.String(), "\n") {
+				// Remove any empty lines
+				if len(comp) > 0 {
+					completions = append(completions, comp)
+				}
+			}
+
+			// Check if the last line of output is of the form :<integer>, which
+			// indicates the BashCompletionDirective.
+			directive := completion.BashCompDirectiveDefault
+			if len(completions) > 0 {
+				lastLine := completions[len(completions)-1]
+				if len(lastLine) > 1 && lastLine[0] == ':' {
+					if strInt, err := strconv.Atoi(lastLine[1:]); err == nil {
+						directive = completion.BashCompDirective(strInt)
+						completions = completions[:len(completions)-1]
+					}
+				}
+			}
+
+			return completions, directive
+		})
 
 		// TODO: Make sure a command with this name does not already exist.
 		baseCmd.AddCommand(c)
