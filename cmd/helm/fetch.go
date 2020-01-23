@@ -166,13 +166,20 @@ func (f *fetchCmd) run() error {
 		if !filepath.IsAbs(ud) {
 			ud = filepath.Join(f.destdir, ud)
 		}
-		if fi, err := os.Stat(ud); err != nil {
-			if err := os.MkdirAll(ud, 0755); err != nil {
+		// Let udCheck to check conflict file/dir without replacing ud when untarDir is the current directory(.).
+		udCheck := ud
+		if udCheck == "." {
+			_, udCheck = filepath.Split(f.chartRef)
+		} else {
+			_, chartName := filepath.Split(f.chartRef)
+			udCheck = filepath.Join(udCheck, chartName)
+		}
+		if _, err := os.Stat(udCheck); err != nil {
+			if err := os.MkdirAll(udCheck, 0755); err != nil {
 				return fmt.Errorf("Failed to untar (mkdir): %s", err)
 			}
-
-		} else if !fi.IsDir() {
-			return fmt.Errorf("Failed to untar: %s is not a directory", ud)
+		} else {
+			return fmt.Errorf("Failed to untar: a file or directory with the name %s already exists", udCheck)
 		}
 
 		return chartutil.ExpandFile(ud, saved)
