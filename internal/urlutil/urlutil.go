@@ -71,3 +71,12 @@ func ExtractHostname(addr string) (string, error) {
 	}
 	return u.Hostname(), nil
 }
+
+// ExtractScheme returns scheme from URL
+func ExtractScheme(addr string) (string, error) {
+	u, err := url.Parse(addr)
+	if err != nil {
+		return "", err
+	}
+	return u.Scheme, nil
+}

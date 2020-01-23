@@ -89,17 +89,24 @@ func NewHTTPGetter(options ...Option) (Getter, error) {
 }
 
 func (g *HTTPGetter) httpClient() (*http.Client, error) {
-	if (g.opts.certFile != "" && g.opts.keyFile != "") || g.opts.caFile != "" {
-		tlsConf, err := tlsutil.NewClientTLS(g.opts.certFile, g.opts.keyFile, g.opts.caFile)
+	scheme, err := urlutil.ExtractScheme(g.opts.url)
+	if err != nil {
+		return nil, err
+	}
+
+	if scheme == "https" {
+		tlsConf, err := tlsutil.NewClientTLSWithRenegotiate(g.opts.certFile, g.opts.keyFile, g.opts.caFile, g.opts.renegotiate)
 		if err != nil {
-			return nil, errors.Wrap(err, "can't create TLS config for client")
+			return nil, errors.Wrap(err, "can't create TLS config")
 		}
+
 		tlsConf.BuildNameToCertificate()
 
 		sni, err := urlutil.ExtractHostname(g.opts.url)
 		if err != nil {
 			return nil, err
 		}
+
 		tlsConf.ServerName = sni
 
 		client := &http.Client{

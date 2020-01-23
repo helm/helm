@@ -28,13 +28,14 @@ import (
 //
 // Getters may or may not ignore these parameters as they are passed in.
 type options struct {
-	url       string
-	certFile  string
-	keyFile   string
-	caFile    string
-	username  string
-	password  string
-	userAgent string
+	url         string
+	certFile    string
+	keyFile     string
+	caFile      string
+	username    string
+	password    string
+	userAgent   string
+	renegotiate string
 }
 
 // Option allows specifying various settings configurable by the user for overriding the defaults
@@ -70,6 +71,13 @@ func WithTLSClientConfig(certFile, keyFile, caFile string) Option {
 		opts.certFile = certFile
 		opts.keyFile = keyFile
 		opts.caFile = caFile
+	}
+}
+
+// WithTLSRenegotiate sets the TLS renegotiation support
+func WithTLSRenegotiate(option string) Option {
+	return func(opts *options) {
+		opts.renegotiate = option
 	}
 }
 

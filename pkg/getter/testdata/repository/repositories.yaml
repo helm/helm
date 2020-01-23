@@ -7,9 +7,11 @@ repositories:
   keyFile: ""
   name: stable
   url: https://kubernetes-charts.storage.googleapis.com
+  renegotiate: never
 - caFile: ""
   cache: repository/cache/local-index.yaml
   certFile: ""
   keyFile: ""
   name: local
   url: http://127.0.0.1:8879/charts
+  renegotiate: never

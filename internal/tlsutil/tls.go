@@ -20,12 +20,47 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"io/ioutil"
+	"strings"
 
 	"github.com/pkg/errors"
 )
 
-// NewClientTLS returns tls.Config appropriate for client auth.
+type TLSRenegotiationStrategy string
+
+const (
+	RenegotiateNever          string = "never"
+	RenegotiateOnceAsClient   string = "once"
+	RenegotiateFreelyAsClient string = "freely"
+)
+
+// Validate and return TLS renegotiation settings
+func GetRenegotiation(option string) (strategy tls.RenegotiationSupport, err error) {
+	option = strings.ToLower(option)
+	switch option {
+	// RenegotiateNever disables renegotiation.
+	case RenegotiateNever:
+		return tls.RenegotiateNever, nil
+	// RenegotiateOnceAsClient allows a remote server to request
+	// renegotiation once per connection.
+	case RenegotiateOnceAsClient:
+		return tls.RenegotiateOnceAsClient, nil
+	// RenegotiateFreelyAsClient allows a remote server to repeatedly
+	// request renegotiation.
+	case RenegotiateFreelyAsClient:
+		return tls.RenegotiateFreelyAsClient, nil
+	}
+	return tls.RenegotiateNever, errors.New("invalid TLS Renegotiation strategy selected")
+}
+
+// NewClientTLS returns tls.Config compatible with client auth but without
+// support for TLS renegotiation
 func NewClientTLS(certFile, keyFile, caFile string) (*tls.Config, error) {
+	return NewClientTLSWithRenegotiate(certFile, keyFile, caFile, RenegotiateNever)
+}
+
+// NewClientTLS returns tls.Config compatible with both client auth and TLS
+// Renegotiation
+func NewClientTLSWithRenegotiate(certFile, keyFile, caFile string, renegotiate string) (*tls.Config, error) {
 	config := tls.Config{}
 
 	if certFile != "" && keyFile != "" {
@@ -43,6 +78,12 @@ func NewClientTLS(certFile, keyFile, caFile string) (*tls.Config, error) {
 		}
 		config.RootCAs = cp
 	}
+
+	renegotiation, err := GetRenegotiation(renegotiate)
+	if err != nil {
+		return nil, errors.Wrapf(err, "valid options include '%s', '%s' and '%s'", RenegotiateNever, RenegotiateOnceAsClient, RenegotiateFreelyAsClient)
+	}
+	config.Renegotiation = renegotiation
 
 	return &config, nil
 }

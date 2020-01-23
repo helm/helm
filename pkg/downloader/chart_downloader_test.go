@@ -91,6 +91,7 @@ func TestResolveChartOpts(t *testing.T) {
 			expect: []getter.Option{
 				getter.WithURL("https://example.com/foo-1.2.3.tgz"),
 				getter.WithTLSClientConfig("cert", "key", "ca"),
+				getter.WithTLSRenegotiate("never"),
 			},
 		},
 	}

@@ -535,7 +535,9 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 			return
 		}
 	}
-	url, err = repo.FindChartInRepoURL(repoURL, name, version, "", "", "", m.Getters)
+	finder := repo.NewChartFinder(repoURL, name, version)
+	finder.SetProvider(m.Getters)
+	url, err = finder.GetURL()
 	if err == nil {
 		return
 	}

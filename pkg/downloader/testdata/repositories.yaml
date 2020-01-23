@@ -21,3 +21,4 @@ repositories:
     certFile: "cert"
     keyFile: "key"
     caFile: "ca"
+    renegotiate: "never"

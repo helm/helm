@@ -47,6 +47,7 @@ func addChartPathOptionsFlags(f *pflag.FlagSet, c *action.ChartPathOptions) {
 	f.StringVar(&c.CertFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
 	f.StringVar(&c.KeyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.StringVar(&c.CaFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+	f.StringVar(&c.Renegotiate, "renegotiate", "never", "TLS renegotiation strategy, valid options include 'never', 'once' and 'freely'")
 }
 
 // bindOutputFlag will add the output flag to the given command and bind the

@@ -3,6 +3,8 @@ repositories:
   - name: stable
     url: https://example.com/stable/charts
     cache: stable-index.yaml
+    renegotiate: never
   - name: incubator
     url: https://example.com/incubator
     cache: incubator-index.yaml
+    renegotiate: never

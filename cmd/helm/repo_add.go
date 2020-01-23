@@ -49,6 +49,8 @@ type repoAddOptions struct {
 
 	repoFile  string
 	repoCache string
+
+	renegotiate string
 }
 
 func newRepoAddCmd(out io.Writer) *cobra.Command {
@@ -75,6 +77,7 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&o.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
 	f.StringVar(&o.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.StringVar(&o.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+	f.StringVar(&o.renegotiate, "renegotiate", "never", "TLS renegotiation strategy, valid options include 'never', 'once' and 'freely'")
 
 	return cmd
 }
@@ -113,13 +116,14 @@ func (o *repoAddOptions) run(out io.Writer) error {
 	}
 
 	c := repo.Entry{
-		Name:     o.name,
-		URL:      o.url,
-		Username: o.username,
-		Password: o.password,
-		CertFile: o.certFile,
-		KeyFile:  o.keyFile,
-		CAFile:   o.caFile,
+		Name:        o.name,
+		URL:         o.url,
+		Username:    o.username,
+		Password:    o.password,
+		CertFile:    o.certFile,
+		KeyFile:     o.keyFile,
+		CAFile:      o.caFile,
+		Renegotiate: o.renegotiate,
 	}
 
 	r, err := repo.NewChartRepository(&c, getter.All(settings))

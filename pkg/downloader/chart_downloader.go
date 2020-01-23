@@ -182,6 +182,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 			c.Options,
 			getter.WithURL(rc.URL),
 			getter.WithTLSClientConfig(rc.CertFile, rc.KeyFile, rc.CAFile),
+			getter.WithTLSRenegotiate(rc.Renegotiate),
 		)
 		if rc.Username != "" && rc.Password != "" {
 			c.Options = append(
@@ -216,6 +217,10 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 
 	if r.Config.CertFile != "" || r.Config.KeyFile != "" || r.Config.CAFile != "" {
 		c.Options = append(c.Options, getter.WithTLSClientConfig(r.Config.CertFile, r.Config.KeyFile, r.Config.CAFile))
+	}
+
+	if r.Config.Renegotiate != "" {
+		c.Options = append(c.Options, getter.WithTLSRenegotiate(r.Config.Renegotiate))
 	}
 
 	// Next, we need to load the index, and actually look up the chart.
