@@ -296,6 +296,41 @@ func TestPackageValues(t *testing.T) {
 	}
 }
 
+func TestNonExistentDirAndBadPermission(t *testing.T) {
+	nonExistentDir := "testdata/testcharts/non-existent-directory"
+
+	tests := []struct {
+		name    string
+		flags   map[string]string
+		args    []string
+		expect  string
+		hasfile string
+		err     bool
+	}{
+		{
+			name:   "package testdata/testcharts/non-existent-directory",
+			args:   []string{"testdata/testcharts/non-existent-directory"},
+			expect: fmt.Sprintf("stat %s: no such file or directory", nonExistentDir),
+			err:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			c := newPackageCmd(&buf)
+			re := regexp.MustCompile(tt.expect)
+			err := c.RunE(c, tt.args)
+			if err != nil {
+				if tt.err && re.MatchString(err.Error()) {
+					return
+				}
+				t.Fatalf("%q: expected error %q, got %q", tt.name, tt.expect, err)
+			}
+		})
+	}
+}
+
 func createValuesFile(t *testing.T, data string) string {
 	outputDir := ensure.TempDir(t)
 
