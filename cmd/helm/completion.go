@@ -139,7 +139,10 @@ __helm_compgen() {
 	fi
 	for w in "${completions[@]}"; do
 		if [[ "${w}" = "$1"* ]]; then
-			echo "${w}"
+			# Use printf instead of echo beause it is possible that
+			# the value to print is -n, which would be interpreted
+			# as a flag to echo
+			printf "%s\n" "${w}"
 		fi
 	done
 }
