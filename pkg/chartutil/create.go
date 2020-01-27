@@ -93,20 +93,19 @@ const defaultValues = `# Default values for %s.
 # Default values for images used in the chart; all these values can be overridden in the 
 # 'images' section for individual images
 global:
-  imageRegistry: docker.io # Allows for easy re-location of all the images to a private registry
-  imagePullPolicy: IfNotPresent
+  # imageRegistry: docker.io # Allows for easy re-location of all the images to a private registry
+  # imagePullPolicy: IfNotPresent
   imagePullSecrets: []
 
 replicaCount: 1
-
 images:
   nginx:
-    name: bitnami/nginx
+    name: nginx
+    originalNamespace: bitnami
     tag: 1.16.1-debian-9-r105
     digest: sha256:582aa10676417e79995989c0e06ffa8d48ced0cc2b9883669b0379ec9a7f45fb # Optional, to ensure image authenticity
-  metrics:
-    name: bitnami/nginx-exporter
-    tag: 0.4.2-debian-9-r129
+  busybox:
+    name: busybox
 
 nameOverride: ""
 fullnameOverride: ""
@@ -249,13 +248,13 @@ spec:
       labels:
         {{- include "<CHARTNAME>.selectorLabels" . | nindent 8 }}
     spec:
-{{ include "<CHARTNAME>.imagePullSecrets" . | indent 6 }}
+      {{- include "<CHARTNAME>.imagePullSecrets" . | indent 6 }}
       serviceAccountName: {{ include "<CHARTNAME>.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: {{ .Chart.Name }}
-{{ include "<CHARTNAME>.registryImage" (dict "image" .Values.images.nginx "values" .Values) | indent 10 }}
+          {{- include "<CHARTNAME>.registryImage" (dict "image" .Values.images.nginx "values" .Values) | nindent 10 }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           ports:
@@ -414,12 +413,47 @@ The most complete image reference, including the
 registry address, repository, tag and digest when available.
 */}}
 {{- define "<CHARTNAME>.imageReference" -}}
-{{- $registry := coalesce .image.registry .values.global.imageRegistry "docker.io" -}}
-{{- $namespace := coalesce .image.namespace .values.imageNamespace .values.global.imageNamespace "library" -}}
-{{- printf "%s/%s/%s:%s" $registry $namespace .image.name .image.tag -}}
+{{- $registry := include "<CHARTNAME>.imageRegistry" . -}}
+{{- $namespace := include "<CHARTNAME>.imageNamespace" . -}}
+{{- printf "%s/%s/%s" $registry $namespace .image.name -}}
+{{- if .image.tag -}}
+{{- printf ":%s" .image.tag -}}
+{{- end -}}
 {{- if .image.digest -}}
 {{- printf "@%s" .image.digest -}}
 {{- end -}}
+{{- end -}}
+
+{{- define "<CHARTNAME>.imageRegistry" -}}
+{{- if or (and .image.useOriginalRegistry (empty .image.registry)) (and .values.useOriginalRegistry (empty .values.imageRegistry)) -}}
+{{- include "<CHARTNAME>.originalImageRegistry" . -}}
+{{- else -}}
+{{- include "<CHARTNAME>.customImageRegistry" . -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "<CHARTNAME>.originalImageRegistry" -}}
+{{- printf (coalesce .image.originalRegistry .values.originalImageRegistry "docker.io") -}}
+{{- end -}}
+
+{{- define "<CHARTNAME>.customImageRegistry" -}}
+{{- printf (coalesce .image.registry .values.imageRegistry .values.global.imageRegistry (include "<CHARTNAME>.originalImageRegistry" .)) -}}
+{{- end -}}
+
+{{- define "<CHARTNAME>.imageNamespace" -}}
+{{- if or (and .image.useOriginalNamespace (empty .image.namespace)) (and .values.useOriginalNamespace (empty .values.imageNamespace)) -}}
+{{- include "<CHARTNAME>.originalImageNamespace" . -}}
+{{- else -}}
+{{- include "<CHARTNAME>.customImageNamespace" . -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "<CHARTNAME>.originalImageNamespace" -}}
+{{- printf (coalesce .image.originalNamespace .values.originalImageNamespace "library") -}}
+{{- end -}}
+
+{{- define "<CHARTNAME>.customImageNamespace" -}}
+{{- printf (coalesce .image.namespace .values.imageNamespace .values.global.imageNamespace (include "<CHARTNAME>.originalImageNamespace" .)) -}}
 {{- end -}}
 
 {{/*
@@ -446,11 +480,11 @@ Use the image pull secrets. All of the specified secrets will be used
 {{- end -}}
 {{- end -}}
 {{- end -}}
-{{- if $secrets -}}
+{{- if $secrets }}
 imagePullSecrets:
 {{- range $secrets }}
 - name: {{ . }}
-{{- end -}}
+{{- end }}
 {{- end -}}
 {{- end -}}`
 
@@ -465,7 +499,7 @@ metadata:
 spec:
   containers:
     - name: wget
-      image: busybox
+      {{- include "<CHARTNAME>.registryImage" (dict "image" .Values.images.busybox "values" .Values) | nindent 6 }}
       command: ['wget']
       args:  ['{{ include "<CHARTNAME>.fullname" . }}:{{ .Values.service.port }}']
   restartPolicy: Never
