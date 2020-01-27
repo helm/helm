@@ -129,8 +129,25 @@ func (ch *Chart) AppVersion() string {
 	return ch.Metadata.AppVersion
 }
 
-// CRDs returns a list of CRD objects in the 'crds/' directory of a Helm chart & subcharts
-func (ch *Chart) CRDs() []CRD {
+// CRDs returns a list of File objects in the 'crds/' directory of a Helm chart.
+// Deprecated: use CRDObjects()
+func (ch *Chart) CRDs() []*File {
+	files := []*File{}
+	// Find all resources in the crds/ directory
+	for _, f := range ch.Files {
+		if strings.HasPrefix(f.Name, "crds/") {
+			files = append(files, f)
+		}
+	}
+	// Get CRDs from dependencies, too.
+	for _, dep := range ch.Dependencies() {
+		files = append(files, dep.CRDs()...)
+	}
+	return files
+}
+
+// CRDObjects returns a list of CRD objects in the 'crds/' directory of a Helm chart & subcharts
+func (ch *Chart) CRDObjects() []CRD {
 	crds := []CRD{}
 	// Find all resources in the crds/ directory
 	for _, f := range ch.Files {
@@ -141,7 +158,7 @@ func (ch *Chart) CRDs() []CRD {
 	}
 	// Get CRDs from dependencies, too.
 	for _, dep := range ch.Dependencies() {
-		crds = append(crds, dep.CRDs()...)
+		crds = append(crds, dep.CRDObjects()...)
 	}
 	return crds
 }
