@@ -95,6 +95,7 @@ type renderable struct {
 
 const warnStartDelim = "HELM_ERR_START"
 const warnEndDelim = "HELM_ERR_END"
+const recursionMaxNums = 1000
 
 var warnRegex = regexp.MustCompile(warnStartDelim + `(.*)` + warnEndDelim)
 
@@ -105,19 +106,20 @@ func warnWrap(warn string) string {
 // initFunMap creates the Engine's FuncMap and adds context-specific functions.
 func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]renderable) {
 	funcMap := funcMap()
-	includedNames := make([]string, 0)
+	includedNames := make(map[string]int)
 
 	// Add the 'include' function here so we can close over t.
 	funcMap["include"] = func(name string, data interface{}) (string, error) {
 		var buf strings.Builder
-		for _, n := range includedNames {
-			if n == name {
+		if v, ok := includedNames[name]; ok {
+			if v > recursionMaxNums {
 				return "", errors.Wrapf(fmt.Errorf("unable to execute template"), "rendering template has a nested reference name: %s", name)
 			}
+			includedNames[name]++
+		} else {
+			includedNames[name] = 1
 		}
-		includedNames = append(includedNames, name)
 		err := t.ExecuteTemplate(&buf, name, data)
-		includedNames = includedNames[:len(includedNames)-1]
 		return buf.String(), err
 	}
 
