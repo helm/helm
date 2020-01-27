@@ -227,9 +227,44 @@ func processImportValues(c *chart.Chart) error {
 		return err
 	}
 	b := make(map[string]interface{})
-	// import values from each dependency if specified in import-values
 	for _, r := range c.Metadata.Dependencies {
 		var outiv []interface{}
+		// export values to each dependency if specified in export-values
+		for _, riv := range r.ExportValues {
+			iv := riv.(map[string]interface{})
+			child := iv["child"].(string)
+			parent := iv["parent"].(string)
+
+			outiv = append(outiv, map[string]string{
+				"child":  child,
+				"parent": parent,
+			})
+
+			name := r.Name
+			if r.Alias != "" {
+				name = r.Alias
+			}
+			// get parent table
+			vv, err := cvals.Table(parent)
+			if err != nil {
+				// parent is not a table - need to check if it's a value
+				value, err := cvals.PathValue(parent)
+				if err != nil {
+					log.Printf("Warning: Path does not exist: %v", err)
+					continue
+				}
+				var childPath = name + "." + child
+				var lastDot = strings.LastIndex(childPath, ".")
+				base := map[string]interface{}{
+					childPath[lastDot+1:]: value,
+				}
+				b = CoalesceTables(cvals, pathToMap(childPath[0:lastDot], base))
+			} else {
+				// create value map from parent to be merged into child
+				b = CoalesceTables(cvals, pathToMap(name+"."+child, vv.AsMap()))
+			}
+		}
+		// import values from each dependency if specified in import-values
 		for _, riv := range r.ImportValues {
 			switch iv := riv.(type) {
 			case map[string]interface{}:

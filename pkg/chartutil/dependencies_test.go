@@ -212,6 +212,10 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	e["SCBexported2A"] = "blaster"
 	e["global.SC1exported2.all.SC1exported3"] = "SC1expstr"
 
+	// `imports` style
+	e["subchart1.mytags.back-end"] = "false"
+	e["subchart1.mytags.front-end"] = "true"
+
 	if err := processDependencyImportValues(c); err != nil {
 		t.Fatalf("processing import values dependencies %v", err)
 	}
