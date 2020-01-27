@@ -303,7 +303,7 @@ kind: ServiceAccount
 metadata:
   name: {{ include "<CHARTNAME>.serviceAccountName" . }}
   labels:
-{{ include "<CHARTNAME>.labels" . | nindent 4 }}
+    {{- include "<CHARTNAME>.labels" . | nindent 4 }}
   {{- with .Values.serviceAccount.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -404,7 +404,7 @@ kind: Pod
 metadata:
   name: "{{ include "<CHARTNAME>.fullname" . }}-test-connection"
   labels:
-{{ include "<CHARTNAME>.labels" . | nindent 4 }}
+    {{- include "<CHARTNAME>.labels" . | nindent 4 }}
   annotations:
     "helm.sh/hook": test-success
 spec:
@@ -412,7 +412,7 @@ spec:
     - name: wget
       image: busybox
       command: ['wget']
-      args:  ['{{ include "<CHARTNAME>.fullname" . }}:{{ .Values.service.port }}']
+      args: ['{{ include "<CHARTNAME>.fullname" . }}:{{ .Values.service.port }}']
   restartPolicy: Never
 `
 
