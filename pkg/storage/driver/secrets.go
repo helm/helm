@@ -44,7 +44,7 @@ type Secrets struct {
 	Log  func(string, ...interface{})
 }
 
-// NewSecrets initializes a new Secrets wrapping an implmenetation of
+// NewSecrets initializes a new Secrets wrapping an implementation of
 // the kubernetes SecretsInterface.
 func NewSecrets(impl corev1.SecretInterface) *Secrets {
 	return &Secrets{
@@ -198,14 +198,14 @@ func (secrets *Secrets) Delete(key string) (rls *rspb.Release, err error) {
 
 // newSecretsObject constructs a kubernetes Secret object
 // to store a release. Each secret data entry is the base64
-// encoded string of a release's binary protobuf encoding.
+// encoded gzipped string of a release.
 //
 // The following labels are used within each secret:
 //
 //    "modifiedAt"    - timestamp indicating when this secret was last modified. (set in Update)
 //    "createdAt"     - timestamp indicating when this secret was created. (set in Create)
 //    "version"        - version of the release.
-//    "status"         - status of the release (see proto/hapi/release.status.pb.go for variants)
+//    "status"         - status of the release (see pkg/release/status.go for variants)
 //    "owner"          - owner of the secret, currently "helm".
 //    "name"           - name of the release.
 //

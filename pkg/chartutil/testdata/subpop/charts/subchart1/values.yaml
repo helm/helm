@@ -23,7 +23,7 @@ overridden-chartA:
   SCAbool: true
   SCAfloat: 3.14
   SCAint: 100
-  SCAstring: "jabathehut"
+  SCAstring: "jabbathehut"
   SC1extra3: true
 
 imported-chartA-B:

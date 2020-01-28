@@ -461,7 +461,7 @@ func verifyChartFileAndTemplate(t *testing.T, c *chart.Chart, name string) {
 				t.Fatalf("Expected 2 Dependency, got %d", len(dep.Dependencies()))
 			}
 		default:
-			t.Errorf("Unexpected dependeny %s", dep.Name())
+			t.Errorf("Unexpected dependency %s", dep.Name())
 		}
 	}
 }

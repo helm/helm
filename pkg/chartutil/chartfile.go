@@ -42,7 +42,16 @@ func LoadChartfile(filename string) (*chart.Metadata, error) {
 //
 // 'filename' should be the complete path and filename ('foo/Chart.yaml')
 func SaveChartfile(filename string, cf *chart.Metadata) error {
+	// Pull out the dependencies of a v1 Chart, since there's no way
+	// to tell the serializer to skip a field for just this use case
+	savedDependencies := cf.Dependencies
+	if cf.APIVersion == chart.APIVersionV1 {
+		cf.Dependencies = nil
+	}
 	out, err := yaml.Marshal(cf)
+	if cf.APIVersion == chart.APIVersionV1 {
+		cf.Dependencies = savedDependencies
+	}
 	if err != nil {
 		return err
 	}

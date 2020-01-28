@@ -33,7 +33,7 @@ type PrintingKubeClient struct {
 	Out io.Writer
 }
 
-// isReachable checks if the cluster is reachable
+// IsReachable checks if the cluster is reachable
 func (p *PrintingKubeClient) IsReachable() error {
 	return nil
 }

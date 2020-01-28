@@ -36,3 +36,7 @@ func TestGetHooks(t *testing.T) {
 	}}
 	runTestCmd(t, tests)
 }
+
+func TestGetHooksRevisionCompletion(t *testing.T) {
+	revisionFlagCompletionTest(t, "get hooks")
+}

@@ -234,12 +234,12 @@ func TestExtract(t *testing.T) {
 	gz.Close()
 	// END tarball creation
 
-	extr, err := NewExtractor(source)
+	extractor, err := NewExtractor(source)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err = extr.Extract(&buf, tempDir); err != nil {
+	if err = extractor.Extract(&buf, tempDir); err != nil {
 		t.Errorf("Did not expect error but got error: %v", err)
 	}
 
