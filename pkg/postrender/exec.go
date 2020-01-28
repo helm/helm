@@ -73,18 +73,27 @@ func (p *execRender) Run(renderedManifests *bytes.Buffer) (*bytes.Buffer, error)
 
 // getFullPath returns the full filepath to the binary to execute. If the path
 // does not contain any separators, it will search first in the plugins
-// directory, then in $PATH, otherwise it will resolve any relative paths to a
-// fully qualified path
+// directory (or directories if multiple are specified. In which case, it will
+// return the first result), then in $PATH, otherwise it will resolve any
+// relative paths to a fully qualified path
 func getFullPath(binaryPath string) (string, error) {
 	// Manually check the plugin dir first
 	if !strings.Contains(binaryPath, string(filepath.Separator)) {
 		// First check the plugin dir
-		pluginDir := helmpath.DataPath("plugins")
-		_, err := os.Stat(filepath.Join(pluginDir, binaryPath))
-		if err != nil && !os.IsNotExist(err) {
-			return "", err
-		} else if err == nil {
-			binaryPath = filepath.Join(pluginDir, binaryPath)
+		pluginDir := helmpath.DataPath("plugins") // Default location
+		// If location for plugins is explicitly set, check there
+		if v, ok := os.LookupEnv("HELM_PLUGINS"); ok {
+			pluginDir = v
+		}
+		// The plugins variable can actually contain multple paths, so loop through those
+		for _, p := range filepath.SplitList(pluginDir) {
+			_, err := os.Stat(filepath.Join(p, binaryPath))
+			if err != nil && !os.IsNotExist(err) {
+				return "", err
+			} else if err == nil {
+				binaryPath = filepath.Join(p, binaryPath)
+				break
+			}
 		}
 	}
 
