@@ -93,8 +93,8 @@ func TestTemplateCmd(t *testing.T) {
 			name:   "template with show-only multiple",
 			cmd:    fmt.Sprintf("template '%s' --show-only templates/service.yaml --show-only charts/subcharta/templates/service.yaml", chartPath),
 			golden: "output/template-show-only-multiple.txt",
-                },
-                {
+		},
+		{
 			name:   "sorted output of manifests (order of filenames, then order of objects within each YAML file)",
 			cmd:    fmt.Sprintf("template '%s'", "testdata/testcharts/object-order"),
 			golden: "output/object-order.txt",
