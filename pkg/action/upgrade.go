@@ -291,7 +291,7 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 	rel.Info.Status = release.StatusFailed
 	rel.Info.Description = msg
 	u.cfg.recordRelease(rel)
-	if u.CleanupOnFail {
+	if u.CleanupOnFail && len(created) > 0 {
 		u.cfg.Log("Cleanup on fail set, cleaning up %d resources", len(created))
 		_, errs := u.cfg.KubeClient.Delete(created)
 		if errs != nil {
