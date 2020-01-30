@@ -103,84 +103,42 @@ var UninstallOrder KindSortOrder = []string{
 	"Namespace",
 }
 
-// sort manifests by kind (out of place sort)
+// sort manifests by kind.
 //
 // Results are sorted by 'ordering', keeping order of items with equal kind/priority
-func manifestsSortedByKind(manifests []Manifest, ordering KindSortOrder) []Manifest {
-	k := make([]string, len(manifests))
-	for i, h := range manifests {
-		k[i] = h.Head.Kind
-	}
-	ks := newKindSorter(k, ordering)
-	sort.Stable(ks)
+func sortManifestsByKind(manifests []Manifest, ordering KindSortOrder) []Manifest {
+	sort.SliceStable(manifests, func(i, j int) bool {
+		return lessByKind(manifests[i], manifests[j], manifests[i].Head.Kind, manifests[j].Head.Kind, ordering)
+	})
 
-	// apply permutation
-	sorted := make([]Manifest, len(manifests))
-	for i, p := range ks.permutation {
-		sorted[i] = manifests[p]
-	}
-	return sorted
+	return manifests
 }
 
-// sort hooks by kind (out of place sort)
+// sort hooks by kind, using an out-of-place sort to preserve the input parameters.
 //
 // Results are sorted by 'ordering', keeping order of items with equal kind/priority
-func hooksSortedByKind(hooks []*release.Hook, ordering KindSortOrder) []*release.Hook {
-	k := make([]string, len(hooks))
-	for i, h := range hooks {
-		k[i] = h.Kind
-	}
+func sortHooksByKind(hooks []*release.Hook, ordering KindSortOrder) []*release.Hook {
+	h := hooks
+	sort.SliceStable(h, func(i, j int) bool {
+		return lessByKind(h[i], h[j], h[i].Kind, h[j].Kind, ordering)
+	})
 
-	ks := newKindSorter(k, ordering)
-	sort.Stable(ks)
-
-	// apply permutation
-	sorted := make([]*release.Hook, len(hooks))
-	for i, p := range ks.permutation {
-		sorted[i] = hooks[p]
-	}
-	return sorted
+	return h
 }
 
-type kindSorter struct {
-	permutation []int
-	ordering    map[string]int
-	kinds       []string
-}
-
-func newKindSorter(kinds []string, s KindSortOrder) *kindSorter {
-	o := make(map[string]int, len(s))
-	for v, k := range s {
-		o[k] = v
+func lessByKind(a interface{}, b interface{}, kindA string, kindB string, o KindSortOrder) bool {
+	ordering := make(map[string]int, len(o))
+	for v, k := range o {
+		ordering[k] = v
 	}
 
-	p := make([]int, len(kinds))
-	for i := range p {
-		p[i] = i
-	}
-	return &kindSorter{
-		permutation: p,
-		kinds:       kinds,
-		ordering:    o,
-	}
-}
-
-func (k *kindSorter) Len() int { return len(k.kinds) }
-
-func (k *kindSorter) Swap(i, j int) {
-	k.permutation[i], k.permutation[j] = k.permutation[j], k.permutation[i]
-}
-
-func (k *kindSorter) Less(i, j int) bool {
-	a := k.kinds[k.permutation[i]]
-	b := k.kinds[k.permutation[j]]
-	first, aok := k.ordering[a]
-	second, bok := k.ordering[b]
+	first, aok := ordering[kindA]
+	second, bok := ordering[kindB]
 
 	if !aok && !bok {
 		// if both are unknown then sort alphabetically by kind, keep original order if same kind
-		if a != b {
-			return a < b
+		if kindA != kindB {
+			return kindA < kindB
 		}
 		return first < second
 	}
