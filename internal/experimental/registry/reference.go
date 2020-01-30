@@ -98,8 +98,8 @@ func (ref *Reference) validateRepo() error {
 	if ref.Repo == "" {
 		return errEmptyRepo
 	}
-	// Makes sure the repo results in a parsable URL (similar to what is done
-	// with containerd reference parsing)
+	// Makes sure the repo results in a parsable URL (similar to what is done with containerd reference parsing).
+	// Add prefix "//" to the URL provided to make it an absolute URL(see https://github.com/golang/go/issues/18824).
 	_, err := url.Parse("//" + ref.Repo)
 	return err
 }
