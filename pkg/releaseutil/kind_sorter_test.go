@@ -177,11 +177,17 @@ func TestKindSorter(t *testing.T) {
 				t.Fatalf("Expected %d names in order, got %d", want, got)
 			}
 			defer buf.Reset()
-			for _, r := range manifestsSortedByKind(manifests, test.order) {
+			orig := manifests
+			for _, r := range sortManifestsByKind(manifests, test.order) {
 				buf.WriteString(r.Name)
 			}
 			if got := buf.String(); got != test.expected {
 				t.Errorf("Expected %q, got %q", test.expected, got)
+			}
+			for i, manifest := range orig {
+				if manifest != manifests[i] {
+					t.Fatal("Expected input to sortManifestsByKind to stay the same")
+				}
 			}
 		})
 	}
@@ -238,7 +244,7 @@ func TestKindSorterKeepOriginalOrder(t *testing.T) {
 		var buf bytes.Buffer
 		t.Run(test.description, func(t *testing.T) {
 			defer buf.Reset()
-			for _, r := range manifestsSortedByKind(manifests, test.order) {
+			for _, r := range sortManifestsByKind(manifests, test.order) {
 				buf.WriteString(r.Name)
 			}
 			if got := buf.String(); got != test.expected {
@@ -259,7 +265,7 @@ func TestKindSorterNamespaceAgainstUnknown(t *testing.T) {
 	}
 
 	manifests := []Manifest{unknown, namespace}
-	manifests = manifestsSortedByKind(manifests, InstallOrder)
+	manifests = sortManifestsByKind(manifests, InstallOrder)
 
 	expectedOrder := []Manifest{namespace, unknown}
 	for i, manifest := range manifests {
@@ -269,7 +275,7 @@ func TestKindSorterNamespaceAgainstUnknown(t *testing.T) {
 	}
 }
 
-// test hook sorting with a small subset of kinds, since it uses the same algorithm as manifestsSortedByKind
+// test hook sorting with a small subset of kinds, since it uses the same algorithm as sortManifestsByKind
 func TestKindSorterForHooks(t *testing.T) {
 	hooks := []*release.Hook{
 		{
@@ -304,8 +310,14 @@ func TestKindSorterForHooks(t *testing.T) {
 				t.Fatalf("Expected %d names in order, got %d", want, got)
 			}
 			defer buf.Reset()
-			for _, r := range hooksSortedByKind(hooks, test.order) {
+			orig := hooks
+			for _, r := range sortHooksByKind(hooks, test.order) {
 				buf.WriteString(r.Name)
+			}
+			for i, hook := range orig {
+				if hook != hooks[i] {
+					t.Fatal("Expected input to sortHooksByKind to stay the same")
+				}
 			}
 			if got := buf.String(); got != test.expected {
 				t.Errorf("Expected %q, got %q", test.expected, got)
