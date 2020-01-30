@@ -187,7 +187,10 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 		i.cfg.Capabilities = chartutil.DefaultCapabilities
 		i.cfg.Capabilities.APIVersions = append(i.cfg.Capabilities.APIVersions, i.APIVersions...)
 		i.cfg.KubeClient = &kubefake.PrintingKubeClient{Out: ioutil.Discard}
-		i.cfg.Releases = storage.Init(driver.NewMemory())
+
+		mem := driver.NewMemory()
+		mem.SetNamespace(i.Namespace)
+		i.cfg.Releases = storage.Init(mem)
 	} else if !i.ClientOnly && len(i.APIVersions) > 0 {
 		i.cfg.Log("API Version list given outside of client only mode, this list will be ignored")
 	}
