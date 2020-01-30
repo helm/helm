@@ -1,0 +1,4 @@
+dependencies:
+- name: mysql
+  version: 1.6.2
+  repository: file://../mysql

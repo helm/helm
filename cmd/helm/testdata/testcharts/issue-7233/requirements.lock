@@ -1,0 +1,6 @@
+dependencies:
+- name: mysql
+  repository: file://../mysql
+  version: 1.6.2
+digest: sha256:add2a8a6b181881747598aabe3bebab079c86624a083bb87ef8ece3fc3207026
+generated: "2020-01-30T17:21:42.015287763Z"

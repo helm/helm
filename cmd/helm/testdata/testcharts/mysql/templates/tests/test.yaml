@@ -1,0 +1,54 @@
+{{- if .Values.testFramework.enabled  }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ template "mysql.fullname" . }}-test
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "mysql.fullname" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    heritage: "{{ .Release.Service }}"
+    release: "{{ .Release.Name }}"
+  annotations:
+    "helm.sh/hook": test-success
+spec:
+  initContainers:
+    - name: test-framework
+      image: "{{ .Values.testFramework.image}}:{{ .Values.testFramework.tag }}"
+      command:
+      - "bash"
+      - "-c"
+      - |
+        set -ex
+        # copy bats to tools dir
+        cp -R /usr/local/libexec/ /tools/bats/
+      volumeMounts:
+      - mountPath: /tools
+        name: tools
+  containers:
+    - name: {{ .Release.Name }}-test
+      image: "{{ .Values.image }}:{{ .Values.imageTag }}"
+      command: ["/tools/bats/bats", "-t", "/tests/run.sh"]
+      volumeMounts:
+      - mountPath: /tests
+        name: tests
+        readOnly: true
+      - mountPath: /tools
+        name: tools
+      {{- if .Values.ssl.enabled }}
+      - name: certificates
+        mountPath: /ssl
+      {{- end }}
+  volumes:
+  - name: tests
+    configMap:
+      name: {{ template "mysql.fullname" . }}-test
+  - name: tools
+    emptyDir: {}
+  {{- if .Values.ssl.enabled }}
+  - name: certificates
+    secret:
+      secretName: {{ .Values.ssl.secret }}
+  {{- end }}
+  restartPolicy: Never
+{{- end }}

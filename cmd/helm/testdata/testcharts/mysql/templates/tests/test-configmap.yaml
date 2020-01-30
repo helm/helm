@@ -1,0 +1,23 @@
+{{- if .Values.testFramework.enabled  }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "mysql.fullname" . }}-test
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "mysql.fullname" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    heritage: "{{ .Release.Service }}"
+    release: "{{ .Release.Name }}"
+data:
+  run.sh: |-
+    {{- if .Values.ssl.enabled | and .Values.mysqlRootPassword }}
+    @test "Testing SSL MySQL Connection" {
+      mysql --host={{ template "mysql.fullname" . }} --port={{ .Values.service.port | default "3306" }} --ssl-cert=/ssl/server-cert.pem --ssl-key=ssl/server-key.pem -u root -p{{ .Values.mysqlRootPassword }}
+    }
+    {{- else if .Values.mysqlRootPassword }}
+    @test "Testing MySQL Connection" {
+      mysql --host={{ template "mysql.fullname" . }} --port={{ .Values.service.port | default "3306" }} -u root -p{{ .Values.mysqlRootPassword }}
+    }
+    {{- end }}
+{{- end }}

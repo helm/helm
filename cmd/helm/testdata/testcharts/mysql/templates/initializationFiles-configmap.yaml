@@ -1,0 +1,12 @@
+{{- if .Values.initializationFiles }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "mysql.fullname" . }}-initialization
+  namespace: {{ .Release.Namespace }}
+data:
+{{- range $key, $val := .Values.initializationFiles }}
+  {{ $key }}: |-
+{{ $val | indent 4}}
+{{- end }}
+{{- end -}}

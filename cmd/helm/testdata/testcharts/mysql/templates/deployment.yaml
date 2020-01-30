@@ -1,0 +1,248 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "mysql.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "mysql.fullname" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+{{- with .Values.deploymentAnnotations }}
+  annotations:
+{{ toYaml . | indent 4 }}
+{{- end }}
+
+spec:
+  strategy:
+{{ toYaml .Values.strategy | indent 4 }}
+  selector:
+    matchLabels:
+      app: {{ template "mysql.fullname" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "mysql.fullname" . }}
+        release: {{ .Release.Name }}
+{{- with .Values.podLabels }}
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.podAnnotations }}
+      annotations:
+{{ toYaml . | indent 8 }}
+{{- end }}
+    spec:
+      {{- if .Values.schedulerName }}
+      schedulerName: "{{ .Values.schedulerName }}"
+      {{- end }}
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.imagePullSecrets | indent 8 }}
+      {{- end }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: "{{ .Values.priorityClassName }}"
+      {{- end }}
+      {{- if .Values.securityContext.enabled }}
+      securityContext:
+        fsGroup: {{ .Values.securityContext.fsGroup }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+      {{- end }}
+      serviceAccountName: {{ template "mysql.serviceAccountName" . }}
+      initContainers:
+      - name: "remove-lost-found"
+        image: "{{ .Values.busybox.image}}:{{ .Values.busybox.tag }}"
+        imagePullPolicy: {{ .Values.imagePullPolicy | quote }}
+        resources:
+{{ toYaml .Values.initContainer.resources | indent 10 }}
+        command:  ["rm", "-fr", "/var/lib/mysql/lost+found"]
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/mysql
+          {{- if .Values.persistence.subPath }}
+          subPath: {{ .Values.persistence.subPath }}
+          {{- end }}
+      {{- if .Values.extraInitContainers }}
+{{ tpl .Values.extraInitContainers . | indent 6 }}
+      {{- end }}
+      {{- if .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
+      {{- end }}
+      {{- if .Values.tolerations }}
+      tolerations:
+{{ toYaml .Values.tolerations | indent 8 }}
+      {{- end }}
+      containers:
+      - name: {{ template "mysql.fullname" . }}
+        image: "{{ .Values.image }}:{{ .Values.imageTag }}"
+        imagePullPolicy: {{ .Values.imagePullPolicy | quote }}
+
+        {{- with .Values.args }}
+        args:
+        {{- range . }}
+          - {{ . | quote }}
+        {{- end }}
+        {{- end }}
+        resources:
+{{ toYaml .Values.resources | indent 10 }}
+        env:
+        {{- if .Values.mysqlAllowEmptyPassword }}
+        - name: MYSQL_ALLOW_EMPTY_PASSWORD
+          value: "true"
+        {{- end }}
+        {{- if not (and .Values.allowEmptyRootPassword (not .Values.mysqlRootPassword)) }}
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "mysql.secretName" . }}
+              key: mysql-root-password
+              {{- if .Values.mysqlAllowEmptyPassword }}
+              optional: true
+              {{- end }}
+        {{- end }}
+        {{- if not (and .Values.allowEmptyRootPassword (not .Values.mysqPassword)) }}
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "mysql.secretName" . }}
+              key: mysql-password
+              {{- if or .Values.mysqlAllowEmptyPassword (empty .Values.mysqlUser) }}
+              optional: true
+              {{- end }}
+        {{- end }}
+        - name: MYSQL_USER
+          value: {{ default "" .Values.mysqlUser | quote }}
+        - name: MYSQL_DATABASE
+          value: {{ default "" .Values.mysqlDatabase | quote }}
+        {{- if .Values.timezone }}
+        - name: TZ
+          value: {{ .Values.timezone }}
+        {{- end }}
+        ports:
+        - name: mysql
+          containerPort: 3306
+        livenessProbe:
+          exec:
+            command:
+            {{- if .Values.mysqlAllowEmptyPassword }}
+            - mysqladmin
+            - ping
+            {{- else }}
+            - sh
+            - -c
+            - "mysqladmin ping -u root -p${MYSQL_ROOT_PASSWORD}"
+            {{- end }}
+          initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+          successThreshold: {{ .Values.livenessProbe.successThreshold }}
+          failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+        readinessProbe:
+          exec:
+            command:
+            {{- if .Values.mysqlAllowEmptyPassword }}
+            - mysqladmin
+            - ping
+            {{- else }}
+            - sh
+            - -c
+            - "mysqladmin ping -u root -p${MYSQL_ROOT_PASSWORD}"
+            {{- end }}
+          initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+          successThreshold: {{ .Values.readinessProbe.successThreshold }}
+          failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/mysql
+          {{- if .Values.persistence.subPath }}
+          subPath: {{ .Values.persistence.subPath }}
+          {{- end }}
+        {{- if .Values.configurationFiles }}
+        {{- range $key, $val := .Values.configurationFiles }}
+        - name: configurations
+          mountPath: {{ $.Values.configurationFilesPath }}{{ $key }}
+          subPath: {{ $key }}
+        {{- end -}}
+        {{- end }}
+        {{- if .Values.initializationFiles }}
+        - name: migrations
+          mountPath: /docker-entrypoint-initdb.d
+        {{- end }}
+        {{- if .Values.ssl.enabled }}
+        - name: certificates
+          mountPath: /ssl
+        {{- end }}
+        {{- if .Values.extraVolumeMounts }}
+{{ tpl .Values.extraVolumeMounts . | indent 8 }}
+        {{- end }}
+      {{- if .Values.metrics.enabled }}
+      - name: metrics
+        image: "{{ .Values.metrics.image }}:{{ .Values.metrics.imageTag }}"
+        imagePullPolicy: {{ .Values.metrics.imagePullPolicy | quote }}
+        {{- if .Values.mysqlAllowEmptyPassword }}
+        command:
+        - 'sh'
+        - '-c'
+        - 'DATA_SOURCE_NAME="root@(localhost:3306)/" /bin/mysqld_exporter'
+        {{- else }}
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "mysql.secretName" . }}
+              key: mysql-root-password
+        command:
+        - 'sh'
+        - '-c'
+        - 'DATA_SOURCE_NAME="root:$MYSQL_ROOT_PASSWORD@(localhost:3306)/" /bin/mysqld_exporter'
+        {{- end }}
+        {{- range $f := .Values.metrics.flags }}
+        - {{ $f | quote }}
+        {{- end }}
+        ports:
+        - name: metrics
+          containerPort: 9104
+        livenessProbe:
+          httpGet:
+            path: /
+            port: metrics
+          initialDelaySeconds: {{ .Values.metrics.livenessProbe.initialDelaySeconds }}
+          timeoutSeconds: {{ .Values.metrics.livenessProbe.timeoutSeconds }}
+        readinessProbe:
+          httpGet:
+            path: /
+            port: metrics
+          initialDelaySeconds: {{ .Values.metrics.readinessProbe.initialDelaySeconds }}
+          timeoutSeconds: {{ .Values.metrics.readinessProbe.timeoutSeconds }}
+        resources:
+{{ toYaml .Values.metrics.resources | indent 10 }}
+      {{- end }}
+      volumes:
+      {{- if .Values.configurationFiles }}
+      - name: configurations
+        configMap:
+          name: {{ template "mysql.fullname" . }}-configuration
+      {{- end }}
+      {{- if .Values.initializationFiles }}
+      - name: migrations
+        configMap:
+          name: {{ template "mysql.fullname" . }}-initialization
+      {{- end }}
+      {{- if .Values.ssl.enabled }}
+      - name: certificates
+        secret:
+          secretName: {{ .Values.ssl.secret }}
+      {{- end }}
+      - name: data
+      {{- if .Values.persistence.enabled }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.persistence.existingClaim | default (include "mysql.fullname" .) }}
+      {{- else }}
+        emptyDir: {}
+      {{- end -}}
+      {{- if .Values.extraVolumes }}
+{{ tpl .Values.extraVolumes . | indent 6 }}
+      {{- end }}
