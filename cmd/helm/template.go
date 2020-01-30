@@ -112,9 +112,9 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					if missing {
 						return fmt.Errorf("could not find template %s in chart", f)
 					}
-					for _, m := range manifestsToRender {
-						fmt.Fprintf(out, "---\n%s\n", m)
-					}
+				}
+				for _, m := range manifestsToRender {
+					fmt.Fprintf(out, "---\n%s\n", m)
 				}
 			} else {
 				fmt.Fprintf(out, "%s", manifests.String())
