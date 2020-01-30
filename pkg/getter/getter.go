@@ -64,7 +64,7 @@ func WithUserAgent(userAgent string) Option {
 	}
 }
 
-// WithTLSClientConfig sets the client client auth with the provided credentials.
+// WithTLSClientConfig sets the client auth with the provided credentials.
 func WithTLSClientConfig(certFile, keyFile, caFile string) Option {
 	return func(opts *options) {
 		opts.certFile = certFile
