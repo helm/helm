@@ -34,6 +34,7 @@ import (
 // It provides the implementation of 'helm lint'.
 type Lint struct {
 	Strict    bool
+	Recursive bool
 	Namespace string
 }
 
@@ -62,6 +63,16 @@ func (l *Lint) Run(paths []string, vals map[string]interface{}) *LintResult {
 			continue
 		}
 
+		//Lint sub charts within an umbrella chart
+		if l.Recursive {
+			subResult := l.recursiveLint(result, path, vals)
+			if subResult != nil {
+				result.Messages = append(result.Messages, subResult.Messages...)
+				result.Errors = append(result.Errors, subResult.Errors...)
+				result.TotalChartsLinted += subResult.TotalChartsLinted
+			}
+		}
+
 		result.Messages = append(result.Messages, linter.Messages...)
 		result.TotalChartsLinted++
 		for _, msg := range linter.Messages {
@@ -71,6 +82,35 @@ func (l *Lint) Run(paths []string, vals map[string]interface{}) *LintResult {
 		}
 	}
 	return result
+}
+
+func (l *Lint) recursiveLint(result *LintResult, path string, vals map[string]interface{}) *LintResult {
+	subPath := filepath.Join(path, "charts")
+	info, err := os.Stat(subPath)
+	if os.IsNotExist(err) {
+		return nil
+	}
+
+	if !info.IsDir() {
+		return nil
+	}
+
+	files, err := ioutil.ReadDir(subPath)
+
+	if err != nil {
+		result.Errors = append(result.Errors, errors.Wrapf(err, "unable to read sub charts directory %s", subPath))
+		return nil
+	}
+
+	var subPaths []string
+	for _, path := range files {
+		if path.IsDir() {
+			chartPath := filepath.Join(subPath, path.Name())
+			subPaths = append(subPaths, chartPath)
+		}
+	}
+
+	return l.Run(subPaths, vals)
 }
 
 func lintChart(path string, vals map[string]interface{}, namespace string, strict bool) (support.Linter, error) {

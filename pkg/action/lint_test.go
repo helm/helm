@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -87,6 +88,48 @@ func TestLintChart(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRecursiveUmbrellaChart(t *testing.T) {
+	t.Run("should lint both, the umbrella chart and its sub chart", func(t *testing.T) {
+		testCharts := []string{"../../cmd/helm/testdata/testcharts/chart-with-subchart"}
+		testLint := NewLint()
+		testLint.Recursive = true
+
+		result := testLint.Run(testCharts, values)
+		if len(result.Errors) != 0 {
+			t.Error("expected no error, but got", len(result.Errors))
+		}
+
+		if result.TotalChartsLinted != 2 {
+			t.Error("expected a total of two linted charts", result.TotalChartsLinted)
+		}
+	})
+
+	t.Run("should error out if sub chart got an error", func(t *testing.T) {
+		testCharts := []string{"../../cmd/helm/testdata/testcharts/chart-with-invalidsubchart"}
+		testLint := NewLint()
+		testLint.Recursive = true
+		expectedError := "chart type is not valid in apiVersion 'v1'. It is valid in apiVersion 'v2'"
+
+		result := testLint.Run(testCharts, values)
+		if len(result.Errors) != 1 {
+			t.Error("expected one error, but got", len(result.Errors))
+		}
+
+		for _, err := range result.Errors {
+			fmt.Printf("%#v\n", err)
+		}
+
+		if result.TotalChartsLinted != 2 {
+			t.Error("expected a total of two linted charts", result.TotalChartsLinted)
+		}
+
+		actual := result.Errors[0].Error()
+		if actual != expectedError {
+			t.Errorf("expected '%s', but got '%s'", expectedError, actual)
+		}
+	})
 }
 
 func TestNonExistentChart(t *testing.T) {
