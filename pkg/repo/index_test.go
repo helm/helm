@@ -36,6 +36,7 @@ import (
 
 const (
 	testfile          = "testdata/local-index.yaml"
+	testjsonfile      = "testdata/local-index.json"
 	unorderedTestfile = "testdata/local-index-unordered.yaml"
 	testRepo          = "test-repo"
 )
@@ -97,6 +98,26 @@ func TestLoadIndex(t *testing.T) {
 
 func TestLoadIndexFile(t *testing.T) {
 	i, err := LoadIndexFile(testfile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	verifyLocalIndex(t, i)
+}
+
+func TestLoadIndexJSON(t *testing.T) {
+	b, err := ioutil.ReadFile(testjsonfile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	i, err := loadIndexJSON(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	verifyLocalIndex(t, i)
+}
+
+func TestLoadIndexJSONFile(t *testing.T) {
+	i, err := LoadIndexJSONFile(testjsonfile)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -17,6 +17,7 @@ limitations under the License.
 package repo
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"os"
 	"path"
@@ -98,6 +99,15 @@ func LoadIndexFile(path string) (*IndexFile, error) {
 		return nil, err
 	}
 	return loadIndex(b)
+}
+
+// LoadIndexJSONFile takes a JSON file at the given path and returns an IndexFile object
+func LoadIndexJSONFile(path string) (*IndexFile, error) {
+	b, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return loadIndexJSON(b)
 }
 
 // Add adds a file to the index
@@ -189,11 +199,22 @@ func (i IndexFile) Get(name, version string) (*ChartVersion, error) {
 	return nil, errors.Errorf("no chart version found for %s-%s", name, version)
 }
 
-// WriteFile writes an index file to the given destination path.
+// WriteFile writes an index.yaml file to the given destination path.
 //
 // The mode on the file is set to 'mode'.
 func (i IndexFile) WriteFile(dest string, mode os.FileMode) error {
 	b, err := yaml.Marshal(i)
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(dest, b, mode)
+}
+
+// WriteJSONFile writes an index.json file to the given destination path.
+//
+// The mode on the file is set to 'mode'.
+func (i IndexFile) WriteJSONFile(dest string, mode os.FileMode) error {
+	b, err := json.Marshal(i)
 	if err != nil {
 		return err
 	}
@@ -280,6 +301,21 @@ func IndexDirectory(dir, baseURL string) (*IndexFile, error) {
 func loadIndex(data []byte) (*IndexFile, error) {
 	i := &IndexFile{}
 	if err := yaml.Unmarshal(data, i); err != nil {
+		return i, err
+	}
+	i.SortEntries()
+	if i.APIVersion == "" {
+		return i, ErrNoAPIVersion
+	}
+	return i, nil
+}
+
+// loadIndexJSON loads an index.json file and does minimal validity checking.
+//
+// This will fail if API Version is not set (ErrNoAPIVersion) or if the unmarshal fails.
+func loadIndexJSON(data []byte) (*IndexFile, error) {
+	i := &IndexFile{}
+	if err := json.Unmarshal(data, i); err != nil {
 		return i, err
 	}
 	i.SortEntries()

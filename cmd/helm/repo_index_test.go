@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"helm.sh/helm/v3/internal/test/ensure"
@@ -28,7 +29,7 @@ import (
 )
 
 func TestRepoIndexCmd(t *testing.T) {
-
+	// t.Run("helm repo index command", func(t *testing.T) {
 	dir := ensure.TempDir(t)
 
 	comp := filepath.Join(dir, "compressedchart-0.1.0.tgz")
@@ -42,6 +43,8 @@ func TestRepoIndexCmd(t *testing.T) {
 
 	buf := bytes.NewBuffer(nil)
 	c := newRepoIndexCmd(buf)
+	expectedNumberOfEntries := 1
+	expectedNumberOfVersions := 2
 
 	if err := c.RunE(c, []string{dir}); err != nil {
 		t.Error(err)
@@ -54,13 +57,15 @@ func TestRepoIndexCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(index.Entries) != 1 {
-		t.Errorf("expected 1 entry, got %d: %#v", len(index.Entries), index.Entries)
+	if len(index.Entries) != expectedNumberOfEntries {
+		t.Errorf("expected %d entry, got %d: %#v",
+			expectedNumberOfEntries, len(index.Entries), index.Entries)
 	}
 
 	vs := index.Entries["compressedchart"]
-	if len(vs) != 2 {
-		t.Errorf("expected 2 versions, got %d: %#v", len(vs), vs)
+	if len(vs) != expectedNumberOfVersions {
+		t.Errorf("expected %d versions, got %d: %#v",
+			expectedNumberOfVersions, len(vs), vs)
 	}
 
 	expectedVersion := "0.2.0"
@@ -68,8 +73,52 @@ func TestRepoIndexCmd(t *testing.T) {
 		t.Errorf("expected %q, got %q", expectedVersion, vs[0].Version)
 	}
 
-	// Test with `--merge`
+	// Test creation of index.json
+	destJSONIndex := filepath.Join(dir, "index.json")
 
+	jsonIndex, err := repo.LoadIndexJSONFile(destJSONIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(jsonIndex.Entries) != expectedNumberOfEntries {
+		t.Errorf("expected %d entry in json index, got %d: %#v",
+			expectedNumberOfEntries, len(jsonIndex.Entries), jsonIndex.Entries)
+	}
+
+	versionsInJSONIndex := jsonIndex.Entries["compressedchart"]
+	if len(versionsInJSONIndex) != expectedNumberOfVersions {
+		t.Errorf("expected %d versions in json index, got %d: %#v",
+			expectedNumberOfVersions, len(versionsInJSONIndex), versionsInJSONIndex)
+	}
+
+	expectedVersionInJSONIndex := "0.2.0"
+	if versionsInJSONIndex[0].Version != expectedVersionInJSONIndex {
+		t.Errorf("expected %q in json index, got %q",
+			expectedVersionInJSONIndex, versionsInJSONIndex[0].Version)
+	}
+
+	// save a copy of index.json to test --merge-json-index later
+	indexForMergeJSON := filepath.Join(dir, "indexForMerge.json")
+	if err = copyFile(destJSONIndex, indexForMergeJSON); err != nil {
+		t.Fatal(err)
+	}
+
+	// save a copy of index.yaml to test --merge now
+	indexForMergeYAML := filepath.Join(dir, "indexForMerge.yaml")
+	if err = copyFile(destIndex, indexForMergeYAML); err != nil {
+		t.Fatal(err)
+	}
+
+	// Test with `--merge`
+	// cleanup index.json and index.yaml as it's not needed. it will be created
+	// by the command
+	if err := os.Remove(destJSONIndex); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(destIndex); err != nil {
+		t.Fatal(err)
+	}
 	// Remove first two charts.
 	if err := os.Remove(comp); err != nil {
 		t.Fatal(err)
@@ -85,7 +134,14 @@ func TestRepoIndexCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	c.ParseFlags([]string{"--merge", destIndex})
+	buf = bytes.NewBuffer(nil)
+	c = newRepoIndexCmd(buf)
+	expectedNumberOfEntries = 2
+	expectedNumberOfVersions = 3
+
+	if err = c.ParseFlags([]string{"--merge", indexForMergeYAML}); err != nil {
+		t.Error(err)
+	}
 	if err := c.RunE(c, []string{dir}); err != nil {
 		t.Error(err)
 	}
@@ -95,13 +151,15 @@ func TestRepoIndexCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(index.Entries) != 2 {
-		t.Errorf("expected 2 entries, got %d: %#v", len(index.Entries), index.Entries)
+	if len(index.Entries) != expectedNumberOfEntries {
+		t.Errorf("expected %d entries, got %d: %#v",
+			expectedNumberOfEntries, len(index.Entries), index.Entries)
 	}
 
 	vs = index.Entries["compressedchart"]
-	if len(vs) != 3 {
-		t.Errorf("expected 3 versions, got %d: %#v", len(vs), vs)
+	if len(vs) != expectedNumberOfVersions {
+		t.Errorf("expected %d versions, got %d: %#v",
+			expectedNumberOfVersions, len(vs), vs)
 	}
 
 	expectedVersion = "0.3.0"
@@ -109,12 +167,111 @@ func TestRepoIndexCmd(t *testing.T) {
 		t.Errorf("expected %q, got %q", expectedVersion, vs[0].Version)
 	}
 
-	// test that index.yaml gets generated on merge even when it doesn't exist
+	jsonIndex, err = repo.LoadIndexJSONFile(destJSONIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(jsonIndex.Entries) != expectedNumberOfEntries {
+		t.Errorf("expected %d entry in json index, got %d: %#v",
+			expectedNumberOfEntries, len(jsonIndex.Entries), jsonIndex.Entries)
+	}
+
+	versionsInJSONIndex = jsonIndex.Entries["compressedchart"]
+	if len(versionsInJSONIndex) != expectedNumberOfVersions {
+		t.Errorf("expected %d versions in json index, got %d: %#v",
+			expectedNumberOfVersions, len(versionsInJSONIndex), versionsInJSONIndex)
+	}
+
+	expectedVersionInJSONIndex = "0.3.0"
+	if versionsInJSONIndex[0].Version != expectedVersionInJSONIndex {
+		t.Errorf("expected %q in json index, got %q",
+			expectedVersionInJSONIndex, versionsInJSONIndex[0].Version)
+	}
+
+	// Test with `--merge-json-index`
+	// cleanup index.yaml and index.json as it's not needed. it will be created
+	// by the command
+	if err := os.Remove(destIndex); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(destJSONIndex); err != nil {
+		t.Fatal(err)
+	}
+
+	buf = bytes.NewBuffer(nil)
+	c = newRepoIndexCmd(buf)
+	expectedNumberOfEntries = 2
+	expectedNumberOfVersions = 3
+
+	if err = c.ParseFlags([]string{"--merge-json-index", indexForMergeJSON}); err != nil {
+		t.Error(err)
+	}
+	if err := c.RunE(c, []string{dir}); err != nil {
+		t.Error(err)
+	}
+
+	index, err = repo.LoadIndexFile(destIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(index.Entries) != expectedNumberOfEntries {
+		t.Errorf("expected %d entries, got %d: %#v",
+			expectedNumberOfEntries, len(index.Entries), index.Entries)
+	}
+
+	vs = index.Entries["compressedchart"]
+	if len(vs) != expectedNumberOfVersions {
+		t.Errorf("expected %d versions, got %d: %#v",
+			expectedNumberOfVersions, len(vs), vs)
+	}
+
+	expectedVersion = "0.3.0"
+	if vs[0].Version != expectedVersion {
+		t.Errorf("expected %q, got %q", expectedVersion, vs[0].Version)
+	}
+
+	jsonIndex, err = repo.LoadIndexJSONFile(destJSONIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(jsonIndex.Entries) != expectedNumberOfEntries {
+		t.Errorf("expected %d entry in json index, got %d: %#v",
+			expectedNumberOfEntries, len(jsonIndex.Entries), jsonIndex.Entries)
+	}
+
+	versionsInJSONIndex = jsonIndex.Entries["compressedchart"]
+	if len(versionsInJSONIndex) != expectedNumberOfVersions {
+		t.Errorf("expected %d versions in json index, got %d: %#v",
+			expectedNumberOfVersions, len(versionsInJSONIndex), versionsInJSONIndex)
+	}
+
+	expectedVersionInJSONIndex = "0.3.0"
+	if versionsInJSONIndex[0].Version != expectedVersionInJSONIndex {
+		t.Errorf("expected %q in json index, got %q",
+			expectedVersionInJSONIndex, versionsInJSONIndex[0].Version)
+	}
+
+	// test that index.yaml and index.json gets generated on
+	// merge even when given index.yaml file doesn't doesn't exist
 	if err := os.Remove(destIndex); err != nil {
 		t.Fatal(err)
 	}
 
-	c.ParseFlags([]string{"--merge", destIndex})
+	if err := os.Remove(destJSONIndex); err != nil {
+		t.Fatal(err)
+	}
+
+	buf = bytes.NewBuffer(nil)
+	c = newRepoIndexCmd(buf)
+	expectedNumberOfEntries = 2
+	expectedNumberOfVersions = 1
+
+	if err = c.ParseFlags([]string{"--merge", destIndex}); err != nil {
+		t.Error(err)
+	}
 	if err := c.RunE(c, []string{dir}); err != nil {
 		t.Error(err)
 	}
@@ -124,20 +281,139 @@ func TestRepoIndexCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// verify it didn't create an empty index.yaml and the merged happened
-	if len(index.Entries) != 2 {
-		t.Errorf("expected 2 entries, got %d: %#v", len(index.Entries), index.Entries)
+	// verify it didn't create an empty index.yaml or empty index.json
+	// and the merged happened
+	if len(index.Entries) != expectedNumberOfEntries {
+		t.Errorf("expected %d entries, got %d: %#v",
+			expectedNumberOfEntries, len(index.Entries), index.Entries)
 	}
 
 	vs = index.Entries["compressedchart"]
-	if len(vs) != 1 {
-		t.Errorf("expected 1 versions, got %d: %#v", len(vs), vs)
+	if len(vs) != expectedNumberOfVersions {
+		t.Errorf("expected %d versions, got %d: %#v",
+			expectedNumberOfVersions, len(vs), vs)
 	}
 
 	expectedVersion = "0.3.0"
 	if vs[0].Version != expectedVersion {
 		t.Errorf("expected %q, got %q", expectedVersion, vs[0].Version)
 	}
+
+	jsonIndex, err = repo.LoadIndexJSONFile(destJSONIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(jsonIndex.Entries) != expectedNumberOfEntries {
+		t.Errorf("expected %d entry in json index, got %d: %#v",
+			expectedNumberOfEntries, len(jsonIndex.Entries), jsonIndex.Entries)
+	}
+
+	versionsInJSONIndex = jsonIndex.Entries["compressedchart"]
+	if len(versionsInJSONIndex) != expectedNumberOfVersions {
+		t.Errorf("expected %d versions in json index, got %d: %#v",
+			expectedNumberOfVersions, len(versionsInJSONIndex), versionsInJSONIndex)
+	}
+
+	expectedVersionInJSONIndex = "0.3.0"
+	if versionsInJSONIndex[0].Version != expectedVersionInJSONIndex {
+		t.Errorf("expected %q in json index, got %q",
+			expectedVersionInJSONIndex, versionsInJSONIndex[0].Version)
+	}
+
+	// test that index.yaml and index.json gets generated on
+	// merge even when given index.json file doesn't doesn't exist
+	if err := os.Remove(destIndex); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.Remove(destJSONIndex); err != nil {
+		t.Fatal(err)
+	}
+
+	buf = bytes.NewBuffer(nil)
+	c = newRepoIndexCmd(buf)
+	expectedNumberOfEntries = 2
+	expectedNumberOfVersions = 1
+
+	if err = c.ParseFlags([]string{"--merge-json-index", destJSONIndex}); err != nil {
+		t.Error(err)
+	}
+	if err := c.RunE(c, []string{dir}); err != nil {
+		t.Error(err)
+	}
+
+	index, err = repo.LoadIndexFile(destIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// verify it didn't create an empty index.yaml or empty index.json
+	// and the merged happened
+	if len(index.Entries) != expectedNumberOfEntries {
+		t.Errorf("expected %d entries, got %d: %#v",
+			expectedNumberOfEntries, len(index.Entries), index.Entries)
+	}
+
+	vs = index.Entries["compressedchart"]
+	if len(vs) != expectedNumberOfVersions {
+		t.Errorf("expected %d versions, got %d: %#v",
+			expectedNumberOfVersions, len(vs), vs)
+	}
+
+	expectedVersion = "0.3.0"
+	if vs[0].Version != expectedVersion {
+		t.Errorf("expected %q, got %q", expectedVersion, vs[0].Version)
+	}
+
+	jsonIndex, err = repo.LoadIndexJSONFile(destJSONIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(jsonIndex.Entries) != expectedNumberOfEntries {
+		t.Errorf("expected %d entry in json index, got %d: %#v",
+			expectedNumberOfEntries, len(jsonIndex.Entries), jsonIndex.Entries)
+	}
+
+	versionsInJSONIndex = jsonIndex.Entries["compressedchart"]
+	if len(versionsInJSONIndex) != expectedNumberOfVersions {
+		t.Errorf("expected %d versions in json index, got %d: %#v",
+			expectedNumberOfVersions, len(versionsInJSONIndex), versionsInJSONIndex)
+	}
+
+	expectedVersionInJSONIndex = "0.3.0"
+	if versionsInJSONIndex[0].Version != expectedVersionInJSONIndex {
+		t.Errorf("expected %q in json index, got %q",
+			expectedVersionInJSONIndex, versionsInJSONIndex[0].Version)
+	}
+	// })
+}
+
+func TestRepoIndexCmd_Another(t *testing.T) {
+	t.Run("passing both --merge and --merge-json-index should fail", func(t *testing.T) {
+		dir := ensure.TempDir(t)
+		buf := bytes.NewBuffer(nil)
+		c := newRepoIndexCmd(buf)
+
+		destIndex := filepath.Join(dir, "index.yaml")
+		destJSONIndex := filepath.Join(dir, "index.json")
+
+		if err := c.ParseFlags([]string{"--merge", destIndex,
+			"--merge-json-index", destJSONIndex}); err != nil {
+			t.Error(err)
+		}
+		err := c.RunE(c, []string{dir})
+		if err == nil {
+			t.Error("expected error but got nil")
+			return
+		}
+
+		expectedError := "only one of --merge and --merge-json-index can be passed"
+		if !strings.Contains(err.Error(), expectedError) {
+			t.Errorf("expected error '%s' but got '%s'", expectedError, err.Error())
+		}
+	})
 }
 
 func linkOrCopy(old, new string) error {
@@ -148,14 +424,14 @@ func linkOrCopy(old, new string) error {
 	return nil
 }
 
-func copyFile(dst, src string) error {
-	i, err := os.Open(dst)
+func copyFile(src, dest string) error {
+	i, err := os.Open(src)
 	if err != nil {
 		return err
 	}
 	defer i.Close()
 
-	o, err := os.Create(src)
+	o, err := os.Create(dest)
 	if err != nil {
 		return err
 	}
