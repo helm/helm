@@ -86,6 +86,13 @@ func TestEnvSettings(t *testing.T) {
 			}
 		})
 	}
+
+	settings := New()
+	settings.SetNamespace("custom-namespace")
+
+	if settings.Namespace() != "custom-namespace" {
+		t.Errorf("expected namespace %s, got %s", "custom-namespace", settings.Namespace())
+	}
 }
 
 func resetEnv() func() {

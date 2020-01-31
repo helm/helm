@@ -121,6 +121,11 @@ func (s *EnvSettings) Namespace() string {
 	return "default"
 }
 
+//SetNamespace sets the namespace
+func (s *EnvSettings) SetNamespace(ns string) {
+	s.namespace = ns
+}
+
 //RESTClientGetter gets the kubeconfig from EnvSettings
 func (s *EnvSettings) RESTClientGetter() genericclioptions.RESTClientGetter {
 	s.configOnce.Do(func() {
