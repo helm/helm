@@ -3,6 +3,7 @@
 
 # Organizations Using Helm
 
+- [Blood Orange](https://bloodorange.io)
 - [Microsoft](https://microsoft.com)
 
 _This file is part of the CNCF official documentation for projects._
