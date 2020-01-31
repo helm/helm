@@ -93,10 +93,10 @@ func (m *Manager) Build() error {
 		if c.Metadata.APIVersion == chart.APIVersionV1 {
 			log.Println("warning: a valid Helm v3 hash was not found. Checking against Helm v2 hash...")
 			if sum, err := resolver.HashV2Req(req); err != nil || sum != lock.Digest {
-				return errors.New("Chart.lock is out of sync with Chart.yaml")
+				return errors.New("the lock file is out of sync with the dependencies file. Please update the dependencies")
 			}
 		} else {
-			return errors.New("Chart.lock is out of sync with Chart.yaml")
+			return errors.New("the lock file is out of sync with the dependencies file. Please update the dependencies")
 		}
 	}
 

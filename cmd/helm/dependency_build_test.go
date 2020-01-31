@@ -102,12 +102,20 @@ func TestDependencyBuildCmd(t *testing.T) {
 }
 
 func TestDependencyBuildCmdWithHelmV2Hash(t *testing.T) {
-	cmd := fmt.Sprintf("dependency build '%s'", "testdata/testcharts/issue-7233")
+	chartName := "testdata/testcharts/issue-7233"
+
+	cmd := fmt.Sprintf("dependency build '%s'", chartName)
 	_, out, err := executeActionCommand(cmd)
 
 	// Want to make sure the build can verify Helm v2 hash
 	if err != nil {
 		t.Logf("Output: %s", out)
+		t.Fatal(err)
+	}
+
+	// Make sure the child chart file got downloaded.
+	expect := filepath.Join(chartName, "charts/alpine-0.1.0.tgz")
+	if _, err := os.Stat(expect); err != nil {
 		t.Fatal(err)
 	}
 }
