@@ -49,7 +49,7 @@ func shortDigest(digest string) string {
 	return digest
 }
 
-// timeAgo returns a human-readable timestamp respresenting time that has passed
+// timeAgo returns a human-readable timestamp representing time that has passed
 func timeAgo(t time.Time) string {
 	return units.HumanDuration(time.Now().UTC().Sub(t))
 }

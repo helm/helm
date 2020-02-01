@@ -66,7 +66,7 @@ var ValidName = regexp.MustCompile("^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+
 
 // Configuration injects the dependencies that all actions share.
 type Configuration struct {
-	// RESTClientGetter is an interface that loads Kuberbetes clients.
+	// RESTClientGetter is an interface that loads Kubernetes clients.
 	RESTClientGetter RESTClientGetter
 
 	// Releases stores records of releases.
@@ -167,8 +167,8 @@ func (c *Configuration) releaseContent(name string, version int) (*release.Relea
 // GetVersionSet retrieves a set of available k8s API versions
 func GetVersionSet(client discovery.ServerResourcesInterface) (chartutil.VersionSet, error) {
 	groups, resources, err := client.ServerGroupsAndResources()
-	if err != nil {
-		return chartutil.DefaultVersionSet, err
+	if err != nil && !discovery.IsGroupDiscoveryFailedError(err) {
+		return chartutil.DefaultVersionSet, errors.Wrap(err, "could not get apiVersions from Kubernetes")
 	}
 
 	// FIXME: The Kubernetes test fixture for cli appears to always return nil

@@ -87,7 +87,7 @@ type Install struct {
 	// APIVersions allows a manual set of supported API Versions to be passed
 	// (for things like templating). These are ignored if ClientOnly is false
 	APIVersions chartutil.VersionSet
-	// Used by helm template to render charts with .Relase.IsUpgrade. Ignored if Dry-Run is false
+	// Used by helm template to render charts with .Release.IsUpgrade. Ignored if Dry-Run is false
 	IsUpgrade bool
 }
 
@@ -436,8 +436,20 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 		}
 	}
 
-	files, err := engine.Render(ch, values)
-	if err != nil {
+	var files map[string]string
+	var err2 error
+
+	if c.RESTClientGetter != nil {
+		rest, err := c.RESTClientGetter.ToRESTConfig()
+		if err != nil {
+			return hs, b, "", err
+		}
+		files, err2 = engine.RenderWithClient(ch, values, rest)
+	} else {
+		files, err2 = engine.Render(ch, values)
+	}
+
+	if err2 != nil {
 		return hs, b, "", err
 	}
 

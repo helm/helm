@@ -216,3 +216,61 @@ func TestHashReq(t *testing.T) {
 		})
 	}
 }
+
+func TestGetLocalPath(t *testing.T) {
+	tests := []struct {
+		name      string
+		repo      string
+		chartpath string
+		expect    string
+		err       bool
+	}{
+		{
+			name:   "absolute path",
+			repo:   "file:////proc",
+			expect: "/proc",
+		},
+		{
+			name:      "relative path",
+			repo:      "file://../../../../cmd/helm/testdata/testcharts/signtest",
+			chartpath: "foo/bar",
+			expect:    "../../cmd/helm/testdata/testcharts/signtest",
+		},
+		{
+			name:      "current directory path",
+			repo:      "../charts/localdependency",
+			chartpath: "testdata/chartpath/charts",
+			expect:    "testdata/chartpath/charts/localdependency",
+		},
+		{
+			name:      "invalid local path",
+			repo:      "file://../testdata/notexist",
+			chartpath: "testdata/chartpath",
+			err:       true,
+		},
+		{
+			name:      "invalid path under current directory",
+			repo:      "../charts/nonexistentdependency",
+			chartpath: "testdata/chartpath/charts",
+			err:       true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p, err := GetLocalPath(tt.repo, tt.chartpath)
+			if err != nil {
+				if tt.err {
+					return
+				}
+				t.Fatal(err)
+			}
+			if tt.err {
+				t.Fatalf("Expected error in test %q", tt.name)
+			}
+			if p != tt.expect {
+				t.Errorf("%q: expected %q, got %q", tt.name, tt.expect, p)
+			}
+		})
+	}
+}

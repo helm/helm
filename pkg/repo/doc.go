@@ -27,7 +27,7 @@ The first is the 'index.yaml' format, which is expressed like this:
 	entries:
 	  frobnitz:
 	  - created: 2016-09-29T12:14:34.830161306-06:00
-		description: This is a frobniz.
+		description: This is a frobnitz.
 		digest: 587bd19a9bd9d2bc4a6d25ab91c8c8e7042c47b4ac246e37bf8e1e74386190f4
 		home: http://example.com
 		keywords:

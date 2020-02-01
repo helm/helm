@@ -26,7 +26,7 @@ import (
 
 // ListStates represents zero or more status codes that a list item may have set
 //
-// Because this is used as a bitmask filter, more than one one bit can be flipped
+// Because this is used as a bitmask filter, more than one bit can be flipped
 // in the ListStates.
 type ListStates uint
 
@@ -41,7 +41,7 @@ const (
 	ListPendingInstall
 	// ListPendingUpgrade filters on status "pending_upgrade" (upgrade in progress)
 	ListPendingUpgrade
-	// ListPendingRollback filters on status "pending_rollback" (rollback in progres)
+	// ListPendingRollback filters on status "pending_rollback" (rollback in progress)
 	ListPendingRollback
 	// ListSuperseded filters on status "superseded" (historical release version that is no longer deployed)
 	ListSuperseded

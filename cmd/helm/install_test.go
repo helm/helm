@@ -193,3 +193,7 @@ func TestInstall(t *testing.T) {
 
 	runTestActionCmd(t, tests)
 }
+
+func TestInstallOutputCompletion(t *testing.T) {
+	outputFlagCompletionTest(t, "install")
+}

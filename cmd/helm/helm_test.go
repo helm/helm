@@ -18,6 +18,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -31,6 +32,7 @@ import (
 	"helm.sh/helm/v3/internal/test"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/cli"
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage"
@@ -47,24 +49,26 @@ func init() {
 func runTestCmd(t *testing.T, tests []cmdTestCase) {
 	t.Helper()
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			defer resetEnv()()
+		for i := 0; i <= tt.repeat; i++ {
+			t.Run(tt.name, func(t *testing.T) {
+				defer resetEnv()()
 
-			storage := storageFixture()
-			for _, rel := range tt.rels {
-				if err := storage.Create(rel); err != nil {
-					t.Fatal(err)
+				storage := storageFixture()
+				for _, rel := range tt.rels {
+					if err := storage.Create(rel); err != nil {
+						t.Fatal(err)
+					}
 				}
-			}
-			t.Log("running cmd: ", tt.cmd)
-			_, out, err := executeActionCommandC(storage, tt.cmd)
-			if (err != nil) != tt.wantError {
-				t.Errorf("expected error, got '%v'", err)
-			}
-			if tt.golden != "" {
-				test.AssertGoldenString(t, out, tt.golden)
-			}
-		})
+				t.Logf("running cmd (attempt %d): %s", i+1, tt.cmd)
+				_, out, err := executeActionCommandC(storage, tt.cmd)
+				if (err != nil) != tt.wantError {
+					t.Errorf("expected error, got '%v'", err)
+				}
+				if tt.golden != "" {
+					test.AssertGoldenString(t, out, tt.golden)
+				}
+			})
+		}
 	}
 }
 
@@ -93,11 +97,39 @@ func storageFixture() *storage.Storage {
 	return storage.Init(driver.NewMemory())
 }
 
+// go-shellwords does not handle empty arguments properly
+// https://github.com/mattn/go-shellwords/issues/5#issuecomment-573431458
+//
+// This method checks if the last argument was an empty one,
+// and if go-shellwords missed it, we add it ourselves.
+//
+// This is important for completion tests as completion often
+// uses an empty last parameter.
+func checkLastEmpty(in string, out []string) []string {
+	lastIndex := len(in) - 1
+
+	if lastIndex >= 1 && (in[lastIndex] == '"' && in[lastIndex-1] == '"' ||
+		in[lastIndex] == '\'' && in[lastIndex-1] == '\'') {
+		// The last parameter of 'in' was empty ("" or ''), let's make sure it was detected.
+		if len(out) > 0 && out[len(out)-1] != "" {
+			// Bug from go-shellwords:
+			// 'out' does not have the empty parameter.  We add it ourselves as a workaround.
+			out = append(out, "")
+		} else {
+			fmt.Println("WARNING: go-shellwords seems to have been fixed.  This workaround can be removed.")
+		}
+	}
+	return out
+}
+
 func executeActionCommandC(store *storage.Storage, cmd string) (*cobra.Command, string, error) {
 	args, err := shellwords.Parse(cmd)
 	if err != nil {
 		return nil, "", err
 	}
+	// Workaround the bug in shellwords
+	args = checkLastEmpty(cmd, args)
+
 	buf := new(bytes.Buffer)
 
 	actionConfig := &action.Configuration{
@@ -124,6 +156,9 @@ type cmdTestCase struct {
 	wantError bool
 	// Rels are the available releases at the start of the test.
 	rels []*release.Release
+	// Number of repeats (in case a feature was previously flaky and the test checks
+	// it's now stably producing identical results). 0 means test is run exactly once.
+	repeat int
 }
 
 func executeActionCommand(cmd string) (*cobra.Command, string, error) {
@@ -131,14 +166,14 @@ func executeActionCommand(cmd string) (*cobra.Command, string, error) {
 }
 
 func resetEnv() func() {
-	origSettings, origEnv := settings, os.Environ()
+	origEnv := os.Environ()
 	return func() {
 		os.Clearenv()
-		settings = origSettings
 		for _, pair := range origEnv {
 			kv := strings.SplitN(pair, "=", 2)
 			os.Setenv(kv[0], kv[1])
 		}
+		settings = cli.New()
 	}
 }
 
