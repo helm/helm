@@ -1,0 +1,16 @@
+###################################################################################################
+# parent-chart horizontal pod autoscaler
+###################################################################################################
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ .Release.Name }}-autoscaler
+  namespace: {{ .Release.Namespace }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1beta1
+    kind: Deployment
+    name: {{ .Release.Name }}
+  minReplicas: {{ required "A valid .Values.resources.autoscaler.minReplicas entry required!" .Values.resources.autoscaler.minReplicas }}
+  maxReplicas: {{ required "A valid .Values.resources.autoscaler.maxReplicas entry required!" .Values.resources.autoscaler.maxReplicas }}
+  targetCPUUtilizationPercentage: {{ required "A valid .Values.resources.autoscaler.targetCPUUtilizationPercentage!" .Values.resources.autoscaler.targetCPUUtilizationPercentage }}
