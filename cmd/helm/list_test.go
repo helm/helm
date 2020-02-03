@@ -206,3 +206,7 @@ func TestListCmd(t *testing.T) {
 	}}
 	runTestCmd(t, tests)
 }
+
+func TestListOutputCompletion(t *testing.T) {
+	outputFlagCompletionTest(t, "list")
+}

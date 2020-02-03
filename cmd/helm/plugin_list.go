@@ -18,6 +18,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
@@ -45,4 +46,18 @@ func newPluginListCmd(out io.Writer) *cobra.Command {
 		},
 	}
 	return cmd
+}
+
+// Provide dynamic auto-completion for plugin names
+func compListPlugins(toComplete string) []string {
+	var pNames []string
+	plugins, err := findPlugins(settings.PluginsDirectory)
+	if err == nil {
+		for _, p := range plugins {
+			if strings.HasPrefix(p.Metadata.Name, toComplete) {
+				pNames = append(pNames, p.Metadata.Name)
+			}
+		}
+	}
+	return pNames
 }

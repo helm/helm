@@ -19,13 +19,16 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"sync"
 	"testing"
 
-	"gopkg.in/yaml.v2"
+	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/internal/test/ensure"
+	"helm.sh/helm/v3/pkg/helmpath"
+	"helm.sh/helm/v3/pkg/helmpath/xdg"
 	"helm.sh/helm/v3/pkg/repo"
 	"helm.sh/helm/v3/pkg/repo/repotest"
 )
@@ -55,7 +58,8 @@ func TestRepoAdd(t *testing.T) {
 	}
 	defer ts.Stop()
 
-	repoFile := filepath.Join(ensure.TempDir(t), "repositories.yaml")
+	rootDir := ensure.TempDir(t)
+	repoFile := filepath.Join(rootDir, "repositories.yaml")
 
 	const testRepoName = "test-name"
 
@@ -65,6 +69,7 @@ func TestRepoAdd(t *testing.T) {
 		noUpdate: true,
 		repoFile: repoFile,
 	}
+	os.Setenv(xdg.CacheHomeEnvVar, rootDir)
 
 	if err := o.run(ioutil.Discard); err != nil {
 		t.Error(err)
@@ -77,6 +82,15 @@ func TestRepoAdd(t *testing.T) {
 
 	if !f.Has(testRepoName) {
 		t.Errorf("%s was not successfully inserted into %s", testRepoName, repoFile)
+	}
+
+	idx := filepath.Join(helmpath.CachePath("repository"), helmpath.CacheIndexFile(testRepoName))
+	if _, err := os.Stat(idx); os.IsNotExist(err) {
+		t.Errorf("Error cache index file was not created for repository %s", testRepoName)
+	}
+	idx = filepath.Join(helmpath.CachePath("repository"), helmpath.CacheChartsFile(testRepoName))
+	if _, err := os.Stat(idx); os.IsNotExist(err) {
+		t.Errorf("Error cache charts file was not created for repository %s", testRepoName)
 	}
 
 	o.noUpdate = false

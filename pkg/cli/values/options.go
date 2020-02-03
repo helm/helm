@@ -17,6 +17,7 @@ limitations under the License.
 package values
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -42,6 +43,7 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 	base := map[string]interface{}{}
 
 	// User specified a values files via -f/--values
+	fmt.Printf("opts.ValueFiles: %v\n", opts.ValueFiles)
 	for _, filePath := range opts.ValueFiles {
 		currentMap := map[string]interface{}{}
 

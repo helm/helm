@@ -83,3 +83,7 @@ func TestSearchRepositoriesCmd(t *testing.T) {
 	}
 	runTestCmd(t, tests)
 }
+
+func TestSearchRepoOutputCompletion(t *testing.T) {
+	outputFlagCompletionTest(t, "search repo")
+}

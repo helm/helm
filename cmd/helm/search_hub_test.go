@@ -49,5 +49,8 @@ func TestSearchHubCmd(t *testing.T) {
 		t.Log(out)
 		t.Log(expected)
 	}
+}
 
+func TestSearchHubOutputCompletion(t *testing.T) {
+	outputFlagCompletionTest(t, "search hub")
 }

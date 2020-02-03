@@ -119,7 +119,7 @@ func TestRepoIndexCmd(t *testing.T) {
 		t.Error(err)
 	}
 
-	_, err = repo.LoadIndexFile(destIndex)
+	index, err = repo.LoadIndexFile(destIndex)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,8 +130,8 @@ func TestRepoIndexCmd(t *testing.T) {
 	}
 
 	vs = index.Entries["compressedchart"]
-	if len(vs) != 3 {
-		t.Errorf("expected 3 versions, got %d: %#v", len(vs), vs)
+	if len(vs) != 1 {
+		t.Errorf("expected 1 versions, got %d: %#v", len(vs), vs)
 	}
 
 	expectedVersion = "0.3.0"

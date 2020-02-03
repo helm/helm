@@ -79,6 +79,7 @@ type Install struct {
 	ReleaseName      string
 	GenerateName     bool
 	NameTemplate     string
+	Description      string
 	OutputDir        string
 	Atomic           bool
 	SkipCRDs         bool
@@ -86,7 +87,7 @@ type Install struct {
 	// APIVersions allows a manual set of supported API Versions to be passed
 	// (for things like templating). These are ignored if ClientOnly is false
 	APIVersions chartutil.VersionSet
-	// Used by helm template to render charts with .Relase.IsUpgrade. Ignored if Dry-Run is false
+	// Used by helm template to render charts with .Release.IsUpgrade. Ignored if Dry-Run is false
 	IsUpgrade bool
 }
 
@@ -293,7 +294,11 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 		}
 	}
 
-	rel.SetStatus(release.StatusDeployed, "Install complete")
+	if len(i.Description) > 0 {
+		rel.SetStatus(release.StatusDeployed, i.Description)
+	} else {
+		rel.SetStatus(release.StatusDeployed, "Install complete")
+	}
 
 	// This is a tricky case. The release has been created, but the result
 	// cannot be recorded. The truest thing to tell the user is that the
@@ -427,9 +432,21 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 		}
 	}
 
-	files, err := engine.Render(ch, values)
-	if err != nil {
-		return hs, b, "", err
+	var files map[string]string
+	var err2 error
+
+	if c.RESTClientGetter != nil {
+		rest, err := c.RESTClientGetter.ToRESTConfig()
+		if err != nil {
+			return hs, b, "", err
+		}
+		files, err2 = engine.RenderWithClient(ch, values, rest)
+	} else {
+		files, err2 = engine.Render(ch, values)
+	}
+
+	if err2 != nil {
+		return hs, b, "", err2
 	}
 
 	// NOTES.txt gets rendered like all the other files, but because it's not a hook nor a resource,
@@ -544,6 +561,10 @@ func (i *Install) NameAndChart(args []string) (string, string, error) {
 			return errors.New("cannot set --name-template and also specify a name")
 		}
 		return nil
+	}
+
+	if len(args) > 2 {
+		return args[0], args[1], errors.Errorf("expected at most two arguments, unexpected arguments: %v", strings.Join(args[2:], ", "))
 	}
 
 	if len(args) == 2 {

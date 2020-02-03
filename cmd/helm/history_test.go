@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"testing"
 
 	"helm.sh/helm/v3/pkg/release"
@@ -65,6 +66,45 @@ func TestHistoryCmd(t *testing.T) {
 			mk("angry-bird", 3, release.StatusSuperseded),
 		},
 		golden: "output/history.json",
+	}}
+	runTestCmd(t, tests)
+}
+
+func TestHistoryOutputCompletion(t *testing.T) {
+	outputFlagCompletionTest(t, "history")
+}
+
+func revisionFlagCompletionTest(t *testing.T, cmdName string) {
+	mk := func(name string, vers int, status release.Status) *release.Release {
+		return release.Mock(&release.MockReleaseOptions{
+			Name:    name,
+			Version: vers,
+			Status:  status,
+		})
+	}
+
+	releases := []*release.Release{
+		mk("musketeers", 11, release.StatusDeployed),
+		mk("musketeers", 10, release.StatusSuperseded),
+		mk("musketeers", 9, release.StatusSuperseded),
+		mk("musketeers", 8, release.StatusSuperseded),
+	}
+
+	tests := []cmdTestCase{{
+		name:   "completion for revision flag",
+		cmd:    fmt.Sprintf("__complete %s musketeers --revision ''", cmdName),
+		rels:   releases,
+		golden: "output/revision-comp.txt",
+	}, {
+		name:   "completion for revision flag with too few args",
+		cmd:    fmt.Sprintf("__complete %s --revision ''", cmdName),
+		rels:   releases,
+		golden: "output/revision-wrong-args-comp.txt",
+	}, {
+		name:   "completion for revision flag with too many args",
+		cmd:    fmt.Sprintf("__complete %s three musketeers --revision ''", cmdName),
+		rels:   releases,
+		golden: "output/revision-wrong-args-comp.txt",
 	}}
 	runTestCmd(t, tests)
 }
