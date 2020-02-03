@@ -112,10 +112,4 @@ func TestDependencyBuildCmdWithHelmV2Hash(t *testing.T) {
 		t.Logf("Output: %s", out)
 		t.Fatal(err)
 	}
-
-	// Make sure the child chart file got downloaded.
-	expect := filepath.Join(chartName, "charts/alpine-0.1.0.tgz")
-	if _, err := os.Stat(expect); err != nil {
-		t.Fatal(err)
-	}
 }
