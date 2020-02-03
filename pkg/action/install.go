@@ -424,7 +424,7 @@ func (i *Install) replaceRelease(rel *release.Release) error {
 }
 
 // renderResources renders the templates in a chart
-func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName string, outputDir string, subNotes bool, useReleaseName bool) ([]*release.Hook, *bytes.Buffer, string, error) {
+func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName string, outputDir string, subNotes, useReleaseName bool) ([]*release.Hook, *bytes.Buffer, string, error) {
 	hs := []*release.Hook{}
 	b := bytes.NewBuffer(nil)
 
