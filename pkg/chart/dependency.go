@@ -53,7 +53,7 @@ type Dependency struct {
 //
 // It represents the state that the dependencies should be in.
 type Lock struct {
-	// Genderated is the date the lock file was last generated.
+	// Generated is the date the lock file was last generated.
 	Generated time.Time `json:"generated"`
 	// Digest is a hash of the dependencies in Chart.yaml.
 	Digest string `json:"digest"`

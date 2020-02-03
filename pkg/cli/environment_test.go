@@ -29,8 +29,8 @@ func TestEnvSettings(t *testing.T) {
 		name string
 
 		// input
-		args   string
-		envars map[string]string
+		args    string
+		envvars map[string]string
 
 		// expected values
 		ns, kcontext string
@@ -47,17 +47,17 @@ func TestEnvSettings(t *testing.T) {
 			debug: true,
 		},
 		{
-			name:   "with envvars set",
-			envars: map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns"},
-			ns:     "yourns",
-			debug:  true,
+			name:    "with envvars set",
+			envvars: map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns"},
+			ns:      "yourns",
+			debug:   true,
 		},
 		{
-			name:   "with flags and envvars set",
-			args:   "--debug --namespace=myns",
-			envars: map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns"},
-			ns:     "myns",
-			debug:  true,
+			name:    "with flags and envvars set",
+			args:    "--debug --namespace=myns",
+			envvars: map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns"},
+			ns:      "myns",
+			debug:   true,
 		},
 	}
 
@@ -65,7 +65,7 @@ func TestEnvSettings(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			defer resetEnv()()
 
-			for k, v := range tt.envars {
+			for k, v := range tt.envvars {
 				os.Setenv(k, v)
 			}
 

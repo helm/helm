@@ -63,7 +63,7 @@ func TestValidateAgainstSingleSchemaNegative(t *testing.T) {
 	}
 }
 
-const subchrtSchema = `{
+const subchartSchema = `{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Values",
   "type": "object",
@@ -81,23 +81,23 @@ const subchrtSchema = `{
 `
 
 func TestValidateAgainstSchema(t *testing.T) {
-	subchrtJSON := []byte(subchrtSchema)
-	subchrt := &chart.Chart{
+	subchartJSON := []byte(subchartSchema)
+	subchart := &chart.Chart{
 		Metadata: &chart.Metadata{
-			Name: "subchrt",
+			Name: "subchart",
 		},
-		Schema: subchrtJSON,
+		Schema: subchartJSON,
 	}
 	chrt := &chart.Chart{
 		Metadata: &chart.Metadata{
 			Name: "chrt",
 		},
 	}
-	chrt.AddDependency(subchrt)
+	chrt.AddDependency(subchart)
 
 	vals := map[string]interface{}{
 		"name": "John",
-		"subchrt": map[string]interface{}{
+		"subchart": map[string]interface{}{
 			"age": 25,
 		},
 	}
@@ -108,23 +108,23 @@ func TestValidateAgainstSchema(t *testing.T) {
 }
 
 func TestValidateAgainstSchemaNegative(t *testing.T) {
-	subchrtJSON := []byte(subchrtSchema)
-	subchrt := &chart.Chart{
+	subchartJSON := []byte(subchartSchema)
+	subchart := &chart.Chart{
 		Metadata: &chart.Metadata{
-			Name: "subchrt",
+			Name: "subchart",
 		},
-		Schema: subchrtJSON,
+		Schema: subchartJSON,
 	}
 	chrt := &chart.Chart{
 		Metadata: &chart.Metadata{
 			Name: "chrt",
 		},
 	}
-	chrt.AddDependency(subchrt)
+	chrt.AddDependency(subchart)
 
 	vals := map[string]interface{}{
-		"name":    "John",
-		"subchrt": map[string]interface{}{},
+		"name":     "John",
+		"subchart": map[string]interface{}{},
 	}
 
 	var errString string
@@ -134,7 +134,7 @@ func TestValidateAgainstSchemaNegative(t *testing.T) {
 		errString = err.Error()
 	}
 
-	expectedErrString := `subchrt:
+	expectedErrString := `subchart:
 - (root): age is required
 `
 	if errString != expectedErrString {

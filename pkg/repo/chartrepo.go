@@ -133,10 +133,21 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 		return "", err
 	}
 
-	if _, err := loadIndex(index); err != nil {
+	indexFile, err := loadIndex(index)
+	if err != nil {
 		return "", err
 	}
 
+	// Create the chart list file in the cache directory
+	var charts strings.Builder
+	for name := range indexFile.Entries {
+		fmt.Fprintln(&charts, name)
+	}
+	chartsFile := filepath.Join(r.CachePath, helmpath.CacheChartsFile(r.Config.Name))
+	os.MkdirAll(filepath.Dir(chartsFile), 0755)
+	ioutil.WriteFile(chartsFile, []byte(charts.String()), 0644)
+
+	// Create the index file in the cache directory
 	fname := filepath.Join(r.CachePath, helmpath.CacheIndexFile(r.Config.Name))
 	os.MkdirAll(filepath.Dir(fname), 0755)
 	return fname, ioutil.WriteFile(fname, index, 0644)

@@ -16,8 +16,8 @@ limitations under the License.
 
 /*Package chartutil contains tools for working with charts.
 
-Charts are described in the protocol buffer definition (pkg/proto/charts).
-This packe provides utilities for serializing and deserializing charts.
+Charts are described in the chart package (pkg/chart).
+This package provides utilities for serializing and deserializing charts.
 
 A chart can be represented on the file system in one of two ways:
 
@@ -25,7 +25,7 @@ A chart can be represented on the file system in one of two ways:
 	- As a tarred gzipped file containing a directory that then contains a
 	Chart.yaml file.
 
-This package provides utilitites for working with those file formats.
+This package provides utilities for working with those file formats.
 
 The preferred way of loading a chart is using 'loader.Load`:
 
@@ -38,7 +38,7 @@ For accepting raw compressed tar file data from an io.Reader, the
 'loader.LoadArchive()' will read in the data, uncompress it, and unpack it
 into a Chart.
 
-When creating charts in memory, use the 'helm.sh/helm/pkg/proto/chart'
+When creating charts in memory, use the 'helm.sh/helm/pkg/chart'
 package directly.
 */
 package chartutil // import "helm.sh/helm/v3/pkg/chartutil"

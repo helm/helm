@@ -27,7 +27,7 @@ import (
 	"helm.sh/helm/v3/internal/version"
 )
 
-// HTTPGetter is the efault HTTP(/S) backend handler
+// HTTPGetter is the default HTTP(/S) backend handler
 type HTTPGetter struct {
 	opts options
 }

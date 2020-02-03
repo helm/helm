@@ -151,8 +151,11 @@ func manuallyProcessArgs(args []string) ([]string, []string) {
 		case "--debug":
 			known = append(known, a)
 		case isKnown(a):
-			known = append(known, a, args[i+1])
+			known = append(known, a)
 			i++
+			if i < len(args) {
+				known = append(known, args[i])
+			}
 		default:
 			if knownArg(a) {
 				known = append(known, a)
