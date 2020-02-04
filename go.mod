@@ -10,7 +10,7 @@ require (
 	github.com/asaskevich/govalidator v0.0.0-20200108200545-475eaeb16496
 	github.com/containerd/containerd v1.3.2
 	github.com/cyphar/filepath-securejoin v0.2.2
-	github.com/deislabs/oras v0.8.1-0.20200203195554-169a5428f68f
+	github.com/deislabs/oras v0.8.1
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/docker/docker v1.4.2-0.20200203170920-46ec8731fbce
 	github.com/docker/go-units v0.4.0
