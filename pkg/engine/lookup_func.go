@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
@@ -30,6 +31,8 @@ import (
 
 type lookupFunc = func(apiversion string, resource string, namespace string, name string) (map[string]interface{}, error)
 
+// NewLookupFunction returns a function for looking up objects in the cluster. If the resource does not exist, no error
+// is raised.
 func NewLookupFunction(config *rest.Config) lookupFunc {
 	return func(apiversion string, resource string, namespace string, name string) (map[string]interface{}, error) {
 		var client dynamic.ResourceInterface
@@ -43,9 +46,14 @@ func NewLookupFunction(config *rest.Config) lookupFunc {
 			client = c
 		}
 		if name != "" {
-			//this will return a single object
+			// this will return a single object
 			obj, err := client.Get(name, metav1.GetOptions{})
 			if err != nil {
+				if apierrors.IsNotFound(err) {
+					// Just return an empty interface when the object was not found.
+					// That way, users can use `if not (lookup ...)` in their templates.
+					return map[string]interface{}{}, nil
+				}
 				return map[string]interface{}{}, err
 			}
 			return obj.UnstructuredContent(), nil
@@ -53,6 +61,11 @@ func NewLookupFunction(config *rest.Config) lookupFunc {
 		//this will return a list
 		obj, err := client.List(metav1.ListOptions{})
 		if err != nil {
+			if apierrors.IsNotFound(err) {
+				// Just return an empty interface when the object was not found.
+				// That way, users can use `if not (lookup ...)` in their templates.
+				return map[string]interface{}{}, nil
+			}
 			return map[string]interface{}{}, err
 		}
 		return obj.UnstructuredContent(), nil

@@ -161,7 +161,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		return nil, nil, err
 	}
 
-	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", u.SubNotes, false)
+	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -291,7 +291,7 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 	rel.Info.Status = release.StatusFailed
 	rel.Info.Description = msg
 	u.cfg.recordRelease(rel)
-	if u.CleanupOnFail {
+	if u.CleanupOnFail && len(created) > 0 {
 		u.cfg.Log("Cleanup on fail set, cleaning up %d resources", len(created))
 		_, errs := u.cfg.KubeClient.Delete(created)
 		if errs != nil {

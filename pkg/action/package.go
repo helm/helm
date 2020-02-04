@@ -60,12 +60,6 @@ func (p *Package) Run(path string, vals map[string]interface{}) (string, error) 
 		return "", err
 	}
 
-	combinedVals, err := chartutil.CoalesceValues(ch, vals)
-	if err != nil {
-		return "", err
-	}
-	ch.Values = combinedVals
-
 	// If version is set, modify the version.
 	if p.Version != "" {
 		if err := setVersion(ch, p.Version); err != nil {

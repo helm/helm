@@ -106,9 +106,9 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					if missing {
 						return fmt.Errorf("could not find template %s in chart", f)
 					}
-					for _, m := range manifestsToRender {
-						fmt.Fprintf(out, "---\n%s\n", m)
-					}
+				}
+				for _, m := range manifestsToRender {
+					fmt.Fprintf(out, "---\n%s\n", m)
 				}
 			} else {
 				fmt.Fprintf(out, "%s", manifests.String())
@@ -131,6 +131,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&includeCrds, "include-crds", false, "include CRDs in the templated output")
 	f.BoolVar(&client.IsUpgrade, "is-upgrade", false, "set .Release.IsUpgrade instead of .Release.IsInstall")
 	f.StringArrayVarP(&extraAPIs, "api-versions", "a", []string{}, "Kubernetes api versions used for Capabilities.APIVersions")
+	f.BoolVar(&client.UseReleaseName, "release-name", false, "use release name in the output-dir path.")
 
 	return cmd
 }

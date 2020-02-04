@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -80,6 +81,9 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 				if err != nil {
 					return err
 				}
+				if _, err := os.Stat(args[i]); err != nil {
+					return err
+				}
 
 				if client.DependencyUpdate {
 					downloadManager := &downloader.Manager{
@@ -114,7 +118,6 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&client.AppVersion, "app-version", "", "set the appVersion on the chart to this version")
 	f.StringVarP(&client.Destination, "destination", "d", ".", "location to write the chart.")
 	f.BoolVarP(&client.DependencyUpdate, "dependency-update", "u", false, `update dependencies from "Chart.yaml" to dir "charts/" before packaging`)
-	addValueOptionsFlags(f, valueOpts)
 
 	return cmd
 }

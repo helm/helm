@@ -36,7 +36,7 @@ type Chart struct {
 	Raw []*File `json:"-"`
 	// Metadata is the contents of the Chartfile.
 	Metadata *Metadata `json:"metadata"`
-	// LocK is the contents of Chart.lock.
+	// Lock is the contents of Chart.lock.
 	Lock *Lock `json:"lock"`
 	// Templates for this chart.
 	Templates []*File `json:"templates"`
