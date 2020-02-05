@@ -163,8 +163,9 @@ sign:
 
 .PHONY: checksum
 checksum:
+	if [ -f "_dist/shasums.txt" ]; then >_dist/shasums.txt; fi
 	for f in _dist/*.{gz,zip} ; do \
-		shasum -a 256 "$${f}"  | sed 's/_dist\///' | tee "$${f}.sha256sum" | awk '{print $$1}' > "$${f}.sha256" ; \
+		shasum -a 256 "$${f}"  | sed 's/_dist\///' | tee -a "_dist/shasums.txt" | awk '{print $$1}' > "$${f}.sha256" ; \
 	done
 
 # ------------------------------------------------------------------------------
