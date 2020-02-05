@@ -67,28 +67,32 @@ type Install struct {
 
 	ChartPathOptions
 
-	ClientOnly       bool
-	DryRun           bool
-	DisableHooks     bool
-	Replace          bool
-	Wait             bool
-	Devel            bool
-	DependencyUpdate bool
-	Timeout          time.Duration
-	Namespace        string
-	ReleaseName      string
-	GenerateName     bool
-	NameTemplate     string
-	Description      string
-	OutputDir        string
-	Atomic           bool
-	SkipCRDs         bool
-	SubNotes         bool
+	ClientOnly               bool
+	DryRun                   bool
+	DisableHooks             bool
+	Replace                  bool
+	Wait                     bool
+	Devel                    bool
+	DependencyUpdate         bool
+	Timeout                  time.Duration
+	Namespace                string
+	ReleaseName              string
+	GenerateName             bool
+	NameTemplate             string
+	Description              string
+	OutputDir                string
+	Atomic                   bool
+	SkipCRDs                 bool
+	SubNotes                 bool
+	DisableOpenAPIValidation bool
 	// APIVersions allows a manual set of supported API Versions to be passed
 	// (for things like templating). These are ignored if ClientOnly is false
 	APIVersions chartutil.VersionSet
 	// Used by helm template to render charts with .Release.IsUpgrade. Ignored if Dry-Run is false
 	IsUpgrade bool
+	// Used by helm template to add the release as part of OutputDir path
+	// OutputDir/<ReleaseName>
+	UseReleaseName bool
 }
 
 // ChartPathOptions captures common options used for controlling chart paths
@@ -217,7 +221,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	rel := i.createRelease(chrt, vals)
 
 	var manifestDoc *bytes.Buffer
-	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.OutputDir, i.SubNotes)
+	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName)
 	// Even for errors, attach this if available
 	if manifestDoc != nil {
 		rel.Manifest = manifestDoc.String()
@@ -232,7 +236,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	// Mark this release as in-progress
 	rel.SetStatus(release.StatusPendingInstall, "Initial install underway")
 
-	resources, err := i.cfg.KubeClient.Build(bytes.NewBufferString(rel.Manifest), true)
+	resources, err := i.cfg.KubeClient.Build(bytes.NewBufferString(rel.Manifest), !i.DisableOpenAPIValidation)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to build kubernetes objects from release manifest")
 	}
@@ -421,7 +425,7 @@ func (i *Install) replaceRelease(rel *release.Release) error {
 }
 
 // renderResources renders the templates in a chart
-func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, outputDir string, subNotes bool) ([]*release.Hook, *bytes.Buffer, string, error) {
+func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName string, outputDir string, subNotes, useReleaseName bool) ([]*release.Hook, *bytes.Buffer, string, error) {
 	hs := []*release.Hook{}
 	b := bytes.NewBuffer(nil)
 
@@ -436,8 +440,20 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 		}
 	}
 
-	files, err := engine.Render(ch, values)
-	if err != nil {
+	var files map[string]string
+	var err2 error
+
+	if c.RESTClientGetter != nil {
+		rest, err := c.RESTClientGetter.ToRESTConfig()
+		if err != nil {
+			return hs, b, "", err
+		}
+		files, err2 = engine.RenderWithClient(ch, values, rest)
+	} else {
+		files, err2 = engine.Render(ch, values)
+	}
+
+	if err2 != nil {
 		return hs, b, "", err
 	}
 
@@ -486,7 +502,11 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 		if outputDir == "" {
 			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", m.Name, m.Content)
 		} else {
-			err = writeToFile(outputDir, m.Name, m.Content, fileWritten[m.Name])
+			newDir := outputDir
+			if useReleaseName {
+				newDir = filepath.Join(outputDir, releaseName)
+			}
+			err = writeToFile(newDir, m.Name, m.Content, fileWritten[m.Name])
 			if err != nil {
 				return hs, b, "", err
 			}

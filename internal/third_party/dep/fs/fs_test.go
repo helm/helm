@@ -170,7 +170,7 @@ func TestCopyDir(t *testing.T) {
 func TestCopyDirFail_SrcInaccessible(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		// XXX: setting permissions works differently in
-		// Microsoft Windows. Skipping this this until a
+		// Microsoft Windows. Skipping this until a
 		// compatible implementation is provided.
 		t.Skip("skipping on windows")
 	}
@@ -209,7 +209,7 @@ func TestCopyDirFail_SrcInaccessible(t *testing.T) {
 func TestCopyDirFail_DstInaccessible(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		// XXX: setting permissions works differently in
-		// Microsoft Windows. Skipping this this until a
+		// Microsoft Windows. Skipping this until a
 		// compatible implementation is provided.
 		t.Skip("skipping on windows")
 	}
@@ -309,7 +309,7 @@ func TestCopyDirFailOpen(t *testing.T) {
 		// Microsoft Windows. os.Chmod(..., 0222) below is not
 		// enough for the file to be readonly, and os.Chmod(...,
 		// 0000) returns an invalid argument error. Skipping
-		// this this until a compatible implementation is
+		// this until a compatible implementation is
 		// provided.
 		t.Skip("skipping on windows")
 	}
@@ -478,7 +478,7 @@ func TestCopyFileSymlink(t *testing.T) {
 func TestCopyFileFail(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		// XXX: setting permissions works differently in
-		// Microsoft Windows. Skipping this this until a
+		// Microsoft Windows. Skipping this until a
 		// compatible implementation is provided.
 		t.Skip("skipping on windows")
 	}
@@ -521,7 +521,7 @@ func TestCopyFileFail(t *testing.T) {
 }
 
 // setupInaccessibleDir creates a temporary location with a single
-// directory in it, in such a way that that directory is not accessible
+// directory in it, in such a way that directory is not accessible
 // after this function returns.
 //
 // op is called with the directory as argument, so that it can create

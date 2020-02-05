@@ -19,12 +19,14 @@ package main
 import (
 	"fmt"
 	"io"
+	"strconv"
 	"time"
 
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
+	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/cli/output"
@@ -68,6 +70,14 @@ func newHistoryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return outfmt.Write(out, history)
 		},
 	}
+
+	// Function providing dynamic auto-completion
+	completion.RegisterValidArgsFunc(cmd, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
+		if len(args) != 0 {
+			return nil, completion.BashCompDirectiveNoFileComp
+		}
+		return compListReleases(toComplete, cfg)
+	})
 
 	f := cmd.Flags()
 	f.IntVar(&client.Max, "max", 256, "maximum number of revision to include in history")
@@ -175,4 +185,17 @@ func min(x, y int) int {
 		return x
 	}
 	return y
+}
+
+func compListRevisions(cfg *action.Configuration, releaseName string) ([]string, completion.BashCompDirective) {
+	client := action.NewHistory(cfg)
+
+	var revisions []string
+	if hist, err := client.Run(releaseName); err == nil {
+		for _, release := range hist {
+			revisions = append(revisions, strconv.Itoa(release.Version))
+		}
+		return revisions, completion.BashCompDirectiveDefault
+	}
+	return nil, completion.BashCompDirectiveError
 }

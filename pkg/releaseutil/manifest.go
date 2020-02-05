@@ -19,6 +19,7 @@ package releaseutil
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -37,8 +38,9 @@ var sep = regexp.MustCompile("(?:^|\\s*\n)---\\s*")
 // SplitManifests takes a string of manifest and returns a map contains individual manifests
 func SplitManifests(bigFile string) map[string]string {
 	// Basically, we're quickly splitting a stream of YAML documents into an
-	// array of YAML docs. In the current implementation, the file name is just
-	// a place holder, and doesn't have any further meaning.
+	// array of YAML docs. The file name is just a place holder, but should be
+	// integer-sortable so that manifests get output in the same order as the
+	// input (see `BySplitManifestsOrder`).
 	tpl := "manifest-%d"
 	res := map[string]string{}
 	// Making sure that any extra whitespace in YAML stream doesn't interfere in splitting documents correctly.
@@ -56,3 +58,15 @@ func SplitManifests(bigFile string) map[string]string {
 	}
 	return res
 }
+
+// BySplitManifestsOrder sorts by in-file manifest order, as provided in function `SplitManifests`
+type BySplitManifestsOrder []string
+
+func (a BySplitManifestsOrder) Len() int { return len(a) }
+func (a BySplitManifestsOrder) Less(i, j int) bool {
+	// Split `manifest-%d`
+	anum, _ := strconv.ParseInt(a[i][len("manifest-"):], 10, 0)
+	bnum, _ := strconv.ParseInt(a[j][len("manifest-"):], 10, 0)
+	return anum < bnum
+}
+func (a BySplitManifestsOrder) Swap(i, j int) { a[i], a[j] = a[j], a[i] }

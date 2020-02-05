@@ -35,23 +35,23 @@ func TestRootCmd(t *testing.T) {
 	}{
 		{
 			name: "defaults",
-			args: "home",
+			args: "env",
 		},
 		{
 			name:      "with $XDG_CACHE_HOME set",
-			args:      "home",
+			args:      "env",
 			envvars:   map[string]string{xdg.CacheHomeEnvVar: "/bar"},
 			cachePath: "/bar/helm",
 		},
 		{
 			name:       "with $XDG_CONFIG_HOME set",
-			args:       "home",
+			args:       "env",
 			envvars:    map[string]string{xdg.ConfigHomeEnvVar: "/bar"},
 			configPath: "/bar/helm",
 		},
 		{
 			name:     "with $XDG_DATA_HOME set",
-			args:     "home",
+			args:     "env",
 			envvars:  map[string]string{xdg.DataHomeEnvVar: "/bar"},
 			dataPath: "/bar/helm",
 		},

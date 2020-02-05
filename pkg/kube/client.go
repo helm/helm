@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"strings"
 	"sync"
 	"time"
@@ -30,6 +29,7 @@ import (
 	"github.com/pkg/errors"
 	batch "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
+	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
@@ -56,16 +56,23 @@ type Client struct {
 	Log     func(string, ...interface{})
 }
 
+var addToScheme sync.Once
+
 // New creates a new Client.
 func New(getter genericclioptions.RESTClientGetter) *Client {
 	if getter == nil {
 		getter = genericclioptions.NewConfigFlags(true)
 	}
 	// Add CRDs to the scheme. They are missing by default.
-	if err := apiextv1beta1.AddToScheme(scheme.Scheme); err != nil {
-		// This should never happen.
-		panic(err)
-	}
+	addToScheme.Do(func() {
+		if err := apiextv1.AddToScheme(scheme.Scheme); err != nil {
+			// This should never happen.
+			panic(err)
+		}
+		if err := apiextv1beta1.AddToScheme(scheme.Scheme); err != nil {
+			panic(err)
+		}
+	})
 	return &Client{
 		Factory: cmdutil.NewFactory(getter),
 		Log:     nopLogger,
@@ -197,6 +204,11 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 	}
 
 	for _, info := range original.Difference(target) {
+		if info.Mapping.GroupVersionKind.Kind == "CustomResourceDefinition" {
+			c.Log("Skipping the deletion of CustomResourceDefinition %q", info.Name)
+			continue
+		}
+
 		c.Log("Deleting %q in %s...", info.Name, info.Namespace)
 		res.Deleted = append(res.Deleted, info)
 		if err := deleteResource(info); err != nil {
@@ -219,6 +231,11 @@ func (c *Client) Delete(resources ResourceList) (*Result, []error) {
 	var errs []error
 	res := &Result{}
 	err := perform(resources, func(info *resource.Info) error {
+		if info.Mapping.GroupVersionKind.Kind == "CustomResourceDefinition" {
+			c.Log("Skipping the deletion of CustomResourceDefinition %q", info.Name)
+			return nil
+		}
+
 		c.Log("Starting delete for %q %s", info.Name, info.Mapping.GroupVersionKind.Kind)
 		if err := c.skipIfNotFound(deleteResource(info)); err != nil {
 			// Collect the error and continue on
@@ -355,7 +372,12 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 	// returned from ConvertToVersion. Anything that's unstructured should
 	// use the jsonpatch.CreateMergePatch. Strategic Merge Patch is not supported
 	// on objects like CRDs.
-	if _, ok := versionedObject.(runtime.Unstructured); ok {
+	_, isUnstructured := versionedObject.(runtime.Unstructured)
+
+	// On newer K8s versions, CRDs aren't unstructured but has this dedicated type
+	_, isCRD := versionedObject.(*apiextv1beta1.CustomResourceDefinition)
+
+	if isUnstructured || isCRD {
 		// fall back to generic JSON merge patch
 		patch, err := jsonpatch.CreateMergePatch(oldData, newData)
 		return patch, types.MergePatchType, err
@@ -398,7 +420,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		if err != nil {
 			return errors.Wrap(err, "failed to replace object")
 		}
-		log.Printf("Replaced %q with kind %s for kind %s\n", target.Name, currentObj.GetObjectKind().GroupVersionKind().Kind, kind)
+		c.Log("Replaced %q with kind %s for kind %s\n", target.Name, currentObj.GetObjectKind().GroupVersionKind().Kind, kind)
 	} else {
 		// send patch to server
 		obj, err = helper.Patch(target.Namespace, target.Name, patchType, patch, nil)

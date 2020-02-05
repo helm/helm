@@ -1,15 +1,16 @@
 BINDIR      := $(CURDIR)/bin
 DIST_DIRS   := find * -type d -exec
-TARGETS     := darwin/amd64 linux/amd64 linux/386 linux/arm linux/arm64 linux/ppc64le windows/amd64
-TARGET_OBJS ?= darwin-amd64.tar.gz darwin-amd64.tar.gz.sha256 linux-amd64.tar.gz linux-amd64.tar.gz.sha256 linux-386.tar.gz linux-386.tar.gz.sha256 linux-arm.tar.gz linux-arm.tar.gz.sha256 linux-arm64.tar.gz linux-arm64.tar.gz.sha256 linux-ppc64le.tar.gz linux-ppc64le.tar.gz.sha256 windows-amd64.zip windows-amd64.zip.sha256
+TARGETS     := darwin/amd64 linux/amd64 linux/386 linux/arm linux/arm64 linux/ppc64le linux/s390x windows/amd64
+TARGET_OBJS ?= darwin-amd64.tar.gz darwin-amd64.tar.gz.sha256 linux-amd64.tar.gz linux-amd64.tar.gz.sha256 linux-386.tar.gz linux-386.tar.gz.sha256 linux-arm.tar.gz linux-arm.tar.gz.sha256 linux-arm64.tar.gz linux-arm64.tar.gz.sha256 linux-ppc64le.tar.gz linux-ppc64le.tar.gz.sha256 linux-s390x.tar.gz linux-s390x.tar.gz.sha256 windows-amd64.zip windows-amd64.zip.sha256
 BINNAME     ?= helm
 
 GOPATH        = $(shell go env GOPATH)
 DEP           = $(GOPATH)/bin/dep
 GOX           = $(GOPATH)/bin/gox
 GOIMPORTS     = $(GOPATH)/bin/goimports
+ARCH          = $(shell uname -p)
 
-ACCEPTANCE_DIR:=$(GOPATH)/src/helm.sh/acceptance-testing
+ACCEPTANCE_DIR:=../acceptance-testing
 # To specify the subset of acceptance tests to run. '.' means all tests
 ACCEPTANCE_RUN_TESTS=.
 
@@ -40,10 +41,13 @@ ifneq ($(BINARY_VERSION),)
 	LDFLAGS += -X helm.sh/helm/v3/internal/version.version=${BINARY_VERSION}
 endif
 
+VERSION_METADATA = unreleased
 # Clear the "unreleased" string in BuildMetadata
 ifneq ($(GIT_TAG),)
-	LDFLAGS += -X helm.sh/helm/v3/internal/version.metadata=
+	VERSION_METADATA =
 endif
+
+LDFLAGS += -X helm.sh/helm/v3/internal/version.metadata=${VERSION_METADATA}
 LDFLAGS += -X helm.sh/helm/v3/internal/version.gitCommit=${GIT_COMMIT}
 LDFLAGS += -X helm.sh/helm/v3/internal/version.gitTreeState=${GIT_DIRTY}
 
@@ -64,7 +68,11 @@ $(BINDIR)/$(BINNAME): $(SRC)
 
 .PHONY: test
 test: build
+ifeq ($(ARCH),s390x)
+test: TESTFLAGS += -v
+else
 test: TESTFLAGS += -race -v
+endif
 test: test-style
 test: test-unit
 

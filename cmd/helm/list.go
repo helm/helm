@@ -26,13 +26,14 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
+	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/release"
 )
 
 var listHelp = `
-This command lists all of the releases.
+This command lists all of the releases for a specified namespace (uses current namespace context if namespace not specified).
 
 By default, it lists only releases that are deployed or failed. Flags like
 '--uninstalled' and '--all' will alter this behavior. Such flags can be combined:
@@ -96,7 +97,7 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVarP(&client.Short, "short", "q", false, "output short (quiet) listing format")
 	f.BoolVarP(&client.ByDate, "date", "d", false, "sort by release date")
 	f.BoolVarP(&client.SortReverse, "reverse", "r", false, "reverse the sort order")
-	f.BoolVarP(&client.All, "all", "a", false, "show all releases, not just the ones marked deployed or failed")
+	f.BoolVarP(&client.All, "all", "a", false, "show all releases without any filter applied")
 	f.BoolVar(&client.Uninstalled, "uninstalled", false, "show uninstalled releases (if 'helm uninstall --keep-history' was used)")
 	f.BoolVar(&client.Superseded, "superseded", false, "show superseded releases")
 	f.BoolVar(&client.Uninstalling, "uninstalling", false, "show releases that are currently being uninstalled")
@@ -163,4 +164,27 @@ func (r *releaseListWriter) WriteJSON(out io.Writer) error {
 
 func (r *releaseListWriter) WriteYAML(out io.Writer) error {
 	return output.EncodeYAML(out, r.releases)
+}
+
+// Provide dynamic auto-completion for release names
+func compListReleases(toComplete string, cfg *action.Configuration) ([]string, completion.BashCompDirective) {
+	completion.CompDebugln(fmt.Sprintf("compListReleases with toComplete %s", toComplete))
+
+	client := action.NewList(cfg)
+	client.All = true
+	client.Limit = 0
+	client.Filter = fmt.Sprintf("^%s", toComplete)
+
+	client.SetStateMask()
+	results, err := client.Run()
+	if err != nil {
+		return nil, completion.BashCompDirectiveDefault
+	}
+
+	var choices []string
+	for _, res := range results {
+		choices = append(choices, res.Name)
+	}
+
+	return choices, completion.BashCompDirectiveNoFileComp
 }

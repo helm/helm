@@ -29,6 +29,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
+	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli/values"
@@ -111,9 +112,9 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					if missing {
 						return fmt.Errorf("could not find template %s in chart", f)
 					}
-					for _, m := range manifestsToRender {
-						fmt.Fprintf(out, "---\n%s\n", m)
-					}
+				}
+				for _, m := range manifestsToRender {
+					fmt.Fprintf(out, "---\n%s\n", m)
 				}
 			} else {
 				fmt.Fprintf(out, "%s", manifests.String())
@@ -123,6 +124,11 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		},
 	}
 
+	// Function providing dynamic auto-completion
+	completion.RegisterValidArgsFunc(cmd, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
+		return compInstall(args, toComplete, client)
+	})
+
 	f := cmd.Flags()
 	addInstallFlags(f, client, valueOpts)
 	f.StringArrayVarP(&showFiles, "show-only", "s", []string{}, "only show manifests rendered from the given templates")
@@ -131,6 +137,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&includeCrds, "include-crds", false, "include CRDs in the templated output")
 	f.BoolVar(&client.IsUpgrade, "is-upgrade", false, "set .Release.IsUpgrade instead of .Release.IsInstall")
 	f.StringArrayVarP(&extraAPIs, "api-versions", "a", []string{}, "Kubernetes api versions used for Capabilities.APIVersions")
+	f.BoolVar(&client.UseReleaseName, "release-name", false, "use release name in the output-dir path.")
 
 	return cmd
 }

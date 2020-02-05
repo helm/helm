@@ -31,7 +31,7 @@ var b64 = base64.StdEncoding
 var magicGzip = []byte{0x1f, 0x8b, 0x08}
 
 // encodeRelease encodes a release returning a base64 encoded
-// gzipped binary protobuf encoding representation, or error.
+// gzipped string representation, or error.
 func encodeRelease(rls *rspb.Release) (string, error) {
 	b, err := json.Marshal(rls)
 	if err != nil {
@@ -50,10 +50,9 @@ func encodeRelease(rls *rspb.Release) (string, error) {
 	return b64.EncodeToString(buf.Bytes()), nil
 }
 
-// decodeRelease decodes the bytes in data into a release
-// type. Data must contain a base64 encoded string of a
-// valid protobuf encoding of a release, otherwise
-// an error is returned.
+// decodeRelease decodes the bytes of data into a release
+// type. Data must contain a base64 encoded gzipped string of a
+// valid release, otherwise an error is returned.
 func decodeRelease(data string) (*rspb.Release, error) {
 	// base64 decode string
 	b, err := b64.DecodeString(data)
@@ -77,7 +76,7 @@ func decodeRelease(data string) (*rspb.Release, error) {
 	}
 
 	var rls rspb.Release
-	// unmarshal protobuf bytes
+	// unmarshal release object bytes
 	if err := json.Unmarshal(b, &rls); err != nil {
 		return nil, err
 	}
