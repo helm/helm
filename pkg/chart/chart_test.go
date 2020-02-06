@@ -41,6 +41,10 @@ func TestCRDs(t *testing.T) {
 				Name: "crdsfoo/bar/baz.yaml",
 				Data: []byte("hello"),
 			},
+			{
+				Name: "crds/README.md",
+				Data: []byte("# hello"),
+			},
 		},
 	}
 
