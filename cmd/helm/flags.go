@@ -98,7 +98,7 @@ func (o *outputValue) Set(s string) error {
 }
 
 func bindPostRenderFlag(cmd *cobra.Command, varRef *postrender.PostRenderer) {
-	cmd.Flags().Var(&postRenderer{varRef}, postRenderFlag, "the path to an executable to be used for post rendering. If a non-absolute path is provided, the plugin directory and $PATH will be searched")
+	cmd.Flags().Var(&postRenderer{varRef}, postRenderFlag, "the path to an executable to be used for post rendering. If it exists in $PATH, the binary will be used, otherwise it will try to look for the executable at the given path")
 	// Setup shell completion for the flag
 	cmd.MarkFlagCustom(outputFlag, "__helm_output_options")
 }
