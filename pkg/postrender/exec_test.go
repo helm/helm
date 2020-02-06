@@ -73,35 +73,38 @@ func TestGetFullPath(t *testing.T) {
 		is.Equal(testpath, fullPath)
 	})
 
-	t.Run("binary in plugin path resolves correctly", func(t *testing.T) {
-		testpath, cleanup := setupTestingScript(t)
-		defer cleanup()
+	// NOTE(thomastaylor312): See note in getFullPath for more details why this
+	// is here
 
-		realPath := os.Getenv("HELM_PLUGINS")
-		os.Setenv("HELM_PLUGINS", filepath.Dir(testpath))
-		defer func() {
-			os.Setenv("HELM_PLUGINS", realPath)
-		}()
+	// t.Run("binary in plugin path resolves correctly", func(t *testing.T) {
+	// 	testpath, cleanup := setupTestingScript(t)
+	// 	defer cleanup()
 
-		fullPath, err := getFullPath(filepath.Base(testpath))
-		is.NoError(err)
-		is.Equal(testpath, fullPath)
-	})
+	// 	realPath := os.Getenv("HELM_PLUGINS")
+	// 	os.Setenv("HELM_PLUGINS", filepath.Dir(testpath))
+	// 	defer func() {
+	// 		os.Setenv("HELM_PLUGINS", realPath)
+	// 	}()
 
-	t.Run("binary in multiple plugin paths resolves correctly", func(t *testing.T) {
-		testpath, cleanup := setupTestingScript(t)
-		defer cleanup()
+	// 	fullPath, err := getFullPath(filepath.Base(testpath))
+	// 	is.NoError(err)
+	// 	is.Equal(testpath, fullPath)
+	// })
 
-		realPath := os.Getenv("HELM_PLUGINS")
-		os.Setenv("HELM_PLUGINS", filepath.Dir(testpath)+string(os.PathListSeparator)+"/another/dir")
-		defer func() {
-			os.Setenv("HELM_PLUGINS", realPath)
-		}()
+	// t.Run("binary in multiple plugin paths resolves correctly", func(t *testing.T) {
+	// 	testpath, cleanup := setupTestingScript(t)
+	// 	defer cleanup()
 
-		fullPath, err := getFullPath(filepath.Base(testpath))
-		is.NoError(err)
-		is.Equal(testpath, fullPath)
-	})
+	// 	realPath := os.Getenv("HELM_PLUGINS")
+	// 	os.Setenv("HELM_PLUGINS", filepath.Dir(testpath)+string(os.PathListSeparator)+"/another/dir")
+	// 	defer func() {
+	// 		os.Setenv("HELM_PLUGINS", realPath)
+	// 	}()
+
+	// 	fullPath, err := getFullPath(filepath.Base(testpath))
+	// 	is.NoError(err)
+	// 	is.Equal(testpath, fullPath)
+	// })
 }
 
 func TestExecRun(t *testing.T) {
