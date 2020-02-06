@@ -135,7 +135,7 @@ func (ch *Chart) CRDs() []*File {
 	files := []*File{}
 	// Find all resources in the crds/ directory
 	for _, f := range ch.Files {
-		if strings.HasPrefix(f.Name, "crds/") {
+		if strings.HasPrefix(f.Name, "crds/") && hasManifestExtension(f.Name) {
 			files = append(files, f)
 		}
 	}
@@ -151,7 +151,7 @@ func (ch *Chart) CRDObjects() []CRD {
 	crds := []CRD{}
 	// Find all resources in the crds/ directory
 	for _, f := range ch.Files {
-		if strings.HasPrefix(f.Name, "crds/") {
+		if strings.HasPrefix(f.Name, "crds/") && hasManifestExtension(f.Name) {
 			mycrd := CRD{Name: f.Name, Filename: filepath.Join(ch.ChartFullPath(), f.Name), File: f}
 			crds = append(crds, mycrd)
 		}
@@ -161,4 +161,9 @@ func (ch *Chart) CRDObjects() []CRD {
 		crds = append(crds, dep.CRDObjects()...)
 	}
 	return crds
+}
+
+func hasManifestExtension(fname string) bool {
+	ext := filepath.Ext(fname)
+	return strings.EqualFold(ext, ".yaml") || strings.EqualFold(ext, ".yml") || strings.EqualFold(ext, ".json")
 }
