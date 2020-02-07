@@ -101,6 +101,7 @@ func TestMemoryGet(t *testing.T) {
 
 func TestMemoryList(t *testing.T) {
 	ts := tsFixtureMemory(t)
+	ts.SetNamespace("default")
 
 	// list all deployed releases
 	dpl, err := ts.List(func(rel *rspb.Release) bool {
