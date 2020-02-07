@@ -39,6 +39,7 @@ import (
 	"helm.sh/helm/v3/pkg/engine"
 	"helm.sh/helm/v3/pkg/getter"
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
+	"helm.sh/helm/v3/pkg/postrender"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/releaseutil"
 	"helm.sh/helm/v3/pkg/repo"
@@ -94,6 +95,7 @@ type Install struct {
 	// Used by helm template to add the release as part of OutputDir path
 	// OutputDir/<ReleaseName>
 	UseReleaseName bool
+	PostRenderer   postrender.PostRenderer
 }
 
 // ChartPathOptions captures common options used for controlling chart paths
@@ -225,7 +227,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	rel := i.createRelease(chrt, vals)
 
 	var manifestDoc *bytes.Buffer
-	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs)
+	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer)
 	// Even for errors, attach this if available
 	if manifestDoc != nil {
 		rel.Manifest = manifestDoc.String()
@@ -429,7 +431,7 @@ func (i *Install) replaceRelease(rel *release.Release) error {
 }
 
 // renderResources renders the templates in a chart
-func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName string, outputDir string, subNotes, useReleaseName bool, includeCrds bool) ([]*release.Hook, *bytes.Buffer, string, error) {
+func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer) ([]*release.Hook, *bytes.Buffer, string, error) {
 	hs := []*release.Hook{}
 	b := bytes.NewBuffer(nil)
 
@@ -525,11 +527,22 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 			if useReleaseName {
 				newDir = filepath.Join(outputDir, releaseName)
 			}
+			// NOTE: We do not have to worry about the post-renderer because
+			// output dir is only used by `helm template`. In the next major
+			// release, we should move this logic to template only as it is not
+			// used by install or upgrade
 			err = writeToFile(newDir, m.Name, m.Content, fileWritten[m.Name])
 			if err != nil {
 				return hs, b, "", err
 			}
 			fileWritten[m.Name] = true
+		}
+	}
+
+	if pr != nil {
+		b, err = pr.Run(b)
+		if err != nil {
+			return hs, b, notes, errors.Wrap(err, "error while running post render on files")
 		}
 	}
 

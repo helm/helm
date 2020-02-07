@@ -130,6 +130,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 	addInstallFlags(cmd.Flags(), client, valueOpts)
 	bindOutputFlag(cmd, &outfmt)
+	bindPostRenderFlag(cmd, &client.PostRenderer)
 
 	return cmd
 }

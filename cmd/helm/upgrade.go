@@ -108,6 +108,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.Devel = client.Devel
 					instClient.Namespace = client.Namespace
 					instClient.Atomic = client.Atomic
+					instClient.PostRenderer = client.PostRenderer
 
 					rel, err := runInstall(args, instClient, valueOpts, out)
 					if err != nil {
@@ -176,6 +177,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 	addValueOptionsFlags(f, valueOpts)
 	bindOutputFlag(cmd, &outfmt)
+	bindPostRenderFlag(cmd, &client.PostRenderer)
 
 	return cmd
 }
