@@ -23,7 +23,7 @@ import (
 )
 
 var (
-	// version is the current version of the Helm.
+	// version is the current version of Helm.
 	// Update this whenever making a new release.
 	// The version is of the format Major.Minor.Patch[-Prerelease][+BuildMetadata]
 	//
