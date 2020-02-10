@@ -157,15 +157,22 @@ fetch-dist:
 
 .PHONY: sign
 sign:
-	for f in _dist/*.{gz,zip,sha256} ; do \
+	for f in _dist/*.{gz,zip,sha256,sha256sum} ; do \
 		gpg --armor --detach-sign $${f} ; \
 	done
 
+# The contents of the .sha256sum file are compatible with tools like
+# shasum. For example, using the following command will verify
+# the file helm-3.1.0-rc.1-darwin-amd64.tar.gz:
+#   shasum -a 256 -c helm-3.1.0-rc.1-darwin-amd64.tar.gz.sha256sum
+# The .sha256 files hold only the hash and are not compatible with
+# verification tools like shasum or sha256sum. This method and file can be
+# removed in Helm v4.
 .PHONY: checksum
 checksum:
-	@if [ -f "_dist/shasums.txt" ]; then >_dist/shasums.txt; fi
 	for f in _dist/*.{gz,zip} ; do \
-		shasum -a 256 "$${f}"  | sed 's/_dist\///' | tee -a "_dist/shasums.txt" | awk '{print $$1}' > "$${f}.sha256" ; \
+		shasum -a 256 "$${f}" | sed 's/_dist\///' > "$${f}.sha256sum" ; \
+		shasum -a 256 "$${f}" | awk '{print $$1}' > "$${f}.sha256" ; \
 	done
 
 # ------------------------------------------------------------------------------
