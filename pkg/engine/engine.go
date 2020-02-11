@@ -120,6 +120,7 @@ func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]render
 			includedNames[name] = 1
 		}
 		err := t.ExecuteTemplate(&buf, name, data)
+		includedNames[name]--
 		return buf.String(), err
 	}
 
