@@ -37,13 +37,23 @@ func TestMemoryCreate(t *testing.T) {
 		err  bool
 	}{
 		{
-			"create should success",
+			"create should succeed",
 			releaseStub("rls-c", 1, "default", rspb.StatusDeployed),
 			false,
 		},
 		{
 			"create should fail (release already exists)",
 			releaseStub("rls-a", 1, "default", rspb.StatusDeployed),
+			true,
+		},
+		{
+			"create in namespace should succeed",
+			releaseStub("rls-a", 1, "mynamespace", rspb.StatusDeployed),
+			false,
+		},
+		{
+			"create in other namespace should fail (release already exists)",
+			releaseStub("rls-c", 1, "mynamespace", rspb.StatusDeployed),
 			true,
 		},
 	}
@@ -57,45 +67,103 @@ func TestMemoryCreate(t *testing.T) {
 			if !tt.err {
 				t.Fatalf("failed to create %q: %s", tt.desc, err)
 			}
+		} else if tt.err {
+			t.Fatalf("Did not get expected error for %q\n", tt.desc)
 		}
 	}
 }
 
 func TestMemoryGet(t *testing.T) {
 	var tests = []struct {
-		desc string
-		key  string
-		err  bool
+		desc      string
+		key       string
+		namespace string
+		err       bool
 	}{
-		{"release key should exist", "rls-a.v1", false},
-		{"release key should not exist", "rls-a.v5", true},
+		{"release key should exist", "rls-a.v1", "default", false},
+		{"release key should not exist", "rls-a.v5", "default", true},
+		{"release key in namespace should exist", "rls-c.v1", "mynamespace", false},
+		{"release key in namespace should not exist", "rls-a.v1", "mynamespace", true},
 	}
 
 	ts := tsFixtureMemory(t)
 	for _, tt := range tests {
+		ts.SetNamespace(tt.namespace)
 		if _, err := ts.Get(tt.key); err != nil {
 			if !tt.err {
 				t.Fatalf("Failed %q to get '%s': %q\n", tt.desc, tt.key, err)
 			}
+		} else if tt.err {
+			t.Fatalf("Did not get expected error for %q '%s'\n", tt.desc, tt.key)
 		}
+	}
+}
+
+func TestMemoryList(t *testing.T) {
+	ts := tsFixtureMemory(t)
+	ts.SetNamespace("default")
+
+	// list all deployed releases
+	dpl, err := ts.List(func(rel *rspb.Release) bool {
+		return rel.Info.Status == rspb.StatusDeployed
+	})
+	// check
+	if err != nil {
+		t.Errorf("Failed to list deployed releases: %s", err)
+	}
+	if len(dpl) != 2 {
+		t.Errorf("Expected 2 deployed, got %d", len(dpl))
+	}
+
+	// list all superseded releases
+	ssd, err := ts.List(func(rel *rspb.Release) bool {
+		return rel.Info.Status == rspb.StatusSuperseded
+	})
+	// check
+	if err != nil {
+		t.Errorf("Failed to list superseded releases: %s", err)
+	}
+	if len(ssd) != 6 {
+		t.Errorf("Expected 6 superseded, got %d", len(ssd))
+	}
+
+	// list all deleted releases
+	del, err := ts.List(func(rel *rspb.Release) bool {
+		return rel.Info.Status == rspb.StatusUninstalled
+	})
+	// check
+	if err != nil {
+		t.Errorf("Failed to list deleted releases: %s", err)
+	}
+	if len(del) != 0 {
+		t.Errorf("Expected 0 deleted, got %d", len(del))
 	}
 }
 
 func TestMemoryQuery(t *testing.T) {
 	var tests = []struct {
-		desc string
-		xlen int
-		lbs  map[string]string
+		desc      string
+		xlen      int
+		namespace string
+		lbs       map[string]string
 	}{
 		{
 			"should be 2 query results",
 			2,
+			"default",
+			map[string]string{"status": "deployed"},
+		},
+		{
+			"should be 1 query result",
+			1,
+			"mynamespace",
 			map[string]string{"status": "deployed"},
 		},
 	}
 
 	ts := tsFixtureMemory(t)
 	for _, tt := range tests {
+		ts.SetNamespace(tt.namespace)
 		l, err := ts.Query(tt.lbs)
 		if err != nil {
 			t.Fatalf("Failed to query: %s\n", err)
@@ -122,8 +190,20 @@ func TestMemoryUpdate(t *testing.T) {
 		},
 		{
 			"update release does not exist",
-			"rls-z.v1",
-			releaseStub("rls-z", 1, "default", rspb.StatusUninstalled),
+			"rls-c.v1",
+			releaseStub("rls-c", 1, "default", rspb.StatusUninstalled),
+			true,
+		},
+		{
+			"update release status in namespace",
+			"rls-c.v4",
+			releaseStub("rls-c", 4, "mynamespace", rspb.StatusSuperseded),
+			false,
+		},
+		{
+			"update release in namespace does not exist",
+			"rls-a.v1",
+			releaseStub("rls-a", 1, "mynamespace", rspb.StatusUninstalled),
 			true,
 		},
 	}
@@ -135,8 +215,11 @@ func TestMemoryUpdate(t *testing.T) {
 				t.Fatalf("Failed %q: %s\n", tt.desc, err)
 			}
 			continue
+		} else if tt.err {
+			t.Fatalf("Did not get expected error for %q '%s'\n", tt.desc, tt.key)
 		}
 
+		ts.SetNamespace(tt.rls.Namespace)
 		r, err := ts.Get(tt.key)
 		if err != nil {
 			t.Fatalf("Failed to get: %s\n", err)
@@ -150,26 +233,35 @@ func TestMemoryUpdate(t *testing.T) {
 
 func TestMemoryDelete(t *testing.T) {
 	var tests = []struct {
-		desc string
-		key  string
-		err  bool
+		desc      string
+		key       string
+		namespace string
+		err       bool
 	}{
-		{"release key should exist", "rls-a.v1", false},
-		{"release key should not exist", "rls-a.v5", true},
+		{"release key should exist", "rls-a.v4", "default", false},
+		{"release key should not exist", "rls-a.v5", "default", true},
+		{"release key from other namespace should not exist", "rls-c.v4", "default", true},
+		{"release key from namespace should exist", "rls-c.v4", "mynamespace", false},
+		{"release key from namespace should not exist", "rls-c.v5", "mynamespace", true},
+		{"release key from namespace2 should not exist", "rls-a.v4", "mynamespace", true},
 	}
 
 	ts := tsFixtureMemory(t)
-	start, err := ts.Query(map[string]string{"name": "rls-a"})
+	ts.SetNamespace("")
+	start, err := ts.Query(map[string]string{"status": "deployed"})
 	if err != nil {
 		t.Errorf("Query failed: %s", err)
 	}
 	startLen := len(start)
 	for _, tt := range tests {
+		ts.SetNamespace(tt.namespace)
 		if rel, err := ts.Delete(tt.key); err != nil {
 			if !tt.err {
 				t.Fatalf("Failed %q to get '%s': %q\n", tt.desc, tt.key, err)
 			}
 			continue
+		} else if tt.err {
+			t.Fatalf("Did not get expected error for %q '%s'\n", tt.desc, tt.key)
 		} else if fmt.Sprintf("%s.v%d", rel.Name, rel.Version) != tt.key {
 			t.Fatalf("Asked for delete on %s, but deleted %d", tt.key, rel.Version)
 		}
@@ -180,14 +272,15 @@ func TestMemoryDelete(t *testing.T) {
 	}
 
 	// Make sure that the deleted records are gone.
-	end, err := ts.Query(map[string]string{"name": "rls-a"})
+	ts.SetNamespace("")
+	end, err := ts.Query(map[string]string{"status": "deployed"})
 	if err != nil {
 		t.Errorf("Query failed: %s", err)
 	}
 	endLen := len(end)
 
-	if startLen <= endLen {
-		t.Errorf("expected start %d to be less than end %d", startLen, endLen)
+	if startLen-2 != endLen {
+		t.Errorf("expected end to be %d instead of %d", startLen-2, endLen)
 		for _, ee := range end {
 			t.Logf("Name: %s, Version: %d", ee.Name, ee.Version)
 		}

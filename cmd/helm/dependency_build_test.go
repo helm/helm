@@ -100,3 +100,16 @@ func TestDependencyBuildCmd(t *testing.T) {
 		t.Errorf("mismatched versions. Expected %q, got %q", "0.1.0", v)
 	}
 }
+
+func TestDependencyBuildCmdWithHelmV2Hash(t *testing.T) {
+	chartName := "testdata/testcharts/issue-7233"
+
+	cmd := fmt.Sprintf("dependency build '%s'", chartName)
+	_, out, err := executeActionCommand(cmd)
+
+	// Want to make sure the build can verify Helm v2 hash
+	if err != nil {
+		t.Logf("Output: %s", out)
+		t.Fatal(err)
+	}
+}
