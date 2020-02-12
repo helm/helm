@@ -23,11 +23,14 @@ import (
 
 func TestLintCmdWithSubchartsFlag(t *testing.T) {
 	testChart := "testdata/testcharts/chart-with-bad-subcharts"
+	// "lint good chart with bad subcharts" only passed in the original version
+	// because no further test was performed if the templates directory was absent
+	// The test should have failed.
 	tests := []cmdTestCase{{
 		name:      "lint good chart with bad subcharts",
 		cmd:       fmt.Sprintf("lint %s", testChart),
 		golden:    "output/lint-chart-with-bad-subcharts.txt",
-		wantError: false,
+		wantError: true,
 	}, {
 		name:      "lint good chart with bad subcharts using --with-subcharts flag",
 		cmd:       fmt.Sprintf("lint --with-subcharts %s", testChart),
