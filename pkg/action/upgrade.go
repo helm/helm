@@ -202,19 +202,7 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 		return upgradedRelease, errors.Wrap(err, "unable to build kubernetes objects from new release manifest")
 	}
 
-	// Do a basic diff using gvk + name to figure out what new resources are being created so we can validate they don't already exist
-	existingResources := make(map[string]bool)
-	for _, r := range current {
-		existingResources[objectKey(r)] = true
-	}
-
-	var toBeCreated kube.ResourceList
-	for _, r := range target {
-		if !existingResources[objectKey(r)] {
-			toBeCreated = append(toBeCreated, r)
-		}
-	}
-
+	toBeCreated := detectNewResources(&current, &target)
 	if err := existingResourceConflict(toBeCreated); err != nil {
 		return nil, errors.Wrap(err, "rendered manifests contain a new resource that already exists. Unable to continue with update")
 	}
@@ -425,6 +413,54 @@ func recreate(cfg *Configuration, resources kube.ResourceList) error {
 }
 
 func objectKey(r *resource.Info) string {
-	gvk := r.Object.GetObjectKind().GroupVersionKind()
-	return fmt.Sprintf("%s/%s/%s/%s", gvk.GroupVersion().String(), gvk.Kind, r.Namespace, r.Name)
+	return fmt.Sprintf("%s/%s/%s", objectKind(r), r.Namespace, r.Name)
+}
+
+func detectNewResources(current *kube.ResourceList, target *kube.ResourceList) kube.ResourceList {
+	existingResources := make(map[string]string)
+	for _, r := range *current {
+		existingResources[objectKey(r)] = objectGroupVersion(r)
+	}
+
+	var toBeCreated kube.ResourceList
+	for _, r := range *target {
+		e := existingResources[objectKey(r)]
+		// Generally we do not care about object versions
+		// Kubernetes has a compat layer that handles migrations
+		// However the same Kind might exist in diffent Groups
+		// In that case we have actually a new Resource
+		if e == "" || isCRD(e) != isCRD(objectGroupVersion(r)) {
+			toBeCreated = append(toBeCreated, r)
+		}
+	}
+
+	return toBeCreated
+}
+
+func objectGroupVersion(r *resource.Info) string {
+	return r.Object.GetObjectKind().GroupVersionKind().GroupVersion().String()
+}
+
+func objectKind(r *resource.Info) string {
+	return r.Object.GetObjectKind().GroupVersionKind().Kind
+}
+
+func isCRD(groupVersion string) bool {
+	s := strings.Split(groupVersion, "/")
+	if len(s) == 1 {
+		// "v1"
+		return false
+	}
+	group := s[0]
+	s = strings.Split(group, ".")
+	if len(s) == 1 {
+		// "apps/v1"
+		return false
+	}
+	if s[len(s)-2] == "k8s" && s[len(s)-1] == "io" {
+		// "networking.k8s.io/v1"
+		return false
+	}
+	// "crd.projectcalico.org/v1"
+	return true
 }

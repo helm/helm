@@ -18,9 +18,11 @@ package action
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/kube"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -253,3 +255,57 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 		is.Equal(expectedValues, updatedRes.Config)
 	})
 }
+
+func TestIsCRD(t *testing.T) {
+	is := assert.New(t)
+	is.True(isCRD("crd.projectcalico.org/v1"))
+	is.True(isCRD("kafka.strimzi.io/v1alpha1"))
+	is.False(isCRD("v1"))
+	is.False(isCRD("app/v1"))
+	is.False(isCRD("banana/v17"))
+	is.False(isCRD("extensions/v1beta1"))
+	is.False(isCRD("networking.k8s.io/v1"))
+}
+
+func TestDetectNewResources(t *testing.T) {
+	t.Skip("This is a live test, comment this line to run")
+	is := assert.New(t)
+	c := kube.New(nil)
+	test1KubernetesNetworkPolicyV1, err := c.Build(strings.NewReader(test1KubernetesNetworkPolicyV1Manifest), false)
+	is.NoError(err)
+	test1KubernetesNetworkPolicyV1Beta1, err := c.Build(strings.NewReader(test1KubernetesNetworkPolicyV1Beta1Manifest), false)
+	is.NoError(err)
+	test2KubernetesNetworkPolicyV1, err := c.Build(strings.NewReader(test2KubernetesNetworkPolicyV1Manifest), false)
+	is.NoError(err)
+
+	// Update of resource
+	is.Nil(detectNewResources(&test1KubernetesNetworkPolicyV1, &test1KubernetesNetworkPolicyV1))
+	// Update of resource - API version changed
+	is.Nil(detectNewResources(&test1KubernetesNetworkPolicyV1Beta1, &test1KubernetesNetworkPolicyV1))
+	// New resource was added
+	is.Equal(test2KubernetesNetworkPolicyV1, detectNewResources(&test1KubernetesNetworkPolicyV1, &test2KubernetesNetworkPolicyV1))
+}
+
+const test1KubernetesNetworkPolicyV1Manifest = `
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: test1
+spec: {}
+`
+
+const test1KubernetesNetworkPolicyV1Beta1Manifest = `
+kind: NetworkPolicy
+apiVersion: extensions/v1beta1
+metadata:
+  name: test1
+spec: {}
+`
+
+const test2KubernetesNetworkPolicyV1Manifest = `
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: test2
+spec: {}
+`
