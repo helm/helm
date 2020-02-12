@@ -65,8 +65,15 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			client.IncludeCRDs = includeCrds
 			rel, err := runInstall(args, client, valueOpts, out)
 
-			// We ignore a potential error here because we always want to print the YAML,
-			// even if it is not valid. The error is still returned afterwards.
+			if err != nil && !settings.Debug {
+				if rel != nil {
+					return fmt.Errorf("%w\n\nUse --debug flag to render out invalid YAML", err)
+				}
+				return err
+			}
+
+			// We ignore a potential error here because, when the --debug flag was specified,
+			// we always want to print the YAML, even if it is not valid. The error is still returned afterwards.
 			if rel != nil {
 				var manifests bytes.Buffer
 				fmt.Fprintln(&manifests, strings.TrimSpace(rel.Manifest))
