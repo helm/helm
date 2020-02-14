@@ -460,7 +460,7 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 	}
 
 	if err2 != nil {
-		return hs, b, "", err
+		return hs, b, "", err2
 	}
 
 	// NOTES.txt gets rendered like all the other files, but because it's not a hook nor a resource,
