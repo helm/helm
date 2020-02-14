@@ -88,7 +88,7 @@ func (c *Client) IsReachable() error {
 	client, _ := c.Factory.KubernetesClientSet()
 	_, err := client.ServerVersion()
 	if err != nil {
-		return errors.New("Kubernetes cluster unreachable")
+		return fmt.Errorf("Kubernetes cluster unreachable: %s", err.Error())
 	}
 	return nil
 }
