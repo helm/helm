@@ -452,12 +452,11 @@ func isCRD(groupVersion string) bool {
 		return false
 	}
 	group := s[0]
-	s = strings.Split(group, ".")
-	if len(s) == 1 {
+	if strings.Count(group, ".") == 0 {
 		// "apps/v1"
 		return false
 	}
-	if s[len(s)-2] == "k8s" && s[len(s)-1] == "io" {
+	if strings.HasSuffix(group, "k8s.io") {
 		// "networking.k8s.io/v1"
 		return false
 	}
