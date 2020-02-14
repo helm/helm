@@ -240,6 +240,21 @@ func TestInstallRelease_DryRun(t *testing.T) {
 	is.Equal(res.Info.Description, "Dry run complete")
 }
 
+func TestInstallReleaseIncorrectTemplate_DryRun(t *testing.T) {
+	is := assert.New(t)
+	instAction := installAction(t)
+	instAction.DryRun = true
+	vals := map[string]interface{}{}
+	_, err := instAction.Run(buildChart(withSampleIncludingIncorrectTemplates()), vals)
+	expectedErr := "\"hello/templates/incorrect\" at <.Values.bad.doh>: nil pointer evaluating interface {}.doh"
+	if err == nil {
+		t.Fatalf("Install should fail containing error: %s", expectedErr)
+	}
+	if err != nil {
+		is.Contains(err.Error(), expectedErr)
+	}
+}
+
 func TestInstallRelease_NoHooks(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
