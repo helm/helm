@@ -24,35 +24,12 @@ import (
 	"github.com/spf13/cobra"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/clientcmd"
 
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/action"
-)
-
-const (
-	contextCompFunc = `
-__helm_get_contexts()
-{
-    __helm_debug "${FUNCNAME[0]}: c is $c words[c] is ${words[c]}"
-    local template out
-    template="{{ range .contexts  }}{{ .name }} {{ end }}"
-    if out=$(kubectl config -o template --template="${template}" view 2>/dev/null); then
-        COMPREPLY=( $( compgen -W "${out[*]}" -- "$cur" ) )
-    fi
-}
-`
-)
-
-var (
-	// Mapping of global flags that can have dynamic completion and the
-	// completion function to be used.
-	bashCompletionFlags = map[string]string{
-		// Cannot convert the kube-context flag to Go completion yet because
-		// an incomplete kube-context will make actionConfig.Init() fail at the very start
-		"kube-context": "__helm_get_contexts",
-	}
 )
 
 var globalUsage = `The Kubernetes package manager
@@ -101,14 +78,14 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		Long:                   globalUsage,
 		SilenceUsage:           true,
 		Args:                   require.NoArgs,
-		BashCompletionFunction: fmt.Sprintf("%s%s", contextCompFunc, completion.GetBashCustomFunction()),
+		BashCompletionFunction: completion.GetBashCustomFunction(),
 	}
 	flags := cmd.PersistentFlags()
 
 	settings.AddFlags(flags)
 
-	flag := flags.Lookup("namespace")
 	// Setup shell completion for the namespace flag
+	flag := flags.Lookup("namespace")
 	completion.RegisterFlagCompletionFunc(flag, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
 		if client, err := actionConfig.KubernetesClientSet(); err == nil {
 			// Choose a long enough timeout that the user notices somethings is not working
@@ -127,6 +104,29 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 			}
 		}
 		return nil, completion.BashCompDirectiveDefault
+	})
+
+	// Setup shell completion for the kube-context flag
+	flag = flags.Lookup("kube-context")
+	completion.RegisterFlagCompletionFunc(flag, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
+		completion.CompDebugln("About to get the different kube-contexts")
+
+		loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
+		if len(settings.KubeConfig) > 0 {
+			loadingRules = &clientcmd.ClientConfigLoadingRules{ExplicitPath: settings.KubeConfig}
+		}
+		if config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+			loadingRules,
+			&clientcmd.ConfigOverrides{}).RawConfig(); err == nil {
+			ctxs := []string{}
+			for name := range config.Contexts {
+				if strings.HasPrefix(name, toComplete) {
+					ctxs = append(ctxs, name)
+				}
+			}
+			return ctxs, completion.BashCompDirectiveNoFileComp
+		}
+		return nil, completion.BashCompDirectiveNoFileComp
 	})
 
 	// We can safely ignore any errors that flags.Parse encounters since
@@ -172,19 +172,6 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		// Setup the special hidden __complete command to allow for dynamic auto-completion
 		completion.NewCompleteCmd(settings, out),
 	)
-
-	// Add annotation to flags for which we can generate completion choices
-	for name, completion := range bashCompletionFlags {
-		if cmd.Flag(name) != nil {
-			if cmd.Flag(name).Annotations == nil {
-				cmd.Flag(name).Annotations = map[string][]string{}
-			}
-			cmd.Flag(name).Annotations[cobra.BashCompCustom] = append(
-				cmd.Flag(name).Annotations[cobra.BashCompCustom],
-				completion,
-			)
-		}
-	}
 
 	// Add *experimental* subcommands
 	registryClient, err := registry.NewClient(

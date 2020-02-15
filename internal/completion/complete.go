@@ -35,9 +35,9 @@ import (
 // This should ultimately be pushed down into Cobra.
 // ==================================================================================
 
-// compRequestCmd Hidden command to request completion results from the program.
+// CompRequestCmd Hidden command to request completion results from the program.
 // Used by the shell completion script.
-const compRequestCmd = "__complete"
+const CompRequestCmd = "__complete"
 
 // Global map allowing to find completion functions for commands or flags.
 var validArgsFunctions = map[interface{}]func(cmd *cobra.Command, args []string, toComplete string) ([]string, BashCompDirective){}
@@ -123,7 +123,7 @@ __helm_custom_func()
         done < <(compgen -W "${out[*]}" -- "$cur")
     fi
 }
-`, compRequestCmd, BashCompDirectiveError, BashCompDirectiveNoSpace, BashCompDirectiveNoFileComp)
+`, CompRequestCmd, BashCompDirectiveError, BashCompDirectiveNoSpace, BashCompDirectiveNoFileComp)
 }
 
 // RegisterValidArgsFunc should be called to register a function to provide argument completion for a command
@@ -177,14 +177,14 @@ func (d BashCompDirective) string() string {
 func NewCompleteCmd(settings *cli.EnvSettings, out io.Writer) *cobra.Command {
 	debug = settings.Debug
 	return &cobra.Command{
-		Use:                   fmt.Sprintf("%s [command-line]", compRequestCmd),
+		Use:                   fmt.Sprintf("%s [command-line]", CompRequestCmd),
 		DisableFlagsInUseLine: true,
 		Hidden:                true,
 		DisableFlagParsing:    true,
 		Args:                  require.MinimumNArgs(1),
 		Short:                 "Request shell completion choices for the specified command-line",
 		Long: fmt.Sprintf("%s is a special command that is used by the shell completion logic\n%s",
-			compRequestCmd, "to request completion choices for the specified command-line."),
+			CompRequestCmd, "to request completion choices for the specified command-line."),
 		Run: func(cmd *cobra.Command, args []string) {
 			CompDebugln(fmt.Sprintf("%s was called with args %v", cmd.Name(), args))
 
