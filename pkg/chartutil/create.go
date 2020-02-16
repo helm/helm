@@ -405,7 +405,10 @@ Includes the 'image' and 'imagePullPolicy' keys.
 */}}
 {{- define "<CHARTNAME>.registryImage" -}}
 image: {{ include "<CHARTNAME>.imageReference" . }}
-{{ include "<CHARTNAME>.imagePullPolicy" . }}
+{{- $pullPolicy := include "<CHARTNAME>.imagePullPolicy" . -}}
+{{- if $pullPolicy }}
+{{ $pullPolicy }}
+{{- end -}}
 {{- end -}}
 
 {{/*
@@ -413,15 +416,19 @@ The most complete image reference, including the
 registry address, repository, tag and digest when available.
 */}}
 {{- define "<CHARTNAME>.imageReference" -}}
-{{- $registry := include "<CHARTNAME>.imageRegistry" . -}}
-{{- $namespace := include "<CHARTNAME>.imageNamespace" . -}}
-{{- printf "%s/%s/%s" $registry $namespace .image.name -}}
+{{ include "<CHARTNAME>.imagePath" . }}
 {{- if .image.tag -}}
 {{- printf ":%s" .image.tag -}}
 {{- end -}}
 {{- if .image.digest -}}
 {{- printf "@%s" .image.digest -}}
 {{- end -}}
+{{- end -}}
+
+{{- define "<CHARTNAME>.imagePath" -}}
+{{- $registry := include "<CHARTNAME>.imageRegistry" . -}}
+{{- $namespace := include "<CHARTNAME>.imageNamespace" . -}}
+{{- printf "%s/%s/%s" $registry $namespace .image.name -}}
 {{- end -}}
 
 {{- define "<CHARTNAME>.imageRegistry" -}}
@@ -460,9 +467,9 @@ registry address, repository, tag and digest when available.
 Specify the image pull policy
 */}}
 {{- define "<CHARTNAME>.imagePullPolicy" -}}
-{{ $policy := coalesce .image.pullPolicy .values.global.imagePullPolicy }}
+{{- $policy := coalesce .image.pullPolicy .values.imagePullPolicy .values.global.imagePullPolicy -}}
 {{- if $policy -}}
-imagePullPolicy: "{{ printf "%s" $policy -}}"
+imagePullPolicy: "{{- $policy -}}"
 {{- end -}}
 {{- end -}}
 
@@ -471,12 +478,19 @@ Use the image pull secrets. All of the specified secrets will be used
 */}}
 {{- define "<CHARTNAME>.imagePullSecrets" -}}
 {{- $secrets := .Values.global.imagePullSecrets -}}
+{{- range $_, $chartSecret := .Values.imagePullSecrets -}}
+{{- if $secrets -}}
+{{- $secrets = append $secrets $chartSecret -}}
+{{- else -}}
+{{- $secrets = list $chartSecret -}}
+{{- end -}}
+{{- end -}}
 {{- range $_, $image := .Values.images -}}
 {{- range $_, $s := $image.pullSecrets -}}
-{{- if not $secrets -}}
-{{- $secrets = list $s -}}
-{{- else -}}
+{{- if $secrets -}}
 {{- $secrets = append $secrets $s -}}
+{{- else -}}
+{{- $secrets = list $s -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}
