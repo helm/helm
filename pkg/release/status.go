@@ -19,12 +19,13 @@ package release
 type Status string
 
 // Describe the status of a release
+// NOTE: Make sure to update cmd/helm/status.go when adding or modifying any of these statuses.
 const (
 	// StatusUnknown indicates that a release is in an uncertain state.
 	StatusUnknown Status = "unknown"
 	// StatusDeployed indicates that the release has been pushed to Kubernetes.
 	StatusDeployed Status = "deployed"
-	// StatusUninstalled indicates that a release has been uninstalled from Kubermetes.
+	// StatusUninstalled indicates that a release has been uninstalled from Kubernetes.
 	StatusUninstalled Status = "uninstalled"
 	// StatusSuperseded indicates that this release object is outdated and a newer one exists.
 	StatusSuperseded Status = "superseded"

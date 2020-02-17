@@ -17,6 +17,7 @@ limitations under the License.
 package chartutil
 
 import (
+	"bytes"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -104,6 +105,15 @@ func TestCreateFrom(t *testing.T) {
 	} {
 		if _, err := os.Stat(filepath.Join(dir, f)); err != nil {
 			t.Errorf("Expected %s file: %s", f, err)
+		}
+
+		// Check each file to make sure <CHARTNAME> has been replaced
+		b, err := ioutil.ReadFile(filepath.Join(dir, f))
+		if err != nil {
+			t.Errorf("Unable to read file %s: %s", f, err)
+		}
+		if bytes.Contains(b, []byte("<CHARTNAME>")) {
+			t.Errorf("File %s contains <CHARTNAME>", f)
 		}
 	}
 }

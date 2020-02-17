@@ -40,7 +40,7 @@ func TestKindSorter(t *testing.T) {
 			Head: &SimpleHead{Kind: "ClusterRoleBindingList"},
 		},
 		{
-			Name: "e",
+			Name: "f",
 			Head: &SimpleHead{Kind: "ConfigMap"},
 		},
 		{
@@ -84,11 +84,11 @@ func TestKindSorter(t *testing.T) {
 			Head: &SimpleHead{Kind: "NetworkPolicy"},
 		},
 		{
-			Name: "f",
+			Name: "g",
 			Head: &SimpleHead{Kind: "PersistentVolume"},
 		},
 		{
-			Name: "g",
+			Name: "h",
 			Head: &SimpleHead{Kind: "PersistentVolumeClaim"},
 		},
 		{
@@ -132,7 +132,7 @@ func TestKindSorter(t *testing.T) {
 			Head: &SimpleHead{Kind: "RoleBindingList"},
 		},
 		{
-			Name: "d",
+			Name: "e",
 			Head: &SimpleHead{Kind: "Secret"},
 		},
 		{
@@ -140,7 +140,7 @@ func TestKindSorter(t *testing.T) {
 			Head: &SimpleHead{Kind: "Service"},
 		},
 		{
-			Name: "h",
+			Name: "d",
 			Head: &SimpleHead{Kind: "ServiceAccount"},
 		},
 		{
@@ -166,8 +166,8 @@ func TestKindSorter(t *testing.T) {
 		order       KindSortOrder
 		expected    string
 	}{
-		{"install", InstallOrder, "aAbcC3de1fgh2iIjJkKlLmnopqrxstuvw!"},
-		{"uninstall", UninstallOrder, "wvmutsxrqponLlKkJjIi2hgf1ed3CcbAa!"},
+		{"install", InstallOrder, "aAbcC3def1gh2iIjJkKlLmnopqrxstuvw!"},
+		{"uninstall", UninstallOrder, "wvmutsxrqponLlKkJjIi2hg1fed3CcbAa!"},
 	} {
 		var buf bytes.Buffer
 		t.Run(test.description, func(t *testing.T) {
@@ -185,8 +185,8 @@ func TestKindSorter(t *testing.T) {
 	}
 }
 
-// TestKindSorterSubSort verifies manifests of same kind are also sorted alphanumeric
-func TestKindSorterSubSort(t *testing.T) {
+// TestKindSorterKeepOriginalOrder verifies manifests of same kind are kept in original order
+func TestKindSorterKeepOriginalOrder(t *testing.T) {
 	manifests := []Manifest{
 		{
 			Name: "a",
@@ -230,8 +230,8 @@ func TestKindSorterSubSort(t *testing.T) {
 		order       KindSortOrder
 		expected    string
 	}{
-		// expectation is sorted by kind (unknown is last) and then sub sorted alphabetically within each group
-		{"cm,clusterRole,clusterRoleBinding,Unknown,Unknown2", InstallOrder, "01Aa!zu1u2t3"},
+		// expectation is sorted by kind (unknown is last) and within each group of same kind, the order is kept
+		{"cm,clusterRole,clusterRoleBinding,Unknown,Unknown2", InstallOrder, "01aAz!u2u1t3"},
 	} {
 		var buf bytes.Buffer
 		t.Run(test.description, func(t *testing.T) {
@@ -243,5 +243,26 @@ func TestKindSorterSubSort(t *testing.T) {
 				t.Errorf("Expected %q, got %q", test.expected, got)
 			}
 		})
+	}
+}
+
+func TestKindSorterNamespaceAgainstUnknown(t *testing.T) {
+	unknown := Manifest{
+		Name: "a",
+		Head: &SimpleHead{Kind: "Unknown"},
+	}
+	namespace := Manifest{
+		Name: "b",
+		Head: &SimpleHead{Kind: "Namespace"},
+	}
+
+	manifests := []Manifest{unknown, namespace}
+	sortByKind(manifests, InstallOrder)
+
+	expectedOrder := []Manifest{namespace, unknown}
+	for i, manifest := range manifests {
+		if expectedOrder[i].Name != manifest.Name {
+			t.Errorf("Expected %s, got %s", expectedOrder[i].Name, manifest.Name)
+		}
 	}
 }

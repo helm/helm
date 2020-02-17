@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -36,10 +37,15 @@ This command packages a chart into a versioned chart archive file. If a path
 is given, this will look at that path for a chart (which must contain a
 Chart.yaml file) and then package that directory.
 
-If no path is given, this will look in the present working directory for a
-Chart.yaml file, and (if found) build the current directory into a chart.
-
 Versioned chart archives are used by Helm package repositories.
+
+To sign a chart, use the '--sign' flag. In most cases, you should also
+provide '--keyring path/to/secret/keys' and '--key keyname'.
+
+  $ helm package --sign ./mychart --key mykey --keyring ~/.gnupg/secring.gpg
+
+If '--keyring' is not specified, Helm usually defaults to the public keyring
+unless your environment is otherwise configured.
 `
 
 func newPackageCmd(out io.Writer) *cobra.Command {
@@ -73,6 +79,9 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 			for i := 0; i < len(args); i++ {
 				path, err := filepath.Abs(args[i])
 				if err != nil {
+					return err
+				}
+				if _, err := os.Stat(args[i]); err != nil {
 					return err
 				}
 
@@ -109,7 +118,6 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&client.AppVersion, "app-version", "", "set the appVersion on the chart to this version")
 	f.StringVarP(&client.Destination, "destination", "d", ".", "location to write the chart.")
 	f.BoolVarP(&client.DependencyUpdate, "dependency-update", "u", false, `update dependencies from "Chart.yaml" to dir "charts/" before packaging`)
-	addValueOptionsFlags(f, valueOpts)
 
 	return cmd
 }

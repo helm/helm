@@ -60,6 +60,31 @@ func TestUpgradeRelease_Wait(t *testing.T) {
 	is.Equal(res.Info.Status, release.StatusFailed)
 }
 
+func TestUpgradeRelease_CleanupOnFail(t *testing.T) {
+	is := assert.New(t)
+	req := require.New(t)
+
+	upAction := upgradeAction(t)
+	rel := releaseStub()
+	rel.Name = "come-fail-away"
+	rel.Info.Status = release.StatusDeployed
+	upAction.cfg.Releases.Create(rel)
+
+	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+	failer.WaitError = fmt.Errorf("I timed out")
+	failer.DeleteError = fmt.Errorf("I tried to delete nil")
+	upAction.cfg.KubeClient = failer
+	upAction.Wait = true
+	upAction.CleanupOnFail = true
+	vals := map[string]interface{}{}
+
+	res, err := upAction.Run(rel.Name, buildChart(), vals)
+	req.Error(err)
+	is.NotContains(err.Error(), "unable to cleanup resources")
+	is.Contains(res.Info.Description, "I timed out")
+	is.Equal(res.Info.Status, release.StatusFailed)
+}
+
 func TestUpgradeRelease_Atomic(t *testing.T) {
 	is := assert.New(t)
 	req := require.New(t)
