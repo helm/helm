@@ -31,6 +31,7 @@ import (
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
+	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/internal/resolver"
 	"helm.sh/helm/v3/internal/third_party/dep/fs"
 	"helm.sh/helm/v3/internal/urlutil"
@@ -306,7 +307,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			},
 		}
 
-		if _, _, err := dl.DownloadTo(churl, "", destPath); err != nil {
+		if _, _, err := dl.DownloadTo(churl, dep.Version, destPath); err != nil {
 			saveError = errors.Wrapf(err, "could not download %s", churl)
 			break
 		}
@@ -397,6 +398,11 @@ Loop:
 	for _, dd := range deps {
 		// If repo is from local path, continue
 		if strings.HasPrefix(dd.Repository, "file://") {
+			continue
+		}
+
+		// if repo is an OCI registry, continue
+		if strings.HasPrefix(dd.Repository, fmt.Sprintf("%s://", registry.OCIProtocol)) {
 			continue
 		}
 
@@ -545,7 +551,7 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 // repoURL is the repository to search
 //
 // If it finds a URL that is "relative", it will prepend the repoURL.
-func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRepository) (url, username, password string, err error) {
+func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRepository) (chartURL, username, password string, err error) {
 	for _, cr := range repos {
 		if urlutil.Equal(repoURL, cr.Config.URL) {
 			var entry repo.ChartVersions
@@ -558,7 +564,7 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 			if err != nil {
 				return
 			}
-			url, err = normalizeURL(repoURL, ve.URLs[0])
+			chartURL, err = normalizeURL(repoURL, ve.URLs[0])
 			if err != nil {
 				return
 			}
@@ -567,12 +573,23 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 			return
 		}
 	}
-	url, err = repo.FindChartInRepoURL(repoURL, name, version, "", "", "", m.Getters)
+
+	u, err := url.ParseRequestURI(repoURL)
+	if err != nil {
+		return
+	}
+
+	if u.Scheme == registry.OCIProtocol {
+		chartURL = repoURL
+		return
+	}
+
+	chartURL, err = repo.FindChartInRepoURL(repoURL, name, version, "", "", "", m.Getters)
 	if err == nil {
 		return
 	}
 	err = errors.Errorf("chart %s not found in %s", name, repoURL)
-	return
+	return chartURL, username, password, err
 }
 
 // findEntryByName finds an entry in the chart repository whose name matches the given name.

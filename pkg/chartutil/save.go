@@ -21,6 +21,7 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
@@ -124,28 +125,50 @@ func Save(c *chart.Chart, outDir string) (string, error) {
 		return "", err
 	}
 
-	// Wrap in gzip writer
-	zipper := gzip.NewWriter(f)
-	zipper.Header.Extra = headerBytes
-	zipper.Header.Comment = "Helm"
-
-	// Wrap in tar writer
-	twriter := tar.NewWriter(zipper)
 	rollback := false
+	// save the chart to the file
+	err = Write(c, f)
+
+	if err != nil {
+		rollback = true
+		return filename, err
+	}
+
 	defer func() {
-		twriter.Close()
-		zipper.Close()
 		f.Close()
 		if rollback {
 			os.Remove(filename)
 		}
 	}()
 
-	if err := writeTarContents(twriter, c, ""); err != nil {
-		rollback = true
-		return filename, err
-	}
 	return filename, nil
+}
+
+// Write streams an archived chart to an io.writer interface.
+//
+// This takes an existing chart and a destination writer.
+func Write(c *chart.Chart, w io.Writer) error {
+	if err := c.Validate(); err != nil {
+		return errors.Wrap(err, "chart validation")
+	}
+
+	// Wrap in gzip writer
+	zipper := gzip.NewWriter(w)
+	zipper.Header.Extra = headerBytes
+	zipper.Header.Comment = "Helm"
+
+	// Wrap in tar writer
+	twriter := tar.NewWriter(zipper)
+	defer func() {
+		twriter.Close()
+		zipper.Close()
+	}()
+
+	if err := writeTarContents(twriter, c, ""); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {

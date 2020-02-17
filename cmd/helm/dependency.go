@@ -71,6 +71,15 @@ the dependency charts stored locally. The path should start with a prefix of
 If the dependency chart is retrieved locally, it is not required to have the
 repository added to helm by "helm add repo". Version matching is also supported
 for this case.
+
+Starting from 3.3.0, if OCI Registry support has been enabled via the HELM_EXPERIMENTAL_OCI
+flag, repository can be defined as an OCI image reference. The path should start with a
+prefix of "oci://". For example,
+
+    # Chart.yaml
+    dependencies:
+    - version: "1.2.3"
+      repository: "oci://localhost:5000/myrepo/mychart:2.7.0"
 `
 
 const dependencyListDesc = `
@@ -82,7 +91,7 @@ the contents of a chart.
 This will produce an error if the chart cannot be loaded.
 `
 
-func newDependencyCmd(out io.Writer) *cobra.Command {
+func newDependencyCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "dependency update|build|list",
 		Aliases: []string{"dep", "dependencies"},
@@ -92,8 +101,8 @@ func newDependencyCmd(out io.Writer) *cobra.Command {
 	}
 
 	cmd.AddCommand(newDependencyListCmd(out))
-	cmd.AddCommand(newDependencyUpdateCmd(out))
-	cmd.AddCommand(newDependencyBuildCmd(out))
+	cmd.AddCommand(newDependencyUpdateCmd(cfg, out))
+	cmd.AddCommand(newDependencyBuildCmd(cfg, out))
 
 	return cmd
 }

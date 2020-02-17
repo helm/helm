@@ -96,6 +96,37 @@ func TestFindChartURL(t *testing.T) {
 	}
 }
 
+func TestFindChartUrlForOCIRepository(t *testing.T) {
+	var b bytes.Buffer
+	m := &Manager{
+		Out:              &b,
+		RepositoryConfig: repoConfig,
+		RepositoryCache:  repoCache,
+	}
+	repos, err := m.loadChartRepositories()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	name := "alpine"
+	version := "0.1.0"
+	repoURL := "oci://example.com/charts/alpine"
+
+	churl, username, password, err := m.findChartURL(name, version, repoURL, repos)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if churl != "oci://example.com/charts/alpine" {
+		t.Errorf("Unexpected URL %q", churl)
+	}
+	if username != "" {
+		t.Errorf("Unexpected username %q", username)
+	}
+	if password != "" {
+		t.Errorf("Unexpected password %q", password)
+	}
+}
+
 func TestGetRepoNames(t *testing.T) {
 	b := bytes.NewBuffer(nil)
 	m := &Manager{

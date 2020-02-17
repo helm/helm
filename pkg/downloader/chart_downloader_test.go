@@ -16,12 +16,28 @@ limitations under the License.
 package downloader
 
 import (
+	"bytes"
+	"context"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
+	auth "github.com/deislabs/oras/pkg/auth/docker"
+	"github.com/docker/distribution/configuration"
+	"github.com/docker/distribution/registry"
+	_ "github.com/docker/distribution/registry/auth/htpasswd"
+	_ "github.com/docker/distribution/registry/storage/driver/inmemory"
+	"github.com/phayes/freeport"
+	"github.com/stretchr/testify/assert"
+	"golang.org/x/crypto/bcrypt"
+
+	helmregistry "helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/internal/test/ensure"
+	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/repo"
@@ -320,6 +336,298 @@ func TestDownloadTo_VerifyLater(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dest, cname+".prov")); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestDownloadToFromOCIRepository(t *testing.T) {
+	var (
+		CredentialsFileBasename  = "config.json"
+		testCacheRootDir         = "helm-registry-test"
+		testHtpasswdFileBasename = "authtest.htpasswd"
+		testUsername             = "myuser"
+		testPassword             = "mypass"
+	)
+	os.RemoveAll(testCacheRootDir)
+	os.Mkdir(testCacheRootDir, 0700)
+
+	var out bytes.Buffer
+	credentialsFile := filepath.Join(testCacheRootDir, CredentialsFileBasename)
+
+	client, err := auth.NewClient(credentialsFile)
+	assert.Nil(t, err, "no error creating auth client")
+
+	resolver, err := client.Resolver(context.Background(), http.DefaultClient, false)
+	assert.Nil(t, err, "no error creating resolver")
+
+	// create cache
+	cache, err := helmregistry.NewCache(
+		helmregistry.CacheOptDebug(true),
+		helmregistry.CacheOptWriter(&out),
+		helmregistry.CacheOptRoot(filepath.Join(testCacheRootDir, helmregistry.CacheRootDir)),
+	)
+
+	assert.Nil(t, err, "failed creating cache")
+
+	// init test client
+	registryClient, err := helmregistry.NewClient(
+		helmregistry.ClientOptDebug(true),
+		helmregistry.ClientOptWriter(&out),
+		helmregistry.ClientOptAuthorizer(&helmregistry.Authorizer{
+			Client: client,
+		}),
+		helmregistry.ClientOptResolver(&helmregistry.Resolver{
+			Resolver: resolver,
+		}),
+		helmregistry.ClientOptCache(cache),
+	)
+	assert.Nil(t, err, "failed creating registry client")
+
+	// create htpasswd file (w BCrypt, which is required)
+	pwBytes, err := bcrypt.GenerateFromPassword([]byte(testPassword), bcrypt.DefaultCost)
+	assert.Nil(t, err, "no error generating bcrypt password for test htpasswd file")
+	htpasswdPath := filepath.Join(testCacheRootDir, testHtpasswdFileBasename)
+	err = ioutil.WriteFile(htpasswdPath, []byte(fmt.Sprintf("%s:%s\n", testUsername, string(pwBytes))), 0644)
+	assert.Nil(t, err, "error creating test htpasswd file")
+
+	// Registry config
+	config := &configuration.Configuration{}
+	port, err := freeport.GetFreePort()
+	assert.Nil(t, err, "no error finding free port for test registry")
+	dockerRegistryHost := fmt.Sprintf("localhost:%d", port)
+	config.HTTP.Addr = fmt.Sprintf(":%d", port)
+	config.HTTP.DrainTimeout = time.Duration(10) * time.Second
+	config.Storage = map[string]configuration.Parameters{"inmemory": map[string]interface{}{}}
+	config.Auth = configuration.Auth{
+		"htpasswd": configuration.Parameters{
+			"realm": "localhost",
+			"path":  htpasswdPath,
+		},
+	}
+	dockerRegistry, err := registry.NewRegistry(context.Background(), config)
+	assert.Nil(t, err, "no error creating test registry")
+
+	// Start Docker registry
+	go dockerRegistry.ListenAndServe()
+	err = registryClient.Login(dockerRegistryHost, testUsername, testPassword, false)
+	assert.Nil(t, err, "failed to login to registry with username "+testUsername+" and password "+testPassword)
+
+	ref, _ := helmregistry.ParseReference(fmt.Sprintf("%s/testrepo/testchart:1.2.3", dockerRegistryHost))
+	ch, err := loader.LoadDir("testdata/local-subchart")
+	assert.Nil(t, err, "failed to load local chart")
+	err = registryClient.SaveChart(ch, ref)
+	assert.Nil(t, err, "failed to save chart")
+	err = registryClient.PushChart(ref)
+	assert.Nil(t, err, "failed to push chart")
+
+	c := ChartDownloader{
+		Out:              os.Stderr,
+		Verify:           VerifyIfPossible,
+		Keyring:          "testdata/helm-test-key.pub",
+		RepositoryConfig: repoConfig,
+		RepositoryCache:  repoCache,
+		Getters: append(getter.All(&cli.EnvSettings{
+			RepositoryConfig: repoConfig,
+			RepositoryCache:  repoCache,
+		}), helmregistry.NewRegistryGetterProvider(registryClient)),
+		Options: []getter.Option{
+			getter.WithBasicAuth("username", "password"),
+		},
+	}
+	// the filename becomes the {last segment of the image name}-{the image tag}
+	fname := "/testchart-1.2.3.tgz"
+	dest := ensure.TempDir(t)
+	where, _, err := c.DownloadTo(fmt.Sprintf("oci://%s/testrepo/testchart:1.2.3", dockerRegistryHost), "", dest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if expect := filepath.Join(dest, fname); where != expect {
+		t.Errorf("Expected download to %s, got %s", expect, where)
+	}
+
+	if _, err := os.Stat(filepath.Join(dest, fname)); err != nil {
+		t.Error(err)
+	}
+
+	os.RemoveAll(testCacheRootDir)
+}
+
+func TestDownloadToFromOCIRepositoryWithoutTag(t *testing.T) {
+	var (
+		CredentialsFileBasename  = "config.json"
+		testCacheRootDir         = "helm-registry-test"
+		testHtpasswdFileBasename = "authtest.htpasswd"
+		testUsername             = "myuser"
+		testPassword             = "mypass"
+	)
+	os.RemoveAll(testCacheRootDir)
+	os.Mkdir(testCacheRootDir, 0700)
+
+	var out bytes.Buffer
+	credentialsFile := filepath.Join(testCacheRootDir, CredentialsFileBasename)
+
+	client, err := auth.NewClient(credentialsFile)
+	assert.Nil(t, err, "no error creating auth client")
+
+	resolver, err := client.Resolver(context.Background(), http.DefaultClient, false)
+	assert.Nil(t, err, "no error creating resolver")
+
+	// create cache
+	cache, err := helmregistry.NewCache(
+		helmregistry.CacheOptDebug(true),
+		helmregistry.CacheOptWriter(&out),
+		helmregistry.CacheOptRoot(filepath.Join(testCacheRootDir, helmregistry.CacheRootDir)),
+	)
+
+	assert.Nil(t, err, "failed creating cache")
+
+	// init test client
+	registryClient, err := helmregistry.NewClient(
+		helmregistry.ClientOptDebug(true),
+		helmregistry.ClientOptWriter(&out),
+		helmregistry.ClientOptAuthorizer(&helmregistry.Authorizer{
+			Client: client,
+		}),
+		helmregistry.ClientOptResolver(&helmregistry.Resolver{
+			Resolver: resolver,
+		}),
+		helmregistry.ClientOptCache(cache),
+	)
+	assert.Nil(t, err, "failed creating registry client")
+
+	// create htpasswd file (w BCrypt, which is required)
+	pwBytes, err := bcrypt.GenerateFromPassword([]byte(testPassword), bcrypt.DefaultCost)
+	assert.Nil(t, err, "no error generating bcrypt password for test htpasswd file")
+	htpasswdPath := filepath.Join(testCacheRootDir, testHtpasswdFileBasename)
+	err = ioutil.WriteFile(htpasswdPath, []byte(fmt.Sprintf("%s:%s\n", testUsername, string(pwBytes))), 0644)
+	assert.Nil(t, err, "error creating test htpasswd file")
+
+	// Registry config
+	config := &configuration.Configuration{}
+	port, err := freeport.GetFreePort()
+	assert.Nil(t, err, "no error finding free port for test registry")
+	dockerRegistryHost := fmt.Sprintf("localhost:%d", port)
+	config.HTTP.Addr = fmt.Sprintf(":%d", port)
+	config.HTTP.DrainTimeout = time.Duration(10) * time.Second
+	config.Storage = map[string]configuration.Parameters{"inmemory": map[string]interface{}{}}
+	config.Auth = configuration.Auth{
+		"htpasswd": configuration.Parameters{
+			"realm": "localhost",
+			"path":  htpasswdPath,
+		},
+	}
+	dockerRegistry, err := registry.NewRegistry(context.Background(), config)
+	assert.Nil(t, err, "no error creating test registry")
+
+	// Start Docker registry
+	go dockerRegistry.ListenAndServe()
+	err = registryClient.Login(dockerRegistryHost, testUsername, testPassword, false)
+	assert.Nil(t, err, "failed to login to registry with username "+testUsername+" and password "+testPassword)
+
+	ref, _ := helmregistry.ParseReference(fmt.Sprintf("%s/testrepo/testchart:1.2.3", dockerRegistryHost))
+	ch, err := loader.LoadDir("testdata/local-subchart")
+	assert.Nil(t, err, "failed to load local chart")
+	err = registryClient.SaveChart(ch, ref)
+	assert.Nil(t, err, "failed to save chart")
+	err = registryClient.PushChart(ref)
+	assert.Nil(t, err, "failed to push chart")
+
+	c := ChartDownloader{
+		Out:              os.Stderr,
+		Verify:           VerifyIfPossible,
+		Keyring:          "testdata/helm-test-key.pub",
+		RepositoryConfig: repoConfig,
+		RepositoryCache:  repoCache,
+		Getters: append(getter.All(&cli.EnvSettings{
+			RepositoryConfig: repoConfig,
+			RepositoryCache:  repoCache,
+		}), helmregistry.NewRegistryGetterProvider(registryClient)),
+		Options: []getter.Option{
+			getter.WithBasicAuth("username", "password"),
+		},
+	}
+	// the filename becomes the {last segment of the image name}-{the image tag}
+	fname := "/testchart-1.2.3.tgz"
+	dest := ensure.TempDir(t)
+	version := "1.2.3"
+	where, _, err := c.DownloadTo(fmt.Sprintf("oci://%s/testrepo/testchart", dockerRegistryHost), version, dest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if expect := filepath.Join(dest, fname); where != expect {
+		t.Errorf("Expected download to %s, got %s", expect, where)
+	}
+
+	if _, err := os.Stat(filepath.Join(dest, fname)); err != nil {
+		t.Error(err)
+	}
+
+	os.RemoveAll(testCacheRootDir)
+}
+
+func TestDownloadToFromOCIRepositoryWithoutTagOrVersion(t *testing.T) {
+	var (
+		CredentialsFileBasename = "config.json"
+		testCacheRootDir        = "helm-registry-test"
+	)
+	os.RemoveAll(testCacheRootDir)
+	os.Mkdir(testCacheRootDir, 0700)
+
+	var out bytes.Buffer
+	credentialsFile := filepath.Join(testCacheRootDir, CredentialsFileBasename)
+
+	client, err := auth.NewClient(credentialsFile)
+	assert.Nil(t, err, "no error creating auth client")
+
+	resolver, err := client.Resolver(context.Background(), http.DefaultClient, false)
+	assert.Nil(t, err, "no error creating resolver")
+
+	// create cache
+	cache, err := helmregistry.NewCache(
+		helmregistry.CacheOptDebug(true),
+		helmregistry.CacheOptWriter(&out),
+		helmregistry.CacheOptRoot(filepath.Join(testCacheRootDir, helmregistry.CacheRootDir)),
+	)
+
+	assert.Nil(t, err, "failed creating cache")
+
+	// init test client
+	registryClient, err := helmregistry.NewClient(
+		helmregistry.ClientOptDebug(true),
+		helmregistry.ClientOptWriter(&out),
+		helmregistry.ClientOptAuthorizer(&helmregistry.Authorizer{
+			Client: client,
+		}),
+		helmregistry.ClientOptResolver(&helmregistry.Resolver{
+			Resolver: resolver,
+		}),
+		helmregistry.ClientOptCache(cache),
+	)
+
+	assert.Nil(t, err, "failed creating registry client")
+
+	c := ChartDownloader{
+		Out:              os.Stderr,
+		Verify:           VerifyIfPossible,
+		Keyring:          "testdata/helm-test-key.pub",
+		RepositoryConfig: repoConfig,
+		RepositoryCache:  repoCache,
+		Getters: append(getter.All(&cli.EnvSettings{
+			RepositoryConfig: repoConfig,
+			RepositoryCache:  repoCache,
+		}), helmregistry.NewRegistryGetterProvider(registryClient)),
+		Options: []getter.Option{
+			getter.WithBasicAuth("username", "password"),
+		},
+	}
+	// the filename becomes the {last segment of the image name}-{the image tag}
+	dest := ensure.TempDir(t)
+	_, _, err = c.DownloadTo("oci://testrepo/testchart", "", dest)
+	if err == nil {
+		t.Error("download succeeded without version or tag")
+	}
+
+	os.RemoveAll(testCacheRootDir)
 }
 
 func TestScanReposForURL(t *testing.T) {
