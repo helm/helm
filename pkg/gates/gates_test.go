@@ -45,3 +45,12 @@ func TestError(t *testing.T) {
 		t.Errorf("incorrect error message. Received %s", g.Error().Error())
 	}
 }
+
+func TestString(t *testing.T) {
+	os.Unsetenv(name)
+	g := Gate(name)
+
+	if g.String() != "HELM_EXPERIMENTAL_FEATURE" {
+		t.Errorf("incorrect string representation. Received %s", g.String())
+	}
+}
