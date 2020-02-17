@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -102,7 +103,7 @@ func newSearchRepoCmd(out io.Writer) *cobra.Command {
 func (o *searchRepoOptions) run(out io.Writer, args []string) error {
 	o.setupSearchedVersion()
 
-	index, err := o.buildIndex(out)
+	index, err := o.buildIndex()
 	if err != nil {
 		return err
 	}
@@ -171,7 +172,7 @@ func (o *searchRepoOptions) applyConstraint(res []*search.Result) ([]*search.Res
 	return data, nil
 }
 
-func (o *searchRepoOptions) buildIndex(out io.Writer) (*search.Index, error) {
+func (o *searchRepoOptions) buildIndex() (*search.Index, error) {
 	// Load the repositories.yaml
 	rf, err := repo.LoadFile(o.repoFile)
 	if isNotExist(err) || len(rf.Repositories) == 0 {
@@ -184,8 +185,7 @@ func (o *searchRepoOptions) buildIndex(out io.Writer) (*search.Index, error) {
 		f := filepath.Join(o.repoCacheDir, helmpath.CacheIndexFile(n))
 		ind, err := repo.LoadIndexFile(f)
 		if err != nil {
-			// TODO should print to stderr
-			fmt.Fprintf(out, "WARNING: Repo %q is corrupt or missing. Try 'helm repo update'.", n)
+			fmt.Fprintf(os.Stderr, "WARNING: Repo %q is corrupt or missing. Try 'helm repo update'.", n)
 			continue
 		}
 
