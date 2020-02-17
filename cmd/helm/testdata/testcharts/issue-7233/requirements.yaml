@@ -1,0 +1,4 @@
+dependencies:
+- name: alpine
+  version: 0.1.0
+  repository: file://../alpine

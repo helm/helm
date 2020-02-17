@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/url"
 	"os"
 	"path"
@@ -86,7 +87,17 @@ func (m *Manager) Build() error {
 	}
 
 	if sum, err := resolver.HashReq(req, lock.Dependencies); err != nil || sum != lock.Digest {
-		return errors.New("Chart.lock is out of sync with Chart.yaml")
+		// If lock digest differs and chart is apiVersion v1, it maybe because the lock was built
+		// with Helm 2 and therefore should be checked with Helm v2 hash
+		// Fix for: https://github.com/helm/helm/issues/7233
+		if c.Metadata.APIVersion == chart.APIVersionV1 {
+			log.Println("warning: a valid Helm v3 hash was not found. Checking against Helm v2 hash...")
+			if sum, err := resolver.HashV2Req(req); err != nil || sum != lock.Digest {
+				return errors.New("the lock file (requirements.lock) is out of sync with the dependencies file (requirements.yaml). Please update the dependencies")
+			}
+		} else {
+			return errors.New("the lock file (Chart.lock) is out of sync with the dependencies file (Chart.yaml). Please update the dependencies")
+		}
 	}
 
 	// Check that all of the repos we're dependent on actually exist.
@@ -149,6 +160,13 @@ func (m *Manager) Update() error {
 		return err
 	}
 
+	// downloadAll might overwrite dependency version, recalculate lock digest
+	newDigest, err := resolver.HashReq(req, lock.Dependencies)
+	if err != nil {
+		return err
+	}
+	lock.Digest = newDigest
+
 	// If the lock file hasn't changed, don't write a new one.
 	oldLock := c.Lock
 	if oldLock != nil && oldLock.Digest == lock.Digest {
@@ -156,7 +174,7 @@ func (m *Manager) Update() error {
 	}
 
 	// Finally, we need to write the lockfile.
-	return writeLock(m.ChartPath, lock)
+	return writeLock(m.ChartPath, lock, c.Metadata.APIVersion == chart.APIVersionV1)
 }
 
 func (m *Manager) loadChartDir() (*chart.Chart, error) {
@@ -627,12 +645,16 @@ func (m *Manager) loadChartRepositories() (map[string]*repo.ChartRepository, err
 }
 
 // writeLock writes a lockfile to disk
-func writeLock(chartpath string, lock *chart.Lock) error {
+func writeLock(chartpath string, lock *chart.Lock, legacyLockfile bool) error {
 	data, err := yaml.Marshal(lock)
 	if err != nil {
 		return err
 	}
-	dest := filepath.Join(chartpath, "Chart.lock")
+	lockfileName := "Chart.lock"
+	if legacyLockfile {
+		lockfileName = "requirements.lock"
+	}
+	dest := filepath.Join(chartpath, lockfileName)
 	return ioutil.WriteFile(dest, data, 0644)
 }
 

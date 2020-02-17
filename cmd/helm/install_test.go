@@ -183,7 +183,17 @@ func TestInstall(t *testing.T) {
 			wantError: true,
 			golden:    "output/subchart-schema-cli-negative.txt",
 		},
+		// Install deprecated chart
+		{
+			name:   "install with warning about deprecated chart",
+			cmd:    "install aeneas testdata/testcharts/deprecated --namespace default",
+			golden: "output/deprecated-chart.txt",
+		},
 	}
 
 	runTestActionCmd(t, tests)
+}
+
+func TestInstallOutputCompletion(t *testing.T) {
+	outputFlagCompletionTest(t, "install")
 }

@@ -460,6 +460,15 @@ func TestAlterFuncMap_include(t *testing.T) {
 		},
 	}
 
+	// Check nested reference in include FuncMap
+	d := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "nested"},
+		Templates: []*chart.File{
+			{Name: "templates/quote", Data: []byte(`{{include "nested/templates/quote" . | indent 2}} dead.`)},
+			{Name: "templates/_partial", Data: []byte(`{{.Release.Name}} - he`)},
+		},
+	}
+
 	v := chartutil.Values{
 		"Values": "",
 		"Chart":  c.Metadata,
@@ -476,6 +485,12 @@ func TestAlterFuncMap_include(t *testing.T) {
 	expect := "  Mistah Kurtz - he dead."
 	if got := out["conrad/templates/quote"]; got != expect {
 		t.Errorf("Expected %q, got %q (%v)", expect, got, out)
+	}
+
+	_, err = Render(d, v)
+	expectErrName := "nested/templates/quote"
+	if err == nil {
+		t.Errorf("Expected err of nested reference name: %v", expectErrName)
 	}
 }
 
@@ -624,6 +639,61 @@ func TestAlterFuncMap_tplinclude(t *testing.T) {
 
 	expect := "\"TplFunction/templates/base\""
 	if got := out["TplFunction/templates/base"]; got != expect {
+		t.Errorf("Expected %q, got %q (%v)", expect, got, out)
+	}
+
+}
+
+func TestRenderRecursionLimit(t *testing.T) {
+	// endless recursion should produce an error
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "bad"},
+		Templates: []*chart.File{
+			{Name: "templates/base", Data: []byte(`{{include "recursion" . }}`)},
+			{Name: "templates/recursion", Data: []byte(`{{define "recursion"}}{{include "recursion" . }}{{end}}`)},
+		},
+	}
+	v := chartutil.Values{
+		"Values": "",
+		"Chart":  c.Metadata,
+		"Release": chartutil.Values{
+			"Name": "TestRelease",
+		},
+	}
+	expectErr := "rendering template has a nested reference name: recursion: unable to execute template"
+
+	_, err := Render(c, v)
+	if err == nil || !strings.HasSuffix(err.Error(), expectErr) {
+		t.Errorf("Expected err with suffix: %s", expectErr)
+	}
+
+	// calling the same function many times is ok
+	times := 4000
+	phrase := "All work and no play makes Jack a dull boy"
+	printFunc := `{{define "overlook"}}{{printf "` + phrase + `\n"}}{{end}}`
+	var repeatedIncl string
+	for i := 0; i < times; i++ {
+		repeatedIncl += `{{include "overlook" . }}`
+	}
+
+	d := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "overlook"},
+		Templates: []*chart.File{
+			{Name: "templates/quote", Data: []byte(repeatedIncl)},
+			{Name: "templates/_function", Data: []byte(printFunc)},
+		},
+	}
+
+	out, err := Render(d, v)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var expect string
+	for i := 0; i < times; i++ {
+		expect += phrase + "\n"
+	}
+	if got := out["overlook/templates/quote"]; got != expect {
 		t.Errorf("Expected %q, got %q (%v)", expect, got, out)
 	}
 

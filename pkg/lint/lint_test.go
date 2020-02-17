@@ -35,12 +35,12 @@ const goodChartDir = "rules/testdata/goodone"
 
 func TestBadChart(t *testing.T) {
 	m := All(badChartDir, values, namespace, strict).Messages
-	if len(m) != 8 {
+	if len(m) != 7 {
 		t.Errorf("Number of errors %v", len(m))
 		t.Errorf("All didn't fail with expected errors, got %#v", m)
 	}
 	// There should be one INFO, 2 WARNINGs and one ERROR messages, check for them
-	var i, w, e, e2, e3, e4, e5, e6 bool
+	var i, w, e, e2, e3, e4, e5 bool
 	for _, msg := range m {
 		if msg.Severity == support.InfoSev {
 			if strings.Contains(msg.Err.Error(), "icon is recommended") {
@@ -59,24 +59,21 @@ func TestBadChart(t *testing.T) {
 			if strings.Contains(msg.Err.Error(), "name is required") {
 				e2 = true
 			}
-			if strings.Contains(msg.Err.Error(), "directory name (badchartfile) and chart name () must be the same") {
+
+			if strings.Contains(msg.Err.Error(), "apiVersion is required. The value must be either \"v1\" or \"v2\"") {
 				e3 = true
 			}
 
-			if strings.Contains(msg.Err.Error(), "apiVersion is required. The value must be either \"v1\" or \"v2\"") {
+			if strings.Contains(msg.Err.Error(), "chart type is not valid in apiVersion") {
 				e4 = true
 			}
 
-			if strings.Contains(msg.Err.Error(), "chart type is not valid in apiVersion") {
-				e5 = true
-			}
-
 			if strings.Contains(msg.Err.Error(), "dependencies are not valid in the Chart file with apiVersion") {
-				e6 = true
+				e5 = true
 			}
 		}
 	}
-	if !e || !e2 || !e3 || !e4 || !e5 || !e6 || !w || !i {
+	if !e || !e2 || !e3 || !e4 || !e5 || !w || !i {
 		t.Errorf("Didn't find all the expected errors, got %#v", m)
 	}
 }

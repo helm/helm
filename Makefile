@@ -1,14 +1,16 @@
-BINDIR     := $(CURDIR)/bin
-DIST_DIRS  := find * -type d -exec
-TARGETS    := darwin/amd64 linux/amd64 linux/386 linux/arm linux/arm64 linux/ppc64le windows/amd64
-BINNAME    ?= helm
+BINDIR      := $(CURDIR)/bin
+DIST_DIRS   := find * -type d -exec
+TARGETS     := darwin/amd64 linux/amd64 linux/386 linux/arm linux/arm64 linux/ppc64le linux/s390x windows/amd64
+TARGET_OBJS ?= darwin-amd64.tar.gz darwin-amd64.tar.gz.sha256 linux-amd64.tar.gz linux-amd64.tar.gz.sha256 linux-386.tar.gz linux-386.tar.gz.sha256 linux-arm.tar.gz linux-arm.tar.gz.sha256 linux-arm64.tar.gz linux-arm64.tar.gz.sha256 linux-ppc64le.tar.gz linux-ppc64le.tar.gz.sha256 linux-s390x.tar.gz linux-s390x.tar.gz.sha256 windows-amd64.zip windows-amd64.zip.sha256
+BINNAME     ?= helm
 
 GOPATH        = $(shell go env GOPATH)
 DEP           = $(GOPATH)/bin/dep
 GOX           = $(GOPATH)/bin/gox
 GOIMPORTS     = $(GOPATH)/bin/goimports
+ARCH          = $(shell uname -p)
 
-ACCEPTANCE_DIR:=$(GOPATH)/src/helm.sh/acceptance-testing
+ACCEPTANCE_DIR:=../acceptance-testing
 # To specify the subset of acceptance tests to run. '.' means all tests
 ACCEPTANCE_RUN_TESTS=.
 
@@ -39,10 +41,13 @@ ifneq ($(BINARY_VERSION),)
 	LDFLAGS += -X helm.sh/helm/v3/internal/version.version=${BINARY_VERSION}
 endif
 
+VERSION_METADATA = unreleased
 # Clear the "unreleased" string in BuildMetadata
 ifneq ($(GIT_TAG),)
-	LDFLAGS += -X helm.sh/helm/v3/internal/version.metadata=
+	VERSION_METADATA =
 endif
+
+LDFLAGS += -X helm.sh/helm/v3/internal/version.metadata=${VERSION_METADATA}
 LDFLAGS += -X helm.sh/helm/v3/internal/version.gitCommit=${GIT_COMMIT}
 LDFLAGS += -X helm.sh/helm/v3/internal/version.gitTreeState=${GIT_DIRTY}
 
@@ -63,7 +68,11 @@ $(BINDIR)/$(BINNAME): $(SRC)
 
 .PHONY: test
 test: build
+ifeq ($(ARCH),s390x)
+test: TESTFLAGS += -v
+else
 test: TESTFLAGS += -race -v
+endif
 test: test-style
 test: test-unit
 
@@ -138,10 +147,32 @@ dist:
 		$(DIST_DIRS) zip -r helm-${VERSION}-{}.zip {} \; \
 	)
 
+.PHONY: fetch-dist
+fetch-dist:
+	mkdir -p _dist
+	cd _dist && \
+	for obj in ${TARGET_OBJS} ; do \
+		curl -sSL -o helm-${VERSION}-$${obj} https://get.helm.sh/helm-${VERSION}-$${obj} ; \
+	done
+
+.PHONY: sign
+sign:
+	for f in _dist/*.{gz,zip,sha256,sha256sum} ; do \
+		gpg --armor --detach-sign $${f} ; \
+	done
+
+# The contents of the .sha256sum file are compatible with tools like
+# shasum. For example, using the following command will verify
+# the file helm-3.1.0-rc.1-darwin-amd64.tar.gz:
+#   shasum -a 256 -c helm-3.1.0-rc.1-darwin-amd64.tar.gz.sha256sum
+# The .sha256 files hold only the hash and are not compatible with
+# verification tools like shasum or sha256sum. This method and file can be
+# removed in Helm v4.
 .PHONY: checksum
 checksum:
 	for f in _dist/*.{gz,zip} ; do \
-		shasum -a 256 "$${f}"  | awk '{print $$1}' > "$${f}.sha256" ; \
+		shasum -a 256 "$${f}" | sed 's/_dist\///' > "$${f}.sha256sum" ; \
+		shasum -a 256 "$${f}" | awk '{print $$1}' > "$${f}.sha256" ; \
 	done
 
 # ------------------------------------------------------------------------------

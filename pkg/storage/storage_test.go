@@ -205,6 +205,46 @@ func TestStorageDeployed(t *testing.T) {
 	}
 }
 
+func TestStorageDeployedWithCorruption(t *testing.T) {
+	storage := Init(driver.NewMemory())
+
+	const name = "angry-bird"
+	const vers = int(4)
+
+	// setup storage with test releases
+	setup := func() {
+		// release records (notice odd order and corruption)
+		rls0 := ReleaseTestData{Name: name, Version: 1, Status: rspb.StatusSuperseded}.ToRelease()
+		rls1 := ReleaseTestData{Name: name, Version: 4, Status: rspb.StatusDeployed}.ToRelease()
+		rls2 := ReleaseTestData{Name: name, Version: 3, Status: rspb.StatusSuperseded}.ToRelease()
+		rls3 := ReleaseTestData{Name: name, Version: 2, Status: rspb.StatusDeployed}.ToRelease()
+
+		// create the release records in the storage
+		assertErrNil(t.Fatal, storage.Create(rls0), "Storing release 'angry-bird' (v1)")
+		assertErrNil(t.Fatal, storage.Create(rls1), "Storing release 'angry-bird' (v2)")
+		assertErrNil(t.Fatal, storage.Create(rls2), "Storing release 'angry-bird' (v3)")
+		assertErrNil(t.Fatal, storage.Create(rls3), "Storing release 'angry-bird' (v4)")
+	}
+
+	setup()
+
+	rls, err := storage.Deployed(name)
+	if err != nil {
+		t.Fatalf("Failed to query for deployed release: %s\n", err)
+	}
+
+	switch {
+	case rls == nil:
+		t.Fatalf("Release is nil")
+	case rls.Name != name:
+		t.Fatalf("Expected release name %q, actual %q\n", name, rls.Name)
+	case rls.Version != vers:
+		t.Fatalf("Expected release version %d, actual %d\n", vers, rls.Version)
+	case rls.Info.Status != rspb.StatusDeployed:
+		t.Fatalf("Expected release status 'DEPLOYED', actual %s\n", rls.Info.Status.String())
+	}
+}
+
 func TestStorageHistory(t *testing.T) {
 	storage := Init(driver.NewMemory())
 

@@ -258,3 +258,7 @@ func prepareMockRelease(releaseName string, t *testing.T) (func(n string, v int,
 
 	return relMock, ch, chartPath
 }
+
+func TestUpgradeOutputCompletion(t *testing.T) {
+	outputFlagCompletionTest(t, "upgrade")
+}

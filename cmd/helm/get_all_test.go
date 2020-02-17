@@ -41,3 +41,7 @@ func TestGetCmd(t *testing.T) {
 	}}
 	runTestCmd(t, tests)
 }
+
+func TestGetAllRevisionCompletion(t *testing.T) {
+	revisionFlagCompletionTest(t, "get all")
+}
