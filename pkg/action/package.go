@@ -112,6 +112,7 @@ func setVersion(ch *chart.Chart, ver string) error {
 	return nil
 }
 
+// Clearsign signs a chart
 func (p *Package) Clearsign(filename string) error {
 	// Load keyring
 	signer, err := provenance.NewFromKeyring(p.Keyring, p.Key)

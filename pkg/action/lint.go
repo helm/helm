@@ -38,6 +38,7 @@ type Lint struct {
 	WithSubcharts bool
 }
 
+// LintResult is the result of Lint
 type LintResult struct {
 	TotalChartsLinted int
 	Messages          []support.Message
