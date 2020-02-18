@@ -135,6 +135,7 @@ func (c *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 	return c.Capabilities, nil
 }
 
+// KubernetesClientSet creates a new kubernetes ClientSet based on the configuration
 func (c *Configuration) KubernetesClientSet() (kubernetes.Interface, error) {
 	conf, err := c.RESTClientGetter.ToRESTConfig()
 	if err != nil {
@@ -219,7 +220,7 @@ func (c *Configuration) recordRelease(r *release.Release) {
 	}
 }
 
-// InitActionConfig initializes the action configuration
+// Init initializes the action configuration
 func (c *Configuration) Init(getter genericclioptions.RESTClientGetter, namespace string, helmDriver string, log DebugLog) error {
 	kc := kube.New(getter)
 	kc.Log = log
