@@ -188,12 +188,25 @@ func (w *waiter) serviceReady(s *corev1.Service) bool {
 	}
 
 	// Make sure the service is not explicitly set to "None" before checking the IP
-	if (s.Spec.ClusterIP != corev1.ClusterIPNone && s.Spec.ClusterIP == "") ||
-		// This checks if the service has a LoadBalancer and that balancer has an Ingress defined
-		(s.Spec.Type == corev1.ServiceTypeLoadBalancer && s.Status.LoadBalancer.Ingress == nil) {
-		w.log("Service does not have IP address: %s/%s", s.GetNamespace(), s.GetName())
+	if s.Spec.ClusterIP != corev1.ClusterIPNone && s.Spec.ClusterIP == "" {
+		w.log("Service does not have cluster IP address: %s/%s", s.GetNamespace(), s.GetName())
 		return false
 	}
+
+	// This checks if the service has a LoadBalancer and that balancer has an Ingress defined
+	if s.Spec.Type == corev1.ServiceTypeLoadBalancer {
+		// do not wait when at least 1 external IP is set
+		if len(s.Spec.ExternalIPs) > 0 {
+			w.log("Service %s/%s has external IP addresses (%v), marking as ready", s.GetNamespace(), s.GetName(), s.Spec.ExternalIPs)
+			return true
+		}
+
+		if s.Status.LoadBalancer.Ingress == nil {
+			w.log("Service does not have load balancer ingress IP address: %s/%s", s.GetNamespace(), s.GetName())
+			return false
+		}
+	}
+
 	return true
 }
 
