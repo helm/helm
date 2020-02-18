@@ -42,6 +42,17 @@ func existingResourceConflict(resources kube.ResourceList) error {
 			return errors.Wrap(err, "could not get information about the resource")
 		}
 
+		// For compatibility reasons Kubernetes serves some resources at multiple API versions,
+		// while only using one storage version:
+		// https://github.com/kubernetes/enhancements/blob/master/keps/sig-api-machinery/20190802-dynamic-coordinated-storage-version.md
+		//
+		// This can cause helper.Get to detect an existing resource at the (new) version that
+		// Helm is attempting to create. If the new version matches the one returned by the
+		// API server, then it should be safe to continue with installation/upgrade.
+		if existing.GetObjectKind().GroupVersionKind() == info.Mapping.GroupVersionKind {
+			return nil
+		}
+
 		return fmt.Errorf("existing resource conflict: namespace: %s, name: %s, existing_kind: %s, new_kind: %s", info.Namespace, info.Name, existing.GetObjectKind().GroupVersionKind(), info.Mapping.GroupVersionKind)
 	})
 	return err
