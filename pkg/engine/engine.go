@@ -159,7 +159,7 @@ func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]render
 				log.Printf("[INFO] Missing required value: %s", warn)
 				return "", nil
 			}
-			return val, errors.Errorf(warnWrap(fmt.Sprintf("missing required value: %v", warn)))
+			return val, errors.Errorf(warnWrap(fmt.Sprintf("%v is required", warn)))
 		} else if _, ok := val.(string); ok {
 			if val == "" {
 				if e.LintMode {
@@ -167,7 +167,7 @@ func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]render
 					log.Printf("[INFO] Missing required value: %s", warn)
 					return "", nil
 				}
-				return val, errors.Errorf(warnWrap(fmt.Sprintf("missing required value: %v", warn)))
+				return val, errors.Errorf(warnWrap(fmt.Sprintf("%v is required", warn)))
 			}
 		}
 		return val, nil
