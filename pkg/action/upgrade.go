@@ -427,5 +427,5 @@ func recreate(cfg *Configuration, resources kube.ResourceList) error {
 
 func objectKey(r *resource.Info) string {
 	gvk := r.Object.GetObjectKind().GroupVersionKind()
-	return fmt.Sprintf("%s/%s/%s/%s", gvk.GroupVersion().String(), gvk.Kind, r.Namespace, r.Name)
+	return fmt.Sprintf("%s/%s/%s", gvk.Kind, r.Namespace, r.Name)
 }
