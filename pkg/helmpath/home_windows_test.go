@@ -23,9 +23,9 @@ import (
 )
 
 func TestHelmHome(t *testing.T) {
-	os.Setenv(xdg.XDGCacheHomeEnvVar, "c:\\")
-	os.Setenv(xdg.XDGConfigHomeEnvVar, "d:\\")
-	os.Setenv(xdg.XDGDataHomeEnvVar, "e:\\")
+	os.Setenv(xdg.CacheHomeEnvVar, "c:\\")
+	os.Setenv(xdg.ConfigHomeEnvVar, "d:\\")
+	os.Setenv(xdg.DataHomeEnvVar, "e:\\")
 	isEq := func(t *testing.T, a, b string) {
 		if a != b {
 			t.Errorf("Expected %q, got %q", b, a)
