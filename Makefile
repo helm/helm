@@ -181,6 +181,21 @@ checksum:
 clean:
 	@rm -rf $(BINDIR) ./_dist
 
+.PHONY: release-notes
+release-notes:
+		@if [ ! -d "./_dist" ]; then \
+			echo "please run 'make fetch-release' first" && \
+			exit 1; \
+		fi
+		@if [ -z "${PREVIOUS_RELEASE}" ]; then \
+			echo "please set PREVIOUS_RELEASE environment variable" \
+			&& exit 1; \
+		fi
+
+		@./scripts/release-notes.sh ${PREVIOUS_RELEASE} ${VERSION}
+
+
+
 .PHONY: info
 info:
 	 @echo "Version:           ${VERSION}"
