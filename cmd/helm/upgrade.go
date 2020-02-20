@@ -65,6 +65,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewUpgrade(cfg)
 	valueOpts := &values.Options{}
 	var outfmt output.Format
+	var createNamespace bool
 
 	cmd := &cobra.Command{
 		Use:   "upgrade [RELEASE] [CHART]",
@@ -100,6 +101,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 						fmt.Fprintf(out, "Release %q does not exist. Installing it now.\n", args[0])
 					}
 					instClient := action.NewInstall(cfg)
+					instClient.CreateNamespace = createNamespace
 					instClient.ChartPathOptions = client.ChartPathOptions
 					instClient.DryRun = client.DryRun
 					instClient.DisableHooks = client.DisableHooks
@@ -159,6 +161,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	})
 
 	f := cmd.Flags()
+	f.BoolVar(&createNamespace, "create-namespace", false, "if --install is set, create the release namespace if not present")
 	f.BoolVarP(&client.Install, "install", "i", false, "if a release by this name doesn't already exist, run an install")
 	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored")
 	f.BoolVar(&client.DryRun, "dry-run", false, "simulate an upgrade")
