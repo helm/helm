@@ -23,10 +23,12 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+
+	"helm.sh/helm/v3/internal/completion"
 )
 
 const completionDesc = `
-Generate autocompletions script for Helm for the specified shell (bash or zsh).
+Generate autocompletions script for Helm for the specified shell (bash, zsh or fish).
 
 This command can generate shell autocompletions. e.g.
 
@@ -41,6 +43,7 @@ var (
 	completionShells = map[string]func(out io.Writer, cmd *cobra.Command) error{
 		"bash": runCompletionBash,
 		"zsh":  runCompletionZsh,
+		"fish": runCompletionFish,
 	}
 )
 
@@ -52,7 +55,7 @@ func newCompletionCmd(out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "completion SHELL",
-		Short: "Generate autocompletions script for the specified shell (bash or zsh)",
+		Short: "Generate autocompletions script for the specified shell (bash, zsh or fish)",
 		Long:  completionDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runCompletion(out, cmd, args)
@@ -242,5 +245,88 @@ BASH_COMPLETION_EOF
 __helm_bash_source <(__helm_convert_bash_to_zsh)
 `
 	out.Write([]byte(zshTail))
+	return nil
+}
+
+func runCompletionFish(out io.Writer, cmd *cobra.Command) error {
+	fishScript := fmt.Sprintf(`# fish completion for helm            -*- shell-script -*-
+
+function __helm_debug
+    set file "$BASH_COMP_DEBUG_FILE"
+    if test -n "$file"
+        echo "$argv" >> $file
+    end
+end
+
+function __helm_handle_completion
+    __helm_debug "Starting __helm_handle_completion with: $argv"
+
+    set -l args (string split " " "$argv")
+
+    __helm_debug "last arg: $args[-1]"
+
+    set -l emptyArg ""
+    if test -z "$args[-1]"
+        __helm_debug "Setting emptyArg"
+        set emptyArg \"\"
+    end
+
+    __helm_debug "emptyArg: $emptyArg"
+	set requestComp "$args[1] __complete $args[2..-1] $emptyArg"
+    __helm_debug "Calling $requestComp"
+    eval $requestComp 2> /dev/null
+end
+
+function __helm_get_completions
+    # Use the cache if possible
+	if not set -q __helm_cache_completions
+	   set -g __helm_cache_completions (__helm_handle_completion (commandline))
+       __helm_debug "Populating completion cache with: $__helm_cache_completions"
+    end
+
+	set -l directive (string sub --start 2 $__helm_cache_completions[-1])
+	set -l comps $__helm_cache_completions[1..-2]
+	__helm_debug "Completions are: $comps"
+	__helm_debug "Directive is: $directive"
+
+	set -l compErr (math (math $directive / %[1]d) %% 2)
+	if test $compErr -eq 1
+	   return 0
+	end
+
+	set -l nospace (math (math $directive / %[2]d) %% 2)
+	set -l nofiles (math (math $directive / %[3]d) %% 2)
+
+	__helm_debug "nospace: $nospace, nofiles: $nofiles"
+
+	for i in $comps
+        printf "%%s\n" $i
+	end
+
+	if test (count $comps) -eq 1; and test $nospace -ne 0
+	   # To support the "nospace" directive we trick the shell
+	   # by outputting an extra, longer completion.
+	   printf "%%s\n" $comps[1].
+	end
+
+	# Return true if no file completion should be done
+	test (count $comps) -gt 0; or test $nofiles -ne 0
+end
+
+# Remove any pre-existing helm completions since we will be handling all of them
+complete -c helm -e
+
+# The order in which the below two lines are defined is very important so that the cache gets
+# properly cleared at the very beginning of completions processing
+#
+# This completion will be run second as complete commands are added FILO.  It should use the cache.
+complete -c helm -n 'not __helm_get_completions'
+
+# This completion will be run first as complete commands are added FILO.  It first clears the cache.
+complete -c helm -n 'set -e __helm_cache_completions; __helm_get_completions' -f -a '(__helm_get_completions)'
+
+`, completion.BashCompDirectiveError, completion.BashCompDirectiveNoSpace, completion.BashCompDirectiveNoFileComp)
+
+	out.Write([]byte(fishScript))
 	return nil
 }
