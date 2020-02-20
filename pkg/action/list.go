@@ -165,6 +165,10 @@ func (l *List) Run() ([]*release.Release, error) {
 		return true
 	})
 
+	if err != nil {
+		return nil, err
+	}
+
 	if results == nil {
 		return results, nil
 	}
