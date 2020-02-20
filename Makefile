@@ -8,7 +8,7 @@ TARGET_OBJS       ?= darwin-amd64.tar.gz darwin-amd64.tar.gz.sha256 linux-amd64.
 DIST_DIRS         = find * -type d -exec
 
 # go option
-GO        ?= go
+GO        ?= GO111MODULE=off go
 PKG       := $(shell glide novendor)
 TAGS      :=
 TESTS     := .
