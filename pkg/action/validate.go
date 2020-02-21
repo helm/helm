@@ -21,13 +21,37 @@ import (
 
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/cli-runtime/pkg/resource"
 
 	"helm.sh/helm/v3/pkg/kube"
 )
 
-func existingResourceConflict(resources kube.ResourceList) error {
-	err := resources.Visit(func(info *resource.Info, err error) error {
+var (
+	managedByReq, _ = labels.NewRequirement("app.kubernetes.io/managed-by", selection.Equals, []string{"Helm"})
+	accessor        = meta.NewAccessor()
+)
+
+func newReleaseSelector(release string) (labels.Selector, error) {
+	releaseReq, err := labels.NewRequirement("app.kubernetes.io/instance", selection.Equals, []string{release})
+	if err != nil {
+		return nil, err
+	}
+
+	return labels.Parse(fmt.Sprintf("%s,%s", releaseReq, managedByReq))
+}
+
+func existingResourceConflict(resources kube.ResourceList, release string) (kube.ResourceList, error) {
+	sel, err := newReleaseSelector(release)
+	if err != nil {
+		return nil, err
+	}
+
+	requireUpdate := kube.ResourceList{}
+
+	err = resources.Visit(func(info *resource.Info, err error) error {
 		if err != nil {
 			return err
 		}
@@ -42,7 +66,20 @@ func existingResourceConflict(resources kube.ResourceList) error {
 			return errors.Wrap(err, "could not get information about the resource")
 		}
 
-		return fmt.Errorf("existing resource conflict: namespace: %s, name: %s, existing_kind: %s, new_kind: %s", info.Namespace, info.Name, existing.GetObjectKind().GroupVersionKind(), info.Mapping.GroupVersionKind)
+		// Allow adoption of the resource if it already has app.kubernetes.io/instance and app.kubernetes.io/managed-by labels.
+		lbls, err := accessor.Labels(existing)
+		if err == nil {
+			set := labels.Set(lbls)
+			if sel.Matches(set) {
+				requireUpdate = append(requireUpdate, info)
+				return nil
+			}
+		}
+
+		return fmt.Errorf(
+			"existing resource conflict: namespace: %s, name: %s, existing_kind: %s, new_kind: %s",
+			info.Namespace, info.Name, existing.GetObjectKind().GroupVersionKind(), info.Mapping.GroupVersionKind)
 	})
-	return err
+
+	return requireUpdate, err
 }

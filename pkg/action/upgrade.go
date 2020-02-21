@@ -216,9 +216,18 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 		}
 	}
 
-	if err := existingResourceConflict(toBeCreated); err != nil {
-		return nil, errors.Wrap(err, "rendered manifests contain a new resource that already exists. Unable to continue with update")
+	toBeUpdated, err := existingResourceConflict(toBeCreated, upgradedRelease.Name)
+	if err != nil {
+		return nil, errors.Wrap(err, "rendered manifests contain a resource that already exists. Unable to continue with update")
 	}
+
+	toBeUpdated.Visit(func(r *resource.Info, err error) error {
+		if err != nil {
+			return err
+		}
+		current.Append(r)
+		return nil
+	})
 
 	if u.DryRun {
 		u.cfg.Log("dry run for %s", upgradedRelease.Name)
