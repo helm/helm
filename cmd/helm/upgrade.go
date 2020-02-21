@@ -75,21 +75,8 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.Namespace = settings.Namespace()
 
-			if client.Version == "" && client.Devel {
-				debug("setting version to >0.0.0-0")
-				client.Version = ">0.0.0-0"
-			}
-
-			vals, err := valueOpts.MergeValues(getter.All(settings))
-			if err != nil {
-				return err
-			}
-
-			chartPath, err := client.ChartPathOptions.LocateChart(args[1], settings)
-			if err != nil {
-				return err
-			}
-
+			// Fixes #7002 - Support reading values from STDIN for `upgrade` command
+			// Must load values AFTER determining if we have to call install so that values loaded from stdin are are not read twice
 			if client.Install {
 				// If a release does not exist, install it. If another error occurs during
 				// the check, ignore the error and continue with the upgrade.
@@ -119,6 +106,21 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					}
 					return outfmt.Write(out, &statusPrinter{rel, settings.Debug})
 				}
+			}
+
+			if client.Version == "" && client.Devel {
+				debug("setting version to >0.0.0-0")
+				client.Version = ">0.0.0-0"
+			}
+
+			chartPath, err := client.ChartPathOptions.LocateChart(args[1], settings)
+			if err != nil {
+				return err
+			}
+
+			vals, err := valueOpts.MergeValues(getter.All(settings))
+			if err != nil {
+				return err
 			}
 
 			// Check chart dependencies to make sure all are present in /charts

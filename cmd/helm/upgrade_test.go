@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -214,6 +215,69 @@ func TestUpgradeWithValuesFile(t *testing.T) {
 	}
 
 	updatedRel, err := store.Get(releaseName, 4)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	if !strings.Contains(updatedRel.Manifest, "drink: beer") {
+		t.Errorf("The value is not set correctly. manifest: %s", updatedRel.Manifest)
+	}
+
+}
+
+func TestUpgradeWithValuesFromStdin(t *testing.T) {
+
+	releaseName := "funny-bunny-v5"
+	relMock, ch, chartPath := prepareMockRelease(releaseName, t)
+
+	defer resetEnv()()
+
+	store := storageFixture()
+
+	store.Create(relMock(releaseName, 3, ch))
+
+	in, err := os.Open("testdata/testcharts/upgradetest/values.yaml")
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	cmd := fmt.Sprintf("upgrade %s --values - '%s'", releaseName, chartPath)
+	_, _, err = executeActionCommandStdinC(store, in, cmd)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	updatedRel, err := store.Get(releaseName, 4)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	if !strings.Contains(updatedRel.Manifest, "drink: beer") {
+		t.Errorf("The value is not set correctly. manifest: %s", updatedRel.Manifest)
+	}
+}
+
+func TestUpgradeInstallWithValuesFromStdin(t *testing.T) {
+
+	releaseName := "funny-bunny-v6"
+	_, _, chartPath := prepareMockRelease(releaseName, t)
+
+	defer resetEnv()()
+
+	store := storageFixture()
+
+	in, err := os.Open("testdata/testcharts/upgradetest/values.yaml")
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	cmd := fmt.Sprintf("upgrade %s -f - --install '%s'", releaseName, chartPath)
+	_, _, err = executeActionCommandStdinC(store, in, cmd)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	updatedRel, err := store.Get(releaseName, 1)
 	if err != nil {
 		t.Errorf("unexpected error, got '%v'", err)
 	}
