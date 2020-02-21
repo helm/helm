@@ -22,36 +22,22 @@ import (
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/cli-runtime/pkg/resource"
 
 	"helm.sh/helm/v3/pkg/kube"
 )
 
-var (
-	managedByReq, _ = labels.NewRequirement("app.kubernetes.io/managed-by", selection.Equals, []string{"Helm"})
-	accessor        = meta.NewAccessor()
+var accessor = meta.NewAccessor()
+
+const (
+	helmReleaseNameAnnotation      = "meta.helm.sh/release-name"
+	helmReleaseNamespaceAnnotation = "meta.helm.sh/release-namespace"
 )
 
-func newReleaseSelector(release string) (labels.Selector, error) {
-	releaseReq, err := labels.NewRequirement("app.kubernetes.io/instance", selection.Equals, []string{release})
-	if err != nil {
-		return nil, err
-	}
-
-	return labels.Parse(fmt.Sprintf("%s,%s", releaseReq, managedByReq))
-}
-
-func existingResourceConflict(resources kube.ResourceList, release string) (kube.ResourceList, error) {
-	sel, err := newReleaseSelector(release)
-	if err != nil {
-		return nil, err
-	}
-
+func existingResourceConflict(resources kube.ResourceList, releaseName, releaseNamespace string) (kube.ResourceList, error) {
 	requireUpdate := kube.ResourceList{}
 
-	err = resources.Visit(func(info *resource.Info, err error) error {
+	err := resources.Visit(func(info *resource.Info, err error) error {
 		if err != nil {
 			return err
 		}
@@ -67,13 +53,10 @@ func existingResourceConflict(resources kube.ResourceList, release string) (kube
 		}
 
 		// Allow adoption of the resource if it already has app.kubernetes.io/instance and app.kubernetes.io/managed-by labels.
-		lbls, err := accessor.Labels(existing)
-		if err == nil {
-			set := labels.Set(lbls)
-			if sel.Matches(set) {
-				requireUpdate = append(requireUpdate, info)
-				return nil
-			}
+		anno, err := accessor.Annotations(existing)
+		if err == nil && anno != nil && anno[helmReleaseNameAnnotation] == releaseName && anno[helmReleaseNamespaceAnnotation] == releaseNamespace {
+			requireUpdate = append(requireUpdate, info)
+			return nil
 		}
 
 		return fmt.Errorf(
@@ -82,4 +65,22 @@ func existingResourceConflict(resources kube.ResourceList, release string) (kube
 	})
 
 	return requireUpdate, err
+}
+
+func setMetadataVisitor(releaseName, releaseNamespace string) resource.VisitorFunc {
+	return func(info *resource.Info, err error) error {
+		if err != nil {
+			return err
+		}
+		anno, err := accessor.Annotations(info.Object)
+		if err != nil {
+			return err
+		}
+		if anno == nil {
+			anno = make(map[string]string)
+		}
+		anno[helmReleaseNameAnnotation] = releaseName
+		anno[helmReleaseNamespaceAnnotation] = releaseNamespace
+		return accessor.SetAnnotations(info.Object, anno)
+	}
 }
