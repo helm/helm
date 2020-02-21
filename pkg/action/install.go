@@ -249,6 +249,11 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 		return nil, errors.Wrap(err, "unable to build kubernetes objects from release manifest")
 	}
 
+	err = resources.Visit(setMetadataVisitor(rel.Name, rel.Namespace))
+	if err != nil {
+		return nil, err
+	}
+
 	// Install requires an extra validation step of checking that resources
 	// don't already exist before we actually create resources. If we continue
 	// forward and create the release object with resources that already exist,
@@ -256,7 +261,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	// deleting the release because the manifest will be pointing at that
 	// resource
 	if !i.ClientOnly && !isUpgrade {
-		toBeUpdated, err := existingResourceConflict(resources, rel.Name)
+		toBeUpdated, err := existingResourceConflict(resources, rel.Name, rel.Namespace)
 		if err != nil {
 			return nil, errors.Wrap(err, "rendered manifests contain a resource that already exists. Unable to continue with install")
 		}
