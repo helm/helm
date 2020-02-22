@@ -16,6 +16,7 @@ limitations under the License.
 package downloader
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -23,7 +24,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/gofrs/flock"
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/internal/urlutil"
@@ -114,6 +117,20 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 		return "", nil, err
 	}
 
+	name := filepath.Base(u.Path)
+	destfile := filepath.Join(dest, name)
+
+	// Acquire a file lock for process synchronization
+	fileLock := flock.New(destfile)
+	lockCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	locked, err := fileLock.TryLockContext(lockCtx, time.Second)
+	if err != nil {
+		return "", nil, err
+	} else if locked {
+		defer fileLock.Unlock()
+	}
+
 	g, err := c.Getters.ByScheme(u.Scheme)
 	if err != nil {
 		return "", nil, err
@@ -124,8 +141,6 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 		return "", nil, err
 	}
 
-	name := filepath.Base(u.Path)
-	destfile := filepath.Join(dest, name)
 	if err := atomicWriteFile(destfile, data, 0644); err != nil {
 		return destfile, nil, err
 	}
