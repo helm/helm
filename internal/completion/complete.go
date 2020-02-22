@@ -35,8 +35,8 @@ import (
 // This should ultimately be pushed down into Cobra.
 // ==================================================================================
 
-// CompRequestCmd Hidden command to request completion results from the program.
-// Used by the shell completion script.
+// CompRequestCmd is the name of the hidden command that is used to request
+// completion results from helm.  It is used by the shell completion script.
 const CompRequestCmd = "__complete"
 
 // Global map allowing to find completion functions for commands or flags.
@@ -73,7 +73,7 @@ __helm_custom_func()
     __helm_debug "${FUNCNAME[0]}: c is $c, words[@] is ${words[@]}, #words[@] is ${#words[@]}"
     __helm_debug "${FUNCNAME[0]}: cur is ${cur}, cword is ${cword}, words is ${words}"
 
-    local out requestComp lastParam lastChar
+    local out requestComp lastParam lastChar comp directive
     requestComp="${words[0]} %[1]s ${words[@]:1}"
 
     lastParam=${words[$((${#words[@]}-1))]}
@@ -173,7 +173,7 @@ func (d BashCompDirective) string() string {
 	return strings.Join(directives, ", ")
 }
 
-// NewCompleteCmd add a special hidden command that an be used to request completions
+// NewCompleteCmd adds a special hidden command that an be used to request completions
 func NewCompleteCmd(settings *cli.EnvSettings, out io.Writer) *cobra.Command {
 	debug = settings.Debug
 	return &cobra.Command{
@@ -183,69 +183,17 @@ func NewCompleteCmd(settings *cli.EnvSettings, out io.Writer) *cobra.Command {
 		DisableFlagParsing:    true,
 		Args:                  require.MinimumNArgs(1),
 		Short:                 "Request shell completion choices for the specified command-line",
-		Long: fmt.Sprintf("%s is a special command that is used by the shell completion logic\n%s",
-			CompRequestCmd, "to request completion choices for the specified command-line."),
+		Long: fmt.Sprintf("%[2]s is a special command that is used by the shell completion logic\n%[1]s",
+			"to request completion choices for the specified command-line.", CompRequestCmd),
 		Run: func(cmd *cobra.Command, args []string) {
-			CompDebugln(fmt.Sprintf("%s was called with args %v", cmd.Name(), args))
-
-			// The last argument, which is not complete, should not be part of the list of arguments
-			toComplete := args[len(args)-1]
-			trimmedArgs := args[:len(args)-1]
-
-			// Find the real command for which completion must be performed
-			finalCmd, finalArgs, err := cmd.Root().Find(trimmedArgs)
+			completions, directive, err := getCompletions(cmd.Root(), args)
 			if err != nil {
-				// Unable to find the real command. E.g., helm invalidCmd <TAB>
-				CompDebugln(fmt.Sprintf("Unable to find a command for arguments: %v", trimmedArgs))
-				return
+				CompErrorln(err.Error())
+				// Keep going for multiple reasons:
+				// 1- There could be some valid completions even though there was an error
+				// 2- Even without completions, we need to print the directive
 			}
 
-			CompDebugln(fmt.Sprintf("Found final command '%s', with finalArgs %v", finalCmd.Name(), finalArgs))
-
-			var flag *pflag.Flag
-			if !finalCmd.DisableFlagParsing {
-				// We only do flag completion if we are allowed to parse flags
-				// This is important for helm plugins which need to do their own flag completion.
-				flag, finalArgs, toComplete, err = checkIfFlagCompletion(finalCmd, finalArgs, toComplete)
-				if err != nil {
-					// Error while attempting to parse flags
-					CompErrorln(err.Error())
-					return
-				}
-			}
-
-			// Parse the flags and extract the arguments to prepare for calling the completion function
-			if err = finalCmd.ParseFlags(finalArgs); err != nil {
-				CompErrorln(fmt.Sprintf("Error while parsing flags from args %v: %s", finalArgs, err.Error()))
-				return
-			}
-
-			// We only remove the flags from the arguments if DisableFlagParsing is not set.
-			// This is important for helm plugins, which need to receive all flags.
-			// The plugin completion code will do its own flag parsing.
-			if !finalCmd.DisableFlagParsing {
-				finalArgs = finalCmd.Flags().Args()
-				CompDebugln(fmt.Sprintf("Args without flags are '%v' with length %d", finalArgs, len(finalArgs)))
-			}
-
-			// Find completion function for the flag or command
-			var key interface{}
-			var keyStr string
-			if flag != nil {
-				key = flag
-				keyStr = flag.Name
-			} else {
-				key = finalCmd
-				keyStr = finalCmd.Name()
-			}
-			completionFn, ok := validArgsFunctions[key]
-			if !ok {
-				CompErrorln(fmt.Sprintf("Dynamic completion not supported/needed for flag or command: %s", keyStr))
-				return
-			}
-
-			CompDebugln(fmt.Sprintf("Calling completion method for subcommand '%s' with args '%v' and toComplete '%s'", finalCmd.Name(), finalArgs, toComplete))
-			completions, directive := completionFn(finalCmd, finalArgs, toComplete)
 			for _, comp := range completions {
 				// Print each possible completion to stdout for the completion script to consume.
 				fmt.Fprintln(out, comp)
@@ -255,21 +203,147 @@ func NewCompleteCmd(settings *cli.EnvSettings, out io.Writer) *cobra.Command {
 				directive = BashCompDirectiveDefault
 			}
 
-			// As the last printout, print the completion directive for the
-			// completion script to parse.
-			// The directive integer must be that last character following a single :
-			// The completion script expects :directive
+			// As the last printout, print the completion directive for the completion script to parse.
+			// The directive integer must be that last character following a single colon (:).
+			// The completion script expects :<directive>
 			fmt.Fprintf(out, ":%d\n", directive)
 
 			// Print some helpful info to stderr for the user to understand.
-			// Output from stderr should be ignored from the completion script.
+			// Output from stderr should be ignored by the completion script.
 			fmt.Fprintf(os.Stderr, "Completion ended with directive: %s\n", directive.string())
 		},
 	}
 }
 
+func getCompletions(rootCmd *cobra.Command, args []string) ([]string, BashCompDirective, error) {
+	var completions []string
+
+	// The last argument, which is not completely typed by the user,
+	// should not be part of the list of arguments
+	toComplete := args[len(args)-1]
+	trimmedArgs := args[:len(args)-1]
+
+	// Find the real command for which completion must be performed
+	finalCmd, finalArgs, err := rootCmd.Find(trimmedArgs)
+	if err != nil {
+		// Unable to find the real command. E.g., helm invalidCmd <TAB>
+		return completions, BashCompDirectiveDefault, fmt.Errorf("Unable to find a command for arguments: %v", trimmedArgs)
+	}
+
+	if isFlag(toComplete) && !strings.Contains(toComplete, "=") {
+		// We are completing a flag name
+		finalCmd.NonInheritedFlags().VisitAll(func(flag *pflag.Flag) {
+			completions = append(completions, getFlagNameCompletions(flag, toComplete)...)
+		})
+		finalCmd.InheritedFlags().VisitAll(func(flag *pflag.Flag) {
+			completions = append(completions, getFlagNameCompletions(flag, toComplete)...)
+		})
+
+		directive := BashCompDirectiveDefault
+		if len(completions) > 0 {
+			if strings.HasSuffix(completions[0], "=") {
+				directive = BashCompDirectiveNoSpace
+			}
+		}
+		return completions, directive, nil
+	}
+
+	var flag *pflag.Flag
+	if !finalCmd.DisableFlagParsing {
+		// We only do flag completion if we are allowed to parse flags
+		// This is important for helm plugins which need to do their own flag completion.
+		flag, finalArgs, toComplete, err = checkIfFlagCompletion(finalCmd, finalArgs, toComplete)
+		if err != nil {
+			// Error while attempting to parse flags
+			return completions, BashCompDirectiveDefault, err
+		}
+	}
+
+	if flag == nil {
+		// Complete subcommand names
+		for _, subCmd := range finalCmd.Commands() {
+			if subCmd.IsAvailableCommand() && strings.HasPrefix(subCmd.Name(), toComplete) {
+				completions = append(completions, subCmd.Name())
+			}
+		}
+
+		// Always complete ValidArgs, even if we are completing a subcommand name.
+		// This is for commands that have both subcommands and validArgs.
+		for _, validArg := range finalCmd.ValidArgs {
+			if strings.HasPrefix(validArg, toComplete) {
+				completions = append(completions, validArg)
+			}
+		}
+
+		// Always let the logic continue to add any ValidArgsFunction completions,
+		// even if we already found other completions already.
+		// This is for commands that have subcommands and/or validArgs but also
+		// specify a ValidArgsFunction.
+	}
+
+	// Parse the flags and extract the arguments to prepare for calling the completion function
+	if err = finalCmd.ParseFlags(finalArgs); err != nil {
+		return completions, BashCompDirectiveDefault, fmt.Errorf("Error while parsing flags from args %v: %s", finalArgs, err.Error())
+	}
+
+	// We only remove the flags from the arguments if DisableFlagParsing is not set.
+	// This is important for helm plugins, which need to receive all flags.
+	// The plugin completion code will do its own flag parsing.
+	if !finalCmd.DisableFlagParsing {
+		finalArgs = finalCmd.Flags().Args()
+	}
+
+	// Find completion function for the flag or command
+	var key interface{}
+	var nameStr string
+	if flag != nil {
+		key = flag
+		nameStr = flag.Name
+	} else {
+		key = finalCmd
+		nameStr = finalCmd.CommandPath()
+	}
+	completionFn, ok := validArgsFunctions[key]
+	if !ok {
+		return completions, BashCompDirectiveDefault, fmt.Errorf("Go custom completion not supported/needed for flag or command: %s", nameStr)
+	}
+
+	comps, directive := completionFn(finalCmd, finalArgs, toComplete)
+	completions = append(completions, comps...)
+	return completions, directive, nil
+}
+
+func getFlagNameCompletions(flag *pflag.Flag, toComplete string) []string {
+	if nonCompletableFlag(flag) {
+		return []string{}
+	}
+
+	var completions []string
+	comp := "--" + flag.Name
+	if strings.HasPrefix(comp, toComplete) {
+		// Flag without the =
+		completions = append(completions, comp)
+
+		if len(flag.NoOptDefVal) == 0 {
+			// Flag requires a value, so it can be suffixed with =
+			comp += "="
+			completions = append(completions, comp)
+		}
+	}
+
+	comp = "-" + flag.Shorthand
+	if len(flag.Shorthand) > 0 && strings.HasPrefix(comp, toComplete) {
+		completions = append(completions, comp)
+	}
+	return completions
+}
+
 func isFlag(arg string) bool {
 	return len(arg) > 0 && arg[0] == '-'
+}
+
+func nonCompletableFlag(flag *pflag.Flag) bool {
+	return flag.Hidden || len(flag.Deprecated) > 0
 }
 
 func checkIfFlagCompletion(finalCmd *cobra.Command, args []string, lastArg string) (*pflag.Flag, []string, string, error) {
@@ -290,7 +364,9 @@ func checkIfFlagCompletion(finalCmd *cobra.Command, args []string, lastArg strin
 		if len(args) > 0 {
 			prevArg := args[len(args)-1]
 			if isFlag(prevArg) {
-				// If the flag contains an = it means it has already been fully processed
+				// Only consider the case where the flag does not contain an =.
+				// If the flag contains an = it means it has already been fully processed,
+				// so we don't need to deal with it here.
 				if index := strings.Index(prevArg, "="); index < 0 {
 					flagName = strings.TrimLeft(prevArg, "-")
 
