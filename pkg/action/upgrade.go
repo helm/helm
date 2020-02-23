@@ -42,9 +42,11 @@ type Upgrade struct {
 
 	ChartPathOptions
 
-	Install      bool
-	Devel        bool
-	Namespace    string
+	Install   bool
+	Devel     bool
+	Namespace string
+	// SkipCRDs skip installing CRDs when install flag is enabled during upgrade
+	SkipCRDs     bool
 	Timeout      time.Duration
 	Wait         bool
 	DisableHooks bool
