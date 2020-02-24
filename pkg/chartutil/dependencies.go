@@ -233,7 +233,7 @@ func processImportValues(c *chart.Chart) error {
 				// get child table
 				vv, err := cvals.Table(r.Name + "." + child)
 				if err != nil {
-					log.Printf("Warning: ImportValues missing table: %v", err)
+					log.Printf("Warning: ImportValues missing table from chart %s: %v", r.Name, err)
 					continue
 				}
 				// create value map from child to be merged into parent
