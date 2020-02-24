@@ -17,6 +17,7 @@ limitations under the License.
 package driver // import "helm.sh/helm/v3/pkg/storage/driver"
 
 import (
+	"reflect"
 	"testing"
 
 	rspb "helm.sh/helm/v3/pkg/release"
@@ -108,5 +109,36 @@ func TestRecordsRemoveAt(t *testing.T) {
 	rs.Remove("rls-a.v1")
 	if len(rs) != 1 {
 		t.Fatalf("Expected length of rs to be 1, got %d", len(rs))
+	}
+}
+
+func TestRecordsGet(t *testing.T) {
+	rs := records([]*record{
+		newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", rspb.StatusSuperseded)),
+		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", rspb.StatusDeployed)),
+	})
+
+	var tests = []struct {
+		desc string
+		key  string
+		rec  *record
+	}{
+		{
+			"get valid key",
+			"rls-a.v1",
+			newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", rspb.StatusSuperseded)),
+		},
+		{
+			"get invalid key",
+			"rls-a.v3",
+			nil,
+		},
+	}
+
+	for _, tt := range tests {
+		got := rs.Get(tt.key)
+		if !reflect.DeepEqual(tt.rec, got) {
+			t.Fatalf("Expected %v, got %v", tt.rec, got)
+		}
 	}
 }
