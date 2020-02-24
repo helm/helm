@@ -142,3 +142,34 @@ func TestRecordsGet(t *testing.T) {
 		}
 	}
 }
+
+func TestRecordsIndex(t *testing.T) {
+	rs := records([]*record{
+		newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", rspb.StatusSuperseded)),
+		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", rspb.StatusDeployed)),
+	})
+
+	var tests = []struct {
+		desc string
+		key  string
+		sort int
+	}{
+		{
+			"get valid key",
+			"rls-a.v1",
+			0,
+		},
+		{
+			"get invalid key",
+			"rls-a.v3",
+			-1,
+		},
+	}
+
+	for _, tt := range tests {
+		got, _ := rs.Index(tt.key)
+		if got != tt.sort {
+			t.Fatalf("Expected %d, got %d", tt.sort, got)
+		}
+	}
+}
