@@ -17,6 +17,8 @@ limitations under the License.
 package driver // import "helm.sh/helm/v3/pkg/storage/driver"
 
 import (
+	"reflect"
+	"sort"
 	"testing"
 )
 
@@ -45,5 +47,16 @@ func TestLabelsMatch(t *testing.T) {
 		if !tt.set1.match(tt.set2) && tt.expect {
 			t.Fatalf("Expected match '%s'\n", tt.desc)
 		}
+	}
+}
+
+func TestLabelsKeys(t *testing.T) {
+	var test = labels(map[string]string{"KEY_A": "VAL_A", "KEY_B": "VAL_B"})
+	var expect = []string{"KEY_A", "KEY_B"}
+
+	result := test.keys()
+	sort.Strings(result)
+	if !reflect.DeepEqual(expect, result) {
+		t.Fatalf("Expected %v, got %v", expect, result)
 	}
 }
