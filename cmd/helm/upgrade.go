@@ -113,6 +113,7 @@ type upgradeCmd struct {
 	subNotes      bool
 	description   string
 	cleanupOnFail bool
+	replace       bool
 
 	certFile string
 	keyFile  string
@@ -182,6 +183,7 @@ func newUpgradeCmd(client helm.Interface, out io.Writer) *cobra.Command {
 	f.BoolVar(&upgrade.subNotes, "render-subchart-notes", false, "Render subchart notes along with parent")
 	f.StringVar(&upgrade.description, "description", "", "Specify the description to use for the upgrade, rather than the default")
 	f.BoolVar(&upgrade.cleanupOnFail, "cleanup-on-fail", false, "Allow deletion of new resources created in this upgrade when upgrade failed")
+	f.BoolVar(&upgrade.replace, "replace", false, "If no deployed version of the release is available, replace an uninstalled, pending install, or failed release which remains in the history. If no prior failed, uninstalled, pending install or deployed release is available, --replace will not install a new release unless --install is also specified. This is unsafe in production")
 	bindOutputFlag(cmd, &upgrade.output)
 
 	f.MarkDeprecated("disable-hooks", "Use --no-hooks instead")
@@ -280,7 +282,9 @@ func (u *upgradeCmd) run() error {
 		helm.UpgradeSubNotes(u.subNotes),
 		helm.UpgradeWait(u.wait),
 		helm.UpgradeDescription(u.description),
-		helm.UpgradeCleanupOnFail(u.cleanupOnFail))
+		helm.UpgradeCleanupOnFail(u.cleanupOnFail),
+		helm.UpgradeReplace(u.replace),
+	)
 	if err != nil {
 		fmt.Fprintf(u.out, "UPGRADE FAILED\nError: %v\n", prettyError(err))
 		if u.atomic {

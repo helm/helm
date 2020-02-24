@@ -509,7 +509,9 @@ type UpdateReleaseRequest struct {
 	// Render subchart notes if enabled
 	SubNotes bool `protobuf:"varint,13,opt,name=subNotes,proto3" json:"subNotes,omitempty"`
 	// Allow deletion of new resources created in this update when update failed
-	CleanupOnFail        bool     `protobuf:"varint,14,opt,name=cleanup_on_fail,json=cleanupOnFail,proto3" json:"cleanup_on_fail,omitempty"`
+	CleanupOnFail bool `protobuf:"varint,14,opt,name=cleanup_on_fail,json=cleanupOnFail,proto3" json:"cleanup_on_fail,omitempty"`
+	// If no deployed version of the release is available, replace an uninstalled, pending install, or failed release which remains in the history
+	Replace              bool     `protobuf:"varint,15,opt,name=replace,proto3" json:"replace,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`

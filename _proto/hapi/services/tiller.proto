@@ -216,6 +216,8 @@ message UpdateReleaseRequest {
 	bool subNotes = 13;
 	// Allow deletion of new resources created in this update when update failed
 	bool cleanup_on_fail = 14;
+	// If no deployed version of the release is available, replace an uninstalled, pending install, or failed release which remains in the history
+	bool replace = 15;
 }
 
 // UpdateReleaseResponse is the response to an update request.

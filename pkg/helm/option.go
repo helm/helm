@@ -318,6 +318,13 @@ func UpgradeCleanupOnFail(cleanupOnFail bool) UpdateOption {
 	}
 }
 
+// If no deployed version of the release is available, replace an uninstalled, pending install, or failed release which remains in the history
+func UpgradeReplace(replace bool) UpdateOption {
+	return func(opts *options) {
+		opts.updateReq.Replace = replace
+	}
+}
+
 // RollbackCleanupOnFail allows deletion of new resources created in this rollback when rollback failed
 func RollbackCleanupOnFail(cleanupOnFail bool) RollbackOption {
 	return func(opts *options) {

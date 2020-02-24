@@ -26,6 +26,7 @@ import (
 	"k8s.io/helm/pkg/hooks"
 	"k8s.io/helm/pkg/proto/hapi/release"
 	"k8s.io/helm/pkg/proto/hapi/services"
+	"k8s.io/helm/pkg/storage"
 	"k8s.io/helm/pkg/timeconv"
 )
 
@@ -76,20 +77,36 @@ func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 		return nil, nil, errMissingChart
 	}
 
-	// finds the deployed release with the given name
-	currentRelease, err := s.env.Releases.Deployed(req.Name)
+	// finds last the non-deleted release with the given name
+	lastRelease, err := s.env.Releases.Last(req.Name)
 	if err != nil {
+		// to keep existing behavior of returning the "%q has no deployed releases" error when an existing release does not exist
+		if strings.Contains(err.Error(), "no revision for release") {
+			return nil, nil, fmt.Errorf("%q %s", req.Name, storage.NoReleasesErr)
+		}
 		return nil, nil, err
+	}
+	status := lastRelease.Info.Status.Code
+
+	var currentRelease *release.Release
+	if lastRelease.Info.Status.Code == release.Status_DEPLOYED {
+		// no need to retrieve the last deployed release from storage as the last release is deployed
+		currentRelease = lastRelease
+	} else {
+		// finds the deployed release with the given name
+		currentRelease, err = s.env.Releases.Deployed(req.Name)
+		if err != nil {
+			if req.Replace && strings.Contains(err.Error(), storage.NoReleasesErr) &&
+				(status == release.Status_FAILED || status == release.Status_PENDING_INSTALL || status == release.Status_DELETED) {
+				currentRelease = lastRelease
+			} else {
+				return nil, nil, err
+			}
+		}
 	}
 
 	// determine if values will be reused
 	if err := s.reuseValues(req, currentRelease); err != nil {
-		return nil, nil, err
-	}
-
-	// finds the non-deleted release with the given name
-	lastRelease, err := s.env.Releases.Last(req.Name)
-	if err != nil {
 		return nil, nil, err
 	}
 
