@@ -80,11 +80,6 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				client.Version = ">0.0.0-0"
 			}
 
-			vals, err := valueOpts.MergeValues(getter.All(settings))
-			if err != nil {
-				return err
-			}
-
 			chartPath, err := client.ChartPathOptions.LocateChart(args[1], settings)
 			if err != nil {
 				return err
@@ -134,6 +129,11 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 			if ch.Metadata.Deprecated {
 				fmt.Fprintln(out, "WARNING: This chart is deprecated")
+			}
+
+			vals, err := valueOpts.MergeValues(getter.All(settings))
+			if err != nil {
+				return err
 			}
 
 			rel, err := client.Run(args[0], ch, vals)
