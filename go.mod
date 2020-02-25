@@ -18,7 +18,7 @@ require (
 	github.com/gobwas/glob v0.2.3
 	github.com/gofrs/flock v0.7.1
 	github.com/gosuri/uitable v0.0.4
-	github.com/mattn/go-shellwords v1.0.9
+	github.com/mattn/go-shellwords v1.0.10
 	github.com/mitchellh/copystructure v1.0.0
 	github.com/opencontainers/go-digest v1.0.0-rc1
 	github.com/opencontainers/image-spec v1.0.1
