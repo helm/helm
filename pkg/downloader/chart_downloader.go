@@ -136,29 +136,45 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 		return "", nil, err
 	}
 
-	data, err := g.Get(u.String(), c.Options...)
-	if err != nil {
-		return "", nil, err
-	}
+	if fi, err := os.Stat(destfile); os.IsNotExist(err) || fi.Size() == 0 {
+		data, err := g.Get(u.String(), c.Options...)
+		if err != nil {
+			return "", nil, err
+		}
 
-	if err := atomicWriteFile(destfile, data, 0644); err != nil {
-		return destfile, nil, err
+		if err := atomicWriteFile(destfile, data, 0644); err != nil {
+			return destfile, nil, err
+		}
 	}
 
 	// If provenance is requested, verify it.
 	ver := &provenance.Verification{}
 	if c.Verify > VerifyNever {
-		body, err := g.Get(u.String() + ".prov")
-		if err != nil {
-			if c.Verify == VerifyAlways {
-				return destfile, ver, errors.Errorf("failed to fetch provenance %q", u.String()+".prov")
-			}
-			fmt.Fprintf(c.Out, "WARNING: Verification not found for %s: %s\n", ref, err)
-			return destfile, ver, nil
-		}
 		provfile := destfile + ".prov"
-		if err := atomicWriteFile(provfile, body, 0644); err != nil {
-			return destfile, nil, err
+
+		// Acquire a file lock for process synchronization
+		fileLock := flock.New(provfile)
+		lockCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		locked, err := fileLock.TryLockContext(lockCtx, time.Second)
+		if err != nil {
+			return "", nil, err
+		} else if locked {
+			defer fileLock.Unlock()
+		}
+
+		if fi, err := os.Stat(provfile); os.IsNotExist(err) || fi.Size() == 0 {
+			body, err := g.Get(u.String() + ".prov")
+			if err != nil {
+				if c.Verify == VerifyAlways {
+					return destfile, ver, errors.Errorf("failed to fetch provenance %q", u.String()+".prov")
+				}
+				fmt.Fprintf(c.Out, "WARNING: Verification not found for %s: %s\n", ref, err)
+				return destfile, ver, nil
+			}
+			if err := atomicWriteFile(provfile, body, 0644); err != nil {
+				return destfile, nil, err
+			}
 		}
 
 		if c.Verify != VerifyLater {
