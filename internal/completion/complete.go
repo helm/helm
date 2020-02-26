@@ -259,7 +259,7 @@ func NewCompleteCmd(settings *cli.EnvSettings, out io.Writer) *cobra.Command {
 			// completion script to parse.
 			// The directive integer must be that last character following a single :
 			// The completion script expects :directive
-			fmt.Fprintln(out, fmt.Sprintf(":%d", directive))
+			fmt.Fprintf(out, ":%d\n", directive)
 
 			// Print some helpful info to stderr for the user to understand.
 			// Output from stderr should be ignored from the completion script.
