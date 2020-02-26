@@ -24,8 +24,6 @@ import (
 	"regexp"
 	"strings"
 
-	"helm.sh/helm/v3/pkg/releaseutil"
-
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
@@ -33,6 +31,7 @@ import (
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli/values"
+	"helm.sh/helm/v3/pkg/releaseutil"
 )
 
 const templateDesc = `
@@ -53,7 +52,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "template [NAME] [CHART]",
-		Short: fmt.Sprintf("locally render templates"),
+		Short: "locally render templates",
 		Long:  templateDesc,
 		Args:  require.MinimumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
