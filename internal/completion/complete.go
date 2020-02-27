@@ -35,9 +35,14 @@ import (
 // This should ultimately be pushed down into Cobra.
 // ==================================================================================
 
-// CompRequestCmd is the name of the hidden command that is used to request
-// completion results from helm.  It is used by the shell completion script.
-const CompRequestCmd = "__complete"
+const (
+	// CompRequestCmd is the name of the hidden command that is used to request
+	// completion results from helm.  It is used by the shell completion script.
+	CompRequestCmd = "__complete"
+	// CompWithDescRequestCmd is the name of the hidden command that is used to request
+	// completion results with their description.  It is used by the shell completion script.
+	CompWithDescRequestCmd = "__completeD"
+)
 
 // Global map allowing to find completion functions for commands or flags.
 var validArgsFunctions = map[interface{}]func(cmd *cobra.Command, args []string, toComplete string) ([]string, BashCompDirective){}
@@ -181,12 +186,13 @@ func NewCompleteCmd(settings *cli.EnvSettings, out io.Writer) *cobra.Command {
 		DisableFlagsInUseLine: true,
 		Hidden:                true,
 		DisableFlagParsing:    true,
+		Aliases:               []string{CompWithDescRequestCmd},
 		Args:                  require.MinimumNArgs(1),
 		Short:                 "Request shell completion choices for the specified command-line",
 		Long: fmt.Sprintf("%[2]s is a special command that is used by the shell completion logic\n%[1]s",
 			"to request completion choices for the specified command-line.", CompRequestCmd),
 		Run: func(cmd *cobra.Command, args []string) {
-			completions, directive, err := getCompletions(cmd.Root(), args)
+			completions, directive, err := getCompletions(cmd, args)
 			if err != nil {
 				CompErrorln(err.Error())
 				// Keep going for multiple reasons:
@@ -215,7 +221,7 @@ func NewCompleteCmd(settings *cli.EnvSettings, out io.Writer) *cobra.Command {
 	}
 }
 
-func getCompletions(rootCmd *cobra.Command, args []string) ([]string, BashCompDirective, error) {
+func getCompletions(cmd *cobra.Command, args []string) ([]string, BashCompDirective, error) {
 	var completions []string
 
 	// The last argument, which is not completely typed by the user,
@@ -224,19 +230,20 @@ func getCompletions(rootCmd *cobra.Command, args []string) ([]string, BashCompDi
 	trimmedArgs := args[:len(args)-1]
 
 	// Find the real command for which completion must be performed
-	finalCmd, finalArgs, err := rootCmd.Find(trimmedArgs)
+	finalCmd, finalArgs, err := cmd.Root().Find(trimmedArgs)
 	if err != nil {
 		// Unable to find the real command. E.g., helm invalidCmd <TAB>
 		return completions, BashCompDirectiveDefault, fmt.Errorf("Unable to find a command for arguments: %v", trimmedArgs)
 	}
 
+	includeDesc := (cmd.CalledAs() == CompWithDescRequestCmd)
 	if isFlag(toComplete) && !strings.Contains(toComplete, "=") {
 		// We are completing a flag name
 		finalCmd.NonInheritedFlags().VisitAll(func(flag *pflag.Flag) {
-			completions = append(completions, getFlagNameCompletions(flag, toComplete)...)
+			completions = append(completions, getFlagNameCompletions(flag, toComplete, includeDesc)...)
 		})
 		finalCmd.InheritedFlags().VisitAll(func(flag *pflag.Flag) {
-			completions = append(completions, getFlagNameCompletions(flag, toComplete)...)
+			completions = append(completions, getFlagNameCompletions(flag, toComplete, includeDesc)...)
 		})
 
 		directive := BashCompDirectiveDefault
@@ -263,7 +270,11 @@ func getCompletions(rootCmd *cobra.Command, args []string) ([]string, BashCompDi
 		// Complete subcommand names
 		for _, subCmd := range finalCmd.Commands() {
 			if subCmd.IsAvailableCommand() && strings.HasPrefix(subCmd.Name(), toComplete) {
-				completions = append(completions, subCmd.Name())
+				comp := subCmd.Name()
+				if includeDesc {
+					comp = fmt.Sprintf("%s\t%s", comp, subCmd.Short)
+				}
+				completions = append(completions, comp)
 			}
 		}
 
@@ -313,7 +324,7 @@ func getCompletions(rootCmd *cobra.Command, args []string) ([]string, BashCompDi
 	return completions, directive, nil
 }
 
-func getFlagNameCompletions(flag *pflag.Flag, toComplete string) []string {
+func getFlagNameCompletions(flag *pflag.Flag, toComplete string, includeDesc bool) []string {
 	if nonCompletableFlag(flag) {
 		return []string{}
 	}
@@ -334,6 +345,13 @@ func getFlagNameCompletions(flag *pflag.Flag, toComplete string) []string {
 	comp = "-" + flag.Shorthand
 	if len(flag.Shorthand) > 0 && strings.HasPrefix(comp, toComplete) {
 		completions = append(completions, comp)
+	}
+
+	// Add documentation if requested
+	if includeDesc {
+		for idx, comp := range completions {
+			completions[idx] = fmt.Sprintf("%s\t%s", comp, flag.Usage)
+		}
 	}
 	return completions
 }

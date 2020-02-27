@@ -45,6 +45,7 @@ var (
 		"zsh":  runCompletionZsh,
 		"fish": runCompletionFish,
 	}
+	completionNoDesc bool
 )
 
 func newCompletionCmd(out io.Writer) *cobra.Command {
@@ -62,6 +63,7 @@ func newCompletionCmd(out io.Writer) *cobra.Command {
 		},
 		ValidArgs: shells,
 	}
+	cmd.PersistentFlags().BoolVar(&completionNoDesc, "no-descriptions", false, "disable completion description for shells that support it")
 
 	return cmd
 }
@@ -249,6 +251,10 @@ __helm_bash_source <(__helm_convert_bash_to_zsh)
 }
 
 func runCompletionFish(out io.Writer, cmd *cobra.Command) error {
+	compCmd := completion.CompWithDescRequestCmd
+	if completionNoDesc {
+		compCmd = completion.CompRequestCmd
+	}
 	fishScript := fmt.Sprintf(`# fish completion for helm            -*- shell-script -*-
 
 function __helm_debug
@@ -272,7 +278,7 @@ function __helm_handle_completion
     end
 
     __helm_debug "emptyArg: $emptyArg"
-	set requestComp "$args[1] __complete $args[2..-1] $emptyArg"
+	set requestComp "$args[1] %[1]s $args[2..-1] $emptyArg"
     __helm_debug "Calling $requestComp"
     eval $requestComp 2> /dev/null
 end
@@ -289,13 +295,13 @@ function __helm_get_completions
 	__helm_debug "Completions are: $comps"
 	__helm_debug "Directive is: $directive"
 
-	set -l compErr (math (math $directive / %[1]d) %% 2)
+	set -l compErr (math (math $directive / %[2]d) %% 2)
 	if test $compErr -eq 1
 	   return 0
 	end
 
-	set -l nospace (math (math $directive / %[2]d) %% 2)
-	set -l nofiles (math (math $directive / %[3]d) %% 2)
+	set -l nospace (math (math $directive / %[3]d) %% 2)
+	set -l nofiles (math (math $directive / %[4]d) %% 2)
 
 	__helm_debug "nospace: $nospace, nofiles: $nofiles"
 
@@ -325,7 +331,7 @@ complete -c helm -n 'not __helm_get_completions'
 # This completion will be run first as complete commands are added FILO.  It first clears the cache.
 complete -c helm -n 'set -e __helm_cache_completions; __helm_get_completions' -f -a '(__helm_get_completions)'
 
-`, completion.BashCompDirectiveError, completion.BashCompDirectiveNoSpace, completion.BashCompDirectiveNoFileComp)
+`, compCmd, completion.BashCompDirectiveError, completion.BashCompDirectiveNoSpace, completion.BashCompDirectiveNoFileComp)
 
 	out.Write([]byte(fishScript))
 	return nil
