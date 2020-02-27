@@ -15,7 +15,7 @@ jobs:
       - checkout
       - run:
           name: install test dependencies
-          command: .circleci/bootstrap.sh
+          command: make lint
       - run:
           name: test style
           command: make test-style

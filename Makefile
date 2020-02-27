@@ -10,6 +10,8 @@ GOX           = $(GOPATH)/bin/gox
 GOIMPORTS     = $(GOPATH)/bin/goimports
 ARCH          = $(shell uname -p)
 
+GOLANGCI_LINT_VERSION = "1.21.0"
+
 ACCEPTANCE_DIR:=../acceptance-testing
 # To specify the subset of acceptance tests to run. '.' means all tests
 ACCEPTANCE_RUN_TESTS=.
@@ -89,9 +91,18 @@ test-coverage:
 	@ ./scripts/coverage.sh
 
 .PHONY: test-style
-test-style:
+test-style: lint
 	GO111MODULE=on golangci-lint run
 	@scripts/validate-license.sh
+
+.PHONY: lint
+lint:
+	set -euo pipefail
+	cd /
+	GO111MODULE=on
+	curl -sSL https://github.com/golangci/golangci-lint/releases/download/v${GOLANGCI_LINT_VERSION}/golangci-lint-${GOLANGCI_LINT_VERSION}-linux-amd64.tar.gz | tar xz
+	sudo mv golangci-lint-${GOLANGCI_LINT_VERSION}-linux-amd64/golangci-lint /usr/local/bin/golangci-lint
+	rm -rf golangci-lint-${GOLANGCI_LINT_VERSION}-linux-amd64
 
 .PHONY: test-acceptance
 test-acceptance: TARGETS = linux/amd64
