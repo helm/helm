@@ -169,7 +169,7 @@ func joinErrors(errs []error) string {
 
 // deleteRelease deletes the release and returns manifests that were kept in the deletion process
 func (u *Uninstall) deleteRelease(rel *release.Release) (string, []error) {
-	caps, err := u.cfg.getCapabilities()
+	caps, err := u.cfg.GetCapabilities()
 	if err != nil {
 		return rel.Manifest, []error{errors.Wrap(err, "could not get apiVersions from Kubernetes")}
 	}

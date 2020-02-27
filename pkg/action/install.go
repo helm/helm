@@ -209,7 +209,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	// the user doesn't have to specify both
 	i.Wait = i.Wait || i.Atomic
 
-	caps, err := i.cfg.getCapabilities()
+	caps, err := i.cfg.GetCapabilities()
 	if err != nil {
 		return nil, err
 	}
@@ -465,7 +465,7 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 	hs := []*release.Hook{}
 	b := bytes.NewBuffer(nil)
 
-	caps, err := c.getCapabilities()
+	caps, err := c.GetCapabilities()
 	if err != nil {
 		return hs, b, "", err
 	}
