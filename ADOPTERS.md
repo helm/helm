@@ -6,8 +6,8 @@
 # Organizations Using Helm
 
 - [Blood Orange](https://bloodorange.io)
-- [Microsoft](https://microsoft.com)
 - [IBM](https://www.ibm.com)
+- [Microsoft](https://microsoft.com)
 - [Qovery](https://www.qovery.com/)
 - [Samsung SDS](https://www.samsungsds.com/)
 - [Ville de Montreal](https://montreal.ca)
