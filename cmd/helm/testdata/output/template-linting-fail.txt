@@ -1,0 +1,6 @@
+==> Linting testdata/testcharts/novals
+[INFO] Chart.yaml: icon is recommended
+[INFO] values.yaml: file does not exist
+[ERROR] templates/: template: novals/templates/alpine-pod.yaml:18:33: executing "novals/templates/alpine-pod.yaml" at <.Release.Time.Seconds>: nil pointer evaluating interface {}.Seconds
+
+Error: 1 chart(s) linted, 1 chart(s) failed

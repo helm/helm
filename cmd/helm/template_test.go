@@ -75,6 +75,23 @@ func TestTemplateCmd(t *testing.T) {
 			golden: "output/template-chart-with-template-lib-archive-dep.txt",
 		},
 		{
+			name:   "check linting success",
+			cmd:    fmt.Sprintf("template '%s' --lint", "testdata/testcharts/empty"),
+			golden: "output/template-linting-success.txt",
+		},
+		{
+			name:      "check linting fail",
+			cmd:       fmt.Sprintf("template '%s' --lint", "testdata/testcharts/novals"),
+			wantError: true,
+			golden:    "output/template-linting-fail.txt",
+		},
+		{
+			name:      "check linting strict fail",
+			cmd:       fmt.Sprintf("template '%s' --lint --strict", "testdata/testcharts/novals"),
+			wantError: true,
+			golden:    "output/template-linting-strict-fail.txt",
+		},
+		{
 			name:   "check kube api versions",
 			cmd:    fmt.Sprintf("template --api-versions helm.k8s.io/test '%s'", chartPath),
 			golden: "output/template-with-api-version.txt",

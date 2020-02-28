@@ -1,0 +1,6 @@
+==> Linting testdata/testcharts/novals
+[INFO] Chart.yaml: icon is recommended
+[INFO] values.yaml: file does not exist
+[ERROR] templates/: template: novals/templates/alpine-pod.yaml:4:36: executing "novals/templates/alpine-pod.yaml" at <.Values.Name>: map has no entry for key "Name"
+
+Error: 1 chart(s) linted, 1 chart(s) failed
