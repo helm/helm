@@ -136,7 +136,6 @@ func TestRenderRefsOrdering(t *testing.T) {
 			{Name: "templates/_helpers.tpl", Data: []byte(`{{- define "test" -}}parent value{{- end -}}`)},
 			{Name: "templates/test.yaml", Data: []byte(`{{ tpl "{{ include \"test\" . }}" . }}`)},
 		},
-
 	}
 	childChart := &chart.Chart{
 		Metadata: &chart.Metadata{
