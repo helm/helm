@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"strings"
 	"sync"
 	"time"
@@ -49,6 +50,8 @@ import (
 
 // ErrNoObjectsVisited indicates that during a visit operation, no matching objects were found.
 var ErrNoObjectsVisited = errors.New("no objects visited")
+
+var metadataAccessor = meta.NewAccessor()
 
 // Client represents a client capable of communicating with the Kubernetes API.
 type Client struct {
@@ -210,6 +213,19 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 
 	for _, info := range original.Difference(target) {
 		c.Log("Deleting %q in %s...", info.Name, info.Namespace)
+
+		if err := info.Get(); err != nil {
+			c.Log("Unable to get obj %q, err: %s", info.Name, err)
+		}
+		annotations, err := metadataAccessor.Annotations(info.Object)
+		if err != nil {
+			c.Log("Unable to get annotations on %q, err: %s", info.Name, err)
+		}
+		if annotations != nil && annotations[ResourcePolicyAnno] == KeepPolicy {
+			c.Log("Skipping delete of %q due to annotation [%s=%s]", info.Name, ResourcePolicyAnno, KeepPolicy)
+			continue
+		}
+
 		res.Deleted = append(res.Deleted, info)
 		if err := deleteResource(info); err != nil {
 			if apierrors.IsNotFound(err) {
