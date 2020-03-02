@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -163,13 +164,13 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		client.Version = ">0.0.0-0"
 	}
 
-	name, chart, err := client.NameAndChart(args)
+	name, schart, err := client.NameAndChart(args)
 	if err != nil {
 		return nil, err
 	}
 	client.ReleaseName = name
 
-	cp, err := client.ChartPathOptions.LocateChart(chart, settings)
+	cp, err := client.ChartPathOptions.LocateChart(schart, settings)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +184,12 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	}
 
 	// Check chart dependencies to make sure all are present in /charts
-	chartRequested, err := loader.Load(cp)
+	var chartRequested *chart.Chart
+	if settings.RepositoryCache == "off" {
+		chartRequested, err = downloader.GetChart(schart, strings.TrimSpace(client.ChartPathOptions.Version))
+	} else {
+		chartRequested, err = loader.Load(cp)
+	}
 	if err != nil {
 		return nil, err
 	}

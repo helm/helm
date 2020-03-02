@@ -620,7 +620,6 @@ OUTER:
 func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (string, error) {
 	name = strings.TrimSpace(name)
 	version := strings.TrimSpace(c.Version)
-
 	if _, err := os.Stat(name); err == nil {
 		abs, err := filepath.Abs(name)
 		if err != nil {
@@ -660,20 +659,24 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		name = chartURL
 	}
 
-	if err := os.MkdirAll(settings.RepositoryCache, 0755); err != nil {
+	// If HELM_REPOSITORY_CACHE has an "off" value, the chart won't be downloaded
+	if err := os.MkdirAll(settings.RepositoryCache, 0755); err != nil && settings.RepositoryCache != "off" {
 		return "", err
 	}
 
-	filename, _, err := dl.DownloadTo(name, version, settings.RepositoryCache)
+	chartLocation, _, err := dl.DownloadTo(name, version, settings.RepositoryCache)
 	if err == nil {
-		lname, err := filepath.Abs(filename)
+		if settings.RepositoryCache != "off" {
+			return chartLocation, err
+		}
+		lname, err := filepath.Abs(chartLocation)
 		if err != nil {
-			return filename, err
+			return chartLocation, err
 		}
 		return lname, nil
 	} else if settings.Debug {
-		return filename, err
+		return chartLocation, err
 	}
 
-	return filename, errors.Errorf("failed to download %q (hint: running `helm repo update` may help)", name)
+	return chartLocation, errors.Errorf("failed to download %q (hint: running `helm repo update` may help)", name)
 }

@@ -322,6 +322,84 @@ func TestDownloadTo_VerifyLater(t *testing.T) {
 	}
 }
 
+func TestDownloadToInMemoryCache(t *testing.T) {
+	// Set up a fake repo with basic auth enabled
+	srv, err := repotest.NewTempServer("testdata/*.tgz*")
+	srv.Stop()
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv.WithMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		username, password, ok := r.BasicAuth()
+		if !ok || username != "username" || password != "password" {
+			t.Errorf("Expected request to use basic auth and for username == 'username' and password == 'password', got '%v', '%s', '%s'", ok, username, password)
+		}
+	}))
+	srv.Start()
+	defer srv.Stop()
+	if err := srv.CreateIndex(); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := srv.LinkIndices(); err != nil {
+		t.Fatal(err)
+	}
+
+	c := ChartDownloader{
+		Out:              os.Stderr,
+		Verify:           VerifyAlways,
+		Keyring:          "testdata/helm-test-key.pub",
+		RepositoryConfig: repoConfig,
+		RepositoryCache:  repoCache,
+		Getters: getter.All(&cli.EnvSettings{
+			RepositoryConfig: repoConfig,
+			RepositoryCache:  repoCache,
+		}),
+		Options: []getter.Option{
+			getter.WithBasicAuth("username", "password"),
+		},
+	}
+	cname := "/signtest-0.1.0.tgz"
+	_, v, err := c.DownloadTo(srv.URL()+cname, "", "off")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if v.FileHash == "" {
+		t.Error("File hash was empty, but verification is required.")
+	}
+}
+
+func TestDownloadToInMemoryCache_VerifyLater(t *testing.T) {
+	defer ensure.HelmHome(t)()
+
+	// Set up a fake repo
+	srv, err := repotest.NewTempServer("testdata/*.tgz*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer srv.Stop()
+	if err := srv.LinkIndices(); err != nil {
+		t.Fatal(err)
+	}
+
+	c := ChartDownloader{
+		Out:              os.Stderr,
+		Verify:           VerifyLater,
+		RepositoryConfig: repoConfig,
+		RepositoryCache:  repoCache,
+		Getters: getter.All(&cli.EnvSettings{
+			RepositoryConfig: repoConfig,
+			RepositoryCache:  repoCache,
+		}),
+	}
+	cname := "/signtest-0.1.0.tgz"
+	_, _, err = c.DownloadTo(srv.URL()+cname, "", "off")
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestScanReposForURL(t *testing.T) {
 	c := ChartDownloader{
 		Out:              os.Stderr,

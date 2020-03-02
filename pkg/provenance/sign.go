@@ -229,7 +229,7 @@ func (s *Signatory) ClearSign(chartpath string) (string, error) {
 	return out.String(), err
 }
 
-// Verify checks a signature and verifies that it is legit for a chart.
+// Verify checks a signature and verifies that it is legit for a chart (stored in the filesystem)
 func (s *Signatory) Verify(chartpath, sigpath string) (*Verification, error) {
 	ver := &Verification{}
 	for _, fname := range []string{chartpath, sigpath} {
@@ -240,8 +240,31 @@ func (s *Signatory) Verify(chartpath, sigpath string) (*Verification, error) {
 		}
 	}
 
+	// Get sigData
+	sigData, err := ioutil.ReadFile(sigpath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get chartData
+	chartData, err := ioutil.ReadFile(chartpath)
+	if err != nil {
+		return nil, err
+	}
+
+	ver, nil := s.VerifyFromData(chartpath, bytes.NewBuffer(chartData), bytes.NewBuffer(sigData))
+
+	// TODO: when image signing is added, verify that here.
+
+	return ver, nil
+}
+
+// VerifyFromData checks the signature and verifies that it is legit for a chart (not stored in the filesystem)
+func (s *Signatory) VerifyFromData(chartRef string, chartData, sigData *bytes.Buffer) (*Verification, error) {
+	ver := &Verification{}
+
 	// First verify the signature
-	sig, err := s.decodeSignature(sigpath)
+	sig, err := s.decodeSignatureFromData(sigData.Bytes())
 	if err != nil {
 		return ver, errors.Wrap(err, "failed to decode signature")
 	}
@@ -253,28 +276,37 @@ func (s *Signatory) Verify(chartpath, sigpath string) (*Verification, error) {
 	ver.SignedBy = by
 
 	// Second, verify the hash of the tarball.
-	sum, err := DigestFile(chartpath)
+	sum, err := Digest(chartData)
 	if err != nil {
 		return ver, err
 	}
+
+	verification, err := s.verifySum(sum, chartRef, sig, ver)
+	if err != nil {
+		return verification, err
+	}
+
+	// TODO: when image signing is added, verify that here.
+
+	return ver, nil
+}
+
+func (s *Signatory) verifySum(sum string, chartRef string, sig *clearsign.Block, ver *Verification) (*Verification, error) {
 	_, sums, err := parseMessageBlock(sig.Plaintext)
 	if err != nil {
 		return ver, err
 	}
 
 	sum = "sha256:" + sum
-	basename := filepath.Base(chartpath)
+	basename := filepath.Base(chartRef)
 	if sha, ok := sums.Files[basename]; !ok {
-		return ver, errors.Errorf("provenance does not contain a SHA for a file named %q", basename)
+		return ver, errors.Errorf("provenance does not contain a SHA for reference named %q", basename)
 	} else if sha != sum {
 		return ver, errors.Errorf("sha256 sum does not match for %s: %q != %q", basename, sha, sum)
 	}
 	ver.FileHash = sum
 	ver.FileName = basename
-
-	// TODO: when image signing is added, verify that here.
-
-	return ver, nil
+	return nil, nil
 }
 
 func (s *Signatory) decodeSignature(filename string) (*clearsign.Block, error) {
@@ -283,6 +315,10 @@ func (s *Signatory) decodeSignature(filename string) (*clearsign.Block, error) {
 		return nil, err
 	}
 
+	return s.decodeSignatureFromData(data)
+}
+
+func (s *Signatory) decodeSignatureFromData(data []byte) (*clearsign.Block, error) {
 	block, _ := clearsign.Decode(data)
 	if block == nil {
 		// There was no sig in the file.

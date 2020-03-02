@@ -16,12 +16,18 @@ limitations under the License.
 package downloader
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+
+	lru "github.com/hashicorp/golang-lru"
+
+	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/chart/loader"
 
 	"github.com/pkg/errors"
 
@@ -72,6 +78,16 @@ type ChartDownloader struct {
 	RepositoryCache  string
 }
 
+type inMemoryChart struct {
+	ChartData              *bytes.Buffer
+	ProvenanceVerification *provenance.Verification
+}
+
+// inMemoryCharts maps version to a particular chart
+type inMemoryCharts map[string]inMemoryChart
+
+var inMemoryCache, _ = lru.New(128)
+
 // DownloadTo retrieves a chart. Depending on the settings, it may also download a provenance file.
 //
 // If Verify is set to VerifyNever, the verification will be nil.
@@ -94,43 +110,74 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 		return "", nil, err
 	}
 
-	data, err := g.Get(u.String(), c.Options...)
+	chartData, err := g.Get(u.String(), c.Options...)
 	if err != nil {
 		return "", nil, err
 	}
 
-	name := filepath.Base(u.Path)
-	destfile := filepath.Join(dest, name)
-	if err := fileutil.AtomicWriteFile(destfile, data, 0644); err != nil {
-		return destfile, nil, err
-	}
-
 	// If provenance is requested, verify it.
 	ver := &provenance.Verification{}
-	if c.Verify > VerifyNever {
-		body, err := g.Get(u.String() + ".prov")
-		if err != nil {
-			if c.Verify == VerifyAlways {
-				return destfile, ver, errors.Errorf("failed to fetch provenance %q", u.String()+".prov")
-			}
-			fmt.Fprintf(c.Out, "WARNING: Verification not found for %s: %s\n", ref, err)
-			return destfile, ver, nil
-		}
-		provfile := destfile + ".prov"
-		if err := fileutil.AtomicWriteFile(provfile, body, 0644); err != nil {
+	chartRef := ""
+	if dest == "off" {
+		chartRef = ref
+	} else {
+		filename := filepath.Base(u.Path)
+		destfile := filepath.Join(dest, filename)
+		if err := fileutil.AtomicWriteFile(destfile, chartData, 0644); err != nil {
 			return destfile, nil, err
 		}
+		chartRef = destfile
+	}
+	if c.Verify > VerifyNever {
+		provData, err := g.Get(u.String() + ".prov")
+		if err != nil {
+			if c.Verify == VerifyAlways {
+				return chartRef, ver, errors.Errorf("failed to fetch provenance %q", u.String()+".prov")
+			}
+			fmt.Fprintf(c.Out, "WARNING: Verification not found for %s: %s\n", ref, err)
+			return chartRef, ver, nil
+		}
 
-		if c.Verify != VerifyLater {
-			ver, err = VerifyChart(destfile, c.Keyring)
-			if err != nil {
-				// Fail always in this case, since it means the verification step
-				// failed.
-				return destfile, ver, err
+		if dest == "off" {
+			if c.Verify != VerifyLater {
+				ver, err = verifyInMemoryChart(chartRef, c.Keyring, chartData, provData)
+				if err != nil {
+					// Fail always in this case, since it means the verification step
+					// failed.
+					return chartRef, ver, err
+				}
+			}
+		} else {
+			provfile := chartRef + ".prov"
+			if err := fileutil.AtomicWriteFile(provfile, provData, 0644); err != nil {
+				return chartRef, nil, err
+			}
+
+			if c.Verify != VerifyLater {
+				ver, err = VerifyChart(chartRef, c.Keyring)
+				if err != nil {
+					// Fail always in this case, since it means the verification step
+					// failed.
+					return chartRef, ver, err
+				}
 			}
 		}
 	}
-	return destfile, ver, nil
+
+	if dest == "off" {
+		inMemoryCache.ContainsOrAdd(chartRef, make(inMemoryCharts))
+		tempCharts, ok := inMemoryCache.Get(chartRef)
+
+		if !ok {
+			return chartRef, ver, errors.New(fmt.Sprintf("error during retrival of chart list %s from Cache", ref))
+		}
+		tempCharts.(inMemoryCharts)[version] = inMemoryChart{
+			ChartData:              chartData,
+			ProvenanceVerification: ver,
+		}
+		inMemoryCache.Add(chartRef, tempCharts)
+	}
+	return chartRef, ver, nil
 }
 
 // ResolveChartVersion resolves a chart reference to a URL.
@@ -153,6 +200,10 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 		return nil, errors.Errorf("invalid chart URL format: %s", ref)
 	}
 	c.Options = append(c.Options, getter.WithURL(ref))
+
+	if c.RepositoryCache == "off" {
+		return u, nil
+	}
 
 	rf, err := loadRepoConfig(c.RepositoryConfig)
 	if err != nil {
@@ -293,6 +344,19 @@ func VerifyChart(path, keyring string) (*provenance.Verification, error) {
 	return sig.Verify(path, provfile)
 }
 
+// verifyInMemoryChart takes key to a chart in the the inMemoryCache and a keyring,
+// and verifies the chart.
+//
+// It assumes that a chart data is accompanied by a embedded provenance file whose
+// name is the archive file name plus the ".prov" extension.
+func verifyInMemoryChart(ref, keyring string, chartData, provData *bytes.Buffer) (*provenance.Verification, error) {
+	sig, err := provenance.NewFromKeyring(keyring, "")
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to load keyring")
+	}
+	return sig.VerifyFromData(ref, chartData, provData)
+}
+
 // isTar tests whether the given file is a tar file.
 //
 // Currently, this simply checks extension, since a subsequent function will
@@ -366,4 +430,13 @@ func loadRepoConfig(file string) (*repo.File, error) {
 		return nil, err
 	}
 	return r, nil
+}
+
+func GetChart(chart string, version string) (*chart.Chart, error) {
+	chartList, _ := inMemoryCache.Get(chart)
+	if chartList != nil {
+		chartData := chartList.(inMemoryCharts)[version].ChartData
+		return loader.LoadArchive(chartData)
+	}
+	return nil, errors.New("Chart not found in cache")
 }
