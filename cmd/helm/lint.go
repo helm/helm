@@ -106,7 +106,7 @@ func newLintCmd(out io.Writer) *cobra.Command {
 				fmt.Fprint(&message, "\n")
 			}
 
-			fmt.Fprintf(out, message.String())
+			fmt.Fprint(out, message.String())
 
 			summary := fmt.Sprintf("%d chart(s) linted, %d chart(s) failed", len(paths), failed)
 			if failed > 0 {
