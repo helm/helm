@@ -195,6 +195,12 @@ func TestInstall(t *testing.T) {
 			cmd:    "install aeneas testdata/testcharts/deprecated --namespace default",
 			golden: "output/deprecated-chart.txt",
 		},
+		// Install with non url and in-memory-cache enabled
+		{
+			name:      "install with inMemory cache enabled ",
+			cmd:       "install cached testdata/testcharts/empty --namespace default --use-inmemory-cache",
+			wantError: true,
+		},
 	}
 
 	runTestActionCmd(t, tests)
