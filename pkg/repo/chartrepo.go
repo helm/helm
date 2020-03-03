@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/url"
 	"os"
 	"path"
@@ -276,6 +277,9 @@ func ResolveReferenceURL(baseURL, refURL string) (string, error) {
 }
 
 func (e *Entry) String() string {
-	buf, _ := json.Marshal(e)
+	buf, err := json.Marshal(e)
+	if err != nil {
+		log.Panic(err)
+	}
 	return string(buf)
 }
