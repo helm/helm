@@ -35,19 +35,33 @@ func TestSQLName(t *testing.T) {
 func TestSQLGet(t *testing.T) {
 	vers := int(1)
 	name := "smug-pigeon"
-	namespace := "default"
+
+	namespace, err := getCurrentNamespace()
+	if err != nil {
+		t.Fatalf("could not get namespace: %v", err)
+	}
+
 	key := testKey(name, vers)
 	rel := releaseStub(name, vers, namespace, rspb.StatusDeployed)
 
 	body, _ := encodeRelease(rel)
 
 	sqlDriver, mock := newTestFixtureSQL(t)
+
+	query := fmt.Sprintf(
+		regexp.QuoteMeta("SELECT %s FROM %s WHERE %s = $1 AND %s = $2"),
+		sqlReleaseTableBodyColumn,
+		sqlReleaseTableName,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableNamespaceColumn,
+	)
+
 	mock.
-		ExpectQuery("SELECT body FROM releases WHERE key = ?").
-		WithArgs(key).
+		ExpectQuery(query).
+		WithArgs(key, namespace).
 		WillReturnRows(
 			mock.NewRows([]string{
-				"body",
+				sqlReleaseTableBodyColumn,
 			}).AddRow(
 				body,
 			),
@@ -78,11 +92,19 @@ func TestSQLList(t *testing.T) {
 	sqlDriver, mock := newTestFixtureSQL(t)
 
 	for i := 0; i < 3; i++ {
+		query := fmt.Sprintf(
+			"SELECT %s FROM %s WHERE %s = '%s'",
+			sqlReleaseTableBodyColumn,
+			sqlReleaseTableName,
+			sqlReleaseTableOwnerColumn,
+			sqlReleaseDefaultOwner,
+		)
+
 		mock.
-			ExpectQuery("SELECT body FROM releases WHERE owner = 'helm'").
+			ExpectQuery(query).
 			WillReturnRows(
 				mock.NewRows([]string{
-					"body",
+					sqlReleaseTableBodyColumn,
 				}).
 					AddRow(body1).
 					AddRow(body2).
@@ -137,17 +159,36 @@ func TestSQLList(t *testing.T) {
 func TestSqlCreate(t *testing.T) {
 	vers := 1
 	name := "smug-pigeon"
-	namespace := "default"
+
+	namespace, err := getCurrentNamespace()
+	if err != nil {
+		t.Fatalf("could not get namespace: %v", err)
+	}
+
 	key := testKey(name, vers)
 	rel := releaseStub(name, vers, namespace, rspb.StatusDeployed)
 
 	sqlDriver, mock := newTestFixtureSQL(t)
 	body, _ := encodeRelease(rel)
 
+	query := fmt.Sprintf(
+		"INSERT INTO %s (%s, %s, %s, %s, %s, %s, %s, %s, %s) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		sqlReleaseTableName,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableTypeColumn,
+		sqlReleaseTableBodyColumn,
+		sqlReleaseTableNameColumn,
+		sqlReleaseTableNamespaceColumn,
+		sqlReleaseTableVersionColumn,
+		sqlReleaseTableStatusColumn,
+		sqlReleaseTableOwnerColumn,
+		sqlReleaseTableCreatedAtColumn,
+	)
+
 	mock.ExpectBegin()
 	mock.
-		ExpectExec(regexp.QuoteMeta("INSERT INTO releases (key, type, body, name, version, status, owner, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")).
-		WithArgs(key, "helm.sh/release.v1", body, rel.Name, int(rel.Version), rel.Info.Status.String(), "helm", int(time.Now().Unix())).
+		ExpectExec(regexp.QuoteMeta(query)).
+		WithArgs(key, sqlReleaseDefaultType, body, rel.Name, rel.Namespace, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, int(time.Now().Unix())).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 
@@ -163,29 +204,56 @@ func TestSqlCreate(t *testing.T) {
 func TestSqlCreateAlreadyExists(t *testing.T) {
 	vers := 1
 	name := "smug-pigeon"
-	namespace := "default"
+
+	namespace, err := getCurrentNamespace()
+	if err != nil {
+		t.Fatalf("could not get namespace: %v", err)
+	}
+
 	key := testKey(name, vers)
 	rel := releaseStub(name, vers, namespace, rspb.StatusDeployed)
 
 	sqlDriver, mock := newTestFixtureSQL(t)
 	body, _ := encodeRelease(rel)
 
+	insertQuery := fmt.Sprintf(
+		"INSERT INTO %s (%s, %s, %s, %s, %s, %s, %s, %s, %s) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		sqlReleaseTableName,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableTypeColumn,
+		sqlReleaseTableBodyColumn,
+		sqlReleaseTableNameColumn,
+		sqlReleaseTableNamespaceColumn,
+		sqlReleaseTableVersionColumn,
+		sqlReleaseTableStatusColumn,
+		sqlReleaseTableOwnerColumn,
+		sqlReleaseTableCreatedAtColumn,
+	)
+
 	// Insert fails (primary key already exists)
 	mock.ExpectBegin()
 	mock.
-		ExpectExec(regexp.QuoteMeta("INSERT INTO releases (key, type, body, name, version, status, owner, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")).
-		WithArgs(key, "helm.sh/release.v1", body, rel.Name, int(rel.Version), rel.Info.Status.String(), "helm", int(time.Now().Unix())).
+		ExpectExec(regexp.QuoteMeta(insertQuery)).
+		WithArgs(key, sqlReleaseDefaultType, body, rel.Name, rel.Namespace, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, int(time.Now().Unix())).
 		WillReturnError(fmt.Errorf("dialect dependent SQL error"))
+
+	selectQuery := fmt.Sprintf(
+		regexp.QuoteMeta("SELECT %s FROM %s WHERE %s = $1 and %s = $2"),
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableName,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableNamespaceColumn,
+	)
 
 	// Let's check that we do make sure the error is due to a release already existing
 	mock.
-		ExpectQuery(regexp.QuoteMeta("SELECT key FROM releases WHERE key = ?")).
-		WithArgs(key).
+		ExpectQuery(selectQuery).
+		WithArgs(key, namespace).
 		WillReturnRows(
 			mock.NewRows([]string{
-				"body",
+				sqlReleaseTableKeyColumn,
 			}).AddRow(
-				body,
+				key,
 			),
 		).RowsWillBeClosed()
 	mock.ExpectRollback()
@@ -202,16 +270,34 @@ func TestSqlCreateAlreadyExists(t *testing.T) {
 func TestSqlUpdate(t *testing.T) {
 	vers := 1
 	name := "smug-pigeon"
-	namespace := "default"
+
+	namespace, err := getCurrentNamespace()
+	if err != nil {
+		t.Fatalf("could not get namespace: %v", err)
+	}
+
 	key := testKey(name, vers)
 	rel := releaseStub(name, vers, namespace, rspb.StatusDeployed)
 
 	sqlDriver, mock := newTestFixtureSQL(t)
 	body, _ := encodeRelease(rel)
 
+	query := fmt.Sprintf(
+		"UPDATE %s SET %s=?, %s=?, %s=?, %s=?, %s=?, %s=? WHERE %s=? AND %s=?",
+		sqlReleaseTableName,
+		sqlReleaseTableBodyColumn,
+		sqlReleaseTableNameColumn,
+		sqlReleaseTableVersionColumn,
+		sqlReleaseTableStatusColumn,
+		sqlReleaseTableOwnerColumn,
+		sqlReleaseTableModifiedAtColumn,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableNamespaceColumn,
+	)
+
 	mock.
-		ExpectExec(regexp.QuoteMeta("UPDATE releases SET body=?, name=?, version=?, status=?, owner=?, modifiedAt=? WHERE key=?")).
-		WithArgs(body, rel.Name, int(rel.Version), rel.Info.Status.String(), "helm", int(time.Now().Unix()), key).
+		ExpectExec(regexp.QuoteMeta(query)).
+		WithArgs(body, rel.Name, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, int(time.Now().Unix()), key, namespace).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	if err := sqlDriver.Update(key, rel); err != nil {
@@ -224,15 +310,20 @@ func TestSqlUpdate(t *testing.T) {
 }
 
 func TestSqlQuery(t *testing.T) {
+	namespace, err := getCurrentNamespace()
+	if err != nil {
+		t.Fatalf("could not get namespace: %v", err)
+	}
+
 	// Reflect actual use cases in ../storage.go
 	labelSetDeployed := map[string]string{
 		"name":   "smug-pigeon",
-		"owner":  "helm",
+		"owner":  sqlReleaseDefaultOwner,
 		"status": "deployed",
 	}
 	labelSetAll := map[string]string{
 		"name":  "smug-pigeon",
-		"owner": "helm",
+		"owner": sqlReleaseDefaultOwner,
 	}
 
 	supersededRelease := releaseStub("smug-pigeon", 1, "default", rspb.StatusSuperseded)
@@ -243,23 +334,42 @@ func TestSqlQuery(t *testing.T) {
 	// Let's actually start our test
 	sqlDriver, mock := newTestFixtureSQL(t)
 
+	query := fmt.Sprintf(
+		"SELECT %s FROM %s WHERE %s=? AND %s=? AND %s=? AND %s=?",
+		sqlReleaseTableBodyColumn,
+		sqlReleaseTableName,
+		sqlReleaseTableNameColumn,
+		sqlReleaseTableNamespaceColumn,
+		sqlReleaseTableOwnerColumn,
+		sqlReleaseTableStatusColumn,
+	)
+
 	mock.
-		ExpectQuery(regexp.QuoteMeta("SELECT body FROM releases WHERE name=? AND owner=? AND status=?")).
-		WithArgs("smug-pigeon", "helm", "deployed").
+		ExpectQuery(regexp.QuoteMeta(query)).
+		WithArgs("smug-pigeon", namespace, sqlReleaseDefaultOwner, "deployed").
 		WillReturnRows(
 			mock.NewRows([]string{
-				"body",
+				sqlReleaseTableBodyColumn,
 			}).AddRow(
 				deployedReleaseBody,
 			),
 		).RowsWillBeClosed()
 
+	query = fmt.Sprintf(
+		"SELECT %s FROM %s WHERE %s=? AND %s=? AND %s=?",
+		sqlReleaseTableBodyColumn,
+		sqlReleaseTableName,
+		sqlReleaseTableNameColumn,
+		sqlReleaseTableNamespaceColumn,
+		sqlReleaseTableOwnerColumn,
+	)
+
 	mock.
-		ExpectQuery(regexp.QuoteMeta("SELECT body FROM releases WHERE name=? AND owner=?")).
-		WithArgs("smug-pigeon", "helm").
+		ExpectQuery(regexp.QuoteMeta(query)).
+		WithArgs("smug-pigeon", namespace, sqlReleaseDefaultOwner).
 		WillReturnRows(
 			mock.NewRows([]string{
-				"body",
+				sqlReleaseTableBodyColumn,
 			}).AddRow(
 				supersededReleaseBody,
 			).AddRow(
@@ -301,7 +411,12 @@ func TestSqlQuery(t *testing.T) {
 func TestSqlDelete(t *testing.T) {
 	vers := 1
 	name := "smug-pigeon"
-	namespace := "default"
+
+	namespace, err := getCurrentNamespace()
+	if err != nil {
+		t.Fatalf("could not get namespace: %v", err)
+	}
+
 	key := testKey(name, vers)
 	rel := releaseStub(name, vers, namespace, rspb.StatusDeployed)
 
@@ -309,34 +424,48 @@ func TestSqlDelete(t *testing.T) {
 
 	sqlDriver, mock := newTestFixtureSQL(t)
 
+	selectQuery := fmt.Sprintf(
+		"SELECT %s FROM %s WHERE %s=$1 AND %s=$2",
+		sqlReleaseTableBodyColumn,
+		sqlReleaseTableName,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableNamespaceColumn,
+	)
+
 	mock.ExpectBegin()
 	mock.
-		ExpectQuery("SELECT body FROM releases WHERE key = ?").
-		WithArgs(key).
+		ExpectQuery(regexp.QuoteMeta(selectQuery)).
+		WithArgs(key, namespace).
 		WillReturnRows(
 			mock.NewRows([]string{
-				"body",
+				sqlReleaseTableBodyColumn,
 			}).AddRow(
 				body,
 			),
 		).RowsWillBeClosed()
 
+	deleteQuery := fmt.Sprintf(
+		"DELETE FROM %s WHERE %s = $1 AND %s = $2",
+		sqlReleaseTableName,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableNamespaceColumn,
+	)
+
 	mock.
-		ExpectExec(regexp.QuoteMeta("DELETE FROM releases WHERE key = $1")).
-		WithArgs(key).
+		ExpectExec(regexp.QuoteMeta(deleteQuery)).
+		WithArgs(key, namespace).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 
 	deletedRelease, err := sqlDriver.Delete(key)
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("sql expectations weren't met: %v", err)
+	}
 	if err != nil {
 		t.Fatalf("failed to delete release with key %q: %v", key, err)
 	}
 
 	if !reflect.DeepEqual(rel, deletedRelease) {
 		t.Errorf("Expected release {%v}, got {%v}", rel, deletedRelease)
-	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("sql expectations weren't met: %v", err)
 	}
 }

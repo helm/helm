@@ -23,6 +23,8 @@ import (
 	"encoding/json"
 	"io/ioutil"
 
+	"k8s.io/client-go/tools/clientcmd"
+
 	rspb "helm.sh/helm/v3/pkg/release"
 )
 
@@ -81,4 +83,18 @@ func decodeRelease(data string) (*rspb.Release, error) {
 		return nil, err
 	}
 	return &rls, nil
+}
+
+// getCurrentNamespace gets the current namespace from the local context
+func getCurrentNamespace() (string, error) {
+	rules := clientcmd.NewDefaultClientConfigLoadingRules()
+	rules.DefaultClientConfig = &clientcmd.DefaultClientConfig
+
+	cfg := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, &clientcmd.ConfigOverrides{
+		ClusterDefaults: clientcmd.ClusterDefaults,
+	})
+
+	namespace, _, err := cfg.Namespace()
+
+	return namespace, err
 }

@@ -51,9 +51,31 @@ var supportedSQLDialects = map[string]struct{}{
 // SQLDriverName is the string name of this driver.
 const SQLDriverName = "SQL"
 
+const sqlReleaseTableName = "releases.v1"
+
+const (
+	sqlReleaseTableKeyColumn        = "key"
+	sqlReleaseTableTypeColumn       = "type"
+	sqlReleaseTableBodyColumn       = "body"
+	sqlReleaseTableNameColumn       = "name"
+	sqlReleaseTableNamespaceColumn  = "namespace"
+	sqlReleaseTableVersionColumn    = "version"
+	sqlReleaseTableStatusColumn     = "status"
+	sqlReleaseTableOwnerColumn      = "owner"
+	sqlReleaseTableCreatedAtColumn  = "created_at"
+	sqlReleaseTableModifiedAtColumn = "modifiedAt"
+)
+
+const (
+	sqlReleaseDefaultOwner = "helm"
+	sqlReleaseDefaultType  = "helm.sh/release.v1"
+)
+
 // SQL is the sql storage driver implementation.
 type SQL struct {
-	db  *sqlx.DB
+	db        *sqlx.DB
+	namespace string
+
 	Log func(string, ...interface{})
 }
 
@@ -70,28 +92,34 @@ func (s *SQL) ensureDBSetup() error {
 				Id: "init",
 				Up: []string{
 					`
-						CREATE TABLE releases (
-							key VARCHAR(67) PRIMARY KEY,
+						CREATE TABLE releases.v1 (
+							key VARCHAR(67),
 							type VARCHAR(64) NOT NULL,
-						  	body TEXT NOT NULL,
-						  	name VARCHAR(64) NOT NULL,
+							body TEXT NOT NULL,
+							name VARCHAR(64) NOT NULL,
+							namespace VARCHAR(64) NOT NULL,
 						  	version INTEGER NOT NULL,
 							status TEXT NOT NULL,
 							owner TEXT NOT NULL,
 							createdAt INTEGER NOT NULL,
-							modifiedAt INTEGER NOT NULL DEFAULT 0
+							modifiedAt INTEGER NOT NULL DEFAULT 0,
+							PRIMARY KEY(name, namespace)
 						);
-						CREATE INDEX ON releases (key);
-						CREATE INDEX ON releases (version);
-						CREATE INDEX ON releases (status);
-						CREATE INDEX ON releases (owner);
-						CREATE INDEX ON releases (createdAt);
-						CREATE INDEX ON releases (modifiedAt);
+						CREATE INDEX ON releases.v1 (name, namespace);
+						CREATE INDEX ON releases.v1 (version);
+						CREATE INDEX ON releases.v1 (status);
+						CREATE INDEX ON releases.v1 (owner);
+						CREATE INDEX ON releases.v1 (createdAt);
+						CREATE INDEX ON releases.v1 (modifiedAt);
+						
+						GRANT ALL ON releases.v1 TO PUBLIC;
+
+						ALTER TABLE releases.v1 ENABLE ROW LEVEL SECURITY;
 					`,
 				},
 				Down: []string{
 					`
-						 DROP TABLE releases;
+						DROP TABLE releases.v1;
 					`,
 				},
 			},
@@ -117,6 +145,7 @@ type SQLReleaseWrapper struct {
 	// we implemented. Note that allowing Helm users to filter against new dimensions will require a
 	// new migration to be added, and the Create and/or update functions to be updated accordingly.
 	Name       string `db:"name"`
+	Namespace  string `db:"namespace"`
 	Version    int    `db:"version"`
 	Status     string `db:"status"`
 	Owner      string `db:"owner"`
@@ -150,9 +179,24 @@ func NewSQL(dialect, connectionString string, logger func(string, ...interface{}
 // Get returns the release named by key.
 func (s *SQL) Get(key string) (*rspb.Release, error) {
 	var record SQLReleaseWrapper
+
+	// We first update the current namespace
+	var err error
+	if s.namespace, err = getCurrentNamespace(); err != nil {
+		s.Log("an error occurred while trying to get the current namespace: %v", err)
+		return nil, err
+	}
+
+	query := fmt.Sprintf(
+		"SELECT %s FROM %s WHERE %s = $1 AND %s = $2",
+		sqlReleaseTableBodyColumn,
+		sqlReleaseTableName,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableNamespaceColumn,
+	)
+
 	// Get will return an error if the result is empty
-	err := s.db.Get(&record, "SELECT body FROM releases WHERE key = $1", key)
-	if err != nil {
+	if err := s.db.Get(&record, query, key, s.namespace); err != nil {
 		s.Log("got SQL error when getting release %s: %v", key, err)
 		return nil, storageerrors.ErrReleaseNotFound(key)
 	}
@@ -168,8 +212,16 @@ func (s *SQL) Get(key string) (*rspb.Release, error) {
 
 // List returns the list of all releases such that filter(release) == true
 func (s *SQL) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
+	query := fmt.Sprintf(
+		"SELECT %s FROM %s WHERE %s = '%s'",
+		sqlReleaseTableBodyColumn,
+		sqlReleaseTableName,
+		sqlReleaseTableOwnerColumn,
+		sqlReleaseDefaultOwner,
+	)
+
 	var records = []SQLReleaseWrapper{}
-	if err := s.db.Select(&records, "SELECT body FROM releases WHERE owner = 'helm'"); err != nil {
+	if err := s.db.Select(&records, query); err != nil {
 		s.Log("list: failed to list: %v", err)
 		return nil, err
 	}
@@ -205,11 +257,24 @@ func (s *SQL) Query(labels map[string]string) ([]*rspb.Release, error) {
 			return nil, fmt.Errorf("unknow label %s", key)
 		}
 	}
+
+	// We filter out releases that do not belong to the current namespace
+	sqlFilterKeys = append(sqlFilterKeys, fmt.Sprintf("%s=:namespace", sqlReleaseTableNamespaceColumn))
+
+	// Then we update the current namespace
+	var err error
+	if s.namespace, err = getCurrentNamespace(); err != nil {
+		s.Log("an error occurred while trying to get the current namespace: %v", err)
+		return nil, err
+	}
+
+	sqlFilter["namespace"] = s.namespace
+
 	sort.Strings(sqlFilterKeys)
 
 	// Build our query
 	query := strings.Join([]string{
-		"SELECT body FROM releases",
+		fmt.Sprintf("SELECT %s FROM %s", sqlReleaseTableBodyColumn, sqlReleaseTableName),
 		"WHERE",
 		strings.Join(sqlFilterKeys, " AND "),
 	}, " ")
@@ -251,28 +316,58 @@ func (s *SQL) Create(key string, rls *rspb.Release) error {
 		return err
 	}
 
+	// We update the current namespace
+	if s.namespace, err = getCurrentNamespace(); err != nil {
+		s.Log("an error occurred while trying to get the current namespace: %v", err)
+		return err
+	}
+
 	transaction, err := s.db.Beginx()
 	if err != nil {
 		s.Log("failed to start SQL transaction: %v", err)
 		return fmt.Errorf("error beginning transaction: %v", err)
 	}
 
-	if _, err := transaction.NamedExec("INSERT INTO releases (key, type, body, name, version, status, owner, createdAt) VALUES (:key, :type, :body, :name, :version, :status, :owner, :createdAt)",
+	query := fmt.Sprintf(
+		"INSERT INTO %s (%s, %s, %s, %s, %s, %s, %s, %s, %s) VALUES (:key, :type, :body, :name, :namespace, :version, :status, :owner, :createdAt)",
+		sqlReleaseTableName,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableTypeColumn,
+		sqlReleaseTableBodyColumn,
+		sqlReleaseTableNameColumn,
+		sqlReleaseTableNamespaceColumn,
+		sqlReleaseTableVersionColumn,
+		sqlReleaseTableStatusColumn,
+		sqlReleaseTableOwnerColumn,
+		sqlReleaseTableCreatedAtColumn,
+	)
+
+	if _, err := transaction.NamedExec(query,
 		&SQLReleaseWrapper{
 			Key:  key,
-			Type: "helm.sh/release.v1",
+			Type: sqlReleaseDefaultType,
 			Body: body,
 
 			Name:      rls.Name,
+			Namespace: rls.Namespace,
 			Version:   int(rls.Version),
 			Status:    rls.Info.Status.String(),
-			Owner:     "helm",
+			Owner:     sqlReleaseDefaultOwner,
 			CreatedAt: int(time.Now().Unix()),
 		},
 	); err != nil {
 		defer transaction.Rollback()
+
+		query := fmt.Sprintf(
+			"SELECT %s FROM %s WHERE %s = $1 and %s = $2",
+			sqlReleaseTableKeyColumn,
+			sqlReleaseTableName,
+			sqlReleaseTableKeyColumn,
+			sqlReleaseTableNamespaceColumn,
+		)
+
 		var record SQLReleaseWrapper
-		if err := transaction.Get(&record, "SELECT key FROM releases WHERE key = ?", key); err == nil {
+		if err := transaction.Get(&record, query, key, s.namespace); err == nil {
 			s.Log("release %s already exists", key)
 			return storageerrors.ErrReleaseExists(key)
 		}
@@ -293,14 +388,28 @@ func (s *SQL) Update(key string, rls *rspb.Release) error {
 		return err
 	}
 
-	if _, err := s.db.NamedExec("UPDATE releases SET body=:body, name=:name, version=:version, status=:status, owner=:owner, modifiedAt=:modifiedAt WHERE key=:key",
+	query := fmt.Sprintf(
+		"UPDATE %s SET %s=:body, %s=:name, %s=:version, %s=:status, %s=:owner, %s=:modifiedAt WHERE %s=:key AND %s=:namespace",
+		sqlReleaseTableName,
+		sqlReleaseTableBodyColumn,
+		sqlReleaseTableNameColumn,
+		sqlReleaseTableVersionColumn,
+		sqlReleaseTableStatusColumn,
+		sqlReleaseTableOwnerColumn,
+		sqlReleaseTableModifiedAtColumn,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableNamespaceColumn,
+	)
+
+	if _, err := s.db.NamedExec(query,
 		&SQLReleaseWrapper{
 			Key:        key,
 			Body:       body,
 			Name:       rls.Name,
+			Namespace:  rls.Namespace,
 			Version:    int(rls.Version),
 			Status:     rls.Info.Status.String(),
-			Owner:      "helm",
+			Owner:      sqlReleaseDefaultOwner,
 			ModifiedAt: int(time.Now().Unix()),
 		},
 	); err != nil {
@@ -319,8 +428,22 @@ func (s *SQL) Delete(key string) (*rspb.Release, error) {
 		return nil, fmt.Errorf("error beginning transaction: %v", err)
 	}
 
+	// We update the current namespace
+	if s.namespace, err = getCurrentNamespace(); err != nil {
+		s.Log("an error occurred while trying to get the current namespace: %v", err)
+		return nil, err
+	}
+
+	selectQuery := fmt.Sprintf(
+		"SELECT %s FROM %s WHERE %s=$1 AND %s=$2",
+		sqlReleaseTableBodyColumn,
+		sqlReleaseTableName,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableNamespaceColumn,
+	)
+
 	var record SQLReleaseWrapper
-	err = transaction.Get(&record, "SELECT body FROM releases WHERE key = $1", key)
+	err = transaction.Get(&record, selectQuery, key, s.namespace)
 	if err != nil {
 		s.Log("release %s not found: %v", key, err)
 		return nil, storageerrors.ErrReleaseNotFound(key)
@@ -334,6 +457,13 @@ func (s *SQL) Delete(key string) (*rspb.Release, error) {
 	}
 	defer transaction.Commit()
 
-	_, err = transaction.Exec("DELETE FROM releases WHERE key = $1", key)
+	deleteQuery := fmt.Sprintf(
+		"DELETE FROM %s WHERE %s = $1 AND %s = $2",
+		sqlReleaseTableName,
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableNamespaceColumn,
+	)
+
+	_, err = transaction.Exec(deleteQuery, key, s.namespace)
 	return release, err
 }
