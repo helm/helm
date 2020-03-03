@@ -239,6 +239,36 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	}
 }
 
+func TestProcessDependencyImportValuesForEnabledCharts(t *testing.T) {
+	c := loadChart(t, "testdata/import-values-from-enabled-subchart/parent-chart")
+	nameOverride := "parent-chart-prod"
+
+	if err := processDependencyImportValues(c); err != nil {
+		t.Fatalf("processing import values dependencies %v", err)
+	}
+
+	if len(c.Dependencies()) != 2 {
+		t.Fatalf("expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
+	}
+
+	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
+		t.Fatalf("expected no errors but got %q", err)
+	}
+
+	if len(c.Dependencies()) != 1 {
+		t.Fatal("expected no changes in dependencies")
+	}
+
+	if len(c.Metadata.Dependencies) != 1 {
+		t.Fatalf("expected 1 dependency specified in Chart.yaml, got %d", len(c.Metadata.Dependencies))
+	}
+
+	prodDependencyValues := c.Dependencies()[0].Values
+	if prodDependencyValues["nameOverride"] != nameOverride {
+		t.Fatalf("dependency chart name should be %s but got %s", nameOverride, prodDependencyValues["nameOverride"])
+	}
+}
+
 func TestGetAliasDependency(t *testing.T) {
 	c := loadChart(t, "testdata/frobnitz")
 	req := c.Metadata.Dependencies

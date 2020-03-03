@@ -30,7 +30,7 @@ import (
 type files map[string][]byte
 
 // NewFiles creates a new files from chart files.
-// Given an []*any.Any (the format for files in a chart.Chart), extract a map of files.
+// Given an []*chart.File (the format for files in a chart.Chart), extract a map of files.
 func newFiles(from []*chart.File) files {
 	files := make(map[string][]byte)
 	for _, f := range from {

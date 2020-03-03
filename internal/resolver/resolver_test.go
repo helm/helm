@@ -227,8 +227,8 @@ func TestGetLocalPath(t *testing.T) {
 	}{
 		{
 			name:   "absolute path",
-			repo:   "file:////proc",
-			expect: "/proc",
+			repo:   "file:////tmp",
+			expect: "/tmp",
 		},
 		{
 			name:      "relative path",
