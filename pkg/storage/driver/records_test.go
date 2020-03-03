@@ -204,3 +204,37 @@ func TestRecordsExists(t *testing.T) {
 		}
 	}
 }
+
+func TestRecordsReplace(t *testing.T) {
+	rs := records([]*record{
+		newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", rspb.StatusSuperseded)),
+		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", rspb.StatusDeployed)),
+	})
+
+	var tests = []struct {
+		desc     string
+		key      string
+		rec      *record
+		expected *record
+	}{
+		{
+			"replace with existing key",
+			"rls-a.v2",
+			newRecord("rls-a.v3", releaseStub("rls-a", 3, "default", rspb.StatusSuperseded)),
+			newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", rspb.StatusDeployed)),
+		},
+		{
+			"replace with non existing key",
+			"rls-a.v4",
+			newRecord("rls-a.v4", releaseStub("rls-a", 4, "default", rspb.StatusDeployed)),
+			nil,
+		},
+	}
+
+	for _, tt := range tests {
+		got := rs.Replace(tt.key, tt.rec)
+		if !reflect.DeepEqual(tt.expected, got) {
+			t.Fatalf("Expected %v, got %v", tt.expected, got)
+		}
+	}
+}
