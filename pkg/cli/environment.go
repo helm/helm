@@ -135,10 +135,10 @@ func (s *EnvSettings) Namespace() string {
 func (s *EnvSettings) RESTClientGetter() genericclioptions.RESTClientGetter {
 	s.configOnce.Do(func() {
 		clientConfig := kube.GetConfig(s.KubeConfig, s.KubeContext, s.namespace)
-		if len(s.KubeToken) > 0 {
+		if s.KubeToken != "" {
 			clientConfig.BearerToken = &s.KubeToken
 		}
-		if len(s.KubeAPIServer) > 0 {
+		if s.KubeAPIServer != "" {
 			clientConfig.APIServer = &s.KubeAPIServer
 		}
 
