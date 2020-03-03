@@ -161,6 +161,20 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 		return err
 	}
 
+	// Save Chart.lock
+	// TODO: remove the APIVersion check when APIVersionV1 is not used anymore
+	if c.Metadata.APIVersion == chart.APIVersionV2 {
+		if c.Lock != nil {
+			ldata, err := yaml.Marshal(c.Lock)
+			if err != nil {
+				return err
+			}
+			if err := writeToTar(out, filepath.Join(base, "Chart.lock"), ldata); err != nil {
+				return err
+			}
+		}
+	}
+
 	// Save values.yaml
 	for _, f := range c.Raw {
 		if f.Name == ValuesfileName {
