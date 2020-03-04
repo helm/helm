@@ -103,6 +103,8 @@ fullnameOverride: ""
 serviceAccount:
   # Specifies whether a service account should be created
   create: true
+  # Annotations to add to the service account
+  annotations: {}
   # The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
   name:
@@ -302,7 +304,11 @@ kind: ServiceAccount
 metadata:
   name: {{ include "<CHARTNAME>.serviceAccountName" . }}
   labels:
-{{ include "<CHARTNAME>.labels" . | nindent 4 }}
+    {{- include "<CHARTNAME>.labels" . | nindent 4 }}
+  {{- with .Values.serviceAccount.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 {{- end -}}
 `
 
@@ -399,7 +405,7 @@ kind: Pod
 metadata:
   name: "{{ include "<CHARTNAME>.fullname" . }}-test-connection"
   labels:
-{{ include "<CHARTNAME>.labels" . | nindent 4 }}
+    {{- include "<CHARTNAME>.labels" . | nindent 4 }}
   annotations:
     "helm.sh/hook": test-success
 spec:
@@ -407,7 +413,7 @@ spec:
     - name: wget
       image: busybox
       command: ['wget']
-      args:  ['{{ include "<CHARTNAME>.fullname" . }}:{{ .Values.service.port }}']
+      args: ['{{ include "<CHARTNAME>.fullname" . }}:{{ .Values.service.port }}']
   restartPolicy: Never
 `
 
@@ -438,6 +444,15 @@ func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
 		return errors.Wrap(err, "transforming values file")
 	}
 	schart.Values = m
+
+	// SaveDir looks for the file values.yaml when saving rather than the values
+	// key in order to preserve the comments in the YAML. The name placeholder
+	// needs to be replaced on that file.
+	for _, f := range schart.Raw {
+		if f.Name == ValuesfileName {
+			f.Data = transform(string(f.Data), schart.Name())
+		}
+	}
 
 	return SaveDir(schart, dest)
 }

@@ -35,23 +35,23 @@ func TestRootCmd(t *testing.T) {
 	}{
 		{
 			name: "defaults",
-			args: "home",
+			args: "env",
 		},
 		{
 			name:      "with $XDG_CACHE_HOME set",
-			args:      "home",
+			args:      "env",
 			envvars:   map[string]string{xdg.CacheHomeEnvVar: "/bar"},
 			cachePath: "/bar/helm",
 		},
 		{
 			name:       "with $XDG_CONFIG_HOME set",
-			args:       "home",
+			args:       "env",
 			envvars:    map[string]string{xdg.ConfigHomeEnvVar: "/bar"},
 			configPath: "/bar/helm",
 		},
 		{
 			name:     "with $XDG_DATA_HOME set",
-			args:     "home",
+			args:     "env",
 			envvars:  map[string]string{xdg.DataHomeEnvVar: "/bar"},
 			dataPath: "/bar/helm",
 		},
@@ -93,5 +93,13 @@ func TestRootCmd(t *testing.T) {
 				t.Errorf("expected data path %q, got %q", tt.dataPath, helmpath.DataPath())
 			}
 		})
+	}
+}
+
+func TestUnknownSubCmd(t *testing.T) {
+	_, _, err := executeActionCommand("foobar")
+
+	if err == nil || err.Error() != `unknown command "foobar" for "helm"` {
+		t.Errorf("Expect unknown command error, got %q", err)
 	}
 }

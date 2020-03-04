@@ -1,0 +1,3 @@
+Error: YAML parse error on chart-with-template-with-invalid-yaml/templates/alpine-pod.yaml: error converting YAML to JSON: yaml: line 11: could not find expected ':'
+
+Use --debug flag to render out invalid YAML

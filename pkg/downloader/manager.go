@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/url"
 	"os"
 	"path"
@@ -86,7 +87,17 @@ func (m *Manager) Build() error {
 	}
 
 	if sum, err := resolver.HashReq(req, lock.Dependencies); err != nil || sum != lock.Digest {
-		return errors.New("Chart.lock is out of sync with Chart.yaml")
+		// If lock digest differs and chart is apiVersion v1, it maybe because the lock was built
+		// with Helm 2 and therefore should be checked with Helm v2 hash
+		// Fix for: https://github.com/helm/helm/issues/7233
+		if c.Metadata.APIVersion == chart.APIVersionV1 {
+			log.Println("warning: a valid Helm v3 hash was not found. Checking against Helm v2 hash...")
+			if sum, err := resolver.HashV2Req(req); err != nil || sum != lock.Digest {
+				return errors.New("the lock file (requirements.lock) is out of sync with the dependencies file (requirements.yaml). Please update the dependencies")
+			}
+		} else {
+			return errors.New("the lock file (Chart.lock) is out of sync with the dependencies file (Chart.yaml). Please update the dependencies")
+		}
 	}
 
 	// Check that all of the repos we're dependent on actually exist.

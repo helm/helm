@@ -112,9 +112,6 @@ func (s *Storage) ListDeployed() ([]*rspb.Release, error) {
 func (s *Storage) Deployed(name string) (*rspb.Release, error) {
 	ls, err := s.DeployedAll(name)
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
-			return nil, errors.Errorf("%q has no deployed releases", name)
-		}
 		return nil, err
 	}
 
@@ -122,7 +119,11 @@ func (s *Storage) Deployed(name string) (*rspb.Release, error) {
 		return nil, errors.Errorf("%q has no deployed releases", name)
 	}
 
-	return ls[0], err
+	// If executed concurrently, Helm's database gets corrupted
+	// and multiple releases are DEPLOYED. Take the latest.
+	relutil.Reverse(ls, relutil.SortByRevision)
+
+	return ls[0], nil
 }
 
 // DeployedAll returns all deployed releases with the provided name, or

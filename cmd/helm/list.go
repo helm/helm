@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
+	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/release"
@@ -163,4 +164,27 @@ func (r *releaseListWriter) WriteJSON(out io.Writer) error {
 
 func (r *releaseListWriter) WriteYAML(out io.Writer) error {
 	return output.EncodeYAML(out, r.releases)
+}
+
+// Provide dynamic auto-completion for release names
+func compListReleases(toComplete string, cfg *action.Configuration) ([]string, completion.BashCompDirective) {
+	completion.CompDebugln(fmt.Sprintf("compListReleases with toComplete %s", toComplete))
+
+	client := action.NewList(cfg)
+	client.All = true
+	client.Limit = 0
+	client.Filter = fmt.Sprintf("^%s", toComplete)
+
+	client.SetStateMask()
+	results, err := client.Run()
+	if err != nil {
+		return nil, completion.BashCompDirectiveDefault
+	}
+
+	var choices []string
+	for _, res := range results {
+		choices = append(choices, res.Name)
+	}
+
+	return choices, completion.BashCompDirectiveNoFileComp
 }

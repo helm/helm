@@ -101,7 +101,11 @@ func (p *Pull) Run(chartRef string) (string, error) {
 	}
 
 	if p.Verify {
-		fmt.Fprintf(&out, "Verification: %v\n", v)
+		for name := range v.SignedBy.Identities {
+			fmt.Fprintf(&out, "Signed by: %v\n", name)
+		}
+		fmt.Fprintf(&out, "Using Key With Fingerprint: %X\n", v.SignedBy.PrimaryKey.Fingerprint)
+		fmt.Fprintf(&out, "Chart Hash Verified: %s\n", v.FileHash)
 	}
 
 	// After verification, untar the chart into the requested directory.
@@ -110,13 +114,21 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		if !filepath.IsAbs(ud) {
 			ud = filepath.Join(p.DestDir, ud)
 		}
-		if fi, err := os.Stat(ud); err != nil {
-			if err := os.MkdirAll(ud, 0755); err != nil {
+		// Let udCheck to check conflict file/dir without replacing ud when untarDir is the current directory(.).
+		udCheck := ud
+		if udCheck == "." {
+			_, udCheck = filepath.Split(chartRef)
+		} else {
+			_, chartName := filepath.Split(chartRef)
+			udCheck = filepath.Join(udCheck, chartName)
+		}
+		if _, err := os.Stat(udCheck); err != nil {
+			if err := os.MkdirAll(udCheck, 0755); err != nil {
 				return out.String(), errors.Wrap(err, "failed to untar (mkdir)")
 			}
 
-		} else if !fi.IsDir() {
-			return out.String(), errors.Errorf("failed to untar: %s is not a directory", ud)
+		} else {
+			return out.String(), errors.Errorf("failed to untar: a file or directory with the name %s already exists", udCheck)
 		}
 
 		return out.String(), chartutil.ExpandFile(ud, saved)

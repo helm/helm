@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"sort"
 
 	auth "github.com/deislabs/oras/pkg/auth/docker"
@@ -73,7 +74,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 		}
 	}
 	if client.resolver == nil {
-		resolver, err := client.authorizer.Resolver(context.Background())
+		resolver, err := client.authorizer.Resolver(context.Background(), http.DefaultClient, false)
 		if err != nil {
 			return nil, err
 		}

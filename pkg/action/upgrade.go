@@ -29,6 +29,7 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/kube"
+	"helm.sh/helm/v3/pkg/postrender"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/releaseutil"
 )
@@ -54,11 +55,13 @@ type Upgrade struct {
 	// Recreate will (if true) recreate pods after a rollback.
 	Recreate bool
 	// MaxHistory limits the maximum number of revisions saved per release
-	MaxHistory    int
-	Atomic        bool
-	CleanupOnFail bool
-	SubNotes      bool
-	Description   string
+	MaxHistory               int
+	Atomic                   bool
+	CleanupOnFail            bool
+	SubNotes                 bool
+	Description              string
+	PostRenderer             postrender.PostRenderer
+	DisableOpenAPIValidation bool
 }
 
 // NewUpgrade creates a new Upgrade object with the given configuration.
@@ -161,7 +164,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		return nil, nil, err
 	}
 
-	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", u.SubNotes)
+	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -186,7 +189,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 	if len(notesTxt) > 0 {
 		upgradedRelease.Info.Notes = notesTxt
 	}
-	err = validateManifest(u.cfg.KubeClient, manifestDoc.Bytes())
+	err = validateManifest(u.cfg.KubeClient, manifestDoc.Bytes(), !u.DisableOpenAPIValidation)
 	return currentRelease, upgradedRelease, err
 }
 
@@ -195,7 +198,7 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 	if err != nil {
 		return upgradedRelease, errors.Wrap(err, "unable to build kubernetes objects from current release manifest")
 	}
-	target, err := u.cfg.KubeClient.Build(bytes.NewBufferString(upgradedRelease.Manifest), true)
+	target, err := u.cfg.KubeClient.Build(bytes.NewBufferString(upgradedRelease.Manifest), !u.DisableOpenAPIValidation)
 	if err != nil {
 		return upgradedRelease, errors.Wrap(err, "unable to build kubernetes objects from new release manifest")
 	}
@@ -291,7 +294,7 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 	rel.Info.Status = release.StatusFailed
 	rel.Info.Description = msg
 	u.cfg.recordRelease(rel)
-	if u.CleanupOnFail {
+	if u.CleanupOnFail && len(created) > 0 {
 		u.cfg.Log("Cleanup on fail set, cleaning up %d resources", len(created))
 		_, errs := u.cfg.KubeClient.Delete(created)
 		if errs != nil {
@@ -381,8 +384,8 @@ func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release, newV
 	return newVals, nil
 }
 
-func validateManifest(c kube.Interface, manifest []byte) error {
-	_, err := c.Build(bytes.NewReader(manifest), true)
+func validateManifest(c kube.Interface, manifest []byte, openAPIValidation bool) error {
+	_, err := c.Build(bytes.NewReader(manifest), openAPIValidation)
 	return err
 }
 

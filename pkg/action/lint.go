@@ -33,10 +33,12 @@ import (
 //
 // It provides the implementation of 'helm lint'.
 type Lint struct {
-	Strict    bool
-	Namespace string
+	Strict        bool
+	Namespace     string
+	WithSubcharts bool
 }
 
+// LintResult is the result of Lint
 type LintResult struct {
 	TotalChartsLinted int
 	Messages          []support.Message

@@ -19,6 +19,7 @@ package main // import "helm.sh/helm/v3/cmd/helm"
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -26,13 +27,18 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"k8s.io/klog"
+	"sigs.k8s.io/yaml"
 
 	// Import to initialize client auth plugins.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/gates"
+	kubefake "helm.sh/helm/v3/pkg/kube/fake"
+	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/storage/driver"
 )
 
 // FeatureGateOCI is the feature gate for checking if `helm chart` and `helm registry` commands should work
@@ -71,9 +77,22 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), os.Getenv("HELM_DRIVER"), debug); err != nil {
-		debug("%+v", err)
-		os.Exit(1)
+	if calledCmd, _, err := cmd.Find(os.Args[1:]); err == nil && calledCmd.Name() == completion.CompRequestCmd {
+		// If completion is being called, we have to check if the completion is for the "--kube-context"
+		// value; if it is, we cannot call the action.Init() method with an incomplete kube-context value
+		// or else it will fail immediately.  So, we simply unset the invalid kube-context value.
+		if args := os.Args[1:]; len(args) > 2 && args[len(args)-2] == "--kube-context" {
+			// We are completing the kube-context value!  Reset it as the current value is not valid.
+			settings.KubeContext = ""
+		}
+	}
+
+	helmDriver := os.Getenv("HELM_DRIVER")
+	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), helmDriver, debug); err != nil {
+		log.Fatal(err)
+	}
+	if helmDriver == "memory" {
+		loadReleasesInMemory(actionConfig)
 	}
 
 	if err := cmd.Execute(); err != nil {
@@ -99,4 +118,42 @@ func checkOCIFeatureGate() func(_ *cobra.Command, _ []string) error {
 		}
 		return nil
 	}
+}
+
+// This function loads releases into the memory storage if the
+// environment variable is properly set.
+func loadReleasesInMemory(actionConfig *action.Configuration) {
+	filePaths := strings.Split(os.Getenv("HELM_MEMORY_DRIVER_DATA"), ":")
+	if len(filePaths) == 0 {
+		return
+	}
+
+	store := actionConfig.Releases
+	mem, ok := store.Driver.(*driver.Memory)
+	if !ok {
+		// For an unexpected reason we are not dealing with the memory storage driver.
+		return
+	}
+
+	actionConfig.KubeClient = &kubefake.PrintingKubeClient{Out: ioutil.Discard}
+
+	for _, path := range filePaths {
+		b, err := ioutil.ReadFile(path)
+		if err != nil {
+			log.Fatal("Unable to read memory driver data", err)
+		}
+
+		releases := []*release.Release{}
+		if err := yaml.Unmarshal(b, &releases); err != nil {
+			log.Fatal("Unable to unmarshal memory driver data: ", err)
+		}
+
+		for _, rel := range releases {
+			if err := store.Create(rel); err != nil {
+				log.Fatal(err)
+			}
+		}
+	}
+	// Must reset namespace to the proper one
+	mem.SetNamespace(settings.Namespace())
 }

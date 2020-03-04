@@ -1,0 +1,5 @@
+plugin.complete was called
+Namespace: mynamespace
+Num args received: 1
+Args received: 
+:2

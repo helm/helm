@@ -1,0 +1,143 @@
+# 5
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: fifth
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+    - Ingress
+
+---
+
+# 6 (implementation detail: currently, 'helm template' outputs hook manifests last; and yes, NetworkPolicy won't make a reasonable hook, this is just a dummy unit test manifest)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  annotations:
+    "helm.sh/hook": pre-install
+  name: sixth
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+    - Ingress
+
+---
+
+# 7
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: seventh
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+    - Ingress
+
+---
+
+# 8
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: eighth
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+    - Ingress
+
+---
+
+# 9
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ninth
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+    - Ingress
+
+---
+
+# 10
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: tenth
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+    - Ingress
+
+---
+
+# 11
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: eleventh
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+    - Ingress
+
+---
+
+# 12
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: twelfth
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+    - Ingress
+
+---
+
+# 13
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: thirteenth
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+    - Ingress
+
+---
+
+# 14
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: fourteenth
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+    - Ingress
+
+---
+
+# 15 (11th object within 02-b.yml, in order to test `SplitManifests` which assigns `manifest-10`
+# to this object which should then come *after* `manifest-9`)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: fifteenth
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+    - Ingress

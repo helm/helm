@@ -53,6 +53,11 @@ func tsFixtureMemory(t *testing.T) *Memory {
 		releaseStub("rls-b", 1, "default", rspb.StatusSuperseded),
 		releaseStub("rls-b", 3, "default", rspb.StatusSuperseded),
 		releaseStub("rls-b", 2, "default", rspb.StatusSuperseded),
+		// rls-c in other namespace
+		releaseStub("rls-c", 4, "mynamespace", rspb.StatusDeployed),
+		releaseStub("rls-c", 1, "mynamespace", rspb.StatusSuperseded),
+		releaseStub("rls-c", 3, "mynamespace", rspb.StatusSuperseded),
+		releaseStub("rls-c", 2, "mynamespace", rspb.StatusSuperseded),
 	}
 
 	mem := NewMemory()

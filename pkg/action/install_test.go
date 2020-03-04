@@ -240,6 +240,21 @@ func TestInstallRelease_DryRun(t *testing.T) {
 	is.Equal(res.Info.Description, "Dry run complete")
 }
 
+func TestInstallReleaseIncorrectTemplate_DryRun(t *testing.T) {
+	is := assert.New(t)
+	instAction := installAction(t)
+	instAction.DryRun = true
+	vals := map[string]interface{}{}
+	_, err := instAction.Run(buildChart(withSampleIncludingIncorrectTemplates()), vals)
+	expectedErr := "\"hello/templates/incorrect\" at <.Values.bad.doh>: nil pointer evaluating interface {}.doh"
+	if err == nil {
+		t.Fatalf("Install should fail containing error: %s", expectedErr)
+	}
+	if err != nil {
+		is.Contains(err.Error(), expectedErr)
+	}
+}
+
 func TestInstallRelease_NoHooks(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
@@ -468,6 +483,46 @@ func TestInstallReleaseOutputDir(t *testing.T) {
 	test.AssertGoldenFile(t, filepath.Join(dir, "hello/templates/rbac"), "rbac.txt")
 
 	_, err = os.Stat(filepath.Join(dir, "hello/templates/empty"))
+	is.True(os.IsNotExist(err))
+}
+
+func TestInstallOutputDirWithReleaseName(t *testing.T) {
+	is := assert.New(t)
+	instAction := installAction(t)
+	vals := map[string]interface{}{}
+
+	dir, err := ioutil.TempDir("", "output-dir")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	instAction.OutputDir = dir
+	instAction.UseReleaseName = true
+	instAction.ReleaseName = "madra"
+
+	newDir := filepath.Join(dir, instAction.ReleaseName)
+
+	_, err = instAction.Run(buildChart(withSampleTemplates(), withMultipleManifestTemplate()), vals)
+	if err != nil {
+		t.Fatalf("Failed install: %s", err)
+	}
+
+	_, err = os.Stat(filepath.Join(newDir, "hello/templates/goodbye"))
+	is.NoError(err)
+
+	_, err = os.Stat(filepath.Join(newDir, "hello/templates/hello"))
+	is.NoError(err)
+
+	_, err = os.Stat(filepath.Join(newDir, "hello/templates/with-partials"))
+	is.NoError(err)
+
+	_, err = os.Stat(filepath.Join(newDir, "hello/templates/rbac"))
+	is.NoError(err)
+
+	test.AssertGoldenFile(t, filepath.Join(newDir, "hello/templates/rbac"), "rbac.txt")
+
+	_, err = os.Stat(filepath.Join(newDir, "hello/templates/empty"))
 	is.True(os.IsNotExist(err))
 }
 

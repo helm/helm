@@ -28,13 +28,14 @@ import (
 //
 // Getters may or may not ignore these parameters as they are passed in.
 type options struct {
-	url       string
-	certFile  string
-	keyFile   string
-	caFile    string
-	username  string
-	password  string
-	userAgent string
+	url                   string
+	certFile              string
+	keyFile               string
+	caFile                string
+	insecureSkipVerifyTLS bool
+	username              string
+	password              string
+	userAgent             string
 }
 
 // Option allows specifying various settings configurable by the user for overriding the defaults
@@ -64,7 +65,14 @@ func WithUserAgent(userAgent string) Option {
 	}
 }
 
-// WithTLSClientConfig sets the client client auth with the provided credentials.
+// WithInsecureSkipVerifyTLS determines if a TLS Certificate will be checked
+func WithInsecureSkipVerifyTLS(insecureSkipVerifyTLS bool) Option {
+	return func(opts *options) {
+		opts.insecureSkipVerifyTLS = insecureSkipVerifyTLS
+	}
+}
+
+// WithTLSClientConfig sets the client auth with the provided credentials.
 func WithTLSClientConfig(certFile, keyFile, caFile string) Option {
 	return func(opts *options) {
 		opts.certFile = certFile

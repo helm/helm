@@ -50,11 +50,12 @@ func SaveDir(c *chart.Chart, dest string) error {
 	}
 
 	// Save values.yaml
-	if c.Values != nil {
-		vf := filepath.Join(outdir, ValuesfileName)
-		b, _ := yaml.Marshal(c.Values)
-		if err := writeFile(vf, b); err != nil {
-			return err
+	for _, f := range c.Raw {
+		if f.Name == ValuesfileName {
+			vf := filepath.Join(outdir, ValuesfileName)
+			if err := writeFile(vf, f.Data); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -160,13 +161,27 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 		return err
 	}
 
-	// Save values.yaml
-	ydata, err := yaml.Marshal(c.Values)
-	if err != nil {
-		return err
+	// Save Chart.lock
+	// TODO: remove the APIVersion check when APIVersionV1 is not used anymore
+	if c.Metadata.APIVersion == chart.APIVersionV2 {
+		if c.Lock != nil {
+			ldata, err := yaml.Marshal(c.Lock)
+			if err != nil {
+				return err
+			}
+			if err := writeToTar(out, filepath.Join(base, "Chart.lock"), ldata); err != nil {
+				return err
+			}
+		}
 	}
-	if err := writeToTar(out, filepath.Join(base, ValuesfileName), ydata); err != nil {
-		return err
+
+	// Save values.yaml
+	for _, f := range c.Raw {
+		if f.Name == ValuesfileName {
+			if err := writeToTar(out, filepath.Join(base, ValuesfileName), f.Data); err != nil {
+				return err
+			}
+		}
 	}
 
 	// Save values.schema.json if it exists

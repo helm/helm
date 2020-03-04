@@ -60,12 +60,6 @@ func (p *Package) Run(path string, vals map[string]interface{}) (string, error) 
 		return "", err
 	}
 
-	combinedVals, err := chartutil.CoalesceValues(ch, vals)
-	if err != nil {
-		return "", err
-	}
-	ch.Values = combinedVals
-
 	// If version is set, modify the version.
 	if p.Version != "" {
 		if err := setVersion(ch, p.Version); err != nil {
@@ -118,6 +112,7 @@ func setVersion(ch *chart.Chart, ver string) error {
 	return nil
 }
 
+// Clearsign signs a chart
 func (p *Package) Clearsign(filename string) error {
 	// Load keyring
 	signer, err := provenance.NewFromKeyring(p.Keyring, p.Key)

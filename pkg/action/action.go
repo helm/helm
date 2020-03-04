@@ -135,6 +135,7 @@ func (c *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 	return c.Capabilities, nil
 }
 
+// KubernetesClientSet creates a new kubernetes ClientSet based on the configuration
 func (c *Configuration) KubernetesClientSet() (kubernetes.Interface, error) {
 	conf, err := c.RESTClientGetter.ToRESTConfig()
 	if err != nil {
@@ -167,8 +168,8 @@ func (c *Configuration) releaseContent(name string, version int) (*release.Relea
 // GetVersionSet retrieves a set of available k8s API versions
 func GetVersionSet(client discovery.ServerResourcesInterface) (chartutil.VersionSet, error) {
 	groups, resources, err := client.ServerGroupsAndResources()
-	if err != nil {
-		return chartutil.DefaultVersionSet, err
+	if err != nil && !discovery.IsGroupDiscoveryFailedError(err) {
+		return chartutil.DefaultVersionSet, errors.Wrap(err, "could not get apiVersions from Kubernetes")
 	}
 
 	// FIXME: The Kubernetes test fixture for cli appears to always return nil
@@ -219,7 +220,7 @@ func (c *Configuration) recordRelease(r *release.Release) {
 	}
 }
 
-// InitActionConfig initializes the action configuration
+// Init initializes the action configuration
 func (c *Configuration) Init(getter genericclioptions.RESTClientGetter, namespace string, helmDriver string, log DebugLog) error {
 	kc := kube.New(getter)
 	kc.Log = log
@@ -240,7 +241,19 @@ func (c *Configuration) Init(getter genericclioptions.RESTClientGetter, namespac
 		d.Log = log
 		store = storage.Init(d)
 	case "memory":
-		d := driver.NewMemory()
+		var d *driver.Memory
+		if c.Releases != nil {
+			if mem, ok := c.Releases.Driver.(*driver.Memory); ok {
+				// This function can be called more than once (e.g., helm list --all-namespaces).
+				// If a memory driver was already initialized, re-use it but set the possibly new namespace.
+				// We re-use it in case some releases where already created in the existing memory driver.
+				d = mem
+			}
+		}
+		if d == nil {
+			d = driver.NewMemory()
+		}
+		d.SetNamespace(namespace)
 		store = storage.Init(d)
 	default:
 		// Not sure what to do here.

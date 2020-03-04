@@ -27,6 +27,7 @@ import (
 	"text/template"
 
 	"github.com/pkg/errors"
+	"k8s.io/client-go/rest"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -39,6 +40,8 @@ type Engine struct {
 	Strict bool
 	// In LintMode, some 'required' template values may be missing, so don't fail
 	LintMode bool
+	// the rest config to connect to te kubernetes api
+	config *rest.Config
 }
 
 // Render takes a chart, optional values, and value overrides, and attempts to render the Go templates.
@@ -71,6 +74,15 @@ func Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, erro
 	return new(Engine).Render(chrt, values)
 }
 
+// RenderWithClient takes a chart, optional values, and value overrides, and attempts to
+// render the Go templates using the default options. This engine is client aware and so can have template
+// functions that interact with the client
+func RenderWithClient(chrt *chart.Chart, values chartutil.Values, config *rest.Config) (map[string]string, error) {
+	return Engine{
+		config: config,
+	}.Render(chrt, values)
+}
+
 // renderable is an object that can be rendered.
 type renderable struct {
 	// tpl is the current template.
@@ -83,6 +95,7 @@ type renderable struct {
 
 const warnStartDelim = "HELM_ERR_START"
 const warnEndDelim = "HELM_ERR_END"
+const recursionMaxNums = 1000
 
 var warnRegex = regexp.MustCompile(warnStartDelim + `(.*)` + warnEndDelim)
 
@@ -93,19 +106,21 @@ func warnWrap(warn string) string {
 // initFunMap creates the Engine's FuncMap and adds context-specific functions.
 func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]renderable) {
 	funcMap := funcMap()
-	includedNames := make([]string, 0)
+	includedNames := make(map[string]int)
 
 	// Add the 'include' function here so we can close over t.
 	funcMap["include"] = func(name string, data interface{}) (string, error) {
 		var buf strings.Builder
-		for _, n := range includedNames {
-			if n == name {
+		if v, ok := includedNames[name]; ok {
+			if v > recursionMaxNums {
 				return "", errors.Wrapf(fmt.Errorf("unable to execute template"), "rendering template has a nested reference name: %s", name)
 			}
+			includedNames[name]++
+		} else {
+			includedNames[name] = 1
 		}
-		includedNames = append(includedNames, name)
 		err := t.ExecuteTemplate(&buf, name, data)
-		includedNames = includedNames[:len(includedNames)-1]
+		includedNames[name]--
 		return buf.String(), err
 	}
 
@@ -156,6 +171,9 @@ func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]render
 			}
 		}
 		return val, nil
+	}
+	if e.config != nil {
+		funcMap["lookup"] = NewLookupFunction(e.config)
 	}
 
 	t.Funcs(funcMap)
