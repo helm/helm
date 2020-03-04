@@ -61,6 +61,8 @@ type Interface interface {
 
 	// isReachable checks whether the client is able to connect to the cluster
 	IsReachable() error
+
+	Get(resources ResourceList) (string, error)
 }
 
 var _ Interface = (*Client)(nil)

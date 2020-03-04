@@ -17,6 +17,7 @@ limitations under the License.
 package kube // import "helm.sh/helm/v3/pkg/kube"
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -35,6 +36,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1beta1 "k8s.io/apimachinery/pkg/apis/meta/v1beta1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -43,8 +45,10 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	cachetools "k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
+	"k8s.io/kubectl/pkg/cmd/get"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 
@@ -105,6 +109,64 @@ func (c *Client) Create(resources ResourceList) (*Result, error) {
 	return &Result{Created: resources}, nil
 }
 
+func transformRequests(req *rest.Request) {
+	group := metav1beta1.GroupName
+	version := metav1beta1.SchemeGroupVersion.Version
+
+	tableParam := fmt.Sprintf("application/json;as=Table;v=%s;g=%s, application/json", version, group)
+	req.SetHeader("Accept", tableParam)
+
+	// if sorting, ensure we receive the full object in order to introspect its fields via jsonpath
+	req.Param("includeObject", "Object")
+}
+
+func (c *Client) Get(resources ResourceList) (string, error) {
+	buf := new(bytes.Buffer)
+	printFlags := get.NewHumanPrintFlags()
+	typePrinter, _ := printFlags.ToPrinter("")
+	printer := &get.TablePrinter{Delegate: typePrinter}
+	objs := make(map[string][]runtime.Object)
+	err := resources.Visit(func(info *resource.Info, err error) error {
+		if err != nil {
+			return err
+		}
+		gvk := info.ResourceMapping().GroupVersionKind
+		vk := gvk.Version + "/" + gvk.Kind
+		obj, err := getResource(info)
+		if err != nil {
+			return err
+		}
+		objs[vk] = append(objs[vk], obj)
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+	for t, ot := range objs {
+		if _, err = fmt.Fprintf(buf, "==> %s\n", t); err != nil {
+			return "", err
+		}
+		for _, o := range ot {
+			if err := printer.PrintObj(o, buf); err != nil {
+				c.Log("failed to print object type %s, object: %q :\n %v", t, o, err)
+				return "", err
+			}
+		}
+		if _, err := buf.WriteString("\n"); err != nil {
+			return "", err
+		}
+	}
+	return buf.String(), nil
+}
+
+func getResource(info *resource.Info) (runtime.Object, error) {
+	obj, err := resource.NewHelper(info.Client, info.Mapping).Get(info.Namespace, info.Name, false)
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
+}
+
 // Wait up to the given timeout for the specified resources to be ready
 func (c *Client) Wait(resources ResourceList, timeout time.Duration) error {
 	cs, err := c.Factory.KubernetesClientSet()
@@ -148,6 +210,7 @@ func (c *Client) Build(reader io.Reader, validate bool) (ResourceList, error) {
 		Unstructured().
 		Schema(schema).
 		Stream(reader, "").
+		TransformRequests(transformRequests).
 		Do().Infos()
 	return result, scrubValidationError(err)
 }

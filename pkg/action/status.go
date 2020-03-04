@@ -17,6 +17,8 @@ limitations under the License.
 package action
 
 import (
+	"bytes"
+
 	"helm.sh/helm/v3/pkg/release"
 )
 
@@ -41,6 +43,15 @@ func (s *Status) Run(name string) (*release.Release, error) {
 	if err := s.cfg.KubeClient.IsReachable(); err != nil {
 		return nil, err
 	}
-
-	return s.cfg.releaseContent(name, s.Version)
+	rel, err := s.cfg.releaseContent(name, s.Version)
+	if err != nil {
+		return nil, err
+	}
+	resources, _ := s.cfg.KubeClient.Build(bytes.NewBufferString(rel.Manifest), true)
+	resp, err := s.cfg.KubeClient.Get(resources)
+	if err != nil {
+		return nil, err
+	}
+	rel.Resources = "\n" + resp
+	return rel, nil
 }

@@ -114,7 +114,9 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 	fmt.Fprintf(out, "NAMESPACE: %s\n", s.release.Namespace)
 	fmt.Fprintf(out, "STATUS: %s\n", s.release.Info.Status.String())
 	fmt.Fprintf(out, "REVISION: %d\n", s.release.Version)
-
+	if len(s.release.Resources) > 0 && s.release.Resources != "\n" {
+		fmt.Fprintf(out, "RESOURCES: %s\n", s.release.Resources)
+	}
 	executions := executionsByHookEvent(s.release)
 	if tests, ok := executions[release.HookTest]; !ok || len(tests) == 0 {
 		fmt.Fprintln(out, "TEST SUITE: None")
