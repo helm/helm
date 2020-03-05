@@ -73,8 +73,11 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 	}
 
 	// If we are dealing with the completion command, we try to load more details about the plugins
-	// if available, so as to allow for command and flag completion
-	if subCmd, _, err := baseCmd.Find(os.Args[1:]); err == nil && subCmd.Name() == "completion" {
+	// if available, so as to allow for command and flag completion.
+	// For cases where the __complete command is used for command and flag completion (e.g., Fish completion),
+	// we also want to load the extra plugin information
+	subCmd, _, err := baseCmd.Find(os.Args[1:])
+	if err == nil && (subCmd.Name() == "completion" || subCmd.Name() == completion.CompRequestCmd) {
 		loadPluginsForCompletion(baseCmd, found)
 		return
 	}
