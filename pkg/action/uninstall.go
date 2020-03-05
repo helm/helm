@@ -187,7 +187,7 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (string, []error) {
 	filesToKeep, filesToDelete := filterManifestsToKeep(files)
 	var kept string
 	for _, f := range filesToKeep {
-		kept += f.Name + "\n"
+		kept += f.Head.Kind + "/" + f.Head.Metadata.Name + "\n"
 	}
 
 	var builder strings.Builder
