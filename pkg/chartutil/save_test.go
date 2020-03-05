@@ -49,6 +49,9 @@ func TestSave(t *testing.T) {
 					Name:       "ahab",
 					Version:    "1.2.3",
 				},
+				Lock: &chart.Lock{
+					Digest: "testdigest",
+				},
 				Files: []*chart.File{
 					{Name: "scheherazade/shahryar.txt", Data: []byte("1,001 Nights")},
 				},
@@ -77,6 +80,9 @@ func TestSave(t *testing.T) {
 			if len(c2.Files) != 1 || c2.Files[0].Name != "scheherazade/shahryar.txt" {
 				t.Fatal("Files data did not match")
 			}
+			if c2.Lock != nil {
+				t.Fatal("Expected v1 chart archive not to contain Chart.lock file")
+			}
 
 			if !bytes.Equal(c.Schema, c2.Schema) {
 				indentation := 4
@@ -86,6 +92,22 @@ func TestSave(t *testing.T) {
 			}
 			if _, err := Save(&chartWithInvalidJSON, dest); err == nil {
 				t.Fatalf("Invalid JSON was not caught while saving chart")
+			}
+
+			c.Metadata.APIVersion = chart.APIVersionV2
+			where, err = Save(c, dest)
+			if err != nil {
+				t.Fatalf("Failed to save: %s", err)
+			}
+			c2, err = loader.LoadFile(where)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if c2.Lock == nil {
+				t.Fatal("Expected v2 chart archive to containe a Chart.lock file")
+			}
+			if c2.Lock.Digest != c.Lock.Digest {
+				t.Fatal("Chart.lock data did not match")
 			}
 		})
 	}

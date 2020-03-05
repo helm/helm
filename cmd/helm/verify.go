@@ -16,6 +16,7 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/spf13/cobra"
@@ -44,7 +45,14 @@ func newVerifyCmd(out io.Writer) *cobra.Command {
 		Long:  verifyDesc,
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return client.Run(args[0])
+			err := client.Run(args[0])
+			if err != nil {
+				return err
+			}
+
+			fmt.Fprint(out, client.Out)
+
+			return nil
 		},
 	}
 

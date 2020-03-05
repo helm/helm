@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{.Release.Name}}-{{.Values.Name}}"
+spec:
+  containers:
+  - name: waiter
+    image: "alpine:3.9"
+    command: ["/bin/sleep","9000"]
+invalid

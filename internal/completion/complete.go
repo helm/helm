@@ -462,7 +462,7 @@ func CompDebug(msg string) {
 
 	if debug {
 		// Must print to stderr for this not to be read by the completion script.
-		fmt.Fprintf(os.Stderr, msg)
+		fmt.Fprintln(os.Stderr, msg)
 	}
 }
 
@@ -483,7 +483,7 @@ func CompError(msg string) {
 	// If not already printed by the call to CompDebug().
 	if !debug {
 		// Must print to stderr for this not to be read by the completion script.
-		fmt.Fprintf(os.Stderr, msg)
+		fmt.Fprintln(os.Stderr, msg)
 	}
 }
 

@@ -1,0 +1,22 @@
+apiVersion: v2
+name: parent-chart
+version: v0.1.0
+appVersion: v0.1.0
+dependencies:
+  - name: dev
+    repository: "file://envs/dev"
+    version: ">= 0.0.1"
+    condition: dev.enabled,global.dev.enabled
+    tags:
+      - dev
+    import-values:
+      - data
+
+  - name: prod
+    repository: "file://envs/prod"
+    version: ">= 0.0.1"
+    condition: prod.enabled,global.prod.enabled
+    tags:
+      - prod
+    import-values:
+      - data

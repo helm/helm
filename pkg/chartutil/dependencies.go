@@ -173,6 +173,14 @@ Loop:
 			cd = append(cd, n)
 		}
 	}
+	// don't keep disabled charts in metadata
+	cdMetadata := []*chart.Dependency{}
+	copy(cdMetadata, c.Metadata.Dependencies[:0])
+	for _, n := range c.Metadata.Dependencies {
+		if _, ok := rm[n.Name]; !ok {
+			cdMetadata = append(cdMetadata, n)
+		}
+	}
 
 	// recursively call self to process sub dependencies
 	for _, t := range cd {
@@ -181,6 +189,9 @@ Loop:
 			return err
 		}
 	}
+	// set the correct dependencies in metadata
+	c.Metadata.Dependencies = nil
+	c.Metadata.Dependencies = append(c.Metadata.Dependencies, cdMetadata...)
 	c.SetDependencies(cd...)
 
 	return nil

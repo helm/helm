@@ -63,57 +63,65 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			client.APIVersions = chartutil.VersionSet(extraAPIs)
 			client.IncludeCRDs = includeCrds
 			rel, err := runInstall(args, client, valueOpts, out)
-			if err != nil {
+
+			if err != nil && !settings.Debug {
+				if rel != nil {
+					return fmt.Errorf("%w\n\nUse --debug flag to render out invalid YAML", err)
+				}
 				return err
 			}
 
-			var manifests bytes.Buffer
-			fmt.Fprintln(&manifests, strings.TrimSpace(rel.Manifest))
+			// We ignore a potential error here because, when the --debug flag was specified,
+			// we always want to print the YAML, even if it is not valid. The error is still returned afterwards.
+			if rel != nil {
+				var manifests bytes.Buffer
+				fmt.Fprintln(&manifests, strings.TrimSpace(rel.Manifest))
 
-			if !client.DisableHooks {
-				for _, m := range rel.Hooks {
-					fmt.Fprintf(&manifests, "---\n# Source: %s\n%s\n", m.Path, m.Manifest)
+				if !client.DisableHooks {
+					for _, m := range rel.Hooks {
+						fmt.Fprintf(&manifests, "---\n# Source: %s\n%s\n", m.Path, m.Manifest)
+					}
+				}
+
+				// if we have a list of files to render, then check that each of the
+				// provided files exists in the chart.
+				if len(showFiles) > 0 {
+					splitManifests := releaseutil.SplitManifests(manifests.String())
+					manifestNameRegex := regexp.MustCompile("# Source: [^/]+/(.+)")
+					var manifestsToRender []string
+					for _, f := range showFiles {
+						missing := true
+						for _, manifest := range splitManifests {
+							submatch := manifestNameRegex.FindStringSubmatch(manifest)
+							if len(submatch) == 0 {
+								continue
+							}
+							manifestName := submatch[1]
+							// manifest.Name is rendered using linux-style filepath separators on Windows as
+							// well as macOS/linux.
+							manifestPathSplit := strings.Split(manifestName, "/")
+							manifestPath := filepath.Join(manifestPathSplit...)
+
+							// if the filepath provided matches a manifest path in the
+							// chart, render that manifest
+							if f == manifestPath {
+								manifestsToRender = append(manifestsToRender, manifest)
+								missing = false
+							}
+						}
+						if missing {
+							return fmt.Errorf("could not find template %s in chart", f)
+						}
+					}
+					for _, m := range manifestsToRender {
+						fmt.Fprintf(out, "---\n%s\n", m)
+					}
+				} else {
+					fmt.Fprintf(out, "%s", manifests.String())
 				}
 			}
 
-			// if we have a list of files to render, then check that each of the
-			// provided files exists in the chart.
-			if len(showFiles) > 0 {
-				splitManifests := releaseutil.SplitManifests(manifests.String())
-				manifestNameRegex := regexp.MustCompile("# Source: [^/]+/(.+)")
-				var manifestsToRender []string
-				for _, f := range showFiles {
-					missing := true
-					for _, manifest := range splitManifests {
-						submatch := manifestNameRegex.FindStringSubmatch(manifest)
-						if len(submatch) == 0 {
-							continue
-						}
-						manifestName := submatch[1]
-						// manifest.Name is rendered using linux-style filepath separators on Windows as
-						// well as macOS/linux.
-						manifestPathSplit := strings.Split(manifestName, "/")
-						manifestPath := filepath.Join(manifestPathSplit...)
-
-						// if the filepath provided matches a manifest path in the
-						// chart, render that manifest
-						if f == manifestPath {
-							manifestsToRender = append(manifestsToRender, manifest)
-							missing = false
-						}
-					}
-					if missing {
-						return fmt.Errorf("could not find template %s in chart", f)
-					}
-				}
-				for _, m := range manifestsToRender {
-					fmt.Fprintf(out, "---\n%s\n", m)
-				}
-			} else {
-				fmt.Fprintf(out, "%s", manifests.String())
-			}
-
-			return nil
+			return err
 		},
 	}
 
