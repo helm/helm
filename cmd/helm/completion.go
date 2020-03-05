@@ -278,45 +278,45 @@ function __helm_handle_completion
     end
 
     __helm_debug "emptyArg: $emptyArg"
-	set requestComp "$args[1] %[1]s $args[2..-1] $emptyArg"
+    set requestComp "$args[1] %[1]s $args[2..-1] $emptyArg"
     __helm_debug "Calling $requestComp"
     eval $requestComp 2> /dev/null
 end
 
 function __helm_get_completions
     # Use the cache if possible
-	if not set -q __helm_cache_completions
-	   set -g __helm_cache_completions (__helm_handle_completion (commandline))
+    if not set -q __helm_cache_completions
+       set -g __helm_cache_completions (__helm_handle_completion (commandline))
        __helm_debug "Populating completion cache with: $__helm_cache_completions"
     end
 
-	set -l directive (string sub --start 2 $__helm_cache_completions[-1])
-	set -l comps $__helm_cache_completions[1..-2]
-	__helm_debug "Completions are: $comps"
-	__helm_debug "Directive is: $directive"
+    set -l directive (string sub --start 2 $__helm_cache_completions[-1])
+    set -l comps $__helm_cache_completions[1..-2]
+    __helm_debug "Completions are: $comps"
+    __helm_debug "Directive is: $directive"
 
-	set -l compErr (math (math $directive / %[2]d) %% 2)
-	if test $compErr -eq 1
-	   return 0
-	end
+    set -l compErr (math (math $directive / %[2]d) %% 2)
+    if test $compErr -eq 1
+       return 0
+    end
 
-	set -l nospace (math (math $directive / %[3]d) %% 2)
-	set -l nofiles (math (math $directive / %[4]d) %% 2)
+    set -l nospace (math (math $directive / %[3]d) %% 2)
+    set -l nofiles (math (math $directive / %[4]d) %% 2)
 
-	__helm_debug "nospace: $nospace, nofiles: $nofiles"
+    __helm_debug "nospace: $nospace, nofiles: $nofiles"
 
-	for i in $comps
+    for i in $comps
         printf "%%s\n" $i
-	end
+    end
 
-	if test (count $comps) -eq 1; and test $nospace -ne 0
-	   # To support the "nospace" directive we trick the shell
-	   # by outputting an extra, longer completion.
-	   printf "%%s\n" $comps[1].
-	end
+    if test (count $comps) -eq 1; and test $nospace -ne 0
+       # To support the "nospace" directive we trick the shell
+       # by outputting an extra, longer completion.
+       printf "%%s\n" $comps[1].
+    end
 
-	# Return true if no file completion should be done
-	test (count $comps) -gt 0; or test $nofiles -ne 0
+    # Return true if no file completion should be done
+    test (count $comps) -gt 0; or test $nofiles -ne 0
 end
 
 # Remove any pre-existing helm completions since we will be handling all of them
