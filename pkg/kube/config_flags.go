@@ -17,9 +17,10 @@ limitations under the License.
 package kube
 
 import (
-	"helm.sh/helm/v3/internal/version"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/rest"
+
+	"helm.sh/helm/v3/internal/version"
 )
 
 type ConfigFlags struct {
