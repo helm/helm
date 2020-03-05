@@ -50,7 +50,6 @@ func (g *GitDownloader) ensureGitDirIgnored(repoPath string) error {
 // DownloadTo will create a temp directory, then fetch a git repo into it.
 // The git repo will be archived into a chart and copied to the destPath.
 func (g *GitDownloader) DownloadTo(gitURL string, ref string, destPath string) error {
-	// the git archive command returns a tgz archive. we need to extract it to get the actual chart files.
 	tmpDir, err := ioutil.TempDir("", "helm")
 	if err != nil {
 		return err

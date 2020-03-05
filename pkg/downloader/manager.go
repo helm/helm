@@ -367,6 +367,11 @@ Loop:
 			continue
 		}
 
+		// If repo is from git url, continue
+		if strings.HasPrefix(dd.Repository, "git:") {
+			continue
+		}
+
 		if dd.Repository == "" {
 			continue
 		}
