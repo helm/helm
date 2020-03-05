@@ -62,7 +62,7 @@ Please make sure you have the correct access rights
 and the repository exists.`
 	}
 
-	fmt.Fprintf(os.Stdout, result)
+	fmt.Fprint(os.Stdout, result)
 	os.Exit(exitCode)
 }
 
