@@ -361,7 +361,7 @@ func isFlag(arg string) bool {
 }
 
 func nonCompletableFlag(flag *pflag.Flag) bool {
-	return flag.Hidden || len(flag.Deprecated) > 0
+	return flag.Hidden || flag.Deprecated != ""
 }
 
 func checkIfFlagCompletion(finalCmd *cobra.Command, args []string, lastArg string) (*pflag.Flag, []string, string, error) {
