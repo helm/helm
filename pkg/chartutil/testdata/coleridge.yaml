@@ -10,4 +10,3 @@ water:
   water:
     where: "everywhere"
     nor: "any drop to drink"
-    temperature: 1234567890

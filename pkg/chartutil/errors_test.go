@@ -20,7 +20,7 @@ import (
 	"testing"
 )
 
-func TestErrorNoTableDoesntPanic(t *testing.T) {
+func TestErrorNoTableDoesNotPanic(t *testing.T) {
 	x := "empty"
 
 	y := ErrNoTable{x}
@@ -28,7 +28,7 @@ func TestErrorNoTableDoesntPanic(t *testing.T) {
 	t.Logf("error is: %s", y)
 }
 
-func TestErrorNoValueDoesntPanic(t *testing.T) {
+func TestErrorNoValueDoesNotPanic(t *testing.T) {
 	x := "empty"
 
 	y := ErrNoValue{x}

@@ -17,6 +17,7 @@ limitations under the License.
 package driver // import "helm.sh/helm/v3/pkg/storage/driver"
 
 import (
+	"reflect"
 	"testing"
 
 	rspb "helm.sh/helm/v3/pkg/release"
@@ -108,5 +109,132 @@ func TestRecordsRemoveAt(t *testing.T) {
 	rs.Remove("rls-a.v1")
 	if len(rs) != 1 {
 		t.Fatalf("Expected length of rs to be 1, got %d", len(rs))
+	}
+}
+
+func TestRecordsGet(t *testing.T) {
+	rs := records([]*record{
+		newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", rspb.StatusSuperseded)),
+		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", rspb.StatusDeployed)),
+	})
+
+	var tests = []struct {
+		desc string
+		key  string
+		rec  *record
+	}{
+		{
+			"get valid key",
+			"rls-a.v1",
+			newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", rspb.StatusSuperseded)),
+		},
+		{
+			"get invalid key",
+			"rls-a.v3",
+			nil,
+		},
+	}
+
+	for _, tt := range tests {
+		got := rs.Get(tt.key)
+		if !reflect.DeepEqual(tt.rec, got) {
+			t.Fatalf("Expected %v, got %v", tt.rec, got)
+		}
+	}
+}
+
+func TestRecordsIndex(t *testing.T) {
+	rs := records([]*record{
+		newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", rspb.StatusSuperseded)),
+		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", rspb.StatusDeployed)),
+	})
+
+	var tests = []struct {
+		desc string
+		key  string
+		sort int
+	}{
+		{
+			"get valid key",
+			"rls-a.v1",
+			0,
+		},
+		{
+			"get invalid key",
+			"rls-a.v3",
+			-1,
+		},
+	}
+
+	for _, tt := range tests {
+		got, _ := rs.Index(tt.key)
+		if got != tt.sort {
+			t.Fatalf("Expected %d, got %d", tt.sort, got)
+		}
+	}
+}
+
+func TestRecordsExists(t *testing.T) {
+	rs := records([]*record{
+		newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", rspb.StatusSuperseded)),
+		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", rspb.StatusDeployed)),
+	})
+
+	var tests = []struct {
+		desc string
+		key  string
+		ok   bool
+	}{
+		{
+			"get valid key",
+			"rls-a.v1",
+			true,
+		},
+		{
+			"get invalid key",
+			"rls-a.v3",
+			false,
+		},
+	}
+
+	for _, tt := range tests {
+		got := rs.Exists(tt.key)
+		if got != tt.ok {
+			t.Fatalf("Expected %t, got %t", tt.ok, got)
+		}
+	}
+}
+
+func TestRecordsReplace(t *testing.T) {
+	rs := records([]*record{
+		newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", rspb.StatusSuperseded)),
+		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", rspb.StatusDeployed)),
+	})
+
+	var tests = []struct {
+		desc     string
+		key      string
+		rec      *record
+		expected *record
+	}{
+		{
+			"replace with existing key",
+			"rls-a.v2",
+			newRecord("rls-a.v3", releaseStub("rls-a", 3, "default", rspb.StatusSuperseded)),
+			newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", rspb.StatusDeployed)),
+		},
+		{
+			"replace with non existing key",
+			"rls-a.v4",
+			newRecord("rls-a.v4", releaseStub("rls-a", 4, "default", rspb.StatusDeployed)),
+			nil,
+		},
+	}
+
+	for _, tt := range tests {
+		got := rs.Replace(tt.key, tt.rec)
+		if !reflect.DeepEqual(tt.expected, got) {
+			t.Fatalf("Expected %v, got %v", tt.expected, got)
+		}
 	}
 }

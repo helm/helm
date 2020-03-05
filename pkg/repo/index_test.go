@@ -17,13 +17,19 @@ limitations under the License.
 package repo
 
 import (
+	"bufio"
+	"bytes"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"path/filepath"
+	"sort"
+	"strings"
 	"testing"
 
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/helmpath"
 
 	"helm.sh/helm/v3/pkg/chart"
 )
@@ -40,14 +46,17 @@ func TestIndexFile(t *testing.T) {
 	i.Add(&chart.Metadata{Name: "cutter", Version: "0.1.1"}, "cutter-0.1.1.tgz", "http://example.com/charts", "sha256:1234567890abc")
 	i.Add(&chart.Metadata{Name: "cutter", Version: "0.1.0"}, "cutter-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890abc")
 	i.Add(&chart.Metadata{Name: "cutter", Version: "0.2.0"}, "cutter-0.2.0.tgz", "http://example.com/charts", "sha256:1234567890abc")
+	i.Add(&chart.Metadata{Name: "setter", Version: "0.1.9+alpha"}, "setter-0.1.9+alpha.tgz", "http://example.com/charts", "sha256:1234567890abc")
+	i.Add(&chart.Metadata{Name: "setter", Version: "0.1.9+beta"}, "setter-0.1.9+beta.tgz", "http://example.com/charts", "sha256:1234567890abc")
+
 	i.SortEntries()
 
 	if i.APIVersion != APIVersionV1 {
 		t.Error("Expected API version v1")
 	}
 
-	if len(i.Entries) != 2 {
-		t.Errorf("Expected 2 charts. Got %d", len(i.Entries))
+	if len(i.Entries) != 3 {
+		t.Errorf("Expected 3 charts. Got %d", len(i.Entries))
 	}
 
 	if i.Entries["clipper"][0].Name != "clipper" {
@@ -55,12 +64,22 @@ func TestIndexFile(t *testing.T) {
 	}
 
 	if len(i.Entries["cutter"]) != 3 {
-		t.Error("Expected two cutters.")
+		t.Error("Expected three cutters.")
 	}
 
 	// Test that the sort worked. 0.2 should be at the first index for Cutter.
 	if v := i.Entries["cutter"][0].Version; v != "0.2.0" {
 		t.Errorf("Unexpected first version: %s", v)
+	}
+
+	cv, err := i.Get("setter", "0.1.9")
+	if err == nil && !strings.Contains(cv.Metadata.Version, "0.1.9") {
+		t.Errorf("Unexpected version: %s", cv.Metadata.Version)
+	}
+
+	cv, err = i.Get("setter", "0.1.9+alpha")
+	if err != nil || cv.Metadata.Version != "0.1.9+alpha" {
+		t.Errorf("Expected version: 0.1.9+alpha")
 	}
 }
 
@@ -117,7 +136,7 @@ func TestMerge(t *testing.T) {
 
 	if len(ind1.Entries) != 2 {
 		t.Errorf("Expected 2 entries, got %d", len(ind1.Entries))
-		vs := ind1.Entries["dreadnaught"]
+		vs := ind1.Entries["dreadnought"]
 		if len(vs) != 2 {
 			t.Errorf("Expected 2 versions, got %d", len(vs))
 		}
@@ -164,6 +183,18 @@ func TestDownloadIndexFile(t *testing.T) {
 			t.Fatalf("Index %q failed to parse: %s", testfile, err)
 		}
 		verifyLocalIndex(t, i)
+
+		// Check that charts file is also created
+		idx = filepath.Join(r.CachePath, helmpath.CacheChartsFile(r.Config.Name))
+		if _, err := os.Stat(idx); err != nil {
+			t.Fatalf("error finding created charts file: %#v", err)
+		}
+
+		b, err = ioutil.ReadFile(idx)
+		if err != nil {
+			t.Fatalf("error reading charts file: %#v", err)
+		}
+		verifyLocalChartsFile(t, b, i)
 	})
 
 	t.Run("should not decode the path in the repo url while downloading index", func(t *testing.T) {
@@ -210,6 +241,18 @@ func TestDownloadIndexFile(t *testing.T) {
 			t.Fatalf("Index %q failed to parse: %s", testfile, err)
 		}
 		verifyLocalIndex(t, i)
+
+		// Check that charts file is also created
+		idx = filepath.Join(r.CachePath, helmpath.CacheChartsFile(r.Config.Name))
+		if _, err := os.Stat(idx); err != nil {
+			t.Fatalf("error finding created charts file: %#v", err)
+		}
+
+		b, err = ioutil.ReadFile(idx)
+		if err != nil {
+			t.Fatalf("error reading charts file: %#v", err)
+		}
+		verifyLocalChartsFile(t, b, i)
 	})
 }
 
@@ -308,6 +351,24 @@ func verifyLocalIndex(t *testing.T, i *IndexFile) {
 	}
 }
 
+func verifyLocalChartsFile(t *testing.T, chartsContent []byte, indexContent *IndexFile) {
+	var expected, real []string
+	for chart := range indexContent.Entries {
+		expected = append(expected, chart)
+	}
+	sort.Strings(expected)
+
+	scanner := bufio.NewScanner(bytes.NewReader(chartsContent))
+	for scanner.Scan() {
+		real = append(real, scanner.Text())
+	}
+	sort.Strings(real)
+
+	if strings.Join(expected, " ") != strings.Join(real, " ") {
+		t.Errorf("Cached charts file content unexpected. Expected:\n%s\ngot:\n%s", expected, real)
+	}
+}
+
 func TestIndexDirectory(t *testing.T) {
 	dir := "testdata/repository"
 	index, err := IndexDirectory(dir, "http://localhost:8080")
@@ -344,26 +405,6 @@ func TestIndexDirectory(t *testing.T) {
 		if frob.Name != cname {
 			t.Errorf("Expected %q, got %q", cname, frob.Name)
 		}
-	}
-}
-
-func TestLoadUnversionedIndex(t *testing.T) {
-	data, err := ioutil.ReadFile("testdata/unversioned-index.yaml")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ind, err := loadUnversionedIndex(data)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if l := len(ind.Entries); l != 2 {
-		t.Fatalf("Expected 2 entries, got %d", l)
-	}
-
-	if l := len(ind.Entries["mysql"]); l != 3 {
-		t.Fatalf("Expected 3 mysql versions, got %d", l)
 	}
 }
 

@@ -122,9 +122,13 @@ func (cache *Cache) FetchReference(ref *Reference) (*CacheRefSummary, error) {
 					contentLayer = &layer
 				}
 			}
-			if contentLayer.Size == 0 {
+			if contentLayer == nil {
 				return &r, errors.New(
 					fmt.Sprintf("manifest does not contain a layer with mediatype %s", HelmChartContentLayerMediaType))
+			}
+			if contentLayer.Size == 0 {
+				return &r, errors.New(
+					fmt.Sprintf("manifest layer with mediatype %s is of size 0", HelmChartContentLayerMediaType))
 			}
 			r.ContentLayer = contentLayer
 			info, err := cache.ociStore.Info(ctx(cache.out, cache.debug), contentLayer.Digest)

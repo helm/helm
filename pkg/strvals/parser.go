@@ -84,7 +84,7 @@ func ParseFile(s string, reader RunesValueReader) (map[string]interface{}, error
 	return vals, err
 }
 
-// ParseIntoString parses a strvals line nad merges the result into dest.
+// ParseIntoString parses a strvals line and merges the result into dest.
 //
 // This method always returns a string as the value.
 func ParseIntoString(s string, dest map[string]interface{}) error {
@@ -108,6 +108,9 @@ type RunesValueReader func([]rune) (interface{}, error)
 
 // parser is a simple parser that takes a strvals line and parses it into a
 // map representation.
+//
+// where sc is the source of the original data being parsed
+// where data is the final parsed data from the parses with correct types
 type parser struct {
 	sc     *bytes.Buffer
 	data   map[string]interface{}
@@ -285,7 +288,13 @@ func (t *parser) listItem(list []interface{}, i int) ([]interface{}, error) {
 		// We have a nested object. Send to t.key
 		inner := map[string]interface{}{}
 		if len(list) > i {
-			inner = list[i].(map[string]interface{})
+			var ok bool
+			inner, ok = list[i].(map[string]interface{})
+			if !ok {
+				// We have indices out of order. Initialize empty value.
+				list[i] = map[string]interface{}{}
+				inner = list[i].(map[string]interface{})
+			}
 		}
 
 		// Recurse
@@ -367,6 +376,11 @@ func inMap(k rune, m map[rune]bool) bool {
 
 func typedVal(v []rune, st bool) interface{} {
 	val := string(v)
+
+	if st {
+		return val
+	}
+
 	if strings.EqualFold(val, "true") {
 		return true
 	}
@@ -375,8 +389,16 @@ func typedVal(v []rune, st bool) interface{} {
 		return false
 	}
 
-	// If this value does not start with zero, and not returnString, try parsing it to an int
-	if !st && len(val) != 0 && val[0] != '0' {
+	if strings.EqualFold(val, "null") {
+		return nil
+	}
+
+	if strings.EqualFold(val, "0") {
+		return int64(0)
+	}
+
+	// If this value does not start with zero, try parsing it to an int
+	if len(val) != 0 && val[0] != '0' {
 		if iv, err := strconv.ParseInt(val, 10, 64); err == nil {
 			return iv
 		}

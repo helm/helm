@@ -15,7 +15,10 @@ limitations under the License.
 
 package chart
 
-import "strings"
+import (
+	"path/filepath"
+	"strings"
+)
 
 // APIVersionV1 is the API version number for version 1.
 const APIVersionV1 = "v1"
@@ -26,22 +29,36 @@ const APIVersionV2 = "v2"
 // Chart is a helm package that contains metadata, a default config, zero or more
 // optionally parameterizable templates, and zero or more charts (dependencies).
 type Chart struct {
+	// Raw contains the raw contents of the files originally contained in the chart archive.
+	//
+	// This should not be used except in special cases like `helm show values`,
+	// where we want to display the raw values, comments and all.
+	Raw []*File `json:"-"`
 	// Metadata is the contents of the Chartfile.
-	Metadata *Metadata
-	// LocK is the contents of Chart.lock.
-	Lock *Lock
+	Metadata *Metadata `json:"metadata"`
+	// Lock is the contents of Chart.lock.
+	Lock *Lock `json:"lock"`
 	// Templates for this chart.
-	Templates []*File
-	// Values are default config for this template.
-	Values map[string]interface{}
+	Templates []*File `json:"templates"`
+	// Values are default config for this chart.
+	Values map[string]interface{} `json:"values"`
 	// Schema is an optional JSON schema for imposing structure on Values
-	Schema []byte
+	Schema []byte `json:"schema"`
 	// Files are miscellaneous files in a chart archive,
 	// e.g. README, LICENSE, etc.
-	Files []*File
+	Files []*File `json:"files"`
 
 	parent       *Chart
 	dependencies []*Chart
+}
+
+type CRD struct {
+	// Name is the File.Name for the crd file
+	Name string
+	// Filename is the File obj Name including (sub-)chart.ChartFullPath
+	Filename string
+	// File is the File obj for the crd
+	File *File
 }
 
 // SetDependencies replaces the chart dependencies.
@@ -113,11 +130,12 @@ func (ch *Chart) AppVersion() string {
 }
 
 // CRDs returns a list of File objects in the 'crds/' directory of a Helm chart.
+// Deprecated: use CRDObjects()
 func (ch *Chart) CRDs() []*File {
 	files := []*File{}
 	// Find all resources in the crds/ directory
 	for _, f := range ch.Files {
-		if strings.HasPrefix(f.Name, "crds/") {
+		if strings.HasPrefix(f.Name, "crds/") && hasManifestExtension(f.Name) {
 			files = append(files, f)
 		}
 	}
@@ -126,4 +144,26 @@ func (ch *Chart) CRDs() []*File {
 		files = append(files, dep.CRDs()...)
 	}
 	return files
+}
+
+// CRDObjects returns a list of CRD objects in the 'crds/' directory of a Helm chart & subcharts
+func (ch *Chart) CRDObjects() []CRD {
+	crds := []CRD{}
+	// Find all resources in the crds/ directory
+	for _, f := range ch.Files {
+		if strings.HasPrefix(f.Name, "crds/") && hasManifestExtension(f.Name) {
+			mycrd := CRD{Name: f.Name, Filename: filepath.Join(ch.ChartFullPath(), f.Name), File: f}
+			crds = append(crds, mycrd)
+		}
+	}
+	// Get CRDs from dependencies, too.
+	for _, dep := range ch.Dependencies() {
+		crds = append(crds, dep.CRDObjects()...)
+	}
+	return crds
+}
+
+func hasManifestExtension(fname string) bool {
+	ext := filepath.Ext(fname)
+	return strings.EqualFold(ext, ".yaml") || strings.EqualFold(ext, ".yml") || strings.EqualFold(ext, ".json")
 }

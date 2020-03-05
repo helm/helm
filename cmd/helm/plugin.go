@@ -33,13 +33,13 @@ Manage client-side Helm plugins.
 func newPluginCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "plugin",
-		Short: "add, list, or remove Helm plugins",
+		Short: "install, list, or uninstall Helm plugins",
 		Long:  pluginHelp,
 	}
 	cmd.AddCommand(
 		newPluginInstallCmd(out),
 		newPluginListCmd(out),
-		newPluginRemoveCmd(out),
+		newPluginUninstallCmd(out),
 		newPluginUpdateCmd(out),
 	)
 	return cmd

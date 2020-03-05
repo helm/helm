@@ -184,3 +184,28 @@ func TestSecretUpdate(t *testing.T) {
 		t.Errorf("Expected status %s, got status %s", rel.Info.Status.String(), got.Info.Status.String())
 	}
 }
+
+func TestSecretDelete(t *testing.T) {
+	vers := 1
+	name := "smug-pigeon"
+	namespace := "default"
+	key := testKey(name, vers)
+	rel := releaseStub(name, vers, namespace, rspb.StatusDeployed)
+
+	secrets := newTestFixtureSecrets(t, []*rspb.Release{rel}...)
+
+	// perform the delete
+	rls, err := secrets.Delete(key)
+	if err != nil {
+		t.Fatalf("Failed to delete release with key %q: %s", key, err)
+	}
+	if !reflect.DeepEqual(rel, rls) {
+		t.Errorf("Expected {%v}, got {%v}", rel, rls)
+	}
+
+	// fetch the deleted release
+	_, err = secrets.Get(key)
+	if !reflect.DeepEqual(ErrReleaseNotFound, err) {
+		t.Errorf("Expected {%v}, got {%v}", ErrReleaseNotFound, err)
+	}
+}

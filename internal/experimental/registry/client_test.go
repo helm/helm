@@ -23,6 +23,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
@@ -66,7 +67,7 @@ func (suite *RegistryClientTestSuite) SetupSuite() {
 	client, err := auth.NewClient(credentialsFile)
 	suite.Nil(err, "no error creating auth client")
 
-	resolver, err := client.Resolver(context.Background())
+	resolver, err := client.Resolver(context.Background(), http.DefaultClient, false)
 	suite.Nil(err, "no error creating resolver")
 
 	// create cache
@@ -161,13 +162,13 @@ func (suite *RegistryClientTestSuite) Test_2_LoadChart() {
 	// non-existent ref
 	ref, err := ParseReference(fmt.Sprintf("%s/testrepo/whodis:9.9.9", suite.DockerRegistryHost))
 	suite.Nil(err)
-	ch, err := suite.RegistryClient.LoadChart(ref)
+	_, err = suite.RegistryClient.LoadChart(ref)
 	suite.NotNil(err)
 
 	// existing ref
 	ref, err = ParseReference(fmt.Sprintf("%s/testrepo/testchart:1.2.3", suite.DockerRegistryHost))
 	suite.Nil(err)
-	ch, err = suite.RegistryClient.LoadChart(ref)
+	ch, err := suite.RegistryClient.LoadChart(ref)
 	suite.Nil(err)
 	suite.Equal("testchart", ch.Metadata.Name)
 	suite.Equal("1.2.3", ch.Metadata.Version)

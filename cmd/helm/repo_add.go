@@ -29,7 +29,7 @@ import (
 	"github.com/gofrs/flock"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
+	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/getter"
@@ -43,9 +43,10 @@ type repoAddOptions struct {
 	password string
 	noUpdate bool
 
-	certFile string
-	keyFile  string
-	caFile   string
+	certFile              string
+	keyFile               string
+	caFile                string
+	insecureSkipTLSverify bool
 
 	repoFile  string
 	repoCache string
@@ -75,6 +76,7 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&o.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
 	f.StringVar(&o.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.StringVar(&o.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+	f.BoolVar(&o.insecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the repository")
 
 	return cmd
 }
@@ -113,13 +115,14 @@ func (o *repoAddOptions) run(out io.Writer) error {
 	}
 
 	c := repo.Entry{
-		Name:     o.name,
-		URL:      o.url,
-		Username: o.username,
-		Password: o.password,
-		CertFile: o.certFile,
-		KeyFile:  o.keyFile,
-		CAFile:   o.caFile,
+		Name:                  o.name,
+		URL:                   o.url,
+		Username:              o.username,
+		Password:              o.password,
+		CertFile:              o.certFile,
+		KeyFile:               o.keyFile,
+		CAFile:                o.caFile,
+		InsecureSkipTLSverify: o.insecureSkipTLSverify,
 	}
 
 	r, err := repo.NewChartRepository(&c, getter.All(settings))

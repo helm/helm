@@ -63,8 +63,11 @@ func TestRepoRemove(t *testing.T) {
 	}
 
 	idx := filepath.Join(rootDir, helmpath.CacheIndexFile(testRepoName))
-
 	mf, _ := os.Create(idx)
+	mf.Close()
+
+	idx2 := filepath.Join(rootDir, helmpath.CacheChartsFile(testRepoName))
+	mf, _ = os.Create(idx2)
 	mf.Close()
 
 	b.Reset()
@@ -77,7 +80,11 @@ func TestRepoRemove(t *testing.T) {
 	}
 
 	if _, err := os.Stat(idx); err == nil {
-		t.Errorf("Error cache file was not removed for repository %s", testRepoName)
+		t.Errorf("Error cache index file was not removed for repository %s", testRepoName)
+	}
+
+	if _, err := os.Stat(idx2); err == nil {
+		t.Errorf("Error cache chart file was not removed for repository %s", testRepoName)
 	}
 
 	f, err := repo.LoadFile(repoFile)

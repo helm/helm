@@ -45,7 +45,6 @@ water:
   water:
     where: "everywhere"
     nor: "any drop to drink"
-    temperature: 1234567890
 `
 
 	data, err := ReadValues([]byte(doc))
@@ -77,7 +76,7 @@ func TestToRenderValues(t *testing.T) {
 		},
 	}
 
-	overideValues := map[string]interface{}{
+	overrideValues := map[string]interface{}{
 		"name": "Haroun",
 		"where": map[string]interface{}{
 			"city": "Baghdad",
@@ -104,7 +103,7 @@ func TestToRenderValues(t *testing.T) {
 		IsInstall: true,
 	}
 
-	res, err := ToRenderValues(c, overideValues, o, nil)
+	res, err := ToRenderValues(c, overrideValues, o, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -246,12 +245,6 @@ func matchValues(t *testing.T, data map[string]interface{}) {
 	} else if o != "everywhere" {
 		t.Errorf("Expected water water everywhere")
 	}
-
-	if o, err := ttpl("{{.water.water.temperature}}", data); err != nil {
-		t.Errorf(".water.water.temperature: %s", err)
-	} else if o != "1234567890" {
-		t.Errorf("Expected water water temperature: 1234567890, got: %s", o)
-	}
 }
 
 func ttpl(tpl string, v map[string]interface{}) (string, error) {
@@ -282,10 +275,10 @@ chapter:
 	} else if v != "Loomings" {
 		t.Errorf("No error but got wrong value for title: %s\n%v", err, d)
 	}
-	if _, err := d.PathValue("chapter.one.doesntexist"); err == nil {
+	if _, err := d.PathValue("chapter.one.doesnotexist"); err == nil {
 		t.Errorf("Non-existent key should return error: %s\n%v", err, d)
 	}
-	if _, err := d.PathValue("chapter.doesntexist.one"); err == nil {
+	if _, err := d.PathValue("chapter.doesnotexist.one"); err == nil {
 		t.Errorf("Non-existent key in middle of path should return error: %s\n%v", err, d)
 	}
 	if _, err := d.PathValue(""); err == nil {

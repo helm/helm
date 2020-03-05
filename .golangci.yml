@@ -1,5 +1,5 @@
 run:
-  deadline: 2m
+  timeout: 2m
 
 linters:
   disable-all: true
@@ -17,11 +17,12 @@ linters:
     - structcheck
     - unused
     - varcheck
+    - staticcheck
 
 linters-settings:
   gofmt:
     simplify: true
   goimports:
-    local-prefixes: helm.sh/helm
+    local-prefixes: helm.sh/helm/v3
   dupl:
     threshold: 400

@@ -17,8 +17,12 @@ limitations under the License.
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -28,6 +32,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/search"
+	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/helmpath"
 	"helm.sh/helm/v3/pkg/repo"
@@ -38,6 +43,21 @@ Search reads through all of the repositories configured on the system, and
 looks for matches. Search of these repositories uses the metadata stored on
 the system.
 
+It will display the latest stable versions of the charts found. If you
+specify the --devel flag, the output will include pre-release versions.
+If you want to search using a version constraint, use --version.
+
+Examples:
+
+    # Search for stable release versions matching the keyword "nginx"
+    $ helm search repo nginx
+
+    # Search for release versions matching the keyword "nginx", including pre-release versions
+    $ helm search repo nginx --devel
+
+    # Search for the latest stable release for nginx-ingress with a major version of 1
+    $ helm search repo nginx-ingress --version ^1.0.0
+
 Repositories are managed with 'helm repo' commands.
 `
 
@@ -47,6 +67,7 @@ const searchMaxScore = 25
 type searchRepoOptions struct {
 	versions     bool
 	regexp       bool
+	devel        bool
 	version      string
 	maxColWidth  uint
 	repoFile     string
@@ -71,6 +92,7 @@ func newSearchRepoCmd(out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.BoolVarP(&o.regexp, "regexp", "r", false, "use regular expressions for searching repositories you have added")
 	f.BoolVarP(&o.versions, "versions", "l", false, "show the long listing, with each version of each chart on its own line, for repositories you have added")
+	f.BoolVar(&o.devel, "devel", false, "use development versions (alpha, beta, and release candidate releases), too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored")
 	f.StringVar(&o.version, "version", "", "search using semantic versioning constraints on repositories you have added")
 	f.UintVar(&o.maxColWidth, "max-col-width", 50, "maximum column width for output table")
 	bindOutputFlag(cmd, &o.outputFormat)
@@ -79,7 +101,9 @@ func newSearchRepoCmd(out io.Writer) *cobra.Command {
 }
 
 func (o *searchRepoOptions) run(out io.Writer, args []string) error {
-	index, err := o.buildIndex(out)
+	o.setupSearchedVersion()
+
+	index, err := o.buildIndex()
 	if err != nil {
 		return err
 	}
@@ -102,6 +126,22 @@ func (o *searchRepoOptions) run(out io.Writer, args []string) error {
 	}
 
 	return o.outputFormat.Write(out, &repoSearchWriter{data, o.maxColWidth})
+}
+
+func (o *searchRepoOptions) setupSearchedVersion() {
+	debug("Original chart version: %q", o.version)
+
+	if o.version != "" {
+		return
+	}
+
+	if o.devel { // search for releases and prereleases (alpha, beta, and release candidate releases).
+		debug("setting version to >0.0.0-0")
+		o.version = ">0.0.0-0"
+	} else { // search only for stable releases, prerelease versions will be skip
+		debug("setting version to >0.0.0")
+		o.version = ">0.0.0"
+	}
 }
 
 func (o *searchRepoOptions) applyConstraint(res []*search.Result) ([]*search.Result, error) {
@@ -132,7 +172,7 @@ func (o *searchRepoOptions) applyConstraint(res []*search.Result) ([]*search.Res
 	return data, nil
 }
 
-func (o *searchRepoOptions) buildIndex(out io.Writer) (*search.Index, error) {
+func (o *searchRepoOptions) buildIndex() (*search.Index, error) {
 	// Load the repositories.yaml
 	rf, err := repo.LoadFile(o.repoFile)
 	if isNotExist(err) || len(rf.Repositories) == 0 {
@@ -145,8 +185,7 @@ func (o *searchRepoOptions) buildIndex(out io.Writer) (*search.Index, error) {
 		f := filepath.Join(o.repoCacheDir, helmpath.CacheIndexFile(n))
 		ind, err := repo.LoadIndexFile(f)
 		if err != nil {
-			// TODO should print to stderr
-			fmt.Fprintf(out, "WARNING: Repo %q is corrupt or missing. Try 'helm repo update'.", n)
+			fmt.Fprintf(os.Stderr, "WARNING: Repo %q is corrupt or missing. Try 'helm repo update'.", n)
 			continue
 		}
 
@@ -156,10 +195,10 @@ func (o *searchRepoOptions) buildIndex(out io.Writer) (*search.Index, error) {
 }
 
 type repoChartElement struct {
-	Name        string
-	Version     string
-	AppVersion  string
-	Description string
+	Name        string `json:"name"`
+	Version     string `json:"version"`
+	AppVersion  string `json:"app_version"`
+	Description string `json:"description"`
 }
 
 type repoSearchWriter struct {
@@ -210,4 +249,138 @@ func (r *repoSearchWriter) encodeByFormat(out io.Writer, format output.Format) e
 	// Because this is a non-exported function and only called internally by
 	// WriteJSON and WriteYAML, we shouldn't get invalid types
 	return nil
+}
+
+// Provides the list of charts that are part of the specified repo, and that starts with 'prefix'.
+func compListChartsOfRepo(repoName string, prefix string) []string {
+	var charts []string
+
+	path := filepath.Join(settings.RepositoryCache, helmpath.CacheChartsFile(repoName))
+	content, err := ioutil.ReadFile(path)
+	if err == nil {
+		scanner := bufio.NewScanner(bytes.NewReader(content))
+		for scanner.Scan() {
+			fullName := fmt.Sprintf("%s/%s", repoName, scanner.Text())
+			if strings.HasPrefix(fullName, prefix) {
+				charts = append(charts, fullName)
+			}
+		}
+		return charts
+	}
+
+	if isNotExist(err) {
+		// If there is no cached charts file, fallback to the full index file.
+		// This is much slower but can happen after the caching feature is first
+		// installed but before the user  does a 'helm repo update' to generate the
+		// first cached charts file.
+		path = filepath.Join(settings.RepositoryCache, helmpath.CacheIndexFile(repoName))
+		if indexFile, err := repo.LoadIndexFile(path); err == nil {
+			for name := range indexFile.Entries {
+				fullName := fmt.Sprintf("%s/%s", repoName, name)
+				if strings.HasPrefix(fullName, prefix) {
+					charts = append(charts, fullName)
+				}
+			}
+			return charts
+		}
+	}
+
+	return []string{}
+}
+
+// Provide dynamic auto-completion for commands that operate on charts (e.g., helm show)
+// When true, the includeFiles argument indicates that completion should include local files (e.g., local charts)
+func compListCharts(toComplete string, includeFiles bool) ([]string, completion.BashCompDirective) {
+	completion.CompDebugln(fmt.Sprintf("compListCharts with toComplete %s", toComplete))
+
+	noSpace := false
+	noFile := false
+	var completions []string
+
+	// First check completions for repos
+	repos := compListRepos("")
+	for _, repo := range repos {
+		repoWithSlash := fmt.Sprintf("%s/", repo)
+		if strings.HasPrefix(toComplete, repoWithSlash) {
+			// Must complete with charts within the specified repo
+			completions = append(completions, compListChartsOfRepo(repo, toComplete)...)
+			noSpace = false
+			break
+		} else if strings.HasPrefix(repo, toComplete) {
+			// Must complete the repo name
+			completions = append(completions, repoWithSlash)
+			noSpace = true
+		}
+	}
+	completion.CompDebugln(fmt.Sprintf("Completions after repos: %v", completions))
+
+	// Now handle completions for url prefixes
+	for _, url := range []string{"https://", "http://", "file://"} {
+		if strings.HasPrefix(toComplete, url) {
+			// The user already put in the full url prefix; we don't have
+			// anything to add, but make sure the shell does not default
+			// to file completion since we could be returning an empty array.
+			noFile = true
+			noSpace = true
+		} else if strings.HasPrefix(url, toComplete) {
+			// We are completing a url prefix
+			completions = append(completions, url)
+			noSpace = true
+		}
+	}
+	completion.CompDebugln(fmt.Sprintf("Completions after urls: %v", completions))
+
+	// Finally, provide file completion if we need to.
+	// We only do this if:
+	// 1- There are other completions found (if there are no completions,
+	//    the shell will do file completion itself)
+	// 2- If there is some input from the user (or else we will end up
+	//    listing the entire content of the current directory which will
+	//    be too many choices for the user to find the real repos)
+	if includeFiles && len(completions) > 0 && len(toComplete) > 0 {
+		if files, err := ioutil.ReadDir("."); err == nil {
+			for _, file := range files {
+				if strings.HasPrefix(file.Name(), toComplete) {
+					// We are completing a file prefix
+					completions = append(completions, file.Name())
+				}
+			}
+		}
+	}
+	completion.CompDebugln(fmt.Sprintf("Completions after files: %v", completions))
+
+	// If the user didn't provide any input to completion,
+	// we provide a hint that a path can also be used
+	if includeFiles && len(toComplete) == 0 {
+		completions = append(completions, "./", "/")
+	}
+	completion.CompDebugln(fmt.Sprintf("Completions after checking empty input: %v", completions))
+
+	directive := completion.BashCompDirectiveDefault
+	if noFile {
+		directive = directive | completion.BashCompDirectiveNoFileComp
+	}
+	if noSpace {
+		directive = directive | completion.BashCompDirectiveNoSpace
+		// The completion.BashCompDirective flags do not work for zsh right now.
+		// We handle it ourselves instead.
+		completions = compEnforceNoSpace(completions)
+	}
+	return completions, directive
+}
+
+// This function prevents the shell from adding a space after
+// a completion by adding a second, fake completion.
+// It is only needed for zsh, but we cannot tell which shell
+// is being used here, so we do the fake completion all the time;
+// there are no real downsides to doing this for bash as well.
+func compEnforceNoSpace(completions []string) []string {
+	// To prevent the shell from adding space after the completion,
+	// we trick it by pretending there is a second, longer match.
+	// We only do this if there is a single choice for completion.
+	if len(completions) == 1 {
+		completions = append(completions, completions[0]+".")
+		completion.CompDebugln(fmt.Sprintf("compEnforceNoSpace: completions now are %v", completions))
+	}
+	return completions
 }

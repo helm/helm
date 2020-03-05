@@ -32,7 +32,7 @@ const (
 )
 
 func TestDataPath(t *testing.T) {
-	os.Unsetenv(DataHomeEnvVar)
+	os.Unsetenv(xdg.DataHomeEnvVar)
 	os.Setenv("APPDATA", filepath.Join(homedir.HomeDir(), "foo"))
 
 	expected := filepath.Join(homedir.HomeDir(), "foo", appName, testFile)
@@ -41,7 +41,7 @@ func TestDataPath(t *testing.T) {
 		t.Errorf("expected '%s', got '%s'", expected, lazy.dataPath(testFile))
 	}
 
-	os.Setenv(DataHomeEnvVar, filepath.Join(homedir.HomeDir(), "xdg"))
+	os.Setenv(xdg.DataHomeEnvVar, filepath.Join(homedir.HomeDir(), "xdg"))
 
 	expected = filepath.Join(homedir.HomeDir(), "xdg", appName, testFile)
 
@@ -70,8 +70,8 @@ func TestConfigPath(t *testing.T) {
 }
 
 func TestCachePath(t *testing.T) {
-	os.Unsetenv(CacheHomeEnvVar)
-	os.Setenv("APPDATA", filepath.Join(homedir.HomeDir(), "foo"))
+	os.Unsetenv(xdg.CacheHomeEnvVar)
+	os.Setenv("TEMP", filepath.Join(homedir.HomeDir(), "foo"))
 
 	expected := filepath.Join(homedir.HomeDir(), "foo", appName, testFile)
 
@@ -79,7 +79,7 @@ func TestCachePath(t *testing.T) {
 		t.Errorf("expected '%s', got '%s'", expected, lazy.cachePath(testFile))
 	}
 
-	os.Setenv(CacheHomeEnvVar, filepath.Join(homedir.HomeDir(), "xdg"))
+	os.Setenv(xdg.CacheHomeEnvVar, filepath.Join(homedir.HomeDir(), "xdg"))
 
 	expected = filepath.Join(homedir.HomeDir(), "xdg", appName, testFile)
 

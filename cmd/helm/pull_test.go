@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"testing"
 
 	"helm.sh/helm/v3/pkg/repo/repotest"
@@ -37,15 +36,23 @@ func TestPullCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	helmTestKeyOut := "Signed by: Helm Testing (This key should only be used for testing. DO NOT TRUST.) <helm-testing@helm.sh>\n" +
+		"Using Key With Fingerprint: 5E615389B53CA37F0EE60BD3843BBF981FC18762\n" +
+		"Chart Hash Verified: "
+
 	// all flags will get "-d outdir" appended.
 	tests := []struct {
 		name         string
 		args         string
+		existFile    string
+		existDir     string
 		wantError    bool
+		wantErrorMsg string
 		failExpect   string
 		expectFile   string
 		expectDir    bool
 		expectVerify bool
+		expectSha    string
 	}{
 		{
 			name:       "Basic chart fetch",
@@ -74,6 +81,7 @@ func TestPullCmd(t *testing.T) {
 			args:         "test/signtest --verify --keyring testdata/helm-test-key.pub",
 			expectFile:   "./signtest-0.1.0.tgz",
 			expectVerify: true,
+			expectSha:    "sha256:e5ef611620fb97704d8751c16bab17fedb68883bfb0edc76f78a70e9173f9b55",
 		},
 		{
 			name:       "Fetch and fail verify",
@@ -88,11 +96,26 @@ func TestPullCmd(t *testing.T) {
 			expectDir:  true,
 		},
 		{
+			name:         "Fetch untar when file with same name existed",
+			args:         "test/test1 --untar --untardir test1",
+			existFile:    "test1",
+			wantError:    true,
+			wantErrorMsg: fmt.Sprintf("failed to untar: a file or directory with the name %s already exists", filepath.Join(srv.Root(), "test1")),
+		},
+		{
+			name:         "Fetch untar when dir with same name existed",
+			args:         "test/test2 --untar --untardir test2",
+			existDir:     "test2",
+			wantError:    true,
+			wantErrorMsg: fmt.Sprintf("failed to untar: a file or directory with the name %s already exists", filepath.Join(srv.Root(), "test2")),
+		},
+		{
 			name:         "Fetch, verify, untar",
-			args:         "test/signtest --verify --keyring=testdata/helm-test-key.pub --untar --untardir signtest",
-			expectFile:   "./signtest",
+			args:         "test/signtest --verify --keyring=testdata/helm-test-key.pub --untar --untardir signtest2",
+			expectFile:   "./signtest2",
 			expectDir:    true,
 			expectVerify: true,
+			expectSha:    "sha256:e5ef611620fb97704d8751c16bab17fedb68883bfb0edc76f78a70e9173f9b55",
 		},
 		{
 			name:       "Chart fetch using repo URL",
@@ -127,22 +150,38 @@ func TestPullCmd(t *testing.T) {
 				filepath.Join(outdir, "repositories.yaml"),
 				outdir,
 			)
+			// Create file or Dir before helm pull --untar, see: https://github.com/helm/helm/issues/7182
+			if tt.existFile != "" {
+				file := filepath.Join(outdir, tt.existFile)
+				_, err := os.Create(file)
+				if err != nil {
+					t.Fatal("err")
+				}
+			}
+			if tt.existDir != "" {
+				file := filepath.Join(outdir, tt.existDir)
+				err := os.Mkdir(file, 0755)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
 			_, out, err := executeActionCommand(cmd)
 			if err != nil {
 				if tt.wantError {
+					if tt.wantErrorMsg != "" && tt.wantErrorMsg == err.Error() {
+						t.Fatalf("Actual error %s, not equal to expected error %s", err, tt.wantErrorMsg)
+					}
 					return
 				}
 				t.Fatalf("%q reported error: %s", tt.name, err)
 			}
 
 			if tt.expectVerify {
-				pointerAddressPattern := "0[xX][A-Fa-f0-9]+"
-				sha256Pattern := "[A-Fa-f0-9]{64}"
-				verificationRegex := regexp.MustCompile(
-					fmt.Sprintf("Verification: &{%s sha256:%s signtest-0.1.0.tgz}\n", pointerAddressPattern, sha256Pattern))
-				if !verificationRegex.MatchString(out) {
-					t.Errorf("%q: expected match for regex %s, got %s", tt.name, verificationRegex, out)
+				outString := helmTestKeyOut + tt.expectSha + "\n"
+				if out != outString {
+					t.Errorf("%q: expected verification output %q, got %q", tt.name, outString, out)
 				}
+
 			}
 
 			ef := filepath.Join(outdir, tt.expectFile)

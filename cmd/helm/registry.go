@@ -25,10 +25,6 @@ import (
 
 const registryHelp = `
 This command consists of multiple subcommands to interact with registries.
-
-It can be used to login to or logout from a registry.
-Example usage:
-    $ helm registry login [URL]
 `
 
 func newRegistryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {

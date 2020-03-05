@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"io"
 	"time"
 
@@ -25,6 +26,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"helm.sh/helm/v3/cmd/helm/require"
+	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -47,30 +49,30 @@ a string value use '--set-string'. In case a value is large and therefore
 you want not to use neither '--values' nor '--set', use '--set-file' to read the
 single large value from file.
 
-	$ helm install -f myvalues.yaml myredis ./redis
+    $ helm install -f myvalues.yaml myredis ./redis
 
 or
 
-	$ helm install --set name=prod myredis ./redis
+    $ helm install --set name=prod myredis ./redis
 
 or
 
-	$ helm install --set-string long_int=1234567890 myredis ./redis
+    $ helm install --set-string long_int=1234567890 myredis ./redis
 
 or
-	$ helm install --set-file my_script=dothings.sh myredis ./redis
+    $ helm install --set-file my_script=dothings.sh myredis ./redis
 
 You can specify the '--values'/'-f' flag multiple times. The priority will be given to the
 last (right-most) file specified. For example, if both myvalues.yaml and override.yaml
 contained a key called 'Test', the value set in override.yaml would take precedence:
 
-	$ helm install -f myvalues.yaml -f override.yaml  myredis ./redis
+    $ helm install -f myvalues.yaml -f override.yaml  myredis ./redis
 
 You can specify the '--set' flag multiple times. The priority will be given to the
 last (right-most) set specified. For example, if both 'bar' and 'newbar' values are
 set for a key called 'foo', the 'newbar' value would take precedence:
 
-	$ helm install --set foo=bar --set foo=newbar  myredis ./redis
+    $ helm install --set foo=bar --set foo=newbar  myredis ./redis
 
 
 To check the generated manifests of a release without installing the chart,
@@ -93,9 +95,9 @@ A chart reference is a convenient way of referencing a chart in a chart reposito
 
 When you use a chart reference with a repo prefix ('example/mariadb'), Helm will look in the local
 configuration for a chart repository named 'example', and will then look for a
-chart in that repository whose name is 'mariadb'. It will install the latest
-version of that chart unless you also supply a version number with the
-'--version' flag.
+chart in that repository whose name is 'mariadb'. It will install the latest stable version of that chart
+until you specify '--devel' flag to also include development version (alpha, beta, and release candidate releases), or
+supply a version number with the '--version' flag.
 
 To see the list of chart repositories, use 'helm repo list'. To search for
 charts in a repository, use 'helm search'.
@@ -121,22 +123,31 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		},
 	}
 
+	// Function providing dynamic auto-completion
+	completion.RegisterValidArgsFunc(cmd, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
+		return compInstall(args, toComplete, client)
+	})
+
 	addInstallFlags(cmd.Flags(), client, valueOpts)
 	bindOutputFlag(cmd, &outfmt)
+	bindPostRenderFlag(cmd, &client.PostRenderer)
 
 	return cmd
 }
 
 func addInstallFlags(f *pflag.FlagSet, client *action.Install, valueOpts *values.Options) {
+	f.BoolVar(&client.CreateNamespace, "create-namespace", false, "create the release namespace if not present")
 	f.BoolVar(&client.DryRun, "dry-run", false, "simulate an install")
 	f.BoolVar(&client.DisableHooks, "no-hooks", false, "prevent hooks from running during install")
-	f.BoolVar(&client.Replace, "replace", false, "re-use the given name, even if that name is already used. This is unsafe in production")
+	f.BoolVar(&client.Replace, "replace", false, "re-use the given name, only if that name is a deleted release which remains in the history. This is unsafe in production")
 	f.DurationVar(&client.Timeout, "timeout", 300*time.Second, "time to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&client.Wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment, StatefulSet, or ReplicaSet are in a ready state before marking the release as successful. It will wait for as long as --timeout")
 	f.BoolVarP(&client.GenerateName, "generate-name", "g", false, "generate the name (and omit the NAME parameter)")
 	f.StringVar(&client.NameTemplate, "name-template", "", "specify template used to name the release")
+	f.StringVar(&client.Description, "description", "", "add a custom description")
 	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored")
 	f.BoolVar(&client.DependencyUpdate, "dependency-update", false, "run helm dependency update before installing the chart")
+	f.BoolVar(&client.DisableOpenAPIValidation, "disable-openapi-validation", false, "if set, the installation process will not validate rendered templates against the Kubernetes OpenAPI Schema")
 	f.BoolVar(&client.Atomic, "atomic", false, "if set, installation process purges chart on fail. The --wait flag will be set automatically if --atomic is used")
 	f.BoolVar(&client.SkipCRDs, "skip-crds", false, "if set, no CRDs will be installed. By default, CRDs are installed if not already present")
 	f.BoolVar(&client.SubNotes, "render-subchart-notes", false, "if set, render subchart notes along with the parent")
@@ -181,6 +192,10 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		return nil, err
 	}
 
+	if chartRequested.Metadata.Deprecated {
+		fmt.Fprintln(out, "WARNING: This chart is deprecated")
+	}
+
 	if req := chartRequested.Metadata.Dependencies; req != nil {
 		// If CheckDependencies returns an error, we have unfulfilled dependencies.
 		// As of Helm 2.4.0, this is treated as a stopping condition:
@@ -218,4 +233,16 @@ func isChartInstallable(ch *chart.Chart) (bool, error) {
 		return true, nil
 	}
 	return false, errors.Errorf("%s charts are not installable", ch.Metadata.Type)
+}
+
+// Provide dynamic auto-completion for the install and template commands
+func compInstall(args []string, toComplete string, client *action.Install) ([]string, completion.BashCompDirective) {
+	requiredArgs := 1
+	if client.GenerateName {
+		requiredArgs = 0
+	}
+	if len(args) == requiredArgs {
+		return compListCharts(toComplete, true)
+	}
+	return nil, completion.BashCompDirectiveNoFileComp
 }

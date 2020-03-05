@@ -159,6 +159,7 @@ func TestList_LimitOffsetOutOfBounds(t *testing.T) {
 	is.NoError(err)
 	is.Len(list, 2)
 }
+
 func TestList_StateMask(t *testing.T) {
 	is := assert.New(t)
 	lister := newListFixture(t)
@@ -166,7 +167,8 @@ func TestList_StateMask(t *testing.T) {
 	one, err := lister.cfg.Releases.Get("one", 1)
 	is.NoError(err)
 	one.SetStatus(release.StatusUninstalled, "uninstalled")
-	lister.cfg.Releases.Update(one)
+	err = lister.cfg.Releases.Update(one)
+	is.NoError(err)
 
 	res, err := lister.Run()
 	is.NoError(err)
@@ -222,11 +224,6 @@ func makeMeSomeReleases(store *storage.Storage, t *testing.T) {
 	three.Name = "three"
 	three.Namespace = "default"
 	three.Version = 3
-	four := releaseStub()
-	four.Name = "four"
-	four.Namespace = "default"
-	four.Version = 4
-	four.Info.Status = release.StatusSuperseded
 
 	for _, rel := range []*release.Release{one, two, three} {
 		if err := store.Create(rel); err != nil {
@@ -237,4 +234,39 @@ func makeMeSomeReleases(store *storage.Storage, t *testing.T) {
 	all, err := store.ListReleases()
 	assert.NoError(t, err)
 	assert.Len(t, all, 3, "sanity test: three items added")
+}
+
+func TestFilterList(t *testing.T) {
+	t.Run("should filter old versions of the same release", func(t *testing.T) {
+		r1 := releaseStub()
+		r1.Name = "r"
+		r1.Version = 1
+		r2 := releaseStub()
+		r2.Name = "r"
+		r2.Version = 2
+		another := releaseStub()
+		another.Name = "another"
+		another.Version = 1
+
+		filteredList := filterList([]*release.Release{r1, r2, another})
+		expectedFilteredList := []*release.Release{r2, another}
+
+		assert.ElementsMatch(t, expectedFilteredList, filteredList)
+	})
+
+	t.Run("should not filter out any version across namespaces", func(t *testing.T) {
+		r1 := releaseStub()
+		r1.Name = "r"
+		r1.Namespace = "default"
+		r1.Version = 1
+		r2 := releaseStub()
+		r2.Name = "r"
+		r2.Namespace = "testing"
+		r2.Version = 2
+
+		filteredList := filterList([]*release.Release{r1, r2})
+		expectedFilteredList := []*release.Release{r1, r2}
+
+		assert.ElementsMatch(t, expectedFilteredList, filteredList)
+	})
 }

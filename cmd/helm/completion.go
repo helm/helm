@@ -30,11 +30,11 @@ Generate autocompletions script for Helm for the specified shell (bash or zsh).
 
 This command can generate shell autocompletions. e.g.
 
-	$ helm completion bash
+    $ helm completion bash
 
 Can be sourced as such
 
-	$ source <(helm completion bash)
+    $ source <(helm completion bash)
 `
 
 var (
@@ -139,7 +139,10 @@ __helm_compgen() {
 	fi
 	for w in "${completions[@]}"; do
 		if [[ "${w}" = "$1"* ]]; then
-			echo "${w}"
+			# Use printf instead of echo beause it is possible that
+			# the value to print is -n, which would be interpreted
+			# as a flag to echo
+			printf "%s\n" "${w}"
 		fi
 	done
 }

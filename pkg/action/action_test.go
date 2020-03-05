@@ -19,6 +19,7 @@ import (
 	"context"
 	"flag"
 	"io/ioutil"
+	"net/http"
 	"path/filepath"
 	"testing"
 
@@ -45,7 +46,7 @@ func actionConfigFixture(t *testing.T) *Configuration {
 		t.Fatal(err)
 	}
 
-	resolver, err := client.Resolver(context.Background())
+	resolver, err := client.Resolver(context.Background(), http.DefaultClient, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -222,6 +223,20 @@ func withSampleTemplates() chartOption {
 			// This adds basic templates and partials.
 			{Name: "templates/goodbye", Data: []byte("goodbye: world")},
 			{Name: "templates/empty", Data: []byte("")},
+			{Name: "templates/with-partials", Data: []byte(`hello: {{ template "_planet" . }}`)},
+			{Name: "templates/partials/_planet", Data: []byte(`{{define "_planet"}}Earth{{end}}`)},
+		}
+		opts.Templates = append(opts.Templates, sampleTemplates...)
+	}
+}
+
+func withSampleIncludingIncorrectTemplates() chartOption {
+	return func(opts *chartOptions) {
+		sampleTemplates := []*chart.File{
+			// This adds basic templates and partials.
+			{Name: "templates/goodbye", Data: []byte("goodbye: world")},
+			{Name: "templates/empty", Data: []byte("")},
+			{Name: "templates/incorrect", Data: []byte("{{ .Values.bad.doh }}")},
 			{Name: "templates/with-partials", Data: []byte(`hello: {{ template "_planet" . }}`)},
 			{Name: "templates/partials/_planet", Data: []byte(`{{define "_planet"}}Earth{{end}}`)},
 		}

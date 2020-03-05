@@ -22,13 +22,13 @@ import (
 
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
 	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/kube"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage"
@@ -66,7 +66,7 @@ var ValidName = regexp.MustCompile("^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+
 
 // Configuration injects the dependencies that all actions share.
 type Configuration struct {
-	// RESTClientGetter is an interface that loads Kuberbetes clients.
+	// RESTClientGetter is an interface that loads Kubernetes clients.
 	RESTClientGetter RESTClientGetter
 
 	// Releases stores records of releases.
@@ -109,9 +109,19 @@ func (c *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get server version from Kubernetes")
 	}
+	// Issue #6361:
+	// Client-Go emits an error when an API service is registered but unimplemented.
+	// We trap that error here and print a warning. But since the discovery client continues
+	// building the API object, it is correctly populated with all valid APIs.
+	// See https://github.com/kubernetes/kubernetes/issues/72051#issuecomment-521157642
 	apiVersions, err := GetVersionSet(dc)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not get apiVersions from Kubernetes")
+		if discovery.IsGroupDiscoveryFailedError(err) {
+			c.Log("WARNING: The Kubernetes server has an orphaned API service. Server reports: %s", err)
+			c.Log("WARNING: To fix this, kubectl delete apiservice <service-name>")
+		} else {
+			return nil, errors.Wrap(err, "could not get apiVersions from Kubernetes")
+		}
 	}
 
 	c.Capabilities = &chartutil.Capabilities{
@@ -125,6 +135,7 @@ func (c *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 	return c.Capabilities, nil
 }
 
+// KubernetesClientSet creates a new kubernetes ClientSet based on the configuration
 func (c *Configuration) KubernetesClientSet() (kubernetes.Interface, error) {
 	conf, err := c.RESTClientGetter.ToRESTConfig()
 	if err != nil {
@@ -157,8 +168,8 @@ func (c *Configuration) releaseContent(name string, version int) (*release.Relea
 // GetVersionSet retrieves a set of available k8s API versions
 func GetVersionSet(client discovery.ServerResourcesInterface) (chartutil.VersionSet, error) {
 	groups, resources, err := client.ServerGroupsAndResources()
-	if err != nil {
-		return chartutil.DefaultVersionSet, err
+	if err != nil && !discovery.IsGroupDiscoveryFailedError(err) {
+		return chartutil.DefaultVersionSet, errors.Wrap(err, "could not get apiVersions from Kubernetes")
 	}
 
 	// FIXME: The Kubernetes test fixture for cli appears to always return nil
@@ -209,20 +220,14 @@ func (c *Configuration) recordRelease(r *release.Release) {
 	}
 }
 
-// InitActionConfig initializes the action configuration
-func (c *Configuration) Init(envSettings *cli.EnvSettings, allNamespaces bool, helmDriver string, log DebugLog) error {
-	getter := envSettings.RESTClientGetter()
-
+// Init initializes the action configuration
+func (c *Configuration) Init(getter genericclioptions.RESTClientGetter, namespace string, helmDriver string, log DebugLog) error {
 	kc := kube.New(getter)
 	kc.Log = log
 
 	clientset, err := kc.Factory.KubernetesClientSet()
 	if err != nil {
 		return err
-	}
-	var namespace string
-	if !allNamespaces {
-		namespace = envSettings.Namespace()
 	}
 
 	var store *storage.Storage
@@ -236,7 +241,19 @@ func (c *Configuration) Init(envSettings *cli.EnvSettings, allNamespaces bool, h
 		d.Log = log
 		store = storage.Init(d)
 	case "memory":
-		d := driver.NewMemory()
+		var d *driver.Memory
+		if c.Releases != nil {
+			if mem, ok := c.Releases.Driver.(*driver.Memory); ok {
+				// This function can be called more than once (e.g., helm list --all-namespaces).
+				// If a memory driver was already initialized, re-use it but set the possibly new namespace.
+				// We re-use it in case some releases where already created in the existing memory driver.
+				d = mem
+			}
+		}
+		if d == nil {
+			d = driver.NewMemory()
+		}
+		d.SetNamespace(namespace)
 		store = storage.Init(d)
 	default:
 		// Not sure what to do here.

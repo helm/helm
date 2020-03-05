@@ -33,6 +33,7 @@ import (
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage/driver"
+	"helm.sh/helm/v3/pkg/time"
 )
 
 type nameTemplateTestCase struct {
@@ -239,6 +240,21 @@ func TestInstallRelease_DryRun(t *testing.T) {
 	is.Equal(res.Info.Description, "Dry run complete")
 }
 
+func TestInstallReleaseIncorrectTemplate_DryRun(t *testing.T) {
+	is := assert.New(t)
+	instAction := installAction(t)
+	instAction.DryRun = true
+	vals := map[string]interface{}{}
+	_, err := instAction.Run(buildChart(withSampleIncludingIncorrectTemplates()), vals)
+	expectedErr := "\"hello/templates/incorrect\" at <.Values.bad.doh>: nil pointer evaluating interface {}.doh"
+	if err == nil {
+		t.Fatalf("Install should fail containing error: %s", expectedErr)
+	}
+	if err != nil {
+		is.Contains(err.Error(), expectedErr)
+	}
+}
+
 func TestInstallRelease_NoHooks(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
@@ -305,7 +321,7 @@ func TestInstallRelease_KubeVersion(t *testing.T) {
 	vals = map[string]interface{}{}
 	_, err = instAction.Run(buildChart(withKube(">=99.0.0")), vals)
 	is.Error(err)
-	is.Contains(err.Error(), "chart requires kubernetesVersion")
+	is.Contains(err.Error(), "chart requires kubeVersion")
 }
 
 func TestInstallRelease_Wait(t *testing.T) {
@@ -468,4 +484,148 @@ func TestInstallReleaseOutputDir(t *testing.T) {
 
 	_, err = os.Stat(filepath.Join(dir, "hello/templates/empty"))
 	is.True(os.IsNotExist(err))
+}
+
+func TestInstallOutputDirWithReleaseName(t *testing.T) {
+	is := assert.New(t)
+	instAction := installAction(t)
+	vals := map[string]interface{}{}
+
+	dir, err := ioutil.TempDir("", "output-dir")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	instAction.OutputDir = dir
+	instAction.UseReleaseName = true
+	instAction.ReleaseName = "madra"
+
+	newDir := filepath.Join(dir, instAction.ReleaseName)
+
+	_, err = instAction.Run(buildChart(withSampleTemplates(), withMultipleManifestTemplate()), vals)
+	if err != nil {
+		t.Fatalf("Failed install: %s", err)
+	}
+
+	_, err = os.Stat(filepath.Join(newDir, "hello/templates/goodbye"))
+	is.NoError(err)
+
+	_, err = os.Stat(filepath.Join(newDir, "hello/templates/hello"))
+	is.NoError(err)
+
+	_, err = os.Stat(filepath.Join(newDir, "hello/templates/with-partials"))
+	is.NoError(err)
+
+	_, err = os.Stat(filepath.Join(newDir, "hello/templates/rbac"))
+	is.NoError(err)
+
+	test.AssertGoldenFile(t, filepath.Join(newDir, "hello/templates/rbac"), "rbac.txt")
+
+	_, err = os.Stat(filepath.Join(newDir, "hello/templates/empty"))
+	is.True(os.IsNotExist(err))
+}
+
+func TestNameAndChart(t *testing.T) {
+	is := assert.New(t)
+	instAction := installAction(t)
+	chartName := "./foo"
+
+	name, chrt, err := instAction.NameAndChart([]string{chartName})
+	if err != nil {
+		t.Fatal(err)
+	}
+	is.Equal(instAction.ReleaseName, name)
+	is.Equal(chartName, chrt)
+
+	instAction.GenerateName = true
+	_, _, err = instAction.NameAndChart([]string{"foo", chartName})
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	is.Equal("cannot set --generate-name and also specify a name", err.Error())
+
+	instAction.GenerateName = false
+	instAction.NameTemplate = "{{ . }}"
+	_, _, err = instAction.NameAndChart([]string{"foo", chartName})
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	is.Equal("cannot set --name-template and also specify a name", err.Error())
+
+	instAction.NameTemplate = ""
+	instAction.ReleaseName = ""
+	_, _, err = instAction.NameAndChart([]string{chartName})
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	is.Equal("must either provide a name or specify --generate-name", err.Error())
+
+	instAction.NameTemplate = ""
+	instAction.ReleaseName = ""
+	_, _, err = instAction.NameAndChart([]string{"foo", chartName, "bar"})
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	is.Equal("expected at most two arguments, unexpected arguments: bar", err.Error())
+}
+
+func TestNameAndChartGenerateName(t *testing.T) {
+	is := assert.New(t)
+	instAction := installAction(t)
+
+	instAction.ReleaseName = ""
+	instAction.GenerateName = true
+
+	tests := []struct {
+		Name         string
+		Chart        string
+		ExpectedName string
+	}{
+		{
+			"local filepath",
+			"./chart",
+			fmt.Sprintf("chart-%d", time.Now().Unix()),
+		},
+		{
+			"dot filepath",
+			".",
+			fmt.Sprintf("chart-%d", time.Now().Unix()),
+		},
+		{
+			"empty filepath",
+			"",
+			fmt.Sprintf("chart-%d", time.Now().Unix()),
+		},
+		{
+			"packaged chart",
+			"chart.tgz",
+			fmt.Sprintf("chart-%d", time.Now().Unix()),
+		},
+		{
+			"packaged chart with .tar.gz extension",
+			"chart.tar.gz",
+			fmt.Sprintf("chart-%d", time.Now().Unix()),
+		},
+		{
+			"packaged chart with local extension",
+			"./chart.tgz",
+			fmt.Sprintf("chart-%d", time.Now().Unix()),
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.Name, func(t *testing.T) {
+			t.Parallel()
+
+			name, chrt, err := instAction.NameAndChart([]string{tc.Chart})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			is.Equal(tc.ExpectedName, name)
+			is.Equal(tc.Chart, chrt)
+		})
+	}
 }

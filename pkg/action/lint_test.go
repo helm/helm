@@ -49,6 +49,10 @@ func TestLintChart(t *testing.T) {
 			chartPath: "../../cmd/helm/testdata/testcharts/compressedchart-with-hyphens-0.1.0.tgz",
 		},
 		{
+			name:      "archived-tar-gz-chart-path",
+			chartPath: "../../cmd/helm/testdata/testcharts/compressedchart-0.1.0.tar.gz",
+		},
+		{
 			name:      "invalid-archived-chart-path",
 			chartPath: "../../cmd/helm/testdata/testcharts/invalidcompressedchart0.1.0.tgz",
 			err:       true,

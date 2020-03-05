@@ -16,6 +16,7 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/spf13/cobra"
@@ -27,7 +28,7 @@ import (
 const verifyDesc = `
 Verify that the given chart has a valid provenance file.
 
-Provenance files provide crytographic verification that a chart has not been
+Provenance files provide cryptographic verification that a chart has not been
 tampered with, and was packaged by a trusted provider.
 
 This command can be used to verify a local chart. Several other commands provide
@@ -44,7 +45,14 @@ func newVerifyCmd(out io.Writer) *cobra.Command {
 		Long:  verifyDesc,
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return client.Run(args[0])
+			err := client.Run(args[0])
+			if err != nil {
+				return err
+			}
+
+			fmt.Fprint(out, client.Out)
+
+			return nil
 		},
 	}
 

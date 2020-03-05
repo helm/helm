@@ -116,11 +116,9 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 		// key will be raised as well
 		err := yaml.Unmarshal([]byte(renderedContent), &yamlStruct)
 
-		validYaml := linter.RunLinterRule(support.ErrorSev, path, validateYamlContent(err))
-
-		if !validYaml {
-			continue
-		}
+		// If YAML linting fails, we sill progress. So we don't capture the returned state
+		// on this linter run.
+		linter.RunLinterRule(support.ErrorSev, path, validateYamlContent(err))
 	}
 }
 

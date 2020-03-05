@@ -1,0 +1,6 @@
+# A values file contains configuration.
+
+name: "Some Name"
+
+section:
+  name: "Name in a section"

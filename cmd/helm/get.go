@@ -29,10 +29,10 @@ var getHelp = `
 This command consists of multiple subcommands which can be used to
 get extended information about the release, including:
 
-  - The values used to generate the release
-  - The generated manifest file
-  - The notes provided by the chart of the release
-  - The hooks associated with the release
+- The values used to generate the release
+- The generated manifest file
+- The notes provided by the chart of the release
+- The hooks associated with the release
 `
 
 func newGetCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {

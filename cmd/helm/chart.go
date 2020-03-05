@@ -26,9 +26,7 @@ import (
 const chartHelp = `
 This command consists of multiple subcommands to work with the chart cache.
 
-It can be used to push, pull, tag, list, or remove Helm charts.
-Example usage:
-    $ helm chart pull [URL]
+The subcommands can be used to push, pull, tag, list, or remove Helm charts.
 `
 
 func newChartCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {

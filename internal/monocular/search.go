@@ -58,7 +58,7 @@ type Chart struct {
 	Icon        string             `json:"icon"`
 }
 
-// Repo contains the name in monocular the the url for the repository
+// Repo contains the name in monocular the url for the repository
 type Repo struct {
 	Name string `json:"name"`
 	URL  string `json:"url"`
