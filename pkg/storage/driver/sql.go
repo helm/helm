@@ -51,7 +51,7 @@ var supportedSQLDialects = map[string]struct{}{
 // SQLDriverName is the string name of this driver.
 const SQLDriverName = "SQL"
 
-const sqlReleaseTableName = "releases.v1"
+const sqlReleaseTableName = "releases_v1"
 
 const (
 	sqlReleaseTableKeyColumn        = "key"
@@ -62,7 +62,7 @@ const (
 	sqlReleaseTableVersionColumn    = "version"
 	sqlReleaseTableStatusColumn     = "status"
 	sqlReleaseTableOwnerColumn      = "owner"
-	sqlReleaseTableCreatedAtColumn  = "created_at"
+	sqlReleaseTableCreatedAtColumn  = "createdAt"
 	sqlReleaseTableModifiedAtColumn = "modifiedAt"
 )
 
@@ -92,7 +92,7 @@ func (s *SQL) ensureDBSetup() error {
 				Id: "init",
 				Up: []string{
 					`
-						CREATE TABLE releases.v1 (
+						CREATE TABLE releases_v1 (
 							key VARCHAR(67),
 							type VARCHAR(64) NOT NULL,
 							body TEXT NOT NULL,
@@ -103,23 +103,23 @@ func (s *SQL) ensureDBSetup() error {
 							owner TEXT NOT NULL,
 							createdAt INTEGER NOT NULL,
 							modifiedAt INTEGER NOT NULL DEFAULT 0,
-							PRIMARY KEY(name, namespace)
+							PRIMARY KEY(key, namespace)
 						);
-						CREATE INDEX ON releases.v1 (name, namespace);
-						CREATE INDEX ON releases.v1 (version);
-						CREATE INDEX ON releases.v1 (status);
-						CREATE INDEX ON releases.v1 (owner);
-						CREATE INDEX ON releases.v1 (createdAt);
-						CREATE INDEX ON releases.v1 (modifiedAt);
+						CREATE INDEX ON releases_v1 (name, namespace);
+						CREATE INDEX ON releases_v1 (version);
+						CREATE INDEX ON releases_v1 (status);
+						CREATE INDEX ON releases_v1 (owner);
+						CREATE INDEX ON releases_v1 (createdAt);
+						CREATE INDEX ON releases_v1 (modifiedAt);
 						
-						GRANT ALL ON releases.v1 TO PUBLIC;
+						GRANT ALL ON releases_v1 TO PUBLIC;
 
-						ALTER TABLE releases.v1 ENABLE ROW LEVEL SECURITY;
+						ALTER TABLE releases_v1 ENABLE ROW LEVEL SECURITY;
 					`,
 				},
 				Down: []string{
 					`
-						DROP TABLE releases.v1;
+						DROP TABLE releases_v1;
 					`,
 				},
 			},
@@ -154,7 +154,7 @@ type SQLReleaseWrapper struct {
 }
 
 // NewSQL initializes a new memory driver.
-func NewSQL(dialect, connectionString string, logger func(string, ...interface{})) (*SQL, error) {
+func NewSQL(dialect, connectionString string, logger func(string, ...interface{}), namespace string) (*SQL, error) {
 	if _, ok := supportedSQLDialects[dialect]; !ok {
 		return nil, fmt.Errorf("%s dialect isn't supported, only \"postgres\" is available for now", dialect)
 	}
@@ -173,19 +173,14 @@ func NewSQL(dialect, connectionString string, logger func(string, ...interface{}
 		return nil, err
 	}
 
+	driver.namespace = namespace
+
 	return driver, nil
 }
 
 // Get returns the release named by key.
 func (s *SQL) Get(key string) (*rspb.Release, error) {
 	var record SQLReleaseWrapper
-
-	// We first update the current namespace
-	var err error
-	if s.namespace, err = getCurrentNamespace(); err != nil {
-		s.Log("an error occurred while trying to get the current namespace: %v", err)
-		return nil, err
-	}
 
 	query := fmt.Sprintf(
 		"SELECT %s FROM %s WHERE %s = $1 AND %s = $2",
@@ -219,6 +214,11 @@ func (s *SQL) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
 		sqlReleaseTableOwnerColumn,
 		sqlReleaseDefaultOwner,
 	)
+
+	// If a namespace was specified, we only list releases from that namespace
+	if s.namespace != "" {
+		query = fmt.Sprintf("%s AND %s = '%s'", query, sqlReleaseTableNamespaceColumn, s.namespace)
+	}
 
 	var records = []SQLReleaseWrapper{}
 	if err := s.db.Select(&records, query); err != nil {
@@ -258,17 +258,11 @@ func (s *SQL) Query(labels map[string]string) ([]*rspb.Release, error) {
 		}
 	}
 
-	// We filter out releases that do not belong to the current namespace
-	sqlFilterKeys = append(sqlFilterKeys, fmt.Sprintf("%s=:namespace", sqlReleaseTableNamespaceColumn))
-
-	// Then we update the current namespace
-	var err error
-	if s.namespace, err = getCurrentNamespace(); err != nil {
-		s.Log("an error occurred while trying to get the current namespace: %v", err)
-		return nil, err
+	// If a namespace was specified, we only list releases from that namespace
+	if s.namespace != "" {
+		sqlFilterKeys = append(sqlFilterKeys, fmt.Sprintf("%s=:namespace", sqlReleaseTableNamespaceColumn))
+		sqlFilter["namespace"] = s.namespace
 	}
-
-	sqlFilter["namespace"] = s.namespace
 
 	sort.Strings(sqlFilterKeys)
 
@@ -310,15 +304,15 @@ func (s *SQL) Query(labels map[string]string) ([]*rspb.Release, error) {
 
 // Create creates a new release.
 func (s *SQL) Create(key string, rls *rspb.Release) error {
+	namespace := rls.Namespace
+	if namespace == "" {
+		namespace = defaultNamespace
+	}
+	s.namespace = namespace
+
 	body, err := encodeRelease(rls)
 	if err != nil {
 		s.Log("failed to encode release: %v", err)
-		return err
-	}
-
-	// We update the current namespace
-	if s.namespace, err = getCurrentNamespace(); err != nil {
-		s.Log("an error occurred while trying to get the current namespace: %v", err)
 		return err
 	}
 
@@ -349,7 +343,7 @@ func (s *SQL) Create(key string, rls *rspb.Release) error {
 			Body: body,
 
 			Name:      rls.Name,
-			Namespace: rls.Namespace,
+			Namespace: namespace,
 			Version:   int(rls.Version),
 			Status:    rls.Info.Status.String(),
 			Owner:     sqlReleaseDefaultOwner,
@@ -382,6 +376,12 @@ func (s *SQL) Create(key string, rls *rspb.Release) error {
 
 // Update updates a release.
 func (s *SQL) Update(key string, rls *rspb.Release) error {
+	namespace := rls.Namespace
+	if namespace == "" {
+		namespace = defaultNamespace
+	}
+	s.namespace = namespace
+
 	body, err := encodeRelease(rls)
 	if err != nil {
 		s.Log("failed to encode release: %v", err)
@@ -406,7 +406,7 @@ func (s *SQL) Update(key string, rls *rspb.Release) error {
 			Key:        key,
 			Body:       body,
 			Name:       rls.Name,
-			Namespace:  rls.Namespace,
+			Namespace:  namespace,
 			Version:    int(rls.Version),
 			Status:     rls.Info.Status.String(),
 			Owner:      sqlReleaseDefaultOwner,
@@ -426,12 +426,6 @@ func (s *SQL) Delete(key string) (*rspb.Release, error) {
 	if err != nil {
 		s.Log("failed to start SQL transaction: %v", err)
 		return nil, fmt.Errorf("error beginning transaction: %v", err)
-	}
-
-	// We update the current namespace
-	if s.namespace, err = getCurrentNamespace(); err != nil {
-		s.Log("an error occurred while trying to get the current namespace: %v", err)
-		return nil, err
 	}
 
 	selectQuery := fmt.Sprintf(

@@ -35,12 +35,7 @@ func TestSQLName(t *testing.T) {
 func TestSQLGet(t *testing.T) {
 	vers := int(1)
 	name := "smug-pigeon"
-
-	namespace, err := getCurrentNamespace()
-	if err != nil {
-		t.Fatalf("could not get namespace: %v", err)
-	}
-
+	namespace := "default"
 	key := testKey(name, vers)
 	rel := releaseStub(name, vers, namespace, rspb.StatusDeployed)
 
@@ -159,12 +154,7 @@ func TestSQLList(t *testing.T) {
 func TestSqlCreate(t *testing.T) {
 	vers := 1
 	name := "smug-pigeon"
-
-	namespace, err := getCurrentNamespace()
-	if err != nil {
-		t.Fatalf("could not get namespace: %v", err)
-	}
-
+	namespace := "default"
 	key := testKey(name, vers)
 	rel := releaseStub(name, vers, namespace, rspb.StatusDeployed)
 
@@ -204,12 +194,7 @@ func TestSqlCreate(t *testing.T) {
 func TestSqlCreateAlreadyExists(t *testing.T) {
 	vers := 1
 	name := "smug-pigeon"
-
-	namespace, err := getCurrentNamespace()
-	if err != nil {
-		t.Fatalf("could not get namespace: %v", err)
-	}
-
+	namespace := "default"
 	key := testKey(name, vers)
 	rel := releaseStub(name, vers, namespace, rspb.StatusDeployed)
 
@@ -270,12 +255,7 @@ func TestSqlCreateAlreadyExists(t *testing.T) {
 func TestSqlUpdate(t *testing.T) {
 	vers := 1
 	name := "smug-pigeon"
-
-	namespace, err := getCurrentNamespace()
-	if err != nil {
-		t.Fatalf("could not get namespace: %v", err)
-	}
-
+	namespace := "default"
 	key := testKey(name, vers)
 	rel := releaseStub(name, vers, namespace, rspb.StatusDeployed)
 
@@ -310,11 +290,6 @@ func TestSqlUpdate(t *testing.T) {
 }
 
 func TestSqlQuery(t *testing.T) {
-	namespace, err := getCurrentNamespace()
-	if err != nil {
-		t.Fatalf("could not get namespace: %v", err)
-	}
-
 	// Reflect actual use cases in ../storage.go
 	labelSetDeployed := map[string]string{
 		"name":   "smug-pigeon",
@@ -346,7 +321,7 @@ func TestSqlQuery(t *testing.T) {
 
 	mock.
 		ExpectQuery(regexp.QuoteMeta(query)).
-		WithArgs("smug-pigeon", namespace, sqlReleaseDefaultOwner, "deployed").
+		WithArgs("smug-pigeon", "default", sqlReleaseDefaultOwner, "deployed").
 		WillReturnRows(
 			mock.NewRows([]string{
 				sqlReleaseTableBodyColumn,
@@ -366,7 +341,7 @@ func TestSqlQuery(t *testing.T) {
 
 	mock.
 		ExpectQuery(regexp.QuoteMeta(query)).
-		WithArgs("smug-pigeon", namespace, sqlReleaseDefaultOwner).
+		WithArgs("smug-pigeon", "default", sqlReleaseDefaultOwner).
 		WillReturnRows(
 			mock.NewRows([]string{
 				sqlReleaseTableBodyColumn,
@@ -411,12 +386,7 @@ func TestSqlQuery(t *testing.T) {
 func TestSqlDelete(t *testing.T) {
 	vers := 1
 	name := "smug-pigeon"
-
-	namespace, err := getCurrentNamespace()
-	if err != nil {
-		t.Fatalf("could not get namespace: %v", err)
-	}
-
+	namespace := "default"
 	key := testKey(name, vers)
 	rel := releaseStub(name, vers, namespace, rspb.StatusDeployed)
 
