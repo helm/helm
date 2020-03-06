@@ -263,9 +263,12 @@ func (c *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 	c.Capabilities = &chartutil.Capabilities{
 		APIVersions: apiVersions,
 		KubeVersion: chartutil.KubeVersion{
-			Version: kubeVersion.GitVersion,
-			Major:   kubeVersion.Major,
-			Minor:   kubeVersion.Minor,
+			Version:   kubeVersion.GitVersion,
+			Major:     kubeVersion.Major,
+			Minor:     kubeVersion.Minor,
+			GoVersion: kubeVersion.GoVersion,
+			Compiler:  kubeVersion.Compiler,
+			Platform:  kubeVersion.Platform,
 		},
 	}
 	return c.Capabilities, nil

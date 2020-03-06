@@ -16,6 +16,8 @@ limitations under the License.
 package chartutil
 
 import (
+	"fmt"
+	"runtime"
 	"testing"
 )
 
@@ -41,21 +43,35 @@ func TestDefaultVersionSet(t *testing.T) {
 }
 
 func TestDefaultCapabilities(t *testing.T) {
+	expectedKubeMajorVersion := "1"
+	expectedKubeMinorVersion := "18"
+	expectedKubeVersion := fmt.Sprintf("v%s.%s.0", expectedKubeMajorVersion, expectedKubeMinorVersion)
 	kv := DefaultCapabilities.KubeVersion
-	if kv.String() != "v1.18.0" {
+	if kv.String() != expectedKubeVersion {
 		t.Errorf("Expected default KubeVersion.String() to be v1.18.0, got %q", kv.String())
 	}
-	if kv.Version != "v1.18.0" {
+	if kv.Version != expectedKubeVersion {
 		t.Errorf("Expected default KubeVersion.Version to be v1.18.0, got %q", kv.Version)
 	}
-	if kv.GitVersion() != "v1.18.0" {
+	if kv.GitVersion() != expectedKubeVersion {
 		t.Errorf("Expected default KubeVersion.GitVersion() to be v1.18.0, got %q", kv.Version)
 	}
-	if kv.Major != "1" {
-		t.Errorf("Expected default KubeVersion.Major to be 1, got %q", kv.Major)
+	if kv.Major != expectedKubeMajorVersion {
+		t.Errorf("Expected default KubeVersion.Major to be %s, got %q", expectedKubeMajorVersion, kv.Major)
+
 	}
-	if kv.Minor != "18" {
-		t.Errorf("Expected default KubeVersion.Minor to be 16, got %q", kv.Minor)
+	if kv.Minor != expectedKubeMinorVersion {
+		t.Errorf("Expected default KubeVersion.Minor to be %s, got %q", expectedKubeMinorVersion, kv.Minor)
+	}
+	if kv.GoVersion != runtime.Version() {
+		t.Errorf("Expected default KubeVersion.GoVersion to be %q, got %q", runtime.Version(), kv.GoVersion)
+	}
+	if kv.Compiler != runtime.Compiler {
+		t.Errorf("Expected default KubeVersion.Compiler to be %q, got %q", runtime.Compiler, kv.Compiler)
+	}
+	expectedPlatform := fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH)
+	if kv.Platform != expectedPlatform {
+		t.Errorf("Expected default KubeVersion.Platform to be %q, got %q", expectedPlatform, kv.Platform)
 	}
 }
 

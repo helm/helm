@@ -1,0 +1,12 @@
+---
+# Source: issue-7004/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: RELEASE-NAME-issue-7004
+    labels:
+        kube-version/compiler: "{{ .Compiler }}"
+        kube-version/platform: "{{ .Platform }}"
+        kube-version/go-version: "{{ .GoVersion }}"
+data:
+    someKey: dummyValue

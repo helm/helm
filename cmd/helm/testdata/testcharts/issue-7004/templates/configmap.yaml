@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: {{ template "issue-7004.fullname" . }}
+    labels:
+        kube-version/compiler: "{{ .Capabilities.KubeVersion.Compiler }}"
+        kube-version/platform: "{{ .Capabilities.KubeVersion.Platform }}"
+        kube-version/go-version: "{{ .Capabilities.KubeVersion.GoVersion }}"
+data:
+    someKey: {{ .Values.someValue }}

@@ -16,6 +16,9 @@ limitations under the License.
 package chartutil
 
 import (
+	"fmt"
+	"runtime"
+
 	"k8s.io/client-go/kubernetes/scheme"
 
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -31,9 +34,12 @@ var (
 	// DefaultCapabilities is the default set of capabilities.
 	DefaultCapabilities = &Capabilities{
 		KubeVersion: KubeVersion{
-			Version: "v1.18.0",
-			Major:   "1",
-			Minor:   "18",
+			Version:   "v1.18.0",
+			Major:     "1",
+			Minor:     "18",
+			GoVersion: runtime.Version(),
+			Compiler:  runtime.Compiler,
+			Platform:  fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
 		},
 		APIVersions: DefaultVersionSet,
 		HelmVersion: helmversion.Get(),
@@ -52,9 +58,12 @@ type Capabilities struct {
 
 // KubeVersion is the Kubernetes version.
 type KubeVersion struct {
-	Version string // Kubernetes version
-	Major   string // Kubernetes major version
-	Minor   string // Kubernetes minor version
+	Version   string // Kubernetes version
+	Major     string // Kubernetes major version
+	Minor     string // Kubernetes minor version
+	GoVersion string // Kubernetes Golang version
+	Compiler  string // Kubernetes Compiler toolchain
+	Platform  string // Kubernetes OS and Architecture
 }
 
 // String implements fmt.Stringer

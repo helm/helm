@@ -18,13 +18,24 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
+	"text/template"
+
+	"helm.sh/helm/v3/internal/test/ensure"
 )
 
 var chartPath = "testdata/testcharts/subchart"
 
 func TestTemplateCmd(t *testing.T) {
+	expectedTemplateOutput, err := prepareExpectedTemplateOutputForKubernetesVersionInfoCheck(t)
+	if err != nil {
+		t.Fatal("failed to generated expected template output: ", err)
+	}
+
 	tests := []cmdTestCase{
 		{
 			name:   "check name",
@@ -121,6 +132,11 @@ func TestTemplateCmd(t *testing.T) {
 			wantError: true,
 			golden:    "output/template-with-invalid-yaml-debug.txt",
 		},
+		{
+			name:   "chart with template with kubernetes go version, platform and compile",
+			cmd:    fmt.Sprintf("template '%s' --debug", "testdata/testcharts/issue-7004"),
+			golden: expectedTemplateOutput,
+		},
 	}
 	runTestCmd(t, tests)
 }
@@ -153,4 +169,29 @@ func TestTemplateVersionCompletion(t *testing.T) {
 		golden: "output/version-invalid-comp.txt",
 	}}
 	runTestCmd(t, tests)
+}
+
+func prepareExpectedTemplateOutputForKubernetesVersionInfoCheck(t *testing.T) (string, error) {
+	tmpDir := ensure.TempDir(t)
+	templatePath := filepath.Join("testdata", "output", "templatized-template-with-kubernetes-version-info.txt")
+	tmpl, err := template.ParseFiles(templatePath)
+	if err != nil {
+		return "", err
+	}
+	templateOutput := &strings.Builder{}
+	data := map[string]string{
+		"Compiler":  runtime.Compiler,
+		"Platform":  fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
+		"GoVersion": runtime.Version(),
+	}
+	err = tmpl.Execute(templateOutput, data)
+	if err != nil {
+		return "", err
+	}
+	outputFilePath := filepath.Join(tmpDir, "template-with-kubernetes-version-info.txt")
+	err = ioutil.WriteFile(outputFilePath, []byte(templateOutput.String()), 0644)
+	if err != nil {
+		return "", err
+	}
+	return outputFilePath, nil
 }

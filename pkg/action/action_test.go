@@ -18,15 +18,22 @@ package action
 import (
 	"context"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
+	"runtime"
 	"testing"
+
+	"github.com/golang/mock/gomock"
+	"k8s.io/apimachinery/pkg/version"
 
 	dockerauth "github.com/deislabs/oras/pkg/auth/docker"
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
 
 	"helm.sh/helm/v3/internal/experimental/registry"
+	"helm.sh/helm/v3/internal/test/action"
+	"helm.sh/helm/v3/internal/test/discovery"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
@@ -352,4 +359,64 @@ func TestValidName(t *testing.T) {
 			t.Errorf("Expected %q to %s", input, st)
 		}
 	}
+}
+
+func TestGetCapabilities(t *testing.T) {
+	t.Run("Capabilities.KubeVersion gives the correct version information", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		mockDiscoveryClient := discovery.NewMockCachedDiscoveryInterface(ctrl)
+		serverVersion := &version.Info{
+			GitVersion: "v1.18.0",
+			Major:      "1",
+			Minor:      "18",
+			GoVersion:  runtime.Version(),
+			Compiler:   runtime.Compiler,
+			Platform:   fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
+		}
+		mockDiscoveryClient.EXPECT().Invalidate()
+		mockDiscoveryClient.EXPECT().ServerVersion().Return(serverVersion, nil)
+		mockDiscoveryClient.EXPECT().ServerGroupsAndResources().Return(nil, nil, nil)
+
+		mockRESTClientGetter := action.NewMockRESTClientGetter(ctrl)
+
+		mockRESTClientGetter.EXPECT().ToDiscoveryClient().Return(mockDiscoveryClient, nil)
+
+		configuration := &Configuration{RESTClientGetter: mockRESTClientGetter}
+
+		capabilities, err := configuration.getCapabilities()
+
+		if err != nil {
+			t.Error(err)
+		}
+
+		expectedKubeMajorVersion := "1"
+		expectedKubeMinorVersion := "18"
+		expectedKubeVersion := fmt.Sprintf("v%s.%s.0", expectedKubeMajorVersion, expectedKubeMinorVersion)
+		kv := capabilities.KubeVersion
+
+		if kv.String() != expectedKubeVersion {
+			t.Errorf("Expected default KubeVersion.String() to be %s, got %q", expectedKubeVersion, kv.String())
+		}
+		if kv.Version != expectedKubeVersion {
+			t.Errorf("Expected default KubeVersion.Version to be %s, got %q", expectedKubeVersion, kv.Version)
+		}
+		if kv.Major != expectedKubeMajorVersion {
+			t.Errorf("Expected default KubeVersion.Major to be %s, got %q", expectedKubeMajorVersion, kv.Major)
+		}
+		if kv.Minor != expectedKubeMinorVersion {
+			t.Errorf("Expected default KubeVersion.Minor to be %s, got %q", expectedKubeMinorVersion, kv.Minor)
+		}
+		if kv.GoVersion != runtime.Version() {
+			t.Errorf("Expected default KubeVersion.GoVersion to be %q, got %q", runtime.Version(), kv.GoVersion)
+		}
+		if kv.Compiler != runtime.Compiler {
+			t.Errorf("Expected default KubeVersion.Compiler to be %q, got %q", runtime.Compiler, kv.Compiler)
+		}
+		expectedPlatform := fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH)
+		if kv.Platform != expectedPlatform {
+			t.Errorf("Expected default KubeVersion.Platform to be %q, got %q", expectedPlatform, kv.Platform)
+		}
+	})
 }
