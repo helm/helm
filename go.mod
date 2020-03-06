@@ -4,7 +4,6 @@ go 1.13
 
 require (
 	github.com/BurntSushi/toml v0.3.1
-	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/Masterminds/semver/v3 v3.0.3
 	github.com/Masterminds/sprig/v3 v3.0.2
 	github.com/Masterminds/vcs v1.13.1
@@ -35,7 +34,6 @@ require (
 	k8s.io/apimachinery v0.17.3
 	k8s.io/cli-runtime v0.17.3
 	k8s.io/client-go v0.17.3
-	k8s.io/helm v2.16.3+incompatible
 	k8s.io/klog v1.0.0
 	k8s.io/kubectl v0.17.3
 	sigs.k8s.io/yaml v1.1.0
