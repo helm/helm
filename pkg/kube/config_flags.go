@@ -49,7 +49,7 @@ func (f *ConfigFlags) ToRESTConfig() (*rest.Config, error) {
 		return nil, err
 	}
 	config.UserAgent = version.GetUserAgent()
-	return config, err
+	return config, nil
 }
 
 // ToDiscoveryClient implements RESTClientGetter.
