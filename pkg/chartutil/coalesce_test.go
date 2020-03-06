@@ -31,6 +31,8 @@ right: Null
 left: NULL
 front: ~
 back: ""
+nested:
+  boat: null
 
 global:
   name: Ishmael
@@ -114,6 +116,10 @@ func TestCoalesceValues(t *testing.T) {
 		}
 	}
 
+	if _, ok := v["nested"].(map[string]interface{})["boat"]; ok {
+		t.Error("Expected nested boat key to be removed, still present")
+	}
+
 	// CoalesceValues should not mutate the passed arguments
 	is.Equal(valsCopy, vals)
 }
@@ -122,24 +128,28 @@ func TestCoalesceTables(t *testing.T) {
 	dst := map[string]interface{}{
 		"name": "Ishmael",
 		"address": map[string]interface{}{
-			"street": "123 Spouter Inn Ct.",
-			"city":   "Nantucket",
+			"street":  "123 Spouter Inn Ct.",
+			"city":    "Nantucket",
+			"country": nil,
 		},
 		"details": map[string]interface{}{
 			"friends": []string{"Tashtego"},
 		},
 		"boat": "pequod",
+		"hole": nil,
 	}
 	src := map[string]interface{}{
 		"occupation": "whaler",
 		"address": map[string]interface{}{
-			"state":  "MA",
-			"street": "234 Spouter Inn Ct.",
+			"state":   "MA",
+			"street":  "234 Spouter Inn Ct.",
+			"country": "US",
 		},
 		"details": "empty",
 		"boat": map[string]interface{}{
 			"mast": true,
 		},
+		"hole": "black",
 	}
 
 	// What we expect is that anything in dst overrides anything in src, but that
@@ -170,6 +180,10 @@ func TestCoalesceTables(t *testing.T) {
 		t.Errorf("Unexpected state: %v", addr["state"])
 	}
 
+	if _, ok = addr["country"]; ok {
+		t.Error("The country is not left out.")
+	}
+
 	if det, ok := dst["details"].(map[string]interface{}); !ok {
 		t.Fatalf("Details is the wrong type: %v", dst["details"])
 	} else if _, ok := det["friends"]; !ok {
@@ -178,5 +192,9 @@ func TestCoalesceTables(t *testing.T) {
 
 	if dst["boat"].(string) != "pequod" {
 		t.Errorf("Expected boat string, got %v", dst["boat"])
+	}
+
+	if _, ok = dst["hole"]; ok {
+		t.Error("The hole still exists.")
 	}
 }
