@@ -51,8 +51,9 @@ func (o ShowOutputFormat) String() string {
 //
 // It provides the implementation of 'helm show' and its respective subcommands.
 type Show struct {
-	OutputFormat ShowOutputFormat
 	ChartPathOptions
+	Devel        bool
+	OutputFormat ShowOutputFormat
 }
 
 // NewShow creates a new Show object with the given configuration.
