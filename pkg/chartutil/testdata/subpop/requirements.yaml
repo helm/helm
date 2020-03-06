@@ -35,3 +35,10 @@ dependencies:
         repository: http://localhost:10191
         version: 0.1.0
         condition: subchart2alias.enabled
+
+      - name: subchart3
+        repository: http://localhost:10191
+        version: 0.1.0
+        condition: subchart3.enabled
+        import-values:
+          - data
