@@ -26,6 +26,7 @@ import (
 	"sort"
 
 	"github.com/pkg/errors"
+	"k8s.io/klog"
 )
 
 // Walk walks the file tree rooted at root, calling walkFn for each file or directory
@@ -70,6 +71,7 @@ func symwalk(path string, info os.FileInfo, walkFn filepath.WalkFunc) error {
 		if err != nil {
 			return errors.Wrapf(err, "error evaluating symlink %s", path)
 		}
+		klog.V(0).Infof("found symbolic link in path: %s resolves to %s", path, resolved)
 		if info, err = os.Lstat(resolved); err != nil {
 			return err
 		}
