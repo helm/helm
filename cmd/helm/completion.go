@@ -316,7 +316,7 @@ function __helm_get_completions
 
     set -l compErr (math (math $directive / %[2]d) %% 2)
     if test $compErr -eq 1
-        __helm_debug "Receive error directive: aborting."
+        __helm_debug "Received error directive: aborting."
         return 0
     end
 

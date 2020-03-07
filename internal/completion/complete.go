@@ -267,29 +267,38 @@ func getCompletions(cmd *cobra.Command, args []string) ([]string, BashCompDirect
 	}
 
 	if flag == nil {
+		subCmdExists := false
 		// Complete subcommand names
 		for _, subCmd := range finalCmd.Commands() {
-			if subCmd.IsAvailableCommand() && strings.HasPrefix(subCmd.Name(), toComplete) {
-				comp := subCmd.Name()
-				if includeDesc {
-					comp = fmt.Sprintf("%s\t%s", comp, subCmd.Short)
+			if subCmd.IsAvailableCommand() {
+				subCmdExists = true
+				if strings.HasPrefix(subCmd.Name(), toComplete) {
+					comp := subCmd.Name()
+					if includeDesc {
+						comp = fmt.Sprintf("%s\t%s", comp, subCmd.Short)
+					}
+					completions = append(completions, comp)
 				}
-				completions = append(completions, comp)
 			}
 		}
+		if subCmdExists {
+			// If there are sub-commands (even if they don't match), we stop completion; we shouldn't
+			// do any argument completion.
+			// A specific case where this is important is for plugin completion.
+			// If we allowed to continue on, plugin dynamic completion would always be triggered
+			// and would need to be handled by the plugin author.
+			return completions, BashCompDirectiveNoFileComp, nil
+		}
 
-		// Always complete ValidArgs, even if we are completing a subcommand name.
-		// This is for commands that have both subcommands and validArgs.
+		// There are no sub-cmds, check for ValidArgs
 		for _, validArg := range finalCmd.ValidArgs {
 			if strings.HasPrefix(validArg, toComplete) {
 				completions = append(completions, validArg)
 			}
 		}
 
-		// Always let the logic continue to add any ValidArgsFunction completions,
-		// even if we already found other completions already.
-		// This is for commands that have subcommands and/or validArgs but also
-		// specify a ValidArgsFunction.
+		// Let the logic continue to add any ValidArgsFunction completions.
+		// This is for commands that may choose to specify both ValidArgs and ValidArgsFunction.
 	}
 
 	// Parse the flags and extract the arguments to prepare for calling the completion function
@@ -316,7 +325,9 @@ func getCompletions(cmd *cobra.Command, args []string) ([]string, BashCompDirect
 	}
 	completionFn, ok := validArgsFunctions[key]
 	if !ok {
-		return completions, BashCompDirectiveDefault, fmt.Errorf("Go custom completion not supported/needed for flag or command: %s", nameStr)
+		CompDebugln(fmt.Sprintf("No dynamic completion registered for flag or command: %s", nameStr))
+		// No custom completion registered.  This is ok.
+		return completions, BashCompDirectiveDefault, nil
 	}
 
 	comps, directive := completionFn(finalCmd, finalArgs, toComplete)
