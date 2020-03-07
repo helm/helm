@@ -49,6 +49,10 @@ pequod:
       sail: true
   ahab:
     scope: whale
+    boat: null
+    nested:
+      foo: true
+      bar: null
 `)
 
 func TestCoalesceValues(t *testing.T) {
@@ -88,6 +92,7 @@ func TestCoalesceValues(t *testing.T) {
 		{"{{.pequod.name}}", "pequod"},
 		{"{{.pequod.ahab.name}}", "ahab"},
 		{"{{.pequod.ahab.scope}}", "whale"},
+		{"{{.pequod.ahab.nested.foo}}", "true"},
 		{"{{.pequod.ahab.global.name}}", "Ishmael"},
 		{"{{.pequod.ahab.global.subject}}", "Queequeg"},
 		{"{{.pequod.ahab.global.harpooner}}", "Tashtego"},
@@ -118,6 +123,15 @@ func TestCoalesceValues(t *testing.T) {
 
 	if _, ok := v["nested"].(map[string]interface{})["boat"]; ok {
 		t.Error("Expected nested boat key to be removed, still present")
+	}
+
+	subchart := v["pequod"].(map[string]interface{})["ahab"].(map[string]interface{})
+	if _, ok := subchart["boat"]; ok {
+		t.Error("Expected subchart boat key to be removed, still present")
+	}
+
+	if _, ok := subchart["nested"].(map[string]interface{})["bar"]; ok {
+		t.Error("Expected subchart nested bar key to be removed, still present")
 	}
 
 	// CoalesceValues should not mutate the passed arguments

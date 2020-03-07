@@ -47,10 +47,7 @@ func CoalesceValues(chrt *chart.Chart, vals map[string]interface{}) (Values, err
 	if valsCopy == nil {
 		valsCopy = make(map[string]interface{})
 	}
-	if _, err := coalesce(chrt, valsCopy); err != nil {
-		return valsCopy, err
-	}
-	return coalesceDeps(chrt, valsCopy)
+	return coalesce(chrt, valsCopy)
 }
 
 // coalesce coalesces the dest values and the chart values, giving priority to the dest values.
