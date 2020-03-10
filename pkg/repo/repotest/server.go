@@ -22,6 +22,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"helm.sh/helm/v3/internal/tlsutil"
+
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/pkg/repo"
@@ -141,6 +143,40 @@ func (s *Server) Start() {
 		}
 		http.FileServer(http.Dir(s.docroot)).ServeHTTP(w, r)
 	}))
+}
+
+func (s *Server) StartTLS() {
+	cd := "../../testdata"
+	ca, pub, priv := filepath.Join(cd, "rootca.crt"), filepath.Join(cd, "crt.pem"), filepath.Join(cd, "key.pem")
+
+	s.srv = httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if s.middleware != nil {
+			s.middleware.ServeHTTP(w, r)
+		}
+		http.FileServer(http.Dir(s.Root())).ServeHTTP(w, r)
+	}))
+	tlsConf, err := tlsutil.NewClientTLS(pub, priv, ca)
+	if err != nil {
+		panic(err)
+	}
+	tlsConf.BuildNameToCertificate()
+	tlsConf.ServerName = "helm.sh"
+	s.srv.TLS = tlsConf
+	s.srv.StartTLS()
+
+	// Set up repositories config with ca file
+	repoConfig := filepath.Join(s.Root(), "repositories.yaml")
+
+	r := repo.NewFile()
+	r.Add(&repo.Entry{
+		Name:   "test",
+		URL:    s.URL(),
+		CAFile: filepath.Join("../../testdata", "rootca.crt"),
+	})
+
+	if err := r.WriteFile(repoConfig, 0644); err != nil {
+		panic(err)
+	}
 }
 
 // Stop stops the server and closes all connections.

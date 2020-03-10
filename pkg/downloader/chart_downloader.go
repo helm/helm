@@ -181,8 +181,10 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 		c.Options = append(
 			c.Options,
 			getter.WithURL(rc.URL),
-			getter.WithTLSClientConfig(rc.CertFile, rc.KeyFile, rc.CAFile),
 		)
+		if rc.CertFile != "" || rc.KeyFile != "" || rc.CAFile != "" {
+			c.Options = append(c.Options, getter.WithTLSClientConfig(rc.CertFile, rc.KeyFile, rc.CAFile))
+		}
 		if rc.Username != "" && rc.Password != "" {
 			c.Options = append(
 				c.Options,
@@ -210,12 +212,14 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 	if err != nil {
 		return u, err
 	}
-	if r != nil && r.Config != nil && r.Config.Username != "" && r.Config.Password != "" {
-		c.Options = append(c.Options, getter.WithBasicAuth(r.Config.Username, r.Config.Password))
-	}
 
-	if r.Config.CertFile != "" || r.Config.KeyFile != "" || r.Config.CAFile != "" {
-		c.Options = append(c.Options, getter.WithTLSClientConfig(r.Config.CertFile, r.Config.KeyFile, r.Config.CAFile))
+	if r != nil && r.Config != nil {
+		if r.Config.CertFile != "" || r.Config.KeyFile != "" || r.Config.CAFile != "" {
+			c.Options = append(c.Options, getter.WithTLSClientConfig(r.Config.CertFile, r.Config.KeyFile, r.Config.CAFile))
+		}
+		if r.Config.Username != "" && r.Config.Password != "" {
+			c.Options = append(c.Options, getter.WithBasicAuth(r.Config.Username, r.Config.Password))
+		}
 	}
 
 	// Next, we need to load the index, and actually look up the chart.
@@ -254,9 +258,6 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 		// TODO add user-agent
 		if _, err := getter.NewHTTPGetter(getter.WithURL(rc.URL)); err != nil {
 			return repoURL, err
-		}
-		if r != nil && r.Config != nil && r.Config.Username != "" && r.Config.Password != "" {
-			c.Options = append(c.Options, getter.WithBasicAuth(r.Config.Username, r.Config.Password))
 		}
 		return u, err
 	}
