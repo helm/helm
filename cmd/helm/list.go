@@ -86,28 +86,26 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 				names := make([]string, 0)
 				for _, res := range results {
-					//fmt.Fprintln(out, res.Name)
 					names = append(names, res.Name)
 				}
 
 				outputFlag := cmd.Flag("output")
-				if outputFlag.Changed {
-					switch outputFlag.Value.String() {
-					case "json":
-						output.EncodeJSON(out, names)
-						return nil
-					case "yaml":
-						output.EncodeYAML(out, names)
-						return nil
-					default:
-						return outfmt.Write(out, newReleaseListWriter(results))
-					}
-				}
 
-				for _, res := range results {
-					fmt.Fprintln(out, res.Name)
+				switch outputFlag.Value.String() {
+				case "json":
+					output.EncodeJSON(out, names)
+					return nil
+				case "yaml":
+					output.EncodeYAML(out, names)
+					return nil
+				case "table":
+					for _, res := range results {
+						fmt.Fprintln(out, res.Name)
+					}
+					return nil
+				default:
+					return outfmt.Write(out, newReleaseListWriter(results))
 				}
-				return nil
 			}
 
 			return outfmt.Write(out, newReleaseListWriter(results))
