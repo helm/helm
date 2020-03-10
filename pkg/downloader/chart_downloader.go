@@ -183,7 +183,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 			getter.WithURL(rc.URL),
 		)
 		if rc.CertFile != "" || rc.KeyFile != "" || rc.CAFile != "" {
-			getter.WithTLSClientConfig(rc.CertFile, rc.KeyFile, rc.CAFile)
+			c.Options = append(c.Options, getter.WithTLSClientConfig(rc.CertFile, rc.KeyFile, rc.CAFile))
 		}
 		if rc.Username != "" && rc.Password != "" {
 			c.Options = append(
