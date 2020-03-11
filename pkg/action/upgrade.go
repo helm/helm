@@ -203,7 +203,8 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 		return upgradedRelease, errors.Wrap(err, "unable to build kubernetes objects from new release manifest")
 	}
 
-	err = target.Visit(setMetadataVisitor(upgradedRelease.Name, upgradedRelease.Namespace))
+	// It is safe to use force only on target because these are resources currently rendered by the chart.
+	err = target.Visit(setMetadataVisitor(upgradedRelease.Name, upgradedRelease.Namespace, true))
 	if err != nil {
 		return upgradedRelease, err
 	}

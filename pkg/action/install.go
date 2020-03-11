@@ -249,7 +249,8 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 		return nil, errors.Wrap(err, "unable to build kubernetes objects from release manifest")
 	}
 
-	err = resources.Visit(setMetadataVisitor(rel.Name, rel.Namespace))
+	// It is safe to use "force" here because these are resources currently rendered by the chart.
+	err = resources.Visit(setMetadataVisitor(rel.Name, rel.Namespace, true))
 	if err != nil {
 		return nil, err
 	}
