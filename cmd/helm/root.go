@@ -99,7 +99,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		Short:                  "The Helm package manager for Kubernetes.",
 		Long:                   globalUsage,
 		SilenceUsage:           true,
-		BashCompletionFunction: completion.GetBashCustomFunction(),
+		BashCompletionFunction: fmt.Sprintf("%s%s", contextCompFunc, completion.GetBashCustomFunction()),
 	}
 	flags := cmd.PersistentFlags()
 
