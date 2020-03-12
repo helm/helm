@@ -75,6 +75,10 @@ func NewUpgrade(cfg *Configuration) *Upgrade {
 
 // Run executes the upgrade on the given release.
 func (u *Upgrade) Run(name string, chart *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
+	if err := u.cfg.KubeClient.IsReachable(); err != nil {
+		return nil, err
+	}
+
 	// Make sure if Atomic is set, that wait is set as well. This makes it so
 	// the user doesn't have to specify both
 	u.Wait = u.Wait || u.Atomic

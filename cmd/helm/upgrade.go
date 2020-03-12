@@ -91,8 +91,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 
 			if client.Install {
-				// If a release does not exist, install it. If another error occurs during
-				// the check, ignore the error and continue with the upgrade.
+				// If a release does not exist, install it.
 				histClient := action.NewHistory(cfg)
 				histClient.Max = 1
 				if _, err := histClient.Run(args[0]); err == driver.ErrReleaseNotFound {
@@ -119,6 +118,8 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 						return err
 					}
 					return outfmt.Write(out, &statusPrinter{rel, settings.Debug})
+				} else if err != nil {
+					return err
 				}
 			}
 
