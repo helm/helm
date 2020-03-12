@@ -81,14 +81,14 @@ The community keeps growing, and we'd love to see you there!
 
 Download Helm ${RELEASE}. The common platform binaries are here:
 
-- [MacOS amd64](https://get.helm.sh/helm-${RELEASE}-darwin-amd64.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-darwin-amd64.tar.gz.sha256) / $(cat _dist/helm-${RELEASE}-darwin-amd64.tar.gz.sha256))
-- [Linux amd64](https://get.helm.sh/helm-${RELEASE}-linux-amd64.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-amd64.tar.gz.sha256) / $(cat _dist/helm-${RELEASE}-linux-amd64.tar.gz.sha256))
-- [Linux arm](https://get.helm.sh/helm-${RELEASE}-linux-arm.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-arm.tar.gz.sha256) / $(cat _dist/helm-${RELEASE}-linux-arm.tar.gz.sha256))
-- [Linux arm64](https://get.helm.sh/helm-${RELEASE}-linux-arm64.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-arm64.tar.gz.sha256) / $(cat _dist/helm-${RELEASE}-linux-arm64.tar.gz.sha256))
-- [Linux i386](https://get.helm.sh/helm-${RELEASE}-linux-386.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-386.tar.gz.sha256) / $(cat _dist/helm-${RELEASE}-linux-386.tar.gz.sha256))
-- [Linux ppc64le](https://get.helm.sh/helm-${RELEASE}-linux-ppc64le.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-ppc64le.tar.gz.sha256) / $(cat _dist/helm-${RELEASE}-linux-ppc64le.tar.gz.sha256))
-- [Linux s390x](https://get.helm.sh/helm-${RELEASE}-linux-s390x.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-s390x.tar.gz.sha256) / $(cat _dist/helm-${RELEASE}-darwin-amd64.tar.gz.sha256))
-- [Windows amd64](https://get.helm.sh/helm-${RELEASE}-windows-amd64.zip) ([checksum](https://get.helm.sh/helm-${RELEASE}-windows-amd64.zip.sha256) / $(cat _dist/helm-${RELEASE}-windows-amd64.zip.sha256))
+- [MacOS amd64](https://get.helm.sh/helm-${RELEASE}-darwin-amd64.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-darwin-amd64.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-darwin-amd64.tar.gz.sha256))
+- [Linux amd64](https://get.helm.sh/helm-${RELEASE}-linux-amd64.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-amd64.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-amd64.tar.gz.sha256))
+- [Linux arm](https://get.helm.sh/helm-${RELEASE}-linux-arm.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-arm.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-arm.tar.gz.sha256))
+- [Linux arm64](https://get.helm.sh/helm-${RELEASE}-linux-arm64.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-arm64.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-arm64.tar.gz.sha256))
+- [Linux i386](https://get.helm.sh/helm-${RELEASE}-linux-386.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-386.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-386.tar.gz.sha256))
+- [Linux ppc64le](https://get.helm.sh/helm-${RELEASE}-linux-ppc64le.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-ppc64le.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-ppc64le.tar.gz.sha256))
+- [Linux s390x](https://get.helm.sh/helm-${RELEASE}-linux-s390x.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-s390x.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-darwin-amd64.tar.gz.sha256))
+- [Windows amd64](https://get.helm.sh/helm-${RELEASE}-windows-amd64.zip) ([checksum](https://get.helm.sh/helm-${RELEASE}-windows-amd64.zip.sha256sum) / $(cat _dist/helm-${RELEASE}-windows-amd64.zip.sha256))
 
 The [Quickstart Guide](https://docs.helm.sh/using_helm/#quickstart-guide) will get you going from there. For **upgrade instructions** or detailed installation notes, check the [install guide](https://docs.helm.sh/using_helm/#installing-helm). You can also use a [script to install](https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3) on any system with \`bash\`.
 
