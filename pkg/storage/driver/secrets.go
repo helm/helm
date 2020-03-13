@@ -185,11 +185,7 @@ func (secrets *Secrets) Update(key string, rls *rspb.Release) error {
 func (secrets *Secrets) Delete(key string) (rls *rspb.Release, err error) {
 	// fetch the release to check existence
 	if rls, err = secrets.Get(key); err != nil {
-		if apierrors.IsNotFound(err) {
-			return nil, ErrReleaseExists
-		}
-
-		return nil, errors.Wrapf(err, "delete: failed to get release %q", key)
+		return nil, err
 	}
 	// delete the release
 	err = secrets.impl.Delete(key, &metav1.DeleteOptions{})
