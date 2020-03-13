@@ -194,6 +194,12 @@ func TestSecretDelete(t *testing.T) {
 
 	secrets := newTestFixtureSecrets(t, []*rspb.Release{rel}...)
 
+	// perform the delete on a non-existing release
+	_, err := secrets.Delete("nonexistent")
+	if err != ErrReleaseNotFound {
+		t.Fatalf("Expected ErrReleaseNotFound, got: {%v}", err)
+	}
+
 	// perform the delete
 	rls, err := secrets.Delete(key)
 	if err != nil {
