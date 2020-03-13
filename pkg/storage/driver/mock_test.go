@@ -23,6 +23,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kblabels "k8s.io/apimachinery/pkg/labels"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
 	rspb "helm.sh/helm/v3/pkg/release"
@@ -191,8 +192,16 @@ func (mock *MockSecretsInterface) Get(name string, options metav1.GetOptions) (*
 // List returns the a of Secret.
 func (mock *MockSecretsInterface) List(opts metav1.ListOptions) (*v1.SecretList, error) {
 	var list v1.SecretList
+
+	labelSelector, err := kblabels.Parse(opts.LabelSelector)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, secret := range mock.objects {
-		list.Items = append(list.Items, *secret)
+		if labelSelector.Matches(kblabels.Set(secret.ObjectMeta.Labels)) {
+			list.Items = append(list.Items, *secret)
+		}
 	}
 	return &list, nil
 }
