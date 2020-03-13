@@ -194,6 +194,12 @@ func TestConfigMapDelete(t *testing.T) {
 
 	cfgmaps := newTestFixtureCfgMaps(t, []*rspb.Release{rel}...)
 
+	// perform the delete on a non-existent release
+	_, err := cfgmaps.Delete("nonexistent")
+	if err != ErrReleaseNotFound {
+		t.Fatalf("Expected ErrReleaseNotFound: got {%v}", err)
+	}
+
 	// perform the delete
 	rls, err := cfgmaps.Delete(key)
 	if err != nil {
