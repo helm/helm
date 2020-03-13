@@ -114,8 +114,16 @@ func (mock *MockConfigMapsInterface) Get(name string, options metav1.GetOptions)
 // List returns the a of ConfigMaps.
 func (mock *MockConfigMapsInterface) List(opts metav1.ListOptions) (*v1.ConfigMapList, error) {
 	var list v1.ConfigMapList
+
+	labelSelector, err := kblabels.Parse(opts.LabelSelector)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, cfgmap := range mock.objects {
-		list.Items = append(list.Items, *cfgmap)
+		if labelSelector.Matches(kblabels.Set(cfgmap.ObjectMeta.Labels)) {
+			list.Items = append(list.Items, *cfgmap)
+		}
 	}
 	return &list, nil
 }
