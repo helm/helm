@@ -28,8 +28,6 @@ import (
 	// Import pq for postgres dialect
 	_ "github.com/lib/pq"
 
-	storageerrors "k8s.io/helm/pkg/storage/errors"
-
 	rspb "helm.sh/helm/v3/pkg/release"
 )
 
@@ -91,36 +89,65 @@ func (s *SQL) ensureDBSetup() error {
 			{
 				Id: "init",
 				Up: []string{
-					`
-						CREATE TABLE releases_v1 (
-							key VARCHAR(67),
-							type VARCHAR(64) NOT NULL,
-							body TEXT NOT NULL,
-							name VARCHAR(64) NOT NULL,
-							namespace VARCHAR(64) NOT NULL,
-						  	version INTEGER NOT NULL,
-							status TEXT NOT NULL,
-							owner TEXT NOT NULL,
-							createdAt INTEGER NOT NULL,
-							modifiedAt INTEGER NOT NULL DEFAULT 0,
-							PRIMARY KEY(key, namespace)
+					fmt.Sprintf(`
+						CREATE TABLE %s (
+							%s VARCHAR(67),
+							%s VARCHAR(64) NOT NULL,
+							%s TEXT NOT NULL,
+							%s VARCHAR(64) NOT NULL,
+							%s VARCHAR(64) NOT NULL,
+							%s INTEGER NOT NULL,
+							%s TEXT NOT NULL,
+							%s TEXT NOT NULL,
+							%s INTEGER NOT NULL,
+							%s INTEGER NOT NULL DEFAULT 0,
+							PRIMARY KEY(%s, %s)
 						);
-						CREATE INDEX ON releases_v1 (name, namespace);
-						CREATE INDEX ON releases_v1 (version);
-						CREATE INDEX ON releases_v1 (status);
-						CREATE INDEX ON releases_v1 (owner);
-						CREATE INDEX ON releases_v1 (createdAt);
-						CREATE INDEX ON releases_v1 (modifiedAt);
+						CREATE INDEX ON %s (%s, %s);
+						CREATE INDEX ON %s (%s);
+						CREATE INDEX ON %s (%s);
+						CREATE INDEX ON %s (%s);
+						CREATE INDEX ON %s (%s);
+						CREATE INDEX ON %s (%s);
 						
-						GRANT ALL ON releases_v1 TO PUBLIC;
+						GRANT ALL ON %s TO PUBLIC;
 
-						ALTER TABLE releases_v1 ENABLE ROW LEVEL SECURITY;
+						ALTER TABLE %s ENABLE ROW LEVEL SECURITY;
 					`,
+						sqlReleaseTableName,
+						sqlReleaseTableKeyColumn,
+						sqlReleaseTableTypeColumn,
+						sqlReleaseTableBodyColumn,
+						sqlReleaseTableNameColumn,
+						sqlReleaseTableNamespaceColumn,
+						sqlReleaseTableVersionColumn,
+						sqlReleaseTableStatusColumn,
+						sqlReleaseTableOwnerColumn,
+						sqlReleaseTableCreatedAtColumn,
+						sqlReleaseTableModifiedAtColumn,
+						sqlReleaseTableKeyColumn,
+						sqlReleaseTableNamespaceColumn,
+						sqlReleaseTableName,
+						sqlReleaseTableKeyColumn,
+						sqlReleaseTableNamespaceColumn,
+						sqlReleaseTableName,
+						sqlReleaseTableVersionColumn,
+						sqlReleaseTableName,
+						sqlReleaseTableStatusColumn,
+						sqlReleaseTableName,
+						sqlReleaseTableOwnerColumn,
+						sqlReleaseTableName,
+						sqlReleaseTableCreatedAtColumn,
+						sqlReleaseTableName,
+						sqlReleaseTableModifiedAtColumn,
+						sqlReleaseTableName,
+						sqlReleaseTableName,
+					),
 				},
 				Down: []string{
-					`
-						DROP TABLE releases_v1;
-					`,
+					fmt.Sprintf(`
+						DROP TABLE %s;
+					`, sqlReleaseTableName),
 				},
 			},
 		},
@@ -193,7 +220,7 @@ func (s *SQL) Get(key string) (*rspb.Release, error) {
 	// Get will return an error if the result is empty
 	if err := s.db.Get(&record, query, key, s.namespace); err != nil {
 		s.Log("got SQL error when getting release %s: %v", key, err)
-		return nil, storageerrors.ErrReleaseNotFound(key)
+		return nil, ErrReleaseNotFound
 	}
 
 	release, err := decodeRelease(record.Body)
@@ -296,7 +323,7 @@ func (s *SQL) Query(labels map[string]string) ([]*rspb.Release, error) {
 	}
 
 	if len(releases) == 0 {
-		return nil, storageerrors.ErrReleaseNotFound(labels["name"])
+		return nil, ErrReleaseNotFound
 	}
 
 	return releases, nil
@@ -363,7 +390,7 @@ func (s *SQL) Create(key string, rls *rspb.Release) error {
 		var record SQLReleaseWrapper
 		if err := transaction.Get(&record, query, key, s.namespace); err == nil {
 			s.Log("release %s already exists", key)
-			return storageerrors.ErrReleaseExists(key)
+			return ErrReleaseExists
 		}
 
 		s.Log("failed to store release %s in SQL database: %v", key, err)
@@ -440,7 +467,7 @@ func (s *SQL) Delete(key string) (*rspb.Release, error) {
 	err = transaction.Get(&record, selectQuery, key, s.namespace)
 	if err != nil {
 		s.Log("release %s not found: %v", key, err)
-		return nil, storageerrors.ErrReleaseNotFound(key)
+		return nil, ErrReleaseNotFound
 	}
 
 	release, err := decodeRelease(record.Body)
