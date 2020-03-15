@@ -258,38 +258,38 @@ func runCompletionFish(out io.Writer, cmd *cobra.Command) error {
 	fishScript := fmt.Sprintf(`# fish completion for helm            -*- shell-script -*-
 
 function __helm_debug
-    set -l file "$BASH_COMP_DEBUG_FILE"
+    set file "$BASH_COMP_DEBUG_FILE"
     if test -n "$file"
         echo "$argv" >> $file
     end
 end
 
-function __helm_perform_completion
-    __helm_debug "Starting __helm_perform_completion with: $argv"
+function __helm_comp_perform
+    __helm_debug "Starting __helm_comp_perform with: $argv"
 
-    set -l args (string split -- " " "$argv")
-    set -l lastArg "$args[-1]"
+    set args (string split -- " " "$argv")
+    set lastArg "$args[-1]"
 
     __helm_debug "args: $args"
     __helm_debug "last arg: $lastArg"
 
-    set -l emptyArg ""
+    set emptyArg ""
     if test -z "$lastArg"
         __helm_debug "Setting emptyArg"
         set emptyArg \"\"
     end
     __helm_debug "emptyArg: $emptyArg"
 
-    set -l requestComp "$args[1] %[1]s $args[2..-1] $emptyArg"
+    set requestComp "$args[1] %[1]s $args[2..-1] $emptyArg"
     __helm_debug "Calling: $requestComp"
 
-    set -l results (eval $requestComp 2> /dev/null)
-    set -l comps $results[1..-2]
-    set -l directiveLine $results[-1]
+    set results (eval $requestComp 2> /dev/null)
+    set comps $results[1..-2]
+    set directiveLine $results[-1]
 
     # For Fish, when completing a flag with an = (e.g., helm -n=<TAB>)
     # completions must be prefixed with the flag
-    set -l flagPrefix (string match -r -- '-.*=' "$lastArg")
+    set flagPrefix (string match -r -- '-.*=' "$lastArg")
 
     __helm_debug "Comps are: $comps"
     __helm_debug "DirectiveLine is: $directiveLine"
@@ -301,68 +301,93 @@ function __helm_perform_completion
     printf "%%s\n" "$directiveLine"
 end
 
-function __helm_get_completions
-    # Use the cache if possible
-    if not set -q __helm_cache_completions
-        if not set -q __helm_comp_command_line
-            set -g __helm_comp_command_line (commandline)
-            __helm_debug "Setting commandline to: $__helm_comp_command_line"
-        end
+# This function does three things:
+# 1- Obtain the completions and store them in the global __helm_comp_results
+# 2- Set the __helm_comp_do_file_comp flag if file completion should be performed
+#    and unset it otherwise
+# 3- Return true if the completion results are not empty
+function __helm_comp_prepare
+    # Start fresh
+    set --erase __helm_comp_do_file_comp
+    set --erase __helm_comp_results
 
-        set -g __helm_cache_completions (__helm_perform_completion "$__helm_comp_command_line")
-        set -e __helm_comp_command_line
-        __helm_debug "Populated completion cache with: $__helm_cache_completions"
+    # Check if the command-line is already provided.  This is useful for testing.
+    if not set --query __helm_comp_commandLine
+        set __helm_comp_commandLine (commandline)
     end
+    __helm_debug "commandLine is: $__helm_comp_commandLine"
 
-    if test -z "$__helm_cache_completions"
+    set results (__helm_comp_perform "$__helm_comp_commandLine")
+    set --erase __helm_comp_commandLine
+    __helm_debug "Completion results: $results"
+
+    if test -z "$results"
         __helm_debug "No completion, probably due to a failure"
+        # Might as well do file completion, in case it helps
+        set --global __helm_comp_do_file_comp 1
         return 0
     end
 
-    set -l directive (string sub --start 2 $__helm_cache_completions[-1])
-    set -l comps $__helm_cache_completions[1..-2]
+    set directive (string sub --start 2 $results[-1])
+    set --global __helm_comp_results $results[1..-2]
 
-    __helm_debug "Completions are: $comps"
+    __helm_debug "Completions are: $__helm_comp_results"
     __helm_debug "Directive is: $directive"
 
-    set -l compErr (math (math $directive / %[2]d) %% 2)
+    if test -z "$directive"
+        set directive 0
+    end
+
+    set compErr (math (math --scale 0 $directive / %[2]d) %% 2)
     if test $compErr -eq 1
         __helm_debug "Received error directive: aborting."
+        # Might as well do file completion, in case it helps
+        set --global __helm_comp_do_file_comp 1
         return 0
     end
 
-    set -l nospace (math (math $directive / %[3]d) %% 2)
-    set -l nofiles (math (math $directive / %[4]d) %% 2)
+    set nospace (math (math --scale 0 $directive / %[3]d) %% 2)
+    set nofiles (math (math --scale 0 $directive / %[4]d) %% 2)
 
     __helm_debug "nospace: $nospace, nofiles: $nofiles"
 
-    for comp in $comps
-        printf "%%s\n" $comp
-    end
+    # Important not to quote the variable for count to work
+    set numComps (count $__helm_comp_results)
+    __helm_debug "numComps: $numComps"
 
-    if test (count $comps) -eq 1; and test $nospace -ne 0
+    if test $numComps -eq 1; and test $nospace -ne 0
        # To support the "nospace" directive we trick the shell
        # by outputting an extra, longer completion.
-       printf "%%s\n" $comps[1].
+       __helm_debug "Adding second completion to perform nospace directive"
+       set --append __helm_comp_results $__helm_comp_results[1].
     end
 
-    # Return true if no file completion should be done
-    test (count $comps) -gt 0; or test "$nofiles" -ne 0
+    if test $numComps -eq 0; and test $nofiles -eq 0
+        __helm_debug "Requesting file completion"
+        set --global __helm_comp_do_file_comp 1
+    end
+
+    # If we don't want file completion, we must return true even if there
+    # are no completions found.  This is because fish will perform the last
+    # completion command, even if its condition is false, if no other
+    # completion command was triggered
+    return (not set --query __helm_comp_do_file_comp)
 end
 
 # Remove any pre-existing helm completions since we will be handling all of them
 complete -c helm -e
 
-# The order in which the below two lines are defined is very important so that the cache gets
-# properly cleared at the very beginning of completions processing
+# The order in which the below two lines are defined is very important so that __helm_comp_prepare
+# is called first.  It is __helm_comp_prepare that sets up the __helm_comp_do_file_comp variable.
 #
-# This completion will be run second as complete commands are added FILO.  It should use the cache.
-# It provides file completion choices when appropriate.
-complete -c helm -n 'not __helm_get_completions'
+# This completion will be run second as complete commands are added FILO.
+# It triggers file completion choices when __helm_comp_do_file_comp is set.
+complete -c helm -n 'set --query __helm_comp_do_file_comp'
 
-# This completion will be run first as complete commands are added FILO.  It first clears the cache.
+# This completion will be run first as complete commands are added FILO.
+# The call to __helm_comp_prepare will setup both __helm_comp_results abd __helm_comp_do_file_comp.
 # It provides the program's completion choices.
-complete -c helm -n 'set -e __helm_cache_completions; __helm_get_completions' -f -a '(__helm_get_completions)'
+complete -c helm -n '__helm_comp_prepare' -f -a '$__helm_comp_results'
 
 `, compCmd, completion.BashCompDirectiveError, completion.BashCompDirectiveNoSpace, completion.BashCompDirectiveNoFileComp)
 
