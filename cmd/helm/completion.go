@@ -304,14 +304,19 @@ end
 function __helm_get_completions
     # Use the cache if possible
     if not set -q __helm_cache_completions
-       if not set -q __helm_comp_command_line
-	      set -g __helm_comp_command_line (commandline)
-	      __helm_debug "Setting commandline to: $__helm_comp_command_line"
-	   end
+        if not set -q __helm_comp_command_line
+            set -g __helm_comp_command_line (commandline)
+            __helm_debug "Setting commandline to: $__helm_comp_command_line"
+        end
 
-       set -g __helm_cache_completions (__helm_perform_completion "$__helm_comp_command_line")
-       set -e __helm_comp_command_line
-       __helm_debug "Populated completion cache with: $__helm_cache_completions"
+        set -g __helm_cache_completions (__helm_perform_completion "$__helm_comp_command_line")
+        set -e __helm_comp_command_line
+        __helm_debug "Populated completion cache with: $__helm_cache_completions"
+    end
+
+    if test -z "$__helm_cache_completions"
+        __helm_debug "No completion, probably due to a failure"
+        return 0
     end
 
     set -l directive (string sub --start 2 $__helm_cache_completions[-1])
