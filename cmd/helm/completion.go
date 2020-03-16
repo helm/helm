@@ -373,24 +373,31 @@ function __helm_comp_prepare
     # completion command was triggered
     return (not set --query __helm_comp_do_file_comp)
 end
+`, compCmd, completion.BashCompDirectiveError, completion.BashCompDirectiveNoSpace, completion.BashCompDirectiveNoFileComp)
 
+	completeCmds := `
 # Remove any pre-existing helm completions since we will be handling all of them
-complete -c helm -e
+complete -c %[1]s -e
 
 # The order in which the below two lines are defined is very important so that __helm_comp_prepare
 # is called first.  It is __helm_comp_prepare that sets up the __helm_comp_do_file_comp variable.
 #
 # This completion will be run second as complete commands are added FILO.
 # It triggers file completion choices when __helm_comp_do_file_comp is set.
-complete -c helm -n 'set --query __helm_comp_do_file_comp'
+complete -c %[1]s -n 'set --query __helm_comp_do_file_comp'
 
 # This completion will be run first as complete commands are added FILO.
 # The call to __helm_comp_prepare will setup both __helm_comp_results abd __helm_comp_do_file_comp.
 # It provides the program's completion choices.
-complete -c helm -n '__helm_comp_prepare' -f -a '$__helm_comp_results'
-
-`, compCmd, completion.BashCompDirectiveError, completion.BashCompDirectiveNoSpace, completion.BashCompDirectiveNoFileComp)
-
+complete -c %[1]s -n '__helm_comp_prepare' -f -a '$__helm_comp_results'
+`
 	out.Write([]byte(fishScript))
+	out.Write([]byte(fmt.Sprintf(completeCmds, "helm")))
+
+	// In case the user renamed the helm binary (e.g., to be able to run
+	// both helm2 and helm3), we hook the new binary name to the completion function
+	if binary := filepath.Base(os.Args[0]); binary != "helm" {
+		out.Write([]byte(fmt.Sprintf(completeCmds, binary)))
+	}
 	return nil
 }
