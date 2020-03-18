@@ -11,8 +11,10 @@ require (
 	github.com/containerd/containerd v1.3.2
 	github.com/cyphar/filepath-securejoin v0.2.2
 	github.com/deislabs/oras v0.8.1
+	github.com/docker/cli v0.0.0-20200130152716-5d0cf8839492
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/docker/docker v1.4.2-0.20200203170920-46ec8731fbce
+	github.com/docker/go v1.5.1-1 // indirect
 	github.com/docker/go-units v0.4.0
 	github.com/evanphx/json-patch v4.5.0+incompatible
 	github.com/gobwas/glob v0.2.3
@@ -27,6 +29,7 @@ require (
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.4.0
+	github.com/theupdateframework/notary v0.6.1
 	github.com/xeipuuv/gojsonschema v1.1.0
 	golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975
 	k8s.io/api v0.18.0
@@ -37,6 +40,7 @@ require (
 	k8s.io/klog v1.0.0
 	k8s.io/kubectl v0.18.0
 	sigs.k8s.io/yaml v1.2.0
+	github.com/agl/ed25519 v0.0.0-20170116200512-5312a6153412
 )
 
 replace (
