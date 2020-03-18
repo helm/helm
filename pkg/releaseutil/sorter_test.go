@@ -79,3 +79,30 @@ func TestSortByRevision(t *testing.T) {
 		return vi < vj
 	})
 }
+
+func TestReverseSortByName(t *testing.T) {
+	Reverse(releases, SortByName)
+	check(t, "ByName", func(i, j int) bool {
+		ni := releases[i].Name
+		nj := releases[j].Name
+		return ni > nj
+	})
+}
+
+func TestReverseSortByDate(t *testing.T) {
+	Reverse(releases, SortByDate)
+	check(t, "ByDate", func(i, j int) bool {
+		ti := releases[i].Info.LastDeployed.Second()
+		tj := releases[j].Info.LastDeployed.Second()
+		return ti > tj
+	})
+}
+
+func TestReverseSortByRevision(t *testing.T) {
+	Reverse(releases, SortByRevision)
+	check(t, "ByRevision", func(i, j int) bool {
+		vi := releases[i].Version
+		vj := releases[j].Version
+		return vi > vj
+	})
+}
