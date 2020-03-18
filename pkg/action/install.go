@@ -41,6 +41,7 @@ import (
 	"helm.sh/helm/v3/pkg/downloader"
 	"helm.sh/helm/v3/pkg/engine"
 	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/kube"
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
 	"helm.sh/helm/v3/pkg/postrender"
 	"helm.sh/helm/v3/pkg/release"
@@ -246,9 +247,16 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	// Mark this release as in-progress
 	rel.SetStatus(release.StatusPendingInstall, "Initial install underway")
 
+	var toBeAdopted kube.ResourceList
 	resources, err := i.cfg.KubeClient.Build(bytes.NewBufferString(rel.Manifest), !i.DisableOpenAPIValidation)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to build kubernetes objects from release manifest")
+	}
+
+	// It is safe to use "force" here because these are resources currently rendered by the chart.
+	err = resources.Visit(setMetadataVisitor(rel.Name, rel.Namespace, true))
+	if err != nil {
+		return nil, err
 	}
 
 	// Install requires an extra validation step of checking that resources
@@ -258,7 +266,8 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	// deleting the release because the manifest will be pointing at that
 	// resource
 	if !i.ClientOnly && !isUpgrade {
-		if err := existingResourceConflict(resources); err != nil {
+		toBeAdopted, err = existingResourceConflict(resources, rel.Name, rel.Namespace)
+		if err != nil {
 			return nil, errors.Wrap(err, "rendered manifests contain a resource that already exists. Unable to continue with install")
 		}
 	}
@@ -321,8 +330,14 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	// At this point, we can do the install. Note that before we were detecting whether to
 	// do an update, but it's not clear whether we WANT to do an update if the re-use is set
 	// to true, since that is basically an upgrade operation.
-	if _, err := i.cfg.KubeClient.Create(resources); err != nil {
-		return i.failRelease(rel, err)
+	if len(toBeAdopted) == 0 {
+		if _, err := i.cfg.KubeClient.Create(resources); err != nil {
+			return i.failRelease(rel, err)
+		}
+	} else {
+		if _, err := i.cfg.KubeClient.Update(toBeAdopted, resources, false); err != nil {
+			return i.failRelease(rel, err)
+		}
 	}
 
 	if i.Wait {

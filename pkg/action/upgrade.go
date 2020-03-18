@@ -209,6 +209,12 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 		return upgradedRelease, errors.Wrap(err, "unable to build kubernetes objects from new release manifest")
 	}
 
+	// It is safe to use force only on target because these are resources currently rendered by the chart.
+	err = target.Visit(setMetadataVisitor(upgradedRelease.Name, upgradedRelease.Namespace, true))
+	if err != nil {
+		return upgradedRelease, err
+	}
+
 	// Do a basic diff using gvk + name to figure out what new resources are being created so we can validate they don't already exist
 	existingResources := make(map[string]bool)
 	for _, r := range current {
@@ -222,9 +228,18 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 		}
 	}
 
-	if err := existingResourceConflict(toBeCreated); err != nil {
-		return nil, errors.Wrap(err, "rendered manifests contain a new resource that already exists. Unable to continue with update")
+	toBeUpdated, err := existingResourceConflict(toBeCreated, upgradedRelease.Name, upgradedRelease.Namespace)
+	if err != nil {
+		return nil, errors.Wrap(err, "rendered manifests contain a resource that already exists. Unable to continue with update")
 	}
+
+	toBeUpdated.Visit(func(r *resource.Info, err error) error {
+		if err != nil {
+			return err
+		}
+		current.Append(r)
+		return nil
+	})
 
 	if u.DryRun {
 		u.cfg.Log("dry run for %s", upgradedRelease.Name)
