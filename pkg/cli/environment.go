@@ -54,6 +54,8 @@ type EnvSettings struct {
 	Debug bool
 	// RegistryConfig is the path to the registry config file.
 	RegistryConfig string
+	// RegistryCache is the path to the registry cache directory.
+	RegistryCache string
 	// RepositoryConfig is the path to the repositories file.
 	RepositoryConfig string
 	// RepositoryCache is the path to the repository cache directory.
@@ -71,6 +73,7 @@ func New() *EnvSettings {
 		KubeAPIServer:    os.Getenv("HELM_KUBEAPISERVER"),
 		PluginsDirectory: envOr("HELM_PLUGINS", helmpath.DataPath("plugins")),
 		RegistryConfig:   envOr("HELM_REGISTRY_CONFIG", helmpath.ConfigPath("registry.json")),
+		RegistryCache:    envOr("HELM_REGISTRY_CACHE", helmpath.CachePath("registry")),
 		RepositoryConfig: envOr("HELM_REPOSITORY_CONFIG", helmpath.ConfigPath("repositories.yaml")),
 		RepositoryCache:  envOr("HELM_REPOSITORY_CACHE", helmpath.CachePath("repository")),
 	}
@@ -87,8 +90,9 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.KubeAPIServer, "kube-apiserver", s.KubeAPIServer, "the address and the port for the Kubernetes API server")
 	fs.BoolVar(&s.Debug, "debug", s.Debug, "enable verbose output")
 	fs.StringVar(&s.RegistryConfig, "registry-config", s.RegistryConfig, "path to the registry config file")
+	fs.StringVar(&s.RegistryCache, "registry-cache", s.RegistryCache, "path to the registry cache directory")
 	fs.StringVar(&s.RepositoryConfig, "repository-config", s.RepositoryConfig, "path to the file containing repository names and URLs")
-	fs.StringVar(&s.RepositoryCache, "repository-cache", s.RepositoryCache, "path to the file containing cached repository indexes")
+	fs.StringVar(&s.RepositoryCache, "repository-cache", s.RepositoryCache, "path to the directory containing cached repository indexes")
 }
 
 func envOr(name, def string) string {
@@ -104,6 +108,7 @@ func (s *EnvSettings) EnvVars() map[string]string {
 		"HELM_DEBUG":             fmt.Sprint(s.Debug),
 		"HELM_PLUGINS":           s.PluginsDirectory,
 		"HELM_REGISTRY_CONFIG":   s.RegistryConfig,
+		"HELM_REGISTRY_CACHE":    s.RegistryCache,
 		"HELM_REPOSITORY_CACHE":  s.RepositoryCache,
 		"HELM_REPOSITORY_CONFIG": s.RepositoryConfig,
 		"HELM_NAMESPACE":         s.Namespace(),
