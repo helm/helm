@@ -125,7 +125,9 @@ service:
   port: 80
 
 ingress:
+  # Specifies whether a ingress should be created
   enabled: false
+  # Annotations to add to the ingress
   annotations: {}
     # kubernetes.io/ingress.class: nginx
     # kubernetes.io/tls-acme: "true"
@@ -194,8 +196,9 @@ metadata:
   name: {{ $fullName }}
   labels:
     {{- include "<CHARTNAME>.labels" . | nindent 4 }}
-  {{- with .Values.ingress.annotations }}
   annotations:
+    {{- include "<CHARTNAME>.annotations" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
@@ -230,6 +233,8 @@ metadata:
   name: {{ include "<CHARTNAME>.fullname" . }}
   labels:
     {{- include "<CHARTNAME>.labels" . | nindent 4 }}
+  annotations:
+    {{- include "<CHARTNAME>.annotations" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
@@ -287,6 +292,8 @@ metadata:
   name: {{ include "<CHARTNAME>.fullname" . }}
   labels:
     {{- include "<CHARTNAME>.labels" . | nindent 4 }}
+  annotations:
+    {{- include "<CHARTNAME>.annotations" . | nindent 4 }}
 spec:
   type: {{ .Values.service.type }}
   ports:
@@ -305,8 +312,9 @@ metadata:
   name: {{ include "<CHARTNAME>.serviceAccountName" . }}
   labels:
     {{- include "<CHARTNAME>.labels" . | nindent 4 }}
-  {{- with .Values.serviceAccount.annotations }}
   annotations:
+    {{- include "<CHARTNAME>.annotations" . | nindent 4 }}
+  {{- with .Values.serviceAccount.annotations }}
     {{- toYaml . | nindent 4 }}
   {{- end }}
 {{- end -}}
@@ -389,6 +397,14 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
 
 {{/*
+Common annotations
+*/}}
+{{- define "<CHARTNAME>.annotations" -}}
+meta.helm.sh/release-name: "{{ .Release.Name }}"
+meta.helm.sh/release-namespace: "{{ .Release.Namespace }}"
+{{- end -}}
+
+{{/*
 Create the name of the service account to use
 */}}
 {{- define "<CHARTNAME>.serviceAccountName" -}}
@@ -407,6 +423,7 @@ metadata:
   labels:
     {{- include "<CHARTNAME>.labels" . | nindent 4 }}
   annotations:
+    {{- include "<CHARTNAME>.annotations" . | nindent 4 }}
     "helm.sh/hook": test-success
 spec:
   containers:
