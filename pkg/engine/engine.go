@@ -163,6 +163,7 @@ func (e *Engine) alterFuncMap(t *template.Template, referenceTpls map[string]ren
 		if err := t.ExecuteTemplate(buf, name, data); err != nil {
 			return "", err
 		}
+		includedNames[name]--
 		return buf.String(), nil
 	}
 
