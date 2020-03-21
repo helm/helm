@@ -32,7 +32,7 @@ import (
 )
 
 type repoRemoveOptions struct {
-	name      string
+	names     []string
 	repoFile  string
 	repoCache string
 }
@@ -41,14 +41,14 @@ func newRepoRemoveCmd(out io.Writer) *cobra.Command {
 	o := &repoRemoveOptions{}
 
 	cmd := &cobra.Command{
-		Use:     "remove [NAME]",
+		Use:     "remove [REPO1 [REPO2 ...]]",
 		Aliases: []string{"rm"},
 		Short:   "remove a chart repository",
-		Args:    require.ExactArgs(1),
+		Args:    require.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.repoFile = settings.RepositoryConfig
 			o.repoCache = settings.RepositoryCache
-			o.name = args[0]
+			o.names = args
 			return o.run(out)
 		},
 	}
@@ -70,18 +70,20 @@ func (o *repoRemoveOptions) run(out io.Writer) error {
 		return errors.New("no repositories configured")
 	}
 
-	if !r.Remove(o.name) {
-		return errors.Errorf("no repo named %q found", o.name)
-	}
-	if err := r.WriteFile(o.repoFile, 0644); err != nil {
-		return err
+	for _, name := range o.names {
+		if !r.Remove(name) {
+			return errors.Errorf("no repo named %q found", name)
+		}
+		if err := r.WriteFile(o.repoFile, 0644); err != nil {
+			return err
+		}
+
+		if err := removeRepoCache(o.repoCache, name); err != nil {
+			return err
+		}
+		fmt.Fprintf(out, "%q has been removed from your repositories\n", name)
 	}
 
-	if err := removeRepoCache(o.repoCache, o.name); err != nil {
-		return err
-	}
-
-	fmt.Fprintf(out, "%q has been removed from your repositories\n", o.name)
 	return nil
 }
 
