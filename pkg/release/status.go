@@ -39,6 +39,8 @@ const (
 	StatusPendingUpgrade Status = "pending-upgrade"
 	// StatusPendingRollback indicates that an rollback operation is underway.
 	StatusPendingRollback Status = "pending-rollback"
+	// StatusRequiresUpgrade indicates an upgrade is required, for example if resources are missing.
+	StatusRequiresUpgrade Status = "requires-upgrade"
 )
 
 func (x Status) String() string { return string(x) }

@@ -242,6 +242,9 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 	})
 
 	if u.DryRun {
+		if len(toBeCreated) > 0 {
+			upgradedRelease.Info.Status = release.StatusRequiresUpgrade
+		}
 		u.cfg.Log("dry run for %s", upgradedRelease.Name)
 		if len(u.Description) > 0 {
 			upgradedRelease.Info.Description = u.Description
