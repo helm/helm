@@ -33,11 +33,12 @@ import (
 type Uninstall struct {
 	cfg *Configuration
 
-	DisableHooks bool
-	DryRun       bool
-	KeepHistory  bool
-	Timeout      time.Duration
-	Description  string
+	DisableHooks    bool
+	HookParallelism int
+	DryRun          bool
+	KeepHistory     bool
+	Timeout         time.Duration
+	Description     string
 }
 
 // NewUninstall creates a new Uninstall object with the given configuration.
@@ -96,7 +97,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	res := &release.UninstallReleaseResponse{Release: rel}
 
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(rel, release.HookPreDelete, u.Timeout); err != nil {
+		if err := u.cfg.execHookEvent(rel, release.HookPreDelete, u.Timeout, u.HookParallelism); err != nil {
 			return res, err
 		}
 	} else {
@@ -113,7 +114,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	res.Info = kept
 
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(rel, release.HookPostDelete, u.Timeout); err != nil {
+		if err := u.cfg.execHookEvent(rel, release.HookPostDelete, u.Timeout, u.HookParallelism); err != nil {
 			errs = append(errs, err)
 		}
 	}

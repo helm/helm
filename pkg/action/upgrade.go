@@ -46,14 +46,15 @@ type Upgrade struct {
 	Devel     bool
 	Namespace string
 	// SkipCRDs skip installing CRDs when install flag is enabled during upgrade
-	SkipCRDs     bool
-	Timeout      time.Duration
-	Wait         bool
-	DisableHooks bool
-	DryRun       bool
-	Force        bool
-	ResetValues  bool
-	ReuseValues  bool
+	SkipCRDs        bool
+	Timeout         time.Duration
+	Wait            bool
+	DisableHooks    bool
+	HookParallelism int
+	DryRun          bool
+	Force           bool
+	ResetValues     bool
+	ReuseValues     bool
 	// Recreate will (if true) recreate pods after a rollback.
 	Recreate bool
 	// MaxHistory limits the maximum number of revisions saved per release
@@ -258,7 +259,7 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 
 	// pre-upgrade hooks
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(upgradedRelease, release.HookPreUpgrade, u.Timeout); err != nil {
+		if err := u.cfg.execHookEvent(upgradedRelease, release.HookPreUpgrade, u.Timeout, u.HookParallelism); err != nil {
 			return u.failRelease(upgradedRelease, kube.ResourceList{}, fmt.Errorf("pre-upgrade hooks failed: %s", err))
 		}
 	} else {
@@ -290,7 +291,7 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 
 	// post-upgrade hooks
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(upgradedRelease, release.HookPostUpgrade, u.Timeout); err != nil {
+		if err := u.cfg.execHookEvent(upgradedRelease, release.HookPostUpgrade, u.Timeout, u.HookParallelism); err != nil {
 			return u.failRelease(upgradedRelease, results.Created, fmt.Errorf("post-upgrade hooks failed: %s", err))
 		}
 	}
@@ -354,6 +355,7 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 		rollin.Version = filteredHistory[0].Version
 		rollin.Wait = true
 		rollin.DisableHooks = u.DisableHooks
+		rollin.HookParallelism = u.HookParallelism
 		rollin.Recreate = u.Recreate
 		rollin.Force = u.Force
 		rollin.Timeout = u.Timeout

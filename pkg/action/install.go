@@ -76,6 +76,7 @@ type Install struct {
 	CreateNamespace          bool
 	DryRun                   bool
 	DisableHooks             bool
+	HookParallelism          int
 	Replace                  bool
 	Wait                     bool
 	Devel                    bool
@@ -322,7 +323,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 
 	// pre-install hooks
 	if !i.DisableHooks {
-		if err := i.cfg.execHook(rel, release.HookPreInstall, i.Timeout); err != nil {
+		if err := i.cfg.execHookEvent(rel, release.HookPreInstall, i.Timeout, i.HookParallelism); err != nil {
 			return i.failRelease(rel, fmt.Errorf("failed pre-install: %s", err))
 		}
 	}
@@ -348,7 +349,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	}
 
 	if !i.DisableHooks {
-		if err := i.cfg.execHook(rel, release.HookPostInstall, i.Timeout); err != nil {
+		if err := i.cfg.execHookEvent(rel, release.HookPostInstall, i.Timeout, i.HookParallelism); err != nil {
 			return i.failRelease(rel, fmt.Errorf("failed post-install: %s", err))
 		}
 	}
@@ -379,6 +380,7 @@ func (i *Install) failRelease(rel *release.Release, err error) (*release.Release
 		i.cfg.Log("Install failed and atomic is set, uninstalling release")
 		uninstall := NewUninstall(i.cfg)
 		uninstall.DisableHooks = i.DisableHooks
+		uninstall.HookParallelism = i.HookParallelism
 		uninstall.KeepHistory = false
 		uninstall.Timeout = i.Timeout
 		if _, uninstallErr := uninstall.Run(i.ReleaseName); uninstallErr != nil {
