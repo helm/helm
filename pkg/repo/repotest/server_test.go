@@ -16,6 +16,7 @@ limitations under the License.
 package repotest
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
@@ -65,6 +66,9 @@ func TestServer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if res.StatusCode != 200 {
+		t.Fatalf("Expected 200, got %d", res.StatusCode)
+	}
 
 	data, err := ioutil.ReadAll(res.Body)
 	res.Body.Close()
@@ -87,6 +91,65 @@ func TestServer(t *testing.T) {
 	}
 
 	res, err = http.Get(srv.URL() + "/index.yaml-nosuchthing")
+	res.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.StatusCode != 404 {
+		t.Fatalf("Expected 404, got %d", res.StatusCode)
+	}
+
+	// By default index.json should not be served,
+	// unless a toggle is enabled.
+	// So the below should give 404
+	res, err = http.Get(srv.URL() + "/index.json")
+	res.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.StatusCode != 404 {
+		t.Fatalf("Expected 404, got %d", res.StatusCode)
+	}
+
+	// Let's enable the toggle to serve index.json
+	srv.ServeJSONIndex(true)
+
+	// Now we should be able to fetch the index.json
+	// with appropriate content
+
+	res, err = http.Get(srv.URL() + "/index.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if res.StatusCode != 200 {
+		t.Fatalf("Expected 200, got %d", res.StatusCode)
+	}
+
+	indexJSONData, err := ioutil.ReadAll(res.Body)
+	res.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	jsonIndex := repo.NewIndexFile()
+	if err := json.Unmarshal(indexJSONData, jsonIndex); err != nil {
+		t.Fatal(err)
+	}
+
+	if l := len(jsonIndex.Entries); l != 1 {
+		t.Fatalf("Expected 1 entry, got %d", l)
+	}
+
+	if !jsonIndex.Has(expect, "0.1.0") {
+		t.Errorf("missing %q", expect)
+	}
+
+	// Let's disable the toggle to serve index.json
+	srv.ServeJSONIndex(false)
+
+	// Now the below should give 404
+	res, err = http.Get(srv.URL() + "/index.json")
 	res.Body.Close()
 	if err != nil {
 		t.Fatal(err)

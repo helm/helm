@@ -24,8 +24,6 @@ import (
 
 	"helm.sh/helm/v3/internal/tlsutil"
 
-	"sigs.k8s.io/yaml"
-
 	"helm.sh/helm/v3/pkg/repo"
 )
 
@@ -79,9 +77,10 @@ func NewServer(docroot string) *Server {
 
 // Server is an implementation of a repository server for testing.
 type Server struct {
-	docroot    string
-	srv        *httptest.Server
-	middleware http.HandlerFunc
+	docroot          string
+	srv              *httptest.Server
+	middleware       http.HandlerFunc
+	jsonIndexEnabled bool
 }
 
 // WithMiddleware injects middleware in front of the server. This can be used to inject
@@ -93,6 +92,13 @@ func (s *Server) WithMiddleware(middleware http.HandlerFunc) {
 // Root gets the docroot for the server.
 func (s *Server) Root() string {
 	return s.docroot
+}
+
+// ServeJSONIndex allows you to enable or disable serving
+// index.json repository index file
+func (s *Server) ServeJSONIndex(enabled bool) {
+	s.jsonIndexEnabled = enabled
+	s.CreateIndex()
 }
 
 // CopyCharts takes a glob expression and copies those charts to the server root.
@@ -121,19 +127,34 @@ func (s *Server) CopyCharts(origin string) ([]string, error) {
 
 // CreateIndex will read docroot and generate an index.yaml file.
 func (s *Server) CreateIndex() error {
+
 	// generate the index
 	index, err := repo.IndexDirectory(s.docroot, s.URL())
 	if err != nil {
 		return err
 	}
 
-	d, err := yaml.Marshal(index)
+	yamlIndexFile := filepath.Join(s.docroot, "index.yaml")
+
+	err = index.WriteFile(yamlIndexFile, 0644)
 	if err != nil {
 		return err
 	}
 
-	ifile := filepath.Join(s.docroot, "index.yaml")
-	return ioutil.WriteFile(ifile, d, 0644)
+	jsonIndexFile := filepath.Join(s.docroot, "index.json")
+	// cleanup existing files
+	err = os.RemoveAll(jsonIndexFile)
+	if err != nil {
+		return err
+	}
+
+	if s.jsonIndexEnabled {
+		err = index.WriteJSONFile(jsonIndexFile, 0644)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *Server) Start() {
