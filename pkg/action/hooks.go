@@ -38,7 +38,8 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		}
 	}
 
-	sort.Sort(hookByWeight(executingHooks))
+	// hooke are pre-ordered by kind, so keep order stable
+	sort.Stable(hookByWeight(executingHooks))
 
 	for _, h := range executingHooks {
 		// Set default delete policy to before-hook-creation
