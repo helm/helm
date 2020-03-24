@@ -1020,8 +1020,8 @@ func TestUpdateRenderValues_dependencies(t *testing.T) {
 		for i := range names {
 			if names[i] != except[i] {
 				t.Errorf("dependencies values do not match got %v, expected %v", names, except)
+				break
 			}
-			break
 		}
 	}
 }

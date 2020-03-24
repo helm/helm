@@ -277,7 +277,12 @@ func TestProcessDependencyImportValuesForEnabledCharts(t *testing.T) {
 	c := loadChart(t, "testdata/import-values-from-enabled-subchart/parent-chart")
 	nameOverride := "parent-chart-prod"
 
-	if err := processDependencyImportValues(c); err != nil {
+	cvals, err := CoalesceValues(c, nil)
+	if err != nil {
+		t.Fatalf("coalescing values %v", err)
+	}
+
+	if err := ProcessDependencyImportValues(c, cvals); err != nil {
 		t.Fatalf("processing import values dependencies %v", err)
 	}
 
@@ -285,7 +290,7 @@ func TestProcessDependencyImportValuesForEnabledCharts(t *testing.T) {
 		t.Fatalf("expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
 	}
 
-	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
+	if err := recProcessDependencyEnabled(c, c.Values, nil); err != nil {
 		t.Fatalf("expected no errors but got %q", err)
 	}
 
