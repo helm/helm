@@ -18,7 +18,7 @@ require (
 	github.com/gobwas/glob v0.2.3
 	github.com/gofrs/flock v0.7.1
 	github.com/gosuri/uitable v0.0.4
-	github.com/mattn/go-shellwords v1.0.9
+	github.com/mattn/go-shellwords v1.0.10
 	github.com/mitchellh/copystructure v1.0.0
 	github.com/opencontainers/go-digest v1.0.0-rc1
 	github.com/opencontainers/image-spec v1.0.1
@@ -29,13 +29,13 @@ require (
 	github.com/stretchr/testify v1.4.0
 	github.com/xeipuuv/gojsonschema v1.1.0
 	golang.org/x/crypto v0.0.0-20200128174031-69ecbb4d6d5d
-	k8s.io/api v0.17.2
-	k8s.io/apiextensions-apiserver v0.17.2
-	k8s.io/apimachinery v0.17.2
-	k8s.io/cli-runtime v0.17.2
-	k8s.io/client-go v0.17.2
+	k8s.io/api v0.17.3
+	k8s.io/apiextensions-apiserver v0.17.3
+	k8s.io/apimachinery v0.17.3
+	k8s.io/cli-runtime v0.17.3
+	k8s.io/client-go v0.17.3
 	k8s.io/klog v1.0.0
-	k8s.io/kubectl v0.17.2
+	k8s.io/kubectl v0.17.3
 	sigs.k8s.io/yaml v1.1.0
 )
 

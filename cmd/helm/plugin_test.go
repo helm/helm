@@ -19,10 +19,14 @@ import (
 	"bytes"
 	"os"
 	"runtime"
+	"sort"
 	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+
+	"helm.sh/helm/v3/pkg/release"
 )
 
 func TestManuallyProcessArgs(t *testing.T) {
@@ -148,6 +152,134 @@ func TestLoadPlugins(t *testing.T) {
 				t.Errorf("Expected %s to output:\n%s\ngot\n%s", tt.use, tt.expect, out.String())
 			}
 		}
+	}
+}
+
+type staticCompletionDetails struct {
+	use       string
+	validArgs []string
+	flags     []string
+	next      []staticCompletionDetails
+}
+
+func TestLoadPluginsForCompletion(t *testing.T) {
+	settings.PluginsDirectory = "testdata/helmhome/helm/plugins"
+
+	var out bytes.Buffer
+
+	cmd := &cobra.Command{
+		Use: "completion",
+	}
+
+	loadPlugins(cmd, &out)
+
+	tests := []staticCompletionDetails{
+		{"args", []string{}, []string{}, []staticCompletionDetails{}},
+		{"echo", []string{}, []string{}, []staticCompletionDetails{}},
+		{"env", []string{}, []string{"global"}, []staticCompletionDetails{
+			{"list", []string{}, []string{"a", "all", "log"}, []staticCompletionDetails{}},
+			{"remove", []string{"all", "one"}, []string{}, []staticCompletionDetails{}},
+		}},
+		{"exitwith", []string{}, []string{}, []staticCompletionDetails{
+			{"code", []string{}, []string{"a", "b"}, []staticCompletionDetails{}},
+		}},
+		{"fullenv", []string{}, []string{"q", "z"}, []staticCompletionDetails{
+			{"empty", []string{}, []string{}, []staticCompletionDetails{}},
+			{"full", []string{}, []string{}, []staticCompletionDetails{
+				{"less", []string{}, []string{"a", "all"}, []staticCompletionDetails{}},
+				{"more", []string{"one", "two"}, []string{"b", "ball"}, []staticCompletionDetails{}},
+			}},
+		}},
+	}
+	checkCommand(t, cmd.Commands(), tests)
+}
+
+func checkCommand(t *testing.T, plugins []*cobra.Command, tests []staticCompletionDetails) {
+	if len(plugins) != len(tests) {
+		t.Fatalf("Expected commands %v, got %v", tests, plugins)
+	}
+
+	for i := 0; i < len(plugins); i++ {
+		pp := plugins[i]
+		tt := tests[i]
+		if pp.Use != tt.use {
+			t.Errorf("%s: Expected Use=%q, got %q", pp.Name(), tt.use, pp.Use)
+		}
+
+		targs := tt.validArgs
+		pargs := pp.ValidArgs
+		if len(targs) != len(pargs) {
+			t.Fatalf("%s: expected args %v, got %v", pp.Name(), targs, pargs)
+		}
+
+		sort.Strings(targs)
+		sort.Strings(pargs)
+		for j := range targs {
+			if targs[j] != pargs[j] {
+				t.Errorf("%s: expected validArg=%q, got %q", pp.Name(), targs[j], pargs[j])
+			}
+		}
+
+		tflags := tt.flags
+		var pflags []string
+		pp.LocalFlags().VisitAll(func(flag *pflag.Flag) {
+			pflags = append(pflags, flag.Name)
+			if len(flag.Shorthand) > 0 && flag.Shorthand != flag.Name {
+				pflags = append(pflags, flag.Shorthand)
+			}
+		})
+		if len(tflags) != len(pflags) {
+			t.Fatalf("%s: expected flags %v, got %v", pp.Name(), tflags, pflags)
+		}
+
+		sort.Strings(tflags)
+		sort.Strings(pflags)
+		for j := range tflags {
+			if tflags[j] != pflags[j] {
+				t.Errorf("%s: expected flag=%q, got %q", pp.Name(), tflags[j], pflags[j])
+			}
+		}
+		// Check the next level
+		checkCommand(t, pp.Commands(), tt.next)
+	}
+}
+
+func TestPluginDynamicCompletion(t *testing.T) {
+
+	tests := []cmdTestCase{{
+		name:   "completion for plugin",
+		cmd:    "__complete args ''",
+		golden: "output/plugin_args_comp.txt",
+		rels:   []*release.Release{},
+	}, {
+		name:   "completion for plugin with flag",
+		cmd:    "__complete args --myflag ''",
+		golden: "output/plugin_args_flag_comp.txt",
+		rels:   []*release.Release{},
+	}, {
+		name:   "completion for plugin with global flag",
+		cmd:    "__complete args --namespace mynamespace ''",
+		golden: "output/plugin_args_ns_comp.txt",
+		rels:   []*release.Release{},
+	}, {
+		name:   "completion for plugin with multiple args",
+		cmd:    "__complete args --myflag --namespace mynamespace start",
+		golden: "output/plugin_args_many_args_comp.txt",
+		rels:   []*release.Release{},
+	}, {
+		name:   "completion for plugin no directive",
+		cmd:    "__complete echo -n mynamespace ''",
+		golden: "output/plugin_echo_no_directive.txt",
+		rels:   []*release.Release{},
+	}, {
+		name:   "completion for plugin bad directive",
+		cmd:    "__complete echo ''",
+		golden: "output/plugin_echo_bad_directive.txt",
+		rels:   []*release.Release{},
+	}}
+	for _, test := range tests {
+		settings.PluginsDirectory = "testdata/helmhome/helm/plugins"
+		runTestCmd(t, []cmdTestCase{test})
 	}
 }
 

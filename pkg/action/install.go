@@ -29,8 +29,11 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/pkg/errors"
+	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/resource"
+	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -38,6 +41,7 @@ import (
 	"helm.sh/helm/v3/pkg/downloader"
 	"helm.sh/helm/v3/pkg/engine"
 	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/kube"
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
 	"helm.sh/helm/v3/pkg/postrender"
 	"helm.sh/helm/v3/pkg/release"
@@ -69,6 +73,7 @@ type Install struct {
 	ChartPathOptions
 
 	ClientOnly               bool
+	CreateNamespace          bool
 	DryRun                   bool
 	DisableHooks             bool
 	Replace                  bool
@@ -238,9 +243,16 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	// Mark this release as in-progress
 	rel.SetStatus(release.StatusPendingInstall, "Initial install underway")
 
+	var toBeAdopted kube.ResourceList
 	resources, err := i.cfg.KubeClient.Build(bytes.NewBufferString(rel.Manifest), !i.DisableOpenAPIValidation)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to build kubernetes objects from release manifest")
+	}
+
+	// It is safe to use "force" here because these are resources currently rendered by the chart.
+	err = resources.Visit(setMetadataVisitor(rel.Name, rel.Namespace, true))
+	if err != nil {
+		return nil, err
 	}
 
 	// Install requires an extra validation step of checking that resources
@@ -250,7 +262,8 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	// deleting the release because the manifest will be pointing at that
 	// resource
 	if !i.ClientOnly && !isUpgrade {
-		if err := existingResourceConflict(resources); err != nil {
+		toBeAdopted, err = existingResourceConflict(resources, rel.Name, rel.Namespace)
+		if err != nil {
 			return nil, errors.Wrap(err, "rendered manifests contain a resource that already exists. Unable to continue with install")
 		}
 	}
@@ -259,6 +272,32 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	if i.DryRun {
 		rel.Info.Description = "Dry run complete"
 		return rel, nil
+	}
+
+	if i.CreateNamespace {
+		ns := &v1.Namespace{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "v1",
+				Kind:       "Namespace",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: i.Namespace,
+				Labels: map[string]string{
+					"name": i.Namespace,
+				},
+			},
+		}
+		buf, err := yaml.Marshal(ns)
+		if err != nil {
+			return nil, err
+		}
+		resourceList, err := i.cfg.KubeClient.Build(bytes.NewBuffer(buf), true)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := i.cfg.KubeClient.Create(resourceList); err != nil && !apierrors.IsAlreadyExists(err) {
+			return nil, err
+		}
 	}
 
 	// If Replace is true, we need to supercede the last release.
@@ -287,8 +326,14 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	// At this point, we can do the install. Note that before we were detecting whether to
 	// do an update, but it's not clear whether we WANT to do an update if the re-use is set
 	// to true, since that is basically an upgrade operation.
-	if _, err := i.cfg.KubeClient.Create(resources); err != nil {
-		return i.failRelease(rel, err)
+	if len(toBeAdopted) == 0 {
+		if _, err := i.cfg.KubeClient.Create(resources); err != nil {
+			return i.failRelease(rel, err)
+		}
+	} else {
+		if _, err := i.cfg.KubeClient.Update(toBeAdopted, resources, false); err != nil {
+			return i.failRelease(rel, err)
+		}
 	}
 
 	if i.Wait {
@@ -710,6 +755,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		Getters: getter.All(settings),
 		Options: []getter.Option{
 			getter.WithBasicAuth(c.Username, c.Password),
+			getter.WithTLSClientConfig(c.CertFile, c.KeyFile, c.CaFile),
 		},
 		RepositoryConfig: settings.RepositoryConfig,
 		RepositoryCache:  settings.RepositoryCache,

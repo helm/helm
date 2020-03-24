@@ -1,0 +1,14 @@
+#!/usr/bin/env sh
+
+echo "echo plugin.complete was called"
+echo "Namespace: ${HELM_NAMESPACE:-NO_NS}"
+echo "Num args received: ${#}"
+echo "Args received: ${@}"
+
+# Final printout is the optional completion directive of the form :<directive>
+if [ "$HELM_NAMESPACE" = "default" ]; then
+    # Output an invalid directive, which should be ignored
+    echo ":2222"
+# else
+    # Don't include the directive, to test it is really optional
+fi

@@ -42,9 +42,11 @@ type Upgrade struct {
 
 	ChartPathOptions
 
-	Install      bool
-	Devel        bool
-	Namespace    string
+	Install   bool
+	Devel     bool
+	Namespace string
+	// SkipCRDs skip installing CRDs when install flag is enabled during upgrade
+	SkipCRDs     bool
 	Timeout      time.Duration
 	Wait         bool
 	DisableHooks bool
@@ -55,12 +57,13 @@ type Upgrade struct {
 	// Recreate will (if true) recreate pods after a rollback.
 	Recreate bool
 	// MaxHistory limits the maximum number of revisions saved per release
-	MaxHistory    int
-	Atomic        bool
-	CleanupOnFail bool
-	SubNotes      bool
-	Description   string
-	PostRenderer  postrender.PostRenderer
+	MaxHistory               int
+	Atomic                   bool
+	CleanupOnFail            bool
+	SubNotes                 bool
+	Description              string
+	PostRenderer             postrender.PostRenderer
+	DisableOpenAPIValidation bool
 }
 
 // NewUpgrade creates a new Upgrade object with the given configuration.
@@ -72,6 +75,10 @@ func NewUpgrade(cfg *Configuration) *Upgrade {
 
 // Run executes the upgrade on the given release.
 func (u *Upgrade) Run(name string, chart *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
+	if err := u.cfg.KubeClient.IsReachable(); err != nil {
+		return nil, err
+	}
+
 	// Make sure if Atomic is set, that wait is set as well. This makes it so
 	// the user doesn't have to specify both
 	u.Wait = u.Wait || u.Atomic
@@ -184,7 +191,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 	if len(notesTxt) > 0 {
 		upgradedRelease.Info.Notes = notesTxt
 	}
-	err = validateManifest(u.cfg.KubeClient, manifestDoc.Bytes())
+	err = validateManifest(u.cfg.KubeClient, manifestDoc.Bytes(), !u.DisableOpenAPIValidation)
 	return currentRelease, upgradedRelease, err
 }
 
@@ -193,9 +200,15 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 	if err != nil {
 		return upgradedRelease, errors.Wrap(err, "unable to build kubernetes objects from current release manifest")
 	}
-	target, err := u.cfg.KubeClient.Build(bytes.NewBufferString(upgradedRelease.Manifest), true)
+	target, err := u.cfg.KubeClient.Build(bytes.NewBufferString(upgradedRelease.Manifest), !u.DisableOpenAPIValidation)
 	if err != nil {
 		return upgradedRelease, errors.Wrap(err, "unable to build kubernetes objects from new release manifest")
+	}
+
+	// It is safe to use force only on target because these are resources currently rendered by the chart.
+	err = target.Visit(setMetadataVisitor(upgradedRelease.Name, upgradedRelease.Namespace, true))
+	if err != nil {
+		return upgradedRelease, err
 	}
 
 	// Do a basic diff using gvk + name to figure out what new resources are being created so we can validate they don't already exist
@@ -211,9 +224,18 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 		}
 	}
 
-	if err := existingResourceConflict(toBeCreated); err != nil {
-		return nil, errors.Wrap(err, "rendered manifests contain a new resource that already exists. Unable to continue with update")
+	toBeUpdated, err := existingResourceConflict(toBeCreated, upgradedRelease.Name, upgradedRelease.Namespace)
+	if err != nil {
+		return nil, errors.Wrap(err, "rendered manifests contain a resource that already exists. Unable to continue with update")
 	}
+
+	toBeUpdated.Visit(func(r *resource.Info, err error) error {
+		if err != nil {
+			return err
+		}
+		current.Append(r)
+		return nil
+	})
 
 	if u.DryRun {
 		u.cfg.Log("dry run for %s", upgradedRelease.Name)
@@ -379,8 +401,8 @@ func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release, newV
 	return newVals, nil
 }
 
-func validateManifest(c kube.Interface, manifest []byte) error {
-	_, err := c.Build(bytes.NewReader(manifest), true)
+func validateManifest(c kube.Interface, manifest []byte, openAPIValidation bool) error {
+	_, err := c.Build(bytes.NewReader(manifest), openAPIValidation)
 	return err
 }
 

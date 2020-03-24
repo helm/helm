@@ -65,6 +65,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewUpgrade(cfg)
 	valueOpts := &values.Options{}
 	var outfmt output.Format
+	var createNamespace bool
 
 	cmd := &cobra.Command{
 		Use:   "upgrade [RELEASE] [CHART]",
@@ -90,8 +91,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 
 			if client.Install {
-				// If a release does not exist, install it. If another error occurs during
-				// the check, ignore the error and continue with the upgrade.
+				// If a release does not exist, install it.
 				histClient := action.NewHistory(cfg)
 				histClient.Max = 1
 				if _, err := histClient.Run(args[0]); err == driver.ErrReleaseNotFound {
@@ -100,21 +100,26 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 						fmt.Fprintf(out, "Release %q does not exist. Installing it now.\n", args[0])
 					}
 					instClient := action.NewInstall(cfg)
+					instClient.CreateNamespace = createNamespace
 					instClient.ChartPathOptions = client.ChartPathOptions
 					instClient.DryRun = client.DryRun
 					instClient.DisableHooks = client.DisableHooks
+					instClient.SkipCRDs = client.SkipCRDs
 					instClient.Timeout = client.Timeout
 					instClient.Wait = client.Wait
 					instClient.Devel = client.Devel
 					instClient.Namespace = client.Namespace
 					instClient.Atomic = client.Atomic
 					instClient.PostRenderer = client.PostRenderer
+					instClient.DisableOpenAPIValidation = client.DisableOpenAPIValidation
 
 					rel, err := runInstall(args, instClient, valueOpts, out)
 					if err != nil {
 						return err
 					}
 					return outfmt.Write(out, &statusPrinter{rel, settings.Debug})
+				} else if err != nil {
+					return err
 				}
 			}
 
@@ -158,6 +163,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	})
 
 	f := cmd.Flags()
+	f.BoolVar(&createNamespace, "create-namespace", false, "if --install is set, create the release namespace if not present")
 	f.BoolVarP(&client.Install, "install", "i", false, "if a release by this name doesn't already exist, run an install")
 	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored")
 	f.BoolVar(&client.DryRun, "dry-run", false, "simulate an upgrade")
@@ -165,6 +171,8 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.MarkDeprecated("recreate-pods", "functionality will no longer be updated. Consult the documentation for other methods to recreate pods")
 	f.BoolVar(&client.Force, "force", false, "force resource updates through a replacement strategy")
 	f.BoolVar(&client.DisableHooks, "no-hooks", false, "disable pre/post upgrade hooks")
+	f.BoolVar(&client.DisableOpenAPIValidation, "disable-openapi-validation", false, "if set, the upgrade process will not validate rendered templates against the Kubernetes OpenAPI Schema")
+	f.BoolVar(&client.SkipCRDs, "skip-crds", false, "if set, no CRDs will be installed when an upgrade is performed with install flag enabled. By default, CRDs are installed if not already present, when an upgrade is performed with install flag enabled")
 	f.DurationVar(&client.Timeout, "timeout", 300*time.Second, "time to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&client.ResetValues, "reset-values", false, "when upgrading, reset the values to the ones built into the chart")
 	f.BoolVar(&client.ReuseValues, "reuse-values", false, "when upgrading, reuse the last release's values and merge in any overrides from the command line via --set and -f. If '--reset-values' is specified, this is ignored")

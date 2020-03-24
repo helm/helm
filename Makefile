@@ -1,7 +1,7 @@
 BINDIR      := $(CURDIR)/bin
 DIST_DIRS   := find * -type d -exec
 TARGETS     := darwin/amd64 linux/amd64 linux/386 linux/arm linux/arm64 linux/ppc64le linux/s390x windows/amd64
-TARGET_OBJS ?= darwin-amd64.tar.gz darwin-amd64.tar.gz.sha256 linux-amd64.tar.gz linux-amd64.tar.gz.sha256 linux-386.tar.gz linux-386.tar.gz.sha256 linux-arm.tar.gz linux-arm.tar.gz.sha256 linux-arm64.tar.gz linux-arm64.tar.gz.sha256 linux-ppc64le.tar.gz linux-ppc64le.tar.gz.sha256 linux-s390x.tar.gz linux-s390x.tar.gz.sha256 windows-amd64.zip windows-amd64.zip.sha256
+TARGET_OBJS ?= darwin-amd64.tar.gz darwin-amd64.tar.gz.sha256 darwin-amd64.tar.gz.sha256sum linux-amd64.tar.gz linux-amd64.tar.gz.sha256 linux-amd64.tar.gz.sha256sum linux-386.tar.gz linux-386.tar.gz.sha256 linux-386.tar.gz.sha256sum linux-arm.tar.gz linux-arm.tar.gz.sha256 linux-arm.tar.gz.sha256sum linux-arm64.tar.gz linux-arm64.tar.gz.sha256 linux-arm64.tar.gz.sha256sum linux-ppc64le.tar.gz linux-ppc64le.tar.gz.sha256 linux-ppc64le.tar.gz.sha256sum linux-s390x.tar.gz linux-s390x.tar.gz.sha256 linux-s390x.tar.gz.sha256sum windows-amd64.zip windows-amd64.zip.sha256 windows-amd64.zip.sha256sum
 BINNAME     ?= helm
 
 GOPATH        = $(shell go env GOPATH)
@@ -24,7 +24,7 @@ GOFLAGS    :=
 SRC        := $(shell find . -type f -name '*.go' -print)
 
 # Required for globs to work correctly
-SHELL      = /bin/bash
+SHELL      = /usr/bin/env bash
 
 GIT_COMMIT = $(shell git rev-parse HEAD)
 GIT_SHA    = $(shell git rev-parse --short HEAD)
@@ -180,6 +180,21 @@ checksum:
 .PHONY: clean
 clean:
 	@rm -rf $(BINDIR) ./_dist
+
+.PHONY: release-notes
+release-notes:
+		@if [ ! -d "./_dist" ]; then \
+			echo "please run 'make fetch-release' first" && \
+			exit 1; \
+		fi
+		@if [ -z "${PREVIOUS_RELEASE}" ]; then \
+			echo "please set PREVIOUS_RELEASE environment variable" \
+			&& exit 1; \
+		fi
+
+		@./scripts/release-notes.sh ${PREVIOUS_RELEASE} ${VERSION}
+
+
 
 .PHONY: info
 info:

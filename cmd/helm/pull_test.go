@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"testing"
 
 	"helm.sh/helm/v3/pkg/repo/repotest"
@@ -37,6 +36,10 @@ func TestPullCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	helmTestKeyOut := "Signed by: Helm Testing (This key should only be used for testing. DO NOT TRUST.) <helm-testing@helm.sh>\n" +
+		"Using Key With Fingerprint: 5E615389B53CA37F0EE60BD3843BBF981FC18762\n" +
+		"Chart Hash Verified: "
+
 	// all flags will get "-d outdir" appended.
 	tests := []struct {
 		name         string
@@ -49,6 +52,7 @@ func TestPullCmd(t *testing.T) {
 		expectFile   string
 		expectDir    bool
 		expectVerify bool
+		expectSha    string
 	}{
 		{
 			name:       "Basic chart fetch",
@@ -77,6 +81,7 @@ func TestPullCmd(t *testing.T) {
 			args:         "test/signtest --verify --keyring testdata/helm-test-key.pub",
 			expectFile:   "./signtest-0.1.0.tgz",
 			expectVerify: true,
+			expectSha:    "sha256:e5ef611620fb97704d8751c16bab17fedb68883bfb0edc76f78a70e9173f9b55",
 		},
 		{
 			name:       "Fetch and fail verify",
@@ -110,6 +115,7 @@ func TestPullCmd(t *testing.T) {
 			expectFile:   "./signtest2",
 			expectDir:    true,
 			expectVerify: true,
+			expectSha:    "sha256:e5ef611620fb97704d8751c16bab17fedb68883bfb0edc76f78a70e9173f9b55",
 		},
 		{
 			name:       "Chart fetch using repo URL",
@@ -171,13 +177,11 @@ func TestPullCmd(t *testing.T) {
 			}
 
 			if tt.expectVerify {
-				pointerAddressPattern := "0[xX][A-Fa-f0-9]+"
-				sha256Pattern := "[A-Fa-f0-9]{64}"
-				verificationRegex := regexp.MustCompile(
-					fmt.Sprintf("Verification: &{%s sha256:%s signtest-0.1.0.tgz}\n", pointerAddressPattern, sha256Pattern))
-				if !verificationRegex.MatchString(out) {
-					t.Errorf("%q: expected match for regex %s, got %s", tt.name, verificationRegex, out)
+				outString := helmTestKeyOut + tt.expectSha + "\n"
+				if out != outString {
+					t.Errorf("%q: expected verification output %q, got %q", tt.name, outString, out)
 				}
+
 			}
 
 			ef := filepath.Join(outdir, tt.expectFile)

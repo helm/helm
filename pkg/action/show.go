@@ -27,12 +27,17 @@ import (
 	"helm.sh/helm/v3/pkg/chartutil"
 )
 
+// ShowOutputFormat is the format of the output of `helm show`
 type ShowOutputFormat string
 
 const (
-	ShowAll    ShowOutputFormat = "all"
-	ShowChart  ShowOutputFormat = "chart"
+	// ShowAll is the format which shows all the information of a chart
+	ShowAll ShowOutputFormat = "all"
+	// ShowChart is the format which only shows the chart's definition
+	ShowChart ShowOutputFormat = "chart"
+	// ShowValues is the format which only shows the chart's values
 	ShowValues ShowOutputFormat = "values"
+	// ShowReadme is the format which only shows the chart's README
 	ShowReadme ShowOutputFormat = "readme"
 )
 
@@ -46,8 +51,9 @@ func (o ShowOutputFormat) String() string {
 //
 // It provides the implementation of 'helm show' and its respective subcommands.
 type Show struct {
-	OutputFormat ShowOutputFormat
 	ChartPathOptions
+	Devel        bool
+	OutputFormat ShowOutputFormat
 }
 
 // NewShow creates a new Show object with the given configuration.

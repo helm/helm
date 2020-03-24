@@ -33,6 +33,7 @@ import (
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -49,6 +50,8 @@ import (
 
 // ErrNoObjectsVisited indicates that during a visit operation, no matching objects were found.
 var ErrNoObjectsVisited = errors.New("no objects visited")
+
+var metadataAccessor = meta.NewAccessor()
 
 // Client represents a client capable of communicating with the Kubernetes API.
 type Client struct {
@@ -88,7 +91,7 @@ func (c *Client) IsReachable() error {
 	client, _ := c.Factory.KubernetesClientSet()
 	_, err := client.ServerVersion()
 	if err != nil {
-		return errors.New("Kubernetes cluster unreachable")
+		return fmt.Errorf("Kubernetes cluster unreachable: %s", err.Error())
 	}
 	return nil
 }
@@ -209,12 +212,20 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 	}
 
 	for _, info := range original.Difference(target) {
-		if info.Mapping.GroupVersionKind.Kind == "CustomResourceDefinition" {
-			c.Log("Skipping the deletion of CustomResourceDefinition %q", info.Name)
+		c.Log("Deleting %q in %s...", info.Name, info.Namespace)
+
+		if err := info.Get(); err != nil {
+			c.Log("Unable to get obj %q, err: %s", info.Name, err)
+		}
+		annotations, err := metadataAccessor.Annotations(info.Object)
+		if err != nil {
+			c.Log("Unable to get annotations on %q, err: %s", info.Name, err)
+		}
+		if annotations != nil && annotations[ResourcePolicyAnno] == KeepPolicy {
+			c.Log("Skipping delete of %q due to annotation [%s=%s]", info.Name, ResourcePolicyAnno, KeepPolicy)
 			continue
 		}
 
-		c.Log("Deleting %q in %s...", info.Name, info.Namespace)
 		res.Deleted = append(res.Deleted, info)
 		if err := deleteResource(info); err != nil {
 			if apierrors.IsNotFound(err) {
@@ -236,11 +247,6 @@ func (c *Client) Delete(resources ResourceList) (*Result, []error) {
 	var errs []error
 	res := &Result{}
 	err := perform(resources, func(info *resource.Info) error {
-		if info.Mapping.GroupVersionKind.Kind == "CustomResourceDefinition" {
-			c.Log("Skipping the deletion of CustomResourceDefinition %q", info.Name)
-			return nil
-		}
-
 		c.Log("Starting delete for %q %s", info.Name, info.Mapping.GroupVersionKind.Kind)
 		if err := c.skipIfNotFound(deleteResource(info)); err != nil {
 			// Collect the error and continue on

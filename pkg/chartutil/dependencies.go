@@ -165,6 +165,17 @@ Loop:
 			cd = append(cd, n)
 		}
 	}
+	// don't keep disabled charts in metadata
+	cdMetadata := []*chart.Dependency{}
+	copy(cdMetadata, c.Metadata.Dependencies[:0])
+	for _, n := range c.Metadata.Dependencies {
+		if _, ok := rm[n.Name]; !ok {
+			cdMetadata = append(cdMetadata, n)
+		}
+	}
+	// set the correct dependencies in metadata
+	c.Metadata.Dependencies = nil
+	c.Metadata.Dependencies = append(c.Metadata.Dependencies, cdMetadata...)
 	c.SetDependencies(cd...)
 
 	return nil
@@ -213,7 +224,7 @@ func processImportValues(c *chart.Chart, cvals Values) error {
 				// get child table
 				vv, err := cvals.Table(r.Name + "." + child)
 				if err != nil {
-					log.Printf("Warning: ImportValues missing table: %v", err)
+					log.Printf("Warning: ImportValues missing table from chart %s: %v", r.Name, err)
 					continue
 				}
 				// create value map from child to be merged into parent

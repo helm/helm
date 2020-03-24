@@ -65,7 +65,7 @@ func TestVerifyCmd(t *testing.T) {
 		{
 			name:      "verify validates a properly signed chart",
 			cmd:       "verify testdata/testcharts/signtest-0.1.0.tgz --keyring testdata/helm-test-key.pub",
-			expect:    "",
+			expect:    "Signed by: Helm Testing (This key should only be used for testing. DO NOT TRUST.) <helm-testing@helm.sh>\nUsing Key With Fingerprint: 5E615389B53CA37F0EE60BD3843BBF981FC18762\nChart Hash Verified: sha256:e5ef611620fb97704d8751c16bab17fedb68883bfb0edc76f78a70e9173f9b55\n",
 			wantError: false,
 		},
 	}

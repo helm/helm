@@ -165,6 +165,10 @@ func (l *List) Run() ([]*release.Release, error) {
 		return true
 	})
 
+	if err != nil {
+		return nil, err
+	}
+
 	if results == nil {
 		return results, nil
 	}
@@ -238,7 +242,7 @@ func filterList(releases []*release.Release) []*release.Release {
 	return list
 }
 
-// setStateMask calculates the state mask based on parameters.
+// SetStateMask calculates the state mask based on parameters.
 func (l *List) SetStateMask() {
 	if l.All {
 		l.StateMask = ListAll

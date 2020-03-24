@@ -17,6 +17,7 @@ linters:
     - structcheck
     - unused
     - varcheck
+    - staticcheck
 
 linters-settings:
   gofmt:

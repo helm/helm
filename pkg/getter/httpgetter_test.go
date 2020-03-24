@@ -44,12 +44,14 @@ func TestHTTPGetter(t *testing.T) {
 	cd := "../../testdata"
 	join := filepath.Join
 	ca, pub, priv := join(cd, "rootca.crt"), join(cd, "crt.pem"), join(cd, "key.pem")
+	insecure := false
 
 	// Test with options
 	g, err = NewHTTPGetter(
 		WithBasicAuth("I", "Am"),
 		WithUserAgent("Groot"),
 		WithTLSClientConfig(pub, priv, ca),
+		WithInsecureSkipVerifyTLS(insecure),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -82,6 +84,29 @@ func TestHTTPGetter(t *testing.T) {
 
 	if hg.opts.caFile != ca {
 		t.Errorf("Expected NewHTTPGetter to contain %q as the CA file, got %q", ca, hg.opts.caFile)
+	}
+
+	if hg.opts.insecureSkipVerifyTLS != insecure {
+		t.Errorf("Expected NewHTTPGetter to contain %t as InsecureSkipVerifyTLs flag, got %t", false, hg.opts.insecureSkipVerifyTLS)
+	}
+
+	// Test if setting insecureSkipVerifyTLS is being passed to the ops
+	insecure = true
+
+	g, err = NewHTTPGetter(
+		WithInsecureSkipVerifyTLS(insecure),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	hg, ok = g.(*HTTPGetter)
+	if !ok {
+		t.Fatal("expected NewHTTPGetter to produce an *HTTPGetter")
+	}
+
+	if hg.opts.insecureSkipVerifyTLS != insecure {
+		t.Errorf("Expected NewHTTPGetter to contain %t as InsecureSkipVerifyTLs flag, got %t", insecure, hg.opts.insecureSkipVerifyTLS)
 	}
 }
 
@@ -190,4 +215,36 @@ func TestDownloadTLS(t *testing.T) {
 	if _, err := g.Get(u.String(), WithURL(u.String()), WithTLSClientConfig("", "", ca)); err != nil {
 		t.Error(err)
 	}
+}
+
+func TestDownloadInsecureSkipTLSVerify(t *testing.T) {
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	defer ts.Close()
+
+	u, _ := url.ParseRequestURI(ts.URL)
+
+	// Ensure the default behaviour did not change
+	g, err := NewHTTPGetter(
+		WithURL(u.String()),
+	)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if _, err := g.Get(u.String()); err == nil {
+		t.Errorf("Expected Getter to throw an error, got %s", err)
+	}
+
+	// Test certificate check skip
+	g, err = NewHTTPGetter(
+		WithURL(u.String()),
+		WithInsecureSkipVerifyTLS(true),
+	)
+	if err != nil {
+		t.Error(err)
+	}
+	if _, err = g.Get(u.String()); err != nil {
+		t.Error(err)
+	}
+
 }
