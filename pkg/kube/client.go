@@ -246,12 +246,17 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 func (c *Client) Delete(resources ResourceList) (*Result, []error) {
 	var errs []error
 	res := &Result{}
+	mtx := sync.Mutex{}
 	err := perform(resources, func(info *resource.Info) error {
 		c.Log("Starting delete for %q %s", info.Name, info.Mapping.GroupVersionKind.Kind)
 		if err := c.skipIfNotFound(deleteResource(info)); err != nil {
+			mtx.Lock()
+			defer mtx.Unlock()
 			// Collect the error and continue on
 			errs = append(errs, err)
 		} else {
+			mtx.Lock()
+			defer mtx.Unlock()
 			res.Deleted = append(res.Deleted, info)
 		}
 		return nil
