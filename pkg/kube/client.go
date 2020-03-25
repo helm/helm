@@ -208,7 +208,6 @@ func (c *Client) Validate(namespace string, reader io.Reader) error {
 		DefaultNamespace().
 		// Schema(c.validator()). // No schema validation
 		Stream(reader, "").
-		Latest().
 		Flatten().
 		Do().Infos()
 	return scrubValidationError(err)
