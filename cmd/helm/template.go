@@ -104,10 +104,19 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 							// if the filepath provided matches a manifest path in the
 							// chart, render that manifest
-							if f == manifestPath {
-								manifestsToRender = append(manifestsToRender, manifest)
-								missing = false
+							if strings.HasSuffix(f, "*") {
+								if matched, _ := filepath.Match(f, manifestPath); !matched {
+									continue
+								}
+							} else if strings.HasSuffix(f, "/") {
+								if dir, _ := filepath.Split(manifestPath); f != dir {
+									continue
+								}
+							} else if f != manifestPath {
+								continue
 							}
+							manifestsToRender = append(manifestsToRender, manifest)
+							missing = false
 						}
 						if missing {
 							return fmt.Errorf("could not find template %s in chart", f)
