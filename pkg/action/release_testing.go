@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"time"
@@ -81,7 +82,7 @@ func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 		for _, e := range h.Events {
 			if e == release.HookTest {
 				req := client.CoreV1().Pods(r.Namespace).GetLogs(h.Name, &v1.PodLogOptions{})
-				logReader, err := req.Stream()
+				logReader, err := req.Stream(context.Background())
 				if err != nil {
 					return errors.Wrapf(err, "unable to get pod logs for %s", h.Name)
 				}

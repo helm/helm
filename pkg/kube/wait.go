@@ -17,6 +17,7 @@ limitations under the License.
 package kube // import "helm.sh/helm/v3/pkg/kube"
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -62,12 +63,12 @@ func (w *waiter) waitForResources(created ResourceList) error {
 			)
 			switch value := AsVersioned(v).(type) {
 			case *corev1.Pod:
-				pod, err := w.c.CoreV1().Pods(v.Namespace).Get(v.Name, metav1.GetOptions{})
+				pod, err := w.c.CoreV1().Pods(v.Namespace).Get(context.Background(), v.Name, metav1.GetOptions{})
 				if err != nil || !w.isPodReady(pod) {
 					return false, err
 				}
 			case *appsv1.Deployment, *appsv1beta1.Deployment, *appsv1beta2.Deployment, *extensionsv1beta1.Deployment:
-				currentDeployment, err := w.c.AppsV1().Deployments(v.Namespace).Get(v.Name, metav1.GetOptions{})
+				currentDeployment, err := w.c.AppsV1().Deployments(v.Namespace).Get(context.Background(), v.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
 				}
@@ -84,7 +85,7 @@ func (w *waiter) waitForResources(created ResourceList) error {
 					return false, nil
 				}
 			case *corev1.PersistentVolumeClaim:
-				claim, err := w.c.CoreV1().PersistentVolumeClaims(v.Namespace).Get(v.Name, metav1.GetOptions{})
+				claim, err := w.c.CoreV1().PersistentVolumeClaims(v.Namespace).Get(context.Background(), v.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
 				}
@@ -92,7 +93,7 @@ func (w *waiter) waitForResources(created ResourceList) error {
 					return false, nil
 				}
 			case *corev1.Service:
-				svc, err := w.c.CoreV1().Services(v.Namespace).Get(v.Name, metav1.GetOptions{})
+				svc, err := w.c.CoreV1().Services(v.Namespace).Get(context.Background(), v.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
 				}
@@ -100,7 +101,7 @@ func (w *waiter) waitForResources(created ResourceList) error {
 					return false, nil
 				}
 			case *extensionsv1beta1.DaemonSet, *appsv1.DaemonSet, *appsv1beta2.DaemonSet:
-				ds, err := w.c.AppsV1().DaemonSets(v.Namespace).Get(v.Name, metav1.GetOptions{})
+				ds, err := w.c.AppsV1().DaemonSets(v.Namespace).Get(context.Background(), v.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
 				}
@@ -130,7 +131,7 @@ func (w *waiter) waitForResources(created ResourceList) error {
 					return false, nil
 				}
 			case *appsv1.StatefulSet, *appsv1beta1.StatefulSet, *appsv1beta2.StatefulSet:
-				sts, err := w.c.AppsV1().StatefulSets(v.Namespace).Get(v.Name, metav1.GetOptions{})
+				sts, err := w.c.AppsV1().StatefulSets(v.Namespace).Get(context.Background(), v.Name, metav1.GetOptions{})
 				if err != nil {
 					return false, err
 				}
@@ -337,7 +338,7 @@ func (w *waiter) statefulSetReady(sts *appsv1.StatefulSet) bool {
 }
 
 func getPods(client kubernetes.Interface, namespace, selector string) ([]corev1.Pod, error) {
-	list, err := client.CoreV1().Pods(namespace).List(metav1.ListOptions{
+	list, err := client.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{
 		LabelSelector: selector,
 	})
 	return list.Items, err
