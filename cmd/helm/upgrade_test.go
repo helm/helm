@@ -196,6 +196,38 @@ func TestUpgradeWithStringValue(t *testing.T) {
 
 }
 
+func TestUpgradeInstallWithSubchartNotes(t *testing.T) {
+
+	releaseName := "wacky-bunny-v1"
+	relMock, ch, _ := prepareMockRelease(releaseName, t)
+
+	defer resetEnv()()
+
+	store := storageFixture()
+
+	store.Create(relMock(releaseName, 1, ch))
+
+	cmd := fmt.Sprintf("upgrade %s -i --render-subchart-notes '%s'", releaseName, "testdata/testcharts/chart-with-subchart-notes")
+	_, _, err := executeActionCommandC(store, cmd)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	upgradedRel, err := store.Get(releaseName, 2)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	if !strings.Contains(upgradedRel.Info.Notes, "PARENT NOTES") {
+		t.Errorf("The parent notes are not set correctly. NOTES: %s", upgradedRel.Info.Notes)
+	}
+
+	if !strings.Contains(upgradedRel.Info.Notes, "SUBCHART NOTES") {
+		t.Errorf("The subchart notes are not set correctly. NOTES: %s", upgradedRel.Info.Notes)
+	}
+
+}
+
 func TestUpgradeWithValuesFile(t *testing.T) {
 
 	releaseName := "funny-bunny-v4"
