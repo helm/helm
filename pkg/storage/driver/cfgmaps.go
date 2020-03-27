@@ -201,11 +201,6 @@ func (cfgmaps *ConfigMaps) Update(key string, rls *rspb.Release) error {
 func (cfgmaps *ConfigMaps) Delete(key string) (rls *rspb.Release, err error) {
 	// fetch the release to check existence
 	if rls, err = cfgmaps.Get(key); err != nil {
-		if apierrors.IsNotFound(err) {
-			return nil, ErrReleaseExists
-		}
-
-		cfgmaps.Log("delete: failed to get release %q: %s", key, err)
 		return nil, err
 	}
 	// delete the release

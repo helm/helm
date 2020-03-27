@@ -77,11 +77,7 @@ func newShowCmd(out io.Writer) *cobra.Command {
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowAll
-			cp, err := client.ChartPathOptions.LocateChart(args[0], settings)
-			if err != nil {
-				return err
-			}
-			output, err := client.Run(cp)
+			output, err := runShow(args, client)
 			if err != nil {
 				return err
 			}
@@ -97,11 +93,7 @@ func newShowCmd(out io.Writer) *cobra.Command {
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowValues
-			cp, err := client.ChartPathOptions.LocateChart(args[0], settings)
-			if err != nil {
-				return err
-			}
-			output, err := client.Run(cp)
+			output, err := runShow(args, client)
 			if err != nil {
 				return err
 			}
@@ -117,11 +109,7 @@ func newShowCmd(out io.Writer) *cobra.Command {
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowChart
-			cp, err := client.ChartPathOptions.LocateChart(args[0], settings)
-			if err != nil {
-				return err
-			}
-			output, err := client.Run(cp)
+			output, err := runShow(args, client)
 			if err != nil {
 				return err
 			}
@@ -137,11 +125,7 @@ func newShowCmd(out io.Writer) *cobra.Command {
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowReadme
-			cp, err := client.ChartPathOptions.LocateChart(args[0], settings)
-			if err != nil {
-				return err
-			}
-			output, err := client.Run(cp)
+			output, err := runShow(args, client)
 			if err != nil {
 				return err
 			}
@@ -152,12 +136,33 @@ func newShowCmd(out io.Writer) *cobra.Command {
 
 	cmds := []*cobra.Command{all, readmeSubCmd, valuesSubCmd, chartSubCmd}
 	for _, subCmd := range cmds {
-		addChartPathOptionsFlags(subCmd.Flags(), &client.ChartPathOptions)
-		showCommand.AddCommand(subCmd)
+		addShowFlags(showCommand, subCmd, client)
 
 		// Register the completion function for each subcommand
 		completion.RegisterValidArgsFunc(subCmd, validArgsFunc)
 	}
 
 	return showCommand
+}
+
+func addShowFlags(showCmd *cobra.Command, subCmd *cobra.Command, client *action.Show) {
+	f := subCmd.Flags()
+
+	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored")
+	addChartPathOptionsFlags(f, &client.ChartPathOptions)
+	showCmd.AddCommand(subCmd)
+}
+
+func runShow(args []string, client *action.Show) (string, error) {
+	debug("Original chart version: %q", client.Version)
+	if client.Version == "" && client.Devel {
+		debug("setting version to >0.0.0-0")
+		client.Version = ">0.0.0-0"
+	}
+
+	cp, err := client.ChartPathOptions.LocateChart(args[0], settings)
+	if err != nil {
+		return "", err
+	}
+	return client.Run(cp)
 }
