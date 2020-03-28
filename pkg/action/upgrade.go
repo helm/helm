@@ -46,6 +46,7 @@ type Upgrade struct {
 
 	ChartPathOptions
 
+	Adopt bool
 	// Install is a purely informative flag that indicates whether this upgrade was done in "install" mode.
 	//
 	// Applications may use this to determine whether this Upgrade operation was done as part of a
@@ -347,7 +348,7 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 	if u.TakeOwnership {
 		toBeUpdated, err = requireAdoption(toBeCreated)
 	} else {
-		toBeUpdated, err = existingResourceConflict(toBeCreated, upgradedRelease.Name, upgradedRelease.Namespace)
+		toBeUpdated, err = existingResourceConflict(toBeCreated, upgradedRelease.Name, upgradedRelease.Namespace, u.Adopt)
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "Unable to continue with update")
