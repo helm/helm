@@ -79,9 +79,9 @@ type Upgrade struct {
 	Recreate bool
 	// MaxHistory limits the maximum number of revisions saved per release
 	MaxHistory int
-	// Atomic, if true, will set the upgrade mode to an atomic upgrade.
+	// Atomic, if true, will roll back on failure.
 	Atomic bool
-	// CleanupOnFail will, if true, cause the upgrade to delete resources on a failed update.
+	// CleanupOnFail will, if true, cause the upgrade to delete newly-created resources on a failed update.
 	CleanupOnFail bool
 	// SubNotes determines whether sub-notes are rendered in the chart.
 	SubNotes bool
