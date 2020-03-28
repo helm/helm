@@ -542,7 +542,7 @@ func (i *Install) availableName() error {
 	releaseutil.Reverse(h, releaseutil.SortByRevision)
 	rel := h[0]
 
-	if st := rel.Info.Status; i.Replace && (st == release.StatusUninstalled || st == release.StatusFailed) {
+	if st := rel.Info.Status; i.Replace && (st == release.StatusUninstalled || st == release.StatusFailed || st == release.StatusPendingInstall) {
 		return nil
 	}
 	return errors.New("cannot re-use a name that is still in use")
