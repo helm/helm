@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
+	sq "github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
 
 	v1 "k8s.io/api/core/v1"
@@ -256,8 +257,9 @@ func newTestFixtureSQL(t *testing.T, releases ...*rspb.Release) (*SQL, sqlmock.S
 
 	sqlxDB := sqlx.NewDb(sqlDB, "sqlmock")
 	return &SQL{
-		db:        sqlxDB,
-		Log:       func(a string, b ...interface{}) {},
-		namespace: "default",
+		db:               sqlxDB,
+		Log:              func(a string, b ...interface{}) {},
+		namespace:        "default",
+		statementBuilder: sq.StatementBuilder.PlaceholderFormat(sq.Dollar),
 	}, mock
 }

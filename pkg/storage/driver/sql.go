@@ -19,11 +19,12 @@ package driver // import "helm.sh/helm/v3/pkg/storage/driver"
 import (
 	"fmt"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
 	migrate "github.com/rubenv/sql-migrate"
+
+	sq "github.com/Masterminds/squirrel"
 
 	// Import pq for postgres dialect
 	_ "github.com/lib/pq"
@@ -71,8 +72,9 @@ const (
 
 // SQL is the sql storage driver implementation.
 type SQL struct {
-	db        *sqlx.DB
-	namespace string
+	db               *sqlx.DB
+	namespace        string
+	statementBuilder sq.StatementBuilderType
 
 	Log func(string, ...interface{})
 }
@@ -192,8 +194,9 @@ func NewSQL(dialect, connectionString string, logger func(string, ...interface{}
 	}
 
 	driver := &SQL{
-		db:  db,
-		Log: logger,
+		db:               db,
+		Log:              logger,
+		statementBuilder: sq.StatementBuilder.PlaceholderFormat(sq.Dollar),
 	}
 
 	if err := driver.ensureDBSetup(); err != nil {
@@ -209,16 +212,20 @@ func NewSQL(dialect, connectionString string, logger func(string, ...interface{}
 func (s *SQL) Get(key string) (*rspb.Release, error) {
 	var record SQLReleaseWrapper
 
-	query := fmt.Sprintf(
-		"SELECT %s FROM %s WHERE %s = $1 AND %s = $2",
-		sqlReleaseTableBodyColumn,
-		sqlReleaseTableName,
-		sqlReleaseTableKeyColumn,
-		sqlReleaseTableNamespaceColumn,
-	)
+	qb := s.statementBuilder.
+		Select(sqlReleaseTableBodyColumn).
+		From(sqlReleaseTableName).
+		Where(sq.Eq{sqlReleaseTableKeyColumn: key}).
+		Where(sq.Eq{sqlReleaseTableNamespaceColumn: s.namespace})
+
+	query, args, err := qb.ToSql()
+	if err != nil {
+		s.Log("failed to build query: %v", err)
+		return nil, err
+	}
 
 	// Get will return an error if the result is empty
-	if err := s.db.Get(&record, query, key, s.namespace); err != nil {
+	if err := s.db.Get(&record, query, args...); err != nil {
 		s.Log("got SQL error when getting release %s: %v", key, err)
 		return nil, ErrReleaseNotFound
 	}
@@ -234,19 +241,20 @@ func (s *SQL) Get(key string) (*rspb.Release, error) {
 
 // List returns the list of all releases such that filter(release) == true
 func (s *SQL) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
-	query := fmt.Sprintf(
-		"SELECT %s FROM %s WHERE %s = $1",
-		sqlReleaseTableBodyColumn,
-		sqlReleaseTableName,
-		sqlReleaseTableOwnerColumn,
-	)
-
-	args := []interface{}{sqlReleaseDefaultOwner}
+	sb := s.statementBuilder.
+		Select(sqlReleaseTableBodyColumn).
+		From(sqlReleaseTableName).
+		Where(sq.Eq{sqlReleaseTableOwnerColumn: sqlReleaseDefaultOwner})
 
 	// If a namespace was specified, we only list releases from that namespace
 	if s.namespace != "" {
-		query = fmt.Sprintf("%s AND %s = $2", query, sqlReleaseTableNamespaceColumn)
-		args = append(args, s.namespace)
+		sb = sb.Where(sq.Eq{sqlReleaseTableNamespaceColumn: s.namespace})
+	}
+
+	query, args, err := sb.ToSql()
+	if err != nil {
+		s.Log("failed to build query: %v", err)
+		return nil, err
 	}
 
 	var records = []SQLReleaseWrapper{}
@@ -272,15 +280,18 @@ func (s *SQL) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
 
 // Query returns the set of releases that match the provided set of labels.
 func (s *SQL) Query(labels map[string]string) ([]*rspb.Release, error) {
-	var sqlFilterKeys []string
-	sqlFilter := map[string]interface{}{}
-	for key, val := range labels {
-		// Build a slice of where filters e.g
-		// labels = map[string]string{ "foo": "foo", "bar": "bar" }
-		// []string{ "foo=?", "bar=?" }
+	sb := s.statementBuilder.
+		Select(sqlReleaseTableBodyColumn).
+		From(sqlReleaseTableName)
+
+	keys := make([]string, 0, len(labels))
+	for key := range labels {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
 		if _, ok := labelMap[key]; ok {
-			sqlFilterKeys = append(sqlFilterKeys, strings.Join([]string{key, "=:", key}, ""))
-			sqlFilter[key] = val
+			sb = sb.Where(sq.Eq{key: labels[key]})
 		} else {
 			s.Log("unknown label %s", key)
 			return nil, fmt.Errorf("unknow label %s", key)
@@ -289,36 +300,27 @@ func (s *SQL) Query(labels map[string]string) ([]*rspb.Release, error) {
 
 	// If a namespace was specified, we only list releases from that namespace
 	if s.namespace != "" {
-		sqlFilterKeys = append(sqlFilterKeys, fmt.Sprintf("%s=:namespace", sqlReleaseTableNamespaceColumn))
-		sqlFilter["namespace"] = s.namespace
+		sb = sb.Where(sq.Eq{sqlReleaseTableNamespaceColumn: s.namespace})
 	}
 
-	sort.Strings(sqlFilterKeys)
-
 	// Build our query
-	query := strings.Join([]string{
-		fmt.Sprintf("SELECT %s FROM %s", sqlReleaseTableBodyColumn, sqlReleaseTableName),
-		"WHERE",
-		strings.Join(sqlFilterKeys, " AND "),
-	}, " ")
-
-	rows, err := s.db.NamedQuery(query, sqlFilter)
+	query, args, err := sb.ToSql()
 	if err != nil {
-		s.Log("failed to query with labels: %v", err)
+		s.Log("failed to build query: %v", err)
+		return nil, err
+	}
+
+	var records = []SQLReleaseWrapper{}
+	if err := s.db.Select(&records, query, args...); err != nil {
+		s.Log("list: failed to query with labels: %v", err)
 		return nil, err
 	}
 
 	var releases []*rspb.Release
-	for rows.Next() {
-		var record SQLReleaseWrapper
-		if err = rows.StructScan(&record); err != nil {
-			s.Log("failed to scan record %q: %v", record, err)
-			return nil, err
-		}
-
+	for _, record := range records {
 		release, err := decodeRelease(record.Body)
 		if err != nil {
-			s.Log("failed to decode release: %v", err)
+			s.Log("list: failed to decode release: %v: %v", record, err)
 			continue
 		}
 		releases = append(releases, release)
@@ -351,46 +353,51 @@ func (s *SQL) Create(key string, rls *rspb.Release) error {
 		return fmt.Errorf("error beginning transaction: %v", err)
 	}
 
-	query := fmt.Sprintf(
-		"INSERT INTO %s (%s, %s, %s, %s, %s, %s, %s, %s, %s) VALUES (:key, :type, :body, :name, :namespace, :version, :status, :owner, :createdAt)",
-		sqlReleaseTableName,
-		sqlReleaseTableKeyColumn,
-		sqlReleaseTableTypeColumn,
-		sqlReleaseTableBodyColumn,
-		sqlReleaseTableNameColumn,
-		sqlReleaseTableNamespaceColumn,
-		sqlReleaseTableVersionColumn,
-		sqlReleaseTableStatusColumn,
-		sqlReleaseTableOwnerColumn,
-		sqlReleaseTableCreatedAtColumn,
-	)
+	insertQuery, args, err := s.statementBuilder.
+		Insert(sqlReleaseTableName).
+		Columns(
+			sqlReleaseTableKeyColumn,
+			sqlReleaseTableTypeColumn,
+			sqlReleaseTableBodyColumn,
+			sqlReleaseTableNameColumn,
+			sqlReleaseTableNamespaceColumn,
+			sqlReleaseTableVersionColumn,
+			sqlReleaseTableStatusColumn,
+			sqlReleaseTableOwnerColumn,
+			sqlReleaseTableCreatedAtColumn,
+		).
+		Values(
+			key,
+			sqlReleaseDefaultType,
+			body,
+			rls.Name,
+			namespace,
+			int(rls.Version),
+			rls.Info.Status.String(),
+			sqlReleaseDefaultOwner,
+			int(time.Now().Unix()),
+		).ToSql()
+	if err != nil {
+		s.Log("failed to build insert query: %v", err)
+		return err
+	}
 
-	if _, err := transaction.NamedExec(query,
-		&SQLReleaseWrapper{
-			Key:  key,
-			Type: sqlReleaseDefaultType,
-			Body: body,
-
-			Name:      rls.Name,
-			Namespace: namespace,
-			Version:   int(rls.Version),
-			Status:    rls.Info.Status.String(),
-			Owner:     sqlReleaseDefaultOwner,
-			CreatedAt: int(time.Now().Unix()),
-		},
-	); err != nil {
+	if _, err := transaction.Exec(insertQuery, args...); err != nil {
 		defer transaction.Rollback()
 
-		query := fmt.Sprintf(
-			"SELECT %s FROM %s WHERE %s = $1 and %s = $2",
-			sqlReleaseTableKeyColumn,
-			sqlReleaseTableName,
-			sqlReleaseTableKeyColumn,
-			sqlReleaseTableNamespaceColumn,
-		)
+		selectQuery, args, buildErr := s.statementBuilder.
+			Select(sqlReleaseTableKeyColumn).
+			From(sqlReleaseTableName).
+			Where(sq.Eq{sqlReleaseTableKeyColumn: key}).
+			Where(sq.Eq{sqlReleaseTableNamespaceColumn: s.namespace}).
+			ToSql()
+		if buildErr != nil {
+			s.Log("failed to build select query: %v", buildErr)
+			return err
+		}
 
 		var record SQLReleaseWrapper
-		if err := transaction.Get(&record, query, key, s.namespace); err == nil {
+		if err := transaction.Get(&record, selectQuery, args...); err == nil {
 			s.Log("release %s already exists", key)
 			return ErrReleaseExists
 		}
@@ -417,31 +424,24 @@ func (s *SQL) Update(key string, rls *rspb.Release) error {
 		return err
 	}
 
-	query := fmt.Sprintf(
-		"UPDATE %s SET %s=:body, %s=:name, %s=:version, %s=:status, %s=:owner, %s=:modifiedAt WHERE %s=:key AND %s=:namespace",
-		sqlReleaseTableName,
-		sqlReleaseTableBodyColumn,
-		sqlReleaseTableNameColumn,
-		sqlReleaseTableVersionColumn,
-		sqlReleaseTableStatusColumn,
-		sqlReleaseTableOwnerColumn,
-		sqlReleaseTableModifiedAtColumn,
-		sqlReleaseTableKeyColumn,
-		sqlReleaseTableNamespaceColumn,
-	)
+	query, args, err := s.statementBuilder.
+		Update(sqlReleaseTableName).
+		Set(sqlReleaseTableBodyColumn, body).
+		Set(sqlReleaseTableNameColumn, rls.Name).
+		Set(sqlReleaseTableVersionColumn, int(rls.Version)).
+		Set(sqlReleaseTableStatusColumn, rls.Info.Status.String()).
+		Set(sqlReleaseTableOwnerColumn, sqlReleaseDefaultOwner).
+		Set(sqlReleaseTableModifiedAtColumn, int(time.Now().Unix())).
+		Where(sq.Eq{sqlReleaseTableKeyColumn: key}).
+		Where(sq.Eq{sqlReleaseTableNamespaceColumn: namespace}).
+		ToSql()
 
-	if _, err := s.db.NamedExec(query,
-		&SQLReleaseWrapper{
-			Key:        key,
-			Body:       body,
-			Name:       rls.Name,
-			Namespace:  namespace,
-			Version:    int(rls.Version),
-			Status:     rls.Info.Status.String(),
-			Owner:      sqlReleaseDefaultOwner,
-			ModifiedAt: int(time.Now().Unix()),
-		},
-	); err != nil {
+	if err != nil {
+		s.Log("failed to build update query: %v", err)
+		return err
+	}
+
+	if _, err := s.db.Exec(query, args...); err != nil {
 		s.Log("failed to update release %s in SQL database: %v", key, err)
 		return err
 	}
@@ -457,16 +457,19 @@ func (s *SQL) Delete(key string) (*rspb.Release, error) {
 		return nil, fmt.Errorf("error beginning transaction: %v", err)
 	}
 
-	selectQuery := fmt.Sprintf(
-		"SELECT %s FROM %s WHERE %s=$1 AND %s=$2",
-		sqlReleaseTableBodyColumn,
-		sqlReleaseTableName,
-		sqlReleaseTableKeyColumn,
-		sqlReleaseTableNamespaceColumn,
-	)
+	selectQuery, args, err := s.statementBuilder.
+		Select(sqlReleaseTableBodyColumn).
+		From(sqlReleaseTableName).
+		Where(sq.Eq{sqlReleaseTableKeyColumn: key}).
+		Where(sq.Eq{sqlReleaseTableNamespaceColumn: s.namespace}).
+		ToSql()
+	if err != nil {
+		s.Log("failed to build select query: %v", err)
+		return nil, err
+	}
 
 	var record SQLReleaseWrapper
-	err = transaction.Get(&record, selectQuery, key, s.namespace)
+	err = transaction.Get(&record, selectQuery, args...)
 	if err != nil {
 		s.Log("release %s not found: %v", key, err)
 		return nil, ErrReleaseNotFound
@@ -480,13 +483,16 @@ func (s *SQL) Delete(key string) (*rspb.Release, error) {
 	}
 	defer transaction.Commit()
 
-	deleteQuery := fmt.Sprintf(
-		"DELETE FROM %s WHERE %s = $1 AND %s = $2",
-		sqlReleaseTableName,
-		sqlReleaseTableKeyColumn,
-		sqlReleaseTableNamespaceColumn,
-	)
+	deleteQuery, args, err := s.statementBuilder.
+		Delete(sqlReleaseTableName).
+		Where(sq.Eq{sqlReleaseTableKeyColumn: key}).
+		Where(sq.Eq{sqlReleaseTableNamespaceColumn: s.namespace}).
+		ToSql()
+	if err != nil {
+		s.Log("failed to build select query: %v", err)
+		return nil, err
+	}
 
-	_, err = transaction.Exec(deleteQuery, key, s.namespace)
+	_, err = transaction.Exec(deleteQuery, args...)
 	return release, err
 }

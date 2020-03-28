@@ -163,7 +163,7 @@ func TestSqlCreate(t *testing.T) {
 	body, _ := encodeRelease(rel)
 
 	query := fmt.Sprintf(
-		"INSERT INTO %s (%s, %s, %s, %s, %s, %s, %s, %s, %s) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		"INSERT INTO %s (%s,%s,%s,%s,%s,%s,%s,%s,%s) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)",
 		sqlReleaseTableName,
 		sqlReleaseTableKeyColumn,
 		sqlReleaseTableTypeColumn,
@@ -203,7 +203,7 @@ func TestSqlCreateAlreadyExists(t *testing.T) {
 	body, _ := encodeRelease(rel)
 
 	insertQuery := fmt.Sprintf(
-		"INSERT INTO %s (%s, %s, %s, %s, %s, %s, %s, %s, %s) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		"INSERT INTO %s (%s,%s,%s,%s,%s,%s,%s,%s,%s) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)",
 		sqlReleaseTableName,
 		sqlReleaseTableKeyColumn,
 		sqlReleaseTableTypeColumn,
@@ -224,7 +224,7 @@ func TestSqlCreateAlreadyExists(t *testing.T) {
 		WillReturnError(fmt.Errorf("dialect dependent SQL error"))
 
 	selectQuery := fmt.Sprintf(
-		regexp.QuoteMeta("SELECT %s FROM %s WHERE %s = $1 and %s = $2"),
+		regexp.QuoteMeta("SELECT %s FROM %s WHERE %s = $1 AND %s = $2"),
 		sqlReleaseTableKeyColumn,
 		sqlReleaseTableName,
 		sqlReleaseTableKeyColumn,
@@ -264,7 +264,7 @@ func TestSqlUpdate(t *testing.T) {
 	body, _ := encodeRelease(rel)
 
 	query := fmt.Sprintf(
-		"UPDATE %s SET %s=?, %s=?, %s=?, %s=?, %s=?, %s=? WHERE %s=? AND %s=?",
+		"UPDATE %s SET %s = $1, %s = $2, %s = $3, %s = $4, %s = $5, %s = $6 WHERE %s = $7 AND %s = $8",
 		sqlReleaseTableName,
 		sqlReleaseTableBodyColumn,
 		sqlReleaseTableNameColumn,
@@ -311,18 +311,18 @@ func TestSqlQuery(t *testing.T) {
 	sqlDriver, mock := newTestFixtureSQL(t)
 
 	query := fmt.Sprintf(
-		"SELECT %s FROM %s WHERE %s=? AND %s=? AND %s=? AND %s=?",
+		"SELECT %s FROM %s WHERE %s = $1 AND %s = $2 AND %s = $3 AND %s = $4",
 		sqlReleaseTableBodyColumn,
 		sqlReleaseTableName,
 		sqlReleaseTableNameColumn,
-		sqlReleaseTableNamespaceColumn,
 		sqlReleaseTableOwnerColumn,
 		sqlReleaseTableStatusColumn,
+		sqlReleaseTableNamespaceColumn,
 	)
 
 	mock.
 		ExpectQuery(regexp.QuoteMeta(query)).
-		WithArgs("smug-pigeon", "default", sqlReleaseDefaultOwner, "deployed").
+		WithArgs("smug-pigeon", sqlReleaseDefaultOwner, "deployed", "default").
 		WillReturnRows(
 			mock.NewRows([]string{
 				sqlReleaseTableBodyColumn,
@@ -332,17 +332,17 @@ func TestSqlQuery(t *testing.T) {
 		).RowsWillBeClosed()
 
 	query = fmt.Sprintf(
-		"SELECT %s FROM %s WHERE %s=? AND %s=? AND %s=?",
+		"SELECT %s FROM %s WHERE %s = $1 AND %s = $2 AND %s = $3",
 		sqlReleaseTableBodyColumn,
 		sqlReleaseTableName,
 		sqlReleaseTableNameColumn,
-		sqlReleaseTableNamespaceColumn,
 		sqlReleaseTableOwnerColumn,
+		sqlReleaseTableNamespaceColumn,
 	)
 
 	mock.
 		ExpectQuery(regexp.QuoteMeta(query)).
-		WithArgs("smug-pigeon", "default", sqlReleaseDefaultOwner).
+		WithArgs("smug-pigeon", sqlReleaseDefaultOwner, "default").
 		WillReturnRows(
 			mock.NewRows([]string{
 				sqlReleaseTableBodyColumn,
@@ -396,7 +396,7 @@ func TestSqlDelete(t *testing.T) {
 	sqlDriver, mock := newTestFixtureSQL(t)
 
 	selectQuery := fmt.Sprintf(
-		"SELECT %s FROM %s WHERE %s=$1 AND %s=$2",
+		"SELECT %s FROM %s WHERE %s = $1 AND %s = $2",
 		sqlReleaseTableBodyColumn,
 		sqlReleaseTableName,
 		sqlReleaseTableKeyColumn,
