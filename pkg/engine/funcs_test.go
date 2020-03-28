@@ -46,6 +46,14 @@ func TestFuncs(t *testing.T) {
 		expect: "map[hello:world]",
 		vars:   `hello: world`,
 	}, {
+		tpl:    `{{ fromYamlArray . }}`,
+		expect: "[one 2 map[name:helm]]",
+		vars:   "- one\n- 2\n- name: helm\n",
+	}, {
+		tpl:    `{{ fromYamlArray . }}`,
+		expect: "[one 2 map[name:helm]]",
+		vars:   `["one", 2, { "name": "helm" }]`,
+	}, {
 		// Regression for https://github.com/helm/helm/issues/2271
 		tpl:    `{{ toToml . }}`,
 		expect: "[mast]\n  sail = \"white\"\n",
@@ -63,6 +71,14 @@ func TestFuncs(t *testing.T) {
 		expect: `map[Error:json: cannot unmarshal array into Go value of type map[string]interface {}]`,
 		vars:   `["one", "two"]`,
 	}, {
+		tpl:    `{{ fromJsonArray . }}`,
+		expect: `[one 2 map[name:helm]]`,
+		vars:   `["one", 2, { "name": "helm" }]`,
+	}, {
+		tpl:    `{{ fromJsonArray . }}`,
+		expect: `[json: cannot unmarshal object into Go value of type []interface {}]`,
+		vars:   `{"hello": "world"}`,
+	}, {
 		tpl:    `{{ merge .dict (fromYaml .yaml) }}`,
 		expect: `map[a:map[b:c]]`,
 		vars:   map[string]interface{}{"dict": map[string]interface{}{"a": map[string]interface{}{"b": "c"}}, "yaml": `{"a":{"b":"d"}}`},
@@ -74,6 +90,10 @@ func TestFuncs(t *testing.T) {
 		tpl:    `{{ fromYaml . }}`,
 		expect: `map[Error:error unmarshaling JSON: while decoding JSON: json: cannot unmarshal array into Go value of type map[string]interface {}]`,
 		vars:   `["one", "two"]`,
+	}, {
+		tpl:    `{{ fromYamlArray . }}`,
+		expect: `[error unmarshaling JSON: while decoding JSON: json: cannot unmarshal object into Go value of type []interface {}]`,
+		vars:   `hello: world`,
 	}}
 
 	for _, tt := range tests {
