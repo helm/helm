@@ -88,15 +88,16 @@ func TestSQLList(t *testing.T) {
 
 	for i := 0; i < 3; i++ {
 		query := fmt.Sprintf(
-			"SELECT %s FROM %s WHERE %s = '%s'",
+			"SELECT %s FROM %s WHERE %s = $1 AND %s = $2",
 			sqlReleaseTableBodyColumn,
 			sqlReleaseTableName,
 			sqlReleaseTableOwnerColumn,
-			sqlReleaseDefaultOwner,
+			sqlReleaseTableNamespaceColumn,
 		)
 
 		mock.
-			ExpectQuery(query).
+			ExpectQuery(regexp.QuoteMeta(query)).
+			WithArgs(sqlReleaseDefaultOwner, sqlDriver.namespace).
 			WillReturnRows(
 				mock.NewRows([]string{
 					sqlReleaseTableBodyColumn,

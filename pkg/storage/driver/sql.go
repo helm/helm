@@ -180,7 +180,7 @@ type SQLReleaseWrapper struct {
 	ModifiedAt int    `db:"modifiedAt"`
 }
 
-// NewSQL initializes a new memory driver.
+// NewSQL initializes a new sql driver.
 func NewSQL(dialect, connectionString string, logger func(string, ...interface{}), namespace string) (*SQL, error) {
 	if _, ok := supportedSQLDialects[dialect]; !ok {
 		return nil, fmt.Errorf("%s dialect isn't supported, only \"postgres\" is available for now", dialect)
@@ -235,20 +235,22 @@ func (s *SQL) Get(key string) (*rspb.Release, error) {
 // List returns the list of all releases such that filter(release) == true
 func (s *SQL) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
 	query := fmt.Sprintf(
-		"SELECT %s FROM %s WHERE %s = '%s'",
+		"SELECT %s FROM %s WHERE %s = $1",
 		sqlReleaseTableBodyColumn,
 		sqlReleaseTableName,
 		sqlReleaseTableOwnerColumn,
-		sqlReleaseDefaultOwner,
 	)
+
+	args := []interface{}{sqlReleaseDefaultOwner}
 
 	// If a namespace was specified, we only list releases from that namespace
 	if s.namespace != "" {
-		query = fmt.Sprintf("%s AND %s = '%s'", query, sqlReleaseTableNamespaceColumn, s.namespace)
+		query = fmt.Sprintf("%s AND %s = $2", query, sqlReleaseTableNamespaceColumn)
+		args = append(args, s.namespace)
 	}
 
 	var records = []SQLReleaseWrapper{}
-	if err := s.db.Select(&records, query); err != nil {
+	if err := s.db.Select(&records, query, args...); err != nil {
 		s.Log("list: failed to list: %v", err)
 		return nil, err
 	}
