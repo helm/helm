@@ -48,7 +48,7 @@ func (s *Status) Run(name string) (*release.Release, error) {
 		return nil, err
 	}
 	resources, _ := s.cfg.KubeClient.Build(bytes.NewBufferString(rel.Manifest), true)
-	resp, err := s.cfg.KubeClient.Get(resources)
+	resp, err := s.cfg.KubeClient.Get(resources, bytes.NewBufferString(rel.Manifest))
 	if err != nil {
 		return nil, err
 	}

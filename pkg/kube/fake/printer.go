@@ -47,7 +47,7 @@ func (p *PrintingKubeClient) Create(resources kube.ResourceList) (*kube.Result, 
 	return &kube.Result{Created: resources}, nil
 }
 
-func (p *PrintingKubeClient) Get(resources kube.ResourceList) (string, error) {
+func (p *PrintingKubeClient) Get(resources kube.ResourceList, reader io.Reader) (string, error) {
 	_, err := io.Copy(p.Out, bufferize(resources))
 	if err != nil {
 		return "", err
