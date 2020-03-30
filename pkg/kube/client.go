@@ -361,6 +361,11 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 	err = perform(infos, func(info *resource.Info) error {
 		mux.Lock()
 		defer mux.Unlock()
+		if err := info.Get(); err != nil {
+			c.Log("WARNING: Failed Get for resource %q: %s", info.Name, err)
+			missing = append(missing, fmt.Sprintf("%v\t\t%s", info.Mapping.Resource, info.Name))
+			return nil
+		}
 
 		//Get the relation pods
 		objs, err = c.getSelectRelationPod(info, objs)
