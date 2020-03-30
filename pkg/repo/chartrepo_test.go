@@ -308,7 +308,7 @@ func TestErrorFindChartInRepoURL(t *testing.T) {
 
 	if _, err := FindChartInRepoURL("http://someserver/something", "nginx", "", "", "", "", g); err == nil {
 		t.Errorf("Expected error for bad chart URL, but did not get any errors")
-	} else if !strings.Contains(err.Error(), `looks like "http://someserver/something" is not a valid chart repository or cannot be reached: Get http://someserver/something/index.yaml`) {
+	} else if !strings.Contains(err.Error(), `looks like "http://someserver/something" is not a valid chart repository or cannot be reached`) {
 		t.Errorf("Expected error for bad chart URL, but got a different error (%v)", err)
 	}
 

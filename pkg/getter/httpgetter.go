@@ -18,7 +18,6 @@ package getter
 import (
 	"bytes"
 	"crypto/tls"
-	"fmt"
 	"io"
 	"net/http"
 
@@ -68,10 +67,7 @@ func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		// In Go 1.14, the error returned from client.Do changed.
-		// This is for backward compatibility, so that tests will pass
-		// for Go 1.13 and before as well as 1.14 and beyond.
-		return buf, fmt.Errorf("Get %s: %s", href, err)
+		return buf, err
 	}
 	if resp.StatusCode != 200 {
 		return buf, errors.Errorf("failed to fetch %s : %s", href, resp.Status)
