@@ -15,6 +15,35 @@ spec:
     singular: authconfig
 
 ---
+# Source: subchart1/templates/subdir/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: subchart1-sa
+---
+# Source: subchart1/templates/subdir/role.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: subchart1-role
+rules:
+- resources: ["*"]
+  verbs: ["get","list","watch"]
+---
+# Source: subchart1/templates/subdir/rolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: subchart1-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: subchart1-role
+subjects:
+- kind: ServiceAccount
+  name: subchart1-sa
+  namespace: default
+---
 # Source: subchart1/charts/subcharta/templates/service.yaml
 apiVersion: v1
 kind: Service
