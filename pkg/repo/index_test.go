@@ -170,8 +170,17 @@ func TestMerge(t *testing.T) {
 }
 
 func TestDownloadIndexFile(t *testing.T) {
-	t.Run("should  download index file", func(t *testing.T) {
-		srv, err := startLocalServerForTests(nil)
+	t.Run("should download index.yaml file and create index.yaml and index.json", func(t *testing.T) {
+		fileBytes, err := ioutil.ReadFile("testdata/local-index.yaml")
+		if err != nil {
+			t.Fatal(err)
+		}
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/index.yaml" {
+				w.Write(fileBytes)
+			}
+		})
+		srv, err := startLocalServerForTests(handler)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -185,37 +194,126 @@ func TestDownloadIndexFile(t *testing.T) {
 			t.Errorf("Problem creating chart repository from %s: %v", testRepo, err)
 		}
 
-		idx, err := r.DownloadIndexFile()
+		yamlIndexFilePath, err := r.DownloadIndexFile()
 		if err != nil {
-			t.Fatalf("Failed to download index file to %s: %#v", idx, err)
+			t.Fatalf("Failed to download index file: %#v", err)
 		}
 
-		if _, err := os.Stat(idx); err != nil {
+		if _, err := os.Stat(yamlIndexFilePath); err != nil {
 			t.Fatalf("error finding created index file: %#v", err)
 		}
 
-		b, err := ioutil.ReadFile(idx)
+		yamlIndexBytes, err := ioutil.ReadFile(yamlIndexFilePath)
 		if err != nil {
-			t.Fatalf("error reading index file: %#v", err)
+			t.Fatalf("error reading yaml index file: %#v", err)
 		}
 
-		i, err := loadIndex(b)
+		yamlIndex, err := loadIndex(yamlIndexBytes)
 		if err != nil {
-			t.Fatalf("Index %q failed to parse: %s", testfile, err)
+			t.Fatalf("Yaml index %q failed to parse: %s", testfile, err)
 		}
-		verifyLocalIndex(t, i)
+		verifyLocalIndex(t, yamlIndex)
+
+		jsonIndexFilePath := filepath.Join(helmpath.CachePath("repository"), helmpath.CacheIndexJSONFile(testRepo))
+		if _, err := os.Stat(jsonIndexFilePath); err != nil {
+			t.Fatalf("error finding created json index file: %#v", err)
+		}
+
+		jsonBytes, err := ioutil.ReadFile(jsonIndexFilePath)
+		if err != nil {
+			t.Fatalf("error reading json index file: %#v", err)
+		}
+
+		jsonIndex, err := loadIndexJSON(jsonBytes)
+		if err != nil {
+			t.Fatalf("Json index %q failed to parse: %s", testjsonfile, err)
+		}
+		verifyLocalIndex(t, jsonIndex)
 
 		// Check that charts file is also created
-		idx = filepath.Join(r.CachePath, helmpath.CacheChartsFile(r.Config.Name))
-		if _, err := os.Stat(idx); err != nil {
+		chartsFile := filepath.Join(r.CachePath, helmpath.CacheChartsFile(r.Config.Name))
+		if _, err := os.Stat(chartsFile); err != nil {
 			t.Fatalf("error finding created charts file: %#v", err)
 		}
 
-		b, err = ioutil.ReadFile(idx)
+		chartsFileBytes, err := ioutil.ReadFile(chartsFile)
 		if err != nil {
 			t.Fatalf("error reading charts file: %#v", err)
 		}
-		verifyLocalChartsFile(t, b, i)
+		verifyLocalChartsFile(t, chartsFileBytes, yamlIndex)
+	})
+
+	t.Run("should download index.json file and create index.json and index.yaml", func(t *testing.T) {
+		fileBytes, err := ioutil.ReadFile("testdata/local-index.json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/index.json" {
+				w.Write(fileBytes)
+			}
+		})
+		srv, err := startLocalServerForTests(handler)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer srv.Close()
+
+		r, err := NewChartRepository(&Entry{
+			Name: testRepo,
+			URL:  srv.URL,
+		}, getter.All(&cli.EnvSettings{}))
+		if err != nil {
+			t.Errorf("Problem creating chart repository from %s: %v", testRepo, err)
+		}
+
+		yamlIndexFilePath, err := r.DownloadIndexFile()
+		if err != nil {
+			t.Fatalf("Failed to download index file: %#v", err)
+		}
+
+		jsonIndexFilePath := filepath.Join(helmpath.CachePath("repository"), helmpath.CacheIndexJSONFile(testRepo))
+		if _, err := os.Stat(jsonIndexFilePath); err != nil {
+			t.Fatalf("error finding created json index file: %#v", err)
+		}
+
+		jsonBytes, err := ioutil.ReadFile(jsonIndexFilePath)
+		if err != nil {
+			t.Fatalf("error reading json index file: %#v", err)
+		}
+
+		jsonIndex, err := loadIndexJSON(jsonBytes)
+		if err != nil {
+			t.Fatalf("Json index %q failed to parse: %s", testjsonfile, err)
+		}
+		verifyLocalIndex(t, jsonIndex)
+
+		if _, err := os.Stat(yamlIndexFilePath); err != nil {
+			t.Fatalf("error finding created yaml index file: %#v", err)
+		}
+
+		yamlIndexBytes, err := ioutil.ReadFile(yamlIndexFilePath)
+		if err != nil {
+			t.Fatalf("error reading yaml index file: %#v", err)
+		}
+
+		yamlIndex, err := loadIndex(yamlIndexBytes)
+		if err != nil {
+			t.Fatalf("Yaml index %q failed to parse: %s", testfile, err)
+		}
+		verifyLocalIndex(t, yamlIndex)
+
+		// Check that charts file is also created
+		chartsFile := filepath.Join(r.CachePath, helmpath.CacheChartsFile(r.Config.Name))
+		if _, err := os.Stat(chartsFile); err != nil {
+			t.Fatalf("error finding created charts file: %#v", err)
+		}
+
+		chartsFileBytes, err := ioutil.ReadFile(chartsFile)
+		if err != nil {
+			t.Fatalf("error reading charts file: %#v", err)
+		}
+		verifyLocalChartsFile(t, chartsFileBytes, yamlIndex)
 	})
 
 	t.Run("should not decode the path in the repo url while downloading index", func(t *testing.T) {

@@ -112,7 +112,10 @@ func TestServer(t *testing.T) {
 	}
 
 	// Let's enable the toggle to serve index.json
-	srv.ServeJSONIndex(true)
+	err = srv.ServeJSONIndex(true)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Now we should be able to fetch the index.json
 	// with appropriate content
@@ -146,7 +149,10 @@ func TestServer(t *testing.T) {
 	}
 
 	// Let's disable the toggle to serve index.json
-	srv.ServeJSONIndex(false)
+	err = srv.ServeJSONIndex(false)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Now the below should give 404
 	res, err = http.Get(srv.URL() + "/index.json")
@@ -156,6 +162,64 @@ func TestServer(t *testing.T) {
 	}
 	if res.StatusCode != 404 {
 		t.Fatalf("Expected 404, got %d", res.StatusCode)
+	}
+}
+
+func TestServer_ServeYamlIndex(t *testing.T) {
+	defer ensure.HelmHome(t)()
+
+	rootDir := ensure.TempDir(t)
+
+	srv := NewServer(rootDir)
+	defer srv.Stop()
+
+	_, err := srv.CopyCharts("testdata/*.tgz")
+	if err != nil {
+		// Some versions of Go don't correctly fire defer on Fatal.
+		t.Fatal(err)
+	}
+
+	// By default index.yaml should be served
+	res, err := http.Get(srv.URL() + "/index.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.StatusCode != 200 {
+		t.Fatalf("Expected 200, got %d", res.StatusCode)
+	}
+
+	// By default index.yaml should be served, yes,
+	// unless a toggle is disabled.
+	// Let's disable the toggle to serve index.json
+	err = srv.ServeYamlIndex(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// So the below should give 404
+	res, err = http.Get(srv.URL() + "/index.yaml")
+	res.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.StatusCode != 404 {
+		t.Fatalf("Expected 404, got %d", res.StatusCode)
+	}
+
+	// Let's enable the toggle to serve index.yaml
+	err = srv.ServeYamlIndex(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Now the below should give 200
+	res, err = http.Get(srv.URL() + "/index.yaml")
+	res.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.StatusCode != 200 {
+		t.Fatalf("Expected 200, got %d", res.StatusCode)
 	}
 }
 

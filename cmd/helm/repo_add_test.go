@@ -104,6 +104,67 @@ func TestRepoAdd(t *testing.T) {
 	}
 }
 
+func TestRepoAdd_IndexJSON(t *testing.T) {
+	ts, err := repotest.NewTempServer("testdata/testserver/*.*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = ts.ServeJSONIndex(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = ts.ServeYamlIndex(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ts.Stop()
+
+	rootDir := ensure.TempDir(t)
+	repoFile := filepath.Join(rootDir, "repositories.yaml")
+
+	const testRepoName = "test-name"
+
+	o := &repoAddOptions{
+		name:     testRepoName,
+		url:      ts.URL(),
+		noUpdate: true,
+		repoFile: repoFile,
+	}
+	os.Setenv(xdg.CacheHomeEnvVar, rootDir)
+
+	if err := o.run(ioutil.Discard); err != nil {
+		t.Error(err)
+	}
+
+	f, err := repo.LoadFile(repoFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !f.Has(testRepoName) {
+		t.Errorf("%s was not successfully inserted into %s", testRepoName, repoFile)
+	}
+
+	idx := filepath.Join(helmpath.CachePath("repository"), helmpath.CacheIndexJSONFile(testRepoName))
+	if _, err := os.Stat(idx); os.IsNotExist(err) {
+		t.Errorf("Error cache json index file was not created for repository %s", testRepoName)
+	}
+	idx = filepath.Join(helmpath.CachePath("repository"), helmpath.CacheChartsFile(testRepoName))
+	if _, err := os.Stat(idx); os.IsNotExist(err) {
+		t.Errorf("Error cache charts file was not created for repository %s", testRepoName)
+	}
+
+	o.noUpdate = false
+
+	if err := o.run(ioutil.Discard); err != nil {
+		t.Errorf("Repository was not updated: %s", err)
+	}
+
+	if err := o.run(ioutil.Discard); err != nil {
+		t.Errorf("Duplicate repository name was added")
+	}
+}
+
 func TestRepoAddConcurrentGoRoutines(t *testing.T) {
 	const testName = "test-name"
 	repoFile := filepath.Join(ensure.TempDir(t), "repositories.yaml")

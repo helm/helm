@@ -113,31 +113,7 @@ func (r *ChartRepository) Load() error {
 
 // DownloadIndexFile fetches the index from a repository.
 func (r *ChartRepository) DownloadIndexFile() (string, error) {
-	parsedURL, err := url.Parse(r.Config.URL)
-	if err != nil {
-		return "", err
-	}
-	parsedURL.RawPath = path.Join(parsedURL.RawPath, "index.yaml")
-	parsedURL.Path = path.Join(parsedURL.Path, "index.yaml")
-
-	indexURL := parsedURL.String()
-	// TODO add user-agent
-	resp, err := r.Client.Get(indexURL,
-		getter.WithURL(r.Config.URL),
-		getter.WithInsecureSkipVerifyTLS(r.Config.InsecureSkipTLSverify),
-		getter.WithTLSClientConfig(r.Config.CertFile, r.Config.KeyFile, r.Config.CAFile),
-		getter.WithBasicAuth(r.Config.Username, r.Config.Password),
-	)
-	if err != nil {
-		return "", err
-	}
-
-	index, err := ioutil.ReadAll(resp)
-	if err != nil {
-		return "", err
-	}
-
-	indexFile, err := loadIndex(index)
+	indexFile, err := r.downloadJSONOrYamlIndex()
 	if err != nil {
 		return "", err
 	}
@@ -151,10 +127,70 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 	os.MkdirAll(filepath.Dir(chartsFile), 0755)
 	ioutil.WriteFile(chartsFile, []byte(charts.String()), 0644)
 
-	// Create the index file in the cache directory
+	// Create the yaml index file in the cache directory
 	fname := filepath.Join(r.CachePath, helmpath.CacheIndexFile(r.Config.Name))
 	os.MkdirAll(filepath.Dir(fname), 0755)
-	return fname, ioutil.WriteFile(fname, index, 0644)
+
+	// Create the json index file in the cache directory
+	jsonIndexFilePapth := filepath.Join(r.CachePath, helmpath.CacheIndexJSONFile(r.Config.Name))
+	os.MkdirAll(filepath.Dir(jsonIndexFilePapth), 0755)
+
+	_ = indexFile.WriteJSONFile(jsonIndexFilePapth, 0644)
+
+	return fname, indexFile.WriteFile(fname, 0644)
+}
+
+func (r *ChartRepository) downloadJSONOrYamlIndex() (*IndexFile, error) {
+	jsonIndexBytes, err := r.downloadIndexFile("index.json")
+	if err == nil {
+		// if json index has been downloaded without errors,
+		// all good, use it!
+		indexFile, err := loadIndexJSON(jsonIndexBytes)
+		if err == nil {
+			return indexFile, nil
+		}
+	}
+
+	// if json index download or parse has issues,
+	// swallow errors and fallback to using yaml index
+	yamlIndexBytes, err := r.downloadIndexFile("index.yaml")
+	if err != nil {
+		return nil, err
+	}
+
+	indexFile, err := loadIndex(yamlIndexBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return indexFile, nil
+}
+
+func (r *ChartRepository) downloadIndexFile(indexFileName string) ([]byte, error) {
+	parsedURL, err := url.Parse(r.Config.URL)
+	if err != nil {
+		return nil, err
+	}
+	parsedURL.RawPath = path.Join(parsedURL.RawPath, indexFileName)
+	parsedURL.Path = path.Join(parsedURL.Path, indexFileName)
+
+	indexURL := parsedURL.String()
+	// TODO add user-agent
+	resp, err := r.Client.Get(indexURL,
+		getter.WithURL(r.Config.URL),
+		getter.WithInsecureSkipVerifyTLS(r.Config.InsecureSkipTLSverify),
+		getter.WithTLSClientConfig(r.Config.CertFile, r.Config.KeyFile, r.Config.CAFile),
+		getter.WithBasicAuth(r.Config.Username, r.Config.Password),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	indexBytes, err := ioutil.ReadAll(resp)
+	if err != nil {
+		return nil, err
+	}
+	return indexBytes, nil
 }
 
 // Index generates an index for the chart repository and writes an index.yaml file.

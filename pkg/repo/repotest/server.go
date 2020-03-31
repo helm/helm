@@ -77,10 +77,11 @@ func NewServer(docroot string) *Server {
 
 // Server is an implementation of a repository server for testing.
 type Server struct {
-	docroot          string
-	srv              *httptest.Server
-	middleware       http.HandlerFunc
-	jsonIndexEnabled bool
+	docroot           string
+	srv               *httptest.Server
+	middleware        http.HandlerFunc
+	jsonIndexEnabled  bool
+	yamlIndexDisabled bool
 }
 
 // WithMiddleware injects middleware in front of the server. This can be used to inject
@@ -96,9 +97,16 @@ func (s *Server) Root() string {
 
 // ServeJSONIndex allows you to enable or disable serving
 // index.json repository index file
-func (s *Server) ServeJSONIndex(enabled bool) {
+func (s *Server) ServeJSONIndex(enabled bool) error {
 	s.jsonIndexEnabled = enabled
-	s.CreateIndex()
+	return s.CreateIndex()
+}
+
+// ServeYamlIndex allows you to enable or disable serving
+// index.yaml repository index file
+func (s *Server) ServeYamlIndex(enabled bool) error {
+	s.yamlIndexDisabled = !enabled
+	return s.CreateIndex()
 }
 
 // CopyCharts takes a glob expression and copies those charts to the server root.
@@ -127,6 +135,21 @@ func (s *Server) CopyCharts(origin string) ([]string, error) {
 
 // CreateIndex will read docroot and generate an index.yaml file.
 func (s *Server) CreateIndex() error {
+	yamlIndexFile := filepath.Join(s.docroot, "index.yaml")
+	jsonIndexFile := filepath.Join(s.docroot, "index.json")
+	// cleanup existing files
+	err := os.RemoveAll(yamlIndexFile)
+	if err != nil {
+		return err
+	}
+	err = os.RemoveAll(jsonIndexFile)
+	if err != nil {
+		return err
+	}
+
+	if !s.jsonIndexEnabled && s.yamlIndexDisabled {
+		return nil
+	}
 
 	// generate the index
 	index, err := repo.IndexDirectory(s.docroot, s.URL())
@@ -134,18 +157,11 @@ func (s *Server) CreateIndex() error {
 		return err
 	}
 
-	yamlIndexFile := filepath.Join(s.docroot, "index.yaml")
-
-	err = index.WriteFile(yamlIndexFile, 0644)
-	if err != nil {
-		return err
-	}
-
-	jsonIndexFile := filepath.Join(s.docroot, "index.json")
-	// cleanup existing files
-	err = os.RemoveAll(jsonIndexFile)
-	if err != nil {
-		return err
+	if !s.yamlIndexDisabled {
+		err = index.WriteFile(yamlIndexFile, 0644)
+		if err != nil {
+			return err
+		}
 	}
 
 	if s.jsonIndexEnabled {

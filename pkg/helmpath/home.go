@@ -34,6 +34,14 @@ func CacheIndexFile(name string) string {
 	return name + "index.yaml"
 }
 
+// CacheIndexJSONFile returns the path to an json index for the given named repository.
+func CacheIndexJSONFile(name string) string {
+	if name != "" {
+		name += "-"
+	}
+	return name + "index.json"
+}
+
 // CacheChartsFile returns the path to a text file listing all the charts
 // within the given named repository.
 func CacheChartsFile(name string) string {
