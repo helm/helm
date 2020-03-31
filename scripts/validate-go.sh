@@ -36,6 +36,7 @@ gometalinter.v1 \
   --tests \
   --vendor \
   --deadline 60s \
+  --skip proto \
   ./... || exit_code=1
 
 echo
