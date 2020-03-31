@@ -18,6 +18,7 @@ package registry // import "helm.sh/helm/v3/internal/experimental/registry"
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -30,6 +31,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 
+	"helm.sh/helm/v3/internal/tlsutil"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/helmpath"
 )
@@ -42,11 +44,15 @@ const (
 type (
 	// Client works with OCI-compliant registries and local Helm chart cache
 	Client struct {
-		debug      bool
-		out        io.Writer
-		authorizer *Authorizer
-		resolver   *Resolver
-		cache      *Cache
+		debug                 bool
+		certFile              string
+		keyFile               string
+		caFile                string
+		insecureSkipTLSverify bool
+		out                   io.Writer
+		authorizer            *Authorizer
+		resolver              *Resolver
+		cache                 *Cache
 	}
 )
 
@@ -69,8 +75,32 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 			Client: authClient,
 		}
 	}
+
+	httpClient := http.DefaultClient
+
+	if (client.certFile != "" && client.keyFile != "") || client.caFile != "" {
+		tlsConf, err := tlsutil.NewClientTLS(client.certFile, client.keyFile, client.caFile)
+		if err != nil {
+			return nil, errors.Wrap(err, "can't create TLS config for client")
+		}
+		tlsConf.BuildNameToCertificate()
+
+		httpClient = &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: tlsConf,
+				Proxy:           http.ProxyFromEnvironment,
+			},
+		}
+	} else if client.insecureSkipTLSverify {
+		httpClient.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+			Proxy: http.ProxyFromEnvironment,
+		}
+	}
 	if client.resolver == nil {
-		resolver, err := client.authorizer.Resolver(context.Background(), http.DefaultClient, false)
+		resolver, err := client.authorizer.Resolver(context.Background(), httpClient, false)
 		if err != nil {
 			return nil, err
 		}

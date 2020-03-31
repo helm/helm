@@ -20,6 +20,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/action"
 )
 
@@ -30,6 +31,11 @@ The subcommands can be used to push, pull, tag, list, or remove Helm charts.
 `
 
 func newChartCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+	var certFile string
+	var keyFile string
+	var caFile string
+	var insecureSkipTLSverify bool
+
 	cmd := &cobra.Command{
 		Use:               "chart",
 		Short:             "push, pull, tag, or remove Helm charts",
@@ -37,13 +43,39 @@ func newChartCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Hidden:            !FeatureGateOCI.IsEnabled(),
 		PersistentPreRunE: checkOCIFeatureGate(),
 	}
-	cmd.AddCommand(
-		newChartListCmd(cfg, out),
-		newChartExportCmd(cfg, out),
+
+	Cmds := []*cobra.Command{
 		newChartPullCmd(cfg, out),
 		newChartPushCmd(cfg, out),
 		newChartRemoveCmd(cfg, out),
+	}
+
+	for _, subCmd := range Cmds {
+		f := subCmd.Flags()
+		f.StringVar(&certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
+		f.StringVar(&keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
+		f.StringVar(&caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+		f.BoolVar(&insecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the repository")
+		subCmd.PreRunE = func(cmd *cobra.Command, args []string) error {
+			registryClient, err := registry.NewClient(
+				registry.ClientOptDebug(settings.Debug),
+				registry.ClientOptWriter(out),
+				registry.ClientOptInsecureClient(insecureSkipTLSverify),
+				registry.ClientOptTLSConfig(certFile, keyFile, caFile),
+			)
+			if err != nil {
+				return err
+			}
+			cfg.RegistryClient = registryClient
+			return nil
+		}
+	}
+	// These commands does not need to have an initialized RegistryClient
+	cmd.AddCommand(
+		newChartListCmd(cfg, out),
+		newChartExportCmd(cfg, out),
 		newChartSaveCmd(cfg, out),
 	)
+	cmd.AddCommand(Cmds...)
 	return cmd
 }

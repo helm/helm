@@ -60,3 +60,19 @@ func ClientOptCache(cache *Cache) ClientOption {
 		client.cache = cache
 	}
 }
+
+// ClientOptInsecure returns a function that sets the insecure tls verify setting on a client options set
+func ClientOptInsecureClient(insecureSkipTLSverify bool) ClientOption {
+	return func(client *Client) {
+		client.insecureSkipTLSverify = insecureSkipTLSverify
+	}
+}
+
+// ClientOptTLSConfig returns a function that sets the tls settings on a client options set
+func ClientOptTLSConfig(certFile, keyFile, caFile string) ClientOption {
+	return func(client *Client) {
+		client.certFile = certFile
+		client.keyFile = keyFile
+		client.caFile = caFile
+	}
+}
