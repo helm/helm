@@ -1,0 +1,15 @@
+{{- if and .Values.replication.enabled .Values.slave.config }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "slave.fullname" . }}
+  labels:
+    app: {{ template "mariadb.name" . }}
+    component: "slave"
+    chart: {{ template "mariadb.chart" . }}
+    release: {{ .Release.Name | quote }}
+    heritage: {{ .Release.Service | quote }}
+data:
+  my.cnf: |-
+{{ .Values.slave.config | indent 4 }}
+{{- end }}

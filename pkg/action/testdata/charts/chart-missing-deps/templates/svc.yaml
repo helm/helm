@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "fullname" . }}
+  labels:
+    app: {{ template "fullname" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+spec:
+  type: {{ .Values.serviceType }}
+  {{- if (or (eq .Values.serviceType "LoadBalancer") (eq .Values.serviceType "NodePort")) }}
+  externalTrafficPolicy: {{ .Values.serviceExternalTrafficPolicy | quote }}
+  {{- end }}
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      {{- if (and (eq .Values.serviceType "NodePort") (not (empty .Values.nodePorts.http)))}}
+      nodePort: {{ .Values.nodePorts.http }}
+      {{- end }}
+    - name: https
+      port: 443
+      targetPort: https
+      {{- if (and (eq .Values.serviceType "NodePort") (not (empty .Values.nodePorts.https)))}}
+      nodePort: {{ .Values.nodePorts.https }}
+      {{- end }}
+  selector:
+    app: {{ template "fullname" . }}

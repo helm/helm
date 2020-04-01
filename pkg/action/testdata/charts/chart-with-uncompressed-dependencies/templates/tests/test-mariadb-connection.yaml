@@ -1,0 +1,29 @@
+{{- if .Values.mariadb.enabled }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Release.Name }}-credentials-test"
+  annotations:
+    "helm.sh/hook": test-success
+spec:
+  containers:
+  - name: {{ .Release.Name }}-credentials-test
+    image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+    imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+    env:
+      - name: MARIADB_HOST
+        value: {{ template "mariadb.fullname" . }}
+      - name: MARIADB_PORT
+        value: "3306"
+      - name: WORDPRESS_DATABASE_NAME
+        value: {{ default "" .Values.mariadb.db.name | quote }}
+      - name: WORDPRESS_DATABASE_USER
+        value: {{ default "" .Values.mariadb.db.user | quote }}
+      - name: WORDPRESS_DATABASE_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: {{ template "mariadb.fullname" . }}
+            key: mariadb-password
+    command: ["sh", "-c", "mysql --host=$MARIADB_HOST --port=$MARIADB_PORT --user=$WORDPRESS_DATABASE_USER --password=$WORDPRESS_DATABASE_PASSWORD"]
+  restartPolicy: Never
+{{- end }}

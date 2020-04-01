@@ -1,0 +1,15 @@
+{{- if .Values.master.config }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "master.fullname" . }}
+  labels:
+    app: {{ template "mariadb.name" . }}
+    component: "master"
+    chart: {{ template "mariadb.chart" . }}
+    release: {{ .Release.Name | quote }}
+    heritage: {{ .Release.Service | quote }}
+data:
+  my.cnf: |-
+{{ .Values.master.config | indent 4 }}
+{{- end -}}
