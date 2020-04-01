@@ -104,10 +104,20 @@ func mergeMaps(a, b map[string]interface{}) map[string]interface{} {
 	return out
 }
 
+var stdin []byte = nil
+
 // readFile load a file from stdin, the local directory, or a remote file with a url.
 func readFile(filePath string, p getter.Providers) ([]byte, error) {
 	if strings.TrimSpace(filePath) == "-" {
-		return ioutil.ReadAll(os.Stdin)
+		var err error = nil
+		// Read stdin only if stdin is empty
+		// Avoid a bug where we read multiple times stdin when using
+		// upgrade with --install option
+		// Fix: https://github.com/helm/helm/issues/7002
+		if stdin == nil {
+			stdin, err = ioutil.ReadAll(os.Stdin)
+		}
+		return stdin, err
 	}
 	u, _ := url.Parse(filePath)
 
