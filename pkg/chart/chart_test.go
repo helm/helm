@@ -96,3 +96,24 @@ func TestMetadata(t *testing.T) {
 	is.Equal("1.0.0", chrt.AppVersion())
 	is.Equal(nil, chrt.Validate())
 }
+
+func TestIsRoot(t *testing.T) {
+	chrt1 := Chart{
+		parent: &Chart{
+			Metadata: &Metadata{
+				Name: "foo",
+			},
+		},
+	}
+
+	chrt2 := Chart{
+		Metadata: &Metadata{
+			Name: "foo",
+		},
+	}
+
+	is := assert.New(t)
+
+	is.Equal(false, chrt1.IsRoot())
+	is.Equal(true, chrt2.IsRoot())
+}
