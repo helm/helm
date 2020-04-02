@@ -95,13 +95,6 @@ func TestTemplateCmd(t *testing.T) {
 			golden: "output/template-show-only-multiple.txt",
 		},
 		{
-			name:   "template with show-only directory",
-			cmd:    fmt.Sprintf("template '%s' --show-only templates/subdir/", chartPath),
-			golden: "output/template-show-only-directory.txt",
-			// Repeat to ensure manifest ordering regressions are caught
-			repeat: 10,
-		},
-		{
 			name:   "template with show-only glob",
 			cmd:    fmt.Sprintf("template '%s' --show-only templates/subdir/role*", chartPath),
 			golden: "output/template-show-only-glob.txt",
