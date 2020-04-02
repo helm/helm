@@ -138,3 +138,24 @@ func TestChartPath(t *testing.T) {
 	is.Equal("foo.", chrt1.ChartPath())
 	is.Equal("foo", chrt2.ChartPath())
 }
+
+func TestChartFullPath(t *testing.T) {
+	chrt1 := Chart{
+		parent: &Chart{
+			Metadata: &Metadata{
+				Name: "foo",
+			},
+		},
+	}
+
+	chrt2 := Chart{
+		Metadata: &Metadata{
+			Name: "foo",
+		},
+	}
+
+	is := assert.New(t)
+
+	is.Equal("foo/charts/", chrt1.ChartFullPath())
+	is.Equal("foo", chrt2.ChartFullPath())
+}
