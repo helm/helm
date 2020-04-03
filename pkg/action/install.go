@@ -64,8 +64,6 @@ const releaseNameMaxLen = 53
 // since there can be filepath in front of it.
 const notesFileSuffix = "NOTES.txt"
 
-const defaultDirectoryPermission = 0755
-
 // Install performs an installation operation.
 type Install struct {
 	cfg *Configuration
@@ -232,7 +230,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	rel := i.createRelease(chrt, vals)
 
 	var manifestDoc *bytes.Buffer
-	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer)
+	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.SubNotes, i.IncludeCRDs, i.PostRenderer)
 	// Even for errors, attach this if available
 	if manifestDoc != nil {
 		rel.Manifest = manifestDoc.String()
@@ -476,7 +474,7 @@ func (i *Install) replaceRelease(rel *release.Release) error {
 }
 
 // renderResources renders the templates in a chart
-func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer) ([]*release.Hook, *bytes.Buffer, string, error) {
+func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, subNotes, includeCrds bool, pr postrender.PostRenderer) ([]*release.Hook, *bytes.Buffer, string, error) {
 	hs := []*release.Hook{}
 	b := bytes.NewBuffer(nil)
 
@@ -547,41 +545,14 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 		return hs, b, "", err
 	}
 
-	// Aggregate all valid manifests into one big doc.
-	fileWritten := make(map[string]bool)
-
 	if includeCrds {
 		for _, crd := range ch.CRDObjects() {
-			if outputDir == "" {
-				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Name, string(crd.File.Data[:]))
-			} else {
-				err = writeToFile(outputDir, crd.Filename, string(crd.File.Data[:]), fileWritten[crd.Name])
-				if err != nil {
-					return hs, b, "", err
-				}
-				fileWritten[crd.Name] = true
-			}
+			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Name, string(crd.File.Data[:]))
 		}
 	}
 
 	for _, m := range manifests {
-		if outputDir == "" {
-			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", m.Name, m.Content)
-		} else {
-			newDir := outputDir
-			if useReleaseName {
-				newDir = filepath.Join(outputDir, releaseName)
-			}
-			// NOTE: We do not have to worry about the post-renderer because
-			// output dir is only used by `helm template`. In the next major
-			// release, we should move this logic to template only as it is not
-			// used by install or upgrade
-			err = writeToFile(newDir, m.Name, m.Content, fileWritten[m.Name])
-			if err != nil {
-				return hs, b, "", err
-			}
-			fileWritten[m.Name] = true
-		}
+		fmt.Fprintf(b, "---\n# Source: %s\n%s\n", m.Name, m.Content)
 	}
 
 	if pr != nil {
@@ -592,50 +563,6 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 	}
 
 	return hs, b, notes, nil
-}
-
-// write the <data> to <output-dir>/<name>. <append> controls if the file is created or content will be appended
-func writeToFile(outputDir string, name string, data string, append bool) error {
-	outfileName := strings.Join([]string{outputDir, name}, string(filepath.Separator))
-
-	err := ensureDirectoryForFile(outfileName)
-	if err != nil {
-		return err
-	}
-
-	f, err := createOrOpenFile(outfileName, append)
-	if err != nil {
-		return err
-	}
-
-	defer f.Close()
-
-	_, err = f.WriteString(fmt.Sprintf("---\n# Source: %s\n%s\n", name, data))
-
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("wrote %s\n", outfileName)
-	return nil
-}
-
-func createOrOpenFile(filename string, append bool) (*os.File, error) {
-	if append {
-		return os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0600)
-	}
-	return os.Create(filename)
-}
-
-// check if the directory exists to create file. creates if don't exists
-func ensureDirectoryForFile(file string) error {
-	baseDir := path.Dir(file)
-	_, err := os.Stat(baseDir)
-	if err != nil && !os.IsNotExist(err) {
-		return err
-	}
-
-	return os.MkdirAll(baseDir, defaultDirectoryPermission)
 }
 
 // NameAndChart returns the name and chart that should be used.

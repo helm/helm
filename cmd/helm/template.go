@@ -20,6 +20,8 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -34,6 +36,8 @@ import (
 	"helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/releaseutil"
 )
+
+const defaultDirectoryPermission = 0755
 
 const templateDesc = `
 Render chart templates locally and display the output.
@@ -77,10 +81,50 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if rel != nil {
 				var manifests bytes.Buffer
 				fmt.Fprintln(&manifests, strings.TrimSpace(rel.Manifest))
-
-				if !client.DisableHooks {
-					for _, m := range rel.Hooks {
-						fmt.Fprintf(&manifests, "---\n# Source: %s\n%s\n", m.Path, m.Manifest)
+				newDir := client.OutputDir
+				if newDir != "" {
+					// Aggregate all valid manifests into one big doc.
+					fileWritten := make(map[string]bool)
+					if client.UseReleaseName {
+						newDir = filepath.Join(client.OutputDir, client.ReleaseName)
+					}
+					if client.IncludeCRDs {
+						for _, crd := range rel.Chart.CRDObjects() {
+							err = writeToFile(newDir, crd.Filename, string(crd.File.Data[:]), fileWritten[crd.Name])
+							if err != nil {
+								return err
+							}
+							fileWritten[crd.Name] = true
+						}
+					}
+					if rel.Manifest != "" {
+						splitManifests := releaseutil.SplitManifests(rel.Manifest)
+						for _, v := range splitManifests {
+							name, content, err := parseManifest(v)
+							if err != nil {
+								return err
+							}
+							err = writeToFile(newDir, name, content, fileWritten[name])
+							if err != nil {
+								return err
+							}
+							fileWritten[name] = true
+						}
+					}
+					if !client.DisableHooks {
+						for _, m := range rel.Hooks {
+							err := writeToFile(newDir, m.Path, m.Manifest, false)
+							if err != nil {
+								return err
+							}
+						}
+					}
+					manifests.Reset()
+				} else {
+					if !client.DisableHooks {
+						for _, m := range rel.Hooks {
+							fmt.Fprintf(&manifests, "---\n# Source: %s\n%s\n", m.Path, m.Manifest)
+						}
 					}
 				}
 
@@ -153,4 +197,59 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	bindPostRenderFlag(cmd, &client.PostRenderer)
 
 	return cmd
+}
+
+// write the <data> to <output-dir>/<name>. <append> controls if the file is created or content will be appended
+func writeToFile(outputDir string, name string, data string, append bool) error {
+	outfileName := strings.Join([]string{outputDir, name}, string(filepath.Separator))
+
+	err := ensureDirectoryForFile(outfileName)
+	if err != nil {
+		return err
+	}
+
+	f, err := createOrOpenFile(outfileName, append)
+	if err != nil {
+		return err
+	}
+
+	defer f.Close()
+
+	_, err = f.WriteString(fmt.Sprintf("---\n# Source: %s\n%s\n", name, data))
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("wrote %s\n", outfileName)
+	return nil
+}
+
+func createOrOpenFile(filename string, append bool) (*os.File, error) {
+	if append {
+		return os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0600)
+	}
+	return os.Create(filename)
+}
+
+// check if the directory exists to create file. creates if don't exists
+func ensureDirectoryForFile(file string) error {
+	baseDir := path.Dir(file)
+	_, err := os.Stat(baseDir)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	return os.MkdirAll(baseDir, defaultDirectoryPermission)
+}
+
+// parseManifest parse manifest string and return name and content
+func parseManifest(manifest string) (string, string, error) {
+	bs := bytes.NewBufferString(manifest)
+	fl, err := bs.ReadBytes('\n')
+	if err != nil {
+		return "", "", err
+	}
+	name := strings.TrimPrefix(string(fl[:len(fl)-1]), "# Source: ")
+	return name, bs.String(), nil
 }
