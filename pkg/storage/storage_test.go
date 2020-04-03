@@ -188,7 +188,7 @@ func TestStorageDeployed(t *testing.T) {
 
 	setup()
 
-	rls, err := storage.Last(name)
+	rls, err := storage.Deployed(name)
 	if err != nil {
 		t.Fatalf("Failed to query for deployed release: %s\n", err)
 	}
@@ -202,6 +202,17 @@ func TestStorageDeployed(t *testing.T) {
 		t.Fatalf("Expected release version %d, actual %d\n", vers, rls.Version)
 	case rls.Info.Status != rspb.StatusDeployed:
 		t.Fatalf("Expected release status 'DEPLOYED', actual %s\n", rls.Info.Status.String())
+	}
+}
+
+func TestStorageDeployedError(t *testing.T) {
+	storage := Init(driver.NewMemory())
+
+	const name = "angry-bird"
+
+	_, err := storage.Deployed(name)
+	if err != driver.ErrReleaseNotFound {
+		t.Fatalf("Expected ErrReleaseNotFound, got: %v", err)
 	}
 }
 

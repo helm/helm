@@ -23,7 +23,7 @@ import (
 	"helm.sh/helm/v3/pkg/release"
 )
 
-func TestRollbackCmd(t *testing.T) {
+func makeTestReleases() []*release.Release {
 	rels := []*release.Release{
 		{
 			Name:    "funny-honey",
@@ -38,32 +38,35 @@ func TestRollbackCmd(t *testing.T) {
 			Version: 2,
 		},
 	}
+	return rels
+}
 
+func TestRollbackCmd(t *testing.T) {
 	tests := []cmdTestCase{{
 		name:   "rollback a release",
 		cmd:    "rollback funny-honey 1",
 		golden: "output/rollback.txt",
-		rels:   rels,
+		rels:   makeTestReleases(),
 	}, {
 		name:   "rollback a release with timeout",
 		cmd:    "rollback funny-honey 1 --timeout 120s",
 		golden: "output/rollback-timeout.txt",
-		rels:   rels,
+		rels:   makeTestReleases(),
 	}, {
 		name:   "rollback a release with wait",
 		cmd:    "rollback funny-honey 1 --wait",
 		golden: "output/rollback-wait.txt",
-		rels:   rels,
+		rels:   makeTestReleases(),
 	}, {
 		name:   "rollback a release without revision",
 		cmd:    "rollback funny-honey",
 		golden: "output/rollback-no-revision.txt",
-		rels:   rels,
+		rels:   makeTestReleases(),
 	}, {
 		name:      "rollback a release without release name",
 		cmd:       "rollback",
 		golden:    "output/rollback-no-args.txt",
-		rels:      rels,
+		rels:      makeTestReleases(),
 		wantError: true,
 	}}
 	runTestCmd(t, tests)
