@@ -107,7 +107,7 @@ func filterRepos(repos []*repo.Entry, ignoredRepoNames []string) []*repo.Entry {
 
 	filteredRepos := make([]*repo.Entry, 0)
 
-	ignored := make(map[string]bool, 0)
+	ignored := make(map[string]bool, len(ignoredRepoNames))
 	for _, repo := range ignoredRepoNames {
 		ignored[repo] = true
 	}
