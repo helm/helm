@@ -44,7 +44,7 @@ func TestRepoRemove(t *testing.T) {
 	b := bytes.NewBuffer(nil)
 
 	rmOpts := repoRemoveOptions{
-		name:      testRepoName,
+		names:     []string{testRepoName},
 		repoFile:  repoFile,
 		repoCache: rootDir,
 	}
