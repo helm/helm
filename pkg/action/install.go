@@ -728,7 +728,7 @@ OUTER:
 // This does not ensure that the chart is well-formed; only that the requested filename exists.
 //
 // Order of resolution:
-// - relative to current working directory
+// - relative to current working directory when --repo flag is not presented
 // - if path is absolute or begins with '.', error out here
 // - URL
 //
@@ -737,20 +737,22 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 	name = strings.TrimSpace(name)
 	version := strings.TrimSpace(c.Version)
 
-	if _, err := os.Stat(name); err == nil {
-		abs, err := filepath.Abs(name)
-		if err != nil {
-			return abs, err
-		}
-		if c.Verify {
-			if _, err := downloader.VerifyChart(abs, c.Keyring); err != nil {
-				return "", err
+	if c.RepoURL == "" {
+		if _, err := os.Stat(name); err == nil {
+			abs, err := filepath.Abs(name)
+			if err != nil {
+				return abs, err
 			}
+			if c.Verify {
+				if _, err := downloader.VerifyChart(abs, c.Keyring); err != nil {
+					return "", err
+				}
+			}
+			return abs, nil
 		}
-		return abs, nil
-	}
-	if filepath.IsAbs(name) || strings.HasPrefix(name, ".") {
-		return name, errors.Errorf("path %q not found", name)
+		if filepath.IsAbs(name) || strings.HasPrefix(name, ".") {
+			return name, errors.Errorf("path %q not found", name)
+		}
 	}
 
 	dl := downloader.ChartDownloader{
