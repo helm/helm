@@ -55,9 +55,6 @@ func newRepoRemoveCmd(out io.Writer) *cobra.Command {
 
 	// Function providing dynamic auto-completion
 	completion.RegisterValidArgsFunc(cmd, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
-		if len(args) != 0 {
-			return nil, completion.BashCompDirectiveNoFileComp
-		}
 		return compListRepos(toComplete), completion.BashCompDirectiveNoFileComp
 	})
 
