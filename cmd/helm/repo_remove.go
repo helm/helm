@@ -43,7 +43,7 @@ func newRepoRemoveCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "remove [REPO1 [REPO2 ...]]",
 		Aliases: []string{"rm"},
-		Short:   "remove a chart repository",
+		Short:   "remove one or more chart repositories",
 		Args:    require.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.repoFile = settings.RepositoryConfig
