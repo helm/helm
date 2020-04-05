@@ -62,15 +62,7 @@ func TestRepoRemove(t *testing.T) {
 		t.Error(err)
 	}
 
-	idx := filepath.Join(rootDir, helmpath.CacheIndexFile(testRepoName))
-	mf, _ := os.Create(idx)
-	mf.Close()
-
-	idx2 := filepath.Join(rootDir, helmpath.CacheChartsFile(testRepoName))
-	mf, _ = os.Create(idx2)
-	mf.Close()
-
-	b.Reset()
+	idx, idx2 := indexing(b, rootDir, testRepoName)
 
 	if err := rmOpts.run(b); err != nil {
 		t.Errorf("Error removing %s from repositories", testRepoName)
@@ -79,13 +71,7 @@ func TestRepoRemove(t *testing.T) {
 		t.Errorf("Unexpected output: %s", b.String())
 	}
 
-	if _, err := os.Stat(idx); err == nil {
-		t.Errorf("Error cache index file was not removed for repository %s", testRepoName)
-	}
-
-	if _, err := os.Stat(idx2); err == nil {
-		t.Errorf("Error cache chart file was not removed for repository %s", testRepoName)
-	}
+	testIndices(t, idx, idx2, testRepoName)
 
 	f, err := repo.LoadFile(repoFile)
 	if err != nil {
@@ -94,5 +80,28 @@ func TestRepoRemove(t *testing.T) {
 
 	if f.Has(testRepoName) {
 		t.Errorf("%s was not successfully removed from repositories list", testRepoName)
+	}
+}
+
+func indexing(buf *bytes.Buffer, rootDir string, repoName string) (cacheIndexFile string, cacheChartsFile string) {
+	idx := filepath.Join(rootDir, helmpath.CacheIndexFile(repoName))
+	mf, _ := os.Create(idx)
+	mf.Close()
+
+	idx2 := filepath.Join(rootDir, helmpath.CacheChartsFile(repoName))
+	mf, _ = os.Create(idx2)
+	mf.Close()
+
+	buf.Reset()
+
+	return idx, idx2
+}
+
+func testIndices(t *testing.T, cacheIndexFile string, cacheChartsFile string, repoName string) {
+	if _, err := os.Stat(cacheIndexFile); err == nil {
+		t.Errorf("Error cache index file was not removed for repository %s", repoName)
+	}
+	if _, err := os.Stat(cacheChartsFile); err == nil {
+		t.Errorf("Error cache chart file was not removed for repository %s", repoName)
 	}
 }
