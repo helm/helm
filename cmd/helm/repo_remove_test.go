@@ -81,6 +81,53 @@ func TestRepoRemove(t *testing.T) {
 	if f.Has(testRepoName) {
 		t.Errorf("%s was not successfully removed from repositories list", testRepoName)
 	}
+
+	// Test removal of multiple repos in one go
+	var testRepoNames = []string{"foo", "bar", "baz"}
+	b2 := bytes.NewBuffer(nil)
+	idxs := make(map[string][]string, len(testRepoNames))
+
+	for _, repoName := range testRepoNames {
+		o := &repoAddOptions{
+			name:     repoName,
+			url:      ts.URL(),
+			repoFile: repoFile,
+		}
+
+		if err := o.run(os.Stderr); err != nil {
+			t.Error(err)
+		}
+
+		cacheIndex, cacheChart := indexing(b, rootDir, repoName)
+		idxs[repoName] = []string{cacheIndex, cacheChart}
+
+	}
+
+	multiRmOpts := repoRemoveOptions{
+		names:     testRepoNames,
+		repoFile:  repoFile,
+		repoCache: rootDir,
+	}
+
+	if err := multiRmOpts.run(b2); err != nil {
+		t.Errorf("Error removing list of repos from repositories: %q", testRepoNames)
+	}
+	if !strings.Contains(b2.String(), "has been removed") {
+		t.Errorf("Unexpected output: %s", b.String())
+	}
+
+	for _, repoName := range testRepoNames {
+		f, err := repo.LoadFile(repoFile)
+		if err != nil {
+			t.Error(err)
+		}
+		if f.Has(repoName) {
+			t.Errorf("%s was not successfully removed from repositories list", repoName)
+		}
+		cacheIndex := idxs[repoName][0]
+		cacheChart := idxs[repoName][1]
+		testIndices(t, cacheIndex, cacheChart, repoName)
+	}
 }
 
 func indexing(buf *bytes.Buffer, rootDir string, repoName string) (cacheIndexFile string, cacheChartsFile string) {
