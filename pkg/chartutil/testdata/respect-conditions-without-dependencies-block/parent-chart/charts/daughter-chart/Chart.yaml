@@ -1,0 +1,17 @@
+apiVersion: v2
+name: daughter-chart
+version: v0.1.0
+appVersion: v0.1.0
+dependencies:
+  - name: dev
+    repository: "file://charts/dev"
+    version: ">= 0.0.1"
+    condition: global.dev.enabled,dev.enabled
+  - name: staging
+    repository: "file://charts/staging"
+    version: ">= 0.0.1"
+    condition: staging.enabled,global.staging.enabled
+  - name: prod
+    repository: "file://charts/prod"
+    version: ">= 0.0.1"
+    condition: global.prod.enabled,prod.enabled

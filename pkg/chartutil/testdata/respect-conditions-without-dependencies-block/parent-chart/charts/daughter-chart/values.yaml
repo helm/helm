@@ -1,0 +1,7 @@
+# Default values for daughter-chart.
+dev:
+  enabled: false
+staging:
+  enabled: false
+prod:
+  enabled: true
