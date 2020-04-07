@@ -113,6 +113,8 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name:
 
+podAnnotations: {}
+
 podSecurityContext: {}
   # fsGroup: 2000
 
@@ -250,6 +252,10 @@ spec:
       {{- include "<CHARTNAME>.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+    {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
       labels:
         {{- include "<CHARTNAME>.selectorLabels" . | nindent 8 }}
     spec:
