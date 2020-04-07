@@ -111,7 +111,6 @@ var manifestWithTestHook = `kind: Pod
 	  cmd: fake-command
   `
 
-
 type chartOptions struct {
 	*chart.Chart
 }
