@@ -130,7 +130,6 @@ func TestTemplateCmd(t *testing.T) {
 	runTestCmd(t, tests)
 }
 
-
 func TestTemplateOutputDir(t *testing.T) {
 	is := assert.New(t)
 
@@ -140,7 +139,7 @@ func TestTemplateOutputDir(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	_, _, err = executeActionCommand(fmt.Sprintf("template --output-dir %s testdata/testcharts/chart-for-template-output",dir))
+	_, _, err = executeActionCommand(fmt.Sprintf("template --output-dir %s testdata/testcharts/chart-for-template-output", dir))
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
 	}
@@ -158,7 +157,6 @@ func TestTemplateOutputDir(t *testing.T) {
 
 }
 
-
 func TestInstallOutputDirWithReleaseName(t *testing.T) {
 	is := assert.New(t)
 	dir, err := ioutil.TempDir("", "output-dir")
@@ -168,8 +166,8 @@ func TestInstallOutputDirWithReleaseName(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	var releaseName = "release"
-	newDir := filepath.Join(dir,releaseName)
-	_, _, err = executeActionCommand(fmt.Sprintf("template --output-dir %s %s testdata/testcharts/chart-for-template-output",newDir,releaseName))
+	newDir := filepath.Join(dir, releaseName)
+	_, _, err = executeActionCommand(fmt.Sprintf("template --output-dir %s %s testdata/testcharts/chart-for-template-output", newDir, releaseName))
 
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
@@ -185,4 +183,3 @@ func TestInstallOutputDirWithReleaseName(t *testing.T) {
 	_, err = os.Stat(filepath.Join(newDir, "chart-for-template-output/templates/tests/test-connection.yaml"))
 	is.NoError(err)
 }
-
