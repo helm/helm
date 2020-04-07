@@ -62,7 +62,10 @@ func TestRepoRemove(t *testing.T) {
 		t.Error(err)
 	}
 
-	idx, idx2 := indexing(b, rootDir, testRepoName)
+	idx, idx2 := indexing(rootDir, testRepoName)
+
+	// Reset the buffer before running repo remove
+	b.Reset()
 
 	if err := rmOpts.run(b); err != nil {
 		t.Errorf("Error removing %s from repositories", testRepoName)
@@ -84,9 +87,9 @@ func TestRepoRemove(t *testing.T) {
 
 	// Test removal of multiple repos in one go
 	var testRepoNames = []string{"foo", "bar", "baz"}
-	b2 := bytes.NewBuffer(nil)
 	idxs := make(map[string][]string, len(testRepoNames))
 
+	// Add test repos
 	for _, repoName := range testRepoNames {
 		o := &repoAddOptions{
 			name:     repoName,
@@ -98,21 +101,28 @@ func TestRepoRemove(t *testing.T) {
 			t.Error(err)
 		}
 
-		cacheIndex, cacheChart := indexing(b, rootDir, repoName)
+		cacheIndex, cacheChart := indexing(rootDir, repoName)
 		idxs[repoName] = []string{cacheIndex, cacheChart}
 
 	}
 
+	// Create repo remove command
 	multiRmOpts := repoRemoveOptions{
 		names:     testRepoNames,
 		repoFile:  repoFile,
 		repoCache: rootDir,
 	}
 
-	if err := multiRmOpts.run(b2); err != nil {
+	// Reset the buffer before running repo remove
+	b.Reset()
+
+	// Run repo remove command
+	if err := multiRmOpts.run(b); err != nil {
 		t.Errorf("Error removing list of repos from repositories: %q", testRepoNames)
 	}
-	if !strings.Contains(b2.String(), "has been removed") {
+
+	// Check that stuff were removed
+	if !strings.Contains(b.String(), "has been removed") {
 		t.Errorf("Unexpected output: %s", b.String())
 	}
 
@@ -130,7 +140,7 @@ func TestRepoRemove(t *testing.T) {
 	}
 }
 
-func indexing(buf *bytes.Buffer, rootDir string, repoName string) (cacheIndexFile string, cacheChartsFile string) {
+func indexing(rootDir string, repoName string) (cacheIndexFile string, cacheChartsFile string) {
 	idx := filepath.Join(rootDir, helmpath.CacheIndexFile(repoName))
 	mf, _ := os.Create(idx)
 	mf.Close()
@@ -138,8 +148,6 @@ func indexing(buf *bytes.Buffer, rootDir string, repoName string) (cacheIndexFil
 	idx2 := filepath.Join(rootDir, helmpath.CacheChartsFile(repoName))
 	mf, _ = os.Create(idx2)
 	mf.Close()
-
-	buf.Reset()
 
 	return idx, idx2
 }
