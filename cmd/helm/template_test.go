@@ -18,8 +18,13 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
+	"log"
+	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var chartPath = "./../../pkg/chartutil/testdata/subpop/charts/subchart1"
@@ -124,3 +129,60 @@ func TestTemplateCmd(t *testing.T) {
 	}
 	runTestCmd(t, tests)
 }
+
+
+func TestTemplateOutputDir(t *testing.T) {
+	is := assert.New(t)
+
+	dir, err := ioutil.TempDir("", "output-dir")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	_, _, err = executeActionCommand(fmt.Sprintf("template --output-dir %s testdata/testcharts/chart-for-template-output",dir))
+	if err != nil {
+		t.Fatalf("Failed install: %s", err)
+	}
+
+	_, err = os.Stat(filepath.Join(dir, "chart-for-template-output/templates/deployment.yaml"))
+	is.NoError(err)
+
+	// test multiManifests
+	_, err = os.Stat(filepath.Join(dir, "chart-for-template-output/templates/network.yaml"))
+	is.NoError(err)
+
+	// test manifest with hook annotation
+	_, err = os.Stat(filepath.Join(dir, "chart-for-template-output/templates/tests/test-connection.yaml"))
+	is.NoError(err)
+
+}
+
+
+func TestInstallOutputDirWithReleaseName(t *testing.T) {
+	is := assert.New(t)
+	dir, err := ioutil.TempDir("", "output-dir")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	var releaseName = "release"
+	newDir := filepath.Join(dir,releaseName)
+	_, _, err = executeActionCommand(fmt.Sprintf("template --output-dir %s %s testdata/testcharts/chart-for-template-output",newDir,releaseName))
+
+	if err != nil {
+		t.Fatalf("Failed install: %s", err)
+	}
+	_, err = os.Stat(filepath.Join(newDir, "chart-for-template-output/templates/deployment.yaml"))
+	is.NoError(err)
+
+	// test multiManifests
+	_, err = os.Stat(filepath.Join(newDir, "chart-for-template-output/templates/network.yaml"))
+	is.NoError(err)
+
+	// test manifest with hook annotation
+	_, err = os.Stat(filepath.Join(newDir, "chart-for-template-output/templates/tests/test-connection.yaml"))
+	is.NoError(err)
+}
+
