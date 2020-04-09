@@ -97,6 +97,8 @@ replicaCount: 1
 image:
   repository: nginx
   pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart version.
+  tag: ""
 
 imagePullSecrets: []
 nameOverride: ""
@@ -110,6 +112,8 @@ serviceAccount:
   # The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
   name:
+
+podAnnotations: {}
 
 podSecurityContext: {}
   # fsGroup: 2000
@@ -248,6 +252,10 @@ spec:
       {{- include "<CHARTNAME>.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+    {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
       labels:
         {{- include "<CHARTNAME>.selectorLabels" . | nindent 8 }}
     spec:
@@ -262,7 +270,7 @@ spec:
         - name: {{ .Chart.Name }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.image.repository }}:{{ .Chart.AppVersion }}"
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http

@@ -22,6 +22,7 @@ import (
 	"io"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -86,12 +87,21 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				// if we have a list of files to render, then check that each of the
 				// provided files exists in the chart.
 				if len(showFiles) > 0 {
+					// This is necessary to ensure consistent manifest ordering when using --show-only
+					// with globs or directory names.
 					splitManifests := releaseutil.SplitManifests(manifests.String())
+					manifestsKeys := make([]string, 0, len(splitManifests))
+					for k := range splitManifests {
+						manifestsKeys = append(manifestsKeys, k)
+					}
+					sort.Sort(releaseutil.BySplitManifestsOrder(manifestsKeys))
+
 					manifestNameRegex := regexp.MustCompile("# Source: [^/]+/(.+)")
 					var manifestsToRender []string
 					for _, f := range showFiles {
 						missing := true
-						for _, manifest := range splitManifests {
+						for _, manifestKey := range manifestsKeys {
+							manifest := splitManifests[manifestKey]
 							submatch := manifestNameRegex.FindStringSubmatch(manifest)
 							if len(submatch) == 0 {
 								continue
@@ -104,10 +114,11 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 							// if the filepath provided matches a manifest path in the
 							// chart, render that manifest
-							if f == manifestPath {
-								manifestsToRender = append(manifestsToRender, manifest)
-								missing = false
+							if matched, _ := filepath.Match(f, manifestPath); !matched {
+								continue
 							}
+							manifestsToRender = append(manifestsToRender, manifest)
+							missing = false
 						}
 						if missing {
 							return fmt.Errorf("could not find template %s in chart", f)
