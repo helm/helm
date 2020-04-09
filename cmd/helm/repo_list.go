@@ -113,8 +113,7 @@ func filterRepos(repos []*repo.Entry, ignoredRepoNames []string) []*repo.Entry {
 	}
 
 	for _, repo := range repos {
-		_, removed := ignored[repo.Name]
-		if !removed {
+		if _, removed := ignored[repo.Name]; !removed {
 			filteredRepos = append(filteredRepos, repo)
 		}
 	}
