@@ -40,7 +40,7 @@ func newEnvCmd(out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "env",
-		Short: "Helm client environment information",
+		Short: "helm client environment information",
 		Long:  envHelp,
 		Args:  require.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
