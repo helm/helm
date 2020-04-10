@@ -62,7 +62,7 @@ func TestRepoRemove(t *testing.T) {
 		t.Error(err)
 	}
 
-	idx, idx2 := createCacheFiles(rootDir, testRepoName)
+	cacheIndexFile, cacheChartsFile := createCacheFiles(rootDir, testRepoName)
 
 	// Reset the buffer before running repo remove
 	b.Reset()
@@ -74,7 +74,7 @@ func TestRepoRemove(t *testing.T) {
 		t.Errorf("Unexpected output: %s", b.String())
 	}
 
-	testCacheFiles(t, idx, idx2, testRepoName)
+	testCacheFiles(t, cacheIndexFile, cacheChartsFile, testRepoName)
 
 	f, err := repo.LoadFile(repoFile)
 	if err != nil {
