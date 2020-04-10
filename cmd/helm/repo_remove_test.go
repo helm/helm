@@ -62,7 +62,7 @@ func TestRepoRemove(t *testing.T) {
 		t.Error(err)
 	}
 
-	idx, idx2 := indexing(rootDir, testRepoName)
+	idx, idx2 := createCacheFiles(rootDir, testRepoName)
 
 	// Reset the buffer before running repo remove
 	b.Reset()
@@ -101,7 +101,7 @@ func TestRepoRemove(t *testing.T) {
 			t.Error(err)
 		}
 
-		cacheIndex, cacheChart := indexing(rootDir, repoName)
+		cacheIndex, cacheChart := createCacheFiles(rootDir, repoName)
 		idxs[repoName] = []string{cacheIndex, cacheChart}
 
 	}
@@ -140,7 +140,7 @@ func TestRepoRemove(t *testing.T) {
 	}
 }
 
-func indexing(rootDir string, repoName string) (cacheIndexFile string, cacheChartsFile string) {
+func createCacheFiles(rootDir string, repoName string) (cacheIndexFile string, cacheChartsFile string) {
 	idx := filepath.Join(rootDir, helmpath.CacheIndexFile(repoName))
 	mf, _ := os.Create(idx)
 	mf.Close()
