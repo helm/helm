@@ -74,7 +74,7 @@ func TestRepoRemove(t *testing.T) {
 		t.Errorf("Unexpected output: %s", b.String())
 	}
 
-	testIndices(t, idx, idx2, testRepoName)
+	testCacheFiles(t, idx, idx2, testRepoName)
 
 	f, err := repo.LoadFile(repoFile)
 	if err != nil {
@@ -136,7 +136,7 @@ func TestRepoRemove(t *testing.T) {
 		}
 		cacheIndex := idxs[repoName][0]
 		cacheChart := idxs[repoName][1]
-		testIndices(t, cacheIndex, cacheChart, repoName)
+		testCacheFiles(t, cacheIndex, cacheChart, repoName)
 	}
 }
 
@@ -152,7 +152,7 @@ func indexing(rootDir string, repoName string) (cacheIndexFile string, cacheChar
 	return idx, idx2
 }
 
-func testIndices(t *testing.T, cacheIndexFile string, cacheChartsFile string, repoName string) {
+func testCacheFiles(t *testing.T, cacheIndexFile string, cacheChartsFile string, repoName string) {
 	if _, err := os.Stat(cacheIndexFile); err == nil {
 		t.Errorf("Error cache index file was not removed for repository %s", repoName)
 	}
