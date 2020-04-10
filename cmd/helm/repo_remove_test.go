@@ -87,7 +87,7 @@ func TestRepoRemove(t *testing.T) {
 
 	// Test removal of multiple repos in one go
 	var testRepoNames = []string{"foo", "bar", "baz"}
-	idxs := make(map[string][]string, len(testRepoNames))
+	cacheFiles := make(map[string][]string, len(testRepoNames))
 
 	// Add test repos
 	for _, repoName := range testRepoNames {
@@ -102,7 +102,7 @@ func TestRepoRemove(t *testing.T) {
 		}
 
 		cacheIndex, cacheChart := createCacheFiles(rootDir, repoName)
-		idxs[repoName] = []string{cacheIndex, cacheChart}
+		cacheFiles[repoName] = []string{cacheIndex, cacheChart}
 
 	}
 
@@ -134,8 +134,8 @@ func TestRepoRemove(t *testing.T) {
 		if f.Has(repoName) {
 			t.Errorf("%s was not successfully removed from repositories list", repoName)
 		}
-		cacheIndex := idxs[repoName][0]
-		cacheChart := idxs[repoName][1]
+		cacheIndex := cacheFiles[repoName][0]
+		cacheChart := cacheFiles[repoName][1]
 		testCacheFiles(t, cacheIndex, cacheChart, repoName)
 	}
 }
