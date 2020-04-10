@@ -141,15 +141,15 @@ func TestRepoRemove(t *testing.T) {
 }
 
 func createCacheFiles(rootDir string, repoName string) (cacheIndexFile string, cacheChartsFile string) {
-	idx := filepath.Join(rootDir, helmpath.CacheIndexFile(repoName))
-	mf, _ := os.Create(idx)
+	cacheIndexFile = filepath.Join(rootDir, helmpath.CacheIndexFile(repoName))
+	mf, _ := os.Create(cacheIndexFile)
 	mf.Close()
 
-	idx2 := filepath.Join(rootDir, helmpath.CacheChartsFile(repoName))
-	mf, _ = os.Create(idx2)
+	cacheChartsFile = filepath.Join(rootDir, helmpath.CacheChartsFile(repoName))
+	mf, _ = os.Create(cacheChartsFile)
 	mf.Close()
 
-	return idx, idx2
+	return cacheIndexFile, cacheChartsFile
 }
 
 func testCacheFiles(t *testing.T, cacheIndexFile string, cacheChartsFile string, repoName string) {
