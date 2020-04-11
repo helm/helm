@@ -26,7 +26,6 @@ import (
 	"github.com/spf13/pflag"
 
 	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -114,6 +113,9 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Short: "install a chart",
 		Long:  installDesc,
 		Args:  require.MinimumNArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return compInstall(args, toComplete, client)
+		},
 		RunE: func(_ *cobra.Command, args []string) error {
 			rel, err := runInstall(args, client, valueOpts, out)
 			if err != nil {
@@ -123,11 +125,6 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return outfmt.Write(out, &statusPrinter{rel, settings.Debug})
 		},
 	}
-
-	// Function providing dynamic auto-completion
-	completion.RegisterValidArgsFunc(cmd, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
-		return compInstall(args, toComplete, client)
-	})
 
 	addInstallFlags(cmd.Flags(), client, valueOpts)
 	bindOutputFlag(cmd, &outfmt)
@@ -242,7 +239,7 @@ func isChartInstallable(ch *chart.Chart) (bool, error) {
 }
 
 // Provide dynamic auto-completion for the install and template commands
-func compInstall(args []string, toComplete string, client *action.Install) ([]string, completion.BashCompDirective) {
+func compInstall(args []string, toComplete string, client *action.Install) ([]string, cobra.ShellCompDirective) {
 	requiredArgs := 1
 	if client.GenerateName {
 		requiredArgs = 0
@@ -250,5 +247,5 @@ func compInstall(args []string, toComplete string, client *action.Install) ([]st
 	if len(args) == requiredArgs {
 		return compListCharts(toComplete, true)
 	}
-	return nil, completion.BashCompDirectiveNoFileComp
+	return nil, cobra.ShellCompDirectiveNoFileComp
 }
