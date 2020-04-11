@@ -113,3 +113,15 @@ func TestDependencyBuildCmdWithHelmV2Hash(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestDependencyBuildCmdWithUnavailableRepos(t *testing.T) {
+	chartName := "testdata/testcharts/issue-7214"
+
+	cmd := fmt.Sprintf("dependency build '%s'", chartName)
+	_, out, err := executeActionCommand(cmd)
+
+	if err != nil {
+		t.Logf("Output: %s", out)
+		t.Fatal(err)
+	}
+}

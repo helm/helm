@@ -95,7 +95,13 @@ func (m *Manager) Build() error {
 		}
 	}
 
-	if _, err := m.resolveRepoNames(req); err != nil {
+	repoNames, err := m.resolveRepoNames(req)
+	if err != nil {
+		return err
+	}
+
+	lock, done, err := m.resolveChartRepos(req, repoNames, c)
+	if done {
 		return err
 	}
 
@@ -161,33 +167,40 @@ func (m *Manager) Update() error {
 		}
 	}
 
-	// Now we need to find out which version of a chart best satisfies the
-	// dependencies in the Chart.yaml
-	lock, err := m.resolve(req, repoNames)
-	if err != nil {
+	lock, done, err := m.resolveChartRepos(req, repoNames, c)
+	if done {
 		return err
-	}
-
-	// Now we need to fetch every package here into charts/
-	if err := m.downloadAll(lock.Dependencies); err != nil {
-		return err
-	}
-
-	// downloadAll might overwrite dependency version, recalculate lock digest
-	newDigest, err := resolver.HashReq(req, lock.Dependencies)
-	if err != nil {
-		return err
-	}
-	lock.Digest = newDigest
-
-	// If the lock file hasn't changed, don't write a new one.
-	oldLock := c.Lock
-	if oldLock != nil && oldLock.Digest == lock.Digest {
-		return nil
 	}
 
 	// Finally, we need to write the lockfile.
 	return writeLock(m.ChartPath, lock, c.Metadata.APIVersion == chart.APIVersionV1)
+}
+
+// resolveChartRepos resolves the Chart Repos and add them if they are not present
+func (m *Manager) resolveChartRepos(req []*chart.Dependency, repoNames map[string]string, c *chart.Chart) (*chart.Lock, bool, error) {
+
+	// Find out which version of a chart best satisfies the
+	// dependencies in the Chart.yaml
+	lock, err := m.resolve(req, repoNames)
+	if err != nil {
+		return nil, true, err
+	}
+	// Now we need to fetch every package here into charts/
+	if err := m.downloadAll(lock.Dependencies); err != nil {
+		return nil, true, err
+	}
+	// downloadAll might overwrite dependency version, recalculate lock digest
+	newDigest, err := resolver.HashReq(req, lock.Dependencies)
+	if err != nil {
+		return nil, true, err
+	}
+	lock.Digest = newDigest
+	// If the lock file hasn't changed, don't write a new one.
+	oldLock := c.Lock
+	if oldLock != nil && oldLock.Digest == lock.Digest {
+		return nil, true, nil
+	}
+	return lock, false, nil
 }
 
 func (m *Manager) loadChartDir() (*chart.Chart, error) {
