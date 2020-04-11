@@ -28,7 +28,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli/values"
@@ -56,6 +55,9 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Short: "locally render templates",
 		Long:  templateDesc,
 		Args:  require.MinimumNArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return compInstall(args, toComplete, client)
+		},
 		RunE: func(_ *cobra.Command, args []string) error {
 			client.DryRun = true
 			client.ReleaseName = "RELEASE-NAME"
@@ -135,11 +137,6 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return err
 		},
 	}
-
-	// Function providing dynamic auto-completion
-	completion.RegisterValidArgsFunc(cmd, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
-		return compInstall(args, toComplete, client)
-	})
 
 	f := cmd.Flags()
 	addInstallFlags(f, client, valueOpts)

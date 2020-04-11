@@ -18,12 +18,12 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli/files"
 	"helm.sh/helm/v3/pkg/cli/output"
@@ -62,19 +62,22 @@ func addExternalFilesFlags(f *pflag.FlagSet, v *files.ExternalFiles) {
 // bindOutputFlag will add the output flag to the given command and bind the
 // value to the given format pointer
 func bindOutputFlag(cmd *cobra.Command, varRef *output.Format) {
-	f := cmd.Flags()
-	flag := f.VarPF(newOutputValue(output.Table, varRef), outputFlag, "o",
+	cmd.Flags().VarP(newOutputValue(output.Table, varRef), outputFlag, "o",
 		fmt.Sprintf("prints the output in the specified format. Allowed values: %s", strings.Join(output.Formats(), ", ")))
 
-	completion.RegisterFlagCompletionFunc(flag, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
+	err := cmd.RegisterFlagCompletionFunc(outputFlag, func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		var formatNames []string
 		for _, format := range output.Formats() {
 			if strings.HasPrefix(format, toComplete) {
 				formatNames = append(formatNames, format)
 			}
 		}
-		return formatNames, completion.BashCompDirectiveDefault
+		return formatNames, cobra.ShellCompDirectiveDefault
 	})
+
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 type outputValue output.Format

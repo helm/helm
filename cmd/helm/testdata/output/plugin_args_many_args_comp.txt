@@ -3,3 +3,4 @@ Namespace: mynamespace
 Num args received: 2
 Args received: --myflag start
 :2
+Completion ended with directive: ShellCompDirectiveNoSpace
