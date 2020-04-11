@@ -23,7 +23,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/pkg/action"
 )
 
@@ -63,18 +62,19 @@ func newShowCmd(out io.Writer) *cobra.Command {
 	}
 
 	// Function providing dynamic auto-completion
-	validArgsFunc := func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
+	validArgsFunc := func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) != 0 {
-			return nil, completion.BashCompDirectiveNoFileComp
+			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 		return compListCharts(toComplete, true)
 	}
 
 	all := &cobra.Command{
-		Use:   "all [CHART]",
-		Short: "show all information of the chart",
-		Long:  showAllDesc,
-		Args:  require.ExactArgs(1),
+		Use:               "all [CHART]",
+		Short:             "show all information of the chart",
+		Long:              showAllDesc,
+		Args:              require.ExactArgs(1),
+		ValidArgsFunction: validArgsFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowAll
 			output, err := runShow(args, client)
@@ -87,10 +87,11 @@ func newShowCmd(out io.Writer) *cobra.Command {
 	}
 
 	valuesSubCmd := &cobra.Command{
-		Use:   "values [CHART]",
-		Short: "show the chart's values",
-		Long:  showValuesDesc,
-		Args:  require.ExactArgs(1),
+		Use:               "values [CHART]",
+		Short:             "show the chart's values",
+		Long:              showValuesDesc,
+		Args:              require.ExactArgs(1),
+		ValidArgsFunction: validArgsFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowValues
 			output, err := runShow(args, client)
@@ -103,10 +104,11 @@ func newShowCmd(out io.Writer) *cobra.Command {
 	}
 
 	chartSubCmd := &cobra.Command{
-		Use:   "chart [CHART]",
-		Short: "show the chart's definition",
-		Long:  showChartDesc,
-		Args:  require.ExactArgs(1),
+		Use:               "chart [CHART]",
+		Short:             "show the chart's definition",
+		Long:              showChartDesc,
+		Args:              require.ExactArgs(1),
+		ValidArgsFunction: validArgsFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowChart
 			output, err := runShow(args, client)
@@ -119,10 +121,11 @@ func newShowCmd(out io.Writer) *cobra.Command {
 	}
 
 	readmeSubCmd := &cobra.Command{
-		Use:   "readme [CHART]",
-		Short: "show the chart's README",
-		Long:  readmeChartDesc,
-		Args:  require.ExactArgs(1),
+		Use:               "readme [CHART]",
+		Short:             "show the chart's README",
+		Long:              readmeChartDesc,
+		Args:              require.ExactArgs(1),
+		ValidArgsFunction: validArgsFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowReadme
 			output, err := runShow(args, client)
@@ -138,9 +141,6 @@ func newShowCmd(out io.Writer) *cobra.Command {
 	for _, subCmd := range cmds {
 		addShowFlags(subCmd, client)
 		showCommand.AddCommand(subCmd)
-
-		// Register the completion function for each subcommand
-		completion.RegisterValidArgsFunc(subCmd, validArgsFunc)
 	}
 
 	return showCommand

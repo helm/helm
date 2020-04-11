@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -27,7 +28,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/action"
 )
@@ -70,24 +70,22 @@ By default, the default directories depend on the Operating System. The defaults
 
 func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:                    "helm",
-		Short:                  "The Helm package manager for Kubernetes.",
-		Long:                   globalUsage,
-		SilenceUsage:           true,
-		BashCompletionFunction: completion.GetBashCustomFunction(),
+		Use:          "helm",
+		Short:        "The Helm package manager for Kubernetes.",
+		Long:         globalUsage,
+		SilenceUsage: true,
 	}
 	flags := cmd.PersistentFlags()
 
 	settings.AddFlags(flags)
 
 	// Setup shell completion for the namespace flag
-	flag := flags.Lookup("namespace")
-	completion.RegisterFlagCompletionFunc(flag, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
+	err := cmd.RegisterFlagCompletionFunc("namespace", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if client, err := actionConfig.KubernetesClientSet(); err == nil {
 			// Choose a long enough timeout that the user notices somethings is not working
 			// but short enough that the user is not made to wait very long
 			to := int64(3)
-			completion.CompDebugln(fmt.Sprintf("About to call kube client for namespaces with timeout of: %d", to))
+			cobra.CompDebugln(fmt.Sprintf("About to call kube client for namespaces with timeout of: %d", to), settings.Debug)
 
 			nsNames := []string{}
 			if namespaces, err := client.CoreV1().Namespaces().List(context.Background(), metav1.ListOptions{TimeoutSeconds: &to}); err == nil {
@@ -96,16 +94,19 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 						nsNames = append(nsNames, ns.Name)
 					}
 				}
-				return nsNames, completion.BashCompDirectiveNoFileComp
+				return nsNames, cobra.ShellCompDirectiveNoFileComp
 			}
 		}
-		return nil, completion.BashCompDirectiveDefault
+		return nil, cobra.ShellCompDirectiveDefault
 	})
 
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Setup shell completion for the kube-context flag
-	flag = flags.Lookup("kube-context")
-	completion.RegisterFlagCompletionFunc(flag, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
-		completion.CompDebugln("About to get the different kube-contexts")
+	err = cmd.RegisterFlagCompletionFunc("kube-context", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		cobra.CompDebugln("About to get the different kube-contexts", settings.Debug)
 
 		loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
 		if len(settings.KubeConfig) > 0 {
@@ -120,10 +121,14 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 					ctxs = append(ctxs, name)
 				}
 			}
-			return ctxs, completion.BashCompDirectiveNoFileComp
+			return ctxs, cobra.ShellCompDirectiveNoFileComp
 		}
-		return nil, completion.BashCompDirectiveNoFileComp
+		return nil, cobra.ShellCompDirectiveNoFileComp
 	})
+
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// We can safely ignore any errors that flags.Parse encounters since
 	// those errors will be caught later during the call to cmd.Execution.
@@ -164,9 +169,6 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 
 		// Hidden documentation generator command: 'helm docs'
 		newDocsCmd(out),
-
-		// Setup the special hidden __complete command to allow for dynamic auto-completion
-		completion.NewCompleteCmd(settings, out),
 	)
 
 	// Add *experimental* subcommands

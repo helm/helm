@@ -19,13 +19,13 @@ package main
 import (
 	"fmt"
 	"io"
+	"log"
 	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli/output"
@@ -53,6 +53,12 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Short: "display the status of the named release",
 		Long:  statusHelp,
 		Args:  require.ExactArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if len(args) != 0 {
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+			return compListReleases(toComplete, cfg)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			rel, err := client.Run(args[0])
 			if err != nil {
@@ -66,24 +72,20 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		},
 	}
 
-	// Function providing dynamic auto-completion
-	completion.RegisterValidArgsFunc(cmd, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
-		if len(args) != 0 {
-			return nil, completion.BashCompDirectiveNoFileComp
-		}
-		return compListReleases(toComplete, cfg)
-	})
-
 	f := cmd.Flags()
 
 	f.IntVar(&client.Version, "revision", 0, "if set, display the status of the named release with revision")
-	flag := f.Lookup("revision")
-	completion.RegisterFlagCompletionFunc(flag, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
+
+	err := cmd.RegisterFlagCompletionFunc("revision", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) == 1 {
 			return compListRevisions(cfg, args[0])
 		}
-		return nil, completion.BashCompDirectiveNoFileComp
+		return nil, cobra.ShellCompDirectiveNoFileComp
 	})
+
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	bindOutputFlag(cmd, &outfmt)
 
