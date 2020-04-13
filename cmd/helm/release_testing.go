@@ -82,7 +82,7 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 
 	f := cmd.Flags()
 	f.DurationVar(&client.Timeout, "timeout", 300*time.Second, "time to wait for any individual Kubernetes operation (like Jobs for hooks)")
-	f.BoolVar(&outputLogs, "logs", false, "Dump the logs from test pods (this runs after all tests are complete, but before any cleanup)")
+	f.BoolVar(&outputLogs, "logs", false, "dump the logs from test pods (this runs after all tests are complete, but before any cleanup)")
 
 	return cmd
 }
