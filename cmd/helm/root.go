@@ -17,6 +17,7 @@ limitations under the License.
 package main // import "helm.sh/helm/v3/cmd/helm"
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -92,7 +93,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 			completion.CompDebugln(fmt.Sprintf("About to call kube client for namespaces with timeout of: %d", to))
 
 			nsNames := []string{}
-			if namespaces, err := client.CoreV1().Namespaces().List(metav1.ListOptions{TimeoutSeconds: &to}); err == nil {
+			if namespaces, err := client.CoreV1().Namespaces().List(context.Background(), metav1.ListOptions{TimeoutSeconds: &to}); err == nil {
 				for _, ns := range namespaces.Items {
 					if strings.HasPrefix(ns.Name, toComplete) {
 						nsNames = append(nsNames, ns.Name)
