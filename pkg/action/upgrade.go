@@ -18,6 +18,7 @@ package action
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -428,7 +429,7 @@ func recreate(cfg *Configuration, resources kube.ResourceList) error {
 			return errors.Wrapf(err, "unable to recreate pods for object %s/%s because an error occurred", res.Namespace, res.Name)
 		}
 
-		pods, err := client.CoreV1().Pods(res.Namespace).List(metav1.ListOptions{
+		pods, err := client.CoreV1().Pods(res.Namespace).List(context.Background(), metav1.ListOptions{
 			LabelSelector: selector.String(),
 		})
 		if err != nil {
@@ -438,7 +439,7 @@ func recreate(cfg *Configuration, resources kube.ResourceList) error {
 		// Restart pods
 		for _, pod := range pods.Items {
 			// Delete each pod for get them restarted with changed spec.
-			if err := client.CoreV1().Pods(pod.Namespace).Delete(pod.Name, metav1.NewPreconditionDeleteOptions(string(pod.UID))); err != nil {
+			if err := client.CoreV1().Pods(pod.Namespace).Delete(context.Background(), pod.Name, *metav1.NewPreconditionDeleteOptions(string(pod.UID))); err != nil {
 				return errors.Wrapf(err, "unable to recreate pods for object %s/%s because an error occurred", res.Namespace, res.Name)
 			}
 		}

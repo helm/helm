@@ -88,10 +88,17 @@ var nopLogger = func(_ string, _ ...interface{}) {}
 
 // IsReachable tests connectivity to the cluster
 func (c *Client) IsReachable() error {
-	client, _ := c.Factory.KubernetesClientSet()
-	_, err := client.ServerVersion()
+	client, err := c.Factory.KubernetesClientSet()
+	if err == genericclioptions.ErrEmptyConfig {
+		// re-replace kubernetes ErrEmptyConfig error with a friendy error
+		// moar workarounds for Kubernetes API breaking.
+		return errors.New("Kubernetes cluster unreachable")
+	}
 	if err != nil {
-		return fmt.Errorf("Kubernetes cluster unreachable: %s", err.Error())
+		return errors.Wrap(err, "Kubernetes cluster unreachable")
+	}
+	if _, err := client.ServerVersion(); err != nil {
+		return errors.Wrap(err, "Kubernetes cluster unreachable")
 	}
 	return nil
 }
@@ -344,7 +351,7 @@ func batchPerform(infos ResourceList, fn func(*resource.Info) error, errs chan<-
 }
 
 func createResource(info *resource.Info) error {
-	obj, err := resource.NewHelper(info.Client, info.Mapping).Create(info.Namespace, true, info.Object, nil)
+	obj, err := resource.NewHelper(info.Client, info.Mapping).Create(info.Namespace, true, info.Object)
 	if err != nil {
 		return err
 	}
@@ -568,9 +575,12 @@ func scrubValidationError(err error) error {
 // WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
 // and returns said phase (PodSucceeded or PodFailed qualify).
 func (c *Client) WaitAndGetCompletedPodPhase(name string, timeout time.Duration) (v1.PodPhase, error) {
-	client, _ := c.Factory.KubernetesClientSet()
+	client, err := c.Factory.KubernetesClientSet()
+	if err != nil {
+		return v1.PodUnknown, err
+	}
 	to := int64(timeout)
-	watcher, err := client.CoreV1().Pods(c.namespace()).Watch(metav1.ListOptions{
+	watcher, err := client.CoreV1().Pods(c.namespace()).Watch(context.Background(), metav1.ListOptions{
 		FieldSelector:  fmt.Sprintf("metadata.name=%s", name),
 		TimeoutSeconds: &to,
 	})
