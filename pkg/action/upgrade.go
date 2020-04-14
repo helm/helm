@@ -33,6 +33,7 @@ import (
 	"helm.sh/helm/v3/pkg/postrender"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/releaseutil"
+	"helm.sh/helm/v3/pkg/storage"
 )
 
 // Upgrade is the action for upgrading releases.
@@ -132,7 +133,23 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 	// finds the deployed release with the given name
 	currentRelease, err := u.cfg.Releases.Deployed(name)
 	if err != nil {
-		return nil, nil, err
+		switch err.(type) {
+		case storage.NoDeployedReleases:
+			// Try lookup again. Note that what we are doing here is attempting to get the
+			// _last release_, which might have been a failure. Our assumption is that this
+			// release best represents the current state of a rendered Helm chart. We are then
+			// relying upon the 3-way diff to help us repair the current in-cluster version.
+			u.cfg.Log("Could not find a deployed release for %q. Trying to get an older (possibly failed) release", name)
+			currentRelease, err = u.cfg.Releases.Last(name)
+			if err != nil {
+				// Regardless of what the error is here, it is likely that we cannot proceed
+				// any more with the upgrade. So we bail.
+				return nil, nil, errors.Wrapf(err, "there are no recorded releases for %q", name)
+			}
+			u.cfg.Log("loaded release %s.%d", currentRelease.Name, currentRelease.Version)
+		default:
+			return nil, nil, err
+		}
 	}
 
 	// determine if values will be reused
@@ -196,6 +213,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 	if len(notesTxt) > 0 {
 		upgradedRelease.Info.Notes = notesTxt
 	}
+	u.cfg.Log("Manifest: %s", manifestDoc)
 	err = validateManifest(u.cfg.KubeClient, manifestDoc.Bytes(), !u.DisableOpenAPIValidation)
 	return currentRelease, upgradedRelease, err
 }

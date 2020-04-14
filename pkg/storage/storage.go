@@ -107,6 +107,14 @@ func (s *Storage) ListDeployed() ([]*rspb.Release, error) {
 	})
 }
 
+// NoDeployedReleases describes the situation where none of the releases in the history are deployed.
+//
+// Aggressive pruning can mask the fact that there is a deployed release, but that it
+// was cleaned up by the history pruner.
+type NoDeployedReleases string
+
+func (e NoDeployedReleases) Error() string { return string(e) }
+
 // Deployed returns the last deployed release with the provided release name, or
 // returns ErrReleaseNotFound if not found.
 func (s *Storage) Deployed(name string) (*rspb.Release, error) {
@@ -116,7 +124,7 @@ func (s *Storage) Deployed(name string) (*rspb.Release, error) {
 	}
 
 	if len(ls) == 0 {
-		return nil, errors.Errorf("%q has no deployed releases", name)
+		return nil, NoDeployedReleases(fmt.Sprintf("%q has no deployed releases", name))
 	}
 
 	// If executed concurrently, Helm's database gets corrupted
@@ -140,7 +148,7 @@ func (s *Storage) DeployedAll(name string) ([]*rspb.Release, error) {
 		return ls, nil
 	}
 	if strings.Contains(err.Error(), "not found") {
-		return nil, errors.Errorf("%q has no deployed releases", name)
+		return nil, NoDeployedReleases(fmt.Sprintf("%q has no deployed releases", name))
 	}
 	return nil, err
 }
