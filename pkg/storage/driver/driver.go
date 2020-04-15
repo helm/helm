@@ -17,6 +17,8 @@ limitations under the License.
 package driver // import "helm.sh/helm/v3/pkg/storage/driver"
 
 import (
+	"fmt"
+
 	"github.com/pkg/errors"
 
 	rspb "helm.sh/helm/v3/pkg/release"
@@ -28,8 +30,29 @@ var (
 	// ErrReleaseExists indicates that a release already exists.
 	ErrReleaseExists = errors.New("release: already exists")
 	// ErrInvalidKey indicates that a release key could not be parsed.
-	ErrInvalidKey = errors.Errorf("release: invalid key")
+	ErrInvalidKey = errors.New("release: invalid key")
+	// ErrNoDeployedReleases indicates that there are no releases with the given key in the deployed state
+	ErrNoDeployedReleases = errors.New("has no deployed releases")
 )
+
+// StorageDriverError records an error and the release name that caused it
+type StorageDriverError struct {
+	ReleaseName string
+	Err         error
+}
+
+func (e *StorageDriverError) Error() string {
+	return fmt.Sprintf("%q %s", e.ReleaseName, e.Err.Error())
+}
+
+func (e *StorageDriverError) Unwrap() error { return e.Err }
+
+func NewErrNoDeployedReleases(releaseName string) error {
+	return &StorageDriverError{
+		ReleaseName: releaseName,
+		Err:         ErrNoDeployedReleases,
+	}
+}
 
 // Creator is the interface that wraps the Create method.
 //
