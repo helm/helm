@@ -210,9 +210,14 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 					Getters:          p,
 					RepositoryConfig: settings.RepositoryConfig,
 					RepositoryCache:  settings.RepositoryCache,
+					Debug:            settings.Debug,
 				}
 				if err := man.Update(); err != nil {
 					return nil, err
+				}
+				// Reload the chart with the updated Chart.lock file.
+				if chartRequested, err = loader.Load(cp); err != nil {
+					return nil, errors.Wrap(err, "failed reloading chart after repo update")
 				}
 			} else {
 				return nil, err
