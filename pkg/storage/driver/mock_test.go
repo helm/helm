@@ -113,7 +113,7 @@ func (mock *MockConfigMapsInterface) Get(_ context.Context, name string, _ metav
 }
 
 // List returns the a of ConfigMaps.
-func (mock *MockConfigMapsInterface) List(_ context.Context, _ metav1.ListOptions) (*v1.ConfigMapList, error) {
+func (mock *MockConfigMapsInterface) List(_ context.Context, opts metav1.ListOptions) (*v1.ConfigMapList, error) {
 	var list v1.ConfigMapList
 
 	labelSelector, err := kblabels.Parse(opts.LabelSelector)
@@ -199,7 +199,7 @@ func (mock *MockSecretsInterface) Get(_ context.Context, name string, _ metav1.G
 }
 
 // List returns the a of Secret.
-func (mock *MockSecretsInterface) List(_ context.Context, _ metav1.ListOptions) (*v1.SecretList, error) {
+func (mock *MockSecretsInterface) List(_ context.Context, opts metav1.ListOptions) (*v1.SecretList, error) {
 	var list v1.SecretList
 
 	labelSelector, err := kblabels.Parse(opts.LabelSelector)
