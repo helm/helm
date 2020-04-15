@@ -17,11 +17,14 @@ limitations under the License.
 package lint
 
 import (
+	"io/ioutil"
+	"os"
 	"strings"
-
-	"k8s.io/helm/pkg/lint/support"
-
 	"testing"
+
+	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/lint/support"
+	"k8s.io/helm/pkg/proto/hapi/chart"
 )
 
 var values = []byte{}
@@ -99,5 +102,38 @@ func TestGoodChart(t *testing.T) {
 	m := All(goodChartDir, values, namespace, strict).Messages
 	if len(m) != 0 {
 		t.Errorf("All failed but shouldn't have: %#v", m)
+	}
+}
+
+// TestHelmCreateChart tests that a `helm create` always passes a `helm lint` test.
+//
+// See https://github.com/helm/helm/issues/7923
+func TestHelmCreateChart(t *testing.T) {
+	dir, err := ioutil.TempDir("", "-helm-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	cfile := &chart.Metadata{
+		Name:        "testhelmcreatepasseslint",
+		Description: "See lint_test.go",
+		Version:     "0.1.0",
+		AppVersion:  "1.0",
+		ApiVersion:  chartutil.ApiVersionV1,
+	}
+
+	createdChart, err := chartutil.Create(cfile, dir)
+	if err != nil {
+		t.Error(err)
+		// Fatal is bad because of the defer.
+		return
+	}
+
+	m := All(createdChart, values, namespace, true).Messages
+	if ll := len(m); ll != 1 {
+		t.Errorf("All should have had exactly 1 error. Got %d", ll)
+	} else if msg := m[0].Err.Error(); !strings.Contains(msg, "icon is recommended") {
+		t.Errorf("Unexpected lint error: %s", msg)
 	}
 }
