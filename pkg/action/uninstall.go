@@ -169,6 +169,7 @@ func joinErrors(errs []error) string {
 
 // deleteRelease deletes the release and returns manifests that were kept in the deletion process
 func (u *Uninstall) deleteRelease(rel *release.Release) (string, []error) {
+	var errs []error
 	caps, err := u.cfg.getCapabilities()
 	if err != nil {
 		return rel.Manifest, []error{errors.Wrap(err, "could not get apiVersions from Kubernetes")}
@@ -194,11 +195,13 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (string, []error) {
 	for _, file := range filesToDelete {
 		builder.WriteString("\n---\n" + file.Content)
 	}
+
 	resources, err := u.cfg.KubeClient.Build(strings.NewReader(builder.String()), false)
 	if err != nil {
 		return "", []error{errors.Wrap(err, "unable to build kubernetes objects for delete")}
 	}
-
-	_, errs := u.cfg.KubeClient.Delete(resources)
+	if len(resources) > 0 {
+		_, errs = u.cfg.KubeClient.Delete(resources)
+	}
 	return kept, errs
 }
