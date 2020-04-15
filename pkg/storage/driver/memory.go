@@ -141,6 +141,11 @@ func (mem *Memory) Query(keyvals map[string]string) ([]*rspb.Release, error) {
 			break
 		}
 	}
+
+	if len(ls) == 0 {
+		return nil, ErrReleaseNotFound
+	}
+
 	return ls, nil
 }
 
