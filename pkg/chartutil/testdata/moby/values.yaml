@@ -7,3 +7,5 @@ right: exists
 left: exists
 front: exists
 back: exists
+nested:
+  boat: true

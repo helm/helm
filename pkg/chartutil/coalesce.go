@@ -47,10 +47,7 @@ func CoalesceValues(chrt *chart.Chart, vals map[string]interface{}) (Values, err
 	if valsCopy == nil {
 		valsCopy = make(map[string]interface{})
 	}
-	if _, err := coalesce(chrt, valsCopy); err != nil {
-		return valsCopy, err
-	}
-	return coalesceDeps(chrt, valsCopy)
+	return coalesce(chrt, valsCopy)
 }
 
 // coalesce coalesces the dest values and the chart values, giving priority to the dest values.
@@ -186,19 +183,18 @@ func CoalesceTables(dst, src map[string]interface{}) map[string]interface{} {
 	// Because dest has higher precedence than src, dest values override src
 	// values.
 	for key, val := range src {
-		if istable(val) {
-			switch innerdst, ok := dst[key]; {
-			case !ok:
-				dst[key] = val
-			case istable(innerdst):
-				CoalesceTables(innerdst.(map[string]interface{}), val.(map[string]interface{}))
-			default:
+		if dv, ok := dst[key]; ok && dv == nil {
+			delete(dst, key)
+		} else if !ok {
+			dst[key] = val
+		} else if istable(val) {
+			if istable(dv) {
+				CoalesceTables(dv.(map[string]interface{}), val.(map[string]interface{}))
+			} else {
 				log.Printf("warning: cannot overwrite table with non table for %s (%v)", key, val)
 			}
-		} else if dv, ok := dst[key]; ok && istable(dv) {
+		} else if istable(dv) {
 			log.Printf("warning: destination for %s is a table. Ignoring non-table value %v", key, val)
-		} else if !ok { // <- ok is still in scope from preceding conditional.
-			dst[key] = val
 		}
 	}
 	return dst
