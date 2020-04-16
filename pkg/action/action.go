@@ -221,23 +221,23 @@ func (c *Configuration) recordRelease(r *release.Release) {
 }
 
 // Init initializes the action configuration
-func (c *Configuration) Init(getter genericclioptions.RESTClientGetter, namespace string, helmDriver string, log DebugLog) error {
+func (c *Configuration) Init(getter genericclioptions.RESTClientGetter, namespace, helmDriver string, log DebugLog) error {
 	kc := kube.New(getter)
 	kc.Log = log
 
-	clientset, err := kc.Factory.KubernetesClientSet()
-	if err != nil {
-		return err
+	lazyClient := &lazyClient{
+		namespace: namespace,
+		clientFn:  kc.Factory.KubernetesClientSet,
 	}
 
 	var store *storage.Storage
 	switch helmDriver {
 	case "secret", "secrets", "":
-		d := driver.NewSecrets(clientset.CoreV1().Secrets(namespace))
+		d := driver.NewSecrets(newSecretClient(lazyClient))
 		d.Log = log
 		store = storage.Init(d)
 	case "configmap", "configmaps":
-		d := driver.NewConfigMaps(clientset.CoreV1().ConfigMaps(namespace))
+		d := driver.NewConfigMaps(newConfigMapClient(lazyClient))
 		d.Log = log
 		store = storage.Init(d)
 	case "memory":

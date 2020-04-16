@@ -97,10 +97,15 @@ func storageFixture() *storage.Storage {
 }
 
 func executeActionCommandC(store *storage.Storage, cmd string) (*cobra.Command, string, error) {
+	return executeActionCommandStdinC(store, nil, cmd)
+}
+
+func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string) (*cobra.Command, string, error) {
 	args, err := shellwords.Parse(cmd)
 	if err != nil {
 		return nil, "", err
 	}
+
 	buf := new(bytes.Buffer)
 
 	actionConfig := &action.Configuration{
@@ -111,15 +116,26 @@ func executeActionCommandC(store *storage.Storage, cmd string) (*cobra.Command, 
 	}
 
 	root := newRootCmd(actionConfig, buf, args)
-	root.SetOutput(buf)
+	root.SetOut(buf)
+	root.SetErr(buf)
 	root.SetArgs(args)
+
+	oldStdin := os.Stdin
+	if in != nil {
+		root.SetIn(in)
+		os.Stdin = in
+	}
 
 	if mem, ok := store.Driver.(*driver.Memory); ok {
 		mem.SetNamespace(settings.Namespace())
 	}
 	c, err := root.ExecuteC()
 
-	return c, buf.String(), err
+	result := buf.String()
+
+	os.Stdin = oldStdin
+
+	return c, result, err
 }
 
 // cmdTestCase describes a test case that works with releases.

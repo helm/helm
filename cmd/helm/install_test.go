@@ -111,6 +111,12 @@ func TestInstall(t *testing.T) {
 			cmd:       "install nodeps testdata/testcharts/chart-missing-deps",
 			wantError: true,
 		},
+		// Install chart with update-dependency
+		{
+			name:   "install chart with missing dependencies",
+			cmd:    "install --dependency-update updeps testdata/testcharts/chart-with-subchart-update",
+			golden: "output/chart-with-subchart-update.txt",
+		},
 		// Install, chart with bad dependencies in Chart.yaml in /charts
 		{
 			name:      "install chart with bad dependencies in Chart.yaml",

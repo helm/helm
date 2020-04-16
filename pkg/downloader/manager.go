@@ -239,6 +239,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 
 	fmt.Fprintf(m.Out, "Saving %d charts\n", len(deps))
 	var saveError error
+	churls := make(map[string]struct{})
 	for _, dep := range deps {
 		// No repository means the chart is in charts directory
 		if dep.Repository == "" {
@@ -278,8 +279,6 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			continue
 		}
 
-		fmt.Fprintf(m.Out, "Downloading %s from repo %s\n", dep.Name, dep.Repository)
-
 		// Any failure to resolve/download a chart should fail:
 		// https://github.com/helm/helm/issues/1439
 		churl, username, password, err := m.findChartURL(dep.Name, dep.Version, dep.Repository, repos)
@@ -287,6 +286,13 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			saveError = errors.Wrapf(err, "could not find %s", churl)
 			break
 		}
+
+		if _, ok := churls[churl]; ok {
+			fmt.Fprintf(m.Out, "Already downloaded %s from repo %s\n", dep.Name, dep.Repository)
+			continue
+		}
+
+		fmt.Fprintf(m.Out, "Downloading %s from repo %s\n", dep.Name, dep.Repository)
 
 		dl := ChartDownloader{
 			Out:              m.Out,
@@ -304,6 +310,8 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			saveError = errors.Wrapf(err, "could not download %s", churl)
 			break
 		}
+
+		churls[churl] = struct{}{}
 	}
 
 	if saveError == nil {

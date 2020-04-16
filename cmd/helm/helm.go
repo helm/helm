@@ -32,7 +32,6 @@ import (
 	// Import to initialize client auth plugins.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
-	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/gates"
@@ -72,16 +71,6 @@ func main() {
 
 	actionConfig := new(action.Configuration)
 	cmd := newRootCmd(actionConfig, os.Stdout, os.Args[1:])
-
-	if calledCmd, _, err := cmd.Find(os.Args[1:]); err == nil && calledCmd.Name() == completion.CompRequestCmd {
-		// If completion is being called, we have to check if the completion is for the "--kube-context"
-		// value; if it is, we cannot call the action.Init() method with an incomplete kube-context value
-		// or else it will fail immediately.  So, we simply unset the invalid kube-context value.
-		if args := os.Args[1:]; len(args) > 2 && args[len(args)-2] == "--kube-context" {
-			// We are completing the kube-context value!  Reset it as the current value is not valid.
-			settings.KubeContext = ""
-		}
-	}
 
 	helmDriver := os.Getenv("HELM_DRIVER")
 	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), helmDriver, debug); err != nil {

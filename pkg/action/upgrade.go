@@ -18,6 +18,7 @@ package action
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -42,27 +43,57 @@ type Upgrade struct {
 
 	ChartPathOptions
 
-	Install   bool
-	Devel     bool
+	// Install is a purely informative flag that indicates whether this upgrade was done in "install" mode.
+	//
+	// Applications may use this to determine whether this Upgrade operation was done as part of a
+	// pure upgrade (Upgrade.Install == false) or as part of an install-or-upgrade operation
+	// (Upgrade.Install == true).
+	//
+	// Setting this to `true` will NOT cause `Upgrade` to perform an install if the release does not exist.
+	// That process must be handled by creating an Install action directly. See cmd/upgrade.go for an
+	// example of how this flag is used.
+	Install bool
+	// Devel indicates that the operation is done in devel mode.
+	Devel bool
+	// Namespace is the namespace in which this operation should be performed.
 	Namespace string
-	// SkipCRDs skip installing CRDs when install flag is enabled during upgrade
-	SkipCRDs     bool
-	Timeout      time.Duration
-	Wait         bool
+	// SkipCRDs skips installing CRDs when install flag is enabled during upgrade
+	SkipCRDs bool
+	// Timeout is the timeout for this operation
+	Timeout time.Duration
+	// Wait determines whether the wait operation should be performed after the upgrade is requested.
+	Wait bool
+	// DisableHooks disables hook processing if set to true.
 	DisableHooks bool
-	DryRun       bool
-	Force        bool
-	ResetValues  bool
-	ReuseValues  bool
+	// DryRun controls whether the operation is prepared, but not executed.
+	// If `true`, the upgrade is prepared but not performed.
+	DryRun bool
+	// Force will, if set to `true`, ignore certain warnings and perform the upgrade anyway.
+	//
+	// This should be used with caution.
+	Force bool
+	// ResetValues will reset the values to the chart's built-ins rather than merging with existing.
+	ResetValues bool
+	// ReuseValues will re-use the user's last supplied values.
+	ReuseValues bool
 	// Recreate will (if true) recreate pods after a rollback.
 	Recreate bool
 	// MaxHistory limits the maximum number of revisions saved per release
-	MaxHistory               int
-	Atomic                   bool
-	CleanupOnFail            bool
-	SubNotes                 bool
-	Description              string
-	PostRenderer             postrender.PostRenderer
+	MaxHistory int
+	// Atomic, if true, will roll back on failure.
+	Atomic bool
+	// CleanupOnFail will, if true, cause the upgrade to delete newly-created resources on a failed update.
+	CleanupOnFail bool
+	// SubNotes determines whether sub-notes are rendered in the chart.
+	SubNotes bool
+	// Description is the description of this operation
+	Description string
+	// PostRender is an optional post-renderer
+	//
+	// If this is non-nil, then after templates are rendered, they will be sent to the
+	// post renderer before sending to the Kuberntes API server.
+	PostRenderer postrender.PostRenderer
+	// DisableOpenAPIValidation controls whether OpenAPI validation is enforced.
 	DisableOpenAPIValidation bool
 }
 
@@ -202,6 +233,13 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Release) (*release.Release, error) {
 	current, err := u.cfg.KubeClient.Build(bytes.NewBufferString(originalRelease.Manifest), false)
 	if err != nil {
+		// Checking for removed Kubernetes API error so can provide a more informative error message to the user
+		// Ref: https://github.com/helm/helm/issues/7219
+		if strings.Contains(err.Error(), "unable to recognize \"\": no matches for kind") {
+			return upgradedRelease, errors.Wrap(err, "current release manifest contains removed kubernetes api(s) for this "+
+				"kubernetes version and it is therefore unable to build the kubernetes "+
+				"objects for performing the diff. error from kubernetes")
+		}
 		return upgradedRelease, errors.Wrap(err, "unable to build kubernetes objects from current release manifest")
 	}
 	target, err := u.cfg.KubeClient.Build(bytes.NewBufferString(upgradedRelease.Manifest), !u.DisableOpenAPIValidation)
@@ -428,7 +466,7 @@ func recreate(cfg *Configuration, resources kube.ResourceList) error {
 			return errors.Wrapf(err, "unable to recreate pods for object %s/%s because an error occurred", res.Namespace, res.Name)
 		}
 
-		pods, err := client.CoreV1().Pods(res.Namespace).List(metav1.ListOptions{
+		pods, err := client.CoreV1().Pods(res.Namespace).List(context.Background(), metav1.ListOptions{
 			LabelSelector: selector.String(),
 		})
 		if err != nil {
@@ -438,7 +476,7 @@ func recreate(cfg *Configuration, resources kube.ResourceList) error {
 		// Restart pods
 		for _, pod := range pods.Items {
 			// Delete each pod for get them restarted with changed spec.
-			if err := client.CoreV1().Pods(pod.Namespace).Delete(pod.Name, metav1.NewPreconditionDeleteOptions(string(pod.UID))); err != nil {
+			if err := client.CoreV1().Pods(pod.Namespace).Delete(context.Background(), pod.Name, *metav1.NewPreconditionDeleteOptions(string(pod.UID))); err != nil {
 				return errors.Wrapf(err, "unable to recreate pods for object %s/%s because an error occurred", res.Namespace, res.Name)
 			}
 		}
