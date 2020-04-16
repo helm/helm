@@ -259,7 +259,6 @@ func (c *Configuration) Init(getter genericclioptions.RESTClientGetter, namespac
 		store = storage.Init(d)
 	case "sql":
 		d, err := driver.NewSQL(
-			os.Getenv("HELM_DRIVER_SQL_DIALECT"),
 			os.Getenv("HELM_DRIVER_SQL_CONNECTION_STRING"),
 			log,
 			namespace,

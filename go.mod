@@ -35,7 +35,7 @@ require (
 	github.com/xeipuuv/gojsonschema v1.1.0
 	golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975
 	k8s.io/api v0.18.0
-	k8s.io/apiextensions-apiserver v0.17.3
+	k8s.io/apiextensions-apiserver v0.18.0
 	k8s.io/apimachinery v0.18.0
 	k8s.io/cli-runtime v0.18.0
 	k8s.io/client-go v0.18.0

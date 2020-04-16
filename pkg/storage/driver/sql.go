@@ -43,9 +43,7 @@ var labelMap = map[string]struct{}{
 	"name":       {},
 }
 
-var supportedSQLDialects = map[string]struct{}{
-	"postgres": {},
-}
+const postgreSQLDialect = "postgres"
 
 // SQLDriverName is the string name of this driver.
 const SQLDriverName = "SQL"
@@ -155,7 +153,7 @@ func (s *SQL) ensureDBSetup() error {
 		},
 	}
 
-	_, err := migrate.Exec(s.db.DB, "postgres", migrations, migrate.Up)
+	_, err := migrate.Exec(s.db.DB, postgreSQLDialect, migrations, migrate.Up)
 	return err
 }
 
@@ -183,12 +181,8 @@ type SQLReleaseWrapper struct {
 }
 
 // NewSQL initializes a new sql driver.
-func NewSQL(dialect, connectionString string, logger func(string, ...interface{}), namespace string) (*SQL, error) {
-	if _, ok := supportedSQLDialects[dialect]; !ok {
-		return nil, fmt.Errorf("%s dialect isn't supported, only \"postgres\" is available for now", dialect)
-	}
-
-	db, err := sqlx.Connect(dialect, connectionString)
+func NewSQL(connectionString string, logger func(string, ...interface{}), namespace string) (*SQL, error) {
+	db, err := sqlx.Connect(postgreSQLDialect, connectionString)
 	if err != nil {
 		return nil, err
 	}
