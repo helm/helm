@@ -210,8 +210,6 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		}
 	}
 
-	targetRelease.Info.Status = release.StatusDeployed
-
 	deployed, err := r.cfg.Releases.DeployedAll(currentRelease.Name)
 	if err != nil && !strings.Contains(err.Error(), "has no deployed releases") {
 		return nil, err
@@ -222,6 +220,8 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		rel.Info.Status = release.StatusSuperseded
 		r.cfg.recordRelease(rel)
 	}
+
+	targetRelease.Info.Status = release.StatusDeployed
 
 	return targetRelease, nil
 }
