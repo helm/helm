@@ -17,6 +17,8 @@ limitations under the License.
 package action
 
 import (
+	"fmt"
+	"os"
 	"path"
 	"regexp"
 
@@ -254,6 +256,16 @@ func (c *Configuration) Init(getter genericclioptions.RESTClientGetter, namespac
 			d = driver.NewMemory()
 		}
 		d.SetNamespace(namespace)
+		store = storage.Init(d)
+	case "sql":
+		d, err := driver.NewSQL(
+			os.Getenv("HELM_DRIVER_SQL_CONNECTION_STRING"),
+			log,
+			namespace,
+		)
+		if err != nil {
+			panic(fmt.Sprintf("Unable to instantiate SQL driver: %v", err))
+		}
 		store = storage.Init(d)
 	default:
 		// Not sure what to do here.

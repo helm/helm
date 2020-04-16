@@ -21,6 +21,10 @@ import (
 	"fmt"
 	"testing"
 
+	sqlmock "github.com/DATA-DOG/go-sqlmock"
+	sq "github.com/Masterminds/squirrel"
+	"github.com/jmoiron/sqlx"
+
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -242,4 +246,20 @@ func (mock *MockSecretsInterface) Delete(_ context.Context, name string, _ metav
 	}
 	delete(mock.objects, name)
 	return nil
+}
+
+// newTestFixtureSQL mocks the SQL database (for testing purposes)
+func newTestFixtureSQL(t *testing.T, releases ...*rspb.Release) (*SQL, sqlmock.Sqlmock) {
+	sqlDB, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("error when opening stub database connection: %v", err)
+	}
+
+	sqlxDB := sqlx.NewDb(sqlDB, "sqlmock")
+	return &SQL{
+		db:               sqlxDB,
+		Log:              func(a string, b ...interface{}) {},
+		namespace:        "default",
+		statementBuilder: sq.StatementBuilder.PlaceholderFormat(sq.Dollar),
+	}, mock
 }
