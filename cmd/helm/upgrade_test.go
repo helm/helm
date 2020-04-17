@@ -80,6 +80,10 @@ func TestUpgradeCmd(t *testing.T) {
 	missingDepsPath := "testdata/testcharts/chart-missing-deps"
 	badDepsPath := "testdata/testcharts/chart-bad-requirements"
 
+	relWithStatusMock := func(n string, v int, ch *chart.Chart, status release.Status) *release.Release {
+		return release.Mock(&release.MockReleaseOptions{Name: n, Version: v, Chart: ch, Status: status})
+	}
+
 	relMock := func(n string, v int, ch *chart.Chart) *release.Release {
 		return release.Mock(&release.MockReleaseOptions{Name: n, Version: v, Chart: ch})
 	}
@@ -138,6 +142,25 @@ func TestUpgradeCmd(t *testing.T) {
 			cmd:       fmt.Sprintf("upgrade bonkers-bunny '%s'", badDepsPath),
 			golden:    "output/upgrade-with-bad-dependencies.txt",
 			wantError: true,
+		},
+		{
+			name:      "upgrade a non-existent release",
+			cmd:       fmt.Sprintf("upgrade funny-bunny '%s'", chartPath),
+			golden:    "output/upgrade-with-bad-or-missing-existing-release.txt",
+			wantError: true,
+		},
+		{
+			name:   "upgrade a failed release",
+			cmd:    fmt.Sprintf("upgrade funny-bunny '%s'", chartPath),
+			golden: "output/upgrade.txt",
+			rels:   []*release.Release{relWithStatusMock("funny-bunny", 2, ch, release.StatusFailed)},
+		},
+		{
+			name:      "upgrade a pending install release",
+			cmd:       fmt.Sprintf("upgrade funny-bunny '%s'", chartPath),
+			golden:    "output/upgrade-with-bad-or-missing-existing-release.txt",
+			wantError: true,
+			rels:      []*release.Release{relWithStatusMock("funny-bunny", 2, ch, release.StatusPendingInstall)},
 		},
 	}
 	runTestCmd(t, tests)

@@ -116,7 +116,7 @@ func (s *Storage) Deployed(name string) (*rspb.Release, error) {
 	}
 
 	if len(ls) == 0 {
-		return nil, errors.Errorf("%q has no deployed releases", name)
+		return nil, driver.NewErrNoDeployedReleases(name)
 	}
 
 	// If executed concurrently, Helm's database gets corrupted
@@ -140,7 +140,7 @@ func (s *Storage) DeployedAll(name string) ([]*rspb.Release, error) {
 		return ls, nil
 	}
 	if strings.Contains(err.Error(), "not found") {
-		return nil, errors.Errorf("%q has no deployed releases", name)
+		return nil, driver.NewErrNoDeployedReleases(name)
 	}
 	return nil, err
 }

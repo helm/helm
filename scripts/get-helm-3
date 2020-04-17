@@ -88,9 +88,9 @@ checkDesiredVersion() {
     # Get tag from release URL
     local latest_release_url="https://github.com/helm/helm/releases"
     if [ "${HAS_CURL}" == "true" ]; then
-      TAG=$(curl -Ls $latest_release_url | grep 'href="/helm/helm/releases/tag/v3.' | grep -v no-underline | head -n 1 | cut -d '"' -f 2 | awk '{n=split($NF,a,"/");print a[n]}' | awk 'a !~ $0{print}; {a=$0}')
+      TAG=$(curl -Ls $latest_release_url | grep 'href="/helm/helm/releases/tag/v3.[0-9]*.[0-9]*\"' | grep -v no-underline | head -n 1 | cut -d '"' -f 2 | awk '{n=split($NF,a,"/");print a[n]}' | awk 'a !~ $0{print}; {a=$0}')
     elif [ "${HAS_WGET}" == "true" ]; then
-      TAG=$(wget $latest_release_url -O - 2>&1 | grep 'href="/helm/helm/releases/tag/v3.' | grep -v no-underline | head -n 1 | cut -d '"' -f 2 | awk '{n=split($NF,a,"/");print a[n]}' | awk 'a !~ $0{print}; {a=$0}')
+      TAG=$(wget $latest_release_url -O - 2>&1 | grep 'href="/helm/helm/releases/tag/v3.[0-9]*.[0-9]*\"' | grep -v no-underline | head -n 1 | cut -d '"' -f 2 | awk '{n=split($NF,a,"/");print a[n]}' | awk 'a !~ $0{print}; {a=$0}')
     fi
   else
     TAG=$DESIRED_VERSION
@@ -163,12 +163,14 @@ verifyChecksum() {
     echo "Please install openssl or set VERIFY_CHECKSUM=false in your environment."
     exit 1
   fi
+  printf "Verifying checksum... "
   local sum=$(openssl sha1 -sha256 ${HELM_TMP_FILE} | awk '{print $2}')
   local expected_sum=$(cat ${HELM_SUM_FILE})
   if [ "$sum" != "$expected_sum" ]; then
     echo "SHA sum of ${HELM_TMP_FILE} does not match. Aborting."
     exit 1
   fi
+  echo "Done."
 }
 
 # verifySignatures obtains the KEYS and signature .asc files from GitHub,
@@ -179,6 +181,7 @@ verifySignatures() {
     echo "Please install gpg or set VERIFY_SIGNATURES=false in your environment."
     exit 1
   fi
+  printf "Verifying signatures... "
   local keys_filename="KEYS"
   local github_keys_url="https://raw.githubusercontent.com/helm/helm/master/${keys_filename}"
   if [ "${HAS_CURL}" == "true" ]; then
@@ -186,7 +189,11 @@ verifySignatures() {
   elif [ "${HAS_WGET}" == "true" ]; then
     wget -q -O "${github_keys_url}" "${HELM_TMP_ROOT}/${keys_filename}"
   fi
-  gpg --import "${HELM_TMP_ROOT}/${keys_filename}"
+  local gpg_stderr_device="/dev/null"
+  if [ "${DEBUG}" == "true" ]; then
+    gpg_stderr_device="/dev/stderr"
+  fi
+  gpg --import "${HELM_TMP_ROOT}/${keys_filename}" 2> "${gpg_stderr_device}"
   local github_release_url="https://github.com/helm/helm/releases/download/${TAG}"
   if [ "${HAS_CURL}" == "true" ]; then
     curl -SsL "${github_release_url}/helm-${TAG}-${OS}-${ARCH}.tar.gz.sha256.asc" -o "${HELM_TMP_ROOT}/helm-${TAG}-${OS}-${ARCH}.tar.gz.sha256.asc"
@@ -197,16 +204,17 @@ verifySignatures() {
   fi
   local error_text="Double-check the PGP key provided. If you think this is a security issue,"
   error_text="${error_text}\nplease see here: https://github.com/helm/community/blob/master/SECURITY.md"
-  if ! gpg --verify "${HELM_TMP_ROOT}/helm-${TAG}-${OS}-${ARCH}.tar.gz.sha256.asc"; then
+  if ! gpg --verify "${HELM_TMP_ROOT}/helm-${TAG}-${OS}-${ARCH}.tar.gz.sha256.asc" 2> "${gpg_stderr_device}"; then
     echo "Unable to verify the signature of helm-${TAG}-${OS}-${ARCH}.tar.gz.sha256!"
     echo -e "${error_text}"
     exit 1
   fi
-  if ! gpg --verify "${HELM_TMP_ROOT}/helm-${TAG}-${OS}-${ARCH}.tar.gz.asc"; then
+  if ! gpg --verify "${HELM_TMP_ROOT}/helm-${TAG}-${OS}-${ARCH}.tar.gz.asc" 2> "${gpg_stderr_device}"; then
     echo "Unable to verify the signature of helm-${TAG}-${OS}-${ARCH}.tar.gz!"
     echo -e "${error_text}"
     exit 1
   fi
+  echo "Done."
 }
 
 # fail_trap is executed if an error occurs.
