@@ -1,2 +1,6 @@
 scope: ahab
 name: ahab
+boat: true
+nested:
+  foo: false
+  bar: true
