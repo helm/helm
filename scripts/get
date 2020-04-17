@@ -82,9 +82,9 @@ checkDesiredVersion() {
     local release_url="https://github.com/helm/helm/releases"
     if type "curl" > /dev/null; then
 
-      TAG=$(curl -Ls $release_url | grep 'href="/helm/helm/releases/tag/v2.' | grep -v no-underline | head -n 1 | cut -d '"' -f 2 | awk '{n=split($NF,a,"/");print a[n]}' | awk 'a !~ $0{print}; {a=$0}')
+      TAG=$(curl -Ls $release_url | grep 'href="/helm/helm/releases/tag/v2.[0-9]*.[0-9]*\"' | grep -v no-underline | head -n 1 | cut -d '"' -f 2 | awk '{n=split($NF,a,"/");print a[n]}' | awk 'a !~ $0{print}; {a=$0}')
     elif type "wget" > /dev/null; then
-      TAG=$(wget $release_url -O - 2>&1 | grep 'href="/helm/helm/releases/tag/v2.' | grep -v no-underline | head -n 1 | cut -d '"' -f 2 | awk '{n=split($NF,a,"/");print a[n]}' | awk 'a !~ $0{print}; {a=$0}')
+      TAG=$(wget $release_url -O - 2>&1 | grep 'href="/helm/helm/releases/tag/v2.[0-9]*.[0-9]*\"' | grep -v no-underline | head -n 1 | cut -d '"' -f 2 | awk '{n=split($NF,a,"/");print a[n]}' | awk 'a !~ $0{print}; {a=$0}')
     fi
   else
     TAG=$DESIRED_VERSION
