@@ -19,7 +19,16 @@
 
 : ${BINARY_NAME:="helm"}
 : ${USE_SUDO:="true"}
+: ${DEBUG:="false"}
+: ${VERIFY_CHECKSUM:="true"}
+: ${VERIFY_SIGNATURES:="true"}
 : ${HELM_INSTALL_DIR:="/usr/local/bin"}
+: ${HELM_INSTALL_DIR:="/usr/local/bin"}
+
+HAS_CURL="$(type "curl" > /dev/null && echo true || echo false)"
+HAS_WGET="$(type "wget" > /dev/null && echo true || echo false)"
+HAS_OPENSSL="$(type "openssl" > /dev/null && echo true || echo false)"
+HAS_GPG="$(type "gpg" > /dev/null && echo true || echo false)"
 
 # initArch discovers the architecture for this system.
 initArch() {
@@ -67,7 +76,7 @@ verifySupported() {
     exit 1
   fi
 
-  if ! type "curl" > /dev/null && ! type "wget" > /dev/null; then
+  if [ "${HAS_CURL}" != "true" ] && [ "${HAS_WGET}" != "true" ]; then
     echo "Either curl or wget is required"
     exit 1
   fi
@@ -78,9 +87,9 @@ checkDesiredVersion() {
   if [ "x$DESIRED_VERSION" == "x" ]; then
     # Get tag from release URL
     local latest_release_url="https://github.com/helm/helm/releases"
-    if type "curl" > /dev/null; then
+    if [ "${HAS_CURL}" == "true" ]; then
       TAG=$(curl -Ls $latest_release_url | grep 'href="/helm/helm/releases/tag/v3.' | grep -v no-underline | head -n 1 | cut -d '"' -f 2 | awk '{n=split($NF,a,"/");print a[n]}' | awk 'a !~ $0{print}; {a=$0}')
-    elif type "wget" > /dev/null; then
+    elif [ "${HAS_WGET}" == "true" ]; then
       TAG=$(wget $latest_release_url -O - 2>&1 | grep 'href="/helm/helm/releases/tag/v3.' | grep -v no-underline | head -n 1 | cut -d '"' -f 2 | awk '{n=split($NF,a,"/");print a[n]}' | awk 'a !~ $0{print}; {a=$0}')
     fi
   else
@@ -115,35 +124,89 @@ downloadFile() {
   HELM_TMP_FILE="$HELM_TMP_ROOT/$HELM_DIST"
   HELM_SUM_FILE="$HELM_TMP_ROOT/$HELM_DIST.sha256"
   echo "Downloading $DOWNLOAD_URL"
-  if type "curl" > /dev/null; then
+  if [ "${HAS_CURL}" == "true" ]; then
     curl -SsL "$CHECKSUM_URL" -o "$HELM_SUM_FILE"
-  elif type "wget" > /dev/null; then
-    wget -q -O "$HELM_SUM_FILE" "$CHECKSUM_URL"
-  fi
-  if type "curl" > /dev/null; then
     curl -SsL "$DOWNLOAD_URL" -o "$HELM_TMP_FILE"
-  elif type "wget" > /dev/null; then
+  elif [ "${HAS_WGET}" == "true" ]; then
+    wget -q -O "$HELM_SUM_FILE" "$CHECKSUM_URL"
     wget -q -O "$HELM_TMP_FILE" "$DOWNLOAD_URL"
   fi
 }
 
-# installFile verifies the SHA256 for the file, then unpacks and
-# installs it.
+# verifyFile verifies the SHA256 checksum of the binary package
+# and the GPG signtaures for both the package and checksum file
+# (depending on settings in environment).
+verifyFile() {
+  if [ "${VERIFY_CHECKSUM}" == "true" ]; then
+    verifyChecksum
+  fi
+  if [ "${VERIFY_SIGNATURES}" == "true" ]; then
+    verifySignatures
+  fi
+}
+
+# installFile installs the Helm binary.
 installFile() {
   HELM_TMP="$HELM_TMP_ROOT/$BINARY_NAME"
-  local sum=$(openssl sha1 -sha256 ${HELM_TMP_FILE} | awk '{print $2}')
-  local expected_sum=$(cat ${HELM_SUM_FILE})
-  if [ "$sum" != "$expected_sum" ]; then
-    echo "SHA sum of ${HELM_TMP_FILE} does not match. Aborting."
-    exit 1
-  fi
-
   mkdir -p "$HELM_TMP"
   tar xf "$HELM_TMP_FILE" -C "$HELM_TMP"
   HELM_TMP_BIN="$HELM_TMP/$OS-$ARCH/helm"
   echo "Preparing to install $BINARY_NAME into ${HELM_INSTALL_DIR}"
   runAsRoot cp "$HELM_TMP_BIN" "$HELM_INSTALL_DIR/$BINARY_NAME"
   echo "$BINARY_NAME installed into $HELM_INSTALL_DIR/$BINARY_NAME"
+}
+
+# verifyChecksum verifies the SHA256 checksum of the binary package.
+verifyChecksum() {
+  if [ "${HAS_OPENSSL}" != "true" ]; then
+    echo "In order to verify checksum, openssl must first be installed."
+    echo "Please install openssl or set VERIFY_CHECKSUM=false in your environment."
+    exit 1
+  fi
+  local sum=$(openssl sha1 -sha256 ${HELM_TMP_FILE} | awk '{print $2}')
+  local expected_sum=$(cat ${HELM_SUM_FILE})
+  if [ "$sum" != "$expected_sum" ]; then
+    echo "SHA sum of ${HELM_TMP_FILE} does not match. Aborting."
+    exit 1
+  fi
+}
+
+# verifySignatures obtains the KEYS and signature .asc files from GitHub,
+# then verifies that the release artifacts were signed by a valid key.
+verifySignatures() {
+  if [ "${HAS_GPG}" != "true" ]; then
+    echo "In order to verify signatures, gpg must first be installed."
+    echo "Please install gpg or set VERIFY_SIGNATURES=false in your environment."
+    exit 1
+  fi
+  local keys_filename="KEYS"
+  local github_keys_url="https://raw.githubusercontent.com/helm/helm/master/${keys_filename}"
+  if [ "${HAS_CURL}" == "true" ]; then
+    curl -SsL "${github_keys_url}" -o "${HELM_TMP_ROOT}/${keys_filename}"
+  elif [ "${HAS_WGET}" == "true" ]; then
+    wget -q -O "${github_keys_url}" "${HELM_TMP_ROOT}/${keys_filename}"
+  fi
+  gpg --import "${HELM_TMP_ROOT}/${keys_filename}"
+  local github_release_url="https://github.com/helm/helm/releases/download/${TAG}"
+  if [ "${HAS_CURL}" == "true" ]; then
+    curl -SsL "${github_release_url}/helm-${TAG}-${OS}-${ARCH}.tar.gz.sha256.asc" -o "${HELM_TMP_ROOT}/helm-${TAG}-${OS}-${ARCH}.tar.gz.sha256.asc"
+    curl -SsL "${github_release_url}/helm-${TAG}-${OS}-${ARCH}.tar.gz.asc" -o "${HELM_TMP_ROOT}/helm-${TAG}-${OS}-${ARCH}.tar.gz.asc"
+  elif [ "${HAS_WGET}" == "true" ]; then
+    wget -q -O "${github_release_url}/helm-${TAG}-${OS}-${ARCH}.tar.gz.sha256.asc" "${HELM_TMP_ROOT}/helm-${TAG}-${OS}-${ARCH}.tar.gz.sha256.asc"
+    wget -q -O "${github_release_url}/${TAG}/helm-${TAG}-${OS}-${ARCH}.tar.gz.asc" "${HELM_TMP_ROOT}/helm-${TAG}-${OS}-${ARCH}.tar.gz.asc"
+  fi
+  local error_text="Double-check the PGP key provided. If you think this is a security issue,"
+  error_text="${error_text}\nplease see here: https://github.com/helm/community/blob/master/SECURITY.md"
+  if ! gpg --verify "${HELM_TMP_ROOT}/helm-${TAG}-${OS}-${ARCH}.tar.gz.sha256.asc"; then
+    echo "Unable to verify the signature of helm-${TAG}-${OS}-${ARCH}.tar.gz.sha256!"
+    echo -e "${error_text}"
+    exit 1
+  fi
+  if ! gpg --verify "${HELM_TMP_ROOT}/helm-${TAG}-${OS}-${ARCH}.tar.gz.asc"; then
+    echo "Unable to verify the signature of helm-${TAG}-${OS}-${ARCH}.tar.gz!"
+    echo -e "${error_text}"
+    exit 1
+  fi
 }
 
 # fail_trap is executed if an error occurs.
@@ -195,6 +258,11 @@ cleanup() {
 trap "fail_trap" EXIT
 set -e
 
+# Set debug if desired
+if [ "${DEBUG}" == "true" ]; then
+  set -x
+fi
+
 # Parsing input arguments (if any)
 export INPUT_ARGUMENTS="${@}"
 set -u
@@ -229,6 +297,7 @@ verifySupported
 checkDesiredVersion
 if ! checkHelmInstalledVersion; then
   downloadFile
+  verifyFile
   installFile
 fi
 testVersion
