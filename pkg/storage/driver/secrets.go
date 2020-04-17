@@ -38,6 +38,9 @@ var _ Driver = (*Secrets)(nil)
 // SecretsDriverName is the string name of the driver.
 const SecretsDriverName = "Secret"
 
+// SecretSizeLimit is the maximum number of characters in Secrets.
+const SecretSizeLimit = 1048576
+
 // Secrets is a wrapper around an implementation of a kubernetes
 // SecretsInterface.
 type Secrets struct {
@@ -152,6 +155,12 @@ func (secrets *Secrets) Create(key string, rls *rspb.Release) error {
 	if err != nil {
 		return errors.Wrapf(err, "create: failed to encode release %q", rls.Name)
 	}
+
+	if len(obj.Data["release"]) > SecretSizeLimit {
+		error := errors.New("the limit of the number of characters in secret resource has been exceeded. please check the chart directory")
+		return errors.Wrap(error, "create: failed to create")
+	}
+
 	// push the secret object out into the kubiverse
 	if _, err := secrets.impl.Create(context.Background(), obj, metav1.CreateOptions{}); err != nil {
 		if apierrors.IsAlreadyExists(err) {
