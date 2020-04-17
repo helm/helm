@@ -27,7 +27,7 @@ func TestLintCmdWithSubchartsFlag(t *testing.T) {
 		name:      "lint good chart with bad subcharts",
 		cmd:       fmt.Sprintf("lint %s", testChart),
 		golden:    "output/lint-chart-with-bad-subcharts.txt",
-		wantError: false,
+		wantError: true,
 	}, {
 		name:      "lint good chart with bad subcharts using --with-subcharts flag",
 		cmd:       fmt.Sprintf("lint --with-subcharts %s", testChart),
