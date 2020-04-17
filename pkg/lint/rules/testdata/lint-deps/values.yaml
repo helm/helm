@@ -1,0 +1,1 @@
+replicaCount: 1
