@@ -176,7 +176,7 @@ func getSecondaryData() map[string]interface{} {
 }
 
 // Tests the coalessing of getMainData() and getSecondaryData()
-func testCoalescedData(t *testing.T, dst map[string]interface{}) {
+func testCoalescedData(t *testing.T, dst map[string]interface{}, cleanNil bool) {
 	// What we expect is that anything in getMainData() overrides anything in
 	// getSecondaryData(), but that otherwise the values are coalesced.
 	if dst["name"] != "Ishmael" {
@@ -203,8 +203,10 @@ func testCoalescedData(t *testing.T, dst map[string]interface{}) {
 		t.Errorf("Unexpected state: %v", addr["state"])
 	}
 
-	if _, ok = addr["country"]; ok {
+	if n, ok := addr["country"]; cleanNil && ok {
 		t.Error("The country is not left out.")
+	} else if !cleanNil && (!ok || n != nil) {
+		t.Error("The country is not nil.")
 	}
 
 	if det, ok := dst["details"].(map[string]interface{}); !ok {
@@ -219,8 +221,10 @@ func testCoalescedData(t *testing.T, dst map[string]interface{}) {
 		t.Errorf("Expected boat string, got %v", dst["boat"])
 	}
 
-	if _, ok = dst["hole"]; ok {
+	if n, ok := dst["hole"]; cleanNil && ok {
 		t.Error("The hole still exists.")
+	} else if !cleanNil && (!ok || n != nil) {
+		t.Error("The hole is not nil.")
 	}
 }
 
@@ -230,7 +234,7 @@ func TestCoalesceTables(t *testing.T) {
 
 	CoalesceTables(dst, src)
 
-	testCoalescedData(t, dst)
+	testCoalescedData(t, dst, true)
 }
 
 func TestCoalesceTablesUpdate(t *testing.T) {
@@ -239,7 +243,7 @@ func TestCoalesceTablesUpdate(t *testing.T) {
 
 	CoalesceTablesUpdate(dst, src)
 
-	testCoalescedData(t, dst)
+	testCoalescedData(t, dst, false)
 }
 
 func TestCoalesceDep(t *testing.T) {
@@ -279,7 +283,7 @@ func TestCoalesceDep(t *testing.T) {
 		t.Error("CoalesceDep must return subchart map.")
 	}
 
-	testCoalescedData(t, dst)
+	testCoalescedData(t, dst, true)
 
 	glob, ok := dst["global"].(map[string]interface{})
 	if !ok {
@@ -318,5 +322,5 @@ func TestCoalesceRoot(t *testing.T) {
 
 	CoalesceRoot(chart, dst)
 
-	testCoalescedData(t, dst)
+	testCoalescedData(t, dst, true)
 }

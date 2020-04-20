@@ -184,6 +184,9 @@ func CoalesceTables(dst, src map[string]interface{}) map[string]interface{} {
 	// values.
 	for key, val := range src {
 		if dv, ok := dst[key]; ok && dv == nil {
+			// When the YAML value is null, we remove the value's key.
+			// This allows Helm's various sources of values (value files or --set) to
+			// remove incompatible keys from any previous chart, file, or set values.
 			delete(dst, key)
 		} else if !ok {
 			dst[key] = val
@@ -209,17 +212,17 @@ func CoalesceTablesUpdate(dst, src map[string]interface{}) map[string]interface{
 	}
 	// src values override dest values.
 	for key, val := range src {
-		if istable(val) {
-			switch innerdst, ok := dst[key]; {
-			case !ok:
-			case istable(innerdst):
-				CoalesceTablesUpdate(innerdst.(map[string]interface{}),
+		// We do not remove the null values, to let value templates delete values of sub-charts
+		if dv, ok := dst[key]; !ok {
+		} else if istable(val) {
+			if istable(dv) {
+				CoalesceTablesUpdate(dv.(map[string]interface{}),
 					val.(map[string]interface{}))
 				continue
-			default:
-				log.Printf("warning: overwriting not table with table for %s (%v)", key, innerdst)
+			} else {
+				log.Printf("warning: overwriting not table with table for %s (%v)", key, dv)
 			}
-		} else if dv, ok := dst[key]; ok && istable(dv) {
+		} else if istable(dv) {
 			log.Printf("warning: overwriting table with non table for %s (%v)", key, dv)
 		}
 		dst[key] = val
