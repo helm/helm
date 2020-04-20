@@ -264,6 +264,43 @@ func TestLoadAll(t *testing.T) {
 	}
 }
 
+func TestFindPlugins(t *testing.T) {
+	cases := []struct {
+		name     string
+		plugdirs string
+		expected int
+	}{
+		{
+			name:     "plugdirs is empty",
+			plugdirs: "",
+			expected: 0,
+		},
+		{
+			name:     "plugdirs isn't dir",
+			plugdirs: "./plugin_test.go",
+			expected: 0,
+		},
+		{
+			name:     "plugdirs doens't have plugin",
+			plugdirs: ".",
+			expected: 0,
+		},
+		{
+			name:     "normal",
+			plugdirs: "./testdata/plugdir",
+			expected: 3,
+		},
+	}
+	for _, c := range cases {
+		t.Run(t.Name(), func(t *testing.T) {
+			plugin, _ := FindPlugins(c.plugdirs)
+			if len(plugin) != c.expected {
+				t.Errorf("expected: %v, got: %v", c.expected, len(plugin))
+			}
+		})
+	}
+}
+
 func TestSetupEnv(t *testing.T) {
 	name := "pequod"
 	base := filepath.Join("testdata/helmhome/helm/plugins", name)

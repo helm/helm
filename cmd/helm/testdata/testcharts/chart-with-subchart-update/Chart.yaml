@@ -1,0 +1,8 @@
+apiVersion: v2
+description: Chart with subchart that needs to be fetched
+name: chart-with-subchart-update
+version: 0.0.1
+dependencies:
+  - name: subchart-with-notes
+    version: 0.0.1
+    repository: file://../chart-with-subchart-notes/charts

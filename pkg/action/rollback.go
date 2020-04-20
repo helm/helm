@@ -211,7 +211,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 	}
 
 	deployed, err := r.cfg.Releases.DeployedAll(currentRelease.Name)
-	if err != nil {
+	if err != nil && !strings.Contains(err.Error(), "has no deployed releases") {
 		return nil, err
 	}
 	// Supersede all previous deployments, see issue #2941.

@@ -55,15 +55,22 @@ func (d *Dependency) List(chartpath string, out io.Writer) error {
 		return nil
 	}
 
-	d.printDependencies(chartpath, out, c.Metadata.Dependencies)
+	d.printDependencies(chartpath, out, c)
 	fmt.Fprintln(out)
 	d.printMissing(chartpath, out, c.Metadata.Dependencies)
 	return nil
 }
 
-func (d *Dependency) dependencyStatus(chartpath string, dep *chart.Dependency) string {
+func (d *Dependency) dependencyStatus(chartpath string, dep *chart.Dependency, parent *chart.Chart) string {
 	filename := fmt.Sprintf("%s-%s.tgz", dep.Name, "*")
 
+	// If a chart is unpacked, this will check the unpacked chart's `charts/` directory for tarballs.
+	// Technically, this is COMPLETELY unnecessary, and should be removed in Helm 4. It is here
+	// to preserved backward compatibility. In Helm 2/3, there is a "difference" between
+	// the tgz version (which outputs "ok" if it unpacks) and the loaded version (which outouts
+	// "unpacked"). Early in Helm 2's history, this would have made a difference. But it no
+	// longer does. However, since this code shipped with Helm 3, the output must remain stable
+	// until Helm 4.
 	switch archives, err := filepath.Glob(filepath.Join(chartpath, "charts", filename)); {
 	case err != nil:
 		return "bad pattern"
@@ -91,58 +98,52 @@ func (d *Dependency) dependencyStatus(chartpath string, dep *chart.Dependency) s
 					return "invalid version"
 				}
 
-				if constraint.Check(v) {
-					return "ok"
+				if !constraint.Check(v) {
+					return "wrong version"
 				}
-				return "wrong version"
 			}
 			return "ok"
 		}
 	}
+	// End unnecessary code.
 
-	folder := filepath.Join(chartpath, "charts", dep.Name)
-	if fi, err := os.Stat(folder); err != nil {
+	var depChart *chart.Chart
+	for _, item := range parent.Dependencies() {
+		if item.Name() == dep.Name {
+			depChart = item
+		}
+	}
+
+	if depChart == nil {
 		return "missing"
-	} else if !fi.IsDir() {
-		return "mispackaged"
 	}
 
-	c, err := loader.Load(folder)
-	if err != nil {
-		return "corrupt"
-	}
-
-	if c.Name() != dep.Name {
-		return "misnamed"
-	}
-
-	if c.Metadata.Version != dep.Version {
+	if depChart.Metadata.Version != dep.Version {
 		constraint, err := semver.NewConstraint(dep.Version)
 		if err != nil {
 			return "invalid version"
 		}
 
-		v, err := semver.NewVersion(c.Metadata.Version)
+		v, err := semver.NewVersion(depChart.Metadata.Version)
 		if err != nil {
 			return "invalid version"
 		}
 
-		if constraint.Check(v) {
-			return "unpacked"
+		if !constraint.Check(v) {
+			return "wrong version"
 		}
-		return "wrong version"
 	}
 
 	return "unpacked"
 }
 
 // printDependencies prints all of the dependencies in the yaml file.
-func (d *Dependency) printDependencies(chartpath string, out io.Writer, reqs []*chart.Dependency) {
+func (d *Dependency) printDependencies(chartpath string, out io.Writer, c *chart.Chart) {
 	table := uitable.New()
 	table.MaxColWidth = 80
 	table.AddRow("NAME", "VERSION", "REPOSITORY", "STATUS")
-	for _, row := range reqs {
-		table.AddRow(row.Name, row.Version, row.Repository, d.dependencyStatus(chartpath, row))
+	for _, row := range c.Metadata.Dependencies {
+		table.AddRow(row.Name, row.Version, row.Repository, d.dependencyStatus(chartpath, row, c))
 	}
 	fmt.Fprintln(out, table)
 }

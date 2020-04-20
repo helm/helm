@@ -298,7 +298,7 @@ func compListCharts(toComplete string, includeFiles bool) ([]string, completion.
 	var completions []string
 
 	// First check completions for repos
-	repos := compListRepos("")
+	repos := compListRepos("", nil)
 	for _, repo := range repos {
 		repoWithSlash := fmt.Sprintf("%s/", repo)
 		if strings.HasPrefix(toComplete, repoWithSlash) {

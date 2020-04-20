@@ -34,6 +34,8 @@ right: Null
 left: NULL
 front: ~
 back: ""
+nested:
+  boat: null
 
 global:
   name: Ishmael
@@ -50,6 +52,10 @@ pequod:
       sail: true
   ahab:
     scope: whale
+    boat: null
+    nested:
+      foo: true
+      bar: null
 `)
 
 func TestCoalesceValues(t *testing.T) {
@@ -89,6 +95,7 @@ func TestCoalesceValues(t *testing.T) {
 		{"{{.pequod.name}}", "pequod"},
 		{"{{.pequod.ahab.name}}", "ahab"},
 		{"{{.pequod.ahab.scope}}", "whale"},
+		{"{{.pequod.ahab.nested.foo}}", "true"},
 		{"{{.pequod.ahab.global.name}}", "Ishmael"},
 		{"{{.pequod.ahab.global.subject}}", "Queequeg"},
 		{"{{.pequod.ahab.global.harpooner}}", "Tashtego"},
@@ -117,6 +124,19 @@ func TestCoalesceValues(t *testing.T) {
 		}
 	}
 
+	if _, ok := v["nested"].(map[string]interface{})["boat"]; ok {
+		t.Error("Expected nested boat key to be removed, still present")
+	}
+
+	subchart := v["pequod"].(map[string]interface{})["ahab"].(map[string]interface{})
+	if _, ok := subchart["boat"]; ok {
+		t.Error("Expected subchart boat key to be removed, still present")
+	}
+
+	if _, ok := subchart["nested"].(map[string]interface{})["bar"]; ok {
+		t.Error("Expected subchart nested bar key to be removed, still present")
+	}
+
 	// CoalesceValues should not mutate the passed arguments
 	is.Equal(valsCopy, vals)
 }
@@ -126,13 +146,15 @@ func getMainData() map[string]interface{} {
 	return map[string]interface{}{
 		"name": "Ishmael",
 		"address": map[string]interface{}{
-			"street": "123 Spouter Inn Ct.",
-			"city":   "Nantucket",
+			"street":  "123 Spouter Inn Ct.",
+			"city":    "Nantucket",
+			"country": nil,
 		},
 		"details": map[string]interface{}{
 			"friends": []string{"Tashtego"},
 		},
 		"boat": "pequod",
+		"hole": nil,
 	}
 }
 
@@ -141,13 +163,15 @@ func getSecondaryData() map[string]interface{} {
 	return map[string]interface{}{
 		"occupation": "whaler",
 		"address": map[string]interface{}{
-			"state":  "MA",
-			"street": "234 Spouter Inn Ct.",
+			"state":   "MA",
+			"street":  "234 Spouter Inn Ct.",
+			"country": "US",
 		},
 		"details": "empty",
 		"boat": map[string]interface{}{
 			"mast": true,
 		},
+		"hole": "black",
 	}
 }
 
@@ -179,6 +203,10 @@ func testCoalescedData(t *testing.T, dst map[string]interface{}) {
 		t.Errorf("Unexpected state: %v", addr["state"])
 	}
 
+	if _, ok = addr["country"]; ok {
+		t.Error("The country is not left out.")
+	}
+
 	if det, ok := dst["details"].(map[string]interface{}); !ok {
 		t.Fatalf("Details is the wrong type: %v", dst["details"])
 	} else if _, ok := det["friends"]; !ok {
@@ -189,6 +217,10 @@ func testCoalescedData(t *testing.T, dst map[string]interface{}) {
 		t.Fatalf("boat is the wrong type: %v", dst["boat"])
 	} else if bo != "pequod" {
 		t.Errorf("Expected boat string, got %v", dst["boat"])
+	}
+
+	if _, ok = dst["hole"]; ok {
+		t.Error("The hole still exists.")
 	}
 }
 
