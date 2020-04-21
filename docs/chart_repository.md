@@ -186,6 +186,10 @@ Read more about chart repositories with JFrog Artifactory [here](https://www.jfr
 
 Helm chart repositories are supported by ProGet. For more information, visit the [Helm repository documentation](https://inedo.com/support/documentation/proget/feeds/helm) on the Inedo website.
 
+### Sonatype Nexus Repository Manager OSS Edition
+
+Helm repositories are available in Nexus Repository Manager OSS Edition. See [Helm Repositories](https://help.sonatype.com/repomanager3/formats/helm-repositories) for details!
+
 ### Github Pages example
 
 In a similar way you can create charts repository using GitHub Pages.
