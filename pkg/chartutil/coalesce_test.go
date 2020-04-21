@@ -217,13 +217,13 @@ func TestCoalesceTables(t *testing.T) {
 		"address": map[string]interface{}{
 			"street":  "123 Spouter Inn Ct.",
 			"city":    "Nantucket",
-			"country": nil,
+			"country": "US",
 		},
 		"details": map[string]interface{}{
 			"friends": []string{"Tashtego"},
 		},
 		"boat": "pequod",
-		"hole": nil,
+		"hole": "black",
 	}
 
 	// What we expect is that anything in dst should have all values set,
@@ -231,7 +231,7 @@ func TestCoalesceTables(t *testing.T) {
 	CoalesceTables(dst2, nil)
 
 	if dst2["name"] != "Ishmael" {
-		t.Errorf("Unexpected name: %s", dst["name"])
+		t.Errorf("Unexpected name: %s", dst2["name"])
 	}
 
 	addr2, ok := dst2["address"].(map[string]interface{})
@@ -247,21 +247,21 @@ func TestCoalesceTables(t *testing.T) {
 		t.Errorf("Unexpected city: %v", addr2["city"])
 	}
 
-	if _, ok = addr2["country"]; ok {
-		t.Error("The country is not left out.")
+	if addr2["country"].(string) != "US" {
+		t.Errorf("Unexpected Country: %v", addr2["country"])
 	}
 
 	if det2, ok := dst2["details"].(map[string]interface{}); !ok {
-		t.Fatalf("Details is the wrong type: %v", dst["details"])
+		t.Fatalf("Details is the wrong type: %v", dst2["details"])
 	} else if _, ok := det2["friends"]; !ok {
 		t.Error("Could not find your friends. Maybe you don't have any. :-(")
 	}
 
 	if dst2["boat"].(string) != "pequod" {
-		t.Errorf("Expected boat string, got %v", dst["boat"])
+		t.Errorf("Expected boat string, got %v", dst2["boat"])
 	}
 
-	if _, ok = dst["hole"]; ok {
-		t.Error("The hole still exists.")
+	if dst2["hole"].(string) != "black" {
+		t.Errorf("Expected hole string, got %v", dst2["boat"])
 	}
 }
