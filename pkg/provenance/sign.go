@@ -29,7 +29,7 @@ import (
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/clearsign"
 	"golang.org/x/crypto/openpgp/packet"
-	"sigs.k8s.io/yaml"
+	"gopkg.in/yaml.v3"
 
 	hapi "helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"

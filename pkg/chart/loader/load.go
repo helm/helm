@@ -24,7 +24,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"sigs.k8s.io/yaml"
+	"gopkg.in/yaml.v3"
 
 	"helm.sh/helm/v3/pkg/chart"
 )

@@ -23,9 +23,8 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/xeipuuv/gojsonschema"
-	"sigs.k8s.io/yaml"
-
 	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/chartutil/yaml"
 )
 
 // ValidateAgainstSchema checks that values does not violate the structure laid out in schema
@@ -60,7 +59,7 @@ func ValidateAgainstSingleSchema(values Values, schemaJSON []byte) error {
 	if err != nil {
 		return err
 	}
-	valuesJSON, err := yaml.YAMLToJSON(valuesData)
+	valuesJSON, err := yaml.ToJSON(valuesData)
 	if err != nil {
 		return err
 	}

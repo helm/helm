@@ -18,7 +18,7 @@ package strvals
 import (
 	"testing"
 
-	"sigs.k8s.io/yaml"
+	"gopkg.in/yaml.v3"
 )
 
 func TestSetIndex(t *testing.T) {

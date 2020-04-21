@@ -23,7 +23,7 @@ import (
 
 	"github.com/gosuri/uitable"
 	"github.com/pkg/errors"
-	"sigs.k8s.io/yaml"
+	"gopkg.in/yaml.v3"
 )
 
 // Format is a type for capturing supported output formats
