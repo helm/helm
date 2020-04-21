@@ -1,6 +1,6 @@
 package yaml
 
-import "gopkg.in/yaml.v2"
+import "gopkg.in/yaml.v3"
 
 // Convert JSON to YAML.
 func FromJSON(j []byte) ([]byte, error) {

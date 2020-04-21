@@ -76,8 +76,8 @@ func TestYAMLToJSON(t *testing.T) {
 		}, {
 			"- t: a\n" +
 				"- t:\n" +
-				"    b: 1\n" +
-				"    c: 2\n",
+				"      b: 1\n" +
+				"      c: 2\n",
 			`[{"t":"a"},{"t":{"b":1,"c":2}}]`,
 			nil,
 		}, {
@@ -85,8 +85,8 @@ func TestYAMLToJSON(t *testing.T) {
 			`[{"t":"a"},{"t":{"b":1,"c":2}}]`,
 			strPtr("- t: a\n" +
 				"- t:\n" +
-				"    b: 1\n" +
-				"    c: 2\n"),
+				"      b: 1\n" +
+				"      c: 2\n"),
 		}, {
 			"- t: \n",
 			`[{"t":null}]`,

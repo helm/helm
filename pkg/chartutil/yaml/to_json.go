@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"strconv"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 func ToJSON(y []byte) ([]byte, error) {
