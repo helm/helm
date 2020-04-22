@@ -172,7 +172,10 @@ func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]render
 		}
 		return val, nil
 	}
-	if e.config != nil {
+
+	// If we are not linting and have a cluster connection, provide a Kubernetes-backed
+	// implementation.
+	if !e.LintMode && e.config != nil {
 		funcMap["lookup"] = NewLookupFunction(e.config)
 	}
 
