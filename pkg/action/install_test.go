@@ -662,7 +662,6 @@ func TestLocateChartIgnoringLocalFolderWithRepoURL(t *testing.T) {
 
 	instAction.ChartPathOptions.RepoURL = srv.URL()
 	instAction.ChartPathOptions.Version = chartVersion
-	settings.Debug = true
 	filename, err := instAction.LocateChart(chartName, settings)
 
 	is.Equal(expectedFilename, filename)
