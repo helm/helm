@@ -30,8 +30,10 @@ import (
 
 	"helm.sh/helm/v3/internal/test"
 	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/cli"
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
 	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/repo/repotest"
 	"helm.sh/helm/v3/pkg/storage/driver"
 	"helm.sh/helm/v3/pkg/time"
 )
@@ -628,4 +630,41 @@ func TestNameAndChartGenerateName(t *testing.T) {
 			is.Equal(tc.Chart, chrt)
 		})
 	}
+}
+
+func TestLocateChartIgnoringLocalFolderWithRepoURL(t *testing.T) {
+	is := assert.New(t)
+	instAction := installAction(t)
+	settings := cli.New()
+
+	chartName := "emptychart"
+	chartVersion := "0.1.0"
+	expectedFilename := settings.RepositoryCache + "/emptychart-0.1.0.tgz"
+
+	// Add a local folder to the current path with the same name as chart name
+	err := os.Mkdir(chartName, 0755)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(chartName)
+
+	// Set up a fake repo
+	srv, err := repotest.NewTempServer("testdata/*.tgz*")
+	srv.Stop()
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv.Start()
+	defer srv.Stop()
+	if err := srv.CreateIndex(); err != nil {
+		t.Fatal(err)
+	}
+
+	instAction.ChartPathOptions.RepoURL = srv.URL()
+	instAction.ChartPathOptions.Version = chartVersion
+	settings.Debug = true
+	filename, err := instAction.LocateChart(chartName, settings)
+
+	is.Equal(expectedFilename, filename)
+	is.NoError(err)
 }
