@@ -211,4 +211,57 @@ func TestCoalesceTables(t *testing.T) {
 	if _, ok = dst["hole"]; ok {
 		t.Error("The hole still exists.")
 	}
+
+	dst2 := map[string]interface{}{
+		"name": "Ishmael",
+		"address": map[string]interface{}{
+			"street":  "123 Spouter Inn Ct.",
+			"city":    "Nantucket",
+			"country": "US",
+		},
+		"details": map[string]interface{}{
+			"friends": []string{"Tashtego"},
+		},
+		"boat": "pequod",
+		"hole": "black",
+	}
+
+	// What we expect is that anything in dst should have all values set,
+	// this happens when the --reuse-values flag is set but the chart has no modifications yet
+	CoalesceTables(dst2, nil)
+
+	if dst2["name"] != "Ishmael" {
+		t.Errorf("Unexpected name: %s", dst2["name"])
+	}
+
+	addr2, ok := dst2["address"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Address went away.")
+	}
+
+	if addr2["street"].(string) != "123 Spouter Inn Ct." {
+		t.Errorf("Unexpected address: %v", addr2["street"])
+	}
+
+	if addr2["city"].(string) != "Nantucket" {
+		t.Errorf("Unexpected city: %v", addr2["city"])
+	}
+
+	if addr2["country"].(string) != "US" {
+		t.Errorf("Unexpected Country: %v", addr2["country"])
+	}
+
+	if det2, ok := dst2["details"].(map[string]interface{}); !ok {
+		t.Fatalf("Details is the wrong type: %v", dst2["details"])
+	} else if _, ok := det2["friends"]; !ok {
+		t.Error("Could not find your friends. Maybe you don't have any. :-(")
+	}
+
+	if dst2["boat"].(string) != "pequod" {
+		t.Errorf("Expected boat string, got %v", dst2["boat"])
+	}
+
+	if dst2["hole"].(string) != "black" {
+		t.Errorf("Expected hole string, got %v", dst2["boat"])
+	}
 }
