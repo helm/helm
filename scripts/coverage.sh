@@ -14,6 +14,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# coverage.sh - Generate test coverage analysis
+# 
+# Coverage report is sent to coveralls.io if circleci is building the master
+# branch.
+#
+# Usage:
+#   coverage.sh [option]
+#
+# Options:
+#   --html         generate html coverage report
+
 set -euo pipefail
 
 covermode=${COVERMODE:-atomic}
@@ -24,31 +35,14 @@ pushd /
 hash goveralls 2>/dev/null || go get github.com/mattn/goveralls
 popd
 
-generate_cover_data() {
-  for d in $(go list ./...) ; do
-    (
-      local output="${coverdir}/${d//\//-}.cover"
-      go test -coverprofile="${output}" -covermode="$covermode" "$d"
-    )
-  done
+go test -cpu 4 -coverprofile="${profile}" -covermode="$covermode" -coverpkg=./... ./...
 
-  echo "mode: $covermode" >"$profile"
-  grep -h -v "^mode:" "$coverdir"/*.cover >>"$profile"
-}
-
-push_to_coveralls() {
-  goveralls -coverprofile="${profile}" -service=circle-ci
-}
-
-generate_cover_data
 go tool cover -func "${profile}"
 
-case "${1-}" in
-  --html)
-    go tool cover -html "${profile}"
-    ;;
-  --coveralls)
-    push_to_coveralls
-    ;;
-esac
+if [[ "${CIRCLE_BRANCH-}" == 'master' ]]; then
+  goveralls -coverprofile="${profile}" -service=circle-ci
+fi
 
+if [[ "${1-}" == '--html' ]]; then
+    go tool cover -html "${profile}"
+fi
