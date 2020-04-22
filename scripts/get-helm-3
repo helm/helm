@@ -24,10 +24,10 @@
 : ${VERIFY_SIGNATURES:="false"}
 : ${HELM_INSTALL_DIR:="/usr/local/bin"}
 
-HAS_CURL="$(type "curl" > /dev/null && echo true || echo false)"
-HAS_WGET="$(type "wget" > /dev/null && echo true || echo false)"
-HAS_OPENSSL="$(type "openssl" > /dev/null && echo true || echo false)"
-HAS_GPG="$(type "gpg" > /dev/null && echo true || echo false)"
+HAS_CURL="$(type "curl" &> /dev/null && echo true || echo false)"
+HAS_WGET="$(type "wget" &> /dev/null && echo true || echo false)"
+HAS_OPENSSL="$(type "openssl" &> /dev/null && echo true || echo false)"
+HAS_GPG="$(type "gpg" &> /dev/null && echo true || echo false)"
 
 # initArch discovers the architecture for this system.
 initArch() {
