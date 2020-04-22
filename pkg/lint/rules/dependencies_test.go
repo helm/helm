@@ -16,42 +16,84 @@ limitations under the License.
 package rules
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
-	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/internal/test/ensure"
+	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/lint/support"
 )
 
-const (
-	badChartDepsDir = "testdata/lint-deps"
-)
-
-func TestValidateDependencyInChartsDir(t *testing.T) {
-	c, err := loader.Load(badChartDepsDir)
-	if err != nil {
-		t.Fatal(err)
+func chartWithBadDependencies() chart.Chart {
+	badChartDeps := chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:       "badchart",
+			Version:    "0.1.0",
+			APIVersion: "v2",
+			Dependencies: []*chart.Dependency{
+				{
+					Name: "sub2",
+				},
+				{
+					Name: "sub3",
+				},
+			},
+		},
 	}
 
-	if err = validateDependencyInChartsDir(c); err == nil {
-		t.Errorf("chart %q should have been flagged for missing deps in chart directory", badChartDepsDir)
+	badChartDeps.SetDependencies(
+		&chart.Chart{
+			Metadata: &chart.Metadata{
+				Name:       "sub1",
+				Version:    "0.1.0",
+				APIVersion: "v2",
+			},
+		},
+		&chart.Chart{
+			Metadata: &chart.Metadata{
+				Name:       "sub2",
+				Version:    "0.1.0",
+				APIVersion: "v2",
+			},
+		},
+	)
+	return badChartDeps
+}
+
+func TestValidateDependencyInChartsDir(t *testing.T) {
+	c := chartWithBadDependencies()
+
+	if err := validateDependencyInChartsDir(&c); err == nil {
+		t.Error("chart should have been flagged for missing deps in chart directory")
 	}
 }
 
 func TestValidateDependencyInMetadata(t *testing.T) {
-	c, err := loader.Load(badChartDepsDir)
-	if err != nil {
-		t.Fatal(err)
-	}
+	c := chartWithBadDependencies()
 
-	if err = validateDependencyInMetadata(c); err == nil {
-		t.Errorf("chart %q should have been flagged for missing deps in chart metadata", badChartDepsDir)
+	if err := validateDependencyInMetadata(&c); err == nil {
+		t.Errorf("chart should have been flagged for missing deps in chart metadata")
 	}
 }
 
 func TestDependencies(t *testing.T) {
-	linter := support.Linter{ChartDir: badChartDepsDir}
+	tmp := ensure.TempDir(t)
+	defer os.RemoveAll(tmp)
+
+	c := chartWithBadDependencies()
+	err := chartutil.SaveDir(&c, tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	linter := support.Linter{ChartDir: filepath.Join(tmp, c.Metadata.Name)}
+
 	Dependencies(&linter)
 	if l := len(linter.Messages); l != 2 {
 		t.Errorf("expected 2 linter errors for bad chart dependencies. Got %d.", l)
+		for i, msg := range linter.Messages {
+			t.Logf("Message: %d, Error: %#v", i, msg)
+		}
 	}
 }
