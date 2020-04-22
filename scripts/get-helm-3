@@ -133,7 +133,7 @@ downloadFile() {
 }
 
 # verifyFile verifies the SHA256 checksum of the binary package
-# and the GPG signtaures for both the package and checksum file
+# and the GPG signatures for both the package and checksum file
 # (depending on settings in environment).
 verifyFile() {
   if [ "${VERIFY_CHECKSUM}" == "true" ]; then
