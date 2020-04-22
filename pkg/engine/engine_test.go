@@ -126,6 +126,46 @@ func TestRender(t *testing.T) {
 	}
 }
 
+func TestRenderRefsOrdering(t *testing.T) {
+	parentChart := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:    "parent",
+			Version: "1.2.3",
+		},
+		Templates: []*chart.File{
+			{Name: "templates/_helpers.tpl", Data: []byte(`{{- define "test" -}}parent value{{- end -}}`)},
+			{Name: "templates/test.yaml", Data: []byte(`{{ tpl "{{ include \"test\" . }}" . }}`)},
+		},
+	}
+	childChart := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:    "child",
+			Version: "1.2.3",
+		},
+		Templates: []*chart.File{
+			{Name: "templates/_helpers.tpl", Data: []byte(`{{- define "test" -}}child value{{- end -}}`)},
+		},
+	}
+	parentChart.AddDependency(childChart)
+
+	expect := map[string]string{
+		"parent/templates/test.yaml": "parent value",
+	}
+
+	for i := 0; i < 100; i++ {
+		out, err := Render(parentChart, chartutil.Values{})
+		if err != nil {
+			t.Fatalf("Failed to render templates: %s", err)
+		}
+
+		for name, data := range expect {
+			if out[name] != data {
+				t.Fatalf("Expected %q, got %q (iteraction %d)", data, out[name], i+1)
+			}
+		}
+	}
+}
+
 func TestRenderInternals(t *testing.T) {
 	// Test the internals of the rendering tool.
 

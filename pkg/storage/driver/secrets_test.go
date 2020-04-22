@@ -130,6 +130,30 @@ func TestSecretList(t *testing.T) {
 	}
 }
 
+func TestSecretQuery(t *testing.T) {
+	secrets := newTestFixtureSecrets(t, []*rspb.Release{
+		releaseStub("key-1", 1, "default", rspb.StatusUninstalled),
+		releaseStub("key-2", 1, "default", rspb.StatusUninstalled),
+		releaseStub("key-3", 1, "default", rspb.StatusDeployed),
+		releaseStub("key-4", 1, "default", rspb.StatusDeployed),
+		releaseStub("key-5", 1, "default", rspb.StatusSuperseded),
+		releaseStub("key-6", 1, "default", rspb.StatusSuperseded),
+	}...)
+
+	rls, err := secrets.Query(map[string]string{"status": "deployed"})
+	if err != nil {
+		t.Fatalf("Failed to query: %s", err)
+	}
+	if len(rls) != 2 {
+		t.Fatalf("Expected 2 results, actual %d", len(rls))
+	}
+
+	_, err = secrets.Query(map[string]string{"name": "notExist"})
+	if err != ErrReleaseNotFound {
+		t.Errorf("Expected {%v}, got {%v}", ErrReleaseNotFound, err)
+	}
+}
+
 func TestSecretCreate(t *testing.T) {
 	secrets := newTestFixtureSecrets(t)
 

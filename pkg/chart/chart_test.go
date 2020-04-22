@@ -96,3 +96,66 @@ func TestMetadata(t *testing.T) {
 	is.Equal("1.0.0", chrt.AppVersion())
 	is.Equal(nil, chrt.Validate())
 }
+
+func TestIsRoot(t *testing.T) {
+	chrt1 := Chart{
+		parent: &Chart{
+			Metadata: &Metadata{
+				Name: "foo",
+			},
+		},
+	}
+
+	chrt2 := Chart{
+		Metadata: &Metadata{
+			Name: "foo",
+		},
+	}
+
+	is := assert.New(t)
+
+	is.Equal(false, chrt1.IsRoot())
+	is.Equal(true, chrt2.IsRoot())
+}
+
+func TestChartPath(t *testing.T) {
+	chrt1 := Chart{
+		parent: &Chart{
+			Metadata: &Metadata{
+				Name: "foo",
+			},
+		},
+	}
+
+	chrt2 := Chart{
+		Metadata: &Metadata{
+			Name: "foo",
+		},
+	}
+
+	is := assert.New(t)
+
+	is.Equal("foo.", chrt1.ChartPath())
+	is.Equal("foo", chrt2.ChartPath())
+}
+
+func TestChartFullPath(t *testing.T) {
+	chrt1 := Chart{
+		parent: &Chart{
+			Metadata: &Metadata{
+				Name: "foo",
+			},
+		},
+	}
+
+	chrt2 := Chart{
+		Metadata: &Metadata{
+			Name: "foo",
+		},
+	}
+
+	is := assert.New(t)
+
+	is.Equal("foo/charts/", chrt1.ChartFullPath())
+	is.Equal("foo", chrt2.ChartFullPath())
+}
