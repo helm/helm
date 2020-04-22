@@ -17,10 +17,13 @@ limitations under the License.
 package action
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -30,9 +33,13 @@ import (
 	"k8s.io/client-go/rest"
 
 	"helm.sh/helm/v3/internal/experimental/registry"
+	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/engine"
 	"helm.sh/helm/v3/pkg/kube"
+	"helm.sh/helm/v3/pkg/postrender"
 	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/releaseutil"
 	"helm.sh/helm/v3/pkg/storage"
 	"helm.sh/helm/v3/pkg/storage/driver"
 	"helm.sh/helm/v3/pkg/time"
@@ -84,6 +91,132 @@ type Configuration struct {
 	Capabilities *chartutil.Capabilities
 
 	Log func(string, ...interface{})
+}
+
+// renderResources renders the templates in a chart
+//
+// TODO: This function is badly in need of a refactor.
+func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, dryRun bool) ([]*release.Hook, *bytes.Buffer, string, error) {
+	hs := []*release.Hook{}
+	b := bytes.NewBuffer(nil)
+
+	caps, err := c.getCapabilities()
+	if err != nil {
+		return hs, b, "", err
+	}
+
+	if ch.Metadata.KubeVersion != "" {
+		if !chartutil.IsCompatibleRange(ch.Metadata.KubeVersion, caps.KubeVersion.String()) {
+			return hs, b, "", errors.Errorf("chart requires kubeVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, caps.KubeVersion.String())
+		}
+	}
+
+	var files map[string]string
+	var err2 error
+
+	// A `helm template` or `helm install --dry-run` should not talk to the remote cluster.
+	// It will break in interesting and exotic ways because other data (e.g. discovery)
+	// is mocked. It is not up to the template author to decide when the user wants to
+	// connect to the cluster. So when the user says to dry run, respect the user's
+	// wishes and do not connect to the cluster.
+	if !dryRun && c.RESTClientGetter != nil {
+		rest, err := c.RESTClientGetter.ToRESTConfig()
+		if err != nil {
+			return hs, b, "", err
+		}
+		files, err2 = engine.RenderWithClient(ch, values, rest)
+	} else {
+		files, err2 = engine.Render(ch, values)
+	}
+
+	if err2 != nil {
+		return hs, b, "", err2
+	}
+
+	// NOTES.txt gets rendered like all the other files, but because it's not a hook nor a resource,
+	// pull it out of here into a separate file so that we can actually use the output of the rendered
+	// text file. We have to spin through this map because the file contains path information, so we
+	// look for terminating NOTES.txt. We also remove it from the files so that we don't have to skip
+	// it in the sortHooks.
+	var notesBuffer bytes.Buffer
+	for k, v := range files {
+		if strings.HasSuffix(k, notesFileSuffix) {
+			if subNotes || (k == path.Join(ch.Name(), "templates", notesFileSuffix)) {
+				// If buffer contains data, add newline before adding more
+				if notesBuffer.Len() > 0 {
+					notesBuffer.WriteString("\n")
+				}
+				notesBuffer.WriteString(v)
+			}
+			delete(files, k)
+		}
+	}
+	notes := notesBuffer.String()
+
+	// Sort hooks, manifests, and partials. Only hooks and manifests are returned,
+	// as partials are not used after renderer.Render. Empty manifests are also
+	// removed here.
+	hs, manifests, err := releaseutil.SortManifests(files, caps.APIVersions, releaseutil.InstallOrder)
+	if err != nil {
+		// By catching parse errors here, we can prevent bogus releases from going
+		// to Kubernetes.
+		//
+		// We return the files as a big blob of data to help the user debug parser
+		// errors.
+		for name, content := range files {
+			if strings.TrimSpace(content) == "" {
+				continue
+			}
+			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", name, content)
+		}
+		return hs, b, "", err
+	}
+
+	// Aggregate all valid manifests into one big doc.
+	fileWritten := make(map[string]bool)
+
+	if includeCrds {
+		for _, crd := range ch.CRDObjects() {
+			if outputDir == "" {
+				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Name, string(crd.File.Data[:]))
+			} else {
+				err = writeToFile(outputDir, crd.Filename, string(crd.File.Data[:]), fileWritten[crd.Name])
+				if err != nil {
+					return hs, b, "", err
+				}
+				fileWritten[crd.Name] = true
+			}
+		}
+	}
+
+	for _, m := range manifests {
+		if outputDir == "" {
+			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", m.Name, m.Content)
+		} else {
+			newDir := outputDir
+			if useReleaseName {
+				newDir = filepath.Join(outputDir, releaseName)
+			}
+			// NOTE: We do not have to worry about the post-renderer because
+			// output dir is only used by `helm template`. In the next major
+			// release, we should move this logic to template only as it is not
+			// used by install or upgrade
+			err = writeToFile(newDir, m.Name, m.Content, fileWritten[m.Name])
+			if err != nil {
+				return hs, b, "", err
+			}
+			fileWritten[m.Name] = true
+		}
+	}
+
+	if pr != nil {
+		b, err = pr.Run(b)
+		if err != nil {
+			return hs, b, notes, errors.Wrap(err, "error while running post render on files")
+		}
+	}
+
+	return hs, b, notes, nil
 }
 
 // RESTClientGetter gets the rest client
