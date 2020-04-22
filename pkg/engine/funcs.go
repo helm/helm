@@ -62,6 +62,11 @@ func funcMap() template.FuncMap {
 		"include":  func(string, interface{}) string { return "not implemented" },
 		"tpl":      func(string, interface{}) interface{} { return "not implemented" },
 		"required": func(string, interface{}) (interface{}, error) { return "not implemented", nil },
+		// Provide a placeholder for the "lookup" function, which requires a kubernetes
+		// connection.
+		"lookup": func(string, string, string, string) (map[string]interface{}, error) {
+			return map[string]interface{}{}, nil
+		},
 	}
 
 	for k, v := range extra {
