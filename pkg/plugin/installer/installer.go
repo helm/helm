@@ -17,6 +17,7 @@ package installer
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -103,9 +104,10 @@ func isPlugin(dirname string) bool {
 	return err == nil
 }
 
+var logger = log.New(os.Stderr, "[debug] ", log.Lshortfile)
+
 func debug(format string, args ...interface{}) {
 	if Debug {
-		format = fmt.Sprintf("[debug] %s\n", format)
-		fmt.Printf(format, args...)
+		logger.Output(2, fmt.Sprintf(format, args...))
 	}
 }
