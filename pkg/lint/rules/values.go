@@ -36,7 +36,7 @@ func Values(linter *support.Linter) {
 
 // ValuesWithOverrides tests the values.yaml file.
 //
-// If a schema iis present in the chart, values are tested against that. Otherwise,
+// If a schema is present in the chart, values are tested against that. Otherwise,
 // they are only tested for well-formedness.
 //
 // If additional values are supplied, they are coalesced into the values in values.yaml.
