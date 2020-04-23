@@ -94,6 +94,11 @@ func TestFuncs(t *testing.T) {
 		tpl:    `{{ fromYamlArray . }}`,
 		expect: `[error unmarshaling JSON: while decoding JSON: json: cannot unmarshal object into Go value of type []interface {}]`,
 		vars:   `hello: world`,
+	}, {
+		// This should never result in a network lookup. Regression for #7955
+		tpl:    `{{ lookup "v1" "Namespace" "" "unlikelynamespace99999999" }}`,
+		expect: `map[]`,
+		vars:   `["one", "two"]`,
 	}}
 
 	for _, tt := range tests {

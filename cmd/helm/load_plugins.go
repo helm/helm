@@ -58,7 +58,7 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 		return
 	}
 
-	found, err := findPlugins(settings.PluginsDirectory)
+	found, err := plugin.FindPlugins(settings.PluginsDirectory)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to load plugins: %s", err)
 		return
@@ -236,20 +236,6 @@ func manuallyProcessArgs(args []string) ([]string, []string) {
 		}
 	}
 	return known, unknown
-}
-
-// findPlugins returns a list of YAML files that describe plugins.
-func findPlugins(plugdirs string) ([]*plugin.Plugin, error) {
-	found := []*plugin.Plugin{}
-	// Let's get all UNIXy and allow path separators
-	for _, p := range filepath.SplitList(plugdirs) {
-		matches, err := plugin.LoadAll(p)
-		if err != nil {
-			return matches, err
-		}
-		found = append(found, matches...)
-	}
-	return found, nil
 }
 
 // pluginCommand represents the optional completion.yaml file of a plugin

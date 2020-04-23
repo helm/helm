@@ -175,7 +175,11 @@ func coalesceValues(c *chart.Chart, v map[string]interface{}) {
 //
 // dest is considered authoritative.
 func CoalesceTables(dst, src map[string]interface{}) map[string]interface{} {
-	if dst == nil || src == nil {
+	// When --reuse-values is set but there are no modifications yet, return new values
+	if src == nil {
+		return dst
+	}
+	if dst == nil {
 		return src
 	}
 	// Because dest has higher precedence than src, dest values override src

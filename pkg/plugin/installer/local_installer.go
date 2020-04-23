@@ -16,6 +16,7 @@ limitations under the License.
 package installer // import "helm.sh/helm/v3/pkg/plugin/installer"
 
 import (
+	"os"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -45,7 +46,8 @@ func (i *LocalInstaller) Install() error {
 	if !isPlugin(i.Source) {
 		return ErrMissingMetadata
 	}
-	return i.link(i.Source)
+	debug("symlinking %s to %s", i.Source, i.Path())
+	return os.Symlink(i.Source, i.Path())
 }
 
 // Update updates a local repository
