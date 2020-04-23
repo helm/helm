@@ -1,0 +1,27 @@
+﻿apiVersion: v1
+name: frobnitz
+description: This is a frobnitz.
+version: "1.2.3"
+keywords:
+  - frobnitz
+  - sprocket
+  - dodad
+maintainers:
+  - name: The Helm Team
+    email: helm@example.com
+  - name: Someone Else
+    email: nobody@example.com
+sources:
+  - https://example.com/foo/bar
+home: http://example.com
+icon: https://example.com/64x64.png
+annotations:
+  extrakey: extravalue
+  anotherkey: anothervalue
+dependencies:
+  - name: alpine
+    version: "0.1.0"
+    repository: https://example.com/charts
+  - name: mariner
+    version: "4.3.2"
+    repository: https://example.com/charts

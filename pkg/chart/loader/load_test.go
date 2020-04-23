@@ -85,6 +85,38 @@ func TestLoadDirWithSymlink(t *testing.T) {
 	verifyDependenciesLock(t, c)
 }
 
+func TestLoadDirWithUTFBOM(t *testing.T) {
+	l, err := Loader("testdata/frobnitz_with_bom")
+	if err != nil {
+		t.Fatalf("Failed to load testdata: %s", err)
+	}
+	c, err := l.Load()
+	if err != nil {
+		t.Fatalf("Failed to load testdata: %s", err)
+	}
+	verifyFrobnitz(t, c)
+	verifyChart(t, c)
+	verifyDependencies(t, c)
+	verifyDependenciesLock(t, c)
+	verifyBomStripped(t, c.Files)
+}
+
+func TestLoadArchiveWithUTFBOM(t *testing.T) {
+	l, err := Loader("testdata/frobnitz_with_bom.tgz")
+	if err != nil {
+		t.Fatalf("Failed to load testdata: %s", err)
+	}
+	c, err := l.Load()
+	if err != nil {
+		t.Fatalf("Failed to load testdata: %s", err)
+	}
+	verifyFrobnitz(t, c)
+	verifyChart(t, c)
+	verifyDependencies(t, c)
+	verifyDependenciesLock(t, c)
+	verifyBomStripped(t, c.Files)
+}
+
 func TestLoadV1(t *testing.T) {
 	l, err := Loader("testdata/frobnitz.v1")
 	if err != nil {
@@ -462,6 +494,14 @@ func verifyChartFileAndTemplate(t *testing.T, c *chart.Chart, name string) {
 			}
 		default:
 			t.Errorf("Unexpected dependency %s", dep.Name())
+		}
+	}
+}
+
+func verifyBomStripped(t *testing.T, files []*chart.File) {
+	for _, file := range files {
+		if bytes.HasPrefix(file.Data, utf8bom) {
+			t.Errorf("Byte Order Mark still present in processed file %s", file.Name)
 		}
 	}
 }
