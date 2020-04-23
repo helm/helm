@@ -46,20 +46,20 @@ Environment variables:
 +------------------+--------------------------------------------------------------------------------------------------------+
 | Name                                  | Description                                                                       |
 +------------------+--------------------------------------------------------------------------------------------------------+
-| $XDG_CACHE_HOME                       | set an alternative location for storing cached files.                             |
-| $XDG_CONFIG_HOME                      | set an alternative location for storing Helm configuration.                       |
-| $XDG_DATA_HOME                        | set an alternative location for storing Helm data.                                |
+| $HELM_CACHE_HOME                      | set an alternative location for storing cached files.                             |
+| $HELM_CONFIG_HOME                     | set an alternative location for storing Helm configuration.                       |
+| $HELM_DATA_HOME                       | set an alternative location for storing Helm data.                                |
 | $HELM_DRIVER                          | set the backend storage driver. Values are: configmap, secret, memory, postgres   |
 | $HELM_DRIVER_SQL_CONNECTION_STRING    | set the connection string the SQL storage driver should use.                      |
 | $HELM_NO_PLUGINS                      | disable plugins. Set HELM_NO_PLUGINS=1 to disable plugins.                        |
 | $KUBECONFIG                           | set an alternative Kubernetes configuration file (default "~/.kube/config")       |
 +------------------+--------------------------------------------------------------------------------------------------------+
 
-Helm stores configuration based on the XDG base directory specification, so
+Helm stores cache, configuration, and data based on the following configuration order:
 
-- cached files are stored in $XDG_CACHE_HOME/helm
-- configuration is stored in $XDG_CONFIG_HOME/helm
-- data is stored in $XDG_DATA_HOME/helm
+- If a HELM_*_HOME environment variable is set, it will be used
+- Otherwise, on systems supporting the XDG base directory specification, the XDG variables will be used
+- When no other location is set a default location will be used based on the operating system
 
 By default, the default directories depend on the Operating System. The defaults are listed below:
 
