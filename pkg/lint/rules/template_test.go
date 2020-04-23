@@ -22,6 +22,9 @@ import (
 	"strings"
 	"testing"
 
+	"helm.sh/helm/v3/internal/test/ensure"
+	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/lint/support"
 )
 
@@ -101,6 +104,7 @@ func TestV3Fail(t *testing.T) {
 		t.Errorf("Unexpected error: %s", res[2].Err)
 	}
 }
+<<<<<<< HEAD
 
 func TestValidateMetadataName(t *testing.T) {
 	names := map[string]bool{
@@ -130,3 +134,44 @@ func TestValidateMetadataName(t *testing.T) {
 		}
 	}
 }
+||||||| merged common ancestors
+=======
+
+func TestDeprecatedAPIFails(t *testing.T) {
+	mychart := chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: "v2",
+			Name:       "failapi",
+			Version:    "0.1.0",
+			Icon:       "satisfy-the-linting-gods.gif",
+		},
+		Templates: []*chart.File{
+			{
+				Name: "templates/baddeployment.yaml",
+				Data: []byte("apiVersion: apps/v1beta1\nkind: Deployment"),
+			},
+			{
+				Name: "templates/goodsecret.yaml",
+				Data: []byte("apiVersion: v1\nkind: Secret"),
+			},
+		},
+	}
+	tmpdir := ensure.TempDir(t)
+	defer os.RemoveAll(tmpdir)
+
+	if err := chartutil.SaveDir(&mychart, tmpdir); err != nil {
+		t.Fatal(err)
+	}
+
+	linter := support.Linter{ChartDir: filepath.Join(tmpdir, mychart.Name())}
+	Templates(&linter, values, namespace, strict)
+	if l := len(linter.Messages); l != 1 {
+		t.Errorf("Expected 1 lint error, got %d", l)
+	}
+
+	err := linter.Messages[0].Err.(deprecatedAPIError)
+	if err.Deprecated != "apps/v1beta1 Deployment" {
+		t.Errorf("Surprised to learn that %q is deprecated", err.Deprecated)
+	}
+}
+>>>>>>> feat: implement deprecation warnings in helm lint
