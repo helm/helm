@@ -18,17 +18,24 @@ package rules // import "helm.sh/helm/v3/pkg/lint/rules"
 
 import "fmt"
 
-// deprecatedApis lists APIs that are deprecated (left) with suggested alternatives (right).
+// deprecatedAPIs lists APIs that are deprecated (left) with suggested alternatives (right).
 //
 // An empty rvalue indicates that the API is completely deprecated.
-var deprecatedApis = map[string]string{
+var deprecatedAPIs = map[string]string{
 	"extensions/v1 Deployment":             "apps/v1 Deployment",
 	"extensions/v1 DaemonSet":              "apps/v1 DaemonSet",
 	"extensions/v1 ReplicaSet":             "apps/v1 ReplicaSet",
 	"extensions/v1beta1 PodSecurityPolicy": "policy/v1beta1 PodSecurityPolicy",
-	"extensions/v1beta1 NetworkPoliicy":    "networking.k8s.iio/v1beta1 NetworkPolicy",
+	"extensions/v1beta1 NetworkPolicy":     "networking.k8s.io/v1beta1 NetworkPolicy",
+	"extensions/v1beta1 Ingress":           "networking.k8s.io/v1beta1 Ingress",
 	"apps/v1beta1 Deployment":              "apps/v1 Deployment",
+	"apps/v1beta1 StatefulSet":             "apps/v1 StatefulSet",
+	"apps/v1beta1 DaemonSet":               "apps/v1 DaemonSet",
+	"apps/v1beta1 ReplicaSet":              "apps/v1 ReplicaSet",
 	"apps/v1beta2 Deployment":              "apps/v1 Deployment",
+	"apps/v1beta2 StatefulSet":             "apps/v1 StatefulSet",
+	"apps/v1beta2 DaemonSet":               "apps/v1 DaemonSet",
+	"apps/v1beta2 ReplicaSet":              "apps/v1 ReplicaSet",
 }
 
 // deprecatedAPIError indicates than an API is deprecated in Kubernetes
@@ -47,7 +54,7 @@ func (e deprecatedAPIError) Error() string {
 
 func validateNoDeprecations(resource *K8sYamlStruct) error {
 	gvk := fmt.Sprintf("%s %s", resource.APIVersion, resource.Kind)
-	if alt, ok := deprecatedApis[gvk]; ok {
+	if alt, ok := deprecatedAPIs[gvk]; ok {
 		return deprecatedAPIError{
 			Deprecated:  gvk,
 			Alternative: alt,
