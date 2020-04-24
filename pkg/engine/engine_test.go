@@ -155,7 +155,7 @@ func TestRenderRefsOrdering(t *testing.T) {
 	}
 
 	for i := 0; i < 100; i++ {
-		out, err := Render(parentChart, chartutil.Values{})
+		out, err := Render(parentChart, chartutil.Values{"Values": map[string]interface{}{}})
 		if err != nil {
 			t.Fatalf("Failed to render templates: %s", err)
 		}
