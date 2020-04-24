@@ -428,3 +428,23 @@ func TestIndexAdd(t *testing.T) {
 		t.Errorf("Expected http://example.com/charts/deis-0.1.0.tgz, got %s", i.Entries["deis"][0].URLs[0])
 	}
 }
+
+func TestIndexWrite(t *testing.T) {
+	i := NewIndexFile()
+	i.Add(&chart.Metadata{Name: "clipper", Version: "0.1.0"}, "clipper-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890")
+	dir, err := ioutil.TempDir("", "helm-tmp")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+	testpath := filepath.Join(dir, "test")
+	i.WriteFile(testpath, 0600)
+
+	got, err := ioutil.ReadFile(testpath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(got), "clipper-0.1.0.tgz") {
+		t.Fatal("Index files doesn't contain expected content")
+	}
+}
