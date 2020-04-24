@@ -21,6 +21,8 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+
+	"helm.sh/helm/v3/internal/third_party/dep/fs"
 )
 
 // AtomicWriteFile atomically (as atomic as os.Rename allows) writes a file to a
@@ -45,5 +47,5 @@ func AtomicWriteFile(filename string, reader io.Reader, mode os.FileMode) error 
 		return err
 	}
 
-	return os.Rename(tempName, filename)
+	return fs.RenameWithFallback(tempName, filename)
 }
