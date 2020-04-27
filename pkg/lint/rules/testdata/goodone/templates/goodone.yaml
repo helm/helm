@@ -1,2 +1,2 @@
 metadata:
-  name: {{.Values.name | default "foo" | title}}
+  name: {{ .Values.name | default "foo" | lower }}
