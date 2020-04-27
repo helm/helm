@@ -68,7 +68,7 @@ func (o *pluginUninstallOptions) complete(args []string) error {
 
 func (o *pluginUninstallOptions) run(out io.Writer) error {
 	debug("loading installed plugins from %s", settings.PluginsDirectory)
-	plugins, err := findPlugins(settings.PluginsDirectory)
+	plugins, err := plugin.FindPlugins(settings.PluginsDirectory)
 	if err != nil {
 		return err
 	}

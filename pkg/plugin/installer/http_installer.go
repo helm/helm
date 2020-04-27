@@ -27,6 +27,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"helm.sh/helm/v3/internal/third_party/dep/fs"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/helmpath"
@@ -68,7 +69,6 @@ func NewExtractor(source string) (Extractor, error) {
 
 // NewHTTPInstaller creates a new HttpInstaller.
 func NewHTTPInstaller(source string) (*HTTPInstaller, error) {
-
 	key, err := cache.Key(source)
 	if err != nil {
 		return nil, err
@@ -108,18 +108,16 @@ func stripPluginName(name string) string {
 }
 
 // Install downloads and extracts the tarball into the cache directory
-// and creates a symlink to the plugin directory.
+// and installs into the plugin directory.
 //
 // Implements Installer.
 func (i *HTTPInstaller) Install() error {
-
 	pluginData, err := i.getter.Get(i.Source)
 	if err != nil {
 		return err
 	}
 
-	err = i.extractor.Extract(pluginData, i.CacheDir)
-	if err != nil {
+	if err := i.extractor.Extract(pluginData, i.CacheDir); err != nil {
 		return err
 	}
 
@@ -132,19 +130,14 @@ func (i *HTTPInstaller) Install() error {
 		return err
 	}
 
-	return i.link(src)
+	debug("copying %s to %s", src, i.Path())
+	return fs.CopyDir(src, i.Path())
 }
 
 // Update updates a local repository
 // Not implemented for now since tarball most likely will be packaged by version
 func (i *HTTPInstaller) Update() error {
 	return errors.Errorf("method Update() not implemented for HttpInstaller")
-}
-
-// Override link because we want to use HttpInstaller.Path() not base.Path()
-func (i *HTTPInstaller) link(from string) error {
-	debug("symlinking %s to %s", from, i.Path())
-	return os.Symlink(from, i.Path())
 }
 
 // Path is overridden because we want to join on the plugin name not the file name
@@ -164,17 +157,16 @@ func (g *TarGzExtractor) Extract(buffer *bytes.Buffer, targetDir string) error {
 		return err
 	}
 
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		return err
+	}
+
 	tarReader := tar.NewReader(uncompressedStream)
-
-	os.MkdirAll(targetDir, 0755)
-
 	for {
 		header, err := tarReader.Next()
-
 		if err == io.EOF {
 			break
 		}
-
 		if err != nil {
 			return err
 		}
@@ -200,7 +192,5 @@ func (g *TarGzExtractor) Extract(buffer *bytes.Buffer, targetDir string) error {
 			return errors.Errorf("unknown type: %b in %s", header.Typeflag, header.Name)
 		}
 	}
-
 	return nil
-
 }

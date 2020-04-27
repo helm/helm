@@ -18,7 +18,6 @@ package downloader
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -26,6 +25,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"helm.sh/helm/v3/internal/fileutil"
 	"helm.sh/helm/v3/internal/urlutil"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/helmpath"
@@ -72,31 +72,6 @@ type ChartDownloader struct {
 	RepositoryCache  string
 }
 
-// atomicWriteFile atomically (as atomic as os.Rename allows) writes a file to a
-// disk.
-func atomicWriteFile(filename string, body io.Reader, mode os.FileMode) error {
-	tempFile, err := ioutil.TempFile(filepath.Split(filename))
-	if err != nil {
-		return err
-	}
-	tempName := tempFile.Name()
-
-	if _, err := io.Copy(tempFile, body); err != nil {
-		tempFile.Close() // return value is ignored as we are already on error path
-		return err
-	}
-
-	if err := tempFile.Close(); err != nil {
-		return err
-	}
-
-	if err := os.Chmod(tempName, mode); err != nil {
-		return err
-	}
-
-	return os.Rename(tempName, filename)
-}
-
 // DownloadTo retrieves a chart. Depending on the settings, it may also download a provenance file.
 //
 // If Verify is set to VerifyNever, the verification will be nil.
@@ -126,7 +101,7 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 
 	name := filepath.Base(u.Path)
 	destfile := filepath.Join(dest, name)
-	if err := atomicWriteFile(destfile, data, 0644); err != nil {
+	if err := fileutil.AtomicWriteFile(destfile, data, 0644); err != nil {
 		return destfile, nil, err
 	}
 
@@ -142,7 +117,7 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 			return destfile, ver, nil
 		}
 		provfile := destfile + ".prov"
-		if err := atomicWriteFile(provfile, body, 0644); err != nil {
+		if err := fileutil.AtomicWriteFile(provfile, body, 0644); err != nil {
 			return destfile, nil, err
 		}
 

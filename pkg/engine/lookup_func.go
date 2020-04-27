@@ -32,8 +32,12 @@ import (
 
 type lookupFunc = func(apiversion string, resource string, namespace string, name string) (map[string]interface{}, error)
 
-// NewLookupFunction returns a function for looking up objects in the cluster. If the resource does not exist, no error
-// is raised.
+// NewLookupFunction returns a function for looking up objects in the cluster.
+//
+// If the resource does not exist, no error is raised.
+//
+// This function is considered deprecated, and will be renamed in Helm 4. It will no
+// longer be a public function.
 func NewLookupFunction(config *rest.Config) lookupFunc {
 	return func(apiversion string, resource string, namespace string, name string) (map[string]interface{}, error) {
 		var client dynamic.ResourceInterface
