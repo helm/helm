@@ -184,9 +184,9 @@ contributing to Helm. All issue types follow the same general lifecycle. Differe
 
 ## How to Contribute a Patch
 
-1. If you haven't already done so, sign a Contributor License Agreement (see details above).
-2. Fork the desired repo, develop and test your code changes.
-3. Submit a pull request.
+1. Identify or create the related issue.
+2. Fork the desired repo; develop and test your code changes.
+3. Submit a pull request, making sure to sign your work and link the related issue.
 
 Coding conventions and standards are explained in the [official developer docs](https://helm.sh/docs/developers/).
 
