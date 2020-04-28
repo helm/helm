@@ -101,3 +101,32 @@ func TestV3Fail(t *testing.T) {
 		t.Errorf("Unexpected error: %s", res[2].Err)
 	}
 }
+
+func TestValidateMetadataName(t *testing.T) {
+	names := map[string]bool{
+		"":                          false,
+		"foo":                       true,
+		"foo.bar1234baz.seventyone": true,
+		"FOO":                       false,
+		"123baz":                    true,
+		"foo.BAR.baz":               false,
+		"one-two":                   true,
+		"-two":                      false,
+		"one_two":                   false,
+		"a..b":                      false,
+		"%^&#$%*@^*@&#^":            false,
+	}
+	for input, expectPass := range names {
+		obj := K8sYamlStruct{Metadata: k8sYamlMetadata{Name: input}}
+		if err := validateMetadataName(&obj); (err == nil) != expectPass {
+			st := "fail"
+			if expectPass {
+				st = "succeed"
+			}
+			t.Errorf("Expected %q to %s", input, st)
+			if err != nil {
+				t.Log(err)
+			}
+		}
+	}
+}
