@@ -270,6 +270,7 @@ func sortTableSlice(objs []runtime.Object) []runtime.Object {
 	var newObjs []runtime.Object
 	namesCache := make(map[string]runtime.Object, len(objs))
 	var names []string
+	var key string
 	for _, obj := range objs {
 		unstr, ok := obj.(*unstructured.Unstructured)
 		if !ok {
@@ -278,8 +279,23 @@ func sortTableSlice(objs []runtime.Object) []runtime.Object {
 		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstr.Object, ntbl); err != nil {
 			return objs
 		}
-		namesCache[ntbl.GetSelfLink()] = obj
-		names = append(names, ntbl.GetSelfLink())
+
+		// At this point we have a table. Each table has just one row. We are
+		// sorting the tables by the first cell (name) in the first and only
+		// row. If the first cell of the first row cannot be gotten as a string
+		// we return the original unsorted list.
+		if len(ntbl.Rows) == 0 { // Make sure there are rows to read from
+			return objs
+		}
+		if len(ntbl.Rows[0].Cells) == 0 { // Make sure there are cells to read
+			return objs
+		}
+		key, ok = ntbl.Rows[0].Cells[0].(string)
+		if !ok {
+			return objs
+		}
+		namesCache[key] = obj
+		names = append(names, key)
 	}
 
 	sort.Strings(names)

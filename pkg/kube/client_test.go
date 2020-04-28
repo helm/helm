@@ -59,6 +59,7 @@ var (
 )
 
 func getCodec() runtime.Codec {
+	metav1.AddMetaToScheme(scheme.Scheme)
 	return scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 }
 
@@ -110,6 +111,32 @@ func newService(name string) v1.Service {
 		},
 		Spec: v1.ServiceSpec{},
 	}
+}
+
+func newTable(name string) metav1.Table {
+
+	return metav1.Table{
+		ColumnDefinitions: []metav1.TableColumnDefinition{{
+			Description: "Name must be unique within a namespace. Is required when creating resources, although some resources may allow a client to request the generation of an appropriate name automatically. Name is primarily intended for creation idempotence and configuration definition. Cannot be updated. More info: http://kubernetes.io/docs/user-guide/identifiers#names",
+			Format:      "name",
+			Name:        "Name",
+			Priority:    0,
+			Type:        "string",
+		}},
+		Rows: []metav1.TableRow{{
+			Cells: []interface{}{
+				name,
+			},
+		}},
+	}
+}
+
+func newTableList(names ...string) []metav1.Table {
+	var list []metav1.Table
+	for _, name := range names {
+		list = append(list, newTable(name))
+	}
+	return list
 }
 
 func notFoundBody() *metav1.Status {
@@ -373,7 +400,7 @@ func TestBuild(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	list := newPodList("starfish", "otter")
+	list := newTableList("starfish", "otter")
 	c := newTestClient()
 	defer c.Cleanup()
 	c.TestFactory.UnstructuredClient = &fake.RESTClient{
@@ -386,7 +413,7 @@ func TestGet(t *testing.T) {
 			case p == "/namespaces/default/pods/starfish" && m == "GET":
 				return newResponse(404, notFoundBody())
 			case p == "/namespaces/default/pods/otter" && m == "GET":
-				return newResponse(200, &list.Items[1])
+				return newResponse(200, &list[1])
 			default:
 				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
 				return nil, nil
@@ -416,8 +443,8 @@ func TestGet(t *testing.T) {
 }
 
 func TestResourceTypeSortOrder(t *testing.T) {
-	pod := newPod("my-pod")
-	service := newService("my-service")
+	pod := newTable("my-pod")
+	service := newTable("my-service")
 	c := newTestClient()
 	defer c.Cleanup()
 	c.TestFactory.UnstructuredClient = &fake.RESTClient{
@@ -458,22 +485,22 @@ func TestResourceTypeSortOrder(t *testing.T) {
 }
 
 func TestResourceSortOrder(t *testing.T) {
-	list := newPodList("albacore", "coral", "beluga")
+	list := newTableList("albacore", "coral", "beluga")
 	c := newTestClient()
 	defer c.Cleanup()
 	c.TestFactory.UnstructuredClient = &fake.RESTClient{
-		GroupVersion:         schema.GroupVersion{Version: "v1"},
+		GroupVersion:         schema.GroupVersion{Version: "v1", Group: "meta.k8s.io"},
 		NegotiatedSerializer: unstructuredSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			p, m := req.URL.Path, req.Method
 			t.Logf("got request %s %s", p, m)
 			switch {
 			case p == "/namespaces/default/pods/albacore" && m == "GET":
-				return newResponse(200, &list.Items[0])
+				return newResponse(200, &list[0])
 			case p == "/namespaces/default/pods/coral" && m == "GET":
-				return newResponse(200, &list.Items[1])
+				return newResponse(200, &list[1])
 			case p == "/namespaces/default/pods/beluga" && m == "GET":
-				return newResponse(200, &list.Items[2])
+				return newResponse(200, &list[2])
 			default:
 				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
 				return nil, nil
