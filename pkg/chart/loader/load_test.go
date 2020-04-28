@@ -20,6 +20,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -83,6 +84,86 @@ func TestLoadDirWithSymlink(t *testing.T) {
 	verifyChart(t, c)
 	verifyDependencies(t, c)
 	verifyDependenciesLock(t, c)
+}
+
+func TestBomTestData(t *testing.T) {
+	testFiles := []string{"frobnitz_with_bom/.helmignore", "frobnitz_with_bom/templates/template.tpl", "frobnitz_with_bom/Chart.yaml"}
+	for _, file := range testFiles {
+		data, err := ioutil.ReadFile("testdata/" + file)
+		if err != nil || !bytes.HasPrefix(data, utf8bom) {
+			t.Errorf("Test file has no BOM or is invalid: testdata/%s", file)
+		}
+	}
+
+	archive, err := ioutil.ReadFile("testdata/frobnitz_with_bom.tgz")
+	if err != nil {
+		t.Fatalf("Error reading archive frobnitz_with_bom.tgz: %s", err)
+	}
+	unzipped, err := gzip.NewReader(bytes.NewReader(archive))
+	if err != nil {
+		t.Fatalf("Error reading archive frobnitz_with_bom.tgz: %s", err)
+	}
+	defer unzipped.Close()
+	for _, testFile := range testFiles {
+		data := make([]byte, 3)
+		err := unzipped.Reset(bytes.NewReader(archive))
+		if err != nil {
+			t.Fatalf("Error reading archive frobnitz_with_bom.tgz: %s", err)
+		}
+		tr := tar.NewReader(unzipped)
+		for {
+			file, err := tr.Next()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				t.Fatalf("Error reading archive frobnitz_with_bom.tgz: %s", err)
+			}
+			if file != nil && strings.EqualFold(file.Name, testFile) {
+				_, err := tr.Read(data)
+				if err != nil {
+					t.Fatalf("Error reading archive frobnitz_with_bom.tgz: %s", err)
+				} else {
+					break
+				}
+			}
+		}
+		if !bytes.Equal(data, utf8bom) {
+			t.Fatalf("Test file has no BOM or is invalid: frobnitz_with_bom.tgz/%s", testFile)
+		}
+	}
+}
+
+func TestLoadDirWithUTFBOM(t *testing.T) {
+	l, err := Loader("testdata/frobnitz_with_bom")
+	if err != nil {
+		t.Fatalf("Failed to load testdata: %s", err)
+	}
+	c, err := l.Load()
+	if err != nil {
+		t.Fatalf("Failed to load testdata: %s", err)
+	}
+	verifyFrobnitz(t, c)
+	verifyChart(t, c)
+	verifyDependencies(t, c)
+	verifyDependenciesLock(t, c)
+	verifyBomStripped(t, c.Files)
+}
+
+func TestLoadArchiveWithUTFBOM(t *testing.T) {
+	l, err := Loader("testdata/frobnitz_with_bom.tgz")
+	if err != nil {
+		t.Fatalf("Failed to load testdata: %s", err)
+	}
+	c, err := l.Load()
+	if err != nil {
+		t.Fatalf("Failed to load testdata: %s", err)
+	}
+	verifyFrobnitz(t, c)
+	verifyChart(t, c)
+	verifyDependencies(t, c)
+	verifyDependenciesLock(t, c)
+	verifyBomStripped(t, c.Files)
 }
 
 func TestLoadV1(t *testing.T) {
@@ -462,6 +543,14 @@ func verifyChartFileAndTemplate(t *testing.T, c *chart.Chart, name string) {
 			}
 		default:
 			t.Errorf("Unexpected dependency %s", dep.Name())
+		}
+	}
+}
+
+func verifyBomStripped(t *testing.T, files []*chart.File) {
+	for _, file := range files {
+		if bytes.HasPrefix(file.Data, utf8bom) {
+			t.Errorf("Byte Order Mark still present in processed file %s", file.Name)
 		}
 	}
 }
