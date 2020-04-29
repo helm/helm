@@ -66,7 +66,7 @@ const (
 const sep = string(filepath.Separator)
 
 const defaultChartfile = `apiVersion: v2
-name: %s
+name: %q
 description: A Helm chart for Kubernetes
 
 # A chart can be either an 'application' or a 'library' chart.
@@ -435,7 +435,7 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 Selector labels
 */}}
 {{- define "<CHARTNAME>.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
+app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . | toJson }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
