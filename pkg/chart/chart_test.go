@@ -97,41 +97,31 @@ func TestMetadata(t *testing.T) {
 	is.Equal(nil, chrt.Validate())
 }
 
-func TestRoot(t *testing.T) {
-	chrt1 := Chart{
-		parent: &Chart{
+func newTestFixtureCharts() (*Chart, *Chart) {
+	return &Chart{
+			parent: &Chart{
+				Metadata: &Metadata{
+					Name: "foo",
+				},
+			},
+		}, &Chart{
 			Metadata: &Metadata{
 				Name: "foo",
 			},
-		},
-	}
+		}
+}
 
-	chrt2 := Chart{
-		Metadata: &Metadata{
-			Name: "foo",
-		},
-	}
+func TestRoot(t *testing.T) {
+	chrt1, chrt2 := newTestFixtureCharts()
 
 	is := assert.New(t)
 
-	is.Equal(&chrt2, chrt1.Root())
-	is.Equal(&chrt2, chrt2.Root())
+	is.Equal(chrt2, chrt1.Root())
+	is.Equal(chrt2, chrt2.Root())
 }
 
 func TestIsRoot(t *testing.T) {
-	chrt1 := Chart{
-		parent: &Chart{
-			Metadata: &Metadata{
-				Name: "foo",
-			},
-		},
-	}
-
-	chrt2 := Chart{
-		Metadata: &Metadata{
-			Name: "foo",
-		},
-	}
+	chrt1, chrt2 := newTestFixtureCharts()
 
 	is := assert.New(t)
 
@@ -140,19 +130,7 @@ func TestIsRoot(t *testing.T) {
 }
 
 func TestChartPath(t *testing.T) {
-	chrt1 := Chart{
-		parent: &Chart{
-			Metadata: &Metadata{
-				Name: "foo",
-			},
-		},
-	}
-
-	chrt2 := Chart{
-		Metadata: &Metadata{
-			Name: "foo",
-		},
-	}
+	chrt1, chrt2 := newTestFixtureCharts()
 
 	is := assert.New(t)
 
@@ -161,19 +139,7 @@ func TestChartPath(t *testing.T) {
 }
 
 func TestChartFullPath(t *testing.T) {
-	chrt1 := Chart{
-		parent: &Chart{
-			Metadata: &Metadata{
-				Name: "foo",
-			},
-		},
-	}
-
-	chrt2 := Chart{
-		Metadata: &Metadata{
-			Name: "foo",
-		},
-	}
+	chrt1, chrt2 := newTestFixtureCharts()
 
 	is := assert.New(t)
 
