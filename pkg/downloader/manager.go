@@ -113,11 +113,6 @@ func (m *Manager) Build() error {
 		}
 	}
 
-	// Check that all of the repos we're dependent on actually exist.
-	if err := m.hasAllRepos(lock.Dependencies); err != nil {
-		return err
-	}
-
 	if !m.SkipUpdate {
 		// For each repo in the file, update the cached copy of that repo
 		if err := m.UpdateRepositories(); err != nil {
@@ -378,40 +373,6 @@ func (m *Manager) safeDeleteDep(name, dir string) error {
 			fmt.Fprintf(m.Out, "Could not delete %s: %s (Skipping)", fname, err)
 			continue
 		}
-	}
-	return nil
-}
-
-// hasAllRepos ensures that all of the referenced deps are in the local repo cache.
-func (m *Manager) hasAllRepos(deps []*chart.Dependency) error {
-	rf, err := loadRepoConfig(m.RepositoryConfig)
-	if err != nil {
-		return err
-	}
-	repos := rf.Repositories
-
-	// Verify that all repositories referenced in the deps are actually known
-	// by Helm.
-	missing := []string{}
-Loop:
-	for _, dd := range deps {
-		// If repo is from local path, continue
-		if strings.HasPrefix(dd.Repository, "file://") {
-			continue
-		}
-
-		if dd.Repository == "" {
-			continue
-		}
-		for _, repo := range repos {
-			if urlutil.Equal(repo.URL, strings.TrimSuffix(dd.Repository, "/")) {
-				continue Loop
-			}
-		}
-		missing = append(missing, dd.Repository)
-	}
-	if len(missing) > 0 {
-		return errors.Errorf("no repository definition for %s. Please add the missing repos via 'helm repo add'", strings.Join(missing, ", "))
 	}
 	return nil
 }
