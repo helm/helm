@@ -127,7 +127,7 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 	}
 
 	if mem, ok := store.Driver.(*driver.Memory); ok {
-		mem.SetNamespace(settings.Namespace())
+		mem.SetNamespace(settings.GetNamespace())
 	}
 	c, err := root.ExecuteC()
 
@@ -163,7 +163,7 @@ func resetEnv() func() {
 			kv := strings.SplitN(pair, "=", 2)
 			os.Setenv(kv[0], kv[1])
 		}
-		settings = cli.New()
+		settings = cli.SettingsFromEnv()
 	}
 }
 

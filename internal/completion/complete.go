@@ -174,7 +174,7 @@ func (d BashCompDirective) string() string {
 }
 
 // NewCompleteCmd add a special hidden command that an be used to request completions
-func NewCompleteCmd(settings *cli.EnvSettings, out io.Writer) *cobra.Command {
+func NewCompleteCmd(settings *cli.Settings, out io.Writer) *cobra.Command {
 	debug = settings.Debug
 	return &cobra.Command{
 		Use:                   fmt.Sprintf("%s [command-line]", CompRequestCmd),

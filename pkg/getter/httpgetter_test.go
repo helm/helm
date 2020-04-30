@@ -122,7 +122,7 @@ func TestDownload(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	g, err := All(cli.New()).ByScheme("http")
+	g, err := All(cli.SettingsFromEnv()).ByScheme("http")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -133,7 +133,7 @@ var httpProvider = Provider{
 // All finds all of the registered getters as a list of Provider instances.
 // Currently, the built-in getters and the discovered plugins with downloader
 // notations are collected.
-func All(settings *cli.EnvSettings) Providers {
+func All(settings *cli.Settings) Providers {
 	result := Providers{httpProvider}
 	pluginDownloaders, _ := collectPlugins(settings)
 	result = append(result, pluginDownloaders...)

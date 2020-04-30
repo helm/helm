@@ -1,43 +1,18 @@
-/*
-Copyright The Helm Authors.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
-/*Package cli describes the operating environment for the Helm CLI.
-
-Helm's environment encapsulates all of the service dependencies Helm has.
-These dependencies are expressed as interfaces so that alternate implementations
-(mocks, etc.) can be easily generated.
-*/
 package cli
 
 import (
 	"fmt"
+	"github.com/spf13/pflag"
+	"helm.sh/helm/v3/pkg/helmpath"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"os"
 	"strconv"
-
-	"github.com/spf13/pflag"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
-
-	"helm.sh/helm/v3/pkg/helmpath"
 )
 
-// EnvSettings describes all of the environment settings.
-type EnvSettings struct {
-	namespace string
-	config    *genericclioptions.ConfigFlags
-
+// Settings describes all of the settings required by the Helm client.
+type Settings struct {
+	Namespace  string
+	HelmDriver string
 	// KubeConfig is the path to the kubeconfig file
 	KubeConfig string
 	// KubeContext is the name of the kubeconfig context.
@@ -56,11 +31,15 @@ type EnvSettings struct {
 	RepositoryCache string
 	// PluginsDirectory is the path to the plugins directory.
 	PluginsDirectory string
+
+	config *genericclioptions.ConfigFlags
 }
 
-func New() *EnvSettings {
-	env := &EnvSettings{
-		namespace:        os.Getenv("HELM_NAMESPACE"),
+// The default Settings struct for the Helm client, largely drawn from environment variables.
+func SettingsFromEnv() *Settings {
+	env := &Settings{
+		Namespace:        os.Getenv("HELM_NAMESPACE"),
+		HelmDriver:       os.Getenv("HELM_DRIVER"),
 		KubeContext:      os.Getenv("HELM_KUBECONTEXT"),
 		KubeToken:        os.Getenv("HELM_KUBETOKEN"),
 		KubeAPIServer:    os.Getenv("HELM_KUBEAPISERVER"),
@@ -73,7 +52,7 @@ func New() *EnvSettings {
 
 	// bind to kubernetes config flags
 	env.config = &genericclioptions.ConfigFlags{
-		Namespace:   &env.namespace,
+		Namespace:   &env.Namespace,
 		Context:     &env.KubeContext,
 		BearerToken: &env.KubeToken,
 		APIServer:   &env.KubeAPIServer,
@@ -83,8 +62,8 @@ func New() *EnvSettings {
 }
 
 // AddFlags binds flags to the given flagset.
-func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
-	fs.StringVarP(&s.namespace, "namespace", "n", s.namespace, "namespace scope for this request")
+func (s *Settings) AddFlags(fs *pflag.FlagSet) {
+	fs.StringVarP(&s.Namespace, "namespace", "n", s.Namespace, "namespace scope for this request")
 	fs.StringVar(&s.KubeConfig, "kubeconfig", "", "path to the kubeconfig file")
 	fs.StringVar(&s.KubeContext, "kube-context", s.KubeContext, "name of the kubeconfig context to use")
 	fs.StringVar(&s.KubeToken, "kube-token", s.KubeToken, "bearer token used for authentication")
@@ -95,6 +74,19 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.RepositoryCache, "repository-cache", s.RepositoryCache, "path to the file containing cached repository indexes")
 }
 
+// GetNamespace gets the namespace from the configuration
+func (s *Settings) GetNamespace() string {
+	if ns, _, err := s.config.ToRawKubeConfigLoader().Namespace(); err == nil {
+		return ns
+	}
+	return "default"
+}
+
+// RESTClientGetter gets the kubeconfig from Settings
+func (s *Settings) RESTClientGetter() genericclioptions.RESTClientGetter {
+	return s.config
+}
+
 func envOr(name, def string) string {
 	if v, ok := os.LookupEnv(name); ok {
 		return v
@@ -102,7 +94,7 @@ func envOr(name, def string) string {
 	return def
 }
 
-func (s *EnvSettings) EnvVars() map[string]string {
+func (s *Settings) EnvVars() map[string]string {
 	envvars := map[string]string{
 		"HELM_BIN":               os.Args[0],
 		"HELM_DEBUG":             fmt.Sprint(s.Debug),
@@ -110,7 +102,7 @@ func (s *EnvSettings) EnvVars() map[string]string {
 		"HELM_REGISTRY_CONFIG":   s.RegistryConfig,
 		"HELM_REPOSITORY_CACHE":  s.RepositoryCache,
 		"HELM_REPOSITORY_CONFIG": s.RepositoryConfig,
-		"HELM_NAMESPACE":         s.Namespace(),
+		"HELM_NAMESPACE":         s.GetNamespace(),
 
 		// broken, these are populated from helm flags and not kubeconfig.
 		"HELM_KUBECONTEXT":   s.KubeContext,
@@ -123,15 +115,6 @@ func (s *EnvSettings) EnvVars() map[string]string {
 	return envvars
 }
 
-// Namespace gets the namespace from the configuration
-func (s *EnvSettings) Namespace() string {
-	if ns, _, err := s.config.ToRawKubeConfigLoader().Namespace(); err == nil {
-		return ns
-	}
-	return "default"
-}
-
-// RESTClientGetter gets the kubeconfig from EnvSettings
-func (s *EnvSettings) RESTClientGetter() genericclioptions.RESTClientGetter {
-	return s.config
+func (s *Settings) validate() error {
+	return nil
 }

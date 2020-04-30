@@ -53,7 +53,7 @@ func TestProviders(t *testing.T) {
 }
 
 func TestAll(t *testing.T) {
-	env := cli.New()
+	env := cli.SettingsFromEnv()
 	env.PluginsDirectory = pluginDir
 
 	all := All(env)
@@ -67,7 +67,7 @@ func TestAll(t *testing.T) {
 }
 
 func TestByScheme(t *testing.T) {
-	env := cli.New()
+	env := cli.SettingsFromEnv()
 	env.PluginsDirectory = pluginDir
 
 	g := All(env)

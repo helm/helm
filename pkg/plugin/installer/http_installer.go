@@ -79,7 +79,7 @@ func NewHTTPInstaller(source string) (*HTTPInstaller, error) {
 		return nil, err
 	}
 
-	get, err := getter.All(new(cli.EnvSettings)).ByScheme("http")
+	get, err := getter.All(new(cli.Settings)).ByScheme("http")
 	if err != nil {
 		return nil, err
 	}

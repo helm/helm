@@ -613,7 +613,7 @@ OUTER:
 // - URL
 //
 // If 'verify' was set on ChartPathOptions, this will attempt to also verify the chart.
-func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (string, error) {
+func (c *ChartPathOptions) LocateChart(name string, settings *cli.Settings) (string, error) {
 	name = strings.TrimSpace(name)
 	version := strings.TrimSpace(c.Version)
 

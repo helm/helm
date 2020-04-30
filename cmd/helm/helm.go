@@ -43,7 +43,7 @@ import (
 // FeatureGateOCI is the feature gate for checking if `helm chart` and `helm registry` commands should work
 const FeatureGateOCI = gates.Gate("HELM_EXPERIMENTAL_OCI")
 
-var settings = cli.New()
+var settings = cli.SettingsFromEnv()
 
 func init() {
 	log.SetFlags(log.Lshortfile)
@@ -72,8 +72,10 @@ func main() {
 
 	// run when each command's execute method is called
 	cobra.OnInitialize(func() {
-		helmDriver := os.Getenv("HELM_DRIVER")
-		if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), helmDriver, debug); err != nil {
+		namespace := settings.GetNamespace()
+		helmDriver := settings.HelmDriver
+
+		if err := actionConfig.Init(settings.RESTClientGetter(), namespace, helmDriver, debug); err != nil {
 			log.Fatal(err)
 		}
 		if helmDriver == "memory" {
@@ -141,5 +143,5 @@ func loadReleasesInMemory(actionConfig *action.Configuration) {
 		}
 	}
 	// Must reset namespace to the proper one
-	mem.SetNamespace(settings.Namespace())
+	mem.SetNamespace(settings.GetNamespace())
 }

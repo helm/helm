@@ -215,7 +215,7 @@ func FindPlugins(plugdirs string) ([]*Plugin, error) {
 // SetupPluginEnv prepares os.Env for plugins. It operates on os.Env because
 // the plugin subsystem itself needs access to the environment variables
 // created here.
-func SetupPluginEnv(settings *cli.EnvSettings, name, base string) {
+func SetupPluginEnv(settings *cli.Settings, name, base string) {
 	env := settings.EnvVars()
 	env["HELM_PLUGIN_NAME"] = name
 	env["HELM_PLUGIN_DIR"] = base

@@ -30,7 +30,7 @@ import (
 
 // collectPlugins scans for getter plugins.
 // This will load plugins according to the cli.
-func collectPlugins(settings *cli.EnvSettings) (Providers, error) {
+func collectPlugins(settings *cli.Settings) (Providers, error) {
 	plugins, err := plugin.FindPlugins(settings.PluginsDirectory)
 	if err != nil {
 		return nil, err
@@ -56,7 +56,7 @@ func collectPlugins(settings *cli.EnvSettings) (Providers, error) {
 // implemented in plugins.
 type pluginGetter struct {
 	command  string
-	settings *cli.EnvSettings
+	settings *cli.Settings
 	name     string
 	base     string
 	opts     options
@@ -86,7 +86,7 @@ func (p *pluginGetter) Get(href string, options ...Option) (*bytes.Buffer, error
 }
 
 // NewPluginGetter constructs a valid plugin getter
-func NewPluginGetter(command string, settings *cli.EnvSettings, name, base string) Constructor {
+func NewPluginGetter(command string, settings *cli.Settings, name, base string) Constructor {
 	return func(options ...Option) (Getter, error) {
 		result := &pluginGetter{
 			command:  command,

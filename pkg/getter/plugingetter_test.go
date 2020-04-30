@@ -24,10 +24,10 @@ import (
 )
 
 func TestCollectPlugins(t *testing.T) {
-	env := cli.New()
-	env.PluginsDirectory = pluginDir
+	settings := cli.SettingsFromEnv()
+	settings.PluginsDirectory = pluginDir
 
-	p, err := collectPlugins(env)
+	p, err := collectPlugins(settings)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,9 +54,9 @@ func TestPluginGetter(t *testing.T) {
 		t.Skip("TODO: refactor this test to work on windows")
 	}
 
-	env := cli.New()
-	env.PluginsDirectory = pluginDir
-	pg := NewPluginGetter("echo", env, "test", ".")
+	settings := cli.SettingsFromEnv()
+	settings.PluginsDirectory = pluginDir
+	pg := NewPluginGetter("echo", settings, "test", ".")
 	g, err := pg()
 	if err != nil {
 		t.Fatal(err)
@@ -79,10 +79,10 @@ func TestPluginSubCommands(t *testing.T) {
 		t.Skip("TODO: refactor this test to work on windows")
 	}
 
-	env := cli.New()
-	env.PluginsDirectory = pluginDir
+	settings := cli.SettingsFromEnv()
+	settings.PluginsDirectory = pluginDir
 
-	pg := NewPluginGetter("echo -n", env, "test", ".")
+	pg := NewPluginGetter("echo -n", settings, "test", ".")
 	g, err := pg()
 	if err != nil {
 		t.Fatal(err)

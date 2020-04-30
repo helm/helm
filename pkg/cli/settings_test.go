@@ -71,15 +71,15 @@ func TestEnvSettings(t *testing.T) {
 
 			flags := pflag.NewFlagSet("testing", pflag.ContinueOnError)
 
-			settings := New()
+			settings := SettingsFromEnv()
 			settings.AddFlags(flags)
 			flags.Parse(strings.Split(tt.args, " "))
 
 			if settings.Debug != tt.debug {
 				t.Errorf("expected debug %t, got %t", tt.debug, settings.Debug)
 			}
-			if settings.Namespace() != tt.ns {
-				t.Errorf("expected namespace %q, got %q", tt.ns, settings.Namespace())
+			if settings.GetNamespace() != tt.ns {
+				t.Errorf("expected namespace %q, got %q", tt.ns, settings.GetNamespace())
 			}
 			if settings.KubeContext != tt.kcontext {
 				t.Errorf("expected kube-context %q, got %q", tt.kcontext, settings.KubeContext)
@@ -92,7 +92,7 @@ func resetEnv() func() {
 	origEnv := os.Environ()
 
 	// ensure any local envvars do not hose us
-	for e := range New().EnvVars() {
+	for e := range SettingsFromEnv().EnvVars() {
 		os.Unsetenv(e)
 	}
 
