@@ -45,7 +45,7 @@ func TestLoadChartRepository(t *testing.T) {
 	r, err := NewChartRepository(&Entry{
 		Name: testRepository,
 		URL:  testURL,
-	}, getter.All(&cli.EnvSettings{}))
+	}, getter.All(&cli.Settings{}))
 	if err != nil {
 		t.Errorf("Problem creating chart repository from %s: %v", testRepository, err)
 	}
@@ -78,7 +78,7 @@ func TestIndex(t *testing.T) {
 	r, err := NewChartRepository(&Entry{
 		Name: testRepository,
 		URL:  testURL,
-	}, getter.All(&cli.EnvSettings{}))
+	}, getter.All(&cli.Settings{}))
 	if err != nil {
 		t.Errorf("Problem creating chart repository from %s: %v", testRepository, err)
 	}
@@ -283,7 +283,7 @@ func TestFindChartInRepoURL(t *testing.T) {
 	}
 	defer srv.Close()
 
-	chartURL, err := FindChartInRepoURL(srv.URL, "nginx", "", "", "", "", getter.All(&cli.EnvSettings{}))
+	chartURL, err := FindChartInRepoURL(srv.URL, "nginx", "", "", "", "", getter.All(&cli.Settings{}))
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -291,7 +291,7 @@ func TestFindChartInRepoURL(t *testing.T) {
 		t.Errorf("%s is not the valid URL", chartURL)
 	}
 
-	chartURL, err = FindChartInRepoURL(srv.URL, "nginx", "0.1.0", "", "", "", getter.All(&cli.EnvSettings{}))
+	chartURL, err = FindChartInRepoURL(srv.URL, "nginx", "0.1.0", "", "", "", getter.All(&cli.Settings{}))
 	if err != nil {
 		t.Errorf("%s", err)
 	}
@@ -302,7 +302,7 @@ func TestFindChartInRepoURL(t *testing.T) {
 
 func TestErrorFindChartInRepoURL(t *testing.T) {
 
-	g := getter.All(&cli.EnvSettings{
+	g := getter.All(&cli.Settings{
 		RepositoryCache: ensure.TempDir(t),
 	})
 

@@ -59,7 +59,7 @@ func TestResolveChartRef(t *testing.T) {
 		Out:              os.Stderr,
 		RepositoryConfig: repoConfig,
 		RepositoryCache:  repoCache,
-		Getters: getter.All(&cli.EnvSettings{
+		Getters: getter.All(&cli.Settings{
 			RepositoryConfig: repoConfig,
 			RepositoryCache:  repoCache,
 		}),
@@ -99,7 +99,7 @@ func TestResolveChartOpts(t *testing.T) {
 		Out:              os.Stderr,
 		RepositoryConfig: repoConfig,
 		RepositoryCache:  repoCache,
-		Getters: getter.All(&cli.EnvSettings{
+		Getters: getter.All(&cli.Settings{
 			RepositoryConfig: repoConfig,
 			RepositoryCache:  repoCache,
 		}),
@@ -199,7 +199,7 @@ func TestDownloadTo(t *testing.T) {
 		Keyring:          "testdata/helm-test-key.pub",
 		RepositoryConfig: repoConfig,
 		RepositoryCache:  repoCache,
-		Getters: getter.All(&cli.EnvSettings{
+		Getters: getter.All(&cli.Settings{
 			RepositoryConfig: repoConfig,
 			RepositoryCache:  repoCache,
 		}),
@@ -252,7 +252,7 @@ func TestDownloadTo_TLS(t *testing.T) {
 		Keyring:          "testdata/helm-test-key.pub",
 		RepositoryConfig: repoConfig,
 		RepositoryCache:  repoCache,
-		Getters: getter.All(&cli.EnvSettings{
+		Getters: getter.All(&cli.Settings{
 			RepositoryConfig: repoConfig,
 			RepositoryCache:  repoCache,
 		}),
@@ -299,7 +299,7 @@ func TestDownloadTo_VerifyLater(t *testing.T) {
 		Verify:           VerifyLater,
 		RepositoryConfig: repoConfig,
 		RepositoryCache:  repoCache,
-		Getters: getter.All(&cli.EnvSettings{
+		Getters: getter.All(&cli.Settings{
 			RepositoryConfig: repoConfig,
 			RepositoryCache:  repoCache,
 		}),
@@ -328,7 +328,7 @@ func TestScanReposForURL(t *testing.T) {
 		Verify:           VerifyLater,
 		RepositoryConfig: repoConfig,
 		RepositoryCache:  repoCache,
-		Getters: getter.All(&cli.EnvSettings{
+		Getters: getter.All(&cli.Settings{
 			RepositoryConfig: repoConfig,
 			RepositoryCache:  repoCache,
 		}),

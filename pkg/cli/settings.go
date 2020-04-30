@@ -1,3 +1,19 @@
+/*
+Copyright The Helm Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package cli
 
 import (
@@ -9,9 +25,11 @@ import (
 	"strconv"
 )
 
-// Settings describes all of the settings required by the Helm client.
+// Settings describes all of the configuration options required by the Helm client.
 type Settings struct {
-	Namespace  string
+	// The Kubernetes namespace
+	Namespace string
+	// The Helm driver ("memory", "secret", or "configmap")
 	HelmDriver string
 	// KubeConfig is the path to the kubeconfig file
 	KubeConfig string
@@ -32,6 +50,7 @@ type Settings struct {
 	// PluginsDirectory is the path to the plugins directory.
 	PluginsDirectory string
 
+	// Kubernetes configuration flags
 	config *genericclioptions.ConfigFlags
 }
 
@@ -113,8 +132,4 @@ func (s *Settings) EnvVars() map[string]string {
 		envvars["KUBECONFIG"] = s.KubeConfig
 	}
 	return envvars
-}
-
-func (s *Settings) validate() error {
-	return nil
 }

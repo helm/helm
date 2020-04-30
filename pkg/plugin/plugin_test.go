@@ -305,7 +305,7 @@ func TestSetupEnv(t *testing.T) {
 	name := "pequod"
 	base := filepath.Join("testdata/helmhome/helm/plugins", name)
 
-	s := cli.New()
+	s := cli.SettingsFromEnv()
 	s.PluginsDirectory = "testdata/helmhome/helm/plugins"
 
 	SetupPluginEnv(s, name, base)
