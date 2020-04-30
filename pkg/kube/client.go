@@ -439,7 +439,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		if err != nil {
 			return errors.Wrap(err, "failed to replace object")
 		}
-		c.Log("Replaced %q with kind %s for kind %s\n", target.Name, currentObj.GetObjectKind().GroupVersionKind().Kind, kind)
+		c.Log("Replaced %q with kind %s for kind %s", target.Name, currentObj.GetObjectKind().GroupVersionKind().Kind, kind)
 	} else {
 		// send patch to server
 		obj, err = helper.Patch(target.Namespace, target.Name, patchType, patch, nil)
