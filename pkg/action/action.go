@@ -62,16 +62,17 @@ var (
 	errInvalidName = errors.New("invalid release name, must match regex ^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+$ and the length must not longer than 53")
 )
 
-// ValidName is a regular expression for names.
+// ValidName is a regular expression for resource names.
 //
 // According to the Kubernetes help text, the regular expression it uses is:
 //
-//	(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?
+//	[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*
 //
-// We modified that. First, we added start and end delimiters. Second, we changed
-// the final ? to + to require that the pattern match at least once. This modification
-// prevents an empty string from matching.
-var ValidName = regexp.MustCompile("^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+$")
+// This follows the above regular expression (but requires a full string match, not partial).
+//
+// The Kubernetes documentation is here, though it is not entirely correct:
+// https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+var ValidName = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$`)
 
 // Configuration injects the dependencies that all actions share.
 type Configuration struct {
