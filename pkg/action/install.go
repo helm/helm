@@ -641,6 +641,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		Options: []getter.Option{
 			getter.WithBasicAuth(c.Username, c.Password),
 			getter.WithTLSClientConfig(c.CertFile, c.KeyFile, c.CaFile),
+			getter.WithInsecureSkipVerifyTLS(c.InsecureSkipTLSverify),
 		},
 		RepositoryConfig: settings.RepositoryConfig,
 		RepositoryCache:  settings.RepositoryCache,
