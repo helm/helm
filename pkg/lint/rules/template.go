@@ -188,10 +188,16 @@ func validateNoReleaseTime(manifest []byte) error {
 
 // TODO: I strongly suspect that there are better regexps than these two.
 var (
-	badTplStart = regexp.MustCompile(`{{-?[^-\s]+`)
-	badTplEnd   = regexp.MustCompile(`[^\s-]+-?}}`)
+	badTplStart = regexp.MustCompile(`{{-?[^-\s\/]+`)
+	badTplEnd   = regexp.MustCompile(`[^\s-\/]+-?}}`)
 )
 
+// validateWhitespaceAroundTemplateDirectives checks for formatting errors on tpl directives
+//
+// The recommendation is that templates add at least one whitespace character between the
+// directive marker ({{ or {{-) and the directive. This enforces that.
+//
+// See https://github.com/helm/helm/issues/5763
 func validateWhitespaceAroundTemplateDirectives(template string) error {
 	badMatches := []string{}
 	if matches := badTplStart.FindAllString(template, 10); matches != nil {

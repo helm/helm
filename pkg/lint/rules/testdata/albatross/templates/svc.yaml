@@ -7,13 +7,13 @@ metadata:
   labels:
     app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
     app.kubernetes.io/instance: {{ .Release.Name | quote }}
-    helm.sh/chart: "{{.Chart.Name}}-{{.Chart.Version}}"
+    helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
     kubeVersion: {{ .Capabilities.KubeVersion.Major }}
 spec:
   ports:
-  - port: {{default 80 .Values.httpPort | quote}}
+  - port: {{ default 80 .Values.httpPort | quote }}
     targetPort: 80
     protocol: TCP
     name: http
   selector:
-    app.kubernetes.io/name: {{template "fullname" .}}
+    app.kubernetes.io/name: {{ template "fullname" . }}

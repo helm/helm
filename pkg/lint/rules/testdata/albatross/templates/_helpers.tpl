@@ -2,7 +2,7 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{define "name"}}{{default "nginx" .Values.nameOverride | trunc 63 | trimSuffix "-" }}{{end}}
+{{ define "name" }}{{ default "nginx" .Values.nameOverride | trunc 63 | trimSuffix "-" }}{{ end }}
 
 {{/*
 Create a default fully qualified app name.
@@ -10,7 +10,7 @@ Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this
 (by the DNS naming spec).
 */}}
-{{define "fullname"}}
+{{ define "fullname" }}
 {{- $name := default "nginx" .Values.nameOverride -}}
-{{printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
-{{end}}
+{{ printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
+{{ end }}

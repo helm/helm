@@ -244,6 +244,7 @@ func TestValidateWhitespaceAroundTemplateDirectives(t *testing.T) {
 		`{{ legal }}{{illegal }}`:       false,
 		`{{ legal }}{{- legal -}}`:      true,
 		"{{\nlegal\n}}":                 true,
+		"{{/* comment */}}":             true,
 	} {
 		if err := validateWhitespaceAroundTemplateDirectives(example); (err == nil) != success {
 			st := "failure"
