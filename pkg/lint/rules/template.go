@@ -106,6 +106,7 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 		// chart is not compatible with v3
 		linter.RunLinterRule(support.WarningSev, path, validateNoCRDHooks(data))
 		linter.RunLinterRule(support.ErrorSev, path, validateNoReleaseTime(data))
+		linter.RunLinterRule(support.InfoSev, path, validateWhitespaceAroundTemplateDirectives(string(data)))
 
 		// We only apply the following lint rules to yaml files
 		if filepath.Ext(fileName) != ".yaml" || filepath.Ext(fileName) == ".yml" {
@@ -183,6 +184,26 @@ func validateNoReleaseTime(manifest []byte) error {
 		return errors.New(".Release.Time has been removed in v3, please replace with the `now` function in your templates")
 	}
 	return nil
+}
+
+// TODO: I strongly suspect that there are better regexps than these two.
+var (
+	badTplStart = regexp.MustCompile(`{{-?[^-\s]+`)
+	badTplEnd   = regexp.MustCompile(`[^\s-]+-?}}`)
+)
+
+func validateWhitespaceAroundTemplateDirectives(template string) error {
+	badMatches := []string{}
+	if matches := badTplStart.FindAllString(template, 10); matches != nil {
+		badMatches = append(badMatches, fmt.Sprintf("\nbad start: %s", strings.Join(matches, "\n\t")))
+	}
+	if matches := badTplEnd.FindAllString(template, 10); matches != nil {
+		badMatches = append(badMatches, fmt.Sprintf("\nbad end: %s", strings.Join(matches, "\n\t")))
+	}
+	if len(badMatches) == 0 {
+		return nil
+	}
+	return fmt.Errorf("whitespace required between template markers and body: %s", strings.Join(badMatches, "\n"))
 }
 
 // K8sYamlStruct stubs a Kubernetes YAML file.

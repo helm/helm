@@ -226,3 +226,31 @@ func TestStrictTemplateParsingMapError(t *testing.T) {
 		}
 	}
 }
+
+func TestValidateWhitespaceAroundTemplateDirectives(t *testing.T) {
+	for example, success := range map[string]bool{
+		"{{foo}}":                       false,
+		"{{-foo-}}":                     false,
+		"{{ foo-}}":                     false,
+		"{{ foo}}":                      false,
+		"{{-foo }}":                     false,
+		"{{foo }}":                      false,
+		"{{ foo }}":                     true,
+		"{{ default 2 .Values.foo }}":   true,
+		"{{default 2 .Values.foo }}":    false,
+		"{{ default 2 .Values.foo}}":    false,
+		`{{ default "}" .Values.foo }}`: true,
+		`{{- foo }}`:                    true,
+		`{{ legal }}{{illegal }}`:       false,
+		`{{ legal }}{{- legal -}}`:      true,
+		"{{\nlegal\n}}":                 true,
+	} {
+		if err := validateWhitespaceAroundTemplateDirectives(example); (err == nil) != success {
+			st := "failure"
+			if success {
+				st = "success"
+			}
+			t.Errorf("Expected %s for %q", st, example)
+		}
+	}
+}
