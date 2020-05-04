@@ -180,11 +180,11 @@ kind: ConfigMap
 metadata:
   name: foo
 data:
-  myval1: {{default "val" .Values.mymap.key1 }}
-  myval2: {{default "val" .Values.mymap.key2 }}
+  myval1: {{  default "val" .Values.mymap.key1 }}
+  myval2: {{  default "val" .Values.mymap.key2 }}
 `
 
-// TestSTrictTemplatePrasingMapError is a regression test.
+// TestStrictTemplatePrasingMapError is a regression test.
 //
 // The template engine should not produce an error when a map in values.yaml does
 // not contain all possible keys.
