@@ -204,6 +204,35 @@ func TestLoadDir(t *testing.T) {
 	}
 }
 
+func TestLoadFile(t *testing.T) {
+	pluginDir := "testdata/plugdir/hello"
+	pluginYaml := "testdata/plugdir/hello/plugin.yaml"
+	plug, err := LoadFile(pluginDir, pluginYaml)
+	if err != nil {
+		t.Fatalf("error loading Hello plugin: %s", err)
+	}
+
+	if plug.Dir != pluginDir {
+		t.Fatalf("Expected dir %q, got %q", pluginDir, plug.Dir)
+	}
+
+	expect := &Metadata{
+		Name:        "hello",
+		Version:     "0.1.0",
+		Usage:       "usage",
+		Description: "description",
+		Command:     "$HELM_PLUGIN_SELF/hello.sh",
+		IgnoreFlags: true,
+		Hooks: map[string]string{
+			Install: "echo installing...",
+		},
+	}
+
+	if !reflect.DeepEqual(expect, plug.Metadata) {
+		t.Fatalf("Expected plugin metadata %v, got %v", expect, plug.Metadata)
+	}
+}
+
 func TestDownloader(t *testing.T) {
 	dirname := "testdata/plugdir/downloader"
 	plug, err := LoadDir(dirname)

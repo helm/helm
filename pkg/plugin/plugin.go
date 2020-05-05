@@ -159,12 +159,17 @@ func (p *Plugin) PrepareCommand(extraArgs []string) (string, []string, error) {
 
 // LoadDir loads a plugin from the given directory.
 func LoadDir(dirname string) (*Plugin, error) {
-	data, err := ioutil.ReadFile(filepath.Join(dirname, PluginFileName))
+	return LoadFile(dirname, filepath.Join(dirname, PluginFileName))
+}
+
+// LoadFile loads a plugin from the given plugin.yaml path.
+func LoadFile(pluginDir, pluginYaml string) (*Plugin, error) {
+	data, err := ioutil.ReadFile(pluginYaml)
 	if err != nil {
 		return nil, err
 	}
 
-	plug := &Plugin{Dir: dirname}
+	plug := &Plugin{Dir: pluginDir}
 	if err := yaml.Unmarshal(data, &plug.Metadata); err != nil {
 		return nil, err
 	}
@@ -187,9 +192,8 @@ func LoadAll(basedir string) ([]*Plugin, error) {
 		return plugins, nil
 	}
 
-	for _, yaml := range matches {
-		dir := filepath.Dir(yaml)
-		p, err := LoadDir(dir)
+	for _, pluginYaml := range matches {
+		p, err := LoadFile(filepath.Dir(pluginYaml), pluginYaml)
 		if err != nil {
 			return plugins, err
 		}
