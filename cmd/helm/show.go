@@ -72,7 +72,7 @@ func newShowCmd(out io.Writer) *cobra.Command {
 
 	all := &cobra.Command{
 		Use:   "all [CHART]",
-		Short: "shows all information of the chart",
+		Short: "show all information of the chart",
 		Long:  showAllDesc,
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -88,7 +88,7 @@ func newShowCmd(out io.Writer) *cobra.Command {
 
 	valuesSubCmd := &cobra.Command{
 		Use:   "values [CHART]",
-		Short: "shows the chart's values",
+		Short: "show the chart's values",
 		Long:  showValuesDesc,
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -104,7 +104,7 @@ func newShowCmd(out io.Writer) *cobra.Command {
 
 	chartSubCmd := &cobra.Command{
 		Use:   "chart [CHART]",
-		Short: "shows the chart's definition",
+		Short: "show the chart's definition",
 		Long:  showChartDesc,
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -120,7 +120,7 @@ func newShowCmd(out io.Writer) *cobra.Command {
 
 	readmeSubCmd := &cobra.Command{
 		Use:   "readme [CHART]",
-		Short: "shows the chart's README",
+		Short: "show the chart's README",
 		Long:  readmeChartDesc,
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
