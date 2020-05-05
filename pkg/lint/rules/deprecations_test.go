@@ -20,7 +20,7 @@ import "testing"
 
 func TestValidateNoDeprecations(t *testing.T) {
 	deprecated := &K8sYamlStruct{
-		APIVersion: "extensions/v1",
+		APIVersion: "extensions/v1beta1",
 		Kind:       "Deployment",
 	}
 	err := validateNoDeprecations(deprecated)
