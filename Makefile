@@ -122,7 +122,7 @@ docker-test-unit: check-docker
 		-v $(shell pwd):/go/src/k8s.io/helm \
 		-w /go/src/k8s.io/helm \
 		$(DEV_IMAGE) \
-		bash -c "HELM_HOME=/no/such/dir go test $(GOFLAGS) -run $(TESTS) $(PKG) $(TESTFLAGS)"
+		bash -c "HELM_HOME=/no/such/dir $(GO) test $(GOFLAGS) -run $(TESTS) $(PKG) $(TESTFLAGS)"
 
 .PHONY: test-style
 test-style:
@@ -168,16 +168,16 @@ HAS_GIT := $(shell command -v git;)
 .PHONY: bootstrap
 bootstrap:
 ifndef HAS_GLIDE
-	go get -u github.com/Masterminds/glide
+	$(GO) get -u github.com/Masterminds/glide
 endif
 ifndef HAS_GOX
-	go get -u github.com/mitchellh/gox
+	$(GO) get -u github.com/mitchellh/gox
 endif
 
 ifndef HAS_GIT
 	$(error You must install Git)
 endif
 	glide install --strip-vendor
-	go build -o bin/protoc-gen-go ./vendor/github.com/golang/protobuf/protoc-gen-go
+	$(GO) build -o bin/protoc-gen-go ./vendor/github.com/golang/protobuf/protoc-gen-go
 
 include versioning.mk
