@@ -21,6 +21,7 @@ import (
 	"os"
 	"testing"
 
+	"helm.sh/helm/v3/pkg/helmpath"
 	"helm.sh/helm/v3/pkg/helmpath/xdg"
 )
 
@@ -31,6 +32,9 @@ func HelmHome(t *testing.T) func() {
 	os.Setenv(xdg.CacheHomeEnvVar, base)
 	os.Setenv(xdg.ConfigHomeEnvVar, base)
 	os.Setenv(xdg.DataHomeEnvVar, base)
+	os.Setenv(helmpath.CacheHomeEnvVar, "")
+	os.Setenv(helmpath.ConfigHomeEnvVar, "")
+	os.Setenv(helmpath.DataHomeEnvVar, "")
 	return func() {
 		os.RemoveAll(base)
 	}
