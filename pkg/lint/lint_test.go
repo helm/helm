@@ -104,7 +104,10 @@ func TestBadValues(t *testing.T) {
 func TestGoodChart(t *testing.T) {
 	m := All(goodChartDir, values, namespace, strict).Messages
 	if len(m) != 0 {
-		t.Errorf("All failed but shouldn't have: %#v", m)
+		t.Error("All returned linter messages when it shouldn't have")
+		for i, msg := range m {
+			t.Logf("Message %d: %s", i, msg)
+		}
 	}
 }
 
@@ -130,6 +133,9 @@ func TestHelmCreateChart(t *testing.T) {
 	m := All(createdChart, values, namespace, true).Messages
 	if ll := len(m); ll != 1 {
 		t.Errorf("All should have had exactly 1 error. Got %d", ll)
+		for i, msg := range m {
+			t.Logf("Message %d: %s", i, msg.Error())
+		}
 	} else if msg := m[0].Err.Error(); !strings.Contains(msg, "icon is recommended") {
 		t.Errorf("Unexpected lint error: %s", msg)
 	}

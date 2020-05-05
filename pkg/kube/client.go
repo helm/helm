@@ -223,6 +223,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 
 		if err := info.Get(); err != nil {
 			c.Log("Unable to get obj %q, err: %s", info.Name, err)
+			continue
 		}
 		annotations, err := metadataAccessor.Annotations(info.Object)
 		if err != nil {
@@ -232,16 +233,11 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			c.Log("Skipping delete of %q due to annotation [%s=%s]", info.Name, ResourcePolicyAnno, KeepPolicy)
 			continue
 		}
-
-		res.Deleted = append(res.Deleted, info)
 		if err := deleteResource(info); err != nil {
-			if apierrors.IsNotFound(err) {
-				c.Log("Attempted to delete %q, but the resource was missing", info.Name)
-			} else {
-				c.Log("Failed to delete %q, err: %s", info.Name, err)
-				return res, errors.Wrapf(err, "Failed to delete %q", info.Name)
-			}
+			c.Log("Failed to delete %q, err: %s", info.ObjectName(), err)
+			continue
 		}
+		res.Deleted = append(res.Deleted, info)
 	}
 	return res, nil
 }
@@ -443,7 +439,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		if err != nil {
 			return errors.Wrap(err, "failed to replace object")
 		}
-		c.Log("Replaced %q with kind %s for kind %s\n", target.Name, currentObj.GetObjectKind().GroupVersionKind().Kind, kind)
+		c.Log("Replaced %q with kind %s for kind %s", target.Name, currentObj.GetObjectKind().GroupVersionKind().Kind, kind)
 	} else {
 		// send patch to server
 		obj, err = helper.Patch(target.Namespace, target.Name, patchType, patch, nil)
