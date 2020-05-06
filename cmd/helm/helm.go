@@ -17,7 +17,6 @@ limitations under the License.
 package main // import "helm.sh/helm/v3/cmd/helm"
 
 import (
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -25,8 +24,6 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
-	"k8s.io/klog"
 	"sigs.k8s.io/yaml"
 
 	// Import to initialize client auth plugins.
@@ -61,17 +58,7 @@ func warning(format string, v ...interface{}) {
 	fmt.Fprintf(os.Stderr, format, v...)
 }
 
-func initKubeLogs() {
-	pflag.CommandLine.SetNormalizeFunc(wordSepNormalizeFunc)
-	gofs := flag.NewFlagSet("klog", flag.ExitOnError)
-	klog.InitFlags(gofs)
-	pflag.CommandLine.AddGoFlagSet(gofs)
-	pflag.CommandLine.Set("logtostderr", "true")
-}
-
 func main() {
-	initKubeLogs()
-
 	actionConfig := new(action.Configuration)
 	cmd, err := newRootCmd(actionConfig, os.Stdout, os.Args[1:])
 	if err != nil {
@@ -99,11 +86,6 @@ func main() {
 			os.Exit(1)
 		}
 	}
-}
-
-// wordSepNormalizeFunc changes all flags that contain "_" separators
-func wordSepNormalizeFunc(f *pflag.FlagSet, name string) pflag.NormalizedName {
-	return pflag.NormalizedName(strings.ReplaceAll(name, "_", "-"))
 }
 
 func checkOCIFeatureGate() func(_ *cobra.Command, _ []string) error {
