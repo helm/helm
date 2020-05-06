@@ -93,6 +93,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	flags := cmd.PersistentFlags()
 
 	settings.AddFlags(flags)
+	addKlogFlags(flags)
 
 	// Setup shell completion for the namespace flag
 	err := cmd.RegisterFlagCompletionFunc("namespace", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
