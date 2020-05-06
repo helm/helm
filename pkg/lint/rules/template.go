@@ -81,7 +81,6 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 		return
 	}
 	var e engine.Engine
-	e.Strict = strict
 	e.LintMode = true
 	renderedContentMap, err := e.Render(chart, valuesToRender)
 
@@ -131,6 +130,7 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 			// on this linter run.
 			linter.RunLinterRule(support.ErrorSev, path, validateYamlContent(err))
 			linter.RunLinterRule(support.ErrorSev, path, validateMetadataName(&yamlStruct))
+			linter.RunLinterRule(support.ErrorSev, path, validateNoDeprecations(&yamlStruct))
 		}
 	}
 }
@@ -190,7 +190,9 @@ func validateNoReleaseTime(manifest []byte) error {
 // DEPRECATED: In Helm 4, this will be made a private type, as it is for use only within
 // the rules package.
 type K8sYamlStruct struct {
-	Metadata k8sYamlMetadata
+	APIVersion string `json:"apiVersion"`
+	Kind       string
+	Metadata   k8sYamlMetadata
 }
 
 type k8sYamlMetadata struct {

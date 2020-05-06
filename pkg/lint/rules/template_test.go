@@ -22,6 +22,9 @@ import (
 	"strings"
 	"testing"
 
+	"helm.sh/helm/v3/internal/test/ensure"
+	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/lint/support"
 )
 
@@ -127,6 +130,99 @@ func TestValidateMetadataName(t *testing.T) {
 			if err != nil {
 				t.Log(err)
 			}
+		}
+	}
+}
+
+func TestDeprecatedAPIFails(t *testing.T) {
+	mychart := chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: "v2",
+			Name:       "failapi",
+			Version:    "0.1.0",
+			Icon:       "satisfy-the-linting-gods.gif",
+		},
+		Templates: []*chart.File{
+			{
+				Name: "templates/baddeployment.yaml",
+				Data: []byte("apiVersion: apps/v1beta1\nkind: Deployment\nmetadata:\n  name: baddep"),
+			},
+			{
+				Name: "templates/goodsecret.yaml",
+				Data: []byte("apiVersion: v1\nkind: Secret\nmetadata:\n  name: goodsecret"),
+			},
+		},
+	}
+	tmpdir := ensure.TempDir(t)
+	defer os.RemoveAll(tmpdir)
+
+	if err := chartutil.SaveDir(&mychart, tmpdir); err != nil {
+		t.Fatal(err)
+	}
+
+	linter := support.Linter{ChartDir: filepath.Join(tmpdir, mychart.Name())}
+	Templates(&linter, values, namespace, strict)
+	if l := len(linter.Messages); l != 1 {
+		for i, msg := range linter.Messages {
+			t.Logf("Message %d: %s", i, msg)
+		}
+		t.Fatalf("Expected 1 lint error, got %d", l)
+	}
+
+	err := linter.Messages[0].Err.(deprecatedAPIError)
+	if err.Deprecated != "apps/v1beta1 Deployment" {
+		t.Errorf("Surprised to learn that %q is deprecated", err.Deprecated)
+	}
+}
+
+const manifest = `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: foo
+data:
+  myval1: {{default "val" .Values.mymap.key1 }}
+  myval2: {{default "val" .Values.mymap.key2 }}
+`
+
+// TestSTrictTemplatePrasingMapError is a regression test.
+//
+// The template engine should not produce an error when a map in values.yaml does
+// not contain all possible keys.
+//
+// See https://github.com/helm/helm/issues/7483
+func TestStrictTemplateParsingMapError(t *testing.T) {
+
+	ch := chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:       "regression7483",
+			APIVersion: "v2",
+			Version:    "0.1.0",
+		},
+		Values: map[string]interface{}{
+			"mymap": map[string]string{
+				"key1": "val1",
+			},
+		},
+		Templates: []*chart.File{
+			{
+				Name: "templates/configmap.yaml",
+				Data: []byte(manifest),
+			},
+		},
+	}
+	dir := ensure.TempDir(t)
+	defer os.RemoveAll(dir)
+	if err := chartutil.SaveDir(&ch, dir); err != nil {
+		t.Fatal(err)
+	}
+	linter := &support.Linter{
+		ChartDir: filepath.Join(dir, ch.Metadata.Name),
+	}
+	Templates(linter, ch.Values, namespace, strict)
+	if len(linter.Messages) != 0 {
+		t.Errorf("expected zero messages, got %d", len(linter.Messages))
+		for i, msg := range linter.Messages {
+			t.Logf("Message %d: %q", i, msg)
 		}
 	}
 }
