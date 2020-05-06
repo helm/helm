@@ -70,7 +70,7 @@ func (o *pluginUpdateOptions) complete(args []string) error {
 func (o *pluginUpdateOptions) run(out io.Writer) error {
 	installer.Debug = settings.Debug
 	debug("loading installed plugins from %s", settings.PluginsDirectory)
-	plugins, err := findPlugins(settings.PluginsDirectory)
+	plugins, err := plugin.FindPlugins(settings.PluginsDirectory)
 	if err != nil {
 		return err
 	}

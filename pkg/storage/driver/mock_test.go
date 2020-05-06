@@ -21,9 +21,14 @@ import (
 	"fmt"
 	"testing"
 
+	sqlmock "github.com/DATA-DOG/go-sqlmock"
+	sq "github.com/Masterminds/squirrel"
+	"github.com/jmoiron/sqlx"
+
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kblabels "k8s.io/apimachinery/pkg/labels"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
 	rspb "helm.sh/helm/v3/pkg/release"
@@ -112,10 +117,18 @@ func (mock *MockConfigMapsInterface) Get(_ context.Context, name string, _ metav
 }
 
 // List returns the a of ConfigMaps.
-func (mock *MockConfigMapsInterface) List(_ context.Context, _ metav1.ListOptions) (*v1.ConfigMapList, error) {
+func (mock *MockConfigMapsInterface) List(_ context.Context, opts metav1.ListOptions) (*v1.ConfigMapList, error) {
 	var list v1.ConfigMapList
+
+	labelSelector, err := kblabels.Parse(opts.LabelSelector)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, cfgmap := range mock.objects {
-		list.Items = append(list.Items, *cfgmap)
+		if labelSelector.Matches(kblabels.Set(cfgmap.ObjectMeta.Labels)) {
+			list.Items = append(list.Items, *cfgmap)
+		}
 	}
 	return &list, nil
 }
@@ -190,10 +203,18 @@ func (mock *MockSecretsInterface) Get(_ context.Context, name string, _ metav1.G
 }
 
 // List returns the a of Secret.
-func (mock *MockSecretsInterface) List(_ context.Context, _ metav1.ListOptions) (*v1.SecretList, error) {
+func (mock *MockSecretsInterface) List(_ context.Context, opts metav1.ListOptions) (*v1.SecretList, error) {
 	var list v1.SecretList
+
+	labelSelector, err := kblabels.Parse(opts.LabelSelector)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, secret := range mock.objects {
-		list.Items = append(list.Items, *secret)
+		if labelSelector.Matches(kblabels.Set(secret.ObjectMeta.Labels)) {
+			list.Items = append(list.Items, *secret)
+		}
 	}
 	return &list, nil
 }
@@ -225,4 +246,20 @@ func (mock *MockSecretsInterface) Delete(_ context.Context, name string, _ metav
 	}
 	delete(mock.objects, name)
 	return nil
+}
+
+// newTestFixtureSQL mocks the SQL database (for testing purposes)
+func newTestFixtureSQL(t *testing.T, releases ...*rspb.Release) (*SQL, sqlmock.Sqlmock) {
+	sqlDB, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("error when opening stub database connection: %v", err)
+	}
+
+	sqlxDB := sqlx.NewDb(sqlDB, "sqlmock")
+	return &SQL{
+		db:               sqlxDB,
+		Log:              func(a string, b ...interface{}) {},
+		namespace:        "default",
+		statementBuilder: sq.StatementBuilder.PlaceholderFormat(sq.Dollar),
+	}, mock
 }

@@ -73,13 +73,13 @@ func TestHTTPInstaller(t *testing.T) {
 
 	i, err := NewForSource(source, "0.0.1")
 	if err != nil {
-		t.Errorf("unexpected error: %s", err)
+		t.Fatalf("unexpected error: %s", err)
 	}
 
 	// ensure a HTTPInstaller was returned
 	httpInstaller, ok := i.(*HTTPInstaller)
 	if !ok {
-		t.Error("expected a HTTPInstaller")
+		t.Fatal("expected a HTTPInstaller")
 	}
 
 	// inject fake http client responding with minimal plugin tarball
@@ -94,17 +94,17 @@ func TestHTTPInstaller(t *testing.T) {
 
 	// install the plugin
 	if err := Install(i); err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	if i.Path() != helmpath.DataPath("plugins", "fake-plugin") {
-		t.Errorf("expected path '$XDG_CONFIG_HOME/helm/plugins/fake-plugin', got %q", i.Path())
+		t.Fatalf("expected path '$XDG_CONFIG_HOME/helm/plugins/fake-plugin', got %q", i.Path())
 	}
 
 	// Install again to test plugin exists error
 	if err := Install(i); err == nil {
-		t.Error("expected error for plugin exists, got none")
+		t.Fatal("expected error for plugin exists, got none")
 	} else if err.Error() != "plugin already exists" {
-		t.Errorf("expected error for plugin exists, got (%v)", err)
+		t.Fatalf("expected error for plugin exists, got (%v)", err)
 	}
 
 }
@@ -119,13 +119,13 @@ func TestHTTPInstallerNonExistentVersion(t *testing.T) {
 
 	i, err := NewForSource(source, "0.0.2")
 	if err != nil {
-		t.Errorf("unexpected error: %s", err)
+		t.Fatalf("unexpected error: %s", err)
 	}
 
 	// ensure a HTTPInstaller was returned
 	httpInstaller, ok := i.(*HTTPInstaller)
 	if !ok {
-		t.Error("expected a HTTPInstaller")
+		t.Fatal("expected a HTTPInstaller")
 	}
 
 	// inject fake http client responding with error
@@ -135,7 +135,7 @@ func TestHTTPInstallerNonExistentVersion(t *testing.T) {
 
 	// attempt to install the plugin
 	if err := Install(i); err == nil {
-		t.Error("expected error from http client")
+		t.Fatal("expected error from http client")
 	}
 
 }
@@ -150,13 +150,13 @@ func TestHTTPInstallerUpdate(t *testing.T) {
 
 	i, err := NewForSource(source, "0.0.1")
 	if err != nil {
-		t.Errorf("unexpected error: %s", err)
+		t.Fatalf("unexpected error: %s", err)
 	}
 
 	// ensure a HTTPInstaller was returned
 	httpInstaller, ok := i.(*HTTPInstaller)
 	if !ok {
-		t.Error("expected a HTTPInstaller")
+		t.Fatal("expected a HTTPInstaller")
 	}
 
 	// inject fake http client responding with minimal plugin tarball
@@ -171,15 +171,15 @@ func TestHTTPInstallerUpdate(t *testing.T) {
 
 	// install the plugin before updating
 	if err := Install(i); err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	if i.Path() != helmpath.DataPath("plugins", "fake-plugin") {
-		t.Errorf("expected path '$XDG_CONFIG_HOME/helm/plugins/fake-plugin', got %q", i.Path())
+		t.Fatalf("expected path '$XDG_CONFIG_HOME/helm/plugins/fake-plugin', got %q", i.Path())
 	}
 
 	// Update plugin, should fail because it is not implemented
 	if err := Update(i); err == nil {
-		t.Error("update method not implemented for http installer")
+		t.Fatal("update method not implemented for http installer")
 	}
 }
 
@@ -240,29 +240,27 @@ func TestExtract(t *testing.T) {
 	}
 
 	if err = extractor.Extract(&buf, tempDir); err != nil {
-		t.Errorf("Did not expect error but got error: %v", err)
+		t.Fatalf("Did not expect error but got error: %v", err)
 	}
 
 	pluginYAMLFullPath := filepath.Join(tempDir, "plugin.yaml")
 	if info, err := os.Stat(pluginYAMLFullPath); err != nil {
 		if os.IsNotExist(err) {
-			t.Errorf("Expected %s to exist but doesn't", pluginYAMLFullPath)
-		} else {
-			t.Error(err)
+			t.Fatalf("Expected %s to exist but doesn't", pluginYAMLFullPath)
 		}
+		t.Fatal(err)
 	} else if info.Mode().Perm() != 0600 {
-		t.Errorf("Expected %s to have 0600 mode it but has %o", pluginYAMLFullPath, info.Mode().Perm())
+		t.Fatalf("Expected %s to have 0600 mode it but has %o", pluginYAMLFullPath, info.Mode().Perm())
 	}
 
 	readmeFullPath := filepath.Join(tempDir, "README.md")
 	if info, err := os.Stat(readmeFullPath); err != nil {
 		if os.IsNotExist(err) {
-			t.Errorf("Expected %s to exist but doesn't", readmeFullPath)
-		} else {
-			t.Error(err)
+			t.Fatalf("Expected %s to exist but doesn't", readmeFullPath)
 		}
+		t.Fatal(err)
 	} else if info.Mode().Perm() != 0777 {
-		t.Errorf("Expected %s to have 0777 mode it but has %o", readmeFullPath, info.Mode().Perm())
+		t.Fatalf("Expected %s to have 0777 mode it but has %o", readmeFullPath, info.Mode().Perm())
 	}
 
 }

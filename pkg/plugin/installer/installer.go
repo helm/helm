@@ -17,11 +17,14 @@ package installer
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
+
+	"helm.sh/helm/v3/pkg/plugin"
 )
 
 // ErrMissingMetadata indicates that plugin.yaml is missing.
@@ -99,13 +102,14 @@ func isRemoteHTTPArchive(source string) bool {
 
 // isPlugin checks if the directory contains a plugin.yaml file.
 func isPlugin(dirname string) bool {
-	_, err := os.Stat(filepath.Join(dirname, "plugin.yaml"))
+	_, err := os.Stat(filepath.Join(dirname, plugin.PluginFileName))
 	return err == nil
 }
 
+var logger = log.New(os.Stderr, "[debug] ", log.Lshortfile)
+
 func debug(format string, args ...interface{}) {
 	if Debug {
-		format = fmt.Sprintf("[debug] %s\n", format)
-		fmt.Printf(format, args...)
+		logger.Output(2, fmt.Sprintf(format, args...))
 	}
 }
