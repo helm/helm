@@ -174,3 +174,55 @@ func TestDeprecatedAPIFails(t *testing.T) {
 		t.Errorf("Surprised to learn that %q is deprecated", err.Deprecated)
 	}
 }
+
+const manifest = `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: foo
+data:
+  myval1: {{default "val" .Values.mymap.key1 }}
+  myval2: {{default "val" .Values.mymap.key2 }}
+`
+
+// TestSTrictTemplatePrasingMapError is a regression test.
+//
+// The template engine should not produce an error when a map in values.yaml does
+// not contain all possible keys.
+//
+// See https://github.com/helm/helm/issues/7483
+func TestStrictTemplateParsingMapError(t *testing.T) {
+
+	ch := chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:       "regression7483",
+			APIVersion: "v2",
+			Version:    "0.1.0",
+		},
+		Values: map[string]interface{}{
+			"mymap": map[string]string{
+				"key1": "val1",
+			},
+		},
+		Templates: []*chart.File{
+			{
+				Name: "templates/configmap.yaml",
+				Data: []byte(manifest),
+			},
+		},
+	}
+	dir := ensure.TempDir(t)
+	defer os.RemoveAll(dir)
+	if err := chartutil.SaveDir(&ch, dir); err != nil {
+		t.Fatal(err)
+	}
+	linter := &support.Linter{
+		ChartDir: filepath.Join(dir, ch.Metadata.Name),
+	}
+	Templates(linter, ch.Values, namespace, strict)
+	if len(linter.Messages) != 0 {
+		t.Errorf("expected zero messages, got %d", len(linter.Messages))
+		for i, msg := range linter.Messages {
+			t.Logf("Message %d: %q", i, msg)
+		}
+	}
+}
