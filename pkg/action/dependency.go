@@ -27,6 +27,7 @@ import (
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/cli/output"
 )
 
 // Dependency is the action for building a given chart's dependency tree.
@@ -43,25 +44,66 @@ func NewDependency() *Dependency {
 	return &Dependency{}
 }
 
-// List executes 'helm dependency list'.
-func (d *Dependency) List(chartpath string, out io.Writer) error {
-	c, err := loader.Load(chartpath)
+type dependencyListElement struct {
+	Name       string `json:"name"`
+	Version    string `json:"version"`
+	Repository string `json:"repository"`
+	Status     string `json:"status"`
+}
+
+type DependencyListWriter struct {
+	Chartpath string
+}
+
+func (w *DependencyListWriter) WriteTable(out io.Writer) error {
+	c, err := loader.Load(w.Chartpath)
 	if err != nil {
 		return err
 	}
 
 	if c.Metadata.Dependencies == nil {
-		fmt.Fprintf(out, "WARNING: no dependencies at %s\n", filepath.Join(chartpath, "charts"))
+		fmt.Fprintf(out, "WARNING: no dependencies at %s\n", filepath.Join(w.Chartpath, "charts"))
 		return nil
 	}
 
-	d.printDependencies(chartpath, out, c)
+	w.printDependenciesTable(w.Chartpath, out, c)
 	fmt.Fprintln(out)
-	d.printMissing(chartpath, out, c.Metadata.Dependencies)
+	w.printMissing(w.Chartpath, out, c.Metadata.Dependencies)
 	return nil
 }
 
-func (d *Dependency) dependencyStatus(chartpath string, dep *chart.Dependency, parent *chart.Chart) string {
+func (w *DependencyListWriter) WriteJSON(out io.Writer) error {
+	return w.encodeByFormat(out, output.JSON)
+}
+
+func (w *DependencyListWriter) WriteYAML(out io.Writer) error {
+	return w.encodeByFormat(out, output.YAML)
+}
+
+func (w *DependencyListWriter) encodeByFormat(out io.Writer, format output.Format) error {
+	c, err := loader.Load(w.Chartpath)
+	if err != nil {
+		return err
+	}
+
+	// Initialize the array so no results returns an empty array instead of null
+	elements := make([]dependencyListElement, 0, len(c.Metadata.Dependencies))
+
+	for _, d := range c.Metadata.Dependencies {
+		elements = append(elements, dependencyListElement{Name: d.Name, Repository: d.Repository, Status: w.dependencyStatus(w.Chartpath, d, c), Version: d.Version})
+	}
+
+	switch format {
+	case output.JSON:
+		return output.EncodeJSON(out, elements)
+	case output.YAML:
+		return output.EncodeYAML(out, elements)
+	}
+
+	return nil
+}
+
+func (w *DependencyListWriter) dependencyStatus(chartpath string, dep *chart.Dependency, parent *chart.Chart) string {
 	filename := fmt.Sprintf("%s-%s.tgz", dep.Name, "*")
 
 	// If a chart is unpacked, this will check the unpacked chart's `charts/` directory for tarballs.
@@ -137,20 +179,20 @@ func (d *Dependency) dependencyStatus(chartpath string, dep *chart.Dependency, p
 	return "unpacked"
 }
 
-// printDependencies prints all of the dependencies in the yaml file.
-func (d *Dependency) printDependencies(chartpath string, out io.Writer, c *chart.Chart) {
+// printDependenciesTable prints all of the dependencies in the yaml file.
+func (w *DependencyListWriter) printDependenciesTable(chartpath string, out io.Writer, c *chart.Chart) {
 	table := uitable.New()
 	table.MaxColWidth = 80
 	table.AddRow("NAME", "VERSION", "REPOSITORY", "STATUS")
 	for _, row := range c.Metadata.Dependencies {
-		table.AddRow(row.Name, row.Version, row.Repository, d.dependencyStatus(chartpath, row, c))
+		table.AddRow(row.Name, row.Version, row.Repository, w.dependencyStatus(chartpath, row, c))
 	}
 	fmt.Fprintln(out, table)
 }
 
 // printMissing prints warnings about charts that are present on disk, but are
 // not in Charts.yaml.
-func (d *Dependency) printMissing(chartpath string, out io.Writer, reqs []*chart.Dependency) {
+func (w *DependencyListWriter) printMissing(chartpath string, out io.Writer, reqs []*chart.Dependency) {
 	folder := filepath.Join(chartpath, "charts/*")
 	files, err := filepath.Glob(folder)
 	if err != nil {
@@ -161,7 +203,7 @@ func (d *Dependency) printMissing(chartpath string, out io.Writer, reqs []*chart
 	for _, f := range files {
 		fi, err := os.Stat(f)
 		if err != nil {
-			fmt.Fprintf(out, "Warning: %s\n", err)
+			fmt.Fprintf(out, "WARNING: %s\n", err)
 		}
 		// Skip anything that is not a directory and not a tgz file.
 		if !fi.IsDir() && filepath.Ext(f) != ".tgz" {
