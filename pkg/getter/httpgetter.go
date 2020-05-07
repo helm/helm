@@ -90,6 +90,10 @@ func NewHTTPGetter(options ...Option) (Getter, error) {
 }
 
 func (g *HTTPGetter) httpClient() (*http.Client, error) {
+	transport := &http.Transport{
+		DisableCompression: true,
+		Proxy: http.ProxyFromEnvironment,
+	}
 	if (g.opts.certFile != "" && g.opts.keyFile != "") || g.opts.caFile != "" {
 		tlsConf, err := tlsutil.NewClientTLS(g.opts.certFile, g.opts.keyFile, g.opts.caFile)
 		if err != nil {
@@ -103,28 +107,19 @@ func (g *HTTPGetter) httpClient() (*http.Client, error) {
 		}
 		tlsConf.ServerName = sni
 
-		client := &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: tlsConf,
-				Proxy:           http.ProxyFromEnvironment,
-			},
-		}
-
-		return client, nil
+		transport.TLSClientConfig = tlsConf
 	}
 
 	if g.opts.insecureSkipVerifyTLS {
-		client := &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true,
-				},
-				Proxy: http.ProxyFromEnvironment,
-			},
+		transport.TLSClientConfig = &tls.Config{
+			InsecureSkipVerify: true,
 		}
 
-		return client, nil
 	}
 
-	return http.DefaultClient, nil
+	client := &http.Client{
+		Transport: transport,
+	}
+
+	return client, nil
 }
