@@ -17,10 +17,13 @@ package getter
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -247,4 +250,40 @@ func TestDownloadInsecureSkipTLSVerify(t *testing.T) {
 		t.Error(err)
 	}
 
+}
+
+func TestHTTPGetterTarDownload(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		f, _ := os.Open("testdata/empty-0.0.1.tgz")
+		defer f.Close()
+
+		b := make([]byte, 512)
+		f.Read(b)
+		//Get the file size
+		FileStat, _ := f.Stat()
+		FileSize := strconv.FormatInt(FileStat.Size(), 10)
+
+		//Simulating improper header values from bitbucket
+		w.Header().Set("Content-Type", "application/x-tar")
+		w.Header().Set("Content-Encoding", "gzip")
+		w.Header().Set("Content-Length", FileSize)
+
+		f.Seek(0, 0)
+		io.Copy(w, f)
+	}))
+
+	defer srv.Close()
+
+	g, err := NewHTTPGetter(WithURL(srv.URL))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	data, _ := g.Get(srv.URL)
+	mimeType := http.DetectContentType(data.Bytes())
+
+	expectedMimeType := "application/x-gzip"
+	if mimeType != expectedMimeType {
+		t.Fatalf("Expected response with MIME type %s, but got %s", expectedMimeType, mimeType)
+	}
 }
