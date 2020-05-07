@@ -238,3 +238,13 @@ func (mem *Memory) rlock() func() {
 // ```defer unlock(mem.rlock())```, locks mem for reading at the
 // call point of defer and unlocks upon exiting the block.
 func unlock(fn func()) { fn() }
+
+func (mem *Memory) SetLabels(labels map[string]string) error {
+	// not support labels
+	return nil
+}
+
+func (mem *Memory) GetLabels(key string) (map[string]string, error) {
+	// not support labels
+	return nil, nil
+}

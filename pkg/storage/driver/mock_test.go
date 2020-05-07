@@ -34,6 +34,33 @@ import (
 	rspb "helm.sh/helm/v3/pkg/release"
 )
 
+type releaseInfo struct {
+	release *rspb.Release
+	// labels specifies the customized labels for release storage's (secret/configmap)
+	labels map[string]string
+}
+
+func newReleaseInfo(rls *rspb.Release) *releaseInfo {
+	return &releaseInfo{
+		release: rls,
+	}
+}
+
+func wrapReleases(rlss ...*rspb.Release) []*releaseInfo {
+	rlsInfos := make([]*releaseInfo, 0)
+	for _, rls := range rlss {
+		rlsInfos = append(rlsInfos, newReleaseInfo(rls))
+	}
+	return rlsInfos
+}
+
+func newReleaseInfoWithLabels(rls *rspb.Release, lbs map[string]string) *releaseInfo {
+	return &releaseInfo{
+		release: rls,
+		labels:  lbs,
+	}
+}
+
 func releaseStub(name string, vers int, namespace string, status rspb.Status) *rspb.Release {
 	return &rspb.Release{
 		Name:      name,
@@ -78,9 +105,9 @@ func tsFixtureMemory(t *testing.T) *Memory {
 
 // newTestFixture initializes a MockConfigMapsInterface.
 // ConfigMaps are created for each release provided.
-func newTestFixtureCfgMaps(t *testing.T, releases ...*rspb.Release) *ConfigMaps {
+func newTestFixtureCfgMaps(t *testing.T, rlsInfos ...*releaseInfo) *ConfigMaps {
 	var mock MockConfigMapsInterface
-	mock.Init(t, releases...)
+	mock.Init(t, rlsInfos...)
 
 	return NewConfigMaps(&mock)
 }
@@ -93,13 +120,13 @@ type MockConfigMapsInterface struct {
 }
 
 // Init initializes the MockConfigMapsInterface with the set of releases.
-func (mock *MockConfigMapsInterface) Init(t *testing.T, releases ...*rspb.Release) {
+func (mock *MockConfigMapsInterface) Init(t *testing.T, rlsInfos ...*releaseInfo) {
 	mock.objects = map[string]*v1.ConfigMap{}
 
-	for _, rls := range releases {
-		objkey := testKey(rls.Name, rls.Version)
+	for _, rlsInfo := range rlsInfos {
+		objkey := testKey(rlsInfo.release.Name, rlsInfo.release.Version)
 
-		cfgmap, err := newConfigMapsObject(objkey, rls, nil)
+		cfgmap, err := newConfigMapsObject(objkey, rlsInfo.release, rlsInfo.labels)
 		if err != nil {
 			t.Fatalf("Failed to create configmap: %s", err)
 		}
@@ -164,9 +191,9 @@ func (mock *MockConfigMapsInterface) Delete(_ context.Context, name string, _ me
 
 // newTestFixture initializes a MockSecretsInterface.
 // Secrets are created for each release provided.
-func newTestFixtureSecrets(t *testing.T, releases ...*rspb.Release) *Secrets {
+func newTestFixtureSecrets(t *testing.T, rlsInfos ...*releaseInfo) *Secrets {
 	var mock MockSecretsInterface
-	mock.Init(t, releases...)
+	mock.Init(t, rlsInfos...)
 
 	return NewSecrets(&mock)
 }
@@ -179,13 +206,13 @@ type MockSecretsInterface struct {
 }
 
 // Init initializes the MockSecretsInterface with the set of releases.
-func (mock *MockSecretsInterface) Init(t *testing.T, releases ...*rspb.Release) {
+func (mock *MockSecretsInterface) Init(t *testing.T, rlsInfos ...*releaseInfo) {
 	mock.objects = map[string]*v1.Secret{}
 
-	for _, rls := range releases {
-		objkey := testKey(rls.Name, rls.Version)
+	for _, rlsInfo := range rlsInfos {
+		objkey := testKey(rlsInfo.release.Name, rlsInfo.release.Version)
 
-		secret, err := newSecretsObject(objkey, rls, nil)
+		secret, err := newSecretsObject(objkey, rlsInfo.release, rlsInfo.labels)
 		if err != nil {
 			t.Fatalf("Failed to create secret: %s", err)
 		}

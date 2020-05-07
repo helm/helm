@@ -47,3 +47,48 @@ func TestLabelsMatch(t *testing.T) {
 		}
 	}
 }
+
+func TestValidate(t *testing.T) {
+	// empty map
+	var nilMap map[string]string
+	if err := validate(nilMap); err != nil {
+		t.Errorf("Nil label map should not fail when validating: %s", err)
+	}
+	// customized labels have no preserved labels of Helm
+	labels0 := map[string]string{"KEY_A": "VAL_A", "KEY_B": "VAL_B"}
+	if err := validate(labels0); err != nil {
+		t.Errorf("Customized labels with no preserved labels of Helm should not fail when validating: %s", err)
+	}
+	// customized labels contain preserved labels of Helm
+	labels1 := map[string]string{"KEY_A": "VAL_A", "KEY_B": "VAL_B", "owner": "Helm"}
+	if err := validate(labels1); err == nil {
+		t.Errorf("Customized labels with preserved labels of Helm must fail when validating")
+	}
+}
+
+func TestRetrieveCustomizedLabels(t *testing.T) {
+	// empty map
+	var nilMap map[string]string
+	customizedLabels := retrieveCustomizedLabels(nilMap)
+	if len(customizedLabels) != 0 {
+		t.Errorf("Nil label map retrieved result should be empy map")
+	}
+	// customized labels with no preserved labels of Helm
+	labels0 := map[string]string{"KEY_A": "VAL_A", "KEY_B": "VAL_B"}
+	customizedLabels = retrieveCustomizedLabels(labels0)
+	if len(customizedLabels) != len(labels0) {
+		t.Errorf("Customized labels with no preserved labels of Helm retrieved result should return the origin labels map")
+	}
+	// customized labels that every key in preserved labels of Helm
+	labels1 := map[string]string{"name": "name", "owner": "helm"}
+	customizedLabels = retrieveCustomizedLabels(labels1)
+	if len(customizedLabels) != 0 {
+		t.Errorf("customized labels that every key in preserved labels of Helm retrieved result should be empy map")
+	}
+	// customized labels contain preserved labels of Helm
+	labels2 := map[string]string{"KEY_A": "VAL_A", "KEY_B": "VAL_B", "owner": "Helm"}
+	customizedLabels = retrieveCustomizedLabels(labels2)
+	if len(customizedLabels) != 2 {
+		t.Errorf("customized labels contain preserved labels of Helm retrieved result should not contain Helm preserved label key")
+	}
+}

@@ -19,6 +19,8 @@ package values
 import (
 	"reflect"
 	"testing"
+
+	"github.com/gosuri/uitable/util/strutil"
 )
 
 func TestMergeValues(t *testing.T) {
@@ -73,5 +75,24 @@ func TestMergeValues(t *testing.T) {
 	equal = reflect.DeepEqual(testMap, expectedMap)
 	if !equal {
 		t.Errorf("Expected a map with different keys to merge properly with another map. Expected: %v, got %v", expectedMap, testMap)
+	}
+}
+
+func TestParseLabels(t *testing.T) {
+	lbs := map[string]string{"KEY_A": "VAL_A", "KEY_B": "VAL_B"}
+
+	labels := make([]string, 0)
+	for k, v := range lbs {
+		labels = append(labels, strutil.Join([]string{k, v}, "="))
+	}
+
+	opts := &Options{
+		Labels: labels,
+	}
+	gotLbs, _ := opts.ParseLabels()
+
+	// compare created parsed labels with original
+	if !reflect.DeepEqual(lbs, gotLbs) {
+		t.Errorf("Expected {%v}, got {%v}", lbs, gotLbs)
 	}
 }

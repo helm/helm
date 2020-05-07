@@ -181,6 +181,15 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		return nil, nil, errPending
 	}
 
+	// get previous release secret labels
+	labels, err := u.cfg.Releases.GetLabels(name, lastRelease.Version)
+	if err != nil {
+		return nil, nil, err
+	}
+	if err = u.cfg.Releases.SetLabels(labels); err != nil {
+		return nil, nil, err
+	}
+
 	var currentRelease *release.Release
 	if lastRelease.Info.Status == release.StatusDeployed {
 		// no need to retrieve the last deployed release from storage as the last release is deployed

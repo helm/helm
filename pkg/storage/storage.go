@@ -54,6 +54,11 @@ func (s *Storage) Get(name string, version int) (*rspb.Release, error) {
 	return s.Driver.Get(makeKey(name, version))
 }
 
+// GetLabels retrieves the labels of release storage.
+func (s *Storage) GetLabels(name string, version int) (map[string]string, error) {
+	return s.Driver.GetLabels(makeKey(name, version))
+}
+
 // Create creates a new storage entry holding the release. An
 // error is returned if the storage driver fails to store the
 // release, or a release with an identical key already exists.

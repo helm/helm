@@ -16,8 +16,15 @@ limitations under the License.
 
 package driver
 
+import (
+	"fmt"
+)
+
 // labels is a map of key value pairs to be included as metadata in a configmap object.
 type labels map[string]string
+
+// reservedLabels specifies release secret/configmap labels for helm
+var reservedLabels = []string{"createdAt", "modifiedAt", "name", "owner", "status", "version"}
 
 func (lbs *labels) init()                { *lbs = labels(make(map[string]string)) }
 func (lbs labels) get(key string) string { return lbs[key] }
@@ -45,4 +52,31 @@ func (lbs *labels) fromMap(kvs map[string]string) {
 	for k, v := range kvs {
 		lbs.set(k, v)
 	}
+}
+
+// validate validates whether user set the labels using Helm preserved labels
+func validate(labels map[string]string) error {
+	for _, lk := range reservedLabels {
+		if _, found := labels[lk]; found {
+			return fmt.Errorf("label key '%s' is reserved for helm, not available for users", lk)
+		}
+	}
+	return nil
+}
+
+// retrieveCustomizedLabels retrieves the real customized labels from the given labels that might contain Helm preserved labels
+func retrieveCustomizedLabels(labels map[string]string) map[string]string {
+	copiedLabels := deepCopyStringMap(labels)
+	for _, lk := range reservedLabels {
+		delete(copiedLabels, lk)
+	}
+	return copiedLabels
+}
+
+func deepCopyStringMap(m map[string]string) map[string]string {
+	ret := make(map[string]string, len(m))
+	for k, v := range m {
+		ret[k] = v
+	}
+	return ret
 }

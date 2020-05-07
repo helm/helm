@@ -117,6 +117,14 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 		return nil, nil, err
 	}
 
+	labels, err := r.cfg.Releases.GetLabels(name, previousVersion)
+	if err != nil {
+		return nil, nil, err
+	}
+	if err = r.cfg.Releases.SetLabels(labels); err != nil {
+		return nil, nil, err
+	}
+
 	// Store a new release object with previous release's configuration
 	targetRelease := &release.Release{
 		Name:      name,

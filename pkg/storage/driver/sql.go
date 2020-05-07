@@ -494,3 +494,13 @@ func (s *SQL) Delete(key string) (*rspb.Release, error) {
 	_, err = transaction.Exec(deleteQuery, args...)
 	return release, err
 }
+
+func (s *SQL) SetLabels(labels map[string]string) error {
+	// not support labels
+	return nil
+}
+
+func (s *SQL) GetLabels(key string) (map[string]string, error) {
+	// not support labels
+	return nil, nil
+}

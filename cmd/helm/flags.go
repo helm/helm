@@ -60,6 +60,10 @@ func addChartPathOptionsFlags(f *pflag.FlagSet, c *action.ChartPathOptions) {
 	f.BoolVar(&c.PassCredentialsAll, "pass-credentials", false, "pass credentials to all domains")
 }
 
+func addStorageOptionsFlags(f *pflag.FlagSet, v *values.Options) {
+	f.StringArrayVarP(&v.Labels, "set-label", "l", []string{}, "specify labels for release secret/configmap on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+}
+
 // bindOutputFlag will add the output flag to the given command and bind the
 // value to the given format pointer
 func bindOutputFlag(cmd *cobra.Command, varRef *output.Format) {

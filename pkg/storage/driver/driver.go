@@ -92,6 +92,16 @@ type Queryor interface {
 	Query(labels map[string]string) ([]*rspb.Release, error)
 }
 
+// Labelor is the interface that wraps the SetLabels and GetLabels methods.
+//
+// SetLabels label the release storage (like secret, configmap etc.) with given labels
+//
+// GetLabels get labels of the release storage (like secret, configmap etc.)
+type Labelor interface {
+	SetLabels(labels map[string]string) error
+	GetLabels(key string) (map[string]string, error)
+}
+
 // Driver is the interface composed of Creator, Updator, Deletor, and Queryor
 // interfaces. It defines the behavior for storing, updating, deleted,
 // and retrieving Helm releases from some underlying storage mechanism,
@@ -101,5 +111,6 @@ type Driver interface {
 	Updator
 	Deletor
 	Queryor
+	Labelor
 	Name() string
 }

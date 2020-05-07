@@ -43,6 +43,8 @@ const ConfigMapsDriverName = "ConfigMap"
 type ConfigMaps struct {
 	impl corev1.ConfigMapInterface
 	Log  func(string, ...interface{})
+	// labels specifies the customized labels for release configmap
+	labels
 }
 
 // NewConfigMaps initializes a new ConfigMaps wrapping an implementation of
@@ -157,6 +159,8 @@ func (cfgmaps *ConfigMaps) Create(key string, rls *rspb.Release) error {
 	var lbs labels
 
 	lbs.init()
+	// set customized labels
+	lbs.fromMap(cfgmaps.labels)
 	lbs.set("createdAt", strconv.Itoa(int(time.Now().Unix())))
 
 	// create a new configmap to hold the release
@@ -183,7 +187,14 @@ func (cfgmaps *ConfigMaps) Update(key string, rls *rspb.Release) error {
 	// set labels for configmaps object meta data
 	var lbs labels
 
+	// get the existed configmap to re-use it's labels
+	exist, err := cfgmaps.impl.Get(context.Background(), key, metav1.GetOptions{})
+	if err != nil {
+		return errors.Wrapf(err, "update: failed to get configmap %q", key)
+	}
+
 	lbs.init()
+	lbs.fromMap(exist.Labels)
 	lbs.set("modifiedAt", strconv.Itoa(int(time.Now().Unix())))
 
 	// create a new configmap object to hold the release
@@ -192,6 +203,7 @@ func (cfgmaps *ConfigMaps) Update(key string, rls *rspb.Release) error {
 		cfgmaps.Log("update: failed to encode release %q: %s", rls.Name, err)
 		return err
 	}
+
 	// push the configmap object out into the kubiverse
 	_, err = cfgmaps.impl.Update(context.Background(), obj, metav1.UpdateOptions{})
 	if err != nil {
@@ -254,4 +266,31 @@ func newConfigMapsObject(key string, rls *rspb.Release, lbs labels) (*v1.ConfigM
 		},
 		Data: map[string]string{"release": s},
 	}, nil
+}
+
+// SetLabels set the customized labels, must be executed before Create function
+func (cfgmaps *ConfigMaps) SetLabels(labels map[string]string) error {
+	if err := validate(labels); err != nil {
+		return err
+	}
+	if cfgmaps.labels == nil {
+		cfgmaps.labels.init()
+	}
+	cfgmaps.labels.fromMap(labels)
+	return nil
+}
+
+// GetLabels return the customized labels
+func (cfgmaps *ConfigMaps) GetLabels(key string) (map[string]string, error) {
+	// fetch the configmap holding the release named by key
+	obj, err := cfgmaps.impl.Get(context.Background(), key, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil, ErrReleaseNotFound
+		}
+
+		cfgmaps.Log("get: failed to get %q: %s", key, err)
+		return nil, err
+	}
+	return retrieveCustomizedLabels(obj.Labels), nil
 }

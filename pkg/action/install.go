@@ -109,6 +109,8 @@ type Install struct {
 	PostRenderer   postrender.PostRenderer
 	// Lock to control raceconditions when the process receives a SIGTERM
 	Lock sync.Mutex
+	// Labels customized release secret/configmap labels
+	Labels map[string]string
 }
 
 // ChartPathOptions captures common options used for controlling chart paths
@@ -302,6 +304,10 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		return rel, nil
 	}
 
+	if err = i.cfg.Releases.SetLabels(i.Labels); err != nil {
+		return nil, err
+	}
+
 	if i.CreateNamespace {
 		ns := &v1.Namespace{
 			TypeMeta: metav1.TypeMeta{
@@ -328,7 +334,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		}
 	}
 
-	// If Replace is true, we need to supercede the last release.
+	// If Replace is true, we need to supersede the last release.
 	if i.Replace {
 		if err := i.replaceRelease(rel); err != nil {
 			return nil, err

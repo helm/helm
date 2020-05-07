@@ -157,6 +157,7 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 	f.BoolVar(&client.SubNotes, "render-subchart-notes", false, "if set, render subchart notes along with the parent")
 	addValueOptionsFlags(f, valueOpts)
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
+	addStorageOptionsFlags(f, valueOpts)
 
 	err := cmd.RegisterFlagCompletionFunc("version", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		requiredArgs := 2
@@ -202,6 +203,15 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	vals, err := valueOpts.MergeValues(p)
 	if err != nil {
 		return nil, err
+	}
+
+	labels, err := valueOpts.ParseLabels()
+	if err != nil {
+		return nil, err
+	}
+	client.Labels = labels
+	if len(client.Labels) > 0 {
+		debug("customized labels: %+v", client.Labels)
 	}
 
 	// Check chart dependencies to make sure all are present in /charts

@@ -43,6 +43,8 @@ const SecretsDriverName = "Secret"
 type Secrets struct {
 	impl corev1.SecretInterface
 	Log  func(string, ...interface{})
+	// labels specifies the customized labels for release secret
+	labels
 }
 
 // NewSecrets initializes a new Secrets wrapping an implementation of
@@ -148,6 +150,8 @@ func (secrets *Secrets) Create(key string, rls *rspb.Release) error {
 	var lbs labels
 
 	lbs.init()
+	// set customized labels
+	lbs.fromMap(secrets.labels)
 	lbs.set("createdAt", strconv.Itoa(int(time.Now().Unix())))
 
 	// create a new secret to hold the release
@@ -172,7 +176,14 @@ func (secrets *Secrets) Update(key string, rls *rspb.Release) error {
 	// set labels for secrets object meta data
 	var lbs labels
 
+	// get the existed secret to re-use it's labels
+	exist, err := secrets.impl.Get(context.Background(), key, metav1.GetOptions{})
+	if err != nil {
+		return errors.Wrapf(err, "update: failed to get secret %q", key)
+	}
+
 	lbs.init()
+	lbs.fromMap(exist.Labels)
 	lbs.set("modifiedAt", strconv.Itoa(int(time.Now().Unix())))
 
 	// create a new secret object to hold the release
@@ -180,6 +191,7 @@ func (secrets *Secrets) Update(key string, rls *rspb.Release) error {
 	if err != nil {
 		return errors.Wrapf(err, "update: failed to encode release %q", rls.Name)
 	}
+
 	// push the secret object out into the kubiverse
 	_, err = secrets.impl.Update(context.Background(), obj, metav1.UpdateOptions{})
 	return errors.Wrap(err, "update: failed to update")
@@ -247,4 +259,29 @@ func newSecretsObject(key string, rls *rspb.Release, lbs labels) (*v1.Secret, er
 		Type: "helm.sh/release.v1",
 		Data: map[string][]byte{"release": []byte(s)},
 	}, nil
+}
+
+// SetLabels set the customized labels, must be executed before Create function
+func (secrets *Secrets) SetLabels(labels map[string]string) error {
+	if err := validate(labels); err != nil {
+		return err
+	}
+	if secrets.labels == nil {
+		secrets.labels.init()
+	}
+	secrets.labels.fromMap(labels)
+	return nil
+}
+
+// GetLabels return the customized labels
+func (secrets *Secrets) GetLabels(key string) (map[string]string, error) {
+	// fetch the secret holding the release named by key
+	obj, err := secrets.impl.Get(context.Background(), key, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil, ErrReleaseNotFound
+		}
+		return nil, errors.Wrapf(err, "get: failed to get %q", key)
+	}
+	return retrieveCustomizedLabels(obj.Labels), nil
 }

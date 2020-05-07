@@ -38,7 +38,7 @@ func TestSecretGet(t *testing.T) {
 	key := testKey(name, vers)
 	rel := releaseStub(name, vers, namespace, rspb.StatusDeployed)
 
-	secrets := newTestFixtureSecrets(t, []*rspb.Release{rel}...)
+	secrets := newTestFixtureSecrets(t, wrapReleases(rel)...)
 
 	// get release with key
 	got, err := secrets.Get(key)
@@ -51,7 +51,7 @@ func TestSecretGet(t *testing.T) {
 	}
 }
 
-func TestUNcompressedSecretGet(t *testing.T) {
+func TestUncompressedSecretGet(t *testing.T) {
 	vers := 1
 	name := "smug-pigeon"
 	namespace := "default"
@@ -84,14 +84,14 @@ func TestUNcompressedSecretGet(t *testing.T) {
 }
 
 func TestSecretList(t *testing.T) {
-	secrets := newTestFixtureSecrets(t, []*rspb.Release{
+	secrets := newTestFixtureSecrets(t, wrapReleases(
 		releaseStub("key-1", 1, "default", rspb.StatusUninstalled),
 		releaseStub("key-2", 1, "default", rspb.StatusUninstalled),
 		releaseStub("key-3", 1, "default", rspb.StatusDeployed),
 		releaseStub("key-4", 1, "default", rspb.StatusDeployed),
 		releaseStub("key-5", 1, "default", rspb.StatusSuperseded),
 		releaseStub("key-6", 1, "default", rspb.StatusSuperseded),
-	}...)
+	)...)
 
 	// list all deleted releases
 	del, err := secrets.List(func(rel *rspb.Release) bool {
@@ -131,14 +131,14 @@ func TestSecretList(t *testing.T) {
 }
 
 func TestSecretQuery(t *testing.T) {
-	secrets := newTestFixtureSecrets(t, []*rspb.Release{
+	secrets := newTestFixtureSecrets(t, wrapReleases(
 		releaseStub("key-1", 1, "default", rspb.StatusUninstalled),
 		releaseStub("key-2", 1, "default", rspb.StatusUninstalled),
 		releaseStub("key-3", 1, "default", rspb.StatusDeployed),
 		releaseStub("key-4", 1, "default", rspb.StatusDeployed),
 		releaseStub("key-5", 1, "default", rspb.StatusSuperseded),
 		releaseStub("key-6", 1, "default", rspb.StatusSuperseded),
-	}...)
+	)...)
 
 	rls, err := secrets.Query(map[string]string{"status": "deployed"})
 	if err != nil {
@@ -180,6 +180,41 @@ func TestSecretCreate(t *testing.T) {
 	}
 }
 
+func TestSecretCreateWithLabels(t *testing.T) {
+	secrets := newTestFixtureSecrets(t)
+
+	lbs := map[string]string{"KEY_A": "VAL_A", "KEY_B": "VAL_B"}
+	secrets.SetLabels(lbs)
+
+	vers := 1
+	name := "smug-pigeon"
+	namespace := "default"
+	key := testKey(name, vers)
+	rel := releaseStub(name, vers, namespace, rspb.StatusDeployed)
+
+	// store the release in a secret
+	if err := secrets.Create(key, rel); err != nil {
+		t.Fatalf("Failed to create release with key %q: %s", key, err)
+	}
+
+	// get the release back
+	got, err := secrets.Get(key)
+	if err != nil {
+		t.Fatalf("Failed to get release with key %q: %s", key, err)
+	}
+
+	// compare created release with original
+	if !reflect.DeepEqual(rel, got) {
+		t.Errorf("Expected {%v}, got {%v}", rel, got)
+	}
+
+	// compare created secret's labels with original
+	gotLbs, _ := secrets.GetLabels(key)
+	if !reflect.DeepEqual(lbs, gotLbs) {
+		t.Errorf("Expected {%v}, got {%v}", lbs, gotLbs)
+	}
+}
+
 func TestSecretUpdate(t *testing.T) {
 	vers := 1
 	name := "smug-pigeon"
@@ -187,7 +222,7 @@ func TestSecretUpdate(t *testing.T) {
 	key := testKey(name, vers)
 	rel := releaseStub(name, vers, namespace, rspb.StatusDeployed)
 
-	secrets := newTestFixtureSecrets(t, []*rspb.Release{rel}...)
+	secrets := newTestFixtureSecrets(t, wrapReleases(rel)...)
 
 	// modify release status code
 	rel.Info.Status = rspb.StatusSuperseded
@@ -209,6 +244,43 @@ func TestSecretUpdate(t *testing.T) {
 	}
 }
 
+func TestSecretUpdateWithLabels(t *testing.T) {
+	vers := 1
+	name := "smug-pigeon"
+	namespace := "default"
+	key := testKey(name, vers)
+	rel := releaseStub(name, vers, namespace, rspb.StatusDeployed)
+
+	lbs := map[string]string{"KEY_A": "VAL_A", "KEY_B": "VAL_B"}
+
+	secrets := newTestFixtureSecrets(t, []*releaseInfo{newReleaseInfoWithLabels(rel, deepCopyStringMap(lbs))}...)
+
+	// modify release status code
+	rel.Info.Status = rspb.StatusSuperseded
+
+	// perform the update
+	if err := secrets.Update(key, rel); err != nil {
+		t.Fatalf("Failed to update release: %s", err)
+	}
+
+	// fetch the updated release
+	got, err := secrets.Get(key)
+	if err != nil {
+		t.Fatalf("Failed to get release with key %q: %s", key, err)
+	}
+
+	// check release has actually been updated by comparing modified fields
+	if rel.Info.Status != got.Info.Status {
+		t.Errorf("Expected status %s, got status %s", rel.Info.Status.String(), got.Info.Status.String())
+	}
+
+	// compare created secret's labels with original
+	gotLbs, _ := secrets.GetLabels(key)
+	if !reflect.DeepEqual(lbs, gotLbs) {
+		t.Errorf("Expected {%v}, got {%v}", lbs, gotLbs)
+	}
+}
+
 func TestSecretDelete(t *testing.T) {
 	vers := 1
 	name := "smug-pigeon"
@@ -216,7 +288,7 @@ func TestSecretDelete(t *testing.T) {
 	key := testKey(name, vers)
 	rel := releaseStub(name, vers, namespace, rspb.StatusDeployed)
 
-	secrets := newTestFixtureSecrets(t, []*rspb.Release{rel}...)
+	secrets := newTestFixtureSecrets(t, wrapReleases(rel)...)
 
 	// perform the delete on a non-existing release
 	_, err := secrets.Delete("nonexistent")
@@ -237,5 +309,34 @@ func TestSecretDelete(t *testing.T) {
 	_, err = secrets.Get(key)
 	if !reflect.DeepEqual(ErrReleaseNotFound, err) {
 		t.Errorf("Expected {%v}, got {%v}", ErrReleaseNotFound, err)
+	}
+}
+
+func TestSecretSetLabels(t *testing.T) {
+	secrets := newTestFixtureSecrets(t)
+
+	lbs := map[string]string{"KEY_A": "VAL_A", "KEY_B": "VAL_B"}
+	secrets.SetLabels(lbs)
+
+	if !reflect.DeepEqual(lbs, secrets.labels.toMap()) {
+		t.Errorf("Expected {%v}, got {%v}", lbs, secrets.labels)
+	}
+}
+
+func TestSecretGetLabels(t *testing.T) {
+	vers := 1
+	name := "smug-pigeon"
+	namespace := "default"
+	key := testKey(name, vers)
+	rel := releaseStub(name, vers, namespace, rspb.StatusDeployed)
+
+	lbs := map[string]string{"KEY_A": "VAL_A", "KEY_B": "VAL_B"}
+
+	secrets := newTestFixtureSecrets(t, []*releaseInfo{newReleaseInfoWithLabels(rel, deepCopyStringMap(lbs))}...)
+
+	// compare created secret's labels with original
+	gotLbs, _ := secrets.GetLabels(key)
+	if !reflect.DeepEqual(lbs, gotLbs) {
+		t.Errorf("Expected {%v}, got {%v}", lbs, gotLbs)
 	}
 }
