@@ -195,6 +195,11 @@ func TestInstall(t *testing.T) {
 			cmd:    "install aeneas testdata/testcharts/deprecated --namespace default",
 			golden: "output/deprecated-chart.txt",
 		},
+		// Install chart with only crds
+		{
+			name: "install chart with only crds",
+			cmd:  "install crd-test testdata/testcharts/chart-with-only-crds --namespace default",
+		},
 	}
 
 	runTestActionCmd(t, tests)

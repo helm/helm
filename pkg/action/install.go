@@ -144,20 +144,24 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 		}
 		totalItems = append(totalItems, res...)
 	}
-	// Invalidate the local cache, since it will not have the new CRDs
-	// present.
-	discoveryClient, err := i.cfg.RESTClientGetter.ToDiscoveryClient()
-	if err != nil {
-		return err
+	if len(totalItems) > 0 {
+		// Invalidate the local cache, since it will not have the new CRDs
+		// present.
+		discoveryClient, err := i.cfg.RESTClientGetter.ToDiscoveryClient()
+		if err != nil {
+			return err
+		}
+		i.cfg.Log("Clearing discovery cache")
+		discoveryClient.Invalidate()
+		// Give time for the CRD to be recognized.
+
+		if err := i.cfg.KubeClient.Wait(totalItems, 60*time.Second); err != nil {
+			return err
+		}
+
+		// Make sure to force a rebuild of the cache.
+		discoveryClient.ServerGroups()
 	}
-	i.cfg.Log("Clearing discovery cache")
-	discoveryClient.Invalidate()
-	// Give time for the CRD to be recognized.
-	if err := i.cfg.KubeClient.Wait(totalItems, 60*time.Second); err != nil {
-		return err
-	}
-	// Make sure to force a rebuild of the cache.
-	discoveryClient.ServerGroups()
 	return nil
 }
 
@@ -264,7 +268,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	// we'll end up in a state where we will delete those resources upon
 	// deleting the release because the manifest will be pointing at that
 	// resource
-	if !i.ClientOnly && !isUpgrade {
+	if !i.ClientOnly && !isUpgrade && len(resources) > 0 {
 		toBeAdopted, err = existingResourceConflict(resources, rel.Name, rel.Namespace)
 		if err != nil {
 			return nil, errors.Wrap(err, "rendered manifests contain a resource that already exists. Unable to continue with install")
@@ -329,11 +333,11 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	// At this point, we can do the install. Note that before we were detecting whether to
 	// do an update, but it's not clear whether we WANT to do an update if the re-use is set
 	// to true, since that is basically an upgrade operation.
-	if len(toBeAdopted) == 0 {
+	if len(toBeAdopted) == 0 && len(resources) > 0 {
 		if _, err := i.cfg.KubeClient.Create(resources); err != nil {
 			return i.failRelease(rel, err)
 		}
-	} else {
+	} else if len(resources) > 0 {
 		if _, err := i.cfg.KubeClient.Update(toBeAdopted, resources, false); err != nil {
 			return i.failRelease(rel, err)
 		}
