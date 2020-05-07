@@ -23,6 +23,7 @@ import (
 
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/cli/output"
 )
 
 const dependencyDesc = `
@@ -99,8 +100,7 @@ func newDependencyCmd(out io.Writer) *cobra.Command {
 }
 
 func newDependencyListCmd(out io.Writer) *cobra.Command {
-	client := action.NewDependency()
-
+	var outfmt output.Format
 	cmd := &cobra.Command{
 		Use:     "list CHART",
 		Aliases: []string{"ls"},
@@ -112,8 +112,11 @@ func newDependencyListCmd(out io.Writer) *cobra.Command {
 			if len(args) > 0 {
 				chartpath = filepath.Clean(args[0])
 			}
-			return client.List(chartpath, out)
+			return outfmt.Write(out, &action.DependencyListWriter{Chartpath: chartpath})
 		},
 	}
+
+	bindOutputFlag(cmd, &outfmt)
+
 	return cmd
 }

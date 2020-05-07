@@ -1,0 +1,4 @@
+- name: mariadb
+  repository: https://kubernetes-charts.storage.googleapis.com/
+  status: ok
+  version: 4.x.x
