@@ -26,6 +26,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/kubectl/pkg/util/templates"
 
 	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/internal/experimental/registry"
@@ -132,31 +133,47 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	flags.ParseErrorsWhitelist.UnknownFlags = true
 	flags.Parse(args)
 
+	commandGroups := templates.CommandGroups{
+		{
+			Message: "Release Management Commands:",
+			Commands: []*cobra.Command{
+				newInstallCmd(actionConfig, out),
+				newListCmd(actionConfig, out),
+				newGetCmd(actionConfig, out),
+				newStatusCmd(actionConfig, out),
+				newUpgradeCmd(actionConfig, out),
+				newHistoryCmd(actionConfig, out),
+				newRollbackCmd(actionConfig, out),
+				newReleaseTestCmd(actionConfig, out),
+				newUninstallCmd(actionConfig, out),
+			},
+		},
+		{
+			Message: "Chart Commands:",
+			Commands: []*cobra.Command{
+				newCreateCmd(out),
+				newDependencyCmd(out),
+				newPackageCmd(out),
+				newTemplateCmd(actionConfig, out),
+				newLintCmd(out),
+				newVerifyCmd(out),
+			},
+		},
+		{
+			Message: "Chart Repository Commands:",
+			Commands: []*cobra.Command{
+				newRepoCmd(out),
+				newSearchCmd(out),
+				newPullCmd(out),
+				newShowCmd(out),
+			},
+		},
+	}
+	commandGroups.Add(cmd)
+	templates.ActsAsRootCommand(cmd, []string{"options"}, commandGroups...)
+
 	// Add subcommands
 	cmd.AddCommand(
-		// chart commands
-		newCreateCmd(out),
-		newDependencyCmd(out),
-		newPullCmd(out),
-		newShowCmd(out),
-		newLintCmd(out),
-		newPackageCmd(out),
-		newRepoCmd(out),
-		newSearchCmd(out),
-		newVerifyCmd(out),
-
-		// release commands
-		newGetCmd(actionConfig, out),
-		newHistoryCmd(actionConfig, out),
-		newInstallCmd(actionConfig, out),
-		newListCmd(actionConfig, out),
-		newReleaseTestCmd(actionConfig, out),
-		newRollbackCmd(actionConfig, out),
-		newStatusCmd(actionConfig, out),
-		newTemplateCmd(actionConfig, out),
-		newUninstallCmd(actionConfig, out),
-		newUpgradeCmd(actionConfig, out),
-
 		newCompletionCmd(out),
 		newEnvCmd(out),
 		newPluginCmd(out),
