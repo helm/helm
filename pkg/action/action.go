@@ -375,11 +375,11 @@ func (c *Configuration) Init(getter genericclioptions.RESTClientGetter, namespac
 	case "secret", "secrets", "":
 		d := driver.NewSecrets(newSecretClient(lazyClient))
 		d.Log = log
-		store = storage.Init(d)
+		store = storage.NewStorage(d, log)
 	case "configmap", "configmaps":
 		d := driver.NewConfigMaps(newConfigMapClient(lazyClient))
 		d.Log = log
-		store = storage.Init(d)
+		store = storage.NewStorage(d, log)
 	case "memory":
 		var d *driver.Memory
 		if c.Releases != nil {
@@ -394,7 +394,7 @@ func (c *Configuration) Init(getter genericclioptions.RESTClientGetter, namespac
 			d = driver.NewMemory()
 		}
 		d.SetNamespace(namespace)
-		store = storage.Init(d)
+		store = storage.NewStorage(d, log)
 	case "sql":
 		d, err := driver.NewSQL(
 			os.Getenv("HELM_DRIVER_SQL_CONNECTION_STRING"),
@@ -404,7 +404,7 @@ func (c *Configuration) Init(getter genericclioptions.RESTClientGetter, namespac
 		if err != nil {
 			panic(fmt.Sprintf("Unable to instantiate SQL driver: %v", err))
 		}
-		store = storage.Init(d)
+		store = storage.NewStorage(d, log)
 	default:
 		// Not sure what to do here.
 		panic("Unknown driver in HELM_DRIVER: " + helmDriver)

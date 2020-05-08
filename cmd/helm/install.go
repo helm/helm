@@ -186,7 +186,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		return nil, err
 	}
 
-	debug("CHART PATH: %s\n", cp)
+	debug("CHART PATH: %s", cp)
 
 	p := getter.All(settings)
 	vals, err := valueOpts.MergeValues(p)

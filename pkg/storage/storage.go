@@ -252,12 +252,17 @@ func makeKey(rlsname string, version int) string {
 // Init initializes a new storage backend with the driver d.
 // If d is nil, the default in-memory driver is used.
 func Init(d driver.Driver) *Storage {
+	return NewStorage(d, func(_ string, _ ...interface{}) {})
+}
+
+// NewStorage creates a new Storage object with the given Driver and log function.
+func NewStorage(d driver.Driver, debug func(format string, args ...interface{})) *Storage {
 	// default driver is in memory
 	if d == nil {
 		d = driver.NewMemory()
 	}
 	return &Storage{
 		Driver: d,
-		Log:    func(_ string, _ ...interface{}) {},
+		Log:    debug,
 	}
 }
