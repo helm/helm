@@ -68,15 +68,14 @@ func (cfgmaps *ConfigMaps) Get(key string) (*rspb.Release, error) {
 		if apierrors.IsNotFound(err) {
 			return nil, ErrReleaseNotFound
 		}
-
 		cfgmaps.Log("get: failed to get %q: %s", key, err)
-		return nil, err
+		return nil, errors.Wrapf(err, "get: failed to get %q", key)
 	}
 	// found the configmap, decode the base64 data string
 	r, err := decodeRelease(obj.Data["release"])
 	if err != nil {
 		cfgmaps.Log("get: failed to decode data %q: %s", key, err)
-		return nil, err
+		return nil, errors.Wrapf(err, "get: failed to decode data %q", key)
 	}
 	// return the release object
 	return r, nil
@@ -92,7 +91,7 @@ func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Releas
 	list, err := cfgmaps.impl.List(context.Background(), opts)
 	if err != nil {
 		cfgmaps.Log("list: failed to list: %s", err)
-		return nil, err
+		return nil, errors.Wrap(err, "list: failed to list")
 	}
 
 	var results []*rspb.Release
@@ -128,7 +127,7 @@ func (cfgmaps *ConfigMaps) Query(labels map[string]string) ([]*rspb.Release, err
 	list, err := cfgmaps.impl.List(context.Background(), opts)
 	if err != nil {
 		cfgmaps.Log("query: failed to query with labels: %s", err)
-		return nil, err
+		return nil, errors.Wrap(err, "query: failed to query with labels")
 	}
 
 	if len(list.Items) == 0 {
@@ -160,16 +159,15 @@ func (cfgmaps *ConfigMaps) Create(key string, rls *rspb.Release) error {
 	obj, err := newConfigMapsObject(key, rls, lbs)
 	if err != nil {
 		cfgmaps.Log("create: failed to encode release %q: %s", rls.Name, err)
-		return err
+		return errors.Wrapf(err, "create: failed to encode release %q", rls.Name)
 	}
 	// push the configmap object out into the kubiverse
 	if _, err := cfgmaps.impl.Create(context.Background(), obj, metav1.CreateOptions{}); err != nil {
 		if apierrors.IsAlreadyExists(err) {
 			return ErrReleaseExists
 		}
-
 		cfgmaps.Log("create: failed to create: %s", err)
-		return err
+		return errors.Wrap(err, "create: failed to create")
 	}
 	return nil
 }
@@ -187,13 +185,13 @@ func (cfgmaps *ConfigMaps) Update(key string, rls *rspb.Release) error {
 	obj, err := newConfigMapsObject(key, rls, lbs)
 	if err != nil {
 		cfgmaps.Log("update: failed to encode release %q: %s", rls.Name, err)
-		return err
+		return errors.Wrapf(err, "update: failed to encode release %q", rls.Name)
 	}
 	// push the configmap object out into the kubiverse
 	_, err = cfgmaps.impl.Update(context.Background(), obj, metav1.UpdateOptions{})
 	if err != nil {
 		cfgmaps.Log("update: failed to update: %s", err)
-		return err
+		return errors.Wrap(err, "update: failed to update")
 	}
 	return nil
 }
@@ -205,10 +203,8 @@ func (cfgmaps *ConfigMaps) Delete(key string) (rls *rspb.Release, err error) {
 		return nil, err
 	}
 	// delete the release
-	if err = cfgmaps.impl.Delete(context.Background(), key, metav1.DeleteOptions{}); err != nil {
-		return rls, err
-	}
-	return rls, nil
+	err = cfgmaps.impl.Delete(context.Background(), key, metav1.DeleteOptions{})
+	return rls, err
 }
 
 // newConfigMapsObject constructs a kubernetes ConfigMap object

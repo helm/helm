@@ -68,11 +68,17 @@ func (secrets *Secrets) Get(key string) (*rspb.Release, error) {
 		if apierrors.IsNotFound(err) {
 			return nil, ErrReleaseNotFound
 		}
+		secrets.Log("get: failed to get %q: %s", key, err)
 		return nil, errors.Wrapf(err, "get: failed to get %q", key)
 	}
 	// found the secret, decode the base64 data string
 	r, err := decodeRelease(string(obj.Data["release"]))
-	return r, errors.Wrapf(err, "get: failed to decode data %q", key)
+	if err != nil {
+		secrets.Log("get: failed to decode data %q: %s", key, err)
+		return nil, errors.Wrapf(err, "get: failed to decode data %q", key)
+	}
+	// return the release object
+	return r, nil
 }
 
 // List fetches all releases and returns the list releases such
@@ -84,6 +90,7 @@ func (secrets *Secrets) List(filter func(*rspb.Release) bool) ([]*rspb.Release, 
 
 	list, err := secrets.impl.List(context.Background(), opts)
 	if err != nil {
+		secrets.Log("list: failed to list: %s", err)
 		return nil, errors.Wrap(err, "list: failed to list")
 	}
 
@@ -119,6 +126,7 @@ func (secrets *Secrets) Query(labels map[string]string) ([]*rspb.Release, error)
 
 	list, err := secrets.impl.List(context.Background(), opts)
 	if err != nil {
+		secrets.Log("query: failed to query with labels: %s", err)
 		return nil, errors.Wrap(err, "query: failed to query with labels")
 	}
 
@@ -150,6 +158,7 @@ func (secrets *Secrets) Create(key string, rls *rspb.Release) error {
 	// create a new secret to hold the release
 	obj, err := newSecretsObject(key, rls, lbs)
 	if err != nil {
+		secrets.Log("create: failed to encode release %q: %s", rls.Name, err)
 		return errors.Wrapf(err, "create: failed to encode release %q", rls.Name)
 	}
 	// push the secret object out into the kubiverse
@@ -157,7 +166,7 @@ func (secrets *Secrets) Create(key string, rls *rspb.Release) error {
 		if apierrors.IsAlreadyExists(err) {
 			return ErrReleaseExists
 		}
-
+		secrets.Log("create: failed to create: %s", err)
 		return errors.Wrap(err, "create: failed to create")
 	}
 	return nil
@@ -175,11 +184,16 @@ func (secrets *Secrets) Update(key string, rls *rspb.Release) error {
 	// create a new secret object to hold the release
 	obj, err := newSecretsObject(key, rls, lbs)
 	if err != nil {
+		secrets.Log("update: failed to encode release %q: %s", rls.Name, err)
 		return errors.Wrapf(err, "update: failed to encode release %q", rls.Name)
 	}
 	// push the secret object out into the kubiverse
 	_, err = secrets.impl.Update(context.Background(), obj, metav1.UpdateOptions{})
-	return errors.Wrap(err, "update: failed to update")
+	if err != nil {
+		secrets.Log("update: failed to update: %s", err)
+		return errors.Wrap(err, "update: failed to update")
+	}
+	return nil
 }
 
 // Delete deletes the Secret holding the release named by key.
