@@ -43,16 +43,22 @@ func TestLoadArchiveFiles(t *testing.T) {
 			generate: func(w *tar.Writer) {
 				// simulate the presence of a `pax_global_header` file like you would get when
 				// processing a GitHub release archive.
-				_ = w.WriteHeader(&tar.Header{
+				err := w.WriteHeader(&tar.Header{
 					Typeflag: tar.TypeXGlobalHeader,
 					Name:     "pax_global_header",
 				})
+				if err != nil {
+					t.Fatal(err)
+				}
 
 				// we need to have at least one file, otherwise we'll get the "no files in chart archive" error
-				_ = w.WriteHeader(&tar.Header{
+				err = w.WriteHeader(&tar.Header{
 					Typeflag: tar.TypeReg,
 					Name:     "dir/empty",
 				})
+				if err != nil {
+					t.Fatal(err)
+				}
 			},
 			check: func(t *testing.T, files []*BufferedFile, err error) {
 				if err != nil {
