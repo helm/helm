@@ -34,10 +34,6 @@ var (
 	referenceDelimiter = regexp.MustCompile(`[:]`)
 	errEmptyRepo       = errors.New("parsed repo was empty")
 	errTooManyColons   = errors.New("ref may only contain a single colon character (:) unless specifying a port number")
-	// ErrInvalid is returned when there is an invalid reference
-	ErrInvalid = errors.New("invalid reference")
-	// ErrHostnameRequired is returned when the hostname is required
-	ErrHostnameRequired = errors.New("hostname required")
 )
 
 type (
@@ -105,15 +101,7 @@ func (ref *Reference) validateRepo() error {
 	}
 	// Makes sure the repo results in a parsable URL (similar to what is done
 	// with containerd reference parsing)
-	u, err := url.Parse("dummy://" + ref.Repo)
-
-	if u.Scheme != "dummy" {
-		return ErrInvalid
-	}
-
-	if u.Host == "" {
-		return ErrHostnameRequired
-	}
+	_, err := url.Parse("dummy://" + ref.Repo)
 	return err
 }
 
