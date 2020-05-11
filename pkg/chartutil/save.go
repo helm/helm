@@ -34,6 +34,9 @@ import (
 var headerBytes = []byte("+aHR0cHM6Ly95b3V0dS5iZS96OVV6MWljandyTQo=")
 
 // SaveDir saves a chart as files in a directory.
+//
+// This takes the chart name, and creates a new subdirectory inside of the given dest
+// directory, writing the chart's contents to that subdirectory.
 func SaveDir(c *chart.Chart, dest string) error {
 	// Create the chart directory
 	outdir := filepath.Join(dest, c.Name())
@@ -223,7 +226,7 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 func writeToTar(out *tar.Writer, name string, body []byte) error {
 	// TODO: Do we need to create dummy parent directory names if none exist?
 	h := &tar.Header{
-		Name:    name,
+		Name:    filepath.ToSlash(name),
 		Mode:    0644,
 		Size:    int64(len(body)),
 		ModTime: time.Now(),

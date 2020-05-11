@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -79,6 +80,10 @@ func TestUpgradeCmd(t *testing.T) {
 	missingDepsPath := "testdata/testcharts/chart-missing-deps"
 	badDepsPath := "testdata/testcharts/chart-bad-requirements"
 
+	relWithStatusMock := func(n string, v int, ch *chart.Chart, status release.Status) *release.Release {
+		return release.Mock(&release.MockReleaseOptions{Name: n, Version: v, Chart: ch, Status: status})
+	}
+
 	relMock := func(n string, v int, ch *chart.Chart) *release.Release {
 		return release.Mock(&release.MockReleaseOptions{Name: n, Version: v, Chart: ch})
 	}
@@ -138,6 +143,25 @@ func TestUpgradeCmd(t *testing.T) {
 			golden:    "output/upgrade-with-bad-dependencies.txt",
 			wantError: true,
 		},
+		{
+			name:      "upgrade a non-existent release",
+			cmd:       fmt.Sprintf("upgrade funny-bunny '%s'", chartPath),
+			golden:    "output/upgrade-with-bad-or-missing-existing-release.txt",
+			wantError: true,
+		},
+		{
+			name:   "upgrade a failed release",
+			cmd:    fmt.Sprintf("upgrade funny-bunny '%s'", chartPath),
+			golden: "output/upgrade.txt",
+			rels:   []*release.Release{relWithStatusMock("funny-bunny", 2, ch, release.StatusFailed)},
+		},
+		{
+			name:      "upgrade a pending install release",
+			cmd:       fmt.Sprintf("upgrade funny-bunny '%s'", chartPath),
+			golden:    "output/upgrade-with-bad-or-missing-existing-release.txt",
+			wantError: true,
+			rels:      []*release.Release{relWithStatusMock("funny-bunny", 2, ch, release.StatusPendingInstall)},
+		},
 	}
 	runTestCmd(t, tests)
 }
@@ -196,6 +220,38 @@ func TestUpgradeWithStringValue(t *testing.T) {
 
 }
 
+func TestUpgradeInstallWithSubchartNotes(t *testing.T) {
+
+	releaseName := "wacky-bunny-v1"
+	relMock, ch, _ := prepareMockRelease(releaseName, t)
+
+	defer resetEnv()()
+
+	store := storageFixture()
+
+	store.Create(relMock(releaseName, 1, ch))
+
+	cmd := fmt.Sprintf("upgrade %s -i --render-subchart-notes '%s'", releaseName, "testdata/testcharts/chart-with-subchart-notes")
+	_, _, err := executeActionCommandC(store, cmd)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	upgradedRel, err := store.Get(releaseName, 2)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	if !strings.Contains(upgradedRel.Info.Notes, "PARENT NOTES") {
+		t.Errorf("The parent notes are not set correctly. NOTES: %s", upgradedRel.Info.Notes)
+	}
+
+	if !strings.Contains(upgradedRel.Info.Notes, "SUBCHART NOTES") {
+		t.Errorf("The subchart notes are not set correctly. NOTES: %s", upgradedRel.Info.Notes)
+	}
+
+}
+
 func TestUpgradeWithValuesFile(t *testing.T) {
 
 	releaseName := "funny-bunny-v4"
@@ -214,6 +270,69 @@ func TestUpgradeWithValuesFile(t *testing.T) {
 	}
 
 	updatedRel, err := store.Get(releaseName, 4)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	if !strings.Contains(updatedRel.Manifest, "drink: beer") {
+		t.Errorf("The value is not set correctly. manifest: %s", updatedRel.Manifest)
+	}
+
+}
+
+func TestUpgradeWithValuesFromStdin(t *testing.T) {
+
+	releaseName := "funny-bunny-v5"
+	relMock, ch, chartPath := prepareMockRelease(releaseName, t)
+
+	defer resetEnv()()
+
+	store := storageFixture()
+
+	store.Create(relMock(releaseName, 3, ch))
+
+	in, err := os.Open("testdata/testcharts/upgradetest/values.yaml")
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	cmd := fmt.Sprintf("upgrade %s --values - '%s'", releaseName, chartPath)
+	_, _, err = executeActionCommandStdinC(store, in, cmd)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	updatedRel, err := store.Get(releaseName, 4)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	if !strings.Contains(updatedRel.Manifest, "drink: beer") {
+		t.Errorf("The value is not set correctly. manifest: %s", updatedRel.Manifest)
+	}
+}
+
+func TestUpgradeInstallWithValuesFromStdin(t *testing.T) {
+
+	releaseName := "funny-bunny-v6"
+	_, _, chartPath := prepareMockRelease(releaseName, t)
+
+	defer resetEnv()()
+
+	store := storageFixture()
+
+	in, err := os.Open("testdata/testcharts/upgradetest/values.yaml")
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	cmd := fmt.Sprintf("upgrade %s -f - --install '%s'", releaseName, chartPath)
+	_, _, err = executeActionCommandStdinC(store, in, cmd)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	updatedRel, err := store.Get(releaseName, 1)
 	if err != nil {
 		t.Errorf("unexpected error, got '%v'", err)
 	}

@@ -21,53 +21,35 @@ import (
 	"io"
 	"sort"
 
-	"helm.sh/helm/v3/pkg/cli"
-
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
 )
 
-var (
-	envHelp = `
+var envHelp = `
 Env prints out all the environment information in use by Helm.
 `
-)
 
 func newEnvCmd(out io.Writer) *cobra.Command {
-	o := &envOptions{}
-	o.settings = cli.New()
-
 	cmd := &cobra.Command{
 		Use:   "env",
-		Short: "Helm client environment information",
+		Short: "helm client environment information",
 		Long:  envHelp,
 		Args:  require.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return o.run(out)
+		Run: func(cmd *cobra.Command, args []string) {
+			envVars := settings.EnvVars()
+
+			// Sort the variables by alphabetical order.
+			// This allows for a constant output across calls to 'helm env'.
+			var keys []string
+			for k := range envVars {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+			for _, k := range keys {
+				fmt.Fprintf(out, "%s=\"%s\"\n", k, envVars[k])
+			}
 		},
 	}
-
 	return cmd
-}
-
-type envOptions struct {
-	settings *cli.EnvSettings
-}
-
-func (o *envOptions) run(out io.Writer) error {
-	envVars := o.settings.EnvVars()
-
-	// Sort the variables by alphabetical order.
-	// This allows for a constant output across calls to 'helm env'.
-	var keys []string
-	for k := range envVars {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	for _, k := range keys {
-		fmt.Printf("%s=\"%s\"\n", k, envVars[k])
-	}
-	return nil
 }

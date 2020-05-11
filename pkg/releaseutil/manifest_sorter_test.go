@@ -219,7 +219,7 @@ metadata:
 		}
 	}
 
-	sorted = sortByKind(sorted, InstallOrder)
+	sorted = sortManifestsByKind(sorted, InstallOrder)
 	for i, m := range generic {
 		if m.Content != sorted[i].Content {
 			t.Errorf("Expected %q, got %q", m.Content, sorted[i].Content)

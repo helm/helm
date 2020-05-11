@@ -17,6 +17,7 @@ limitations under the License.
 package driver // import "helm.sh/helm/v3/pkg/storage/driver"
 
 import (
+	"context"
 	"strconv"
 	"strings"
 	"time"
@@ -62,7 +63,7 @@ func (cfgmaps *ConfigMaps) Name() string {
 // or error if not found.
 func (cfgmaps *ConfigMaps) Get(key string) (*rspb.Release, error) {
 	// fetch the configmap holding the release named by key
-	obj, err := cfgmaps.impl.Get(key, metav1.GetOptions{})
+	obj, err := cfgmaps.impl.Get(context.Background(), key, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return nil, ErrReleaseNotFound
@@ -88,7 +89,7 @@ func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Releas
 	lsel := kblabels.Set{"owner": "helm"}.AsSelector()
 	opts := metav1.ListOptions{LabelSelector: lsel.String()}
 
-	list, err := cfgmaps.impl.List(opts)
+	list, err := cfgmaps.impl.List(context.Background(), opts)
 	if err != nil {
 		cfgmaps.Log("list: failed to list: %s", err)
 		return nil, err
@@ -124,7 +125,7 @@ func (cfgmaps *ConfigMaps) Query(labels map[string]string) ([]*rspb.Release, err
 
 	opts := metav1.ListOptions{LabelSelector: ls.AsSelector().String()}
 
-	list, err := cfgmaps.impl.List(opts)
+	list, err := cfgmaps.impl.List(context.Background(), opts)
 	if err != nil {
 		cfgmaps.Log("query: failed to query with labels: %s", err)
 		return nil, err
@@ -162,7 +163,7 @@ func (cfgmaps *ConfigMaps) Create(key string, rls *rspb.Release) error {
 		return err
 	}
 	// push the configmap object out into the kubiverse
-	if _, err := cfgmaps.impl.Create(obj); err != nil {
+	if _, err := cfgmaps.impl.Create(context.Background(), obj, metav1.CreateOptions{}); err != nil {
 		if apierrors.IsAlreadyExists(err) {
 			return ErrReleaseExists
 		}
@@ -189,7 +190,7 @@ func (cfgmaps *ConfigMaps) Update(key string, rls *rspb.Release) error {
 		return err
 	}
 	// push the configmap object out into the kubiverse
-	_, err = cfgmaps.impl.Update(obj)
+	_, err = cfgmaps.impl.Update(context.Background(), obj, metav1.UpdateOptions{})
 	if err != nil {
 		cfgmaps.Log("update: failed to update: %s", err)
 		return err
@@ -201,15 +202,10 @@ func (cfgmaps *ConfigMaps) Update(key string, rls *rspb.Release) error {
 func (cfgmaps *ConfigMaps) Delete(key string) (rls *rspb.Release, err error) {
 	// fetch the release to check existence
 	if rls, err = cfgmaps.Get(key); err != nil {
-		if apierrors.IsNotFound(err) {
-			return nil, ErrReleaseExists
-		}
-
-		cfgmaps.Log("delete: failed to get release %q: %s", key, err)
 		return nil, err
 	}
 	// delete the release
-	if err = cfgmaps.impl.Delete(key, &metav1.DeleteOptions{}); err != nil {
+	if err = cfgmaps.impl.Delete(context.Background(), key, metav1.DeleteOptions{}); err != nil {
 		return rls, err
 	}
 	return rls, nil

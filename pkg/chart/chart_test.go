@@ -78,3 +78,134 @@ func TestSaveChartNoRawData(t *testing.T) {
 
 	is.Equal([]*File(nil), res.Raw)
 }
+
+func TestMetadata(t *testing.T) {
+	chrt := Chart{
+		Metadata: &Metadata{
+			Name:       "foo.yaml",
+			AppVersion: "1.0.0",
+			APIVersion: "v2",
+			Version:    "1.0.0",
+			Type:       "application",
+		},
+	}
+
+	is := assert.New(t)
+
+	is.Equal("foo.yaml", chrt.Name())
+	is.Equal("1.0.0", chrt.AppVersion())
+	is.Equal(nil, chrt.Validate())
+}
+
+func TestIsRoot(t *testing.T) {
+	chrt1 := Chart{
+		parent: &Chart{
+			Metadata: &Metadata{
+				Name: "foo",
+			},
+		},
+	}
+
+	chrt2 := Chart{
+		Metadata: &Metadata{
+			Name: "foo",
+		},
+	}
+
+	is := assert.New(t)
+
+	is.Equal(false, chrt1.IsRoot())
+	is.Equal(true, chrt2.IsRoot())
+}
+
+func TestChartPath(t *testing.T) {
+	chrt1 := Chart{
+		parent: &Chart{
+			Metadata: &Metadata{
+				Name: "foo",
+			},
+		},
+	}
+
+	chrt2 := Chart{
+		Metadata: &Metadata{
+			Name: "foo",
+		},
+	}
+
+	is := assert.New(t)
+
+	is.Equal("foo.", chrt1.ChartPath())
+	is.Equal("foo", chrt2.ChartPath())
+}
+
+func TestChartFullPath(t *testing.T) {
+	chrt1 := Chart{
+		parent: &Chart{
+			Metadata: &Metadata{
+				Name: "foo",
+			},
+		},
+	}
+
+	chrt2 := Chart{
+		Metadata: &Metadata{
+			Name: "foo",
+		},
+	}
+
+	is := assert.New(t)
+
+	is.Equal("foo/charts/", chrt1.ChartFullPath())
+	is.Equal("foo", chrt2.ChartFullPath())
+}
+
+func TestCRDObjects(t *testing.T) {
+	chrt := Chart{
+		Files: []*File{
+			{
+				Name: "crds/foo.yaml",
+				Data: []byte("hello"),
+			},
+			{
+				Name: "bar.yaml",
+				Data: []byte("hello"),
+			},
+			{
+				Name: "crds/foo/bar/baz.yaml",
+				Data: []byte("hello"),
+			},
+			{
+				Name: "crdsfoo/bar/baz.yaml",
+				Data: []byte("hello"),
+			},
+			{
+				Name: "crds/README.md",
+				Data: []byte("# hello"),
+			},
+		},
+	}
+
+	expected := []CRD{
+		{
+			Name:     "crds/foo.yaml",
+			Filename: "crds/foo.yaml",
+			File: &File{
+				Name: "crds/foo.yaml",
+				Data: []byte("hello"),
+			},
+		},
+		{
+			Name:     "crds/foo/bar/baz.yaml",
+			Filename: "crds/foo/bar/baz.yaml",
+			File: &File{
+				Name: "crds/foo/bar/baz.yaml",
+				Data: []byte("hello"),
+			},
+		},
+	}
+
+	is := assert.New(t)
+	crds := chrt.CRDObjects()
+	is.Equal(expected, crds)
+}

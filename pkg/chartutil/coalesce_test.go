@@ -31,6 +31,8 @@ right: Null
 left: NULL
 front: ~
 back: ""
+nested:
+  boat: null
 
 global:
   name: Ishmael
@@ -47,6 +49,10 @@ pequod:
       sail: true
   ahab:
     scope: whale
+    boat: null
+    nested:
+      foo: true
+      bar: null
 `)
 
 func TestCoalesceValues(t *testing.T) {
@@ -86,6 +92,7 @@ func TestCoalesceValues(t *testing.T) {
 		{"{{.pequod.name}}", "pequod"},
 		{"{{.pequod.ahab.name}}", "ahab"},
 		{"{{.pequod.ahab.scope}}", "whale"},
+		{"{{.pequod.ahab.nested.foo}}", "true"},
 		{"{{.pequod.ahab.global.name}}", "Ishmael"},
 		{"{{.pequod.ahab.global.subject}}", "Queequeg"},
 		{"{{.pequod.ahab.global.harpooner}}", "Tashtego"},
@@ -114,6 +121,19 @@ func TestCoalesceValues(t *testing.T) {
 		}
 	}
 
+	if _, ok := v["nested"].(map[string]interface{})["boat"]; ok {
+		t.Error("Expected nested boat key to be removed, still present")
+	}
+
+	subchart := v["pequod"].(map[string]interface{})["ahab"].(map[string]interface{})
+	if _, ok := subchart["boat"]; ok {
+		t.Error("Expected subchart boat key to be removed, still present")
+	}
+
+	if _, ok := subchart["nested"].(map[string]interface{})["bar"]; ok {
+		t.Error("Expected subchart nested bar key to be removed, still present")
+	}
+
 	// CoalesceValues should not mutate the passed arguments
 	is.Equal(valsCopy, vals)
 }
@@ -122,24 +142,28 @@ func TestCoalesceTables(t *testing.T) {
 	dst := map[string]interface{}{
 		"name": "Ishmael",
 		"address": map[string]interface{}{
-			"street": "123 Spouter Inn Ct.",
-			"city":   "Nantucket",
+			"street":  "123 Spouter Inn Ct.",
+			"city":    "Nantucket",
+			"country": nil,
 		},
 		"details": map[string]interface{}{
 			"friends": []string{"Tashtego"},
 		},
 		"boat": "pequod",
+		"hole": nil,
 	}
 	src := map[string]interface{}{
 		"occupation": "whaler",
 		"address": map[string]interface{}{
-			"state":  "MA",
-			"street": "234 Spouter Inn Ct.",
+			"state":   "MA",
+			"street":  "234 Spouter Inn Ct.",
+			"country": "US",
 		},
 		"details": "empty",
 		"boat": map[string]interface{}{
 			"mast": true,
 		},
+		"hole": "black",
 	}
 
 	// What we expect is that anything in dst overrides anything in src, but that
@@ -170,6 +194,10 @@ func TestCoalesceTables(t *testing.T) {
 		t.Errorf("Unexpected state: %v", addr["state"])
 	}
 
+	if _, ok = addr["country"]; ok {
+		t.Error("The country is not left out.")
+	}
+
 	if det, ok := dst["details"].(map[string]interface{}); !ok {
 		t.Fatalf("Details is the wrong type: %v", dst["details"])
 	} else if _, ok := det["friends"]; !ok {
@@ -178,5 +206,62 @@ func TestCoalesceTables(t *testing.T) {
 
 	if dst["boat"].(string) != "pequod" {
 		t.Errorf("Expected boat string, got %v", dst["boat"])
+	}
+
+	if _, ok = dst["hole"]; ok {
+		t.Error("The hole still exists.")
+	}
+
+	dst2 := map[string]interface{}{
+		"name": "Ishmael",
+		"address": map[string]interface{}{
+			"street":  "123 Spouter Inn Ct.",
+			"city":    "Nantucket",
+			"country": "US",
+		},
+		"details": map[string]interface{}{
+			"friends": []string{"Tashtego"},
+		},
+		"boat": "pequod",
+		"hole": "black",
+	}
+
+	// What we expect is that anything in dst should have all values set,
+	// this happens when the --reuse-values flag is set but the chart has no modifications yet
+	CoalesceTables(dst2, nil)
+
+	if dst2["name"] != "Ishmael" {
+		t.Errorf("Unexpected name: %s", dst2["name"])
+	}
+
+	addr2, ok := dst2["address"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Address went away.")
+	}
+
+	if addr2["street"].(string) != "123 Spouter Inn Ct." {
+		t.Errorf("Unexpected address: %v", addr2["street"])
+	}
+
+	if addr2["city"].(string) != "Nantucket" {
+		t.Errorf("Unexpected city: %v", addr2["city"])
+	}
+
+	if addr2["country"].(string) != "US" {
+		t.Errorf("Unexpected Country: %v", addr2["country"])
+	}
+
+	if det2, ok := dst2["details"].(map[string]interface{}); !ok {
+		t.Fatalf("Details is the wrong type: %v", dst2["details"])
+	} else if _, ok := det2["friends"]; !ok {
+		t.Error("Could not find your friends. Maybe you don't have any. :-(")
+	}
+
+	if dst2["boat"].(string) != "pequod" {
+		t.Errorf("Expected boat string, got %v", dst2["boat"])
+	}
+
+	if dst2["hole"].(string) != "black" {
+		t.Errorf("Expected hole string, got %v", dst2["boat"])
 	}
 }
