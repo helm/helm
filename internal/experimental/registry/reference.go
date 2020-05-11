@@ -101,7 +101,7 @@ func (ref *Reference) validateRepo() error {
 	}
 	// Makes sure the repo results in a parsable URL (similar to what is done
 	// with containerd reference parsing)
-	_, err := url.Parse("dummy://" + ref.Repo)
+	_, err := url.Parse("//" + ref.Repo)
 	return err
 }
 
