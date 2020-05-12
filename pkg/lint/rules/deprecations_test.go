@@ -40,3 +40,11 @@ func TestValidateNoDeprecations(t *testing.T) {
 		t.Errorf("Expected a v1 Pod to not be deprecated")
 	}
 }
+
+func TestDeprecatedAPIError(t *testing.T) {
+	expected := "the kind \"extensions/v1beta1 Deployment\" is deprecated in favor of \"apps/v1 Deployment\""
+	got := deprecatedAPIError{"extensions/v1beta1 Deployment", "apps/v1 Deployment"}.Error()
+	if expected != got {
+		t.Errorf("Expected %v, got %v", expected, got)
+	}
+}
