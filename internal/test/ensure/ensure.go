@@ -19,6 +19,7 @@ package ensure
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"helm.sh/helm/v3/pkg/helmpath"
@@ -48,4 +49,22 @@ func TempDir(t *testing.T) string {
 		t.Fatal(err)
 	}
 	return d
+}
+
+// TempFile ensures a temp file for unit testing purposes.
+//
+// It returns the path to the directory (to which you will still need to join the filename)
+//
+// You must clean up the directory that is returned.
+//
+// 	tempdir := TempFile(t, "foo", []byte("bar"))
+// 	defer os.RemoveAll(tempdir)
+// 	filename := filepath.Join(tempdir, "foo")
+func TempFile(t *testing.T, name string, data []byte) string {
+	path := TempDir(t)
+	filename := filepath.Join(path, name)
+	if err := ioutil.WriteFile(filename, data, 0755); err != nil {
+		t.Fatal(err)
+	}
+	return path
 }
