@@ -17,14 +17,40 @@ limitations under the License.
 package rules
 
 import (
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"helm.sh/helm/v3/internal/test/ensure"
 )
 
-var (
-	nonExistingValuesFilePath = filepath.Join("/fake/dir", "values.yaml")
-)
+var nonExistingValuesFilePath = filepath.Join("/fake/dir", "values.yaml")
+
+const testSchema = `
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "helm values test schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "username",
+    "password"
+  ],
+  "properties": {
+    "username": {
+      "description": "Your username",
+      "type": "string"
+    },
+    "password": {
+      "description": "Your password",
+      "type": "string"
+    }
+  }
+}
+`
 
 func TestValidateValuesYamlNotDirectory(t *testing.T) {
 	_ = os.Mkdir(nonExistingValuesFilePath, os.ModePerm)
@@ -34,4 +60,69 @@ func TestValidateValuesYamlNotDirectory(t *testing.T) {
 	if err == nil {
 		t.Errorf("validateValuesFileExistence to return a linter error, got no error")
 	}
+}
+
+func TestValidateValuesFileWellFormed(t *testing.T) {
+	badYaml := `
+	not:well[]{}formed
+	`
+	tmpdir := ensure.TempFile(t, "values.yaml", []byte(badYaml))
+	defer os.RemoveAll(tmpdir)
+	valfile := filepath.Join(tmpdir, "values.yaml")
+	if err := validateValuesFile(valfile, map[string]interface{}{}); err == nil {
+		t.Fatal("expected values file to fail parsing")
+	}
+}
+
+func TestValidateValuesFileSchema(t *testing.T) {
+	yaml := "username: admin\npassword: swordfish"
+	tmpdir := ensure.TempFile(t, "values.yaml", []byte(yaml))
+	defer os.RemoveAll(tmpdir)
+	createTestingSchema(t, tmpdir)
+
+	valfile := filepath.Join(tmpdir, "values.yaml")
+	if err := validateValuesFile(valfile, map[string]interface{}{}); err != nil {
+		t.Fatalf("Failed validation with %s", err)
+	}
+}
+
+func TestValidateValuesFileSchemaFailure(t *testing.T) {
+	// 1234 is an int, not a string. This should fail.
+	yaml := "username: 1234\npassword: swordfish"
+	tmpdir := ensure.TempFile(t, "values.yaml", []byte(yaml))
+	defer os.RemoveAll(tmpdir)
+	createTestingSchema(t, tmpdir)
+
+	valfile := filepath.Join(tmpdir, "values.yaml")
+
+	err := validateValuesFile(valfile, map[string]interface{}{})
+	if err == nil {
+		t.Fatal("expected values file to fail parsing")
+	}
+
+	assert.Contains(t, err.Error(), "Expected: string, given: integer", "integer should be caught by schema")
+}
+
+func TestValidateValuesFileSchemaOverrides(t *testing.T) {
+	yaml := "username: admin"
+	overrides := map[string]interface{}{
+		"password": "swordfish",
+	}
+	tmpdir := ensure.TempFile(t, "values.yaml", []byte(yaml))
+	defer os.RemoveAll(tmpdir)
+	createTestingSchema(t, tmpdir)
+
+	valfile := filepath.Join(tmpdir, "values.yaml")
+	if err := validateValuesFile(valfile, overrides); err != nil {
+		t.Fatalf("Failed validation with %s", err)
+	}
+}
+
+func createTestingSchema(t *testing.T, dir string) string {
+	t.Helper()
+	schemafile := filepath.Join(dir, "values.schema.json")
+	if err := ioutil.WriteFile(schemafile, []byte(testSchema), 0700); err != nil {
+		t.Fatalf("Failed to write schema to tmpdir: %s", err)
+	}
+	return schemafile
 }
