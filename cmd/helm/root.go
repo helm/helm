@@ -71,9 +71,12 @@ By default, the default directories depend on the Operating System. The defaults
 
 func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:                    "helm",
-		Short:                  "The Helm package manager for Kubernetes.",
-		Long:                   globalUsage,
+		Use:   "helm",
+		Short: "The Helm package manager for Kubernetes.",
+		Long:  globalUsage,
+		Run: func(cmd *cobra.Command, args []string) {
+			cmd.Help()
+		},
 		SilenceUsage:           true,
 		BashCompletionFunction: completion.GetBashCustomFunction(),
 	}
@@ -178,6 +181,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		newEnvCmd(out),
 		newPluginCmd(out),
 		newVersionCmd(out),
+		newCmdOptions(out),
 
 		// Hidden documentation generator command: 'helm docs'
 		newDocsCmd(out),
