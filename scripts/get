@@ -175,7 +175,7 @@ fail_trap() {
 # testVersion tests the installed client to make sure it is working.
 testVersion() {
   set +e
-  HELM="$(which $PROJECT_NAME)"
+  HELM="$(command -v $PROJECT_NAME)"
   if [ "$?" = "1" ]; then
     echo "$PROJECT_NAME not found. Is $HELM_INSTALL_DIR on your "'$PATH?'
     exit 1
