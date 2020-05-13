@@ -26,7 +26,7 @@ import (
 )
 
 const completionDesc = `
-Generate autocompletions script for Helm for the specified shell (bash or zsh).
+Generate autocompletions script for Helm for the specified shell (bash, zsh or fish).
 
 This command can generate shell autocompletions. e.g.
 
@@ -41,6 +41,7 @@ var (
 	completionShells = map[string]func(out io.Writer, cmd *cobra.Command) error{
 		"bash": runCompletionBash,
 		"zsh":  runCompletionZsh,
+		"fish": runCompletionFish,
 	}
 )
 
@@ -52,7 +53,7 @@ func newCompletionCmd(out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "completion SHELL",
-		Short: "generate autocompletions script for the specified shell (bash or zsh)",
+		Short: "generate autocompletions script for the specified shell (bash, zsh or fish)",
 		Long:  completionDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runCompletion(out, cmd, args)
@@ -243,4 +244,8 @@ __helm_bash_source <(__helm_convert_bash_to_zsh)
 `
 	out.Write([]byte(zshTail))
 	return nil
+}
+
+func runCompletionFish(out io.Writer, cmd *cobra.Command) error {
+	return cmd.Root().GenFishCompletion(out, true)
 }
