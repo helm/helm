@@ -418,29 +418,29 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		kind   = target.Mapping.GroupVersionKind.Kind
 	)
 
-	patch, patchType, err := createPatch(target, currentObj)
-	if err != nil {
-		return errors.Wrap(err, "failed to create patch")
-	}
-
-	if patch == nil || string(patch) == "{}" {
-		c.Log("Looks like there are no changes for %s %q", target.Mapping.GroupVersionKind.Kind, target.Name)
-		// This needs to happen to make sure that tiller has the latest info from the API
-		// Otherwise there will be no labels and other functions that use labels will panic
-		if err := target.Get(); err != nil {
-			return errors.Wrap(err, "failed to refresh resource information")
-		}
-		return nil
-	}
-
 	// if --force is applied, attempt to replace the existing resource with the new object.
 	if force {
+		var err error
 		obj, err = helper.Replace(target.Namespace, target.Name, true, target.Object)
 		if err != nil {
 			return errors.Wrap(err, "failed to replace object")
 		}
 		c.Log("Replaced %q with kind %s for kind %s", target.Name, currentObj.GetObjectKind().GroupVersionKind().Kind, kind)
 	} else {
+		patch, patchType, err := createPatch(target, currentObj)
+		if err != nil {
+			return errors.Wrap(err, "failed to create patch")
+		}
+
+		if patch == nil || string(patch) == "{}" {
+			c.Log("Looks like there are no changes for %s %q", target.Mapping.GroupVersionKind.Kind, target.Name)
+			// This needs to happen to make sure that tiller has the latest info from the API
+			// Otherwise there will be no labels and other functions that use labels will panic
+			if err := target.Get(); err != nil {
+				return errors.Wrap(err, "failed to refresh resource information")
+			}
+			return nil
+		}
 		// send patch to server
 		obj, err = helper.Patch(target.Namespace, target.Name, patchType, patch, nil)
 		if err != nil {
