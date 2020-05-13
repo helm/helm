@@ -188,6 +188,9 @@ func (g *TarGzExtractor) Extract(buffer *bytes.Buffer, targetDir string) error {
 				return err
 			}
 			outFile.Close()
+		// We don't want to process these extension header files.
+		case tar.TypeXGlobalHeader, tar.TypeXHeader:
+			continue
 		default:
 			return errors.Errorf("unknown type: %b in %s", header.Typeflag, header.Name)
 		}
