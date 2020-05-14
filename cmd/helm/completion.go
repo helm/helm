@@ -43,6 +43,7 @@ var (
 		"zsh":  runCompletionZsh,
 		"fish": runCompletionFish,
 	}
+	completionNoDesc bool
 )
 
 func newCompletionCmd(out io.Writer) *cobra.Command {
@@ -60,6 +61,7 @@ func newCompletionCmd(out io.Writer) *cobra.Command {
 		},
 		ValidArgs: shells,
 	}
+	cmd.Flags().BoolVar(&completionNoDesc, "no-descriptions", false, "disable completion descriptions for shells that support it")
 
 	return cmd
 }
@@ -247,5 +249,5 @@ __helm_bash_source <(__helm_convert_bash_to_zsh)
 }
 
 func runCompletionFish(out io.Writer, cmd *cobra.Command) error {
-	return cmd.Root().GenFishCompletion(out, true)
+	return cmd.Root().GenFishCompletion(out, !completionNoDesc)
 }
