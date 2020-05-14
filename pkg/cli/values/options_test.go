@@ -17,8 +17,15 @@ limitations under the License.
 package values
 
 import (
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
+	"os"
 	"reflect"
 	"testing"
+
+	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v3/pkg/getter"
 )
 
 func TestMergeValues(t *testing.T) {
@@ -73,5 +80,69 @@ func TestMergeValues(t *testing.T) {
 	equal = reflect.DeepEqual(testMap, expectedMap)
 	if !equal {
 		t.Errorf("Expected a map with different keys to merge properly with another map. Expected: %v, got %v", expectedMap, testMap)
+	}
+}
+
+func TestReadFile(t *testing.T) {
+	var settings = cli.New()
+	p := getter.All(settings)
+	testData := []byte("OK")
+
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write(testData)
+	}))
+	defer s.Close()
+
+	tmpFile, err := ioutil.TempFile("", "illegal-character-file-name-%s--*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tmpFile.Write(testData); err != nil {
+		t.Fatal(err)
+	}
+	defer tmpFile.Close()
+	defer os.Remove(tmpFile.Name())
+
+	tests := []struct {
+		name     string
+		filePath string
+		p        getter.Providers
+		want     []byte
+		wantErr  bool
+	}{
+		{
+			name:     "local-file",
+			filePath: tmpFile.Name(),
+			p:        p,
+			want:     testData,
+			wantErr:  false,
+		},
+		{
+			name:     "http-getter",
+			filePath: s.URL,
+			p:        p,
+			want:     testData,
+			wantErr:  false,
+		},
+		{
+			name:     "not-supported-schema",
+			filePath: "not-supported-schema://file",
+			p:        p,
+			want:     nil,
+			wantErr:  true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := readFile(tt.filePath, p)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("readFile() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("readFile() got = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
