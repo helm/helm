@@ -28,6 +28,7 @@ func TestSetIndex(t *testing.T) {
 		expect  []interface{}
 		add     int
 		val     int
+		err     bool
 	}{
 		{
 			name:    "short",
@@ -35,6 +36,7 @@ func TestSetIndex(t *testing.T) {
 			expect:  []interface{}{0, 1, 2},
 			add:     2,
 			val:     2,
+			err:     false,
 		},
 		{
 			name:    "equal",
@@ -42,6 +44,7 @@ func TestSetIndex(t *testing.T) {
 			expect:  []interface{}{0, 2},
 			add:     1,
 			val:     2,
+			err:     false,
 		},
 		{
 			name:    "long",
@@ -49,17 +52,41 @@ func TestSetIndex(t *testing.T) {
 			expect:  []interface{}{0, 1, 2, 4, 4, 5},
 			add:     3,
 			val:     4,
+			err:     false,
+		},
+		{
+			name:    "negative",
+			initial: []interface{}{0, 1, 2, 3, 4, 5},
+			expect:  []interface{}{0, 1, 2, 3, 4, 5},
+			add:     -1,
+			val:     4,
+			err:     true,
 		},
 	}
 
 	for _, tt := range tests {
-		got := setIndex(tt.initial, tt.add, tt.val)
+		got, err := setIndex(tt.initial, tt.add, tt.val)
+
+		if err != nil && tt.err == false {
+			t.Fatalf("%s: Expected no error but error returned", tt.name)
+		} else if err == nil && tt.err == true {
+			t.Fatalf("%s: Expected error but no error returned", tt.name)
+		}
+
 		if len(got) != len(tt.expect) {
 			t.Fatalf("%s: Expected length %d, got %d", tt.name, len(tt.expect), len(got))
 		}
 
-		if gg := got[tt.add].(int); gg != tt.val {
-			t.Errorf("%s, Expected value %d, got %d", tt.name, tt.val, gg)
+		if !tt.err {
+			if gg := got[tt.add].(int); gg != tt.val {
+				t.Errorf("%s, Expected value %d, got %d", tt.name, tt.val, gg)
+			}
+		}
+
+		for k, v := range got {
+			if v != tt.expect[k] {
+				t.Errorf("%s, Expected value %d, got %d", tt.name, tt.expect[k], v)
+			}
 		}
 	}
 }
@@ -272,6 +299,10 @@ func TestParseSet(t *testing.T) {
 			},
 		},
 		{
+			str: "list[0].foo=bar,list[-30].hello=world",
+			err: true,
+		},
+		{
 			str:    "list[0]=foo,list[1]=bar",
 			expect: map[string]interface{}{"list": []string{"foo", "bar"}},
 		},
@@ -282,6 +313,10 @@ func TestParseSet(t *testing.T) {
 		{
 			str:    "list[0]=foo,list[3]=bar",
 			expect: map[string]interface{}{"list": []interface{}{"foo", nil, nil, "bar"}},
+		},
+		{
+			str: "list[0]=foo,list[-20]=bar",
+			err: true,
 		},
 		{
 			str: "illegal[0]name.foo=bar",
