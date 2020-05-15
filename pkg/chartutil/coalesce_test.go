@@ -21,6 +21,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"helm.sh/helm/v3/pkg/chart"
 )
 
 // ref: http://www.yaml.org/spec/1.2/spec.html#id2803362
@@ -55,9 +57,48 @@ pequod:
       bar: null
 `)
 
+func withDeps(c *chart.Chart, deps ...*chart.Chart) *chart.Chart {
+	c.AddDependency(deps...)
+	return c
+}
+
 func TestCoalesceValues(t *testing.T) {
 	is := assert.New(t)
-	c := loadChart(t, "testdata/moby")
+
+	c := withDeps(&chart.Chart{
+		Metadata: &chart.Metadata{Name: "moby"},
+		Values: map[string]interface{}{
+			"back":     "exists",
+			"bottom":   "exists",
+			"front":    "exists",
+			"left":     "exists",
+			"name":     "moby",
+			"nested":   map[string]interface{}{"boat": true},
+			"override": "bad",
+			"right":    "exists",
+			"scope":    "moby",
+			"top":      "nope",
+		},
+	},
+		withDeps(&chart.Chart{
+			Metadata: &chart.Metadata{Name: "pequod"},
+			Values:   map[string]interface{}{"name": "pequod", "scope": "pequod"},
+		},
+			&chart.Chart{
+				Metadata: &chart.Metadata{Name: "ahab"},
+				Values: map[string]interface{}{
+					"scope":  "ahab",
+					"name":   "ahab",
+					"boat":   true,
+					"nested": map[string]interface{}{"foo": false, "bar": true},
+				},
+			},
+		),
+		&chart.Chart{
+			Metadata: &chart.Metadata{Name: "spouter"},
+			Values:   map[string]interface{}{"scope": "spouter"},
+		},
+	)
 
 	vals, err := ReadValues(testCoalesceValuesYaml)
 	if err != nil {
