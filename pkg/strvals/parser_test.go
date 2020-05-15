@@ -362,6 +362,10 @@ func TestParseSet(t *testing.T) {
 				},
 			},
 		},
+		{
+			str: "]={}].",
+			err: true,
+		},
 	}
 
 	for _, tt := range tests {

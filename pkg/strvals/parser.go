@@ -150,7 +150,12 @@ func runeSet(r []rune) map[rune]bool {
 	return s
 }
 
-func (t *parser) key(data map[string]interface{}) error {
+func (t *parser) key(data map[string]interface{}) (reterr error) {
+	defer func() {
+		if r := recover(); r != nil {
+			reterr = fmt.Errorf("unable to parse key: %s", r)
+		}
+	}()
 	stop := runeSet([]rune{'=', '[', ',', '.'})
 	for {
 		switch k, last, err := runesUntil(t.sc, stop); {
