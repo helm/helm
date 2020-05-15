@@ -231,7 +231,16 @@ func set(data map[string]interface{}, key string, val interface{}) {
 	data[key] = val
 }
 
-func setIndex(list []interface{}, index int, val interface{}) ([]interface{}, error) {
+func setIndex(list []interface{}, index int, val interface{}) (l2 []interface{}, err error) {
+	// There are possible index values that are out of range on a target system
+	// causing a panic. This will catch the panic and return an error instead.
+	// The value of the index that causes a panic varies from system to system.
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("error processing index %d: %s", index, r)
+		}
+	}()
+
 	if index < 0 {
 		return list, fmt.Errorf("negative %d index not allowed", index)
 	}
