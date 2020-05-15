@@ -60,6 +60,7 @@ or
     $ helm install --set-string long_int=1234567890 myredis ./redis
 
 or
+
     $ helm install --set-file my_script=dothings.sh myredis ./redis
 
 You can specify the '--values'/'-f' flag multiple times. The priority will be given to the
