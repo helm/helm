@@ -83,6 +83,17 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 			if err := yaml.Unmarshal(f.Data, c.Metadata); err != nil {
 				return c, errors.Wrap(err, "cannot load Chart.yaml")
 			}
+			// when unmarshaling dependencies, the value of Enabled will default to false
+			// in order to make use of this flag, first need to change all values to true, then unmarshal again
+			if len(c.Metadata.Dependencies) > 0 {
+				for _, dep := range c.Metadata.Dependencies {
+					dep.Enabled = true
+				}
+				if err := yaml.Unmarshal(f.Data, c.Metadata); err != nil {
+					return c, errors.Wrap(err, "reloading Chart.yaml failed")
+				}
+			}
+
 			// NOTE(bacongobbler): while the chart specification says that APIVersion must be set,
 			// Helm 2 accepted charts that did not provide an APIVersion in their chart metadata.
 			// Because of that, if APIVersion is unset, we should assume we're loading a v1 chart.

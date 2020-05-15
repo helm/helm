@@ -39,3 +39,17 @@ dependencies:
     repository: http://localhost:10191
     version: 0.1.0
     condition: subchart2alias.enabled
+
+  - name: subchart2
+    alias: subchart2diabled
+    repository: http://localhost:10191
+    version: 0.1.0
+    enabled: false
+    condition: subchart2diabled.enabled
+
+  - name: subchart2
+    alias: subchart2alwaysEnabled
+    repository: http://localhost:10191
+    version: 0.1.0
+    enabled: true
+    condition: subchart2alwaysEnabled.enabled

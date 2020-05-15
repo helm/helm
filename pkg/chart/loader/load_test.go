@@ -450,8 +450,8 @@ func verifyDependencies(t *testing.T, c *chart.Chart) {
 		t.Errorf("Expected 2 dependencies, got %d", len(c.Metadata.Dependencies))
 	}
 	tests := []*chart.Dependency{
-		{Name: "alpine", Version: "0.1.0", Repository: "https://example.com/charts"},
-		{Name: "mariner", Version: "4.3.2", Repository: "https://example.com/charts"},
+		{Name: "alpine", Version: "0.1.0", Repository: "https://example.com/charts", Enabled: true},
+		{Name: "mariner", Version: "4.3.2", Repository: "https://example.com/charts", Enabled: false},
 	}
 	for i, tt := range tests {
 		d := c.Metadata.Dependencies[i]
@@ -463,6 +463,9 @@ func verifyDependencies(t *testing.T, c *chart.Chart) {
 		}
 		if d.Repository != tt.Repository {
 			t.Errorf("Expected dependency named %q to have repository %q, got %q", tt.Name, tt.Repository, d.Repository)
+		}
+		if d.Enabled != tt.Enabled {
+			t.Errorf("Expected dependency named %q to have enabled %t, got %t", tt.Name, tt.Enabled, d.Enabled)
 		}
 	}
 }

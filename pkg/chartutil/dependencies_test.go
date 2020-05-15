@@ -70,47 +70,55 @@ func TestDependencyEnabled(t *testing.T) {
 	}{{
 		"tags with no effect",
 		M{"tags": M{"nothinguseful": false}},
-		[]string{"parentchart", "parentchart.subchart1", "parentchart.subchart1.subcharta", "parentchart.subchart1.subchartb"},
+		[]string{"parentchart", "parentchart.subchart1", "parentchart.subchart1.subcharta", "parentchart.subchart1.subchartb", "parentchart.subchart2alwaysEnabled"},
 	}, {
 		"tags disabling a group",
 		M{"tags": M{"front-end": false}},
-		[]string{"parentchart"},
+		[]string{"parentchart", "parentchart.subchart2alwaysEnabled"},
 	}, {
 		"tags disabling a group and enabling a different group",
 		M{"tags": M{"front-end": false, "back-end": true}},
-		[]string{"parentchart", "parentchart.subchart2", "parentchart.subchart2.subchartb", "parentchart.subchart2.subchartc"},
+		[]string{"parentchart", "parentchart.subchart2", "parentchart.subchart2.subchartb", "parentchart.subchart2.subchartc", "parentchart.subchart2alwaysEnabled", "parentchart.subchart2alwaysEnabled.subchartb", "parentchart.subchart2alwaysEnabled.subchartc"},
 	}, {
 		"tags disabling only children, children still enabled since tag front-end=true in values.yaml",
 		M{"tags": M{"subcharta": false, "subchartb": false}},
-		[]string{"parentchart", "parentchart.subchart1", "parentchart.subchart1.subcharta", "parentchart.subchart1.subchartb"},
+		[]string{"parentchart", "parentchart.subchart1", "parentchart.subchart1.subcharta", "parentchart.subchart1.subchartb", "parentchart.subchart2alwaysEnabled"},
 	}, {
 		"tags disabling all parents/children with additional tag re-enabling a parent",
 		M{"tags": M{"front-end": false, "subchart1": true, "back-end": false}},
-		[]string{"parentchart", "parentchart.subchart1"},
+		[]string{"parentchart", "parentchart.subchart1", "parentchart.subchart2alwaysEnabled"},
 	}, {
 		"conditions enabling the parent charts, but back-end (b, c) is still disabled via values.yaml",
 		M{"subchart1": M{"enabled": true}, "subchart2": M{"enabled": true}},
-		[]string{"parentchart", "parentchart.subchart1", "parentchart.subchart1.subcharta", "parentchart.subchart1.subchartb", "parentchart.subchart2"},
+		[]string{"parentchart", "parentchart.subchart1", "parentchart.subchart1.subcharta", "parentchart.subchart1.subchartb", "parentchart.subchart2", "parentchart.subchart2alwaysEnabled"},
 	}, {
 		"conditions disabling the parent charts, effectively disabling children",
 		M{"subchart1": M{"enabled": false}, "subchart2": M{"enabled": false}},
-		[]string{"parentchart"},
+		[]string{"parentchart", "parentchart.subchart2alwaysEnabled"},
 	}, {
 		"conditions a child using the second condition path of child's condition",
 		M{"subchart1": M{"subcharta": M{"enabled": false}}},
-		[]string{"parentchart", "parentchart.subchart1", "parentchart.subchart1.subchartb"},
+		[]string{"parentchart", "parentchart.subchart1", "parentchart.subchart1.subchartb", "parentchart.subchart2alwaysEnabled"},
 	}, {
 		"tags enabling a parent/child group with condition disabling one child",
 		M{"subchart2": M{"subchartc": M{"enabled": false}}, "tags": M{"back-end": true}},
-		[]string{"parentchart", "parentchart.subchart1", "parentchart.subchart1.subcharta", "parentchart.subchart1.subchartb", "parentchart.subchart2", "parentchart.subchart2.subchartb"},
+		[]string{"parentchart", "parentchart.subchart1", "parentchart.subchart1.subcharta", "parentchart.subchart1.subchartb", "parentchart.subchart2", "parentchart.subchart2.subchartb", "parentchart.subchart2alwaysEnabled", "parentchart.subchart2alwaysEnabled.subchartb"},
 	}, {
 		"tags will not enable a child if parent is explicitly disabled with condition",
 		M{"subchart1": M{"enabled": false}, "tags": M{"front-end": true}},
-		[]string{"parentchart"},
+		[]string{"parentchart", "parentchart.subchart2alwaysEnabled"},
 	}, {
 		"subcharts with alias also respect conditions",
 		M{"subchart1": M{"enabled": false}, "subchart2alias": M{"enabled": true, "subchartb": M{"enabled": true}}},
-		[]string{"parentchart", "parentchart.subchart2alias", "parentchart.subchart2alias.subchartb"},
+		[]string{"parentchart", "parentchart.subchart2alias", "parentchart.subchart2alias.subchartb", "parentchart.subchart2alwaysEnabled"},
+	}, {
+		"conditions don't enable a disabled chart",
+		M{"subchart1": M{"enabled": false}, "subchart2diabled": M{"enabled": true}},
+		[]string{"parentchart", "parentchart.subchart2alwaysEnabled"},
+	}, {
+		"conditions can disable an enabled chart",
+		M{"subchart1": M{"enabled": false}, "subchart2alwaysEnabled": M{"enabled": false}},
+		[]string{"parentchart"},
 	}}
 
 	for _, tc := range tests {
