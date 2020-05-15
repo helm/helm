@@ -137,7 +137,7 @@ Loop:
 	}
 
 	for _, req := range c.Metadata.Dependencies {
-		if req.Enabled == false {
+		if !req.Enabled {
 			continue
 		}
 		if chartDependency := getAliasDependency(c.Dependencies(), req); chartDependency != nil {
