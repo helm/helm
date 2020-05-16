@@ -12,3 +12,7 @@ tar -zcvf frobnitz_backslash/charts/mariner-4.3.2.tgz mariner
 echo "Packing frobnitz"
 tar --exclude=ignore/* -zcvf frobnitz-1.2.3.tgz frobnitz
 tar --exclude=ignore/* -zcvf frobnitz_backslash-1.2.3.tgz frobnitz_backslash
+cp frobnitz-1.2.3.tgz frobnitz.v1.tgz
+
+tar --exclude=ignore/* -zcvf frobnitz_with_bom.tgz frobnitz_with_bom
+
