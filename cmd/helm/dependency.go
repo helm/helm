@@ -84,11 +84,12 @@ This will produce an error if the chart cannot be loaded.
 
 func newDependencyCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "dependency update|build|list",
-		Aliases: []string{"dep", "dependencies"},
-		Short:   "manage a chart's dependencies",
-		Long:    dependencyDesc,
-		Args:    require.NoArgs,
+		Use:                   "dependency update|build|list",
+		DisableFlagsInUseLine: true,
+		Aliases:               []string{"dep", "dependencies"},
+		Short:                 "manage a chart's dependencies",
+		Long:                  dependencyDesc,
+		Args:                  require.NoArgs,
 	}
 
 	cmd.AddCommand(newDependencyListCmd(out))
@@ -102,11 +103,12 @@ func newDependencyListCmd(out io.Writer) *cobra.Command {
 	client := action.NewDependency()
 
 	cmd := &cobra.Command{
-		Use:     "list CHART",
-		Aliases: []string{"ls"},
-		Short:   "list the dependencies for the given chart",
-		Long:    dependencyListDesc,
-		Args:    require.MaximumNArgs(1),
+		Use:                   "list CHART",
+		DisableFlagsInUseLine: true,
+		Aliases:               []string{"ls"},
+		Short:                 "list the dependencies for the given chart",
+		Long:                  dependencyListDesc,
+		Args:                  require.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			chartpath := "."
 			if len(args) > 0 {

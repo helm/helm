@@ -109,10 +109,11 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	var outfmt output.Format
 
 	cmd := &cobra.Command{
-		Use:   "install [NAME] [CHART]",
-		Short: "install a chart",
-		Long:  installDesc,
-		Args:  require.MinimumNArgs(1),
+		Use:                   "install [NAME] [CHART]",
+		DisableFlagsInUseLine: true,
+		Short:                 "install a chart",
+		Long:                  installDesc,
+		Args:                  require.MinimumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			rel, err := runInstall(args, client, valueOpts, out)
 			if err != nil {

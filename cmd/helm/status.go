@@ -49,10 +49,11 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	var outfmt output.Format
 
 	cmd := &cobra.Command{
-		Use:   "status RELEASE_NAME",
-		Short: "display the status of the named release",
-		Long:  statusHelp,
-		Args:  require.ExactArgs(1),
+		Use:                   "status RELEASE_NAME",
+		DisableFlagsInUseLine: true,
+		Short:                 "display the status of the named release",
+		Long:                  statusHelp,
+		Args:                  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			rel, err := client.Run(args[0])
 			if err != nil {

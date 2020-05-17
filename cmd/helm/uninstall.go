@@ -42,12 +42,13 @@ func newUninstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewUninstall(cfg)
 
 	cmd := &cobra.Command{
-		Use:        "uninstall RELEASE_NAME [...]",
-		Aliases:    []string{"del", "delete", "un"},
-		SuggestFor: []string{"remove", "rm"},
-		Short:      "uninstall a release",
-		Long:       uninstallDesc,
-		Args:       require.MinimumNArgs(1),
+		Use:                   "uninstall RELEASE_NAME [...]",
+		DisableFlagsInUseLine: true,
+		Aliases:               []string{"del", "delete", "un"},
+		SuggestFor:            []string{"remove", "rm"},
+		Short:                 "uninstall a release",
+		Long:                  uninstallDesc,
+		Args:                  require.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			for i := 0; i < len(args); i++ {
 

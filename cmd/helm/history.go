@@ -56,11 +56,12 @@ func newHistoryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	var outfmt output.Format
 
 	cmd := &cobra.Command{
-		Use:     "history RELEASE_NAME",
-		Long:    historyHelp,
-		Short:   "fetch release history",
-		Aliases: []string{"hist"},
-		Args:    require.ExactArgs(1),
+		Use:                   "history RELEASE_NAME",
+		DisableFlagsInUseLine: true,
+		Long:                  historyHelp,
+		Short:                 "fetch release history",
+		Aliases:               []string{"hist"},
+		Args:                  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			history, err := getHistory(client, args[0])
 			if err != nil {

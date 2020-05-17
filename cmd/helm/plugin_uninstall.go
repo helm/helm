@@ -36,9 +36,10 @@ func newPluginUninstallCmd(out io.Writer) *cobra.Command {
 	o := &pluginUninstallOptions{}
 
 	cmd := &cobra.Command{
-		Use:     "uninstall <plugin>...",
-		Aliases: []string{"rm", "remove"},
-		Short:   "uninstall one or more Helm plugins",
+		Use:                   "uninstall <plugin>...",
+		DisableFlagsInUseLine: true,
+		Aliases:               []string{"rm", "remove"},
+		Short:                 "uninstall one or more Helm plugins",
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			return o.complete(args)
 		},

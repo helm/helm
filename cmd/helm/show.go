@@ -55,11 +55,12 @@ func newShowCmd(out io.Writer) *cobra.Command {
 	client := action.NewShow(action.ShowAll)
 
 	showCommand := &cobra.Command{
-		Use:     "show",
-		Short:   "show information of a chart",
-		Aliases: []string{"inspect"},
-		Long:    showDesc,
-		Args:    require.NoArgs,
+		Use:                   "show",
+		DisableFlagsInUseLine: true,
+		Short:                 "show information of a chart",
+		Aliases:               []string{"inspect"},
+		Long:                  showDesc,
+		Args:                  require.NoArgs,
 	}
 
 	// Function providing dynamic auto-completion
@@ -71,10 +72,11 @@ func newShowCmd(out io.Writer) *cobra.Command {
 	}
 
 	all := &cobra.Command{
-		Use:   "all [CHART]",
-		Short: "show all information of the chart",
-		Long:  showAllDesc,
-		Args:  require.ExactArgs(1),
+		Use:                   "all [CHART]",
+		DisableFlagsInUseLine: true,
+		Short:                 "show all information of the chart",
+		Long:                  showAllDesc,
+		Args:                  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowAll
 			output, err := runShow(args, client)
@@ -87,10 +89,11 @@ func newShowCmd(out io.Writer) *cobra.Command {
 	}
 
 	valuesSubCmd := &cobra.Command{
-		Use:   "values [CHART]",
-		Short: "show the chart's values",
-		Long:  showValuesDesc,
-		Args:  require.ExactArgs(1),
+		Use:                   "values [CHART]",
+		DisableFlagsInUseLine: true,
+		Short:                 "show the chart's values",
+		Long:                  showValuesDesc,
+		Args:                  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowValues
 			output, err := runShow(args, client)
@@ -103,10 +106,11 @@ func newShowCmd(out io.Writer) *cobra.Command {
 	}
 
 	chartSubCmd := &cobra.Command{
-		Use:   "chart [CHART]",
-		Short: "show the chart's definition",
-		Long:  showChartDesc,
-		Args:  require.ExactArgs(1),
+		Use:                   "chart [CHART]",
+		DisableFlagsInUseLine: true,
+		Short:                 "show the chart's definition",
+		Long:                  showChartDesc,
+		Args:                  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowChart
 			output, err := runShow(args, client)
@@ -119,10 +123,11 @@ func newShowCmd(out io.Writer) *cobra.Command {
 	}
 
 	readmeSubCmd := &cobra.Command{
-		Use:   "readme [CHART]",
-		Short: "show the chart's README",
-		Long:  readmeChartDesc,
-		Args:  require.ExactArgs(1),
+		Use:                   "readme [CHART]",
+		DisableFlagsInUseLine: true,
+		Short:                 "show the chart's README",
+		Long:                  readmeChartDesc,
+		Args:                  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowReadme
 			output, err := runShow(args, client)

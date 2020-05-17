@@ -46,11 +46,12 @@ func newPullCmd(out io.Writer) *cobra.Command {
 	client := action.NewPull()
 
 	cmd := &cobra.Command{
-		Use:     "pull [chart URL | repo/chartname] [...]",
-		Short:   "download a chart from a repository and (optionally) unpack it in local directory",
-		Aliases: []string{"fetch"},
-		Long:    pullDesc,
-		Args:    require.MinimumNArgs(1),
+		Use:                   "pull [chart URL | repo/chartname] [...]",
+		DisableFlagsInUseLine: true,
+		Short:                 "download a chart from a repository and (optionally) unpack it in local directory",
+		Aliases:               []string{"fetch"},
+		Long:                  pullDesc,
+		Args:                  require.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.Settings = settings
 			if client.Version == "" && client.Devel {

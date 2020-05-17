@@ -37,10 +37,11 @@ func newGetHooksCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewGet(cfg)
 
 	cmd := &cobra.Command{
-		Use:   "hooks RELEASE_NAME",
-		Short: "download all hooks for a named release",
-		Long:  getHooksHelp,
-		Args:  require.ExactArgs(1),
+		Use:                   "hooks RELEASE_NAME",
+		DisableFlagsInUseLine: true,
+		Short:                 "download all hooks for a named release",
+		Long:                  getHooksHelp,
+		Args:                  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			res, err := client.Run(args[0])
 			if err != nil {

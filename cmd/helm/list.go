@@ -64,11 +64,12 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	var outfmt output.Format
 
 	cmd := &cobra.Command{
-		Use:     "list",
-		Short:   "list releases",
-		Long:    listHelp,
-		Aliases: []string{"ls"},
-		Args:    require.NoArgs,
+		Use:                   "list",
+		DisableFlagsInUseLine: true,
+		Short:                 "list releases",
+		Long:                  listHelp,
+		Aliases:               []string{"ls"},
+		Args:                  require.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if client.AllNamespaces {
 				if err := cfg.Init(settings.RESTClientGetter(), "", os.Getenv("HELM_DRIVER"), debug); err != nil {

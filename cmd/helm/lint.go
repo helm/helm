@@ -45,9 +45,10 @@ func newLintCmd(out io.Writer) *cobra.Command {
 	valueOpts := &values.Options{}
 
 	cmd := &cobra.Command{
-		Use:   "lint PATH",
-		Short: "examine a chart for possible issues",
-		Long:  longLintHelp,
+		Use:                   "lint PATH",
+		DisableFlagsInUseLine: true,
+		Short:                 "examine a chart for possible issues",
+		Long:                  longLintHelp,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			paths := []string{"."}
 			if len(args) > 0 {

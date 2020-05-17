@@ -60,10 +60,11 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 	o := &createOptions{}
 
 	cmd := &cobra.Command{
-		Use:   "create NAME",
-		Short: "create a new chart with the given name",
-		Long:  createDesc,
-		Args:  require.ExactArgs(1),
+		Use:                   "create NAME",
+		DisableFlagsInUseLine: true,
+		Short:                 "create a new chart with the given name",
+		Long:                  createDesc,
+		Args:                  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.name = args[0]
 			o.starterDir = helmpath.DataPath("starters")

@@ -18,6 +18,7 @@ package main
 
 import (
 	"io"
+	"k8s.io/kubectl/pkg/util/templates"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
@@ -36,11 +37,12 @@ not change the item as it exists in the cache.
 
 func newChartSaveCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	return &cobra.Command{
-		Use:    "save [path] [ref]",
-		Short:  "save a chart directory",
-		Long:   chartSaveDesc,
-		Args:   require.MinimumNArgs(2),
-		Hidden: !FeatureGateOCI.IsEnabled(),
+		Use:                   "save [path] [ref]",
+		DisableFlagsInUseLine: true,
+		Short:                 templates.LongDesc("save a chart directory"),
+		Long:                  chartSaveDesc,
+		Args:                  require.MinimumNArgs(2),
+		Hidden:                !FeatureGateOCI.IsEnabled(),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			path := args[0]
 			ref := args[1]

@@ -42,10 +42,11 @@ func newGetValuesCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewGetValues(cfg)
 
 	cmd := &cobra.Command{
-		Use:   "values RELEASE_NAME",
-		Short: "download the values file for a named release",
-		Long:  getValuesHelp,
-		Args:  require.ExactArgs(1),
+		Use:                   "values RELEASE_NAME",
+		DisableFlagsInUseLine: true,
+		Short:                 "download the values file for a named release",
+		Long:                  getValuesHelp,
+		Args:                  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			vals, err := client.Run(args[0])
 			if err != nil {

@@ -68,10 +68,11 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	var createNamespace bool
 
 	cmd := &cobra.Command{
-		Use:   "upgrade [RELEASE] [CHART]",
-		Short: "upgrade a release",
-		Long:  upgradeDesc,
-		Args:  require.ExactArgs(2),
+		Use:                   "upgrade [RELEASE] [CHART]",
+		DisableFlagsInUseLine: true,
+		Short:                 "upgrade a release",
+		Long:                  upgradeDesc,
+		Args:                  require.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.Namespace = settings.Namespace()
 

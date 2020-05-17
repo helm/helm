@@ -47,11 +47,12 @@ func newDependencyUpdateCmd(out io.Writer) *cobra.Command {
 	client := action.NewDependency()
 
 	cmd := &cobra.Command{
-		Use:     "update CHART",
-		Aliases: []string{"up"},
-		Short:   "update charts/ based on the contents of Chart.yaml",
-		Long:    dependencyUpDesc,
-		Args:    require.MaximumNArgs(1),
+		Use:                   "update CHART",
+		DisableFlagsInUseLine: true,
+		Aliases:               []string{"up"},
+		Short:                 "update charts/ based on the contents of Chart.yaml",
+		Long:                  dependencyUpDesc,
+		Args:                  require.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			chartpath := "."
 			if len(args) > 0 {

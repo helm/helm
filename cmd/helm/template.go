@@ -52,10 +52,11 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	var showFiles []string
 
 	cmd := &cobra.Command{
-		Use:   "template [NAME] [CHART]",
-		Short: "locally render templates",
-		Long:  templateDesc,
-		Args:  require.MinimumNArgs(1),
+		Use:                   "template [NAME] [CHART]",
+		DisableFlagsInUseLine: true,
+		Short:                 "locally render templates",
+		Long:                  templateDesc,
+		Args:                  require.MinimumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			client.DryRun = true
 			client.ReleaseName = "RELEASE-NAME"

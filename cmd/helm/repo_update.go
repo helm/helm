@@ -45,11 +45,12 @@ func newRepoUpdateCmd(out io.Writer) *cobra.Command {
 	o := &repoUpdateOptions{update: updateCharts}
 
 	cmd := &cobra.Command{
-		Use:     "update",
-		Aliases: []string{"up"},
-		Short:   "update information of available charts locally from chart repositories",
-		Long:    updateDesc,
-		Args:    require.NoArgs,
+		Use:                   "update",
+		DisableFlagsInUseLine: true,
+		Aliases:               []string{"up"},
+		Short:                 "update information of available charts locally from chart repositories",
+		Long:                  updateDesc,
+		Args:                  require.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.repoFile = settings.RepositoryConfig
 			return o.run(out)

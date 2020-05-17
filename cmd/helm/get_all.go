@@ -37,10 +37,11 @@ func newGetAllCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewGet(cfg)
 
 	cmd := &cobra.Command{
-		Use:   "all RELEASE_NAME",
-		Short: "download all information for a named release",
-		Long:  getAllHelp,
-		Args:  require.ExactArgs(1),
+		Use:                   "all RELEASE_NAME",
+		DisableFlagsInUseLine: true,
+		Short:                 "download all information for a named release",
+		Long:                  getAllHelp,
+		Args:                  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			res, err := client.Run(args[0])
 			if err != nil {

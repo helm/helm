@@ -43,10 +43,11 @@ func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewRollback(cfg)
 
 	cmd := &cobra.Command{
-		Use:   "rollback <RELEASE> [REVISION]",
-		Short: "roll back a release to a previous revision",
-		Long:  rollbackDesc,
-		Args:  require.MinimumNArgs(1),
+		Use:                   "rollback <RELEASE> [REVISION]",
+		DisableFlagsInUseLine: true,
+		Short:                 "roll back a release to a previous revision",
+		Long:                  rollbackDesc,
+		Args:                  require.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 1 {
 				ver, err := strconv.Atoi(args[1])

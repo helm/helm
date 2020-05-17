@@ -44,10 +44,11 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 	client := action.NewDependency()
 
 	cmd := &cobra.Command{
-		Use:   "build CHART",
-		Short: "rebuild the charts/ directory based on the Chart.lock file",
-		Long:  dependencyBuildDesc,
-		Args:  require.MaximumNArgs(1),
+		Use:                   "build CHART",
+		DisableFlagsInUseLine: true,
+		Short:                 "rebuild the charts/ directory based on the Chart.lock file",
+		Long:                  dependencyBuildDesc,
+		Args:                  require.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			chartpath := "."
 			if len(args) > 0 {

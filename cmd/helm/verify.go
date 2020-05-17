@@ -40,10 +40,11 @@ func newVerifyCmd(out io.Writer) *cobra.Command {
 	client := action.NewVerify()
 
 	cmd := &cobra.Command{
-		Use:   "verify PATH",
-		Short: "verify that a chart at the given path has been signed and is valid",
-		Long:  verifyDesc,
-		Args:  require.ExactArgs(1),
+		Use:                   "verify PATH",
+		DisableFlagsInUseLine: true,
+		Short:                 "verify that a chart at the given path has been signed and is valid",
+		Long:                  verifyDesc,
+		Args:                  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			err := client.Run(args[0])
 			if err != nil {

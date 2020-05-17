@@ -53,9 +53,10 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 	valueOpts := &values.Options{}
 
 	cmd := &cobra.Command{
-		Use:   "package [CHART_PATH] [...]",
-		Short: "package a chart directory into a chart archive",
-		Long:  packageDesc,
+		Use:                   "package [CHART_PATH] [...]",
+		DisableFlagsInUseLine: true,
+		Short:                 "package a chart directory into a chart archive",
+		Long:                  packageDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return errors.Errorf("need at least one argument, the path to the chart")

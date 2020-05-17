@@ -36,12 +36,13 @@ To remove all unlinked content, please run "helm chart prune". (TODO)
 
 func newChartRemoveCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	return &cobra.Command{
-		Use:     "remove [ref]",
-		Aliases: []string{"rm"},
-		Short:   "remove a chart",
-		Long:    chartRemoveDesc,
-		Args:    require.MinimumNArgs(1),
-		Hidden:  !FeatureGateOCI.IsEnabled(),
+		Use:                   "remove [ref]",
+		DisableFlagsInUseLine: true,
+		Aliases:               []string{"rm"},
+		Short:                 "remove a chart",
+		Long:                  chartRemoveDesc,
+		Args:                  require.MinimumNArgs(1),
+		Hidden:                !FeatureGateOCI.IsEnabled(),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ref := args[0]
 			return action.NewChartRemove(cfg).Run(out, ref)

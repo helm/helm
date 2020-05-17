@@ -51,9 +51,10 @@ func newSearchHubCmd(out io.Writer) *cobra.Command {
 	o := &searchHubOptions{}
 
 	cmd := &cobra.Command{
-		Use:   "hub [keyword]",
-		Short: "search for charts in the Helm Hub or an instance of Monocular",
-		Long:  searchHubDesc,
+		Use:                   "hub [keyword]",
+		DisableFlagsInUseLine: true,
+		Short:                 "search for charts in the Helm Hub or an instance of Monocular",
+		Long:                  searchHubDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return o.run(out, args)
 		},

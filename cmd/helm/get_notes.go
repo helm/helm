@@ -35,10 +35,11 @@ func newGetNotesCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewGet(cfg)
 
 	cmd := &cobra.Command{
-		Use:   "notes RELEASE_NAME",
-		Short: "download the notes for a named release",
-		Long:  getNotesHelp,
-		Args:  require.ExactArgs(1),
+		Use:                   "notes RELEASE_NAME",
+		DisableFlagsInUseLine: true,
+		Short:                 "download the notes for a named release",
+		Long:                  getNotesHelp,
+		Args:                  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			res, err := client.Run(args[0])
 			if err != nil {

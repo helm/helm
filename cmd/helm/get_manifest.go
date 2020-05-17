@@ -39,10 +39,11 @@ func newGetManifestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 	client := action.NewGet(cfg)
 
 	cmd := &cobra.Command{
-		Use:   "manifest RELEASE_NAME",
-		Short: "download the manifest for a named release",
-		Long:  getManifestHelp,
-		Args:  require.ExactArgs(1),
+		Use:                   "manifest RELEASE_NAME",
+		DisableFlagsInUseLine: true,
+		Short:                 "download the manifest for a named release",
+		Long:                  getManifestHelp,
+		Args:                  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			res, err := client.Run(args[0])
 			if err != nil {

@@ -49,10 +49,11 @@ func newRepoIndexCmd(out io.Writer) *cobra.Command {
 	o := &repoIndexOptions{}
 
 	cmd := &cobra.Command{
-		Use:   "index [DIR]",
-		Short: "generate an index file given a directory containing packaged charts",
-		Long:  repoIndexDesc,
-		Args:  require.ExactArgs(1),
+		Use:                   "index [DIR]",
+		DisableFlagsInUseLine: true,
+		Short:                 "generate an index file given a directory containing packaged charts",
+		Long:                  repoIndexDesc,
+		Args:                  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.dir = args[0]
 			return o.run(out)

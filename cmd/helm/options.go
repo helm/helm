@@ -26,10 +26,11 @@ import (
 // NewCmdOptions implements the options command
 func newCmdOptions(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "options",
-		Short: "print the list of flags inherited by all commands",
-		Long:  "print the list of flags inherited by all commands",
-		Args:  require.NoArgs,
+		Use:                   "options",
+		DisableFlagsInUseLine: true,
+		Short:                 "print the list of flags inherited by all commands",
+		Long:                  "print the list of flags inherited by all commands",
+		Args:                  require.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
 			cmd.Usage()
 		},
