@@ -74,7 +74,7 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		return compListReleases(toComplete, cfg)
 	})
 
-	f := cmd.PersistentFlags()
+	f := cmd.Flags()
 
 	f.IntVar(&client.Version, "revision", 0, "if set, display the status of the named release with revision")
 	flag := f.Lookup("revision")
