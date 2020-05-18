@@ -31,4 +31,9 @@ const (
 	// DataHomeEnvVar is the environment variable used by the
 	// XDG base directory specification for the data directory.
 	DataHomeEnvVar = "XDG_DATA_HOME"
+
+	// DataDirsEnvVar is the environment variable contains
+	// preference order set of base directories separated by a
+	// colon ":".
+	DataDirsEnvVar = "XDG_DATA_DIRS"
 )

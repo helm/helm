@@ -16,7 +16,11 @@
 package helmpath
 
 import (
+	"os"
 	"path/filepath"
+	"strings"
+
+	"helm.sh/helm/v3/pkg/helmpath/xdg"
 
 	"k8s.io/client-go/util/homedir"
 )
@@ -42,4 +46,8 @@ func configHome() string {
 // If $XDG_CACHE_HOME is either not set or empty, a default equal to $HOME/.cache is used.
 func cacheHome() string {
 	return filepath.Join(homedir.HomeDir(), ".cache")
+}
+
+func dataDirs() string {
+	return strings.Join([]string{dataHome(), os.Getenv(xdg.DataDirsEnvVar)}, ":")
 }

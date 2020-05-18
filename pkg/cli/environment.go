@@ -26,6 +26,9 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
+
+	"helm.sh/helm/v3/pkg/helmpath/xdg"
 
 	"github.com/spf13/pflag"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -56,6 +59,8 @@ type EnvSettings struct {
 	RepositoryCache string
 	// PluginsDirectory is the path to the plugins directory.
 	PluginsDirectory string
+	// PluginsDirectories contains colon separated locations to different possible plugin directories
+	PluginsDirectories string
 }
 
 func New() *EnvSettings {
@@ -65,6 +70,8 @@ func New() *EnvSettings {
 		KubeToken:        os.Getenv("HELM_KUBETOKEN"),
 		KubeAPIServer:    os.Getenv("HELM_KUBEAPISERVER"),
 		PluginsDirectory: envOr("HELM_PLUGINS", helmpath.DataPath("plugins")),
+		PluginsDirectories: strings.Join([]string{envOr("HELM_PLUGINS", helmpath.DataPath("plugins")),
+			os.Getenv(xdg.DataDirsEnvVar)}, ":"),
 		RegistryConfig:   envOr("HELM_REGISTRY_CONFIG", helmpath.ConfigPath("registry.json")),
 		RepositoryConfig: envOr("HELM_REPOSITORY_CONFIG", helmpath.ConfigPath("repositories.yaml")),
 		RepositoryCache:  envOr("HELM_REPOSITORY_CACHE", helmpath.CachePath("repository")),

@@ -20,6 +20,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"helm.sh/helm/v3/pkg/helmpath"
@@ -33,6 +34,7 @@ func HelmHome(t *testing.T) func() {
 	os.Setenv(xdg.CacheHomeEnvVar, base)
 	os.Setenv(xdg.ConfigHomeEnvVar, base)
 	os.Setenv(xdg.DataHomeEnvVar, base)
+	os.Setenv(xdg.DataDirsEnvVar, strings.Join([]string{base, os.Getenv(xdg.DataDirsEnvVar)}, ":"))
 	os.Setenv(helmpath.CacheHomeEnvVar, "")
 	os.Setenv(helmpath.ConfigHomeEnvVar, "")
 	os.Setenv(helmpath.DataHomeEnvVar, "")

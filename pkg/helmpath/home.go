@@ -26,6 +26,9 @@ func CachePath(elem ...string) string { return lp.cachePath(elem...) }
 // DataPath returns the path where Helm stores data.
 func DataPath(elem ...string) string { return lp.dataPath(elem...) }
 
+// DataDirs returns the paths where Helm can store data.
+func DataDirs(elem string) string { return lp.dataDirs(elem) }
+
 // CacheIndexFile returns the path to an index for the given named repository.
 func CacheIndexFile(name string) string {
 	if name != "" {

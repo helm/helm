@@ -78,6 +78,7 @@ func TestManuallyProcessArgs(t *testing.T) {
 
 func TestLoadPlugins(t *testing.T) {
 	settings.PluginsDirectory = "testdata/helmhome/helm/plugins"
+	settings.PluginsDirectories = "testdata/helmhome/helm/plugins"
 	settings.RepositoryConfig = "testdata/helmhome/helm/repositories.yaml"
 	settings.RepositoryCache = "testdata/helmhome/helm/repository"
 
@@ -91,6 +92,86 @@ func TestLoadPlugins(t *testing.T) {
 		"fullenv",
 		"testdata/helmhome/helm/plugins/fullenv",
 		"testdata/helmhome/helm/plugins",
+		"testdata/helmhome/helm/repositories.yaml",
+		"testdata/helmhome/helm/repository",
+		os.Args[0],
+	}, "\n")
+
+	// Test that the YAML file was correctly converted to a command.
+	tests := []struct {
+		use    string
+		short  string
+		long   string
+		expect string
+		args   []string
+		code   int
+	}{
+		{"args", "echo args", "This echos args", "-a -b -c\n", []string{"-a", "-b", "-c"}, 0},
+		{"echo", "echo stuff", "This echos stuff", "hello\n", []string{}, 0},
+		{"env", "env stuff", "show the env", "env\n", []string{}, 0},
+		{"exitwith", "exitwith code", "This exits with the specified exit code", "", []string{"2"}, 2},
+		{"fullenv", "show env vars", "show all env vars", envs + "\n", []string{}, 0},
+	}
+
+	plugins := cmd.Commands()
+
+	if len(plugins) != len(tests) {
+		t.Fatalf("Expected %d plugins, got %d", len(tests), len(plugins))
+	}
+
+	for i := 0; i < len(plugins); i++ {
+		out.Reset()
+		tt := tests[i]
+		pp := plugins[i]
+		if pp.Use != tt.use {
+			t.Errorf("%d: Expected Use=%q, got %q", i, tt.use, pp.Use)
+		}
+		if pp.Short != tt.short {
+			t.Errorf("%d: Expected Use=%q, got %q", i, tt.short, pp.Short)
+		}
+		if pp.Long != tt.long {
+			t.Errorf("%d: Expected Use=%q, got %q", i, tt.long, pp.Long)
+		}
+
+		// Currently, plugins assume a Linux subsystem. Skip the execution
+		// tests until this is fixed
+		if runtime.GOOS != "windows" {
+			if err := pp.RunE(pp, tt.args); err != nil {
+				if tt.code > 0 {
+					perr, ok := err.(pluginError)
+					if !ok {
+						t.Errorf("Expected %s to return pluginError: got %v(%T)", tt.use, err, err)
+					}
+					if perr.code != tt.code {
+						t.Errorf("Expected %s to return %d: got %d", tt.use, tt.code, perr.code)
+					}
+				} else {
+					t.Errorf("Error running %s: %+v", tt.use, err)
+				}
+			}
+			if out.String() != tt.expect {
+				t.Errorf("Expected %s to output:\n%s\ngot\n%s", tt.use, tt.expect, out.String())
+			}
+		}
+	}
+}
+
+func TestLoadPluginsFromDifferentLocations(t *testing.T) {
+	settings.PluginsDirectory = "testdata/helmhome/helm/plugins_1"
+	settings.PluginsDirectories = "testdata/helmhome/helm/plugins_1:testdata/helmhome/helm/plugins_2"
+	settings.RepositoryConfig = "testdata/helmhome/helm/repositories.yaml"
+	settings.RepositoryCache = "testdata/helmhome/helm/repository"
+
+	var (
+		out bytes.Buffer
+		cmd cobra.Command
+	)
+	loadPlugins(&cmd, &out)
+
+	envs := strings.Join([]string{
+		"fullenv",
+		"testdata/helmhome/helm/plugins_1/fullenv",
+		"testdata/helmhome/helm/plugins_1",
 		"testdata/helmhome/helm/repositories.yaml",
 		"testdata/helmhome/helm/repository",
 		os.Args[0],
@@ -279,6 +360,7 @@ func TestPluginDynamicCompletion(t *testing.T) {
 	}}
 	for _, test := range tests {
 		settings.PluginsDirectory = "testdata/helmhome/helm/plugins"
+		settings.PluginsDirectories = "testdata/helmhome/helm/plugins"
 		runTestCmd(t, []cmdTestCase{test})
 	}
 }

@@ -16,6 +16,7 @@ package helmpath
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"helm.sh/helm/v3/pkg/helmpath/xdg"
 )
@@ -43,9 +44,12 @@ func (l lazypath) path(helmEnvVar, xdgEnvVar string, defaultFn func() string, el
 	// 1. See if a Helm specific environment variable has been set.
 	// 2. Check if an XDG environment variable is set
 	// 3. Fall back to a default
-	base := os.Getenv(helmEnvVar)
-	if base != "" {
-		return filepath.Join(base, filepath.Join(elem...))
+	base := ""
+	if helmEnvVar != "" {
+		base = os.Getenv(helmEnvVar)
+		if base != "" {
+			return filepath.Join(base, filepath.Join(elem...))
+		}
 	}
 	base = os.Getenv(xdgEnvVar)
 	if base == "" {
@@ -69,4 +73,11 @@ func (l lazypath) configPath(elem ...string) string {
 // dataPath defines the base directory relative to which user specific data files should be stored.
 func (l lazypath) dataPath(elem ...string) string {
 	return l.path(DataHomeEnvVar, xdg.DataHomeEnvVar, dataHome, filepath.Join(elem...))
+}
+
+// dataDirs defines all the base directories in order of precedence separated by colon
+// relative to which user specific data files can be stored.
+// Not exposed on Helm side but used internally
+func (l lazypath) dataDirs(elem ...string) string {
+	return l.path("", xdg.DataDirsEnvVar, dataDirs, strings.Join(elem, ":"))
 }
