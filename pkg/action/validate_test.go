@@ -46,6 +46,25 @@ func newDeploymentResource(name, namespace string) *resource.Info {
 	}
 }
 
+func TestCheckAssignedRelease(t *testing.T) {
+	deployFoo := newDeploymentResource("foo", "ns-a")
+
+	// Don't set annotations the resource and verify no errors
+	err := checkAssignedRelease(deployFoo.Object, "rel-a")
+	assert.NoError(t, err)
+
+	// Set other release name annotation and verify annotation error message
+	_ = accessor.SetAnnotations(deployFoo.Object, map[string]string{
+		helmReleaseNameAnnotation: "rel-a",
+	})
+	err = checkAssignedRelease(deployFoo.Object, "rel-b")
+	assert.EqualError(t, err, `adoption error: "rel-a" is the owner`)
+
+	// Set same release name annotation andverify no errors
+	err = checkAssignedRelease(deployFoo.Object, "rel-a")
+	assert.NoError(t, err)
+}
+
 func TestCheckOwnership(t *testing.T) {
 	deployFoo := newDeploymentResource("foo", "ns-a")
 

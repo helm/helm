@@ -96,6 +96,8 @@ type Upgrade struct {
 	PostRenderer postrender.PostRenderer
 	// DisableOpenAPIValidation controls whether OpenAPI validation is enforced.
 	DisableOpenAPIValidation bool
+	// Adopt, if true, adopt the resources already exist and aren't owned by any other releases.
+	Adopt bool
 }
 
 // NewUpgrade creates a new Upgrade object with the given configuration.
@@ -282,7 +284,7 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 		}
 	}
 
-	toBeUpdated, err := existingResourceConflict(toBeCreated, upgradedRelease.Name, upgradedRelease.Namespace)
+	toBeUpdated, err := existingResourceConflict(toBeCreated, upgradedRelease.Name, upgradedRelease.Namespace, u.Adopt)
 	if err != nil {
 		return nil, errors.Wrap(err, "rendered manifests contain a resource that already exists. Unable to continue with update")
 	}
@@ -303,6 +305,12 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 			upgradedRelease.Info.Description = "Dry run complete"
 		}
 		return upgradedRelease, nil
+	}
+
+	if u.Adopt {
+		if err := adoptExistingResource(toBeUpdated, upgradedRelease.Name, upgradedRelease.Namespace); err != nil {
+			return nil, err
+		}
 	}
 
 	u.cfg.Log("creating upgraded release for %s", upgradedRelease.Name)

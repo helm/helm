@@ -23,6 +23,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/cli-runtime/pkg/resource"
 
 	"helm.sh/helm/v3/pkg/kube"
@@ -37,7 +38,36 @@ const (
 	helmReleaseNamespaceAnnotation = "meta.helm.sh/release-namespace"
 )
 
-func existingResourceConflict(resources kube.ResourceList, releaseName, releaseNamespace string) (kube.ResourceList, error) {
+func adoptExistingResource(resources kube.ResourceList, releaseName, releaseNamespace string) error {
+	err := resources.Visit(func(info *resource.Info, err error) error {
+		if err != nil {
+			return err
+		}
+
+		helper := resource.NewHelper(info.Client, info.Mapping)
+		patchData := fmt.Sprintf(`{
+	"metadata": {
+		"labels": {
+			"%s":"%s"
+		},
+		"annotations": {
+			"%s":"%s",
+			"%s":"%s"
+		}
+	}
+}`, appManagedByLabel, appManagedByHelm, helmReleaseNameAnnotation, releaseName,
+			helmReleaseNamespaceAnnotation, releaseNamespace)
+
+		if _, err := helper.Patch(info.Namespace, info.Name, types.StrategicMergePatchType, ([]byte)(patchData), nil); err != nil {
+			return errors.Wrap(err, "could not patch the resource")
+		}
+		return nil
+	})
+
+	return err
+}
+
+func existingResourceConflict(resources kube.ResourceList, releaseName, releaseNamespace string, adopt bool) (kube.ResourceList, error) {
 	var requireUpdate kube.ResourceList
 
 	err := resources.Visit(func(info *resource.Info, err error) error {
@@ -54,9 +84,15 @@ func existingResourceConflict(resources kube.ResourceList, releaseName, releaseN
 			return errors.Wrap(err, "could not get information about the resource")
 		}
 
-		// Allow adoption of the resource if it is managed by Helm and is annotated with correct release name and namespace.
-		if err := checkOwnership(existing, releaseName, releaseNamespace); err != nil {
-			return fmt.Errorf("%s exists and cannot be imported into the current release: %s", resourceString(info), err)
+		if adopt {
+			if err := checkAssignedRelease(existing, releaseName); err != nil {
+				return fmt.Errorf("%s is already used in other release: %s", resourceString(info), err)
+			}
+		} else {
+			// Allow adoption of the resource if it is managed by Helm and is annotated with correct release name and namespace.
+			if err := checkOwnership(existing, releaseName, releaseNamespace); err != nil {
+				return fmt.Errorf("%s exists and cannot be imported into the current release: %s", resourceString(info), err)
+			}
 		}
 
 		requireUpdate.Append(info)
@@ -95,6 +131,20 @@ func checkOwnership(obj runtime.Object, releaseName, releaseNamespace string) er
 		return err
 	}
 
+	return nil
+}
+
+func checkAssignedRelease(obj runtime.Object, releaseName string) error {
+	annos, err := accessor.Annotations(obj)
+	if err != nil {
+		return err
+	}
+	actual, ok := annos[helmReleaseNameAnnotation]
+	if ok {
+		if actual != releaseName {
+			return fmt.Errorf("adoption error: %q is the owner", actual)
+		}
+	}
 	return nil
 }
 
