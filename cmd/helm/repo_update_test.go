@@ -19,6 +19,8 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -77,5 +79,36 @@ func TestUpdateCharts(t *testing.T) {
 	}
 	if !strings.Contains(got, "Update Complete.") {
 		t.Error("Update was not successful")
+	}
+}
+
+func TestUpdateChartsCustomCache(t *testing.T) {
+	defer resetEnv()()
+	defer ensure.HelmHome(t)()
+
+	ts, err := repotest.NewTempServer("testdata/testserver/*.*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ts.Stop()
+
+	r, err := repo.NewChartRepository(&repo.Entry{
+		Name: "charts",
+		URL:  ts.URL(),
+	}, getter.All(settings))
+	if err != nil {
+		t.Error(err)
+	}
+
+	cachePath := ensure.TempDir(t)
+	cacheFile := filepath.Join(cachePath, "charts-index.yaml")
+	r.CachePath = cachePath
+
+	b := bytes.NewBuffer(nil)
+	updateCharts([]*repo.ChartRepository{r}, b)
+
+	_, err = ioutil.ReadFile(cacheFile)
+	if err != nil {
+		t.Error(err)
 	}
 }
