@@ -78,7 +78,6 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				var manifests bytes.Buffer
 				fmt.Fprintln(&manifests, strings.TrimSpace(rel.Manifest))
 
-
 				// if we have a list of files to render, then check that each of the
 				// provided files exists in the chart.
 				if len(showFiles) > 0 {
