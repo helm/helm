@@ -19,7 +19,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -52,6 +52,25 @@ func TestUpdateCmd(t *testing.T) {
 	}
 }
 
+func TestUpdateCustomCacheCmd(t *testing.T) {
+	var out bytes.Buffer
+	rootDir := ensure.TempDir(t)
+	cachePath := filepath.Join(rootDir, "updcustomcache")
+	_ = os.Mkdir(cachePath, os.ModePerm)
+	defer os.RemoveAll(cachePath)
+	o := &repoUpdateOptions{
+		update:    updateCharts,
+		repoFile:  "testdata/repositories.yaml",
+		repoCache: cachePath,
+	}
+	if err := o.run(&out); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(cachePath, "charts-index.yaml")); err != nil {
+		t.Fatalf("error finding created index file in custom cache: %#v", err)
+	}
+}
+
 func TestUpdateCharts(t *testing.T) {
 	defer resetEnv()()
 	defer ensure.HelmHome(t)()
@@ -79,36 +98,5 @@ func TestUpdateCharts(t *testing.T) {
 	}
 	if !strings.Contains(got, "Update Complete.") {
 		t.Error("Update was not successful")
-	}
-}
-
-func TestUpdateChartsCustomCache(t *testing.T) {
-	defer resetEnv()()
-	defer ensure.HelmHome(t)()
-
-	ts, err := repotest.NewTempServer("testdata/testserver/*.*")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer ts.Stop()
-
-	r, err := repo.NewChartRepository(&repo.Entry{
-		Name: "charts",
-		URL:  ts.URL(),
-	}, getter.All(settings))
-	if err != nil {
-		t.Error(err)
-	}
-
-	cachePath := ensure.TempDir(t)
-	cacheFile := filepath.Join(cachePath, "charts-index.yaml")
-	r.CachePath = cachePath
-
-	b := bytes.NewBuffer(nil)
-	updateCharts([]*repo.ChartRepository{r}, b)
-
-	_, err = ioutil.ReadFile(cacheFile)
-	if err != nil {
-		t.Error(err)
 	}
 }
