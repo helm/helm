@@ -119,7 +119,7 @@ readme for more details.
 Alternatively, you can follow these manual steps to perform an update of the API
 versions of a release manifest:
 
-- Prerequsiities:
+- Prerequisites:
   - HELM_PROTOBUF_SCHEMA: [Helm protobuf schema](https://github.com/helm/helm/tree/dev-v2/_proto)
   - PROTOBUF_SCHEMA: [Protobuf base schema](https://github.com/protocolbuffers/protobuf/tree/master/src) 
 - Get the name of the latest deployed release:
@@ -147,3 +147,5 @@ with the new encoded release object
 API versions
 - Add a description in the upgrade, something along the lines to not perform a
 rollback to a Helm version prior to this current version
+
+> Note: Ensure to use the `protobuf schema` for the deployed Tiller version, otherwise the decoding might fail
