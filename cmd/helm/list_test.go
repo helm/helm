@@ -40,6 +40,23 @@ func TestListCmd(t *testing.T) {
 		},
 	}
 
+	chartWithDependencies := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:       "prims47",
+			Version:    "4.7.7",
+			AppVersion: "0.0.1",
+			Home:       "https://charts.com/prims47",
+			Dependencies: []*chart.Dependency{
+				{
+					Name:       "benArfa",
+					Version:    "4.7.7",
+					Repository: "https://helm.com/prims47",
+					Enabled:    true,
+				},
+			},
+		},
+	}
+
 	releaseFixture := []*release.Release{
 		{
 			Name:      "starlord",
@@ -60,6 +77,16 @@ func TestListCmd(t *testing.T) {
 				Status:       release.StatusDeployed,
 			},
 			Chart: chartInfo,
+		},
+		{
+			Name:      "fuegoPepito",
+			Version:   1,
+			Namespace: defaultNamespace,
+			Info: &release.Info{
+				LastDeployed: timestamp1,
+				Status:       release.StatusPendingInstall,
+			},
+			Chart: chartWithDependencies,
 		},
 		{
 			Name:      "groot",
@@ -154,6 +181,11 @@ func TestListCmd(t *testing.T) {
 		golden: "output/list-all.txt",
 		rels:   releaseFixture,
 	}, {
+		name:   "list all releases with dependencies",
+		cmd:    "list --with-dependencies",
+		golden: "output/list-with-dependencies.txt",
+		rels:   releaseFixture,
+	}, {
 		name:   "list releases sorted by release date",
 		cmd:    "list --date",
 		golden: "output/list-date.txt",
@@ -207,6 +239,11 @@ func TestListCmd(t *testing.T) {
 		name:   "list releases in short output format",
 		cmd:    "list --short --output json",
 		golden: "output/list-short-json.txt",
+		rels:   releaseFixture,
+	}, {
+		name:   "list releases in short output format",
+		cmd:    "list --short --output table",
+		golden: "output/list-short-table.txt",
 		rels:   releaseFixture,
 	}, {
 		name:   "list superseded releases",
