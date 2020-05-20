@@ -73,7 +73,7 @@ func TestList_OneNamespace(t *testing.T) {
 	makeMeSomeReleases(lister.cfg.Releases, t)
 	list, err := lister.Run()
 	is.NoError(err)
-	is.Len(list, 3)
+	is.Len(list, 4)
 }
 
 func TestList_AllNamespaces(t *testing.T) {
@@ -84,7 +84,84 @@ func TestList_AllNamespaces(t *testing.T) {
 	lister.SetStateMask()
 	list, err := lister.Run()
 	is.NoError(err)
+	is.Len(list, 4)
+}
+
+func TestList_WithDependencies(t *testing.T) {
+	is := assert.New(t)
+	lister := newListFixture(t)
+	makeMeSomeReleases(lister.cfg.Releases, t)
+	lister.WithDependencies = true
+	lister.SetStateMask()
+	list, err := lister.Run()
+	is.NoError(err)
+	is.Len(list, 8)
+}
+
+func TestList_Deployed(t *testing.T) {
+	is := assert.New(t)
+	lister := newListFixture(t)
+	makeMeSomeReleases(lister.cfg.Releases, t)
+	lister.Deployed = true
+	lister.SetStateMask()
+	list, err := lister.Run()
+	is.NoError(err)
 	is.Len(list, 3)
+}
+
+func TestList_Uninstalled(t *testing.T) {
+	is := assert.New(t)
+	lister := newListFixture(t)
+	makeMeSomeReleases(lister.cfg.Releases, t)
+	lister.Uninstalled = true
+	lister.SetStateMask()
+	list, err := lister.Run()
+	is.NoError(err)
+	is.Len(list, 1)
+}
+
+func TestList_Uninstalling(t *testing.T) {
+	is := assert.New(t)
+	lister := newListFixture(t)
+	makeMeSomeReleases(lister.cfg.Releases, t)
+	lister.Uninstalling = true
+	lister.SetStateMask()
+	list, err := lister.Run()
+	is.NoError(err)
+	is.Len(list, 1)
+}
+
+func TestList_Pending(t *testing.T) {
+	is := assert.New(t)
+	lister := newListFixture(t)
+	makeMeSomeReleases(lister.cfg.Releases, t)
+	lister.Pending = true
+	lister.SetStateMask()
+	list, err := lister.Run()
+	is.NoError(err)
+	is.Len(list, 1)
+}
+
+func TestList_Failed(t *testing.T) {
+	is := assert.New(t)
+	lister := newListFixture(t)
+	makeMeSomeReleases(lister.cfg.Releases, t)
+	lister.Failed = true
+	lister.SetStateMask()
+	list, err := lister.Run()
+	is.NoError(err)
+	is.Len(list, 1)
+}
+
+func TestList_Superseded(t *testing.T) {
+	is := assert.New(t)
+	lister := newListFixture(t)
+	makeMeSomeReleases(lister.cfg.Releases, t)
+	lister.Superseded = true
+	lister.SetStateMask()
+	list, err := lister.Run()
+	is.NoError(err)
+	is.Len(list, 1)
 }
 
 func TestList_Sort(t *testing.T) {
@@ -94,10 +171,11 @@ func TestList_Sort(t *testing.T) {
 	makeMeSomeReleases(lister.cfg.Releases, t)
 	list, err := lister.Run()
 	is.NoError(err)
-	is.Len(list, 3)
+	is.Len(list, 4)
 	is.Equal("two", list[0].Name)
 	is.Equal("three", list[1].Name)
-	is.Equal("one", list[2].Name)
+	is.Equal("seven", list[2].Name)
+	is.Equal("one", list[3].Name)
 }
 
 func TestList_Limit(t *testing.T) {
@@ -108,9 +186,9 @@ func TestList_Limit(t *testing.T) {
 	list, err := lister.Run()
 	is.NoError(err)
 	is.Len(list, 2)
-	// Lex order means one, three, two
+	// Lex order means one, seven, three, two
 	is.Equal("one", list[0].Name)
-	is.Equal("three", list[1].Name)
+	is.Equal("seven", list[1].Name)
 }
 
 func TestList_BigLimit(t *testing.T) {
@@ -120,12 +198,13 @@ func TestList_BigLimit(t *testing.T) {
 	makeMeSomeReleases(lister.cfg.Releases, t)
 	list, err := lister.Run()
 	is.NoError(err)
-	is.Len(list, 3)
+	is.Len(list, 4)
 
-	// Lex order means one, three, two
+	// Lex order means one, seven, three, two
 	is.Equal("one", list[0].Name)
-	is.Equal("three", list[1].Name)
-	is.Equal("two", list[2].Name)
+	is.Equal("seven", list[1].Name)
+	is.Equal("three", list[2].Name)
+	is.Equal("two", list[3].Name)
 }
 
 func TestList_LimitOffset(t *testing.T) {
@@ -138,16 +217,16 @@ func TestList_LimitOffset(t *testing.T) {
 	is.NoError(err)
 	is.Len(list, 2)
 
-	// Lex order means one, three, two
-	is.Equal("three", list[0].Name)
-	is.Equal("two", list[1].Name)
+	// Lex order means one, seven, three, two
+	is.Equal("seven", list[0].Name)
+	is.Equal("three", list[1].Name)
 }
 
 func TestList_LimitOffsetOutOfBounds(t *testing.T) {
 	is := assert.New(t)
 	lister := newListFixture(t)
 	lister.Limit = 2
-	lister.Offset = 3 // Last item is index 2
+	lister.Offset = 4 // Last item is index 2
 	makeMeSomeReleases(lister.cfg.Releases, t)
 	list, err := lister.Run()
 	is.NoError(err)
@@ -157,7 +236,7 @@ func TestList_LimitOffsetOutOfBounds(t *testing.T) {
 	lister.Offset = 1
 	list, err = lister.Run()
 	is.NoError(err)
-	is.Len(list, 2)
+	is.Len(list, 3)
 }
 
 func TestList_StateMask(t *testing.T) {
@@ -172,20 +251,20 @@ func TestList_StateMask(t *testing.T) {
 
 	res, err := lister.Run()
 	is.NoError(err)
-	is.Len(res, 2)
-	is.Equal("three", res[0].Name)
-	is.Equal("two", res[1].Name)
+	is.Len(res, 3)
+	is.Equal("seven", res[0].Name)
+	is.Equal("three", res[1].Name)
 
 	lister.StateMask = ListUninstalled
 	res, err = lister.Run()
 	is.NoError(err)
-	is.Len(res, 1)
-	is.Equal("one", res[0].Name)
+	is.Len(res, 2)
+	is.Equal("four", res[0].Name)
 
 	lister.StateMask |= ListDeployed
 	res, err = lister.Run()
 	is.NoError(err)
-	is.Len(res, 3)
+	is.Len(res, 4)
 }
 
 func TestList_Filter(t *testing.T) {
@@ -224,8 +303,28 @@ func makeMeSomeReleases(store *storage.Storage, t *testing.T) {
 	three.Name = "three"
 	three.Namespace = "default"
 	three.Version = 3
+	four := namedReleaseStub("prims47-fuego", release.StatusUninstalled)
+	four.Name = "four"
+	four.Namespace = "default"
+	four.Version = 1
+	five := namedReleaseStub("prims47-benArfa", release.StatusUninstalling)
+	five.Name = "five"
+	five.Namespace = "default"
+	five.Version = 1
+	six := namedReleaseStub("prims47-benArfa", release.StatusPendingInstall)
+	six.Name = "six"
+	six.Namespace = "default"
+	six.Version = 1
+	seven := namedReleaseStub("prims47-benArfa", release.StatusFailed)
+	seven.Name = "seven"
+	seven.Namespace = "default"
+	seven.Version = 1
+	eight := namedReleaseStub("prims47-benArfa", release.StatusSuperseded)
+	eight.Name = "eight"
+	eight.Namespace = "default"
+	eight.Version = 1
 
-	for _, rel := range []*release.Release{one, two, three} {
+	for _, rel := range []*release.Release{one, two, three, four, five, six, seven, eight} {
 		if err := store.Create(rel); err != nil {
 			t.Fatal(err)
 		}
@@ -233,7 +332,7 @@ func makeMeSomeReleases(store *storage.Storage, t *testing.T) {
 
 	all, err := store.ListReleases()
 	assert.NoError(t, err)
-	assert.Len(t, all, 3, "sanity test: three items added")
+	assert.Len(t, all, 8, "sanity test: three items added")
 }
 
 func TestFilterList(t *testing.T) {

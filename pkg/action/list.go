@@ -126,6 +126,8 @@ type List struct {
 	Deployed     bool
 	Failed       bool
 	Pending      bool
+	// All with dependencies
+	WithDependencies bool
 }
 
 // NewList constructs a new *List
@@ -244,7 +246,7 @@ func filterList(releases []*release.Release) []*release.Release {
 
 // SetStateMask calculates the state mask based on parameters.
 func (l *List) SetStateMask() {
-	if l.All {
+	if l.All || l.WithDependencies {
 		l.StateMask = ListAll
 		return
 	}
@@ -253,18 +255,23 @@ func (l *List) SetStateMask() {
 	if l.Deployed {
 		state |= ListDeployed
 	}
+
 	if l.Uninstalled {
 		state |= ListUninstalled
 	}
+
 	if l.Uninstalling {
 		state |= ListUninstalling
 	}
+
 	if l.Pending {
 		state |= ListPendingInstall | ListPendingRollback | ListPendingUpgrade
 	}
+
 	if l.Failed {
 		state |= ListFailed
 	}
+
 	if l.Superseded {
 		state |= ListSuperseded
 	}
