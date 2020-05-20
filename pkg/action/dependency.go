@@ -36,6 +36,7 @@ type Dependency struct {
 	Verify      bool
 	Keyring     string
 	SkipRefresh bool
+  FileOnly    bool
 }
 
 // NewDependency creates a new Dependency object with the given configuration.

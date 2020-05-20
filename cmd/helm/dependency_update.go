@@ -62,6 +62,7 @@ func newDependencyUpdateCmd(out io.Writer) *cobra.Command {
 				ChartPath:        chartpath,
 				Keyring:          client.Keyring,
 				SkipUpdate:       client.SkipRefresh,
+        FileOnly:         client.FileOnly,
 				Getters:          getter.All(settings),
 				RepositoryConfig: settings.RepositoryConfig,
 				RepositoryCache:  settings.RepositoryCache,
@@ -78,6 +79,7 @@ func newDependencyUpdateCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&client.Verify, "verify", false, "verify the packages against signatures")
 	f.StringVar(&client.Keyring, "keyring", defaultKeyring(), "keyring containing public keys")
 	f.BoolVar(&client.SkipRefresh, "skip-refresh", false, "do not refresh the local repository cache")
+	f.BoolVar(&client.FileOnly, "file-only", false, "refresh only file:// dependencies")
 
 	return cmd
 }

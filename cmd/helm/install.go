@@ -208,6 +208,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 					ChartPath:        cp,
 					Keyring:          client.ChartPathOptions.Keyring,
 					SkipUpdate:       false,
+          FileOnly:         false,
 					Getters:          p,
 					RepositoryConfig: settings.RepositoryConfig,
 					RepositoryCache:  settings.RepositoryCache,
