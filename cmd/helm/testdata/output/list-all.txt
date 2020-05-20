@@ -1,5 +1,6 @@
 NAME       	NAMESPACE	REVISION	UPDATED                      	STATUS         	CHART          	APP VERSION
 drax       	default  	1       	2016-01-16 00:00:01 +0000 UTC	uninstalling   	chickadee-1.0.0	0.0.1      
+fuegoPepito	default  	1       	2016-01-16 00:00:01 +0000 UTC	pending-install	prims47-4.7.7  	0.0.1      
 gamora     	default  	1       	2016-01-16 00:00:01 +0000 UTC	superseded     	chickadee-1.0.0	0.0.1      
 groot      	default  	1       	2016-01-16 00:00:01 +0000 UTC	uninstalled    	chickadee-1.0.0	0.0.1      
 hummingbird	default  	1       	2016-01-16 00:00:03 +0000 UTC	deployed       	chickadee-1.0.0	0.0.1      

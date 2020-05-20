@@ -28,6 +28,7 @@ import (
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/release"
 )
@@ -61,6 +62,7 @@ flag with the '--offset' flag allows you to page through results.
 
 func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewList(cfg)
+
 	var outfmt output.Format
 
 	cmd := &cobra.Command{
@@ -75,40 +77,45 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					return err
 				}
 			}
+
 			client.SetStateMask()
 
 			results, err := client.Run()
+
 			if err != nil {
 				return err
 			}
 
-			if client.Short {
-
-				names := make([]string, 0)
-				for _, res := range results {
-					names = append(names, res.Name)
-				}
-
-				outputFlag := cmd.Flag("output")
-
-				switch outputFlag.Value.String() {
-				case "json":
-					output.EncodeJSON(out, names)
-					return nil
-				case "yaml":
-					output.EncodeYAML(out, names)
-					return nil
-				case "table":
-					for _, res := range results {
-						fmt.Fprintln(out, res.Name)
-					}
-					return nil
-				default:
-					return outfmt.Write(out, newReleaseListWriter(results))
-				}
+			if client.WithDependencies {
+				return outfmt.Write(out, newReleaseListWriter(results, true))
 			}
 
-			return outfmt.Write(out, newReleaseListWriter(results))
+			if !client.Short {
+				return outfmt.Write(out, newReleaseListWriter(results, false))
+			}
+
+			names := make([]string, 0)
+			for _, res := range results {
+				names = append(names, res.Name)
+			}
+
+			outputFlag := cmd.Flag("output")
+
+			switch outputFlag.Value.String() {
+			case "json":
+				output.EncodeJSON(out, names)
+				return nil
+			case "yaml":
+				output.EncodeYAML(out, names)
+				return nil
+			case "table":
+				for _, res := range results {
+					fmt.Fprintln(out, res.Name)
+				}
+				return nil
+			default:
+				return outfmt.Write(out, newReleaseListWriter(results, false))
+			}
 		},
 	}
 
@@ -117,6 +124,7 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVarP(&client.ByDate, "date", "d", false, "sort by release date")
 	f.BoolVarP(&client.SortReverse, "reverse", "r", false, "reverse the sort order")
 	f.BoolVarP(&client.All, "all", "a", false, "show all releases without any filter applied")
+	f.BoolVarP(&client.WithDependencies, "with-dependencies", "p", false, "show all releases without any filter applied and dependencies")
 	f.BoolVar(&client.Uninstalled, "uninstalled", false, "show uninstalled releases (if 'helm uninstall --keep-history' was used)")
 	f.BoolVar(&client.Superseded, "superseded", false, "show superseded releases")
 	f.BoolVar(&client.Uninstalling, "uninstalling", false, "show releases that are currently being uninstalled")
@@ -132,47 +140,78 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	return cmd
 }
 
+type releaseElementChart struct {
+	Name       string `json:"name,omitempty"`
+	Version    string `json:"version,omitempty"`
+	Repository string `json:"repository"`
+	Enabled    bool   `json:"enabled,omitempty"`
+}
+
 type releaseElement struct {
-	Name       string `json:"name"`
-	Namespace  string `json:"namespace"`
-	Revision   string `json:"revision"`
-	Updated    string `json:"updated"`
-	Status     string `json:"status"`
-	Chart      string `json:"chart"`
-	AppVersion string `json:"app_version"`
+	Name         string                `json:"name"`
+	Namespace    string                `json:"namespace"`
+	Revision     string                `json:"revision"`
+	Updated      string                `json:"updated"`
+	Status       string                `json:"status"`
+	Chart        string                `json:"chart"`
+	AppVersion   string                `json:"app_version"`
+	Dependencies []releaseElementChart `json:"dependencies"`
 }
 
 type releaseListWriter struct {
 	releases []releaseElement
 }
 
-func newReleaseListWriter(releases []*release.Release) *releaseListWriter {
+func newReleaseListWriter(releases []*release.Release, withDependencies bool) *releaseListWriter {
 	// Initialize the array so no results returns an empty array instead of null
 	elements := make([]releaseElement, 0, len(releases))
+
 	for _, r := range releases {
-		element := releaseElement{
-			Name:       r.Name,
-			Namespace:  r.Namespace,
-			Revision:   strconv.Itoa(r.Version),
-			Status:     r.Info.Status.String(),
-			Chart:      fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version),
-			AppVersion: r.Chart.Metadata.AppVersion,
+		dependencies := []releaseElementChart{}
+
+		if withDependencies {
+			dependencies = handleChartDependencies(r.Chart.Metadata.Dependencies)
 		}
+
+		element := releaseElement{
+			Name:         r.Name,
+			Namespace:    r.Namespace,
+			Revision:     strconv.Itoa(r.Version),
+			Status:       r.Info.Status.String(),
+			Chart:        fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version),
+			AppVersion:   r.Chart.Metadata.AppVersion,
+			Dependencies: dependencies,
+		}
+
 		t := "-"
 		if tspb := r.Info.LastDeployed; !tspb.IsZero() {
 			t = tspb.String()
 		}
+
 		element.Updated = t
 		elements = append(elements, element)
 	}
+
 	return &releaseListWriter{elements}
 }
 
 func (r *releaseListWriter) WriteTable(out io.Writer) error {
 	table := uitable.New()
+	tableDependencies := uitable.New()
+
 	table.AddRow("NAME", "NAMESPACE", "REVISION", "UPDATED", "STATUS", "CHART", "APP VERSION")
+
 	for _, r := range r.releases {
 		table.AddRow(r.Name, r.Namespace, r.Revision, r.Updated, r.Status, r.Chart, r.AppVersion)
+
+		if len(r.Dependencies) < 1 {
+			continue
+		}
+
+		table.Wrap = true
+		buildDependenciesTable(tableDependencies, r.Dependencies)
+
+		table.AddRow(tableDependencies)
 	}
 	return output.EncodeTable(out, table)
 }
@@ -206,4 +245,36 @@ func compListReleases(toComplete string, cfg *action.Configuration) ([]string, c
 	}
 
 	return choices, completion.BashCompDirectiveNoFileComp
+}
+
+func buildDependenciesTable(table *uitable.Table, dependencies []releaseElementChart) {
+	table.AddRow("======== DEPENDENCIES ========")
+	table.AddRow("NAME", "Version", "Repository", "Enabled")
+
+	for _, d := range dependencies {
+		table.AddRow(d.Name, d.Version, d.Repository, d.Enabled)
+	}
+
+	table.AddRow("================")
+}
+
+func handleChartDependencies(chartDependencies []*chart.Dependency) []releaseElementChart {
+	if len(chartDependencies) < 1 {
+		return []releaseElementChart{}
+	}
+
+	dependencies := []releaseElementChart{}
+
+	for _, d := range chartDependencies {
+		chart := releaseElementChart{
+			Name:       d.Name,
+			Version:    d.Version,
+			Repository: d.Repository,
+			Enabled:    d.Enabled,
+		}
+
+		dependencies = append(dependencies, chart)
+	}
+
+	return dependencies
 }
