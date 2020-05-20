@@ -62,7 +62,7 @@ func newDependencyUpdateCmd(out io.Writer) *cobra.Command {
 				ChartPath:        chartpath,
 				Keyring:          client.Keyring,
 				SkipUpdate:       client.SkipRefresh,
-        FileOnly:         client.FileOnly,
+				FileOnly:         client.FileOnly,
 				Getters:          getter.All(settings),
 				RepositoryConfig: settings.RepositoryConfig,
 				RepositoryCache:  settings.RepositoryCache,

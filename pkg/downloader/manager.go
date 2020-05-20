@@ -56,8 +56,8 @@ type Manager struct {
 	Keyring string
 	// SkipUpdate indicates that the repository should not be updated first.
 	SkipUpdate bool
-  // FileOnly  indicates that only file:// charts should be updated
-  FileOnly  bool
+	// FileOnly  indicates that only file:// charts should be updated
+	FileOnly bool
 	// Getter collection for the operation
 	Getters          []getter.Provider
 	RepositoryConfig string
@@ -280,9 +280,9 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			dep.Version = ver
 			continue
 		} else if m.FileOnly {
-      fmt.Fprintf(m.Out, "Updating file:// dependencies only - skip %s from repo %s\n", dep.Name, dep.Repository)
-      continue
-    }
+			fmt.Fprintf(m.Out, "Updating file:// dependencies only - skip %s from repo %s\n", dep.Name, dep.Repository)
+			continue
+		}
 
 		// Any failure to resolve/download a chart should fail:
 		// https://github.com/helm/helm/issues/1439
