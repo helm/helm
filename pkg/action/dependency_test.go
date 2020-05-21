@@ -25,8 +25,9 @@ import (
 
 func TestList(t *testing.T) {
 	for _, tcase := range []struct {
-		chart  string
-		golden string
+		chart      string
+		golden     string
+		transitive bool
 	}{
 		{
 			chart:  "testdata/charts/chart-with-compressed-dependencies",
@@ -48,9 +49,14 @@ func TestList(t *testing.T) {
 			chart:  "testdata/charts/chart-missing-deps",
 			golden: "output/missing-deps.txt",
 		},
+		{
+			chart:      "testdata/charts/transitive-dependencies",
+			golden:     "output/transitive-dependencies.txt",
+			transitive: true,
+		},
 	} {
 		buf := bytes.Buffer{}
-		if err := NewDependency().List(tcase.chart, &buf); err != nil {
+		if err := NewDependency().List(tcase.chart, &buf, tcase.transitive); err != nil {
 			t.Fatal(err)
 		}
 		test.AssertGoldenBytes(t, buf.Bytes(), tcase.golden)

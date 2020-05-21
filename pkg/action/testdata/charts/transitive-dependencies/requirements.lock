@@ -1,0 +1,6 @@
+dependencies:
+- name: wordpress
+  repository: https://kubernetes-charts.storage.googleapis.com
+  version: 5.0.2
+digest: sha256:47874170647e0698d5fc4cb23bbc97e3e2bf80d841cffa0a2fb2688aa4a35372
+generated: "2020-05-21T22:52:53.59605223+03:00"

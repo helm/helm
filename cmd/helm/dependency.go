@@ -100,7 +100,7 @@ func newDependencyCmd(out io.Writer) *cobra.Command {
 
 func newDependencyListCmd(out io.Writer) *cobra.Command {
 	client := action.NewDependency()
-
+	var transitive *bool
 	cmd := &cobra.Command{
 		Use:     "list CHART",
 		Aliases: []string{"ls"},
@@ -112,8 +112,11 @@ func newDependencyListCmd(out io.Writer) *cobra.Command {
 			if len(args) > 0 {
 				chartpath = filepath.Clean(args[0])
 			}
-			return client.List(chartpath, out)
+			return client.List(chartpath, out, *transitive)
 		},
 	}
+
+	transitive = cmd.Flags().Bool("transitive", false, "show transitive dependencies (dependencies of dependencies)")
+
 	return cmd
 }

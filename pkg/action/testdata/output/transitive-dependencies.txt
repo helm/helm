@@ -1,0 +1,4 @@
+NAME     	VERSION	REPOSITORY                                       	STATUS    
+wordpress	5.0.2  	https://kubernetes-charts.storage.googleapis.com 	ok        
+mariadb  	5.2.5  	https://kubernetes-charts.storage.googleapis.com/	transitive
+
