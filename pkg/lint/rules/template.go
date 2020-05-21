@@ -57,7 +57,7 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 		return
 	}
 
-	// Load chart and parse templates, based on tiller/release_server
+	// Load chart and parse templates
 	chart, err := loader.Load(linter.ChartDir)
 
 	chartLoaded := linter.RunLinterRule(support.ErrorSev, path, err)

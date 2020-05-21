@@ -434,7 +434,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 
 		if patch == nil || string(patch) == "{}" {
 			c.Log("Looks like there are no changes for %s %q", target.Mapping.GroupVersionKind.Kind, target.Name)
-			// This needs to happen to make sure that tiller has the latest info from the API
+			// This needs to happen to make sure that Helm has the latest info from the API
 			// Otherwise there will be no labels and other functions that use labels will panic
 			if err := target.Get(); err != nil {
 				return errors.Wrap(err, "failed to refresh resource information")
