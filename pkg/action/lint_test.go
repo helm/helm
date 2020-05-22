@@ -24,10 +24,10 @@ var (
 	values                  = make(map[string]interface{})
 	namespace               = "testNamespace"
 	strict                  = false
-	chart1MultipleChartLint = "../../cmd/helm/testdata/testcharts/multiplecharts-lint-chart-1"
-	chart2MultipleChartLint = "../../cmd/helm/testdata/testcharts/multiplecharts-lint-chart-2"
-	corruptedTgzChart       = "../../cmd/helm/testdata/testcharts/corrupted-compressed-chart.tgz"
-	chartWithNoTemplatesDir = "../../cmd/helm/testdata/testcharts/chart-with-no-templates-dir"
+	chart1MultipleChartLint = "testdata/charts/multiplecharts-lint-chart-1"
+	chart2MultipleChartLint = "testdata/charts/multiplecharts-lint-chart-2"
+	corruptedTgzChart       = "testdata/charts/corrupted-compressed-chart.tgz"
+	chartWithNoTemplatesDir = "testdata/charts/chart-with-no-templates-dir"
 )
 
 func TestLintChart(t *testing.T) {
@@ -38,41 +38,41 @@ func TestLintChart(t *testing.T) {
 	}{
 		{
 			name:      "decompressed-chart",
-			chartPath: "../../cmd/helm/testdata/testcharts/decompressedchart/",
+			chartPath: "testdata/charts/decompressedchart/",
 		},
 		{
 			name:      "archived-chart-path",
-			chartPath: "../../cmd/helm/testdata/testcharts/compressedchart-0.1.0.tgz",
+			chartPath: "testdata/charts/compressedchart-0.1.0.tgz",
 		},
 		{
 			name:      "archived-chart-path-with-hyphens",
-			chartPath: "../../cmd/helm/testdata/testcharts/compressedchart-with-hyphens-0.1.0.tgz",
+			chartPath: "testdata/charts/compressedchart-with-hyphens-0.1.0.tgz",
 		},
 		{
 			name:      "archived-tar-gz-chart-path",
-			chartPath: "../../cmd/helm/testdata/testcharts/compressedchart-0.1.0.tar.gz",
+			chartPath: "testdata/charts/compressedchart-0.1.0.tar.gz",
 		},
 		{
 			name:      "invalid-archived-chart-path",
-			chartPath: "../../cmd/helm/testdata/testcharts/invalidcompressedchart0.1.0.tgz",
+			chartPath: "testdata/charts/invalidcompressedchart0.1.0.tgz",
 			err:       true,
 		},
 		{
 			name:      "chart-missing-manifest",
-			chartPath: "../../cmd/helm/testdata/testcharts/chart-missing-manifest",
+			chartPath: "testdata/charts/chart-missing-manifest",
 			err:       true,
 		},
 		{
 			name:      "chart-with-schema",
-			chartPath: "../../cmd/helm/testdata/testcharts/chart-with-schema",
+			chartPath: "testdata/charts/chart-with-schema",
 		},
 		{
 			name:      "chart-with-schema-negative",
-			chartPath: "../../cmd/helm/testdata/testcharts/chart-with-schema-negative",
+			chartPath: "testdata/charts/chart-with-schema-negative",
 		},
 		{
 			name:      "pre-release-chart",
-			chartPath: "../../cmd/helm/testdata/testcharts/pre-release-chart-0.1.0-alpha.tgz",
+			chartPath: "testdata/charts/pre-release-chart-0.1.0-alpha.tgz",
 		},
 	}
 

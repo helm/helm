@@ -22,7 +22,7 @@ import (
 	"testing"
 )
 
-var chartPath = "./../../pkg/chartutil/testdata/subpop/charts/subchart1"
+var chartPath = "testdata/testcharts/subchart"
 
 func TestTemplateCmd(t *testing.T) {
 	tests := []cmdTestCase{

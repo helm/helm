@@ -1,8 +1,0 @@
-apiVersion: v1
-description: Deploy a basic Alpine Linux pod
-home: https://helm.sh/helm
-name: novals
-sources:
-  - https://github.com/helm/helm
-version: 0.2.0
-appVersion: 3.3

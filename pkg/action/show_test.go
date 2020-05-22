@@ -17,55 +17,50 @@ limitations under the License.
 package action
 
 import (
-	"io/ioutil"
-	"strings"
 	"testing"
+
+	"helm.sh/helm/v3/pkg/chart"
 )
 
 func TestShow(t *testing.T) {
 	client := NewShow(ShowAll)
+	client.chart = &chart.Chart{
+		Metadata: &chart.Metadata{Name: "alpine"},
+		Files: []*chart.File{
+			{Name: "README.md", Data: []byte("README\n")},
+		},
+		Raw: []*chart.File{
+			{Name: "values.yaml", Data: []byte("VALUES\n")},
+		},
+		Values: map[string]interface{}{},
+	}
 
-	output, err := client.Run("../../cmd/helm/testdata/testcharts/alpine")
+	output, err := client.Run("")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Load the data from the textfixture directly.
-	cdata, err := ioutil.ReadFile("../../cmd/helm/testdata/testcharts/alpine/Chart.yaml")
-	if err != nil {
-		t.Fatal(err)
-	}
-	data, err := ioutil.ReadFile("../../cmd/helm/testdata/testcharts/alpine/values.yaml")
-	if err != nil {
-		t.Fatal(err)
-	}
-	readmeData, err := ioutil.ReadFile("../../cmd/helm/testdata/testcharts/alpine/README.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	parts := strings.SplitN(output, "---", 3)
-	if len(parts) != 3 {
-		t.Fatalf("Expected 2 parts, got %d", len(parts))
-	}
+	expect := `name: alpine
 
-	expect := []string{
-		strings.ReplaceAll(strings.TrimSpace(string(cdata)), "\r", ""),
-		strings.ReplaceAll(strings.TrimSpace(string(data)), "\r", ""),
-		strings.ReplaceAll(strings.TrimSpace(string(readmeData)), "\r", ""),
-	}
+---
+VALUES
 
-	// Problem: ghodss/yaml doesn't marshal into struct order. To solve, we
-	// have to carefully craft the Chart.yaml to match.
-	for i, got := range parts {
-		got = strings.ReplaceAll(strings.TrimSpace(got), "\r", "")
-		if got != expect[i] {
-			t.Errorf("Expected\n%q\nGot\n%q\n", expect[i], got)
-		}
+---
+README
+
+`
+	if output != expect {
+		t.Errorf("Expected\n%q\nGot\n%q\n", expect, output)
 	}
+}
+
+func TestShowNoValues(t *testing.T) {
+	client := NewShow(ShowAll)
+	client.chart = new(chart.Chart)
 
 	// Regression tests for missing values. See issue #1024.
 	client.OutputFormat = ShowValues
-	output, err = client.Run("../../cmd/helm/testdata/testcharts/novals")
+	output, err := client.Run("")
 	if err != nil {
 		t.Fatal(err)
 	}
