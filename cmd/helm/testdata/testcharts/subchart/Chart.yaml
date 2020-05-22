@@ -1,0 +1,36 @@
+apiVersion: v1
+description: A Helm chart for Kubernetes
+name: subchart
+version: 0.1.0
+dependencies:
+  - name: subcharta
+    repository: http://localhost:10191
+    version: 0.1.0
+    condition: subcharta.enabled
+    tags:
+      - front-end
+      - subcharta
+    import-values:
+      - child: SCAdata
+        parent: imported-chartA
+      - child: SCAdata
+        parent: overridden-chartA
+      - child: SCAdata
+        parent: imported-chartA-B
+
+  - name: subchartb
+    repository: http://localhost:10191
+    version: 0.1.0
+    condition: subchartb.enabled
+    import-values:
+      - child: SCBdata
+        parent: imported-chartB
+      - child: SCBdata
+        parent: imported-chartA-B
+      - child: exports.SCBexported2
+        parent: exports.SCBexported2
+      - SCBexported1
+
+    tags:
+      - front-end
+      - subchartb

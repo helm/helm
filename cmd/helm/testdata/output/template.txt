@@ -1,34 +1,34 @@
 ---
-# Source: subchart1/templates/subdir/serviceaccount.yaml
+# Source: subchart/templates/subdir/serviceaccount.yaml
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: subchart1-sa
+  name: subchart-sa
 ---
-# Source: subchart1/templates/subdir/role.yaml
+# Source: subchart/templates/subdir/role.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: subchart1-role
+  name: subchart-role
 rules:
 - resources: ["*"]
   verbs: ["get","list","watch"]
 ---
-# Source: subchart1/templates/subdir/rolebinding.yaml
+# Source: subchart/templates/subdir/rolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: subchart1-binding
+  name: subchart-binding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: subchart1-role
+  name: subchart-role
 subjects:
 - kind: ServiceAccount
-  name: subchart1-sa
+  name: subchart-sa
   namespace: default
 ---
-# Source: subchart1/charts/subcharta/templates/service.yaml
+# Source: subchart/charts/subcharta/templates/service.yaml
 apiVersion: v1
 kind: Service
 metadata:
@@ -45,7 +45,7 @@ spec:
   selector:
     app.kubernetes.io/name: subcharta
 ---
-# Source: subchart1/charts/subchartb/templates/service.yaml
+# Source: subchart/charts/subchartb/templates/service.yaml
 apiVersion: v1
 kind: Service
 metadata:
@@ -62,13 +62,13 @@ spec:
   selector:
     app.kubernetes.io/name: subchartb
 ---
-# Source: subchart1/templates/service.yaml
+# Source: subchart/templates/service.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: subchart1
+  name: subchart
   labels:
-    helm.sh/chart: "subchart1-0.1.0"
+    helm.sh/chart: "subchart-0.1.0"
     app.kubernetes.io/instance: "RELEASE-NAME"
     kube-version/major: "1"
     kube-version/minor: "18"
@@ -81,4 +81,4 @@ spec:
     protocol: TCP
     name: nginx
   selector:
-    app.kubernetes.io/name: subchart1
+    app.kubernetes.io/name: subchart
