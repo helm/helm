@@ -1,0 +1,3 @@
+NAME  	VERSION	REPOSITORY               	ENABLED
+fuego 	7.7.0  	https://prims47-fuego.com	true   
+pepito	4.2.7' 	https://pepito.com       	true   
