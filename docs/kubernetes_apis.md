@@ -117,18 +117,19 @@ plugin to perform the update of a release to supported APIs. Check out the
 readme for more details.
 
 Alternatively, you can follow these manual steps to perform an update of the API
-versions of a release manifest:
+versions of a release manifest. Depending on your configuration you will follow
+the steps for the ConfigMap or Secret backend.
 
 - Prerequisites:
   - HELM_PROTOBUF_SCHEMA: [Helm protobuf schema](https://github.com/helm/helm/tree/dev-v2/_proto)
   - PROTOBUF_SCHEMA: [Protobuf base schema](https://github.com/protocolbuffers/protobuf/tree/master/src) 
-- Get the name of the latest deployed release:
+- Get the name of the ConfigMap or Secret associated with the latest deployed release:
   - ConfigMap backend: `kubectl get configmap -l OWNER=TILLER,STATUS=DEPLOYED,NAME=<release_name> --namespace <tiller_namespace> | awk '{print $1}' | grep -v NAME`
   - Secrets backend: `kubectl get secret -l OWNER=TILLER,STATUS=DEPLOYED,NAME=<release_name> --namespace <tiller_namespace> | awk '{print $1}' | grep -v NAME`
 - Get latest deployed release details:
-  - ConfigMap backend: `kubectl get configmap <release_version_configmap_name> -n <tiller_namespace> -o yaml > release.yaml`
-  - Secrets backend: `kubectl get secret <release_version_secret_name> -n <tiller_namespace> -o yaml > release.yaml`
-- Backup the release incase you need to restore if something goes wrong:
+  - ConfigMap backend: `kubectl get configmap <release_configmap_name> -n <tiller_namespace> -o yaml > release.yaml`
+  - Secrets backend: `kubectl get secret <release_secret_name> -n <tiller_namespace> -o yaml > release.yaml`
+- Backup the release in case you need to restore if something goes wrong:
   - `cp release.yaml release.bak`
   - In case of emergency, restore: `kubectl apply -f release.bak -n <tiller_namespace>`
 - Decode the release object: 
