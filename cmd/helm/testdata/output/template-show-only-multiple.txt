@@ -1,11 +1,11 @@
 ---
-# Source: subchart1/templates/service.yaml
+# Source: subchart/templates/service.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: subchart1
+  name: subchart
   labels:
-    helm.sh/chart: "subchart1-0.1.0"
+    helm.sh/chart: "subchart-0.1.0"
     app.kubernetes.io/instance: "RELEASE-NAME"
     kube-version/major: "1"
     kube-version/minor: "18"
@@ -19,9 +19,9 @@ spec:
     protocol: TCP
     name: nginx
   selector:
-    app.kubernetes.io/name: subchart1
+    app.kubernetes.io/name: subchart
 ---
-# Source: subchart1/charts/subcharta/templates/service.yaml
+# Source: subchart/charts/subcharta/templates/service.yaml
 apiVersion: v1
 kind: Service
 metadata:
