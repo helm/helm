@@ -2,6 +2,7 @@
 
 - [Quick Start](quickstart.md) - Read me first!
 - [Installing Helm](install.md) - Install Helm and Tiller
+  - [Deprecated Kubernetes APIs](kubernetes_apis.md)
   - [Kubernetes Distribution Notes](kubernetes_distros.md)
   - [Frequently Asked Questions](install_faq.md)
 - [Using Helm](using_helm.md) - Learn the Helm tools
