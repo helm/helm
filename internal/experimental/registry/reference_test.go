@@ -116,4 +116,18 @@ func TestParseReference(t *testing.T) {
 	s = "localhost:5000/x/y/z:123:x:y"
 	_, err = ParseReference(s)
 	is.Error(err, "ref contains too many colons (4)")
+
+	s = "myrepo/mychart:1222222"
+	ref, err = ParseReference(s)
+	is.NoError(err)
+	is.Equal("myrepo/mychart", ref.Repo)
+	is.Equal("1222222", ref.Tag)
+	is.Equal("myrepo/mychart:1222222", ref.FullName())
+
+	s = "myrepo/mychart:5000:1222222"
+	ref, err = ParseReference(s)
+	is.NoError(err)
+	is.Equal("myrepo/mychart:5000", ref.Repo)
+	is.Equal("1222222", ref.Tag)
+	is.Equal("myrepo/mychart:5000:1222222", ref.FullName())
 }

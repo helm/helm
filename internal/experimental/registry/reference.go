@@ -135,11 +135,15 @@ func fixSplitComponents(c []string) []string {
 	if len(c) <= 1 {
 		return c
 	}
+
 	possiblePortParts := strings.Split(c[1], "/")
-	if _, err := strconv.Atoi(possiblePortParts[0]); err == nil {
+
+	if _, err := strconv.Atoi(possiblePortParts[0]); err == nil && len(possiblePortParts) > 1 {
 		components := []string{strings.Join(c[:2], ":")}
 		components = append(components, c[2:]...)
+
 		return components
 	}
+
 	return c
 }
