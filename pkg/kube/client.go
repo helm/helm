@@ -484,13 +484,30 @@ type UpdateOptions struct {
 func (c *Client) UpdateWithOptions(namespace string, originalReader, targetReader io.Reader, opts UpdateOptions) error {
 	original, err := c.BuildUnstructured(namespace, originalReader)
 	if err != nil {
-		return fmt.Errorf("failed decoding reader into objects: %s", err)
+		// Checking for removed Kubernetes API error so can provide a more informative error message to the user
+		// Ref: https://github.com/helm/helm/issues/7219
+		if strings.Contains(err.Error(), "unable to recognize \"\": no matches for kind") {
+			return fmt.Errorf("current release manifest contains removed kubernetes api(s) for this "+
+				"kubernetes version and it is therefore unable to build the kubernetes "+
+				"objects for performing the diff. error from kubernetes: %s", err)
+		} else {
+			return fmt.Errorf("failed decoding reader into objects: %s", err)
+		}
 	}
 
 	c.Log("building resources from updated manifest")
 	target, err := c.BuildUnstructured(namespace, targetReader)
 	if err != nil {
-		return fmt.Errorf("failed decoding reader into objects: %s", err)
+		// Checking for removed Kubernetes API error so can provide a more informative error message to the user
+		// Ref: https://github.com/helm/helm/issues/7219
+		if strings.Contains(err.Error(), "unable to recognize \"\": no matches for kind") {
+			return fmt.Errorf("new release manifest contains removed kubernetes api(s) for this "+
+				"kubernetes version and it is therefore unable to build the kubernetes "+
+				"objects for deployment. error from kubernetes: %s", err)
+
+		} else {
+			return fmt.Errorf("failed decoding reader into objects: %s", err)
+		}
 	}
 
 	newlyCreatedResources := []*resource.Info{}
