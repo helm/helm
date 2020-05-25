@@ -55,6 +55,24 @@ func TestRootCmd(t *testing.T) {
 			envvars:  map[string]string{xdg.DataHomeEnvVar: "/bar"},
 			dataPath: "/bar/helm",
 		},
+		{
+			name:      "with $HELM_CACHE_HOME set",
+			args:      "env",
+			envvars:   map[string]string{helmpath.CacheHomeEnvVar: "/foo/helm"},
+			cachePath: "/foo/helm",
+		},
+		{
+			name:       "with $HELM_CONFIG_HOME set",
+			args:       "env",
+			envvars:    map[string]string{helmpath.ConfigHomeEnvVar: "/foo/helm"},
+			configPath: "/foo/helm",
+		},
+		{
+			name:     "with $HELM_DATA_HOME set",
+			args:     "env",
+			envvars:  map[string]string{helmpath.DataHomeEnvVar: "/foo/helm"},
+			dataPath: "/foo/helm",
+		},
 	}
 
 	for _, tt := range tests {

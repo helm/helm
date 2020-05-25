@@ -29,9 +29,9 @@ var (
 	// DefaultCapabilities is the default set of capabilities.
 	DefaultCapabilities = &Capabilities{
 		KubeVersion: KubeVersion{
-			Version: "v1.16.0",
+			Version: "v1.18.0",
 			Major:   "1",
-			Minor:   "16",
+			Minor:   "18",
 		},
 		APIVersions: DefaultVersionSet,
 	}

@@ -33,7 +33,7 @@ import (
 	"helm.sh/helm/v3/pkg/chartutil"
 )
 
-// Engine is an implementation of 'cmd/tiller/environment'.Engine that uses Go templates.
+// Engine is an implementation of the Helm rendering implementation for templates.
 type Engine struct {
 	// If strict is enabled, template rendering will fail if a template references
 	// a value that was not passed in.

@@ -17,9 +17,11 @@ limitations under the License.
 package rules
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
@@ -35,6 +37,14 @@ var (
 	releaseTimeSearch = regexp.MustCompile(`\.Release\.Time`)
 )
 
+// validName is a regular expression for names.
+//
+// This is different than action.ValidName. It conforms to the regular expression
+// `kubectl` says it uses, plus it disallows empty names.
+//
+// For details, see https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+var validName = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$`)
+
 // Templates lints the templates in the Linter.
 func Templates(linter *support.Linter, values map[string]interface{}, namespace string, strict bool) {
 	path := "templates/"
@@ -47,7 +57,7 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 		return
 	}
 
-	// Load chart and parse templates, based on tiller/release_server
+	// Load chart and parse templates
 	chart, err := loader.Load(linter.ChartDir)
 
 	chartLoaded := linter.RunLinterRule(support.ErrorSev, path, err)
@@ -57,7 +67,7 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 	}
 
 	options := chartutil.ReleaseOptions{
-		Name:      "testRelease",
+		Name:      "test-release",
 		Namespace: namespace,
 	}
 
@@ -71,7 +81,6 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 		return
 	}
 	var e engine.Engine
-	e.Strict = strict
 	e.LintMode = true
 	renderedContentMap, err := e.Render(chart, valuesToRender)
 
@@ -111,14 +120,18 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 		// linter.RunLinterRule(support.WarningSev, path, validateQuotes(string(preExecutedTemplate)))
 
 		renderedContent := renderedContentMap[filepath.Join(chart.Name(), fileName)]
-		var yamlStruct K8sYamlStruct
-		// Even though K8sYamlStruct only defines Metadata namespace, an error in any other
-		// key will be raised as well
-		err := yaml.Unmarshal([]byte(renderedContent), &yamlStruct)
+		if strings.TrimSpace(renderedContent) != "" {
+			var yamlStruct K8sYamlStruct
+			// Even though K8sYamlStruct only defines a few fields, an error in any other
+			// key will be raised as well
+			err := yaml.Unmarshal([]byte(renderedContent), &yamlStruct)
 
-		// If YAML linting fails, we sill progress. So we don't capture the returned state
-		// on this linter run.
-		linter.RunLinterRule(support.ErrorSev, path, validateYamlContent(err))
+			// If YAML linting fails, we sill progress. So we don't capture the returned state
+			// on this linter run.
+			linter.RunLinterRule(support.ErrorSev, path, validateYamlContent(err))
+			linter.RunLinterRule(support.ErrorSev, path, validateMetadataName(&yamlStruct))
+			linter.RunLinterRule(support.ErrorSev, path, validateNoDeprecations(&yamlStruct))
+		}
 	}
 }
 
@@ -149,6 +162,15 @@ func validateYamlContent(err error) error {
 	return errors.Wrap(err, "unable to parse YAML")
 }
 
+func validateMetadataName(obj *K8sYamlStruct) error {
+	// This will return an error if the characters do not abide by the standard OR if the
+	// name is left empty.
+	if validName.MatchString(obj.Metadata.Name) {
+		return nil
+	}
+	return fmt.Errorf("object name does not conform to Kubernetes naming requirements: %q", obj.Metadata.Name)
+}
+
 func validateNoCRDHooks(manifest []byte) error {
 	if crdHookSearch.Match(manifest) {
 		return errors.New("manifest is a crd-install hook. This hook is no longer supported in v3 and all CRDs should also exist the crds/ directory at the top level of the chart")
@@ -164,9 +186,16 @@ func validateNoReleaseTime(manifest []byte) error {
 }
 
 // K8sYamlStruct stubs a Kubernetes YAML file.
-// Need to access for now to Namespace only
+//
+// DEPRECATED: In Helm 4, this will be made a private type, as it is for use only within
+// the rules package.
 type K8sYamlStruct struct {
-	Metadata struct {
-		Namespace string
-	}
+	APIVersion string `json:"apiVersion"`
+	Kind       string
+	Metadata   k8sYamlMetadata
+}
+
+type k8sYamlMetadata struct {
+	Namespace string
+	Name      string
 }

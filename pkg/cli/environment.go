@@ -105,6 +105,9 @@ func envOr(name, def string) string {
 func (s *EnvSettings) EnvVars() map[string]string {
 	envvars := map[string]string{
 		"HELM_BIN":               os.Args[0],
+		"HELM_CACHE_HOME":        helmpath.CachePath(""),
+		"HELM_CONFIG_HOME":       helmpath.ConfigPath(""),
+		"HELM_DATA_HOME":         helmpath.DataPath(""),
 		"HELM_DEBUG":             fmt.Sprint(s.Debug),
 		"HELM_PLUGINS":           s.PluginsDirectory,
 		"HELM_REGISTRY_CONFIG":   s.RegistryConfig,

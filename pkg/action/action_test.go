@@ -316,3 +316,40 @@ func TestGetVersionSet(t *testing.T) {
 		t.Error("Non-existent version is reported found.")
 	}
 }
+
+// TestValidName is a regression test for ValidName
+//
+// Kubernetes has strict naming conventions for resource names. This test represents
+// those conventions.
+//
+// See https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+//
+// NOTE: At the time of this writing, the docs above say that names cannot begin with
+// digits. However, `kubectl`'s regular expression explicit allows this, and
+// Kubernetes (at least as of 1.18) also accepts resources whose names begin with digits.
+func TestValidName(t *testing.T) {
+	names := map[string]bool{
+		"":                          false,
+		"foo":                       true,
+		"foo.bar1234baz.seventyone": true,
+		"FOO":                       false,
+		"123baz":                    true,
+		"foo.BAR.baz":               false,
+		"one-two":                   true,
+		"-two":                      false,
+		"one_two":                   false,
+		"a..b":                      false,
+		"%^&#$%*@^*@&#^":            false,
+		"example:com":               false,
+		"example%%com":              false,
+	}
+	for input, expectPass := range names {
+		if ValidName.MatchString(input) != expectPass {
+			st := "fail"
+			if expectPass {
+				st = "succeed"
+			}
+			t.Errorf("Expected %q to %s", input, st)
+		}
+	}
+}

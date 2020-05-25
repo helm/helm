@@ -19,6 +19,8 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -47,6 +49,25 @@ func TestUpdateCmd(t *testing.T) {
 
 	if got := out.String(); !strings.Contains(got, "charts") {
 		t.Errorf("Expected 'charts' got %q", got)
+	}
+}
+
+func TestUpdateCustomCacheCmd(t *testing.T) {
+	var out bytes.Buffer
+	rootDir := ensure.TempDir(t)
+	cachePath := filepath.Join(rootDir, "updcustomcache")
+	_ = os.Mkdir(cachePath, os.ModePerm)
+	defer os.RemoveAll(cachePath)
+	o := &repoUpdateOptions{
+		update:    updateCharts,
+		repoFile:  "testdata/repositories.yaml",
+		repoCache: cachePath,
+	}
+	if err := o.run(&out); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(cachePath, "charts-index.yaml")); err != nil {
+		t.Fatalf("error finding created index file in custom cache: %#v", err)
 	}
 }
 
