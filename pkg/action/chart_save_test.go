@@ -19,6 +19,7 @@ package action
 import (
 	"io/ioutil"
 	"testing"
+	"time"
 
 	"helm.sh/helm/v3/internal/experimental/registry"
 )
@@ -66,5 +67,50 @@ func TestChartSave(t *testing.T) {
 	ref.Tag = "0.1.0"
 	if _, err := action.cfg.RegistryClient.LoadChart(ref); err != nil {
 		t.Error(err)
+	}
+}
+
+func TestIdenticalDigests(t *testing.T) {
+	ref1String := "localhost:5000/test1:0.2.0"
+	ref2String := "localhost:5000/test2:0.2.0"
+
+	tmpDir, err := ioutil.TempDir("", "helm-digest-test")
+	if err != nil {
+		t.Error(err)
+	}
+
+	cache, err := registry.NewCache(
+		registry.CacheOptRoot(tmpDir),
+	)
+	if err != nil {
+		t.Error(err)
+	}
+
+	input := buildChart()
+
+	ref1, err := registry.ParseReference(ref1String)
+	if err != nil {
+		t.Error(err)
+	}
+
+	ref2, err := registry.ParseReference(ref2String)
+	if err != nil {
+		t.Error(err)
+	}
+
+	sum1, err := cache.StoreReference(ref1, input)
+	if err != nil {
+		t.Error(err)
+	}
+
+	time.Sleep(1 * time.Second)
+
+	sum2, err := cache.StoreReference(ref2, input)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if a, b := string(sum1.Digest), string(sum2.Digest); a != b {
+		t.Fatalf("digest %s and digest %s do not match", a, b)
 	}
 }
