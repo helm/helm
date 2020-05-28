@@ -357,6 +357,8 @@ func (cache *Cache) fetchBlob(desc *ocispec.Descriptor) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer reader.Close()
+
 	bytes := make([]byte, desc.Size)
 	_, err = reader.ReadAt(bytes, 0)
 	if err != nil {
