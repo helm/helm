@@ -41,8 +41,8 @@ func addValueOptionsFlags(f *pflag.FlagSet, v *values.Options) {
 }
 
 func addChartPathOptionsFlags(f *pflag.FlagSet, c *action.ChartPathOptions) {
-	f.StringVar(&c.Version, "version", "", "specify the exact chart version to install. If this is not specified, the latest version is installed")
-	f.BoolVar(&c.Verify, "verify", false, "verify the package before installing it")
+	f.StringVar(&c.Version, "version", "", "specify the exact chart version to use. If this is not specified, the latest version is used")
+	f.BoolVar(&c.Verify, "verify", false, "verify the package before using it")
 	f.StringVar(&c.Keyring, "keyring", defaultKeyring(), "location of public keys used for verification")
 	f.StringVar(&c.RepoURL, "repo", "", "chart repository url where to locate the requested chart")
 	f.StringVar(&c.Username, "username", "", "chart repository username where to locate the requested chart")
