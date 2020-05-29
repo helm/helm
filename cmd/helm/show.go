@@ -136,7 +136,8 @@ func newShowCmd(out io.Writer) *cobra.Command {
 
 	cmds := []*cobra.Command{all, readmeSubCmd, valuesSubCmd, chartSubCmd}
 	for _, subCmd := range cmds {
-		addShowFlags(showCommand, subCmd, client)
+		addShowFlags(subCmd, client)
+		showCommand.AddCommand(subCmd)
 
 		// Register the completion function for each subcommand
 		completion.RegisterValidArgsFunc(subCmd, validArgsFunc)
@@ -145,12 +146,11 @@ func newShowCmd(out io.Writer) *cobra.Command {
 	return showCommand
 }
 
-func addShowFlags(showCmd *cobra.Command, subCmd *cobra.Command, client *action.Show) {
+func addShowFlags(subCmd *cobra.Command, client *action.Show) {
 	f := subCmd.Flags()
 
 	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored")
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
-	showCmd.AddCommand(subCmd)
 }
 
 func runShow(args []string, client *action.Show) (string, error) {
