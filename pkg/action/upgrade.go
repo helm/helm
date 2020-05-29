@@ -29,6 +29,7 @@ import (
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/cli/files"
 	"helm.sh/helm/v3/pkg/kube"
 	"helm.sh/helm/v3/pkg/postrender"
 	"helm.sh/helm/v3/pkg/release"
@@ -96,6 +97,7 @@ type Upgrade struct {
 	PostRenderer postrender.PostRenderer
 	// DisableOpenAPIValidation controls whether OpenAPI validation is enforced.
 	DisableOpenAPIValidation bool
+	ExternalFiles            files.ExternalFiles
 }
 
 // NewUpgrade creates a new Upgrade object with the given configuration.
