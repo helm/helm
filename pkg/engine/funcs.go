@@ -53,6 +53,7 @@ func funcMap() template.FuncMap {
 		"fromYaml":      fromYAML,
 		"fromYamlArray": fromYAMLArray,
 		"toJson":        toJSON,
+		"toJsonPretty":  toJSONPretty,
 		"fromJson":      fromJSON,
 		"fromJsonArray": fromJSONArray,
 
@@ -139,6 +140,20 @@ func toTOML(v interface{}) string {
 // This is designed to be called from a template.
 func toJSON(v interface{}) string {
 	data, err := json.Marshal(v)
+	if err != nil {
+		// Swallow errors inside of a template.
+		return ""
+	}
+	return string(data)
+}
+
+// toJSONPretty takes an interface, marshals it to json (with indent of two
+// spaces, and returns a string. It will always return a string, even on marshal
+// error (empty string).
+//
+// This is designed to be called from a template.
+func toJSONPretty(v interface{}) string {
+	data, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		// Swallow errors inside of a template.
 		return ""

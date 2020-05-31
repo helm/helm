@@ -41,6 +41,10 @@ func TestFuncs(t *testing.T) {
 		tpl:    `{{ toJson . }}`,
 		expect: `{"foo":"bar"}`,
 		vars:   map[string]interface{}{"foo": "bar"},
+	}, {}, {
+		tpl:    `{{ toJsonPretty . }}`,
+		expect: "{\n  \"foo\": \"bar\"\n}",
+		vars:   map[string]interface{}{"foo": "bar"},
 	}, {
 		tpl:    `{{ fromYaml . }}`,
 		expect: "map[hello:world]",

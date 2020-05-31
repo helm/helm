@@ -70,7 +70,7 @@ func TestFuncMap(t *testing.T) {
 	}
 
 	// Test for Engine-specific template functions.
-	expect := []string{"include", "required", "tpl", "toYaml", "fromYaml", "toToml", "toJson", "fromJson", "lookup"}
+	expect := []string{"include", "required", "tpl", "toYaml", "fromYaml", "toToml", "toJson", "toJsonPretty", "fromJson", "lookup"}
 	for _, f := range expect {
 		if _, ok := fns[f]; !ok {
 			t.Errorf("Expected add-on function %q", f)
@@ -89,6 +89,7 @@ func TestRender(t *testing.T) {
 			{Name: "templates/test2", Data: []byte("{{.Values.global.callme | lower }}")},
 			{Name: "templates/test3", Data: []byte("{{.noValue}}")},
 			{Name: "templates/test4", Data: []byte("{{toJson .Values}}")},
+			{Name: "templates/test5", Data: []byte("{{toJsonPretty .Values}}")},
 		},
 		Values: map[string]interface{}{"outer": "DEFAULT", "inner": "DEFAULT"},
 	}
