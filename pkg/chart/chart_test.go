@@ -97,6 +97,32 @@ func TestMetadata(t *testing.T) {
 	is.Equal(nil, chrt.Validate())
 }
 
+func TestRoot(t *testing.T) {
+	chrt1 := Chart{
+		Metadata: &Metadata{
+			Name: "foo",
+		},
+	}
+
+	chrt2 := Chart{
+		Metadata: &Metadata{
+			Name: "foo",
+		},
+		parent: &chrt1,
+	}
+
+	chrt3 := Chart{
+		Metadata: &Metadata{
+			Name: "foo",
+		},
+		parent: &chrt2,
+	}
+
+	is := assert.New(t)
+
+	is.Equal(&chrt1, chrt3.Root())
+}
+
 func TestIsRoot(t *testing.T) {
 	chrt1 := Chart{
 		parent: &Chart{
