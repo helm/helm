@@ -571,7 +571,7 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 	if err == nil {
 		return
 	}
-	err = errors.Errorf("chart %s not found in %s", name, repoURL)
+	err = errors.Errorf("chart %s not found in %s: %s", name, repoURL, err)
 	return
 }
 
