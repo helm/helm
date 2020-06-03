@@ -121,6 +121,11 @@ func TestTemplateCmd(t *testing.T) {
 			wantError: true,
 			golden:    "output/template-with-invalid-yaml-debug.txt",
 		},
+		{
+			name:   "chart with template with external file",
+			cmd:    fmt.Sprintf("template '%s' --include-file external.txt=testdata/external.txt", "testdata/testcharts/configmap"),
+			golden: "output/template-with-external-file.txt",
+		},
 	}
 	runTestCmd(t, tests)
 }
