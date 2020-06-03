@@ -24,10 +24,15 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/containerd/containerd/errdefs"
 
 	auth "github.com/deislabs/oras/pkg/auth/docker"
 	"github.com/docker/distribution/configuration"
@@ -49,10 +54,11 @@ var (
 
 type RegistryClientTestSuite struct {
 	suite.Suite
-	Out                io.Writer
-	DockerRegistryHost string
-	CacheRootDir       string
-	RegistryClient     *Client
+	Out                     io.Writer
+	DockerRegistryHost      string
+	CompromisedRegistryHost string
+	CacheRootDir            string
+	RegistryClient          *Client
 }
 
 func (suite *RegistryClientTestSuite) SetupSuite() {
@@ -115,6 +121,8 @@ func (suite *RegistryClientTestSuite) SetupSuite() {
 	}
 	dockerRegistry, err := registry.NewRegistry(context.Background(), config)
 	suite.Nil(err, "no error creating test registry")
+
+	suite.CompromisedRegistryHost = initCompromisedRegistryTestServer()
 
 	// Start Docker registry
 	go dockerRegistry.ListenAndServe()
@@ -232,6 +240,16 @@ func (suite *RegistryClientTestSuite) Test_7_Logout() {
 	suite.Nil(err, "no error logging out of registry")
 }
 
+func (suite *RegistryClientTestSuite) Test_8_ManInTheMiddle() {
+	ref, err := ParseReference(fmt.Sprintf("%s/testrepo/supposedlysafechart:9.9.9", suite.CompromisedRegistryHost))
+	suite.Nil(err)
+
+	// returns content that does not match the expected digest
+	err = suite.RegistryClient.PullChart(ref)
+	suite.NotNil(err)
+	suite.True(errdefs.IsFailedPrecondition(err))
+}
+
 func TestRegistryClientTestSuite(t *testing.T) {
 	suite.Run(t, new(RegistryClientTestSuite))
 }
@@ -249,4 +267,44 @@ func getFreePort() (int, error) {
 	}
 	defer l.Close()
 	return l.Addr().(*net.TCPAddr).Port, nil
+}
+
+func initCompromisedRegistryTestServer() string {
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "manifests") {
+			w.Header().Set("Content-Type", "application/vnd.oci.image.manifest.v1+json")
+			w.WriteHeader(200)
+
+			// layers[0] is the blob []byte("a")
+			w.Write([]byte(
+				`{ "schemaVersion": 2, "config": {
+    "mediaType": "application/vnd.cncf.helm.config.v1+json",
+    "digest": "sha256:a705ee2789ab50a5ba20930f246dbd5cc01ff9712825bb98f57ee8414377f133",
+    "size": 181
+  },
+  "layers": [
+    {
+      "mediaType": "application/tar+gzip",
+      "digest": "sha256:ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+      "size": 1
+    }
+  ]
+}`))
+		} else if r.URL.Path == "/v2/testrepo/supposedlysafechart/blobs/sha256:a705ee2789ab50a5ba20930f246dbd5cc01ff9712825bb98f57ee8414377f133" {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(200)
+			w.Write([]byte("{\"name\":\"mychart\",\"version\":\"0.1.0\",\"description\":\"A Helm chart for Kubernetes\\n" +
+				"an 'application' or a 'library' chart.\",\"apiVersion\":\"v2\",\"appVersion\":\"1.16.0\",\"type\":" +
+				"\"application\"}"))
+		} else if r.URL.Path == "/v2/testrepo/supposedlysafechart/blobs/sha256:ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb" {
+			w.Header().Set("Content-Type", "application/tar+gzip")
+			w.WriteHeader(200)
+			w.Write([]byte("b"))
+		} else {
+			w.WriteHeader(500)
+		}
+	}))
+
+	u, _ := url.Parse(s.URL)
+	return fmt.Sprintf("localhost:%s", u.Port())
 }
