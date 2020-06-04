@@ -17,9 +17,12 @@ limitations under the License.
 package lint
 
 import (
+	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 
+	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/lint/support"
 )
 
@@ -93,7 +96,7 @@ func TestBadValues(t *testing.T) {
 	if len(m) < 1 {
 		t.Fatalf("All didn't fail with expected errors, got %#v", m)
 	}
-	if !strings.Contains(m[0].Err.Error(), "cannot unmarshal") {
+	if !strings.Contains(m[0].Err.Error(), "unable to parse YAML") {
 		t.Errorf("All didn't have the error for invalid key format: %s", m[0].Err)
 	}
 }
@@ -101,6 +104,39 @@ func TestBadValues(t *testing.T) {
 func TestGoodChart(t *testing.T) {
 	m := All(goodChartDir, values, namespace, strict).Messages
 	if len(m) != 0 {
-		t.Errorf("All failed but shouldn't have: %#v", m)
+		t.Error("All returned linter messages when it shouldn't have")
+		for i, msg := range m {
+			t.Logf("Message %d: %s", i, msg)
+		}
+	}
+}
+
+// TestHelmCreateChart tests that a `helm create` always passes a `helm lint` test.
+//
+// See https://github.com/helm/helm/issues/7923
+func TestHelmCreateChart(t *testing.T) {
+	dir, err := ioutil.TempDir("", "-helm-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	createdChart, err := chartutil.Create("testhelmcreatepasseslint", dir)
+	if err != nil {
+		t.Error(err)
+		// Fatal is bad because of the defer.
+		return
+	}
+
+	// Note: we test with strict=true here, even though others have
+	// strict = false.
+	m := All(createdChart, values, namespace, true).Messages
+	if ll := len(m); ll != 1 {
+		t.Errorf("All should have had exactly 1 error. Got %d", ll)
+		for i, msg := range m {
+			t.Logf("Message %d: %s", i, msg.Error())
+		}
+	} else if msg := m[0].Err.Error(); !strings.Contains(msg, "icon is recommended") {
+		t.Errorf("Unexpected lint error: %s", msg)
 	}
 }

@@ -32,7 +32,6 @@ import (
 	// Import to initialize client auth plugins.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
-	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/gates"
@@ -44,9 +43,7 @@ import (
 // FeatureGateOCI is the feature gate for checking if `helm chart` and `helm registry` commands should work
 const FeatureGateOCI = gates.Gate("HELM_EXPERIMENTAL_OCI")
 
-var (
-	settings = cli.New()
-)
+var settings = cli.New()
 
 func init() {
 	log.SetFlags(log.Lshortfile)
@@ -77,23 +74,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	if calledCmd, _, err := cmd.Find(os.Args[1:]); err == nil && calledCmd.Name() == completion.CompRequestCmd {
-		// If completion is being called, we have to check if the completion is for the "--kube-context"
-		// value; if it is, we cannot call the action.Init() method with an incomplete kube-context value
-		// or else it will fail immediately.  So, we simply unset the invalid kube-context value.
-		if args := os.Args[1:]; len(args) > 2 && args[len(args)-2] == "--kube-context" {
-			// We are completing the kube-context value!  Reset it as the current value is not valid.
-			settings.KubeContext = ""
+	// run when each command's execute method is called
+	cobra.OnInitialize(func() {
+		helmDriver := os.Getenv("HELM_DRIVER")
+		if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), helmDriver, debug); err != nil {
+			log.Fatal(err)
 		}
-	}
-
-	helmDriver := os.Getenv("HELM_DRIVER")
-	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), helmDriver, debug); err != nil {
-		log.Fatal(err)
-	}
-	if helmDriver == "memory" {
-		loadReleasesInMemory(actionConfig)
-	}
+		if helmDriver == "memory" {
+			loadReleasesInMemory(actionConfig)
+		}
+	})
 
 	if err := cmd.Execute(); err != nil {
 		debug("%+v", err)

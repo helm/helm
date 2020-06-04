@@ -53,9 +53,10 @@ func TestProviders(t *testing.T) {
 }
 
 func TestAll(t *testing.T) {
-	all := All(&cli.EnvSettings{
-		PluginsDirectory: pluginDir,
-	})
+	env := cli.New()
+	env.PluginsDirectory = pluginDir
+
+	all := All(env)
 	if len(all) != 3 {
 		t.Errorf("expected 3 providers (default plus two plugins), got %d", len(all))
 	}
@@ -66,9 +67,10 @@ func TestAll(t *testing.T) {
 }
 
 func TestByScheme(t *testing.T) {
-	g := All(&cli.EnvSettings{
-		PluginsDirectory: pluginDir,
-	})
+	env := cli.New()
+	env.PluginsDirectory = pluginDir
+
+	g := All(env)
 	if _, err := g.ByScheme("test"); err != nil {
 		t.Error(err)
 	}

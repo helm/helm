@@ -22,7 +22,7 @@ import (
 	"testing"
 )
 
-var chartPath = "./../../pkg/chartutil/testdata/subpop/charts/subchart1"
+var chartPath = "testdata/testcharts/subchart"
 
 func TestTemplateCmd(t *testing.T) {
 	tests := []cmdTestCase{
@@ -93,6 +93,13 @@ func TestTemplateCmd(t *testing.T) {
 			name:   "template with show-only multiple",
 			cmd:    fmt.Sprintf("template '%s' --show-only templates/service.yaml --show-only charts/subcharta/templates/service.yaml", chartPath),
 			golden: "output/template-show-only-multiple.txt",
+		},
+		{
+			name:   "template with show-only glob",
+			cmd:    fmt.Sprintf("template '%s' --show-only templates/subdir/role*", chartPath),
+			golden: "output/template-show-only-glob.txt",
+			// Repeat to ensure manifest ordering regressions are caught
+			repeat: 10,
 		},
 		{
 			name:   "sorted output of manifests (order of filenames, then order of objects within each YAML file)",

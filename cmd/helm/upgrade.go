@@ -75,24 +75,10 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.Namespace = settings.Namespace()
 
-			if client.Version == "" && client.Devel {
-				debug("setting version to >0.0.0-0")
-				client.Version = ">0.0.0-0"
-			}
-
-			vals, err := valueOpts.MergeValues(getter.All(settings))
-			if err != nil {
-				return err
-			}
-
-			chartPath, err := client.ChartPathOptions.LocateChart(args[1], settings)
-			if err != nil {
-				return err
-			}
-
+			// Fixes #7002 - Support reading values from STDIN for `upgrade` command
+			// Must load values AFTER determining if we have to call install so that values loaded from stdin are are not read twice
 			if client.Install {
-				// If a release does not exist, install it. If another error occurs during
-				// the check, ignore the error and continue with the upgrade.
+				// If a release does not exist, install it.
 				histClient := action.NewHistory(cfg)
 				histClient.Max = 1
 				if _, err := histClient.Run(args[0]); err == driver.ErrReleaseNotFound {
@@ -105,6 +91,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.ChartPathOptions = client.ChartPathOptions
 					instClient.DryRun = client.DryRun
 					instClient.DisableHooks = client.DisableHooks
+					instClient.SkipCRDs = client.SkipCRDs
 					instClient.Timeout = client.Timeout
 					instClient.Wait = client.Wait
 					instClient.Devel = client.Devel
@@ -112,13 +99,31 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.Atomic = client.Atomic
 					instClient.PostRenderer = client.PostRenderer
 					instClient.DisableOpenAPIValidation = client.DisableOpenAPIValidation
+					instClient.SubNotes = client.SubNotes
 
 					rel, err := runInstall(args, instClient, valueOpts, out)
 					if err != nil {
 						return err
 					}
 					return outfmt.Write(out, &statusPrinter{rel, settings.Debug})
+				} else if err != nil {
+					return err
 				}
+			}
+
+			if client.Version == "" && client.Devel {
+				debug("setting version to >0.0.0-0")
+				client.Version = ">0.0.0-0"
+			}
+
+			chartPath, err := client.ChartPathOptions.LocateChart(args[1], settings)
+			if err != nil {
+				return err
+			}
+
+			vals, err := valueOpts.MergeValues(getter.All(settings))
+			if err != nil {
+				return err
 			}
 
 			// Check chart dependencies to make sure all are present in /charts
@@ -170,6 +175,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.Force, "force", false, "force resource updates through a replacement strategy")
 	f.BoolVar(&client.DisableHooks, "no-hooks", false, "disable pre/post upgrade hooks")
 	f.BoolVar(&client.DisableOpenAPIValidation, "disable-openapi-validation", false, "if set, the upgrade process will not validate rendered templates against the Kubernetes OpenAPI Schema")
+	f.BoolVar(&client.SkipCRDs, "skip-crds", false, "if set, no CRDs will be installed when an upgrade is performed with install flag enabled. By default, CRDs are installed if not already present, when an upgrade is performed with install flag enabled")
 	f.DurationVar(&client.Timeout, "timeout", 300*time.Second, "time to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&client.ResetValues, "reset-values", false, "when upgrading, reset the values to the ones built into the chart")
 	f.BoolVar(&client.ReuseValues, "reuse-values", false, "when upgrading, reuse the last release's values and merge in any overrides from the command line via --set and -f. If '--reset-values' is specified, this is ignored")

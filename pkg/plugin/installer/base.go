@@ -16,7 +16,6 @@ limitations under the License.
 package installer // import "helm.sh/helm/v3/pkg/plugin/installer"
 
 import (
-	"os"
 	"path/filepath"
 
 	"helm.sh/helm/v3/pkg/helmpath"
@@ -31,13 +30,7 @@ func newBase(source string) base {
 	return base{source}
 }
 
-// link creates a symlink from the plugin source to the base path.
-func (b *base) link(from string) error {
-	debug("symlinking %s to %s", from, b.Path())
-	return os.Symlink(from, b.Path())
-}
-
-// Path is where the plugin will be symlinked to.
+// Path is where the plugin will be installed.
 func (b *base) Path() string {
 	if b.Source == "" {
 		return ""

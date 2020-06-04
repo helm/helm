@@ -60,6 +60,7 @@ or
     $ helm install --set-string long_int=1234567890 myredis ./redis
 
 or
+
     $ helm install --set-file my_script=dothings.sh myredis ./redis
 
 You can specify the '--values'/'-f' flag multiple times. The priority will be given to the
@@ -148,7 +149,7 @@ func addInstallFlags(f *pflag.FlagSet, client *action.Install, valueOpts *values
 	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored")
 	f.BoolVar(&client.DependencyUpdate, "dependency-update", false, "run helm dependency update before installing the chart")
 	f.BoolVar(&client.DisableOpenAPIValidation, "disable-openapi-validation", false, "if set, the installation process will not validate rendered templates against the Kubernetes OpenAPI Schema")
-	f.BoolVar(&client.Atomic, "atomic", false, "if set, installation process purges chart on fail. The --wait flag will be set automatically if --atomic is used")
+	f.BoolVar(&client.Atomic, "atomic", false, "if set, the installation process deletes the installation on failure. The --wait flag will be set automatically if --atomic is used")
 	f.BoolVar(&client.SkipCRDs, "skip-crds", false, "if set, no CRDs will be installed. By default, CRDs are installed if not already present")
 	f.BoolVar(&client.SubNotes, "render-subchart-notes", false, "if set, render subchart notes along with the parent")
 	addValueOptionsFlags(f, valueOpts)
@@ -210,9 +211,14 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 					Getters:          p,
 					RepositoryConfig: settings.RepositoryConfig,
 					RepositoryCache:  settings.RepositoryCache,
+					Debug:            settings.Debug,
 				}
 				if err := man.Update(); err != nil {
 					return nil, err
+				}
+				// Reload the chart with the updated Chart.lock file.
+				if chartRequested, err = loader.Load(cp); err != nil {
+					return nil, errors.Wrap(err, "failed reloading chart after repo update")
 				}
 			} else {
 				return nil, err

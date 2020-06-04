@@ -33,12 +33,21 @@ Show the version for Helm.
 This will print a representation the version of Helm.
 The output will look something like this:
 
-version.BuildInfo{Version:"v2.0.0", GitCommit:"ff52399e51bb880526e9cd0ed8386f6433b74da1", GitTreeState:"clean"}
+version.BuildInfo{Version:"v3.2.1", GitCommit:"fe51cd1e31e6a202cba7dead9552a6d418ded79a", GitTreeState:"clean", GoVersion:"go1.13.10"}
 
 - Version is the semantic version of the release.
 - GitCommit is the SHA for the commit that this version was built from.
 - GitTreeState is "clean" if there are no local code changes when this binary was
   built, and "dirty" if the binary was built from locally modified code.
+- GoVersion is the version of Go that was used to compile Helm.
+
+When using the --template flag the following properties are available to use in
+the template:
+
+- .Version contains the semantic version of Helm
+- .GitCommit is the git commit
+- .GitTreeState is the state of the git tree when Helm was built
+- .GoVersion contains the version of Go that Helm was compiled with
 `
 
 type versionOptions struct {

@@ -53,6 +53,8 @@ const (
 	ServiceName = TemplatesDir + sep + "service.yaml"
 	// ServiceAccountName is the name of the example serviceaccount file.
 	ServiceAccountName = TemplatesDir + sep + "serviceaccount.yaml"
+	// HorizontalPodAutoscalerName is the name of the example hpa file.
+	HorizontalPodAutoscalerName = TemplatesDir + sep + "hpa.yaml"
 	// NotesName is the name of the example NOTES.txt file.
 	NotesName = TemplatesDir + sep + "NOTES.txt"
 	// HelpersName is the name of the example helpers file.
@@ -79,10 +81,12 @@ type: application
 
 # This is the chart version. This version number should be incremented each time you make changes
 # to the chart and its templates, including the app version.
+# Versions are expected to follow Semantic Versioning (https://semver.org/)
 version: 0.1.0
 
 # This is the version number of the application being deployed. This version number should be
-# incremented each time you make changes to the application.
+# incremented each time you make changes to the application. Versions are not expected to
+# follow Semantic Versioning. They should reflect the version the application is using.
 appVersion: 1.16.0
 `
 
@@ -95,6 +99,8 @@ replicaCount: 1
 image:
   repository: nginx
   pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
 
 imagePullSecrets: []
 nameOverride: ""
@@ -107,7 +113,9 @@ serviceAccount:
   annotations: {}
   # The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
-  name:
+  name: ""
+
+podAnnotations: {}
 
 podSecurityContext: {}
   # fsGroup: 2000
@@ -148,6 +156,13 @@ resources: {}
   # requests:
   #   cpu: 100m
   #   memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
 
 nodeSelector: {}
 
@@ -199,29 +214,29 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-{{- if .Values.ingress.tls }}
+  {{- if .Values.ingress.tls }}
   tls:
-  {{- range .Values.ingress.tls }}
+    {{- range .Values.ingress.tls }}
     - hosts:
-      {{- range .hosts }}
+        {{- range .hosts }}
         - {{ . | quote }}
-      {{- end }}
+        {{- end }}
       secretName: {{ .secretName }}
+    {{- end }}
   {{- end }}
-{{- end }}
   rules:
-  {{- range .Values.ingress.hosts }}
+    {{- range .Values.ingress.hosts }}
     - host: {{ .host | quote }}
       http:
         paths:
-        {{- range .paths }}
+          {{- range .paths }}
           - path: {{ . }}
             backend:
               serviceName: {{ $fullName }}
               servicePort: {{ $svcPort }}
-        {{- end }}
+          {{- end }}
+    {{- end }}
   {{- end }}
-{{- end }}
 `
 
 const defaultDeployment = `apiVersion: apps/v1
@@ -231,19 +246,25 @@ metadata:
   labels:
     {{- include "<CHARTNAME>.labels" . | nindent 4 }}
 spec:
+{{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
+{{- end }}
   selector:
     matchLabels:
       {{- include "<CHARTNAME>.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+    {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
       labels:
         {{- include "<CHARTNAME>.selectorLabels" . | nindent 8 }}
     spec:
-    {{- with .Values.imagePullSecrets }}
+      {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
-    {{- end }}
+      {{- end }}
       serviceAccountName: {{ include "<CHARTNAME>.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
@@ -251,7 +272,7 @@ spec:
         - name: {{ .Chart.Name }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.image.repository }}:{{ .Chart.AppVersion }}"
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
@@ -271,14 +292,14 @@ spec:
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-    {{- with .Values.affinity }}
+      {{- with .Values.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
-    {{- end }}
-    {{- with .Values.tolerations }}
+      {{- end }}
+      {{- with .Values.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
-    {{- end }}
+      {{- end }}
 `
 
 const defaultService = `apiVersion: v1
@@ -309,7 +330,37 @@ metadata:
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
-{{- end -}}
+{{- end }}
+`
+
+const defaultHorizontalPodAutoscaler = `{{- if .Values.autoscaling.enabled }}
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "<CHARTNAME>.fullname" . }}
+  labels:
+    {{- include "<CHARTNAME>.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "<CHARTNAME>.fullname" . }}
+  minReplicas: {{ .Values.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.maxReplicas }}
+  metrics:
+  {{- if .Values.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        targetAverageUtilization: {{ .Values.autoscaling.targetCPUUtilizationPercentage }}
+  {{- end }}
+  {{- if .Values.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        targetAverageUtilization: {{ .Values.autoscaling.targetMemoryUtilizationPercentage }}
+  {{- end }}
+{{- end }}
 `
 
 const defaultNotes = `1. Get the application URL by running these commands:
@@ -340,8 +391,8 @@ const defaultHelpers = `{{/* vim: set filetype=mustache: */}}
 Expand the name of the chart.
 */}}
 {{- define "<CHARTNAME>.name" -}}
-{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
-{{- end -}}
+{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
+{{- end }}
 
 {{/*
 Create a default fully qualified app name.
@@ -349,24 +400,24 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 If release name contains chart name it will be used as a full name.
 */}}
 {{- define "<CHARTNAME>.fullname" -}}
-{{- if .Values.fullnameOverride -}}
-{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" -}}
-{{- else -}}
-{{- $name := default .Chart.Name .Values.nameOverride -}}
-{{- if contains $name .Release.Name -}}
-{{- .Release.Name | trunc 63 | trimSuffix "-" -}}
-{{- else -}}
-{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
-{{- end -}}
-{{- end -}}
-{{- end -}}
+{{- if .Values.fullnameOverride }}
+{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
+{{- else }}
+{{- $name := default .Chart.Name .Values.nameOverride }}
+{{- if contains $name .Release.Name }}
+{{- .Release.Name | trunc 63 | trimSuffix "-" }}
+{{- else }}
+{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" }}
+{{- end }}
+{{- end }}
+{{- end }}
 
 {{/*
 Create chart name and version as used by the chart label.
 */}}
 {{- define "<CHARTNAME>.chart" -}}
-{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" -}}
-{{- end -}}
+{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
+{{- end }}
 
 {{/*
 Common labels
@@ -378,7 +429,7 @@ helm.sh/chart: {{ include "<CHARTNAME>.chart" . }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
-{{- end -}}
+{{- end }}
 
 {{/*
 Selector labels
@@ -386,18 +437,18 @@ Selector labels
 {{- define "<CHARTNAME>.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
-{{- end -}}
+{{- end }}
 
 {{/*
 Create the name of the service account to use
 */}}
 {{- define "<CHARTNAME>.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create -}}
-    {{ default (include "<CHARTNAME>.fullname" .) .Values.serviceAccount.name }}
-{{- else -}}
-    {{ default "default" .Values.serviceAccount.name }}
-{{- end -}}
-{{- end -}}
+{{- if .Values.serviceAccount.create }}
+{{- default (include "<CHARTNAME>.fullname" .) .Values.serviceAccount.name }}
+{{- else }}
+{{- default "default" .Values.serviceAccount.name }}
+{{- end }}
+{{- end }}
 `
 
 const defaultTestConnection = `apiVersion: v1
@@ -525,6 +576,11 @@ func Create(name, dir string) (string, error) {
 			// serviceaccount.yaml
 			path:    filepath.Join(cdir, ServiceAccountName),
 			content: transform(defaultServiceAccount, name),
+		},
+		{
+			// hpa.yaml
+			path:    filepath.Join(cdir, HorizontalPodAutoscalerName),
+			content: transform(defaultHorizontalPodAutoscaler, name),
 		},
 		{
 			// NOTES.txt

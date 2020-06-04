@@ -74,18 +74,18 @@ func TestResolve(t *testing.T) {
 		{
 			name: "repo from valid local path",
 			req: []*chart.Dependency{
-				{Name: "signtest", Repository: "file://../../../../cmd/helm/testdata/testcharts/signtest", Version: "0.1.0"},
+				{Name: "base", Repository: "file://base", Version: "0.1.0"},
 			},
 			expect: &chart.Lock{
 				Dependencies: []*chart.Dependency{
-					{Name: "signtest", Repository: "file://../../../../cmd/helm/testdata/testcharts/signtest", Version: "0.1.0"},
+					{Name: "base", Repository: "file://base", Version: "0.1.0"},
 				},
 			},
 		},
 		{
 			name: "repo from invalid local path",
 			req: []*chart.Dependency{
-				{Name: "notexist", Repository: "file://../testdata/notexist", Version: "0.1.0"},
+				{Name: "notexist", Repository: "file://testdata/notexist", Version: "0.1.0"},
 			},
 			err: true,
 		},
@@ -232,9 +232,9 @@ func TestGetLocalPath(t *testing.T) {
 		},
 		{
 			name:      "relative path",
-			repo:      "file://../../../../cmd/helm/testdata/testcharts/signtest",
+			repo:      "file://../../testdata/chartpath/base",
 			chartpath: "foo/bar",
-			expect:    "../../cmd/helm/testdata/testcharts/signtest",
+			expect:    "testdata/chartpath/base",
 		},
 		{
 			name:      "current directory path",
@@ -244,13 +244,13 @@ func TestGetLocalPath(t *testing.T) {
 		},
 		{
 			name:      "invalid local path",
-			repo:      "file://../testdata/notexist",
+			repo:      "file://testdata/notexist",
 			chartpath: "testdata/chartpath",
 			err:       true,
 		},
 		{
 			name:      "invalid path under current directory",
-			repo:      "../charts/nonexistentdependency",
+			repo:      "charts/nonexistentdependency",
 			chartpath: "testdata/chartpath/charts",
 			err:       true,
 		},

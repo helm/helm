@@ -50,7 +50,7 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "status RELEASE_NAME",
-		Short: "displays the status of the named release",
+		Short: "display the status of the named release",
 		Long:  statusHelp,
 		Args:  require.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -74,7 +74,7 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		return compListReleases(toComplete, cfg)
 	})
 
-	f := cmd.PersistentFlags()
+	f := cmd.Flags()
 
 	f.IntVar(&client.Version, "revision", 0, "if set, display the status of the named release with revision")
 	flag := f.Lookup("revision")

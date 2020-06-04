@@ -4,8 +4,10 @@ go 1.13
 
 require (
 	github.com/BurntSushi/toml v0.3.1
-	github.com/Masterminds/semver/v3 v3.0.3
-	github.com/Masterminds/sprig/v3 v3.0.2
+	github.com/DATA-DOG/go-sqlmock v1.4.1
+	github.com/Masterminds/semver/v3 v3.1.0
+	github.com/Masterminds/sprig/v3 v3.1.0
+	github.com/Masterminds/squirrel v1.2.0
 	github.com/Masterminds/vcs v1.13.1
 	github.com/asaskevich/govalidator v0.0.0-20200108200545-475eaeb16496
 	github.com/containerd/containerd v1.3.2
@@ -18,26 +20,28 @@ require (
 	github.com/gobwas/glob v0.2.3
 	github.com/gofrs/flock v0.7.1
 	github.com/gosuri/uitable v0.0.4
+	github.com/jmoiron/sqlx v1.2.0
+	github.com/lib/pq v1.3.0
 	github.com/mattn/go-shellwords v1.0.10
 	github.com/mitchellh/copystructure v1.0.0
 	github.com/opencontainers/go-digest v1.0.0-rc1
 	github.com/opencontainers/image-spec v1.0.1
 	github.com/pkg/errors v0.9.1
+	github.com/rubenv/sql-migrate v0.0.0-20200212082348-64f95ea68aa3
 	github.com/sirupsen/logrus v1.4.2
-	github.com/spf13/cobra v0.0.5
+	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.4.0
+	github.com/stretchr/testify v1.5.1
 	github.com/xeipuuv/gojsonschema v1.1.0
-	golang.org/x/crypto v0.0.0-20200128174031-69ecbb4d6d5d
-	honnef.co/go/tools v0.0.0-20190523083050-ea95bdfd59fc // indirect
-	k8s.io/api v0.17.3
-	k8s.io/apiextensions-apiserver v0.17.3
-	k8s.io/apimachinery v0.17.3
-	k8s.io/cli-runtime v0.17.3
-	k8s.io/client-go v0.17.3
+	golang.org/x/crypto v0.0.0-20200414173820-0848c9571904
+	k8s.io/api v0.18.2
+	k8s.io/apiextensions-apiserver v0.18.2
+	k8s.io/apimachinery v0.18.2
+	k8s.io/cli-runtime v0.18.2
+	k8s.io/client-go v0.18.2
 	k8s.io/klog v1.0.0
-	k8s.io/kubectl v0.17.3
-	sigs.k8s.io/yaml v1.1.0
+	k8s.io/kubectl v0.18.2
+	sigs.k8s.io/yaml v1.2.0
 )
 
 replace (

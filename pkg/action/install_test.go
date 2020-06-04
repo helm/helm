@@ -29,6 +29,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"helm.sh/helm/v3/internal/test"
+	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
 	"helm.sh/helm/v3/pkg/release"
@@ -238,6 +239,27 @@ func TestInstallRelease_DryRun(t *testing.T) {
 	is.Len(res.Hooks, 1)
 	is.True(res.Hooks[0].LastRun.CompletedAt.IsZero(), "expect hook to not be marked as run")
 	is.Equal(res.Info.Description, "Dry run complete")
+}
+
+// Regression test for #7955: Lookup must not connect to Kubernetes on a dry-run.
+func TestInstallRelease_DryRun_Lookup(t *testing.T) {
+	is := assert.New(t)
+	instAction := installAction(t)
+	instAction.DryRun = true
+	vals := map[string]interface{}{}
+
+	mockChart := buildChart(withSampleTemplates())
+	mockChart.Templates = append(mockChart.Templates, &chart.File{
+		Name: "templates/lookup",
+		Data: []byte(`goodbye: {{ lookup "v1" "Namespace" "" "___" }}`),
+	})
+
+	res, err := instAction.Run(mockChart, vals)
+	if err != nil {
+		t.Fatalf("Failed install: %s", err)
+	}
+
+	is.Contains(res.Manifest, "goodbye: map[]")
 }
 
 func TestInstallReleaseIncorrectTemplate_DryRun(t *testing.T) {
