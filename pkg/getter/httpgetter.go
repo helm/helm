@@ -92,7 +92,7 @@ func NewHTTPGetter(options ...Option) (Getter, error) {
 func (g *HTTPGetter) httpClient() (*http.Client, error) {
 	transport := &http.Transport{
 		DisableCompression: true,
-		Proxy: http.ProxyFromEnvironment,
+		Proxy:              http.ProxyFromEnvironment,
 	}
 	if (g.opts.certFile != "" && g.opts.keyFile != "") || g.opts.caFile != "" {
 		tlsConf, err := tlsutil.NewClientTLS(g.opts.certFile, g.opts.keyFile, g.opts.caFile)
