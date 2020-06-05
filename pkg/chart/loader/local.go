@@ -67,11 +67,11 @@ func expandDir(name string, path string) (map[string]string, error) {
 	fmap := make(map[string]string)
 
 	f, err := os.Open(path)
-	defer f.Close()
 
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
 
 	files, err := f.Readdir(-1)
 	if err != nil {
