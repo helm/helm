@@ -288,7 +288,7 @@ func (cache *Cache) saveChartConfig(ch *chart.Chart) (*ocispec.Descriptor, bool,
 func (cache *Cache) saveChartContentLayer(ch *chart.Chart) (*ocispec.Descriptor, bool, error) {
 	destDir := filepath.Join(cache.rootDir, ".build")
 	os.MkdirAll(destDir, 0755)
-	tmpFile, err := chartutil.Save(ch, destDir, chartutil.WithoutTimestamp())
+	tmpFile, err := chartutil.SaveWithOpts(ch, destDir, chartutil.WithoutTimestamp())
 	defer os.Remove(tmpFile)
 	if err != nil {
 		return nil, false, errors.Wrap(err, "failed to save")
