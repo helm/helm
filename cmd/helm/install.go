@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"strings"
 	"time"
 
@@ -231,7 +232,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 
 	err = loadExternalFiles(chartRequested, client.ExternalFiles)
 	if err != nil {
-		fmt.Fprintln(out, err)
+		return nil, err
 	}
 
 	client.Namespace = settings.Namespace()
@@ -252,23 +253,41 @@ func isChartInstallable(ch *chart.Chart) (bool, error) {
 func loadExternalFiles(ch *chart.Chart, exFiles files.ExternalFiles) error {
 	var errs []string
 	fs := make(map[string]string)
+
 	for _, s := range exFiles.Files {
 		if err := files.ParseIntoString(s, fs); err != nil {
-			debug("error parsing file option", s, err)
-			errs = append(errs, s)
+			debug(fmt.Sprintf("error parsing include-file option %s: %v", s, err))
+			errs = append(errs, fmt.Sprintf("%s (parse error)", s))
 		}
 	}
 
-	for name, path := range fs {
-		byt, err := loader.LoadLocalFile(path)
-		if err != nil {
-			errs = append(errs, path)
+	for _, g := range exFiles.Globs {
+		if err := files.ParseIntoString(g, fs); err != nil {
+			debug(fmt.Sprintf("error parsing include-dir option %s: %v", g, err))
+			errs = append(errs, fmt.Sprintf("%s (parse error)", g))
 		}
-		ch.Files = append(ch.Files, &chart.File{Name: name, Data: byt})
+	}
+
+	for n, p := range fs {
+		allPaths, err := loader.ExpandLocalPath(n, p)
+		debug(fmt.Sprintf("%s expanded to: %v", p, allPaths))
+		if err != nil {
+			debug(fmt.Sprintf("error loading external path %s: %v", p, err))
+			errs = append(errs, fmt.Sprintf("%s (path not accessible)", p))
+		}
+
+		for name, fp := range allPaths {
+			byt, err := ioutil.ReadFile(fp)
+			if err != nil {
+				errs = append(errs, fmt.Sprintf("%s (not readable)", fp))
+			} else {
+				ch.Files = append(ch.Files, &chart.File{Name: name, Data: byt})
+			}
+		}
 	}
 
 	if len(errs) > 0 {
-		return errors.New(fmt.Sprint("Failed to load external files:", strings.Join(errs, ";")))
+		return errors.New(fmt.Sprint("Failed to load external files: ", strings.Join(errs, "; ")))
 	}
 	return nil
 }

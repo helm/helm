@@ -54,8 +54,8 @@ func addChartPathOptionsFlags(f *pflag.FlagSet, c *action.ChartPathOptions) {
 }
 
 func addExternalFilesFlags(f *pflag.FlagSet, v *files.ExternalFiles) {
-	f.StringArrayVar(&v.Files, "include-file", []string{}, "paths to local external files to use during chart installation")
-	f.StringArrayVar(&v.Globs, "include-dir", []string{}, "globs to local external files to use during chart installation")
+	f.StringArrayVar(&v.Files, "include-file", []string{}, "paths to local files to add during chart installation")
+	f.StringArrayVar(&v.Globs, "include-dir", []string{}, "paths or globs to local dirs to add during chart installation")
 }
 
 // bindOutputFlag will add the output flag to the given command and bind the
