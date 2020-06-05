@@ -1,1 +1,4 @@
-external: external.txt
+external: false
+glob:
+  enabled: false
+  path: "glob/*"

@@ -18,6 +18,9 @@ package files
 
 import (
 	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -34,6 +37,36 @@ func ParseIntoString(s string, dest map[string]string) error {
 		name := strings.TrimSpace(splt[0])
 		path := strings.TrimSpace(splt[1])
 		dest[name] = path
+	}
+
+	return nil
+}
+
+//ParseGlobIntoString parses an include-dir file line and merges all files found into dest.
+func ParseGlobIntoString(g string, dest map[string]string) error {
+	globs := make(map[string]string)
+	err := ParseIntoString(g, globs)
+	if err != nil {
+		return err
+	}
+	for k, g := range globs {
+		if !strings.Contains(g, "*") {
+			if _, err := os.Stat(g); os.IsNotExist(err) {
+				return err
+			}
+
+			// force glob style on simple directories
+			g = strings.TrimRight(g, "/") + "/*"
+		}
+		fmt.Println(g)
+
+		paths, err := filepath.Glob(g)
+		if err != nil {
+			return err
+		}
+		for _, path := range paths {
+			dest[fmt.Sprintf("%s/%s", k, filepath.Base(path))] = path
+		}
 	}
 
 	return nil
