@@ -188,6 +188,56 @@ func TestList_StateMask(t *testing.T) {
 	is.Len(res, 3)
 }
 
+func TestList_StateMaskWithStaleRevisions(t *testing.T) {
+	is := assert.New(t)
+	lister := newListFixture(t)
+	lister.StateMask = ListFailed
+
+	makeMeSomeReleasesWithStaleFailure(lister.cfg.Releases, t)
+
+	res, err := lister.Run()
+
+	is.NoError(err)
+	is.Len(res, 1)
+
+	// "dirty" release should _not_ be present as most recent
+	// release is deployed despite failed release in past
+	is.Equal("failed", res[0].Name)
+}
+
+func makeMeSomeReleasesWithStaleFailure(store *storage.Storage, t *testing.T) {
+	t.Helper()
+	one := namedReleaseStub("clean", release.StatusDeployed)
+	one.Namespace = "default"
+	one.Version = 1
+
+	two := namedReleaseStub("dirty", release.StatusDeployed)
+	two.Namespace = "default"
+	two.Version = 1
+
+	three := namedReleaseStub("dirty", release.StatusFailed)
+	three.Namespace = "default"
+	three.Version = 2
+
+	four := namedReleaseStub("dirty", release.StatusDeployed)
+	four.Namespace = "default"
+	four.Version = 3
+
+	five := namedReleaseStub("failed", release.StatusFailed)
+	five.Namespace = "default"
+	five.Version = 1
+
+	for _, rel := range []*release.Release{one, two, three, four, five} {
+		if err := store.Create(rel); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	all, err := store.ListReleases()
+	assert.NoError(t, err)
+	assert.Len(t, all, 5, "sanity test: five items added")
+}
+
 func TestList_Filter(t *testing.T) {
 	is := assert.New(t)
 	lister := newListFixture(t)
@@ -236,7 +286,7 @@ func makeMeSomeReleases(store *storage.Storage, t *testing.T) {
 	assert.Len(t, all, 3, "sanity test: three items added")
 }
 
-func TestFilterList(t *testing.T) {
+func TestFilterLatestReleases(t *testing.T) {
 	t.Run("should filter old versions of the same release", func(t *testing.T) {
 		r1 := releaseStub()
 		r1.Name = "r"
@@ -248,7 +298,7 @@ func TestFilterList(t *testing.T) {
 		another.Name = "another"
 		another.Version = 1
 
-		filteredList := filterList([]*release.Release{r1, r2, another})
+		filteredList := filterLatestReleases([]*release.Release{r1, r2, another})
 		expectedFilteredList := []*release.Release{r2, another}
 
 		assert.ElementsMatch(t, expectedFilteredList, filteredList)
@@ -264,7 +314,7 @@ func TestFilterList(t *testing.T) {
 		r2.Namespace = "testing"
 		r2.Version = 2
 
-		filteredList := filterList([]*release.Release{r1, r2})
+		filteredList := filterLatestReleases([]*release.Release{r1, r2})
 		expectedFilteredList := []*release.Release{r1, r2}
 
 		assert.ElementsMatch(t, expectedFilteredList, filteredList)
