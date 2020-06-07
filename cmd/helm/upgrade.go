@@ -267,7 +267,7 @@ func (u *upgradeCmd) run() error {
 	}
 
 	if ch.Metadata.Deprecated {
-		fmt.Fprintln(out, "WARNING: This chart is deprecated")
+		fmt.Fprintln(os.Stdout, "WARNING: This chart is deprecated")
 	}
 
 	resp, err := u.client.UpdateReleaseFromChart(
