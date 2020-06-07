@@ -267,6 +267,11 @@ func (i *installCmd) run() error {
 		return prettyError(err)
 	}
 
+	if chartRequested.Metadata.Deprecated {
+		fmt.Fprintln(out, "WARNING: This chart is deprecated")
+	}
+
+
 	if req, err := chartutil.LoadRequirements(chartRequested); err == nil {
 		// If checkDependencies returns an error, we have unfulfilled dependencies.
 		// As of Helm 2.4.0, this is treated as a stopping condition:
