@@ -148,7 +148,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 
 			if ch.Metadata.Deprecated {
-				fmt.Fprintln(out, "WARNING: This chart is deprecated")
+				warning("This chart is deprecated")
 			}
 
 			rel, err := client.Run(args[0], ch, vals)

@@ -56,6 +56,11 @@ func debug(format string, v ...interface{}) {
 	}
 }
 
+func warning(format string, v ...interface{}) {
+	format = fmt.Sprintf("WARNING: %s\n", format)
+	fmt.Fprintf(os.Stderr, format, v...)
+}
+
 func initKubeLogs() {
 	pflag.CommandLine.SetNormalizeFunc(wordSepNormalizeFunc)
 	gofs := flag.NewFlagSet("klog", flag.ExitOnError)
