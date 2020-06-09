@@ -37,7 +37,6 @@ type dependencyElement struct {
 	Name       string `json:"name"`
 	Version    string `json:"version,omitempty"`
 	Repository string `json:"repository"`
-	Enabled    bool   `json:"enabled,omitempty"`
 }
 
 type dependencyListWriter struct {
@@ -99,7 +98,6 @@ func newDependenciesListWriter(dependencies []*chart.Dependency) *dependencyList
 			Name:       d.Name,
 			Version:    d.Version,
 			Repository: d.Repository,
-			Enabled:    d.Enabled,
 		}
 
 		elements = append(elements, element)
@@ -111,10 +109,10 @@ func newDependenciesListWriter(dependencies []*chart.Dependency) *dependencyList
 func (d dependencyListWriter) WriteTable(out io.Writer) error {
 	table := uitable.New()
 
-	table.AddRow("NAME", "VERSION", "REPOSITORY", "ENABLED")
+	table.AddRow("NAME", "VERSION", "REPOSITORY")
 
 	for _, r := range d.dependencies {
-		table.AddRow(r.Name, r.Version, r.Repository, r.Enabled)
+		table.AddRow(r.Name, r.Version, r.Repository)
 	}
 
 	return output.EncodeTable(out, table)

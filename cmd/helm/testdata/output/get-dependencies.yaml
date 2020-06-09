@@ -1,8 +1,6 @@
-- enabled: true
-  name: fuego
+- name: fuego
   repository: https://prims47-fuego.com
   version: 7.7.0
-- enabled: true
-  name: pepito
+- name: pepito
   repository: https://pepito.com
   version: 4.2.7'

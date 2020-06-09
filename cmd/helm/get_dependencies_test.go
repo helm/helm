@@ -36,8 +36,8 @@ func TestGetDependencies(t *testing.T) {
 			Version:    "4.7.7-beta.1",
 			AppVersion: "1.0",
 			Dependencies: []*chart.Dependency{
-				{Name: "fuego", Version: "7.7.0", Repository: "https://prims47-fuego.com", Enabled: true},
-				{Name: "pepito", Version: "4.2.7'", Repository: "https://pepito.com", Enabled: true},
+				{Name: "fuego", Version: "7.7.0", Repository: "https://prims47-fuego.com"},
+				{Name: "pepito", Version: "4.2.7'", Repository: "https://pepito.com"},
 			},
 		},
 		Templates: []*chart.File{
