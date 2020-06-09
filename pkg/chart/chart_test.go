@@ -94,6 +94,7 @@ func TestMetadata(t *testing.T) {
 
 	is.Equal("foo.yaml", chrt.Name())
 	is.Equal("1.0.0", chrt.AppVersion())
+	is.Equal("1.0.0", chrt.Version())
 	is.Equal(nil, chrt.Validate())
 }
 

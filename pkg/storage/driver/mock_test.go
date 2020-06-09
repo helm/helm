@@ -31,6 +31,7 @@ import (
 	kblabels "k8s.io/apimachinery/pkg/labels"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
+	chart "helm.sh/helm/v3/pkg/chart"
 	rspb "helm.sh/helm/v3/pkg/release"
 )
 
@@ -40,6 +41,14 @@ func releaseStub(name string, vers int, namespace string, status rspb.Status) *r
 		Version:   vers,
 		Namespace: namespace,
 		Info:      &rspb.Info{Status: status},
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{
+				APIVersion: "v1",
+				Name:       "hello",
+				Version:    "0.1.0",
+				AppVersion: "0.2.0",
+			},
+		},
 	}
 }
 

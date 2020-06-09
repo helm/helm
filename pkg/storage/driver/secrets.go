@@ -224,6 +224,8 @@ func newSecretsObject(key string, rls *rspb.Release, lbs labels) (*v1.Secret, er
 	lbs.set("owner", owner)
 	lbs.set("status", rls.Info.Status.String())
 	lbs.set("version", strconv.Itoa(rls.Version))
+	lbs.set("appVersion", rls.Chart.AppVersion())
+	lbs.set("chartVersion", rls.Chart.Version())
 
 	// create and return secret object.
 	// Helm 3 introduced setting the 'Type' field

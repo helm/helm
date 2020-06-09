@@ -129,6 +129,14 @@ func (ch *Chart) AppVersion() string {
 	return ch.Metadata.AppVersion
 }
 
+// Version returns the chartversion of the chart.
+func (ch *Chart) Version() string {
+	if ch.Metadata == nil {
+		return ""
+	}
+	return ch.Metadata.Version
+}
+
 // CRDs returns a list of File objects in the 'crds/' directory of a Helm chart.
 // Deprecated: use CRDObjects()
 func (ch *Chart) CRDs() []*File {
