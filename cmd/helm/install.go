@@ -17,7 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"fmt"
 	"io"
 <<<<<<< HEAD
 	"io/ioutil"
@@ -213,7 +212,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	}
 
 	if chartRequested.Metadata.Deprecated {
-		fmt.Fprintln(out, "WARNING: This chart is deprecated")
+		warning("This chart is deprecated")
 	}
 
 	if req := chartRequested.Metadata.Dependencies; req != nil {
