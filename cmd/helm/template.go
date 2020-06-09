@@ -102,6 +102,8 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					var manifestsToRender []string
 					for _, f := range showFiles {
 						missing := true
+						// Use linux-style filepath separators to unify user's input path
+						f = filepath.ToSlash(f)
 						for _, manifestKey := range manifestsKeys {
 							manifest := splitManifests[manifestKey]
 							submatch := manifestNameRegex.FindStringSubmatch(manifest)
@@ -112,7 +114,9 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 							// manifest.Name is rendered using linux-style filepath separators on Windows as
 							// well as macOS/linux.
 							manifestPathSplit := strings.Split(manifestName, "/")
-							manifestPath := filepath.Join(manifestPathSplit...)
+							// manifest.Path is connected using linux-style filepath separators on Windows as
+							// well as macOS/linux
+							manifestPath := strings.Join(manifestPathSplit, "/")
 
 							// if the filepath provided matches a manifest path in the
 							// chart, render that manifest
