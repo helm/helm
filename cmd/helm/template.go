@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -63,7 +64,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			client.ClientOnly = !validate
 			client.APIVersions = chartutil.VersionSet(extraAPIs)
 			client.IncludeCRDs = includeCrds
-			rel, err := runInstall(args, client, valueOpts, out)
+			rel, err := runInstall(args, client, valueOpts, ioutil.Discard)
 
 			if err != nil && !settings.Debug {
 				if rel != nil {
