@@ -50,19 +50,19 @@ func TestInstall(t *testing.T) {
 		// Install, external file
 		{
 			name:   "install with external files",
-			cmd:    "install virgil testdata/testcharts/configmap --include-file external.txt=testdata/files/external.txt",
+			cmd:    "install virgil testdata/testcharts/external --include-file external.txt=testdata/files/external.txt",
 			golden: "output/install-with-external-files.txt",
 		},
 		// Install, external dir
 		{
 			name:   "install with external dir",
-			cmd:    "install virgil testdata/testcharts/configmap --set glob.enabled=true --include-dir glob=testdata/files/",
+			cmd:    "install virgil testdata/testcharts/external --set glob.enabled=true --include-dir glob=testdata/files/",
 			golden: "output/install-with-external-files.txt",
 		},
 		// Install, external glob files
 		{
 			name:   "install with external globbed files",
-			cmd:    "install virgil testdata/testcharts/configmap --set glob.enabled=true --include-dir glob=testdata/files/external.*.conf",
+			cmd:    "install virgil testdata/testcharts/external --set glob.enabled=true --include-dir glob=testdata/files/external.*.conf",
 			golden: "output/install-with-external-files.txt",
 		},
 		// Install, no hooks

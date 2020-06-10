@@ -19,7 +19,6 @@ package files
 import (
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 )
@@ -51,19 +50,16 @@ func ParseGlobIntoString(g string, dest map[string]string) error {
 	}
 	for k, g := range globs {
 		if !strings.Contains(g, "*") {
-			if _, err := os.Stat(g); os.IsNotExist(err) {
-				return err
-			}
-
 			// force glob style on simple directories
 			g = strings.TrimRight(g, "/") + "/*"
 		}
-		fmt.Println(g)
 
 		paths, err := filepath.Glob(g)
 		if err != nil {
 			return err
 		}
+
+		k = strings.TrimRight(k, "/")
 		for _, path := range paths {
 			dest[fmt.Sprintf("%s/%s", k, filepath.Base(path))] = path
 		}
