@@ -55,3 +55,24 @@ func TestParseIntoString(t *testing.T) {
 	err = ParseIntoString(badFlag, dest)
 	is.NotNil(err)
 }
+
+func TestParseGlobIntoString(t *testing.T) {
+	need := require.New(t)
+	is := assert.New(t)
+
+	dest := make(map[string]string)
+	globFlagSlash := "glob/=testdata/foo/foo.*"
+	dirFlagNoSlash := "dir=testdata/foo/"
+
+	err := ParseGlobIntoString(globFlagSlash, dest)
+	need.NoError(err)
+	need.Contains(dest, "glob/foo.txt")
+	is.Equal("testdata/foo/foo.txt", dest["glob/foo.txt"])
+
+	err = ParseGlobIntoString(dirFlagNoSlash, dest)
+	need.NoError(err)
+	need.Contains(dest, "dir/foo.txt")
+	need.Contains(dest, "dir/bar.txt")
+	is.Equal("testdata/foo/foo.txt", dest["dir/foo.txt"])
+	is.Equal("testdata/foo/bar.txt", dest["dir/bar.txt"])
+}
