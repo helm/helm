@@ -142,6 +142,11 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				fmt.Fprintln(out, "WARNING: This chart is deprecated")
 			}
 
+			err = loadExternalFiles(ch, client.ExternalFiles)
+			if err != nil {
+				return err
+			}
+
 			rel, err := client.Run(args[0], ch, vals)
 			if err != nil {
 				return errors.Wrap(err, "UPGRADE FAILED")
