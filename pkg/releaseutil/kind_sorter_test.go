@@ -18,13 +18,14 @@ package releaseutil
 
 import (
 	"bytes"
+	"sort"
 	"testing"
 
 	"helm.sh/helm/v3/pkg/release"
 )
 
-func TestKindSorter(t *testing.T) {
-	manifests := []Manifest{
+func buildManifestsForTestKindSorter() []Manifest {
+	return []Manifest{
 		{
 			Name: "E",
 			Head: &SimpleHead{Kind: "SecretList"},
@@ -165,15 +166,31 @@ func TestKindSorter(t *testing.T) {
 			Name: "x",
 			Head: &SimpleHead{Kind: "HorizontalPodAutoscaler"},
 		},
+		{
+			Name: "N",
+			Head: &SimpleHead{Kind: "NginxVhost"},
+		},
+		{
+			Name: "U",
+			Head: &SimpleHead{Kind: "Unknown"},
+		},
+		{
+			Name: "R",
+			Head: &SimpleHead{Kind: "Registration"},
+		},
 	}
+}
+
+func TestKindSorter(t *testing.T) {
+	manifests := buildManifestsForTestKindSorter()
 
 	for _, test := range []struct {
 		description string
 		order       KindSortOrder
 		expected    string
 	}{
-		{"install", InstallOrder, "aAbcC3deEf1gh2iIjJkKlLmnopqrxstuvw!"},
-		{"uninstall", UninstallOrder, "wvmutsxrqponLlKkJjIi2hg1fEed3CcbAa!"},
+		{"install", InstallOrder, "aAbcC3deEf1gh2iIjJkKlLmnopqrxstuvw!NUR"},
+		{"uninstall", UninstallOrder, "wvmutsxrqponLlKkJjIi2hg1fEed3CcbAaRUN!"},
 	} {
 		var buf bytes.Buffer
 		t.Run(test.description, func(t *testing.T) {
@@ -187,6 +204,40 @@ func TestKindSorter(t *testing.T) {
 			}
 			if got := buf.String(); got != test.expected {
 				t.Errorf("Expected %q, got %q", test.expected, got)
+			}
+			for i, manifest := range orig {
+				if manifest != manifests[i] {
+					t.Fatal("Expected input to sortManifestsByKind to stay the same")
+				}
+			}
+		})
+	}
+}
+
+func TestKindSorterFailedUsingAlphabeticalOrder(t *testing.T) {
+	manifests := buildManifestsForTestKindSorter()
+
+	for _, test := range []struct {
+		description string
+		order       KindSortOrder
+		expected    string
+		actual      string
+	}{
+		{"install", InstallOrder, "aAbcC3deEf1gh2iIjJkKlLmnopqrxstuvw!NUR", "aAbcC3deEf1gh2iIjJkKlLmnopqrxstuvw!NRU"},
+		{"uninstall", UninstallOrder, "wvmutsxrqponLlKkJjIi2hg1fEed3CcbAaRUN!", "wvmutsxrqponLlKkJjIi2hg1fEed3CcbAa!NRU"},
+	} {
+		var buf bytes.Buffer
+		t.Run(test.description, func(t *testing.T) {
+			if got, want := len(test.expected), len(manifests); got != want {
+				t.Fatalf("Expected %d names in order, got %d", want, got)
+			}
+			defer buf.Reset()
+			orig := manifests
+			for _, r := range sortManifestsByKindForCRsUsingAlphabeticalOrder(manifests, test.order) {
+				buf.WriteString(r.Name)
+			}
+			if got := buf.String(); got == test.actual && got != test.expected {
+				t.Logf("Expected %q, got %q", test.expected, got)
 			}
 			for i, manifest := range orig {
 				if manifest != manifests[i] {
@@ -328,4 +379,39 @@ func TestKindSorterForHooks(t *testing.T) {
 			}
 		})
 	}
+}
+
+func sortManifestsByKindForCRsUsingAlphabeticalOrder(manifests []Manifest, ordering KindSortOrder) []Manifest {
+	sort.SliceStable(manifests, func(i, j int) bool {
+		return lessByKindForCRsUsingAlphabeticalOrder(manifests[i], manifests[j], manifests[i].Head.Kind, manifests[j].Head.Kind, ordering)
+	})
+
+	return manifests
+}
+
+func lessByKindForCRsUsingAlphabeticalOrder(a interface{}, b interface{}, kindA string, kindB string, o KindSortOrder) bool {
+	ordering := make(map[string]int, len(o))
+	for v, k := range o {
+		ordering[k] = v
+	}
+
+	first, aok := ordering[kindA]
+	second, bok := ordering[kindB]
+
+	if !aok && !bok {
+		// if both are unknown then sort alphabetically by kind, keep original order if same kind
+		if kindA != kindB {
+			return kindA < kindB
+		}
+		return first < second
+	}
+	// unknown kind is last
+	if !aok {
+		return false
+	}
+	if !bok {
+		return true
+	}
+	// sort different kinds, keep original order if same priority
+	return first < second
 }

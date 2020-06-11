@@ -17,6 +17,7 @@ limitations under the License.
 package releaseutil
 
 import (
+	"reflect"
 	"sort"
 
 	"helm.sh/helm/v3/pkg/release"
@@ -137,12 +138,11 @@ func lessByKind(a interface{}, b interface{}, kindA string, kindB string, o Kind
 	first, aok := ordering[kindA]
 	second, bok := ordering[kindB]
 
+	// both kinds are unknown
+	// the installing order of the unknown kinds is as the order that they are in original manifests/hooks,
+	// and the uninstalling order is the reverse order that they are in original manifests/hooks.
 	if !aok && !bok {
-		// if both are unknown then sort alphabetically by kind, keep original order if same kind
-		if kindA != kindB {
-			return kindA < kindB
-		}
-		return first < second
+		return reflect.DeepEqual(o, UninstallOrder)
 	}
 	// unknown kind is last
 	if !aok {
