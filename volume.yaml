@@ -2,8 +2,7 @@ kind: PersistentVolume
 apiVersion: v1
 metadata:
   name: persistent-volume
-  labels:
-    type: local
+  namespace: hermes
 spec:
   storageClassName: manual
   capacity:
@@ -16,6 +15,7 @@ spec:
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
+  namespace: hermes
   name: persistent-volume-claim
 spec:
   accessModes:

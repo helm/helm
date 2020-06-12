@@ -36,3 +36,4 @@ kind: ConfigMap
 metadata:
   creationTimestamp: null
   name: repositories
+  namespace: hermes
