@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"log"
 	"time"
 
 	"github.com/pkg/errors"
@@ -194,6 +195,17 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	bindOutputFlag(cmd, &outfmt)
 	bindPostRenderFlag(cmd, &client.PostRenderer)
 	addExternalFilesFlags(f, &client.ExternalFiles)
+
+	err := cmd.RegisterFlagCompletionFunc("version", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		if len(args) != 2 {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		return compVersionFlag(args[1], toComplete)
+	})
+
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	return cmd
 }

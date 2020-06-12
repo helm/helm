@@ -451,3 +451,29 @@ func prepareMockReleaseWithExternal(releaseName string, exFiles []*chart.File, t
 func TestUpgradeOutputCompletion(t *testing.T) {
 	outputFlagCompletionTest(t, "upgrade")
 }
+
+func TestUpgradeVersionCompletion(t *testing.T) {
+	repoFile := "testdata/helmhome/helm/repositories.yaml"
+	repoCache := "testdata/helmhome/helm/repository"
+
+	repoSetup := fmt.Sprintf("--repository-config %s --repository-cache %s", repoFile, repoCache)
+
+	tests := []cmdTestCase{{
+		name:   "completion for upgrade version flag",
+		cmd:    fmt.Sprintf("%s __complete upgrade releasename testing/alpine --version ''", repoSetup),
+		golden: "output/version-comp.txt",
+	}, {
+		name:   "completion for upgrade version flag too few args",
+		cmd:    fmt.Sprintf("%s __complete upgrade releasename --version ''", repoSetup),
+		golden: "output/version-invalid-comp.txt",
+	}, {
+		name:   "completion for upgrade version flag too many args",
+		cmd:    fmt.Sprintf("%s __complete upgrade releasename testing/alpine badarg --version ''", repoSetup),
+		golden: "output/version-invalid-comp.txt",
+	}, {
+		name:   "completion for upgrade version flag invalid chart",
+		cmd:    fmt.Sprintf("%s __complete upgrade releasename invalid/invalid --version ''", repoSetup),
+		golden: "output/version-invalid-comp.txt",
+	}}
+	runTestCmd(t, tests)
+}
