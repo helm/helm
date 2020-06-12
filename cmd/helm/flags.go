@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -27,7 +28,9 @@ import (
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/cli/values"
+	"helm.sh/helm/v3/pkg/helmpath"
 	"helm.sh/helm/v3/pkg/postrender"
+	"helm.sh/helm/v3/pkg/repo"
 )
 
 const outputFlag = "output"
@@ -126,4 +129,28 @@ func (p postRenderer) Set(s string) error {
 	}
 	*p.renderer = pr
 	return nil
+}
+
+func compVersionFlag(chartRef string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	chartInfo := strings.Split(chartRef, "/")
+	if len(chartInfo) != 2 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	repoName := chartInfo[0]
+	chartName := chartInfo[1]
+
+	path := filepath.Join(settings.RepositoryCache, helmpath.CacheIndexFile(repoName))
+
+	var versions []string
+	if indexFile, err := repo.LoadIndexFile(path); err == nil {
+		for _, details := range indexFile.Entries[chartName] {
+			version := details.Metadata.Version
+			if strings.HasPrefix(version, toComplete) {
+				versions = append(versions, version)
+			}
+		}
+	}
+
+	return versions, cobra.ShellCompDirectiveNoFileComp
 }

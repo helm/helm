@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"log"
 
 	"github.com/spf13/cobra"
 
@@ -151,6 +152,17 @@ func addShowFlags(subCmd *cobra.Command, client *action.Show) {
 
 	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored")
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
+
+	err := subCmd.RegisterFlagCompletionFunc("version", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		if len(args) != 1 {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		return compVersionFlag(args[0], toComplete)
+	})
+
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func runShow(args []string, client *action.Show) (string, error) {

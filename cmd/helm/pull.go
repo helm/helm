@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"log"
 
 	"github.com/spf13/cobra"
 
@@ -81,6 +82,17 @@ func newPullCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&client.UntarDir, "untardir", ".", "if untar is specified, this flag specifies the name of the directory into which the chart is expanded")
 	f.StringVarP(&client.DestDir, "destination", "d", ".", "location to write the chart. If this and tardir are specified, tardir is appended to this")
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
+
+	err := cmd.RegisterFlagCompletionFunc("version", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		if len(args) != 1 {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		return compVersionFlag(args[0], toComplete)
+	})
+
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	return cmd
 }
