@@ -386,8 +386,7 @@ const defaultNotes = `1. Get the application URL by running these commands:
 {{- end }}
 `
 
-const defaultHelpers = `{{/* vim: set filetype=mustache: */}}
-{{/*
+const defaultHelpers = `{{/*
 Expand the name of the chart.
 */}}
 {{- define "<CHARTNAME>.name" -}}
