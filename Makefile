@@ -61,9 +61,9 @@ all: build
 build: $(BINDIR)/$(BINNAME) $(BINDIR)/$(BINNAME)-server
 
 $(BINDIR)/$(BINNAME): $(SRC)
-	GO111MODULE=on go build $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' -o $(BINDIR)/$(BINNAME) ./cmd/helm
+	GO111MODULE=on go build -o $(BINDIR)/$(BINNAME) ./cmd/helm
 $(BINDIR)/$(BINNAME)-server: $(SRC)
-	GO111MODULE=on go build $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' -o $(BINDIR)/$(BINNAME)-server ./cmd/service
+	GO111MODULE=on go build -o $(BINDIR)/helm3-server ./cmd/service
 # ------------------------------------------------------------------------------
 #  test
 
