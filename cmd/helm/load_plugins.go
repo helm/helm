@@ -105,7 +105,8 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 		// We only do this when necessary (for the "completion" and "__complete" commands) to avoid the
 		// risk of a rogue plugin affecting Helm's normal behavior.
 		subCmd, _, err := baseCmd.Find(os.Args[1:])
-		if (err == nil && (subCmd.Name() == "completion" || subCmd.Name() == cobra.ShellCompRequestCmd)) ||
+		if (err == nil &&
+			((subCmd.HasParent() && subCmd.Parent().Name() == "completion") || subCmd.Name() == cobra.ShellCompRequestCmd)) ||
 			/* for the tests */ subCmd == baseCmd.Root() {
 			loadCompletionForPlugin(c, plug)
 		}
