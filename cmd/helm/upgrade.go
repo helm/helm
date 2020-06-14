@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -264,6 +265,10 @@ func (u *upgradeCmd) run() error {
 		}
 	} else {
 		return prettyError(err)
+	}
+
+	if ch.Metadata.Deprecated {
+		fmt.Fprintln(os.Stderr, "WARNING: This chart is deprecated")
 	}
 
 	resp, err := u.client.UpdateReleaseFromChart(
