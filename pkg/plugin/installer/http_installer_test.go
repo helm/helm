@@ -22,11 +22,12 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
-	"k8s.io/helm/pkg/helm/helmpath"
 	"os"
 	"path/filepath"
 	"syscall"
 	"testing"
+
+	"k8s.io/helm/pkg/helm/helmpath"
 )
 
 var _ Installer = new(HTTPInstaller)
@@ -222,7 +223,7 @@ func TestExtract(t *testing.T) {
 		Name, Body string
 		Mode       int64
 	}{
-		{"../../plugin.yaml", "sneaky plugin metadata", 0600},
+		{"./plugin.yaml", "sneaky plugin metadata", 0600},
 		{"README.md", "some text", 0777},
 	}
 	for _, file := range files {
@@ -280,6 +281,101 @@ func TestExtract(t *testing.T) {
 		}
 	} else if info.Mode().Perm() != 0777 {
 		t.Errorf("Expected %s to have 0777 mode it but has %o", readmeFullPath, info.Mode().Perm())
+	}
+
+}
+
+func TestExtractBadPlugin(t *testing.T) {
+	//create a temp home
+	hh, err := ioutil.TempDir("", "helm-home-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(hh)
+
+	home := helmpath.Home(hh)
+	if err := os.MkdirAll(home.Plugins(), 0755); err != nil {
+		t.Fatalf("Could not create %s: %s", home.Plugins(), err)
+	}
+
+	cacheDir := filepath.Join(home.Cache(), "plugins", "plugin-key")
+	if err := os.MkdirAll(cacheDir, 0755); err != nil {
+		t.Fatalf("Could not create %s: %s", cacheDir, err)
+	}
+
+	syscall.Umask(0000)
+
+	var tarbuf bytes.Buffer
+	tw := tar.NewWriter(&tarbuf)
+	var files = []struct {
+		Name, Body string
+		Mode       int64
+	}{
+		{"../../plugin.yaml", "sneaky plugin metadata", 0600},
+		{"README.md", "some text", 0777},
+	}
+	for _, file := range files {
+		hdr := &tar.Header{
+			Name:     file.Name,
+			Typeflag: tar.TypeReg,
+			Mode:     file.Mode,
+			Size:     int64(len(file.Body)),
+		}
+		if err := tw.WriteHeader(hdr); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := tw.Write([]byte(file.Body)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	if _, err := gz.Write(tarbuf.Bytes()); err != nil {
+		t.Fatal(err)
+	}
+	gz.Close()
+
+	source := "https://repo.localdomain/plugins/fake-plugin-0.0.1.tgz"
+	extr, err := NewExtractor(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err = extr.Extract(&buf, cacheDir); err == nil {
+		t.Error("Should have failed because of bad plugin.yaml path")
+	}
+}
+
+func TestCleanJoin(t *testing.T) {
+	for i, fixture := range []struct {
+		path        string
+		expect      string
+		expectError bool
+	}{
+		{"foo/bar.txt", "/tmp/foo/bar.txt", false},
+		{"/foo/bar.txt", "", true},
+		{"./foo/bar.txt", "/tmp/foo/bar.txt", false},
+		{"./././././foo/bar.txt", "/tmp/foo/bar.txt", false},
+		{"../../../../foo/bar.txt", "", true},
+		{"foo/../../../../bar.txt", "", true},
+		{"c:/foo/bar.txt", "/tmp/c:/foo/bar.txt", true},
+		{"foo\\bar.txt", "/tmp/foo/bar.txt", false},
+		{"c:\\foo\\bar.txt", "", true},
+	} {
+		out, err := cleanJoin("/tmp", fixture.path)
+		if err != nil {
+			if !fixture.expectError {
+				t.Errorf("Test %d: Path was not cleaned: %s", i, err)
+			}
+			continue
+		}
+		if fixture.expect != out {
+			t.Errorf("Test %d: Expected %q but got %q", i, fixture.expect, out)
+		}
 	}
 
 }
