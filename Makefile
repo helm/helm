@@ -5,7 +5,6 @@ TARGET_OBJS ?= darwin-amd64.tar.gz darwin-amd64.tar.gz.sha256 darwin-amd64.tar.g
 BINNAME     ?= helm
 
 GOPATH        = $(shell go env GOPATH)
-DEP           = $(GOPATH)/bin/dep
 GOX           = $(GOPATH)/bin/gox
 GOIMPORTS     = $(GOPATH)/bin/goimports
 ARCH          = $(shell uname -p)
