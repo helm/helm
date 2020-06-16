@@ -71,15 +71,76 @@ MySQL. We can use `helm inspect chart` to see this:
 
 ```console
 $ helm inspect stable/mariadb
-Fetched stable/mariadb to mariadb-0.5.1.tgz
-description: Chart for MariaDB
+apiVersion: v1
+appVersion: 10.3.22
+deprecated: true
+description: DEPRECATED Fast, reliable, scalable, and easy to use open-source relational database system. MariaDB Server is intended for mission-critical, heavy-load production systems as well as for embedding into mass-deployed software. Highly available MariaDB cluster.
 engine: gotpl
 home: https://mariadb.org
+icon: https://bitnami.com/assets/stacks/mariadb/img/mariadb-stack-220x234.png
 keywords:
 - mariadb
 - mysql
 - database
 - sql
+- prometheus
+name: mariadb
+sources:
+- https://github.com/bitnami/bitnami-docker-mariadb
+- https://github.com/prometheus/mysqld_exporter
+version: 7.3.14
+...
+```
+
+Sometimes there will be a development version of a chart available. Compare
+these excerpts for the spinnaker chart's default vs development versions:
+
+```console
+$ helm inspect stable/spinnaker
+apiVersion: v1
+appVersion: 1.16.2
+description: Open source, multi-cloud continuous delivery platform for releasing software changes with high velocity and confidence.
+home: http://spinnaker.io/
+icon: https://pbs.twimg.com/profile_images/669205226994319362/O7OjwPrh_400x400.png
+maintainers:
+- email: viglesias@google.com
+  name: viglesiasce
+- email: ezimanyi@google.com
+  name: ezimanyi
+- email: hello@dwardu.com
+  name: dwardu89
+- email: username.taken@gmail.com
+  name: paulczar
+name: spinnaker
+sources:
+- https://github.com/spinnaker
+- https://github.com/viglesiasce/images
+version: 1.23.3
+...
+```
+
+```console
+$ helm inspect stable/spinnaker --devel
+
+apiVersion: v1
+appVersion: 1.16.2
+description: Open source, multi-cloud continuous delivery platform for releasing software changes with high velocity and confidence.
+home: http://spinnaker.io/
+icon: https://pbs.twimg.com/profile_images/669205226994319362/O7OjwPrh_400x400.png
+maintainers:
+- email: viglesias@google.com
+  name: viglesiasce
+- email: ezimanyi@google.com
+  name: ezimanyi
+- email: hello@dwardu.com
+  name: dwardu89
+- email: username.taken@gmail.com
+  name: paulczar
+name: spinnaker
+sources:
+- https://github.com/spinnaker
+- https://github.com/viglesiasce/images
+version: 2.0.0-rc5
 ...
 ```
 
