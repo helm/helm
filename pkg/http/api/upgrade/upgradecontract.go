@@ -1,13 +1,13 @@
-package install
+package upgrade
 
-type InstallRequest struct {
+type UpgradeRequest struct {
 	RequestID        string
 	ReleaseName      string
 	ReleaseNamespace string
 	ChartPath        string
 }
 
-type InstallResponse struct {
+type UpgradeResponse struct {
 	Status        bool
 	ReleaseStatus string
 }

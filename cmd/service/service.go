@@ -7,6 +7,7 @@ import (
 	"helm.sh/helm/v3/pkg/http/api/install"
 	"helm.sh/helm/v3/pkg/http/api/list"
 	"helm.sh/helm/v3/pkg/http/api/ping"
+	"helm.sh/helm/v3/pkg/http/api/upgrade"
 	"helm.sh/helm/v3/pkg/servercontext"
 )
 
@@ -20,6 +21,7 @@ func startServer(appconfig *servercontext.Application) {
 	router.Handle("/ping", ping.Handler())
 	router.Handle("/list", list.Handler())
 	router.Handle("/install", install.Handler())
+	router.Handle("/upgrade", upgrade.Handler())
 
 	err := http.ListenAndServe(fmt.Sprintf(":%d", 8080), router)
 	if err != nil {
