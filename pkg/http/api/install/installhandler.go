@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"helm.sh/helm/v3/cmd/servercontext"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/servercontext"
 )
 
 func Handler() http.Handler {

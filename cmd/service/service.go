@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"helm.sh/helm/v3/cmd/endpoints/install"
-	"helm.sh/helm/v3/cmd/endpoints/list"
-	"helm.sh/helm/v3/cmd/endpoints/ping"
-	"helm.sh/helm/v3/cmd/servercontext"
+	"helm.sh/helm/v3/pkg/http/api/install"
+	"helm.sh/helm/v3/pkg/http/api/list"
+	"helm.sh/helm/v3/pkg/http/api/ping"
+	"helm.sh/helm/v3/pkg/servercontext"
 )
 
 func main() {
