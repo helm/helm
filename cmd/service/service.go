@@ -2,70 +2,25 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"os"
+	"net/http"
 
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/gates"
-	"helm.sh/helm/v3/pkg/http"
-	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	"helm.sh/helm/v3/cmd/endpoints/list"
+	"helm.sh/helm/v3/cmd/endpoints/ping"
+	"helm.sh/helm/v3/cmd/servercontext"
 )
-
-var (
-	settings = cli.New()
-)
-
-func debug(format string, v ...interface{}) {
-	format = fmt.Sprintf("[debug] %s\n", format)
-	log.Output(2, fmt.Sprintf(format, v...))
-}
-
-const FeatureGateOCI = gates.Gate("HELM_EXPERIMENTAL_OCI")
-
-// Input: repositories.yaml, repositories cache (optional), chart location
 
 func main() {
-	actionConfig := new(action.Configuration)
-	for k, v := range settings.EnvVars() {
-		fmt.Println(k, v)
-	}
-	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), os.Getenv("HELM_DRIVER"), debug); err != nil {
-		log.Fatalf("error getting configuration: %v", err)
-		return
-	}
-	if _, err := actionConfig.KubernetesClientSet(); err != nil {
-		log.Fatalf("error initilizing kubernetes client configuration: %v", err)
-		return
-	}
-
-	listReleases(actionConfig)
-	helmRepoUpdate()
-	// this has to be added in repositories: https://charts.bitnami.com/bitnami
-	installRelease(actionConfig, "bitnami/redis", "bitnami-redis-2")
+	app := servercontext.NewApp()
+	startServer(app)
 }
 
-func listReleases(cfg *action.Configuration) {
-	releases, err := http.List(cfg)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(string(releases))
-}
+func startServer(appconfig *servercontext.Application) {
+	router := http.NewServeMux()
+	router.Handle("/ping", ping.Handler())
+	router.Handle("/list", list.Handler())
 
-func helmRepoUpdate() {
-	err := http.HelmRepoUpdate()
+	err := http.ListenAndServe(fmt.Sprintf(":%d", 8080), router)
 	if err != nil {
-		panic(err)
+		fmt.Println("error starting server", err)
 	}
-}
-
-func installRelease(cfg *action.Configuration, chartPath string, releaseName string) {
-	fmt.Printf("installing chart: %s. release name: %s ", chartPath, releaseName)
-	_, err := http.Install(cfg, chartPath, releaseName)
-	if err != nil {
-		fmt.Println("error installing chart", err)
-		return
-	}
-	fmt.Printf("installed chart: %s release: %s successfully", chartPath, releaseName)
 }
