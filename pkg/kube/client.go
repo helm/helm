@@ -68,6 +68,8 @@ import (
 // MissingGetHeader is added to Get's output when a resource is not found.
 const MissingGetHeader = "==> MISSING\nKIND\t\tNAME\n"
 
+const KubsAPIErrorMsg = "unable to recognize \"\": no matches for kind"
+
 // ErrNoObjectsVisited indicates that during a visit operation, no matching objects were found.
 var ErrNoObjectsVisited = goerrors.New("no objects visited")
 
@@ -486,7 +488,7 @@ func (c *Client) UpdateWithOptions(namespace string, originalReader, targetReade
 	if err != nil {
 		// Checking for removed Kubernetes API error so can provide a more informative error message to the user
 		// Ref: https://github.com/helm/helm/issues/7219
-		if strings.Contains(err.Error(), "unable to recognize \"\": no matches for kind") {
+		if strings.Contains(err.Error(), KubsAPIErrorMsg) {
 			return fmt.Errorf("current release manifest contains removed kubernetes api(s) for this "+
 				"kubernetes version and it is therefore unable to build the kubernetes "+
 				"objects for performing the diff. error from kubernetes: %s", err)
@@ -500,7 +502,7 @@ func (c *Client) UpdateWithOptions(namespace string, originalReader, targetReade
 	if err != nil {
 		// Checking for removed Kubernetes API error so can provide a more informative error message to the user
 		// Ref: https://github.com/helm/helm/issues/7219
-		if strings.Contains(err.Error(), "unable to recognize \"\": no matches for kind") {
+		if strings.Contains(err.Error(), KubsAPIErrorMsg) {
 			return fmt.Errorf("new release manifest contains removed kubernetes api(s) for this "+
 				"kubernetes version and it is therefore unable to build the kubernetes "+
 				"objects for deployment. error from kubernetes: %s", err)
