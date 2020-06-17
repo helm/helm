@@ -39,6 +39,7 @@ type Options struct {
 // MergeValues merges values from files specified via -f/--values and directly
 // via --set, --set-string, or --set-file, marshaling them to YAML
 func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, error) {
+
 	base := map[string]interface{}{}
 
 	// User specified a values files via -f/--values

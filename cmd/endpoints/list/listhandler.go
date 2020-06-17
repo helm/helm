@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"helm.sh/helm/v3/cmd/servercontext"
 	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/servercontext"
 )
 
 func Handler() http.Handler {
@@ -31,7 +31,7 @@ func Handler() http.Handler {
 		list.SetStateMask()
 		results, err := list.Run()
 		if err != nil {
-			fmt.Print("error while running helm list")
+			fmt.Printf("error while running helm list %v", err)
 		}
 
 		var helmReleases []HelmRelease
