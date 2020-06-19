@@ -31,7 +31,10 @@ func Handler() http.Handler {
 		request.ReleaseName = req.Header.Get("Release-Name")
 		request.ReleaseNamespace = req.Header.Get("Release-Namespace")
 		request.ChartPath = req.Header.Get("Chart-Path")
+		request.Values = req.Header.Get("Values")
+
 		valueOpts := &values.Options{}
+		valueOpts.Values = append(valueOpts.Values, request.Values)
 
 		status, releaseStatus, err := InstallChart(request.ReleaseName, request.ReleaseNamespace, request.ChartPath, valueOpts)
 		if err != nil {
@@ -54,15 +57,15 @@ func InstallChart(releaseName, releaseNamespace, chartPath string, valueOpts *va
 	install := action.NewInstall(servercontext.App().ActionConfig)
 	install.ReleaseName = releaseName
 	install.Namespace = releaseNamespace
+
 	vals, err := valueOpts.MergeValues(getter.All(servercontext.App().Config))
+	if err != nil {
+		return false, "", err
+	}
 
 	cp, err := install.ChartPathOptions.LocateChart(chartPath, servercontext.App().Config)
 	if err != nil {
 		fmt.Printf("error in locating chart: %v", err)
-		return false, "", err
-	}
-
-	if err != nil {
 		return false, "", err
 	}
 

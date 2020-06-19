@@ -5,6 +5,7 @@ type InstallRequest struct {
 	ReleaseName      string
 	ReleaseNamespace string
 	ChartPath        string
+	Values           string
 }
 
 type InstallResponse struct {

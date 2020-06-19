@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"net/http"
 
-	"helm.sh/helm/v3/cmd/endpoints/install"
-	"helm.sh/helm/v3/cmd/servercontext"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/http/api/install"
+	"helm.sh/helm/v3/pkg/servercontext"
 	"helm.sh/helm/v3/pkg/storage/driver"
 )
 
