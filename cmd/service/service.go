@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"helm.sh/helm/v3/pkg/http/api/install"
+	"helm.sh/helm/v3/pkg/http/api"
 	"helm.sh/helm/v3/pkg/http/api/list"
 	"helm.sh/helm/v3/pkg/http/api/ping"
-	"helm.sh/helm/v3/pkg/http/api/upgrade"
 	"helm.sh/helm/v3/pkg/servercontext"
 )
 
@@ -18,10 +17,13 @@ func main() {
 
 func startServer(appconfig *servercontext.Application) {
 	router := http.NewServeMux()
+	//TODO: use gorilla mux and add middleware to write content type and other headers
+	cfg := servercontext.App().Config
+	service := api.NewService(cfg)
 	router.Handle("/ping", ping.Handler())
 	router.Handle("/list", list.Handler())
-	router.Handle("/install", install.Handler())
-	router.Handle("/upgrade", upgrade.Handler())
+	router.Handle("/install", api.Install(service))
+	router.Handle("/upgrade", api.Upgrade(service))
 
 	err := http.ListenAndServe(fmt.Sprintf(":%d", 8080), router)
 	if err != nil {

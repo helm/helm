@@ -9,6 +9,7 @@ import (
 	"helm.sh/helm/v3/pkg/cli"
 )
 
+//TODO: rename package
 var app Application
 
 type Application struct {

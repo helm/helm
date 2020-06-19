@@ -45,6 +45,7 @@ require (
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.1.0
 	github.com/xenolf/lego v0.3.2-0.20160613233155-a9d8cec0e656 // indirect
+	go.uber.org/zap v1.10.0
 	golang.org/x/crypto v0.0.0-20191028145041-f83a4685e152
 	golang.org/x/net v0.0.0-20191028085509-fe3aa8a45271 // indirect
 	golang.org/x/sys v0.0.0-20191028164358-195ce5e7f934 // indirect
