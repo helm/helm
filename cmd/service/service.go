@@ -6,6 +6,7 @@ import (
 
 	"helm.sh/helm/v3/pkg/http/api"
 	"helm.sh/helm/v3/pkg/http/api/list"
+	"helm.sh/helm/v3/pkg/http/api/logger"
 	"helm.sh/helm/v3/pkg/http/api/ping"
 	"helm.sh/helm/v3/pkg/servercontext"
 )
@@ -17,9 +18,11 @@ func main() {
 
 func startServer(appconfig *servercontext.Application) {
 	router := http.NewServeMux()
+
 	//TODO: use gorilla mux and add middleware to write content type and other headers
-	cfg := servercontext.App().Config
-	service := api.NewService(cfg)
+	app := servercontext.App()
+	logger.Setup("debug")
+	service := api.NewService(app.Config, app.ActionConfig)
 	router.Handle("/ping", ping.Handler())
 	router.Handle("/list", list.Handler())
 	router.Handle("/install", api.Install(service))

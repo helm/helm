@@ -10,12 +10,21 @@ import (
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/http/api/logger"
 	"helm.sh/helm/v3/pkg/servercontext"
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
 type Service struct {
-	config  *cli.EnvSettings
-	install *action.Install
+	settings     *cli.EnvSettings
+	actionConfig *action.Configuration
+	chartloader  *action.ChartPathOptions
+}
+
+type InstallConfig struct {
+	Name      string
+	Namespace string
+	ChartName string
 }
 
 type chartValues map[string]interface{}
@@ -27,31 +36,25 @@ type installResult struct {
 func (s Service) getValues(vals chartValues) (chartValues, error) {
 	valueOpts := &values.Options{}
 	//valueOpts.Values = append(valueOpts.Values, vals)
+	//TODO: we need to make this as Provider, so it'll be able to merge
 	return valueOpts.MergeValues(getter.All(servercontext.App().Config))
 }
 
-func (s Service) Install(ctx context.Context, chartName string, values chartValues) (installResult, error) {
-	var result installResult
-	chart, err := s.loadChart(chartName)
+func (s Service) Install(ctx context.Context, cfg InstallConfig, values chartValues) (*installResult, error) {
+	chart, err := s.loadChart(cfg.ChartName)
 	if err != nil {
-		return result, err
+		return nil, err
 	}
 	vals, err := s.getValues(values)
 	if err != nil {
-		return result, fmt.Errorf("error merging values: %v", err)
+		return nil, fmt.Errorf("error merging values: %v", err)
 	}
-	release, err := s.install.Run(chart, vals)
-	if err != nil {
-		return result, fmt.Errorf("error in installing chart: %v", err)
-	}
-	if release.Info != nil {
-		result.status = release.Info.Status.String()
-	}
-	return result, nil
+	return s.installChart(cfg, chart, vals)
 }
 
 func (s Service) loadChart(chartName string) (*chart.Chart, error) {
-	cp, err := s.install.ChartPathOptions.LocateChart(chartName, s.config)
+	logger.Debugf("[Install] chart name: %s", chartName)
+	cp, err := s.chartloader.LocateChart(chartName, s.settings)
 	if err != nil {
 		return nil, fmt.Errorf("error in locating chart: %v", err)
 	}
@@ -62,10 +65,27 @@ func (s Service) loadChart(chartName string) (*chart.Chart, error) {
 	return requestedChart, nil
 }
 
-func NewService(cfg *cli.EnvSettings) Service {
+func (s Service) installChart(icfg InstallConfig, ch *chart.Chart, vals chartValues) (*installResult, error) {
+	install := action.NewInstall(s.actionConfig)
+	install.Namespace = icfg.Namespace
+	install.ReleaseName = icfg.Name
+
+	release, err := install.Run(ch, vals)
+	if err != nil {
+		return nil, fmt.Errorf("error in installing chart: %v", err)
+	}
+	result := new(installResult)
+	fmt.Println(result)
+	if release.Info != nil {
+		result.status = release.Info.Status.String()
+	}
+	return result, nil
+}
+
+func NewService(settings *cli.EnvSettings, actionConfig *action.Configuration) Service {
 	return Service{
-		config: cfg,
-		//TODO: not sure why this's needed, but we can refactor later,could be passed as param
-		install: action.NewInstall(servercontext.App().ActionConfig),
+		settings:     settings,
+		actionConfig: actionConfig,
+		chartloader:  new(action.ChartPathOptions),
 	}
 }

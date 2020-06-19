@@ -31,7 +31,8 @@ func Install(svc Service) http.Handler {
 		}
 		defer r.Body.Close()
 		var response InstallResponse
-		res, err := svc.Install(r.Context(), req.Chart, req.Values)
+		cfg := InstallConfig{ChartName: req.Chart, Name: req.Name, Namespace: req.Namespace}
+		res, err := svc.Install(r.Context(), cfg, req.Values)
 		if err != nil {
 			response.Error = err.Error()
 			logger.Errorf("[Install] error while installing chart: %v", err)
@@ -41,6 +42,7 @@ func Install(svc Service) http.Handler {
 		response.Status = res.status
 		if err := json.NewEncoder(w).Encode(response); err != nil {
 			logger.Errorf("[Install] error writing response %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	})

@@ -89,7 +89,12 @@ func (h UpgradeHandler) UpgradeRelease(releaseName, releaseNamespace, chartPath 
 			fmt.Printf("Release %q does not exist. Installing it now.\n", releaseName)
 
 			//TODO: yet to accomodate namespace and releasename, just refactoring
-			release, err := h.service.Install(context.TODO(), chartPath, vals)
+			icfg := InstallConfig{
+				Namespace: releaseNamespace,
+				Name:      releaseName,
+				ChartName: chartPath,
+			}
+			release, err := h.service.Install(context.TODO(), icfg, vals)
 			if err != nil {
 				fmt.Printf("error in request: %v", err)
 				return false, "", err
