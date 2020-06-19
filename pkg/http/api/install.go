@@ -16,7 +16,7 @@ type InstallRequest struct {
 
 type InstallResponse struct {
 	Error  string `json:"error,omitempty"`
-	Status string
+	Status string `json:"status"`
 }
 
 // RODO: we could use interface as well if everything's in same package
@@ -40,7 +40,7 @@ func Install(svc Service) http.Handler {
 			return
 		}
 		response.Status = res.status
-		if err := json.NewEncoder(w).Encode(response); err != nil {
+		if err := json.NewEncoder(w).Encode(&response); err != nil {
 			logger.Errorf("[Install] error writing response %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return

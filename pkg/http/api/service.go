@@ -4,21 +4,27 @@ import (
 	"context"
 	"fmt"
 
-	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/cli/values"
-	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/http/api/logger"
-	"helm.sh/helm/v3/pkg/servercontext"
+	"helm.sh/helm/v3/pkg/release"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
+type installer interface {
+	SetConfig(InstallConfig)
+	Run(*chart.Chart, map[string]interface{}) (*release.Release, error)
+}
+
+type chartloader interface {
+	LocateChart(name string, settings *cli.EnvSettings) (string, error)
+}
+
 type Service struct {
-	settings     *cli.EnvSettings
-	actionConfig *action.Configuration
-	chartloader  *action.ChartPathOptions
+	settings *cli.EnvSettings
+	installer
+	chartloader
 }
 
 type InstallConfig struct {
@@ -34,10 +40,11 @@ type installResult struct {
 }
 
 func (s Service) getValues(vals chartValues) (chartValues, error) {
-	valueOpts := &values.Options{}
+	//	valueOpts := &values.Options{}
 	//valueOpts.Values = append(valueOpts.Values, vals)
 	//TODO: we need to make this as Provider, so it'll be able to merge
-	return valueOpts.MergeValues(getter.All(servercontext.App().Config))
+	// why do we need getter.ALl?
+	return vals, nil
 }
 
 func (s Service) Install(ctx context.Context, cfg InstallConfig, values chartValues) (*installResult, error) {
@@ -66,26 +73,22 @@ func (s Service) loadChart(chartName string) (*chart.Chart, error) {
 }
 
 func (s Service) installChart(icfg InstallConfig, ch *chart.Chart, vals chartValues) (*installResult, error) {
-	install := action.NewInstall(s.actionConfig)
-	install.Namespace = icfg.Namespace
-	install.ReleaseName = icfg.Name
-
-	release, err := install.Run(ch, vals)
+	s.installer.SetConfig(icfg)
+	release, err := s.installer.Run(ch, vals)
 	if err != nil {
 		return nil, fmt.Errorf("error in installing chart: %v", err)
 	}
 	result := new(installResult)
-	fmt.Println(result)
 	if release.Info != nil {
 		result.status = release.Info.Status.String()
 	}
 	return result, nil
 }
 
-func NewService(settings *cli.EnvSettings, actionConfig *action.Configuration) Service {
+func NewService(settings *cli.EnvSettings, cl chartloader, i installer) Service {
 	return Service{
-		settings:     settings,
-		actionConfig: actionConfig,
-		chartloader:  new(action.ChartPathOptions),
+		settings:    settings,
+		chartloader: cl,
+		installer:   i,
 	}
 }

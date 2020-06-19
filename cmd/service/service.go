@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/http/api"
 	"helm.sh/helm/v3/pkg/http/api/list"
 	"helm.sh/helm/v3/pkg/http/api/logger"
@@ -22,7 +23,9 @@ func startServer(appconfig *servercontext.Application) {
 	//TODO: use gorilla mux and add middleware to write content type and other headers
 	app := servercontext.App()
 	logger.Setup("debug")
-	service := api.NewService(app.Config, app.ActionConfig)
+	actionInstall := action.NewInstall(app.ActionConfig)
+
+	service := api.NewService(app.Config, new(action.ChartPathOptions), api.NewInstaller(actionInstall))
 	router.Handle("/ping", ping.Handler())
 	router.Handle("/list", list.Handler())
 	router.Handle("/install", api.Install(service))
