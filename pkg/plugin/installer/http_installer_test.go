@@ -23,7 +23,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"syscall"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -193,10 +192,10 @@ func TestExtract(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	// Set the umask to default open permissions so we can actually test
-	oldmask := syscall.Umask(0000)
-	defer func() {
-		syscall.Umask(oldmask)
-	}()
+	// oldmask := syscall.Umask(0000)
+	// defer func() {
+	// 	syscall.Umask(oldmask)
+	// }()
 
 	// Write a tarball to a buffer for us to extract
 	var tarbuf bytes.Buffer
@@ -206,7 +205,7 @@ func TestExtract(t *testing.T) {
 		Mode       int64
 	}{
 		{"plugin.yaml", "plugin metadata", 0600},
-		{"README.md", "some text", 0777},
+		{"README.md", "some text", 0755},
 	}
 	for _, file := range files {
 		hdr := &tar.Header{
@@ -272,10 +271,9 @@ func TestExtract(t *testing.T) {
 			t.Fatalf("Expected %s to exist but doesn't", readmeFullPath)
 		}
 		t.Fatal(err)
-	} else if info.Mode().Perm() != 0777 {
-		t.Fatalf("Expected %s to have 0777 mode it but has %o", readmeFullPath, info.Mode().Perm())
+	} else if info.Mode().Perm() != 0755 {
+		t.Fatalf("Expected %s to have 0755 mode it but has %o", readmeFullPath, info.Mode().Perm())
 	}
-
 }
 
 func TestCleanJoin(t *testing.T) {
