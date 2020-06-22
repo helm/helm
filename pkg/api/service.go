@@ -8,22 +8,13 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/release"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
-type installer interface {
-	SetConfig(InstallConfig)
-	Run(*chart.Chart, map[string]interface{}) (*release.Release, error)
-}
-
-type chartloader interface {
-	LocateChart(name string, settings *cli.EnvSettings) (string, error)
-}
-
 type Service struct {
 	settings *cli.EnvSettings
-	installer
+	Installer
+	lister
 	chartloader
 }
 
@@ -73,8 +64,8 @@ func (s Service) loadChart(chartName string) (*chart.Chart, error) {
 }
 
 func (s Service) installChart(icfg InstallConfig, ch *chart.Chart, vals chartValues) (*installResult, error) {
-	s.installer.SetConfig(icfg)
-	release, err := s.installer.Run(ch, vals)
+	s.Installer.SetConfig(icfg)
+	release, err := s.Installer.Run(ch, vals)
 	if err != nil {
 		return nil, fmt.Errorf("error in installing chart: %v", err)
 	}
@@ -85,10 +76,11 @@ func (s Service) installChart(icfg InstallConfig, ch *chart.Chart, vals chartVal
 	return result, nil
 }
 
-func NewService(settings *cli.EnvSettings, cl chartloader, i installer) Service {
+func NewService(settings *cli.EnvSettings, cl chartloader, i Installer, l lister) Service {
 	return Service{
-		settings:    settings,
-		chartloader: cl,
-		installer:   i,
+		settings,
+		i,
+		l,
+		cl,
 	}
 }

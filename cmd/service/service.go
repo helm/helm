@@ -13,19 +13,22 @@ import (
 )
 
 func main() {
-	app := servercontext.NewApp()
-	startServer(app)
+	servercontext.NewApp()
+	startServer()
 }
 
-func startServer(appconfig *servercontext.Application) {
+func startServer() {
 	router := http.NewServeMux()
 
 	//TODO: use gorilla mux and add middleware to write content type and other headers
 	app := servercontext.App()
 	logger.Setup("debug")
-	actionInstall := action.NewInstall(app.ActionConfig)
 
-	service := api.NewService(app.Config, new(action.ChartPathOptions), api.NewInstaller(actionInstall))
+	service := api.NewService(app.Config,
+		new(action.ChartPathOptions),
+		api.NewInstall(action.NewInstall(app.ActionConfig)),
+		api.NewList(action.NewList(app.ActionConfig)))
+
 	router.Handle("/ping", ping.Handler())
 	router.Handle("/list", list.Handler())
 	router.Handle("/install", api.Install(service))
