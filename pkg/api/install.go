@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"helm.sh/helm/v3/pkg/http/api/logger"
+	"helm.sh/helm/v3/pkg/api/logger"
 )
 
 type InstallRequest struct {

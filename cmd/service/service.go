@@ -5,10 +5,10 @@ import (
 	"net/http"
 
 	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/http/api"
-	"helm.sh/helm/v3/pkg/http/api/list"
-	"helm.sh/helm/v3/pkg/http/api/logger"
-	"helm.sh/helm/v3/pkg/http/api/ping"
+	"helm.sh/helm/v3/pkg/api"
+	"helm.sh/helm/v3/pkg/api/list"
+	"helm.sh/helm/v3/pkg/api/logger"
+	"helm.sh/helm/v3/pkg/api/ping"
 	"helm.sh/helm/v3/pkg/servercontext"
 )
 

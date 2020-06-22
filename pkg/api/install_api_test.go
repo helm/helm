@@ -12,10 +12,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"gotest.tools/assert"
+	"helm.sh/helm/v3/pkg/api"
+	"helm.sh/helm/v3/pkg/api/logger"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/http/api"
-	"helm.sh/helm/v3/pkg/http/api/logger"
 	"helm.sh/helm/v3/pkg/release"
 )
 
