@@ -17,7 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"time"
@@ -193,10 +192,6 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		return nil, err
 	}
 
-	if _, err := isLimitSize(chartRequested.Raw); err != nil {
-		return nil, err
-	}
-
 	if chartRequested.Metadata.Deprecated {
 		fmt.Fprintln(out, "WARNING: This chart is deprecated")
 	}
@@ -243,20 +238,6 @@ func isChartInstallable(ch *chart.Chart) (bool, error) {
 		return true, nil
 	}
 	return false, errors.Errorf("%s charts are not installable", ch.Metadata.Type)
-}
-
-// It is to limit the total size of the template file to 3m, and the content of files over 3m should not be allowed to be installed.
-//
-// This is because the server requires the requestbody to be less than 3m when creating secrets.For details, please refer to: https://github.com/kubernetes/kubernetes/blob/release-1.18/staging/src/k8s.io/apiserver/pkg/server/config.go#L323
-func isLimitSize(raw []*chart.File) (bool, error) {
-	totalSize := int64(0)
-	for _, r := range raw {
-		totalSize += int64(bytes.Count(r.Data, []byte("")))
-	}
-	if totalSize < int64(3 * 1024 * 1024) {
-		return true, nil
-	}
-	return false,errors.Errorf("Chart package too large, limit is 3MB.")
 }
 
 // Provide dynamic auto-completion for the install and template commands

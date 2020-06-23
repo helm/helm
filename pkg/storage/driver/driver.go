@@ -29,6 +29,8 @@ var (
 	ErrReleaseNotFound = errors.New("release: not found")
 	// ErrReleaseExists indicates that a release already exists.
 	ErrReleaseExists = errors.New("release: already exists")
+	// ErrPackageTooLarge indicates that package too large,because of storage limit,reference: https://github.com/kubernetes/kubernetes/blob/release-1.18/staging/src/k8s.io/apiserver/pkg/server/config.go#L323
+	ErrPackageTooLarge = errors.New("Chart package too large,storage limit is 3145728")
 	// ErrInvalidKey indicates that a release key could not be parsed.
 	ErrInvalidKey = errors.New("release: invalid key")
 	// ErrNoDeployedReleases indicates that there are no releases with the given key in the deployed state

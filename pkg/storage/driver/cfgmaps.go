@@ -166,6 +166,8 @@ func (cfgmaps *ConfigMaps) Create(key string, rls *rspb.Release) error {
 	if _, err := cfgmaps.impl.Create(context.Background(), obj, metav1.CreateOptions{}); err != nil {
 		if apierrors.IsAlreadyExists(err) {
 			return ErrReleaseExists
+		}else if apierrors.IsRequestEntityTooLargeError(err){
+			return ErrPackageTooLarge
 		}
 
 		cfgmaps.Log("create: failed to create: %s", err)
