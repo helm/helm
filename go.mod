@@ -7,10 +7,10 @@ require (
 	github.com/DATA-DOG/go-sqlmock v1.4.1
 	github.com/Masterminds/semver/v3 v3.1.0
 	github.com/Masterminds/sprig/v3 v3.1.0
-	github.com/Masterminds/squirrel v1.2.0
+	github.com/Masterminds/squirrel v1.4.0
 	github.com/Masterminds/vcs v1.13.1
-	github.com/asaskevich/govalidator v0.0.0-20200108200545-475eaeb16496
-	github.com/containerd/containerd v1.3.2
+	github.com/asaskevich/govalidator v0.0.0-20200428143746-21a406dcc535
+	github.com/containerd/containerd v1.3.4
 	github.com/cyphar/filepath-securejoin v0.2.2
 	github.com/deislabs/oras v0.8.1
 	github.com/docker/distribution v2.7.1+incompatible
@@ -21,26 +21,26 @@ require (
 	github.com/gofrs/flock v0.7.1
 	github.com/gosuri/uitable v0.0.4
 	github.com/jmoiron/sqlx v1.2.0
-	github.com/lib/pq v1.3.0
+	github.com/lib/pq v1.7.0
 	github.com/mattn/go-shellwords v1.0.10
 	github.com/mitchellh/copystructure v1.0.0
-	github.com/opencontainers/go-digest v1.0.0-rc1
+	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.0.1
 	github.com/pkg/errors v0.9.1
-	github.com/rubenv/sql-migrate v0.0.0-20200212082348-64f95ea68aa3
-	github.com/sirupsen/logrus v1.4.2
+	github.com/rubenv/sql-migrate v0.0.0-20200616145509-8d140a17f351
+	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.5.1
-	github.com/xeipuuv/gojsonschema v1.1.0
-	golang.org/x/crypto v0.0.0-20200414173820-0848c9571904
-	k8s.io/api v0.18.2
-	k8s.io/apiextensions-apiserver v0.18.2
-	k8s.io/apimachinery v0.18.2
-	k8s.io/cli-runtime v0.18.2
-	k8s.io/client-go v0.18.2
+	github.com/stretchr/testify v1.6.1
+	github.com/xeipuuv/gojsonschema v1.2.0
+	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
+	k8s.io/api v0.18.4
+	k8s.io/apiextensions-apiserver v0.18.4
+	k8s.io/apimachinery v0.18.4
+	k8s.io/cli-runtime v0.18.4
+	k8s.io/client-go v0.18.4
 	k8s.io/klog v1.0.0
-	k8s.io/kubectl v0.18.2
+	k8s.io/kubectl v0.18.4
 	sigs.k8s.io/yaml v1.2.0
 )
 
