@@ -88,7 +88,7 @@ func (h UpgradeHandler) UpgradeRelease(releaseName, releaseNamespace, chartPath 
 		if _, err := history.Run(releaseName); err == driver.ErrReleaseNotFound {
 			fmt.Printf("Release %q does not exist. Installing it now.\n", releaseName)
 
-			//TODO: yet to accomodate namespace and releasename, just refactoring
+			//TODO: yet to accommodate namespace and releasename, just refactoring
 			icfg := InstallConfig{
 				Namespace: releaseNamespace,
 				Name:      releaseName,

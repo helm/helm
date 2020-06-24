@@ -53,6 +53,25 @@ func (s *ServiceTestSuite) TestInstallShouldReturnErrorOnInvalidChart() {
 	s.installer.AssertNotCalled(t, "Run")
 }
 
+func (s *ServiceTestSuite) TestInstallShouldReturnErrorOnLocalChartReference() {
+	chartName := "./some/local-chart"
+	cfg := InstallConfig{
+		Name:      "some-component",
+		Namespace: "hermes",
+		ChartName: chartName,
+	}
+	var vals chartValues
+
+	res, err := s.svc.Install(s.ctx, cfg, vals)
+
+	t := s.T()
+	assert.Nil(t, res)
+	assert.EqualError(t, err, "error request validation: cannot refer local chart")
+	s.chartloader.AssertNotCalled(t, "LocateChart")
+	s.installer.AssertNotCalled(t, "SetConfig")
+	s.installer.AssertNotCalled(t, "Run")
+}
+
 func (s *ServiceTestSuite) TestInstallShouldReturnErrorOnFailedIntallRun() {
 	chartName := "stable/valid-chart"
 	cfg := InstallConfig{

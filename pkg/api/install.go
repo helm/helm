@@ -16,7 +16,7 @@ type InstallRequest struct {
 
 type InstallResponse struct {
 	Error  string `json:"error,omitempty"`
-	Status string `json:"status"`
+	Status string `json:"status,omitempty"`
 }
 
 // RODO: we could use interface as well if everything's in same package
@@ -34,9 +34,7 @@ func Install(svc Service) http.Handler {
 		cfg := InstallConfig{ChartName: req.Chart, Name: req.Name, Namespace: req.Namespace}
 		res, err := svc.Install(r.Context(), cfg, req.Values)
 		if err != nil {
-			response.Error = err.Error()
-			logger.Errorf("[Install] error while installing chart: %v", err)
-			w.WriteHeader(http.StatusInternalServerError)
+			respondError(w, "error while installing chart: %v", err)
 			return
 		}
 		response.Status = res.status
@@ -46,4 +44,14 @@ func Install(svc Service) http.Handler {
 			return
 		}
 	})
+}
+
+func respondError(w http.ResponseWriter, logprefix string, err error) {
+	response := InstallResponse{Error: err.Error()}
+	w.WriteHeader(http.StatusInternalServerError)
+	if err := json.NewEncoder(w).Encode(&response); err != nil {
+		logger.Errorf("[Install] %s %v", logprefix, err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 }

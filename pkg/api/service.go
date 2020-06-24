@@ -2,19 +2,20 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 
 	"helm.sh/helm/v3/pkg/api/logger"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/release"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
 type installer interface {
 	SetConfig(InstallConfig)
-	Run(*chart.Chart, map[string]interface{}) (*release.Release, error)
+	runner
 }
 
 type chartloader interface {
@@ -35,7 +36,7 @@ type InstallConfig struct {
 
 type chartValues map[string]interface{}
 
-type installResult struct {
+type InstallResult struct {
 	status string
 }
 
@@ -47,7 +48,10 @@ func (s Service) getValues(vals chartValues) (chartValues, error) {
 	return vals, nil
 }
 
-func (s Service) Install(ctx context.Context, cfg InstallConfig, values chartValues) (*installResult, error) {
+func (s Service) Install(ctx context.Context, cfg InstallConfig, values chartValues) (*InstallResult, error) {
+	if err := s.validate(cfg, values); err != nil {
+		return nil, fmt.Errorf("error request validation: %v", err)
+	}
 	chart, err := s.loadChart(cfg.ChartName)
 	if err != nil {
 		return nil, err
@@ -72,17 +76,25 @@ func (s Service) loadChart(chartName string) (*chart.Chart, error) {
 	return requestedChart, nil
 }
 
-func (s Service) installChart(icfg InstallConfig, ch *chart.Chart, vals chartValues) (*installResult, error) {
+func (s Service) installChart(icfg InstallConfig, ch *chart.Chart, vals chartValues) (*InstallResult, error) {
 	s.installer.SetConfig(icfg)
 	release, err := s.installer.Run(ch, vals)
 	if err != nil {
 		return nil, fmt.Errorf("error in installing chart: %v", err)
 	}
-	result := new(installResult)
+	result := new(InstallResult)
 	if release.Info != nil {
 		result.status = release.Info.Status.String()
 	}
 	return result, nil
+}
+
+func (s Service) validate(icfg InstallConfig, values chartValues) error {
+	if strings.HasPrefix(icfg.ChartName, ".") ||
+		strings.HasPrefix(icfg.ChartName, "/") {
+		return errors.New("cannot refer local chart")
+	}
+	return nil
 }
 
 func NewService(settings *cli.EnvSettings, cl chartloader, i installer) Service {

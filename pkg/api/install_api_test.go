@@ -1,6 +1,7 @@
 package api_test
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -62,8 +63,28 @@ func (s *InstallerTestSuite) TestShouldReturnDeployedStatusOnSuccessfulInstall()
 
 	resp, err := http.DefaultClient.Do(req)
 
-	assert.Equal(s.T(), 200, resp.StatusCode)
+	assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
 	expectedResponse := `{"status":"deployed"}` + "\n"
+	respBody, _ := ioutil.ReadAll(resp.Body)
+	assert.Equal(s.T(), expectedResponse, string(respBody))
+	require.NoError(s.T(), err)
+	s.mockInstaller.AssertExpectations(s.T())
+	s.mockChartLoader.AssertExpectations(s.T())
+}
+
+func (s *InstallerTestSuite) TestShouldReturnInternalServerErrorOnFailure() {
+	chartName := "stable/redis-ha"
+	body := fmt.Sprintf(`{
+    "chart":"%s",
+    "name": "redis-v5",
+    "namespace": "something"}`, chartName)
+	req, _ := http.NewRequest("POST", fmt.Sprintf("%s/install", s.server.URL), strings.NewReader(body))
+	s.mockChartLoader.On("LocateChart", chartName, s.appConfig).Return("./testdata/albatross", errors.New("Invalid chart"))
+
+	resp, err := http.DefaultClient.Do(req)
+
+	assert.Equal(s.T(), http.StatusInternalServerError, resp.StatusCode)
+	expectedResponse := `{"error":"error in locating chart: Invalid chart"}` + "\n"
 	respBody, _ := ioutil.ReadAll(resp.Body)
 	assert.Equal(s.T(), expectedResponse, string(respBody))
 	require.NoError(s.T(), err)
