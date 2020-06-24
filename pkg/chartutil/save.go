@@ -128,26 +128,7 @@ func SaveDir(c *chart.Chart, dest string) error {
 //
 // This returns the absolute path to the chart archive file.
 func Save(c *chart.Chart, outDir string) (string, error) {
-	tgzWriter, err := createTarGzipWriter(c, outDir)
-	if err != nil {
-		return "", err
-	}
-
-	filename := tgzWriter.File.Name()
-	rollback := false
-
-	defer func() {
-		tgzWriter.Close()
-		if rollback {
-			os.Remove(filename)
-		}
-	}()
-
-	if err := writeTarContents(tgzWriter.TarWriter, c, "", time.Now()); err != nil {
-		rollback = true
-		return filename, err
-	}
-	return filename, nil
+	return SaveWithOpts(c, outDir)
 }
 
 func SaveWithOpts(c *chart.Chart, outDir string, opts ...SaveOpt) (string, error) {
