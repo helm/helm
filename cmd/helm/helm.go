@@ -68,7 +68,11 @@ func main() {
 	initKubeLogs()
 
 	actionConfig := new(action.Configuration)
-	cmd := newRootCmd(actionConfig, os.Stdout, os.Args[1:])
+	cmd, err := newRootCmd(actionConfig, os.Stdout, os.Args[1:])
+	if err != nil {
+		debug("%+v", err)
+		os.Exit(1)
+	}
 
 	// run when each command's execute method is called
 	cobra.OnInitialize(func() {

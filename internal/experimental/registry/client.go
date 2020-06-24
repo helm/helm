@@ -42,11 +42,13 @@ const (
 type (
 	// Client works with OCI-compliant registries and local Helm chart cache
 	Client struct {
-		debug      bool
-		out        io.Writer
-		authorizer *Authorizer
-		resolver   *Resolver
-		cache      *Cache
+		debug bool
+		// path to repository config file e.g. ~/.docker/config.json
+		credentialsFile string
+		out             io.Writer
+		authorizer      *Authorizer
+		resolver        *Resolver
+		cache           *Cache
 	}
 )
 
@@ -59,9 +61,11 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 		opt(client)
 	}
 	// set defaults if fields are missing
+	if client.credentialsFile == "" {
+		client.credentialsFile = helmpath.CachePath("registry", CredentialsFileBasename)
+	}
 	if client.authorizer == nil {
-		credentialsFile := helmpath.CachePath("registry", CredentialsFileBasename)
-		authClient, err := auth.NewClient(credentialsFile)
+		authClient, err := auth.NewClient(client.credentialsFile)
 		if err != nil {
 			return nil, err
 		}
