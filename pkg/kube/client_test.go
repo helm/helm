@@ -302,7 +302,7 @@ func TestUpdateNonManagedResourceError(t *testing.T) {
 	}
 
 	if err := c.Update(v1.NamespaceDefault, objBody(&current), objBody(&target), false, false, 0, false); err != nil {
-		if err.Error() != "kind Pod with the name \"starfish\" already exists in the cluster and wasn't defined in the previous release. Before upgrading, please either delete the resource from the cluster or remove it from the chart" {
+		if err.Error() != "kind Pod with the name \"starfish\" in \"default\" already exists in the cluster and wasn't defined in the previous release. Before upgrading, please either delete the resource from the cluster or remove it from the chart" {
 			t.Fatal(err)
 		}
 	} else {
