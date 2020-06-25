@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"helm.sh/helm/v3/pkg/api/logger"
-	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/release"
 )
@@ -18,8 +17,9 @@ import (
 type ServiceTestSuite struct {
 	suite.Suite
 	ctx         context.Context
-	installer   *mockInstaller
-	chartloader *mockChartLoader
+	installer   *MockInstall
+	chartloader *MockChartLoader
+	lister		*MockList
 	svc         Service
 	settings    *cli.EnvSettings
 }
@@ -27,10 +27,11 @@ type ServiceTestSuite struct {
 func (s *ServiceTestSuite) SetupTest() {
 	logger.Setup("")
 	s.ctx = context.Background()
-	s.installer = new(mockInstaller)
-	s.chartloader = new(mockChartLoader)
+	s.installer = new(MockInstall)
+	s.lister = new(MockList)
+	s.chartloader = new(MockChartLoader)
 	s.settings = &cli.EnvSettings{}
-	s.svc = NewService(s.settings, s.chartloader, s.installer)
+	s.svc = NewService(s.settings, s.chartloader, s.installer, s.lister)
 }
 
 func (s *ServiceTestSuite) TestInstallShouldReturnErrorOnInvalidChart() {
@@ -100,22 +101,4 @@ func (s *ServiceTestSuite) TestInstallShouldReturnResultOnSuccess() {
 
 func TestServiceSuite(t *testing.T) {
 	suite.Run(t, new(ServiceTestSuite))
-}
-
-type mockChartLoader struct{ mock.Mock }
-
-func (m *mockChartLoader) LocateChart(name string, settings *cli.EnvSettings) (string, error) {
-	args := m.Called(name, settings)
-	return args.String(0), args.Error(1)
-}
-
-type mockInstaller struct{ mock.Mock }
-
-func (m *mockInstaller) SetConfig(cfg InstallConfig) {
-	m.Called(cfg)
-}
-
-func (m *mockInstaller) Run(c *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
-	args := m.Called(c, vals)
-	return args.Get(0).(*release.Release), args.Error(1)
 }

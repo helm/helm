@@ -26,3 +26,7 @@ func (m *MockList) Run() ([]*release.Release, error) {
 	args := m.Called()
 	return args.Get(0).([]*release.Release), args.Error(1)
 }
+
+func (m *MockList) SetStateMask() {
+	m.Called()
+}

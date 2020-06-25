@@ -20,7 +20,7 @@ type HelmRelease struct {
 	Namespace string `json:"namespace"`
 }
 
-func Handler(svc Service) http.Handler {
+func List(svc Service) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -29,9 +29,11 @@ func Handler(svc Service) http.Handler {
 		decoder := json.NewDecoder(r.Body)
 		decoder.UseNumber()
 		if err := decoder.Decode(&request); err != nil {
-			response.Error = err.Error()
 			logger.Errorf("[List] error decoding request: %v", err)
+			response.Error = err.Error()
+			payload, _ := json.Marshal(response)
 			w.WriteHeader(http.StatusBadRequest)
+			w.Write(payload)
 			return
 		}
 		defer r.Body.Close()
@@ -42,9 +44,11 @@ func Handler(svc Service) http.Handler {
 		res, err := svc.lister.Run()
 
 		if err != nil {
-			response.Error = err.Error()
 			logger.Errorf("[List] error while installing chart: %v", err)
+			response.Error = err.Error()
+			payload, _ := json.Marshal(response)
 			w.WriteHeader(http.StatusInternalServerError)
+			w.Write(payload)
 			return
 		}
 
@@ -56,9 +60,11 @@ func Handler(svc Service) http.Handler {
 		response = ListResponse{"", helmReleases}
 		payload, err := json.Marshal(response)
 		if err != nil {
-			response.Error = err.Error()
 			logger.Errorf("[List] error writing response %v", err)
+			response.Error = err.Error()
+			payload, _ := json.Marshal(response)
 			w.WriteHeader(http.StatusInternalServerError)
+			w.Write(payload)
 			return
 		}
 
