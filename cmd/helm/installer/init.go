@@ -51,6 +51,29 @@ func Initialize(home helmpath.Home, out io.Writer, skipRefresh bool, settings he
 	return ensureRepoFileFormat(home.RepositoryFile(), out)
 }
 
+// InitializeWithoutRepos initializes local config without adding repos
+//
+// Returns an error if the command failed.
+func InitializeWithoutRepos(home helmpath.Home, out io.Writer) error {
+	if err := ensureDirectories(home, out); err != nil {
+		return err
+	}
+
+	// Adding an empty repositories file
+	repoFile := home.RepositoryFile()
+	if fi, err := os.Stat(repoFile); err != nil {
+		fmt.Fprintf(out, "Creating %s \n", repoFile)
+		f := repo.NewRepoFile()
+		if err := f.WriteFile(repoFile, 0644); err != nil {
+			return err
+		}
+	} else if fi.IsDir() {
+		return fmt.Errorf("%s must be a file, not a directory", repoFile)
+	}
+
+	return ensureRepoFileFormat(home.RepositoryFile(), out)
+}
+
 // ensureDirectories checks to see if $HELM_HOME exists.
 //
 // If $HELM_HOME does not exist, this function will create it.

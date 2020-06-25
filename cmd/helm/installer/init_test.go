@@ -68,6 +68,41 @@ func TestInitialize(t *testing.T) {
 	}
 }
 
+func TestInitializeWithoutRepos(t *testing.T) {
+	home, err := ioutil.TempDir("", "helm_home")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(home)
+
+	b := bytes.NewBuffer(nil)
+	hh := helmpath.Home(home)
+
+	if err := InitializeWithoutRepos(hh, b); err != nil {
+		t.Error(err)
+	}
+
+	expectedDirs := []string{hh.String(), hh.Repository(), hh.Cache()}
+	for _, dir := range expectedDirs {
+		if fi, err := os.Stat(dir); err != nil {
+			t.Errorf("%s", err)
+		} else if !fi.IsDir() {
+			t.Errorf("%s is not a directory", fi)
+		}
+	}
+
+	if fi, err := os.Stat(hh.RepositoryFile()); err != nil {
+		t.Error(err)
+	} else if fi.IsDir() {
+		t.Errorf("%s should not be a directory", fi)
+	}
+
+	// Make sure the local repository was not added
+	if fi, err := os.Stat(hh.LocalRepository(LocalRepositoryIndexFile)); err == nil {
+		t.Errorf("%s should not be found", fi)
+	}
+}
+
 func TestEnsureHome(t *testing.T) {
 	home, err := ioutil.TempDir("", "helm_home")
 	if err != nil {

@@ -80,6 +80,7 @@ type initCmd struct {
 	dryRun         bool
 	forceUpgrade   bool
 	skipRefresh    bool
+	skipRepos      bool
 	out            io.Writer
 	client         helm.Interface
 	home           helmpath.Home
@@ -118,6 +119,7 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	f.BoolVarP(&i.clientOnly, "client-only", "c", false, "If set does not install Tiller")
 	f.BoolVar(&i.dryRun, "dry-run", false, "Do not install local or remote")
 	f.BoolVar(&i.skipRefresh, "skip-refresh", false, "Do not refresh (download) the local repository cache")
+	f.BoolVar(&i.skipRepos, "skip-repos", false, "Skip adding the stable and local repositories")
 	f.BoolVar(&i.wait, "wait", false, "Block until Tiller is running and ready to receive requests")
 
 	// TODO: replace TLS flags with pkg/helm/environment.AddFlagsTLS() in Helm 3
@@ -258,8 +260,14 @@ func (i *initCmd) run() error {
 		return nil
 	}
 
-	if err := installer.Initialize(i.home, i.out, i.skipRefresh, settings, stableRepositoryURL, localRepositoryURL); err != nil {
-		return fmt.Errorf("error initializing: %s", err)
+	if i.skipRepos {
+		if err := installer.InitializeWithoutRepos(i.home, i.out); err != nil {
+			return fmt.Errorf("error initializing: %s", err)
+		}
+	} else {
+		if err := installer.Initialize(i.home, i.out, i.skipRefresh, settings, stableRepositoryURL, localRepositoryURL); err != nil {
+			return fmt.Errorf("error initializing: %s", err)
+		}
 	}
 	fmt.Fprintf(i.out, "$HELM_HOME has been configured at %s.\n", settings.Home)
 
