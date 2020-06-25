@@ -81,3 +81,12 @@ func TestZeroValueUnmarshal(t *testing.T) {
 		t.Errorf("expected time to be equal to zero value, got %v", myTime)
 	}
 }
+
+func TestFormat(t *testing.T) {
+	when := Date(2009, 11, 17, 20, 34, 58, 651387237, time.UTC)
+	expected := "2009-11-17 20:34:58 +0000 UTC"
+	got := Format(when)
+	if expected != got {
+		t.Errorf("expected %s, got %s", expected, got)
+	}
+}

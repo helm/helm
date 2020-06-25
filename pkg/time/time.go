@@ -89,3 +89,8 @@ func (t Time) Round(d time.Duration) Time    { return Time{Time: t.Time.Round(d)
 func (t Time) Sub(u Time) time.Duration      { return t.Time.Sub(u.Time) }
 func (t Time) Truncate(d time.Duration) Time { return Time{Time: t.Time.Truncate(d)} }
 func (t Time) UTC() Time                     { return Time{Time: t.Time.UTC()} }
+
+// Format formats time in custom output format
+func Format(t Time) string {
+	return t.Format("2006-01-02 15:04:05 -0700 MST")
+}

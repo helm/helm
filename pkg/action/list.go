@@ -122,6 +122,7 @@ type List struct {
 	// Filter is a filter that is applied to the results
 	Filter       string
 	Short        bool
+	FormatTime   bool
 	Uninstalled  bool
 	Superseded   bool
 	Uninstalling bool

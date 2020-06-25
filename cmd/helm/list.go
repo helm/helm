@@ -29,6 +29,7 @@ import (
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/release"
+	helmtime "helm.sh/helm/v3/pkg/time"
 )
 
 var listHelp = `
@@ -46,8 +47,8 @@ regular expressions (Perl compatible) that are applied to the list of releases.
 Only items that match the filter will be returned.
 
     $ helm list --filter 'ara[a-z]+'
-    NAME                UPDATED                     CHART
-    maudlin-arachnid    Mon May  9 16:07:08 2016    alpine-0.1.0
+    NAME                UPDATED                         CHART
+    maudlin-arachnid    1977-09-02 22:04:05 +0000 UTC   alpine-0.1.0
 
 If no results are found, 'helm list' will exit 0, but with no output (or in
 the case of no '-q' flag, only headers).
@@ -104,16 +105,17 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					}
 					return nil
 				default:
-					return outfmt.Write(out, newReleaseListWriter(results))
+					return outfmt.Write(out, newReleaseListWriter(results, client.FormatTime))
 				}
 			}
 
-			return outfmt.Write(out, newReleaseListWriter(results))
+			return outfmt.Write(out, newReleaseListWriter(results, client.FormatTime))
 		},
 	}
 
 	f := cmd.Flags()
 	f.BoolVarP(&client.Short, "short", "q", false, "output short (quiet) listing format")
+	f.BoolVar(&client.FormatTime, "format-time", false, "format time")
 	f.BoolVarP(&client.ByDate, "date", "d", false, "sort by release date")
 	f.BoolVarP(&client.SortReverse, "reverse", "r", false, "reverse the sort order")
 	f.BoolVarP(&client.All, "all", "a", false, "show all releases without any filter applied")
@@ -147,26 +149,49 @@ type releaseListWriter struct {
 	releases []releaseElement
 }
 
-func newReleaseListWriter(releases []*release.Release) *releaseListWriter {
+func newReleaseListWriter(releases []*release.Release, formatTime bool) *releaseListWriter {
 	// Initialize the array so no results returns an empty array instead of null
 	elements := make([]releaseElement, 0, len(releases))
 	for _, r := range releases {
-		element := releaseElement{
-			Name:       r.Name,
-			Namespace:  r.Namespace,
-			Revision:   strconv.Itoa(r.Version),
-			Status:     r.Info.Status.String(),
-			Chart:      fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version),
-			AppVersion: r.Chart.Metadata.AppVersion,
+		var element releaseElement
+
+		if formatTime {
+			element = timeFormattedElement(r)
+		} else {
+			element = releaseElement{
+				Name:       r.Name,
+				Namespace:  r.Namespace,
+				Revision:   strconv.Itoa(r.Version),
+				Status:     r.Info.Status.String(),
+				Chart:      fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version),
+				AppVersion: r.Chart.Metadata.AppVersion,
+			}
+			t := "-"
+			if tspb := r.Info.LastDeployed; !tspb.IsZero() {
+				t = tspb.String()
+			}
+			element.Updated = t
 		}
-		t := "-"
-		if tspb := r.Info.LastDeployed; !tspb.IsZero() {
-			t = tspb.String()
-		}
-		element.Updated = t
+
 		elements = append(elements, element)
 	}
 	return &releaseListWriter{elements}
+}
+
+func timeFormattedElement(r *release.Release) releaseElement {
+	t := "-"
+	if tspb := r.Info.LastDeployed; !tspb.IsZero() {
+		t = helmtime.Format(tspb)
+	}
+	return releaseElement{
+		Name:       r.Name,
+		Namespace:  r.Namespace,
+		Revision:   strconv.Itoa(r.Version),
+		Updated:    t,
+		Status:     r.Info.Status.String(),
+		Chart:      fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version),
+		AppVersion: r.Chart.Metadata.AppVersion,
+	}
 }
 
 func (r *releaseListWriter) WriteTable(out io.Writer) error {
