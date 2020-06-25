@@ -47,8 +47,8 @@ regular expressions (Perl compatible) that are applied to the list of releases.
 Only items that match the filter will be returned.
 
     $ helm list --filter 'ara[a-z]+'
-    NAME                UPDATED                         CHART
-    maudlin-arachnid    1977-09-02 22:04:05 +0000 UTC   alpine-0.1.0
+    NAME                UPDATED                               CHART
+    maudlin-arachnid    1977-09-02 22:04:05.46104 +0000 UTC   alpine-0.1.0
 
 If no results are found, 'helm list' will exit 0, but with no output (or in
 the case of no '-q' flag, only headers).
