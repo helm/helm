@@ -19,6 +19,8 @@ type ServiceTestSuite struct {
 	suite.Suite
 	ctx         context.Context
 	installer   *mockInstaller
+	upgrader    *mockUpgrader
+	history     *mockHistory
 	chartloader *mockChartLoader
 	svc         Service
 	settings    *cli.EnvSettings
@@ -28,14 +30,16 @@ func (s *ServiceTestSuite) SetupTest() {
 	logger.Setup("")
 	s.ctx = context.Background()
 	s.installer = new(mockInstaller)
+	s.upgrader = new(mockUpgrader)
+	s.history = new(mockHistory)
 	s.chartloader = new(mockChartLoader)
 	s.settings = &cli.EnvSettings{}
-	s.svc = NewService(s.settings, s.chartloader, s.installer)
+	s.svc = NewService(s.settings, s.chartloader, s.installer, s.upgrader, s.history)
 }
 
 func (s *ServiceTestSuite) TestInstallShouldReturnErrorOnInvalidChart() {
 	chartName := "stable/invalid-chart"
-	cfg := InstallConfig{
+	cfg := ReleaseConfig{
 		Name:      "some-component",
 		Namespace: "hermes",
 		ChartName: chartName,
@@ -55,7 +59,7 @@ func (s *ServiceTestSuite) TestInstallShouldReturnErrorOnInvalidChart() {
 
 func (s *ServiceTestSuite) TestInstallShouldReturnErrorOnLocalChartReference() {
 	chartName := "./some/local-chart"
-	cfg := InstallConfig{
+	cfg := ReleaseConfig{
 		Name:      "some-component",
 		Namespace: "hermes",
 		ChartName: chartName,
@@ -74,7 +78,7 @@ func (s *ServiceTestSuite) TestInstallShouldReturnErrorOnLocalChartReference() {
 
 func (s *ServiceTestSuite) TestInstallShouldReturnErrorOnFailedIntallRun() {
 	chartName := "stable/valid-chart"
-	cfg := InstallConfig{
+	cfg := ReleaseConfig{
 		Name:      "some-component",
 		Namespace: "hermes",
 		ChartName: chartName,
@@ -96,7 +100,7 @@ func (s *ServiceTestSuite) TestInstallShouldReturnErrorOnFailedIntallRun() {
 
 func (s *ServiceTestSuite) TestInstallShouldReturnResultOnSuccess() {
 	chartName := "stable/valid-chart"
-	cfg := InstallConfig{
+	cfg := ReleaseConfig{
 		Name:      "some-component",
 		Namespace: "hermes",
 		ChartName: chartName,
@@ -130,11 +134,34 @@ func (m *mockChartLoader) LocateChart(name string, settings *cli.EnvSettings) (s
 
 type mockInstaller struct{ mock.Mock }
 
-func (m *mockInstaller) SetConfig(cfg InstallConfig) {
+type mockUpgrader struct{ mock.Mock }
+
+type mockHistory struct{ mock.Mock }
+
+func (m *mockInstaller) SetConfig(cfg ReleaseConfig) {
 	m.Called(cfg)
 }
 
 func (m *mockInstaller) Run(c *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
 	args := m.Called(c, vals)
 	return args.Get(0).(*release.Release), args.Error(1)
+}
+
+func (m *mockUpgrader) GetInstall() bool {
+	args := m.Called()
+	return args.Get(0).(bool)
+}
+
+func (m *mockUpgrader) Run(name string, chart *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
+	args := m.Called(name, chart, vals)
+	return args.Get(0).(*release.Release), args.Error(1)
+}
+
+func (m *mockUpgrader) SetConfig(cfg ReleaseConfig) {
+	_ = m.Called(cfg)
+}
+
+func (m *mockHistory) Run(name string) ([]*release.Release, error) {
+	args := m.Called(name)
+	return args.Get(0).([]*release.Release), args.Error(1)
 }

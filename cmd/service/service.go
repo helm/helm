@@ -24,8 +24,11 @@ func startServer(appconfig *servercontext.Application) {
 	app := servercontext.App()
 	logger.Setup("debug")
 	actionInstall := action.NewInstall(app.ActionConfig)
+	actionUpgrade := action.NewUpgrade(app.ActionConfig)
+	actionHistory := action.NewHistory(app.ActionConfig)
 
-	service := api.NewService(app.Config, new(action.ChartPathOptions), api.NewInstaller(actionInstall))
+	service := api.NewService(app.Config, new(action.ChartPathOptions), api.NewInstaller(actionInstall), api.NewUpgrader(actionUpgrade), api.NewHistory(actionHistory))
+
 	router.Handle("/ping", ping.Handler())
 	router.Handle("/list", list.Handler())
 	router.Handle("/install", api.Install(service))

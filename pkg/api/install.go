@@ -31,7 +31,7 @@ func Install(svc Service) http.Handler {
 		}
 		defer r.Body.Close()
 		var response InstallResponse
-		cfg := InstallConfig{ChartName: req.Chart, Name: req.Name, Namespace: req.Namespace}
+		cfg := ReleaseConfig{ChartName: req.Chart, Name: req.Name, Namespace: req.Namespace}
 		res, err := svc.Install(r.Context(), cfg, req.Values)
 		if err != nil {
 			respondError(w, "error while installing chart: %v", err)

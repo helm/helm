@@ -41,7 +41,7 @@ func (s *InstallerTestSuite) SetupTest() {
 		RepositoryConfig: "./testdata/helm",
 		PluginsDirectory: "./testdata/helm/plugin",
 	}
-	service := api.NewService(s.appConfig, s.mockChartLoader, s.mockInstaller)
+	service := api.NewService(s.appConfig, s.mockChartLoader, s.mockInstaller, nil, nil)
 	handler := api.Install(service)
 	s.server = httptest.NewServer(handler)
 }
@@ -54,7 +54,7 @@ func (s *InstallerTestSuite) TestShouldReturnDeployedStatusOnSuccessfulInstall()
     "namespace": "something"}`, chartName)
 	req, _ := http.NewRequest("POST", fmt.Sprintf("%s/install", s.server.URL), strings.NewReader(body))
 	s.mockChartLoader.On("LocateChart", chartName, s.appConfig).Return("./testdata/albatross", nil)
-	icfg := api.InstallConfig{ChartName: chartName, Name: "redis-v5", Namespace: "something"}
+	icfg := api.ReleaseConfig{ChartName: chartName, Name: "redis-v5", Namespace: "something"}
 	s.mockInstaller.On("SetConfig", icfg)
 	release := &release.Release{Info: &release.Info{Status: release.StatusDeployed}}
 	var vals map[string]interface{}
@@ -102,7 +102,7 @@ func TestInstallAPI(t *testing.T) {
 
 type mockInstaller struct{ mock.Mock }
 
-func (m *mockInstaller) SetConfig(cfg api.InstallConfig) {
+func (m *mockInstaller) SetConfig(cfg api.ReleaseConfig) {
 	m.Called(cfg)
 }
 

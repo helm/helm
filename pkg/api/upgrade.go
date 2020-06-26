@@ -1,129 +1,48 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/cli/values"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/servercontext"
-	"helm.sh/helm/v3/pkg/storage/driver"
+	"helm.sh/helm/v3/pkg/api/logger"
 )
 
 type UpgradeRequest struct {
-	RequestID        string
-	ReleaseName      string
-	ReleaseNamespace string
-	ChartPath        string
+	Name      string                 `json:"name"`
+	Namespace string                 `json:"namespace"`
+	Chart     string                 `json:"chart"`
+	Values    map[string]interface{} `json:"values"`
 }
 
 type UpgradeResponse struct {
-	Status        bool
-	ReleaseStatus string
+	Error  string `json:"error,omitempty"`
+	Status string `json:"status,omitempty"`
 }
 
-type UpgradeHandler struct {
-	service Service
-}
+func Upgrade(svc Service) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		defer r.Body.Close()
 
-func Upgrade(service Service) http.Handler {
-	return UpgradeHandler{service: service}
-}
-
-func (h UpgradeHandler) ServeHTTP(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", "application/json")
-	defer req.Body.Close()
-
-	var request UpgradeRequest
-	decoder := json.NewDecoder(req.Body)
-	decoder.UseNumber()
-
-	if err := decoder.Decode(&request); err != nil {
-		fmt.Printf("error in request: %v", err)
-		return
-	}
-
-	request.RequestID = req.Header.Get("Request-Id")
-	request.ReleaseName = req.Header.Get("Release-Name")
-	request.ReleaseNamespace = req.Header.Get("Release-Namespace")
-	request.ChartPath = req.Header.Get("Chart-Path")
-	valueOpts := &values.Options{}
-
-	status, releaseStatus, err := h.UpgradeRelease(request.ReleaseName, request.ReleaseNamespace, request.ChartPath, valueOpts)
-	if err != nil {
-		fmt.Printf("error in request: %v", err)
-		return
-	}
-
-	response := UpgradeResponse{Status: status, ReleaseStatus: releaseStatus}
-	payload, err := json.Marshal(response)
-	if err != nil {
-		fmt.Printf("error parsing response %v", err)
-		return
-	}
-
-	res.Write(payload)
-}
-
-func (h UpgradeHandler) UpgradeRelease(releaseName, releaseNamespace, chartPath string, valueOpts *values.Options) (bool, string, error) {
-	upgrade := action.NewUpgrade(servercontext.App().ActionConfig)
-	upgrade.Namespace = releaseNamespace
-
-	vals, err := valueOpts.MergeValues(getter.All(servercontext.App().Config))
-	if err != nil {
-		return false, "", err
-	}
-
-	chartPath, err = upgrade.ChartPathOptions.LocateChart(chartPath, servercontext.App().Config)
-	if err != nil {
-		return false, "", err
-	}
-	if upgrade.Install {
-		history := action.NewHistory(servercontext.App().ActionConfig)
-		history.Max = 1
-		if _, err := history.Run(releaseName); err == driver.ErrReleaseNotFound {
-			fmt.Printf("Release %q does not exist. Installing it now.\n", releaseName)
-
-			//TODO: yet to accommodate namespace and releasename, just refactoring
-			icfg := InstallConfig{
-				Namespace: releaseNamespace,
-				Name:      releaseName,
-				ChartName: chartPath,
-			}
-			release, err := h.service.Install(context.TODO(), icfg, vals)
-			if err != nil {
-				fmt.Printf("error in request: %v", err)
-				return false, "", err
-			}
-			return true, release.status, nil
+		var req UpgradeRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			logger.Errorf("[Upgrade] error decoding request: %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
 		}
-	}
-
-	ch, err := loader.Load(chartPath)
-	if err != nil {
-		fmt.Printf("error in loading: %v", err)
-		return false, "", err
-	}
-	if req := ch.Metadata.Dependencies; req != nil {
-		if err := action.CheckDependencies(ch, req); err != nil {
-			fmt.Printf("error in dependencies: %v", err)
-			return false, "", err
+		defer r.Body.Close()
+		var response UpgradeResponse
+		cfg := ReleaseConfig{ChartName: req.Chart, Name: req.Name, Namespace: req.Namespace}
+		res, err := svc.Upgrade(r.Context(), cfg, req.Values)
+		if err != nil {
+			respondError(w, "error while installing chart: %v", err)
+			return
 		}
-	}
-
-	if ch.Metadata.Deprecated {
-		fmt.Printf("WARNING: This chart is deprecated")
-	}
-
-	release, err := upgrade.Run(releaseName, ch, vals)
-	if err != nil {
-		fmt.Printf("error in installing chart: %v", err)
-		return false, "", err
-	}
-
-	return true, release.Info.Status.String(), nil
+		response.Status = res.status
+		if err := json.NewEncoder(w).Encode(&response); err != nil {
+			logger.Errorf("[Install] error writing response %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	})
 }
