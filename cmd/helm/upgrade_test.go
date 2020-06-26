@@ -85,6 +85,7 @@ func TestUpgradeCmd(t *testing.T) {
 	originalDepsPath := filepath.Join("testdata/testcharts/reqtest")
 	missingDepsPath := filepath.Join("testdata/testcharts/chart-missing-deps")
 	badDepsPath := filepath.Join("testdata/testcharts/chart-bad-requirements")
+	deprecatedChart := filepath.Join("testdata/testcharts/deprecatedchart")
 	var ch3 *chart.Chart
 	ch3, err = chartutil.Load(originalDepsPath)
 	if err != nil {
@@ -182,6 +183,13 @@ func TestUpgradeCmd(t *testing.T) {
 			args: []string{"bonkers-bunny", badDepsPath},
 			resp: helm.ReleaseMock(&helm.MockReleaseOptions{Name: "bonkers-bunny", Version: 1, Chart: ch3}),
 			err:  true,
+		},
+		{
+			name:     "upgrade a release with deprecated chart",
+			args:     []string{"crazy-bunny", deprecatedChart},
+			resp:     helm.ReleaseMock(&helm.MockReleaseOptions{Name: "crazy-bunny", Version: 2, Chart: ch}),
+			expected: "Release \"crazy-bunny\" has been upgraded.\n",
+			rels:     []*release.Release{helm.ReleaseMock(&helm.MockReleaseOptions{Name: "crazy-bunny", Version: 2, Chart: ch})},
 		},
 	}
 
