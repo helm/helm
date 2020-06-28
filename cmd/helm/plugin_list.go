@@ -83,7 +83,7 @@ func compListPlugins(toComplete string, ignoredPluginNames []string) []string {
 		filteredPlugins := filterPlugins(plugins, ignoredPluginNames)
 		for _, p := range filteredPlugins {
 			if strings.HasPrefix(p.Metadata.Name, toComplete) {
-				pNames = append(pNames, p.Metadata.Name)
+				pNames = append(pNames, fmt.Sprintf("%s\t%s", p.Metadata.Name, p.Metadata.Usage))
 			}
 		}
 	}

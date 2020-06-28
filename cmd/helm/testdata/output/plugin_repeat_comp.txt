@@ -1,6 +1,6 @@
-echo
-env
-exitwith
-fullenv
+echo	echo stuff
+env	env stuff
+exitwith	exitwith code
+fullenv	show env vars
 :4
 Completion ended with directive: ShellCompDirectiveNoFileComp
