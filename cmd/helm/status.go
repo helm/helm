@@ -78,7 +78,7 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 	err := cmd.RegisterFlagCompletionFunc("revision", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) == 1 {
-			return compListRevisions(cfg, args[0])
+			return compListRevisions(toComplete, cfg, args[0])
 		}
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	})

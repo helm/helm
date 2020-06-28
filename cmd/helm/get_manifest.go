@@ -62,7 +62,7 @@ func newGetManifestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 	cmd.Flags().IntVar(&client.Version, "revision", 0, "get the named release with revision")
 	err := cmd.RegisterFlagCompletionFunc("revision", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) == 1 {
-			return compListRevisions(cfg, args[0])
+			return compListRevisions(toComplete, cfg, args[0])
 		}
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	})
