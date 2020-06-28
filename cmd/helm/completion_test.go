@@ -29,9 +29,14 @@ import (
 func checkFileCompletion(t *testing.T, cmdName string, shouldBePerformed bool) {
 	storage := storageFixture()
 	storage.Create(&release.Release{
-		Name:    "myrelease",
-		Info:    &release.Info{Status: release.StatusDeployed},
-		Chart:   &chart.Chart{},
+		Name: "myrelease",
+		Info: &release.Info{Status: release.StatusDeployed},
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{
+				Name:    "Myrelease-Chart",
+				Version: "1.2.3",
+			},
+		},
 		Version: 1,
 	})
 
