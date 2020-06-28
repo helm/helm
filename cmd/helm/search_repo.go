@@ -302,7 +302,14 @@ func compListCharts(toComplete string, includeFiles bool) ([]string, cobra.Shell
 
 	// First check completions for repos
 	repos := compListRepos("", nil)
-	for _, repo := range repos {
+	for _, repoInfo := range repos {
+		// Split name from description
+		repoInfo := strings.Split(repoInfo, "\t")
+		repo := repoInfo[0]
+		repoDesc := ""
+		if len(repoInfo) > 1 {
+			repoDesc = repoInfo[1]
+		}
 		repoWithSlash := fmt.Sprintf("%s/", repo)
 		if strings.HasPrefix(toComplete, repoWithSlash) {
 			// Must complete with charts within the specified repo
@@ -310,15 +317,15 @@ func compListCharts(toComplete string, includeFiles bool) ([]string, cobra.Shell
 			noSpace = false
 			break
 		} else if strings.HasPrefix(repo, toComplete) {
-			// Must complete the repo name
-			completions = append(completions, repoWithSlash)
+			// Must complete the repo name with the slash, followed by the description
+			completions = append(completions, fmt.Sprintf("%s\t%s", repoWithSlash, repoDesc))
 			noSpace = true
 		}
 	}
 	cobra.CompDebugln(fmt.Sprintf("Completions after repos: %v", completions), settings.Debug)
 
 	// Now handle completions for url prefixes
-	for _, url := range []string{"https://", "http://", "file://"} {
+	for _, url := range []string{"https://\tChart URL prefix", "http://\tChart URL prefix", "file://\tChart local URL prefix"} {
 		if strings.HasPrefix(toComplete, url) {
 			// The user already put in the full url prefix; we don't have
 			// anything to add, but make sure the shell does not default
@@ -355,7 +362,7 @@ func compListCharts(toComplete string, includeFiles bool) ([]string, cobra.Shell
 	// If the user didn't provide any input to completion,
 	// we provide a hint that a path can also be used
 	if includeFiles && len(toComplete) == 0 {
-		completions = append(completions, "./", "/")
+		completions = append(completions, "./\tRelative path prefix to local chart", "/\tAbsolute path prefix to local chart")
 	}
 	cobra.CompDebugln(fmt.Sprintf("Completions after checking empty input: %v", completions), settings.Debug)
 
