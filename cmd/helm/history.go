@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gosuri/uitable"
@@ -184,15 +185,18 @@ func min(x, y int) int {
 	return y
 }
 
-func compListRevisions(cfg *action.Configuration, releaseName string) ([]string, cobra.ShellCompDirective) {
+func compListRevisions(toComplete string, cfg *action.Configuration, releaseName string) ([]string, cobra.ShellCompDirective) {
 	client := action.NewHistory(cfg)
 
 	var revisions []string
 	if hist, err := client.Run(releaseName); err == nil {
 		for _, release := range hist {
-			revisions = append(revisions, strconv.Itoa(release.Version))
+			version := strconv.Itoa(release.Version)
+			if strings.HasPrefix(version, toComplete) {
+				revisions = append(revisions, version)
+			}
 		}
-		return revisions, cobra.ShellCompDirectiveDefault
+		return revisions, cobra.ShellCompDirectiveNoFileComp
 	}
 	return nil, cobra.ShellCompDirectiveError
 }
