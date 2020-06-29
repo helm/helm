@@ -13,6 +13,7 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/storage/driver"
 )
 
 type ServiceTestSuite struct {
@@ -76,7 +77,7 @@ func (s *ServiceTestSuite) TestInstallShouldReturnErrorOnLocalChartReference() {
 	s.installer.AssertNotCalled(t, "Run")
 }
 
-func (s *ServiceTestSuite) TestInstallShouldReturnErrorOnFailedIntallRun() {
+func (s *ServiceTestSuite) TestInstallShouldReturnErrorOnFailedInstallRun() {
 	chartName := "stable/valid-chart"
 	cfg := ReleaseConfig{
 		Name:      "some-component",
@@ -119,6 +120,102 @@ func (s *ServiceTestSuite) TestInstallShouldReturnResultOnSuccess() {
 	assert.Equal(t, res.status, "deployed")
 	s.chartloader.AssertExpectations(t)
 	s.installer.AssertExpectations(t)
+}
+
+func (s *ServiceTestSuite) TestUpgradeInstallTrueShouldInstallChart() {
+	chartName := "stable/valid-chart"
+	cfg := ReleaseConfig{
+		Name:      "some-component",
+		Namespace: "hermes",
+		ChartName: chartName,
+	}
+	var vals map[string]interface{}
+	s.chartloader.On("LocateChart", chartName, s.settings).Return("testdata/albatross", nil)
+	s.upgrader.On("GetInstall").Return(true)
+	s.history.On("Run", "some-component").Return([]*release.Release{}, driver.ErrReleaseNotFound)
+
+	s.installer.On("SetConfig", cfg)
+	release := &release.Release{Name: "some-comp-release", Info: &release.Info{Status: release.StatusDeployed}}
+	s.installer.On("Run", mock.AnythingOfType("*chart.Chart"), vals).Return(release, nil)
+	res, err := s.svc.Upgrade(s.ctx, cfg, vals)
+
+	t := s.T()
+	assert.NoError(t, err)
+	require.NotNil(t, res)
+	assert.Equal(t, res.status, "deployed")
+	s.chartloader.AssertExpectations(t)
+	s.installer.AssertExpectations(t)
+}
+
+func (s *ServiceTestSuite) TestUpgradeInstallFalseShouldNotInstallChart() {
+	chartName := "stable/valid-chart"
+	cfg := ReleaseConfig{
+		Name:      "some-component",
+		Namespace: "hermes",
+		ChartName: chartName,
+	}
+	var vals map[string]interface{}
+	s.chartloader.On("LocateChart", chartName, s.settings).Return("testdata/albatross", nil)
+	s.upgrader.On("GetInstall").Return(false)
+
+	s.upgrader.On("SetConfig", cfg)
+	release := &release.Release{Name: "some-comp-release", Info: &release.Info{Status: release.StatusDeployed}}
+	s.upgrader.On("Run", "some-component", mock.AnythingOfType("*chart.Chart"), vals).Return(release, nil)
+	res, err := s.svc.Upgrade(s.ctx, cfg, vals)
+
+	t := s.T()
+	assert.NoError(t, err)
+	require.NotNil(t, res)
+	s.installer.AssertNotCalled(t, "Run")
+	s.history.AssertNotCalled(t, "Run")
+	assert.Equal(t, res.status, "deployed")
+	s.chartloader.AssertExpectations(t)
+	s.installer.AssertExpectations(t)
+}
+
+func (s *ServiceTestSuite) TestUpgradeShouldReturnErrorOnFailedUpgradeRun() {
+	chartName := "stable/valid-chart"
+	cfg := ReleaseConfig{
+		Name:      "some-component",
+		Namespace: "hermes",
+		ChartName: chartName,
+	}
+	var vals map[string]interface{}
+	s.chartloader.On("LocateChart", chartName, s.settings).Return("testdata/albatross", nil)
+	s.upgrader.On("GetInstall").Return(false)
+	s.upgrader.On("SetConfig", cfg)
+	release := &release.Release{Name: "some-comp-release", Info: &release.Info{Status: release.StatusDeployed}}
+	s.upgrader.On("Run", "some-component", mock.AnythingOfType("*chart.Chart"), vals).Return(release, errors.New("cluster issue"))
+
+	res, err := s.svc.Upgrade(s.ctx, cfg, vals)
+	t := s.T()
+	assert.Nil(t, res)
+	assert.EqualError(t, err, "error in upgrading chart: cluster issue")
+	s.chartloader.AssertExpectations(t)
+	s.installer.AssertExpectations(t)
+}
+
+func (s *ServiceTestSuite) TestUpgradeShouldReturnResultOnSuccess() {
+	chartName := "stable/valid-chart"
+	cfg := ReleaseConfig{
+		Name:      "some-component",
+		Namespace: "hermes",
+		ChartName: chartName,
+	}
+	var vals map[string]interface{}
+	s.chartloader.On("LocateChart", chartName, s.settings).Return("testdata/albatross", nil)
+	s.upgrader.On("GetInstall").Return(false)
+	s.upgrader.On("SetConfig", cfg)
+	release := &release.Release{Name: "some-comp-release", Info: &release.Info{Status: release.StatusDeployed}}
+	s.upgrader.On("Run", "some-component", mock.AnythingOfType("*chart.Chart"), vals).Return(release, nil)
+
+	res, err := s.svc.Upgrade(s.ctx, cfg, vals)
+	t := s.T()
+	assert.NoError(t, err)
+	require.NotNil(t, res)
+	assert.Equal(t, res.status, "deployed")
+	s.chartloader.AssertExpectations(t)
+	s.upgrader.AssertExpectations(t)
 }
 
 func TestServiceSuite(t *testing.T) {

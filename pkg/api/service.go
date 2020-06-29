@@ -88,17 +88,19 @@ func (s Service) Upgrade(ctx context.Context, cfg ReleaseConfig, values chartVal
 	if err != nil {
 		return nil, fmt.Errorf("error merging values: %v", err)
 	}
+
 	if s.upgrader.GetInstall() {
 		if _, err := s.history.Run(cfg.Name); err == driver.ErrReleaseNotFound {
 			fmt.Printf("Release %q does not exist. Installing it now.\n", cfg.Name)
 			return s.installChart(cfg, chart, vals)
 		}
 	}
+
 	return s.upgradeRelease(cfg, chart, vals)
 }
 
 func (s Service) loadChart(chartName string) (*chart.Chart, error) {
-	logger.Debugf("[Install] chart name: %s", chartName)
+	logger.Debugf("[install/upgrade] chart name: %s", chartName)
 	cp, err := s.chartloader.LocateChart(chartName, s.settings)
 	if err != nil {
 		return nil, fmt.Errorf("error in locating chart: %v", err)
@@ -127,7 +129,7 @@ func (s Service) upgradeRelease(ucfg ReleaseConfig, ch *chart.Chart, vals chartV
 	s.upgrader.SetConfig(ucfg)
 	release, err := s.upgrader.Run(ucfg.Name, ch, vals)
 	if err != nil {
-		return nil, fmt.Errorf("error in installing chart: %v", err)
+		return nil, fmt.Errorf("error in upgrading chart: %v", err)
 	}
 	result := new(ReleaseResult)
 	if release.Info != nil {
