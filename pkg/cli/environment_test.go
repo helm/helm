@@ -35,29 +35,34 @@ func TestEnvSettings(t *testing.T) {
 		// expected values
 		ns, kcontext string
 		debug        bool
+		maxhistory   int
 	}{
 		{
-			name: "defaults",
-			ns:   "default",
+			name:       "defaults",
+			ns:         "default",
+			maxhistory: defaultMaxHistory,
 		},
 		{
-			name:  "with flags set",
-			args:  "--debug --namespace=myns",
-			ns:    "myns",
-			debug: true,
+			name:       "with flags set",
+			args:       "--debug --namespace=myns",
+			ns:         "myns",
+			debug:      true,
+			maxhistory: defaultMaxHistory,
 		},
 		{
-			name:    "with envvars set",
-			envvars: map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns"},
-			ns:      "yourns",
-			debug:   true,
+			name:       "with envvars set",
+			envvars:    map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_MAX_HISTORY": "5"},
+			ns:         "yourns",
+			maxhistory: 5,
+			debug:      true,
 		},
 		{
-			name:    "with flags and envvars set",
-			args:    "--debug --namespace=myns",
-			envvars: map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns"},
-			ns:      "myns",
-			debug:   true,
+			name:       "with flags and envvars set",
+			args:       "--debug --namespace=myns",
+			envvars:    map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns"},
+			ns:         "myns",
+			debug:      true,
+			maxhistory: defaultMaxHistory,
 		},
 	}
 
@@ -83,6 +88,9 @@ func TestEnvSettings(t *testing.T) {
 			}
 			if settings.KubeContext != tt.kcontext {
 				t.Errorf("expected kube-context %q, got %q", tt.kcontext, settings.KubeContext)
+			}
+			if settings.MaxHistory != tt.maxhistory {
+				t.Errorf("expected maxHistory %d, got %d", tt.maxhistory, settings.MaxHistory)
 			}
 		})
 	}
