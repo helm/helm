@@ -193,6 +193,23 @@ func TestUpgradeWithValue(t *testing.T) {
 
 }
 
+func TestUpgradeWithValueFile(t *testing.T) {
+	releaseName := "funny-bunny-v2"
+	relMock, ch, chartPath := prepareMockRelease(releaseName, t)
+
+	defer resetEnv()()
+
+	store := storageFixture()
+
+	store.Create(relMock(releaseName, 3, ch))
+
+  cmd := fmt.Sprintf("upgrade %s --debug --set-file drink=testdata/testcharts/upgradetest/value.bin '%s'", releaseName, chartPath)
+	_, _, err := executeActionCommandC(store, cmd)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+}
+
 func TestUpgradeWithStringValue(t *testing.T) {
 	releaseName := "funny-bunny-v3"
 	relMock, ch, chartPath := prepareMockRelease(releaseName, t)
