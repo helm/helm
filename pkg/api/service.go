@@ -28,7 +28,7 @@ type InstallConfig struct {
 
 type ChartValues map[string]interface{}
 
-type installResult struct {
+type InstallResult struct {
 	Status string
 }
 
@@ -40,7 +40,7 @@ func (s Service) getValues(vals ChartValues) (ChartValues, error) {
 	return vals, nil
 }
 
-func (s Service) Install(ctx context.Context, cfg InstallConfig, values ChartValues) (*installResult, error) {
+func (s Service) Install(ctx context.Context, cfg InstallConfig, values ChartValues) (*InstallResult, error) {
 	chart, err := s.loadChart(cfg.ChartName)
 	if err != nil {
 		return nil, err
@@ -65,13 +65,13 @@ func (s Service) loadChart(chartName string) (*chart.Chart, error) {
 	return requestedChart, nil
 }
 
-func (s Service) installChart(icfg InstallConfig, ch *chart.Chart, vals ChartValues) (*installResult, error) {
+func (s Service) installChart(icfg InstallConfig, ch *chart.Chart, vals ChartValues) (*InstallResult, error) {
 	s.Installer.SetConfig(icfg)
 	release, err := s.Installer.Run(ch, vals)
 	if err != nil {
 		return nil, fmt.Errorf("error in installing chart: %v", err)
 	}
-	result := new(installResult)
+	result := new(InstallResult)
 	if release.Info != nil {
 		result.Status = release.Info.Status.String()
 	}
