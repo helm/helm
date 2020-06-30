@@ -15,10 +15,10 @@ type lister interface {
 	SetState(state action.ListStates)
 }
 
-func NewList(action *action.List) *list{
+func NewList(action *action.List) *list {
 	return &list{action}
 }
 
-func (l *list) SetState(state action.ListStates){
+func (l *list) SetState(state action.ListStates) {
 	l.StateMask = state
 }

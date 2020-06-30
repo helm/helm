@@ -9,15 +9,12 @@ import (
 
 	"helm.sh/helm/v3/pkg/action"
 
-
 	"helm.sh/helm/v3/pkg/api/logger"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/storage/driver"
-	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
-
 
 type upgrader interface {
 	SetConfig(ReleaseConfig)
@@ -57,7 +54,6 @@ func (s Service) getValues(vals ChartValues) (ChartValues, error) {
 	// why do we need getter.ALl?
 	return vals, nil
 }
-
 
 func (s Service) Install(ctx context.Context, cfg ReleaseConfig, values ChartValues) (*ReleaseResult, error) {
 	if err := s.validate(cfg, values); err != nil {
@@ -110,7 +106,6 @@ func (s Service) loadChart(chartName string) (*chart.Chart, error) {
 	return requestedChart, nil
 }
 
-
 func (s Service) installChart(icfg ReleaseConfig, ch *chart.Chart, vals ChartValues) (*ReleaseResult, error) {
 	s.Installer.SetConfig(icfg)
 	release, err := s.Installer.Run(ch, vals)
@@ -123,7 +118,6 @@ func (s Service) installChart(icfg ReleaseConfig, ch *chart.Chart, vals ChartVal
 	}
 	return result, nil
 }
-
 
 func (s Service) upgradeRelease(ucfg ReleaseConfig, ch *chart.Chart, vals ChartValues) (*ReleaseResult, error) {
 	s.upgrader.SetConfig(ucfg)
@@ -175,5 +169,5 @@ func (s Service) List(releaseStatus string) ([]Release, error) {
 }
 
 func NewService(settings *cli.EnvSettings, cl chartloader, l lister, i Installer, u upgrader, h history) Service {
-	return Service{settings,cl, l,i, u, h}
+	return Service{settings, cl, l, i, u, h}
 }

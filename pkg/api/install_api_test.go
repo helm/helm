@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"gotest.tools/assert"
+
 	"helm.sh/helm/v3/pkg/api"
 	"helm.sh/helm/v3/pkg/api/logger"
 	"helm.sh/helm/v3/pkg/cli"
@@ -23,9 +24,9 @@ type InstallerTestSuite struct {
 	suite.Suite
 	recorder        *httptest.ResponseRecorder
 	server          *httptest.Server
-	mockInstall	    *mockInstall
+	mockInstall     *mockInstall
 	mockChartLoader *mockChartLoader
-	mockList		*mockList
+	mockList        *mockList
 	appConfig       *cli.EnvSettings
 }
 
@@ -42,7 +43,7 @@ func (s *InstallerTestSuite) SetupTest() {
 		RepositoryConfig: "./testdata/helm",
 		PluginsDirectory: "./testdata/helm/plugin",
 	}
-	service := api.NewService(s.appConfig, s.mockChartLoader,nil, s.mockInstall, nil, nil)
+	service := api.NewService(s.appConfig, s.mockChartLoader, nil, s.mockInstall, nil, nil)
 	handler := api.Install(service)
 	s.server = httptest.NewServer(handler)
 }

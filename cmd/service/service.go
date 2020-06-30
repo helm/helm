@@ -22,21 +22,14 @@ func startServer() {
 	//TODO: use gorilla mux and add middleware to write content type and other headers
 	app := servercontext.App()
 	logger.Setup("debug")
-<<<<<<< HEAD
+
+	actionList := action.NewList(app.ActionConfig)
 	actionInstall := action.NewInstall(app.ActionConfig)
 	actionUpgrade := action.NewUpgrade(app.ActionConfig)
 	actionHistory := action.NewHistory(app.ActionConfig)
 
-	service := api.NewService(app.Config, new(action.ChartPathOptions), api.NewInstaller(actionInstall), api.NewUpgrader(actionUpgrade), api.NewHistory(actionHistory))
+	service := api.NewService(app.Config, new(action.ChartPathOptions), api.NewList(actionList), api.NewInstall(actionInstall), api.NewUpgrader(actionUpgrade), api.NewHistory(actionHistory))
 
-=======
-
-	service := api.NewService(app.Config,
-		new(action.ChartPathOptions),
-		api.NewInstall(action.NewInstall(app.ActionConfig)),
-		api.NewList(action.NewList(app.ActionConfig)))
-
->>>>>>> helm-service-refactor
 	router.Handle("/ping", ping.Handler())
 	router.Handle("/list", api.List(service))
 	router.Handle("/install", api.Install(service))

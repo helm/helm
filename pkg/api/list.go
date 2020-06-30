@@ -2,12 +2,13 @@ package api
 
 import (
 	"encoding/json"
-	"helm.sh/helm/v3/pkg/api/logger"
 	"net/http"
+
+	"helm.sh/helm/v3/pkg/api/logger"
 )
 
 type ListRequest struct {
-	NameSpace string `json:"namespace"`
+	NameSpace     string `json:"namespace"`
 	ReleaseStatus string `json:"release_status"`
 }
 

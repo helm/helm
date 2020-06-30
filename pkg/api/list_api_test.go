@@ -2,30 +2,30 @@ package api_test
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
-	"gotest.tools/assert"
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/api"
-	"helm.sh/helm/v3/pkg/api/logger"
-	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/release"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
+	"gotest.tools/assert"
+
+	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/api"
+	"helm.sh/helm/v3/pkg/api/logger"
+	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v3/pkg/release"
 )
 
 type ListTestSuite struct {
 	suite.Suite
-	recorder        *httptest.ResponseRecorder
-	server          *httptest.Server
-	mockInstall	    *mockInstall
-	mockChartLoader *mockChartLoader
-	mockList		*mockList
-	appConfig       *cli.EnvSettings
+	recorder  *httptest.ResponseRecorder
+	server    *httptest.Server
+	mockList  *mockList
+	appConfig *cli.EnvSettings
 }
 
 type mockList struct{ mock.Mock }
@@ -67,7 +67,7 @@ func (s *ListTestSuite) TestShouldReturnReleasesWhenSuccessfulAPICall() {
 	releases = append(releases,
 		&release.Release{Name: "test-release",
 			Namespace: "test-namespace",
-			Info: &release.Info{Status: release.StatusDeployed}})
+			Info:      &release.Info{Status: release.StatusDeployed}})
 
 	s.mockList.On("SetStateMask")
 	s.mockList.On("SetState", action.ListDeployed)
@@ -88,7 +88,6 @@ func (s *ListTestSuite) TestShouldReturnReleasesWhenSuccessfulAPICall() {
 func (s *ListTestSuite) TestShouldReturnBadRequestErrorIfItHasInvalidCharacter() {
 	body := `{"request_id":"test-request-id""""}`
 	req, _ := http.NewRequest("POST", fmt.Sprintf("%s/list", s.server.URL), strings.NewReader(body))
-
 
 	resp, err := http.DefaultClient.Do(req)
 

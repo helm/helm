@@ -3,14 +3,16 @@ package api_test
 import (
 	"context"
 	"errors"
+	"testing"
+
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/api"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
 	"helm.sh/helm/v3/pkg/api/logger"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/cli"
@@ -25,7 +27,7 @@ type ServiceTestSuite struct {
 	history     *mockHistory
 	installer   *mockInstall
 	chartloader *mockChartLoader
-	lister		*mockList
+	lister      *mockList
 	svc         api.Service
 	settings    *cli.EnvSettings
 }
@@ -147,7 +149,10 @@ func (s *ServiceTestSuite) TestUpgradeInstallTrueShouldInstallChart() {
 	assert.NoError(t, err)
 	require.NotNil(t, res)
 	assert.Equal(t, res.Status, "deployed")
+	s.upgrader.AssertNotCalled(t, "Run")
 	s.chartloader.AssertExpectations(t)
+	s.upgrader.AssertExpectations(t)
+	s.history.AssertExpectations(t)
 	s.installer.AssertExpectations(t)
 }
 
@@ -222,6 +227,44 @@ func (s *ServiceTestSuite) TestUpgradeShouldReturnResultOnSuccess() {
 	s.upgrader.AssertExpectations(t)
 }
 
+func (s *ServiceTestSuite) TestUpgradeValidateFailShouldResultFailure() {
+	chartName := "./some/local-chart"
+	cfg := api.ReleaseConfig{
+		Name:      "some-component",
+		Namespace: "hermes",
+		ChartName: chartName,
+	}
+	var vals api.ChartValues
+
+	res, err := s.svc.Upgrade(s.ctx, cfg, vals)
+
+	t := s.T()
+	assert.Nil(t, res)
+	assert.EqualError(t, err, "error request validation: cannot refer local chart")
+	s.chartloader.AssertNotCalled(t, "LocateChart")
+	s.upgrader.AssertNotCalled(t, "SetConfig")
+	s.upgrader.AssertNotCalled(t, "Run")
+}
+
+func (s *ServiceTestSuite) TestUpgradeShouldReturnErrorOnInvalidChart() {
+	chartName := "stable/invalid-chart"
+	cfg := api.ReleaseConfig{
+		Name:      "some-component",
+		Namespace: "hermes",
+		ChartName: chartName,
+	}
+	var vals api.ChartValues
+	s.chartloader.On("LocateChart", chartName, s.settings).Return("", errors.New("Unable to find chart"))
+
+	res, err := s.svc.Upgrade(s.ctx, cfg, vals)
+
+	t := s.T()
+	assert.Nil(t, res)
+	assert.EqualError(t, err, "error in locating chart: Unable to find chart")
+	s.chartloader.AssertExpectations(t)
+	s.upgrader.AssertNotCalled(t, "SetConfig")
+	s.upgrader.AssertNotCalled(t, "Run")
+}
 
 func (s *ServiceTestSuite) TestListShouldReturnErrorOnFailureOfListRun() {
 	s.lister.On("SetState", action.ListDeployed)
@@ -249,7 +292,7 @@ func (s *ServiceTestSuite) TestListShouldReturnAllReleasesIfNoFilterIsPassed() {
 	releases = append(releases,
 		&release.Release{Name: "test-release",
 			Namespace: "test-namespace",
-			Info: &release.Info{Status: release.StatusDeployed}})
+			Info:      &release.Info{Status: release.StatusDeployed}})
 
 	s.lister.On("Run").Return(releases, nil)
 
@@ -293,7 +336,6 @@ func (s *ServiceTestSuite) TestListShouldReturnDeployedReleasesIfDeployedIsPasse
 	s.lister.AssertExpectations(t)
 }
 
-
 type mockInstall struct{ mock.Mock }
 
 func (m *mockInstall) SetConfig(cfg api.ReleaseConfig) {
@@ -305,14 +347,12 @@ func (m *mockInstall) Run(c *chart.Chart, vals map[string]interface{}) (*release
 	return args.Get(0).(*release.Release), args.Error(1)
 }
 
-
 type mockChartLoader struct{ mock.Mock }
 
 func (m *mockChartLoader) LocateChart(name string, settings *cli.EnvSettings) (string, error) {
 	args := m.Called(name, settings)
 	return args.String(0), args.Error(1)
 }
-
 
 type mockUpgrader struct{ mock.Mock }
 
@@ -329,7 +369,6 @@ func (m *mockUpgrader) GetInstall() bool {
 	args := m.Called()
 	return args.Get(0).(bool)
 }
-
 
 type mockHistory struct{ mock.Mock }
 

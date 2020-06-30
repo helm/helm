@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 
 	"helm.sh/helm/v3/pkg/api/logger"
@@ -25,8 +26,9 @@ func Upgrade(svc Service) http.Handler {
 		defer r.Body.Close()
 
 		var req UpgradeRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			logger.Errorf("[Upgrade] error decoding request: %v", err)
+
+		if err := json.NewDecoder(r.Body).Decode(&req); err == io.EOF || err != nil {
+			logger.Errorf("[Upgrade] error decoding request: %v", err.Error())
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}

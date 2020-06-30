@@ -1,10 +1,10 @@
 package ping
 
-type PingReq struct {
+type Req struct {
 	RequestID string
 }
 
-type PingResponse struct {
+type Response struct {
 	Status bool
 	Data   string
 }
