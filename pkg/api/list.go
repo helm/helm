@@ -12,12 +12,12 @@ type ListRequest struct {
 }
 
 type ListResponse struct {
-	Error  string `json:"error,omitempty"`
-	Data   []Releases
+	Error    string `json:"error,omitempty"`
+	Releases []Release
 }
 
-type Releases struct {
-	Release   string `json:"release"`
+type Release struct {
+	Name      string `json:"release"`
 	Namespace string `json:"namespace"`
 }
 

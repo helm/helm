@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"helm.sh/helm/v3/pkg/action"
 
@@ -77,18 +78,28 @@ func (s Service) installChart(icfg InstallConfig, ch *chart.Chart, vals ChartVal
 	return result, nil
 }
 
-func (s Service) List(releaseStatus string) ([]Releases, error) {
+func (s Service) List(releaseStatus string) ([]Release, error) {
 	listStates := new(action.ListStates)
-	s.lister.SetState(listStates.FromName(releaseStatus))
+
+	state := action.ListAll
+	if releaseStatus != "" {
+		state = listStates.FromName(releaseStatus)
+	}
+
+	if state == action.ListUnknown {
+		return nil, errors.New("invalid release status")
+	}
+
+	s.lister.SetState(state)
 	s.lister.SetStateMask()
 	releases, err := s.lister.Run()
 	if err != nil {
 		return nil, err
 	}
 
-	var helmReleases []Releases
+	var helmReleases []Release
 	for _, eachRes := range releases {
-		r := Releases{Release: eachRes.Name, Namespace: eachRes.Namespace}
+		r := Release{Name: eachRes.Name, Namespace: eachRes.Namespace}
 		helmReleases = append(helmReleases, r)
 	}
 
