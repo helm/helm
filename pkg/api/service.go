@@ -4,7 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"strings"
+
+	"helm.sh/helm/v3/pkg/action"
+
 
 	"helm.sh/helm/v3/pkg/api/logger"
 	"helm.sh/helm/v3/pkg/chart"
@@ -14,10 +18,6 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
-type installer interface {
-	SetConfig(ReleaseConfig)
-	installrunner
-}
 
 type upgrader interface {
 	SetConfig(ReleaseConfig)
@@ -29,15 +29,12 @@ type history interface {
 	historyrunner
 }
 
-type chartloader interface {
-	LocateChart(name string, settings *cli.EnvSettings) (string, error)
-}
-
 type Service struct {
 	settings *cli.EnvSettings
-	installer
-	upgrader
 	chartloader
+	lister
+	Installer
+	upgrader
 	history
 }
 
@@ -47,13 +44,13 @@ type ReleaseConfig struct {
 	ChartName string
 }
 
-type chartValues map[string]interface{}
+type ChartValues map[string]interface{}
 
 type ReleaseResult struct {
-	status string
+	Status string
 }
 
-func (s Service) getValues(vals chartValues) (chartValues, error) {
+func (s Service) getValues(vals ChartValues) (ChartValues, error) {
 	//	valueOpts := &values.Options{}
 	//valueOpts.Values = append(valueOpts.Values, vals)
 	//TODO: we need to make this as Provider, so it'll be able to merge
@@ -61,7 +58,8 @@ func (s Service) getValues(vals chartValues) (chartValues, error) {
 	return vals, nil
 }
 
-func (s Service) Install(ctx context.Context, cfg ReleaseConfig, values chartValues) (*ReleaseResult, error) {
+
+func (s Service) Install(ctx context.Context, cfg ReleaseConfig, values ChartValues) (*ReleaseResult, error) {
 	if err := s.validate(cfg, values); err != nil {
 		return nil, fmt.Errorf("error request validation: %v", err)
 	}
@@ -76,7 +74,7 @@ func (s Service) Install(ctx context.Context, cfg ReleaseConfig, values chartVal
 	return s.installChart(cfg, chart, vals)
 }
 
-func (s Service) Upgrade(ctx context.Context, cfg ReleaseConfig, values chartValues) (*ReleaseResult, error) {
+func (s Service) Upgrade(ctx context.Context, cfg ReleaseConfig, values ChartValues) (*ReleaseResult, error) {
 	if err := s.validate(cfg, values); err != nil {
 		return nil, fmt.Errorf("error request validation: %v", err)
 	}
@@ -112,20 +110,22 @@ func (s Service) loadChart(chartName string) (*chart.Chart, error) {
 	return requestedChart, nil
 }
 
-func (s Service) installChart(icfg ReleaseConfig, ch *chart.Chart, vals chartValues) (*ReleaseResult, error) {
-	s.installer.SetConfig(icfg)
-	release, err := s.installer.Run(ch, vals)
+
+func (s Service) installChart(icfg ReleaseConfig, ch *chart.Chart, vals ChartValues) (*ReleaseResult, error) {
+	s.Installer.SetConfig(icfg)
+	release, err := s.Installer.Run(ch, vals)
 	if err != nil {
 		return nil, fmt.Errorf("error in installing chart: %v", err)
 	}
 	result := new(ReleaseResult)
 	if release.Info != nil {
-		result.status = release.Info.Status.String()
+		result.Status = release.Info.Status.String()
 	}
 	return result, nil
 }
 
-func (s Service) upgradeRelease(ucfg ReleaseConfig, ch *chart.Chart, vals chartValues) (*ReleaseResult, error) {
+
+func (s Service) upgradeRelease(ucfg ReleaseConfig, ch *chart.Chart, vals ChartValues) (*ReleaseResult, error) {
 	s.upgrader.SetConfig(ucfg)
 	release, err := s.upgrader.Run(ucfg.Name, ch, vals)
 	if err != nil {
@@ -133,12 +133,12 @@ func (s Service) upgradeRelease(ucfg ReleaseConfig, ch *chart.Chart, vals chartV
 	}
 	result := new(ReleaseResult)
 	if release.Info != nil {
-		result.status = release.Info.Status.String()
+		result.Status = release.Info.Status.String()
 	}
 	return result, nil
 }
 
-func (s Service) validate(icfg ReleaseConfig, values chartValues) error {
+func (s Service) validate(icfg ReleaseConfig, values ChartValues) error {
 	if strings.HasPrefix(icfg.ChartName, ".") ||
 		strings.HasPrefix(icfg.ChartName, "/") {
 		return errors.New("cannot refer local chart")
@@ -146,12 +146,34 @@ func (s Service) validate(icfg ReleaseConfig, values chartValues) error {
 	return nil
 }
 
-func NewService(settings *cli.EnvSettings, cl chartloader, i installer, u upgrader, h history) Service {
-	return Service{
-		settings:    settings,
-		chartloader: cl,
-		installer:   i,
-		upgrader:    u,
-		history:     h,
+func (s Service) List(releaseStatus string) ([]Release, error) {
+	listStates := new(action.ListStates)
+
+	state := action.ListAll
+	if releaseStatus != "" {
+		state = listStates.FromName(releaseStatus)
 	}
+
+	if state == action.ListUnknown {
+		return nil, errors.New("invalid release status")
+	}
+
+	s.lister.SetState(state)
+	s.lister.SetStateMask()
+	releases, err := s.lister.Run()
+	if err != nil {
+		return nil, err
+	}
+
+	var helmReleases []Release
+	for _, eachRes := range releases {
+		r := Release{Name: eachRes.Name, Namespace: eachRes.Namespace}
+		helmReleases = append(helmReleases, r)
+	}
+
+	return helmReleases, nil
+}
+
+func NewService(settings *cli.EnvSettings, cl chartloader, l lister, i Installer, u upgrader, h history) Service {
+	return Service{settings,cl, l,i, u, h}
 }

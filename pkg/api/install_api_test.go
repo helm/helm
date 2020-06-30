@@ -15,7 +15,6 @@ import (
 	"gotest.tools/assert"
 	"helm.sh/helm/v3/pkg/api"
 	"helm.sh/helm/v3/pkg/api/logger"
-	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/release"
 )
@@ -24,8 +23,9 @@ type InstallerTestSuite struct {
 	suite.Suite
 	recorder        *httptest.ResponseRecorder
 	server          *httptest.Server
-	mockInstaller   *mockInstaller
+	mockInstall	    *mockInstall
 	mockChartLoader *mockChartLoader
+	mockList		*mockList
 	appConfig       *cli.EnvSettings
 }
 
@@ -35,13 +35,14 @@ func (s *InstallerTestSuite) SetupSuite() {
 
 func (s *InstallerTestSuite) SetupTest() {
 	s.recorder = httptest.NewRecorder()
-	s.mockInstaller = new(mockInstaller)
+	s.mockInstall = new(mockInstall)
 	s.mockChartLoader = new(mockChartLoader)
+	s.mockList = new(mockList)
 	s.appConfig = &cli.EnvSettings{
 		RepositoryConfig: "./testdata/helm",
 		PluginsDirectory: "./testdata/helm/plugin",
 	}
-	service := api.NewService(s.appConfig, s.mockChartLoader, s.mockInstaller, nil, nil)
+	service := api.NewService(s.appConfig, s.mockChartLoader,nil, s.mockInstall, nil, nil)
 	handler := api.Install(service)
 	s.server = httptest.NewServer(handler)
 }
@@ -55,11 +56,11 @@ func (s *InstallerTestSuite) TestShouldReturnDeployedStatusOnSuccessfulInstall()
 	req, _ := http.NewRequest("POST", fmt.Sprintf("%s/install", s.server.URL), strings.NewReader(body))
 	s.mockChartLoader.On("LocateChart", chartName, s.appConfig).Return("./testdata/albatross", nil)
 	icfg := api.ReleaseConfig{ChartName: chartName, Name: "redis-v5", Namespace: "something"}
-	s.mockInstaller.On("SetConfig", icfg)
+	s.mockInstall.On("SetConfig", icfg)
 	release := &release.Release{Info: &release.Info{Status: release.StatusDeployed}}
 	var vals map[string]interface{}
 	//TODO: pass chart object and verify values present testdata chart yml
-	s.mockInstaller.On("Run", mock.AnythingOfType("*chart.Chart"), vals).Return(release, nil)
+	s.mockInstall.On("Run", mock.AnythingOfType("*chart.Chart"), vals).Return(release, nil)
 
 	resp, err := http.DefaultClient.Do(req)
 
@@ -68,7 +69,7 @@ func (s *InstallerTestSuite) TestShouldReturnDeployedStatusOnSuccessfulInstall()
 	respBody, _ := ioutil.ReadAll(resp.Body)
 	assert.Equal(s.T(), expectedResponse, string(respBody))
 	require.NoError(s.T(), err)
-	s.mockInstaller.AssertExpectations(s.T())
+	s.mockInstall.AssertExpectations(s.T())
 	s.mockChartLoader.AssertExpectations(s.T())
 }
 
@@ -88,7 +89,7 @@ func (s *InstallerTestSuite) TestShouldReturnInternalServerErrorOnFailure() {
 	respBody, _ := ioutil.ReadAll(resp.Body)
 	assert.Equal(s.T(), expectedResponse, string(respBody))
 	require.NoError(s.T(), err)
-	s.mockInstaller.AssertExpectations(s.T())
+	s.mockInstall.AssertExpectations(s.T())
 	s.mockChartLoader.AssertExpectations(s.T())
 }
 
@@ -98,22 +99,4 @@ func (s *InstallerTestSuite) TearDownTest() {
 
 func TestInstallAPI(t *testing.T) {
 	suite.Run(t, new(InstallerTestSuite))
-}
-
-type mockInstaller struct{ mock.Mock }
-
-func (m *mockInstaller) SetConfig(cfg api.ReleaseConfig) {
-	m.Called(cfg)
-}
-
-func (m *mockInstaller) Run(c *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
-	args := m.Called(c, vals)
-	return args.Get(0).(*release.Release), args.Error(1)
-}
-
-type mockChartLoader struct{ mock.Mock }
-
-func (m *mockChartLoader) LocateChart(name string, settings *cli.EnvSettings) (string, error) {
-	args := m.Called(name, settings)
-	return args.String(0), args.Error(1)
 }

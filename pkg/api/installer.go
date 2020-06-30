@@ -6,19 +6,20 @@ import (
 	"helm.sh/helm/v3/pkg/release"
 )
 
-type Installer struct {
+type install struct {
 	*action.Install
 }
 
-type installrunner interface {
+type Installer interface {
 	Run(*chart.Chart, map[string]interface{}) (*release.Release, error)
+	SetConfig(ReleaseConfig)
 }
 
-func (i *Installer) SetConfig(cfg ReleaseConfig) {
+func (i *install) SetConfig(cfg ReleaseConfig) {
 	i.ReleaseName = cfg.Name
 	i.Namespace = cfg.Namespace
 }
 
-func NewInstaller(ai *action.Install) *Installer {
-	return &Installer{ai}
+func NewInstall(ai *action.Install) *install {
+	return &install{ai}
 }

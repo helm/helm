@@ -15,7 +15,6 @@ import (
 	"gotest.tools/assert"
 	"helm.sh/helm/v3/pkg/api"
 	"helm.sh/helm/v3/pkg/api/logger"
-	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/release"
 )
@@ -43,7 +42,7 @@ func (s *UpgradeTestSuite) SetupTest() {
 		RepositoryConfig: "./testdata/helm",
 		PluginsDirectory: "./testdata/helm/plugin",
 	}
-	service := api.NewService(s.appConfig, s.mockChartLoader, nil, s.mockUpgrader, s.mockHistory)
+	service := api.NewService(s.appConfig, s.mockChartLoader, nil, nil, s.mockUpgrader, s.mockHistory)
 	handler := api.Upgrade(service)
 	s.server = httptest.NewServer(handler)
 }
@@ -104,27 +103,4 @@ func (s *UpgradeTestSuite) TearDownTest() {
 
 func TestUpgradeAPI(t *testing.T) {
 	suite.Run(t, new(UpgradeTestSuite))
-}
-
-type mockUpgrader struct{ mock.Mock }
-
-type mockHistory struct{ mock.Mock }
-
-func (m *mockUpgrader) Run(name string, chart *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
-	args := m.Called(name, chart, vals)
-	return args.Get(0).(*release.Release), args.Error(1)
-}
-
-func (m *mockUpgrader) GetInstall() bool {
-	args := m.Called()
-	return args.Get(0).(bool)
-}
-
-func (m *mockUpgrader) SetConfig(cfg api.ReleaseConfig) {
-	_ = m.Called(cfg)
-}
-
-func (m *mockHistory) Run(name string) ([]*release.Release, error) {
-	args := m.Called(name)
-	return args.Get(0).([]*release.Release), args.Error(1)
 }

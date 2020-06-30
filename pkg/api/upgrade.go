@@ -30,6 +30,7 @@ func Upgrade(svc Service) http.Handler {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
+
 		defer r.Body.Close()
 		var response UpgradeResponse
 		cfg := ReleaseConfig{ChartName: req.Chart, Name: req.Name, Namespace: req.Namespace}
@@ -38,7 +39,7 @@ func Upgrade(svc Service) http.Handler {
 			respondError(w, "error while upgrading chart: %v", err)
 			return
 		}
-		response.Status = res.status
+		response.Status = res.Status
 		if err := json.NewEncoder(w).Encode(&response); err != nil {
 			logger.Errorf("[Upgrade] error writing response %v", err)
 			w.WriteHeader(http.StatusInternalServerError)

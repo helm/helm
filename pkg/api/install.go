@@ -37,7 +37,7 @@ func Install(svc Service) http.Handler {
 			respondError(w, "error while installing chart: %v", err)
 			return
 		}
-		response.Status = res.status
+		response.Status = res.Status
 		if err := json.NewEncoder(w).Encode(&response); err != nil {
 			logger.Errorf("[Install] error writing response %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
