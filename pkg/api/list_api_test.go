@@ -78,9 +78,11 @@ func (s *ListTestSuite) TestShouldReturnReleasesWhenSuccessfulAPICall() {
 	resp, err := http.DefaultClient.Do(req)
 
 	assert.Equal(s.T(), 200, resp.StatusCode)
+
 	expectedResponse := `{"Data":[{"release":"test-release","namespace":"test-namespace"}]}`
 	respBody, _ := ioutil.ReadAll(resp.Body)
 	assert.Equal(s.T(), expectedResponse, string(respBody))
+
 	require.NoError(s.T(), err)
 	s.mockList.AssertExpectations(s.T())
 }
@@ -89,9 +91,14 @@ func (s *ListTestSuite) TestShouldReturnBadRequestErrorIfItHasInvalidCharacter()
 	body := `{"request_id":"test-request-id""""}`
 	req, _ := http.NewRequest("POST", fmt.Sprintf("%s/list", s.server.URL), strings.NewReader(body))
 
+
 	resp, err := http.DefaultClient.Do(req)
 
 	assert.Equal(s.T(), 400, resp.StatusCode)
+
+	expectedResponse := `{"error":"invalid character '\"' after object key:value pair","Data":null}`
+	respBody, _ := ioutil.ReadAll(resp.Body)
+	assert.Equal(s.T(), expectedResponse, string(respBody))
 	require.NoError(s.T(), err)
 }
 
