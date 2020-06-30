@@ -161,7 +161,14 @@ func (s Service) List(releaseStatus string) ([]Release, error) {
 
 	var helmReleases []Release
 	for _, eachRes := range releases {
-		r := Release{Name: eachRes.Name, Namespace: eachRes.Namespace}
+		r := Release{Name: eachRes.Name,
+			Namespace: eachRes.Namespace,
+			Revision: eachRes.Version,
+			Updated: eachRes.Info.LastDeployed,
+			Status: eachRes.Info.Status,
+			Chart:      fmt.Sprintf("%s-%s", eachRes.Chart.Metadata.Name, eachRes.Chart.Metadata.Version),
+			AppVersion: eachRes.Chart.Metadata.AppVersion,
+		}
 		helmReleases = append(helmReleases, r)
 	}
 

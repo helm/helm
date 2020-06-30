@@ -3,6 +3,7 @@ package api_test
 import (
 	"context"
 	"errors"
+	"helm.sh/helm/v3/pkg/time"
 	"testing"
 
 	"helm.sh/helm/v3/pkg/action"
@@ -285,6 +286,10 @@ func (s *ServiceTestSuite) TestListShouldReturnErrorOnFailureOfListRun() {
 }
 
 func (s *ServiceTestSuite) TestListShouldReturnAllReleasesIfNoFilterIsPassed() {
+	layout := "2006-01-02T15:04:05.000Z"
+	str := "2014-11-12T11:45:26.371Z"
+	timeFromStr, err := time.Parse(layout, str)
+
 	s.lister.On("SetState", action.ListAll)
 	s.lister.On("SetStateMask")
 
@@ -292,7 +297,10 @@ func (s *ServiceTestSuite) TestListShouldReturnAllReleasesIfNoFilterIsPassed() {
 	releases = append(releases,
 		&release.Release{Name: "test-release",
 			Namespace: "test-namespace",
-			Info:      &release.Info{Status: release.StatusDeployed}})
+			Info:      &release.Info{Status: release.StatusDeployed, LastDeployed: timeFromStr},
+			Version:   1,
+			Chart:     &chart.Chart{Metadata: &chart.Metadata{Name: "test-release", Version: "0.1", AppVersion: "0.1"}},
+		})
 
 	s.lister.On("Run").Return(releases, nil)
 
@@ -304,11 +312,23 @@ func (s *ServiceTestSuite) TestListShouldReturnAllReleasesIfNoFilterIsPassed() {
 	require.NotNil(t, res)
 
 	var response []api.Release
-	response = append(response, api.Release{"test-release", "test-namespace"})
+	response = append(response, api.Release{Name: "test-release",
+		Namespace:  "test-namespace",
+		Revision:   1,
+		Updated:    timeFromStr,
+		Status:     release.StatusDeployed,
+		Chart:      "test-release-0.1",
+		AppVersion: "0.1",
+	})
 
-	assert.Equal(t, len(res), 1)
+	assert.Equal(t, 1, len(res))
 	assert.Equal(t, "test-release", response[0].Name)
 	assert.Equal(t, "test-namespace", response[0].Namespace)
+	assert.Equal(t, 1, response[0].Revision)
+	assert.Equal(t, timeFromStr, response[0].Updated)
+	assert.Equal(t, release.StatusDeployed, response[0].Status)
+	assert.Equal(t, "test-release-0.1", response[0].Chart)
+	assert.Equal(t, "0.1", response[0].AppVersion)
 
 	s.lister.AssertExpectations(t)
 }

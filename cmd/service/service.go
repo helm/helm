@@ -28,7 +28,12 @@ func startServer() {
 	actionUpgrade := action.NewUpgrade(app.ActionConfig)
 	actionHistory := action.NewHistory(app.ActionConfig)
 
-	service := api.NewService(app.Config, new(action.ChartPathOptions), api.NewList(actionList), api.NewInstall(actionInstall), api.NewUpgrader(actionUpgrade), api.NewHistory(actionHistory))
+	service := api.NewService(app.Config,
+		new(action.ChartPathOptions),
+		api.NewList(actionList),
+		api.NewInstall(actionInstall),
+		api.NewUpgrader(actionUpgrade),
+		api.NewHistory(actionHistory))
 
 	router.Handle("/ping", ping.Handler())
 	router.Handle("/list", api.List(service))

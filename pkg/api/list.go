@@ -2,9 +2,10 @@ package api
 
 import (
 	"encoding/json"
-	"net/http"
-
 	"helm.sh/helm/v3/pkg/api/logger"
+	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/time"
+	"net/http"
 )
 
 type ListRequest struct {
@@ -13,13 +14,18 @@ type ListRequest struct {
 }
 
 type ListResponse struct {
-	Error    string `json:"error,omitempty"`
-	Releases []Release
+	Error    string    `json:"error,omitempty"`
+	Releases []Release `json:"releases,omitempty"`
 }
 
 type Release struct {
-	Name      string `json:"release"`
-	Namespace string `json:"namespace"`
+	Name        string         `json:"name"`
+	Namespace   string         `json:"namespace"`
+	Revision    int            `json:"revision"`
+	Updated     time.Time      `json:"updated_at,omitempty"`
+	Status      release.Status `json:"status"`
+	Chart       string         `json:"chart"`
+	AppVersion  string         `json:"app_version"`
 }
 
 func List(svc Service) http.Handler {
