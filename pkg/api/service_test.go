@@ -1,8 +1,9 @@
-package api
+package api_test
 
 import (
 	"context"
 	"errors"
+	"helm.sh/helm/v3/pkg/api"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,31 +18,31 @@ import (
 type ServiceTestSuite struct {
 	suite.Suite
 	ctx         context.Context
-	installer   *MockInstall
-	chartloader *MockChartLoader
-	lister		*MockList
-	svc         Service
+	installer   *mockInstall
+	chartloader *mockChartLoader
+	lister		*mockList
+	svc         api.Service
 	settings    *cli.EnvSettings
 }
 
 func (s *ServiceTestSuite) SetupTest() {
 	logger.Setup("")
 	s.ctx = context.Background()
-	s.installer = new(MockInstall)
-	s.lister = new(MockList)
-	s.chartloader = new(MockChartLoader)
+	s.installer = new(mockInstall)
+	s.lister = new(mockList)
+	s.chartloader = new(mockChartLoader)
 	s.settings = &cli.EnvSettings{}
-	s.svc = NewService(s.settings, s.chartloader, s.installer, s.lister)
+	s.svc = api.NewService(s.settings, s.chartloader, s.installer, s.lister)
 }
 
 func (s *ServiceTestSuite) TestInstallShouldReturnErrorOnInvalidChart() {
 	chartName := "stable/invalid-chart"
-	cfg := InstallConfig{
+	cfg := api.InstallConfig{
 		Name:      "some-component",
 		Namespace: "hermes",
 		ChartName: chartName,
 	}
-	var vals chartValues
+	var vals api.ChartValues
 	s.chartloader.On("LocateChart", chartName, s.settings).Return("", errors.New("Unable to find chart"))
 
 	res, err := s.svc.Install(s.ctx, cfg, vals)
@@ -56,7 +57,7 @@ func (s *ServiceTestSuite) TestInstallShouldReturnErrorOnInvalidChart() {
 
 func (s *ServiceTestSuite) TestInstallShouldReturnErrorOnFailedIntallRun() {
 	chartName := "stable/valid-chart"
-	cfg := InstallConfig{
+	cfg := api.InstallConfig{
 		Name:      "some-component",
 		Namespace: "hermes",
 		ChartName: chartName,
@@ -78,7 +79,7 @@ func (s *ServiceTestSuite) TestInstallShouldReturnErrorOnFailedIntallRun() {
 
 func (s *ServiceTestSuite) TestInstallShouldReturnResultOnSuccess() {
 	chartName := "stable/valid-chart"
-	cfg := InstallConfig{
+	cfg := api.InstallConfig{
 		Name:      "some-component",
 		Namespace: "hermes",
 		ChartName: chartName,
@@ -94,7 +95,7 @@ func (s *ServiceTestSuite) TestInstallShouldReturnResultOnSuccess() {
 	t := s.T()
 	assert.NoError(t, err)
 	require.NotNil(t, res)
-	assert.Equal(t, res.status, "deployed")
+	assert.Equal(t, res.Status, "deployed")
 	s.chartloader.AssertExpectations(t)
 	s.installer.AssertExpectations(t)
 }

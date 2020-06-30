@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"helm.sh/helm/v3/pkg/action"
 
 	"helm.sh/helm/v3/pkg/api/logger"
 	"helm.sh/helm/v3/pkg/chart"
@@ -24,13 +25,13 @@ type InstallConfig struct {
 	ChartName string
 }
 
-type chartValues map[string]interface{}
+type ChartValues map[string]interface{}
 
 type installResult struct {
-	status string
+	Status string
 }
 
-func (s Service) getValues(vals chartValues) (chartValues, error) {
+func (s Service) getValues(vals ChartValues) (ChartValues, error) {
 	//	valueOpts := &values.Options{}
 	//valueOpts.Values = append(valueOpts.Values, vals)
 	//TODO: we need to make this as Provider, so it'll be able to merge
@@ -38,7 +39,7 @@ func (s Service) getValues(vals chartValues) (chartValues, error) {
 	return vals, nil
 }
 
-func (s Service) Install(ctx context.Context, cfg InstallConfig, values chartValues) (*installResult, error) {
+func (s Service) Install(ctx context.Context, cfg InstallConfig, values ChartValues) (*installResult, error) {
 	chart, err := s.loadChart(cfg.ChartName)
 	if err != nil {
 		return nil, err
@@ -63,7 +64,7 @@ func (s Service) loadChart(chartName string) (*chart.Chart, error) {
 	return requestedChart, nil
 }
 
-func (s Service) installChart(icfg InstallConfig, ch *chart.Chart, vals chartValues) (*installResult, error) {
+func (s Service) installChart(icfg InstallConfig, ch *chart.Chart, vals ChartValues) (*installResult, error) {
 	s.Installer.SetConfig(icfg)
 	release, err := s.Installer.Run(ch, vals)
 	if err != nil {
@@ -71,9 +72,27 @@ func (s Service) installChart(icfg InstallConfig, ch *chart.Chart, vals chartVal
 	}
 	result := new(installResult)
 	if release.Info != nil {
-		result.status = release.Info.Status.String()
+		result.Status = release.Info.Status.String()
 	}
 	return result, nil
+}
+
+func (s Service) List(releaseStatus string) ([]Releases, error) {
+	listStates := new(action.ListStates)
+	s.lister.SetState(listStates.FromName(releaseStatus))
+	s.lister.SetStateMask()
+	releases, err := s.lister.Run()
+	if err != nil {
+		return nil, err
+	}
+
+	var helmReleases []Releases
+	for _, eachRes := range releases {
+		r := Releases{Release: eachRes.Name, Namespace: eachRes.Namespace}
+		helmReleases = append(helmReleases, r)
+	}
+
+	return helmReleases, nil
 }
 
 func NewService(settings *cli.EnvSettings, cl chartloader, i Installer, l lister) Service {

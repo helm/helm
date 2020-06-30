@@ -7,15 +7,16 @@ import (
 )
 
 type ListRequest struct {
-	RequestID string
+	NameSpace string `json:"namespace"`
+	ReleaseStatus string `json:"release_status"`
 }
 
 type ListResponse struct {
 	Error  string `json:"error,omitempty"`
-	Data   []HelmRelease
+	Data   []Releases
 }
 
-type HelmRelease struct {
+type Releases struct {
 	Release   string `json:"release"`
 	Namespace string `json:"namespace"`
 }
@@ -27,7 +28,6 @@ func List(svc Service) http.Handler {
 		var response ListResponse
 		var request ListRequest
 		decoder := json.NewDecoder(r.Body)
-		decoder.UseNumber()
 		if err := decoder.Decode(&request); err != nil {
 			logger.Errorf("[List] error decoding request: %v", err)
 			response.Error = err.Error()
@@ -38,10 +38,7 @@ func List(svc Service) http.Handler {
 		}
 		defer r.Body.Close()
 
-		request.RequestID = r.Header.Get("Request-Id")
-
-		svc.lister.SetStateMask()
-		res, err := svc.lister.Run()
+		helmReleases, err := svc.List(request.ReleaseStatus)
 
 		if err != nil {
 			logger.Errorf("[List] error while installing chart: %v", err)
@@ -52,11 +49,6 @@ func List(svc Service) http.Handler {
 			return
 		}
 
-		var helmReleases []HelmRelease
-		for _, eachRes := range res {
-			r := HelmRelease{Release: eachRes.Name, Namespace: eachRes.Namespace}
-			helmReleases = append(helmReleases, r)
-		}
 		response = ListResponse{"", helmReleases}
 		payload, err := json.Marshal(response)
 		if err != nil {

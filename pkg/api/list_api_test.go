@@ -2,9 +2,11 @@ package api_test
 
 import (
 	"fmt"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"gotest.tools/assert"
+	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/api"
 	"helm.sh/helm/v3/pkg/api/logger"
 	"helm.sh/helm/v3/pkg/cli"
@@ -20,10 +22,25 @@ type ListTestSuite struct {
 	suite.Suite
 	recorder        *httptest.ResponseRecorder
 	server          *httptest.Server
-	mockInstall	    *api.MockInstall
-	mockChartLoader *api.MockChartLoader
-	mockList		*api.MockList
+	mockInstall	    *mockInstall
+	mockChartLoader *mockChartLoader
+	mockList		*mockList
 	appConfig       *cli.EnvSettings
+}
+
+type mockList struct{ mock.Mock }
+
+func (m *mockList) Run() ([]*release.Release, error) {
+	args := m.Called()
+	return args.Get(0).([]*release.Release), args.Error(1)
+}
+
+func (m *mockList) SetStateMask() {
+	m.Called()
+}
+
+func (m *mockList) SetState(state action.ListStates) {
+	m.Called(state)
 }
 
 func (s *ListTestSuite) SetupSuite() {
@@ -32,9 +49,9 @@ func (s *ListTestSuite) SetupSuite() {
 
 func (s *ListTestSuite) SetupTest() {
 	s.recorder = httptest.NewRecorder()
-	s.mockInstall = new(api.MockInstall)
-	s.mockChartLoader = new(api.MockChartLoader)
-	s.mockList = new(api.MockList)
+	s.mockInstall = new(mockInstall)
+	s.mockChartLoader = new(mockChartLoader)
+	s.mockList = new(mockList)
 	s.appConfig = &cli.EnvSettings{
 		RepositoryConfig: "./testdata/helm",
 		PluginsDirectory: "./testdata/helm/plugin",
@@ -45,7 +62,7 @@ func (s *ListTestSuite) SetupTest() {
 }
 
 func (s *ListTestSuite) TestShouldReturnReleasesWhenSuccessfulAPICall() {
-	body := `{"request_id":"test-request-id"}`
+	body := `{"release_status":"deployed"}`
 	req, _ := http.NewRequest("POST", fmt.Sprintf("%s/list", s.server.URL), strings.NewReader(body))
 
 	var releases []*release.Release
@@ -55,6 +72,7 @@ func (s *ListTestSuite) TestShouldReturnReleasesWhenSuccessfulAPICall() {
 			Info: &release.Info{Status: release.StatusDeployed}})
 
 	s.mockList.On("SetStateMask")
+	s.mockList.On("SetState", action.ListDeployed)
 	s.mockList.On("Run").Return(releases, nil)
 
 	resp, err := http.DefaultClient.Do(req)

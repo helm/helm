@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"fmt"
+	"helm.sh/helm/v3/pkg/chart"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -22,10 +23,28 @@ type InstallerTestSuite struct {
 	suite.Suite
 	recorder        *httptest.ResponseRecorder
 	server          *httptest.Server
-	mockInstall	    *api.MockInstall
-	mockChartLoader *api.MockChartLoader
-	mockList		*api.MockList
+	mockInstall	    *mockInstall
+	mockChartLoader *mockChartLoader
+	mockList		*mockList
 	appConfig       *cli.EnvSettings
+}
+
+type mockInstall struct{ mock.Mock }
+
+func (m *mockInstall) SetConfig(cfg api.InstallConfig) {
+	m.Called(cfg)
+}
+
+func (m *mockInstall) Run(c *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
+	args := m.Called(c, vals)
+	return args.Get(0).(*release.Release), args.Error(1)
+}
+
+type mockChartLoader struct{ mock.Mock }
+
+func (m *mockChartLoader) LocateChart(name string, settings *cli.EnvSettings) (string, error) {
+	args := m.Called(name, settings)
+	return args.String(0), args.Error(1)
 }
 
 func (s *InstallerTestSuite) SetupSuite() {
@@ -34,9 +53,9 @@ func (s *InstallerTestSuite) SetupSuite() {
 
 func (s *InstallerTestSuite) SetupTest() {
 	s.recorder = httptest.NewRecorder()
-	s.mockInstall = new(api.MockInstall)
-	s.mockChartLoader = new(api.MockChartLoader)
-	s.mockList = new(api.MockList)
+	s.mockInstall = new(mockInstall)
+	s.mockChartLoader = new(mockChartLoader)
+	s.mockList = new(mockList)
 	s.appConfig = &cli.EnvSettings{
 		RepositoryConfig: "./testdata/helm",
 		PluginsDirectory: "./testdata/helm/plugin",
@@ -64,7 +83,7 @@ func (s *InstallerTestSuite) TestShouldReturnDeployedStatusOnSuccessfulInstall()
 	resp, err := http.DefaultClient.Do(req)
 
 	assert.Equal(s.T(), 200, resp.StatusCode)
-	expectedResponse := `{"status":"deployed"}` + "\n"
+	expectedResponse := `{"Status":"deployed"}` + "\n"
 	respBody, _ := ioutil.ReadAll(resp.Body)
 	assert.Equal(s.T(), expectedResponse, string(respBody))
 	require.NoError(s.T(), err)

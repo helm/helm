@@ -99,7 +99,7 @@ func (h UpgradeHandler) UpgradeRelease(releaseName, releaseNamespace, chartPath 
 				fmt.Printf("error in request: %v", err)
 				return false, "", err
 			}
-			return true, release.status, nil
+			return true, release.Status, nil
 		}
 	}
 
