@@ -97,7 +97,7 @@ type Configuration struct {
 // renderResources renders the templates in a chart
 //
 // TODO: This function is badly in need of a refactor.
-func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, dryRun bool) ([]*release.Hook, *bytes.Buffer, string, error) {
+func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, dryRun bool, unsafeTemplateLiveConn bool) ([]*release.Hook, *bytes.Buffer, string, error) {
 	hs := []*release.Hook{}
 	b := bytes.NewBuffer(nil)
 
@@ -119,15 +119,34 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 	// It will break in interesting and exotic ways because other data (e.g. discovery)
 	// is mocked. It is not up to the template author to decide when the user wants to
 	// connect to the cluster. So when the user says to dry run, respect the user's
-	// wishes and do not connect to the cluster.
-	if !dryRun && c.RESTClientGetter != nil {
+	// wishes and do not connect to the cluster
+
+	// When the user uses `helm template --unsafe-template-live-conn` we understand that wants
+	// to use a live cluster connection.
+
+	if unsafeTemplateLiveConn && c.RESTClientGetter != nil {
 		rest, err := c.RESTClientGetter.ToRESTConfig()
 		if err != nil {
 			return hs, b, "", err
 		}
 		files, err2 = engine.RenderWithClient(ch, values, rest)
-	} else {
-		files, err2 = engine.Render(ch, values)
+	}
+
+	if err2 != nil {
+		return hs, b, "", err2
+	}
+
+	// When templateLive is false then `helm template` was not invoked.
+	if len(files) == 0 {
+		if !dryRun && c.RESTClientGetter != nil {
+			rest, err := c.RESTClientGetter.ToRESTConfig()
+			if err != nil {
+				return hs, b, "", err
+			}
+			files, err2 = engine.RenderWithClient(ch, values, rest)
+		} else {
+			files, err2 = engine.Render(ch, values)
+		}
 	}
 
 	if err2 != nil {

@@ -45,6 +45,7 @@ faked locally. Additionally, none of the server-side testing of chart validity
 func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	var validate bool
 	var includeCrds bool
+	var unsafeTemplateLiveConn bool
 	client := action.NewInstall(cfg)
 	valueOpts := &values.Options{}
 	var extraAPIs []string
@@ -59,6 +60,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return compInstall(args, toComplete, client)
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
+			client.UnsafeTemplateLiveConn = unsafeTemplateLiveConn || UnsafeTemplateLiveConn.IsEnabled()
 			client.DryRun = true
 			client.ReleaseName = "RELEASE-NAME"
 			client.Replace = true // Skip the name check
@@ -147,6 +149,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.IsUpgrade, "is-upgrade", false, "set .Release.IsUpgrade instead of .Release.IsInstall")
 	f.StringArrayVarP(&extraAPIs, "api-versions", "a", []string{}, "Kubernetes api versions used for Capabilities.APIVersions")
 	f.BoolVar(&client.UseReleaseName, "release-name", false, "use release name in the output-dir path.")
+	f.BoolVar(&unsafeTemplateLiveConn, "unsafe-template-live-conn", false, "enables the connection to the cluster. It is considered unsafe use under your own risk.")
 	bindPostRenderFlag(cmd, &client.PostRenderer)
 
 	return cmd

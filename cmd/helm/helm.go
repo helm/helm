@@ -43,6 +43,10 @@ import (
 // FeatureGateOCI is the feature gate for checking if `helm chart` and `helm registry` commands should work
 const FeatureGateOCI = gates.Gate("HELM_EXPERIMENTAL_OCI")
 
+// UnsafeTemplateLiveConn handles unsafe-template-live-conn arg as env var
+//  to simplify the integration with third party tools and plugins.
+const UnsafeTemplateLiveConn = gates.Gate("HELM_UNSAFE_TEMPLATE_LIVE_CONN")
+
 var settings = cli.New()
 
 func init() {
