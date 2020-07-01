@@ -2,6 +2,8 @@ package api_test
 
 import (
 	"fmt"
+	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/time"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -60,6 +62,10 @@ func (s *ListTestSuite) SetupTest() {
 }
 
 func (s *ListTestSuite) TestShouldReturnReleasesWhenSuccessfulAPICall() {
+	layout := "2006-01-02T15:04:05.000Z"
+	str := "2014-11-12T11:45:26.371Z"
+	timeFromStr, _ := time.Parse(layout, str)
+
 	body := `{"release_status":"deployed"}`
 	req, _ := http.NewRequest("POST", fmt.Sprintf("%s/list", s.server.URL), strings.NewReader(body))
 
@@ -67,7 +73,10 @@ func (s *ListTestSuite) TestShouldReturnReleasesWhenSuccessfulAPICall() {
 	releases = append(releases,
 		&release.Release{Name: "test-release",
 			Namespace: "test-namespace",
-			Info:      &release.Info{Status: release.StatusDeployed}})
+			Info:      &release.Info{Status: release.StatusDeployed, LastDeployed: timeFromStr},
+			Version:   1,
+			Chart:     &chart.Chart{Metadata: &chart.Metadata{Name: "test-release", Version: "0.1", AppVersion: "0.1"}},
+		})
 
 	s.mockList.On("SetStateMask")
 	s.mockList.On("SetState", action.ListDeployed)
@@ -77,7 +86,7 @@ func (s *ListTestSuite) TestShouldReturnReleasesWhenSuccessfulAPICall() {
 
 	assert.Equal(s.T(), 200, resp.StatusCode)
 
-	expectedResponse := `{"Releases":[{"release":"test-release","namespace":"test-namespace"}]}`
+	expectedResponse := `{"releases":[{"name":"test-release","namespace":"test-namespace","revision":1,"updated_at":"2014-11-12T11:45:26.371Z","status":"deployed","chart":"test-release-0.1","app_version":"0.1"}]}`
 	respBody, _ := ioutil.ReadAll(resp.Body)
 	assert.Equal(s.T(), expectedResponse, string(respBody))
 
@@ -93,7 +102,7 @@ func (s *ListTestSuite) TestShouldReturnBadRequestErrorIfItHasInvalidCharacter()
 
 	assert.Equal(s.T(), 400, resp.StatusCode)
 
-	expectedResponse := `{"error":"invalid character '\"' after object key:value pair","Releases":null}`
+	expectedResponse := `{"error":"invalid character '\"' after object key:value pair"}`
 	respBody, _ := ioutil.ReadAll(resp.Body)
 	assert.Equal(s.T(), expectedResponse, string(respBody))
 	require.NoError(s.T(), err)

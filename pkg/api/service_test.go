@@ -289,7 +289,7 @@ func (s *ServiceTestSuite) TestListShouldReturnErrorOnFailureOfListRun() {
 func (s *ServiceTestSuite) TestListShouldReturnAllReleasesIfNoFilterIsPassed() {
 	layout := "2006-01-02T15:04:05.000Z"
 	str := "2014-11-12T11:45:26.371Z"
-	timeFromStr, err := time.Parse(layout, str)
+	timeFromStr, _ := time.Parse(layout, str)
 
 	s.lister.On("SetState", action.ListAll)
 	s.lister.On("SetStateMask")

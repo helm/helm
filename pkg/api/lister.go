@@ -5,20 +5,20 @@ import (
 	"helm.sh/helm/v3/pkg/release"
 )
 
-type list struct {
+type Lister struct {
 	*action.List
 }
 
-type lister interface {
+type ListRunner interface {
 	Run() ([]*release.Release, error)
 	SetStateMask()
 	SetState(state action.ListStates)
 }
 
-func NewList(action *action.List) *list {
-	return &list{action}
+func NewList(action *action.List) *Lister {
+	return &Lister{action}
 }
 
-func (l *list) SetState(state action.ListStates) {
+func (l *Lister) SetState(state action.ListStates) {
 	l.StateMask = state
 }

@@ -29,8 +29,8 @@ type history interface {
 type Service struct {
 	settings *cli.EnvSettings
 	chartloader
-	lister
-	Installer
+	ListRunner
+	InstallRunner
 	upgrader
 	history
 }
@@ -107,8 +107,8 @@ func (s Service) loadChart(chartName string) (*chart.Chart, error) {
 }
 
 func (s Service) installChart(icfg ReleaseConfig, ch *chart.Chart, vals ChartValues) (*ReleaseResult, error) {
-	s.Installer.SetConfig(icfg)
-	release, err := s.Installer.Run(ch, vals)
+	s.InstallRunner.SetConfig(icfg)
+	release, err := s.InstallRunner.Run(ch, vals)
 	if err != nil {
 		return nil, fmt.Errorf("error in installing chart: %v", err)
 	}
@@ -152,29 +152,29 @@ func (s Service) List(releaseStatus string) ([]Release, error) {
 		return nil, errors.New("invalid release status")
 	}
 
-	s.lister.SetState(state)
-	s.lister.SetStateMask()
-	releases, err := s.lister.Run()
+	s.ListRunner.SetState(state)
+	s.ListRunner.SetStateMask()
+	releases, err := s.ListRunner.Run()
 	if err != nil {
 		return nil, err
 	}
 
 	var helmReleases []Release
-	for _, eachRes := range releases {
-		r := Release{Name: eachRes.Name,
-			Namespace:  eachRes.Namespace,
-			Revision:   eachRes.Version,
-			Updated:    eachRes.Info.LastDeployed,
-			Status:     eachRes.Info.Status,
-			Chart:      fmt.Sprintf("%s-%s", eachRes.Chart.Metadata.Name, eachRes.Chart.Metadata.Version),
-			AppVersion: eachRes.Chart.Metadata.AppVersion,
+	for _, r := range releases {
+		helmRelease := Release{Name: r.Name,
+			Namespace:  r.Namespace,
+			Revision:   r.Version,
+			Updated:    r.Info.LastDeployed,
+			Status:     r.Info.Status,
+			Chart:      fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version),
+			AppVersion: r.Chart.Metadata.AppVersion,
 		}
-		helmReleases = append(helmReleases, r)
+		helmReleases = append(helmReleases, helmRelease)
 	}
 
 	return helmReleases, nil
 }
 
-func NewService(settings *cli.EnvSettings, cl chartloader, l lister, i Installer, u upgrader, h history) Service {
+func NewService(settings *cli.EnvSettings, cl chartloader, l ListRunner, i InstallRunner, u upgrader, h history) Service {
 	return Service{settings, cl, l, i, u, h}
 }
