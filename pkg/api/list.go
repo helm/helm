@@ -66,7 +66,6 @@ func List(svc Service) http.Handler {
 			return
 		}
 
-		w.WriteHeader(http.StatusOK)
 		w.Write(payload)
 	})
 }
