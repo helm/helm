@@ -2,10 +2,11 @@ package api
 
 import (
 	"encoding/json"
+	"net/http"
+
 	"helm.sh/helm/v3/pkg/api/logger"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/time"
-	"net/http"
 )
 
 type ListRequest struct {
@@ -19,19 +20,17 @@ type ListResponse struct {
 }
 
 type Release struct {
-	Name        string         `json:"name"`
-	Namespace   string         `json:"namespace"`
-	Revision    int            `json:"revision"`
-	Updated     time.Time      `json:"updated_at,omitempty"`
-	Status      release.Status `json:"status"`
-	Chart       string         `json:"chart"`
-	AppVersion  string         `json:"app_version"`
+	Name       string         `json:"name"`
+	Namespace  string         `json:"namespace"`
+	Revision   int            `json:"revision"`
+	Updated    time.Time      `json:"updated_at,omitempty"`
+	Status     release.Status `json:"status"`
+	Chart      string         `json:"chart"`
+	AppVersion string         `json:"app_version"`
 }
 
 func List(svc Service) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
 		var response ListResponse
 		var request ListRequest
 		decoder := json.NewDecoder(r.Body)

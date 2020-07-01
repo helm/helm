@@ -8,8 +8,6 @@ import (
 
 func Handler() http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-
-		res.Header().Set("Content-Type", "application/json")
 		defer req.Body.Close()
 
 		var request Req

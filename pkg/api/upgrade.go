@@ -22,7 +22,6 @@ type UpgradeResponse struct {
 
 func Upgrade(svc Service) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
 		defer r.Body.Close()
 
 		var req UpgradeRequest

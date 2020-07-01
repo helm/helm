@@ -85,7 +85,7 @@ func (s Service) Upgrade(ctx context.Context, cfg ReleaseConfig, values ChartVal
 
 	if s.upgrader.GetInstall() {
 		if _, err := s.history.Run(cfg.Name); err == driver.ErrReleaseNotFound {
-			fmt.Printf("Release %q does not exist. Installing it now.\n", cfg.Name)
+			logger.Debugf("release %q does not exist. Installing it now.\n", cfg.Name)
 			return s.installChart(cfg, chart, vals)
 		}
 	}
@@ -162,10 +162,10 @@ func (s Service) List(releaseStatus string) ([]Release, error) {
 	var helmReleases []Release
 	for _, eachRes := range releases {
 		r := Release{Name: eachRes.Name,
-			Namespace: eachRes.Namespace,
-			Revision: eachRes.Version,
-			Updated: eachRes.Info.LastDeployed,
-			Status: eachRes.Info.Status,
+			Namespace:  eachRes.Namespace,
+			Revision:   eachRes.Version,
+			Updated:    eachRes.Info.LastDeployed,
+			Status:     eachRes.Info.Status,
 			Chart:      fmt.Sprintf("%s-%s", eachRes.Chart.Metadata.Name, eachRes.Chart.Metadata.Version),
 			AppVersion: eachRes.Chart.Metadata.AppVersion,
 		}

@@ -16,6 +16,13 @@ func main() {
 	startServer()
 }
 
+func setContentType(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		next.ServeHTTP(w, r)
+	})
+}
+
 func startServer() {
 	router := http.NewServeMux()
 
@@ -35,10 +42,10 @@ func startServer() {
 		api.NewUpgrader(actionUpgrade),
 		api.NewHistory(actionHistory))
 
-	router.Handle("/ping", ping.Handler())
-	router.Handle("/list", api.List(service))
-	router.Handle("/install", api.Install(service))
-	router.Handle("/upgrade", api.Upgrade(service))
+	router.Handle("/ping", setContentType(ping.Handler()))
+	router.Handle("/list", setContentType(api.List(service)))
+	router.Handle("/install", setContentType(api.Install(service)))
+	router.Handle("/upgrade", setContentType(api.Upgrade(service)))
 
 	err := http.ListenAndServe(fmt.Sprintf(":%d", 8080), router)
 	if err != nil {

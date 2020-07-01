@@ -3,8 +3,9 @@ package api_test
 import (
 	"context"
 	"errors"
-	"helm.sh/helm/v3/pkg/time"
 	"testing"
+
+	"helm.sh/helm/v3/pkg/time"
 
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/api"
