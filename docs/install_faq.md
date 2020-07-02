@@ -15,7 +15,7 @@ I want to know more about my downloading options.
 
 Binaries are stored at [get.helm.sh](https://get.helm.sh).
 
-**Q: Why aren't there Debian/Fedora/... native packages of Helm?**
+**Q: Why aren't there native packages of Helm for Fedora and other Linux distros?**
 
 We'd love to provide these or point you toward a trusted provider. If you're
 interested in helping, we'd love it. This is how the Homebrew formula was
