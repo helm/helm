@@ -20,10 +20,13 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"time"
 
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 
 	"helm.sh/helm/v3/pkg/release"
 )
@@ -32,16 +35,19 @@ import (
 //
 // It provides the implementation of 'helm test'.
 type ReleaseTesting struct {
-	cfg     *Configuration
-	Timeout time.Duration
+	cfg       *Configuration
+	clientSet kubernetes.Interface
+	Timeout   time.Duration
 	// Used for fetching logs from test pods
 	Namespace string
 }
 
 // NewReleaseTesting creates a new ReleaseTesting object with the given configuration.
 func NewReleaseTesting(cfg *Configuration) *ReleaseTesting {
+	clientSet, _ := cfg.KubernetesClientSet()
 	return &ReleaseTesting{
-		cfg: cfg,
+		cfg:       cfg,
+		clientSet: clientSet,
 	}
 }
 
@@ -73,25 +79,36 @@ func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
 // the given writer. These can be immediately output to the user or captured for
 // other uses
 func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
-	client, err := r.cfg.KubernetesClientSet()
-	if err != nil {
-		return errors.Wrap(err, "unable to get kubernetes client to fetch pod logs")
-	}
-
 	for _, h := range rel.Hooks {
 		for _, e := range h.Events {
 			if e == release.HookTest {
-				req := client.CoreV1().Pods(r.Namespace).GetLogs(h.Name, &v1.PodLogOptions{})
+				var podName string
+				if h.Kind == "Job" {
+					resp, err := r.clientSet.CoreV1().Pods(r.Namespace).List(context.TODO(), metav1.ListOptions{
+						LabelSelector: fmt.Sprintf("job-name=%s", h.Name),
+					})
+					if err != nil || len(resp.Items) == 0 {
+						return errors.Wrapf(err, "Unable to get the running pod for %s", h.Name)
+					}
+					//TODO When multiple pods are parallel, it is necessary to aggregate logs
+					podName = resp.Items[0].Name
+				} else if h.Kind == "Pod" {
+					podName = h.Name
+				} else {
+					log.Printf("warning: The current type does not support log acquisition, only Job or Pod")
+					continue
+				}
+				req := r.clientSet.CoreV1().Pods(r.Namespace).GetLogs(podName, &v1.PodLogOptions{})
 				logReader, err := req.Stream(context.Background())
 				if err != nil {
-					return errors.Wrapf(err, "unable to get pod logs for %s", h.Name)
+					return errors.Wrapf(err, "unable to get pod logs for %s", podName)
 				}
 
-				fmt.Fprintf(out, "POD LOGS: %s\n", h.Name)
+				fmt.Fprintf(out, "POD LOGS: %s\n", podName)
 				_, err = io.Copy(out, logReader)
 				fmt.Fprintln(out)
 				if err != nil {
-					return errors.Wrapf(err, "unable to write pod logs for %s", h.Name)
+					return errors.Wrapf(err, "unable to write pod logs for %s", podName)
 				}
 			}
 		}
