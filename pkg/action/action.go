@@ -411,5 +411,17 @@ func (c *Configuration) Init(getter genericclioptions.RESTClientGetter, namespac
 	c.Releases = store
 	c.Log = log
 
+	// Experimental: init registry client
+	var buf bytes.Buffer
+	registryClient, err := registry.NewClient(
+		registry.ClientOptWriter(&buf),
+	)
+
+	if err != nil {
+		panic(fmt.Sprintf("Unable to instantiate registry client: %v", err))
+		return err
+	}
+	c.RegistryClient = registryClient
+
 	return nil
 }
