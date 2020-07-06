@@ -2,13 +2,14 @@ package api_test
 
 import (
 	"fmt"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/time"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/time"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -65,31 +66,30 @@ func (s *ListTestSuite) TestShouldReturnReleasesWhenSuccessfulAPICall() {
 	layout := "2006-01-02T15:04:05.000Z"
 	str := "2014-11-12T11:45:26.371Z"
 	timeFromStr, _ := time.Parse(layout, str)
-
 	body := `{"release_status":"deployed"}`
 	req, _ := http.NewRequest("POST", fmt.Sprintf("%s/list", s.server.URL), strings.NewReader(body))
-
-	var releases []*release.Release
-	releases = append(releases,
-		&release.Release{Name: "test-release",
+	releases := []*release.Release{
+		{
+			Name:      "test-release",
 			Namespace: "test-namespace",
 			Info:      &release.Info{Status: release.StatusDeployed, LastDeployed: timeFromStr},
 			Version:   1,
 			Chart:     &chart.Chart{Metadata: &chart.Metadata{Name: "test-release", Version: "0.1", AppVersion: "0.1"}},
-		})
-
+		},
+	}
 	s.mockList.On("SetStateMask")
 	s.mockList.On("SetState", action.ListDeployed)
 	s.mockList.On("Run").Return(releases, nil)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, httpErr := http.DefaultClient.Do(req)
 
 	assert.Equal(s.T(), 200, resp.StatusCode)
 
 	expectedResponse := `{"releases":[{"name":"test-release","namespace":"test-namespace","revision":1,"updated_at":"2014-11-12T11:45:26.371Z","status":"deployed","chart":"test-release-0.1","app_version":"0.1"}]}`
-	respBody, _ := ioutil.ReadAll(resp.Body)
-	assert.Equal(s.T(), expectedResponse, string(respBody))
+	respBody, err := ioutil.ReadAll(resp.Body)
 
+	assert.Equal(s.T(), expectedResponse, string(respBody))
+	require.NoError(s.T(), httpErr)
 	require.NoError(s.T(), err)
 	s.mockList.AssertExpectations(s.T())
 }

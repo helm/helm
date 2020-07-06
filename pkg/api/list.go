@@ -47,25 +47,27 @@ func List(svc Service) http.Handler {
 		helmReleases, err := svc.List(request.ReleaseStatus)
 
 		if err != nil {
-			logger.Errorf("[List] error while installing chart: %v", err)
-			response.Error = err.Error()
-			payload, _ := json.Marshal(response)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write(payload)
+			respondInstallError(w, "error while listing charts: %v", err)
 			return
 		}
 
 		response = ListResponse{"", helmReleases}
 		payload, err := json.Marshal(response)
 		if err != nil {
-			logger.Errorf("[List] error writing response %v", err)
-			response.Error = err.Error()
-			payload, _ := json.Marshal(response)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write(payload)
+			respondInstallError(w, "error writing response: %v", err)
 			return
 		}
 
 		w.Write(payload)
 	})
+}
+
+func respondListError(w http.ResponseWriter, logprefix string, err error) {
+	response := ListResponse{Error: err.Error()}
+	w.WriteHeader(http.StatusInternalServerError)
+	if err := json.NewEncoder(w).Encode(&response); err != nil {
+		logger.Errorf("[List] %s %v", logprefix, err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 }

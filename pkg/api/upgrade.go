@@ -37,14 +37,23 @@ func Upgrade(svc Service) http.Handler {
 		cfg := ReleaseConfig{ChartName: req.Chart, Name: req.Name, Namespace: req.Namespace}
 		res, err := svc.Upgrade(r.Context(), cfg, req.Values)
 		if err != nil {
-			respondError(w, "error while upgrading chart: %v", err)
+			respondUpgradeError(w, "error while upgrading chart: %v", err)
 			return
 		}
 		response.Status = res.Status
 		if err := json.NewEncoder(w).Encode(&response); err != nil {
-			logger.Errorf("[Upgrade] error writing response %v", err)
-			w.WriteHeader(http.StatusInternalServerError)
+			respondUpgradeError(w, "error writing response: %v", err)
 			return
 		}
 	})
+}
+
+func respondUpgradeError(w http.ResponseWriter, logprefix string, err error) {
+	response := UpgradeResponse{Error: err.Error()}
+	w.WriteHeader(http.StatusInternalServerError)
+	if err := json.NewEncoder(w).Encode(&response); err != nil {
+		logger.Errorf("[Upgrade] %s %v", logprefix, err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 }

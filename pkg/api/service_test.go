@@ -47,13 +47,14 @@ func (s *ServiceTestSuite) SetupTest() {
 }
 
 func (s *ServiceTestSuite) TestInstallShouldReturnErrorOnInvalidChart() {
+	var vals api.ChartValues
 	chartName := "stable/invalid-chart"
 	cfg := api.ReleaseConfig{
 		Name:      "some-component",
 		Namespace: "hermes",
 		ChartName: chartName,
 	}
-	var vals api.ChartValues
+
 	s.chartloader.On("LocateChart", chartName, s.settings).Return("", errors.New("Unable to find chart"))
 
 	res, err := s.svc.Install(s.ctx, cfg, vals)
@@ -67,13 +68,13 @@ func (s *ServiceTestSuite) TestInstallShouldReturnErrorOnInvalidChart() {
 }
 
 func (s *ServiceTestSuite) TestInstallShouldReturnErrorOnLocalChartReference() {
+	var vals api.ChartValues
 	chartName := "./some/local-chart"
 	cfg := api.ReleaseConfig{
 		Name:      "some-component",
 		Namespace: "hermes",
 		ChartName: chartName,
 	}
-	var vals api.ChartValues
 
 	res, err := s.svc.Install(s.ctx, cfg, vals)
 
@@ -86,15 +87,16 @@ func (s *ServiceTestSuite) TestInstallShouldReturnErrorOnLocalChartReference() {
 }
 
 func (s *ServiceTestSuite) TestInstallShouldReturnErrorOnFailedInstallRun() {
+	var release *release.Release
+	var vals map[string]interface{}
 	chartName := "stable/valid-chart"
 	cfg := api.ReleaseConfig{
 		Name:      "some-component",
 		Namespace: "hermes",
 		ChartName: chartName,
 	}
-	var vals map[string]interface{}
+
 	s.chartloader.On("LocateChart", chartName, s.settings).Return("testdata/albatross", nil)
-	var release *release.Release
 	s.installer.On("SetConfig", cfg)
 	s.installer.On("Run", mock.AnythingOfType("*chart.Chart"), vals).Return(release, errors.New("cluster issue"))
 
@@ -108,13 +110,14 @@ func (s *ServiceTestSuite) TestInstallShouldReturnErrorOnFailedInstallRun() {
 }
 
 func (s *ServiceTestSuite) TestInstallShouldReturnResultOnSuccess() {
+	var vals map[string]interface{}
 	chartName := "stable/valid-chart"
 	cfg := api.ReleaseConfig{
 		Name:      "some-component",
 		Namespace: "hermes",
 		ChartName: chartName,
 	}
-	var vals map[string]interface{}
+
 	s.chartloader.On("LocateChart", chartName, s.settings).Return("testdata/albatross", nil)
 	s.installer.On("SetConfig", cfg)
 	release := &release.Release{Name: "some-comp-release", Info: &release.Info{Status: release.StatusDeployed}}
@@ -131,20 +134,21 @@ func (s *ServiceTestSuite) TestInstallShouldReturnResultOnSuccess() {
 }
 
 func (s *ServiceTestSuite) TestUpgradeInstallTrueShouldInstallChart() {
+	var vals map[string]interface{}
 	chartName := "stable/valid-chart"
 	cfg := api.ReleaseConfig{
 		Name:      "some-component",
 		Namespace: "hermes",
 		ChartName: chartName,
 	}
-	var vals map[string]interface{}
+
 	s.chartloader.On("LocateChart", chartName, s.settings).Return("testdata/albatross", nil)
 	s.upgrader.On("GetInstall").Return(true)
 	s.history.On("Run", "some-component").Return([]*release.Release{}, driver.ErrReleaseNotFound)
-
 	s.installer.On("SetConfig", cfg)
 	release := &release.Release{Name: "some-comp-release", Info: &release.Info{Status: release.StatusDeployed}}
 	s.installer.On("Run", mock.AnythingOfType("*chart.Chart"), vals).Return(release, nil)
+
 	res, err := s.svc.Upgrade(s.ctx, cfg, vals)
 
 	t := s.T()
@@ -168,10 +172,10 @@ func (s *ServiceTestSuite) TestUpgradeInstallFalseShouldNotInstallChart() {
 	var vals map[string]interface{}
 	s.chartloader.On("LocateChart", chartName, s.settings).Return("testdata/albatross", nil)
 	s.upgrader.On("GetInstall").Return(false)
-
 	s.upgrader.On("SetConfig", cfg)
 	release := &release.Release{Name: "some-comp-release", Info: &release.Info{Status: release.StatusDeployed}}
 	s.upgrader.On("Run", "some-component", mock.AnythingOfType("*chart.Chart"), vals).Return(release, nil)
+
 	res, err := s.svc.Upgrade(s.ctx, cfg, vals)
 
 	t := s.T()
@@ -199,6 +203,7 @@ func (s *ServiceTestSuite) TestUpgradeShouldReturnErrorOnFailedUpgradeRun() {
 	s.upgrader.On("Run", "some-component", mock.AnythingOfType("*chart.Chart"), vals).Return(release, errors.New("cluster issue"))
 
 	res, err := s.svc.Upgrade(s.ctx, cfg, vals)
+
 	t := s.T()
 	assert.Nil(t, res)
 	assert.EqualError(t, err, "error in upgrading chart: cluster issue")
@@ -221,6 +226,7 @@ func (s *ServiceTestSuite) TestUpgradeShouldReturnResultOnSuccess() {
 	s.upgrader.On("Run", "some-component", mock.AnythingOfType("*chart.Chart"), vals).Return(release, nil)
 
 	res, err := s.svc.Upgrade(s.ctx, cfg, vals)
+
 	t := s.T()
 	assert.NoError(t, err)
 	require.NotNil(t, res)
@@ -230,13 +236,13 @@ func (s *ServiceTestSuite) TestUpgradeShouldReturnResultOnSuccess() {
 }
 
 func (s *ServiceTestSuite) TestUpgradeValidateFailShouldResultFailure() {
+	var vals api.ChartValues
 	chartName := "./some/local-chart"
 	cfg := api.ReleaseConfig{
 		Name:      "some-component",
 		Namespace: "hermes",
 		ChartName: chartName,
 	}
-	var vals api.ChartValues
 
 	res, err := s.svc.Upgrade(s.ctx, cfg, vals)
 
@@ -269,32 +275,26 @@ func (s *ServiceTestSuite) TestUpgradeShouldReturnErrorOnInvalidChart() {
 }
 
 func (s *ServiceTestSuite) TestListShouldReturnErrorOnFailureOfListRun() {
+	var releases []*release.Release
+	releaseStatus := "deployed"
 	s.lister.On("SetState", action.ListDeployed)
 	s.lister.On("SetStateMask")
-
-	var releases []*release.Release
-
 	s.lister.On("Run").Return(releases, errors.New("cluster issue"))
 
-	releaseStatus := "deployed"
 	res, err := s.svc.List(releaseStatus)
 
 	t := s.T()
 	assert.Error(t, err, "cluster issue")
 	assert.Nil(t, res)
-
 	s.lister.AssertExpectations(t)
 }
 
 func (s *ServiceTestSuite) TestListShouldReturnAllReleasesIfNoFilterIsPassed() {
 	layout := "2006-01-02T15:04:05.000Z"
 	str := "2014-11-12T11:45:26.371Z"
-	timeFromStr, _ := time.Parse(layout, str)
-
-	s.lister.On("SetState", action.ListAll)
-	s.lister.On("SetStateMask")
-
+	releaseStatus := ""
 	var releases []*release.Release
+	timeFromStr, _ := time.Parse(layout, str)
 	releases = append(releases,
 		&release.Release{Name: "test-release",
 			Namespace: "test-namespace",
@@ -302,10 +302,11 @@ func (s *ServiceTestSuite) TestListShouldReturnAllReleasesIfNoFilterIsPassed() {
 			Version:   1,
 			Chart:     &chart.Chart{Metadata: &chart.Metadata{Name: "test-release", Version: "0.1", AppVersion: "0.1"}},
 		})
+	s.lister.On("SetState", action.ListAll)
+	s.lister.On("SetStateMask")
 
 	s.lister.On("Run").Return(releases, nil)
 
-	releaseStatus := ""
 	res, err := s.svc.List(releaseStatus)
 
 	t := s.T()
@@ -330,7 +331,7 @@ func (s *ServiceTestSuite) TestListShouldReturnAllReleasesIfNoFilterIsPassed() {
 	assert.Equal(t, release.StatusDeployed, response[0].Status)
 	assert.Equal(t, "test-release-0.1", response[0].Chart)
 	assert.Equal(t, "0.1", response[0].AppVersion)
-
+	assert.Equal(t, response, releases[0])
 	s.lister.AssertExpectations(t)
 }
 
@@ -339,17 +340,16 @@ func (s *ServiceTestSuite) TestListShouldReturnErrorIfInvalidStatusIsPassedAsFil
 	_, err := s.svc.List(releaseStatus)
 
 	t := s.T()
-	assert.Error(t, err, "invalid release status")
+	assert.EqualError(t, err, "invalid release status")
 }
 
 func (s *ServiceTestSuite) TestListShouldReturnDeployedReleasesIfDeployedIsPassedAsFilter() {
+	var releases []*release.Release
+	releaseStatus := "deployed"
 	s.lister.On("SetState", action.ListDeployed)
 	s.lister.On("SetStateMask")
-
-	var releases []*release.Release
 	s.lister.On("Run").Return(releases, nil)
 
-	releaseStatus := "deployed"
 	_, err := s.svc.List(releaseStatus)
 
 	t := s.T()
