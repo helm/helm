@@ -11,7 +11,14 @@ proceeds to show two ways to install the server.
 The Helm client can be installed either from source, or from pre-built binary
 releases.
 
-### From the Binary Releases
+### From The Helm Project
+
+The Helm project provides two ways to fetch and install Helm. These are the
+official methods to get Helm releases. In addition to that, the Helm community
+provides methods to install Helm through different package managers. Installation
+through those methods can be found below the official methods.
+
+#### From the Binary Releases
 
 Every [release](https://github.com/helm/helm/releases) of Helm
 provides binary releases for a variety of OSes. These binary versions
@@ -24,56 +31,7 @@ can be manually downloaded and installed.
 
 From there, you should be able to run the client: `helm help`.
 
-### From Snap (Linux)
-
-The Snap package for Helm is maintained by
-[Snapcrafters](https://github.com/snapcrafters/helm).
-
-```
-sudo snap install helm --classic
-```
-
-### From Homebrew (macOS)
-
-Members of the Kubernetes community have contributed a Helm formula build to
-Homebrew. This formula is generally up to date.
-
-```
-brew install kubernetes-helm
-```
-
-(Note: There is also a formula for emacs-helm, which is a different
-project.)
-
-### From Chocolatey or scoop (Windows)
-
-Members of the Kubernetes community have contributed a [Helm package](https://chocolatey.org/packages/kubernetes-helm) build to
-[Chocolatey](https://chocolatey.org/). This package is generally up to date.
-
-```
-choco install kubernetes-helm
-```
-
-The binary can also be installed via [`scoop`](https://scoop.sh) command-line installer.
-
-```
-scoop install helm
-```
-
-### From Apt (Debian/Ubuntu)
-
-Members of the Kubernetes community have contributed a [Helm
-package](https://helm.baltorepo.com/stable/debian/) for Apt. This package is generally up to date.
-
-```
-curl https://helm.baltorepo.com/organization/signing.asc | sudo apt-key add -
-sudo apt-get install apt-transport-https --yes
-echo "deb https://baltocdn.com/helm/stable/debian/ all main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
-sudo apt-get update
-sudo apt-get install helm2
-```
-
-### From Script
+#### From Script
 
 Helm now has an installer script that will automatically grab the latest version
 of the Helm client and [install it locally](https://git.io/get_helm.sh).
@@ -89,7 +47,66 @@ $ ./get_helm.sh
 
 Yes, you can `curl -L https://git.io/get_helm.sh | bash` that if you want to live on the edge.
 
-### From Canary Builds
+### Through Package Managers
+
+The Helm community provides the ability to install Helm through operating system
+package managers. These are not supported by the Helm project and are not considered
+trusted 3rd parties.
+
+#### From Snap (Linux)
+
+The Snap package for Helm is maintained by
+[Snapcrafters](https://github.com/snapcrafters/helm).
+
+```
+sudo snap install helm --classic
+```
+
+#### From Homebrew (macOS)
+
+Members of the Helm community have contributed a Helm formula build to
+Homebrew. This formula is generally up to date.
+
+```
+brew install kubernetes-helm
+```
+
+(Note: There is also a formula for emacs-helm, which is a different
+project.)
+
+### #From Chocolatey or scoop (Windows)
+
+Members of the Helm community have contributed a [Helm package](https://chocolatey.org/packages/kubernetes-helm) build to
+[Chocolatey](https://chocolatey.org/). This package is generally up to date.
+
+```
+choco install kubernetes-helm
+```
+
+The binary can also be installed via [`scoop`](https://scoop.sh) command-line installer.
+
+```
+scoop install helm
+```
+
+#### From Apt (Debian/Ubuntu)
+
+Members of the Helm community have contributed a [Helm
+package](https://helm.baltorepo.com/stable/debian/) for Apt. This package is generally up to date.
+
+```
+curl https://helm.baltorepo.com/organization/signing.asc | sudo apt-key add -
+sudo apt-get install apt-transport-https --yes
+echo "deb https://baltocdn.com/helm/stable/debian/ all main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
+sudo apt-get update
+sudo apt-get install helm2
+```
+
+### Development Builds
+
+In addition to releases you can download or install development snapshots of Helm.
+
+#### From Canary Builds
 
 "Canary" builds are versions of the Helm software that are built from
 the latest master branch. They are not official releases, and may not be
@@ -103,7 +120,7 @@ Here are links to the common builds:
 - [macOS AMD64](https://get.helm.sh/helm-canary-darwin-amd64.tar.gz)
 - [Experimental Windows AMD64](https://get.helm.sh/helm-canary-windows-amd64.zip)
 
-### From Source (Linux, macOS)
+#### From Source (Linux, macOS)
 
 Building Helm from source is slightly more work, but is the best way to
 go if you want to test the latest (pre-release) Helm version.
