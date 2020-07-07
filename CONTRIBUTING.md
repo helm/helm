@@ -96,22 +96,18 @@ that we're already aware of. It is also worth asking on the Slack channels.
 
 ## Milestones
 
-We use milestones to track progress of releases. There are also 2 special milestones used for
-helping us keep work organized: `Upcoming - Minor` and `Upcoming - Major`
+We use milestones to track progress of specific planned releases.
 
-`Upcoming - Minor` is used for keeping track of issues that aren't assigned to a specific release
-but could easily be addressed in a minor release. `Upcoming - Major` keeps track of issues that will
-need to be addressed in a major release. For example, if the current version is `3.2.0` an issue/PR
-could fall in to one of 4 different active milestones: `3.2.1`, `3.3.0`, `Upcoming - Minor`, or
-`Upcoming - Major`. If an issue pertains to a specific upcoming bug or minor release, it would go
-into `3.2.1` or `3.3.0`. If the issue/PR does not have a specific milestone yet, but it is likely
-that it will land in a `3.X` release, it should go into `Upcoming - Minor`. If the issue/PR is a
-large functionality add or change and/or it breaks compatibility, then it should be added to the
-`Upcoming - Major` milestone. An issue that we are not sure we will be doing will not be added to
-any milestone.
+For example, if the latest currently-released version is `3.2.1`, an issue/PR which pertains to a
+specific upcoming bugfix or feature release could fall into one of two different active milestones:
+`3.2.2` or `3.3.0`.
 
-A milestone (and hence release) is considered done when all outstanding issues/PRs have been closed
-or moved to another milestone.
+Issues and PRs which are deemed backwards-incompatible may be added to the discussion items for
+Helm 4 with [label:v4.x](https://github.com/helm/helm/labels/v4.x). An issue or PR that we are not
+sure we will be addressing will not be added to any milestone.
+
+A milestone (and hence release) can be closed when all outstanding issues/PRs have been closed
+or moved to another milestone and the associated release has been published.
 
 ## Semantic Versioning
 
