@@ -102,7 +102,9 @@ For example, if the latest currently-released version is `3.2.1`, an issue/PR wh
 specific upcoming bugfix or feature release could fall into one of two different active milestones:
 `3.2.2` or `3.3.0`.
 
-An issue that we are not sure we will be addressing will not be added to any milestone.
+Issues and PRs which are deemed backwards-incompatible may be added to the discussion items for
+Helm 4 with [label:v4.x](https://github.com/helm/helm/labels/v4.x). An issue or PR that we are not
+sure we will be addressing will not be added to any milestone.
 
 A milestone (and hence release) can be closed when all outstanding issues/PRs have been closed
 or moved to another milestone and the associated release has been published.
