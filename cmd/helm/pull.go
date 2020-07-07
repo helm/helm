@@ -19,11 +19,11 @@ package main
 import (
 	"fmt"
 	"io"
+	"log"
 
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/pkg/action"
 )
 
@@ -51,6 +51,12 @@ func newPullCmd(out io.Writer) *cobra.Command {
 		Aliases: []string{"fetch"},
 		Long:    pullDesc,
 		Args:    require.MinimumNArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if len(args) != 0 {
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+			return compListCharts(toComplete, false)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.Settings = settings
 			if client.Version == "" && client.Devel {
@@ -69,14 +75,6 @@ func newPullCmd(out io.Writer) *cobra.Command {
 		},
 	}
 
-	// Function providing dynamic auto-completion
-	completion.RegisterValidArgsFunc(cmd, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
-		if len(args) != 0 {
-			return nil, completion.BashCompDirectiveNoFileComp
-		}
-		return compListCharts(toComplete, false)
-	})
-
 	f := cmd.Flags()
 	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored.")
 	f.BoolVar(&client.Untar, "untar", false, "if set to true, will untar the chart after downloading it")
@@ -84,6 +82,17 @@ func newPullCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&client.UntarDir, "untardir", ".", "if untar is specified, this flag specifies the name of the directory into which the chart is expanded")
 	f.StringVarP(&client.DestDir, "destination", "d", ".", "location to write the chart. If this and tardir are specified, tardir is appended to this")
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
+
+	err := cmd.RegisterFlagCompletionFunc("version", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		if len(args) != 1 {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		return compVersionFlag(args[0], toComplete)
+	})
+
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	return cmd
 }

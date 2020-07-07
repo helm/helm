@@ -99,7 +99,7 @@ replicaCount: 1
 image:
   repository: nginx
   pullPolicy: IfNotPresent
-  # Overrides the image tag whose default is the chart version.
+  # Overrides the image tag whose default is the chart appVersion.
   tag: ""
 
 imagePullSecrets: []
@@ -386,8 +386,7 @@ const defaultNotes = `1. Get the application URL by running these commands:
 {{- end }}
 `
 
-const defaultHelpers = `{{/* vim: set filetype=mustache: */}}
-{{/*
+const defaultHelpers = `{{/*
 Expand the name of the chart.
 */}}
 {{- define "<CHARTNAME>.name" -}}

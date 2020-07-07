@@ -195,3 +195,29 @@ func TestPullCmd(t *testing.T) {
 		})
 	}
 }
+
+func TestPullVersionCompletion(t *testing.T) {
+	repoFile := "testdata/helmhome/helm/repositories.yaml"
+	repoCache := "testdata/helmhome/helm/repository"
+
+	repoSetup := fmt.Sprintf("--repository-config %s --repository-cache %s", repoFile, repoCache)
+
+	tests := []cmdTestCase{{
+		name:   "completion for pull version flag",
+		cmd:    fmt.Sprintf("%s __complete pull testing/alpine --version ''", repoSetup),
+		golden: "output/version-comp.txt",
+	}, {
+		name:   "completion for pull version flag too few args",
+		cmd:    fmt.Sprintf("%s __complete pull --version ''", repoSetup),
+		golden: "output/version-invalid-comp.txt",
+	}, {
+		name:   "completion for pull version flag too many args",
+		cmd:    fmt.Sprintf("%s __complete pull testing/alpine badarg --version ''", repoSetup),
+		golden: "output/version-invalid-comp.txt",
+	}, {
+		name:   "completion for pull version flag invalid chart",
+		cmd:    fmt.Sprintf("%s __complete pull invalid/invalid --version ''", repoSetup),
+		golden: "output/version-invalid-comp.txt",
+	}}
+	runTestCmd(t, tests)
+}

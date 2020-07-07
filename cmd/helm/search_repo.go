@@ -32,7 +32,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/search"
-	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/helmpath"
 	"helm.sh/helm/v3/pkg/repo"
@@ -290,8 +289,8 @@ func compListChartsOfRepo(repoName string, prefix string) []string {
 
 // Provide dynamic auto-completion for commands that operate on charts (e.g., helm show)
 // When true, the includeFiles argument indicates that completion should include local files (e.g., local charts)
-func compListCharts(toComplete string, includeFiles bool) ([]string, completion.BashCompDirective) {
-	completion.CompDebugln(fmt.Sprintf("compListCharts with toComplete %s", toComplete))
+func compListCharts(toComplete string, includeFiles bool) ([]string, cobra.ShellCompDirective) {
+	cobra.CompDebugln(fmt.Sprintf("compListCharts with toComplete %s", toComplete), settings.Debug)
 
 	noSpace := false
 	noFile := false
@@ -312,7 +311,7 @@ func compListCharts(toComplete string, includeFiles bool) ([]string, completion.
 			noSpace = true
 		}
 	}
-	completion.CompDebugln(fmt.Sprintf("Completions after repos: %v", completions))
+	cobra.CompDebugln(fmt.Sprintf("Completions after repos: %v", completions), settings.Debug)
 
 	// Now handle completions for url prefixes
 	for _, url := range []string{"https://", "http://", "file://"} {
@@ -328,7 +327,7 @@ func compListCharts(toComplete string, includeFiles bool) ([]string, completion.
 			noSpace = true
 		}
 	}
-	completion.CompDebugln(fmt.Sprintf("Completions after urls: %v", completions))
+	cobra.CompDebugln(fmt.Sprintf("Completions after urls: %v", completions), settings.Debug)
 
 	// Finally, provide file completion if we need to.
 	// We only do this if:
@@ -347,22 +346,22 @@ func compListCharts(toComplete string, includeFiles bool) ([]string, completion.
 			}
 		}
 	}
-	completion.CompDebugln(fmt.Sprintf("Completions after files: %v", completions))
+	cobra.CompDebugln(fmt.Sprintf("Completions after files: %v", completions), settings.Debug)
 
 	// If the user didn't provide any input to completion,
 	// we provide a hint that a path can also be used
 	if includeFiles && len(toComplete) == 0 {
 		completions = append(completions, "./", "/")
 	}
-	completion.CompDebugln(fmt.Sprintf("Completions after checking empty input: %v", completions))
+	cobra.CompDebugln(fmt.Sprintf("Completions after checking empty input: %v", completions), settings.Debug)
 
-	directive := completion.BashCompDirectiveDefault
+	directive := cobra.ShellCompDirectiveDefault
 	if noFile {
-		directive = directive | completion.BashCompDirectiveNoFileComp
+		directive = directive | cobra.ShellCompDirectiveNoFileComp
 	}
 	if noSpace {
-		directive = directive | completion.BashCompDirectiveNoSpace
-		// The completion.BashCompDirective flags do not work for zsh right now.
+		directive = directive | cobra.ShellCompDirectiveNoSpace
+		// The cobra.ShellCompDirective flags do not work for zsh right now.
 		// We handle it ourselves instead.
 		completions = compEnforceNoSpace(completions)
 	}
@@ -380,7 +379,7 @@ func compEnforceNoSpace(completions []string) []string {
 	// We only do this if there is a single choice for completion.
 	if len(completions) == 1 {
 		completions = append(completions, completions[0]+".")
-		completion.CompDebugln(fmt.Sprintf("compEnforceNoSpace: completions now are %v", completions))
+		cobra.CompDebugln(fmt.Sprintf("compEnforceNoSpace: completions now are %v", completions), settings.Debug)
 	}
 	return completions
 }

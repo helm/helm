@@ -43,9 +43,7 @@ import (
 // FeatureGateOCI is the feature gate for checking if `helm chart` and `helm registry` commands should work
 const FeatureGateOCI = gates.Gate("HELM_EXPERIMENTAL_OCI")
 
-var (
-	settings = cli.New()
-)
+var settings = cli.New()
 
 func init() {
 	log.SetFlags(log.Lshortfile)
@@ -56,6 +54,11 @@ func debug(format string, v ...interface{}) {
 		format = fmt.Sprintf("[debug] %s\n", format)
 		log.Output(2, fmt.Sprintf(format, v...))
 	}
+}
+
+func warning(format string, v ...interface{}) {
+	format = fmt.Sprintf("WARNING: %s\n", format)
+	fmt.Fprintf(os.Stderr, format, v...)
 }
 
 func initKubeLogs() {
@@ -70,15 +73,22 @@ func main() {
 	initKubeLogs()
 
 	actionConfig := new(action.Configuration)
-	cmd := newRootCmd(actionConfig, os.Stdout, os.Args[1:])
+	cmd, err := newRootCmd(actionConfig, os.Stdout, os.Args[1:])
+	if err != nil {
+		debug("%+v", err)
+		os.Exit(1)
+	}
 
-	helmDriver := os.Getenv("HELM_DRIVER")
-	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), helmDriver, debug); err != nil {
-		log.Fatal(err)
-	}
-	if helmDriver == "memory" {
-		loadReleasesInMemory(actionConfig)
-	}
+	// run when each command's execute method is called
+	cobra.OnInitialize(func() {
+		helmDriver := os.Getenv("HELM_DRIVER")
+		if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), helmDriver, debug); err != nil {
+			log.Fatal(err)
+		}
+		if helmDriver == "memory" {
+			loadReleasesInMemory(actionConfig)
+		}
+	})
 
 	if err := cmd.Execute(); err != nil {
 		debug("%+v", err)

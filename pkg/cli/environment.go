@@ -26,21 +26,17 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"sync"
 
 	"github.com/spf13/pflag"
-
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"helm.sh/helm/v3/pkg/helmpath"
-	"helm.sh/helm/v3/pkg/kube"
 )
 
 // EnvSettings describes all of the environment settings.
 type EnvSettings struct {
-	namespace  string
-	config     genericclioptions.RESTClientGetter
-	configOnce sync.Once
+	namespace string
+	config    *genericclioptions.ConfigFlags
 
 	// KubeConfig is the path to the kubeconfig file
 	KubeConfig string
@@ -63,8 +59,7 @@ type EnvSettings struct {
 }
 
 func New() *EnvSettings {
-
-	env := EnvSettings{
+	env := &EnvSettings{
 		namespace:        os.Getenv("HELM_NAMESPACE"),
 		KubeContext:      os.Getenv("HELM_KUBECONTEXT"),
 		KubeToken:        os.Getenv("HELM_KUBETOKEN"),
@@ -75,7 +70,16 @@ func New() *EnvSettings {
 		RepositoryCache:  envOr("HELM_REPOSITORY_CACHE", helmpath.CachePath("repository")),
 	}
 	env.Debug, _ = strconv.ParseBool(os.Getenv("HELM_DEBUG"))
-	return &env
+
+	// bind to kubernetes config flags
+	env.config = &genericclioptions.ConfigFlags{
+		Namespace:   &env.namespace,
+		Context:     &env.KubeContext,
+		BearerToken: &env.KubeToken,
+		APIServer:   &env.KubeAPIServer,
+		KubeConfig:  &env.KubeConfig,
+	}
+	return env
 }
 
 // AddFlags binds flags to the given flagset.
@@ -101,48 +105,36 @@ func envOr(name, def string) string {
 func (s *EnvSettings) EnvVars() map[string]string {
 	envvars := map[string]string{
 		"HELM_BIN":               os.Args[0],
+		"HELM_CACHE_HOME":        helmpath.CachePath(""),
+		"HELM_CONFIG_HOME":       helmpath.ConfigPath(""),
+		"HELM_DATA_HOME":         helmpath.DataPath(""),
 		"HELM_DEBUG":             fmt.Sprint(s.Debug),
 		"HELM_PLUGINS":           s.PluginsDirectory,
 		"HELM_REGISTRY_CONFIG":   s.RegistryConfig,
 		"HELM_REPOSITORY_CACHE":  s.RepositoryCache,
 		"HELM_REPOSITORY_CONFIG": s.RepositoryConfig,
 		"HELM_NAMESPACE":         s.Namespace(),
-		"HELM_KUBECONTEXT":       s.KubeContext,
-		"HELM_KUBETOKEN":         s.KubeToken,
-		"HELM_KUBEAPISERVER":     s.KubeAPIServer,
-	}
 
+		// broken, these are populated from helm flags and not kubeconfig.
+		"HELM_KUBECONTEXT":   s.KubeContext,
+		"HELM_KUBETOKEN":     s.KubeToken,
+		"HELM_KUBEAPISERVER": s.KubeAPIServer,
+	}
 	if s.KubeConfig != "" {
 		envvars["KUBECONFIG"] = s.KubeConfig
 	}
-
 	return envvars
 }
 
-//Namespace gets the namespace from the configuration
+// Namespace gets the namespace from the configuration
 func (s *EnvSettings) Namespace() string {
-	if s.namespace != "" {
-		return s.namespace
-	}
-
-	if ns, _, err := s.RESTClientGetter().ToRawKubeConfigLoader().Namespace(); err == nil {
+	if ns, _, err := s.config.ToRawKubeConfigLoader().Namespace(); err == nil {
 		return ns
 	}
 	return "default"
 }
 
-//RESTClientGetter gets the kubeconfig from EnvSettings
+// RESTClientGetter gets the kubeconfig from EnvSettings
 func (s *EnvSettings) RESTClientGetter() genericclioptions.RESTClientGetter {
-	s.configOnce.Do(func() {
-		clientConfig := kube.GetConfig(s.KubeConfig, s.KubeContext, s.namespace)
-		if s.KubeToken != "" {
-			clientConfig.BearerToken = &s.KubeToken
-		}
-		if s.KubeAPIServer != "" {
-			clientConfig.APIServer = &s.KubeAPIServer
-		}
-
-		s.config = clientConfig
-	})
 	return s.config
 }

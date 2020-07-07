@@ -86,6 +86,7 @@ func (ref *Reference) FullName() string {
 
 // validate makes sure the ref meets our criteria
 func (ref *Reference) validate() error {
+
 	err := ref.validateRepo()
 	if err != nil {
 		return err
@@ -100,7 +101,7 @@ func (ref *Reference) validateRepo() error {
 	}
 	// Makes sure the repo results in a parsable URL (similar to what is done
 	// with containerd reference parsing)
-	_, err := url.Parse(ref.Repo)
+	_, err := url.Parse("//" + ref.Repo)
 	return err
 }
 

@@ -80,3 +80,41 @@ func TestShowPreReleaseChart(t *testing.T) {
 		})
 	}
 }
+
+func TestShowVersionCompletion(t *testing.T) {
+	repoFile := "testdata/helmhome/helm/repositories.yaml"
+	repoCache := "testdata/helmhome/helm/repository"
+
+	repoSetup := fmt.Sprintf("--repository-config %s --repository-cache %s", repoFile, repoCache)
+
+	tests := []cmdTestCase{{
+		name:   "completion for show version flag",
+		cmd:    fmt.Sprintf("%s __complete show chart testing/alpine --version ''", repoSetup),
+		golden: "output/version-comp.txt",
+	}, {
+		name:   "completion for show version flag too few args",
+		cmd:    fmt.Sprintf("%s __complete show chart --version ''", repoSetup),
+		golden: "output/version-invalid-comp.txt",
+	}, {
+		name:   "completion for show version flag too many args",
+		cmd:    fmt.Sprintf("%s __complete show chart testing/alpine badarg --version ''", repoSetup),
+		golden: "output/version-invalid-comp.txt",
+	}, {
+		name:   "completion for show version flag invalid chart",
+		cmd:    fmt.Sprintf("%s __complete show chart invalid/invalid --version ''", repoSetup),
+		golden: "output/version-invalid-comp.txt",
+	}, {
+		name:   "completion for show version flag with all",
+		cmd:    fmt.Sprintf("%s __complete show all testing/alpine --version ''", repoSetup),
+		golden: "output/version-comp.txt",
+	}, {
+		name:   "completion for show version flag with readme",
+		cmd:    fmt.Sprintf("%s __complete show readme testing/alpine --version ''", repoSetup),
+		golden: "output/version-comp.txt",
+	}, {
+		name:   "completion for show version flag with values",
+		cmd:    fmt.Sprintf("%s __complete show values testing/alpine --version ''", repoSetup),
+		golden: "output/version-comp.txt",
+	}}
+	runTestCmd(t, tests)
+}

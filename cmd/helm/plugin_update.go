@@ -24,7 +24,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/pkg/plugin"
 	"helm.sh/helm/v3/pkg/plugin/installer"
 )
@@ -40,6 +39,12 @@ func newPluginUpdateCmd(out io.Writer) *cobra.Command {
 		Use:     "update <plugin>...",
 		Aliases: []string{"up"},
 		Short:   "update one or more Helm plugins",
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if len(args) != 0 {
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+			return compListPlugins(toComplete), cobra.ShellCompDirectiveNoFileComp
+		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			return o.complete(args)
 		},
@@ -47,15 +52,6 @@ func newPluginUpdateCmd(out io.Writer) *cobra.Command {
 			return o.run(out)
 		},
 	}
-
-	// Function providing dynamic auto-completion
-	completion.RegisterValidArgsFunc(cmd, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
-		if len(args) != 0 {
-			return nil, completion.BashCompDirectiveNoFileComp
-		}
-		return compListPlugins(toComplete), completion.BashCompDirectiveNoFileComp
-	})
-
 	return cmd
 }
 

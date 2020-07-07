@@ -19,11 +19,11 @@ package main
 import (
 	"fmt"
 	"io"
+	"log"
 
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/pkg/action"
 )
 
@@ -63,18 +63,19 @@ func newShowCmd(out io.Writer) *cobra.Command {
 	}
 
 	// Function providing dynamic auto-completion
-	validArgsFunc := func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
+	validArgsFunc := func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) != 0 {
-			return nil, completion.BashCompDirectiveNoFileComp
+			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 		return compListCharts(toComplete, true)
 	}
 
 	all := &cobra.Command{
-		Use:   "all [CHART]",
-		Short: "shows all information of the chart",
-		Long:  showAllDesc,
-		Args:  require.ExactArgs(1),
+		Use:               "all [CHART]",
+		Short:             "show all information of the chart",
+		Long:              showAllDesc,
+		Args:              require.ExactArgs(1),
+		ValidArgsFunction: validArgsFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowAll
 			output, err := runShow(args, client)
@@ -87,10 +88,11 @@ func newShowCmd(out io.Writer) *cobra.Command {
 	}
 
 	valuesSubCmd := &cobra.Command{
-		Use:   "values [CHART]",
-		Short: "shows the chart's values",
-		Long:  showValuesDesc,
-		Args:  require.ExactArgs(1),
+		Use:               "values [CHART]",
+		Short:             "show the chart's values",
+		Long:              showValuesDesc,
+		Args:              require.ExactArgs(1),
+		ValidArgsFunction: validArgsFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowValues
 			output, err := runShow(args, client)
@@ -103,10 +105,11 @@ func newShowCmd(out io.Writer) *cobra.Command {
 	}
 
 	chartSubCmd := &cobra.Command{
-		Use:   "chart [CHART]",
-		Short: "shows the chart's definition",
-		Long:  showChartDesc,
-		Args:  require.ExactArgs(1),
+		Use:               "chart [CHART]",
+		Short:             "show the chart's definition",
+		Long:              showChartDesc,
+		Args:              require.ExactArgs(1),
+		ValidArgsFunction: validArgsFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowChart
 			output, err := runShow(args, client)
@@ -119,10 +122,11 @@ func newShowCmd(out io.Writer) *cobra.Command {
 	}
 
 	readmeSubCmd := &cobra.Command{
-		Use:   "readme [CHART]",
-		Short: "shows the chart's README",
-		Long:  readmeChartDesc,
-		Args:  require.ExactArgs(1),
+		Use:               "readme [CHART]",
+		Short:             "show the chart's README",
+		Long:              readmeChartDesc,
+		Args:              require.ExactArgs(1),
+		ValidArgsFunction: validArgsFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowReadme
 			output, err := runShow(args, client)
@@ -136,21 +140,29 @@ func newShowCmd(out io.Writer) *cobra.Command {
 
 	cmds := []*cobra.Command{all, readmeSubCmd, valuesSubCmd, chartSubCmd}
 	for _, subCmd := range cmds {
-		addShowFlags(showCommand, subCmd, client)
-
-		// Register the completion function for each subcommand
-		completion.RegisterValidArgsFunc(subCmd, validArgsFunc)
+		addShowFlags(subCmd, client)
+		showCommand.AddCommand(subCmd)
 	}
 
 	return showCommand
 }
 
-func addShowFlags(showCmd *cobra.Command, subCmd *cobra.Command, client *action.Show) {
+func addShowFlags(subCmd *cobra.Command, client *action.Show) {
 	f := subCmd.Flags()
 
 	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored")
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
-	showCmd.AddCommand(subCmd)
+
+	err := subCmd.RegisterFlagCompletionFunc("version", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		if len(args) != 1 {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		return compVersionFlag(args[0], toComplete)
+	})
+
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func runShow(args []string, client *action.Show) (string, error) {

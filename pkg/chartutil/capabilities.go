@@ -20,6 +20,8 @@ import (
 
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+
+	helmversion "helm.sh/helm/v3/internal/version"
 )
 
 var (
@@ -29,11 +31,12 @@ var (
 	// DefaultCapabilities is the default set of capabilities.
 	DefaultCapabilities = &Capabilities{
 		KubeVersion: KubeVersion{
-			Version: "v1.16.0",
+			Version: "v1.18.0",
 			Major:   "1",
-			Minor:   "16",
+			Minor:   "18",
 		},
 		APIVersions: DefaultVersionSet,
+		HelmVersion: helmversion.Get(),
 	}
 )
 
@@ -43,6 +46,8 @@ type Capabilities struct {
 	KubeVersion KubeVersion
 	// APIversions are supported Kubernetes API versions.
 	APIVersions VersionSet
+	// HelmVersion is the build information for this helm version
+	HelmVersion helmversion.BuildInfo
 }
 
 // KubeVersion is the Kubernetes version.

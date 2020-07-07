@@ -17,12 +17,16 @@ package getter
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -45,6 +49,7 @@ func TestHTTPGetter(t *testing.T) {
 	join := filepath.Join
 	ca, pub, priv := join(cd, "rootca.crt"), join(cd, "crt.pem"), join(cd, "key.pem")
 	insecure := false
+	timeout := time.Second * 5
 
 	// Test with options
 	g, err = NewHTTPGetter(
@@ -52,6 +57,7 @@ func TestHTTPGetter(t *testing.T) {
 		WithUserAgent("Groot"),
 		WithTLSClientConfig(pub, priv, ca),
 		WithInsecureSkipVerifyTLS(insecure),
+		WithTimeout(timeout),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -90,6 +96,10 @@ func TestHTTPGetter(t *testing.T) {
 		t.Errorf("Expected NewHTTPGetter to contain %t as InsecureSkipVerifyTLs flag, got %t", false, hg.opts.insecureSkipVerifyTLS)
 	}
 
+	if hg.opts.timeout != timeout {
+		t.Errorf("Expected NewHTTPGetter to contain %s as Timeout flag, got %s", timeout, hg.opts.timeout)
+	}
+
 	// Test if setting insecureSkipVerifyTLS is being passed to the ops
 	insecure = true
 
@@ -122,7 +132,7 @@ func TestDownload(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	g, err := All(new(cli.EnvSettings)).ByScheme("http")
+	g, err := All(cli.New()).ByScheme("http")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -247,4 +257,40 @@ func TestDownloadInsecureSkipTLSVerify(t *testing.T) {
 		t.Error(err)
 	}
 
+}
+
+func TestHTTPGetterTarDownload(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		f, _ := os.Open("testdata/empty-0.0.1.tgz")
+		defer f.Close()
+
+		b := make([]byte, 512)
+		f.Read(b)
+		//Get the file size
+		FileStat, _ := f.Stat()
+		FileSize := strconv.FormatInt(FileStat.Size(), 10)
+
+		//Simulating improper header values from bitbucket
+		w.Header().Set("Content-Type", "application/x-tar")
+		w.Header().Set("Content-Encoding", "gzip")
+		w.Header().Set("Content-Length", FileSize)
+
+		f.Seek(0, 0)
+		io.Copy(w, f)
+	}))
+
+	defer srv.Close()
+
+	g, err := NewHTTPGetter(WithURL(srv.URL))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	data, _ := g.Get(srv.URL)
+	mimeType := http.DetectContentType(data.Bytes())
+
+	expectedMimeType := "application/x-gzip"
+	if mimeType != expectedMimeType {
+		t.Fatalf("Expected response with MIME type %s, but got %s", expectedMimeType, mimeType)
+	}
 }

@@ -56,6 +56,9 @@ func TestEqual(t *testing.T) {
 		{"/foo", "/foo", true},
 		{"/foo", "/foo/", true},
 		{"/foo/.", "/foo/", true},
+		{"%/1234", "%/1234", true},
+		{"%/1234", "%/123", false},
+		{"/1234", "%/1234", false},
 	} {
 		if tt.match != Equal(tt.a, tt.b) {
 			t.Errorf("Expected %q==%q to be %t", tt.a, tt.b, tt.match)

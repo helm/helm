@@ -48,7 +48,7 @@ func newDocsCmd(out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:    "docs",
-		Short:  "Generate documentation as markdown or man pages",
+		Short:  "generate documentation as markdown or man pages",
 		Long:   docsDesc,
 		Hidden: true,
 		Args:   require.NoArgs,

@@ -27,7 +27,7 @@ import (
 	"helm.sh/helm/v3/pkg/storage/driver"
 )
 
-// The type field of the Kubernetes storage object which stores the Helm release
+// HelmStorageType is the type field of the Kubernetes storage object which stores the Helm release
 // version. It is modified slightly replacing the '/': sh.helm/release.v1
 // Note: The version 'v1' is incremented if the release object metadata is
 // modified between major releases.
