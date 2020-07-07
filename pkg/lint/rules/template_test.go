@@ -145,7 +145,7 @@ func TestDeprecatedAPIFails(t *testing.T) {
 		Templates: []*chart.File{
 			{
 				Name: "templates/baddeployment.yaml",
-				Data: []byte("apiVersion: apps/v1beta1\nkind: Deployment\nmetadata:\n  name: baddep"),
+				Data: []byte("apiVersion: apps/v1beta1\nkind: Deployment\nmetadata:\n  name: baddep\nspec: {selector: {matchLabels: {foo: bar}}}"),
 			},
 			{
 				Name: "templates/goodsecret.yaml",
@@ -224,5 +224,84 @@ func TestStrictTemplateParsingMapError(t *testing.T) {
 		for i, msg := range linter.Messages {
 			t.Logf("Message %d: %q", i, msg)
 		}
+	}
+}
+
+func TestValidateMatchSelector(t *testing.T) {
+	md := &K8sYamlStruct{
+		APIVersion: "apps/v1",
+		Kind:       "Deployment",
+		Metadata: k8sYamlMetadata{
+			Name: "mydeployment",
+		},
+	}
+	manifest := `
+	apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+	`
+	if err := validateMatchSelector(md, manifest); err != nil {
+		t.Error(err)
+	}
+	manifest = `
+	apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  selector:
+    matchExpressions:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+	`
+	if err := validateMatchSelector(md, manifest); err != nil {
+		t.Error(err)
+	}
+	manifest = `
+	apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+	`
+	if err := validateMatchSelector(md, manifest); err == nil {
+		t.Error("expected Deployment with no selector to fail")
 	}
 }

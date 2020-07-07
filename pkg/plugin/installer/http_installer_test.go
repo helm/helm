@@ -222,6 +222,19 @@ func TestExtract(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+
+	// Add pax global headers. This should be ignored.
+	// Note the PAX header that isn't global cannot be written using WriteHeader.
+	// Details are in the internal Go function for the tar packaged named
+	// allowedFormats. For a TypeXHeader it will return a message stating
+	// "cannot manually encode TypeXHeader, TypeGNULongName, or TypeGNULongLink headers"
+	if err := tw.WriteHeader(&tar.Header{
+		Name:     "pax_global_header",
+		Typeflag: tar.TypeXGlobalHeader,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
 	if err := tw.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -261,6 +274,36 @@ func TestExtract(t *testing.T) {
 		t.Fatal(err)
 	} else if info.Mode().Perm() != 0777 {
 		t.Fatalf("Expected %s to have 0777 mode it but has %o", readmeFullPath, info.Mode().Perm())
+	}
+
+}
+
+func TestCleanJoin(t *testing.T) {
+	for i, fixture := range []struct {
+		path        string
+		expect      string
+		expectError bool
+	}{
+		{"foo/bar.txt", "/tmp/foo/bar.txt", false},
+		{"/foo/bar.txt", "", true},
+		{"./foo/bar.txt", "/tmp/foo/bar.txt", false},
+		{"./././././foo/bar.txt", "/tmp/foo/bar.txt", false},
+		{"../../../../foo/bar.txt", "", true},
+		{"foo/../../../../bar.txt", "", true},
+		{"c:/foo/bar.txt", "/tmp/c:/foo/bar.txt", true},
+		{"foo\\bar.txt", "/tmp/foo/bar.txt", false},
+		{"c:\\foo\\bar.txt", "", true},
+	} {
+		out, err := cleanJoin("/tmp", fixture.path)
+		if err != nil {
+			if !fixture.expectError {
+				t.Errorf("Test %d: Path was not cleaned: %s", i, err)
+			}
+			continue
+		}
+		if fixture.expect != out {
+			t.Errorf("Test %d: Expected %q but got %q", i, fixture.expect, out)
+		}
 	}
 
 }

@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -207,4 +208,34 @@ func TestInstall(t *testing.T) {
 
 func TestInstallOutputCompletion(t *testing.T) {
 	outputFlagCompletionTest(t, "install")
+}
+
+func TestInstallVersionCompletion(t *testing.T) {
+	repoFile := "testdata/helmhome/helm/repositories.yaml"
+	repoCache := "testdata/helmhome/helm/repository"
+
+	repoSetup := fmt.Sprintf("--repository-config %s --repository-cache %s", repoFile, repoCache)
+
+	tests := []cmdTestCase{{
+		name:   "completion for install version flag with release name",
+		cmd:    fmt.Sprintf("%s __complete install releasename testing/alpine --version ''", repoSetup),
+		golden: "output/version-comp.txt",
+	}, {
+		name:   "completion for install version flag with generate-name",
+		cmd:    fmt.Sprintf("%s __complete install --generate-name testing/alpine --version ''", repoSetup),
+		golden: "output/version-comp.txt",
+	}, {
+		name:   "completion for install version flag too few args",
+		cmd:    fmt.Sprintf("%s __complete install testing/alpine --version ''", repoSetup),
+		golden: "output/version-invalid-comp.txt",
+	}, {
+		name:   "completion for install version flag too many args",
+		cmd:    fmt.Sprintf("%s __complete install releasename testing/alpine badarg --version ''", repoSetup),
+		golden: "output/version-invalid-comp.txt",
+	}, {
+		name:   "completion for install version flag invalid chart",
+		cmd:    fmt.Sprintf("%s __complete install releasename invalid/invalid --version ''", repoSetup),
+		golden: "output/version-invalid-comp.txt",
+	}}
+	runTestCmd(t, tests)
 }

@@ -56,7 +56,7 @@ func TestValidateAgainstSingleSchemaNegative(t *testing.T) {
 	}
 
 	expectedErrString := `- (root): employmentInfo is required
-- age: Must be greater than or equal to 0/1
+- age: Must be greater than or equal to 0
 `
 	if errString != expectedErrString {
 		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)

@@ -18,12 +18,14 @@ package rules // import "helm.sh/helm/v3/pkg/lint/rules"
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/asaskevich/govalidator"
 	"github.com/pkg/errors"
+	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -45,17 +47,44 @@ func Chartfile(linter *support.Linter) {
 		return
 	}
 
+	// type check for Chart.yaml . ignoring error as any parse
+	// errors would already be caught in the above load function
+	chartFileForTypeCheck, _ := loadChartFileForTypeCheck(chartPath)
+
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartName(chartFile))
 
 	// Chart metadata
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartAPIVersion(chartFile))
+
+	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartVersionType(chartFileForTypeCheck))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartVersion(chartFile))
+	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartAppVersionType(chartFileForTypeCheck))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartMaintainer(chartFile))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartSources(chartFile))
 	linter.RunLinterRule(support.InfoSev, chartFileName, validateChartIconPresence(chartFile))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartIconURL(chartFile))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartType(chartFile))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartDependencies(chartFile))
+}
+
+func validateChartVersionType(data map[string]interface{}) error {
+	return isStringValue(data, "version")
+}
+
+func validateChartAppVersionType(data map[string]interface{}) error {
+	return isStringValue(data, "appVersion")
+}
+
+func isStringValue(data map[string]interface{}, key string) error {
+	value, ok := data[key]
+	if !ok {
+		return nil
+	}
+	valueType := fmt.Sprintf("%T", value)
+	if valueType != "string" {
+		return errors.Errorf("%s should be of type string but it's of type %s", key, valueType)
+	}
+	return nil
 }
 
 func validateChartYamlNotDirectory(chartPath string) error {
@@ -165,4 +194,17 @@ func validateChartType(cf *chart.Metadata) error {
 		return fmt.Errorf("chart type is not valid in apiVersion '%s'. It is valid in apiVersion '%s'", cf.APIVersion, chart.APIVersionV2)
 	}
 	return nil
+}
+
+// loadChartFileForTypeCheck loads the Chart.yaml
+// in a generic form of a map[string]interface{}, so that the type
+// of the values can be checked
+func loadChartFileForTypeCheck(filename string) (map[string]interface{}, error) {
+	b, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+	y := make(map[string]interface{})
+	err = yaml.Unmarshal(b, &y)
+	return y, err
 }

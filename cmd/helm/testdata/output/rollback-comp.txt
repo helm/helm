@@ -1,0 +1,4 @@
+carabins
+musketeers
+:4
+Completion ended with directive: ShellCompDirectiveNoFileComp

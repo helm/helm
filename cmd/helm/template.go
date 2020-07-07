@@ -28,7 +28,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli/values"
@@ -56,6 +55,9 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Short: "locally render templates",
 		Long:  templateDesc,
 		Args:  require.MinimumNArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return compInstall(args, toComplete, client)
+		},
 		RunE: func(_ *cobra.Command, args []string) error {
 			client.DryRun = true
 			client.ReleaseName = "RELEASE-NAME"
@@ -78,12 +80,6 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				var manifests bytes.Buffer
 				fmt.Fprintln(&manifests, strings.TrimSpace(rel.Manifest))
 
-				if !client.DisableHooks {
-					for _, m := range rel.Hooks {
-						fmt.Fprintf(&manifests, "---\n# Source: %s\n%s\n", m.Path, m.Manifest)
-					}
-				}
-
 				// if we have a list of files to render, then check that each of the
 				// provided files exists in the chart.
 				if len(showFiles) > 0 {
@@ -100,6 +96,8 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					var manifestsToRender []string
 					for _, f := range showFiles {
 						missing := true
+						// Use linux-style filepath separators to unify user's input path
+						f = filepath.ToSlash(f)
 						for _, manifestKey := range manifestsKeys {
 							manifest := splitManifests[manifestKey]
 							submatch := manifestNameRegex.FindStringSubmatch(manifest)
@@ -110,7 +108,9 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 							// manifest.Name is rendered using linux-style filepath separators on Windows as
 							// well as macOS/linux.
 							manifestPathSplit := strings.Split(manifestName, "/")
-							manifestPath := filepath.Join(manifestPathSplit...)
+							// manifest.Path is connected using linux-style filepath separators on Windows as
+							// well as macOS/linux
+							manifestPath := strings.Join(manifestPathSplit, "/")
 
 							// if the filepath provided matches a manifest path in the
 							// chart, render that manifest
@@ -136,13 +136,8 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		},
 	}
 
-	// Function providing dynamic auto-completion
-	completion.RegisterValidArgsFunc(cmd, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
-		return compInstall(args, toComplete, client)
-	})
-
 	f := cmd.Flags()
-	addInstallFlags(f, client, valueOpts)
+	addInstallFlags(cmd, f, client, valueOpts)
 	f.StringArrayVarP(&showFiles, "show-only", "s", []string{}, "only show manifests rendered from the given templates")
 	f.StringVar(&client.OutputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
 	f.BoolVar(&validate, "validate", false, "validate your manifests against the Kubernetes cluster you are currently pointing at. This is the same validation performed on an install")

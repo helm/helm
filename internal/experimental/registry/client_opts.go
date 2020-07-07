@@ -60,3 +60,10 @@ func ClientOptCache(cache *Cache) ClientOption {
 		client.cache = cache
 	}
 }
+
+// ClientOptCredentialsFile returns a function that sets the cache setting on a client options set
+func ClientOptCredentialsFile(credentialsFile string) ClientOption {
+	return func(client *Client) {
+		client.credentialsFile = credentialsFile
+	}
+}

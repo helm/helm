@@ -20,15 +20,14 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"strings"
 
 	"github.com/spf13/cobra"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/kubectl/pkg/util/templates"
 
-	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/action"
 )
@@ -69,26 +68,24 @@ By default, the default directories depend on the Operating System. The defaults
 | Windows          | %TEMP%\helm               | %APPDATA%\helm                 | %APPDATA%\helm          |
 `
 
-func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string) *cobra.Command {
+func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string) (*cobra.Command, error) {
 	cmd := &cobra.Command{
-		Use:                    "helm",
-		Short:                  "The Helm package manager for Kubernetes.",
-		Long:                   globalUsage,
-		SilenceUsage:           true,
-		BashCompletionFunction: completion.GetBashCustomFunction(),
+		Use:          "helm",
+		Short:        "The Helm package manager for Kubernetes.",
+		Long:         globalUsage,
+		SilenceUsage: true,
 	}
 	flags := cmd.PersistentFlags()
 
 	settings.AddFlags(flags)
 
 	// Setup shell completion for the namespace flag
-	flag := flags.Lookup("namespace")
-	completion.RegisterFlagCompletionFunc(flag, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
+	err := cmd.RegisterFlagCompletionFunc("namespace", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if client, err := actionConfig.KubernetesClientSet(); err == nil {
 			// Choose a long enough timeout that the user notices somethings is not working
 			// but short enough that the user is not made to wait very long
 			to := int64(3)
-			completion.CompDebugln(fmt.Sprintf("About to call kube client for namespaces with timeout of: %d", to))
+			cobra.CompDebugln(fmt.Sprintf("About to call kube client for namespaces with timeout of: %d", to), settings.Debug)
 
 			nsNames := []string{}
 			if namespaces, err := client.CoreV1().Namespaces().List(context.Background(), metav1.ListOptions{TimeoutSeconds: &to}); err == nil {
@@ -97,16 +94,19 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 						nsNames = append(nsNames, ns.Name)
 					}
 				}
-				return nsNames, completion.BashCompDirectiveNoFileComp
+				return nsNames, cobra.ShellCompDirectiveNoFileComp
 			}
 		}
-		return nil, completion.BashCompDirectiveDefault
+		return nil, cobra.ShellCompDirectiveDefault
 	})
 
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Setup shell completion for the kube-context flag
-	flag = flags.Lookup("kube-context")
-	completion.RegisterFlagCompletionFunc(flag, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
-		completion.CompDebugln("About to get the different kube-contexts")
+	err = cmd.RegisterFlagCompletionFunc("kube-context", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		cobra.CompDebugln("About to get the different kube-contexts", settings.Debug)
 
 		loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
 		if len(settings.KubeConfig) > 0 {
@@ -121,10 +121,14 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 					ctxs = append(ctxs, name)
 				}
 			}
-			return ctxs, completion.BashCompDirectiveNoFileComp
+			return ctxs, cobra.ShellCompDirectiveNoFileComp
 		}
-		return nil, completion.BashCompDirectiveNoFileComp
+		return nil, cobra.ShellCompDirectiveNoFileComp
 	})
+
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// We can safely ignore any errors that flags.Parse encounters since
 	// those errors will be caught later during the call to cmd.Execution.
@@ -133,47 +137,31 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	flags.ParseErrorsWhitelist.UnknownFlags = true
 	flags.Parse(args)
 
-	commandGroups := templates.CommandGroups{
-		{
-			Message: "Release Management Commands:",
-			Commands: []*cobra.Command{
-				newInstallCmd(actionConfig, out),
-				newListCmd(actionConfig, out),
-				newGetCmd(actionConfig, out),
-				newStatusCmd(actionConfig, out),
-				newUpgradeCmd(actionConfig, out),
-				newHistoryCmd(actionConfig, out),
-				newRollbackCmd(actionConfig, out),
-				newReleaseTestCmd(actionConfig, out),
-				newUninstallCmd(actionConfig, out),
-			},
-		},
-		{
-			Message: "Chart Commands:",
-			Commands: []*cobra.Command{
-				newCreateCmd(out),
-				newDependencyCmd(out),
-				newPackageCmd(out),
-				newTemplateCmd(actionConfig, out),
-				newLintCmd(out),
-				newVerifyCmd(out),
-			},
-		},
-		{
-			Message: "Chart Repository Commands:",
-			Commands: []*cobra.Command{
-				newRepoCmd(out),
-				newSearchCmd(out),
-				newPullCmd(out),
-				newShowCmd(out),
-			},
-		},
-	}
-	commandGroups.Add(cmd)
-	templates.ActsAsRootCommand(cmd, []string{"options"}, commandGroups...)
-
 	// Add subcommands
 	cmd.AddCommand(
+		// chart commands
+		newCreateCmd(out),
+		newDependencyCmd(out),
+		newPullCmd(out),
+		newShowCmd(out),
+		newLintCmd(out),
+		newPackageCmd(out),
+		newRepoCmd(out),
+		newSearchCmd(out),
+		newVerifyCmd(out),
+
+		// release commands
+		newGetCmd(actionConfig, out),
+		newHistoryCmd(actionConfig, out),
+		newInstallCmd(actionConfig, out),
+		newListCmd(actionConfig, out),
+		newReleaseTestCmd(actionConfig, out),
+		newRollbackCmd(actionConfig, out),
+		newStatusCmd(actionConfig, out),
+		newTemplateCmd(actionConfig, out),
+		newUninstallCmd(actionConfig, out),
+		newUpgradeCmd(actionConfig, out),
+
 		newCompletionCmd(out),
 		newEnvCmd(out),
 		newPluginCmd(out),
@@ -181,19 +169,16 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 
 		// Hidden documentation generator command: 'helm docs'
 		newDocsCmd(out),
-
-		// Setup the special hidden __complete command to allow for dynamic auto-completion
-		completion.NewCompleteCmd(settings, out),
 	)
 
 	// Add *experimental* subcommands
 	registryClient, err := registry.NewClient(
 		registry.ClientOptDebug(settings.Debug),
 		registry.ClientOptWriter(out),
+		registry.ClientOptCredentialsFile(settings.RegistryConfig),
 	)
 	if err != nil {
-		// TODO: don't panic here, refactor newRootCmd to return error
-		panic(err)
+		return nil, err
 	}
 	actionConfig.RegistryClient = registryClient
 	cmd.AddCommand(
@@ -204,5 +189,5 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	// Find and add plugins
 	loadPlugins(cmd, out)
 
-	return cmd
+	return cmd, nil
 }

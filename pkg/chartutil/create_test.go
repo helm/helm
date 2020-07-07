@@ -81,7 +81,7 @@ func TestCreateFrom(t *testing.T) {
 		Name:       "foo",
 		Version:    "0.1.0",
 	}
-	srcdir := "./testdata/mariner"
+	srcdir := "./testdata/frobnitz/charts/mariner"
 
 	if err := CreateFrom(cf, tdir, srcdir); err != nil {
 		t.Fatal(err)

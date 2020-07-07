@@ -26,6 +26,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -48,6 +49,7 @@ func TestHTTPGetter(t *testing.T) {
 	join := filepath.Join
 	ca, pub, priv := join(cd, "rootca.crt"), join(cd, "crt.pem"), join(cd, "key.pem")
 	insecure := false
+	timeout := time.Second * 5
 
 	// Test with options
 	g, err = NewHTTPGetter(
@@ -55,6 +57,7 @@ func TestHTTPGetter(t *testing.T) {
 		WithUserAgent("Groot"),
 		WithTLSClientConfig(pub, priv, ca),
 		WithInsecureSkipVerifyTLS(insecure),
+		WithTimeout(timeout),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -91,6 +94,10 @@ func TestHTTPGetter(t *testing.T) {
 
 	if hg.opts.insecureSkipVerifyTLS != insecure {
 		t.Errorf("Expected NewHTTPGetter to contain %t as InsecureSkipVerifyTLs flag, got %t", false, hg.opts.insecureSkipVerifyTLS)
+	}
+
+	if hg.opts.timeout != timeout {
+		t.Errorf("Expected NewHTTPGetter to contain %s as Timeout flag, got %s", timeout, hg.opts.timeout)
 	}
 
 	// Test if setting insecureSkipVerifyTLS is being passed to the ops
