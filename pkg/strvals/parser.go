@@ -277,12 +277,20 @@ func (t *parser) listItem(list []interface{}, i int) ([]interface{}, error) {
 		}
 	case last == '[':
 		// now we have a nested list. Read the index and handle.
-		i, err := t.keyIndex()
+		nextI, err := t.keyIndex()
 		if err != nil {
 			return list, fmt.Errorf("error parsing index: %s", err)
 		}
+		var crtList []interface{}
+		if len(list) > i {
+			// If nested list already exists, take the value of list to next cycle.
+			existed := list[i]
+			if existed != nil {
+				crtList = list[i].([]interface{})
+			}
+		}
 		// Now we need to get the value after the ].
-		list2, err := t.listItem(list, i)
+		list2, err := t.listItem(crtList, nextI)
 		return setIndex(list, i, list2), err
 	case last == '.':
 		// We have a nested object. Send to t.key
