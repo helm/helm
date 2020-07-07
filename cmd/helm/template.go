@@ -80,12 +80,6 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				var manifests bytes.Buffer
 				fmt.Fprintln(&manifests, strings.TrimSpace(rel.Manifest))
 
-				if !client.DisableHooks {
-					for _, m := range rel.Hooks {
-						fmt.Fprintf(&manifests, "---\n# Source: %s\n%s\n", m.Path, m.Manifest)
-					}
-				}
-
 				// if we have a list of files to render, then check that each of the
 				// provided files exists in the chart.
 				if len(showFiles) > 0 {
