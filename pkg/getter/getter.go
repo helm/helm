@@ -44,7 +44,7 @@ type options struct {
 	version               string
 	registryClient        *registry.Client
 	timeout               time.Duration
-	transport             *http.Transport
+	token                 string
 }
 
 // Option allows specifying various settings configurable by the user for overriding the defaults
@@ -93,6 +93,13 @@ func WithTLSClientConfig(certFile, keyFile, caFile string) Option {
 		opts.certFile = certFile
 		opts.keyFile = keyFile
 		opts.caFile = caFile
+	}
+}
+
+// WithBearerToken sets the request's Authorization header to use the provided token
+func WithBearerToken(token string) Option {
+	return func(opts *options) {
+		opts.token = token
 	}
 }
 

@@ -313,7 +313,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 
 		// Any failure to resolve/download a chart should fail:
 		// https://github.com/helm/helm/issues/1439
-		churl, username, password, insecureskiptlsverify, passcredentialsall, caFile, certFile, keyFile, err := m.findChartURL(dep.Name, dep.Version, dep.Repository, repos)
+		churl, username, password, token, err := m.findChartURL(dep.Name, dep.Version, dep.Repository, repos)
 		if err != nil {
 			saveError = errors.Wrapf(err, "could not find %s", churl)
 			break
@@ -336,9 +336,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			Getters:          m.Getters,
 			Options: []getter.Option{
 				getter.WithBasicAuth(username, password),
-				getter.WithPassCredentialsAll(passcredentialsall),
-				getter.WithInsecureSkipVerifyTLS(insecureskiptlsverify),
-				getter.WithTLSClientConfig(certFile, keyFile, caFile),
+				getter.WithBearerToken(token),
 			},
 		}
 
@@ -703,11 +701,7 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 // repoURL is the repository to search
 //
 // If it finds a URL that is "relative", it will prepend the repoURL.
-func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRepository) (url, username, password string, insecureskiptlsverify, passcredentialsall bool, caFile, certFile, keyFile string, err error) {
-	if registry.IsOCI(repoURL) {
-		return fmt.Sprintf("%s/%s:%s", repoURL, name, version), "", "", false, false, "", "", "", nil
-	}
-
+func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRepository) (url, username, password, token string, err error) {
 	for _, cr := range repos {
 
 		if urlutil.Equal(repoURL, cr.Config.URL) {
@@ -727,11 +721,7 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 			}
 			username = cr.Config.Username
 			password = cr.Config.Password
-			passcredentialsall = cr.Config.PassCredentialsAll
-			insecureskiptlsverify = cr.Config.InsecureSkipTLSverify
-			caFile = cr.Config.CAFile
-			certFile = cr.Config.CertFile
-			keyFile = cr.Config.KeyFile
+			token = cr.Config.Token
 			return
 		}
 	}

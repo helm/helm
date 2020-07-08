@@ -18,6 +18,7 @@ package getter
 import (
 	"bytes"
 	"crypto/tls"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -76,6 +77,10 @@ func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
 		if g.opts.username != "" && g.opts.password != "" {
 			req.SetBasicAuth(g.opts.username, g.opts.password)
 		}
+	}
+
+	if g.opts.token != "" {
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", g.opts.token))
 	}
 
 	client, err := g.httpClient()

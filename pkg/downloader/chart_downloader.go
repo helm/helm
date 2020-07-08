@@ -239,6 +239,13 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 				getter.WithPassCredentialsAll(rc.PassCredentialsAll),
 			)
 		}
+		if rc.Token != "" {
+			c.Options = append(
+				c.Options,
+				getter.WithBearerToken(rc.Token),
+			)
+		}
+
 		return u, nil
 	}
 
@@ -274,6 +281,9 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 				getter.WithBasicAuth(r.Config.Username, r.Config.Password),
 				getter.WithPassCredentialsAll(r.Config.PassCredentialsAll),
 			)
+		}
+		if r.Config.Token != "" {
+			c.Options = append(c.Options, getter.WithBearerToken(r.Config.Token))
 		}
 	}
 

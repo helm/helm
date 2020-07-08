@@ -18,6 +18,7 @@ package downloader
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"helm.sh/helm/v3/internal/test/ensure"
@@ -308,6 +309,63 @@ func TestDownloadTo_VerifyLater(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dest, cname+".prov")); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestDownloadTo_Token(t *testing.T) {
+	// Set up a fake repo with bearer auth enabled
+	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")
+	srv.Stop()
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv.WithMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token := strings.Split(r.Header.Get("Authorization"), "Bearer ")
+		if len(token) != 2 || strings.TrimSpace(token[1]) != "JWT" {
+			t.Errorf("Expected request to use bearer token and for token == 'JWT' got '%s'", token)
+		}
+	}))
+	srv.Start()
+	defer srv.Stop()
+	if err := srv.CreateIndex(); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := srv.LinkIndices(); err != nil {
+		t.Fatal(err)
+	}
+
+	c := ChartDownloader{
+		Out:              os.Stderr,
+		Verify:           VerifyAlways,
+		Keyring:          "testdata/helm-test-key.pub",
+		RepositoryConfig: repoConfig,
+		RepositoryCache:  repoCache,
+		Getters: getter.All(&cli.EnvSettings{
+			RepositoryConfig: repoConfig,
+			RepositoryCache:  repoCache,
+		}),
+		Options: []getter.Option{
+			getter.WithBearerToken("JWT"),
+		},
+	}
+	cname := "/signtest-0.1.0.tgz"
+	dest := srv.Root()
+	where, v, err := c.DownloadTo(srv.URL()+cname, "", dest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if expect := filepath.Join(dest, cname); where != expect {
+		t.Errorf("Expected download to %s, got %s", expect, where)
+	}
+
+	if v.FileHash == "" {
+		t.Error("File hash was empty, but verification is required.")
+	}
+
+	if _, err := os.Stat(filepath.Join(dest, cname)); err != nil {
+		t.Error(err)
 	}
 }
 

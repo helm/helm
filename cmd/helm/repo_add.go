@@ -63,6 +63,8 @@ type repoAddOptions struct {
 
 	// Deprecated, but cannot be removed until Helm 4
 	deprecatedNoUpdate bool
+
+	tokenFromStdin bool
 }
 
 func newRepoAddCmd(out io.Writer) *cobra.Command {
@@ -78,7 +80,6 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 			o.url = args[1]
 			o.repoFile = settings.RepositoryConfig
 			o.repoCache = settings.RepositoryCache
-
 			return o.run(out)
 		},
 	}
@@ -94,7 +95,7 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&o.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 	f.BoolVar(&o.insecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the repository")
 	f.BoolVar(&o.allowDeprecatedRepos, "allow-deprecated-repos", false, "by default, this command will not allow adding official repos that have been permanently deleted. This disables that behavior")
-	f.BoolVar(&o.passCredentialsAll, "pass-credentials", false, "pass credentials to all domains")
+	f.BoolVar(&o.tokenFromStdin, "token-stdin", false, "read chart repository bearer token from stdin")
 
 	return cmd
 }
@@ -165,6 +166,16 @@ func (o *repoAddOptions) run(out io.Writer) error {
 		}
 	}
 
+	var token string
+	if o.tokenFromStdin {
+		tokenStdin, err := ioutil.ReadAll(os.Stdin)
+		if err != nil {
+			return err
+		}
+		token = strings.TrimSuffix(string(tokenStdin), "\n")
+		token = strings.TrimSuffix(token, "\r")
+	}
+
 	c := repo.Entry{
 		Name:                  o.name,
 		URL:                   o.url,
@@ -175,6 +186,7 @@ func (o *repoAddOptions) run(out io.Writer) error {
 		KeyFile:               o.keyFile,
 		CAFile:                o.caFile,
 		InsecureSkipTLSverify: o.insecureSkipTLSverify,
+		Token:                 token,
 	}
 
 	// Check if the repo name is legal

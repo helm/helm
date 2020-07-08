@@ -48,7 +48,7 @@ type Entry struct {
 	KeyFile               string `json:"keyFile"`
 	CAFile                string `json:"caFile"`
 	InsecureSkipTLSverify bool   `json:"insecure_skip_tls_verify"`
-	PassCredentialsAll    bool   `json:"pass_credentials_all"`
+	Token                 string `json:"token"`
 }
 
 // ChartRepository represents a chart repository
@@ -58,6 +58,70 @@ type ChartRepository struct {
 	IndexFile  *IndexFile
 	Client     getter.Getter
 	CachePath  string
+}
+
+// options are generic parameters to be provided to find chart.
+type options struct {
+	chartName             string
+	chartVersion          string
+	repoURL               string
+	certFile              string
+	keyFile               string
+	caFile                string
+	username              string
+	password              string
+	token                 string
+	insecureSkipTLSverify bool
+}
+
+// Option allows specifying various settings configurable by the user for overriding the defaults
+// used when performing find chart.
+type Option func(*options)
+
+// WithChartInfo informs the chart info.
+func WithChartInfo(chartName, chartVersion string) Option {
+	return func(opts *options) {
+		opts.chartName = chartName
+		opts.chartVersion = chartVersion
+	}
+}
+
+// WithRepoURL informs the repo url that will be used when find chart.
+func WithRepoURL(url string) Option {
+	return func(opts *options) {
+		opts.repoURL = url
+	}
+}
+
+// WithBasicAuth sets the request's Authorization header to use the provided credentials
+func WithBasicAuth(username, password string) Option {
+	return func(opts *options) {
+		opts.username = username
+		opts.password = password
+	}
+}
+
+// WithTLSClientConfig sets the client auth with the provided credentials.
+func WithTLSClientConfig(certFile, keyFile, caFile string) Option {
+	return func(opts *options) {
+		opts.certFile = certFile
+		opts.keyFile = keyFile
+		opts.caFile = caFile
+	}
+}
+
+// WithBearerToken sets the request's Authorization header to use the provided token
+func WithBearerToken(token string) Option {
+	return func(opts *options) {
+		opts.token = token
+	}
+}
+
+// WithInsecureSkipVerifyTLS determines if a TLS Certificate will be checked
+func WithInsecureSkipVerifyTLS(insecureSkipTLSverify bool) Option {
+	return func(opts *options) {
+		opts.insecureSkipTLSverify = insecureSkipTLSverify
+	}
 }
 
 // NewChartRepository constructs ChartRepository
@@ -130,7 +194,7 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 		getter.WithInsecureSkipVerifyTLS(r.Config.InsecureSkipTLSverify),
 		getter.WithTLSClientConfig(r.Config.CertFile, r.Config.KeyFile, r.Config.CAFile),
 		getter.WithBasicAuth(r.Config.Username, r.Config.Password),
-		getter.WithPassCredentialsAll(r.Config.PassCredentialsAll),
+		getter.WithBearerToken(r.Config.Token),
 	)
 	if err != nil {
 		return "", err
@@ -204,14 +268,33 @@ func (r *ChartRepository) generateIndex() error {
 // FindChartInRepoURL finds chart in chart repository pointed by repoURL
 // without adding repo to repositories
 func FindChartInRepoURL(repoURL, chartName, chartVersion, certFile, keyFile, caFile string, getters getter.Providers) (string, error) {
-	return FindChartInAuthRepoURL(repoURL, "", "", chartName, chartVersion, certFile, keyFile, caFile, getters)
+	return FindChartInRepoURLWithAuth(
+		getters,
+		WithRepoURL(repoURL),
+		WithChartInfo(chartName, chartVersion),
+		WithTLSClientConfig(certFile, keyFile, caFile),
+	)
 }
 
 // FindChartInAuthRepoURL finds chart in chart repository pointed by repoURL
 // without adding repo to repositories, like FindChartInRepoURL,
 // but it also receives credentials for the chart repository.
+// Deprecated: this function is deprecated and will be removed in Helm 4, please use FindChartInRepoURLWithAuth instead.
 func FindChartInAuthRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile string, getters getter.Providers) (string, error) {
-	return FindChartInAuthAndTLSRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile, false, getters)
+	return findChartInAuthRepoURL(
+		getters,
+		WithRepoURL(repoURL),
+		WithChartInfo(chartName, chartVersion),
+		WithBasicAuth(username, password),
+		WithTLSClientConfig(certFile, keyFile, caFile),
+	)
+}
+
+// FindChartInRepoURLWithAuth finds chart in chart repository pointed by repoURL
+// without adding repo to repositories, like FindChartInRepoURL,
+// but it also receives credentials for the chart repository.
+func FindChartInRepoURLWithAuth(getters getter.Providers, opts ...Option) (string, error) {
+	return findChartInAuthRepoURL(getters, opts...)
 }
 
 // FindChartInAuthAndTLSRepoURL finds chart in chart repository pointed by repoURL
@@ -219,31 +302,37 @@ func FindChartInAuthRepoURL(repoURL, username, password, chartName, chartVersion
 // but it also receives credentials and TLS verify flag for the chart repository.
 // TODO Helm 4, FindChartInAuthAndTLSRepoURL should be integrated into FindChartInAuthRepoURL.
 func FindChartInAuthAndTLSRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile string, insecureSkipTLSverify bool, getters getter.Providers) (string, error) {
-	return FindChartInAuthAndTLSAndPassRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile, false, false, getters)
+	return findChartInAuthRepoURL(
+		getters,
+		WithRepoURL(repoURL),
+		WithChartInfo(chartName, chartVersion),
+		WithBasicAuth(username, password),
+		WithTLSClientConfig(certFile, keyFile, caFile),
+		WithInsecureSkipVerifyTLS(insecureSkipTLSverify),
+	)
 }
 
-// FindChartInAuthAndTLSAndPassRepoURL finds chart in chart repository pointed by repoURL
-// without adding repo to repositories, like FindChartInRepoURL,
-// but it also receives credentials, TLS verify flag, and if credentials should
-// be passed on to other domains.
-// TODO Helm 4, FindChartInAuthAndTLSAndPassRepoURL should be integrated into FindChartInAuthRepoURL.
-func FindChartInAuthAndTLSAndPassRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile string, insecureSkipTLSverify, passCredentialsAll bool, getters getter.Providers) (string, error) {
+func findChartInAuthRepoURL(getters getter.Providers, opts ...Option) (string, error) {
 
 	// Download and write the index file to a temporary location
 	buf := make([]byte, 20)
 	rand.Read(buf)
 	name := strings.ReplaceAll(base64.StdEncoding.EncodeToString(buf), "/", "-")
+	repoOpts := options{}
+	for _, opt := range opts {
+		opt(&repoOpts)
+	}
 
 	c := Entry{
-		URL:                   repoURL,
-		Username:              username,
-		Password:              password,
-		PassCredentialsAll:    passCredentialsAll,
-		CertFile:              certFile,
-		KeyFile:               keyFile,
-		CAFile:                caFile,
 		Name:                  name,
-		InsecureSkipTLSverify: insecureSkipTLSverify,
+		URL:                   repoOpts.repoURL,
+		Username:              repoOpts.username,
+		Password:              repoOpts.password,
+		CertFile:              repoOpts.certFile,
+		KeyFile:               repoOpts.keyFile,
+		CAFile:                repoOpts.caFile,
+		Token:                 repoOpts.token,
+		InsecureSkipTLSverify: repoOpts.insecureSkipTLSverify,
 	}
 	r, err := NewChartRepository(&c, getters)
 	if err != nil {
@@ -251,7 +340,7 @@ func FindChartInAuthAndTLSAndPassRepoURL(repoURL, username, password, chartName,
 	}
 	idx, err := r.DownloadIndexFile()
 	if err != nil {
-		return "", errors.Wrapf(err, "looks like %q is not a valid chart repository or cannot be reached", repoURL)
+		return "", errors.Wrapf(err, "looks like %q is not a valid chart repository or cannot be reached", repoOpts.repoURL)
 	}
 
 	// Read the index file for the repository to get chart information and return chart URL
@@ -260,13 +349,13 @@ func FindChartInAuthAndTLSAndPassRepoURL(repoURL, username, password, chartName,
 		return "", err
 	}
 
-	errMsg := fmt.Sprintf("chart %q", chartName)
-	if chartVersion != "" {
-		errMsg = fmt.Sprintf("%s version %q", errMsg, chartVersion)
+	errMsg := fmt.Sprintf("chart %q", repoOpts.chartName)
+	if repoOpts.chartVersion != "" {
+		errMsg = fmt.Sprintf("%s version %q", errMsg, repoOpts.chartVersion)
 	}
-	cv, err := repoIndex.Get(chartName, chartVersion)
+	cv, err := repoIndex.Get(repoOpts.chartName, repoOpts.chartVersion)
 	if err != nil {
-		return "", errors.Errorf("%s not found in %s repository", errMsg, repoURL)
+		return "", errors.Errorf("%s not found in %s repository", errMsg, repoOpts.repoURL)
 	}
 
 	if len(cv.URLs) == 0 {
@@ -275,7 +364,7 @@ func FindChartInAuthAndTLSAndPassRepoURL(repoURL, username, password, chartName,
 
 	chartURL := cv.URLs[0]
 
-	absoluteChartURL, err := ResolveReferenceURL(repoURL, chartURL)
+	absoluteChartURL, err := ResolveReferenceURL(repoOpts.repoURL, chartURL)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to make chart URL absolute")
 	}
