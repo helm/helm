@@ -115,6 +115,7 @@ type ChartPathOptions struct {
 	Username              string // --username
 	Verify                bool   // --verify
 	Version               string // --version
+	Token                 string // --token
 }
 
 // NewInstall creates a new Install object with the given configuration.
@@ -652,6 +653,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 			getter.WithBasicAuth(c.Username, c.Password),
 			getter.WithTLSClientConfig(c.CertFile, c.KeyFile, c.CaFile),
 			getter.WithInsecureSkipVerifyTLS(c.InsecureSkipTLSverify),
+			getter.WithBearerToken(c.Token),
 		},
 		RepositoryConfig: settings.RepositoryConfig,
 		RepositoryCache:  settings.RepositoryCache,
@@ -660,8 +662,15 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		dl.Verify = downloader.VerifyAlways
 	}
 	if c.RepoURL != "" {
-		chartURL, err := repo.FindChartInAuthAndTLSRepoURL(c.RepoURL, c.Username, c.Password, name, version,
-			c.CertFile, c.KeyFile, c.CaFile, c.InsecureSkipTLSverify, getter.All(settings))
+		chartURL, err := repo.FindChartInRepoURLWithAuth(
+			getter.All(settings),
+			repo.WithRepoURL(c.RepoURL),
+			repo.WithChartInfo(name, version),
+			repo.WithTLSClientConfig(c.CertFile, c.KeyFile, c.CaFile),
+			repo.WithBasicAuth(c.Username, c.Password),
+			repo.WithBearerToken(c.Token),
+			repo.WithInsecureSkipVerifyTLS(c.InsecureSkipTLSverify),
+		)
 		if err != nil {
 			return "", err
 		}

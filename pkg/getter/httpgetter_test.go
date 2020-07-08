@@ -58,6 +58,7 @@ func TestHTTPGetter(t *testing.T) {
 		WithTLSClientConfig(pub, priv, ca),
 		WithInsecureSkipVerifyTLS(insecure),
 		WithTimeout(timeout),
+		WithBearerToken("JWT"),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -98,6 +99,10 @@ func TestHTTPGetter(t *testing.T) {
 
 	if hg.opts.timeout != timeout {
 		t.Errorf("Expected NewHTTPGetter to contain %s as Timeout flag, got %s", timeout, hg.opts.timeout)
+	}
+
+	if hg.opts.token != "JWT" {
+		t.Errorf("Expected NewHTTPGetter to contain %s as the token, got %s", "JWT", hg.opts.token)
 	}
 
 	// Test if setting insecureSkipVerifyTLS is being passed to the ops
@@ -257,6 +262,64 @@ func TestDownloadInsecureSkipTLSVerify(t *testing.T) {
 		t.Error(err)
 	}
 
+}
+
+func TestDownloadToken(t *testing.T) {
+	expect := "Call me Ishmael"
+	expectedUserAgent := "I am Groot"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defaultUserAgent := "Helm/" + strings.TrimPrefix(version.GetVersion(), "v")
+		if r.UserAgent() != defaultUserAgent {
+			t.Errorf("Expected '%s', got '%s'", defaultUserAgent, r.UserAgent())
+		}
+		fmt.Fprint(w, expect)
+	}))
+	defer srv.Close()
+
+	g, err := All(cli.New()).ByScheme("http")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := g.Get(srv.URL, WithURL(srv.URL))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got.String() != expect {
+		t.Errorf("Expected %q, got %q", expect, got.String())
+	}
+
+	// test with http server
+	tokenSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token := strings.Split(r.Header.Get("Authorization"), "Bearer ")
+		if len(token) != 2 || strings.TrimSpace(token[1]) != "JWT" {
+			t.Errorf("Expected request to use bearer token and for token == 'JWT' got '%s'", token)
+		}
+		if r.UserAgent() != expectedUserAgent {
+			t.Errorf("Expected '%s', got '%s'", expectedUserAgent, r.UserAgent())
+		}
+		fmt.Fprint(w, expect)
+	}))
+
+	defer tokenSrv.Close()
+
+	u, _ := url.ParseRequestURI(tokenSrv.URL)
+	httpgetter, err := NewHTTPGetter(
+		WithURL(u.String()),
+		WithBearerToken("JWT"),
+		WithUserAgent(expectedUserAgent),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err = httpgetter.Get(u.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got.String() != expect {
+		t.Errorf("Expected %q, got %q", expect, got.String())
+	}
 }
 
 func TestHTTPGetterTarDownload(t *testing.T) {

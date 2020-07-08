@@ -81,7 +81,7 @@ func TestFindChartURL(t *testing.T) {
 	version := "0.1.0"
 	repoURL := "http://example.com/charts"
 
-	churl, username, password, err := m.findChartURL(name, version, repoURL, repos)
+	churl, username, password, token, err := m.findChartURL(name, version, repoURL, repos)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,6 +93,9 @@ func TestFindChartURL(t *testing.T) {
 	}
 	if password != "" {
 		t.Errorf("Unexpected password %q", password)
+	}
+	if token != "" {
+		t.Errorf("Unexpected token %q", token)
 	}
 }
 

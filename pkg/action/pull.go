@@ -65,6 +65,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 			getter.WithBasicAuth(p.Username, p.Password),
 			getter.WithTLSClientConfig(p.CertFile, p.KeyFile, p.CaFile),
 			getter.WithInsecureSkipVerifyTLS(p.InsecureSkipTLSverify),
+			getter.WithBearerToken(p.Token),
 		},
 		RepositoryConfig: p.Settings.RepositoryConfig,
 		RepositoryCache:  p.Settings.RepositoryCache,
@@ -89,7 +90,15 @@ func (p *Pull) Run(chartRef string) (string, error) {
 	}
 
 	if p.RepoURL != "" {
-		chartURL, err := repo.FindChartInAuthAndTLSRepoURL(p.RepoURL, p.Username, p.Password, chartRef, p.Version, p.CertFile, p.KeyFile, p.CaFile, p.InsecureSkipTLSverify, getter.All(p.Settings))
+		chartURL, err := repo.FindChartInRepoURLWithAuth(
+			getter.All(p.Settings),
+			repo.WithRepoURL(p.RepoURL),
+			repo.WithChartInfo(chartRef, p.Version),
+			repo.WithTLSClientConfig(p.CertFile, p.KeyFile, p.CaFile),
+			repo.WithBasicAuth(p.Username, p.Password),
+			repo.WithBearerToken(p.Token),
+			repo.WithInsecureSkipVerifyTLS(p.InsecureSkipTLSverify),
+		)
 		if err != nil {
 			return out.String(), err
 		}
