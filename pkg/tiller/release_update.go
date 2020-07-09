@@ -93,6 +93,14 @@ func (s *ReleaseServer) prepareUpdate(req *services.UpdateReleaseRequest) (*rele
 		return nil, nil, err
 	}
 
+	// Concurrent `helm upgrade`s will either fail here with `errPending` or
+	// when creating the release with "already exists". This should act as a
+	// pessimistic lock.
+	sc := lastRelease.Info.Status.Code
+	if sc == release.Status_PENDING_INSTALL || sc == release.Status_PENDING_UPGRADE || sc == release.Status_PENDING_ROLLBACK {
+		return nil, nil, errPending
+	}
+
 	// Increment revision count. This is passed to templates, and also stored on
 	// the release object.
 	revision := lastRelease.Version + 1

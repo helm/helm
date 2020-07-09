@@ -104,6 +104,31 @@ func TestUpdateRelease(t *testing.T) {
 		t.Errorf("Expected description %q, got %q", edesc, got)
 	}
 }
+func TestUpdateReleasePendingError(t *testing.T) {
+	c := helm.NewContext()
+	rs := rsFixture()
+	rel := releaseStub()
+	rs.env.Releases.Create(rel)
+	rel2 := releaseStub()
+	rel2.Info.Status.Code = release.Status_PENDING_UPGRADE
+	rel2.Version = 2
+	rs.env.Releases.Create(rel2)
+
+	req := &services.UpdateReleaseRequest{
+		Name: rel.Name,
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{Name: "hello"},
+			Templates: []*chart.Template{
+				{Name: "templates/hello", Data: []byte("hello: world")},
+				{Name: "templates/hooks", Data: []byte(manifestWithUpgradeHooks)},
+			},
+		},
+	}
+	_, err := rs.UpdateRelease(c, req)
+	if err == nil {
+		t.Fatalf("Expected failure to update")
+	}
+}
 func TestUpdateRelease_ResetValues(t *testing.T) {
 	c := helm.NewContext()
 	rs := rsFixture()
