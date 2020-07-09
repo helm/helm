@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 
 	"helm.sh/helm/v3/pkg/api/logger"
@@ -33,32 +34,27 @@ func List(svc Service) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var response ListResponse
 		var request ListRequest
-		decoder := json.NewDecoder(r.Body)
-		if err := decoder.Decode(&request); err != nil {
-			logger.Errorf("[List] error decoding request: %v", err)
-			response.Error = err.Error()
-			payload, _ := json.Marshal(response)
+		if err := json.NewDecoder(r.Body).Decode(&request); err == io.EOF || err != nil {
+			logger.Errorf("[List] error decoding request: %v", err.Error())
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write(payload)
+			response.Error = err.Error()
+			json.NewEncoder(w).Encode(response)
 			return
 		}
 		defer r.Body.Close()
 
-		helmReleases, err := svc.List(request.ReleaseStatus)
+		helmReleases, err := svc.List(request.ReleaseStatus, request.NameSpace)
 
 		if err != nil {
 			respondInstallError(w, "error while listing charts: %v", err)
-			return
 		}
 
 		response = ListResponse{"", helmReleases}
-		payload, err := json.Marshal(response)
+		err = json.NewEncoder(w).Encode(response)
 		if err != nil {
 			respondInstallError(w, "error writing response: %v", err)
 			return
 		}
-
-		w.Write(payload)
 	})
 }
 

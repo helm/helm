@@ -1,8 +1,8 @@
 package api_test
 
 import (
+	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -42,8 +42,8 @@ func (m *mockList) SetStateMask() {
 	m.Called()
 }
 
-func (m *mockList) SetState(state action.ListStates) {
-	m.Called(state)
+func (m *mockList) SetConfig(state action.ListStates, allNameSpaces bool) {
+	m.Called(state, allNameSpaces)
 }
 
 func (s *ListTestSuite) SetupSuite() {
@@ -68,43 +68,53 @@ func (s *ListTestSuite) TestShouldReturnReleasesWhenSuccessfulAPICall() {
 	timeFromStr, _ := time.Parse(layout, str)
 	body := `{"release_status":"deployed"}`
 	req, _ := http.NewRequest("POST", fmt.Sprintf("%s/list", s.server.URL), strings.NewReader(body))
-	releases := []*release.Release{
-		{
-			Name:      "test-release",
-			Namespace: "test-namespace",
-			Info:      &release.Info{Status: release.StatusDeployed, LastDeployed: timeFromStr},
-			Version:   1,
-			Chart:     &chart.Chart{Metadata: &chart.Metadata{Name: "test-release", Version: "0.1", AppVersion: "0.1"}},
-		},
-	}
+
+	releases := []*release.Release{{Name: "test-release",
+		Namespace: "test-namespace",
+		Info:      &release.Info{Status: release.StatusDeployed, LastDeployed: timeFromStr},
+		Version:   1,
+		Chart:     &chart.Chart{Metadata: &chart.Metadata{Name: "test-release", Version: "0.1", AppVersion: "0.1"}},
+	}}
+
 	s.mockList.On("SetStateMask")
-	s.mockList.On("SetState", action.ListDeployed)
+	s.mockList.On("SetConfig", action.ListDeployed, true)
 	s.mockList.On("Run").Return(releases, nil)
 
-	resp, httpErr := http.DefaultClient.Do(req)
+	res, err := http.DefaultClient.Do(req)
+	assert.Equal(s.T(), 200, res.StatusCode)
 
-	assert.Equal(s.T(), 200, resp.StatusCode)
+	var actualResponse api.ListResponse
+	err = json.NewDecoder(res.Body).Decode(&actualResponse)
 
-	expectedResponse := `{"releases":[{"name":"test-release","namespace":"test-namespace","revision":1,"updated_at":"2014-11-12T11:45:26.371Z","status":"deployed","chart":"test-release-0.1","app_version":"0.1"}]}`
-	respBody, err := ioutil.ReadAll(resp.Body)
+	expectedResponse := api.ListResponse{Error: "",
+		Releases: []api.Release{{"test-release",
+			"test-namespace",
+			1,
+			timeFromStr,
+			release.StatusDeployed,
+			"test-release-0.1",
+			"0.1",
+		}}}
 
-	assert.Equal(s.T(), expectedResponse, string(respBody))
-	require.NoError(s.T(), httpErr)
+	assert.Equal(s.T(), expectedResponse.Releases[0], actualResponse.Releases[0])
 	require.NoError(s.T(), err)
 	s.mockList.AssertExpectations(s.T())
 }
 
 func (s *ListTestSuite) TestShouldReturnBadRequestErrorIfItHasInvalidCharacter() {
-	body := `{"request_id":"test-request-id""""}`
+	body := `{"release_status":"unknown""""}`
 	req, _ := http.NewRequest("POST", fmt.Sprintf("%s/list", s.server.URL), strings.NewReader(body))
 
-	resp, err := http.DefaultClient.Do(req)
+	res, err := http.DefaultClient.Do(req)
 
-	assert.Equal(s.T(), 400, resp.StatusCode)
+	assert.Equal(s.T(), 400, res.StatusCode)
 
-	expectedResponse := `{"error":"invalid character '\"' after object key:value pair"}`
-	respBody, _ := ioutil.ReadAll(resp.Body)
-	assert.Equal(s.T(), expectedResponse, string(respBody))
+	expectedResponse := "invalid character '\"' after object key:value pair"
+
+	var actualResponse api.ListResponse
+	err = json.NewDecoder(res.Body).Decode(&actualResponse)
+
+	assert.Equal(s.T(), expectedResponse, actualResponse.Error)
 	require.NoError(s.T(), err)
 }
 

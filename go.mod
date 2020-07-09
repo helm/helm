@@ -26,6 +26,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20191027212112-611e8accdfc9 // indirect
 	github.com/google/go-cmp v0.3.1 // indirect
 	github.com/googleapis/gnostic v0.3.1 // indirect
+	github.com/gorilla/mux v1.7.4
 	github.com/gosuri/uitable v0.0.1
 	github.com/gregjones/httpcache v0.0.0-20181110185634-c63ab54fda8f // indirect
 	github.com/hashicorp/golang-lru v0.5.3 // indirect

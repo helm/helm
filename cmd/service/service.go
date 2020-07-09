@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/gorilla/mux"
 	"net/http"
 
 	"helm.sh/helm/v3/pkg/action"
@@ -24,9 +25,8 @@ func setContentType(next http.Handler) http.Handler {
 }
 
 func startServer() {
-	router := http.NewServeMux()
+	router := mux.NewRouter()
 
-	//TODO: use gorilla mux and add middleware to write content type and other headers
 	app := servercontext.App()
 	logger.Setup("debug")
 
@@ -42,10 +42,10 @@ func startServer() {
 		api.NewUpgrader(actionUpgrade),
 		api.NewHistory(actionHistory))
 
-	router.Handle("/ping", setContentType(ping.Handler()))
-	router.Handle("/list", setContentType(api.List(service)))
-	router.Handle("/install", setContentType(api.Install(service)))
-	router.Handle("/upgrade", setContentType(api.Upgrade(service)))
+	router.Handle("/ping", setContentType(ping.Handler())).Methods(http.MethodGet)
+	router.Handle("/list", setContentType(api.List(service))).Methods(http.MethodPost)
+	router.Handle("/install", setContentType(api.Install(service))).Methods(http.MethodPost)
+	router.Handle("/upgrade", setContentType(api.Upgrade(service))).Methods(http.MethodPost)
 
 	err := http.ListenAndServe(fmt.Sprintf(":%d", 8080), router)
 	if err != nil {

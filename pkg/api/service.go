@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-
 	"strings"
 
 	"helm.sh/helm/v3/pkg/action"
@@ -140,7 +139,7 @@ func (s Service) validate(icfg ReleaseConfig, values ChartValues) error {
 	return nil
 }
 
-func (s Service) List(releaseStatus string) ([]Release, error) {
+func (s Service) List(releaseStatus string, namespace string) ([]Release, error) {
 	listStates := new(action.ListStates)
 
 	state := action.ListAll
@@ -152,8 +151,14 @@ func (s Service) List(releaseStatus string) ([]Release, error) {
 		return nil, errors.New("invalid release status")
 	}
 
-	s.ListRunner.SetState(state)
+	allNameSpaces := true
+	if namespace != "" {
+		allNameSpaces = false
+	}
+
+	s.ListRunner.SetConfig(state, allNameSpaces)
 	s.ListRunner.SetStateMask()
+
 	releases, err := s.ListRunner.Run()
 	if err != nil {
 		return nil, err

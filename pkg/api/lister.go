@@ -12,13 +12,14 @@ type Lister struct {
 type ListRunner interface {
 	Run() ([]*release.Release, error)
 	SetStateMask()
-	SetState(state action.ListStates)
+	SetConfig(state action.ListStates, allNameSpaces bool)
 }
 
 func NewList(action *action.List) *Lister {
 	return &Lister{action}
 }
 
-func (l *Lister) SetState(state action.ListStates) {
+func (l *Lister) SetConfig(state action.ListStates, allNameSpaces bool) {
 	l.StateMask = state
+	l.AllNamespaces = allNameSpaces
 }

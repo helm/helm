@@ -277,11 +277,11 @@ func (s *ServiceTestSuite) TestUpgradeShouldReturnErrorOnInvalidChart() {
 func (s *ServiceTestSuite) TestListShouldReturnErrorOnFailureOfListRun() {
 	var releases []*release.Release
 	releaseStatus := "deployed"
-	s.lister.On("SetState", action.ListDeployed)
+	s.lister.On("SetConfig", action.ListDeployed, false)
 	s.lister.On("SetStateMask")
 	s.lister.On("Run").Return(releases, errors.New("cluster issue"))
 
-	res, err := s.svc.List(releaseStatus)
+	res, err := s.svc.List(releaseStatus, "test-namespace")
 
 	t := s.T()
 	assert.Error(t, err, "cluster issue")
@@ -293,51 +293,41 @@ func (s *ServiceTestSuite) TestListShouldReturnAllReleasesIfNoFilterIsPassed() {
 	layout := "2006-01-02T15:04:05.000Z"
 	str := "2014-11-12T11:45:26.371Z"
 	releaseStatus := ""
-	var releases []*release.Release
 	timeFromStr, _ := time.Parse(layout, str)
-	releases = append(releases,
-		&release.Release{Name: "test-release",
-			Namespace: "test-namespace",
-			Info:      &release.Info{Status: release.StatusDeployed, LastDeployed: timeFromStr},
-			Version:   1,
-			Chart:     &chart.Chart{Metadata: &chart.Metadata{Name: "test-release", Version: "0.1", AppVersion: "0.1"}},
-		})
-	s.lister.On("SetState", action.ListAll)
-	s.lister.On("SetStateMask")
 
+	releases := []*release.Release{{Name: "test-release",
+		Namespace: "test-namespace",
+		Info:      &release.Info{Status: release.StatusDeployed, LastDeployed: timeFromStr},
+		Version:   1,
+		Chart:     &chart.Chart{Metadata: &chart.Metadata{Name: "test-release", Version: "0.1", AppVersion: "0.1"}},
+	}}
+
+	s.lister.On("SetConfig", action.ListAll, false)
+	s.lister.On("SetStateMask")
 	s.lister.On("Run").Return(releases, nil)
 
-	res, err := s.svc.List(releaseStatus)
+	res, err := s.svc.List(releaseStatus, "test-namespace")
 
 	t := s.T()
 	assert.NoError(t, err)
 	require.NotNil(t, res)
 
-	var response []api.Release
-	response = append(response, api.Release{Name: "test-release",
-		Namespace:  "test-namespace",
-		Revision:   1,
-		Updated:    timeFromStr,
-		Status:     release.StatusDeployed,
-		Chart:      "test-release-0.1",
-		AppVersion: "0.1",
-	})
-
-	assert.Equal(t, 1, len(res))
-	assert.Equal(t, "test-release", response[0].Name)
-	assert.Equal(t, "test-namespace", response[0].Namespace)
-	assert.Equal(t, 1, response[0].Revision)
-	assert.Equal(t, timeFromStr, response[0].Updated)
-	assert.Equal(t, release.StatusDeployed, response[0].Status)
-	assert.Equal(t, "test-release-0.1", response[0].Chart)
-	assert.Equal(t, "0.1", response[0].AppVersion)
-	assert.Equal(t, response, releases[0])
+	response := []api.Release{{"test-release",
+		"test-namespace",
+		1,
+		timeFromStr,
+		release.StatusDeployed,
+		"test-release-0.1",
+		"0.1",
+	}}
+	
+	assert.Equal(t, response, res)
 	s.lister.AssertExpectations(t)
 }
 
 func (s *ServiceTestSuite) TestListShouldReturnErrorIfInvalidStatusIsPassedAsFilter() {
 	releaseStatus := "invalid"
-	_, err := s.svc.List(releaseStatus)
+	_, err := s.svc.List(releaseStatus, "test-namespace")
 
 	t := s.T()
 	assert.EqualError(t, err, "invalid release status")
@@ -346,11 +336,11 @@ func (s *ServiceTestSuite) TestListShouldReturnErrorIfInvalidStatusIsPassedAsFil
 func (s *ServiceTestSuite) TestListShouldReturnDeployedReleasesIfDeployedIsPassedAsFilter() {
 	var releases []*release.Release
 	releaseStatus := "deployed"
-	s.lister.On("SetState", action.ListDeployed)
+	s.lister.On("SetConfig", action.ListDeployed, false)
 	s.lister.On("SetStateMask")
 	s.lister.On("Run").Return(releases, nil)
 
-	_, err := s.svc.List(releaseStatus)
+	_, err := s.svc.List(releaseStatus, "test-namespace")
 
 	t := s.T()
 	assert.NoError(t, err)
