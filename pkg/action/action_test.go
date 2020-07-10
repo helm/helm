@@ -141,7 +141,7 @@ var manifestWithKeepAnno = `
 apiVersion: v1
 kind: Pod
 metadata:
-  name: pod-keep,
+  name: pod-keep
   annotations:
     "helm.sh/resource-policy": keep
 spec:

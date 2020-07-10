@@ -31,5 +31,5 @@ func TestUninstall_deleteRelease(t *testing.T) {
 	unisAction := NewUninstall(config)
 	str, errs := unisAction.deleteRelease(rel)
 	is.Len(errs, 0)
-	is.Equal("pod/pod-keep\n", str)
+	is.Equal("Pod/pod-keep\n", str)
 }
