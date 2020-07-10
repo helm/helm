@@ -24,7 +24,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/gofrs/flock"
@@ -117,8 +116,9 @@ func (o *repoAddOptions) run(out io.Writer) error {
 	}
 
 	if o.username != "" && o.password == "" {
+		fd := int(os.Stdin.Fd())
 		fmt.Fprint(out, "Password: ")
-		password, err := terminal.ReadPassword(syscall.Stdin)
+		password, err := terminal.ReadPassword(fd)
 		fmt.Fprintln(out)
 		if err != nil {
 			return err
