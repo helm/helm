@@ -117,7 +117,7 @@ func (o *repoAddOptions) run(out io.Writer) error {
 	}
 
 	if o.username != "" && o.password == "" {
-		fmt.Fprint(out, "Password:")
+		fmt.Fprint(out, "Password: ")
 		password, err := terminal.ReadPassword(syscall.Stdin)
 		fmt.Fprintln(out)
 		if err != nil {
