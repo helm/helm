@@ -24,11 +24,13 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/gofrs/flock"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"golang.org/x/crypto/ssh/terminal"
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/cmd/helm/require"
@@ -112,6 +114,16 @@ func (o *repoAddOptions) run(out io.Writer) error {
 
 	if o.noUpdate && f.Has(o.name) {
 		return errors.Errorf("repository name (%s) already exists, please specify a different name", o.name)
+	}
+
+	if o.username != "" && o.password == "" {
+		fmt.Fprint(out, "Password: ")
+		password, err := terminal.ReadPassword(syscall.Stdin)
+		fmt.Fprintln(out)
+		if err != nil {
+			return err
+		}
+		o.password = string(password)
 	}
 
 	c := repo.Entry{
