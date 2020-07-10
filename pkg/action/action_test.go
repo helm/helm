@@ -137,6 +137,20 @@ subjects:
   namespace: {{ .Release.Namespace }}
 `
 
+var manifestWithKeepAnno = `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-keep,
+  annotations:
+    "helm.sh/resource-policy": keep
+spec:
+  containers:
+  - name: nemo-test
+    image: fake-image
+    cmd: fake-command
+  `
+
 type chartOptions struct {
 	*chart.Chart
 }
@@ -248,6 +262,15 @@ func withMultipleManifestTemplate() chartOption {
 	return func(opts *chartOptions) {
 		sampleTemplates := []*chart.File{
 			{Name: "templates/rbac", Data: []byte(rbacManifests)},
+		}
+		opts.Templates = append(opts.Templates, sampleTemplates...)
+	}
+}
+
+func withKeepAnnoManifestTemplate() chartOption {
+	return func(opts *chartOptions) {
+		sampleTemplates := []*chart.File{
+			{Name: "templates/keep", Data: []byte(manifestWithKeepAnno)},
 		}
 		opts.Templates = append(opts.Templates, sampleTemplates...)
 	}
