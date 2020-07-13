@@ -72,7 +72,7 @@ func TestShowNoValues(t *testing.T) {
 
 func TestShowValuesByJsonPathFormat(t *testing.T) {
 	client := NewShow(ShowValues)
-	client.JsonPathTemplate = "{$.nestedKey.simpleKey}"
+	client.JSONPathTemplate = "{$.nestedKey.simpleKey}"
 	client.chart = buildChart(withSampleValues())
 	output, err := client.Run("")
 	if err != nil {

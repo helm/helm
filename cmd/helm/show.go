@@ -152,7 +152,7 @@ func addShowFlags(subCmd *cobra.Command, client *action.Show) {
 
 	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored")
 	if subCmd.Name() == "values" {
-		f.StringVar(&client.JsonPathTemplate, "jsonpath", "", "use jsonpath output format")
+		f.StringVar(&client.JSONPathTemplate, "jsonpath", "", "use jsonpath output format")
 	}
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 
