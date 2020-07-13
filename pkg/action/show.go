@@ -20,12 +20,12 @@ import (
 	"fmt"
 	"strings"
 
-	"helm.sh/helm/v3/pkg/chartutil"
 	"k8s.io/cli-runtime/pkg/printers"
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/chartutil"
 )
 
 // ShowOutputFormat is the format of the output of `helm show`
@@ -55,7 +55,7 @@ type Show struct {
 	ChartPathOptions
 	Devel            bool
 	OutputFormat     ShowOutputFormat
-	JsonPathTemplate string
+	JSONPathTemplate string
 	chart            *chart.Chart // for testing
 }
 
@@ -89,10 +89,10 @@ func (s *Show) Run(chartpath string) (string, error) {
 		if s.OutputFormat == ShowAll {
 			fmt.Fprintln(&out, "---")
 		}
-		if s.JsonPathTemplate != "" {
-			printer, err := printers.NewJSONPathPrinter(s.JsonPathTemplate)
+		if s.JSONPathTemplate != "" {
+			printer, err := printers.NewJSONPathPrinter(s.JSONPathTemplate)
 			if err != nil {
-				return "", fmt.Errorf("error parsing jsonpath %s, %v\n", s.JsonPathTemplate, err)
+				return "", fmt.Errorf("error parsing jsonpath %s, %v", s.JSONPathTemplate, err)
 			}
 			printer.Execute(&out, s.chart.Values)
 		} else {
