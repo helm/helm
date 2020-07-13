@@ -108,12 +108,13 @@ var UninstallOrder KindSortOrder = []string{
 // sort manifests by kind.
 //
 // Results are sorted by 'ordering', keeping order of items with equal kind/priority
-func sortManifestsByKind(manifests []Manifest, ordering KindSortOrder) []Manifest {
-	sort.SliceStable(manifests, func(i, j int) bool {
-		return lessByKind(manifests[i], manifests[j], manifests[i].Head.Kind, manifests[j].Head.Kind, ordering)
+func sortManifestsByKind(manifests []*Manifest, ordering KindSortOrder) []*Manifest {
+	m := manifests
+	sort.SliceStable(m, func(i, j int) bool {
+		return lessByKind(m[i], m[j], m[i].Head.Kind, m[j].Head.Kind, ordering)
 	})
 
-	return manifests
+	return m
 }
 
 // sort hooks by kind, using an out-of-place sort to preserve the input parameters.

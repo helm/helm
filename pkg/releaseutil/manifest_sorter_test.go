@@ -193,7 +193,7 @@ metadata:
 	}
 
 	// Verify the sort order
-	sorted := []Manifest{}
+	sorted := []*Manifest{}
 	for _, s := range data {
 		manifests := SplitManifests(s.manifest)
 
@@ -209,7 +209,7 @@ metadata:
 
 			// only keep track of non-hook manifests
 			if s.hooks[name] == nil {
-				another := Manifest{
+				another := &Manifest{
 					Content: m,
 					Name:    name,
 					Head:    &sh,

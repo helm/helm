@@ -31,7 +31,7 @@ const resourcePolicyAnno = "helm.sh/resource-policy"
 //   during an uninstallRelease action.
 const keepPolicy = "keep"
 
-func filterManifestsToKeep(manifests []releaseutil.Manifest) (keep, remaining []releaseutil.Manifest) {
+func filterManifestsToKeep(manifests []*releaseutil.Manifest) (keep, remaining []*releaseutil.Manifest) {
 	for _, m := range manifests {
 		if m.Head.Metadata == nil || m.Head.Metadata.Annotations == nil || len(m.Head.Metadata.Annotations) == 0 {
 			remaining = append(remaining, m)
