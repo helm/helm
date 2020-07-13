@@ -542,14 +542,14 @@ func (c *Client) waitForPodSuccess(obj runtime.Object, name string) (bool, error
 
 	switch o.Status.Phase {
 	case v1.PodSucceeded:
-		fmt.Printf("Pod %s succeeded\n", o.Name)
+		c.Log("Pod %s succeeded", o.Name)
 		return true, nil
 	case v1.PodFailed:
 		return true, errors.Errorf("pod %s failed", o.Name)
 	case v1.PodPending:
-		fmt.Printf("Pod %s pending\n", o.Name)
+		c.Log("Pod %s pending", o.Name)
 	case v1.PodRunning:
-		fmt.Printf("Pod %s running\n", o.Name)
+		c.Log("Pod %s running", o.Name)
 	}
 
 	return false, nil
