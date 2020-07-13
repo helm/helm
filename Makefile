@@ -183,7 +183,7 @@ clean:
 .PHONY: release-notes
 release-notes:
 		@if [ ! -d "./_dist" ]; then \
-			echo "please run 'make fetch-release' first" && \
+			echo "please run 'make fetch-dist' first" && \
 			exit 1; \
 		fi
 		@if [ -z "${PREVIOUS_RELEASE}" ]; then \
