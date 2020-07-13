@@ -158,7 +158,7 @@ func TestUpgradeCmd(t *testing.T) {
 		{
 			name:      "upgrade a pending install release",
 			cmd:       fmt.Sprintf("upgrade funny-bunny '%s'", chartPath),
-			golden:    "output/upgrade-with-bad-or-missing-existing-release.txt",
+			golden:    "output/upgrade-with-pending-install.txt",
 			wantError: true,
 			rels:      []*release.Release{relWithStatusMock("funny-bunny", 2, ch, release.StatusPendingInstall)},
 		},
