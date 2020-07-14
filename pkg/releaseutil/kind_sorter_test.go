@@ -24,7 +24,7 @@ import (
 )
 
 func TestKindSorter(t *testing.T) {
-	manifests := []Manifest{
+	manifests := []*Manifest{
 		{
 			Name: "E",
 			Head: &SimpleHead{Kind: "SecretList"},
@@ -199,7 +199,7 @@ func TestKindSorter(t *testing.T) {
 
 // TestKindSorterKeepOriginalOrder verifies manifests of same kind are kept in original order
 func TestKindSorterKeepOriginalOrder(t *testing.T) {
-	manifests := []Manifest{
+	manifests := []*Manifest{
 		{
 			Name: "a",
 			Head: &SimpleHead{Kind: "ClusterRole"},
@@ -259,19 +259,19 @@ func TestKindSorterKeepOriginalOrder(t *testing.T) {
 }
 
 func TestKindSorterNamespaceAgainstUnknown(t *testing.T) {
-	unknown := Manifest{
+	unknown := &Manifest{
 		Name: "a",
 		Head: &SimpleHead{Kind: "Unknown"},
 	}
-	namespace := Manifest{
+	namespace := &Manifest{
 		Name: "b",
 		Head: &SimpleHead{Kind: "Namespace"},
 	}
 
-	manifests := []Manifest{unknown, namespace}
+	manifests := []*Manifest{unknown, namespace}
 	manifests = sortManifestsByKind(manifests, InstallOrder)
 
-	expectedOrder := []Manifest{namespace, unknown}
+	expectedOrder := []*Manifest{namespace, unknown}
 	for i, manifest := range manifests {
 		if expectedOrder[i].Name != manifest.Name {
 			t.Errorf("Expected %s, got %s", expectedOrder[i].Name, manifest.Name)

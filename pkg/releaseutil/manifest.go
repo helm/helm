@@ -23,6 +23,9 @@ import (
 	"strings"
 )
 
+// OrderWeightAnnotation is the label name for a weight of a manifest
+const OrderWeightAnnotation = "helm.sh/order-weight"
+
 // SimpleHead defines what the structure of the head of a manifest file
 type SimpleHead struct {
 	Version  string `json:"apiVersion"`

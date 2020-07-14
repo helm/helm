@@ -34,6 +34,7 @@ import (
 type Manifest struct {
 	Name    string
 	Content string
+	Weight  int
 	Head    *SimpleHead
 }
 
@@ -47,7 +48,7 @@ type manifestFile struct {
 // result is an intermediate structure used during sorting.
 type result struct {
 	hooks   []*release.Hook
-	generic []Manifest
+	generic []*Manifest
 }
 
 // TODO: Refactor this out. It's here because naming conventions were not followed through.
@@ -75,7 +76,7 @@ var events = map[string]release.HookEvent{
 //
 // Files that do not parse into the expected format are simply placed into a map and
 // returned.
-func SortManifests(files map[string]string, apis chartutil.VersionSet, ordering KindSortOrder) ([]*release.Hook, []Manifest, error) {
+func SortManifests(files map[string]string, apis chartutil.VersionSet, ordering KindSortOrder) ([]*release.Hook, []*Manifest, error) {
 	result := &result{}
 
 	var sortedFilePaths []string
@@ -107,8 +108,11 @@ func SortManifests(files map[string]string, apis chartutil.VersionSet, ordering 
 			return result.hooks, result.generic, err
 		}
 	}
+	sortedManifests := sortManifestsByKind(result.generic, ordering)
+	// manifests are ordered by kind, so keep order stable
+	sort.Stable(manifestByWeight(sortedManifests))
 
-	return sortHooksByKind(result.hooks, ordering), sortManifestsByKind(result.generic, ordering), nil
+	return sortHooksByKind(result.hooks, ordering), sortedManifests, nil
 }
 
 // sort takes a manifestFile object which may contain multiple resource definition
@@ -147,7 +151,7 @@ func (file *manifestFile) sort(result *result) error {
 		}
 
 		if !hasAnyAnnotation(entry) {
-			result.generic = append(result.generic, Manifest{
+			result.generic = append(result.generic, &Manifest{
 				Name:    file.path,
 				Content: m,
 				Head:    &entry,
@@ -157,9 +161,11 @@ func (file *manifestFile) sort(result *result) error {
 
 		hookTypes, ok := entry.Metadata.Annotations[release.HookAnnotation]
 		if !ok {
-			result.generic = append(result.generic, Manifest{
+			ow := calculateOrderWeight(entry)
+			result.generic = append(result.generic, &Manifest{
 				Name:    file.path,
 				Content: m,
+				Weight:  ow,
 				Head:    &entry,
 			})
 			continue
@@ -222,6 +228,18 @@ func calculateHookWeight(entry SimpleHead) int {
 	return hw
 }
 
+// calculateOrderWeight finds the weight in the hook weight annotation.
+//
+// If no weight is found, the assigned weight is 0
+func calculateOrderWeight(entry SimpleHead) int {
+	ows := entry.Metadata.Annotations[OrderWeightAnnotation]
+	ow, err := strconv.Atoi(ows)
+	if err != nil {
+		ow = 0
+	}
+	return ow
+}
+
 // operateAnnotationValues finds the given annotation and runs the operate function with the value of that annotation
 func operateAnnotationValues(entry SimpleHead, annotation string, operate func(p string)) {
 	if dps, ok := entry.Metadata.Annotations[annotation]; ok {
@@ -230,4 +248,13 @@ func operateAnnotationValues(entry SimpleHead, annotation string, operate func(p
 			operate(dp)
 		}
 	}
+}
+
+// manifestByWeight is a sorter for manifests
+type manifestByWeight []*Manifest
+
+func (x manifestByWeight) Len() int      { return len(x) }
+func (x manifestByWeight) Swap(i, j int) { x[i], x[j] = x[j], x[i] }
+func (x manifestByWeight) Less(i, j int) bool {
+	return x[i].Weight < x[j].Weight
 }
