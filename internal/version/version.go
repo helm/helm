@@ -25,6 +25,7 @@ import (
 var (
 	// version is the current version of Helm.
 	// Update this whenever making a new release.
+	// The version is of the format Major.Minor.Patch[-Prerelease][+BuildMetadata]
 	//
 	// Increment major number for new feature additions and behavioral changes.
 	// Increment minor number for bug fixes and performance enhancements.
