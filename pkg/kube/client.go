@@ -39,6 +39,7 @@ import (
 	batch "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	extv1beta1 "k8s.io/api/extensions/v1beta1"
+	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -81,16 +82,24 @@ type Client struct {
 	Log func(string, ...interface{})
 }
 
+var addToScheme sync.Once
+
 // New creates a new Client.
 func New(getter genericclioptions.RESTClientGetter) *Client {
 	if getter == nil {
 		getter = genericclioptions.NewConfigFlags(true)
 	}
 
-	err := apiextv1beta1.AddToScheme(scheme.Scheme)
-	if err != nil {
-		panic(err)
-	}
+	// Add CRDs to the scheme. They are missing by default.
+	addToScheme.Do(func() {
+		if err := apiextv1.AddToScheme(scheme.Scheme); err != nil {
+			// This should never happen.
+			panic(err)
+		}
+		if err := apiextv1beta1.AddToScheme(scheme.Scheme); err != nil {
+			panic(err)
+		}
+	})
 
 	return &Client{
 		Factory: cmdutil.NewFactory(getter),
@@ -385,7 +394,7 @@ func (c *Client) Get(namespace string, reader io.Reader) (string, error) {
 			return nil
 		}
 
-		//Get the relation pods
+		// Get the relation pods
 		objs, err = c.getSelectRelationPod(info, objs)
 		if err != nil {
 			c.Log("Warning: get the relation pod is failed, err:%s", err.Error())
@@ -733,32 +742,20 @@ func (c *Client) pollCRDEstablished(t time.Duration) ResourceActorFunc {
 }
 
 func (c *Client) pollCRDUntilEstablished(timeout time.Duration, info *resource.Info) error {
+	obj, err := asVersioned(info)
+	if err != nil {
+		return fmt.Errorf("unable to get versioned CRD: %v", err)
+	}
+
 	return wait.PollImmediate(time.Second, timeout, func() (bool, error) {
-		err := info.Get()
-		if err != nil {
-			return false, fmt.Errorf("unable to get CRD: %v", err)
+		switch value := obj.(type) {
+		case *apiextv1beta1.CustomResourceDefinition:
+			return c.crdBetaReady(*value), nil
+		case *apiextv1.CustomResourceDefinition:
+			return c.crdReady(*value), nil
+		default:
+			return false, fmt.Errorf("invalid CRD kind: %T", value)
 		}
-
-		crd := &apiextv1beta1.CustomResourceDefinition{}
-		err = scheme.Scheme.Convert(info.Object, crd, nil)
-		if err != nil {
-			return false, fmt.Errorf("unable to convert to CRD type: %v", err)
-		}
-
-		for _, cond := range crd.Status.Conditions {
-			switch cond.Type {
-			case apiextv1beta1.Established:
-				if cond.Status == apiextv1beta1.ConditionTrue {
-					return true, nil
-				}
-			case apiextv1beta1.NamesAccepted:
-				if cond.Status == apiextv1beta1.ConditionFalse {
-					return false, fmt.Errorf("naming conflict detected for CRD %s", crd.GetName())
-				}
-			}
-		}
-
-		return false, nil
 	})
 }
 
@@ -839,10 +836,11 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 	_, isUnstructured := versionedObject.(runtime.Unstructured)
 
 	// On newer K8s versions, CRDs aren't unstructured but has this dedicated type
-	_, isCRD := versionedObject.(*apiextv1beta1.CustomResourceDefinition)
+	_, isV1CRD := versionedObject.(*apiextv1.CustomResourceDefinition)
+	_, isV1Beta1CRD := versionedObject.(*apiextv1beta1.CustomResourceDefinition)
 
 	switch {
-	case runtime.IsNotRegisteredError(err), isUnstructured, isCRD:
+	case runtime.IsNotRegisteredError(err), isUnstructured, isV1CRD, isV1Beta1CRD:
 		// fall back to generic JSON merge patch
 		patch, err := jsonpatch.CreateMergePatch(oldData, newData)
 		if err != nil {
@@ -1169,6 +1167,49 @@ func (c *Client) getSelectRelationPod(info *resource.Info, objs map[string][]run
 	}
 
 	return objs, nil
+}
+
+// Because the v1 extensions API is not available on all supported k8s versions
+// yet and because Go doesn't support generics, we need to have a duplicate
+// function to support the v1beta1 types
+func (c *Client) crdBetaReady(crd apiextv1beta1.CustomResourceDefinition) bool {
+	for _, cond := range crd.Status.Conditions {
+		switch cond.Type {
+		case apiextv1beta1.Established:
+			if cond.Status == apiextv1beta1.ConditionTrue {
+				return true
+			}
+		case apiextv1beta1.NamesAccepted:
+			if cond.Status == apiextv1beta1.ConditionFalse {
+				// This indicates a naming conflict, but it's probably not the
+				// job of this function to fail because of that. Instead,
+				// we treat it as a success, since the process should be able to
+				// continue.
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (c *Client) crdReady(crd apiextv1.CustomResourceDefinition) bool {
+	for _, cond := range crd.Status.Conditions {
+		switch cond.Type {
+		case apiextv1.Established:
+			if cond.Status == apiextv1.ConditionTrue {
+				return true
+			}
+		case apiextv1.NamesAccepted:
+			if cond.Status == apiextv1.ConditionFalse {
+				// This indicates a naming conflict, but it's probably not the
+				// job of this function to fail because of that. Instead,
+				// we treat it as a success, since the process should be able to
+				// continue.
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func asVersionedOrUnstructured(info *resource.Info) runtime.Object {

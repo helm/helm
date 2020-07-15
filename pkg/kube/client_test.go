@@ -27,6 +27,7 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
+	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -43,12 +44,20 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+	err = apiextv1.AddToScheme(scheme.Scheme)
+	if err != nil {
+		panic(err)
+	}
 
 	// Tiller use the scheme from go-client, but the cmdtesting
 	// package used here is hardcoded to use the scheme from
 	// kubectl. So for testing, we need to add the CustomResourceDefinition
 	// type to both schemes.
 	err = apiextv1beta1.AddToScheme(kubectlscheme.Scheme)
+	if err != nil {
+		panic(err)
+	}
+	err = apiextv1.AddToScheme(kubectlscheme.Scheme)
 	if err != nil {
 		panic(err)
 	}
@@ -533,32 +542,64 @@ func TestResourceSortOrder(t *testing.T) {
 
 func TestWaitUntilCRDEstablished(t *testing.T) {
 	testCases := map[string]struct {
-		conditions            []apiextv1beta1.CustomResourceDefinitionCondition
+		conditions            []apiextv1.CustomResourceDefinitionCondition
+		crdManifest           string
 		returnConditionsAfter int
 		success               bool
 	}{
-		"crd reaches established state after 2 requests": {
-			conditions: []apiextv1beta1.CustomResourceDefinitionCondition{
+		"v1beta1 crd reaches established state after 2 requests": {
+			conditions: []apiextv1.CustomResourceDefinitionCondition{
 				{
-					Type:   apiextv1beta1.Established,
-					Status: apiextv1beta1.ConditionTrue,
+					Type:   apiextv1.Established,
+					Status: apiextv1.ConditionTrue,
 				},
 			},
+			crdManifest:           crdV1Beta1Manifest,
 			returnConditionsAfter: 2,
 			success:               true,
 		},
-		"crd does not reach established state before timeout": {
-			conditions:            []apiextv1beta1.CustomResourceDefinitionCondition{},
+		"v1beta1 crd does not reach established state before timeout": {
+			conditions:            []apiextv1.CustomResourceDefinitionCondition{},
+			crdManifest:           crdV1Beta1Manifest,
 			returnConditionsAfter: 100,
 			success:               false,
 		},
-		"crd name is not accepted": {
-			conditions: []apiextv1beta1.CustomResourceDefinitionCondition{
+		"v1beta1 crd name is not accepted": {
+			conditions: []apiextv1.CustomResourceDefinitionCondition{
 				{
-					Type:   apiextv1beta1.NamesAccepted,
-					Status: apiextv1beta1.ConditionFalse,
+					Type:   apiextv1.NamesAccepted,
+					Status: apiextv1.ConditionFalse,
 				},
 			},
+			crdManifest:           crdV1Beta1Manifest,
+			returnConditionsAfter: 1,
+			success:               false,
+		},
+		"v1 crd reaches established state after 2 requests": {
+			conditions: []apiextv1.CustomResourceDefinitionCondition{
+				{
+					Type:   apiextv1.Established,
+					Status: apiextv1.ConditionTrue,
+				},
+			},
+			crdManifest:           crdV1Manifest,
+			returnConditionsAfter: 2,
+			success:               true,
+		},
+		"v1 crd does not reach established state before timeout": {
+			conditions:            []apiextv1.CustomResourceDefinitionCondition{},
+			crdManifest:           crdV1Manifest,
+			returnConditionsAfter: 100,
+			success:               false,
+		},
+		"v1 crd name is not accepted": {
+			conditions: []apiextv1.CustomResourceDefinitionCondition{
+				{
+					Type:   apiextv1.NamesAccepted,
+					Status: apiextv1.ConditionFalse,
+				},
+			},
+			crdManifest:           crdV1Manifest,
 			returnConditionsAfter: 1,
 			success:               false,
 		},
@@ -569,8 +610,8 @@ func TestWaitUntilCRDEstablished(t *testing.T) {
 			c := newTestClient()
 			defer c.Cleanup()
 
-			crdWithoutConditions := newCrdWithStatus("name", apiextv1beta1.CustomResourceDefinitionStatus{})
-			crdWithConditions := newCrdWithStatus("name", apiextv1beta1.CustomResourceDefinitionStatus{
+			crdWithoutConditions := newCrdWithStatus("name", apiextv1.CustomResourceDefinitionStatus{})
+			crdWithConditions := newCrdWithStatus("name", apiextv1.CustomResourceDefinitionStatus{
 				Conditions: tc.conditions,
 			})
 
@@ -579,7 +620,7 @@ func TestWaitUntilCRDEstablished(t *testing.T) {
 				GroupVersion:         schema.GroupVersion{Version: "v1"},
 				NegotiatedSerializer: unstructuredSerializer,
 				Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
-					var crd apiextv1beta1.CustomResourceDefinition
+					var crd apiextv1.CustomResourceDefinition
 					if requestCount < tc.returnConditionsAfter {
 						crd = crdWithoutConditions
 					} else {
@@ -590,7 +631,7 @@ func TestWaitUntilCRDEstablished(t *testing.T) {
 				}),
 			}
 
-			err := c.WaitUntilCRDEstablished(strings.NewReader(crdManifest), 5*time.Second)
+			err := c.WaitUntilCRDEstablished(strings.NewReader(crdV1Beta1Manifest), 5*time.Second)
 			if err != nil && tc.success {
 				t.Errorf("%s: expected no error, but got %v", name, err)
 			}
@@ -601,13 +642,13 @@ func TestWaitUntilCRDEstablished(t *testing.T) {
 	}
 }
 
-func newCrdWithStatus(name string, status apiextv1beta1.CustomResourceDefinitionStatus) apiextv1beta1.CustomResourceDefinition {
-	crd := apiextv1beta1.CustomResourceDefinition{
+func newCrdWithStatus(name string, status apiextv1.CustomResourceDefinitionStatus) apiextv1.CustomResourceDefinition {
+	crd := apiextv1.CustomResourceDefinition{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: metav1.NamespaceDefault,
 		},
-		Spec:   apiextv1beta1.CustomResourceDefinitionSpec{},
+		Spec:   apiextv1.CustomResourceDefinitionSpec{},
 		Status: status,
 	}
 	return crd
@@ -881,8 +922,46 @@ spec:
         - containerPort: 80
 `
 
-const crdManifest = `
+const crdV1Beta1Manifest = `
 apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: applications.app.k8s.io
+spec:
+  group: app.k8s.io
+  names:
+    kind: Application
+    plural: applications
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'Description'
+          type: string
+        kind:
+          description: 'Kind'
+          type: string
+        metadata:
+          type: object
+        spec:
+          type: object
+        status:
+          type: object
+  version: v1beta1
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+`
+
+const crdV1Manifest = `
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   creationTimestamp: null
