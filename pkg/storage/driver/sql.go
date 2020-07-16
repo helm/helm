@@ -310,6 +310,10 @@ func (s *SQL) Query(labels map[string]string) ([]*rspb.Release, error) {
 		return nil, err
 	}
 
+	if len(records) == 0 {
+		return nil, ErrReleaseNotFound
+	}
+
 	var releases []*rspb.Release
 	for _, record := range records {
 		release, err := decodeRelease(record.Body)
@@ -318,10 +322,6 @@ func (s *SQL) Query(labels map[string]string) ([]*rspb.Release, error) {
 			continue
 		}
 		releases = append(releases, release)
-	}
-
-	if len(releases) == 0 {
-		return nil, ErrReleaseNotFound
 	}
 
 	return releases, nil
