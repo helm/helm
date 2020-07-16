@@ -83,6 +83,17 @@ func TestResolve(t *testing.T) {
 			},
 		},
 		{
+			name: "repo from valid local path with range resolution",
+			req: []*chart.Dependency{
+				{Name: "base", Repository: "file://base", Version: "^0.1.0"},
+			},
+			expect: &chart.Lock{
+				Dependencies: []*chart.Dependency{
+					{Name: "base", Repository: "file://base", Version: "0.1.0"},
+				},
+			},
+		},
+		{
 			name: "repo from invalid local path",
 			req: []*chart.Dependency{
 				{Name: "notexist", Repository: "file://testdata/notexist", Version: "0.1.0"},
