@@ -171,6 +171,10 @@ func (m *Manager) Update() error {
 	// For the repositories Helm is not configured to know about, ensure Helm
 	// has some information about them and, when possible, the index files
 	// locally.
+	// TODO(mattfarina): Repositories should be explicitly added by end users
+	// rather than automattic. In Helm v4 require users to add repositories. They
+	// should have to add them in order to make sure they are aware of the
+	// respoitories and opt-in to any locations. For security.
 	repoNames, err = m.ensureMissingRepos(repoNames, req)
 	if err != nil {
 		return err
