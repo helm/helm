@@ -389,3 +389,33 @@ func TestErrRepoNotFound_Error(t *testing.T) {
 		})
 	}
 }
+
+func TestKey(t *testing.T) {
+	tests := []struct {
+		name   string
+		expect string
+	}{
+		{
+			name:   "file:////tmp",
+			expect: "afeed3459e92a874f6373aca264ce1459bfa91f9c1d6612f10ae3dc2ee955df3",
+		},
+		{
+			name:   "https://example.com/charts",
+			expect: "7065c57c94b2411ad774638d76823c7ccb56415441f5ab2f5ece2f3845728e5d",
+		},
+		{
+			name:   "foo/bar/baz",
+			expect: "15c46a4f8a189ae22f36f201048881d6c090c93583bedcf71f5443fdef224c82",
+		},
+	}
+
+	for _, tt := range tests {
+		o, err := key(tt.name)
+		if err != nil {
+			t.Fatalf("unable to generate key for %q with error: %s", tt.name, err)
+		}
+		if o != tt.expect {
+			t.Errorf("wrong key name generated for %q, expected %q but got %q", tt.name, tt.expect, o)
+		}
+	}
+}
