@@ -96,5 +96,5 @@ func updateCharts(repos []*repo.ChartRepository, out io.Writer) {
 		}(re)
 	}
 	wg.Wait()
-	fmt.Fprintln(out, "Update Complete. ⎈ Happy Helming!⎈ ")
+	fmt.Fprintln(out, "Update Complete. ⎈Happy Helming!⎈")
 }
