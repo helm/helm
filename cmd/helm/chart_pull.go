@@ -32,7 +32,8 @@ This will store the chart in the local registry cache to be used later.
 `
 
 func newChartPullCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
-	return &cobra.Command{
+	var insecureOpt, plainHTTPOpt bool
+	cmd := &cobra.Command{
 		Use:    "pull [ref]",
 		Short:  "pull a chart from remote",
 		Long:   chartPullDesc,
@@ -40,7 +41,13 @@ func newChartPullCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Hidden: !FeatureGateOCI.IsEnabled(),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ref := args[0]
-			return action.NewChartPull(cfg).Run(out, ref)
+			return action.NewChartPull(cfg).Run(out, ref, insecureOpt, plainHTTPOpt)
 		},
 	}
+
+	f := cmd.Flags()
+	f.BoolVarP(&insecureOpt, "insecure", "", false, "allow connections to TLS registry without certs")
+	f.BoolVarP(&plainHTTPOpt, "plain-http", "", false, "use plain http and not https")
+
+	return cmd
 }

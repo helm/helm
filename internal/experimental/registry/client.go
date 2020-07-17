@@ -19,12 +19,14 @@ package registry // import "helm.sh/helm/v3/internal/experimental/registry"
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"sort"
 
+	"github.com/containerd/containerd/remotes"
 	auth "github.com/deislabs/oras/pkg/auth/docker"
 	"github.com/deislabs/oras/pkg/content"
 	"github.com/deislabs/oras/pkg/oras"
@@ -76,7 +78,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 		}
 	}
 	if client.resolver == nil {
-		resolver, err := client.authorizer.Resolver(context.Background(), http.DefaultClient, false)
+		resolver, err := client.newResolver(false, false)
 		if err != nil {
 			return nil, err
 		}
@@ -119,7 +121,17 @@ func (c *Client) Logout(hostname string) error {
 }
 
 // PushChart uploads a chart to a registry
-func (c *Client) PushChart(ref *Reference) error {
+func (c *Client) PushChart(ref *Reference, insecure bool, plainHTTP bool) error {
+	if insecure || plainHTTP {
+		resolver, err := c.newResolver(insecure, plainHTTP)
+		if err != nil {
+			return err
+		}
+		c.resolver = &Resolver{
+			Resolver: resolver,
+		}
+	}
+
 	r, err := c.cache.FetchReference(ref)
 	if err != nil {
 		return err
@@ -199,7 +211,17 @@ func (c *Client) PullChart(ref *Reference) (*bytes.Buffer, error) {
 // PullChartToCache pulls a chart from an OCI Registry to the Registry Cache.
 // This function is needed for `helm chart pull`, which is experimental and will be deprecated soon.
 // Likewise, the Registry cache will soon be deprecated as will this function.
-func (c *Client) PullChartToCache(ref *Reference) error {
+func (c *Client) PullChartToCache(ref *Reference, insecure bool, plainHTTP bool) error {
+	if insecure || plainHTTP {
+		resolver, err := c.newResolver(insecure, plainHTTP)
+		if err != nil {
+			return err
+		}
+		c.resolver = &Resolver{
+			Resolver: resolver,
+		}
+	}
+
 	if ref.Tag == "" {
 		return errors.New("tag explicitly required")
 	}
@@ -333,4 +355,18 @@ func (c *Client) getChartTableRows() ([][]interface{}, error) {
 		}
 	}
 	return rows, nil
+}
+
+func (c *Client) newResolver(insecure bool, plainHTTP bool) (resolver remotes.Resolver, err error) {
+	client := http.DefaultClient
+	if insecure {
+		client.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		}
+	}
+
+	resolver, err = c.authorizer.Resolver(context.Background(), client, plainHTTP)
+	return
 }
