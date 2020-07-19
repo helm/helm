@@ -46,7 +46,7 @@ func NewReleaseTesting(cfg *Configuration) *ReleaseTesting {
 }
 
 // Run executes 'helm test' against the given release.
-func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
+func (r *ReleaseTesting) Run(name string, filters map[string][]string) (*release.Release, error) {
 	if err := r.cfg.KubeClient.IsReachable(); err != nil {
 		return nil, err
 	}
@@ -61,11 +61,26 @@ func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
 		return rel, err
 	}
 
+	skippedHooks := []*release.Hook{}
+	executingHooks := []*release.Hook{}
+	if len(filters["skip"]) != 0 {
+		for _, h := range rel.Hooks {
+			if contains(filters["skip"], h.Name) {
+				skippedHooks = append(skippedHooks, h)
+			} else {
+				executingHooks = append(executingHooks, h)
+			}
+		}
+		rel.Hooks = executingHooks
+	}
+
 	if err := r.cfg.execHook(rel, release.HookTest, r.Timeout); err != nil {
+		rel.Hooks = append(skippedHooks, rel.Hooks...)
 		r.cfg.Releases.Update(rel)
 		return rel, err
 	}
 
+	rel.Hooks = append(skippedHooks, rel.Hooks...)
 	return rel, r.cfg.Releases.Update(rel)
 }
 
@@ -97,4 +112,13 @@ func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 		}
 	}
 	return nil
+}
+
+func contains(arr []string, value string) bool {
+	for _, item := range arr {
+		if item == value {
+			return true
+		}
+	}
+	return false
 }

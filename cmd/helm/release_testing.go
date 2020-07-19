@@ -39,6 +39,7 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 	client := action.NewReleaseTesting(cfg)
 	var outfmt = output.Table
 	var outputLogs bool
+	var skip []string
 
 	cmd := &cobra.Command{
 		Use:   "test [RELEASE]",
@@ -53,7 +54,8 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.Namespace = settings.Namespace()
-			rel, runErr := client.Run(args[0])
+			filters := map[string][]string{"skip": skip}
+			rel, runErr := client.Run(args[0], filters)
 			// We only return an error if we weren't even able to get the
 			// release, otherwise we keep going so we can print status and logs
 			// if requested
@@ -80,6 +82,7 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 	f := cmd.Flags()
 	f.DurationVar(&client.Timeout, "timeout", 300*time.Second, "time to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&outputLogs, "logs", false, "dump the logs from test pods (this runs after all tests are complete, but before any cleanup)")
+	f.StringSliceVar(&skip, "skip", []string{}, "names of tests to skip (can specify multiple or separate values with commas: test1,test2)")
 
 	return cmd
 }
