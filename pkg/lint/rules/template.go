@@ -121,6 +121,7 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 
 		renderedContent := renderedContentMap[filepath.Join(chart.Name(), fileName)]
 		if strings.TrimSpace(renderedContent) != "" {
+			fmt.Printf("Template %s: \n %s", path, renderedContent)
 			var yamlStruct K8sYamlStruct
 			// Even though K8sYamlStruct only defines a few fields, an error in any other
 			// key will be raised as well
