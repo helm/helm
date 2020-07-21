@@ -19,7 +19,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/util/homedir"
 
@@ -65,7 +67,11 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 			if client.Verify {
 				man.Verify = downloader.VerifyIfPossible
 			}
-			return man.Build()
+			err := man.Build()
+			if e, ok := err.(downloader.ErrRepoNotFound); ok {
+				return errors.Errorf("no repository definition for %s. Please add the missing repos via 'helm repo add'", strings.Join(e.Repos, ", "))
+			}
+			return err
 		},
 	}
 
