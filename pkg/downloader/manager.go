@@ -48,6 +48,7 @@ type ErrRepoNotFound struct {
 	Repos []string
 }
 
+// Error implements the error interface.
 func (e ErrRepoNotFound) Error() string {
 	return fmt.Sprintf("no repository definition for %s", strings.Join(e.Repos, ", "))
 }
@@ -479,31 +480,14 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 		if !found {
 			repository := dd.Repository
 			// Add if URL
-			_, err := url.ParseRequestURI(repository)
-			if err == nil {
-				reposMap[repository] = repository
-				continue
+			if _, err := url.ParseRequestURI(repository); err != nil {
+				return nil, err
 			}
 			missing = append(missing, repository)
 		}
 	}
 	if len(missing) > 0 {
-		errorMessage := fmt.Sprintf("no repository definition for %s. Please add them via 'helm repo add'", strings.Join(missing, ", "))
-		// It is common for people to try to enter "stable" as a repository instead of the actual URL.
-		// For this case, let's give them a suggestion.
-		containsNonURL := false
-		for _, repo := range missing {
-			if !strings.Contains(repo, "//") && !strings.HasPrefix(repo, "@") && !strings.HasPrefix(repo, "alias:") {
-				containsNonURL = true
-			}
-		}
-		if containsNonURL {
-			errorMessage += `
-Note that repositories must be URLs or aliases. For example, to refer to the "example"
-repository, use "https://charts.example.com/" or "@example" instead of
-"example". Don't forget to add the repo, too ('helm repo add').`
-		}
-		return nil, errors.New(errorMessage)
+		return nil, ErrRepoNotFound{missing}
 	}
 	return reposMap, nil
 }

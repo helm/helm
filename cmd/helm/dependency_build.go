@@ -16,12 +16,11 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/util/homedir"
 
@@ -69,7 +68,7 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 			}
 			err := man.Build()
 			if e, ok := err.(downloader.ErrRepoNotFound); ok {
-				return errors.Errorf("no repository definition for %s. Please add the missing repos via 'helm repo add'", strings.Join(e.Repos, ", "))
+				return fmt.Errorf("%s. Please add the missing repos via 'helm repo add'", e.Error())
 			}
 			return err
 		},
