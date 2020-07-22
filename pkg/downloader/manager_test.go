@@ -360,3 +360,32 @@ func TestBuild_WithRepositoryAlias(t *testing.T) {
 		Repository: "@test",
 	})
 }
+
+func TestErrRepoNotFound_Error(t *testing.T) {
+	type fields struct {
+		Repos []string
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   string
+	}{
+		{
+			name: "OK",
+			fields: fields{
+				Repos: []string{"https://charts1.example.com", "https://charts2.example.com"},
+			},
+			want: "no repository definition for https://charts1.example.com, https://charts2.example.com",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := ErrRepoNotFound{
+				Repos: tt.fields.Repos,
+			}
+			if got := e.Error(); got != tt.want {
+				t.Errorf("Error() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

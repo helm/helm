@@ -42,6 +42,17 @@ import (
 	"helm.sh/helm/v3/pkg/repo"
 )
 
+// ErrRepoNotFound indicates that chart repositories can't be found in local repo cache.
+// The value of Repos is missing repos.
+type ErrRepoNotFound struct {
+	Repos []string
+}
+
+// Error implements the error interface.
+func (e ErrRepoNotFound) Error() string {
+	return fmt.Sprintf("no repository definition for %s", strings.Join(e.Repos, ", "))
+}
+
 // Manager handles the lifecycle of fetching, resolving, and storing dependencies.
 type Manager struct {
 	// Out is used to print warnings and notifications.
@@ -411,7 +422,7 @@ Loop:
 		missing = append(missing, dd.Repository)
 	}
 	if len(missing) > 0 {
-		return errors.Errorf("no repository definition for %s. Please add the missing repos via 'helm repo add'", strings.Join(missing, ", "))
+		return ErrRepoNotFound{missing}
 	}
 	return nil
 }
