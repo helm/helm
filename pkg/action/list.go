@@ -250,7 +250,8 @@ func (l *List) filterStateMask(releases []*release.Release) []*release.Release {
 
 	for _, rls := range releases {
 		currentStatus := l.StateMask.FromName(rls.Info.Status.String())
-		if l.StateMask&currentStatus == 0 {
+		mask := l.StateMask & currentStatus
+		if mask == 0 {
 			continue
 		}
 		desiredStateReleases = append(desiredStateReleases, rls)
