@@ -17,12 +17,14 @@ package main
 
 import (
 	"io"
+	"os"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/downloader"
 	"helm.sh/helm/v3/pkg/getter"
 )
@@ -71,13 +73,31 @@ func newDependencyUpdateCmd(cfg *action.Configuration, out io.Writer) *cobra.Com
 			if client.Verify {
 				man.Verify = downloader.VerifyAlways
 			}
-			return man.Update()
+
+			err := man.Update()
+			if err != nil {
+				return err
+			}
+
+			if client.Untar {
+				match := chartpath + "/charts/*.tgz"
+				files, err := filepath.Glob(match)
+				if err != nil {
+					return err
+				}
+				for _, f := range files {
+					chartutil.ExpandFile(chartpath+"/charts/", f)
+					os.Remove(f)
+				}
+			}
+			return nil
 		},
 	}
 
 	f := cmd.Flags()
 	f.BoolVar(&client.Verify, "verify", false, "verify the packages against signatures")
 	f.StringVar(&client.Keyring, "keyring", defaultKeyring(), "keyring containing public keys")
+	f.BoolVar(&client.Untar, "untar", false, "if set to true, will untar the chart after downloading it")
 	f.BoolVar(&client.SkipRefresh, "skip-refresh", false, "do not refresh the local repository cache")
 
 	return cmd
