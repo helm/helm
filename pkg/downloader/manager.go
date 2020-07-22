@@ -108,13 +108,7 @@ func (m *Manager) Build() error {
 		}
 	}
 
-	repoNames, err := m.resolveRepoNames(req)
-	if err != nil {
-		return err
-	}
-
-	_, err = m.ensureMissingRepos(repoNames, req)
-	if err != nil {
+	if _, err := m.resolveRepoNames(req); err != nil {
 		return err
 	}
 
@@ -130,6 +124,11 @@ func (m *Manager) Build() error {
 		} else {
 			return errors.New("the lock file (Chart.lock) is out of sync with the dependencies file (Chart.yaml). Please update the dependencies")
 		}
+	}
+
+	// Check that all of the repos we're dependent on actually exist.
+	if err := m.hasAllRepos(lock.Dependencies); err != nil {
+		return err
 	}
 
 	if !m.SkipUpdate {
@@ -174,7 +173,7 @@ func (m *Manager) Update() error {
 	// TODO(mattfarina): Repositories should be explicitly added by end users
 	// rather than automattic. In Helm v4 require users to add repositories. They
 	// should have to add them in order to make sure they are aware of the
-	// respoitories and opt-in to any locations. For security.
+	// respoitories and opt-in to any locations, for security.
 	repoNames, err = m.ensureMissingRepos(repoNames, req)
 	if err != nil {
 		return err
@@ -409,6 +408,40 @@ func (m *Manager) safeDeleteDep(name, dir string) error {
 	return nil
 }
 
+// hasAllRepos ensures that all of the referenced deps are in the local repo cache.
+func (m *Manager) hasAllRepos(deps []*chart.Dependency) error {
+	rf, err := loadRepoConfig(m.RepositoryConfig)
+	if err != nil {
+		return err
+	}
+	repos := rf.Repositories
+
+	// Verify that all repositories referenced in the deps are actually known
+	// by Helm.
+	missing := []string{}
+Loop:
+	for _, dd := range deps {
+		// If repo is from local path, continue
+		if strings.HasPrefix(dd.Repository, "file://") {
+			continue
+		}
+
+		if dd.Repository == "" {
+			continue
+		}
+		for _, repo := range repos {
+			if urlutil.Equal(repo.URL, strings.TrimSuffix(dd.Repository, "/")) {
+				continue Loop
+			}
+		}
+		missing = append(missing, dd.Repository)
+	}
+	if len(missing) > 0 {
+		return ErrRepoNotFound{missing}
+	}
+	return nil
+}
+
 // ensureMissingRepos attempts to ensure the repository information for repos
 // not managed by Helm is present. This takes in the repoNames Helm is configured
 // to work with along with the chart dependencies. It will find the deps not
@@ -435,7 +468,7 @@ func (m *Manager) ensureMissingRepos(repoNames map[string]string, deps []*chart.
 		if err != nil {
 			return repoNames, err
 		}
-		rn = "helm-manager-" + rn
+		rn = managerKeyPrefix + rn
 
 		repoNames[dd.Name] = rn
 
@@ -578,7 +611,7 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 			if _, err := r.DownloadIndexFile(); err != nil {
 				// For those dependencies that are not known to helm and using a
 				// generated key name we display the repo url.
-				if strings.HasPrefix(r.Config.Name, "helm-manager-") {
+				if strings.HasPrefix(r.Config.Name, managerKeyPrefix) {
 					fmt.Fprintf(m.Out, "...Unable to get an update from the %q chart repository:\n\t%s\n", r.Config.URL, err)
 				} else {
 					fmt.Fprintf(m.Out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", r.Config.Name, r.Config.URL, err)
@@ -586,7 +619,7 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 			} else {
 				// For those dependencies that are not known to helm and using a
 				// generated key name we display the repo url.
-				if strings.HasPrefix(r.Config.Name, "helm-manager-") {
+				if strings.HasPrefix(r.Config.Name, managerKeyPrefix) {
 					fmt.Fprintf(m.Out, "...Successfully got an update from the %q chart repository\n", r.Config.URL)
 				} else {
 					fmt.Fprintf(m.Out, "...Successfully got an update from the %q chart repository\n", r.Config.Name)
@@ -791,6 +824,9 @@ func move(tmpPath, destPath string) error {
 	}
 	return nil
 }
+
+// The prefix to use for cache keys created by the manager for repo names
+const managerKeyPrefix = "helm-manager-"
 
 // key is used to turn a name, such as a repository url, into a filesystem
 // safe name that is unique for querying. To accomplish this a unique hash of
