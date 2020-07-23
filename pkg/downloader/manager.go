@@ -16,6 +16,8 @@ limitations under the License.
 package downloader
 
 import (
+	"crypto"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -158,14 +160,27 @@ func (m *Manager) Update() error {
 		return nil
 	}
 
-	// Check that all of the repos we're dependent on actually exist and
-	// the repo index names.
+	// Get the names of the repositories the dependencies need that Helm is
+	// configured to know about.
 	repoNames, err := m.resolveRepoNames(req)
 	if err != nil {
 		return err
 	}
 
-	// For each repo in the file, update the cached copy of that repo
+	// For the repositories Helm is not configured to know about, ensure Helm
+	// has some information about them and, when possible, the index files
+	// locally.
+	// TODO(mattfarina): Repositories should be explicitly added by end users
+	// rather than automattic. In Helm v4 require users to add repositories. They
+	// should have to add them in order to make sure they are aware of the
+	// respoitories and opt-in to any locations, for security.
+	repoNames, err = m.ensureMissingRepos(repoNames, req)
+	if err != nil {
+		return err
+	}
+
+	// For each of the repositories Helm is configured to know about, update
+	// the index information locally.
 	if !m.SkipUpdate {
 		if err := m.UpdateRepositories(); err != nil {
 			return err
@@ -427,6 +442,62 @@ Loop:
 	return nil
 }
 
+// ensureMissingRepos attempts to ensure the repository information for repos
+// not managed by Helm is present. This takes in the repoNames Helm is configured
+// to work with along with the chart dependencies. It will find the deps not
+// in a known repo and attempt to ensure the data is present for steps like
+// version resolution.
+func (m *Manager) ensureMissingRepos(repoNames map[string]string, deps []*chart.Dependency) (map[string]string, error) {
+
+	var ru []*repo.Entry
+
+	for _, dd := range deps {
+
+		// When the repoName for a dependency is known we can skip ensuring
+		if _, ok := repoNames[dd.Name]; ok {
+			continue
+		}
+
+		// The generated repository name, which will result in an index being
+		// locally cached, has a name pattern of "helm-manager-" followed by a
+		// sha256 of the repo name. This assumes end users will never create
+		// repositories with these names pointing to other repositories. Using
+		// this method of naming allows the existing repository pulling and
+		// resolution code to do most of the work.
+		rn, err := key(dd.Repository)
+		if err != nil {
+			return repoNames, err
+		}
+		rn = managerKeyPrefix + rn
+
+		repoNames[dd.Name] = rn
+
+		// Assuming the repository is generally available. For Helm managed
+		// access controls the repository needs to be added through the user
+		// managed system. This path will work for public charts, like those
+		// supplied by Bitnami, but not for protected charts, like corp ones
+		// behind a username and pass.
+		ri := &repo.Entry{
+			Name: rn,
+			URL:  dd.Repository,
+		}
+		ru = append(ru, ri)
+	}
+
+	// Calls to UpdateRepositories (a public function) will only update
+	// repositories configured by the user. Here we update repos found in
+	// the dependencies that are not known to the user if update skipping
+	// is not configured.
+	if !m.SkipUpdate && len(ru) > 0 {
+		fmt.Fprintln(m.Out, "Getting updates for unmanaged Helm repositories...")
+		if err := m.parallelRepoUpdate(ru); err != nil {
+			return repoNames, err
+		}
+	}
+
+	return repoNames, nil
+}
+
 // resolveRepoNames returns the repo names of the referenced deps which can be used to fetch the cached index file
 // and replaces aliased repository URLs into resolved URLs in dependencies.
 func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string, error) {
@@ -517,16 +588,18 @@ func (m *Manager) UpdateRepositories() error {
 	}
 	repos := rf.Repositories
 	if len(repos) > 0 {
+		fmt.Fprintln(m.Out, "Hang tight while we grab the latest from your chart repositories...")
 		// This prints warnings straight to out.
 		if err := m.parallelRepoUpdate(repos); err != nil {
 			return err
 		}
+		fmt.Fprintln(m.Out, "Update Complete. ⎈Happy Helming!⎈")
 	}
 	return nil
 }
 
 func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
-	fmt.Fprintln(m.Out, "Hang tight while we grab the latest from your chart repositories...")
+
 	var wg sync.WaitGroup
 	for _, c := range repos {
 		r, err := repo.NewChartRepository(c, m.Getters)
@@ -536,15 +609,27 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 		wg.Add(1)
 		go func(r *repo.ChartRepository) {
 			if _, err := r.DownloadIndexFile(); err != nil {
-				fmt.Fprintf(m.Out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", r.Config.Name, r.Config.URL, err)
+				// For those dependencies that are not known to helm and using a
+				// generated key name we display the repo url.
+				if strings.HasPrefix(r.Config.Name, managerKeyPrefix) {
+					fmt.Fprintf(m.Out, "...Unable to get an update from the %q chart repository:\n\t%s\n", r.Config.URL, err)
+				} else {
+					fmt.Fprintf(m.Out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", r.Config.Name, r.Config.URL, err)
+				}
 			} else {
-				fmt.Fprintf(m.Out, "...Successfully got an update from the %q chart repository\n", r.Config.Name)
+				// For those dependencies that are not known to helm and using a
+				// generated key name we display the repo url.
+				if strings.HasPrefix(r.Config.Name, managerKeyPrefix) {
+					fmt.Fprintf(m.Out, "...Successfully got an update from the %q chart repository\n", r.Config.URL)
+				} else {
+					fmt.Fprintf(m.Out, "...Successfully got an update from the %q chart repository\n", r.Config.Name)
+				}
 			}
 			wg.Done()
 		}(r)
 	}
 	wg.Wait()
-	fmt.Fprintln(m.Out, "Update Complete. ⎈Happy Helming!⎈")
+
 	return nil
 }
 
@@ -738,4 +823,19 @@ func move(tmpPath, destPath string) error {
 		}
 	}
 	return nil
+}
+
+// The prefix to use for cache keys created by the manager for repo names
+const managerKeyPrefix = "helm-manager-"
+
+// key is used to turn a name, such as a repository url, into a filesystem
+// safe name that is unique for querying. To accomplish this a unique hash of
+// the string is used.
+func key(name string) (string, error) {
+	in := strings.NewReader(name)
+	hash := crypto.SHA256.New()
+	if _, err := io.Copy(hash, in); err != nil {
+		return "", nil
+	}
+	return hex.EncodeToString(hash.Sum(nil)), nil
 }
