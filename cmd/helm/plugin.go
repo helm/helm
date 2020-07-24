@@ -35,6 +35,7 @@ func newPluginCmd(out io.Writer) *cobra.Command {
 		Use:   "plugin",
 		Short: "install, list, or uninstall Helm plugins",
 		Long:  pluginHelp,
+		Run:   func(cmd *cobra.Command, args []string) {},
 	}
 	cmd.AddCommand(
 		newPluginInstallCmd(out),

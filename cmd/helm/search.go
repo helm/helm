@@ -34,6 +34,7 @@ func newSearchCmd(out io.Writer) *cobra.Command {
 		Use:   "search [keyword]",
 		Short: "search for a keyword in charts",
 		Long:  searchDesc,
+		Run:   func(cmd *cobra.Command, args []string) {},
 	}
 
 	cmd.AddCommand(newSearchHubCmd(out))

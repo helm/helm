@@ -89,6 +89,7 @@ func newDependencyCmd(out io.Writer) *cobra.Command {
 		Short:   "manage a chart's dependencies",
 		Long:    dependencyDesc,
 		Args:    require.NoArgs,
+		Run:     func(cmd *cobra.Command, args []string) {},
 	}
 
 	cmd.AddCommand(newDependencyListCmd(out))

@@ -41,6 +41,7 @@ func newGetCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Short: "download extended information of a named release",
 		Long:  getHelp,
 		Args:  require.NoArgs,
+		Run:   func(cmd *cobra.Command, args []string) {},
 	}
 
 	cmd.AddCommand(newGetAllCmd(cfg, out))

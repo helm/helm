@@ -60,6 +60,7 @@ func newShowCmd(out io.Writer) *cobra.Command {
 		Aliases: []string{"inspect"},
 		Long:    showDesc,
 		Args:    require.NoArgs,
+		Run:     func(cmd *cobra.Command, args []string) {},
 	}
 
 	// Function providing dynamic auto-completion
