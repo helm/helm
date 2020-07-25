@@ -123,6 +123,9 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 			if err := yaml.Unmarshal(f.Data, &c.Lock); err != nil {
 				return c, errors.Wrap(err, "cannot load requirements.lock")
 			}
+			if c.Metadata == nil {
+				c.Metadata = new(chart.Metadata)
+			}
 			if c.Metadata.APIVersion == chart.APIVersionV1 {
 				c.Files = append(c.Files, &chart.File{Name: f.Name, Data: f.Data})
 			}
