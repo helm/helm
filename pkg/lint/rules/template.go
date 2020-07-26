@@ -32,7 +32,7 @@ import (
 )
 
 // Templates lints the templates in the Linter.
-func Templates(linter *support.Linter, values []byte, namespace string, strict bool) {
+func Templates(linter *support.Linter, values []byte, namespace string) {
 	path := "templates/"
 	templatesPath := filepath.Join(linter.ChartDir, path)
 
@@ -77,9 +77,6 @@ func Templates(linter *support.Linter, values []byte, namespace string, strict b
 	}
 	e := engine.New()
 	e.LintMode = true
-	if strict {
-		e.Strict = true
-	}
 	renderedContentMap, err := e.Render(chart, valuesToRender)
 
 	renderOk := linter.RunLinterRule(support.ErrorSev, path, err)
