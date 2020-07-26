@@ -97,7 +97,7 @@ func (l *lintCmd) run() error {
 	var total int
 	var failures int
 	for _, path := range l.paths {
-		linter, err := lintChart(path, rvals, l.namespace, l.strict)
+		linter, err := lintChart(path, rvals, l.namespace)
 		if err != nil {
 			failures = failures + 1
 			fmt.Println("==> Skipping", path)
@@ -132,7 +132,7 @@ func (l *lintCmd) run() error {
 	return nil
 }
 
-func lintChart(path string, vals []byte, namespace string, strict bool) (support.Linter, error) {
+func lintChart(path string, vals []byte, namespace string) (support.Linter, error) {
 	var chartPath string
 	linter := support.Linter{}
 
@@ -171,7 +171,7 @@ func lintChart(path string, vals []byte, namespace string, strict bool) (support
 		return linter, fmt.Errorf("unable to check Chart.yaml file in chart: %s", err.Error())
 	}
 
-	return lint.All(chartPath, vals, namespace, strict), nil
+	return lint.All(chartPath, vals, namespace), nil
 }
 
 // vals merges values from files specified via -f/--values and

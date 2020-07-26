@@ -31,7 +31,6 @@ var values = []byte{}
 
 const (
 	namespace        = "testNamespace"
-	strict           = false
 	badChartDir      = "rules/testdata/badchartfile"
 	badValuesFileDir = "rules/testdata/badvaluesfile"
 	badYamlFileDir   = "rules/testdata/albatross"
@@ -39,7 +38,7 @@ const (
 )
 
 func TestBadChart(t *testing.T) {
-	m := All(badChartDir, values, namespace, strict).Messages
+	m := All(badChartDir, values, namespace).Messages
 	if len(m) != 6 {
 		t.Errorf("Number of errors %v", len(m))
 		t.Errorf("All didn't fail with expected errors, got %#v", m)
@@ -79,7 +78,7 @@ func TestBadChart(t *testing.T) {
 }
 
 func TestInvalidYaml(t *testing.T) {
-	m := All(badYamlFileDir, values, namespace, strict).Messages
+	m := All(badYamlFileDir, values, namespace).Messages
 	if len(m) != 1 {
 		t.Fatalf("All didn't fail with expected errors, got %#v", m)
 	}
@@ -89,7 +88,7 @@ func TestInvalidYaml(t *testing.T) {
 }
 
 func TestBadValues(t *testing.T) {
-	m := All(badValuesFileDir, values, namespace, strict).Messages
+	m := All(badValuesFileDir, values, namespace).Messages
 	if len(m) != 1 {
 		t.Fatalf("All didn't fail with expected errors, got %#v", m)
 	}
@@ -99,7 +98,7 @@ func TestBadValues(t *testing.T) {
 }
 
 func TestGoodChart(t *testing.T) {
-	m := All(goodChartDir, values, namespace, strict).Messages
+	m := All(goodChartDir, values, namespace).Messages
 	if len(m) != 0 {
 		t.Errorf("All failed but shouldn't have: %#v", m)
 	}
@@ -130,7 +129,7 @@ func TestHelmCreateChart(t *testing.T) {
 		return
 	}
 
-	m := All(createdChart, values, namespace, true).Messages
+	m := All(createdChart, values, namespace).Messages
 	if ll := len(m); ll != 1 {
 		t.Errorf("All should have had exactly 1 error. Got %d", ll)
 	} else if msg := m[0].Err.Error(); !strings.Contains(msg, "icon is recommended") {
