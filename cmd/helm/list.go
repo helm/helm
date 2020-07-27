@@ -132,13 +132,14 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 }
 
 type releaseElement struct {
-	Name       string `json:"name"`
-	Namespace  string `json:"namespace"`
-	Revision   string `json:"revision"`
-	Updated    string `json:"updated"`
-	Status     string `json:"status"`
-	Chart      string `json:"chart"`
-	AppVersion string `json:"app_version"`
+	Name         string `json:"name"`
+	Namespace    string `json:"namespace"`
+	Revision     string `json:"revision"`
+	Updated      string `json:"updated"`
+	Status       string `json:"status"`
+	Chart        string `json:"chart"`
+	AppVersion   string `json:"app_version"`
+	ChartVersion string `json:"chart_version"`
 }
 
 type releaseListWriter struct {
@@ -150,12 +151,13 @@ func newReleaseListWriter(releases []*release.Release) *releaseListWriter {
 	elements := make([]releaseElement, 0, len(releases))
 	for _, r := range releases {
 		element := releaseElement{
-			Name:       r.Name,
-			Namespace:  r.Namespace,
-			Revision:   strconv.Itoa(r.Version),
-			Status:     r.Info.Status.String(),
-			Chart:      fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version),
-			AppVersion: r.Chart.Metadata.AppVersion,
+			Name:         r.Name,
+			Namespace:    r.Namespace,
+			Revision:     strconv.Itoa(r.Version),
+			Status:       r.Info.Status.String(),
+			Chart:        fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version),
+			AppVersion:   r.Chart.Metadata.AppVersion,
+			ChartVersion: r.Chart.Metadata.Version,
 		}
 		t := "-"
 		if tspb := r.Info.LastDeployed; !tspb.IsZero() {
@@ -169,9 +171,9 @@ func newReleaseListWriter(releases []*release.Release) *releaseListWriter {
 
 func (r *releaseListWriter) WriteTable(out io.Writer) error {
 	table := uitable.New()
-	table.AddRow("NAME", "NAMESPACE", "REVISION", "UPDATED", "STATUS", "CHART", "APP VERSION")
+	table.AddRow("NAME", "NAMESPACE", "REVISION", "UPDATED", "STATUS", "CHART", "APP VERSION", "CHART VERSION")
 	for _, r := range r.releases {
-		table.AddRow(r.Name, r.Namespace, r.Revision, r.Updated, r.Status, r.Chart, r.AppVersion)
+		table.AddRow(r.Name, r.Namespace, r.Revision, r.Updated, r.Status, r.Chart, r.AppVersion, r.ChartVersion)
 	}
 	return output.EncodeTable(out, table)
 }
