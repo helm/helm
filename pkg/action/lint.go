@@ -33,6 +33,7 @@ import (
 //
 // It provides the implementation of 'helm lint'.
 type Lint struct {
+	ChartPathOptions
 	Strict        bool
 	Namespace     string
 	WithSubcharts bool
