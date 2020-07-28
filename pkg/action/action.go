@@ -99,7 +99,9 @@ type Configuration struct {
 // renderResources renders the templates in a chart
 //
 // TODO: This function is badly in need of a refactor.
-func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, disableHooks bool, pr postrender.PostRenderer, dryRun bool) ([]*release.Hook, *bytes.Buffer, string, error) {
+// TODO: As part of the refactor the duplicate code in cmd/helm/template.go should be removed
+//       This code has to do with writing files to dick.
+func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, dryRun bool) ([]*release.Hook, *bytes.Buffer, string, error) {
 	hs := []*release.Hook{}
 	b := bytes.NewBuffer(nil)
 
@@ -209,24 +211,6 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 				return hs, b, "", err
 			}
 			fileWritten[m.Name] = true
-		}
-	}
-
-	if !disableHooks && len(hs) > 0 {
-		for _, h := range hs {
-			if outputDir == "" {
-				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", h.Path, h.Manifest)
-			} else {
-				newDir := outputDir
-				if useReleaseName {
-					newDir = filepath.Join(outputDir, releaseName)
-				}
-				err = writeToFile(newDir, h.Path, h.Manifest, fileWritten[h.Path])
-				if err != nil {
-					return hs, b, "", err
-				}
-				fileWritten[h.Path] = true
-			}
 		}
 	}
 

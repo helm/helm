@@ -20,6 +20,8 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -79,6 +81,25 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if rel != nil {
 				var manifests bytes.Buffer
 				fmt.Fprintln(&manifests, strings.TrimSpace(rel.Manifest))
+				if !client.DisableHooks {
+					fileWritten := make(map[string]bool)
+					for _, m := range rel.Hooks {
+						if client.OutputDir == "" {
+							fmt.Fprintf(&manifests, "---\n# Source: %s\n%s\n", m.Path, m.Manifest)
+						} else {
+							newDir := client.OutputDir
+							if client.UseReleaseName {
+								newDir = filepath.Join(client.OutputDir, client.ReleaseName)
+							}
+							err = writeToFile(newDir, m.Path, m.Manifest, fileWritten[m.Path])
+							if err != nil {
+								return err
+							}
+							fileWritten[m.Path] = true
+						}
+
+					}
+				}
 
 				// if we have a list of files to render, then check that each of the
 				// provided files exists in the chart.
@@ -148,4 +169,51 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	bindPostRenderFlag(cmd, &client.PostRenderer)
 
 	return cmd
+}
+
+// The following functions (writeToFile, createOrOpenFile, and ensureDirectoryForFile)
+// are coppied from the actions package. This is part of a change to correct a
+// bug introduced by #8156. As part of the todo to refactor renderResources
+// this duplicate code should be removed. It is added here so that the API
+// surface area is as minimally impacted as possible in fixing the issue.
+func writeToFile(outputDir string, name string, data string, append bool) error {
+	outfileName := strings.Join([]string{outputDir, name}, string(filepath.Separator))
+
+	err := ensureDirectoryForFile(outfileName)
+	if err != nil {
+		return err
+	}
+
+	f, err := createOrOpenFile(outfileName, append)
+	if err != nil {
+		return err
+	}
+
+	defer f.Close()
+
+	_, err = f.WriteString(fmt.Sprintf("---\n# Source: %s\n%s\n", name, data))
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("wrote %s\n", outfileName)
+	return nil
+}
+
+func createOrOpenFile(filename string, append bool) (*os.File, error) {
+	if append {
+		return os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0600)
+	}
+	return os.Create(filename)
+}
+
+func ensureDirectoryForFile(file string) error {
+	baseDir := path.Dir(file)
+	_, err := os.Stat(baseDir)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	return os.MkdirAll(baseDir, 0755)
 }
