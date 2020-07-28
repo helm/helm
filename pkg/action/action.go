@@ -183,7 +183,11 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 			if outputDir == "" {
 				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Name, string(crd.File.Data[:]))
 			} else {
-				err = writeToFile(outputDir, crd.Filename, string(crd.File.Data[:]), fileWritten[crd.Name])
+				newDir := outputDir
+				if useReleaseName {
+					newDir = filepath.Join(outputDir, releaseName)
+				}
+				err = writeToFile(newDir, crd.Filename, string(crd.File.Data[:]), fileWritten[crd.Name])
 				if err != nil {
 					return hs, b, "", err
 				}
