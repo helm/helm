@@ -39,6 +39,8 @@ The status consists of:
 - last deployment time
 - k8s namespace in which the release lives
 - state of the release (can be: unknown, deployed, uninstalled, superseded, failed, uninstalling, pending-install, pending-upgrade or pending-rollback)
+- revision of the release
+- description of the release (can be completion message or error message, need to enable --show-desc)
 - list of resources that this release consists of, sorted by kind
 - details on last test suite run, if applicable
 - additional notes provided by the chart
@@ -68,7 +70,7 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			// strip chart metadata from the output
 			rel.Chart = nil
 
-			return outfmt.Write(out, &statusPrinter{rel, false})
+			return outfmt.Write(out, &statusPrinter{rel, false, client.ShowDescription})
 		},
 	}
 
@@ -88,13 +90,15 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	}
 
 	bindOutputFlag(cmd, &outfmt)
+	f.BoolVar(&client.ShowDescription, "show-desc", false, "if set, display the description message of the named release")
 
 	return cmd
 }
 
 type statusPrinter struct {
-	release *release.Release
-	debug   bool
+	release         *release.Release
+	debug           bool
+	showDescription bool
 }
 
 func (s statusPrinter) WriteJSON(out io.Writer) error {
@@ -116,6 +120,9 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 	fmt.Fprintf(out, "NAMESPACE: %s\n", s.release.Namespace)
 	fmt.Fprintf(out, "STATUS: %s\n", s.release.Info.Status.String())
 	fmt.Fprintf(out, "REVISION: %d\n", s.release.Version)
+	if s.showDescription {
+		fmt.Fprintf(out, "DESCRIPTION: %s\n", s.release.Info.Description)
+	}
 
 	executions := executionsByHookEvent(s.release)
 	if tests, ok := executions[release.HookTest]; !ok || len(tests) == 0 {
