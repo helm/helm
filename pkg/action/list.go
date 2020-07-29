@@ -126,6 +126,7 @@ type List struct {
 	Deployed     bool
 	Failed       bool
 	Pending      bool
+	Selector     string
 }
 
 // NewList constructs a new *List
