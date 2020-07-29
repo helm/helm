@@ -20,6 +20,8 @@ import (
 	"path"
 	"regexp"
 
+	"k8s.io/apimachinery/pkg/labels"
+
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/releaseutil"
 )
@@ -152,11 +154,22 @@ func (l *List) Run() ([]*release.Release, error) {
 		}
 	}
 
+	selectorObj, err := labels.Parse(l.Selector)
+	if err != nil {
+		return nil, err
+	}
+
 	results, err := l.cfg.Releases.List(func(rel *release.Release) bool {
 		// Skip anything that doesn't match the filter.
 		if filter != nil && !filter.MatchString(rel.Name) {
 			return false
 		}
+
+		// Skip anything that doesn't match the selector
+		if ! selectorObj.Matches(labels.Set(rel.Labels)) {
+			return false
+		}
+		
 		return true
 	})
 
