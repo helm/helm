@@ -1,0 +1,7 @@
+NAME: flummoxed-chickadee
+LAST DEPLOYED: Sat Jan 16 00:00:00 2016
+NAMESPACE: default
+STATUS: deployed
+REVISION: 0
+DESCRIPTION: Mock description
+TEST SUITE: None

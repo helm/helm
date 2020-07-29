@@ -45,6 +45,14 @@ func TestStatusCmd(t *testing.T) {
 			Status: release.StatusDeployed,
 		}),
 	}, {
+		name:   "get status of a deployed release, with desc",
+		cmd:    "status --show-desc flummoxed-chickadee",
+		golden: "output/status-with-desc.txt",
+		rels: releasesMockWithStatus(&release.Info{
+			Status:      release.StatusDeployed,
+			Description: "Mock description",
+		}),
+	}, {
 		name:   "get status of a deployed release with notes",
 		cmd:    "status flummoxed-chickadee",
 		golden: "output/status-with-notes.txt",
