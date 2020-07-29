@@ -98,6 +98,7 @@ func (secrets *Secrets) List(filter func(*rspb.Release) bool) ([]*rspb.Release, 
 			continue
 		}
 		if filter(rls) {
+			rls.Labels = item.ObjectMeta.Labels
 			results = append(results, rls)
 		}
 	}

@@ -37,6 +37,8 @@ type Release struct {
 	Version int `json:"version,omitempty"`
 	// Namespace is the kubernetes namespace of the release.
 	Namespace string `json:"namespace,omitempty"`
+	// Labels of the release
+	Labels map[string]string `json:"labels,omitempty"`
 }
 
 // SetStatus is a helper for setting the status on a release.

@@ -106,6 +106,7 @@ func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Releas
 			continue
 		}
 		if filter(rls) {
+			rls.Labels = item.ObjectMeta.Labels
 			results = append(results, rls)
 		}
 	}
