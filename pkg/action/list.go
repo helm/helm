@@ -172,10 +172,10 @@ func (l *List) Run() ([]*release.Release, error) {
 		}
 
 		// Skip anything that doesn't match the selector
-		if ! selectorObj.Matches(labels.Set(rel.Labels)) {
+		if !selectorObj.Matches(labels.Set(rel.Labels)) {
 			return false
 		}
-		
+
 		return true
 	})
 
