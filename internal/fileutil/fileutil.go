@@ -22,15 +22,18 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/pkg/errors"
+
 	"helm.sh/helm/v3/internal/third_party/dep/fs"
 )
 
 // AtomicWriteFile atomically (as atomic as os.Rename allows) writes a file to a
 // disk.
 func AtomicWriteFile(filename string, reader io.Reader, mode os.FileMode) error {
-	tempFile, err := ioutil.TempFile(filepath.Split(filename))
+	tdir, tname := filepath.Split(filename)
+	tempFile, err := ioutil.TempFile(tdir, tname)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to create %s in dir %s", tname, tdir)
 	}
 	tempName := tempFile.Name()
 

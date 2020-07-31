@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -67,7 +68,8 @@ func TestInstallRelease(t *testing.T) {
 	is.NoError(err)
 
 	is.Len(rel.Hooks, 1)
-	is.Equal(rel.Hooks[0].Manifest, manifestWithHook)
+	hookWithComment := "# Source: hello/templates/hooks\n" + manifestWithHook
+	is.Equal(rel.Hooks[0].Manifest, hookWithComment)
 	is.Equal(rel.Hooks[0].Events[0], release.HookPostInstall)
 	is.Equal(rel.Hooks[0].Events[1], release.HookPreDelete, "Expected event 0 is pre-delete")
 
@@ -100,8 +102,9 @@ func TestInstallReleaseWithValues(t *testing.T) {
 	rel, err := instAction.cfg.Releases.Get(res.Name, res.Version)
 	is.NoError(err)
 
+	hookWithComment := "# Source: hello/templates/hooks\n" + manifestWithHook
 	is.Len(rel.Hooks, 1)
-	is.Equal(rel.Hooks[0].Manifest, manifestWithHook)
+	is.Equal(rel.Hooks[0].Manifest, hookWithComment)
 	is.Equal(rel.Hooks[0].Events[0], release.HookPostInstall)
 	is.Equal(rel.Hooks[0].Events[1], release.HookPreDelete, "Expected event 0 is pre-delete")
 
@@ -149,7 +152,8 @@ func TestInstallRelease_WithNotes(t *testing.T) {
 	rel, err := instAction.cfg.Releases.Get(res.Name, res.Version)
 	is.NoError(err)
 	is.Len(rel.Hooks, 1)
-	is.Equal(rel.Hooks[0].Manifest, manifestWithHook)
+	hookWithComment := "# Source: hello/templates/hooks\n" + manifestWithHook
+	is.Equal(rel.Hooks[0].Manifest, hookWithComment)
 	is.Equal(rel.Hooks[0].Events[0], release.HookPostInstall)
 	is.Equal(rel.Hooks[0].Events[1], release.HookPreDelete, "Expected event 0 is pre-delete")
 	is.NotEqual(len(res.Manifest), 0)
@@ -656,4 +660,32 @@ func TestNameAndChartGenerateName(t *testing.T) {
 			is.Equal(tc.Chart, chrt)
 		})
 	}
+}
+
+type PostRenderFixture struct {
+	output string
+}
+
+func (p *PostRenderFixture) Run(input *bytes.Buffer) (*bytes.Buffer, error) {
+	return bytes.NewBufferString(p.output), nil
+}
+
+func TestDoPostRender(t *testing.T) {
+	postRenderIn := "input"
+	postRenderOut := `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: post-render-out
+`
+	caps := chartutil.DefaultCapabilities
+	pfx := &PostRenderFixture{postRenderOut}
+	rel := &release.Release{}
+
+	if err := doPostRender(pfx, bytes.NewBufferString(postRenderIn), rel, caps); err != nil {
+		t.Fatal(err)
+	}
+
+	expect := fmt.Sprintf("---\n# Source: v1.ConfigMap.post-render-out.yaml%s", postRenderOut)
+	assert.Equal(t, rel.Manifest, expect)
 }

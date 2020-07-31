@@ -222,12 +222,22 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		return nil, nil, err
 	}
 
-	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, false, u.PostRenderer, u.DryRun)
+	/*
+		hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, false, u.PostRenderer, u.DryRun)
+
+	*/
+	rflags := renderFlags{dryRun: u.DryRun, includeHooks: true, subNotes: u.SubNotes}
+	rendered, err := u.cfg.renderResources2(chart, valuesToRender, rflags)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// Store an upgraded release.
+	manifest := rendered.manifest()
+	hooks, err := rendered.releaseHooks(u.cfg)
+	if err != nil {
+		return nil, nil, err
+	}
 	upgradedRelease := &release.Release{
 		Name:      name,
 		Namespace: currentRelease.Namespace,
@@ -238,16 +248,21 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 			LastDeployed:  Timestamper(),
 			Status:        release.StatusPendingUpgrade,
 			Description:   "Preparing upgrade", // This should be overwritten later.
+			Notes:         rendered.notes,
 		},
 		Version:  revision,
-		Manifest: manifestDoc.String(),
+		Manifest: manifest,
 		Hooks:    hooks,
 	}
 
-	if len(notesTxt) > 0 {
-		upgradedRelease.Info.Notes = notesTxt
+	// Run the post-render.
+	if u.PostRenderer != nil {
+		if err := doPostRender(u.PostRenderer, rendered.toBuffer(rflags), upgradedRelease, caps); err != nil {
+			return currentRelease, upgradedRelease, err
+		}
 	}
-	err = validateManifest(u.cfg.KubeClient, manifestDoc.Bytes(), !u.DisableOpenAPIValidation)
+
+	err = validateManifest(u.cfg.KubeClient, []byte(upgradedRelease.Manifest), !u.DisableOpenAPIValidation)
 	return currentRelease, upgradedRelease, err
 }
 

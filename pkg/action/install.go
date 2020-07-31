@@ -235,17 +235,53 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 
 	rel := i.createRelease(chrt, vals)
 
-	var manifestDoc *bytes.Buffer
-	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.DisableHooks, i.PostRenderer, i.DryRun)
-	// Even for errors, attach this if available
-	if manifestDoc != nil {
-		rel.Manifest = manifestDoc.String()
+	rflags := renderFlags{
+		includeCrds:  i.IncludeCRDs,
+		includeHooks: !i.DisableHooks,
+		dryRun:       i.DryRun,
+		subNotes:     i.SubNotes,
 	}
+	rendered, err := i.cfg.renderResources2(chrt, valuesToRender, rflags)
+	var err2 error
+	// Do our best to attach content. Even if there is an error, this may be informative
+	rel.Manifest = rendered.toBuffer(rflags).String()
+	rel.Hooks, err2 = rendered.releaseHooks(i.cfg)
+	if err2 != nil {
+		return rel, err2
+	}
+	rel.Info.Notes = rendered.notes
+
+	//var manifestDoc *bytes.Buffer
+	//rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.DisableHooks, i.PostRenderer, i.DryRun)
+
 	// Check error from render
 	if err != nil {
 		rel.SetStatus(release.StatusFailed, fmt.Sprintf("failed to render resource: %s", err.Error()))
 		// Return a release with partial data so that the client can show debugging information.
 		return rel, err
+	}
+
+	// Run the post-render.
+	// Note that this was moved before the i.OutputDir check so that post-render support
+	// can be added to 'helm template'
+	if i.PostRenderer != nil {
+		if err := doPostRender(i.PostRenderer, rendered.toBuffer(rflags), rel, caps); err != nil {
+			return rel, err
+		}
+	}
+
+	// Write to an output directory if necessary.
+	if i.OutputDir != "" {
+		dest := i.OutputDir
+		if i.UseReleaseName {
+			dest = filepath.Join(i.OutputDir, i.ReleaseName)
+		}
+		// TODO: Is there any condition under which we want to change the includeHooks or
+		// includeCrds flag?
+		if err := rendered.writeDirectory(dest, rflags); err != nil {
+			i.cfg.Log("Could not write files to %s: %s", dest, err)
+			return rel, err
+		}
 	}
 
 	// Mark this release as in-progress
@@ -375,6 +411,56 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	}
 
 	return rel, nil
+}
+
+// doPostRender performs a PostRender run and modifies the release appropriately.
+//
+// A post-render takes the rendered result of templates, pipes it out to the external
+// processor, and then receives the results. There is no assurance that the incoming
+// data bears any resemblance to the rendered templates. Therefore, we have to go through
+// some extra steps to re-process that data, shaping it back into the form that Helm
+// expects. This can be a "lossy" process, in the sense that we lose a strong correlation
+// between how the input (the Helm chart) correlates to specific outputs (Kubernetes
+// objects).
+func doPostRender(pr postrender.PostRenderer, manifest *bytes.Buffer, rel *release.Release, caps *chartutil.Capabilities) error {
+	// Execute the renderer, and with the result it gives us back.
+	manifest, err := pr.Run(manifest)
+	if err != nil {
+		return errors.Wrap(err, "error while running post render on files")
+	}
+
+	// Attempt to re-parse the objects into Helm internal representations (namely file->data).
+	// This performs some validation on the YAML, but is not exhaustive.
+	files, err := postrender.Reparse(manifest.Bytes())
+	if err != nil {
+		return errors.Wrap(err, "YAML returned from post-render cannot be parsed")
+	}
+
+	// Now we re-sort the manifests. We do this because a post-render can modify things
+	// in an unpredictable way. For example, it may rewrite hooks to not be hooks.
+	var resources []releaseutil.Manifest
+	rel.Hooks, resources, err = releaseutil.SortManifests(files, caps.APIVersions, releaseutil.InstallOrder)
+	if err != nil {
+		var b bytes.Buffer
+		// If an error occurse, we try to put together a decent piece of debuggable data,
+		// since this data is the output of an external process.
+		for name, content := range files {
+			if strings.TrimSpace(content) == "" {
+				continue
+			}
+			fmt.Fprintf(&b, "---\n# Source: %s\n%s\n", name, content)
+		}
+		rel.Manifest = b.String()
+		return err
+	}
+
+	// Now we just need to re-attach the resources to the release.
+	var buf bytes.Buffer
+	for _, m := range resources {
+		fmt.Fprintf(&buf, "---\n# Source: %s\n%s\n", m.Name, m.Content)
+	}
+	rel.Manifest = buf.String()
+	return nil
 }
 
 func (i *Install) failRelease(rel *release.Release, err error) (*release.Release, error) {

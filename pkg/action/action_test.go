@@ -353,3 +353,52 @@ func TestValidName(t *testing.T) {
 		}
 	}
 }
+
+func TestRenderedResources(t *testing.T) {
+	hook := `apiVersion: v1
+kind: Secret
+metadata:
+  name: hook
+  annotations:
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-weight": 999
+stringData:
+  hello: world`
+
+	r := renderedResources{
+		hooks: []*renderedDocument{
+			{name: "hook", content: hook},
+		},
+		resources: []*renderedDocument{
+			{name: "manifest1", content: "manifest 1\n"},
+			{name: "manifest2", content: "manifest 2"},
+		},
+		notes: "NOTES",
+		crds: []*renderedDocument{
+			{name: "crd", content: "crd"},
+		},
+	}
+
+	expect := `---
+manifest 1
+---
+manifest 2`
+
+	if r.manifest() != expect {
+		t.Errorf("Expected two manifests. Expected: %q\nGot %q", expect, r.manifest())
+	}
+
+	hooks, err := r.releaseHooks(actionConfigFixture(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(hooks) != 1 {
+		t.Fatalf("Expected 1 hook, got %d", len(hooks))
+	}
+	if hooks[0].Name != "hook" {
+		t.Errorf("Expected name 'hook', got %q", hooks[0].Name)
+	}
+	if hooks[0].Manifest != hook {
+		t.Errorf("Expected manifest\n%q, got\n%q", hook, hooks[0].Manifest)
+	}
+}
