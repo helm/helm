@@ -147,7 +147,8 @@ func validateReleaseName(releaseName string) error {
 		return errMissingRelease
 	}
 
-	if !ValidName.MatchString(releaseName) || (len(releaseName) > releaseNameMaxLen) {
+	// Check length first, since that is a less expensive operation.
+	if len(releaseName) > releaseNameMaxLen || !ValidName.MatchString(releaseName) {
 		return errInvalidName
 	}
 
