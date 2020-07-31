@@ -105,7 +105,7 @@ func (ref *Reference) validateRepo() error {
 	return err
 }
 
-// validateNumColon ensures the ref only contains a single colon character (:)
+// validateNumColons ensures the ref only contains a single colon character (:)
 // (or potentially two, there might be a port number specified i.e. :5000)
 func (ref *Reference) validateNumColons() error {
 	if strings.Contains(ref.Tag, ":") {
