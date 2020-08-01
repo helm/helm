@@ -78,6 +78,9 @@ func (cfgmaps *ConfigMaps) Get(key string) (*rspb.Release, error) {
 		cfgmaps.Log("get: failed to decode data %q: %s", key, err)
 		return nil, err
 	}
+
+	r.Labels = getLabelsFromCM(obj)
+
 	// return the release object
 	return r, nil
 }
@@ -106,7 +109,7 @@ func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Releas
 			continue
 		}
 
-		rls.Labels = item.ObjectMeta.Labels
+		rls.Labels = getLabelsFromCM(&item)
 
 		if filter(rls) {
 			results = append(results, rls)
@@ -240,7 +243,10 @@ func newConfigMapsObject(key string, rls *rspb.Release, lbs labels) (*v1.ConfigM
 		lbs.init()
 	}
 
-	// apply labels
+	// apply user labels
+	lbs.fromMap(rls.Labels)
+
+	// apply internal labels
 	lbs.set("name", rls.Name)
 	lbs.set("owner", owner)
 	lbs.set("status", rls.Info.Status.String())
@@ -254,4 +260,14 @@ func newConfigMapsObject(key string, rls *rspb.Release, lbs labels) (*v1.ConfigM
 		},
 		Data: map[string]string{"release": s},
 	}, nil
+}
+
+func getLabelsFromCM(obj *v1.ConfigMap) map[string]string {
+	labels := obj.ObjectMeta.Labels
+
+	for _, k := range []string{"name", "owner", "status", "version"} {
+		delete(labels, k)
+	}
+	
+	return labels
 }
