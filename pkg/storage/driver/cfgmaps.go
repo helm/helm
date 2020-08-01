@@ -79,7 +79,7 @@ func (cfgmaps *ConfigMaps) Get(key string) (*rspb.Release, error) {
 		return nil, err
 	}
 
-	r.Labels = getLabelsFromCM(obj)
+	r.Labels = filterSystemLabels(obj.ObjectMeta.Labels)
 
 	// return the release object
 	return r, nil
@@ -109,7 +109,7 @@ func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Releas
 			continue
 		}
 
-		rls.Labels = getLabelsFromCM(&item)
+		rls.Labels = filterSystemLabels(item.ObjectMeta.Labels)
 
 		if filter(rls) {
 			results = append(results, rls)
@@ -260,14 +260,4 @@ func newConfigMapsObject(key string, rls *rspb.Release, lbs labels) (*v1.ConfigM
 		},
 		Data: map[string]string{"release": s},
 	}, nil
-}
-
-func getLabelsFromCM(obj *v1.ConfigMap) map[string]string {
-	labels := obj.ObjectMeta.Labels
-
-	for _, k := range []string{"name", "owner", "status", "version"} {
-		delete(labels, k)
-	}
-	
-	return labels
 }

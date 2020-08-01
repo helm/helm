@@ -83,3 +83,11 @@ func decodeRelease(data string) (*rspb.Release, error) {
 	}
 	return &rls, nil
 }
+
+// Removes system labels
+func filterSystemLabels(lbs map[string]string) map[string]string {
+	for _, k := range []string{"name", "owner", "status", "version"} {
+		delete(lbs, k)
+	}
+	return lbs
+}
