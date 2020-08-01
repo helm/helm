@@ -244,7 +244,7 @@ func newConfigMapsObject(key string, rls *rspb.Release, lbs labels) (*v1.ConfigM
 	}
 
 	// apply user labels
-	lbs.fromMap(rls.Labels)
+	lbs.mergeUserLabels(rls.Labels)
 
 	// apply internal labels
 	lbs.set("name", rls.Name)
