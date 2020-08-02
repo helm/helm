@@ -150,6 +150,11 @@ func (s *SQL) ensureDBSetup() error {
 					`, sqlReleaseTableName),
 				},
 			},
+			{
+				Id:   "labels",
+				Up:   []string{"CREATE TABLE labels (release_key VARCHAR(67), key VARCHAR(64), value VARCHAR(67));"},
+				Down: []string{"DELETE TABLE labels;"},
+			},
 		},
 	}
 
@@ -399,6 +404,34 @@ func (s *SQL) Create(key string, rls *rspb.Release) error {
 		s.Log("failed to store release %s in SQL database: %v", key, err)
 		return err
 	}
+
+	for lk, lv := range rls.Labels {
+		insertLabelsQuery, args, err := s.statementBuilder.
+			Insert("labels").
+			Columns(
+				"release_key",
+				"key",
+				"value",
+			).
+			Values(
+				key,
+				lk,
+				lv,
+			).ToSql()
+
+		if err != nil {
+			defer transaction.Rollback()
+			s.Log("failed to build insert query: %v", err)
+			return err
+		}
+
+		if _, err := transaction.Exec(insertLabelsQuery, args...); err != nil {
+			defer transaction.Rollback()
+			s.Log("failed to write labels: %v", err)
+			return err
+		}
+	}
+
 	defer transaction.Commit()
 
 	return nil
