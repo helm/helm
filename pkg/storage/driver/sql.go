@@ -152,7 +152,7 @@ func (s *SQL) ensureDBSetup() error {
 			},
 			{
 				Id:   "labels",
-				Up:   []string{"CREATE TABLE labels (release_key VARCHAR(67), key VARCHAR(64), value VARCHAR(67));"},
+				Up:   []string{"CREATE TABLE labels (release_key VARCHAR(67), release_namespace VARCHAR(67), key VARCHAR(64), value VARCHAR(67));"},
 				Down: []string{"DELETE TABLE labels;"},
 			},
 		},
@@ -410,11 +410,13 @@ func (s *SQL) Create(key string, rls *rspb.Release) error {
 			Insert("labels").
 			Columns(
 				"release_key",
+				"release_namespace",
 				"key",
 				"value",
 			).
 			Values(
 				key,
+				namespace,
 				lk,
 				lv,
 			).ToSql()
@@ -516,10 +518,25 @@ func (s *SQL) Delete(key string) (*rspb.Release, error) {
 		Where(sq.Eq{sqlReleaseTableNamespaceColumn: s.namespace}).
 		ToSql()
 	if err != nil {
-		s.Log("failed to build select query: %v", err)
+		s.Log("failed to build delete query: %v", err)
 		return nil, err
 	}
 
-	_, err = transaction.Exec(deleteQuery, args...)
+	if _, err = transaction.Exec(deleteQuery, args...); err != nil {
+		return release, err
+	}
+
+	deleteLabelsQuery, args, err := s.statementBuilder.
+		Delete("labels").
+		Where(sq.Eq{"release_key": key}).
+		Where(sq.Eq{"release_namespace": s.namespace}).
+		ToSql()
+
+	if err != nil {
+		s.Log("failed to build delete labels query: %v", err)
+		return nil, err
+	}
+
+	_, err = transaction.Exec(deleteLabelsQuery, args...)
 	return release, err
 }
