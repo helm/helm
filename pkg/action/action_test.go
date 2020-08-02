@@ -353,3 +353,20 @@ func TestValidName(t *testing.T) {
 		}
 	}
 }
+
+func TestParseLabels(t *testing.T) {
+	names := map[string]bool{
+		"":                  true,
+		"foo":               false,
+		"foo=bar":           true,
+		"foo=bar1,foo2=bar": true,
+		"foo=bar1=bar2":     false,
+	}
+	for input, expectPass := range names {
+		_, err := parseLabels(input)
+		passed := err == nil
+		if passed != expectPass {
+			t.Errorf("Expected %q to %s", input, st)
+		}
+	}
+}

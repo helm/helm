@@ -236,11 +236,8 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 
 	rel := i.createRelease(chrt, vals)
 
-	// FIXME: Rework me
-	rel.Labels = make(map[string]string)
-	for _, label := range strings.Split(i.Labels, ",") {
-		parts := strings.Split(label, "=")
-		rel.Labels[parts[0]] = parts[1]
+	if rel.Labels, err = parseLabels(i.Labels); err != nil {
+		return nil, err
 	}
 
 	var manifestDoc *bytes.Buffer

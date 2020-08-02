@@ -417,3 +417,19 @@ func (c *Configuration) Init(getter genericclioptions.RESTClientGetter, namespac
 
 	return nil
 }
+
+func parseLabels(labels string) (map[string]string, error) {
+	if len(labels) == 0 {
+		return map[string]string{}, nil
+	}
+
+	labelsMap := make(map[string]string)
+	for _, label := range strings.Split(labels, ",") {
+		parts := strings.Split(label, "=")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("Can't parse label: %s", label)
+		}
+		labelsMap[parts[0]] = parts[1]
+	}
+	return labelsMap, nil
+}
