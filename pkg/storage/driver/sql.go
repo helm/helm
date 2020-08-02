@@ -575,6 +575,29 @@ func (s *SQL) Delete(key string) (*rspb.Release, error) {
 		transaction.Rollback()
 		return nil, err
 	}
+
+	LabelsQuery, args, err := s.statementBuilder.
+		Select(sqlLabelTableKeyColumn, sqlLabelTableValueColumn).
+		From(sqlLabelTableName).
+		Where(sq.Eq{sqlLabelTableReleaseKeyColumn: key,
+			sqlLabelTableReleaseNamespaceColumn: s.namespace}).
+		ToSql()
+	if err != nil {
+		s.Log("failed to build query: %v", err)
+		return nil, err
+	}
+
+	var LabelsList = []SQLReleaseLabelWrapper{}
+	if err := s.db.Select(&LabelsList, LabelsQuery, args...); err != nil {
+		s.Log("get: failed to get release Labels: %v", err)
+		return nil, err
+	}
+
+	LabelsMap := make(map[string]string)
+	for _, i := range LabelsList {
+		LabelsMap[i.Key] = i.Value
+	}
+	release.Labels = filterSystemLabels(LabelsMap)
 	defer transaction.Commit()
 
 	deleteQuery, args, err := s.statementBuilder.

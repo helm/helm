@@ -451,6 +451,27 @@ func TestSqlDelete(t *testing.T) {
 			),
 		).RowsWillBeClosed()
 
+	queryLabels := fmt.Sprintf(
+		regexp.QuoteMeta("SELECT %s, %s FROM %s WHERE %s = $1 AND %s = $2"),
+		sqlLabelTableKeyColumn,
+		sqlLabelTableValueColumn,
+		sqlLabelTableName,
+		sqlLabelTableReleaseKeyColumn,
+		sqlLabelTableReleaseNamespaceColumn,
+	)
+
+	eq := mock.ExpectQuery(queryLabels).
+		WithArgs(key, namespace)
+
+	returnRows := mock.NewRows([]string{
+		sqlLabelTableKeyColumn,
+		sqlLabelTableValueColumn,
+	})
+	for k, v := range rel.Labels {
+		returnRows.AddRow(k, v)
+	}
+	eq.WillReturnRows(returnRows).RowsWillBeClosed()
+
 	deleteQuery := fmt.Sprintf(
 		"DELETE FROM %s WHERE %s = $1 AND %s = $2",
 		sqlReleaseTableName,
