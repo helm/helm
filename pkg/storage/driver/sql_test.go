@@ -62,6 +62,27 @@ func TestSQLGet(t *testing.T) {
 			),
 		).RowsWillBeClosed()
 
+	queryLabels := fmt.Sprintf(
+		regexp.QuoteMeta("SELECT %s, %s FROM %s WHERE %s = $1 AND %s = $2"),
+		sqlLabelTableKeyColumn,
+		sqlLabelTableValueColumn,
+		sqlLabelTableName,
+		sqlLabelTableReleaseKeyColumn,
+		sqlLabelTableReleaseNamespaceColumn,
+	)
+
+	eq := mock.ExpectQuery(queryLabels).
+		WithArgs(key, namespace)
+
+	returnRows := mock.NewRows([]string{
+		sqlLabelTableKeyColumn,
+		sqlLabelTableValueColumn,
+	})
+	for k, v := range rel.Labels {
+		returnRows.AddRow(k, v)
+	}
+	eq.WillReturnRows(returnRows).RowsWillBeClosed()
+
 	got, err := sqlDriver.Get(key)
 	if err != nil {
 		t.Fatalf("Failed to get release: %v", err)
@@ -181,6 +202,21 @@ func TestSqlCreate(t *testing.T) {
 		ExpectExec(regexp.QuoteMeta(query)).
 		WithArgs(key, sqlReleaseDefaultType, body, rel.Name, rel.Namespace, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, int(time.Now().Unix())).
 		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	labelsQuery := fmt.Sprintf(
+		"INSERT INTO %s (%s,%s,%s,%s) VALUES ($1,$2,$3,$4)",
+		sqlLabelTableName,
+		sqlLabelTableReleaseKeyColumn,
+		sqlLabelTableReleaseNamespaceColumn,
+		sqlLabelTableKeyColumn,
+		sqlLabelTableValueColumn,
+	)
+	for k, v := range rel.Labels {
+		mock.
+			ExpectExec(regexp.QuoteMeta(labelsQuery)).
+			WithArgs(key, rel.Namespace, k, v).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+	}
 	mock.ExpectCommit()
 
 	if err := sqlDriver.Create(key, rel); err != nil {
@@ -421,11 +457,22 @@ func TestSqlDelete(t *testing.T) {
 		sqlReleaseTableKeyColumn,
 		sqlReleaseTableNamespaceColumn,
 	)
-
 	mock.
 		ExpectExec(regexp.QuoteMeta(deleteQuery)).
 		WithArgs(key, namespace).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	deleteLabelsQuery := fmt.Sprintf(
+		"DELETE FROM %s WHERE %s = $1 AND %s = $2",
+		sqlLabelTableName,
+		sqlLabelTableReleaseKeyColumn,
+		sqlLabelTableReleaseNamespaceColumn,
+	)
+	mock.
+		ExpectExec(regexp.QuoteMeta(deleteLabelsQuery)).
+		WithArgs(key, namespace).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
 	mock.ExpectCommit()
 
 	deletedRelease, err := sqlDriver.Delete(key)
