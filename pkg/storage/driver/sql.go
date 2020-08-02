@@ -34,7 +34,7 @@ import (
 
 var _ Driver = (*SQL)(nil)
 
-var LabelMap = map[string]struct{}{
+var labelMap = map[string]struct{}{
 	"modifiedAt": {},
 	"createdAt":  {},
 	"version":    {},
@@ -208,7 +208,7 @@ type SQLReleaseWrapper struct {
 	// The rspb.Release body, as a base64-encoded string
 	Body string `db:"body"`
 
-	// Release "Labels" that can be used as filters in the storage.Query(Labels map[string]string)
+	// Release "labels" that can be used as filters in the storage.Query(labels map[string]string)
 	// we implemented. Note that allowing Helm users to filter against new dimensions will require a
 	// new migration to be added, and the Create and/or update functions to be updated accordingly.
 	Name       string `db:"name"`
@@ -277,28 +277,10 @@ func (s *SQL) Get(key string) (*rspb.Release, error) {
 		return nil, err
 	}
 
-	LabelsQuery, args, err := s.statementBuilder.
-		Select(sqlLabelTableKeyColumn, sqlLabelTableValueColumn).
-		From(sqlLabelTableName).
-		Where(sq.Eq{sqlLabelTableReleaseKeyColumn: key,
-			sqlLabelTableReleaseNamespaceColumn: s.namespace}).
-		ToSql()
-	if err != nil {
-		s.Log("failed to build query: %v", err)
+	if release.Labels, err = s.getReleaseLabels(key, s.namespace); err != nil {
+		s.Log("failed to get release %s labels: %v", key, err)
 		return nil, err
 	}
-
-	var LabelsList = []SQLReleaseLabelWrapper{}
-	if err := s.db.Select(&LabelsList, LabelsQuery, args...); err != nil {
-		s.Log("get: failed to get release Labels: %v", err)
-		return nil, err
-	}
-
-	LabelsMap := make(map[string]string)
-	for _, i := range LabelsList {
-		LabelsMap[i.Key] = i.Value
-	}
-	release.Labels = filterSystemLabels(LabelsMap)
 
 	return release, nil
 }
@@ -306,7 +288,7 @@ func (s *SQL) Get(key string) (*rspb.Release, error) {
 // List returns the list of all releases such that filter(release) == true
 func (s *SQL) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
 	sb := s.statementBuilder.
-		Select(sqlReleaseTableBodyColumn).
+		Select(sqlReleaseTableKeyColumn, sqlReleaseTableBodyColumn).
 		From(sqlReleaseTableName).
 		Where(sq.Eq{sqlReleaseTableOwnerColumn: sqlReleaseDefaultOwner})
 
@@ -334,6 +316,12 @@ func (s *SQL) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
 			s.Log("list: failed to decode release: %v: %v", record, err)
 			continue
 		}
+
+		if release.Labels, err = s.getReleaseLabels(record.Key, release.Namespace); err != nil {
+			s.Log("failed to get release %s labels: %v", record.Key, err)
+			return nil, err
+		}
+
 		if filter(release) {
 			releases = append(releases, release)
 		}
@@ -342,23 +330,23 @@ func (s *SQL) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
 	return releases, nil
 }
 
-// Query returns the set of releases that match the provided set of Labels.
-func (s *SQL) Query(Labels map[string]string) ([]*rspb.Release, error) {
+// Query returns the set of releases that match the provided set of labels.
+func (s *SQL) Query(labels map[string]string) ([]*rspb.Release, error) {
 	sb := s.statementBuilder.
-		Select(sqlReleaseTableBodyColumn).
+		Select(sqlReleaseTableKeyColumn, sqlReleaseTableBodyColumn).
 		From(sqlReleaseTableName)
 
-	keys := make([]string, 0, len(Labels))
-	for key := range Labels {
+	keys := make([]string, 0, len(labels))
+	for key := range labels {
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
 	for _, key := range keys {
-		if _, ok := LabelMap[key]; ok {
-			sb = sb.Where(sq.Eq{key: Labels[key]})
+		if _, ok := labelMap[key]; ok {
+			sb = sb.Where(sq.Eq{key: labels[key]})
 		} else {
 			s.Log("unknown Label %s", key)
-			return nil, fmt.Errorf("unknow Label %s", key)
+			return nil, fmt.Errorf("unknown label %s", key)
 		}
 	}
 
@@ -376,7 +364,7 @@ func (s *SQL) Query(Labels map[string]string) ([]*rspb.Release, error) {
 
 	var records = []SQLReleaseWrapper{}
 	if err := s.db.Select(&records, query, args...); err != nil {
-		s.Log("list: failed to query with Labels: %v", err)
+		s.Log("list: failed to query with labels: %v", err)
 		return nil, err
 	}
 
@@ -387,6 +375,12 @@ func (s *SQL) Query(Labels map[string]string) ([]*rspb.Release, error) {
 			s.Log("list: failed to decode release: %v: %v", record, err)
 			continue
 		}
+
+		if release.Labels, err = s.getReleaseLabels(record.Key, release.Namespace); err != nil {
+			s.Log("failed to get release %s labels: %v", record.Key, err)
+			return nil, err
+		}
+
 		releases = append(releases, release)
 	}
 
@@ -576,28 +570,12 @@ func (s *SQL) Delete(key string) (*rspb.Release, error) {
 		return nil, err
 	}
 
-	LabelsQuery, args, err := s.statementBuilder.
-		Select(sqlLabelTableKeyColumn, sqlLabelTableValueColumn).
-		From(sqlLabelTableName).
-		Where(sq.Eq{sqlLabelTableReleaseKeyColumn: key,
-			sqlLabelTableReleaseNamespaceColumn: s.namespace}).
-		ToSql()
-	if err != nil {
-		s.Log("failed to build query: %v", err)
+	if release.Labels, err = s.getReleaseLabels(key, s.namespace); err != nil {
+		s.Log("failed to get release %s labels: %v", key, err)
+		transaction.Rollback()
 		return nil, err
 	}
 
-	var LabelsList = []SQLReleaseLabelWrapper{}
-	if err := s.db.Select(&LabelsList, LabelsQuery, args...); err != nil {
-		s.Log("get: failed to get release Labels: %v", err)
-		return nil, err
-	}
-
-	LabelsMap := make(map[string]string)
-	for _, i := range LabelsList {
-		LabelsMap[i.Key] = i.Value
-	}
-	release.Labels = filterSystemLabels(LabelsMap)
 	defer transaction.Commit()
 
 	deleteQuery, args, err := s.statementBuilder.
@@ -627,4 +605,29 @@ func (s *SQL) Delete(key string) (*rspb.Release, error) {
 
 	_, err = transaction.Exec(deleteLabelsQuery, args...)
 	return release, err
+}
+
+// Fetches release labels from database
+func (s *SQL) getReleaseLabels(key string, namespace string) (map[string]string, error) {
+	query, args, err := s.statementBuilder.
+		Select(sqlLabelTableKeyColumn, sqlLabelTableValueColumn).
+		From(sqlLabelTableName).
+		Where(sq.Eq{sqlLabelTableReleaseKeyColumn: key,
+			sqlLabelTableReleaseNamespaceColumn: s.namespace}).
+		ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	var labelsList = []SQLReleaseLabelWrapper{}
+	if err := s.db.Select(&labelsList, query, args...); err != nil {
+		return nil, err
+	}
+
+	labelsMap := make(map[string]string)
+	for _, i := range labelsList {
+		labelsMap[i.Key] = i.Value
+	}
+
+	return filterSystemLabels(labelsMap), nil
 }

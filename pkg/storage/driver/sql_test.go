@@ -62,26 +62,7 @@ func TestSQLGet(t *testing.T) {
 			),
 		).RowsWillBeClosed()
 
-	queryLabels := fmt.Sprintf(
-		regexp.QuoteMeta("SELECT %s, %s FROM %s WHERE %s = $1 AND %s = $2"),
-		sqlLabelTableKeyColumn,
-		sqlLabelTableValueColumn,
-		sqlLabelTableName,
-		sqlLabelTableReleaseKeyColumn,
-		sqlLabelTableReleaseNamespaceColumn,
-	)
-
-	eq := mock.ExpectQuery(queryLabels).
-		WithArgs(key, namespace)
-
-	returnRows := mock.NewRows([]string{
-		sqlLabelTableKeyColumn,
-		sqlLabelTableValueColumn,
-	})
-	for k, v := range rel.Labels {
-		returnRows.AddRow(k, v)
-	}
-	eq.WillReturnRows(returnRows).RowsWillBeClosed()
+	mockLabelsFetch(mock, key, namespace, defaultTestLabels())
 
 	got, err := sqlDriver.Get(key)
 	if err != nil {
@@ -109,7 +90,8 @@ func TestSQLList(t *testing.T) {
 
 	for i := 0; i < 3; i++ {
 		query := fmt.Sprintf(
-			"SELECT %s FROM %s WHERE %s = $1 AND %s = $2",
+			"SELECT %s, %s FROM %s WHERE %s = $1 AND %s = $2",
+			sqlReleaseTableKeyColumn,
 			sqlReleaseTableBodyColumn,
 			sqlReleaseTableName,
 			sqlReleaseTableOwnerColumn,
@@ -130,6 +112,10 @@ func TestSQLList(t *testing.T) {
 					AddRow(body5).
 					AddRow(body6),
 			).RowsWillBeClosed()
+
+		for j := 1; j <= 6; j++ {
+			mockLabelsFetch(mock, "", sqlDriver.namespace, defaultTestLabels())
+		}
 	}
 
 	// list all deleted releases
@@ -347,7 +333,8 @@ func TestSqlQuery(t *testing.T) {
 	sqlDriver, mock := newTestFixtureSQL(t)
 
 	query := fmt.Sprintf(
-		"SELECT %s FROM %s WHERE %s = $1 AND %s = $2 AND %s = $3 AND %s = $4",
+		"SELECT %s, %s FROM %s WHERE %s = $1 AND %s = $2 AND %s = $3 AND %s = $4",
+		sqlReleaseTableKeyColumn,
 		sqlReleaseTableBodyColumn,
 		sqlReleaseTableName,
 		sqlReleaseTableNameColumn,
@@ -367,8 +354,11 @@ func TestSqlQuery(t *testing.T) {
 			),
 		).RowsWillBeClosed()
 
+	mockLabelsFetch(mock, "", "default", defaultTestLabels())
+
 	query = fmt.Sprintf(
-		"SELECT %s FROM %s WHERE %s = $1 AND %s = $2 AND %s = $3",
+		"SELECT %s, %s FROM %s WHERE %s = $1 AND %s = $2 AND %s = $3",
+		sqlReleaseTableKeyColumn,
 		sqlReleaseTableBodyColumn,
 		sqlReleaseTableName,
 		sqlReleaseTableNameColumn,
@@ -388,6 +378,9 @@ func TestSqlQuery(t *testing.T) {
 				deployedReleaseBody,
 			),
 		).RowsWillBeClosed()
+
+	mockLabelsFetch(mock, "", "default", defaultTestLabels())
+	mockLabelsFetch(mock, "", "default", defaultTestLabels())
 
 	results, err := sqlDriver.Query(labelSetDeployed)
 	if err != nil {
@@ -451,26 +444,7 @@ func TestSqlDelete(t *testing.T) {
 			),
 		).RowsWillBeClosed()
 
-	queryLabels := fmt.Sprintf(
-		regexp.QuoteMeta("SELECT %s, %s FROM %s WHERE %s = $1 AND %s = $2"),
-		sqlLabelTableKeyColumn,
-		sqlLabelTableValueColumn,
-		sqlLabelTableName,
-		sqlLabelTableReleaseKeyColumn,
-		sqlLabelTableReleaseNamespaceColumn,
-	)
-
-	eq := mock.ExpectQuery(queryLabels).
-		WithArgs(key, namespace)
-
-	returnRows := mock.NewRows([]string{
-		sqlLabelTableKeyColumn,
-		sqlLabelTableValueColumn,
-	})
-	for k, v := range rel.Labels {
-		returnRows.AddRow(k, v)
-	}
-	eq.WillReturnRows(returnRows).RowsWillBeClosed()
+	mockLabelsFetch(mock, key, namespace, defaultTestLabels())
 
 	deleteQuery := fmt.Sprintf(
 		"DELETE FROM %s WHERE %s = $1 AND %s = $2",
@@ -478,6 +452,7 @@ func TestSqlDelete(t *testing.T) {
 		sqlReleaseTableKeyColumn,
 		sqlReleaseTableNamespaceColumn,
 	)
+
 	mock.
 		ExpectExec(regexp.QuoteMeta(deleteQuery)).
 		WithArgs(key, namespace).
@@ -507,4 +482,28 @@ func TestSqlDelete(t *testing.T) {
 	if !reflect.DeepEqual(rel, deletedRelease) {
 		t.Errorf("Expected release {%v}, got {%v}", rel, deletedRelease)
 	}
+}
+
+// Mocks labels fetch queries
+func mockLabelsFetch(mock sqlmock.Sqlmock, key string, namespace string, labels map[string]string) {
+	query := fmt.Sprintf(
+		regexp.QuoteMeta("SELECT %s, %s FROM %s WHERE %s = $1 AND %s = $2"),
+		sqlLabelTableKeyColumn,
+		sqlLabelTableValueColumn,
+		sqlLabelTableName,
+		sqlLabelTableReleaseKeyColumn,
+		sqlLabelTableReleaseNamespaceColumn,
+	)
+
+	eq := mock.ExpectQuery(query).
+		WithArgs(key, namespace)
+
+	returnRows := mock.NewRows([]string{
+		sqlLabelTableKeyColumn,
+		sqlLabelTableValueColumn,
+	})
+	for k, v := range labels {
+		returnRows.AddRow(k, v)
+	}
+	eq.WillReturnRows(returnRows).RowsWillBeClosed()
 }

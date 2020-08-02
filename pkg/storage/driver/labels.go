@@ -49,7 +49,7 @@ func (lbs *labels) fromMap(kvs map[string]string) {
 
 func (lbs *labels) mergeUserLabels(list map[string]string) {
 	for k, v := range list {
-		if ! isSystemLabel(k) {
+		if !isSystemLabel(k) {
 			lbs.set(k, v)
 		}
 	}

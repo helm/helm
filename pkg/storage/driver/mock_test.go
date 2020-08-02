@@ -40,8 +40,12 @@ func releaseStub(name string, vers int, namespace string, status rspb.Status) *r
 		Version:   vers,
 		Namespace: namespace,
 		Info:      &rspb.Info{Status: status},
-		Labels: map[string]string{"key": "value"},
+		Labels:    defaultTestLabels(),
 	}
+}
+
+func defaultTestLabels() map[string]string {
+	return map[string]string{"key1": "value1", "key2": "value2"}
 }
 
 func testKey(name string, vers int) string {
