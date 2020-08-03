@@ -16,7 +16,9 @@ limitations under the License.
 package getter
 
 import (
+	"context"
 	"fmt"
+	"github.com/pkg/errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -27,8 +29,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/internal/tlsutil"
 	"helm.sh/helm/v3/internal/version"
@@ -50,6 +50,7 @@ func TestHTTPGetter(t *testing.T) {
 	ca, pub, priv := join(cd, "rootca.crt"), join(cd, "crt.pem"), join(cd, "key.pem")
 	insecure := false
 	timeout := time.Second * 5
+	ctx := context.TODO()
 
 	// Test with options
 	g, err = NewHTTPGetter(
@@ -58,6 +59,7 @@ func TestHTTPGetter(t *testing.T) {
 		WithTLSClientConfig(pub, priv, ca),
 		WithInsecureSkipVerifyTLS(insecure),
 		WithTimeout(timeout),
+		WithContext(ctx),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -98,6 +100,10 @@ func TestHTTPGetter(t *testing.T) {
 
 	if hg.opts.timeout != timeout {
 		t.Errorf("Expected NewHTTPGetter to contain %s as Timeout flag, got %s", timeout, hg.opts.timeout)
+	}
+
+	if hg.opts.context != ctx {
+		t.Errorf("Expected NewHTTPGetter to contain %s as Context flag, got %s", ctx, hg.opts.context)
 	}
 
 	// Test if setting insecureSkipVerifyTLS is being passed to the ops

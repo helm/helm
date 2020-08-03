@@ -18,6 +18,7 @@ package getter
 
 import (
 	"bytes"
+	"context"
 	"time"
 
 	"github.com/pkg/errors"
@@ -38,6 +39,7 @@ type options struct {
 	password              string
 	userAgent             string
 	timeout               time.Duration
+	context               context.Context
 }
 
 // Option allows specifying various settings configurable by the user for overriding the defaults
@@ -87,6 +89,13 @@ func WithTLSClientConfig(certFile, keyFile, caFile string) Option {
 func WithTimeout(timeout time.Duration) Option {
 	return func(opts *options) {
 		opts.timeout = timeout
+	}
+}
+
+// WithContext sets the context for requests
+func WithContext(ctx context.Context) Option {
+	return func(opts *options) {
+		opts.context = ctx
 	}
 }
 

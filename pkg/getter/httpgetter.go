@@ -51,6 +51,9 @@ func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
 		return buf, err
 	}
 
+	if g.opts.context != nil {
+		req = req.WithContext(g.opts.context)
+	}
 	req.Header.Set("User-Agent", version.GetUserAgent())
 	if g.opts.userAgent != "" {
 		req.Header.Set("User-Agent", g.opts.userAgent)
