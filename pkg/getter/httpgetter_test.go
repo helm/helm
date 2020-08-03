@@ -18,7 +18,6 @@ package getter
 import (
 	"context"
 	"fmt"
-	"github.com/pkg/errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -29,6 +28,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/internal/tlsutil"
 	"helm.sh/helm/v3/internal/version"
