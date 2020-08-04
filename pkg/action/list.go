@@ -154,19 +154,9 @@ func (l *List) Run() ([]*release.Release, error) {
 		}
 	}
 
-	selectorObj, err := labels.Parse(l.Selector)
-	if err != nil {
-		return nil, err
-	}
-
 	results, err := l.cfg.Releases.List(func(rel *release.Release) bool {
 		// Skip anything that doesn't match the filter.
 		if filter != nil && !filter.MatchString(rel.Name) {
-			return false
-		}
-
-		// Skip anything that doesn't match the selector
-		if !selectorObj.Matches(labels.Set(rel.Labels)) {
 			return false
 		}
 
@@ -191,6 +181,13 @@ func (l *List) Run() ([]*release.Release, error) {
 	// State mask application must occur after filtering to
 	// latest releases, otherwise outdated entries can be returned
 	results = l.filterStateMask(results)
+
+	// Skip anything that doesn't match the selector
+	selectorObj, err := labels.Parse(l.Selector)
+	if err != nil {
+		return nil, err
+	}
+	results = l.filterSelector(results, selectorObj)
 
 	// Unfortunately, we have to sort before truncating, which can incur substantial overhead
 	l.sort(results)
@@ -269,6 +266,18 @@ func (l *List) filterStateMask(releases []*release.Release) []*release.Release {
 			continue
 		}
 		desiredStateReleases = append(desiredStateReleases, rls)
+	}
+
+	return desiredStateReleases
+}
+
+func (l *List) filterSelector(releases []*release.Release, selector labels.Selector) []*release.Release {
+	desiredStateReleases := make([]*release.Release, 0)
+
+	for _, rls := range releases {
+		if selector.Matches(labels.Set(rls.Labels)) {
+			desiredStateReleases = append(desiredStateReleases, rls)
+		}
 	}
 
 	return desiredStateReleases
