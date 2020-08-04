@@ -40,11 +40,12 @@ func TestRepoAddCmd(t *testing.T) {
 	}
 	defer srv.Stop()
 
-	repoFile := filepath.Join(ensure.TempDir(t), "repositories.yaml")
+	tmpdir := ensure.TempDir(t)
+	repoFile := filepath.Join(tmpdir, "repositories.yaml")
 
 	tests := []cmdTestCase{{
 		name:   "add a repository",
-		cmd:    fmt.Sprintf("repo add test-name %s --repository-config %s", srv.URL(), repoFile),
+		cmd:    fmt.Sprintf("repo add test-name %s --repository-config %s --repository-cache %s", srv.URL(), repoFile, tmpdir),
 		golden: "output/repo-add.txt",
 	}}
 
