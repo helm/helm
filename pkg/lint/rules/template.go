@@ -50,12 +50,10 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 	path := "templates/"
 	templatesPath := filepath.Join(linter.ChartDir, path)
 
-	templatesDirExist := linter.RunLinterRule(support.WarningSev, path, validateTemplatesDir(templatesPath))
-
-	// Templates directory is optional for now
-	if !templatesDirExist {
-		return
-	}
+	// Templates directory is optional
+	// if a warning level alarm occurs, just output the result,
+	// and then continue to execute the subsequent logic
+	linter.RunLinterRule(support.WarningSev, path, validateTemplatesDir(templatesPath))
 
 	// Load chart and parse templates
 	chart, err := loader.Load(linter.ChartDir)
