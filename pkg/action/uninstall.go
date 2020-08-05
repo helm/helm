@@ -111,6 +111,10 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	}
 
 	kept, errs := u.deleteRelease(rel)
+
+	if kept != "" {
+		kept = "These resources were kept due to the resource policy:\n" + kept
+	}
 	res.Info = kept
 
 	if !u.DisableHooks {
@@ -189,7 +193,7 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (string, []error) {
 	filesToKeep, filesToDelete := filterManifestsToKeep(files)
 	var kept string
 	for _, f := range filesToKeep {
-		kept += f.Name + "\n"
+		kept += "[" + f.Head.Kind + "] " + f.Head.Metadata.Name + "\n"
 	}
 
 	var builder strings.Builder
