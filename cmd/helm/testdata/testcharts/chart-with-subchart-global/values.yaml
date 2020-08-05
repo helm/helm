@@ -1,0 +1,22 @@
+global:
+  ingress:
+    annotations: {}
+
+dep1:
+  ingress:
+    enabled: true
+    annotations:
+      "some-annotation": "dep1"
+    hosts:
+      - host: localhost1
+        paths:
+          - /
+dep2:
+  ingress:
+    enabled: true
+    annotations:
+      "some-annotation": "dep2"
+    hosts:
+      - host: localhost2
+        paths:
+          - /

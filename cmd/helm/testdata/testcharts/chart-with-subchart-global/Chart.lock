@@ -1,0 +1,9 @@
+dependencies:
+- name: dep1
+  repository: file://../dep1
+  version: 0.1.0
+- name: dep2
+  repository: file://../dep2
+  version: 0.1.0
+digest: sha256:3278a7071cc4f6cecc966ec807fd378018d2f7f07f5f136b538596c1d9066c51
+generated: "2020-08-03T18:59:45.008862+03:00"
