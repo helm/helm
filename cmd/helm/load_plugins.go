@@ -128,7 +128,7 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 func manuallyProcessArgs(args []string) ([]string, []string) {
 	known := []string{}
 	unknown := []string{}
-	kvargs := []string{"--host", "--kube-context", "--home", "--tiller-namespace"}
+	kvargs := []string{"--host", "--kube-context", "--home", "--tiller-namespace", "--kubeconfig"}
 	knownArg := func(a string) bool {
 		for _, pre := range kvargs {
 			if strings.HasPrefix(a, pre+"=") {
