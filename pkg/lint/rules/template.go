@@ -67,7 +67,7 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 	}
 
 	options := chartutil.ReleaseOptions{
-		Name:      "test-release",
+		Name:      chart.Name(),
 		Namespace: namespace,
 	}
 
