@@ -55,7 +55,7 @@ var values = []byte("nameOverride: ''\nhttpPort: 80")
 
 func TestTemplateParsing(t *testing.T) {
 	linter := support.Linter{ChartDir: templateTestBasedir}
-	Templates(&linter, values, namespace)
+	Templates(&linter, values, namespace, strict)
 	res := linter.Messages
 
 	if len(res) != 1 {
@@ -78,7 +78,7 @@ func TestTemplateIntegrationHappyPath(t *testing.T) {
 	defer os.Rename(ignoredTemplatePath, wrongTemplatePath)
 
 	linter := support.Linter{ChartDir: templateTestBasedir}
-	Templates(&linter, values, namespace)
+	Templates(&linter, values, namespace, strict)
 	res := linter.Messages
 
 	if len(res) != 0 {
@@ -112,6 +112,7 @@ data:
   myval1: {{default "val" .Values.mymap.key1 }}
   myval2: {{default "val" .Values.mymap.key2 }}
 `
+	var ingoredStrict = true
 	ch := chart.Chart{
 		Metadata: &chart.Metadata{
 			Name:       "regression.6705",
@@ -132,7 +133,7 @@ data:
 	linter := &support.Linter{
 		ChartDir: filepath.Join(dir, ch.Metadata.Name),
 	}
-	Templates(linter, vals, namespace)
+	Templates(linter, vals, namespace, ingoredStrict)
 	if len(linter.Messages) != 0 {
 		t.Errorf("expected zero messages, got %d", len(linter.Messages))
 		for i, msg := range linter.Messages {

@@ -58,10 +58,11 @@ func TestLintChart(t *testing.T) {
 
 	values := []byte{}
 	namespace := "testNamespace"
+	strict := false
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := lintChart(tt.chartPath, values, namespace)
+			_, err := lintChart(tt.chartPath, values, namespace, strict)
 			switch {
 			case err != nil && !tt.err:
 				t.Errorf("%s", err)
