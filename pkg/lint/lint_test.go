@@ -130,7 +130,7 @@ func TestHelmCreateChart(t *testing.T) {
 		return
 	}
 
-	m := All(createdChart, values, namespace, strict).Messages
+	m := All(createdChart, values, namespace, true).Messages
 	if ll := len(m); ll != 1 {
 		t.Errorf("All should have had exactly 1 error. Got %d", ll)
 	} else if msg := m[0].Err.Error(); !strings.Contains(msg, "icon is recommended") {
