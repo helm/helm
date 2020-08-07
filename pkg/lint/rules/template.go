@@ -32,7 +32,7 @@ import (
 )
 
 // Templates lints the templates in the Linter.
-func Templates(linter *support.Linter, values []byte, namespace string) {
+func Templates(linter *support.Linter, values []byte, namespace string, strict bool) {
 	path := "templates/"
 	templatesPath := filepath.Join(linter.ChartDir, path)
 
