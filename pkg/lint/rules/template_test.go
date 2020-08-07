@@ -112,7 +112,6 @@ data:
   myval1: {{default "val" .Values.mymap.key1 }}
   myval2: {{default "val" .Values.mymap.key2 }}
 `
-	var ingoredStrict = true
 	ch := chart.Chart{
 		Metadata: &chart.Metadata{
 			Name:       "regression.6705",
@@ -133,7 +132,7 @@ data:
 	linter := &support.Linter{
 		ChartDir: filepath.Join(dir, ch.Metadata.Name),
 	}
-	Templates(linter, vals, namespace, ingoredStrict)
+	Templates(linter, vals, namespace, true)
 	if len(linter.Messages) != 0 {
 		t.Errorf("expected zero messages, got %d", len(linter.Messages))
 		for i, msg := range linter.Messages {
