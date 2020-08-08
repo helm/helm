@@ -17,14 +17,12 @@ package main
 
 import (
 	"io"
-	"os"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/downloader"
 	"helm.sh/helm/v3/pkg/getter"
 )
@@ -69,28 +67,12 @@ func newDependencyUpdateCmd(cfg *action.Configuration, out io.Writer) *cobra.Com
 				RepositoryConfig: settings.RepositoryConfig,
 				RepositoryCache:  settings.RepositoryCache,
 				Debug:            settings.Debug,
+				Untar:            client.Untar,
 			}
 			if client.Verify {
 				man.Verify = downloader.VerifyAlways
 			}
-
-			err := man.Update()
-			if err != nil {
-				return err
-			}
-
-			if client.Untar {
-				match := chartpath + "/charts/*.tgz"
-				files, err := filepath.Glob(match)
-				if err != nil {
-					return err
-				}
-				for _, f := range files {
-					chartutil.ExpandFile(chartpath+"/charts/", f)
-					os.Remove(f)
-				}
-			}
-			return nil
+			return man.Update()
 		},
 	}
 
