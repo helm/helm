@@ -221,3 +221,8 @@ func TestPullVersionCompletion(t *testing.T) {
 	}}
 	runTestCmd(t, tests)
 }
+
+func TestPullFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "pull", false)
+	checkFileCompletion(t, "pull repo/chart", false)
+}

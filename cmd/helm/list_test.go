@@ -235,3 +235,7 @@ func TestListCmd(t *testing.T) {
 func TestListOutputCompletion(t *testing.T) {
 	outputFlagCompletionTest(t, "list")
 }
+
+func TestListFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "list", false)
+}

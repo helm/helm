@@ -54,3 +54,7 @@ func TestSearchHubCmd(t *testing.T) {
 func TestSearchHubOutputCompletion(t *testing.T) {
 	outputFlagCompletionTest(t, "search hub")
 }
+
+func TestSearchHubFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "search hub", true) // File completion may be useful when inputing a keyword
+}

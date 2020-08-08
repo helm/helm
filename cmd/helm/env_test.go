@@ -20,10 +20,6 @@ import (
 	"testing"
 )
 
-func TestRepoListOutputCompletion(t *testing.T) {
-	outputFlagCompletionTest(t, "repo list")
-}
-
-func TestRepoListFileCompletion(t *testing.T) {
-	checkFileCompletion(t, "repo list", false)
+func TestEnvFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "env", false)
 }
