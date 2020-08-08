@@ -16,14 +16,8 @@ limitations under the License.
 
 package main
 
-import (
-	"testing"
-)
+import "testing"
 
-func TestRepoListOutputCompletion(t *testing.T) {
-	outputFlagCompletionTest(t, "repo list")
-}
-
-func TestRepoListFileCompletion(t *testing.T) {
-	checkFileCompletion(t, "repo list", false)
+func TestSearchFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "search", false)
 }

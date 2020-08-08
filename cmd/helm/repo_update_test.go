@@ -100,3 +100,7 @@ func TestUpdateCharts(t *testing.T) {
 		t.Error("Update was not successful")
 	}
 }
+
+func TestRepoUpdateFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "repo update", false)
+}
