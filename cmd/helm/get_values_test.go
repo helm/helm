@@ -60,3 +60,8 @@ func TestGetValuesRevisionCompletion(t *testing.T) {
 func TestGetValuesOutputCompletion(t *testing.T) {
 	outputFlagCompletionTest(t, "get values")
 }
+
+func TestGetValuesFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "get values", false)
+	checkFileCompletion(t, "get values myrelease", false)
+}

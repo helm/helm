@@ -75,6 +75,9 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		Short:        "The Helm package manager for Kubernetes.",
 		Long:         globalUsage,
 		SilenceUsage: true,
+		// This breaks completion for 'helm help <TAB>'
+		// The Cobra release following 1.0 will fix this
+		//ValidArgsFunction: noCompletions, // Disable file completion
 	}
 	flags := cmd.PersistentFlags()
 

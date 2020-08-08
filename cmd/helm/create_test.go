@@ -192,3 +192,8 @@ func TestCreateStarterAbsoluteCmd(t *testing.T) {
 		t.Error("Did not find foo.tpl")
 	}
 }
+
+func TestCreateFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "create", true)
+	checkFileCompletion(t, "create myname", false)
+}

@@ -54,10 +54,11 @@ $ helm completion zsh > "${fpath[1]}/_helm"
 
 func newCompletionCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "completion",
-		Short: "generate autocompletions script for the specified shell",
-		Long:  completionDesc,
-		Args:  require.NoArgs,
+		Use:               "completion",
+		Short:             "generate autocompletions script for the specified shell",
+		Long:              completionDesc,
+		Args:              require.NoArgs,
+		ValidArgsFunction: noCompletions, // Disable file completion
 	}
 
 	bash := &cobra.Command{
@@ -66,6 +67,7 @@ func newCompletionCmd(out io.Writer) *cobra.Command {
 		Long:                  bashCompDesc,
 		Args:                  require.NoArgs,
 		DisableFlagsInUseLine: true,
+		ValidArgsFunction:     noCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runCompletionBash(out, cmd)
 		},
@@ -77,6 +79,7 @@ func newCompletionCmd(out io.Writer) *cobra.Command {
 		Long:                  zshCompDesc,
 		Args:                  require.NoArgs,
 		DisableFlagsInUseLine: true,
+		ValidArgsFunction:     noCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runCompletionZsh(out, cmd)
 		},
@@ -252,4 +255,9 @@ __helm_bash_source <(__helm_convert_bash_to_zsh)
 `
 	out.Write([]byte(zshTail))
 	return nil
+}
+
+// Function to disable file completion
+func noCompletions(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	return nil, cobra.ShellCompDirectiveNoFileComp
 }

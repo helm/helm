@@ -160,3 +160,9 @@ func repoAddConcurrent(t *testing.T, testName, repoFile string) {
 		}
 	}
 }
+
+func TestRepoAddFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "repo add", false)
+	checkFileCompletion(t, "repo add reponame", false)
+	checkFileCompletion(t, "repo add reponame https://example.com", false)
+}

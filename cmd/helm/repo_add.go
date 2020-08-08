@@ -57,9 +57,10 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 	o := &repoAddOptions{}
 
 	cmd := &cobra.Command{
-		Use:   "add [NAME] [URL]",
-		Short: "add a chart repository",
-		Args:  require.ExactArgs(2),
+		Use:               "add [NAME] [URL]",
+		Short:             "add a chart repository",
+		Args:              require.ExactArgs(2),
+		ValidArgsFunction: noCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.name = args[0]
 			o.url = args[1]
