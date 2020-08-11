@@ -19,6 +19,7 @@ package kube // import "helm.sh/helm/v3/pkg/kube"
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/pkg/errors"
@@ -44,7 +45,10 @@ import (
 type waiter struct {
 	c       kubernetes.Interface
 	timeout time.Duration
-	log     func(string, ...interface{})
+}
+
+func (w *waiter) log(format string, v ...interface{}) {
+	fmt.Fprintf(os.Stdout, fmt.Sprintf("%s\n", format), v...)
 }
 
 // waitForResources polls to get the current status of all pods, PVCs, and Services
