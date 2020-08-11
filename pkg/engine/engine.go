@@ -28,6 +28,7 @@ import (
 
 	"github.com/pkg/errors"
 	"k8s.io/client-go/rest"
+	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -349,6 +350,33 @@ func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.
 		next["Values"] = vals["Values"]
 	} else if vs, err := vals.Table("Values." + c.Name()); err == nil {
 		next["Values"] = vs
+	}
+
+	// apply the map's transformation and coalesce it with `next`
+	if c.Map != nil {
+		// render the map's template
+		mapTemplate := make(map[string]renderable)
+		mapTemplate["map"] = renderable{
+			tpl:      string(c.Map.Data),
+			vals:     next,
+			basePath: c.ChartFullPath(),
+		}
+		// todo: pass conf to Engine here
+		val, err := Engine{}.render(mapTemplate)
+		if err != nil {
+			// todo
+			fmt.Println("ERRRRORRR:", err)
+			return
+		}
+		// construct the map values from the resulting yaml
+		mapped := map[string]interface{}{}
+		if err := yaml.Unmarshal([]byte(val["map"]), &mapped); err != nil {
+			// todo
+			fmt.Println("ERRRRORRR:", err)
+			return
+		}
+		// coalesce with preference to `mapped`
+		next["Values"] = chartutil.CoalesceTables(mapped, next["Values"].(chartutil.Values).AsMap())
 	}
 
 	for _, child := range c.Dependencies() {

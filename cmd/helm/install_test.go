@@ -201,6 +201,12 @@ func TestInstall(t *testing.T) {
 			name: "install chart with only crds",
 			cmd:  "install crd-test testdata/testcharts/chart-with-only-crds --namespace default",
 		},
+		// Install, base case with map and subcharts
+		{
+			name:   "basic install with a map and subcharts",
+			cmd:    "install aeneas testdata/testcharts/chart-with-map --namespace default",
+			golden: "output/install.txt",
+		},
 	}
 
 	runTestActionCmd(t, tests)

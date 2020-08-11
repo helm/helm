@@ -1,0 +1,7 @@
+apiVersion: v1
+description: Chart with map and subcharts
+name: chart-with-map
+version: 0.0.1
+dependencies:
+  - name: subchart
+    version: 0.0.1

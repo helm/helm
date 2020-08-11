@@ -1,0 +1,4 @@
+derived: {{ printf "%s-%s" .Values.public1 "a" }}
+
+subchart:
+  default: "aa"

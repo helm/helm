@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Pod
+metadata:
+    name: "aaa"
+    labels:
+        derived: {{ .Values.derived }}
+        public1: {{ .Values.public1 }}

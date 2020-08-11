@@ -738,3 +738,50 @@ func TestRenderRecursionLimit(t *testing.T) {
 	}
 
 }
+
+func TestRenderMap(t *testing.T) {
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:    "moby",
+			Version: "1.2.3",
+		},
+		Templates: []*chart.File{
+			{Name: "templates/test1", Data: []byte("{{.Values.outer | title }} {{.Values.inner | title}}")},
+			{Name: "templates/test2", Data: []byte("{{toJson .Values}}")},
+		},
+		// maps "outer"
+		Map: &chart.File{
+			Name: "map",
+			Data: []byte("outer: {{.Values.inner}}-a"),
+		},
+		Values: map[string]interface{}{"inner": "DEFAULT"},
+	}
+
+	// no "outer"
+	vals := map[string]interface{}{
+		"Values": chartutil.Values{
+			"inner": "inn",
+		},
+	}
+
+	v, err := chartutil.CoalesceValues(c, vals)
+	if err != nil {
+		t.Fatalf("Failed to coalesce values: %s", err)
+	}
+	out, err := Render(c, v)
+	if err != nil {
+		t.Errorf("Failed to render templates: %s", err)
+	}
+
+	// "outer" was mapped
+	expect := map[string]string{
+		"moby/templates/test1": "Inn-A Inn",
+		"moby/templates/test2": `{"inner":"inn","outer":"inn-a"}`,
+	}
+
+	for name, data := range expect {
+		if out[name] != data {
+			t.Errorf("Expected %q, got %q", data, out[name])
+		}
+	}
+}

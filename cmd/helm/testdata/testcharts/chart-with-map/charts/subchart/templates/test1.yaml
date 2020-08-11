@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Pod
+metadata:
+    name: "aaa"
+    labels:
+        derived: {{ .Values.derived }}
+        default: {{ .Values.default }}

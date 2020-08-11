@@ -1,0 +1,1 @@
+derived: {{ printf "%s-%s" .Values.default "a" }}
