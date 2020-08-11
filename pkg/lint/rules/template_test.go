@@ -17,12 +17,15 @@ limitations under the License.
 package rules
 
 import (
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/lint/support"
+	"k8s.io/helm/pkg/proto/hapi/chart"
 )
 
 const (
@@ -80,5 +83,60 @@ func TestTemplateIntegrationHappyPath(t *testing.T) {
 
 	if len(res) != 0 {
 		t.Fatalf("Expected no error, got %d, %v", len(res), res)
+	}
+}
+
+// TestSTrictTemplatePrasingMapError is a regression test.
+//
+// The template engine should not produce an error when a map in values.yaml does
+// not contain all possible keys.
+//
+// See https://github.com/helm/helm/issues/7483 (helm v3)
+// and https://github.com/helm/helm/issues/6705 (helm v2)
+func TestStrictTemplateParsingMapError(t *testing.T) {
+	dir, err := ioutil.TempDir("", "helm-test-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	var vals = []byte(`
+mymap:
+  key1: nestedValue
+`)
+	var manifest = `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: foo
+data:
+  myval1: {{default "val" .Values.mymap.key1 }}
+  myval2: {{default "val" .Values.mymap.key2 }}
+`
+	ch := chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:       "regression.6705",
+			ApiVersion: "v1",
+			Version:    "0.1.0",
+		},
+		Templates: []*chart.Template{
+			{
+				Name: "templates/configmap.yaml",
+				Data: []byte(manifest),
+			},
+		},
+	}
+
+	if err := chartutil.SaveDir(&ch, dir); err != nil {
+		t.Fatal(err)
+	}
+	linter := &support.Linter{
+		ChartDir: filepath.Join(dir, ch.Metadata.Name),
+	}
+	Templates(linter, vals, namespace, true)
+	if len(linter.Messages) != 0 {
+		t.Errorf("expected zero messages, got %d", len(linter.Messages))
+		for i, msg := range linter.Messages {
+			t.Logf("Message %d: %q", i, msg)
+		}
 	}
 }

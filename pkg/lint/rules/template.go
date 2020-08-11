@@ -77,9 +77,6 @@ func Templates(linter *support.Linter, values []byte, namespace string, strict b
 	}
 	e := engine.New()
 	e.LintMode = true
-	if strict {
-		e.Strict = true
-	}
 	renderedContentMap, err := e.Render(chart, valuesToRender)
 
 	renderOk := linter.RunLinterRule(support.ErrorSev, path, err)

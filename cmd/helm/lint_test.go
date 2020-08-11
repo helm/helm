@@ -107,3 +107,45 @@ func TestLinRunForNonExistentChart(t *testing.T) {
 		}
 	})
 }
+
+func TestLintRunForStrictErrors(t *testing.T) {
+	out := bytes.NewBufferString("")
+	tests := []struct {
+		name      string
+		chartPath string
+		strict    bool
+		errStr    string
+		wantErr   bool
+	}{
+		{
+			name:      "non-strict should not error",
+			chartPath: "testdata/testcharts/bad.name",
+			strict:    false,
+			wantErr:   false,
+		},
+		{
+			name:      "strict should error",
+			chartPath: "testdata/testcharts/bad.name",
+			strict:    true,
+			errStr:    "1 chart(s) linted, 1 chart(s) failed",
+			wantErr:   true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testLint := &lintCmd{
+				paths:  []string{tt.chartPath},
+				strict: tt.strict,
+				out:    out,
+			}
+			expectedErr := fmt.Errorf(tt.errStr)
+			err := testLint.run()
+			if tt.wantErr && err == nil {
+				t.Errorf("expected error but got no error")
+			}
+			if err != nil && (err.Error() != expectedErr.Error()) {
+				t.Errorf("expected: \"%v\" , but got: \"%v\"", expectedErr, err)
+			}
+		})
+	}
+}
