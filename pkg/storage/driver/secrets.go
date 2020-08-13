@@ -97,6 +97,9 @@ func (secrets *Secrets) List(filter func(*rspb.Release) bool) ([]*rspb.Release, 
 			secrets.Log("list: failed to decode release: %v: %s", item, err)
 			continue
 		}
+
+		rls.Labels = item.ObjectMeta.Labels
+
 		if filter(rls) {
 			results = append(results, rls)
 		}

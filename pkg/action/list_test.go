@@ -320,3 +320,49 @@ func TestFilterLatestReleases(t *testing.T) {
 		assert.ElementsMatch(t, expectedFilteredList, filteredList)
 	})
 }
+
+func TestSelectorList(t *testing.T) {
+	r1 := releaseStub()
+	r1.Name = "r1"
+	r1.Version = 1
+	r1.Labels = map[string]string{"key": "value1"}
+	r2 := releaseStub()
+	r2.Name = "r2"
+	r2.Version = 1
+	r2.Labels = map[string]string{"key": "value2"}
+	r3 := releaseStub()
+	r3.Name = "r3"
+	r3.Version = 1
+	r3.Labels = map[string]string{}
+
+	lister := newListFixture(t)
+	for _, rel := range []*release.Release{r1, r2, r3} {
+		if err := lister.cfg.Releases.Create(rel); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	t.Run("should fail selector parsing", func(t *testing.T) {
+		is := assert.New(t)
+		lister.Selector = "a?=b"
+
+		_, err := lister.Run()
+		is.Error(err)
+	})
+
+	t.Run("should select one release with matching label", func(t *testing.T) {
+		lister.Selector = "key==value1"
+		res, _ := lister.Run()
+
+		expectedFilteredList := []*release.Release{r1}
+		assert.ElementsMatch(t, expectedFilteredList, res)
+	})
+
+	t.Run("should select two releases with non matching label", func(t *testing.T) {
+		lister.Selector = "key!=value1"
+		res, _ := lister.Run()
+
+		expectedFilteredList := []*release.Release{r2, r3}
+		assert.ElementsMatch(t, expectedFilteredList, res)
+	})
+}

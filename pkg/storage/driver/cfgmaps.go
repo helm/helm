@@ -105,6 +105,9 @@ func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Releas
 			cfgmaps.Log("list: failed to decode release: %v: %s", item, err)
 			continue
 		}
+
+		rls.Labels = item.ObjectMeta.Labels
+
 		if filter(rls) {
 			results = append(results, rls)
 		}

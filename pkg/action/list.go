@@ -20,6 +20,8 @@ import (
 	"path"
 	"regexp"
 
+	"k8s.io/apimachinery/pkg/labels"
+
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/releaseutil"
 )
@@ -126,6 +128,7 @@ type List struct {
 	Deployed     bool
 	Failed       bool
 	Pending      bool
+	Selector     string
 }
 
 // NewList constructs a new *List
@@ -156,6 +159,7 @@ func (l *List) Run() ([]*release.Release, error) {
 		if filter != nil && !filter.MatchString(rel.Name) {
 			return false
 		}
+
 		return true
 	})
 
@@ -177,6 +181,13 @@ func (l *List) Run() ([]*release.Release, error) {
 	// State mask application must occur after filtering to
 	// latest releases, otherwise outdated entries can be returned
 	results = l.filterStateMask(results)
+
+	// Skip anything that doesn't match the selector
+	selectorObj, err := labels.Parse(l.Selector)
+	if err != nil {
+		return nil, err
+	}
+	results = l.filterSelector(results, selectorObj)
 
 	// Unfortunately, we have to sort before truncating, which can incur substantial overhead
 	l.sort(results)
@@ -255,6 +266,18 @@ func (l *List) filterStateMask(releases []*release.Release) []*release.Release {
 			continue
 		}
 		desiredStateReleases = append(desiredStateReleases, rls)
+	}
+
+	return desiredStateReleases
+}
+
+func (l *List) filterSelector(releases []*release.Release, selector labels.Selector) []*release.Release {
+	desiredStateReleases := make([]*release.Release, 0)
+
+	for _, rls := range releases {
+		if selector.Matches(labels.Set(rls.Labels)) {
+			desiredStateReleases = append(desiredStateReleases, rls)
+		}
 	}
 
 	return desiredStateReleases
