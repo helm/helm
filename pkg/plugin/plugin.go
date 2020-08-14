@@ -197,4 +197,8 @@ func SetupPluginEnv(settings helm_env.EnvSettings,
 	if settings.Debug {
 		os.Setenv("HELM_DEBUG", "1")
 	}
+
+	if settings.KubeConfig != "" {
+		os.Setenv("KUBECONFIG", settings.KubeConfig)
+	}
 }
