@@ -32,10 +32,11 @@ Env prints out all the environment information in use by Helm.
 
 func newEnvCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "env",
-		Short: "helm client environment information",
-		Long:  envHelp,
-		Args:  require.NoArgs,
+		Use:               "env",
+		Short:             "helm client environment information",
+		Long:              envHelp,
+		Args:              require.NoArgs,
+		ValidArgsFunction: noCompletions,
 		Run: func(cmd *cobra.Command, args []string) {
 			envVars := settings.EnvVars()
 

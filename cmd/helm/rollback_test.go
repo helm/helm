@@ -104,3 +104,9 @@ func TestRollbackRevisionCompletion(t *testing.T) {
 	}}
 	runTestCmd(t, tests)
 }
+
+func TestRollbackFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "rollback", false)
+	checkFileCompletion(t, "rollback myrelease", false)
+	checkFileCompletion(t, "rollback myrelease 1", false)
+}

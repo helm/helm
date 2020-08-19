@@ -298,3 +298,26 @@ func TestLoadPlugins_HelmNoPlugins(t *testing.T) {
 		t.Fatalf("Expected 0 plugins, got %d", len(plugins))
 	}
 }
+
+func TestPluginFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "plugin", false)
+}
+
+func TestPluginInstallFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "plugin install", true)
+	checkFileCompletion(t, "plugin install mypath", false)
+}
+
+func TestPluginListFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "plugin list", false)
+}
+
+func TestPluginUninstallFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "plugin uninstall", false)
+	checkFileCompletion(t, "plugin uninstall myplugin", false)
+}
+
+func TestPluginUpdateFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "plugin update", false)
+	checkFileCompletion(t, "plugin update myplugin", false)
+}

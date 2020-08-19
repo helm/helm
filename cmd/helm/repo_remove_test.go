@@ -160,3 +160,8 @@ func testCacheFiles(t *testing.T, cacheIndexFile string, cacheChartsFile string,
 		t.Errorf("Error cache chart file was not removed for repository %s", repoName)
 	}
 }
+
+func TestRepoRemoveFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "repo remove", false)
+	checkFileCompletion(t, "repo remove repo1", false)
+}

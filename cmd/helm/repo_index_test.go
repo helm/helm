@@ -165,3 +165,8 @@ func copyFile(dst, src string) error {
 
 	return err
 }
+
+func TestRepoIndexFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "repo index", true)
+	checkFileCompletion(t, "repo index mydir", false)
+}

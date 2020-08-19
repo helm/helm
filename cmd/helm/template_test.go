@@ -154,3 +154,10 @@ func TestTemplateVersionCompletion(t *testing.T) {
 	}}
 	runTestCmd(t, tests)
 }
+
+func TestTemplateFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "template", false)
+	checkFileCompletion(t, "template --generate-name", true)
+	checkFileCompletion(t, "template myname", true)
+	checkFileCompletion(t, "template myname mychart", false)
+}

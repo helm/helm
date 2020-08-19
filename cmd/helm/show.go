@@ -55,11 +55,12 @@ func newShowCmd(out io.Writer) *cobra.Command {
 	client := action.NewShow(action.ShowAll)
 
 	showCommand := &cobra.Command{
-		Use:     "show",
-		Short:   "show information of a chart",
-		Aliases: []string{"inspect"},
-		Long:    showDesc,
-		Args:    require.NoArgs,
+		Use:               "show",
+		Short:             "show information of a chart",
+		Aliases:           []string{"inspect"},
+		Long:              showDesc,
+		Args:              require.NoArgs,
+		ValidArgsFunction: noCompletions, // Disable file completion
 	}
 
 	// Function providing dynamic auto-completion

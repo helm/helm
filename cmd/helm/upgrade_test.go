@@ -407,3 +407,9 @@ func TestUpgradeVersionCompletion(t *testing.T) {
 	}}
 	runTestCmd(t, tests)
 }
+
+func TestUpgradeFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "upgrade", false)
+	checkFileCompletion(t, "upgrade myrelease", true)
+	checkFileCompletion(t, "upgrade myrelease repo/chart", false)
+}

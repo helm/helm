@@ -365,6 +365,11 @@ func compListCharts(toComplete string, includeFiles bool) ([]string, cobra.Shell
 		// We handle it ourselves instead.
 		completions = compEnforceNoSpace(completions)
 	}
+	if !includeFiles {
+		// If we should not include files in the completions,
+		// we should disable file completion
+		directive = directive | cobra.ShellCompDirectiveNoFileComp
+	}
 	return completions, directive
 }
 
