@@ -24,8 +24,8 @@ import (
 
 const searchDesc = `
 Search provides the ability to search for Helm charts in the various places
-they can be stored including the Helm Hub and repositories you have added. Use
-search subcommands to search different locations for charts.
+they can be stored including the Artifact Hub and repositories you have added.
+Use search subcommands to search different locations for charts.
 `
 
 func newSearchCmd(out io.Writer) *cobra.Command {

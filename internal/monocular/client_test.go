@@ -21,11 +21,11 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	c, err := New("https://hub.helm.sh")
+	c, err := New("https://artifacthub.io")
 	if err != nil {
 		t.Errorf("error creating client: %s", err)
 	}
-	if c.BaseURL != "https://hub.helm.sh" {
-		t.Errorf("incorrect BaseURL. Expected \"https://hub.helm.sh\" but got %q", c.BaseURL)
+	if c.BaseURL != "https://artifacthub.io" {
+		t.Errorf("incorrect BaseURL. Expected \"https://artifacthub.io\" but got %q", c.BaseURL)
 	}
 }
