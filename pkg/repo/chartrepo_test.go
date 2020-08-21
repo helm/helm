@@ -172,7 +172,7 @@ func TestIndexCustomSchemeDownload(t *testing.T) {
 
 func verifyIndex(t *testing.T, actual *IndexFile) {
 	var empty time.Time
-	if actual.Generated.Equal(empty) {
+	if actual.Generated == empty {
 		t.Errorf("Generated should be greater than 0: %s", actual.Generated)
 	}
 
@@ -242,7 +242,7 @@ func verifyIndex(t *testing.T, actual *IndexFile) {
 			if len(g.Maintainers) != 2 {
 				t.Error("Expected 2 maintainers.")
 			}
-			if g.Created.Equal(empty) {
+			if g.Created == empty {
 				t.Error("Expected created to be non-empty")
 			}
 			if g.Description == "" {
