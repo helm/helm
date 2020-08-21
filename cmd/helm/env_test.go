@@ -20,6 +20,15 @@ import (
 	"testing"
 )
 
+func TestEnv(t *testing.T) {
+	tests := []cmdTestCase{{
+		name:   "completion for env",
+		cmd:    "__complete env ''",
+		golden: "output/env-comp.txt",
+	}}
+	runTestCmd(t, tests)
+}
+
 func TestEnvFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "env", false)
 }
