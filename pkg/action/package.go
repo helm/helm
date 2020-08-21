@@ -135,7 +135,9 @@ func (p *Package) Clearsign(filename string) error {
 // promptUser implements provenance.PassphraseFetcher
 func promptUser(name string) ([]byte, error) {
 	fmt.Printf("Password for key %q >  ", name)
-	pw, err := terminal.ReadPassword(syscall.Stdin)
+	// syscall.Stdin is not an int in all environments and needs to be coerced
+	// into one there (e.g., Windows)
+	pw, err := terminal.ReadPassword(int(syscall.Stdin))
 	fmt.Println()
 	return pw, err
 }
