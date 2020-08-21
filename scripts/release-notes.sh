@@ -39,8 +39,8 @@ done
 
 ## Check for hints that checksum files were downloaded
 ## from `make fetch-dist`
-if [[ ! -e "./_dist/helm-${RELEASE}-darwin-amd64.tar.gz.sha256" ]]; then
-  echo "checksum file ./_dist/helm-${RELEASE}-darwin-amd64.tar.gz.sha256 not found in ./_dist/"
+if [[ ! -e "./_dist/helm-${RELEASE}-darwin-amd64.tar.gz.sha256sum" ]]; then
+  echo "checksum file ./_dist/helm-${RELEASE}-darwin-amd64.tar.gz.sha256sum not found in ./_dist/"
   echo "Did you forget to run \`make fetch-dist\` first ?"
   exit 1
 fi
