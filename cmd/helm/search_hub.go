@@ -106,7 +106,14 @@ type hubSearchWriter struct {
 func newHubSearchWriter(results []monocular.SearchResult, endpoint string, columnWidth uint) *hubSearchWriter {
 	var elements []hubChartElement
 	for _, r := range results {
+		// Backwards compatibility for Monocular
 		url := endpoint + "/charts/" + r.ID
+
+		// Check for artifactHub compatibility
+		if r.ArtifactHub.PackageURL != "" {
+			url = r.ArtifactHub.PackageURL
+		}
+
 		elements = append(elements, hubChartElement{url, r.Relationships.LatestChartVersion.Data.Version, r.Relationships.LatestChartVersion.Data.AppVersion, r.Attributes.Description})
 	}
 	return &hubSearchWriter{elements, columnWidth}
