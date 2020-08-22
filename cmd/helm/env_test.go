@@ -31,4 +31,5 @@ func TestEnv(t *testing.T) {
 
 func TestEnvFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "env", false)
+	checkFileCompletion(t, "env HELM_BIN", false)
 }
