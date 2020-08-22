@@ -39,7 +39,7 @@ Foundation sandbox project. You can browse the hub at https://artifacthub.io/
 
 The [KEYWORD] argument accepts either a keyword string, or quoted string of rich
 query options. For rich query options documentation, see
-https://artifacthub.github.io/hub/api/#/Packages/get_packages_search
+https://artifacthub.github.io/hub/api/?urls.primaryName=Monocular%20compatible%20search%20API#/Monocular/get_api_chartsvc_v1_charts_search
 
 Previous versions of Helm used an instance of Monocular as the default
 'endpoint', so for backwards compatibility Artifact Hub is compatible with the
