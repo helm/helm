@@ -126,11 +126,17 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 			// Even though K8sYamlStruct only defines a few fields, an error in any other
 			// key will be raised as well
 			err := yaml.Unmarshal([]byte(renderedContent), &yamlStruct)
-
 			// If YAML linting fails, we sill progress. So we don't capture the returned state
 			// on this linter run.
 			linter.RunLinterRule(support.ErrorSev, fpath, validateYamlContent(err))
-			linter.RunLinterRule(support.ErrorSev, fpath, validateMetadataName(&yamlStruct))
+			if isListOfResources(&yamlStruct) {
+				for i, item := range yamlStruct.Items {
+					err := errors.Wrapf(validateMetadataName(&item), "at item index %d", i)
+					linter.RunLinterRule(support.ErrorSev, fpath, err)
+				}
+			} else {
+				linter.RunLinterRule(support.ErrorSev, fpath, validateMetadataName(&yamlStruct))
+			}
 			linter.RunLinterRule(support.ErrorSev, fpath, validateNoDeprecations(&yamlStruct))
 			linter.RunLinterRule(support.ErrorSev, fpath, validateMatchSelector(&yamlStruct, renderedContent))
 		}
@@ -164,13 +170,16 @@ func validateYamlContent(err error) error {
 	return errors.Wrap(err, "unable to parse YAML")
 }
 
-func validateMetadataName(obj *K8sYamlStruct) error {
-	// This will return an error if the characters do not abide by the standard OR if the
-	// name is left empty.
-	if validName.MatchString(obj.Metadata.Name) {
+func isListOfResources(yamlStruct *K8sYamlStruct) bool {
+	return len(yamlStruct.Items) > 0
+}
+
+func validateMetadataName(yamlStruct *K8sYamlStruct) error {
+	if validName.MatchString(yamlStruct.Metadata.Name) {
 		return nil
 	}
-	return fmt.Errorf("object name does not conform to Kubernetes naming requirements: %q", obj.Metadata.Name)
+
+	return fmt.Errorf("object name does not conform to Kubernetes naming requirements: %q", yamlStruct.Metadata.Name)
 }
 
 func validateNoCRDHooks(manifest []byte) error {
@@ -208,6 +217,7 @@ type K8sYamlStruct struct {
 	APIVersion string `json:"apiVersion"`
 	Kind       string
 	Metadata   k8sYamlMetadata
+	Items      []K8sYamlStruct
 }
 
 type k8sYamlMetadata struct {

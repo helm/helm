@@ -134,6 +134,23 @@ func TestValidateMetadataName(t *testing.T) {
 	}
 }
 
+func TestListOfResources(t *testing.T) {
+	testData := map[string]int{
+		"./testdata/good_list_of_resources": 0,
+		"./testdata/bad_list_of_resources":  2,
+	}
+
+	for testDir, expectedErrs := range testData {
+		linter := support.Linter{ChartDir: testDir}
+		Templates(&linter, values, namespace, strict)
+		res := linter.Messages
+
+		if len(res) != expectedErrs {
+			t.Fatalf("Expected %d error(s) in %s, got %d, %v", expectedErrs, testDir, len(res), res)
+		}
+	}
+}
+
 func TestDeprecatedAPIFails(t *testing.T) {
 	mychart := chart.Chart{
 		Metadata: &chart.Metadata{
