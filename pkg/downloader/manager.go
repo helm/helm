@@ -294,7 +294,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		}
 		if strings.HasPrefix(dep.Repository, "file://") {
 			if m.Debug {
-				fmt.Fprintf(m.Out, "Archiving %s from repo %s\n", dep.Name, dep.Repository)
+				fmt.Fprintf(m.Out, "Archiving %s %s from repo %s\n", dep.Name, dep.Version, dep.Repository)
 			}
 			ver, err := tarFromLocalDir(m.ChartPath, dep.Name, dep.Repository, dep.Version)
 			if err != nil {
@@ -314,11 +314,11 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		}
 
 		if _, ok := churls[churl]; ok {
-			fmt.Fprintf(m.Out, "Already downloaded %s from repo %s\n", dep.Name, dep.Repository)
+			fmt.Fprintf(m.Out, "Already downloaded %s %s from repo %s\n", dep.Name, dep.Version, dep.Repository)
 			continue
 		}
 
-		fmt.Fprintf(m.Out, "Downloading %s from repo %s\n", dep.Name, dep.Repository)
+		fmt.Fprintf(m.Out, "Downloading %s %s from repo %s\n", dep.Name, dep.Version, dep.Repository)
 
 		dl := ChartDownloader{
 			Out:              m.Out,
