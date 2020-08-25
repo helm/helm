@@ -1,0 +1,25 @@
+# comment on first line
+{{- if .Values.condition }}
+apiVersion: v1
+kind: ConfigMap
+# Metadata
+metadata:
+  name: mychart-configmap-1
+  namespace: default
+data:
+  myvalue: "Hello World"
+{{- end }}
+
+---
+
+# comment on first line
+{{- if .Values.condition }}
+apiVersion: v1
+kind: ConfigMap
+# Metadata
+metadata:
+  name: mychart-configmap-2
+  namespace: default
+data:
+  myvalue: "Hello World"
+{{- end }}

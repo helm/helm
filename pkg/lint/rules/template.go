@@ -123,6 +123,7 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 		// linter.RunLinterRule(support.WarningSev, fpath, validateQuotes(string(preExecutedTemplate)))
 
 		renderedContent := renderedContentMap[path.Join(chart.Name(), fileName)]
+		renderedContent = cleanseRenderedContent(renderedContent)
 		if strings.TrimSpace(renderedContent) != "" {
 			linter.RunLinterRule(support.WarningSev, fpath, validateTopIndentLevel(renderedContent))
 			var yamlStruct K8sYamlStruct
@@ -164,6 +165,17 @@ func validateTopIndentLevel(content string) error {
 		return nil
 	}
 	return scanner.Err()
+}
+
+func cleanseRenderedContent(renderedContent string) string {
+	renderedArray := strings.Split(strings.Replace(renderedContent, "\r\n", "\n", -1), "\n")
+	cleansedContent := []string{}
+	for _, line := range renderedArray {
+		if !(strings.HasPrefix(line, "#") || strings.HasPrefix(line, "---")) {
+			cleansedContent = append(cleansedContent, line)
+		}
+	}
+	return strings.Join(cleansedContent, "\n")
 }
 
 // Validation functions

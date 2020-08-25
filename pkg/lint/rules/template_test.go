@@ -330,5 +330,27 @@ func TestValidateTopIndentLevel(t *testing.T) {
 			t.Errorf("Expected %t for %q", shouldFail, doc)
 		}
 	}
+}
 
+func TestCleanseRenderedContent(t *testing.T) {
+	input := `
+#comments about the template file
+apiVersion: v1
+kind: ConfigMap
+# Metadata
+metadata:
+  name: mychart-configmap-1
+  namespace: default
+`
+	expect := `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mychart-configmap-1
+  namespace: default
+`
+	output := cleanseRenderedContent(input)
+	if output != expect {
+		t.Errorf("Expected : %+v , but got : %+v", expect, output)
+	}
 }
