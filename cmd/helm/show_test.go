@@ -50,6 +50,13 @@ func TestShowPreReleaseChart(t *testing.T) {
 			expectedErr: "failed to download \"test/pre-release-chart\"",
 		},
 		{
+			name:        "show pre-release chart",
+			args:        "test/pre-release-chart",
+			fail:        true,
+			flags:       "--version 1.0.0",
+			expectedErr: "failed to download \"test/pre-release-chart\" at version \"1.0.0\"",
+		},
+		{
 			name:  "show pre-release chart with 'devel' flag",
 			args:  "test/pre-release-chart",
 			flags: "--devel",
