@@ -677,5 +677,9 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		return filename, err
 	}
 
-	return filename, errors.Errorf("failed to download %q (hint: running `helm repo update` may help)", name)
+	atVersion := ""
+	if version != "" {
+		atVersion = fmt.Sprintf(" at version %q", version)
+	}
+	return filename, errors.Errorf("failed to download %q%s (hint: running `helm repo update` may help)", name, atVersion)
 }
