@@ -55,4 +55,5 @@ func TestCompletionFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "completion", false)
 	checkFileCompletion(t, "completion bash", false)
 	checkFileCompletion(t, "completion zsh", false)
+	checkFileCompletion(t, "completion fish", false)
 }
