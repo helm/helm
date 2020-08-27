@@ -344,6 +344,12 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 		}
 	}
 
+	if !i.DisableHooks {
+		if err := i.cfg.execHook(rel, release.HookPreReady, i.Timeout); err != nil {
+			return i.failRelease(rel, fmt.Errorf("failed pre-ready: %s", err))
+		}
+	}
+
 	if i.Wait {
 		if err := i.cfg.KubeClient.Wait(resources, i.Timeout); err != nil {
 			return i.failRelease(rel, err)

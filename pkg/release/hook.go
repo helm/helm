@@ -33,6 +33,7 @@ const (
 	HookPostUpgrade  HookEvent = "post-upgrade"
 	HookPreRollback  HookEvent = "pre-rollback"
 	HookPostRollback HookEvent = "post-rollback"
+	HookPreReady     HookEvent = "pre-ready"
 	HookTest         HookEvent = "test"
 )
 
