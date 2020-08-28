@@ -220,7 +220,17 @@ func (w *waiter) volumeReady(v *corev1.PersistentVolumeClaim) bool {
 }
 
 func (w *waiter) deploymentReady(rs *appsv1.ReplicaSet, dep *appsv1.Deployment) bool {
+	// If there are no desired replicas, there will be nothing to wait for.
+	if *dep.Spec.Replicas == 0 {
+		return true
+	}
+
+	// Ensure the expected available replicas are ready.
 	expectedReady := *dep.Spec.Replicas - deploymentutil.MaxUnavailable(*dep)
+	// Also ensure at least 1 replica is ready.
+	if expectedReady < 1 {
+		expectedReady = 1
+	}
 	if !(rs.Status.ReadyReplicas >= expectedReady) {
 		w.log("Deployment is not ready: %s/%s. %d out of %d expected pods are ready", dep.Namespace, dep.Name, rs.Status.ReadyReplicas, expectedReady)
 		return false
@@ -234,11 +244,18 @@ func (w *waiter) daemonSetReady(ds *appsv1.DaemonSet) bool {
 		return true
 	}
 
+	// If there are no desired replicas, there will be nothing to wait for.
+	if ds.Status.DesiredNumberScheduled == 0 {
+		return true
+	}
+
 	// Make sure all the updated pods have been scheduled
 	if ds.Status.UpdatedNumberScheduled != ds.Status.DesiredNumberScheduled {
 		w.log("DaemonSet is not ready: %s/%s. %d out of %d expected pods have been scheduled", ds.Namespace, ds.Name, ds.Status.UpdatedNumberScheduled, ds.Status.DesiredNumberScheduled)
 		return false
 	}
+
+	// Ensure the expected available replicas are ready.
 	maxUnavailable, err := intstr.GetValueFromIntOrPercent(ds.Spec.UpdateStrategy.RollingUpdate.MaxUnavailable, int(ds.Status.DesiredNumberScheduled), true)
 	if err != nil {
 		// If for some reason the value is invalid, set max unavailable to the
@@ -246,8 +263,11 @@ func (w *waiter) daemonSetReady(ds *appsv1.DaemonSet) bool {
 		// `MaxUnavailable` function in deploymentutil
 		maxUnavailable = int(ds.Status.DesiredNumberScheduled)
 	}
-
 	expectedReady := int(ds.Status.DesiredNumberScheduled) - maxUnavailable
+	// Also ensure at least 1 replica is ready.
+	if expectedReady < 1 {
+		expectedReady = 1
+	}
 	if !(int(ds.Status.NumberReady) >= expectedReady) {
 		w.log("DaemonSet is not ready: %s/%s. %d out of %d expected pods are ready", ds.Namespace, ds.Name, ds.Status.NumberReady, expectedReady)
 		return false
