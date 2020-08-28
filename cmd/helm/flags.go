@@ -150,7 +150,21 @@ func compVersionFlag(chartRef string, toComplete string) ([]string, cobra.ShellC
 		for _, details := range indexFile.Entries[chartName] {
 			version := details.Metadata.Version
 			if strings.HasPrefix(version, toComplete) {
-				versions = append(versions, version)
+				appVersion := details.Metadata.AppVersion
+				appVersionDesc := ""
+				if appVersion != "" {
+					appVersionDesc = fmt.Sprintf("App: %s, ", appVersion)
+				}
+				created := details.Created.Format("January 2, 2006")
+				createdDesc := ""
+				if created != "" {
+					createdDesc = fmt.Sprintf("Created: %s ", created)
+				}
+				deprecated := ""
+				if details.Metadata.Deprecated {
+					deprecated = "(deprecated)"
+				}
+				versions = append(versions, fmt.Sprintf("%s\t%s%s%s", version, appVersionDesc, createdDesc, deprecated))
 			}
 		}
 	}
