@@ -68,7 +68,7 @@ func newSearchHubCmd(out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.StringVar(&o.searchEndpoint, "endpoint", "https://artifacthub.io", "Hub instance to query for charts")
+	f.StringVar(&o.searchEndpoint, "endpoint", "https://hub.helm.sh", "Hub instance to query for charts")
 	f.UintVar(&o.maxColWidth, "max-col-width", 50, "maximum column width for output table")
 	bindOutputFlag(cmd, &o.outputFormat)
 
