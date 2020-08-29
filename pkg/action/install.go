@@ -500,8 +500,6 @@ func writeToFile(outputDir string, name string, data string, append bool) error 
 	if err != nil {
 		return err
 	}
-
-	fmt.Printf("wrote %s\n", outfileName)
 	return nil
 }
 
