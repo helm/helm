@@ -1,4 +1,3 @@
-WARNING: This chart is deprecated
 NAME: aeneas
 LAST DEPLOYED: Fri Sep  2 22:04:05 1977
 NAMESPACE: default

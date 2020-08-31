@@ -171,3 +171,8 @@ func TestStatusRevisionCompletion(t *testing.T) {
 func TestStatusOutputCompletion(t *testing.T) {
 	outputFlagCompletionTest(t, "status")
 }
+
+func TestStatusFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "status", false)
+	checkFileCompletion(t, "status myrelease", false)
+}

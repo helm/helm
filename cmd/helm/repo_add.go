@@ -29,6 +29,7 @@ import (
 	"github.com/gofrs/flock"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"golang.org/x/crypto/ssh/terminal"
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/cmd/helm/require"
@@ -56,9 +57,10 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 	o := &repoAddOptions{}
 
 	cmd := &cobra.Command{
-		Use:   "add [NAME] [URL]",
-		Short: "add a chart repository",
-		Args:  require.ExactArgs(2),
+		Use:               "add [NAME] [URL]",
+		Short:             "add a chart repository",
+		Args:              require.ExactArgs(2),
+		ValidArgsFunction: noCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.name = args[0]
 			o.url = args[1]
@@ -114,6 +116,17 @@ func (o *repoAddOptions) run(out io.Writer) error {
 		return errors.Errorf("repository name (%s) already exists, please specify a different name", o.name)
 	}
 
+	if o.username != "" && o.password == "" {
+		fd := int(os.Stdin.Fd())
+		fmt.Fprint(out, "Password: ")
+		password, err := terminal.ReadPassword(fd)
+		fmt.Fprintln(out)
+		if err != nil {
+			return err
+		}
+		o.password = string(password)
+	}
+
 	c := repo.Entry{
 		Name:                  o.name,
 		URL:                   o.url,
@@ -130,6 +143,9 @@ func (o *repoAddOptions) run(out io.Writer) error {
 		return err
 	}
 
+	if o.repoCache != "" {
+		r.CachePath = o.repoCache
+	}
 	if _, err := r.DownloadIndexFile(); err != nil {
 		return errors.Wrapf(err, "looks like %q is not a valid chart repository or cannot be reached", o.url)
 	}

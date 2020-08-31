@@ -40,11 +40,12 @@ func TestRepoAddCmd(t *testing.T) {
 	}
 	defer srv.Stop()
 
-	repoFile := filepath.Join(ensure.TempDir(t), "repositories.yaml")
+	tmpdir := ensure.TempDir(t)
+	repoFile := filepath.Join(tmpdir, "repositories.yaml")
 
 	tests := []cmdTestCase{{
 		name:   "add a repository",
-		cmd:    fmt.Sprintf("repo add test-name %s --repository-config %s", srv.URL(), repoFile),
+		cmd:    fmt.Sprintf("repo add test-name %s --repository-config %s --repository-cache %s", srv.URL(), repoFile, tmpdir),
 		golden: "output/repo-add.txt",
 	}}
 
@@ -158,4 +159,10 @@ func repoAddConcurrent(t *testing.T, testName, repoFile string) {
 			t.Errorf("%s was not successfully inserted into %s: %s", name, repoFile, f.Repositories[0])
 		}
 	}
+}
+
+func TestRepoAddFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "repo add", false)
+	checkFileCompletion(t, "repo add reponame", false)
+	checkFileCompletion(t, "repo add reponame https://example.com", false)
 }

@@ -26,6 +26,7 @@ import (
 type Get struct {
 	cfg *Configuration
 
+	// Initializing Version to 0 will get the latest revision of the release.
 	Version int
 }
 

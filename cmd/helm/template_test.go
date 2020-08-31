@@ -22,7 +22,7 @@ import (
 	"testing"
 )
 
-var chartPath = "./../../pkg/chartutil/testdata/subpop/charts/subchart1"
+var chartPath = "testdata/testcharts/subchart"
 
 func TestTemplateCmd(t *testing.T) {
 	tests := []cmdTestCase{
@@ -123,4 +123,41 @@ func TestTemplateCmd(t *testing.T) {
 		},
 	}
 	runTestCmd(t, tests)
+}
+
+func TestTemplateVersionCompletion(t *testing.T) {
+	repoFile := "testdata/helmhome/helm/repositories.yaml"
+	repoCache := "testdata/helmhome/helm/repository"
+
+	repoSetup := fmt.Sprintf("--repository-config %s --repository-cache %s", repoFile, repoCache)
+
+	tests := []cmdTestCase{{
+		name:   "completion for template version flag with release name",
+		cmd:    fmt.Sprintf("%s __complete template releasename testing/alpine --version ''", repoSetup),
+		golden: "output/version-comp.txt",
+	}, {
+		name:   "completion for template version flag with generate-name",
+		cmd:    fmt.Sprintf("%s __complete template --generate-name testing/alpine --version ''", repoSetup),
+		golden: "output/version-comp.txt",
+	}, {
+		name:   "completion for template version flag too few args",
+		cmd:    fmt.Sprintf("%s __complete template testing/alpine --version ''", repoSetup),
+		golden: "output/version-invalid-comp.txt",
+	}, {
+		name:   "completion for template version flag too many args",
+		cmd:    fmt.Sprintf("%s __complete template releasename testing/alpine badarg --version ''", repoSetup),
+		golden: "output/version-invalid-comp.txt",
+	}, {
+		name:   "completion for template version flag invalid chart",
+		cmd:    fmt.Sprintf("%s __complete template releasename invalid/invalid --version ''", repoSetup),
+		golden: "output/version-invalid-comp.txt",
+	}}
+	runTestCmd(t, tests)
+}
+
+func TestTemplateFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "template", false)
+	checkFileCompletion(t, "template --generate-name", true)
+	checkFileCompletion(t, "template myname", true)
+	checkFileCompletion(t, "template myname mychart", false)
 }

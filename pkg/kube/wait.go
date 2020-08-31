@@ -188,8 +188,8 @@ func (w *waiter) serviceReady(s *corev1.Service) bool {
 		return true
 	}
 
-	// Make sure the service is not explicitly set to "None" before checking the IP
-	if s.Spec.ClusterIP != corev1.ClusterIPNone && s.Spec.ClusterIP == "" {
+	// Ensure that the service cluster IP is not empty
+	if s.Spec.ClusterIP == "" {
 		w.log("Service does not have cluster IP address: %s/%s", s.GetNamespace(), s.GetName())
 		return false
 	}

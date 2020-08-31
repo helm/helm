@@ -1,23 +1,23 @@
 ---
-# Source: subchart1/templates/subdir/role.yaml
+# Source: subchart/templates/subdir/role.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: subchart1-role
+  name: subchart-role
 rules:
 - resources: ["*"]
   verbs: ["get","list","watch"]
 ---
-# Source: subchart1/templates/subdir/rolebinding.yaml
+# Source: subchart/templates/subdir/rolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: subchart1-binding
+  name: subchart-binding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: subchart1-role
+  name: subchart-role
 subjects:
 - kind: ServiceAccount
-  name: subchart1-sa
+  name: subchart-sa
   namespace: default

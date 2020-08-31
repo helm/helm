@@ -1,0 +1,55 @@
+# Default values for subchart.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+# subchart
+service:
+  name: nginx
+  type: ClusterIP
+  externalPort: 80
+  internalPort: 80
+
+
+SC1data:
+  SC1bool: true
+  SC1float: 3.14
+  SC1int: 100
+  SC1string: "dollywood"
+  SC1extra1: 11
+
+imported-chartA:
+  SC1extra2: 1.337
+
+overridden-chartA:
+  SCAbool: true
+  SCAfloat: 3.14
+  SCAint: 100
+  SCAstring: "jabbathehut"
+  SC1extra3: true
+
+imported-chartA-B:
+  SC1extra5: "tiller"
+
+overridden-chartA-B:
+  SCAbool: true
+  SCAfloat: 3.33
+  SCAint: 555
+  SCAstring: "wormwood"
+  SCAextra1: 23
+
+  SCBbool: true
+  SCBfloat: 0.25
+  SCBint: 98
+  SCBstring: "murkwood"
+  SCBextra1: 13
+
+  SC1extra6: 77
+
+SCBexported1A:
+  SC1extra7: true
+
+exports:
+  SC1exported1:
+    global:
+      SC1exported2:
+        all:
+          SC1exported3: "SC1expstr"

@@ -40,3 +40,8 @@ func TestGetNotesCmd(t *testing.T) {
 func TestGetNotesRevisionCompletion(t *testing.T) {
 	revisionFlagCompletionTest(t, "get notes")
 }
+
+func TestGetNotesFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "get notes", false)
+	checkFileCompletion(t, "get notes myrelease", false)
+}

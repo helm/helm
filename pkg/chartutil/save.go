@@ -34,6 +34,9 @@ import (
 var headerBytes = []byte("+aHR0cHM6Ly95b3V0dS5iZS96OVV6MWljandyTQo=")
 
 // SaveDir saves a chart as files in a directory.
+//
+// This takes the chart name, and creates a new subdirectory inside of the given dest
+// directory, writing the chart's contents to that subdirectory.
 func SaveDir(c *chart.Chart, dest string) error {
 	// Create the chart directory
 	outdir := filepath.Join(dest, c.Name())
@@ -103,12 +106,17 @@ func Save(c *chart.Chart, outDir string) (string, error) {
 
 	filename := fmt.Sprintf("%s-%s.tgz", c.Name(), c.Metadata.Version)
 	filename = filepath.Join(outDir, filename)
-	if stat, err := os.Stat(filepath.Dir(filename)); os.IsNotExist(err) {
-		if err := os.MkdirAll(filepath.Dir(filename), 0755); err != nil {
-			return "", err
+	dir := filepath.Dir(filename)
+	if stat, err := os.Stat(dir); err != nil {
+		if os.IsNotExist(err) {
+			if err2 := os.MkdirAll(dir, 0755); err2 != nil {
+				return "", err2
+			}
+		} else {
+			return "", errors.Wrapf(err, "stat %s", dir)
 		}
 	} else if !stat.IsDir() {
-		return "", errors.Errorf("is not a directory: %s", filepath.Dir(filename))
+		return "", errors.Errorf("is not a directory: %s", dir)
 	}
 
 	f, err := os.Create(filename)

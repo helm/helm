@@ -30,23 +30,23 @@ func TestList(t *testing.T) {
 	}{
 		{
 			chart:  "testdata/charts/chart-with-compressed-dependencies",
-			golden: "output/compressed-deps.txt",
+			golden: "output/list-compressed-deps.txt",
 		},
 		{
 			chart:  "testdata/charts/chart-with-compressed-dependencies-2.1.8.tgz",
-			golden: "output/compressed-deps-tgz.txt",
+			golden: "output/list-compressed-deps-tgz.txt",
 		},
 		{
 			chart:  "testdata/charts/chart-with-uncompressed-dependencies",
-			golden: "output/uncompressed-deps.txt",
+			golden: "output/list-uncompressed-deps.txt",
 		},
 		{
 			chart:  "testdata/charts/chart-with-uncompressed-dependencies-2.1.8.tgz",
-			golden: "output/uncompressed-deps-tgz.txt",
+			golden: "output/list-uncompressed-deps-tgz.txt",
 		},
 		{
 			chart:  "testdata/charts/chart-missing-deps",
-			golden: "output/missing-deps.txt",
+			golden: "output/list-missing-deps.txt",
 		},
 	} {
 		buf := bytes.Buffer{}

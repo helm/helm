@@ -35,6 +35,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -223,6 +224,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 
 		if err := info.Get(); err != nil {
 			c.Log("Unable to get obj %q, err: %s", info.Name, err)
+			continue
 		}
 		annotations, err := metadataAccessor.Annotations(info.Object)
 		if err != nil {
@@ -232,16 +234,11 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			c.Log("Skipping delete of %q due to annotation [%s=%s]", info.Name, ResourcePolicyAnno, KeepPolicy)
 			continue
 		}
-
-		res.Deleted = append(res.Deleted, info)
 		if err := deleteResource(info); err != nil {
-			if apierrors.IsNotFound(err) {
-				c.Log("Attempted to delete %q, but the resource was missing", info.Name)
-			} else {
-				c.Log("Failed to delete %q, err: %s", info.Name, err)
-				return res, errors.Wrapf(err, "Failed to delete %q", info.Name)
-			}
+			c.Log("Failed to delete %q, err: %s", info.ObjectName(), err)
+			continue
 		}
+		res.Deleted = append(res.Deleted, info)
 	}
 	return res, nil
 }
@@ -422,29 +419,29 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		kind   = target.Mapping.GroupVersionKind.Kind
 	)
 
-	patch, patchType, err := createPatch(target, currentObj)
-	if err != nil {
-		return errors.Wrap(err, "failed to create patch")
-	}
-
-	if patch == nil || string(patch) == "{}" {
-		c.Log("Looks like there are no changes for %s %q", target.Mapping.GroupVersionKind.Kind, target.Name)
-		// This needs to happen to make sure that tiller has the latest info from the API
-		// Otherwise there will be no labels and other functions that use labels will panic
-		if err := target.Get(); err != nil {
-			return errors.Wrap(err, "failed to refresh resource information")
-		}
-		return nil
-	}
-
 	// if --force is applied, attempt to replace the existing resource with the new object.
 	if force {
+		var err error
 		obj, err = helper.Replace(target.Namespace, target.Name, true, target.Object)
 		if err != nil {
 			return errors.Wrap(err, "failed to replace object")
 		}
-		c.Log("Replaced %q with kind %s for kind %s\n", target.Name, currentObj.GetObjectKind().GroupVersionKind().Kind, kind)
+		c.Log("Replaced %q with kind %s for kind %s", target.Name, currentObj.GetObjectKind().GroupVersionKind().Kind, kind)
 	} else {
+		patch, patchType, err := createPatch(target, currentObj)
+		if err != nil {
+			return errors.Wrap(err, "failed to create patch")
+		}
+
+		if patch == nil || string(patch) == "{}" {
+			c.Log("Looks like there are no changes for %s %q", target.Mapping.GroupVersionKind.Kind, target.Name)
+			// This needs to happen to make sure that Helm has the latest info from the API
+			// Otherwise there will be no labels and other functions that use labels will panic
+			if err := target.Get(); err != nil {
+				return errors.Wrap(err, "failed to refresh resource information")
+			}
+			return nil
+		}
 		// send patch to server
 		obj, err = helper.Patch(target.Namespace, target.Name, patchType, patch, nil)
 		if err != nil {
@@ -482,7 +479,7 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 
 	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), timeout)
 	defer cancel()
-	_, err = watchtools.ListWatchUntil(ctx, lw, func(e watch.Event) (bool, error) {
+	_, err = watchtools.UntilWithSync(ctx, lw, &unstructured.Unstructured{}, nil, func(e watch.Event) (bool, error) {
 		// Make sure the incoming object is versioned as we use unstructured
 		// objects when we build manifests
 		obj := convertWithMapper(e.Object, info.Mapping)
@@ -546,14 +543,14 @@ func (c *Client) waitForPodSuccess(obj runtime.Object, name string) (bool, error
 
 	switch o.Status.Phase {
 	case v1.PodSucceeded:
-		fmt.Printf("Pod %s succeeded\n", o.Name)
+		c.Log("Pod %s succeeded", o.Name)
 		return true, nil
 	case v1.PodFailed:
 		return true, errors.Errorf("pod %s failed", o.Name)
 	case v1.PodPending:
-		fmt.Printf("Pod %s pending\n", o.Name)
+		c.Log("Pod %s pending", o.Name)
 	case v1.PodRunning:
-		fmt.Printf("Pod %s running\n", o.Name)
+		c.Log("Pod %s running", o.Name)
 	}
 
 	return false, nil

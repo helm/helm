@@ -60,18 +60,21 @@ var (
 	errInvalidRevision = errors.New("invalid release revision")
 	// errInvalidName indicates that an invalid release name was provided
 	errInvalidName = errors.New("invalid release name, must match regex ^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+$ and the length must not longer than 53")
+	// errPending indicates that another instance of Helm is already applying an operation on a release.
+	errPending = errors.New("another operation (install/upgrade/rollback) is in progress")
 )
 
-// ValidName is a regular expression for names.
+// ValidName is a regular expression for resource names.
 //
 // According to the Kubernetes help text, the regular expression it uses is:
 //
-//	(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?
+//	[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*
 //
-// We modified that. First, we added start and end delimiters. Second, we changed
-// the final ? to + to require that the pattern match at least once. This modification
-// prevents an empty string from matching.
-var ValidName = regexp.MustCompile("^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+$")
+// This follows the above regular expression (but requires a full string match, not partial).
+//
+// The Kubernetes documentation is here, though it is not entirely correct:
+// https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+var ValidName = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$`)
 
 // Configuration injects the dependencies that all actions share.
 type Configuration struct {
@@ -96,6 +99,8 @@ type Configuration struct {
 // renderResources renders the templates in a chart
 //
 // TODO: This function is badly in need of a refactor.
+// TODO: As part of the refactor the duplicate code in cmd/helm/template.go should be removed
+//       This code has to do with writing files to disk.
 func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, dryRun bool) ([]*release.Hook, *bytes.Buffer, string, error) {
 	hs := []*release.Hook{}
 	b := bytes.NewBuffer(nil)

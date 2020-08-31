@@ -202,3 +202,8 @@ func setFlags(cmd *cobra.Command, flags map[string]string) {
 		dest.Set(f, v)
 	}
 }
+
+func TestPackageFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "package", true)
+	checkFileCompletion(t, "package mypath", true) // Multiple paths can be given
+}

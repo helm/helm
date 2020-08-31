@@ -25,7 +25,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/pkg/action"
 )
 
@@ -47,6 +46,17 @@ func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Short: "roll back a release to a previous revision",
 		Long:  rollbackDesc,
 		Args:  require.MinimumNArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if len(args) == 0 {
+				return compListReleases(toComplete, cfg)
+			}
+
+			if len(args) == 1 {
+				return compListRevisions(toComplete, cfg, args[0])
+			}
+
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 1 {
 				ver, err := strconv.Atoi(args[1])
@@ -65,14 +75,6 @@ func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		},
 	}
 
-	// Function providing dynamic auto-completion
-	completion.RegisterValidArgsFunc(cmd, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
-		if len(args) != 0 {
-			return nil, completion.BashCompDirectiveNoFileComp
-		}
-		return compListReleases(toComplete, cfg)
-	})
-
 	f := cmd.Flags()
 	f.BoolVar(&client.DryRun, "dry-run", false, "simulate a rollback")
 	f.BoolVar(&client.Recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
@@ -81,6 +83,7 @@ func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.DurationVar(&client.Timeout, "timeout", 300*time.Second, "time to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&client.Wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment, StatefulSet, or ReplicaSet are in a ready state before marking the release as successful. It will wait for as long as --timeout")
 	f.BoolVar(&client.CleanupOnFail, "cleanup-on-fail", false, "allow deletion of new resources created in this rollback when rollback fails")
+	f.IntVar(&client.MaxHistory, "history-max", settings.MaxHistory, "limit the maximum number of revisions saved per release. Use 0 for no limit")
 
 	return cmd
 }

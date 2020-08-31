@@ -5,7 +5,6 @@ TARGET_OBJS ?= darwin-amd64.tar.gz darwin-amd64.tar.gz.sha256 darwin-amd64.tar.g
 BINNAME     ?= helm
 
 GOPATH        = $(shell go env GOPATH)
-DEP           = $(GOPATH)/bin/dep
 GOX           = $(GOPATH)/bin/gox
 GOIMPORTS     = $(GOPATH)/bin/goimports
 ARCH          = $(shell uname -p)
@@ -61,7 +60,7 @@ all: build
 build: $(BINDIR)/$(BINNAME)
 
 $(BINDIR)/$(BINNAME): $(SRC)
-	GO111MODULE=on go build $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' -o $(BINDIR)/$(BINNAME) ./cmd/helm
+	GO111MODULE=on go build $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' -o '$(BINDIR)'/$(BINNAME) ./cmd/helm
 
 # ------------------------------------------------------------------------------
 #  test
@@ -98,7 +97,7 @@ test-acceptance: TARGETS = linux/amd64
 test-acceptance: build build-cross
 	@if [ -d "${ACCEPTANCE_DIR}" ]; then \
 		cd ${ACCEPTANCE_DIR} && \
-			ROBOT_RUN_TESTS=$(ACCEPTANCE_RUN_TESTS) ROBOT_HELM_PATH=$(BINDIR) make acceptance; \
+			ROBOT_RUN_TESTS=$(ACCEPTANCE_RUN_TESTS) ROBOT_HELM_PATH='$(BINDIR)' make acceptance; \
 	else \
 		echo "You must clone the acceptance_testing repo under $(ACCEPTANCE_DIR)"; \
 		echo "You can find the acceptance_testing repo at https://github.com/helm/acceptance-testing"; \
@@ -179,12 +178,12 @@ checksum:
 
 .PHONY: clean
 clean:
-	@rm -rf $(BINDIR) ./_dist
+	@rm -rf '$(BINDIR)' ./_dist
 
 .PHONY: release-notes
 release-notes:
 		@if [ ! -d "./_dist" ]; then \
-			echo "please run 'make fetch-release' first" && \
+			echo "please run 'make fetch-dist' first" && \
 			exit 1; \
 		fi
 		@if [ -z "${PREVIOUS_RELEASE}" ]; then \

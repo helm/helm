@@ -43,7 +43,7 @@ If you want to use a package manager:
 - [GoFish](https://gofi.sh/) users can use `gofish install helm`.
 - [Snapcraft](https://snapcraft.io/) users can use `snap install helm --classic`
 
-To rapidly get Helm up and running, start with the [Quick Start Guide](https://docs.helm.sh/using_helm/#quickstart-guide).
+To rapidly get Helm up and running, start with the [Quick Start Guide](https://helm.sh/docs/intro/quickstart/).
 
 See the [installation guide](https://helm.sh/docs/intro/install/) for more options,
 including installing pre-releases.

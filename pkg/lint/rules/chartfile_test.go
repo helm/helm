@@ -30,7 +30,8 @@ import (
 )
 
 const (
-	badChartDir = "testdata/badchartfile"
+	badChartDir        = "testdata/badchartfile"
+	anotherBadChartDir = "testdata/anotherbadchartfile"
 )
 
 var (
@@ -184,36 +185,63 @@ func TestValidateChartIconURL(t *testing.T) {
 }
 
 func TestChartfile(t *testing.T) {
-	linter := support.Linter{ChartDir: badChartDir}
-	Chartfile(&linter)
-	msgs := linter.Messages
+	t.Run("Chart.yaml basic validity issues", func(t *testing.T) {
+		linter := support.Linter{ChartDir: badChartDir}
+		Chartfile(&linter)
+		msgs := linter.Messages
+		expectedNumberOfErrorMessages := 6
 
-	if len(msgs) != 6 {
-		t.Errorf("Expected 6 errors, got %d", len(msgs))
-	}
+		if len(msgs) != expectedNumberOfErrorMessages {
+			t.Errorf("Expected %d errors, got %d", expectedNumberOfErrorMessages, len(msgs))
+			return
+		}
 
-	if !strings.Contains(msgs[0].Err.Error(), "name is required") {
-		t.Errorf("Unexpected message 0: %s", msgs[0].Err)
-	}
+		if !strings.Contains(msgs[0].Err.Error(), "name is required") {
+			t.Errorf("Unexpected message 0: %s", msgs[0].Err)
+		}
 
-	if !strings.Contains(msgs[1].Err.Error(), "apiVersion is required. The value must be either \"v1\" or \"v2\"") {
-		t.Errorf("Unexpected message 1: %s", msgs[1].Err)
-	}
+		if !strings.Contains(msgs[1].Err.Error(), "apiVersion is required. The value must be either \"v1\" or \"v2\"") {
+			t.Errorf("Unexpected message 1: %s", msgs[1].Err)
+		}
 
-	if !strings.Contains(msgs[2].Err.Error(), "version '0.0.0.0' is not a valid SemVer") {
-		t.Errorf("Unexpected message 2: %s", msgs[2].Err)
-	}
+		if !strings.Contains(msgs[2].Err.Error(), "version '0.0.0.0' is not a valid SemVer") {
+			t.Errorf("Unexpected message 2: %s", msgs[2].Err)
+		}
 
-	if !strings.Contains(msgs[3].Err.Error(), "icon is recommended") {
-		t.Errorf("Unexpected message 3: %s", msgs[3].Err)
-	}
+		if !strings.Contains(msgs[3].Err.Error(), "icon is recommended") {
+			t.Errorf("Unexpected message 3: %s", msgs[3].Err)
+		}
 
-	if !strings.Contains(msgs[4].Err.Error(), "chart type is not valid in apiVersion") {
-		t.Errorf("Unexpected message 4: %s", msgs[4].Err)
-	}
+		if !strings.Contains(msgs[4].Err.Error(), "chart type is not valid in apiVersion") {
+			t.Errorf("Unexpected message 4: %s", msgs[4].Err)
+		}
 
-	if !strings.Contains(msgs[5].Err.Error(), "dependencies are not valid in the Chart file with apiVersion") {
-		t.Errorf("Unexpected message 5: %s", msgs[5].Err)
-	}
+		if !strings.Contains(msgs[5].Err.Error(), "dependencies are not valid in the Chart file with apiVersion") {
+			t.Errorf("Unexpected message 5: %s", msgs[5].Err)
+		}
+	})
 
+	t.Run("Chart.yaml validity issues due to type mismatch", func(t *testing.T) {
+		linter := support.Linter{ChartDir: anotherBadChartDir}
+		Chartfile(&linter)
+		msgs := linter.Messages
+		expectedNumberOfErrorMessages := 3
+
+		if len(msgs) != expectedNumberOfErrorMessages {
+			t.Errorf("Expected %d errors, got %d", expectedNumberOfErrorMessages, len(msgs))
+			return
+		}
+
+		if !strings.Contains(msgs[0].Err.Error(), "version should be of type string") {
+			t.Errorf("Unexpected message 0: %s", msgs[0].Err)
+		}
+
+		if !strings.Contains(msgs[1].Err.Error(), "version '7.2445e+06' is not a valid SemVer") {
+			t.Errorf("Unexpected message 1: %s", msgs[1].Err)
+		}
+
+		if !strings.Contains(msgs[2].Err.Error(), "appVersion should be of type string") {
+			t.Errorf("Unexpected message 2: %s", msgs[2].Err)
+		}
+	})
 }
