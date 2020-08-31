@@ -42,7 +42,7 @@ func TestBadChart(t *testing.T) {
 		t.Errorf("Number of errors %v", len(m))
 		t.Errorf("All didn't fail with expected errors, got %#v", m)
 	}
-	// There should be one INFO, 2 WARNINGs and 2 ERROR messages, check for them
+	// There should be one INFO, 2 WARNINGs and one ERROR messages, check for them
 	var i, w, e, e2, e3, e4, e5, e6 bool
 	for _, msg := range m {
 		if msg.Severity == support.InfoSev {
@@ -74,13 +74,13 @@ func TestBadChart(t *testing.T) {
 			if strings.Contains(msg.Err.Error(), "dependencies are not valid in the Chart file with apiVersion") {
 				e5 = true
 			}
-			// This comes from the dependency check, which loads dependency info from the Chart.yaml
-			if strings.Contains(msg.Err.Error(), "unable to load chart") {
+
+			if strings.Contains(msg.Err.Error(), "chart.metadata.name is required") {
 				e6 = true
 			}
 		}
 	}
-	if !e || !e2 || !e3 || !e4 || !e5 || !w || !i || !e6 {
+	if !e || !e2 || !e3 || !e4 || !e5 || !e6 || !w || !i {
 		t.Errorf("Didn't find all the expected errors, got %#v", m)
 	}
 }
