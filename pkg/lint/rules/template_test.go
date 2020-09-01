@@ -22,6 +22,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Masterminds/goutils"
+
 	"helm.sh/helm/v3/internal/test/ensure"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -119,6 +121,14 @@ func TestValidateMetadataName(t *testing.T) {
 		"a..b":                      false,
 		"%^&#$%*@^*@&#^":            false,
 	}
+
+	// The length checker should catch this first. So this is not true fuzzing.
+	tooLong, err := goutils.RandomAlphaNumeric(300)
+	if err != nil {
+		t.Fatalf("Randomizer failed to initialize: %s", err)
+	}
+	names[tooLong] = false
+
 	for input, expectPass := range names {
 		obj := K8sYamlStruct{Metadata: k8sYamlMetadata{Name: input}}
 		if err := validateMetadataName(&obj); (err == nil) != expectPass {
