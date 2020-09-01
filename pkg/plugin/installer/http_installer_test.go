@@ -277,3 +277,33 @@ func TestExtract(t *testing.T) {
 	}
 
 }
+
+func TestCleanJoin(t *testing.T) {
+	for i, fixture := range []struct {
+		path        string
+		expect      string
+		expectError bool
+	}{
+		{"foo/bar.txt", "/tmp/foo/bar.txt", false},
+		{"/foo/bar.txt", "", true},
+		{"./foo/bar.txt", "/tmp/foo/bar.txt", false},
+		{"./././././foo/bar.txt", "/tmp/foo/bar.txt", false},
+		{"../../../../foo/bar.txt", "", true},
+		{"foo/../../../../bar.txt", "", true},
+		{"c:/foo/bar.txt", "/tmp/c:/foo/bar.txt", true},
+		{"foo\\bar.txt", "/tmp/foo/bar.txt", false},
+		{"c:\\foo\\bar.txt", "", true},
+	} {
+		out, err := cleanJoin("/tmp", fixture.path)
+		if err != nil {
+			if !fixture.expectError {
+				t.Errorf("Test %d: Path was not cleaned: %s", i, err)
+			}
+			continue
+		}
+		if fixture.expect != out {
+			t.Errorf("Test %d: Expected %q but got %q", i, fixture.expect, out)
+		}
+	}
+
+}

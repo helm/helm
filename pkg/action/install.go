@@ -104,15 +104,16 @@ type Install struct {
 
 // ChartPathOptions captures common options used for controlling chart paths
 type ChartPathOptions struct {
-	CaFile   string // --ca-file
-	CertFile string // --cert-file
-	KeyFile  string // --key-file
-	Keyring  string // --keyring
-	Password string // --password
-	RepoURL  string // --repo
-	Username string // --username
-	Verify   bool   // --verify
-	Version  string // --version
+	CaFile                string // --ca-file
+	CertFile              string // --cert-file
+	KeyFile               string // --key-file
+	InsecureSkipTLSverify bool   // --insecure-skip-verify
+	Keyring               string // --keyring
+	Password              string // --password
+	RepoURL               string // --repo
+	Username              string // --username
+	Verify                bool   // --verify
+	Version               string // --version
 }
 
 // NewInstall creates a new Install object with the given configuration.
@@ -644,6 +645,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		Options: []getter.Option{
 			getter.WithBasicAuth(c.Username, c.Password),
 			getter.WithTLSClientConfig(c.CertFile, c.KeyFile, c.CaFile),
+			getter.WithInsecureSkipVerifyTLS(c.InsecureSkipTLSverify),
 		},
 		RepositoryConfig: settings.RepositoryConfig,
 		RepositoryCache:  settings.RepositoryCache,

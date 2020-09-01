@@ -26,7 +26,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/release"
@@ -64,11 +63,12 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	var outfmt output.Format
 
 	cmd := &cobra.Command{
-		Use:     "list",
-		Short:   "list releases",
-		Long:    listHelp,
-		Aliases: []string{"ls"},
-		Args:    require.NoArgs,
+		Use:               "list",
+		Short:             "list releases",
+		Long:              listHelp,
+		Aliases:           []string{"ls"},
+		Args:              require.NoArgs,
+		ValidArgsFunction: noCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if client.AllNamespaces {
 				if err := cfg.Init(settings.RESTClientGetter(), "", os.Getenv("HELM_DRIVER"), debug); err != nil {
@@ -127,6 +127,7 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.IntVarP(&client.Limit, "max", "m", 256, "maximum number of releases to fetch")
 	f.IntVar(&client.Offset, "offset", 0, "next release name in the list, used to offset from start value")
 	f.StringVarP(&client.Filter, "filter", "f", "", "a regular expression (Perl compatible). Any releases that match the expression will be included in the results")
+	f.StringVarP(&client.Selector, "selector", "l", "", "Selector (label query) to filter on, supports '=', '==', and '!='.(e.g. -l key1=value1,key2=value2). Works only for secret(default) and configmap storage backends.")
 	bindOutputFlag(cmd, &outfmt)
 
 	return cmd
@@ -186,8 +187,8 @@ func (r *releaseListWriter) WriteYAML(out io.Writer) error {
 }
 
 // Provide dynamic auto-completion for release names
-func compListReleases(toComplete string, cfg *action.Configuration) ([]string, completion.BashCompDirective) {
-	completion.CompDebugln(fmt.Sprintf("compListReleases with toComplete %s", toComplete))
+func compListReleases(toComplete string, cfg *action.Configuration) ([]string, cobra.ShellCompDirective) {
+	cobra.CompDebugln(fmt.Sprintf("compListReleases with toComplete %s", toComplete), settings.Debug)
 
 	client := action.NewList(cfg)
 	client.All = true
@@ -197,7 +198,7 @@ func compListReleases(toComplete string, cfg *action.Configuration) ([]string, c
 	client.SetStateMask()
 	results, err := client.Run()
 	if err != nil {
-		return nil, completion.BashCompDirectiveDefault
+		return nil, cobra.ShellCompDirectiveDefault
 	}
 
 	var choices []string
@@ -205,5 +206,5 @@ func compListReleases(toComplete string, cfg *action.Configuration) ([]string, c
 		choices = append(choices, res.Name)
 	}
 
-	return choices, completion.BashCompDirectiveNoFileComp
+	return choices, cobra.ShellCompDirectiveNoFileComp
 }

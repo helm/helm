@@ -60,6 +60,8 @@ var (
 	errInvalidRevision = errors.New("invalid release revision")
 	// errInvalidName indicates that an invalid release name was provided
 	errInvalidName = errors.New("invalid release name, must match regex ^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+$ and the length must not longer than 53")
+	// errPending indicates that another instance of Helm is already applying an operation on a release.
+	errPending = errors.New("another operation (install/upgrade/rollback) is in progress")
 )
 
 // ValidName is a regular expression for resource names.
@@ -97,6 +99,8 @@ type Configuration struct {
 // renderResources renders the templates in a chart
 //
 // TODO: This function is badly in need of a refactor.
+// TODO: As part of the refactor the duplicate code in cmd/helm/template.go should be removed
+//       This code has to do with writing files to disk.
 func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, dryRun bool) ([]*release.Hook, *bytes.Buffer, string, error) {
 	hs := []*release.Hook{}
 	b := bytes.NewBuffer(nil)

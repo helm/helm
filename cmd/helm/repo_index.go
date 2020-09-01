@@ -53,6 +53,14 @@ func newRepoIndexCmd(out io.Writer) *cobra.Command {
 		Short: "generate an index file given a directory containing packaged charts",
 		Long:  repoIndexDesc,
 		Args:  require.ExactArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if len(args) == 0 {
+				// Allow file completion when completing the argument for the directory
+				return nil, cobra.ShellCompDirectiveDefault
+			}
+			// No more completions, so disable file completion
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.dir = args[0]
 			return o.run(out)

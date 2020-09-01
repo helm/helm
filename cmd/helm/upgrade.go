@@ -19,13 +19,13 @@ package main
 import (
 	"fmt"
 	"io"
+	"log"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/cli/output"
@@ -72,6 +72,15 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Short: "upgrade a release",
 		Long:  upgradeDesc,
 		Args:  require.ExactArgs(2),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if len(args) == 0 {
+				return compListReleases(toComplete, cfg)
+			}
+			if len(args) == 1 {
+				return compListCharts(toComplete, true)
+			}
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.Namespace = settings.Namespace()
 
@@ -100,6 +109,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.PostRenderer = client.PostRenderer
 					instClient.DisableOpenAPIValidation = client.DisableOpenAPIValidation
 					instClient.SubNotes = client.SubNotes
+					instClient.Description = client.Description
 
 					rel, err := runInstall(args, instClient, valueOpts, out)
 					if err != nil {
@@ -138,7 +148,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 
 			if ch.Metadata.Deprecated {
-				fmt.Fprintln(out, "WARNING: This chart is deprecated")
+				warning("This chart is deprecated")
 			}
 
 			rel, err := client.Run(args[0], ch, vals)
@@ -153,17 +163,6 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return outfmt.Write(out, &statusPrinter{rel, settings.Debug})
 		},
 	}
-
-	// Function providing dynamic auto-completion
-	completion.RegisterValidArgsFunc(cmd, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
-		if len(args) == 0 {
-			return compListReleases(toComplete, cfg)
-		}
-		if len(args) == 1 {
-			return compListCharts(toComplete, true)
-		}
-		return nil, completion.BashCompDirectiveNoFileComp
-	})
 
 	f := cmd.Flags()
 	f.BoolVar(&createNamespace, "create-namespace", false, "if --install is set, create the release namespace if not present")
@@ -181,7 +180,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.ReuseValues, "reuse-values", false, "when upgrading, reuse the last release's values and merge in any overrides from the command line via --set and -f. If '--reset-values' is specified, this is ignored")
 	f.BoolVar(&client.Wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment, StatefulSet, or ReplicaSet are in a ready state before marking the release as successful. It will wait for as long as --timeout")
 	f.BoolVar(&client.Atomic, "atomic", false, "if set, upgrade process rolls back changes made in case of failed upgrade. The --wait flag will be set automatically if --atomic is used")
-	f.IntVar(&client.MaxHistory, "history-max", 10, "limit the maximum number of revisions saved per release. Use 0 for no limit")
+	f.IntVar(&client.MaxHistory, "history-max", settings.MaxHistory, "limit the maximum number of revisions saved per release. Use 0 for no limit")
 	f.BoolVar(&client.CleanupOnFail, "cleanup-on-fail", false, "allow deletion of new resources created in this upgrade when upgrade fails")
 	f.BoolVar(&client.SubNotes, "render-subchart-notes", false, "if set, render subchart notes along with the parent")
 	f.StringVar(&client.Description, "description", "", "add a custom description")
@@ -189,6 +188,17 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	addValueOptionsFlags(f, valueOpts)
 	bindOutputFlag(cmd, &outfmt)
 	bindPostRenderFlag(cmd, &client.PostRenderer)
+
+	err := cmd.RegisterFlagCompletionFunc("version", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		if len(args) != 2 {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		return compVersionFlag(args[1], toComplete)
+	})
+
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	return cmd
 }

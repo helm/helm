@@ -381,13 +381,13 @@ const defaultNotes = `1. Get the application URL by running these commands:
   echo http://$SERVICE_IP:{{ .Values.service.port }}
 {{- else if contains "ClusterIP" .Values.service.type }}
   export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "<CHARTNAME>.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
+  export CONTAINER_PORT=$(kubectl get pod --namespace {{ .Release.Namespace }} $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
   echo "Visit http://127.0.0.1:8080 to use your application"
-  kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME 8080:80
+  kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME 8080:$CONTAINER_PORT
 {{- end }}
 `
 
-const defaultHelpers = `{{/* vim: set filetype=mustache: */}}
-{{/*
+const defaultHelpers = `{{/*
 Expand the name of the chart.
 */}}
 {{- define "<CHARTNAME>.name" -}}
@@ -425,9 +425,7 @@ Common labels
 {{- define "<CHARTNAME>.labels" -}}
 helm.sh/chart: {{ include "<CHARTNAME>.chart" . }}
 {{ include "<CHARTNAME>.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-{{- end }}
+app.kubernetes.io/version: {{ .Values.image.tag | default .Chart.AppVersion | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
@@ -458,7 +456,7 @@ metadata:
   labels:
     {{- include "<CHARTNAME>.labels" . | nindent 4 }}
   annotations:
-    "helm.sh/hook": test-success
+    "helm.sh/hook": test
 spec:
   containers:
     - name: wget

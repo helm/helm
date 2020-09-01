@@ -35,6 +35,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -478,7 +479,7 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 
 	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), timeout)
 	defer cancel()
-	_, err = watchtools.ListWatchUntil(ctx, lw, func(e watch.Event) (bool, error) {
+	_, err = watchtools.UntilWithSync(ctx, lw, &unstructured.Unstructured{}, nil, func(e watch.Event) (bool, error) {
 		// Make sure the incoming object is versioned as we use unstructured
 		// objects when we build manifests
 		obj := convertWithMapper(e.Object, info.Mapping)
@@ -542,14 +543,14 @@ func (c *Client) waitForPodSuccess(obj runtime.Object, name string) (bool, error
 
 	switch o.Status.Phase {
 	case v1.PodSucceeded:
-		fmt.Printf("Pod %s succeeded\n", o.Name)
+		c.Log("Pod %s succeeded", o.Name)
 		return true, nil
 	case v1.PodFailed:
 		return true, errors.Errorf("pod %s failed", o.Name)
 	case v1.PodPending:
-		fmt.Printf("Pod %s pending\n", o.Name)
+		c.Log("Pod %s pending", o.Name)
 	case v1.PodRunning:
-		fmt.Printf("Pod %s running\n", o.Name)
+		c.Log("Pod %s running", o.Name)
 	}
 
 	return false, nil
