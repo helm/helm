@@ -17,6 +17,8 @@ limitations under the License.
 package rules
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
 	"os"
 	"path"
@@ -122,6 +124,7 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 
 		renderedContent := renderedContentMap[path.Join(chart.Name(), fileName)]
 		if strings.TrimSpace(renderedContent) != "" {
+			linter.RunLinterRule(support.WarningSev, path, validateTopIndentLevel(renderedContent))
 			var yamlStruct K8sYamlStruct
 			// Even though K8sYamlStruct only defines a few fields, an error in any other
 			// key will be raised as well
@@ -135,6 +138,32 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 			linter.RunLinterRule(support.ErrorSev, fpath, validateMatchSelector(&yamlStruct, renderedContent))
 		}
 	}
+}
+
+// validateTopIndentLevel checks that the content does not start with an indent level > 0.
+//
+// This error can occur when a template accidentally inserts space. It can cause
+// unpredictable errors dependening on whether the text is normalized before being passed
+// into the YAML parser. So we trap it here.
+//
+// See https://github.com/helm/helm/issues/8467
+func validateTopIndentLevel(content string) error {
+	// Read lines until we get to a non-empty one
+	scanner := bufio.NewScanner(bytes.NewBufferString(content))
+	for scanner.Scan() {
+		line := scanner.Text()
+		// If line is empty, skip
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		// If it starts with one or more spaces, this is an error
+		if strings.HasPrefix(line, " ") || strings.HasPrefix(line, "\t") {
+			return fmt.Errorf("document starts with an illegal indent: %q, which may cause parsing problems", line)
+		}
+		// Any other condition passes.
+		return nil
+	}
+	return scanner.Err()
 }
 
 // Validation functions
