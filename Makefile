@@ -50,6 +50,7 @@ endif
 LDFLAGS += -X helm.sh/helm/v3/internal/version.metadata=${VERSION_METADATA}
 LDFLAGS += -X helm.sh/helm/v3/internal/version.gitCommit=${GIT_COMMIT}
 LDFLAGS += -X helm.sh/helm/v3/internal/version.gitTreeState=${GIT_DIRTY}
+LDFLAGS += $(EXT_LDFLAGS)
 
 .PHONY: all
 all: build
