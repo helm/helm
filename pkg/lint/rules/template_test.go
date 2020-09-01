@@ -315,3 +315,20 @@ spec:
 		t.Error("expected Deployment with no selector to fail")
 	}
 }
+
+func TestValidateTopIndentLevel(t *testing.T) {
+	for doc, shouldFail := range map[string]bool{
+		// Should not fail
+		"\n\n\n\t\n   \t\n":          false,
+		"apiVersion:foo\n  bar:baz":  false,
+		"\n\n\napiVersion:foo\n\n\n": false,
+		// Should fail
+		"  apiVersion:foo":         true,
+		"\n\n  apiVersion:foo\n\n": true,
+	} {
+		if err := validateTopIndentLevel(doc); (err == nil) == shouldFail {
+			t.Errorf("Expected %t for %q", shouldFail, doc)
+		}
+	}
+
+}
