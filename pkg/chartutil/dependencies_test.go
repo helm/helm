@@ -17,6 +17,7 @@ package chartutil
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strconv"
 	"testing"
@@ -59,6 +60,35 @@ func TestLoadDependency(t *testing.T) {
 	c := loadChart(t, "testdata/frobnitz")
 	check(c.Metadata.Dependencies)
 	check(c.Lock.Dependencies)
+}
+
+// recProcessDependencyEnabled is mostly a simplified version of
+// Engine.recUpdateRenderValues, for testing only dependencies
+func recProcessDependencyEnabled(c *chart.Chart, v map[string]interface{}, tags map[string]interface{}) error {
+	// get the local values
+	var err error
+	if c.IsRoot() {
+		v, err = CoalesceRoot(c, v)
+		tags = GetTags(v)
+	} else {
+		v, err = CoalesceDep(c, v)
+	}
+	if err != nil {
+		return err
+	}
+	// Remove all disabled dependencies
+	err = ProcessDependencyEnabled(c, v, tags)
+	if err != nil {
+		return err
+	}
+	// Recursive upudate on enabled dependencies
+	for _, child := range c.Dependencies() {
+		err = recProcessDependencyEnabled(child, v, tags)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func TestDependencyEnabled(t *testing.T) {
@@ -116,7 +146,7 @@ func TestDependencyEnabled(t *testing.T) {
 	for _, tc := range tests {
 		c := loadChart(t, "testdata/subpop")
 		t.Run(tc.name, func(t *testing.T) {
-			if err := processDependencyEnabled(c, tc.v, ""); err != nil {
+			if err := recProcessDependencyEnabled(c, tc.v, nil); err != nil {
 				t.Fatalf("error processing enabled dependencies %v", err)
 			}
 
@@ -212,12 +242,16 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	e["SCBexported2A"] = "blaster"
 	e["global.SC1exported2.all.SC1exported3"] = "SC1expstr"
 
-	if err := processDependencyImportValues(c); err != nil {
+	var cvals Values
+	cvals, err := CoalesceValues(c, nil)
+	if err != nil {
+		t.Fatalf("coalescing values %v", err)
+	}
+	if err := ProcessDependencyImportValues(c, cvals); err != nil {
 		t.Fatalf("processing import values dependencies %v", err)
 	}
-	cc := Values(c.Values)
 	for kk, vv := range e {
-		pv, err := cc.PathValue(kk)
+		pv, err := cvals.PathValue(kk)
 		if err != nil {
 			t.Fatalf("retrieving import values table %v %v", kk, err)
 		}
@@ -243,7 +277,12 @@ func TestProcessDependencyImportValuesForEnabledCharts(t *testing.T) {
 	c := loadChart(t, "testdata/import-values-from-enabled-subchart/parent-chart")
 	nameOverride := "parent-chart-prod"
 
-	if err := processDependencyImportValues(c); err != nil {
+	cvals, err := CoalesceValues(c, nil)
+	if err != nil {
+		t.Fatalf("coalescing values %v", err)
+	}
+
+	if err := ProcessDependencyImportValues(c, cvals); err != nil {
 		t.Fatalf("processing import values dependencies %v", err)
 	}
 
@@ -251,7 +290,7 @@ func TestProcessDependencyImportValuesForEnabledCharts(t *testing.T) {
 		t.Fatalf("expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
 	}
 
-	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
+	if err := recProcessDependencyEnabled(c, c.Values, nil); err != nil {
 		t.Fatalf("expected no errors but got %q", err)
 	}
 
@@ -315,7 +354,7 @@ func TestDependentChartAliases(t *testing.T) {
 		t.Fatalf("expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
 	}
 
-	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
+	if err := ProcessDependencyEnabled(c, c.Values, GetTags(c.Values)); err != nil {
 		t.Fatalf("expected no errors but got %q", err)
 	}
 
@@ -336,7 +375,7 @@ func TestDependentChartWithSubChartsAbsentInDependency(t *testing.T) {
 		t.Fatalf("expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
 	}
 
-	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
+	if err := ProcessDependencyEnabled(c, c.Values, GetTags(c.Values)); err != nil {
 		t.Fatalf("expected no errors but got %q", err)
 	}
 
@@ -373,7 +412,7 @@ func TestDependentChartsWithSubchartsAllSpecifiedInDependency(t *testing.T) {
 		t.Fatalf("expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
 	}
 
-	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
+	if err := ProcessDependencyEnabled(c, c.Values, GetTags(c.Values)); err != nil {
 		t.Fatalf("expected no errors but got %q", err)
 	}
 
@@ -393,7 +432,7 @@ func TestDependentChartsWithSomeSubchartsSpecifiedInDependency(t *testing.T) {
 		t.Fatalf("expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
 	}
 
-	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
+	if err := ProcessDependencyEnabled(c, c.Values, GetTags(c.Values)); err != nil {
 		t.Fatalf("expected no errors but got %q", err)
 	}
 
@@ -403,5 +442,35 @@ func TestDependentChartsWithSomeSubchartsSpecifiedInDependency(t *testing.T) {
 
 	if len(c.Metadata.Dependencies) != 1 {
 		t.Fatalf("expected 1 dependency specified in Chart.yaml, got %d", len(c.Metadata.Dependencies))
+	}
+}
+
+func TestGetTags(t *testing.T) {
+	type M = map[string]interface{}
+	tests := []struct {
+		name string
+		vals M
+		tags M
+	}{{
+		"normal tags",
+		M{"tags": M{"a": true, "b": false}},
+		M{"a": true, "b": false},
+	}, {
+		"not an object tags",
+		M{"tags": []interface{}{"a", "b"}},
+		nil,
+	}, {
+		"no tags",
+		M{"no_tags": M{"a": true, "b": false}},
+		nil,
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tags := GetTags(tt.vals)
+			if !reflect.DeepEqual(tags, tt.tags) {
+				t.Fatalf("tags map do not match got %v, expected %v", tags, tt.tags)
+			}
+		})
 	}
 }

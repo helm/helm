@@ -17,11 +17,11 @@ limitations under the License.
 package chartutil
 
 import (
-	"fmt"
 	"io"
 	"io/ioutil"
 	"strings"
 
+	"github.com/mitchellh/copystructure"
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
@@ -134,6 +134,7 @@ func ToRenderValues(chrt *chart.Chart, chrtVals map[string]interface{}, options 
 	top := map[string]interface{}{
 		"Chart":        chrt.Metadata,
 		"Capabilities": caps,
+		"Values":       nil,
 		"Release": map[string]interface{}{
 			"Name":      options.Name,
 			"Namespace": options.Namespace,
@@ -144,17 +145,17 @@ func ToRenderValues(chrt *chart.Chart, chrtVals map[string]interface{}, options 
 		},
 	}
 
-	vals, err := CoalesceValues(chrt, chrtVals)
-	if err != nil {
-		return top, err
+	// if we have an empty map, make sure it is initialized
+	if chrtVals == nil {
+		top["Values"] = map[string]interface{}{}
+	} else {
+		vals, err := copystructure.Copy(chrtVals)
+		if err != nil {
+			return top, err
+		}
+		top["Values"] = vals.(map[string]interface{})
 	}
 
-	if err := ValidateAgainstSchema(chrt, vals); err != nil {
-		errFmt := "values don't meet the specifications of the schema(s) in the following chart(s):\n%s"
-		return top, fmt.Errorf(errFmt, err.Error())
-	}
-
-	top["Values"] = vals
 	return top, nil
 }
 

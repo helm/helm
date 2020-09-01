@@ -64,6 +64,11 @@ type Engine struct {
 // section contains a value named "bar", that value will be passed on to the
 // bar chart during render time.
 func (e Engine) Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, error) {
+	// update values and dependencies
+	if err := e.updateRenderValues(chrt, values); err != nil {
+		return nil, err
+	}
+	// parse templates with the updated values
 	tmap := allTemplates(chrt, values)
 	return e.render(tmap)
 }
@@ -295,6 +300,75 @@ func cleanupExecError(filename string, err error) error {
 	}
 
 	return err
+}
+
+// updateRenderValues update render values with chart values.
+func (e Engine) updateRenderValues(c *chart.Chart, vals chartutil.Values) error {
+	var sb strings.Builder
+	// update values and dependencies
+	if err := e.recUpdateRenderValues(c, vals, nil, &sb); err != nil {
+		return err
+	}
+	// Check for values validation errors
+	if sb.Len() > 0 {
+		errFmt := "values don't meet the specifications of the schema(s) in the following chart(s):\n%s"
+		return fmt.Errorf(errFmt, sb.String())
+	}
+	// import values from dependenvies
+	if err := chartutil.ProcessDependencyImportValues(c, vals["Values"].(map[string]interface{})); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (e Engine) recUpdateRenderValues(c *chart.Chart, vals chartutil.Values, tags map[string]interface{}, sb *strings.Builder) error {
+	next := map[string]interface{}{
+		"Chart":        c.Metadata,
+		"Files":        newFiles(c.Files),
+		"Release":      vals["Release"],
+		"Capabilities": vals["Capabilities"],
+		"Values":       nil,
+	}
+
+	// If there is a {{.Values.ThisChart}} in the parent metadata,
+	// copy that into the {{.Values}} for this template.
+	var nvals map[string]interface{}
+	var err error
+	if c.IsRoot() {
+		nvals, err = chartutil.CoalesceRoot(c, vals["Values"].(map[string]interface{}))
+	} else {
+		nvals, err = chartutil.CoalesceDep(c, vals["Values"].(map[string]interface{}))
+	}
+	if err != nil {
+		return err
+	}
+	next["Values"] = nvals
+	// Get validations errors of chart values
+	if c.Schema != nil {
+		err = chartutil.ValidateAgainstSingleSchema(nvals, c.Schema)
+		if err != nil {
+			sb.WriteString(fmt.Sprintf("%s:\n", c.Name()))
+			sb.WriteString(err.Error())
+		}
+	}
+	// Get tags of the root
+	if c.IsRoot() {
+		tags = chartutil.GetTags(nvals)
+	}
+	// Remove all disabled dependencies
+	err = chartutil.ProcessDependencyEnabled(c, nvals, tags)
+	if err != nil {
+		return err
+	}
+	// Recursive upudate on enabled dependencies
+	for _, child := range c.Dependencies() {
+		err = e.recUpdateRenderValues(child, next, tags, sb)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func sortTemplates(tpls map[string]renderable) []string {

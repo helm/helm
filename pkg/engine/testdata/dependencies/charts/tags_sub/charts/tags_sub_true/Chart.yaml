@@ -1,0 +1,4 @@
+apiVersion: v2
+description: A Helm chart for Kubernetes
+name: tags_sub_true
+version: 0.1.0

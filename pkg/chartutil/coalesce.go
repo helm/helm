@@ -35,6 +35,8 @@ import (
 //	- A chart has access to all of the variables for it, as well as all of
 //		the values destined for its dependencies.
 func CoalesceValues(chrt *chart.Chart, vals map[string]interface{}) (map[string]interface{}, error) {
+	// create a copy of vals and then pass it to coalesce
+	// and coalesceDeps, as both will mutate the passed values
 	v, err := copystructure.Copy(vals)
 	if err != nil {
 		return vals, err
@@ -186,6 +188,9 @@ func CoalesceTables(dst, src map[string]interface{}) map[string]interface{} {
 	// values.
 	for key, val := range src {
 		if dv, ok := dst[key]; ok && dv == nil {
+			// When the YAML value is null, we remove the value's key.
+			// This allows Helm's various sources of values (value files or --set) to
+			// remove incompatible keys from any previous chart, file, or set values.
 			delete(dst, key)
 		} else if !ok {
 			dst[key] = val
@@ -200,4 +205,59 @@ func CoalesceTables(dst, src map[string]interface{}) map[string]interface{} {
 		}
 	}
 	return dst
+}
+
+// CoalesceTablesUpdate merges a source map into a destination map.
+//
+// src is considered authoritative.
+func CoalesceTablesUpdate(dst, src map[string]interface{}) map[string]interface{} {
+	if dst == nil || src == nil {
+		return dst
+	}
+	// src values override dest values.
+	for key, val := range src {
+		// We do not remove the null values, to let value templates delete values of sub-charts
+		if dv, ok := dst[key]; !ok {
+		} else if istable(val) {
+			if istable(dv) {
+				CoalesceTablesUpdate(dv.(map[string]interface{}),
+					val.(map[string]interface{}))
+				continue
+			} else {
+				log.Printf("warning: overwriting not table with table for %s (%v)", key, dv)
+			}
+		} else if istable(dv) {
+			log.Printf("warning: overwriting table with non table for %s (%v)", key, dv)
+		}
+		dst[key] = val
+	}
+	return dst
+}
+
+// CoalesceDep returns the render values for subchart,
+// merged with subchart values and dest global
+func CoalesceDep(subchart *chart.Chart, dest map[string]interface{}) (map[string]interface{}, error) {
+	dv, ok := dest[subchart.Name()]
+	if !ok {
+		// If dest doesn't already have the key, create it.
+		dv = map[string]interface{}{}
+		dest[subchart.Name()] = dv
+	} else if !istable(dv) {
+		return dest, errors.Errorf("type mismatch on %s: %t", subchart.Name(), dv)
+	}
+	dvmap := dv.(map[string]interface{})
+
+	// Get globals out of dest and merge them into dvmap.
+	coalesceGlobals(dvmap, dest)
+
+	// Now coalesce the rest of the values.
+	coalesceValues(subchart, dvmap)
+	return dvmap, nil
+}
+
+// CoalesceRoot merges dest with chrt values,
+// it returns dest for a similar behavior with CoalesceDep
+func CoalesceRoot(chrt *chart.Chart, dest map[string]interface{}) (map[string]interface{}, error) {
+	coalesceValues(chrt, dest)
+	return dest, nil
 }

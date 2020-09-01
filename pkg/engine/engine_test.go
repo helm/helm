@@ -18,11 +18,13 @@ package engine
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
 
 	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 )
 
@@ -153,7 +155,9 @@ func TestRenderRefsOrdering(t *testing.T) {
 	}
 
 	for i := 0; i < 100; i++ {
-		out, err := Render(parentChart, chartutil.Values{})
+		out, err := Render(parentChart, chartutil.Values{
+			"Values": map[string]interface{}{},
+		})
 		if err != nil {
 			t.Fatalf("Failed to render templates: %s", err)
 		}
@@ -333,7 +337,9 @@ func TestRenderDependency(t *testing.T) {
 		},
 	})
 
-	out, err := Render(ch, map[string]interface{}{})
+	out, err := Render(ch, map[string]interface{}{
+		"Values": map[string]interface{}{},
+	})
 	if err != nil {
 		t.Fatalf("failed to render chart: %s", err)
 	}
@@ -737,4 +743,312 @@ func TestRenderRecursionLimit(t *testing.T) {
 		t.Errorf("Expected %q, got %q (%v)", expect, got, out)
 	}
 
+}
+
+func TestUpdateRenderValues_dependencies(t *testing.T) {
+	values := map[string]interface{}{}
+	rv := map[string]interface{}{
+		"Release": map[string]interface{}{
+			"Name": "Test Name",
+		},
+		"Values": values,
+	}
+	c := loadChart(t, "testdata/dependencies")
+
+	if err := new(Engine).updateRenderValues(c, rv); err != nil {
+		t.Fatal(err)
+	}
+	// check for conditions
+	if vm, ok := values["condition_true"]; !ok {
+		t.Errorf("chart 'condition_true' not evaluated")
+	} else {
+		m := vm.(map[string]interface{})
+		if v, ok := m["evaluated"]; !ok || !v.(bool) {
+			t.Errorf("chart 'condition_true' not evaluated")
+		}
+	}
+	if _, ok := values["condition_false"]; ok {
+		t.Errorf("chart 'condition_false' evaluated")
+	}
+	if vm, ok := values["condition_null"]; !ok {
+		t.Errorf("chart 'condition_null' not evaluated")
+	} else {
+		m := vm.(map[string]interface{})
+		if v, ok := m["evaluated"]; !ok || !v.(bool) {
+			t.Errorf("chart 'condition_null' not evaluated")
+		}
+	}
+	// check for tags
+	if vm, ok := values["tags_true"]; !ok {
+		t.Errorf("chart 'tags_true' not evaluated")
+	} else {
+		m := vm.(map[string]interface{})
+		if v, ok := m["evaluated"]; !ok || !v.(bool) {
+			t.Errorf("chart 'tags_true' not evaluated")
+		}
+	}
+	if _, ok := values["tags_false"]; ok {
+		t.Errorf("chart 'tags_false' evaluated")
+	}
+	// check for sub tags
+	if vm, ok := values["tags_sub"]; !ok {
+		t.Errorf("chart 'tags_sub' not evaluated")
+	} else {
+		m := vm.(map[string]interface{})
+		if v, ok := m["evaluated"]; !ok || !v.(bool) {
+			t.Errorf("chart 'tags_sub' not evaluated")
+		}
+		if vm, ok := m["tags_sub_true"]; !ok {
+			t.Errorf("chart 'tags_sub/tags_sub_true' not evaluated")
+		} else {
+			m := vm.(map[string]interface{})
+			if v, ok := m["evaluated"]; !ok || !v.(bool) {
+				t.Errorf("chart 'tags_sub/tags_sub_true' not evaluated")
+			}
+		}
+		if _, ok := m["tags_sub/tags_sub_false"]; ok {
+			t.Errorf("chart 'tags_sub/tags_sub_false' evaluated")
+		}
+	}
+	// check for import-values
+	if vm, ok := values["import_values"]; !ok {
+		t.Errorf("chart 'import_values' not evaluated")
+	} else {
+		m := vm.(map[string]interface{})
+		if v, ok := m["evaluated"]; !ok || !v.(bool) {
+			t.Errorf("chart 'import_values' not evaluated")
+		}
+	}
+	if vm, ok := values["importValues"]; !ok {
+		t.Errorf("value 'importValues' not imported")
+	} else {
+		m := vm.(map[string]interface{})
+		if v, ok := m["imported"]; !ok || !v.(bool) {
+			t.Errorf("value 'importValues.imported' not imported")
+		}
+	}
+	if vm, ok := values["subImport"]; !ok {
+		t.Errorf("value 'subImport' not imported")
+	} else {
+		m := vm.(map[string]interface{})
+		if v, ok := m["old"]; !ok {
+			t.Errorf("value 'subImport.old' not imported")
+		} else if vs, ok := v.(string); !ok || vs != "values.yaml" {
+			t.Errorf("wrong 'subImport.old' imported: %v", v)
+		}
+	}
+
+	names := extractChartNames(c)
+	except := []string{
+		"parentchart",
+		"parentchart.condition_null",
+		"parentchart.condition_true",
+		"parentchart.import_values",
+		"parentchart.tags_sub",
+		"parentchart.tags_sub.tags_sub_true",
+		"parentchart.tags_true",
+	}
+	if len(names) != len(except) {
+		t.Errorf("dependencies values do not match got %v, expected %v", names, except)
+	} else {
+		for i := range names {
+			if names[i] != except[i] {
+				t.Errorf("dependencies values do not match got %v, expected %v", names, except)
+				break
+			}
+		}
+	}
+}
+
+// copied from chartutil/values_test.go:TestToRenderValues
+// because ToRenderValues no longer coalesces chart values
+func TestUpdateRenderValues_ToRenderValues(t *testing.T) {
+
+	chartValues := map[string]interface{}{
+		"name": "al Rashid",
+		"where": map[string]interface{}{
+			"city":  "Basrah",
+			"title": "caliph",
+		},
+	}
+
+	overideValues := map[string]interface{}{
+		"name": "Haroun",
+		"where": map[string]interface{}{
+			"city":  "Baghdad",
+			"date":  "809 CE",
+			"title": "caliph",
+		},
+	}
+
+	c := &chart.Chart{
+		Metadata:  &chart.Metadata{Name: "test"},
+		Templates: []*chart.File{},
+		Values:    chartValues,
+		Files: []*chart.File{
+			{Name: "scheherazade/shahryar.txt", Data: []byte("1,001 Nights")},
+		},
+	}
+	c.AddDependency(&chart.Chart{
+		Metadata: &chart.Metadata{Name: "where"},
+	})
+
+	o := chartutil.ReleaseOptions{
+		Name:      "Seven Voyages",
+		Namespace: "default",
+		Revision:  1,
+		IsInstall: true,
+	}
+
+	res, err := chartutil.ToRenderValues(c, overideValues, o, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = new(Engine).updateRenderValues(c, res); err != nil {
+		t.Fatal(err)
+	}
+
+	// Ensure that the top-level values are all set.
+	if name := res["Chart"].(*chart.Metadata).Name; name != "test" {
+		t.Errorf("Expected chart name 'test', got %q", name)
+	}
+	relmap := res["Release"].(map[string]interface{})
+	if name := relmap["Name"]; name.(string) != "Seven Voyages" {
+		t.Errorf("Expected release name 'Seven Voyages', got %q", name)
+	}
+	if namespace := relmap["Namespace"]; namespace.(string) != "default" {
+		t.Errorf("Expected namespace 'default', got %q", namespace)
+	}
+	if revision := relmap["Revision"]; revision.(int) != 1 {
+		t.Errorf("Expected revision '1', got %d", revision)
+	}
+	if relmap["IsUpgrade"].(bool) {
+		t.Error("Expected upgrade to be false.")
+	}
+	if !relmap["IsInstall"].(bool) {
+		t.Errorf("Expected install to be true.")
+	}
+	if !res["Capabilities"].(*chartutil.Capabilities).APIVersions.Has("v1") {
+		t.Error("Expected Capabilities to have v1 as an API")
+	}
+	if res["Capabilities"].(*chartutil.Capabilities).KubeVersion.Major != "1" {
+		t.Error("Expected Capabilities to have a Kube version")
+	}
+
+	vals := res["Values"].(map[string]interface{})
+	if vals["name"] != "Haroun" {
+		t.Errorf("Expected 'Haroun', got %q (%v)", vals["name"], vals)
+	}
+	where := vals["where"].(map[string]interface{})
+	expects := map[string]string{
+		"city":  "Baghdad",
+		"date":  "809 CE",
+		"title": "caliph",
+	}
+	for field, expect := range expects {
+		if got := where[field]; got != expect {
+			t.Errorf("Expected %q, got %q (%v)", expect, got, where)
+		}
+	}
+}
+
+// copied from chartutil/dependencies_test.go:TestDependencyEnabled
+// because ProcessDependencyEnabled is no longer recursive
+func TestUpdateRenderValues_TestDependencyEnabled(t *testing.T) {
+	type M = map[string]interface{}
+	tests := []struct {
+		name string
+		v    M
+		e    []string // expected charts including duplicates in alphanumeric order
+	}{{
+		"tags with no effect",
+		M{"tags": M{"nothinguseful": false}},
+		[]string{"parentchart", "parentchart.subchart1", "parentchart.subchart1.subcharta", "parentchart.subchart1.subchartb"},
+	}, {
+		"tags disabling a group",
+		M{"tags": M{"front-end": false}},
+		[]string{"parentchart"},
+	}, {
+		"tags disabling a group and enabling a different group",
+		M{"tags": M{"front-end": false, "back-end": true}},
+		[]string{"parentchart", "parentchart.subchart2", "parentchart.subchart2.subchartb", "parentchart.subchart2.subchartc"},
+	}, {
+		"tags disabling only children, children still enabled since tag front-end=true in values.yaml",
+		M{"tags": M{"subcharta": false, "subchartb": false}},
+		[]string{"parentchart", "parentchart.subchart1", "parentchart.subchart1.subcharta", "parentchart.subchart1.subchartb"},
+	}, {
+		"tags disabling all parents/children with additional tag re-enabling a parent",
+		M{"tags": M{"front-end": false, "subchart1": true, "back-end": false}},
+		[]string{"parentchart", "parentchart.subchart1"},
+	}, {
+		"conditions enabling the parent charts, but back-end (b, c) is still disabled via values.yaml",
+		M{"subchart1": M{"enabled": true}, "subchart2": M{"enabled": true}},
+		[]string{"parentchart", "parentchart.subchart1", "parentchart.subchart1.subcharta", "parentchart.subchart1.subchartb", "parentchart.subchart2"},
+	}, {
+		"conditions disabling the parent charts, effectively disabling children",
+		M{"subchart1": M{"enabled": false}, "subchart2": M{"enabled": false}},
+		[]string{"parentchart"},
+	}, {
+		"conditions a child using the second condition path of child's condition",
+		M{"subchart1": M{"subcharta": M{"enabled": false}}},
+		[]string{"parentchart", "parentchart.subchart1", "parentchart.subchart1.subchartb"},
+	}, {
+		"tags enabling a parent/child group with condition disabling one child",
+		M{"subchart2": M{"subchartc": M{"enabled": false}}, "tags": M{"back-end": true}},
+		[]string{"parentchart", "parentchart.subchart1", "parentchart.subchart1.subcharta", "parentchart.subchart1.subchartb", "parentchart.subchart2", "parentchart.subchart2.subchartb"},
+	}, {
+		"tags will not enable a child if parent is explicitly disabled with condition",
+		M{"subchart1": M{"enabled": false}, "tags": M{"front-end": true}},
+		[]string{"parentchart"},
+	}, {
+		"subcharts with alias also respect conditions",
+		M{"subchart1": M{"enabled": false}, "subchart2alias": M{"enabled": true, "subchartb": M{"enabled": true}}},
+		[]string{"parentchart", "parentchart.subchart2alias", "parentchart.subchart2alias.subchartb"},
+	}}
+
+	for _, tc := range tests {
+		c := loadChart(t, "../chartutil/testdata/subpop")
+		vals := map[string]interface{}{"Values": tc.v}
+		t.Run(tc.name, func(t *testing.T) {
+			if err := new(Engine).updateRenderValues(c, vals); err != nil {
+				t.Fatalf("error processing enabled dependencies %v", err)
+			}
+
+			names := extractChartNames(c)
+			if len(names) != len(tc.e) {
+				t.Fatalf("slice lengths do not match got %v, expected %v", len(names), len(tc.e))
+			}
+			for i := range names {
+				if names[i] != tc.e[i] {
+					t.Fatalf("slice values do not match got %v, expected %v", names, tc.e)
+				}
+			}
+		})
+	}
+}
+
+// copied from chartutil/dependencies_test.go:loadChart
+func loadChart(t *testing.T, path string) *chart.Chart {
+	t.Helper()
+	c, err := loader.Load(path)
+	if err != nil {
+		t.Fatalf("failed to load testdata: %s", err)
+	}
+	return c
+}
+
+// copied from chartutil/dependencies_test.go:extractChartNames
+// extractCharts recursively searches chart dependencies returning all charts found
+func extractChartNames(c *chart.Chart) []string {
+	var out []string
+	var fn func(c *chart.Chart)
+	fn = func(c *chart.Chart) {
+		out = append(out, c.ChartPath())
+		for _, d := range c.Dependencies() {
+			fn(d)
+		}
+	}
+	fn(c)
+	sort.Strings(out)
+	return out
 }
