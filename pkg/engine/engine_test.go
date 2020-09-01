@@ -409,7 +409,7 @@ func TestRenderNestedValues(t *testing.T) {
 	inject := chartutil.Values{
 		"Values": tmp,
 		"Chart":  outer.Metadata,
-		"Release": chartutil.Values{
+		"Release": map[string]interface{}{
 			"Name": "dyin",
 		},
 	}
@@ -464,9 +464,9 @@ func TestRenderBuiltinValues(t *testing.T) {
 	outer.AddDependency(inner)
 
 	inject := chartutil.Values{
-		"Values": "",
+		"Values": map[string]interface{}{},
 		"Chart":  outer.Metadata,
-		"Release": chartutil.Values{
+		"Release": map[string]interface{}{
 			"Name": "Aeneid",
 		},
 	}
@@ -510,9 +510,9 @@ func TestAlterFuncMap_include(t *testing.T) {
 	}
 
 	v := chartutil.Values{
-		"Values": "",
+		"Values": map[string]interface{}{},
 		"Chart":  c.Metadata,
-		"Release": chartutil.Values{
+		"Release": map[string]interface{}{
 			"Name": "Mistah Kurtz",
 		},
 	}
@@ -544,12 +544,12 @@ func TestAlterFuncMap_require(t *testing.T) {
 	}
 
 	v := chartutil.Values{
-		"Values": chartutil.Values{
+		"Values": map[string]interface{}{
 			"who":   "us",
 			"bases": 2,
 		},
 		"Chart": c.Metadata,
-		"Release": chartutil.Values{
+		"Release": map[string]interface{}{
 			"Name": "That 90s meme",
 		},
 	}
@@ -571,11 +571,11 @@ func TestAlterFuncMap_require(t *testing.T) {
 	// test required without passing in needed values with lint mode on
 	// verifies lint replaces required with an empty string (should not fail)
 	lintValues := chartutil.Values{
-		"Values": chartutil.Values{
+		"Values": map[string]interface{}{
 			"who": "us",
 		},
 		"Chart": c.Metadata,
-		"Release": chartutil.Values{
+		"Release": map[string]interface{}{
 			"Name": "That 90s meme",
 		},
 	}
@@ -605,11 +605,11 @@ func TestAlterFuncMap_tpl(t *testing.T) {
 	}
 
 	v := chartutil.Values{
-		"Values": chartutil.Values{
+		"Values": map[string]interface{}{
 			"value": "myvalue",
 		},
 		"Chart": c.Metadata,
-		"Release": chartutil.Values{
+		"Release": map[string]interface{}{
 			"Name": "TestRelease",
 		},
 	}
@@ -634,11 +634,11 @@ func TestAlterFuncMap_tplfunc(t *testing.T) {
 	}
 
 	v := chartutil.Values{
-		"Values": chartutil.Values{
+		"Values": map[string]interface{}{
 			"value": "myvalue",
 		},
 		"Chart": c.Metadata,
-		"Release": chartutil.Values{
+		"Release": map[string]interface{}{
 			"Name": "TestRelease",
 		},
 	}
@@ -663,11 +663,11 @@ func TestAlterFuncMap_tplinclude(t *testing.T) {
 		},
 	}
 	v := chartutil.Values{
-		"Values": chartutil.Values{
+		"Values": map[string]interface{}{
 			"value": "myvalue",
 		},
 		"Chart": c.Metadata,
-		"Release": chartutil.Values{
+		"Release": map[string]interface{}{
 			"Name": "TestRelease",
 		},
 	}
@@ -694,9 +694,9 @@ func TestRenderRecursionLimit(t *testing.T) {
 		},
 	}
 	v := chartutil.Values{
-		"Values": "",
+		"Values": map[string]interface{}{},
 		"Chart":  c.Metadata,
-		"Release": chartutil.Values{
+		"Release": map[string]interface{}{
 			"Name": "TestRelease",
 		},
 	}

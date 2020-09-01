@@ -222,6 +222,7 @@ func processImportValues(c *chart.Chart) error {
 		return nil
 	}
 	// combine chart values and empty config to get Values
+	var cvals Values
 	cvals, err := CoalesceValues(c, nil)
 	if err != nil {
 		return err
@@ -248,7 +249,7 @@ func processImportValues(c *chart.Chart) error {
 					continue
 				}
 				// create value map from child to be merged into parent
-				b = CoalesceTables(cvals, pathToMap(parent, vv.AsMap()))
+				b = CoalesceTables(cvals, pathToMap(parent, vv))
 			case string:
 				child := "exports." + iv
 				outiv = append(outiv, map[string]string{
@@ -260,7 +261,7 @@ func processImportValues(c *chart.Chart) error {
 					log.Printf("Warning: ImportValues missing table: %v", err)
 					continue
 				}
-				b = CoalesceTables(b, vm.AsMap())
+				b = CoalesceTables(b, vm)
 			}
 		}
 		// set our formatted import values

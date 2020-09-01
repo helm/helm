@@ -245,7 +245,7 @@ func (e Engine) renderWithReferences(tpls, referenceTpls map[string]renderable) 
 		}
 		// At render time, add information about the template that is being rendered.
 		vals := tpls[filename].vals
-		vals["Template"] = chartutil.Values{"Name": filename, "BasePath": tpls[filename].basePath}
+		vals["Template"] = map[string]interface{}{"Name": filename, "BasePath": tpls[filename].basePath}
 		var buf strings.Builder
 		if err := t.ExecuteTemplate(&buf, filename, vals); err != nil {
 			return map[string]string{}, cleanupExecError(filename, err)
@@ -340,7 +340,7 @@ func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.
 		"Files":        newFiles(c.Files),
 		"Release":      vals["Release"],
 		"Capabilities": vals["Capabilities"],
-		"Values":       make(chartutil.Values),
+		"Values":       map[string]interface{}{},
 	}
 
 	// If there is a {{.Values.ThisChart}} in the parent metadata,

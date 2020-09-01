@@ -34,7 +34,7 @@ import (
 //	- Scalar values and arrays are replaced, maps are merged
 //	- A chart has access to all of the variables for it, as well as all of
 //		the values destined for its dependencies.
-func CoalesceValues(chrt *chart.Chart, vals map[string]interface{}) (Values, error) {
+func CoalesceValues(chrt *chart.Chart, vals map[string]interface{}) (map[string]interface{}, error) {
 	v, err := copystructure.Copy(vals)
 	if err != nil {
 		return vals, err

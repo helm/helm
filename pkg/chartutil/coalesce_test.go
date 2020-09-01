@@ -108,7 +108,7 @@ func TestCoalesceValues(t *testing.T) {
 	// taking a copy of the values before passing it
 	// to CoalesceValues as argument, so that we can
 	// use it for asserting later
-	valsCopy := make(Values, len(vals))
+	valsCopy := make(map[string]interface{}, len(vals))
 	for key, value := range vals {
 		valsCopy[key] = value
 	}
