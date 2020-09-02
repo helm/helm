@@ -177,8 +177,11 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			return err
 		}
 
+		kind := info.Mapping.GroupVersionKind.Kind
+
 		helper := resource.NewHelper(info.Client, info.Mapping)
-		if _, err := helper.Get(info.Namespace, info.Name, info.Export); err != nil {
+		currentObject, err := helper.Get(info.Namespace, info.Name, info.Export)
+		if err != nil {
 			if !apierrors.IsNotFound(err) {
 				return errors.Wrap(err, "could not get information about the resource")
 			}
@@ -191,14 +194,25 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 				return errors.Wrap(err, "failed to create resource")
 			}
 
-			kind := info.Mapping.GroupVersionKind.Kind
 			c.Log("Created a new %s called %q in %s\n", kind, info.Name, info.Namespace)
 			return nil
 		}
 
+		// Figure out whether this resource in the target release revision has
+		// annotation "helm.sh/resource-policy=keep", if yes, Helm should not
+		// manage this resource anymore.
+		annotations, err := metadataAccessor.Annotations(currentObject)
+		if err != nil {
+			return errors.Errorf("failed to get annotations of kind %s with the name %q", kind, info.Name)
+		}
+		if annotations != nil {
+			if val, exist := annotations[ResourcePolicyAnno]; exist && val == KeepPolicy {
+				return nil
+			}
+		}
+
 		originalInfo := original.Get(info)
 		if originalInfo == nil {
-			kind := info.Mapping.GroupVersionKind.Kind
 			return errors.Errorf("no %s with the name %q found", kind, info.Name)
 		}
 
