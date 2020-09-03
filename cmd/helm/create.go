@@ -41,8 +41,9 @@ something like this:
     ├── Chart.yaml    # Information about your chart
     ├── values.yaml   # The default values for your templates
     ├── charts/       # Charts that this chart depends on
-    └── templates/    # The template files
-        └── tests/    # The test files
+    ├── templates/    # The template files
+    │   └── tests/    # The test files
+    └── values/       # The values template files
 
 'helm create' takes a path for an argument. If directories in the given path
 do not exist, Helm will attempt to create them as it goes. If the given

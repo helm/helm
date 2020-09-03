@@ -28,6 +28,7 @@ import (
 
 	"github.com/pkg/errors"
 	"k8s.io/client-go/rest"
+	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -64,7 +65,7 @@ type Engine struct {
 // section contains a value named "bar", that value will be passed on to the
 // bar chart during render time.
 func (e Engine) Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, error) {
-	// update values and dependencies
+	// parse values templates and update values and dependencies
 	if err := e.updateRenderValues(chrt, values); err != nil {
 		return nil, err
 	}
@@ -302,10 +303,10 @@ func cleanupExecError(filename string, err error) error {
 	return err
 }
 
-// updateRenderValues update render values with chart values.
+// updateRenderValues update render values with chart values and values templates.
 func (e Engine) updateRenderValues(c *chart.Chart, vals chartutil.Values) error {
 	var sb strings.Builder
-	// update values and dependencies
+	// parse values templates and update values and dependencies
 	if err := e.recUpdateRenderValues(c, vals, nil, &sb); err != nil {
 		return err
 	}
@@ -344,12 +345,40 @@ func (e Engine) recUpdateRenderValues(c *chart.Chart, vals chartutil.Values, tag
 		return err
 	}
 	next["Values"] = nvals
-	// Get validations errors of chart values
+	// Get validations errors of chart values, before applying values template
 	if c.Schema != nil {
 		err = chartutil.ValidateAgainstSingleSchema(nvals, c.Schema)
 		if err != nil {
 			sb.WriteString(fmt.Sprintf("%s:\n", c.Name()))
 			sb.WriteString(err.Error())
+		}
+	}
+	// Get all values templates of the chart
+	templates := map[string]renderable{}
+	newParentID := c.ChartFullPath()
+	for _, t := range c.ValuesTemplates {
+		if !isTemplateValid(c, t.Name) {
+			continue
+		}
+		templates[path.Join(newParentID, t.Name)] = renderable{
+			tpl:      string(t.Data),
+			vals:     next,
+			basePath: path.Join(newParentID, "values"),
+		}
+	}
+	// Render all values templates
+	rendered, err := e.render(templates)
+	if err != nil {
+		return err
+	}
+	// Parse and apply all values templates
+	if len(rendered) > 0 {
+		for _, filename := range sortValuesTemplates(rendered) {
+			src := map[string]interface{}{}
+			if err := yaml.Unmarshal([]byte(rendered[filename]), &src); err != nil {
+				return errors.Wrap(err, fmt.Sprintf("cannot load %s", filename))
+			}
+			chartutil.CoalesceTablesUpdate(nvals, src)
 		}
 	}
 	// Get tags of the root
@@ -361,7 +390,7 @@ func (e Engine) recUpdateRenderValues(c *chart.Chart, vals chartutil.Values, tag
 	if err != nil {
 		return err
 	}
-	// Recursive upudate on enabled dependencies
+	// Recursive update on enabled dependencies
 	for _, child := range c.Dependencies() {
 		err = e.recUpdateRenderValues(child, next, tags, sb)
 		if err != nil {
@@ -369,6 +398,18 @@ func (e Engine) recUpdateRenderValues(c *chart.Chart, vals chartutil.Values, tag
 		}
 	}
 	return nil
+}
+
+// sortValuesTemplates sorts the rendered yaml values files from lowest to highest priority
+func sortValuesTemplates(tpls map[string]string) []string {
+	keys := make(sort.StringSlice, len(tpls))
+	i := 0
+	for key := range tpls {
+		keys[i] = key
+		i++
+	}
+	sort.Sort(keys)
+	return keys
 }
 
 func sortTemplates(tpls map[string]renderable) []string {

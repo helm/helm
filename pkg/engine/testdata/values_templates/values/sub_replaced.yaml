@@ -1,0 +1,5 @@
+
+subchart:
+  # should replaced by subchart/values/replaced.yaml
+  replaced3: "values/sub_replaced.yaml"
+  replaced4: "values/sub_replaced.yaml"

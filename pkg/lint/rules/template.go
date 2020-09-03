@@ -19,7 +19,6 @@ package rules
 import (
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -48,20 +47,18 @@ var validName = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-
 
 // Templates lints the templates in the Linter.
 func Templates(linter *support.Linter, values map[string]interface{}, namespace string, strict bool) {
-	fpath := "templates/"
-	templatesPath := filepath.Join(linter.ChartDir, fpath)
+	path := ""
 
-	templatesDirExist := linter.RunLinterRule(support.WarningSev, fpath, validateTemplatesDir(templatesPath))
+	// No warning for values templates directory yet
+	// linter.RunLinterRule(support.WarningSev, "values/", validateTemplatesDir(filepath.Join(linter.ChartDir, "values/")))
 
 	// Templates directory is optional for now
-	if !templatesDirExist {
-		return
-	}
+	linter.RunLinterRule(support.WarningSev, "templates/", validateTemplatesDir(filepath.Join(linter.ChartDir, "templates/")))
 
 	// Load chart and parse templates
 	chart, err := loader.Load(linter.ChartDir)
 
-	chartLoaded := linter.RunLinterRule(support.ErrorSev, fpath, err)
+	chartLoaded := linter.RunLinterRule(support.ErrorSev, path, err)
 
 	if !chartLoaded {
 		return
@@ -72,23 +69,44 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 		Namespace: namespace,
 	}
 
-	cvals, err := chartutil.CoalesceValues(chart, values)
+	valuesToRender, err := chartutil.ToRenderValues(chart, values, options, nil)
 	if err != nil {
-		return
-	}
-	valuesToRender, err := chartutil.ToRenderValues(chart, cvals, options, nil)
-	if err != nil {
-		linter.RunLinterRule(support.ErrorSev, fpath, err)
+		linter.RunLinterRule(support.ErrorSev, path, err)
 		return
 	}
 	var e engine.Engine
 	e.LintMode = true
 	renderedContentMap, err := e.Render(chart, valuesToRender)
 
-	renderOk := linter.RunLinterRule(support.ErrorSev, fpath, err)
+	renderOk := linter.RunLinterRule(support.ErrorSev, path, err)
 
 	if !renderOk {
 		return
+	}
+
+	/* Iterate over all the values templates to check:
+	- It is a .yaml file
+	- All the values in the template file is defined
+	- {{}} include | quote
+	*/
+	for _, template := range chart.ValuesTemplates {
+		fileName, data := template.Name, template.Data
+		path = fileName
+
+		linter.RunLinterRule(support.ErrorSev, path, validateAllowedExtension(fileName))
+		// These are v3 specific checks to make sure and warn people if their
+		// chart is not compatible with v3
+		linter.RunLinterRule(support.WarningSev, path, validateNoCRDHooks(data))
+		linter.RunLinterRule(support.ErrorSev, path, validateNoReleaseTime(data))
+
+		// NOTE: disabled for now, Refs https://github.com/helm/helm/issues/1463
+		// Check that all the templates have a matching value
+		//linter.RunLinterRule(support.WarningSev, path, validateNoMissingValues(templatesPath, valuesToRender, preExecutedTemplate))
+
+		// NOTE: disabled for now, Refs https://github.com/helm/helm/issues/1037
+		// linter.RunLinterRule(support.WarningSev, path, validateQuotes(string(preExecutedTemplate)))
+
+		// e.Render already have already checked if the content is a valid Yaml file
 	}
 
 	/* Iterate over all the templates to check:
@@ -100,13 +118,13 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 	*/
 	for _, template := range chart.Templates {
 		fileName, data := template.Name, template.Data
-		fpath = fileName
+		path = fileName
 
-		linter.RunLinterRule(support.ErrorSev, fpath, validateAllowedExtension(fileName))
+		linter.RunLinterRule(support.ErrorSev, path, validateAllowedExtension(fileName))
 		// These are v3 specific checks to make sure and warn people if their
 		// chart is not compatible with v3
-		linter.RunLinterRule(support.WarningSev, fpath, validateNoCRDHooks(data))
-		linter.RunLinterRule(support.ErrorSev, fpath, validateNoReleaseTime(data))
+		linter.RunLinterRule(support.WarningSev, path, validateNoCRDHooks(data))
+		linter.RunLinterRule(support.ErrorSev, path, validateNoReleaseTime(data))
 
 		// We only apply the following lint rules to yaml files
 		if filepath.Ext(fileName) != ".yaml" || filepath.Ext(fileName) == ".yml" {
@@ -115,12 +133,12 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 
 		// NOTE: disabled for now, Refs https://github.com/helm/helm/issues/1463
 		// Check that all the templates have a matching value
-		//linter.RunLinterRule(support.WarningSev, fpath, validateNoMissingValues(templatesPath, valuesToRender, preExecutedTemplate))
+		//linter.RunLinterRule(support.WarningSev, path, validateNoMissingValues(templatesPath, valuesToRender, preExecutedTemplate))
 
 		// NOTE: disabled for now, Refs https://github.com/helm/helm/issues/1037
-		// linter.RunLinterRule(support.WarningSev, fpath, validateQuotes(string(preExecutedTemplate)))
+		// linter.RunLinterRule(support.WarningSev, path, validateQuotes(string(preExecutedTemplate)))
 
-		renderedContent := renderedContentMap[path.Join(chart.Name(), fileName)]
+		renderedContent := renderedContentMap[filepath.Join(chart.Name(), fileName)]
 		if strings.TrimSpace(renderedContent) != "" {
 			var yamlStruct K8sYamlStruct
 			// Even though K8sYamlStruct only defines a few fields, an error in any other
@@ -129,10 +147,10 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 
 			// If YAML linting fails, we sill progress. So we don't capture the returned state
 			// on this linter run.
-			linter.RunLinterRule(support.ErrorSev, fpath, validateYamlContent(err))
-			linter.RunLinterRule(support.ErrorSev, fpath, validateMetadataName(&yamlStruct))
-			linter.RunLinterRule(support.ErrorSev, fpath, validateNoDeprecations(&yamlStruct))
-			linter.RunLinterRule(support.ErrorSev, fpath, validateMatchSelector(&yamlStruct, renderedContent))
+			linter.RunLinterRule(support.ErrorSev, path, validateYamlContent(err))
+			linter.RunLinterRule(support.ErrorSev, path, validateMetadataName(&yamlStruct))
+			linter.RunLinterRule(support.ErrorSev, path, validateNoDeprecations(&yamlStruct))
+			linter.RunLinterRule(support.ErrorSev, path, validateMatchSelector(&yamlStruct, renderedContent))
 		}
 	}
 }

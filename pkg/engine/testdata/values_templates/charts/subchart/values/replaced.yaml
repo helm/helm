@@ -1,0 +1,4 @@
+# replacement should work
+replaced2: "subchart/values/replaced.yaml"
+replaced4: "subchart/values/replaced.yaml"
+currentReplaced2: "{{ .Values.replaced2 }}"

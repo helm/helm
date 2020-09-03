@@ -1,0 +1,1 @@
+releaseName: {{ .Release.Name }}

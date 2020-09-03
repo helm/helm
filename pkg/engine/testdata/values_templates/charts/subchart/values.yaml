@@ -1,0 +1,13 @@
+# should coalesce with parent global
+global:
+  subValues: true
+# should be evaluated
+evaluated: true
+# original value should be kept
+replaced1: "subchart/values.yaml"
+replaced3: "subchart/values.yaml"
+# should cloalesce with parent values.yaml
+coalesce:
+  value2: "subchart/values.yaml"
+  value4: "subchart/values.yaml"
+  value5: "subchart/values.yaml"

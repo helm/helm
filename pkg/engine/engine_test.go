@@ -742,7 +742,197 @@ func TestRenderRecursionLimit(t *testing.T) {
 	if got := out["overlook/templates/quote"]; got != expect {
 		t.Errorf("Expected %q, got %q (%v)", expect, got, out)
 	}
+}
 
+func TestUpdateRenderValues_values_templates(t *testing.T) {
+	values := map[string]interface{}{}
+	rv := map[string]interface{}{
+		"Release": map[string]interface{}{
+			"Name": "Test Name",
+		},
+		"Values": values,
+	}
+	c := loadChart(t, "testdata/values_templates")
+
+	if err := new(Engine).updateRenderValues(c, rv); err != nil {
+		t.Fatal(err)
+	}
+	if v, ok := values["releaseName"]; !ok {
+		t.Errorf("field 'releaseName' missing")
+	} else if vs, ok := v.(string); !ok || vs != "Test Name" {
+		t.Errorf("wrong value on field 'releaseName': %v", v)
+	}
+	// Check root remplacements
+	if v, ok := values["replaced"]; !ok {
+		t.Errorf("field 'replaced' missing")
+	} else if vs := v.(string); vs != "values/replaced2.yaml" {
+		t.Errorf("wrong priority on field 'replaced', value from %s", vs)
+	}
+	if v, ok := values["currentReplaced1"]; !ok {
+		t.Errorf("field 'currentReplaced1' missing")
+	} else if vs := v.(string); vs != "values.yaml" {
+		t.Errorf("wrong evaluation order on field 'currentReplaced1', value from %s", vs)
+	}
+	if v, ok := values["currentReplaced2"]; !ok {
+		t.Errorf("field 'currentReplaced2' missing")
+	} else if vs := v.(string); vs != "values.yaml" {
+		t.Errorf("wrong evaluation order on field 'currentReplaced2', value from %s", vs)
+	}
+	// check root coalesce
+	if vm, ok := values["coalesce"]; !ok {
+		t.Errorf("field 'coalesce' missing")
+	} else {
+		m := vm.(map[string]interface{})
+		if v, ok := m["old"]; !ok {
+			t.Errorf("field 'coalesce.old' missing")
+		} else if vs := v.(string); vs != "values.yaml" {
+			t.Errorf("wrong priority on field 'coalesce.old', value from %s", vs)
+		}
+		if v, ok := m["common"]; !ok {
+			t.Errorf("field 'coalesce.common' missing")
+		} else if vs := v.(string); vs != "values/coalesce.yaml" {
+			t.Errorf("wrong priority on field 'coalesce.common', value from %s", vs)
+		}
+		if v, ok := m["new"]; !ok {
+			t.Errorf("field 'coalesce.new' missing")
+		} else if vs := v.(string); vs != "values/coalesce.yaml" {
+			t.Errorf("wrong priority on field 'coalesce.new', value from %s", vs)
+		}
+	}
+	// check root global
+	if vm, ok := values["global"]; !ok {
+		t.Errorf("field 'global' missing")
+	} else {
+		m := vm.(map[string]interface{})
+		if v, ok := m["parentValues"]; !ok || !v.(bool) {
+			t.Errorf("field 'global.parentValues' missing")
+		}
+		if v, ok := m["parentTemplate"]; !ok || !v.(bool) {
+			t.Errorf("field 'global.parentTemplate' missing")
+		}
+		if _, ok := m["subValues"]; ok {
+			t.Errorf("field 'global.subValues' unexpected")
+		}
+		if _, ok := m["subTeamplate"]; ok {
+			t.Errorf("field 'global.subTeamplate' unexpected")
+		}
+	}
+	// check subchart
+	if vm, ok := values["subchart"]; !ok {
+		t.Errorf("field 'subchart' missing")
+	} else {
+		// check subchart evaluated
+		m := vm.(map[string]interface{})
+		if v, ok := m["evaluated"]; !ok || !v.(bool) {
+			t.Errorf("chart 'subchart' not evaluated")
+		}
+		// check subchart replaced
+		if v, ok := m["replaced1"]; !ok {
+			t.Errorf("field 'subchart.replaced1' missing")
+		} else if vs := v.(string); vs != "values.yaml" {
+			t.Errorf("wrong priority on field 'subchart.replaced1', value from %s", vs)
+		}
+		if v, ok := m["replaced2"]; !ok {
+			t.Errorf("field 'subchart.replaced2' missing")
+		} else if vs := v.(string); vs != "subchart/values/replaced.yaml" {
+			t.Errorf("wrong priority on field 'subchart.replaced2', value from %s", vs)
+		}
+		if v, ok := m["replaced3"]; !ok {
+			t.Errorf("field 'subchart.replaced3' missing")
+		} else if vs := v.(string); vs != "values/sub_replaced.yaml" {
+			t.Errorf("wrong priority on field 'subchart.replaced3', value from %s", vs)
+		}
+		if v, ok := m["replaced4"]; !ok {
+			t.Errorf("field 'subchart.replaced4' missing")
+		} else if vs := v.(string); vs != "subchart/values/replaced.yaml" {
+			t.Errorf("wrong priority on field 'subchart.replaced4', value from %s", vs)
+		}
+		if v, ok := m["currentReplaced2"]; !ok {
+			t.Errorf("field 'subchart.currentReplaced2' missing")
+		} else if vs := v.(string); vs != "values.yaml" {
+			t.Errorf("wrong evaluation order on field 'subchart.currentReplaced2', value from %s", vs)
+		}
+		// check subchart coalesce
+		if vm, ok := m["coalesce"]; !ok {
+			t.Errorf("field 'subchart.coalesce' missing")
+		} else {
+			m := vm.(map[string]interface{})
+			if v, ok := m["value1"]; !ok {
+				t.Errorf("field 'subchart.coalesce.value1' missing")
+			} else if vs := v.(string); vs != "values.yaml" {
+				t.Errorf("wrong priority on field 'subchart.coalesce.value1', value from %s", vs)
+			}
+			if v, ok := m["value2"]; !ok {
+				t.Errorf("field 'subchart.coalesce.value2' missing")
+			} else if vs := v.(string); vs != "values.yaml" {
+				t.Errorf("wrong priority on field 'subchart.coalesce.value2', value from %s", vs)
+			}
+			if v, ok := m["value3"]; !ok {
+				t.Errorf("field 'subchart.coalesce.value3' missing")
+			} else if vs := v.(string); vs != "subchart/values/coalesce.yaml" {
+				t.Errorf("wrong priority on field 'subchart.coalesce.value3', value from %s", vs)
+			}
+			if v, ok := m["value4"]; !ok {
+				t.Errorf("field 'subchart.coalesce.value4' missing")
+			} else if vs := v.(string); vs != "subchart/values.yaml" {
+				t.Errorf("wrong priority on field 'subchart.coalesce.value4', value from %s", vs)
+			}
+			if v, ok := m["value5"]; !ok {
+				t.Errorf("field 'subchart.coalesce.value5' missing")
+			} else if vs := v.(string); vs != "subchart/values/coalesce.yaml" {
+				t.Errorf("wrong priority on field 'subchart.coalesce.value5', value from %s", vs)
+			}
+			if v, ok := m["value6"]; !ok {
+				t.Errorf("field 'subchart.coalesce.value6' missing")
+			} else if vs := v.(string); vs != "subchart/values/coalesce.yaml" {
+				t.Errorf("wrong priority on field 'subchart.coalesce.value6', value from %s", vs)
+			}
+		}
+		// check subchart global
+		if vm, ok := m["global"]; !ok {
+			t.Errorf("field 'subchart.global' missing")
+		} else {
+			m := vm.(map[string]interface{})
+			if v, ok := m["parentValues"]; !ok || !v.(bool) {
+				t.Errorf("field 'subchart.global.parentValues' missing")
+			}
+			if v, ok := m["parentTemplate"]; !ok || !v.(bool) {
+				t.Errorf("field 'subchart.global.parentTemplate' missing")
+			}
+			if v, ok := m["subTeamplate"]; !ok || !v.(bool) {
+				t.Errorf("field 'subchart.global.subTeamplate' missing")
+			}
+			if v, ok := m["parentValues"]; !ok || !v.(bool) {
+				t.Errorf("field 'subchart.global.parentValues' missing")
+			}
+		}
+		// check subchart globalEvaluated
+		if vm, ok := m["globalEvaluated"]; !ok {
+			t.Errorf("field 'subchart.globalEvaluated' missing")
+		} else {
+			m := vm.(map[string]interface{})
+			if v, ok := m["parentValues"]; !ok {
+				t.Errorf("field 'subchart.globalEvaluated.parentValues' missing")
+			} else if vb, ok := v.(bool); !ok || !vb {
+				t.Errorf("field 'subchart.globalEvaluated.parentValues' has wrong value: %v", vb)
+			}
+			if v, ok := m["parentTemplate"]; !ok {
+				t.Errorf("field 'subchart.globalEvaluated.parentTemplate' missing")
+			} else if vb, ok := v.(bool); !ok || !vb {
+				t.Errorf("field 'subchart.globalEvaluated.parentTemplate' has wrong value: %v", vb)
+			}
+			if v, ok := m["subValues"]; !ok {
+				t.Errorf("field 'subchart.globalEvaluated.subValues' missing")
+			} else if vb, ok := v.(bool); !ok || !vb {
+				t.Errorf("field 'subchart.globalEvaluated.subValues' has wrong value: %v", vb)
+			}
+			if v, ok := m["subTeamplate"]; !ok {
+				t.Errorf("field 'subchart.globalEvaluated.subTeamplate' missing")
+			} else if v != nil {
+				t.Errorf("field 'subchart.globalEvaluated.subTeamplate' has wrong value: %v", v)
+			}
+		}
+	}
 }
 
 func TestUpdateRenderValues_dependencies(t *testing.T) {
@@ -827,6 +1017,14 @@ func TestUpdateRenderValues_dependencies(t *testing.T) {
 			t.Errorf("value 'importValues.imported' not imported")
 		}
 	}
+	if vm, ok := values["importTemplate"]; !ok {
+		t.Errorf("value 'importTemplate' not imported")
+	} else {
+		m := vm.(map[string]interface{})
+		if v, ok := m["imported"]; !ok || !v.(bool) {
+			t.Errorf("value 'importTemplate.imported' not imported")
+		}
+	}
 	if vm, ok := values["subImport"]; !ok {
 		t.Errorf("value 'subImport' not imported")
 	} else {
@@ -834,6 +1032,16 @@ func TestUpdateRenderValues_dependencies(t *testing.T) {
 		if v, ok := m["old"]; !ok {
 			t.Errorf("value 'subImport.old' not imported")
 		} else if vs, ok := v.(string); !ok || vs != "values.yaml" {
+			t.Errorf("wrong 'subImport.old' imported: %v", v)
+		}
+		if v, ok := m["common"]; !ok {
+			t.Errorf("value 'subImport.common' not imported")
+		} else if vs, ok := v.(string); !ok || vs != "values/import.yaml" {
+			t.Errorf("wrong 'subImport.common' imported: %v", v)
+		}
+		if v, ok := m["new"]; !ok {
+			t.Errorf("value 'subImport.new' not imported")
+		} else if vs, ok := v.(string); !ok || vs != "values/import.yaml" {
 			t.Errorf("wrong 'subImport.old' imported: %v", v)
 		}
 	}

@@ -20,8 +20,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
-
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/lint/support"
@@ -32,19 +30,12 @@ import (
 // See https://github.com/helm/helm/issues/7910
 func Dependencies(linter *support.Linter) {
 	c, err := loader.LoadDir(linter.ChartDir)
-	if !linter.RunLinterRule(support.ErrorSev, "", validateChartFormat(err)) {
-		return
+	if err != nil {
+		return // None of our business, Templates should deal with that
 	}
 
 	linter.RunLinterRule(support.ErrorSev, linter.ChartDir, validateDependencyInMetadata(c))
 	linter.RunLinterRule(support.WarningSev, linter.ChartDir, validateDependencyInChartsDir(c))
-}
-
-func validateChartFormat(chartError error) error {
-	if chartError != nil {
-		return errors.Errorf("unable to load chart\n\t%s", chartError)
-	}
-	return nil
 }
 
 func validateDependencyInChartsDir(c *chart.Chart) (err error) {

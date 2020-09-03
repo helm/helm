@@ -1,0 +1,4 @@
+# should cloalesce with values.yaml
+coalesce:
+  common: "values/coalesce.yaml"
+  new: "values/coalesce.yaml"

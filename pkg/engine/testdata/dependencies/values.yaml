@@ -1,7 +1,7 @@
 condition:
-  "true": true
-  "false": false
-  "null": null
+  "true": false
+  "false": true
+  "null": false
 tags:
-  true_tag: true
-  false_tag: false
+  true_tag: false
+  false_tag: true

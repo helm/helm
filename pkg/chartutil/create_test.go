@@ -62,6 +62,7 @@ func TestCreate(t *testing.T) {
 		TemplatesTestsDir,
 		TestConnectionName,
 		ValuesfileName,
+		ValuesTemplatesDir,
 	} {
 		if _, err := os.Stat(filepath.Join(dir, f)); err != nil {
 			t.Errorf("Expected %s file: %s", f, err)
@@ -102,6 +103,7 @@ func TestCreateFrom(t *testing.T) {
 		ChartfileName,
 		ValuesfileName,
 		filepath.Join(TemplatesDir, "placeholder.tpl"),
+		filepath.Join(ValuesTemplatesDir, "placeholder.yaml"),
 	} {
 		if _, err := os.Stat(filepath.Join(dir, f)); err != nil {
 			t.Errorf("Expected %s file: %s", f, err)
