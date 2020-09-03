@@ -27,6 +27,11 @@ type Status struct {
 	cfg *Configuration
 
 	Version int
+
+	// If true, display description to output format,
+	// only affect print type table.
+	// TODO Helm 4: Remove this flag and output the description by default.
+	ShowDescription bool
 }
 
 // NewStatus creates a new Status object with the given configuration.

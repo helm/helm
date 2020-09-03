@@ -122,7 +122,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return err
 			}
 
-			return outfmt.Write(out, &statusPrinter{rel, settings.Debug})
+			return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false})
 		},
 	}
 
