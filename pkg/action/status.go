@@ -29,6 +29,11 @@ type Status struct {
 	cfg *Configuration
 
 	Version int
+
+	// If true, display description to output format,
+	// only affect print type table.
+	// TODO Helm 4: Remove this flag and output the description by default.
+	ShowDescription bool
 }
 
 // NewStatus creates a new Status object with the given configuration.
@@ -47,11 +52,13 @@ func (s *Status) Run(name string) (*release.Release, error) {
 	if err != nil {
 		return nil, err
 	}
-	resources, _ := s.cfg.KubeClient.Build(bytes.NewBufferString(rel.Manifest), true)
+	resources, _ := s.cfg.KubeClient.Build(bytes.NewBufferString(rel.Manifest), false)
 	resp, err := s.cfg.KubeClient.Get(resources, bytes.NewBufferString(rel.Manifest))
 	if err != nil {
 		return nil, err
 	}
-	rel.Resources = "\n" + resp
+	if resp != "" {
+		rel.Info.Resources = resp
+	}
 	return rel, nil
 }

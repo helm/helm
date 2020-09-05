@@ -118,3 +118,23 @@ func TestShowVersionCompletion(t *testing.T) {
 	}}
 	runTestCmd(t, tests)
 }
+
+func TestShowFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "show", false)
+}
+
+func TestShowAllFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "show all", true)
+}
+
+func TestShowChartFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "show chart", true)
+}
+
+func TestShowReadmeFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "show readme", true)
+}
+
+func TestShowValuesFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "show values", true)
+}

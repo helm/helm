@@ -45,6 +45,14 @@ func TestStatusCmd(t *testing.T) {
 			Status: release.StatusDeployed,
 		}),
 	}, {
+		name:   "get status of a deployed release, with desc",
+		cmd:    "status --show-desc flummoxed-chickadee",
+		golden: "output/status-with-desc.txt",
+		rels: releasesMockWithStatus(&release.Info{
+			Status:      release.StatusDeployed,
+			Description: "Mock description",
+		}),
+	}, {
 		name:   "get status of a deployed release with notes",
 		cmd:    "status flummoxed-chickadee",
 		golden: "output/status-with-notes.txt",
@@ -60,6 +68,26 @@ func TestStatusCmd(t *testing.T) {
 			Status: release.StatusDeployed,
 			Notes:  "release notes",
 		}),
+	}, {
+		name:   "get status of a deployed release with resources",
+		cmd:    "status flummoxed-chickadee",
+		golden: "output/status-with-resources.txt",
+		rels: releasesMockWithStatus(
+			&release.Info{
+				Resources: "hello resource",
+				Status:    release.StatusDeployed,
+			},
+		),
+	}, {
+		name:   "get status of a deployed release with resources in json",
+		cmd:    "status flummoxed-chickadee -o json",
+		golden: "output/status-with-resources.json",
+		rels: releasesMockWithStatus(
+			&release.Info{
+				Resources: "hello resource",
+				Status:    release.StatusDeployed,
+			},
+		),
 	}, {
 		name:   "get status of a deployed release with test suite",
 		cmd:    "status flummoxed-chickadee",
@@ -170,4 +198,9 @@ func TestStatusRevisionCompletion(t *testing.T) {
 
 func TestStatusOutputCompletion(t *testing.T) {
 	outputFlagCompletionTest(t, "status")
+}
+
+func TestStatusFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "status", false)
+	checkFileCompletion(t, "status myrelease", false)
 }

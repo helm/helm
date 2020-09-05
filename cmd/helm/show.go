@@ -55,11 +55,12 @@ func newShowCmd(out io.Writer) *cobra.Command {
 	client := action.NewShow(action.ShowAll)
 
 	showCommand := &cobra.Command{
-		Use:     "show",
-		Short:   "show information of a chart",
-		Aliases: []string{"inspect"},
-		Long:    showDesc,
-		Args:    require.NoArgs,
+		Use:               "show",
+		Short:             "show information of a chart",
+		Aliases:           []string{"inspect"},
+		Long:              showDesc,
+		Args:              require.NoArgs,
+		ValidArgsFunction: noCompletions, // Disable file completion
 	}
 
 	// Function providing dynamic auto-completion
@@ -151,6 +152,9 @@ func addShowFlags(subCmd *cobra.Command, client *action.Show) {
 	f := subCmd.Flags()
 
 	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored")
+	if subCmd.Name() == "values" {
+		f.StringVar(&client.JSONPathTemplate, "jsonpath", "", "supply a JSONPath expression to filter the output")
+	}
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 
 	err := subCmd.RegisterFlagCompletionFunc("version", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

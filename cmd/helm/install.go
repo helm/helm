@@ -122,7 +122,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return err
 			}
 
-			return outfmt.Write(out, &statusPrinter{rel, settings.Debug})
+			return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false})
 		},
 	}
 
@@ -200,8 +200,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		return nil, err
 	}
 
-	validInstallableChart, err := isChartInstallable(chartRequested)
-	if !validInstallableChart {
+	if err := checkIfInstallable(chartRequested); err != nil {
 		return nil, err
 	}
 
@@ -242,15 +241,15 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	return client.Run(chartRequested, vals)
 }
 
-// isChartInstallable validates if a chart can be installed
+// checkIfInstallable validates if a chart can be installed
 //
 // Application chart type is only installable
-func isChartInstallable(ch *chart.Chart) (bool, error) {
+func checkIfInstallable(ch *chart.Chart) error {
 	switch ch.Metadata.Type {
 	case "", "application":
-		return true, nil
+		return nil
 	}
-	return false, errors.Errorf("%s charts are not installable", ch.Metadata.Type)
+	return errors.Errorf("%s charts are not installable", ch.Metadata.Type)
 }
 
 // Provide dynamic auto-completion for the install and template commands

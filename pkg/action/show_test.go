@@ -69,3 +69,17 @@ func TestShowNoValues(t *testing.T) {
 		t.Errorf("expected empty values buffer, got %s", output)
 	}
 }
+
+func TestShowValuesByJsonPathFormat(t *testing.T) {
+	client := NewShow(ShowValues)
+	client.JSONPathTemplate = "{$.nestedKey.simpleKey}"
+	client.chart = buildChart(withSampleValues())
+	output, err := client.Run("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	expect := "simpleValue"
+	if output != expect {
+		t.Errorf("Expected\n%q\nGot\n%q\n", expect, output)
+	}
+}

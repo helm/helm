@@ -33,4 +33,6 @@ type Info struct {
 	Status Status `json:"status,omitempty"`
 	// Contains the rendered templates/NOTES.txt if available
 	Notes string `json:"notes,omitempty"`
+	// Contains the deployed resources information
+	Resources string `json:"resources,omitempty"`
 }

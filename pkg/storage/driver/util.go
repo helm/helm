@@ -68,6 +68,7 @@ func decodeRelease(data string) (*rspb.Release, error) {
 		if err != nil {
 			return nil, err
 		}
+		defer r.Close()
 		b2, err := ioutil.ReadAll(r)
 		if err != nil {
 			return nil, err

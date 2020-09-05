@@ -42,3 +42,8 @@ const (
 )
 
 func (x Status) String() string { return string(x) }
+
+// IsPending determines if this status is a state or a transition.
+func (x Status) IsPending() bool {
+	return x == StatusPendingInstall || x == StatusPendingUpgrade || x == StatusPendingRollback
+}

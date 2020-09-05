@@ -147,7 +147,8 @@ func validateReleaseName(releaseName string) error {
 		return errMissingRelease
 	}
 
-	if !ValidName.MatchString(releaseName) || (len(releaseName) > releaseNameMaxLen) {
+	// Check length first, since that is a less expensive operation.
+	if len(releaseName) > releaseNameMaxLen || !ValidName.MatchString(releaseName) {
 		return errInvalidName
 	}
 
@@ -168,6 +169,11 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 			return nil, nil, driver.NewErrNoDeployedReleases(name)
 		}
 		return nil, nil, err
+	}
+
+	// Concurrent `helm upgrade`s will either fail here with `errPending` or when creating the release with "already exists". This should act as a pessimistic lock.
+	if lastRelease.Info.Status.IsPending() {
+		return nil, nil, errPending
 	}
 
 	var currentRelease *release.Release
@@ -217,7 +223,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		return nil, nil, err
 	}
 
-	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, false, u.PostRenderer, u.DryRun)
+	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, u.DryRun)
 	if err != nil {
 		return nil, nil, err
 	}

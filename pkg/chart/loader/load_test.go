@@ -310,7 +310,7 @@ func TestLoadInvalidArchive(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(tmpdir)
+	defer os.RemoveAll(tmpdir)
 
 	writeTar := func(filename, internalPath string, body []byte) {
 		dest, err := os.Create(filename)

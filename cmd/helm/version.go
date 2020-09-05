@@ -59,10 +59,11 @@ func newVersionCmd(out io.Writer) *cobra.Command {
 	o := &versionOptions{}
 
 	cmd := &cobra.Command{
-		Use:   "version",
-		Short: "print the client version information",
-		Long:  versionDesc,
-		Args:  require.NoArgs,
+		Use:               "version",
+		Short:             "print the client version information",
+		Long:              versionDesc,
+		Args:              require.NoArgs,
+		ValidArgsFunction: noCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return o.run(out)
 		},

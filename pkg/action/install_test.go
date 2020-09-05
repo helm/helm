@@ -499,9 +499,6 @@ func TestInstallReleaseOutputDir(t *testing.T) {
 	_, err = os.Stat(filepath.Join(dir, "hello/templates/with-partials"))
 	is.NoError(err)
 
-	_, err = os.Stat(filepath.Join(dir, "hello/templates/hooks"))
-	is.NoError(err)
-
 	_, err = os.Stat(filepath.Join(dir, "hello/templates/rbac"))
 	is.NoError(err)
 
@@ -540,9 +537,6 @@ func TestInstallOutputDirWithReleaseName(t *testing.T) {
 	is.NoError(err)
 
 	_, err = os.Stat(filepath.Join(newDir, "hello/templates/with-partials"))
-	is.NoError(err)
-
-	_, err = os.Stat(filepath.Join(newDir, "hello/templates/hooks"))
 	is.NoError(err)
 
 	_, err = os.Stat(filepath.Join(newDir, "hello/templates/rbac"))

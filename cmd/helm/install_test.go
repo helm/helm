@@ -239,3 +239,10 @@ func TestInstallVersionCompletion(t *testing.T) {
 	}}
 	runTestCmd(t, tests)
 }
+
+func TestInstallFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "install", false)
+	checkFileCompletion(t, "install --generate-name", true)
+	checkFileCompletion(t, "install myname", true)
+	checkFileCompletion(t, "install myname mychart", false)
+}

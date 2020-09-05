@@ -52,12 +52,32 @@ To load completions for every new session, execute once:
 $ helm completion zsh > "${fpath[1]}/_helm"
 `
 
+const fishCompDesc = `
+Generate the autocompletion script for Helm for the fish shell.
+
+To load completions in your current shell session:
+$ helm completion fish | source
+
+To load completions for every new session, execute once:
+$ helm completion fish > ~/.config/fish/completions/helm.fish
+
+You will need to start a new shell for this setup to take effect.
+`
+
+const (
+	noDescFlagName = "no-descriptions"
+	noDescFlagText = "disable completion descriptions"
+)
+
+var disableCompDescriptions bool
+
 func newCompletionCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "completion",
-		Short: "generate autocompletions script for the specified shell",
-		Long:  completionDesc,
-		Args:  require.NoArgs,
+		Use:               "completion",
+		Short:             "generate autocompletions script for the specified shell",
+		Long:              completionDesc,
+		Args:              require.NoArgs,
+		ValidArgsFunction: noCompletions, // Disable file completion
 	}
 
 	bash := &cobra.Command{
@@ -66,6 +86,7 @@ func newCompletionCmd(out io.Writer) *cobra.Command {
 		Long:                  bashCompDesc,
 		Args:                  require.NoArgs,
 		DisableFlagsInUseLine: true,
+		ValidArgsFunction:     noCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runCompletionBash(out, cmd)
 		},
@@ -77,12 +98,26 @@ func newCompletionCmd(out io.Writer) *cobra.Command {
 		Long:                  zshCompDesc,
 		Args:                  require.NoArgs,
 		DisableFlagsInUseLine: true,
+		ValidArgsFunction:     noCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runCompletionZsh(out, cmd)
 		},
 	}
 
-	cmd.AddCommand(bash, zsh)
+	fish := &cobra.Command{
+		Use:                   "fish",
+		Short:                 "generate autocompletions script for fish",
+		Long:                  fishCompDesc,
+		Args:                  require.NoArgs,
+		DisableFlagsInUseLine: true,
+		ValidArgsFunction:     noCompletions,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runCompletionFish(out, cmd)
+		},
+	}
+	fish.Flags().BoolVar(&disableCompDescriptions, noDescFlagName, false, noDescFlagText)
+
+	cmd.AddCommand(bash, zsh, fish)
 
 	return cmd
 }
@@ -148,7 +183,7 @@ __helm_compgen() {
 	fi
 	for w in "${completions[@]}"; do
 		if [[ "${w}" = "$1"* ]]; then
-			# Use printf instead of echo beause it is possible that
+			# Use printf instead of echo because it is possible that
 			# the value to print is -n, which would be interpreted
 			# as a flag to echo
 			printf "%s\n" "${w}"
@@ -252,4 +287,13 @@ __helm_bash_source <(__helm_convert_bash_to_zsh)
 `
 	out.Write([]byte(zshTail))
 	return nil
+}
+
+func runCompletionFish(out io.Writer, cmd *cobra.Command) error {
+	return cmd.Root().GenFishCompletion(out, !disableCompDescriptions)
+}
+
+// Function to disable file completion
+func noCompletions(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	return nil, cobra.ShellCompDirectiveNoFileComp
 }

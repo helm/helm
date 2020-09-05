@@ -66,3 +66,8 @@ func TestUninstall(t *testing.T) {
 	}
 	runTestCmd(t, tests)
 }
+
+func TestUninstallFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "uninstall", false)
+	checkFileCompletion(t, "uninstall myrelease", false)
+}

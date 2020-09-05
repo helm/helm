@@ -63,11 +63,12 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	var outfmt output.Format
 
 	cmd := &cobra.Command{
-		Use:     "list",
-		Short:   "list releases",
-		Long:    listHelp,
-		Aliases: []string{"ls"},
-		Args:    require.NoArgs,
+		Use:               "list",
+		Short:             "list releases",
+		Long:              listHelp,
+		Aliases:           []string{"ls"},
+		Args:              require.NoArgs,
+		ValidArgsFunction: noCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if client.AllNamespaces {
 				if err := cfg.Init(settings.RESTClientGetter(), "", os.Getenv("HELM_DRIVER"), debug); err != nil {
@@ -126,6 +127,7 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.IntVarP(&client.Limit, "max", "m", 256, "maximum number of releases to fetch")
 	f.IntVar(&client.Offset, "offset", 0, "next release name in the list, used to offset from start value")
 	f.StringVarP(&client.Filter, "filter", "f", "", "a regular expression (Perl compatible). Any releases that match the expression will be included in the results")
+	f.StringVarP(&client.Selector, "selector", "l", "", "Selector (label query) to filter on, supports '=', '==', and '!='.(e.g. -l key1=value1,key2=value2). Works only for secret(default) and configmap storage backends.")
 	bindOutputFlag(cmd, &outfmt)
 
 	return cmd
