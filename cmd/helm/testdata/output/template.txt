@@ -5,13 +5,22 @@ kind: ServiceAccount
 metadata:
   name: subchart-sa
 ---
+# Source: subchart/templates/tests/test-config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "RELEASE-NAME-testconfig"
+data:
+  message: Hello World
+---
 # Source: subchart/templates/subdir/role.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: subchart-role
 rules:
-- resources: ["*"]
+- apiGroups: [""]
+  resources: ["pods"]
   verbs: ["get","list","watch"]
 ---
 # Source: subchart/templates/subdir/rolebinding.yaml
@@ -82,3 +91,22 @@ spec:
     name: nginx
   selector:
     app.kubernetes.io/name: subchart
+---
+# Source: subchart/templates/tests/test-nothing.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "RELEASE-NAME-test"
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: test
+      image: "alpine:latest"
+      envFrom:
+        - configMapRef:
+            name: "RELEASE-NAME-testconfig"
+      command:
+        - echo
+        - "$message"
+  restartPolicy: Never
