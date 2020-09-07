@@ -27,7 +27,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/downloader"
 	"helm.sh/helm/v3/pkg/getter"
 )
@@ -50,7 +49,6 @@ unless your environment is otherwise configured.
 
 func newPackageCmd(out io.Writer) *cobra.Command {
 	client := action.NewPackage()
-	valueOpts := &values.Options{}
 
 	cmd := &cobra.Command{
 		Use:   "package [CHART_PATH] [...]",
@@ -71,10 +69,6 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 			client.RepositoryConfig = settings.RepositoryConfig
 			client.RepositoryCache = settings.RepositoryCache
 			p := getter.All(settings)
-			vals, err := valueOpts.MergeValues(p)
-			if err != nil {
-				return err
-			}
 
 			for i := 0; i < len(args); i++ {
 				path, err := filepath.Abs(args[i])
@@ -100,7 +94,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 						return err
 					}
 				}
-				p, err := client.Run(path, vals)
+				p, err := client.Run(path)
 				if err != nil {
 					return err
 				}
