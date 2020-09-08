@@ -47,6 +47,7 @@ faked locally. Additionally, none of the server-side testing of chart validity
 func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	var validate bool
 	var includeCrds bool
+	var skipTests bool
 	client := action.NewInstall(cfg)
 	valueOpts := &values.Options{}
 	var extraAPIs []string
@@ -67,6 +68,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			client.ClientOnly = !validate
 			client.APIVersions = chartutil.VersionSet(extraAPIs)
 			client.IncludeCRDs = includeCrds
+			client.SkipTests = skipTests
 			rel, err := runInstall(args, client, valueOpts, out)
 
 			if err != nil && !settings.Debug {
@@ -163,6 +165,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.StringVar(&client.OutputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
 	f.BoolVar(&validate, "validate", false, "validate your manifests against the Kubernetes cluster you are currently pointing at. This is the same validation performed on an install")
 	f.BoolVar(&includeCrds, "include-crds", false, "include CRDs in the templated output")
+	f.BoolVar(&skipTests, "skip-tests", false, "skip tests and manifests in tests directories from templated output")
 	f.BoolVar(&client.IsUpgrade, "is-upgrade", false, "set .Release.IsUpgrade instead of .Release.IsInstall")
 	f.StringArrayVarP(&extraAPIs, "api-versions", "a", []string{}, "Kubernetes api versions used for Capabilities.APIVersions")
 	f.BoolVar(&client.UseReleaseName, "release-name", false, "use release name in the output-dir path.")
