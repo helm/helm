@@ -26,7 +26,8 @@ import (
 )
 
 const (
-	// This should be set based on the version of client-go being imported
+	// This should be set in the Makefile based on the version of client-go being imported.
+	// These constants will be overwritten with LDFLAGS
 	k8sVersionMajor = 1
 	k8sVersionMinor = 19
 )
