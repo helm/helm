@@ -53,6 +53,10 @@ func validateNoDeprecations(resource *K8sYamlStruct) error {
 
 	runtimeObject, err := resourceToRuntimeObject(resource)
 	if err != nil {
+		// do not error for non-kubernetes resources
+		if runtime.IsNotRegisteredError(err) {
+			return nil
+		}
 		return err
 	}
 	if !deprecation.IsDeprecated(runtimeObject, k8sVersionMajor, k8sVersionMinor) {
