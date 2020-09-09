@@ -73,7 +73,7 @@ func TestUpdateCustomCacheCmd(t *testing.T) {
 
 func TestUpdateCharts(t *testing.T) {
 	defer resetEnv()()
-	defer ensure.HelmHome(t)()
+	ensure.HelmHome(t)
 
 	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
 	if err != nil {

@@ -178,7 +178,6 @@ func TestDeprecatedAPIFails(t *testing.T) {
 		},
 	}
 	tmpdir := ensure.TempDir(t)
-	defer os.RemoveAll(tmpdir)
 
 	if err := chartutil.SaveDir(&mychart, tmpdir); err != nil {
 		t.Fatal(err)
@@ -235,7 +234,6 @@ func TestStrictTemplateParsingMapError(t *testing.T) {
 		},
 	}
 	dir := ensure.TempDir(t)
-	defer os.RemoveAll(dir)
 	if err := chartutil.SaveDir(&ch, dir); err != nil {
 		t.Fatal(err)
 	}

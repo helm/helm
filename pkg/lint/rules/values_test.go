@@ -67,7 +67,6 @@ func TestValidateValuesFileWellFormed(t *testing.T) {
 	not:well[]{}formed
 	`
 	tmpdir := ensure.TempFile(t, "values.yaml", []byte(badYaml))
-	defer os.RemoveAll(tmpdir)
 	valfile := filepath.Join(tmpdir, "values.yaml")
 	if err := validateValuesFile(valfile, map[string]interface{}{}); err == nil {
 		t.Fatal("expected values file to fail parsing")
@@ -77,7 +76,6 @@ func TestValidateValuesFileWellFormed(t *testing.T) {
 func TestValidateValuesFileSchema(t *testing.T) {
 	yaml := "username: admin\npassword: swordfish"
 	tmpdir := ensure.TempFile(t, "values.yaml", []byte(yaml))
-	defer os.RemoveAll(tmpdir)
 	createTestingSchema(t, tmpdir)
 
 	valfile := filepath.Join(tmpdir, "values.yaml")
@@ -90,7 +88,6 @@ func TestValidateValuesFileSchemaFailure(t *testing.T) {
 	// 1234 is an int, not a string. This should fail.
 	yaml := "username: 1234\npassword: swordfish"
 	tmpdir := ensure.TempFile(t, "values.yaml", []byte(yaml))
-	defer os.RemoveAll(tmpdir)
 	createTestingSchema(t, tmpdir)
 
 	valfile := filepath.Join(tmpdir, "values.yaml")
@@ -109,7 +106,6 @@ func TestValidateValuesFileSchemaOverrides(t *testing.T) {
 		"password": "swordfish",
 	}
 	tmpdir := ensure.TempFile(t, "values.yaml", []byte(yaml))
-	defer os.RemoveAll(tmpdir)
 	createTestingSchema(t, tmpdir)
 
 	valfile := filepath.Join(tmpdir, "values.yaml")
