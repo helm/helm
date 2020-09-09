@@ -183,7 +183,7 @@ func TestGetRepoNames(t *testing.T) {
 
 func TestUpdateBeforeBuild(t *testing.T) {
 	// Set up a fake repo
-	srv, err := repotest.NewTempServer("testdata/*.tgz*")
+	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -257,7 +257,7 @@ func TestUpdateBeforeBuild(t *testing.T) {
 // If each of these main fields (name, version, repository) is not supplied by dep param, default value will be used.
 func checkBuildWithOptionalFields(t *testing.T, chartName string, dep chart.Dependency) {
 	// Set up a fake repo
-	srv, err := repotest.NewTempServer("testdata/*.tgz*")
+	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")
 	if err != nil {
 		t.Fatal(err)
 	}
