@@ -20,6 +20,7 @@ import (
 	"flag"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -55,6 +56,8 @@ func actionConfigFixture(t *testing.T) *Configuration {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	t.Cleanup(func() { os.RemoveAll(tdir) })
 
 	cache, err := registry.NewCache(
 		registry.CacheOptDebug(true),
