@@ -75,7 +75,7 @@ func TestUpdateCharts(t *testing.T) {
 	defer resetEnv()()
 	defer ensure.HelmHome(t)()
 
-	ts, err := repotest.NewTempServer("testdata/testserver/*.*")
+	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -28,7 +28,7 @@ import (
 )
 
 func TestDependencyBuildCmd(t *testing.T) {
-	srv, err := repotest.NewTempServer("testdata/testcharts/*.tgz")
+	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/testcharts/*.tgz")
 	defer srv.Stop()
 	if err != nil {
 		t.Fatal(err)

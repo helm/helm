@@ -34,7 +34,7 @@ import (
 )
 
 func TestRepoAddCmd(t *testing.T) {
-	srv, err := repotest.NewTempServer("testdata/testserver/*.*")
+	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +53,7 @@ func TestRepoAddCmd(t *testing.T) {
 }
 
 func TestRepoAdd(t *testing.T) {
-	ts, err := repotest.NewTempServer("testdata/testserver/*.*")
+	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +118,7 @@ func TestRepoAddConcurrentDirNotExist(t *testing.T) {
 }
 
 func repoAddConcurrent(t *testing.T, testName, repoFile string) {
-	ts, err := repotest.NewTempServer("testdata/testserver/*.*")
+	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
 	if err != nil {
 		t.Fatal(err)
 	}
