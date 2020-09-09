@@ -24,6 +24,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/release"
 	helmtime "helm.sh/helm/v3/pkg/time"
 )
@@ -87,7 +88,7 @@ func (r *Rollback) Run(name string) error {
 // prepareRollback finds the previous release and prepares a new release object with
 // the previous release's configuration
 func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Release, error) {
-	if err := validateReleaseName(name); err != nil {
+	if err := chartutil.ValidateReleaseName(name); err != nil {
 		return nil, nil, errors.Errorf("prepareRollback: Release name is invalid: %s", name)
 	}
 

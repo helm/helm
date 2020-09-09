@@ -19,6 +19,7 @@ package action
 import (
 	"github.com/pkg/errors"
 
+	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/release"
 )
 
@@ -45,7 +46,7 @@ func (h *History) Run(name string) ([]*release.Release, error) {
 		return nil, err
 	}
 
-	if err := validateReleaseName(name); err != nil {
+	if err := chartutil.ValidateReleaseName(name); err != nil {
 		return nil, errors.Errorf("release name is invalid: %s", name)
 	}
 

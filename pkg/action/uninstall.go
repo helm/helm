@@ -22,6 +22,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/releaseutil"
 	helmtime "helm.sh/helm/v3/pkg/time"
@@ -62,7 +63,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 		return &release.UninstallReleaseResponse{Release: r}, nil
 	}
 
-	if err := validateReleaseName(name); err != nil {
+	if err := chartutil.ValidateReleaseName(name); err != nil {
 		return nil, errors.Errorf("uninstall: Release name is invalid: %s", name)
 	}
 
