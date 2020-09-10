@@ -50,6 +50,8 @@ func NewTempServerWithCleanup(t *testing.T, glob string) (*Server, error) {
 //
 // The caller is responsible for destroying the temp directory as well as stopping
 // the server.
+//
+// Deprecated: use NewTempServerWithCleanup
 func NewTempServer(glob string) (*Server, error) {
 	tdir, err := ioutil.TempDir("", "helm-repotest-")
 	if err != nil {
