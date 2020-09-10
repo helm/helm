@@ -48,11 +48,22 @@ Environment variables:
 | $HELM_CACHE_HOME                   | set an alternative location for storing cached files.                             |
 | $HELM_CONFIG_HOME                  | set an alternative location for storing Helm configuration.                       |
 | $HELM_DATA_HOME                    | set an alternative location for storing Helm data.                                |
+| $HELM_DEBUG                        | indicate whether or not Helm is running in Debug mode                             |
 | $HELM_DRIVER                       | set the backend storage driver. Values are: configmap, secret, memory, postgres   |
 | $HELM_DRIVER_SQL_CONNECTION_STRING | set the connection string the SQL storage driver should use.                      |
 | $HELM_MAX_HISTORY                  | set the maximum number of helm release history.                                   |
+| $HELM_NAMESPACE                    | set the namespace used for the helm operations.                                   |
 | $HELM_NO_PLUGINS                   | disable plugins. Set HELM_NO_PLUGINS=1 to disable plugins.                        |
+| $HELM_PLUGINS                      | set the path to the plugins directory                                             |
+| $HELM_REGISTRY_CONFIG              | set the path to the registry config file.                                         |
+| $HELM_REPOSITORY_CACHE             | set the path to the repository cache directory                                    |
+| $HELM_REPOSITORY_CONFIG            | set the path to the repositories file.                                            |
 | $KUBECONFIG                        | set an alternative Kubernetes configuration file (default "~/.kube/config")       |
+| $HELM_KUBEAPISERVER                | set the Kubernetes API Server Endpoint for authentication                         |
+| $HELM_KUBEASGROUPS                 | set the Username to impersonate for the operation.                                |
+| $HELM_KUBEASUSER                   | set the Groups to use for impoersonation using a comma-separated list.            |
+| $HELM_KUBECONTEXT                  | set the name of the kubeconfig context.                                           |
+| $HELM_KUBETOKEN                    | set the Bearer KubeToken used for authentication.                                 |
 
 Helm stores cache, configuration, and data based on the following configuration order:
 
