@@ -70,7 +70,7 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			// strip chart metadata from the output
 			rel.Chart = nil
 
-			return outfmt.Write(out, &statusPrinter{rel, false, client.ShowDescription})
+			return outfmt.Write(out, &statusWriter{rel, false, client.ShowDescription})
 		},
 	}
 
@@ -95,21 +95,21 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	return cmd
 }
 
-type statusPrinter struct {
+type statusWriter struct {
 	release         *release.Release
 	debug           bool
 	showDescription bool
 }
 
-func (s statusPrinter) WriteJSON(out io.Writer) error {
+func (s statusWriter) WriteJSON(out io.Writer) error {
 	return output.EncodeJSON(out, s.release)
 }
 
-func (s statusPrinter) WriteYAML(out io.Writer) error {
+func (s statusWriter) WriteYAML(out io.Writer) error {
 	return output.EncodeYAML(out, s.release)
 }
 
-func (s statusPrinter) WriteTable(out io.Writer) error {
+func (s statusWriter) WriteTable(out io.Writer) error {
 	if s.release == nil {
 		return nil
 	}
