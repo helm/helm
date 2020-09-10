@@ -55,9 +55,14 @@ LDFLAGS += -X helm.sh/helm/v3/internal/version.gitCommit=${GIT_COMMIT}
 LDFLAGS += -X helm.sh/helm/v3/internal/version.gitTreeState=${GIT_DIRTY}
 LDFLAGS += $(EXT_LDFLAGS)
 
-# Define constants for the client-go version
-LDFLAGS += -X helm.sh/helm/v3/pkg/lint/rules.k8sVersionMajor=$(shell awk '/client-go/{s=$$2;sub("^v","",s);split(s,v,".");print v[1]+1}' go.mod)
-LDFLAGS += -X helm.sh/helm/v3/pkg/lint/rules.k8sVersionMinor=$(shell awk '/client-go/{s=$$2;sub("^v","",s);split(s,v,".");print v[2]}' go.mod)
+# Define constants based on the client-go version
+K8S_MODULES_MAJOR_VER=$(shell awk '/client-go/{s=$$2;sub("^v","",s);split(s,v,".");print v[1]+1}' go.mod)
+K8S_MODULES_MINOR_VER=$(shell awk '/client-go/{s=$$2;sub("^v","",s);split(s,v,".");print v[2]}' go.mod)
+
+LDFLAGS += -X helm.sh/helm/v3/pkg/lint/rules.k8sVersionMajor=$(K8S_MODULES_MAJOR_VER)
+LDFLAGS += -X helm.sh/helm/v3/pkg/lint/rules.k8sVersionMinor=$(K8S_MODULES_MINOR_VER)
+LDFLAGS += -X helm.sh/helm/v3/pkg/chartutil.k8sVersionMajor=$(K8S_MODULES_MAJOR_VER)
+LDFLAGS += -X helm.sh/helm/v3/pkg/chartutil.k8sVersionMinor=$(K8S_MODULES_MINOR_VER)
 
 .PHONY: all
 all: build
