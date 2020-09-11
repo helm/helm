@@ -37,11 +37,11 @@ import (
 )
 
 type repoAddOptions struct {
-	name     string
-	url      string
-	username string
-	password string
-	noUpdate bool
+	name        string
+	url         string
+	username    string
+	password    string
+	forceUpdate bool
 
 	certFile              string
 	keyFile               string
@@ -50,6 +50,9 @@ type repoAddOptions struct {
 
 	repoFile  string
 	repoCache string
+
+	// Deprecated, but cannot be removed until Helm 4
+	deprecatedNoUpdate bool
 }
 
 func newRepoAddCmd(out io.Writer) *cobra.Command {
@@ -72,7 +75,8 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.StringVar(&o.username, "username", "", "chart repository username")
 	f.StringVar(&o.password, "password", "", "chart repository password")
-	f.BoolVar(&o.noUpdate, "no-update", false, "raise error if repo is already registered")
+	f.BoolVar(&o.forceUpdate, "force-update", false, "replace (overwrite) the repo if it already exists")
+	f.BoolVar(&o.deprecatedNoUpdate, "no-update", false, "Ignored. Formerly, it would disabled forced updates. It is deprecated by force-update.")
 	f.StringVar(&o.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
 	f.StringVar(&o.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.StringVar(&o.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
@@ -110,7 +114,8 @@ func (o *repoAddOptions) run(out io.Writer) error {
 		return err
 	}
 
-	if o.noUpdate && f.Has(o.name) {
+	// If the repo exists and --force-update was not specified, error out.
+	if !o.forceUpdate && f.Has(o.name) {
 		return errors.Errorf("repository name (%s) already exists, please specify a different name", o.name)
 	}
 
