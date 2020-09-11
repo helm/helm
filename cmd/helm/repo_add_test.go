@@ -65,10 +65,11 @@ func TestRepoAdd(t *testing.T) {
 	const testRepoName = "test-name"
 
 	o := &repoAddOptions{
-		name:     testRepoName,
-		url:      ts.URL(),
-		noUpdate: true,
-		repoFile: repoFile,
+		name:               testRepoName,
+		url:                ts.URL(),
+		forceUpdate:        false,
+		deprecatedNoUpdate: true,
+		repoFile:           repoFile,
 	}
 	os.Setenv(xdg.CacheHomeEnvVar, rootDir)
 
@@ -94,7 +95,7 @@ func TestRepoAdd(t *testing.T) {
 		t.Errorf("Error cache charts file was not created for repository %s", testRepoName)
 	}
 
-	o.noUpdate = false
+	o.forceUpdate = true
 
 	if err := o.run(ioutil.Discard); err != nil {
 		t.Errorf("Repository was not updated: %s", err)
@@ -130,10 +131,11 @@ func repoAddConcurrent(t *testing.T, testName, repoFile string) {
 		go func(name string) {
 			defer wg.Done()
 			o := &repoAddOptions{
-				name:     name,
-				url:      ts.URL(),
-				noUpdate: true,
-				repoFile: repoFile,
+				name:               name,
+				url:                ts.URL(),
+				deprecatedNoUpdate: true,
+				forceUpdate:        false,
+				repoFile:           repoFile,
 			}
 			if err := o.run(ioutil.Discard); err != nil {
 				t.Error(err)
