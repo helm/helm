@@ -1,5 +1,5 @@
 table
 json
 yaml
-:0
-Completion ended with directive: ShellCompDirectiveDefault
+:4
+Completion ended with directive: ShellCompDirectiveNoFileComp
