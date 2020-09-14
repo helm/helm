@@ -83,18 +83,23 @@ func NewChartRepository(cfg *Entry, getters getter.Providers) (*ChartRepository,
 //
 // It requires the presence of an index.yaml file in the directory.
 func (r *ChartRepository) Load() error {
-	dirInfo, err := os.Stat(r.Config.Name)
+	cacheIndexFile := r.Config.Name
+	dirInfo, err := os.Stat(cacheIndexFile)
 	if err != nil {
-		return err
+		cacheIndexFile = r.CachePath
+		dirInfo, err = os.Stat(cacheIndexFile)
+		if err != nil {
+			return err
+		}
 	}
 	if !dirInfo.IsDir() {
-		return errors.Errorf("%q is not a directory", r.Config.Name)
+		return errors.Errorf("%q is not a directory", cacheIndexFile)
 	}
 
 	// FIXME: Why are we recursively walking directories?
 	// FIXME: Why are we not reading the repositories.yaml to figure out
 	// what repos to use?
-	filepath.Walk(r.Config.Name, func(path string, f os.FileInfo, err error) error {
+	filepath.Walk(cacheIndexFile, func(path string, f os.FileInfo, err error) error {
 		if !f.IsDir() {
 			if strings.Contains(f.Name(), "-index.yaml") {
 				i, err := LoadIndexFile(path)

@@ -74,6 +74,49 @@ func TestLoadChartRepository(t *testing.T) {
 	}
 }
 
+func TestLoadChartMetadataFromRepositoryConfig(t *testing.T) {
+	parentDir := os.TempDir()
+	defer os.RemoveAll(parentDir)
+
+	repositoryCacheDir, _ := ioutil.TempDir(parentDir, "*-cache")
+	repositoryConfigDir, _ := ioutil.TempDir(parentDir, "*-repository")
+	repositoryConfigFile := filepath.Join(repositoryConfigDir, "repository.yaml")
+
+	f := NewFile()
+	f.Add(&Entry{
+		Name: "stable",
+		URL:  "https://kubernetes-charts.storage.googleapis.com",
+	})
+	err := f.WriteFile(repositoryConfigFile, 0644)
+	if err != nil {
+		t.Fatalf("Failed to write repository config '%s':\n\t%s\n", repositoryConfigFile, err.Error())
+	}
+
+	helmSettings := cli.New()
+	helmSettings.RepositoryCache = repositoryCacheDir
+	helmSettings.RepositoryConfig = repositoryConfigFile
+
+	entry := f.Repositories[0]
+	cr, _ := NewChartRepository(entry, getter.All(helmSettings))
+	cr.CachePath = helmSettings.RepositoryCache
+
+	indexFilePath, err := cr.DownloadIndexFile()
+	if err != nil {
+		t.Fatalf("Failed to download index file:\n\t%s\n", err.Error())
+	}
+
+	cr.ChartPaths = append(cr.ChartPaths, indexFilePath)
+
+	err = cr.Load()
+	if err != nil {
+		t.Fatalf("Failed to generate index file:\n\t%s\n", err.Error())
+	}
+
+	if len(cr.IndexFile.Entries) == 0 {
+		t.Errorf("Did not load entries")
+	}
+}
+
 func TestIndex(t *testing.T) {
 	r, err := NewChartRepository(&Entry{
 		Name: testRepository,
