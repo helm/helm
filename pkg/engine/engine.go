@@ -44,6 +44,13 @@ type Engine struct {
 	config *rest.Config
 }
 
+// NewWithClient creates a new instance of client-aware Engine
+func NewWithClient(config *rest.Config) *Engine {
+	return &Engine{
+		config: config,
+	}
+}
+
 // Render takes a chart, optional values, and value overrides, and attempts to render the Go templates.
 //
 // Render can be called repeatedly on the same engine.
