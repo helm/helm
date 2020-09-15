@@ -422,3 +422,19 @@ func TestIndexAdd(t *testing.T) {
 		t.Errorf("Expected http://example.com/charts/deis-0.1.0.tgz, got %s", i.Entries["deis"][0].URLs[0])
 	}
 }
+
+const mockDuplicateIndex = `
+entries:
+  foo: {}
+  bar: {}
+  baz: {}
+  bar: {}
+`
+
+func TestValidateIndex(t *testing.T) {
+	expect := `key "bar" already set in map`
+	err := validateIndex([]byte(mockDuplicateIndex))
+	if strings.Contains(expect, err.Error()) {
+		t.Errorf("Unexpected error: %s", err)
+	}
+}
