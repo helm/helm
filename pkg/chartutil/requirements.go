@@ -17,7 +17,9 @@ package chartutil
 
 import (
 	"errors"
+	"fmt"
 	"log"
+	"regexp"
 	"strings"
 	"time"
 
@@ -219,6 +221,9 @@ func ProcessRequirementsTags(reqs *Requirements, cvals Values) {
 
 }
 
+// Validate alias names against this regexp
+var aliasRegexp = regexp.MustCompile("^[a-zA-Z0-9-_]+$")
+
 func getAliasDependency(charts []*chart.Chart, aliasChart *Dependency) *chart.Chart {
 	var chartFound chart.Chart
 	for _, existingChart := range charts {
@@ -237,6 +242,11 @@ func getAliasDependency(charts []*chart.Chart, aliasChart *Dependency) *chart.Ch
 		chartFound = *existingChart
 		newMetadata := *existingChart.Metadata
 		if aliasChart.Alias != "" {
+			// Make sure Alias is well-formed
+			if !aliasRegexp.MatchString(aliasChart.Alias) {
+				fmt.Printf("Invalid alias in dependency %q. Skipping.", aliasChart.Name)
+				continue
+			}
 			newMetadata.Name = aliasChart.Alias
 		}
 		chartFound.Metadata = &newMetadata
@@ -286,6 +296,9 @@ func doProcessRequirementsEnabled(c *chart.Chart, v *chart.Config, path string) 
 			chartDependencies = append(chartDependencies, chartDependency)
 		}
 		if req.Alias != "" {
+			if !aliasRegexp.MatchString(req.Alias) {
+				return fmt.Errorf("illegal alias name in %q", req.Name)
+			}
 			req.Name = req.Alias
 		}
 	}

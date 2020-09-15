@@ -16,6 +16,7 @@ limitations under the License.
 package plugin // import "k8s.io/helm/pkg/plugin"
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -141,13 +142,22 @@ func LoadAll(basedir string) ([]*Plugin, error) {
 		return plugins, nil
 	}
 
+	loaded := map[string]bool{}
 	for _, yaml := range matches {
 		dir := filepath.Dir(yaml)
 		p, err := LoadDir(dir)
+		pname := p.Metadata.Name
 		if err != nil {
 			return plugins, err
 		}
+
+		if _, ok := loaded[pname]; ok {
+			fmt.Fprintf(os.Stderr, "A plugin named %q already exists. Skipping.", pname)
+			continue
+		}
+
 		plugins = append(plugins, p)
+		loaded[pname] = true
 	}
 	return plugins, nil
 }

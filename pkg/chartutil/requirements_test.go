@@ -370,7 +370,15 @@ func TestGetAliasDependency(t *testing.T) {
 	}
 
 	// Failure case
+	resetName := req.Dependencies[0].Name
 	req.Dependencies[0].Name = "something-else"
+	if aliasChart := getAliasDependency(c.Dependencies, req.Dependencies[0]); aliasChart != nil {
+		t.Fatalf("expected no chart but got %s", aliasChart.Metadata.Name)
+	}
+
+	// Add a bad alias name
+	req.Dependencies[0].Name = resetName
+	req.Dependencies[0].Alias = "$foobar"
 	if aliasChart := getAliasDependency(c.Dependencies, req.Dependencies[0]); aliasChart != nil {
 		t.Fatalf("expected no chart but got %s", aliasChart.Metadata.Name)
 	}
@@ -515,4 +523,17 @@ func TestDependentChartsWithSomeSubchartsSpecifiedInRequirements(t *testing.T) {
 		t.Fatalf("Expected more dependencies than specified in requirements.yaml(%d), but got %d", len(reqmts.Dependencies), len(c.Dependencies))
 	}
 
+}
+
+func TestAliasRegexp(t *testing.T) {
+	for name, shouldPass := range map[string]bool{
+		"abcdefghijklmnopqrstuvwxyzABCDEFG0987654321_-": true,
+		"$foo":     false,
+		"bar$":     false,
+		"foo\nbar": false,
+	} {
+		if aliasRegexp.MatchString(name) != shouldPass {
+			t.Errorf("name %q failed to pass its test", name)
+		}
+	}
 }
