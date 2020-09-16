@@ -75,7 +75,7 @@ func TestLoadChartRepository(t *testing.T) {
 }
 
 func TestLoadChartMetadataFromRepositoryConfig(t *testing.T) {
-	parentDir := os.TempDir()
+	parentDir := ensure.TempDir(t)
 	defer os.RemoveAll(parentDir)
 
 	repositoryCacheDir, _ := ioutil.TempDir(parentDir, "*-cache")
