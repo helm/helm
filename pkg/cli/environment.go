@@ -56,6 +56,8 @@ type EnvSettings struct {
 	KubeAPIServer string
 	// Custom certificate authority file.
 	KubeCaFile string
+	// KubeInsecure indicates whether or not checking kubernetes apiserver's certificate
+	KubeInsecure bool
 	// Debug indicates whether or not Helm is running in Debug mode.
 	Debug bool
 	// RegistryConfig is the path to the registry config file.
@@ -80,6 +82,7 @@ func New() *EnvSettings {
 		KubeAsGroups:     envCSV("HELM_KUBEASGROUPS"),
 		KubeAPIServer:    os.Getenv("HELM_KUBEAPISERVER"),
 		KubeCaFile:       os.Getenv("HELM_KUBECAFILE"),
+		KubeInsecure:     envBoolOr("HELM_KUBEAPISERVER_INSECURE", false),
 		PluginsDirectory: envOr("HELM_PLUGINS", helmpath.DataPath("plugins")),
 		RegistryConfig:   envOr("HELM_REGISTRY_CONFIG", helmpath.ConfigPath("registry.json")),
 		RepositoryConfig: envOr("HELM_REPOSITORY_CONFIG", helmpath.ConfigPath("repositories.yaml")),
@@ -97,6 +100,7 @@ func New() *EnvSettings {
 		KubeConfig:       &env.KubeConfig,
 		Impersonate:      &env.KubeAsUser,
 		ImpersonateGroup: &env.KubeAsGroups,
+		Insecure:         &env.KubeInsecure,
 	}
 	return env
 }
@@ -111,6 +115,7 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringArrayVar(&s.KubeAsGroups, "kube-as-group", s.KubeAsGroups, "group to impersonate for the operation, this flag can be repeated to specify multiple groups.")
 	fs.StringVar(&s.KubeAPIServer, "kube-apiserver", s.KubeAPIServer, "the address and the port for the Kubernetes API server")
 	fs.StringVar(&s.KubeCaFile, "kube-ca-file", s.KubeCaFile, "the certificate authority file for the Kubernetes API server connection")
+	fs.BoolVar(&s.KubeInsecure, "kube-insecure-skip-tls-verify", s.KubeInsecure, "if true, the kubernetes apiserver's certificate will not be checked for validity. This will make your HTTPS connections insecure")
 	fs.BoolVar(&s.Debug, "debug", s.Debug, "enable verbose output")
 	fs.StringVar(&s.RegistryConfig, "registry-config", s.RegistryConfig, "path to the registry config file")
 	fs.StringVar(&s.RepositoryConfig, "repository-config", s.RepositoryConfig, "path to the file containing repository names and URLs")
@@ -144,6 +149,18 @@ func envCSV(name string) (ls []string) {
 	return
 }
 
+func envBoolOr(name string, def bool) bool {
+	if name == "" {
+		return def
+	}
+	envVal := envOr(name, strconv.FormatBool(def))
+	ret, err := strconv.ParseBool(envVal)
+	if err != nil {
+		return def
+	}
+	return ret
+}
+
 func (s *EnvSettings) EnvVars() map[string]string {
 	envvars := map[string]string{
 		"HELM_BIN":               os.Args[0],
@@ -159,12 +176,13 @@ func (s *EnvSettings) EnvVars() map[string]string {
 		"HELM_MAX_HISTORY":       strconv.Itoa(s.MaxHistory),
 
 		// broken, these are populated from helm flags and not kubeconfig.
-		"HELM_KUBECONTEXT":   s.KubeContext,
-		"HELM_KUBETOKEN":     s.KubeToken,
-		"HELM_KUBEASUSER":    s.KubeAsUser,
-		"HELM_KUBEASGROUPS":  strings.Join(s.KubeAsGroups, ","),
-		"HELM_KUBEAPISERVER": s.KubeAPIServer,
-		"HELM_KUBECAFILE":    s.KubeCaFile,
+		"HELM_KUBECONTEXT":            s.KubeContext,
+		"HELM_KUBETOKEN":              s.KubeToken,
+		"HELM_KUBEASUSER":             s.KubeAsUser,
+		"HELM_KUBEASGROUPS":           strings.Join(s.KubeAsGroups, ","),
+		"HELM_KUBEAPISERVER":          s.KubeAPIServer,
+		"HELM_KUBECAFILE":             s.KubeCaFile,
+		"HELM_KUBEAPISERVER_INSECURE": strconv.FormatBool(s.KubeInsecure),
 	}
 	if s.KubeConfig != "" {
 		envvars["KUBECONFIG"] = s.KubeConfig

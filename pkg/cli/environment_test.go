@@ -40,6 +40,7 @@ func TestEnvSettings(t *testing.T) {
 		kAsUser      string
 		kAsGroups    []string
 		kCaFile      string
+		kubeInsecure bool
 	}{
 		{
 			name:       "defaults",
@@ -131,5 +132,57 @@ func resetEnv() func() {
 			kv := strings.SplitN(pair, "=", 2)
 			os.Setenv(kv[0], kv[1])
 		}
+	}
+}
+
+func Test_envBoolOr(t *testing.T) {
+	type args struct {
+		name     string
+		envValue string
+		def      bool
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "empty name",
+			args: args{
+				name:     "",
+				envValue: "",
+				def:      true,
+			},
+			want: true,
+		},
+		{
+			name: "with ENV set",
+			args: args{
+				name:     "ENV",
+				envValue: "true",
+				def:      false,
+			},
+			want: true,
+		},
+		{
+			name: "with illegal ENV set",
+			args: args{
+				name:     "ENV",
+				envValue: "true1",
+				def:      true,
+			},
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.args.envValue != "" && tt.args.name != "" {
+				defer os.Unsetenv(tt.args.name)
+				os.Setenv(tt.args.name, tt.args.envValue)
+			}
+			if got := envBoolOr(tt.args.name, tt.args.def); got != tt.want {
+				t.Errorf("envBoolOr() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
