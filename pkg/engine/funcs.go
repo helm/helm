@@ -27,7 +27,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-// funcMap returns a mapping of all of the functions that Engine has.
+// FuncMap returns a mapping of all of the functions that Engine has.
 //
 // Because some functions are late-bound (e.g. contain context-sensitive
 // data), the functions may not all perform identically outside of an Engine
@@ -41,7 +41,7 @@ import (
 // These are late-bound in Engine.Render().  The
 // version included in the FuncMap is a placeholder.
 //
-func funcMap() template.FuncMap {
+func FuncMap() template.FuncMap {
 	f := sprig.TxtFuncMap()
 	delete(f, "env")
 	delete(f, "expandenv")

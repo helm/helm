@@ -105,7 +105,7 @@ func warnWrap(warn string) string {
 
 // initFunMap creates the Engine's FuncMap and adds context-specific functions.
 func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]renderable) {
-	funcMap := funcMap()
+	funcMap := FuncMap()
 	includedNames := make(map[string]int)
 
 	// Add the 'include' function here so we can close over t.
