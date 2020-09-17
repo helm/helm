@@ -58,8 +58,6 @@ var (
 	errMissingRelease = errors.New("no release provided")
 	// errInvalidRevision indicates that an invalid release revision number was provided.
 	errInvalidRevision = errors.New("invalid release revision")
-	// errPending indicates that another instance of Helm is already applying an operation on a release.
-	errPending = errors.New("another operation (install/upgrade/rollback) is in progress")
 )
 
 // ValidName is a regular expression for resource names.
