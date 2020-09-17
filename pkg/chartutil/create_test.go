@@ -154,7 +154,7 @@ func TestCreate_Overwrite(t *testing.T) {
 
 	if errlog.Len() == 0 {
 		t.Errorf("Expected warnings about overwriting files.")
-  }
+	}
 }
 
 func TestValidateChartName(t *testing.T) {
