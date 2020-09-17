@@ -1,3 +1,5 @@
+// +build !windows
+
 /*
 Copyright The Helm Authors.
 
