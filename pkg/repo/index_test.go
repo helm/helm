@@ -35,9 +35,31 @@ import (
 )
 
 const (
-	testfile          = "testdata/local-index.yaml"
-	unorderedTestfile = "testdata/local-index-unordered.yaml"
-	testRepo          = "test-repo"
+	testfile            = "testdata/local-index.yaml"
+	chartmuseumtestfile = "testdata/chartmuseum-index.yaml"
+	unorderedTestfile   = "testdata/local-index-unordered.yaml"
+	testRepo            = "test-repo"
+	indexWithDuplicates = `
+apiVersion: v1
+entries:
+  nginx:
+    - urls:
+        - https://kubernetes-charts.storage.googleapis.com/nginx-0.2.0.tgz
+      name: nginx
+      description: string
+      version: 0.2.0
+      home: https://github.com/something/else
+      digest: "sha256:1234567890abcdef"
+  nginx:
+    - urls:
+        - https://kubernetes-charts.storage.googleapis.com/alpine-1.0.0.tgz
+        - http://storage2.googleapis.com/kubernetes-charts/alpine-1.0.0.tgz
+      name: alpine
+      description: string
+      version: 1.0.0
+      home: https://github.com/something
+      digest: "sha256:1234567890abcdef"
+`
 )
 
 func TestIndexFile(t *testing.T) {
@@ -84,38 +106,37 @@ func TestIndexFile(t *testing.T) {
 }
 
 func TestLoadIndex(t *testing.T) {
-	b, err := ioutil.ReadFile(testfile)
-	if err != nil {
-		t.Fatal(err)
-	}
-	i, err := loadIndex(b)
-	if err != nil {
-		t.Fatal(err)
-	}
-	verifyLocalIndex(t, i)
-}
 
-const indexWithDuplicates = `
-apiVersion: v1
-entries:
-  nginx:
-    - urls:
-        - https://kubernetes-charts.storage.googleapis.com/nginx-0.2.0.tgz
-      name: nginx
-      description: string
-      version: 0.2.0
-      home: https://github.com/something/else
-      digest: "sha256:1234567890abcdef"
-  nginx:
-    - urls:
-        - https://kubernetes-charts.storage.googleapis.com/alpine-1.0.0.tgz
-        - http://storage2.googleapis.com/kubernetes-charts/alpine-1.0.0.tgz
-      name: alpine
-      description: string
-      version: 1.0.0
-      home: https://github.com/something
-      digest: "sha256:1234567890abcdef"
-`
+	tests := []struct {
+		Name     string
+		Filename string
+	}{
+		{
+			Name:     "regular index file",
+			Filename: testfile,
+		},
+		{
+			Name:     "chartmuseum index file",
+			Filename: chartmuseumtestfile,
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.Name, func(t *testing.T) {
+			t.Parallel()
+			b, err := ioutil.ReadFile(tc.Filename)
+			if err != nil {
+				t.Fatal(err)
+			}
+			i, err := loadIndex(b)
+			if err != nil {
+				t.Fatal(err)
+			}
+			verifyLocalIndex(t, i)
+		})
+	}
+}
 
 // TestLoadIndex_Duplicates is a regression to make sure that we don't non-deterministically allow duplicate packages.
 func TestLoadIndex_Duplicates(t *testing.T) {
