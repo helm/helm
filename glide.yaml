@@ -77,6 +77,14 @@ import:
 
   - package: github.com/cpuguy83/go-md2man
     version: ^1.0.10
+  
+  # The vanity URL has gone away but the commit in the
+  # transitive dependency is still present
+  - package: vbom.ml/util
+    version: efcd4e0f97874370259c7d93e12aad57911dea81
+    repo: https://github.com/fvbommel/sortorder.git
+    subpackages:
+      - sortorder
 
 testImports:
   - package: github.com/stretchr/testify

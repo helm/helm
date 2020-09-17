@@ -1,5 +1,5 @@
-hash: ac5ff6bfe50536fa733d160b064d05691909e1d796c6d9284ce2eb4deb998db9
-updated: 2019-10-29T19:02:24.996035Z
+hash: f690c7a0f6f7772f816547c7c601363c28cf50df7738c8c4a5121ed07b95bc6d
+updated: 2020-09-17T13:02:24.996035Z
 imports:
 - name: cloud.google.com/go
   version: 8c41231e01b2085512d98153bcffb847ff9b4b9f
@@ -846,8 +846,9 @@ imports:
   version: fd68e9863619f6ec2fdd8625fe1f02e7c877e480
 - name: vbom.ml/util
   version: efcd4e0f97874370259c7d93e12aad57911dea81
+  repo: https://github.com/fvbommel/sortorder.git
   subpackages:
-  - sortorder
+    - sortorder
 testImports:
 - name: github.com/DATA-DOG/go-sqlmock
   version: e64ef33e8bdaf17d91e3ecb35b9c1d0e420b3309
