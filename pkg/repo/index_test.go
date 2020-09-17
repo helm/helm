@@ -95,6 +95,35 @@ func TestLoadIndex(t *testing.T) {
 	verifyLocalIndex(t, i)
 }
 
+const indexWithDuplicates = `
+apiVersion: v1
+entries:
+  nginx:
+    - urls:
+        - https://kubernetes-charts.storage.googleapis.com/nginx-0.2.0.tgz
+      name: nginx
+      description: string
+      version: 0.2.0
+      home: https://github.com/something/else
+      digest: "sha256:1234567890abcdef"
+  nginx:
+    - urls:
+        - https://kubernetes-charts.storage.googleapis.com/alpine-1.0.0.tgz
+        - http://storage2.googleapis.com/kubernetes-charts/alpine-1.0.0.tgz
+      name: alpine
+      description: string
+      version: 1.0.0
+      home: https://github.com/something
+      digest: "sha256:1234567890abcdef"
+`
+
+// TestLoadIndex_Duplicates is a regression to make sure that we don't non-deterministically allow duplicate packages.
+func TestLoadIndex_Duplicates(t *testing.T) {
+	if _, err := loadIndex([]byte(indexWithDuplicates)); err == nil {
+		t.Errorf("Expected an error when duplicate entries are present")
+	}
+}
+
 func TestLoadIndexFile(t *testing.T) {
 	i, err := LoadIndexFile(testfile)
 	if err != nil {

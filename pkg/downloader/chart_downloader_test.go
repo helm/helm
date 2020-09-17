@@ -71,7 +71,7 @@ func TestResolveChartRef(t *testing.T) {
 			if tt.fail {
 				continue
 			}
-			t.Errorf("%s: failed with error %s", tt.name, err)
+			t.Errorf("%s: failed with error %q", tt.name, err)
 			continue
 		}
 		if got := u.String(); got != tt.expect {
