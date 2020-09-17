@@ -5,6 +5,5 @@ description: |-
   description
 command: "$HELM_PLUGIN_SELF/hello.sh"
 ignoreFlags: true
-install: "echo installing..."
 hooks:
   install: "echo installing..."
