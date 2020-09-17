@@ -96,6 +96,12 @@ type Metadata struct {
 	// Downloaders field is used if the plugin supply downloader mechanism
 	// for special protocols.
 	Downloaders []Downloaders `json:"downloaders"`
+
+	// UseTunnelDeprecated indicates that this command needs a tunnel.
+	// Setting this will cause a number of side effects, such as the
+	// automatic setting of HELM_HOST.
+	// DEPRECATED and unused, but retained for backwards compatibility with Helm 2 plugins. Remove in Helm 4
+	UseTunnelDeprecated bool `json:"useTunnel,omitempty"`
 }
 
 // Plugin represents a plugin.
@@ -200,7 +206,7 @@ func LoadDir(dirname string) (*Plugin, error) {
 	}
 
 	plug := &Plugin{Dir: dirname}
-	if err := yaml.Unmarshal(data, &plug.Metadata); err != nil {
+	if err := yaml.UnmarshalStrict(data, &plug.Metadata); err != nil {
 		return nil, errors.Wrapf(err, "failed to load plugin at %q", pluginfile)
 	}
 	return plug, validatePluginData(plug, pluginfile)

@@ -37,7 +37,7 @@ func TestLocalInstaller(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	source := "../testdata/plugdir/echo"
+	source := "../testdata/plugdir/good/echo"
 	i, err := NewForSource(source, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
