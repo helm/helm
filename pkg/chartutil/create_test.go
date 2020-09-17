@@ -154,5 +154,32 @@ func TestCreate_Overwrite(t *testing.T) {
 
 	if errlog.Len() == 0 {
 		t.Errorf("Expected warnings about overwriting files.")
+  }
+}
+
+func TestValidateChartName(t *testing.T) {
+	for name, shouldPass := range map[string]bool{
+		"":                              false,
+		"abcdefghijklmnopqrstuvwxyz-_.": true,
+		"ABCDEFGHIJKLMNOPQRSTUVWXYZ-_.": true,
+		"$hello":                        false,
+		"Hellô":                         false,
+		"he%%o":                         false,
+		"he\nllo":                       false,
+
+		"abcdefghijklmnopqrstuvwxyz-_." +
+			"abcdefghijklmnopqrstuvwxyz-_." +
+			"abcdefghijklmnopqrstuvwxyz-_." +
+			"abcdefghijklmnopqrstuvwxyz-_." +
+			"abcdefghijklmnopqrstuvwxyz-_." +
+			"abcdefghijklmnopqrstuvwxyz-_." +
+			"abcdefghijklmnopqrstuvwxyz-_." +
+			"abcdefghijklmnopqrstuvwxyz-_." +
+			"abcdefghijklmnopqrstuvwxyz-_." +
+			"ABCDEFGHIJKLMNOPQRSTUVWXYZ-_.": false,
+	} {
+		if err := validateChartName(name); (err != nil) == shouldPass {
+			t.Errorf("test for %q failed", name)
+		}
 	}
 }

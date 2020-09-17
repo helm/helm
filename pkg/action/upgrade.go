@@ -115,7 +115,7 @@ func (u *Upgrade) Run(name string, chart *chart.Chart, vals map[string]interface
 	// the user doesn't have to specify both
 	u.Wait = u.Wait || u.Atomic
 
-	if err := validateReleaseName(name); err != nil {
+	if err := chartutil.ValidateReleaseName(name); err != nil {
 		return nil, errors.Errorf("release name is invalid: %s", name)
 	}
 	u.cfg.Log("preparing upgrade for %s", name)
@@ -140,19 +140,6 @@ func (u *Upgrade) Run(name string, chart *chart.Chart, vals map[string]interface
 	}
 
 	return res, nil
-}
-
-func validateReleaseName(releaseName string) error {
-	if releaseName == "" {
-		return errMissingRelease
-	}
-
-	// Check length first, since that is a less expensive operation.
-	if len(releaseName) > releaseNameMaxLen || !ValidName.MatchString(releaseName) {
-		return errInvalidName
-	}
-
-	return nil
 }
 
 // prepareUpgrade builds an upgraded release for an upgrade operation.
