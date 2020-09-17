@@ -30,6 +30,7 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/ghodss/yaml"
+	yaml2 "gopkg.in/yaml.v2"
 
 	"k8s.io/helm/pkg/chartutil"
 	"k8s.io/helm/pkg/proto/hapi/chart"
@@ -81,6 +82,14 @@ type IndexFile struct {
 	Generated  time.Time                `json:"generated"`
 	Entries    map[string]ChartVersions `json:"entries"`
 	PublicKeys []string                 `json:"publicKeys,omitempty"`
+}
+
+// IndexValidation is used to validate the integrity of an index file
+type IndexValidation struct {
+	APIVersion string                 `yaml:"apiVersion"`
+	Generated  time.Time              `yaml:"generated"`
+	Entries    map[string]interface{} `yaml:"entries"`
+	PublicKeys []string               `yaml:"publicKeys,omitempty"`
 }
 
 // NewIndexFile initializes an index.
@@ -283,9 +292,14 @@ func IndexDirectory(dir, baseURL string) (*IndexFile, error) {
 // This will fail if API Version is not set (ErrNoAPIVersion) or if the unmarshal fails.
 func loadIndex(data []byte) (*IndexFile, error) {
 	i := &IndexFile{}
+	if err := validateIndex(data); err != nil {
+		return i, err
+	}
+
 	if err := yaml.Unmarshal(data, i); err != nil {
 		return i, err
 	}
+
 	i.SortEntries()
 	if i.APIVersion == "" {
 		// When we leave Beta, we should remove legacy support and just
@@ -294,6 +308,16 @@ func loadIndex(data []byte) (*IndexFile, error) {
 		return loadUnversionedIndex(data)
 	}
 	return i, nil
+}
+
+// validateIndex validates that the index is well-formed.
+func validateIndex(data []byte) error {
+	// This is done ONLY for validation. We need to use ghodss/yaml for the actual parsing.
+	validation := &IndexValidation{}
+	if err := yaml2.UnmarshalStrict(data, validation); err != nil {
+		return err
+	}
+	return nil
 }
 
 // unversionedEntry represents a deprecated pre-Alpha.5 format.

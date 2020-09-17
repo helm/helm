@@ -137,6 +137,7 @@ func TestLoadAll(t *testing.T) {
 		t.Fatalf("Could not load %q: %s", basedir, err)
 	}
 
+	// This would fail if the duplicate plugin were loaded.
 	if l := len(plugs); l != 3 {
 		t.Fatalf("expected 3 plugins, found %d", l)
 	}
