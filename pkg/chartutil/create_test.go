@@ -118,6 +118,45 @@ func TestCreateFrom(t *testing.T) {
 	}
 }
 
+// TestCreate_Overwrite is a regression test for making sure that files are overwritten.
+func TestCreate_Overwrite(t *testing.T) {
+	tdir, err := ioutil.TempDir("", "helm-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tdir)
+
+	var errlog bytes.Buffer
+
+	if _, err := Create("foo", tdir); err != nil {
+		t.Fatal(err)
+	}
+
+	dir := filepath.Join(tdir, "foo")
+
+	tplname := filepath.Join(dir, "templates/hpa.yaml")
+	writeFile(tplname, []byte("FOO"))
+
+	// Now re-run the create
+	Stderr = &errlog
+	if _, err := Create("foo", tdir); err != nil {
+		t.Fatal(err)
+	}
+
+	data, err := ioutil.ReadFile(tplname)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if string(data) == "FOO" {
+		t.Fatal("File that should have been modified was not.")
+	}
+
+	if errlog.Len() == 0 {
+		t.Errorf("Expected warnings about overwriting files.")
+	}
+}
+
 func TestValidateChartName(t *testing.T) {
 	for name, shouldPass := range map[string]bool{
 		"":                              false,

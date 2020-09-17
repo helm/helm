@@ -107,6 +107,7 @@ func (o *createOptions) run(out io.Writer) error {
 		return chartutil.CreateFrom(cfile, filepath.Dir(o.name), lstarter)
 	}
 
+	chartutil.Stderr = out
 	_, err := chartutil.Create(chartname, filepath.Dir(o.name))
 	return err
 }
