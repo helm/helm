@@ -77,6 +77,8 @@ func (c ChartVersions) Less(a, b int) bool {
 
 // IndexFile represents the index file in a chart repository
 type IndexFile struct {
+	// This is used ONLY for validation against chartmuseum's index files and is discarded after validation.
+	ServerInfo map[string]interface{}   `json:"serverInfo,omitempty"`
 	APIVersion string                   `json:"apiVersion"`
 	Generated  time.Time                `json:"generated"`
 	Entries    map[string]ChartVersions `json:"entries"`
