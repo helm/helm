@@ -16,6 +16,7 @@ limitations under the License.
 package plugin // import "helm.sh/helm/v3/pkg/plugin"
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -318,5 +319,53 @@ func TestSetupEnv(t *testing.T) {
 		if got := os.Getenv(tt.name); got != tt.expect {
 			t.Errorf("Expected $%s=%q, got %q", tt.name, tt.expect, got)
 		}
+	}
+}
+
+func TestValidatePluginData(t *testing.T) {
+	for i, item := range []struct {
+		pass bool
+		plug *Plugin
+	}{
+		{true, mockPlugin("abcdefghijklmnopqrstuvwxyz0123456789_-ABC")},
+		{true, mockPlugin("foo-bar-FOO-BAR_1234")},
+		{false, mockPlugin("foo -bar")},
+		{false, mockPlugin("$foo -bar")}, // Test leading chars
+		{false, mockPlugin("foo -bar ")}, // Test trailing chars
+		{false, mockPlugin("foo\nbar")},  // Test newline
+	} {
+		err := validatePluginData(item.plug, fmt.Sprintf("test-%d", i))
+		if item.pass && err != nil {
+			t.Errorf("failed to validate case %d: %s", i, err)
+		} else if !item.pass && err == nil {
+			t.Errorf("expected case %d to fail", i)
+		}
+	}
+}
+
+func TestDetectDuplicates(t *testing.T) {
+	plugs := []*Plugin{
+		mockPlugin("foo"),
+		mockPlugin("bar"),
+	}
+	if err := detectDuplicates(plugs); err != nil {
+		t.Error("no duplicates in the first set")
+	}
+	plugs = append(plugs, mockPlugin("foo"))
+	if err := detectDuplicates(plugs); err == nil {
+		t.Error("duplicates in the second set")
+	}
+}
+
+func mockPlugin(name string) *Plugin {
+	return &Plugin{
+		Metadata: &Metadata{
+			Name:        name,
+			Version:     "v0.1.2",
+			Usage:       "Mock plugin",
+			Description: "Mock plugin for testing",
+			Command:     "echo mock plugin",
+		},
+		Dir: "no-such-dir",
 	}
 }
