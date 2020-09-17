@@ -228,6 +228,23 @@ type ChartVersion struct {
 	Created time.Time `json:"created,omitempty"`
 	Removed bool      `json:"removed,omitempty"`
 	Digest  string    `json:"digest,omitempty"`
+
+	// ChecksumDeprecated is deprecated in Helm 3, and therefore ignored. Helm 3 replaced
+	// this with Digest. However, with a strict YAML parser enabled, a field must be
+	// present on the struct for backwards compatibility.
+	ChecksumDeprecated string `json:"checksum,omitempty"`
+
+	// EngineDeprecated is deprecated in Helm 3, and therefore ignored. However, with a strict
+	// YAML parser enabled, this field must be present.
+	EngineDeprecated string `json:"engine,omitempty"`
+
+	// TillerVersionDeprecated is deprecated in Helm 3, and therefore ignored. However, with a strict
+	// YAML parser enabled, this field must be present.
+	TillerVersionDeprecated string `json:"tillerVersion,omitempty"`
+
+	// URLDeprecated is deprectaed in Helm 3, superseded by URLs. It is ignored. However,
+	// with a strict YAML parser enabled, this must be present on the struct.
+	URLDeprecated string `json:"url,omitempty"`
 }
 
 // IndexDirectory reads a (flat) directory and generates an index.
@@ -281,7 +298,7 @@ func IndexDirectory(dir, baseURL string) (*IndexFile, error) {
 // This will fail if API Version is not set (ErrNoAPIVersion) or if the unmarshal fails.
 func loadIndex(data []byte) (*IndexFile, error) {
 	i := &IndexFile{}
-	if err := yaml.Unmarshal(data, i); err != nil {
+	if err := yaml.UnmarshalStrict(data, i); err != nil {
 		return i, err
 	}
 	i.SortEntries()
