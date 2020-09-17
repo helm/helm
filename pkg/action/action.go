@@ -58,13 +58,14 @@ var (
 	errMissingRelease = errors.New("no release provided")
 	// errInvalidRevision indicates that an invalid release revision number was provided.
 	errInvalidRevision = errors.New("invalid release revision")
-	// errInvalidName indicates that an invalid release name was provided
-	errInvalidName = errors.New("invalid release name, must match regex ^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+$ and the length must not longer than 53")
 	// errPending indicates that another instance of Helm is already applying an operation on a release.
 	errPending = errors.New("another operation (install/upgrade/rollback) is in progress")
 )
 
 // ValidName is a regular expression for resource names.
+//
+// DEPRECATED: This will be removed in Helm 4, and is no longer used here. See
+// pkg/chartutil.ValidateName for the replacement.
 //
 // According to the Kubernetes help text, the regular expression it uses is:
 //
@@ -294,7 +295,7 @@ func (c *Configuration) Now() time.Time {
 }
 
 func (c *Configuration) releaseContent(name string, version int) (*release.Release, error) {
-	if err := validateReleaseName(name); err != nil {
+	if err := chartutil.ValidateReleaseName(name); err != nil {
 		return nil, errors.Errorf("releaseContent: Release name is invalid: %s", name)
 	}
 
