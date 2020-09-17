@@ -22,9 +22,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	helm_env "k8s.io/helm/pkg/helm/environment"
-
 	"github.com/ghodss/yaml"
+	yaml2 "gopkg.in/yaml.v2"
+
+	helm_env "k8s.io/helm/pkg/helm/environment"
 )
 
 const pluginFileName = "plugin.yaml"
@@ -120,10 +121,18 @@ func LoadDir(dirname string) (*Plugin, error) {
 	}
 
 	plug := &Plugin{Dir: dirname}
+	if err := validateMeta(data); err != nil {
+		return nil, err
+	}
 	if err := yaml.Unmarshal(data, &plug.Metadata); err != nil {
 		return nil, err
 	}
 	return plug, nil
+}
+
+func validateMeta(data []byte) error {
+	// This is done ONLY for validation. We need to use ghodss/yaml for the actual parsing.
+	return yaml2.UnmarshalStrict(data, &Metadata{})
 }
 
 // LoadAll loads all plugins found beneath the base directory.

@@ -1,0 +1,10 @@
+name: "hello"
+version: "0.1.0"
+usage: "usage"
+description: |-
+  description
+command: "$HELM_PLUGIN_SELF/hello.sh"
+useTunnel: true
+ignoreFlags: true
+hooks:
+  install: "echo installing..."
