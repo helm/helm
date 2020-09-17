@@ -59,7 +59,7 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 
 	found, err := plugin.FindPlugins(settings.PluginsDirectory)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to load plugins: %s", err)
+		fmt.Fprintf(os.Stderr, "failed to load plugins: %s\n", err)
 		return
 	}
 
