@@ -19,6 +19,7 @@ package helm // import "k8s.io/helm/pkg/helm"
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"math/rand"
 	"strings"
 	"sync"
@@ -332,7 +333,7 @@ func ReleaseMock(opts *MockReleaseOptions) *release.Release {
 
 	name := opts.Name
 	if name == "" {
-		name = "testrelease-" + string(rand.Intn(100))
+		name = fmt.Sprintf("testrelease-%d", rand.Intn(100))
 	}
 
 	var version int32 = 1
