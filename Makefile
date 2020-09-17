@@ -33,24 +33,23 @@ GIT_DIRTY  = $(shell test -n "`git status --porcelain`" && echo "dirty" || echo 
 
 ifdef VERSION
 	BINARY_VERSION = $(VERSION)
+else
+	BINARY_VERSION = $(GIT_TAG)
 endif
-BINARY_VERSION ?= ${GIT_TAG}
 
 # Only set Version if building a tag or VERSION is set
 ifneq ($(BINARY_VERSION),)
-	LDFLAGS += -X helm.sh/helm/v3/internal/version.version=${BINARY_VERSION}
+	VERSION_LDFLAGS += -X helm.sh/helm/v3/internal/version.version=$(BINARY_VERSION)
 endif
 
-VERSION_METADATA = unreleased
-# Clear the "unreleased" string in BuildMetadata
-ifneq ($(GIT_TAG),)
-	VERSION_METADATA =
+# Set the "unreleased" string in BuildMetadata
+ifeq ($(GIT_TAG),)
+	VERSION_METADATA = unreleased
 endif
 
-LDFLAGS += -X helm.sh/helm/v3/internal/version.metadata=${VERSION_METADATA}
-LDFLAGS += -X helm.sh/helm/v3/internal/version.gitCommit=${GIT_COMMIT}
-LDFLAGS += -X helm.sh/helm/v3/internal/version.gitTreeState=${GIT_DIRTY}
-LDFLAGS += $(EXT_LDFLAGS)
+VERSION_LDFLAGS += -X helm.sh/helm/v3/internal/version.metadata=${VERSION_METADATA}
+VERSION_LDFLAGS += -X helm.sh/helm/v3/internal/version.gitCommit=${GIT_COMMIT}
+VERSION_LDFLAGS += -X helm.sh/helm/v3/internal/version.gitTreeState=${GIT_DIRTY}
 
 .PHONY: all
 all: build
@@ -62,7 +61,7 @@ all: build
 build: $(BINDIR)/$(BINNAME)
 
 $(BINDIR)/$(BINNAME): $(SRC)
-	GO111MODULE=on go build $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' -o '$(BINDIR)'/$(BINNAME) ./cmd/helm
+	GO111MODULE=on go build $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS) $(VERSION_LDFLAGS) $(EXT_LDFLAGS)' -o '$(BINDIR)'/$(BINNAME) ./cmd/helm
 
 # ------------------------------------------------------------------------------
 #  install
