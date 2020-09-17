@@ -47,9 +47,9 @@ ifeq ($(GIT_TAG),)
 	VERSION_METADATA = unreleased
 endif
 
-VERSION_LDFLAGS += -X helm.sh/helm/v3/internal/version.metadata=${VERSION_METADATA}
-VERSION_LDFLAGS += -X helm.sh/helm/v3/internal/version.gitCommit=${GIT_COMMIT}
-VERSION_LDFLAGS += -X helm.sh/helm/v3/internal/version.gitTreeState=${GIT_DIRTY}
+VERSION_LDFLAGS += -X helm.sh/helm/v3/internal/version.metadata=$(VERSION_METADATA)
+VERSION_LDFLAGS += -X helm.sh/helm/v3/internal/version.gitCommit=$(GIT_COMMIT)
+VERSION_LDFLAGS += -X helm.sh/helm/v3/internal/version.gitTreeState=$(GIT_DIRTY)
 
 .PHONY: all
 all: build
@@ -103,8 +103,8 @@ test-style:
 .PHONY: test-acceptance
 test-acceptance: TARGETS = linux/amd64
 test-acceptance: build build-cross
-	@if [ -d "${ACCEPTANCE_DIR}" ]; then \
-		cd ${ACCEPTANCE_DIR} && \
+	@if [ -d "$(ACCEPTANCE_DIR)" ]; then \
+		cd $(ACCEPTANCE_DIR) && \
 			ROBOT_RUN_TESTS=$(ACCEPTANCE_RUN_TESTS) ROBOT_HELM_PATH='$(BINDIR)' make acceptance; \
 	else \
 		echo "You must clone the acceptance_testing repo under $(ACCEPTANCE_DIR)"; \
@@ -142,7 +142,7 @@ $(GOIMPORTS):
 .PHONY: build-cross
 build-cross: LDFLAGS += -extldflags "-static"
 build-cross: $(GOX)
-	GO111MODULE=on CGO_ENABLED=0 $(GOX) -parallel=3 -output="_dist/{{.OS}}-{{.Arch}}/$(BINNAME)" -osarch='$(TARGETS)' $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' ./cmd/helm
+	GO111MODULE=on CGO_ENABLED=0 $(GOX) -parallel=3 -output="_dist/{{.OS}}-{{.Arch}}/$(BINNAME)" -osarch='$(TARGETS)' $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS) $(VERSION_LDFLAGS) $(EXT_LDFLAGS)' ./cmd/helm
 
 .PHONY: dist
 dist:
@@ -150,16 +150,16 @@ dist:
 		cd _dist && \
 		$(DIST_DIRS) cp ../LICENSE {} \; && \
 		$(DIST_DIRS) cp ../README.md {} \; && \
-		$(DIST_DIRS) tar -zcf helm-${VERSION}-{}.tar.gz {} \; && \
-		$(DIST_DIRS) zip -r helm-${VERSION}-{}.zip {} \; \
+		$(DIST_DIRS) tar -zcf helm-$(VERSION)-{}.tar.gz {} \; && \
+		$(DIST_DIRS) zip -r helm-$(VERSION)-{}.zip {} \; \
 	)
 
 .PHONY: fetch-dist
 fetch-dist:
 	mkdir -p _dist
 	cd _dist && \
-	for obj in ${TARGET_OBJS} ; do \
-		curl -sSL -o helm-${VERSION}-$${obj} https://get.helm.sh/helm-${VERSION}-$${obj} ; \
+	for obj in $(TARGET_OBJS) ; do \
+		curl -sSL -o helm-$(VERSION)-$${obj} https://get.helm.sh/helm-$(VERSION)-$${obj} ; \
 	done
 
 .PHONY: sign
@@ -194,18 +194,18 @@ release-notes:
 			echo "please run 'make fetch-dist' first" && \
 			exit 1; \
 		fi
-		@if [ -z "${PREVIOUS_RELEASE}" ]; then \
+		@if [ -z "$(PREVIOUS_RELEASE)" ]; then \
 			echo "please set PREVIOUS_RELEASE environment variable" \
 			&& exit 1; \
 		fi
 
-		@./scripts/release-notes.sh ${PREVIOUS_RELEASE} ${VERSION}
+		@./scripts/release-notes.sh $(PREVIOUS_RELEASE) $(VERSION)
 
 
 
 .PHONY: info
 info:
-	 @echo "Version:           ${VERSION}"
-	 @echo "Git Tag:           ${GIT_TAG}"
-	 @echo "Git Commit:        ${GIT_COMMIT}"
-	 @echo "Git Tree State:    ${GIT_DIRTY}"
+	 @echo "Version:           $(VERSION)"
+	 @echo "Git Tag:           $(GIT_TAG)"
+	 @echo "Git Commit:        $(GIT_COMMIT)"
+	 @echo "Git Tree State:    $(GIT_DIRTY)"
