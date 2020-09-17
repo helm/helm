@@ -64,7 +64,7 @@ func TestPrepareCommand(t *testing.T) {
 }
 
 func TestLoadDir(t *testing.T) {
-	dirname := "testdata/plugdir/hello"
+	dirname := "testdata/plugdir/good/hello"
 	plug, err := LoadDir(dirname)
 	if err != nil {
 		t.Fatalf("error loading Hello plugin: %s", err)
@@ -92,8 +92,15 @@ func TestLoadDir(t *testing.T) {
 	}
 }
 
+func TestLoadDirDuplicateEntries(t *testing.T) {
+	dirname := "testdata/plugdir/bad/duplicate-entries"
+	if _, err := LoadDir(dirname); err == nil {
+		t.Errorf("successfully loaded plugin with duplicate entries when it should've failed")
+	}
+}
+
 func TestDownloader(t *testing.T) {
-	dirname := "testdata/plugdir/downloader"
+	dirname := "testdata/plugdir/good/downloader"
 	plug, err := LoadDir(dirname)
 	if err != nil {
 		t.Fatalf("error loading Hello plugin: %s", err)
@@ -131,7 +138,7 @@ func TestLoadAll(t *testing.T) {
 		t.Fatalf("expected empty dir to have 0 plugins")
 	}
 
-	basedir := "testdata/plugdir"
+	basedir := "testdata/plugdir/good"
 	plugs, err := LoadAll(basedir)
 	if err != nil {
 		t.Fatalf("Could not load %q: %s", basedir, err)

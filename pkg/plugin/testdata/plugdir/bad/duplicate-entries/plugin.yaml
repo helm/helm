@@ -1,11 +1,12 @@
-name: "hello"
+name: "duplicate-entries"
 version: "0.1.0"
 usage: "usage"
 description: |-
   description
-command: "$HELM_PLUGIN_SELF/hello.sh"
+command: "echo hello"
 useTunnel: true
 ignoreFlags: true
-install: "echo installing..."
 hooks:
   install: "echo installing..."
+hooks:
+  install: "echo installing something different"
