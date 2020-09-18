@@ -86,6 +86,9 @@ type IndexFile struct {
 
 // IndexValidation is used to validate the integrity of an index file
 type IndexValidation struct {
+	// This is used ONLY for validation against chartmuseum's index files and
+	// is discarded after validation.
+	ServerInfo map[string]interface{} `yaml:"serverInfo,omitempty"`
 	APIVersion string                 `yaml:"apiVersion"`
 	Generated  time.Time              `yaml:"generated"`
 	Entries    map[string]interface{} `yaml:"entries"`
