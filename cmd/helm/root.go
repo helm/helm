@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -116,7 +115,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	})
 
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	// Setup shell completion for the kube-context flag
@@ -142,7 +141,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	})
 
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	// We can safely ignore any errors that flags.Parse encounters since
