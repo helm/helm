@@ -85,6 +85,22 @@ func (r *File) Has(name string) bool {
 	return entry != nil
 }
 
+// HasRepoWithNameAndURL returns true if the given name whth url is already a repository name.
+func (r *File) HasRepoWithNameAndURL(name string, url string) bool {
+	entry := r.GetRepoByNameAndURL(name, url)
+	return entry != nil
+}
+
+// GetRepoByNameAndURL returns an entry with the given name and url if it exists, otherwise returns nil
+func (r *File) GetRepoByNameAndURL(name string, url string) *Entry {
+	for _, entry := range r.Repositories {
+		if entry.Name == name && entry.URL == url {
+			return entry
+		}
+	}
+	return nil
+}
+
 // Get returns an entry with the given name if it exists, otherwise returns nil
 func (r *File) Get(name string) *Entry {
 	for _, entry := range r.Repositories {

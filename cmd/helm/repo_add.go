@@ -115,6 +115,10 @@ func (o *repoAddOptions) run(out io.Writer) error {
 	if err := yaml.Unmarshal(b, &f); err != nil {
 		return err
 	}
+	// If the repo with specified name and url is already exists, directory returun.
+	if f.HasRepoWithNameAndURL(o.name, o.url) {
+		return nil
+	}
 
 	// If the repo exists and --force-update was not specified, error out.
 	if !o.forceUpdate && f.Has(o.name) {

@@ -90,6 +90,95 @@ func TestNewFile(t *testing.T) {
 		}
 	}
 }
+func TestRepoFile_HasRepoWithNameAndURL(t *testing.T) {
+	repo := NewFile()
+	repo.Add(
+		&Entry{
+			Name: "first",
+			URL:  "https://example.com/first",
+		},
+		&Entry{
+			Name: "second",
+			URL:  "https://example.com/second",
+		},
+		&Entry{
+			Name: "third",
+			URL:  "https://example.com/third",
+		},
+		&Entry{
+			Name: "fourth",
+			URL:  "https://example.com/fourth",
+		},
+	)
+
+	name := "second"
+	url := "https://example.com/second"
+
+	found := repo.HasRepoWithNameAndURL(name, url)
+	if !found {
+		t.Fatalf("Expected repo entry %q with name %q to be found", name, url)
+	}
+
+	found = repo.HasRepoWithNameAndURL("nonexistent", "nonexistent")
+	if found {
+		t.Errorf("Got unexpected entry.")
+	}
+
+	found = repo.HasRepoWithNameAndURL("first", "nonexistent")
+	if found {
+		t.Errorf("Got unexpected entry.")
+	}
+
+	found = repo.HasRepoWithNameAndURL("nonexistent", "https://example.com/first")
+	if found {
+		t.Errorf("Got unexpected entry.")
+	}
+}
+func TestRepoFile_GetRepoByNameAndURL(t *testing.T) {
+	repo := NewFile()
+	repo.Add(
+		&Entry{
+			Name: "first",
+			URL:  "https://example.com/first",
+		},
+		&Entry{
+			Name: "second",
+			URL:  "https://example.com/second",
+		},
+		&Entry{
+			Name: "third",
+			URL:  "https://example.com/third",
+		},
+		&Entry{
+			Name: "fourth",
+			URL:  "https://example.com/fourth",
+		},
+	)
+
+	name := "second"
+	url := "https://example.com/second"
+
+	entry := repo.GetRepoByNameAndURL(name, url)
+	if entry == nil {
+		t.Fatalf("Expected repo entry %q with name %q to be found", name, url)
+	}
+
+	entry = repo.GetRepoByNameAndURL("nonexistent", "nonexistent")
+	if entry != nil {
+		t.Errorf("Got unexpected entry %+v", entry)
+	}
+
+	entry = repo.GetRepoByNameAndURL("first", "nonexistent")
+	if entry != nil {
+		t.Errorf("Got unexpected entry %+v", entry)
+	}
+
+	entry = repo.GetRepoByNameAndURL("nonexistent", "https://example.com/first")
+	if entry != nil {
+		t.Errorf("Got unexpected entry %+v", entry)
+	}
+
+}
 
 func TestRepoFile_Get(t *testing.T) {
 	repo := NewFile()

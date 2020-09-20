@@ -59,6 +59,12 @@ func TestRepoAdd(t *testing.T) {
 	}
 	defer ts.Stop()
 
+	tsn, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tsn.Stop()
+
 	rootDir := ensure.TempDir(t)
 	repoFile := filepath.Join(rootDir, "repositories.yaml")
 
@@ -77,12 +83,17 @@ func TestRepoAdd(t *testing.T) {
 		t.Error(err)
 	}
 
+	// add repo with same name and url is ok.
+	if err := o.run(ioutil.Discard); err != nil {
+		t.Error(err)
+	}
+
 	f, err := repo.LoadFile(repoFile)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !f.Has(testRepoName) {
+	if !f.HasRepoWithNameAndURL(testRepoName, ts.URL()) {
 		t.Errorf("%s was not successfully inserted into %s", testRepoName, repoFile)
 	}
 
@@ -93,6 +104,12 @@ func TestRepoAdd(t *testing.T) {
 	idx = filepath.Join(helmpath.CachePath("repository"), helmpath.CacheChartsFile(testRepoName))
 	if _, err := os.Stat(idx); os.IsNotExist(err) {
 		t.Errorf("Error cache charts file was not created for repository %s", testRepoName)
+	}
+
+	o.url = tsn.URL()
+
+	if err := o.run(ioutil.Discard); err == nil {
+		t.Errorf("Expected error: repo is already exists with different url, but got nil")
 	}
 
 	o.forceUpdate = true
