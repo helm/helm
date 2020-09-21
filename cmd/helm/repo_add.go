@@ -116,11 +116,6 @@ func (o *repoAddOptions) run(out io.Writer) error {
 		return err
 	}
 
-	// If the repo exists and --force-update was not specified, error out.
-	if !o.forceUpdate && f.Has(o.name) {
-		return errors.Errorf("repository name (%s) already exists, please specify a different name", o.name)
-	}
-
 	if o.username != "" && o.password == "" {
 		fd := int(os.Stdin.Fd())
 		fmt.Fprint(out, "Password: ")
@@ -141,6 +136,23 @@ func (o *repoAddOptions) run(out io.Writer) error {
 		KeyFile:               o.keyFile,
 		CAFile:                o.caFile,
 		InsecureSkipTLSverify: o.insecureSkipTLSverify,
+	}
+
+	// If the repo exists do one of two things:
+	// 1. If the configuration for the name is the same continue without error
+	// 2. When the config is different require --force-update
+	if !o.forceUpdate && f.Has(o.name) {
+		existing := f.Get(o.name)
+		if c != *existing {
+
+			// The input coming in for the name is different from what is already
+			// configured. Return an error.
+			return errors.Errorf("repository name (%s) already exists, please specify a different name", o.name)
+		}
+
+		// The add is idempotent so do nothing
+		fmt.Fprintf(out, "%q already exists with the same configuration, skipping\n", o.name)
+		return nil
 	}
 
 	r, err := repo.NewChartRepository(&c, getter.All(settings))

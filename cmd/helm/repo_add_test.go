@@ -40,14 +40,38 @@ func TestRepoAddCmd(t *testing.T) {
 	}
 	defer srv.Stop()
 
+	// A second test server is setup to verify URL changing
+	srv2, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer srv2.Stop()
+
 	tmpdir := ensure.TempDir(t)
 	repoFile := filepath.Join(tmpdir, "repositories.yaml")
 
-	tests := []cmdTestCase{{
-		name:   "add a repository",
-		cmd:    fmt.Sprintf("repo add test-name %s --repository-config %s --repository-cache %s", srv.URL(), repoFile, tmpdir),
-		golden: "output/repo-add.txt",
-	}}
+	tests := []cmdTestCase{
+		{
+			name:   "add a repository",
+			cmd:    fmt.Sprintf("repo add test-name %s --repository-config %s --repository-cache %s", srv.URL(), repoFile, tmpdir),
+			golden: "output/repo-add.txt",
+		},
+		{
+			name:   "add repository second time",
+			cmd:    fmt.Sprintf("repo add test-name %s --repository-config %s --repository-cache %s", srv.URL(), repoFile, tmpdir),
+			golden: "output/repo-add2.txt",
+		},
+		{
+			name:      "add repository different url",
+			cmd:       fmt.Sprintf("repo add test-name %s --repository-config %s --repository-cache %s", srv2.URL(), repoFile, tmpdir),
+			wantError: true,
+		},
+		{
+			name:   "add repository second time",
+			cmd:    fmt.Sprintf("repo add test-name %s --repository-config %s --repository-cache %s --force-update", srv2.URL(), repoFile, tmpdir),
+			golden: "output/repo-add.txt",
+		},
+	}
 
 	runTestCmd(t, tests)
 }
