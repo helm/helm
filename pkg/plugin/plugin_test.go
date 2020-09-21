@@ -16,6 +16,7 @@ limitations under the License.
 package plugin // import "helm.sh/helm/v3/pkg/plugin"
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -177,7 +178,7 @@ func TestNoMatchPrepareCommand(t *testing.T) {
 }
 
 func TestLoadDir(t *testing.T) {
-	dirname := "testdata/plugdir/hello"
+	dirname := "testdata/plugdir/good/hello"
 	plug, err := LoadDir(dirname)
 	if err != nil {
 		t.Fatalf("error loading Hello plugin: %s", err)
@@ -204,8 +205,15 @@ func TestLoadDir(t *testing.T) {
 	}
 }
 
+func TestLoadDirDuplicateEntries(t *testing.T) {
+	dirname := "testdata/plugdir/bad/duplicate-entries"
+	if _, err := LoadDir(dirname); err == nil {
+		t.Errorf("successfully loaded plugin with duplicate entries when it should've failed")
+	}
+}
+
 func TestDownloader(t *testing.T) {
-	dirname := "testdata/plugdir/downloader"
+	dirname := "testdata/plugdir/good/downloader"
 	plug, err := LoadDir(dirname)
 	if err != nil {
 		t.Fatalf("error loading Hello plugin: %s", err)
@@ -243,7 +251,7 @@ func TestLoadAll(t *testing.T) {
 		t.Fatalf("expected empty dir to have 0 plugins")
 	}
 
-	basedir := "testdata/plugdir"
+	basedir := "testdata/plugdir/good"
 	plugs, err := LoadAll(basedir)
 	if err != nil {
 		t.Fatalf("Could not load %q: %s", basedir, err)
@@ -287,7 +295,7 @@ func TestFindPlugins(t *testing.T) {
 		},
 		{
 			name:     "normal",
-			plugdirs: "./testdata/plugdir",
+			plugdirs: "./testdata/plugdir/good",
 			expected: 3,
 		},
 	}
@@ -318,5 +326,53 @@ func TestSetupEnv(t *testing.T) {
 		if got := os.Getenv(tt.name); got != tt.expect {
 			t.Errorf("Expected $%s=%q, got %q", tt.name, tt.expect, got)
 		}
+	}
+}
+
+func TestValidatePluginData(t *testing.T) {
+	for i, item := range []struct {
+		pass bool
+		plug *Plugin
+	}{
+		{true, mockPlugin("abcdefghijklmnopqrstuvwxyz0123456789_-ABC")},
+		{true, mockPlugin("foo-bar-FOO-BAR_1234")},
+		{false, mockPlugin("foo -bar")},
+		{false, mockPlugin("$foo -bar")}, // Test leading chars
+		{false, mockPlugin("foo -bar ")}, // Test trailing chars
+		{false, mockPlugin("foo\nbar")},  // Test newline
+	} {
+		err := validatePluginData(item.plug, fmt.Sprintf("test-%d", i))
+		if item.pass && err != nil {
+			t.Errorf("failed to validate case %d: %s", i, err)
+		} else if !item.pass && err == nil {
+			t.Errorf("expected case %d to fail", i)
+		}
+	}
+}
+
+func TestDetectDuplicates(t *testing.T) {
+	plugs := []*Plugin{
+		mockPlugin("foo"),
+		mockPlugin("bar"),
+	}
+	if err := detectDuplicates(plugs); err != nil {
+		t.Error("no duplicates in the first set")
+	}
+	plugs = append(plugs, mockPlugin("foo"))
+	if err := detectDuplicates(plugs); err == nil {
+		t.Error("duplicates in the second set")
+	}
+}
+
+func mockPlugin(name string) *Plugin {
+	return &Plugin{
+		Metadata: &Metadata{
+			Name:        name,
+			Version:     "v0.1.2",
+			Usage:       "Mock plugin",
+			Description: "Mock plugin for testing",
+			Command:     "echo mock plugin",
+		},
+		Dir: "no-such-dir",
 	}
 }

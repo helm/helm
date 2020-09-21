@@ -17,8 +17,12 @@ limitations under the License.
 package action
 
 import (
+	"io/ioutil"
+	"os"
+	"path"
 	"testing"
 
+	"helm.sh/helm/v3/internal/test/ensure"
 	"helm.sh/helm/v3/pkg/chart"
 )
 
@@ -40,5 +44,59 @@ func TestSetVersion(t *testing.T) {
 
 	if err := setVersion(c, "monkeyface"); err == nil {
 		t.Error("Expected bogus version to return an error.")
+	}
+}
+
+func TestPassphraseFileFetcher(t *testing.T) {
+	secret := "secret"
+	directory := ensure.TempFile(t, "passphrase-file", []byte(secret))
+	defer os.RemoveAll(directory)
+
+	fetcher, err := passphraseFileFetcher(path.Join(directory, "passphrase-file"), nil)
+	if err != nil {
+		t.Fatal("Unable to create passphraseFileFetcher", err)
+	}
+
+	passphrase, err := fetcher("key")
+	if err != nil {
+		t.Fatal("Unable to fetch passphrase")
+	}
+
+	if string(passphrase) != secret {
+		t.Errorf("Expected %s got %s", secret, string(passphrase))
+	}
+}
+
+func TestPassphraseFileFetcher_WithLineBreak(t *testing.T) {
+	secret := "secret"
+	directory := ensure.TempFile(t, "passphrase-file", []byte(secret+"\n\n."))
+	defer os.RemoveAll(directory)
+
+	fetcher, err := passphraseFileFetcher(path.Join(directory, "passphrase-file"), nil)
+	if err != nil {
+		t.Fatal("Unable to create passphraseFileFetcher", err)
+	}
+
+	passphrase, err := fetcher("key")
+	if err != nil {
+		t.Fatal("Unable to fetch passphrase")
+	}
+
+	if string(passphrase) != secret {
+		t.Errorf("Expected %s got %s", secret, string(passphrase))
+	}
+}
+
+func TestPassphraseFileFetcher_WithInvalidStdin(t *testing.T) {
+	directory := ensure.TempDir(t)
+	defer os.RemoveAll(directory)
+
+	stdin, err := ioutil.TempFile(directory, "non-existing")
+	if err != nil {
+		t.Fatal("Unable to create test file", err)
+	}
+
+	if _, err := passphraseFileFetcher("-", stdin); err == nil {
+		t.Error("Expected passphraseFileFetcher returning an error")
 	}
 }

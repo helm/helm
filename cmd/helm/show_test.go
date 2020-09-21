@@ -26,7 +26,7 @@ import (
 )
 
 func TestShowPreReleaseChart(t *testing.T) {
-	srv, err := repotest.NewTempServer("testdata/testcharts/*.tgz*")
+	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/testcharts/*.tgz*")
 	if err != nil {
 		t.Fatal(err)
 	}

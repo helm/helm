@@ -81,6 +81,15 @@ func (md *Metadata) Validate() error {
 	if !isValidChartType(md.Type) {
 		return ValidationError("chart.metadata.type must be application or library")
 	}
+
+	// Aliases need to be validated here to make sure that the alias name does
+	// not contain any illegal characters.
+	for _, dependency := range md.Dependencies {
+		if err := validateDependency(dependency); err != nil {
+			return err
+		}
+	}
+
 	// TODO validate valid semver here?
 	return nil
 }
@@ -91,4 +100,14 @@ func isValidChartType(in string) bool {
 		return true
 	}
 	return false
+}
+
+// validateDependency checks for common problems with the dependency datastructure in
+// the chart. This check must be done at load time before the dependency's charts are
+// loaded.
+func validateDependency(dep *Dependency) error {
+	if len(dep.Alias) > 0 && !aliasNameFormat.MatchString(dep.Alias) {
+		return ValidationErrorf("dependency %q has disallowed characters in the alias", dep.Name)
+	}
+	return nil
 }
