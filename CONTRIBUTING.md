@@ -234,7 +234,7 @@ Like any good open source project, we use Pull Requests (PRs) to track code chan
       permits. The maintainer who takes the issue should self-request a review.
     - PRs from a community member with the label `size/S` or larger requires 2 review approvals from
       maintainers before it can be merged. Those with `size/XS` are per the judgement of the
-      maintainers.
+      maintainers. For more detail see the [Size Labels](#size-labels) section.
 4. Reviewing/Discussion
     - All reviews will be completed using Github review tool.
     - A "Comment" review should be used when there are questions about the code that should be
