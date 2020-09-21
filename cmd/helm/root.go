@@ -205,7 +205,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	loadPlugins(cmd, out)
 
 	// Check permissions on critical files
-	checkPerms(out)
+	checkPerms()
 
 	return cmd, nil
 }
