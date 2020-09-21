@@ -104,7 +104,7 @@ func getUsernamePassword(usernameOpt string, passwordOpt string, passwordFromStd
 			}
 		}
 	} else {
-		fmt.Fprintln(os.Stderr, "WARNING! Using --password via the CLI is insecure. Use --password-stdin.")
+		warning("Using --password via the CLI is insecure. Use --password-stdin.")
 	}
 
 	return username, password, nil

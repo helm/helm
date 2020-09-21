@@ -19,7 +19,7 @@ limitations under the License.
 package main
 
 import (
-	"bytes"
+	"bufio"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -28,6 +28,14 @@ import (
 )
 
 func TestCheckPerms(t *testing.T) {
+	// NOTE(bacongobbler): have to open a new file handler here as the default os.Sterr cannot be read from
+	stderr, err := os.Open("/dev/stderr")
+	if err != nil {
+		t.Fatalf("could not open /dev/stderr for reading: %s", err)
+	}
+	defer stderr.Close()
+	reader := bufio.NewReader(stderr)
+
 	tdir, err := ioutil.TempDir("", "helmtest")
 	if err != nil {
 		t.Fatal(err)
@@ -43,21 +51,26 @@ func TestCheckPerms(t *testing.T) {
 	settings.KubeConfig = tfile
 	defer func() { settings.KubeConfig = tconfig }()
 
-	var b bytes.Buffer
-	checkPerms(&b)
+	checkPerms()
+	text, err := reader.ReadString('\n')
+	if err != nil {
+		t.Fatalf("could not read from stderr: %s", err)
+	}
 	expectPrefix := "WARNING: Kubernetes configuration file is group-readable. This is insecure. Location:"
-	if !strings.HasPrefix(b.String(), expectPrefix) {
-		t.Errorf("Expected to get a warning for group perms. Got %q", b.String())
+	if !strings.HasPrefix(text, expectPrefix) {
+		t.Errorf("Expected to get a warning for group perms. Got %q", text)
 	}
 
 	if err := fh.Chmod(0404); err != nil {
 		t.Errorf("Could not change mode on file: %s", err)
 	}
-	b.Reset()
-	checkPerms(&b)
-	expectPrefix = "WARNING: Kubernetes configuration file is world-readable. This is insecure. Location:"
-	if !strings.HasPrefix(b.String(), expectPrefix) {
-		t.Errorf("Expected to get a warning for world perms. Got %q", b.String())
+	checkPerms()
+	text, err = reader.ReadString('\n')
+	if err != nil {
+		t.Fatalf("could not read from stderr: %s", err)
 	}
-
+	expectPrefix = "WARNING: Kubernetes configuration file is world-readable. This is insecure. Location:"
+	if !strings.HasPrefix(text, expectPrefix) {
+		t.Errorf("Expected to get a warning for world perms. Got %q", text)
+	}
 }

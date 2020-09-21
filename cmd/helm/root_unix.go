@@ -19,14 +19,12 @@ limitations under the License.
 package main
 
 import (
-	"fmt"
-	"io"
 	"os"
 	"os/user"
 	"path/filepath"
 )
 
-func checkPerms(out io.Writer) {
+func checkPerms() {
 	// This function MUST NOT FAIL, as it is just a check for a common permissions problem.
 	// If for some reason the function hits a stopping condition, it may panic. But only if
 	// we can be sure that it is panicing because Helm cannot proceed.
@@ -52,9 +50,9 @@ func checkPerms(out io.Writer) {
 
 	perm := fi.Mode().Perm()
 	if perm&0040 > 0 {
-		fmt.Fprintf(out, "WARNING: Kubernetes configuration file is group-readable. This is insecure. Location: %s\n", kc)
+		warning("Kubernetes configuration file is group-readable. This is insecure. Location: %s", kc)
 	}
 	if perm&0004 > 0 {
-		fmt.Fprintf(out, "WARNING: Kubernetes configuration file is world-readable. This is insecure. Location: %s\n", kc)
+		warning("Kubernetes configuration file is world-readable. This is insecure. Location: %s", kc)
 	}
 }
