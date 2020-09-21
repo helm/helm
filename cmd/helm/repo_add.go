@@ -116,6 +116,15 @@ func (o *repoAddOptions) run(out io.Writer) error {
 		return err
 	}
 
+	// If the same name and url already exists, return as a no-op.
+	// fixes https://github.com/helm/helm/issues/8771
+	if f.Has(o.name) {
+		e := f.Get(o.name)
+		if e.URL == o.url {
+			return nil
+		}
+	}
+
 	// If the repo exists and --force-update was not specified, error out.
 	if !o.forceUpdate && f.Has(o.name) {
 		return errors.Errorf("repository name (%s) already exists, please specify a different name", o.name)

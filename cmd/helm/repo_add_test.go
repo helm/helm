@@ -77,6 +77,12 @@ func TestRepoAdd(t *testing.T) {
 		t.Error(err)
 	}
 
+	// try adding the same name and url again; should be a no-op and return
+	// successful.
+	if err := o.run(ioutil.Discard); err != nil {
+		t.Error(err)
+	}
+
 	f, err := repo.LoadFile(repoFile)
 	if err != nil {
 		t.Fatal(err)
