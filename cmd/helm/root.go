@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -205,7 +206,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	loadPlugins(cmd, out)
 
 	// Check permissions on critical files
-	checkPerms(out)
+	checkPerms(os.Stderr)
 
 	return cmd, nil
 }
