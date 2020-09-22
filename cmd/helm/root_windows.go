@@ -18,7 +18,7 @@ package main
 
 import "io"
 
-func checkPerms(out io.Writer) {
+func checkPerms() {
 	// Not yet implemented on Windows. If you know how to do a comprehensive perms
 	// check on Windows, contributions welcomed!
 }
