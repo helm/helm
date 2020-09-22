@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"bufio"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -39,6 +40,7 @@ type Package struct {
 	Sign             bool
 	Key              string
 	Keyring          string
+	PassphraseFile   string
 	Version          string
 	AppVersion       string
 	Destination      string
@@ -120,7 +122,15 @@ func (p *Package) Clearsign(filename string) error {
 		return err
 	}
 
-	if err := signer.DecryptKey(promptUser); err != nil {
+	passphraseFetcher := promptUser
+	if p.PassphraseFile != "" {
+		passphraseFetcher, err = passphraseFileFetcher(p.PassphraseFile, os.Stdin)
+		if err != nil {
+			return err
+		}
+	}
+
+	if err := signer.DecryptKey(passphraseFetcher); err != nil {
 		return err
 	}
 
@@ -140,4 +150,35 @@ func promptUser(name string) ([]byte, error) {
 	pw, err := terminal.ReadPassword(int(syscall.Stdin))
 	fmt.Println()
 	return pw, err
+}
+
+func passphraseFileFetcher(passphraseFile string, stdin *os.File) (provenance.PassphraseFetcher, error) {
+	file, err := openPassphraseFile(passphraseFile, stdin)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	reader := bufio.NewReader(file)
+	passphrase, _, err := reader.ReadLine()
+	if err != nil {
+		return nil, err
+	}
+	return func(name string) ([]byte, error) {
+		return passphrase, nil
+	}, nil
+}
+
+func openPassphraseFile(passphraseFile string, stdin *os.File) (*os.File, error) {
+	if passphraseFile == "-" {
+		stat, err := stdin.Stat()
+		if err != nil {
+			return nil, err
+		}
+		if (stat.Mode() & os.ModeNamedPipe) == 0 {
+			return nil, errors.New("specified reading passphrase from stdin, without input on stdin")
+		}
+		return stdin, nil
+	}
+	return os.Open(passphraseFile)
 }

@@ -232,8 +232,9 @@ Like any good open source project, we use Pull Requests (PRs) to track code chan
 3. Assigning reviews
     - Once a review has the `awaiting review` label, maintainers will review them as schedule
       permits. The maintainer who takes the issue should self-request a review.
-    - Any PR with the `size/large` label requires 2 review approvals from maintainers before it can
-      be merged. Those with `size/medium` or `size/small` are per the judgement of the maintainers.
+    - PRs from a community member with the label `size/S` or larger requires 2 review approvals from
+      maintainers before it can be merged. Those with `size/XS` are per the judgement of the
+      maintainers.
 4. Reviewing/Discussion
     - All reviews will be completed using Github review tool.
     - A "Comment" review should be used when there are questions about the code that should be
@@ -313,15 +314,16 @@ makes 30 lines of changes in 1 file, but it changes key functionality, it will l
 feature, but requires another 150 lines of tests to cover all cases, could be labeled as `size/S`
 even though the number of lines is greater than defined below.
 
-PRs submitted by a core maintainer, regardless of size, only requires approval from one additional
-maintainer. This ensures there are at least two maintainers who are aware of any significant PRs
-introduced to the codebase.
+Any changes from the community labeled as `size/S` or larger should be thoroughly tested before
+merging and always requires approval from 2 core maintainers. PRs submitted by a core maintainer,
+regardless of size, only requires approval from one additional maintainer. This ensures there are at
+least two maintainers who are aware of any significant PRs introduced to the codebase.
 
 | Label | Description |
 | ----- | ----------- |
 | `size/XS` | Denotes a PR that changes 0-9 lines, ignoring generated files. Very little testing may be required depending on the change. |
 | `size/S` | Denotes a PR that changes 10-29 lines, ignoring generated files. Only small amounts of manual testing may be required. |
 | `size/M` | Denotes a PR that changes 30-99 lines, ignoring generated files. Manual validation should be required. |
-| `size/L` | Denotes a PR that changes 100-499 lines, ignoring generated files. This should be thoroughly tested before merging and always requires 2 approvals. |
-| `size/XL` | Denotes a PR that changes 500-999 lines, ignoring generated files. This should be thoroughly tested before merging and always requires 2 approvals. |
-| `size/XXL` | Denotes a PR that changes 1000+ lines, ignoring generated files. This should be thoroughly tested before merging and always requires 2 approvals. |
+| `size/L` | Denotes a PR that changes 100-499 lines, ignoring generated files. |
+| `size/XL` | Denotes a PR that changes 500-999 lines, ignoring generated files. |
+| `size/XXL` | Denotes a PR that changes 1000+ lines, ignoring generated files. |

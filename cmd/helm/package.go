@@ -114,6 +114,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&client.Sign, "sign", false, "use a PGP private key to sign this package")
 	f.StringVar(&client.Key, "key", "", "name of the key to use when signing. Used if --sign is true")
 	f.StringVar(&client.Keyring, "keyring", defaultKeyring(), "location of a public keyring")
+	f.StringVar(&client.PassphraseFile, "passphrase-file", "", `location of a file which contains the passphrase for the signing key. Use "-" in order to read from stdin.`)
 	f.StringVar(&client.Version, "version", "", "set the version on the chart to this semver version")
 	f.StringVar(&client.AppVersion, "app-version", "", "set the appVersion on the chart to this version")
 	f.StringVarP(&client.Destination, "destination", "d", ".", "location to write the chart.")

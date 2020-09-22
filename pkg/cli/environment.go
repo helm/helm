@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/spf13/pflag"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -47,6 +48,10 @@ type EnvSettings struct {
 	KubeContext string
 	// Bearer KubeToken used for authentication
 	KubeToken string
+	// Username to impersonate for the operation
+	KubeAsUser string
+	// Groups to impersonate for the operation, multiple groups parsed from a comma delimited list
+	KubeAsGroups []string
 	// Kubernetes API Server Endpoint for authentication
 	KubeAPIServer string
 	// Debug indicates whether or not Helm is running in Debug mode.
@@ -69,6 +74,8 @@ func New() *EnvSettings {
 		MaxHistory:       envIntOr("HELM_MAX_HISTORY", defaultMaxHistory),
 		KubeContext:      os.Getenv("HELM_KUBECONTEXT"),
 		KubeToken:        os.Getenv("HELM_KUBETOKEN"),
+		KubeAsUser:       os.Getenv("HELM_KUBEASUSER"),
+		KubeAsGroups:     envCSV("HELM_KUBEASGROUPS"),
 		KubeAPIServer:    os.Getenv("HELM_KUBEAPISERVER"),
 		PluginsDirectory: envOr("HELM_PLUGINS", helmpath.DataPath("plugins")),
 		RegistryConfig:   envOr("HELM_REGISTRY_CONFIG", helmpath.ConfigPath("registry.json")),
@@ -79,11 +86,13 @@ func New() *EnvSettings {
 
 	// bind to kubernetes config flags
 	env.config = &genericclioptions.ConfigFlags{
-		Namespace:   &env.namespace,
-		Context:     &env.KubeContext,
-		BearerToken: &env.KubeToken,
-		APIServer:   &env.KubeAPIServer,
-		KubeConfig:  &env.KubeConfig,
+		Namespace:        &env.namespace,
+		Context:          &env.KubeContext,
+		BearerToken:      &env.KubeToken,
+		APIServer:        &env.KubeAPIServer,
+		KubeConfig:       &env.KubeConfig,
+		Impersonate:      &env.KubeAsUser,
+		ImpersonateGroup: &env.KubeAsGroups,
 	}
 	return env
 }
@@ -94,6 +103,8 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.KubeConfig, "kubeconfig", "", "path to the kubeconfig file")
 	fs.StringVar(&s.KubeContext, "kube-context", s.KubeContext, "name of the kubeconfig context to use")
 	fs.StringVar(&s.KubeToken, "kube-token", s.KubeToken, "bearer token used for authentication")
+	fs.StringVar(&s.KubeAsUser, "kube-as-user", s.KubeAsUser, "Username to impersonate for the operation")
+	fs.StringArrayVar(&s.KubeAsGroups, "kube-as-group", s.KubeAsGroups, "Group to impersonate for the operation, this flag can be repeated to specify multiple groups.")
 	fs.StringVar(&s.KubeAPIServer, "kube-apiserver", s.KubeAPIServer, "the address and the port for the Kubernetes API server")
 	fs.BoolVar(&s.Debug, "debug", s.Debug, "enable verbose output")
 	fs.StringVar(&s.RegistryConfig, "registry-config", s.RegistryConfig, "path to the registry config file")
@@ -120,6 +131,14 @@ func envIntOr(name string, def int) int {
 	return ret
 }
 
+func envCSV(name string) (ls []string) {
+	trimmed := strings.Trim(os.Getenv(name), ", ")
+	if trimmed != "" {
+		ls = strings.Split(trimmed, ",")
+	}
+	return
+}
+
 func (s *EnvSettings) EnvVars() map[string]string {
 	envvars := map[string]string{
 		"HELM_BIN":               os.Args[0],
@@ -137,6 +156,8 @@ func (s *EnvSettings) EnvVars() map[string]string {
 		// broken, these are populated from helm flags and not kubeconfig.
 		"HELM_KUBECONTEXT":   s.KubeContext,
 		"HELM_KUBETOKEN":     s.KubeToken,
+		"HELM_KUBEASUSER":    s.KubeAsUser,
+		"HELM_KUBEASGROUPS":  strings.Join(s.KubeAsGroups, ","),
 		"HELM_KUBEAPISERVER": s.KubeAPIServer,
 	}
 	if s.KubeConfig != "" {

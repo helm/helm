@@ -40,7 +40,7 @@ type Engine struct {
 	Strict bool
 	// In LintMode, some 'required' template values may be missing, so don't fail
 	LintMode bool
-	// the rest config to connect to te kubernetes api
+	// the rest config to connect to the kubernetes api
 	config *rest.Config
 }
 

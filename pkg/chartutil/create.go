@@ -18,9 +18,11 @@ package chartutil
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -29,6 +31,12 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 )
+
+// chartName is a regular expression for testing the supplied name of a chart.
+// This regular expression is probably stricter than it needs to be. We can relax it
+// somewhat. Newline characters, as well as $, quotes, +, parens, and % are known to be
+// problematic.
+var chartName = regexp.MustCompile("^[a-zA-Z0-9._-]+$")
 
 const (
 	// ChartfileName is the default Chart file name.
@@ -62,6 +70,10 @@ const (
 	// TestConnectionName is the name of the example test file.
 	TestConnectionName = TemplatesTestsDir + sep + "test-connection.yaml"
 )
+
+// maxChartNameLength is lower than the limits we know of with certain file systems,
+// and with certain Kubernetes fields.
+const maxChartNameLength = 250
 
 const sep = string(filepath.Separator)
 
@@ -425,7 +437,9 @@ Common labels
 {{- define "<CHARTNAME>.labels" -}}
 helm.sh/chart: {{ include "<CHARTNAME>.chart" . }}
 {{ include "<CHARTNAME>.selectorLabels" . }}
-app.kubernetes.io/version: {{ .Values.image.tag | default .Chart.AppVersion | quote }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
@@ -465,6 +479,12 @@ spec:
       args: ['{{ include "<CHARTNAME>.fullname" . }}:{{ .Values.service.port }}']
   restartPolicy: Never
 `
+
+// Stderr is an io.Writer to which error messages can be written
+//
+// In Helm 4, this will be replaced. It is needed in Helm 3 to preserve API backward
+// compatibility.
+var Stderr io.Writer = os.Stderr
 
 // CreateFrom creates a new chart, but scaffolds it from the src chart.
 func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
@@ -520,6 +540,12 @@ func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
 // error. In such a case, this will attempt to clean up by removing the
 // new chart directory.
 func Create(name, dir string) (string, error) {
+
+	// Sanity-check the name of a chart so user doesn't create one that causes problems.
+	if err := validateChartName(name); err != nil {
+		return "", err
+	}
+
 	path, err := filepath.Abs(dir)
 	if err != nil {
 		return path, err
@@ -599,8 +625,8 @@ func Create(name, dir string) (string, error) {
 
 	for _, file := range files {
 		if _, err := os.Stat(file.path); err == nil {
-			// File exists and is okay. Skip it.
-			continue
+			// There is no handle to a preferred output stream here.
+			fmt.Fprintf(Stderr, "WARNING: File %q already exists. Overwriting.\n", file.path)
 		}
 		if err := writeFile(file.path, file.content); err != nil {
 			return cdir, err
@@ -624,4 +650,14 @@ func writeFile(name string, content []byte) error {
 		return err
 	}
 	return ioutil.WriteFile(name, content, 0644)
+}
+
+func validateChartName(name string) error {
+	if name == "" || len(name) > maxChartNameLength {
+		return fmt.Errorf("chart name must be between 1 and %d characters", maxChartNameLength)
+	}
+	if !chartName.MatchString(name) {
+		return fmt.Errorf("chart name must match the regular expression %q", chartName.String())
+	}
+	return nil
 }

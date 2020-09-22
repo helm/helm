@@ -69,7 +69,7 @@ func bindOutputFlag(cmd *cobra.Command, varRef *output.Format) {
 				formatNames = append(formatNames, format)
 			}
 		}
-		return formatNames, cobra.ShellCompDirectiveDefault
+		return formatNames, cobra.ShellCompDirectiveNoFileComp
 	})
 
 	if err != nil {

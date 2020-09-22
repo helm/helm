@@ -30,7 +30,7 @@ import (
 )
 
 func TestRepoRemove(t *testing.T) {
-	ts, err := repotest.NewTempServer("testdata/testserver/*.*")
+	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
 	if err != nil {
 		t.Fatal(err)
 	}
