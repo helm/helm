@@ -365,6 +365,7 @@ func (c *Configuration) recordRelease(r *release.Release) {
 func (c *Configuration) Init(getter genericclioptions.RESTClientGetter, namespace, helmDriver string, log DebugLog) error {
 	kc := kube.New(getter)
 	kc.Log = log
+	kc.Namespace = namespace
 
 	lazyClient := &lazyClient{
 		namespace: namespace,
