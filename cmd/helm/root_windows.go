@@ -16,8 +16,6 @@ limitations under the License.
 
 package main
 
-import "io"
-
 func checkPerms() {
 	// Not yet implemented on Windows. If you know how to do a comprehensive perms
 	// check on Windows, contributions welcomed!
