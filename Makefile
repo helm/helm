@@ -165,7 +165,7 @@ fetch-dist:
 
 .PHONY: sign
 sign:
-	for f in _dist/*.{gz,zip,sha256,sha256sum} ; do \
+	for f in $$(ls _dist/*.{gz,zip,sha256,sha256sum} 2>/dev/null) ; do \
 		gpg --armor --detach-sign $${f} ; \
 	done
 
@@ -178,7 +178,7 @@ sign:
 # removed in Helm v4.
 .PHONY: checksum
 checksum:
-	for f in _dist/*.{gz,zip} ; do \
+	for f in $$(ls _dist/*.{gz,zip} 2>/dev/null) ; do \
 		shasum -a 256 "$${f}" | sed 's/_dist\///' > "$${f}.sha256sum" ; \
 		shasum -a 256 "$${f}" | awk '{print $$1}' > "$${f}.sha256" ; \
 	done
