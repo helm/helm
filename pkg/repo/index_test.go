@@ -36,6 +36,7 @@ import (
 
 const (
 	testfile            = "testdata/local-index.yaml"
+	annotationstestfile = "testdata/local-index-annotations.yaml"
 	chartmuseumtestfile = "testdata/chartmuseum-index.yaml"
 	unorderedTestfile   = "testdata/local-index-unordered.yaml"
 	testRepo            = "test-repo"
@@ -151,6 +152,21 @@ func TestLoadIndexFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	verifyLocalIndex(t, i)
+}
+
+func TestLoadIndexFileAnnotations(t *testing.T) {
+	i, err := LoadIndexFile(annotationstestfile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	verifyLocalIndex(t, i)
+
+	if len(i.Annotations) != 1 {
+		t.Fatalf("Expected 1 annotation but got %d", len(i.Annotations))
+	}
+	if i.Annotations["helm.sh/test"] != "foo bar" {
+		t.Error("Did not get expected value for helm.sh/test annotation")
+	}
 }
 
 func TestLoadUnorderedIndex(t *testing.T) {
