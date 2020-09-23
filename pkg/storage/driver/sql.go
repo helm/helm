@@ -324,6 +324,10 @@ func (s *SQL) Query(labels map[string]string) ([]*rspb.Release, error) {
 		releases = append(releases, release)
 	}
 
+	if len(releases) == 0 {
+		return nil, ErrReleaseNotFound
+	}
+
 	return releases, nil
 }
 
