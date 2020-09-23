@@ -105,17 +105,17 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					}
 					return nil
 				default:
-					return outfmt.Write(out, newReleaseListWriter(results, client.FormatTime))
+					return outfmt.Write(out, newReleaseListWriter(results, client.TimeFormat))
 				}
 			}
 
-			return outfmt.Write(out, newReleaseListWriter(results, client.FormatTime))
+			return outfmt.Write(out, newReleaseListWriter(results, client.TimeFormat))
 		},
 	}
 
 	f := cmd.Flags()
 	f.BoolVarP(&client.Short, "short", "q", false, "output short (quiet) listing format")
-	f.BoolVar(&client.FormatTime, "format-time", false, "format time")
+	f.StringVar(&client.TimeFormat, "time-format", "", "format time. Example: --time-format 2009-11-17 20:34:10 +0000 UTC")
 	f.BoolVarP(&client.ByDate, "date", "d", false, "sort by release date")
 	f.BoolVarP(&client.SortReverse, "reverse", "r", false, "reverse the sort order")
 	f.BoolVarP(&client.All, "all", "a", false, "show all releases without any filter applied")
@@ -149,7 +149,7 @@ type releaseListWriter struct {
 	releases []releaseElement
 }
 
-func newReleaseListWriter(releases []*release.Release, formatTime bool) *releaseListWriter {
+func newReleaseListWriter(releases []*release.Release, timeFormat string) *releaseListWriter {
 	// Initialize the array so no results returns an empty array instead of null
 	elements := make([]releaseElement, 0, len(releases))
 	for _, r := range releases {
@@ -164,8 +164,8 @@ func newReleaseListWriter(releases []*release.Release, formatTime bool) *release
 
 		t := "-"
 		if tspb := r.Info.LastDeployed; !tspb.IsZero() {
-			if formatTime {
-				t = helmtime.Format(tspb)
+			if timeFormat != "" {
+				t = helmtime.Format(tspb, timeFormat)
 			} else {
 				t = tspb.String()
 			}

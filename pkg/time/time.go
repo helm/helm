@@ -91,6 +91,6 @@ func (t Time) Truncate(d time.Duration) Time { return Time{Time: t.Time.Truncate
 func (t Time) UTC() Time                     { return Time{Time: t.Time.UTC()} }
 
 // Format formats time in custom output format
-func Format(t Time) string {
-	return t.Format("2006-01-02 15:04:05 -0700 MST")
+func Format(t Time, format string) string {
+	return t.Format(format)
 }
