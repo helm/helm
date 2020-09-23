@@ -153,45 +153,28 @@ func newReleaseListWriter(releases []*release.Release, formatTime bool) *release
 	// Initialize the array so no results returns an empty array instead of null
 	elements := make([]releaseElement, 0, len(releases))
 	for _, r := range releases {
-		var element releaseElement
+		element := releaseElement{
+			Name:       r.Name,
+			Namespace:  r.Namespace,
+			Revision:   strconv.Itoa(r.Version),
+			Status:     r.Info.Status.String(),
+			Chart:      fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version),
+			AppVersion: r.Chart.Metadata.AppVersion,
+		}
 
-		if formatTime {
-			element = timeFormattedElement(r)
-		} else {
-			element = releaseElement{
-				Name:       r.Name,
-				Namespace:  r.Namespace,
-				Revision:   strconv.Itoa(r.Version),
-				Status:     r.Info.Status.String(),
-				Chart:      fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version),
-				AppVersion: r.Chart.Metadata.AppVersion,
-			}
-			t := "-"
-			if tspb := r.Info.LastDeployed; !tspb.IsZero() {
+		t := "-"
+		if tspb := r.Info.LastDeployed; !tspb.IsZero() {
+			if formatTime {
+				t = helmtime.Format(tspb)
+			} else {
 				t = tspb.String()
 			}
-			element.Updated = t
 		}
+		element.Updated = t
 
 		elements = append(elements, element)
 	}
 	return &releaseListWriter{elements}
-}
-
-func timeFormattedElement(r *release.Release) releaseElement {
-	t := "-"
-	if tspb := r.Info.LastDeployed; !tspb.IsZero() {
-		t = helmtime.Format(tspb)
-	}
-	return releaseElement{
-		Name:       r.Name,
-		Namespace:  r.Namespace,
-		Revision:   strconv.Itoa(r.Version),
-		Updated:    t,
-		Status:     r.Info.Status.String(),
-		Chart:      fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version),
-		AppVersion: r.Chart.Metadata.AppVersion,
-	}
 }
 
 func (r *releaseListWriter) WriteTable(out io.Writer) error {
