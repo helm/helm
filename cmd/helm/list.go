@@ -29,7 +29,6 @@ import (
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/release"
-	helmtime "helm.sh/helm/v3/pkg/time"
 )
 
 var listHelp = `
@@ -165,7 +164,7 @@ func newReleaseListWriter(releases []*release.Release, timeFormat string) *relea
 		t := "-"
 		if tspb := r.Info.LastDeployed; !tspb.IsZero() {
 			if timeFormat != "" {
-				t = helmtime.Format(tspb, timeFormat)
+				t = tspb.Format(timeFormat)
 			} else {
 				t = tspb.String()
 			}
