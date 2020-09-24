@@ -78,11 +78,20 @@ func TestCoalesceValues(t *testing.T) {
 			"right":    "exists",
 			"scope":    "moby",
 			"top":      "nope",
+			"global": map[string]interface{}{
+				"nested2": map[string]interface{}{"l0": "moby"},
+			},
 		},
 	},
 		withDeps(&chart.Chart{
 			Metadata: &chart.Metadata{Name: "pequod"},
-			Values:   map[string]interface{}{"name": "pequod", "scope": "pequod"},
+			Values: map[string]interface{}{
+				"name":  "pequod",
+				"scope": "pequod",
+				"global": map[string]interface{}{
+					"nested2": map[string]interface{}{"l1": "pequod"},
+				},
+			},
 		},
 			&chart.Chart{
 				Metadata: &chart.Metadata{Name: "ahab"},
@@ -91,12 +100,20 @@ func TestCoalesceValues(t *testing.T) {
 					"name":   "ahab",
 					"boat":   true,
 					"nested": map[string]interface{}{"foo": false, "bar": true},
+					"global": map[string]interface{}{
+						"nested2": map[string]interface{}{"l2": "ahab"},
+					},
 				},
 			},
 		),
 		&chart.Chart{
 			Metadata: &chart.Metadata{Name: "spouter"},
-			Values:   map[string]interface{}{"scope": "spouter"},
+			Values: map[string]interface{}{
+				"scope": "spouter",
+				"global": map[string]interface{}{
+					"nested2": map[string]interface{}{"l1": "spouter"},
+				},
+			},
 		},
 	)
 
@@ -147,6 +164,19 @@ func TestCoalesceValues(t *testing.T) {
 		{"{{.spouter.global.nested.boat}}", "true"},
 		{"{{.pequod.global.nested.sail}}", "true"},
 		{"{{.spouter.global.nested.sail}}", "<no value>"},
+
+		{"{{.global.nested2.l0}}", "moby"},
+		{"{{.global.nested2.l1}}", "<no value>"},
+		{"{{.global.nested2.l2}}", "<no value>"},
+		{"{{.pequod.global.nested2.l0}}", "moby"},
+		{"{{.pequod.global.nested2.l1}}", "pequod"},
+		{"{{.pequod.global.nested2.l2}}", "<no value>"},
+		{"{{.pequod.ahab.global.nested2.l0}}", "moby"},
+		{"{{.pequod.ahab.global.nested2.l1}}", "pequod"},
+		{"{{.pequod.ahab.global.nested2.l2}}", "ahab"},
+		{"{{.spouter.global.nested2.l0}}", "moby"},
+		{"{{.spouter.global.nested2.l1}}", "spouter"},
+		{"{{.spouter.global.nested2.l2}}", "<no value>"},
 	}
 
 	for _, tt := range tests {
