@@ -112,6 +112,7 @@ func coalesceGlobals(dest, src map[string]interface{}) {
 			if destv, ok := dg[key]; !ok {
 				// Here there is no merge. We're just adding.
 				dg[key] = vv
+				continue
 			} else {
 				if destvmap, ok := destv.(map[string]interface{}); !ok {
 					log.Printf("Conflict: cannot merge map onto non-map for %q. Skipping.", key)
