@@ -62,6 +62,8 @@ type EnvSettings struct {
 	RepositoryConfig string
 	// RepositoryCache is the path to the repository cache directory.
 	RepositoryCache string
+	// ChartCache is the path to the chart cache directory.
+	ChartCache string
 	// PluginsDirectory is the path to the plugins directory.
 	PluginsDirectory string
 	// MaxHistory is the max release history maintained.
@@ -81,6 +83,7 @@ func New() *EnvSettings {
 		RegistryConfig:   envOr("HELM_REGISTRY_CONFIG", helmpath.ConfigPath("registry.json")),
 		RepositoryConfig: envOr("HELM_REPOSITORY_CONFIG", helmpath.ConfigPath("repositories.yaml")),
 		RepositoryCache:  envOr("HELM_REPOSITORY_CACHE", helmpath.CachePath("repository")),
+		ChartCache:       envOr("HELM_CHART_CACHE", helmpath.CachePath("charts")),
 	}
 	env.Debug, _ = strconv.ParseBool(os.Getenv("HELM_DEBUG"))
 
@@ -110,6 +113,7 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.RegistryConfig, "registry-config", s.RegistryConfig, "path to the registry config file")
 	fs.StringVar(&s.RepositoryConfig, "repository-config", s.RepositoryConfig, "path to the file containing repository names and URLs")
 	fs.StringVar(&s.RepositoryCache, "repository-cache", s.RepositoryCache, "path to the file containing cached repository indexes")
+	fs.StringVar(&s.ChartCache, "chart-cache", s.ChartCache, "path to the chart cache directory")
 }
 
 func envOr(name, def string) string {
@@ -146,6 +150,7 @@ func (s *EnvSettings) EnvVars() map[string]string {
 		"HELM_CONFIG_HOME":       helmpath.ConfigPath(""),
 		"HELM_DATA_HOME":         helmpath.DataPath(""),
 		"HELM_DEBUG":             fmt.Sprint(s.Debug),
+		"HELM_CHART_CACHE":       s.ChartCache,
 		"HELM_PLUGINS":           s.PluginsDirectory,
 		"HELM_REGISTRY_CONFIG":   s.RegistryConfig,
 		"HELM_REPOSITORY_CACHE":  s.RepositoryCache,

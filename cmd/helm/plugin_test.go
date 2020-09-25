@@ -86,6 +86,7 @@ func TestLoadPlugins(t *testing.T) {
 	settings.PluginsDirectory = "testdata/helmhome/helm/plugins"
 	settings.RepositoryConfig = "testdata/helmhome/helm/repositories.yaml"
 	settings.RepositoryCache = "testdata/helmhome/helm/repository"
+	settings.ChartCache = "testdata/helmhome/helm/charts"
 
 	var (
 		out bytes.Buffer
@@ -99,6 +100,7 @@ func TestLoadPlugins(t *testing.T) {
 		"testdata/helmhome/helm/plugins",
 		"testdata/helmhome/helm/repositories.yaml",
 		"testdata/helmhome/helm/repository",
+		"testdata/helmhome/helm/charts",
 		os.Args[0],
 	}, "\n")
 

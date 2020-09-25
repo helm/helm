@@ -54,6 +54,7 @@ Environment variables:
 | $HELM_MAX_HISTORY                  | set the maximum number of helm release history.                                   |
 | $HELM_NAMESPACE                    | set the namespace used for the helm operations.                                   |
 | $HELM_NO_PLUGINS                   | disable plugins. Set HELM_NO_PLUGINS=1 to disable plugins.                        |
+| $HELM_CHART_CACHE                  | set the path to the chart cache directory                                         |
 | $HELM_PLUGINS                      | set the path to the plugins directory                                             |
 | $HELM_REGISTRY_CONFIG              | set the path to the registry config file.                                         |
 | $HELM_REPOSITORY_CACHE             | set the path to the repository cache directory                                    |
