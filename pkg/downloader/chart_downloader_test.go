@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"helm.sh/helm/v3/internal/test/ensure"
@@ -42,6 +43,7 @@ func TestResolveChartRef(t *testing.T) {
 		{name: "full URL", ref: "http://example.com/foo-1.2.3.tgz", expect: "http://example.com/foo-1.2.3.tgz"},
 		{name: "full URL, HTTPS", ref: "https://example.com/foo-1.2.3.tgz", expect: "https://example.com/foo-1.2.3.tgz"},
 		{name: "full URL, with authentication", ref: "http://username:password@example.com/foo-1.2.3.tgz", expect: "http://username:password@example.com/foo-1.2.3.tgz"},
+		{name: "full URL, no repo", ref: "https://unknown-example.com/foo-1.2.3.tgz", expect: "https://unknown-example.com/foo-1.2.3.tgz"},
 		{name: "reference, testing repo", ref: "testing/alpine", expect: "http://example.com/alpine-1.2.3.tgz"},
 		{name: "reference, version, testing repo", ref: "testing/alpine", version: "0.2.0", expect: "http://example.com/alpine-0.2.0.tgz"},
 		{name: "reference, version, malformed repo", ref: "malformed/alpine", version: "1.2.3", expect: "http://dl.example.com/alpine-1.2.3.tgz"},
@@ -85,13 +87,39 @@ func TestResolveChartOpts(t *testing.T) {
 	tests := []struct {
 		name, ref, version string
 		expect             []getter.Option
+		expectChartURL     string
 	}{
 		{
-			name: "repo with CA-file",
-			ref:  "testing-ca-file/foo",
+			name:           "reference",
+			ref:            "testing/alpine",
+			expectChartURL: "http://example.com/alpine-1.2.3.tgz",
+			expect: []getter.Option{
+				getter.WithURL("http://example.com/alpine-1.2.3.tgz"),
+			},
+		},
+		{
+			name:           "reference, repo with CA-file",
+			ref:            "testing-ca-file/foo",
+			expectChartURL: "https://example.com/foo-1.2.3.tgz",
 			expect: []getter.Option{
 				getter.WithURL("https://example.com/foo-1.2.3.tgz"),
 				getter.WithTLSClientConfig("cert", "key", "ca"),
+			},
+		},
+		{
+			name:           "full URL",
+			ref:            "http://example.com/foo-1.2.3.tgz",
+			expectChartURL: "http://example.com/foo-1.2.3.tgz",
+			expect: []getter.Option{
+				getter.WithURL("http://example.com/foo-1.2.3.tgz"),
+			},
+		},
+		{
+			name:           "full URL, no repo",
+			ref:            "http://unknown-example.com/foo-1.2.3.tgz",
+			expectChartURL: "http://unknown-example.com/foo-1.2.3.tgz",
+			expect: []getter.Option{
+				getter.WithURL("http://unknown-example.com/foo-1.2.3.tgz"),
 			},
 		},
 	}
@@ -136,8 +164,13 @@ func TestResolveChartOpts(t *testing.T) {
 			continue
 		}
 
-		if *(got.(*getter.HTTPGetter)) != *(expect.(*getter.HTTPGetter)) {
-			t.Errorf("%s: expected %s, got %s", tt.name, expect, got)
+		if got := u.String(); tt.expectChartURL != u.String() {
+			t.Errorf("%s: expected %#v, got %#v", tt.name, tt.expectChartURL, got)
+			continue
+		}
+
+		if !reflect.DeepEqual(got.(*getter.HTTPGetter), expect.(*getter.HTTPGetter)) {
+			t.Errorf("%s: expected %#v, got %#v", tt.name, expect, got)
 		}
 	}
 }
