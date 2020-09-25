@@ -178,7 +178,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 		}
 
 		helper := resource.NewHelper(info.Client, info.Mapping)
-		if _, err := helper.Get(info.Namespace, info.Name, info.Export); err != nil {
+		if _, err := helper.Get(info.Namespace, info.Name); err != nil {
 			if !apierrors.IsNotFound(err) {
 				return errors.Wrap(err, "could not get information about the resource")
 			}
@@ -374,7 +374,7 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 
 	// Fetch the current object for the three way merge
 	helper := resource.NewHelper(target.Client, target.Mapping)
-	currentObj, err := helper.Get(target.Namespace, target.Name, target.Export)
+	currentObj, err := helper.Get(target.Namespace, target.Name)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return nil, types.StrategicMergePatchType, errors.Wrapf(err, "unable to get data for current object %s/%s", target.Namespace, target.Name)
 	}
