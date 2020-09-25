@@ -49,3 +49,15 @@ func AtomicWriteFile(filename string, reader io.Reader, mode os.FileMode) error 
 
 	return fs.RenameWithFallback(tempName, filename)
 }
+
+// AtomicCopyFile atomically (as atomic as os.Rename allows) copy a file to a
+// destination.
+func AtomicCopyFile(src, dst string, mode os.FileMode) error {
+	f, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	return AtomicWriteFile(dst, f, 0644)
+}

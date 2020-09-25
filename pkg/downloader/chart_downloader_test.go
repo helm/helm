@@ -32,7 +32,6 @@ import (
 const (
 	repoConfig = "testdata/repositories.yaml"
 	repoCache  = "testdata/repository"
-	chartCache = "testdata/charts"
 )
 
 func TestResolveChartRef(t *testing.T) {
@@ -205,6 +204,9 @@ func TestIsTar(t *testing.T) {
 }
 
 func TestDownloadTo(t *testing.T) {
+	dest := ensure.TempDir(t)
+	defer os.RemoveAll(dest)
+
 	// Set up a fake repo with basic auth enabled
 	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")
 	srv.Stop()
@@ -233,7 +235,7 @@ func TestDownloadTo(t *testing.T) {
 		Keyring:          "testdata/helm-test-key.pub",
 		RepositoryConfig: repoConfig,
 		RepositoryCache:  repoCache,
-		ChartCache:       chartCache,
+		ChartCache:       filepath.Join(dest, "charts"),
 		Getters: getter.All(&cli.EnvSettings{
 			RepositoryConfig: repoConfig,
 			RepositoryCache:  repoCache,
@@ -243,7 +245,6 @@ func TestDownloadTo(t *testing.T) {
 		},
 	}
 	cname := "/signtest-0.1.0.tgz"
-	dest := srv.Root()
 	where, v, err := c.DownloadTo(srv.URL()+cname, "", dest)
 	if err != nil {
 		t.Fatal(err)
@@ -263,6 +264,9 @@ func TestDownloadTo(t *testing.T) {
 }
 
 func TestDownloadTo_TLS(t *testing.T) {
+	dest := ensure.TempDir(t)
+	defer os.RemoveAll(dest)
+
 	// Set up mock server w/ tls enabled
 	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")
 	srv.Stop()
@@ -287,7 +291,7 @@ func TestDownloadTo_TLS(t *testing.T) {
 		Keyring:          "testdata/helm-test-key.pub",
 		RepositoryConfig: repoConfig,
 		RepositoryCache:  repoCache,
-		ChartCache:       chartCache,
+		ChartCache:       filepath.Join(dest, "charts"),
 		Getters: getter.All(&cli.EnvSettings{
 			RepositoryConfig: repoConfig,
 			RepositoryCache:  repoCache,
@@ -295,7 +299,6 @@ func TestDownloadTo_TLS(t *testing.T) {
 		Options: []getter.Option{},
 	}
 	cname := "test/signtest"
-	dest := srv.Root()
 	where, v, err := c.DownloadTo(cname, "", dest)
 	if err != nil {
 		t.Fatal(err)
@@ -316,9 +319,8 @@ func TestDownloadTo_TLS(t *testing.T) {
 }
 
 func TestDownloadTo_VerifyLater(t *testing.T) {
-	defer ensure.HelmHome(t)()
-
 	dest := ensure.TempDir(t)
+	defer os.RemoveAll(dest)
 
 	// Set up a fake repo
 	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")
@@ -335,7 +337,7 @@ func TestDownloadTo_VerifyLater(t *testing.T) {
 		Verify:           VerifyLater,
 		RepositoryConfig: repoConfig,
 		RepositoryCache:  repoCache,
-		ChartCache:       chartCache,
+		ChartCache:       filepath.Join(dest, "charts"),
 		Getters: getter.All(&cli.EnvSettings{
 			RepositoryConfig: repoConfig,
 			RepositoryCache:  repoCache,
@@ -365,7 +367,6 @@ func TestScanReposForURL(t *testing.T) {
 		Verify:           VerifyLater,
 		RepositoryConfig: repoConfig,
 		RepositoryCache:  repoCache,
-		ChartCache:       chartCache,
 		Getters: getter.All(&cli.EnvSettings{
 			RepositoryConfig: repoConfig,
 			RepositoryCache:  repoCache,

@@ -16,10 +16,13 @@ limitations under the License.
 package downloader
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -49,6 +52,10 @@ const (
 	// This is to accommodate the case where another step of the process will
 	// perform verification.
 	VerifyLater
+)
+
+const (
+	provenanceFileExtension = ".prov"
 )
 
 // ErrNoOwnerRepo indicates that a given chart URL can't be found in any repos.
@@ -85,53 +92,191 @@ type ChartDownloader struct {
 // Returns a string path to the location where the file was downloaded and a verification
 // (if provenance was verified), or an error if something bad happened.
 func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *provenance.Verification, error) {
-	u, err := c.ResolveChartVersion(ref, version)
+	chartPath, ver, err := c.Fetch(ref, version)
 	if err != nil {
-		return "", nil, err
+		return "", ver, err
+	}
+
+	// Copy the chart from cache to dest path, using the standard name (not the cache key)
+	u, _, _ := c.resolveChartVersion(ref, version)
+	destPath := filepath.Join(dest, path.Base(u.String()))
+	if err := fileutil.AtomicCopyFile(chartPath, destPath, 0644); err != nil {
+		return destPath, ver, err
+	}
+
+	// Even though provenance is already verified on c.Fetch(), we still need to copy the file
+	// This is the expected behavior on `helm pull` for example, and it is used on tests.
+	chartProvenancePath := chartPath + provenanceFileExtension
+	if _, err := os.Stat(chartProvenancePath); !os.IsNotExist(err) {
+		return destPath, ver, fileutil.AtomicCopyFile(chartProvenancePath, destPath+provenanceFileExtension, 0644)
+	}
+
+	return destPath, ver, nil
+}
+
+// Returns the URL for the provenance file of a chart
+func provenanceURL(chart *url.URL) (*url.URL, error) {
+	u, err := url.Parse(chart.String())
+	if err != nil {
+		return nil, err
+	}
+
+	u.Path += provenanceFileExtension
+	return u, nil
+}
+
+// Fetch retrieves a chart. Depending on the settings, it may also download a provenance file.
+//
+// If Verify is set to VerifyNever, the verification will be nil.
+// If Verify is set to VerifyIfPossible, this will return a verification (or nil on failure), and print a warning on failure.
+// If Verify is set to VerifyAlways, this will return a verification or an error if the verification fails.
+// If Verify is set to VerifyLater, this will download the prov file (if it exists), but not verify it.
+//
+// For VerifyNever and VerifyIfPossible, the Verification may be empty.
+//
+// Returns a string path to the location where the file was downloaded and a verification
+// (if provenance was verified), or an error if something bad happened.
+func (c *ChartDownloader) Fetch(ref, version string) (string, *provenance.Verification, error) {
+	// Error if fails to dowload chart or fails to download provenance (when VerifyAlways)
+	chartPath, err := c.downloadChartFiles(ref, version)
+	if err != nil {
+		return chartPath, nil, err
+	}
+
+	// Verify chart according to policy
+	ver, err := c.provenanceVerificationPolicy(chartPath)
+	return chartPath, ver, err
+}
+
+// provenanceVerificationPolicy applies the provenance verification policy.
+// Returns a provenance verification or an error if something bad happened.
+// See VerificationStrategy
+func (c *ChartDownloader) provenanceVerificationPolicy(chartPath string) (*provenance.Verification, error) {
+	// Nothing to verify
+	if c.Verify == VerifyNever || c.Verify == VerifyLater {
+		return &provenance.Verification{}, nil
+	}
+
+	// It is not possible to verify because provenance file is not available
+	chartProvenancePath := chartPath + provenanceFileExtension
+	if _, err := os.Stat(chartProvenancePath); os.IsNotExist(err) && c.Verify == VerifyIfPossible {
+		return &provenance.Verification{}, nil
+	}
+
+	// It is possible, or required to verify
+	return VerifyChart(chartPath, c.Keyring)
+}
+
+// downloadChartFiles downloads the chart identified by ref and version. It may also download its provenance file.
+// Downloaded files are stored in ChartCache.
+func (c *ChartDownloader) downloadChartFiles(ref, version string) (string, error) {
+	u, repo, err := c.resolveChartVersion(ref, version)
+	if err != nil {
+		return "", err
 	}
 
 	g, err := c.Getters.ByScheme(u.Scheme)
 	if err != nil {
-		return "", nil, err
+		return "", err
 	}
 
-	data, err := g.Get(u.String(), c.Options...)
+	// ChartCache is the workspace for chart downloads
+	// TODO: implement --no-cache by making it set settings.ChartCache to a tmpdir
+	if c.ChartCache == "" {
+		return "", errors.New("unexpected empty chart cache path")
+	}
+
+	resourceURL := u.String()
+	cacheKey, err := c.cacheKey(resourceURL)
 	if err != nil {
-		return "", nil, err
+		return "", err
 	}
 
-	name := filepath.Base(u.Path)
-	destfile := filepath.Join(dest, name)
-	if err := fileutil.AtomicWriteFile(destfile, data, 0644); err != nil {
-		return destfile, nil, err
+	dstPath := c.cachePathFor(repo, cacheKey)
+	if err := c.cachedDownload(g, resourceURL, dstPath); err != nil {
+		return dstPath, err
 	}
 
-	// If provenance is requested, verify it.
-	ver := &provenance.Verification{}
-	if c.Verify > VerifyNever {
-		body, err := g.Get(u.String() + ".prov")
-		if err != nil {
-			if c.Verify == VerifyAlways {
-				return destfile, ver, errors.Errorf("failed to fetch provenance %q", u.String()+".prov")
-			}
-			fmt.Fprintf(c.Out, "WARNING: Verification not found for %s: %s\n", ref, err)
-			return destfile, ver, nil
-		}
-		provfile := destfile + ".prov"
-		if err := fileutil.AtomicWriteFile(provfile, body, 0644); err != nil {
-			return destfile, nil, err
-		}
-
-		if c.Verify != VerifyLater {
-			ver, err = VerifyChart(destfile, c.Keyring)
-			if err != nil {
-				// Fail always in this case, since it means the verification step
-				// failed.
-				return destfile, ver, err
-			}
-		}
+	// No need to download the provenance file
+	if c.Verify == VerifyNever {
+		return dstPath, nil
 	}
-	return destfile, ver, nil
+
+	// Download provenance file
+	provU, err := provenanceURL(u)
+	if err == nil {
+		provDestPath := dstPath + provenanceFileExtension
+		err = c.cachedDownload(g, provU.String(), provDestPath)
+	}
+
+	// Only returns errors if verification policy is Always
+	if c.Verify == VerifyAlways && err != nil {
+		return dstPath, errors.Errorf("failed to fetch provenance %q", provU.String())
+	}
+
+	// But log failures to download provenance file
+	if err != nil {
+		fmt.Fprintf(c.Out, "WARNING: Verification not found for %s: %s\n", ref, err)
+	}
+
+	return dstPath, nil
+}
+
+// cachedDownload downloads a resource to a destination
+// TODO: implement caching policy
+func (c *ChartDownloader) cachedDownload(g getter.Getter, resourceURL, dstPath string) error {
+	if _, err := os.Stat(dstPath); !os.IsNotExist(err) {
+		return nil // nothing to do
+	}
+
+	data, err := g.Get(resourceURL, c.Options...)
+	if err != nil {
+		return err
+	}
+
+	if err := os.MkdirAll(filepath.Dir(dstPath), 0755); err != nil {
+		return err
+	}
+
+	return fileutil.AtomicWriteFile(dstPath, data, 0644)
+}
+
+// Returns the chart cache path for a given repo
+// TODO: might be vulnerable to path traversals but I don't see any safe implementation in helm codebase
+// https://github.com/golang/go/issues/20126
+func (c *ChartDownloader) cachePathFor(repo *repo.Entry, cacheKey string) string {
+	repoName := "-" // represents an 'unknown' repo
+	if repo != nil && repo.Name != "" {
+		repoName = repo.Name
+	}
+
+	return filepath.Join(c.ChartCache, repoName, cacheKey)
+}
+
+// cacheKey returns a cache key that uniquely identifies a chart resource and is human readable
+func (c *ChartDownloader) cacheKey(href string) (string, error) {
+	baseURI, fileName := path.Split(href)
+
+	// Given
+	//   https://storage.cloud.google.com/kubernetes-charts/airflow-7.9.0.tgz
+	//   https://storage.cloud.google.com/kubernetes-charts/ = e8e54542a371d321238a5969734af6f1d8ab04db (sha1)
+	// Returns
+	//   e8e54542a371d321238a5969734af6f1d8ab04db-airflow-7.9.0.tgz
+	digest, err := c.digest(baseURI)
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(digest, fileName), nil
+}
+
+// digest calculates a SHA1 message digest
+func (c *ChartDownloader) digest(src string) (string, error) {
+	hash := sha1.New()
+	if _, err := io.WriteString(hash, src); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
 // ResolveChartVersion resolves a chart reference to a URL.
@@ -148,18 +293,25 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 //		* If version is non-empty, this will return the URL for that version
 //		* If version is empty, this will return the URL for the latest version
 //		* If no version can be found, an error is returned
-func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, error) {
+func (c *ChartDownloader) ResolveChartVersion(ref, version string) (u *url.URL, err error) {
+	u, _, err = c.resolveChartVersion(ref, version)
+	return
+}
+
+// resolveChartVersion resolves a chart reference to a URL and a repo entry.
+func (c *ChartDownloader) resolveChartVersion(ref, version string) (*url.URL, *repo.Entry, error) {
 	u, err := url.Parse(ref)
 	if err != nil {
-		return nil, errors.Errorf("invalid chart URL format: %s", ref)
+		return nil, nil, errors.Errorf("invalid chart URL format: %s", ref)
 	}
 	c.Options = append(c.Options, getter.WithURL(ref))
 
 	rf, err := loadRepoConfig(c.RepositoryConfig)
 	if err != nil {
-		return u, err
+		return u, nil, err
 	}
 
+	// TODO: assess lookup performance
 	if u.IsAbs() && len(u.Host) > 0 && len(u.Path) > 0 {
 		// In this case, we have to find the parent repo that contains this chart
 		// URL. And this is an unfortunate problem, as it requires actually going
@@ -168,103 +320,97 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 		// for that repo.
 
 		rc, err := c.scanReposForURL(ref, rf)
+
+		// If there is no special config, return the default HTTP client and
+		// swallow the error.
+		if err == ErrNoOwnerRepo {
+			return u, nil, nil
+		}
+
 		if err != nil {
-			// If there is no special config, return the default HTTP client and
-			// swallow the error.
-			if err == ErrNoOwnerRepo {
-				return u, nil
-			}
-			return u, err
+			return u, nil, err
 		}
 
 		// If we get here, we don't need to go through the next phase of looking
 		// up the URL. We have it already. So we just set the parameters and return.
-		c.Options = append(
-			c.Options,
-			getter.WithURL(rc.URL),
-		)
-		if rc.CertFile != "" || rc.KeyFile != "" || rc.CAFile != "" {
-			c.Options = append(c.Options, getter.WithTLSClientConfig(rc.CertFile, rc.KeyFile, rc.CAFile))
-		}
-		if rc.Username != "" && rc.Password != "" {
-			c.Options = append(
-				c.Options,
-				getter.WithBasicAuth(rc.Username, rc.Password),
-			)
-		}
-		return u, nil
+		c.setOptionsFromRepo(rc)
+		return u, rc, nil
 	}
 
 	// See if it's of the form: repo/path_to_chart
 	p := strings.SplitN(u.Path, "/", 2)
 	if len(p) < 2 {
-		return u, errors.Errorf("non-absolute URLs should be in form of repo_name/path_to_chart, got: %s", u)
+		return u, nil, errors.Errorf("non-absolute URLs should be in form of repo_name/path_to_chart, got: %s", u)
 	}
 
 	repoName := p[0]
 	chartName := p[1]
 	rc, err := pickChartRepositoryConfigByName(repoName, rf.Repositories)
-
 	if err != nil {
-		return u, err
+		return u, nil, err
 	}
 
+	// Validates the repo.Entry found (valid URL with a valid schema)
 	r, err := repo.NewChartRepository(rc, c.Getters)
 	if err != nil {
-		return u, err
+		return u, rc, err
 	}
 
-	if r != nil && r.Config != nil {
-		if r.Config.CertFile != "" || r.Config.KeyFile != "" || r.Config.CAFile != "" {
-			c.Options = append(c.Options, getter.WithTLSClientConfig(r.Config.CertFile, r.Config.KeyFile, r.Config.CAFile))
-		}
-		if r.Config.Username != "" && r.Config.Password != "" {
-			c.Options = append(c.Options, getter.WithBasicAuth(r.Config.Username, r.Config.Password))
-		}
-	}
+	c.setOptionsFromRepo(r.Config)
 
 	// Next, we need to load the index, and actually look up the chart.
 	idxFile := filepath.Join(c.RepositoryCache, helmpath.CacheIndexFile(r.Config.Name))
 	i, err := repo.LoadIndexFile(idxFile)
 	if err != nil {
-		return u, errors.Wrap(err, "no cached repo found. (try 'helm repo update')")
+		return u, rc, errors.Wrap(err, "no cached repo found. (try 'helm repo update')")
 	}
 
 	cv, err := i.Get(chartName, version)
 	if err != nil {
-		return u, errors.Wrapf(err, "chart %q matching %s not found in %s index. (try 'helm repo update')", chartName, version, r.Config.Name)
+		return u, rc, errors.Wrapf(err, "chart %q matching %s not found in %s index. (try 'helm repo update')", chartName, version, r.Config.Name)
 	}
 
 	if len(cv.URLs) == 0 {
-		return u, errors.Errorf("chart %q has no downloadable URLs", ref)
+		return u, rc, errors.Errorf("chart %q has no downloadable URLs", ref)
 	}
 
 	// TODO: Seems that picking first URL is not fully correct
 	u, err = url.Parse(cv.URLs[0])
 	if err != nil {
-		return u, errors.Errorf("invalid chart URL format: %s", ref)
+		return u, rc, errors.Errorf("invalid chart URL format: %s", ref)
+	}
+
+	if u.IsAbs() {
+		return u, rc, nil
 	}
 
 	// If the URL is relative (no scheme), prepend the chart repo's base URL
-	if !u.IsAbs() {
-		repoURL, err := url.Parse(rc.URL)
-		if err != nil {
-			return repoURL, err
-		}
-		q := repoURL.Query()
-		// We need a trailing slash for ResolveReference to work, but make sure there isn't already one
-		repoURL.Path = strings.TrimSuffix(repoURL.Path, "/") + "/"
-		u = repoURL.ResolveReference(u)
-		u.RawQuery = q.Encode()
-		// TODO add user-agent
-		if _, err := getter.NewHTTPGetter(getter.WithURL(rc.URL)); err != nil {
-			return repoURL, err
-		}
-		return u, err
+	repoURL, err := url.Parse(rc.URL)
+	if err != nil {
+		return repoURL, rc, err
 	}
 
-	// TODO add user-agent
-	return u, nil
+	// We need a trailing slash for ResolveReference to work, but make sure there isn't already one
+	repoURL.Path = strings.TrimSuffix(repoURL.Path, "/") + "/"
+	u = repoURL.ResolveReference(u)
+	u.RawQuery = repoURL.Query().Encode()
+	if _, err := getter.NewHTTPGetter(); err != nil {
+		return repoURL, rc, err
+	}
+
+	return u, rc, nil
+}
+
+func (c *ChartDownloader) setOptionsFromRepo(rc *repo.Entry) {
+	c.Options = append(c.Options, getter.WithURL(rc.URL)) // TODO: remove
+
+	if rc.CertFile != "" || rc.KeyFile != "" || rc.CAFile != "" {
+		c.Options = append(c.Options, getter.WithTLSClientConfig(rc.CertFile, rc.KeyFile, rc.CAFile))
+	}
+
+	if rc.Username != "" && rc.Password != "" {
+		c.Options = append(c.Options, getter.WithBasicAuth(rc.Username, rc.Password))
+	}
 }
 
 // VerifyChart takes a path to a chart archive and a keyring, and verifies the chart.
@@ -282,7 +428,7 @@ func VerifyChart(path, keyring string) (*provenance.Verification, error) {
 		return nil, errors.New("chart must be a tgz file")
 	}
 
-	provfile := path + ".prov"
+	provfile := path + provenanceFileExtension
 	if _, err := os.Stat(provfile); err != nil {
 		return nil, errors.Wrapf(err, "could not load provenance file %s", provfile)
 	}

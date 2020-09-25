@@ -71,7 +71,6 @@ func TestFindChartURL(t *testing.T) {
 		Out:              &b,
 		RepositoryConfig: repoConfig,
 		RepositoryCache:  repoCache,
-		ChartCache:       chartCache,
 	}
 	repos, err := m.loadChartRepositories()
 	if err != nil {
@@ -103,7 +102,6 @@ func TestGetRepoNames(t *testing.T) {
 		Out:              b,
 		RepositoryConfig: repoConfig,
 		RepositoryCache:  repoCache,
-		ChartCache:       chartCache,
 	}
 	tests := []struct {
 		name   string
