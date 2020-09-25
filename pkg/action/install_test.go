@@ -31,6 +31,7 @@ import (
 	"helm.sh/helm/v3/internal/test"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/kube"
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage/driver"
@@ -46,6 +47,9 @@ type nameTemplateTestCase struct {
 func installAction(t *testing.T) *Install {
 	config := actionConfigFixture(t)
 	instAction := NewInstall(config)
+	instAction.cfg.Do = func(namespace string) kube.Interface {
+		return config.KubeClient
+	}
 	instAction.Namespace = "spaced"
 	instAction.ReleaseName = "test-install-release"
 
@@ -119,7 +123,7 @@ func TestInstallReleaseClientOnly(t *testing.T) {
 	instAction.Run(buildChart(), nil) // disregard output
 
 	is.Equal(instAction.cfg.Capabilities, chartutil.DefaultCapabilities)
-	is.Equal(instAction.cfg.KubeClient, &kubefake.PrintingKubeClient{Out: ioutil.Discard})
+	is.Equal(instAction.client, &kubefake.PrintingKubeClient{Out: ioutil.Discard})
 }
 
 func TestInstallRelease_NoName(t *testing.T) {

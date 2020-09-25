@@ -67,7 +67,8 @@ const defaultDirectoryPermission = 0755
 
 // Install performs an installation operation.
 type Install struct {
-	cfg *Configuration
+	cfg    *Configuration
+	client kube.Interface
 
 	ChartPathOptions
 
@@ -128,13 +129,13 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 	totalItems := []*resource.Info{}
 	for _, obj := range crds {
 		// Read in the resources
-		res, err := i.cfg.KubeClient.Build(bytes.NewBuffer(obj.File.Data), false)
+		res, err := i.client.Build(bytes.NewBuffer(obj.File.Data), false)
 		if err != nil {
 			return errors.Wrapf(err, "failed to install CRD %s", obj.Name)
 		}
 
 		// Send them to Kube
-		if _, err := i.cfg.KubeClient.Create(res); err != nil {
+		if _, err := i.client.Create(res); err != nil {
 			// If the error is CRD already exists, continue.
 			if apierrors.IsAlreadyExists(err) {
 				crdName := res[0].Name
@@ -156,7 +157,7 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 		discoveryClient.Invalidate()
 		// Give time for the CRD to be recognized.
 
-		if err := i.cfg.KubeClient.Wait(totalItems, 60*time.Second); err != nil {
+		if err := i.client.Wait(totalItems, 60*time.Second); err != nil {
 			return err
 		}
 
@@ -170,9 +171,11 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 //
 // If DryRun is set to true, this will prepare the release, but not install it
 func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
+	i.client = i.cfg.Do(i.Namespace)
+
 	// Check reachability of cluster unless in client-only mode (e.g. `helm template` without `--validate`)
 	if !i.ClientOnly {
-		if err := i.cfg.KubeClient.IsReachable(); err != nil {
+		if err := i.client.IsReachable(); err != nil {
 			return nil, err
 		}
 	}
@@ -197,7 +200,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 		// NOTE(bacongobbler): used for `helm template`
 		i.cfg.Capabilities = chartutil.DefaultCapabilities
 		i.cfg.Capabilities.APIVersions = append(i.cfg.Capabilities.APIVersions, i.APIVersions...)
-		i.cfg.KubeClient = &kubefake.PrintingKubeClient{Out: ioutil.Discard}
+		i.client = &kubefake.PrintingKubeClient{Out: ioutil.Discard}
 
 		mem := driver.NewMemory()
 		mem.SetNamespace(i.Namespace)
@@ -252,7 +255,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	rel.SetStatus(release.StatusPendingInstall, "Initial install underway")
 
 	var toBeAdopted kube.ResourceList
-	resources, err := i.cfg.KubeClient.Build(bytes.NewBufferString(rel.Manifest), !i.DisableOpenAPIValidation)
+	resources, err := i.client.Build(bytes.NewBufferString(rel.Manifest), !i.DisableOpenAPIValidation)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to build kubernetes objects from release manifest")
 	}
@@ -299,11 +302,11 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 		if err != nil {
 			return nil, err
 		}
-		resourceList, err := i.cfg.KubeClient.Build(bytes.NewBuffer(buf), true)
+		resourceList, err := i.client.Build(bytes.NewBuffer(buf), true)
 		if err != nil {
 			return nil, err
 		}
-		if _, err := i.cfg.KubeClient.Create(resourceList); err != nil && !apierrors.IsAlreadyExists(err) {
+		if _, err := i.client.Create(resourceList); err != nil && !apierrors.IsAlreadyExists(err) {
 			return nil, err
 		}
 	}
@@ -335,17 +338,17 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	// do an update, but it's not clear whether we WANT to do an update if the re-use is set
 	// to true, since that is basically an upgrade operation.
 	if len(toBeAdopted) == 0 && len(resources) > 0 {
-		if _, err := i.cfg.KubeClient.Create(resources); err != nil {
+		if _, err := i.client.Create(resources); err != nil {
 			return i.failRelease(rel, err)
 		}
 	} else if len(resources) > 0 {
-		if _, err := i.cfg.KubeClient.Update(toBeAdopted, resources, false); err != nil {
+		if _, err := i.client.Update(toBeAdopted, resources, false); err != nil {
 			return i.failRelease(rel, err)
 		}
 	}
 
 	if i.Wait {
-		if err := i.cfg.KubeClient.Wait(resources, i.Timeout); err != nil {
+		if err := i.client.Wait(resources, i.Timeout); err != nil {
 			return i.failRelease(rel, err)
 		}
 

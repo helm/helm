@@ -77,10 +77,14 @@ var (
 // https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
 var ValidName = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$`)
 
+type DoMake func(namespace string) kube.Interface
+
 // Configuration injects the dependencies that all actions share.
 type Configuration struct {
 	// RESTClientGetter is an interface that loads Kubernetes clients.
-	RESTClientGetter RESTClientGetter
+	RESTClientGetter genericclioptions.RESTClientGetter
+
+	Do DoMake
 
 	// Releases stores records of releases.
 	Releases *storage.Storage
@@ -365,7 +369,6 @@ func (c *Configuration) recordRelease(r *release.Release) {
 func (c *Configuration) Init(getter genericclioptions.RESTClientGetter, namespace, helmDriver string, log DebugLog) error {
 	kc := kube.New(getter)
 	kc.Log = log
-	kc.Namespace = namespace
 
 	lazyClient := &lazyClient{
 		namespace: namespace,
@@ -413,6 +416,12 @@ func (c *Configuration) Init(getter genericclioptions.RESTClientGetter, namespac
 	}
 
 	c.RESTClientGetter = getter
+	c.Do = func(namespace string) kube.Interface {
+		client := kube.New(c.RESTClientGetter)
+		client.Log = c.Log
+		client.Namespace = namespace
+		return client
+	}
 	c.KubeClient = kc
 	c.Releases = store
 	c.Log = log

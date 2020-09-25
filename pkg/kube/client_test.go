@@ -21,11 +21,9 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"strings"
 	"testing"
 
-	"helm.sh/helm/v3/pkg/cli"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -250,84 +248,6 @@ func TestBuild(t *testing.T) {
 
 			if len(infos) != tt.count {
 				t.Errorf("expected %d result objects, got %d", tt.count, len(infos))
-			}
-		})
-	}
-}
-
-func TestNamespace(t *testing.T) {
-	reset := func() func() {
-		var originalHelmNamespace *string
-		origEnv := os.Environ()
-		for _, pair := range origEnv {
-			kv := strings.SplitN(pair, "=", 2)
-			if kv[0] == "HELM_NAMESPACE" {
-				o := kv[1]
-				originalHelmNamespace = &o
-				break
-			}
-		}
-
-		return func() {
-			os.Unsetenv("HELM_NAMESPACE")
-			if originalHelmNamespace != nil {
-				os.Setenv("HELM_NAMESPACE", *originalHelmNamespace)
-			}
-		}
-	}
-
-	refstring := func(s string) *string {
-		return &s
-	}
-	tcs := []struct {
-		name              string
-		envNamespace      string
-		namespace         *string
-		expectedNamespace string
-	}{
-		{
-			name:              "unset-namespace",
-			envNamespace:      v1.NamespaceDefault,
-			namespace:         nil,
-			expectedNamespace: v1.NamespaceDefault,
-		}, {
-			name:              "test-namespace",
-			envNamespace:      v1.NamespaceDefault,
-			namespace:         refstring("test"),
-			expectedNamespace: "test",
-		}, {
-			name:              "non-default-env-namespace",
-			envNamespace:      "test",
-			namespace:         nil,
-			expectedNamespace: "test",
-		}, {
-			name:              "non-default-env-and-test-namespace",
-			envNamespace:      "stage",
-			namespace:         refstring("test"),
-			expectedNamespace: "test",
-		},
-	}
-
-	for _, tc := range tcs {
-		t.Run(tc.name, func(t *testing.T) {
-			defer reset()()
-
-			os.Setenv("HELM_NAMESPACE", tc.envNamespace)
-			c := New(cli.New().RESTClientGetter())
-			if tc.namespace != nil {
-				c.Namespace = *tc.namespace
-			}
-			reslist, err := c.Build(strings.NewReader(testServiceManifest), true)
-			if err != nil {
-				t.Errorf("unexpected error from Build: %v", err)
-			}
-			if len(reslist) != 1 {
-				t.Errorf("expected 1 resource; got %d", len(reslist))
-			}
-			res := reslist[0]
-			t.Logf("%#v\n", res)
-			if res.Namespace != tc.expectedNamespace {
-				t.Errorf("Incorrect namespace: expected '%s', got '%s'", tc.expectedNamespace, res.Namespace)
 			}
 		})
 	}
