@@ -340,6 +340,12 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 		}
 	}
 
+	if !u.DisableHooks {
+		if err := u.cfg.execHook(upgradedRelease, release.HookPreReady, u.Timeout); err != nil {
+			return u.failRelease(upgradedRelease, results.Created, fmt.Errorf("failed pre-ready: %s", err))
+		}
+	}
+
 	if u.Wait {
 		if err := u.cfg.KubeClient.Wait(target, u.Timeout); err != nil {
 			u.cfg.recordRelease(originalRelease)
