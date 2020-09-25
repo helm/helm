@@ -70,6 +70,7 @@ type ChartDownloader struct {
 	Options          []getter.Option
 	RepositoryConfig string
 	RepositoryCache  string
+	ChartCache       string
 }
 
 // DownloadTo retrieves a chart. Depending on the settings, it may also download a provenance file.

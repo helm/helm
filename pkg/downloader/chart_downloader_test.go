@@ -31,6 +31,7 @@ import (
 const (
 	repoConfig = "testdata/repositories.yaml"
 	repoCache  = "testdata/repository"
+	chartCache = "testdata/charts"
 )
 
 func TestResolveChartRef(t *testing.T) {
@@ -199,6 +200,7 @@ func TestDownloadTo(t *testing.T) {
 		Keyring:          "testdata/helm-test-key.pub",
 		RepositoryConfig: repoConfig,
 		RepositoryCache:  repoCache,
+		ChartCache:       chartCache,
 		Getters: getter.All(&cli.EnvSettings{
 			RepositoryConfig: repoConfig,
 			RepositoryCache:  repoCache,
@@ -252,6 +254,7 @@ func TestDownloadTo_TLS(t *testing.T) {
 		Keyring:          "testdata/helm-test-key.pub",
 		RepositoryConfig: repoConfig,
 		RepositoryCache:  repoCache,
+		ChartCache:       chartCache,
 		Getters: getter.All(&cli.EnvSettings{
 			RepositoryConfig: repoConfig,
 			RepositoryCache:  repoCache,
@@ -299,6 +302,7 @@ func TestDownloadTo_VerifyLater(t *testing.T) {
 		Verify:           VerifyLater,
 		RepositoryConfig: repoConfig,
 		RepositoryCache:  repoCache,
+		ChartCache:       chartCache,
 		Getters: getter.All(&cli.EnvSettings{
 			RepositoryConfig: repoConfig,
 			RepositoryCache:  repoCache,
@@ -328,6 +332,7 @@ func TestScanReposForURL(t *testing.T) {
 		Verify:           VerifyLater,
 		RepositoryConfig: repoConfig,
 		RepositoryCache:  repoCache,
+		ChartCache:       chartCache,
 		Getters: getter.All(&cli.EnvSettings{
 			RepositoryConfig: repoConfig,
 			RepositoryCache:  repoCache,

@@ -222,6 +222,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 					Getters:          p,
 					RepositoryConfig: settings.RepositoryConfig,
 					RepositoryCache:  settings.RepositoryCache,
+					ChartCache:       settings.ChartCache,
 					Debug:            settings.Debug,
 				}
 				if err := man.Update(); err != nil {

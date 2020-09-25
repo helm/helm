@@ -71,6 +71,7 @@ func TestFindChartURL(t *testing.T) {
 		Out:              &b,
 		RepositoryConfig: repoConfig,
 		RepositoryCache:  repoCache,
+		ChartCache:       chartCache,
 	}
 	repos, err := m.loadChartRepositories()
 	if err != nil {
@@ -102,6 +103,7 @@ func TestGetRepoNames(t *testing.T) {
 		Out:              b,
 		RepositoryConfig: repoConfig,
 		RepositoryCache:  repoCache,
+		ChartCache:       chartCache,
 	}
 	tests := []struct {
 		name   string
@@ -235,6 +237,7 @@ func TestUpdateBeforeBuild(t *testing.T) {
 		Getters:          g,
 		RepositoryConfig: dir("repositories.yaml"),
 		RepositoryCache:  dir(),
+		ChartCache:       dir(),
 	}
 
 	// Update before Build. see issue: https://github.com/helm/helm/issues/7101
@@ -305,6 +308,7 @@ func checkBuildWithOptionalFields(t *testing.T, chartName string, dep chart.Depe
 		Getters:          g,
 		RepositoryConfig: dir("repositories.yaml"),
 		RepositoryCache:  dir(),
+		ChartCache:       dir(),
 	}
 
 	// First build will update dependencies and create Chart.lock file.

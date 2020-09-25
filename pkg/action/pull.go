@@ -68,6 +68,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		},
 		RepositoryConfig: p.Settings.RepositoryConfig,
 		RepositoryCache:  p.Settings.RepositoryCache,
+		ChartCache:       p.Settings.ChartCache,
 	}
 
 	if p.Verify {

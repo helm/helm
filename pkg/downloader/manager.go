@@ -73,6 +73,7 @@ type Manager struct {
 	Getters          []getter.Provider
 	RepositoryConfig string
 	RepositoryCache  string
+	ChartCache       string
 }
 
 // Build rebuilds a local charts directory from a lockfile.
@@ -326,6 +327,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			Keyring:          m.Keyring,
 			RepositoryConfig: m.RepositoryConfig,
 			RepositoryCache:  m.RepositoryCache,
+			ChartCache:       m.ChartCache,
 			Getters:          m.Getters,
 			Options: []getter.Option{
 				getter.WithBasicAuth(username, password),
