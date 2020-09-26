@@ -127,13 +127,13 @@ func TestUpgradeCmd(t *testing.T) {
 		},
 		{
 			name:      "install a release with missing dependencies",
-			cmd:       fmt.Sprintf("upgrade bonkers-bunny -i '%s'", missingDepsPath),
+			cmd:       "upgrade nodeps -i testdata/testcharts/chart-missing-deps",
 			golden:    "output/upgrade-with-install-missing-dependencies.txt",
 			wantError: true,
 		},
 		{
 			name:   "install a release with missing dependencies",
-			cmd:    fmt.Sprintf("upgrade bonkers-bunny -i --dependency-update '%s'", missingDepsPath),
+			cmd:    "upgrade updeps -i --dependency-update testdata/testcharts/chart-with-subchart-update",
 			golden: "output/upgrade-with-install-dependency-update.txt",
 		},
 		{
@@ -150,8 +150,9 @@ func TestUpgradeCmd(t *testing.T) {
 		},
 		{
 			name:   "upgrade a release with missing dependencies",
-			cmd:    fmt.Sprintf("upgrade --dependency-update bonkers-bunny %s", missingDepsPath),
+			cmd:    "upgrade updeps --dependency-update testdata/testcharts/chart-with-subchart-update",
 			golden: "output/upgrade-with-dependency-update.txt",
+			rels:   []*release.Release{relMock("updeps", 1, ch)},
 		},
 		{
 			name:      "upgrade a release with bad dependencies",

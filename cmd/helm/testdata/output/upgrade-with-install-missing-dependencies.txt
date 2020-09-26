@@ -1,0 +1,2 @@
+Release "nodeps" does not exist. Installing it now.
+Error: found in Chart.yaml, but missing in charts/ directory: reqsubchart2
