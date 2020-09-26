@@ -22,6 +22,8 @@ import (
 	"sync"
 	"testing"
 
+	"k8s.io/client-go/rest"
+
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
 )
@@ -737,4 +739,98 @@ func TestRenderRecursionLimit(t *testing.T) {
 		t.Errorf("Expected %q, got %q (%v)", expect, got, out)
 	}
 
+}
+
+func TestOptions(t *testing.T) {
+	cfg := &rest.Config{}
+
+	tcs := []struct {
+		name        string
+		opts        []Option
+		expectError bool
+		validate    func(t *testing.T, e *Engine)
+	}{
+		{
+			name:        "defaults",
+			opts:        []Option{},
+			expectError: false,
+			validate: func(t *testing.T, e *Engine) {
+				if e.config != nil || e.LintMode != false || e.Strict != false {
+					t.Errorf("Unexpected engine: %#v", e)
+				}
+			},
+		},
+		{
+			name:        "explicit-defaults",
+			opts:        []Option{WithConfig(nil), WithLintMode(false), WithStrict(false)},
+			expectError: false,
+			validate: func(t *testing.T, e *Engine) {
+				if e.config != nil || e.LintMode != false || e.Strict != false {
+					t.Errorf("Unexpected engine: %#v", e)
+				}
+			},
+		},
+		{
+			name:        "resetting-option",
+			opts:        []Option{WithLintMode(true), WithLintMode(false)},
+			expectError: false,
+			validate: func(t *testing.T, e *Engine) {
+				if e.LintMode != false {
+					t.Errorf("Incorrect lint mode")
+				}
+			},
+		},
+		{
+			name:        "with-config",
+			opts:        []Option{WithConfig(cfg)},
+			expectError: false,
+			validate: func(t *testing.T, e *Engine) {
+				if e.config != cfg {
+					t.Errorf("Set incorrect config reference")
+				}
+			},
+		},
+		{
+			name:        "with-lint-mode",
+			opts:        []Option{WithLintMode(true)},
+			expectError: false,
+			validate: func(t *testing.T, e *Engine) {
+				if e.LintMode != true {
+					t.Errorf("Did not set lint mode")
+				}
+			},
+		},
+		{
+			name:        "with-strict",
+			opts:        []Option{WithStrict(true)},
+			expectError: false,
+			validate: func(t *testing.T, e *Engine) {
+				if e.Strict != true {
+					t.Errorf("Did not set strict")
+				}
+			},
+		},
+		{
+			name:        "with-erroring-option",
+			opts:        []Option{func(*Engine) error { return fmt.Errorf("No thank you") }},
+			expectError: true,
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			e, err := New(tc.opts...)
+			if tc.expectError {
+				if err == nil {
+					t.Error("Expected error but did not get one")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Got unexpected error: %q", err)
+				} else {
+					tc.validate(t, e)
+				}
+			}
+		})
+	}
 }

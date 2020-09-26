@@ -44,11 +44,15 @@ type Engine struct {
 	config *rest.Config
 }
 
-// NewWithClient creates a new instance of client-aware Engine
-func NewWithClient(config *rest.Config) *Engine {
-	return &Engine{
-		config: config,
+// New creates a new instance of Engine with the supplied options
+func New(opts ...Option) (*Engine, error) {
+	e := &Engine{}
+	for _, opt := range opts {
+		if err := opt(e); err != nil {
+			return nil, err
+		}
 	}
+	return e, nil
 }
 
 // Render takes a chart, optional values, and value overrides, and attempts to render the Go templates.
