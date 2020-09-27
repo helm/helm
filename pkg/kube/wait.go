@@ -19,6 +19,7 @@ package kube // import "helm.sh/helm/v3/pkg/kube"
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -64,7 +65,13 @@ func (w *waiter) waitForResources(created ResourceList, waitForJobsEnabled bool)
 			switch value := AsVersioned(v).(type) {
 			case *corev1.Pod:
 				pod, err := w.c.CoreV1().Pods(v.Namespace).Get(context.Background(), v.Name, metav1.GetOptions{})
-				if err != nil || !w.isPodReady(pod) {
+
+				if err != nil {
+					return false, err
+				}
+
+				if !w.isPodReady(pod) {
+					err = w.checkPodBackOffStatus(pod)
 					return false, err
 				}
 			case *batchv1.Job:
@@ -89,6 +96,25 @@ func (w *waiter) waitForResources(created ResourceList, waitForJobsEnabled bool)
 					return false, err
 				}
 				if !w.deploymentReady(newReplicaSet, currentDeployment) {
+					// has replica set failed?
+					for _, rc := range newReplicaSet.Status.Conditions {
+						if rc.Type == "ReplicaFailure" || rc.Reason == "FailedCreate" {
+							return false, errors.Errorf("%s: %s", rc.Reason, rc.Message)
+						}
+					}
+
+					// has pod failed?
+					pods, err := w.podsforObject(v.Namespace, value)
+					if err != nil {
+						return false, err
+					}
+					for _, pod := range pods {
+						err := w.checkPodBackOffStatus(&pod)
+						if err != nil {
+							return false, err
+						}
+					}
+
 					return false, nil
 				}
 			case *corev1.PersistentVolumeClaim:
@@ -199,6 +225,15 @@ func (w *waiter) jobReady(job *batchv1.Job) bool {
 		return false
 	}
 	return true
+}
+
+func (w *waiter) checkPodBackOffStatus(pod *corev1.Pod) error {
+	for _, cs := range pod.Status.ContainerStatuses {
+		if cs.State.Waiting != nil && strings.HasSuffix(cs.State.Waiting.Reason, "BackOff") {
+			return errors.Errorf("%s: %s", cs.State.Waiting.Reason, cs.State.Waiting.Message)
+		}
+	}
+	return nil
 }
 
 func (w *waiter) serviceReady(s *corev1.Service) bool {
