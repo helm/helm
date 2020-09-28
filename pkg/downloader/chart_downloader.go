@@ -187,12 +187,11 @@ func (c *ChartDownloader) downloadChartFiles(ref, version string) (string, error
 	}
 
 	resourceURL := u.String()
-	cacheKey, err := c.cacheKey(resourceURL)
+	dstPath, err := c.cachePathFor(repo, resourceURL)
 	if err != nil {
 		return "", err
 	}
 
-	dstPath := c.cachePathFor(repo, cacheKey)
 	if err := c.cachedDownload(g, resourceURL, dstPath); err != nil {
 		return dstPath, err
 	}
@@ -241,27 +240,27 @@ func (c *ChartDownloader) cachedDownload(g getter.Getter, resourceURL, dstPath s
 	return fileutil.AtomicWriteFile(dstPath, data, 0644)
 }
 
-// Returns the chart cache path for a given repo
+// Returns the chart cache path for a given chart of a repo.
 // TODO: might be vulnerable to path traversals but I don't see any safe implementation in helm codebase
 // https://github.com/golang/go/issues/20126
-func (c *ChartDownloader) cachePathFor(repo *repo.Entry, cacheKey string) string {
+func (c *ChartDownloader) cachePathFor(repo *repo.Entry, chartURL string) (string, error) {
 	repoName := "-" // represents an 'unknown' repo
 	if repo != nil && repo.Name != "" {
 		repoName = repo.Name
 	}
 
-	return filepath.Join(c.ChartCache, repoName, cacheKey)
+	cacheKey, err := c.cacheKey(chartURL)
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(c.ChartCache, repoName, cacheKey), nil
 }
 
-// cacheKey returns a cache key that uniquely identifies a chart resource and is human readable
+// cacheKey returns a cache key that uniquely identifies a chart resource and is human readable.
+// It also preserves the filename to make copy operations easier.
 func (c *ChartDownloader) cacheKey(href string) (string, error) {
 	baseURI, fileName := path.Split(href)
-
-	// Given
-	//   https://storage.cloud.google.com/kubernetes-charts/airflow-7.9.0.tgz
-	//   https://storage.cloud.google.com/kubernetes-charts/ = e8e54542a371d321238a5969734af6f1d8ab04db (sha1)
-	// Returns
-	//   e8e54542a371d321238a5969734af6f1d8ab04db-airflow-7.9.0.tgz
 	digest, err := c.digest(baseURI)
 	if err != nil {
 		return "", err

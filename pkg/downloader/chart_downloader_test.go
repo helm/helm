@@ -18,8 +18,10 @@ package downloader
 import (
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"testing"
 
 	"helm.sh/helm/v3/internal/test/ensure"
@@ -33,6 +35,39 @@ const (
 	repoConfig = "testdata/repositories.yaml"
 	repoCache  = "testdata/repository"
 )
+
+func TestCacheKey(t *testing.T) {
+	for _, tt := range []struct {
+		chartURL string
+		repo     *repo.Entry
+		expected string
+	}{
+		{
+			repo: nil, chartURL: "https://storage.cloud.google.com/kubernetes-charts/airflow-7.9.0.tgz",
+			expected: "-/e8e54542a371d321238a5969734af6f1d8ab04db/airflow-7.9.0.tgz",
+		},
+		{
+			repo: &repo.Entry{}, chartURL: "https://storage.cloud.google.com/kubernetes-charts/airflow-7.9.0.tgz",
+			expected: "-/e8e54542a371d321238a5969734af6f1d8ab04db/airflow-7.9.0.tgz",
+		},
+		{
+			repo: &repo.Entry{Name: "unstable"}, chartURL: "https://storage.cloud.google.com/kubernetes-charts/airflow-7.9.0.tgz",
+			expected: "unstable/e8e54542a371d321238a5969734af6f1d8ab04db/airflow-7.9.0.tgz",
+		},
+	} {
+		c := &ChartDownloader{}
+		got, err := c.cachePathFor(tt.repo, tt.chartURL)
+		if err != nil {
+			t.Errorf("failed to compute cacheKey: %s", err)
+			continue
+		}
+
+		if got != tt.expected {
+			t.Errorf("expected %s, got %s", tt.expected, got)
+			continue
+		}
+	}
+}
 
 func TestResolveChartRef(t *testing.T) {
 	tests := []struct {
@@ -199,6 +234,115 @@ func TestIsTar(t *testing.T) {
 	for src, expect := range tests {
 		if isTar(src) != expect {
 			t.Errorf("%q should be %t", src, expect)
+		}
+	}
+}
+
+func TestFetch_provenanceVerification(t *testing.T) {
+	// Setup a temp chart cache path
+	chartCachePath := ensure.TempDir(t)
+	defer os.RemoveAll(chartCachePath)
+
+	// Set up a fake repo
+	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := srv.CreateIndex(); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := srv.LinkIndices(); err != nil {
+		t.Fatal(err)
+	}
+
+	c := ChartDownloader{
+		Out:              os.Stderr,
+		Keyring:          "testdata/helm-test-key.pub",
+		RepositoryConfig: repoConfig,
+		RepositoryCache:  repoCache,
+		ChartCache:       chartCachePath,
+		Getters: getter.All(&cli.EnvSettings{
+			RepositoryConfig: repoConfig,
+			RepositoryCache:  repoCache,
+		}),
+	}
+
+	// Fetch a chart without provenance
+	for _, tt := range []struct {
+		chart          string
+		verify         VerificationStrategy
+		expectedCache  []string
+		expectVerified bool
+	}{
+		{
+			chart:         "local-subchart-0.1.0.tgz",
+			verify:        VerifyNever,
+			expectedCache: []string{"local-subchart-0.1.0.tgz"},
+		},
+		{
+			chart:         "local-subchart-0.1.0.tgz",
+			verify:        VerifyLater,
+			expectedCache: []string{"local-subchart-0.1.0.tgz"},
+		},
+		{
+			chart:         "local-subchart-0.1.0.tgz",
+			verify:        VerifyIfPossible,
+			expectedCache: []string{"local-subchart-0.1.0.tgz"}, // no provenance available
+		},
+		{
+			chart:         "signtest-0.1.0.tgz",
+			verify:        VerifyNever,
+			expectedCache: []string{"signtest-0.1.0.tgz"},
+		},
+		{
+			chart:         "signtest-0.1.0.tgz",
+			verify:        VerifyLater,
+			expectedCache: []string{"signtest-0.1.0.tgz", "signtest-0.1.0.tgz.prov"},
+		},
+		{
+			chart:          "signtest-0.1.0.tgz",
+			verify:         VerifyIfPossible,
+			expectedCache:  []string{"signtest-0.1.0.tgz", "signtest-0.1.0.tgz.prov"},
+			expectVerified: true,
+		},
+		{
+			chart:          "signtest-0.1.0.tgz",
+			verify:         VerifyAlways,
+			expectedCache:  []string{"signtest-0.1.0.tgz", "signtest-0.1.0.tgz.prov"},
+			expectVerified: true,
+		},
+	} {
+		os.RemoveAll(chartCachePath) // Starts with an empty cache
+
+		c.Verify = tt.verify
+		where, ver, err := c.Fetch(srv.URL()+"/"+tt.chart, "")
+		if err != nil {
+			t.Error(err)
+			continue
+		}
+
+		if got := path.Base(where); got != tt.chart {
+			t.Errorf("chart is not cached with the same filename. expected: %s, got: %s\n", tt.chart, got)
+			continue
+		}
+
+		cachedCharts, _ := filepath.Glob(filepath.Join(chartCachePath, "*/*/*.tgz*"))
+		cachedFilenames := make([]string, 0, len(cachedCharts))
+		for _, inCache := range cachedCharts {
+			cachedFilenames = append(cachedFilenames, filepath.Base(inCache)) // Remove the tmpdir and cache key
+		}
+
+		sort.Strings(cachedFilenames)
+		sort.Strings(tt.expectedCache)
+		if !reflect.DeepEqual(cachedFilenames, tt.expectedCache) {
+			t.Errorf("unexpected cached files: expected %v, got %v\n", tt.expectedCache, cachedFilenames)
+			continue
+		}
+
+		if tt.expectVerified && ver.FileHash == "" {
+			t.Error("File hash was empty, but verification is required.")
 		}
 	}
 }
