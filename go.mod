@@ -23,7 +23,7 @@ require (
 	github.com/gosuri/uitable v0.0.4
 	github.com/jessevdk/go-flags v1.4.0 // indirect
 	github.com/jmoiron/sqlx v1.2.0
-	github.com/lib/pq v1.7.0
+	github.com/lib/pq v1.8.0
 	github.com/mattn/go-shellwords v1.0.10
 	github.com/mitchellh/copystructure v1.0.0
 	github.com/opencontainers/go-digest v1.0.0
