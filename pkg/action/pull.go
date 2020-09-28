@@ -18,7 +18,6 @@ package action
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -76,19 +75,6 @@ func (p *Pull) Run(chartRef string) (string, error) {
 	} else if p.VerifyLater {
 		c.Verify = downloader.VerifyLater
 	}
-
-	// If untar is set, we fetch to a tempdir, then untar and copy after
-	// verification.
-	dest := p.DestDir
-	if p.Untar {
-		var err error
-		dest, err = ioutil.TempDir("", "helm-")
-		if err != nil {
-			return out.String(), errors.Wrap(err, "failed to untar")
-		}
-		defer os.RemoveAll(dest)
-	}
-
 	if p.RepoURL != "" {
 		chartURL, err := repo.FindChartInAuthAndTLSRepoURL(p.RepoURL, p.Username, p.Password, chartRef, p.Version, p.CertFile, p.KeyFile, p.CaFile, p.InsecureSkipTLSverify, getter.All(p.Settings))
 		if err != nil {
@@ -97,7 +83,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		chartRef = chartURL
 	}
 
-	saved, v, err := c.DownloadTo(chartRef, p.Version, dest)
+	chartPath, v, err := c.Fetch(chartRef, p.Version)
 	if err != nil {
 		return out.String(), err
 	}
@@ -133,7 +119,10 @@ func (p *Pull) Run(chartRef string) (string, error) {
 			return out.String(), errors.Errorf("failed to untar: a file or directory with the name %s already exists", udCheck)
 		}
 
-		return out.String(), chartutil.ExpandFile(ud, saved)
+		return out.String(), chartutil.ExpandFile(ud, chartPath)
 	}
-	return out.String(), nil
+
+	// Just copy to destination
+	_, err = downloader.CopyChart(chartPath, p.DestDir)
+	return out.String(), err
 }
