@@ -33,6 +33,7 @@ import (
 )
 
 func TestDependencyUpdateCmd(t *testing.T) {
+	ensure.HelmHome(t)
 	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/testcharts/*.tgz")
 	if err != nil {
 		t.Fatal(err)

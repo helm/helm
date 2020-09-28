@@ -21,12 +21,14 @@ import (
 	"path/filepath"
 	"testing"
 
+	"helm.sh/helm/v3/internal/test/ensure"
 	"helm.sh/helm/v3/pkg/helmpath"
 )
 
 var _ Installer = new(LocalInstaller)
 
 func TestLocalInstaller(t *testing.T) {
+	ensure.HelmHome(t)
 	// Make a temp dir
 	tdir, err := ioutil.TempDir("", "helm-installer-")
 	if err != nil {

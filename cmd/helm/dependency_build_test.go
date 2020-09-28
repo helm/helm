@@ -22,6 +22,7 @@ import (
 	"strings"
 	"testing"
 
+	"helm.sh/helm/v3/internal/test/ensure"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/provenance"
 	"helm.sh/helm/v3/pkg/repo"
@@ -29,6 +30,7 @@ import (
 )
 
 func TestDependencyBuildCmd(t *testing.T) {
+	ensure.HelmHome(t)
 	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/testcharts/*.tgz")
 	defer srv.Stop()
 	if err != nil {

@@ -143,6 +143,7 @@ func TestRepoAddConcurrentDirNotExist(t *testing.T) {
 }
 
 func repoAddConcurrent(t *testing.T, testName, repoFile string) {
+	ensure.HelmHome(t)
 	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
 	if err != nil {
 		t.Fatal(err)
