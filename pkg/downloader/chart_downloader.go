@@ -98,20 +98,25 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 	}
 
 	// Copy the chart from cache to dest path, using the standard name (not the cache key)
-	u, _, _ := c.resolveChartVersion(ref, version)
-	destPath := filepath.Join(dest, path.Base(u.String()))
-	if err := fileutil.AtomicCopyFile(chartPath, destPath, 0644); err != nil {
-		return destPath, ver, err
+	dstPath, err := CopyChart(chartPath, dest)
+	return dstPath, ver, err
+}
+
+// CopyChart copies a chart to a destination path. If provenance file is available, it will also be copied to the same parent dir.
+func CopyChart(srcPath, dstDir string) (string, error) {
+	dstPath := filepath.Join(dstDir, path.Base(srcPath))
+	if err := fileutil.AtomicCopyFile(srcPath, dstPath, 0644); err != nil {
+		return dstPath, err
 	}
 
 	// Even though provenance is already verified on c.Fetch(), we still need to copy the file
 	// This is the expected behavior on `helm pull` for example, and it is used on tests.
-	chartProvenancePath := chartPath + provenanceFileExtension
+	chartProvenancePath := srcPath + provenanceFileExtension
 	if _, err := os.Stat(chartProvenancePath); !os.IsNotExist(err) {
-		return destPath, ver, fileutil.AtomicCopyFile(chartProvenancePath, destPath+provenanceFileExtension, 0644)
+		return dstPath, fileutil.AtomicCopyFile(chartProvenancePath, dstPath+provenanceFileExtension, 0644)
 	}
 
-	return destPath, ver, nil
+	return dstPath, nil
 }
 
 // Returns the URL for the provenance file of a chart

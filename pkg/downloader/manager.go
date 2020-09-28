@@ -33,7 +33,6 @@ import (
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/v3/internal/fileutil"
 	"helm.sh/helm/v3/internal/resolver"
 	"helm.sh/helm/v3/internal/third_party/dep/fs"
 	"helm.sh/helm/v3/internal/urlutil"
@@ -362,18 +361,8 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 
 	// Copying files over
 	for _, downloadedChart := range downloadedCharts {
-		dst := filepath.Join(destPath, filepath.Base(downloadedChart))
-		if err := fileutil.AtomicCopyFile(downloadedChart, dst, 0644); err != nil {
-			return err
-		}
-
 		// TODO: confirm if there's any reason to include provenance files in charts/ for an unpacked chart.
-		chartProvenancePath := downloadedChart + provenanceFileExtension
-		if _, err := os.Stat(chartProvenancePath); os.IsNotExist(err) {
-			continue
-		}
-
-		if err := fileutil.AtomicCopyFile(chartProvenancePath, dst+provenanceFileExtension, 0644); err != nil {
+		if _, err := CopyChart(downloadedChart, destPath); err != nil {
 			return err
 		}
 	}
