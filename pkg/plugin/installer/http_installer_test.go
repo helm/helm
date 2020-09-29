@@ -20,9 +20,13 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/base64"
+	"fmt"
 	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"testing"
 
@@ -63,9 +67,24 @@ func TestStripName(t *testing.T) {
 	}
 }
 
+func mockArchiveServer() *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasSuffix(r.URL.Path, ".tar.gz") {
+			w.Header().Add("Content-Type", "text/html")
+			fmt.Fprintln(w, "broken")
+			return
+		}
+		w.Header().Add("Content-Type", "application/gzip")
+		fmt.Fprintln(w, "test")
+	}))
+}
+
 func TestHTTPInstaller(t *testing.T) {
 	defer ensure.HelmHome(t)()
-	source := "https://repo.localdomain/plugins/fake-plugin-0.0.1.tar.gz"
+
+	srv := mockArchiveServer()
+	defer srv.Close()
+	source := srv.URL + "/plugins/fake-plugin-0.0.1.tar.gz"
 
 	if err := os.MkdirAll(helmpath.DataPath("plugins"), 0755); err != nil {
 		t.Fatalf("Could not create %s: %s", helmpath.DataPath("plugins"), err)
@@ -111,7 +130,9 @@ func TestHTTPInstaller(t *testing.T) {
 
 func TestHTTPInstallerNonExistentVersion(t *testing.T) {
 	defer ensure.HelmHome(t)()
-	source := "https://repo.localdomain/plugins/fake-plugin-0.0.2.tar.gz"
+	srv := mockArchiveServer()
+	defer srv.Close()
+	source := srv.URL + "/plugins/fake-plugin-0.0.1.tar.gz"
 
 	if err := os.MkdirAll(helmpath.DataPath("plugins"), 0755); err != nil {
 		t.Fatalf("Could not create %s: %s", helmpath.DataPath("plugins"), err)
@@ -141,7 +162,9 @@ func TestHTTPInstallerNonExistentVersion(t *testing.T) {
 }
 
 func TestHTTPInstallerUpdate(t *testing.T) {
-	source := "https://repo.localdomain/plugins/fake-plugin-0.0.1.tar.gz"
+	srv := mockArchiveServer()
+	defer srv.Close()
+	source := srv.URL + "/plugins/fake-plugin-0.0.1.tar.gz"
 	defer ensure.HelmHome(t)()
 
 	if err := os.MkdirAll(helmpath.DataPath("plugins"), 0755); err != nil {
@@ -306,4 +329,27 @@ func TestCleanJoin(t *testing.T) {
 		}
 	}
 
+}
+
+func TestMediaTypeToExtension(t *testing.T) {
+
+	for mt, shouldPass := range map[string]bool{
+		"":                   false,
+		"application/gzip":   true,
+		"application/x-gzip": true,
+		"application/x-tgz":  true,
+		"application/x-gtar": true,
+		"application/json":   false,
+	} {
+		ext, ok := mediaTypeToExtension(mt)
+		if ok != shouldPass {
+			t.Errorf("Media type %q failed test", mt)
+		}
+		if shouldPass && ext == "" {
+			t.Errorf("Expected an extension but got empty string")
+		}
+		if !shouldPass && len(ext) != 0 {
+			t.Error("Expected extension to be empty for unrecognized type")
+		}
+	}
 }

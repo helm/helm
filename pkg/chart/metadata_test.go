@@ -48,12 +48,60 @@ func TestValidate(t *testing.T) {
 			&Metadata{Name: "test", APIVersion: "v2", Version: "1.0", Type: "application"},
 			nil,
 		},
+		{
+			&Metadata{
+				Name:       "test",
+				APIVersion: "v2",
+				Version:    "1.0",
+				Type:       "application",
+				Dependencies: []*Dependency{
+					{Name: "dependency", Alias: "legal-alias"},
+				},
+			},
+			nil,
+		},
+		{
+			&Metadata{
+				Name:       "test",
+				APIVersion: "v2",
+				Version:    "1.0",
+				Type:       "application",
+				Dependencies: []*Dependency{
+					{Name: "bad", Alias: "illegal alias"},
+				},
+			},
+			ValidationError("dependency \"bad\" has disallowed characters in the alias"),
+		},
 	}
 
 	for _, tt := range tests {
 		result := tt.md.Validate()
 		if result != tt.err {
-			t.Errorf("expected %s, got %s", tt.err, result)
+			t.Errorf("expected '%s', got '%s'", tt.err, result)
+		}
+	}
+}
+
+func TestValidateDependency(t *testing.T) {
+	dep := &Dependency{
+		Name: "example",
+	}
+	for value, shouldFail := range map[string]bool{
+		"abcdefghijklmenopQRSTUVWXYZ-0123456780_": false,
+		"-okay":      false,
+		"_okay":      false,
+		"- bad":      true,
+		" bad":       true,
+		"bad\nvalue": true,
+		"bad ":       true,
+		"bad$":       true,
+	} {
+		dep.Alias = value
+		res := validateDependency(dep)
+		if res != nil && !shouldFail {
+			t.Errorf("Failed on case %q", dep.Alias)
+		} else if res == nil && shouldFail {
+			t.Errorf("Expected failure for %q", dep.Alias)
 		}
 	}
 }

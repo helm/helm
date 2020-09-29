@@ -26,7 +26,7 @@ import (
 )
 
 func TestShowPreReleaseChart(t *testing.T) {
-	srv, err := repotest.NewTempServer("testdata/testcharts/*.tgz*")
+	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/testcharts/*.tgz*")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,6 +48,13 @@ func TestShowPreReleaseChart(t *testing.T) {
 			args:        "test/pre-release-chart",
 			fail:        true,
 			expectedErr: "failed to download \"test/pre-release-chart\"",
+		},
+		{
+			name:        "show pre-release chart",
+			args:        "test/pre-release-chart",
+			fail:        true,
+			flags:       "--version 1.0.0",
+			expectedErr: "failed to download \"test/pre-release-chart\" at version \"1.0.0\"",
 		},
 		{
 			name:  "show pre-release chart with 'devel' flag",

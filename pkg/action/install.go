@@ -654,8 +654,8 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		dl.Verify = downloader.VerifyAlways
 	}
 	if c.RepoURL != "" {
-		chartURL, err := repo.FindChartInAuthRepoURL(c.RepoURL, c.Username, c.Password, name, version,
-			c.CertFile, c.KeyFile, c.CaFile, getter.All(settings))
+		chartURL, err := repo.FindChartInAuthAndTLSRepoURL(c.RepoURL, c.Username, c.Password, name, version,
+			c.CertFile, c.KeyFile, c.CaFile, c.InsecureSkipTLSverify, getter.All(settings))
 		if err != nil {
 			return "", err
 		}
@@ -677,5 +677,9 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		return filename, err
 	}
 
-	return filename, errors.Errorf("failed to download %q (hint: running `helm repo update` may help)", name)
+	atVersion := ""
+	if version != "" {
+		atVersion = fmt.Sprintf(" at version %q", version)
+	}
+	return filename, errors.Errorf("failed to download %q%s (hint: running `helm repo update` may help)", name, atVersion)
 }

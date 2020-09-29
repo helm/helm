@@ -1,4 +1,5 @@
 BINDIR      := $(CURDIR)/bin
+INSTALL_PATH ?= /usr/local/bin
 DIST_DIRS   := find * -type d -exec
 TARGETS     := darwin/amd64 linux/amd64 linux/386 linux/arm linux/arm64 linux/ppc64le linux/s390x windows/amd64
 TARGET_OBJS ?= darwin-amd64.tar.gz darwin-amd64.tar.gz.sha256 darwin-amd64.tar.gz.sha256sum linux-amd64.tar.gz linux-amd64.tar.gz.sha256 linux-amd64.tar.gz.sha256sum linux-386.tar.gz linux-386.tar.gz.sha256 linux-386.tar.gz.sha256sum linux-arm.tar.gz linux-arm.tar.gz.sha256 linux-arm.tar.gz.sha256sum linux-arm64.tar.gz linux-arm64.tar.gz.sha256 linux-arm64.tar.gz.sha256sum linux-ppc64le.tar.gz linux-ppc64le.tar.gz.sha256 linux-ppc64le.tar.gz.sha256sum linux-s390x.tar.gz linux-s390x.tar.gz.sha256 linux-s390x.tar.gz.sha256sum windows-amd64.zip windows-amd64.zip.sha256 windows-amd64.zip.sha256sum
@@ -49,6 +50,7 @@ endif
 LDFLAGS += -X helm.sh/helm/v3/internal/version.metadata=${VERSION_METADATA}
 LDFLAGS += -X helm.sh/helm/v3/internal/version.gitCommit=${GIT_COMMIT}
 LDFLAGS += -X helm.sh/helm/v3/internal/version.gitTreeState=${GIT_DIRTY}
+LDFLAGS += $(EXT_LDFLAGS)
 
 .PHONY: all
 all: build
@@ -61,6 +63,13 @@ build: $(BINDIR)/$(BINNAME)
 
 $(BINDIR)/$(BINNAME): $(SRC)
 	GO111MODULE=on go build $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' -o '$(BINDIR)'/$(BINNAME) ./cmd/helm
+
+# ------------------------------------------------------------------------------
+#  install
+
+.PHONY: install
+install: build
+	@install "$(BINDIR)/$(BINNAME)" "$(INSTALL_PATH)/$(BINNAME)"
 
 # ------------------------------------------------------------------------------
 #  test
@@ -156,7 +165,7 @@ fetch-dist:
 
 .PHONY: sign
 sign:
-	for f in _dist/*.{gz,zip,sha256,sha256sum} ; do \
+	for f in $$(ls _dist/*.{gz,zip,sha256,sha256sum} 2>/dev/null) ; do \
 		gpg --armor --detach-sign $${f} ; \
 	done
 
@@ -169,7 +178,7 @@ sign:
 # removed in Helm v4.
 .PHONY: checksum
 checksum:
-	for f in _dist/*.{gz,zip} ; do \
+	for f in $$(ls _dist/*.{gz,zip} 2>/dev/null) ; do \
 		shasum -a 256 "$${f}" | sed 's/_dist\///' > "$${f}.sha256sum" ; \
 		shasum -a 256 "$${f}" | awk '{print $$1}' > "$${f}.sha256" ; \
 	done

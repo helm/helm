@@ -91,9 +91,12 @@ func newResponse(code int, obj runtime.Object) (*http.Response, error) {
 	return &http.Response{StatusCode: code, Header: header, Body: body}, nil
 }
 
-func newTestClient() *Client {
+func newTestClient(t *testing.T) *Client {
+	testFactory := cmdtesting.NewTestFactory()
+	t.Cleanup(testFactory.Cleanup)
+
 	return &Client{
-		Factory: cmdtesting.NewTestFactory().WithNamespace("default"),
+		Factory: testFactory.WithNamespace("default"),
 		Log:     nopLogger,
 	}
 }
@@ -107,7 +110,7 @@ func TestUpdate(t *testing.T) {
 
 	var actions []string
 
-	c := newTestClient()
+	c := newTestClient(t)
 	c.Factory.(*cmdtesting.TestFactory).UnstructuredClient = &fake.RESTClient{
 		NegotiatedSerializer: unstructuredSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
@@ -232,7 +235,7 @@ func TestBuild(t *testing.T) {
 		},
 	}
 
-	c := newTestClient()
+	c := newTestClient(t)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Test for an invalid manifest
@@ -279,7 +282,7 @@ func TestPerform(t *testing.T) {
 				return nil
 			}
 
-			c := newTestClient()
+			c := newTestClient(t)
 			infos, err := c.Build(tt.reader, false)
 			if err != nil && err.Error() != tt.errMessage {
 				t.Errorf("Error while building manifests: %v", err)

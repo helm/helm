@@ -205,6 +205,14 @@ func FindChartInRepoURL(repoURL, chartName, chartVersion, certFile, keyFile, caF
 // without adding repo to repositories, like FindChartInRepoURL,
 // but it also receives credentials for the chart repository.
 func FindChartInAuthRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile string, getters getter.Providers) (string, error) {
+	return FindChartInAuthAndTLSRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile, false, getters)
+}
+
+// FindChartInAuthAndTLSRepoURL finds chart in chart repository pointed by repoURL
+// without adding repo to repositories, like FindChartInRepoURL,
+// but it also receives credentials and TLS verify flag for the chart repository.
+// TODO Helm 4, FindChartInAuthAndTLSRepoURL should be integrated into FindChartInAuthRepoURL.
+func FindChartInAuthAndTLSRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile string, insecureSkipTLSverify bool, getters getter.Providers) (string, error) {
 
 	// Download and write the index file to a temporary location
 	buf := make([]byte, 20)
@@ -212,13 +220,14 @@ func FindChartInAuthRepoURL(repoURL, username, password, chartName, chartVersion
 	name := strings.ReplaceAll(base64.StdEncoding.EncodeToString(buf), "/", "-")
 
 	c := Entry{
-		URL:      repoURL,
-		Username: username,
-		Password: password,
-		CertFile: certFile,
-		KeyFile:  keyFile,
-		CAFile:   caFile,
-		Name:     name,
+		URL:                   repoURL,
+		Username:              username,
+		Password:              password,
+		CertFile:              certFile,
+		KeyFile:               keyFile,
+		CAFile:                caFile,
+		Name:                  name,
+		InsecureSkipTLSverify: insecureSkipTLSverify,
 	}
 	r, err := NewChartRepository(&c, getters)
 	if err != nil {

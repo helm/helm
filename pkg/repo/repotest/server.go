@@ -21,6 +21,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"testing"
 
 	"helm.sh/helm/v3/internal/tlsutil"
 
@@ -29,6 +30,19 @@ import (
 	"helm.sh/helm/v3/pkg/repo"
 )
 
+// NewTempServerWithCleanup creates a server inside of a temp dir.
+//
+// If the passed in string is not "", it will be treated as a shell glob, and files
+// will be copied from that path to the server's docroot.
+//
+// The caller is responsible for stopping the server.
+// The temp dir will be removed by testing package automatically when test finished.
+func NewTempServerWithCleanup(t *testing.T, glob string) (*Server, error) {
+	srv, err := NewTempServer(glob)
+	t.Cleanup(func() { os.RemoveAll(srv.docroot) })
+	return srv, err
+}
+
 // NewTempServer creates a server inside of a temp dir.
 //
 // If the passed in string is not "", it will be treated as a shell glob, and files
@@ -36,6 +50,8 @@ import (
 //
 // The caller is responsible for destroying the temp directory as well as stopping
 // the server.
+//
+// Deprecated: use NewTempServerWithCleanup
 func NewTempServer(glob string) (*Server, error) {
 	tdir, err := ioutil.TempDir("", "helm-repotest-")
 	if err != nil {

@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -184,7 +183,7 @@ func (o *searchRepoOptions) buildIndex() (*search.Index, error) {
 		f := filepath.Join(o.repoCacheDir, helmpath.CacheIndexFile(n))
 		ind, err := repo.LoadIndexFile(f)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "WARNING: Repo %q is corrupt or missing. Try 'helm repo update'.", n)
+			warning("Repo %q is corrupt or missing. Try 'helm repo update'.", n)
 			continue
 		}
 

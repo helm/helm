@@ -40,14 +40,6 @@ var (
 	releaseTimeSearch = regexp.MustCompile(`\.Release\.Time`)
 )
 
-// validName is a regular expression for names.
-//
-// This is different than action.ValidName. It conforms to the regular expression
-// `kubectl` says it uses, plus it disallows empty names.
-//
-// For details, see https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-var validName = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$`)
-
 // Templates lints the templates in the Linter.
 func Templates(linter *support.Linter, values map[string]interface{}, namespace string, strict bool) {
 	fpath := "templates/"
@@ -199,10 +191,10 @@ func validateMetadataName(obj *K8sYamlStruct) error {
 	}
 	// This will return an error if the characters do not abide by the standard OR if the
 	// name is left empty.
-	if validName.MatchString(obj.Metadata.Name) {
-		return nil
+	if err := chartutil.ValidateMetadataName(obj.Metadata.Name); err != nil {
+		return errors.Wrapf(err, "object name does not conform to Kubernetes naming requirements: %q", obj.Metadata.Name)
 	}
-	return fmt.Errorf("object name does not conform to Kubernetes naming requirements: %q", obj.Metadata.Name)
+	return nil
 }
 
 func validateNoCRDHooks(manifest []byte) error {

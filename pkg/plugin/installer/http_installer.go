@@ -59,6 +59,18 @@ var Extractors = map[string]Extractor{
 	".tgz":    &TarGzExtractor{},
 }
 
+// Convert a media type to an extractor extension.
+//
+// This should be refactored in Helm 4, combined with the extension-based mechanism.
+func mediaTypeToExtension(mt string) (string, bool) {
+	switch strings.ToLower(mt) {
+	case "application/gzip", "application/x-gzip", "application/x-tgz", "application/x-gtar":
+		return ".tgz", true
+	default:
+		return "", false
+	}
+}
+
 // NewExtractor creates a new extractor matching the source file name
 func NewExtractor(source string) (Extractor, error) {
 	for suffix, extractor := range Extractors {

@@ -59,7 +59,7 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 
 	found, err := plugin.FindPlugins(settings.PluginsDirectory)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to load plugins: %s", err)
+		fmt.Fprintf(os.Stderr, "failed to load plugins: %s\n", err)
 		return
 	}
 
@@ -154,7 +154,7 @@ func callPluginExecutable(pluginName string, main string, argv []string, out io.
 func manuallyProcessArgs(args []string) ([]string, []string) {
 	known := []string{}
 	unknown := []string{}
-	kvargs := []string{"--kube-context", "--namespace", "-n", "--kubeconfig", "--kube-apiserver", "--kube-token", "--registry-config", "--repository-cache", "--repository-config"}
+	kvargs := []string{"--kube-context", "--namespace", "-n", "--kubeconfig", "--kube-apiserver", "--kube-token", "--kube-as-user", "--kube-as-group", "--registry-config", "--repository-cache", "--repository-config"}
 	knownArg := func(a string) bool {
 		for _, pre := range kvargs {
 			if strings.HasPrefix(a, pre+"=") {
