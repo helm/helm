@@ -19,7 +19,8 @@ limitations under the License.
 package main
 
 import (
-	"bufio"
+	"bytes"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -27,15 +28,27 @@ import (
 	"testing"
 )
 
-func TestCheckPerms(t *testing.T) {
-	// NOTE(bacongobbler): have to open a new file handler here as the default os.Sterr cannot be read from
-	stderr, err := os.Open("/dev/stderr")
+func checkPermsStderr() (string, error) {
+	r, w, err := os.Pipe()
 	if err != nil {
-		t.Fatalf("could not open /dev/stderr for reading: %s", err)
+		return "", err
 	}
-	defer stderr.Close()
-	reader := bufio.NewReader(stderr)
 
+	stderr := os.Stderr
+	os.Stderr = w
+	defer func() {
+		os.Stderr = stderr
+	}()
+
+	checkPerms()
+	w.Close()
+
+	var text bytes.Buffer
+	io.Copy(&text, r)
+	return text.String(), nil
+}
+
+func TestCheckPerms(t *testing.T) {
 	tdir, err := ioutil.TempDir("", "helmtest")
 	if err != nil {
 		t.Fatal(err)
@@ -51,8 +64,7 @@ func TestCheckPerms(t *testing.T) {
 	settings.KubeConfig = tfile
 	defer func() { settings.KubeConfig = tconfig }()
 
-	checkPerms()
-	text, err := reader.ReadString('\n')
+	text, err := checkPermsStderr()
 	if err != nil {
 		t.Fatalf("could not read from stderr: %s", err)
 	}
@@ -64,8 +76,7 @@ func TestCheckPerms(t *testing.T) {
 	if err := fh.Chmod(0404); err != nil {
 		t.Errorf("Could not change mode on file: %s", err)
 	}
-	checkPerms()
-	text, err = reader.ReadString('\n')
+	text, err = checkPermsStderr()
 	if err != nil {
 		t.Fatalf("could not read from stderr: %s", err)
 	}
