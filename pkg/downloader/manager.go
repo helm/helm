@@ -666,7 +666,7 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 	}
 
 	err = errors.Errorf("chart %s not found in %s: %s", name, repoURL, err)
-	return
+	return url, username, password, err
 }
 
 // findEntryByName finds an entry in the chart repository whose name matches the given name.
