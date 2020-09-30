@@ -120,7 +120,8 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 		return nil, "", err
 	}
 
-	root.SetOutput(buf)
+	root.SetOut(buf)
+	root.SetErr(buf)
 	root.SetArgs(args)
 
 	oldStdin := os.Stdin

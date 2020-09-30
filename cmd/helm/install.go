@@ -17,11 +17,11 @@ limitations under the License.
 package main
 
 import (
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"strings"
+	"log"
 	"time"
 
 	"github.com/pkg/errors"
