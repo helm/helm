@@ -17,13 +17,11 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"io"
-<<<<<<< HEAD
 	"io/ioutil"
-	"strings"
-=======
 	"log"
->>>>>>> feat(comp): Provide completion for --version flag
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
