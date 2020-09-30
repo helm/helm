@@ -34,7 +34,6 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/internal/resolver"
-	"helm.sh/helm/v3/internal/third_party/dep/fs"
 	"helm.sh/helm/v3/internal/urlutil"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -808,20 +807,6 @@ func tarFromLocalDir(chartpath, name, repo, version string) (string, error) {
 	}
 
 	return "", errors.Errorf("can't get a valid version for dependency %s", name)
-}
-
-// move files from tmppath to destpath
-func move(tmpPath, destPath string) error {
-	files, _ := ioutil.ReadDir(tmpPath)
-	for _, file := range files {
-		filename := file.Name()
-		tmpfile := filepath.Join(tmpPath, filename)
-		destfile := filepath.Join(destPath, filename)
-		if err := fs.RenameWithFallback(tmpfile, destfile); err != nil {
-			return errors.Wrap(err, "unable to move local charts to charts dir")
-		}
-	}
-	return nil
 }
 
 // The prefix to use for cache keys created by the manager for repo names
