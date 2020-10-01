@@ -83,6 +83,10 @@ type IndexFile struct {
 	Generated  time.Time                `json:"generated"`
 	Entries    map[string]ChartVersions `json:"entries"`
 	PublicKeys []string                 `json:"publicKeys,omitempty"`
+
+	// Annotations are additional mappings uninterpreted by Helm. They are made available for
+	// other applications to add information to the index file.
+	Annotations map[string]string `json:"annotations,omitempty"`
 }
 
 // NewIndexFile initializes an index.
