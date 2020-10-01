@@ -40,5 +40,5 @@ func (a *ChartPull) Run(out io.Writer, ref string) error {
 	if err != nil {
 		return err
 	}
-	return a.cfg.RegistryClient.PullChart(r)
+	return a.cfg.RegistryClient.PullChartToCache(r)
 }

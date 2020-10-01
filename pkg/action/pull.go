@@ -43,13 +43,15 @@ type Pull struct {
 	Devel       bool
 	Untar       bool
 	VerifyLater bool
+	OCI         bool
 	UntarDir    string
 	DestDir     string
+	cfg         *Configuration
 }
 
 // NewPull creates a new Pull object with the given configuration.
-func NewPull() *Pull {
-	return &Pull{}
+func NewPull(cfg *Configuration) *Pull {
+	return &Pull{cfg: cfg}
 }
 
 // Run executes 'helm pull' against the given release.
@@ -68,6 +70,16 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		},
 		RepositoryConfig: p.Settings.RepositoryConfig,
 		RepositoryCache:  p.Settings.RepositoryCache,
+	}
+
+	if p.OCI {
+		if p.Version == "" {
+			return out.String(), errors.Errorf("--version flag is explicitly required for OCI registries")
+		}
+
+		c.Options = append(c.Options,
+			getter.WithRegistryClient(p.cfg.RegistryClient),
+			getter.WithTagName(p.Version))
 	}
 
 	if p.Verify {
@@ -123,6 +135,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 			_, chartName := filepath.Split(chartRef)
 			udCheck = filepath.Join(udCheck, chartName)
 		}
+
 		if _, err := os.Stat(udCheck); err != nil {
 			if err := os.MkdirAll(udCheck, 0755); err != nil {
 				return out.String(), errors.Wrap(err, "failed to untar (mkdir)")
