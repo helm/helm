@@ -17,8 +17,11 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -29,6 +32,7 @@ import (
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/cli/files"
 	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/downloader"
@@ -151,6 +155,7 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 	f.BoolVar(&client.SubNotes, "render-subchart-notes", false, "if set, render subchart notes along with the parent")
 	addValueOptionsFlags(f, valueOpts)
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
+	addExternalFilesFlags(f, &client.ExternalFiles)
 
 	err := cmd.RegisterFlagCompletionFunc("version", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		requiredArgs := 2
@@ -237,6 +242,11 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		}
 	}
 
+	err = loadExternalFiles(chartRequested, client.ExternalFiles)
+	if err != nil {
+		return nil, err
+	}
+
 	client.Namespace = settings.Namespace()
 	return client.Run(chartRequested, vals)
 }
@@ -250,6 +260,48 @@ func checkIfInstallable(ch *chart.Chart) error {
 		return nil
 	}
 	return errors.Errorf("%s charts are not installable", ch.Metadata.Type)
+}
+
+func loadExternalFiles(ch *chart.Chart, exFiles files.ExternalFiles) error {
+	var errs []string
+	fs := make(map[string]string)
+
+	for _, s := range exFiles.Files {
+		if err := files.ParseIntoString(s, fs); err != nil {
+			debug(fmt.Sprintf("error parsing include-file option %s: %v", s, err))
+			errs = append(errs, fmt.Sprintf("%s (parse error)", s))
+		}
+	}
+
+	for _, g := range exFiles.Globs {
+		if err := files.ParseIntoString(g, fs); err != nil {
+			debug(fmt.Sprintf("error parsing include-dir option %s: %v", g, err))
+			errs = append(errs, fmt.Sprintf("%s (parse error)", g))
+		}
+	}
+
+	for n, p := range fs {
+		allPaths, err := loader.ExpandLocalPath(n, p)
+		debug(fmt.Sprintf("%s expanded to: %v", p, allPaths))
+		if err != nil {
+			debug(fmt.Sprintf("error loading external path %s: %v", p, err))
+			errs = append(errs, fmt.Sprintf("%s (path not accessible)", p))
+		}
+
+		for name, fp := range allPaths {
+			byt, err := ioutil.ReadFile(fp)
+			if err != nil {
+				errs = append(errs, fmt.Sprintf("%s (not readable)", fp))
+			} else {
+				ch.Files = append(ch.Files, &chart.File{Name: name, Data: byt})
+			}
+		}
+	}
+
+	if len(errs) > 0 {
+		return errors.New(fmt.Sprint("Failed to load external files: ", strings.Join(errs, "; ")))
+	}
+	return nil
 }
 
 // Provide dynamic auto-completion for the install and template commands

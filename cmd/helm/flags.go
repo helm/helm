@@ -28,6 +28,7 @@ import (
 	"k8s.io/klog"
 
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/cli/files"
 	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/helmpath"
@@ -56,6 +57,11 @@ func addChartPathOptionsFlags(f *pflag.FlagSet, c *action.ChartPathOptions) {
 	f.StringVar(&c.KeyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.BoolVar(&c.InsecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the chart download")
 	f.StringVar(&c.CaFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+}
+
+func addExternalFilesFlags(f *pflag.FlagSet, v *files.ExternalFiles) {
+	f.StringArrayVar(&v.Files, "include-file", []string{}, "paths to local files to add during chart installation")
+	f.StringArrayVar(&v.Globs, "include-dir", []string{}, "paths or globs to local dirs to add during chart installation")
 }
 
 // bindOutputFlag will add the output flag to the given command and bind the
