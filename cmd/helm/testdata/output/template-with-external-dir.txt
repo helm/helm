@@ -17,6 +17,9 @@ metadata:
     # This makes it easy to audit chart usage.
     helm.sh/chart: "configmap-0.1.0"
 data:
-  external.1.conf: glob-external-1
-  external.2.conf: glob-external-2
-  external.txt: out-of-chart-dir
+  external.1.conf: |
+    glob-external-1
+  external.2.conf: |
+    glob-external-2
+  external.txt: |
+    out-of-chart-dir
