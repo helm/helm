@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "{{.Release.Name}}-{{.Values.Name}}"
+  labels:
+    # The "app.kubernetes.io/managed-by" label is used to track which tool
+    # deployed a given chart. It is useful for admins who want to see what
+    # releases a particular tool is responsible for.
+    app.kubernetes.io/managed-by: {{.Release.Service | quote }}
+    # The "app.kubernetes.io/instance" convention makes it easy to tie a release
+    # to all of the Kubernetes resources that were created as part of that
+    # release.
+    app.kubernetes.io/instance: {{.Release.Name | quote }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
+    # This makes it easy to audit chart usage.
+    helm.sh/chart: "{{.Chart.Name}}-{{.Chart.Version}}"
+data:
+{{- if .Values.external }}
+{{ (.Files.Glob .Values.external).AsConfig | indent 2 }}
+{{- end }}
+{{- if .Values.glob.enabled }}
+{{ (.Files.Glob .Values.glob.path).AsConfig | indent 2 }}
+{{- end }}

@@ -1,0 +1,4 @@
+external: false
+glob:
+  enabled: false
+  path: "glob/*"

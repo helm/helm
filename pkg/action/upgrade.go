@@ -30,6 +30,7 @@ import (
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/cli/files"
 	"helm.sh/helm/v3/pkg/kube"
 	"helm.sh/helm/v3/pkg/postrender"
 	"helm.sh/helm/v3/pkg/release"
@@ -101,6 +102,7 @@ type Upgrade struct {
 	DisableOpenAPIValidation bool
 	// Get missing dependencies
 	DependencyUpdate bool
+	ExternalFiles            files.ExternalFiles
 	// Lock to control raceconditions when the process receives a SIGTERM
 	Lock sync.Mutex
 }

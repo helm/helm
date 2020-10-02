@@ -80,6 +80,11 @@ func main() {
 		}
 	})
 
+	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), os.Getenv("HELM_DRIVER"), debug); err != nil {
+		debug("%+v", err)
+		os.Exit(1)
+	}
+
 	if err := cmd.Execute(); err != nil {
 		debug("%+v", err)
 		switch e := err.(type) {
