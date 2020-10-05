@@ -49,9 +49,27 @@ type Pull struct {
 	cfg         *Configuration
 }
 
-// NewPull creates a new Pull object with the given configuration.
-func NewPull(cfg *Configuration) *Pull {
-	return &Pull{cfg: cfg}
+type PullOpt func(*Pull)
+
+func WithConfig(cfg *Configuration) PullOpt {
+	return func(p *Pull) {
+		p.cfg = cfg
+	}
+}
+
+// NewPull creates a new Pull object.
+func NewPull() *Pull {
+	return NewPullWithOpts()
+}
+
+// NewPull creates a new pull, with configuration options.
+func NewPullWithOpts(opts ...PullOpt) *Pull {
+	p := &Pull{}
+	for _, fn := range opts {
+		fn(p)
+	}
+
+	return p
 }
 
 // Run executes 'helm pull' against the given release.

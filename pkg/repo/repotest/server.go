@@ -19,7 +19,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -27,23 +26,21 @@ import (
 	"testing"
 	"time"
 
-	"helm.sh/helm/v3/internal/tlsutil"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/repo"
-
-	"sigs.k8s.io/yaml"
-
 	auth "github.com/deislabs/oras/pkg/auth/docker"
 	"github.com/docker/distribution/configuration"
 	"github.com/docker/distribution/registry"
 	_ "github.com/docker/distribution/registry/auth/htpasswd"           // used for docker test registry
 	_ "github.com/docker/distribution/registry/storage/driver/inmemory" // used for docker test registry
+	"github.com/phayes/freeport"
+	"golang.org/x/crypto/bcrypt"
+	"sigs.k8s.io/yaml"
 
 	ociRegistry "helm.sh/helm/v3/internal/experimental/registry"
-
-	"golang.org/x/crypto/bcrypt"
+	"helm.sh/helm/v3/internal/tlsutil"
+	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/repo"
 )
 
 // NewTempServerWithCleanup creates a server inside of a temp dir.
@@ -96,7 +93,7 @@ func NewOCIServer(t *testing.T, dir string) (*OCIServer, error) {
 
 	// Registry config
 	config := &configuration.Configuration{}
-	port, err := getFreePort()
+	port, err := freeport.GetFreePort()
 	if err != nil {
 		t.Fatalf("error finding free port for test registry")
 	}
@@ -403,18 +400,4 @@ func setTestingRepository(url, fname string) error {
 		URL:  url,
 	})
 	return r.WriteFile(fname, 0644)
-}
-
-func getFreePort() (int, error) {
-	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
-	if err != nil {
-		return 0, err
-	}
-
-	l, err := net.ListenTCP("tcp", addr)
-	if err != nil {
-		return 0, err
-	}
-	defer l.Close()
-	return l.Addr().(*net.TCPAddr).Port, nil
 }

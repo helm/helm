@@ -25,16 +25,15 @@ import (
 	"net/http"
 	"sort"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/helmpath"
-
-	"github.com/deislabs/oras/pkg/content"
-
 	auth "github.com/deislabs/oras/pkg/auth/docker"
+	"github.com/deislabs/oras/pkg/content"
 	"github.com/deislabs/oras/pkg/oras"
 	"github.com/gosuri/uitable"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
+
+	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/helmpath"
 )
 
 const (
@@ -197,6 +196,9 @@ func (c *Client) PullChart(ref *Reference) (*bytes.Buffer, error) {
 	return buf, nil
 }
 
+// PullChartToCache pulls a chart from an OCI Registry to the Registry Cache.
+// This function is needed for `helm chart pull`, which is experimental and will be deprecated soon.
+// Likewise, the Registry cache will soon be deprecated as will this function.
 func (c *Client) PullChartToCache(ref *Reference) error {
 	if ref.Tag == "" {
 		return errors.New("tag explicitly required")

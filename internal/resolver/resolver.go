@@ -23,15 +23,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
+	"github.com/pkg/errors"
+
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/gates"
 	"helm.sh/helm/v3/pkg/helmpath"
 	"helm.sh/helm/v3/pkg/provenance"
 	"helm.sh/helm/v3/pkg/repo"
-
-	"github.com/Masterminds/semver/v3"
-	"github.com/pkg/errors"
 )
 
 const FeatureGateOCI = gates.Gate("HELM_EXPERIMENTAL_OCI")
