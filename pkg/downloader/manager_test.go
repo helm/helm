@@ -17,6 +17,7 @@ package downloader
 
 import (
 	"bytes"
+	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -178,6 +179,42 @@ func TestGetRepoNames(t *testing.T) {
 		if !eq {
 			t.Errorf("%s: expected map %v, got %v", tt.name, l, tt.name)
 		}
+	}
+}
+
+func TestDownloadAll(t *testing.T) {
+	// If we run downloadAll without defer than this test will fail
+	// 1st downloadAll creates charts folder
+	// 2nd downloadAll copies existing charts to tmpcharts and fails but tmpcharts folder will be removed
+	// 3rd downloadAll again runs with another dependency
+	b := bytes.NewBuffer(nil)
+	m := &Manager{
+		Out:              b,
+		RepositoryConfig: repoConfig,
+		RepositoryCache:  repoCache,
+	}
+	// remove charts folder at the end of test
+	defer os.RemoveAll("charts")
+
+	// call downloadAll so that it will create charts directory
+	err := m.downloadAll([]*chart.Dependency{
+		{Name: "local-dep", Repository: "file://./testdata/signtest", Version: "0.1.0"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// this will copy charts directory content to tmp directory and recreates new charts
+	err = m.downloadAll([]*chart.Dependency{
+		{Name: "local-subchart", Repository: ""},
+	})
+	if err == nil {
+		t.Fatal(err)
+	}
+	err = m.downloadAll([]*chart.Dependency{
+		{Name: "local-dep", Repository: "file://./testdata/signtest", Version: "0.1.0"},
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
