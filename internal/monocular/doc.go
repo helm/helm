@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 // Package monocular contains the logic for interacting with monocular instances
-// like the Helm Hub.
+// like the original version of Helm Hub.
 //
 // This is a library for interacting with monocular
 package monocular

@@ -30,15 +30,16 @@ import (
 )
 
 const searchHubDesc = `
-Search the Helm Hub or an instance of Monocular for Helm charts.
+Search Artifact Hub or an instance of Monocular for Helm charts.
 
-The Helm Hub provides a centralized search for publicly available distributed
-charts. It is maintained by the Helm project. It can be visited at
-https://hub.helm.sh
+Artifact Hub (https://artifacthub.io/) provides a centralized search for
+publicly available packages and configurations for CNCF projects, including
+Helm charts. On GitHub: https://github.com/artifacthub/hub
+
 
 Monocular is a web-based application that enables the search and discovery of
-charts from multiple Helm Chart repositories. It is the codebase that powers the
-Helm Hub. You can find it at https://github.com/helm/monocular
+charts from multiple Helm Chart repositories.
+On GitHub: https://github.com/helm/monocular
 `
 
 type searchHubOptions struct {
@@ -52,7 +53,7 @@ func newSearchHubCmd(out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "hub [keyword]",
-		Short: "search for charts in the Helm Hub or an instance of Monocular",
+		Short: "search for charts in the Artifact Hub or an instance of Monocular",
 		Long:  searchHubDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return o.run(out, args)
