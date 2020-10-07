@@ -142,6 +142,18 @@ func TestRepoAddConcurrentDirNotExist(t *testing.T) {
 	repoAddConcurrent(t, testName, repoFile)
 }
 
+func TestRepoAddConcurrentNoFileExtension(t *testing.T) {
+	const testName = "test-name-3"
+	repoFile := filepath.Join(ensure.TempDir(t), "repositories")
+	repoAddConcurrent(t, testName, repoFile)
+}
+
+func TestRepoAddConcurrentHiddenFile(t *testing.T) {
+	const testName = "test-name-4"
+	repoFile := filepath.Join(ensure.TempDir(t), ".repositories")
+	repoAddConcurrent(t, testName, repoFile)
+}
+
 func repoAddConcurrent(t *testing.T, testName, repoFile string) {
 	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
 	if err != nil {
