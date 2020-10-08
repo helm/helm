@@ -35,6 +35,7 @@ import (
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/gates"
+	"helm.sh/helm/v3/pkg/kube"
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage/driver"
@@ -130,7 +131,9 @@ func loadReleasesInMemory(actionConfig *action.Configuration) {
 		return
 	}
 
-	actionConfig.KubeClient = &kubefake.PrintingKubeClient{Out: ioutil.Discard}
+	actionConfig.GetKubeClient = func(namespace string) kube.Interface {
+		return &kubefake.PrintingKubeClient{Out: ioutil.Discard}
+	}
 
 	for _, path := range filePaths {
 		b, err := ioutil.ReadFile(path)

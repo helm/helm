@@ -40,7 +40,8 @@ import (
 //
 // It provides the implementation of 'helm upgrade'.
 type Upgrade struct {
-	cfg *Configuration
+	cfg    *Configuration
+	client kube.Interface
 
 	ChartPathOptions
 
@@ -107,7 +108,9 @@ func NewUpgrade(cfg *Configuration) *Upgrade {
 
 // Run executes the upgrade on the given release.
 func (u *Upgrade) Run(name string, chart *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
-	if err := u.cfg.KubeClient.IsReachable(); err != nil {
+	u.client = u.cfg.GetKubeClient(u.Namespace)
+
+	if err := u.client.IsReachable(); err != nil {
 		return nil, err
 	}
 
@@ -235,12 +238,12 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 	if len(notesTxt) > 0 {
 		upgradedRelease.Info.Notes = notesTxt
 	}
-	err = validateManifest(u.cfg.KubeClient, manifestDoc.Bytes(), !u.DisableOpenAPIValidation)
+	err = validateManifest(u.client, manifestDoc.Bytes(), !u.DisableOpenAPIValidation)
 	return currentRelease, upgradedRelease, err
 }
 
 func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Release) (*release.Release, error) {
-	current, err := u.cfg.KubeClient.Build(bytes.NewBufferString(originalRelease.Manifest), false)
+	current, err := u.client.Build(bytes.NewBufferString(originalRelease.Manifest), false)
 	if err != nil {
 		// Checking for removed Kubernetes API error so can provide a more informative error message to the user
 		// Ref: https://github.com/helm/helm/issues/7219
@@ -251,7 +254,7 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 		}
 		return upgradedRelease, errors.Wrap(err, "unable to build kubernetes objects from current release manifest")
 	}
-	target, err := u.cfg.KubeClient.Build(bytes.NewBufferString(upgradedRelease.Manifest), !u.DisableOpenAPIValidation)
+	target, err := u.client.Build(bytes.NewBufferString(upgradedRelease.Manifest), !u.DisableOpenAPIValidation)
 	if err != nil {
 		return upgradedRelease, errors.Wrap(err, "unable to build kubernetes objects from new release manifest")
 	}
@@ -312,7 +315,7 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 		u.cfg.Log("upgrade hooks disabled for %s", upgradedRelease.Name)
 	}
 
-	results, err := u.cfg.KubeClient.Update(current, target, u.Force)
+	results, err := u.client.Update(current, target, u.Force)
 	if err != nil {
 		u.cfg.recordRelease(originalRelease)
 		return u.failRelease(upgradedRelease, results.Created, err)
@@ -329,7 +332,7 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 	}
 
 	if u.Wait {
-		if err := u.cfg.KubeClient.Wait(target, u.Timeout); err != nil {
+		if err := u.client.Wait(target, u.Timeout); err != nil {
 			u.cfg.recordRelease(originalRelease)
 			return u.failRelease(upgradedRelease, results.Created, err)
 		}
@@ -364,7 +367,7 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 	u.cfg.recordRelease(rel)
 	if u.CleanupOnFail && len(created) > 0 {
 		u.cfg.Log("Cleanup on fail set, cleaning up %d resources", len(created))
-		_, errs := u.cfg.KubeClient.Delete(created)
+		_, errs := u.client.Delete(created)
 		if errs != nil {
 			var errorList []string
 			for _, e := range errs {

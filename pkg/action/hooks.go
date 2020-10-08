@@ -55,7 +55,8 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 			return err
 		}
 
-		resources, err := cfg.KubeClient.Build(bytes.NewBufferString(h.Manifest), true)
+		client := cfg.GetKubeClient(rl.Namespace)
+		resources, err := client.Build(bytes.NewBufferString(h.Manifest), true)
 		if err != nil {
 			return errors.Wrapf(err, "unable to build kubernetes object for %s hook %s", hook, h.Path)
 		}
@@ -73,14 +74,14 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		h.LastRun.Phase = release.HookPhaseUnknown
 
 		// Create hook resources
-		if _, err := cfg.KubeClient.Create(resources); err != nil {
+		if _, err := client.Create(resources); err != nil {
 			h.LastRun.CompletedAt = helmtime.Now()
 			h.LastRun.Phase = release.HookPhaseFailed
 			return errors.Wrapf(err, "warning: Hook %s %s failed", hook, h.Path)
 		}
 
 		// Watch hook resources until they have completed
-		err = cfg.KubeClient.WatchUntilReady(resources, timeout)
+		err = client.WatchUntilReady(resources, timeout)
 		// Note the time of success/failure
 		h.LastRun.CompletedAt = helmtime.Now()
 		// Mark hook as succeeded or failed
@@ -127,11 +128,12 @@ func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.Hoo
 		return nil
 	}
 	if hookHasDeletePolicy(h, policy) {
-		resources, err := cfg.KubeClient.Build(bytes.NewBufferString(h.Manifest), false)
+		client := cfg.GetKubeClient("")
+		resources, err := client.Build(bytes.NewBufferString(h.Manifest), false)
 		if err != nil {
 			return errors.Wrapf(err, "unable to build kubernetes object for deleting hook %s", h.Path)
 		}
-		_, errs := cfg.KubeClient.Delete(resources)
+		_, errs := client.Delete(resources)
 		if len(errs) > 0 {
 			return errors.New(joinErrors(errs))
 		}

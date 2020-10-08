@@ -42,7 +42,7 @@ func NewHistory(cfg *Configuration) *History {
 
 // Run executes 'helm history' against the given release.
 func (h *History) Run(name string) ([]*release.Release, error) {
-	if err := h.cfg.KubeClient.IsReachable(); err != nil {
+	if err := h.cfg.GetKubeClient("").IsReachable(); err != nil {
 		return nil, err
 	}
 

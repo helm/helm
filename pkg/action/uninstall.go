@@ -50,7 +50,7 @@ func NewUninstall(cfg *Configuration) *Uninstall {
 
 // Run uninstalls the given release.
 func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) {
-	if err := u.cfg.KubeClient.IsReachable(); err != nil {
+	if err := u.cfg.GetKubeClient("").IsReachable(); err != nil {
 		return nil, err
 	}
 
@@ -197,12 +197,14 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (string, []error) {
 		builder.WriteString("\n---\n" + file.Content)
 	}
 
-	resources, err := u.cfg.KubeClient.Build(strings.NewReader(builder.String()), false)
+	client := u.cfg.GetKubeClient(rel.Namespace)
+
+	resources, err := client.Build(strings.NewReader(builder.String()), false)
 	if err != nil {
 		return "", []error{errors.Wrap(err, "unable to build kubernetes objects for delete")}
 	}
 	if len(resources) > 0 {
-		_, errs = u.cfg.KubeClient.Delete(resources)
+		_, errs = client.Delete(resources)
 	}
 	return kept, errs
 }

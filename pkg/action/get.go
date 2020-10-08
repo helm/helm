@@ -39,7 +39,7 @@ func NewGet(cfg *Configuration) *Get {
 
 // Run executes 'helm get' against the given release.
 func (g *Get) Run(name string) (*release.Release, error) {
-	if err := g.cfg.KubeClient.IsReachable(); err != nil {
+	if err := g.cfg.GetKubeClient("").IsReachable(); err != nil {
 		return nil, err
 	}
 

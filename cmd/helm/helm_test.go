@@ -112,11 +112,11 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 	fake := &kubefake.PrintingKubeClient{Out: ioutil.Discard}
 
 	actionConfig := &action.Configuration{
-		Do: func(namespace string) kube.Interface {
+		GetKubeClient: func(namespace string) kube.Interface {
 			return fake
 		},
 		Releases:     store,
-		KubeClient:   fake,
+		KubeClient:   nil,
 		Capabilities: chartutil.DefaultCapabilities,
 		Log:          func(format string, v ...interface{}) {},
 	}

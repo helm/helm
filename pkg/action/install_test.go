@@ -31,7 +31,6 @@ import (
 	"helm.sh/helm/v3/internal/test"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/kube"
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage/driver"
@@ -47,9 +46,6 @@ type nameTemplateTestCase struct {
 func installAction(t *testing.T) *Install {
 	config := actionConfigFixture(t)
 	instAction := NewInstall(config)
-	instAction.cfg.Do = func(namespace string) kube.Interface {
-		return config.KubeClient
-	}
 	instAction.Namespace = "spaced"
 	instAction.ReleaseName = "test-install-release"
 
@@ -301,9 +297,9 @@ func TestInstallRelease_FailedHooks(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "failed-hooks"
-	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+	failer := instAction.cfg.GetKubeClient("").(*kubefake.FailingKubeClient)
 	failer.WatchUntilReadyError = fmt.Errorf("Failed watch")
-	instAction.cfg.KubeClient = failer
+	// instAction.cfg.KubeClient = failer
 
 	vals := map[string]interface{}{}
 	res, err := instAction.Run(buildChart(), vals)
@@ -354,9 +350,9 @@ func TestInstallRelease_Wait(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "come-fail-away"
-	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+	failer := instAction.cfg.GetKubeClient("").(*kubefake.FailingKubeClient)
 	failer.WaitError = fmt.Errorf("I timed out")
-	instAction.cfg.KubeClient = failer
+	// instAction.cfg.KubeClient = failer
 	instAction.Wait = true
 	vals := map[string]interface{}{}
 
@@ -372,9 +368,9 @@ func TestInstallRelease_Atomic(t *testing.T) {
 	t.Run("atomic uninstall succeeds", func(t *testing.T) {
 		instAction := installAction(t)
 		instAction.ReleaseName = "come-fail-away"
-		failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+		failer := instAction.cfg.GetKubeClient("").(*kubefake.FailingKubeClient)
 		failer.WaitError = fmt.Errorf("I timed out")
-		instAction.cfg.KubeClient = failer
+		// instAction.cfg.KubeClient = failer
 		instAction.Atomic = true
 		vals := map[string]interface{}{}
 
@@ -392,10 +388,10 @@ func TestInstallRelease_Atomic(t *testing.T) {
 	t.Run("atomic uninstall fails", func(t *testing.T) {
 		instAction := installAction(t)
 		instAction.ReleaseName = "come-fail-away-with-me"
-		failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+		failer := instAction.cfg.GetKubeClient("").(*kubefake.FailingKubeClient)
 		failer.WaitError = fmt.Errorf("I timed out")
 		failer.DeleteError = fmt.Errorf("uninstall fail")
-		instAction.cfg.KubeClient = failer
+		// instAction.cfg.KubeClient = failer
 		instAction.Atomic = true
 		vals := map[string]interface{}{}
 

@@ -55,7 +55,7 @@ func NewRollback(cfg *Configuration) *Rollback {
 
 // Run executes 'helm rollback' against the given release.
 func (r *Rollback) Run(name string) error {
-	if err := r.cfg.KubeClient.IsReachable(); err != nil {
+	if err := r.cfg.GetKubeClient("").IsReachable(); err != nil {
 		return err
 	}
 
@@ -145,11 +145,13 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		return targetRelease, nil
 	}
 
-	current, err := r.cfg.KubeClient.Build(bytes.NewBufferString(currentRelease.Manifest), false)
+	client := r.cfg.GetKubeClient(currentRelease.Namespace)
+
+	current, err := client.Build(bytes.NewBufferString(currentRelease.Manifest), false)
 	if err != nil {
 		return targetRelease, errors.Wrap(err, "unable to build kubernetes objects from current release manifest")
 	}
-	target, err := r.cfg.KubeClient.Build(bytes.NewBufferString(targetRelease.Manifest), false)
+	target, err := client.Build(bytes.NewBufferString(targetRelease.Manifest), false)
 	if err != nil {
 		return targetRelease, errors.Wrap(err, "unable to build kubernetes objects from new release manifest")
 	}
@@ -163,7 +165,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		r.cfg.Log("rollback hooks disabled for %s", targetRelease.Name)
 	}
 
-	results, err := r.cfg.KubeClient.Update(current, target, r.Force)
+	results, err := client.Update(current, target, r.Force)
 
 	if err != nil {
 		msg := fmt.Sprintf("Rollback %q failed: %s", targetRelease.Name, err)
@@ -175,7 +177,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		r.cfg.recordRelease(targetRelease)
 		if r.CleanupOnFail {
 			r.cfg.Log("Cleanup on fail set, cleaning up %d resources", len(results.Created))
-			_, errs := r.cfg.KubeClient.Delete(results.Created)
+			_, errs := client.Delete(results.Created)
 			if errs != nil {
 				var errorList []string
 				for _, e := range errs {
@@ -199,7 +201,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 	}
 
 	if r.Wait {
-		if err := r.cfg.KubeClient.Wait(target, r.Timeout); err != nil {
+		if err := client.Wait(target, r.Timeout); err != nil {
 			targetRelease.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", targetRelease.Name, err.Error()))
 			r.cfg.recordRelease(currentRelease)
 			r.cfg.recordRelease(targetRelease)

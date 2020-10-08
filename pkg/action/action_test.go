@@ -30,6 +30,7 @@ import (
 	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/kube"
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage"
@@ -80,9 +81,12 @@ func actionConfigFixture(t *testing.T) *Configuration {
 		t.Fatal(err)
 	}
 
+	fake := &kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: ioutil.Discard}}
 	return &Configuration{
-		Releases:       storage.Init(driver.NewMemory()),
-		KubeClient:     &kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: ioutil.Discard}},
+		Releases: storage.Init(driver.NewMemory()),
+		GetKubeClient: func(namespace string) kube.Interface {
+			return fake
+		},
 		Capabilities:   chartutil.DefaultCapabilities,
 		RegistryClient: registryClient,
 		Log: func(format string, v ...interface{}) {

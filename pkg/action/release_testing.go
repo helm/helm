@@ -48,7 +48,7 @@ func NewReleaseTesting(cfg *Configuration) *ReleaseTesting {
 
 // Run executes 'helm test' against the given release.
 func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
-	if err := r.cfg.KubeClient.IsReachable(); err != nil {
+	if err := r.cfg.GetKubeClient("").IsReachable(); err != nil {
 		return nil, err
 	}
 

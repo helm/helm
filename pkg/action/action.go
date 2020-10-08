@@ -77,19 +77,21 @@ var (
 // https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
 var ValidName = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$`)
 
-type DoMake func(namespace string) kube.Interface
+// GetKubeClientFunc returns a Kube client with the specified namespace
+type GetKubeClientFunc func(namespace string) kube.Interface
 
 // Configuration injects the dependencies that all actions share.
 type Configuration struct {
 	// RESTClientGetter is an interface that loads Kubernetes clients.
 	RESTClientGetter genericclioptions.RESTClientGetter
 
-	Do DoMake
+	// GetKubeClient returns an instance of a Kubernetes API client.
+	GetKubeClient GetKubeClientFunc
 
 	// Releases stores records of releases.
 	Releases *storage.Storage
 
-	// KubeClient is a Kubernetes API client.
+	// Deprecated: KubeClient should not be used; use GetKubeClient instead
 	KubeClient kube.Interface
 
 	// RegistryClient is a client for working with registries
@@ -416,13 +418,13 @@ func (c *Configuration) Init(getter genericclioptions.RESTClientGetter, namespac
 	}
 
 	c.RESTClientGetter = getter
-	c.Do = func(namespace string) kube.Interface {
+	c.GetKubeClient = func(namespace string) kube.Interface {
 		client := kube.New(c.RESTClientGetter)
 		client.Log = c.Log
 		client.Namespace = namespace
 		return client
 	}
-	c.KubeClient = kc
+	c.KubeClient = nil
 	c.Releases = store
 	c.Log = log
 

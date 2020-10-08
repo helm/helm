@@ -171,7 +171,7 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 //
 // If DryRun is set to true, this will prepare the release, but not install it
 func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
-	i.client = i.cfg.Do(i.Namespace)
+	i.client = i.cfg.GetKubeClient(i.Namespace)
 
 	// Check reachability of cluster unless in client-only mode (e.g. `helm template` without `--validate`)
 	if !i.ClientOnly {

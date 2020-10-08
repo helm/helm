@@ -141,7 +141,7 @@ func NewList(cfg *Configuration) *List {
 
 // Run executes the list command, returning a set of matches.
 func (l *List) Run() ([]*release.Release, error) {
-	if err := l.cfg.KubeClient.IsReachable(); err != nil {
+	if err := l.cfg.GetKubeClient("").IsReachable(); err != nil {
 		return nil, err
 	}
 
