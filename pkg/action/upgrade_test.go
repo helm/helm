@@ -50,7 +50,6 @@ func TestUpgradeRelease_Wait(t *testing.T) {
 
 	failer := upAction.cfg.GetKubeClient("").(*kubefake.FailingKubeClient)
 	failer.WaitError = fmt.Errorf("I timed out")
-	// upAction.cfg.KubeClient = failer
 	upAction.Wait = true
 	vals := map[string]interface{}{}
 
@@ -73,7 +72,6 @@ func TestUpgradeRelease_CleanupOnFail(t *testing.T) {
 	failer := upAction.cfg.GetKubeClient("").(*kubefake.FailingKubeClient)
 	failer.WaitError = fmt.Errorf("I timed out")
 	failer.DeleteError = fmt.Errorf("I tried to delete nil")
-	// upAction.cfg.KubeClient = failer
 	upAction.Wait = true
 	upAction.CleanupOnFail = true
 	vals := map[string]interface{}{}
@@ -100,7 +98,6 @@ func TestUpgradeRelease_Atomic(t *testing.T) {
 		failer := upAction.cfg.GetKubeClient("").(*kubefake.FailingKubeClient)
 		// We can't make Update error because then the rollback won't work
 		failer.WatchUntilReadyError = fmt.Errorf("arming key removed")
-		// upAction.cfg.KubeClient = failer
 		upAction.Atomic = true
 		vals := map[string]interface{}{}
 
@@ -125,7 +122,6 @@ func TestUpgradeRelease_Atomic(t *testing.T) {
 
 		failer := upAction.cfg.GetKubeClient("").(*kubefake.FailingKubeClient)
 		failer.UpdateError = fmt.Errorf("update fail")
-		// upAction.cfg.KubeClient = failer
 		upAction.Atomic = true
 		vals := map[string]interface{}{}
 

@@ -424,7 +424,6 @@ func (c *Configuration) Init(getter genericclioptions.RESTClientGetter, namespac
 		client.Namespace = namespace
 		return client
 	}
-	c.KubeClient = nil
 	c.Releases = store
 	c.Log = log
 

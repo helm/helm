@@ -116,7 +116,6 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 			return fake
 		},
 		Releases:     store,
-		KubeClient:   nil,
 		Capabilities: chartutil.DefaultCapabilities,
 		Log:          func(format string, v ...interface{}) {},
 	}
