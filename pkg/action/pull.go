@@ -43,7 +43,6 @@ type Pull struct {
 	Devel       bool
 	Untar       bool
 	VerifyLater bool
-	OCI         bool
 	UntarDir    string
 	DestDir     string
 	cfg         *Configuration
@@ -90,7 +89,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		RepositoryCache:  p.Settings.RepositoryCache,
 	}
 
-	if p.OCI {
+	if strings.HasPrefix(chartRef, "oci://") {
 		if p.Version == "" {
 			return out.String(), errors.Errorf("--version flag is explicitly required for OCI registries")
 		}

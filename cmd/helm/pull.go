@@ -69,8 +69,6 @@ func newPullCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				if !FeatureGateOCI.IsEnabled() {
 					return FeatureGateOCI.Error()
 				}
-
-				client.OCI = true
 			}
 
 			for i := 0; i < len(args); i++ {
