@@ -594,8 +594,12 @@ func CheckDependencies(ch *chart.Chart, reqs []*chart.Dependency) error {
 
 OUTER:
 	for _, r := range reqs {
+		req := r.Name
+		if idx := strings.LastIndex(req, "/"); idx >= 0 {
+			req = req[idx+1:]
+		}
 		for _, d := range ch.Dependencies() {
-			if d.Name() == r.Name {
+			if d.Name() == req {
 				continue OUTER
 			}
 		}

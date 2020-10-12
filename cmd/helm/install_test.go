@@ -201,6 +201,11 @@ func TestInstall(t *testing.T) {
 			name: "install chart with only crds",
 			cmd:  "install crd-test testdata/testcharts/chart-with-only-crds --namespace default",
 		},
+		// Install with subchart from chartcenter
+		{
+			name: "install with subchart from chartcenter",
+			cmd:  "install chartcenter testdata/testcharts/chartcenter --namespace default",
+		},
 	}
 
 	runTestActionCmd(t, tests)

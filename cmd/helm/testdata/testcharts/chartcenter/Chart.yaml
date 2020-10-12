@@ -1,0 +1,8 @@
+apiVersion: v1
+description: A Helm chart for Kubernetes
+name: chartcenter
+version: 0.1.0
+dependencies:
+  - name: stable/mariadb
+    version: 4.x.x
+    repository: "https://repo.chartcenter.io"
