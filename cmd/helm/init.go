@@ -316,7 +316,7 @@ func (i *initCmd) run() error {
 		fmt.Fprintf(i.out, "\nWarning: You appear to be using an unreleased version of Helm. Please either use the\n"+
 			"--canary-image flag, or specify your desired tiller version with --tiller-image.\n\n"+
 			"Ex:\n"+
-			"$ helm init --tiller-image gcr.io/kubernetes-helm/tiller:v2.8.2\n\n")
+			"$ helm init --tiller-image ghcr.io/helm/tiller:v2.17.0\n\n")
 	}
 
 	return nil

@@ -92,7 +92,7 @@ development may not be available in Google Cloud Container Registry. If you're g
 image pull errors, you can override the version of Tiller. Example:
 
 ```console
-helm init --tiller-image=gcr.io/kubernetes-helm/tiller:2.7.2
+helm init --tiller-image=ghcr.io/helm/tiller:2.17.0
 ```
 
 Or use the latest version:

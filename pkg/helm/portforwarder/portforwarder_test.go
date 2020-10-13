@@ -19,7 +19,7 @@ package portforwarder
 import (
 	"testing"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 )
@@ -99,11 +99,11 @@ func TestGetTillerPodImage(t *testing.T) {
 				Containers: []v1.Container{
 					{
 						Name:  "tiller",
-						Image: "gcr.io/kubernetes-helm/tiller:v2.0.0",
+						Image: "ghcr.io/helm/tiller:v2.0.0",
 					},
 				},
 			},
-			expected: "gcr.io/kubernetes-helm/tiller:v2.0.0",
+			expected: "ghcr.io/helm/tiller:v2.0.0",
 			err:      false,
 		},
 		{
