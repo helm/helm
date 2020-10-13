@@ -384,6 +384,55 @@ func TestStorageDontDeleteDeployed(t *testing.T) {
 	}
 }
 
+func TestStorageDeleteLastFailed(t *testing.T) {
+	storage := Init(driver.NewMemory())
+	storage.Log = t.Logf
+	storage.MaxHistory = 3
+
+	const name = "angry-bird"
+
+	// Set up storage with test releases.
+	setup := func() {
+		// release records
+		rls0 := ReleaseTestData{Name: name, Version: 1, Status: rspb.StatusFailed}.ToRelease()
+		rls1 := ReleaseTestData{Name: name, Version: 2, Status: rspb.StatusFailed}.ToRelease()
+		rls2 := ReleaseTestData{Name: name, Version: 3, Status: rspb.StatusFailed}.ToRelease()
+
+		// create the release records in the storage
+		assertErrNil(t.Fatal, storage.Create(rls0), "Storing release 'angry-bird' (v1)")
+		assertErrNil(t.Fatal, storage.Create(rls1), "Storing release 'angry-bird' (v2)")
+		assertErrNil(t.Fatal, storage.Create(rls2), "Storing release 'angry-bird' (v3)")
+	}
+
+	setup()
+
+	rls3 := ReleaseTestData{Name: name, Version: 4, Status: rspb.StatusFailed}.ToRelease()
+	assertErrNil(t.Fatal, storage.Create(rls3), "Storing release 'angry-bird' (v4)")
+
+	// On inserting the 4th record, we expect the oldest failed release get deleted
+	hist, err := storage.History(name)
+	if err != nil {
+		t.Fatal(err)
+	} else if len(hist) != storage.MaxHistory {
+		for _, item := range hist {
+			t.Logf("%s %v", item.Name, item.Version)
+		}
+		t.Fatalf("expected %d items in history, got %d", storage.MaxHistory, len(hist))
+	}
+
+	expectedVersions := map[int]bool{
+		2: true,
+		3: true,
+		4: true,
+	}
+
+	for _, item := range hist {
+		if !expectedVersions[item.Version] {
+			t.Errorf("Release version %d, found when not expected", item.Version)
+		}
+	}
+}
+
 func TestStorageLast(t *testing.T) {
 	storage := Init(driver.NewMemory())
 
