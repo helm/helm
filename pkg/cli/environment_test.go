@@ -34,13 +34,13 @@ func TestEnvSettings(t *testing.T) {
 		envvars map[string]string
 
 		// expected values
-		ns, kcontext string
-		debug        bool
-		maxhistory   int
-		kAsUser      string
-		kAsGroups    []string
-		kCaFile      string
-		kubeInsecure bool
+		ns, kcontext              string
+		debug                     bool
+		maxhistory                int
+		kAsUser                   string
+		kAsGroups                 []string
+		kCaFile                   string
+		kubeInsecureSkipTLSVerify bool
 	}{
 		{
 			name:       "defaults",
