@@ -54,8 +54,8 @@ type EnvSettings struct {
 	KubeAsGroups []string
 	// Kubernetes API Server Endpoint for authentication
 	KubeAPIServer string
-	// KubeInsecure indicates whether or not checking kubernetes apiserver's certificate
-	KubeInsecure bool
+	// KubeInsecureSkipTLSVerify indicates whether or not checking kubernetes apiserver's certificate
+	KubeInsecureSkipTLSVerify bool
 	// Debug indicates whether or not Helm is running in Debug mode.
 	Debug bool
 	// RegistryConfig is the path to the registry config file.
@@ -72,18 +72,18 @@ type EnvSettings struct {
 
 func New() *EnvSettings {
 	env := &EnvSettings{
-		namespace:        os.Getenv("HELM_NAMESPACE"),
-		MaxHistory:       envIntOr("HELM_MAX_HISTORY", defaultMaxHistory),
-		KubeContext:      os.Getenv("HELM_KUBECONTEXT"),
-		KubeToken:        os.Getenv("HELM_KUBETOKEN"),
-		KubeAsUser:       os.Getenv("HELM_KUBEASUSER"),
-		KubeAsGroups:     envCSV("HELM_KUBEASGROUPS"),
-		KubeAPIServer:    os.Getenv("HELM_KUBEAPISERVER"),
-		KubeInsecure:     envBoolOr("HELM_KUBEAPISERVER_INSECURE", false),
-		PluginsDirectory: envOr("HELM_PLUGINS", helmpath.DataPath("plugins")),
-		RegistryConfig:   envOr("HELM_REGISTRY_CONFIG", helmpath.ConfigPath("registry.json")),
-		RepositoryConfig: envOr("HELM_REPOSITORY_CONFIG", helmpath.ConfigPath("repositories.yaml")),
-		RepositoryCache:  envOr("HELM_REPOSITORY_CACHE", helmpath.CachePath("repository")),
+		namespace:                 os.Getenv("HELM_NAMESPACE"),
+		MaxHistory:                envIntOr("HELM_MAX_HISTORY", defaultMaxHistory),
+		KubeContext:               os.Getenv("HELM_KUBECONTEXT"),
+		KubeToken:                 os.Getenv("HELM_KUBETOKEN"),
+		KubeAsUser:                os.Getenv("HELM_KUBEASUSER"),
+		KubeAsGroups:              envCSV("HELM_KUBEASGROUPS"),
+		KubeAPIServer:             os.Getenv("HELM_KUBEAPISERVER"),
+		KubeInsecureSkipTLSVerify: envBoolOr("HELM_KUBEAPISERVER_INSECURE", false),
+		PluginsDirectory:          envOr("HELM_PLUGINS", helmpath.DataPath("plugins")),
+		RegistryConfig:            envOr("HELM_REGISTRY_CONFIG", helmpath.ConfigPath("registry.json")),
+		RepositoryConfig:          envOr("HELM_REPOSITORY_CONFIG", helmpath.ConfigPath("repositories.yaml")),
+		RepositoryCache:           envOr("HELM_REPOSITORY_CACHE", helmpath.CachePath("repository")),
 	}
 	env.Debug, _ = strconv.ParseBool(os.Getenv("HELM_DEBUG"))
 
@@ -96,7 +96,7 @@ func New() *EnvSettings {
 		KubeConfig:       &env.KubeConfig,
 		Impersonate:      &env.KubeAsUser,
 		ImpersonateGroup: &env.KubeAsGroups,
-		Insecure:         &env.KubeInsecure,
+		Insecure:         &env.KubeInsecureSkipTLSVerify,
 	}
 	return env
 }
@@ -110,7 +110,7 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.KubeAsUser, "kube-as-user", s.KubeAsUser, "Username to impersonate for the operation")
 	fs.StringArrayVar(&s.KubeAsGroups, "kube-as-group", s.KubeAsGroups, "Group to impersonate for the operation, this flag can be repeated to specify multiple groups.")
 	fs.StringVar(&s.KubeAPIServer, "kube-apiserver", s.KubeAPIServer, "the address and the port for the Kubernetes API server")
-	fs.BoolVar(&s.KubeInsecure, "kube-insecure-skip-tls-verify", s.KubeInsecure, "if true, the kubernetes apiserver's certificate will not be checked for validity. This will make your HTTPS connections insecure")
+	fs.BoolVar(&s.KubeInsecureSkipTLSVerify, "kube-insecure-skip-tls-verify", s.KubeInsecureSkipTLSVerify, "if true, the kubernetes apiserver's certificate will not be checked for validity. This will make your HTTPS connections insecure")
 	fs.BoolVar(&s.Debug, "debug", s.Debug, "enable verbose output")
 	fs.StringVar(&s.RegistryConfig, "registry-config", s.RegistryConfig, "path to the registry config file")
 	fs.StringVar(&s.RepositoryConfig, "repository-config", s.RepositoryConfig, "path to the file containing repository names and URLs")
@@ -171,12 +171,12 @@ func (s *EnvSettings) EnvVars() map[string]string {
 		"HELM_MAX_HISTORY":       strconv.Itoa(s.MaxHistory),
 
 		// broken, these are populated from helm flags and not kubeconfig.
-		"HELM_KUBECONTEXT":            s.KubeContext,
-		"HELM_KUBETOKEN":              s.KubeToken,
-		"HELM_KUBEAPISERVER":          s.KubeAPIServer,
-		"HELM_KUBEASUSER":             s.KubeAsUser,
-		"HELM_KUBEASGROUPS":           strings.Join(s.KubeAsGroups, ","),
-		"HELM_KUBEAPISERVER_INSECURE": strconv.FormatBool(s.KubeInsecure),
+		"HELM_KUBECONTEXT":                  s.KubeContext,
+		"HELM_KUBETOKEN":                    s.KubeToken,
+		"HELM_KUBEAPISERVER":                s.KubeAPIServer,
+		"HELM_KUBEASUSER":                   s.KubeAsUser,
+		"HELM_KUBEASGROUPS":                 strings.Join(s.KubeAsGroups, ","),
+		"HELM_KUBEINSECURE_SKIP_TLS_VERIFY": strconv.FormatBool(s.KubeInsecureSkipTLSVerify),
 	}
 	if s.KubeConfig != "" {
 		envvars["KUBECONFIG"] = s.KubeConfig
