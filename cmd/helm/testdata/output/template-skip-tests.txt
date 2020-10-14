@@ -84,22 +84,3 @@ spec:
     name: nginx
   selector:
     app.kubernetes.io/name: subchart
----
-# Source: subchart/templates/tests/test-nothing.yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  name: "RELEASE-NAME-test"
-  annotations:
-    "helm.sh/hook": test
-spec:
-  containers:
-    - name: test
-      image: "alpine:latest"
-      envFrom:
-        - configMapRef:
-            name: "RELEASE-NAME-testconfig"
-      command:
-        - echo
-        - "$message"
-  restartPolicy: Never

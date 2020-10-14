@@ -101,7 +101,7 @@ type Configuration struct {
 // TODO: This function is badly in need of a refactor.
 // TODO: As part of the refactor the duplicate code in cmd/helm/template.go should be removed
 //       This code has to do with writing files to disk.
-func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, skipTests bool, pr postrender.PostRenderer, dryRun bool) ([]*release.Hook, *bytes.Buffer, string, error) {
+func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, dryRun bool) ([]*release.Hook, *bytes.Buffer, string, error) {
 	hs := []*release.Hook{}
 	b := bytes.NewBuffer(nil)
 
@@ -194,7 +194,7 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 		}
 	}
 
-	for _, m := range filterManifests(manifests, skipTests) {
+	for _, m := range manifests {
 		if outputDir == "" {
 			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", m.Name, m.Content)
 		} else {
@@ -222,19 +222,6 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 	}
 
 	return hs, b, notes, nil
-}
-
-func filterManifests(manifests []releaseutil.Manifest, skipTests bool) []releaseutil.Manifest {
-	if skipTests {
-		var manifestsWithoutTests []releaseutil.Manifest
-		for _, m := range manifests {
-			if !strings.Contains(m.Name, "tests/") {
-				manifestsWithoutTests = append(manifestsWithoutTests, m)
-			}
-		}
-		return manifestsWithoutTests
-	}
-	return manifests
 }
 
 // RESTClientGetter gets the rest client
