@@ -45,7 +45,11 @@ func TempDir(t *testing.T) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { os.RemoveAll(d) })
+	t.Cleanup(func() {
+		if !t.Failed() {
+			os.RemoveAll(d)
+		}
+	})
 
 	return d
 }
