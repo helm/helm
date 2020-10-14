@@ -5,6 +5,9 @@ jobs:
     parallelism: 3
     docker:
       - image: golang:1.14
+        auth:
+          username: $DOCKER_USER
+          password: $DOCKER_PASS
     environment:
       PROJECT_NAME: "kubernetes-helm"
     steps:
