@@ -242,7 +242,7 @@ the Tiller image:
 
 ```console
 $ export TILLER_TAG=v2.0.0-beta.1        # Or whatever version you want
-$ kubectl --namespace=kube-system set image deployments/tiller-deploy tiller=gcr.io/kubernetes-helm/tiller:$TILLER_TAG
+$ kubectl --namespace=kube-system set image deployments/tiller-deploy tiller=ghcr.io/helm/tiller:$TILLER_TAG
 deployment "tiller-deploy" image updated
 ```
 

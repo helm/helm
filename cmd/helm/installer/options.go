@@ -19,13 +19,13 @@ package installer // import "k8s.io/helm/cmd/helm/installer"
 import (
 	"fmt"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/helm/pkg/strvals"
 	"k8s.io/helm/pkg/version"
 )
 
 const (
-	defaultImage = "gcr.io/kubernetes-helm/tiller"
+	defaultImage = "ghcr.io/helm/tiller"
 
 	fmtJSON OutputFormat = "json"
 	fmtYAML OutputFormat = "yaml"

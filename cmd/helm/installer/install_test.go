@@ -24,7 +24,7 @@ import (
 
 	"github.com/ghodss/yaml"
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
@@ -42,8 +42,8 @@ func TestDeployment(t *testing.T) {
 		expect          string
 		imagePullPolicy v1.PullPolicy
 	}{
-		{"default", "", false, "gcr.io/kubernetes-helm/tiller:" + version.Version, "IfNotPresent"},
-		{"canary", "example.com/tiller", true, "gcr.io/kubernetes-helm/tiller:canary", "Always"},
+		{"default", "", false, "ghcr.io/helm/tiller:" + version.Version, "IfNotPresent"},
+		{"canary", "example.com/tiller", true, "ghcr.io/helm/tiller:canary", "Always"},
 		{"custom", "example.com/tiller:latest", false, "example.com/tiller:latest", "IfNotPresent"},
 	}
 
@@ -55,7 +55,7 @@ func TestDeployment(t *testing.T) {
 
 		// Unreleased versions of helm don't have a release image. See issue 3370
 		if tt.name == "default" && version.BuildMetadata == "unreleased" {
-			tt.expect = "gcr.io/kubernetes-helm/tiller:canary"
+			tt.expect = "ghcr.io/helm/tiller:canary"
 		}
 		if got := dep.Spec.Template.Spec.Containers[0].Image; got != tt.expect {
 			t.Errorf("%s: expected image %q, got %q", tt.name, tt.expect, got)
@@ -80,8 +80,8 @@ func TestDeploymentForServiceAccount(t *testing.T) {
 		imagePullPolicy v1.PullPolicy
 		serviceAccount  string
 	}{
-		{"withSA", "", false, "gcr.io/kubernetes-helm/tiller:latest", "IfNotPresent", "service-account"},
-		{"withoutSA", "", false, "gcr.io/kubernetes-helm/tiller:latest", "IfNotPresent", ""},
+		{"withSA", "", false, "ghcr.io/helm/tiller:latest", "IfNotPresent", "service-account"},
+		{"withoutSA", "", false, "ghcr.io/helm/tiller:latest", "IfNotPresent", ""},
 	}
 	for _, tt := range tests {
 		opts := &Options{Namespace: v1.NamespaceDefault, ImageSpec: tt.image, UseCanary: tt.canary, ServiceAccount: tt.serviceAccount}
@@ -187,7 +187,7 @@ func TestSecretManifest(t *testing.T) {
 }
 
 func TestInstall(t *testing.T) {
-	image := "gcr.io/kubernetes-helm/tiller:v2.0.0"
+	image := "ghcr.io/helm/tiller:v2.0.0"
 
 	fc := &fake.Clientset{}
 	fc.AddReactor("create", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
@@ -234,7 +234,7 @@ func TestInstall(t *testing.T) {
 }
 
 func TestInstallHA(t *testing.T) {
-	image := "gcr.io/kubernetes-helm/tiller:v2.0.0"
+	image := "ghcr.io/helm/tiller:v2.0.0"
 
 	fc := &fake.Clientset{}
 	fc.AddReactor("create", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
@@ -257,7 +257,7 @@ func TestInstallHA(t *testing.T) {
 }
 
 func TestInstall_WithTLS(t *testing.T) {
-	image := "gcr.io/kubernetes-helm/tiller:v2.0.0"
+	image := "ghcr.io/helm/tiller:v2.0.0"
 	name := "tiller-secret"
 
 	fc := &fake.Clientset{}
@@ -332,7 +332,7 @@ func TestInstall_canary(t *testing.T) {
 	fc.AddReactor("create", "deployments", func(action testcore.Action) (bool, runtime.Object, error) {
 		obj := action.(testcore.CreateAction).GetObject().(*appsv1.Deployment)
 		i := obj.Spec.Template.Spec.Containers[0].Image
-		if i != "gcr.io/kubernetes-helm/tiller:canary" {
+		if i != "ghcr.io/helm/tiller:canary" {
 			t.Errorf("expected canary image, got '%s'", i)
 		}
 		return true, obj, nil
@@ -353,7 +353,7 @@ func TestInstall_canary(t *testing.T) {
 }
 
 func TestUpgrade(t *testing.T) {
-	image := "gcr.io/kubernetes-helm/tiller:v2.0.0"
+	image := "ghcr.io/helm/tiller:v2.0.0"
 	serviceAccount := "newServiceAccount"
 	existingDeployment, _ := generateDeployment(&Options{
 		Namespace:      v1.NamespaceDefault,
@@ -394,7 +394,7 @@ func TestUpgrade(t *testing.T) {
 }
 
 func TestUpgrade_serviceNotFound(t *testing.T) {
-	image := "gcr.io/kubernetes-helm/tiller:v2.0.0"
+	image := "ghcr.io/helm/tiller:v2.0.0"
 
 	existingDeployment, _ := generateDeployment(&Options{
 		Namespace: v1.NamespaceDefault,
@@ -437,7 +437,7 @@ func TestUpgrade_serviceNotFound(t *testing.T) {
 }
 
 func TestUgrade_newerVersion(t *testing.T) {
-	image := "gcr.io/kubernetes-helm/tiller:v2.0.0"
+	image := "ghcr.io/helm/tiller:v2.0.0"
 	serviceAccount := "newServiceAccount"
 	existingDeployment, _ := generateDeployment(&Options{
 		Namespace:      v1.NamespaceDefault,
@@ -497,7 +497,7 @@ func TestUgrade_newerVersion(t *testing.T) {
 }
 
 func TestUpgrade_identical(t *testing.T) {
-	image := "gcr.io/kubernetes-helm/tiller:v2.0.0"
+	image := "ghcr.io/helm/tiller:v2.0.0"
 	serviceAccount := "newServiceAccount"
 	existingDeployment, _ := generateDeployment(&Options{
 		Namespace:      v1.NamespaceDefault,
@@ -538,7 +538,7 @@ func TestUpgrade_identical(t *testing.T) {
 }
 
 func TestUpgrade_canaryClient(t *testing.T) {
-	image := "gcr.io/kubernetes-helm/tiller:canary"
+	image := "ghcr.io/helm/tiller:canary"
 	serviceAccount := "newServiceAccount"
 	existingDeployment, _ := generateDeployment(&Options{
 		Namespace:      v1.NamespaceDefault,
@@ -579,7 +579,7 @@ func TestUpgrade_canaryClient(t *testing.T) {
 }
 
 func TestUpgrade_canaryServer(t *testing.T) {
-	image := "gcr.io/kubernetes-helm/tiller:v2.0.0"
+	image := "ghcr.io/helm/tiller:v2.0.0"
 	serviceAccount := "newServiceAccount"
 	existingDeployment, _ := generateDeployment(&Options{
 		Namespace:      v1.NamespaceDefault,
