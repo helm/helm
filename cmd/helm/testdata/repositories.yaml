@@ -1,4 +1,4 @@
 apiVersion: v1
 repositories:
   - name: charts
-    url: "https://kubernetes-charts.storage.googleapis.com"
+    url: "https://charts.helm.sh/stable"

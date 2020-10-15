@@ -85,7 +85,7 @@ func TestFindChartURL(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if churl != "https://kubernetes-charts.storage.googleapis.com/alpine-0.1.0.tgz" {
+	if churl != "https://charts.helm.sh/stable/alpine-0.1.0.tgz" {
 		t.Errorf("Unexpected URL %q", churl)
 	}
 	if username != "" {

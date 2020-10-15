@@ -3,7 +3,7 @@ entries:
   alpine:
     - name: alpine
       urls:
-        - https://kubernetes-charts.storage.googleapis.com/alpine-0.1.0.tgz
+        - https://charts.helm.sh/stable/alpine-0.1.0.tgz
       checksum: 0e6661f193211d7a5206918d42f5c2a9470b737d
       home: https://helm.sh/helm
       sources:
@@ -15,7 +15,7 @@ entries:
       icon: ""
     - name: alpine
       urls:
-        - https://kubernetes-charts.storage.googleapis.com/alpine-0.2.0.tgz
+        - https://charts.helm.sh/stable/alpine-0.2.0.tgz
       checksum: 0e6661f193211d7a5206918d42f5c2a9470b737d
       home: https://helm.sh/helm
       sources:
@@ -28,7 +28,7 @@ entries:
   mariadb:
     - name: mariadb
       urls:
-        - https://kubernetes-charts.storage.googleapis.com/mariadb-0.3.0.tgz
+        - https://charts.helm.sh/stable/mariadb-0.3.0.tgz
       checksum: 65229f6de44a2be9f215d11dbff311673fc8ba56
       home: https://mariadb.org
       sources:
