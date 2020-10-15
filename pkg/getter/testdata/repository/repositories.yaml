@@ -6,7 +6,7 @@ repositories:
   certFile: ""
   keyFile: ""
   name: stable
-  url: https://kubernetes-charts.storage.googleapis.com
+  url: https://charts.helm.sh/stable
 - caFile: ""
   cache: repository/cache/local-index.yaml
   certFile: ""
