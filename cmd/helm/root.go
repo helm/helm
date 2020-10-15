@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -30,6 +31,7 @@ import (
 
 	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/repo"
 )
 
 var globalUsage = `The Kubernetes package manager
@@ -208,5 +210,54 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	// Check permissions on critical files
 	checkPerms()
 
+	// Check for expired repositories
+	checkForExpiredRepos(settings.RepositoryConfig)
+
 	return cmd, nil
+}
+
+func checkForExpiredRepos(repofile string) {
+
+	expiredRepos := []struct {
+		name string
+		old  string
+		new  string
+	}{
+		{
+			name: "stable",
+			old:  "kubernetes-charts.storage.googleapis.com",
+			new:  "https://charts.helm.sh/stable",
+		},
+		{
+			name: "incubator",
+			old:  "kubernetes-charts-incubator.storage.googleapis.com",
+			new:  "https://charts.helm.sh/incubator",
+		},
+	}
+
+	// parse repo file.
+	// Ignore the error because it is okay for a repo file to be unparseable at this
+	// stage. Later checks will trap the error and respond accordingly.
+	repoFile, err := repo.LoadFile(repofile)
+	if err != nil {
+		return
+	}
+
+	for _, exp := range expiredRepos {
+		r := repoFile.Get(exp.name)
+		if r == nil {
+			return
+		}
+
+		if url := r.URL; strings.Contains(url, exp.old) {
+			fmt.Fprintf(
+				os.Stderr,
+				"WARNING: %q is deprecated for %q and will be deleted Nov. 13, 2020.\nWARNING: You should switch to %q\n",
+				exp.old,
+				exp.name,
+				exp.new,
+			)
+		}
+	}
+
 }
