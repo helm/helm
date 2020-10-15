@@ -36,6 +36,7 @@ require (
 	github.com/stretchr/testify v1.6.1
 	github.com/xeipuuv/gojsonschema v1.2.0
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
+	gopkg.in/yaml.v2 v2.3.0 // indirect
 	k8s.io/api v0.19.2
 	k8s.io/apiextensions-apiserver v0.19.2
 	k8s.io/apimachinery v0.19.2

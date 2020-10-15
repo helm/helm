@@ -95,6 +95,10 @@ func TestFuncs(t *testing.T) {
 		expect: `[error unmarshaling JSON: while decoding JSON: json: cannot unmarshal object into Go value of type []interface {}]`,
 		vars:   `hello: world`,
 	}, {
+		tpl:    `{{ toYaml . }}`,
+		expect: `foo: this string needs to be more than 80 characters in order to trigger the wrapping behavior in gopkg.in/yaml.v2 <= 2.2.8`,
+		vars:   map[string]interface{}{"foo": "this string needs to be more than 80 characters in order to trigger the wrapping behavior in gopkg.in/yaml.v2 <= 2.2.8"},
+	}, {
 		// This should never result in a network lookup. Regression for #7955
 		tpl:    `{{ lookup "v1" "Namespace" "" "unlikelynamespace99999999" }}`,
 		expect: `map[]`,
