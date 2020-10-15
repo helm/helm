@@ -36,6 +36,7 @@ import (
 	helm_env "k8s.io/helm/pkg/helm/environment"
 	"k8s.io/helm/pkg/helm/portforwarder"
 	"k8s.io/helm/pkg/kube"
+	"k8s.io/helm/pkg/repo"
 	"k8s.io/helm/pkg/tlsutil"
 )
 
@@ -175,6 +176,52 @@ Environment:
 
 `
 
+func checkForExpiredRepos(repofile string) {
+
+	expiredRepos := []struct {
+		name string
+		old  string
+		new  string
+	}{
+		{
+			name: "stable",
+			old:  "kubernetes-charts.storage.googleapis.com",
+			new:  "https://charts.helm.sh/stable",
+		},
+		{
+			name: "incubator",
+			old:  "kubernetes-charts-incubator.storage.googleapis.com",
+			new:  "https://charts.helm.sh/incubator",
+		},
+	}
+
+	// parse repo file.
+	// Ignore the error because it is okay for a repo file to be unparseable at this
+	// stage. Later checks will trap the error and respond accordingly.
+	repoFile, err := repo.LoadRepositoriesFile(repofile)
+	if err != nil {
+		return
+	}
+
+	for _, exp := range expiredRepos {
+		r, ok := repoFile.Get(exp.name)
+		if !ok {
+			return
+		}
+
+		if url := r.URL; strings.Contains(url, exp.old) {
+			fmt.Fprintf(
+				os.Stderr,
+				"WARNING: %q is deprecated for %q and will be deleted Nov. 13, 2020.\nWARNING: You should switch to %q\n",
+				exp.old,
+				exp.name,
+				exp.new,
+			)
+		}
+	}
+
+}
+
 func newRootCmd(args []string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "helm",
@@ -182,6 +229,7 @@ func newRootCmd(args []string) *cobra.Command {
 		Long:         globalUsage,
 		SilenceUsage: true,
 		PersistentPreRun: func(*cobra.Command, []string) {
+			checkForExpiredRepos(settings.Home.RepositoryFile())
 			if settings.TLSCaCertFile == helm_env.DefaultTLSCaCert || settings.TLSCaCertFile == "" {
 				settings.TLSCaCertFile = settings.Home.TLSCaCert()
 			} else {

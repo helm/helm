@@ -32,32 +32,33 @@ helm init [flags]
 ### Options
 
 ```
-      --automount-service-account-token   Auto-mount the given service account to tiller (default true)
-      --canary-image                      Use the canary Tiller image
-  -c, --client-only                       If set does not install Tiller
-      --dry-run                           Do not install local or remote
-      --force-upgrade                     Force upgrade of Tiller to the current helm version
-  -h, --help                              help for init
-      --history-max int                   Limit the maximum number of revisions saved per release. Use 0 for no limit.
-      --local-repo-url string             URL for local repository (default "http://127.0.0.1:8879/charts")
-      --net-host                          Install Tiller with net=host
-      --node-selectors string             Labels to specify the node on which Tiller is installed (app=tiller,helm=rocks)
-  -o, --output OutputFormat               Skip installation and output Tiller's manifest in specified format (json or yaml)
-      --override stringArray              Override values for the Tiller Deployment manifest (can specify multiple or separate values with commas: key1=val1,key2=val2)
-      --replicas int                      Amount of tiller instances to run on the cluster (default 1)
-      --service-account string            Name of service account
-      --skip-refresh                      Do not refresh (download) the local repository cache
-      --skip-repos                        Skip adding the stable and local repositories
-      --stable-repo-url string            URL for stable repository (default "https://kubernetes-charts.storage.googleapis.com")
-  -i, --tiller-image string               Override Tiller image
-      --tiller-tls                        Install Tiller with TLS enabled
-      --tiller-tls-cert string            Path to TLS certificate file to install with Tiller
-      --tiller-tls-hostname string        The server name used to verify the hostname on the returned certificates from Tiller
-      --tiller-tls-key string             Path to TLS key file to install with Tiller
-      --tiller-tls-verify                 Install Tiller with TLS enabled and to verify remote certificates
-      --tls-ca-cert string                Path to CA root certificate
-      --upgrade                           Upgrade if Tiller is already installed
-      --wait                              Block until Tiller is running and ready to receive requests
+      --automount-service-account-token    Auto-mount the given service account to tiller (default true)
+      --canary-image                       Use the canary Tiller image
+  -c, --client-only                        If set does not install Tiller
+      --dry-run                            Do not install local or remote
+      --force-upgrade                      Force upgrade of Tiller to the current helm version
+  -h, --help                               help for init
+      --history-max int                    Limit the maximum number of revisions saved per release. Use 0 for no limit.
+      --local-repo-url string              URL for local repository (default "http://127.0.0.1:8879/charts")
+      --net-host                           Install Tiller with net=host
+      --node-selectors string              Labels to specify the node on which Tiller is installed (app=tiller,helm=rocks)
+  -o, --output OutputFormat                Skip installation and output Tiller's manifest in specified format (json or yaml)
+      --override stringArray               Override values for the Tiller Deployment manifest (can specify multiple or separate values with commas: key1=val1,key2=val2)
+      --replicas int                       Amount of tiller instances to run on the cluster (default 1)
+      --service-account string             Name of service account
+      --skip-refresh                       Do not refresh (download) the local repository cache
+      --skip-repos                         Skip adding the stable and local repositories
+      --stable-repo-url string             URL for stable repository (default "https://charts.helm.sh/stable")
+  -i, --tiller-image string                Override Tiller image
+      --tiller-tls                         Install Tiller with TLS enabled
+      --tiller-tls-cert string             Path to TLS certificate file to install with Tiller
+      --tiller-tls-hostname string         The server name used to verify the hostname on the returned certificates from Tiller
+      --tiller-tls-key string              Path to TLS key file to install with Tiller
+      --tiller-tls-verify                  Install Tiller with TLS enabled and to verify remote certificates
+      --tls-ca-cert string                 Path to CA root certificate
+      --upgrade                            Upgrade if Tiller is already installed
+      --use-deprecated-stable-repository   Use the old (googleapis) repository URL even though that URL is being shutdown.
+      --wait                               Block until Tiller is running and ready to receive requests
 ```
 
 ### Options inherited from parent commands
@@ -76,4 +77,4 @@ helm init [flags]
 
 * [helm](helm.md)	 - The Helm package manager for Kubernetes.
 
-###### Auto generated by spf13/cobra on 25-Jun-2020
+###### Auto generated by spf13/cobra on 15-Oct-2020
