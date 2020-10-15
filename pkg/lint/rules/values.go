@@ -71,7 +71,7 @@ func validateValuesFile(valuesPath string, overrides map[string]interface{}) err
 	// We could change that. For now, though, we retain that strategy, and thus can
 	// coalesce tables (like reuse-values does) instead of doing the full chart
 	// CoalesceValues.
-	values = chartutil.CoalesceTables(values, overrides)
+	values = chartutil.CoalesceTables(overrides, values)
 
 	ext := filepath.Ext(valuesPath)
 	schemaPath := valuesPath[:len(valuesPath)-len(ext)] + ".schema.json"
