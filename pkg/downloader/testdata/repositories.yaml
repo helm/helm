@@ -3,7 +3,8 @@ repositories:
   - name: testing
     url: "http://example.com"
   - name: testing-https
-    url: "https://example.com"
+    url: "https://testing-https.example.com"
+    insecure_skip_tls_verify: true
   - name: testing-basicauth
     url: "http://username:password@example.com"
   - name: kubernetes-charts

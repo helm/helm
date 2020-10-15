@@ -77,15 +77,15 @@ func TestFindChartURL(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	name := "alpine"
-	version := "0.1.0"
-	repoURL := "http://example.com/charts"
+	name := "foo"
+	version := "1.2.3"
+	repoURL := "https://testing-https.example.com"
 
-	churl, username, password, err := m.findChartURL(name, version, repoURL, repos)
+	churl, username, password, insecureSkipTLSVerify, err := m.findChartURL(name, version, repoURL, repos)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if churl != "https://kubernetes-charts.storage.googleapis.com/alpine-0.1.0.tgz" {
+	if churl != "https://example.com/foo-1.2.3.tgz" {
 		t.Errorf("Unexpected URL %q", churl)
 	}
 	if username != "" {
@@ -93,6 +93,9 @@ func TestFindChartURL(t *testing.T) {
 	}
 	if password != "" {
 		t.Errorf("Unexpected password %q", password)
+	}
+	if !insecureSkipTLSVerify {
+		t.Errorf("Unexpected insecureSkipTLSVerify %v", insecureSkipTLSVerify)
 	}
 }
 
