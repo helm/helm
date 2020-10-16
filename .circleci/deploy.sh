@@ -57,8 +57,8 @@ docker login -u _json_key -p "$(cat ${HOME}/gcloud-service-key.json)" https://gc
 echo "Configuring Docker Hub configuration"
 echo ${DOCKER_PASS} | docker login -u ${DOCKER_USER} --password-stdin
 
-echo "Configuring Quay configuration"
-echo ${QUAY_PASS} | docker login quay.io -u ${QUAY_USER} --password-stdin
+# echo "Configuring Quay configuration"
+# echo ${QUAY_PASS} | docker login quay.io -u ${QUAY_USER} --password-stdin
 
 echo "Building the tiller image"
 make docker-build VERSION="${VERSION}"
@@ -76,9 +76,9 @@ echo "Pushing image to Docker Hub"
 docker tag "ghcr.io/helm/tiller:${VERSION}" "helmpack/tiller:${VERSION}"
 docker push "helmpack/tiller:${VERSION}"
 
-echo "Pushing image to Quay"
-docker tag "ghcr.io/helm/tiller:${VERSION}" "quay.io/helmpack/tiller:${VERSION}"
-docker push "quay.io/helmpack/tiller:${VERSION}"
+# echo "Pushing image to Quay"
+# docker tag "ghcr.io/helm/tiller:${VERSION}" "quay.io/helmpack/tiller:${VERSION}"
+# docker push "quay.io/helmpack/tiller:${VERSION}"
 
 # Canary version is used with helm init --canary-image flag.
 # Does not push canary binary which is Helm v3.
