@@ -17,10 +17,14 @@ limitations under the License.
 package action
 
 import (
+	"bytes"
 	"strings"
 	"time"
 
 	"github.com/pkg/errors"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/release"
@@ -34,11 +38,13 @@ import (
 type Uninstall struct {
 	cfg *Configuration
 
-	DisableHooks bool
-	DryRun       bool
-	KeepHistory  bool
-	Timeout      time.Duration
-	Description  string
+	DisableHooks    bool
+	DryRun          bool
+	DeleteNamespace bool
+	Namespace       string
+	KeepHistory     bool
+	Timeout         time.Duration
+	Description     string
 }
 
 // NewUninstall creates a new Uninstall object with the given configuration.
@@ -61,6 +67,38 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 			return &release.UninstallReleaseResponse{}, err
 		}
 		return &release.UninstallReleaseResponse{Release: r}, nil
+	}
+
+	if u.DeleteNamespace {
+		u.cfg.Log("uninstall: Deleting namespace %s", u.Namespace)
+
+		ns := &v1.Namespace{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "v1",
+				Kind:       "Namespace",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: u.Namespace,
+				Labels: map[string]string{
+					"name": u.Namespace,
+				},
+			},
+		}
+
+		buf, err := yaml.Marshal(ns)
+		if err != nil {
+			return nil, err
+		}
+		resourceList, err := u.cfg.KubeClient.Build(bytes.NewBuffer(buf), true)
+		if err != nil {
+			return nil, err
+		}
+
+		_, errs := u.cfg.KubeClient.Delete(resourceList)
+		if len(errs) > 0 {
+			return nil, errors.New(joinErrors(errs))
+		}
+		return &release.UninstallReleaseResponse{}, nil
 	}
 
 	if err := chartutil.ValidateReleaseName(name); err != nil {
