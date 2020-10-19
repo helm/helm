@@ -59,7 +59,8 @@ To dump a manifest containing the Tiller deployment YAML, combine the
 `
 
 var (
-	stableRepositoryURL = "https://kubernetes-charts.storage.googleapis.com"
+	stableRepositoryURL    = "https://charts.helm.sh/stable"
+	oldStableRepositoryURL = "https://kubernetes-charts.storage.googleapis.com"
 	// This is the IPv4 loopback, not localhost, because we have to force IPv4
 	// for Dockerized Helm: https://github.com/kubernetes/helm/issues/1410
 	localRepositoryURL = "http://127.0.0.1:8879/charts"
@@ -72,24 +73,25 @@ var (
 )
 
 type initCmd struct {
-	image          string
-	clientOnly     bool
-	canary         bool
-	upgrade        bool
-	namespace      string
-	dryRun         bool
-	forceUpgrade   bool
-	skipRefresh    bool
-	skipRepos      bool
-	out            io.Writer
-	client         helm.Interface
-	home           helmpath.Home
-	opts           installer.Options
-	kubeClient     kubernetes.Interface
-	serviceAccount string
-	maxHistory     int
-	replicas       int
-	wait           bool
+	image             string
+	clientOnly        bool
+	canary            bool
+	upgrade           bool
+	namespace         string
+	dryRun            bool
+	forceUpgrade      bool
+	skipRefresh       bool
+	skipRepos         bool
+	out               io.Writer
+	client            helm.Interface
+	home              helmpath.Home
+	opts              installer.Options
+	kubeClient        kubernetes.Interface
+	serviceAccount    string
+	maxHistory        int
+	replicas          int
+	wait              bool
+	useDeprecatedRepo bool
 }
 
 func newInitCmd(out io.Writer) *cobra.Command {
@@ -121,6 +123,8 @@ func newInitCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&i.skipRefresh, "skip-refresh", false, "Do not refresh (download) the local repository cache")
 	f.BoolVar(&i.skipRepos, "skip-repos", false, "Skip adding the stable and local repositories")
 	f.BoolVar(&i.wait, "wait", false, "Block until Tiller is running and ready to receive requests")
+
+	f.BoolVar(&i.useDeprecatedRepo, "use-deprecated-stable-repository", false, "Use the old (googleapis) repository URL even though that URL is being shutdown.")
 
 	// TODO: replace TLS flags with pkg/helm/environment.AddFlagsTLS() in Helm 3
 	//
@@ -265,6 +269,11 @@ func (i *initCmd) run() error {
 			return fmt.Errorf("error initializing: %s", err)
 		}
 	} else {
+		// If this is set, override user config, default config, and set it to the old
+		// URL.
+		if i.useDeprecatedRepo {
+			stableRepositoryURL = oldStableRepositoryURL
+		}
 		if err := installer.Initialize(i.home, i.out, i.skipRefresh, settings, stableRepositoryURL, localRepositoryURL); err != nil {
 			return fmt.Errorf("error initializing: %s", err)
 		}

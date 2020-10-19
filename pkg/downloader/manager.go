@@ -457,7 +457,7 @@ func (m *Manager) getRepoNames(deps []*chartutil.Dependency) (map[string]string,
 		if containsNonURL {
 			errorMessage += `
 Note that repositories must be URLs or aliases. For example, to refer to the stable
-repository, use "https://kubernetes-charts.storage.googleapis.com/" or "@stable" instead of
+repository, use "https://charts.helm.sh/stable" or "@stable" instead of
 "stable". Don't forget to add the repo, too ('helm repo add').`
 		}
 		return nil, errors.New(errorMessage)

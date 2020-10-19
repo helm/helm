@@ -100,7 +100,7 @@ docker-build-experimental: check-docker docker-binary docker-binary-rudder
 
 .PHONY: test
 test: build
-test: TESTFLAGS += -race -v
+test: TESTFLAGS += -v
 test: test-style
 test: test-unit
 

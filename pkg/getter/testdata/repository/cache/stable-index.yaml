@@ -14,7 +14,7 @@ entries:
     sources:
     - https://github.com/kubernetes/contrib/tree/master/cluster-autoscaler/cloudprovider/aws
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/aws-cluster-autoscaler-0.2.1.tgz
+    - https://charts.helm.sh/stable/aws-cluster-autoscaler-0.2.1.tgz
     version: 0.2.1
   - apiVersion: v1
     created: 2017-03-02T18:48:30.418071154Z
@@ -28,7 +28,7 @@ entries:
     sources:
     - https://github.com/kubernetes/contrib/tree/master/cluster-autoscaler/cloudprovider/aws
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/aws-cluster-autoscaler-0.2.0.tgz
+    - https://charts.helm.sh/stable/aws-cluster-autoscaler-0.2.0.tgz
     version: 0.2.0
   chaoskube:
   - created: 2017-04-28T00:18:30.071358212Z
@@ -43,7 +43,7 @@ entries:
     sources:
     - https://github.com/linki/chaoskube
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/chaoskube-0.5.0.tgz
+    - https://charts.helm.sh/stable/chaoskube-0.5.0.tgz
     version: 0.5.0
   - created: 2017-03-14T23:48:31.878196764Z
     description: Chaoskube periodically kills random pods in your Kubernetes cluster.
@@ -57,7 +57,7 @@ entries:
     sources:
     - https://github.com/linki/chaoskube
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/chaoskube-0.4.0.tgz
+    - https://charts.helm.sh/stable/chaoskube-0.4.0.tgz
     version: 0.4.0
   - created: 2017-02-13T04:18:31.525717582Z
     description: A Helm chart for chaoskube
@@ -71,7 +71,7 @@ entries:
     sources:
     - https://github.com/linki/chaoskube
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/chaoskube-0.3.1.tgz
+    - https://charts.helm.sh/stable/chaoskube-0.3.1.tgz
     version: 0.3.1
   - created: 2017-02-13T21:18:28.251529085Z
     description: Chaoskube periodically kills random pods in your Kubernetes cluster.
@@ -85,7 +85,7 @@ entries:
     sources:
     - https://github.com/linki/chaoskube
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/chaoskube-0.3.1-1.tgz
+    - https://charts.helm.sh/stable/chaoskube-0.3.1-1.tgz
     version: 0.3.1-1
   chronograf:
   - created: 2017-04-28T00:18:30.071786276Z
@@ -104,7 +104,7 @@ entries:
       name: Jack Zampolin
     name: chronograf
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/chronograf-0.2.0.tgz
+    - https://charts.helm.sh/stable/chronograf-0.2.0.tgz
     version: 0.2.0
   - created: 2017-03-22T23:03:29.448801697Z
     description: Open-source web application written in Go and React.js that provides
@@ -122,7 +122,7 @@ entries:
       name: Jack Zampolin
     name: chronograf
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/chronograf-0.1.2.tgz
+    - https://charts.helm.sh/stable/chronograf-0.1.2.tgz
     version: 0.1.2
   - created: 2017-02-13T04:18:31.52604543Z
     description: Chart for Chronograf
@@ -138,7 +138,7 @@ entries:
       name: Jack Zampolin
     name: chronograf
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/chronograf-0.1.1.tgz
+    - https://charts.helm.sh/stable/chronograf-0.1.1.tgz
     version: 0.1.1
   - created: 2017-01-28T00:33:31.060189495Z
     description: Chart for Chronograf
@@ -154,7 +154,7 @@ entries:
       name: Jack Zampolin
     name: chronograf
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/chronograf-0.1.0.tgz
+    - https://charts.helm.sh/stable/chronograf-0.1.0.tgz
     version: 0.1.0
   cockroachdb:
   - created: 2017-04-28T00:18:30.07217685Z
@@ -169,7 +169,7 @@ entries:
     sources:
     - https://github.com/cockroachdb/cockroach
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/cockroachdb-0.2.2.tgz
+    - https://charts.helm.sh/stable/cockroachdb-0.2.2.tgz
     version: 0.2.2
   - created: 2017-02-13T04:18:31.526409785Z
     description: CockroachDB Helm chart for Kubernetes.
@@ -182,7 +182,7 @@ entries:
     sources:
     - https://github.com/cockroachdb/cockroach
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/cockroachdb-0.2.1.tgz
+    - https://charts.helm.sh/stable/cockroachdb-0.2.1.tgz
     version: 0.2.1
   - created: 2017-01-27T21:48:32.059935168Z
     description: CockroachDB Helm chart for Kubernetes.
@@ -195,7 +195,7 @@ entries:
     sources:
     - https://github.com/cockroachdb/cockroach
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/cockroachdb-0.2.0.tgz
+    - https://charts.helm.sh/stable/cockroachdb-0.2.0.tgz
     version: 0.2.0
   concourse:
   - created: 2017-04-28T00:18:30.074578589Z
@@ -216,7 +216,7 @@ entries:
     - https://github.com/concourse/bin
     - https://github.com/helm/charts
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/concourse-0.1.3.tgz
+    - https://charts.helm.sh/stable/concourse-0.1.3.tgz
     version: 0.1.3
   - created: 2017-02-14T19:03:29.77100439Z
     description: Concourse is a simple and scalable CI system.
@@ -236,7 +236,7 @@ entries:
     - https://github.com/concourse/bin
     - https://github.com/helm/charts
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/concourse-0.1.2.tgz
+    - https://charts.helm.sh/stable/concourse-0.1.2.tgz
     version: 0.1.2
   - created: 2017-02-13T21:18:28.254273427Z
     description: Concourse is a simple and scalable CI system.
@@ -256,7 +256,7 @@ entries:
     - https://github.com/concourse/bin
     - https://github.com/helm/charts
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/concourse-0.1.1.tgz
+    - https://charts.helm.sh/stable/concourse-0.1.1.tgz
     version: 0.1.1
   - created: 2017-02-10T23:18:26.003782261Z
     description: Concourse Helm chart for Kubernetes.
@@ -275,7 +275,7 @@ entries:
     - https://github.com/concourse/bin
     - https://github.com/helm/charts
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/concourse-0.1.0.tgz
+    - https://charts.helm.sh/stable/concourse-0.1.0.tgz
     version: 0.1.0
   consul:
   - created: 2017-04-28T00:18:30.075038045Z
@@ -292,7 +292,7 @@ entries:
     sources:
     - https://github.com/kelseyhightower/consul-on-kubernetes
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/consul-0.2.2.tgz
+    - https://charts.helm.sh/stable/consul-0.2.2.tgz
     version: 0.2.2
   - created: 2017-04-26T14:48:28.225526691Z
     description: Highly available and distributed service discovery and key-value
@@ -308,7 +308,7 @@ entries:
     sources:
     - https://github.com/kelseyhightower/consul-on-kubernetes
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/consul-0.2.0.tgz
+    - https://charts.helm.sh/stable/consul-0.2.0.tgz
     version: 0.2.0
   coredns:
   - created: 2017-04-28T00:18:30.075393511Z
@@ -330,7 +330,7 @@ entries:
     sources:
     - https://github.com/coredns/coredns
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/coredns-0.1.0.tgz
+    - https://charts.helm.sh/stable/coredns-0.1.0.tgz
     version: 0.1.0
   datadog:
   - created: 2017-04-28T00:18:30.075800677Z
@@ -350,7 +350,7 @@ entries:
     - https://app.datadoghq.com/account/settings#agent/kubernetes
     - https://github.com/DataDog/docker-dd-agent
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/datadog-0.3.0.tgz
+    - https://charts.helm.sh/stable/datadog-0.3.0.tgz
     version: 0.3.0
   - created: 2017-04-06T11:33:26.056402381Z
     description: DataDog Agent
@@ -369,7 +369,7 @@ entries:
     - https://app.datadoghq.com/account/settings#agent/kubernetes
     - https://github.com/DataDog/docker-dd-agent
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/datadog-0.2.1.tgz
+    - https://charts.helm.sh/stable/datadog-0.2.1.tgz
     version: 0.2.1
   - created: 2017-02-11T03:18:26.518137684Z
     description: DataDog Agent
@@ -386,7 +386,7 @@ entries:
     - https://app.datadoghq.com/account/settings#agent/kubernetes
     - https://github.com/DataDog/docker-dd-agent
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/datadog-0.2.0.tgz
+    - https://charts.helm.sh/stable/datadog-0.2.0.tgz
     version: 0.2.0
   - created: 2017-01-04T00:48:19.731877862Z
     description: DataDog Agent
@@ -403,7 +403,7 @@ entries:
     - https://app.datadoghq.com/account/settings#agent/kubernetes
     - https://github.com/DataDog/docker-dd-agent
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/datadog-0.1.0.tgz
+    - https://charts.helm.sh/stable/datadog-0.1.0.tgz
     version: 0.1.0
   dokuwiki:
   - created: 2017-04-28T00:18:30.076184541Z
@@ -425,7 +425,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-dokuwiki
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/dokuwiki-0.1.4.tgz
+    - https://charts.helm.sh/stable/dokuwiki-0.1.4.tgz
     version: 0.1.4
   - created: 2017-04-13T05:18:28.897680481Z
     description: DokuWiki is a standards-compliant, simple to use wiki optimized for
@@ -446,7 +446,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-dokuwiki
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/dokuwiki-0.1.3.tgz
+    - https://charts.helm.sh/stable/dokuwiki-0.1.3.tgz
     version: 0.1.3
   - created: 2017-03-02T19:33:28.170205427Z
     description: DokuWiki is a standards-compliant, simple to use wiki optimized for
@@ -467,7 +467,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-dokuwiki
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/dokuwiki-0.1.2.tgz
+    - https://charts.helm.sh/stable/dokuwiki-0.1.2.tgz
     version: 0.1.2
   - created: 2017-02-01T02:18:29.116555882Z
     description: DokuWiki is a standards-compliant, simple to use wiki optimized for
@@ -488,7 +488,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-dokuwiki
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/dokuwiki-0.1.1.tgz
+    - https://charts.helm.sh/stable/dokuwiki-0.1.1.tgz
     version: 0.1.1
   - created: 2017-01-28T00:33:31.06436596Z
     description: DokuWiki is a standards-compliant, simple to use wiki optimized for
@@ -509,7 +509,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-dokuwiki
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/dokuwiki-0.1.0.tgz
+    - https://charts.helm.sh/stable/dokuwiki-0.1.0.tgz
     version: 0.1.0
   drupal:
   - created: 2017-04-28T00:18:30.076853626Z
@@ -533,7 +533,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-drupal
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/drupal-0.5.1.tgz
+    - https://charts.helm.sh/stable/drupal-0.5.1.tgz
     version: 0.5.1
   - created: 2017-04-24T19:18:29.642780033Z
     description: One of the most versatile open source content management systems.
@@ -556,7 +556,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-drupal
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/drupal-0.5.0.tgz
+    - https://charts.helm.sh/stable/drupal-0.5.0.tgz
     version: 0.5.0
   - created: 2017-04-11T17:18:28.883487907Z
     description: One of the most versatile open source content management systems.
@@ -579,7 +579,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-drupal
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/drupal-0.4.6.tgz
+    - https://charts.helm.sh/stable/drupal-0.4.6.tgz
     version: 0.4.6
   - created: 2017-03-23T01:48:29.309045867Z
     description: One of the most versatile open source content management systems.
@@ -602,7 +602,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-drupal
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/drupal-0.4.5.tgz
+    - https://charts.helm.sh/stable/drupal-0.4.5.tgz
     version: 0.4.5
   - created: 2017-03-16T13:33:30.828606332Z
     description: One of the most versatile open source content management systems.
@@ -625,7 +625,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-drupal
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/drupal-0.4.4.tgz
+    - https://charts.helm.sh/stable/drupal-0.4.4.tgz
     version: 0.4.4
   - created: 2017-03-02T19:33:28.170963773Z
     description: One of the most versatile open source content management systems.
@@ -648,7 +648,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-drupal
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/drupal-0.4.3.tgz
+    - https://charts.helm.sh/stable/drupal-0.4.3.tgz
     version: 0.4.3
   - created: 2017-02-27T17:03:27.765392204Z
     description: One of the most versatile open source content management systems.
@@ -671,7 +671,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-drupal
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/drupal-0.4.2.tgz
+    - https://charts.helm.sh/stable/drupal-0.4.2.tgz
     version: 0.4.2
   - created: 2017-02-11T00:18:52.26723498Z
     description: One of the most versatile open source content management systems.
@@ -693,7 +693,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-drupal
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/drupal-0.4.1.tgz
+    - https://charts.helm.sh/stable/drupal-0.4.1.tgz
     version: 0.4.1
   - created: 2017-01-28T00:33:31.065139372Z
     description: One of the most versatile open source content management systems.
@@ -715,7 +715,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-drupal
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/drupal-0.4.0.tgz
+    - https://charts.helm.sh/stable/drupal-0.4.0.tgz
     version: 0.4.0
   - created: 2017-01-04T00:48:19.73297256Z
     description: One of the most versatile open source content management systems.
@@ -737,7 +737,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-drupal
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/drupal-0.3.10.tgz
+    - https://charts.helm.sh/stable/drupal-0.3.10.tgz
     version: 0.3.10
   - created: 2016-12-15T00:48:24.005322531Z
     description: One of the most versatile open source content management systems.
@@ -759,7 +759,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-drupal
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/drupal-0.3.9.tgz
+    - https://charts.helm.sh/stable/drupal-0.3.9.tgz
     version: 0.3.9
   - created: 2016-12-09T18:48:20.182097412Z
     description: One of the most versatile open source content management systems.
@@ -781,7 +781,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-drupal
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/drupal-0.3.8.tgz
+    - https://charts.helm.sh/stable/drupal-0.3.8.tgz
     version: 0.3.8
   - created: 2016-11-21T19:48:21.904806991Z
     description: One of the most versatile open source content management systems.
@@ -803,7 +803,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-drupal
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/drupal-0.3.7.tgz
+    - https://charts.helm.sh/stable/drupal-0.3.7.tgz
     version: 0.3.7
   - created: 2016-11-08T15:03:20.739400722Z
     description: One of the most versatile open source content management systems.
@@ -825,7 +825,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-drupal
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/drupal-0.3.6.tgz
+    - https://charts.helm.sh/stable/drupal-0.3.6.tgz
     version: 0.3.6
   - created: 2016-11-03T19:33:29.11780736Z
     description: One of the most versatile open source content management systems.
@@ -847,7 +847,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-drupal
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/drupal-0.3.5.tgz
+    - https://charts.helm.sh/stable/drupal-0.3.5.tgz
     version: 0.3.5
   - created: 2016-10-21T19:18:18.619010562Z
     description: One of the most versatile open source content management systems.
@@ -869,7 +869,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-drupal
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/drupal-0.3.4.tgz
+    - https://charts.helm.sh/stable/drupal-0.3.4.tgz
     version: 0.3.4
   - created: 2016-10-19T00:03:14.027652488Z
     description: One of the most versatile open source content management systems.
@@ -891,7 +891,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-drupal
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/drupal-0.3.3.tgz
+    - https://charts.helm.sh/stable/drupal-0.3.3.tgz
     version: 0.3.3
   - created: 2016-10-19T00:03:14.027073479Z
     description: One of the most versatile open source content management systems.
@@ -913,7 +913,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-drupal
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/drupal-0.3.2.tgz
+    - https://charts.helm.sh/stable/drupal-0.3.2.tgz
     version: 0.3.2
   - created: 2016-10-19T00:03:14.025451665Z
     description: One of the most versatile open source content management systems.
@@ -935,7 +935,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-drupal
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/drupal-0.3.1.tgz
+    - https://charts.helm.sh/stable/drupal-0.3.1.tgz
     version: 0.3.1
   - created: 2016-10-19T00:03:14.024557743Z
     description: One of the most versatile open source content management systems.
@@ -957,7 +957,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-drupal
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/drupal-0.3.0.tgz
+    - https://charts.helm.sh/stable/drupal-0.3.0.tgz
     version: 0.3.0
   etcd-operator:
   - apiVersion: v1
@@ -975,7 +975,7 @@ entries:
     sources:
     - https://github.com/coreos/etcd-operator
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/etcd-operator-0.2.0.tgz
+    - https://charts.helm.sh/stable/etcd-operator-0.2.0.tgz
     version: 0.2.0
   - apiVersion: v1
     created: 2017-03-08T19:18:29.84391993Z
@@ -990,7 +990,7 @@ entries:
     sources:
     - https://github.com/coreos/etcd-operator
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/etcd-operator-0.1.1.tgz
+    - https://charts.helm.sh/stable/etcd-operator-0.1.1.tgz
     version: 0.1.1
   - apiVersion: v1
     created: 2017-02-11T03:18:26.519796919Z
@@ -1004,7 +1004,7 @@ entries:
     sources:
     - https://github.com/coreos/etcd-operator
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/etcd-operator-0.1.0.tgz
+    - https://charts.helm.sh/stable/etcd-operator-0.1.0.tgz
     version: 0.1.0
   factorio:
   - created: 2017-04-28T00:18:30.077542134Z
@@ -1022,7 +1022,7 @@ entries:
     sources:
     - https://github.com/games-on-k8s/docker-factorio
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/factorio-0.2.0.tgz
+    - https://charts.helm.sh/stable/factorio-0.2.0.tgz
     version: 0.2.0
   - created: 2017-03-15T11:48:36.74226142Z
     description: Factorio dedicated server.
@@ -1039,7 +1039,7 @@ entries:
     sources:
     - https://github.com/games-on-k8s/docker-factorio
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/factorio-0.1.4.tgz
+    - https://charts.helm.sh/stable/factorio-0.1.4.tgz
     version: 0.1.4
   - created: 2017-02-13T04:18:31.530714209Z
     description: Factorio dedicated server.
@@ -1054,7 +1054,7 @@ entries:
     sources:
     - https://github.com/games-on-k8s/docker-factorio
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/factorio-0.1.3.tgz
+    - https://charts.helm.sh/stable/factorio-0.1.3.tgz
     version: 0.1.3
   - created: 2017-01-28T00:33:31.066072163Z
     description: Factorio dedicated server.
@@ -1069,7 +1069,7 @@ entries:
     sources:
     - https://github.com/games-on-k8s/docker-factorio
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/factorio-0.1.2.tgz
+    - https://charts.helm.sh/stable/factorio-0.1.2.tgz
     version: 0.1.2
   - created: 2016-12-02T09:03:20.175832035Z
     description: Factorio dedicated server.
@@ -1084,7 +1084,7 @@ entries:
     sources:
     - https://github.com/games-on-k8s/docker-factorio
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/factorio-0.1.1.tgz
+    - https://charts.helm.sh/stable/factorio-0.1.1.tgz
     version: 0.1.1
   - created: 2016-11-07T18:33:21.243890443Z
     description: Factorio dedicated server.
@@ -1099,7 +1099,7 @@ entries:
     sources:
     - https://github.com/games-on-k8s/docker-factorio
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/factorio-0.1.0.tgz
+    - https://charts.helm.sh/stable/factorio-0.1.0.tgz
     version: 0.1.0
   gcloud-endpoints:
   - created: 2017-04-28T00:18:30.077956448Z
@@ -1124,7 +1124,7 @@ entries:
       name: Matt Tucker
     name: gcloud-endpoints
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/gcloud-endpoints-0.1.0.tgz
+    - https://charts.helm.sh/stable/gcloud-endpoints-0.1.0.tgz
     version: 0.1.0
   gcloud-sqlproxy:
   - created: 2017-04-28T00:18:30.078355277Z
@@ -1146,7 +1146,7 @@ entries:
     sources:
     - https://github.com/rimusz/charts
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/gcloud-sqlproxy-0.1.0.tgz
+    - https://charts.helm.sh/stable/gcloud-sqlproxy-0.1.0.tgz
     version: 0.1.0
   ghost:
   - created: 2017-04-28T00:18:30.079159648Z
@@ -1171,7 +1171,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-ghost
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/ghost-0.4.7.tgz
+    - https://charts.helm.sh/stable/ghost-0.4.7.tgz
     version: 0.4.7
   - created: 2017-04-06T10:48:26.261677382Z
     description: A simple, powerful publishing platform that allows you to share your
@@ -1195,7 +1195,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-ghost
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/ghost-0.4.6.tgz
+    - https://charts.helm.sh/stable/ghost-0.4.6.tgz
     version: 0.4.6
   - created: 2017-03-08T19:03:31.719494672Z
     description: A simple, powerful publishing platform that allows you to share your
@@ -1219,7 +1219,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-ghost
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/ghost-0.4.5.tgz
+    - https://charts.helm.sh/stable/ghost-0.4.5.tgz
     version: 0.4.5
   - created: 2017-02-27T17:03:27.767416735Z
     description: A simple, powerful publishing platform that allows you to share your
@@ -1243,7 +1243,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-ghost
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/ghost-0.4.4.tgz
+    - https://charts.helm.sh/stable/ghost-0.4.4.tgz
     version: 0.4.4
   - created: 2017-02-11T00:18:52.2688126Z
     description: A simple, powerful publishing platform that allows you to share your
@@ -1266,7 +1266,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-ghost
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/ghost-0.4.3.tgz
+    - https://charts.helm.sh/stable/ghost-0.4.3.tgz
     version: 0.4.3
   - created: 2017-01-29T22:48:35.944809746Z
     description: A simple, powerful publishing platform that allows you to share your
@@ -1289,7 +1289,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-ghost
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/ghost-0.4.2.tgz
+    - https://charts.helm.sh/stable/ghost-0.4.2.tgz
     version: 0.4.2
   - created: 2017-01-21T00:18:31.342008382Z
     description: A simple, powerful publishing platform that allows you to share your
@@ -1312,7 +1312,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-ghost
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/ghost-0.4.1.tgz
+    - https://charts.helm.sh/stable/ghost-0.4.1.tgz
     version: 0.4.1
   - created: 2016-12-09T18:48:20.183434341Z
     description: A simple, powerful publishing platform that allows you to share your
@@ -1335,7 +1335,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-ghost
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/ghost-0.4.0.tgz
+    - https://charts.helm.sh/stable/ghost-0.4.0.tgz
     version: 0.4.0
   gitlab-ce:
   - created: 2017-04-28T00:18:30.080184798Z
@@ -1358,7 +1358,7 @@ entries:
     - https://hub.docker.com/r/gitlab/gitlab-ce/
     - https://docs.gitlab.com/omnibus/
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/gitlab-ce-0.1.7.tgz
+    - https://charts.helm.sh/stable/gitlab-ce-0.1.7.tgz
     version: 0.1.7
   - created: 2017-04-11T16:33:29.173232912Z
     description: GitLab Community Edition
@@ -1380,7 +1380,7 @@ entries:
     - https://hub.docker.com/r/gitlab/gitlab-ce/
     - https://docs.gitlab.com/omnibus/
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/gitlab-ce-0.1.6.tgz
+    - https://charts.helm.sh/stable/gitlab-ce-0.1.6.tgz
     version: 0.1.6
   - created: 2017-03-23T20:48:32.107763732Z
     description: GitLab Community Edition
@@ -1402,7 +1402,7 @@ entries:
     - https://hub.docker.com/r/gitlab/gitlab-ce/
     - https://docs.gitlab.com/omnibus/
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/gitlab-ce-0.1.5.tgz
+    - https://charts.helm.sh/stable/gitlab-ce-0.1.5.tgz
     version: 0.1.5
   - created: 2017-02-14T02:48:28.88667289Z
     description: GitLab Community Edition
@@ -1422,7 +1422,7 @@ entries:
     - https://hub.docker.com/r/gitlab/gitlab-ce/
     - https://docs.gitlab.com/omnibus/
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/gitlab-ce-0.1.4.tgz
+    - https://charts.helm.sh/stable/gitlab-ce-0.1.4.tgz
     version: 0.1.4
   - created: 2017-02-13T20:18:28.097071087Z
     description: GitLab Community Edition
@@ -1442,7 +1442,7 @@ entries:
     - https://hub.docker.com/r/gitlab/gitlab-ce/
     - https://docs.gitlab.com/omnibus/
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/gitlab-ce-0.1.3.tgz
+    - https://charts.helm.sh/stable/gitlab-ce-0.1.3.tgz
     version: 0.1.3
   - created: 2017-01-26T03:18:35.336711333Z
     description: GitLab Community Edition
@@ -1462,7 +1462,7 @@ entries:
     - https://hub.docker.com/r/gitlab/gitlab-ce/
     - https://docs.gitlab.com/omnibus/
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/gitlab-ce-0.1.2.tgz
+    - https://charts.helm.sh/stable/gitlab-ce-0.1.2.tgz
     version: 0.1.2
   - created: 2017-01-13T20:48:31.520266166Z
     description: GitLab Community Edition
@@ -1482,7 +1482,7 @@ entries:
     - https://hub.docker.com/r/gitlab/gitlab-ce/
     - https://docs.gitlab.com/omnibus/
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/gitlab-ce-0.1.1.tgz
+    - https://charts.helm.sh/stable/gitlab-ce-0.1.1.tgz
     version: 0.1.1
   - created: 2016-12-15T21:18:24.667256782Z
     description: GitLab Community Edition
@@ -1502,7 +1502,7 @@ entries:
     - https://hub.docker.com/r/gitlab/gitlab-ce/
     - https://docs.gitlab.com/omnibus/
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/gitlab-ce-0.1.0.tgz
+    - https://charts.helm.sh/stable/gitlab-ce-0.1.0.tgz
     version: 0.1.0
   gitlab-ee:
   - created: 2017-04-28T00:18:30.081242553Z
@@ -1525,7 +1525,7 @@ entries:
     - https://hub.docker.com/r/gitlab/gitlab-ee/
     - https://docs.gitlab.com/omnibus/
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/gitlab-ee-0.1.6.tgz
+    - https://charts.helm.sh/stable/gitlab-ee-0.1.6.tgz
     version: 0.1.6
   grafana:
   - created: 2017-04-28T00:18:30.082782593Z
@@ -1541,7 +1541,7 @@ entries:
     sources:
     - https://github.com/grafana/grafana
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/grafana-0.3.1.tgz
+    - https://charts.helm.sh/stable/grafana-0.3.1.tgz
     version: 0.3.1
   - created: 2017-04-14T01:18:27.369088748Z
     description: The leading tool for querying and visualizing time series and metrics.
@@ -1556,7 +1556,7 @@ entries:
     sources:
     - https://github.com/grafana/grafana
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/grafana-0.3.0.tgz
+    - https://charts.helm.sh/stable/grafana-0.3.0.tgz
     version: 0.3.0
   - created: 2017-04-05T18:03:30.376700685Z
     description: The leading tool for querying and visualizing time series and metrics.
@@ -1571,7 +1571,7 @@ entries:
     sources:
     - https://github.com/grafana/grafana
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/grafana-0.2.5.tgz
+    - https://charts.helm.sh/stable/grafana-0.2.5.tgz
     version: 0.2.5
   - created: 2017-03-16T23:33:31.578792832Z
     description: The leading tool for querying and visualizing time series and metrics.
@@ -1586,7 +1586,7 @@ entries:
     sources:
     - https://github.com/grafana/grafana
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/grafana-0.2.4.tgz
+    - https://charts.helm.sh/stable/grafana-0.2.4.tgz
     version: 0.2.4
   - created: 2017-03-14T23:48:31.886602615Z
     description: The leading tool for querying and visualizing time series and metrics.
@@ -1601,7 +1601,7 @@ entries:
     sources:
     - https://github.com/grafana/grafana
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/grafana-0.2.3.tgz
+    - https://charts.helm.sh/stable/grafana-0.2.3.tgz
     version: 0.2.3
   - created: 2017-02-13T22:33:28.777518221Z
     description: The leading tool for querying and visualizing time series and metrics.
@@ -1616,7 +1616,7 @@ entries:
     sources:
     - https://github.com/grafana/grafana
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/grafana-0.2.2.tgz
+    - https://charts.helm.sh/stable/grafana-0.2.2.tgz
     version: 0.2.2
   - created: 2017-02-13T04:18:31.532928133Z
     description: A Helm chart for Kubernetes
@@ -1630,7 +1630,7 @@ entries:
     sources:
     - https://github.com/grafana/grafana
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/grafana-0.2.1.tgz
+    - https://charts.helm.sh/stable/grafana-0.2.1.tgz
     version: 0.2.1
   - created: 2017-01-29T23:03:26.897254812Z
     description: A Helm chart for Kubernetes
@@ -1644,7 +1644,7 @@ entries:
     sources:
     - https://github.com/grafana/grafana
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/grafana-0.2.0.tgz
+    - https://charts.helm.sh/stable/grafana-0.2.0.tgz
     version: 0.2.0
   influxdb:
   - created: 2017-04-28T00:18:30.083302575Z
@@ -1663,7 +1663,7 @@ entries:
     sources:
     - https://github.com/influxdata/influxdb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/influxdb-0.4.0.tgz
+    - https://charts.helm.sh/stable/influxdb-0.4.0.tgz
     version: 0.4.0
   - created: 2017-03-23T01:19:01.442621577Z
     description: Scalable datastore for metrics, events, and real-time analytics.
@@ -1681,7 +1681,7 @@ entries:
     sources:
     - https://github.com/influxdata/influxdb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/influxdb-0.3.0.tgz
+    - https://charts.helm.sh/stable/influxdb-0.3.0.tgz
     version: 0.3.0
   - created: 2017-03-17T05:33:29.077307939Z
     description: Scalable datastore for metrics, events, and real-time analytics.
@@ -1699,7 +1699,7 @@ entries:
     sources:
     - https://github.com/influxdata/influxdb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/influxdb-0.2.1.tgz
+    - https://charts.helm.sh/stable/influxdb-0.2.1.tgz
     version: 0.2.1
   - created: 2017-02-13T17:03:30.109119817Z
     description: Scalable datastore for metrics, events, and real-time analytics.
@@ -1717,7 +1717,7 @@ entries:
     sources:
     - https://github.com/influxdata/influxdb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/influxdb-0.1.2.tgz
+    - https://charts.helm.sh/stable/influxdb-0.1.2.tgz
     version: 0.1.2
   - created: 2017-02-13T04:33:52.294695041Z
     description: Chart for InfluxDB
@@ -1733,7 +1733,7 @@ entries:
       name: Jack Zampolin
     name: influxdb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/influxdb-0.1.1.tgz
+    - https://charts.helm.sh/stable/influxdb-0.1.1.tgz
     version: 0.1.1
   - created: 2017-01-28T00:48:33.328518706Z
     description: Chart for InfluxDB
@@ -1749,7 +1749,7 @@ entries:
       name: Jack Zampolin
     name: influxdb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/influxdb-0.1.0.tgz
+    - https://charts.helm.sh/stable/influxdb-0.1.0.tgz
     version: 0.1.0
   jasperreports:
   - created: 2017-04-28T00:18:30.084006378Z
@@ -1774,7 +1774,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-jasperreports
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/jasperreports-0.1.5.tgz
+    - https://charts.helm.sh/stable/jasperreports-0.1.5.tgz
     version: 0.1.5
   - created: 2017-04-06T10:18:27.580953879Z
     description: The JasperReports server can be used as a stand-alone or embedded
@@ -1798,7 +1798,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-jasperreports
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/jasperreports-0.1.4.tgz
+    - https://charts.helm.sh/stable/jasperreports-0.1.4.tgz
     version: 0.1.4
   - created: 2017-03-08T19:03:31.722665089Z
     description: The JasperReports server can be used as a stand-alone or embedded
@@ -1822,7 +1822,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-jasperreports
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/jasperreports-0.1.3.tgz
+    - https://charts.helm.sh/stable/jasperreports-0.1.3.tgz
     version: 0.1.3
   - created: 2017-02-13T21:33:27.741967589Z
     description: The JasperReports server can be used as a stand-alone or embedded
@@ -1846,7 +1846,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-jasperreports
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/jasperreports-0.1.2.tgz
+    - https://charts.helm.sh/stable/jasperreports-0.1.2.tgz
     version: 0.1.2
   - created: 2017-01-28T01:33:32.784491819Z
     description: The JasperReports server can be used as a stand-alone or embedded
@@ -1870,7 +1870,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-jasperreports
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/jasperreports-0.1.1.tgz
+    - https://charts.helm.sh/stable/jasperreports-0.1.1.tgz
     version: 0.1.1
   jenkins:
   - created: 2017-04-28T00:18:30.084552323Z
@@ -1890,7 +1890,7 @@ entries:
     - https://github.com/jenkinsci/jenkins
     - https://github.com/jenkinsci/docker-jnlp-slave
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/jenkins-0.6.0.tgz
+    - https://charts.helm.sh/stable/jenkins-0.6.0.tgz
     version: 0.6.0
   - created: 2017-04-24T21:03:29.315054715Z
     description: Open source continuous integration server. It supports multiple SCM
@@ -1909,7 +1909,7 @@ entries:
     - https://github.com/jenkinsci/jenkins
     - https://github.com/jenkinsci/docker-jnlp-slave
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/jenkins-0.5.1.tgz
+    - https://charts.helm.sh/stable/jenkins-0.5.1.tgz
     version: 0.5.1
   - created: 2017-04-19T16:48:30.580850385Z
     description: Open source continuous integration server. It supports multiple SCM
@@ -1928,7 +1928,7 @@ entries:
     - https://github.com/jenkinsci/jenkins
     - https://github.com/jenkinsci/docker-jnlp-slave
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/jenkins-0.5.0.tgz
+    - https://charts.helm.sh/stable/jenkins-0.5.0.tgz
     version: 0.5.0
   - created: 2017-04-13T19:03:30.206806842Z
     description: Open source continuous integration server. It supports multiple SCM
@@ -1947,7 +1947,7 @@ entries:
     - https://github.com/jenkinsci/jenkins
     - https://github.com/jenkinsci/docker-jnlp-slave
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/jenkins-0.4.1.tgz
+    - https://charts.helm.sh/stable/jenkins-0.4.1.tgz
     version: 0.4.1
   - created: 2017-04-13T05:33:26.915479665Z
     description: Open source continuous integration server. It supports multiple SCM
@@ -1966,7 +1966,7 @@ entries:
     - https://github.com/jenkinsci/jenkins
     - https://github.com/jenkinsci/docker-jnlp-slave
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/jenkins-0.4.0.tgz
+    - https://charts.helm.sh/stable/jenkins-0.4.0.tgz
     version: 0.4.0
   - created: 2017-04-13T05:18:28.907645759Z
     description: Open source continuous integration server. It supports multiple SCM
@@ -1985,7 +1985,7 @@ entries:
     - https://github.com/jenkinsci/jenkins
     - https://github.com/jenkinsci/docker-jnlp-slave
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/jenkins-0.3.1.tgz
+    - https://charts.helm.sh/stable/jenkins-0.3.1.tgz
     version: 0.3.1
   - created: 2017-03-30T07:48:56.453711055Z
     description: Open source continuous integration server. It supports multiple SCM
@@ -2004,7 +2004,7 @@ entries:
     - https://github.com/jenkinsci/jenkins
     - https://github.com/jenkinsci/docker-jnlp-slave
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/jenkins-0.3.0.tgz
+    - https://charts.helm.sh/stable/jenkins-0.3.0.tgz
     version: 0.3.0
   - created: 2017-03-22T22:18:33.707478335Z
     description: Open source continuous integration server. It supports multiple SCM
@@ -2023,7 +2023,7 @@ entries:
     - https://github.com/jenkinsci/jenkins
     - https://github.com/jenkinsci/docker-jnlp-slave
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/jenkins-0.2.0.tgz
+    - https://charts.helm.sh/stable/jenkins-0.2.0.tgz
     version: 0.2.0
   - created: 2017-03-15T09:48:31.97803944Z
     description: Open source continuous integration server. It supports multiple SCM
@@ -2042,7 +2042,7 @@ entries:
     - https://github.com/jenkinsci/jenkins
     - https://github.com/jenkinsci/docker-jnlp-slave
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/jenkins-0.1.15.tgz
+    - https://charts.helm.sh/stable/jenkins-0.1.15.tgz
     version: 0.1.15
   - created: 2017-03-14T13:33:36.105867963Z
     description: Open source continuous integration server. It supports multiple SCM
@@ -2061,7 +2061,7 @@ entries:
     - https://github.com/jenkinsci/jenkins
     - https://github.com/jenkinsci/docker-jnlp-slave
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/jenkins-0.1.14.tgz
+    - https://charts.helm.sh/stable/jenkins-0.1.14.tgz
     version: 0.1.14
   - created: 2017-02-13T22:18:28.949796594Z
     description: Open source continuous integration server. It supports multiple SCM
@@ -2080,7 +2080,7 @@ entries:
     - https://github.com/jenkinsci/jenkins
     - https://github.com/jenkinsci/docker-jnlp-slave
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/jenkins-0.1.13.tgz
+    - https://charts.helm.sh/stable/jenkins-0.1.13.tgz
     version: 0.1.13
   - created: 2017-02-13T21:48:52.587710548Z
     description: Open source continuous integration server. It supports multiple SCM
@@ -2099,7 +2099,7 @@ entries:
     - https://github.com/jenkinsci/jenkins
     - https://github.com/jenkinsci/docker-jnlp-slave
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/jenkins-0.1.12.tgz
+    - https://charts.helm.sh/stable/jenkins-0.1.12.tgz
     version: 0.1.12
   - created: 2017-02-13T21:03:28.21318035Z
     description: Open source continuous integration server. It supports multiple SCM
@@ -2118,7 +2118,7 @@ entries:
     - https://github.com/jenkinsci/jenkins
     - https://github.com/jenkinsci/docker-jnlp-slave
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/jenkins-0.1.10.tgz
+    - https://charts.helm.sh/stable/jenkins-0.1.10.tgz
     version: 0.1.10
   - created: 2017-02-13T17:03:30.11276321Z
     description: Open source continuous integration server. It supports multiple SCM
@@ -2137,7 +2137,7 @@ entries:
     - https://github.com/jenkinsci/jenkins
     - https://github.com/jenkinsci/docker-jnlp-slave
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/jenkins-0.1.9.tgz
+    - https://charts.helm.sh/stable/jenkins-0.1.9.tgz
     version: 0.1.9
   - created: 2017-02-13T04:18:31.534794405Z
     description: Open source continuous integration server. It supports multiple SCM
@@ -2156,7 +2156,7 @@ entries:
     - https://github.com/jenkinsci/jenkins
     - https://github.com/jenkinsci/docker-jnlp-slave
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/jenkins-0.1.8.tgz
+    - https://charts.helm.sh/stable/jenkins-0.1.8.tgz
     version: 0.1.8
   - created: 2017-01-27T21:48:32.069740444Z
     description: A Jenkins Helm chart for Kubernetes.
@@ -2173,7 +2173,7 @@ entries:
     - https://github.com/jenkinsci/jenkins
     - https://github.com/jenkinsci/docker-jnlp-slave
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/jenkins-0.1.7.tgz
+    - https://charts.helm.sh/stable/jenkins-0.1.7.tgz
     version: 0.1.7
   - created: 2017-01-04T00:48:19.7378014Z
     description: A Jenkins Helm chart for Kubernetes.
@@ -2190,7 +2190,7 @@ entries:
     - https://github.com/jenkinsci/jenkins
     - https://github.com/jenkinsci/docker-jnlp-slave
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/jenkins-0.1.6.tgz
+    - https://charts.helm.sh/stable/jenkins-0.1.6.tgz
     version: 0.1.6
   - created: 2016-12-19T22:03:51.103057889Z
     description: A Jenkins Helm chart for Kubernetes.
@@ -2207,7 +2207,7 @@ entries:
     - https://github.com/jenkinsci/jenkins
     - https://github.com/jenkinsci/docker-jnlp-slave
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/jenkins-0.1.5.tgz
+    - https://charts.helm.sh/stable/jenkins-0.1.5.tgz
     version: 0.1.5
   - created: 2016-12-09T18:48:20.183887307Z
     description: A Jenkins Helm chart for Kubernetes.
@@ -2224,7 +2224,7 @@ entries:
     - https://github.com/jenkinsci/jenkins
     - https://github.com/jenkinsci/docker-jnlp-slave
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/jenkins-0.1.4.tgz
+    - https://charts.helm.sh/stable/jenkins-0.1.4.tgz
     version: 0.1.4
   - created: 2016-12-05T18:33:22.028569484Z
     description: A Jenkins Helm chart for Kubernetes.
@@ -2241,7 +2241,7 @@ entries:
     - https://github.com/jenkinsci/jenkins
     - https://github.com/jenkinsci/docker-jnlp-slave
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/jenkins-0.1.1.tgz
+    - https://charts.helm.sh/stable/jenkins-0.1.1.tgz
     version: 0.1.1
   - created: 2016-10-19T00:03:14.028672648Z
     description: A Jenkins Helm chart for Kubernetes.
@@ -2258,7 +2258,7 @@ entries:
     - https://github.com/jenkinsci/jenkins
     - https://github.com/jenkinsci/docker-jnlp-slave
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/jenkins-0.1.0.tgz
+    - https://charts.helm.sh/stable/jenkins-0.1.0.tgz
     version: 0.1.0
   joomla:
   - created: 2017-04-28T00:18:30.085219154Z
@@ -2280,7 +2280,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-joomla
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/joomla-0.4.6.tgz
+    - https://charts.helm.sh/stable/joomla-0.4.6.tgz
     version: 0.4.6
   - created: 2017-04-06T11:03:25.397962583Z
     description: PHP content management system (CMS) for publishing web content
@@ -2301,7 +2301,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-joomla
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/joomla-0.4.5.tgz
+    - https://charts.helm.sh/stable/joomla-0.4.5.tgz
     version: 0.4.5
   - created: 2017-03-02T19:33:28.178324258Z
     description: PHP content management system (CMS) for publishing web content
@@ -2322,7 +2322,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-joomla
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/joomla-0.4.4.tgz
+    - https://charts.helm.sh/stable/joomla-0.4.4.tgz
     version: 0.4.4
   - created: 2017-02-27T16:48:32.159029074Z
     description: PHP content management system (CMS) for publishing web content
@@ -2343,7 +2343,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-joomla
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/joomla-0.4.3.tgz
+    - https://charts.helm.sh/stable/joomla-0.4.3.tgz
     version: 0.4.3
   - created: 2017-02-11T00:18:52.272598223Z
     description: PHP content management system (CMS) for publishing web content
@@ -2363,7 +2363,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-joomla
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/joomla-0.4.2.tgz
+    - https://charts.helm.sh/stable/joomla-0.4.2.tgz
     version: 0.4.2
   - created: 2017-01-21T00:18:31.345952551Z
     description: PHP content management system (CMS) for publishing web content
@@ -2383,7 +2383,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-joomla
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/joomla-0.4.1.tgz
+    - https://charts.helm.sh/stable/joomla-0.4.1.tgz
     version: 0.4.1
   - created: 2016-12-09T18:48:20.18539038Z
     description: PHP content management system (CMS) for publishing web content
@@ -2403,7 +2403,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-joomla
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/joomla-0.4.0.tgz
+    - https://charts.helm.sh/stable/joomla-0.4.0.tgz
     version: 0.4.0
   kapacitor:
   - created: 2017-04-28T00:18:30.085544137Z
@@ -2424,7 +2424,7 @@ entries:
     sources:
     - https://github.com/influxdata/kapacitor
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/kapacitor-0.2.2.tgz
+    - https://charts.helm.sh/stable/kapacitor-0.2.2.tgz
     version: 0.2.2
   - created: 2017-03-22T21:33:33.841225941Z
     description: InfluxDB's native data processing engine. It can process both stream
@@ -2444,7 +2444,7 @@ entries:
     sources:
     - https://github.com/influxdata/kapacitor
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/kapacitor-0.2.1.tgz
+    - https://charts.helm.sh/stable/kapacitor-0.2.1.tgz
     version: 0.2.1
   - created: 2017-02-13T21:48:52.58883187Z
     description: InfluxDB's native data processing engine. It can process both stream
@@ -2464,7 +2464,7 @@ entries:
     sources:
     - https://github.com/influxdata/kapacitor
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/kapacitor-0.1.2.tgz
+    - https://charts.helm.sh/stable/kapacitor-0.1.2.tgz
     version: 0.1.2
   - created: 2017-02-13T21:03:28.215149313Z
     description: Chart for Chronograf
@@ -2481,7 +2481,7 @@ entries:
       name: Jack Zampolin
     name: kapacitor
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/kapacitor-0.1.1.tgz
+    - https://charts.helm.sh/stable/kapacitor-0.1.1.tgz
     version: 0.1.1
   - created: 2017-01-28T01:33:32.786133788Z
     description: Chart for Chronograf
@@ -2498,7 +2498,7 @@ entries:
       name: Jack Zampolin
     name: kapacitor
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/kapacitor-0.1.0.tgz
+    - https://charts.helm.sh/stable/kapacitor-0.1.0.tgz
     version: 0.1.0
   kube-lego:
   - apiVersion: v1
@@ -2518,7 +2518,7 @@ entries:
     sources:
     - https://github.com/jetstack/kube-lego/tree/master/examples/nginx
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/kube-lego-0.1.8.tgz
+    - https://charts.helm.sh/stable/kube-lego-0.1.8.tgz
     version: 0.1.8
   - apiVersion: v1
     created: 2017-03-20T20:03:37.426644363Z
@@ -2537,7 +2537,7 @@ entries:
     sources:
     - https://github.com/jetstack/kube-lego/tree/master/examples/nginx
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/kube-lego-0.1.7.tgz
+    - https://charts.helm.sh/stable/kube-lego-0.1.7.tgz
     version: 0.1.7
   - apiVersion: v1
     created: 2017-03-02T19:33:28.179029307Z
@@ -2556,7 +2556,7 @@ entries:
     sources:
     - https://github.com/jetstack/kube-lego/tree/master/examples/nginx
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/kube-lego-0.1.6.tgz
+    - https://charts.helm.sh/stable/kube-lego-0.1.6.tgz
     version: 0.1.6
   - apiVersion: v1
     created: 2017-02-27T17:33:27.264070807Z
@@ -2575,7 +2575,7 @@ entries:
     sources:
     - https://github.com/jetstack/kube-lego/tree/master/examples/nginx
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/kube-lego-0.1.5.tgz
+    - https://charts.helm.sh/stable/kube-lego-0.1.5.tgz
     version: 0.1.5
   - apiVersion: v1
     created: 2017-02-14T15:48:28.578398517Z
@@ -2594,7 +2594,7 @@ entries:
     sources:
     - https://github.com/jetstack/kube-lego/tree/master/examples/nginx
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/kube-lego-0.1.4.tgz
+    - https://charts.helm.sh/stable/kube-lego-0.1.4.tgz
     version: 0.1.4
   - apiVersion: v1
     created: 2017-02-11T00:48:25.354730418Z
@@ -2613,7 +2613,7 @@ entries:
     sources:
     - https://github.com/jetstack/kube-lego/tree/master/examples/nginx
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/kube-lego-0.1.3.tgz
+    - https://charts.helm.sh/stable/kube-lego-0.1.3.tgz
     version: 0.1.3
   kube-ops-view:
   - created: 2017-04-28T00:18:30.086143954Z
@@ -2633,7 +2633,7 @@ entries:
     sources:
     - https://github.com/hjacobs/kube-ops-view
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/kube-ops-view-0.2.0.tgz
+    - https://charts.helm.sh/stable/kube-ops-view-0.2.0.tgz
     version: 0.2.0
   kube2iam:
   - created: 2017-04-28T00:18:30.086423576Z
@@ -2656,7 +2656,7 @@ entries:
     sources:
     - https://github.com/jtblin/kube2iam
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/kube2iam-0.2.1.tgz
+    - https://charts.helm.sh/stable/kube2iam-0.2.1.tgz
     version: 0.2.1
   - created: 2017-03-02T18:48:30.431985789Z
     description: Provide IAM credentials to pods based on annotations.
@@ -2678,7 +2678,7 @@ entries:
     sources:
     - https://github.com/jtblin/kube2iam
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/kube2iam-0.2.0.tgz
+    - https://charts.helm.sh/stable/kube2iam-0.2.0.tgz
     version: 0.2.0
   - created: 2017-02-13T17:03:30.115672844Z
     description: Provide IAM credentials to containers running inside a kubernetes
@@ -2699,7 +2699,7 @@ entries:
     sources:
     - https://github.com/jtblin/kube2iam
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/kube2iam-0.1.1.tgz
+    - https://charts.helm.sh/stable/kube2iam-0.1.1.tgz
     version: 0.1.1
   - created: 2017-01-19T00:33:27.789172853Z
     description: Provide IAM credentials to containers running inside a kubernetes
@@ -2720,7 +2720,7 @@ entries:
     sources:
     - https://github.com/jtblin/kube2iam
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/kube2iam-0.1.0.tgz
+    - https://charts.helm.sh/stable/kube2iam-0.1.0.tgz
     version: 0.1.0
   linkerd:
   - apiVersion: v1
@@ -2736,7 +2736,7 @@ entries:
     sources:
     - https://github.com/BuoyantIO/linkerd
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/linkerd-0.2.0.tgz
+    - https://charts.helm.sh/stable/linkerd-0.2.0.tgz
     version: 0.2.0
   - apiVersion: v1
     created: 2017-03-27T13:18:34.232799345Z
@@ -2751,7 +2751,7 @@ entries:
     sources:
     - https://github.com/BuoyantIO/linkerd
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/linkerd-0.1.1.tgz
+    - https://charts.helm.sh/stable/linkerd-0.1.1.tgz
     version: 0.1.1
   - apiVersion: v1
     created: 2017-02-13T04:33:52.299092507Z
@@ -2765,7 +2765,7 @@ entries:
     sources:
     - https://github.com/BuoyantIO/linkerd
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/linkerd-0.1.0.tgz
+    - https://charts.helm.sh/stable/linkerd-0.1.0.tgz
     version: 0.1.0
   locust:
   - created: 2017-04-28T00:18:30.087097677Z
@@ -2780,7 +2780,7 @@ entries:
     sources:
     - https://github.com/honestbee/distributed-load-testing
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/locust-0.1.2.tgz
+    - https://charts.helm.sh/stable/locust-0.1.2.tgz
     version: 0.1.2
   - created: 2017-04-20T16:18:33.345004534Z
     description: A chart for locust distributed load testing
@@ -2789,7 +2789,7 @@ entries:
     sources:
     - https://github.com/honestbee/distributed-load-testing
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/locust-0.1.1.tgz
+    - https://charts.helm.sh/stable/locust-0.1.1.tgz
     version: 0.1.1
   - created: 2017-04-11T16:03:29.689097384Z
     description: A chart for locust distributed load testing
@@ -2798,7 +2798,7 @@ entries:
     sources:
     - https://github.com/honestbee/distributed-load-testing
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/locust-0.1.0.tgz
+    - https://charts.helm.sh/stable/locust-0.1.0.tgz
     version: 0.1.0
   magento:
   - created: 2017-04-28T00:18:30.087794886Z
@@ -2822,7 +2822,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-magento
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/magento-0.4.6.tgz
+    - https://charts.helm.sh/stable/magento-0.4.6.tgz
     version: 0.4.6
   - created: 2017-03-31T19:33:30.42890495Z
     description: A feature-rich flexible e-commerce solution. It includes transaction
@@ -2845,7 +2845,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-magento
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/magento-0.4.5.tgz
+    - https://charts.helm.sh/stable/magento-0.4.5.tgz
     version: 0.4.5
   - created: 2017-03-09T19:33:31.142591331Z
     description: A feature-rich flexible e-commerce solution. It includes transaction
@@ -2868,7 +2868,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-magento
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/magento-0.4.4.tgz
+    - https://charts.helm.sh/stable/magento-0.4.4.tgz
     version: 0.4.4
   - created: 2017-03-02T19:33:28.180428252Z
     description: A feature-rich flexible e-commerce solution. It includes transaction
@@ -2891,7 +2891,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-magento
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/magento-0.4.3.tgz
+    - https://charts.helm.sh/stable/magento-0.4.3.tgz
     version: 0.4.3
   - created: 2017-02-27T16:48:32.161186722Z
     description: A feature-rich flexible e-commerce solution. It includes transaction
@@ -2914,7 +2914,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-magento
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/magento-0.4.2.tgz
+    - https://charts.helm.sh/stable/magento-0.4.2.tgz
     version: 0.4.2
   - created: 2017-01-21T00:18:31.349108265Z
     description: A feature-rich flexible e-commerce solution. It includes transaction
@@ -2937,7 +2937,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-magento
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/magento-0.4.1.tgz
+    - https://charts.helm.sh/stable/magento-0.4.1.tgz
     version: 0.4.1
   - created: 2017-01-04T00:48:19.74048297Z
     description: A feature-rich flexible e-commerce solution. It includes transaction
@@ -2960,7 +2960,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-magento
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/magento-0.4.0.tgz
+    - https://charts.helm.sh/stable/magento-0.4.0.tgz
     version: 0.4.0
   mariadb:
   - created: 2017-04-28T00:18:30.088188975Z
@@ -2983,7 +2983,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mariadb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mariadb-0.6.0.tgz
+    - https://charts.helm.sh/stable/mariadb-0.6.0.tgz
     version: 0.6.0
   - created: 2017-04-03T22:33:26.672780802Z
     description: Fast, reliable, scalable, and easy to use open-source relational
@@ -3005,7 +3005,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mariadb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mariadb-0.5.14.tgz
+    - https://charts.helm.sh/stable/mariadb-0.5.14.tgz
     version: 0.5.14
   - created: 2017-03-23T19:18:29.910295788Z
     description: Fast, reliable, scalable, and easy to use open-source relational
@@ -3027,7 +3027,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mariadb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mariadb-0.5.13.tgz
+    - https://charts.helm.sh/stable/mariadb-0.5.13.tgz
     version: 0.5.13
   - created: 2017-03-17T22:48:29.250381078Z
     description: Fast, reliable, scalable, and easy to use open-source relational
@@ -3049,7 +3049,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mariadb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mariadb-0.5.12.tgz
+    - https://charts.helm.sh/stable/mariadb-0.5.12.tgz
     version: 0.5.12
   - created: 2017-03-16T13:33:30.840089178Z
     description: Fast, reliable, scalable, and easy to use open-source relational
@@ -3071,7 +3071,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mariadb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mariadb-0.5.11.tgz
+    - https://charts.helm.sh/stable/mariadb-0.5.11.tgz
     version: 0.5.11
   - created: 2017-03-15T23:03:34.130536152Z
     description: Fast, reliable, scalable, and easy to use open-source relational
@@ -3093,7 +3093,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mariadb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mariadb-0.5.10.tgz
+    - https://charts.helm.sh/stable/mariadb-0.5.10.tgz
     version: 0.5.10
   - created: 2017-03-08T19:03:31.728285865Z
     description: Fast, reliable, scalable, and easy to use open-source relational
@@ -3115,7 +3115,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mariadb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mariadb-0.5.9.tgz
+    - https://charts.helm.sh/stable/mariadb-0.5.9.tgz
     version: 0.5.9
   - created: 2017-02-11T00:18:52.27620633Z
     description: Chart for MariaDB
@@ -3134,7 +3134,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mariadb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mariadb-0.5.8.tgz
+    - https://charts.helm.sh/stable/mariadb-0.5.8.tgz
     version: 0.5.8
   - created: 2017-01-31T01:03:26.972704179Z
     description: Chart for MariaDB
@@ -3153,7 +3153,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mariadb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mariadb-0.5.7.tgz
+    - https://charts.helm.sh/stable/mariadb-0.5.7.tgz
     version: 0.5.7
   - created: 2017-01-27T22:33:30.411626628Z
     description: Chart for MariaDB
@@ -3172,7 +3172,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mariadb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mariadb-0.5.6.tgz
+    - https://charts.helm.sh/stable/mariadb-0.5.6.tgz
     version: 0.5.6
   - created: 2016-12-15T23:18:25.557355931Z
     description: Chart for MariaDB
@@ -3191,7 +3191,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mariadb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mariadb-0.5.5.tgz
+    - https://charts.helm.sh/stable/mariadb-0.5.5.tgz
     version: 0.5.5
   - created: 2016-12-09T18:48:20.185787408Z
     description: Chart for MariaDB
@@ -3210,7 +3210,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mariadb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mariadb-0.5.4.tgz
+    - https://charts.helm.sh/stable/mariadb-0.5.4.tgz
     version: 0.5.4
   - created: 2016-11-23T00:33:20.016012859Z
     description: Chart for MariaDB
@@ -3229,7 +3229,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mariadb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mariadb-0.5.3.tgz
+    - https://charts.helm.sh/stable/mariadb-0.5.3.tgz
     version: 0.5.3
   - created: 2016-11-03T19:33:29.120356141Z
     description: Chart for MariaDB
@@ -3248,7 +3248,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mariadb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mariadb-0.5.2.tgz
+    - https://charts.helm.sh/stable/mariadb-0.5.2.tgz
     version: 0.5.2
   - created: 2016-10-19T00:03:14.031007257Z
     description: Chart for MariaDB
@@ -3267,7 +3267,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mariadb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mariadb-0.5.1.tgz
+    - https://charts.helm.sh/stable/mariadb-0.5.1.tgz
     version: 0.5.1
   - created: 2016-10-19T00:03:14.030598543Z
     description: Chart for MariaDB
@@ -3286,7 +3286,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mariadb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mariadb-0.5.0.tgz
+    - https://charts.helm.sh/stable/mariadb-0.5.0.tgz
     version: 0.5.0
   - created: 2016-10-19T00:03:14.03012509Z
     description: Chart for MariaDB
@@ -3305,7 +3305,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mariadb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mariadb-0.4.0.tgz
+    - https://charts.helm.sh/stable/mariadb-0.4.0.tgz
     version: 0.4.0
   - created: 2016-10-19T00:03:14.029775557Z
     description: Chart for MariaDB
@@ -3324,7 +3324,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mariadb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mariadb-0.3.1.tgz
+    - https://charts.helm.sh/stable/mariadb-0.3.1.tgz
     version: 0.3.1
   - created: 2016-10-19T00:03:14.02942396Z
     description: Chart for MariaDB
@@ -3343,7 +3343,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mariadb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mariadb-0.3.0.tgz
+    - https://charts.helm.sh/stable/mariadb-0.3.0.tgz
     version: 0.3.0
   mediawiki:
   - created: 2017-04-28T00:18:30.088860566Z
@@ -3365,7 +3365,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mediawiki
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mediawiki-0.4.6.tgz
+    - https://charts.helm.sh/stable/mediawiki-0.4.6.tgz
     version: 0.4.6
   - created: 2017-04-06T10:18:27.586263816Z
     description: Extremely powerful, scalable software and a feature-rich wiki implementation
@@ -3386,7 +3386,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mediawiki
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mediawiki-0.4.5.tgz
+    - https://charts.helm.sh/stable/mediawiki-0.4.5.tgz
     version: 0.4.5
   - created: 2017-03-08T19:03:31.729226516Z
     description: Extremely powerful, scalable software and a feature-rich wiki implementation
@@ -3407,7 +3407,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mediawiki
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mediawiki-0.4.4.tgz
+    - https://charts.helm.sh/stable/mediawiki-0.4.4.tgz
     version: 0.4.4
   - created: 2017-02-13T04:18:31.539427547Z
     description: Extremely powerful, scalable software and a feature-rich wiki implementation
@@ -3427,7 +3427,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mediawiki
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mediawiki-0.4.3.tgz
+    - https://charts.helm.sh/stable/mediawiki-0.4.3.tgz
     version: 0.4.3
   - created: 2017-01-21T00:18:31.350311075Z
     description: Extremely powerful, scalable software and a feature-rich wiki implementation
@@ -3447,7 +3447,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mediawiki
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mediawiki-0.4.2.tgz
+    - https://charts.helm.sh/stable/mediawiki-0.4.2.tgz
     version: 0.4.2
   - created: 2016-12-15T21:18:24.670966268Z
     description: Extremely powerful, scalable software and a feature-rich wiki implementation
@@ -3467,7 +3467,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mediawiki
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mediawiki-0.4.1.tgz
+    - https://charts.helm.sh/stable/mediawiki-0.4.1.tgz
     version: 0.4.1
   - created: 2016-12-09T18:48:20.186416136Z
     description: Extremely powerful, scalable software and a feature-rich wiki implementation
@@ -3487,7 +3487,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mediawiki
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mediawiki-0.4.0.tgz
+    - https://charts.helm.sh/stable/mediawiki-0.4.0.tgz
     version: 0.4.0
   memcached:
   - created: 2017-04-28T00:18:30.090586195Z
@@ -3507,7 +3507,7 @@ entries:
     sources:
     - https://github.com/docker-library/memcached
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/memcached-0.4.1.tgz
+    - https://charts.helm.sh/stable/memcached-0.4.1.tgz
     version: 0.4.1
   - created: 2017-02-13T04:18:31.539713999Z
     description: Chart for Memcached
@@ -3524,7 +3524,7 @@ entries:
     sources:
     - https://github.com/docker-library/memcached
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/memcached-0.4.0.tgz
+    - https://charts.helm.sh/stable/memcached-0.4.0.tgz
     version: 0.4.0
   minecraft:
   - created: 2017-04-28T00:18:30.09103508Z
@@ -3541,7 +3541,7 @@ entries:
     - https://hub.docker.com/r/itzg/minecraft-server/~/dockerfile/
     - https://github.com/itzg/dockerfiles
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/minecraft-0.1.3.tgz
+    - https://charts.helm.sh/stable/minecraft-0.1.3.tgz
     version: 0.1.3
   - created: 2017-03-16T23:33:31.588714127Z
     description: Minecraft server
@@ -3557,7 +3557,7 @@ entries:
     - https://hub.docker.com/r/itzg/minecraft-server/~/dockerfile/
     - https://github.com/itzg/dockerfiles
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/minecraft-0.1.2.tgz
+    - https://charts.helm.sh/stable/minecraft-0.1.2.tgz
     version: 0.1.2
   - created: 2017-01-30T23:33:28.437640114Z
     description: Minecraft server
@@ -3573,7 +3573,7 @@ entries:
     - https://hub.docker.com/r/itzg/minecraft-server/~/dockerfile/
     - https://github.com/itzg/dockerfiles
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/minecraft-0.1.1.tgz
+    - https://charts.helm.sh/stable/minecraft-0.1.1.tgz
     version: 0.1.1
   - created: 2016-12-05T21:03:20.22190695Z
     description: Minecraft server
@@ -3589,7 +3589,7 @@ entries:
     - https://hub.docker.com/r/itzg/minecraft-server/~/dockerfile/
     - https://github.com/itzg/dockerfiles
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/minecraft-0.1.0.tgz
+    - https://charts.helm.sh/stable/minecraft-0.1.0.tgz
     version: 0.1.0
   minio:
   - apiVersion: v1
@@ -3612,7 +3612,7 @@ entries:
     sources:
     - https://github.com/minio/minio
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/minio-0.1.0.tgz
+    - https://charts.helm.sh/stable/minio-0.1.0.tgz
     version: 0.1.0
   - apiVersion: v1
     created: 2017-03-16T23:48:28.876000842Z
@@ -3634,7 +3634,7 @@ entries:
     sources:
     - https://github.com/minio/minio
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/minio-0.0.4.tgz
+    - https://charts.helm.sh/stable/minio-0.0.4.tgz
     version: 0.0.4
   - apiVersion: v1
     created: 2017-02-13T04:33:52.302413618Z
@@ -3654,7 +3654,7 @@ entries:
     sources:
     - https://github.com/minio/minio
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/minio-0.0.3.tgz
+    - https://charts.helm.sh/stable/minio-0.0.3.tgz
     version: 0.0.3
   - apiVersion: v1
     created: 2017-02-03T20:18:29.15659791Z
@@ -3674,7 +3674,7 @@ entries:
     sources:
     - https://github.com/minio/minio
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/minio-0.0.2.tgz
+    - https://charts.helm.sh/stable/minio-0.0.2.tgz
     version: 0.0.2
   - apiVersion: v1
     created: 2017-01-12T02:36:05.500400572Z
@@ -3692,7 +3692,7 @@ entries:
     sources:
     - https://github.com/minio/minio
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/minio-0.0.1.tgz
+    - https://charts.helm.sh/stable/minio-0.0.1.tgz
     version: 0.0.1
   mongodb:
   - created: 2017-04-28T00:18:30.091865909Z
@@ -3714,7 +3714,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mongodb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mongodb-0.4.9.tgz
+    - https://charts.helm.sh/stable/mongodb-0.4.9.tgz
     version: 0.4.9
   - created: 2017-04-06T10:33:26.324740815Z
     description: NoSQL document-oriented database that stores JSON-like documents
@@ -3735,7 +3735,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mongodb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mongodb-0.4.8.tgz
+    - https://charts.helm.sh/stable/mongodb-0.4.8.tgz
     version: 0.4.8
   - created: 2017-03-08T19:03:31.731176002Z
     description: NoSQL document-oriented database that stores JSON-like documents
@@ -3756,7 +3756,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mongodb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mongodb-0.4.7.tgz
+    - https://charts.helm.sh/stable/mongodb-0.4.7.tgz
     version: 0.4.7
   - created: 2017-02-14T03:48:27.566728756Z
     description: NoSQL document-oriented database that stores JSON-like documents
@@ -3777,7 +3777,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mongodb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mongodb-0.4.6.tgz
+    - https://charts.helm.sh/stable/mongodb-0.4.6.tgz
     version: 0.4.6
   - created: 2017-02-10T23:18:26.017406698Z
     description: Chart for MongoDB
@@ -3795,7 +3795,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mongodb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mongodb-0.4.5.tgz
+    - https://charts.helm.sh/stable/mongodb-0.4.5.tgz
     version: 0.4.5
   - created: 2017-01-30T23:33:28.438574863Z
     description: Chart for MongoDB
@@ -3813,7 +3813,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mongodb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mongodb-0.4.4.tgz
+    - https://charts.helm.sh/stable/mongodb-0.4.4.tgz
     version: 0.4.4
   - created: 2017-01-13T20:48:31.52900213Z
     description: Chart for MongoDB
@@ -3831,7 +3831,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mongodb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mongodb-0.4.3.tgz
+    - https://charts.helm.sh/stable/mongodb-0.4.3.tgz
     version: 0.4.3
   - created: 2017-01-03T17:48:20.740456601Z
     description: Chart for MongoDB
@@ -3849,7 +3849,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mongodb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mongodb-0.4.2.tgz
+    - https://charts.helm.sh/stable/mongodb-0.4.2.tgz
     version: 0.4.2
   - created: 2016-12-15T00:48:24.012807516Z
     description: Chart for MongoDB
@@ -3867,7 +3867,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mongodb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mongodb-0.4.1.tgz
+    - https://charts.helm.sh/stable/mongodb-0.4.1.tgz
     version: 0.4.1
   - created: 2016-12-09T18:48:20.187403991Z
     description: Chart for MongoDB
@@ -3885,7 +3885,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-mongodb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mongodb-0.4.0.tgz
+    - https://charts.helm.sh/stable/mongodb-0.4.0.tgz
     version: 0.4.0
   mongodb-replicaset:
   - created: 2017-04-28T00:18:30.092344824Z
@@ -3902,7 +3902,7 @@ entries:
     sources:
     - https://github.com/mongodb/mongo
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mongodb-replicaset-1.0.0.tgz
+    - https://charts.helm.sh/stable/mongodb-replicaset-1.0.0.tgz
     version: 1.0.0
   moodle:
   - created: 2017-04-28T00:18:30.093014917Z
@@ -3924,7 +3924,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-moodle
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/moodle-0.1.4.tgz
+    - https://charts.helm.sh/stable/moodle-0.1.4.tgz
     version: 0.1.4
   - created: 2017-03-31T19:33:30.433327839Z
     description: Moodle is a learning platform designed to provide educators, administrators
@@ -3945,7 +3945,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-moodle
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/moodle-0.1.3.tgz
+    - https://charts.helm.sh/stable/moodle-0.1.3.tgz
     version: 0.1.3
   - created: 2017-03-26T18:03:33.791615833Z
     description: Moodle is a learning platform designed to provide educators, administrators
@@ -3966,7 +3966,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-moodle
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/moodle-0.1.2.tgz
+    - https://charts.helm.sh/stable/moodle-0.1.2.tgz
     version: 0.1.2
   mysql:
   - created: 2017-04-28T00:18:30.093353908Z
@@ -3988,7 +3988,7 @@ entries:
     - https://github.com/helm/charts
     - https://github.com/docker-library/mysql
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mysql-0.2.6.tgz
+    - https://charts.helm.sh/stable/mysql-0.2.6.tgz
     version: 0.2.6
   - created: 2017-04-13T05:18:28.91694371Z
     description: Fast, reliable, scalable, and easy to use open-source relational
@@ -4009,7 +4009,7 @@ entries:
     - https://github.com/helm/charts
     - https://github.com/docker-library/mysql
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mysql-0.2.5.tgz
+    - https://charts.helm.sh/stable/mysql-0.2.5.tgz
     version: 0.2.5
   - created: 2017-02-13T04:18:31.541320579Z
     description: Chart for MySQL
@@ -4028,7 +4028,7 @@ entries:
     - https://github.com/helm/charts
     - https://github.com/docker-library/mysql
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mysql-0.2.4.tgz
+    - https://charts.helm.sh/stable/mysql-0.2.4.tgz
     version: 0.2.4
   - created: 2017-01-27T22:33:30.41494884Z
     description: Chart for MySQL
@@ -4047,7 +4047,7 @@ entries:
     - https://github.com/helm/charts
     - https://github.com/docker-library/mysql
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mysql-0.2.3.tgz
+    - https://charts.helm.sh/stable/mysql-0.2.3.tgz
     version: 0.2.3
   - created: 2016-12-21T19:33:19.335178436Z
     description: Chart for MySQL
@@ -4066,7 +4066,7 @@ entries:
     - https://github.com/helm/charts
     - https://github.com/docker-library/mysql
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mysql-0.2.2.tgz
+    - https://charts.helm.sh/stable/mysql-0.2.2.tgz
     version: 0.2.2
   - created: 2016-12-09T18:48:20.187750412Z
     description: Chart for MySQL
@@ -4085,7 +4085,7 @@ entries:
     - https://github.com/helm/charts
     - https://github.com/docker-library/mysql
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mysql-0.2.1.tgz
+    - https://charts.helm.sh/stable/mysql-0.2.1.tgz
     version: 0.2.1
   - created: 2016-11-04T14:18:20.013918541Z
     description: Chart for MySQL
@@ -4104,7 +4104,7 @@ entries:
     - https://github.com/helm/charts
     - https://github.com/docker-library/mysql
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mysql-0.2.0.tgz
+    - https://charts.helm.sh/stable/mysql-0.2.0.tgz
     version: 0.2.0
   - created: 2016-11-03T03:18:19.715713217Z
     description: Chart for MySQL
@@ -4123,7 +4123,7 @@ entries:
     - https://github.com/helm/charts
     - https://github.com/docker-library/mysql
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mysql-0.1.2.tgz
+    - https://charts.helm.sh/stable/mysql-0.1.2.tgz
     version: 0.1.2
   - created: 2016-10-19T18:33:14.866729383Z
     description: Chart for MySQL
@@ -4142,7 +4142,7 @@ entries:
     - https://github.com/helm/charts
     - https://github.com/docker-library/mysql
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mysql-0.1.1.tgz
+    - https://charts.helm.sh/stable/mysql-0.1.1.tgz
     version: 0.1.1
   - created: 2016-10-19T00:03:14.031801762Z
     description: Chart for MySQL
@@ -4161,7 +4161,7 @@ entries:
     - https://github.com/helm/charts
     - https://github.com/docker-library/mysql
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/mysql-0.1.0.tgz
+    - https://charts.helm.sh/stable/mysql-0.1.0.tgz
     version: 0.1.0
   namerd:
   - apiVersion: v1
@@ -4177,7 +4177,7 @@ entries:
     sources:
     - https://github.com/linkerd/linkerd
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/namerd-0.1.0.tgz
+    - https://charts.helm.sh/stable/namerd-0.1.0.tgz
     version: 0.1.0
   nginx-ingress:
   - created: 2017-04-28T00:18:30.094151336Z
@@ -4200,7 +4200,7 @@ entries:
     sources:
     - https://github.com/kubernetes/contrib/tree/master/ingress/controllers/nginx
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/nginx-ingress-0.3.2.tgz
+    - https://charts.helm.sh/stable/nginx-ingress-0.3.2.tgz
     version: 0.3.2
   - created: 2017-04-03T22:33:26.678796256Z
     description: An nginx Ingress controller that uses ConfigMap to store the nginx
@@ -4222,7 +4222,7 @@ entries:
     sources:
     - https://github.com/kubernetes/contrib/tree/master/ingress/controllers/nginx
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/nginx-ingress-0.3.1.tgz
+    - https://charts.helm.sh/stable/nginx-ingress-0.3.1.tgz
     version: 0.3.1
   - created: 2017-03-10T17:03:37.208481141Z
     description: An nginx Ingress controller that uses ConfigMap to store the nginx
@@ -4242,7 +4242,7 @@ entries:
     sources:
     - https://github.com/kubernetes/contrib/tree/master/ingress/controllers/nginx
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/nginx-ingress-0.3.0.tgz
+    - https://charts.helm.sh/stable/nginx-ingress-0.3.0.tgz
     version: 0.3.0
   nginx-lego:
   - created: 2017-04-28T00:18:30.094506147Z
@@ -4262,7 +4262,7 @@ entries:
     - https://github.com/kubernetes/contrib/tree/master/ingress/controllers/nginx
     - https://github.com/jetstack/kube-lego/tree/master/examples/nginx
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/nginx-lego-0.2.1.tgz
+    - https://charts.helm.sh/stable/nginx-lego-0.2.1.tgz
     version: 0.2.1
   - created: 2017-03-02T18:48:30.43738595Z
     description: Chart for nginx-ingress-controller and kube-lego
@@ -4281,7 +4281,7 @@ entries:
     - https://github.com/kubernetes/contrib/tree/master/ingress/controllers/nginx
     - https://github.com/jetstack/kube-lego/tree/master/examples/nginx
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/nginx-lego-0.2.0.tgz
+    - https://charts.helm.sh/stable/nginx-lego-0.2.0.tgz
     version: 0.2.0
   - created: 2017-01-12T02:52:37.835917781Z
     description: Chart for nginx-ingress-controller and kube-lego
@@ -4300,7 +4300,7 @@ entries:
     - https://github.com/kubernetes/contrib/tree/master/ingress/controllers/nginx
     - https://github.com/jetstack/kube-lego/tree/master/examples/nginx
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/nginx-lego-0.1.0.tgz
+    - https://charts.helm.sh/stable/nginx-lego-0.1.0.tgz
     version: 0.1.0
   odoo:
   - created: 2017-04-28T00:18:30.095144247Z
@@ -4322,7 +4322,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-odoo
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/odoo-0.5.0.tgz
+    - https://charts.helm.sh/stable/odoo-0.5.0.tgz
     version: 0.5.0
   - created: 2017-04-20T11:48:30.777572861Z
     description: A suite of web based open source business apps.
@@ -4343,7 +4343,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-odoo
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/odoo-0.4.5.tgz
+    - https://charts.helm.sh/stable/odoo-0.4.5.tgz
     version: 0.4.5
   - created: 2017-04-19T19:48:30.479799003Z
     description: A suite of web based open source business apps.
@@ -4364,7 +4364,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-odoo
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/odoo-0.4.4.tgz
+    - https://charts.helm.sh/stable/odoo-0.4.4.tgz
     version: 0.4.4
   - created: 2017-03-23T21:18:31.859026332Z
     description: A suite of web based open source business apps.
@@ -4385,7 +4385,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-odoo
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/odoo-0.4.3.tgz
+    - https://charts.helm.sh/stable/odoo-0.4.3.tgz
     version: 0.4.3
   - created: 2017-03-23T00:18:30.533565303Z
     description: A suite of web based open source business apps.
@@ -4406,7 +4406,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-odoo
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/odoo-0.4.2.tgz
+    - https://charts.helm.sh/stable/odoo-0.4.2.tgz
     version: 0.4.2
   - created: 2017-03-17T22:48:29.256461745Z
     description: A suite of web based open source business apps.
@@ -4427,7 +4427,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-odoo
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/odoo-0.4.1.tgz
+    - https://charts.helm.sh/stable/odoo-0.4.1.tgz
     version: 0.4.1
   - created: 2017-03-08T19:03:31.734764598Z
     description: A suite of web based open source business apps.
@@ -4448,7 +4448,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-odoo
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/odoo-0.4.0.tgz
+    - https://charts.helm.sh/stable/odoo-0.4.0.tgz
     version: 0.4.0
   opencart:
   - created: 2017-04-28T00:18:30.095906073Z
@@ -4471,7 +4471,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-opencart
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/opencart-0.4.5.tgz
+    - https://charts.helm.sh/stable/opencart-0.4.5.tgz
     version: 0.4.5
   - created: 2017-04-06T11:18:27.44256999Z
     description: A free and open source e-commerce platform for online merchants.
@@ -4493,7 +4493,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-opencart
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/opencart-0.4.4.tgz
+    - https://charts.helm.sh/stable/opencart-0.4.4.tgz
     version: 0.4.4
   - created: 2017-03-02T19:33:28.187180475Z
     description: A free and open source e-commerce platform for online merchants.
@@ -4515,7 +4515,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-opencart
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/opencart-0.4.3.tgz
+    - https://charts.helm.sh/stable/opencart-0.4.3.tgz
     version: 0.4.3
   - created: 2017-02-23T02:33:30.963491381Z
     description: A free and open source e-commerce platform for online merchants.
@@ -4537,7 +4537,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-opencart
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/opencart-0.4.2.tgz
+    - https://charts.helm.sh/stable/opencart-0.4.2.tgz
     version: 0.4.2
   - created: 2017-01-21T00:18:31.354317974Z
     description: A free and open source e-commerce platform for online merchants.
@@ -4559,7 +4559,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-opencart
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/opencart-0.4.1.tgz
+    - https://charts.helm.sh/stable/opencart-0.4.1.tgz
     version: 0.4.1
   - created: 2017-01-04T00:48:19.745672724Z
     description: A free and open source e-commerce platform for online merchants.
@@ -4581,7 +4581,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-opencart
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/opencart-0.4.0.tgz
+    - https://charts.helm.sh/stable/opencart-0.4.0.tgz
     version: 0.4.0
   openvpn:
   - apiVersion: v1
@@ -4605,7 +4605,7 @@ entries:
       name: John Felten
     name: openvpn
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/openvpn-1.0.2.tgz
+    - https://charts.helm.sh/stable/openvpn-1.0.2.tgz
     version: 1.0.2
   - apiVersion: v1
     created: 2017-04-06T10:18:27.592699587Z
@@ -4628,7 +4628,7 @@ entries:
       name: John Felten
     name: openvpn
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/openvpn-1.0.1.tgz
+    - https://charts.helm.sh/stable/openvpn-1.0.1.tgz
     version: 1.0.1
   - apiVersion: v1
     created: 2017-01-27T21:48:32.078827588Z
@@ -4651,7 +4651,7 @@ entries:
       name: John Felten
     name: openvpn
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/openvpn-1.0.0.tgz
+    - https://charts.helm.sh/stable/openvpn-1.0.0.tgz
     version: 1.0.0
   orangehrm:
   - created: 2017-04-28T00:18:30.097427186Z
@@ -4676,7 +4676,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-orangehrm
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/orangehrm-0.4.5.tgz
+    - https://charts.helm.sh/stable/orangehrm-0.4.5.tgz
     version: 0.4.5
   - created: 2017-04-12T21:03:28.668395677Z
     description: OrangeHRM is a free HR management system that offers a wealth of
@@ -4700,7 +4700,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-orangehrm
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/orangehrm-0.4.4.tgz
+    - https://charts.helm.sh/stable/orangehrm-0.4.4.tgz
     version: 0.4.4
   - created: 2017-03-18T18:33:36.171180792Z
     description: OrangeHRM is a free HR management system that offers a wealth of
@@ -4724,7 +4724,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-orangehrm
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/orangehrm-0.4.3.tgz
+    - https://charts.helm.sh/stable/orangehrm-0.4.3.tgz
     version: 0.4.3
   - created: 2017-03-02T19:33:28.188778055Z
     description: OrangeHRM is a free HR management system that offers a wealth of
@@ -4748,7 +4748,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-orangehrm
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/orangehrm-0.4.2.tgz
+    - https://charts.helm.sh/stable/orangehrm-0.4.2.tgz
     version: 0.4.2
   - created: 2017-02-23T02:33:30.964778113Z
     description: OrangeHRM is a free HR management system that offers a wealth of
@@ -4772,7 +4772,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-orangehrm
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/orangehrm-0.4.1.tgz
+    - https://charts.helm.sh/stable/orangehrm-0.4.1.tgz
     version: 0.4.1
   - created: 2017-02-01T00:48:29.581953712Z
     description: OrangeHRM is a free HR management system that offers a wealth of
@@ -4796,7 +4796,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-orangehrm
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/orangehrm-0.4.0.tgz
+    - https://charts.helm.sh/stable/orangehrm-0.4.0.tgz
     version: 0.4.0
   osclass:
   - created: 2017-04-28T00:18:30.098620601Z
@@ -4819,7 +4819,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-osclass
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/osclass-0.4.1.tgz
+    - https://charts.helm.sh/stable/osclass-0.4.1.tgz
     version: 0.4.1
   - created: 2017-02-23T02:33:30.965596248Z
     description: Osclass is a php script that allows you to quickly create and manage
@@ -4841,7 +4841,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-osclass
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/osclass-0.4.0.tgz
+    - https://charts.helm.sh/stable/osclass-0.4.0.tgz
     version: 0.4.0
   owncloud:
   - created: 2017-04-28T00:18:30.099329236Z
@@ -4864,7 +4864,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-owncloud
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/owncloud-0.4.7.tgz
+    - https://charts.helm.sh/stable/owncloud-0.4.7.tgz
     version: 0.4.7
   - created: 2017-04-20T16:18:33.358391215Z
     description: A file sharing server that puts the control and security of your
@@ -4886,7 +4886,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-owncloud
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/owncloud-0.4.6.tgz
+    - https://charts.helm.sh/stable/owncloud-0.4.6.tgz
     version: 0.4.6
   - created: 2017-03-23T21:18:31.86258413Z
     description: A file sharing server that puts the control and security of your
@@ -4908,7 +4908,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-owncloud
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/owncloud-0.4.5.tgz
+    - https://charts.helm.sh/stable/owncloud-0.4.5.tgz
     version: 0.4.5
   - created: 2017-03-08T19:03:31.738784117Z
     description: A file sharing server that puts the control and security of your
@@ -4930,7 +4930,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-owncloud
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/owncloud-0.4.4.tgz
+    - https://charts.helm.sh/stable/owncloud-0.4.4.tgz
     version: 0.4.4
   - created: 2017-02-11T03:18:26.536480213Z
     description: A file sharing server that puts the control and security of your
@@ -4951,7 +4951,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-owncloud
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/owncloud-0.4.3.tgz
+    - https://charts.helm.sh/stable/owncloud-0.4.3.tgz
     version: 0.4.3
   - created: 2017-01-30T23:48:29.172608299Z
     description: A file sharing server that puts the control and security of your
@@ -4972,7 +4972,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-owncloud
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/owncloud-0.4.2.tgz
+    - https://charts.helm.sh/stable/owncloud-0.4.2.tgz
     version: 0.4.2
   - created: 2017-01-21T00:18:31.35624854Z
     description: A file sharing server that puts the control and security of your
@@ -4993,7 +4993,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-owncloud
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/owncloud-0.4.1.tgz
+    - https://charts.helm.sh/stable/owncloud-0.4.1.tgz
     version: 0.4.1
   - created: 2016-12-21T18:33:20.278724682Z
     description: A file sharing server that puts the control and security of your
@@ -5014,7 +5014,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-owncloud
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/owncloud-0.4.0.tgz
+    - https://charts.helm.sh/stable/owncloud-0.4.0.tgz
     version: 0.4.0
   percona:
   - created: 2017-04-28T00:18:30.099763589Z
@@ -5037,7 +5037,7 @@ entries:
     - https://github.com/helm/charts
     - https://github.com/docker-library/percona
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/percona-0.1.0.tgz
+    - https://charts.helm.sh/stable/percona-0.1.0.tgz
     version: 0.1.0
   phabricator:
   - created: 2017-04-28T00:18:30.100508372Z
@@ -5068,7 +5068,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-phabricator
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/phabricator-0.4.5.tgz
+    - https://charts.helm.sh/stable/phabricator-0.4.5.tgz
     version: 0.4.5
   - created: 2017-04-06T10:33:26.333625406Z
     description: Collection of open source web applications that help software companies
@@ -5098,7 +5098,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-phabricator
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/phabricator-0.4.4.tgz
+    - https://charts.helm.sh/stable/phabricator-0.4.4.tgz
     version: 0.4.4
   - created: 2017-03-02T19:33:28.191377992Z
     description: Collection of open source web applications that help software companies
@@ -5128,7 +5128,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-phabricator
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/phabricator-0.4.3.tgz
+    - https://charts.helm.sh/stable/phabricator-0.4.3.tgz
     version: 0.4.3
   - created: 2017-02-23T02:33:30.967143259Z
     description: Collection of open source web applications that help software companies
@@ -5158,7 +5158,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-phabricator
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/phabricator-0.4.2.tgz
+    - https://charts.helm.sh/stable/phabricator-0.4.2.tgz
     version: 0.4.2
   - created: 2017-01-21T00:18:31.358403062Z
     description: Collection of open source web applications that help software companies
@@ -5188,7 +5188,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-phabricator
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/phabricator-0.4.1.tgz
+    - https://charts.helm.sh/stable/phabricator-0.4.1.tgz
     version: 0.4.1
   - created: 2017-01-04T00:48:19.747640048Z
     description: Collection of open source web applications that help software companies
@@ -5218,7 +5218,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-phabricator
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/phabricator-0.4.0.tgz
+    - https://charts.helm.sh/stable/phabricator-0.4.0.tgz
     version: 0.4.0
   phpbb:
   - created: 2017-04-28T00:18:30.10119319Z
@@ -5240,7 +5240,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-phpbb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/phpbb-0.4.7.tgz
+    - https://charts.helm.sh/stable/phpbb-0.4.7.tgz
     version: 0.4.7
   - created: 2017-04-13T05:18:28.926003844Z
     description: Community forum that supports the notion of users and groups, file
@@ -5261,7 +5261,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-phpbb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/phpbb-0.4.6.tgz
+    - https://charts.helm.sh/stable/phpbb-0.4.6.tgz
     version: 0.4.6
   - created: 2017-03-02T19:33:28.19218227Z
     description: Community forum that supports the notion of users and groups, file
@@ -5282,7 +5282,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-phpbb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/phpbb-0.4.5.tgz
+    - https://charts.helm.sh/stable/phpbb-0.4.5.tgz
     version: 0.4.5
   - created: 2017-02-23T02:33:30.967854461Z
     description: Community forum that supports the notion of users and groups, file
@@ -5303,7 +5303,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-phpbb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/phpbb-0.4.4.tgz
+    - https://charts.helm.sh/stable/phpbb-0.4.4.tgz
     version: 0.4.4
   - created: 2017-02-13T17:03:30.134235119Z
     description: Community forum that supports the notion of users and groups, file
@@ -5324,7 +5324,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-phpbb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/phpbb-0.4.3.tgz
+    - https://charts.helm.sh/stable/phpbb-0.4.3.tgz
     version: 0.4.3
   - created: 2017-02-13T04:18:31.547850917Z
     description: Community forum that supports the notion of users and groups, file
@@ -5344,7 +5344,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-phpbb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/phpbb-0.4.2.tgz
+    - https://charts.helm.sh/stable/phpbb-0.4.2.tgz
     version: 0.4.2
   - created: 2017-01-31T00:03:26.18262303Z
     description: Community forum that supports the notion of users and groups, file
@@ -5364,7 +5364,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-phpbb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/phpbb-0.4.1.tgz
+    - https://charts.helm.sh/stable/phpbb-0.4.1.tgz
     version: 0.4.1
   - created: 2016-12-09T18:48:20.188802837Z
     description: Community forum that supports the notion of users and groups, file
@@ -5384,7 +5384,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-phpbb
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/phpbb-0.4.0.tgz
+    - https://charts.helm.sh/stable/phpbb-0.4.0.tgz
     version: 0.4.0
   postgresql:
   - created: 2017-04-28T00:18:30.101575321Z
@@ -5407,7 +5407,7 @@ entries:
     - https://github.com/helm/charts
     - https://github.com/docker-library/postgres
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/postgresql-0.6.0.tgz
+    - https://charts.helm.sh/stable/postgresql-0.6.0.tgz
     version: 0.6.0
   - created: 2017-03-16T23:33:31.598678756Z
     description: Object-relational database management system (ORDBMS) with an emphasis
@@ -5429,7 +5429,7 @@ entries:
     - https://github.com/helm/charts
     - https://github.com/docker-library/postgres
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/postgresql-0.5.1.tgz
+    - https://charts.helm.sh/stable/postgresql-0.5.1.tgz
     version: 0.5.1
   - created: 2017-03-15T11:18:31.676836517Z
     description: Object-relational database management system (ORDBMS) with an emphasis
@@ -5451,7 +5451,7 @@ entries:
     - https://github.com/helm/charts
     - https://github.com/docker-library/postgres
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/postgresql-0.5.0.tgz
+    - https://charts.helm.sh/stable/postgresql-0.5.0.tgz
     version: 0.5.0
   - created: 2017-03-15T09:48:31.994004661Z
     description: Object-relational database management system (ORDBMS) with an emphasis
@@ -5473,7 +5473,7 @@ entries:
     - https://github.com/helm/charts
     - https://github.com/docker-library/postgres
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/postgresql-0.4.0.tgz
+    - https://charts.helm.sh/stable/postgresql-0.4.0.tgz
     version: 0.4.0
   - created: 2017-02-13T21:33:27.762374795Z
     description: Object-relational database management system (ORDBMS) with an emphasis
@@ -5495,7 +5495,7 @@ entries:
     - https://github.com/helm/charts
     - https://github.com/docker-library/postgres
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/postgresql-0.3.4.tgz
+    - https://charts.helm.sh/stable/postgresql-0.3.4.tgz
     version: 0.3.4
   - created: 2017-02-13T04:18:31.548242286Z
     description: Chart for PostgreSQL
@@ -5515,7 +5515,7 @@ entries:
     - https://github.com/helm/charts
     - https://github.com/docker-library/postgres
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/postgresql-0.3.3.tgz
+    - https://charts.helm.sh/stable/postgresql-0.3.3.tgz
     version: 0.3.3
   - created: 2017-02-06T17:48:28.059659169Z
     description: Chart for PostgreSQL
@@ -5535,7 +5535,7 @@ entries:
     - https://github.com/helm/charts
     - https://github.com/docker-library/postgres
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/postgresql-0.3.2.tgz
+    - https://charts.helm.sh/stable/postgresql-0.3.2.tgz
     version: 0.3.2
   - created: 2017-01-28T00:18:32.756495622Z
     description: Chart for PostgreSQL
@@ -5555,7 +5555,7 @@ entries:
     - https://github.com/helm/charts
     - https://github.com/docker-library/postgres
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/postgresql-0.3.1.tgz
+    - https://charts.helm.sh/stable/postgresql-0.3.1.tgz
     version: 0.3.1
   - created: 2017-01-26T17:18:33.808053693Z
     description: Chart for PostgreSQL
@@ -5575,7 +5575,7 @@ entries:
     - https://github.com/helm/charts
     - https://github.com/docker-library/postgres
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/postgresql-0.3.0.tgz
+    - https://charts.helm.sh/stable/postgresql-0.3.0.tgz
     version: 0.3.0
   - created: 2016-12-21T18:33:20.280731983Z
     description: Chart for PostgreSQL
@@ -5594,7 +5594,7 @@ entries:
     - https://github.com/helm/charts
     - https://github.com/docker-library/postgres
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/postgresql-0.2.2.tgz
+    - https://charts.helm.sh/stable/postgresql-0.2.2.tgz
     version: 0.2.2
   - created: 2016-12-19T22:48:20.03810957Z
     description: Chart for PostgreSQL
@@ -5613,7 +5613,7 @@ entries:
     - https://github.com/helm/charts
     - https://github.com/docker-library/postgres
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/postgresql-0.2.1.tgz
+    - https://charts.helm.sh/stable/postgresql-0.2.1.tgz
     version: 0.2.1
   - created: 2016-12-05T20:48:21.242600076Z
     description: Chart for PostgreSQL
@@ -5632,7 +5632,7 @@ entries:
     - https://github.com/helm/charts
     - https://github.com/docker-library/postgres
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/postgresql-0.2.0.tgz
+    - https://charts.helm.sh/stable/postgresql-0.2.0.tgz
     version: 0.2.0
   - created: 2016-11-08T15:03:20.745475633Z
     description: Chart for PostgreSQL
@@ -5651,7 +5651,7 @@ entries:
     - https://github.com/helm/charts
     - https://github.com/docker-library/postgres
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/postgresql-0.1.1.tgz
+    - https://charts.helm.sh/stable/postgresql-0.1.1.tgz
     version: 0.1.1
   - created: 2016-11-04T14:18:20.014925806Z
     description: Chart for PostgreSQL
@@ -5670,7 +5670,7 @@ entries:
     - https://github.com/helm/charts
     - https://github.com/docker-library/postgres
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/postgresql-0.1.0.tgz
+    - https://charts.helm.sh/stable/postgresql-0.1.0.tgz
     version: 0.1.0
   prestashop:
   - created: 2017-04-28T00:18:30.102289986Z
@@ -5694,7 +5694,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-prestashop
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/prestashop-0.4.6.tgz
+    - https://charts.helm.sh/stable/prestashop-0.4.6.tgz
     version: 0.4.6
   - created: 2017-04-06T11:03:25.414976585Z
     description: A popular open source ecommerce solution. Professional tools are
@@ -5717,7 +5717,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-prestashop
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/prestashop-0.4.5.tgz
+    - https://charts.helm.sh/stable/prestashop-0.4.5.tgz
     version: 0.4.5
   - created: 2017-03-23T01:19:01.462007867Z
     description: A popular open source ecommerce solution. Professional tools are
@@ -5740,7 +5740,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-prestashop
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/prestashop-0.4.4.tgz
+    - https://charts.helm.sh/stable/prestashop-0.4.4.tgz
     version: 0.4.4
   - created: 2017-03-08T19:03:31.741573757Z
     description: A popular open source ecommerce solution. Professional tools are
@@ -5763,7 +5763,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-prestashop
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/prestashop-0.4.3.tgz
+    - https://charts.helm.sh/stable/prestashop-0.4.3.tgz
     version: 0.4.3
   - created: 2017-02-13T17:03:30.136404798Z
     description: A popular open source ecommerce solution. Professional tools are
@@ -5786,7 +5786,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-prestashop
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/prestashop-0.4.2.tgz
+    - https://charts.helm.sh/stable/prestashop-0.4.2.tgz
     version: 0.4.2
   - created: 2017-01-21T00:18:31.360326923Z
     description: A popular open source ecommerce solution. Professional tools are
@@ -5809,7 +5809,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-prestashop
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/prestashop-0.4.1.tgz
+    - https://charts.helm.sh/stable/prestashop-0.4.1.tgz
     version: 0.4.1
   - created: 2017-01-04T00:48:19.749415831Z
     description: A popular open source ecommerce solution. Professional tools are
@@ -5832,7 +5832,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-prestashop
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/prestashop-0.4.0.tgz
+    - https://charts.helm.sh/stable/prestashop-0.4.0.tgz
     version: 0.4.0
   prometheus:
   - created: 2017-04-28T00:18:30.103009703Z
@@ -5850,7 +5850,7 @@ entries:
     - https://github.com/prometheus/prometheus
     - https://github.com/kubernetes/kube-state-metrics
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/prometheus-3.0.2.tgz
+    - https://charts.helm.sh/stable/prometheus-3.0.2.tgz
     version: 3.0.2
   - created: 2017-04-14T01:18:27.389282119Z
     description: Prometheus is a monitoring system and time series database.
@@ -5867,7 +5867,7 @@ entries:
     - https://github.com/prometheus/prometheus
     - https://github.com/kubernetes/kube-state-metrics
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/prometheus-3.0.1.tgz
+    - https://charts.helm.sh/stable/prometheus-3.0.1.tgz
     version: 3.0.1
   - created: 2017-03-23T19:03:32.048982259Z
     description: Prometheus is a monitoring system and time series database.
@@ -5884,7 +5884,7 @@ entries:
     - https://github.com/prometheus/prometheus
     - https://github.com/kubernetes/kube-state-metrics
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/prometheus-3.0.0.tgz
+    - https://charts.helm.sh/stable/prometheus-3.0.0.tgz
     version: 3.0.0
   - created: 2017-03-20T20:18:33.636286259Z
     description: A Prometheus Helm chart for Kubernetes. Prometheus is a monitoring
@@ -5900,7 +5900,7 @@ entries:
     - https://github.com/prometheus/alertmanager
     - https://github.com/prometheus/prometheus
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/prometheus-2.0.4.tgz
+    - https://charts.helm.sh/stable/prometheus-2.0.4.tgz
     version: 2.0.4
   - created: 2017-02-13T04:18:31.549501389Z
     description: A Prometheus Helm chart for Kubernetes. Prometheus is a monitoring
@@ -5916,7 +5916,7 @@ entries:
     - https://github.com/prometheus/alertmanager
     - https://github.com/prometheus/prometheus
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/prometheus-2.0.3.tgz
+    - https://charts.helm.sh/stable/prometheus-2.0.3.tgz
     version: 2.0.3
   - created: 2017-02-03T20:18:29.168136057Z
     description: A Prometheus Helm chart for Kubernetes. Prometheus is a monitoring
@@ -5932,7 +5932,7 @@ entries:
     - https://github.com/prometheus/alertmanager
     - https://github.com/prometheus/prometheus
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/prometheus-2.0.2.tgz
+    - https://charts.helm.sh/stable/prometheus-2.0.2.tgz
     version: 2.0.2
   - created: 2017-02-01T02:18:29.14318599Z
     description: A Prometheus Helm chart for Kubernetes. Prometheus is a monitoring
@@ -5948,7 +5948,7 @@ entries:
     - https://github.com/prometheus/alertmanager
     - https://github.com/prometheus/prometheus
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/prometheus-2.0.1.tgz
+    - https://charts.helm.sh/stable/prometheus-2.0.1.tgz
     version: 2.0.1
   - created: 2017-01-19T19:18:27.372125459Z
     description: A Prometheus Helm chart for Kubernetes. Prometheus is a monitoring
@@ -5964,7 +5964,7 @@ entries:
     - https://github.com/prometheus/alertmanager
     - https://github.com/prometheus/prometheus
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/prometheus-2.0.0.tgz
+    - https://charts.helm.sh/stable/prometheus-2.0.0.tgz
     version: 2.0.0
   - created: 2017-01-12T02:52:37.843602967Z
     description: A Prometheus Helm chart for Kubernetes. Prometheus is a monitoring
@@ -5980,7 +5980,7 @@ entries:
     - https://github.com/prometheus/alertmanager
     - https://github.com/prometheus/prometheus
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/prometheus-1.4.2.tgz
+    - https://charts.helm.sh/stable/prometheus-1.4.2.tgz
     version: 1.4.2
   - created: 2017-01-04T00:48:19.750279814Z
     description: A Prometheus Helm chart for Kubernetes. Prometheus is a monitoring
@@ -5996,7 +5996,7 @@ entries:
     - https://github.com/prometheus/alertmanager
     - https://github.com/prometheus/prometheus
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/prometheus-1.4.1.tgz
+    - https://charts.helm.sh/stable/prometheus-1.4.1.tgz
     version: 1.4.1
   - created: 2016-12-09T18:48:20.189907856Z
     description: A Prometheus Helm chart for Kubernetes. Prometheus is a monitoring
@@ -6012,7 +6012,7 @@ entries:
     - https://github.com/prometheus/alertmanager
     - https://github.com/prometheus/prometheus
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/prometheus-1.3.1.tgz
+    - https://charts.helm.sh/stable/prometheus-1.3.1.tgz
     version: 1.3.1
   rabbitmq:
   - created: 2017-04-28T00:18:30.103417484Z
@@ -6033,7 +6033,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-rabbitmq
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/rabbitmq-0.5.1.tgz
+    - https://charts.helm.sh/stable/rabbitmq-0.5.1.tgz
     version: 0.5.1
   - created: 2017-04-06T10:33:26.336868116Z
     description: Open source message broker software that implements the Advanced
@@ -6053,7 +6053,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-rabbitmq
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/rabbitmq-0.5.0.tgz
+    - https://charts.helm.sh/stable/rabbitmq-0.5.0.tgz
     version: 0.5.0
   - created: 2017-04-03T22:33:26.690098498Z
     description: Open source message broker software that implements the Advanced
@@ -6073,7 +6073,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-rabbitmq
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/rabbitmq-0.4.5.tgz
+    - https://charts.helm.sh/stable/rabbitmq-0.4.5.tgz
     version: 0.4.5
   - created: 2017-03-18T18:33:36.178174406Z
     description: Open source message broker software that implements the Advanced
@@ -6093,7 +6093,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-rabbitmq
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/rabbitmq-0.4.4.tgz
+    - https://charts.helm.sh/stable/rabbitmq-0.4.4.tgz
     version: 0.4.4
   - created: 2017-03-16T13:33:30.85508759Z
     description: Open source message broker software that implements the Advanced
@@ -6113,7 +6113,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-rabbitmq
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/rabbitmq-0.4.3.tgz
+    - https://charts.helm.sh/stable/rabbitmq-0.4.3.tgz
     version: 0.4.3
   - created: 2017-03-08T19:03:31.743135112Z
     description: Open source message broker software that implements the Advanced
@@ -6133,7 +6133,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-rabbitmq
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/rabbitmq-0.4.2.tgz
+    - https://charts.helm.sh/stable/rabbitmq-0.4.2.tgz
     version: 0.4.2
   - created: 2017-02-13T04:18:31.549853753Z
     description: Open source message broker software that implements the Advanced
@@ -6152,7 +6152,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-rabbitmq
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/rabbitmq-0.4.1.tgz
+    - https://charts.helm.sh/stable/rabbitmq-0.4.1.tgz
     version: 0.4.1
   - created: 2017-01-31T00:03:26.184733426Z
     description: Open source message broker software that implements the Advanced
@@ -6171,7 +6171,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-rabbitmq
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/rabbitmq-0.4.0.tgz
+    - https://charts.helm.sh/stable/rabbitmq-0.4.0.tgz
     version: 0.4.0
   redis:
   - created: 2017-04-28T00:18:30.103747837Z
@@ -6193,7 +6193,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-redis
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/redis-0.5.1.tgz
+    - https://charts.helm.sh/stable/redis-0.5.1.tgz
     version: 0.5.1
   - created: 2017-04-03T22:18:27.809077961Z
     description: Open source, advanced key-value store. It is often referred to as
@@ -6214,7 +6214,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-redis
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/redis-0.5.0.tgz
+    - https://charts.helm.sh/stable/redis-0.5.0.tgz
     version: 0.5.0
   - created: 2017-03-23T15:48:30.415372004Z
     description: Open source, advanced key-value store. It is often referred to as
@@ -6235,7 +6235,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-redis
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/redis-0.4.6.tgz
+    - https://charts.helm.sh/stable/redis-0.4.6.tgz
     version: 0.4.6
   - created: 2017-03-02T19:33:28.196397881Z
     description: Open source, advanced key-value store. It is often referred to as
@@ -6256,7 +6256,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-redis
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/redis-0.4.5.tgz
+    - https://charts.helm.sh/stable/redis-0.4.5.tgz
     version: 0.4.5
   - created: 2017-02-13T20:18:28.115940614Z
     description: Open source, advanced key-value store. It is often referred to as
@@ -6277,7 +6277,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-redis
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/redis-0.4.4.tgz
+    - https://charts.helm.sh/stable/redis-0.4.4.tgz
     version: 0.4.4
   - created: 2017-02-13T04:18:31.550184203Z
     description: Chart for Redis
@@ -6295,7 +6295,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-redis
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/redis-0.4.3.tgz
+    - https://charts.helm.sh/stable/redis-0.4.3.tgz
     version: 0.4.3
   - created: 2017-01-28T02:03:32.495597111Z
     description: Chart for Redis
@@ -6313,7 +6313,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-redis
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/redis-0.4.2.tgz
+    - https://charts.helm.sh/stable/redis-0.4.2.tgz
     version: 0.4.2
   - created: 2016-12-09T18:48:20.191261198Z
     description: Chart for Redis
@@ -6331,7 +6331,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-redis
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/redis-0.4.1.tgz
+    - https://charts.helm.sh/stable/redis-0.4.1.tgz
     version: 0.4.1
   - created: 2016-10-31T16:33:19.644247028Z
     description: Chart for Redis
@@ -6349,7 +6349,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-redis
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/redis-0.4.0.tgz
+    - https://charts.helm.sh/stable/redis-0.4.0.tgz
     version: 0.4.0
   redmine:
   - created: 2017-04-28T00:18:30.104404263Z
@@ -6374,7 +6374,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-redmine
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/redmine-0.4.2.tgz
+    - https://charts.helm.sh/stable/redmine-0.4.2.tgz
     version: 0.4.2
   - created: 2017-04-13T05:18:28.930142135Z
     description: A flexible project management web application.
@@ -6398,7 +6398,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-redmine
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/redmine-0.4.1.tgz
+    - https://charts.helm.sh/stable/redmine-0.4.1.tgz
     version: 0.4.1
   - created: 2017-03-31T19:33:30.446728632Z
     description: A flexible project management web application.
@@ -6422,7 +6422,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-redmine
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/redmine-0.4.0.tgz
+    - https://charts.helm.sh/stable/redmine-0.4.0.tgz
     version: 0.4.0
   - created: 2017-03-14T23:48:31.907843022Z
     description: A flexible project management web application.
@@ -6446,7 +6446,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-redmine
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/redmine-0.3.11.tgz
+    - https://charts.helm.sh/stable/redmine-0.3.11.tgz
     version: 0.3.11
   - created: 2017-03-08T19:03:31.745197966Z
     description: A flexible project management web application.
@@ -6470,7 +6470,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-redmine
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/redmine-0.3.10.tgz
+    - https://charts.helm.sh/stable/redmine-0.3.10.tgz
     version: 0.3.10
   - created: 2017-02-13T21:33:27.767502945Z
     description: A flexible project management web application.
@@ -6494,7 +6494,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-redmine
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/redmine-0.3.9.tgz
+    - https://charts.helm.sh/stable/redmine-0.3.9.tgz
     version: 0.3.9
   - created: 2017-02-10T23:18:26.028438027Z
     description: A flexible project management web application.
@@ -6517,7 +6517,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-redmine
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/redmine-0.3.8.tgz
+    - https://charts.helm.sh/stable/redmine-0.3.8.tgz
     version: 0.3.8
   - created: 2017-01-31T00:18:28.517014253Z
     description: A flexible project management web application.
@@ -6540,7 +6540,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-redmine
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/redmine-0.3.7.tgz
+    - https://charts.helm.sh/stable/redmine-0.3.7.tgz
     version: 0.3.7
   - created: 2016-12-15T21:18:24.678305914Z
     description: A flexible project management web application.
@@ -6563,7 +6563,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-redmine
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/redmine-0.3.6.tgz
+    - https://charts.helm.sh/stable/redmine-0.3.6.tgz
     version: 0.3.6
   - created: 2016-12-05T21:03:20.228049572Z
     description: A flexible project management web application.
@@ -6586,7 +6586,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-redmine
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/redmine-0.3.5.tgz
+    - https://charts.helm.sh/stable/redmine-0.3.5.tgz
     version: 0.3.5
   - created: 2016-11-03T19:33:29.122956769Z
     description: A flexible project management web application.
@@ -6609,7 +6609,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-redmine
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/redmine-0.3.4.tgz
+    - https://charts.helm.sh/stable/redmine-0.3.4.tgz
     version: 0.3.4
   - created: 2016-10-21T19:18:18.621573514Z
     description: A flexible project management web application.
@@ -6632,7 +6632,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-redmine
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/redmine-0.3.3.tgz
+    - https://charts.helm.sh/stable/redmine-0.3.3.tgz
     version: 0.3.3
   - created: 2016-10-19T00:03:14.035726608Z
     description: A flexible project management web application.
@@ -6655,7 +6655,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-redmine
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/redmine-0.3.2.tgz
+    - https://charts.helm.sh/stable/redmine-0.3.2.tgz
     version: 0.3.2
   - created: 2016-10-19T00:03:14.034750035Z
     description: A flexible project management web application.
@@ -6678,7 +6678,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-redmine
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/redmine-0.3.1.tgz
+    - https://charts.helm.sh/stable/redmine-0.3.1.tgz
     version: 0.3.1
   - created: 2016-10-19T00:03:14.033766322Z
     description: A flexible project management web application.
@@ -6701,7 +6701,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-redmine
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/redmine-0.3.0.tgz
+    - https://charts.helm.sh/stable/redmine-0.3.0.tgz
     version: 0.3.0
   sapho:
   - apiVersion: v1
@@ -6722,7 +6722,7 @@ entries:
     - https://hub.docker.com/r/sapho/ops-docker-tomcat
     - https://github.com/helm/charts/tree/master/stable/mysql
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/sapho-0.1.5.tgz
+    - https://charts.helm.sh/stable/sapho-0.1.5.tgz
     version: 0.1.5
   - apiVersion: v1
     created: 2017-02-13T04:33:52.314506112Z
@@ -6740,7 +6740,7 @@ entries:
     - https://hub.docker.com/r/sapho/ops-docker-tomcat
     - https://github.com/helm/charts/tree/master/stable/mysql
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/sapho-0.1.4.tgz
+    - https://charts.helm.sh/stable/sapho-0.1.4.tgz
     version: 0.1.4
   - apiVersion: v1
     created: 2017-01-31T00:18:28.518904Z
@@ -6758,7 +6758,7 @@ entries:
     - https://hub.docker.com/r/sapho/ops-docker-tomcat
     - https://github.com/helm/charts/tree/master/stable/mysql
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/sapho-0.1.3.tgz
+    - https://charts.helm.sh/stable/sapho-0.1.3.tgz
     version: 0.1.3
   selenium:
   - created: 2017-04-28T00:18:30.106455441Z
@@ -6776,7 +6776,7 @@ entries:
     sources:
     - https://github.com/SeleniumHQ/docker-selenium
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/selenium-0.1.0.tgz
+    - https://charts.helm.sh/stable/selenium-0.1.0.tgz
     version: 0.1.0
   sensu:
   - apiVersion: v1
@@ -6798,7 +6798,7 @@ entries:
     - https://github.com/sstarcher/docker-sensu
     - https://github.com/sensu/sensu
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/sensu-0.1.2.tgz
+    - https://charts.helm.sh/stable/sensu-0.1.2.tgz
     version: 0.1.2
   - apiVersion: v1
     created: 2017-03-17T05:18:29.12808256Z
@@ -6819,7 +6819,7 @@ entries:
     - https://github.com/sstarcher/docker-sensu
     - https://github.com/sensu/sensu
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/sensu-0.1.1.tgz
+    - https://charts.helm.sh/stable/sensu-0.1.1.tgz
     version: 0.1.1
   - apiVersion: v1
     created: 2016-12-21T23:33:22.277352049Z
@@ -6840,7 +6840,7 @@ entries:
     - https://github.com/sstarcher/docker-sensu
     - https://github.com/sensu/sensu
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/sensu-0.1.0.tgz
+    - https://charts.helm.sh/stable/sensu-0.1.0.tgz
     version: 0.1.0
   spark:
   - created: 2017-04-28T00:18:30.107369986Z
@@ -6856,7 +6856,7 @@ entries:
     - https://github.com/kubernetes/kubernetes/tree/master/examples/spark
     - https://github.com/apache/spark
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/spark-0.1.4.tgz
+    - https://charts.helm.sh/stable/spark-0.1.4.tgz
     version: 0.1.4
   - created: 2017-03-09T19:03:32.57258203Z
     description: Fast and general-purpose cluster computing system.
@@ -6871,7 +6871,7 @@ entries:
     - https://github.com/kubernetes/kubernetes/tree/master/examples/spark
     - https://github.com/apache/spark
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/spark-0.1.3.tgz
+    - https://charts.helm.sh/stable/spark-0.1.3.tgz
     version: 0.1.3
   - created: 2017-02-13T04:33:52.317122021Z
     description: A Apache Spark Helm chart for Kubernetes. Apache Spark is a fast
@@ -6886,7 +6886,7 @@ entries:
     - https://github.com/kubernetes/kubernetes/tree/master/examples/spark
     - https://github.com/apache/spark
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/spark-0.1.2.tgz
+    - https://charts.helm.sh/stable/spark-0.1.2.tgz
     version: 0.1.2
   - created: 2017-01-27T21:48:32.088621169Z
     description: A Apache Spark Helm chart for Kubernetes. Apache Spark is a fast
@@ -6901,7 +6901,7 @@ entries:
     - https://github.com/kubernetes/kubernetes/tree/master/examples/spark
     - https://github.com/apache/spark
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/spark-0.1.1.tgz
+    - https://charts.helm.sh/stable/spark-0.1.1.tgz
     version: 0.1.1
   spartakus:
   - created: 2017-04-28T00:18:30.107681212Z
@@ -6916,7 +6916,7 @@ entries:
     sources:
     - https://github.com/kubernetes-incubator/spartakus
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/spartakus-1.1.1.tgz
+    - https://charts.helm.sh/stable/spartakus-1.1.1.tgz
     version: 1.1.1
   - created: 2017-03-02T18:48:30.451198217Z
     description: Collect information about Kubernetes clusters to help improve the
@@ -6930,7 +6930,7 @@ entries:
     sources:
     - https://github.com/kubernetes-incubator/spartakus
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/spartakus-1.1.0.tgz
+    - https://charts.helm.sh/stable/spartakus-1.1.0.tgz
     version: 1.1.0
   - created: 2017-02-13T17:03:30.144830851Z
     description: A Spartakus Helm chart for Kubernetes. Spartakus aims to collect
@@ -6944,7 +6944,7 @@ entries:
     sources:
     - https://github.com/kubernetes-incubator/spartakus
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/spartakus-1.0.0.tgz
+    - https://charts.helm.sh/stable/spartakus-1.0.0.tgz
     version: 1.0.0
   spinnaker:
   - apiVersion: v1
@@ -6962,7 +6962,7 @@ entries:
     - https://github.com/spinnaker
     - https://github.com/viglesiasce/images
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/spinnaker-0.1.1.tgz
+    - https://charts.helm.sh/stable/spinnaker-0.1.1.tgz
     version: 0.1.1
   - apiVersion: v1
     created: 2017-02-13T20:48:27.29021219Z
@@ -6977,7 +6977,7 @@ entries:
     - https://github.com/spinnaker
     - https://github.com/viglesiasce/images
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/spinnaker-0.1.0.tgz
+    - https://charts.helm.sh/stable/spinnaker-0.1.0.tgz
     version: 0.1.0
   sumokube:
   - created: 2017-04-28T00:18:30.109952763Z
@@ -6995,7 +6995,7 @@ entries:
     sources:
     - https://github.com/SumoLogic/sumologic-collector-docker
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/sumokube-0.1.1.tgz
+    - https://charts.helm.sh/stable/sumokube-0.1.1.tgz
     version: 0.1.1
   - created: 2017-01-27T21:48:32.092039665Z
     description: Sumologic Log Collector
@@ -7012,7 +7012,7 @@ entries:
     sources:
     - https://github.com/SumoLogic/sumologic-collector-docker
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/sumokube-0.1.0.tgz
+    - https://charts.helm.sh/stable/sumokube-0.1.0.tgz
     version: 0.1.0
   telegraf:
   - created: 2017-04-28T00:18:30.110460492Z
@@ -7031,7 +7031,7 @@ entries:
       name: Jack Zampolin
     name: telegraf
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/telegraf-0.2.0.tgz
+    - https://charts.helm.sh/stable/telegraf-0.2.0.tgz
     version: 0.2.0
   - created: 2017-02-13T21:48:52.617397285Z
     description: Telegraf is an agent written in Go for collecting, processing, aggregating,
@@ -7049,7 +7049,7 @@ entries:
       name: Jack Zampolin
     name: telegraf
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/telegraf-0.1.1.tgz
+    - https://charts.helm.sh/stable/telegraf-0.1.1.tgz
     version: 0.1.1
   - created: 2017-02-11T03:18:26.54678474Z
     description: Chart for Telegraf Kubernetes deployments
@@ -7066,7 +7066,7 @@ entries:
       name: Jack Zampolin
     name: telegraf
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/telegraf-0.1.0.tgz
+    - https://charts.helm.sh/stable/telegraf-0.1.0.tgz
     version: 0.1.0
   testlink:
   - created: 2017-04-28T00:18:30.111130012Z
@@ -7088,7 +7088,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-testlink
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/testlink-0.4.6.tgz
+    - https://charts.helm.sh/stable/testlink-0.4.6.tgz
     version: 0.4.6
   - created: 2017-03-23T18:18:30.028234531Z
     description: Web-based test management system that facilitates software quality
@@ -7109,7 +7109,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-testlink
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/testlink-0.4.5.tgz
+    - https://charts.helm.sh/stable/testlink-0.4.5.tgz
     version: 0.4.5
   - created: 2017-03-08T19:03:31.751542723Z
     description: Web-based test management system that facilitates software quality
@@ -7130,7 +7130,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-testlink
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/testlink-0.4.4.tgz
+    - https://charts.helm.sh/stable/testlink-0.4.4.tgz
     version: 0.4.4
   - created: 2017-02-11T03:18:26.547570032Z
     description: Web-based test management system that facilitates software quality
@@ -7150,7 +7150,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-testlink
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/testlink-0.4.3.tgz
+    - https://charts.helm.sh/stable/testlink-0.4.3.tgz
     version: 0.4.3
   - created: 2017-01-21T00:18:31.369288453Z
     description: Web-based test management system that facilitates software quality
@@ -7170,7 +7170,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-testlink
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/testlink-0.4.2.tgz
+    - https://charts.helm.sh/stable/testlink-0.4.2.tgz
     version: 0.4.2
   - created: 2016-12-15T21:18:24.679744308Z
     description: Web-based test management system that facilitates software quality
@@ -7190,7 +7190,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-testlink
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/testlink-0.4.1.tgz
+    - https://charts.helm.sh/stable/testlink-0.4.1.tgz
     version: 0.4.1
   - created: 2016-12-09T18:48:20.193151472Z
     description: Web-based test management system that facilitates software quality
@@ -7210,7 +7210,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-testlink
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/testlink-0.4.0.tgz
+    - https://charts.helm.sh/stable/testlink-0.4.0.tgz
     version: 0.4.0
   traefik:
   - apiVersion: v1
@@ -7234,7 +7234,7 @@ entries:
     - https://github.com/containous/traefik
     - https://github.com/krancour/charts/tree/master/traefik
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/traefik-1.2.1-a.tgz
+    - https://charts.helm.sh/stable/traefik-1.2.1-a.tgz
     version: 1.2.1-a
   - apiVersion: v1
     created: 2017-03-31T19:33:30.456523182Z
@@ -7257,7 +7257,7 @@ entries:
     - https://github.com/containous/traefik
     - https://github.com/krancour/charts/tree/master/traefik
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/traefik-1.1.2-h.tgz
+    - https://charts.helm.sh/stable/traefik-1.1.2-h.tgz
     version: 1.1.2-h
   - apiVersion: v1
     created: 2017-03-16T23:33:31.610346236Z
@@ -7280,7 +7280,7 @@ entries:
     - https://github.com/containous/traefik
     - https://github.com/krancour/charts/tree/master/traefik
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/traefik-1.1.2-g.tgz
+    - https://charts.helm.sh/stable/traefik-1.1.2-g.tgz
     version: 1.1.2-g
   - apiVersion: v1
     created: 2017-02-27T17:18:28.185706737Z
@@ -7303,7 +7303,7 @@ entries:
     - https://github.com/containous/traefik
     - https://github.com/krancour/charts/tree/master/traefik
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/traefik-1.1.2-f.tgz
+    - https://charts.helm.sh/stable/traefik-1.1.2-f.tgz
     version: 1.1.2-f
   - apiVersion: v1
     created: 2017-02-13T22:18:28.973464794Z
@@ -7326,7 +7326,7 @@ entries:
     - https://github.com/containous/traefik
     - https://github.com/krancour/charts/tree/master/traefik
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/traefik-1.1.2-e.tgz
+    - https://charts.helm.sh/stable/traefik-1.1.2-e.tgz
     version: 1.1.2-e
   - apiVersion: v1
     created: 2017-02-13T21:33:27.776086791Z
@@ -7349,7 +7349,7 @@ entries:
     - https://github.com/containous/traefik
     - https://github.com/krancour/charts/tree/master/traefik
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/traefik-1.1.2-d.tgz
+    - https://charts.helm.sh/stable/traefik-1.1.2-d.tgz
     version: 1.1.2-d
   - apiVersion: v1
     created: 2017-02-03T19:33:30.806247527Z
@@ -7372,7 +7372,7 @@ entries:
     - https://github.com/containous/traefik
     - https://github.com/krancour/charts/tree/master/traefik
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/traefik-1.1.2-c.tgz
+    - https://charts.helm.sh/stable/traefik-1.1.2-c.tgz
     version: 1.1.2-c
   - apiVersion: v1
     created: 2017-02-01T02:18:29.153394653Z
@@ -7395,7 +7395,7 @@ entries:
     - https://github.com/containous/traefik
     - https://github.com/krancour/charts/tree/master/traefik
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/traefik-1.1.2-b.tgz
+    - https://charts.helm.sh/stable/traefik-1.1.2-b.tgz
     version: 1.1.2-b
   - apiVersion: v1
     created: 2017-01-28T00:18:32.767314879Z
@@ -7418,7 +7418,7 @@ entries:
     - https://github.com/containous/traefik
     - https://github.com/krancour/charts/tree/master/traefik
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/traefik-1.1.2-a.tgz
+    - https://charts.helm.sh/stable/traefik-1.1.2-a.tgz
     version: 1.1.2-a
   - apiVersion: v1
     created: 2017-01-03T17:48:20.753425335Z
@@ -7441,7 +7441,7 @@ entries:
     - https://github.com/containous/traefik
     - https://github.com/krancour/charts/tree/master/traefik
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/traefik-1.1.1-a.tgz
+    - https://charts.helm.sh/stable/traefik-1.1.1-a.tgz
     version: 1.1.1-a
   - apiVersion: v1
     created: 2016-11-23T00:33:20.024479934Z
@@ -7464,7 +7464,7 @@ entries:
     - https://github.com/containous/traefik
     - https://github.com/krancour/charts/tree/master/traefik
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/traefik-1.1.0-rc3-a.tgz
+    - https://charts.helm.sh/stable/traefik-1.1.0-rc3-a.tgz
     version: 1.1.0-rc3-a
   - apiVersion: v1
     created: 2016-11-30T22:03:20.721274307Z
@@ -7487,7 +7487,7 @@ entries:
     - https://github.com/containous/traefik
     - https://github.com/krancour/charts/tree/master/traefik
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/traefik-1.1.0-a.tgz
+    - https://charts.helm.sh/stable/traefik-1.1.0-a.tgz
     version: 1.1.0-a
   uchiwa:
   - apiVersion: v1
@@ -7510,7 +7510,7 @@ entries:
     - https://github.com/sstarcher/docker-uchiwa
     - https://github.com/sensu/uchiwa
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/uchiwa-0.2.1.tgz
+    - https://charts.helm.sh/stable/uchiwa-0.2.1.tgz
     version: 0.2.1
   - apiVersion: v1
     created: 2017-03-17T06:03:29.101091523Z
@@ -7532,7 +7532,7 @@ entries:
     - https://github.com/sstarcher/docker-uchiwa
     - https://github.com/sensu/uchiwa
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/uchiwa-0.2.0.tgz
+    - https://charts.helm.sh/stable/uchiwa-0.2.0.tgz
     version: 0.2.0
   - apiVersion: v1
     created: 2017-01-18T23:03:27.817024829Z
@@ -7554,7 +7554,7 @@ entries:
     - https://github.com/sstarcher/docker-uchiwa
     - https://github.com/sensu/uchiwa
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/uchiwa-0.1.0.tgz
+    - https://charts.helm.sh/stable/uchiwa-0.1.0.tgz
     version: 0.1.0
   wordpress:
   - created: 2017-04-28T00:18:30.114169329Z
@@ -7578,7 +7578,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-wordpress
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/wordpress-0.6.0.tgz
+    - https://charts.helm.sh/stable/wordpress-0.6.0.tgz
     version: 0.6.0
   - created: 2017-04-03T22:33:26.700088102Z
     description: Web publishing platform for building blogs and websites.
@@ -7601,7 +7601,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-wordpress
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/wordpress-0.5.2.tgz
+    - https://charts.helm.sh/stable/wordpress-0.5.2.tgz
     version: 0.5.2
   - created: 2017-03-23T21:18:31.877594706Z
     description: Web publishing platform for building blogs and websites.
@@ -7624,7 +7624,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-wordpress
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/wordpress-0.5.1.tgz
+    - https://charts.helm.sh/stable/wordpress-0.5.1.tgz
     version: 0.5.1
   - created: 2017-03-16T13:33:30.866725941Z
     description: Web publishing platform for building blogs and websites.
@@ -7647,7 +7647,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-wordpress
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/wordpress-0.5.0.tgz
+    - https://charts.helm.sh/stable/wordpress-0.5.0.tgz
     version: 0.5.0
   - created: 2017-03-14T23:48:31.917245657Z
     description: Web publishing platform for building blogs and websites.
@@ -7670,7 +7670,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-wordpress
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/wordpress-0.4.3.tgz
+    - https://charts.helm.sh/stable/wordpress-0.4.3.tgz
     version: 0.4.3
   - created: 2017-03-08T19:03:31.755452536Z
     description: Web publishing platform for building blogs and websites.
@@ -7693,7 +7693,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-wordpress
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/wordpress-0.4.2.tgz
+    - https://charts.helm.sh/stable/wordpress-0.4.2.tgz
     version: 0.4.2
   - created: 2017-02-13T04:33:52.323397093Z
     description: Web publishing platform for building blogs and websites.
@@ -7715,7 +7715,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-wordpress
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/wordpress-0.4.1.tgz
+    - https://charts.helm.sh/stable/wordpress-0.4.1.tgz
     version: 0.4.1
   - created: 2017-01-28T00:18:32.769124587Z
     description: Web publishing platform for building blogs and websites.
@@ -7737,7 +7737,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-wordpress
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/wordpress-0.4.0.tgz
+    - https://charts.helm.sh/stable/wordpress-0.4.0.tgz
     version: 0.4.0
   - created: 2017-01-04T00:48:19.757447587Z
     description: Web publishing platform for building blogs and websites.
@@ -7759,7 +7759,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-wordpress
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/wordpress-0.3.4.tgz
+    - https://charts.helm.sh/stable/wordpress-0.3.4.tgz
     version: 0.3.4
   - created: 2016-12-15T00:48:24.021239603Z
     description: Web publishing platform for building blogs and websites.
@@ -7781,7 +7781,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-wordpress
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/wordpress-0.3.3.tgz
+    - https://charts.helm.sh/stable/wordpress-0.3.3.tgz
     version: 0.3.3
   - created: 2016-12-09T18:48:20.19465733Z
     description: Web publishing platform for building blogs and websites.
@@ -7803,7 +7803,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-wordpress
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/wordpress-0.3.2.tgz
+    - https://charts.helm.sh/stable/wordpress-0.3.2.tgz
     version: 0.3.2
   - created: 2016-10-21T19:18:18.622178432Z
     description: Web publishing platform for building blogs and websites.
@@ -7825,7 +7825,7 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-wordpress
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/wordpress-0.3.1.tgz
+    - https://charts.helm.sh/stable/wordpress-0.3.1.tgz
     version: 0.3.1
   - created: 2016-10-19T00:03:14.037631856Z
     description: Web publishing platform for building blogs and websites.
@@ -7847,6 +7847,6 @@ entries:
     sources:
     - https://github.com/bitnami/bitnami-docker-wordpress
     urls:
-    - https://kubernetes-charts.storage.googleapis.com/wordpress-0.3.0.tgz
+    - https://charts.helm.sh/stable/wordpress-0.3.0.tgz
     version: 0.3.0
 generated: 2017-04-28T00:18:30.070608132Z

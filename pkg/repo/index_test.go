@@ -109,6 +109,7 @@ func TestLoadIndex(t *testing.T) {
 			Name:     "regular index file",
 			Filename: testfile,
 		},
+
 		{
 			Name:     "chartmuseum index file",
 			Filename: chartmuseumtestfile,
@@ -327,7 +328,7 @@ func verifyLocalIndex(t *testing.T, i *IndexFile) {
 				Home:        "https://github.com/something",
 			},
 			URLs: []string{
-				"https://kubernetes-charts.storage.googleapis.com/alpine-1.0.0.tgz",
+				"https://charts.helm.sh/stable/alpine-1.0.0.tgz",
 				"http://storage2.googleapis.com/kubernetes-charts/alpine-1.0.0.tgz",
 			},
 			Digest: "sha256:1234567890abcdef",
@@ -341,7 +342,7 @@ func verifyLocalIndex(t *testing.T, i *IndexFile) {
 				Home:        "https://github.com/something/else",
 			},
 			URLs: []string{
-				"https://kubernetes-charts.storage.googleapis.com/nginx-0.2.0.tgz",
+				"https://charts.helm.sh/stable/nginx-0.2.0.tgz",
 			},
 			Digest: "sha256:1234567890abcdef",
 		},
@@ -354,7 +355,7 @@ func verifyLocalIndex(t *testing.T, i *IndexFile) {
 				Home:        "https://github.com/something",
 			},
 			URLs: []string{
-				"https://kubernetes-charts.storage.googleapis.com/nginx-0.1.0.tgz",
+				"https://charts.helm.sh/stable/nginx-0.1.0.tgz",
 			},
 			Digest: "sha256:1234567890abcdef",
 		},
