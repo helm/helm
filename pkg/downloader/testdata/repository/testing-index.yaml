@@ -16,7 +16,7 @@ entries:
     - name: alpine
       urls:
         - http://example.com/alpine-0.2.0.tgz
-        - https://kubernetes-charts.storage.googleapis.com/alpine-0.2.0.tgz
+        - https://charts.helm.sh/stable/alpine-0.2.0.tgz
       checksum: 0e6661f193211d7a5206918d42f5c2a9470b737d
       home: https://helm.sh/helm
       sources:
