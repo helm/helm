@@ -1,0 +1,2 @@
+NAME                 	CHART VERSION	APP VERSION	DESCRIPTION            
+testing/nginx-ingress	a.b.c.sdfsdf 	           	Chart for nginx-ingress
