@@ -55,3 +55,33 @@ entries:
         - name: Bitnami
           email: containers@bitnami.com
       icon: ""
+    - name: mariadb
+      url: https://charts.helm.sh/stable/mariadb-0.3.0-0565674.tgz
+      checksum: 65229f6de44a2be9f215d11dbff311673fc8ba56
+      home: https://mariadb.org
+      sources:
+        - https://github.com/bitnami/bitnami-docker-mariadb
+      version: 0.3.0-0565674
+      description: Chart for MariaDB
+      keywords:
+        - mariadb
+        - mysql
+        - database
+        - sql
+      maintainers:
+        - name: Bitnami
+          email: containers@bitnami.com
+      icon: ""
+  nginx-ingress:
+    - name: nginx-ingress
+      url: https://github.com/kubernetes/ingress-nginx/ingress-a.b.c.sdfsdf.tgz
+      checksum: 25229f6de44a2be9f215d11dbff31167ddc8ba56
+      home: https://github.com/kubernetes/ingress-nginx
+      sources:
+        - https://github.com/kubernetes/ingress-nginx
+      version: a.b.c.sdfsdf
+      description: Chart for nginx-ingress
+      keywords:
+        - ingress
+        - nginx
+      icon: ""
