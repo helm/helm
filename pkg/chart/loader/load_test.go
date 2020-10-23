@@ -206,6 +206,32 @@ func TestLoadFile(t *testing.T) {
 	verifyDependencies(t, c)
 }
 
+func TestLoadFiles_BadCases(t *testing.T) {
+	for _, tt := range []struct {
+		name          string
+		bufferedFiles []*BufferedFile
+		expectError   string
+	}{
+		{
+			name: "These files contain only requirements.lock",
+			bufferedFiles: []*BufferedFile{
+				{
+					Name: "requirements.lock",
+					Data: []byte(""),
+				},
+			},
+			expectError: "validation: chart.metadata.apiVersion is required"},
+	} {
+		_, err := LoadFiles(tt.bufferedFiles)
+		if err == nil {
+			t.Fatal("expected error when load illegal files")
+		}
+		if !strings.Contains(err.Error(), tt.expectError) {
+			t.Errorf("Expected error to contain %q, got %q for %s", tt.expectError, err.Error(), tt.name)
+		}
+	}
+}
+
 func TestLoadFiles(t *testing.T) {
 	goodFiles := []*BufferedFile{
 		{
