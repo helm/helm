@@ -99,6 +99,19 @@ func TestDependencyBuildCmd(t *testing.T) {
 	if v := reqver.Version; v != "0.1.0" {
 		t.Errorf("mismatched versions. Expected %q, got %q", "0.1.0", v)
 	}
+
+	skipRefreshCmd := fmt.Sprintf("dependency build '%s' --skip-refresh --repository-config %s --repository-cache %s", filepath.Join(rootDir, chartname), repoFile, rootDir)
+	_, out, err = executeActionCommand(skipRefreshCmd)
+
+	// In this pass, we check --skip-refresh option becomes effective.
+	if err != nil {
+		t.Logf("Output: %s", out)
+		t.Fatal(err)
+	}
+
+	if strings.Contains(out, `update from the "test" chart repository`) {
+		t.Errorf("Repo did get updated\n%s", out)
+	}
 }
 
 func TestDependencyBuildCmdWithHelmV2Hash(t *testing.T) {
