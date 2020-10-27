@@ -93,7 +93,6 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 		}
 	}
 	for _, f := range files {
-		c.Raw = append(c.Raw, &chart.File{Name: f.Name, Data: f.Data})
 		switch {
 		case f.Name == "Chart.yaml":
 			// already processed
