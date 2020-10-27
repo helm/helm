@@ -199,6 +199,16 @@ func TestListCmd(t *testing.T) {
 		golden: "output/list-short.txt",
 		rels:   releaseFixture,
 	}, {
+		name:   "list releases in short output format",
+		cmd:    "list --short --output yaml",
+		golden: "output/list-short-yaml.txt",
+		rels:   releaseFixture,
+	}, {
+		name:   "list releases in short output format",
+		cmd:    "list --short --output json",
+		golden: "output/list-short-json.txt",
+		rels:   releaseFixture,
+	}, {
 		name:   "list superseded releases",
 		cmd:    "list --superseded",
 		golden: "output/list-superseded.txt",
@@ -224,4 +234,8 @@ func TestListCmd(t *testing.T) {
 
 func TestListOutputCompletion(t *testing.T) {
 	outputFlagCompletionTest(t, "list")
+}
+
+func TestListFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "list", false)
 }

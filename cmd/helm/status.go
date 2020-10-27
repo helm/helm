@@ -19,13 +19,13 @@ package main
 import (
 	"fmt"
 	"io"
+	"log"
 	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli/output"
@@ -39,6 +39,8 @@ The status consists of:
 - last deployment time
 - k8s namespace in which the release lives
 - state of the release (can be: unknown, deployed, uninstalled, superseded, failed, uninstalling, pending-install, pending-upgrade or pending-rollback)
+- revision of the release
+- description of the release (can be completion message or error message, need to enable --show-desc)
 - list of resources that this release consists of, sorted by kind
 - details on last test suite run, if applicable
 - additional notes provided by the chart
@@ -50,9 +52,15 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "status RELEASE_NAME",
-		Short: "displays the status of the named release",
+		Short: "display the status of the named release",
 		Long:  statusHelp,
 		Args:  require.ExactArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if len(args) != 0 {
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+			return compListReleases(toComplete, cfg)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			rel, err := client.Run(args[0])
 			if err != nil {
@@ -62,37 +70,35 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			// strip chart metadata from the output
 			rel.Chart = nil
 
-			return outfmt.Write(out, &statusPrinter{rel, false})
+			return outfmt.Write(out, &statusPrinter{rel, false, client.ShowDescription})
 		},
 	}
 
-	// Function providing dynamic auto-completion
-	completion.RegisterValidArgsFunc(cmd, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
-		if len(args) != 0 {
-			return nil, completion.BashCompDirectiveNoFileComp
-		}
-		return compListReleases(toComplete, cfg)
-	})
-
-	f := cmd.PersistentFlags()
+	f := cmd.Flags()
 
 	f.IntVar(&client.Version, "revision", 0, "if set, display the status of the named release with revision")
-	flag := f.Lookup("revision")
-	completion.RegisterFlagCompletionFunc(flag, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
+
+	err := cmd.RegisterFlagCompletionFunc("revision", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) == 1 {
-			return compListRevisions(cfg, args[0])
+			return compListRevisions(toComplete, cfg, args[0])
 		}
-		return nil, completion.BashCompDirectiveNoFileComp
+		return nil, cobra.ShellCompDirectiveNoFileComp
 	})
 
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	bindOutputFlag(cmd, &outfmt)
+	f.BoolVar(&client.ShowDescription, "show-desc", false, "if set, display the description message of the named release")
 
 	return cmd
 }
 
 type statusPrinter struct {
-	release *release.Release
-	debug   bool
+	release         *release.Release
+	debug           bool
+	showDescription bool
 }
 
 func (s statusPrinter) WriteJSON(out io.Writer) error {
@@ -114,6 +120,9 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 	fmt.Fprintf(out, "NAMESPACE: %s\n", s.release.Namespace)
 	fmt.Fprintf(out, "STATUS: %s\n", s.release.Info.Status.String())
 	fmt.Fprintf(out, "REVISION: %d\n", s.release.Version)
+	if s.showDescription {
+		fmt.Fprintf(out, "DESCRIPTION: %s\n", s.release.Info.Description)
+	}
 
 	executions := executionsByHookEvent(s.release)
 	if tests, ok := executions[release.HookTest]; !ok || len(tests) == 0 {

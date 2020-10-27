@@ -34,25 +34,50 @@ import (
 )
 
 func TestRepoAddCmd(t *testing.T) {
-	srv, err := repotest.NewTempServer("testdata/testserver/*.*")
+	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer srv.Stop()
 
-	repoFile := filepath.Join(ensure.TempDir(t), "repositories.yaml")
+	// A second test server is setup to verify URL changing
+	srv2, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer srv2.Stop()
 
-	tests := []cmdTestCase{{
-		name:   "add a repository",
-		cmd:    fmt.Sprintf("repo add test-name %s --repository-config %s", srv.URL(), repoFile),
-		golden: "output/repo-add.txt",
-	}}
+	tmpdir := ensure.TempDir(t)
+	repoFile := filepath.Join(tmpdir, "repositories.yaml")
+
+	tests := []cmdTestCase{
+		{
+			name:   "add a repository",
+			cmd:    fmt.Sprintf("repo add test-name %s --repository-config %s --repository-cache %s", srv.URL(), repoFile, tmpdir),
+			golden: "output/repo-add.txt",
+		},
+		{
+			name:   "add repository second time",
+			cmd:    fmt.Sprintf("repo add test-name %s --repository-config %s --repository-cache %s", srv.URL(), repoFile, tmpdir),
+			golden: "output/repo-add2.txt",
+		},
+		{
+			name:      "add repository different url",
+			cmd:       fmt.Sprintf("repo add test-name %s --repository-config %s --repository-cache %s", srv2.URL(), repoFile, tmpdir),
+			wantError: true,
+		},
+		{
+			name:   "add repository second time",
+			cmd:    fmt.Sprintf("repo add test-name %s --repository-config %s --repository-cache %s --force-update", srv2.URL(), repoFile, tmpdir),
+			golden: "output/repo-add.txt",
+		},
+	}
 
 	runTestCmd(t, tests)
 }
 
 func TestRepoAdd(t *testing.T) {
-	ts, err := repotest.NewTempServer("testdata/testserver/*.*")
+	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,10 +89,11 @@ func TestRepoAdd(t *testing.T) {
 	const testRepoName = "test-name"
 
 	o := &repoAddOptions{
-		name:     testRepoName,
-		url:      ts.URL(),
-		noUpdate: true,
-		repoFile: repoFile,
+		name:               testRepoName,
+		url:                ts.URL(),
+		forceUpdate:        false,
+		deprecatedNoUpdate: true,
+		repoFile:           repoFile,
 	}
 	os.Setenv(xdg.CacheHomeEnvVar, rootDir)
 
@@ -93,7 +119,7 @@ func TestRepoAdd(t *testing.T) {
 		t.Errorf("Error cache charts file was not created for repository %s", testRepoName)
 	}
 
-	o.noUpdate = false
+	o.forceUpdate = true
 
 	if err := o.run(ioutil.Discard); err != nil {
 		t.Errorf("Repository was not updated: %s", err)
@@ -117,7 +143,7 @@ func TestRepoAddConcurrentDirNotExist(t *testing.T) {
 }
 
 func repoAddConcurrent(t *testing.T, testName, repoFile string) {
-	ts, err := repotest.NewTempServer("testdata/testserver/*.*")
+	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,10 +155,11 @@ func repoAddConcurrent(t *testing.T, testName, repoFile string) {
 		go func(name string) {
 			defer wg.Done()
 			o := &repoAddOptions{
-				name:     name,
-				url:      ts.URL(),
-				noUpdate: true,
-				repoFile: repoFile,
+				name:               name,
+				url:                ts.URL(),
+				deprecatedNoUpdate: true,
+				forceUpdate:        false,
+				repoFile:           repoFile,
 			}
 			if err := o.run(ioutil.Discard); err != nil {
 				t.Error(err)
@@ -158,4 +185,10 @@ func repoAddConcurrent(t *testing.T, testName, repoFile string) {
 			t.Errorf("%s was not successfully inserted into %s: %s", name, repoFile, f.Repositories[0])
 		}
 	}
+}
+
+func TestRepoAddFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "repo add", false)
+	checkFileCompletion(t, "repo add reponame", false)
+	checkFileCompletion(t, "repo add reponame https://example.com", false)
 }

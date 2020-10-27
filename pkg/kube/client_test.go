@@ -91,9 +91,12 @@ func newResponse(code int, obj runtime.Object) (*http.Response, error) {
 	return &http.Response{StatusCode: code, Header: header, Body: body}, nil
 }
 
-func newTestClient() *Client {
+func newTestClient(t *testing.T) *Client {
+	testFactory := cmdtesting.NewTestFactory()
+	t.Cleanup(testFactory.Cleanup)
+
 	return &Client{
-		Factory: cmdtesting.NewTestFactory().WithNamespace("default"),
+		Factory: testFactory.WithNamespace("default"),
 		Log:     nopLogger,
 	}
 }
@@ -107,7 +110,7 @@ func TestUpdate(t *testing.T) {
 
 	var actions []string
 
-	c := newTestClient()
+	c := newTestClient(t)
 	c.Factory.(*cmdtesting.TestFactory).UnstructuredClient = &fake.RESTClient{
 		NegotiatedSerializer: unstructuredSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
@@ -164,9 +167,21 @@ func TestUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := c.Update(first, second, false); err != nil {
+	result, err := c.Update(first, second, false)
+	if err != nil {
 		t.Fatal(err)
 	}
+
+	if len(result.Created) != 1 {
+		t.Errorf("expected 1 resource created, got %d", len(result.Created))
+	}
+	if len(result.Updated) != 2 {
+		t.Errorf("expected 2 resource updated, got %d", len(result.Updated))
+	}
+	if len(result.Deleted) != 1 {
+		t.Errorf("expected 1 resource deleted, got %d", len(result.Deleted))
+	}
+
 	// TODO: Find a way to test methods that use Client Set
 	// Test with a wait
 	// if err := c.Update("test", objBody(codec, &listB), objBody(codec, &listC), false, 300, true); err != nil {
@@ -190,8 +205,7 @@ func TestUpdate(t *testing.T) {
 		"/namespaces/default/pods/squid:DELETE",
 	}
 	if len(expectedActions) != len(actions) {
-		t.Errorf("unexpected number of requests, expected %d, got %d", len(expectedActions), len(actions))
-		return
+		t.Fatalf("unexpected number of requests, expected %d, got %d", len(expectedActions), len(actions))
 	}
 	for k, v := range expectedActions {
 		if actions[k] != v {
@@ -221,7 +235,7 @@ func TestBuild(t *testing.T) {
 		},
 	}
 
-	c := newTestClient()
+	c := newTestClient(t)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Test for an invalid manifest
@@ -268,7 +282,7 @@ func TestPerform(t *testing.T) {
 				return nil
 			}
 
-			c := newTestClient()
+			c := newTestClient(t)
 			infos, err := c.Build(tt.reader, false)
 			if err != nil && err.Error() != tt.errMessage {
 				t.Errorf("Error while building manifests: %v", err)

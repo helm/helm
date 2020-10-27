@@ -56,7 +56,7 @@ func TestVCSInstaller(t *testing.T) {
 	}
 
 	source := "https://github.com/adamreese/helm-env"
-	testRepoPath, _ := filepath.Abs("../testdata/plugdir/echo")
+	testRepoPath, _ := filepath.Abs("../testdata/plugdir/good/echo")
 	repo := &testRepo{
 		local: testRepoPath,
 		tags:  []string{"0.1.0", "0.1.1"},
@@ -80,24 +80,24 @@ func TestVCSInstaller(t *testing.T) {
 		t.Fatal(err)
 	}
 	if repo.current != "0.1.1" {
-		t.Errorf("expected version '0.1.1', got %q", repo.current)
+		t.Fatalf("expected version '0.1.1', got %q", repo.current)
 	}
 	if i.Path() != helmpath.DataPath("plugins", "helm-env") {
-		t.Errorf("expected path '$XDG_CONFIG_HOME/helm/plugins/helm-env', got %q", i.Path())
+		t.Fatalf("expected path '$XDG_CONFIG_HOME/helm/plugins/helm-env', got %q", i.Path())
 	}
 
 	// Install again to test plugin exists error
 	if err := Install(i); err == nil {
-		t.Error("expected error for plugin exists, got none")
+		t.Fatalf("expected error for plugin exists, got none")
 	} else if err.Error() != "plugin already exists" {
-		t.Errorf("expected error for plugin exists, got (%v)", err)
+		t.Fatalf("expected error for plugin exists, got (%v)", err)
 	}
 
 	// Testing FindSource method, expect error because plugin code is not a cloned repository
 	if _, err := FindSource(i.Path()); err == nil {
-		t.Error("expected error for inability to find plugin source, got none")
+		t.Fatalf("expected error for inability to find plugin source, got none")
 	} else if err.Error() != "cannot get information about plugin source" {
-		t.Errorf("expected error for inability to find plugin source, got (%v)", err)
+		t.Fatalf("expected error for inability to find plugin source, got (%v)", err)
 	}
 }
 
@@ -113,15 +113,14 @@ func TestVCSInstallerNonExistentVersion(t *testing.T) {
 	}
 
 	// ensure a VCSInstaller was returned
-	_, ok := i.(*VCSInstaller)
-	if !ok {
+	if _, ok := i.(*VCSInstaller); !ok {
 		t.Fatal("expected a VCSInstaller")
 	}
 
 	if err := Install(i); err == nil {
-		t.Error("expected error for version does not exists, got none")
+		t.Fatalf("expected error for version does not exists, got none")
 	} else if err.Error() != fmt.Sprintf("requested version %q does not exist for plugin %q", version, source) {
-		t.Errorf("expected error for version does not exists, got (%v)", err)
+		t.Fatalf("expected error for version does not exists, got (%v)", err)
 	}
 }
 func TestVCSInstallerUpdate(t *testing.T) {
@@ -135,8 +134,7 @@ func TestVCSInstallerUpdate(t *testing.T) {
 	}
 
 	// ensure a VCSInstaller was returned
-	_, ok := i.(*VCSInstaller)
-	if !ok {
+	if _, ok := i.(*VCSInstaller); !ok {
 		t.Fatal("expected a VCSInstaller")
 	}
 
@@ -157,7 +155,9 @@ func TestVCSInstallerUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	repoRemote := pluginInfo.(*VCSInstaller).Repo.Remote()
+	vcsInstaller := pluginInfo.(*VCSInstaller)
+
+	repoRemote := vcsInstaller.Repo.Remote()
 	if repoRemote != source {
 		t.Fatalf("invalid source found, expected %q got %q", source, repoRemote)
 	}
@@ -168,12 +168,14 @@ func TestVCSInstallerUpdate(t *testing.T) {
 	}
 
 	// Test update failure
-	os.Remove(filepath.Join(i.Path(), "plugin.yaml"))
+	if err := os.Remove(filepath.Join(vcsInstaller.Repo.LocalPath(), "plugin.yaml")); err != nil {
+		t.Fatal(err)
+	}
 	// Testing update for error
-	if err := Update(i); err == nil {
-		t.Error("expected error for plugin modified, got none")
+	if err := Update(vcsInstaller); err == nil {
+		t.Fatalf("expected error for plugin modified, got none")
 	} else if err.Error() != "plugin repo was modified" {
-		t.Errorf("expected error for plugin modified, got (%v)", err)
+		t.Fatalf("expected error for plugin modified, got (%v)", err)
 	}
 
 }

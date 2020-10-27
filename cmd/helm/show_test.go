@@ -26,7 +26,7 @@ import (
 )
 
 func TestShowPreReleaseChart(t *testing.T) {
-	srv, err := repotest.NewTempServer("testdata/testcharts/*.tgz*")
+	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/testcharts/*.tgz*")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,6 +48,13 @@ func TestShowPreReleaseChart(t *testing.T) {
 			args:        "test/pre-release-chart",
 			fail:        true,
 			expectedErr: "failed to download \"test/pre-release-chart\"",
+		},
+		{
+			name:        "show pre-release chart",
+			args:        "test/pre-release-chart",
+			fail:        true,
+			flags:       "--version 1.0.0",
+			expectedErr: "failed to download \"test/pre-release-chart\" at version \"1.0.0\"",
 		},
 		{
 			name:  "show pre-release chart with 'devel' flag",
@@ -79,4 +86,62 @@ func TestShowPreReleaseChart(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestShowVersionCompletion(t *testing.T) {
+	repoFile := "testdata/helmhome/helm/repositories.yaml"
+	repoCache := "testdata/helmhome/helm/repository"
+
+	repoSetup := fmt.Sprintf("--repository-config %s --repository-cache %s", repoFile, repoCache)
+
+	tests := []cmdTestCase{{
+		name:   "completion for show version flag",
+		cmd:    fmt.Sprintf("%s __complete show chart testing/alpine --version ''", repoSetup),
+		golden: "output/version-comp.txt",
+	}, {
+		name:   "completion for show version flag too few args",
+		cmd:    fmt.Sprintf("%s __complete show chart --version ''", repoSetup),
+		golden: "output/version-invalid-comp.txt",
+	}, {
+		name:   "completion for show version flag too many args",
+		cmd:    fmt.Sprintf("%s __complete show chart testing/alpine badarg --version ''", repoSetup),
+		golden: "output/version-invalid-comp.txt",
+	}, {
+		name:   "completion for show version flag invalid chart",
+		cmd:    fmt.Sprintf("%s __complete show chart invalid/invalid --version ''", repoSetup),
+		golden: "output/version-invalid-comp.txt",
+	}, {
+		name:   "completion for show version flag with all",
+		cmd:    fmt.Sprintf("%s __complete show all testing/alpine --version ''", repoSetup),
+		golden: "output/version-comp.txt",
+	}, {
+		name:   "completion for show version flag with readme",
+		cmd:    fmt.Sprintf("%s __complete show readme testing/alpine --version ''", repoSetup),
+		golden: "output/version-comp.txt",
+	}, {
+		name:   "completion for show version flag with values",
+		cmd:    fmt.Sprintf("%s __complete show values testing/alpine --version ''", repoSetup),
+		golden: "output/version-comp.txt",
+	}}
+	runTestCmd(t, tests)
+}
+
+func TestShowFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "show", false)
+}
+
+func TestShowAllFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "show all", true)
+}
+
+func TestShowChartFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "show chart", true)
+}
+
+func TestShowReadmeFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "show readme", true)
+}
+
+func TestShowValuesFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "show values", true)
 }

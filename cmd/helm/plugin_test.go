@@ -37,6 +37,9 @@ func TestManuallyProcessArgs(t *testing.T) {
 		"--kubeconfig", "/home/foo",
 		"--kube-context=test1",
 		"--kube-context", "test1",
+		"--kube-as-user", "pikachu",
+		"--kube-as-group", "teatime",
+		"--kube-as-group", "admins",
 		"-n=test2",
 		"-n", "test2",
 		"--namespace=test2",
@@ -51,6 +54,9 @@ func TestManuallyProcessArgs(t *testing.T) {
 		"--kubeconfig", "/home/foo",
 		"--kube-context=test1",
 		"--kube-context", "test1",
+		"--kube-as-user", "pikachu",
+		"--kube-as-group", "teatime",
+		"--kube-as-group", "admins",
 		"-n=test2",
 		"-n", "test2",
 		"--namespace=test2",
@@ -297,4 +303,27 @@ func TestLoadPlugins_HelmNoPlugins(t *testing.T) {
 	if len(plugins) != 0 {
 		t.Fatalf("Expected 0 plugins, got %d", len(plugins))
 	}
+}
+
+func TestPluginFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "plugin", false)
+}
+
+func TestPluginInstallFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "plugin install", true)
+	checkFileCompletion(t, "plugin install mypath", false)
+}
+
+func TestPluginListFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "plugin list", false)
+}
+
+func TestPluginUninstallFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "plugin uninstall", false)
+	checkFileCompletion(t, "plugin uninstall myplugin", false)
+}
+
+func TestPluginUpdateFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "plugin update", false)
+	checkFileCompletion(t, "plugin update myplugin", false)
 }

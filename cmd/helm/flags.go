@@ -17,17 +17,22 @@ limitations under the License.
 package main
 
 import (
+	"flag"
 	"fmt"
+	"log"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"k8s.io/klog"
 
-	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/cli/values"
+	"helm.sh/helm/v3/pkg/helmpath"
 	"helm.sh/helm/v3/pkg/postrender"
+	"helm.sh/helm/v3/pkg/repo"
 )
 
 const outputFlag = "output"
@@ -41,33 +46,37 @@ func addValueOptionsFlags(f *pflag.FlagSet, v *values.Options) {
 }
 
 func addChartPathOptionsFlags(f *pflag.FlagSet, c *action.ChartPathOptions) {
-	f.StringVar(&c.Version, "version", "", "specify the exact chart version to install. If this is not specified, the latest version is installed")
-	f.BoolVar(&c.Verify, "verify", false, "verify the package before installing it")
+	f.StringVar(&c.Version, "version", "", "specify the exact chart version to use. If this is not specified, the latest version is used")
+	f.BoolVar(&c.Verify, "verify", false, "verify the package before using it")
 	f.StringVar(&c.Keyring, "keyring", defaultKeyring(), "location of public keys used for verification")
 	f.StringVar(&c.RepoURL, "repo", "", "chart repository url where to locate the requested chart")
 	f.StringVar(&c.Username, "username", "", "chart repository username where to locate the requested chart")
 	f.StringVar(&c.Password, "password", "", "chart repository password where to locate the requested chart")
 	f.StringVar(&c.CertFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
 	f.StringVar(&c.KeyFile, "key-file", "", "identify HTTPS client using this SSL key file")
+	f.BoolVar(&c.InsecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the chart download")
 	f.StringVar(&c.CaFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 }
 
 // bindOutputFlag will add the output flag to the given command and bind the
 // value to the given format pointer
 func bindOutputFlag(cmd *cobra.Command, varRef *output.Format) {
-	f := cmd.Flags()
-	flag := f.VarPF(newOutputValue(output.Table, varRef), outputFlag, "o",
+	cmd.Flags().VarP(newOutputValue(output.Table, varRef), outputFlag, "o",
 		fmt.Sprintf("prints the output in the specified format. Allowed values: %s", strings.Join(output.Formats(), ", ")))
 
-	completion.RegisterFlagCompletionFunc(flag, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
+	err := cmd.RegisterFlagCompletionFunc(outputFlag, func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		var formatNames []string
 		for _, format := range output.Formats() {
 			if strings.HasPrefix(format, toComplete) {
 				formatNames = append(formatNames, format)
 			}
 		}
-		return formatNames, completion.BashCompDirectiveDefault
+		return formatNames, cobra.ShellCompDirectiveNoFileComp
 	})
+
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 type outputValue output.Format
@@ -123,4 +132,49 @@ func (p postRenderer) Set(s string) error {
 	}
 	*p.renderer = pr
 	return nil
+}
+
+func compVersionFlag(chartRef string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	chartInfo := strings.Split(chartRef, "/")
+	if len(chartInfo) != 2 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	repoName := chartInfo[0]
+	chartName := chartInfo[1]
+
+	path := filepath.Join(settings.RepositoryCache, helmpath.CacheIndexFile(repoName))
+
+	var versions []string
+	if indexFile, err := repo.LoadIndexFile(path); err == nil {
+		for _, details := range indexFile.Entries[chartName] {
+			version := details.Metadata.Version
+			if strings.HasPrefix(version, toComplete) {
+				versions = append(versions, version)
+			}
+		}
+	}
+
+	return versions, cobra.ShellCompDirectiveNoFileComp
+}
+
+// addKlogFlags adds flags from k8s.io/klog
+// marks the flags as hidden to avoid polluting the help text
+func addKlogFlags(fs *pflag.FlagSet) {
+	local := flag.NewFlagSet("klog", flag.ExitOnError)
+	klog.InitFlags(local)
+	local.VisitAll(func(fl *flag.Flag) {
+		fl.Name = normalize(fl.Name)
+		if fs.Lookup(fl.Name) != nil {
+			return
+		}
+		newflag := pflag.PFlagFromGoFlag(fl)
+		newflag.Hidden = true
+		fs.AddFlag(newflag)
+	})
+}
+
+// normalize replaces underscores with hyphens
+func normalize(s string) string {
+	return strings.ReplaceAll(s, "_", "-")
 }

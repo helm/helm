@@ -90,3 +90,8 @@ func TestVerifyCmd(t *testing.T) {
 		})
 	}
 }
+
+func TestVerifyFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "verify", true)
+	checkFileCompletion(t, "verify mypath", false)
+}

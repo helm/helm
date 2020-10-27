@@ -17,12 +17,18 @@ limitations under the License.
 package driver // import "helm.sh/helm/v3/pkg/storage/driver"
 
 import (
+	"context"
 	"fmt"
 	"testing"
+
+	sqlmock "github.com/DATA-DOG/go-sqlmock"
+	sq "github.com/Masterminds/squirrel"
+	"github.com/jmoiron/sqlx"
 
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kblabels "k8s.io/apimachinery/pkg/labels"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
 	rspb "helm.sh/helm/v3/pkg/release"
@@ -102,7 +108,7 @@ func (mock *MockConfigMapsInterface) Init(t *testing.T, releases ...*rspb.Releas
 }
 
 // Get returns the ConfigMap by name.
-func (mock *MockConfigMapsInterface) Get(name string, options metav1.GetOptions) (*v1.ConfigMap, error) {
+func (mock *MockConfigMapsInterface) Get(_ context.Context, name string, _ metav1.GetOptions) (*v1.ConfigMap, error) {
 	object, ok := mock.objects[name]
 	if !ok {
 		return nil, apierrors.NewNotFound(v1.Resource("tests"), name)
@@ -111,16 +117,24 @@ func (mock *MockConfigMapsInterface) Get(name string, options metav1.GetOptions)
 }
 
 // List returns the a of ConfigMaps.
-func (mock *MockConfigMapsInterface) List(opts metav1.ListOptions) (*v1.ConfigMapList, error) {
+func (mock *MockConfigMapsInterface) List(_ context.Context, opts metav1.ListOptions) (*v1.ConfigMapList, error) {
 	var list v1.ConfigMapList
+
+	labelSelector, err := kblabels.Parse(opts.LabelSelector)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, cfgmap := range mock.objects {
-		list.Items = append(list.Items, *cfgmap)
+		if labelSelector.Matches(kblabels.Set(cfgmap.ObjectMeta.Labels)) {
+			list.Items = append(list.Items, *cfgmap)
+		}
 	}
 	return &list, nil
 }
 
 // Create creates a new ConfigMap.
-func (mock *MockConfigMapsInterface) Create(cfgmap *v1.ConfigMap) (*v1.ConfigMap, error) {
+func (mock *MockConfigMapsInterface) Create(_ context.Context, cfgmap *v1.ConfigMap, _ metav1.CreateOptions) (*v1.ConfigMap, error) {
 	name := cfgmap.ObjectMeta.Name
 	if object, ok := mock.objects[name]; ok {
 		return object, apierrors.NewAlreadyExists(v1.Resource("tests"), name)
@@ -130,7 +144,7 @@ func (mock *MockConfigMapsInterface) Create(cfgmap *v1.ConfigMap) (*v1.ConfigMap
 }
 
 // Update updates a ConfigMap.
-func (mock *MockConfigMapsInterface) Update(cfgmap *v1.ConfigMap) (*v1.ConfigMap, error) {
+func (mock *MockConfigMapsInterface) Update(_ context.Context, cfgmap *v1.ConfigMap, _ metav1.UpdateOptions) (*v1.ConfigMap, error) {
 	name := cfgmap.ObjectMeta.Name
 	if _, ok := mock.objects[name]; !ok {
 		return nil, apierrors.NewNotFound(v1.Resource("tests"), name)
@@ -140,7 +154,7 @@ func (mock *MockConfigMapsInterface) Update(cfgmap *v1.ConfigMap) (*v1.ConfigMap
 }
 
 // Delete deletes a ConfigMap by name.
-func (mock *MockConfigMapsInterface) Delete(name string, opts *metav1.DeleteOptions) error {
+func (mock *MockConfigMapsInterface) Delete(_ context.Context, name string, _ metav1.DeleteOptions) error {
 	if _, ok := mock.objects[name]; !ok {
 		return apierrors.NewNotFound(v1.Resource("tests"), name)
 	}
@@ -180,7 +194,7 @@ func (mock *MockSecretsInterface) Init(t *testing.T, releases ...*rspb.Release) 
 }
 
 // Get returns the Secret by name.
-func (mock *MockSecretsInterface) Get(name string, options metav1.GetOptions) (*v1.Secret, error) {
+func (mock *MockSecretsInterface) Get(_ context.Context, name string, _ metav1.GetOptions) (*v1.Secret, error) {
 	object, ok := mock.objects[name]
 	if !ok {
 		return nil, apierrors.NewNotFound(v1.Resource("tests"), name)
@@ -189,16 +203,24 @@ func (mock *MockSecretsInterface) Get(name string, options metav1.GetOptions) (*
 }
 
 // List returns the a of Secret.
-func (mock *MockSecretsInterface) List(opts metav1.ListOptions) (*v1.SecretList, error) {
+func (mock *MockSecretsInterface) List(_ context.Context, opts metav1.ListOptions) (*v1.SecretList, error) {
 	var list v1.SecretList
+
+	labelSelector, err := kblabels.Parse(opts.LabelSelector)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, secret := range mock.objects {
-		list.Items = append(list.Items, *secret)
+		if labelSelector.Matches(kblabels.Set(secret.ObjectMeta.Labels)) {
+			list.Items = append(list.Items, *secret)
+		}
 	}
 	return &list, nil
 }
 
 // Create creates a new Secret.
-func (mock *MockSecretsInterface) Create(secret *v1.Secret) (*v1.Secret, error) {
+func (mock *MockSecretsInterface) Create(_ context.Context, secret *v1.Secret, _ metav1.CreateOptions) (*v1.Secret, error) {
 	name := secret.ObjectMeta.Name
 	if object, ok := mock.objects[name]; ok {
 		return object, apierrors.NewAlreadyExists(v1.Resource("tests"), name)
@@ -208,7 +230,7 @@ func (mock *MockSecretsInterface) Create(secret *v1.Secret) (*v1.Secret, error) 
 }
 
 // Update updates a Secret.
-func (mock *MockSecretsInterface) Update(secret *v1.Secret) (*v1.Secret, error) {
+func (mock *MockSecretsInterface) Update(_ context.Context, secret *v1.Secret, _ metav1.UpdateOptions) (*v1.Secret, error) {
 	name := secret.ObjectMeta.Name
 	if _, ok := mock.objects[name]; !ok {
 		return nil, apierrors.NewNotFound(v1.Resource("tests"), name)
@@ -218,10 +240,26 @@ func (mock *MockSecretsInterface) Update(secret *v1.Secret) (*v1.Secret, error) 
 }
 
 // Delete deletes a Secret by name.
-func (mock *MockSecretsInterface) Delete(name string, opts *metav1.DeleteOptions) error {
+func (mock *MockSecretsInterface) Delete(_ context.Context, name string, _ metav1.DeleteOptions) error {
 	if _, ok := mock.objects[name]; !ok {
 		return apierrors.NewNotFound(v1.Resource("tests"), name)
 	}
 	delete(mock.objects, name)
 	return nil
+}
+
+// newTestFixtureSQL mocks the SQL database (for testing purposes)
+func newTestFixtureSQL(t *testing.T, releases ...*rspb.Release) (*SQL, sqlmock.Sqlmock) {
+	sqlDB, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("error when opening stub database connection: %v", err)
+	}
+
+	sqlxDB := sqlx.NewDb(sqlDB, "sqlmock")
+	return &SQL{
+		db:               sqlxDB,
+		Log:              func(a string, b ...interface{}) {},
+		namespace:        "default",
+		statementBuilder: sq.StatementBuilder.PlaceholderFormat(sq.Dollar),
+	}, mock
 }

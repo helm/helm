@@ -48,11 +48,13 @@ func funcMap() template.FuncMap {
 
 	// Add some extra functionality
 	extra := template.FuncMap{
-		"toToml":   toTOML,
-		"toYaml":   toYAML,
-		"fromYaml": fromYAML,
-		"toJson":   toJSON,
-		"fromJson": fromJSON,
+		"toToml":        toTOML,
+		"toYaml":        toYAML,
+		"fromYaml":      fromYAML,
+		"fromYamlArray": fromYAMLArray,
+		"toJson":        toJSON,
+		"fromJson":      fromJSON,
+		"fromJsonArray": fromJSONArray,
 
 		// This is a placeholder for the "include" function, which is
 		// late-bound to a template. By declaring it here, we preserve the
@@ -60,6 +62,11 @@ func funcMap() template.FuncMap {
 		"include":  func(string, interface{}) string { return "not implemented" },
 		"tpl":      func(string, interface{}) interface{} { return "not implemented" },
 		"required": func(string, interface{}) (interface{}, error) { return "not implemented", nil },
+		// Provide a placeholder for the "lookup" function, which requires a kubernetes
+		// connection.
+		"lookup": func(string, string, string, string) (map[string]interface{}, error) {
+			return map[string]interface{}{}, nil
+		},
 	}
 
 	for k, v := range extra {
@@ -95,6 +102,21 @@ func fromYAML(str string) map[string]interface{} {
 		m["Error"] = err.Error()
 	}
 	return m
+}
+
+// fromYAMLArray converts a YAML array into a []interface{}.
+//
+// This is not a general-purpose YAML parser, and will not parse all valid
+// YAML documents. Additionally, because its intended use is within templates
+// it tolerates errors. It will insert the returned error message string as
+// the first and only item in the returned array.
+func fromYAMLArray(str string) []interface{} {
+	a := []interface{}{}
+
+	if err := yaml.Unmarshal([]byte(str), &a); err != nil {
+		a = []interface{}{err.Error()}
+	}
+	return a
 }
 
 // toTOML takes an interface, marshals it to toml, and returns a string. It will
@@ -137,4 +159,19 @@ func fromJSON(str string) map[string]interface{} {
 		m["Error"] = err.Error()
 	}
 	return m
+}
+
+// fromJSONArray converts a JSON array into a []interface{}.
+//
+// This is not a general-purpose JSON parser, and will not parse all valid
+// JSON documents. Additionally, because its intended use is within templates
+// it tolerates errors. It will insert the returned error message string as
+// the first and only item in the returned array.
+func fromJSONArray(str string) []interface{} {
+	a := []interface{}{}
+
+	if err := json.Unmarshal([]byte(str), &a); err != nil {
+		a = []interface{}{err.Error()}
+	}
+	return a
 }

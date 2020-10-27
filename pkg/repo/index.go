@@ -17,6 +17,7 @@ limitations under the License.
 package repo
 
 import (
+	"bytes"
 	"io/ioutil"
 	"os"
 	"path"
@@ -29,6 +30,7 @@ import (
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
+	"helm.sh/helm/v3/internal/fileutil"
 	"helm.sh/helm/v3/internal/urlutil"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -75,10 +77,16 @@ func (c ChartVersions) Less(a, b int) bool {
 
 // IndexFile represents the index file in a chart repository
 type IndexFile struct {
+	// This is used ONLY for validation against chartmuseum's index files and is discarded after validation.
+	ServerInfo map[string]interface{}   `json:"serverInfo,omitempty"`
 	APIVersion string                   `json:"apiVersion"`
 	Generated  time.Time                `json:"generated"`
 	Entries    map[string]ChartVersions `json:"entries"`
 	PublicKeys []string                 `json:"publicKeys,omitempty"`
+
+	// Annotations are additional mappings uninterpreted by Helm. They are made available for
+	// other applications to add information to the index file.
+	Annotations map[string]string `json:"annotations,omitempty"`
 }
 
 // NewIndexFile initializes an index.
@@ -197,7 +205,7 @@ func (i IndexFile) WriteFile(dest string, mode os.FileMode) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(dest, b, mode)
+	return fileutil.AtomicWriteFile(dest, bytes.NewReader(b), mode)
 }
 
 // Merge merges the given index file into this index.
@@ -226,6 +234,23 @@ type ChartVersion struct {
 	Created time.Time `json:"created,omitempty"`
 	Removed bool      `json:"removed,omitempty"`
 	Digest  string    `json:"digest,omitempty"`
+
+	// ChecksumDeprecated is deprecated in Helm 3, and therefore ignored. Helm 3 replaced
+	// this with Digest. However, with a strict YAML parser enabled, a field must be
+	// present on the struct for backwards compatibility.
+	ChecksumDeprecated string `json:"checksum,omitempty"`
+
+	// EngineDeprecated is deprecated in Helm 3, and therefore ignored. However, with a strict
+	// YAML parser enabled, this field must be present.
+	EngineDeprecated string `json:"engine,omitempty"`
+
+	// TillerVersionDeprecated is deprecated in Helm 3, and therefore ignored. However, with a strict
+	// YAML parser enabled, this field must be present.
+	TillerVersionDeprecated string `json:"tillerVersion,omitempty"`
+
+	// URLDeprecated is deprectaed in Helm 3, superseded by URLs. It is ignored. However,
+	// with a strict YAML parser enabled, this must be present on the struct.
+	URLDeprecated string `json:"url,omitempty"`
 }
 
 // IndexDirectory reads a (flat) directory and generates an index.
@@ -279,7 +304,7 @@ func IndexDirectory(dir, baseURL string) (*IndexFile, error) {
 // This will fail if API Version is not set (ErrNoAPIVersion) or if the unmarshal fails.
 func loadIndex(data []byte) (*IndexFile, error) {
 	i := &IndexFile{}
-	if err := yaml.Unmarshal(data, i); err != nil {
+	if err := yaml.UnmarshalStrict(data, i); err != nil {
 		return i, err
 	}
 	i.SortEntries()

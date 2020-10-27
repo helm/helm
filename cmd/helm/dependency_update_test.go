@@ -33,7 +33,7 @@ import (
 )
 
 func TestDependencyUpdateCmd(t *testing.T) {
-	srv, err := repotest.NewTempServer("testdata/testcharts/*.tgz")
+	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/testcharts/*.tgz")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +121,7 @@ func TestDependencyUpdateCmd_DontDeleteOldChartsOnError(t *testing.T) {
 	defer resetEnv()()
 	defer ensure.HelmHome(t)()
 
-	srv, err := repotest.NewTempServer("testdata/testcharts/*.tgz")
+	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/testcharts/*.tgz")
 	if err != nil {
 		t.Fatal(err)
 	}

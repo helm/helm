@@ -64,6 +64,15 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 		Short: "create a new chart with the given name",
 		Long:  createDesc,
 		Args:  require.ExactArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if len(args) == 0 {
+				// Allow file completion when completing the argument for the name
+				// which could be a path
+				return nil, cobra.ShellCompDirectiveDefault
+			}
+			// No more completions, so disable file completion
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.name = args[0]
 			o.starterDir = helmpath.DataPath("starters")
@@ -71,7 +80,7 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&o.starter, "starter", "p", "", "The name or absolute path to Helm starter scaffold")
+	cmd.Flags().StringVarP(&o.starter, "starter", "p", "", "the name or absolute path to Helm starter scaffold")
 	return cmd
 }
 
@@ -98,6 +107,7 @@ func (o *createOptions) run(out io.Writer) error {
 		return chartutil.CreateFrom(cfile, filepath.Dir(o.name), lstarter)
 	}
 
+	chartutil.Stderr = out
 	_, err := chartutil.Create(chartname, filepath.Dir(o.name))
 	return err
 }

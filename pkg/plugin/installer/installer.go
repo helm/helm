@@ -17,11 +17,15 @@ package installer
 
 import (
 	"fmt"
+	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
+
+	"helm.sh/helm/v3/pkg/plugin"
 )
 
 // ErrMissingMetadata indicates that plugin.yaml is missing.
@@ -86,10 +90,29 @@ func isLocalReference(source string) bool {
 }
 
 // isRemoteHTTPArchive checks if the source is a http/https url and is an archive
+//
+// It works by checking whether the source looks like a URL and, if it does, running a
+// HEAD operation to see if the remote resource is a file that we understand.
 func isRemoteHTTPArchive(source string) bool {
 	if strings.HasPrefix(source, "http://") || strings.HasPrefix(source, "https://") {
+		res, err := http.Head(source)
+		if err != nil {
+			// If we get an error at the network layer, we can't install it. So
+			// we return false.
+			return false
+		}
+
+		// Next, we look for the content type or content disposition headers to see
+		// if they have matching extractors.
+		contentType := res.Header.Get("content-type")
+		foundSuffix, ok := mediaTypeToExtension(contentType)
+		if !ok {
+			// Media type not recognized
+			return false
+		}
+
 		for suffix := range Extractors {
-			if strings.HasSuffix(source, suffix) {
+			if strings.HasSuffix(foundSuffix, suffix) {
 				return true
 			}
 		}
@@ -99,13 +122,14 @@ func isRemoteHTTPArchive(source string) bool {
 
 // isPlugin checks if the directory contains a plugin.yaml file.
 func isPlugin(dirname string) bool {
-	_, err := os.Stat(filepath.Join(dirname, "plugin.yaml"))
+	_, err := os.Stat(filepath.Join(dirname, plugin.PluginFileName))
 	return err == nil
 }
 
+var logger = log.New(os.Stderr, "[debug] ", log.Lshortfile)
+
 func debug(format string, args ...interface{}) {
 	if Debug {
-		format = fmt.Sprintf("[debug] %s\n", format)
-		fmt.Printf(format, args...)
+		logger.Output(2, fmt.Sprintf(format, args...))
 	}
 }

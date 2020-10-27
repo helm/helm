@@ -20,6 +20,7 @@ import (
 	"flag"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -55,6 +56,8 @@ func actionConfigFixture(t *testing.T) *Configuration {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	t.Cleanup(func() { os.RemoveAll(tdir) })
 
 	cache, err := registry.NewCache(
 		registry.CacheOptDebug(true),
@@ -256,6 +259,14 @@ func withMultipleManifestTemplate() chartOption {
 func withKube(version string) chartOption {
 	return func(opts *chartOptions) {
 		opts.Metadata.KubeVersion = version
+	}
+}
+
+func withSecondHook(hookManifest string) chartOption {
+	return func(opts *chartOptions) {
+		opts.Templates = append(opts.Templates,
+			&chart.File{Name: "templates/hooks-test", Data: []byte(hookManifest)},
+		)
 	}
 }
 

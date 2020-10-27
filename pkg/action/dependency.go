@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/gosuri/uitable"
@@ -55,94 +56,135 @@ func (d *Dependency) List(chartpath string, out io.Writer) error {
 		return nil
 	}
 
-	d.printDependencies(chartpath, out, c.Metadata.Dependencies)
+	d.printDependencies(chartpath, out, c)
 	fmt.Fprintln(out)
 	d.printMissing(chartpath, out, c.Metadata.Dependencies)
 	return nil
 }
 
-func (d *Dependency) dependencyStatus(chartpath string, dep *chart.Dependency) string {
+// dependecyStatus returns a string describing the status of a dependency viz a viz the parent chart.
+func (d *Dependency) dependencyStatus(chartpath string, dep *chart.Dependency, parent *chart.Chart) string {
 	filename := fmt.Sprintf("%s-%s.tgz", dep.Name, "*")
 
+	// If a chart is unpacked, this will check the unpacked chart's `charts/` directory for tarballs.
+	// Technically, this is COMPLETELY unnecessary, and should be removed in Helm 4. It is here
+	// to preserved backward compatibility. In Helm 2/3, there is a "difference" between
+	// the tgz version (which outputs "ok" if it unpacks) and the loaded version (which outouts
+	// "unpacked"). Early in Helm 2's history, this would have made a difference. But it no
+	// longer does. However, since this code shipped with Helm 3, the output must remain stable
+	// until Helm 4.
 	switch archives, err := filepath.Glob(filepath.Join(chartpath, "charts", filename)); {
 	case err != nil:
 		return "bad pattern"
 	case len(archives) > 1:
-		return "too many matches"
+		// See if the second part is a SemVer
+		found := []string{}
+		for _, arc := range archives {
+			// we need to trip the prefix dirs and the extension off.
+			filename = strings.TrimSuffix(filepath.Base(arc), ".tgz")
+			maybeVersion := strings.TrimPrefix(filename, fmt.Sprintf("%s-", dep.Name))
+
+			if _, err := semver.StrictNewVersion(maybeVersion); err == nil {
+				// If the version parsed without an error, it is possibly a valid
+				// version.
+				found = append(found, arc)
+			}
+		}
+
+		if l := len(found); l == 1 {
+			// If we get here, we do the same thing as in len(archives) == 1.
+			if r := statArchiveForStatus(found[0], dep); r != "" {
+				return r
+			}
+
+			// Fall through and look for directories
+		} else if l > 1 {
+			return "too many matches"
+		}
+
+		// The sanest thing to do here is to fall through and see if we have any directory
+		// matches.
+
 	case len(archives) == 1:
 		archive := archives[0]
-		if _, err := os.Stat(archive); err == nil {
-			c, err := loader.Load(archive)
-			if err != nil {
-				return "corrupt"
-			}
-			if c.Name() != dep.Name {
-				return "misnamed"
-			}
+		if r := statArchiveForStatus(archive, dep); r != "" {
+			return r
+		}
 
-			if c.Metadata.Version != dep.Version {
-				constraint, err := semver.NewConstraint(dep.Version)
-				if err != nil {
-					return "invalid version"
-				}
+	}
+	// End unnecessary code.
 
-				v, err := semver.NewVersion(c.Metadata.Version)
-				if err != nil {
-					return "invalid version"
-				}
-
-				if constraint.Check(v) {
-					return "ok"
-				}
-				return "wrong version"
-			}
-			return "ok"
+	var depChart *chart.Chart
+	for _, item := range parent.Dependencies() {
+		if item.Name() == dep.Name {
+			depChart = item
 		}
 	}
 
-	folder := filepath.Join(chartpath, "charts", dep.Name)
-	if fi, err := os.Stat(folder); err != nil {
+	if depChart == nil {
 		return "missing"
-	} else if !fi.IsDir() {
-		return "mispackaged"
 	}
 
-	c, err := loader.Load(folder)
-	if err != nil {
-		return "corrupt"
-	}
-
-	if c.Name() != dep.Name {
-		return "misnamed"
-	}
-
-	if c.Metadata.Version != dep.Version {
+	if depChart.Metadata.Version != dep.Version {
 		constraint, err := semver.NewConstraint(dep.Version)
 		if err != nil {
 			return "invalid version"
 		}
 
-		v, err := semver.NewVersion(c.Metadata.Version)
+		v, err := semver.NewVersion(depChart.Metadata.Version)
 		if err != nil {
 			return "invalid version"
 		}
 
-		if constraint.Check(v) {
-			return "unpacked"
+		if !constraint.Check(v) {
+			return "wrong version"
 		}
-		return "wrong version"
 	}
 
 	return "unpacked"
 }
 
+// stat an archive and return a message if the stat is successful
+//
+// This is a refactor of the code originally in dependencyStatus. It is here to
+// support legacy behavior, and should be removed in Helm 4.
+func statArchiveForStatus(archive string, dep *chart.Dependency) string {
+	if _, err := os.Stat(archive); err == nil {
+		c, err := loader.Load(archive)
+		if err != nil {
+			return "corrupt"
+		}
+		if c.Name() != dep.Name {
+			return "misnamed"
+		}
+
+		if c.Metadata.Version != dep.Version {
+			constraint, err := semver.NewConstraint(dep.Version)
+			if err != nil {
+				return "invalid version"
+			}
+
+			v, err := semver.NewVersion(c.Metadata.Version)
+			if err != nil {
+				return "invalid version"
+			}
+
+			if !constraint.Check(v) {
+				return "wrong version"
+			}
+		}
+		return "ok"
+	}
+	return ""
+}
+
 // printDependencies prints all of the dependencies in the yaml file.
-func (d *Dependency) printDependencies(chartpath string, out io.Writer, reqs []*chart.Dependency) {
+func (d *Dependency) printDependencies(chartpath string, out io.Writer, c *chart.Chart) {
 	table := uitable.New()
 	table.MaxColWidth = 80
 	table.AddRow("NAME", "VERSION", "REPOSITORY", "STATUS")
-	for _, row := range reqs {
-		table.AddRow(row.Name, row.Version, row.Repository, d.dependencyStatus(chartpath, row))
+	for _, row := range c.Metadata.Dependencies {
+		table.AddRow(row.Name, row.Version, row.Repository, d.dependencyStatus(chartpath, row, c))
 	}
 	fmt.Fprintln(out, table)
 }

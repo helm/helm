@@ -18,7 +18,6 @@ package downloader
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -26,6 +25,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"helm.sh/helm/v3/internal/fileutil"
 	"helm.sh/helm/v3/internal/urlutil"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/helmpath"
@@ -101,7 +101,7 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 
 	name := filepath.Base(u.Path)
 	destfile := filepath.Join(dest, name)
-	if err := ioutil.WriteFile(destfile, data.Bytes(), 0644); err != nil {
+	if err := fileutil.AtomicWriteFile(destfile, data, 0644); err != nil {
 		return destfile, nil, err
 	}
 
@@ -117,7 +117,7 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 			return destfile, ver, nil
 		}
 		provfile := destfile + ".prov"
-		if err := ioutil.WriteFile(provfile, body.Bytes(), 0644); err != nil {
+		if err := fileutil.AtomicWriteFile(provfile, body, 0644); err != nil {
 			return destfile, nil, err
 		}
 

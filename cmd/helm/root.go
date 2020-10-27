@@ -17,8 +17,10 @@ limitations under the License.
 package main // import "helm.sh/helm/v3/cmd/helm"
 
 import (
+	"context"
 	"fmt"
 	"io"
+	"log"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -26,7 +28,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/action"
 )
@@ -42,72 +43,86 @@ Common actions for Helm:
 
 Environment variables:
 
-+------------------+-----------------------------------------------------------------------------+
-| Name             | Description                                                                 |
-+------------------+-----------------------------------------------------------------------------+
-| $XDG_CACHE_HOME  | set an alternative location for storing cached files.                       |
-| $XDG_CONFIG_HOME | set an alternative location for storing Helm configuration.                 |
-| $XDG_DATA_HOME   | set an alternative location for storing Helm data.                          |
-| $HELM_DRIVER     | set the backend storage driver. Values are: configmap, secret, memory       |
-| $HELM_NO_PLUGINS | disable plugins. Set HELM_NO_PLUGINS=1 to disable plugins.                  |
-| $KUBECONFIG      | set an alternative Kubernetes configuration file (default "~/.kube/config") |
-+------------------+-----------------------------------------------------------------------------+
+| Name                               | Description                                                                       |
+|------------------------------------|-----------------------------------------------------------------------------------|
+| $HELM_CACHE_HOME                   | set an alternative location for storing cached files.                             |
+| $HELM_CONFIG_HOME                  | set an alternative location for storing Helm configuration.                       |
+| $HELM_DATA_HOME                    | set an alternative location for storing Helm data.                                |
+| $HELM_DEBUG                        | indicate whether or not Helm is running in Debug mode                             |
+| $HELM_DRIVER                       | set the backend storage driver. Values are: configmap, secret, memory, postgres   |
+| $HELM_DRIVER_SQL_CONNECTION_STRING | set the connection string the SQL storage driver should use.                      |
+| $HELM_MAX_HISTORY                  | set the maximum number of helm release history.                                   |
+| $HELM_NAMESPACE                    | set the namespace used for the helm operations.                                   |
+| $HELM_NO_PLUGINS                   | disable plugins. Set HELM_NO_PLUGINS=1 to disable plugins.                        |
+| $HELM_PLUGINS                      | set the path to the plugins directory                                             |
+| $HELM_REGISTRY_CONFIG              | set the path to the registry config file.                                         |
+| $HELM_REPOSITORY_CACHE             | set the path to the repository cache directory                                    |
+| $HELM_REPOSITORY_CONFIG            | set the path to the repositories file.                                            |
+| $KUBECONFIG                        | set an alternative Kubernetes configuration file (default "~/.kube/config")       |
+| $HELM_KUBEAPISERVER                | set the Kubernetes API Server Endpoint for authentication                         |
+| $HELM_KUBEASGROUPS                 | set the Username to impersonate for the operation.                                |
+| $HELM_KUBEASUSER                   | set the Groups to use for impoersonation using a comma-separated list.            |
+| $HELM_KUBECONTEXT                  | set the name of the kubeconfig context.                                           |
+| $HELM_KUBETOKEN                    | set the Bearer KubeToken used for authentication.                                 |
 
-Helm stores configuration based on the XDG base directory specification, so
+Helm stores cache, configuration, and data based on the following configuration order:
 
-- cached files are stored in $XDG_CACHE_HOME/helm
-- configuration is stored in $XDG_CONFIG_HOME/helm
-- data is stored in $XDG_DATA_HOME/helm
+- If a HELM_*_HOME environment variable is set, it will be used
+- Otherwise, on systems supporting the XDG base directory specification, the XDG variables will be used
+- When no other location is set a default location will be used based on the operating system
 
 By default, the default directories depend on the Operating System. The defaults are listed below:
 
-+------------------+---------------------------+--------------------------------+-------------------------+
 | Operating System | Cache Path                | Configuration Path             | Data Path               |
-+------------------+---------------------------+--------------------------------+-------------------------+
+|------------------|---------------------------|--------------------------------|-------------------------|
 | Linux            | $HOME/.cache/helm         | $HOME/.config/helm             | $HOME/.local/share/helm |
 | macOS            | $HOME/Library/Caches/helm | $HOME/Library/Preferences/helm | $HOME/Library/helm      |
 | Windows          | %TEMP%\helm               | %APPDATA%\helm                 | %APPDATA%\helm          |
-+------------------+---------------------------+--------------------------------+-------------------------+
 `
 
-func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string) *cobra.Command {
+func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string) (*cobra.Command, error) {
 	cmd := &cobra.Command{
-		Use:                    "helm",
-		Short:                  "The Helm package manager for Kubernetes.",
-		Long:                   globalUsage,
-		SilenceUsage:           true,
-		BashCompletionFunction: completion.GetBashCustomFunction(),
+		Use:          "helm",
+		Short:        "The Helm package manager for Kubernetes.",
+		Long:         globalUsage,
+		SilenceUsage: true,
+		// This breaks completion for 'helm help <TAB>'
+		// The Cobra release following 1.0 will fix this
+		//ValidArgsFunction: noCompletions, // Disable file completion
 	}
 	flags := cmd.PersistentFlags()
 
 	settings.AddFlags(flags)
+	addKlogFlags(flags)
 
 	// Setup shell completion for the namespace flag
-	flag := flags.Lookup("namespace")
-	completion.RegisterFlagCompletionFunc(flag, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
+	err := cmd.RegisterFlagCompletionFunc("namespace", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if client, err := actionConfig.KubernetesClientSet(); err == nil {
 			// Choose a long enough timeout that the user notices somethings is not working
 			// but short enough that the user is not made to wait very long
 			to := int64(3)
-			completion.CompDebugln(fmt.Sprintf("About to call kube client for namespaces with timeout of: %d", to))
+			cobra.CompDebugln(fmt.Sprintf("About to call kube client for namespaces with timeout of: %d", to), settings.Debug)
 
 			nsNames := []string{}
-			if namespaces, err := client.CoreV1().Namespaces().List(metav1.ListOptions{TimeoutSeconds: &to}); err == nil {
+			if namespaces, err := client.CoreV1().Namespaces().List(context.Background(), metav1.ListOptions{TimeoutSeconds: &to}); err == nil {
 				for _, ns := range namespaces.Items {
 					if strings.HasPrefix(ns.Name, toComplete) {
 						nsNames = append(nsNames, ns.Name)
 					}
 				}
-				return nsNames, completion.BashCompDirectiveNoFileComp
+				return nsNames, cobra.ShellCompDirectiveNoFileComp
 			}
 		}
-		return nil, completion.BashCompDirectiveDefault
+		return nil, cobra.ShellCompDirectiveDefault
 	})
 
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Setup shell completion for the kube-context flag
-	flag = flags.Lookup("kube-context")
-	completion.RegisterFlagCompletionFunc(flag, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
-		completion.CompDebugln("About to get the different kube-contexts")
+	err = cmd.RegisterFlagCompletionFunc("kube-context", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		cobra.CompDebugln("About to get the different kube-contexts", settings.Debug)
 
 		loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
 		if len(settings.KubeConfig) > 0 {
@@ -122,10 +137,14 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 					ctxs = append(ctxs, name)
 				}
 			}
-			return ctxs, completion.BashCompDirectiveNoFileComp
+			return ctxs, cobra.ShellCompDirectiveNoFileComp
 		}
-		return nil, completion.BashCompDirectiveNoFileComp
+		return nil, cobra.ShellCompDirectiveNoFileComp
 	})
+
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// We can safely ignore any errors that flags.Parse encounters since
 	// those errors will be caught later during the call to cmd.Execution.
@@ -166,19 +185,16 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 
 		// Hidden documentation generator command: 'helm docs'
 		newDocsCmd(out),
-
-		// Setup the special hidden __complete command to allow for dynamic auto-completion
-		completion.NewCompleteCmd(settings, out),
 	)
 
 	// Add *experimental* subcommands
 	registryClient, err := registry.NewClient(
 		registry.ClientOptDebug(settings.Debug),
 		registry.ClientOptWriter(out),
+		registry.ClientOptCredentialsFile(settings.RegistryConfig),
 	)
 	if err != nil {
-		// TODO: don't panic here, refactor newRootCmd to return error
-		panic(err)
+		return nil, err
 	}
 	actionConfig.RegistryClient = registryClient
 	cmd.AddCommand(
@@ -189,5 +205,8 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	// Find and add plugins
 	loadPlugins(cmd, out)
 
-	return cmd
+	// Check permissions on critical files
+	checkPerms()
+
+	return cmd, nil
 }

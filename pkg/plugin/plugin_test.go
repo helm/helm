@@ -16,6 +16,7 @@ limitations under the License.
 package plugin // import "helm.sh/helm/v3/pkg/plugin"
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -28,14 +29,14 @@ import (
 func checkCommand(p *Plugin, extraArgs []string, osStrCmp string, t *testing.T) {
 	cmd, args, err := p.PrepareCommand(extraArgs)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Fatal(err)
 	}
 	if cmd != "echo" {
-		t.Errorf("Expected echo, got %q", cmd)
+		t.Fatalf("Expected echo, got %q", cmd)
 	}
 
 	if l := len(args); l != 5 {
-		t.Errorf("expected 5 args, got %d", l)
+		t.Fatalf("expected 5 args, got %d", l)
 	}
 
 	expect := []string{"-n", osStrCmp, "--debug", "--foo", "bar"}
@@ -49,13 +50,13 @@ func checkCommand(p *Plugin, extraArgs []string, osStrCmp string, t *testing.T) 
 	p.Metadata.IgnoreFlags = true
 	cmd, args, err = p.PrepareCommand(extraArgs)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Fatal(err)
 	}
 	if cmd != "echo" {
-		t.Errorf("Expected echo, got %q", cmd)
+		t.Fatalf("Expected echo, got %q", cmd)
 	}
 	if l := len(args); l != 2 {
-		t.Errorf("expected 2 args, got %d", l)
+		t.Fatalf("expected 2 args, got %d", l)
 	}
 	expect = []string{"-n", osStrCmp}
 	for i := 0; i < len(args); i++ {
@@ -155,7 +156,7 @@ func TestNoPrepareCommand(t *testing.T) {
 
 	_, _, err := p.PrepareCommand(argv)
 	if err == nil {
-		t.Errorf("Expected error to be returned")
+		t.Fatalf("Expected error to be returned")
 	}
 }
 
@@ -172,19 +173,19 @@ func TestNoMatchPrepareCommand(t *testing.T) {
 	argv := []string{"--debug", "--foo", "bar"}
 
 	if _, _, err := p.PrepareCommand(argv); err == nil {
-		t.Errorf("Expected error to be returned")
+		t.Fatalf("Expected error to be returned")
 	}
 }
 
 func TestLoadDir(t *testing.T) {
-	dirname := "testdata/plugdir/hello"
+	dirname := "testdata/plugdir/good/hello"
 	plug, err := LoadDir(dirname)
 	if err != nil {
 		t.Fatalf("error loading Hello plugin: %s", err)
 	}
 
 	if plug.Dir != dirname {
-		t.Errorf("Expected dir %q, got %q", dirname, plug.Dir)
+		t.Fatalf("Expected dir %q, got %q", dirname, plug.Dir)
 	}
 
 	expect := &Metadata{
@@ -200,19 +201,26 @@ func TestLoadDir(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(expect, plug.Metadata) {
-		t.Errorf("Expected plugin metadata %v, got %v", expect, plug.Metadata)
+		t.Fatalf("Expected plugin metadata %v, got %v", expect, plug.Metadata)
+	}
+}
+
+func TestLoadDirDuplicateEntries(t *testing.T) {
+	dirname := "testdata/plugdir/bad/duplicate-entries"
+	if _, err := LoadDir(dirname); err == nil {
+		t.Errorf("successfully loaded plugin with duplicate entries when it should've failed")
 	}
 }
 
 func TestDownloader(t *testing.T) {
-	dirname := "testdata/plugdir/downloader"
+	dirname := "testdata/plugdir/good/downloader"
 	plug, err := LoadDir(dirname)
 	if err != nil {
 		t.Fatalf("error loading Hello plugin: %s", err)
 	}
 
 	if plug.Dir != dirname {
-		t.Errorf("Expected dir %q, got %q", dirname, plug.Dir)
+		t.Fatalf("Expected dir %q, got %q", dirname, plug.Dir)
 	}
 
 	expect := &Metadata{
@@ -230,7 +238,7 @@ func TestDownloader(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(expect, plug.Metadata) {
-		t.Errorf("Expected metadata %v, got %v", expect, plug.Metadata)
+		t.Fatalf("Expected metadata %v, got %v", expect, plug.Metadata)
 	}
 }
 
@@ -243,7 +251,7 @@ func TestLoadAll(t *testing.T) {
 		t.Fatalf("expected empty dir to have 0 plugins")
 	}
 
-	basedir := "testdata/plugdir"
+	basedir := "testdata/plugdir/good"
 	plugs, err := LoadAll(basedir)
 	if err != nil {
 		t.Fatalf("Could not load %q: %s", basedir, err)
@@ -264,13 +272,49 @@ func TestLoadAll(t *testing.T) {
 	}
 }
 
+func TestFindPlugins(t *testing.T) {
+	cases := []struct {
+		name     string
+		plugdirs string
+		expected int
+	}{
+		{
+			name:     "plugdirs is empty",
+			plugdirs: "",
+			expected: 0,
+		},
+		{
+			name:     "plugdirs isn't dir",
+			plugdirs: "./plugin_test.go",
+			expected: 0,
+		},
+		{
+			name:     "plugdirs doens't have plugin",
+			plugdirs: ".",
+			expected: 0,
+		},
+		{
+			name:     "normal",
+			plugdirs: "./testdata/plugdir/good",
+			expected: 3,
+		},
+	}
+	for _, c := range cases {
+		t.Run(t.Name(), func(t *testing.T) {
+			plugin, _ := FindPlugins(c.plugdirs)
+			if len(plugin) != c.expected {
+				t.Errorf("expected: %v, got: %v", c.expected, len(plugin))
+			}
+		})
+	}
+}
+
 func TestSetupEnv(t *testing.T) {
 	name := "pequod"
 	base := filepath.Join("testdata/helmhome/helm/plugins", name)
 
-	s := &cli.EnvSettings{
-		PluginsDirectory: "testdata/helmhome/helm/plugins",
-	}
+	s := cli.New()
+	s.PluginsDirectory = "testdata/helmhome/helm/plugins"
 
 	SetupPluginEnv(s, name, base)
 	for _, tt := range []struct {
@@ -282,5 +326,53 @@ func TestSetupEnv(t *testing.T) {
 		if got := os.Getenv(tt.name); got != tt.expect {
 			t.Errorf("Expected $%s=%q, got %q", tt.name, tt.expect, got)
 		}
+	}
+}
+
+func TestValidatePluginData(t *testing.T) {
+	for i, item := range []struct {
+		pass bool
+		plug *Plugin
+	}{
+		{true, mockPlugin("abcdefghijklmnopqrstuvwxyz0123456789_-ABC")},
+		{true, mockPlugin("foo-bar-FOO-BAR_1234")},
+		{false, mockPlugin("foo -bar")},
+		{false, mockPlugin("$foo -bar")}, // Test leading chars
+		{false, mockPlugin("foo -bar ")}, // Test trailing chars
+		{false, mockPlugin("foo\nbar")},  // Test newline
+	} {
+		err := validatePluginData(item.plug, fmt.Sprintf("test-%d", i))
+		if item.pass && err != nil {
+			t.Errorf("failed to validate case %d: %s", i, err)
+		} else if !item.pass && err == nil {
+			t.Errorf("expected case %d to fail", i)
+		}
+	}
+}
+
+func TestDetectDuplicates(t *testing.T) {
+	plugs := []*Plugin{
+		mockPlugin("foo"),
+		mockPlugin("bar"),
+	}
+	if err := detectDuplicates(plugs); err != nil {
+		t.Error("no duplicates in the first set")
+	}
+	plugs = append(plugs, mockPlugin("foo"))
+	if err := detectDuplicates(plugs); err == nil {
+		t.Error("duplicates in the second set")
+	}
+}
+
+func mockPlugin(name string) *Plugin {
+	return &Plugin{
+		Metadata: &Metadata{
+			Name:        name,
+			Version:     "v0.1.2",
+			Usage:       "Mock plugin",
+			Description: "Mock plugin for testing",
+			Command:     "echo mock plugin",
+		},
+		Dir: "no-such-dir",
 	}
 }

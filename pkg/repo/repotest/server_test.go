@@ -99,7 +99,7 @@ func TestServer(t *testing.T) {
 func TestNewTempServer(t *testing.T) {
 	defer ensure.HelmHome(t)()
 
-	srv, err := NewTempServer("testdata/examplechart-0.1.0.tgz")
+	srv, err := NewTempServerWithCleanup(t, "testdata/examplechart-0.1.0.tgz")
 	if err != nil {
 		t.Fatal(err)
 	}

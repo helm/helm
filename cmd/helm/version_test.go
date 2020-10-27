@@ -43,3 +43,7 @@ func TestVersion(t *testing.T) {
 	}}
 	runTestCmd(t, tests)
 }
+
+func TestVersionFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "version", false)
+}

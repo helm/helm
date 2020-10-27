@@ -23,3 +23,7 @@ import (
 func TestRepoListOutputCompletion(t *testing.T) {
 	outputFlagCompletionTest(t, "repo list")
 }
+
+func TestRepoListFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "repo list", false)
+}

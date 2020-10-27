@@ -30,7 +30,8 @@ func All(basedir string, values map[string]interface{}, namespace string, strict
 
 	linter := support.Linter{ChartDir: chartDir}
 	rules.Chartfile(&linter)
-	rules.Values(&linter)
+	rules.ValuesWithOverrides(&linter, values)
 	rules.Templates(&linter, values, namespace, strict)
+	rules.Dependencies(&linter)
 	return linter
 }

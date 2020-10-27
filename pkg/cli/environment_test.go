@@ -18,6 +18,7 @@ package cli
 
 import (
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -35,29 +36,42 @@ func TestEnvSettings(t *testing.T) {
 		// expected values
 		ns, kcontext string
 		debug        bool
+		maxhistory   int
+		kAsUser      string
+		kAsGroups    []string
 	}{
 		{
-			name: "defaults",
-			ns:   "default",
+			name:       "defaults",
+			ns:         "default",
+			maxhistory: defaultMaxHistory,
 		},
 		{
-			name:  "with flags set",
-			args:  "--debug --namespace=myns",
-			ns:    "myns",
-			debug: true,
+			name:       "with flags set",
+			args:       "--debug --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters",
+			ns:         "myns",
+			debug:      true,
+			maxhistory: defaultMaxHistory,
+			kAsUser:    "poro",
+			kAsGroups:  []string{"admins", "teatime", "snackeaters"},
 		},
 		{
-			name:    "with envvars set",
-			envvars: map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns"},
-			ns:      "yourns",
-			debug:   true,
+			name:       "with envvars set",
+			envvars:    map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_MAX_HISTORY": "5"},
+			ns:         "yourns",
+			maxhistory: 5,
+			debug:      true,
+			kAsUser:    "pikachu",
+			kAsGroups:  []string{"operators", "snackeaters", "partyanimals"},
 		},
 		{
-			name:    "with flags and envvars set",
-			args:    "--debug --namespace=myns",
-			envvars: map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns"},
-			ns:      "myns",
-			debug:   true,
+			name:       "with flags and envvars set",
+			args:       "--debug --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters",
+			envvars:    map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_MAX_HISTORY": "5"},
+			ns:         "myns",
+			debug:      true,
+			maxhistory: 5,
+			kAsUser:    "poro",
+			kAsGroups:  []string{"admins", "teatime", "snackeaters"},
 		},
 	}
 
@@ -83,6 +97,15 @@ func TestEnvSettings(t *testing.T) {
 			}
 			if settings.KubeContext != tt.kcontext {
 				t.Errorf("expected kube-context %q, got %q", tt.kcontext, settings.KubeContext)
+			}
+			if settings.MaxHistory != tt.maxhistory {
+				t.Errorf("expected maxHistory %d, got %d", tt.maxhistory, settings.MaxHistory)
+			}
+			if tt.kAsUser != settings.KubeAsUser {
+				t.Errorf("expected kAsUser %q, got %q", tt.kAsUser, settings.KubeAsUser)
+			}
+			if !reflect.DeepEqual(tt.kAsGroups, settings.KubeAsGroups) {
+				t.Errorf("expected kAsGroups %+v, got %+v", len(tt.kAsGroups), len(settings.KubeAsGroups))
 			}
 		})
 	}

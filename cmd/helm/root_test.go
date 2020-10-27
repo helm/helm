@@ -55,6 +55,24 @@ func TestRootCmd(t *testing.T) {
 			envvars:  map[string]string{xdg.DataHomeEnvVar: "/bar"},
 			dataPath: "/bar/helm",
 		},
+		{
+			name:      "with $HELM_CACHE_HOME set",
+			args:      "env",
+			envvars:   map[string]string{helmpath.CacheHomeEnvVar: "/foo/helm"},
+			cachePath: "/foo/helm",
+		},
+		{
+			name:       "with $HELM_CONFIG_HOME set",
+			args:       "env",
+			envvars:    map[string]string{helmpath.ConfigHomeEnvVar: "/foo/helm"},
+			configPath: "/foo/helm",
+		},
+		{
+			name:     "with $HELM_DATA_HOME set",
+			args:     "env",
+			envvars:  map[string]string{helmpath.DataHomeEnvVar: "/foo/helm"},
+			dataPath: "/foo/helm",
+		},
 	}
 
 	for _, tt := range tests {
@@ -103,3 +121,11 @@ func TestUnknownSubCmd(t *testing.T) {
 		t.Errorf("Expect unknown command error, got %q", err)
 	}
 }
+
+// Need the release of Cobra following 1.0 to be able to disable
+// file completion on the root command.  Until then, we cannot
+// because it would break 'helm help <TAB>'
+//
+// func TestRootFileCompletion(t *testing.T) {
+// 	checkFileCompletion(t, "", false)
+// }

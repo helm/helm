@@ -24,7 +24,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli/output"
 )
@@ -46,6 +45,12 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 		Short: "run tests for a release",
 		Long:  releaseTestHelp,
 		Args:  require.ExactArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if len(args) != 0 {
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+			return compListReleases(toComplete, cfg)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.Namespace = settings.Namespace()
 			rel, runErr := client.Run(args[0])
@@ -56,7 +61,7 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 				return runErr
 			}
 
-			if err := outfmt.Write(out, &statusPrinter{rel, settings.Debug}); err != nil {
+			if err := outfmt.Write(out, &statusPrinter{rel, settings.Debug, false}); err != nil {
 				return err
 			}
 
@@ -72,18 +77,10 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 		},
 	}
 
-	// Function providing dynamic auto-completion
-	completion.RegisterValidArgsFunc(cmd, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
-		if len(args) != 0 {
-			return nil, completion.BashCompDirectiveNoFileComp
-		}
-		return compListReleases(toComplete, cfg)
-	})
-
 	f := cmd.Flags()
 	f.DurationVar(&client.Timeout, "timeout", 300*time.Second, "time to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.IntVar(&client.HookParallelism, "hook-parallelism", 1, "maximum number of hooks to execute in parallel")
-	f.BoolVar(&outputLogs, "logs", false, "Dump the logs from test pods (this runs after all tests are complete, but before any cleanup)")
+	f.BoolVar(&outputLogs, "logs", false, "dump the logs from test pods (this runs after all tests are complete, but before any cleanup)")
 
 	return cmd
 }

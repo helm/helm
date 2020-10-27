@@ -106,7 +106,7 @@ func TestCreateStarterCmd(t *testing.T) {
 		t.Errorf("Wrong API version: %q", c.Metadata.APIVersion)
 	}
 
-	expectedNumberOfTemplates := 8
+	expectedNumberOfTemplates := 9
 	if l := len(c.Templates); l != expectedNumberOfTemplates {
 		t.Errorf("Expected %d templates, got %d", expectedNumberOfTemplates, l)
 	}
@@ -174,7 +174,7 @@ func TestCreateStarterAbsoluteCmd(t *testing.T) {
 		t.Errorf("Wrong API version: %q", c.Metadata.APIVersion)
 	}
 
-	expectedNumberOfTemplates := 8
+	expectedNumberOfTemplates := 9
 	if l := len(c.Templates); l != expectedNumberOfTemplates {
 		t.Errorf("Expected %d templates, got %d", expectedNumberOfTemplates, l)
 	}
@@ -191,4 +191,9 @@ func TestCreateStarterAbsoluteCmd(t *testing.T) {
 	if !found {
 		t.Error("Did not find foo.tpl")
 	}
+}
+
+func TestCreateFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "create", true)
+	checkFileCompletion(t, "create myname", false)
 }

@@ -20,9 +20,13 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/base64"
+	"fmt"
 	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"testing"
 
@@ -63,9 +67,24 @@ func TestStripName(t *testing.T) {
 	}
 }
 
+func mockArchiveServer() *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasSuffix(r.URL.Path, ".tar.gz") {
+			w.Header().Add("Content-Type", "text/html")
+			fmt.Fprintln(w, "broken")
+			return
+		}
+		w.Header().Add("Content-Type", "application/gzip")
+		fmt.Fprintln(w, "test")
+	}))
+}
+
 func TestHTTPInstaller(t *testing.T) {
 	defer ensure.HelmHome(t)()
-	source := "https://repo.localdomain/plugins/fake-plugin-0.0.1.tar.gz"
+
+	srv := mockArchiveServer()
+	defer srv.Close()
+	source := srv.URL + "/plugins/fake-plugin-0.0.1.tar.gz"
 
 	if err := os.MkdirAll(helmpath.DataPath("plugins"), 0755); err != nil {
 		t.Fatalf("Could not create %s: %s", helmpath.DataPath("plugins"), err)
@@ -73,13 +92,13 @@ func TestHTTPInstaller(t *testing.T) {
 
 	i, err := NewForSource(source, "0.0.1")
 	if err != nil {
-		t.Errorf("unexpected error: %s", err)
+		t.Fatalf("unexpected error: %s", err)
 	}
 
 	// ensure a HTTPInstaller was returned
 	httpInstaller, ok := i.(*HTTPInstaller)
 	if !ok {
-		t.Error("expected a HTTPInstaller")
+		t.Fatal("expected a HTTPInstaller")
 	}
 
 	// inject fake http client responding with minimal plugin tarball
@@ -94,24 +113,26 @@ func TestHTTPInstaller(t *testing.T) {
 
 	// install the plugin
 	if err := Install(i); err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	if i.Path() != helmpath.DataPath("plugins", "fake-plugin") {
-		t.Errorf("expected path '$XDG_CONFIG_HOME/helm/plugins/fake-plugin', got %q", i.Path())
+		t.Fatalf("expected path '$XDG_CONFIG_HOME/helm/plugins/fake-plugin', got %q", i.Path())
 	}
 
 	// Install again to test plugin exists error
 	if err := Install(i); err == nil {
-		t.Error("expected error for plugin exists, got none")
+		t.Fatal("expected error for plugin exists, got none")
 	} else if err.Error() != "plugin already exists" {
-		t.Errorf("expected error for plugin exists, got (%v)", err)
+		t.Fatalf("expected error for plugin exists, got (%v)", err)
 	}
 
 }
 
 func TestHTTPInstallerNonExistentVersion(t *testing.T) {
 	defer ensure.HelmHome(t)()
-	source := "https://repo.localdomain/plugins/fake-plugin-0.0.2.tar.gz"
+	srv := mockArchiveServer()
+	defer srv.Close()
+	source := srv.URL + "/plugins/fake-plugin-0.0.1.tar.gz"
 
 	if err := os.MkdirAll(helmpath.DataPath("plugins"), 0755); err != nil {
 		t.Fatalf("Could not create %s: %s", helmpath.DataPath("plugins"), err)
@@ -119,13 +140,13 @@ func TestHTTPInstallerNonExistentVersion(t *testing.T) {
 
 	i, err := NewForSource(source, "0.0.2")
 	if err != nil {
-		t.Errorf("unexpected error: %s", err)
+		t.Fatalf("unexpected error: %s", err)
 	}
 
 	// ensure a HTTPInstaller was returned
 	httpInstaller, ok := i.(*HTTPInstaller)
 	if !ok {
-		t.Error("expected a HTTPInstaller")
+		t.Fatal("expected a HTTPInstaller")
 	}
 
 	// inject fake http client responding with error
@@ -135,13 +156,15 @@ func TestHTTPInstallerNonExistentVersion(t *testing.T) {
 
 	// attempt to install the plugin
 	if err := Install(i); err == nil {
-		t.Error("expected error from http client")
+		t.Fatal("expected error from http client")
 	}
 
 }
 
 func TestHTTPInstallerUpdate(t *testing.T) {
-	source := "https://repo.localdomain/plugins/fake-plugin-0.0.1.tar.gz"
+	srv := mockArchiveServer()
+	defer srv.Close()
+	source := srv.URL + "/plugins/fake-plugin-0.0.1.tar.gz"
 	defer ensure.HelmHome(t)()
 
 	if err := os.MkdirAll(helmpath.DataPath("plugins"), 0755); err != nil {
@@ -150,13 +173,13 @@ func TestHTTPInstallerUpdate(t *testing.T) {
 
 	i, err := NewForSource(source, "0.0.1")
 	if err != nil {
-		t.Errorf("unexpected error: %s", err)
+		t.Fatalf("unexpected error: %s", err)
 	}
 
 	// ensure a HTTPInstaller was returned
 	httpInstaller, ok := i.(*HTTPInstaller)
 	if !ok {
-		t.Error("expected a HTTPInstaller")
+		t.Fatal("expected a HTTPInstaller")
 	}
 
 	// inject fake http client responding with minimal plugin tarball
@@ -171,15 +194,15 @@ func TestHTTPInstallerUpdate(t *testing.T) {
 
 	// install the plugin before updating
 	if err := Install(i); err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	if i.Path() != helmpath.DataPath("plugins", "fake-plugin") {
-		t.Errorf("expected path '$XDG_CONFIG_HOME/helm/plugins/fake-plugin', got %q", i.Path())
+		t.Fatalf("expected path '$XDG_CONFIG_HOME/helm/plugins/fake-plugin', got %q", i.Path())
 	}
 
 	// Update plugin, should fail because it is not implemented
 	if err := Update(i); err == nil {
-		t.Error("update method not implemented for http installer")
+		t.Fatal("update method not implemented for http installer")
 	}
 }
 
@@ -222,6 +245,19 @@ func TestExtract(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+
+	// Add pax global headers. This should be ignored.
+	// Note the PAX header that isn't global cannot be written using WriteHeader.
+	// Details are in the internal Go function for the tar packaged named
+	// allowedFormats. For a TypeXHeader it will return a message stating
+	// "cannot manually encode TypeXHeader, TypeGNULongName, or TypeGNULongLink headers"
+	if err := tw.WriteHeader(&tar.Header{
+		Name:     "pax_global_header",
+		Typeflag: tar.TypeXGlobalHeader,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
 	if err := tw.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -240,29 +276,80 @@ func TestExtract(t *testing.T) {
 	}
 
 	if err = extractor.Extract(&buf, tempDir); err != nil {
-		t.Errorf("Did not expect error but got error: %v", err)
+		t.Fatalf("Did not expect error but got error: %v", err)
 	}
 
 	pluginYAMLFullPath := filepath.Join(tempDir, "plugin.yaml")
 	if info, err := os.Stat(pluginYAMLFullPath); err != nil {
 		if os.IsNotExist(err) {
-			t.Errorf("Expected %s to exist but doesn't", pluginYAMLFullPath)
-		} else {
-			t.Error(err)
+			t.Fatalf("Expected %s to exist but doesn't", pluginYAMLFullPath)
 		}
+		t.Fatal(err)
 	} else if info.Mode().Perm() != 0600 {
-		t.Errorf("Expected %s to have 0600 mode it but has %o", pluginYAMLFullPath, info.Mode().Perm())
+		t.Fatalf("Expected %s to have 0600 mode it but has %o", pluginYAMLFullPath, info.Mode().Perm())
 	}
 
 	readmeFullPath := filepath.Join(tempDir, "README.md")
 	if info, err := os.Stat(readmeFullPath); err != nil {
 		if os.IsNotExist(err) {
-			t.Errorf("Expected %s to exist but doesn't", readmeFullPath)
-		} else {
-			t.Error(err)
+			t.Fatalf("Expected %s to exist but doesn't", readmeFullPath)
 		}
+		t.Fatal(err)
 	} else if info.Mode().Perm() != 0777 {
-		t.Errorf("Expected %s to have 0777 mode it but has %o", readmeFullPath, info.Mode().Perm())
+		t.Fatalf("Expected %s to have 0777 mode it but has %o", readmeFullPath, info.Mode().Perm())
 	}
 
+}
+
+func TestCleanJoin(t *testing.T) {
+	for i, fixture := range []struct {
+		path        string
+		expect      string
+		expectError bool
+	}{
+		{"foo/bar.txt", "/tmp/foo/bar.txt", false},
+		{"/foo/bar.txt", "", true},
+		{"./foo/bar.txt", "/tmp/foo/bar.txt", false},
+		{"./././././foo/bar.txt", "/tmp/foo/bar.txt", false},
+		{"../../../../foo/bar.txt", "", true},
+		{"foo/../../../../bar.txt", "", true},
+		{"c:/foo/bar.txt", "/tmp/c:/foo/bar.txt", true},
+		{"foo\\bar.txt", "/tmp/foo/bar.txt", false},
+		{"c:\\foo\\bar.txt", "", true},
+	} {
+		out, err := cleanJoin("/tmp", fixture.path)
+		if err != nil {
+			if !fixture.expectError {
+				t.Errorf("Test %d: Path was not cleaned: %s", i, err)
+			}
+			continue
+		}
+		if fixture.expect != out {
+			t.Errorf("Test %d: Expected %q but got %q", i, fixture.expect, out)
+		}
+	}
+
+}
+
+func TestMediaTypeToExtension(t *testing.T) {
+
+	for mt, shouldPass := range map[string]bool{
+		"":                   false,
+		"application/gzip":   true,
+		"application/x-gzip": true,
+		"application/x-tgz":  true,
+		"application/x-gtar": true,
+		"application/json":   false,
+	} {
+		ext, ok := mediaTypeToExtension(mt)
+		if ok != shouldPass {
+			t.Errorf("Media type %q failed test", mt)
+		}
+		if shouldPass && ext == "" {
+			t.Errorf("Expected an extension but got empty string")
+		}
+		if !shouldPass && len(ext) != 0 {
+			t.Error("Expected extension to be empty for unrecognized type")
+		}
+	}
 }

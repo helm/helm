@@ -20,14 +20,16 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
+	"path"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/internal/completion"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli/values"
@@ -55,6 +57,9 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Short: "locally render templates",
 		Long:  templateDesc,
 		Args:  require.MinimumNArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return compInstall(args, toComplete, client)
+		},
 		RunE: func(_ *cobra.Command, args []string) error {
 			client.DryRun = true
 			client.ReleaseName = "RELEASE-NAME"
@@ -76,22 +81,46 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if rel != nil {
 				var manifests bytes.Buffer
 				fmt.Fprintln(&manifests, strings.TrimSpace(rel.Manifest))
-
 				if !client.DisableHooks {
+					fileWritten := make(map[string]bool)
 					for _, m := range rel.Hooks {
-						fmt.Fprintf(&manifests, "---\n# Source: %s\n%s\n", m.Path, m.Manifest)
+						if client.OutputDir == "" {
+							fmt.Fprintf(&manifests, "---\n# Source: %s\n%s\n", m.Path, m.Manifest)
+						} else {
+							newDir := client.OutputDir
+							if client.UseReleaseName {
+								newDir = filepath.Join(client.OutputDir, client.ReleaseName)
+							}
+							err = writeToFile(newDir, m.Path, m.Manifest, fileWritten[m.Path])
+							if err != nil {
+								return err
+							}
+							fileWritten[m.Path] = true
+						}
+
 					}
 				}
 
 				// if we have a list of files to render, then check that each of the
 				// provided files exists in the chart.
 				if len(showFiles) > 0 {
+					// This is necessary to ensure consistent manifest ordering when using --show-only
+					// with globs or directory names.
 					splitManifests := releaseutil.SplitManifests(manifests.String())
+					manifestsKeys := make([]string, 0, len(splitManifests))
+					for k := range splitManifests {
+						manifestsKeys = append(manifestsKeys, k)
+					}
+					sort.Sort(releaseutil.BySplitManifestsOrder(manifestsKeys))
+
 					manifestNameRegex := regexp.MustCompile("# Source: [^/]+/(.+)")
 					var manifestsToRender []string
 					for _, f := range showFiles {
 						missing := true
-						for _, manifest := range splitManifests {
+						// Use linux-style filepath separators to unify user's input path
+						f = filepath.ToSlash(f)
+						for _, manifestKey := range manifestsKeys {
+							manifest := splitManifests[manifestKey]
 							submatch := manifestNameRegex.FindStringSubmatch(manifest)
 							if len(submatch) == 0 {
 								continue
@@ -100,14 +129,17 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 							// manifest.Name is rendered using linux-style filepath separators on Windows as
 							// well as macOS/linux.
 							manifestPathSplit := strings.Split(manifestName, "/")
-							manifestPath := filepath.Join(manifestPathSplit...)
+							// manifest.Path is connected using linux-style filepath separators on Windows as
+							// well as macOS/linux
+							manifestPath := strings.Join(manifestPathSplit, "/")
 
 							// if the filepath provided matches a manifest path in the
 							// chart, render that manifest
-							if f == manifestPath {
-								manifestsToRender = append(manifestsToRender, manifest)
-								missing = false
+							if matched, _ := filepath.Match(f, manifestPath); !matched {
+								continue
 							}
+							manifestsToRender = append(manifestsToRender, manifest)
+							missing = false
 						}
 						if missing {
 							return fmt.Errorf("could not find template %s in chart", f)
@@ -125,13 +157,8 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		},
 	}
 
-	// Function providing dynamic auto-completion
-	completion.RegisterValidArgsFunc(cmd, func(cmd *cobra.Command, args []string, toComplete string) ([]string, completion.BashCompDirective) {
-		return compInstall(args, toComplete, client)
-	})
-
 	f := cmd.Flags()
-	addInstallFlags(f, client, valueOpts)
+	addInstallFlags(cmd, f, client, valueOpts)
 	f.StringArrayVarP(&showFiles, "show-only", "s", []string{}, "only show manifests rendered from the given templates")
 	f.StringVar(&client.OutputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
 	f.BoolVar(&validate, "validate", false, "validate your manifests against the Kubernetes cluster you are currently pointing at. This is the same validation performed on an install")
@@ -142,4 +169,51 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	bindPostRenderFlag(cmd, &client.PostRenderer)
 
 	return cmd
+}
+
+// The following functions (writeToFile, createOrOpenFile, and ensureDirectoryForFile)
+// are coppied from the actions package. This is part of a change to correct a
+// bug introduced by #8156. As part of the todo to refactor renderResources
+// this duplicate code should be removed. It is added here so that the API
+// surface area is as minimally impacted as possible in fixing the issue.
+func writeToFile(outputDir string, name string, data string, append bool) error {
+	outfileName := strings.Join([]string{outputDir, name}, string(filepath.Separator))
+
+	err := ensureDirectoryForFile(outfileName)
+	if err != nil {
+		return err
+	}
+
+	f, err := createOrOpenFile(outfileName, append)
+	if err != nil {
+		return err
+	}
+
+	defer f.Close()
+
+	_, err = f.WriteString(fmt.Sprintf("---\n# Source: %s\n%s\n", name, data))
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("wrote %s\n", outfileName)
+	return nil
+}
+
+func createOrOpenFile(filename string, append bool) (*os.File, error) {
+	if append {
+		return os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0600)
+	}
+	return os.Create(filename)
+}
+
+func ensureDirectoryForFile(file string) error {
+	baseDir := path.Dir(file)
+	_, err := os.Stat(baseDir)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	return os.MkdirAll(baseDir, 0755)
 }

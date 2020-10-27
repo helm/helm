@@ -49,7 +49,8 @@ func (cfg *Configuration) execHookEvent(rl *release.Release, event release.HookE
 			}
 		}
 	}
-	var weights []int
+
+	weights := make([]int, 0, len(weightedHooks))
 	for w := range weightedHooks {
 		weights = append(weights, w)
 		// sort hooks in each weighted group by name
@@ -61,24 +62,24 @@ func (cfg *Configuration) execHookEvent(rl *release.Release, event release.HookE
 
 	var mut sync.RWMutex
 	for _, w := range weights {
-		sem := make(chan int, parallelism)
+		sem := make(chan struct{}, parallelism)
 		errsChan := make(chan error)
 		errs := make([]error, 0)
 		for _, h := range weightedHooks[w] {
 			// execute hooks in parallel (with limited parallelism enforced by semaphore)
 			go func(h *release.Hook) {
-				sem <- 1
+				sem <- struct{}{}
 				errsChan <- cfg.execHook(rl, h, &mut, timeout)
 				<-sem
 			}(h)
 		}
-
 		// collect errors
 		for range weightedHooks[w] {
 			if err := <-errsChan; err != nil {
 				errs = append(errs, err)
 			}
 		}
+
 		if len(errs) > 0 {
 			return errors.Errorf("%s hook event failed with %d error(s): %s", event, len(errs), joinErrors(errs))
 		}
@@ -93,9 +94,30 @@ func (cfg *Configuration) execHookEvent(rl *release.Release, event release.HookE
 			}
 		}
 	}
-
 	return nil
 }
+
+// // hooke are pre-ordered by kind, so keep order stable
+// sort.Stable(hookByWeight(executingHooks))
+
+// for _, h := range executingHooks {
+// 	// Set default delete policy to before-hook-creation
+// 	if h.DeletePolicies == nil || len(h.DeletePolicies) == 0 {
+// 		// TODO(jlegrone): Only apply before-hook-creation delete policy to run to completion
+// 		//                 resources. For all other resource types update in place if a
+// 		//                 resource with the same name already exists and is owned by the
+// 		//                 current release.
+// 		h.DeletePolicies = []release.HookDeletePolicy{release.HookBeforeHookCreation}
+// 	}
+
+// 	if err := cfg.deleteHookByPolicy(h, release.HookBeforeHookCreation); err != nil {
+// 		return err
+// 	}
+
+// 	resources, err := cfg.KubeClient.Build(bytes.NewBufferString(h.Manifest), true)
+// 	if err != nil {
+// 		return errors.Wrapf(err, "unable to build kubernetes object for %s hook %s", hook, h.Path)
+// 	}
 
 // execHook executes a hook.
 func (cfg *Configuration) execHook(rl *release.Release, h *release.Hook, mut *sync.RWMutex, timeout time.Duration) (err error) {
@@ -126,20 +148,18 @@ func (cfg *Configuration) execHook(rl *release.Release, h *release.Hook, mut *sy
 	}()
 
 	// Create hook resources
-	if _, err := cfg.KubeClient.Create(resources); err != nil {
+	if _, err = cfg.KubeClient.Create(resources); err != nil {
 		updateHookPhase(h, mut, release.HookPhaseFailed)
 		return errors.Wrapf(err, "warning: hook %s failed", h.Path)
 	}
 
-	// Watch hook resources until they have completed
-	err = cfg.KubeClient.WatchUntilReady(resources, timeout)
-	// Mark hook as succeeded or failed
-	if err != nil {
+	// Watch hook resources until they have completed then mark hook as succeeded or failed
+	if err = cfg.KubeClient.WatchUntilReady(resources, timeout); err != nil {
 		updateHookPhase(h, mut, release.HookPhaseFailed)
 		// If a hook is failed, check the annotation of the hook to determine whether the hook should be deleted
 		// under failed condition. If so, then clear the corresponding resource object in the hook.
-		if err := cfg.deleteHookByPolicy(h, release.HookFailed); err != nil {
-			return err
+		if deleteHookErr := cfg.deleteHookByPolicy(h, release.HookFailed); deleteHookErr != nil {
+			return deleteHookErr
 		}
 		return err
 	}

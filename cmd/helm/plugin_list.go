@@ -22,16 +22,19 @@ import (
 
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
+
+	"helm.sh/helm/v3/pkg/plugin"
 )
 
 func newPluginListCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "list",
-		Aliases: []string{"ls"},
-		Short:   "list installed Helm plugins",
+		Use:               "list",
+		Aliases:           []string{"ls"},
+		Short:             "list installed Helm plugins",
+		ValidArgsFunction: noCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			debug("pluginDirs: %s", settings.PluginsDirectory)
-			plugins, err := findPlugins(settings.PluginsDirectory)
+			plugins, err := plugin.FindPlugins(settings.PluginsDirectory)
 			if err != nil {
 				return err
 			}
@@ -51,7 +54,7 @@ func newPluginListCmd(out io.Writer) *cobra.Command {
 // Provide dynamic auto-completion for plugin names
 func compListPlugins(toComplete string) []string {
 	var pNames []string
-	plugins, err := findPlugins(settings.PluginsDirectory)
+	plugins, err := plugin.FindPlugins(settings.PluginsDirectory)
 	if err == nil {
 		for _, p := range plugins {
 			if strings.HasPrefix(p.Metadata.Name, toComplete) {

@@ -43,46 +43,26 @@ func TestLoadArchiveFiles(t *testing.T) {
 			generate: func(w *tar.Writer) {
 				// simulate the presence of a `pax_global_header` file like you would get when
 				// processing a GitHub release archive.
-				_ = w.WriteHeader(&tar.Header{
+				err := w.WriteHeader(&tar.Header{
 					Typeflag: tar.TypeXGlobalHeader,
 					Name:     "pax_global_header",
 				})
+				if err != nil {
+					t.Fatal(err)
+				}
 
 				// we need to have at least one file, otherwise we'll get the "no files in chart archive" error
-				_ = w.WriteHeader(&tar.Header{
+				err = w.WriteHeader(&tar.Header{
 					Typeflag: tar.TypeReg,
 					Name:     "dir/empty",
 				})
+				if err != nil {
+					t.Fatal(err)
+				}
 			},
 			check: func(t *testing.T, files []*BufferedFile, err error) {
 				if err != nil {
 					t.Fatalf(`got unwanted error [%#v] for tar file with pax_global_header content`, err)
-				}
-
-				if len(files) != 1 {
-					t.Fatalf(`expected to get one file but got [%v]`, files)
-				}
-			},
-		},
-		{
-			name: "should ignore files with TypeXHeader type",
-			generate: func(w *tar.Writer) {
-				// simulate the presence of a `pax_header` file like you might get when
-				// processing a GitHub release archive.
-				_ = w.WriteHeader(&tar.Header{
-					Typeflag: tar.TypeXHeader,
-					Name:     "pax_header",
-				})
-
-				// we need to have at least one file, otherwise we'll get the "no files in chart archive" error
-				_ = w.WriteHeader(&tar.Header{
-					Typeflag: tar.TypeReg,
-					Name:     "dir/empty",
-				})
-			},
-			check: func(t *testing.T, files []*BufferedFile, err error) {
-				if err != nil {
-					t.Fatalf(`got unwanted error [%#v] for tar file with pax_header content`, err)
 				}
 
 				if len(files) != 1 {

@@ -28,6 +28,7 @@ func TestSetIndex(t *testing.T) {
 		expect  []interface{}
 		add     int
 		val     int
+		err     bool
 	}{
 		{
 			name:    "short",
@@ -35,6 +36,7 @@ func TestSetIndex(t *testing.T) {
 			expect:  []interface{}{0, 1, 2},
 			add:     2,
 			val:     2,
+			err:     false,
 		},
 		{
 			name:    "equal",
@@ -42,6 +44,7 @@ func TestSetIndex(t *testing.T) {
 			expect:  []interface{}{0, 2},
 			add:     1,
 			val:     2,
+			err:     false,
 		},
 		{
 			name:    "long",
@@ -49,17 +52,41 @@ func TestSetIndex(t *testing.T) {
 			expect:  []interface{}{0, 1, 2, 4, 4, 5},
 			add:     3,
 			val:     4,
+			err:     false,
+		},
+		{
+			name:    "negative",
+			initial: []interface{}{0, 1, 2, 3, 4, 5},
+			expect:  []interface{}{0, 1, 2, 3, 4, 5},
+			add:     -1,
+			val:     4,
+			err:     true,
 		},
 	}
 
 	for _, tt := range tests {
-		got := setIndex(tt.initial, tt.add, tt.val)
+		got, err := setIndex(tt.initial, tt.add, tt.val)
+
+		if err != nil && tt.err == false {
+			t.Fatalf("%s: Expected no error but error returned", tt.name)
+		} else if err == nil && tt.err == true {
+			t.Fatalf("%s: Expected error but no error returned", tt.name)
+		}
+
 		if len(got) != len(tt.expect) {
 			t.Fatalf("%s: Expected length %d, got %d", tt.name, len(tt.expect), len(got))
 		}
 
-		if gg := got[tt.add].(int); gg != tt.val {
-			t.Errorf("%s, Expected value %d, got %d", tt.name, tt.val, gg)
+		if !tt.err {
+			if gg := got[tt.add].(int); gg != tt.val {
+				t.Errorf("%s, Expected value %d, got %d", tt.name, tt.val, gg)
+			}
+		}
+
+		for k, v := range got {
+			if v != tt.expect[k] {
+				t.Errorf("%s, Expected value %d, got %d", tt.name, tt.expect[k], v)
+			}
 		}
 	}
 }
@@ -272,6 +299,10 @@ func TestParseSet(t *testing.T) {
 			},
 		},
 		{
+			str: "list[0].foo=bar,list[-30].hello=world",
+			err: true,
+		},
+		{
 			str:    "list[0]=foo,list[1]=bar",
 			expect: map[string]interface{}{"list": []string{"foo", "bar"}},
 		},
@@ -282,6 +313,10 @@ func TestParseSet(t *testing.T) {
 		{
 			str:    "list[0]=foo,list[3]=bar",
 			expect: map[string]interface{}{"list": []interface{}{"foo", nil, nil, "bar"}},
+		},
+		{
+			str: "list[0]=foo,list[-20]=bar",
+			err: true,
 		},
 		{
 			str: "illegal[0]name.foo=bar",
@@ -326,6 +361,10 @@ func TestParseSet(t *testing.T) {
 					"name2": []map[string]interface{}{nil, {"foo": "bar"}},
 				},
 			},
+		},
+		{
+			str: "]={}].",
+			err: true,
 		},
 	}
 
@@ -382,39 +421,118 @@ func TestParseSet(t *testing.T) {
 }
 
 func TestParseInto(t *testing.T) {
-	got := map[string]interface{}{
-		"outer": map[string]interface{}{
-			"inner1": "overwrite",
-			"inner2": "value2",
+	tests := []struct {
+		input  string
+		input2 string
+		got    map[string]interface{}
+		expect map[string]interface{}
+		err    bool
+	}{
+		{
+			input: "outer.inner1=value1,outer.inner3=value3,outer.inner4=4",
+			got: map[string]interface{}{
+				"outer": map[string]interface{}{
+					"inner1": "overwrite",
+					"inner2": "value2",
+				},
+			},
+			expect: map[string]interface{}{
+				"outer": map[string]interface{}{
+					"inner1": "value1",
+					"inner2": "value2",
+					"inner3": "value3",
+					"inner4": 4,
+				}},
+			err: false,
+		},
+		{
+			input:  "listOuter[0][0].type=listValue",
+			input2: "listOuter[0][0].status=alive",
+			got:    map[string]interface{}{},
+			expect: map[string]interface{}{
+				"listOuter": [][]interface{}{{map[string]string{
+					"type":   "listValue",
+					"status": "alive",
+				}}},
+			},
+			err: false,
+		},
+		{
+			input:  "listOuter[0][0].type=listValue",
+			input2: "listOuter[1][0].status=alive",
+			got:    map[string]interface{}{},
+			expect: map[string]interface{}{
+				"listOuter": [][]interface{}{
+					{
+						map[string]string{"type": "listValue"},
+					},
+					{
+						map[string]string{"status": "alive"},
+					},
+				},
+			},
+			err: false,
+		},
+		{
+			input:  "listOuter[0][1][0].type=listValue",
+			input2: "listOuter[0][0][1].status=alive",
+			got: map[string]interface{}{
+				"listOuter": []interface{}{
+					[]interface{}{
+						[]interface{}{
+							map[string]string{"exited": "old"},
+						},
+					},
+				},
+			},
+			expect: map[string]interface{}{
+				"listOuter": [][][]interface{}{
+					{
+						{
+							map[string]string{"exited": "old"},
+							map[string]string{"status": "alive"},
+						},
+						{
+							map[string]string{"type": "listValue"},
+						},
+					},
+				},
+			},
+			err: false,
 		},
 	}
-	input := "outer.inner1=value1,outer.inner3=value3,outer.inner4=4"
-	expect := map[string]interface{}{
-		"outer": map[string]interface{}{
-			"inner1": "value1",
-			"inner2": "value2",
-			"inner3": "value3",
-			"inner4": 4,
-		},
-	}
+	for _, tt := range tests {
+		if err := ParseInto(tt.input, tt.got); err != nil {
+			t.Fatal(err)
+		}
+		if tt.err {
+			t.Errorf("%s: Expected error. Got nil", tt.input)
+		}
 
-	if err := ParseInto(input, got); err != nil {
-		t.Fatal(err)
-	}
+		if tt.input2 != "" {
+			if err := ParseInto(tt.input2, tt.got); err != nil {
+				t.Fatal(err)
+			}
+			if tt.err {
+				t.Errorf("%s: Expected error. Got nil", tt.input2)
+			}
+		}
 
-	y1, err := yaml.Marshal(expect)
-	if err != nil {
-		t.Fatal(err)
-	}
-	y2, err := yaml.Marshal(got)
-	if err != nil {
-		t.Fatalf("Error serializing parsed value: %s", err)
-	}
+		y1, err := yaml.Marshal(tt.expect)
+		if err != nil {
+			t.Fatal(err)
+		}
+		y2, err := yaml.Marshal(tt.got)
+		if err != nil {
+			t.Fatalf("Error serializing parsed value: %s", err)
+		}
 
-	if string(y1) != string(y2) {
-		t.Errorf("%s: Expected:\n%s\nGot:\n%s", input, y1, y2)
+		if string(y1) != string(y2) {
+			t.Errorf("%s: Expected:\n%s\nGot:\n%s", tt.input, y1, y2)
+		}
 	}
 }
+
 func TestParseIntoString(t *testing.T) {
 	got := map[string]interface{}{
 		"outer": map[string]interface{}{

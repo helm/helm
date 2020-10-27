@@ -1,3 +1,4 @@
 aramis
 athos
 :4
+Completion ended with directive: ShellCompDirectiveNoFileComp

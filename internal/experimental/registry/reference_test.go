@@ -81,6 +81,13 @@ func TestParseReference(t *testing.T) {
 	is.Equal("1.5.0", ref.Tag)
 	is.Equal("myrepo:5001/mychart:1.5.0", ref.FullName())
 
+	s = "127.0.0.1:5001/mychart:1.5.0"
+	ref, err = ParseReference(s)
+	is.NoError(err)
+	is.Equal("127.0.0.1:5001/mychart", ref.Repo)
+	is.Equal("1.5.0", ref.Tag)
+	is.Equal("127.0.0.1:5001/mychart:1.5.0", ref.FullName())
+
 	s = "localhost:5000/mychart:latest"
 	ref, err = ParseReference(s)
 	is.NoError(err)

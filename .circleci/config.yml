@@ -5,11 +5,11 @@ jobs:
   build:
     working_directory: ~/helm.sh/helm
     docker:
-      - image: circleci/golang:1.13
+      - image: circleci/golang:1.14
 
     environment:
       GOCACHE: "/tmp/go/cache"
-      GOLANGCI_LINT_VERSION: "1.21.0"
+      GOLANGCI_LINT_VERSION: "1.27.0"
 
     steps:
       - checkout
