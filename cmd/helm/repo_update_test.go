@@ -67,7 +67,7 @@ func TestUpdateCustomCacheCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(cachePath, "charts-index.yaml")); err != nil {
-		t.Fatalf("error finding created index file in custom cache: %#v", err)
+		t.Fatalf("error finding created index file in custom cache: %v", err)
 	}
 }
 
