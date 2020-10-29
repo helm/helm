@@ -28,8 +28,8 @@ import (
 )
 
 const (
-	k8sMajorVer = 1
-	k8sMinorVer = 19
+	k8sVersionMajor = 1
+	k8sVersionMinor = 19
 )
 
 var (
@@ -39,9 +39,9 @@ var (
 	// DefaultCapabilities is the default set of capabilities.
 	DefaultCapabilities = &Capabilities{
 		KubeVersion: KubeVersion{
-			Version: fmt.Sprintf("v%d.%d.0", k8sMajorVer, k8sMinorVer),
-			Major:   strconv.Itoa(k8sMajorVer),
-			Minor:   strconv.Itoa(k8sMinorVer),
+			Version: fmt.Sprintf("v%d.%d.0", k8sVersionMajor, k8sVersionMinor),
+			Major:   strconv.Itoa(k8sVersionMajor),
+			Minor:   strconv.Itoa(k8sVersionMinor),
 		},
 		APIVersions: DefaultVersionSet,
 		HelmVersion: helmversion.Get(),
