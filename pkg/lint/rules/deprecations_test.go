@@ -29,7 +29,7 @@ func TestValidateNoDeprecations(t *testing.T) {
 	}
 	depErr := err.(deprecatedAPIError)
 	if depErr.Message == "" {
-		t.Fatal("Expected error message to be non-blank")
+		t.Fatalf("Expected error message to be non-blank: %v", err)
 	}
 
 	if err := validateNoDeprecations(&K8sYamlStruct{
