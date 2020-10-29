@@ -77,7 +77,9 @@ const maxChartNameLength = 250
 
 const sep = string(filepath.Separator)
 
-const defaultChartfile = `apiVersion: v2
+const defaultChartfile = `# Chart.yaml describes the Helm chart, for more information see:
+# https://helm.sh/docs/topics/charts/#the-chartyaml-file
+apiVersion: v2
 name: %s
 description: A Helm chart for Kubernetes
 
@@ -399,23 +401,29 @@ const defaultNotes = `1. Get the application URL by running these commands:
 {{- end }}
 `
 
-const defaultHelpers = `{{/*
-Expand the name of the chart.
+const defaultHelpers = `{{- /*
+This defined template is used to set the app.kubernetes.io/name label's value
+and also has a role to play in the fullname helper function.
 */}}
 {{- define "<CHARTNAME>.name" -}}
-{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
+{{- .Values.nameOverride | default .Chart.Name }}
 {{- end }}
 
-{{/*
-Create a default fully qualified app name.
-We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
-If release name contains chart name it will be used as a full name.
+{{- /*
+This defined template is used to set the metadata.name field of resources.
+
+Unless fullnameOverride is set, this template return <release name>-<chart name>
+with the exception of release name's that include the chart name, then it only
+return <release name>.
+
+The returned name is truncated at 63 chars because some Kubernetes resources
+metadata.name fields are limited to this (by the DNS naming spec).
 */}}
 {{- define "<CHARTNAME>.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
-{{- $name := default .Chart.Name .Values.nameOverride }}
+{{- $name := .Values.nameOverride | default .Chart.Name }}
 {{- if contains $name .Release.Name }}
 {{- .Release.Name | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -424,15 +432,16 @@ If release name contains chart name it will be used as a full name.
 {{- end }}
 {{- end }}
 
-{{/*
-Create chart name and version as used by the chart label.
+{{- /*
+This defined template is used to set the helm.sh/chart label.
 */}}
 {{- define "<CHARTNAME>.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
-{{/*
-Common labels
+{{- /*
+This defined template lists all labels set on resources, which includes some
+common labels in addition to the selector labels.
 */}}
 {{- define "<CHARTNAME>.labels" -}}
 helm.sh/chart: {{ include "<CHARTNAME>.chart" . }}
@@ -443,22 +452,26 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
-{{/*
-Selector labels
+{{- /*
+This defined template lists labels for a Deployment's spec.selector.matchLabel
+field and a Service's spec.selector field.
+
+Deployment resources' matchLabel fields are immutable, so a change here will
+require that the Deployment resource to be recreated.
 */}}
 {{- define "<CHARTNAME>.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
-{{/*
-Create the name of the service account to use
+{{- /*
+This defined template is used to reference a ServiceAccount.
 */}}
 {{- define "<CHARTNAME>.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "<CHARTNAME>.fullname" .) .Values.serviceAccount.name }}
+{{- .Values.serviceAccount.name | default (include "<CHARTNAME>.fullname" .) }}
 {{- else }}
-{{- default "default" .Values.serviceAccount.name }}
+{{- .Values.serviceAccount.name | default "default" }}
 {{- end }}
 {{- end }}
 `
