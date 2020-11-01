@@ -1003,7 +1003,7 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 
 	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), timeout)
 	defer cancel()
-	_, err = watchtools.ListWatchUntil(ctx, lw, func(e watch.Event) (bool, error) {
+	_, err = watchtools.UntilWithSync(ctx, lw, resourceInfoToObject(info, c), nil, func(e watch.Event) (bool, error) {
 		switch e.Type {
 		case watch.Added, watch.Modified:
 			// For things like a secret or a config map, this is the best indicator
@@ -1020,7 +1020,7 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 			return true, nil
 		case watch.Error:
 			// Handle error and return with an error.
-			c.Log("Error event for %s", info.Name)
+			c.Log("Error event for %s: %v", info.Name, e.Object)
 			return true, fmt.Errorf("Failed to deploy %s", info.Name)
 		default:
 			return false, nil
@@ -1096,7 +1096,7 @@ func (c *Client) watchPodUntilComplete(timeout time.Duration, info *resource.Inf
 	c.Log("Watching pod %s for completion with timeout of %v", info.Name, timeout)
 	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), timeout)
 	defer cancel()
-	_, err := watchtools.ListWatchUntil(ctx, lw, func(e watch.Event) (bool, error) {
+	_, err := watchtools.UntilWithSync(ctx, lw, resourceInfoToObject(info, c), nil, func(e watch.Event) (bool, error) {
 		return isPodComplete(e)
 	})
 
