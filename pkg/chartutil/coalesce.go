@@ -17,6 +17,7 @@ limitations under the License.
 package chartutil
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/mitchellh/copystructure"
@@ -24,6 +25,13 @@ import (
 
 	"helm.sh/helm/v3/pkg/chart"
 )
+
+func concatPrefix(a, b string) string {
+	if a == "" {
+		return b
+	}
+	return fmt.Sprintf("%s.%s", a, b)
+}
 
 // CoalesceValues coalesces all of the values in a chart (and its subcharts).
 //
@@ -45,19 +53,21 @@ func CoalesceValues(chrt *chart.Chart, vals map[string]interface{}) (Values, err
 	if valsCopy == nil {
 		valsCopy = make(map[string]interface{})
 	}
-	return coalesce(chrt, valsCopy)
+	return coalesce(log.Printf, chrt, valsCopy, "")
 }
+
+type printFn func(format string, v ...interface{})
 
 // coalesce coalesces the dest values and the chart values, giving priority to the dest values.
 //
 // This is a helper function for CoalesceValues.
-func coalesce(ch *chart.Chart, dest map[string]interface{}) (map[string]interface{}, error) {
-	coalesceValues(ch, dest)
-	return coalesceDeps(ch, dest)
+func coalesce(printf printFn, ch *chart.Chart, dest map[string]interface{}, prefix string) (map[string]interface{}, error) {
+	coalesceValues(printf, ch, dest, prefix)
+	return coalesceDeps(printf, ch, dest, prefix)
 }
 
 // coalesceDeps coalesces the dependencies of the given chart.
-func coalesceDeps(chrt *chart.Chart, dest map[string]interface{}) (map[string]interface{}, error) {
+func coalesceDeps(printf printFn, chrt *chart.Chart, dest map[string]interface{}, prefix string) (map[string]interface{}, error) {
 	for _, subchart := range chrt.Dependencies() {
 		if c, ok := dest[subchart.Name()]; !ok {
 			// If dest doesn't already have the key, create it.
@@ -67,13 +77,14 @@ func coalesceDeps(chrt *chart.Chart, dest map[string]interface{}) (map[string]in
 		}
 		if dv, ok := dest[subchart.Name()]; ok {
 			dvmap := dv.(map[string]interface{})
+			subPrefix := concatPrefix(prefix, chrt.Metadata.Name)
 
 			// Get globals out of dest and merge them into dvmap.
-			coalesceGlobals(dvmap, dest)
+			coalesceGlobals(printf, dvmap, dest, subPrefix)
 
 			// Now coalesce the rest of the values.
 			var err error
-			dest[subchart.Name()], err = coalesce(subchart, dvmap)
+			dest[subchart.Name()], err = coalesce(printf, subchart, dvmap, subPrefix)
 			if err != nil {
 				return dest, err
 			}
@@ -85,20 +96,20 @@ func coalesceDeps(chrt *chart.Chart, dest map[string]interface{}) (map[string]in
 // coalesceGlobals copies the globals out of src and merges them into dest.
 //
 // For convenience, returns dest.
-func coalesceGlobals(dest, src map[string]interface{}) {
+func coalesceGlobals(printf printFn, dest, src map[string]interface{}, prefix string) {
 	var dg, sg map[string]interface{}
 
 	if destglob, ok := dest[GlobalKey]; !ok {
 		dg = make(map[string]interface{})
 	} else if dg, ok = destglob.(map[string]interface{}); !ok {
-		log.Printf("warning: skipping globals because destination %s is not a table.", GlobalKey)
+		printf("warning: skipping globals because destination %s is not a table.", GlobalKey)
 		return
 	}
 
 	if srcglob, ok := src[GlobalKey]; !ok {
 		sg = make(map[string]interface{})
 	} else if sg, ok = srcglob.(map[string]interface{}); !ok {
-		log.Printf("warning: skipping globals because source %s is not a table.", GlobalKey)
+		printf("warning: skipping globals because source %s is not a table.", GlobalKey)
 		return
 	}
 
@@ -114,17 +125,18 @@ func coalesceGlobals(dest, src map[string]interface{}) {
 				dg[key] = vv
 			} else {
 				if destvmap, ok := destv.(map[string]interface{}); !ok {
-					log.Printf("Conflict: cannot merge map onto non-map for %q. Skipping.", key)
+					printf("Conflict: cannot merge map onto non-map for %q. Skipping.", key)
 				} else {
 					// Basically, we reverse order of coalesce here to merge
 					// top-down.
-					CoalesceTables(vv, destvmap)
+					subPrefix := concatPrefix(prefix, key)
+					coalesceTablesFullKey(printf, vv, destvmap, subPrefix)
 					dg[key] = vv
 				}
 			}
 		} else if dv, ok := dg[key]; ok && istable(dv) {
 			// It's not clear if this condition can actually ever trigger.
-			log.Printf("key %s is table. Skipping", key)
+			printf("key %s is table. Skipping", key)
 		} else {
 			// TODO: Do we need to do any additional checking on the value?
 			dg[key] = val
@@ -144,7 +156,8 @@ func copyMap(src map[string]interface{}) map[string]interface{} {
 // coalesceValues builds up a values map for a particular chart.
 //
 // Values in v will override the values in the chart.
-func coalesceValues(c *chart.Chart, v map[string]interface{}) {
+func coalesceValues(printf printFn, c *chart.Chart, v map[string]interface{}, prefix string) {
+	subPrefix := concatPrefix(prefix, c.Metadata.Name)
 	for key, val := range c.Values {
 		if value, ok := v[key]; ok {
 			if value == nil {
@@ -159,12 +172,12 @@ func coalesceValues(c *chart.Chart, v map[string]interface{}) {
 					// If the original value is nil, there is nothing to coalesce, so we don't print
 					// the warning
 					if val != nil {
-						log.Printf("warning: skipped value for %s: Not a table.", key)
+						printf("warning: skipped value for %s.%s: Not a table.", subPrefix, key)
 					}
 				} else {
 					// Because v has higher precedence than nv, dest values override src
 					// values.
-					CoalesceTables(dest, src)
+					coalesceTablesFullKey(printf, dest, src, concatPrefix(subPrefix, key))
 				}
 			}
 		} else {
@@ -178,6 +191,13 @@ func coalesceValues(c *chart.Chart, v map[string]interface{}) {
 //
 // dest is considered authoritative.
 func CoalesceTables(dst, src map[string]interface{}) map[string]interface{} {
+	return coalesceTablesFullKey(log.Printf, dst, src, "")
+}
+
+// coalesceTablesFullKey merges a source map into a destination map.
+//
+// dest is considered authoritative.
+func coalesceTablesFullKey(printf printFn, dst, src map[string]interface{}, prefix string) map[string]interface{} {
 	// When --reuse-values is set but there are no modifications yet, return new values
 	if src == nil {
 		return dst
@@ -188,18 +208,19 @@ func CoalesceTables(dst, src map[string]interface{}) map[string]interface{} {
 	// Because dest has higher precedence than src, dest values override src
 	// values.
 	for key, val := range src {
+		fullkey := concatPrefix(prefix, key)
 		if dv, ok := dst[key]; ok && dv == nil {
 			delete(dst, key)
 		} else if !ok {
 			dst[key] = val
 		} else if istable(val) {
 			if istable(dv) {
-				CoalesceTables(dv.(map[string]interface{}), val.(map[string]interface{}))
+				coalesceTablesFullKey(printf, dv.(map[string]interface{}), val.(map[string]interface{}), fullkey)
 			} else {
-				log.Printf("warning: cannot overwrite table with non table for %s (%v)", key, val)
+				printf("warning: cannot overwrite table with non table for %s (%v)", fullkey, val)
 			}
 		} else if istable(dv) && val != nil {
-			log.Printf("warning: destination for %s is a table. Ignoring non-table value %v", key, val)
+			printf("warning: destination for %s is a table. Ignoring non-table value (%v)", fullkey, val)
 		}
 	}
 	return dst
