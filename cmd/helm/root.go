@@ -252,7 +252,7 @@ func checkForExpiredRepos(repofile string) {
 		if url := r.URL; strings.Contains(url, exp.old) {
 			fmt.Fprintf(
 				os.Stderr,
-				"WARNING: %q is deprecated for %q and will be deleted Nov. 13, 2020.\nWARNING: You should switch to %q\n",
+				"WARNING: %q is deprecated for %q and will be deleted Nov. 13, 2020.\nWARNING: You should switch to %q\nWARNING: Switch via: helm repo add stable https://charts.helm.sh/stable --force-update",
 				exp.old,
 				exp.name,
 				exp.new,
