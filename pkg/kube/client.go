@@ -127,7 +127,7 @@ func (c *Client) Create(resources ResourceList) (*Result, error) {
 }
 
 // Wait up to the given timeout for the specified resources to be ready
-func (c *Client) Wait(resources ResourceList, timeout time.Duration) error {
+func (c *Client) Wait(resources ResourceList, timeout time.Duration, waitForJobsEnabled bool) error {
 	cs, err := c.getKubeClient()
 	if err != nil {
 		return err
@@ -137,7 +137,7 @@ func (c *Client) Wait(resources ResourceList, timeout time.Duration) error {
 		log:     c.Log,
 		timeout: timeout,
 	}
-	return w.waitForResources(resources)
+	return w.waitForResources(resources, waitForJobsEnabled)
 }
 
 func (c *Client) namespace() string {

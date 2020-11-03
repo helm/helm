@@ -77,6 +77,7 @@ type Install struct {
 	DisableHooks             bool
 	Replace                  bool
 	Wait                     bool
+	WaitForJobs              bool
 	Devel                    bool
 	DependencyUpdate         bool
 	Timeout                  time.Duration
@@ -156,7 +157,7 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 		discoveryClient.Invalidate()
 		// Give time for the CRD to be recognized.
 
-		if err := i.cfg.KubeClient.Wait(totalItems, 60*time.Second); err != nil {
+		if err := i.cfg.KubeClient.Wait(totalItems, 60*time.Second, false); err != nil {
 			return err
 		}
 
@@ -345,10 +346,9 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	}
 
 	if i.Wait {
-		if err := i.cfg.KubeClient.Wait(resources, i.Timeout); err != nil {
+		if err := i.cfg.KubeClient.Wait(resources, i.Timeout, i.WaitForJobs); err != nil {
 			return i.failRelease(rel, err)
 		}
-
 	}
 
 	if !i.DisableHooks {

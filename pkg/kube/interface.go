@@ -30,7 +30,7 @@ type Interface interface {
 	// Create creates one or more resources.
 	Create(resources ResourceList) (*Result, error)
 
-	Wait(resources ResourceList, timeout time.Duration) error
+	Wait(resources ResourceList, timeout time.Duration, waitForJobsEnabled bool) error
 
 	// Delete destroys one or more resources.
 	Delete(resources ResourceList) (*Result, []error)

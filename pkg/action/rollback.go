@@ -38,6 +38,7 @@ type Rollback struct {
 	Version       int
 	Timeout       time.Duration
 	Wait          bool
+	WaitForJobs   bool
 	DisableHooks  bool
 	DryRun        bool
 	Recreate      bool // will (if true) recreate pods after a rollback.
@@ -199,7 +200,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 	}
 
 	if r.Wait {
-		if err := r.cfg.KubeClient.Wait(target, r.Timeout); err != nil {
+		if err := r.cfg.KubeClient.Wait(target, r.Timeout, r.WaitForJobs); err != nil {
 			targetRelease.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", targetRelease.Name, err.Error()))
 			r.cfg.recordRelease(currentRelease)
 			r.cfg.recordRelease(targetRelease)

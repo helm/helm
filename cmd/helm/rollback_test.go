@@ -55,6 +55,11 @@ func TestRollbackCmd(t *testing.T) {
 		golden: "output/rollback-wait.txt",
 		rels:   rels,
 	}, {
+		name:   "rollback a release with wait-for-jobs",
+		cmd:    "rollback funny-honey 1 --wait --wait-for-jobs",
+		golden: "output/rollback-wait-for-jobs.txt",
+		rels:   rels,
+	}, {
 		name:   "rollback a release without revision",
 		cmd:    "rollback funny-honey",
 		golden: "output/rollback-no-revision.txt",
