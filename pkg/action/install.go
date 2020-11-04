@@ -181,14 +181,16 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 		return nil, err
 	}
 
-	// Pre-install anything in the crd/ directory. We do this before Helm
+	// Pre-install anything in the crds/ directory. We do this before Helm
 	// contacts the upstream server and builds the capabilities object.
-	if crds := chrt.CRDObjects(); !i.ClientOnly && !i.SkipCRDs && len(crds) > 0 {
+	if !i.ClientOnly && !i.SkipCRDs {
 		// On dry run, bail here
 		if i.DryRun {
 			i.cfg.Log("WARNING: This chart or one of its subcharts contains CRDs. Rendering may fail or contain inaccuracies.")
-		} else if err := i.installCRDs(crds); err != nil {
-			return nil, err
+		} else if crds := chrt.CRDObjects(); len(crds) > 0 {
+			if err := i.installCRDs(crds); err != nil {
+				return nil, err
+			}
 		}
 	}
 
