@@ -154,16 +154,26 @@ func (o *searchRepoOptions) applyConstraint(res []*search.Result) ([]*search.Res
 
 	data := res[:0]
 	foundNames := map[string]bool{}
+	appendSearchResults := func(res *search.Result) {
+		data = append(data, res)
+		if !o.versions {
+			foundNames[res.Name] = true // If user hasn't requested all versions, only show the latest that matches
+		}
+	}
 	for _, r := range res {
 		if _, found := foundNames[r.Name]; found {
 			continue
 		}
 		v, err := semver.NewVersion(r.Chart.Version)
-		if err != nil || constraint.Check(v) {
-			data = append(data, r)
-			if !o.versions {
-				foundNames[r.Name] = true // If user hasn't requested all versions, only show the latest that matches
+
+		if err != nil {
+			// If the current version number check appears ErrSegmentStartsZero or ErrInvalidPrerelease error and not devel mode, ingore
+			if (err == semver.ErrSegmentStartsZero || err == semver.ErrInvalidPrerelease) && !o.devel {
+				continue
 			}
+			appendSearchResults(r)
+		} else if constraint.Check(v) {
+			appendSearchResults(r)
 		}
 	}
 
