@@ -331,9 +331,16 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 	}
 
 	if u.Wait {
-		if err := u.cfg.KubeClient.Wait(target, u.Timeout, u.WaitForJobs); err != nil {
-			u.cfg.recordRelease(originalRelease)
-			return u.failRelease(upgradedRelease, results.Created, err)
+		if u.WaitForJobs {
+			if err := u.cfg.KubeClient.WaitWithJobs(target, u.Timeout); err != nil {
+				u.cfg.recordRelease(originalRelease)
+				return u.failRelease(upgradedRelease, results.Created, err)
+			}
+		} else {
+			if err := u.cfg.KubeClient.Wait(target, u.Timeout); err != nil {
+				u.cfg.recordRelease(originalRelease)
+				return u.failRelease(upgradedRelease, results.Created, err)
+			}
 		}
 	}
 
