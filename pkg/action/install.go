@@ -480,7 +480,7 @@ func (i *Install) replaceRelease(rel *release.Release) error {
 }
 
 // write the <data> to <output-dir>/<name>. <append> controls if the file is created or content will be appended
-func writeToFile(outputDir string, name string, data string, append bool) error {
+func writeToFile(outputDir string, name string, data string, append bool, log DebugLog) error {
 	outfileName := strings.Join([]string{outputDir, name}, string(filepath.Separator))
 
 	err := ensureDirectoryForFile(outfileName)
@@ -501,7 +501,7 @@ func writeToFile(outputDir string, name string, data string, append bool) error 
 		return err
 	}
 
-	fmt.Printf("wrote %s\n", outfileName)
+	log("wrote %s\n", outfileName)
 	return nil
 }
 

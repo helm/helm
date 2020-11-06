@@ -186,7 +186,7 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 			if outputDir == "" {
 				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Name, string(crd.File.Data[:]))
 			} else {
-				err = writeToFile(outputDir, crd.Filename, string(crd.File.Data[:]), fileWritten[crd.Name])
+				err = writeToFile(outputDir, crd.Filename, string(crd.File.Data[:]), fileWritten[crd.Name], c.Log)
 				if err != nil {
 					return hs, b, "", err
 				}
@@ -207,7 +207,7 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 			// output dir is only used by `helm template`. In the next major
 			// release, we should move this logic to template only as it is not
 			// used by install or upgrade
-			err = writeToFile(newDir, m.Name, m.Content, fileWritten[m.Name])
+			err = writeToFile(newDir, m.Name, m.Content, fileWritten[m.Name], c.Log)
 			if err != nil {
 				return hs, b, "", err
 			}
