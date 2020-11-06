@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -27,7 +28,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"sigs.k8s.io/yaml"
+	"k8s.io/apimachinery/pkg/util/yaml"
 
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -117,20 +118,30 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 		renderedContent := renderedContentMap[path.Join(chart.Name(), fileName)]
 		if strings.TrimSpace(renderedContent) != "" {
 			linter.RunLinterRule(support.WarningSev, fpath, validateTopIndentLevel(renderedContent))
-			var yamlStruct K8sYamlStruct
-			// Even though K8sYamlStruct only defines a few fields, an error in any other
-			// key will be raised as well
-			err := yaml.Unmarshal([]byte(renderedContent), &yamlStruct)
 
-			if (K8sYamlStruct{}) == yamlStruct {
-				continue
+			decoder := yaml.NewYAMLOrJSONDecoder(strings.NewReader(renderedContent), 4096)
+
+			// Lint all resources if the file contains multiple documents separated by ---
+			for {
+				// Even though K8sYamlStruct only defines a few fields, an error in any other
+				// key will be raised as well
+				var yamlStruct *K8sYamlStruct
+
+				err := decoder.Decode(&yamlStruct)
+				if err == io.EOF {
+					break
+				}
+
+				// If YAML linting fails, we sill progress. So we don't capture the returned state
+				// on this linter run.
+				linter.RunLinterRule(support.ErrorSev, fpath, validateYamlContent(err))
+
+				if yamlStruct != nil {
+					linter.RunLinterRule(support.ErrorSev, fpath, validateMetadataName(yamlStruct))
+					linter.RunLinterRule(support.ErrorSev, fpath, validateNoDeprecations(yamlStruct))
+					linter.RunLinterRule(support.ErrorSev, fpath, validateMatchSelector(yamlStruct, renderedContent))
+				}
 			}
-			// If YAML linting fails, we sill progress. So we don't capture the returned state
-			// on this linter run.
-			linter.RunLinterRule(support.ErrorSev, fpath, validateYamlContent(err))
-			linter.RunLinterRule(support.ErrorSev, fpath, validateMetadataName(&yamlStruct))
-			linter.RunLinterRule(support.ErrorSev, fpath, validateNoDeprecations(&yamlStruct))
-			linter.RunLinterRule(support.ErrorSev, fpath, validateMatchSelector(&yamlStruct, renderedContent))
 		}
 	}
 }

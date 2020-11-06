@@ -107,6 +107,20 @@ func TestV3Fail(t *testing.T) {
 	}
 }
 
+func TestMultiTemplateFail(t *testing.T) {
+	linter := support.Linter{ChartDir: "./testdata/multi-template-fail"}
+	Templates(&linter, values, namespace, strict)
+	res := linter.Messages
+
+	if len(res) != 1 {
+		t.Fatalf("Expected 1 error, got %d, %v", len(res), res)
+	}
+
+	if !strings.Contains(res[0].Err.Error(), "object name does not conform to Kubernetes naming requirements") {
+		t.Errorf("Unexpected error: %s", res[0].Err)
+	}
+}
+
 func TestValidateMetadataName(t *testing.T) {
 	names := map[string]bool{
 		"":                          false,
