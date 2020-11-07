@@ -2,7 +2,6 @@
 [INFO] Chart.yaml: icon is recommended
 [ERROR] Chart.yaml: chart type is not valid in apiVersion 'v1'. It is valid in apiVersion 'v2'
 [ERROR] templates/alpine-pod.yaml: unable to parse YAML: error converting YAML to JSON: yaml: line 11: could not find expected ':'
-
 ---
 # Source: testdata/testcharts/chart-with-template-with-invalid-yaml
 apiVersion: v1

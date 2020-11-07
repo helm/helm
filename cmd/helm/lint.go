@@ -102,7 +102,7 @@ func newLintCmd(out io.Writer) *cobra.Command {
 
 				if settings.Debug {
 					for _, contents := range result.RenderedContents {
-						fmt.Fprintf(&message, "---\n# Source: %s\n%s\n", path, contents)
+						fmt.Fprintf(&message, "---\n# Source: %s\n%s", path, contents)
 					}
 				}
 
