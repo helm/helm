@@ -36,6 +36,10 @@ var sev = []string{"UNKNOWN", "INFO", "WARNING", "ERROR"}
 // Linter encapsulates a linting run of a particular chart.
 type Linter struct {
 	Messages []Message
+
+	// Contains the rendered templates
+	RenderedContent []string
+
 	// The highest severity of all the failing lint rules
 	HighestSeverity int
 	ChartDir        string
@@ -47,6 +51,11 @@ type Message struct {
 	Severity int
 	Path     string
 	Err      error
+}
+
+// NewRenderedContent appends content
+func (l *Linter) NewRenderedContent(content string) {
+	l.RenderedContent = append(l.RenderedContent, content)
 }
 
 func (m Message) Error() string {

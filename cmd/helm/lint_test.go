@@ -33,6 +33,11 @@ func TestLintCmdWithSubchartsFlag(t *testing.T) {
 		cmd:       fmt.Sprintf("lint --with-subcharts %s", testChart),
 		golden:    "output/lint-chart-with-bad-subcharts-with-subcharts.txt",
 		wantError: true,
+	}, {
+		name:      "lint bad chart using --debug flag",
+		cmd:       fmt.Sprintf("lint %s --debug", "testdata/testcharts/chart-with-template-with-invalid-yaml"),
+		golden:    "output/lint-chart-with-template-with-invalid-yaml-with-debug.txt",
+		wantError: true,
 	}}
 	runTestCmd(t, tests)
 }

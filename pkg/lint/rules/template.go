@@ -82,10 +82,6 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 
 	renderOk := linter.RunLinterRule(support.ErrorSev, fpath, err)
 
-	if !renderOk {
-		return
-	}
-
 	/* Iterate over all the templates to check:
 	- It is a .yaml file
 	- All the values in the template file is defined
@@ -117,6 +113,14 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 
 		renderedContent := renderedContentMap[path.Join(chart.Name(), fileName)]
 		if strings.TrimSpace(renderedContent) != "" {
+
+			linter.NewRenderedContent(renderedContent)
+
+			// We check if the render was successful here to allow any invalid templates to be returned in debug
+			if !renderOk {
+				break
+			}
+
 			linter.RunLinterRule(support.WarningSev, fpath, validateTopIndentLevel(renderedContent))
 
 			decoder := yaml.NewYAMLOrJSONDecoder(strings.NewReader(renderedContent), 4096)
@@ -132,7 +136,7 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 					break
 				}
 
-				// If YAML linting fails, we sill progress. So we don't capture the returned state
+				// If YAML linting fails, we still progress. So we don't capture the returned state
 				// on this linter run.
 				linter.RunLinterRule(support.ErrorSev, fpath, validateYamlContent(err))
 

@@ -100,6 +100,12 @@ func newLintCmd(out io.Writer) *cobra.Command {
 					failed++
 				}
 
+				if settings.Debug {
+					for _, contents := range result.RenderedContents {
+						fmt.Fprintf(&message, "---\n# Source: %s\n%s\n", path, contents)
+					}
+				}
+
 				// Adding extra new line here to break up the
 				// results, stops this from being a big wall of
 				// text and makes it easier to follow.

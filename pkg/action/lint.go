@@ -41,6 +41,7 @@ type Lint struct {
 // LintResult is the result of Lint
 type LintResult struct {
 	TotalChartsLinted int
+	RenderedContents  []string
 	Messages          []support.Message
 	Errors            []error
 }
@@ -59,6 +60,9 @@ func (l *Lint) Run(paths []string, vals map[string]interface{}) *LintResult {
 	result := &LintResult{}
 	for _, path := range paths {
 		linter, err := lintChart(path, vals, l.Namespace, l.Strict)
+
+		result.RenderedContents = append(result.RenderedContents, linter.RenderedContent...)
+
 		if err != nil {
 			result.Errors = append(result.Errors, err)
 			continue

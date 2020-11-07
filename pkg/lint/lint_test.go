@@ -35,6 +35,7 @@ const badChartDir = "rules/testdata/badchartfile"
 const badValuesFileDir = "rules/testdata/badvaluesfile"
 const badYamlFileDir = "rules/testdata/albatross"
 const goodChartDir = "rules/testdata/goodone"
+const multiTemplateFail = "rules/testdata/multi-template-fail"
 
 func TestBadChart(t *testing.T) {
 	m := All(badChartDir, values, namespace, strict).Messages
@@ -102,6 +103,16 @@ func TestBadValues(t *testing.T) {
 	}
 	if !strings.Contains(m[0].Err.Error(), "unable to parse YAML") {
 		t.Errorf("All didn't have the error for invalid key format: %s", m[0].Err)
+	}
+}
+
+func TestRenderedContent(t *testing.T) {
+	m := All(multiTemplateFail, values, namespace, strict).RenderedContent
+	if len(m) < 1 {
+		t.Fatalf("All didn't return any content, got %#v", m)
+	}
+	if !strings.Contains(m[0], "apiVersion: v1") {
+		t.Errorf("All didn't have expected content")
 	}
 }
 
