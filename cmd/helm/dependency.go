@@ -84,12 +84,11 @@ This will produce an error if the chart cannot be loaded.
 
 func newDependencyCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               "dependency update|build|list",
-		Aliases:           []string{"dep", "dependencies"},
-		Short:             "manage a chart's dependencies",
-		Long:              dependencyDesc,
-		Args:              require.NoArgs,
-		ValidArgsFunction: noCompletions, // Disable file completion
+		Use:     "dependency update|build|list",
+		Aliases: []string{"dep", "dependencies"},
+		Short:   "manage a chart's dependencies",
+		Long:    dependencyDesc,
+		Args:    require.NoArgs,
 	}
 
 	cmd.AddCommand(newDependencyListCmd(out))

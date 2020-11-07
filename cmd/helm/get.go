@@ -37,11 +37,10 @@ get extended information about the release, including:
 
 func newGetCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               "get",
-		Short:             "download extended information of a named release",
-		Long:              getHelp,
-		Args:              require.NoArgs,
-		ValidArgsFunction: noCompletions, // Disable file completion
+		Use:   "get",
+		Short: "download extended information of a named release",
+		Long:  getHelp,
+		Args:  require.NoArgs,
 	}
 
 	cmd.AddCommand(newGetAllCmd(cfg, out))

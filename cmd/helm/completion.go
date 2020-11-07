@@ -73,11 +73,10 @@ var disableCompDescriptions bool
 
 func newCompletionCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               "completion",
-		Short:             "generate autocompletions script for the specified shell",
-		Long:              completionDesc,
-		Args:              require.NoArgs,
-		ValidArgsFunction: noCompletions, // Disable file completion
+		Use:   "completion",
+		Short: "generate autocompletions script for the specified shell",
+		Long:  completionDesc,
+		Args:  require.NoArgs,
 	}
 
 	bash := &cobra.Command{
