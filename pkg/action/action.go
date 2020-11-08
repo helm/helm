@@ -405,7 +405,8 @@ func (c *Configuration) Init(getter genericclioptions.RESTClientGetter, namespac
 		}
 	case "azure_blob":
 		d, err := driver.NewAzureBlob(
-			os.Getenv("HELM_DRIVER_AZURE_BLOB_CONNECTION_STRING"),
+			os.Getenv("HELM_DRIVER_AZURE_BLOB_ACCOUNT"),
+			os.Getenv("HELM_DRIVER_AZURE_BLOB_KEY"),
 			log,
 			namespace,
 		)
