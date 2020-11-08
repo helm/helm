@@ -371,16 +371,14 @@ func (c *Configuration) Init(getter genericclioptions.RESTClientGetter, namespac
 		clientFn:  kc.Factory.KubernetesClientSet,
 	}
 
-	var store *storage.Storage
+	var d driver.Driver
 	switch helmDriver {
 	case "secret", "secrets", "":
 		d := driver.NewSecrets(newSecretClient(lazyClient))
 		d.Log = log
-		store = storage.Init(d)
 	case "configmap", "configmaps":
 		d := driver.NewConfigMaps(newConfigMapClient(lazyClient))
 		d.Log = log
-		store = storage.Init(d)
 	case "memory":
 		var d *driver.Memory
 		if c.Releases != nil {
@@ -405,12 +403,20 @@ func (c *Configuration) Init(getter genericclioptions.RESTClientGetter, namespac
 		if err != nil {
 			panic(fmt.Sprintf("Unable to instantiate SQL driver: %v", err))
 		}
-		store = storage.Init(d)
+	case "azure_blob":
+		d, err := driver.NewAzureBlob(
+			os.Getenv("HELM_DRIVER_AZURE_BLOB_CONNECTION_STRING"),
+			log,
+			namespace,
+		)
+		if err != nil {
+			panic(fmt.Sprintf("Unable to instantiate SQL driver: %v", err))
+		}
 	default:
 		// Not sure what to do here.
 		panic("Unknown driver in HELM_DRIVER: " + helmDriver)
 	}
-
+	store := storage.Init(d)
 	c.RESTClientGetter = getter
 	c.KubeClient = kc
 	c.Releases = store

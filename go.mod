@@ -3,6 +3,7 @@ module helm.sh/helm/v3
 go 1.14
 
 require (
+	github.com/Azure/azure-storage-blob-go v0.11.0
 	github.com/BurntSushi/toml v0.3.1
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/Masterminds/goutils v1.1.0
