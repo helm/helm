@@ -162,7 +162,11 @@ func (ch *Chart) CRDObjects() []CRD {
 	}
 	// Get CRDs from dependencies, too.
 	for _, dep := range ch.Dependencies() {
-		crds = append(crds, dep.CRDObjects()...)
+		for _, req := range ch.Metadata.Dependencies {
+			if dep.Name() == req.Name && req.Enabled {
+				crds = append(crds, dep.CRDObjects()...)
+			}
+		}
 	}
 	return crds
 }

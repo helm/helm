@@ -209,3 +209,81 @@ func TestCRDObjects(t *testing.T) {
 	crds := chrt.CRDObjects()
 	is.Equal(expected, crds)
 }
+
+func TestCRDObjectsWithDependecy(t *testing.T) {
+	chrt := createTestChartWithCrdAndDependency(true)
+	expected := []CRD{
+		{
+			Name:     "crds/foo.yaml",
+			Filename: "crds/foo.yaml",
+			File: &File{
+				Name: "crds/foo.yaml",
+				Data: []byte("hello"),
+			},
+		},
+		{
+			Name:     "crds/baz.yaml",
+			Filename: "dependency1/crds/baz.yaml",
+			File: &File{
+				Name: "crds/baz.yaml",
+				Data: []byte("hello"),
+			},
+		},
+	}
+
+	is := assert.New(t)
+	crds := chrt.CRDObjects()
+	is.Equal(expected, crds)
+}
+
+func TestCRDObjectsWithDependecyDisabled(t *testing.T) {
+	chrt := createTestChartWithCrdAndDependency(false)
+	expected := []CRD{
+		{
+			Name:     "crds/foo.yaml",
+			Filename: "crds/foo.yaml",
+			File: &File{
+				Name: "crds/foo.yaml",
+				Data: []byte("hello"),
+			},
+		},
+	}
+
+	is := assert.New(t)
+	crds := chrt.CRDObjects()
+	is.Equal(expected, crds)
+}
+
+func createTestChartWithCrdAndDependency(dependencyEnabled bool) Chart {
+	chrt := Chart{
+		Files: []*File{
+			{
+				Name: "crds/foo.yaml",
+				Data: []byte("hello"),
+			},
+		},
+		dependencies: []*Chart{
+			{
+				Metadata: &Metadata{
+					Name: "dependency1",
+				},
+				Files: []*File{
+					{
+						Name: "crds/baz.yaml",
+						Data: []byte("hello"),
+					},
+				},
+			},
+		},
+		Metadata: &Metadata{
+			Dependencies: []*Dependency{
+				{
+					Name:    "dependency1",
+					Enabled: dependencyEnabled,
+				},
+			},
+		},
+	}
+
+	return chrt
+}
