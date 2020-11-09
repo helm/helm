@@ -210,7 +210,7 @@ func TestCRDObjects(t *testing.T) {
 	is.Equal(expected, crds)
 }
 
-func TestCRDObjectsWithDependecy(t *testing.T) {
+func TestCRDObjectsWithDependency(t *testing.T) {
 	chrt := createTestChartWithCrdAndDependency(true)
 	expected := []CRD{
 		{
@@ -236,7 +236,7 @@ func TestCRDObjectsWithDependecy(t *testing.T) {
 	is.Equal(expected, crds)
 }
 
-func TestCRDObjectsWithDependecyDisabled(t *testing.T) {
+func TestCRDObjectsWithDependencyDisabled(t *testing.T) {
 	chrt := createTestChartWithCrdAndDependency(false)
 	expected := []CRD{
 		{
