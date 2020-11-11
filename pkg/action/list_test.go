@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -365,4 +366,45 @@ func TestSelectorList(t *testing.T) {
 		expectedFilteredList := []*release.Release{r2, r3}
 		assert.ElementsMatch(t, expectedFilteredList, res)
 	})
+}
+func TestListAll(t *testing.T) {
+	wantReleaseName := "foo"
+	wantMaxVersions := 10
+
+	is := assert.New(t)
+	lister := newListFixture(t)
+	lister.Limit = 0
+	lister.Filter = wantReleaseName
+	lister.StateMask = ListAll
+
+	makeMeMultipleReleaseVersions(lister.cfg.Releases, "foo", wantMaxVersions, t)
+
+	list, err := lister.Run()
+	is.NoError(err)
+	is.Len(list, wantMaxVersions)
+}
+
+func makeMeMultipleReleaseVersions(store *storage.Storage, releaseName string, maxVersion int, t *testing.T) {
+	t.Helper()
+
+	for i := 1; i <= maxVersion; i++ {
+		rel := releaseStub()
+		rel.Name = releaseName
+		rel.Version = i
+
+		switch {
+		case rel.Version < maxVersion:
+			rel.Info.Status = release.StatusSuperseded
+		case rel.Version == maxVersion:
+			rel.Info.Status = release.StatusDeployed
+		}
+
+		if err := store.Create(rel); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	all, err := store.ListReleases()
+	assert.NoError(t, err)
+	assert.Len(t, all, maxVersion, fmt.Sprintf("sanity test: %d items added", maxVersion))
 }
