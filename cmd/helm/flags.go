@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -66,11 +67,14 @@ func bindOutputFlag(cmd *cobra.Command, varRef *output.Format) {
 
 	err := cmd.RegisterFlagCompletionFunc(outputFlag, func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		var formatNames []string
-		for _, format := range output.Formats() {
+		for format, desc := range output.FormatsWithDesc() {
 			if strings.HasPrefix(format, toComplete) {
-				formatNames = append(formatNames, format)
+				formatNames = append(formatNames, fmt.Sprintf("%s\t%s", format, desc))
 			}
 		}
+
+		// Sort the results to get a deterministic order for the tests
+		sort.Strings(formatNames)
 		return formatNames, cobra.ShellCompDirectiveNoFileComp
 	})
 
