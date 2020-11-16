@@ -183,22 +183,19 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 
 	if includeCrds {
 		for _, crd := range ch.CRDObjects() {
-			if outputDir == "" {
-				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Name, string(crd.File.Data[:]))
-			} else {
+			if outputDir != "" {
 				err = writeToFile(outputDir, crd.Filename, string(crd.File.Data[:]), fileWritten[crd.Name])
 				if err != nil {
 					return hs, b, "", err
 				}
 				fileWritten[crd.Name] = true
 			}
+			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Name, string(crd.File.Data[:]))
 		}
 	}
 
 	for _, m := range manifests {
-		if outputDir == "" {
-			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", m.Name, m.Content)
-		} else {
+		if outputDir != "" {
 			newDir := outputDir
 			if useReleaseName {
 				newDir = filepath.Join(outputDir, releaseName)
@@ -213,6 +210,7 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 			}
 			fileWritten[m.Name] = true
 		}
+		fmt.Fprintf(b, "---\n# Source: %s\n%s\n", m.Name, m.Content)
 	}
 
 	if pr != nil {
