@@ -148,7 +148,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					for _, m := range manifestsToRender {
 						fmt.Fprintf(out, "---\n%s\n", m)
 					}
-				} else {
+				} else if client.OutputDir == "" {
 					fmt.Fprintf(out, "%s", manifests.String())
 				}
 			}
