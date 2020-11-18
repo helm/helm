@@ -201,6 +201,13 @@ func TestInstall(t *testing.T) {
 			name: "install chart with only crds",
 			cmd:  "install crd-test testdata/testcharts/chart-with-only-crds --namespace default",
 		},
+		// Install, chart with unknown field
+		{
+			name:      "install chart with unknown field",
+			cmd:       "install unknownfield testdata/testcharts/chart-unknown-field",
+			wantError: true,
+			golden:    "output/install-chart-unknown-field.txt",
+		},
 	}
 
 	runTestActionCmd(t, tests)

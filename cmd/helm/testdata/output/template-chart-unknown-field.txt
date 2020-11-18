@@ -1,0 +1,2 @@
+wrote output/dump/alpine/templates/alpine-pod.yaml
+Error: unable to build kubernetes objects from release manifest: error validating "": error validating data: ValidationError(Pod.spec): unknown field "invalidKey" in io.k8s.api.core.v1.PodSpec
