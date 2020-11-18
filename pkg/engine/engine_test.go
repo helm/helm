@@ -286,6 +286,23 @@ func TestExecErrors(t *testing.T) {
 	}
 }
 
+func TestFailErrors(t *testing.T) {
+	vals := chartutil.Values{"Values": map[string]interface{}{}}
+
+	failtpl := `{{ fail "This is an error" }}`
+	tplsFailed := map[string]renderable{
+		"failtpl": {tpl: failtpl, vals: vals},
+	}
+	_, err := new(Engine).render(tplsFailed)
+	if err == nil {
+		t.Fatalf("Expected failures while rendering: %s", err)
+	}
+	expected := `execution error at (failtpl:1:3): This is an error`
+	if err.Error() != expected {
+		t.Errorf("Expected '%s', got %q", expected, err.Error())
+	}
+}
+
 func TestAllTemplates(t *testing.T) {
 	ch1 := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "ch1"},
