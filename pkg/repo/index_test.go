@@ -214,6 +214,81 @@ func TestMerge(t *testing.T) {
 
 }
 
+func TestMergePrerelease(t *testing.T) {
+	ind1 := NewIndexFile()
+	ind1.Add(&chart.Metadata{
+		Name:    "dreadnought",
+		Version: "0.2.0",
+	}, "dreadnought-0.2.0.tgz", "http://example.com", "aaaa")
+
+	ind2 := NewIndexFile()
+	ind2.Add(&chart.Metadata{
+		Name:    "dreadnought",
+		Version: "0.1.0",
+	}, "dreadnought-0.1.0.tgz", "http://example.com", "aaaabbbb")
+	ind2.Add(&chart.Metadata{
+		Name:    "dreadnought",
+		Version: "0.1-dev",
+	}, "dreadnought-0.1-dev.tgz", "http://example.com", "ccccbbbb")
+
+	ind1.Merge(ind2)
+
+	if len(ind1.Entries) != 1 {
+		t.Errorf("Expected 1 entries, got %d", len(ind1.Entries))
+	}
+	vs := ind1.Entries["dreadnought"]
+	if len(vs) != 3 {
+		t.Errorf("Expected 3 versions, got %d", len(vs))
+		for i := 0; i < len(vs); i++ {
+			t.Errorf("* %+v", ind1.Entries["dreadnought"][i].Metadata.Version)
+		}
+	}
+	v := vs[0]
+	if v.Version != "0.2.0" {
+		t.Errorf("Expected %q version to be 0.2.0, got %s", v.Name, v.Version)
+	}
+
+}
+
+func TestMergeSameVersion(t *testing.T) {
+	ind1 := NewIndexFile()
+	ind1.Add(&chart.Metadata{
+		Name:    "dreadnought",
+		Version: "0.2.0",
+	}, "dreadnought-0.2.0.tgz", "http://example.com", "aaaa")
+
+	ind2 := NewIndexFile()
+	ind2.Add(&chart.Metadata{
+		Name:    "dreadnought",
+		Version: "0.2.0",
+	}, "dreadnought-0.2.0.tgz", "http://example.com", "aaaabbbb")
+	ind2.Add(&chart.Metadata{
+		Name:    "dreadnought",
+		Version: "0.1-dev",
+	}, "dreadnought-0.1-dev.tgz", "http://example.com", "ccccbbbb")
+
+	ind1.Merge(ind2)
+
+	if len(ind1.Entries) != 1 {
+		t.Errorf("Expected 1 entries, got %d", len(ind1.Entries))
+	}
+	vs := ind1.Entries["dreadnought"]
+	if len(vs) != 2 {
+		t.Errorf("Expected 2 versions, got %d", len(vs))
+		for i := 0; i < len(vs); i++ {
+			t.Errorf("* %+v", ind1.Entries["dreadnought"][i].Metadata.Version)
+		}
+	}
+	v := vs[0]
+	if v.Version != "0.2.0" {
+		t.Errorf("Expected %q version to be 0.2.0, got %s", v.Name, v.Version)
+	}
+	expectedDigest := "aaaa"
+	if v.Digest != expectedDigest {
+		t.Errorf("Expected merged %q digest to be %q, got %s", v.Name, expectedDigest, v.Digest)
+	}
+}
+
 func TestDownloadIndexFile(t *testing.T) {
 	t.Run("should  download index file", func(t *testing.T) {
 		srv, err := startLocalServerForTests(nil)
