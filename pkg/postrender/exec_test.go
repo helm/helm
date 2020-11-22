@@ -31,7 +31,7 @@ import (
 )
 
 const testingScript = `#!/bin/sh
-sed s/FOOTEST/BARTEST/g <&0
+sed s/FOOTEST/${1:-BARTEST}/g <&0
 `
 
 func TestGetFullPath(t *testing.T) {
@@ -122,6 +122,23 @@ func TestExecRun(t *testing.T) {
 	output, err := renderer.Run(bytes.NewBufferString("FOOTEST"))
 	is.NoError(err)
 	is.Contains(output.String(), "BARTEST")
+}
+
+func TestExecRunWithArgs(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// the actual Run test uses a basic sed example, so skip this test on windows
+		t.Skip("skipping on windows")
+	}
+	is := assert.New(t)
+	testpath, cleanup := setupTestingScript(t)
+	defer cleanup()
+
+	renderer, err := NewExec(testpath + " ARGUMENT")
+	require.NoError(t, err)
+
+	output, err := renderer.Run(bytes.NewBufferString("FOOTEST"))
+	is.NoError(err)
+	is.Contains(output.String(), "ARGUMENT")
 }
 
 func setupTestingScript(t *testing.T) (filepath string, cleanup func()) {

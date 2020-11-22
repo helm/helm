@@ -21,29 +21,34 @@ import (
 	"io"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/pkg/errors"
 )
 
 type execRender struct {
 	binaryPath string
+	args       []string
 }
 
 // NewExec returns a PostRenderer implementation that calls the provided binary.
 // It returns an error if the binary cannot be found. If the path does not
 // contain any separators, it will search in $PATH, otherwise it will resolve
 // any relative paths to a fully qualified path
-func NewExec(binaryPath string) (PostRenderer, error) {
+func NewExec(command string) (PostRenderer, error) {
+	commandList := strings.Split(command, " ")
+	binaryPath, args := commandList[0], commandList[1:]
+
 	fullPath, err := getFullPath(binaryPath)
 	if err != nil {
 		return nil, err
 	}
-	return &execRender{fullPath}, nil
+	return &execRender{fullPath, args}, nil
 }
 
 // Run the configured binary for the post render
 func (p *execRender) Run(renderedManifests *bytes.Buffer) (*bytes.Buffer, error) {
-	cmd := exec.Command(p.binaryPath)
+	cmd := exec.Command(p.binaryPath, p.args...)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return nil, err
