@@ -21,8 +21,8 @@ import (
 	"io"
 	"os/exec"
 	"path/filepath"
-	"strings"
 
+	"github.com/mattn/go-shellwords"
 	"github.com/pkg/errors"
 )
 
@@ -36,7 +36,15 @@ type execRender struct {
 // contain any separators, it will search in $PATH, otherwise it will resolve
 // any relative paths to a fully qualified path
 func NewExec(command string) (PostRenderer, error) {
-	commandList := strings.Split(command, " ")
+	parser := shellwords.NewParser()
+	parser.ParseEnv = false
+	parser.ParseBacktick = false
+
+	commandList, err := parser.Parse(command)
+	if err != nil {
+		return nil, err
+	}
+
 	binaryPath, args := commandList[0], commandList[1:]
 
 	fullPath, err := getFullPath(binaryPath)

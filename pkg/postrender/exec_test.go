@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -37,7 +38,7 @@ sed s/FOOTEST/${1:-BARTEST}/g <&0
 func TestGetFullPath(t *testing.T) {
 	is := assert.New(t)
 	t.Run("full path resolves correctly", func(t *testing.T) {
-		testpath, cleanup := setupTestingScript(t)
+		testpath, cleanup := setupTestingScript(t, "post-render-test.sh")
 		defer cleanup()
 
 		fullPath, err := getFullPath(testpath)
@@ -46,7 +47,7 @@ func TestGetFullPath(t *testing.T) {
 	})
 
 	t.Run("relative path resolves correctly", func(t *testing.T) {
-		testpath, cleanup := setupTestingScript(t)
+		testpath, cleanup := setupTestingScript(t, "post-render-test.sh")
 		defer cleanup()
 
 		currentDir, err := os.Getwd()
@@ -59,7 +60,7 @@ func TestGetFullPath(t *testing.T) {
 	})
 
 	t.Run("binary in PATH resolves correctly", func(t *testing.T) {
-		testpath, cleanup := setupTestingScript(t)
+		testpath, cleanup := setupTestingScript(t, "post-render-test.sh")
 		defer cleanup()
 
 		realPath := os.Getenv("PATH")
@@ -113,7 +114,7 @@ func TestExecRun(t *testing.T) {
 		t.Skip("skipping on windows")
 	}
 	is := assert.New(t)
-	testpath, cleanup := setupTestingScript(t)
+	testpath, cleanup := setupTestingScript(t, "post-render-test.sh")
 	defer cleanup()
 
 	renderer, err := NewExec(testpath)
@@ -130,7 +131,7 @@ func TestExecRunWithArgs(t *testing.T) {
 		t.Skip("skipping on windows")
 	}
 	is := assert.New(t)
-	testpath, cleanup := setupTestingScript(t)
+	testpath, cleanup := setupTestingScript(t, "post-render-test.sh")
 	defer cleanup()
 
 	renderer, err := NewExec(testpath + " ARGUMENT")
@@ -141,12 +142,47 @@ func TestExecRunWithArgs(t *testing.T) {
 	is.Contains(output.String(), "ARGUMENT")
 }
 
-func setupTestingScript(t *testing.T) (filepath string, cleanup func()) {
+func TestExecRunWithArgsAndSpaceInCommandUsingBackslash(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// the actual Run test uses a basic sed example, so skip this test on windows
+		t.Skip("skipping on windows")
+	}
+	is := assert.New(t)
+	testpath, cleanup := setupTestingScript(t, "post render test.sh")
+	testpathEscaped := strings.ReplaceAll(testpath, " ", "\\ ")
+	defer cleanup()
+
+	renderer, err := NewExec(testpathEscaped + " ARGUMENT")
+	require.NoError(t, err)
+
+	output, err := renderer.Run(bytes.NewBufferString("FOOTEST"))
+	is.NoError(err)
+	is.Contains(output.String(), "ARGUMENT")
+}
+
+func TestExecRunWithArgsAndSpaceInCommandUsingQuotes(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// the actual Run test uses a basic sed example, so skip this test on windows
+		t.Skip("skipping on windows")
+	}
+	is := assert.New(t)
+	testpath, cleanup := setupTestingScript(t, "post render test.sh")
+	defer cleanup()
+
+	renderer, err := NewExec("'" + testpath + "' ARGUMENT")
+	require.NoError(t, err)
+
+	output, err := renderer.Run(bytes.NewBufferString("FOOTEST"))
+	is.NoError(err)
+	is.Contains(output.String(), "ARGUMENT")
+}
+
+func setupTestingScript(t *testing.T, fileName string) (filepath string, cleanup func()) {
 	t.Helper()
 
 	tempdir := ensure.TempDir(t)
 
-	f, err := ioutil.TempFile(tempdir, "post-render-test.sh")
+	f, err := ioutil.TempFile(tempdir, fileName)
 	if err != nil {
 		t.Fatalf("unable to create tempfile for testing: %s", err)
 	}
