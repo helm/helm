@@ -119,6 +119,17 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 						missing := true
 						// Use linux-style filepath separators to unify user's input path
 						f = filepath.ToSlash(f)
+						// the following path matching assumes starting at the "templates/" directory
+						// so we will split the input path on "/" and reslice starting at "templates" if it exists
+						fileSplit := strings.Split(f, "/")
+						for i,v := range fileSplit {
+							if v == "templates" {
+								fileSplit = fileSplit[i:]
+								break;
+							}
+						}
+						f = strings.Join(fileSplit, "/")
+
 						for _, manifestKey := range manifestsKeys {
 							manifest := splitManifests[manifestKey]
 							submatch := manifestNameRegex.FindStringSubmatch(manifest)
