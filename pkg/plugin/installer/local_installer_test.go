@@ -50,4 +50,5 @@ func TestLocalInstaller(t *testing.T) {
 	if i.Path() != helmpath.DataPath("plugins", "echo") {
 		t.Fatalf("expected path '$XDG_CONFIG_HOME/helm/plugins/helm-env', got %q", i.Path())
 	}
+	defer os.RemoveAll(filepath.Dir(helmpath.DataPath())) // helmpath.DataPath is like /tmp/helm013130971/helm
 }

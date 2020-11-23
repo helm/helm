@@ -283,6 +283,7 @@ func TestDownloadTo_VerifyLater(t *testing.T) {
 	defer ensure.HelmHome(t)()
 
 	dest := ensure.TempDir(t)
+	defer os.RemoveAll(dest)
 
 	// Set up a fake repo
 	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")

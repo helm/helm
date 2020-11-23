@@ -148,6 +148,7 @@ func TestIndexCustomSchemeDownload(t *testing.T) {
 		t.Fatalf("Problem loading chart repository from %s: %v", repoURL, err)
 	}
 	repo.CachePath = ensure.TempDir(t)
+	defer os.RemoveAll(repo.CachePath)
 
 	tempIndexFile, err := ioutil.TempFile("", "test-repo")
 	if err != nil {
