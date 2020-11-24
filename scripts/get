@@ -77,15 +77,19 @@ verifySupported() {
 
 # checkDesiredVersion checks if the desired version is available.
 checkDesiredVersion() {
-  if [ "x$DESIRED_VERSION" == "x" ]; then
-    # Get tag from release URL
-    local release_url="https://github.com/helm/helm/releases"
-    if type "curl" > /dev/null; then
+  # Get available tags from release URL
+  local release_url="https://github.com/helm/helm/releases"
+  if type "curl" > /dev/null; then
+    available_tags=$(curl -Ls $release_url | grep 'href="/helm/helm/releases/tag/v2.[0-9]*.[0-9]*\"' | grep -v no-underline | cut -d '"' -f 2 | awk '{n=split($NF,a,"/");print a[n]}' | awk 'a !~ $0{print}; {a=$0}')
+  elif type "wget" > /dev/null; then
+    available_tags=$(wget $release_url -O - 2>&1 | grep 'href="/helm/helm/releases/tag/v2.[0-9]*.[0-9]*\"' | grep -v no-underline | cut -d '"' -f 2 | awk '{n=split($NF,a,"/");print a[n]}' | awk 'a !~ $0{print}; {a=$0}')
+  fi
 
-      TAG=$(curl -Ls $release_url | grep 'href="/helm/helm/releases/tag/v2.[0-9]*.[0-9]*\"' | grep -v no-underline | head -n 1 | cut -d '"' -f 2 | awk '{n=split($NF,a,"/");print a[n]}' | awk 'a !~ $0{print}; {a=$0}')
-    elif type "wget" > /dev/null; then
-      TAG=$(wget $release_url -O - 2>&1 | grep 'href="/helm/helm/releases/tag/v2.[0-9]*.[0-9]*\"' | grep -v no-underline | head -n 1 | cut -d '"' -f 2 | awk '{n=split($NF,a,"/");print a[n]}' | awk 'a !~ $0{print}; {a=$0}')
-    fi
+  if [ "x$DESIRED_VERSION" == "x" ]; then
+    TAG=$(echo $available_tags | cut -d ' ' -f 1)
+  elif ! echo $available_tags | grep $DESIRED_VERSION > /dev/null; then
+    echo "Helm $DESIRED_VERSION is unavailable"
+    exit 1
   else
     TAG=$DESIRED_VERSION
   fi
