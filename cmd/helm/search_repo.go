@@ -167,7 +167,7 @@ func (o *searchRepoOptions) applyConstraint(res []*search.Result) ([]*search.Res
 		v, err := semver.NewVersion(r.Chart.Version)
 
 		if err != nil {
-			// If the current version number check appears ErrSegmentStartsZero or ErrInvalidPrerelease error and not devel mode, ingore
+			// If the current version number check appears ErrSegmentStartsZero or ErrInvalidPrerelease error and not devel mode, ignore
 			if (err == semver.ErrSegmentStartsZero || err == semver.ErrInvalidPrerelease) && !o.devel {
 				continue
 			}

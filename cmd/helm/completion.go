@@ -27,7 +27,7 @@ import (
 )
 
 const completionDesc = `
-Generate autocompletions script for Helm for the specified shell.
+Generate autocompletion scripts for Helm for the specified shell.
 `
 const bashCompDesc = `
 Generate the autocompletion script for Helm for the bash shell.
@@ -74,14 +74,14 @@ var disableCompDescriptions bool
 func newCompletionCmd(out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "completion",
-		Short: "generate autocompletions script for the specified shell",
+		Short: "generate autocompletion scripts for the specified shell",
 		Long:  completionDesc,
 		Args:  require.NoArgs,
 	}
 
 	bash := &cobra.Command{
 		Use:                   "bash",
-		Short:                 "generate autocompletions script for bash",
+		Short:                 "generate autocompletion script for bash",
 		Long:                  bashCompDesc,
 		Args:                  require.NoArgs,
 		DisableFlagsInUseLine: true,
@@ -93,7 +93,7 @@ func newCompletionCmd(out io.Writer) *cobra.Command {
 
 	zsh := &cobra.Command{
 		Use:                   "zsh",
-		Short:                 "generate autocompletions script for zsh",
+		Short:                 "generate autocompletion script for zsh",
 		Long:                  zshCompDesc,
 		Args:                  require.NoArgs,
 		DisableFlagsInUseLine: true,
@@ -106,7 +106,7 @@ func newCompletionCmd(out io.Writer) *cobra.Command {
 
 	fish := &cobra.Command{
 		Use:                   "fish",
-		Short:                 "generate autocompletions script for fish",
+		Short:                 "generate autocompletion script for fish",
 		Long:                  fishCompDesc,
 		Args:                  require.NoArgs,
 		DisableFlagsInUseLine: true,
