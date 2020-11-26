@@ -126,11 +126,11 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	// connect to the cluster. So when the user says to dry run, respect the user's
 	// wishes and do not connect to the cluster.
 	if !dryRun && cfg.RESTClientGetter != nil {
-		rest, err := cfg.RESTClientGetter.ToRESTConfig()
+		restConfig, err := cfg.RESTClientGetter.ToRESTConfig()
 		if err != nil {
 			return hs, b, "", err
 		}
-		files, err2 = engine.RenderWithClient(ch, values, rest)
+		files, err2 = engine.RenderWithClient(ch, values, restConfig)
 	} else {
 		files, err2 = engine.Render(ch, values)
 	}
