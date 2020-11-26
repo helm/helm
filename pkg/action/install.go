@@ -219,7 +219,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 		return nil, err
 	}
 
-	//special case for helm template --is-upgrade
+	// special case for helm template --is-upgrade
 	isUpgrade := i.IsUpgrade && i.DryRun
 	options := chartutil.ReleaseOptions{
 		Name:      i.ReleaseName,
