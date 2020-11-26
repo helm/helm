@@ -110,7 +110,7 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 
 		// NOTE: disabled for now, Refs https://github.com/helm/helm/issues/1463
 		// Check that all the templates have a matching value
-		//linter.RunLinterRule(support.WarningSev, fpath, validateNoMissingValues(templatesPath, valuesToRender, preExecutedTemplate))
+		// linter.RunLinterRule(support.WarningSev, fpath, validateNoMissingValues(templatesPath, valuesToRender, preExecutedTemplate))
 
 		// NOTE: disabled for now, Refs https://github.com/helm/helm/issues/1037
 		// linter.RunLinterRule(support.WarningSev, fpath, validateQuotes(string(preExecutedTemplate)))
