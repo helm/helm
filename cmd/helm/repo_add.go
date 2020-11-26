@@ -105,7 +105,7 @@ func (o *repoAddOptions) run(out io.Writer) error {
 		}
 	}
 
-	//Ensure the file directory exists as it is required for file locking
+	// Ensure the file directory exists as it is required for file locking
 	err := os.MkdirAll(filepath.Dir(o.repoFile), os.ModePerm)
 	if err != nil && !os.IsExist(err) {
 		return err
