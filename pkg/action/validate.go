@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/cli-runtime/pkg/resource"
 
+	"helm.sh/helm/v3/internal/version"
 	"helm.sh/helm/v3/pkg/kube"
 )
 
@@ -45,7 +46,7 @@ func existingResourceConflict(resources kube.ResourceList, releaseName, releaseN
 			return err
 		}
 
-		helper := resource.NewHelper(info.Client, info.Mapping)
+		helper := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(version.GetUserAgent())
 		existing, err := helper.Get(info.Namespace, info.Name)
 		if err != nil {
 			if apierrors.IsNotFound(err) {

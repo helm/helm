@@ -48,6 +48,8 @@ import (
 	cachetools "k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
+
+	"helm.sh/helm/v3/internal/version"
 )
 
 // ErrNoObjectsVisited indicates that during a visit operation, no matching objects were found.
@@ -190,7 +192,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			return err
 		}
 
-		helper := resource.NewHelper(info.Client, info.Mapping)
+		helper := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(version.GetUserAgent())
 		if _, err := helper.Get(info.Namespace, info.Name); err != nil {
 			if !apierrors.IsNotFound(err) {
 				return errors.Wrap(err, "could not get information about the resource")
@@ -361,7 +363,7 @@ func batchPerform(infos ResourceList, fn func(*resource.Info) error, errs chan<-
 }
 
 func createResource(info *resource.Info) error {
-	obj, err := resource.NewHelper(info.Client, info.Mapping).Create(info.Namespace, true, info.Object)
+	obj, err := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(version.GetUserAgent()).Create(info.Namespace, true, info.Object)
 	if err != nil {
 		return err
 	}
@@ -371,7 +373,7 @@ func createResource(info *resource.Info) error {
 func deleteResource(info *resource.Info) error {
 	policy := metav1.DeletePropagationBackground
 	opts := &metav1.DeleteOptions{PropagationPolicy: &policy}
-	_, err := resource.NewHelper(info.Client, info.Mapping).DeleteWithOptions(info.Namespace, info.Name, opts)
+	_, err := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(version.GetUserAgent()).DeleteWithOptions(info.Namespace, info.Name, opts)
 	return err
 }
 
@@ -386,7 +388,7 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 	}
 
 	// Fetch the current object for the three way merge
-	helper := resource.NewHelper(target.Client, target.Mapping)
+	helper := resource.NewHelper(target.Client, target.Mapping).WithFieldManager(version.GetUserAgent())
 	currentObj, err := helper.Get(target.Namespace, target.Name)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return nil, types.StrategicMergePatchType, errors.Wrapf(err, "unable to get data for current object %s/%s", target.Namespace, target.Name)
@@ -428,7 +430,7 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force bool) error {
 	var (
 		obj    runtime.Object
-		helper = resource.NewHelper(target.Client, target.Mapping)
+		helper = resource.NewHelper(target.Client, target.Mapping).WithFieldManager(version.GetUserAgent())
 		kind   = target.Mapping.GroupVersionKind.Kind
 	)
 
