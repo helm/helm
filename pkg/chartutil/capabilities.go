@@ -59,6 +59,14 @@ type Capabilities struct {
 	HelmVersion helmversion.BuildInfo
 }
 
+func (capabilities *Capabilities) Copy() *Capabilities {
+	return &Capabilities{
+		KubeVersion: capabilities.KubeVersion,
+		APIVersions: capabilities.APIVersions,
+		HelmVersion: capabilities.HelmVersion,
+	}
+}
+
 // KubeVersion is the Kubernetes version.
 type KubeVersion struct {
 	Version string // Kubernetes version

@@ -198,7 +198,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	if i.ClientOnly {
 		// Add mock objects in here so it doesn't use Kube API server
 		// NOTE(bacongobbler): used for `helm template`
-		i.cfg.Capabilities = chartutil.DefaultCapabilities
+		i.cfg.Capabilities = chartutil.DefaultCapabilities.Copy()
 		if i.KubeVersion != nil {
 			i.cfg.Capabilities.KubeVersion = *i.KubeVersion
 		}
