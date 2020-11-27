@@ -81,7 +81,7 @@ func ParseKubeVersion(version string) (*KubeVersion, error) {
 		return nil, err
 	}
 	return &KubeVersion{
-		Version: sv.Original(),
+		Version: "v" + sv.String(),
 		Major:   strconv.FormatUint(sv.Major(), 10),
 		Minor:   strconv.FormatUint(sv.Minor(), 10),
 	}, nil
