@@ -11,7 +11,7 @@ require (
 	github.com/Masterminds/squirrel v1.4.0
 	github.com/Masterminds/vcs v1.13.1
 	github.com/asaskevich/govalidator v0.0.0-20200428143746-21a406dcc535
-	github.com/containerd/containerd v1.3.4
+	github.com/containerd/containerd v1.4.2
 	github.com/cyphar/filepath-securejoin v0.2.2
 	github.com/deislabs/oras v0.8.1
 	github.com/docker/distribution v2.7.1+incompatible
@@ -36,10 +36,10 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	k8s.io/api v0.19.3
-	k8s.io/apiextensions-apiserver v0.19.3 
+	k8s.io/apiextensions-apiserver v0.19.3
 	k8s.io/apimachinery v0.19.3
-	k8s.io/cli-runtime v0.19.3 
-	k8s.io/client-go v0.19.3 
+	k8s.io/cli-runtime v0.19.3
+	k8s.io/client-go v0.19.3
 	k8s.io/klog v1.0.0
 	k8s.io/kubectl v0.19.3
 	sigs.k8s.io/yaml v1.2.0
