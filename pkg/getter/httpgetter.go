@@ -111,10 +111,13 @@ func (g *HTTPGetter) httpClient() (*http.Client, error) {
 	}
 
 	if g.opts.insecureSkipVerifyTLS {
-		transport.TLSClientConfig = &tls.Config{
-			InsecureSkipVerify: true,
+		if transport.TLSClientConfig == nil {
+			transport.TLSClientConfig = &tls.Config{
+				InsecureSkipVerify: true,
+			}
+		} else {
+			transport.TLSClientConfig.InsecureSkipVerify = true
 		}
-
 	}
 
 	client := &http.Client{
