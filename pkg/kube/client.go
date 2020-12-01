@@ -211,8 +211,21 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 
 		originalInfo := original.Get(info)
 		if originalInfo == nil {
-			kind := info.Mapping.GroupVersionKind.Kind
-			return errors.Errorf("no %s with the name %q found", kind, info.Name)
+			c.Log("Warning: %s/%s is found in k8s, but not found in previous release info", info.Namespace, info.Name)
+			c.Log("Deleting %q in %s...", info.Name, info.Namespace)
+			if err := deleteResource(info); err != nil {
+				c.Log("Failed to delete %q, err: %s", info.Name, err)
+				return errors.Wrap(err, "Failed to delete resource")
+			}
+			res.Deleted = append(res.Deleted, info)
+
+			if err := createResource(info); err != nil {
+				return errors.Wrap(err, "failed to create resource")
+			}
+
+			// Append the created resource to the results
+			res.Created = append(res.Created, info)
+			return nil
 		}
 
 		if err := updateResource(c, info, originalInfo.Object, force); err != nil {
