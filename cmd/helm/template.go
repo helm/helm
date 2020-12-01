@@ -91,7 +91,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 							if client.UseReleaseName {
 								newDir = filepath.Join(client.OutputDir, client.ReleaseName)
 							}
-							err = writeToFile(newDir, m.Path, m.Manifest, fileWritten[m.Path])
+							err := writeToFile(newDir, m.Path, m.Manifest, fileWritten[m.Path])
 							if err != nil {
 								return err
 							}
