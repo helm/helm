@@ -99,7 +99,8 @@ version: 0.1.0
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application. Versions are not expected to
 # follow Semantic Versioning. They should reflect the version the application is using.
-appVersion: 1.16.0
+# It is recommended to use it with quotes.
+appVersion: "1.16.0"
 `
 
 const defaultValues = `# Default values for %s.
