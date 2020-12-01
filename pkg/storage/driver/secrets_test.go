@@ -147,6 +147,11 @@ func TestSecretQuery(t *testing.T) {
 	if len(rls) != 2 {
 		t.Fatalf("Expected 2 results, actual %d", len(rls))
 	}
+	for _, rls := range rls {
+		if rls.Labels["status"] != "deployed" {
+			t.Errorf("Expected status label on release")
+		}
+	}
 
 	_, err = secrets.Query(map[string]string{"name": "notExist"})
 	if err != ErrReleaseNotFound {
