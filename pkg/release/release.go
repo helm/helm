@@ -38,8 +38,7 @@ type Release struct {
 	// Namespace is the kubernetes namespace of the release.
 	Namespace string `json:"namespace,omitempty"`
 	// Labels of the release.
-	// Disabled encoding into Json cause labels are stored in storage driver metadata field.
-	Labels map[string]string `json:"-"`
+	Labels map[string]string `json:"labels,omitempty"`
 }
 
 // SetStatus is a helper for setting the status on a release.

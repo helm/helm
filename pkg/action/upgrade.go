@@ -96,6 +96,8 @@ type Upgrade struct {
 	PostRenderer postrender.PostRenderer
 	// DisableOpenAPIValidation controls whether OpenAPI validation is enforced.
 	DisableOpenAPIValidation bool
+
+	Labels map[string]string
 }
 
 // NewUpgrade creates a new Upgrade object with the given configuration.
@@ -230,6 +232,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		Version:  revision,
 		Manifest: manifestDoc.String(),
 		Hooks:    hooks,
+		Labels:   u.Labels,
 	}
 
 	if len(notesTxt) > 0 {

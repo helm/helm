@@ -148,6 +148,10 @@ func (secrets *Secrets) Create(key string, rls *rspb.Release) error {
 	var lbs labels
 
 	lbs.init()
+
+	// add user provided labels here, so that user can't override builtin labels
+	lbs.fromMap(rls.Labels)
+
 	lbs.set("createdAt", strconv.Itoa(int(time.Now().Unix())))
 
 	// create a new secret to hold the release
@@ -173,6 +177,10 @@ func (secrets *Secrets) Update(key string, rls *rspb.Release) error {
 	var lbs labels
 
 	lbs.init()
+
+	// add user provided labels here, so that user can't override builtin labels
+	lbs.fromMap(rls.Labels)
+
 	lbs.set("modifiedAt", strconv.Itoa(int(time.Now().Unix())))
 
 	// create a new secret object to hold the release

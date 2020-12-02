@@ -134,6 +134,7 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 		Version:  currentRelease.Version + 1,
 		Manifest: previousRelease.Manifest,
 		Hooks:    previousRelease.Hooks,
+		Labels:   previousRelease.Labels,
 	}
 
 	return currentRelease, targetRelease, nil

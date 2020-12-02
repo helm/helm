@@ -157,6 +157,10 @@ func (cfgmaps *ConfigMaps) Create(key string, rls *rspb.Release) error {
 	var lbs labels
 
 	lbs.init()
+
+	// add user provided labels here, so that user can't override builtin labels
+	lbs.fromMap(rls.Labels)
+
 	lbs.set("createdAt", strconv.Itoa(int(time.Now().Unix())))
 
 	// create a new configmap to hold the release
@@ -184,6 +188,10 @@ func (cfgmaps *ConfigMaps) Update(key string, rls *rspb.Release) error {
 	var lbs labels
 
 	lbs.init()
+
+	// add user provided labels here, so that user can't override builtin labels
+	lbs.fromMap(rls.Labels)
+
 	lbs.set("modifiedAt", strconv.Itoa(int(time.Now().Unix())))
 
 	// create a new configmap object to hold the release

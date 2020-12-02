@@ -100,6 +100,8 @@ type Install struct {
 	// OutputDir/<ReleaseName>
 	UseReleaseName bool
 	PostRenderer   postrender.PostRenderer
+
+	Labels map[string]string
 }
 
 // ChartPathOptions captures common options used for controlling chart paths
@@ -443,6 +445,7 @@ func (i *Install) createRelease(chrt *chart.Chart, rawVals map[string]interface{
 			Status:        release.StatusUnknown,
 		},
 		Version: 1,
+		Labels:  i.Labels,
 	}
 }
 
