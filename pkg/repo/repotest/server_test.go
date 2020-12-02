@@ -18,6 +18,7 @@ package repotest
 import (
 	"io/ioutil"
 	"net/http"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -33,6 +34,7 @@ func TestServer(t *testing.T) {
 	defer ensure.HelmHome(t)()
 
 	rootDir := ensure.TempDir(t)
+	defer os.RemoveAll(rootDir)
 
 	srv := NewServer(rootDir)
 	defer srv.Stop()
