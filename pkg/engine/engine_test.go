@@ -289,7 +289,7 @@ func TestExecErrors(t *testing.T) {
 func TestFailErrors(t *testing.T) {
 	vals := chartutil.Values{"Values": map[string]interface{}{}}
 
-	failtpl := `{{ fail "This is an error" }}`
+	failtpl := `All your base are belong to us{{ fail "This is an error" }}`
 	tplsFailed := map[string]renderable{
 		"failtpl": {tpl: failtpl, vals: vals},
 	}
@@ -300,6 +300,18 @@ func TestFailErrors(t *testing.T) {
 	expected := `execution error at (failtpl:1:3): This is an error`
 	if err.Error() != expected {
 		t.Errorf("Expected '%s', got %q", expected, err.Error())
+	}
+
+	var e Engine
+	e.LintMode = true
+	out, err := e.render(tplsFailed)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectStr := "All your base are belong to us"
+	if gotStr := out["failtpl"]; gotStr != expectStr {
+		t.Errorf("Expected %q, got %q (%v)", expectStr, gotStr, out)
 	}
 }
 
