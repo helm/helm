@@ -186,6 +186,8 @@ func (o *repoAddOptions) run(out io.Writer) error {
 
 	f.Update(&c)
 
+	f.Generated = time.Now()
+
 	if err := f.WriteFile(o.repoFile, 0644); err != nil {
 		return err
 	}

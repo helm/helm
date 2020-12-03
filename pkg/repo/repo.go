@@ -112,7 +112,6 @@ func (r *File) Remove(name string) bool {
 
 // WriteFile writes a repositories file to the given path.
 func (r *File) WriteFile(path string, perm os.FileMode) error {
-	r.Generated = time.Now()
 	data, err := yaml.Marshal(r)
 	if err != nil {
 		return err
