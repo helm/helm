@@ -161,10 +161,13 @@ func (o *repoAddOptions) run(out io.Writer) error {
 	if !o.forceUpdate && f.Has(o.name) {
 		existing := f.Get(o.name)
 		if c != *existing {
-
-			// The input coming in for the name is different from what is already
-			// configured. Return an error.
-			return errors.Errorf("repository name (%s) already exists, please specify a different name", o.name)
+			// In case of of the repo URLs ends with a trailing slash and the other
+			// one doesn't, the config is considered to be different even though they
+			// refer to the same repository.
+			// Only fail with an error if the configs actually are different.
+			if c.URLWithTrailingSlash() != existing.URLWithTrailingSlash() {
+				return errors.Errorf("repository name (%s) already exists, please specify a different name", o.name)
+			}
 		}
 
 		// The add is idempotent so do nothing
