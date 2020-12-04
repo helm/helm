@@ -292,3 +292,13 @@ func (e *Entry) String() string {
 	}
 	return string(buf)
 }
+
+// URLWithTrailingSlash returns the repository URL with a trailing slash.
+// If the URL already ends with a slash, it will be returned unchanged.
+func (e *Entry) URLWithTrailingSlash() string {
+	if e.URL[len(e.URL)-1:] == "/" {
+		return e.URL
+	}
+
+	return e.URL + "/"
+}
