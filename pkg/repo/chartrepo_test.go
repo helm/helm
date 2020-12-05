@@ -413,6 +413,6 @@ func TestEntry_URLWithTrailingSlash(t *testing.T) {
 	e = Entry{URL: urlWithoutTrailingSlash}
 
 	if e.URLWithTrailingSlash() != urlWithTrailingSlash {
-		t.Errorf("Expected repository URL without trailing slash")
+		t.Errorf("Expected repository URL with trailing slash")
 	}
 }
