@@ -297,7 +297,7 @@ func TestFailErrors(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Expected failures while rendering: %s", err)
 	}
-	expected := `execution error at (failtpl:1:3): This is an error`
+	expected := `execution error at (failtpl:1:33): This is an error`
 	if err.Error() != expected {
 		t.Errorf("Expected '%s', got %q", expected, err.Error())
 	}
