@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"os"
 	"path"
 	"regexp"
 
@@ -126,6 +127,7 @@ type List struct {
 	Uninstalled  bool
 	Superseded   bool
 	Uninstalling bool
+	ServiceName  string
 	Deployed     bool
 	Failed       bool
 	Pending      bool
@@ -154,7 +156,7 @@ func (l *List) Run() ([]*release.Release, error) {
 			return nil, err
 		}
 	}
-
+	os.Setenv("helm-serviceName", l.ServiceName)
 	results, err := l.cfg.Releases.List(func(rel *release.Release) bool {
 		// Skip anything that doesn't match the filter.
 		if filter != nil && !filter.MatchString(rel.Name) {

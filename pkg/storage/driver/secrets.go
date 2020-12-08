@@ -18,6 +18,7 @@ package driver // import "helm.sh/helm/v3/pkg/storage/driver"
 
 import (
 	"context"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -80,6 +81,12 @@ func (secrets *Secrets) Get(key string) (*rspb.Release, error) {
 // secret fails to retrieve the releases.
 func (secrets *Secrets) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
 	lsel := kblabels.Set{"owner": "helm"}.AsSelector()
+	if os.Getenv("helm-serviceName") != "" {
+		lsel = kblabels.Set{
+			"owner": "helm",
+			"name":  os.Getenv("helm-serviceName"),
+		}.AsSelector()
+	}
 	opts := metav1.ListOptions{LabelSelector: lsel.String()}
 
 	list, err := secrets.impl.List(context.Background(), opts)
