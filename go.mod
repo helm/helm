@@ -8,7 +8,7 @@ require (
 	github.com/Masterminds/goutils v1.1.0
 	github.com/Masterminds/semver/v3 v3.1.0
 	github.com/Masterminds/sprig/v3 v3.1.0
-	github.com/Masterminds/squirrel v1.4.0
+	github.com/Masterminds/squirrel v1.5.0
 	github.com/Masterminds/vcs v1.13.1
 	github.com/asaskevich/govalidator v0.0.0-20200428143746-21a406dcc535
 	github.com/containerd/containerd v1.3.4
@@ -36,7 +36,7 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	k8s.io/api v0.19.4
-	k8s.io/apiextensions-apiserver v0.19.4 
+	k8s.io/apiextensions-apiserver v0.19.4
 	k8s.io/apimachinery v0.19.4
 	k8s.io/cli-runtime v0.19.4
 	k8s.io/client-go v0.19.4
