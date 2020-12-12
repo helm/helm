@@ -134,6 +134,7 @@ func TestValidateMetadataName(t *testing.T) {
 		"one_two":                   false,
 		"a..b":                      false,
 		"%^&#$%*@^*@&#^":            false,
+		"example:com":               false,
 	}
 
 	// The length checker should catch this first. So this is not true fuzzing.
@@ -155,6 +156,17 @@ func TestValidateMetadataName(t *testing.T) {
 				t.Log(err)
 			}
 		}
+	}
+
+	md := &K8sYamlStruct{
+		Kind: "Role",
+		Metadata: k8sYamlMetadata{
+			Name: "system::kube-scheduler",
+		},
+	}
+
+	if err := validateMetadataName(md); err != nil {
+		t.Error(err)
 	}
 }
 
