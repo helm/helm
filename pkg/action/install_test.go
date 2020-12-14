@@ -425,9 +425,9 @@ func TestNameTemplate(t *testing.T) {
 		},
 		// No such function
 		{
-			tpl:              "foobar-{{randInt}}",
+			tpl:              "foobar-{{randInteger}}",
 			expected:         "",
-			expectedErrorStr: "function \"randInt\" not defined",
+			expectedErrorStr: "function \"randInteger\" not defined",
 		},
 		// Invalid template
 		{
