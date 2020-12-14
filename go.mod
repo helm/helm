@@ -34,14 +34,14 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.6.1
 	github.com/xeipuuv/gojsonschema v1.2.0
-	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
-	k8s.io/api v0.19.4
-	k8s.io/apiextensions-apiserver v0.19.4
-	k8s.io/apimachinery v0.19.4
-	k8s.io/cli-runtime v0.19.4
-	k8s.io/client-go v0.19.4
-	k8s.io/klog/v2 v2.2.0
-	k8s.io/kubectl v0.19.4
+	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
+	k8s.io/api v0.20.0
+	k8s.io/apiextensions-apiserver v0.20.0
+	k8s.io/apimachinery v0.20.0
+	k8s.io/cli-runtime v0.20.0
+	k8s.io/client-go v0.20.0
+	k8s.io/klog/v2 v2.4.0
+	k8s.io/kubectl v0.20.0
 	sigs.k8s.io/yaml v1.2.0
 )
 
