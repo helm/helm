@@ -211,11 +211,13 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 
 		originalInfo := original.Get(info)
 		if originalInfo == nil {
+			kind := info.Mapping.GroupVersionKind.Kind
 			if hasResourcePolicyKeep(c, info) {
-				c.Log("Resource %q not found in current manifest, skip update due to annotation [%s=%s]", info.Name, ResourcePolicyAnno, KeepPolicy)
+				c.Log("Resource %q of kind %s not found in current manifest, skip update due to annotation [%s=%s]",
+					info.Name, kind, ResourcePolicyAnno, KeepPolicy)
 				return nil
 			}
-			return errors.Errorf("Cannot update the resource %q, was not found in current manifest", info.Name)
+			return errors.Errorf("Cannot update the resource %q of kind %s, was not found in current manifest", info.Name, kind)
 		}
 
 		if err := updateResource(c, info, originalInfo.Object, force); err != nil {
