@@ -29,6 +29,7 @@ import (
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli/output"
+	"helm.sh/helm/v3/pkg/cli/sanitize"
 	"helm.sh/helm/v3/pkg/release"
 )
 
@@ -70,7 +71,7 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			// strip chart metadata from the output
 			rel.Chart = nil
 
-			return outfmt.Write(out, &statusPrinter{rel, false, client.ShowDescription})
+			return outfmt.Write(out, &statusPrinter{rel, false, client.ShowDescription, false})
 		},
 	}
 
@@ -99,6 +100,7 @@ type statusPrinter struct {
 	release         *release.Release
 	debug           bool
 	showDescription bool
+	hideSecrets     bool
 }
 
 func (s statusPrinter) WriteJSON(out io.Writer) error {
@@ -170,7 +172,16 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 		for _, h := range s.release.Hooks {
 			fmt.Fprintf(out, "---\n# Source: %s\n%s\n", h.Path, h.Manifest)
 		}
-		fmt.Fprintf(out, "MANIFEST:\n%s\n", s.release.Manifest)
+		var err error
+		manifest := s.release.Manifest
+		if s.hideSecrets {
+			manifest, err = sanitize.HideSecrets(manifest)
+			if err != nil {
+				return err
+			}
+		}
+
+		fmt.Fprintf(out, "MANIFEST:\n%s\n", manifest)
 	}
 
 	if len(s.release.Info.Notes) > 0 {

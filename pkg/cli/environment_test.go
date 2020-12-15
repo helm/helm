@@ -36,6 +36,7 @@ func TestEnvSettings(t *testing.T) {
 		// expected values
 		ns, kcontext string
 		debug        bool
+		hideSecrets  bool
 		maxhistory   int
 		kAsUser      string
 		kAsGroups    []string
@@ -47,35 +48,38 @@ func TestEnvSettings(t *testing.T) {
 			maxhistory: defaultMaxHistory,
 		},
 		{
-			name:       "with flags set",
-			args:       "--debug --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters --kube-ca-file=/tmp/ca.crt",
-			ns:         "myns",
-			debug:      true,
-			maxhistory: defaultMaxHistory,
-			kAsUser:    "poro",
-			kAsGroups:  []string{"admins", "teatime", "snackeaters"},
-			kCaFile:    "/tmp/ca.crt",
+			name:        "with flags set",
+			args:        "--debug --hide-secrets --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters --kube-ca-file=/tmp/ca.crt",
+			ns:          "myns",
+			debug:       true,
+			hideSecrets: true,
+			maxhistory:  defaultMaxHistory,
+			kAsUser:     "poro",
+			kAsGroups:   []string{"admins", "teatime", "snackeaters"},
+			kCaFile:     "/tmp/ca.crt",
 		},
 		{
-			name:       "with envvars set",
-			envvars:    map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_MAX_HISTORY": "5", "HELM_KUBECAFILE": "/tmp/ca.crt"},
-			ns:         "yourns",
-			maxhistory: 5,
-			debug:      true,
-			kAsUser:    "pikachu",
-			kAsGroups:  []string{"operators", "snackeaters", "partyanimals"},
-			kCaFile:    "/tmp/ca.crt",
+			name:        "with envvars set",
+			envvars:     map[string]string{"HELM_DEBUG": "1", "HELM_HIDE_SECRETS": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_MAX_HISTORY": "5", "HELM_KUBECAFILE": "/tmp/ca.crt"},
+			ns:          "yourns",
+			maxhistory:  5,
+			debug:       true,
+			hideSecrets: true,
+			kAsUser:     "pikachu",
+			kAsGroups:   []string{"operators", "snackeaters", "partyanimals"},
+			kCaFile:     "/tmp/ca.crt",
 		},
 		{
-			name:       "with flags and envvars set",
-			args:       "--debug --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters --kube-ca-file=/my/ca.crt",
-			envvars:    map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_MAX_HISTORY": "5", "HELM_KUBECAFILE": "/tmp/ca.crt"},
-			ns:         "myns",
-			debug:      true,
-			maxhistory: 5,
-			kAsUser:    "poro",
-			kAsGroups:  []string{"admins", "teatime", "snackeaters"},
-			kCaFile:    "/my/ca.crt",
+			name:        "with flags and envvars set",
+			args:        "--debug --hide-secrets --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters --kube-ca-file=/my/ca.crt",
+			envvars:     map[string]string{"HELM_DEBUG": "1", "HELM_HIDE_SECRETS": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_MAX_HISTORY": "5", "HELM_KUBECAFILE": "/tmp/ca.crt"},
+			ns:          "myns",
+			debug:       true,
+			hideSecrets: true,
+			maxhistory:  5,
+			kAsUser:     "poro",
+			kAsGroups:   []string{"admins", "teatime", "snackeaters"},
+			kCaFile:     "/my/ca.crt",
 		},
 	}
 
@@ -95,6 +99,9 @@ func TestEnvSettings(t *testing.T) {
 
 			if settings.Debug != tt.debug {
 				t.Errorf("expected debug %t, got %t", tt.debug, settings.Debug)
+			}
+			if settings.HideSecrets != tt.hideSecrets {
+				t.Errorf("expected hide-secrets %t, got %t", tt.hideSecrets, settings.HideSecrets)
 			}
 			if settings.Namespace() != tt.ns {
 				t.Errorf("expected namespace %q, got %q", tt.ns, settings.Namespace())

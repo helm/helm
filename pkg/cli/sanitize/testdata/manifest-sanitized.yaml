@@ -1,0 +1,63 @@
+---
+# Source: test/templates/sa.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: build-robot
+---
+# Source: test/templates/secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: secret-sample
+data:
+  test: [HIDDEN]
+  password: [HIDDEN]
+---
+# Source: test/templates/cm.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  creationTimestamp: 2016-02-18T18:52:05Z
+  name: game-config
+  namespace: default
+  resourceVersion: "516"
+  uid: b4952dc3-d670-11e5-8cd0-68f728db1985
+data:
+  test: YmFyCg==
+  game.properties: |
+    enemies=aliens
+    lives=3
+    enemies.cheat=true
+    enemies.cheat.level=noGoodRotten
+    secret.code.passphrase=UUDDLRLRBABAS
+    secret.code.allowed=true
+    secret.code.lives=30
+  ui.properties: |
+    color.good=purple
+    color.bad=yellow
+    allow.textmode=true
+    how.nice.to.look=fairlyNice
+---
+# Source: test/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.14.2
+          ports:
+            - containerPort: 80

@@ -58,6 +58,8 @@ type EnvSettings struct {
 	KubeCaFile string
 	// Debug indicates whether or not Helm is running in Debug mode.
 	Debug bool
+	// HideSecrets indicates whether Secret values should be hidden.
+	HideSecrets bool
 	// RegistryConfig is the path to the registry config file.
 	RegistryConfig string
 	// RepositoryConfig is the path to the repositories file.
@@ -86,6 +88,7 @@ func New() *EnvSettings {
 		RepositoryCache:  envOr("HELM_REPOSITORY_CACHE", helmpath.CachePath("repository")),
 	}
 	env.Debug, _ = strconv.ParseBool(os.Getenv("HELM_DEBUG"))
+	env.HideSecrets, _ = strconv.ParseBool(os.Getenv("HELM_HIDE_SECRETS"))
 
 	// bind to kubernetes config flags
 	env.config = &genericclioptions.ConfigFlags{
@@ -112,6 +115,7 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.KubeAPIServer, "kube-apiserver", s.KubeAPIServer, "the address and the port for the Kubernetes API server")
 	fs.StringVar(&s.KubeCaFile, "kube-ca-file", s.KubeCaFile, "the certificate authority file for the Kubernetes API server connection")
 	fs.BoolVar(&s.Debug, "debug", s.Debug, "enable verbose output")
+	fs.BoolVar(&s.HideSecrets, "hide-secrets", s.HideSecrets, "hide Secret values in printed manifests")
 	fs.StringVar(&s.RegistryConfig, "registry-config", s.RegistryConfig, "path to the registry config file")
 	fs.StringVar(&s.RepositoryConfig, "repository-config", s.RepositoryConfig, "path to the file containing repository names and URLs")
 	fs.StringVar(&s.RepositoryCache, "repository-cache", s.RepositoryCache, "path to the file containing cached repository indexes")
