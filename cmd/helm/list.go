@@ -209,8 +209,12 @@ func compListReleases(toComplete string, cfg *action.Configuration) ([]string, c
 	}
 
 	var choices []string
+	uniqueNames := map[string]bool{}
 	for _, res := range results {
-		choices = append(choices, res.Name)
+		if ok := uniqueNames[res.Name]; !ok {
+			uniqueNames[res.Name] = true
+			choices = append(choices, res.Name)
+		}
 	}
 
 	return choices, cobra.ShellCompDirectiveNoFileComp
