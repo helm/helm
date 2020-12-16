@@ -56,7 +56,7 @@ func TestFuncs(t *testing.T) {
 	}, {
 		// Regression for https://github.com/helm/helm/issues/2271
 		tpl:    `{{ toToml . }}`,
-		expect: "[mast]\n  sail = \"white\"\n",
+		expect: "\n[mast]\n  sail = \"white\"\n",
 		vars:   map[string]map[string]string{"mast": {"sail": "white"}},
 	}, {
 		tpl:    `{{ fromYaml . }}`,

@@ -22,8 +22,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/BurntSushi/toml"
 	"github.com/Masterminds/sprig/v3"
+	"github.com/pelletier/go-toml"
 	"sigs.k8s.io/yaml"
 )
 
