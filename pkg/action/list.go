@@ -172,10 +172,10 @@ func (l *List) Run() ([]*release.Release, error) {
 		return results, nil
 	}
 
-	// by definition, superseded releases are never shown if
-	// only the latest releases are returned. so if requested statemask
-	// is _only_ ListSuperseded, skip the latest release filter
-	if l.StateMask != ListSuperseded {
+	// If superseded releases should be returned, then do not filter for only
+	// the latest releases, because the latest releases exclude superseded
+	// releases, by definition.
+	if (l.StateMask & ListSuperseded) == 0 {
 		results = filterLatestReleases(results)
 	}
 
