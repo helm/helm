@@ -16,9 +16,10 @@ limitations under the License.
 package chartutil
 
 import (
-	"github.com/mitchellh/copystructure"
 	"log"
 	"strings"
+
+	"github.com/mitchellh/copystructure"
 
 	"helm.sh/helm/v3/pkg/chart"
 )

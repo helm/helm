@@ -18,9 +18,9 @@ package chartutil
 
 import (
 	"encoding/json"
-	"github.com/mitchellh/copystructure"
 	"testing"
 
+	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/assert"
 
 	"helm.sh/helm/v3/pkg/chart"
