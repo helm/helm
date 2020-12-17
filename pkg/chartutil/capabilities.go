@@ -29,7 +29,7 @@ import (
 
 const (
 	k8sVersionMajor = 1
-	k8sVersionMinor = 19
+	k8sVersionMinor = 20
 )
 
 var (
