@@ -201,12 +201,12 @@ func validateYamlContent(err error) error {
 
 func validateMetadataName(obj *K8sYamlStruct) error {
 	if len(obj.Metadata.Name) == 0 || len(obj.Metadata.Name) > 253 {
-		return fmt.Errorf("object name must be between 0 and 253 characters: %q", obj.Metadata.Name)
+		return fmt.Errorf("metadata object 'name' must be between 0 and 253 characters: %q", obj.Metadata.Name)
 	}
 	// This will return an error if the characters do not abide by the standard OR if the
 	// name is left empty.
 	if err := chartutil.ValidateMetadataName(obj.Metadata.Name); err != nil {
-		return errors.Wrapf(err, "object name does not conform to Kubernetes naming requirements: %q", obj.Metadata.Name)
+		return errors.Wrapf(err, "metadata object 'name' does not conform to Kubernetes naming requirements: %q", obj.Metadata.Name)
 	}
 	return nil
 }
