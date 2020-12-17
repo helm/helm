@@ -146,12 +146,12 @@ func copyMap(src map[string]interface{}) map[string]interface{} {
 //
 // Values in v will override the values in the chart.
 func coalesceValues(c *chart.Chart, v map[string]interface{}) {
-	valsCopy, err := copystructure.Copy(c.Values)
+	chartValsCopy, err := copystructure.Copy(c.Values)
 	if err != nil {
 		log.Printf("warning: could not copy values %+v. Using raw values from chart. Exception:\n%s", c.Values, err)
-		valsCopy = c.Values
+		chartValsCopy = c.Values
 	}
-	for key, val := range valsCopy.(map[string]interface{}) {
+	for key, val := range chartValsCopy.(map[string]interface{}) {
 		if value, ok := v[key]; ok {
 			if value == nil {
 				// When the YAML value is null, we remove the value's key.
