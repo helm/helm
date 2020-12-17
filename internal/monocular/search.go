@@ -40,10 +40,16 @@ const SearchPath = "api/chartsvc/v1/charts/search"
 // SearchResult represents an individual chart result
 type SearchResult struct {
 	ID            string        `json:"id"`
+	ArtifactHub   ArtifactHub   `json:"artifactHub"`
 	Type          string        `json:"type"`
 	Attributes    Chart         `json:"attributes"`
 	Links         Links         `json:"links"`
 	Relationships Relationships `json:"relationships"`
+}
+
+// ArtifactHub represents data specific to Artifact Hub instances
+type ArtifactHub struct {
+	PackageURL string `json:"packageUrl"`
 }
 
 // Chart is the attributes for the chart
