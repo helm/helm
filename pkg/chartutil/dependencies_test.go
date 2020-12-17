@@ -181,10 +181,11 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	e["imported-chartA-B.SPextra5"] = "k8s"
 	e["imported-chartA-B.SC1extra5"] = "tiller"
 
-	e["overridden-chart1.SC1bool"] = "false"
-	e["overridden-chart1.SC1float"] = "3.141592"
-	e["overridden-chart1.SC1int"] = "99"
-	e["overridden-chart1.SC1string"] = "pollywog"
+	// overridden values are not applied by processDependencyImportValues
+	e["overridden-chart1.SC1bool"] = "true"
+	e["overridden-chart1.SC1float"] = "3.14"
+	e["overridden-chart1.SC1int"] = "100"
+	e["overridden-chart1.SC1string"] = "dollywood"
 	e["overridden-chart1.SPextra2"] = "42"
 
 	e["overridden-chartA.SCAbool"] = "true"
@@ -194,13 +195,13 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	e["overridden-chartA.SPextra4"] = "true"
 
 	e["overridden-chartA-B.SCAbool"] = "true"
-	e["overridden-chartA-B.SCAfloat"] = "41.3"
-	e["overridden-chartA-B.SCAint"] = "808"
-	e["overridden-chartA-B.SCAstring"] = "jabberwocky"
-	e["overridden-chartA-B.SCBbool"] = "false"
-	e["overridden-chartA-B.SCBfloat"] = "1.99"
-	e["overridden-chartA-B.SCBint"] = "77"
-	e["overridden-chartA-B.SCBstring"] = "jango"
+	e["overridden-chartA-B.SCAfloat"] = "3.33"
+	e["overridden-chartA-B.SCAint"] = "555"
+	e["overridden-chartA-B.SCAstring"] = "wormwood"
+	e["overridden-chartA-B.SCBbool"] = "true"
+	e["overridden-chartA-B.SCBfloat"] = "0.25"
+	e["overridden-chartA-B.SCBint"] = "98"
+	e["overridden-chartA-B.SCBstring"] = "murkwood"
 	e["overridden-chartA-B.SPextra6"] = "111"
 	e["overridden-chartA-B.SCAextra1"] = "23"
 	e["overridden-chartA-B.SCBextra1"] = "13"
@@ -212,7 +213,7 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	e["SCBexported2A"] = "blaster"
 	e["global.SC1exported2.all.SC1exported3"] = "SC1expstr"
 
-	if err := processDependencyImportValues(c); err != nil {
+	if err := processDependencyImportValues(c, make(map[string]interface{})); err != nil {
 		t.Fatalf("processing import values dependencies %v", err)
 	}
 	cc := Values(c.Values)
@@ -225,15 +226,15 @@ func TestProcessDependencyImportValues(t *testing.T) {
 		switch pv := pv.(type) {
 		case float64:
 			if s := strconv.FormatFloat(pv, 'f', -1, 64); s != vv {
-				t.Errorf("failed to match imported float value %v with expected %v", s, vv)
+				t.Errorf("failed to match %s, imported float value %v, expected %v", kk, s, vv)
 			}
 		case bool:
 			if b := strconv.FormatBool(pv); b != vv {
-				t.Errorf("failed to match imported bool value %v with expected %v", b, vv)
+				t.Errorf("failed to match %s, imported bool value %v, expected %v", kk, b, vv)
 			}
 		default:
 			if pv != vv {
-				t.Errorf("failed to match imported string value %q with expected %q", pv, vv)
+				t.Errorf("failed to match %s, imported string value %q, expected %q", kk, pv, vv)
 			}
 		}
 	}
@@ -243,7 +244,7 @@ func TestProcessDependencyImportValuesForEnabledCharts(t *testing.T) {
 	c := loadChart(t, "testdata/import-values-from-enabled-subchart/parent-chart")
 	nameOverride := "parent-chart-prod"
 
-	if err := processDependencyImportValues(c); err != nil {
+	if err := processDependencyImportValues(c, make(map[string]interface{})); err != nil {
 		t.Fatalf("processing import values dependencies %v", err)
 	}
 
