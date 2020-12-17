@@ -18,6 +18,7 @@ package chartutil
 
 import (
 	"encoding/json"
+	"github.com/mitchellh/copystructure"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -78,11 +79,12 @@ func TestCoalesceValues(t *testing.T) {
 			"right":    "exists",
 			"scope":    "moby",
 			"top":      "nope",
+			"pequod":   map[string]interface{}{"nested": map[string]interface{}{"bar": nil}},
 		},
 	},
 		withDeps(&chart.Chart{
 			Metadata: &chart.Metadata{Name: "pequod"},
-			Values:   map[string]interface{}{"name": "pequod", "scope": "pequod"},
+			Values:   map[string]interface{}{"name": "pequod", "scope": "pequod", "nested": map[string]interface{}{"bar": "true"}},
 		},
 			&chart.Chart{
 				Metadata: &chart.Metadata{Name: "ahab"},
@@ -105,12 +107,15 @@ func TestCoalesceValues(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// taking a copy of the values before passing it
-	// to CoalesceValues as argument, so that we can
-	// use it for asserting later
-	valsCopy := make(Values, len(vals))
-	for key, value := range vals {
-		valsCopy[key] = value
+	// take a copy of the values and chart values before passing
+	// to CoalesceValues, so that we can use for asserting later
+	valsCopy, err := copystructure.Copy(vals)
+	if err != nil {
+		t.Fatal(err)
+	}
+	chartValsCopy, err := copystructure.Copy(c.Values)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	v, err := CoalesceValues(c, vals)
@@ -131,6 +136,7 @@ func TestCoalesceValues(t *testing.T) {
 		{"{{.global.subject}}", "Queequeg"},
 		{"{{.global.harpooner}}", "<no value>"},
 		{"{{.pequod.name}}", "pequod"},
+		{"{{.pequod.nested.bar}}", "<no value>"},
 		{"{{.pequod.ahab.name}}", "ahab"},
 		{"{{.pequod.ahab.scope}}", "whale"},
 		{"{{.pequod.ahab.nested.foo}}", "true"},
@@ -177,6 +183,7 @@ func TestCoalesceValues(t *testing.T) {
 
 	// CoalesceValues should not mutate the passed arguments
 	is.Equal(valsCopy, vals)
+	is.Equal(chartValsCopy, c.Values)
 }
 
 func TestCoalesceTables(t *testing.T) {
