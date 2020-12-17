@@ -262,6 +262,14 @@ func withKube(version string) chartOption {
 	}
 }
 
+func withSecondHook(hookManifest string) chartOption {
+	return func(opts *chartOptions) {
+		opts.Templates = append(opts.Templates,
+			&chart.File{Name: "templates/hooks-test", Data: []byte(hookManifest)},
+		)
+	}
+}
+
 // releaseStub creates a release stub, complete with the chartStub as its chart.
 func releaseStub() *release.Release {
 	return namedReleaseStub("angry-panda", release.StatusDeployed)

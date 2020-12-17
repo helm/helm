@@ -403,6 +403,88 @@ func TestInstallRelease_Atomic(t *testing.T) {
 	})
 }
 
+func TestInstallRelease_HookParallelism(t *testing.T) {
+	is := assert.New(t)
+	t.Run("hook parallelism of 0 defaults to 1", func(t *testing.T) {
+		instAction := installAction(t)
+		instAction.HookParallelism = 0
+		vals := map[string]interface{}{}
+		res, err := instAction.Run(buildChart(), vals)
+		if err != nil {
+			t.Fatalf("Failed install: %s", err)
+		}
+		is.Equal(res.Name, "test-install-release", "Expected release name.")
+		is.Equal(res.Namespace, "spaced")
+
+		rel, err := instAction.cfg.Releases.Get(res.Name, res.Version)
+		is.NoError(err)
+
+		is.Len(rel.Hooks, 1)
+		is.Equal(rel.Hooks[0].Manifest, manifestWithHook)
+		is.Equal(rel.Hooks[0].Events[0], release.HookPostInstall)
+		is.Equal(rel.Hooks[0].Events[1], release.HookPreDelete, "Expected event 0 is pre-delete")
+
+		is.NotEqual(len(res.Manifest), 0)
+		is.NotEqual(len(rel.Manifest), 0)
+		is.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world")
+		is.Equal(rel.Info.Description, "Install complete")
+	})
+
+	t.Run("hook parallelism greater than number of hooks", func(t *testing.T) {
+		instAction := installAction(t)
+		instAction.HookParallelism = 10
+		vals := map[string]interface{}{}
+		res, err := instAction.Run(buildChart(), vals)
+		if err != nil {
+			t.Fatalf("Failed install: %s", err)
+		}
+		is.Equal(res.Name, "test-install-release", "Expected release name.")
+		is.Equal(res.Namespace, "spaced")
+
+		rel, err := instAction.cfg.Releases.Get(res.Name, res.Version)
+		is.NoError(err)
+
+		is.Len(rel.Hooks, 1)
+		is.Equal(rel.Hooks[0].Manifest, manifestWithHook)
+		is.Equal(rel.Hooks[0].Events[0], release.HookPostInstall)
+		is.Equal(rel.Hooks[0].Events[1], release.HookPreDelete, "Expected event 0 is pre-delete")
+
+		is.NotEqual(len(res.Manifest), 0)
+		is.NotEqual(len(rel.Manifest), 0)
+		is.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world")
+		is.Equal(rel.Info.Description, "Install complete")
+	})
+
+	t.Run("hook parallelism with multiple hooks", func(t *testing.T) {
+		instAction := installAction(t)
+		instAction.HookParallelism = 2
+		vals := map[string]interface{}{}
+		res, err := instAction.Run(buildChart(withSecondHook(manifestWithHook)), vals)
+		if err != nil {
+			t.Fatalf("Failed install: %s", err)
+		}
+		is.Equal(res.Name, "test-install-release", "Expected release name.")
+		is.Equal(res.Namespace, "spaced")
+
+		rel, err := instAction.cfg.Releases.Get(res.Name, res.Version)
+		is.NoError(err)
+
+		is.Len(rel.Hooks, 2)
+		is.Equal(rel.Hooks[0].Manifest, manifestWithHook)
+		is.Equal(rel.Hooks[0].Events[0], release.HookPostInstall)
+		is.Equal(rel.Hooks[0].Events[1], release.HookPreDelete, "Expected event 0 is pre-delete")
+
+		is.Equal(rel.Hooks[1].Manifest, manifestWithHook)
+		is.Equal(rel.Hooks[1].Events[0], release.HookPostInstall)
+		is.Equal(rel.Hooks[1].Events[1], release.HookPreDelete, "Expected event 1 is pre-delete")
+
+		is.NotEqual(len(res.Manifest), 0)
+		is.NotEqual(len(rel.Manifest), 0)
+		is.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world")
+		is.Equal(rel.Info.Description, "Install complete")
+	})
+}
+
 func TestNameTemplate(t *testing.T) {
 	testCases := []nameTemplateTestCase{
 		// Just a straight up nop please

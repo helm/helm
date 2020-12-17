@@ -273,3 +273,169 @@ func TestUpgradeRelease_Pending(t *testing.T) {
 	_, err := upAction.Run(rel.Name, buildChart(), vals)
 	req.Contains(err.Error(), "progress", err)
 }
+
+func TestUpgradeRelease_HookParallelism(t *testing.T) {
+	is := assert.New(t)
+	t.Run("hook parallelism of 0 defaults to 1", func(t *testing.T) {
+		upAction := upgradeAction(t)
+		upAction.HookParallelism = 0
+		chartDefaultValues := map[string]interface{}{
+			"subchart": map[string]interface{}{
+				"enabled": true,
+			},
+		}
+		dependency := chart.Dependency{
+			Name:       "subchart",
+			Version:    "0.1.0",
+			Repository: "http://some-repo.com",
+			Condition:  "subchart.enabled",
+		}
+		sampleChart := buildChart(
+			withName("sample"),
+			withValues(chartDefaultValues),
+			withMetadataDependency(dependency),
+		)
+		now := time.Now()
+		rel := &release.Release{
+			Name: "nuketown",
+			Info: &release.Info{
+				FirstDeployed: now,
+				LastDeployed:  now,
+				Status:        release.StatusDeployed,
+				Description:   "Named Release Stub",
+			},
+			Chart:   sampleChart,
+			Version: 1,
+		}
+		err := upAction.cfg.Releases.Create(rel)
+		is.NoError(err)
+		res, err := upAction.Run(rel.Name, sampleChart, map[string]interface{}{})
+		if err != nil {
+			t.Fatalf("Failed upgrade: %s", err)
+		}
+		is.Equal(res.Name, "nuketown", "Expected release name.")
+
+		rel, err = upAction.cfg.Releases.Get(res.Name, res.Version)
+		is.NoError(err)
+
+		is.Len(rel.Hooks, 1)
+		is.Equal(rel.Hooks[0].Manifest, manifestWithHook)
+		is.Equal(rel.Hooks[0].Events[0], release.HookPostInstall)
+		is.Equal(rel.Hooks[0].Events[1], release.HookPreDelete, "Expected event 0 is pre-delete")
+
+		is.NotEqual(len(res.Manifest), 0)
+		is.NotEqual(len(rel.Manifest), 0)
+		is.Contains(rel.Manifest, "---\n# Source: sample/templates/hello\nhello: world")
+		is.Equal(rel.Info.Description, "Upgrade complete")
+	})
+
+	t.Run("hook parallelism greater than number of hooks", func(t *testing.T) {
+		upAction := upgradeAction(t)
+		upAction.HookParallelism = 10
+		chartDefaultValues := map[string]interface{}{
+			"subchart": map[string]interface{}{
+				"enabled": true,
+			},
+		}
+		dependency := chart.Dependency{
+			Name:       "subchart",
+			Version:    "0.1.0",
+			Repository: "http://some-repo.com",
+			Condition:  "subchart.enabled",
+		}
+		sampleChart := buildChart(
+			withName("sample"),
+			withValues(chartDefaultValues),
+			withMetadataDependency(dependency),
+		)
+		now := time.Now()
+		rel := &release.Release{
+			Name: "nuketown",
+			Info: &release.Info{
+				FirstDeployed: now,
+				LastDeployed:  now,
+				Status:        release.StatusDeployed,
+				Description:   "Named Release Stub",
+			},
+			Chart:   sampleChart,
+			Version: 1,
+		}
+		err := upAction.cfg.Releases.Create(rel)
+		is.NoError(err)
+		res, err := upAction.Run(rel.Name, sampleChart, map[string]interface{}{})
+		if err != nil {
+			t.Fatalf("Failed upgrade: %s", err)
+		}
+		is.Equal(res.Name, "nuketown", "Expected release name.")
+
+		rel, err = upAction.cfg.Releases.Get(res.Name, res.Version)
+		is.NoError(err)
+
+		is.Len(rel.Hooks, 1)
+		is.Equal(rel.Hooks[0].Manifest, manifestWithHook)
+		is.Equal(rel.Hooks[0].Events[0], release.HookPostInstall)
+		is.Equal(rel.Hooks[0].Events[1], release.HookPreDelete, "Expected event 0 is pre-delete")
+
+		is.NotEqual(len(res.Manifest), 0)
+		is.NotEqual(len(rel.Manifest), 0)
+		is.Contains(rel.Manifest, "---\n# Source: sample/templates/hello\nhello: world")
+		is.Equal(rel.Info.Description, "Upgrade complete")
+	})
+
+	t.Run("hook parallelism with multiple hooks", func(t *testing.T) {
+		upAction := upgradeAction(t)
+		upAction.HookParallelism = 2
+		chartDefaultValues := map[string]interface{}{
+			"subchart": map[string]interface{}{
+				"enabled": true,
+			},
+		}
+		dependency := chart.Dependency{
+			Name:       "subchart",
+			Version:    "0.1.0",
+			Repository: "http://some-repo.com",
+			Condition:  "subchart.enabled",
+		}
+		sampleChart := buildChart(
+			withName("sample"),
+			withValues(chartDefaultValues),
+			withMetadataDependency(dependency),
+			withSecondHook(manifestWithHook),
+		)
+		now := time.Now()
+		rel := &release.Release{
+			Name: "nuketown",
+			Info: &release.Info{
+				FirstDeployed: now,
+				LastDeployed:  now,
+				Status:        release.StatusDeployed,
+				Description:   "Named Release Stub",
+			},
+			Chart:   sampleChart,
+			Version: 1,
+		}
+		err := upAction.cfg.Releases.Create(rel)
+		is.NoError(err)
+		res, err := upAction.Run(rel.Name, sampleChart, map[string]interface{}{})
+		if err != nil {
+			t.Fatalf("Failed upgrade: %s", err)
+		}
+		is.Equal(res.Name, "nuketown", "Expected release name.")
+
+		rel, err = upAction.cfg.Releases.Get(res.Name, res.Version)
+		is.NoError(err)
+
+		is.Len(rel.Hooks, 2)
+		is.Equal(rel.Hooks[0].Manifest, manifestWithHook)
+		is.Equal(rel.Hooks[0].Events[0], release.HookPostInstall)
+		is.Equal(rel.Hooks[0].Events[1], release.HookPreDelete, "Expected event 0 is pre-delete")
+		is.Equal(rel.Hooks[1].Manifest, manifestWithHook)
+		is.Equal(rel.Hooks[1].Events[0], release.HookPostInstall)
+		is.Equal(rel.Hooks[1].Events[1], release.HookPreDelete, "Expected event 0 is pre-delete")
+
+		is.NotEqual(len(res.Manifest), 0)
+		is.NotEqual(len(rel.Manifest), 0)
+		is.Contains(rel.Manifest, "---\n# Source: sample/templates/hello\nhello: world")
+		is.Equal(rel.Info.Description, "Upgrade complete")
+	})
+}

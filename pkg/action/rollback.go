@@ -35,15 +35,16 @@ import (
 type Rollback struct {
 	cfg *Configuration
 
-	Version       int
-	Timeout       time.Duration
-	Wait          bool
-	DisableHooks  bool
-	DryRun        bool
-	Recreate      bool // will (if true) recreate pods after a rollback.
-	Force         bool // will (if true) force resource upgrade through uninstall/recreate if needed
-	CleanupOnFail bool
-	MaxHistory    int // MaxHistory limits the maximum number of revisions saved per release
+	Version         int
+	Timeout         time.Duration
+	Wait            bool
+	DisableHooks    bool
+	HookParallelism int
+	DryRun          bool
+	Recreate        bool // will (if true) recreate pods after a rollback.
+	Force           bool // will (if true) force resource upgrade through uninstall/recreate if needed
+	CleanupOnFail   bool
+	MaxHistory      int // MaxHistory limits the maximum number of revisions saved per release
 }
 
 // NewRollback creates a new Rollback object with the given configuration.
@@ -156,7 +157,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 
 	// pre-rollback hooks
 	if !r.DisableHooks {
-		if err := r.cfg.execHook(targetRelease, release.HookPreRollback, r.Timeout); err != nil {
+		if err := r.cfg.execHookEvent(targetRelease, release.HookPreRollback, r.Timeout, r.HookParallelism); err != nil {
 			return targetRelease, err
 		}
 	} else {
@@ -209,7 +210,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 
 	// post-rollback hooks
 	if !r.DisableHooks {
-		if err := r.cfg.execHook(targetRelease, release.HookPostRollback, r.Timeout); err != nil {
+		if err := r.cfg.execHookEvent(targetRelease, release.HookPostRollback, r.Timeout, r.HookParallelism); err != nil {
 			return targetRelease, err
 		}
 	}
