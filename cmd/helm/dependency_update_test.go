@@ -144,7 +144,7 @@ func TestDependencyUpdateCmd(t *testing.T) {
 		t.Logf("Output: %s", out)
 		t.Fatal(err)
 	}
-	expect = dir(ociChartName, "charts/oci-dependent-chart")
+	expect = dir(ociChartName, "charts/oci-dependent-chart-0.1.0.tgz")
 	if _, err := os.Stat(expect); err != nil {
 		t.Fatal(err)
 	}

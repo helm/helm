@@ -335,7 +335,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			},
 		}
 
-		untar, version := false, ""
+		version := ""
 		if strings.HasPrefix(churl, "oci://") {
 			if !resolver.FeatureGateOCI.IsEnabled() {
 				return errors.Wrapf(resolver.FeatureGateOCI.Error(),
@@ -346,27 +346,15 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			if err != nil {
 				return errors.Wrapf(err, "could not parse OCI reference")
 			}
-			untar = true
 			dl.Options = append(dl.Options,
 				getter.WithRegistryClient(m.RegistryClient),
 				getter.WithTagName(version))
 		}
 
-		destFile, _, err := dl.DownloadTo(churl, version, destPath)
+		_, _, err = dl.DownloadTo(churl, version, destPath)
 		if err != nil {
 			saveError = errors.Wrapf(err, "could not download %s", churl)
 			break
-		}
-
-		if untar {
-			err = chartutil.ExpandFile(destPath, destFile)
-			if err != nil {
-				return errors.Wrapf(err, "could not open %s to untar", destFile)
-			}
-			err = os.RemoveAll(destFile)
-			if err != nil {
-				return errors.Wrapf(err, "chart was downloaded and untarred, but was unable to remove the tarball: %s", destFile)
-			}
 		}
 
 		churls[churl] = struct{}{}
