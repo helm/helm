@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -177,20 +176,10 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 		}
 		return hs, b, "", err
 	}
-
-	// Aggregate all valid manifests into one big doc.
-	fileWritten := make(map[string]bool)
-
 	if includeCrds {
 		for _, crd := range ch.CRDObjects() {
 			if outputDir == "" {
 				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Name, string(crd.File.Data[:]))
-			} else {
-				err = writeToFile(outputDir, crd.Filename, string(crd.File.Data[:]), fileWritten[crd.Name])
-				if err != nil {
-					return hs, b, "", err
-				}
-				fileWritten[crd.Name] = true
 			}
 		}
 	}
@@ -198,20 +187,6 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 	for _, m := range manifests {
 		if outputDir == "" {
 			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", m.Name, m.Content)
-		} else {
-			newDir := outputDir
-			if useReleaseName {
-				newDir = filepath.Join(outputDir, releaseName)
-			}
-			// NOTE: We do not have to worry about the post-renderer because
-			// output dir is only used by `helm template`. In the next major
-			// release, we should move this logic to template only as it is not
-			// used by install or upgrade
-			err = writeToFile(newDir, m.Name, m.Content, fileWritten[m.Name])
-			if err != nil {
-				return hs, b, "", err
-			}
-			fileWritten[m.Name] = true
 		}
 	}
 
