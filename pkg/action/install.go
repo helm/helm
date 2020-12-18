@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -62,8 +61,6 @@ const releaseNameMaxLen = 53
 // wants to see this file after rendering in the status command. However, it must be a suffix
 // since there can be filepath in front of it.
 const notesFileSuffix = "NOTES.txt"
-
-const defaultDirectoryPermission = 0755
 
 // Install performs an installation operation.
 type Install struct {
@@ -483,50 +480,6 @@ func (i *Install) replaceRelease(rel *release.Release) error {
 	// For any other status, mark it as superseded and store the old record
 	last.SetStatus(release.StatusSuperseded, "superseded by new release")
 	return i.recordRelease(last)
-}
-
-// write the <data> to <output-dir>/<name>. <append> controls if the file is created or content will be appended
-func writeToFile(outputDir string, name string, data string, append bool) error {
-	outfileName := strings.Join([]string{outputDir, name}, string(filepath.Separator))
-
-	err := ensureDirectoryForFile(outfileName)
-	if err != nil {
-		return err
-	}
-
-	f, err := createOrOpenFile(outfileName, append)
-	if err != nil {
-		return err
-	}
-
-	defer f.Close()
-
-	_, err = f.WriteString(fmt.Sprintf("---\n# Source: %s\n%s\n", name, data))
-
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("wrote %s\n", outfileName)
-	return nil
-}
-
-func createOrOpenFile(filename string, append bool) (*os.File, error) {
-	if append {
-		return os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0600)
-	}
-	return os.Create(filename)
-}
-
-// check if the directory exists to create file. creates if don't exists
-func ensureDirectoryForFile(file string) error {
-	baseDir := path.Dir(file)
-	_, err := os.Stat(baseDir)
-	if err != nil && !os.IsNotExist(err) {
-		return err
-	}
-
-	return os.MkdirAll(baseDir, defaultDirectoryPermission)
 }
 
 // NameAndChart returns the name and chart that should be used.
