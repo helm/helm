@@ -62,8 +62,7 @@ func main() {
 	actionConfig := new(action.Configuration)
 	cmd, err := newRootCmd(actionConfig, os.Stdout, os.Args[1:])
 	if err != nil {
-		debug("%+v", err)
-		os.Exit(1)
+		log.Fatal(err)
 	}
 
 	// run when each command's execute method is called
