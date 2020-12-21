@@ -160,11 +160,10 @@ func (o *repoAddOptions) run(out io.Writer) error {
 	// 2. When the config is different require --force-update
 	if !o.forceUpdate && f.Has(o.name) {
 		existing := f.Get(o.name)
-		// In case of of the repo URLs ends with a trailing slash and the other
-		// one doesn't, the config is considered to be different even though they
-		// refer to the same repository.
-		// Only fail with an error if the configs actually are different.
-		if c != *existing && c.URLWithTrailingSlash() != existing.URLWithTrailingSlash() {
+		existing.URL = existing.URLWithTrailingSlash()
+		c.URL = c.URLWithTrailingSlash()
+		// Only fail with an error if the configs are different.
+		if c != *existing {
 			return errors.Errorf("repository name (%s) already exists, please specify a different name", o.name)
 		}
 
