@@ -41,6 +41,7 @@ type FailingKubeClient struct {
 	DeleteWithPropagationError       error
 	WatchUntilReadyError             error
 	UpdateError                      error
+	UpdateWithTimeoutError           error
 	BuildError                       error
 	BuildTableError                  error
 	BuildDummy                       bool
@@ -112,6 +113,13 @@ func (f *FailingKubeClient) Update(r, modified kube.ResourceList, ignoreMe bool)
 		return &kube.Result{}, f.UpdateError
 	}
 	return f.PrintingKubeClient.Update(r, modified, ignoreMe)
+}
+
+func (f *FailingKubeClient) UpdateWithTimeout(r, modified kube.ResourceList, ignoreMe bool, timeout time.Duration) (*kube.Result, error) {
+	if f.UpdateWithTimeoutError != nil {
+		return &kube.Result{}, f.UpdateWithTimeoutError
+	}
+	return f.PrintingKubeClient.UpdateWithTimeout(r, modified, ignoreMe, 0)
 }
 
 // Build returns the configured error if set or prints

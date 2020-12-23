@@ -25,6 +25,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -47,6 +48,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
@@ -56,6 +58,17 @@ import (
 	cachetools "k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
+)
+
+var accessor = meta.NewAccessor()
+
+// Annotation for resource recreation on update. The two cases "conflict" and "invalid" are the two cases where
+// kubectl apply --force tries a recreate, so those seem to be the most relevant two cases users usually want
+// to control.
+const (
+	updatePolicyAnnotation         = "helm.sh/update-policy"
+	updatePolicyRecreateOnConflict = "recreate-on-conflict"
+	updatePolicyRecreateOnInvalid  = "recreate-on-invalid"
 )
 
 // ErrNoObjectsVisited indicates that during a visit operation, no matching objects were found.
@@ -379,14 +392,20 @@ func (c *Client) BuildTable(reader io.Reader, validate bool) (ResourceList, erro
 	return result, scrubValidationError(err)
 }
 
-// Update takes the current list of objects and target list of objects and
+// Update is a wrapper for UpdateWithTimeout to avoid a breaking API change.
+// Deprecated: prefer UpdateWithTimeout, cannot be removed until Helm 4
+func (c *Client) Update(original, target ResourceList, force bool) (*Result, error) {
+	return c.UpdateWithTimeout(original, target, force, time.Duration(0))
+}
+
+// UpdateWithTimeout takes the current list of objects and target list of objects and
 // creates resources that don't already exist, updates resources that have been
 // modified in the target configuration, and deletes resources from the current
 // configuration that are not present in the target configuration. If an error
 // occurs, a Result will still be returned with the error, containing all
 // resource updates, creations, and deletions that were attempted. These can be
 // used for cleanup or other logging purposes.
-func (c *Client) Update(original, target ResourceList, force bool) (*Result, error) {
+func (c *Client) UpdateWithTimeout(original, target ResourceList, force bool, timeout time.Duration) (*Result, error) {
 	updateErrors := []string{}
 	res := &Result{}
 
@@ -421,7 +440,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			return errors.Errorf("no %s with the name %q found", kind, info.Name)
 		}
 
-		if err := updateResource(c, info, originalInfo.Object, force); err != nil {
+		if err := updateResource(c, info, originalInfo.Object, force, timeout); err != nil {
 			c.Log("error updating the resource %q:\n\t %v", info.Name, err)
 			updateErrors = append(updateErrors, err.Error())
 		}
@@ -659,7 +678,7 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 	return patch, types.StrategicMergePatchType, err
 }
 
-func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force bool) error {
+func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force bool, timeout time.Duration) error {
 	var (
 		obj    runtime.Object
 		helper = resource.NewHelper(target.Client, target.Mapping).WithFieldManager(getManagedFieldsManager())
@@ -669,9 +688,11 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 	// if --force is applied, attempt to replace the existing resource with the new object.
 	if force {
 		var err error
-		obj, err = helper.Replace(target.Namespace, target.Name, true, target.Object)
+		obj, err = withUpdatePolicy(c, helper, target, timeout, func() (runtime.Object, error) {
+			return helper.Replace(target.Namespace, target.Name, true, target.Object)
+		})
 		if err != nil {
-			return errors.Wrap(err, "failed to replace object")
+			return errors.Wrapf(err, "failed to replace %q with kind %s", target.Name, kind)
 		}
 		c.Log("Replaced %q with kind %s for kind %s", target.Name, currentObj.GetObjectKind().GroupVersionKind().Kind, kind)
 	} else {
@@ -691,7 +712,9 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		}
 		// send patch to server
 		c.Log("Patch %s %q in namespace %s", kind, target.Name, target.Namespace)
-		obj, err = helper.Patch(target.Namespace, target.Name, patchType, patch, nil)
+		obj, err = withUpdatePolicy(c, helper, target, timeout, func() (runtime.Object, error) {
+			return helper.Patch(target.Namespace, target.Name, patchType, patch, nil)
+		})
 		if err != nil {
 			return errors.Wrapf(err, "cannot patch %q with kind %s", target.Name, kind)
 		}
@@ -699,6 +722,65 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 
 	target.Refresh(obj, true)
 	return nil
+}
+
+// withUpdatePolicy applies the update to an object by executing applyUpdate and falls back to recreating the object
+// if allowed by the updatePolicyAnnotation
+func withUpdatePolicy(c *Client, helper *resource.Helper, target *resource.Info, timeout time.Duration, applyUpdate func() (runtime.Object, error)) (runtime.Object, error) {
+	obj, updateErr := applyUpdate()
+	if updateErr == nil {
+		return obj, updateErr
+	}
+
+	annos, err := accessor.Annotations(target.Object)
+	if err != nil {
+		return nil, err
+	}
+
+	updatePolicies := strings.Split(strings.ReplaceAll(annos[updatePolicyAnnotation], " ", ""), ",")
+	sort.Strings(updatePolicies)
+
+	hasUpdatePolicy := func(updatePolicyValue string) bool {
+		return sort.SearchStrings(updatePolicies, updatePolicyValue) < len(updatePolicies)
+	}
+
+	recreate := false
+	switch reason := apierrors.ReasonForError(updateErr); reason {
+	case metav1.StatusReasonConflict:
+		recreate = hasUpdatePolicy(updatePolicyRecreateOnConflict)
+	case metav1.StatusReasonInvalid:
+		recreate = hasUpdatePolicy(updatePolicyRecreateOnInvalid)
+	}
+
+	if recreate {
+		c.Log("Update of %q of kind %s failed, trying to replace resource according to %s: %s", target.Name,
+			target.Mapping.GroupVersionKind.Kind, updatePolicyAnnotation, annos[updatePolicyAnnotation])
+		err = c.deleteAndCreate(helper, target, timeout)
+		// target is already refreshed so don't return an object.
+		return nil, err
+	}
+	return obj, updateErr
+}
+
+// deleteAndCreate deletes an object, polls until successfully deleted (or timeout is exceeded) and recreates it afterwards.
+func (c *Client) deleteAndCreate(helper *resource.Helper, target *resource.Info, timeout time.Duration) error {
+	if err := deleteResource(target, metav1.DeletePropagationBackground); err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	if err := wait.PollUntilContextCancel(ctx, 2*time.Second, true, func(ctx context.Context) (bool, error) {
+		if _, err := helper.Get(target.Namespace, target.Name); !apierrors.IsNotFound(err) {
+			return false, err
+		}
+		return true, nil
+	}); err != nil {
+		return err
+	}
+
+	return createResource(target)
 }
 
 func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) error {
