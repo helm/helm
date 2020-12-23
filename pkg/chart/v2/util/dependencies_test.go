@@ -430,6 +430,9 @@ func TestDependentChartAliases(t *testing.T) {
 	if aliasChart == nil {
 		t.Fatalf("failed to get dependency chart for alias %s", req[2].Name)
 	}
+	if aliasChart.Parent() != c {
+		t.Fatalf("dependency chart has wrong parent, expected %s but got %s", c.Name(), aliasChart.Parent().Name())
+	}
 	if req[2].Alias != "" {
 		if aliasChart.Name() != req[2].Alias {
 			t.Fatalf("dependency chart name should be %s but got %s", req[2].Alias, aliasChart.Name())
@@ -520,4 +523,33 @@ func TestDependentChartsWithSomeSubchartsSpecifiedInDependency(t *testing.T) {
 	if len(c.Metadata.Dependencies) != 1 {
 		t.Fatalf("expected 1 dependency specified in Chart.yaml, got %d", len(c.Metadata.Dependencies))
 	}
+}
+
+func validateDependencyTree(t *testing.T, c *chart.Chart) {
+	for _, dependency := range c.Dependencies() {
+		if dependency.Parent() != c {
+			if dependency.Parent() != c {
+				t.Fatalf("dependency chart %s has wrong parent, expected %s but got %s", dependency.Name(), c.Name(), dependency.Parent().Name())
+			}
+		}
+		// recurse entire tree
+		validateDependencyTree(t, dependency)
+	}
+}
+
+func TestChartWithDependencyAliasedTwiceAndDoublyReferencedSubDependency(t *testing.T) {
+	c := loadChart(t, "testdata/chart-with-dependency-aliased-twice")
+
+	if len(c.Dependencies()) != 1 {
+		t.Fatalf("expected one dependency for this chart, but got %d", len(c.Dependencies()))
+	}
+
+	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
+		t.Fatalf("expected no errors but got %q", err)
+	}
+
+	if len(c.Dependencies()) != 2 {
+		t.Fatal("expected two dependencies after processing aliases")
+	}
+	validateDependencyTree(t, c)
 }
