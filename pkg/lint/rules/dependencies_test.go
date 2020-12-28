@@ -78,6 +78,67 @@ func TestValidateDependencyInMetadata(t *testing.T) {
 	}
 }
 
+func TestValidateDependenciesUnique(t *testing.T) {
+	tests := []struct {
+		chart chart.Chart
+	}{
+		{chart.Chart{
+			Metadata: &chart.Metadata{
+				Name:       "badchart",
+				Version:    "0.1.0",
+				APIVersion: "v2",
+				Dependencies: []*chart.Dependency{
+					{
+						Name: "foo",
+					},
+					{
+						Name: "foo",
+					},
+				},
+			},
+		}},
+		{chart.Chart{
+			Metadata: &chart.Metadata{
+				Name:       "badchart",
+				Version:    "0.1.0",
+				APIVersion: "v2",
+				Dependencies: []*chart.Dependency{
+					{
+						Name:  "foo",
+						Alias: "bar",
+					},
+					{
+						Name: "bar",
+					},
+				},
+			},
+		}},
+		{chart.Chart{
+			Metadata: &chart.Metadata{
+				Name:       "badchart",
+				Version:    "0.1.0",
+				APIVersion: "v2",
+				Dependencies: []*chart.Dependency{
+					{
+						Name:  "foo",
+						Alias: "baz",
+					},
+					{
+						Name:  "bar",
+						Alias: "baz",
+					},
+				},
+			},
+		}},
+	}
+
+	for _, tt := range tests {
+		if err := validateDependenciesUnique(&tt.chart); err == nil {
+			t.Errorf("chart should have been flagged for dependency shadowing")
+		}
+	}
+}
+
 func TestDependencies(t *testing.T) {
 	tmp := ensure.TempDir(t)
 	defer os.RemoveAll(tmp)
