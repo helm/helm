@@ -21,7 +21,7 @@ import (
 	"testing"
 )
 
-func TestMergeValues(t *testing.T) {
+func TestMergeMaps(t *testing.T) {
 	nestedMap := map[string]interface{}{
 		"foo": "bar",
 		"baz": map[string]string{
