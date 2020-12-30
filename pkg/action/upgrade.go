@@ -20,7 +20,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/pkg/errors"
@@ -100,6 +103,11 @@ type Upgrade struct {
 	DisableOpenAPIValidation bool
 	// Get missing dependencies
 	DependencyUpdate bool
+}
+
+type ResultMessage struct {
+	r *release.Release
+	e error
 }
 
 // NewUpgrade creates a new Upgrade object with the given configuration.
@@ -306,11 +314,33 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 	if err := u.cfg.Releases.Create(upgradedRelease); err != nil {
 		return nil, err
 	}
+	rChan := make(chan ResultMessage)
+	go u.releasingUpgrade(rChan, upgradedRelease, current, target, originalRelease)
+	go u.handleSignals(rChan, upgradedRelease)
+	result := <-rChan
 
+	return result.r, result.e
+}
+
+func (u *Upgrade) handleSignals(c chan<- ResultMessage, upgradedRelease *release.Release) {
+	// Handle SIGINT
+	cSignal := make(chan os.Signal)
+	signal.Notify(cSignal, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-cSignal
+		u.cfg.Log("SIGTERM or SIGINT received")
+		r, e := u.failRelease(upgradedRelease, kube.ResourceList{}, fmt.Errorf("SIGTERM or SIGINT received, release failed"))
+		c <- ResultMessage{r: r, e: e}
+	}()
+}
+func (u *Upgrade) releasingUpgrade(c chan<- ResultMessage, upgradedRelease *release.Release, current kube.ResourceList, target kube.ResourceList, originalRelease *release.Release) {
 	// pre-upgrade hooks
+
 	if !u.DisableHooks {
 		if err := u.cfg.execHook(upgradedRelease, release.HookPreUpgrade, u.Timeout); err != nil {
-			return u.failRelease(upgradedRelease, kube.ResourceList{}, fmt.Errorf("pre-upgrade hooks failed: %s", err))
+			r, e := u.failRelease(upgradedRelease, kube.ResourceList{}, fmt.Errorf("pre-upgrade hooks failed: %s", err))
+			c <- ResultMessage{r: r, e: e}
+			return
 		}
 	} else {
 		u.cfg.Log("upgrade hooks disabled for %s", upgradedRelease.Name)
@@ -319,7 +349,9 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 	results, err := u.cfg.KubeClient.Update(current, target, u.Force)
 	if err != nil {
 		u.cfg.recordRelease(originalRelease)
-		return u.failRelease(upgradedRelease, results.Created, err)
+		r, e := u.failRelease(upgradedRelease, results.Created, err)
+		c <- ResultMessage{r: r, e: e}
+		return
 	}
 
 	if u.Recreate {
@@ -336,12 +368,16 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 		if u.WaitForJobs {
 			if err := u.cfg.KubeClient.WaitWithJobs(target, u.Timeout); err != nil {
 				u.cfg.recordRelease(originalRelease)
-				return u.failRelease(upgradedRelease, results.Created, err)
+				r, e := u.failRelease(upgradedRelease, results.Created, err)
+				c <- ResultMessage{r: r, e: e}
+				return
 			}
 		} else {
 			if err := u.cfg.KubeClient.Wait(target, u.Timeout); err != nil {
 				u.cfg.recordRelease(originalRelease)
-				return u.failRelease(upgradedRelease, results.Created, err)
+				r, e := u.failRelease(upgradedRelease, results.Created, err)
+				c <- ResultMessage{r: r, e: e}
+				return
 			}
 		}
 	}
@@ -349,7 +385,9 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 	// post-upgrade hooks
 	if !u.DisableHooks {
 		if err := u.cfg.execHook(upgradedRelease, release.HookPostUpgrade, u.Timeout); err != nil {
-			return u.failRelease(upgradedRelease, results.Created, fmt.Errorf("post-upgrade hooks failed: %s", err))
+			r, e := u.failRelease(upgradedRelease, results.Created, fmt.Errorf("post-upgrade hooks failed: %s", err))
+			c <- ResultMessage{r: r, e: e}
+			return
 		}
 	}
 
@@ -362,8 +400,7 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 	} else {
 		upgradedRelease.Info.Description = "Upgrade complete"
 	}
-
-	return upgradedRelease, nil
+	c <- ResultMessage{r: upgradedRelease, e: nil}
 }
 
 func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, err error) (*release.Release, error) {
