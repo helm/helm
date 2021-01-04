@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"helm.sh/helm/v3/pkg/release"
 )
@@ -67,7 +68,25 @@ func TestHistoryCmd(t *testing.T) {
 		},
 		golden: "output/history.json",
 	}}
+
+	prevLocal := time.Local
+	time.Local = time.UTC
 	runTestCmd(t, tests)
+
+	time.Local = time.FixedZone("Arbitrary", 5*60*60)
+	runTestCmd(t, []cmdTestCase{{
+		name: "get history for release in UTC+5",
+		cmd:  "history angry-bird",
+		rels: []*release.Release{
+			mk("angry-bird", 4, release.StatusDeployed),
+			mk("angry-bird", 3, release.StatusSuperseded),
+			mk("angry-bird", 2, release.StatusSuperseded),
+			mk("angry-bird", 1, release.StatusSuperseded),
+		},
+		golden: "output/history-utc+5.txt",
+	}})
+
+	time.Local = prevLocal
 }
 
 func TestHistoryOutputCompletion(t *testing.T) {
