@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"helm.sh/helm/v3/internal/test/ensure"
 	"helm.sh/helm/v3/pkg/chart"
@@ -169,7 +170,11 @@ func TestUpgradeCmd(t *testing.T) {
 			rels:      []*release.Release{relWithStatusMock("funny-bunny", 2, ch, release.StatusPendingInstall)},
 		},
 	}
+
+	prevLocal := time.Local
+	time.Local = time.UTC
 	runTestCmd(t, tests)
+	time.Local = prevLocal
 }
 
 func TestUpgradeWithValue(t *testing.T) {

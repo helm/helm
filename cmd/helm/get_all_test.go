@@ -18,6 +18,7 @@ package main
 
 import (
 	"testing"
+	"time"
 
 	"helm.sh/helm/v3/pkg/release"
 )
@@ -39,7 +40,11 @@ func TestGetCmd(t *testing.T) {
 		golden:    "output/get-all-no-args.txt",
 		wantError: true,
 	}}
+
+	prevLocal := time.Local
+	time.Local = time.UTC
 	runTestCmd(t, tests)
+	time.Local = prevLocal
 }
 
 func TestGetAllRevisionCompletion(t *testing.T) {

@@ -109,7 +109,61 @@ func TestStatusCmd(t *testing.T) {
 			},
 		),
 	}}
+
+	prevLocal := time.Local
+	time.Local = time.UTC
 	runTestCmd(t, tests)
+
+	time.Local = time.FixedZone("Arbitrary", 5*60*60)
+	runTestCmd(t, []cmdTestCase{{
+		name:   "get status of a deployed release",
+		cmd:    "status flummoxed-chickadee",
+		golden: "output/status-utc+5.txt",
+		rels: releasesMockWithStatus(&release.Info{
+			Status: release.StatusDeployed,
+		}),
+	}, {
+		name:   "get status of a deployed release with test suite",
+		cmd:    "status flummoxed-chickadee",
+		golden: "output/status-with-test-suite-utc+5.txt",
+		rels: releasesMockWithStatus(
+			&release.Info{
+				Status: release.StatusDeployed,
+			},
+			&release.Hook{
+				Name:   "never-run-test",
+				Events: []release.HookEvent{release.HookTest},
+			},
+			&release.Hook{
+				Name:   "passing-test",
+				Events: []release.HookEvent{release.HookTest},
+				LastRun: release.HookExecution{
+					StartedAt:   mustParseTime("2006-01-02T15:04:05Z"),
+					CompletedAt: mustParseTime("2006-01-02T15:04:07Z"),
+					Phase:       release.HookPhaseSucceeded,
+				},
+			},
+			&release.Hook{
+				Name:   "failing-test",
+				Events: []release.HookEvent{release.HookTest},
+				LastRun: release.HookExecution{
+					StartedAt:   mustParseTime("2006-01-02T15:10:05Z"),
+					CompletedAt: mustParseTime("2006-01-02T15:10:07Z"),
+					Phase:       release.HookPhaseFailed,
+				},
+			},
+			&release.Hook{
+				Name:   "passing-pre-install",
+				Events: []release.HookEvent{release.HookPreInstall},
+				LastRun: release.HookExecution{
+					StartedAt:   mustParseTime("2006-01-02T15:00:05Z"),
+					CompletedAt: mustParseTime("2006-01-02T15:00:07Z"),
+					Phase:       release.HookPhaseSucceeded,
+				},
+			},
+		),
+	}})
+	time.Local = prevLocal
 }
 
 func mustParseTime(t string) helmtime.Time {

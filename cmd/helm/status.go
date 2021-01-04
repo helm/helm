@@ -115,7 +115,7 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 	}
 	fmt.Fprintf(out, "NAME: %s\n", s.release.Name)
 	if !s.release.Info.LastDeployed.IsZero() {
-		fmt.Fprintf(out, "LAST DEPLOYED: %s\n", s.release.Info.LastDeployed.Format(time.ANSIC))
+		fmt.Fprintf(out, "LAST DEPLOYED: %s\n", s.release.Info.LastDeployed.Local().Format(time.ANSIC))
 	}
 	fmt.Fprintf(out, "NAMESPACE: %s\n", s.release.Namespace)
 	fmt.Fprintf(out, "STATUS: %s\n", s.release.Info.Status.String())
@@ -135,8 +135,8 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 			}
 			fmt.Fprintf(out, "TEST SUITE:     %s\n%s\n%s\n%s\n",
 				h.Name,
-				fmt.Sprintf("Last Started:   %s", h.LastRun.StartedAt.Format(time.ANSIC)),
-				fmt.Sprintf("Last Completed: %s", h.LastRun.CompletedAt.Format(time.ANSIC)),
+				fmt.Sprintf("Last Started:   %s", h.LastRun.StartedAt.Local().Format(time.ANSIC)),
+				fmt.Sprintf("Last Completed: %s", h.LastRun.CompletedAt.Local().Format(time.ANSIC)),
 				fmt.Sprintf("Phase:          %s", h.LastRun.Phase),
 			)
 		}

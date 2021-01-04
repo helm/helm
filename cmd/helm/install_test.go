@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"testing"
+	"time"
 )
 
 func TestInstall(t *testing.T) {
@@ -209,7 +210,10 @@ func TestInstall(t *testing.T) {
 		},
 	}
 
+	prevLocal := time.Local
+	time.Local = time.UTC
 	runTestActionCmd(t, tests)
+	time.Local = prevLocal
 }
 
 func TestInstallOutputCompletion(t *testing.T) {
