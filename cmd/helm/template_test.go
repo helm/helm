@@ -121,6 +121,11 @@ func TestTemplateCmd(t *testing.T) {
 			wantError: true,
 			golden:    "output/template-with-invalid-yaml-debug.txt",
 		},
+		{
+			name:   "template skip-tests",
+			cmd:    fmt.Sprintf(`template '%s' --skip-tests`, chartPath),
+			golden: "output/template-skip-tests.txt",
+		},
 	}
 	runTestCmd(t, tests)
 }

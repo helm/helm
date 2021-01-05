@@ -11,7 +11,8 @@ kind: Role
 metadata:
   name: subchart-role
 rules:
-- resources: ["*"]
+- apiGroups: [""]
+  resources: ["pods"]
   verbs: ["get","list","watch"]
 ---
 # Source: subchart/templates/subdir/rolebinding.yaml
@@ -82,3 +83,32 @@ spec:
     name: nginx
   selector:
     app.kubernetes.io/name: subchart
+---
+# Source: subchart/templates/tests/test-config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "foobar-YWJj-baz-testconfig"
+  annotations:
+    "helm.sh/hook": test
+data:
+  message: Hello World
+---
+# Source: subchart/templates/tests/test-nothing.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "foobar-YWJj-baz-test"
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: test
+      image: "alpine:latest"
+      envFrom:
+        - configMapRef:
+            name: "foobar-YWJj-baz-testconfig"
+      command:
+        - echo
+        - "$message"
+  restartPolicy: Never
