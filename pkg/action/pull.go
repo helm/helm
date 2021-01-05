@@ -45,11 +45,30 @@ type Pull struct {
 	VerifyLater bool
 	UntarDir    string
 	DestDir     string
+	cfg         *Configuration
 }
 
-// NewPull creates a new Pull object with the given configuration.
+type PullOpt func(*Pull)
+
+func WithConfig(cfg *Configuration) PullOpt {
+	return func(p *Pull) {
+		p.cfg = cfg
+	}
+}
+
+// NewPull creates a new Pull object.
 func NewPull() *Pull {
-	return &Pull{}
+	return NewPullWithOpts()
+}
+
+// NewPull creates a new pull, with configuration options.
+func NewPullWithOpts(opts ...PullOpt) *Pull {
+	p := &Pull{}
+	for _, fn := range opts {
+		fn(p)
+	}
+
+	return p
 }
 
 // Run executes 'helm pull' against the given release.
@@ -68,6 +87,16 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		},
 		RepositoryConfig: p.Settings.RepositoryConfig,
 		RepositoryCache:  p.Settings.RepositoryCache,
+	}
+
+	if strings.HasPrefix(chartRef, "oci://") {
+		if p.Version == "" {
+			return out.String(), errors.Errorf("--version flag is explicitly required for OCI registries")
+		}
+
+		c.Options = append(c.Options,
+			getter.WithRegistryClient(p.cfg.RegistryClient),
+			getter.WithTagName(p.Version))
 	}
 
 	if p.Verify {
@@ -123,6 +152,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 			_, chartName := filepath.Split(chartRef)
 			udCheck = filepath.Join(udCheck, chartName)
 		}
+
 		if _, err := os.Stat(udCheck); err != nil {
 			if err := os.MkdirAll(udCheck, 0755); err != nil {
 				return out.String(), errors.Wrap(err, "failed to untar (mkdir)")
