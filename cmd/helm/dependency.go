@@ -93,7 +93,7 @@ func newDependencyCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 	cmd.AddCommand(newDependencyListCmd(out))
 	cmd.AddCommand(newDependencyUpdateCmd(cfg, out))
-	cmd.AddCommand(newDependencyBuildCmd(out))
+	cmd.AddCommand(newDependencyBuildCmd(cfg, out))
 
 	return cmd
 }
