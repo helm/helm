@@ -22,7 +22,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -31,12 +30,6 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 )
-
-// chartName is a regular expression for testing the supplied name of a chart.
-// This regular expression is probably stricter than it needs to be. We can relax it
-// somewhat. Newline characters, as well as $, quotes, +, parens, and % are known to be
-// problematic.
-var chartName = regexp.MustCompile("^[a-zA-Z0-9._-]+$")
 
 const (
 	// ChartfileName is the default Chart file name.
@@ -70,10 +63,6 @@ const (
 	// TestConnectionName is the name of the example test file.
 	TestConnectionName = TemplatesTestsDir + sep + "test-connection.yaml"
 )
-
-// maxChartNameLength is lower than the limits we know of with certain file systems,
-// and with certain Kubernetes fields.
-const maxChartNameLength = 250
 
 const sep = string(filepath.Separator)
 
@@ -547,7 +536,7 @@ func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
 func Create(name, dir string) (string, error) {
 
 	// Sanity-check the name of a chart so user doesn't create one that causes problems.
-	if err := validateChartName(name); err != nil {
+	if err := ValidateChartName(name); err != nil {
 		return "", err
 	}
 
@@ -655,14 +644,4 @@ func writeFile(name string, content []byte) error {
 		return err
 	}
 	return ioutil.WriteFile(name, content, 0644)
-}
-
-func validateChartName(name string) error {
-	if name == "" || len(name) > maxChartNameLength {
-		return fmt.Errorf("chart name must be between 1 and %d characters", maxChartNameLength)
-	}
-	if !chartName.MatchString(name) {
-		return fmt.Errorf("chart name must match the regular expression %q", chartName.String())
-	}
-	return nil
 }

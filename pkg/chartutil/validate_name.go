@@ -35,6 +35,12 @@ import (
 // https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
 var validName = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$`)
 
+// validchartName is a regular expression for testing the supplied name of a chart.
+// This regular expression is probably stricter than it needs to be. We can relax it
+// somewhat. Newline characters, as well as $, quotes, +, parens, and % are known to be
+// problematic.
+var validchartName = regexp.MustCompile("^[a-zA-Z0-9._-]+$")
+
 var (
 	// errMissingName indicates that a release (name) was not provided.
 	errMissingName = errors.New("no name provided")
@@ -56,6 +62,10 @@ const (
 	maxReleaseNameLen = 53
 	// maxMetadataNameLen is the maximum length Kubernetes allows for any name.
 	maxMetadataNameLen = 253
+
+	// maxChartNameLength is lower than the limits we know of with certain file systems,
+	// and with certain Kubernetes fields.
+	maxChartNameLength = 250
 )
 
 // ValidateReleaseName performs checks for an entry for a Helm release name
@@ -99,6 +109,29 @@ func ValidateReleaseName(name string) error {
 func ValidateMetadataName(name string) error {
 	if name == "" || len(name) > maxMetadataNameLen || !validName.MatchString(name) {
 		return errInvalidKubernetesName
+	}
+	return nil
+}
+
+// ValidateChartName validates the name of helm charts
+//
+// Empty strings, strings longer than 250 chars, or strings that don't match the regexp
+// will fail.
+//
+// According to the Kubernetes help text, the regular expression it uses is:
+//
+//	[a-zA-Z0-9._-]+$
+//
+// This follows the above regular expression (but requires a full string match, not partial).
+func ValidateChartName(name string) error {
+	if name == "" {
+		return fmt.Errorf("name is required")
+	}
+	if name == "" || len(name) > maxChartNameLength {
+		return fmt.Errorf("chart name must be between 1 and %d characters", maxChartNameLength)
+	}
+	if !validchartName.MatchString(name) {
+		return fmt.Errorf("chart name must match the regular expression %q", validchartName.String())
 	}
 	return nil
 }

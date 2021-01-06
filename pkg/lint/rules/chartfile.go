@@ -51,7 +51,7 @@ func Chartfile(linter *support.Linter) {
 	// errors would already be caught in the above load function
 	chartFileForTypeCheck, _ := loadChartFileForTypeCheck(chartPath)
 
-	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartName(chartFile))
+	linter.RunLinterRule(support.ErrorSev, chartFileName, chartutil.ValidateChartName(chartFile.Name))
 
 	// Chart metadata
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartAPIVersion(chartFile))
@@ -99,13 +99,6 @@ func validateChartYamlNotDirectory(chartPath string) error {
 func validateChartYamlFormat(chartFileError error) error {
 	if chartFileError != nil {
 		return errors.Errorf("unable to parse YAML\n\t%s", chartFileError.Error())
-	}
-	return nil
-}
-
-func validateChartName(cf *chart.Metadata) error {
-	if cf.Name == "" {
-		return errors.New("name is required")
 	}
 	return nil
 }

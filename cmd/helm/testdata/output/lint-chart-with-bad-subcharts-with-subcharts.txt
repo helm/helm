@@ -13,8 +13,14 @@
 [ERROR] : unable to load chart
 	validation: chart.metadata.name is required
 
+==> Linting testdata/testcharts/chart-with-bad-subcharts/charts/bad-subchart-name-length
+[ERROR] Chart.yaml: chart name must be between 1 and 250 characters
+[ERROR] Chart.yaml: apiVersion is required. The value must be either "v1" or "v2"
+[INFO] Chart.yaml: icon is recommended
+[WARNING] templates/: directory not found
+
 ==> Linting testdata/testcharts/chart-with-bad-subcharts/charts/good-subchart
 [INFO] Chart.yaml: icon is recommended
 [WARNING] templates/: directory not found
 
-Error: 3 chart(s) linted, 2 chart(s) failed
+Error: 4 chart(s) linted, 3 chart(s) failed

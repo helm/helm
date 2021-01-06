@@ -65,7 +65,7 @@ func TestValidateChartYamlFormat(t *testing.T) {
 }
 
 func TestValidateChartName(t *testing.T) {
-	err := validateChartName(badChart)
+	err := chartutil.ValidateChartName(badChart.Name)
 	if err == nil {
 		t.Errorf("validateChartName to return a linter error, got no error")
 	}
