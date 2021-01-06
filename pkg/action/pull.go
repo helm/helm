@@ -61,7 +61,7 @@ func NewPull() *Pull {
 	return NewPullWithOpts()
 }
 
-// NewPull creates a new pull, with configuration options.
+// NewPullWithOpts creates a new pull, with configuration options.
 func NewPullWithOpts(opts ...PullOpt) *Pull {
 	p := &Pull{}
 	for _, fn := range opts {
