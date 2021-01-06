@@ -453,8 +453,8 @@ func (m *Manager) hasAllRepos(deps []*chart.Dependency) error {
 	missing := []string{}
 Loop:
 	for _, dd := range deps {
-		// If repo is from local path, continue
-		if strings.HasPrefix(dd.Repository, "file://") {
+		// If repo is from local path or OCI, continue
+		if strings.HasPrefix(dd.Repository, "file://") || strings.HasPrefix(dd.Repository, "oci://") {
 			continue
 		}
 
@@ -555,7 +555,8 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 	missing := []string{}
 	for _, dd := range deps {
 		// Don't map the repository, we don't need to download chart from charts directory
-		if dd.Repository == "" {
+		// When OCI is used there is no Helm repository
+		if dd.Repository == "" || strings.HasPrefix(dd.Repository, "oci://") {
 			continue
 		}
 		// if dep chart is from local path, verify the path is valid
