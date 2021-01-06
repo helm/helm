@@ -24,7 +24,9 @@ TESTS      := .
 TESTFLAGS  :=
 LDFLAGS    := -w -s
 GOFLAGS    :=
-SRC        := $(shell find . -type f -name '*.go' -print)
+
+# Rebuild the buinary if any of these files change
+SRC := $(shell find . -type f -name '*.go' -print) go.mod go.sum
 
 # Required for globs to work correctly
 SHELL      = /usr/bin/env bash
