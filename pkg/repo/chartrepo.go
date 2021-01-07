@@ -275,6 +275,10 @@ func ResolveReferenceURL(baseURL, refURL string) (string, error) {
 		return "", errors.Wrapf(err, "failed to parse %s as URL", baseURL)
 	}
 
+	if parsedBaseURL.RawQuery != "" {
+		refURL = fmt.Sprintf("%s?%s", refURL, parsedBaseURL.RawQuery)
+	}
+
 	parsedRefURL, err := url.Parse(refURL)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to parse %s as URL", refURL)
