@@ -400,4 +400,20 @@ func TestResolveReferenceURL(t *testing.T) {
 	if chartURL != "https://charts.helm.sh/stable/nginx-0.2.0.tgz" {
 		t.Errorf("%s", chartURL)
 	}
+
+	chartURL, err = ResolveReferenceURL("http://localhost:8123/charts/?key=value", "nginx-0.2.0.tgz")
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	if chartURL != "http://localhost:8123/charts/nginx-0.2.0.tgz?key=value" {
+		t.Errorf("%s", chartURL)
+	}
+
+	chartURL, err = ResolveReferenceURL("http://localhost:8123/charts/?", "nginx-0.2.0.tgz")
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	if chartURL != "http://localhost:8123/charts/nginx-0.2.0.tgz" {
+		t.Errorf("%s", chartURL)
+	}
 }
