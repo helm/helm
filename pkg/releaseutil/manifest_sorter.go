@@ -203,6 +203,78 @@ func (file *manifestFile) sort(result *result) error {
 	return nil
 }
 
+// SortAllManifests takes a map of filename/YAML contents, splits the file
+// by manifest entries and sorts them based on the given ordering. No regard is given
+// to wether the manifest contains a hook.
+//
+// Files that do not parse into the expected format are simply placed into a map and
+// returned.
+func SortAllManifests(files map[string]string, apis chartutil.VersionSet, ordering KindSortOrder) ([]Manifest, error) {
+	result := &result{}
+
+	var sortedFilePaths []string
+	for filePath := range files {
+		sortedFilePaths = append(sortedFilePaths, filePath)
+	}
+	sort.Strings(sortedFilePaths)
+
+	for _, filePath := range sortedFilePaths {
+		content := files[filePath]
+
+		// Skip partials. We could return these as a separate map, but there doesn't
+		// seem to be any need for that at this time.
+		if strings.HasPrefix(path.Base(filePath), "_") {
+			continue
+		}
+		// Skip empty files and log this.
+		if strings.TrimSpace(content) == "" {
+			continue
+		}
+
+		manifestFile := &manifestFile{
+			entries: SplitManifests(content),
+			path:    filePath,
+			apis:    apis,
+		}
+
+		if err := manifestFile.sortAll(result); err != nil {
+			return result.generic, err
+		}
+	}
+
+	return sortByKind(result.generic, ordering), nil
+}
+
+// sortAll takes a manifestFile object which may contain multiple resource definition
+// entries and sorts them based on the given ordering. No regard is given
+// to wether the manifest contains a hook.
+//
+func (file *manifestFile) sortAll(result *result) error {
+	// Go through manifests in order found in file (function `SplitAllManifests` creates integer-sortable keys)
+	var sortedEntryKeys []string
+	for entryKey := range file.entries {
+		sortedEntryKeys = append(sortedEntryKeys, entryKey)
+	}
+	sort.Sort(BySplitManifestsOrder(sortedEntryKeys))
+
+	for _, entryKey := range sortedEntryKeys {
+		m := file.entries[entryKey]
+
+		var entry SimpleHead
+		if err := yaml.Unmarshal([]byte(m), &entry); err != nil {
+			return errors.Wrapf(err, "YAML parse error on %s", file.path)
+		}
+
+		result.generic = append(result.generic, Manifest{
+			Name:    file.path,
+			Content: m,
+			Head:    &entry,
+		})
+	}
+
+	return nil
+}
+
 // hasAnyAnnotation returns true if the given entry has any annotations at all.
 func hasAnyAnnotation(entry SimpleHead) bool {
 	return entry.Metadata != nil &&

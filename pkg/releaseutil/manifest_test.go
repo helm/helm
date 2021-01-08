@@ -19,6 +19,8 @@ package releaseutil // import "helm.sh/helm/v3/pkg/releaseutil"
 import (
 	"reflect"
 	"testing"
+
+	"helm.sh/helm/v3/pkg/release"
 )
 
 const mockManifestFile = `
@@ -57,5 +59,20 @@ func TestSplitManifest(t *testing.T) {
 	expected := map[string]string{"manifest-0": expectedManifest}
 	if !reflect.DeepEqual(manifests, expected) {
 		t.Errorf("Expected %v, got %v", expected, manifests)
+	}
+}
+
+func TestSplitAllManifests(t *testing.T) {
+	mockRelease := release.Mock(&release.MockReleaseOptions{})
+	manifests := SplitAllManifests(mockRelease)
+	if len(manifests) != 2 {
+		t.Errorf("Expected 2 manifests (including one containing a hook), got %v", len(manifests))
+	}
+	if len(mockRelease.Hooks) != 1 {
+		t.Errorf("Expected 1 hook, got %v", len(mockRelease.Hooks))
+	}
+	manifestsLessHooks := SplitManifests(mockRelease.Manifest)
+	if len(manifestsLessHooks) != 1 {
+		t.Errorf("Expected 1 manifest without a hook, got %v", len(manifestsLessHooks))
 	}
 }

@@ -17,6 +17,7 @@ limitations under the License.
 package releaseutil
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -219,6 +220,155 @@ metadata:
 		}
 	}
 
+	sorted = sortByKind(sorted, InstallOrder)
+	for i, m := range generic {
+		if m.Content != sorted[i].Content {
+			t.Errorf("Expected %q, got %q", m.Content, sorted[i].Content)
+		}
+	}
+}
+
+func TestSortAllManifests(t *testing.T) {
+
+	data := []struct {
+		name     []string
+		path     string
+		kind     []string
+		hooks    map[string][]release.HookEvent
+		manifest string
+	}{
+		{
+			name:  []string{"first"},
+			path:  "one",
+			kind:  []string{"Job"},
+			hooks: map[string][]release.HookEvent{"first": {release.HookPreInstall}},
+			manifest: `apiVersion: v1
+kind: Job
+metadata:
+  name: first
+  labels:
+    doesnot: matter
+  annotations:
+    "helm.sh/hook": pre-install
+`,
+		},
+		{
+			name:  []string{"second"},
+			path:  "two",
+			kind:  []string{"ReplicaSet"},
+			hooks: map[string][]release.HookEvent{"second": {release.HookPostInstall}},
+			manifest: `kind: ReplicaSet
+apiVersion: v1beta1
+metadata:
+  name: second
+  annotations:
+    "helm.sh/hook": post-install
+`,
+		}, {
+			name:  []string{"third"},
+			path:  "three",
+			kind:  []string{"ReplicaSet"},
+			hooks: map[string][]release.HookEvent{"third": {release.HookPreDelete}},
+			manifest: `kind: ReplicaSet
+apiVersion: v1beta1
+metadata:
+  name: third
+  annotations:
+    "helm.sh/hook": pre-delete
+`,
+		}, {
+			name:  []string{"fourth"},
+			path:  "four",
+			kind:  []string{"Pod"},
+			hooks: map[string][]release.HookEvent{"fourth": nil},
+			manifest: `kind: Pod
+apiVersion: v1
+metadata:
+  name: fourth
+  annotations:
+    nothing: here`,
+		}, {
+			name:  []string{"fifth"},
+			path:  "five",
+			kind:  []string{"ReplicaSet"},
+			hooks: map[string][]release.HookEvent{"fifth": {release.HookPostDelete, release.HookPostInstall}},
+			manifest: `kind: ReplicaSet
+apiVersion: v1beta1
+metadata:
+  name: fifth
+  annotations:
+    "helm.sh/hook": post-delete, post-install
+`,
+		}, {
+			name:  []string{"sixth", "example-test"},
+			path:  "six",
+			kind:  []string{"ConfigMap", "Pod"},
+			hooks: map[string][]release.HookEvent{"sixth": nil, "example-test": {release.HookTest}},
+			manifest: `kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: sixth
+data:
+  name: value
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: example-test
+  annotations:
+    "helm.sh/hook": test
+`,
+		},
+	}
+
+	manifests := make(map[string]string, len(data))
+	for i, o := range data {
+		manifests[fmt.Sprintf(manifestTpl, i)] = o.manifest
+	}
+
+	generic, err := SortAllManifests(manifests, chartutil.VersionSet{"v1", "v1beta1"}, InstallOrder)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+
+	// NOTE: 'six' includes two manifests.
+	if len(generic) != 7 {
+		t.Errorf("Expected 7 generic manifests, got %d", len(generic))
+	}
+
+	// Verify the sort order
+	noHooks := []Manifest{}
+	hooks := []Manifest{}
+	for i, s := range data {
+		manifests := SplitManifests(s.manifest)
+
+		for _, m := range manifests {
+			var sh SimpleHead
+			if err := yaml.Unmarshal([]byte(m), &sh); err != nil {
+				// This is expected for manifests that are corrupt or empty.
+				t.Log(err)
+				continue
+			}
+
+			name := sh.Metadata.Name
+
+			if s.hooks[name] == nil {
+				noHooks = append(noHooks, Manifest{
+					Content: m,
+					Name:    fmt.Sprintf(manifestTpl, i),
+					Head:    &sh,
+				})
+			} else {
+				hooks = append(hooks, Manifest{
+					Content: m,
+					Name:    fmt.Sprintf(manifestTpl, i),
+					Head:    &sh,
+				})
+			}
+		}
+	}
+
+	sorted := append(noHooks, hooks...)
 	sorted = sortByKind(sorted, InstallOrder)
 	for i, m := range generic {
 		if m.Content != sorted[i].Content {

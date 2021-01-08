@@ -21,6 +21,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	rspb "helm.sh/helm/v3/pkg/release"
 )
 
 // SimpleHead defines what the structure of the head of a manifest file
@@ -35,13 +37,14 @@ type SimpleHead struct {
 
 var sep = regexp.MustCompile("(?:^|\\s*\n)---\\s*")
 
+const manifestTpl = "manifest-%d"
+
 // SplitManifests takes a string of manifest and returns a map contains individual manifests
 func SplitManifests(bigFile string) map[string]string {
 	// Basically, we're quickly splitting a stream of YAML documents into an
 	// array of YAML docs. The file name is just a place holder, but should be
 	// integer-sortable so that manifests get output in the same order as the
 	// input (see `BySplitManifestsOrder`).
-	tpl := "manifest-%d"
 	res := map[string]string{}
 	// Making sure that any extra whitespace in YAML stream doesn't interfere in splitting documents correctly.
 	bigFileTmp := strings.TrimSpace(bigFile)
@@ -53,7 +56,32 @@ func SplitManifests(bigFile string) map[string]string {
 		}
 
 		d = strings.TrimSpace(d)
-		res[fmt.Sprintf(tpl, count)] = d
+		res[fmt.Sprintf(manifestTpl, count)] = d
+		count = count + 1
+	}
+	return res
+}
+
+// SplitAllManifests takes a Release and returns a map contains ALL individual manifests, including manifests with hooks
+func SplitAllManifests(rel *rspb.Release) map[string]string {
+	res := SplitManifests(rel.Manifest)
+
+	hookManifests := getHookManifests(rel, res)
+	for k, v := range hookManifests {
+		res[k] = v
+	}
+	return res
+}
+
+func getHookManifests(rel *rspb.Release, baseManifests map[string]string) map[string]string {
+	res := map[string]string{}
+	var count int = len(baseManifests)
+	for _, d := range rel.Hooks {
+		if d == nil {
+			continue
+		}
+
+		res[fmt.Sprintf(manifestTpl, count)] = fmt.Sprintf("# Source: %s\n%s", d.Path, d.Manifest)
 		count = count + 1
 	}
 	return res
