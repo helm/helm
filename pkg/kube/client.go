@@ -225,8 +225,8 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 
 		originalInfo := original.Get(info)
 		if originalInfo == nil {
-			kind := info.Mapping.GroupVersionKind.Kind
-			return errors.Errorf("no %s with the name %q found", kind, info.Name)
+			c.Log("obj %q already exists; skipping", info.Name)
+			return nil
 		}
 
 		if err := updateResource(c, info, originalInfo.Object, force); err != nil {
