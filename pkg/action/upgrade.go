@@ -40,7 +40,7 @@ import (
 	"helm.sh/helm/v3/pkg/storage/driver"
 )
 
-var mutex sync.Mutex
+var upgradeLock sync.Mutex
 
 // Upgrade is the action for upgrading releases.
 //
@@ -326,12 +326,12 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 }
 
 func (u *Upgrade) reportToPerformUpgrade(c chan<- resultMessage, rel *release.Release, created kube.ResourceList, err error) {
-	mutex.Lock()
+	upgradeLock.Lock()
 	if err != nil {
 		rel, err = u.failRelease(rel, created, err)
 	}
 	c <- resultMessage{r: rel, e: err}
-	mutex.Unlock()
+	upgradeLock.Unlock()
 }
 func (u *Upgrade) handleSignals(c chan<- resultMessage, upgradedRelease *release.Release) {
 	// Handle SIGINT

@@ -22,9 +22,12 @@ import (
 	"io/ioutil"
 	"net/url"
 	"os"
+	"os/signal"
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
+	"syscall"
 	"text/template"
 	"time"
 
@@ -65,6 +68,8 @@ const releaseNameMaxLen = 53
 const notesFileSuffix = "NOTES.txt"
 
 const defaultDirectoryPermission = 0755
+
+var installLock sync.Mutex
 
 // Install performs an installation operation.
 type Install struct {
@@ -331,11 +336,21 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 		// not working.
 		return rel, err
 	}
+	rChan := make(chan resultMessage)
+	go i.performInstall(rChan, rel, toBeAdopted, resources)
+	go i.handleSignals(rChan, rel)
+	result := <-rChan
+	//start preformInstall go routine
+	return result.r, result.e
+}
+
+func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, toBeAdopted kube.ResourceList, resources kube.ResourceList) {
 
 	// pre-install hooks
 	if !i.DisableHooks {
 		if err := i.cfg.execHook(rel, release.HookPreInstall, i.Timeout); err != nil {
-			return i.failRelease(rel, fmt.Errorf("failed pre-install: %s", err))
+			i.reportToRun(c, rel, fmt.Errorf("failed pre-install: %s", err))
+			return
 		}
 	}
 
@@ -344,29 +359,34 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	// to true, since that is basically an upgrade operation.
 	if len(toBeAdopted) == 0 && len(resources) > 0 {
 		if _, err := i.cfg.KubeClient.Create(resources); err != nil {
-			return i.failRelease(rel, err)
+			i.reportToRun(c, rel, err)
+			return
 		}
 	} else if len(resources) > 0 {
 		if _, err := i.cfg.KubeClient.Update(toBeAdopted, resources, false); err != nil {
-			return i.failRelease(rel, err)
+			i.reportToRun(c, rel, err)
+			return
 		}
 	}
 
 	if i.Wait {
 		if i.WaitForJobs {
 			if err := i.cfg.KubeClient.WaitWithJobs(resources, i.Timeout); err != nil {
-				return i.failRelease(rel, err)
+				i.reportToRun(c, rel, err)
+				return
 			}
 		} else {
 			if err := i.cfg.KubeClient.Wait(resources, i.Timeout); err != nil {
-				return i.failRelease(rel, err)
+				i.reportToRun(c, rel, err)
+				return
 			}
 		}
 	}
 
 	if !i.DisableHooks {
 		if err := i.cfg.execHook(rel, release.HookPostInstall, i.Timeout); err != nil {
-			return i.failRelease(rel, fmt.Errorf("failed post-install: %s", err))
+			i.reportToRun(c, rel, fmt.Errorf("failed post-install: %s", err))
+			return
 		}
 	}
 
@@ -387,9 +407,26 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 		i.cfg.Log("failed to record the release: %s", err)
 	}
 
-	return rel, nil
+	i.reportToRun(c, rel, nil)
 }
-
+func (i *Install) handleSignals(c chan<- resultMessage, rel *release.Release) {
+	// Handle SIGINT
+	cSignal := make(chan os.Signal)
+	signal.Notify(cSignal, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-cSignal
+		i.cfg.Log("SIGTERM or SIGINT received")
+		i.reportToRun(c, rel, fmt.Errorf("SIGTERM or SIGINT received, release failed"))
+	}()
+}
+func (i *Install) reportToRun(c chan<- resultMessage, rel *release.Release, err error) {
+	installLock.Lock()
+	if err != nil {
+		rel, err = i.failRelease(rel, err)
+	}
+	c <- resultMessage{r: rel, e: err}
+	installLock.Unlock()
+}
 func (i *Install) failRelease(rel *release.Release, err error) (*release.Release, error) {
 	rel.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", i.ReleaseName, err.Error()))
 	if i.Atomic {
