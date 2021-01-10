@@ -58,6 +58,14 @@ func (f *FailingKubeClient) Wait(resources kube.ResourceList, d time.Duration) e
 	return f.PrintingKubeClient.Wait(resources, d)
 }
 
+// WaitWithJobs returns the configured error if set or prints
+func (f *FailingKubeClient) WaitWithJobs(resources kube.ResourceList, d time.Duration) error {
+	if f.WaitError != nil {
+		return f.WaitError
+	}
+	return f.PrintingKubeClient.Wait(resources, d)
+}
+
 // Delete returns the configured error if set or prints
 func (f *FailingKubeClient) Delete(resources kube.ResourceList) (*kube.Result, []error) {
 	if f.DeleteError != nil {

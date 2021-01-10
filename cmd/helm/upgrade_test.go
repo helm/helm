@@ -132,6 +132,12 @@ func TestUpgradeCmd(t *testing.T) {
 			rels:   []*release.Release{relMock("crazy-bunny", 2, ch2)},
 		},
 		{
+			name:   "upgrade a release with wait-for-jobs",
+			cmd:    fmt.Sprintf("upgrade crazy-bunny --wait --wait-for-jobs '%s'", chartPath),
+			golden: "output/upgrade-with-wait-for-jobs.txt",
+			rels:   []*release.Release{relMock("crazy-bunny", 2, ch2)},
+		},
+		{
 			name:      "upgrade a release with missing dependencies",
 			cmd:       fmt.Sprintf("upgrade bonkers-bunny %s", missingDepsPath),
 			golden:    "output/upgrade-with-missing-dependencies.txt",

@@ -16,65 +16,69 @@ limitations under the License.
 
 package rules // import "helm.sh/helm/v3/pkg/lint/rules"
 
-import "fmt"
+import (
+	"fmt"
 
-// deprecatedAPIs lists APIs that are deprecated (left) with suggested alternatives (right).
-//
-// An empty rvalue indicates that the API is completely deprecated.
-var deprecatedAPIs = map[string]string{
-	"extensions/v1beta1 Deployment":                             "apps/v1 Deployment",
-	"extensions/v1beta1 DaemonSet":                              "apps/v1 DaemonSet",
-	"extensions/v1beta1 ReplicaSet":                             "apps/v1 ReplicaSet",
-	"extensions/v1beta1 PodSecurityPolicy":                      "policy/v1beta1 PodSecurityPolicy",
-	"extensions/v1beta1 NetworkPolicy":                          "networking.k8s.io/v1beta1 NetworkPolicy",
-	"extensions/v1beta1 Ingress":                                "networking.k8s.io/v1beta1 Ingress",
-	"apps/v1beta1 Deployment":                                   "apps/v1 Deployment",
-	"apps/v1beta1 StatefulSet":                                  "apps/v1 StatefulSet",
-	"apps/v1beta1 ReplicaSet":                                   "apps/v1 ReplicaSet",
-	"apps/v1beta2 Deployment":                                   "apps/v1 Deployment",
-	"apps/v1beta2 StatefulSet":                                  "apps/v1 StatefulSet",
-	"apps/v1beta2 DaemonSet":                                    "apps/v1 DaemonSet",
-	"apps/v1beta2 ReplicaSet":                                   "apps/v1 ReplicaSet",
-	"apiextensions.k8s.io/v1beta1 CustomResourceDefinition":     "apiextensions.k8s.io/v1 CustomResourceDefinition",
-	"rbac.authorization.k8s.io/v1alpha1 ClusterRole":            "rbac.authorization.k8s.io/v1 ClusterRole",
-	"rbac.authorization.k8s.io/v1alpha1 ClusterRoleList":        "rbac.authorization.k8s.io/v1 ClusterRoleList",
-	"rbac.authorization.k8s.io/v1alpha1 ClusterRoleBinding":     "rbac.authorization.k8s.io/v1 ClusterRoleBinding",
-	"rbac.authorization.k8s.io/v1alpha1 ClusterRoleBindingList": "rbac.authorization.k8s.io/v1 ClusterRoleBindingList",
-	"rbac.authorization.k8s.io/v1alpha1 Role":                   "rbac.authorization.k8s.io/v1 Role",
-	"rbac.authorization.k8s.io/v1alpha1 RoleList":               "rbac.authorization.k8s.io/v1 RoleList",
-	"rbac.authorization.k8s.io/v1alpha1 RoleBinding":            "rbac.authorization.k8s.io/v1 RoleBinding",
-	"rbac.authorization.k8s.io/v1alpha1 RoleBindingList":        "rbac.authorization.k8s.io/v1 RoleBindingList",
-	"rbac.authorization.k8s.io/v1beta1 ClusterRole":             "rbac.authorization.k8s.io/v1 ClusterRole",
-	"rbac.authorization.k8s.io/v1beta1 ClusterRoleList":         "rbac.authorization.k8s.io/v1 ClusterRoleList",
-	"rbac.authorization.k8s.io/v1beta1 ClusterRoleBinding":      "rbac.authorization.k8s.io/v1 ClusterRoleBinding",
-	"rbac.authorization.k8s.io/v1beta1 ClusterRoleBindingList":  "rbac.authorization.k8s.io/v1 ClusterRoleBindingList",
-	"rbac.authorization.k8s.io/v1beta1 Role":                    "rbac.authorization.k8s.io/v1 Role",
-	"rbac.authorization.k8s.io/v1beta1 RoleList":                "rbac.authorization.k8s.io/v1 RoleList",
-	"rbac.authorization.k8s.io/v1beta1 RoleBinding":             "rbac.authorization.k8s.io/v1 RoleBinding",
-	"rbac.authorization.k8s.io/v1beta1 RoleBindingList":         "rbac.authorization.k8s.io/v1 RoleBindingList",
-}
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apiserver/pkg/endpoints/deprecation"
+	kscheme "k8s.io/client-go/kubernetes/scheme"
+)
+
+const (
+	// This should be set in the Makefile based on the version of client-go being imported.
+	// These constants will be overwritten with LDFLAGS
+	k8sVersionMajor = 1
+	k8sVersionMinor = 20
+)
 
 // deprecatedAPIError indicates than an API is deprecated in Kubernetes
 type deprecatedAPIError struct {
-	Deprecated  string
-	Alternative string
+	Deprecated string
+	Message    string
 }
 
 func (e deprecatedAPIError) Error() string {
-	msg := fmt.Sprintf("the kind %q is deprecated", e.Deprecated)
-	if e.Alternative != "" {
-		msg += fmt.Sprintf(" in favor of %q", e.Alternative)
-	}
+	msg := e.Message
 	return msg
 }
 
 func validateNoDeprecations(resource *K8sYamlStruct) error {
-	gvk := fmt.Sprintf("%s %s", resource.APIVersion, resource.Kind)
-	if alt, ok := deprecatedAPIs[gvk]; ok {
-		return deprecatedAPIError{
-			Deprecated:  gvk,
-			Alternative: alt,
-		}
+	// if `resource` does not have an APIVersion or Kind, we cannot test it for deprecation
+	if resource.APIVersion == "" {
+		return nil
 	}
-	return nil
+	if resource.Kind == "" {
+		return nil
+	}
+
+	runtimeObject, err := resourceToRuntimeObject(resource)
+	if err != nil {
+		// do not error for non-kubernetes resources
+		if runtime.IsNotRegisteredError(err) {
+			return nil
+		}
+		return err
+	}
+	if !deprecation.IsDeprecated(runtimeObject, k8sVersionMajor, k8sVersionMinor) {
+		return nil
+	}
+	gvk := fmt.Sprintf("%s %s", resource.APIVersion, resource.Kind)
+	return deprecatedAPIError{
+		Deprecated: gvk,
+		Message:    deprecation.WarningMessage(runtimeObject),
+	}
+}
+
+func resourceToRuntimeObject(resource *K8sYamlStruct) (runtime.Object, error) {
+	scheme := runtime.NewScheme()
+	kscheme.AddToScheme(scheme)
+
+	gvk := schema.FromAPIVersionAndKind(resource.APIVersion, resource.Kind)
+	out, err := scheme.New(gvk)
+	if err != nil {
+		return nil, err
+	}
+	out.GetObjectKind().SetGroupVersionKind(gvk)
+	return out, nil
 }

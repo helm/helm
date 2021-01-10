@@ -16,17 +16,30 @@ limitations under the License.
 package repotest
 
 import (
+	"context"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
-	"helm.sh/helm/v3/internal/tlsutil"
-
+	auth "github.com/deislabs/oras/pkg/auth/docker"
+	"github.com/docker/distribution/configuration"
+	"github.com/docker/distribution/registry"
+	_ "github.com/docker/distribution/registry/auth/htpasswd"           // used for docker test registry
+	_ "github.com/docker/distribution/registry/storage/driver/inmemory" // used for docker test registry
+	"github.com/phayes/freeport"
+	"golang.org/x/crypto/bcrypt"
 	"sigs.k8s.io/yaml"
 
+	ociRegistry "helm.sh/helm/v3/internal/experimental/registry"
+	"helm.sh/helm/v3/internal/tlsutil"
+	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/repo"
 )
 
@@ -41,6 +54,166 @@ func NewTempServerWithCleanup(t *testing.T, glob string) (*Server, error) {
 	srv, err := NewTempServer(glob)
 	t.Cleanup(func() { os.RemoveAll(srv.docroot) })
 	return srv, err
+}
+
+type OCIServer struct {
+	*registry.Registry
+	RegistryURL  string
+	Dir          string
+	TestUsername string
+	TestPassword string
+	Client       *ociRegistry.Client
+}
+
+type OCIServerRunConfig struct {
+	DependingChart *chart.Chart
+}
+
+type OCIServerOpt func(config *OCIServerRunConfig)
+
+func WithDependingChart(c *chart.Chart) OCIServerOpt {
+	return func(config *OCIServerRunConfig) {
+		config.DependingChart = c
+	}
+}
+
+func NewOCIServer(t *testing.T, dir string) (*OCIServer, error) {
+	testHtpasswdFileBasename := "authtest.htpasswd"
+	testUsername, testPassword := "username", "password"
+
+	pwBytes, err := bcrypt.GenerateFromPassword([]byte(testPassword), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatal("error generating bcrypt password for test htpasswd file")
+	}
+	htpasswdPath := filepath.Join(dir, testHtpasswdFileBasename)
+	err = ioutil.WriteFile(htpasswdPath, []byte(fmt.Sprintf("%s:%s\n", testUsername, string(pwBytes))), 0644)
+	if err != nil {
+		t.Fatalf("error creating test htpasswd file")
+	}
+
+	// Registry config
+	config := &configuration.Configuration{}
+	port, err := freeport.GetFreePort()
+	if err != nil {
+		t.Fatalf("error finding free port for test registry")
+	}
+
+	config.HTTP.Addr = fmt.Sprintf(":%d", port)
+	config.HTTP.DrainTimeout = time.Duration(10) * time.Second
+	config.Storage = map[string]configuration.Parameters{"inmemory": map[string]interface{}{}}
+	config.Auth = configuration.Auth{
+		"htpasswd": configuration.Parameters{
+			"realm": "localhost",
+			"path":  htpasswdPath,
+		},
+	}
+
+	registryURL := fmt.Sprintf("localhost:%d", port)
+
+	r, err := registry.NewRegistry(context.Background(), config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return &OCIServer{
+		Registry:     r,
+		RegistryURL:  registryURL,
+		TestUsername: testUsername,
+		TestPassword: testPassword,
+		Dir:          dir,
+	}, nil
+}
+
+func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
+	cfg := &OCIServerRunConfig{}
+	for _, fn := range opts {
+		fn(cfg)
+	}
+
+	go srv.ListenAndServe()
+
+	credentialsFile := filepath.Join(srv.Dir, "config.json")
+
+	client, err := auth.NewClient(credentialsFile)
+	if err != nil {
+		t.Fatalf("error creating auth client")
+	}
+
+	resolver, err := client.Resolver(context.Background(), http.DefaultClient, false)
+	if err != nil {
+		t.Fatalf("error creating resolver")
+	}
+
+	// init test client
+	registryClient, err := ociRegistry.NewClient(
+		ociRegistry.ClientOptDebug(true),
+		ociRegistry.ClientOptWriter(os.Stdout),
+		ociRegistry.ClientOptAuthorizer(&ociRegistry.Authorizer{
+			Client: client,
+		}),
+		ociRegistry.ClientOptResolver(&ociRegistry.Resolver{
+			Resolver: resolver,
+		}),
+	)
+	if err != nil {
+		t.Fatalf("error creating registry client")
+	}
+
+	err = registryClient.Login(srv.RegistryURL, srv.TestUsername, srv.TestPassword, false)
+	if err != nil {
+		t.Fatalf("error logging into registry with good credentials")
+	}
+
+	ref, err := ociRegistry.ParseReference(fmt.Sprintf("%s/u/ocitestuser/oci-dependent-chart:0.1.0", srv.RegistryURL))
+	if err != nil {
+		t.Fatalf("")
+	}
+
+	err = chartutil.ExpandFile(srv.Dir, filepath.Join(srv.Dir, "oci-dependent-chart-0.1.0.tgz"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// valid chart
+	ch, err := loader.LoadDir(filepath.Join(srv.Dir, "oci-dependent-chart"))
+	if err != nil {
+		t.Fatal("error loading chart")
+	}
+
+	err = os.RemoveAll(filepath.Join(srv.Dir, "oci-dependent-chart"))
+	if err != nil {
+		t.Fatal("error removing chart before push")
+	}
+
+	err = registryClient.SaveChart(ch, ref)
+	if err != nil {
+		t.Fatal("error saving chart")
+	}
+
+	err = registryClient.PushChart(ref)
+	if err != nil {
+		t.Fatal("error pushing chart")
+	}
+
+	if cfg.DependingChart != nil {
+		c := cfg.DependingChart
+		dependingRef, err := ociRegistry.ParseReference(fmt.Sprintf("%s/u/ocitestuser/oci-depending-chart:1.2.3", srv.RegistryURL))
+		if err != nil {
+			t.Fatal("error parsing reference for depending chart reference")
+		}
+
+		err = registryClient.SaveChart(c, dependingRef)
+		if err != nil {
+			t.Fatal("error saving depending chart")
+		}
+
+		err = registryClient.PushChart(dependingRef)
+		if err != nil {
+			t.Fatal("error pushing depending chart")
+		}
+	}
+
+	srv.Client = registryClient
 }
 
 // NewTempServer creates a server inside of a temp dir.

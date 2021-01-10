@@ -137,7 +137,21 @@ func (c *Client) Wait(resources ResourceList, timeout time.Duration) error {
 		log:     c.Log,
 		timeout: timeout,
 	}
-	return w.waitForResources(resources)
+	return w.waitForResources(resources, false)
+}
+
+// WaitWithJobs wait up to the given timeout for the specified resources to be ready, including jobs.
+func (c *Client) WaitWithJobs(resources ResourceList, timeout time.Duration) error {
+	cs, err := c.getKubeClient()
+	if err != nil {
+		return err
+	}
+	w := waiter{
+		c:       cs,
+		log:     c.Log,
+		timeout: timeout,
+	}
+	return w.waitForResources(resources, true)
 }
 
 func (c *Client) namespace() string {

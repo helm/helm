@@ -41,7 +41,7 @@ If no lock file is found, 'helm dependency build' will mirror the behavior
 of 'helm dependency update'.
 `
 
-func newDependencyBuildCmd(out io.Writer) *cobra.Command {
+func newDependencyBuildCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewDependency()
 
 	cmd := &cobra.Command{
@@ -60,6 +60,7 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 				Keyring:          client.Keyring,
 				SkipUpdate:       client.SkipRefresh,
 				Getters:          getter.All(settings),
+				RegistryClient:   cfg.RegistryClient,
 				RepositoryConfig: settings.RepositoryConfig,
 				RepositoryCache:  settings.RepositoryCache,
 				Debug:            settings.Debug,

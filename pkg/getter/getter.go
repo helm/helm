@@ -22,6 +22,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/cli"
 )
 
@@ -33,10 +34,13 @@ type options struct {
 	certFile              string
 	keyFile               string
 	caFile                string
+	unTar                 bool
 	insecureSkipVerifyTLS bool
 	username              string
 	password              string
 	userAgent             string
+	version               string
+	registryClient        *registry.Client
 	timeout               time.Duration
 }
 
@@ -90,6 +94,24 @@ func WithTimeout(timeout time.Duration) Option {
 	}
 }
 
+func WithTagName(tagname string) Option {
+	return func(opts *options) {
+		opts.version = tagname
+	}
+}
+
+func WithRegistryClient(client *registry.Client) Option {
+	return func(opts *options) {
+		opts.registryClient = client
+	}
+}
+
+func WithUntar() Option {
+	return func(opts *options) {
+		opts.unTar = true
+	}
+}
+
 // Getter is an interface to support GET to the specified URL.
 type Getter interface {
 	// Get file content by url string
@@ -139,11 +161,16 @@ var httpProvider = Provider{
 	New:     NewHTTPGetter,
 }
 
+var ociProvider = Provider{
+	Schemes: []string{"oci"},
+	New:     NewOCIGetter,
+}
+
 // All finds all of the registered getters as a list of Provider instances.
 // Currently, the built-in getters and the discovered plugins with downloader
 // notations are collected.
 func All(settings *cli.EnvSettings) Providers {
-	result := Providers{httpProvider}
+	result := Providers{httpProvider, ociProvider}
 	pluginDownloaders, _ := collectPlugins(settings)
 	result = append(result, pluginDownloaders...)
 	return result

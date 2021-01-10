@@ -40,6 +40,23 @@ func TestDependencyUpdateCmd(t *testing.T) {
 	defer srv.Stop()
 	t.Logf("Listening on directory %s", srv.Root())
 
+	ociSrv, err := repotest.NewOCIServer(t, srv.Root())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ociChartName := "oci-depending-chart"
+	c := createTestingMetadataForOCI(ociChartName, ociSrv.RegistryURL)
+	if err := chartutil.SaveDir(c, ociSrv.Dir); err != nil {
+		t.Fatal(err)
+	}
+	ociSrv.Run(t, repotest.WithDependingChart(c))
+
+	err = os.Setenv("HELM_EXPERIMENTAL_OCI", "1")
+	if err != nil {
+		t.Fatal("failed to set environment variable enabling OCI support")
+	}
+
 	if err := srv.LinkIndices(); err != nil {
 		t.Fatal(err)
 	}
@@ -115,6 +132,22 @@ func TestDependencyUpdateCmd(t *testing.T) {
 	if _, err := os.Stat(unexpected); err == nil {
 		t.Fatalf("Unexpected %q", unexpected)
 	}
+
+	// test for OCI charts
+	cmd := fmt.Sprintf("dependency update '%s' --repository-config %s --repository-cache %s --registry-config %s/config.json",
+		dir(ociChartName),
+		dir("repositories.yaml"),
+		dir(),
+		dir())
+	_, out, err = executeActionCommand(cmd)
+	if err != nil {
+		t.Logf("Output: %s", out)
+		t.Fatal(err)
+	}
+	expect = dir(ociChartName, "charts/oci-dependent-chart-0.1.0.tgz")
+	if _, err := os.Stat(expect); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestDependencyUpdateCmd_DontDeleteOldChartsOnError(t *testing.T) {
@@ -188,6 +221,19 @@ func createTestingMetadata(name, baseURL string) *chart.Chart {
 			Dependencies: []*chart.Dependency{
 				{Name: "reqtest", Version: "0.1.0", Repository: baseURL},
 				{Name: "compressedchart", Version: "0.1.0", Repository: baseURL},
+			},
+		},
+	}
+}
+
+func createTestingMetadataForOCI(name, registryURL string) *chart.Chart {
+	return &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: chart.APIVersionV2,
+			Name:       name,
+			Version:    "1.2.3",
+			Dependencies: []*chart.Dependency{
+				{Name: "oci-dependent-chart", Version: "0.1.0", Repository: fmt.Sprintf("oci://%s/u/ocitestuser", registryURL)},
 			},
 		},
 	}
