@@ -19,6 +19,7 @@ package chartutil
 import (
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/pkg/errors"
 )
@@ -34,6 +35,12 @@ import (
 // The Kubernetes documentation is here, though it is not entirely correct:
 // https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
 var validName = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$`)
+
+// nameMayNotBe specifies strings that cannot be used as names specified as path segments (like the REST API or etcd store)
+var nameMayNotBe = []string{".", ".."}
+
+// nameMayNotContain specifies substrings that cannot be used in names specified as path segments (like the REST API or etcd store)
+var nameMayNotContain = []string{"/", "%"}
 
 var (
 	// errMissingName indicates that a release (name) was not provided.
@@ -99,6 +106,25 @@ func ValidateReleaseName(name string) error {
 func ValidateMetadataName(name string) error {
 	if name == "" || len(name) > maxMetadataNameLen || !validName.MatchString(name) {
 		return errInvalidKubernetesName
+	}
+	return nil
+}
+
+// ValidateRBACMetadataName validate the name field of a Kubernetes rbac metadata object.
+func ValidateRBACMetadataName(name string) error {
+	if name == "" {
+		return errMissingName
+	}
+	for _, illegalName := range nameMayNotBe {
+		if name == illegalName {
+			return errors.Errorf("invalid release name , cannot be any of the following characters: %s", nameMayNotBe)
+		}
+	}
+
+	for _, illegalContent := range nameMayNotContain {
+		if strings.Contains(name, illegalContent) {
+			return errors.Errorf("invalid release name , cannot contain the following characters: %s", nameMayNotContain)
+		}
 	}
 	return nil
 }

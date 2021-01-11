@@ -89,3 +89,24 @@ func TestValidateMetadataName(t *testing.T) {
 		}
 	}
 }
+
+func TestValidateRBACMetadataName(t *testing.T) {
+	names := map[string]bool{
+		"":      false,
+		".":     false,
+		"..":    false,
+		"foo/":  false,
+		"foo%":  false,
+		"foo/%": false,
+		"foo":   true,
+	}
+	for input, expectPass := range names {
+		if err := ValidateRBACMetadataName(input); (err == nil) != expectPass {
+			st := "fail"
+			if expectPass {
+				st = "succeed"
+			}
+			t.Errorf("Expected %q to %s", input, st)
+		}
+	}
+}
