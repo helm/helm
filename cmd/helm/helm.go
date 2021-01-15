@@ -62,7 +62,7 @@ func main() {
 	actionConfig := new(action.Configuration)
 	cmd, err := newRootCmd(actionConfig, os.Stdout, os.Args[1:])
 	if err != nil {
-		debug("%+v", err)
+		warning("%+v", err)
 		os.Exit(1)
 	}
 
