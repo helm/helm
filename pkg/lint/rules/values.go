@@ -70,8 +70,9 @@ func validateValuesFile(valuesPath string, overrides map[string]interface{}) err
 	// level values against the top-level expectations. Subchart values are not linted.
 	// We could change that. For now, though, we retain that strategy, and thus can
 	// coalesce tables (like reuse-values does) instead of doing the full chart
-	// CoalesceValues.
-	values = chartutil.CoalesceTables(values, overrides)
+	// CoalesceValues
+	coalescedValues := chartutil.CoalesceTables(make(map[string]interface{}, len(overrides)), overrides)
+	coalescedValues = chartutil.CoalesceTables(coalescedValues, values)
 
 	ext := filepath.Ext(valuesPath)
 	schemaPath := valuesPath[:len(valuesPath)-len(ext)] + ".schema.json"
@@ -82,5 +83,5 @@ func validateValuesFile(valuesPath string, overrides map[string]interface{}) err
 	if err != nil {
 		return err
 	}
-	return chartutil.ValidateAgainstSingleSchema(values, schema)
+	return chartutil.ValidateAgainstSingleSchema(coalescedValues, schema)
 }
