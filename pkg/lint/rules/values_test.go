@@ -104,7 +104,7 @@ func TestValidateValuesFileSchemaFailure(t *testing.T) {
 }
 
 func TestValidateValuesFileSchemaOverrides(t *testing.T) {
-	yaml := "username: admin"
+	yaml := "username: admin\npassword:"
 	overrides := map[string]interface{}{
 		"password": "swordfish",
 	}
@@ -116,6 +116,23 @@ func TestValidateValuesFileSchemaOverrides(t *testing.T) {
 	if err := validateValuesFile(valfile, overrides); err != nil {
 		t.Fatalf("Failed validation with %s", err)
 	}
+}
+
+func TestValidateValuesFileSchemaOverridesFailure(t *testing.T) {
+	yaml := "username: admin\npassword:"
+	overrides := map[string]interface{}{
+		"username": "anotherUser",
+	}
+	tmpdir := ensure.TempFile(t, "values.yaml", []byte(yaml))
+	defer os.RemoveAll(tmpdir)
+	createTestingSchema(t, tmpdir)
+
+	valfile := filepath.Join(tmpdir, "values.yaml")
+	err := validateValuesFile(valfile, overrides)
+	if err == nil {
+		t.Fatalf("expected values file to fail parsing")
+	}
+	assert.Contains(t, err.Error(), "Expected: string, given: null", "Null value for password should be caught by schema")
 }
 
 func createTestingSchema(t *testing.T, dir string) string {
