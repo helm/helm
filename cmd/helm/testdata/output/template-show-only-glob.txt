@@ -5,7 +5,8 @@ kind: Role
 metadata:
   name: subchart-role
 rules:
-- resources: ["*"]
+- apiGroups: [""]
+  resources: ["pods"]
   verbs: ["get","list","watch"]
 ---
 # Source: subchart/templates/subdir/rolebinding.yaml

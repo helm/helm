@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -33,12 +32,12 @@ import (
 	"time"
 
 	"github.com/containerd/containerd/errdefs"
-
 	auth "github.com/deislabs/oras/pkg/auth/docker"
 	"github.com/docker/distribution/configuration"
 	"github.com/docker/distribution/registry"
 	_ "github.com/docker/distribution/registry/auth/htpasswd"
 	_ "github.com/docker/distribution/registry/storage/driver/inmemory"
+	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/bcrypt"
 
@@ -107,7 +106,7 @@ func (suite *RegistryClientTestSuite) SetupSuite() {
 
 	// Registry config
 	config := &configuration.Configuration{}
-	port, err := getFreePort()
+	port, err := freeport.GetFreePort()
 	suite.Nil(err, "no error finding free port for test registry")
 	suite.DockerRegistryHost = fmt.Sprintf("localhost:%d", port)
 	config.HTTP.Addr = fmt.Sprintf(":%d", port)
@@ -202,13 +201,13 @@ func (suite *RegistryClientTestSuite) Test_4_PullChart() {
 	// non-existent ref
 	ref, err := ParseReference(fmt.Sprintf("%s/testrepo/whodis:9.9.9", suite.DockerRegistryHost))
 	suite.Nil(err)
-	err = suite.RegistryClient.PullChart(ref)
+	_, err = suite.RegistryClient.PullChart(ref)
 	suite.NotNil(err)
 
 	// existing ref
 	ref, err = ParseReference(fmt.Sprintf("%s/testrepo/testchart:1.2.3", suite.DockerRegistryHost))
 	suite.Nil(err)
-	err = suite.RegistryClient.PullChart(ref)
+	_, err = suite.RegistryClient.PullChart(ref)
 	suite.Nil(err)
 }
 
@@ -245,28 +244,13 @@ func (suite *RegistryClientTestSuite) Test_8_ManInTheMiddle() {
 	suite.Nil(err)
 
 	// returns content that does not match the expected digest
-	err = suite.RegistryClient.PullChart(ref)
+	_, err = suite.RegistryClient.PullChart(ref)
 	suite.NotNil(err)
 	suite.True(errdefs.IsFailedPrecondition(err))
 }
 
 func TestRegistryClientTestSuite(t *testing.T) {
 	suite.Run(t, new(RegistryClientTestSuite))
-}
-
-// borrowed from https://github.com/phayes/freeport
-func getFreePort() (int, error) {
-	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
-	if err != nil {
-		return 0, err
-	}
-
-	l, err := net.ListenTCP("tcp", addr)
-	if err != nil {
-		return 0, err
-	}
-	defer l.Close()
-	return l.Addr().(*net.TCPAddr).Port, nil
 }
 
 func initCompromisedRegistryTestServer() string {

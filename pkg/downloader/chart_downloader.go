@@ -25,6 +25,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/internal/fileutil"
 	"helm.sh/helm/v3/internal/urlutil"
 	"helm.sh/helm/v3/pkg/getter"
@@ -68,6 +69,7 @@ type ChartDownloader struct {
 	Getters getter.Providers
 	// Options provide parameters to be passed along to the Getter being initialized.
 	Options          []getter.Option
+	RegistryClient   *registry.Client
 	RepositoryConfig string
 	RepositoryCache  string
 }
@@ -100,6 +102,10 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 	}
 
 	name := filepath.Base(u.Path)
+	if u.Scheme == "oci" {
+		name = fmt.Sprintf("%s-%s.tgz", name, version)
+	}
+
 	destfile := filepath.Join(dest, name)
 	if err := fileutil.AtomicWriteFile(destfile, data, 0644); err != nil {
 		return destfile, nil, err

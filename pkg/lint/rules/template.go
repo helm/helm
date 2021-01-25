@@ -137,8 +137,11 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 				linter.RunLinterRule(support.ErrorSev, fpath, validateYamlContent(err))
 
 				if yamlStruct != nil {
-					linter.RunLinterRule(support.ErrorSev, fpath, validateMetadataName(yamlStruct))
-					linter.RunLinterRule(support.ErrorSev, fpath, validateNoDeprecations(yamlStruct))
+					// NOTE: set to warnings to allow users to support out-of-date kubernetes
+					// Refs https://github.com/helm/helm/issues/8596
+					linter.RunLinterRule(support.WarningSev, fpath, validateMetadataName(yamlStruct))
+					linter.RunLinterRule(support.WarningSev, fpath, validateNoDeprecations(yamlStruct))
+
 					linter.RunLinterRule(support.ErrorSev, fpath, validateMatchSelector(yamlStruct, renderedContent))
 				}
 			}

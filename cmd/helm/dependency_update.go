@@ -43,7 +43,7 @@ in the Chart.yaml file, but (b) at the wrong version.
 `
 
 // newDependencyUpdateCmd creates a new dependency update command.
-func newDependencyUpdateCmd(out io.Writer) *cobra.Command {
+func newDependencyUpdateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewDependency()
 
 	cmd := &cobra.Command{
@@ -63,6 +63,7 @@ func newDependencyUpdateCmd(out io.Writer) *cobra.Command {
 				Keyring:          client.Keyring,
 				SkipUpdate:       client.SkipRefresh,
 				Getters:          getter.All(settings),
+				RegistryClient:   cfg.RegistryClient,
 				RepositoryConfig: settings.RepositoryConfig,
 				RepositoryCache:  settings.RepositoryCache,
 				Debug:            settings.Debug,
