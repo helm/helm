@@ -45,7 +45,6 @@ type searchHubOptions struct {
 	searchEndpoint string
 	maxColWidth    uint
 	outputFormat   output.Format
-	listRepo       bool
 }
 
 func newSearchHubCmd(out io.Writer) *cobra.Command {
@@ -63,7 +62,7 @@ func newSearchHubCmd(out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.StringVar(&o.searchEndpoint, "endpoint", "https://hub.helm.sh", "monocular instance to query for charts")
 	f.UintVar(&o.maxColWidth, "max-col-width", 50, "maximum column width for output table")
-	f.BoolVar(&o.listRepo, "list-repo", false, "toggle chart repo URL display")
+
 	bindOutputFlag(cmd, &o.outputFormat)
 
 	return cmd
@@ -82,7 +81,7 @@ func (o *searchHubOptions) run(out io.Writer, args []string) error {
 		return fmt.Errorf("unable to perform search against %q", o.searchEndpoint)
 	}
 
-	return o.outputFormat.Write(out, newHubSearchWriter(results, o.searchEndpoint, o.maxColWidth, o.listRepo))
+	return o.outputFormat.Write(out, newHubSearchWriter(results, o.searchEndpoint, o.maxColWidth))
 }
 
 type hubChartRepo struct {
@@ -101,16 +100,15 @@ type hubChartElement struct {
 type hubSearchWriter struct {
 	elements    []hubChartElement
 	columnWidth uint
-	listRepo    bool
 }
 
-func newHubSearchWriter(results []monocular.SearchResult, endpoint string, columnWidth uint, listRepo bool) *hubSearchWriter {
+func newHubSearchWriter(results []monocular.SearchResult, endpoint string, columnWidth uint) *hubSearchWriter {
 	var elements []hubChartElement
 	for _, r := range results {
 		url := endpoint + "/charts/" + r.ID
 		elements = append(elements, hubChartElement{url, r.Relationships.LatestChartVersion.Data.Version, r.Relationships.LatestChartVersion.Data.AppVersion, r.Attributes.Description, hubChartRepo{URL: r.Attributes.Repo.URL, Name: r.Attributes.Repo.Name}})
 	}
-	return &hubSearchWriter{elements, columnWidth, listRepo}
+	return &hubSearchWriter{elements, columnWidth}
 }
 
 func (h *hubSearchWriter) WriteTable(out io.Writer) error {
@@ -124,18 +122,10 @@ func (h *hubSearchWriter) WriteTable(out io.Writer) error {
 	table := uitable.New()
 	table.MaxColWidth = h.columnWidth
 
-	if h.listRepo {
-		table.AddRow("REPO", "URL", "CHART VERSION", "APP VERSION", "DESCRIPTION")
-	} else {
-		table.AddRow("URL", "CHART VERSION", "APP VERSION", "DESCRIPTION")
-	}
+	table.AddRow("URL", "CHART VERSION", "APP VERSION", "DESCRIPTION", "REPO")
 
 	for _, r := range h.elements {
-		if h.listRepo {
-			table.AddRow(r.Repository.URL, r.URL, r.Version, r.AppVersion, r.Description)
-		} else {
-			table.AddRow(r.URL, r.Version, r.AppVersion, r.Description)
-		}
+		table.AddRow(r.URL, r.Version, r.AppVersion, r.Description, r.Repository.URL)
 	}
 	return output.EncodeTable(out, table)
 }
