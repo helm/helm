@@ -11,7 +11,7 @@ require (
 	github.com/Masterminds/squirrel v1.5.0
 	github.com/Masterminds/vcs v1.13.1
 	github.com/asaskevich/govalidator v0.0.0-20200428143746-21a406dcc535
-	github.com/containerd/containerd v1.3.4
+	github.com/containerd/containerd v1.4.3
 	github.com/cyphar/filepath-securejoin v0.2.2
 	github.com/deislabs/oras v0.8.1
 	github.com/docker/distribution v2.7.1+incompatible
