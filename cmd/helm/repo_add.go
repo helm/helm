@@ -29,7 +29,7 @@ import (
 	"github.com/gofrs/flock"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/cmd/helm/require"
@@ -136,7 +136,7 @@ func (o *repoAddOptions) run(out io.Writer) error {
 	if o.username != "" && o.password == "" {
 		fd := int(os.Stdin.Fd())
 		fmt.Fprint(out, "Password: ")
-		password, err := terminal.ReadPassword(fd)
+		password, err := term.ReadPassword(fd)
 		fmt.Fprintln(out)
 		if err != nil {
 			return err
