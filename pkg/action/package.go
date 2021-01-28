@@ -25,7 +25,7 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/pkg/errors"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -145,7 +145,7 @@ func promptUser(name string) ([]byte, error) {
 	fmt.Printf("Password for key %q >  ", name)
 	// syscall.Stdin is not an int in all environments and needs to be coerced
 	// into one there (e.g., Windows)
-	pw, err := terminal.ReadPassword(int(syscall.Stdin))
+	pw, err := term.ReadPassword(int(syscall.Stdin))
 	fmt.Println()
 	return pw, err
 }
