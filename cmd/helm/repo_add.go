@@ -160,10 +160,8 @@ func (o *repoAddOptions) run(out io.Writer) error {
 	// 2. When the config is different require --force-update
 	if !o.forceUpdate && f.Has(o.name) {
 		existing := f.Get(o.name)
-		existing.URL = existing.URLWithTrailingSlash()
-		c.URL = c.URLWithTrailingSlash()
 		// Only fail with an error if the configs are different.
-		if c != *existing {
+		if c.URLWithTrailingSlash() != existing.URLWithTrailingSlash() {
 			return errors.Errorf("repository name (%s) already exists, please specify a different name", o.name)
 		}
 
