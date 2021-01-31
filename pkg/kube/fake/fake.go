@@ -40,6 +40,7 @@ type FailingKubeClient struct {
 	BuildError                       error
 	BuildUnstructuredError           error
 	WaitAndGetCompletedPodPhaseError error
+	WaitDuration                     time.Duration
 }
 
 // Create returns the configured error if set or prints
@@ -52,7 +53,12 @@ func (f *FailingKubeClient) Create(resources kube.ResourceList) (*kube.Result, e
 
 // Wait returns the configured error if set or prints
 func (f *FailingKubeClient) Wait(resources kube.ResourceList, d time.Duration) error {
+	if f.WaitDuration != 0 {
+		d = f.WaitDuration
+	}
+
 	if f.WaitError != nil {
+		time.Sleep(d)
 		return f.WaitError
 	}
 	return f.PrintingKubeClient.Wait(resources, d)

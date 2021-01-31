@@ -18,7 +18,11 @@ package action
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
+	"os/exec"
 	"testing"
+	gotime "time"
 
 	"helm.sh/helm/v3/pkg/chart"
 
@@ -295,4 +299,67 @@ func TestUpgradeRelease_Pending(t *testing.T) {
 
 	_, err := upAction.Run(rel.Name, buildChart(), vals)
 	req.Contains(err.Error(), "progress", err)
+}
+
+func TestUpgradeRelease_Interrupted_Wait(t *testing.T) {
+	if os.Getenv("HANDLE_SIGINT") == "1" {
+		t.Run("Execute TestUpgradeRelease_Interrupted_Wait", func(t *testing.T) {
+			is := assert.New(t)
+			req := require.New(t)
+
+			upAction := upgradeAction(t)
+			rel := releaseStub()
+			rel.Name = "interrupted-release"
+			rel.Info.Status = release.StatusDeployed
+			upAction.cfg.Releases.Create(rel)
+
+			failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+			failer.PrintingKubeClient.WaitDuration = 10 * gotime.Second
+			upAction.cfg.KubeClient = failer
+			upAction.Wait = true
+			vals := map[string]interface{}{}
+			res, err := upAction.Run(rel.Name, buildChart(), vals)
+
+			req.Error(err)
+			is.Contains(res.Info.Description, "Upgrade \"interrupted-release\" failed: SIGTERM or SIGINT received, release failed")
+			is.Equal(res.Info.Status, release.StatusFailed)
+		})
+		return
+
+	}
+	t.Run("Setup TestUpgradeRelease_Interrupted_Wait", func(t *testing.T) {
+		cmd := exec.Command(os.Args[0], "-test.run=TestUpgradeRelease_Interrupted_Wait")
+		cmd.Env = append(os.Environ(), "HANDLE_SIGINT=1")
+		stdout, err := cmd.StdoutPipe()
+		if err != nil {
+			t.Fatal(err)
+		}
+		stderr, err := cmd.StderrPipe()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := cmd.Start(); err != nil {
+			t.Fatal(err)
+		}
+		go func() {
+			slurp, _ := ioutil.ReadAll(stdout)
+			fmt.Printf("%s\n", slurp)
+		}()
+
+		go func() {
+			slurp, _ := ioutil.ReadAll(stderr)
+			fmt.Printf("%s\n", slurp)
+		}()
+
+		gotime.Sleep(2 * gotime.Second)
+		p, _ := os.FindProcess(cmd.Process.Pid)
+
+		if err := p.Signal(os.Interrupt); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := cmd.Wait(); err != nil {
+			t.FailNow()
+		}
+	})
 }
