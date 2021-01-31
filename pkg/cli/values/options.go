@@ -30,11 +30,12 @@ import (
 )
 
 type Options struct {
-	ValueFiles   []string
-	StringValues []string
-	Values       []string
-	FileValues   []string
-	JSONValues   []string
+	ValueFiles    []string
+	StringValues  []string
+	Values        []string
+	FileValues    []string
+	JSONValues    []string
+	LiteralValues []string
 }
 
 // MergeValues merges values from files specified via -f/--values and directly
@@ -90,6 +91,13 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 		}
 		if err := strvals.ParseIntoFile(value, base, reader); err != nil {
 			return nil, errors.Wrap(err, "failed parsing --set-file data")
+		}
+	}
+
+	// User specified a value via --set-literal
+	for _, value := range opts.LiteralValues {
+		if err := strvals.ParseLiteralInto(value, base); err != nil {
+			return nil, errors.Wrap(err, "failed parsing --set-literal data")
 		}
 	}
 
