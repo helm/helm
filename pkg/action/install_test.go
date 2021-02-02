@@ -21,10 +21,12 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
+	gotime "time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -361,7 +363,62 @@ func TestInstallRelease_Wait(t *testing.T) {
 	is.Contains(res.Info.Description, "I timed out")
 	is.Equal(res.Info.Status, release.StatusFailed)
 }
+func TestInstallRelease_Wait_Interrupted(t *testing.T) {
+	if os.Getenv("HANDLE_SIGINT") == "1" {
+		t.Run("Execute TestInstallRelease_Wait_Interrupted", func(t *testing.T) {
+			is := assert.New(t)
+			instAction := installAction(t)
+			instAction.ReleaseName = "interrupted-release"
+			failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+			failer.PrintingKubeClient.WaitDuration = 10 * gotime.Second
+			instAction.cfg.KubeClient = failer
+			instAction.Wait = true
+			vals := map[string]interface{}{}
 
+			res, err := instAction.Run(buildChart(), vals)
+			is.Error(err)
+			is.Contains(res.Info.Description, "SIGTERM or SIGINT received, release failed")
+			is.Equal(res.Info.Status, release.StatusFailed)
+		})
+		return
+
+	}
+	t.Run("Setup TestInstallRelease_Wait_Interrupted", func(t *testing.T) {
+		cmd := exec.Command(os.Args[0], "-test.run=TestInstallRelease_Wait_Interrupted")
+		cmd.Env = append(os.Environ(), "HANDLE_SIGINT=1")
+		stdout, err := cmd.StdoutPipe()
+		if err != nil {
+			t.Fatal(err)
+		}
+		stderr, err := cmd.StderrPipe()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := cmd.Start(); err != nil {
+			t.Fatal(err)
+		}
+		go func() {
+			slurp, _ := ioutil.ReadAll(stdout)
+			fmt.Printf("%s\n", slurp)
+		}()
+
+		go func() {
+			slurp, _ := ioutil.ReadAll(stderr)
+			fmt.Printf("%s\n", slurp)
+		}()
+
+		gotime.Sleep(2 * gotime.Second)
+		p, _ := os.FindProcess(cmd.Process.Pid)
+
+		if err := p.Signal(os.Interrupt); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := cmd.Wait(); err != nil {
+			t.FailNow()
+		}
+	})
+}
 func TestInstallRelease_WaitForJobs(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
@@ -419,7 +476,69 @@ func TestInstallRelease_Atomic(t *testing.T) {
 		is.Contains(err.Error(), "an error occurred while uninstalling the release")
 	})
 }
+func TestInstallRelease_Atomic_Interrupted(t *testing.T) {
+	if os.Getenv("HANDLE_SIGINT") == "1" {
+		t.Run("Execute TestInstallRelease_Atomic_Interrupted", func(t *testing.T) {
+			is := assert.New(t)
+			instAction := installAction(t)
+			instAction.ReleaseName = "interrupted-release"
+			failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+			failer.PrintingKubeClient.WaitDuration = 10 * gotime.Second
+			instAction.cfg.KubeClient = failer
+			instAction.Atomic = true
+			vals := map[string]interface{}{}
 
+			res, err := instAction.Run(buildChart(), vals)
+			is.Error(err)
+			is.Contains(err.Error(), "SIGTERM or SIGINT received, release failed")
+			is.Contains(err.Error(), "atomic")
+			is.Contains(err.Error(), "uninstalled")
+
+			// Now make sure it isn't in storage any more
+			_, err = instAction.cfg.Releases.Get(res.Name, res.Version)
+			is.Error(err)
+			is.Equal(err, driver.ErrReleaseNotFound)
+
+		})
+		return
+
+	}
+	t.Run("Setup TestInstallRelease_Atomic_Interrupted", func(t *testing.T) {
+		cmd := exec.Command(os.Args[0], "-test.run=TestInstallRelease_Atomic_Interrupted")
+		cmd.Env = append(os.Environ(), "HANDLE_SIGINT=1")
+		stdout, err := cmd.StdoutPipe()
+		if err != nil {
+			t.Fatal(err)
+		}
+		stderr, err := cmd.StderrPipe()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := cmd.Start(); err != nil {
+			t.Fatal(err)
+		}
+		go func() {
+			slurp, _ := ioutil.ReadAll(stdout)
+			fmt.Printf("%s\n", slurp)
+		}()
+
+		go func() {
+			slurp, _ := ioutil.ReadAll(stderr)
+			fmt.Printf("%s\n", slurp)
+		}()
+
+		gotime.Sleep(2 * gotime.Second)
+		p, _ := os.FindProcess(cmd.Process.Pid)
+
+		if err := p.Signal(os.Interrupt); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := cmd.Wait(); err != nil {
+			t.FailNow()
+		}
+	})
+}
 func TestNameTemplate(t *testing.T) {
 	testCases := []nameTemplateTestCase{
 		// Just a straight up nop please

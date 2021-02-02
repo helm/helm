@@ -325,6 +325,9 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 	return result.r, result.e
 }
 
+// Function used to lock the Mutex, this is important for the case when the atomic flag is set.
+// In that case the upgrade will finish before the rollback is finished so it is necessary to wait for the rollback to finish.
+// The rollback will be trigger by the function failRelease
 func (u *Upgrade) reportToPerformUpgrade(c chan<- resultMessage, rel *release.Release, created kube.ResourceList, err error) {
 	upgradeLock.Lock()
 	if err != nil {
@@ -333,15 +336,15 @@ func (u *Upgrade) reportToPerformUpgrade(c chan<- resultMessage, rel *release.Re
 	c <- resultMessage{r: rel, e: err}
 	upgradeLock.Unlock()
 }
+
+// Setup listener for SIGINT and SIGTERM
 func (u *Upgrade) handleSignals(c chan<- resultMessage, upgradedRelease *release.Release) {
-	// Handle SIGINT
 	cSignal := make(chan os.Signal)
 	signal.Notify(cSignal, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-cSignal
 		u.cfg.Log("SIGTERM or SIGINT received")
-		// when the atomic flag is set the ongoing release finish first and doesn't give time for the rollback happens . I need to think in a way to lock the chanel
-		// Implement function reportToPerformUpgrade(channel, Release, ResourceList, error) if error != nill call u.failRelease
+		// when the atomic flag is set the ongoing release finish first and doesn't give time for the rollback happens.
 		u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, fmt.Errorf("SIGTERM or SIGINT received, release failed"))
 	}()
 }
