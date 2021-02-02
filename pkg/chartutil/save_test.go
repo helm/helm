@@ -139,7 +139,7 @@ func TestSavePreservesTimestamps(t *testing.T) {
 		Metadata: &chart.Metadata{
 			APIVersion: chart.APIVersionV1,
 			Name:       "ahab",
-			Version:    "1.2.3.4",
+			Version:    "1.2.3",
 		},
 		Values: map[string]interface{}{
 			"imageName": "testimage",
