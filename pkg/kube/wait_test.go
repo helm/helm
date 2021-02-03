@@ -266,6 +266,26 @@ func Test_waiter_jobReady(t *testing.T) {
 			args: args{job: newJob("foo", 1, 1, 0, 1)},
 			want: false,
 		},
+		{
+			name: "job is completed with retry",
+			args: args{job: newJob("foo", 1, 1, 1, 1)},
+			want: true,
+		},
+		{
+			name: "job is failed with retry",
+			args: args{job: newJob("foo", 1, 1, 0, 2)},
+			want: false,
+		},
+		{
+			name: "job is completed single run",
+			args: args{job: newJob("foo", 0, 1, 1, 0)},
+			want: true,
+		},
+		{
+			name: "job is failed single run",
+			args: args{job: newJob("foo", 0, 1, 0, 1)},
+			want: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

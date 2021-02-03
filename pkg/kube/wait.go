@@ -190,7 +190,7 @@ func (w *waiter) isPodReady(pod *corev1.Pod) bool {
 }
 
 func (w *waiter) jobReady(job *batchv1.Job) bool {
-	if job.Status.Failed >= *job.Spec.BackoffLimit {
+	if job.Status.Failed > *job.Spec.BackoffLimit {
 		w.log("Job is failed: %s/%s", job.GetNamespace(), job.GetName())
 		return false
 	}
