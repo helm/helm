@@ -20,6 +20,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"io/ioutil"
+	"runtime"
 
 	"github.com/pkg/errors"
 )
@@ -49,6 +50,8 @@ func NewClientTLS(certFile, keyFile, caFile string) (*tls.Config, error) {
 
 // CertPoolFromFile returns an x509.CertPool containing the certificates
 // in the given PEM-encoded file.
+// For non-windows OS, it loads the system cert pool and adds the certificates
+// in the given PEM-encoded file to it before returning.
 // Returns an error if the file could not be read, a certificate could not
 // be parsed, or if the file does not contain any certificates
 func CertPoolFromFile(filename string) (*x509.CertPool, error) {
@@ -56,7 +59,17 @@ func CertPoolFromFile(filename string) (*x509.CertPool, error) {
 	if err != nil {
 		return nil, errors.Errorf("can't read CA file: %v", filename)
 	}
-	cp := x509.NewCertPool()
+
+	var cp *x509.CertPool
+	if runtime.GOOS == "windows" {
+		cp = x509.NewCertPool()
+	} else {
+		cp, err = x509.SystemCertPool()
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to load system cert pool")
+		}
+	}
+
 	if !cp.AppendCertsFromPEM(b) {
 		return nil, errors.Errorf("failed to append certificates from file: %s", filename)
 	}
