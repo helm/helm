@@ -36,6 +36,7 @@ func TestEnvSettings(t *testing.T) {
 		// expected values
 		ns, kcontext string
 		debug        bool
+		verbose      bool
 		maxhistory   int
 		kAsUser      string
 		kAsGroups    []string
@@ -48,9 +49,10 @@ func TestEnvSettings(t *testing.T) {
 		},
 		{
 			name:       "with flags set",
-			args:       "--debug --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters --kube-ca-file=/tmp/ca.crt",
+			args:       "--debug --verbose --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters --kube-ca-file=/tmp/ca.crt",
 			ns:         "myns",
 			debug:      true,
+			verbose:    true,
 			maxhistory: defaultMaxHistory,
 			kAsUser:    "poro",
 			kAsGroups:  []string{"admins", "teatime", "snackeaters"},
@@ -95,6 +97,9 @@ func TestEnvSettings(t *testing.T) {
 
 			if settings.Debug != tt.debug {
 				t.Errorf("expected debug %t, got %t", tt.debug, settings.Debug)
+			}
+			if settings.Verbose != tt.verbose {
+				t.Errorf("expected verbose %t, got %t", tt.verbose, settings.Verbose)
 			}
 			if settings.Namespace() != tt.ns {
 				t.Errorf("expected namespace %q, got %q", tt.ns, settings.Namespace())

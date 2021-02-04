@@ -120,7 +120,7 @@ func (u *Upgrade) Run(name string, chart *chart.Chart, vals map[string]interface
 	if err := chartutil.ValidateReleaseName(name); err != nil {
 		return nil, errors.Errorf("release name is invalid: %s", name)
 	}
-	u.cfg.Log("preparing upgrade for %s", name)
+	u.cfg.Log("Preparing upgrade for %s", name)
 	currentRelease, upgradedRelease, err := u.prepareUpgrade(name, chart, vals)
 	if err != nil {
 		return nil, err
@@ -128,14 +128,14 @@ func (u *Upgrade) Run(name string, chart *chart.Chart, vals map[string]interface
 
 	u.cfg.Releases.MaxHistory = u.MaxHistory
 
-	u.cfg.Log("performing update for %s", name)
+	u.cfg.Log("Performing update for %s", name)
 	res, err := u.performUpgrade(currentRelease, upgradedRelease)
 	if err != nil {
 		return res, err
 	}
 
 	if !u.DryRun {
-		u.cfg.Log("updating status for upgraded release for %s", name)
+		u.cfg.Log("Updating status for upgraded release for %s", name)
 		if err := u.cfg.Releases.Update(upgradedRelease); err != nil {
 			return res, err
 		}
@@ -300,7 +300,7 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 		return upgradedRelease, nil
 	}
 
-	u.cfg.Log("creating upgraded release for %s", upgradedRelease.Name)
+	u.cfg.Log("Creating upgraded release for %s", upgradedRelease.Name)
 	if err := u.cfg.Releases.Create(upgradedRelease); err != nil {
 		return nil, err
 	}

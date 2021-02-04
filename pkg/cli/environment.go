@@ -58,6 +58,8 @@ type EnvSettings struct {
 	KubeCaFile string
 	// Debug indicates whether or not Helm is running in Debug mode.
 	Debug bool
+	// Verbose indicates whether or not Helm is running in Verbose mode.
+	Verbose bool
 	// RegistryConfig is the path to the registry config file.
 	RegistryConfig string
 	// RepositoryConfig is the path to the repositories file.
@@ -86,7 +88,7 @@ func New() *EnvSettings {
 		RepositoryCache:  envOr("HELM_REPOSITORY_CACHE", helmpath.CachePath("repository")),
 	}
 	env.Debug, _ = strconv.ParseBool(os.Getenv("HELM_DEBUG"))
-
+	env.Verbose, _ = strconv.ParseBool(os.Getenv("HELM_VERBOSE"))
 	// bind to kubernetes config flags
 	env.config = &genericclioptions.ConfigFlags{
 		Namespace:        &env.namespace,
@@ -111,7 +113,8 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringArrayVar(&s.KubeAsGroups, "kube-as-group", s.KubeAsGroups, "group to impersonate for the operation, this flag can be repeated to specify multiple groups.")
 	fs.StringVar(&s.KubeAPIServer, "kube-apiserver", s.KubeAPIServer, "the address and the port for the Kubernetes API server")
 	fs.StringVar(&s.KubeCaFile, "kube-ca-file", s.KubeCaFile, "the certificate authority file for the Kubernetes API server connection")
-	fs.BoolVar(&s.Debug, "debug", s.Debug, "enable verbose output")
+	fs.BoolVar(&s.Debug, "debug", s.Debug, "enable debug output")
+	fs.BoolVar(&s.Verbose, "verbose", s.Verbose, "enable verbose output")
 	fs.StringVar(&s.RegistryConfig, "registry-config", s.RegistryConfig, "path to the registry config file")
 	fs.StringVar(&s.RepositoryConfig, "repository-config", s.RepositoryConfig, "path to the file containing repository names and URLs")
 	fs.StringVar(&s.RepositoryCache, "repository-cache", s.RepositoryCache, "path to the file containing cached repository indexes")
@@ -151,6 +154,7 @@ func (s *EnvSettings) EnvVars() map[string]string {
 		"HELM_CONFIG_HOME":       helmpath.ConfigPath(""),
 		"HELM_DATA_HOME":         helmpath.DataPath(""),
 		"HELM_DEBUG":             fmt.Sprint(s.Debug),
+		"HELM_VERBOSE":           fmt.Sprint(s.Verbose),
 		"HELM_PLUGINS":           s.PluginsDirectory,
 		"HELM_REGISTRY_CONFIG":   s.RegistryConfig,
 		"HELM_REPOSITORY_CACHE":  s.RepositoryCache,

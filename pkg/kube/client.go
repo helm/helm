@@ -88,7 +88,7 @@ func New(getter genericclioptions.RESTClientGetter) *Client {
 	}
 }
 
-var nopLogger = func(_ string, _ ...interface{}) {}
+var nopLogger = func(s string, i ...interface{}) {}
 
 // getKubeClient get or create a new KubernetesClientSet
 func (c *Client) getKubeClient() (*kubernetes.Clientset, error) {
@@ -198,7 +198,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 	updateErrors := []string{}
 	res := &Result{}
 
-	c.Log("checking %d resources for changes", len(target))
+	c.Log("Checking %d resources for changes", len(target))
 	err := target.Visit(func(info *resource.Info, err error) error {
 		if err != nil {
 			return err
@@ -219,7 +219,12 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			}
 
 			kind := info.Mapping.GroupVersionKind.Kind
-			c.Log("Created a new %s called %q in %s\n", kind, info.Name, info.Namespace)
+			if info.Namespace == "" {
+				// Cluster wide resource doesn't have a namespace defined
+				c.Log("Created a new %s called %q\n", kind, info.Name)
+			} else {
+				c.Log("Created a new %s called %q in %s\n", kind, info.Name, info.Namespace)
+			}
 			return nil
 		}
 

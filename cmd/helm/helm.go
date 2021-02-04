@@ -53,6 +53,12 @@ func debug(format string, v ...interface{}) {
 	}
 }
 
+func verbose(format string, v ...interface{}) {
+	if settings.Verbose {
+		format = fmt.Sprintf("%s\n", format)
+		fmt.Fprintf(os.Stdout, format, v...)
+	}
+}
 func warning(format string, v ...interface{}) {
 	format = fmt.Sprintf("WARNING: %s\n", format)
 	fmt.Fprintf(os.Stderr, format, v...)
@@ -69,7 +75,11 @@ func main() {
 	// run when each command's execute method is called
 	cobra.OnInitialize(func() {
 		helmDriver := os.Getenv("HELM_DRIVER")
-		if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), helmDriver, debug); err != nil {
+		logger := debug
+		if settings.Verbose {
+			logger = verbose
+		}
+		if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), helmDriver, logger); err != nil {
 			log.Fatal(err)
 		}
 		if helmDriver == "memory" {

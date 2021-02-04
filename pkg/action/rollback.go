@@ -81,7 +81,7 @@ func (r *Rollback) Run(name string) error {
 	}
 
 	if !r.DryRun {
-		r.cfg.Log("updating status for rolled back release for %s", name)
+		r.cfg.Log("Updating status for rolled back release for %s", name)
 		if err := r.cfg.Releases.Update(targetRelease); err != nil {
 			return err
 		}
