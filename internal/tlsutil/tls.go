@@ -20,7 +20,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"io/ioutil"
-	"runtime"
 
 	"github.com/pkg/errors"
 )
@@ -60,14 +59,9 @@ func CertPoolFromFile(filename string) (*x509.CertPool, error) {
 		return nil, errors.Errorf("can't read CA file: %v", filename)
 	}
 
-	var cp *x509.CertPool
-	if runtime.GOOS == "windows" {
-		cp = x509.NewCertPool()
-	} else {
-		cp, err = x509.SystemCertPool()
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to load system cert pool")
-		}
+	cp, err := x509.SystemCertPool()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to load system cert pool")
 	}
 
 	if !cp.AppendCertsFromPEM(b) {
