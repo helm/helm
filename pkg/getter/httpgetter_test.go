@@ -319,9 +319,6 @@ func TestHttpClientInsecureSkipVerify(t *testing.T) {
 	if len(transport.TLSClientConfig.Certificates) <= 0 {
 		t.Fatal("transport.TLSClientConfig.Certificates is not present")
 	}
-	if transport.TLSClientConfig.ServerName == "" {
-		t.Fatal("TLSClientConfig.ServerName is blank")
-	}
 }
 
 func verifyInsecureSkipVerify(t *testing.T, g HTTPGetter, caseName string, expectedValue bool) *http.Transport {

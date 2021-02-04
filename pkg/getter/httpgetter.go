@@ -24,7 +24,6 @@ import (
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/internal/tlsutil"
-	"helm.sh/helm/v3/internal/urlutil"
 	"helm.sh/helm/v3/internal/version"
 )
 
@@ -99,13 +98,6 @@ func (g *HTTPGetter) httpClient() (*http.Client, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "can't create TLS config for client")
 		}
-		tlsConf.BuildNameToCertificate()
-
-		sni, err := urlutil.ExtractHostname(g.opts.url)
-		if err != nil {
-			return nil, err
-		}
-		tlsConf.ServerName = sni
 
 		transport.TLSClientConfig = tlsConf
 	}
