@@ -41,7 +41,7 @@ func TestDefaultVersionSet(t *testing.T) {
 }
 
 func TestDefaultCapabilities(t *testing.T) {
-	kv := DefaultCapabilities.KubeVersion
+	kv := NewCapabilities().KubeVersion
 	if kv.String() != "v1.20.0" {
 		t.Errorf("Expected default KubeVersion.String() to be v1.20.0, got %q", kv.String())
 	}
@@ -60,8 +60,7 @@ func TestDefaultCapabilities(t *testing.T) {
 }
 
 func TestDefaultCapabilitiesHelmVersion(t *testing.T) {
-	hv := DefaultCapabilities.HelmVersion
-
+	hv := NewCapabilities().HelmVersion
 	if hv.Version != "v3.5" {
 		t.Errorf("Expected default HelmVersion to be v3.5, got %q", hv.Version)
 	}

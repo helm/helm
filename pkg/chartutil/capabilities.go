@@ -35,17 +35,6 @@ const (
 var (
 	// DefaultVersionSet is the default version set, which includes only Core V1 ("v1").
 	DefaultVersionSet = allKnownVersions()
-
-	// DefaultCapabilities is the default set of capabilities.
-	DefaultCapabilities = &Capabilities{
-		KubeVersion: KubeVersion{
-			Version: fmt.Sprintf("v%d.%d.0", k8sVersionMajor, k8sVersionMinor),
-			Major:   strconv.Itoa(k8sVersionMajor),
-			Minor:   strconv.Itoa(k8sVersionMinor),
-		},
-		APIVersions: DefaultVersionSet,
-		HelmVersion: helmversion.Get(),
-	}
 )
 
 // Capabilities describes the capabilities of the Kubernetes cluster.
@@ -56,6 +45,19 @@ type Capabilities struct {
 	APIVersions VersionSet
 	// HelmVersion is the build information for this helm version
 	HelmVersion helmversion.BuildInfo
+}
+
+// NewCapabilities returns the default set of capabilities.
+func NewCapabilities() *Capabilities {
+	return &Capabilities{
+		KubeVersion: KubeVersion{
+			Version: fmt.Sprintf("v%d.%d.0", k8sVersionMajor, k8sVersionMinor),
+			Major:   strconv.Itoa(k8sVersionMajor),
+			Minor:   strconv.Itoa(k8sVersionMinor),
+		},
+		APIVersions: DefaultVersionSet,
+		HelmVersion: helmversion.Get(),
+	}
 }
 
 // KubeVersion is the Kubernetes version.
