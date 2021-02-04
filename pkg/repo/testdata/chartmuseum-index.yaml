@@ -14,6 +14,7 @@ entries:
         - popular
         - web server
         - proxy
+      apiVersion: v2
     - urls:
         - https://charts.helm.sh/stable/nginx-0.1.0.tgz
       name: nginx
@@ -25,6 +26,7 @@ entries:
         - popular
         - web server
         - proxy
+      apiVersion: v2
   alpine:
     - urls:
         - https://charts.helm.sh/stable/alpine-1.0.0.tgz
@@ -39,6 +41,7 @@ entries:
         - small
         - sumtin
       digest: "sha256:1234567890abcdef"
+      apiVersion: v2
   chartWithNoURL:
     - name: chartWithNoURL
       description: string
@@ -48,3 +51,4 @@ entries:
         - small
         - sumtin
       digest: "sha256:1234567890abcdef"
+      apiVersion: v2
