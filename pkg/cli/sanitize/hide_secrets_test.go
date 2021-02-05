@@ -22,29 +22,49 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"helm.sh/helm/v3/pkg/release"
 )
 
-func TestHideSecrets(t *testing.T) {
+func TestHideManifestSecrets(t *testing.T) {
 
-	t.Run("hide secret values", func(t *testing.T) {
+	t.Run("replace manifest with sanitized one", func(t *testing.T) {
 		manifestRaw, err := ioutil.ReadFile("testdata/manifest-input.yaml")
 		require.NoError(t, err)
 		expectedManifestRaw, err := ioutil.ReadFile("testdata/manifest-sanitized.yaml")
 		require.NoError(t, err)
 
-		sanitizedManifest, err := HideSecrets(string(manifestRaw))
+		rel := &release.Release{
+			Name:     "test",
+			Manifest: string(manifestRaw),
+		}
+
+		err = HideManifestSecrets(rel)
 		require.NoError(t, err)
 
-		assert.Equal(t, string(expectedManifestRaw), sanitizedManifest)
+		assert.Equal(t, string(expectedManifestRaw), rel.Manifest)
 	})
 
-	t.Run("do not modify, when no secret values", func(t *testing.T) {
+	t.Run("do not modify manifest when no secret values", func(t *testing.T) {
 		manifestRaw, err := ioutil.ReadFile("testdata/manifest-no-secret.yaml")
 		require.NoError(t, err)
 
-		sanitizedManifest, err := HideSecrets(string(manifestRaw))
+		rel := &release.Release{
+			Name:     "test",
+			Manifest: string(manifestRaw),
+		}
+
+		err = HideManifestSecrets(rel)
 		require.NoError(t, err)
 
-		assert.Equal(t, string(manifestRaw), sanitizedManifest)
+		assert.Equal(t, string(manifestRaw), rel.Manifest)
+	})
+
+	t.Run("ignore nil release", func(t *testing.T) {
+		var rel *release.Release
+
+		err := HideManifestSecrets(rel)
+		require.NoError(t, err)
+		assert.Nil(t, rel)
 	})
 }

@@ -104,10 +104,22 @@ type statusPrinter struct {
 }
 
 func (s statusPrinter) WriteJSON(out io.Writer) error {
+	if s.hideSecrets {
+		err := sanitize.HideManifestSecrets(s.release)
+		if err != nil {
+			return err
+		}
+	}
 	return output.EncodeJSON(out, s.release)
 }
 
 func (s statusPrinter) WriteYAML(out io.Writer) error {
+	if s.hideSecrets {
+		err := sanitize.HideManifestSecrets(s.release)
+		if err != nil {
+			return err
+		}
+	}
 	return output.EncodeYAML(out, s.release)
 }
 
@@ -115,6 +127,13 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 	if s.release == nil {
 		return nil
 	}
+	if s.hideSecrets {
+		err := sanitize.HideManifestSecrets(s.release)
+		if err != nil {
+			return err
+		}
+	}
+
 	fmt.Fprintf(out, "NAME: %s\n", s.release.Name)
 	if !s.release.Info.LastDeployed.IsZero() {
 		fmt.Fprintf(out, "LAST DEPLOYED: %s\n", s.release.Info.LastDeployed.Format(time.ANSIC))
@@ -172,16 +191,7 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 		for _, h := range s.release.Hooks {
 			fmt.Fprintf(out, "---\n# Source: %s\n%s\n", h.Path, h.Manifest)
 		}
-		var err error
-		manifest := s.release.Manifest
-		if s.hideSecrets {
-			manifest, err = sanitize.HideSecrets(manifest)
-			if err != nil {
-				return err
-			}
-		}
-
-		fmt.Fprintf(out, "MANIFEST:\n%s\n", manifest)
+		fmt.Fprintf(out, "MANIFEST:\n%s\n", s.release.Manifest)
 	}
 
 	if len(s.release.Info.Notes) > 0 {

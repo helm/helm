@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"strings"
 
+	"helm.sh/helm/v3/pkg/release"
+
 	"gopkg.in/yaml.v2"
 )
 
@@ -27,9 +29,25 @@ const (
 	hiddenSecretValue = "[HIDDEN]"
 )
 
-// HideSecrets replaces values in Secrets in the chart manifest with
+// HideManifestSecrets sanitizes release manifest and replaces it.
+// Manifest cannot be applied after this operation.
+func HideManifestSecrets(r *release.Release) error {
+	if r == nil {
+		return nil
+	}
+	manifest, err := hideSecrets(r.Manifest)
+	if err != nil {
+		return err
+	}
+
+	r.Manifest = manifest
+
+	return nil
+}
+
+// hideSecrets replaces values in Secrets in the chart manifest with
 // `[HIDDEN]` value.
-func HideSecrets(manifest string) (string, error) {
+func hideSecrets(manifest string) (string, error) {
 	resources := strings.Split(manifest, "\n---")
 	outRes := make([]string, 0, len(resources))
 

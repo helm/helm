@@ -27,6 +27,8 @@ import (
 	"sort"
 	"strings"
 
+	"helm.sh/helm/v3/pkg/cli/sanitize"
+
 	"helm.sh/helm/v3/pkg/release"
 
 	"github.com/spf13/cobra"
@@ -77,6 +79,13 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					return fmt.Errorf("%w\n\nUse --debug flag to render out invalid YAML", err)
 				}
 				return err
+			}
+
+			if settings.HideSecrets {
+				err := sanitize.HideManifestSecrets(rel)
+				if err != nil {
+					return fmt.Errorf("failed to hide manifest secrets: %w", err)
+				}
 			}
 
 			// We ignore a potential error here because, when the --debug flag was specified,
