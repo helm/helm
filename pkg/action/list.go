@@ -98,6 +98,9 @@ const (
 // List is the action for listing releases.
 //
 // It provides, for example, the implementation of 'helm list'.
+// It returns no more than one revision of every release in one specific, or in
+// all, namespaces.
+// To list all the revisions of a specific release, see the History action.
 type List struct {
 	cfg *Configuration
 
@@ -122,6 +125,7 @@ type List struct {
 	// Filter is a filter that is applied to the results
 	Filter       string
 	Short        bool
+	TimeFormat   string
 	Uninstalled  bool
 	Superseded   bool
 	Uninstalling bool

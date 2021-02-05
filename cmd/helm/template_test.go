@@ -122,6 +122,11 @@ func TestTemplateCmd(t *testing.T) {
 			golden:    "output/template-with-invalid-yaml-debug.txt",
 		},
 		{
+			name:   "template skip-tests",
+			cmd:    fmt.Sprintf(`template '%s' --skip-tests`, chartPath),
+			golden: "output/template-skip-tests.txt",
+		},
+		{
 			name:   "chart with template with external file",
 			cmd:    fmt.Sprintf("template '%s' --set external=external.txt --include-file external.txt=testdata/files/external.txt", "testdata/testcharts/external"),
 			golden: "output/template-with-external-file.txt",

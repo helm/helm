@@ -9,7 +9,7 @@ Helm is a tool for managing Charts. Charts are packages of pre-configured Kubern
 
 Use Helm to:
 
-- Find and use [popular software packaged as Helm Charts](https://hub.helm.sh) to run in Kubernetes
+- Find and use [popular software packaged as Helm Charts](https://artifacthub.io/packages/search?kind=0) to run in Kubernetes
 - Share your own applications as Helm Charts
 - Create reproducible builds of your Kubernetes applications
 - Intelligently manage your Kubernetes manifest files
@@ -66,7 +66,7 @@ You can reach the Helm community and developers via the following channels:
   - [#charts](https://kubernetes.slack.com/messages/charts)
 - Mailing List:
   - [Helm Mailing List](https://lists.cncf.io/g/cncf-helm)
-- Developer Call: Thursdays at 9:30-10:00 Pacific. [https://zoom.us/j/696660622](https://zoom.us/j/696660622)
+- Developer Call: Thursdays at 9:30-10:00 Pacific ([meeting details](https://github.com/helm/community/blob/master/communication.md#meetings))
 
 ### Code of conduct
 

@@ -39,6 +39,7 @@ func TestEnvSettings(t *testing.T) {
 		maxhistory   int
 		kAsUser      string
 		kAsGroups    []string
+		kCaFile      string
 	}{
 		{
 			name:       "defaults",
@@ -47,31 +48,34 @@ func TestEnvSettings(t *testing.T) {
 		},
 		{
 			name:       "with flags set",
-			args:       "--debug --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters",
+			args:       "--debug --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters --kube-ca-file=/tmp/ca.crt",
 			ns:         "myns",
 			debug:      true,
 			maxhistory: defaultMaxHistory,
 			kAsUser:    "poro",
 			kAsGroups:  []string{"admins", "teatime", "snackeaters"},
+			kCaFile:    "/tmp/ca.crt",
 		},
 		{
 			name:       "with envvars set",
-			envvars:    map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_MAX_HISTORY": "5"},
+			envvars:    map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_MAX_HISTORY": "5", "HELM_KUBECAFILE": "/tmp/ca.crt"},
 			ns:         "yourns",
 			maxhistory: 5,
 			debug:      true,
 			kAsUser:    "pikachu",
 			kAsGroups:  []string{"operators", "snackeaters", "partyanimals"},
+			kCaFile:    "/tmp/ca.crt",
 		},
 		{
 			name:       "with flags and envvars set",
-			args:       "--debug --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters",
-			envvars:    map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_MAX_HISTORY": "5"},
+			args:       "--debug --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters --kube-ca-file=/my/ca.crt",
+			envvars:    map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_MAX_HISTORY": "5", "HELM_KUBECAFILE": "/tmp/ca.crt"},
 			ns:         "myns",
 			debug:      true,
 			maxhistory: 5,
 			kAsUser:    "poro",
 			kAsGroups:  []string{"admins", "teatime", "snackeaters"},
+			kCaFile:    "/my/ca.crt",
 		},
 	}
 
@@ -106,6 +110,9 @@ func TestEnvSettings(t *testing.T) {
 			}
 			if !reflect.DeepEqual(tt.kAsGroups, settings.KubeAsGroups) {
 				t.Errorf("expected kAsGroups %+v, got %+v", len(tt.kAsGroups), len(settings.KubeAsGroups))
+			}
+			if tt.kCaFile != settings.KubeCaFile {
+				t.Errorf("expected kCaFile %q, got %q", tt.kCaFile, settings.KubeCaFile)
 			}
 		})
 	}

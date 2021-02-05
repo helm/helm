@@ -143,7 +143,7 @@ func (o *searchRepoOptions) setupSearchedVersion() {
 }
 
 func (o *searchRepoOptions) applyConstraint(res []*search.Result) ([]*search.Result, error) {
-	if len(o.version) == 0 {
+	if o.version == "" {
 		return res, nil
 	}
 
@@ -155,15 +155,18 @@ func (o *searchRepoOptions) applyConstraint(res []*search.Result) ([]*search.Res
 	data := res[:0]
 	foundNames := map[string]bool{}
 	for _, r := range res {
-		if _, found := foundNames[r.Name]; found {
+		// if not returning all versions and already have found a result,
+		// you're done!
+		if !o.versions && foundNames[r.Name] {
 			continue
 		}
 		v, err := semver.NewVersion(r.Chart.Version)
-		if err != nil || constraint.Check(v) {
+		if err != nil {
+			continue
+		}
+		if constraint.Check(v) {
 			data = append(data, r)
-			if !o.versions {
-				foundNames[r.Name] = true // If user hasn't requested all versions, only show the latest that matches
-			}
+			foundNames[r.Name] = true
 		}
 	}
 
@@ -184,6 +187,7 @@ func (o *searchRepoOptions) buildIndex() (*search.Index, error) {
 		ind, err := repo.LoadIndexFile(f)
 		if err != nil {
 			warning("Repo %q is corrupt or missing. Try 'helm repo update'.", n)
+			warning("%s", err)
 			continue
 		}
 
@@ -360,9 +364,6 @@ func compListCharts(toComplete string, includeFiles bool) ([]string, cobra.Shell
 	}
 	if noSpace {
 		directive = directive | cobra.ShellCompDirectiveNoSpace
-		// The cobra.ShellCompDirective flags do not work for zsh right now.
-		// We handle it ourselves instead.
-		completions = compEnforceNoSpace(completions)
 	}
 	if !includeFiles {
 		// If we should not include files in the completions,
@@ -370,20 +371,4 @@ func compListCharts(toComplete string, includeFiles bool) ([]string, cobra.Shell
 		directive = directive | cobra.ShellCompDirectiveNoFileComp
 	}
 	return completions, directive
-}
-
-// This function prevents the shell from adding a space after
-// a completion by adding a second, fake completion.
-// It is only needed for zsh, but we cannot tell which shell
-// is being used here, so we do the fake completion all the time;
-// there are no real downsides to doing this for bash as well.
-func compEnforceNoSpace(completions []string) []string {
-	// To prevent the shell from adding space after the completion,
-	// we trick it by pretending there is a second, longer match.
-	// We only do this if there is a single choice for completion.
-	if len(completions) == 1 {
-		completions = append(completions, completions[0]+".")
-		cobra.CompDebugln(fmt.Sprintf("compEnforceNoSpace: completions now are %v", completions), settings.Debug)
-	}
-	return completions
 }

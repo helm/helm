@@ -107,6 +107,20 @@ func TestV3Fail(t *testing.T) {
 	}
 }
 
+func TestMultiTemplateFail(t *testing.T) {
+	linter := support.Linter{ChartDir: "./testdata/multi-template-fail"}
+	Templates(&linter, values, namespace, strict)
+	res := linter.Messages
+
+	if len(res) != 1 {
+		t.Fatalf("Expected 1 error, got %d, %v", len(res), res)
+	}
+
+	if !strings.Contains(res[0].Err.Error(), "object name does not conform to Kubernetes naming requirements") {
+		t.Errorf("Unexpected error: %s", res[0].Err)
+	}
+}
+
 func TestValidateMetadataName(t *testing.T) {
 	names := map[string]bool{
 		"":                          false,
@@ -331,4 +345,38 @@ func TestValidateTopIndentLevel(t *testing.T) {
 		}
 	}
 
+}
+
+// TestEmptyWithCommentsManifests checks the lint is not failing against empty manifests that contains only comments
+// See https://github.com/helm/helm/issues/8621
+func TestEmptyWithCommentsManifests(t *testing.T) {
+	mychart := chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: "v2",
+			Name:       "emptymanifests",
+			Version:    "0.1.0",
+			Icon:       "satisfy-the-linting-gods.gif",
+		},
+		Templates: []*chart.File{
+			{
+				Name: "templates/empty-with-comments.yaml",
+				Data: []byte("#@formatter:off\n"),
+			},
+		},
+	}
+	tmpdir := ensure.TempDir(t)
+	defer os.RemoveAll(tmpdir)
+
+	if err := chartutil.SaveDir(&mychart, tmpdir); err != nil {
+		t.Fatal(err)
+	}
+
+	linter := support.Linter{ChartDir: filepath.Join(tmpdir, mychart.Name())}
+	Templates(&linter, values, namespace, strict)
+	if l := len(linter.Messages); l > 0 {
+		for i, msg := range linter.Messages {
+			t.Logf("Message %d: %s", i, msg)
+		}
+		t.Fatalf("Expected 0 lint errors, got %d", l)
+	}
 }

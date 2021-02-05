@@ -25,9 +25,8 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/pkg/errors"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 
-	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/provenance"
@@ -64,9 +63,11 @@ func (p *Package) Run(path string, vals map[string]interface{}) (string, error) 
 
 	// If version is set, modify the version.
 	if p.Version != "" {
-		if err := setVersion(ch, p.Version); err != nil {
-			return "", err
-		}
+		ch.Metadata.Version = p.Version
+	}
+
+	if err := validateVersion(ch.Metadata.Version); err != nil {
+		return "", err
 	}
 
 	if p.AppVersion != "" {
@@ -103,14 +104,11 @@ func (p *Package) Run(path string, vals map[string]interface{}) (string, error) 
 	return name, err
 }
 
-func setVersion(ch *chart.Chart, ver string) error {
-	// Verify that version is a Version, and error out if it is not.
+// validateVersion Verify that version is a Version, and error out if it is not.
+func validateVersion(ver string) error {
 	if _, err := semver.NewVersion(ver); err != nil {
 		return err
 	}
-
-	// Set the version field on the chart.
-	ch.Metadata.Version = ver
 	return nil
 }
 
@@ -147,7 +145,7 @@ func promptUser(name string) ([]byte, error) {
 	fmt.Printf("Password for key %q >  ", name)
 	// syscall.Stdin is not an int in all environments and needs to be coerced
 	// into one there (e.g., Windows)
-	pw, err := terminal.ReadPassword(int(syscall.Stdin))
+	pw, err := term.ReadPassword(int(syscall.Stdin))
 	fmt.Println()
 	return pw, err
 }

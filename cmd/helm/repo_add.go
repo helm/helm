@@ -29,7 +29,7 @@ import (
 	"github.com/gofrs/flock"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/cmd/helm/require"
@@ -37,12 +37,19 @@ import (
 	"helm.sh/helm/v3/pkg/repo"
 )
 
+// Repositories that have been permanently deleted and no longer work
+var deprecatedRepos = map[string]string{
+	"//kubernetes-charts.storage.googleapis.com":           "https://charts.helm.sh/stable",
+	"//kubernetes-charts-incubator.storage.googleapis.com": "https://charts.helm.sh/incubator",
+}
+
 type repoAddOptions struct {
-	name        string
-	url         string
-	username    string
-	password    string
-	forceUpdate bool
+	name                 string
+	url                  string
+	username             string
+	password             string
+	forceUpdate          bool
+	allowDeprecatedRepos bool
 
 	certFile              string
 	keyFile               string
@@ -83,12 +90,22 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&o.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.StringVar(&o.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 	f.BoolVar(&o.insecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the repository")
+	f.BoolVar(&o.allowDeprecatedRepos, "allow-deprecated-repos", false, "by default, this command will not allow adding official repos that have been permanently deleted. This disables that behavior")
 
 	return cmd
 }
 
 func (o *repoAddOptions) run(out io.Writer) error {
-	//Ensure the file directory exists as it is required for file locking
+	// Block deprecated repos
+	if !o.allowDeprecatedRepos {
+		for oldURL, newURL := range deprecatedRepos {
+			if strings.Contains(o.url, oldURL) {
+				return fmt.Errorf("repo %q is no longer available; try %q instead", o.url, newURL)
+			}
+		}
+	}
+
+	// Ensure the file directory exists as it is required for file locking
 	err := os.MkdirAll(filepath.Dir(o.repoFile), os.ModePerm)
 	if err != nil && !os.IsExist(err) {
 		return err
@@ -119,7 +136,7 @@ func (o *repoAddOptions) run(out io.Writer) error {
 	if o.username != "" && o.password == "" {
 		fd := int(os.Stdin.Fd())
 		fmt.Fprint(out, "Password: ")
-		password, err := terminal.ReadPassword(fd)
+		password, err := term.ReadPassword(fd)
 		fmt.Fprintln(out)
 		if err != nil {
 			return err

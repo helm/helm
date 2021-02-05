@@ -22,6 +22,7 @@ import (
 	"strings"
 	"testing"
 
+	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/provenance"
 	"helm.sh/helm/v3/pkg/repo"
 	"helm.sh/helm/v3/pkg/repo/repotest"
@@ -36,6 +37,27 @@ func TestDependencyBuildCmd(t *testing.T) {
 
 	rootDir := srv.Root()
 	srv.LinkIndices()
+
+	ociSrv, err := repotest.NewOCIServer(t, srv.Root())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ociChartName := "oci-depending-chart"
+	c := createTestingMetadataForOCI(ociChartName, ociSrv.RegistryURL)
+	if err := chartutil.SaveDir(c, ociSrv.Dir); err != nil {
+		t.Fatal(err)
+	}
+	ociSrv.Run(t, repotest.WithDependingChart(c))
+
+	err = os.Setenv("HELM_EXPERIMENTAL_OCI", "1")
+	if err != nil {
+		t.Fatal("failed to set environment variable enabling OCI support")
+	}
+
+	dir := func(p ...string) string {
+		return filepath.Join(append([]string{srv.Root()}, p...)...)
+	}
 
 	chartname := "depbuild"
 	createTestingChart(t, rootDir, chartname, srv.URL())
@@ -98,6 +120,35 @@ func TestDependencyBuildCmd(t *testing.T) {
 	}
 	if v := reqver.Version; v != "0.1.0" {
 		t.Errorf("mismatched versions. Expected %q, got %q", "0.1.0", v)
+	}
+
+	skipRefreshCmd := fmt.Sprintf("dependency build '%s' --skip-refresh --repository-config %s --repository-cache %s", filepath.Join(rootDir, chartname), repoFile, rootDir)
+	_, out, err = executeActionCommand(skipRefreshCmd)
+
+	// In this pass, we check --skip-refresh option becomes effective.
+	if err != nil {
+		t.Logf("Output: %s", out)
+		t.Fatal(err)
+	}
+
+	if strings.Contains(out, `update from the "test" chart repository`) {
+		t.Errorf("Repo did get updated\n%s", out)
+	}
+
+	// OCI dependencies
+	cmd = fmt.Sprintf("dependency build '%s' --repository-config %s --repository-cache %s --registry-config %s/config.json",
+		dir(ociChartName),
+		dir("repositories.yaml"),
+		dir(),
+		dir())
+	_, out, err = executeActionCommand(cmd)
+	if err != nil {
+		t.Logf("Output: %s", out)
+		t.Fatal(err)
+	}
+	expect = dir(ociChartName, "charts/oci-dependent-chart-0.1.0.tgz")
+	if _, err := os.Stat(expect); err != nil {
+		t.Fatal(err)
 	}
 }
 

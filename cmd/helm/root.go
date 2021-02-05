@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -30,6 +31,7 @@ import (
 
 	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/repo"
 )
 
 var globalUsage = `The Kubernetes package manager
@@ -60,8 +62,9 @@ Environment variables:
 | $HELM_REPOSITORY_CONFIG            | set the path to the repositories file.                                            |
 | $KUBECONFIG                        | set an alternative Kubernetes configuration file (default "~/.kube/config")       |
 | $HELM_KUBEAPISERVER                | set the Kubernetes API Server Endpoint for authentication                         |
-| $HELM_KUBEASGROUPS                 | set the Username to impersonate for the operation.                                |
-| $HELM_KUBEASUSER                   | set the Groups to use for impoersonation using a comma-separated list.            |
+| $HELM_KUBECAFILE                   | set the Kubernetes certificate authority file.                                    |
+| $HELM_KUBEASGROUPS                 | set the Groups to use for impersonation using a comma-separated list.             |
+| $HELM_KUBEASUSER                   | set the Username to impersonate for the operation.                                |
 | $HELM_KUBECONTEXT                  | set the name of the kubeconfig context.                                           |
 | $HELM_KUBETOKEN                    | set the Bearer KubeToken used for authentication.                                 |
 
@@ -86,9 +89,6 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		Short:        "The Helm package manager for Kubernetes.",
 		Long:         globalUsage,
 		SilenceUsage: true,
-		// This breaks completion for 'helm help <TAB>'
-		// The Cobra release following 1.0 will fix this
-		//ValidArgsFunction: noCompletions, // Disable file completion
 	}
 	flags := cmd.PersistentFlags()
 
@@ -153,12 +153,22 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	flags.ParseErrorsWhitelist.UnknownFlags = true
 	flags.Parse(args)
 
+	registryClient, err := registry.NewClient(
+		registry.ClientOptDebug(settings.Debug),
+		registry.ClientOptWriter(out),
+		registry.ClientOptCredentialsFile(settings.RegistryConfig),
+	)
+	if err != nil {
+		return nil, err
+	}
+	actionConfig.RegistryClient = registryClient
+
 	// Add subcommands
 	cmd.AddCommand(
 		// chart commands
 		newCreateCmd(out),
-		newDependencyCmd(out),
-		newPullCmd(out),
+		newDependencyCmd(actionConfig, out),
+		newPullCmd(actionConfig, out),
 		newShowCmd(out),
 		newLintCmd(out),
 		newPackageCmd(out),
@@ -188,15 +198,6 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	)
 
 	// Add *experimental* subcommands
-	registryClient, err := registry.NewClient(
-		registry.ClientOptDebug(settings.Debug),
-		registry.ClientOptWriter(out),
-		registry.ClientOptCredentialsFile(settings.RegistryConfig),
-	)
-	if err != nil {
-		return nil, err
-	}
-	actionConfig.RegistryClient = registryClient
 	cmd.AddCommand(
 		newRegistryCmd(actionConfig, out),
 		newChartCmd(actionConfig, out),
@@ -208,5 +209,56 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	// Check permissions on critical files
 	checkPerms()
 
+	// Check for expired repositories
+	checkForExpiredRepos(settings.RepositoryConfig)
+
 	return cmd, nil
+}
+
+func checkForExpiredRepos(repofile string) {
+
+	expiredRepos := []struct {
+		name string
+		old  string
+		new  string
+	}{
+		{
+			name: "stable",
+			old:  "kubernetes-charts.storage.googleapis.com",
+			new:  "https://charts.helm.sh/stable",
+		},
+		{
+			name: "incubator",
+			old:  "kubernetes-charts-incubator.storage.googleapis.com",
+			new:  "https://charts.helm.sh/incubator",
+		},
+	}
+
+	// parse repo file.
+	// Ignore the error because it is okay for a repo file to be unparseable at this
+	// stage. Later checks will trap the error and respond accordingly.
+	repoFile, err := repo.LoadFile(repofile)
+	if err != nil {
+		return
+	}
+
+	for _, exp := range expiredRepos {
+		r := repoFile.Get(exp.name)
+		if r == nil {
+			return
+		}
+
+		if url := r.URL; strings.Contains(url, exp.old) {
+			fmt.Fprintf(
+				os.Stderr,
+				"WARNING: %q is deprecated for %q and will be deleted Nov. 13, 2020.\nWARNING: You should switch to %q via:\nWARNING: helm repo add %q %q --force-update\n",
+				exp.old,
+				exp.name,
+				exp.new,
+				exp.name,
+				exp.new,
+			)
+		}
+	}
+
 }

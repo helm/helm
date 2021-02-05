@@ -294,3 +294,54 @@ func TestHTTPGetterTarDownload(t *testing.T) {
 		t.Fatalf("Expected response with MIME type %s, but got %s", expectedMimeType, mimeType)
 	}
 }
+
+func TestHttpClientInsecureSkipVerify(t *testing.T) {
+	g := HTTPGetter{}
+	g.opts.url = "https://localhost"
+	verifyInsecureSkipVerify(t, g, "Blank HTTPGetter", false)
+
+	g = HTTPGetter{}
+	g.opts.url = "https://localhost"
+	g.opts.caFile = "testdata/ca.crt"
+	verifyInsecureSkipVerify(t, g, "HTTPGetter with ca file", false)
+
+	g = HTTPGetter{}
+	g.opts.url = "https://localhost"
+	g.opts.insecureSkipVerifyTLS = true
+	verifyInsecureSkipVerify(t, g, "HTTPGetter with skip cert verification only", true)
+
+	g = HTTPGetter{}
+	g.opts.url = "https://localhost"
+	g.opts.certFile = "testdata/client.crt"
+	g.opts.keyFile = "testdata/client.key"
+	g.opts.insecureSkipVerifyTLS = true
+	transport := verifyInsecureSkipVerify(t, g, "HTTPGetter with 2 way ssl", true)
+	if len(transport.TLSClientConfig.Certificates) <= 0 {
+		t.Fatal("transport.TLSClientConfig.Certificates is not present")
+	}
+	if transport.TLSClientConfig.ServerName == "" {
+		t.Fatal("TLSClientConfig.ServerName is blank")
+	}
+}
+
+func verifyInsecureSkipVerify(t *testing.T, g HTTPGetter, caseName string, expectedValue bool) *http.Transport {
+	returnVal, err := g.httpClient()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if returnVal == nil {
+		t.Fatalf("Expected non nil value for http client")
+	}
+	transport := (returnVal.Transport).(*http.Transport)
+	gotValue := false
+	if transport.TLSClientConfig != nil {
+		gotValue = transport.TLSClientConfig.InsecureSkipVerify
+	}
+	if gotValue != expectedValue {
+		t.Fatalf("Case Name = %s\nInsecureSkipVerify did not come as expected. Expected = %t; Got = %v",
+			caseName, expectedValue, gotValue)
+	}
+	return transport
+}

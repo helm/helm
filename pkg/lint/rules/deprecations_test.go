@@ -27,10 +27,9 @@ func TestValidateNoDeprecations(t *testing.T) {
 	if err == nil {
 		t.Fatal("Expected deprecated extension to be flagged")
 	}
-
 	depErr := err.(deprecatedAPIError)
-	if depErr.Alternative != "apps/v1 Deployment" {
-		t.Errorf("Expected %q to be replaced by %q", depErr.Deprecated, depErr.Alternative)
+	if depErr.Message == "" {
+		t.Fatalf("Expected error message to be non-blank: %v", err)
 	}
 
 	if err := validateNoDeprecations(&K8sYamlStruct{

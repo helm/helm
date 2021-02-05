@@ -148,6 +148,7 @@ func TestIndexCustomSchemeDownload(t *testing.T) {
 		t.Fatalf("Problem loading chart repository from %s: %v", repoURL, err)
 	}
 	repo.CachePath = ensure.TempDir(t)
+	defer os.RemoveAll(repo.CachePath)
 
 	tempIndexFile, err := ioutil.TempFile("", "test-repo")
 	if err != nil {
@@ -302,7 +303,7 @@ func TestFindChartInAuthAndTLSRepoURL(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
-	if chartURL != "https://kubernetes-charts.storage.googleapis.com/nginx-0.2.0.tgz" {
+	if chartURL != "https://charts.helm.sh/stable/nginx-0.2.0.tgz" {
 		t.Errorf("%s is not the valid URL", chartURL)
 	}
 
@@ -325,7 +326,7 @@ func TestFindChartInRepoURL(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
-	if chartURL != "https://kubernetes-charts.storage.googleapis.com/nginx-0.2.0.tgz" {
+	if chartURL != "https://charts.helm.sh/stable/nginx-0.2.0.tgz" {
 		t.Errorf("%s is not the valid URL", chartURL)
 	}
 
@@ -333,7 +334,7 @@ func TestFindChartInRepoURL(t *testing.T) {
 	if err != nil {
 		t.Errorf("%s", err)
 	}
-	if chartURL != "https://kubernetes-charts.storage.googleapis.com/nginx-0.1.0.tgz" {
+	if chartURL != "https://charts.helm.sh/stable/nginx-0.1.0.tgz" {
 		t.Errorf("%s is not the valid URL", chartURL)
 	}
 }
@@ -392,11 +393,11 @@ func TestResolveReferenceURL(t *testing.T) {
 		t.Errorf("%s", chartURL)
 	}
 
-	chartURL, err = ResolveReferenceURL("http://localhost:8123", "https://kubernetes-charts.storage.googleapis.com/nginx-0.2.0.tgz")
+	chartURL, err = ResolveReferenceURL("http://localhost:8123", "https://charts.helm.sh/stable/nginx-0.2.0.tgz")
 	if err != nil {
 		t.Errorf("%s", err)
 	}
-	if chartURL != "https://kubernetes-charts.storage.googleapis.com/nginx-0.2.0.tgz" {
+	if chartURL != "https://charts.helm.sh/stable/nginx-0.2.0.tgz" {
 		t.Errorf("%s", chartURL)
 	}
 }

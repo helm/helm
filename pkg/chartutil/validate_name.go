@@ -17,6 +17,7 @@ limitations under the License.
 package chartutil
 
 import (
+	"fmt"
 	"regexp"
 
 	"github.com/pkg/errors"
@@ -39,11 +40,15 @@ var (
 	errMissingName = errors.New("no name provided")
 
 	// errInvalidName indicates that an invalid release name was provided
-	errInvalidName = errors.New("invalid release name, must match regex ^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+$ and the length must not longer than 53")
+	errInvalidName = errors.New(fmt.Sprintf(
+		"invalid release name, must match regex %s and the length must not be longer than 53",
+		validName.String()))
 
 	// errInvalidKubernetesName indicates that the name does not meet the Kubernetes
 	// restrictions on metadata names.
-	errInvalidKubernetesName = errors.New("invalid metadata name, must match regex ^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])+$ and the length must not longer than 253")
+	errInvalidKubernetesName = errors.New(fmt.Sprintf(
+		"invalid metadata name, must match regex %s and the length must not be longer than 253",
+		validName.String()))
 )
 
 const (

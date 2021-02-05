@@ -26,6 +26,9 @@ import (
 // History is the action for checking the release's ledger.
 //
 // It provides the implementation of 'helm history'.
+// It returns all the revisions for a specific release.
+// To list up to one revision of every release in one specific, or in all,
+// namespaces, see the List action.
 type History struct {
 	cfg *Configuration
 
