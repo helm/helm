@@ -98,6 +98,7 @@ type Upgrade struct {
 	PostRenderer postrender.PostRenderer
 	// DisableOpenAPIValidation controls whether OpenAPI validation is enforced.
 	DisableOpenAPIValidation bool
+	DependencyUpdate         bool
 }
 
 // NewUpgrade creates a new Upgrade object with the given configuration.

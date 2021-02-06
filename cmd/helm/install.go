@@ -209,32 +209,39 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		warning("This chart is deprecated")
 	}
 
+	// Only check dependencies if there are any
 	if req := chartRequested.Metadata.Dependencies; req != nil {
 		// If CheckDependencies returns an error, we have unfulfilled dependencies.
 		// As of Helm 2.4.0, this is treated as a stopping condition:
 		// https://github.com/helm/helm/issues/2209
-		if err := action.CheckDependencies(chartRequested, req); err != nil {
-			if client.DependencyUpdate {
-				man := &downloader.Manager{
-					Out:              out,
-					ChartPath:        cp,
-					Keyring:          client.ChartPathOptions.Keyring,
-					SkipUpdate:       false,
-					Getters:          p,
-					RepositoryConfig: settings.RepositoryConfig,
-					RepositoryCache:  settings.RepositoryCache,
-					Debug:            settings.Debug,
-				}
-				if err := man.Update(); err != nil {
-					return nil, err
-				}
-				// Reload the chart with the updated Chart.lock file.
-				if chartRequested, err = loader.Load(cp); err != nil {
-					return nil, errors.Wrap(err, "failed reloading chart after repo update")
-				}
-			} else {
+		// Update all dependencies if DependencyUpdate is true
+		if client.DependencyUpdate {
+			man := &downloader.Manager{
+				Out:              out,
+				ChartPath:        cp,
+				Keyring:          client.ChartPathOptions.Keyring,
+				SkipUpdate:       false,
+				Getters:          p,
+				RepositoryConfig: settings.RepositoryConfig,
+				RepositoryCache:  settings.RepositoryCache,
+				Debug:            settings.Debug,
+			}
+
+			// reload chart dependencies
+			if err := man.Update(); err != nil {
 				return nil, err
 			}
+
+			// Reload the chart with the updated Chart.lock file.
+			if chartRequested, err = loader.Load(cp); err != nil {
+				return nil, errors.Wrap(err, "failed reloading chart after repo update")
+			}
+
+		}
+
+		// If not all dependencies are locally fail
+		if err := action.CheckDependencies(chartRequested, req); err != nil {
+			return nil, err
 		}
 	}
 
