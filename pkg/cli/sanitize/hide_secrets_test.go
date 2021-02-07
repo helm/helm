@@ -28,37 +28,44 @@ import (
 
 func TestHideManifestSecrets(t *testing.T) {
 
-	t.Run("replace manifest with sanitized one", func(t *testing.T) {
-		manifestRaw, err := ioutil.ReadFile("testdata/manifest-input.yaml")
-		require.NoError(t, err)
-		expectedManifestRaw, err := ioutil.ReadFile("testdata/manifest-sanitized.yaml")
-		require.NoError(t, err)
+	for _, testCase := range []struct {
+		description   string
+		manifestFile  string
+		sanitizedFile string
+	}{
+		{
+			description:   "replace manifest with sanitized one",
+			manifestFile:  "testdata/manifest-input.yaml",
+			sanitizedFile: "testdata/manifest-sanitized.yaml",
+		},
+		{
+			description:   "handle different secrets",
+			manifestFile:  "testdata/different-secrets.yaml",
+			sanitizedFile: "testdata/different-secrets-sanitized.yaml",
+		},
+		{
+			description:   "do not modify manifest when no secret values",
+			manifestFile:  "testdata/manifest-no-secret.yaml",
+			sanitizedFile: "testdata/manifest-no-secret.yaml",
+		},
+	} {
+		t.Run(testCase.description, func(t *testing.T) {
+			manifestRaw, err := ioutil.ReadFile(testCase.manifestFile)
+			require.NoError(t, err)
+			expectedManifestRaw, err := ioutil.ReadFile(testCase.sanitizedFile)
+			require.NoError(t, err)
 
-		rel := &release.Release{
-			Name:     "test",
-			Manifest: string(manifestRaw),
-		}
+			rel := &release.Release{
+				Name:     "test",
+				Manifest: string(manifestRaw),
+			}
 
-		err = HideManifestSecrets(rel)
-		require.NoError(t, err)
+			err = HideManifestSecrets(rel)
+			require.NoError(t, err)
 
-		assert.Equal(t, string(expectedManifestRaw), rel.Manifest)
-	})
-
-	t.Run("do not modify manifest when no secret values", func(t *testing.T) {
-		manifestRaw, err := ioutil.ReadFile("testdata/manifest-no-secret.yaml")
-		require.NoError(t, err)
-
-		rel := &release.Release{
-			Name:     "test",
-			Manifest: string(manifestRaw),
-		}
-
-		err = HideManifestSecrets(rel)
-		require.NoError(t, err)
-
-		assert.Equal(t, string(manifestRaw), rel.Manifest)
-	})
+			assert.Equal(t, string(expectedManifestRaw), rel.Manifest)
+		})
+	}
 
 	t.Run("ignore nil release", func(t *testing.T) {
 		var rel *release.Release
@@ -66,5 +73,18 @@ func TestHideManifestSecrets(t *testing.T) {
 		err := HideManifestSecrets(rel)
 		require.NoError(t, err)
 		assert.Nil(t, rel)
+	})
+
+	t.Run("include secret name in error message", func(t *testing.T) {
+		manifestRaw, err := ioutil.ReadFile("testdata/invalid-secret.yaml")
+		require.NoError(t, err)
+
+		rel := &release.Release{
+			Name:     "test",
+			Manifest: string(manifestRaw),
+		}
+		err = HideManifestSecrets(rel)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "\"invalid-secret-with-dup-values\"")
 	})
 }

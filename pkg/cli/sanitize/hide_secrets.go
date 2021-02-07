@@ -20,9 +20,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	"helm.sh/helm/v3/pkg/release"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -31,6 +33,7 @@ const (
 
 // HideManifestSecrets sanitizes release manifest and replaces it.
 // Manifest cannot be applied after this operation.
+// Indentation and extra spaces in Secret's `data` and `stringData` sections can be impacted.
 func HideManifestSecrets(r *release.Release) error {
 	if r == nil {
 		return nil
@@ -55,17 +58,35 @@ func hideSecrets(manifest string) (string, error) {
 		var resourceMap map[string]interface{}
 		err := yaml.Unmarshal([]byte(r), &resourceMap)
 		if err != nil {
-			return "", err
+			return "", errors.Wrapf(err, "failed to unmarshal %q resource", tryToGetName(resourceMap))
 		}
 
 		if isSecret(resourceMap) {
-			r = hideSecretData(r, resourceMap)
+			rs, err := hideSecretData(r)
+			if err != nil {
+				return "", errors.Wrapf(err, "failed to hide %q Secret data", tryToGetName(resourceMap))
+			}
+			r = rs
 		}
 
 		outRes = append(outRes, r)
 	}
 
 	return strings.Join(outRes, "\n---"), nil
+}
+
+func tryToGetName(resourceMap map[string]interface{}) string {
+	metadata, ok := resourceMap["metadata"].(map[string]interface{})
+	if !ok {
+		return ""
+	}
+
+	name, ok := metadata["name"].(string)
+	if !ok {
+		return ""
+	}
+
+	return name
 }
 
 func isSecret(resource map[string]interface{}) bool {
@@ -82,68 +103,105 @@ func isSecret(resource map[string]interface{}) bool {
 	return true
 }
 
-func hideSecretData(raw string, resource map[string]interface{}) string {
-	dataRaw, ok := resource["data"].(map[interface{}]interface{})
-	if !ok || len(dataRaw) == 0 {
-		return raw
-	}
-
-	data := toMapOfStrings(dataRaw)
-
+func hideSecretData(raw string) (string, error) {
 	lines := strings.Split(raw, "\n")
-	outLines := make([]string, len(lines))
+	outLines := make([]string, 0, len(lines))
 
-	for i, line := range lines {
-		trimmed := strings.TrimSpace(line)
+	// To minimize impact of empty lines and custom indentation
+	// we only marshal `data` and `secretData` sections of the Secrets
+	for i := 0; i < len(lines); i++ {
+		line := lines[i]
+		outLines = append(outLines, line)
 
-		// If line is part of secret.data, sanitize line by replacing the value part
-		if key, matches := matchKeyValPair(data, trimmed); matches {
-			sanitizedLine := strings.Replace(line, trimmed, formatHiddenValue(key), 1)
-			outLines[i] = sanitizedLine
-			continue
-		}
+		if strings.HasPrefix(line, "data:") || strings.HasPrefix(line, "stringData:") {
+			endLine := findSectionEnd(lines, i+1)
+			sanitizedLines, err := sanitizeDataYaml(lines[i+1 : endLine+1])
+			if err != nil {
+				return "", errors.Wrap(err, "failed to sanitize Secret data")
+			}
+			outLines = append(outLines, sanitizedLines...)
 
-		outLines[i] = line
-	}
-
-	return strings.Join(outLines, "\n")
-}
-
-func toMapOfStrings(rawMap map[interface{}]interface{}) map[string]string {
-	stringsMap := make(map[string]string, len(rawMap))
-	for k, v := range rawMap {
-		key, ok := k.(string)
-		if !ok {
-			continue
-		}
-		val, ok := v.(string)
-		if !ok {
-			continue
-		}
-		stringsMap[key] = val
-	}
-	return stringsMap
-}
-
-// matchKeyValPair checks if data contains joined key value pair in format
-// `key: value` equal to specified string.
-// Returns key with which string matched and indicator if it matched any.
-func matchKeyValPair(data map[string]string, str string) (string, bool) {
-	for k, v := range data {
-		joined := joinKeyVal(k, v)
-
-		if joined == str {
-			return k, true
+			i = endLine
 		}
 	}
 
-	return "", false
+	return strings.Join(outLines, "\n"), nil
 }
 
-func joinKeyVal(key, val string) string {
-	return fmt.Sprintf("%s: %s", key, val)
+func sanitizeDataYaml(yamlLines []string) ([]string, error) {
+	yamlData := strings.Join(yamlLines, "\n")
+	data := &yaml.Node{}
+	err := yaml.Unmarshal([]byte(yamlData), data)
+	if err != nil {
+		return nil, err
+	}
+	if len(data.Content) == 0 {
+		return []string{}, nil
+	}
+
+	node := data.Content[0]
+	sanitizeNode(node)
+
+	// Try to preserve indentation of the data section
+	indent := "  "
+	if len(node.Content) > 1 {
+		lineNum := node.Content[1].Line
+		indent = takeWhitespace(yamlLines[lineNum-1])
+	}
+
+	sanitized, err := yaml.Marshal(node)
+	if err != nil {
+		return nil, err
+	}
+	str := strings.TrimSpace(string(sanitized))
+	lines := strings.Split(str, "\n")
+
+	for i := range lines {
+		lines[i] = fmt.Sprintf("%s%s", indent, lines[i])
+	}
+
+	return lines, nil
 }
 
-func formatHiddenValue(key string) string {
-	return joinKeyVal(key, hiddenSecretValue)
+func sanitizeNode(node *yaml.Node) {
+	if node.Kind != yaml.MappingNode {
+		return
+	}
+	contents := node.Content
+
+	for i := 1; i < len(contents); i += 2 {
+		contents[i].Style = 0 // Erase literal style
+		contents[i].SetString(hiddenSecretValue)
+	}
+}
+
+func takeWhitespace(line string) string {
+	buff := make([]byte, 0)
+	for _, c := range line {
+		switch c {
+		case ' ', '\t':
+			buff = append(buff, byte(c))
+			continue
+		}
+
+		break
+	}
+	return string(buff)
+}
+
+func findSectionEnd(lines []string, start int) int {
+	i := start
+	for i < len(lines) && isDataLine(lines[i]) {
+		i++
+	}
+	return i - 1
+}
+
+func isDataLine(line string) bool {
+	trimmed := strings.TrimSpace(line)
+	if trimmed == "" {
+		return true
+	}
+
+	return len(line) > 1 && (line[0] == byte('\t') || line[0] == byte(' '))
 }

@@ -11,19 +11,23 @@ kind: Secret
 metadata:
   name: secret-sample
 data:
-  test: [HIDDEN]
-  password: [HIDDEN]
+  test: '[HIDDEN]'
+  password: '[HIDDEN]'
+  complex.key: '[HIDDEN]'
+  fromFile.json: '[HIDDEN]'
+stringData:
+  string: '[HIDDEN]'
+  string.complex: '[HIDDEN]'
+  stringFile.json: '[HIDDEN]'
 ---
 # Source: test/templates/cm.yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  creationTimestamp: 2016-02-18T18:52:05Z
   name: game-config
   namespace: default
-  resourceVersion: "516"
-  uid: b4952dc3-d670-11e5-8cd0-68f728db1985
 data:
+  stringData: string-data
   test: YmFyCg==
   game.properties: |
     enemies=aliens

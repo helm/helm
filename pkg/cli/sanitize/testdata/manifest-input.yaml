@@ -13,17 +13,30 @@ metadata:
 data:
   test: YmFyCg==
   password: bXktcGFzc3dvcmQ=
+  complex.key: Y29tcGxleAo=
+  fromFile.json: |
+    ewogICJteS1jb25maWcta2V5IjogIm15IHZhbHVlIiwgCiAgImFnZSI6IDI0LAogICJhcnJheSI6IFsidmFsdWUiLCAidmFsdWUyIl0sCiAgIm9iamVjdCI6IHsKICAgICJrZXkiOiAidmFsdWUiCiAgfQp9Cg==
+stringData:
+  string: super-secret
+  string.complex: complex
+  stringFile.json: |
+    {
+      "my-config-key": "my value",
+      "age": 24,
+      "array": ["value", "value2"],
+      "object": {
+        "key": "value"
+      }
+    }
 ---
 # Source: test/templates/cm.yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  creationTimestamp: 2016-02-18T18:52:05Z
   name: game-config
   namespace: default
-  resourceVersion: "516"
-  uid: b4952dc3-d670-11e5-8cd0-68f728db1985
 data:
+  stringData: string-data
   test: YmFyCg==
   game.properties: |
     enemies=aliens
