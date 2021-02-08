@@ -23,6 +23,7 @@
 : ${VERIFY_CHECKSUM:="true"}
 : ${VERIFY_SIGNATURES:="false"}
 : ${HELM_INSTALL_DIR:="/usr/local/bin"}
+: ${GPG_PUBRING:="pubring.kbx"}
 
 HAS_CURL="$(type "curl" &> /dev/null && echo true || echo false)"
 HAS_WGET="$(type "wget" &> /dev/null && echo true || echo false)"
@@ -206,7 +207,7 @@ verifySignatures() {
     gpg_stderr_device="/dev/stderr"
   fi
   gpg --batch --quiet --homedir="${gpg_homedir}" --import "${HELM_TMP_ROOT}/${keys_filename}" 2> "${gpg_stderr_device}"
-  gpg --batch --no-default-keyring --keyring "${gpg_homedir}/pubring.kbx" --export > "${gpg_keyring}"
+  gpg --batch --no-default-keyring --keyring "${gpg_homedir}/${GPG_PUBRING}" --export > "${gpg_keyring}"
   local github_release_url="https://github.com/helm/helm/releases/download/${TAG}"
   if [ "${HAS_CURL}" == "true" ]; then
     curl -SsL "${github_release_url}/helm-${TAG}-${OS}-${ARCH}.tar.gz.sha256.asc" -o "${HELM_TMP_ROOT}/helm-${TAG}-${OS}-${ARCH}.tar.gz.sha256.asc"
