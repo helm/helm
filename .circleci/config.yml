@@ -13,7 +13,7 @@ jobs:
 
     environment:
       GOCACHE: "/tmp/go/cache"
-      GOLANGCI_LINT_VERSION: "1.27.0"
+      GOLANGCI_LINT_VERSION: "1.36.0"
 
     steps:
       - checkout
