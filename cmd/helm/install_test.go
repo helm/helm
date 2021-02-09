@@ -111,7 +111,7 @@ func TestInstall(t *testing.T) {
 		{
 			name: "install with verification, valid",
 			cmd:  "install signtest testdata/testcharts/signtest-0.1.0.tgz --verify --keyring testdata/helm-test-key.pub",
-		},
+		}, 
 		// Install, chart with missing dependencies in /charts
 		{
 			name:      "install chart with missing dependencies",
@@ -120,7 +120,7 @@ func TestInstall(t *testing.T) {
 		},
 		// Install chart with update-dependency
 		{
-			name:   "install chart with missing dependencies",
+			name:   "install chart with missing dependencies with update",
 			cmd:    "install --dependency-update updeps testdata/testcharts/chart-with-subchart-update",
 			golden: "output/chart-with-subchart-update.txt",
 		},

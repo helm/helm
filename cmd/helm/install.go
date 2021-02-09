@@ -211,10 +211,6 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 
 	// Only check dependencies if there are any
 	if req := chartRequested.Metadata.Dependencies; req != nil {
-		// If CheckDependencies returns an error, we have unfulfilled dependencies.
-		// As of Helm 2.4.0, this is treated as a stopping condition:
-		// https://github.com/helm/helm/issues/2209
-		// Update all dependencies if DependencyUpdate is true
 		if client.DependencyUpdate {
 			man := &downloader.Manager{
 				Out:              out,
@@ -239,7 +235,10 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 
 		}
 
-		// If not all dependencies are locally fail
+		// If CheckDependencies returns an error, we have unfulfilled dependencies.
+		// As of Helm 2.4.0, this is treated as a stopping condition:
+		// https://github.com/helm/helm/issues/2209
+		// Update all dependencies if DependencyUpdate is true
 		if err := action.CheckDependencies(chartRequested, req); err != nil {
 			return nil, err
 		}

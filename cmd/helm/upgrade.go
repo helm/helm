@@ -171,7 +171,10 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					}
 				}
 
-				// If not all dependencies are locally fail
+				// If CheckDependencies returns an error, we have unfulfilled dependencies.
+				// As of Helm 2.4.0, this is treated as a stopping condition:
+				// https://github.com/helm/helm/issues/2209
+				// Update all dependencies if DependencyUpdate is true
 				if err := action.CheckDependencies(ch, req); err != nil {
 					return err
 				}
