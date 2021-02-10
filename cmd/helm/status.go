@@ -71,7 +71,7 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			// strip chart metadata from the output
 			rel.Chart = nil
 
-			return outfmt.Write(out, &statusPrinter{rel, false, client.ShowDescription, false})
+			return outfmt.Write(out, &statusPrinter{rel, false, client.ShowDescription, settings.HideSecrets})
 		},
 	}
 

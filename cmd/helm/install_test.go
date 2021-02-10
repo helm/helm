@@ -207,6 +207,12 @@ func TestInstall(t *testing.T) {
 			name: "install chart with only crds",
 			cmd:  "install crd-test testdata/testcharts/chart-with-only-crds --namespace default",
 		},
+		// Install hiding secret values
+		{
+			name:   "install chart hiding secret values",
+			cmd:    "install with-secrets testdata/testcharts/chart-with-secrets --namespace default --debug --hide-secrets",
+			golden: "output/install-hide-secrets.txt",
+		},
 	}
 
 	runTestActionCmd(t, tests)

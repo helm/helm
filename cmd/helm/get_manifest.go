@@ -21,6 +21,8 @@ import (
 	"io"
 	"log"
 
+	"helm.sh/helm/v3/pkg/cli/sanitize"
+
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
@@ -54,6 +56,13 @@ func newGetManifestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 			if err != nil {
 				return err
 			}
+			if settings.HideSecrets {
+				err := sanitize.HideManifestSecrets(res)
+				if err != nil {
+					return err
+				}
+			}
+
 			fmt.Fprintln(out, res.Manifest)
 			return nil
 		},

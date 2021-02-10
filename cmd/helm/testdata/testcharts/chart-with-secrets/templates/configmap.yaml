@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: game-config
+  namespace: default
+data:
+  secretData: abcd
+  simple: value
+  game.properties: |
+    enemies=aliens
+    lives=3
+  file.json: |
+    {
+      "my-config-key": "my value",
+      "age": 24,
+      "array": ["value", "value2"],
+      "object": {
+        "key": "value"
+      }
+    }
