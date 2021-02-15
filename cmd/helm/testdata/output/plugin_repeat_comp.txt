@@ -1,0 +1,6 @@
+echo
+env
+exitwith
+fullenv
+:4
+Completion ended with directive: ShellCompDirectiveNoFileComp

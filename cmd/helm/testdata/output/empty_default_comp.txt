@@ -1,0 +1,2 @@
+:0
+Completion ended with directive: ShellCompDirectiveDefault
