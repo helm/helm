@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -98,12 +99,15 @@ type Upgrade struct {
 	PostRenderer postrender.PostRenderer
 	// DisableOpenAPIValidation controls whether OpenAPI validation is enforced.
 	DisableOpenAPIValidation bool
+	// Synchronize multiple upgrade operations happening in parallel
+	Mutex *sync.Mutex
 }
 
 // NewUpgrade creates a new Upgrade object with the given configuration.
 func NewUpgrade(cfg *Configuration) *Upgrade {
 	return &Upgrade{
-		cfg: cfg,
+		cfg:   cfg,
+		Mutex: &sync.Mutex{},
 	}
 }
 
@@ -126,7 +130,9 @@ func (u *Upgrade) Run(name string, chart *chart.Chart, vals map[string]interface
 		return nil, err
 	}
 
+	u.Mutex.Lock()
 	u.cfg.Releases.MaxHistory = u.MaxHistory
+	u.Mutex.Unlock()
 
 	u.cfg.Log("performing update for %s", name)
 	res, err := u.performUpgrade(currentRelease, upgradedRelease)
