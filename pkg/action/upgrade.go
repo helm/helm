@@ -442,15 +442,12 @@ func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release, newV
 	if u.ReuseValues {
 		u.cfg.Log("reusing the old release's values")
 
-		// We have to regenerate the old coalesced values:
-		oldVals, err := chartutil.CoalesceValues(current.Chart, current.Config)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to rebuild old values")
-		}
+		// merge old chart values to new chart values
+		mergedChartValues := chartutil.CoalesceTables(chart.Values, current.Chart.Values)
 
 		newVals = chartutil.CoalesceTables(newVals, current.Config)
 
-		chart.Values = oldVals
+		chart.Values = mergedChartValues
 
 		return newVals, nil
 	}
