@@ -82,6 +82,7 @@ The community keeps growing, and we'd love to see you there!
 Download Helm ${RELEASE}. The common platform binaries are here:
 
 - [MacOS amd64](https://get.helm.sh/helm-${RELEASE}-darwin-amd64.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-darwin-amd64.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-darwin-amd64.tar.gz.sha256))
+- [MacOS arm64](https://get.helm.sh/helm-${RELEASE}-darwin-arm64.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-darwin-arm64.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-darwin-arm64.tar.gz.sha256))
 - [Linux amd64](https://get.helm.sh/helm-${RELEASE}-linux-amd64.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-amd64.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-amd64.tar.gz.sha256))
 - [Linux arm](https://get.helm.sh/helm-${RELEASE}-linux-arm.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-arm.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-arm.tar.gz.sha256))
 - [Linux arm64](https://get.helm.sh/helm-${RELEASE}-linux-arm64.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-arm64.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-arm64.tar.gz.sha256))
