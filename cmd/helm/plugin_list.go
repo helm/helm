@@ -16,17 +16,18 @@ limitations under the License.
 package main
 
 import (
-	"fmt"
 	"io"
 	"strings"
 
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 
+	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/plugin"
 )
 
 func newPluginListCmd(out io.Writer) *cobra.Command {
+	var outfmt output.Format
 	cmd := &cobra.Command{
 		Use:               "list",
 		Aliases:           []string{"ls"},
@@ -39,16 +40,33 @@ func newPluginListCmd(out io.Writer) *cobra.Command {
 				return err
 			}
 
-			table := uitable.New()
-			table.AddRow("NAME", "VERSION", "DESCRIPTION")
-			for _, p := range plugins {
-				table.AddRow(p.Metadata.Name, p.Metadata.Version, p.Metadata.Description)
-			}
-			fmt.Fprintln(out, table)
-			return nil
+			return outfmt.Write(out, &pluginListWriter{plugins})
 		},
 	}
+	bindOutputFlag(cmd, &outfmt)
+
 	return cmd
+}
+
+type pluginListWriter struct {
+	plugins []*plugin.Plugin
+}
+
+func (p *pluginListWriter) WriteTable(out io.Writer) error {
+	table := uitable.New()
+	table.AddRow("NAME", "VERSION", "DESCRIPTION")
+	for _, p := range p.plugins {
+		table.AddRow(p.Metadata.Name, p.Metadata.Version, p.Metadata.Description)
+	}
+	return output.EncodeTable(out, table)
+}
+
+func (p *pluginListWriter) WriteJSON(out io.Writer) error {
+	return output.EncodeJSON(out, p.plugins)
+}
+
+func (p *pluginListWriter) WriteYAML(out io.Writer) error {
+	return output.EncodeYAML(out, p.plugins)
 }
 
 // Provide dynamic auto-completion for plugin names

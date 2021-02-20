@@ -193,7 +193,7 @@ below.
 3. Discussion
     - issues that are labeled as `feature` or `bug` should be connected to the PR that resolves it.
     - Whoever is working on a `feature` or `bug` issue (whether a maintainer or someone from the
-      community), should either assign the issue to themself or make a comment in the issue saying
+      community), should either assign the issue to themselves or make a comment in the issue saying
       that they are taking it.
     - `proposal` and `support/question` issues should stay open until resolved or if they have not
       been active for more than 30 days. This will help keep the issue queue to a manageable size
