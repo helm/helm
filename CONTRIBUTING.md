@@ -200,9 +200,25 @@ below.
       and reduce noise. Should the issue need to stay open, the `keep open` label can be added.
 4. Issue closure
 
+## Writing a Feature
+
+Before writing a new feature for Helm, please make sure to write up a [Helm
+Improvement Proposal](https://github.com/helm/community/tree/master/hips). A
+Helm Improvement Proposal is a design document that describes a new feature for
+the Helm project. The proposal should provide a concise technical specification
+of the feature and a rationale for the feature.
+
+[HIP 1](https://github.com/helm/community/blob/master/hips/hip-0001.md)
+describes the process to write a HIP as well as the review process.
+
+After your proposal has been approved, follow the [developer's
+guide](https://helm.sh/docs/community/developers/) to get started.
+
 ## How to Contribute a Patch
 
-1. Identify or create the related issue.
+1. Identify or create the related issue. If you're proposing a larger change to
+   Helm, consider writing a [Helm Improvement
+   Proposal](https://github.com/helm/community/tree/master/hips).
 2. Fork the desired repo; develop and test your code changes.
 3. Submit a pull request, making sure to sign your work and link the related issue.
 
