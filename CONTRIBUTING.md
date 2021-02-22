@@ -206,7 +206,7 @@ Before writing a new feature for Helm, please make sure to write up a [Helm
 Improvement Proposal](https://github.com/helm/community/tree/master/hips). A
 Helm Improvement Proposal is a design document that describes a new feature for
 the Helm project. The proposal should provide a concise technical specification
-of the feature and a rationale for the feature.
+and rationale for the feature.
 
 [HIP 1](https://github.com/helm/community/blob/master/hips/hip-0001.md)
 describes the process to write a HIP as well as the review process.
