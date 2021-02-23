@@ -225,8 +225,7 @@ guide](https://helm.sh/docs/community/developers/) to get started.
 ## How to Contribute a Patch
 
 1. Identify or create the related issue. If you're proposing a larger change to
-   Helm, consider writing a [Helm Improvement
-   Proposal](https://github.com/helm/community/tree/master/hips).
+   Helm, see [Proposing an Idea](#proposing-an-idea).
 2. Fork the desired repo; develop and test your code changes.
 3. Submit a pull request, making sure to sign your work and link the related issue.
 
