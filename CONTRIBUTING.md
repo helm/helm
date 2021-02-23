@@ -211,9 +211,9 @@ concise technical specification and rationale for the feature.
 
 It is also worth considering vetting your idea with the community via the
 [cncf-helm](mailto:cncf-helm@lists.cncf.io) mailing list. Vetting an idea publicly before going as
-far as writing a proposal is meant to save the potential author time. Many ideas have been proposed
-- it's quite likely there are others in the community who may be working on a similar proposal, or a
-  similar proposal may have already been written.
+far as writing a proposal is meant to save the potential author time. Many ideas have been proposed;
+it's quite likely there are others in the community who may be working on a similar proposal, or a
+similar proposal may have already been written.
 
 HIPs are submitted to the [helm/community repository](https://github.com/helm/community). [HIP
 1](https://github.com/helm/community/blob/master/hips/hip-0001.md) describes the process to write a
