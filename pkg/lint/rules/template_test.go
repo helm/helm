@@ -25,6 +25,7 @@ import (
 	"github.com/Masterminds/goutils"
 
 	"helm.sh/helm/v3/internal/test/ensure"
+	"helm.sh/helm/v3/internal/third_party/dep/fs"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/lint/support"
@@ -75,8 +76,8 @@ var ignoredTemplatePath = filepath.Join(templateTestBasedir, "fail.yaml.ignored"
 // namespaces, partial templates
 func TestTemplateIntegrationHappyPath(t *testing.T) {
 	// Rename file so it gets ignored by the linter
-	os.Rename(wrongTemplatePath, ignoredTemplatePath)
-	defer os.Rename(ignoredTemplatePath, wrongTemplatePath)
+	fs.RenameWithFallback(wrongTemplatePath, ignoredTemplatePath)
+	defer fs.RenameWithFallback(ignoredTemplatePath, wrongTemplatePath)
 
 	linter := support.Linter{ChartDir: templateTestBasedir}
 	Templates(&linter, values, namespace, strict)
