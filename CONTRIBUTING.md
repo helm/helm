@@ -191,7 +191,9 @@ below.
       issue to a milestone until the questions are answered.
     - We attempt to do this process at least once per work day.
 3. Discussion
-    - issues that are labeled as `feature` or `bug` should be connected to the PR that resolves it.
+    - Issues that are labeled `feature` or `proposal` must write a Helm Improvement Proposal (HIP).
+      See [Proposing an Idea](#proposing-an-idea). Smaller quality-of-life enhancements are exempt.
+    - Issues that are labeled as `feature` or `bug` should be connected to the PR that resolves it.
     - Whoever is working on a `feature` or `bug` issue (whether a maintainer or someone from the
       community), should either assign the issue to themself or make a comment in the issue saying
       that they are taking it.
@@ -200,16 +202,22 @@ below.
       and reduce noise. Should the issue need to stay open, the `keep open` label can be added.
 4. Issue closure
 
-## Writing a Feature
+## Proposing an Idea
 
-Before writing a new feature for Helm, please make sure to write up a [Helm
-Improvement Proposal](https://github.com/helm/community/tree/master/hips). A
-Helm Improvement Proposal is a design document that describes a new feature for
-the Helm project. The proposal should provide a concise technical specification
-and rationale for the feature.
+Before proposing a new idea to the Helm project, please make sure to write up a [Helm Improvement
+Proposal](https://github.com/helm/community/tree/master/hips). A Helm Improvement Proposal is a
+design document that describes a new feature for the Helm project. The proposal should provide a
+concise technical specification and rationale for the feature.
 
-[HIP 1](https://github.com/helm/community/blob/master/hips/hip-0001.md)
-describes the process to write a HIP as well as the review process.
+It is also worth considering vetting your idea with the community via the
+[cncf-helm](mailto:cncf-helm@lists.cncf.io) mailing list. Vetting an idea publicly before going as
+far as writing a proposal is meant to save the potential author time. Many ideas have been proposed
+- it's quite likely there are others in the community who may be working on a similar proposal, or a
+  similar proposal may have already been written.
+
+HIPs are submitted to the [helm/community repository](https://github.com/helm/community). [HIP
+1](https://github.com/helm/community/blob/master/hips/hip-0001.md) describes the process to write a
+HIP as well as the review process.
 
 After your proposal has been approved, follow the [developer's
 guide](https://helm.sh/docs/community/developers/) to get started.
