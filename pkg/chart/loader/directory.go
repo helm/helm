@@ -116,5 +116,5 @@ func LoadDir(dir string) (*chart.Chart, error) {
 		return c, err
 	}
 
-	return LoadFiles(files)
+	return LoadFiles(files, topdir)
 }

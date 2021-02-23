@@ -223,7 +223,7 @@ func TestLoadFiles_BadCases(t *testing.T) {
 			},
 			expectError: "validation: chart.metadata.apiVersion is required"},
 	} {
-		_, err := LoadFiles(tt.bufferedFiles)
+		_, err := LoadFiles(tt.bufferedFiles, tt.name)
 		if err == nil {
 			t.Fatal("expected error when load illegal files")
 		}
@@ -274,7 +274,7 @@ icon: https://example.com/64x64.png
 		},
 	}
 
-	c, err := LoadFiles(goodFiles)
+	c, err := LoadFiles(goodFiles, t.Name())
 	if err != nil {
 		t.Errorf("Expected good files to be loaded, got %v", err)
 	}
@@ -299,10 +299,10 @@ icon: https://example.com/64x64.png
 		t.Errorf("Expected number of templates == 2, got %d", len(c.Templates))
 	}
 
-	if _, err = LoadFiles([]*BufferedFile{}); err == nil {
+	if _, err = LoadFiles([]*BufferedFile{}, t.Name()); err == nil {
 		t.Fatal("Expected err to be non-nil")
 	}
-	if err.Error() != "Chart.yaml file is missing" {
+	if err.Error() != "Chart.yaml file is missing (from TestLoadFiles)" {
 		t.Errorf("Expected chart metadata missing error, got '%s'", err.Error())
 	}
 }
@@ -363,7 +363,7 @@ icon: https://example.com/64x64.png
 		log.SetOutput(stderr)
 	}()
 
-	_, err = LoadFiles(goodFiles)
+	_, err = LoadFiles(goodFiles, t.Name())
 	if err != nil {
 		t.Errorf("Expected good files to be loaded, got %v", err)
 	}
@@ -480,7 +480,7 @@ func TestLoadInvalidArchive(t *testing.T) {
 	illegalChart = filepath.Join(tmpdir, "abs-path2.tgz")
 	writeTar(illegalChart, "files/whatever.yaml", []byte("hello: world"))
 	_, err = Load(illegalChart)
-	if err.Error() != "Chart.yaml file is missing" {
+	if !strings.Contains(err.Error(), "Chart.yaml file is missing") {
 		t.Errorf("Unexpected error message: %s", err)
 	}
 
@@ -488,7 +488,7 @@ func TestLoadInvalidArchive(t *testing.T) {
 	illegalChart = filepath.Join(tmpdir, "abs-winpath.tgz")
 	writeTar(illegalChart, "c:\\Chart.yaml", []byte("hello: world"))
 	_, err = Load(illegalChart)
-	if err.Error() != "validation: chart.metadata.name is required" {
+	if !strings.Contains(err.Error(), "validation: chart.metadata.name is required") {
 		t.Error(err)
 	}
 }

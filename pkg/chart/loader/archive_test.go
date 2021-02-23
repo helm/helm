@@ -83,7 +83,7 @@ func TestLoadArchiveFiles(t *testing.T) {
 			_ = tw.Close()
 			_ = gzw.Close()
 
-			files, err := LoadArchiveFiles(buf)
+			files, err := LoadArchiveFiles(buf, tc.name)
 			tc.check(t, files, err)
 		})
 	}

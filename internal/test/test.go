@@ -20,7 +20,9 @@ import (
 	"bytes"
 	"flag"
 	"io/ioutil"
+	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/pkg/errors"
 )
@@ -53,7 +55,7 @@ func AssertGoldenBytes(t TestingT, actual []byte, filename string) {
 func AssertGoldenString(t TestingT, actual, filename string) {
 	t.Helper()
 
-	if err := compare([]byte(actual), path(filename)); err != nil {
+	if err := compare(relativize([]byte(actual)), path(filename)); err != nil {
 		t.Fatalf("%v", err)
 	}
 }
@@ -77,7 +79,7 @@ func path(filename string) string {
 }
 
 func compare(actual []byte, filename string) error {
-	actual = normalize(actual)
+	actual = relativize(normalize(actual))
 	if err := update(filename, actual); err != nil {
 		return err
 	}
@@ -102,4 +104,16 @@ func update(filename string, in []byte) error {
 
 func normalize(in []byte) []byte {
 	return bytes.Replace(in, []byte("\r\n"), []byte("\n"), -1)
+}
+
+func relativize(relative []byte) []byte {
+	relativeString := string(relative)
+	if !strings.Contains(relativeString, "(from ") {
+		return relative
+	}
+	base, err := os.Getwd()
+	if err != nil {
+		return relative
+	}
+	return []byte(strings.ReplaceAll(relativeString, base, "."))
 }

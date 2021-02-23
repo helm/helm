@@ -69,7 +69,7 @@ type BufferedFile struct {
 }
 
 // LoadFiles loads from in-memory files.
-func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
+func LoadFiles(files []*BufferedFile, Path string) (*chart.Chart, error) {
 	c := new(chart.Chart)
 	subcharts := make(map[string][]*BufferedFile)
 
@@ -82,7 +82,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 				c.Metadata = new(chart.Metadata)
 			}
 			if err := yaml.Unmarshal(f.Data, c.Metadata); err != nil {
-				return c, errors.Wrap(err, "cannot load Chart.yaml")
+				return c, errors.Wrapf(err, "cannot load Chart.yaml (from %s)", Path)
 			}
 			// NOTE(bacongobbler): while the chart specification says that APIVersion must be set,
 			// Helm 2 accepted charts that did not provide an APIVersion in their chart metadata.
@@ -100,12 +100,12 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 		case f.Name == "Chart.lock":
 			c.Lock = new(chart.Lock)
 			if err := yaml.Unmarshal(f.Data, &c.Lock); err != nil {
-				return c, errors.Wrap(err, "cannot load Chart.lock")
+				return c, errors.Wrapf(err, "cannot load Chart.lock (from %s)", Path)
 			}
 		case f.Name == "values.yaml":
 			c.Values = make(map[string]interface{})
 			if err := yaml.Unmarshal(f.Data, &c.Values); err != nil {
-				return c, errors.Wrap(err, "cannot load values.yaml")
+				return c, errors.Wrapf(err, "cannot load values.yaml (from %s)", Path)
 			}
 		case f.Name == "values.schema.json":
 			c.Schema = f.Data
@@ -117,10 +117,10 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 				c.Metadata = new(chart.Metadata)
 			}
 			if c.Metadata.APIVersion != chart.APIVersionV1 {
-				log.Printf("Warning: Dependencies are handled in Chart.yaml since apiVersion \"v2\". We recommend migrating dependencies to Chart.yaml.")
+				log.Printf("Warning: Dependencies are handled in Chart.yaml (from %s) since apiVersion \"v2\". We recommend migrating dependencies to Chart.yaml.", Path)
 			}
 			if err := yaml.Unmarshal(f.Data, c.Metadata); err != nil {
-				return c, errors.Wrap(err, "cannot load requirements.yaml")
+				return c, errors.Wrapf(err, "cannot load requirements.yaml (from %s)", Path)
 			}
 			if c.Metadata.APIVersion == chart.APIVersionV1 {
 				c.Files = append(c.Files, &chart.File{Name: f.Name, Data: f.Data})
@@ -129,7 +129,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 		case f.Name == "requirements.lock":
 			c.Lock = new(chart.Lock)
 			if err := yaml.Unmarshal(f.Data, &c.Lock); err != nil {
-				return c, errors.Wrap(err, "cannot load requirements.lock")
+				return c, errors.Wrapf(err, "cannot load requirements.lock (from %s)", Path)
 			}
 			if c.Metadata == nil {
 				c.Metadata = new(chart.Metadata)
@@ -155,7 +155,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 	}
 
 	if c.Metadata == nil {
-		return c, errors.New("Chart.yaml file is missing")
+		return c, errors.Errorf("Chart.yaml file is missing (from %s)", Path)
 	}
 
 	if err := c.Validate(); err != nil {
@@ -171,10 +171,10 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 		case filepath.Ext(n) == ".tgz":
 			file := files[0]
 			if file.Name != n {
-				return c, errors.Errorf("error unpacking tar in %s: expected %s, got %s", c.Name(), n, file.Name)
+				return c, errors.Errorf("error unpacking tar in %s (from %s): expected %s, got %s", c.Name(), Path, n, file.Name)
 			}
 			// Untar the chart and add to c.Dependencies
-			sc, err = LoadArchive(bytes.NewBuffer(file.Data))
+			sc, err = LoadArchive(bytes.NewBuffer(file.Data), Path)
 		default:
 			// We have to trim the prefix off of every file, and ignore any file
 			// that is in charts/, but isn't actually a chart.
@@ -187,11 +187,11 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 				f.Name = parts[1]
 				buff = append(buff, f)
 			}
-			sc, err = LoadFiles(buff)
+			sc, err = LoadFiles(buff, Path)
 		}
 
 		if err != nil {
-			return c, errors.Wrapf(err, "error unpacking %s in %s", n, c.Name())
+			return c, errors.Wrapf(err, "error unpacking %s in %s (from %s)", n, c.Name(), Path)
 		}
 		c.AddDependency(sc)
 	}

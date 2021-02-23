@@ -32,7 +32,7 @@ import (
 
 // Expand uncompresses and extracts a chart into the specified directory.
 func Expand(dir string, r io.Reader) error {
-	files, err := loader.LoadArchiveFiles(r)
+	files, err := loader.LoadArchiveFiles(r, dir)
 	if err != nil {
 		return err
 	}
@@ -43,13 +43,13 @@ func Expand(dir string, r io.Reader) error {
 		if file.Name == "Chart.yaml" {
 			ch := &chart.Metadata{}
 			if err := yaml.Unmarshal(file.Data, ch); err != nil {
-				return errors.Wrap(err, "cannot load Chart.yaml")
+				return errors.Wrapf(err, "cannot load Chart.yaml (from %s)", dir)
 			}
 			chartName = ch.Name
 		}
 	}
 	if chartName == "" {
-		return errors.New("chart name not specified")
+		return errors.Errorf("chart name not specified (in %s)", dir)
 	}
 
 	// Find the base directory

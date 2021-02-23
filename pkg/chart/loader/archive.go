@@ -62,7 +62,7 @@ func LoadFile(name string) (*chart.Chart, error) {
 		return nil, err
 	}
 
-	c, err := LoadArchive(raw)
+	c, err := LoadArchive(raw, name)
 	if err != nil {
 		if err == gzip.ErrHeader {
 			return nil, fmt.Errorf("file '%s' does not appear to be a valid chart file (details: %s)", name, err)
@@ -101,7 +101,7 @@ func ensureArchive(name string, raw *os.File) error {
 // LoadArchiveFiles reads in files out of an archive into memory. This function
 // performs important path security checks and should always be used before
 // expanding a tarball
-func LoadArchiveFiles(in io.Reader) ([]*BufferedFile, error) {
+func LoadArchiveFiles(in io.Reader, Path string) ([]*BufferedFile, error) {
 	unzipped, err := gzip.NewReader(in)
 	if err != nil {
 		return nil, err
@@ -187,11 +187,11 @@ func LoadArchiveFiles(in io.Reader) ([]*BufferedFile, error) {
 }
 
 // LoadArchive loads from a reader containing a compressed tar archive.
-func LoadArchive(in io.Reader) (*chart.Chart, error) {
-	files, err := LoadArchiveFiles(in)
+func LoadArchive(in io.Reader, Path string) (*chart.Chart, error) {
+	files, err := LoadArchiveFiles(in, Path)
 	if err != nil {
 		return nil, err
 	}
 
-	return LoadFiles(files)
+	return LoadFiles(files, Path)
 }
