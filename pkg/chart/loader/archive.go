@@ -139,6 +139,11 @@ func LoadArchiveFiles(in io.Reader) ([]*BufferedFile, error) {
 		}
 
 		parts := strings.Split(hd.Name, delimiter)
+
+		if parts[0] == "Chart.yaml" {
+			return nil, errors.New("chart yaml not in base directory")
+		}
+
 		n := strings.Join(parts[1:], delimiter)
 
 		// Normalize the path to the / delimiter
@@ -163,10 +168,6 @@ func LoadArchiveFiles(in io.Reader) ([]*BufferedFile, error) {
 		// for this condition.
 		if drivePathPattern.MatchString(n) {
 			return nil, errors.New("chart contains illegally named files")
-		}
-
-		if parts[0] == "Chart.yaml" {
-			return nil, errors.New("chart yaml not in base directory")
 		}
 
 		if _, err := io.Copy(b, tr); err != nil {
