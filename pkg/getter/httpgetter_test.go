@@ -233,7 +233,7 @@ func TestDownloadInsecureSkipTLSVerify(t *testing.T) {
 
 	u, _ := url.ParseRequestURI(ts.URL)
 
-	// Ensure the default behaviour did not change
+	// Ensure the default behavior did not change
 	g, err := NewHTTPGetter(
 		WithURL(u.String()),
 	)
