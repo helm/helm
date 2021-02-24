@@ -247,7 +247,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	}
 
 	destPath := filepath.Join(m.ChartPath, "charts")
-	tmpPath, err := ioutil.TempDir("", "tmpcharts-*")
+	tmpPath, err := ioutil.TempDir(m.ChartPath, "tmpcharts-*")
 	if err != nil {
 		return errors.Wrap(err, "failed to create tmpcharts dir")
 	}

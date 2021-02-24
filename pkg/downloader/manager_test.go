@@ -17,10 +17,13 @@ package downloader
 
 import (
 	"bytes"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"helm.sh/helm/v3/internal/third_party/dep/fs"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -188,22 +191,29 @@ func TestDownloadAll(t *testing.T) {
 	// 2nd downloadAll copies existing charts to tmpcharts and fails but tmpcharts folder will be removed
 	// 3rd downloadAll again runs with another dependency
 	b := bytes.NewBuffer(nil)
+	testDir, _ := ioutil.TempDir("", "helm-manager-test-*")
 	m := &Manager{
 		Out:              b,
 		RepositoryConfig: repoConfig,
 		RepositoryCache:  repoCache,
+		ChartPath:        testDir,
 	}
-	// remove charts folder at the end of test
-	defer os.RemoveAll("charts")
+	// remove Chart folder at the end of test
+	defer os.RemoveAll(testDir)
+
+	testChartPath := "./testdata/signtest"
+
+	// Copy the test chart to our testing area
+	fs.CopyDir(testChartPath, filepath.Join(testDir, testChartPath))
 
 	// call downloadAll so that it will create charts directory
 	err := m.downloadAll([]*chart.Dependency{
-		{Name: "local-dep", Repository: "file://./testdata/signtest", Version: "0.1.0"},
+		{Name: "local-dep", Repository: "file://" + testChartPath, Version: "0.1.0"},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	// this will copy charts directory content to tmp directory and recreates new charts
+	// this will copy charts directory content to tmp directory and recreate new charts
 	err = m.downloadAll([]*chart.Dependency{
 		{Name: "local-subchart", Repository: ""},
 	})
@@ -211,7 +221,7 @@ func TestDownloadAll(t *testing.T) {
 		t.Fatal(err)
 	}
 	err = m.downloadAll([]*chart.Dependency{
-		{Name: "local-dep", Repository: "file://./testdata/signtest", Version: "0.1.0"},
+		{Name: "local-dep", Repository: "file://" + testChartPath, Version: "0.1.0"},
 	})
 	if err != nil {
 		t.Fatal(err)
