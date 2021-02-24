@@ -150,7 +150,7 @@ func TestDependencyUpdateCmd(t *testing.T) {
 	}
 }
 
-func TestDependencyUpdateCmd_DontDeleteOldChartsOnError(t *testing.T) {
+func TestDependencyUpdateCmd_DoNotDeleteOldChartsOnError(t *testing.T) {
 	defer resetEnv()()
 	defer ensure.HelmHome(t)()
 
