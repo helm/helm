@@ -188,7 +188,7 @@ func isTestHook(h *release.Hook) bool {
 }
 
 // The following functions (writeToFile, createOrOpenFile, and ensureDirectoryForFile)
-// are coppied from the actions package. This is part of a change to correct a
+// are copied from the actions package. This is part of a change to correct a
 // bug introduced by #8156. As part of the todo to refactor renderResources
 // this duplicate code should be removed. It is added here so that the API
 // surface area is as minimally impacted as possible in fixing the issue.
