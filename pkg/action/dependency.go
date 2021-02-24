@@ -69,7 +69,7 @@ func (d *Dependency) dependencyStatus(chartpath string, dep *chart.Dependency, p
 	// If a chart is unpacked, this will check the unpacked chart's `charts/` directory for tarballs.
 	// Technically, this is COMPLETELY unnecessary, and should be removed in Helm 4. It is here
 	// to preserved backward compatibility. In Helm 2/3, there is a "difference" between
-	// the tgz version (which outputs "ok" if it unpacks) and the loaded version (which outouts
+	// the tgz version (which outputs "ok" if it unpacks) and the loaded version (which outputs
 	// "unpacked"). Early in Helm 2's history, this would have made a difference. But it no
 	// longer does. However, since this code shipped with Helm 3, the output must remain stable
 	// until Helm 4.
