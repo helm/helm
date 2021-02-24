@@ -1,4 +1,4 @@
-aramis
-athos
+aramis	Aramis-chart-0.0.0 -> uninstalled
+athos	Athos-chart-1.2.3 -> deployed
 :4
 Completion ended with directive: ShellCompDirectiveNoFileComp

@@ -193,7 +193,9 @@ func compListRevisions(toComplete string, cfg *action.Configuration, releaseName
 		for _, release := range hist {
 			version := strconv.Itoa(release.Version)
 			if strings.HasPrefix(version, toComplete) {
-				revisions = append(revisions, version)
+				appVersion := fmt.Sprintf("App: %s", release.Chart.Metadata.AppVersion)
+				chartDesc := fmt.Sprintf("Chart: %s-%s", release.Chart.Metadata.Name, release.Chart.Metadata.Version)
+				revisions = append(revisions, fmt.Sprintf("%s\t%s, %s", version, appVersion, chartDesc))
 			}
 		}
 		return revisions, cobra.ShellCompDirectiveNoFileComp
