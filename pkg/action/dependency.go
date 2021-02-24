@@ -62,7 +62,7 @@ func (d *Dependency) List(chartpath string, out io.Writer) error {
 	return nil
 }
 
-// dependecyStatus returns a string describing the status of a dependency viz a viz the parent chart.
+// dependencyStatus returns a string describing the status of a dependency viz a viz the parent chart.
 func (d *Dependency) dependencyStatus(chartpath string, dep *chart.Dependency, parent *chart.Chart) string {
 	filename := fmt.Sprintf("%s-%s.tgz", dep.Name, "*")
 
