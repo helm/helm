@@ -267,7 +267,7 @@ type ChartVersion struct {
 	// YAML parser enabled, this field must be present.
 	TillerVersionDeprecated string `json:"tillerVersion,omitempty"`
 
-	// URLDeprecated is deprectaed in Helm 3, superseded by URLs. It is ignored. However,
+	// URLDeprecated is deprecated in Helm 3, superseded by URLs. It is ignored. However,
 	// with a strict YAML parser enabled, this must be present on the struct.
 	URLDeprecated string `json:"url,omitempty"`
 }
