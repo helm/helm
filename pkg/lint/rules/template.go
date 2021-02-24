@@ -152,7 +152,7 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 // validateTopIndentLevel checks that the content does not start with an indent level > 0.
 //
 // This error can occur when a template accidentally inserts space. It can cause
-// unpredictable errors dependening on whether the text is normalized before being passed
+// unpredictable errors depending on whether the text is normalized before being passed
 // into the YAML parser. So we trap it here.
 //
 // See https://github.com/helm/helm/issues/8467
