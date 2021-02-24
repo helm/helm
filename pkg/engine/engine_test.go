@@ -160,7 +160,7 @@ func TestRenderRefsOrdering(t *testing.T) {
 
 		for name, data := range expect {
 			if out[name] != data {
-				t.Fatalf("Expected %q, got %q (iteraction %d)", data, out[name], i+1)
+				t.Fatalf("Expected %q, got %q (iteration %d)", data, out[name], i+1)
 			}
 		}
 	}
