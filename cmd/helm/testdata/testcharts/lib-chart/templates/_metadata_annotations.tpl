@@ -11,7 +11,7 @@ Any valid hook may be passed in. Separate multiple hooks with a ",".
 "helm.sh/hook": {{printf "%s" . | quote}}
 {{- end -}}
 
-{{- define "common.annote" -}}
+{{- define "common.annotate" -}}
 {{- range $k, $v := . }}
 {{ $k | quote }}: {{ $v | quote }}
 {{- end -}}
