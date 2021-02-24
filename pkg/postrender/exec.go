@@ -85,7 +85,7 @@ func getFullPath(binaryPath string) (string, error) {
 	// 	if v, ok := os.LookupEnv("HELM_PLUGINS"); ok {
 	// 		pluginDir = v
 	// 	}
-	// 	// The plugins variable can actually contain multple paths, so loop through those
+	// 	// The plugins variable can actually contain multiple paths, so loop through those
 	// 	for _, p := range filepath.SplitList(pluginDir) {
 	// 		_, err := os.Stat(filepath.Join(p, binaryPath))
 	// 		if err != nil && !os.IsNotExist(err) {
