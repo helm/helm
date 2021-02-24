@@ -72,7 +72,7 @@ func (p *execRender) Run(renderedManifests *bytes.Buffer) (*bytes.Buffer, error)
 func getFullPath(binaryPath string) (string, error) {
 	// NOTE(thomastaylor312): I am leaving this code commented out here. During
 	// the implementation of post-render, it was brought up that if we are
-	// relying on plguins, we should actually use the plugin system so it can
+	// relying on plugins, we should actually use the plugin system so it can
 	// properly handle multiple OSs. This will be a feature add in the future,
 	// so I left this code for reference. It can be deleted or reused once the
 	// feature is implemented
