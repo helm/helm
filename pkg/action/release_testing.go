@@ -64,37 +64,21 @@ func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
 		return rel, err
 	}
 
-	skippedHooks := []*release.Hook{}
-	executingHooks := []*release.Hook{}
-	if len(r.Filters["!name"]) != 0 {
+	var activeHooks []*release.Hook
+	if len(r.Filters["!name"]) != 0 || len(r.Filters["name"]) != 0 {
+		activeHooks = []*release.Hook{}
 		for _, h := range rel.Hooks {
-			if contains(r.Filters["!name"], h.Name) {
-				skippedHooks = append(skippedHooks, h)
-			} else {
-				executingHooks = append(executingHooks, h)
+			if r.passesFilters(h.Name) {
+				activeHooks = append(activeHooks, h)
 			}
 		}
-		rel.Hooks = executingHooks
-	}
-	if len(r.Filters["name"]) != 0 {
-		executingHooks = nil
-		for _, h := range rel.Hooks {
-			if contains(r.Filters["name"], h.Name) {
-				executingHooks = append(executingHooks, h)
-			} else {
-				skippedHooks = append(skippedHooks, h)
-			}
-		}
-		rel.Hooks = executingHooks
 	}
 
-	if err := r.cfg.execHook(rel, release.HookTest, r.Timeout); err != nil {
-		rel.Hooks = append(skippedHooks, rel.Hooks...)
+	if err := r.cfg.execHook(rel, release.HookTest, activeHooks, r.Timeout); err != nil {
 		r.cfg.Releases.Update(rel)
 		return rel, err
 	}
 
-	rel.Hooks = append(skippedHooks, rel.Hooks...)
 	return rel, r.cfg.Releases.Update(rel)
 }
 
@@ -126,6 +110,16 @@ func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 		}
 	}
 	return nil
+}
+
+func (r *ReleaseTesting) passesFilters(name string) bool {
+	if len(r.Filters["!name"]) != 0 && contains(r.Filters["!name"], name) {
+		return false
+	} else if len(r.Filters["name"]) != 0 {
+		return contains(r.Filters["name"], name)
+	}
+
+	return true
 }
 
 func contains(arr []string, value string) bool {

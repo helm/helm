@@ -167,11 +167,11 @@ func TestReleaseTesting_ConflictingFilters(t *testing.T) {
 	for _, hook := range res.Hooks {
 		switch hook.Name {
 		case "test-cm":
-			is.Empty(hook.LastRun.Phase)
+			is.Empty(hook.LastRun.Phase, hook.Name)
 		case "finding-nemo":
-			is.Empty(hook.LastRun.Phase)
+			is.Empty(hook.LastRun.Phase, hook.Name)
 		case "finding-dory":
-			is.Empty(hook.LastRun.Phase)
+			is.Empty(hook.LastRun.Phase, hook.Name)
 		default:
 			is.Fail("Unexpected hook: " + hook.Name)
 		}

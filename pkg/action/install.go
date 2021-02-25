@@ -327,7 +327,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 
 	// pre-install hooks
 	if !i.DisableHooks {
-		if err := i.cfg.execHook(rel, release.HookPreInstall, i.Timeout); err != nil {
+		if err := i.cfg.execHook(rel, release.HookPreInstall, nil, i.Timeout); err != nil {
 			return i.failRelease(rel, fmt.Errorf("failed pre-install: %s", err))
 		}
 	}
@@ -358,7 +358,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	}
 
 	if !i.DisableHooks {
-		if err := i.cfg.execHook(rel, release.HookPostInstall, i.Timeout); err != nil {
+		if err := i.cfg.execHook(rel, release.HookPostInstall, nil, i.Timeout); err != nil {
 			return i.failRelease(rel, fmt.Errorf("failed post-install: %s", err))
 		}
 	}

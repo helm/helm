@@ -97,7 +97,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	res := &release.UninstallReleaseResponse{Release: rel}
 
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(rel, release.HookPreDelete, u.Timeout); err != nil {
+		if err := u.cfg.execHook(rel, release.HookPreDelete, nil, u.Timeout); err != nil {
 			return res, err
 		}
 	} else {
@@ -114,7 +114,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	res.Info = kept
 
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(rel, release.HookPostDelete, u.Timeout); err != nil {
+		if err := u.cfg.execHook(rel, release.HookPostDelete, nil, u.Timeout); err != nil {
 			errs = append(errs, err)
 		}
 	}

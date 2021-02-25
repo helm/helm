@@ -27,10 +27,13 @@ import (
 )
 
 // execHook executes all of the hooks for the given hook event.
-func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, timeout time.Duration) error {
+func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, activeHooks []*release.Hook, timeout time.Duration) error {
 	executingHooks := []*release.Hook{}
+	if activeHooks == nil {
+		activeHooks = rl.Hooks
+	}
 
-	for _, h := range rl.Hooks {
+	for _, h := range activeHooks {
 		for _, e := range h.Events {
 			if e == hook {
 				executingHooks = append(executingHooks, h)
