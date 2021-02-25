@@ -31,11 +31,9 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 	executingHooks := []*release.Hook{}
 
 	for _, h := range rl.Hooks {
-		if !h.ExecutionDisabled {
-			for _, e := range h.Events {
-				if e == hook {
-					executingHooks = append(executingHooks, h)
-				}
+		for _, e := range h.Events {
+			if e == hook {
+				executingHooks = append(executingHooks, h)
 			}
 		}
 	}

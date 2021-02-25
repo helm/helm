@@ -76,8 +76,6 @@ type Hook struct {
 	Weight int `json:"weight,omitempty"`
 	// DeletePolicies are the policies that indicate when to delete the hook
 	DeletePolicies []HookDeletePolicy `json:"delete_policies,omitempty"`
-	// ExecutionDisabled is set to true when a hook has been filtered out and should not be executed
-	ExecutionDisabled bool `json:"-"`
 }
 
 // A HookExecution records the result for the last execution of a hook for a given release.

@@ -64,26 +64,37 @@ func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
 		return rel, err
 	}
 
+	skippedHooks := []*release.Hook{}
+	executingHooks := []*release.Hook{}
 	if len(r.Filters["!name"]) != 0 {
 		for _, h := range rel.Hooks {
 			if contains(r.Filters["!name"], h.Name) {
-				h.ExecutionDisabled = true
+				skippedHooks = append(skippedHooks, h)
+			} else {
+				executingHooks = append(executingHooks, h)
 			}
 		}
+		rel.Hooks = executingHooks
 	}
 	if len(r.Filters["name"]) != 0 {
+		executingHooks = nil
 		for _, h := range rel.Hooks {
-			if !contains(r.Filters["name"], h.Name) {
-				h.ExecutionDisabled = true
+			if contains(r.Filters["name"], h.Name) {
+				executingHooks = append(executingHooks, h)
+			} else {
+				skippedHooks = append(skippedHooks, h)
 			}
 		}
+		rel.Hooks = executingHooks
 	}
 
 	if err := r.cfg.execHook(rel, release.HookTest, r.Timeout); err != nil {
+		rel.Hooks = append(skippedHooks, rel.Hooks...)
 		r.cfg.Releases.Update(rel)
 		return rel, err
 	}
 
+	rel.Hooks = append(skippedHooks, rel.Hooks...)
 	return rel, r.cfg.Releases.Update(rel)
 }
 
