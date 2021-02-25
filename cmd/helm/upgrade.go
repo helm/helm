@@ -30,7 +30,6 @@ import (
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/cli/values"
-	"helm.sh/helm/v3/pkg/downloader"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/storage/driver"
 )
@@ -148,27 +147,10 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 			// Only check dependencies if there are any
 			if req := ch.Metadata.Dependencies; req != nil {
-				// Update all dependencies if DependencyUpdate is true
 				if client.DependencyUpdate {
-					man := &downloader.Manager{
-						Out:              out,
-						ChartPath:        chartPath,
-						Keyring:          client.ChartPathOptions.Keyring,
-						SkipUpdate:       false,
-						Getters:          p,
-						RepositoryConfig: settings.RepositoryConfig,
-						RepositoryCache:  settings.RepositoryCache,
-						Debug:            settings.Debug,
-					}
-
-					// reload chart dependencies
-					if err := man.Update(); err != nil {
+					// Update all dependencies if DependencyUpdate is true
+					if ch, err = action.UpdateDependencies(chartPath, client.ChartPathOptions.Keyring, settings, out, p); err != nil {
 						return err
-					}
-
-					// Reload the chart with the updated Chart.lock file.
-					if ch, err = loader.Load(chartPath); err != nil {
-						return errors.Wrap(err, "failed reloading chart after repo update")
 					}
 				}
 

@@ -1,0 +1,6 @@
+dependencies:
+- name: subchart-with-notes
+  repository: ""
+  version: 0.0.1
+digest: sha256:eb038c91a8a689391fdbedd7a1016b2512bc3daee2a11afb7f359ba1341f03c6
+generated: "2021-02-25T14:22:08.359847407+01:00"
