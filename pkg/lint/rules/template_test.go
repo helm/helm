@@ -17,12 +17,11 @@ limitations under the License.
 package rules
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/Masterminds/goutils"
 
 	"helm.sh/helm/v3/internal/test/ensure"
 	"helm.sh/helm/v3/pkg/chart"
@@ -122,39 +121,84 @@ func TestMultiTemplateFail(t *testing.T) {
 }
 
 func TestValidateMetadataName(t *testing.T) {
-	names := map[string]bool{
-		"":                          false,
-		"foo":                       true,
-		"foo.bar1234baz.seventyone": true,
-		"FOO":                       false,
-		"123baz":                    true,
-		"foo.BAR.baz":               false,
-		"one-two":                   true,
-		"-two":                      false,
-		"one_two":                   false,
-		"a..b":                      false,
-		"%^&#$%*@^*@&#^":            false,
-	}
+	tests := []struct {
+		obj     *K8sYamlStruct
+		wantErr bool
+	}{
+		// Most kinds use IsDNS1123Subdomain.
+		{&K8sYamlStruct{Kind: "Pod", Metadata: k8sYamlMetadata{Name: ""}}, true},
+		{&K8sYamlStruct{Kind: "Pod", Metadata: k8sYamlMetadata{Name: "foo"}}, false},
+		{&K8sYamlStruct{Kind: "Pod", Metadata: k8sYamlMetadata{Name: "foo.bar1234baz.seventyone"}}, false},
+		{&K8sYamlStruct{Kind: "Pod", Metadata: k8sYamlMetadata{Name: "FOO"}}, true},
+		{&K8sYamlStruct{Kind: "Pod", Metadata: k8sYamlMetadata{Name: "123baz"}}, false},
+		{&K8sYamlStruct{Kind: "Pod", Metadata: k8sYamlMetadata{Name: "foo.BAR.baz"}}, true},
+		{&K8sYamlStruct{Kind: "Pod", Metadata: k8sYamlMetadata{Name: "one-two"}}, false},
+		{&K8sYamlStruct{Kind: "Pod", Metadata: k8sYamlMetadata{Name: "-two"}}, true},
+		{&K8sYamlStruct{Kind: "Pod", Metadata: k8sYamlMetadata{Name: "one_two"}}, true},
+		{&K8sYamlStruct{Kind: "Pod", Metadata: k8sYamlMetadata{Name: "a..b"}}, true},
+		{&K8sYamlStruct{Kind: "Pod", Metadata: k8sYamlMetadata{Name: "%^&#$%*@^*@&#^"}}, true},
+		{&K8sYamlStruct{Kind: "Pod", Metadata: k8sYamlMetadata{Name: "operator:pod"}}, true},
+		{&K8sYamlStruct{Kind: "ServiceAccount", Metadata: k8sYamlMetadata{Name: "foo"}}, false},
+		{&K8sYamlStruct{Kind: "ServiceAccount", Metadata: k8sYamlMetadata{Name: "foo.bar1234baz.seventyone"}}, false},
+		{&K8sYamlStruct{Kind: "ServiceAccount", Metadata: k8sYamlMetadata{Name: "FOO"}}, true},
+		{&K8sYamlStruct{Kind: "ServiceAccount", Metadata: k8sYamlMetadata{Name: "operator:sa"}}, true},
 
-	// The length checker should catch this first. So this is not true fuzzing.
-	tooLong, err := goutils.RandomAlphaNumeric(300)
-	if err != nil {
-		t.Fatalf("Randomizer failed to initialize: %s", err)
-	}
-	names[tooLong] = false
+		// Service uses IsDNS1035Label.
+		{&K8sYamlStruct{Kind: "Service", Metadata: k8sYamlMetadata{Name: "foo"}}, false},
+		{&K8sYamlStruct{Kind: "Service", Metadata: k8sYamlMetadata{Name: "123baz"}}, true},
+		{&K8sYamlStruct{Kind: "Service", Metadata: k8sYamlMetadata{Name: "foo.bar"}}, true},
 
-	for input, expectPass := range names {
-		obj := K8sYamlStruct{Metadata: k8sYamlMetadata{Name: input}}
-		if err := validateMetadataName(&obj); (err == nil) != expectPass {
-			st := "fail"
-			if expectPass {
-				st = "succeed"
+		// Namespace uses IsDNS1123Label.
+		{&K8sYamlStruct{Kind: "Namespace", Metadata: k8sYamlMetadata{Name: "foo"}}, false},
+		{&K8sYamlStruct{Kind: "Namespace", Metadata: k8sYamlMetadata{Name: "123baz"}}, false},
+		{&K8sYamlStruct{Kind: "Namespace", Metadata: k8sYamlMetadata{Name: "foo.bar"}}, true},
+		{&K8sYamlStruct{Kind: "Namespace", Metadata: k8sYamlMetadata{Name: "foo-bar"}}, false},
+
+		// CertificateSigningRequest has no validation.
+		{&K8sYamlStruct{Kind: "CertificateSigningRequest", Metadata: k8sYamlMetadata{Name: ""}}, false},
+		{&K8sYamlStruct{Kind: "CertificateSigningRequest", Metadata: k8sYamlMetadata{Name: "123baz"}}, false},
+		{&K8sYamlStruct{Kind: "CertificateSigningRequest", Metadata: k8sYamlMetadata{Name: "%^&#$%*@^*@&#^"}}, false},
+
+		// RBAC uses path validation.
+		{&K8sYamlStruct{Kind: "Role", Metadata: k8sYamlMetadata{Name: "foo"}}, false},
+		{&K8sYamlStruct{Kind: "Role", Metadata: k8sYamlMetadata{Name: "123baz"}}, false},
+		{&K8sYamlStruct{Kind: "Role", Metadata: k8sYamlMetadata{Name: "foo.bar"}}, false},
+		{&K8sYamlStruct{Kind: "Role", Metadata: k8sYamlMetadata{Name: "operator:role"}}, false},
+		{&K8sYamlStruct{Kind: "Role", Metadata: k8sYamlMetadata{Name: "operator/role"}}, true},
+		{&K8sYamlStruct{Kind: "Role", Metadata: k8sYamlMetadata{Name: "operator%role"}}, true},
+		{&K8sYamlStruct{Kind: "ClusterRole", Metadata: k8sYamlMetadata{Name: "foo"}}, false},
+		{&K8sYamlStruct{Kind: "ClusterRole", Metadata: k8sYamlMetadata{Name: "123baz"}}, false},
+		{&K8sYamlStruct{Kind: "ClusterRole", Metadata: k8sYamlMetadata{Name: "foo.bar"}}, false},
+		{&K8sYamlStruct{Kind: "ClusterRole", Metadata: k8sYamlMetadata{Name: "operator:role"}}, false},
+		{&K8sYamlStruct{Kind: "ClusterRole", Metadata: k8sYamlMetadata{Name: "operator/role"}}, true},
+		{&K8sYamlStruct{Kind: "ClusterRole", Metadata: k8sYamlMetadata{Name: "operator%role"}}, true},
+		{&K8sYamlStruct{Kind: "RoleBinding", Metadata: k8sYamlMetadata{Name: "operator:role"}}, false},
+		{&K8sYamlStruct{Kind: "ClusterRoleBinding", Metadata: k8sYamlMetadata{Name: "operator:role"}}, false},
+
+		// Unknown Kind
+		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sYamlMetadata{Name: ""}}, true},
+		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sYamlMetadata{Name: "foo"}}, false},
+		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sYamlMetadata{Name: "foo.bar1234baz.seventyone"}}, false},
+		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sYamlMetadata{Name: "FOO"}}, true},
+		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sYamlMetadata{Name: "123baz"}}, false},
+		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sYamlMetadata{Name: "foo.BAR.baz"}}, true},
+		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sYamlMetadata{Name: "one-two"}}, false},
+		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sYamlMetadata{Name: "-two"}}, true},
+		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sYamlMetadata{Name: "one_two"}}, true},
+		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sYamlMetadata{Name: "a..b"}}, true},
+		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sYamlMetadata{Name: "%^&#$%*@^*@&#^"}}, true},
+		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sYamlMetadata{Name: "operator:pod"}}, true},
+
+		// No kind
+		{&K8sYamlStruct{Metadata: k8sYamlMetadata{Name: "foo"}}, false},
+		{&K8sYamlStruct{Metadata: k8sYamlMetadata{Name: "operator:pod"}}, true},
+	}
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("%s/%s", tt.obj.Kind, tt.obj.Metadata.Name), func(t *testing.T) {
+			if err := validateMetadataName(tt.obj); (err != nil) != tt.wantErr {
+				t.Errorf("validateMetadataName() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			t.Errorf("Expected %q to %s", input, st)
-			if err != nil {
-				t.Log(err)
-			}
-		}
+		})
 	}
 }
 
