@@ -214,6 +214,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		// https://github.com/helm/helm/issues/2209
 		if err := action.CheckDependencies(chartRequested, req); err != nil {
 			if client.DependencyUpdate {
+				// Update all dependencies if DependencyUpdate flag is set (Implemented with PR#9399)
 				if chartRequested, err = action.UpdateDependencies(cp, client.ChartPathOptions.Keyring, settings, out, p); err != nil {
 					return nil, err
 				}

@@ -148,7 +148,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			// Only check dependencies if there are any
 			if req := ch.Metadata.Dependencies; req != nil {
 				if client.DependencyUpdate {
-					// Update all dependencies if DependencyUpdate is true
+					// Update all dependencies if DependencyUpdate flag is set (Implemented with PR#9399)
 					if ch, err = action.UpdateDependencies(chartPath, client.ChartPathOptions.Keyring, settings, out, p); err != nil {
 						return err
 					}
