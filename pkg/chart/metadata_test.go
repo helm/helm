@@ -72,6 +72,10 @@ func TestValidate(t *testing.T) {
 			},
 			ValidationError("dependency \"bad\" has disallowed characters in the alias"),
 		},
+		{
+			&Metadata{APIVersion: "v2", Name: "test", Version: "1.2.3.4"},
+			ValidationError("chart.metadata.version \"1.2.3.4\" is invalid"),
+		},
 	}
 
 	for _, tt := range tests {
@@ -82,26 +86,15 @@ func TestValidate(t *testing.T) {
 	}
 }
 
-func TestValidateDependency(t *testing.T) {
-	dep := &Dependency{
-		Name: "example",
+func TestValidate_sanitize(t *testing.T) {
+	md := &Metadata{APIVersion: "v2", Name: "test", Version: "1.0", Description: "\adescr\u0081iption\rtest", Maintainers: []*Maintainer{{Name: "\r"}}}
+	if err := md.Validate(); err != nil {
+		t.Fatalf("unexpected error: %s", err)
 	}
-	for value, shouldFail := range map[string]bool{
-		"abcdefghijklmenopQRSTUVWXYZ-0123456780_": false,
-		"-okay":      false,
-		"_okay":      false,
-		"- bad":      true,
-		" bad":       true,
-		"bad\nvalue": true,
-		"bad ":       true,
-		"bad$":       true,
-	} {
-		dep.Alias = value
-		res := validateDependency(dep)
-		if res != nil && !shouldFail {
-			t.Errorf("Failed on case %q", dep.Alias)
-		} else if res == nil && shouldFail {
-			t.Errorf("Expected failure for %q", dep.Alias)
-		}
+	if md.Description != "description test" {
+		t.Fatalf("description was not sanitized: %q", md.Description)
+	}
+	if md.Maintainers[0].Name != " " {
+		t.Fatal("maintainer name was not sanitized")
 	}
 }

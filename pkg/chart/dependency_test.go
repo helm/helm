@@ -13,26 +13,32 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-
-package main
+package chart
 
 import (
 	"testing"
 )
 
-func TestDocsTypeFlagCompletion(t *testing.T) {
-	tests := []cmdTestCase{{
-		name:   "completion for docs --type",
-		cmd:    "__complete docs --type ''",
-		golden: "output/docs-type-comp.txt",
-	}, {
-		name:   "completion for docs --type",
-		cmd:    "__complete docs --type mar",
-		golden: "output/docs-type-filtered-comp.txt",
-	}}
-	runTestCmd(t, tests)
-}
-
-func TestDocsFileCompletion(t *testing.T) {
-	checkFileCompletion(t, "docs", false)
+func TestValidateDependency(t *testing.T) {
+	dep := &Dependency{
+		Name: "example",
+	}
+	for value, shouldFail := range map[string]bool{
+		"abcdefghijklmenopQRSTUVWXYZ-0123456780_": false,
+		"-okay":      false,
+		"_okay":      false,
+		"- bad":      true,
+		" bad":       true,
+		"bad\nvalue": true,
+		"bad ":       true,
+		"bad$":       true,
+	} {
+		dep.Alias = value
+		res := dep.Validate()
+		if res != nil && !shouldFail {
+			t.Errorf("Failed on case %q", dep.Alias)
+		} else if res == nil && shouldFail {
+			t.Errorf("Expected failure for %q", dep.Alias)
+		}
+	}
 }

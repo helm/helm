@@ -21,6 +21,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/pkg/errors"
+
 	rspb "helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage/driver"
 )
@@ -273,6 +275,32 @@ func TestStorageHistory(t *testing.T) {
 	}
 	if len(h) != 4 {
 		t.Fatalf("Release history (%q) is empty\n", name)
+	}
+}
+
+func TestStorageRemoveLeastRecentWithError(t *testing.T) {
+	storage := Init(driver.NewMemory())
+	storage.Log = t.Logf
+
+	storage.MaxHistory = 1
+
+	const name = "angry-bird"
+
+	// setup storage with test releases
+	setup := func() {
+		// release records
+		rls1 := ReleaseTestData{Name: name, Version: 1, Status: rspb.StatusSuperseded}.ToRelease()
+
+		// create the release records in the storage
+		assertErrNil(t.Fatal, storage.Driver.Create(makeKey(rls1.Name, rls1.Version), rls1), "Storing release 'angry-bird' (v1)")
+	}
+	setup()
+
+	rls2 := ReleaseTestData{Name: name, Version: 2, Status: rspb.StatusSuperseded}.ToRelease()
+	wantErr := driver.ErrNoDeployedReleases
+	gotErr := storage.Create(rls2)
+	if !errors.Is(gotErr, wantErr) {
+		t.Fatalf("Storing release 'angry-bird' (v2) should return the error %#v, but returned %#v", wantErr, gotErr)
 	}
 }
 

@@ -92,12 +92,11 @@ func newCompletionCmd(out io.Writer) *cobra.Command {
 	}
 
 	zsh := &cobra.Command{
-		Use:                   "zsh",
-		Short:                 "generate autocompletion script for zsh",
-		Long:                  zshCompDesc,
-		Args:                  require.NoArgs,
-		DisableFlagsInUseLine: true,
-		ValidArgsFunction:     noCompletions,
+		Use:               "zsh",
+		Short:             "generate autocompletion script for zsh",
+		Long:              zshCompDesc,
+		Args:              require.NoArgs,
+		ValidArgsFunction: noCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runCompletionZsh(out, cmd)
 		},
@@ -105,12 +104,11 @@ func newCompletionCmd(out io.Writer) *cobra.Command {
 	zsh.Flags().BoolVar(&disableCompDescriptions, noDescFlagName, false, noDescFlagText)
 
 	fish := &cobra.Command{
-		Use:                   "fish",
-		Short:                 "generate autocompletion script for fish",
-		Long:                  fishCompDesc,
-		Args:                  require.NoArgs,
-		DisableFlagsInUseLine: true,
-		ValidArgsFunction:     noCompletions,
+		Use:               "fish",
+		Short:             "generate autocompletion script for fish",
+		Long:              fishCompDesc,
+		Args:              require.NoArgs,
+		ValidArgsFunction: noCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runCompletionFish(out, cmd)
 		},

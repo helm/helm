@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -53,20 +54,27 @@ func TestUpdateCmd(t *testing.T) {
 }
 
 func TestUpdateCustomCacheCmd(t *testing.T) {
-	var out bytes.Buffer
 	rootDir := ensure.TempDir(t)
 	cachePath := filepath.Join(rootDir, "updcustomcache")
-	_ = os.Mkdir(cachePath, os.ModePerm)
+	os.Mkdir(cachePath, os.ModePerm)
 	defer os.RemoveAll(cachePath)
-	o := &repoUpdateOptions{
-		update:    updateCharts,
-		repoFile:  "testdata/repositories.yaml",
-		repoCache: cachePath,
-	}
-	if err := o.run(&out); err != nil {
+
+	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
+	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(cachePath, "charts-index.yaml")); err != nil {
+	defer ts.Stop()
+
+	o := &repoUpdateOptions{
+		update:    updateCharts,
+		repoFile:  filepath.Join(ts.Root(), "repositories.yaml"),
+		repoCache: cachePath,
+	}
+	b := ioutil.Discard
+	if err := o.run(b); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(cachePath, "test-index.yaml")); err != nil {
 		t.Fatalf("error finding created index file in custom cache: %v", err)
 	}
 }

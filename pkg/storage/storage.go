@@ -61,7 +61,10 @@ func (s *Storage) Create(rls *rspb.Release) error {
 	s.Log("creating release %q", makeKey(rls.Name, rls.Version))
 	if s.MaxHistory > 0 {
 		// Want to make space for one more release.
-		s.removeLeastRecent(rls.Name, s.MaxHistory-1)
+		if err := s.removeLeastRecent(rls.Name, s.MaxHistory-1); err != nil &&
+			!errors.Is(err, driver.ErrReleaseNotFound) {
+			return err
+		}
 	}
 	return s.Driver.Create(makeKey(rls.Name, rls.Version), rls)
 }

@@ -131,13 +131,13 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		if config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 			loadingRules,
 			&clientcmd.ConfigOverrides{}).RawConfig(); err == nil {
-			ctxs := []string{}
-			for name := range config.Contexts {
+			comps := []string{}
+			for name, context := range config.Contexts {
 				if strings.HasPrefix(name, toComplete) {
-					ctxs = append(ctxs, name)
+					comps = append(comps, fmt.Sprintf("%s\t%s", name, context.Cluster))
 				}
 			}
-			return ctxs, cobra.ShellCompDirectiveNoFileComp
+			return comps, cobra.ShellCompDirectiveNoFileComp
 		}
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	})

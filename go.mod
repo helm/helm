@@ -5,15 +5,15 @@ go 1.15
 require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/DATA-DOG/go-sqlmock v1.5.0
-	github.com/Masterminds/goutils v1.1.0
+	github.com/Masterminds/goutils v1.1.1
 	github.com/Masterminds/semver/v3 v3.1.1
-	github.com/Masterminds/sprig/v3 v3.2.0
+	github.com/Masterminds/sprig/v3 v3.2.2
 	github.com/Masterminds/squirrel v1.5.0
 	github.com/Masterminds/vcs v1.13.1
 	github.com/asaskevich/govalidator v0.0.0-20200428143746-21a406dcc535
 	github.com/containerd/containerd v1.4.3
 	github.com/cyphar/filepath-securejoin v0.2.2
-	github.com/deislabs/oras v0.9.0
+	github.com/deislabs/oras v0.10.0
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/docker/docker v1.4.2-0.20200203170920-46ec8731fbce
 	github.com/docker/go-units v0.4.0
@@ -24,7 +24,7 @@ require (
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/lib/pq v1.9.0
 	github.com/mattn/go-shellwords v1.0.11
-	github.com/mitchellh/copystructure v1.0.0
+	github.com/mitchellh/copystructure v1.1.1
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.0.1
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
@@ -44,7 +44,7 @@ require (
 	k8s.io/apiserver v0.20.2
 	k8s.io/cli-runtime v0.20.2
 	k8s.io/client-go v0.20.2
-	k8s.io/klog/v2 v2.4.0
+	k8s.io/klog/v2 v2.5.0
 	k8s.io/kubectl v0.20.2
 	sigs.k8s.io/yaml v1.2.0
 )

@@ -126,7 +126,7 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.Pending, "pending", false, "show pending releases")
 	f.BoolVarP(&client.AllNamespaces, "all-namespaces", "A", false, "list releases across all namespaces")
 	f.IntVarP(&client.Limit, "max", "m", 256, "maximum number of releases to fetch")
-	f.IntVar(&client.Offset, "offset", 0, "next release name in the list, used to offset from start value")
+	f.IntVar(&client.Offset, "offset", 0, "next release index in the list, used to offset from start value")
 	f.StringVarP(&client.Filter, "filter", "f", "", "a regular expression (Perl compatible). Any releases that match the expression will be included in the results")
 	f.StringVarP(&client.Selector, "selector", "l", "", "Selector (label query) to filter on, supports '=', '==', and '!='.(e.g. -l key1=value1,key2=value2). Works only for secret(default) and configmap storage backends.")
 	bindOutputFlag(cmd, &outfmt)
@@ -203,14 +203,15 @@ func compListReleases(toComplete string, cfg *action.Configuration) ([]string, c
 	client.Filter = fmt.Sprintf("^%s", toComplete)
 
 	client.SetStateMask()
-	results, err := client.Run()
+	releases, err := client.Run()
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveDefault
 	}
 
 	var choices []string
-	for _, res := range results {
-		choices = append(choices, res.Name)
+	for _, rel := range releases {
+		choices = append(choices,
+			fmt.Sprintf("%s\t%s-%s -> %s", rel.Name, rel.Chart.Metadata.Name, rel.Chart.Metadata.Version, rel.Info.Status.String()))
 	}
 
 	return choices, cobra.ShellCompDirectiveNoFileComp
