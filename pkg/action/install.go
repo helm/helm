@@ -207,7 +207,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 		i.cfg.Log("API Version list given outside of client only mode, this list will be ignored")
 	}
 
-	if err := chartutil.ProcessDependencies(chrt, vals); err != nil {
+	if err := chartutil.ProcessDependenciesWithValues(chrt, vals); err != nil {
 		return nil, err
 	}
 

@@ -25,7 +25,7 @@ import (
 )
 
 // ProcessDependencies checks through this chart's dependencies, processing accordingly.
-func ProcessDependencies(c *chart.Chart, vals map[string]interface{}) error {
+func ProcessDependenciesWithValues(c *chart.Chart, vals map[string]interface{}) error {
 	v, err := copystructure.Copy(vals)
 	if err != nil {
 		return err
@@ -37,6 +37,16 @@ func ProcessDependencies(c *chart.Chart, vals map[string]interface{}) error {
 		valsCopy = make(map[string]interface{})
 	}
 	return process(c, valsCopy)
+}
+
+// ProcessDependencies checks through this chart's dependencies, processing accordingly.
+//
+// Deprecated: ProcessDependencies. Use ProcessDependenciesWithValues
+func ProcessDependencies(c *chart.Chart, v Values) error {
+	if err := processDependencyEnabled(c, v, ""); err != nil {
+		return err
+	}
+	return processDependencyImportValues(c, v)
 }
 
 // process processes the dependencies
