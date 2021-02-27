@@ -48,6 +48,7 @@ func installAction(t *testing.T) *Install {
 	instAction := NewInstall(config)
 	instAction.Namespace = "spaced"
 	instAction.ReleaseName = "test-install-release"
+	instAction.CreateNamespace = true
 
 	return instAction
 }

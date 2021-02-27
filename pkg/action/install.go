@@ -292,7 +292,8 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 			ObjectMeta: metav1.ObjectMeta{
 				Name: i.Namespace,
 				Labels: map[string]string{
-					"name": i.Namespace,
+					"name":            i.Namespace,
+					appManagedByLabel: appManagedByHelm,
 				},
 			},
 		}
