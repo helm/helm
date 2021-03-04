@@ -266,6 +266,16 @@ func Test_waiter_jobReady(t *testing.T) {
 			args: args{job: newJob("foo", 1, 1, 0, 1)},
 			want: false,
 		},
+		{
+			name: "job is completed with backoffLimit=0",
+			args: args{job: newJob("foo", 0, 1, 1, 0)},
+			want: true,
+		},
+		{
+			name: "job is failed and it is ok",
+			args: args{job: newJob("foo", 0, 1, 0, 1)},
+			want: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
