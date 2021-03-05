@@ -46,8 +46,8 @@ regular expressions (Perl compatible) that are applied to the list of releases.
 Only items that match the filter will be returned.
 
     $ helm list --filter 'ara[a-z]+'
-    NAME                UPDATED                     CHART
-    maudlin-arachnid    Mon May  9 16:07:08 2016    alpine-0.1.0
+    NAME                UPDATED                                  CHART
+    maudlin-arachnid    2020-06-18 14:17:46.125134977 +0000 UTC  alpine-0.1.0
 
 If no results are found, 'helm list' will exit 0, but with no output (or in
 the case of no '-q' flag, only headers).
@@ -104,16 +104,17 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					}
 					return nil
 				default:
-					return outfmt.Write(out, newReleaseListWriter(results))
+					return outfmt.Write(out, newReleaseListWriter(results, client.TimeFormat))
 				}
 			}
 
-			return outfmt.Write(out, newReleaseListWriter(results))
+			return outfmt.Write(out, newReleaseListWriter(results, client.TimeFormat))
 		},
 	}
 
 	f := cmd.Flags()
 	f.BoolVarP(&client.Short, "short", "q", false, "output short (quiet) listing format")
+	f.StringVar(&client.TimeFormat, "time-format", "", `format time using golang time formatter. Example: --time-format "2006-01-02 15:04:05Z0700"`)
 	f.BoolVarP(&client.ByDate, "date", "d", false, "sort by release date")
 	f.BoolVarP(&client.SortReverse, "reverse", "r", false, "reverse the sort order")
 	f.BoolVarP(&client.All, "all", "a", false, "show all releases without any filter applied")
@@ -125,7 +126,7 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.Pending, "pending", false, "show pending releases")
 	f.BoolVarP(&client.AllNamespaces, "all-namespaces", "A", false, "list releases across all namespaces")
 	f.IntVarP(&client.Limit, "max", "m", 256, "maximum number of releases to fetch")
-	f.IntVar(&client.Offset, "offset", 0, "next release name in the list, used to offset from start value")
+	f.IntVar(&client.Offset, "offset", 0, "next release index in the list, used to offset from start value")
 	f.StringVarP(&client.Filter, "filter", "f", "", "a regular expression (Perl compatible). Any releases that match the expression will be included in the results")
 	f.StringVarP(&client.Selector, "selector", "l", "", "Selector (label query) to filter on, supports '=', '==', and '!='.(e.g. -l key1=value1,key2=value2). Works only for secret(default) and configmap storage backends.")
 	bindOutputFlag(cmd, &outfmt)
@@ -147,7 +148,7 @@ type releaseListWriter struct {
 	releases []releaseElement
 }
 
-func newReleaseListWriter(releases []*release.Release) *releaseListWriter {
+func newReleaseListWriter(releases []*release.Release, timeFormat string) *releaseListWriter {
 	// Initialize the array so no results returns an empty array instead of null
 	elements := make([]releaseElement, 0, len(releases))
 	for _, r := range releases {
@@ -159,11 +160,17 @@ func newReleaseListWriter(releases []*release.Release) *releaseListWriter {
 			Chart:      fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version),
 			AppVersion: r.Chart.Metadata.AppVersion,
 		}
+
 		t := "-"
 		if tspb := r.Info.LastDeployed; !tspb.IsZero() {
-			t = tspb.String()
+			if timeFormat != "" {
+				t = tspb.Format(timeFormat)
+			} else {
+				t = tspb.String()
+			}
 		}
 		element.Updated = t
+
 		elements = append(elements, element)
 	}
 	return &releaseListWriter{elements}
@@ -196,14 +203,15 @@ func compListReleases(toComplete string, cfg *action.Configuration) ([]string, c
 	client.Filter = fmt.Sprintf("^%s", toComplete)
 
 	client.SetStateMask()
-	results, err := client.Run()
+	releases, err := client.Run()
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveDefault
 	}
 
 	var choices []string
-	for _, res := range results {
-		choices = append(choices, res.Name)
+	for _, rel := range releases {
+		choices = append(choices,
+			fmt.Sprintf("%s\t%s-%s -> %s", rel.Name, rel.Chart.Metadata.Name, rel.Chart.Metadata.Version, rel.Info.Status.String()))
 	}
 
 	return choices, cobra.ShellCompDirectiveNoFileComp

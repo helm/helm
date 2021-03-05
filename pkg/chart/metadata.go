@@ -15,6 +15,13 @@ limitations under the License.
 
 package chart
 
+import (
+	"strings"
+	"unicode"
+
+	"github.com/Masterminds/semver/v3"
+)
+
 // Maintainer describes a Chart maintainer.
 type Maintainer struct {
 	// Name is a user name or organization name
@@ -25,15 +32,23 @@ type Maintainer struct {
 	URL string `json:"url,omitempty"`
 }
 
+// Validate checks valid data and sanitizes string characters.
+func (m *Maintainer) Validate() error {
+	m.Name = sanitizeString(m.Name)
+	m.Email = sanitizeString(m.Email)
+	m.URL = sanitizeString(m.URL)
+	return nil
+}
+
 // Metadata for a Chart file. This models the structure of a Chart.yaml file.
 type Metadata struct {
-	// The name of the chart
+	// The name of the chart. Required.
 	Name string `json:"name,omitempty"`
 	// The URL to a relevant project page, git repo, or contact person
 	Home string `json:"home,omitempty"`
 	// Source is the URL to the source code of this chart
 	Sources []string `json:"sources,omitempty"`
-	// A SemVer 2 conformant version string of the chart
+	// A SemVer 2 conformant version string of the chart. Required.
 	Version string `json:"version,omitempty"`
 	// A one-sentence description of the chart
 	Description string `json:"description,omitempty"`
@@ -43,7 +58,7 @@ type Metadata struct {
 	Maintainers []*Maintainer `json:"maintainers,omitempty"`
 	// The URL to an icon file.
 	Icon string `json:"icon,omitempty"`
-	// The API Version of this chart.
+	// The API Version of this chart. Required.
 	APIVersion string `json:"apiVersion,omitempty"`
 	// The condition to check to enable chart
 	Condition string `json:"condition,omitempty"`
@@ -64,11 +79,28 @@ type Metadata struct {
 	Type string `json:"type,omitempty"`
 }
 
-// Validate checks the metadata for known issues, returning an error if metadata is not correct
+// Validate checks the metadata for known issues and sanitizes string
+// characters.
 func (md *Metadata) Validate() error {
 	if md == nil {
 		return ValidationError("chart.metadata is required")
 	}
+
+	md.Name = sanitizeString(md.Name)
+	md.Description = sanitizeString(md.Description)
+	md.Home = sanitizeString(md.Home)
+	md.Icon = sanitizeString(md.Icon)
+	md.Condition = sanitizeString(md.Condition)
+	md.Tags = sanitizeString(md.Tags)
+	md.AppVersion = sanitizeString(md.AppVersion)
+	md.KubeVersion = sanitizeString(md.KubeVersion)
+	for i := range md.Sources {
+		md.Sources[i] = sanitizeString(md.Sources[i])
+	}
+	for i := range md.Keywords {
+		md.Keywords[i] = sanitizeString(md.Keywords[i])
+	}
+
 	if md.APIVersion == "" {
 		return ValidationError("chart.metadata.apiVersion is required")
 	}
@@ -78,19 +110,26 @@ func (md *Metadata) Validate() error {
 	if md.Version == "" {
 		return ValidationError("chart.metadata.version is required")
 	}
+	if !isValidSemver(md.Version) {
+		return ValidationErrorf("chart.metadata.version %q is invalid", md.Version)
+	}
 	if !isValidChartType(md.Type) {
 		return ValidationError("chart.metadata.type must be application or library")
+	}
+
+	for _, m := range md.Maintainers {
+		if err := m.Validate(); err != nil {
+			return err
+		}
 	}
 
 	// Aliases need to be validated here to make sure that the alias name does
 	// not contain any illegal characters.
 	for _, dependency := range md.Dependencies {
-		if err := validateDependency(dependency); err != nil {
+		if err := dependency.Validate(); err != nil {
 			return err
 		}
 	}
-
-	// TODO validate valid semver here?
 	return nil
 }
 
@@ -102,12 +141,20 @@ func isValidChartType(in string) bool {
 	return false
 }
 
-// validateDependency checks for common problems with the dependency datastructure in
-// the chart. This check must be done at load time before the dependency's charts are
-// loaded.
-func validateDependency(dep *Dependency) error {
-	if len(dep.Alias) > 0 && !aliasNameFormat.MatchString(dep.Alias) {
-		return ValidationErrorf("dependency %q has disallowed characters in the alias", dep.Name)
-	}
-	return nil
+func isValidSemver(v string) bool {
+	_, err := semver.NewVersion(v)
+	return err == nil
+}
+
+// sanitizeString normalize spaces and removes non-printable characters.
+func sanitizeString(str string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsSpace(r) {
+			return ' '
+		}
+		if unicode.IsPrint(r) {
+			return r
+		}
+		return -1
+	}, str)
 }

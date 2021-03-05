@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -42,8 +43,8 @@ file, and MUST pass the verification process. Failure in any part of this will
 result in an error, and the chart will not be saved locally.
 `
 
-func newPullCmd(out io.Writer) *cobra.Command {
-	client := action.NewPull()
+func newPullCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+	client := action.NewPullWithOpts(action.WithConfig(cfg))
 
 	cmd := &cobra.Command{
 		Use:     "pull [chart URL | repo/chartname] [...]",
@@ -62,6 +63,12 @@ func newPullCmd(out io.Writer) *cobra.Command {
 			if client.Version == "" && client.Devel {
 				debug("setting version to >0.0.0-0")
 				client.Version = ">0.0.0-0"
+			}
+
+			if strings.HasPrefix(args[0], "oci://") {
+				if !FeatureGateOCI.IsEnabled() {
+					return FeatureGateOCI.Error()
+				}
 			}
 
 			for i := 0; i < len(args); i++ {

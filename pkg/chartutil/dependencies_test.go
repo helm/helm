@@ -310,6 +310,7 @@ func TestGetAliasDependency(t *testing.T) {
 
 func TestDependentChartAliases(t *testing.T) {
 	c := loadChart(t, "testdata/dependent-chart-alias")
+	req := c.Metadata.Dependencies
 
 	if len(c.Dependencies()) != 2 {
 		t.Fatalf("expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
@@ -326,7 +327,25 @@ func TestDependentChartAliases(t *testing.T) {
 	if len(c.Dependencies()) != len(c.Metadata.Dependencies) {
 		t.Fatalf("expected number of chart dependencies %d, but got %d", len(c.Metadata.Dependencies), len(c.Dependencies()))
 	}
-	// FIXME test for correct aliases
+
+	aliasChart := getAliasDependency(c.Dependencies(), req[2])
+
+	if aliasChart == nil {
+		t.Fatalf("failed to get dependency chart for alias %s", req[2].Name)
+	}
+	if req[2].Alias != "" {
+		if aliasChart.Name() != req[2].Alias {
+			t.Fatalf("dependency chart name should be %s but got %s", req[2].Alias, aliasChart.Name())
+		}
+	} else if aliasChart.Name() != req[2].Name {
+		t.Fatalf("dependency chart name should be %s but got %s", req[2].Name, aliasChart.Name())
+	}
+
+	req[2].Name = "dummy-name"
+	if aliasChart := getAliasDependency(c.Dependencies(), req[2]); aliasChart != nil {
+		t.Fatalf("expected no chart but got %s", aliasChart.Name())
+	}
+
 }
 
 func TestDependentChartWithSubChartsAbsentInDependency(t *testing.T) {

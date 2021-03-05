@@ -54,6 +54,8 @@ type EnvSettings struct {
 	KubeAsGroups []string
 	// Kubernetes API Server Endpoint for authentication
 	KubeAPIServer string
+	// Custom certificate authority file.
+	KubeCaFile string
 	// Debug indicates whether or not Helm is running in Debug mode.
 	Debug bool
 	// RegistryConfig is the path to the registry config file.
@@ -77,6 +79,7 @@ func New() *EnvSettings {
 		KubeAsUser:       os.Getenv("HELM_KUBEASUSER"),
 		KubeAsGroups:     envCSV("HELM_KUBEASGROUPS"),
 		KubeAPIServer:    os.Getenv("HELM_KUBEAPISERVER"),
+		KubeCaFile:       os.Getenv("HELM_KUBECAFILE"),
 		PluginsDirectory: envOr("HELM_PLUGINS", helmpath.DataPath("plugins")),
 		RegistryConfig:   envOr("HELM_REGISTRY_CONFIG", helmpath.ConfigPath("registry.json")),
 		RepositoryConfig: envOr("HELM_REPOSITORY_CONFIG", helmpath.ConfigPath("repositories.yaml")),
@@ -90,6 +93,7 @@ func New() *EnvSettings {
 		Context:          &env.KubeContext,
 		BearerToken:      &env.KubeToken,
 		APIServer:        &env.KubeAPIServer,
+		CAFile:           &env.KubeCaFile,
 		KubeConfig:       &env.KubeConfig,
 		Impersonate:      &env.KubeAsUser,
 		ImpersonateGroup: &env.KubeAsGroups,
@@ -103,9 +107,10 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.KubeConfig, "kubeconfig", "", "path to the kubeconfig file")
 	fs.StringVar(&s.KubeContext, "kube-context", s.KubeContext, "name of the kubeconfig context to use")
 	fs.StringVar(&s.KubeToken, "kube-token", s.KubeToken, "bearer token used for authentication")
-	fs.StringVar(&s.KubeAsUser, "kube-as-user", s.KubeAsUser, "Username to impersonate for the operation")
-	fs.StringArrayVar(&s.KubeAsGroups, "kube-as-group", s.KubeAsGroups, "Group to impersonate for the operation, this flag can be repeated to specify multiple groups.")
+	fs.StringVar(&s.KubeAsUser, "kube-as-user", s.KubeAsUser, "username to impersonate for the operation")
+	fs.StringArrayVar(&s.KubeAsGroups, "kube-as-group", s.KubeAsGroups, "group to impersonate for the operation, this flag can be repeated to specify multiple groups.")
 	fs.StringVar(&s.KubeAPIServer, "kube-apiserver", s.KubeAPIServer, "the address and the port for the Kubernetes API server")
+	fs.StringVar(&s.KubeCaFile, "kube-ca-file", s.KubeCaFile, "the certificate authority file for the Kubernetes API server connection")
 	fs.BoolVar(&s.Debug, "debug", s.Debug, "enable verbose output")
 	fs.StringVar(&s.RegistryConfig, "registry-config", s.RegistryConfig, "path to the registry config file")
 	fs.StringVar(&s.RepositoryConfig, "repository-config", s.RepositoryConfig, "path to the file containing repository names and URLs")
@@ -159,6 +164,7 @@ func (s *EnvSettings) EnvVars() map[string]string {
 		"HELM_KUBEASUSER":    s.KubeAsUser,
 		"HELM_KUBEASGROUPS":  strings.Join(s.KubeAsGroups, ","),
 		"HELM_KUBEAPISERVER": s.KubeAPIServer,
+		"HELM_KUBECAFILE":    s.KubeCaFile,
 	}
 	if s.KubeConfig != "" {
 		envvars["KUBECONFIG"] = s.KubeConfig

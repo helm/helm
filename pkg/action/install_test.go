@@ -362,6 +362,23 @@ func TestInstallRelease_Wait(t *testing.T) {
 	is.Equal(res.Info.Status, release.StatusFailed)
 }
 
+func TestInstallRelease_WaitForJobs(t *testing.T) {
+	is := assert.New(t)
+	instAction := installAction(t)
+	instAction.ReleaseName = "come-fail-away"
+	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+	failer.WaitError = fmt.Errorf("I timed out")
+	instAction.cfg.KubeClient = failer
+	instAction.Wait = true
+	instAction.WaitForJobs = true
+	vals := map[string]interface{}{}
+
+	res, err := instAction.Run(buildChart(), vals)
+	is.Error(err)
+	is.Contains(res.Info.Description, "I timed out")
+	is.Equal(res.Info.Status, release.StatusFailed)
+}
+
 func TestInstallRelease_Atomic(t *testing.T) {
 	is := assert.New(t)
 
@@ -425,9 +442,9 @@ func TestNameTemplate(t *testing.T) {
 		},
 		// No such function
 		{
-			tpl:              "foobar-{{randInt}}",
+			tpl:              "foobar-{{randInteger}}",
 			expected:         "",
-			expectedErrorStr: "function \"randInt\" not defined",
+			expectedErrorStr: "function \"randInteger\" not defined",
 		},
 		// Invalid template
 		{

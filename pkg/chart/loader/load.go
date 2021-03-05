@@ -73,10 +73,11 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 	c := new(chart.Chart)
 	subcharts := make(map[string][]*BufferedFile)
 
+	// do not rely on assumed ordering of files in the chart and crash
+	// if Chart.yaml was not coming early enough to initialize metadata
 	for _, f := range files {
 		c.Raw = append(c.Raw, &chart.File{Name: f.Name, Data: f.Data})
-		switch {
-		case f.Name == "Chart.yaml":
+		if f.Name == "Chart.yaml" {
 			if c.Metadata == nil {
 				c.Metadata = new(chart.Metadata)
 			}
@@ -89,6 +90,13 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 			if c.Metadata.APIVersion == "" {
 				c.Metadata.APIVersion = chart.APIVersionV1
 			}
+		}
+	}
+	for _, f := range files {
+		switch {
+		case f.Name == "Chart.yaml":
+			// already processed
+			continue
 		case f.Name == "Chart.lock":
 			c.Lock = new(chart.Lock)
 			if err := yaml.Unmarshal(f.Data, &c.Lock); err != nil {
@@ -123,6 +131,9 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 			if err := yaml.Unmarshal(f.Data, &c.Lock); err != nil {
 				return c, errors.Wrap(err, "cannot load requirements.lock")
 			}
+			if c.Metadata == nil {
+				c.Metadata = new(chart.Metadata)
+			}
 			if c.Metadata.APIVersion == chart.APIVersionV1 {
 				c.Files = append(c.Files, &chart.File{Name: f.Name, Data: f.Data})
 			}
@@ -141,6 +152,10 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 		default:
 			c.Files = append(c.Files, &chart.File{Name: f.Name, Data: f.Data})
 		}
+	}
+
+	if c.Metadata == nil {
+		return c, errors.New("Chart.yaml file is missing")
 	}
 
 	if err := c.Validate(); err != nil {

@@ -22,6 +22,7 @@ import (
 	"compress/gzip"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -206,6 +207,32 @@ func TestLoadFile(t *testing.T) {
 	verifyDependencies(t, c)
 }
 
+func TestLoadFiles_BadCases(t *testing.T) {
+	for _, tt := range []struct {
+		name          string
+		bufferedFiles []*BufferedFile
+		expectError   string
+	}{
+		{
+			name: "These files contain only requirements.lock",
+			bufferedFiles: []*BufferedFile{
+				{
+					Name: "requirements.lock",
+					Data: []byte(""),
+				},
+			},
+			expectError: "validation: chart.metadata.apiVersion is required"},
+	} {
+		_, err := LoadFiles(tt.bufferedFiles)
+		if err == nil {
+			t.Fatal("expected error when load illegal files")
+		}
+		if !strings.Contains(err.Error(), tt.expectError) {
+			t.Errorf("Expected error to contain %q, got %q for %s", tt.expectError, err.Error(), tt.name)
+		}
+	}
+}
+
 func TestLoadFiles(t *testing.T) {
 	goodFiles := []*BufferedFile{
 		{
@@ -275,9 +302,79 @@ icon: https://example.com/64x64.png
 	if _, err = LoadFiles([]*BufferedFile{}); err == nil {
 		t.Fatal("Expected err to be non-nil")
 	}
-	if err.Error() != "validation: chart.metadata is required" {
+	if err.Error() != "Chart.yaml file is missing" {
 		t.Errorf("Expected chart metadata missing error, got '%s'", err.Error())
 	}
+}
+
+// Test the order of file loading. The Chart.yaml file needs to come first for
+// later comparison checks. See https://github.com/helm/helm/pull/8948
+func TestLoadFilesOrder(t *testing.T) {
+	goodFiles := []*BufferedFile{
+		{
+			Name: "requirements.yaml",
+			Data: []byte("dependencies:"),
+		},
+		{
+			Name: "values.yaml",
+			Data: []byte("var: some values"),
+		},
+
+		{
+			Name: "templates/deployment.yaml",
+			Data: []byte("some deployment"),
+		},
+		{
+			Name: "templates/service.yaml",
+			Data: []byte("some service"),
+		},
+		{
+			Name: "Chart.yaml",
+			Data: []byte(`apiVersion: v1
+name: frobnitz
+description: This is a frobnitz.
+version: "1.2.3"
+keywords:
+  - frobnitz
+  - sprocket
+  - dodad
+maintainers:
+  - name: The Helm Team
+    email: helm@example.com
+  - name: Someone Else
+    email: nobody@example.com
+sources:
+  - https://example.com/foo/bar
+home: http://example.com
+icon: https://example.com/64x64.png
+`),
+		},
+	}
+
+	// Capture stderr to make sure message about Chart.yaml handle dependencies
+	// is not present
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("Unable to create pipe: %s", err)
+	}
+	stderr := log.Writer()
+	log.SetOutput(w)
+	defer func() {
+		log.SetOutput(stderr)
+	}()
+
+	_, err = LoadFiles(goodFiles)
+	if err != nil {
+		t.Errorf("Expected good files to be loaded, got %v", err)
+	}
+	w.Close()
+
+	var text bytes.Buffer
+	io.Copy(&text, r)
+	if text.String() != "" {
+		t.Errorf("Expected no message to Stderr, got %s", text.String())
+	}
+
 }
 
 // Packaging the chart on a Windows machine will produce an
@@ -349,7 +446,7 @@ func TestLoadInvalidArchive(t *testing.T) {
 		{"illegal-name.tgz", "./.", "chart illegally contains content outside the base directory"},
 		{"illegal-name2.tgz", "/./.", "chart illegally contains content outside the base directory"},
 		{"illegal-name3.tgz", "missing-leading-slash", "chart illegally contains content outside the base directory"},
-		{"illegal-name4.tgz", "/missing-leading-slash", "validation: chart.metadata is required"},
+		{"illegal-name4.tgz", "/missing-leading-slash", "Chart.yaml file is missing"},
 		{"illegal-abspath.tgz", "//foo", "chart illegally contains absolute paths"},
 		{"illegal-abspath2.tgz", "///foo", "chart illegally contains absolute paths"},
 		{"illegal-abspath3.tgz", "\\\\foo", "chart illegally contains absolute paths"},
@@ -383,8 +480,8 @@ func TestLoadInvalidArchive(t *testing.T) {
 	illegalChart = filepath.Join(tmpdir, "abs-path2.tgz")
 	writeTar(illegalChart, "files/whatever.yaml", []byte("hello: world"))
 	_, err = Load(illegalChart)
-	if err.Error() != "validation: chart.metadata is required" {
-		t.Error(err)
+	if err.Error() != "Chart.yaml file is missing" {
+		t.Errorf("Unexpected error message: %s", err)
 	}
 
 	// Finally, test that drive letter gets stripped off on Windows

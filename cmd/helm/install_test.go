@@ -85,6 +85,12 @@ func TestInstall(t *testing.T) {
 			cmd:    "install apollo testdata/testcharts/empty --wait",
 			golden: "output/install-with-wait.txt",
 		},
+		// Install, with wait-for-jobs
+		{
+			name:   "install with wait-for-jobs",
+			cmd:    "install apollo testdata/testcharts/empty --wait --wait-for-jobs",
+			golden: "output/install-with-wait-for-jobs.txt",
+		},
 		// Install, using the name-template
 		{
 			name:   "install with name-template",

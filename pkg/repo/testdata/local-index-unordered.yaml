@@ -2,7 +2,7 @@ apiVersion: v1
 entries:
   nginx:
     - urls:
-        - https://kubernetes-charts.storage.googleapis.com/nginx-0.1.0.tgz
+        - https://charts.helm.sh/stable/nginx-0.1.0.tgz
       name: nginx
       description: string
       version: 0.1.0
@@ -12,8 +12,9 @@ entries:
         - popular
         - web server
         - proxy
+      apiVersion: v2
     - urls:
-        - https://kubernetes-charts.storage.googleapis.com/nginx-0.2.0.tgz
+        - https://charts.helm.sh/stable/nginx-0.2.0.tgz
       name: nginx
       description: string
       version: 0.2.0
@@ -23,9 +24,10 @@ entries:
         - popular
         - web server
         - proxy
+      apiVersion: v2
   alpine:
     - urls:
-        - https://kubernetes-charts.storage.googleapis.com/alpine-1.0.0.tgz
+        - https://charts.helm.sh/stable/alpine-1.0.0.tgz
         - http://storage2.googleapis.com/kubernetes-charts/alpine-1.0.0.tgz
       name: alpine
       description: string
@@ -37,6 +39,7 @@ entries:
         - small
         - sumtin
       digest: "sha256:1234567890abcdef"
+      apiVersion: v2
   chartWithNoURL:
     - name: chartWithNoURL
       description: string
@@ -46,3 +49,4 @@ entries:
         - small
         - sumtin
       digest: "sha256:1234567890abcdef"
+      apiVersion: v2
