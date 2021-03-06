@@ -1,4 +1,5 @@
 *.exe
+*.swp
 .DS_Store
 .coverage/
 .idea/
