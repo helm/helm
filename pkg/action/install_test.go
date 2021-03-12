@@ -450,7 +450,7 @@ func TestNameTemplate(t *testing.T) {
 		{
 			tpl:              "foobar-{{",
 			expected:         "",
-			expectedErrorStr: "unexpected unclosed action",
+			expectedErrorStr: "template: name-template:1: unclosed action",
 		},
 	}
 
