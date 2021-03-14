@@ -81,11 +81,37 @@ func TestFindChartURL(t *testing.T) {
 	version := "0.1.0"
 	repoURL := "http://example.com/charts"
 
-	churl, username, password, err := m.findChartURL(name, version, repoURL, repos)
+	churl, username, password, insecureSkipTLSVerify, err := m.findChartURL(name, version, repoURL, repos)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if churl != "https://charts.helm.sh/stable/alpine-0.1.0.tgz" {
+		t.Errorf("Unexpected URL %q", churl)
+	}
+	if username != "" {
+		t.Errorf("Unexpected username %q", username)
+	}
+	if password != "" {
+		t.Errorf("Unexpected password %q", password)
+	}
+	if insecureSkipTLSVerify {
+		t.Errorf("Unexpected insecureSkipTLSVerify %t", insecureSkipTLSVerify)
+	}
+
+	name = "tlsfoo"
+	version = "1.2.3"
+	repoURL = "https://example-https-insecureskiptlsverify.com"
+
+	churl, username, password, insecureSkipTLSVerify, err = m.findChartURL(name, version, repoURL, repos)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !insecureSkipTLSVerify {
+		t.Errorf("Unexpected insecureSkipTLSVerify %t", insecureSkipTLSVerify)
+	}
+	if churl != "https://example.com/tlsfoo-1.2.3.tgz" {
 		t.Errorf("Unexpected URL %q", churl)
 	}
 	if username != "" {
