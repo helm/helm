@@ -13,28 +13,32 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package downloader
+package getter
 
 import (
+	"bytes"
+	"strings"
+
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/internal/fileutil"
 	"helm.sh/helm/v3/pkg/gitutil"
 )
 
 // Assigned here so it can be overridden for testing.
 var gitCloneTo = gitutil.CloneTo
 
-// GitDownloader handles downloading a chart from a git url.
-type GitDownloader struct{}
+// GITGetter is the default HTTP(/S) backend handler
+type GITGetter struct {
+	opts options
+}
 
 // ensureGitDirIgnored will append ".git/" to the .helmignore file in a directory.
 // Create the .helmignore file if it does not exist.
-func (g *GitDownloader) ensureGitDirIgnored(repoPath string) error {
+func (g *GITGetter) ensureGitDirIgnored(repoPath string) error {
 	helmignorePath := filepath.Join(repoPath, ".helmignore")
 	f, err := os.OpenFile(helmignorePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
@@ -47,17 +51,34 @@ func (g *GitDownloader) ensureGitDirIgnored(repoPath string) error {
 	return nil
 }
 
-// DownloadTo will create a temp directory, then fetch a git repo into it.
-// The git repo will be archived into a chart and copied to the destPath.
-func (g *GitDownloader) DownloadTo(gitURL string, ref string, destPath string) error {
+//Get performs a Get from repo.Getter and returns the body.
+func (g *GITGetter) Get(href string, options ...Option) (*bytes.Buffer, error) {
+	for _, opt := range options {
+		opt(&g.opts)
+	}
+	return g.get(href)
+}
+
+func (g *GITGetter) get(href string) (*bytes.Buffer, error) {
+	gitURL := strings.TrimPrefix(href, "git:")
+	version := g.opts.version
+	chartName := g.opts.chartName
+	if version == "" {
+		return nil, fmt.Errorf("The version must be a valid tag or branch name for the git repo, not nil")
+	}
 	tmpDir, err := ioutil.TempDir("", "helm")
 	if err != nil {
-		return err
+		return nil, err
+	}
+	chartTmpDir := filepath.Join(tmpDir, chartName)
+
+	if err := os.MkdirAll(chartTmpDir, 0755); err != nil {
+		return nil, err
 	}
 	defer os.RemoveAll(tmpDir)
 
-	if err = gitCloneTo(gitURL, ref, tmpDir); err != nil {
-		return fmt.Errorf("Unable to retrieve git repo. %s", err)
+	if err = gitCloneTo(gitURL, version, chartTmpDir); err != nil {
+		return nil, fmt.Errorf("Unable to retrieve git repo. %s", err)
 	}
 
 	// A .helmignore that includes an ignore for .git/ should be included in the git repo itself,
@@ -65,14 +86,21 @@ func (g *GitDownloader) DownloadTo(gitURL string, ref string, destPath string) e
 	// To prevent the git history from bleeding into the charts archive, append/create .helmignore.
 	g.ensureGitDirIgnored(tmpDir)
 
-	// Turn the extracted git archive into a chart and move it into the charts directory.
-	// This is using chartutil.Save() so that .helmignore logic is applied.
-	loadedChart, loadErr := loader.LoadDir(tmpDir)
-	if loadErr != nil {
-		return fmt.Errorf("Unable to process the git repo %s as a chart. %s", gitURL, err)
+	buf, err := fileutil.CompressDirToTgz(chartTmpDir, tmpDir)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to tar and compress dir %s to tgz file. %s", tmpDir, err)
 	}
-	if _, saveErr := chartutil.Save(loadedChart, destPath); saveErr != nil {
-		return fmt.Errorf("Unable to save the git repo %s as a chart. %s", gitURL, err)
+	return buf, nil
+}
+
+// NewGITGetter constructs a valid http/https client as a Getter
+func NewGITGetter(ops ...Option) (Getter, error) {
+
+	client := GITGetter{}
+
+	for _, opt := range ops {
+		opt(&client.opts)
 	}
-	return nil
+
+	return &client, nil
 }
