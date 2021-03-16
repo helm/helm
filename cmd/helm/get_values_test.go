@@ -53,6 +53,10 @@ func TestGetValuesCmd(t *testing.T) {
 	runTestCmd(t, tests)
 }
 
+func TestGetValuesCompletion(t *testing.T) {
+	checkReleaseCompletion(t, "get values", false)
+}
+
 func TestGetValuesRevisionCompletion(t *testing.T) {
 	revisionFlagCompletionTest(t, "get values")
 }

@@ -20,6 +20,10 @@ import (
 	"testing"
 )
 
+func TestReleaseTestingCompletion(t *testing.T) {
+	checkReleaseCompletion(t, "test", false)
+}
+
 func TestReleaseTestingFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "test", false)
 	checkFileCompletion(t, "test myrelease", false)

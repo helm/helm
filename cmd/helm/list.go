@@ -193,8 +193,32 @@ func (r *releaseListWriter) WriteYAML(out io.Writer) error {
 	return output.EncodeYAML(out, r.releases)
 }
 
+// Returns all releases from 'releases', except those with names matching 'ignoredReleases'
+func filterReleases(releases []*release.Release, ignoredReleaseNames []string) []*release.Release {
+	// if ignoredReleaseNames is nil, just return releases
+	if ignoredReleaseNames == nil {
+		return releases
+	}
+
+	var filteredReleases []*release.Release
+	for _, rel := range releases {
+		found := false
+		for _, ignoredName := range ignoredReleaseNames {
+			if rel.Name == ignoredName {
+				found = true
+				break
+			}
+		}
+		if !found {
+			filteredReleases = append(filteredReleases, rel)
+		}
+	}
+
+	return filteredReleases
+}
+
 // Provide dynamic auto-completion for release names
-func compListReleases(toComplete string, cfg *action.Configuration) ([]string, cobra.ShellCompDirective) {
+func compListReleases(toComplete string, ignoredReleaseNames []string, cfg *action.Configuration) ([]string, cobra.ShellCompDirective) {
 	cobra.CompDebugln(fmt.Sprintf("compListReleases with toComplete %s", toComplete), settings.Debug)
 
 	client := action.NewList(cfg)
@@ -209,7 +233,8 @@ func compListReleases(toComplete string, cfg *action.Configuration) ([]string, c
 	}
 
 	var choices []string
-	for _, rel := range releases {
+	filteredReleases := filterReleases(releases, ignoredReleaseNames)
+	for _, rel := range filteredReleases {
 		choices = append(choices,
 			fmt.Sprintf("%s\t%s-%s -> %s", rel.Name, rel.Chart.Metadata.Name, rel.Chart.Metadata.Version, rel.Info.Status.String()))
 	}

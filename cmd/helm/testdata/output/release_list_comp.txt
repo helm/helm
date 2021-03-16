@@ -1,0 +1,5 @@
+aramis	foo-0.1.0-beta.1 -> deployed
+athos	foo-0.1.0-beta.1 -> deployed
+porthos	foo-0.1.0-beta.1 -> deployed
+:4
+Completion ended with directive: ShellCompDirectiveNoFileComp

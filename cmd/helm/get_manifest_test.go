@@ -37,6 +37,10 @@ func TestGetManifest(t *testing.T) {
 	runTestCmd(t, tests)
 }
 
+func TestGetManifestCompletion(t *testing.T) {
+	checkReleaseCompletion(t, "get manifest", false)
+}
+
 func TestGetManifestRevisionCompletion(t *testing.T) {
 	revisionFlagCompletionTest(t, "get manifest")
 }
