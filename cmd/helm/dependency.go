@@ -75,11 +75,11 @@ for this case.
 A repository can be defined as a git URL. The path must start with a prefix of
 "git:" followed by a valid git repository URL.
 
-# requirements.yaml
-dependencies:
-- name: nginx
-       version: "master"
-       repository: "git:https://github.com/helm/helm-chart.git"
+    # Chart.yaml
+    dependencies:
+    - name: nginx
+      version: "master"
+      repository: "git:https://github.com/helm/helm-chart.git"
 
 The 'repository' can be the https or ssh URL that you would use to clone a git
 repo or add as a git remote, prefixed with 'git:'.

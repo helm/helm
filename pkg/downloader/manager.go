@@ -310,20 +310,6 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			dep.Version = ver
 			continue
 		}
-		if strings.HasPrefix(dep.Repository, "git:") {
-			destPath := filepath.Join(m.ChartPath, "charts")
-			gitURL := strings.TrimPrefix(dep.Repository, "git:")
-			if m.Debug {
-				fmt.Fprintf(m.Out, "Downloading %s from git repo %s\n", dep.Name, gitURL)
-			}
-			dl := GitDownloader{}
-			if err := dl.DownloadTo(gitURL, dep.Version, destPath); err != nil {
-				saveError = fmt.Errorf("could not download %s: %s", gitURL, err)
-				break
-			}
-			continue
-		}
-		fmt.Fprintf(m.Out, "Downloading %s from repo %s\n", dep.Name, dep.Repository)
 
 		// Any failure to resolve/download a chart should fail:
 		// https://github.com/helm/helm/issues/1439
@@ -357,7 +343,13 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		}
 
 		version := ""
+
 		if registry.IsOCI(churl) {
+			if !resolver.FeatureGateOCI.IsEnabled() {
+				return errors.Wrapf(resolver.FeatureGateOCI.Error(),
+					"the repository %s is an OCI registry", churl)
+			}
+
 			churl, version, err = parseOCIRef(churl)
 			if err != nil {
 				return errors.Wrapf(err, "could not parse OCI reference")
@@ -365,6 +357,17 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			dl.Options = append(dl.Options,
 				getter.WithRegistryClient(m.RegistryClient),
 				getter.WithTagName(version))
+		}
+
+		if strings.HasPrefix(churl, "git://") {
+			version = dep.Version
+
+			dl.Options = append(dl.Options, getter.WithTagName(version))
+			dl.Options = append(dl.Options, getter.WithChartName(dep.Name))
+
+			if m.Debug {
+				fmt.Fprintf(m.Out, "Downloading %s from git repo %s\n", dep.Name, churl)
+			}
 		}
 
 		if _, _, err = dl.DownloadTo(churl, version, tmpPath); err != nil {
@@ -733,6 +736,10 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 //
 // If it finds a URL that is "relative", it will prepend the repoURL.
 func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRepository) (url, username, password string, insecureskiptlsverify, passcredentialsall bool, caFile, certFile, keyFile string, err error) {
+	if strings.HasPrefix(repoURL, "git://") {
+		return repoURL, "", "", false, false, "", "", "", nil
+	}
+
 	if registry.IsOCI(repoURL) {
 		return fmt.Sprintf("%s/%s:%s", repoURL, name, version), "", "", false, false, "", "", "", nil
 	}
