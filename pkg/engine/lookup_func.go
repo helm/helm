@@ -80,7 +80,7 @@ func NewLookupFunction(config *rest.Config) lookupFunc {
 // getDynamicClientOnUnstructured returns a dynamic client on an Unstructured type. This client can be further namespaced.
 func getDynamicClientOnKind(apiversion string, kind string, config *rest.Config) (dynamic.NamespaceableResourceInterface, bool, error) {
 	gvk := schema.FromAPIVersionAndKind(apiversion, kind)
-	apiRes, err := getAPIReourceForGVK(gvk, config)
+	apiRes, err := getAPIResourceForGVK(gvk, config)
 	if err != nil {
 		log.Printf("[ERROR] unable to get apiresource from unstructured: %s , error %s", gvk.String(), err)
 		return nil, false, errors.Wrapf(err, "unable to get apiresource from unstructured: %s", gvk.String())
@@ -99,7 +99,7 @@ func getDynamicClientOnKind(apiversion string, kind string, config *rest.Config)
 	return res, apiRes.Namespaced, nil
 }
 
-func getAPIReourceForGVK(gvk schema.GroupVersionKind, config *rest.Config) (metav1.APIResource, error) {
+func getAPIResourceForGVK(gvk schema.GroupVersionKind, config *rest.Config) (metav1.APIResource, error) {
 	res := metav1.APIResource{}
 	discoveryClient, err := discovery.NewDiscoveryClientForConfig(config)
 	if err != nil {

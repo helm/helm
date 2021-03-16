@@ -18,7 +18,7 @@ overridden-chartA:
   SCAbool: true
   SCAfloat: 41.3
   SCAint: 808
-  SCAstring: "jaberwocky"
+  SCAstring: "jabberwocky"
   SPextra4: true
 
 imported-chartA-B:
@@ -28,7 +28,7 @@ overridden-chartA-B:
   SCAbool: true
   SCAfloat: 41.3
   SCAint: 808
-  SCAstring: "jaberwocky"
+  SCAstring: "jabberwocky"
   SCBbool: false
   SCBfloat: 1.99
   SCBint: 77

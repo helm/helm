@@ -259,7 +259,7 @@ Like any good open source project, we use Pull Requests (PRs) to track code chan
       maintainers before it can be merged. Those with `size/XS` are per the judgement of the
       maintainers. For more detail see the [Size Labels](#size-labels) section.
 4. Reviewing/Discussion
-    - All reviews will be completed using Github review tool.
+    - All reviews will be completed using GitHub review tool.
     - A "Comment" review should be used when there are questions about the code that should be
       answered, but that don't involve code changes. This type of review does not count as approval.
     - A "Changes Requested" review indicates that changes to the code need to be made before they

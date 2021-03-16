@@ -288,7 +288,7 @@ func (s *SQL) Query(labels map[string]string) ([]*rspb.Release, error) {
 			sb = sb.Where(sq.Eq{key: labels[key]})
 		} else {
 			s.Log("unknown label %s", key)
-			return nil, fmt.Errorf("unknow label %s", key)
+			return nil, fmt.Errorf("unknown label %s", key)
 		}
 	}
 

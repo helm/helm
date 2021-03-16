@@ -25,7 +25,7 @@ TESTFLAGS  :=
 LDFLAGS    := -w -s
 GOFLAGS    :=
 
-# Rebuild the buinary if any of these files change
+# Rebuild the binary if any of these files change
 SRC := $(shell find . -type f -name '*.go' -print) go.mod go.sum
 
 # Required for globs to work correctly

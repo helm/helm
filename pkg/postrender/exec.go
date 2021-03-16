@@ -72,7 +72,7 @@ func (p *execRender) Run(renderedManifests *bytes.Buffer) (*bytes.Buffer, error)
 func getFullPath(binaryPath string) (string, error) {
 	// NOTE(thomastaylor312): I am leaving this code commented out here. During
 	// the implementation of post-render, it was brought up that if we are
-	// relying on plguins, we should actually use the plugin system so it can
+	// relying on plugins, we should actually use the plugin system so it can
 	// properly handle multiple OSs. This will be a feature add in the future,
 	// so I left this code for reference. It can be deleted or reused once the
 	// feature is implemented
@@ -85,7 +85,7 @@ func getFullPath(binaryPath string) (string, error) {
 	// 	if v, ok := os.LookupEnv("HELM_PLUGINS"); ok {
 	// 		pluginDir = v
 	// 	}
-	// 	// The plugins variable can actually contain multple paths, so loop through those
+	// 	// The plugins variable can actually contain multiple paths, so loop through those
 	// 	for _, p := range filepath.SplitList(pluginDir) {
 	// 		_, err := os.Stat(filepath.Join(p, binaryPath))
 	// 		if err != nil && !os.IsNotExist(err) {

@@ -94,7 +94,7 @@ type Upgrade struct {
 	// PostRender is an optional post-renderer
 	//
 	// If this is non-nil, then after templates are rendered, they will be sent to the
-	// post renderer before sending to the Kuberntes API server.
+	// post renderer before sending to the Kubernetes API server.
 	PostRenderer postrender.PostRenderer
 	// DisableOpenAPIValidation controls whether OpenAPI validation is enforced.
 	DisableOpenAPIValidation bool

@@ -58,7 +58,7 @@ func AssertGoldenString(t TestingT, actual, filename string) {
 	}
 }
 
-// AssertGoldenFile assers that the content of the actual file matches the contents of the expected file
+// AssertGoldenFile asserts that the content of the actual file matches the contents of the expected file
 func AssertGoldenFile(t TestingT, actualFileName string, expectedFilename string) {
 	t.Helper()
 

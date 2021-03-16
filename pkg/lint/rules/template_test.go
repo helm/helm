@@ -208,7 +208,7 @@ data:
   myval2: {{default "val" .Values.mymap.key2 }}
 `
 
-// TestSTrictTemplatePrasingMapError is a regression test.
+// TestStrictTemplateParsingMapError is a regression test.
 //
 // The template engine should not produce an error when a map in values.yaml does
 // not contain all possible keys.
