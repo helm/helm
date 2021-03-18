@@ -61,7 +61,7 @@ const (
 // ValidateReleaseName performs checks for an entry for a Helm release name
 //
 // For Helm to allow a name, it must be below a certain character count (53) and also match
-// a reguar expression.
+// a regular expression.
 //
 // According to the Kubernetes help text, the regular expression it uses is:
 //

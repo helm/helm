@@ -54,7 +54,7 @@ Get started with the [Quick Start guide](https://helm.sh/docs/intro/quickstart/)
 
 ## Roadmap
 
-The [Helm roadmap uses Github milestones](https://github.com/helm/helm/milestones) to track the progress of the project.
+The [Helm roadmap uses GitHub milestones](https://github.com/helm/helm/milestones) to track the progress of the project.
 
 ## Community, discussion, contribution, and support
 

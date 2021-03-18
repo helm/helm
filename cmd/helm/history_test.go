@@ -109,6 +109,10 @@ func revisionFlagCompletionTest(t *testing.T, cmdName string) {
 	runTestCmd(t, tests)
 }
 
+func TestHistoryCompletion(t *testing.T) {
+	checkReleaseCompletion(t, "history", false)
+}
+
 func TestHistoryFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "history", false)
 	checkFileCompletion(t, "history myrelease", false)

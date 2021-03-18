@@ -114,7 +114,7 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	f.BoolVarP(&client.Short, "short", "q", false, "output short (quiet) listing format")
-	f.StringVar(&client.TimeFormat, "time-format", "", "format time. Example: --time-format 2009-11-17 20:34:10 +0000 UTC")
+	f.StringVar(&client.TimeFormat, "time-format", "", `format time using golang time formatter. Example: --time-format "2006-01-02 15:04:05Z0700"`)
 	f.BoolVarP(&client.ByDate, "date", "d", false, "sort by release date")
 	f.BoolVarP(&client.SortReverse, "reverse", "r", false, "reverse the sort order")
 	f.BoolVarP(&client.All, "all", "a", false, "show all releases without any filter applied")
@@ -126,7 +126,7 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.Pending, "pending", false, "show pending releases")
 	f.BoolVarP(&client.AllNamespaces, "all-namespaces", "A", false, "list releases across all namespaces")
 	f.IntVarP(&client.Limit, "max", "m", 256, "maximum number of releases to fetch")
-	f.IntVar(&client.Offset, "offset", 0, "next release name in the list, used to offset from start value")
+	f.IntVar(&client.Offset, "offset", 0, "next release index in the list, used to offset from start value")
 	f.StringVarP(&client.Filter, "filter", "f", "", "a regular expression (Perl compatible). Any releases that match the expression will be included in the results")
 	f.StringVarP(&client.Selector, "selector", "l", "", "Selector (label query) to filter on, supports '=', '==', and '!='.(e.g. -l key1=value1,key2=value2). Works only for secret(default) and configmap storage backends.")
 	bindOutputFlag(cmd, &outfmt)
@@ -193,8 +193,32 @@ func (r *releaseListWriter) WriteYAML(out io.Writer) error {
 	return output.EncodeYAML(out, r.releases)
 }
 
+// Returns all releases from 'releases', except those with names matching 'ignoredReleases'
+func filterReleases(releases []*release.Release, ignoredReleaseNames []string) []*release.Release {
+	// if ignoredReleaseNames is nil, just return releases
+	if ignoredReleaseNames == nil {
+		return releases
+	}
+
+	var filteredReleases []*release.Release
+	for _, rel := range releases {
+		found := false
+		for _, ignoredName := range ignoredReleaseNames {
+			if rel.Name == ignoredName {
+				found = true
+				break
+			}
+		}
+		if !found {
+			filteredReleases = append(filteredReleases, rel)
+		}
+	}
+
+	return filteredReleases
+}
+
 // Provide dynamic auto-completion for release names
-func compListReleases(toComplete string, cfg *action.Configuration) ([]string, cobra.ShellCompDirective) {
+func compListReleases(toComplete string, ignoredReleaseNames []string, cfg *action.Configuration) ([]string, cobra.ShellCompDirective) {
 	cobra.CompDebugln(fmt.Sprintf("compListReleases with toComplete %s", toComplete), settings.Debug)
 
 	client := action.NewList(cfg)
@@ -203,14 +227,16 @@ func compListReleases(toComplete string, cfg *action.Configuration) ([]string, c
 	client.Filter = fmt.Sprintf("^%s", toComplete)
 
 	client.SetStateMask()
-	results, err := client.Run()
+	releases, err := client.Run()
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveDefault
 	}
 
 	var choices []string
-	for _, res := range results {
-		choices = append(choices, res.Name)
+	filteredReleases := filterReleases(releases, ignoredReleaseNames)
+	for _, rel := range filteredReleases {
+		choices = append(choices,
+			fmt.Sprintf("%s\t%s-%s -> %s", rel.Name, rel.Chart.Metadata.Name, rel.Chart.Metadata.Version, rel.Info.Status.String()))
 	}
 
 	return choices, cobra.ShellCompDirectiveNoFileComp

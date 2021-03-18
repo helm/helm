@@ -61,7 +61,10 @@ func (s *Storage) Create(rls *rspb.Release) error {
 	s.Log("creating release %q", makeKey(rls.Name, rls.Version))
 	if s.MaxHistory > 0 {
 		// Want to make space for one more release.
-		s.removeLeastRecent(rls.Name, s.MaxHistory-1)
+		if err := s.removeLeastRecent(rls.Name, s.MaxHistory-1); err != nil &&
+			!errors.Is(err, driver.ErrReleaseNotFound) {
+			return err
+		}
 	}
 	return s.Driver.Create(makeKey(rls.Name, rls.Version), rls)
 }
@@ -153,7 +156,7 @@ func (s *Storage) History(name string) ([]*rspb.Release, error) {
 	return s.Driver.Query(map[string]string{"name": name, "owner": "helm"})
 }
 
-// removeLeastRecent removes items from history until the lengh number of releases
+// removeLeastRecent removes items from history until the length number of releases
 // does not exceed max.
 //
 // We allow max to be set explicitly so that calling functions can "make space"

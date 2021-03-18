@@ -27,7 +27,7 @@ import (
 func checkPerms() {
 	// This function MUST NOT FAIL, as it is just a check for a common permissions problem.
 	// If for some reason the function hits a stopping condition, it may panic. But only if
-	// we can be sure that it is panicing because Helm cannot proceed.
+	// we can be sure that it is panicking because Helm cannot proceed.
 
 	kc := settings.KubeConfig
 	if kc == "" {

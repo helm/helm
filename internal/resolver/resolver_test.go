@@ -96,7 +96,7 @@ func TestResolve(t *testing.T) {
 		{
 			name: "repo from invalid local path",
 			req: []*chart.Dependency{
-				{Name: "notexist", Repository: "file://testdata/notexist", Version: "0.1.0"},
+				{Name: "nonexistent", Repository: "file://testdata/nonexistent", Version: "0.1.0"},
 			},
 			err: true,
 		},
@@ -255,7 +255,7 @@ func TestGetLocalPath(t *testing.T) {
 		},
 		{
 			name:      "invalid local path",
-			repo:      "file://testdata/notexist",
+			repo:      "file://testdata/nonexistent",
 			chartpath: "testdata/chartpath",
 			err:       true,
 		},

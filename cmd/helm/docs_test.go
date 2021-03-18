@@ -20,6 +20,19 @@ import (
 	"testing"
 )
 
+func TestDocsTypeFlagCompletion(t *testing.T) {
+	tests := []cmdTestCase{{
+		name:   "completion for docs --type",
+		cmd:    "__complete docs --type ''",
+		golden: "output/docs-type-comp.txt",
+	}, {
+		name:   "completion for docs --type",
+		cmd:    "__complete docs --type mar",
+		golden: "output/docs-type-filtered-comp.txt",
+	}}
+	runTestCmd(t, tests)
+}
+
 func TestDocsFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "docs", false)
 }

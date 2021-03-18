@@ -102,7 +102,7 @@ func TestSave(t *testing.T) {
 				t.Fatal(err)
 			}
 			if c2.Lock == nil {
-				t.Fatal("Expected v2 chart archive to containe a Chart.lock file")
+				t.Fatal("Expected v2 chart archive to contain a Chart.lock file")
 			}
 			if c2.Lock.Digest != c.Lock.Digest {
 				t.Fatal("Chart.lock data did not match")
@@ -139,7 +139,7 @@ func TestSavePreservesTimestamps(t *testing.T) {
 		Metadata: &chart.Metadata{
 			APIVersion: chart.APIVersionV1,
 			Name:       "ahab",
-			Version:    "1.2.3.4",
+			Version:    "1.2.3",
 		},
 		Values: map[string]interface{}{
 			"imageName": "testimage",

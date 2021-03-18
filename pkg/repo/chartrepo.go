@@ -82,6 +82,8 @@ func NewChartRepository(cfg *Entry, getters getter.Providers) (*ChartRepository,
 // Load loads a directory of charts as if it were a repository.
 //
 // It requires the presence of an index.yaml file in the directory.
+//
+// Deprecated: remove in Helm 4.
 func (r *ChartRepository) Load() error {
 	dirInfo, err := os.Stat(r.Config.Name)
 	if err != nil {
@@ -99,7 +101,7 @@ func (r *ChartRepository) Load() error {
 			if strings.Contains(f.Name(), "-index.yaml") {
 				i, err := LoadIndexFile(path)
 				if err != nil {
-					return nil
+					return err
 				}
 				r.IndexFile = i
 			} else if strings.HasSuffix(f.Name(), ".tgz") {
@@ -137,7 +139,7 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 		return "", err
 	}
 
-	indexFile, err := loadIndex(index)
+	indexFile, err := loadIndex(index, r.Config.URL)
 	if err != nil {
 		return "", err
 	}
@@ -187,7 +189,9 @@ func (r *ChartRepository) generateIndex() error {
 		}
 
 		if !r.IndexFile.Has(ch.Name(), ch.Metadata.Version) {
-			r.IndexFile.Add(ch.Metadata, path, r.Config.URL, digest)
+			if err := r.IndexFile.MustAdd(ch.Metadata, path, r.Config.URL, digest); err != nil {
+				return errors.Wrapf(err, "failed adding to %s to index", path)
+			}
 		}
 		// TODO: If a chart exists, but has a different Digest, should we error?
 	}

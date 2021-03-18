@@ -63,9 +63,15 @@ func newRepoUpdateCmd(out io.Writer) *cobra.Command {
 
 func (o *repoUpdateOptions) run(out io.Writer) error {
 	f, err := repo.LoadFile(o.repoFile)
-	if isNotExist(err) || len(f.Repositories) == 0 {
+	switch {
+	case isNotExist(err):
+		return errNoRepositories
+	case err != nil:
+		return errors.Wrapf(err, "failed loading file: %s", o.repoFile)
+	case len(f.Repositories) == 0:
 		return errNoRepositories
 	}
+
 	var repos []*repo.ChartRepository
 	for _, cfg := range f.Repositories {
 		r, err := repo.NewChartRepository(cfg, getter.All(settings))

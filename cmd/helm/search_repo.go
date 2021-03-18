@@ -143,7 +143,7 @@ func (o *searchRepoOptions) setupSearchedVersion() {
 }
 
 func (o *searchRepoOptions) applyConstraint(res []*search.Result) ([]*search.Result, error) {
-	if len(o.version) == 0 {
+	if o.version == "" {
 		return res, nil
 	}
 
@@ -154,26 +154,19 @@ func (o *searchRepoOptions) applyConstraint(res []*search.Result) ([]*search.Res
 
 	data := res[:0]
 	foundNames := map[string]bool{}
-	appendSearchResults := func(res *search.Result) {
-		data = append(data, res)
-		if !o.versions {
-			foundNames[res.Name] = true // If user hasn't requested all versions, only show the latest that matches
-		}
-	}
 	for _, r := range res {
-		if _, found := foundNames[r.Name]; found {
+		// if not returning all versions and already have found a result,
+		// you're done!
+		if !o.versions && foundNames[r.Name] {
 			continue
 		}
 		v, err := semver.NewVersion(r.Chart.Version)
-
 		if err != nil {
-			// If the current version number check appears ErrSegmentStartsZero or ErrInvalidPrerelease error and not devel mode, ignore
-			if (err == semver.ErrSegmentStartsZero || err == semver.ErrInvalidPrerelease) && !o.devel {
-				continue
-			}
-			appendSearchResults(r)
-		} else if constraint.Check(v) {
-			appendSearchResults(r)
+			continue
+		}
+		if constraint.Check(v) {
+			data = append(data, r)
+			foundNames[r.Name] = true
 		}
 	}
 
@@ -194,6 +187,7 @@ func (o *searchRepoOptions) buildIndex() (*search.Index, error) {
 		ind, err := repo.LoadIndexFile(f)
 		if err != nil {
 			warning("Repo %q is corrupt or missing. Try 'helm repo update'.", n)
+			warning("%s", err)
 			continue
 		}
 

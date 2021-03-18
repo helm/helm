@@ -51,14 +51,39 @@ func newPluginListCmd(out io.Writer) *cobra.Command {
 	return cmd
 }
 
+// Returns all plugins from plugins, except those with names matching ignoredPluginNames
+func filterPlugins(plugins []*plugin.Plugin, ignoredPluginNames []string) []*plugin.Plugin {
+	// if ignoredPluginNames is nil, just return plugins
+	if ignoredPluginNames == nil {
+		return plugins
+	}
+
+	var filteredPlugins []*plugin.Plugin
+	for _, plugin := range plugins {
+		found := false
+		for _, ignoredName := range ignoredPluginNames {
+			if plugin.Metadata.Name == ignoredName {
+				found = true
+				break
+			}
+		}
+		if !found {
+			filteredPlugins = append(filteredPlugins, plugin)
+		}
+	}
+
+	return filteredPlugins
+}
+
 // Provide dynamic auto-completion for plugin names
-func compListPlugins(toComplete string) []string {
+func compListPlugins(toComplete string, ignoredPluginNames []string) []string {
 	var pNames []string
 	plugins, err := plugin.FindPlugins(settings.PluginsDirectory)
-	if err == nil {
-		for _, p := range plugins {
+	if err == nil && len(plugins) > 0 {
+		filteredPlugins := filterPlugins(plugins, ignoredPluginNames)
+		for _, p := range filteredPlugins {
 			if strings.HasPrefix(p.Metadata.Name, toComplete) {
-				pNames = append(pNames, p.Metadata.Name)
+				pNames = append(pNames, fmt.Sprintf("%s\t%s", p.Metadata.Name, p.Metadata.Usage))
 			}
 		}
 	}
