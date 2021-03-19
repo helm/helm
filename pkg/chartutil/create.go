@@ -216,8 +216,12 @@ const defaultIgnore = `# Patterns to ignore when building packages.
 const defaultIngress = `{{- if .Values.ingress.enabled -}}
 {{- $fullName := include "<CHARTNAME>.fullname" . -}}
 {{- $svcPort := .Values.service.port -}}
-{{- if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion -}}
+{{- if eq "true" (include "<CHARTNAME>.ingressApiVersionChanged" .) }}
+{{- if semverCompare "<1.19-0" .Capabilities.KubeVersion.GitVersion -}}
 apiVersion: networking.k8s.io/v1beta1
+{{- else -}}
+apiVersion: networking.k8s.io/v1
+{{- end }}
 {{- else -}}
 apiVersion: extensions/v1beta1
 {{- end }}
@@ -242,6 +246,22 @@ spec:
     {{- end }}
   {{- end }}
   rules:
+    {{- if eq "true" (include "<CHARTNAME>.ingressApiVersionChanged" .) }}
+    {{- range .Values.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $fullName }}
+                port:
+                  number: {{ $svcPort }}
+          {{- end }}
+    {{- end }}
+    {{- else }}
     {{- range .Values.ingress.hosts }}
     - host: {{ .host | quote }}
       http:
@@ -253,7 +273,8 @@ spec:
               servicePort: {{ $svcPort }}
           {{- end }}
     {{- end }}
-  {{- end }}
+    {{- end }}
+{{- end }}
 `
 
 const defaultDeployment = `apiVersion: apps/v1
@@ -434,6 +455,17 @@ Create chart name and version as used by the chart label.
 */}}
 {{- define "<CHARTNAME>.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
+According to the kubernetes version, judge whether the content of ingress needs to be updated.
+*/}}
+{{- define "<CHARTNAME>.ingressApiVersionChanged" -}}
+{{- if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion }}
+{{- printf "%s" "true" }}
+{{- else }}
+{{- printf "%s" "false" }}
+{{- end }}
 {{- end }}
 
 {{/*
