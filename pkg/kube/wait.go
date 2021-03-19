@@ -52,6 +52,8 @@ type waiter struct {
 func (w *waiter) waitForResources(created ResourceList, waitForJobsEnabled bool) error {
 	w.log("beginning wait for %d resources with timeout of %v", len(created), w.timeout)
 
+	var retryCount, maxRetryCount = 0, 60
+
 	return wait.Poll(2*time.Second, w.timeout, func() (bool, error) {
 		for _, v := range created {
 			var (
@@ -64,20 +66,29 @@ func (w *waiter) waitForResources(created ResourceList, waitForJobsEnabled bool)
 			switch value := AsVersioned(v).(type) {
 			case *corev1.Pod:
 				pod, err := w.c.CoreV1().Pods(v.Namespace).Get(context.Background(), v.Name, metav1.GetOptions{})
-				if err != nil || !w.isPodReady(pod) {
+				if err != nil {
+					retryCount++
+					return waitWithRetry(w, retryCount, maxRetryCount, err)
+				}
+				if !w.isPodReady(pod) {
 					return false, err
 				}
 			case *batchv1.Job:
 				if waitForJobsEnabled {
 					job, err := w.c.BatchV1().Jobs(v.Namespace).Get(context.Background(), v.Name, metav1.GetOptions{})
-					if err != nil || !w.jobReady(job) {
+					if err != nil {
+						retryCount++
+						return waitWithRetry(w, retryCount, maxRetryCount, err)
+					}
+					if !w.jobReady(job) {
 						return false, err
 					}
 				}
 			case *appsv1.Deployment, *appsv1beta1.Deployment, *appsv1beta2.Deployment, *extensionsv1beta1.Deployment:
 				currentDeployment, err := w.c.AppsV1().Deployments(v.Namespace).Get(context.Background(), v.Name, metav1.GetOptions{})
 				if err != nil {
-					return false, err
+					retryCount++
+					return waitWithRetry(w, retryCount, maxRetryCount, err)
 				}
 				// If paused deployment will never be ready
 				if currentDeployment.Spec.Paused {
@@ -94,7 +105,8 @@ func (w *waiter) waitForResources(created ResourceList, waitForJobsEnabled bool)
 			case *corev1.PersistentVolumeClaim:
 				claim, err := w.c.CoreV1().PersistentVolumeClaims(v.Namespace).Get(context.Background(), v.Name, metav1.GetOptions{})
 				if err != nil {
-					return false, err
+					retryCount++
+					return waitWithRetry(w, retryCount, maxRetryCount, err)
 				}
 				if !w.volumeReady(claim) {
 					return false, nil
@@ -102,7 +114,8 @@ func (w *waiter) waitForResources(created ResourceList, waitForJobsEnabled bool)
 			case *corev1.Service:
 				svc, err := w.c.CoreV1().Services(v.Namespace).Get(context.Background(), v.Name, metav1.GetOptions{})
 				if err != nil {
-					return false, err
+					retryCount++
+					return waitWithRetry(w, retryCount, maxRetryCount, err)
 				}
 				if !w.serviceReady(svc) {
 					return false, nil
@@ -110,14 +123,16 @@ func (w *waiter) waitForResources(created ResourceList, waitForJobsEnabled bool)
 			case *extensionsv1beta1.DaemonSet, *appsv1.DaemonSet, *appsv1beta2.DaemonSet:
 				ds, err := w.c.AppsV1().DaemonSets(v.Namespace).Get(context.Background(), v.Name, metav1.GetOptions{})
 				if err != nil {
-					return false, err
+					retryCount++
+					return waitWithRetry(w, retryCount, maxRetryCount, err)
 				}
 				if !w.daemonSetReady(ds) {
 					return false, nil
 				}
 			case *apiextv1beta1.CustomResourceDefinition:
 				if err := v.Get(); err != nil {
-					return false, err
+					retryCount++
+					return waitWithRetry(w, retryCount, maxRetryCount, err)
 				}
 				crd := &apiextv1beta1.CustomResourceDefinition{}
 				if err := scheme.Scheme.Convert(v.Object, crd, nil); err != nil {
@@ -128,7 +143,8 @@ func (w *waiter) waitForResources(created ResourceList, waitForJobsEnabled bool)
 				}
 			case *apiextv1.CustomResourceDefinition:
 				if err := v.Get(); err != nil {
-					return false, err
+					retryCount++
+					return waitWithRetry(w, retryCount, maxRetryCount, err)
 				}
 				crd := &apiextv1.CustomResourceDefinition{}
 				if err := scheme.Scheme.Convert(v.Object, crd, nil); err != nil {
@@ -140,13 +156,18 @@ func (w *waiter) waitForResources(created ResourceList, waitForJobsEnabled bool)
 			case *appsv1.StatefulSet, *appsv1beta1.StatefulSet, *appsv1beta2.StatefulSet:
 				sts, err := w.c.AppsV1().StatefulSets(v.Namespace).Get(context.Background(), v.Name, metav1.GetOptions{})
 				if err != nil {
-					return false, err
+					retryCount++
+					return waitWithRetry(w, retryCount, maxRetryCount, err)
 				}
 				if !w.statefulSetReady(sts) {
 					return false, nil
 				}
 			case *corev1.ReplicationController, *extensionsv1beta1.ReplicaSet, *appsv1beta2.ReplicaSet, *appsv1.ReplicaSet:
 				ok, err = w.podsReadyForObject(v.Namespace, value)
+				if err != nil {
+					retryCount++
+					return waitWithRetry(w, retryCount, maxRetryCount, err)
+				}
 			}
 			if !ok || err != nil {
 				return false, err
@@ -409,4 +430,14 @@ func SelectorsForObject(object runtime.Object) (selector labels.Selector, err er
 	}
 
 	return selector, errors.Wrap(err, "invalid label selector")
+}
+
+func waitWithRetry(w *waiter, retryCount, maxRetryCount int, err error) (bool, error) {
+	if retryCount <= maxRetryCount {
+		w.log("failed to call k8s api during waiting, retry times %d, err: %v", retryCount, err)
+		time.Sleep(time.Second * 1)
+		return false, nil
+	} else {
+		return false, err
+	}
 }
