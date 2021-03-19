@@ -435,7 +435,6 @@ func SelectorsForObject(object runtime.Object) (selector labels.Selector, err er
 func waitWithRetry(w *waiter, retryCount, maxRetryCount int, err error) (bool, error) {
 	if retryCount <= maxRetryCount {
 		w.log("failed to call k8s api during waiting, retry times %d, err: %v", retryCount, err)
-		time.Sleep(time.Second * 1)
 		return false, nil
 	}
 	return false, err
