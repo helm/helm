@@ -215,7 +215,7 @@ func validateMetadataName(obj *K8sYamlStruct) error {
 		allErrs = append(allErrs, field.Invalid(field.NewPath("metadata").Child("name"), obj.Metadata.Name, msg))
 	}
 	if len(allErrs) > 0 {
-		return fmt.Errorf("object name does not conform to Kubernetes naming requirements: %q (%s)", obj.Metadata.Name, allErrs.ToAggregate().Error())
+		return errors.Wrapf(allErrs.ToAggregate(), "object name does not conform to Kubernetes naming requirements: %q", obj.Metadata.Name)
 	}
 	return nil
 }
