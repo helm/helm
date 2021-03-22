@@ -210,10 +210,6 @@ func validateYamlContent(err error) error {
 // DNS (RFC 1123), used by most resources.
 func validateMetadataName(obj *K8sYamlStruct) error {
 	fn := validateMetadataNameFunc(obj)
-	if fn == nil {
-		fn = validation.NameIsDNSSubdomain
-	}
-
 	allErrs := field.ErrorList{}
 	for _, msg := range fn(obj.Metadata.Name, false) {
 		allErrs = append(allErrs, field.Invalid(field.NewPath("metadata").Child("name"), obj.Metadata.Name, msg))
@@ -234,7 +230,9 @@ func validateMetadataName(obj *K8sYamlStruct) error {
 //
 // Implementing here to avoid importing k/k.
 //
-// If no mapping is defined, returns nil.
+// If no mapping is defined, returns NameIsDNSSubdomain.  This is used by object
+// kinds that don't have special requirements, so is the most likely to work if
+// new kinds are added.
 func validateMetadataNameFunc(obj *K8sYamlStruct) validation.ValidateNameFunc {
 	switch strings.ToLower(obj.Kind) {
 	case "pod", "node", "secret", "endpoints", "resourcequota", // core
@@ -265,7 +263,7 @@ func validateMetadataNameFunc(obj *K8sYamlStruct) validation.ValidateNameFunc {
 			return apipath.IsValidPathSegmentName(name)
 		}
 	default:
-		return nil
+		return validation.NameIsDNSSubdomain
 	}
 }
 
