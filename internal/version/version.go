@@ -53,9 +53,6 @@ type BuildInfo struct {
 
 // GetVersion returns the semver string of the version
 func GetVersion() string {
-	if metadata == "" {
-		return version
-	}
 	return version + "+" + metadata
 }
 

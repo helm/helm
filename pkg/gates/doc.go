@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*Package gates provides a general tool for working with experimental feature gates.
+/*Package gates provide a general tool for working with experimental feature gates.
 
 This provides convenience methods where the user can determine if certain experimental features are enabled.
 */
