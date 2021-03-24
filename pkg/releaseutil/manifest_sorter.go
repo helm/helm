@@ -257,13 +257,15 @@ func operateAnnotationValues(entry SimpleHead, annotation string, operate func(p
 	}
 }
 
-// isKnownKind returns true if the given kind exists in the InstallOrder or UninstallOrder
+// isKnownKind returns true if the given kind exists in the InstallOrder AND UninstallOrder
 func isKnownKind(kind string) bool {
-	knownKinds := append(InstallOrder, UninstallOrder...)
-
-	for _, kk := range knownKinds {
-		if kk == kind {
-			return true
+	for _, k := range InstallOrder {
+		if k == kind {
+			for _, kk := range UninstallOrder {
+				if kk == kind {
+					return true
+				}
+			}
 		}
 	}
 	return false
