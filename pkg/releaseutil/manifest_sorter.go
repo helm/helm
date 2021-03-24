@@ -32,9 +32,10 @@ import (
 
 // Manifest represents a manifest file, which has a name and some content.
 type Manifest struct {
-	Name    string
-	Content string
-	Head    *SimpleHead
+	Name          string
+	Content       string
+	Head          *SimpleHead
+	InstallBefore []string
 }
 
 // manifestFile represents a file that contains a manifest.
@@ -155,6 +156,30 @@ func (file *manifestFile) sort(result *result) error {
 			continue
 		}
 
+		installBeforeKinds, ok := entry.Metadata.Annotations[InstallOrderAnnotation]
+		// InstallOrderAnnotation is only supported for unknown Kinds e.g. Custom Resources
+		if ok && isKnownKind(entry.Kind) {
+			log.Printf("info: %v annotation is not supported for Kind %v", InstallOrderAnnotation, entry.Kind)
+		} else if ok {
+			var installBefore []string
+			for _, kind := range strings.Split(installBeforeKinds, ",") {
+				kind = strings.TrimSpace(kind)
+				if isKnownKind(kind) {
+					installBefore = append(installBefore, kind)
+				} else {
+					log.Printf("info: skipping unknown install-before kind: %q", kind)
+				}
+			}
+
+			result.generic = append(result.generic, Manifest{
+				Name:          file.path,
+				Content:       m,
+				Head:          &entry,
+				InstallBefore: installBefore,
+			})
+			continue
+		}
+
 		hookTypes, ok := entry.Metadata.Annotations[release.HookAnnotation]
 		if !ok {
 			result.generic = append(result.generic, Manifest{
@@ -230,4 +255,16 @@ func operateAnnotationValues(entry SimpleHead, annotation string, operate func(p
 			operate(dp)
 		}
 	}
+}
+
+// isKnownKind returns true if the given kind exists in the InstallOrder or UninstallOrder
+func isKnownKind(kind string) bool {
+	knownKinds := append(InstallOrder, UninstallOrder...)
+
+	for _, kk := range knownKinds {
+		if kk == kind {
+			return true
+		}
+	}
+	return false
 }

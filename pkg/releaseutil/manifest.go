@@ -23,6 +23,9 @@ import (
 	"strings"
 )
 
+// InstallOrderAnnotation the annotation that allows manipulating the install order of custom resources
+const InstallOrderAnnotation = "helm.sh/install-before"
+
 // SimpleHead defines what the structure of the head of a manifest file
 type SimpleHead struct {
 	Version  string `json:"apiVersion"`

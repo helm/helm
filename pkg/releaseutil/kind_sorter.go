@@ -108,12 +108,12 @@ var UninstallOrder KindSortOrder = []string{
 // sort manifests by kind.
 //
 // Results are sorted by 'ordering', keeping order of items with equal kind/priority
-func sortManifestsByKind(manifests []Manifest, ordering KindSortOrder) []Manifest {
-	sort.SliceStable(manifests, func(i, j int) bool {
-		return lessByKind(manifests[i], manifests[j], manifests[i].Head.Kind, manifests[j].Head.Kind, ordering)
+func sortManifestsByKind(m []Manifest, ordering KindSortOrder) []Manifest {
+	sort.SliceStable(m, func(i, j int) bool {
+		return lessByKind(m[i], m[j], m[i].Head.Kind, m[j].Head.Kind, m[i].InstallBefore, m[j].InstallBefore, ordering)
 	})
 
-	return manifests
+	return m
 }
 
 // sort hooks by kind, using an out-of-place sort to preserve the input parameters.
@@ -122,20 +122,15 @@ func sortManifestsByKind(manifests []Manifest, ordering KindSortOrder) []Manifes
 func sortHooksByKind(hooks []*release.Hook, ordering KindSortOrder) []*release.Hook {
 	h := hooks
 	sort.SliceStable(h, func(i, j int) bool {
-		return lessByKind(h[i], h[j], h[i].Kind, h[j].Kind, ordering)
+		return lessByKind(h[i], h[j], h[i].Kind, h[j].Kind, nil, nil, ordering)
 	})
 
 	return h
 }
 
-func lessByKind(a interface{}, b interface{}, kindA string, kindB string, o KindSortOrder) bool {
-	ordering := make(map[string]int, len(o))
-	for v, k := range o {
-		ordering[k] = v
-	}
-
-	first, aok := ordering[kindA]
-	second, bok := ordering[kindB]
+func lessByKind(a interface{}, b interface{}, kindA string, kindB string, beforeA []string, beforeB []string, o KindSortOrder) bool {
+	first, aok := installOrderIndex(kindA, beforeA, o)
+	second, bok := installOrderIndex(kindB, beforeB, o)
 
 	if !aok && !bok {
 		// if both are unknown then sort alphabetically by kind, keep original order if same kind
@@ -153,4 +148,29 @@ func lessByKind(a interface{}, b interface{}, kindA string, kindB string, o Kind
 	}
 	// sort different kinds, keep original order if same priority
 	return first < second
+}
+
+// installOrderIndex returns the lowest index number of all beforeKinds
+func installOrderIndex(kind string, beforeKinds []string, o KindSortOrder) (int, bool) {
+	ordering := make(map[string]int, len(o))
+	for v, k := range o {
+		ordering[k] = v
+	}
+
+	orderIndex, foundIndex := ordering[kind]
+
+	// reset orderIndex for unknown resources
+	if !foundIndex {
+		orderIndex = len(o)
+	}
+
+	for _, kind := range beforeKinds {
+		i, ok := ordering[kind]
+		if ok && i < orderIndex {
+			foundIndex = true
+			// set orderIndex 1 BEFORE the actual index, so it get executed BEFORE it
+			orderIndex = i - 1
+		}
+	}
+	return orderIndex, foundIndex
 }
