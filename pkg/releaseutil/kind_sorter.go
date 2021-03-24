@@ -17,6 +17,7 @@ limitations under the License.
 package releaseutil
 
 import (
+	"log"
 	"sort"
 
 	"helm.sh/helm/v3/pkg/release"
@@ -108,9 +109,10 @@ var UninstallOrder KindSortOrder = []string{
 // sort manifests by kind.
 //
 // Results are sorted by 'ordering', keeping order of items with equal kind/priority
-func sortManifestsByKind(m []Manifest, ordering KindSortOrder) []Manifest {
+func sortManifestsByKind(manifests []Manifest, uninstall bool) []Manifest {
+	m := manifests
 	sort.SliceStable(m, func(i, j int) bool {
-		return lessByKind(m[i], m[j], m[i].Head.Kind, m[j].Head.Kind, m[i].InstallBefore, m[j].InstallBefore, ordering)
+		return lessByKind(m[i], m[j], m[i].Head.Kind, m[j].Head.Kind, m[i].InstallBefore, m[j].InstallBefore, uninstall)
 	})
 
 	return m
@@ -119,18 +121,18 @@ func sortManifestsByKind(m []Manifest, ordering KindSortOrder) []Manifest {
 // sort hooks by kind, using an out-of-place sort to preserve the input parameters.
 //
 // Results are sorted by 'ordering', keeping order of items with equal kind/priority
-func sortHooksByKind(hooks []*release.Hook, ordering KindSortOrder) []*release.Hook {
+func sortHooksByKind(hooks []*release.Hook, uninstall bool) []*release.Hook {
 	h := hooks
 	sort.SliceStable(h, func(i, j int) bool {
-		return lessByKind(h[i], h[j], h[i].Kind, h[j].Kind, nil, nil, ordering)
+		return lessByKind(h[i], h[j], h[i].Kind, h[j].Kind, []string{}, []string{}, uninstall)
 	})
 
 	return h
 }
 
-func lessByKind(a interface{}, b interface{}, kindA string, kindB string, beforeA []string, beforeB []string, o KindSortOrder) bool {
-	first, aok := installOrderIndex(kindA, beforeA, o)
-	second, bok := installOrderIndex(kindB, beforeB, o)
+func lessByKind(a interface{}, b interface{}, kindA string, kindB string, beforeA []string, beforeB []string, uninstall bool) bool {
+	first, aok := installOrderIndex(kindA, beforeA, uninstall)
+	second, bok := installOrderIndex(kindB, beforeB, uninstall)
 
 	if !aok && !bok {
 		// if both are unknown then sort alphabetically by kind, keep original order if same kind
@@ -151,26 +153,45 @@ func lessByKind(a interface{}, b interface{}, kindA string, kindB string, before
 }
 
 // installOrderIndex returns the lowest index number of all beforeKinds
-func installOrderIndex(kind string, beforeKinds []string, o KindSortOrder) (int, bool) {
-	ordering := make(map[string]int, len(o))
-	for v, k := range o {
+func installOrderIndex(kind string, beforeKinds []string, uninstall bool) (int, bool) {
+	order := InstallOrder
+	if uninstall {
+		order = UninstallOrder
+	}
+
+	ordering := make(map[string]int, len(order))
+	for v, k := range order {
 		ordering[k] = v
 	}
 
 	orderIndex, foundIndex := ordering[kind]
 
 	// reset orderIndex for unknown resources
-	if !foundIndex {
-		orderIndex = len(o)
+	// when we're uninstalling we're actually searching for the HIGHEST index, so 0 is fine as initial value
+	if !foundIndex && !uninstall {
+		orderIndex = len(order)
 	}
 
 	for _, kind := range beforeKinds {
 		i, ok := ordering[kind]
-		if ok && i < orderIndex {
+		if !ok {
+			continue
+		}
+		// we're searching for the lowest index when installing
+		if i < orderIndex && !uninstall {
 			foundIndex = true
-			// set orderIndex 1 BEFORE the actual index, so it get executed BEFORE it
+			// set orderIndex 1 BEFORE the actual index, so it get installed BEFORE it
 			orderIndex = i - 1
 		}
+		// we're searching for the highest index when uninstalling
+		if i > orderIndex && uninstall {
+			foundIndex = true
+			// set orderIndex 1 AFTER the actual index, so it get uninstalled AFTER it
+			orderIndex = i + 1
+		}
 	}
+
+	log.Printf("kind: %v / beforeKinds: %v = %v (foundIndex: %v / uninstall: %v)", kind, beforeKinds, orderIndex, foundIndex, uninstall)
+
 	return orderIndex, foundIndex
 }

@@ -76,7 +76,7 @@ var events = map[string]release.HookEvent{
 //
 // Files that do not parse into the expected format are simply placed into a map and
 // returned.
-func SortManifests(files map[string]string, apis chartutil.VersionSet, ordering KindSortOrder) ([]*release.Hook, []Manifest, error) {
+func SortManifests(files map[string]string, apis chartutil.VersionSet, uninstall bool) ([]*release.Hook, []Manifest, error) {
 	result := &result{}
 
 	var sortedFilePaths []string
@@ -109,7 +109,7 @@ func SortManifests(files map[string]string, apis chartutil.VersionSet, ordering 
 		}
 	}
 
-	return sortHooksByKind(result.hooks, ordering), sortManifestsByKind(result.generic, ordering), nil
+	return sortHooksByKind(result.hooks, uninstall), sortManifestsByKind(result.generic, uninstall), nil
 }
 
 // sort takes a manifestFile object which may contain multiple resource definition
