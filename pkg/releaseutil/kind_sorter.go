@@ -17,7 +17,6 @@ limitations under the License.
 package releaseutil
 
 import (
-	"log"
 	"sort"
 
 	"helm.sh/helm/v3/pkg/release"
@@ -161,7 +160,14 @@ func installOrderIndex(kind string, beforeKinds []string, uninstall bool) (int, 
 
 	ordering := make(map[string]int, len(order))
 	for v, k := range order {
-		ordering[k] = v
+		// In order to allow placing custom resources in between existing resources we need to double the index.
+		// for example
+		// NetworkPolicy has an index of 1
+		// ResourceQuota has an index of 2
+		// if we want to place a custom resource in between we would need to make the index of that resource 1.5
+		// since we use int numbers we cannot use floating point numbers, so instead we just DOUBLE the index of
+		// everything so that our Custom Resource fits in between (2 and 4 in this case)
+		ordering[k] = v * 2
 	}
 
 	orderIndex, foundIndex := ordering[kind]
@@ -169,7 +175,8 @@ func installOrderIndex(kind string, beforeKinds []string, uninstall bool) (int, 
 	// reset orderIndex for unknown resources
 	// when we're uninstalling we're actually searching for the HIGHEST index, so 0 is fine as initial value
 	if !foundIndex && !uninstall {
-		orderIndex = len(order)
+		// see above why we use double the length
+		orderIndex = len(order) * 2
 	}
 
 	for _, kind := range beforeKinds {
@@ -190,8 +197,6 @@ func installOrderIndex(kind string, beforeKinds []string, uninstall bool) (int, 
 			orderIndex = i + 1
 		}
 	}
-
-	log.Printf("kind: %v / beforeKinds: %v = %v (foundIndex: %v / uninstall: %v)", kind, beforeKinds, orderIndex, foundIndex, uninstall)
 
 	return orderIndex, foundIndex
 }
