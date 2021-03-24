@@ -166,6 +166,21 @@ func TestKindSorter(t *testing.T) {
 			Name: "x",
 			Head: &SimpleHead{Kind: "HorizontalPodAutoscaler"},
 		},
+		{
+			Name:          "9",
+			Head:          &SimpleHead{Kind: "MyCustomResourceBeforeDeployment"},
+			InstallBefore: []string{"Deployment"},
+		},
+		{
+			Name:          "8",
+			Head:          &SimpleHead{Kind: "MyCustomResourceBeforeEverything"},
+			InstallBefore: InstallOrder,
+		},
+		{
+			Name:          "7",
+			Head:          &SimpleHead{Kind: "MyCustomResourceBeforeMultipleResources"},
+			InstallBefore: []string{"Deployment", "Service", "ServiceAccount"},
+		},
 	}
 
 	for _, test := range []struct {
@@ -173,8 +188,8 @@ func TestKindSorter(t *testing.T) {
 		uninstall   bool
 		expected    string
 	}{
-		{"install", false, "aAbcC3deEf1gh2iIjJkKlLmnopqrxstuvw!"},
-		{"uninstall", true, "wvmutsxrqponLlKkJjIi2hg1fEed3CcbAa!"},
+		{"install", false, "8aAbcC37deEf1gh2iIjJkKlLmnopq9rxstuvw!"},
+		{"uninstall", true, "wvmutsxr9qponLlKkJjIi2hg1fEed73CcbAa8!"},
 	} {
 		var buf bytes.Buffer
 		t.Run(test.description, func(t *testing.T) {
