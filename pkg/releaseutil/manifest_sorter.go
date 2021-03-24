@@ -164,11 +164,11 @@ func (file *manifestFile) sort(result *result) error {
 			var installBefore []string
 			for _, kind := range strings.Split(installBeforeKinds, ",") {
 				kind = strings.TrimSpace(kind)
-				if isKnownKind(kind) {
-					installBefore = append(installBefore, kind)
-				} else {
+				if !isKnownKind(kind) {
 					log.Printf("info: skipping unknown install-before kind: %q", kind)
+					continue
 				}
+				installBefore = append(installBefore, kind)
 			}
 
 			result.generic = append(result.generic, Manifest{

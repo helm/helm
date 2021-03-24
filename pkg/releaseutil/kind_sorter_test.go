@@ -18,6 +18,7 @@ package releaseutil
 
 import (
 	"bytes"
+	"reflect"
 	"testing"
 
 	"helm.sh/helm/v3/pkg/release"
@@ -169,11 +170,11 @@ func TestKindSorter(t *testing.T) {
 
 	for _, test := range []struct {
 		description string
-		order       KindSortOrder
+		uninstall   bool
 		expected    string
 	}{
-		{"install", InstallOrder, "aAbcC3deEf1gh2iIjJkKlLmnopqrxstuvw!"},
-		{"uninstall", UninstallOrder, "wvmutsxrqponLlKkJjIi2hg1fEed3CcbAa!"},
+		{"install", false, "aAbcC3deEf1gh2iIjJkKlLmnopqrxstuvw!"},
+		{"uninstall", true, "wvmutsxrqponLlKkJjIi2hg1fEed3CcbAa!"},
 	} {
 		var buf bytes.Buffer
 		t.Run(test.description, func(t *testing.T) {
@@ -182,14 +183,14 @@ func TestKindSorter(t *testing.T) {
 			}
 			defer buf.Reset()
 			orig := manifests
-			for _, r := range sortManifestsByKind(manifests, test.order) {
+			for _, r := range sortManifestsByKind(manifests, test.uninstall) {
 				buf.WriteString(r.Name)
 			}
 			if got := buf.String(); got != test.expected {
 				t.Errorf("Expected %q, got %q", test.expected, got)
 			}
 			for i, manifest := range orig {
-				if manifest != manifests[i] {
+				if !reflect.DeepEqual(manifest, manifests[i]) {
 					t.Fatal("Expected input to sortManifestsByKind to stay the same")
 				}
 			}
@@ -239,16 +240,16 @@ func TestKindSorterKeepOriginalOrder(t *testing.T) {
 	}
 	for _, test := range []struct {
 		description string
-		order       KindSortOrder
+		uninstall   bool
 		expected    string
 	}{
 		// expectation is sorted by kind (unknown is last) and within each group of same kind, the order is kept
-		{"cm,clusterRole,clusterRoleBinding,Unknown,Unknown2", InstallOrder, "01aAz!u2u1t3"},
+		{"cm,clusterRole,clusterRoleBinding,Unknown,Unknown2", false, "01aAz!u2u1t3"},
 	} {
 		var buf bytes.Buffer
 		t.Run(test.description, func(t *testing.T) {
 			defer buf.Reset()
-			for _, r := range sortManifestsByKind(manifests, test.order) {
+			for _, r := range sortManifestsByKind(manifests, test.uninstall) {
 				buf.WriteString(r.Name)
 			}
 			if got := buf.String(); got != test.expected {
@@ -269,7 +270,7 @@ func TestKindSorterNamespaceAgainstUnknown(t *testing.T) {
 	}
 
 	manifests := []Manifest{unknown, namespace}
-	manifests = sortManifestsByKind(manifests, InstallOrder)
+	manifests = sortManifestsByKind(manifests, false)
 
 	expectedOrder := []Manifest{namespace, unknown}
 	for i, manifest := range manifests {
@@ -302,11 +303,11 @@ func TestKindSorterForHooks(t *testing.T) {
 
 	for _, test := range []struct {
 		description string
-		order       KindSortOrder
+		uninstall   bool
 		expected    string
 	}{
-		{"install", InstallOrder, "acij"},
-		{"uninstall", UninstallOrder, "jica"},
+		{"install", false, "acij"},
+		{"uninstall", true, "jica"},
 	} {
 		var buf bytes.Buffer
 		t.Run(test.description, func(t *testing.T) {
@@ -315,7 +316,7 @@ func TestKindSorterForHooks(t *testing.T) {
 			}
 			defer buf.Reset()
 			orig := hooks
-			for _, r := range sortHooksByKind(hooks, test.order) {
+			for _, r := range sortHooksByKind(hooks, test.uninstall) {
 				buf.WriteString(r.Name)
 			}
 			for i, hook := range orig {

@@ -139,7 +139,7 @@ metadata:
 		manifests[o.path] = o.manifest
 	}
 
-	hs, generic, err := SortManifests(manifests, chartutil.VersionSet{"v1", "v1beta1"}, InstallOrder)
+	hs, generic, err := SortManifests(manifests, chartutil.VersionSet{"v1", "v1beta1"}, false)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
@@ -219,7 +219,7 @@ metadata:
 		}
 	}
 
-	sorted = sortManifestsByKind(sorted, InstallOrder)
+	sorted = sortManifestsByKind(sorted, false)
 	for i, m := range generic {
 		if m.Content != sorted[i].Content {
 			t.Errorf("Expected %q, got %q", m.Content, sorted[i].Content)
