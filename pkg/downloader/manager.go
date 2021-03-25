@@ -78,6 +78,32 @@ type Manager struct {
 	RepositoryCache  string
 }
 
+func NewManager(
+	out io.Writer,
+	chartPath string,
+	verify VerificationStrategy,
+	debug bool,
+	keyring string,
+	skipUpdate bool,
+	getters []getter.Provider,
+	registryClient *registry.Client,
+	repositoryConfig string,
+	repositoryCache string,
+) *Manager {
+	return &Manager{
+		Out:              out,
+		ChartPath:        chartPath,
+		Verify:           verify,
+		Debug:            debug,
+		Keyring:          keyring,
+		SkipUpdate:       skipUpdate,
+		Getters:          getters,
+		RegistryClient:   registryClient,
+		RepositoryConfig: repositoryConfig,
+		RepositoryCache:  repositoryCache,
+	}
+}
+
 // Build rebuilds a local charts directory from a lockfile.
 //
 // If the lockfile is not present, this will run a Manager.Update()
