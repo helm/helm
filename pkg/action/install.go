@@ -102,6 +102,8 @@ type Install struct {
 	PostRenderer   postrender.PostRenderer
 	// Lock to control raceconditions when the process receives a SIGTERM
 	Lock sync.Mutex
+	// RegistryClient is a client for working with registries
+	RegistryClient *registry.Client
 }
 
 // ChartPathOptions captures common options used for controlling chart paths
@@ -125,12 +127,10 @@ type ChartPathOptions struct {
 
 // NewInstall creates a new Install object with the given configuration.
 func NewInstall(cfg *Configuration) *Install {
-	in := &Install{
-		cfg: cfg,
+	return &Install{
+		cfg:            cfg,
+		RegistryClient: cfg.RegistryClient,
 	}
-	in.ChartPathOptions.registryClient = cfg.RegistryClient
-
-	return in
 }
 
 func (i *Install) installCRDs(crds []chart.CRD) error {

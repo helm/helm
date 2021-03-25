@@ -241,6 +241,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 					Keyring:          client.ChartPathOptions.Keyring,
 					SkipUpdate:       false,
 					Getters:          p,
+					RegistryClient:   client.RegistryClient,
 					RepositoryConfig: settings.RepositoryConfig,
 					RepositoryCache:  settings.RepositoryCache,
 					Debug:            settings.Debug,
