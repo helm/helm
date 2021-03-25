@@ -70,7 +70,7 @@ metadata:
   name: subchart
   labels:
     helm.sh/chart: "subchart-0.1.0"
-    app.kubernetes.io/instance: "RELEASE-NAME"
+    app.kubernetes.io/instance: "release-name"
     kube-version/major: "1"
     kube-version/minor: "16"
     kube-version/version: "v1.16.0"
@@ -88,7 +88,7 @@ spec:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: "RELEASE-NAME-testconfig"
+  name: "release-name-testconfig"
   annotations:
     "helm.sh/hook": test
 data:
@@ -98,7 +98,7 @@ data:
 apiVersion: v1
 kind: Pod
 metadata:
-  name: "RELEASE-NAME-test"
+  name: "release-name-test"
   annotations:
     "helm.sh/hook": test
 spec:
@@ -107,7 +107,7 @@ spec:
       image: "alpine:latest"
       envFrom:
         - configMapRef:
-            name: "RELEASE-NAME-testconfig"
+            name: "release-name-testconfig"
       command:
         - echo
         - "$message"
