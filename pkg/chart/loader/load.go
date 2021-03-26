@@ -173,7 +173,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 			if file.Name != n {
 				return c, errors.Errorf("error unpacking tar in %s: expected %s, got %s", c.Name(), n, file.Name)
 			}
-			// Untar the chart and add to c.Dependencies
+			// Untar the chart and add to c.dependencies later
 			sc, err = LoadArchive(bytes.NewBuffer(file.Data))
 		default:
 			// We have to trim the prefix off of every file, and ignore any file

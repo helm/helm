@@ -19,6 +19,7 @@ package main
 import (
 	"io"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -150,6 +151,7 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 	f.BoolVar(&client.Atomic, "atomic", false, "if set, the installation process deletes the installation on failure. The --wait flag will be set automatically if --atomic is used")
 	f.BoolVar(&client.SkipCRDs, "skip-crds", false, "if set, no CRDs will be installed. By default, CRDs are installed if not already present")
 	f.BoolVar(&client.SubNotes, "render-subchart-notes", false, "if set, render subchart notes along with the parent")
+	f.StringSliceVar(&client.Dependencies, "set-dependency", []string{}, "override versions's dependencies (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	addValueOptionsFlags(f, valueOpts)
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 
@@ -209,9 +211,14 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		warning("This chart is deprecated")
 	}
 
+	if err := updateDependencies(chartRequested, client); err != nil {
+		return nil, err
+	}
+
 	if req := chartRequested.Metadata.Dependencies; req != nil {
 		// If CheckDependencies returns an error, we have unfulfilled dependencies.
-		// As of Helm 2.4.0, this is treated as a stopping condition:
+		// As of Helm 2.4.0, this is treated as a stopping condition (unless the
+		// dependency-update option was specified):
 		// https://github.com/helm/helm/issues/2209
 		if err := action.CheckDependencies(chartRequested, req); err != nil {
 			if client.DependencyUpdate {
@@ -263,4 +270,39 @@ func compInstall(args []string, toComplete string, client *action.Install) ([]st
 		return compListCharts(toComplete, true)
 	}
 	return nil, cobra.ShellCompDirectiveNoFileComp
+}
+
+func updateDependencies(ch *chart.Chart, client *action.Install) error {
+	for _, change := range client.Dependencies {
+		pair := strings.SplitN(change, "=", 2)
+		s := strings.Split(pair[0], ".")
+		pErr := errors.Errorf("Dependency update %q cannot be parsed. Only values for chartname.version and chartname.repository can be patched.", pair[0])
+		if len(s) != 2 {
+			return pErr
+		}
+		name := s[0]
+		property := s[1]
+		found := false
+		for _, dep := range ch.Metadata.Dependencies {
+			if dep.Name == name {
+				found = true
+				switch property {
+				case "version":
+					dep.Version = pair[1]
+				case "repository":
+					dep.Repository = pair[1]
+				default:
+					return pErr
+				}
+
+				if err := dep.Validate(); err != nil {
+					return errors.Wrapf(err, "Dependency %q could not be patched because it failed validation", name)
+				}
+			}
+		}
+		if !found {
+			return errors.Errorf("Dependency %q was not found so it could not be patched.", name)
+		}
+	}
+	return nil
 }

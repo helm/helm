@@ -101,6 +101,7 @@ type Install struct {
 	// OutputDir/<ReleaseName>
 	UseReleaseName bool
 	PostRenderer   postrender.PostRenderer
+	Dependencies   []string
 }
 
 // ChartPathOptions captures common options used for controlling chart paths
