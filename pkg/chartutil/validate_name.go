@@ -96,6 +96,9 @@ func ValidateReleaseName(name string) error {
 //
 // The Kubernetes documentation is here, though it is not entirely correct:
 // https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+//
+// Deprecated: remove in Helm 4.  Name validation now uses rules defined in
+// pkg/lint/rules.validateMetadataNameFunc()
 func ValidateMetadataName(name string) error {
 	if name == "" || len(name) > maxMetadataNameLen || !validName.MatchString(name) {
 		return errInvalidKubernetesName
