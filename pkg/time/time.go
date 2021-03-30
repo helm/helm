@@ -26,6 +26,25 @@ import (
 	"time"
 )
 
+const (
+	ANSIC = time.ANSIC
+	UnixDate = time.UnixDate
+	RubyDate = time.RubyDate
+	RFC822 = time.RFC822
+	RFC822Z = time.RFC822Z
+	RFC850 = time.RFC850
+	RFC1123 = time.RFC1123
+	RFC1123Z = time.RFC1123Z
+	RFC3339 = time.RFC3339
+	RFC3339Nano = time.RFC3339Nano
+	Kitchen = time.Kitchen
+	// Handy time stamps.
+	Stamp = time.Stamp
+	StampMilli = time.StampMilli
+	StampMicro = time.StampMicro
+	StampNano  = time.StampNano
+)
+
 // emptyString contains an empty JSON string value to be used as output
 var emptyString = `""`
 
@@ -89,3 +108,15 @@ func (t Time) Round(d time.Duration) Time    { return Time{Time: t.Time.Round(d)
 func (t Time) Sub(u Time) time.Duration      { return t.Time.Sub(u.Time) }
 func (t Time) Truncate(d time.Duration) Time { return Time{Time: t.Time.Truncate(d)} }
 func (t Time) UTC() Time                     { return Time{Time: t.Time.UTC()} }
+
+func Display(t Time, timeFormat string) string {
+	d := "-"
+	if !t.IsZero() {
+		if timeFormat != "" {
+			d = t.Local().Format(timeFormat)
+		} else {
+			d = t.Local().String()
+		}
+	}
+	return d
+}

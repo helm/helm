@@ -29,6 +29,7 @@ import (
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/time"
 )
 
 var listHelp = `
@@ -156,20 +157,11 @@ func newReleaseListWriter(releases []*release.Release, timeFormat string) *relea
 			Name:       r.Name,
 			Namespace:  r.Namespace,
 			Revision:   strconv.Itoa(r.Version),
+			Updated:    time.Display(r.Info.LastDeployed, timeFormat),
 			Status:     r.Info.Status.String(),
 			Chart:      fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version),
 			AppVersion: r.Chart.Metadata.AppVersion,
 		}
-
-		t := "-"
-		if tspb := r.Info.LastDeployed; !tspb.IsZero() {
-			if timeFormat != "" {
-				t = tspb.Format(timeFormat)
-			} else {
-				t = tspb.String()
-			}
-		}
-		element.Updated = t
 
 		elements = append(elements, element)
 	}
