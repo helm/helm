@@ -21,7 +21,6 @@ import (
 	"io"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
@@ -32,7 +31,7 @@ import (
 	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/releaseutil"
-	helmtime "helm.sh/helm/v3/pkg/time"
+	"helm.sh/helm/v3/pkg/time"
 )
 
 var historyHelp = `
@@ -44,11 +43,11 @@ configures the maximum length of the revision list returned.
 The historical release set is printed as a formatted table, e.g:
 
     $ helm history angry-bird
-    REVISION    UPDATED                     STATUS          CHART             APP VERSION     DESCRIPTION
-    1           Mon Oct 3 10:15:13 2016     superseded      alpine-0.1.0      1.0             Initial install
-    2           Mon Oct 3 10:15:13 2016     superseded      alpine-0.1.0      1.0             Upgraded successfully
-    3           Mon Oct 3 10:15:13 2016     superseded      alpine-0.1.0      1.0             Rolled back to 2
-    4           Mon Oct 3 10:15:13 2016     deployed        alpine-0.1.0      1.0             Upgraded successfully
+    REVISION    UPDATED                         STATUS          CHART             APP VERSION     DESCRIPTION
+    1           Mon Oct 3 10:15:13 UTC 2016     superseded      alpine-0.1.0      1.0             Initial install
+    2           Mon Oct 3 10:15:13 UTC 2016     superseded      alpine-0.1.0      1.0             Upgraded successfully
+    3           Mon Oct 3 10:15:13 UTC 2016     superseded      alpine-0.1.0      1.0             Rolled back to 2
+    4           Mon Oct 3 10:15:13 UTC 2016     deployed        alpine-0.1.0      1.0             Upgraded successfully
 `
 
 func newHistoryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
@@ -85,12 +84,12 @@ func newHistoryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 }
 
 type releaseInfo struct {
-	Revision    int           `json:"revision"`
-	Updated     helmtime.Time `json:"updated"`
-	Status      string        `json:"status"`
-	Chart       string        `json:"chart"`
-	AppVersion  string        `json:"app_version"`
-	Description string        `json:"description"`
+	Revision    int    `json:"revision"`
+	Updated     string `json:"updated"`
+	Status      string `json:"status"`
+	Chart       string `json:"chart"`
+	AppVersion  string `json:"app_version"`
+	Description string `json:"description"`
 }
 
 type releaseHistory []releaseInfo
@@ -107,7 +106,7 @@ func (r releaseHistory) WriteTable(out io.Writer) error {
 	tbl := uitable.New()
 	tbl.AddRow("REVISION", "UPDATED", "STATUS", "CHART", "APP VERSION", "DESCRIPTION")
 	for _, item := range r {
-		tbl.AddRow(item.Revision, item.Updated.Format(time.ANSIC), item.Status, item.Chart, item.AppVersion, item.Description)
+		tbl.AddRow(item.Revision, item.Updated, item.Status, item.Chart, item.AppVersion, item.Description)
 	}
 	return output.EncodeTable(out, tbl)
 }
@@ -142,18 +141,17 @@ func getReleaseHistory(rls []*release.Release) (history releaseHistory) {
 		v := r.Version
 		d := r.Info.Description
 		a := formatAppVersion(r.Chart)
+		u := time.Display(r.Info.LastDeployed, time.UnixDate)
 
 		rInfo := releaseInfo{
 			Revision:    v,
+			Updated:     u,
 			Status:      s,
 			Chart:       c,
 			AppVersion:  a,
 			Description: d,
 		}
-		if !r.Info.LastDeployed.IsZero() {
-			rInfo.Updated = r.Info.LastDeployed
 
-		}
 		history = append(history, rInfo)
 	}
 

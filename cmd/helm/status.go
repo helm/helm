@@ -21,7 +21,6 @@ import (
 	"io"
 	"log"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 
@@ -30,6 +29,7 @@ import (
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/time"
 )
 
 // NOTE: Keep the list of statuses up-to-date with pkg/release/status.go.
@@ -114,9 +114,7 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 		return nil
 	}
 	fmt.Fprintf(out, "NAME: %s\n", s.release.Name)
-	if !s.release.Info.LastDeployed.IsZero() {
-		fmt.Fprintf(out, "LAST DEPLOYED: %s\n", s.release.Info.LastDeployed.Format(time.ANSIC))
-	}
+	fmt.Fprintf(out, "LAST DEPLOYED: %s\n", time.Display(s.release.Info.LastDeployed, time.UnixDate))
 	fmt.Fprintf(out, "NAMESPACE: %s\n", s.release.Namespace)
 	fmt.Fprintf(out, "STATUS: %s\n", s.release.Info.Status.String())
 	fmt.Fprintf(out, "REVISION: %d\n", s.release.Version)
@@ -135,8 +133,8 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 			}
 			fmt.Fprintf(out, "TEST SUITE:     %s\n%s\n%s\n%s\n",
 				h.Name,
-				fmt.Sprintf("Last Started:   %s", h.LastRun.StartedAt.Format(time.ANSIC)),
-				fmt.Sprintf("Last Completed: %s", h.LastRun.CompletedAt.Format(time.ANSIC)),
+				fmt.Sprintf("Last Started:   %s", time.Display(h.LastRun.StartedAt, time.UnixDate)),
+				fmt.Sprintf("Last Completed: %s", time.Display(h.LastRun.CompletedAt, time.UnixDate)),
 				fmt.Sprintf("Phase:          %s", h.LastRun.Phase),
 			)
 		}
