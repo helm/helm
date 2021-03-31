@@ -154,8 +154,12 @@ func (i IndexFile) Add(md *chart.Metadata, filename, baseURL, digest string) {
 
 // Has returns true if the index has an entry for a chart with the given name and exact version.
 func (i IndexFile) Has(name, version string) bool {
-	_, err := i.Get(name, version)
-	return err == nil
+	for _, ver := range i.Entries[name] {
+		if version == ver.Version {
+			return true
+		}
+	}
+	return false
 }
 
 // SortEntries sorts the entries by version in descending order.
