@@ -147,27 +147,29 @@ func (c *Client) PushChart(ref *Reference) error {
 
 // PullChart downloads a chart from a registry
 func (c *Client) PullChart(ref *Reference) (*bytes.Buffer, error) {
-	buf := bytes.NewBuffer(nil)
+
+	if ref == nil {
+		return nil, errors.New("reference explicitly required")
+	}
 
 	if ref.Tag == "" {
-		return buf, errors.New("tag explicitly required")
+		return nil, errors.New("tag explicitly required")
 	}
 
 	fmt.Fprintf(c.out, "%s: Pulling from %s\n", ref.Tag, ref.Repo)
 
 	store := content.NewMemoryStore()
-	fullname := ref.FullName()
-	_ = fullname
-	_, layerDescriptors, err := oras.Pull(ctx(c.out, c.debug), c.resolver, ref.FullName(), store,
+	fullName := ref.FullName()
+	_, layerDescriptors, err := oras.Pull(ctx(c.out, c.debug), c.resolver, fullName, store,
 		oras.WithPullEmptyNameAllowed(),
 		oras.WithAllowedMediaTypes(KnownMediaTypes()))
 	if err != nil {
-		return buf, err
+		return nil, err
 	}
 
 	numLayers := len(layerDescriptors)
 	if numLayers < 1 {
-		return buf, errors.New(
+		return nil, errors.New(
 			fmt.Sprintf("manifest does not contain at least 1 layer (total: %d)", numLayers))
 	}
 
@@ -182,17 +184,17 @@ func (c *Client) PullChart(ref *Reference) (*bytes.Buffer, error) {
 	}
 
 	if contentLayer == nil {
-		return buf, errors.New(
+		return nil, errors.New(
 			fmt.Sprintf("manifest does not contain a layer with mediatype %s",
 				HelmChartContentLayerMediaType))
 	}
 
 	_, b, ok := store.Get(*contentLayer)
 	if !ok {
-		return buf, errors.Errorf("Unable to retrieve blob with digest %s", contentLayer.Digest)
+		return nil, errors.Errorf("Unable to retrieve blob with digest %s", contentLayer.Digest)
 	}
 
-	buf = bytes.NewBuffer(b)
+	buf := bytes.NewBuffer(b)
 	return buf, nil
 }
 
