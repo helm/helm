@@ -49,6 +49,28 @@ func (g *OCIGetter) get(href string) (*bytes.Buffer, error) {
 		return nil, err
 	}
 
+	// In case any TLS setting is set, recreate the registry client
+	opts := []registry.ClientOption{}
+
+	if g.opts.caFile != "" {
+		opts = append(opts, registry.ClientOptCAFile(g.opts.caFile))
+	}
+
+	if g.opts.certFile != "" && g.opts.keyFile != "" {
+		opts = append(opts, registry.ClientOptCertKeyFiles(g.opts.certFile, g.opts.keyFile))
+	}
+
+	if g.opts.insecureSkipVerifyTLS {
+		opts = append(opts, registry.ClientOptInsecureSkipVerifyTLS(g.opts.insecureSkipVerifyTLS))
+	}
+
+	if len(opts) > 0 {
+		client, err = registry.NewClient(opts...)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	buf, err := client.PullChart(r)
 	if err != nil {
 		return nil, err

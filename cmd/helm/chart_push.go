@@ -22,6 +22,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
+	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/action"
 )
 
@@ -35,6 +36,7 @@ Must first run "helm chart save" or "helm chart pull".
 
 func newChartPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	var insecureOpt, plainHTTPOpt bool
+	var caFile, certFile, keyFile string
 	cmd := &cobra.Command{
 		Use:    "push [ref]",
 		Short:  "push a chart to remote",
@@ -43,13 +45,29 @@ func newChartPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Hidden: !FeatureGateOCI.IsEnabled(),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ref := args[0]
-			return action.NewChartPush(cfg).Run(out, ref, insecureOpt, plainHTTPOpt)
+			registryClient, err := registry.NewClient(
+				registry.ClientOptDebug(settings.Debug),
+				registry.ClientOptWriter(out),
+				registry.ClientOptCredentialsFile(settings.RegistryConfig),
+				registry.ClientOptPlainHTTP(plainHTTPOpt),
+				registry.ClientOptInsecureSkipVerifyTLS(insecureOpt),
+				registry.ClientOptCAFile(caFile),
+				registry.ClientOptCertKeyFiles(certFile, keyFile),
+			)
+			if err != nil {
+				return err
+			}
+
+			cfg.RegistryClient = registryClient
+			return action.NewChartPush(cfg).Run(out, ref)
 		},
 	}
 
 	f := cmd.Flags()
-	f.BoolVarP(&insecureOpt, "insecure", "", false, "allow connections to TLS registry without certs")
-	f.BoolVarP(&plainHTTPOpt, "plain-http", "", false, "use plain http and not https")
-
+	f.BoolVarP(&insecureOpt, "insecure-skip-tls-verify", "", false, "skip registry tls certificate checks")
+	f.BoolVarP(&plainHTTPOpt, "plain-http", "", false, "use plain http to connect to the registry instead of https")
+	f.StringVar(&certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
+	f.StringVar(&keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
+	f.StringVar(&caFile, "ca-file", "", "verify certificates of HTTPS-enabled registry using this CA bundle")
 	return cmd
 }

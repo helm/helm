@@ -656,6 +656,15 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		RepositoryConfig: settings.RepositoryConfig,
 		RepositoryCache:  settings.RepositoryCache,
 	}
+
+	if strings.HasPrefix(name, "oci://") {
+		if version == "" {
+			return "", errors.Errorf("--version flag is explicitly required for OCI registries")
+		}
+
+		dl.Options = append(dl.Options, getter.WithTagName(version))
+	}
+
 	if c.Verify {
 		dl.Verify = downloader.VerifyAlways
 	}

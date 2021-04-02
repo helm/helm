@@ -61,9 +61,38 @@ func ClientOptCache(cache *Cache) ClientOption {
 	}
 }
 
-// ClientOptCredentialsFile returns a function that sets the cache setting on a client options set
+// ClientOptCredentialsFile returns a function that sets the credentials file setting on a client options set
 func ClientOptCredentialsFile(credentialsFile string) ClientOption {
 	return func(client *Client) {
 		client.credentialsFile = credentialsFile
+	}
+}
+
+// ClientOptCaFile returns a function that sets the CA file setting on a client options set
+func ClientOptCAFile(caFile string) ClientOption {
+	return func(client *Client) {
+		client.caFile = caFile
+	}
+}
+
+// ClientOptCaFile returns a function that sets the cert/key file setting on a client options set
+func ClientOptCertKeyFiles(certFile, keyFile string) ClientOption {
+	return func(client *Client) {
+		client.certFile = certFile
+		client.keyFile = keyFile
+	}
+}
+
+// ClientOptCaFile returns a function that sets the insecure setting on a client options set
+func ClientOptInsecureSkipVerifyTLS(insecureSkipVerifyTLS bool) ClientOption {
+	return func(client *Client) {
+		client.insecureSkipVerifyTLS = insecureSkipVerifyTLS
+	}
+}
+
+// ClientOptCaFile returns a function that sets the plain http setting on a client options set
+func ClientOptPlainHTTP(plainHTTP bool) ClientOption {
+	return func(client *Client) {
+		client.plainHTTP = plainHTTP
 	}
 }

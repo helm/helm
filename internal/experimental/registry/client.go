@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -53,6 +54,13 @@ type (
 		authorizer      *Authorizer
 		resolver        *Resolver
 		cache           *Cache
+
+		// registry setting
+		certFile              string
+		keyFile               string
+		caFile                string
+		insecureSkipVerifyTLS bool
+		plainHTTP             bool
 	}
 )
 
@@ -78,7 +86,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 		}
 	}
 	if client.resolver == nil {
-		resolver, err := client.newResolver(false, false)
+		resolver, err := client.newResolver()
 		if err != nil {
 			return nil, err
 		}
@@ -121,17 +129,7 @@ func (c *Client) Logout(hostname string) error {
 }
 
 // PushChart uploads a chart to a registry
-func (c *Client) PushChart(ref *Reference, insecure bool, plainHTTP bool) error {
-	if insecure || plainHTTP {
-		resolver, err := c.newResolver(insecure, plainHTTP)
-		if err != nil {
-			return err
-		}
-		c.resolver = &Resolver{
-			Resolver: resolver,
-		}
-	}
-
+func (c *Client) PushChart(ref *Reference) error {
 	r, err := c.cache.FetchReference(ref)
 	if err != nil {
 		return err
@@ -211,17 +209,7 @@ func (c *Client) PullChart(ref *Reference) (*bytes.Buffer, error) {
 // PullChartToCache pulls a chart from an OCI Registry to the Registry Cache.
 // This function is needed for `helm chart pull`, which is experimental and will be deprecated soon.
 // Likewise, the Registry cache will soon be deprecated as will this function.
-func (c *Client) PullChartToCache(ref *Reference, insecure bool, plainHTTP bool) error {
-	if insecure || plainHTTP {
-		resolver, err := c.newResolver(insecure, plainHTTP)
-		if err != nil {
-			return err
-		}
-		c.resolver = &Resolver{
-			Resolver: resolver,
-		}
-	}
-
+func (c *Client) PullChartToCache(ref *Reference) error {
 	if ref.Tag == "" {
 		return errors.New("tag explicitly required")
 	}
@@ -357,16 +345,40 @@ func (c *Client) getChartTableRows() ([][]interface{}, error) {
 	return rows, nil
 }
 
-func (c *Client) newResolver(insecure bool, plainHTTP bool) (resolver remotes.Resolver, err error) {
-	client := http.DefaultClient
-	if insecure {
-		client.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
+func (c *Client) newResolver() (resolver remotes.Resolver, err error) {
+	config := &tls.Config{}
+
+	if c.caFile != "" {
+		caCert, err := ioutil.ReadFile(c.caFile)
+		if err != nil {
+			return nil, err
 		}
+
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM(caCert)
+		config.RootCAs = caCertPool
 	}
 
-	resolver, err = c.authorizer.Resolver(context.Background(), client, plainHTTP)
-	return
+	if c.certFile != "" && c.keyFile != "" {
+		cert, err := tls.LoadX509KeyPair(c.certFile, c.keyFile)
+		if err != nil {
+			return nil, err
+		}
+
+		config.Certificates = []tls.Certificate{cert}
+	}
+
+	if c.insecureSkipVerifyTLS {
+		config.InsecureSkipVerify = true
+	}
+
+	return c.authorizer.Resolver(
+		context.Background(),
+		&http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: config,
+			},
+		},
+		c.plainHTTP,
+	)
 }

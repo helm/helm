@@ -186,13 +186,13 @@ func (suite *RegistryClientTestSuite) Test_3_PushChart() {
 	// non-existent ref
 	ref, err := ParseReference(fmt.Sprintf("%s/testrepo/whodis:9.9.9", suite.DockerRegistryHost))
 	suite.Nil(err)
-	err = suite.RegistryClient.PushChart(ref, false, false)
+	err = suite.RegistryClient.PushChart(ref)
 	suite.NotNil(err)
 
 	// existing ref
 	ref, err = ParseReference(fmt.Sprintf("%s/testrepo/testchart:1.2.3", suite.DockerRegistryHost))
 	suite.Nil(err)
-	err = suite.RegistryClient.PushChart(ref, false, false)
+	err = suite.RegistryClient.PushChart(ref)
 	suite.Nil(err)
 }
 
