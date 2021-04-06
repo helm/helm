@@ -24,6 +24,12 @@ import (
 	rspb "helm.sh/helm/v3/pkg/release"
 )
 
+func labeledReleaseStub(name string, vers int, namespace string, status rspb.Status, labels map[string]string) *rspb.Release {
+	rls := releaseStub(name, vers, namespace, status)
+	rls.Labels = labels
+	return rls
+}
+
 func TestSecretName(t *testing.T) {
 	c := newTestFixtureSecrets(t)
 	if c.Name() != SecretsDriverName {
@@ -85,12 +91,12 @@ func TestUNcompressedSecretGet(t *testing.T) {
 
 func TestSecretList(t *testing.T) {
 	secrets := newTestFixtureSecrets(t, []*rspb.Release{
-		releaseStub("key-1", 1, "default", rspb.StatusUninstalled),
-		releaseStub("key-2", 1, "default", rspb.StatusUninstalled),
-		releaseStub("key-3", 1, "default", rspb.StatusDeployed),
-		releaseStub("key-4", 1, "default", rspb.StatusDeployed),
-		releaseStub("key-5", 1, "default", rspb.StatusSuperseded),
-		releaseStub("key-6", 1, "default", rspb.StatusSuperseded),
+		labeledReleaseStub("key-1", 1, "default", rspb.StatusUninstalled, map[string]string{"releaseName": "key-1"}),
+		labeledReleaseStub("key-2", 1, "default", rspb.StatusUninstalled, map[string]string{"releaseName": "key-2"}),
+		labeledReleaseStub("key-3", 1, "default", rspb.StatusDeployed, map[string]string{"releaseName": "key-3"}),
+		labeledReleaseStub("key-4", 1, "default", rspb.StatusDeployed, map[string]string{"releaseName": "key-4"}),
+		labeledReleaseStub("key-5", 1, "default", rspb.StatusSuperseded, map[string]string{"releaseName": "key-5"}),
+		labeledReleaseStub("key-6", 1, "default", rspb.StatusSuperseded, map[string]string{"releaseName": "key-6"}),
 	}...)
 
 	// list all deleted releases
@@ -104,6 +110,11 @@ func TestSecretList(t *testing.T) {
 	if len(del) != 2 {
 		t.Errorf("Expected 2 deleted, got %d:\n%v\n", len(del), del)
 	}
+	for _, delRls := range del {
+		if rlsName, ok := delRls.Labels["releaseName"]; !ok || !(rlsName == "key-1" || rlsName == "key-2") {
+			t.Errorf("Unexpected labels, expected 'key-1' or 'key-2', got '%s'", rlsName)
+		}
+	}
 
 	// list all deployed releases
 	dpl, err := secrets.List(func(rel *rspb.Release) bool {
@@ -116,6 +127,11 @@ func TestSecretList(t *testing.T) {
 	if len(dpl) != 2 {
 		t.Errorf("Expected 2 deployed, got %d", len(dpl))
 	}
+	for _, dplRls := range dpl {
+		if rlsName, ok := dplRls.Labels["releaseName"]; !ok || !(rlsName == "key-3" || rlsName == "key-4") {
+			t.Errorf("Unexpected labels, expected 'key-3' or 'key-4', got '%s'", rlsName)
+		}
+	}
 
 	// list all superseded releases
 	ssd, err := secrets.List(func(rel *rspb.Release) bool {
@@ -127,6 +143,11 @@ func TestSecretList(t *testing.T) {
 	}
 	if len(ssd) != 2 {
 		t.Errorf("Expected 2 superseded, got %d", len(ssd))
+	}
+	for _, ssdRls := range ssd {
+		if rlsName, ok := ssdRls.Labels["releaseName"]; !ok || !(rlsName == "key-5" || rlsName == "key-6") {
+			t.Errorf("Unexpected labels, expected 'key-5' or 'key-6', got '%s'", rlsName)
+		}
 	}
 }
 

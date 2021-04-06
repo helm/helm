@@ -136,6 +136,9 @@ func (secrets *Secrets) Query(labels map[string]string) ([]*rspb.Release, error)
 			secrets.Log("query: failed to decode release: %s", err)
 			continue
 		}
+
+		rls.Labels = item.ObjectMeta.Labels
+
 		results = append(results, rls)
 	}
 	return results, nil

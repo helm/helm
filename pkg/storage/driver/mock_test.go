@@ -189,6 +189,14 @@ func (mock *MockSecretsInterface) Init(t *testing.T, releases ...*rspb.Release) 
 		if err != nil {
 			t.Fatalf("Failed to create secret: %s", err)
 		}
+		//add release labels to secret
+		if rls.Labels != nil {
+			for k, v := range rls.Labels {
+				if _, ok := secret.ObjectMeta.Labels[k]; !ok {
+					secret.ObjectMeta.Labels[k] = v
+				}
+			}
+		}
 		mock.objects[objkey] = secret
 	}
 }
