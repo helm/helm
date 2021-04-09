@@ -211,7 +211,6 @@ const defaultIgnore = `# Patterns to ignore when building packages.
 `
 
 const defaultIngress = `{{- if .Values.ingress.enabled -}}
-{{- if .Values.ingress.enabled -}}
 {{- $fullName := include "<CHARTNAME>.fullname" . -}}
 {{- $svcPort := .Values.service.port -}}
 {{- $kubeVersion := .Capabilities.KubeVersion.GitVersion -}}
@@ -268,7 +267,7 @@ spec:
       secretName: {{ .secretName }}
     {{- end }}
   {{- end }}
-  {{- end }}
+{{- end }}
 `
 
 const defaultDeployment = `apiVersion: apps/v1
