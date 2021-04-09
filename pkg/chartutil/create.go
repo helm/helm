@@ -147,16 +147,13 @@ service:
 
 ingress:
   enabled: false
+  # className: nginx
   annotations: {}
-    # kubernetes.io/ingress.class: nginx
     # kubernetes.io/tls-acme: "true"
-  hosts:
+  rules:
     - host: chart-example.local
-      paths:
-      - path: /
-        backend:
-          serviceName: chart-example.local
-          servicePort: 80
+      path: /
+      pathType: ImplementationSpecific
   tls: []
   #  - secretName: chart-example-tls
   #    hosts:
@@ -214,23 +211,53 @@ const defaultIgnore = `# Patterns to ignore when building packages.
 `
 
 const defaultIngress = `{{- if .Values.ingress.enabled -}}
+{{- if .Values.ingress.enabled -}}
 {{- $fullName := include "<CHARTNAME>.fullname" . -}}
 {{- $svcPort := .Values.service.port -}}
-{{- if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion -}}
-apiVersion: networking.k8s.io/v1beta1
+{{- $kubeVersion := .Capabilities.KubeVersion.GitVersion -}}
+{{- if semverCompare ">=1.19-0" $kubeVersion -}}
+apiVersion: networking.k8s.io/v1
 {{- else -}}
-apiVersion: extensions/v1beta1
+apiVersion: networking.k8s.io/v1beta1
 {{- end }}
 kind: Ingress
 metadata:
   name: {{ $fullName }}
   labels:
     {{- include "<CHARTNAME>.labels" . | nindent 4 }}
+  {{- if and .Values.ingress.className (not (semverCompare ">=1.18-0" $kubeVersion)) }}
+    {{- if not (hasKey .Values.ingress.annotations "kubernetes.io/ingress.class") }}
+    {{- $_ := set .Values.ingress.annotations "kubernetes.io/ingress.class" .Values.ingress.className}}
+    {{- end }}
+  {{- end }}
   {{- with .Values.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
+  {{- if and .Values.ingress.className (semverCompare ">=1.18-0" $kubeVersion) }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  rules:
+    {{- range .Values.ingress.rules }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+        - path: {{ .path }}
+          {{- if and .pathType (semverCompare ">=1.18-0" $kubeVersion) }}
+          pathType: {{ .pathType }}
+          {{- end }}
+          backend:
+            {{- if semverCompare ">=1.19-0" $kubeVersion }}
+            service:
+              name: {{ $fullName }}
+              port:
+                number: {{ $svcPort }}
+            {{- else -}}
+            serviceName: {{ $fullName }}
+            servicePort: {{ $svcPort }}
+            {{- end }}
+    {{- end }}
   {{- if .Values.ingress.tls }}
   tls:
     {{- range .Values.ingress.tls }}
@@ -241,18 +268,6 @@ spec:
       secretName: {{ .secretName }}
     {{- end }}
   {{- end }}
-  rules:
-    {{- range .Values.ingress.hosts }}
-    - host: {{ .host | quote }}
-      http:
-        paths:
-          {{- range .paths }}
-          - path: {{ .path }}
-            backend:
-              serviceName: {{ $fullName }}
-              servicePort: {{ $svcPort }}
-          {{- end }}
-    {{- end }}
   {{- end }}
 `
 
@@ -382,10 +397,8 @@ spec:
 
 const defaultNotes = `1. Get the application URL by running these commands:
 {{- if .Values.ingress.enabled }}
-{{- range $host := .Values.ingress.hosts }}
-  {{- range .paths }}
-  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
-  {{- end }}
+{{- range $rule := .Values.ingress.rules }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}{{ .path }}
 {{- end }}
 {{- else if contains "NodePort" .Values.service.type }}
   export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "<CHARTNAME>.fullname" . }})
