@@ -214,26 +214,25 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		// As of Helm 2.4.0, this is treated as a stopping condition:
 		// https://github.com/helm/helm/issues/2209
 		if err := action.CheckDependencies(chartRequested, req); err != nil {
-			if client.DependencyUpdate {
-				man := &downloader.Manager{
-					Out:              out,
-					ChartPath:        cp,
-					Keyring:          client.ChartPathOptions.Keyring,
-					SkipUpdate:       false,
-					Getters:          p,
-					RepositoryConfig: settings.RepositoryConfig,
-					RepositoryCache:  settings.RepositoryCache,
-					Debug:            settings.Debug,
-				}
-				if err := man.Update(); err != nil {
-					return nil, err
-				}
-				// Reload the chart with the updated Chart.lock file.
-				if chartRequested, err = loader.Load(cp); err != nil {
-					return nil, errors.Wrap(err, "failed reloading chart after repo update")
-				}
-			} else {
+			if !client.DependencyUpdate {
 				return nil, err
+			}
+			man := &downloader.Manager{
+				Out:              out,
+				ChartPath:        cp,
+				Keyring:          client.ChartPathOptions.Keyring,
+				SkipUpdate:       false,
+				Getters:          p,
+				RepositoryConfig: settings.RepositoryConfig,
+				RepositoryCache:  settings.RepositoryCache,
+				Debug:            settings.Debug,
+			}
+			if err := man.Update(); err != nil {
+				return nil, err
+			}
+			// Reload the chart with the updated Chart.lock file.
+			if chartRequested, err = loader.Load(cp); err != nil {
+				return nil, errors.Wrap(err, "failed reloading chart after repo update")
 			}
 		}
 	}
@@ -246,8 +245,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 //
 // Application chart type is only installable
 func checkIfInstallable(ch *chart.Chart) error {
-	switch ch.Metadata.Type {
-	case "", "application":
+	if ch.Metadata.Type == "" || ch.Metadata.Type == "application" {
 		return nil
 	}
 	return errors.Errorf("%s charts are not installable", ch.Metadata.Type)
