@@ -29,11 +29,21 @@ This command consists of multiple subcommands to interact with registries.
 
 func newRegistryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               "registry",
-		Short:             "login to or logout from a registry",
-		Long:              registryHelp,
-		Hidden:            !FeatureGateOCI.IsEnabled(),
-		PersistentPreRunE: checkOCIFeatureGate(),
+		Use:    "registry",
+		Short:  "login to or logout from a registry",
+		Long:   registryHelp,
+		Hidden: !FeatureGateOCI.IsEnabled(),
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if err := checkOCIFeatureGate()(cmd, args); err != nil {
+				return err
+			}
+
+			if err := callPersistentPreRunE(cmd, args); err != nil {
+				return err
+			}
+
+			return nil
+		},
 	}
 	cmd.AddCommand(
 		newRegistryLoginCmd(cfg, out),

@@ -58,6 +58,9 @@ func newPullCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 			return compListCharts(toComplete, false)
 		},
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			return preRunEWithChartPathOptions(cmd, args, &client.ChartPathOptions)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.Settings = settings
 			if client.Version == "" && client.Devel {

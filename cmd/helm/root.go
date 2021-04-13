@@ -153,15 +153,26 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	flags.ParseErrorsWhitelist.UnknownFlags = true
 	flags.Parse(args)
 
-	registryClient, err := registry.NewClient(
-		registry.ClientOptDebug(settings.Debug),
-		registry.ClientOptWriter(out),
-		registry.ClientOptCredentialsFile(settings.RegistryConfig),
-	)
-	if err != nil {
-		return nil, err
+	cmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		registryClient, err := registry.NewClient(
+			registry.ClientOptDebug(settings.Debug),
+			registry.ClientOptWriter(out),
+			registry.ClientOptCredentialsFile(settings.RegistryConfig),
+			registry.ClientOptPlainHTTP(registry.PlainHTTPOpt),
+			registry.ClientOptInsecureSkipVerifyTLS(registry.InsecureOpt),
+			registry.ClientOptCAFile(registry.CAFileOpt),
+			registry.ClientOptCertKeyFiles(registry.CertFileOpt, registry.KeyFile),
+		)
+		if err != nil {
+			return err
+		}
+		// Used by helm install/show/upgrade/template in LocateChart
+		registry.DefaultClient = registryClient
+		// Used by helm pull/registry/chart/...
+		actionConfig.RegistryClient = registryClient
+
+		return nil
 	}
-	actionConfig.RegistryClient = registryClient
 
 	// Add subcommands
 	cmd.AddCommand(

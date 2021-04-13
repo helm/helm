@@ -111,6 +111,9 @@ func newShowCmd(out io.Writer) *cobra.Command {
 		Long:              showChartDesc,
 		Args:              require.ExactArgs(1),
 		ValidArgsFunction: validArgsFunc,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			return preRunEWithChartPathOptions(cmd, args, &client.ChartPathOptions)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowChart
 			output, err := runShow(args, client)

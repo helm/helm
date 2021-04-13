@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"helm.sh/helm/v3/cmd/helm/require"
+	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -103,6 +104,19 @@ To see the list of chart repositories, use 'helm repo list'. To search for
 charts in a repository, use 'helm search'.
 `
 
+func preRunEWithChartPathOptions(cmd *cobra.Command, args []string, cp *action.ChartPathOptions) error {
+	registry.InsecureOpt = cp.InsecureSkipTLSverify
+	registry.CAFileOpt = cp.CaFile
+	registry.CertFileOpt = cp.CertFile
+	registry.KeyFile = cp.KeyFile
+
+	if err := callPersistentPreRunE(cmd, args); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewInstall(cfg)
 	valueOpts := &values.Options{}
@@ -115,6 +129,9 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Args:  require.MinimumNArgs(1),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstall(args, toComplete, client)
+		},
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			return preRunEWithChartPathOptions(cmd, args, &client.ChartPathOptions)
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
 			rel, err := runInstall(args, client, valueOpts, out)

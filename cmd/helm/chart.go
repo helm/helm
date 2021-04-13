@@ -29,13 +29,34 @@ This command consists of multiple subcommands to work with the chart cache.
 The subcommands can be used to push, pull, tag, list, or remove Helm charts.
 `
 
+// https://github.com/spf13/cobra/issues/216#issuecomment-703846787
+func callPersistentPreRunE(cmd *cobra.Command, args []string) error {
+	if parent := cmd.Parent(); parent != nil {
+		if parent.PersistentPreRunE != nil {
+			return parent.PersistentPreRunE(parent, args)
+		}
+	}
+
+	return nil
+}
+
 func newChartCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               "chart",
-		Short:             "push, pull, tag, or remove Helm charts",
-		Long:              chartHelp,
-		Hidden:            !FeatureGateOCI.IsEnabled(),
-		PersistentPreRunE: checkOCIFeatureGate(),
+		Use:    "chart",
+		Short:  "push, pull, tag, or remove Helm charts",
+		Long:   chartHelp,
+		Hidden: !FeatureGateOCI.IsEnabled(),
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if err := checkOCIFeatureGate()(cmd, args); err != nil {
+				return err
+			}
+
+			if err := callPersistentPreRunE(cmd, args); err != nil {
+				return err
+			}
+
+			return nil
+		},
 	}
 	cmd.AddCommand(
 		newChartListCmd(cfg, out),

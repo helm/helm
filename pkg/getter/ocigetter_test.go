@@ -16,15 +16,49 @@ limitations under the License.
 package getter
 
 import (
+	"path/filepath"
 	"testing"
 )
 
 func TestNewOCIGetter(t *testing.T) {
-	testfn := func(ops *options) {
-		if ops.registryClient == nil {
-			t.Fatalf("the OCIGetter's registryClient should not be null")
-		}
+	_, err := NewOCIGetter()
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	NewOCIGetter(testfn)
+	// Test with options
+	cd := "../../testdata"
+	join := filepath.Join
+	ca, pub, priv := join(cd, "rootca.crt"), join(cd, "crt.pem"), join(cd, "key.pem")
+	insecure := true
+
+	g, err := NewOCIGetter(
+		WithInsecureSkipVerifyTLS(insecure),
+		WithTLSClientConfig(pub, priv, ca),
+	)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	og, ok := g.(*OCIGetter)
+	if !ok {
+		t.Fatal("expected NewOCIGetter to produce an *OCIGetter")
+	}
+
+	if og.opts.certFile != pub {
+		t.Errorf("Expected NewOCIGetter to contain %q as the public key file, got %q", pub, og.opts.certFile)
+	}
+
+	if og.opts.keyFile != priv {
+		t.Errorf("Expected NewOCIGetter to contain %q as the private key file, got %q", priv, og.opts.keyFile)
+	}
+
+	if og.opts.caFile != ca {
+		t.Errorf("Expected NewOCIGetter to contain %q as the CA file, got %q", ca, og.opts.caFile)
+	}
+
+	if og.opts.insecureSkipVerifyTLS != insecure {
+		t.Errorf("Expected NewOCIGetter to contain %t as InsecureSkipVerifyTLs flag, got %t", false, og.opts.insecureSkipVerifyTLS)
+	}
 }
