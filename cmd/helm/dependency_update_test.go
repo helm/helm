@@ -96,7 +96,7 @@ func TestDependencyUpdateCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	i, err := repo.LoadIndexFile(dir(helmpath.CacheIndexFile("test")))
+	i, err := repo.LoadIndexFile(dir(helmpath.CacheIndexFile("test")), false)
 	if err != nil {
 		t.Fatal(err)
 	}

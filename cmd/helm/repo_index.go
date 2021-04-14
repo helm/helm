@@ -97,7 +97,7 @@ func index(dir, url, mergeTo string) error {
 			i2 = repo.NewIndexFile()
 			i2.WriteFile(mergeTo, 0644)
 		} else {
-			i2, err = repo.LoadIndexFile(mergeTo)
+			i2, err = repo.LoadIndexFile(mergeTo, false)
 			if err != nil {
 				return errors.Wrap(err, "merge failed")
 			}

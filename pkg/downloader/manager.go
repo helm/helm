@@ -652,7 +652,7 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 		}
 		wg.Add(1)
 		go func(r *repo.ChartRepository) {
-			if _, err := r.DownloadIndexFile(); err != nil {
+			if _, err := r.DownloadIndexFile(false); err != nil {
 				// For those dependencies that are not known to helm and using a
 				// generated key name we display the repo url.
 				if strings.HasPrefix(r.Config.Name, managerKeyPrefix) {
@@ -795,7 +795,7 @@ func (m *Manager) loadChartRepositories() (map[string]*repo.ChartRepository, err
 	for _, re := range rf.Repositories {
 		lname := re.Name
 		idxFile := filepath.Join(m.RepositoryCache, helmpath.CacheIndexFile(lname))
-		index, err := repo.LoadIndexFile(idxFile)
+		index, err := repo.LoadIndexFile(idxFile, false)
 		if err != nil {
 			return indices, err
 		}

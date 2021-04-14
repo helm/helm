@@ -150,7 +150,7 @@ func compVersionFlag(chartRef string, toComplete string) ([]string, cobra.ShellC
 	path := filepath.Join(settings.RepositoryCache, helmpath.CacheIndexFile(repoName))
 
 	var versions []string
-	if indexFile, err := repo.LoadIndexFile(path); err == nil {
+	if indexFile, err := repo.LoadIndexFile(path, false); err == nil {
 		for _, details := range indexFile.Entries[chartName] {
 			version := details.Metadata.Version
 			if strings.HasPrefix(version, toComplete) {

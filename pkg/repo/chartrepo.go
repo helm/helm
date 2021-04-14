@@ -99,7 +99,7 @@ func (r *ChartRepository) Load() error {
 	filepath.Walk(r.Config.Name, func(path string, f os.FileInfo, err error) error {
 		if !f.IsDir() {
 			if strings.Contains(f.Name(), "-index.yaml") {
-				i, err := LoadIndexFile(path)
+				i, err := LoadIndexFile(path, false)
 				if err != nil {
 					return err
 				}
@@ -114,7 +114,7 @@ func (r *ChartRepository) Load() error {
 }
 
 // DownloadIndexFile fetches the index from a repository.
-func (r *ChartRepository) DownloadIndexFile() (string, error) {
+func (r *ChartRepository) DownloadIndexFile(hideValidationWarnings bool) (string, error) {
 	parsedURL, err := url.Parse(r.Config.URL)
 	if err != nil {
 		return "", err
@@ -139,7 +139,7 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 		return "", err
 	}
 
-	indexFile, err := loadIndex(index, r.Config.URL)
+	indexFile, err := loadIndex(index, r.Config.URL, hideValidationWarnings)
 	if err != nil {
 		return "", err
 	}
@@ -237,13 +237,13 @@ func FindChartInAuthAndTLSRepoURL(repoURL, username, password, chartName, chartV
 	if err != nil {
 		return "", err
 	}
-	idx, err := r.DownloadIndexFile()
+	idx, err := r.DownloadIndexFile(false)
 	if err != nil {
 		return "", errors.Wrapf(err, "looks like %q is not a valid chart repository or cannot be reached", repoURL)
 	}
 
 	// Read the index file for the repository to get chart information and return chart URL
-	repoIndex, err := LoadIndexFile(idx)
+	repoIndex, err := LoadIndexFile(idx, false)
 	if err != nil {
 		return "", err
 	}

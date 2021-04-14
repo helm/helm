@@ -44,12 +44,13 @@ var deprecatedRepos = map[string]string{
 }
 
 type repoAddOptions struct {
-	name                 string
-	url                  string
-	username             string
-	password             string
-	forceUpdate          bool
-	allowDeprecatedRepos bool
+	name                   string
+	url                    string
+	username               string
+	password               string
+	forceUpdate            bool
+	allowDeprecatedRepos   bool
+	hideValidationWarnings bool
 
 	certFile              string
 	keyFile               string
@@ -91,6 +92,7 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&o.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 	f.BoolVar(&o.insecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the repository")
 	f.BoolVar(&o.allowDeprecatedRepos, "allow-deprecated-repos", false, "by default, this command will not allow adding official repos that have been permanently deleted. This disables that behavior")
+	f.BoolVar(&o.hideValidationWarnings, "hide-validation-warnings", false, "hide validation warnings while indexing repository")
 
 	return cmd
 }
@@ -180,7 +182,7 @@ func (o *repoAddOptions) run(out io.Writer) error {
 	if o.repoCache != "" {
 		r.CachePath = o.repoCache
 	}
-	if _, err := r.DownloadIndexFile(); err != nil {
+	if _, err := r.DownloadIndexFile(o.hideValidationWarnings); err != nil {
 		return errors.Wrapf(err, "looks like %q is not a valid chart repository or cannot be reached", o.url)
 	}
 

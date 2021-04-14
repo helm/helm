@@ -136,7 +136,7 @@ func TestLoadIndex(t *testing.T) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
-			i, err := LoadIndexFile(tc.Filename)
+			i, err := LoadIndexFile(tc.Filename, false)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -147,13 +147,13 @@ func TestLoadIndex(t *testing.T) {
 
 // TestLoadIndex_Duplicates is a regression to make sure that we don't non-deterministically allow duplicate packages.
 func TestLoadIndex_Duplicates(t *testing.T) {
-	if _, err := loadIndex([]byte(indexWithDuplicates), "indexWithDuplicates"); err == nil {
+	if _, err := loadIndex([]byte(indexWithDuplicates), "indexWithDuplicates", false); err == nil {
 		t.Errorf("Expected an error when duplicate entries are present")
 	}
 }
 
 func TestLoadIndexFileAnnotations(t *testing.T) {
-	i, err := LoadIndexFile(annotationstestfile)
+	i, err := LoadIndexFile(annotationstestfile, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +168,7 @@ func TestLoadIndexFileAnnotations(t *testing.T) {
 }
 
 func TestLoadUnorderedIndex(t *testing.T) {
-	i, err := LoadIndexFile(unorderedTestfile)
+	i, err := LoadIndexFile(unorderedTestfile, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -230,7 +230,7 @@ func TestDownloadIndexFile(t *testing.T) {
 			t.Errorf("Problem creating chart repository from %s: %v", testRepo, err)
 		}
 
-		idx, err := r.DownloadIndexFile()
+		idx, err := r.DownloadIndexFile(false)
 		if err != nil {
 			t.Fatalf("Failed to download index file to %s: %#v", idx, err)
 		}
@@ -239,7 +239,7 @@ func TestDownloadIndexFile(t *testing.T) {
 			t.Fatalf("error finding created index file: %#v", err)
 		}
 
-		i, err := LoadIndexFile(idx)
+		i, err := LoadIndexFile(idx, false)
 		if err != nil {
 			t.Fatalf("Index %q failed to parse: %s", testfile, err)
 		}
@@ -283,7 +283,7 @@ func TestDownloadIndexFile(t *testing.T) {
 			t.Errorf("Problem creating chart repository from %s: %v", testRepo, err)
 		}
 
-		idx, err := r.DownloadIndexFile()
+		idx, err := r.DownloadIndexFile(false)
 		if err != nil {
 			t.Fatalf("Failed to download index file to %s: %#v", idx, err)
 		}
@@ -292,7 +292,7 @@ func TestDownloadIndexFile(t *testing.T) {
 			t.Fatalf("error finding created index file: %#v", err)
 		}
 
-		i, err := LoadIndexFile(idx)
+		i, err := LoadIndexFile(idx, false)
 		if err != nil {
 			t.Fatalf("Index %q failed to parse: %s", testfile, err)
 		}

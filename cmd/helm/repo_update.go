@@ -24,7 +24,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/repo"
 )
@@ -37,9 +36,10 @@ Information is cached locally, where it is used by commands like 'helm search'.
 var errNoRepositories = errors.New("no repositories found. You must add one before updating")
 
 type repoUpdateOptions struct {
-	update    func([]*repo.ChartRepository, io.Writer)
-	repoFile  string
-	repoCache string
+	hideValidationWarnings bool
+	update                 func([]*repo.ChartRepository, io.Writer, bool)
+	repoFile               string
+	repoCache              string
 }
 
 func newRepoUpdateCmd(out io.Writer) *cobra.Command {
@@ -50,18 +50,21 @@ func newRepoUpdateCmd(out io.Writer) *cobra.Command {
 		Aliases:           []string{"up"},
 		Short:             "update information of available charts locally from chart repositories",
 		Long:              updateDesc,
-		Args:              require.NoArgs,
 		ValidArgsFunction: noCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.repoFile = settings.RepositoryConfig
 			o.repoCache = settings.RepositoryCache
-			return o.run(out)
+			return o.run(out, args)
 		},
 	}
+
+	f := cmd.Flags()
+	f.BoolVar(&o.hideValidationWarnings, "hide-validation-warnings", false, "hide validation warnings while indexing repository")
+
 	return cmd
 }
 
-func (o *repoUpdateOptions) run(out io.Writer) error {
+func (o *repoUpdateOptions) run(out io.Writer, args []string) error {
 	f, err := repo.LoadFile(o.repoFile)
 	switch {
 	case isNotExist(err):
@@ -84,18 +87,18 @@ func (o *repoUpdateOptions) run(out io.Writer) error {
 		repos = append(repos, r)
 	}
 
-	o.update(repos, out)
+	o.update(repos, out, o.hideValidationWarnings)
 	return nil
 }
 
-func updateCharts(repos []*repo.ChartRepository, out io.Writer) {
+func updateCharts(repos []*repo.ChartRepository, out io.Writer, hideValidationWarnings bool) {
 	fmt.Fprintln(out, "Hang tight while we grab the latest from your chart repositories...")
 	var wg sync.WaitGroup
 	for _, re := range repos {
 		wg.Add(1)
 		go func(re *repo.ChartRepository) {
 			defer wg.Done()
-			if _, err := re.DownloadIndexFile(); err != nil {
+			if _, err := re.DownloadIndexFile(hideValidationWarnings); err != nil {
 				fmt.Fprintf(out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", re.Config.Name, re.Config.URL, err)
 			} else {
 				fmt.Fprintf(out, "...Successfully got an update from the %q chart repository\n", re.Config.Name)

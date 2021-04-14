@@ -93,7 +93,7 @@ func TestIndex(t *testing.T) {
 	}
 
 	tempIndexPath := filepath.Join(testRepository, indexPath)
-	actual, err := LoadIndexFile(tempIndexPath)
+	actual, err := LoadIndexFile(tempIndexPath, false)
 	defer os.Remove(tempIndexPath) // clean up
 	if err != nil {
 		t.Errorf("Error loading index file %v", err)
@@ -105,7 +105,7 @@ func TestIndex(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error performing re-index: %s\n", err)
 	}
-	second, err := LoadIndexFile(tempIndexPath)
+	second, err := LoadIndexFile(tempIndexPath, false)
 	if err != nil {
 		t.Errorf("Error re-loading index file %v", err)
 	}
@@ -156,7 +156,7 @@ func TestIndexCustomSchemeDownload(t *testing.T) {
 	}
 	defer os.Remove(tempIndexFile.Name())
 
-	idx, err := repo.DownloadIndexFile()
+	idx, err := repo.DownloadIndexFile(false)
 	if err != nil {
 		t.Fatalf("Failed to download index file to %s: %v", idx, err)
 	}
