@@ -101,12 +101,25 @@ func NewIndexFile() *IndexFile {
 }
 
 // LoadIndexFile takes a file at the given path and returns an IndexFile object
-func LoadIndexFile(path string, hideValidationWarnings bool) (*IndexFile, error) {
+func LoadIndexFile(path string) (*IndexFile, error) {
 	b, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	i, err := loadIndex(b, path, hideValidationWarnings)
+	i, err := loadIndex(b, path, false)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error loading %s", path)
+	}
+	return i, nil
+}
+
+// LoadIndexFile takes a file at the given path and returns an IndexFile object
+func LoadIndexFileHideValidationWarnings(path string) (*IndexFile, error) {
+	b, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	i, err := loadIndex(b, path, true)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error loading %s", path)
 	}

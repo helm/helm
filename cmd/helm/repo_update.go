@@ -98,7 +98,13 @@ func updateCharts(repos []*repo.ChartRepository, out io.Writer, hideValidationWa
 		wg.Add(1)
 		go func(re *repo.ChartRepository) {
 			defer wg.Done()
-			if _, err := re.DownloadIndexFile(hideValidationWarnings); err != nil {
+			var err error
+			if hideValidationWarnings {
+				_, err = re.DownloadIndexFileHideValidationWarnings()
+			} else {
+				_, err = re.DownloadIndexFile()
+			}
+			if err != nil {
 				fmt.Fprintf(out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", re.Config.Name, re.Config.URL, err)
 			} else {
 				fmt.Fprintf(out, "...Successfully got an update from the %q chart repository\n", re.Config.Name)

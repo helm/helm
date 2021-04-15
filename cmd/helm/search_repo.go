@@ -186,7 +186,12 @@ func (o *searchRepoOptions) buildIndex() (*search.Index, error) {
 	for _, re := range rf.Repositories {
 		n := re.Name
 		f := filepath.Join(o.repoCacheDir, helmpath.CacheIndexFile(n))
-		ind, err := repo.LoadIndexFile(f, o.hideValidationWarnings)
+		var ind *repo.IndexFile
+		if o.hideValidationWarnings {
+			ind, err = repo.LoadIndexFileHideValidationWarnings(f)
+		} else {
+			ind, err = repo.LoadIndexFile(f)
+		}
 		if err != nil {
 			warning("Repo %q is corrupt or missing. Try 'helm repo update'.", n)
 			warning("%s", err)
@@ -278,7 +283,7 @@ func compListChartsOfRepo(repoName string, prefix string) []string {
 		// installed but before the user  does a 'helm repo update' to generate the
 		// first cached charts file.
 		path = filepath.Join(settings.RepositoryCache, helmpath.CacheIndexFile(repoName))
-		if indexFile, err := repo.LoadIndexFile(path, false); err == nil {
+		if indexFile, err := repo.LoadIndexFile(path); err == nil {
 			for name := range indexFile.Entries {
 				fullName := fmt.Sprintf("%s/%s", repoName, name)
 				if strings.HasPrefix(fullName, prefix) {

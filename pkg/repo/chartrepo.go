@@ -99,7 +99,7 @@ func (r *ChartRepository) Load() error {
 	filepath.Walk(r.Config.Name, func(path string, f os.FileInfo, err error) error {
 		if !f.IsDir() {
 			if strings.Contains(f.Name(), "-index.yaml") {
-				i, err := LoadIndexFile(path, false)
+				i, err := LoadIndexFile(path)
 				if err != nil {
 					return err
 				}
@@ -114,7 +114,24 @@ func (r *ChartRepository) Load() error {
 }
 
 // DownloadIndexFile fetches the index from a repository.
-func (r *ChartRepository) DownloadIndexFile(hideValidationWarnings bool) (string, error) {
+func (r *ChartRepository) DownloadIndexFile() (string, error) {
+	return r.downloadIndexFile(false)
+}
+
+func (r *ChartRepository) DownloadIndexFileHideValidationWarnings() (string, error) {
+	return r.downloadIndexFile(true)
+}
+
+// Index generates an index for the chart repository and writes an index.yaml file.
+func (r *ChartRepository) Index() error {
+	err := r.generateIndex()
+	if err != nil {
+		return err
+	}
+	return r.saveIndexFile()
+}
+
+func (r *ChartRepository) downloadIndexFile(hideValidationWarnings bool) (string, error) {
 	parsedURL, err := url.Parse(r.Config.URL)
 	if err != nil {
 		return "", err
@@ -157,15 +174,6 @@ func (r *ChartRepository) DownloadIndexFile(hideValidationWarnings bool) (string
 	fname := filepath.Join(r.CachePath, helmpath.CacheIndexFile(r.Config.Name))
 	os.MkdirAll(filepath.Dir(fname), 0755)
 	return fname, ioutil.WriteFile(fname, index, 0644)
-}
-
-// Index generates an index for the chart repository and writes an index.yaml file.
-func (r *ChartRepository) Index() error {
-	err := r.generateIndex()
-	if err != nil {
-		return err
-	}
-	return r.saveIndexFile()
 }
 
 func (r *ChartRepository) saveIndexFile() error {
@@ -237,13 +245,13 @@ func FindChartInAuthAndTLSRepoURL(repoURL, username, password, chartName, chartV
 	if err != nil {
 		return "", err
 	}
-	idx, err := r.DownloadIndexFile(false)
+	idx, err := r.DownloadIndexFile()
 	if err != nil {
 		return "", errors.Wrapf(err, "looks like %q is not a valid chart repository or cannot be reached", repoURL)
 	}
 
 	// Read the index file for the repository to get chart information and return chart URL
-	repoIndex, err := LoadIndexFile(idx, false)
+	repoIndex, err := LoadIndexFile(idx)
 	if err != nil {
 		return "", err
 	}

@@ -109,7 +109,7 @@ func TestDependencyBuildCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	i, err := repo.LoadIndexFile(filepath.Join(rootDir, "index.yaml"), false)
+	i, err := repo.LoadIndexFile(filepath.Join(rootDir, "index.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
