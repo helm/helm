@@ -355,6 +355,11 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 				return i.failRelease(rel, err)
 			}
 		}
+		for _, r := range resources {
+			if err := r.Get(); err != nil {
+				return i.failRelease(rel, err)
+			}
+		}
 	}
 
 	if !i.DisableHooks {
