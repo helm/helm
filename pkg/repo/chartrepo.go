@@ -116,6 +116,32 @@ func (r *ChartRepository) Load() error {
 
 // DownloadIndexFile fetches the index from a repository.
 func (r *ChartRepository) DownloadIndexFile() (string, error) {
+	return r.downloadIndexFile(true)
+}
+
+// ValidateAndDownloadIndexFile fetches the index without consolidating validation warnings.
+func (r *ChartRepository) ValidateAndDownloadIndexFile() (string, error) {
+	return r.downloadIndexFile(false)
+}
+
+// Index generates an index for the chart repository and writes an index.yaml file.
+func (r *ChartRepository) Index() error {
+	err := r.generateIndex()
+	if err != nil {
+		return err
+	}
+	return r.saveIndexFile()
+}
+
+func (r *ChartRepository) saveIndexFile() error {
+	index, err := yaml.Marshal(r.IndexFile)
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(filepath.Join(r.Config.Name, indexPath), index, 0644)
+}
+
+func (r *ChartRepository) downloadIndexFile(consolidateWarnings bool) (string, error) {
 	parsedURL, err := url.Parse(r.Config.URL)
 	if err != nil {
 		return "", err
@@ -141,7 +167,7 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 		return "", err
 	}
 
-	indexFile, err := loadIndex(index, r.Config.URL)
+	indexFile, err := loadIndex(index, r.Config.URL, consolidateWarnings)
 	if err != nil {
 		return "", err
 	}
@@ -159,23 +185,6 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 	fname := filepath.Join(r.CachePath, helmpath.CacheIndexFile(r.Config.Name))
 	os.MkdirAll(filepath.Dir(fname), 0755)
 	return fname, ioutil.WriteFile(fname, index, 0644)
-}
-
-// Index generates an index for the chart repository and writes an index.yaml file.
-func (r *ChartRepository) Index() error {
-	err := r.generateIndex()
-	if err != nil {
-		return err
-	}
-	return r.saveIndexFile()
-}
-
-func (r *ChartRepository) saveIndexFile() error {
-	index, err := yaml.Marshal(r.IndexFile)
-	if err != nil {
-		return err
-	}
-	return ioutil.WriteFile(filepath.Join(r.Config.Name, indexPath), index, 0644)
 }
 
 func (r *ChartRepository) generateIndex() error {

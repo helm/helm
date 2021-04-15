@@ -108,7 +108,7 @@ func LoadIndexFile(path string) (*IndexFile, error) {
 	if err != nil {
 		return nil, err
 	}
-	i, err := loadIndex(b, path)
+	i, err := loadIndex(b, path, true)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error loading %s", path)
 	}
@@ -326,7 +326,7 @@ func IndexDirectory(dir, baseURL string) (*IndexFile, error) {
 //
 // The source parameter is only used for logging.
 // This will fail if API Version is not set (ErrNoAPIVersion) or if the unmarshal fails.
-func loadIndex(data []byte, source string) (*IndexFile, error) {
+func loadIndex(data []byte, source string, consolidateWarnings bool) (*IndexFile, error) {
 	i := &IndexFile{}
 
 	if len(data) == 0 {
@@ -337,16 +337,23 @@ func loadIndex(data []byte, source string) (*IndexFile, error) {
 		return i, err
 	}
 
+	invalidCharts := 0
 	for name, cvs := range i.Entries {
 		for idx := len(cvs) - 1; idx >= 0; idx-- {
 			if cvs[idx].APIVersion == "" {
 				cvs[idx].APIVersion = chart.APIVersionV1
 			}
 			if err := cvs[idx].Validate(); err != nil {
-				log.Printf("skipping loading invalid entry for chart %q %q from %s: %s", name, cvs[idx].Version, source, err)
+				invalidCharts++
+				if !consolidateWarnings {
+					log.Printf("skipping loading invalid entry for chart %q %q from %s: %s", name, cvs[idx].Version, source, err)
+				}
 				cvs = append(cvs[:idx], cvs[idx+1:]...)
 			}
 		}
+	}
+	if invalidCharts > 0 && consolidateWarnings {
+		log.Printf("skipped loading %d invalid chart entries from %s\nrun 'helm repo update --show-all-warnings' for full list of invalid entries", invalidCharts, source)
 	}
 	i.SortEntries()
 	if i.APIVersion == "" {
