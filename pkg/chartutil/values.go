@@ -136,7 +136,7 @@ type ReleaseOptions struct {
 // This takes both ReleaseOptions and Capabilities to merge into the render values.
 func ToRenderValues(chrt *chart.Chart, chrtVals map[string]interface{}, options ReleaseOptions, caps *Capabilities) (Values, error) {
 	if caps == nil {
-		caps = DefaultCapabilities
+		caps = DefaultCapabilities()
 	}
 	top := map[string]interface{}{
 		"Chart":        chrt.Metadata,

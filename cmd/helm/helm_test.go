@@ -111,7 +111,7 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 	actionConfig := &action.Configuration{
 		Releases:     store,
 		KubeClient:   &kubefake.PrintingKubeClient{Out: ioutil.Discard},
-		Capabilities: chartutil.DefaultCapabilities,
+		Capabilities: chartutil.DefaultCapabilities(),
 		Log:          func(format string, v ...interface{}) {},
 	}
 

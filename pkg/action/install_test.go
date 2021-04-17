@@ -118,7 +118,7 @@ func TestInstallReleaseClientOnly(t *testing.T) {
 	instAction.ClientOnly = true
 	instAction.Run(buildChart(), nil) // disregard output
 
-	is.Equal(instAction.cfg.Capabilities, chartutil.DefaultCapabilities)
+	is.Equal(instAction.cfg.Capabilities, chartutil.DefaultCapabilities())
 	is.Equal(instAction.cfg.KubeClient, &kubefake.PrintingKubeClient{Out: ioutil.Discard})
 }
 

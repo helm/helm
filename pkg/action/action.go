@@ -310,7 +310,7 @@ func (c *Configuration) releaseContent(name string, version int) (*release.Relea
 func GetVersionSet(client discovery.ServerResourcesInterface) (chartutil.VersionSet, error) {
 	groups, resources, err := client.ServerGroupsAndResources()
 	if err != nil && !discovery.IsGroupDiscoveryFailedError(err) {
-		return chartutil.DefaultVersionSet, errors.Wrap(err, "could not get apiVersions from Kubernetes")
+		return chartutil.DefaultVersionSet(), errors.Wrap(err, "could not get apiVersions from Kubernetes")
 	}
 
 	// FIXME: The Kubernetes test fixture for cli appears to always return nil
@@ -318,7 +318,7 @@ func GetVersionSet(client discovery.ServerResourcesInterface) (chartutil.Version
 	// return the default API list. This is also a safe value to return in any
 	// other odd-ball case.
 	if len(groups) == 0 && len(resources) == 0 {
-		return chartutil.DefaultVersionSet, nil
+		return chartutil.DefaultVersionSet(), nil
 	}
 
 	versionMap := make(map[string]interface{})
