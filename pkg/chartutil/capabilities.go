@@ -19,6 +19,9 @@ import (
 	"fmt"
 	"strconv"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	runtime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes/scheme"
 
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -76,10 +79,35 @@ func allKnownVersions() VersionSet {
 	// We should register the built in extension APIs as well so CRDs are
 	// supported in the default version set. This has caused problems with `helm
 	// template` in the past, so let's be safe
-	apiextensionsv1beta1.AddToScheme(scheme.Scheme)
-	apiextensionsv1.AddToScheme(scheme.Scheme)
+	s := runtime.NewScheme()
+	metav1.AddToGroupVersion(s, schema.GroupVersion{Version: "v1"})
+	scheme.AddToScheme(s)
 
-	groups := scheme.Scheme.PrioritizedVersionsAllGroups()
+	addKnownTypesv1beta1 := func(scheme *runtime.Scheme) error {
+		scheme.AddKnownTypes(apiextensionsv1beta1.SchemeGroupVersion,
+			&apiextensionsv1beta1.CustomResourceDefinition{},
+			&apiextensionsv1beta1.CustomResourceDefinitionList{},
+			&apiextensionsv1beta1.ConversionReview{},
+		)
+		metav1.AddToGroupVersion(scheme, apiextensionsv1beta1.SchemeGroupVersion)
+		return nil
+	}
+	schemeBuilderv1beta1 := runtime.NewSchemeBuilder(addKnownTypesv1beta1, apiextensionsv1.RegisterDefaults)
+	schemeBuilderv1beta1.AddToScheme(s)
+
+	addKnownTypesv1 := func(scheme *runtime.Scheme) error {
+		scheme.AddKnownTypes(apiextensionsv1.SchemeGroupVersion,
+			&apiextensionsv1.CustomResourceDefinition{},
+			&apiextensionsv1.CustomResourceDefinitionList{},
+			&apiextensionsv1.ConversionReview{},
+		)
+		metav1.AddToGroupVersion(scheme, apiextensionsv1.SchemeGroupVersion)
+		return nil
+	}
+	schemeBuilderv1 := runtime.NewSchemeBuilder(addKnownTypesv1, apiextensionsv1.RegisterDefaults)
+	schemeBuilderv1.AddToScheme(s)
+
+	groups := s.PrioritizedVersionsAllGroups()
 	vs := make(VersionSet, 0, len(groups))
 	for _, gv := range groups {
 		vs = append(vs, gv.String())
@@ -89,11 +117,12 @@ func allKnownVersions() VersionSet {
 
 // DefaultCapabilities returns the default set of capabilities.
 func DefaultCapabilities() *Capabilities {
-	return &Capabilities{KubeVersion: KubeVersion{
-		Version: fmt.Sprintf("v%d.%d.0", k8sVersionMajor, k8sVersionMinor),
-		Major:   strconv.Itoa(k8sVersionMajor),
-		Minor:   strconv.Itoa(k8sVersionMinor),
-	},
+	return &Capabilities{
+		KubeVersion: KubeVersion{
+			Version: fmt.Sprintf("v%d.%d.0", k8sVersionMajor, k8sVersionMinor),
+			Major:   strconv.Itoa(k8sVersionMajor),
+			Minor:   strconv.Itoa(k8sVersionMinor),
+		},
 		APIVersions: DefaultVersionSet(),
 		HelmVersion: helmversion.Get(),
 	}
