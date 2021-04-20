@@ -19,7 +19,6 @@ package repo
 import (
 	"bufio"
 	"bytes"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -251,7 +250,7 @@ func TestDownloadIndexFile(t *testing.T) {
 			t.Fatalf("error finding created charts file: %#v", err)
 		}
 
-		b, err := ioutil.ReadFile(idx)
+		b, err := os.ReadFile(idx)
 		if err != nil {
 			t.Fatalf("error reading charts file: %#v", err)
 		}
@@ -260,7 +259,7 @@ func TestDownloadIndexFile(t *testing.T) {
 
 	t.Run("should not decode the path in the repo url while downloading index", func(t *testing.T) {
 		chartRepoURLPath := "/some%2Fpath/test"
-		fileBytes, err := ioutil.ReadFile("testdata/local-index.yaml")
+		fileBytes, err := os.ReadFile("testdata/local-index.yaml")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -304,7 +303,7 @@ func TestDownloadIndexFile(t *testing.T) {
 			t.Fatalf("error finding created charts file: %#v", err)
 		}
 
-		b, err := ioutil.ReadFile(idx)
+		b, err := os.ReadFile(idx)
 		if err != nil {
 			t.Fatalf("error reading charts file: %#v", err)
 		}
@@ -507,7 +506,7 @@ func TestIndexWrite(t *testing.T) {
 	if err := i.MustAdd(&chart.Metadata{APIVersion: "v2", Name: "clipper", Version: "0.1.0"}, "clipper-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890"); err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
-	dir, err := ioutil.TempDir("", "helm-tmp")
+	dir, err := os.MkdirTemp("", "helm-tmp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -515,7 +514,7 @@ func TestIndexWrite(t *testing.T) {
 	testpath := filepath.Join(dir, "test")
 	i.WriteFile(testpath, 0600)
 
-	got, err := ioutil.ReadFile(testpath)
+	got, err := os.ReadFile(testpath)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -21,7 +21,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -101,7 +100,7 @@ func (suite *RegistryClientTestSuite) SetupSuite() {
 	pwBytes, err := bcrypt.GenerateFromPassword([]byte(testPassword), bcrypt.DefaultCost)
 	suite.Nil(err, "no error generating bcrypt password for test htpasswd file")
 	htpasswdPath := filepath.Join(suite.CacheRootDir, testHtpasswdFileBasename)
-	err = ioutil.WriteFile(htpasswdPath, []byte(fmt.Sprintf("%s:%s\n", testUsername, string(pwBytes))), 0644)
+	err = os.WriteFile(htpasswdPath, []byte(fmt.Sprintf("%s:%s\n", testUsername, string(pwBytes))), 0644)
 	suite.Nil(err, "no error creating test htpasswd file")
 
 	// Registry config

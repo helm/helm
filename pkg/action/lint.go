@@ -80,7 +80,7 @@ func lintChart(path string, vals map[string]interface{}, namespace string, stric
 	linter := support.Linter{}
 
 	if strings.HasSuffix(path, ".tgz") || strings.HasSuffix(path, ".tar.gz") {
-		tempDir, err := ioutil.TempDir("", "helm-lint")
+		tempDir, err := os.MkdirTemp("", "helm-lint")
 		if err != nil {
 			return linter, errors.Wrap(err, "unable to create temp dir to extract tarball")
 		}

@@ -19,7 +19,7 @@ package action
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -198,7 +198,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 		// NOTE(bacongobbler): used for `helm template`
 		i.cfg.Capabilities = chartutil.DefaultCapabilities
 		i.cfg.Capabilities.APIVersions = append(i.cfg.Capabilities.APIVersions, i.APIVersions...)
-		i.cfg.KubeClient = &kubefake.PrintingKubeClient{Out: ioutil.Discard}
+		i.cfg.KubeClient = &kubefake.PrintingKubeClient{Out: io.Discard}
 
 		mem := driver.NewMemory()
 		mem.SetNamespace(i.Namespace)

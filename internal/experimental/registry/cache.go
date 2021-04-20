@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -74,7 +73,7 @@ type (
 // NewCache returns a new OCI Layout-compliant cache with config
 func NewCache(opts ...CacheOption) (*Cache, error) {
 	cache := &Cache{
-		out: ioutil.Discard,
+		out: io.Discard,
 	}
 	for _, opt := range opts {
 		opt(cache)
@@ -293,7 +292,7 @@ func (cache *Cache) saveChartContentLayer(ch *chart.Chart) (*ocispec.Descriptor,
 	if err != nil {
 		return nil, false, errors.Wrap(err, "failed to save")
 	}
-	contentBytes, err := ioutil.ReadFile(tmpFile)
+	contentBytes, err := os.ReadFile(tmpFile)
 	if err != nil {
 		return nil, false, err
 	}

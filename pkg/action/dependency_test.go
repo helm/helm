@@ -18,7 +18,6 @@ package action
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -68,7 +67,7 @@ func TestList(t *testing.T) {
 // chart names do not cause resolution problems.
 func TestDependencyStatus_Dashes(t *testing.T) {
 	// Make a temp dir
-	dir, err := ioutil.TempDir("", "helmtest-")
+	dir, err := os.MkdirTemp("", "helmtest-")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +105,7 @@ func TestDependencyStatus_Dashes(t *testing.T) {
 
 func TestStatArchiveForStatus(t *testing.T) {
 	// Make a temp dir
-	dir, err := ioutil.TempDir("", "helmtest-")
+	dir, err := os.MkdirTemp("", "helmtest-")
 	if err != nil {
 		t.Fatal(err)
 	}

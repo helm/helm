@@ -18,7 +18,6 @@ package repotest
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -86,7 +85,7 @@ func NewOCIServer(t *testing.T, dir string) (*OCIServer, error) {
 		t.Fatal("error generating bcrypt password for test htpasswd file")
 	}
 	htpasswdPath := filepath.Join(dir, testHtpasswdFileBasename)
-	err = ioutil.WriteFile(htpasswdPath, []byte(fmt.Sprintf("%s:%s\n", testUsername, string(pwBytes))), 0644)
+	err = os.WriteFile(htpasswdPath, []byte(fmt.Sprintf("%s:%s\n", testUsername, string(pwBytes))), 0644)
 	if err != nil {
 		t.Fatalf("error creating test htpasswd file")
 	}
@@ -226,7 +225,7 @@ func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
 //
 // Deprecated: use NewTempServerWithCleanup
 func NewTempServer(glob string) (*Server, error) {
-	tdir, err := ioutil.TempDir("", "helm-repotest-")
+	tdir, err := os.MkdirTemp("", "helm-repotest-")
 	if err != nil {
 		return nil, err
 	}
@@ -294,11 +293,11 @@ func (s *Server) CopyCharts(origin string) ([]string, error) {
 	for i, f := range files {
 		base := filepath.Base(f)
 		newname := filepath.Join(s.docroot, base)
-		data, err := ioutil.ReadFile(f)
+		data, err := os.ReadFile(f)
 		if err != nil {
 			return []string{}, err
 		}
-		if err := ioutil.WriteFile(newname, data, 0644); err != nil {
+		if err := os.WriteFile(newname, data, 0644); err != nil {
 			return []string{}, err
 		}
 		copied[i] = newname
@@ -322,7 +321,7 @@ func (s *Server) CreateIndex() error {
 	}
 
 	ifile := filepath.Join(s.docroot, "index.yaml")
-	return ioutil.WriteFile(ifile, d, 0644)
+	return os.WriteFile(ifile, d, 0644)
 }
 
 func (s *Server) Start() {

@@ -18,7 +18,7 @@ package action
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -119,7 +119,7 @@ func TestInstallReleaseClientOnly(t *testing.T) {
 	instAction.Run(buildChart(), nil) // disregard output
 
 	is.Equal(instAction.cfg.Capabilities, chartutil.DefaultCapabilities)
-	is.Equal(instAction.cfg.KubeClient, &kubefake.PrintingKubeClient{Out: ioutil.Discard})
+	is.Equal(instAction.cfg.KubeClient, &kubefake.PrintingKubeClient{Out: io.Discard})
 }
 
 func TestInstallRelease_NoName(t *testing.T) {
@@ -494,7 +494,7 @@ func TestInstallReleaseOutputDir(t *testing.T) {
 	instAction := installAction(t)
 	vals := map[string]interface{}{}
 
-	dir, err := ioutil.TempDir("", "output-dir")
+	dir, err := os.MkdirTemp("", "output-dir")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -530,7 +530,7 @@ func TestInstallOutputDirWithReleaseName(t *testing.T) {
 	instAction := installAction(t)
 	vals := map[string]interface{}{}
 
-	dir, err := ioutil.TempDir("", "output-dir")
+	dir, err := os.MkdirTemp("", "output-dir")
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -17,7 +17,7 @@ limitations under the License.
 package action
 
 import (
-	"io/ioutil"
+	"io"
 	"testing"
 
 	"helm.sh/helm/v3/internal/experimental/registry"
@@ -34,7 +34,7 @@ func TestChartSave(t *testing.T) {
 	action := chartSaveAction(t)
 
 	input := buildChart()
-	if err := action.Run(ioutil.Discard, input, "localhost:5000/test:0.2.0"); err != nil {
+	if err := action.Run(io.Discard, input, "localhost:5000/test:0.2.0"); err != nil {
 		t.Error(err)
 	}
 
@@ -48,7 +48,7 @@ func TestChartSave(t *testing.T) {
 	}
 
 	// now let's check if `helm chart save` can use the chart version when the tag is not present
-	if err := action.Run(ioutil.Discard, input, "localhost:5000/test"); err != nil {
+	if err := action.Run(io.Discard, input, "localhost:5000/test"); err != nil {
 		t.Error(err)
 	}
 

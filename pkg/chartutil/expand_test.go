@@ -17,14 +17,13 @@ limitations under the License.
 package chartutil
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 )
 
 func TestExpand(t *testing.T) {
-	dest, err := ioutil.TempDir("", "helm-testing-")
+	dest, err := os.MkdirTemp("", "helm-testing-")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +80,7 @@ func TestExpand(t *testing.T) {
 }
 
 func TestExpandFile(t *testing.T) {
-	dest, err := ioutil.TempDir("", "helm-testing-")
+	dest, err := os.MkdirTemp("", "helm-testing-")
 	if err != nil {
 		t.Fatal(err)
 	}
