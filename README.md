@@ -48,6 +48,8 @@ To rapidly get Helm up and running, start with the [Quick Start Guide](https://h
 See the [installation guide](https://helm.sh/docs/intro/install/) for more options,
 including installing pre-releases.
 
+For installation of legacy 2.15.1 version of `helm` please follow the guide: https://medium.com/@jyotirbhandari/how-to-downgrade-helm-version-on-server-and-client-4838ca100dbf
+
 ## Docs
 
 Get started with the [Quick Start guide](https://helm.sh/docs/intro/quickstart/) or plunge into the [complete documentation](https://helm.sh/docs)
