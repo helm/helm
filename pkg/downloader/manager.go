@@ -20,7 +20,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/url"
 	"os"
@@ -862,7 +861,7 @@ func tarFromLocalDir(chartpath, name, repo, version string) (string, error) {
 
 // move files from tmppath to destpath
 func move(tmpPath, destPath string) error {
-	files, _ := ioutil.ReadDir(tmpPath)
+	files, _ := os.ReadDir(tmpPath)
 	for _, file := range files {
 		filename := file.Name()
 		tmpfile := filepath.Join(tmpPath, filename)

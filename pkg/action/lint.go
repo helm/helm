@@ -17,7 +17,6 @@ limitations under the License.
 package action
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -96,7 +95,7 @@ func lintChart(path string, vals map[string]interface{}, namespace string, stric
 			return linter, errors.Wrap(err, "unable to extract tarball")
 		}
 
-		files, err := ioutil.ReadDir(tempDir)
+		files, err := os.ReadDir(tempDir)
 		if err != nil {
 			return linter, errors.Wrapf(err, "unable to read temporary output directory %s", tempDir)
 		}
