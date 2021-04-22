@@ -608,6 +608,9 @@ func (c *Client) WaitAndGetCompletedPodPhase(name string, timeout time.Duration)
 		FieldSelector:  fmt.Sprintf("metadata.name=%s", name),
 		TimeoutSeconds: &to,
 	})
+	if err != nil {
+		return v1.PodUnknown, err
+	}
 
 	for event := range watcher.ResultChan() {
 		p, ok := event.Object.(*v1.Pod)
