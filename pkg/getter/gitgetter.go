@@ -20,7 +20,6 @@ import (
 	"strings"
 
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -34,6 +33,10 @@ var gitCloneTo = gitutil.CloneTo
 // GITGetter is the default HTTP(/S) backend handler
 type GITGetter struct {
 	opts options
+}
+
+func (g *GITGetter) ChartName() string {
+	return g.opts.chartName
 }
 
 // ensureGitDirIgnored will append ".git/" to the .helmignore file in a directory.
@@ -60,13 +63,13 @@ func (g *GITGetter) Get(href string, options ...Option) (*bytes.Buffer, error) {
 }
 
 func (g *GITGetter) get(href string) (*bytes.Buffer, error) {
-	gitURL := strings.TrimPrefix(href, "git:")
+	gitURL := strings.TrimPrefix(href, "git://")
 	version := g.opts.version
 	chartName := g.opts.chartName
 	if version == "" {
 		return nil, fmt.Errorf("The version must be a valid tag or branch name for the git repo, not nil")
 	}
-	tmpDir, err := ioutil.TempDir("", "helm")
+	tmpDir, err := os.MkdirTemp("", "helm")
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +87,7 @@ func (g *GITGetter) get(href string) (*bytes.Buffer, error) {
 	// A .helmignore that includes an ignore for .git/ should be included in the git repo itself,
 	// but a lot of people will probably not think about that.
 	// To prevent the git history from bleeding into the charts archive, append/create .helmignore.
-	g.ensureGitDirIgnored(tmpDir)
+	g.ensureGitDirIgnored(chartTmpDir)
 
 	buf, err := fileutil.CompressDirToTgz(chartTmpDir, tmpDir)
 	if err != nil {
@@ -93,7 +96,7 @@ func (g *GITGetter) get(href string) (*bytes.Buffer, error) {
 	return buf, nil
 }
 
-// NewGITGetter constructs a valid http/https client as a Getter
+// NewGITGetter constructs a valid git client as a Getter
 func NewGITGetter(ops ...Option) (Getter, error) {
 
 	client := GITGetter{}

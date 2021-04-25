@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"archive/tar"
 	"bytes"
@@ -55,20 +56,32 @@ func AtomicWriteFile(filename string, reader io.Reader, mode os.FileMode) error 
 	return fs.RenameWithFallback(tempName, filename)
 }
 
-func CompressDirToTgz(src, tmpdir string) (*bytes.Buffer, error) {
-	// tar => gzip => buf
+func CompressDirToTgz(chartTmpDir, tmpdir string) (*bytes.Buffer, error) {
 
+	_, err := os.Stat(chartTmpDir)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = os.Stat(tmpdir)
+	if err != nil {
+		return nil, err
+	}
+
+	// tar => gzip => buf
 	buf := bytes.NewBuffer(nil)
 	zr := gzip.NewWriter(buf)
+	zr.ModTime = time.Date(1977, time.May, 25, 0, 0, 0, 0, time.UTC)
 	tw := tar.NewWriter(zr)
 
 	// walk through every file in the folder
-	walkErr := filepath.Walk(src, func(file string, fi os.FileInfo, err error) error {
+	walkErr := filepath.Walk(chartTmpDir, func(file string, fi os.FileInfo, err error) error {
 
 		// generate tar header
 		if err != nil {
 			return err
 		}
+
 		header, err := tar.FileInfoHeader(fi, strings.TrimPrefix(file, tmpdir+"/"))
 		if err != nil {
 			return err
@@ -77,11 +90,13 @@ func CompressDirToTgz(src, tmpdir string) (*bytes.Buffer, error) {
 		// must provide real name
 		// (see https://golang.org/src/archive/tar/common.go?#L626)
 		header.Name = strings.TrimPrefix(filepath.ToSlash(file), tmpdir+"/")
+		header.ModTime = time.Date(1977, time.May, 25, 0, 0, 0, 0, time.UTC)
 
 		// write header
 		if err := tw.WriteHeader(header); err != nil {
 			return err
 		}
+
 		// if not a dir, write file content
 		if !fi.IsDir() {
 			data, err := os.Open(file)

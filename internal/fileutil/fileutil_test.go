@@ -18,6 +18,8 @@ package fileutil
 
 import (
 	"bytes"
+	"crypto/md5"
+	"encoding/hex"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -54,5 +56,27 @@ func TestAtomicWriteFile(t *testing.T) {
 	if mode != gotinfo.Mode() {
 		t.Fatalf("expected %s: to be the same mode as %s",
 			mode, gotinfo.Mode())
+	}
+}
+
+func TestCompressDirToTgz(t *testing.T) {
+
+	testDataDir := "testdata"
+	chartTestDir := "testdata/helmchart"
+	expectMd5Value := "47e407d2251866226cb7df4c44028091"
+	expectChartBytesLen := 3990
+
+	chartBytes, err := CompressDirToTgz(chartTestDir, testDataDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	chartBytesLen := chartBytes.Len()
+	hash := md5.Sum(chartBytes.Bytes())
+	currentMd5Value := hex.EncodeToString(hash[:])
+	if currentMd5Value != expectMd5Value {
+		t.Fatalf("Expect md5 %s, but get md5 %s, len %d", expectMd5Value, currentMd5Value, chartBytesLen)
+	}
+	if chartBytesLen != expectChartBytesLen {
+		t.Fatalf("Expect chartBytesLen %d, but get %d", expectChartBytesLen, chartBytesLen)
 	}
 }

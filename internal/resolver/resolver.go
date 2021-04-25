@@ -124,7 +124,7 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 
 			if !found {
 				return nil, fmt.Errorf(`dependency %q is missing git branch or tag: %s.
-			When using a "git:" type repository, the "version" should be a valid branch or tag name`, d.Name, d.Version)
+			When using a "git://" type repository, the "version" should be a valid branch or tag name`, d.Name, d.Version)
 			}
 
 			locked[i] = &chart.Dependency{
@@ -133,10 +133,6 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 				Version:    d.Version,
 			}
 			continue
-		}
-
-		if err != nil {
-			return nil, errors.Wrapf(err, "dependency %q has an invalid version/constraint format", d.Name)
 		}
 
 		repoName := repoNames[d.Name]
