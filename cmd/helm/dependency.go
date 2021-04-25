@@ -73,20 +73,20 @@ repository added to helm by "helm add repo". Version matching is also supported
 for this case.
 
 A repository can be defined as a git URL. The path must start with a prefix of
-"git:" followed by a valid git repository URL.
+"git://" followed by a valid git repository URL.
 
     # Chart.yaml
     dependencies:
-    - name: nginx
-      version: "master"
-      repository: "git:https://github.com/helm/helm-chart.git"
+    - name: helm-chart
+      version: "main"
+      repository: "git://https://github.com/helm/helm-chart.git"
 
 The 'repository' can be the https or ssh URL that you would use to clone a git
 repo or add as a git remote, prefixed with 'git:'.
-For example 'git:git@github.com:helm/helm-chart.git' or
-'git:https://github.com/helm/helm-chart.git'
+For example 'git://git@github.com:helm/helm-chart.git' or
+'git://https://github.com/helm/helm-chart.git'
 
-When using a 'git:' repository, the 'version' must be a valid tag or branch
+When using a 'git://' repository, the 'version' must be a valid  semantic tag or branch
 name for the git repo. For example 'master'.
 
 Limitations when working with git repositories:

@@ -619,7 +619,7 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 		// if dep chart is from a git url, assume it is valid for now.
 		// if the repo does not exist then it will later error when we try to fetch branches and tags.
 		// we could check for the repo existence here, but trying to avoid anotehr git request.
-		if strings.HasPrefix(dd.Repository, "git:") {
+		if strings.HasPrefix(dd.Repository, "git://") {
 			if m.Debug {
 				fmt.Fprintf(m.Out, "Repository from git url: %s\n", strings.TrimPrefix(dd.Repository, "git:"))
 			}
