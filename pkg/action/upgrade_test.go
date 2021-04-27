@@ -277,6 +277,59 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 	})
 }
 
+func TestUpgradeRelease_ResetThenReuseValues(t *testing.T) {
+	is := assert.New(t)
+
+	t.Run("reset then reuse values should work with values", func(t *testing.T) {
+		upAction := upgradeAction(t)
+
+		existingValues := map[string]interface{}{
+			"name":        "value",
+			"maxHeapSize": "128m",
+			"replicas":    2,
+		}
+		newValues := map[string]interface{}{
+			"name":        "newValue",
+			"maxHeapSize": "512m",
+			"cpu":         "12m",
+		}
+		newChartValues := map[string]interface{}{
+			"memory": "256m",
+		}
+		expectedValues := map[string]interface{}{
+			"name":        "newValue",
+			"maxHeapSize": "512m",
+			"cpu":         "12m",
+			"replicas":    2,
+		}
+
+		rel := releaseStub()
+		rel.Name = "nuketown"
+		rel.Info.Status = release.StatusDeployed
+		rel.Config = existingValues
+
+		err := upAction.cfg.Releases.Create(rel)
+		is.NoError(err)
+
+		upAction.ResetThenReuseValues = true
+		// setting newValues and upgrading
+		res, err := upAction.Run(rel.Name, buildChart(withValues(newChartValues)), newValues)
+		is.NoError(err)
+
+		// Now make sure it is actually upgraded
+		updatedRes, err := upAction.cfg.Releases.Get(res.Name, 2)
+		is.NoError(err)
+
+		if updatedRes == nil {
+			is.Fail("Updated Release is nil")
+			return
+		}
+		is.Equal(release.StatusDeployed, updatedRes.Info.Status)
+		is.Equal(expectedValues, updatedRes.Config)
+		is.Equal(newChartValues, updatedRes.Chart.Values)
+	})
+}
+
 func TestUpgradeRelease_Pending(t *testing.T) {
 	req := require.New(t)
 
