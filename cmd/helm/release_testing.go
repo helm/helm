@@ -39,7 +39,7 @@ The tests to be run are defined in the chart that was installed.
 
 func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewReleaseTesting(cfg)
-	var outfmt = output.Table
+	var outfmt output.Format
 	var outputLogs bool
 	var filter []string
 
@@ -76,7 +76,10 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 				return err
 			}
 
-			if outputLogs {
+			// The logs are always included when JSON or YAML output is used.
+			// With table output, we print logs if and only if explicitly requested,
+			// to preserve backwards compatibility.
+			if outfmt == output.Table && outputLogs {
 				// Print a newline to stdout to separate the output
 				fmt.Fprintln(out)
 				if err := client.GetPodLogs(out, rel); err != nil {
@@ -90,8 +93,9 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 
 	f := cmd.Flags()
 	f.DurationVar(&client.Timeout, "timeout", 300*time.Second, "time to wait for any individual Kubernetes operation (like Jobs for hooks)")
-	f.BoolVar(&outputLogs, "logs", false, "dump the logs from test pods (this runs after all tests are complete, but before any cleanup)")
+	f.BoolVar(&outputLogs, "logs", false, "dump the logs from test pods even with table output (this runs after all tests are complete, but before any cleanup)")
 	f.StringSliceVar(&filter, "filter", []string{}, "specify tests by attribute (currently \"name\") using attribute=value syntax or '!attribute=value' to exclude a test (can specify multiple or separate values with commas: name=test1,name=test2)")
+	bindOutputFlag(cmd, &outfmt)
 
 	return cmd
 }

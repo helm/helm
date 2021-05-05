@@ -17,10 +17,13 @@ package action
 
 import (
 	"bytes"
+	"context"
 	"sort"
 	"time"
 
 	"github.com/pkg/errors"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes"
 
 	"helm.sh/helm/v3/pkg/release"
 	helmtime "helm.sh/helm/v3/pkg/time"
@@ -40,6 +43,11 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 
 	// hooke are pre-ordered by kind, so keep order stable
 	sort.Stable(hookByWeight(executingHooks))
+
+	client, err := cfg.KubernetesClientSet()
+	if err != nil {
+		return errors.Wrapf(err, "unable to create Kubernetes client set to fetch pod logs")
+	}
 
 	for _, h := range executingHooks {
 		// Set default delete policy to before-hook-creation
@@ -83,6 +91,15 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		err = cfg.KubeClient.WatchUntilReady(resources, timeout)
 		// Note the time of success/failure
 		h.LastRun.CompletedAt = helmtime.Now()
+
+		if isTestHook(h) {
+			hookLog, err := getHookLog(client, rl, h)
+			if err != nil {
+				return err
+			}
+			h.LastRun.Log = &hookLog
+		}
+
 		// Mark hook as succeeded or failed
 		if err != nil {
 			h.LastRun.Phase = release.HookPhaseFailed
@@ -105,6 +122,17 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 	}
 
 	return nil
+}
+
+// getHookLog gets the log from the pod associated with the given hook, which is expected to be a test hook.
+func getHookLog(client kubernetes.Interface, rel *release.Release, hook *release.Hook) (release.HookLog, error) {
+	req := client.CoreV1().Pods(rel.Namespace).GetLogs(hook.Name, &v1.PodLogOptions{})
+	responseBody, err := req.DoRaw(context.Background())
+	if err != nil {
+		var nothing release.HookLog
+		return nothing, errors.Wrapf(err, "unable to get pod logs for %s", hook.Name)
+	}
+	return release.HookLog(responseBody), nil
 }
 
 // hookByWeight is a sorter for hooks
@@ -144,6 +172,16 @@ func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.Hoo
 func hookHasDeletePolicy(h *release.Hook, policy release.HookDeletePolicy) bool {
 	for _, v := range h.DeletePolicies {
 		if policy == v {
+			return true
+		}
+	}
+	return false
+}
+
+// isTestHook determines whether a hook is a test hook.
+func isTestHook(h *release.Hook) bool {
+	for _, e := range h.Events {
+		if e == release.HookTest {
 			return true
 		}
 	}
