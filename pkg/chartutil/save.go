@@ -23,7 +23,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
+	"sort"
 
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
@@ -203,6 +203,9 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 	}
 
 	// Save templates
+	sort.Slice(c.Templates, func(i, j int) bool {
+		return c.Templates[i].Name < c.Templates[j].Name
+	})
 	for _, f := range c.Templates {
 		n := filepath.Join(base, f.Name)
 		if err := writeToTar(out, n, f.Data); err != nil {
@@ -211,6 +214,9 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 	}
 
 	// Save files
+	sort.Slice(c.Files, func(i, j int) bool {
+		return c.Files[i].Name < c.Files[j].Name
+	})
 	for _, f := range c.Files {
 		n := filepath.Join(base, f.Name)
 		if err := writeToTar(out, n, f.Data); err != nil {
@@ -231,10 +237,9 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 func writeToTar(out *tar.Writer, name string, body []byte) error {
 	// TODO: Do we need to create dummy parent directory names if none exist?
 	h := &tar.Header{
-		Name:    filepath.ToSlash(name),
-		Mode:    0644,
-		Size:    int64(len(body)),
-		ModTime: time.Now(),
+		Name: filepath.ToSlash(name),
+		Mode: 0644,
+		Size: int64(len(body)),
 	}
 	if err := out.WriteHeader(h); err != nil {
 		return err
