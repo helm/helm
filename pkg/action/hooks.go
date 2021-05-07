@@ -44,11 +44,6 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 	// hooke are pre-ordered by kind, so keep order stable
 	sort.Stable(hookByWeight(executingHooks))
 
-	client, err := cfg.KubernetesClientSet()
-	if err != nil {
-		return errors.Wrapf(err, "unable to create Kubernetes client set to fetch pod logs")
-	}
-
 	for _, h := range executingHooks {
 		// Set default delete policy to before-hook-creation
 		if h.DeletePolicies == nil || len(h.DeletePolicies) == 0 {
@@ -93,6 +88,11 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		h.LastRun.CompletedAt = helmtime.Now()
 
 		if isTestHook(h) {
+			// "Why create a new client for each hook?" Because `cfg` can be `nil` outside the `for` loop.
+			client, err := cfg.KubernetesClientSet()
+			if err != nil {
+				return errors.Wrapf(err, "unable to create Kubernetes client set to fetch pod logs")
+			}
 			hookLog, err := getHookLog(client, rl, h)
 			if err != nil {
 				return err
