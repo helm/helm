@@ -32,11 +32,11 @@ import (
 	"time"
 
 	"github.com/containerd/containerd/errdefs"
-	auth "github.com/deislabs/oras/pkg/auth/docker"
 	"github.com/docker/distribution/configuration"
 	"github.com/docker/distribution/registry"
 	_ "github.com/docker/distribution/registry/auth/htpasswd"
 	_ "github.com/docker/distribution/registry/storage/driver/inmemory"
+	auth "github.com/oras-project/oras-go/pkg/auth/docker"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/bcrypt"
