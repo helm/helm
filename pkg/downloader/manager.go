@@ -248,6 +248,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 
 	destPath := filepath.Join(m.ChartPath, "charts")
 	tmpPath := filepath.Join(m.ChartPath, "tmpcharts")
+	defer os.RemoveAll(tmpPath)
 
 	// Create 'charts' directory if it doesn't already exist.
 	if fi, err := os.Stat(destPath); err != nil {
@@ -256,6 +257,14 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		}
 	} else if !fi.IsDir() {
 		return errors.Errorf("%q is not a directory", destPath)
+	}
+
+	// Check if tmpcharts exists, is so, delete it. see https://github.com/helm/helm/issues/5567
+	if _, err := os.Stat(tmpPath); !os.IsNotExist(err) {
+		err := os.RemoveAll(tmpPath)
+		if err != nil {
+			return errors.Wrap(err, "unable to delete tmp dir")
+		}
 	}
 
 	if err := fs.RenameWithFallback(destPath, tmpPath); err != nil {

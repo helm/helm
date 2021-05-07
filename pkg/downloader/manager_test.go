@@ -17,10 +17,13 @@ package downloader
 
 import (
 	"bytes"
+	"fmt"
+	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
 
+	"github.com/pkg/errors"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/getter"
@@ -221,6 +224,89 @@ func TestUpdateBeforeBuild(t *testing.T) {
 	}
 	if err := chartutil.SaveDir(c, dir()); err != nil {
 		t.Fatal(err)
+	}
+
+	// Set-up a manager
+	b := bytes.NewBuffer(nil)
+	g := getter.Providers{getter.Provider{
+		Schemes: []string{"http", "https"},
+		New:     getter.NewHTTPGetter,
+	}}
+	m := &Manager{
+		ChartPath:        dir(c.Metadata.Name),
+		Out:              b,
+		Getters:          g,
+		RepositoryConfig: dir("repositories.yaml"),
+		RepositoryCache:  dir(),
+	}
+
+	// Update before Build. see issue: https://github.com/helm/helm/issues/7101
+	err = m.Update()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = m.Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestUpdateWithExistingTempDir(t *testing.T) {
+	// Set up a fake repo
+	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer srv.Stop()
+	if err := srv.LinkIndices(); err != nil {
+		t.Fatal(err)
+	}
+
+	dir := func(p ...string) string {
+		return filepath.Join(append([]string{srv.Root()}, p...)...)
+	}
+
+	// Save dep
+	d := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:       "dep-chart",
+			Version:    "0.1.0",
+			APIVersion: "v1",
+		},
+	}
+	if err := chartutil.SaveDir(d, dir()); err != nil {
+		t.Fatal(err)
+	}
+	// Save a chart
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:       "with-dependency-existing-tmpcharts",
+			Version:    "0.1.0",
+			APIVersion: "v2",
+			Dependencies: []*chart.Dependency{{
+				Name:       d.Metadata.Name,
+				Version:    ">=0.1.0",
+				Repository: "file://../dep-chart",
+			}},
+		},
+	}
+
+	if err := chartutil.SaveDir(c, dir()); err != nil {
+		t.Fatal(err)
+	}
+
+	// add a tmpcharts to the chart dir
+	outdir := filepath.Join(dir(), c.Name())
+	tmpPath := filepath.Join(outdir, "tmpcharts")
+	fmt.Println(tmpPath)
+	// Create 'tmpcharts' directory if it doesn't already exist.
+	if fi, err := os.Stat(tmpPath); err != nil {
+		if err := os.MkdirAll(tmpPath, 0755); err != nil {
+			t.Fatal(err)
+		}
+	} else if !fi.IsDir() {
+		t.Fatal(errors.Errorf("%q is not a directory", tmpPath))
 	}
 
 	// Set-up a manager
