@@ -48,6 +48,8 @@ the template:
 - .GitCommit is the git commit
 - .GitTreeState is the state of the git tree when Helm was built
 - .GoVersion contains the version of Go that Helm was compiled with
+
+For example, --template '{{.Version}}' outputs 'v3.2.1'. See [unit tests](https://github.com/helm/helm/blob/main/cmd/helm/version_test.go) for further examples.
 `
 
 type versionOptions struct {
