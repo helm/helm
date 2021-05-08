@@ -37,11 +37,14 @@ type Dependency struct {
 	Verify      bool
 	Keyring     string
 	SkipRefresh bool
+	ColumnWidth uint
 }
 
 // NewDependency creates a new Dependency object with the given configuration.
 func NewDependency() *Dependency {
-	return &Dependency{}
+	return &Dependency{
+		ColumnWidth: 80,
+	}
 }
 
 // List executes 'helm dependency list'.
@@ -181,7 +184,7 @@ func statArchiveForStatus(archive string, dep *chart.Dependency) string {
 // printDependencies prints all of the dependencies in the yaml file.
 func (d *Dependency) printDependencies(chartpath string, out io.Writer, c *chart.Chart) {
 	table := uitable.New()
-	table.MaxColWidth = 80
+	table.MaxColWidth = d.ColumnWidth
 	table.AddRow("NAME", "VERSION", "REPOSITORY", "STATUS")
 	for _, row := range c.Metadata.Dependencies {
 		table.AddRow(row.Name, row.Version, row.Repository, d.dependencyStatus(chartpath, row, c))

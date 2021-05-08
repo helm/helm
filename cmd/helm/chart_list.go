@@ -31,14 +31,18 @@ Charts are sorted by ref name, alphabetically.
 `
 
 func newChartListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
-	return &cobra.Command{
+	chartList := action.NewChartList(cfg)
+	cmd := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"ls"},
 		Short:   "list all saved charts",
 		Long:    chartListDesc,
 		Hidden:  !FeatureGateOCI.IsEnabled(),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return action.NewChartList(cfg).Run(out)
+			return chartList.Run(out)
 		},
 	}
+	f := cmd.Flags()
+	f.UintVar(&chartList.ColumnWidth, "max-col-width", 60, "maximum column width for output table")
+	return cmd
 }

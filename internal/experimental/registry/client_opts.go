@@ -67,3 +67,10 @@ func ClientOptCredentialsFile(credentialsFile string) ClientOption {
 		client.credentialsFile = credentialsFile
 	}
 }
+
+// ClientOptColumnWidth returns a function that sets the column width on a client options set
+func ClientOptColumnWidth(columnWidth uint) ClientOption {
+	return func(client *Client) {
+		client.columnWidth = columnWidth
+	}
+}
