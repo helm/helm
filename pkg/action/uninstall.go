@@ -26,6 +26,7 @@ import (
 	"helm.sh/helm/v3/pkg/kube"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/releaseutil"
+	"helm.sh/helm/v3/pkg/storage/driver"
 	helmtime "helm.sh/helm/v3/pkg/time"
 )
 
@@ -35,12 +36,13 @@ import (
 type Uninstall struct {
 	cfg *Configuration
 
-	DisableHooks bool
-	DryRun       bool
-	KeepHistory  bool
-	Wait         bool
-	Timeout      time.Duration
-	Description  string
+	DisableHooks  bool
+	DryRun        bool
+	KeepHistory   bool
+	Wait          bool
+	Timeout       time.Duration
+	Description   string
+	AllowNotFound bool
 }
 
 // NewUninstall creates a new Uninstall object with the given configuration.
@@ -70,6 +72,9 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	}
 
 	rels, err := u.cfg.Releases.History(name)
+	if u.AllowNotFound && errors.Is(err, driver.ErrReleaseNotFound) {
+		return &release.UninstallReleaseResponse{}, nil
+	}
 	if err != nil {
 		return nil, errors.Wrapf(err, "uninstall: Release not loaded: %s", name)
 	}
