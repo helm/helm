@@ -35,6 +35,7 @@ import (
 	"helm.sh/helm/v3/pkg/storage"
 	"helm.sh/helm/v3/pkg/storage/driver"
 	"helm.sh/helm/v3/pkg/time"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
 var verbose = flag.Bool("test.log", false, "enable test logging")
@@ -317,5 +318,78 @@ func TestGetVersionSet(t *testing.T) {
 	}
 	if vs.Has("nosuchversion/v1") {
 		t.Error("Non-existent version is reported found.")
+	}
+}
+
+func TestConfiguration_Init(t *testing.T) {
+	type args struct {
+		getter     genericclioptions.RESTClientGetter
+		namespace  string
+		helmDriver string
+		log        DebugLog
+	}
+	tests := []struct {
+		name          string
+		configuration *Configuration
+		args          args
+		wantErr       bool
+	}{
+		{
+			"default helm driver",
+			actionConfigFixture(t),
+			args{nil, "", "", nil},
+			false,
+		},
+		{
+			"`secret` helm driver",
+			actionConfigFixture(t),
+			args{nil, "", "secret", nil},
+			false,
+		},
+		{
+			"`secrets` helm driver",
+			actionConfigFixture(t),
+			args{nil, "", "secrets", nil},
+			false,
+		},
+		{
+			"`configmap` helm driver",
+			actionConfigFixture(t),
+			args{nil, "", "configmap", nil},
+			false,
+		},
+		{
+			"`configmaps` helm driver",
+			actionConfigFixture(t),
+			args{nil, "", "configmaps", nil},
+			false,
+		},
+		{
+			"`memory` helm driver",
+			actionConfigFixture(t),
+			args{nil, "", "memory", nil},
+			false,
+		},
+		{
+			"`sql` helm driver without env var",
+			actionConfigFixture(t),
+			args{nil, "", "sql", nil},
+			true,
+		},
+		{
+			"unknow helm driver",
+			actionConfigFixture(t),
+			args{nil, "", "unknown", nil},
+			true,
+		},
+	}
+	
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := tt.configuration
+			if err := c.Init(tt.args.getter, tt.args.namespace, tt.args.helmDriver, tt.args.log); (err != nil) != tt.wantErr {
+				t.Errorf("Configuration.Init() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
 	}
 }

@@ -408,7 +408,7 @@ func (c *Configuration) Init(getter genericclioptions.RESTClientGetter, namespac
 		store = storage.Init(d)
 	default:
 		// Not sure what to do here.
-		errors.Errorf("Unknown driver in HELM_DRIVER: %s", helmDriver)
+		return errors.Errorf("Unknown driver in HELM_DRIVER: %s", helmDriver)
 	}
 
 	c.RESTClientGetter = getter
