@@ -31,7 +31,7 @@ import (
 
 const defaultNamespace = metav1.NamespaceDefault
 
-func Test_waiter_deploymentReady(t *testing.T) {
+func Test_ReadyChecker_deploymentReady(t *testing.T) {
 	type args struct {
 		rs  *appsv1.ReplicaSet
 		dep *appsv1.Deployment
@@ -68,18 +68,15 @@ func Test_waiter_deploymentReady(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			w := &waiter{
-				c:   fake.NewSimpleClientset(),
-				log: nopLogger,
-			}
-			if got := w.deploymentReady(tt.args.rs, tt.args.dep); got != tt.want {
+			c := NewReadyChecker(fake.NewSimpleClientset(), nil)
+			if got := c.deploymentReady(tt.args.rs, tt.args.dep); got != tt.want {
 				t.Errorf("deploymentReady() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func Test_waiter_daemonSetReady(t *testing.T) {
+func Test_ReadyChecker_daemonSetReady(t *testing.T) {
 	type args struct {
 		ds *appsv1.DaemonSet
 	}
@@ -119,18 +116,15 @@ func Test_waiter_daemonSetReady(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			w := &waiter{
-				c:   fake.NewSimpleClientset(),
-				log: nopLogger,
-			}
-			if got := w.daemonSetReady(tt.args.ds); got != tt.want {
+			c := NewReadyChecker(fake.NewSimpleClientset(), nil)
+			if got := c.daemonSetReady(tt.args.ds); got != tt.want {
 				t.Errorf("daemonSetReady() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func Test_waiter_statefulSetReady(t *testing.T) {
+func Test_ReadyChecker_statefulSetReady(t *testing.T) {
 	type args struct {
 		sts *appsv1.StatefulSet
 	}
@@ -170,18 +164,15 @@ func Test_waiter_statefulSetReady(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			w := &waiter{
-				c:   fake.NewSimpleClientset(),
-				log: nopLogger,
-			}
-			if got := w.statefulSetReady(tt.args.sts); got != tt.want {
+			c := NewReadyChecker(fake.NewSimpleClientset(), nil)
+			if got := c.statefulSetReady(tt.args.sts); got != tt.want {
 				t.Errorf("statefulSetReady() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func Test_waiter_podsReadyForObject(t *testing.T) {
+func Test_ReadyChecker_podsReadyForObject(t *testing.T) {
 	type args struct {
 		namespace string
 		obj       runtime.Object
@@ -220,17 +211,14 @@ func Test_waiter_podsReadyForObject(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			w := &waiter{
-				c:   fake.NewSimpleClientset(),
-				log: nopLogger,
-			}
+			c := NewReadyChecker(fake.NewSimpleClientset(), nil)
 			for _, pod := range tt.existPods {
-				if _, err := w.c.CoreV1().Pods(defaultNamespace).Create(context.TODO(), &pod, metav1.CreateOptions{}); err != nil {
+				if _, err := c.client.CoreV1().Pods(defaultNamespace).Create(context.TODO(), &pod, metav1.CreateOptions{}); err != nil {
 					t.Errorf("Failed to create Pod error: %v", err)
 					return
 				}
 			}
-			got, err := w.podsReadyForObject(tt.args.namespace, tt.args.obj)
+			got, err := c.podsReadyForObject(context.TODO(), tt.args.namespace, tt.args.obj)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("podsReadyForObject() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -242,7 +230,7 @@ func Test_waiter_podsReadyForObject(t *testing.T) {
 	}
 }
 
-func Test_waiter_jobReady(t *testing.T) {
+func Test_ReadyChecker_jobReady(t *testing.T) {
 	type args struct {
 		job *batchv1.Job
 	}
@@ -289,18 +277,15 @@ func Test_waiter_jobReady(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			w := &waiter{
-				c:   fake.NewSimpleClientset(),
-				log: nopLogger,
-			}
-			if got := w.jobReady(tt.args.job); got != tt.want {
+			c := NewReadyChecker(fake.NewSimpleClientset(), nil)
+			if got := c.jobReady(tt.args.job); got != tt.want {
 				t.Errorf("jobReady() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func Test_waiter_volumeReady(t *testing.T) {
+func Test_ReadyChecker_volumeReady(t *testing.T) {
 	type args struct {
 		v *corev1.PersistentVolumeClaim
 	}
@@ -326,11 +311,8 @@ func Test_waiter_volumeReady(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			w := &waiter{
-				c:   fake.NewSimpleClientset(),
-				log: nopLogger,
-			}
-			if got := w.volumeReady(tt.args.v); got != tt.want {
+			c := NewReadyChecker(fake.NewSimpleClientset(), nil)
+			if got := c.volumeReady(tt.args.v); got != tt.want {
 				t.Errorf("volumeReady() = %v, want %v", got, tt.want)
 			}
 		})
