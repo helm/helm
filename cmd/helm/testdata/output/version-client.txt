@@ -1,1 +1,1 @@
-version.BuildInfo{Version:"v3.5", GitCommit:"", GitTreeState:"", GoVersion:""}
+version.BuildInfo{Version:"v3.6", GitCommit:"", GitTreeState:"", GoVersion:""}
