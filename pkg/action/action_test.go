@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	dockerauth "github.com/deislabs/oras/pkg/auth/docker"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
 
 	"helm.sh/helm/v3/internal/experimental/registry"
@@ -35,7 +36,6 @@ import (
 	"helm.sh/helm/v3/pkg/storage"
 	"helm.sh/helm/v3/pkg/storage/driver"
 	"helm.sh/helm/v3/pkg/time"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
 var verbose = flag.Bool("test.log", false, "enable test logging")
