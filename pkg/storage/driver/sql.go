@@ -162,7 +162,7 @@ type SQLReleaseWrapper struct {
 	// The primary key, made of {release-name}.{release-version}
 	Key string `db:"key"`
 
-	// See https://github.com/helm/helm/blob/master/pkg/storage/driver/secrets.go#L236
+	// See https://github.com/helm/helm/blob/c9fe3d118caec699eb2565df9838673af379ce12/pkg/storage/driver/secrets.go#L231
 	Type string `db:"type"`
 
 	// The rspb.Release body, as a base64-encoded string
