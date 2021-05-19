@@ -1,21 +1,4 @@
 ---
-# Source: crds/crdA.yaml
-apiVersion: apiextensions.k8s.io/v1beta1
-kind: CustomResourceDefinition
-metadata:
-  name: testcrds.testcrdgroups.example.com
-spec:
-  group: testcrdgroups.example.com
-  version: v1alpha1
-  names:
-    kind: TestCRD
-    listKind: TestCRDList
-    plural: testcrds
-    shortNames:
-      - tc
-    singular: authconfig
-
----
 # Source: subchart/templates/subdir/serviceaccount.yaml
 apiVersion: v1
 kind: ServiceAccount
@@ -89,8 +72,8 @@ metadata:
     helm.sh/chart: "subchart-0.1.0"
     app.kubernetes.io/instance: "RELEASE-NAME"
     kube-version/major: "1"
-    kube-version/minor: "20"
-    kube-version/version: "v1.20.0"
+    kube-version/minor: "16"
+    kube-version/version: "v1.16.0"
 spec:
   type: ClusterIP
   ports:

@@ -185,13 +185,13 @@ verifyChecksum() {
   echo "Done."
 }
 
-# verifySignatures obtains the latest KEYS file from GitHub master branch
+# verifySignatures obtains the latest KEYS file from GitHub main branch
 # as well as the signature .asc files from the specific GitHub release,
 # then verifies that the release artifacts were signed by a maintainer's key.
 verifySignatures() {
   printf "Verifying signatures... "
   local keys_filename="KEYS"
-  local github_keys_url="https://raw.githubusercontent.com/helm/helm/master/${keys_filename}"
+  local github_keys_url="https://raw.githubusercontent.com/helm/helm/main/${keys_filename}"
   if [ "${HAS_CURL}" == "true" ]; then
     curl -SsL "${github_keys_url}" -o "${HELM_TMP_ROOT}/${keys_filename}"
   elif [ "${HAS_WGET}" == "true" ]; then

@@ -91,7 +91,7 @@ Download Helm ${RELEASE}. The common platform binaries are here:
 - [Linux s390x](https://get.helm.sh/helm-${RELEASE}-linux-s390x.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-s390x.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-s390x.tar.gz.sha256))
 - [Windows amd64](https://get.helm.sh/helm-${RELEASE}-windows-amd64.zip) ([checksum](https://get.helm.sh/helm-${RELEASE}-windows-amd64.zip.sha256sum) / $(cat _dist/helm-${RELEASE}-windows-amd64.zip.sha256))
 
-The [Quickstart Guide](https://helm.sh/docs/intro/quickstart/) will get you going from there. For **upgrade instructions** or detailed installation notes, check the [install guide](https://helm.sh/docs/intro/install/). You can also use a [script to install](https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3) on any system with \`bash\`.
+The [Quickstart Guide](https://helm.sh/docs/intro/quickstart/) will get you going from there. For **upgrade instructions** or detailed installation notes, check the [install guide](https://helm.sh/docs/intro/install/). You can also use a [script to install](https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3) on any system with \`bash\`.
 
 ## What's Next
 
