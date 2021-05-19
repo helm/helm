@@ -33,33 +33,41 @@ const bashCompDesc = `
 Generate the autocompletion script for Helm for the bash shell.
 
 To load completions in your current shell session:
-$ source <(helm completion bash)
+
+    source <(helm completion bash)
 
 To load completions for every new session, execute once:
-Linux:
-  $ helm completion bash > /etc/bash_completion.d/helm
-MacOS:
-  $ helm completion bash > /usr/local/etc/bash_completion.d/helm
+- Linux:
+
+      helm completion bash > /etc/bash_completion.d/helm
+
+- MacOS:
+
+      helm completion bash > /usr/local/etc/bash_completion.d/helm
 `
 
 const zshCompDesc = `
 Generate the autocompletion script for Helm for the zsh shell.
 
 To load completions in your current shell session:
-$ source <(helm completion zsh)
+
+    source <(helm completion zsh)
 
 To load completions for every new session, execute once:
-$ helm completion zsh > "${fpath[1]}/_helm"
+
+    helm completion zsh > "${fpath[1]}/_helm"
 `
 
 const fishCompDesc = `
 Generate the autocompletion script for Helm for the fish shell.
 
 To load completions in your current shell session:
-$ helm completion fish | source
+
+    helm completion fish | source
 
 To load completions for every new session, execute once:
-$ helm completion fish > ~/.config/fish/completions/helm.fish
+
+    helm completion fish > ~/.config/fish/completions/helm.fish
 
 You will need to start a new shell for this setup to take effect.
 `
