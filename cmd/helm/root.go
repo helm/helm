@@ -63,6 +63,7 @@ Environment variables:
 | $KUBECONFIG                        | set an alternative Kubernetes configuration file (default "~/.kube/config")       |
 | $HELM_KUBEAPISERVER                | set the Kubernetes API Server Endpoint for authentication                         |
 | $HELM_KUBECAFILE                   | set the Kubernetes certificate authority file.                                    |
+| $HELM_KUBEINSECURE_SKIP_TLS_VERIFY | disable the Kubernetes tls verfiy check.                                          | 
 | $HELM_KUBEASGROUPS                 | set the Groups to use for impersonation using a comma-separated list.             |
 | $HELM_KUBEASUSER                   | set the Username to impersonate for the operation.                                |
 | $HELM_KUBECONTEXT                  | set the name of the kubeconfig context.                                           |
