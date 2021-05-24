@@ -1,7 +1,6 @@
 maintainers:
   - adamreese
   - bacongobbler
-  - fibonacci1729
   - hickeyma
   - jdolitsky
   - marckhouzam
@@ -10,6 +9,7 @@ maintainers:
   - SlickNik
   - technosophos
 emeritus:
+  - fibonacci1729
   - jascott1
   - michelleN
   - migmartri
