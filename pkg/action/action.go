@@ -418,3 +418,8 @@ func (c *Configuration) Init(getter genericclioptions.RESTClientGetter, namespac
 
 	return nil
 }
+
+func warning(format string, v ...interface{}) {
+	format = fmt.Sprintf("WARNING: %s\n", format)
+	fmt.Fprintf(os.Stderr, format, v...)
+}

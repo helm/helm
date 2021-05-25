@@ -643,6 +643,11 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 				return "", err
 			}
 		}
+		if c.RepoURL != "" {
+			warning("Chart found at local path '%v'. Ignoring Repository URL '%v.'",
+				abs,
+				c.RepoURL)
+		}
 		return abs, nil
 	}
 	if filepath.IsAbs(name) || strings.HasPrefix(name, ".") {
