@@ -106,7 +106,7 @@ func LoadIndexFile(path string) (*IndexFile, error) {
 	if err != nil {
 		return nil, err
 	}
-	i, err := loadIndex(b, path)
+	i, err := loadIndex(b)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error loading %s", path)
 	}
@@ -322,21 +322,19 @@ func IndexDirectory(dir, baseURL string) (*IndexFile, error) {
 
 // loadIndex loads an index file and does minimal validity checking.
 //
-// The source parameter is only used for logging.
 // This will fail if API Version is not set (ErrNoAPIVersion) or if the unmarshal fails.
-func loadIndex(data []byte, source string) (*IndexFile, error) {
+func loadIndex(data []byte) (*IndexFile, error) {
 	i := &IndexFile{}
 	if err := yaml.UnmarshalStrict(data, i); err != nil {
 		return i, err
 	}
 
-	for name, cvs := range i.Entries {
+	for _, cvs := range i.Entries {
 		for idx := len(cvs) - 1; idx >= 0; idx-- {
 			if cvs[idx].APIVersion == "" {
 				cvs[idx].APIVersion = chart.APIVersionV1
 			}
 			if err := cvs[idx].Validate(); err != nil {
-				log.Printf("skipping loading invalid entry for chart %q %q from %s: %s", name, cvs[idx].Version, source, err)
 				cvs = append(cvs[:idx], cvs[idx+1:]...)
 			}
 		}

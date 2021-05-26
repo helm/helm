@@ -139,7 +139,7 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 		return "", err
 	}
 
-	indexFile, err := loadIndex(index, r.Config.URL)
+	indexFile, err := loadIndex(index)
 	if err != nil {
 		return "", err
 	}
