@@ -19,9 +19,27 @@ package main
 import (
 	"fmt"
 	"testing"
+
+	"helm.sh/helm/v3/pkg/repo/repotest"
 )
 
 func TestInstall(t *testing.T) {
+
+	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")
+	srv.Stop()
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv.Start()
+	defer srv.Stop()
+	if err := srv.CreateIndex(); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := srv.LinkIndices(); err != nil {
+		t.Fatal(err)
+	}
+
 	tests := []cmdTestCase{
 		// Install, base case
 		{
@@ -206,6 +224,12 @@ func TestInstall(t *testing.T) {
 		{
 			name: "install chart with only crds",
 			cmd:  "install crd-test testdata/testcharts/chart-with-only-crds --namespace default",
+		},
+		// Install chart with repoURL
+		{
+			name:   "install chart with only repoURL",
+			cmd:    "install local-subchart  local-subchart --repo " + srv.URL() + " --version 0.1.0",
+			golden: "output/install-with-repo-url.txt",
 		},
 	}
 

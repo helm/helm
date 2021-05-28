@@ -72,6 +72,7 @@ type ChartDownloader struct {
 	RegistryClient   *registry.Client
 	RepositoryConfig string
 	RepositoryCache  string
+	UseRepoURL       bool
 }
 
 // DownloadTo retrieves a chart. Depending on the settings, it may also download a provenance file.
@@ -158,6 +159,12 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 	if err != nil {
 		return nil, errors.Errorf("invalid chart URL format: %s", ref)
 	}
+
+	// It is already resolve, no need to look for the version in the repoconfig
+	if c.UseRepoURL {
+		return u, nil
+	}
+
 	c.Options = append(c.Options, getter.WithURL(ref))
 
 	rf, err := loadRepoConfig(c.RepositoryConfig)

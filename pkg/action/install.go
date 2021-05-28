@@ -633,20 +633,22 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 	name = strings.TrimSpace(name)
 	version := strings.TrimSpace(c.Version)
 
-	if _, err := os.Stat(name); err == nil {
-		abs, err := filepath.Abs(name)
-		if err != nil {
-			return abs, err
-		}
-		if c.Verify {
-			if _, err := downloader.VerifyChart(abs, c.Keyring); err != nil {
-				return "", err
+	if len(c.RepoURL) == 0 {
+		if _, err := os.Stat(name); err == nil {
+			abs, err := filepath.Abs(name)
+			if err != nil {
+				return abs, err
 			}
+			if c.Verify {
+				if _, err := downloader.VerifyChart(abs, c.Keyring); err != nil {
+					return "", err
+				}
+			}
+			return abs, nil
 		}
-		return abs, nil
-	}
-	if filepath.IsAbs(name) || strings.HasPrefix(name, ".") {
-		return name, errors.Errorf("path %q not found", name)
+		if filepath.IsAbs(name) || strings.HasPrefix(name, ".") {
+			return name, errors.Errorf("path %q not found", name)
+		}
 	}
 
 	dl := downloader.ChartDownloader{
@@ -660,6 +662,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		},
 		RepositoryConfig: settings.RepositoryConfig,
 		RepositoryCache:  settings.RepositoryCache,
+		UseRepoURL:       len(c.RepoURL) > 0,
 	}
 	if c.Verify {
 		dl.Verify = downloader.VerifyAlways

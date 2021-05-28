@@ -242,6 +242,10 @@ func FindChartInAuthAndTLSRepoURL(repoURL, username, password, chartName, chartV
 		return "", errors.Wrapf(err, "looks like %q is not a valid chart repository or cannot be reached", repoURL)
 	}
 
+	// Temporary generation needs to delete
+	defer os.Remove(filepath.Join(r.CachePath, helmpath.CacheIndexFile(r.Config.Name)))
+	defer os.Remove(filepath.Join(r.CachePath, helmpath.CacheChartsFile(r.Config.Name)))
+
 	// Read the index file for the repository to get chart information and return chart URL
 	repoIndex, err := LoadIndexFile(idx)
 	if err != nil {
