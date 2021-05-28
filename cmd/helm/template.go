@@ -23,8 +23,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
-	"sort"
 	"strings"
 
 	"helm.sh/helm/v3/pkg/release"
@@ -35,7 +33,6 @@ import (
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli/values"
-	"helm.sh/helm/v3/pkg/releaseutil"
 )
 
 const templateDesc = `
@@ -54,7 +51,6 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	valueOpts := &values.Options{}
 	var kubeVersion string
 	var extraAPIs []string
-	var showFiles []string
 
 	cmd := &cobra.Command{
 		Use:   "template [NAME] [CHART]",
@@ -115,57 +111,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 					}
 				}
-
-				// if we have a list of files to render, then check that each of the
-				// provided files exists in the chart.
-				if len(showFiles) > 0 {
-					// This is necessary to ensure consistent manifest ordering when using --show-only
-					// with globs or directory names.
-					splitManifests := releaseutil.SplitManifests(manifests.String())
-					manifestsKeys := make([]string, 0, len(splitManifests))
-					for k := range splitManifests {
-						manifestsKeys = append(manifestsKeys, k)
-					}
-					sort.Sort(releaseutil.BySplitManifestsOrder(manifestsKeys))
-
-					manifestNameRegex := regexp.MustCompile("# Source: [^/]+/(.+)")
-					var manifestsToRender []string
-					for _, f := range showFiles {
-						missing := true
-						// Use linux-style filepath separators to unify user's input path
-						f = filepath.ToSlash(f)
-						for _, manifestKey := range manifestsKeys {
-							manifest := splitManifests[manifestKey]
-							submatch := manifestNameRegex.FindStringSubmatch(manifest)
-							if len(submatch) == 0 {
-								continue
-							}
-							manifestName := submatch[1]
-							// manifest.Name is rendered using linux-style filepath separators on Windows as
-							// well as macOS/linux.
-							manifestPathSplit := strings.Split(manifestName, "/")
-							// manifest.Path is connected using linux-style filepath separators on Windows as
-							// well as macOS/linux
-							manifestPath := strings.Join(manifestPathSplit, "/")
-
-							// if the filepath provided matches a manifest path in the
-							// chart, render that manifest
-							if matched, _ := filepath.Match(f, manifestPath); !matched {
-								continue
-							}
-							manifestsToRender = append(manifestsToRender, manifest)
-							missing = false
-						}
-						if missing {
-							return fmt.Errorf("could not find template %s in chart", f)
-						}
-					}
-					for _, m := range manifestsToRender {
-						fmt.Fprintf(out, "---\n%s\n", m)
-					}
-				} else {
-					fmt.Fprintf(out, "%s", manifests.String())
-				}
+				fmt.Fprintf(out, "%s", manifests.String())
 			}
 
 			return err
@@ -174,7 +120,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	addInstallFlags(cmd, f, client, valueOpts)
-	f.StringArrayVarP(&showFiles, "show-only", "s", []string{}, "only show manifests rendered from the given templates")
+	f.StringSliceVarP(&client.FileFilter, "show-only", "s", []string{}, "only show manifests rendered from the given templates")
 	f.StringVar(&client.OutputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
 	f.BoolVar(&validate, "validate", false, "validate your manifests against the Kubernetes cluster you are currently pointing at. This is the same validation performed on an install")
 	f.BoolVar(&includeCrds, "include-crds", false, "include CRDs in the templated output")

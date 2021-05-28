@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -25,6 +26,9 @@ import (
 var chartPath = "testdata/testcharts/subchart"
 
 func TestTemplateCmd(t *testing.T) {
+	outputDir := "/tmp/template-with-show-only-one-and-output-dir"
+	defer os.RemoveAll(outputDir)
+
 	tests := []cmdTestCase{
 		{
 			name:   "check name",
@@ -93,6 +97,11 @@ func TestTemplateCmd(t *testing.T) {
 			name:   "template with show-only one",
 			cmd:    fmt.Sprintf("template '%s' --show-only templates/service.yaml", chartPath),
 			golden: "output/template-show-only-one.txt",
+		},
+		{
+			name:   "template with show-only one and output-dir",
+			cmd:    fmt.Sprintf("template '%s' --show-only templates/service.yaml --output-dir '%s'", chartPath, outputDir),
+			golden: "output/template-show-only-one-and-output-dir.txt",
 		},
 		{
 			name:   "template with show-only multiple",

@@ -18,9 +18,12 @@ package releaseutil
 
 import (
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"helm.sh/helm/v3/pkg/release"
 )
 
 // SimpleHead defines what the structure of the head of a manifest file
@@ -70,3 +73,67 @@ func (a BySplitManifestsOrder) Less(i, j int) bool {
 	return anum < bnum
 }
 func (a BySplitManifestsOrder) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+
+// FilterManifestsAndHooks takes a map of manifests and a map of *hooks and returns only those which match
+// the fileFilter map
+func FilterManifestsAndHooks(manifests []Manifest, hooks []*release.Hook, fileFilter []string) ([]Manifest, []*release.Hook, error) {
+	if len(fileFilter) == 0 {
+		return manifests, hooks, nil
+	}
+
+	// Ignore everything until the first slash
+	// This will look like: dir/templates/template.yaml
+	// And the regex will return templates/template.yaml
+	pathRegex := regexp.MustCompile("[^/]+/(.+)")
+
+	filteredManifests := make([]Manifest, 0)
+	filteredHooks := make([]*release.Hook, 0)
+	var missing bool
+	for _, fileName := range fileFilter {
+		missing = true
+		// Use linux-style filepath separators to unify user's input path
+		fileName = filepath.ToSlash(fileName)
+		for _, manifest := range manifests {
+			if !IsPathMatch(fileName, manifest.Name, pathRegex) {
+				continue
+			}
+			missing = false
+			filteredManifests = append(filteredManifests, manifest)
+		}
+		// If the path was found in the manifest, we do not have to search for it in the hooks
+		if !missing {
+			continue
+		}
+		for _, hook := range hooks {
+			if !IsPathMatch(fileName, hook.Path, pathRegex) {
+				continue
+			}
+			missing = false
+			filteredHooks = append(filteredHooks, hook)
+		}
+		if missing {
+			return nil, nil, fmt.Errorf("Could not find template %s in chart", fileName)
+		}
+	}
+
+	return filteredManifests, filteredHooks, nil
+}
+
+func IsPathMatch(fileName string, path string, pathRegex *regexp.Regexp) bool {
+	submatch := pathRegex.FindStringSubmatch(path)
+	if len(submatch) == 0 {
+		return false
+	}
+
+	submatchPath := submatch[1]
+	// hook.Path is rendered using linux-style filepath separators on Windows as
+	// well as macOS/linux.
+	pathSplit := strings.Split(submatchPath, "/")
+	// hook.Path is connected using linux-style filepath separators on Windows as
+	// well as macOS/linux
+	joinedPath := strings.Join(pathSplit, "/")
+	// if the filepath provided matches a manifest path in the
+	// chart, render that manifest
+	matched, _ := filepath.Match(fileName, joinedPath)
+	return matched
+}
