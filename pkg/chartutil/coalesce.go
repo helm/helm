@@ -127,9 +127,10 @@ func coalesceGlobals(dest, src map[string]interface{}) {
 			// It's not clear if this condition can actually ever trigger.
 			log.Printf("key %s is table. Skipping", key)
 			continue
+		} else {
+			// TODO: Do we need to do any additional checking on the value?
+			dg[key] = val
 		}
-		// TODO: Do we need to do any additional checking on the value?
-		dg[key] = val
 	}
 	dest[GlobalKey] = dg
 }
