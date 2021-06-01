@@ -122,7 +122,19 @@ func (p *Pull) Run(chartRef string) (string, error) {
 	}
 
 	if p.RepoURL != "" {
-		chartURL, err := repo.FindChartInAuthAndTLSAndPassRepoURL(p.RepoURL, p.Username, p.Password, chartRef, p.Version, p.CertFile, p.KeyFile, p.CaFile, p.InsecureSkipTLSverify, p.PassCredentialsAll, getter.All(p.Settings))
+		username := p.Username
+		password := p.Password
+		if username == "" && password == "" {
+			repoEntry, err := repo.FindRepoEntry(p.RepoURL, p.Settings.RepositoryConfig)
+			if err != nil {
+				return out.String(), err
+			}
+			if repoEntry != nil {
+				username = repoEntry.Username
+				password = repoEntry.Password
+			}
+		}
+		chartURL, err := repo.FindChartInAuthAndTLSAndPassRepoURL(p.RepoURL, username, password, chartRef, p.Version, p.CertFile, p.KeyFile, p.CaFile, p.InsecureSkipTLSverify, p.PassCredentialsAll, getter.All(p.Settings))
 		if err != nil {
 			return out.String(), err
 		}
