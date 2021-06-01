@@ -385,15 +385,9 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		fmt.Fprintln(m.Out, "Save error occurred: ", saveError)
 		fmt.Fprintln(m.Out, "Deleting newly downloaded charts, restoring pre-update state")
 		for _, dep := range deps {
-			if err := m.safeDeleteDep(dep.Name, destPath); err != nil {
+			if err := m.safeDeleteDep(dep.Name, tmpPath); err != nil {
 				return err
 			}
-		}
-		if err := os.RemoveAll(destPath); err != nil {
-			return errors.Wrapf(err, "failed to remove %v", destPath)
-		}
-		if err := fs.RenameWithFallback(tmpPath, destPath); err != nil {
-			return errors.Wrap(err, "unable to move current charts to tmp dir")
 		}
 		return saveError
 	}
