@@ -259,7 +259,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		return errors.Errorf("%q is not a directory", destPath)
 	}
 
-	// Check if tmpcharts exists, is so, delete it. see https://github.com/helm/helm/issues/5567
+	// Check if tmpcharts exists, if so, delete it. see https://github.com/helm/helm/issues/5567
 	if _, err := os.Stat(tmpPath); !os.IsNotExist(err) {
 		err := os.RemoveAll(tmpPath)
 		if err != nil {
@@ -267,11 +267,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		}
 	}
 
-	if err := fs.RenameWithFallback(destPath, tmpPath); err != nil {
-		return errors.Wrap(err, "unable to move current charts to tmp dir")
-	}
-
-	if err := os.MkdirAll(destPath, 0755); err != nil {
+	if err := os.MkdirAll(tmpPath, 0755); err != nil {
 		return err
 	}
 
@@ -282,7 +278,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		// No repository means the chart is in charts directory
 		if dep.Repository == "" {
 			fmt.Fprintf(m.Out, "Dependency %s did not declare a repository. Assuming it exists in the charts directory\n", dep.Name)
-			chartPath := filepath.Join(tmpPath, dep.Name)
+			chartPath := filepath.Join(destPath, dep.Name)
 			ch, err := loader.LoadDir(chartPath)
 			if err != nil {
 				return fmt.Errorf("Unable to load chart: %v", err)
@@ -360,7 +356,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 				getter.WithTagName(version))
 		}
 
-		_, _, err = dl.DownloadTo(churl, version, destPath)
+		_, _, err = dl.DownloadTo(churl, version, tmpPath)
 		if err != nil {
 			saveError = errors.Wrapf(err, "could not download %s", churl)
 			break
@@ -374,7 +370,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		for _, dep := range deps {
 			// Chart from local charts directory stays in place
 			if dep.Repository != "" {
-				if err := m.safeDeleteDep(dep.Name, tmpPath); err != nil {
+				if err := m.safeDeleteDep(dep.Name, destPath); err != nil {
 					return err
 				}
 			}
