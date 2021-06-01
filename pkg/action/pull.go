@@ -18,6 +18,7 @@ package action
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -72,6 +73,21 @@ func (p *Pull) SetRegistryClient(client *registry.Client) {
 // Run executes 'helm pull' against the given release.
 func (p *Pull) Run(chartRef string) (string, error) {
 	var out strings.Builder
+
+	// If the repository URL is set via CLI (--repo), but neither a username nor
+	// password are set for a pull request, check if the repository credentials
+	// are already stored in helm's repository config.
+	if p.RepoURL != "" && p.Username == "" && p.Password == "" {
+		f, err := repo.LoadFile(p.Settings.RepositoryConfig)
+		if err != nil {
+			return out.String(), fmt.Errorf("failed to load repository config %q: %w", p.Settings.RepositoryConfig, err)
+		}
+		if repoEntry := f.GetByURL(p.RepoURL); repoEntry != nil {
+			slog.Debug("Using credentials from repository config")
+			p.Username = repoEntry.Username
+			p.Password = repoEntry.Password
+		}
+	}
 
 	c := downloader.ChartDownloader{
 		Out:     &out,
