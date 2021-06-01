@@ -558,3 +558,67 @@ func TestPullOCIWithTagAndDigest(t *testing.T) {
 		}
 	}
 }
+
+func TestPullWithCredentialsFromExistingRepository(t *testing.T) {
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testcharts/*.tgz"),
+		repotest.WithMiddleware(repotest.BasicAuthMiddleware(t)),
+	)
+	defer srv.Stop()
+
+	if err := srv.LinkIndices(); err != nil {
+		t.Fatal(err)
+	}
+
+	// all flags will get "-d outdir" appended.
+	tests := []struct {
+		name       string
+		args       string
+		expectFile string
+	}{
+		{
+			name:       "Chart fetch using repo URL with username and password",
+			expectFile: "./signtest-0.1.0.tgz",
+			args:       "signtest --repo " + srv.URL() + " --username username --password password",
+		},
+		{
+			name:       "Chart fetch using repo URL with stored credentials",
+			expectFile: "./signtest-0.1.0.tgz",
+			args:       "signtest --repo " + srv.URL(),
+		},
+	}
+
+	outdir := t.TempDir()
+	repositoryConfig := filepath.Join(outdir, "repositories.yaml")
+	repositoryCache := outdir
+	registryConfig := filepath.Join(outdir, "config.json")
+	cmd := fmt.Sprintf("repo add test_repository %s --username %s --password %s "+
+		"--repository-config %s --repository-cache %s --registry-config %s",
+		srv.URL(), "username", "password", repositoryConfig, repositoryCache, registryConfig,
+	)
+	if _, _, err := executeActionCommand(cmd); err != nil {
+		t.Fatalf("got error in setup, error: %q", err)
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := fmt.Sprintf("pull %s -d '%s' --repository-config %s --repository-cache %s --registry-config %s",
+				tt.args,
+				outdir,
+				repositoryConfig,
+				repositoryCache,
+				registryConfig,
+			)
+			_, _, err := executeActionCommand(cmd)
+			if err != nil {
+				t.Fatalf("%q reported error: %s", tt.name, err)
+			}
+
+			ef := filepath.Join(outdir, tt.expectFile)
+			if _, err := os.Stat(ef); err != nil {
+				t.Errorf("%q: expected a file at %s. %s", tt.name, ef, err)
+			}
+		})
+	}
+}
