@@ -112,7 +112,14 @@ func (o *repoAddOptions) run(out io.Writer) error {
 	}
 
 	// Acquire a file lock for process synchronization
-	fileLock := flock.New(strings.Replace(o.repoFile, filepath.Ext(o.repoFile), ".lock", 1))
+	repoFileExt := filepath.Ext(o.repoFile)
+	var lockPath string
+	if len(repoFileExt) > 0 && len(repoFileExt) < len(o.repoFile) {
+		lockPath = strings.Replace(o.repoFile, repoFileExt, ".lock", 1)
+	} else {
+		lockPath = o.repoFile + ".lock"
+	}
+	fileLock := flock.New(lockPath)
 	lockCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	locked, err := fileLock.TryLockContext(lockCtx, time.Second)
