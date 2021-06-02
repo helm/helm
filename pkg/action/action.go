@@ -102,11 +102,11 @@ type Configuration struct {
 // TODO: This function is badly in need of a refactor.
 // TODO: As part of the refactor the duplicate code in cmd/helm/template.go should be removed
 //       This code has to do with writing files to disk.
-func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, dryRun bool) ([]*release.Hook, *bytes.Buffer, string, error) {
+func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, dryRun bool) ([]*release.Hook, *bytes.Buffer, string, error) {
 	hs := []*release.Hook{}
 	b := bytes.NewBuffer(nil)
 
-	caps, err := c.getCapabilities()
+	caps, err := cfg.getCapabilities()
 	if err != nil {
 		return hs, b, "", err
 	}
@@ -125,12 +125,12 @@ func (c *Configuration) renderResources(ch *chart.Chart, values chartutil.Values
 	// is mocked. It is not up to the template author to decide when the user wants to
 	// connect to the cluster. So when the user says to dry run, respect the user's
 	// wishes and do not connect to the cluster.
-	if !dryRun && c.RESTClientGetter != nil {
-		rest, err := c.RESTClientGetter.ToRESTConfig()
+	if !dryRun && cfg.RESTClientGetter != nil {
+		restConfig, err := cfg.RESTClientGetter.ToRESTConfig()
 		if err != nil {
 			return hs, b, "", err
 		}
-		files, err2 = engine.RenderWithClient(ch, values, rest)
+		files, err2 = engine.RenderWithClient(ch, values, restConfig)
 	} else {
 		files, err2 = engine.Render(ch, values)
 	}
@@ -236,11 +236,11 @@ type RESTClientGetter interface {
 type DebugLog func(format string, v ...interface{})
 
 // capabilities builds a Capabilities from discovery information.
-func (c *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
-	if c.Capabilities != nil {
-		return c.Capabilities, nil
+func (cfg *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
+	if cfg.Capabilities != nil {
+		return cfg.Capabilities, nil
 	}
-	dc, err := c.RESTClientGetter.ToDiscoveryClient()
+	dc, err := cfg.RESTClientGetter.ToDiscoveryClient()
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get Kubernetes discovery client")
 	}
@@ -258,14 +258,14 @@ func (c *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 	apiVersions, err := GetVersionSet(dc)
 	if err != nil {
 		if discovery.IsGroupDiscoveryFailedError(err) {
-			c.Log("WARNING: The Kubernetes server has an orphaned API service. Server reports: %s", err)
-			c.Log("WARNING: To fix this, kubectl delete apiservice <service-name>")
+			cfg.Log("WARNING: The Kubernetes server has an orphaned API service. Server reports: %s", err)
+			cfg.Log("WARNING: To fix this, kubectl delete apiservice <service-name>")
 		} else {
 			return nil, errors.Wrap(err, "could not get apiVersions from Kubernetes")
 		}
 	}
 
-	c.Capabilities = &chartutil.Capabilities{
+	cfg.Capabilities = &chartutil.Capabilities{
 		APIVersions: apiVersions,
 		KubeVersion: chartutil.KubeVersion{
 			Version: kubeVersion.GitVersion,
@@ -273,12 +273,12 @@ func (c *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 			Minor:   kubeVersion.Minor,
 		},
 	}
-	return c.Capabilities, nil
+	return cfg.Capabilities, nil
 }
 
 // KubernetesClientSet creates a new kubernetes ClientSet based on the configuration
-func (c *Configuration) KubernetesClientSet() (kubernetes.Interface, error) {
-	conf, err := c.RESTClientGetter.ToRESTConfig()
+func (cfg *Configuration) KubernetesClientSet() (kubernetes.Interface, error) {
+	conf, err := cfg.RESTClientGetter.ToRESTConfig()
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to generate config for kubernetes client")
 	}
@@ -290,20 +290,20 @@ func (c *Configuration) KubernetesClientSet() (kubernetes.Interface, error) {
 //
 // If the configuration has a Timestamper on it, that will be used.
 // Otherwise, this will use time.Now().
-func (c *Configuration) Now() time.Time {
+func (cfg *Configuration) Now() time.Time {
 	return Timestamper()
 }
 
-func (c *Configuration) releaseContent(name string, version int) (*release.Release, error) {
+func (cfg *Configuration) releaseContent(name string, version int) (*release.Release, error) {
 	if err := chartutil.ValidateReleaseName(name); err != nil {
 		return nil, errors.Errorf("releaseContent: Release name is invalid: %s", name)
 	}
 
 	if version <= 0 {
-		return c.Releases.Last(name)
+		return cfg.Releases.Last(name)
 	}
 
-	return c.Releases.Get(name, version)
+	return cfg.Releases.Get(name, version)
 }
 
 // GetVersionSet retrieves a set of available k8s API versions
@@ -355,14 +355,14 @@ func GetVersionSet(client discovery.ServerResourcesInterface) (chartutil.Version
 }
 
 // recordRelease with an update operation in case reuse has been set.
-func (c *Configuration) recordRelease(r *release.Release) {
-	if err := c.Releases.Update(r); err != nil {
-		c.Log("warning: Failed to update release %s: %s", r.Name, err)
+func (cfg *Configuration) recordRelease(r *release.Release) {
+	if err := cfg.Releases.Update(r); err != nil {
+		cfg.Log("warning: Failed to update release %s: %s", r.Name, err)
 	}
 }
 
 // Init initializes the action configuration
-func (c *Configuration) Init(getter genericclioptions.RESTClientGetter, namespace, helmDriver string, log DebugLog) error {
+func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namespace, helmDriver string, log DebugLog) error {
 	kc := kube.New(getter)
 	kc.Log = log
 
@@ -383,8 +383,8 @@ func (c *Configuration) Init(getter genericclioptions.RESTClientGetter, namespac
 		store = storage.Init(d)
 	case "memory":
 		var d *driver.Memory
-		if c.Releases != nil {
-			if mem, ok := c.Releases.Driver.(*driver.Memory); ok {
+		if cfg.Releases != nil {
+			if mem, ok := cfg.Releases.Driver.(*driver.Memory); ok {
 				// This function can be called more than once (e.g., helm list --all-namespaces).
 				// If a memory driver was already initialized, re-use it but set the possibly new namespace.
 				// We re-use it in case some releases where already created in the existing memory driver.
@@ -411,10 +411,10 @@ func (c *Configuration) Init(getter genericclioptions.RESTClientGetter, namespac
 		panic("Unknown driver in HELM_DRIVER: " + helmDriver)
 	}
 
-	c.RESTClientGetter = getter
-	c.KubeClient = kc
-	c.Releases = store
-	c.Log = log
+	cfg.RESTClientGetter = getter
+	cfg.KubeClient = kc
+	cfg.Releases = store
+	cfg.Log = log
 
 	return nil
 }
