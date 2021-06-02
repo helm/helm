@@ -25,9 +25,13 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/gosuri/uitable"
+	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v3/pkg/downloader"
+	"helm.sh/helm/v3/pkg/getter"
 )
 
 // Dependency is the action for building a given chart's dependency tree.
@@ -227,4 +231,29 @@ func (d *Dependency) printMissing(chartpath string, out io.Writer, reqs []*chart
 			fmt.Fprintf(out, "WARNING: %q is not in Chart.yaml.\n", f)
 		}
 	}
+}
+
+// UpdateDependencies update dependency charts.
+func UpdateDependencies(chartPath string, keyRing string, settings *cli.EnvSettings, out io.Writer, p getter.Providers) (*chart.Chart, error) {
+	// Update all dependencies if DependencyUpdate is true
+	man := &downloader.Manager{
+		Out:              out,
+		ChartPath:        chartPath,
+		Keyring:          keyRing,
+		SkipUpdate:       false,
+		Getters:          p,
+		RepositoryConfig: settings.RepositoryConfig,
+		RepositoryCache:  settings.RepositoryCache,
+		Debug:            settings.Debug,
+	}
+	// Reload chart dependencies
+	if err := man.Update(); err != nil {
+		return nil, err
+	}
+	// Reload the chart with the updated Chart.lock file.
+	ch, err := loader.Load(chartPath)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed reloading chart after repo update")
+	}
+	return ch, nil
 }

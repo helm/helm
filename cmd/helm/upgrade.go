@@ -105,6 +105,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.Wait = client.Wait
 					instClient.WaitForJobs = client.WaitForJobs
 					instClient.Devel = client.Devel
+					instClient.DependencyUpdate = client.DependencyUpdate
 					instClient.Namespace = client.Namespace
 					instClient.Atomic = client.Atomic
 					instClient.PostRenderer = client.PostRenderer
@@ -132,6 +133,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return err
 			}
 
+			p := getter.All(settings)
 			vals, err := valueOpts.MergeValues(getter.All(settings))
 			if err != nil {
 				return err
@@ -142,7 +144,20 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
+
+			// Only check dependencies if there are any
 			if req := ch.Metadata.Dependencies; req != nil {
+				if client.DependencyUpdate {
+					// Update all dependencies if DependencyUpdate flag is set (Implemented with PR#9399)
+					if ch, err = action.UpdateDependencies(chartPath, client.ChartPathOptions.Keyring, settings, out, p); err != nil {
+						return err
+					}
+				}
+
+				// If CheckDependencies returns an error, we have unfulfilled dependencies.
+				// As of Helm 2.4.0, this is treated as a stopping condition:
+				// https://github.com/helm/helm/issues/2209
+				// Update all dependencies if DependencyUpdate is true
 				if err := action.CheckDependencies(ch, req); err != nil {
 					return err
 				}
@@ -182,6 +197,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.Wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment, StatefulSet, or ReplicaSet are in a ready state before marking the release as successful. It will wait for as long as --timeout")
 	f.BoolVar(&client.WaitForJobs, "wait-for-jobs", false, "if set and --wait enabled, will wait until all Jobs have been completed before marking the release as successful. It will wait for as long as --timeout")
 	f.BoolVar(&client.Atomic, "atomic", false, "if set, upgrade process rolls back changes made in case of failed upgrade. The --wait flag will be set automatically if --atomic is used")
+	f.BoolVar(&client.DependencyUpdate, "dependency-update", false, "run helm dependency update before upgrading the chart")
 	f.IntVar(&client.MaxHistory, "history-max", settings.MaxHistory, "limit the maximum number of revisions saved per release. Use 0 for no limit")
 	f.BoolVar(&client.CleanupOnFail, "cleanup-on-fail", false, "allow deletion of new resources created in this upgrade when upgrade fails")
 	f.BoolVar(&client.SubNotes, "render-subchart-notes", false, "if set, render subchart notes along with the parent")
