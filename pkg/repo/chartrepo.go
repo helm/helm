@@ -286,7 +286,8 @@ func FindChartInAuthAndTLSAndPassRepoURL(repoURL, username, password, chartName,
 // ResolveReferenceURL resolves refURL relative to baseURL.
 // If refURL is absolute, it simply returns refURL.
 func ResolveReferenceURL(baseURL, refURL string) (string, error) {
-	parsedBaseURL, err := url.Parse(baseURL)
+	// We need a trailing slash for ResolveReference to work, but make sure there isn't already one
+	parsedBaseURL, err := url.Parse(strings.TrimSuffix(baseURL, "/") + "/")
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to parse %s as URL", baseURL)
 	}
@@ -296,8 +297,6 @@ func ResolveReferenceURL(baseURL, refURL string) (string, error) {
 		return "", errors.Wrapf(err, "failed to parse %s as URL", refURL)
 	}
 
-	// We need a trailing slash for ResolveReference to work, but make sure there isn't already one
-	parsedBaseURL.Path = strings.TrimSuffix(parsedBaseURL.Path, "/") + "/"
 	return parsedBaseURL.ResolveReference(parsedRefURL).String(), nil
 }
 
