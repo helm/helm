@@ -47,6 +47,11 @@ func (p *PrintingKubeClient) Create(resources kube.ResourceList) (*kube.Result, 
 	return &kube.Result{Created: resources}, nil
 }
 
+// Create prints the values of what would be created with a real KubeClient.
+func (p *PrintingKubeClient) CreateIfNotExists(resources kube.ResourceList) (*kube.Result, error) {
+	return p.Create(resources)
+}
+
 func (p *PrintingKubeClient) Wait(resources kube.ResourceList, _ time.Duration) error {
 	_, err := io.Copy(p.Out, bufferize(resources))
 	return err
