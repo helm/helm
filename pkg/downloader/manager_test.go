@@ -81,7 +81,7 @@ func TestFindChartURL(t *testing.T) {
 	version := "0.1.0"
 	repoURL := "http://example.com/charts"
 
-	churl, username, password, insecureSkipTLSVerify, err := m.findChartURL(name, version, repoURL, repos)
+	churl, username, password, certname, keyname, cafile, insecureSkipTLSVerify, err := m.findChartURL(name, version, repoURL, repos)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,6 +95,15 @@ func TestFindChartURL(t *testing.T) {
 	if password != "" {
 		t.Errorf("Unexpected password %q", password)
 	}
+	if certname != "" {
+		t.Errorf("Unexpected certname %q", certname)
+	}
+	if keyname != "" {
+		t.Errorf("Unexpected keyname %q", keyname)
+	}
+	if cafile != "" {
+		t.Errorf("Unexpected cafile %q", cafile)
+	}
 	if insecureSkipTLSVerify {
 		t.Errorf("Unexpected insecureSkipTLSVerify %t", insecureSkipTLSVerify)
 	}
@@ -103,7 +112,7 @@ func TestFindChartURL(t *testing.T) {
 	version = "1.2.3"
 	repoURL = "https://example-https-insecureskiptlsverify.com"
 
-	churl, username, password, insecureSkipTLSVerify, err = m.findChartURL(name, version, repoURL, repos)
+	churl, username, password, certname, keyname, cafile, insecureSkipTLSVerify, err = m.findChartURL(name, version, repoURL, repos)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,6 +128,46 @@ func TestFindChartURL(t *testing.T) {
 	}
 	if password != "" {
 		t.Errorf("Unexpected password %q", password)
+	}
+	if certname != "" {
+		t.Errorf("Unexpected certname %q", certname)
+	}
+	if keyname != "" {
+		t.Errorf("Unexpected keyname %q", keyname)
+	}
+	if cafile != "" {
+		t.Errorf("Unexpected cafile %q", cafile)
+	}
+
+	name = "privatechart"
+	version = "1.2.3"
+	repoURL = "https://private.example.com"
+
+	churl, username, password, certname, keyname, cafile, insecureSkipTLSVerify, err = m.findChartURL(name, version, repoURL, repos)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if insecureSkipTLSVerify {
+		t.Errorf("Unexpected insecureSkipTLSVerify %t", insecureSkipTLSVerify)
+	}
+	if churl != "https://private.example.com/privatechart-1.2.3.tgz" {
+		t.Errorf("Unexpected URL %q", churl)
+	}
+	if username != "" {
+		t.Errorf("Unexpected username %q", username)
+	}
+	if password != "" {
+		t.Errorf("Unexpected password %q", password)
+	}
+	if certname != "cert" {
+		t.Errorf("Unexpected certname %q", certname)
+	}
+	if keyname != "key" {
+		t.Errorf("Unexpected keyname %q", keyname)
+	}
+	if cafile != "ca" {
+		t.Errorf("Unexpected cafile %q", cafile)
 	}
 }
 

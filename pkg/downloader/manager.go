@@ -310,7 +310,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 
 		// Any failure to resolve/download a chart should fail:
 		// https://github.com/helm/helm/issues/1439
-		churl, username, password, insecureskiptlsverify, err := m.findChartURL(dep.Name, dep.Version, dep.Repository, repos)
+		churl, username, password, certfile, keyfile, cafile, insecureskiptlsverify, err := m.findChartURL(dep.Name, dep.Version, dep.Repository, repos)
 		if err != nil {
 			saveError = errors.Wrapf(err, "could not find %s", churl)
 			break
@@ -332,6 +332,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			Getters:          m.Getters,
 			Options: []getter.Option{
 				getter.WithBasicAuth(username, password),
+				getter.WithTLSClientConfig(certfile, keyfile, cafile),
 				getter.WithInsecureSkipVerifyTLS(insecureskiptlsverify),
 			},
 		}
@@ -686,9 +687,9 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 // repoURL is the repository to search
 //
 // If it finds a URL that is "relative", it will prepend the repoURL.
-func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRepository) (url, username, password string, insecureskiptlsverify bool, err error) {
+func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRepository) (url, username, password, certfile, keyfile, cafile string, insecureskiptlsverify bool, err error) {
 	if strings.HasPrefix(repoURL, "oci://") {
-		return fmt.Sprintf("%s/%s:%s", repoURL, name, version), "", "", false, nil
+		return fmt.Sprintf("%s/%s:%s", repoURL, name, version), "", "", "", "", "", false, nil
 	}
 
 	for _, cr := range repos {
@@ -710,16 +711,19 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 			}
 			username = cr.Config.Username
 			password = cr.Config.Password
+			keyfile = cr.Config.KeyFile
+			certfile = cr.Config.CertFile
+			cafile = cr.Config.CAFile
 			insecureskiptlsverify = cr.Config.InsecureSkipTLSverify
 			return
 		}
 	}
-	url, err = repo.FindChartInRepoURL(repoURL, name, version, "", "", "", m.Getters)
+	url, err = repo.FindChartInRepoURL(repoURL, name, version, certfile, keyfile, cafile, m.Getters)
 	if err == nil {
-		return url, username, password, false, err
+		return url, username, password, certfile, keyfile, cafile, false, err
 	}
 	err = errors.Errorf("chart %s not found in %s: %s", name, repoURL, err)
-	return url, username, password, false, err
+	return url, username, password, certfile, keyfile, cafile, false, err
 }
 
 // findEntryByName finds an entry in the chart repository whose name matches the given name.

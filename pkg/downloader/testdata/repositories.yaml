@@ -24,3 +24,8 @@ repositories:
   - name: testing-https-insecureskip-tls-verify
     url: "https://example-https-insecureskiptlsverify.com"
     insecure_skip_tls_verify: true 
+  - name: testing-cert-key
+    url: "https://private.example.com"
+    certFile: "cert"
+    keyFile: "key"
+    caFile: "ca"
