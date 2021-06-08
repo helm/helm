@@ -45,7 +45,8 @@ func TestDependencyBuildCmd(t *testing.T) {
 
 	ociChartName := "oci-depending-chart"
 	c := createTestingMetadataForOCI(ociChartName, ociSrv.RegistryURL)
-	if err := chartutil.SaveDir(c, ociSrv.Dir); err != nil {
+	_, err = chartutil.Save(c, ociSrv.Dir)
+	if err != nil {
 		t.Fatal(err)
 	}
 	ociSrv.Run(t, repotest.WithDependingChart(c))
@@ -136,6 +137,10 @@ func TestDependencyBuildCmd(t *testing.T) {
 	}
 
 	// OCI dependencies
+	err = chartutil.SaveDir(c, dir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	cmd = fmt.Sprintf("dependency build '%s' --repository-config %s --repository-cache %s --registry-config %s/config.json",
 		dir(ociChartName),
 		dir("repositories.yaml"),

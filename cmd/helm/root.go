@@ -200,7 +200,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	// Add *experimental* subcommands
 	cmd.AddCommand(
 		newRegistryCmd(actionConfig, out),
-		newChartCmd(actionConfig, out),
+		newPushCmd(actionConfig, out),
 	)
 
 	// Find and add plugins

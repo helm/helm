@@ -34,5 +34,6 @@ func NewRegistryLogout(cfg *Configuration) *RegistryLogout {
 
 // Run executes the registry logout operation
 func (a *RegistryLogout) Run(out io.Writer, hostname string) error {
-	return a.cfg.RegistryClient.Logout(hostname)
+	_, err := a.cfg.RegistryClient.Logout(hostname)
+	return err
 }

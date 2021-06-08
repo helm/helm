@@ -16,13 +16,16 @@ limitations under the License.
 
 package registry // import "helm.sh/helm/v3/internal/experimental/registry"
 
-import (
-	"github.com/containerd/containerd/remotes"
-)
+const (
+	// CredentialsFileBasename is the filename for auth credentials file
+	CredentialsFileBasename = "config.json"
 
-type (
-	// Resolver provides remotes based on a locator
-	Resolver struct {
-		remotes.Resolver
-	}
+	// ConfigMediaType is the reserved media type for the Helm chart manifest config
+	ConfigMediaType = "application/vnd.cncf.helm.config.v1+json"
+
+	// ChartLayerMediaType is the reserved media type for Helm chart package content
+	ChartLayerMediaType = "application/vnd.cncf.helm.chart.content.v1.tar+gzip"
+
+	// ProvLayerMediaType is the reserved media type for Helm chart provenance files
+	ProvLayerMediaType = "application/vnd.cncf.helm.chart.provenance.v1.prov"
 )

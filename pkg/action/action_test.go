@@ -16,15 +16,11 @@ limitations under the License.
 package action
 
 import (
-	"context"
 	"flag"
 	"io/ioutil"
-	"net/http"
 	"os"
-	"path/filepath"
 	"testing"
 
-	dockerauth "github.com/deislabs/oras/pkg/auth/docker"
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
 
 	"helm.sh/helm/v3/internal/experimental/registry"
@@ -42,16 +38,6 @@ var verbose = flag.Bool("test.log", false, "enable test logging")
 func actionConfigFixture(t *testing.T) *Configuration {
 	t.Helper()
 
-	client, err := dockerauth.NewClient()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	resolver, err := client.Resolver(context.Background(), http.DefaultClient, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	tdir, err := ioutil.TempDir("", "helm-action-test")
 	if err != nil {
 		t.Fatal(err)
@@ -59,23 +45,7 @@ func actionConfigFixture(t *testing.T) *Configuration {
 
 	t.Cleanup(func() { os.RemoveAll(tdir) })
 
-	cache, err := registry.NewCache(
-		registry.CacheOptDebug(true),
-		registry.CacheOptRoot(filepath.Join(tdir, registry.CacheRootDir)),
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	registryClient, err := registry.NewClient(
-		registry.ClientOptAuthorizer(&registry.Authorizer{
-			Client: client,
-		}),
-		registry.ClientOptResolver(&registry.Resolver{
-			Resolver: resolver,
-		}),
-		registry.ClientOptCache(cache),
-	)
+	registryClient, err := registry.NewClient()
 	if err != nil {
 		t.Fatal(err)
 	}

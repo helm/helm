@@ -18,6 +18,8 @@ package action
 
 import (
 	"io"
+
+	"helm.sh/helm/v3/internal/experimental/registry"
 )
 
 // RegistryLogin performs a registry login operation.
@@ -34,5 +36,9 @@ func NewRegistryLogin(cfg *Configuration) *RegistryLogin {
 
 // Run executes the registry login operation
 func (a *RegistryLogin) Run(out io.Writer, hostname string, username string, password string, insecure bool) error {
-	return a.cfg.RegistryClient.Login(hostname, username, password, insecure)
+	_, err := a.cfg.RegistryClient.Login(
+		hostname,
+		registry.LoginOptBasicAuth(username, password),
+		registry.LoginOptInsecure(insecure))
+	return err
 }

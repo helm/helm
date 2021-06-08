@@ -16,13 +16,9 @@ limitations under the License.
 
 package registry // import "helm.sh/helm/v3/internal/experimental/registry"
 
-import (
-	"github.com/deislabs/oras/pkg/auth"
-)
-
 type (
-	// Authorizer handles registry auth operations
-	Authorizer struct {
-		auth.Client
+	// LoginResult is the result returned upon successful login.
+	LoginResult struct {
+		Host string `json:"host"`
 	}
 )

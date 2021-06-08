@@ -40,21 +40,29 @@ func (g *OCIGetter) get(href string) (*bytes.Buffer, error) {
 	client := g.opts.registryClient
 
 	ref := strings.TrimPrefix(href, "oci://")
+
+	var pullOpts []registry.PullOption
+	requestingProv := strings.HasSuffix(ref, ".prov")
+	if requestingProv {
+		ref = strings.TrimSuffix(ref, ".prov")
+		pullOpts = append(pullOpts,
+			registry.PullOptWithChart(false),
+			registry.PullOptWithProv(true))
+	}
+
 	if version := g.opts.version; version != "" {
 		ref = fmt.Sprintf("%s:%s", ref, version)
 	}
 
-	r, err := registry.ParseReference(ref)
+	result, err := client.Pull(ref, pullOpts...)
 	if err != nil {
 		return nil, err
 	}
 
-	buf, err := client.PullChart(r)
-	if err != nil {
-		return nil, err
+	if requestingProv {
+		return bytes.NewBuffer(result.Prov.Data), nil
 	}
-
-	return buf, nil
+	return bytes.NewBuffer(result.Chart.Data), nil
 }
 
 // NewOCIGetter constructs a valid http/https client as a Getter

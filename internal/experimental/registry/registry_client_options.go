@@ -40,37 +40,9 @@ func ClientOptWriter(out io.Writer) ClientOption {
 	}
 }
 
-// ClientOptResolver returns a function that sets the resolver setting on client options set
-func ClientOptResolver(resolver *Resolver) ClientOption {
-	return func(client *Client) {
-		client.resolver = resolver
-	}
-}
-
-// ClientOptAuthorizer returns a function that sets the authorizer setting on client options set
-func ClientOptAuthorizer(authorizer *Authorizer) ClientOption {
-	return func(client *Client) {
-		client.authorizer = authorizer
-	}
-}
-
-// ClientOptCache returns a function that sets the cache setting on a client options set
-func ClientOptCache(cache *Cache) ClientOption {
-	return func(client *Client) {
-		client.cache = cache
-	}
-}
-
-// ClientOptCredentialsFile returns a function that sets the cache setting on a client options set
+// ClientOptCredentialsFile returns a function that sets the credentialsFile setting on a client options set
 func ClientOptCredentialsFile(credentialsFile string) ClientOption {
 	return func(client *Client) {
 		client.credentialsFile = credentialsFile
-	}
-}
-
-// ClientOptColumnWidth returns a function that sets the column width on a client options set
-func ClientOptColumnWidth(columnWidth uint) ClientOption {
-	return func(client *Client) {
-		client.columnWidth = columnWidth
 	}
 }

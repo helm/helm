@@ -17,41 +17,24 @@ limitations under the License.
 package registry // import "helm.sh/helm/v3/internal/experimental/registry"
 
 import (
+	"bytes"
 	"context"
-	"fmt"
 	"io"
-	"time"
 
-	orascontext "github.com/deislabs/oras/pkg/context"
-	units "github.com/docker/go-units"
+	orascontext "github.com/oras-project/oras-go/pkg/context"
 	"github.com/sirupsen/logrus"
+
+	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/chart/loader"
 )
 
-// byteCountBinary produces a human-readable file size
-func byteCountBinary(b int64) string {
-	const unit = 1024
-	if b < unit {
-		return fmt.Sprintf("%d B", b)
+// extractChartMeta is used to extract a chart metadata from a byte array
+func extractChartMeta(chartData []byte) (*chart.Metadata, error) {
+	ch, err := loader.LoadArchive(bytes.NewReader(chartData))
+	if err != nil {
+		return nil, err
 	}
-	div, exp := int64(unit), 0
-	for n := b / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-	return fmt.Sprintf("%.1f %ciB", float64(b)/float64(div), "KMGTPE"[exp])
-}
-
-// shortDigest returns first 7 characters of a sha256 digest
-func shortDigest(digest string) string {
-	if len(digest) == 64 {
-		return digest[:7]
-	}
-	return digest
-}
-
-// timeAgo returns a human-readable timestamp representing time that has passed
-func timeAgo(t time.Time) string {
-	return units.HumanDuration(time.Now().UTC().Sub(t))
+	return ch.Metadata, nil
 }
 
 // ctx retrieves a fresh context.

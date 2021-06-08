@@ -14,31 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package action
+package registry // import "helm.sh/helm/v3/internal/experimental/registry"
 
 import (
-	"io"
-
-	"helm.sh/helm/v3/internal/experimental/registry"
+	"fmt"
 )
 
-// ChartRemove performs a chart remove operation.
-type ChartRemove struct {
-	cfg *Configuration
-}
-
-// NewChartRemove creates a new ChartRemove object with the given configuration.
-func NewChartRemove(cfg *Configuration) *ChartRemove {
-	return &ChartRemove{
-		cfg: cfg,
+// Logout logs out of a registry
+func (c *Client) Logout(host string, opts ...LogoutOption) (*LogoutResult, error) {
+	operation := &logoutOperation{}
+	for _, opt := range opts {
+		opt(operation)
 	}
-}
-
-// Run executes the chart remove operation
-func (a *ChartRemove) Run(out io.Writer, ref string) error {
-	r, err := registry.ParseReference(ref)
+	err := c.authorizer.Logout(ctx(c.out, c.debug), host)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return a.cfg.RegistryClient.RemoveChart(r)
+	result := &LogoutResult{
+		Host: host,
+	}
+	fmt.Fprintf(c.out, "Removing login credentials for %s\n", result.Host)
+	return result, nil
 }
