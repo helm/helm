@@ -757,8 +757,8 @@ github.com/openzipkin-contrib/zipkin-go-opentracing v0.4.5/go.mod h1:/wsWhb9smxS
 github.com/openzipkin/zipkin-go v0.1.6/go.mod h1:QgAqvLzwWbR/WpD4A3cGpPtJrZXNIiJc5AZX7/PBEpw=
 github.com/openzipkin/zipkin-go v0.2.1/go.mod h1:NaW6tEwdmWMaCDZzg8sh+IBNOxHMPnhQw8ySjnjRyN4=
 github.com/openzipkin/zipkin-go v0.2.2/go.mod h1:NaW6tEwdmWMaCDZzg8sh+IBNOxHMPnhQw8ySjnjRyN4=
-github.com/oras-project/oras-go v0.3.0-rc1 h1:kaNwM3hf8eFYbEZJ54oVylCECcEXCSPu3DN3QYvxKWA=
-github.com/oras-project/oras-go v0.3.0-rc1/go.mod h1:iGamc9+xWzQodKeX5l7FF0VgmmJ8aTRS2kJA6CedmjU=
+github.com/oras-project/oras-go v0.3.0 h1:NCcXeTPPlf2Ys2Pdpdu82lpaWSg3EdXxeZQgLfvgpBw=
+github.com/oras-project/oras-go v0.3.0/go.mod h1:iGamc9+xWzQodKeX5l7FF0VgmmJ8aTRS2kJA6CedmjU=
 github.com/pact-foundation/pact-go v1.0.4/go.mod h1:uExwJY4kCzNPcHRj+hCR/HBbOOIwwtUjcrb0b5/5kLM=
 github.com/pascaldekloe/goe v0.0.0-20180627143212-57f6aae5913c/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
 github.com/pborman/uuid v1.2.0/go.mod h1:X/NO0urCmaxf9VXbdlT7C2Yzkj2IKimNn4k+gtPdI/k=
