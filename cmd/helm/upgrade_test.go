@@ -32,6 +32,7 @@ import (
 )
 
 func TestUpgradeCmd(t *testing.T) {
+
 	tmpChart := ensure.TempDir(t)
 	cfile := &chart.Chart{
 		Metadata: &chart.Metadata{
@@ -79,6 +80,7 @@ func TestUpgradeCmd(t *testing.T) {
 
 	missingDepsPath := "testdata/testcharts/chart-missing-deps"
 	badDepsPath := "testdata/testcharts/chart-bad-requirements"
+	presentDepsPath := "testdata/testcharts/chart-with-subchart-update"
 
 	relWithStatusMock := func(n string, v int, ch *chart.Chart, status release.Status) *release.Release {
 		return release.Mock(&release.MockReleaseOptions{Name: n, Version: v, Chart: ch, Status: status})
@@ -148,6 +150,12 @@ func TestUpgradeCmd(t *testing.T) {
 			cmd:       fmt.Sprintf("upgrade bonkers-bunny '%s'", badDepsPath),
 			golden:    "output/upgrade-with-bad-dependencies.txt",
 			wantError: true,
+		},
+		{
+			name:   "upgrade a release with resolving missing dependencies",
+			cmd:    fmt.Sprintf("upgrade --dependency-update funny-bunny %s", presentDepsPath),
+			golden: "output/upgrade-with-dependency-update.txt",
+			rels:   []*release.Release{relMock("funny-bunny", 2, ch2)},
 		},
 		{
 			name:      "upgrade a non-existent release",

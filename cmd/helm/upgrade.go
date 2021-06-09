@@ -31,6 +31,7 @@ import (
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/cli/values"
+	"helm.sh/helm/v3/pkg/downloader"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/storage/driver"
 )
@@ -139,7 +140,8 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return err
 			}
 
-			vals, err := valueOpts.MergeValues(getter.All(settings))
+			p := getter.All(settings)
+			vals, err := valueOpts.MergeValues(p)
 			if err != nil {
 				return err
 			}
@@ -151,7 +153,27 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 			if req := ch.Metadata.Dependencies; req != nil {
 				if err := action.CheckDependencies(ch, req); err != nil {
-					return err
+					if client.DependencyUpdate {
+						man := &downloader.Manager{
+							Out:              out,
+							ChartPath:        chartPath,
+							Keyring:          client.ChartPathOptions.Keyring,
+							SkipUpdate:       false,
+							Getters:          p,
+							RepositoryConfig: settings.RepositoryConfig,
+							RepositoryCache:  settings.RepositoryCache,
+							Debug:            settings.Debug,
+						}
+						if err := man.Update(); err != nil {
+							return err
+						}
+						// Reload the chart with the updated Chart.lock file.
+						if ch, err = loader.Load(chartPath); err != nil {
+							return errors.Wrap(err, "failed reloading chart after repo update")
+						}
+					} else {
+						return err
+					}
 				}
 			}
 
@@ -193,6 +215,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.CleanupOnFail, "cleanup-on-fail", false, "allow deletion of new resources created in this upgrade when upgrade fails")
 	f.BoolVar(&client.SubNotes, "render-subchart-notes", false, "if set, render subchart notes along with the parent")
 	f.StringVar(&client.Description, "description", "", "add a custom description")
+	f.BoolVar(&client.DependencyUpdate, "dependency-update", false, "update dependencies if they are missing before installing the chart")
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 	addValueOptionsFlags(f, valueOpts)
 	bindOutputFlag(cmd, &outfmt)
