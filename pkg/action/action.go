@@ -97,12 +97,44 @@ type Configuration struct {
 	Log func(string, ...interface{})
 }
 
-// renderResources renders the templates in a chart
+type renderStrategyFunction = func(ch *chart.Chart, values chartutil.Values) (map[string]string, error)
+
+var renderStrategy = func(cfg *Configuration) renderStrategyFunction {
+	if cfg.RESTClientGetter != nil {
+		return func(ch *chart.Chart, values chartutil.Values) (map[string]string, error) {
+			restConfig, err := cfg.RESTClientGetter.ToRESTConfig()
+			if err != nil {
+				return nil, err
+			}
+
+			return engine.RenderWithClient(ch, values, restConfig)
+		}
+	}
+
+	return localRenderStrategy
+}
+
+var localRenderStrategy renderStrategyFunction = engine.Render
+
+func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer) ([]*release.Hook, *bytes.Buffer, string, error) {
+	return cfg.render(ch, values, releaseName, outputDir, subNotes, useReleaseName, includeCrds, pr, renderStrategy(cfg))
+}
+
+// A `helm template` or `helm install --dry-run` should not talk to the remote cluster.
+// It will break in interesting and exotic ways because other data (e.g. discovery)
+// is mocked. It is not up to the template author to decide when the user wants to
+// connect to the cluster. So when the user says to dry run, respect the user's
+// wishes and do not connect to the cluster.
+func (cfg *Configuration) renderResourcesLocally(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer) ([]*release.Hook, *bytes.Buffer, string, error) {
+	return cfg.render(ch, values, releaseName, outputDir, subNotes, useReleaseName, includeCrds, pr, localRenderStrategy)
+}
+
+// render renders the templates in a chart
 //
 // TODO: This function is badly in need of a refactor.
 // TODO: As part of the refactor the duplicate code in cmd/helm/template.go should be removed
 //       This code has to do with writing files to disk.
-func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, dryRun bool) ([]*release.Hook, *bytes.Buffer, string, error) {
+func (cfg *Configuration) render(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, render renderStrategyFunction) ([]*release.Hook, *bytes.Buffer, string, error) {
 	hs := []*release.Hook{}
 	b := bytes.NewBuffer(nil)
 
@@ -120,22 +152,9 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	var files map[string]string
 	var err2 error
 
-	// A `helm template` or `helm install --dry-run` should not talk to the remote cluster.
-	// It will break in interesting and exotic ways because other data (e.g. discovery)
-	// is mocked. It is not up to the template author to decide when the user wants to
-	// connect to the cluster. So when the user says to dry run, respect the user's
-	// wishes and do not connect to the cluster.
-	if !dryRun && cfg.RESTClientGetter != nil {
-		restConfig, err := cfg.RESTClientGetter.ToRESTConfig()
-		if err != nil {
-			return hs, b, "", err
-		}
-		files, err2 = engine.RenderWithClient(ch, values, restConfig)
-	} else {
-		files, err2 = engine.Render(ch, values)
-	}
+	files, err = render(ch, values)
 
-	if err2 != nil {
+	if err != nil {
 		return hs, b, "", err2
 	}
 
