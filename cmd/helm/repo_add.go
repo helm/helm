@@ -48,6 +48,7 @@ type repoAddOptions struct {
 	url                  string
 	username             string
 	password             string
+	passCredentialsAll   bool
 	forceUpdate          bool
 	allowDeprecatedRepos bool
 
@@ -91,6 +92,7 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&o.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 	f.BoolVar(&o.insecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the repository")
 	f.BoolVar(&o.allowDeprecatedRepos, "allow-deprecated-repos", false, "by default, this command will not allow adding official repos that have been permanently deleted. This disables that behavior")
+	f.BoolVar(&o.passCredentialsAll, "pass-credentials", false, "pass credentials to all domains")
 
 	return cmd
 }
@@ -156,6 +158,7 @@ func (o *repoAddOptions) run(out io.Writer) error {
 		URL:                   o.url,
 		Username:              o.username,
 		Password:              o.password,
+		PassCredentialsAll:    o.passCredentialsAll,
 		CertFile:              o.certFile,
 		KeyFile:               o.keyFile,
 		CAFile:                o.caFile,
