@@ -195,6 +195,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 			c.Options = append(
 				c.Options,
 				getter.WithBasicAuth(rc.Username, rc.Password),
+				getter.WithPassCredentialsAll(rc.PassCredentialsAll),
 			)
 		}
 		return u, nil
@@ -224,7 +225,10 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 			c.Options = append(c.Options, getter.WithTLSClientConfig(r.Config.CertFile, r.Config.KeyFile, r.Config.CAFile))
 		}
 		if r.Config.Username != "" && r.Config.Password != "" {
-			c.Options = append(c.Options, getter.WithBasicAuth(r.Config.Username, r.Config.Password))
+			c.Options = append(c.Options,
+				getter.WithBasicAuth(r.Config.Username, r.Config.Password),
+				getter.WithPassCredentialsAll(r.Config.PassCredentialsAll),
+			)
 		}
 	}
 
