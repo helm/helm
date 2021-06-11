@@ -21,8 +21,8 @@ import (
 	"context"
 	"io"
 
-	orascontext "github.com/oras-project/oras-go/pkg/context"
 	"github.com/sirupsen/logrus"
+	orascontext "oras.land/oras-go/pkg/context"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"

@@ -23,8 +23,8 @@ import (
 	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/oras-project/oras-go/pkg/content"
-	"github.com/oras-project/oras-go/pkg/oras"
+	"oras.land/oras-go/pkg/content"
+	"oras.land/oras-go/pkg/oras"
 )
 
 // Push uploads a chart to a registry.

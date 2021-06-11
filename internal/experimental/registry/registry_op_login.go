@@ -19,7 +19,7 @@ package registry // import "helm.sh/helm/v3/internal/experimental/registry"
 import (
 	"fmt"
 
-	"github.com/oras-project/oras-go/pkg/auth"
+	"oras.land/oras-go/pkg/auth"
 )
 
 // Login logs into a registry
