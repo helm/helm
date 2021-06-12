@@ -322,26 +322,28 @@ func TestGetVersionSet(t *testing.T) {
 	}
 }
 
+var originalRenderStrategy = renderStrategy
+var originalLocalRenderStrategy = localRenderStrategy
+
+func renderStrategyDecorator(decoratorAction func(ch *chart.Chart, values chartutil.Values), strategy renderStrategyFunction) renderStrategyFunction {
+	return func(ch *chart.Chart, values chartutil.Values) (map[string]string, error) {
+		decoratorAction(ch, values)
+		return strategy(ch, values)
+	}
+}
+
 func TestRenderResources_RendersWithStrategy(t *testing.T) {
-	var renderedLocally = false
 	var rendered = false
 	var renderedChart *chart.Chart
 	var renderedValues *chartutil.Values
-	var nullRenderStrategy = func(ch *chart.Chart, values chartutil.Values) (map[string]string, error) {
+	var captureChartAndValues = func(ch *chart.Chart, values chartutil.Values) {
 		renderedChart = ch
 		renderedValues = &values
-
-		return make(map[string]string), nil
 	}
-	renderStrategy = func(cfg *Configuration) func(ch *chart.Chart, values chartutil.Values) (map[string]string, error) {
+	renderStrategy = func(cfg *Configuration) renderStrategyFunction {
 		rendered = true
 
-		return nullRenderStrategy
-	}
-	localRenderStrategy = func(ch *chart.Chart, values chartutil.Values) (map[string]string, error) {
-		renderedLocally = true
-
-		return nullRenderStrategy(ch, values)
+		return renderStrategyDecorator(captureChartAndValues, originalRenderStrategy(cfg))
 	}
 
 	var chart = buildChart()
@@ -352,7 +354,6 @@ func TestRenderResources_RendersWithStrategy(t *testing.T) {
 	actionConfigFixture(t).renderResources(chart, values, "", "", false, false, false, postRender)
 
 	assert.True(t, rendered, "the chart should be rendered with cluster contact")
-	assert.False(t, renderedLocally, "the chart should not be rendered without cluster contact")
 	assert.Same(t, chart, renderedChart, "the rendered chart and the chart resource should be the same")
 	assert.Equal(t, values, *renderedValues, "the rendered values and the values resource should be the same")
 }
@@ -362,21 +363,19 @@ func TestRenderResourcesLocally_RendersWithLocalStrategy(t *testing.T) {
 	var rendered = false
 	var renderedChart *chart.Chart
 	var renderedValues *chartutil.Values
-	var nullRenderStrategy = func(ch *chart.Chart, values chartutil.Values) (map[string]string, error) {
+	var captureChartAndValues = func(ch *chart.Chart, values chartutil.Values) {
 		renderedChart = ch
 		renderedValues = &values
-
-		return make(map[string]string), nil
 	}
-	renderStrategy = func(cfg *Configuration) func(ch *chart.Chart, values chartutil.Values) (map[string]string, error) {
+	renderStrategy = func(cfg *Configuration) renderStrategyFunction {
 		rendered = true
 
-		return nullRenderStrategy
+		return renderStrategyDecorator(captureChartAndValues, originalRenderStrategy(cfg))
 	}
 	localRenderStrategy = func(ch *chart.Chart, values chartutil.Values) (map[string]string, error) {
 		renderedLocally = true
 
-		return nullRenderStrategy(ch, values)
+		return renderStrategyDecorator(captureChartAndValues, originalLocalRenderStrategy)(ch, values)
 	}
 
 	var chart = buildChart()

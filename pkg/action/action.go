@@ -149,13 +149,9 @@ func (cfg *Configuration) render(ch *chart.Chart, values chartutil.Values, relea
 		}
 	}
 
-	var files map[string]string
-	var err2 error
-
-	files, err = render(ch, values)
-
+	files, err := render(ch, values)
 	if err != nil {
-		return hs, b, "", err2
+		return hs, b, "", err
 	}
 
 	// NOTES.txt gets rendered like all the other files, but because it's not a hook nor a resource,
