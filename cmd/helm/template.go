@@ -74,6 +74,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 
 			client.DryRun = true
+			client.RenderConnected = false
 			client.ReleaseName = "RELEASE-NAME"
 			client.Replace = true // Skip the name check
 			client.ClientOnly = !validate

@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -27,16 +28,23 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/rest"
 
 	"helm.sh/helm/v3/internal/test"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/engine"
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage/driver"
 	"helm.sh/helm/v3/pkg/time"
+	cmdtesting "k8s.io/kubectl/pkg/cmd/testing"
 )
 
+type lookupFunc = func(apiversion string, resource string, namespace string, name string) (map[string]interface{}, error)
+type lookupMatch func(apiversion string, resource string, namespace string, name string) bool
 type nameTemplateTestCase struct {
 	tpl              string
 	expected         string
@@ -50,6 +58,55 @@ func installAction(t *testing.T) *Install {
 	instAction.ReleaseName = "test-install-release"
 
 	return instAction
+}
+
+func toMap(in interface{}) map[string]interface{} {
+	var out map[string]interface{}
+	marshalled, _ := json.Marshal(in)
+	json.Unmarshal(marshalled, &out)
+
+	return out
+}
+
+func addLookupReturn(obj map[string]interface{}, match lookupMatch) {
+	originalLookupFactory := engine.NewLookupFunction
+	engine.NewLookupFunction = func(config *rest.Config) lookupFunc {
+		return func(apiversion string, resource string, namespace string, name string) (map[string]interface{}, error) {
+			if match(apiversion, resource, namespace, name) {
+				return obj, nil
+			}
+
+			return originalLookupFactory(config)(apiversion, resource, namespace, name)
+		}
+	}
+}
+
+func matchPod(pod v1.Pod) lookupMatch {
+	return func(apiversion string, resource string, namespace string, name string) bool {
+		return apiversion == "v1" && resource == pod.TypeMeta.Kind && namespace == pod.ObjectMeta.Namespace && name == pod.ObjectMeta.Name
+	}
+}
+
+func newPodWithStatus(name string, status v1.PodStatus, namespace string) v1.Pod {
+	ns := v1.NamespaceDefault
+	if namespace != "" {
+		ns = namespace
+	}
+	return v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+			SelfLink:  "/api/v1/namespaces/default/pods/" + name,
+		},
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{{
+				Name:  "app:v4",
+				Image: "abc/app:v4",
+				Ports: []v1.ContainerPort{{Name: "http", ContainerPort: 80}},
+			}},
+		},
+		Status: status,
+	}
 }
 
 func TestInstallRelease(t *testing.T) {
@@ -241,25 +298,47 @@ func TestInstallRelease_DryRun(t *testing.T) {
 	is.Equal(res.Info.Description, "Dry run complete")
 }
 
-// Regression test for #7955: Lookup must not connect to Kubernetes on a dry-run.
-func TestInstallRelease_DryRun_Lookup(t *testing.T) {
-	is := assert.New(t)
+func TestInstallRelease_RenderConnected_Lookup(t *testing.T) {
+	it := assert.New(t)
 	instAction := installAction(t)
-	instAction.DryRun = true
-	vals := map[string]interface{}{}
-
-	mockChart := buildChart(withSampleTemplates())
+	instAction.cfg.RESTClientGetter = cmdtesting.NewTestFactory()
+	neo := newPodWithStatus("Neo", v1.PodStatus{}, "The Matricks")
+	instAction.RenderConnected = true
+	mockChart := buildChart()
+	addLookupReturn(toMap(neo), matchPod(neo))
 	mockChart.Templates = append(mockChart.Templates, &chart.File{
 		Name: "templates/lookup",
-		Data: []byte(`goodbye: {{ lookup "v1" "Namespace" "" "___" }}`),
+		Data: []byte(fmt.Sprintf(`goodbye: {{ lookup "v1" "%s" "%s" "%s" }}`, neo.TypeMeta.Kind, neo.ObjectMeta.Namespace, neo.ObjectMeta.Name)),
 	})
 
-	res, err := instAction.Run(mockChart, vals)
+	res, err := instAction.Run(mockChart, map[string]interface{}{})
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
 	}
 
-	is.Contains(res.Manifest, "goodbye: map[]")
+	it.Contains(res.Manifest, fmt.Sprint(toMap(neo)))
+}
+
+func TestInstallRelease_NotRenderConnected_Lookup(t *testing.T) {
+	it := assert.New(t)
+	instAction := installAction(t)
+	instAction.cfg.RESTClientGetter = cmdtesting.NewTestFactory()
+	trinity := newPodWithStatus("Trinity", v1.PodStatus{}, "The Matricks")
+	instAction.RenderConnected = false
+	mockChart := buildChart()
+	addLookupReturn(toMap(trinity), matchPod(trinity))
+	mockChart.Templates = append(mockChart.Templates, &chart.File{
+		Name: "templates/lookup",
+		Data: []byte(fmt.Sprintf(`goodbye: {{ lookup "v1" "%s" "%s" "%s" }}`, trinity.TypeMeta.Kind, trinity.ObjectMeta.Namespace, trinity.ObjectMeta.Name)),
+	})
+
+	res, err := instAction.Run(mockChart, map[string]interface{}{})
+	if err != nil {
+		t.Fatalf("Failed install: %s", err)
+	}
+
+	it.Contains(res.Manifest, "goodbye: map[]")
+	it.NotContains(res.Manifest, fmt.Sprint(toMap(trinity)))
 }
 
 func TestInstallReleaseIncorrectTemplate_DryRun(t *testing.T) {
