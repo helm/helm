@@ -32,6 +32,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 
+	cmdtesting "k8s.io/kubectl/pkg/cmd/testing"
+
 	"helm.sh/helm/v3/internal/test"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -40,7 +42,6 @@ import (
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage/driver"
 	"helm.sh/helm/v3/pkg/time"
-	cmdtesting "k8s.io/kubectl/pkg/cmd/testing"
 )
 
 type lookupFunc = func(apiversion string, resource string, namespace string, name string) (map[string]interface{}, error)
