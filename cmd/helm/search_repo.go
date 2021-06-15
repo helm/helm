@@ -63,14 +63,15 @@ Repositories are managed with 'helm repo' commands.
 const searchMaxScore = 25
 
 type searchRepoOptions struct {
-	versions     bool
-	regexp       bool
-	devel        bool
-	version      string
-	maxColWidth  uint
-	repoFile     string
-	repoCacheDir string
-	outputFormat output.Format
+	versions               bool
+	regexp                 bool
+	devel                  bool
+	hideValidationWarnings bool
+	version                string
+	maxColWidth            uint
+	repoFile               string
+	repoCacheDir           string
+	outputFormat           output.Format
 }
 
 func newSearchRepoCmd(out io.Writer) *cobra.Command {
@@ -91,6 +92,7 @@ func newSearchRepoCmd(out io.Writer) *cobra.Command {
 	f.BoolVarP(&o.regexp, "regexp", "r", false, "use regular expressions for searching repositories you have added")
 	f.BoolVarP(&o.versions, "versions", "l", false, "show the long listing, with each version of each chart on its own line, for repositories you have added")
 	f.BoolVar(&o.devel, "devel", false, "use development versions (alpha, beta, and release candidate releases), too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored")
+	f.BoolVar(&o.hideValidationWarnings, "hide-validation-warnings", false, "hide validation warnings while indexing repository")
 	f.StringVar(&o.version, "version", "", "search using semantic versioning constraints on repositories you have added")
 	f.UintVar(&o.maxColWidth, "max-col-width", 50, "maximum column width for output table")
 	bindOutputFlag(cmd, &o.outputFormat)
@@ -184,7 +186,12 @@ func (o *searchRepoOptions) buildIndex() (*search.Index, error) {
 	for _, re := range rf.Repositories {
 		n := re.Name
 		f := filepath.Join(o.repoCacheDir, helmpath.CacheIndexFile(n))
-		ind, err := repo.LoadIndexFile(f)
+		var ind *repo.IndexFile
+		if o.hideValidationWarnings {
+			ind, err = repo.LoadIndexFileHideValidationWarnings(f)
+		} else {
+			ind, err = repo.LoadIndexFile(f)
+		}
 		if err != nil {
 			warning("Repo %q is corrupt or missing. Try 'helm repo update'.", n)
 			warning("%s", err)

@@ -147,7 +147,7 @@ func TestLoadIndex(t *testing.T) {
 
 // TestLoadIndex_Duplicates is a regression to make sure that we don't non-deterministically allow duplicate packages.
 func TestLoadIndex_Duplicates(t *testing.T) {
-	if _, err := loadIndex([]byte(indexWithDuplicates), "indexWithDuplicates"); err == nil {
+	if _, err := loadIndex([]byte(indexWithDuplicates), "indexWithDuplicates", false); err == nil {
 		t.Errorf("Expected an error when duplicate entries are present")
 	}
 }

@@ -35,7 +35,7 @@ func TestUpdateCmd(t *testing.T) {
 	var out bytes.Buffer
 	// Instead of using the HTTP updater, we provide our own for this test.
 	// The TestUpdateCharts test verifies the HTTP behavior independently.
-	updater := func(repos []*repo.ChartRepository, out io.Writer) {
+	updater := func(repos []*repo.ChartRepository, out io.Writer, hideValidationWarnings bool) {
 		for _, re := range repos {
 			fmt.Fprintln(out, re.Config.Name)
 		}
@@ -44,7 +44,7 @@ func TestUpdateCmd(t *testing.T) {
 		update:   updater,
 		repoFile: "testdata/repositories.yaml",
 	}
-	if err := o.run(&out); err != nil {
+	if err := o.run(&out, []string{}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -71,7 +71,7 @@ func TestUpdateCustomCacheCmd(t *testing.T) {
 		repoCache: cachePath,
 	}
 	b := ioutil.Discard
-	if err := o.run(b); err != nil {
+	if err := o.run(b, []string{}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(cachePath, "test-index.yaml")); err != nil {
@@ -98,7 +98,7 @@ func TestUpdateCharts(t *testing.T) {
 	}
 
 	b := bytes.NewBuffer(nil)
-	updateCharts([]*repo.ChartRepository{r}, b)
+	updateCharts([]*repo.ChartRepository{r}, b, false)
 
 	got := b.String()
 	if strings.Contains(got, "Unable to get an update") {
