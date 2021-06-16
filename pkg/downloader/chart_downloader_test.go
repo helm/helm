@@ -205,6 +205,7 @@ func TestDownloadTo(t *testing.T) {
 		}),
 		Options: []getter.Option{
 			getter.WithBasicAuth("username", "password"),
+			getter.WithPassCredentialsAll(false),
 		},
 	}
 	cname := "/signtest-0.1.0.tgz"

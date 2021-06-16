@@ -81,7 +81,7 @@ func TestFindChartURL(t *testing.T) {
 	version := "0.1.0"
 	repoURL := "http://example.com/charts"
 
-	churl, username, password, insecureSkipTLSVerify, err := m.findChartURL(name, version, repoURL, repos)
+	churl, username, password, insecureSkipTLSVerify, passcredentialsall, err := m.findChartURL(name, version, repoURL, repos)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,6 +95,9 @@ func TestFindChartURL(t *testing.T) {
 	if password != "" {
 		t.Errorf("Unexpected password %q", password)
 	}
+	if passcredentialsall != false {
+		t.Errorf("Unexpected passcredentialsall %t", passcredentialsall)
+	}
 	if insecureSkipTLSVerify {
 		t.Errorf("Unexpected insecureSkipTLSVerify %t", insecureSkipTLSVerify)
 	}
@@ -103,7 +106,7 @@ func TestFindChartURL(t *testing.T) {
 	version = "1.2.3"
 	repoURL = "https://example-https-insecureskiptlsverify.com"
 
-	churl, username, password, insecureSkipTLSVerify, err = m.findChartURL(name, version, repoURL, repos)
+	churl, username, password, insecureSkipTLSVerify, passcredentialsall, err = m.findChartURL(name, version, repoURL, repos)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,6 +122,9 @@ func TestFindChartURL(t *testing.T) {
 	}
 	if password != "" {
 		t.Errorf("Unexpected password %q", password)
+	}
+	if passcredentialsall != false {
+		t.Errorf("Unexpected passcredentialsall %t", passcredentialsall)
 	}
 }
 
