@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -113,6 +114,7 @@ type ChartPathOptions struct {
 	InsecureSkipTLSverify bool   // --insecure-skip-verify
 	Keyring               string // --keyring
 	Password              string // --password
+	PassCredentialsAll    bool   // --pass-credentials
 	RepoURL               string // --repo
 	Username              string // --username
 	Verify                bool   // --verify
@@ -654,7 +656,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		Keyring: c.Keyring,
 		Getters: getter.All(settings),
 		Options: []getter.Option{
-			getter.WithBasicAuth(c.Username, c.Password),
+			getter.WithPassCredentialsAll(c.PassCredentialsAll),
 			getter.WithTLSClientConfig(c.CertFile, c.KeyFile, c.CaFile),
 			getter.WithInsecureSkipVerifyTLS(c.InsecureSkipTLSverify),
 		},
@@ -673,12 +675,34 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		dl.Verify = downloader.VerifyAlways
 	}
 	if c.RepoURL != "" {
-		chartURL, err := repo.FindChartInAuthAndTLSRepoURL(c.RepoURL, c.Username, c.Password, name, version,
-			c.CertFile, c.KeyFile, c.CaFile, c.InsecureSkipTLSverify, getter.All(settings))
+		chartURL, err := repo.FindChartInAuthAndTLSAndPassRepoURL(c.RepoURL, c.Username, c.Password, name, version,
+			c.CertFile, c.KeyFile, c.CaFile, c.InsecureSkipTLSverify, c.PassCredentialsAll, getter.All(settings))
 		if err != nil {
 			return "", err
 		}
 		name = chartURL
+
+		// Only pass the user/pass on when the user has said to or when the
+		// location of the chart repo and the chart are the same domain.
+		u1, err := url.Parse(c.RepoURL)
+		if err != nil {
+			return "", err
+		}
+		u2, err := url.Parse(chartURL)
+		if err != nil {
+			return "", err
+		}
+
+		// Host on URL (returned from url.Parse) contains the port if present.
+		// This check ensures credentials are not passed between different
+		// services on different ports.
+		if c.PassCredentialsAll || (u1.Scheme == u2.Scheme && u1.Host == u2.Host) {
+			dl.Options = append(dl.Options, getter.WithBasicAuth(c.Username, c.Password))
+		} else {
+			dl.Options = append(dl.Options, getter.WithBasicAuth("", ""))
+		}
+	} else {
+		dl.Options = append(dl.Options, getter.WithBasicAuth(c.Username, c.Password))
 	}
 
 	if err := os.MkdirAll(settings.RepositoryCache, 0755); err != nil {
