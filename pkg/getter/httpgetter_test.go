@@ -54,6 +54,7 @@ func TestHTTPGetter(t *testing.T) {
 	// Test with options
 	g, err = NewHTTPGetter(
 		WithBasicAuth("I", "Am"),
+		WithPassCredentialsAll(false),
 		WithUserAgent("Groot"),
 		WithTLSClientConfig(pub, priv, ca),
 		WithInsecureSkipVerifyTLS(insecure),
@@ -74,6 +75,10 @@ func TestHTTPGetter(t *testing.T) {
 
 	if hg.opts.password != "Am" {
 		t.Errorf("Expected NewHTTPGetter to contain %q as the password, got %q", "Am", hg.opts.password)
+	}
+
+	if hg.opts.passCredentialsAll != false {
+		t.Errorf("Expected NewHTTPGetter to contain %t as PassCredentialsAll, got %t", false, hg.opts.passCredentialsAll)
 	}
 
 	if hg.opts.userAgent != "Groot" {
@@ -117,6 +122,28 @@ func TestHTTPGetter(t *testing.T) {
 
 	if hg.opts.insecureSkipVerifyTLS != insecure {
 		t.Errorf("Expected NewHTTPGetter to contain %t as InsecureSkipVerifyTLs flag, got %t", insecure, hg.opts.insecureSkipVerifyTLS)
+	}
+
+	// Checking false by default
+	if hg.opts.passCredentialsAll != false {
+		t.Errorf("Expected NewHTTPGetter to contain %t as PassCredentialsAll, got %t", false, hg.opts.passCredentialsAll)
+	}
+
+	// Test setting PassCredentialsAll
+	g, err = NewHTTPGetter(
+		WithBasicAuth("I", "Am"),
+		WithPassCredentialsAll(true),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	hg, ok = g.(*HTTPGetter)
+	if !ok {
+		t.Fatal("expected NewHTTPGetter to produce an *HTTPGetter")
+	}
+	if hg.opts.passCredentialsAll != true {
+		t.Errorf("Expected NewHTTPGetter to contain %t as PassCredentialsAll, got %t", true, hg.opts.passCredentialsAll)
 	}
 }
 
@@ -163,7 +190,78 @@ func TestDownload(t *testing.T) {
 	httpgetter, err := NewHTTPGetter(
 		WithURL(u.String()),
 		WithBasicAuth("username", "password"),
+		WithPassCredentialsAll(false),
 		WithUserAgent(expectedUserAgent),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err = httpgetter.Get(u.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got.String() != expect {
+		t.Errorf("Expected %q, got %q", expect, got.String())
+	}
+
+	// test with Get URL differing from withURL
+	crossAuthSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		username, password, ok := r.BasicAuth()
+		if ok || username == "username" || password == "password" {
+			t.Errorf("Expected request to not include but got '%v', '%s', '%s'", ok, username, password)
+		}
+		fmt.Fprint(w, expect)
+	}))
+
+	defer crossAuthSrv.Close()
+
+	u, _ = url.ParseRequestURI(crossAuthSrv.URL)
+
+	// A different host is provided for the WithURL from the one used for Get
+	u2, _ := url.ParseRequestURI(crossAuthSrv.URL)
+	host := strings.Split(u2.Host, ":")
+	host[0] = host[0] + "a"
+	u2.Host = strings.Join(host, ":")
+	httpgetter, err = NewHTTPGetter(
+		WithURL(u2.String()),
+		WithBasicAuth("username", "password"),
+		WithPassCredentialsAll(false),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err = httpgetter.Get(u.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got.String() != expect {
+		t.Errorf("Expected %q, got %q", expect, got.String())
+	}
+
+	// test with Get URL differing from withURL and should pass creds
+	crossAuthSrv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		username, password, ok := r.BasicAuth()
+		if !ok || username != "username" || password != "password" {
+			t.Errorf("Expected request to use basic auth and for username == 'username' and password == 'password', got '%v', '%s', '%s'", ok, username, password)
+		}
+		fmt.Fprint(w, expect)
+	}))
+
+	defer crossAuthSrv.Close()
+
+	u, _ = url.ParseRequestURI(crossAuthSrv.URL)
+
+	// A different host is provided for the WithURL from the one used for Get
+	u2, _ = url.ParseRequestURI(crossAuthSrv.URL)
+	host = strings.Split(u2.Host, ":")
+	host[0] = host[0] + "a"
+	u2.Host = strings.Join(host, ":")
+	httpgetter, err = NewHTTPGetter(
+		WithURL(u2.String()),
+		WithBasicAuth("username", "password"),
+		WithPassCredentialsAll(true),
 	)
 	if err != nil {
 		t.Fatal(err)
