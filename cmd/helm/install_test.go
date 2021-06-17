@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 
 	"helm.sh/helm/v3/pkg/repo/repotest"
@@ -47,6 +48,8 @@ func TestInstall(t *testing.T) {
 	if err := srv.LinkIndices(); err != nil {
 		t.Fatal(err)
 	}
+
+	repoFile := filepath.Join(srv.Root(), "repositories.yaml")
 
 	tests := []cmdTestCase{
 		// Install, base case
@@ -237,6 +240,11 @@ func TestInstall(t *testing.T) {
 		{
 			name:   "basic install with credentials",
 			cmd:    "install aeneas reqtest --namespace default --repo " + srv.URL() + " --username username --password password",
+			golden: "output/install.txt",
+		},
+		{
+			name:   "basic install with credentials without specify repository url",
+			cmd:    fmt.Sprintf("install aeneas test/reqtest --namespace default --username username --password password --repository-config %s --repository-cache %s", repoFile, srv.Root()),
 			golden: "output/install.txt",
 		},
 		{

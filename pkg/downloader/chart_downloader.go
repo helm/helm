@@ -221,6 +221,10 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 	}
 
 	if r != nil && r.Config != nil {
+		c.Options = append(
+			c.Options,
+			getter.WithURL(r.Config.URL),
+		)
 		if r.Config.CertFile != "" || r.Config.KeyFile != "" || r.Config.CAFile != "" {
 			c.Options = append(c.Options, getter.WithTLSClientConfig(r.Config.CertFile, r.Config.KeyFile, r.Config.CAFile))
 		}
