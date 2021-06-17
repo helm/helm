@@ -33,10 +33,19 @@ func URLJoin(baseURL string, paths ...string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if u.RawPath == "" {
+		u.RawPath = u.Path
+	}
 	// We want path instead of filepath because path always uses /.
-	all := []string{u.Path}
+	all := []string{u.RawPath}
 	all = append(all, paths...)
-	u.Path = path.Join(all...)
+	u.RawPath = path.Join(all...)
+
+	u.Path, err = url.PathUnescape(u.RawPath)
+	if err != nil {
+		return "", err
+	}
+
 	return u.String(), nil
 }
 

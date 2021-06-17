@@ -28,6 +28,9 @@ func TestURLJoin(t *testing.T) {
 		{name: "URL, two paths", url: "http://example.com", paths: []string{"hello", "world"}, expect: "http://example.com/hello/world"},
 		{name: "URL, no paths", url: "http://example.com", paths: []string{}, expect: "http://example.com"},
 		{name: "basepath, two paths", url: "../example.com", paths: []string{"hello", "world"}, expect: "../example.com/hello/world"},
+		{name: "encoded parts", url: "../example.com", paths: []string{"hello", "world"}, expect: "../example.com/hello/world"},
+		{name: "Long URL with encoded path, non-encoded paths", url: "http://example.com/but%2ffirst", paths: []string{"part-1", "part-2"}, expect: "http://example.com/but%2ffirst/part-1/part-2"},
+		{name: "Long URL with encoded path, encoded paths", url: "http://example.com/but%2ffirst", paths: []string{"part%25-1", "part%25-2"}, expect: "http://example.com/but%2ffirst/part%25-1/part%25-2"},
 	}
 
 	for _, tt := range tests {
