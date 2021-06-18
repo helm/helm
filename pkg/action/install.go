@@ -666,7 +666,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 
 	if strings.HasPrefix(name, "oci://") {
 		if version == "" {
-			return "", errors.Errorf("--version flag is explicitly required for OCI registries")
+			return "", errors.New("version is explicitly required for OCI registries")
 		}
 		dl.Options = append(dl.Options, getter.WithTagName(version))
 	}
@@ -725,9 +725,5 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		atVersion = fmt.Sprintf(" at version %q", version)
 	}
 
-	hint := "running `helm repo update` may help"
-	if strings.HasPrefix(name, "oci://") {
-		hint = "running `helm registry login` may help)"
-	}
-	return filename, errors.Errorf("failed to download %q%s (hint: %s)", name, atVersion, hint)
+	return filename, errors.Errorf("failed to download %q%s", name, atVersion)
 }
