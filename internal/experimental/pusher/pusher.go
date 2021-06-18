@@ -27,7 +27,6 @@ import (
 //
 // Pushers may or may not ignore these parameters as they are passed in.
 type options struct {
-	withProv       bool
 	registryClient *registry.Client
 }
 
@@ -39,13 +38,6 @@ type Option func(*options)
 func WithRegistryClient(client *registry.Client) Option {
 	return func(opts *options) {
 		opts.registryClient = client
-	}
-}
-
-// WithProvenance sets the withProv option.
-func WithProvenance(withProv bool) Option {
-	return func(opts *options) {
-		opts.withProv = withProv
 	}
 }
 

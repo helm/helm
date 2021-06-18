@@ -57,8 +57,5 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		},
 	}
 
-	f := cmd.Flags()
-	f.BoolVar(&client.WithProv, "with-prov", false, "upload .prov file")
-
 	return cmd
 }

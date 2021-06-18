@@ -30,7 +30,6 @@ import (
 // It provides the implementation of 'helm push'.
 type Push struct {
 	Settings *cli.EnvSettings
-	WithProv bool
 	cfg      *action.Configuration
 }
 
@@ -60,9 +59,7 @@ func (p *Push) Run(chartRef string, remote string) (string, error) {
 	c := uploader.ChartUploader{
 		Out:     &out,
 		Pushers: pusher.All(p.Settings),
-		Options: []pusher.Option{
-			pusher.WithProvenance(p.WithProv),
-		},
+		Options: []pusher.Option{},
 	}
 
 	if strings.HasPrefix(remote, "oci://") {

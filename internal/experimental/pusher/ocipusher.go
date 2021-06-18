@@ -18,6 +18,7 @@ package pusher
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path"
 	"strings"
 
@@ -52,10 +53,9 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 	}
 
 	var pushOpts []registry.PushOption
-	var provBytes []byte
-	if pusher.opts.withProv {
-		provRef := fmt.Sprintf("%s.prov", chartRef)
-		provBytes, err = ioutil.ReadFile(provRef)
+	provRef := fmt.Sprintf("%s.prov", chartRef)
+	if _, err := os.Stat(provRef); err == nil {
+		provBytes, err := ioutil.ReadFile(provRef)
 		if err != nil {
 			return err
 		}
