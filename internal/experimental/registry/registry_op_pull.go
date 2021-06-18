@@ -110,16 +110,21 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 			Size:   configDescriptor.Size,
 		},
 		Chart: &descriptorPullSummaryWithMeta{},
-		Prov: &descriptorPullSummary{},
-		Ref:  ref,
+		Prov:  &descriptorPullSummary{},
+		Ref:   ref,
 	}
+	var getManifestErr error
 	if _, manifestData, ok := store.Get(manifest); !ok {
-		return nil, errors.Errorf("Unable to retrieve blob with digest %s", manifest.Digest)
+		getManifestErr = errors.Errorf("Unable to retrieve blob with digest %s", manifest.Digest)
 	} else {
 		result.Manifest.Data = manifestData
 	}
+	if getManifestErr != nil {
+		return nil, getManifestErr
+	}
+	var getConfigDescriptorErr error
 	if _, configData, ok := store.Get(*configDescriptor); !ok {
-		return nil, errors.Errorf("Unable to retrieve blob with digest %s", configDescriptor.Digest)
+		getConfigDescriptorErr = errors.Errorf("Unable to retrieve blob with digest %s", configDescriptor.Digest)
 	} else {
 		result.Config.Data = configData
 		var meta *chart.Metadata
@@ -128,22 +133,33 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		}
 		result.Chart.Meta = meta
 	}
+	if getConfigDescriptorErr != nil {
+		return nil, getConfigDescriptorErr
+	}
 	if operation.withChart {
+		var getChartDescriptorErr error
 		if _, chartData, ok := store.Get(*chartDescriptor); !ok {
-			return nil, errors.Errorf("Unable to retrieve blob with digest %s", chartDescriptor.Digest)
+			getChartDescriptorErr = errors.Errorf("Unable to retrieve blob with digest %s", chartDescriptor.Digest)
 		} else {
 			result.Chart.Data = chartData
 			result.Chart.Digest = chartDescriptor.Digest.String()
 			result.Chart.Size = chartDescriptor.Size
 		}
+		if getChartDescriptorErr != nil {
+			return nil, getChartDescriptorErr
+		}
 	}
 	if operation.withProv && !provMissing {
+		var getProvDescriptorErr error
 		if _, provData, ok := store.Get(*provDescriptor); !ok {
-			return nil, errors.Errorf("Unable to retrieve blob with digest %s", provDescriptor.Digest)
+			getProvDescriptorErr = errors.Errorf("Unable to retrieve blob with digest %s", provDescriptor.Digest)
 		} else {
 			result.Prov.Data = provData
 			result.Prov.Digest = provDescriptor.Digest.String()
 			result.Prov.Size = provDescriptor.Size
+		}
+		if getProvDescriptorErr != nil {
+			return nil, getProvDescriptorErr
 		}
 	}
 	fmt.Fprintf(c.out, "Pulled: %s\n", result.Ref)
