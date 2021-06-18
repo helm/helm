@@ -22,6 +22,8 @@ import (
 	"path"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/chart/loader"
 )
@@ -40,6 +42,17 @@ func (pusher *OCIPusher) Push(chartRef, href string, options ...Option) error {
 }
 
 func (pusher *OCIPusher) push(chartRef, href string) error {
+	stat, err := os.Stat(chartRef)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return errors.Errorf("%s: no such file", chartRef)
+		}
+		return err
+	}
+	if stat.IsDir() {
+		return errors.New("cannot push directory, must provide chart archive (.tgz)")
+	}
+
 	meta, err := loader.Load(chartRef)
 	if err != nil {
 		return err
