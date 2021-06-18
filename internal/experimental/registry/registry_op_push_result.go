@@ -16,9 +16,7 @@ limitations under the License.
 
 package registry // import "helm.sh/helm/v3/internal/experimental/registry"
 
-import (
-	"helm.sh/helm/v3/pkg/chart"
-)
+import "helm.sh/helm/v3/pkg/chart"
 
 type (
 	// PushResult is the result returned upon successful push.

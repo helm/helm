@@ -30,9 +30,7 @@ import (
 	"helm.sh/helm/v3/pkg/helmpath"
 )
 
-var (
-	userAgent = fmt.Sprintf("helm/%s", version.GetVersion())
-)
+var userAgent = fmt.Sprintf("helm/%s", version.GetVersion())
 
 type (
 	// Client works with OCI-compliant registries
