@@ -109,8 +109,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		return nil, errors.Errorf("Unable to retrieve blob with digest %s", configDescriptor.Digest)
 	}
 	var meta *chart.Metadata
-	err = json.Unmarshal(configData, &meta)
-	if err != nil {
+	if err := json.Unmarshal(configData, &meta); err != nil {
 		return nil, err
 	}
 	var chartData []byte
