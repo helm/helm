@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
+	experimental "helm.sh/helm/v3/internal/experimental/action"
 	"helm.sh/helm/v3/pkg/action"
 )
 
@@ -34,7 +35,7 @@ provenance file, which will also be uploaded.
 `
 
 func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
-	client := action.NewPushWithOpts(action.WithPushConfig(cfg))
+	client := experimental.NewPushWithOpts(experimental.WithPushConfig(cfg))
 
 	cmd := &cobra.Command{
 		Use:               "push [chart] [remote]",
