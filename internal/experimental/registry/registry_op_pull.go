@@ -100,61 +100,50 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 					ProvLayerMediaType))
 		}
 	}
-	_, manifestData, ok := store.Get(manifest)
-	if !ok {
-		return nil, errors.Errorf("Unable to retrieve blob with digest %s", manifest.Digest)
-	}
-	_, configData, ok := store.Get(*configDescriptor)
-	if !ok {
-		return nil, errors.Errorf("Unable to retrieve blob with digest %s", configDescriptor.Digest)
-	}
-	var meta *chart.Metadata
-	if err := json.Unmarshal(configData, &meta); err != nil {
-		return nil, err
-	}
-	var chartData []byte
-	if operation.withChart {
-		var ok bool
-		_, chartData, ok = store.Get(*chartDescriptor)
-		if !ok {
-			return nil, errors.Errorf("Unable to retrieve blob with digest %s", chartDescriptor.Digest)
-		}
-	}
-	var provData []byte
-	if operation.withProv && !provMissing {
-		var ok bool
-		_, provData, ok = store.Get(*provDescriptor)
-		if !ok {
-			return nil, errors.Errorf("Unable to retrieve blob with digest %s", provDescriptor.Digest)
-		}
-	}
 	result := &PullResult{
 		Manifest: &descriptorPullSummary{
-			Data:   manifestData,
 			Digest: manifest.Digest.String(),
 			Size:   manifest.Size,
 		},
 		Config: &descriptorPullSummary{
-			Data:   configData,
 			Digest: configDescriptor.Digest.String(),
 			Size:   configDescriptor.Size,
 		},
-		Chart: &descriptorPullSummaryWithMeta{
-			Meta: meta,
-		},
-		Prov: &descriptorPullSummary{}, // prevent nil references
+		Chart: &descriptorPullSummaryWithMeta{},
+		Prov: &descriptorPullSummary{},
 		Ref:  ref,
 	}
-	if chartData != nil {
-		result.Chart.Data = chartData
-		result.Chart.Digest = chartDescriptor.Digest.String()
-		result.Chart.Size = chartDescriptor.Size
+	if _, manifestData, ok := store.Get(manifest); !ok {
+		return nil, errors.Errorf("Unable to retrieve blob with digest %s", manifest.Digest)
+	} else {
+		result.Manifest.Data = manifestData
 	}
-	if provData != nil {
-		result.Prov = &descriptorPullSummary{
-			Data:   provData,
-			Digest: provDescriptor.Digest.String(),
-			Size:   provDescriptor.Size,
+	if _, configData, ok := store.Get(*configDescriptor); !ok {
+		return nil, errors.Errorf("Unable to retrieve blob with digest %s", configDescriptor.Digest)
+	} else {
+		result.Config.Data = configData
+		var meta *chart.Metadata
+		if err := json.Unmarshal(configData, &meta); err != nil {
+			return nil, err
+		}
+		result.Chart.Meta = meta
+	}
+	if operation.withChart {
+		if _, chartData, ok := store.Get(*chartDescriptor); !ok {
+			return nil, errors.Errorf("Unable to retrieve blob with digest %s", chartDescriptor.Digest)
+		} else {
+			result.Chart.Data = chartData
+			result.Chart.Digest = chartDescriptor.Digest.String()
+			result.Chart.Size = chartDescriptor.Size
+		}
+	}
+	if operation.withProv && !provMissing {
+		if _, provData, ok := store.Get(*provDescriptor); !ok {
+			return nil, errors.Errorf("Unable to retrieve blob with digest %s", provDescriptor.Digest)
+		} else {
+			result.Prov.Data = provData
+			result.Prov.Digest = provDescriptor.Digest.String()
+			result.Prov.Size = provDescriptor.Size
 		}
 	}
 	fmt.Fprintf(c.out, "Pulled: %s\n", result.Ref)
