@@ -493,6 +493,11 @@ func (m *Manager) ensureMissingRepos(repoNames map[string]string, deps []*chart.
 			continue
 		}
 
+		// OCI-based dependencies do not have a local cache, so skip them
+		if strings.HasPrefix(dd.Repository, "oci://") {
+			continue
+		}
+
 		// When the repoName for a dependency is known we can skip ensuring
 		if _, ok := repoNames[dd.Name]; ok {
 			continue
