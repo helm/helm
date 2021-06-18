@@ -44,6 +44,10 @@ func (c *ChartUploader) UploadTo(ref, remote string) error {
 		return errors.Errorf("invalid chart URL format: %s", remote)
 	}
 
+	if u.Scheme == "" {
+		return errors.New("scheme prefix missing from remote (e.g. \"oci://\")")
+	}
+
 	pusher, err := c.Pushers.ByScheme(u.Scheme)
 	if err != nil {
 		return err
