@@ -258,6 +258,9 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		return errors.Errorf("%q is not a directory", destPath)
 	}
 
+	if err := os.RemoveAll(tmpPath); err != nil {
+		return errors.Wrapf(err, "failed to remove %v", tmpPath)
+	}
 	if err := fs.RenameWithFallback(destPath, tmpPath); err != nil {
 		return errors.Wrap(err, "unable to move current charts to tmp dir")
 	}
