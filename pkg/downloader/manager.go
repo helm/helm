@@ -276,21 +276,21 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			chartPath := filepath.Join(tmpPath, dep.Name)
 			ch, err := loader.LoadDir(chartPath)
 			if err != nil {
-				return fmt.Errorf("Unable to load chart: %v", err)
+				return fmt.Errorf("unable to load chart: %v", err)
 			}
 
 			constraint, err := semver.NewConstraint(dep.Version)
 			if err != nil {
-				return fmt.Errorf("Dependency %s has an invalid version/constraint format: %s", dep.Name, err)
+				return fmt.Errorf("dependency %s has an invalid version/constraint format: %s", dep.Name, err)
 			}
 
 			v, err := semver.NewVersion(ch.Metadata.Version)
 			if err != nil {
-				return fmt.Errorf("Invalid version %s for dependency %s: %s", dep.Version, dep.Name, err)
+				return fmt.Errorf("invalid version %s for dependency %s: %s", dep.Version, dep.Name, err)
 			}
 
 			if !constraint.Check(v) {
-				saveError = fmt.Errorf("Dependency %s at version %s does not satisfy the constraint %s", dep.Name, ch.Metadata.Version, dep.Version)
+				saveError = fmt.Errorf("dependency %s at version %s does not satisfy the constraint %s", dep.Name, ch.Metadata.Version, dep.Version)
 				break
 			}
 			continue
@@ -310,7 +310,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 
 		// Any failure to resolve/download a chart should fail:
 		// https://github.com/helm/helm/issues/1439
-		churl, username, password, err := m.findChartURL(dep.Name, dep.Version, dep.Repository, repos)
+		churl, username, password, insecureskiptlsverify, passcredentialsall, err := m.findChartURL(dep.Name, dep.Version, dep.Repository, repos)
 		if err != nil {
 			saveError = errors.Wrapf(err, "could not find %s", churl)
 			break
@@ -332,6 +332,8 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			Getters:          m.Getters,
 			Options: []getter.Option{
 				getter.WithBasicAuth(username, password),
+				getter.WithPassCredentialsAll(passcredentialsall),
+				getter.WithInsecureSkipVerifyTLS(insecureskiptlsverify),
 			},
 		}
 
@@ -685,9 +687,9 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 // repoURL is the repository to search
 //
 // If it finds a URL that is "relative", it will prepend the repoURL.
-func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRepository) (url, username, password string, err error) {
+func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRepository) (url, username, password string, insecureskiptlsverify, passcredentialsall bool, err error) {
 	if strings.HasPrefix(repoURL, "oci://") {
-		return fmt.Sprintf("%s/%s:%s", repoURL, name, version), "", "", nil
+		return fmt.Sprintf("%s/%s:%s", repoURL, name, version), "", "", false, false, nil
 	}
 
 	for _, cr := range repos {
@@ -709,15 +711,17 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 			}
 			username = cr.Config.Username
 			password = cr.Config.Password
+			passcredentialsall = cr.Config.PassCredentialsAll
+			insecureskiptlsverify = cr.Config.InsecureSkipTLSverify
 			return
 		}
 	}
 	url, err = repo.FindChartInRepoURL(repoURL, name, version, "", "", "", m.Getters)
 	if err == nil {
-		return url, username, password, err
+		return url, username, password, false, false, err
 	}
 	err = errors.Errorf("chart %s not found in %s: %s", name, repoURL, err)
-	return url, username, password, err
+	return url, username, password, false, false, err
 }
 
 // findEntryByName finds an entry in the chart repository whose name matches the given name.

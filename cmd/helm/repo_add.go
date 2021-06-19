@@ -48,6 +48,7 @@ type repoAddOptions struct {
 	url                  string
 	username             string
 	password             string
+	passCredentialsAll   bool
 	forceUpdate          bool
 	allowDeprecatedRepos bool
 
@@ -91,6 +92,7 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&o.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 	f.BoolVar(&o.insecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the repository")
 	f.BoolVar(&o.allowDeprecatedRepos, "allow-deprecated-repos", false, "by default, this command will not allow adding official repos that have been permanently deleted. This disables that behavior")
+	f.BoolVar(&o.passCredentialsAll, "pass-credentials", false, "pass credentials to all domains")
 
 	return cmd
 }
@@ -112,7 +114,14 @@ func (o *repoAddOptions) run(out io.Writer) error {
 	}
 
 	// Acquire a file lock for process synchronization
-	fileLock := flock.New(strings.Replace(o.repoFile, filepath.Ext(o.repoFile), ".lock", 1))
+	repoFileExt := filepath.Ext(o.repoFile)
+	var lockPath string
+	if len(repoFileExt) > 0 && len(repoFileExt) < len(o.repoFile) {
+		lockPath = strings.Replace(o.repoFile, repoFileExt, ".lock", 1)
+	} else {
+		lockPath = o.repoFile + ".lock"
+	}
+	fileLock := flock.New(lockPath)
 	lockCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	locked, err := fileLock.TryLockContext(lockCtx, time.Second)
@@ -149,6 +158,7 @@ func (o *repoAddOptions) run(out io.Writer) error {
 		URL:                   o.url,
 		Username:              o.username,
 		Password:              o.password,
+		PassCredentialsAll:    o.passCredentialsAll,
 		CertFile:              o.certFile,
 		KeyFile:               o.keyFile,
 		CAFile:                o.caFile,
