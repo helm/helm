@@ -111,7 +111,23 @@ func (m *Manager) Build() error {
 		}
 	}
 
-	if _, err := m.resolveRepoNames(req); err != nil {
+	// Get the names of the repositories the dependencies need that Helm is
+	// configured to know about.
+	repoNames, err := m.resolveRepoNames(req)
+	if err != nil {
+		return err
+	}
+
+	// For the repositories Helm is not configured to know about, ensure Helm
+	// has some information about them and, when possible, the index files
+	// locally.
+	// NOTE: The comment below is copied from Manager.Update()
+	// TODO(mattfarina): Repositories should be explicitly added by end users
+	// rather than automattic. In Helm v4 require users to add repositories. They
+	// should have to add them in order to make sure they are aware of the
+	// repositories and opt-in to any locations, for security.
+	_, err = m.ensureMissingRepos(repoNames, req)
+	if err != nil {
 		return err
 	}
 
@@ -127,11 +143,6 @@ func (m *Manager) Build() error {
 		} else {
 			return errors.New("the lock file (Chart.lock) is out of sync with the dependencies file (Chart.yaml). Please update the dependencies")
 		}
-	}
-
-	// Check that all of the repos we're dependent on actually exist.
-	if err := m.hasAllRepos(lock.Dependencies); err != nil {
-		return err
 	}
 
 	if !m.SkipUpdate {
@@ -438,40 +449,6 @@ func (m *Manager) safeDeleteDep(name, dir string) error {
 			fmt.Fprintf(m.Out, "Could not delete %s: %s (Skipping)", fname, err)
 			continue
 		}
-	}
-	return nil
-}
-
-// hasAllRepos ensures that all of the referenced deps are in the local repo cache.
-func (m *Manager) hasAllRepos(deps []*chart.Dependency) error {
-	rf, err := loadRepoConfig(m.RepositoryConfig)
-	if err != nil {
-		return err
-	}
-	repos := rf.Repositories
-
-	// Verify that all repositories referenced in the deps are actually known
-	// by Helm.
-	missing := []string{}
-Loop:
-	for _, dd := range deps {
-		// If repo is from local path or OCI, continue
-		if strings.HasPrefix(dd.Repository, "file://") || strings.HasPrefix(dd.Repository, "oci://") {
-			continue
-		}
-
-		if dd.Repository == "" {
-			continue
-		}
-		for _, repo := range repos {
-			if urlutil.Equal(repo.URL, strings.TrimSuffix(dd.Repository, "/")) {
-				continue Loop
-			}
-		}
-		missing = append(missing, dd.Repository)
-	}
-	if len(missing) > 0 {
-		return ErrRepoNotFound{missing}
 	}
 	return nil
 }
