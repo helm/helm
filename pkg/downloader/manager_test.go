@@ -24,6 +24,7 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/repo"
 	"helm.sh/helm/v3/pkg/repo/repotest"
 )
 
@@ -416,6 +417,84 @@ func checkBuildWithOptionalFields(t *testing.T, chartName string, dep chart.Depe
 	}
 
 	// Second build should be passed. See PR #6655.
+	err = m.Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+// This test covers the issue #9840: helm dependecy build: missing repos are not added automatically in presence of Chart.lock
+// There was inconsistency in behaviour of helm dependency build function (manager.Build()):
+// - if there's no Chart.lock in a chart, all the dependencies listed in the respective section of Chart.yaml are added automatically;
+// - if Chart.lock is there, helm fails with an error like:
+//   "Error: no repository definition for https://grafana.github.io/helm-charts. Please add the missing repos via 'helm repo add'."
+// The tests based on the checkBuildWithOptionalFields function do not catch the error during the second call of manager.Build, because their
+// repo list always contains the repository specified in dependencies (test).
+func TestBuild_BuildWithLockfileAndMissingRepo(t *testing.T) {
+	// Set up a fake repo
+	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer srv.Stop()
+	if err := srv.LinkIndices(); err != nil {
+		t.Fatal(err)
+	}
+	dir := func(p ...string) string {
+		return filepath.Join(append([]string{srv.Root()}, p...)...)
+	}
+
+	dep := chart.Dependency{
+		Name:       "local-subchart",
+		Version:    "0.1.0",
+		Repository: srv.URL(),
+	}
+
+	chartName := "chart1"
+
+	// Save a chart
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:         chartName,
+			Version:      "0.1.0",
+			APIVersion:   "v2",
+			Dependencies: []*chart.Dependency{&dep},
+		},
+	}
+	if err := chartutil.SaveDir(c, dir()); err != nil {
+		t.Fatal(err)
+	}
+
+	// Set-up a manager
+	b := bytes.NewBuffer(nil)
+	g := getter.Providers{getter.Provider{
+		Schemes: []string{"http", "https"},
+		New:     getter.NewHTTPGetter,
+	}}
+	m := &Manager{
+		ChartPath:        dir(chartName),
+		Out:              b,
+		Getters:          g,
+		RepositoryConfig: dir("repositories.yaml"),
+		RepositoryCache:  dir(),
+	}
+
+	// During the first build, since we don't have a Chart.lock yet, the manager.Build() will
+	// fallback to manager.Update() and generate a new Chart.lock along the way.
+	// At this point, we want the test repo to stay in the RepositoryConfig.
+	err = m.Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// This time, having Chart.lock in place, Manager.Build() will take another path - it won't
+	// fallback to manager.Update()
+	// We want to make sure all the repos specified in dependencies are added automatically,
+	// thus we generate an empty repository config.
+	r := repo.NewFile()
+	r.WriteFile(m.RepositoryConfig, 0644)
+
+	// If everything is fine and the dependencies are added, the second build should succeed.
 	err = m.Build()
 	if err != nil {
 		t.Fatal(err)
