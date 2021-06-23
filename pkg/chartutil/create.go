@@ -570,12 +570,12 @@ func Create(name, dir string) (string, error) {
 		return "", err
 	}
 
-	path, err := filepath.Abs(dir)
+	cdir, err := filepath.Abs(dir)
 	if err != nil {
-		return path, err
+		return cdir, err
 	}
 
-	parentPath := filepath.Dir(path)
+	parentPath := filepath.Dir(cdir)
 	if fi, err := os.Stat(parentPath); err != nil {
 		return parentPath, err
 	} else if !fi.IsDir() {
@@ -588,57 +588,57 @@ func Create(name, dir string) (string, error) {
 	}{
 		{
 			// Chart.yaml
-			path:    filepath.Join(path, ChartfileName),
+			path:    filepath.Join(cdir, ChartfileName),
 			content: []byte(fmt.Sprintf(defaultChartfile, name)),
 		},
 		{
 			// values.yaml
-			path:    filepath.Join(path, ValuesfileName),
+			path:    filepath.Join(cdir, ValuesfileName),
 			content: []byte(fmt.Sprintf(defaultValues, name)),
 		},
 		{
 			// .helmignore
-			path:    filepath.Join(path, IgnorefileName),
+			path:    filepath.Join(cdir, IgnorefileName),
 			content: []byte(defaultIgnore),
 		},
 		{
 			// ingress.yaml
-			path:    filepath.Join(path, IngressFileName),
+			path:    filepath.Join(cdir, IngressFileName),
 			content: transform(defaultIngress, name),
 		},
 		{
 			// deployment.yaml
-			path:    filepath.Join(path, DeploymentName),
+			path:    filepath.Join(cdir, DeploymentName),
 			content: transform(defaultDeployment, name),
 		},
 		{
 			// service.yaml
-			path:    filepath.Join(path, ServiceName),
+			path:    filepath.Join(cdir, ServiceName),
 			content: transform(defaultService, name),
 		},
 		{
 			// serviceaccount.yaml
-			path:    filepath.Join(path, ServiceAccountName),
+			path:    filepath.Join(cdir, ServiceAccountName),
 			content: transform(defaultServiceAccount, name),
 		},
 		{
 			// hpa.yaml
-			path:    filepath.Join(path, HorizontalPodAutoscalerName),
+			path:    filepath.Join(cdir, HorizontalPodAutoscalerName),
 			content: transform(defaultHorizontalPodAutoscaler, name),
 		},
 		{
 			// NOTES.txt
-			path:    filepath.Join(path, NotesName),
+			path:    filepath.Join(cdir, NotesName),
 			content: transform(defaultNotes, name),
 		},
 		{
 			// _helpers.tpl
-			path:    filepath.Join(path, HelpersName),
+			path:    filepath.Join(cdir, HelpersName),
 			content: transform(defaultHelpers, name),
 		},
 		{
 			// test-connection.yaml
-			path:    filepath.Join(path, TestConnectionName),
+			path:    filepath.Join(cdir, TestConnectionName),
 			content: transform(defaultTestConnection, name),
 		},
 	}
@@ -649,14 +649,14 @@ func Create(name, dir string) (string, error) {
 			fmt.Fprintf(Stderr, "WARNING: File %q already exists. Overwriting.\n", file.path)
 		}
 		if err := writeFile(file.path, file.content); err != nil {
-			return path, err
+			return cdir, err
 		}
 	}
 	// Need to add the ChartsDir explicitly as it does not contain any file OOTB
-	if err := os.MkdirAll(filepath.Join(path, ChartsDir), 0755); err != nil {
-		return path, err
+	if err := os.MkdirAll(filepath.Join(cdir, ChartsDir), 0755); err != nil {
+		return cdir, err
 	}
-	return path, nil
+	return cdir, nil
 }
 
 // transform performs a string replacement of the specified source for
