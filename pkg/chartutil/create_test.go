@@ -34,12 +34,11 @@ func TestCreate(t *testing.T) {
 	}
 	defer os.RemoveAll(tdir)
 
-	c, err := Create("foo", tdir)
+	destination := filepath.Join(tdir, "foo")
+	c, err := Create("foo", destination)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	dir := filepath.Join(tdir, "foo")
 
 	mychart, err := loader.LoadDir(c)
 	if err != nil {
@@ -63,7 +62,7 @@ func TestCreate(t *testing.T) {
 		TestConnectionName,
 		ValuesfileName,
 	} {
-		if _, err := os.Stat(filepath.Join(dir, f)); err != nil {
+		if _, err := os.Stat(filepath.Join(destination, f)); err != nil {
 			t.Errorf("Expected %s file: %s", f, err)
 		}
 	}
@@ -83,15 +82,14 @@ func TestCreateFrom(t *testing.T) {
 	}
 	srcdir := "./testdata/frobnitz/charts/mariner"
 
-	if err := CreateFrom(cf, tdir, srcdir); err != nil {
+	destination := filepath.Join(tdir, cf.Name)
+	if err := CreateFrom(cf, destination, srcdir); err != nil {
 		t.Fatal(err)
 	}
 
-	dir := filepath.Join(tdir, "foo")
-	c := filepath.Join(tdir, cf.Name)
-	mychart, err := loader.LoadDir(c)
+	mychart, err := loader.LoadDir(destination)
 	if err != nil {
-		t.Fatalf("Failed to load newly created chart %q: %s", c, err)
+		t.Fatalf("Failed to load newly created chart %q: %s", destination, err)
 	}
 
 	if mychart.Name() != "foo" {
@@ -103,12 +101,12 @@ func TestCreateFrom(t *testing.T) {
 		ValuesfileName,
 		filepath.Join(TemplatesDir, "placeholder.tpl"),
 	} {
-		if _, err := os.Stat(filepath.Join(dir, f)); err != nil {
+		if _, err := os.Stat(filepath.Join(destination, f)); err != nil {
 			t.Errorf("Expected %s file: %s", f, err)
 		}
 
 		// Check each file to make sure <CHARTNAME> has been replaced
-		b, err := ioutil.ReadFile(filepath.Join(dir, f))
+		b, err := ioutil.ReadFile(filepath.Join(destination, f))
 		if err != nil {
 			t.Errorf("Unable to read file %s: %s", f, err)
 		}
@@ -128,18 +126,17 @@ func TestCreate_Overwrite(t *testing.T) {
 
 	var errlog bytes.Buffer
 
-	if _, err := Create("foo", tdir); err != nil {
+	destination := filepath.Join(tdir, "foo")
+	if _, err := Create("foo", destination); err != nil {
 		t.Fatal(err)
 	}
 
-	dir := filepath.Join(tdir, "foo")
-
-	tplname := filepath.Join(dir, "templates/hpa.yaml")
+	tplname := filepath.Join(destination, "templates/hpa.yaml")
 	writeFile(tplname, []byte("FOO"))
 
 	// Now re-run the create
 	Stderr = &errlog
-	if _, err := Create("foo", tdir); err != nil {
+	if _, err := Create("foo", destination); err != nil {
 		t.Fatal(err)
 	}
 

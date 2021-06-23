@@ -19,6 +19,7 @@ package lint
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -125,7 +126,8 @@ func TestHelmCreateChart(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	createdChart, err := chartutil.Create("testhelmcreatepasseslint", dir)
+	destination := filepath.Join(dir, "testhelmcreatepasseslint")
+	createdChart, err := chartutil.Create("testhelmcreatepasseslint", destination)
 	if err != nil {
 		t.Error(err)
 		// Fatal is bad because of the defer.

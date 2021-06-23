@@ -547,7 +547,7 @@ func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
 		}
 	}
 
-	return SaveDir(schart, dest)
+	return SaveDirCustom(schart, dest)
 }
 
 // Create creates a new chart in a directory.
@@ -575,15 +575,11 @@ func Create(name, dir string) (string, error) {
 		return path, err
 	}
 
-	if fi, err := os.Stat(path); err != nil {
-		return path, err
+	parentPath := filepath.Dir(path)
+	if fi, err := os.Stat(parentPath); err != nil {
+		return parentPath, err
 	} else if !fi.IsDir() {
-		return path, errors.Errorf("no such directory %s", path)
-	}
-
-	cdir := filepath.Join(path, name)
-	if fi, err := os.Stat(cdir); err == nil && !fi.IsDir() {
-		return cdir, errors.Errorf("file %s already exists and is not a directory", cdir)
+		return parentPath, errors.Errorf("no such directory %s", parentPath)
 	}
 
 	files := []struct {
@@ -592,57 +588,57 @@ func Create(name, dir string) (string, error) {
 	}{
 		{
 			// Chart.yaml
-			path:    filepath.Join(cdir, ChartfileName),
+			path:    filepath.Join(path, ChartfileName),
 			content: []byte(fmt.Sprintf(defaultChartfile, name)),
 		},
 		{
 			// values.yaml
-			path:    filepath.Join(cdir, ValuesfileName),
+			path:    filepath.Join(path, ValuesfileName),
 			content: []byte(fmt.Sprintf(defaultValues, name)),
 		},
 		{
 			// .helmignore
-			path:    filepath.Join(cdir, IgnorefileName),
+			path:    filepath.Join(path, IgnorefileName),
 			content: []byte(defaultIgnore),
 		},
 		{
 			// ingress.yaml
-			path:    filepath.Join(cdir, IngressFileName),
+			path:    filepath.Join(path, IngressFileName),
 			content: transform(defaultIngress, name),
 		},
 		{
 			// deployment.yaml
-			path:    filepath.Join(cdir, DeploymentName),
+			path:    filepath.Join(path, DeploymentName),
 			content: transform(defaultDeployment, name),
 		},
 		{
 			// service.yaml
-			path:    filepath.Join(cdir, ServiceName),
+			path:    filepath.Join(path, ServiceName),
 			content: transform(defaultService, name),
 		},
 		{
 			// serviceaccount.yaml
-			path:    filepath.Join(cdir, ServiceAccountName),
+			path:    filepath.Join(path, ServiceAccountName),
 			content: transform(defaultServiceAccount, name),
 		},
 		{
 			// hpa.yaml
-			path:    filepath.Join(cdir, HorizontalPodAutoscalerName),
+			path:    filepath.Join(path, HorizontalPodAutoscalerName),
 			content: transform(defaultHorizontalPodAutoscaler, name),
 		},
 		{
 			// NOTES.txt
-			path:    filepath.Join(cdir, NotesName),
+			path:    filepath.Join(path, NotesName),
 			content: transform(defaultNotes, name),
 		},
 		{
 			// _helpers.tpl
-			path:    filepath.Join(cdir, HelpersName),
+			path:    filepath.Join(path, HelpersName),
 			content: transform(defaultHelpers, name),
 		},
 		{
 			// test-connection.yaml
-			path:    filepath.Join(cdir, TestConnectionName),
+			path:    filepath.Join(path, TestConnectionName),
 			content: transform(defaultTestConnection, name),
 		},
 	}
@@ -653,14 +649,14 @@ func Create(name, dir string) (string, error) {
 			fmt.Fprintf(Stderr, "WARNING: File %q already exists. Overwriting.\n", file.path)
 		}
 		if err := writeFile(file.path, file.content); err != nil {
-			return cdir, err
+			return path, err
 		}
 	}
 	// Need to add the ChartsDir explicitly as it does not contain any file OOTB
-	if err := os.MkdirAll(filepath.Join(cdir, ChartsDir), 0755); err != nil {
-		return cdir, err
+	if err := os.MkdirAll(filepath.Join(path, ChartsDir), 0755); err != nil {
+		return path, err
 	}
-	return cdir, nil
+	return path, nil
 }
 
 // transform performs a string replacement of the specified source for

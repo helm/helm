@@ -52,6 +52,7 @@ will be overwritten, but other files will be left alone.
 
 type createOptions struct {
 	starter    string // --starter
+	directory  string // --directory
 	name       string
 	starterDir string
 }
@@ -81,6 +82,7 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&o.starter, "starter", "p", "", "the name or absolute path to Helm starter scaffold")
+	cmd.Flags().StringVarP(&o.directory, "directory", "d", "", "the location of the created chart")
 	return cmd
 }
 
@@ -97,6 +99,11 @@ func (o *createOptions) run(out io.Writer) error {
 		APIVersion:  chart.APIVersionV2,
 	}
 
+	destination := o.directory
+	if destination == "" {
+		destination = o.name
+	}
+
 	if o.starter != "" {
 		// Create from the starter
 		lstarter := filepath.Join(o.starterDir, o.starter)
@@ -104,10 +111,10 @@ func (o *createOptions) run(out io.Writer) error {
 		if filepath.IsAbs(o.starter) {
 			lstarter = o.starter
 		}
-		return chartutil.CreateFrom(cfile, filepath.Dir(o.name), lstarter)
+		return chartutil.CreateFrom(cfile, destination, lstarter)
 	}
 
 	chartutil.Stderr = out
-	_, err := chartutil.Create(chartname, filepath.Dir(o.name))
+	_, err := chartutil.Create(chartname, destination)
 	return err
 }
