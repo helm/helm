@@ -28,10 +28,10 @@ import (
 )
 
 const pushDesc = `
-Upload a package to a registry.
+Upload a chart to a registry.
 
-If the --with-prov flag is specified, the chart MUST have an associated
-provenance file, which will also be uploaded.
+If the chart has an associated provenance file,
+it will also be uploaded.
 `
 
 func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
