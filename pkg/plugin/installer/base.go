@@ -16,6 +16,7 @@ limitations under the License.
 package installer // import "helm.sh/helm/v3/pkg/plugin/installer"
 
 import (
+	"os"
 	"path/filepath"
 
 	"helm.sh/helm/v3/pkg/helmpath"
@@ -34,6 +35,10 @@ func newBase(source string) base {
 func (b *base) Path() string {
 	if b.Source == "" {
 		return ""
+	}
+	helmPluginsDir := os.Getenv("HELM_PLUGINS")
+	if helmPluginsDir != "" {
+		return filepath.Join(helmPluginsDir, filepath.Base(b.Source))
 	}
 	return helmpath.DataPath("plugins", filepath.Base(b.Source))
 }
