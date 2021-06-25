@@ -720,6 +720,10 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 			return
 		}
 	}
+	if urlUsername, urlPassword, ok := getBasicAuth(repoURL); ok {
+		username = urlUsername
+		password = urlPassword
+	}
 	url, err = repo.FindChartInRepoURL(repoURL, name, version, certFile, keyFile, caFile, m.Getters)
 	if err == nil {
 		return url, username, password, false, false, "", "", "", err
@@ -785,6 +789,18 @@ func normalizeURL(baseURL, urlOrPath string) (string, error) {
 
 	u2.Path = path.Join(u2.Path, urlOrPath)
 	return u2.String(), nil
+}
+
+func getBasicAuth(baseURL string) (string, string, bool) {
+	u, err := url.Parse(baseURL)
+	if err != nil {
+		return "", "", false
+	}
+	if _, ok := u.User.Password(); !ok {
+		return "", "", false
+	}
+	password, _ := u.User.Password()
+	return u.User.Username(), password, true
 }
 
 // loadChartRepositories reads the repositories.yaml, and then builds a map of
