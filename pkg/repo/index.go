@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Masterminds/semver/v3"
@@ -111,6 +112,30 @@ func LoadIndexFile(path string) (*IndexFile, error) {
 		return nil, errors.Wrapf(err, "error loading %s", path)
 	}
 	return i, nil
+}
+
+var cache = make(map[string]*IndexFile)
+var cacheLock sync.RWMutex
+
+func LoadIndexFileWithCaching(path string) (*IndexFile, error) {
+	// if already in cache, return cached entry
+	cacheLock.RLock()
+	if idx, ok := cache[path]; ok {
+		cacheLock.RUnlock()
+		// safe to return a pointer to the cached entry here since once in cache
+		// entry will never be overwritten
+		return idx, nil
+	}
+	cacheLock.RUnlock()
+	// not in cache, need to load from disk
+	idx, err := LoadIndexFile(path)
+	if err == nil {
+		// we fetched the index successfully. Store it in cache.
+		cacheLock.Lock()
+		cache[path] = idx
+		cacheLock.Unlock()
+	}
+	return idx, err
 }
 
 // MustAdd adds a file to the index
