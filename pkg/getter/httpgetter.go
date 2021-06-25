@@ -43,13 +43,11 @@ func (g *HTTPGetter) Get(href string, options ...Option) (*bytes.Buffer, error) 
 }
 
 func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
-	buf := bytes.NewBuffer(nil)
-
 	// Set a helm specific user agent so that a repo server and metrics can
 	// separate helm calls from other tools interacting with repos.
-	req, err := http.NewRequest("GET", href, nil)
+	req, err := http.NewRequest(http.MethodGet, href, nil)
 	if err != nil {
-		return buf, err
+		return nil, err
 	}
 
 	req.Header.Set("User-Agent", version.GetUserAgent())
@@ -61,11 +59,11 @@ func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
 	// with the basic auth is the one being fetched.
 	u1, err := url.Parse(g.opts.url)
 	if err != nil {
-		return buf, errors.Wrap(err, "Unable to parse getter URL")
+		return nil, errors.Wrap(err, "Unable to parse getter URL")
 	}
 	u2, err := url.Parse(href)
 	if err != nil {
-		return buf, errors.Wrap(err, "Unable to parse URL getting from")
+		return nil, errors.Wrap(err, "Unable to parse URL getting from")
 	}
 
 	// Host on URL (returned from url.Parse) contains the port if present.
@@ -84,14 +82,15 @@ func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return buf, err
+		return nil, err
 	}
-	if resp.StatusCode != 200 {
-		return buf, errors.Errorf("failed to fetch %s : %s", href, resp.Status)
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.Errorf("failed to fetch %s : %s", href, resp.Status)
 	}
 
+	buf := bytes.NewBuffer(nil)
 	_, err = io.Copy(buf, resp.Body)
-	resp.Body.Close()
 	return buf, err
 }
 
