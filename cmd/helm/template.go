@@ -34,6 +34,7 @@ import (
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/releaseutil"
 )
@@ -50,6 +51,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	var validate bool
 	var includeCrds bool
 	var skipTests bool
+	var computedValues bool
 	client := action.NewInstall(cfg)
 	valueOpts := &values.Options{}
 	var kubeVersion string
@@ -116,6 +118,22 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					}
 				}
 
+				// if using --computed-values, just display the resulting YAML from the provided input values
+				if computedValues {
+
+					// Apply our supplied additional values (rel.config) and the values baked in the chart
+					// and combine
+					cfg, err := chartutil.CoalesceValues(rel.Chart, rel.Config)
+					if err != nil {
+						return err
+					}
+
+					err = output.EncodeYAML(out, cfg.AsMap())
+
+					// Exit early either with an error or nil if the output was successful
+					return err
+				}
+
 				// if we have a list of files to render, then check that each of the
 				// provided files exists in the chart.
 				if len(showFiles) > 0 {
@@ -179,6 +197,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&validate, "validate", false, "validate your manifests against the Kubernetes cluster you are currently pointing at. This is the same validation performed on an install")
 	f.BoolVar(&includeCrds, "include-crds", false, "include CRDs in the templated output")
 	f.BoolVar(&skipTests, "skip-tests", false, "skip tests from templated output")
+	f.BoolVar(&computedValues, "computed-values", false, "template just the computed values as YAML rather than the manifest")
 	f.BoolVar(&client.IsUpgrade, "is-upgrade", false, "set .Release.IsUpgrade instead of .Release.IsInstall")
 	f.StringVar(&kubeVersion, "kube-version", "", "Kubernetes version used for Capabilities.KubeVersion")
 	f.StringArrayVarP(&extraAPIs, "api-versions", "a", []string{}, "Kubernetes api versions used for Capabilities.APIVersions")
