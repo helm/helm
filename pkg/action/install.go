@@ -28,6 +28,8 @@ import (
 	"text/template"
 	"time"
 
+	"helm.sh/helm/v3/internal/urlutil"
+
 	"github.com/Masterminds/sprig/v3"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
@@ -688,7 +690,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		// Host on URL (returned from url.Parse) contains the port if present.
 		// This check ensures credentials are not passed between different
 		// services on different ports.
-		if c.PassCredentialsAll || (u1.Scheme == u2.Scheme && u1.Host == u2.Host) {
+		if c.PassCredentialsAll || (u1.Scheme == u2.Scheme && urlutil.CanonicalAddr(u1) == urlutil.CanonicalAddr(u2)) {
 			dl.Options = append(dl.Options, getter.WithBasicAuth(c.Username, c.Password))
 		} else {
 			dl.Options = append(dl.Options, getter.WithBasicAuth("", ""))

@@ -71,7 +71,7 @@ func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
 	// Host on URL (returned from url.Parse) contains the port if present.
 	// This check ensures credentials are not passed between different
 	// services on different ports.
-	if g.opts.passCredentialsAll || (u1.Scheme == u2.Scheme && u1.Host == u2.Host) {
+	if g.opts.passCredentialsAll || (u1.Scheme == u2.Scheme && urlutil.CanonicalAddr(u1) == urlutil.CanonicalAddr(u2)) {
 		if g.opts.username != "" && g.opts.password != "" {
 			req.SetBasicAuth(g.opts.username, g.opts.password)
 		}

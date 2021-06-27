@@ -16,7 +16,10 @@ limitations under the License.
 
 package urlutil
 
-import "testing"
+import (
+	"net/url"
+	"testing"
+)
 
 func TestURLJoin(t *testing.T) {
 	tests := []struct {
@@ -75,6 +78,36 @@ func TestExtractHostname(t *testing.T) {
 	}
 	for start, expect := range tests {
 		if got, _ := ExtractHostname(start); got != expect {
+			t.Errorf("Got %q, expected %q", got, expect)
+		}
+	}
+}
+
+func TestCanonicalAddr(t *testing.T) {
+	tests := map[*url.URL]string{
+		{
+			Scheme: "http",
+			Host:   "example.com",
+			Path:   "/",
+		}: "example.com:80",
+		{
+			Scheme: "https",
+			Host:   "example.com",
+			Path:   "/",
+		}: "example.com:443",
+		{
+			Scheme: "https",
+			Host:   "example.com",
+			Path:   "/foo",
+		}: "example.com:443",
+		{
+			Scheme: "https",
+			Host:   "example.com:31337",
+			Path:   "/not/with/a/bang/but/a/whimper",
+		}: "example.com:31337",
+	}
+	for urlInput, expect := range tests {
+		if got := CanonicalAddr(urlInput); got != expect {
 			t.Errorf("Got %q, expected %q", got, expect)
 		}
 	}

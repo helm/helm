@@ -17,6 +17,7 @@ limitations under the License.
 package urlutil
 
 import (
+	"net"
 	"net/url"
 	"path"
 	"path/filepath"
@@ -70,4 +71,21 @@ func ExtractHostname(addr string) (string, error) {
 		return "", err
 	}
 	return u.Hostname(), nil
+}
+
+// From: https://golang.org/src/net/http/transport.go:2712
+var portMap = map[string]string{
+	"http":  "80",
+	"https": "443",
+}
+
+// CanonicalAddr returns url.Host but always with a ":port" suffix
+// From: https://golang.org/src/net/http/transport.go:2719 without idna to ascii conversion
+func CanonicalAddr(url *url.URL) string {
+	addr := url.Hostname()
+	port := url.Port()
+	if port == "" {
+		port = portMap[url.Scheme]
+	}
+	return net.JoinHostPort(addr, port)
 }
