@@ -48,15 +48,10 @@ func (c *ChartUploader) UploadTo(ref, remote string) error {
 		return errors.New("scheme prefix missing from remote (e.g. \"oci://\")")
 	}
 
-	pusher, err := c.Pushers.ByScheme(u.Scheme)
+	p, err := c.Pushers.ByScheme(u.Scheme)
 	if err != nil {
 		return err
 	}
 
-	err = pusher.Push(ref, u.String(), c.Options...)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return p.Push(ref, u.String(), c.Options...)
 }
