@@ -17,7 +17,6 @@ limitations under the License.
 package registry // import "helm.sh/helm/v3/internal/experimental/registry"
 
 import (
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -29,8 +28,6 @@ import (
 	"helm.sh/helm/v3/internal/version"
 	"helm.sh/helm/v3/pkg/helmpath"
 )
-
-var userAgent = fmt.Sprintf("helm/%s", version.GetVersion())
 
 type (
 	// Client works with OCI-compliant registries
@@ -64,7 +61,7 @@ func NewClient(options ...ClientOption) (*Client, error) {
 	}
 	if client.resolver == nil {
 		headers := http.Header{}
-		headers.Set("User-Agent", userAgent)
+		headers.Set("User-Agent", version.GetUserAgent())
 		opts := []auth.ResolverOption{auth.WithResolverHeaders(headers)}
 		resolver, err := client.authorizer.ResolverWithOpts(opts...)
 		if err != nil {

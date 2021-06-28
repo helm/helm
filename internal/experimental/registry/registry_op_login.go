@@ -20,6 +20,8 @@ import (
 	"fmt"
 
 	"oras.land/oras-go/pkg/auth"
+
+	"helm.sh/helm/v3/internal/version"
 )
 
 // Login logs into a registry
@@ -33,7 +35,7 @@ func (c *Client) Login(host string, options ...LoginOption) (*LoginResult, error
 		auth.WithLoginHostname(host),
 		auth.WithLoginUsername(operation.username),
 		auth.WithLoginSecret(operation.password),
-		auth.WithLoginUserAgent(userAgent),
+		auth.WithLoginUserAgent(version.GetUserAgent()),
 	}
 	if operation.insecure {
 		authorizerLoginOpts = append(authorizerLoginOpts, auth.WithLoginInsecure())
