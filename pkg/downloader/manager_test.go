@@ -24,6 +24,7 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/repo"
 	"helm.sh/helm/v3/pkg/repo/repotest"
 )
 
@@ -520,4 +521,45 @@ func TestKey(t *testing.T) {
 			t.Errorf("wrong key name generated for %q, expected %q but got %q", tt.name, tt.expect, o)
 		}
 	}
+}
+
+func TestRemoveDuplicates(t *testing.T) {
+	entries := []*repo.Entry{
+		{Name: "helm-manager-sha123"},
+		{Name: "helm-manager-sha456"},
+		{Name: "helm-manager-sha123"},
+	}
+
+	tests := []struct {
+		input  []*repo.Entry
+		expect []*repo.Entry
+	}{
+		{
+			input:  entries,
+			expect: entries[:2],
+		},
+		{
+			input:  entries[1:],
+			expect: entries[1:],
+		},
+	}
+
+	for _, tt := range tests {
+		output := removeDuplicates(tt.input)
+
+		outSize := len(output)
+		expectedSize := len(tt.expect)
+
+		if outSize != expectedSize {
+			t.Fatalf("duplication removal failed, expected %d but got %d", expectedSize, outSize)
+		}
+
+		for i, o := range output {
+			if o != tt.expect[i] {
+				t.Errorf("duplication removal failed, expected %q but got %q", tt.expect[i], o)
+			}
+
+		}
+	}
+
 }
