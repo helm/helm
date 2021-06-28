@@ -580,11 +580,6 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 			continue
 		}
 
-		if strings.HasPrefix(dd.Repository, "oci://") {
-			reposMap[dd.Name] = dd.Repository
-			continue
-		}
-
 		found := false
 
 		for _, repo := range repos {
