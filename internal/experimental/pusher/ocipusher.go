@@ -76,7 +76,7 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 	}
 
 	ref := fmt.Sprintf("%s:%s",
-		path.Join(strings.TrimPrefix(href, "oci://"), meta.Metadata.Name),
+		path.Join(strings.TrimPrefix(href, fmt.Sprintf("%s://", registry.OCIScheme)), meta.Metadata.Name),
 		meta.Metadata.Version)
 
 	_, err = client.Push(chartBytes, ref, pushOpts...)

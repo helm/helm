@@ -16,6 +16,7 @@ limitations under the License.
 package uploader
 
 import (
+	"fmt"
 	"io"
 	"net/url"
 
@@ -45,7 +46,7 @@ func (c *ChartUploader) UploadTo(ref, remote string) error {
 	}
 
 	if u.Scheme == "" {
-		return errors.New("scheme prefix missing from remote (e.g. \"oci://\")")
+		return errors.New(fmt.Sprintf("scheme prefix missing from remote (e.g. \"%s://\")", registry.OCIScheme))
 	}
 
 	p, err := c.Pushers.ByScheme(u.Scheme)

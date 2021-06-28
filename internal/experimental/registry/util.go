@@ -19,7 +19,9 @@ package registry // import "helm.sh/helm/v3/internal/experimental/registry"
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 	orascontext "oras.land/oras-go/pkg/context"
@@ -27,6 +29,11 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 )
+
+// IsOCI determines whether or not a URL is to be treated as an OCI URL
+func IsOCI(url string) bool {
+	return strings.HasPrefix(url, fmt.Sprintf("%s://", OCIScheme))
+}
 
 // extractChartMeta is used to extract a chart metadata from a byte array
 func extractChartMeta(chartData []byte) (*chart.Metadata, error) {

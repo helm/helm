@@ -18,6 +18,7 @@ package pusher
 import (
 	"testing"
 
+	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/cli"
 )
 
@@ -61,7 +62,7 @@ func TestAll(t *testing.T) {
 func TestByScheme(t *testing.T) {
 	env := cli.New()
 	g := All(env)
-	if _, err := g.ByScheme("oci"); err != nil {
+	if _, err := g.ByScheme(registry.OCIScheme); err != nil {
 		t.Error(err)
 	}
 }

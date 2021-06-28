@@ -83,7 +83,7 @@ func (p Providers) ByScheme(scheme string) (Pusher, error) {
 }
 
 var ociProvider = Provider{
-	Schemes: []string{"oci"},
+	Schemes: []string{registry.OCIScheme},
 	New:     NewOCIPusher,
 }
 

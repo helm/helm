@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"helm.sh/helm/v3/internal/experimental/pusher"
+	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/internal/experimental/uploader"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli"
@@ -62,7 +63,7 @@ func (p *Push) Run(chartRef string, remote string) (string, error) {
 		Options: []pusher.Option{},
 	}
 
-	if strings.HasPrefix(remote, "oci://") {
+	if registry.IsOCI(remote) {
 		c.Options = append(c.Options, pusher.WithRegistryClient(p.cfg.RegistryClient))
 	}
 

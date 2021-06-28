@@ -36,6 +36,7 @@ import (
 	"k8s.io/cli-runtime/pkg/resource"
 	"sigs.k8s.io/yaml"
 
+	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli"
@@ -664,7 +665,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		RepositoryCache:  settings.RepositoryCache,
 	}
 
-	if strings.HasPrefix(name, "oci://") {
+	if registry.IsOCI(name) {
 		if version == "" {
 			return "", errors.New("version is explicitly required for OCI registries")
 		}

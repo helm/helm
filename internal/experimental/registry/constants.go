@@ -17,6 +17,9 @@ limitations under the License.
 package registry // import "helm.sh/helm/v3/internal/experimental/registry"
 
 const (
+	// OCIScheme is the URL scheme for OCI-based requests
+	OCIScheme = "oci"
+
 	// CredentialsFileBasename is the filename for auth credentials file
 	CredentialsFileBasename = "config.json"
 

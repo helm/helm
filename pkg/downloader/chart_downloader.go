@@ -102,7 +102,7 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 	}
 
 	name := filepath.Base(u.Path)
-	if u.Scheme == "oci" {
+	if u.Scheme == registry.OCIScheme {
 		name = fmt.Sprintf("%s-%s.tgz", name, version)
 	}
 

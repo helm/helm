@@ -25,6 +25,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/downloader"
@@ -90,7 +91,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		RepositoryCache:  p.Settings.RepositoryCache,
 	}
 
-	if strings.HasPrefix(chartRef, "oci://") {
+	if registry.IsOCI(chartRef) {
 		if p.Version == "" {
 			return out.String(), errors.Errorf("--version flag is explicitly required for OCI registries")
 		}
