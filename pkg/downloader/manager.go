@@ -531,8 +531,8 @@ func (m *Manager) ensureMissingRepos(repoNames map[string]string, deps []*chart.
 	// is not configured.
 	if !m.SkipUpdate && len(ru) > 0 {
 
-		// Some dependencies might have a diferent names but point to the same repository
-		// after creating a unique key we should remove duplicated entries to avoid unecessary work
+		// Some dependencies might have a different names but point to the same repository
+		// after creating a unique key we should remove duplicated entries to avoid unnecessary work
 		ru = removeDuplicates(ru)
 
 		fmt.Fprintln(m.Out, "Getting updates for unmanaged Helm repositories...")
