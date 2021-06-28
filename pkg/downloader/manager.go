@@ -530,6 +530,11 @@ func (m *Manager) ensureMissingRepos(repoNames map[string]string, deps []*chart.
 	// the dependencies that are not known to the user if update skipping
 	// is not configured.
 	if !m.SkipUpdate && len(ru) > 0 {
+
+		// Some dependencies might have a diferent names but point to the same repository
+		// after creating a unique key we should remove duplicated entries to avoid unecessary work
+		ru = removeDuplicates(ru)
+
 		fmt.Fprintln(m.Out, "Getting updates for unmanaged Helm repositories...")
 		if err := m.parallelRepoUpdate(ru); err != nil {
 			return repoNames, err
@@ -895,4 +900,19 @@ func key(name string) (string, error) {
 		return "", nil
 	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
+// removeDuplicates remove entries with the same name or unique key
+func removeDuplicates(re []*repo.Entry) []*repo.Entry {
+	m := make(map[string]struct{})
+	uniq := make([]*repo.Entry, 0)
+	for _, r := range re {
+		if _, ok := m[r.Name]; ok {
+			continue
+		}
+		m[r.Name] = struct{}{}
+		uniq = append(uniq, r)
+	}
+
+	return uniq
 }
