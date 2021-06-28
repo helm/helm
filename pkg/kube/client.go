@@ -100,7 +100,7 @@ func (c *Client) getKubeClient() (*kubernetes.Clientset, error) {
 	return c.kubeClient, err
 }
 
-// IsReachable tests connectivity to the cluster
+// IsReachable tests connectivity to the cluster.
 func (c *Client) IsReachable() error {
 	client, err := c.getKubeClient()
 	if err == genericclioptions.ErrEmptyConfig {
@@ -126,7 +126,7 @@ func (c *Client) Create(resources ResourceList) (*Result, error) {
 	return &Result{Created: resources}, nil
 }
 
-// Wait up to the given timeout for the specified resources to be ready
+// Wait waits up to the given timeout for the specified resources to be ready.
 func (c *Client) Wait(resources ResourceList, timeout time.Duration) error {
 	cs, err := c.getKubeClient()
 	if err != nil {
@@ -324,7 +324,7 @@ func (c *Client) watchTimeout(t time.Duration) func(*resource.Info) error {
 
 // WatchUntilReady watches the resources given and waits until it is ready.
 //
-// This function is mainly for hook implementations. It watches for a resource to
+// This method is mainly for hook implementations. It watches for a resource to
 // hit a particular milestone. The milestone depends on the Kind.
 //
 // For most kinds, it checks to see if the resource is marked as Added or Modified
