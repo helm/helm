@@ -1,0 +1,107 @@
+SC1data:
+  SC1bool: true
+  SC1extra1: 11
+  SC1float: 3.14
+  SC1int: 100
+  SC1string: dollywood
+SCBexported1A:
+  SC1extra7: true
+  SCBexported1B: 1965
+exports:
+  SC1exported1:
+    global:
+      SC1exported2:
+        all:
+          SC1exported3: SC1expstr
+  SCBexported2:
+    SCBexported2A: blaster
+imported-chartA:
+  SC1extra2: 1.337
+  SCAbool: false
+  SCAfloat: 3.1
+  SCAint: 55
+  SCAnested1:
+    SCAnested2: true
+  SCAstring: jabba
+imported-chartA-B:
+  SC1extra5: tiller
+  SCAbool: false
+  SCAfloat: 3.1
+  SCAint: 55
+  SCAnested1:
+    SCAnested2: true
+  SCAstring: jabba
+  SCBbool: true
+  SCBfloat: 7.77
+  SCBint: 33
+  SCBstring: boba
+imported-chartB:
+  SCBbool: true
+  SCBfloat: 7.77
+  SCBint: 33
+  SCBstring: boba
+overridden-chartA:
+  SC1extra3: true
+  SCAbool: true
+  SCAfloat: 3.14
+  SCAint: 100
+  SCAnested1:
+    SCAnested2: true
+  SCAstring: jabbathehut
+overridden-chartA-B:
+  SC1extra6: 77
+  SCAbool: true
+  SCAextra1: 23
+  SCAfloat: 3.33
+  SCAint: 555
+  SCAstring: wormwood
+  SCBbool: true
+  SCBextra1: 13
+  SCBfloat: 0.25
+  SCBint: 98
+  SCBstring: murkwood
+service:
+  externalPort: 80
+  internalPort: 80
+  name: nginx
+  type: ClusterIP
+subcharta:
+  SCAdata:
+    SCAbool: false
+    SCAfloat: 3.1
+    SCAint: 55
+    SCAnested1:
+      SCAnested2: true
+    SCAstring: jabba
+  global: {}
+  service:
+    externalPort: 80
+    internalPort: 80
+    name: apache
+    type: ClusterIP
+subchartb:
+  SCBdata:
+    SCBbool: true
+    SCBfloat: 7.77
+    SCBint: 33
+    SCBstring: boba
+  exports:
+    SCBexported1:
+      SCBexported1A:
+        SCBexported1B: 1965
+    SCBexported2:
+      SCBexported2A: blaster
+  global:
+    kolla:
+      nova:
+        api:
+          all:
+            port: 8774
+        metadata:
+          all:
+            port: 8775
+  service:
+    externalPort: 80
+    internalPort: 80
+    name: nginx
+    type: ClusterIP

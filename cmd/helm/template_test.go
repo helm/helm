@@ -131,6 +131,21 @@ func TestTemplateCmd(t *testing.T) {
 			cmd:    fmt.Sprintf(`template '%s' --skip-tests`, chartPath),
 			golden: "output/template-skip-tests.txt",
 		},
+		{
+			name:   "template compute-values",
+			cmd:    fmt.Sprintf(`template '%s' --computed-values`, chartPath),
+			golden: "output/template-compute-values.txt",
+		},
+		{
+			name:   "template compute-values-overrides",
+			cmd:    fmt.Sprintf(`template '%s' --computed-values --set service.name=apache`, chartPath),
+			golden: "output/template-compute-values-overrides.txt",
+		},
+		{
+			name:   "template compute-values-subchart-with-overrides",
+			cmd:    fmt.Sprintf(`template '%s' --computed-values --set subcharta.service.name=nginx`, chartPath),
+			golden: "output/template-compute-values-subchart-overrides.txt",
+		},
 	}
 	runTestCmd(t, tests)
 }
