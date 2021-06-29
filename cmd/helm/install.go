@@ -19,7 +19,6 @@ package main
 import (
 	"io"
 	"log"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -183,10 +182,8 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	}
 	client.ReleaseName = name
 
-	if strings.HasPrefix(chart, "oci://") {
-		if !FeatureGateOCI.IsEnabled() {
-			return nil, FeatureGateOCI.Error()
-		}
+	if err := checkOCI(chart); err != nil {
+		return nil, err
 	}
 
 	cp, err := client.ChartPathOptions.LocateChart(chart, settings)

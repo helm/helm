@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -84,10 +83,8 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if strings.HasPrefix(args[1], "oci://") {
-				if !FeatureGateOCI.IsEnabled() {
-					return FeatureGateOCI.Error()
-				}
+			if err := checkOCI(args[1]); err != nil {
+				return err
 			}
 
 			client.Namespace = settings.Namespace()

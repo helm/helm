@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -177,10 +176,8 @@ func runShow(args []string, client *action.Show) (string, error) {
 		client.Version = ">0.0.0-0"
 	}
 
-	if strings.HasPrefix(args[0], "oci://") {
-		if !FeatureGateOCI.IsEnabled() {
-			return "", FeatureGateOCI.Error()
-		}
+	if err := checkOCI(args[0]); err != nil {
+		return "", err
 	}
 
 	cp, err := client.ChartPathOptions.LocateChart(args[0], settings)
