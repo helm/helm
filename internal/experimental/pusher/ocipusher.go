@@ -67,11 +67,11 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 
 	var pushOpts []registry.PushOption
 	provRef := fmt.Sprintf("%s.prov", chartRef)
-	if provBytes, err := ioutil.ReadFile(provRef); err != nil {
-		if err != os.ErrNotExist { // ignore error if .prov does not exist
+	if _, err := os.Stat(provRef); err == nil {
+		provBytes, err := ioutil.ReadFile(provRef)
+		if err != nil {
 			return err
 		}
-	} else {
 		pushOpts = append(pushOpts, registry.PushOptProvData(provBytes))
 	}
 
