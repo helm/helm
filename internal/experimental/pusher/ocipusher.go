@@ -67,11 +67,11 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 
 	var pushOpts []registry.PushOption
 	provRef := fmt.Sprintf("%s.prov", chartRef)
-	if _, err := os.Stat(provRef); err == nil {
-		provBytes, err := ioutil.ReadFile(provRef)
-		if err != nil {
+	if provBytes, err := ioutil.ReadFile(provRef); err != nil {
+		if err != os.ErrNotExist { // ignore error if .prov does not exist
 			return err
 		}
+	} else {
 		pushOpts = append(pushOpts, registry.PushOptProvData(provBytes))
 	}
 
@@ -80,11 +80,7 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 		meta.Metadata.Version)
 
 	_, err = client.Push(chartBytes, ref, pushOpts...)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // NewOCIPusher constructs a valid OCI client as a Pusher

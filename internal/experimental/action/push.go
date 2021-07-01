@@ -67,6 +67,5 @@ func (p *Push) Run(chartRef string, remote string) (string, error) {
 		c.Options = append(c.Options, pusher.WithRegistryClient(p.cfg.RegistryClient))
 	}
 
-	err := c.UploadTo(chartRef, remote)
-	return out.String(), err
+	return out.String(), c.UploadTo(chartRef, remote)
 }
