@@ -899,13 +899,13 @@ func key(name string) (string, error) {
 
 // removeDuplicates remove entries with the same name or unique key
 func removeDuplicates(re []*repo.Entry) []*repo.Entry {
-	m := make(map[string]struct{})
-	uniq := make([]*repo.Entry, 0)
+	m := map[string]bool{}
+	uniq := []*repo.Entry{}
 	for _, r := range re {
-		if _, ok := m[r.Name]; ok {
+		if m[r.Name] {
 			continue
 		}
-		m[r.Name] = struct{}{}
+		m[r.Name] = true
 		uniq = append(uniq, r)
 	}
 
