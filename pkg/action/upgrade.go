@@ -40,8 +40,6 @@ import (
 	"helm.sh/helm/v3/pkg/storage/driver"
 )
 
-var upgradeLock sync.Mutex
-
 // Upgrade is the action for upgrading releases.
 //
 // It provides the implementation of 'helm upgrade'.
@@ -106,6 +104,8 @@ type Upgrade struct {
 	DisableOpenAPIValidation bool
 	// Get missing dependencies
 	DependencyUpdate bool
+	// Lock to control raceconditions when the process receives a SIGTERM
+	Lock sync.Mutex
 }
 
 type resultMessage struct {
@@ -329,12 +329,12 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 // In that case the upgrade will finish before the rollback is finished so it is necessary to wait for the rollback to finish.
 // The rollback will be trigger by the function failRelease
 func (u *Upgrade) reportToPerformUpgrade(c chan<- resultMessage, rel *release.Release, created kube.ResourceList, err error) {
-	upgradeLock.Lock()
+	u.Lock.Lock()
 	if err != nil {
 		rel, err = u.failRelease(rel, created, err)
 	}
 	c <- resultMessage{r: rel, e: err}
-	upgradeLock.Unlock()
+	u.Lock.Unlock()
 }
 
 // Setup listener for SIGINT and SIGTERM

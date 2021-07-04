@@ -69,8 +69,6 @@ const notesFileSuffix = "NOTES.txt"
 
 const defaultDirectoryPermission = 0755
 
-var installLock sync.Mutex
-
 // Install performs an installation operation.
 type Install struct {
 	cfg *Configuration
@@ -109,6 +107,8 @@ type Install struct {
 	// OutputDir/<ReleaseName>
 	UseReleaseName bool
 	PostRenderer   postrender.PostRenderer
+	// Lock to control raceconditions when the process receives a SIGTERM
+	Lock sync.Mutex
 }
 
 // ChartPathOptions captures common options used for controlling chart paths
@@ -420,12 +420,12 @@ func (i *Install) handleSignals(c chan<- resultMessage, rel *release.Release) {
 	}()
 }
 func (i *Install) reportToRun(c chan<- resultMessage, rel *release.Release, err error) {
-	installLock.Lock()
+	i.Lock.Lock()
 	if err != nil {
 		rel, err = i.failRelease(rel, err)
 	}
 	c <- resultMessage{r: rel, e: err}
-	installLock.Unlock()
+	i.Lock.Unlock()
 }
 func (i *Install) failRelease(rel *release.Release, err error) (*release.Release, error) {
 	rel.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", i.ReleaseName, err.Error()))
