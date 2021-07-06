@@ -29,6 +29,18 @@ func TestResolve(t *testing.T) {
 		err    bool
 	}{
 		{
+			name: "repo from invalid version",
+			req: []*chart.Dependency{
+				{Name: "base", Repository: "file://base", Version: "1.1.0"},
+			},
+			expect: &chart.Lock{
+				Dependencies: []*chart.Dependency{
+					{Name: "base", Repository: "file://base", Version: "0.1.0"},
+				},
+			},
+			err: true,
+		},
+		{
 			name: "version failure",
 			req: []*chart.Dependency{
 				{Name: "oedipus-rex", Repository: "http://example.com", Version: ">a1"},
