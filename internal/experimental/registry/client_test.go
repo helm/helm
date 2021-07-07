@@ -110,27 +110,25 @@ func (suite *RegistryClientTestSuite) TearDownSuite() {
 }
 
 func (suite *RegistryClientTestSuite) Test_0_Login() {
-	_, err := suite.RegistryClient.Login(suite.DockerRegistryHost,
+	err := suite.RegistryClient.Login(suite.DockerRegistryHost,
 		LoginOptBasicAuth("badverybad", "ohsobad"),
 		LoginOptInsecure(false))
 	suite.NotNil(err, "error logging into registry with bad credentials")
 
-	_, err = suite.RegistryClient.Login(suite.DockerRegistryHost,
+	err = suite.RegistryClient.Login(suite.DockerRegistryHost,
 		LoginOptBasicAuth("badverybad", "ohsobad"),
 		LoginOptInsecure(true))
 	suite.NotNil(err, "error logging into registry with bad credentials, insecure mode")
 
-	result, err := suite.RegistryClient.Login(suite.DockerRegistryHost,
+	err = suite.RegistryClient.Login(suite.DockerRegistryHost,
 		LoginOptBasicAuth(testUsername, testPassword),
 		LoginOptInsecure(false))
 	suite.Nil(err, "no error logging into registry with good credentials")
-	suite.Equal(suite.DockerRegistryHost, result.Host, "result.Host is as expected")
 
-	_, err = suite.RegistryClient.Login(suite.DockerRegistryHost,
+	err = suite.RegistryClient.Login(suite.DockerRegistryHost,
 		LoginOptBasicAuth(testUsername, testPassword),
 		LoginOptInsecure(true))
 	suite.Nil(err, "no error logging into registry with good credentials, insecure mode")
-	suite.Equal(suite.DockerRegistryHost, result.Host, "result.Host is as expected")
 }
 
 func (suite *RegistryClientTestSuite) Test_1_Push() {
@@ -297,12 +295,11 @@ func (suite *RegistryClientTestSuite) Test_2_Pull() {
 }
 
 func (suite *RegistryClientTestSuite) Test_3_Logout() {
-	_, err := suite.RegistryClient.Logout("this-host-aint-real:5000")
+	err := suite.RegistryClient.Logout("this-host-aint-real:5000")
 	suite.NotNil(err, "error logging out of registry that has no entry")
 
-	result, err := suite.RegistryClient.Logout(suite.DockerRegistryHost)
+	err = suite.RegistryClient.Logout(suite.DockerRegistryHost)
 	suite.Nil(err, "no error logging out of registry")
-	suite.Equal(suite.DockerRegistryHost, result.Host, "result.Host is as expected")
 }
 
 func (suite *RegistryClientTestSuite) Test_4_ManInTheMiddle() {

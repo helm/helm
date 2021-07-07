@@ -37,9 +37,8 @@ func NewRegistryLogin(cfg *action.Configuration) *RegistryLogin {
 
 // Run executes the registry login operation
 func (a *RegistryLogin) Run(out io.Writer, hostname string, username string, password string, insecure bool) error {
-	_, err := a.cfg.RegistryClient.Login(
+	return a.cfg.RegistryClient.Login(
 		hostname,
 		registry.LoginOptBasicAuth(username, password),
 		registry.LoginOptInsecure(insecure))
-	return err
 }

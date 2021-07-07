@@ -143,7 +143,7 @@ func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
 		t.Fatalf("error creating registry client")
 	}
 
-	_, err = registryClient.Login(
+	err = registryClient.Login(
 		srv.RegistryURL,
 		ociRegistry.LoginOptBasicAuth(srv.TestUsername, srv.TestPassword),
 		ociRegistry.LoginOptInsecure(false))

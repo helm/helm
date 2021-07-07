@@ -109,11 +109,6 @@ type (
 	// LoginOption allows specifying various settings on login
 	LoginOption func(*loginOperation)
 
-	// LoginResult is the result returned upon successful login
-	LoginResult struct {
-		Host string `json:"host"`
-	}
-
 	loginOperation struct {
 		username string
 		password string
@@ -122,7 +117,7 @@ type (
 )
 
 // Login logs into a registry
-func (c *Client) Login(host string, options ...LoginOption) (*LoginResult, error) {
+func (c *Client) Login(host string, options ...LoginOption) error {
 	operation := &loginOperation{}
 	for _, option := range options {
 		option(operation)
@@ -137,15 +132,11 @@ func (c *Client) Login(host string, options ...LoginOption) (*LoginResult, error
 	if operation.insecure {
 		authorizerLoginOpts = append(authorizerLoginOpts, auth.WithLoginInsecure())
 	}
-	err := c.authorizer.LoginWithOpts(authorizerLoginOpts...)
-	if err != nil {
-		return nil, err
-	}
-	result := &LoginResult{
-		Host: host,
+	if err := c.authorizer.LoginWithOpts(authorizerLoginOpts...); err != nil {
+		return err
 	}
 	fmt.Fprintln(c.out, "Login Succeeded")
-	return result, nil
+	return nil
 }
 
 // LoginOptBasicAuth returns a function that sets the username/password settings on login
@@ -167,29 +158,20 @@ type (
 	// LogoutOption allows specifying various settings on logout
 	LogoutOption func(*logoutOperation)
 
-	// LogoutResult is the result returned upon successful logout.
-	LogoutResult struct {
-		Host string `json:"host"`
-	}
-
 	logoutOperation struct{}
 )
 
 // Logout logs out of a registry
-func (c *Client) Logout(host string, opts ...LogoutOption) (*LogoutResult, error) {
+func (c *Client) Logout(host string, opts ...LogoutOption) error {
 	operation := &logoutOperation{}
 	for _, opt := range opts {
 		opt(operation)
 	}
-	err := c.authorizer.Logout(ctx(c.out, c.debug), host)
-	if err != nil {
-		return nil, err
+	if err := c.authorizer.Logout(ctx(c.out, c.debug), host); err != nil {
+		return err
 	}
-	result := &LogoutResult{
-		Host: host,
-	}
-	fmt.Fprintf(c.out, "Removing login credentials for %s\n", result.Host)
-	return result, nil
+	fmt.Fprintf(c.out, "Removing login credentials for %s\n", host)
+	return nil
 }
 
 type (
