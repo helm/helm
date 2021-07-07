@@ -17,6 +17,7 @@ limitations under the License.
 package chartutil
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/mitchellh/copystructure"
@@ -35,6 +36,9 @@ import (
 //	- A chart has access to all of the variables for it, as well as all of
 //		the values destined for its dependencies.
 func CoalesceValues(chrt *chart.Chart, vals map[string]interface{}) (Values, error) {
+	if chrt == nil {
+		return nil, fmt.Errorf("the chart is nil")
+	}
 	v, err := copystructure.Copy(vals)
 	if err != nil {
 		return vals, err

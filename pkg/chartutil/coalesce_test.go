@@ -116,6 +116,11 @@ func TestCoalesceValues(t *testing.T) {
 		valsCopy[key] = value
 	}
 
+	_, err = CoalesceValues(nil, vals)
+	if err == nil {
+		t.Errorf("Excepted errors when chart is nil")
+	}
+
 	v, err := CoalesceValues(c, vals)
 	if err != nil {
 		t.Fatal(err)

@@ -153,15 +153,22 @@ func newReleaseListWriter(releases []*release.Release, timeFormat string) *relea
 	elements := make([]releaseElement, 0, len(releases))
 	for _, r := range releases {
 		element := releaseElement{
-			Name:       r.Name,
-			Namespace:  r.Namespace,
-			Revision:   strconv.Itoa(r.Version),
-			Status:     r.Info.Status.String(),
-			Chart:      fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version),
-			AppVersion: r.Chart.Metadata.AppVersion,
+			Name:      r.Name,
+			Namespace: r.Namespace,
+			Revision:  strconv.Itoa(r.Version),
+			Status:    r.Info.Status.String(),
 		}
 
 		t := "-"
+
+		if r.Chart != nil {
+			element.Chart = fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version)
+			element.AppVersion = r.Chart.Metadata.AppVersion
+		} else {
+			element.Chart = t
+			element.AppVersion = t
+		}
+
 		if tspb := r.Info.LastDeployed; !tspb.IsZero() {
 			if timeFormat != "" {
 				t = tspb.Format(timeFormat)
