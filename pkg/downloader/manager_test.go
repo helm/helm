@@ -193,6 +193,13 @@ func TestGetRepoNames(t *testing.T) {
 			},
 			expect: map[string]string{},
 		},
+		{
+			name: "repo from git url",
+			req: []*chart.Dependency{
+				{Name: "local-dep", Repository: "git:https://github.com/git/git"},
+			},
+			expect: map[string]string{"local-dep": "git:https://github.com/git/git"},
+		},
 	}
 
 	for _, tt := range tests {
