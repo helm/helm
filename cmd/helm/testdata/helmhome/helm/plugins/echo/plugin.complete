@@ -7,8 +7,7 @@ echo "Args received: ${@}"
 
 # Final printout is the optional completion directive of the form :<directive>
 if [ "$HELM_NAMESPACE" = "default" ]; then
-    # Output an invalid directive, which should be ignored
-    echo ":2222"
+    echo ":0"
 # else
     # Don't include the directive, to test it is really optional
 fi
