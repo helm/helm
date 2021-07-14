@@ -48,8 +48,54 @@ func TestUpdateCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if got := out.String(); !strings.Contains(got, "charts") {
-		t.Errorf("Expected 'charts' got %q", got)
+	if got := out.String(); !strings.Contains(got, "charts") ||
+		!strings.Contains(got, "firstexample") ||
+		!strings.Contains(got, "secondexample") {
+		t.Errorf("Expected 'charts', 'firstexample' and 'secondexample' but got %q", got)
+	}
+}
+
+func TestUpdateCmdMultiple(t *testing.T) {
+	var out bytes.Buffer
+	// Instead of using the HTTP updater, we provide our own for this test.
+	// The TestUpdateCharts test verifies the HTTP behavior independently.
+	updater := func(repos []*repo.ChartRepository, out io.Writer) {
+		for _, re := range repos {
+			fmt.Fprintln(out, re.Config.Name)
+		}
+	}
+	o := &repoUpdateOptions{
+		update:   updater,
+		repoFile: "testdata/repositories.yaml",
+		names:    []string{"firstexample", "charts"},
+	}
+	if err := o.run(&out); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := out.String(); !strings.Contains(got, "charts") ||
+		!strings.Contains(got, "firstexample") ||
+		strings.Contains(got, "secondexample") {
+		t.Errorf("Expected 'charts' and 'firstexample' but not 'secondexample' but got %q", got)
+	}
+}
+
+func TestUpdateCmdInvalid(t *testing.T) {
+	var out bytes.Buffer
+	// Instead of using the HTTP updater, we provide our own for this test.
+	// The TestUpdateCharts test verifies the HTTP behavior independently.
+	updater := func(repos []*repo.ChartRepository, out io.Writer) {
+		for _, re := range repos {
+			fmt.Fprintln(out, re.Config.Name)
+		}
+	}
+	o := &repoUpdateOptions{
+		update:   updater,
+		repoFile: "testdata/repositories.yaml",
+		names:    []string{"firstexample", "invalid"},
+	}
+	if err := o.run(&out); err == nil {
+		t.Fatal("expected error but did not get one")
 	}
 }
 
@@ -111,4 +157,5 @@ func TestUpdateCharts(t *testing.T) {
 
 func TestRepoUpdateFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "repo update", false)
+	checkFileCompletion(t, "repo update repo1", false)
 }

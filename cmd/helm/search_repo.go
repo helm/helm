@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -340,7 +341,7 @@ func compListCharts(toComplete string, includeFiles bool) ([]string, cobra.Shell
 	//    listing the entire content of the current directory which will
 	//    be too many choices for the user to find the real repos)
 	if includeFiles && len(completions) > 0 && len(toComplete) > 0 {
-		if files, err := ioutil.ReadDir("."); err == nil {
+		if files, err := os.ReadDir("."); err == nil {
 			for _, file := range files {
 				if strings.HasPrefix(file.Name(), toComplete) {
 					// We are completing a file prefix
