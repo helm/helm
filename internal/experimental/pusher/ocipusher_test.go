@@ -26,5 +26,11 @@ func TestNewOCIPusher(t *testing.T) {
 		}
 	}
 
-	NewOCIPusher(testfn)
+	p, err := NewOCIPusher(testfn)
+	if p == nil {
+		t.Error("NewOCIPusher returned nil")
+	}
+	if err != nil {
+		t.Error(err)
+	}
 }
