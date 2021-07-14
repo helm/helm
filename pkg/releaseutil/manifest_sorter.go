@@ -143,6 +143,10 @@ func (file *manifestFile) sort(result *result) error {
 
 		var entry SimpleHead
 		if err := yaml.Unmarshal([]byte(m), &entry); err != nil {
+			// Return a more understandable error message when the yaml fails to parse
+			if strings.Contains(err.Error(), "releaseutil.SimpleHead") {
+				return errors.Errorf("A non Kubernetes resource was generated on %s", file.path)
+			}
 			return errors.Wrapf(err, "YAML parse error on %s", file.path)
 		}
 

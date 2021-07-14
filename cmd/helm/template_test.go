@@ -131,6 +131,12 @@ func TestTemplateCmd(t *testing.T) {
 			cmd:    fmt.Sprintf(`template '%s' --skip-tests`, chartPath),
 			golden: "output/template-skip-tests.txt",
 		},
+		{
+			name:      "template with required statement",
+			cmd:       fmt.Sprintf("template '%s'", "testdata/testcharts/issue-5550"),
+			wantError: true,
+			golden:    "output/issue-5550.txt",
+		},
 	}
 	runTestCmd(t, tests)
 }

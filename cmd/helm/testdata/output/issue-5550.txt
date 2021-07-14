@@ -1,0 +1,3 @@
+Error: A non Kubernetes resource was generated on issue-5550/templates/deployment.yaml
+
+Use --debug flag to render out invalid YAML
