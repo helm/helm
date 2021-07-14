@@ -181,31 +181,44 @@ func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
 		t.Fatal("could not load chart into memory")
 	}
 
-	_, err = registryClient.Push(contentBytes, ref)
+	result, err := registryClient.Push(contentBytes, ref)
 	if err != nil {
 		t.Fatalf("error pushing dependent chart: %s", err)
 	}
-
-	if cfg.DependingChart != nil {
-		c := cfg.DependingChart
-		dependingRef := fmt.Sprintf("%s/u/ocitestuser/%s:%s",
-			srv.RegistryURL, c.Metadata.Name, c.Metadata.Version)
-
-		// load it into memory...
-		absPath := filepath.Join(srv.Dir,
-			fmt.Sprintf("%s-%s.tgz", c.Metadata.Name, c.Metadata.Version))
-		contentBytes, err := ioutil.ReadFile(absPath)
-		if err != nil {
-			t.Fatal("could not load chart into memory")
-		}
-
-		_, err = registryClient.Push(contentBytes, dependingRef)
-		if err != nil {
-			t.Fatalf("error pushing depending chart: %s", err)
-		}
-	}
+	t.Logf("Manifest.Digest: %s, Manifest.Size: %d, "+
+		"Config.Digest: %s, Config.Size: %d, "+
+		"Chart.Digest: %s, Chart.Size: %d",
+		result.Manifest.Digest, result.Manifest.Size,
+		result.Config.Digest, result.Config.Size,
+		result.Chart.Digest, result.Chart.Size)
 
 	srv.Client = registryClient
+	c := cfg.DependingChart
+	if c == nil {
+		return
+	}
+
+	dependingRef := fmt.Sprintf("%s/u/ocitestuser/%s:%s",
+		srv.RegistryURL, c.Metadata.Name, c.Metadata.Version)
+
+	// load it into memory...
+	absPath = filepath.Join(srv.Dir,
+		fmt.Sprintf("%s-%s.tgz", c.Metadata.Name, c.Metadata.Version))
+	contentBytes, err = ioutil.ReadFile(absPath)
+	if err != nil {
+		t.Fatal("could not load chart into memory")
+	}
+
+	result, err = registryClient.Push(contentBytes, dependingRef)
+	if err != nil {
+		t.Fatalf("error pushing depending chart: %s", err)
+	}
+	t.Logf("Manifest.Digest: %s, Manifest.Size: %d, "+
+		"Config.Digest: %s, Config.Size: %d, "+
+		"Chart.Digest: %s, Chart.Size: %d",
+		result.Manifest.Digest, result.Manifest.Size,
+		result.Config.Digest, result.Config.Size,
+		result.Chart.Digest, result.Chart.Size)
 }
 
 // NewTempServer creates a server inside of a temp dir.
