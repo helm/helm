@@ -135,6 +135,29 @@ func TestResolve(t *testing.T) {
 			},
 			err: true,
 		},
+		{
+			name: "optional dependencise version",
+			req: []*chart.Dependency{
+				{Name: "base", Repository: "file://base", Version: ""},
+			},
+			expect: &chart.Lock{
+				Dependencies: []*chart.Dependency{
+					{Name: "base", Repository: "file://base", Version: "0.1.0"},
+				},
+			},
+		},
+		{
+			name: "required dependency version",
+			req: []*chart.Dependency{
+				{Name: "alpine", Repository: "http://example.com", Version: ""},
+			},
+			expect: &chart.Lock{
+				Dependencies: []*chart.Dependency{
+					{Name: "alpine", Repository: "http://example.com", Version: "0.2.0"},
+				},
+			},
+			err: true,
+		},
 	}
 
 	repoNames := map[string]string{"alpine": "kubernetes-charts", "redis": "kubernetes-charts"}

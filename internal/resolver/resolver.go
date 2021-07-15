@@ -18,6 +18,7 @@ package resolver
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -57,7 +58,15 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 	locked := make([]*chart.Dependency, len(reqs))
 	missing := []string{}
 	for i, d := range reqs {
-		constraint, err := semver.NewConstraint(d.Version)
+		v := d.Version
+		if len(strings.TrimSpace(v)) == 0 {
+			if !strings.HasPrefix(d.Repository, "file://") {
+				return nil, fmt.Errorf("dependency %q must has a version", d.Name)
+			}
+			v = "*"
+		}
+
+		constraint, err := semver.NewConstraint(v)
 		if err != nil {
 			return nil, errors.Wrapf(err, "dependency %q has an invalid version/constraint format", d.Name)
 		}
