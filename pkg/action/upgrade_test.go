@@ -22,7 +22,7 @@ import (
 	"os"
 	"os/exec"
 	"testing"
-	gotime "time"
+	"time"
 
 	"helm.sh/helm/v3/pkg/chart"
 
@@ -31,7 +31,7 @@ import (
 
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
 	"helm.sh/helm/v3/pkg/release"
-	"helm.sh/helm/v3/pkg/time"
+	helmtime "helm.sh/helm/v3/pkg/time"
 )
 
 func upgradeAction(t *testing.T) *Upgrade {
@@ -229,7 +229,7 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 			withValues(chartDefaultValues),
 			withMetadataDependency(dependency),
 		)
-		now := time.Now()
+		now := helmtime.Now()
 		existingValues := map[string]interface{}{
 			"subchart": map[string]interface{}{
 				"enabled": false,
@@ -314,7 +314,7 @@ func TestUpgradeRelease_Interrupted_Wait(t *testing.T) {
 			upAction.cfg.Releases.Create(rel)
 
 			failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-			failer.PrintingKubeClient.WaitDuration = 10 * gotime.Second
+			failer.PrintingKubeClient.WaitDuration = 10 * time.Second
 			upAction.cfg.KubeClient = failer
 			upAction.Wait = true
 			vals := map[string]interface{}{}
@@ -351,7 +351,7 @@ func TestUpgradeRelease_Interrupted_Wait(t *testing.T) {
 			fmt.Printf("%s\n", slurp)
 		}()
 
-		gotime.Sleep(2 * gotime.Second)
+		time.Sleep(2 * time.Second)
 		p, _ := os.FindProcess(cmd.Process.Pid)
 
 		if err := p.Signal(os.Interrupt); err != nil {
@@ -377,7 +377,7 @@ func TestUpgradeRelease_Interrupted_Atomic(t *testing.T) {
 			upAction.cfg.Releases.Create(rel)
 
 			failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-			failer.PrintingKubeClient.WaitDuration = 5 * gotime.Second
+			failer.PrintingKubeClient.WaitDuration = 5 * time.Second
 			upAction.cfg.KubeClient = failer
 			upAction.Atomic = true
 			vals := map[string]interface{}{}
@@ -419,7 +419,7 @@ func TestUpgradeRelease_Interrupted_Atomic(t *testing.T) {
 			fmt.Printf("%s\n", slurp)
 		}()
 
-		gotime.Sleep(2 * gotime.Second)
+		time.Sleep(2 * time.Second)
 		p, _ := os.FindProcess(cmd.Process.Pid)
 
 		if err := p.Signal(os.Interrupt); err != nil {
