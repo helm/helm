@@ -47,7 +47,7 @@ func (p *PrintingKubeClient) Create(resources kube.ResourceList) (*kube.Result, 
 	return &kube.Result{Created: resources}, nil
 }
 
-func (p *PrintingKubeClient) Wait(resources kube.ResourceList, d time.Duration) error {
+func (p *PrintingKubeClient) Wait(resources kube.ResourceList, _ time.Duration) error {
 	_, err := io.Copy(p.Out, bufferize(resources))
 	return err
 }
