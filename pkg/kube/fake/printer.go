@@ -30,8 +30,7 @@ import (
 // PrintingKubeClient implements KubeClient, but simply prints the reader to
 // the given output.
 type PrintingKubeClient struct {
-	Out          io.Writer
-	WaitDuration time.Duration
+	Out io.Writer
 }
 
 // IsReachable checks if the cluster is reachable
@@ -49,10 +48,6 @@ func (p *PrintingKubeClient) Create(resources kube.ResourceList) (*kube.Result, 
 }
 
 func (p *PrintingKubeClient) Wait(resources kube.ResourceList, d time.Duration) error {
-	if p.WaitDuration != 0 {
-		time.Sleep(p.WaitDuration)
-	}
-
 	_, err := io.Copy(p.Out, bufferize(resources))
 	return err
 }

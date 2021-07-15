@@ -26,7 +26,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
-	gotime "time"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -36,7 +36,7 @@ import (
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage/driver"
-	"helm.sh/helm/v3/pkg/time"
+	helmtime "helm.sh/helm/v3/pkg/time"
 )
 
 type nameTemplateTestCase struct {
@@ -370,7 +370,7 @@ func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 			instAction := installAction(t)
 			instAction.ReleaseName = "interrupted-release"
 			failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-			failer.PrintingKubeClient.WaitDuration = 10 * gotime.Second
+			failer.WaitDuration = 10 * time.Second
 			instAction.cfg.KubeClient = failer
 			instAction.Wait = true
 			vals := map[string]interface{}{}
@@ -407,7 +407,7 @@ func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 			fmt.Printf("%s\n", slurp)
 		}()
 
-		gotime.Sleep(2 * gotime.Second)
+		time.Sleep(2 * time.Second)
 		p, _ := os.FindProcess(cmd.Process.Pid)
 
 		if err := p.Signal(os.Interrupt); err != nil {
@@ -483,7 +483,7 @@ func TestInstallRelease_Atomic_Interrupted(t *testing.T) {
 			instAction := installAction(t)
 			instAction.ReleaseName = "interrupted-release"
 			failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-			failer.PrintingKubeClient.WaitDuration = 10 * gotime.Second
+			failer.WaitDuration = 10 * time.Second
 			instAction.cfg.KubeClient = failer
 			instAction.Atomic = true
 			vals := map[string]interface{}{}
@@ -527,7 +527,7 @@ func TestInstallRelease_Atomic_Interrupted(t *testing.T) {
 			fmt.Printf("%s\n", slurp)
 		}()
 
-		gotime.Sleep(2 * gotime.Second)
+		time.Sleep(2 * time.Second)
 		p, _ := os.FindProcess(cmd.Process.Pid)
 
 		if err := p.Signal(os.Interrupt); err != nil {
@@ -743,32 +743,32 @@ func TestNameAndChartGenerateName(t *testing.T) {
 		{
 			"local filepath",
 			"./chart",
-			fmt.Sprintf("chart-%d", time.Now().Unix()),
+			fmt.Sprintf("chart-%d", helmtime.Now().Unix()),
 		},
 		{
 			"dot filepath",
 			".",
-			fmt.Sprintf("chart-%d", time.Now().Unix()),
+			fmt.Sprintf("chart-%d", helmtime.Now().Unix()),
 		},
 		{
 			"empty filepath",
 			"",
-			fmt.Sprintf("chart-%d", time.Now().Unix()),
+			fmt.Sprintf("chart-%d", helmtime.Now().Unix()),
 		},
 		{
 			"packaged chart",
 			"chart.tgz",
-			fmt.Sprintf("chart-%d", time.Now().Unix()),
+			fmt.Sprintf("chart-%d", helmtime.Now().Unix()),
 		},
 		{
 			"packaged chart with .tar.gz extension",
 			"chart.tar.gz",
-			fmt.Sprintf("chart-%d", time.Now().Unix()),
+			fmt.Sprintf("chart-%d", helmtime.Now().Unix()),
 		},
 		{
 			"packaged chart with local extension",
 			"./chart.tgz",
-			fmt.Sprintf("chart-%d", time.Now().Unix()),
+			fmt.Sprintf("chart-%d", helmtime.Now().Unix()),
 		},
 	}
 

@@ -314,7 +314,7 @@ func TestUpgradeRelease_Interrupted_Wait(t *testing.T) {
 			upAction.cfg.Releases.Create(rel)
 
 			failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-			failer.PrintingKubeClient.WaitDuration = 10 * time.Second
+			failer.WaitDuration = 10 * time.Second
 			upAction.cfg.KubeClient = failer
 			upAction.Wait = true
 			vals := map[string]interface{}{}
@@ -377,7 +377,7 @@ func TestUpgradeRelease_Interrupted_Atomic(t *testing.T) {
 			upAction.cfg.Releases.Create(rel)
 
 			failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-			failer.PrintingKubeClient.WaitDuration = 5 * time.Second
+			failer.WaitDuration = 5 * time.Second
 			upAction.cfg.KubeClient = failer
 			upAction.Atomic = true
 			vals := map[string]interface{}{}
