@@ -235,50 +235,63 @@ func Test_ReadyChecker_jobReady(t *testing.T) {
 		job *batchv1.Job
 	}
 	tests := []struct {
-		name string
-		args args
-		want bool
+		name    string
+		args    args
+		want    bool
+		wantErr bool
 	}{
 		{
-			name: "job is completed",
-			args: args{job: newJob("foo", 1, 1, 1, 0)},
-			want: true,
+			name:    "job is completed",
+			args:    args{job: newJob("foo", 1, 1, 1, 0)},
+			want:    true,
+			wantErr: false,
 		},
 		{
-			name: "job is incomplete",
-			args: args{job: newJob("foo", 1, 1, 0, 0)},
-			want: false,
+			name:    "job is incomplete",
+			args:    args{job: newJob("foo", 1, 1, 0, 0)},
+			want:    false,
+			wantErr: false,
 		},
 		{
-			name: "job is failed",
-			args: args{job: newJob("foo", 1, 1, 0, 1)},
-			want: false,
+			name:    "job is failed but within BackoffLimit",
+			args:    args{job: newJob("foo", 1, 1, 0, 1)},
+			want:    false,
+			wantErr: false,
 		},
 		{
-			name: "job is completed with retry",
-			args: args{job: newJob("foo", 1, 1, 1, 1)},
-			want: true,
+			name:    "job is completed with retry",
+			args:    args{job: newJob("foo", 1, 1, 1, 1)},
+			want:    true,
+			wantErr: false,
 		},
 		{
-			name: "job is failed with retry",
-			args: args{job: newJob("foo", 1, 1, 0, 2)},
-			want: false,
+			name:    "job is failed and beyond BackoffLimit",
+			args:    args{job: newJob("foo", 1, 1, 0, 2)},
+			want:    false,
+			wantErr: true,
 		},
 		{
-			name: "job is completed single run",
-			args: args{job: newJob("foo", 0, 1, 1, 0)},
-			want: true,
+			name:    "job is completed single run",
+			args:    args{job: newJob("foo", 0, 1, 1, 0)},
+			want:    true,
+			wantErr: false,
 		},
 		{
-			name: "job is failed single run",
-			args: args{job: newJob("foo", 0, 1, 0, 1)},
-			want: false,
+			name:    "job is failed single run",
+			args:    args{job: newJob("foo", 0, 1, 0, 1)},
+			want:    false,
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := NewReadyChecker(fake.NewSimpleClientset(), nil)
-			if got := c.jobReady(tt.args.job); got != tt.want {
+			got, err := c.jobReady(tt.args.job)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("jobReady() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
 				t.Errorf("jobReady() = %v, want %v", got, tt.want)
 			}
 		})
