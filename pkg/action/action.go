@@ -94,6 +94,10 @@ type Configuration struct {
 	// Capabilities describes the capabilities of the Kubernetes cluster.
 	Capabilities *chartutil.Capabilities
 
+	// UseThreeWayMergePatchForUnstructured controls whether to use three way merge patch
+	// for unstructured (CR, CRD etc.) objects.
+	UseThreeWayMergePatchForUnstructured bool
+
 	Log func(string, ...interface{})
 }
 
@@ -365,6 +369,7 @@ func (cfg *Configuration) recordRelease(r *release.Release) {
 func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namespace, helmDriver string, log DebugLog) error {
 	kc := kube.New(getter)
 	kc.Log = log
+	kc.UseThreeWayMergePatchForUnstructured = cfg.UseThreeWayMergePatchForUnstructured
 
 	lazyClient := &lazyClient{
 		namespace: namespace,

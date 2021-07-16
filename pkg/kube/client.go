@@ -27,6 +27,7 @@ import (
 	"sync"
 	"time"
 
+	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/pkg/errors"
 	batch "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
@@ -68,6 +69,10 @@ type Client struct {
 	Log     func(string, ...interface{})
 	// Namespace allows to bypass the kubeconfig file for the choice of the namespace
 	Namespace string
+
+	// UseThreeWayMergePatchForUnstructured controls whether to use three way merge patch
+	// for unstructured (CR, CRD etc.) objects
+	UseThreeWayMergePatchForUnstructured bool
 
 	kubeClient *kubernetes.Clientset
 }
@@ -418,7 +423,7 @@ func deleteResource(info *resource.Info) error {
 	return err
 }
 
-func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.PatchType, error) {
+func createPatch(target *resource.Info, current runtime.Object, useThreeWayMergePatchForUnstructured bool) ([]byte, types.PatchType, error) {
 	oldData, err := json.Marshal(current)
 	if err != nil {
 		return nil, types.StrategicMergePatchType, errors.Wrap(err, "serializing current configuration")
@@ -446,7 +451,7 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 
 	// Unstructured objects, such as CRDs, may not have an not registered error
 	// returned from ConvertToVersion. Anything that's unstructured should
-	// use the jsonmergepatch.CreateThreeWayJSONMergePatch. Strategic Merge Patch is not supported
+	// use generic JSON merge patch. Strategic Merge Patch is not supported
 	// on objects like CRDs.
 	_, isUnstructured := versionedObject.(runtime.Unstructured)
 
@@ -455,13 +460,17 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 
 	if isUnstructured || isCRD {
 		// fall back to generic JSON merge patch
-		// from https://github.com/kubernetes/kubectl/blob/b83b2ec7d15f286720bccf7872b5c72372cb8e80/pkg/cmd/apply/patcher.go#L129
-		preconditions := []mergepatch.PreconditionFunc{mergepatch.RequireKeyUnchanged("apiVersion"),
-			mergepatch.RequireKeyUnchanged("kind"), mergepatch.RequireMetadataKeyUnchanged("name")}
-		patch, err := jsonmergepatch.CreateThreeWayJSONMergePatch(oldData, newData, currentData, preconditions...)
-		if err != nil && mergepatch.IsPreconditionFailed(err) {
-			err = fmt.Errorf("%s", "At least one of apiVersion, kind and name was changed")
+		if useThreeWayMergePatchForUnstructured {
+			// from https://github.com/kubernetes/kubectl/blob/b83b2ec7d15f286720bccf7872b5c72372cb8e80/pkg/cmd/apply/patcher.go#L129
+			preconditions := []mergepatch.PreconditionFunc{mergepatch.RequireKeyUnchanged("apiVersion"),
+				mergepatch.RequireKeyUnchanged("kind"), mergepatch.RequireMetadataKeyUnchanged("name")}
+			patch, err := jsonmergepatch.CreateThreeWayJSONMergePatch(oldData, newData, currentData, preconditions...)
+			if err != nil && mergepatch.IsPreconditionFailed(err) {
+				err = fmt.Errorf("%s", "At least one of apiVersion, kind and name was changed")
+			}
+			return patch, types.MergePatchType, err
 		}
+		patch, err := jsonpatch.CreateMergePatch(oldData, newData)
 		return patch, types.MergePatchType, err
 	}
 
@@ -490,7 +499,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		}
 		c.Log("Replaced %q with kind %s for kind %s", target.Name, currentObj.GetObjectKind().GroupVersionKind().Kind, kind)
 	} else {
-		patch, patchType, err := createPatch(target, currentObj)
+		patch, patchType, err := createPatch(target, currentObj, c.UseThreeWayMergePatchForUnstructured)
 		if err != nil {
 			return errors.Wrap(err, "failed to create patch")
 		}

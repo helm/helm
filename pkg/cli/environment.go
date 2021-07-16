@@ -68,6 +68,9 @@ type EnvSettings struct {
 	PluginsDirectory string
 	// MaxHistory is the max release history maintained.
 	MaxHistory int
+	// UseThreeWayMergePatchForUnstructured controls whether to use three way merge patch
+	// for unstructured (CR, CRD etc.) objects.
+	UseThreeWayMergePatchForUnstructured bool
 }
 
 func New() *EnvSettings {
@@ -86,6 +89,7 @@ func New() *EnvSettings {
 		RepositoryCache:  envOr("HELM_REPOSITORY_CACHE", helmpath.CachePath("repository")),
 	}
 	env.Debug, _ = strconv.ParseBool(os.Getenv("HELM_DEBUG"))
+	env.UseThreeWayMergePatchForUnstructured, _ = strconv.ParseBool(os.Getenv("HELM_USE_THREE_WAY_MERGE_PATCH_FOR_UNSTRUCTURED"))
 
 	// bind to kubernetes config flags
 	env.config = &genericclioptions.ConfigFlags{
@@ -115,6 +119,7 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.RegistryConfig, "registry-config", s.RegistryConfig, "path to the registry config file")
 	fs.StringVar(&s.RepositoryConfig, "repository-config", s.RepositoryConfig, "path to the file containing repository names and URLs")
 	fs.StringVar(&s.RepositoryCache, "repository-cache", s.RepositoryCache, "path to the file containing cached repository indexes")
+	fs.BoolVar(&s.UseThreeWayMergePatchForUnstructured, "use-three-way-merge-patch-for-unstructured", s.UseThreeWayMergePatchForUnstructured, "use three way merge patch for unstructured (CR, CRD etc.) objects")
 }
 
 func envOr(name, def string) string {

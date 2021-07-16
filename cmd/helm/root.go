@@ -163,6 +163,8 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	}
 	actionConfig.RegistryClient = registryClient
 
+	actionConfig.UseThreeWayMergePatchForUnstructured = settings.UseThreeWayMergePatchForUnstructured
+
 	// Add subcommands
 	cmd.AddCommand(
 		// chart commands
