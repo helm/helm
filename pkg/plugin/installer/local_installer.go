@@ -28,13 +28,13 @@ type LocalInstaller struct {
 }
 
 // NewLocalInstaller creates a new LocalInstaller.
-func NewLocalInstaller(source string) (*LocalInstaller, error) {
+func NewLocalInstaller(source, pluginsDirectory string) (*LocalInstaller, error) {
 	src, err := filepath.Abs(source)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to get absolute path to plugin")
 	}
 	i := &LocalInstaller{
-		base: newBase(src),
+		base: newBase(src, pluginsDirectory),
 	}
 	return i, nil
 }

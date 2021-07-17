@@ -16,7 +16,6 @@ limitations under the License.
 package installer // import "helm.sh/helm/v3/pkg/plugin/installer"
 
 import (
-	"os"
 	"testing"
 )
 
@@ -39,13 +38,10 @@ func TestPath(t *testing.T) {
 
 	for _, tt := range tests {
 
-		baseIns := newBase(tt.source)
-		os.Setenv("HELM_PLUGINS", tt.helmPluginsDir)
+		baseIns := newBase(tt.source, tt.helmPluginsDir)
 		baseInsPath := baseIns.Path()
 		if baseInsPath != tt.expectPath {
 			t.Errorf("expected name %s, got %s", tt.expectPath, baseInsPath)
 		}
 	}
-
-	defer os.Unsetenv("HELM_PLUGINS")
 }

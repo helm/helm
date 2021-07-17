@@ -33,6 +33,7 @@ import (
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/internal/test/ensure"
+	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/helmpath"
 )
@@ -83,6 +84,7 @@ func TestHTTPInstaller(t *testing.T) {
 	defer ensure.HelmHome(t)()
 
 	srv := mockArchiveServer()
+	settings := cli.New()
 	defer srv.Close()
 	source := srv.URL + "/plugins/fake-plugin-0.0.1.tar.gz"
 
@@ -90,7 +92,7 @@ func TestHTTPInstaller(t *testing.T) {
 		t.Fatalf("Could not create %s: %s", helmpath.DataPath("plugins"), err)
 	}
 
-	i, err := NewForSource(source, "0.0.1")
+	i, err := NewForSource(source, "0.0.1", settings.PluginsDirectory)
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
@@ -130,6 +132,7 @@ func TestHTTPInstaller(t *testing.T) {
 
 func TestHTTPInstallerNonExistentVersion(t *testing.T) {
 	defer ensure.HelmHome(t)()
+	settings := cli.New()
 	srv := mockArchiveServer()
 	defer srv.Close()
 	source := srv.URL + "/plugins/fake-plugin-0.0.1.tar.gz"
@@ -138,7 +141,7 @@ func TestHTTPInstallerNonExistentVersion(t *testing.T) {
 		t.Fatalf("Could not create %s: %s", helmpath.DataPath("plugins"), err)
 	}
 
-	i, err := NewForSource(source, "0.0.2")
+	i, err := NewForSource(source, "0.0.2", settings.PluginsDirectory)
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
@@ -163,6 +166,7 @@ func TestHTTPInstallerNonExistentVersion(t *testing.T) {
 
 func TestHTTPInstallerUpdate(t *testing.T) {
 	srv := mockArchiveServer()
+	settings := cli.New()
 	defer srv.Close()
 	source := srv.URL + "/plugins/fake-plugin-0.0.1.tar.gz"
 	defer ensure.HelmHome(t)()
@@ -171,7 +175,7 @@ func TestHTTPInstallerUpdate(t *testing.T) {
 		t.Fatalf("Could not create %s: %s", helmpath.DataPath("plugins"), err)
 	}
 
-	i, err := NewForSource(source, "0.0.1")
+	i, err := NewForSource(source, "0.0.1", settings.PluginsDirectory)
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}

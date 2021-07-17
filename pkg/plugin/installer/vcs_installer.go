@@ -35,20 +35,20 @@ type VCSInstaller struct {
 	base
 }
 
-func existingVCSRepo(location string) (Installer, error) {
+func existingVCSRepo(location, pluginsDirectory string) (Installer, error) {
 	repo, err := vcs.NewRepo("", location)
 	if err != nil {
 		return nil, err
 	}
 	i := &VCSInstaller{
 		Repo: repo,
-		base: newBase(repo.Remote()),
+		base: newBase(repo.Remote(), pluginsDirectory),
 	}
 	return i, nil
 }
 
 // NewVCSInstaller creates a new VCSInstaller.
-func NewVCSInstaller(source, version string) (*VCSInstaller, error) {
+func NewVCSInstaller(source, version, pluginsDirectory string) (*VCSInstaller, error) {
 	key, err := cache.Key(source)
 	if err != nil {
 		return nil, err
@@ -61,7 +61,7 @@ func NewVCSInstaller(source, version string) (*VCSInstaller, error) {
 	i := &VCSInstaller{
 		Repo:    repo,
 		Version: version,
-		base:    newBase(source),
+		base:    newBase(source, pluginsDirectory),
 	}
 	return i, err
 }

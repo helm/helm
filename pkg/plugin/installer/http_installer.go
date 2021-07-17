@@ -82,7 +82,7 @@ func NewExtractor(source string) (Extractor, error) {
 }
 
 // NewHTTPInstaller creates a new HttpInstaller.
-func NewHTTPInstaller(source string) (*HTTPInstaller, error) {
+func NewHTTPInstaller(source, pluginsDirectory string) (*HTTPInstaller, error) {
 	key, err := cache.Key(source)
 	if err != nil {
 		return nil, err
@@ -101,7 +101,7 @@ func NewHTTPInstaller(source string) (*HTTPInstaller, error) {
 	i := &HTTPInstaller{
 		CacheDir:   helmpath.CachePath("plugins", key),
 		PluginName: stripPluginName(filepath.Base(source)),
-		base:       newBase(source),
+		base:       newBase(source, pluginsDirectory),
 		extractor:  extractor,
 		getter:     get,
 	}

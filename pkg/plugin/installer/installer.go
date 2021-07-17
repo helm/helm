@@ -64,19 +64,19 @@ func Update(i Installer) error {
 }
 
 // NewForSource determines the correct Installer for the given source.
-func NewForSource(source, version string) (Installer, error) {
+func NewForSource(source, version, pluginsDirectory string) (Installer, error) {
 	// Check if source is a local directory
 	if isLocalReference(source) {
-		return NewLocalInstaller(source)
+		return NewLocalInstaller(source, pluginsDirectory)
 	} else if isRemoteHTTPArchive(source) {
-		return NewHTTPInstaller(source)
+		return NewHTTPInstaller(source, pluginsDirectory)
 	}
-	return NewVCSInstaller(source, version)
+	return NewVCSInstaller(source, version, pluginsDirectory)
 }
 
 // FindSource determines the correct Installer for the given source.
-func FindSource(location string) (Installer, error) {
-	installer, err := existingVCSRepo(location)
+func FindSource(location, pluginsDirectory string) (Installer, error) {
+	installer, err := existingVCSRepo(location, pluginsDirectory)
 	if err != nil && err.Error() == "Cannot detect VCS" {
 		return installer, errors.New("cannot get information about plugin source")
 	}

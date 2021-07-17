@@ -71,7 +71,7 @@ func (o *pluginInstallOptions) complete(args []string) error {
 func (o *pluginInstallOptions) run(out io.Writer) error {
 	installer.Debug = settings.Debug
 
-	i, err := installer.NewForSource(o.source, o.version)
+	i, err := installer.NewForSource(o.source, o.version, settings.PluginsDirectory)
 	if err != nil {
 		return err
 	}

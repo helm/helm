@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/helmpath"
 )
 
@@ -32,13 +33,14 @@ func TestLocalInstaller(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	settings := cli.New()
 	defer os.RemoveAll(tdir)
 	if err := ioutil.WriteFile(filepath.Join(tdir, "plugin.yaml"), []byte{}, 0644); err != nil {
 		t.Fatal(err)
 	}
 
 	source := "../testdata/plugdir/good/echo"
-	i, err := NewForSource(source, "")
+	i, err := NewForSource(source, "", settings.PluginsDirectory)
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}

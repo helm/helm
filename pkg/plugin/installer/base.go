@@ -16,19 +16,21 @@ limitations under the License.
 package installer // import "helm.sh/helm/v3/pkg/plugin/installer"
 
 import (
-	"os"
 	"path/filepath"
-
-	"helm.sh/helm/v3/pkg/helmpath"
 )
 
 type base struct {
 	// Source is the reference to a plugin
 	Source string
+	// PluginsDirectory is the directory where plugins are installed
+	PluginsDirectory string
 }
 
-func newBase(source string) base {
-	return base{source}
+func newBase(source, pluginsDirectory string) base {
+	return base{
+		Source:           source,
+		PluginsDirectory: pluginsDirectory,
+	}
 }
 
 // Path is where the plugin will be installed.
@@ -36,9 +38,5 @@ func (b *base) Path() string {
 	if b.Source == "" {
 		return ""
 	}
-	helmPluginsDir := os.Getenv("HELM_PLUGINS")
-	if helmPluginsDir != "" {
-		return filepath.Join(helmPluginsDir, filepath.Base(b.Source))
-	}
-	return helmpath.DataPath("plugins", filepath.Base(b.Source))
+	return filepath.Join(b.PluginsDirectory, filepath.Base(b.Source))
 }
