@@ -35,7 +35,7 @@ func TestUpdateCmd(t *testing.T) {
 	var out bytes.Buffer
 	// Instead of using the HTTP updater, we provide our own for this test.
 	// The TestUpdateCharts test verifies the HTTP behavior independently.
-	updater := func(repos []*repo.ChartRepository, out io.Writer, failOnRepoUpdateFail bool, showAllWarnings bool) error {
+	updater := func(repos []*repo.ChartRepository, out io.Writer, failOnRepoUpdateFail bool, showValidationErrors bool) error {
 		for _, re := range repos {
 			fmt.Fprintln(out, re.Config.Name)
 		}
@@ -60,7 +60,7 @@ func TestUpdateCmdMultiple(t *testing.T) {
 	var out bytes.Buffer
 	// Instead of using the HTTP updater, we provide our own for this test.
 	// The TestUpdateCharts test verifies the HTTP behavior independently.
-	updater := func(repos []*repo.ChartRepository, out io.Writer, failOnRepoUpdateFail bool, showAllWarnings bool) error {
+	updater := func(repos []*repo.ChartRepository, out io.Writer, failOnRepoUpdateFail bool, showValidationErrors bool) error {
 		for _, re := range repos {
 			fmt.Fprintln(out, re.Config.Name)
 		}
@@ -86,7 +86,7 @@ func TestUpdateCmdInvalid(t *testing.T) {
 	var out bytes.Buffer
 	// Instead of using the HTTP updater, we provide our own for this test.
 	// The TestUpdateCharts test verifies the HTTP behavior independently.
-	updater := func(repos []*repo.ChartRepository, out io.Writer, failOnRepoUpdateFail bool, showAllWarnings bool) error {
+	updater := func(repos []*repo.ChartRepository, out io.Writer, failOnRepoUpdateFail bool, showValidationErrors bool) error {
 		for _, re := range repos {
 			fmt.Fprintln(out, re.Config.Name)
 		}

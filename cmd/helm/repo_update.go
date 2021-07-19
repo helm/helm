@@ -41,7 +41,7 @@ To update all the repositories, use 'helm repo update'.
 var errNoRepositories = errors.New("no repositories found. You must add one before updating")
 
 type repoUpdateOptions struct {
-	showAllWarnings      bool
+	showValidationErrors bool
 	update               func([]*repo.ChartRepository, io.Writer, bool, bool) error
 	repoFile             string
 	repoCache            string
@@ -75,7 +75,7 @@ func newRepoUpdateCmd(out io.Writer) *cobra.Command {
 	// This should be deprecated in Helm 4 by update to the behaviour of `helm repo update` command.
 	f.BoolVar(&o.failOnRepoUpdateFail, "fail-on-repo-update-fail", false, "update fails if any of the repository updates fail")
 
-	f.BoolVar(&o.showAllWarnings, "show-all-warnings", false, "show every invalid chart while indexing repository")
+	f.BoolVar(&o.showValidationErrors, "show-repo-validation-errors", false, "show every invalid chart while indexing repository")
 
 	return cmd
 }
@@ -114,10 +114,10 @@ func (o *repoUpdateOptions) run(out io.Writer, args []string) error {
 		}
 	}
 
-	return o.update(repos, out, o.failOnRepoUpdateFail, o.showAllWarnings)
+	return o.update(repos, out, o.failOnRepoUpdateFail, o.showValidationErrors)
 }
 
-func updateCharts(repos []*repo.ChartRepository, out io.Writer, failOnRepoUpdateFail bool, showAllWarnings bool) error {
+func updateCharts(repos []*repo.ChartRepository, out io.Writer, failOnRepoUpdateFail bool, showValidationErrors bool) error {
 	fmt.Fprintln(out, "Hang tight while we grab the latest from your chart repositories...")
 	var wg sync.WaitGroup
 	var repoFailList []string
@@ -126,7 +126,7 @@ func updateCharts(repos []*repo.ChartRepository, out io.Writer, failOnRepoUpdate
 		go func(re *repo.ChartRepository) {
 			defer wg.Done()
 			var err error
-			if showAllWarnings {
+			if showValidationErrors {
 				_, err = re.ValidateAndDownloadIndexFile()
 			} else {
 				_, err = re.DownloadIndexFile()

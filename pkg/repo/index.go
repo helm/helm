@@ -326,7 +326,7 @@ func IndexDirectory(dir, baseURL string) (*IndexFile, error) {
 //
 // The source parameter is only used for logging.
 // This will fail if API Version is not set (ErrNoAPIVersion) or if the unmarshal fails.
-func loadIndex(data []byte, source string, consolidateWarnings bool) (*IndexFile, error) {
+func loadIndex(data []byte, source string, consolidateValidationErrors bool) (*IndexFile, error) {
 	i := &IndexFile{}
 
 	if len(data) == 0 {
@@ -345,15 +345,15 @@ func loadIndex(data []byte, source string, consolidateWarnings bool) (*IndexFile
 			}
 			if err := cvs[idx].Validate(); err != nil {
 				invalidCharts++
-				if !consolidateWarnings {
+				if !consolidateValidationErrors {
 					log.Printf("skipping loading invalid entry for chart %q %q from %s: %s", name, cvs[idx].Version, source, err)
 				}
 				cvs = append(cvs[:idx], cvs[idx+1:]...)
 			}
 		}
 	}
-	if invalidCharts > 0 && consolidateWarnings {
-		log.Printf("skipped loading %d invalid chart entries from %s\nrun 'helm repo update --show-all-warnings' for full list of invalid entries", invalidCharts, source)
+	if invalidCharts > 0 && consolidateValidationErrors {
+		log.Printf("skipped loading %d invalid chart entries from %s\nrun 'helm repo update --show-repo-validation-errors' for full list of invalid entries", invalidCharts, source)
 	}
 	i.SortEntries()
 	if i.APIVersion == "" {
