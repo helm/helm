@@ -30,18 +30,18 @@ import (
 // Assigned here so it can be overridden for testing.
 var gitCloneTo = gitutil.CloneTo
 
-// GITGetter is the default HTTP(/S) backend handler
-type GITGetter struct {
+// GitGetter is the default HTTP(/S) backend handler
+type GitGetter struct {
 	opts options
 }
 
-func (g *GITGetter) ChartName() string {
+func (g *GitGetter) ChartName() string {
 	return g.opts.chartName
 }
 
 // ensureGitDirIgnored will append ".git/" to the .helmignore file in a directory.
 // Create the .helmignore file if it does not exist.
-func (g *GITGetter) ensureGitDirIgnored(repoPath string) error {
+func (g *GitGetter) ensureGitDirIgnored(repoPath string) error {
 	helmignorePath := filepath.Join(repoPath, ".helmignore")
 	f, err := os.OpenFile(helmignorePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
@@ -55,14 +55,14 @@ func (g *GITGetter) ensureGitDirIgnored(repoPath string) error {
 }
 
 //Get performs a Get from repo.Getter and returns the body.
-func (g *GITGetter) Get(href string, options ...Option) (*bytes.Buffer, error) {
+func (g *GitGetter) Get(href string, options ...Option) (*bytes.Buffer, error) {
 	for _, opt := range options {
 		opt(&g.opts)
 	}
 	return g.get(href)
 }
 
-func (g *GITGetter) get(href string) (*bytes.Buffer, error) {
+func (g *GitGetter) get(href string) (*bytes.Buffer, error) {
 	gitURL := strings.TrimPrefix(href, "git://")
 	version := g.opts.version
 	chartName := g.opts.chartName
@@ -96,10 +96,10 @@ func (g *GITGetter) get(href string) (*bytes.Buffer, error) {
 	return buf, nil
 }
 
-// NewGITGetter constructs a valid git client as a Getter
-func NewGITGetter(ops ...Option) (Getter, error) {
+// NewGitGetter constructs a valid git client as a Getter
+func NewGitGetter(ops ...Option) (Getter, error) {
 
-	client := GITGetter{}
+	client := GitGetter{}
 
 	for _, opt := range ops {
 		opt(&client.opts)

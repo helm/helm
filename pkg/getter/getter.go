@@ -190,7 +190,7 @@ var ociProvider = Provider{
 
 var gitProvider = Provider{
 	Schemes: []string{"git"},
-	New:     NewGITGetter,
+	New:     NewGitGetter,
 }
 
 // All finds all of the registered getters as a list of Provider instances.
