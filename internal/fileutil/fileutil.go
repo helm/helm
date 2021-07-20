@@ -91,6 +91,9 @@ func CompressDirToTgz(chartTmpDir, tmpdir string) (*bytes.Buffer, error) {
 		// (see https://golang.org/src/archive/tar/common.go?#L626)
 		header.Name = strings.TrimPrefix(filepath.ToSlash(file), tmpdir+"/")
 		header.ModTime = time.Date(1977, time.May, 25, 0, 0, 0, 0, time.UTC)
+		header.AccessTime = time.Date(1977, time.May, 25, 0, 0, 0, 0, time.UTC)
+		header.ChangeTime = time.Date(1977, time.May, 25, 0, 0, 0, 0, time.UTC)
+		header.Format = tar.FormatGNU
 
 		// write header
 		if err := tw.WriteHeader(header); err != nil {

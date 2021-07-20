@@ -20,12 +20,12 @@ import (
 )
 
 func TestNewGITGetter(t *testing.T) {
-	g, err := NewGITGetter()
+	g, err := NewGitGetter()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if _, ok := g.(*GITGetter); !ok {
+	if _, ok := g.(*GitGetter); !ok {
 		t.Fatal("Expected NewGITGetter to produce an *GITGetter")
 	}
 }
