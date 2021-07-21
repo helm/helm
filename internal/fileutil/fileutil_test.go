@@ -17,9 +17,10 @@ limitations under the License.
 package fileutil
 
 import (
+	"archive/tar"
 	"bytes"
-	"crypto/md5"
-	"encoding/hex"
+	"compress/gzip"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -62,21 +63,43 @@ func TestAtomicWriteFile(t *testing.T) {
 func TestCompressDirToTgz(t *testing.T) {
 
 	testDataDir := "testdata"
-	chartTestDir := "testdata/helmchart"
-	expectMd5Value := "218a88e89fa53efc6dd56aab27159880"
-	expectChartBytesLen := 3998
+	chartTestDir := "testdata/testdir"
 
 	chartBytes, err := CompressDirToTgz(chartTestDir, testDataDir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	chartBytesLen := chartBytes.Len()
-	hash := md5.Sum(chartBytes.Bytes())
-	currentMd5Value := hex.EncodeToString(hash[:])
-	if currentMd5Value != expectMd5Value {
-		t.Fatalf("Expect md5 %s, but get md5 %s, len %d", expectMd5Value, currentMd5Value, chartBytesLen)
+
+	// gzip read
+	gr, err := gzip.NewReader(chartBytes)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if chartBytesLen != expectChartBytesLen {
-		t.Fatalf("Expect chartBytesLen %d, but get %d", expectChartBytesLen, chartBytesLen)
+	defer gr.Close()
+
+	// tar read
+	tr := tar.NewReader(gr)
+	defer gr.Close()
+
+	found := false
+	fileBytes := bytes.NewBuffer(nil)
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if hdr.Name == "testdir/testfile" {
+			found = true
+			_, err := io.Copy(fileBytes, tr)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("testdir/testfile not found")
+	}
+	if !bytes.Equal(fileBytes.Bytes(), []byte("helm")) {
+		t.Fatalf("testdir/testfile's content not match, excpcted %s, got %s", "helm", fileBytes.String())
 	}
 }

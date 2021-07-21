@@ -71,7 +71,13 @@ func CompressDirToTgz(chartTmpDir, tmpdir string) (*bytes.Buffer, error) {
 	// tar => gzip => buf
 	buf := bytes.NewBuffer(nil)
 	zr := gzip.NewWriter(buf)
+
 	zr.ModTime = time.Date(1977, time.May, 25, 0, 0, 0, 0, time.UTC)
+	zr.Header.ModTime = time.Date(1977, time.May, 25, 0, 0, 0, 0, time.UTC)
+	zr.Header.OS = 3 // Unix
+	zr.OS = 3        //Unix
+	zr.Extra = nil
+
 	tw := tar.NewWriter(zr)
 
 	// walk through every file in the folder
@@ -93,7 +99,18 @@ func CompressDirToTgz(chartTmpDir, tmpdir string) (*bytes.Buffer, error) {
 		header.ModTime = time.Date(1977, time.May, 25, 0, 0, 0, 0, time.UTC)
 		header.AccessTime = time.Date(1977, time.May, 25, 0, 0, 0, 0, time.UTC)
 		header.ChangeTime = time.Date(1977, time.May, 25, 0, 0, 0, 0, time.UTC)
-		header.Format = tar.FormatGNU
+		header.Format = tar.FormatPAX
+		header.PAXRecords = nil
+
+		if fi.IsDir() {
+			header.Typeflag = tar.TypeDir
+			header.Mode |= 0755
+			header.Size = 0
+		} else {
+			header.Typeflag = tar.TypeReg
+			header.Mode |= 0644
+			header.Size = fi.Size()
+		}
 
 		// write header
 		if err := tw.WriteHeader(header); err != nil {

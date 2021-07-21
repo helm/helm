@@ -495,7 +495,7 @@ Loop:
 		}
 
 		// If repo is from git url, continue
-		if strings.HasPrefix(dd.Repository, "git:") {
+		if strings.HasPrefix(dd.Repository, "git://") {
 			continue
 		}
 
