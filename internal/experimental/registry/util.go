@@ -22,8 +22,8 @@ import (
 	"io"
 	"time"
 
-	orascontext "github.com/deislabs/oras/pkg/context"
 	units "github.com/docker/go-units"
+	orascontext "github.com/oras-project/oras-go/pkg/context"
 	"github.com/sirupsen/logrus"
 )
 
