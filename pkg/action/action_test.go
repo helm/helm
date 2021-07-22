@@ -24,8 +24,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	dockerauth "github.com/oras-project/oras-go/pkg/auth/docker"
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
+	dockerauth "oras.land/oras-go/pkg/auth/docker"
 
 	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/chart"
