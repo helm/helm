@@ -22,8 +22,11 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
+	"strconv"
 	"strings"
+	"sync"
 	"text/template"
 
 	"github.com/pkg/errors"
@@ -102,14 +105,32 @@ var warnRegex = regexp.MustCompile(warnStartDelim + `(.*)` + warnEndDelim)
 func warnWrap(warn string) string {
 	return warnStartDelim + warn + warnEndDelim
 }
+func goid() int {
+	var buf [64]byte
+	n := runtime.Stack(buf[:], false)
+	idField := strings.Fields(strings.TrimPrefix(string(buf[:n]), "goroutine "))[0]
+	id, err := strconv.Atoi(idField)
+	if err != nil {
+		panic(fmt.Sprintf("cannot get goroutine id: %v", err))
+	}
+	return id
+}
 
 // initFunMap creates the Engine's FuncMap and adds context-specific functions.
 func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]renderable) {
 	funcMap := funcMap()
-	includedNames := make(map[string]int)
+	var includedNamesPerProcess sync.Map
 
 	// Add the 'include' function here so we can close over t.
-	funcMap["include"] = func(name string, data interface{}) (string, error) {
+	funcMap["include"] = func(name string, data chartutil.Values) (string, error) {
+		processId:=goid()
+		var includedNames_, ok = includedNamesPerProcess.Load(processId)
+		if !ok {
+			includedNames_ = make(map[string]int)
+			includedNamesPerProcess.Store(processId, includedNames_)
+		}
+		includedNames := includedNames_.(map[string]int)
+
 		var buf strings.Builder
 		if v, ok := includedNames[name]; ok {
 			if v > recursionMaxNums {
@@ -126,6 +147,10 @@ func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]render
 
 	// Add the 'tpl' function here
 	funcMap["tpl"] = func(tpl string, vals chartutil.Values) (string, error) {
+		// if tpl is not a template just return the string.
+		if !strings.Contains(tpl, "{") {
+			return tpl, nil
+		}
 		basePath, err := vals.PathValue("Template.BasePath")
 		if err != nil {
 			return "", errors.Wrapf(err, "cannot retrieve Template.Basepath from values inside tpl function: %s", tpl)
@@ -144,7 +169,7 @@ func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]render
 			},
 		}
 
-		result, err := e.renderWithReferences(templates, referenceTpls)
+		result, err := e.renderWithReferencesInternal(templates, referenceTpls, false)
 		if err != nil {
 			return "", errors.Wrapf(err, "error during tpl function execution for %q", tpl)
 		}
@@ -200,6 +225,12 @@ func (e Engine) render(tpls map[string]renderable) (map[string]string, error) {
 // renderWithReferences takes a map of templates/values to render, and a map of
 // templates which can be referenced within them.
 func (e Engine) renderWithReferences(tpls, referenceTpls map[string]renderable) (rendered map[string]string, err error) {
+	return e.renderWithReferencesInternal(tpls, tpls, true)
+}
+
+// renderWithReferences takes a map of templates/values to render, and a map of
+// templates which can be referenced within them.
+func (e Engine) renderWithReferencesInternal(tpls, referenceTpls map[string]renderable, toplevel bool) (rendered map[string]string, err error) {
 	// Basically, what we do here is start with an empty parent template and then
 	// build up a list of templates -- one for each file. Once all of the templates
 	// have been parsed, we loop through again and execute every template.
@@ -247,6 +278,11 @@ func (e Engine) renderWithReferences(tpls, referenceTpls map[string]renderable) 
 	}
 
 	rendered = make(map[string]string, len(keys))
+	var renderResults chan RenderResults = nil
+	if toplevel {
+		renderResults = make(chan RenderResults, len(keys))
+	}
+
 	for _, filename := range keys {
 		// Don't render partials. We don't care out the direct output of partials.
 		// They are only included from other templates.
@@ -255,19 +291,53 @@ func (e Engine) renderWithReferences(tpls, referenceTpls map[string]renderable) 
 		}
 		// At render time, add information about the template that is being rendered.
 		vals := tpls[filename].vals
-		vals["Template"] = chartutil.Values{"Name": filename, "BasePath": tpls[filename].basePath}
-		var buf strings.Builder
-		if err := t.ExecuteTemplate(&buf, filename, vals); err != nil {
-			return map[string]string{}, cleanupExecError(filename, err)
+		if vals["Template"] == nil {
+			vals["Template"] = chartutil.Values{"Name": filename, "BasePath": tpls[filename].basePath}
 		}
+		if toplevel {
+			go doRenderAsync(renderResults, filename, t, vals)
+		} else {
+			r,renderError := doRender(filename, t, vals)
+			if renderError != nil {
+				return map[string]string{}, cleanupExecError(filename, renderError)
+			}
+			rendered[filename] = r
+		}
+	}
+	if renderResults !=nil {
+		for _, filename := range keys {
+			if strings.HasPrefix(path.Base(filename), "_") {
+				continue
+			}
+			renderResult := <-renderResults
+			if renderResult.error != nil {
+				return map[string]string{}, cleanupExecError(renderResult.filename, renderResult.error)
+			}
+			rendered[renderResult.filename] = renderResult.rendered
+		}
+	}
+	return rendered, nil
+}
+type RenderResults struct {
+	filename string
+	rendered string
+	error error
+}
+func doRenderAsync(renderResults chan RenderResults, filename string, t* template.Template, vals chartutil.Values) {
+	rendered, error := doRender(filename, t, vals)
+	renderResults <- RenderResults{filename: filename, rendered: rendered, error: error}
+}
 
-		// Work around the issue where Go will emit "<no value>" even if Options(missing=zero)
-		// is set. Since missing=error will never get here, we do not need to handle
-		// the Strict case.
-		rendered[filename] = strings.ReplaceAll(buf.String(), "<no value>", "")
+func doRender(filename string, t* template.Template, vals chartutil.Values) (string, error) {
+	var buf strings.Builder
+	if err := t.ExecuteTemplate(&buf, filename, vals); err != nil {
+		return "", cleanupExecError(filename, err)
 	}
 
-	return rendered, nil
+	// Work around the issue where Go will emit "<no value>" even if Options(missing=zero)
+	// is set. Since missing=error will never get here, we do not need to handle
+	// the Strict case.
+	return strings.ReplaceAll(buf.String(), "<no value>", ""), nil
 }
 
 func cleanupParseError(filename string, err error) error {
