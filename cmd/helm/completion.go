@@ -72,6 +72,16 @@ To load completions for every new session, execute once:
 You will need to start a new shell for this setup to take effect.
 `
 
+const powershellCompDesc = `
+Generate the autocompletion script for powershell.
+
+To load completions in your current shell session:
+PS C:\> helm completion powershell | Out-String | Invoke-Expression
+
+To load completions for every new session, add the output of the above command
+to your powershell profile.
+`
+
 const (
 	noDescFlagName = "no-descriptions"
 	noDescFlagText = "disable completion descriptions"
@@ -123,7 +133,19 @@ func newCompletionCmd(out io.Writer) *cobra.Command {
 	}
 	fish.Flags().BoolVar(&disableCompDescriptions, noDescFlagName, false, noDescFlagText)
 
-	cmd.AddCommand(bash, zsh, fish)
+	powershell := &cobra.Command{
+		Use:               "powershell",
+		Short:             "generate autocompletion script for powershell",
+		Long:              powershellCompDesc,
+		Args:              require.NoArgs,
+		ValidArgsFunction: noCompletions,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runCompletionPowershell(out, cmd)
+		},
+	}
+	powershell.Flags().BoolVar(&disableCompDescriptions, noDescFlagName, false, noDescFlagText)
+
+	cmd.AddCommand(bash, zsh, fish, powershell)
 
 	return cmd
 }
@@ -178,6 +200,13 @@ compdef _helm %[1]s
 
 func runCompletionFish(out io.Writer, cmd *cobra.Command) error {
 	return cmd.Root().GenFishCompletion(out, !disableCompDescriptions)
+}
+
+func runCompletionPowershell(out io.Writer, cmd *cobra.Command) error {
+	if disableCompDescriptions {
+		return cmd.Root().GenPowerShellCompletion(out)
+	}
+	return cmd.Root().GenPowerShellCompletionWithDesc(out)
 }
 
 // Function to disable file completion
