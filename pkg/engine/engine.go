@@ -123,7 +123,7 @@ func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]render
 
 	// Add the 'include' function here so we can close over t.
 	funcMap["include"] = func(name string, data chartutil.Values) (string, error) {
-		processId:=goid()
+		processId := goid()
 		var includedNames_, ok = includedNamesPerProcess.Load(processId)
 		if !ok {
 			includedNames_ = make(map[string]int)
@@ -297,14 +297,14 @@ func (e Engine) renderWithReferencesInternal(tpls, referenceTpls map[string]rend
 		if toplevel {
 			go doRenderAsync(renderResults, filename, t, vals)
 		} else {
-			r,renderError := doRender(filename, t, vals)
+			r, renderError := doRender(filename, t, vals)
 			if renderError != nil {
 				return map[string]string{}, cleanupExecError(filename, renderError)
 			}
 			rendered[filename] = r
 		}
 	}
-	if renderResults !=nil {
+	if renderResults != nil {
 		for _, filename := range keys {
 			if strings.HasPrefix(path.Base(filename), "_") {
 				continue
@@ -318,17 +318,19 @@ func (e Engine) renderWithReferencesInternal(tpls, referenceTpls map[string]rend
 	}
 	return rendered, nil
 }
+
 type RenderResults struct {
 	filename string
 	rendered string
-	error error
+	error    error
 }
-func doRenderAsync(renderResults chan RenderResults, filename string, t* template.Template, vals chartutil.Values) {
+
+func doRenderAsync(renderResults chan RenderResults, filename string, t *template.Template, vals chartutil.Values) {
 	rendered, error := doRender(filename, t, vals)
 	renderResults <- RenderResults{filename: filename, rendered: rendered, error: error}
 }
 
-func doRender(filename string, t* template.Template, vals chartutil.Values) (string, error) {
+func doRender(filename string, t *template.Template, vals chartutil.Values) (string, error) {
 	var buf strings.Builder
 	if err := t.ExecuteTemplate(&buf, filename, vals); err != nil {
 		return "", cleanupExecError(filename, err)
