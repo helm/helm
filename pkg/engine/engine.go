@@ -123,11 +123,11 @@ func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]render
 
 	// Add the 'include' function here so we can close over t.
 	funcMap["include"] = func(name string, data chartutil.Values) (string, error) {
-		processId := goid()
-		var existingIncludedNames, ok = includedNamesPerProcess.Load(processId)
+		processID := goid()
+		var existingIncludedNames, ok = includedNamesPerProcess.Load(processID)
 		if !ok {
 			existingIncludedNames = make(map[string]int)
-			includedNamesPerProcess.Store(processId, existingIncludedNames)
+			includedNamesPerProcess.Store(processID, existingIncludedNames)
 		}
 		includedNames := existingIncludedNames.(map[string]int)
 
