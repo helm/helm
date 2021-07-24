@@ -23,12 +23,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/Masterminds/vcs"
 	"helm.sh/helm/v3/internal/fileutil"
-	"helm.sh/helm/v3/pkg/gitutil"
 )
-
-// Assigned here so it can be overridden for testing.
-var gitCloneTo = gitutil.CloneTo
 
 // GitGetter is the default HTTP(/S) backend handler
 type GitGetter struct {
@@ -67,7 +64,7 @@ func (g *GitGetter) get(href string) (*bytes.Buffer, error) {
 	version := g.opts.version
 	chartName := g.opts.chartName
 	if version == "" {
-		return nil, fmt.Errorf("The version must be a valid tag or branch name for the git repo, not nil")
+		return nil, fmt.Errorf("the version must be a valid tag or branch name for the git repo, not nil")
 	}
 	tmpDir, err := os.MkdirTemp("", "helm")
 	if err != nil {
@@ -80,8 +77,15 @@ func (g *GitGetter) get(href string) (*bytes.Buffer, error) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	if err = gitCloneTo(gitURL, version, chartTmpDir); err != nil {
-		return nil, fmt.Errorf("Unable to retrieve git repo. %s", err)
+	repo, err := vcs.NewRepo(gitURL, chartTmpDir)
+	if err != nil {
+		return nil, err
+	}
+	if err := repo.Get(); err != nil {
+		return nil, err
+	}
+	if err := repo.UpdateVersion(version); err != nil {
+		return nil, err
 	}
 
 	// A .helmignore that includes an ignore for .git/ should be included in the git repo itself,
@@ -91,7 +95,7 @@ func (g *GitGetter) get(href string) (*bytes.Buffer, error) {
 
 	buf, err := fileutil.CompressDirToTgz(chartTmpDir, tmpDir)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to tar and compress dir %s to tgz file. %s", tmpDir, err)
+		return nil, fmt.Errorf("unable to tar and compress dir %s to tgz file. %s", tmpDir, err)
 	}
 	return buf, nil
 }
