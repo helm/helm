@@ -102,16 +102,6 @@ func CompressDirToTgz(chartTmpDir, tmpdir string) (*bytes.Buffer, error) {
 		header.Format = tar.FormatPAX
 		header.PAXRecords = nil
 
-		if fi.IsDir() {
-			header.Typeflag = tar.TypeDir
-			header.Mode |= 0755
-			header.Size = 0
-		} else {
-			header.Typeflag = tar.TypeReg
-			header.Mode |= 0644
-			header.Size = fi.Size()
-		}
-
 		// write header
 		if err := tw.WriteHeader(header); err != nil {
 			return err
