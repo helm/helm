@@ -18,16 +18,15 @@ package action
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/url"
 	"os"
-	"os/signal"
 	"path"
 	"path/filepath"
 	"strings"
 	"sync"
-	"syscall"
 	"text/template"
 	"time"
 
@@ -179,7 +178,14 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 // Run executes the installation
 //
 // If DryRun is set to true, this will prepare the release, but not install it
+
 func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
+	ctx := context.Background()
+	return i.RunWithContext(ctx, chrt, vals)
+}
+
+// Run executes the installation with Context
+func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
 	// Check reachability of cluster unless in client-only mode (e.g. `helm template` without `--validate`)
 	if !i.ClientOnly {
 		if err := i.cfg.KubeClient.IsReachable(); err != nil {
@@ -338,7 +344,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	}
 	rChan := make(chan resultMessage)
 	go i.performInstall(rChan, rel, toBeAdopted, resources)
-	go i.handleSignals(rChan, rel)
+	go i.handleContext(ctx, rChan, rel)
 	result := <-rChan
 	//start preformInstall go routine
 	return result.r, result.e
@@ -409,14 +415,11 @@ func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, t
 
 	i.reportToRun(c, rel, nil)
 }
-func (i *Install) handleSignals(c chan<- resultMessage, rel *release.Release) {
-	// Handle SIGINT
-	cSignal := make(chan os.Signal)
-	signal.Notify(cSignal, os.Interrupt, syscall.SIGTERM)
+func (i *Install) handleContext(ctx context.Context, c chan<- resultMessage, rel *release.Release) {
 	go func() {
-		<-cSignal
-		i.cfg.Log("SIGTERM or SIGINT received")
-		i.reportToRun(c, rel, fmt.Errorf("SIGTERM or SIGINT received, release failed"))
+		<-ctx.Done()
+		err := ctx.Err()
+		i.reportToRun(c, rel, err)
 	}()
 }
 func (i *Install) reportToRun(c chan<- resultMessage, rel *release.Release, err error) {

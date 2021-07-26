@@ -17,10 +17,8 @@ limitations under the License.
 package action
 
 import (
+	"context"
 	"fmt"
-	"io/ioutil"
-	"os"
-	"os/exec"
 	"testing"
 	"time"
 
@@ -302,132 +300,64 @@ func TestUpgradeRelease_Pending(t *testing.T) {
 }
 
 func TestUpgradeRelease_Interrupted_Wait(t *testing.T) {
-	if os.Getenv("HANDLE_SIGINT") == "1" {
-		t.Run("Execute TestUpgradeRelease_Interrupted_Wait", func(t *testing.T) {
-			is := assert.New(t)
-			req := require.New(t)
 
-			upAction := upgradeAction(t)
-			rel := releaseStub()
-			rel.Name = "interrupted-release"
-			rel.Info.Status = release.StatusDeployed
-			upAction.cfg.Releases.Create(rel)
+	is := assert.New(t)
+	req := require.New(t)
 
-			failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-			failer.WaitDuration = 10 * time.Second
-			upAction.cfg.KubeClient = failer
-			upAction.Wait = true
-			vals := map[string]interface{}{}
-			res, err := upAction.Run(rel.Name, buildChart(), vals)
+	upAction := upgradeAction(t)
+	rel := releaseStub()
+	rel.Name = "interrupted-release"
+	rel.Info.Status = release.StatusDeployed
+	upAction.cfg.Releases.Create(rel)
 
-			req.Error(err)
-			is.Contains(res.Info.Description, "Upgrade \"interrupted-release\" failed: SIGTERM or SIGINT received, release failed")
-			is.Equal(res.Info.Status, release.StatusFailed)
-		})
-		return
+	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+	failer.WaitDuration = 10 * time.Second
+	upAction.cfg.KubeClient = failer
+	upAction.Wait = true
+	vals := map[string]interface{}{}
 
-	}
-	t.Run("Setup TestUpgradeRelease_Interrupted_Wait", func(t *testing.T) {
-		cmd := exec.Command(os.Args[0], "-test.run=TestUpgradeRelease_Interrupted_Wait")
-		cmd.Env = append(os.Environ(), "HANDLE_SIGINT=1")
-		stdout, err := cmd.StdoutPipe()
-		if err != nil {
-			t.Fatal(err)
-		}
-		stderr, err := cmd.StderrPipe()
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := cmd.Start(); err != nil {
-			t.Fatal(err)
-		}
-		go func() {
-			slurp, _ := ioutil.ReadAll(stdout)
-			fmt.Printf("%s\n", slurp)
-		}()
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	time.AfterFunc(time.Second, cancel)
 
-		go func() {
-			slurp, _ := ioutil.ReadAll(stderr)
-			fmt.Printf("%s\n", slurp)
-		}()
+	res, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
 
-		time.Sleep(2 * time.Second)
-		p, _ := os.FindProcess(cmd.Process.Pid)
+	req.Error(err)
+	is.Contains(res.Info.Description, "Upgrade \"interrupted-release\" failed: context canceled")
+	is.Equal(res.Info.Status, release.StatusFailed)
 
-		if err := p.Signal(os.Interrupt); err != nil {
-			t.Fatal(err)
-		}
-
-		if err := cmd.Wait(); err != nil {
-			t.FailNow()
-		}
-	})
 }
 
 func TestUpgradeRelease_Interrupted_Atomic(t *testing.T) {
-	if os.Getenv("HANDLE_SIGINT") == "1" {
-		t.Run("Execute TestUpgradeRelease_Interrupted_Atomic", func(t *testing.T) {
-			is := assert.New(t)
-			req := require.New(t)
 
-			upAction := upgradeAction(t)
-			rel := releaseStub()
-			rel.Name = "interrupted-release"
-			rel.Info.Status = release.StatusDeployed
-			upAction.cfg.Releases.Create(rel)
+	is := assert.New(t)
+	req := require.New(t)
 
-			failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-			failer.WaitDuration = 5 * time.Second
-			upAction.cfg.KubeClient = failer
-			upAction.Atomic = true
-			vals := map[string]interface{}{}
-			res, err := upAction.Run(rel.Name, buildChart(), vals)
+	upAction := upgradeAction(t)
+	rel := releaseStub()
+	rel.Name = "interrupted-release"
+	rel.Info.Status = release.StatusDeployed
+	upAction.cfg.Releases.Create(rel)
 
-			req.Error(err)
-			is.Contains(err.Error(), "release interrupted-release failed, and has been rolled back due to atomic being set: SIGTERM or SIGINT received, release failed")
+	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+	failer.WaitDuration = 5 * time.Second
+	upAction.cfg.KubeClient = failer
+	upAction.Atomic = true
+	vals := map[string]interface{}{}
 
-			// Now make sure it is actually upgraded
-			updatedRes, err := upAction.cfg.Releases.Get(res.Name, 3)
-			is.NoError(err)
-			// Should have rolled back to the previous
-			is.Equal(updatedRes.Info.Status, release.StatusDeployed)
-		})
-		return
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	time.AfterFunc(time.Second, cancel)
 
-	}
-	t.Run("Setup TestUpgradeRelease_Interrupted_Atomic", func(t *testing.T) {
-		cmd := exec.Command(os.Args[0], "-test.run=TestUpgradeRelease_Interrupted_Atomic")
-		cmd.Env = append(os.Environ(), "HANDLE_SIGINT=1")
-		stdout, err := cmd.StdoutPipe()
-		if err != nil {
-			t.Fatal(err)
-		}
-		stderr, err := cmd.StderrPipe()
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := cmd.Start(); err != nil {
-			t.Fatal(err)
-		}
-		go func() {
-			slurp, _ := ioutil.ReadAll(stdout)
-			fmt.Printf("%s\n", slurp)
-		}()
+	res, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
 
-		go func() {
-			slurp, _ := ioutil.ReadAll(stderr)
-			fmt.Printf("%s\n", slurp)
-		}()
+	req.Error(err)
+	is.Contains(err.Error(), "release interrupted-release failed, and has been rolled back due to atomic being set: context canceled")
 
-		time.Sleep(2 * time.Second)
-		p, _ := os.FindProcess(cmd.Process.Pid)
+	// Now make sure it is actually upgraded
+	updatedRes, err := upAction.cfg.Releases.Get(res.Name, 3)
+	is.NoError(err)
+	// Should have rolled back to the previous
+	is.Equal(updatedRes.Info.Status, release.StatusDeployed)
 
-		if err := p.Signal(os.Interrupt); err != nil {
-			t.Fatal(err)
-		}
-
-		if err := cmd.Wait(); err != nil {
-			t.FailNow()
-		}
-	})
 }

@@ -20,11 +20,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"os"
-	"os/signal"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/pkg/errors"
@@ -120,8 +117,14 @@ func NewUpgrade(cfg *Configuration) *Upgrade {
 	}
 }
 
-// Run executes the upgrade on the given release.
+// Run executes the upgrade on the given release
 func (u *Upgrade) Run(name string, chart *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
+	ctx := context.Background()
+	return u.RunWithContext(ctx, name, chart, vals)
+}
+
+// Run executes the upgrade on the given release with context.
+func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
 	if err := u.cfg.KubeClient.IsReachable(); err != nil {
 		return nil, err
 	}
@@ -142,7 +145,7 @@ func (u *Upgrade) Run(name string, chart *chart.Chart, vals map[string]interface
 	u.cfg.Releases.MaxHistory = u.MaxHistory
 
 	u.cfg.Log("performing update for %s", name)
-	res, err := u.performUpgrade(currentRelease, upgradedRelease)
+	res, err := u.performUpgrade(ctx, currentRelease, upgradedRelease)
 	if err != nil {
 		return res, err
 	}
@@ -254,7 +257,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 	return currentRelease, upgradedRelease, err
 }
 
-func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Release) (*release.Release, error) {
+func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedRelease *release.Release) (*release.Release, error) {
 	current, err := u.cfg.KubeClient.Build(bytes.NewBufferString(originalRelease.Manifest), false)
 	if err != nil {
 		// Checking for removed Kubernetes API error so can provide a more informative error message to the user
@@ -319,7 +322,7 @@ func (u *Upgrade) performUpgrade(originalRelease, upgradedRelease *release.Relea
 	}
 	rChan := make(chan resultMessage)
 	go u.releasingUpgrade(rChan, upgradedRelease, current, target, originalRelease)
-	go u.handleSignals(rChan, upgradedRelease)
+	go u.handleContext(ctx, rChan, upgradedRelease)
 	result := <-rChan
 
 	return result.r, result.e
@@ -338,14 +341,13 @@ func (u *Upgrade) reportToPerformUpgrade(c chan<- resultMessage, rel *release.Re
 }
 
 // Setup listener for SIGINT and SIGTERM
-func (u *Upgrade) handleSignals(c chan<- resultMessage, upgradedRelease *release.Release) {
-	cSignal := make(chan os.Signal)
-	signal.Notify(cSignal, os.Interrupt, syscall.SIGTERM)
+func (u *Upgrade) handleContext(ctx context.Context, c chan<- resultMessage, upgradedRelease *release.Release) {
+
 	go func() {
-		<-cSignal
-		u.cfg.Log("SIGTERM or SIGINT received")
+		<-ctx.Done()
+		err := ctx.Err()
 		// when the atomic flag is set the ongoing release finish first and doesn't give time for the rollback happens.
-		u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, fmt.Errorf("SIGTERM or SIGINT received, release failed"))
+		u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, err)
 	}()
 }
 func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *release.Release, current kube.ResourceList, target kube.ResourceList, originalRelease *release.Release) {
