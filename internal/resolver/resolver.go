@@ -27,10 +27,10 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/pkg/errors"
 
-	"github.com/Masterminds/vcs"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/gates"
+	"helm.sh/helm/v3/pkg/gitutils"
 	"helm.sh/helm/v3/pkg/helmpath"
 	"helm.sh/helm/v3/pkg/provenance"
 	"helm.sh/helm/v3/pkg/registry"
@@ -38,6 +38,8 @@ import (
 )
 
 const FeatureGateOCI = gates.Gate("HELM_EXPERIMENTAL_OCI")
+
+var hasGitReference = gitutils.HasGitReference
 
 // Resolver resolves dependencies from semantic version ranges to a particular version.
 type Resolver struct {
@@ -113,17 +115,11 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 
 		if strings.HasPrefix(d.Repository, "git://") {
 
-			local, err := os.MkdirTemp("", d.Name)
-			if err != nil {
-				return nil, err
-			}
-			repo, err := vcs.NewRepo(strings.TrimPrefix(d.Repository, "git://"), local)
+			found, err := hasGitReference(strings.TrimPrefix(d.Repository, "git://"), d.Version, d.Name)
 
 			if err != nil {
 				return nil, err
 			}
-
-			found := repo.IsReference(d.Version)
 
 			if !found {
 				return nil, fmt.Errorf(`dependency %q is missing git branch or tag: %s.

@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 
 	"github.com/Masterminds/vcs"
+
 	"helm.sh/helm/v3/internal/fileutil"
 )
 
