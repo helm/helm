@@ -345,8 +345,13 @@ func allTemplates(c *chart.Chart, vals chartutil.Values) map[string]renderable {
 // As it recurses, it also sets the values to be appropriate for the template
 // scope.
 func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.Values) {
+	chartMetaData := struct {
+		chart.Metadata
+		IsRoot bool
+	}{*c.Metadata, c.IsRoot()}
+
 	next := map[string]interface{}{
-		"Chart":        c.Metadata,
+		"Chart":        chartMetaData,
 		"Files":        newFiles(c.Files),
 		"Release":      vals["Release"],
 		"Capabilities": vals["Capabilities"],
