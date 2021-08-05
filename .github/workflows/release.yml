@@ -1,0 +1,47 @@
+name: release
+on:
+  create:
+    tags:
+      - v*
+
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version
+        required: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      AZURE_STORAGE_CONNECTION_STRING: "${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}"
+      AZURE_STORAGE_CONTAINER_NAME: "${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}"
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v2
+
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.16'
+
+      - name: Set Version (tag event)
+        run: |
+          echo "::set-output name=VERSION::${GITHUB_REF##*/}"
+        if: github.event == "create"
+
+      - name: Set Version (dispatch event)
+        run: |
+          echo "::set-output name=VERSION::${{ github.event.inputs.version }}"
+        if: github.event == "workflow_dispatch"
+
+      - name: Build Helm Binaries
+        run: |
+          make build-cross
+          make dist checksum VERSION="${VERSION}"
+
+      - name: Azure CLI Action
+        uses: Azure/cli@1.0.4
+        with:
+          inlineScript: |
+            az storage blob upload-batch -s _dist/ -d "$AZURE_STORAGE_CONTAINER_NAME" --pattern 'helm-*' --connection-string "$AZURE_STORAGE_CONNECTION_STRING"
