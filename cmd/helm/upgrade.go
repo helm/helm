@@ -187,7 +187,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			signal.Notify(cSignal, os.Interrupt, syscall.SIGTERM)
 			go func() {
 				<-cSignal
-				fmt.Fprintf(out, "Release %s has been cancel.\n", args[0])
+				fmt.Fprintf(out, "Release %s has been cancelled.\n", args[0])
 				cancel()
 			}()
 

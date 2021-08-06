@@ -254,7 +254,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	signal.Notify(cSignal, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-cSignal
-		fmt.Fprintf(out, "Release %s has been cancel.\n", args[0])
+		fmt.Fprintf(out, "Release %s has been cancelled.\n", args[0])
 		cancel()
 	}()
 
