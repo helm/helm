@@ -38,7 +38,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		}
 	}
 
-	// hooke are pre-ordered by kind, so keep order stable
+	// hooks are pre-ordered by kind, so keep order stable
 	sort.Stable(hookByWeight(executingHooks))
 
 	for _, h := range executingHooks {
@@ -113,7 +113,7 @@ type hookByWeight []*release.Hook
 func (x hookByWeight) Len() int      { return len(x) }
 func (x hookByWeight) Swap(i, j int) { x[i], x[j] = x[j], x[i] }
 func (x hookByWeight) Less(i, j int) bool {
-	if x[i].Weight == x[j].Weight {
+	if x[i].Weight == x[j].Weight && x[i].Kind == x[j].Kind {
 		return x[i].Name < x[j].Name
 	}
 	return x[i].Weight < x[j].Weight
