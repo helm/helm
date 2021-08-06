@@ -9,7 +9,7 @@ require (
 	github.com/Masterminds/sprig/v3 v3.2.2
 	github.com/Masterminds/squirrel v1.5.0
 	github.com/Masterminds/vcs v1.13.1
-	github.com/asaskevich/govalidator v0.0.0-20200428143746-21a406dcc535
+	github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a
 	github.com/containerd/containerd v1.5.2
 	github.com/cyphar/filepath-securejoin v0.2.2
 	github.com/docker/distribution v2.7.1+incompatible
@@ -23,6 +23,7 @@ require (
 	github.com/mattn/go-shellwords v1.0.11
 	github.com/mitchellh/copystructure v1.1.1
 	github.com/opencontainers/image-spec v1.0.1
+	github.com/oras-project/oras-go v0.1.0
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
 	github.com/pkg/errors v0.9.1
 	github.com/rubenv/sql-migrate v0.0.0-20200616145509-8d140a17f351

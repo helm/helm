@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*Package pusher provides a generalized tool for uploading data by scheme.
-
+/*
+Package pusher provides a generalized tool for uploading data by scheme.
 This provides a method by which the plugin system can load arbitrary protocol
 handlers based upon a URL scheme.
 */
