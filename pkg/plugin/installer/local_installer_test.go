@@ -40,7 +40,7 @@ func TestLocalInstaller(t *testing.T) {
 	}
 
 	source := "../testdata/plugdir/good/echo"
-	i, err := NewForSource(source, "", settings.PluginsDirectory)
+	i, err := NewForSourceWithPluginsDirectory(source, "", settings.PluginsDirectory)
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}

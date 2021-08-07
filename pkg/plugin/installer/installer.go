@@ -63,20 +63,31 @@ func Update(i Installer) error {
 	return i.Update()
 }
 
-// NewForSource determines the correct Installer for the given source.
-func NewForSource(source, version, pluginsDirectory string) (Installer, error) {
+// NewForSourceWithPluginsDirectory determines the correct Installer for the given source with pluginsDiretory arg, it should be removed in helm v4.
+func NewForSourceWithPluginsDirectory(source, version, pluginsDirectory string) (Installer, error) {
 	// Check if source is a local directory
 	if isLocalReference(source) {
-		return NewLocalInstaller(source, pluginsDirectory)
+		return NewLocalInstallerWithPluginsDirectory(source, pluginsDirectory)
 	} else if isRemoteHTTPArchive(source) {
-		return NewHTTPInstaller(source, pluginsDirectory)
+		return NewHTTPInstallerWithPluginsDirectory(source, pluginsDirectory)
 	}
-	return NewVCSInstaller(source, version, pluginsDirectory)
+	return NewVCSInstallerWithPluginsDirectory(source, version, pluginsDirectory)
+}
+
+// NewForSource determines the correct Installer for the given source.
+func NewForSource(source, version string) (Installer, error) {
+	// Check if source is a local directory
+	if isLocalReference(source) {
+		return NewLocalInstaller(source)
+	} else if isRemoteHTTPArchive(source) {
+		return NewHTTPInstaller(source)
+	}
+	return NewVCSInstaller(source, version)
 }
 
 // FindSource determines the correct Installer for the given source.
-func FindSource(location, pluginsDirectory string) (Installer, error) {
-	installer, err := existingVCSRepo(location, pluginsDirectory)
+func FindSource(location string) (Installer, error) {
+	installer, err := existingVCSRepo(location)
 	if err != nil && err.Error() == "Cannot detect VCS" {
 		return installer, errors.New("cannot get information about plugin source")
 	}

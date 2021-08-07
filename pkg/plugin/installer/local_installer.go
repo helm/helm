@@ -27,16 +27,20 @@ type LocalInstaller struct {
 	base
 }
 
-// NewLocalInstaller creates a new LocalInstaller.
-func NewLocalInstaller(source, pluginsDirectory string) (*LocalInstaller, error) {
+// NewLocalInstallerWithPluginsDirectory creates a new LocalInstaller with pluginsDirectory arg, it should be removed in helm v4.
+func NewLocalInstallerWithPluginsDirectory(source, pluginsDirectory string) (*LocalInstaller, error) {
 	src, err := filepath.Abs(source)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to get absolute path to plugin")
 	}
-	i := &LocalInstaller{
-		base: newBase(src, pluginsDirectory),
-	}
-	return i, nil
+	i, err := NewLocalInstaller(source)
+	i.base = newBase(pluginsDirectory, src)
+	return i, err
+}
+
+// NewLocalInstaller creates a new LocalInstaller.
+func NewLocalInstaller(source string) (*LocalInstaller, error) {
+	return &LocalInstaller{}, nil
 }
 
 // Install creates a symlink to the plugin directory.

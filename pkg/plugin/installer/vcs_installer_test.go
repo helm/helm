@@ -64,7 +64,7 @@ func TestVCSInstaller(t *testing.T) {
 		tags:  []string{"0.1.0", "0.1.1"},
 	}
 
-	i, err := NewForSource(source, "~0.1.0", settings.PluginsDirectory)
+	i, err := NewForSourceWithPluginsDirectory(source, "~0.1.0", settings.PluginsDirectory)
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
@@ -96,7 +96,7 @@ func TestVCSInstaller(t *testing.T) {
 	}
 
 	// Testing FindSource method, expect error because plugin code is not a cloned repository
-	if _, err := FindSource(i.Path(), settings.PluginsDirectory); err == nil {
+	if _, err := FindSource(i.Path()); err == nil {
 		t.Fatalf("expected error for inability to find plugin source, got none")
 	} else if err.Error() != "cannot get information about plugin source" {
 		t.Fatalf("expected error for inability to find plugin source, got (%v)", err)
@@ -110,7 +110,7 @@ func TestVCSInstallerNonExistentVersion(t *testing.T) {
 	version := "0.2.0"
 	settings := cli.New()
 
-	i, err := NewForSource(source, version, settings.PluginsDirectory)
+	i, err := NewForSourceWithPluginsDirectory(source, version, settings.PluginsDirectory)
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
@@ -132,7 +132,7 @@ func TestVCSInstallerUpdate(t *testing.T) {
 	source := "https://github.com/adamreese/helm-env"
 	settings := cli.New()
 
-	i, err := NewForSource(source, "", settings.PluginsDirectory)
+	i, err := NewForSourceWithPluginsDirectory(source, "", settings.PluginsDirectory)
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
@@ -154,7 +154,7 @@ func TestVCSInstallerUpdate(t *testing.T) {
 	}
 
 	// Test FindSource method for positive result
-	pluginInfo, err := FindSource(i.Path(), settings.PluginsDirectory)
+	pluginInfo, err := FindSource(i.Path())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -96,7 +96,7 @@ func updatePlugin(p *plugin.Plugin) error {
 		return err
 	}
 
-	i, err := installer.FindSource(absExactLocation, settings.PluginsDirectory)
+	i, err := installer.FindSource(absExactLocation)
 	if err != nil {
 		return err
 	}

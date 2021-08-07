@@ -92,7 +92,7 @@ func TestHTTPInstaller(t *testing.T) {
 		t.Fatalf("Could not create %s: %s", helmpath.DataPath("plugins"), err)
 	}
 
-	i, err := NewForSource(source, "0.0.1", settings.PluginsDirectory)
+	i, err := NewForSourceWithPluginsDirectory(source, "0.0.1", settings.PluginsDirectory)
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
@@ -141,7 +141,7 @@ func TestHTTPInstallerNonExistentVersion(t *testing.T) {
 		t.Fatalf("Could not create %s: %s", helmpath.DataPath("plugins"), err)
 	}
 
-	i, err := NewForSource(source, "0.0.2", settings.PluginsDirectory)
+	i, err := NewForSourceWithPluginsDirectory(source, "0.0.2", settings.PluginsDirectory)
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
@@ -175,7 +175,7 @@ func TestHTTPInstallerUpdate(t *testing.T) {
 		t.Fatalf("Could not create %s: %s", helmpath.DataPath("plugins"), err)
 	}
 
-	i, err := NewForSource(source, "0.0.1", settings.PluginsDirectory)
+	i, err := NewForSourceWithPluginsDirectory(source, "0.0.1", settings.PluginsDirectory)
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}

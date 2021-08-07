@@ -24,6 +24,7 @@ import (
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/internal/third_party/dep/fs"
+	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/helmpath"
 	"helm.sh/helm/v3/pkg/plugin/cache"
 )
@@ -35,20 +36,32 @@ type VCSInstaller struct {
 	base
 }
 
-func existingVCSRepo(location, pluginsDirectory string) (Installer, error) {
+func existingVCSRepo(location string) (Installer, error) {
 	repo, err := vcs.NewRepo("", location)
 	if err != nil {
 		return nil, err
 	}
+	settings := cli.New()
+
 	i := &VCSInstaller{
 		Repo: repo,
-		base: newBase(repo.Remote(), pluginsDirectory),
+		base: newBase(repo.Remote(), settings.PluginsDirectory),
 	}
 	return i, nil
 }
 
+// NewVCSInstallerWithPluginsDirectory creates a new VCSInstaller with pluginsDirector arg, it should be removed in helm v4.
+func NewVCSInstallerWithPluginsDirectory(source, version, pluginsDirectory string) (*VCSInstaller, error) {
+	i, err := NewVCSInstaller(source, version)
+	if err != nil {
+		return nil, err
+	}
+	i.base = newBase(source, pluginsDirectory)
+	return i, nil
+}
+
 // NewVCSInstaller creates a new VCSInstaller.
-func NewVCSInstaller(source, version, pluginsDirectory string) (*VCSInstaller, error) {
+func NewVCSInstaller(source, version string) (*VCSInstaller, error) {
 	key, err := cache.Key(source)
 	if err != nil {
 		return nil, err
@@ -61,7 +74,6 @@ func NewVCSInstaller(source, version, pluginsDirectory string) (*VCSInstaller, e
 	i := &VCSInstaller{
 		Repo:    repo,
 		Version: version,
-		base:    newBase(source, pluginsDirectory),
 	}
 	return i, err
 }
