@@ -34,7 +34,7 @@ func NewLocalInstallerWithPluginsDirectory(source, pluginsDirectory string) (*Lo
 		return nil, errors.Wrap(err, "unable to get absolute path to plugin")
 	}
 	i, err := NewLocalInstaller(source)
-	i.base = newBase(pluginsDirectory, src)
+	i.base = newBase(src, pluginsDirectory)
 	return i, err
 }
 
