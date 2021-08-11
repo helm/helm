@@ -268,6 +268,9 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 		q := repoURL.Query()
 		// We need a trailing slash for ResolveReference to work, but make sure there isn't already one
 		repoURL.Path = strings.TrimSuffix(repoURL.Path, "/") + "/"
+		// The URL class has problems with URL-escaped paths if we don't
+		// modify both paths. See https://github.com/helm/helm/issues/9977
+		repoURL.RawPath = strings.TrimSuffix(repoURL.RawPath, "/") + "/"
 		u = repoURL.ResolveReference(u)
 		u.RawQuery = q.Encode()
 		// TODO add user-agent
