@@ -146,7 +146,7 @@ func (o *repoAddOptions) run(out io.Writer) error {
 
 	if o.username != "" && o.password == "" {
 		if o.passwordFromStdinOpt {
-			passwordFromStdin, err := ioutil.ReadAll(os.Stdin)
+			passwordFromStdin, err := io.ReadAll(os.Stdin)
 			if err != nil {
 				return err
 			}
