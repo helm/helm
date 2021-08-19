@@ -31,8 +31,8 @@ import (
 	digest "github.com/opencontainers/go-digest"
 	specs "github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	orascontent "github.com/oras-project/oras-go/pkg/content"
 	"github.com/pkg/errors"
+	orascontent "oras.land/oras-go/pkg/content"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"

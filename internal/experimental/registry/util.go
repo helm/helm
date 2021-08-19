@@ -23,8 +23,8 @@ import (
 	"time"
 
 	units "github.com/docker/go-units"
-	orascontext "github.com/oras-project/oras-go/pkg/context"
 	"github.com/sirupsen/logrus"
+	orascontext "oras.land/oras-go/pkg/context"
 )
 
 // byteCountBinary produces a human-readable file size

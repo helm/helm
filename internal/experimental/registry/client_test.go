@@ -36,10 +36,10 @@ import (
 	"github.com/distribution/distribution/v3/registry"
 	_ "github.com/distribution/distribution/v3/registry/auth/htpasswd"
 	_ "github.com/distribution/distribution/v3/registry/storage/driver/inmemory"
-	auth "github.com/oras-project/oras-go/pkg/auth/docker"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/bcrypt"
+	auth "oras.land/oras-go/pkg/auth/docker"
 
 	"helm.sh/helm/v3/pkg/chart"
 )
