@@ -16,7 +16,6 @@ limitations under the License.
 package downloader
 
 import (
-	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
@@ -171,19 +170,7 @@ func TestIsTar(t *testing.T) {
 }
 
 func TestDownloadTo(t *testing.T) {
-	// Set up a fake repo with basic auth enabled
-	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")
-	srv.Stop()
-	if err != nil {
-		t.Fatal(err)
-	}
-	srv.WithMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		username, password, ok := r.BasicAuth()
-		if !ok || username != "username" || password != "password" {
-			t.Errorf("Expected request to use basic auth and for username == 'username' and password == 'password', got '%v', '%s', '%s'", ok, username, password)
-		}
-	}))
-	srv.Start()
+	srv := repotest.NewTempServerWithCleanupAndBasicAuth(t, "testdata/*.tgz*")
 	defer srv.Stop()
 	if err := srv.CreateIndex(); err != nil {
 		t.Fatal(err)
