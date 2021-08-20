@@ -27,10 +27,10 @@ import (
 
 	"github.com/gosuri/uitable"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	auth "github.com/oras-project/oras-go/pkg/auth/docker"
-	"github.com/oras-project/oras-go/pkg/content"
-	"github.com/oras-project/oras-go/pkg/oras"
 	"github.com/pkg/errors"
+	auth "oras.land/oras-go/pkg/auth/docker"
+	"oras.land/oras-go/pkg/content"
+	"oras.land/oras-go/pkg/oras"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/helmpath"
