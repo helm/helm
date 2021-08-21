@@ -32,6 +32,10 @@ import (
 const updateDesc = `
 Update gets the latest information about charts from the respective chart repositories.
 Information is cached locally, where it is used by commands like 'helm search'.
+
+You can optionally specify a list of repositories you want to update.
+	$ helm repo update <repo_name> ...
+To update all the repositories, use 'helm repo update'.
 `
 
 var errNoRepositories = errors.New("no repositories found. You must add one before updating")
@@ -40,21 +44,25 @@ type repoUpdateOptions struct {
 	update    func([]*repo.ChartRepository, io.Writer)
 	repoFile  string
 	repoCache string
+	names     []string
 }
 
 func newRepoUpdateCmd(out io.Writer) *cobra.Command {
 	o := &repoUpdateOptions{update: updateCharts}
 
 	cmd := &cobra.Command{
-		Use:               "update",
-		Aliases:           []string{"up"},
-		Short:             "update information of available charts locally from chart repositories",
-		Long:              updateDesc,
-		Args:              require.NoArgs,
-		ValidArgsFunction: noCompletions,
+		Use:     "update [REPO1 [REPO2 ...]]",
+		Aliases: []string{"up"},
+		Short:   "update information of available charts locally from chart repositories",
+		Long:    updateDesc,
+		Args:    require.MinimumNArgs(0),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return compListRepos(toComplete, args), cobra.ShellCompDirectiveNoFileComp
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			o.repoFile = settings.RepositoryConfig
 			o.repoCache = settings.RepositoryCache
+			o.names = args
 			return o.run(out)
 		},
 	}
@@ -63,19 +71,36 @@ func newRepoUpdateCmd(out io.Writer) *cobra.Command {
 
 func (o *repoUpdateOptions) run(out io.Writer) error {
 	f, err := repo.LoadFile(o.repoFile)
-	if isNotExist(err) || len(f.Repositories) == 0 {
+	switch {
+	case isNotExist(err):
+		return errNoRepositories
+	case err != nil:
+		return errors.Wrapf(err, "failed loading file: %s", o.repoFile)
+	case len(f.Repositories) == 0:
 		return errNoRepositories
 	}
+
 	var repos []*repo.ChartRepository
-	for _, cfg := range f.Repositories {
-		r, err := repo.NewChartRepository(cfg, getter.All(settings))
-		if err != nil {
+	updateAllRepos := len(o.names) == 0
+
+	if !updateAllRepos {
+		// Fail early if the user specified an invalid repo to update
+		if err := checkRequestedRepos(o.names, f.Repositories); err != nil {
 			return err
 		}
-		if o.repoCache != "" {
-			r.CachePath = o.repoCache
+	}
+
+	for _, cfg := range f.Repositories {
+		if updateAllRepos || isRepoRequested(cfg.Name, o.names) {
+			r, err := repo.NewChartRepository(cfg, getter.All(settings))
+			if err != nil {
+				return err
+			}
+			if o.repoCache != "" {
+				r.CachePath = o.repoCache
+			}
+			repos = append(repos, r)
 		}
-		repos = append(repos, r)
 	}
 
 	o.update(repos, out)
@@ -98,4 +123,29 @@ func updateCharts(repos []*repo.ChartRepository, out io.Writer) {
 	}
 	wg.Wait()
 	fmt.Fprintln(out, "Update Complete. ⎈Happy Helming!⎈")
+}
+
+func checkRequestedRepos(requestedRepos []string, validRepos []*repo.Entry) error {
+	for _, requestedRepo := range requestedRepos {
+		found := false
+		for _, repo := range validRepos {
+			if requestedRepo == repo.Name {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return errors.Errorf("no repositories found matching '%s'.  Nothing will be updated", requestedRepo)
+		}
+	}
+	return nil
+}
+
+func isRepoRequested(repoName string, requestedRepos []string) bool {
+	for _, requestedRepo := range requestedRepos {
+		if repoName == requestedRepo {
+			return true
+		}
+	}
+	return false
 }

@@ -50,19 +50,17 @@ initOS() {
 
 # runs the given command as root (detects if we are root already)
 runAsRoot() {
-  local CMD="$*"
-
-  if [ $EUID -ne 0 -a $USE_SUDO = "true" ]; then
-    CMD="sudo $CMD"
+  if [ $EUID -ne 0 -a "$USE_SUDO" = "true" ]; then
+    sudo "${@}"
+  else
+    "${@}"
   fi
-
-  $CMD
 }
 
 # verifySupported checks that the os/arch combination is supported for
 # binary builds.
 verifySupported() {
-  local supported="darwin-amd64\nlinux-386\nlinux-amd64\nlinux-arm\nlinux-arm64\nlinux-ppc64le\nwindows-amd64"
+  local supported="darwin-amd64\nlinux-386\nlinux-amd64\nlinux-arm\nlinux-arm64\nlinux-ppc64le\nlinux-s390x\nwindows-amd64"
   if ! echo "${supported}" | grep -q "${OS}-${ARCH}"; then
     echo "No prebuilt binary for ${OS}-${ARCH}."
     echo "To build from source, go to https://github.com/helm/helm"
@@ -78,14 +76,8 @@ verifySupported() {
 # checkDesiredVersion checks if the desired version is available.
 checkDesiredVersion() {
   if [ "x$DESIRED_VERSION" == "x" ]; then
-    # Get tag from release URL
-    local release_url="https://github.com/helm/helm/releases"
-    if type "curl" > /dev/null; then
-
-      TAG=$(curl -Ls $release_url | grep 'href="/helm/helm/releases/tag/v2.[0-9]*.[0-9]*\"' | grep -v no-underline | head -n 1 | cut -d '"' -f 2 | awk '{n=split($NF,a,"/");print a[n]}' | awk 'a !~ $0{print}; {a=$0}')
-    elif type "wget" > /dev/null; then
-      TAG=$(wget $release_url -O - 2>&1 | grep 'href="/helm/helm/releases/tag/v2.[0-9]*.[0-9]*\"' | grep -v no-underline | head -n 1 | cut -d '"' -f 2 | awk '{n=split($NF,a,"/");print a[n]}' | awk 'a !~ $0{print}; {a=$0}')
-    fi
+    # Pinning tag to v2.17.0 as per https://github.com/helm/helm/issues/9607
+    TAG=v2.17.0
   else
     TAG=$DESIRED_VERSION
   fi

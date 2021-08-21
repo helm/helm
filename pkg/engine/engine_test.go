@@ -160,7 +160,7 @@ func TestRenderRefsOrdering(t *testing.T) {
 
 		for name, data := range expect {
 			if out[name] != data {
-				t.Fatalf("Expected %q, got %q (iteraction %d)", data, out[name], i+1)
+				t.Fatalf("Expected %q, got %q (iteration %d)", data, out[name], i+1)
 			}
 		}
 	}
@@ -283,6 +283,35 @@ func TestExecErrors(t *testing.T) {
 	expected = `execution error at (issue6044:3:4): abc: something is missing`
 	if err.Error() != expected {
 		t.Errorf("Expected '%s', got %q", expected, err.Error())
+	}
+}
+
+func TestFailErrors(t *testing.T) {
+	vals := chartutil.Values{"Values": map[string]interface{}{}}
+
+	failtpl := `All your base are belong to us{{ fail "This is an error" }}`
+	tplsFailed := map[string]renderable{
+		"failtpl": {tpl: failtpl, vals: vals},
+	}
+	_, err := new(Engine).render(tplsFailed)
+	if err == nil {
+		t.Fatalf("Expected failures while rendering: %s", err)
+	}
+	expected := `execution error at (failtpl:1:33): This is an error`
+	if err.Error() != expected {
+		t.Errorf("Expected '%s', got %q", expected, err.Error())
+	}
+
+	var e Engine
+	e.LintMode = true
+	out, err := e.render(tplsFailed)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectStr := "All your base are belong to us"
+	if gotStr := out["failtpl"]; gotStr != expectStr {
+		t.Errorf("Expected %q, got %q (%v)", expectStr, gotStr, out)
 	}
 }
 

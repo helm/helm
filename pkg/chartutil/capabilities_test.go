@@ -62,7 +62,23 @@ func TestDefaultCapabilities(t *testing.T) {
 func TestDefaultCapabilitiesHelmVersion(t *testing.T) {
 	hv := DefaultCapabilities.HelmVersion
 
-	if hv.Version != "v3.5" {
-		t.Errorf("Expected default HelmVersion to be v3.5, got %q", hv.Version)
+	if hv.Version != "v3.6" {
+		t.Errorf("Expected default HelmVersion to be v3.6, got %q", hv.Version)
+	}
+}
+
+func TestParseKubeVersion(t *testing.T) {
+	kv, err := ParseKubeVersion("v1.16.0")
+	if err != nil {
+		t.Errorf("Expected v1.16.0 to parse successfully")
+	}
+	if kv.Version != "v1.16.0" {
+		t.Errorf("Expected parsed KubeVersion.Version to be v1.16.0, got %q", kv.String())
+	}
+	if kv.Major != "1" {
+		t.Errorf("Expected parsed KubeVersion.Major to be 1, got %q", kv.Major)
+	}
+	if kv.Minor != "16" {
+		t.Errorf("Expected parsed KubeVersion.Minor to be 16, got %q", kv.Minor)
 	}
 }

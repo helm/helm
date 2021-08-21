@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -47,26 +48,79 @@ func TestUpdateCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if got := out.String(); !strings.Contains(got, "charts") {
-		t.Errorf("Expected 'charts' got %q", got)
+	if got := out.String(); !strings.Contains(got, "charts") ||
+		!strings.Contains(got, "firstexample") ||
+		!strings.Contains(got, "secondexample") {
+		t.Errorf("Expected 'charts', 'firstexample' and 'secondexample' but got %q", got)
 	}
 }
 
-func TestUpdateCustomCacheCmd(t *testing.T) {
+func TestUpdateCmdMultiple(t *testing.T) {
 	var out bytes.Buffer
-	rootDir := ensure.TempDir(t)
-	cachePath := filepath.Join(rootDir, "updcustomcache")
-	_ = os.Mkdir(cachePath, os.ModePerm)
-	defer os.RemoveAll(cachePath)
+	// Instead of using the HTTP updater, we provide our own for this test.
+	// The TestUpdateCharts test verifies the HTTP behavior independently.
+	updater := func(repos []*repo.ChartRepository, out io.Writer) {
+		for _, re := range repos {
+			fmt.Fprintln(out, re.Config.Name)
+		}
+	}
 	o := &repoUpdateOptions{
-		update:    updateCharts,
-		repoFile:  "testdata/repositories.yaml",
-		repoCache: cachePath,
+		update:   updater,
+		repoFile: "testdata/repositories.yaml",
+		names:    []string{"firstexample", "charts"},
 	}
 	if err := o.run(&out); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(cachePath, "charts-index.yaml")); err != nil {
+
+	if got := out.String(); !strings.Contains(got, "charts") ||
+		!strings.Contains(got, "firstexample") ||
+		strings.Contains(got, "secondexample") {
+		t.Errorf("Expected 'charts' and 'firstexample' but not 'secondexample' but got %q", got)
+	}
+}
+
+func TestUpdateCmdInvalid(t *testing.T) {
+	var out bytes.Buffer
+	// Instead of using the HTTP updater, we provide our own for this test.
+	// The TestUpdateCharts test verifies the HTTP behavior independently.
+	updater := func(repos []*repo.ChartRepository, out io.Writer) {
+		for _, re := range repos {
+			fmt.Fprintln(out, re.Config.Name)
+		}
+	}
+	o := &repoUpdateOptions{
+		update:   updater,
+		repoFile: "testdata/repositories.yaml",
+		names:    []string{"firstexample", "invalid"},
+	}
+	if err := o.run(&out); err == nil {
+		t.Fatal("expected error but did not get one")
+	}
+}
+
+func TestUpdateCustomCacheCmd(t *testing.T) {
+	rootDir := ensure.TempDir(t)
+	cachePath := filepath.Join(rootDir, "updcustomcache")
+	os.Mkdir(cachePath, os.ModePerm)
+	defer os.RemoveAll(cachePath)
+
+	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ts.Stop()
+
+	o := &repoUpdateOptions{
+		update:    updateCharts,
+		repoFile:  filepath.Join(ts.Root(), "repositories.yaml"),
+		repoCache: cachePath,
+	}
+	b := ioutil.Discard
+	if err := o.run(b); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(cachePath, "test-index.yaml")); err != nil {
 		t.Fatalf("error finding created index file in custom cache: %v", err)
 	}
 }
@@ -103,4 +157,5 @@ func TestUpdateCharts(t *testing.T) {
 
 func TestRepoUpdateFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "repo update", false)
+	checkFileCompletion(t, "repo update repo1", false)
 }

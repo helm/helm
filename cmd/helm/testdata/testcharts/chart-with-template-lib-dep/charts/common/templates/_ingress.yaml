@@ -4,7 +4,7 @@ kind: Ingress
 {{ template "common.metadata" . }}
   {{- if .Values.ingress.annotations }}
   annotations:
-    {{ include "common.annote" .Values.ingress.annotations | indent 4 }}
+    {{ include "common.annotate" .Values.ingress.annotations | indent 4 }}
   {{- end }}
 spec:
   rules:

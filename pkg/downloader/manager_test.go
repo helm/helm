@@ -17,11 +17,14 @@ package downloader
 
 import (
 	"bytes"
+	"io/ioutil"
+	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
 
 	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/repo/repotest"
@@ -81,10 +84,11 @@ func TestFindChartURL(t *testing.T) {
 	version := "0.1.0"
 	repoURL := "http://example.com/charts"
 
-	churl, username, password, err := m.findChartURL(name, version, repoURL, repos)
+	churl, username, password, insecureSkipTLSVerify, passcredentialsall, _, _, _, err := m.findChartURL(name, version, repoURL, repos)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if churl != "https://charts.helm.sh/stable/alpine-0.1.0.tgz" {
 		t.Errorf("Unexpected URL %q", churl)
 	}
@@ -93,6 +97,37 @@ func TestFindChartURL(t *testing.T) {
 	}
 	if password != "" {
 		t.Errorf("Unexpected password %q", password)
+	}
+	if passcredentialsall != false {
+		t.Errorf("Unexpected passcredentialsall %t", passcredentialsall)
+	}
+	if insecureSkipTLSVerify {
+		t.Errorf("Unexpected insecureSkipTLSVerify %t", insecureSkipTLSVerify)
+	}
+
+	name = "tlsfoo"
+	version = "1.2.3"
+	repoURL = "https://example-https-insecureskiptlsverify.com"
+
+	churl, username, password, insecureSkipTLSVerify, passcredentialsall, _, _, _, err = m.findChartURL(name, version, repoURL, repos)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !insecureSkipTLSVerify {
+		t.Errorf("Unexpected insecureSkipTLSVerify %t", insecureSkipTLSVerify)
+	}
+	if churl != "https://example.com/tlsfoo-1.2.3.tgz" {
+		t.Errorf("Unexpected URL %q", churl)
+	}
+	if username != "" {
+		t.Errorf("Unexpected username %q", username)
+	}
+	if password != "" {
+		t.Errorf("Unexpected password %q", password)
+	}
+	if passcredentialsall != false {
+		t.Errorf("Unexpected passcredentialsall %t", passcredentialsall)
 	}
 }
 
@@ -178,6 +213,54 @@ func TestGetRepoNames(t *testing.T) {
 		if !eq {
 			t.Errorf("%s: expected map %v, got %v", tt.name, l, tt.name)
 		}
+	}
+}
+
+func TestDownloadAll(t *testing.T) {
+	chartPath, err := ioutil.TempDir("", "test-downloadall")
+	if err != nil {
+		t.Fatalf("could not create tempdir: %v", err)
+	}
+	defer os.RemoveAll(chartPath)
+	m := &Manager{
+		Out:              new(bytes.Buffer),
+		RepositoryConfig: repoConfig,
+		RepositoryCache:  repoCache,
+		ChartPath:        chartPath,
+	}
+	signtest, err := loader.LoadDir(filepath.Join("testdata", "signtest"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := chartutil.SaveDir(signtest, filepath.Join(chartPath, "testdata")); err != nil {
+		t.Fatal(err)
+	}
+
+	local, err := loader.LoadDir(filepath.Join("testdata", "local-subchart"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := chartutil.SaveDir(local, filepath.Join(chartPath, "charts")); err != nil {
+		t.Fatal(err)
+	}
+
+	signDep := &chart.Dependency{
+		Name:       signtest.Name(),
+		Repository: "file://./testdata/signtest",
+		Version:    signtest.Metadata.Version,
+	}
+	localDep := &chart.Dependency{
+		Name:       local.Name(),
+		Repository: "",
+		Version:    local.Metadata.Version,
+	}
+
+	// create a 'tmpcharts' directory to test #5567
+	if err := os.MkdirAll(filepath.Join(chartPath, "tmpcharts"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.downloadAll([]*chart.Dependency{signDep, localDep}); err != nil {
+		t.Error(err)
 	}
 }
 

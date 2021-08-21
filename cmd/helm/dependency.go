@@ -100,7 +100,6 @@ func newDependencyCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 func newDependencyListCmd(out io.Writer) *cobra.Command {
 	client := action.NewDependency()
-
 	cmd := &cobra.Command{
 		Use:     "list CHART",
 		Aliases: []string{"ls"},
@@ -115,5 +114,9 @@ func newDependencyListCmd(out io.Writer) *cobra.Command {
 			return client.List(chartpath, out)
 		},
 	}
+
+	f := cmd.Flags()
+
+	f.UintVar(&client.ColumnWidth, "max-col-width", 80, "maximum column width for output table")
 	return cmd
 }

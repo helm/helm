@@ -27,11 +27,10 @@ import (
 	"strings"
 	"testing"
 
+	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/helmpath"
-
-	"helm.sh/helm/v3/pkg/chart"
 )
 
 const (
@@ -65,12 +64,23 @@ entries:
 
 func TestIndexFile(t *testing.T) {
 	i := NewIndexFile()
-	i.Add(&chart.Metadata{Name: "clipper", Version: "0.1.0"}, "clipper-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890")
-	i.Add(&chart.Metadata{Name: "cutter", Version: "0.1.1"}, "cutter-0.1.1.tgz", "http://example.com/charts", "sha256:1234567890abc")
-	i.Add(&chart.Metadata{Name: "cutter", Version: "0.1.0"}, "cutter-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890abc")
-	i.Add(&chart.Metadata{Name: "cutter", Version: "0.2.0"}, "cutter-0.2.0.tgz", "http://example.com/charts", "sha256:1234567890abc")
-	i.Add(&chart.Metadata{Name: "setter", Version: "0.1.9+alpha"}, "setter-0.1.9+alpha.tgz", "http://example.com/charts", "sha256:1234567890abc")
-	i.Add(&chart.Metadata{Name: "setter", Version: "0.1.9+beta"}, "setter-0.1.9+beta.tgz", "http://example.com/charts", "sha256:1234567890abc")
+	for _, x := range []struct {
+		md       *chart.Metadata
+		filename string
+		baseURL  string
+		digest   string
+	}{
+		{&chart.Metadata{APIVersion: "v2", Name: "clipper", Version: "0.1.0"}, "clipper-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890"},
+		{&chart.Metadata{APIVersion: "v2", Name: "cutter", Version: "0.1.1"}, "cutter-0.1.1.tgz", "http://example.com/charts", "sha256:1234567890abc"},
+		{&chart.Metadata{APIVersion: "v2", Name: "cutter", Version: "0.1.0"}, "cutter-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890abc"},
+		{&chart.Metadata{APIVersion: "v2", Name: "cutter", Version: "0.2.0"}, "cutter-0.2.0.tgz", "http://example.com/charts", "sha256:1234567890abc"},
+		{&chart.Metadata{APIVersion: "v2", Name: "setter", Version: "0.1.9+alpha"}, "setter-0.1.9+alpha.tgz", "http://example.com/charts", "sha256:1234567890abc"},
+		{&chart.Metadata{APIVersion: "v2", Name: "setter", Version: "0.1.9+beta"}, "setter-0.1.9+beta.tgz", "http://example.com/charts", "sha256:1234567890abc"},
+	} {
+		if err := i.MustAdd(x.md, x.filename, x.baseURL, x.digest); err != nil {
+			t.Errorf("unexpected error adding to index: %s", err)
+		}
+	}
 
 	i.SortEntries()
 
@@ -126,11 +136,7 @@ func TestLoadIndex(t *testing.T) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
-			b, err := ioutil.ReadFile(tc.Filename)
-			if err != nil {
-				t.Fatal(err)
-			}
-			i, err := loadIndex(b)
+			i, err := LoadIndexFile(tc.Filename)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -141,17 +147,15 @@ func TestLoadIndex(t *testing.T) {
 
 // TestLoadIndex_Duplicates is a regression to make sure that we don't non-deterministically allow duplicate packages.
 func TestLoadIndex_Duplicates(t *testing.T) {
-	if _, err := loadIndex([]byte(indexWithDuplicates)); err == nil {
+	if _, err := loadIndex([]byte(indexWithDuplicates), "indexWithDuplicates"); err == nil {
 		t.Errorf("Expected an error when duplicate entries are present")
 	}
 }
 
-func TestLoadIndexFile(t *testing.T) {
-	i, err := LoadIndexFile(testfile)
-	if err != nil {
-		t.Fatal(err)
+func TestLoadIndex_Empty(t *testing.T) {
+	if _, err := loadIndex([]byte(""), "indexWithEmpty"); err == nil {
+		t.Errorf("Expected an error when index.yaml is empty.")
 	}
-	verifyLocalIndex(t, i)
 }
 
 func TestLoadIndexFileAnnotations(t *testing.T) {
@@ -170,11 +174,7 @@ func TestLoadIndexFileAnnotations(t *testing.T) {
 }
 
 func TestLoadUnorderedIndex(t *testing.T) {
-	b, err := ioutil.ReadFile(unorderedTestfile)
-	if err != nil {
-		t.Fatal(err)
-	}
-	i, err := loadIndex(b)
+	i, err := LoadIndexFile(unorderedTestfile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,20 +183,26 @@ func TestLoadUnorderedIndex(t *testing.T) {
 
 func TestMerge(t *testing.T) {
 	ind1 := NewIndexFile()
-	ind1.Add(&chart.Metadata{
-		Name:    "dreadnought",
-		Version: "0.1.0",
-	}, "dreadnought-0.1.0.tgz", "http://example.com", "aaaa")
+
+	if err := ind1.MustAdd(&chart.Metadata{APIVersion: "v2", Name: "dreadnought", Version: "0.1.0"}, "dreadnought-0.1.0.tgz", "http://example.com", "aaaa"); err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
 
 	ind2 := NewIndexFile()
-	ind2.Add(&chart.Metadata{
-		Name:    "dreadnought",
-		Version: "0.2.0",
-	}, "dreadnought-0.2.0.tgz", "http://example.com", "aaaabbbb")
-	ind2.Add(&chart.Metadata{
-		Name:    "doughnut",
-		Version: "0.2.0",
-	}, "doughnut-0.2.0.tgz", "http://example.com", "ccccbbbb")
+
+	for _, x := range []struct {
+		md       *chart.Metadata
+		filename string
+		baseURL  string
+		digest   string
+	}{
+		{&chart.Metadata{APIVersion: "v2", Name: "dreadnought", Version: "0.2.0"}, "dreadnought-0.2.0.tgz", "http://example.com", "aaaabbbb"},
+		{&chart.Metadata{APIVersion: "v2", Name: "doughnut", Version: "0.2.0"}, "doughnut-0.2.0.tgz", "http://example.com", "ccccbbbb"},
+	} {
+		if err := ind2.MustAdd(x.md, x.filename, x.baseURL, x.digest); err != nil {
+			t.Errorf("unexpected error: %s", err)
+		}
+	}
 
 	ind1.Merge(ind2)
 
@@ -239,12 +245,7 @@ func TestDownloadIndexFile(t *testing.T) {
 			t.Fatalf("error finding created index file: %#v", err)
 		}
 
-		b, err := ioutil.ReadFile(idx)
-		if err != nil {
-			t.Fatalf("error reading index file: %#v", err)
-		}
-
-		i, err := loadIndex(b)
+		i, err := LoadIndexFile(idx)
 		if err != nil {
 			t.Fatalf("Index %q failed to parse: %s", testfile, err)
 		}
@@ -256,7 +257,7 @@ func TestDownloadIndexFile(t *testing.T) {
 			t.Fatalf("error finding created charts file: %#v", err)
 		}
 
-		b, err = ioutil.ReadFile(idx)
+		b, err := ioutil.ReadFile(idx)
 		if err != nil {
 			t.Fatalf("error reading charts file: %#v", err)
 		}
@@ -297,12 +298,7 @@ func TestDownloadIndexFile(t *testing.T) {
 			t.Fatalf("error finding created index file: %#v", err)
 		}
 
-		b, err := ioutil.ReadFile(idx)
-		if err != nil {
-			t.Fatalf("error reading index file: %#v", err)
-		}
-
-		i, err := loadIndex(b)
+		i, err := LoadIndexFile(idx)
 		if err != nil {
 			t.Fatalf("Index %q failed to parse: %s", testfile, err)
 		}
@@ -314,7 +310,7 @@ func TestDownloadIndexFile(t *testing.T) {
 			t.Fatalf("error finding created charts file: %#v", err)
 		}
 
-		b, err = ioutil.ReadFile(idx)
+		b, err := ioutil.ReadFile(idx)
 		if err != nil {
 			t.Fatalf("error reading charts file: %#v", err)
 		}
@@ -345,6 +341,7 @@ func verifyLocalIndex(t *testing.T, i *IndexFile) {
 	expects := []*ChartVersion{
 		{
 			Metadata: &chart.Metadata{
+				APIVersion:  "v2",
 				Name:        "alpine",
 				Description: "string",
 				Version:     "1.0.0",
@@ -359,6 +356,7 @@ func verifyLocalIndex(t *testing.T, i *IndexFile) {
 		},
 		{
 			Metadata: &chart.Metadata{
+				APIVersion:  "v2",
 				Name:        "nginx",
 				Description: "string",
 				Version:     "0.2.0",
@@ -372,6 +370,7 @@ func verifyLocalIndex(t *testing.T, i *IndexFile) {
 		},
 		{
 			Metadata: &chart.Metadata{
+				APIVersion:  "v2",
 				Name:        "nginx",
 				Description: "string",
 				Version:     "0.1.0",
@@ -476,28 +475,44 @@ func TestIndexDirectory(t *testing.T) {
 
 func TestIndexAdd(t *testing.T) {
 	i := NewIndexFile()
-	i.Add(&chart.Metadata{Name: "clipper", Version: "0.1.0"}, "clipper-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890")
+
+	for _, x := range []struct {
+		md       *chart.Metadata
+		filename string
+		baseURL  string
+		digest   string
+	}{
+
+		{&chart.Metadata{APIVersion: "v2", Name: "clipper", Version: "0.1.0"}, "clipper-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890"},
+		{&chart.Metadata{APIVersion: "v2", Name: "alpine", Version: "0.1.0"}, "/home/charts/alpine-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890"},
+		{&chart.Metadata{APIVersion: "v2", Name: "deis", Version: "0.1.0"}, "/home/charts/deis-0.1.0.tgz", "http://example.com/charts/", "sha256:1234567890"},
+	} {
+		if err := i.MustAdd(x.md, x.filename, x.baseURL, x.digest); err != nil {
+			t.Errorf("unexpected error adding to index: %s", err)
+		}
+	}
 
 	if i.Entries["clipper"][0].URLs[0] != "http://example.com/charts/clipper-0.1.0.tgz" {
 		t.Errorf("Expected http://example.com/charts/clipper-0.1.0.tgz, got %s", i.Entries["clipper"][0].URLs[0])
 	}
-
-	i.Add(&chart.Metadata{Name: "alpine", Version: "0.1.0"}, "/home/charts/alpine-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890")
-
 	if i.Entries["alpine"][0].URLs[0] != "http://example.com/charts/alpine-0.1.0.tgz" {
 		t.Errorf("Expected http://example.com/charts/alpine-0.1.0.tgz, got %s", i.Entries["alpine"][0].URLs[0])
 	}
-
-	i.Add(&chart.Metadata{Name: "deis", Version: "0.1.0"}, "/home/charts/deis-0.1.0.tgz", "http://example.com/charts/", "sha256:1234567890")
-
 	if i.Entries["deis"][0].URLs[0] != "http://example.com/charts/deis-0.1.0.tgz" {
 		t.Errorf("Expected http://example.com/charts/deis-0.1.0.tgz, got %s", i.Entries["deis"][0].URLs[0])
+	}
+
+	// test error condition
+	if err := i.MustAdd(&chart.Metadata{}, "error-0.1.0.tgz", "", ""); err == nil {
+		t.Fatal("expected error adding to index")
 	}
 }
 
 func TestIndexWrite(t *testing.T) {
 	i := NewIndexFile()
-	i.Add(&chart.Metadata{Name: "clipper", Version: "0.1.0"}, "clipper-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890")
+	if err := i.MustAdd(&chart.Metadata{APIVersion: "v2", Name: "clipper", Version: "0.1.0"}, "clipper-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890"); err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
 	dir, err := ioutil.TempDir("", "helm-tmp")
 	if err != nil {
 		t.Fatal(err)

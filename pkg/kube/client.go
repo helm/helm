@@ -21,6 +21,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -54,6 +56,10 @@ import (
 var ErrNoObjectsVisited = errors.New("no objects visited")
 
 var metadataAccessor = meta.NewAccessor()
+
+// ManagedFieldsManager is the name of the manager of Kubernetes managedFields
+// first introduced in Kubernetes 1.18
+var ManagedFieldsManager string
 
 // Client represents a client capable of communicating with the Kubernetes API.
 type Client struct {
@@ -100,7 +106,7 @@ func (c *Client) getKubeClient() (*kubernetes.Clientset, error) {
 	return c.kubeClient, err
 }
 
-// IsReachable tests connectivity to the cluster
+// IsReachable tests connectivity to the cluster.
 func (c *Client) IsReachable() error {
 	client, err := c.getKubeClient()
 	if err == genericclioptions.ErrEmptyConfig {
@@ -126,18 +132,19 @@ func (c *Client) Create(resources ResourceList) (*Result, error) {
 	return &Result{Created: resources}, nil
 }
 
-// Wait up to the given timeout for the specified resources to be ready
+// Wait waits up to the given timeout for the specified resources to be ready.
 func (c *Client) Wait(resources ResourceList, timeout time.Duration) error {
 	cs, err := c.getKubeClient()
 	if err != nil {
 		return err
 	}
+	checker := NewReadyChecker(cs, c.Log, PausedAsReady(true))
 	w := waiter{
-		c:       cs,
+		c:       checker,
 		log:     c.Log,
 		timeout: timeout,
 	}
-	return w.waitForResources(resources, false)
+	return w.waitForResources(resources)
 }
 
 // WaitWithJobs wait up to the given timeout for the specified resources to be ready, including jobs.
@@ -146,12 +153,13 @@ func (c *Client) WaitWithJobs(resources ResourceList, timeout time.Duration) err
 	if err != nil {
 		return err
 	}
+	checker := NewReadyChecker(cs, c.Log, PausedAsReady(true), CheckJobs(true))
 	w := waiter{
-		c:       cs,
+		c:       checker,
 		log:     c.Log,
 		timeout: timeout,
 	}
-	return w.waitForResources(resources, true)
+	return w.waitForResources(resources)
 }
 
 func (c *Client) namespace() string {
@@ -204,7 +212,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			return err
 		}
 
-		helper := resource.NewHelper(info.Client, info.Mapping)
+		helper := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(getManagedFieldsManager())
 		if _, err := helper.Get(info.Namespace, info.Name); err != nil {
 			if !apierrors.IsNotFound(err) {
 				return errors.Wrap(err, "could not get information about the resource")
@@ -322,7 +330,7 @@ func (c *Client) watchTimeout(t time.Duration) func(*resource.Info) error {
 
 // WatchUntilReady watches the resources given and waits until it is ready.
 //
-// This function is mainly for hook implementations. It watches for a resource to
+// This method is mainly for hook implementations. It watches for a resource to
 // hit a particular milestone. The milestone depends on the Kind.
 //
 // For most kinds, it checks to see if the resource is marked as Added or Modified
@@ -357,6 +365,26 @@ func perform(infos ResourceList, fn func(*resource.Info) error) error {
 	return nil
 }
 
+// getManagedFieldsManager returns the manager string. If one was set it will be returned.
+// Otherwise, one is calculated based on the name of the binary.
+func getManagedFieldsManager() string {
+
+	// When a manager is explicitly set use it
+	if ManagedFieldsManager != "" {
+		return ManagedFieldsManager
+	}
+
+	// When no manager is set and no calling application can be found it is unknown
+	if len(os.Args[0]) == 0 {
+		return "unknown"
+	}
+
+	// When there is an application that can be determined and no set manager
+	// use the base name. This is one of the ways Kubernetes libs handle figuring
+	// names out.
+	return filepath.Base(os.Args[0])
+}
+
 func batchPerform(infos ResourceList, fn func(*resource.Info) error, errs chan<- error) {
 	var kind string
 	var wg sync.WaitGroup
@@ -375,7 +403,7 @@ func batchPerform(infos ResourceList, fn func(*resource.Info) error, errs chan<-
 }
 
 func createResource(info *resource.Info) error {
-	obj, err := resource.NewHelper(info.Client, info.Mapping).Create(info.Namespace, true, info.Object)
+	obj, err := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(getManagedFieldsManager()).Create(info.Namespace, true, info.Object)
 	if err != nil {
 		return err
 	}
@@ -385,7 +413,7 @@ func createResource(info *resource.Info) error {
 func deleteResource(info *resource.Info) error {
 	policy := metav1.DeletePropagationBackground
 	opts := &metav1.DeleteOptions{PropagationPolicy: &policy}
-	_, err := resource.NewHelper(info.Client, info.Mapping).DeleteWithOptions(info.Namespace, info.Name, opts)
+	_, err := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(getManagedFieldsManager()).DeleteWithOptions(info.Namespace, info.Name, opts)
 	return err
 }
 
@@ -400,7 +428,7 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 	}
 
 	// Fetch the current object for the three way merge
-	helper := resource.NewHelper(target.Client, target.Mapping)
+	helper := resource.NewHelper(target.Client, target.Mapping).WithFieldManager(getManagedFieldsManager())
 	currentObj, err := helper.Get(target.Namespace, target.Name)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return nil, types.StrategicMergePatchType, errors.Wrapf(err, "unable to get data for current object %s/%s", target.Namespace, target.Name)
@@ -442,7 +470,7 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force bool) error {
 	var (
 		obj    runtime.Object
-		helper = resource.NewHelper(target.Client, target.Mapping)
+		helper = resource.NewHelper(target.Client, target.Mapping).WithFieldManager(getManagedFieldsManager())
 		kind   = target.Mapping.GroupVersionKind.Kind
 	)
 

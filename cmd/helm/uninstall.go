@@ -48,10 +48,7 @@ func newUninstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Long:       uninstallDesc,
 		Args:       require.MinimumNArgs(1),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			if len(args) != 0 {
-				return nil, cobra.ShellCompDirectiveNoFileComp
-			}
-			return compListReleases(toComplete, cfg)
+			return compListReleases(toComplete, args, cfg)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			for i := 0; i < len(args); i++ {

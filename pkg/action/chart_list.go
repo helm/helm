@@ -18,11 +18,14 @@ package action
 
 import (
 	"io"
+
+	"helm.sh/helm/v3/internal/experimental/registry"
 )
 
 // ChartList performs a chart list operation.
 type ChartList struct {
-	cfg *Configuration
+	cfg         *Configuration
+	ColumnWidth uint
 }
 
 // NewChartList creates a new ChartList object with the given configuration.
@@ -34,5 +37,8 @@ func NewChartList(cfg *Configuration) *ChartList {
 
 // Run executes the chart list operation
 func (a *ChartList) Run(out io.Writer) error {
-	return a.cfg.RegistryClient.PrintChartTable()
+	client := a.cfg.RegistryClient
+	opt := registry.ClientOptColumnWidth(a.ColumnWidth)
+	opt(client)
+	return client.PrintChartTable()
 }

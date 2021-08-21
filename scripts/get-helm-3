@@ -23,6 +23,7 @@
 : ${VERIFY_CHECKSUM:="true"}
 : ${VERIFY_SIGNATURES:="false"}
 : ${HELM_INSTALL_DIR:="/usr/local/bin"}
+: ${GPG_PUBRING:="pubring.kbx"}
 
 HAS_CURL="$(type "curl" &> /dev/null && echo true || echo false)"
 HAS_WGET="$(type "wget" &> /dev/null && echo true || echo false)"
@@ -56,19 +57,17 @@ initOS() {
 
 # runs the given command as root (detects if we are root already)
 runAsRoot() {
-  local CMD="$*"
-
-  if [ $EUID -ne 0 -a $USE_SUDO = "true" ]; then
-    CMD="sudo $CMD"
+  if [ $EUID -ne 0 -a "$USE_SUDO" = "true" ]; then
+    sudo "${@}"
+  else
+    "${@}"
   fi
-
-  $CMD
 }
 
 # verifySupported checks that the os/arch combination is supported for
 # binary builds, as well whether or not necessary tools are present.
 verifySupported() {
-  local supported="darwin-amd64\nlinux-386\nlinux-amd64\nlinux-arm\nlinux-arm64\nlinux-ppc64le\nlinux-s390x\nwindows-amd64"
+  local supported="darwin-amd64\ndarwin-arm64\nlinux-386\nlinux-amd64\nlinux-arm\nlinux-arm64\nlinux-ppc64le\nlinux-s390x\nwindows-amd64"
   if ! echo "${supported}" | grep -q "${OS}-${ARCH}"; then
     echo "No prebuilt binary for ${OS}-${ARCH}."
     echo "To build from source, go to https://github.com/helm/helm"
@@ -186,13 +185,13 @@ verifyChecksum() {
   echo "Done."
 }
 
-# verifySignatures obtains the latest KEYS file from GitHub master branch
+# verifySignatures obtains the latest KEYS file from GitHub main branch
 # as well as the signature .asc files from the specific GitHub release,
 # then verifies that the release artifacts were signed by a maintainer's key.
 verifySignatures() {
   printf "Verifying signatures... "
   local keys_filename="KEYS"
-  local github_keys_url="https://raw.githubusercontent.com/helm/helm/master/${keys_filename}"
+  local github_keys_url="https://raw.githubusercontent.com/helm/helm/main/${keys_filename}"
   if [ "${HAS_CURL}" == "true" ]; then
     curl -SsL "${github_keys_url}" -o "${HELM_TMP_ROOT}/${keys_filename}"
   elif [ "${HAS_WGET}" == "true" ]; then
@@ -206,7 +205,7 @@ verifySignatures() {
     gpg_stderr_device="/dev/stderr"
   fi
   gpg --batch --quiet --homedir="${gpg_homedir}" --import "${HELM_TMP_ROOT}/${keys_filename}" 2> "${gpg_stderr_device}"
-  gpg --batch --no-default-keyring --keyring "${gpg_homedir}/pubring.kbx" --export > "${gpg_keyring}"
+  gpg --batch --no-default-keyring --keyring "${gpg_homedir}/${GPG_PUBRING}" --export > "${gpg_keyring}"
   local github_release_url="https://github.com/helm/helm/releases/download/${TAG}"
   if [ "${HAS_CURL}" == "true" ]; then
     curl -SsL "${github_release_url}/helm-${TAG}-${OS}-${ARCH}.tar.gz.sha256.asc" -o "${HELM_TMP_ROOT}/helm-${TAG}-${OS}-${ARCH}.tar.gz.sha256.asc"

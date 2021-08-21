@@ -88,5 +88,5 @@ func TestSearchHubOutputCompletion(t *testing.T) {
 }
 
 func TestSearchHubFileCompletion(t *testing.T) {
-	checkFileCompletion(t, "search hub", true) // File completion may be useful when inputing a keyword
+	checkFileCompletion(t, "search hub", true) // File completion may be useful when inputting a keyword
 }

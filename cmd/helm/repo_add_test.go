@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 
@@ -142,6 +143,18 @@ func TestRepoAddConcurrentDirNotExist(t *testing.T) {
 	repoAddConcurrent(t, testName, repoFile)
 }
 
+func TestRepoAddConcurrentNoFileExtension(t *testing.T) {
+	const testName = "test-name-3"
+	repoFile := filepath.Join(ensure.TempDir(t), "repositories")
+	repoAddConcurrent(t, testName, repoFile)
+}
+
+func TestRepoAddConcurrentHiddenFile(t *testing.T) {
+	const testName = "test-name-4"
+	repoFile := filepath.Join(ensure.TempDir(t), ".repositories")
+	repoAddConcurrent(t, testName, repoFile)
+}
+
 func repoAddConcurrent(t *testing.T, testName, repoFile string) {
 	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
 	if err != nil {
@@ -191,4 +204,34 @@ func TestRepoAddFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "repo add", false)
 	checkFileCompletion(t, "repo add reponame", false)
 	checkFileCompletion(t, "repo add reponame https://example.com", false)
+}
+
+func TestRepoAddWithPasswordFromStdin(t *testing.T) {
+	srv := repotest.NewTempServerWithCleanupAndBasicAuth(t, "testdata/testserver/*.*")
+	defer srv.Stop()
+
+	defer resetEnv()()
+
+	in, err := os.Open("testdata/password")
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	tmpdir := ensure.TempDir(t)
+	repoFile := filepath.Join(tmpdir, "repositories.yaml")
+
+	store := storageFixture()
+
+	const testName = "test-name"
+	const username = "username"
+	cmd := fmt.Sprintf("repo add %s %s --repository-config %s --repository-cache %s --username %s --password-stdin", testName, srv.URL(), repoFile, tmpdir, username)
+	var result string
+	_, result, err = executeActionCommandStdinC(store, in, cmd)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	if !strings.Contains(result, fmt.Sprintf("\"%s\" has been added to your repositories", testName)) {
+		t.Errorf("Repo was not successfully added. Output: %s", result)
+	}
 }

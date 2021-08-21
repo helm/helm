@@ -74,7 +74,6 @@ metadata:
     kube-version/major: "1"
     kube-version/minor: "20"
     kube-version/version: "v1.20.0"
-    kube-api-version/test: v1
 spec:
   type: ClusterIP
   ports:

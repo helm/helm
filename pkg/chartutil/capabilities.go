@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/Masterminds/semver/v3"
 	"k8s.io/client-go/kubernetes/scheme"
 
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -58,6 +59,14 @@ type Capabilities struct {
 	HelmVersion helmversion.BuildInfo
 }
 
+func (capabilities *Capabilities) Copy() *Capabilities {
+	return &Capabilities{
+		KubeVersion: capabilities.KubeVersion,
+		APIVersions: capabilities.APIVersions,
+		HelmVersion: capabilities.HelmVersion,
+	}
+}
+
 // KubeVersion is the Kubernetes version.
 type KubeVersion struct {
 	Version string // Kubernetes version
@@ -72,6 +81,19 @@ func (kv *KubeVersion) String() string { return kv.Version }
 //
 // Deprecated: use KubeVersion.Version.
 func (kv *KubeVersion) GitVersion() string { return kv.Version }
+
+// ParseKubeVersion parses kubernetes version from string
+func ParseKubeVersion(version string) (*KubeVersion, error) {
+	sv, err := semver.NewVersion(version)
+	if err != nil {
+		return nil, err
+	}
+	return &KubeVersion{
+		Version: "v" + sv.String(),
+		Major:   strconv.FormatUint(sv.Major(), 10),
+		Minor:   strconv.FormatUint(sv.Minor(), 10),
+	}, nil
+}
 
 // VersionSet is a set of Kubernetes API versions.
 type VersionSet []string

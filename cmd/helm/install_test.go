@@ -18,10 +18,39 @@ package main
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"path/filepath"
 	"testing"
+
+	"helm.sh/helm/v3/pkg/repo/repotest"
 )
 
 func TestInstall(t *testing.T) {
+	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/testcharts/*.tgz*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer srv.Stop()
+
+	srv.WithMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		username, password, ok := r.BasicAuth()
+		if !ok || username != "username" || password != "password" {
+			t.Errorf("Expected request to use basic auth and for username == 'username' and password == 'password', got '%v', '%s', '%s'", ok, username, password)
+		}
+	}))
+
+	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.FileServer(http.Dir(srv.Root())).ServeHTTP(w, r)
+	}))
+	defer srv2.Close()
+
+	if err := srv.LinkIndices(); err != nil {
+		t.Fatal(err)
+	}
+
+	repoFile := filepath.Join(srv.Root(), "repositories.yaml")
+
 	tests := []cmdTestCase{
 		// Install, base case
 		{
@@ -206,6 +235,22 @@ func TestInstall(t *testing.T) {
 		{
 			name: "install chart with only crds",
 			cmd:  "install crd-test testdata/testcharts/chart-with-only-crds --namespace default",
+		},
+		// Verify the user/pass works
+		{
+			name:   "basic install with credentials",
+			cmd:    "install aeneas reqtest --namespace default --repo " + srv.URL() + " --username username --password password",
+			golden: "output/install.txt",
+		},
+		{
+			name:   "basic install with credentials",
+			cmd:    "install aeneas reqtest --namespace default --repo " + srv2.URL + " --username username --password password --pass-credentials",
+			golden: "output/install.txt",
+		},
+		{
+			name:   "basic install with credentials and no repo",
+			cmd:    fmt.Sprintf("install aeneas test/reqtest --username username --password password --repository-config %s --repository-cache %s", repoFile, srv.Root()),
+			golden: "output/install.txt",
 		},
 	}
 

@@ -40,6 +40,16 @@ func Formats() []string {
 	return []string{Table.String(), JSON.String(), YAML.String()}
 }
 
+// FormatsWithDesc returns a list of the string representation of the supported formats
+// including a description
+func FormatsWithDesc() map[string]string {
+	return map[string]string{
+		Table.String(): "Output result in human-readable format",
+		JSON.String():  "Output result in JSON format",
+		YAML.String():  "Output result in YAML format",
+	}
+}
+
 // ErrInvalidFormatType is returned when an unsupported format type is used
 var ErrInvalidFormatType = fmt.Errorf("invalid format type")
 

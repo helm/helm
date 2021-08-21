@@ -289,7 +289,7 @@ func TestFindPlugins(t *testing.T) {
 			expected: 0,
 		},
 		{
-			name:     "plugdirs doens't have plugin",
+			name:     "plugdirs doesn't have plugin",
 			plugdirs: ".",
 			expected: 0,
 		},

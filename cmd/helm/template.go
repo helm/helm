@@ -52,6 +52,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	var skipTests bool
 	client := action.NewInstall(cfg)
 	valueOpts := &values.Options{}
+	var kubeVersion string
 	var extraAPIs []string
 	var showFiles []string
 
@@ -64,6 +65,14 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return compInstall(args, toComplete, client)
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
+			if kubeVersion != "" {
+				parsedKubeVersion, err := chartutil.ParseKubeVersion(kubeVersion)
+				if err != nil {
+					return fmt.Errorf("invalid kube version '%s': %s", kubeVersion, err)
+				}
+				client.KubeVersion = parsedKubeVersion
+			}
+
 			client.DryRun = true
 			client.ReleaseName = "RELEASE-NAME"
 			client.Replace = true // Skip the name check
@@ -171,6 +180,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&includeCrds, "include-crds", false, "include CRDs in the templated output")
 	f.BoolVar(&skipTests, "skip-tests", false, "skip tests from templated output")
 	f.BoolVar(&client.IsUpgrade, "is-upgrade", false, "set .Release.IsUpgrade instead of .Release.IsInstall")
+	f.StringVar(&kubeVersion, "kube-version", "", "Kubernetes version used for Capabilities.KubeVersion")
 	f.StringArrayVarP(&extraAPIs, "api-versions", "a", []string{}, "Kubernetes api versions used for Capabilities.APIVersions")
 	f.BoolVar(&client.UseReleaseName, "release-name", false, "use release name in the output-dir path.")
 	bindPostRenderFlag(cmd, &client.PostRenderer)
@@ -188,7 +198,7 @@ func isTestHook(h *release.Hook) bool {
 }
 
 // The following functions (writeToFile, createOrOpenFile, and ensureDirectoryForFile)
-// are coppied from the actions package. This is part of a change to correct a
+// are copied from the actions package. This is part of a change to correct a
 // bug introduced by #8156. As part of the todo to refactor renderResources
 // this duplicate code should be removed. It is added here so that the API
 // surface area is as minimally impacted as possible in fixing the issue.

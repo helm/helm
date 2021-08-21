@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -92,8 +93,10 @@ type Install struct {
 	SubNotes                 bool
 	DisableOpenAPIValidation bool
 	IncludeCRDs              bool
+	// KubeVersion allows specifying a custom kubernetes version to use and
 	// APIVersions allows a manual set of supported API Versions to be passed
 	// (for things like templating). These are ignored if ClientOnly is false
+	KubeVersion *chartutil.KubeVersion
 	APIVersions chartutil.VersionSet
 	// Used by helm template to render charts with .Release.IsUpgrade. Ignored if Dry-Run is false
 	IsUpgrade bool
@@ -111,6 +114,7 @@ type ChartPathOptions struct {
 	InsecureSkipTLSverify bool   // --insecure-skip-verify
 	Keyring               string // --keyring
 	Password              string // --password
+	PassCredentialsAll    bool   // --pass-credentials
 	RepoURL               string // --repo
 	Username              string // --username
 	Verify                bool   // --verify
@@ -196,7 +200,10 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	if i.ClientOnly {
 		// Add mock objects in here so it doesn't use Kube API server
 		// NOTE(bacongobbler): used for `helm template`
-		i.cfg.Capabilities = chartutil.DefaultCapabilities
+		i.cfg.Capabilities = chartutil.DefaultCapabilities.Copy()
+		if i.KubeVersion != nil {
+			i.cfg.Capabilities.KubeVersion = *i.KubeVersion
+		}
 		i.cfg.Capabilities.APIVersions = append(i.cfg.Capabilities.APIVersions, i.APIVersions...)
 		i.cfg.KubeClient = &kubefake.PrintingKubeClient{Out: ioutil.Discard}
 
@@ -220,7 +227,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 		return nil, err
 	}
 
-	//special case for helm template --is-upgrade
+	// special case for helm template --is-upgrade
 	isUpgrade := i.IsUpgrade && i.DryRun
 	options := chartutil.ReleaseOptions{
 		Name:      i.ReleaseName,
@@ -649,7 +656,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		Keyring: c.Keyring,
 		Getters: getter.All(settings),
 		Options: []getter.Option{
-			getter.WithBasicAuth(c.Username, c.Password),
+			getter.WithPassCredentialsAll(c.PassCredentialsAll),
 			getter.WithTLSClientConfig(c.CertFile, c.KeyFile, c.CaFile),
 			getter.WithInsecureSkipVerifyTLS(c.InsecureSkipTLSverify),
 		},
@@ -660,12 +667,34 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		dl.Verify = downloader.VerifyAlways
 	}
 	if c.RepoURL != "" {
-		chartURL, err := repo.FindChartInAuthAndTLSRepoURL(c.RepoURL, c.Username, c.Password, name, version,
-			c.CertFile, c.KeyFile, c.CaFile, c.InsecureSkipTLSverify, getter.All(settings))
+		chartURL, err := repo.FindChartInAuthAndTLSAndPassRepoURL(c.RepoURL, c.Username, c.Password, name, version,
+			c.CertFile, c.KeyFile, c.CaFile, c.InsecureSkipTLSverify, c.PassCredentialsAll, getter.All(settings))
 		if err != nil {
 			return "", err
 		}
 		name = chartURL
+
+		// Only pass the user/pass on when the user has said to or when the
+		// location of the chart repo and the chart are the same domain.
+		u1, err := url.Parse(c.RepoURL)
+		if err != nil {
+			return "", err
+		}
+		u2, err := url.Parse(chartURL)
+		if err != nil {
+			return "", err
+		}
+
+		// Host on URL (returned from url.Parse) contains the port if present.
+		// This check ensures credentials are not passed between different
+		// services on different ports.
+		if c.PassCredentialsAll || (u1.Scheme == u2.Scheme && u1.Host == u2.Host) {
+			dl.Options = append(dl.Options, getter.WithBasicAuth(c.Username, c.Password))
+		} else {
+			dl.Options = append(dl.Options, getter.WithBasicAuth("", ""))
+		}
+	} else {
+		dl.Options = append(dl.Options, getter.WithBasicAuth(c.Username, c.Password))
 	}
 
 	if err := os.MkdirAll(settings.RepositoryCache, 0755); err != nil {

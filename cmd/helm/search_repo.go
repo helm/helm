@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -143,7 +144,7 @@ func (o *searchRepoOptions) setupSearchedVersion() {
 }
 
 func (o *searchRepoOptions) applyConstraint(res []*search.Result) ([]*search.Result, error) {
-	if len(o.version) == 0 {
+	if o.version == "" {
 		return res, nil
 	}
 
@@ -154,26 +155,19 @@ func (o *searchRepoOptions) applyConstraint(res []*search.Result) ([]*search.Res
 
 	data := res[:0]
 	foundNames := map[string]bool{}
-	appendSearchResults := func(res *search.Result) {
-		data = append(data, res)
-		if !o.versions {
-			foundNames[res.Name] = true // If user hasn't requested all versions, only show the latest that matches
-		}
-	}
 	for _, r := range res {
-		if _, found := foundNames[r.Name]; found {
+		// if not returning all versions and already have found a result,
+		// you're done!
+		if !o.versions && foundNames[r.Name] {
 			continue
 		}
 		v, err := semver.NewVersion(r.Chart.Version)
-
 		if err != nil {
-			// If the current version number check appears ErrSegmentStartsZero or ErrInvalidPrerelease error and not devel mode, ignore
-			if (err == semver.ErrSegmentStartsZero || err == semver.ErrInvalidPrerelease) && !o.devel {
-				continue
-			}
-			appendSearchResults(r)
-		} else if constraint.Check(v) {
-			appendSearchResults(r)
+			continue
+		}
+		if constraint.Check(v) {
+			data = append(data, r)
+			foundNames[r.Name] = true
 		}
 	}
 
@@ -194,6 +188,7 @@ func (o *searchRepoOptions) buildIndex() (*search.Index, error) {
 		ind, err := repo.LoadIndexFile(f)
 		if err != nil {
 			warning("Repo %q is corrupt or missing. Try 'helm repo update'.", n)
+			warning("%s", err)
 			continue
 		}
 
@@ -307,7 +302,14 @@ func compListCharts(toComplete string, includeFiles bool) ([]string, cobra.Shell
 
 	// First check completions for repos
 	repos := compListRepos("", nil)
-	for _, repo := range repos {
+	for _, repoInfo := range repos {
+		// Split name from description
+		repoInfo := strings.Split(repoInfo, "\t")
+		repo := repoInfo[0]
+		repoDesc := ""
+		if len(repoInfo) > 1 {
+			repoDesc = repoInfo[1]
+		}
 		repoWithSlash := fmt.Sprintf("%s/", repo)
 		if strings.HasPrefix(toComplete, repoWithSlash) {
 			// Must complete with charts within the specified repo
@@ -315,15 +317,15 @@ func compListCharts(toComplete string, includeFiles bool) ([]string, cobra.Shell
 			noSpace = false
 			break
 		} else if strings.HasPrefix(repo, toComplete) {
-			// Must complete the repo name
-			completions = append(completions, repoWithSlash)
+			// Must complete the repo name with the slash, followed by the description
+			completions = append(completions, fmt.Sprintf("%s\t%s", repoWithSlash, repoDesc))
 			noSpace = true
 		}
 	}
 	cobra.CompDebugln(fmt.Sprintf("Completions after repos: %v", completions), settings.Debug)
 
 	// Now handle completions for url prefixes
-	for _, url := range []string{"https://", "http://", "file://"} {
+	for _, url := range []string{"https://\tChart URL prefix", "http://\tChart URL prefix", "file://\tChart local URL prefix"} {
 		if strings.HasPrefix(toComplete, url) {
 			// The user already put in the full url prefix; we don't have
 			// anything to add, but make sure the shell does not default
@@ -346,7 +348,7 @@ func compListCharts(toComplete string, includeFiles bool) ([]string, cobra.Shell
 	//    listing the entire content of the current directory which will
 	//    be too many choices for the user to find the real repos)
 	if includeFiles && len(completions) > 0 && len(toComplete) > 0 {
-		if files, err := ioutil.ReadDir("."); err == nil {
+		if files, err := os.ReadDir("."); err == nil {
 			for _, file := range files {
 				if strings.HasPrefix(file.Name(), toComplete) {
 					// We are completing a file prefix
@@ -360,7 +362,7 @@ func compListCharts(toComplete string, includeFiles bool) ([]string, cobra.Shell
 	// If the user didn't provide any input to completion,
 	// we provide a hint that a path can also be used
 	if includeFiles && len(toComplete) == 0 {
-		completions = append(completions, "./", "/")
+		completions = append(completions, "./\tRelative path prefix to local chart", "/\tAbsolute path prefix to local chart")
 	}
 	cobra.CompDebugln(fmt.Sprintf("Completions after checking empty input: %v", completions), settings.Debug)
 

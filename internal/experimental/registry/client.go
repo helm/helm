@@ -25,12 +25,12 @@ import (
 	"net/http"
 	"sort"
 
-	auth "github.com/deislabs/oras/pkg/auth/docker"
-	"github.com/deislabs/oras/pkg/content"
-	"github.com/deislabs/oras/pkg/oras"
 	"github.com/gosuri/uitable"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
+	auth "oras.land/oras-go/pkg/auth/docker"
+	"oras.land/oras-go/pkg/content"
+	"oras.land/oras-go/pkg/oras"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/helmpath"
@@ -51,6 +51,7 @@ type (
 		authorizer      *Authorizer
 		resolver        *Resolver
 		cache           *Cache
+		columnWidth     uint
 	}
 )
 
@@ -94,6 +95,10 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 			return nil, err
 		}
 		client.cache = cache
+	}
+
+	if client.columnWidth == 0 {
+		client.columnWidth = 60
 	}
 	return client, nil
 }
@@ -279,7 +284,7 @@ func (c *Client) RemoveChart(ref *Reference) error {
 // PrintChartTable prints a list of locally stored charts
 func (c *Client) PrintChartTable() error {
 	table := uitable.New()
-	table.MaxColWidth = 60
+	table.MaxColWidth = c.columnWidth
 	table.AddRow("REF", "NAME", "VERSION", "DIGEST", "SIZE", "CREATED")
 	rows, err := c.getChartTableRows()
 	if err != nil {
