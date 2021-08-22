@@ -362,7 +362,7 @@ func TestUpgradeWithExternalFile(t *testing.T) {
 	releaseName := "funny-bunny-v7"
 
 	exFiles := []*chart.File{
-		{Name: "external.txt", Data: []byte("from-external-file")},
+		{Name: "testdata/files/external.txt", Data: []byte("from-external-file")},
 	}
 
 	relMock, ch, chartPath := prepareMockReleaseWithExternal(releaseName, exFiles, t)
@@ -373,7 +373,7 @@ func TestUpgradeWithExternalFile(t *testing.T) {
 
 	store.Create(relMock(releaseName, 3, ch))
 
-	cmd := fmt.Sprintf("upgrade %s --set glob.enabled=false --set external=external.txt '%s'", releaseName, chartPath)
+	cmd := fmt.Sprintf("upgrade %s --set glob.enabled=false --set external=testdata/files/external.txt '%s'", releaseName, chartPath)
 	_, _, err := executeActionCommandC(store, cmd)
 	if err != nil {
 		t.Errorf("unexpected error, got '%v'", err)

@@ -300,36 +300,25 @@ func checkIfInstallable(ch *chart.Chart) error {
 
 func loadExternalFiles(ch *chart.Chart, exFiles files.ExternalFiles) error {
 	var errs []string
-	fs := make(map[string]string)
+	var fs []string
 
-	for _, s := range exFiles.Files {
-		if err := files.ParseIntoString(s, fs); err != nil {
-			debug(fmt.Sprintf("error parsing include-file option %s: %v", s, err))
-			errs = append(errs, fmt.Sprintf("%s (parse error)", s))
-		}
-	}
+	fs = append(fs, exFiles.Files...)
+	fs = append(fs, exFiles.Globs...)
 
-	for _, g := range exFiles.Globs {
-		if err := files.ParseIntoString(g, fs); err != nil {
-			debug(fmt.Sprintf("error parsing include-dir option %s: %v", g, err))
-			errs = append(errs, fmt.Sprintf("%s (parse error)", g))
-		}
-	}
-
-	for n, p := range fs {
-		allPaths, err := loader.ExpandLocalPath(n, p)
-		debug(fmt.Sprintf("%s expanded to: %v", p, allPaths))
+	for _, path := range fs {
+		allPaths, err := loader.ExpandFilePath(path)
+		debug(fmt.Sprintf("%s expanded to: %v", path, allPaths))
 		if err != nil {
-			debug(fmt.Sprintf("error loading external path %s: %v", p, err))
-			errs = append(errs, fmt.Sprintf("%s (path not accessible)", p))
+			debug(fmt.Sprintf("error loading external path %s: %v", path, err))
+			errs = append(errs, fmt.Sprintf("%s (path not accessible)", path))
 		}
 
-		for name, fp := range allPaths {
-			byt, err := ioutil.ReadFile(fp)
+		for _, name := range allPaths {
+			fileContentBytes, err := ioutil.ReadFile(name)
 			if err != nil {
-				errs = append(errs, fmt.Sprintf("%s (not readable)", fp))
+				errs = append(errs, fmt.Sprintf("%s (not readable)", name))
 			} else {
-				ch.Files = append(ch.Files, &chart.File{Name: name, Data: byt})
+				ch.Files = append(ch.Files, &chart.File{Name: name, Data: fileContentBytes})
 			}
 		}
 	}

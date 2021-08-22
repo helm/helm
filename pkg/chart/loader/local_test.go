@@ -16,31 +16,23 @@ package loader
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestExpandLocalPath(t *testing.T) {
-	need := require.New(t)
-	is := assert.New(t)
+	req := require.New(t)
 
-	glob, err := ExpandLocalPath("glob", "testdata/frobnitz/*.yaml")
-	need.NoError(err)
-	need.Contains(glob, "glob/Chart.yaml")
-	need.Contains(glob, "glob/values.yaml")
-	is.Equal("testdata/frobnitz/Chart.yaml", glob["glob/Chart.yaml"])
-	is.Equal("testdata/frobnitz/values.yaml", glob["glob/values.yaml"])
+	glob, err := ExpandFilePath("testdata/frobnitz/*.yaml")
+	req.NoError(err)
+	req.Contains(glob, "testdata/frobnitz/Chart.yaml")
+	req.Contains(glob, "testdata/frobnitz/values.yaml")
 
-	dir, err := ExpandLocalPath("dir", "testdata/albatross/")
-	need.NoError(err)
-	need.Contains(dir, "dir/Chart.yaml")
-	need.Contains(dir, "dir/values.yaml")
-	is.Equal("testdata/albatross/Chart.yaml", dir["dir/Chart.yaml"])
-	is.Equal("testdata/albatross/values.yaml", dir["dir/values.yaml"])
+	dir, err := ExpandFilePath("testdata/albatross/")
+	req.NoError(err)
+	req.Contains(dir, "testdata/albatross/Chart.yaml")
+	req.Contains(dir, "testdata/albatross/values.yaml")
 
-	file, err := ExpandLocalPath("file", "testdata/albatross/Chart.yaml")
-	need.NoError(err)
-	need.Contains(file, "file")
-	is.Equal("testdata/albatross/Chart.yaml", file["file"])
-
+	file, err := ExpandFilePath("testdata/albatross/Chart.yaml")
+	req.NoError(err)
+	req.Contains(file, "testdata/albatross/Chart.yaml")
 }

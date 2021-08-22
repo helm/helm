@@ -1,4 +1,4 @@
 external: false
 glob:
   enabled: false
-  path: "glob/*"
+  path: "testdata/files/*"

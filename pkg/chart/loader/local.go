@@ -20,29 +20,28 @@ import (
 	"strings"
 )
 
-// ExpandLocalPath expands a local file, dir or glob path to a list of files
-func ExpandLocalPath(name string, path string) (map[string]string, error) {
+// ExpandFilePath expands a local file, dir or glob path to a list of files
+func ExpandFilePath(path string) ([]string, error) {
 	if strings.Contains(path, "*") {
 		// if this is a glob, we expand it and return a list of files
-		return expandGlob(name, path)
+		return expandGlob(path)
 	}
 
-	fi, err := os.Stat(path)
+	fileInfo, err := os.Stat(path)
 	if err != nil {
 		return nil, err
 	}
 
-	if fi.IsDir() {
+	if fileInfo.IsDir() {
 		// if this is a valid dir, we return all files within
-		return expandDir(name, path)
+		return expandDir(path)
 	}
 
 	// finally, this is a file, so we return it
-	return map[string]string{name: path}, nil
+	return []string{path}, nil
 }
 
-func expandGlob(name string, path string) (map[string]string, error) {
-	fmap := make(map[string]string)
+func expandGlob(path string) ([]string, error) {
 	paths, err := filepath.Glob(path)
 	if err != nil {
 		return nil, err
@@ -51,18 +50,10 @@ func expandGlob(name string, path string) (map[string]string, error) {
 		return nil, errors.New("empty glob")
 	}
 
-	namePrefix := strings.TrimRight(name, "/") + "/"
-	for _, p := range paths {
-		key := namePrefix + filepath.Base(p)
-		fmap[key] = p
-	}
-
-	return fmap, nil
+	return paths, err
 }
 
-func expandDir(name string, path string) (map[string]string, error) {
-	fmap := make(map[string]string)
-
+func expandDir(path string) ([]string, error) {
 	f, err := os.Open(path)
 
 	if err != nil {
@@ -70,16 +61,15 @@ func expandDir(name string, path string) (map[string]string, error) {
 	}
 	defer f.Close()
 
-	files, err := f.Readdir(-1)
+	filesInfos, err := f.Readdir(-1)
 	if err != nil {
 		return nil, err
 	}
 
+	var filesPaths []string
 	localDirName := strings.TrimRight(path, "/") + "/"
-	namePrefix := strings.TrimRight(name, "/") + "/"
-	for _, file := range files {
-		key := namePrefix + file.Name()
-		fmap[key] = localDirName + file.Name()
+	for _, file := range filesInfos {
+		filesPaths = append(filesPaths, localDirName+file.Name())
 	}
-	return fmap, nil
+	return filesPaths, nil
 }
