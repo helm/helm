@@ -346,6 +346,36 @@ func TestAllTemplates(t *testing.T) {
 	}
 }
 
+func TestChartValuesContainsIsRoot(t *testing.T) {
+	ch1 := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "parent"},
+		Templates: []*chart.File{
+			{Name: "templates/isroot", Data: []byte("{{.Chart.IsRoot}}")},
+		},
+	}
+	dep1 := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "child"},
+		Templates: []*chart.File{
+			{Name: "templates/isroot", Data: []byte("{{.Chart.IsRoot}}")},
+		},
+	}
+	ch1.AddDependency(dep1)
+
+	out, err := Render(ch1, chartutil.Values{})
+	if err != nil {
+		t.Fatalf("failed to render templates: %s", err)
+	}
+	expects := map[string]string{
+		"parent/charts/child/templates/isroot": "false",
+		"parent/templates/isroot":              "true",
+	}
+	for file, expect := range expects {
+		if out[file] != expect {
+			t.Errorf("Expected %q, got %q", expect, out[file])
+		}
+	}
+}
+
 func TestRenderDependency(t *testing.T) {
 	deptpl := `{{define "myblock"}}World{{end}}`
 	toptpl := `Hello {{template "myblock"}}`
