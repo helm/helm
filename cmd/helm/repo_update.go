@@ -41,10 +41,11 @@ To update all the repositories, use 'helm repo update'.
 var errNoRepositories = errors.New("no repositories found. You must add one before updating")
 
 type repoUpdateOptions struct {
-	update    func([]*repo.ChartRepository, io.Writer)
-	repoFile  string
-	repoCache string
-	names     []string
+	update               func([]*repo.ChartRepository, io.Writer, bool) error
+	repoFile             string
+	repoCache            string
+	names                []string
+	failOnRepoUpdateFail bool
 }
 
 func newRepoUpdateCmd(out io.Writer) *cobra.Command {
@@ -66,6 +67,13 @@ func newRepoUpdateCmd(out io.Writer) *cobra.Command {
 			return o.run(out)
 		},
 	}
+
+	f := cmd.Flags()
+
+	// Adding this flag for Helm 3 as stop gap functionality for https://github.com/helm/helm/issues/10016.
+	// This should be deprecated in Helm 4 by update to the behaviour of `helm repo update` command.
+	f.BoolVar(&o.failOnRepoUpdateFail, "fail-on-repo-update-fail", false, "update fails if any of the repository updates fail")
+
 	return cmd
 }
 
@@ -103,26 +111,34 @@ func (o *repoUpdateOptions) run(out io.Writer) error {
 		}
 	}
 
-	o.update(repos, out)
-	return nil
+	return o.update(repos, out, o.failOnRepoUpdateFail)
 }
 
-func updateCharts(repos []*repo.ChartRepository, out io.Writer) {
+func updateCharts(repos []*repo.ChartRepository, out io.Writer, failOnRepoUpdateFail bool) error {
 	fmt.Fprintln(out, "Hang tight while we grab the latest from your chart repositories...")
 	var wg sync.WaitGroup
+	var repoFailList []string
 	for _, re := range repos {
 		wg.Add(1)
 		go func(re *repo.ChartRepository) {
 			defer wg.Done()
 			if _, err := re.DownloadIndexFile(); err != nil {
 				fmt.Fprintf(out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", re.Config.Name, re.Config.URL, err)
+				repoFailList = append(repoFailList, re.Config.URL)
 			} else {
 				fmt.Fprintf(out, "...Successfully got an update from the %q chart repository\n", re.Config.Name)
 			}
 		}(re)
 	}
 	wg.Wait()
+
+	if len(repoFailList) > 0 && failOnRepoUpdateFail {
+		return errors.New(fmt.Sprintf("Failed to update the following repositories: %s",
+			repoFailList))
+	}
+
 	fmt.Fprintln(out, "Update Complete. ⎈Happy Helming!⎈")
+	return nil
 }
 
 func checkRequestedRepos(requestedRepos []string, validRepos []*repo.Entry) error {
