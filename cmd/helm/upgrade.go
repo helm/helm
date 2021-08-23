@@ -116,7 +116,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.PostRenderer = client.PostRenderer
 					instClient.DisableOpenAPIValidation = client.DisableOpenAPIValidation
 					instClient.SubNotes = client.SubNotes
-					instClient.ExternalFiles = client.ExternalFiles
+					instClient.ExternalPaths = client.ExternalPaths
 					instClient.Description = client.Description
 					instClient.DependencyUpdate = client.DependencyUpdate
 
@@ -182,7 +182,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				warning("This chart is deprecated")
 			}
 
-			err = loadExternalFiles(ch, client.ExternalFiles)
+			err = loadExternalPaths(ch, client.ExternalPaths)
 			if err != nil {
 				return err
 			}
@@ -241,7 +241,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	addValueOptionsFlags(f, valueOpts)
 	bindOutputFlag(cmd, &outfmt)
 	bindPostRenderFlag(cmd, &client.PostRenderer)
-	addExternalFilesFlags(f, &client.ExternalFiles)
+	addExternalPathsFlags(f, &client.ExternalPaths)
 
 	err := cmd.RegisterFlagCompletionFunc("version", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) != 2 {

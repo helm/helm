@@ -36,7 +36,6 @@ import (
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/cli/files"
 	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/downloader"
@@ -174,7 +173,7 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 	f.BoolVar(&client.SubNotes, "render-subchart-notes", false, "if set, render subchart notes along with the parent")
 	addValueOptionsFlags(f, valueOpts)
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
-	addExternalFilesFlags(f, &client.ExternalFiles)
+	addExternalPathsFlags(f, &client.ExternalPaths)
 
 	err := cmd.RegisterFlagCompletionFunc("version", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		requiredArgs := 2
@@ -262,7 +261,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		}
 	}
 
-	err = loadExternalFiles(chartRequested, client.ExternalFiles)
+	err = loadExternalPaths(chartRequested, client.ExternalPaths)
 	if err != nil {
 		return nil, err
 	}
@@ -298,14 +297,10 @@ func checkIfInstallable(ch *chart.Chart) error {
 	return errors.Errorf("%s charts are not installable", ch.Metadata.Type)
 }
 
-func loadExternalFiles(ch *chart.Chart, exFiles files.ExternalFiles) error {
+func loadExternalPaths(ch *chart.Chart, externalPaths []string) error {
 	var errs []string
-	var fs []string
 
-	fs = append(fs, exFiles.Files...)
-	fs = append(fs, exFiles.Globs...)
-
-	for _, path := range fs {
+	for _, path := range externalPaths {
 		allPaths, err := loader.ExpandFilePath(path)
 		debug(fmt.Sprintf("%s expanded to: %v", path, allPaths))
 		if err != nil {
@@ -324,7 +319,7 @@ func loadExternalFiles(ch *chart.Chart, exFiles files.ExternalFiles) error {
 	}
 
 	if len(errs) > 0 {
-		return errors.New(fmt.Sprint("Failed to load external files: ", strings.Join(errs, "; ")))
+		return errors.New(fmt.Sprint("Failed to load external paths: ", strings.Join(errs, "; ")))
 	}
 	return nil
 }
