@@ -18,6 +18,7 @@ package engine
 
 import (
 	"encoding/base64"
+	"fmt"
 	"path"
 	"strings"
 
@@ -46,11 +47,11 @@ func newFiles(from []*chart.File) files {
 //
 // This is intended to be accessed from within a template, so a missed key returns
 // an empty []byte.
-func (f files) GetBytes(name string) []byte {
+func (f files) GetBytes(name string) ([]byte, error) {
 	if v, ok := f[name]; ok {
-		return v
+		return v, nil
 	}
-	return []byte{}
+	return []byte{}, fmt.Errorf("file %s not included", name)
 }
 
 // Get returns a string representation of the given file.
@@ -59,8 +60,13 @@ func (f files) GetBytes(name string) []byte {
 // template.
 //
 //	{{.Files.Get "foo"}}
-func (f files) Get(name string) string {
-	return string(f.GetBytes(name))
+func (f files) Get(name string) (string, error) {
+	content, err := f.GetBytes(name)
+	if err != nil {
+		return "", err
+	}
+
+	return string(content), nil
 }
 
 // Glob takes a glob pattern and returns another files object only containing
@@ -101,9 +107,9 @@ func (f files) Glob(pattern string) files {
 //
 //   data:
 // {{ .Files.Glob("config/**").AsConfig() | indent 4 }}
-func (f files) AsConfig() string {
-	if f == nil {
-		return ""
+func (f files) AsConfig() (string, error) {
+	if f == nil || len(f) == 0 {
+		return "", fmt.Errorf("must pass files")
 	}
 
 	m := make(map[string]string)
@@ -113,7 +119,7 @@ func (f files) AsConfig() string {
 		m[path.Base(k)] = string(v)
 	}
 
-	return toYAML(m)
+	return toYAML(m), nil
 }
 
 // AsSecrets returns the base64-encoded value of a Files object suitable for
@@ -130,9 +136,9 @@ func (f files) AsConfig() string {
 //
 //   data:
 // {{ .Files.Glob("secrets/*").AsSecrets() }}
-func (f files) AsSecrets() string {
-	if f == nil {
-		return ""
+func (f files) AsSecrets() (string, error) {
+	if f == nil || len(f) == 0 {
+		return "", fmt.Errorf("must pass files")
 	}
 
 	m := make(map[string]string)
@@ -141,7 +147,7 @@ func (f files) AsSecrets() string {
 		m[path.Base(k)] = base64.StdEncoding.EncodeToString(v)
 	}
 
-	return toYAML(m)
+	return toYAML(m), nil
 }
 
 // Lines returns each line of a named file (split by "\n") as a slice, so it can
@@ -151,10 +157,10 @@ func (f files) AsSecrets() string {
 //
 // {{ range .Files.Lines "foo/bar.html" }}
 // {{ . }}{{ end }}
-func (f files) Lines(path string) []string {
+func (f files) Lines(path string) ([]string, error) {
 	if f == nil || f[path] == nil {
-		return []string{}
+		return nil, fmt.Errorf("must pass files")
 	}
 
-	return strings.Split(string(f[path]), "\n")
+	return strings.Split(string(f[path]), "\n"), nil
 }
