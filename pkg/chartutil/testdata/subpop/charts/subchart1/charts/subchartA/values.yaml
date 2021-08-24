@@ -15,3 +15,15 @@ SCAdata:
   SCAnested1:
     SCAnested2: true
 
+exported-overridden-chart1:
+  SCAbool: true
+  SCAfloat: 33.3
+  SCAint: 333
+  SCAstring: "exported-from-chart1"
+  SPExtra15: "should-be-unchanged"
+
+exported-passthrough:
+  SPExtra18: "should-be-unchanged"
+
+exported-short-chart1:
+  SPExtra16: "should-be-unchanged"

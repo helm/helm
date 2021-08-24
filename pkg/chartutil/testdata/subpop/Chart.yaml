@@ -25,6 +25,16 @@ dependencies:
         parent: .
       - SCBexported2
       - SC1exported1
+    export-values:
+      - parent: exported-parent
+        child: exported-parent
+      - parent: exported-overridden-parent
+        child: exported-overridden-parent
+      - parent: exported-single-value-parent
+        child: exported-single-value-parent
+      - parent: exported-passthrough
+        child: subcharta.exported-passthrough
+      - exported-short-parent
 
   - name: subchart2
     repository: http://localhost:10191

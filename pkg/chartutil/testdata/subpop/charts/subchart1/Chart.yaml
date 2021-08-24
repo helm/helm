@@ -17,6 +17,10 @@ dependencies:
         parent: overridden-chartA
       - child: SCAdata
         parent: imported-chartA-B
+    export-values:
+      - parent: exported-overridden-chart1
+        child: exported-overridden-chart1
+      - exported-short-chart1
 
   - name: subchartb
     repository: http://localhost:10191

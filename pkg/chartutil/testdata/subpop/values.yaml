@@ -35,6 +35,28 @@ overridden-chartA-B:
   SCBstring: "jango"
   SPextra6: 111
 
+exported-parent:
+  SPExtra7: "exported-from-parent"
+  SPNested1:
+    SPExtra19: "exported-from-parent-n6"
+
+exported-overridden-parent:
+  SC1bool: true
+  SC1float: 22.2
+  SC1int: 222
+  SC1string: "exported-from-parent-n2"
+  SPExtra8: "exported-from-parent-n3"
+
+exported-single-value-parent: "exported-from-parent-n7"
+
+exported-passthrough:
+  SPExtra17: "exported-from-parent-n5"
+
+exports:
+  exported-short-parent:
+    exported-short-parent:
+      SPExtra9: "exported-from-parent-n4"
+
 tags:
   front-end: true
   back-end: false

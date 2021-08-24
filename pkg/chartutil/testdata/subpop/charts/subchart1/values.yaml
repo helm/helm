@@ -29,6 +29,26 @@ overridden-chartA:
 imported-chartA-B:
   SC1extra5: "tiller"
 
+exported-parent:
+  SPExtra10: "should-be-unchanged"
+
+exported-overridden-parent:
+  SC1bool: false
+  SC1float: 11.1
+  SC1int: 111
+  SC1string: "should-be-overridden"
+  SPExtra11: "should-be-unchanged"
+
+exported-short-parent:
+  SPExtra12: "should-be-unchanged"
+
+exported-overridden-chart1:
+  SCAbool: true
+  SCAfloat: 33.3
+  SCAint: 333
+  SCAstring: "exported-from-chart1"
+  SPExtra13: "exported-from-chart1-n2"
+
 overridden-chartA-B:
   SCAbool: true
   SCAfloat: 3.33
@@ -53,3 +73,6 @@ exports:
       SC1exported2:
         all:
           SC1exported3: "SC1expstr"
+  exported-short-chart1:
+    exported-short-chart1:
+      SPExtra14: "exported-from-chart1-n3"

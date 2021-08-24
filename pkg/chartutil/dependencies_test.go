@@ -212,7 +212,7 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	e["SCBexported2A"] = "blaster"
 	e["global.SC1exported2.all.SC1exported3"] = "SC1expstr"
 
-	if err := processDependencyImportValues(c); err != nil {
+	if err := processDependencyImportExportValues(c); err != nil {
 		t.Fatalf("processing import values dependencies %v", err)
 	}
 	cc := Values(c.Values)
@@ -247,7 +247,7 @@ func TestProcessDependencyImportValuesMultiLevelPrecedence(t *testing.T) {
 	e["app1.service.port"] = "3456"
 	e["app2.service.port"] = "8080"
 
-	if err := processDependencyImportValues(c); err != nil {
+	if err := processDependencyImportExportValues(c); err != nil {
 		t.Fatalf("processing import values dependencies %v", err)
 	}
 	cc := Values(c.Values)
@@ -270,11 +270,79 @@ func TestProcessDependencyImportValuesMultiLevelPrecedence(t *testing.T) {
 	}
 }
 
+func TestProcessDependencyExportValues(t *testing.T) {
+	c := loadChart(t, "testdata/subpop")
+
+	e := make(map[string]string)
+
+	// merge with no overrides
+	e["subchart1.exported-parent.SPExtra7"] = "exported-from-parent"
+	e["subchart1.exported-parent.SPExtra10"] = "should-be-unchanged"
+	e["subchart1.exported-parent.SPNested1.SPExtra19"] = "exported-from-parent-n6"
+
+	// single value export
+	e["subchart1.exported-single-value-parent"] = "exported-from-parent-n7"
+
+	// merge with overrides
+	e["subchart1.exported-overridden-parent.SC1bool"] = "true"
+	e["subchart1.exported-overridden-parent.SC1float"] = "22.2"
+	e["subchart1.exported-overridden-parent.SC1int"] = "222"
+	e["subchart1.exported-overridden-parent.SC1string"] = "exported-from-parent-n2"
+	e["subchart1.exported-overridden-parent.SPExtra8"] = "exported-from-parent-n3"
+	e["subchart1.exported-overridden-parent.SPExtra11"] = "should-be-unchanged"
+
+	// `exports` style, no overrides
+	e["subchart1.exported-short-parent.SPExtra9"] = "exported-from-parent-n4"
+	e["subchart1.exported-short-parent.SPExtra12"] = "should-be-unchanged"
+
+	// passed from child to its own child with overrides
+	e["subchart1.subcharta.exported-overridden-chart1.SCAbool"] = "true"
+	e["subchart1.subcharta.exported-overridden-chart1.SCAfloat"] = "33.3"
+	e["subchart1.subcharta.exported-overridden-chart1.SCAint"] = "333"
+	e["subchart1.subcharta.exported-overridden-chart1.SCAstring"] = "exported-from-chart1"
+	e["subchart1.subcharta.exported-overridden-chart1.SPExtra13"] = "exported-from-chart1-n2"
+	e["subchart1.subcharta.exported-overridden-chart1.SPExtra15"] = "should-be-unchanged"
+
+	// passed from child to its own child, `exports` style, no overrides
+	e["subchart1.subcharta.exported-short-chart1.SPExtra14"] = "exported-from-chart1-n3"
+	e["subchart1.subcharta.exported-short-chart1.SPExtra16"] = "should-be-unchanged"
+
+	// passed through from parent to the child of the child chart, no overrides
+	e["subchart1.subcharta.exported-passthrough.SPExtra17"] = "exported-from-parent-n5"
+	e["subchart1.subcharta.exported-passthrough.SPExtra18"] = "should-be-unchanged"
+
+	if err := processDependencyImportExportValues(c); err != nil {
+		t.Fatalf("processing export values dependencies %v", err)
+	}
+	cc := Values(c.Values)
+	for kk, vv := range e {
+		pv, err := cc.PathValue(kk)
+		if err != nil {
+			t.Fatalf("retrieving export values table %v %v", kk, err)
+		}
+
+		switch pv := pv.(type) {
+		case float64:
+			if s := strconv.FormatFloat(pv, 'f', -1, 64); s != vv {
+				t.Errorf("failed to match exported float value %v with expected %v", s, vv)
+			}
+		case bool:
+			if b := strconv.FormatBool(pv); b != vv {
+				t.Errorf("failed to match exported bool value %v with expected %v", b, vv)
+			}
+		default:
+			if pv != vv {
+				t.Errorf("failed to match exported string value %q with expected %q", pv, vv)
+			}
+		}
+	}
+}
+
 func TestProcessDependencyImportValuesForEnabledCharts(t *testing.T) {
 	c := loadChart(t, "testdata/import-values-from-enabled-subchart/parent-chart")
 	nameOverride := "parent-chart-prod"
 
-	if err := processDependencyImportValues(c); err != nil {
+	if err := processDependencyImportExportValues(c); err != nil {
 		t.Fatalf("processing import values dependencies %v", err)
 	}
 
