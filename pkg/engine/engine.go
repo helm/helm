@@ -97,7 +97,7 @@ const warnStartDelim = "HELM_ERR_START"
 const warnEndDelim = "HELM_ERR_END"
 const recursionMaxNums = 1000
 
-var warnRegex = regexp.MustCompile(warnStartDelim + `(.*)` + warnEndDelim)
+var warnRegex = regexp.MustCompile(warnStartDelim + `((?s).*)` + warnEndDelim)
 
 func warnWrap(warn string) string {
 	return warnStartDelim + warn + warnEndDelim
