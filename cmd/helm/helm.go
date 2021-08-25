@@ -32,6 +32,7 @@ import (
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/gates"
+	"helm.sh/helm/v3/pkg/kube"
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage/driver"
@@ -59,6 +60,12 @@ func warning(format string, v ...interface{}) {
 }
 
 func main() {
+	// Setting the name of the app for managedFields in the Kubernetes client.
+	// It is set here to the full name of "helm" so that renaming of helm to
+	// another name (e.g., helm2 or helm3) does not change the name of the
+	// manager as picked up by the automated name detection.
+	kube.ManagedFieldsManager = "helm"
+
 	actionConfig := new(action.Configuration)
 	cmd, err := newRootCmd(actionConfig, os.Stdout, os.Args[1:])
 	if err != nil {

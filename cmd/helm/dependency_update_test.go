@@ -17,7 +17,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -188,7 +187,7 @@ func TestDependencyUpdateCmd_DoNotDeleteOldChartsOnError(t *testing.T) {
 	}
 
 	// Make sure charts dir still has dependencies
-	files, err := ioutil.ReadDir(filepath.Join(dir(chartname), "charts"))
+	files, err := os.ReadDir(filepath.Join(dir(chartname), "charts"))
 	if err != nil {
 		t.Fatal(err)
 	}
