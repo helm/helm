@@ -277,11 +277,6 @@ func TestPluginDynamicCompletion(t *testing.T) {
 		cmd:    "__complete echo -n mynamespace ''",
 		golden: "output/plugin_echo_no_directive.txt",
 		rels:   []*release.Release{},
-	}, {
-		name:   "completion for plugin bad directive",
-		cmd:    "__complete echo ''",
-		golden: "output/plugin_echo_bad_directive.txt",
-		rels:   []*release.Release{},
 	}}
 	for _, test := range tests {
 		settings.PluginsDirectory = "testdata/helmhome/helm/plugins"

@@ -17,7 +17,7 @@ limitations under the License.
 package registry // import "helm.sh/helm/v3/internal/experimental/registry"
 
 import (
-	"github.com/deislabs/oras/pkg/auth"
+	"oras.land/oras-go/pkg/auth"
 )
 
 type (
