@@ -97,7 +97,7 @@ const warnStartDelim = "HELM_ERR_START"
 const warnEndDelim = "HELM_ERR_END"
 const recursionMaxNums = 1000
 
-var warnRegex = regexp.MustCompile(warnStartDelim + `(.*)` + warnEndDelim)
+var warnRegex = regexp.MustCompile(warnStartDelim + `((?s).*)` + warnEndDelim)
 
 func warnWrap(warn string) string {
 	return warnStartDelim + warn + warnEndDelim
@@ -347,8 +347,13 @@ func allTemplates(c *chart.Chart, vals chartutil.Values) map[string]renderable {
 // scope.
 func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.Values) map[string]interface{} {
 	subCharts := make(map[string]interface{})
+	chartMetaData := struct {
+		chart.Metadata
+		IsRoot bool
+	}{*c.Metadata, c.IsRoot()}
+
 	next := map[string]interface{}{
-		"Chart":        c.Metadata,
+		"Chart":        chartMetaData,
 		"Files":        newFiles(c.Files),
 		"Release":      vals["Release"],
 		"Capabilities": vals["Capabilities"],

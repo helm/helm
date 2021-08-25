@@ -245,44 +245,65 @@ func TestParseErrors(t *testing.T) {
 
 func TestExecErrors(t *testing.T) {
 	vals := chartutil.Values{"Values": map[string]interface{}{}}
-
-	tplsMissingRequired := map[string]renderable{
-		"missing_required": {tpl: `{{required "foo is required" .Values.foo}}`, vals: vals},
-	}
-	_, err := new(Engine).render(tplsMissingRequired)
-	if err == nil {
-		t.Fatalf("Expected failures while rendering: %s", err)
-	}
-	expected := `execution error at (missing_required:1:2): foo is required`
-	if err.Error() != expected {
-		t.Errorf("Expected '%s', got %q", expected, err.Error())
-	}
-
-	tplsMissingRequired = map[string]renderable{
-		"missing_required_with_colons": {tpl: `{{required ":this: message: has many: colons:" .Values.foo}}`, vals: vals},
-	}
-	_, err = new(Engine).render(tplsMissingRequired)
-	if err == nil {
-		t.Fatalf("Expected failures while rendering: %s", err)
-	}
-	expected = `execution error at (missing_required_with_colons:1:2): :this: message: has many: colons:`
-	if err.Error() != expected {
-		t.Errorf("Expected '%s', got %q", expected, err.Error())
-	}
-
-	issue6044tpl := `{{ $someEmptyValue := "" }}
+	cases := []struct {
+		name     string
+		tpls     map[string]renderable
+		expected string
+	}{
+		{
+			name: "MissingRequired",
+			tpls: map[string]renderable{
+				"missing_required": {tpl: `{{required "foo is required" .Values.foo}}`, vals: vals},
+			},
+			expected: `execution error at (missing_required:1:2): foo is required`,
+		},
+		{
+			name: "MissingRequiredWithColons",
+			tpls: map[string]renderable{
+				"missing_required_with_colons": {tpl: `{{required ":this: message: has many: colons:" .Values.foo}}`, vals: vals},
+			},
+			expected: `execution error at (missing_required_with_colons:1:2): :this: message: has many: colons:`,
+		},
+		{
+			name: "Issue6044",
+			tpls: map[string]renderable{
+				"issue6044": {
+					vals: vals,
+					tpl: `{{ $someEmptyValue := "" }}
 {{ $myvar := "abc" }}
-{{- required (printf "%s: something is missing" $myvar) $someEmptyValue | repeat 0 }}`
-	tplsMissingRequired = map[string]renderable{
-		"issue6044": {tpl: issue6044tpl, vals: vals},
+{{- required (printf "%s: something is missing" $myvar) $someEmptyValue | repeat 0 }}`,
+				},
+			},
+			expected: `execution error at (issue6044:3:4): abc: something is missing`,
+		},
+		{
+			name: "MissingRequiredWithNewlines",
+			tpls: map[string]renderable{
+				"issue9981": {tpl: `{{required "foo is required\nmore info after the break" .Values.foo}}`, vals: vals},
+			},
+			expected: `execution error at (issue9981:1:2): foo is required
+more info after the break`,
+		},
+		{
+			name: "FailWithNewlines",
+			tpls: map[string]renderable{
+				"issue9981": {tpl: `{{fail "something is wrong\nlinebreak"}}`, vals: vals},
+			},
+			expected: `execution error at (issue9981:1:2): something is wrong
+linebreak`,
+		},
 	}
-	_, err = new(Engine).render(tplsMissingRequired)
-	if err == nil {
-		t.Fatalf("Expected failures while rendering: %s", err)
-	}
-	expected = `execution error at (issue6044:3:4): abc: something is missing`
-	if err.Error() != expected {
-		t.Errorf("Expected '%s', got %q", expected, err.Error())
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := new(Engine).render(tt.tpls)
+			if err == nil {
+				t.Fatalf("Expected failures while rendering: %s", err)
+			}
+			if err.Error() != tt.expected {
+				t.Errorf("Expected %q, got %q", tt.expected, err.Error())
+			}
+		})
 	}
 }
 
@@ -343,6 +364,36 @@ func TestAllTemplates(t *testing.T) {
 	tpls := allTemplates(ch1, chartutil.Values{})
 	if len(tpls) != 5 {
 		t.Errorf("Expected 5 charts, got %d", len(tpls))
+	}
+}
+
+func TestChartValuesContainsIsRoot(t *testing.T) {
+	ch1 := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "parent"},
+		Templates: []*chart.File{
+			{Name: "templates/isroot", Data: []byte("{{.Chart.IsRoot}}")},
+		},
+	}
+	dep1 := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "child"},
+		Templates: []*chart.File{
+			{Name: "templates/isroot", Data: []byte("{{.Chart.IsRoot}}")},
+		},
+	}
+	ch1.AddDependency(dep1)
+
+	out, err := Render(ch1, chartutil.Values{})
+	if err != nil {
+		t.Fatalf("failed to render templates: %s", err)
+	}
+	expects := map[string]string{
+		"parent/charts/child/templates/isroot": "false",
+		"parent/templates/isroot":              "true",
+	}
+	for file, expect := range expects {
+		if out[file] != expect {
+			t.Errorf("Expected %q, got %q", expect, out[file])
+		}
 	}
 }
 

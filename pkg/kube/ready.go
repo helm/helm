@@ -227,7 +227,7 @@ func (c *ReadyChecker) jobReady(job *batchv1.Job) bool {
 		c.log("Job is failed: %s/%s", job.GetNamespace(), job.GetName())
 		return false
 	}
-	if job.Status.Succeeded < *job.Spec.Completions {
+	if job.Spec.Completions != nil && job.Status.Succeeded < *job.Spec.Completions {
 		c.log("Job is not completed: %s/%s", job.GetNamespace(), job.GetName())
 		return false
 	}

@@ -50,6 +50,8 @@ var (
 	ErrNoChartVersion = errors.New("no chart version found")
 	// ErrNoChartName indicates that a chart with the given name is not found.
 	ErrNoChartName = errors.New("no chart name found")
+	// ErrEmptyIndexYaml indicates that the content of index.yaml is empty.
+	ErrEmptyIndexYaml = errors.New("empty index.yaml file")
 )
 
 // ChartVersions is a list of versioned chart references.
@@ -326,6 +328,11 @@ func IndexDirectory(dir, baseURL string) (*IndexFile, error) {
 // This will fail if API Version is not set (ErrNoAPIVersion) or if the unmarshal fails.
 func loadIndex(data []byte, source string) (*IndexFile, error) {
 	i := &IndexFile{}
+
+	if len(data) == 0 {
+		return i, ErrEmptyIndexYaml
+	}
+
 	if err := yaml.UnmarshalStrict(data, i); err != nil {
 		return i, err
 	}

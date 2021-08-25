@@ -152,6 +152,12 @@ func TestLoadIndex_Duplicates(t *testing.T) {
 	}
 }
 
+func TestLoadIndex_Empty(t *testing.T) {
+	if _, err := loadIndex([]byte(""), "indexWithEmpty"); err == nil {
+		t.Errorf("Expected an error when index.yaml is empty.")
+	}
+}
+
 func TestLoadIndexFileAnnotations(t *testing.T) {
 	i, err := LoadIndexFile(annotationstestfile)
 	if err != nil {

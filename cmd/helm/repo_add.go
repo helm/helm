@@ -48,6 +48,7 @@ type repoAddOptions struct {
 	url                  string
 	username             string
 	password             string
+	passwordFromStdinOpt bool
 	passCredentialsAll   bool
 	forceUpdate          bool
 	allowDeprecatedRepos bool
@@ -85,6 +86,7 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.StringVar(&o.username, "username", "", "chart repository username")
 	f.StringVar(&o.password, "password", "", "chart repository password")
+	f.BoolVarP(&o.passwordFromStdinOpt, "password-stdin", "", false, "read chart repository password from stdin")
 	f.BoolVar(&o.forceUpdate, "force-update", false, "replace (overwrite) the repo if it already exists")
 	f.BoolVar(&o.deprecatedNoUpdate, "no-update", false, "Ignored. Formerly, it would disabled forced updates. It is deprecated by force-update.")
 	f.StringVar(&o.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
@@ -143,14 +145,24 @@ func (o *repoAddOptions) run(out io.Writer) error {
 	}
 
 	if o.username != "" && o.password == "" {
-		fd := int(os.Stdin.Fd())
-		fmt.Fprint(out, "Password: ")
-		password, err := term.ReadPassword(fd)
-		fmt.Fprintln(out)
-		if err != nil {
-			return err
+		if o.passwordFromStdinOpt {
+			passwordFromStdin, err := io.ReadAll(os.Stdin)
+			if err != nil {
+				return err
+			}
+			password := strings.TrimSuffix(string(passwordFromStdin), "\n")
+			password = strings.TrimSuffix(password, "\r")
+			o.password = password
+		} else {
+			fd := int(os.Stdin.Fd())
+			fmt.Fprint(out, "Password: ")
+			password, err := term.ReadPassword(fd)
+			fmt.Fprintln(out)
+			if err != nil {
+				return err
+			}
+			o.password = string(password)
 		}
-		o.password = string(password)
 	}
 
 	c := repo.Entry{
