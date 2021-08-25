@@ -260,6 +260,7 @@ func (e Engine) renderWithReferences(tpls, referenceTpls map[string]renderable) 
 		if err := t.ExecuteTemplate(&buf, filename, vals); err != nil {
 			return map[string]string{}, cleanupExecError(filename, err)
 		}
+		delete(vals, "Template")
 
 		// Work around the issue where Go will emit "<no value>" even if Options(missing=zero)
 		// is set. Since missing=error will never get here, we do not need to handle
@@ -344,7 +345,8 @@ func allTemplates(c *chart.Chart, vals chartutil.Values) map[string]renderable {
 //
 // As it recurses, it also sets the values to be appropriate for the template
 // scope.
-func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.Values) {
+func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.Values) map[string]interface{} {
+	subCharts := make(map[string]interface{})
 	chartMetaData := struct {
 		chart.Metadata
 		IsRoot bool
@@ -356,6 +358,7 @@ func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.
 		"Release":      vals["Release"],
 		"Capabilities": vals["Capabilities"],
 		"Values":       make(chartutil.Values),
+		"Subcharts":    subCharts,
 	}
 
 	// If there is a {{.Values.ThisChart}} in the parent metadata,
@@ -367,7 +370,7 @@ func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.
 	}
 
 	for _, child := range c.Dependencies() {
-		recAllTpls(child, templates, next)
+		subCharts[child.Name()] = recAllTpls(child, templates, next)
 	}
 
 	newParentID := c.ChartFullPath()
@@ -381,6 +384,8 @@ func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.
 			basePath: path.Join(newParentID, "templates"),
 		}
 	}
+
+	return next
 }
 
 // isTemplateValid returns true if the template is valid for the chart type
