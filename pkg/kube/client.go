@@ -162,7 +162,7 @@ func (c *Client) WaitWithJobs(resources ResourceList, timeout time.Duration) err
 	return w.waitForResources(resources)
 }
 
-// Wait up to the given timeout for the specified resources to be deleted
+// WaitForDelete wait up to the given timeout for the specified resources to be deleted.
 func (c *Client) WaitForDelete(resources ResourceList, timeout time.Duration) error {
 	w := waiter{
 		log:     c.Log,
