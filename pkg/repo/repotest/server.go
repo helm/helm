@@ -26,10 +26,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/distribution/configuration"
-	"github.com/docker/distribution/registry"
-	_ "github.com/docker/distribution/registry/auth/htpasswd"           // used for docker test registry
-	_ "github.com/docker/distribution/registry/storage/driver/inmemory" // used for docker test registry
+	"github.com/distribution/distribution/v3/configuration"
+	"github.com/distribution/distribution/v3/registry"
+	_ "github.com/distribution/distribution/v3/registry/auth/htpasswd"           // used for docker test registry
+	_ "github.com/distribution/distribution/v3/registry/storage/driver/inmemory" // used for docker test registry
 	"github.com/phayes/freeport"
 	"golang.org/x/crypto/bcrypt"
 	"sigs.k8s.io/yaml"
@@ -53,6 +53,23 @@ func NewTempServerWithCleanup(t *testing.T, glob string) (*Server, error) {
 	srv, err := NewTempServer(glob)
 	t.Cleanup(func() { os.RemoveAll(srv.docroot) })
 	return srv, err
+}
+
+// Set up a fake repo with basic auth enabled
+func NewTempServerWithCleanupAndBasicAuth(t *testing.T, glob string) *Server {
+	srv, err := NewTempServerWithCleanup(t, glob)
+	srv.Stop()
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv.WithMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		username, password, ok := r.BasicAuth()
+		if !ok || username != "username" || password != "password" {
+			t.Errorf("Expected request to use basic auth and for username == 'username' and password == 'password', got '%v', '%s', '%s'", ok, username, password)
+		}
+	}))
+	srv.Start()
+	return srv
 }
 
 type OCIServer struct {
