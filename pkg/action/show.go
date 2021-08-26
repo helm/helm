@@ -109,14 +109,13 @@ func (s *Show) Run(chartpath string) (string, error) {
 	}
 
 	if s.OutputFormat == ShowReadme || s.OutputFormat == ShowAll {
-		if s.OutputFormat == ShowAll {
-			fmt.Fprintln(&out, "---")
-		}
 		readme := findReadme(s.chart.Files)
-		if readme == nil {
-			return out.String(), nil
+		if readme != nil {
+			if s.OutputFormat == ShowAll {
+				fmt.Fprintln(&out, "---")
+			}
+			fmt.Fprintf(&out, "%s\n", readme.Data)
 		}
-		fmt.Fprintf(&out, "%s\n", readme.Data)
 	}
 
 	if s.OutputFormat == ShowCRDs || s.OutputFormat == ShowAll {
