@@ -169,7 +169,7 @@ func TestInstall(t *testing.T) {
 			name:      "install library chart",
 			cmd:       "install libchart testdata/testcharts/lib-chart",
 			wantError: true,
-			golden:    "output/template-lib-chart.txt",
+			golden:    "output/install-lib-chart.txt",
 		},
 		// Install, chart with bad type
 		{

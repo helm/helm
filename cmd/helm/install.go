@@ -124,7 +124,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		RunE: func(_ *cobra.Command, args []string) error {
 			rel, err := runInstall(args, client, valueOpts, out)
 			if err != nil {
-				return err
+				return errors.Wrap(err, "INSTALLATION FAILED")
 			}
 
 			return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false})
