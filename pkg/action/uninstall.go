@@ -120,7 +120,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	res.Info = kept
 
 	if u.Wait {
-		if kubeClient, ok := u.cfg.KubeClient.(kube.ClientInterface); ok {
+		if kubeClient, ok := u.cfg.KubeClient.(kube.InterfaceExt); ok {
 			if err := kubeClient.WaitForDelete(deletedResources, u.Timeout); err != nil {
 				errs = append(errs, err)
 			}
