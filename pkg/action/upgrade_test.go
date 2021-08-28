@@ -388,3 +388,96 @@ func TestUpgradeRelease_Interrupted_Atomic(t *testing.T) {
 	is.Equal(updatedRes.Info.Status, release.StatusDeployed)
 
 }
+
+func TestUpgradeFailsWhenWrongPathsIncluded(t *testing.T) {
+	is := assert.New(t)
+	vals := map[string]interface{}{}
+
+	tests := []includeExternalPathTestCase{
+		{
+			Name:             "included paths not passed",
+			IncludedFilePath: "",
+			ExternalPath:     "testdata/files/external.txt",
+		},
+		{
+			Name:             "absolute path of file is included and external file is relative",
+			IncludedFilePath: getAbsPath("testdata/files/external.txt"),
+			ExternalPath:     "testdata/files/external.txt",
+		},
+		{
+			Name:             "relative path of file is included and external file is absolute",
+			IncludedFilePath: "testdata/files/external.txt",
+			ExternalPath:     getAbsPath("testdata/files/external.txt"),
+		},
+		{
+			Name:             "absolute path of directory is included and external file is relative",
+			IncludedFilePath: getAbsPath("testdata/files"),
+			ExternalPath:     "testdata/files/external.txt",
+		},
+		{
+			Name:             "relative path of directory is included and external file is absolute",
+			IncludedFilePath: "testdata/files",
+			ExternalPath:     getAbsPath("testdata/files/external.txt"),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.Name, func(t *testing.T) {
+			upAction := upgradeAction(t)
+			upAction.ExternalPaths = append(upAction.ExternalPaths, tc.IncludedFilePath)
+
+			rel := releaseStub()
+			rel.Name = "test"
+			rel.Info.Status = release.StatusDeployed
+			upAction.cfg.Releases.Create(rel)
+
+			_, err := upAction.Run(rel.Name, buildChart(withExternalFileTemplate(tc.ExternalPath)), vals)
+			expectedErr := fmt.Sprintf("<.Files.Get>: error calling Get: file %s not included", tc.ExternalPath)
+			is.Error(err, expectedErr)
+		})
+	}
+}
+
+func TestUpgradeWhenIncludePathsPassed(t *testing.T) {
+	is := assert.New(t)
+	vals := map[string]interface{}{}
+
+	tests := []includeExternalPathTestCase{
+		{
+			Name:             "relative path of file is included and external file is relative",
+			IncludedFilePath: "testdata/files/external.txt",
+			ExternalPath:     "testdata/files/external.txt",
+		},
+		{
+			Name:             "relative path of file is included and external file is absolute",
+			IncludedFilePath: getAbsPath("testdata/files/external.txt"),
+			ExternalPath:     getAbsPath("testdata/files/external.txt"),
+		},
+		{
+			Name:             "relative path of directory is included and external file is relative",
+			IncludedFilePath: "testdata/files",
+			ExternalPath:     "testdata/files/external.txt",
+		},
+		{
+			Name:             "absolute path of directory is included and external file is absolute",
+			IncludedFilePath: getAbsPath("testdata/files"),
+			ExternalPath:     getAbsPath("testdata/files/external.txt"),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.Name, func(t *testing.T) {
+			upAction := upgradeAction(t)
+			upAction.ExternalPaths = append(upAction.ExternalPaths, tc.IncludedFilePath)
+
+			rel := releaseStub()
+			rel.Name = "test"
+			rel.Info.Status = release.StatusDeployed
+			upAction.cfg.Releases.Create(rel)
+
+			upgradeRelease, err := upAction.Run(rel.Name, buildChart(withExternalFileTemplate(tc.ExternalPath)), vals)
+			is.Contains(upgradeRelease.Manifest, "out-of-chart-dir")
+			is.NoError(err)
+		})
+	}
+}

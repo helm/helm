@@ -177,6 +177,38 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 	return nil
 }
 
+func loadExternalPaths(ch *chart.Chart, externalPaths []string) error {
+	var errs []string
+
+	for _, p := range externalPaths {
+		allPaths, err := expandFilePath(p)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("%s (path not accessible)", p))
+		}
+
+		for _, currentPath := range allPaths {
+			fileContentBytes, err := os.ReadFile(currentPath)
+			if err != nil {
+				errs = append(errs, fmt.Sprintf("%s (not readable)", currentPath))
+				continue
+			}
+
+			newFile := chart.File{Name: currentPath, Data: fileContentBytes}
+			for _, file := range ch.Files {
+				if file.Name == newFile.Name && bytes.Equal(file.Data, newFile.Data) {
+					continue
+				}
+			}
+			ch.Files = append(ch.Files, &newFile)
+		}
+	}
+
+	if len(errs) > 0 {
+		return errors.New(fmt.Sprint("Failed to load external paths: ", strings.Join(errs, "; ")))
+	}
+	return nil
+}
+
 // Run executes the installation
 //
 // If DryRun is set to true, this will prepare the release, but not install it
@@ -188,6 +220,10 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 
 // Run executes the installation with Context
 func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
+	if err := loadExternalPaths(chrt, i.ExternalPaths); err != nil {
+		return nil, err
+	}
+
 	// Check reachability of cluster unless in client-only mode (e.g. `helm template` without `--validate`)
 	if !i.ClientOnly {
 		if err := i.cfg.KubeClient.IsReachable(); err != nil {

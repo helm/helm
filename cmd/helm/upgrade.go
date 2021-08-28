@@ -182,11 +182,6 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				warning("This chart is deprecated")
 			}
 
-			err = loadExternalPaths(ch, client.ExternalPaths)
-			if err != nil {
-				return err
-			}
-
 			// Create context and prepare the handle of SIGTERM
 			ctx := context.Background()
 			ctx, cancel := context.WithCancel(ctx)

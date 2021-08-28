@@ -180,6 +180,10 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		return nil, nil, err
 	}
 
+	if err := loadExternalPaths(chart, u.ExternalPaths); err != nil {
+		return nil, nil, err
+	}
+
 	// Concurrent `helm upgrade`s will either fail here with `errPending` or when creating the release with "already exists". This should act as a pessimistic lock.
 	if lastRelease.Info.Status.IsPending() {
 		return nil, nil, errPending
