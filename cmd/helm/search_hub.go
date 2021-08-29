@@ -71,7 +71,7 @@ func newSearchHubCmd(out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.StringVar(&o.searchEndpoint, "endpoint", "https://hub.helm.sh", "Hub instance to query for charts")
 	f.UintVar(&o.maxColWidth, "max-col-width", 50, "maximum column width for output table")
-	f.BoolVar(&o.listRepoURL, "list-repo", false, "print charts repository URL")
+	f.BoolVar(&o.listRepoURL, "list-repo-url", false, "print charts repository URL")
 
 	bindOutputFlag(cmd, &o.outputFormat)
 

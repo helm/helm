@@ -70,7 +70,7 @@ func TestSearchHubListRepoCmd(t *testing.T) {
 %s/charts/bitnami/phpmyadmin	3.0.0        	4.9.0-1    	phpMyAdmin is an mysql administration frontend	https://charts.bitnami.com   
 `, ts.URL, ts.URL)
 
-	testcmd := "search hub --list-repo --endpoint " + ts.URL + " maria"
+	testcmd := "search hub --list-repo-url --endpoint " + ts.URL + " maria"
 	storage := storageFixture()
 	_, out, err := executeActionCommandC(storage, testcmd)
 	if err != nil {
