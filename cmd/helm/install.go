@@ -182,6 +182,10 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	}
 	client.ReleaseName = name
 
+	if err := checkOCI(chart); err != nil {
+		return nil, err
+	}
+
 	cp, err := client.ChartPathOptions.LocateChart(chart, settings)
 	if err != nil {
 		return nil, err

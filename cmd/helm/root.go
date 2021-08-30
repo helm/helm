@@ -200,7 +200,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	// Add *experimental* subcommands
 	cmd.AddCommand(
 		newRegistryCmd(actionConfig, out),
-		newChartCmd(actionConfig, out),
+		newPushCmd(actionConfig, out),
 	)
 
 	// Find and add plugins
@@ -261,4 +261,13 @@ func checkForExpiredRepos(repofile string) {
 		}
 	}
 
+}
+
+// When dealing with OCI-based charts, ensure that the user has
+// enabled the experimental feature gate prior to continuing
+func checkOCI(ref string) error {
+	if registry.IsOCI(ref) && !FeatureGateOCI.IsEnabled() {
+		return FeatureGateOCI.Error()
+	}
+	return nil
 }

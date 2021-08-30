@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/spf13/cobra"
@@ -26,20 +27,35 @@ import (
 	"helm.sh/helm/v3/pkg/action"
 )
 
-const registryLogoutDesc = `
-Remove credentials stored for a remote registry.
+const pushDesc = `
+Upload a chart to a registry.
+
+If the chart has an associated provenance file,
+it will also be uploaded.
 `
 
-func newRegistryLogoutCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
-	return &cobra.Command{
-		Use:    "logout [host]",
-		Short:  "logout from a registry",
-		Long:   registryLogoutDesc,
-		Args:   require.MinimumNArgs(1),
-		Hidden: !FeatureGateOCI.IsEnabled(),
+func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+	client := experimental.NewPushWithOpts(experimental.WithPushConfig(cfg))
+
+	cmd := &cobra.Command{
+		Use:               "push [chart] [remote]",
+		Short:             "push a chart to remote",
+		Long:              pushDesc,
+		Hidden:            !FeatureGateOCI.IsEnabled(),
+		PersistentPreRunE: checkOCIFeatureGate(),
+		Args:              require.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			hostname := args[0]
-			return experimental.NewRegistryLogout(cfg).Run(out, hostname)
+			chartRef := args[0]
+			remote := args[1]
+			client.Settings = settings
+			output, err := client.Run(chartRef, remote)
+			if err != nil {
+				return err
+			}
+			fmt.Fprint(out, output)
+			return nil
 		},
 	}
+
+	return cmd
 }

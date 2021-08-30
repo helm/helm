@@ -26,6 +26,7 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/pkg/errors"
 
+	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/gates"
@@ -121,7 +122,7 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 		var version string
 		var ok bool
 		found := true
-		if !strings.HasPrefix(d.Repository, "oci://") {
+		if !registry.IsOCI(d.Repository) {
 			repoIndex, err := repo.LoadIndexFile(filepath.Join(r.cachepath, helmpath.CacheIndexFile(repoName)))
 			if err != nil {
 				return nil, errors.Wrapf(err, "no cached repository for %s found. (try 'helm repo update')", repoName)

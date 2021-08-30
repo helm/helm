@@ -17,17 +17,18 @@ limitations under the License.
 package registry // import "helm.sh/helm/v3/internal/experimental/registry"
 
 const (
-	// HelmChartConfigMediaType is the reserved media type for the Helm chart manifest config
-	HelmChartConfigMediaType = "application/vnd.cncf.helm.config.v1+json"
+	// OCIScheme is the URL scheme for OCI-based requests
+	OCIScheme = "oci"
 
-	// HelmChartContentLayerMediaType is the reserved media type for Helm chart package content
-	HelmChartContentLayerMediaType = "application/tar+gzip"
+	// CredentialsFileBasename is the filename for auth credentials file
+	CredentialsFileBasename = "config.json"
+
+	// ConfigMediaType is the reserved media type for the Helm chart manifest config
+	ConfigMediaType = "application/vnd.cncf.helm.config.v1+json"
+
+	// ChartLayerMediaType is the reserved media type for Helm chart package content
+	ChartLayerMediaType = "application/vnd.cncf.helm.chart.content.v1.tar+gzip"
+
+	// ProvLayerMediaType is the reserved media type for Helm chart provenance files
+	ProvLayerMediaType = "application/vnd.cncf.helm.chart.provenance.v1.prov"
 )
-
-// KnownMediaTypes returns a list of layer mediaTypes that the Helm client knows about
-func KnownMediaTypes() []string {
-	return []string{
-		HelmChartConfigMediaType,
-		HelmChartContentLayerMediaType,
-	}
-}

@@ -169,7 +169,7 @@ var httpProvider = Provider{
 }
 
 var ociProvider = Provider{
-	Schemes: []string{"oci"},
+	Schemes: []string{registry.OCIScheme},
 	New:     NewOCIGetter,
 }
 

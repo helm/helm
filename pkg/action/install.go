@@ -36,6 +36,7 @@ import (
 	"k8s.io/cli-runtime/pkg/resource"
 	"sigs.k8s.io/yaml"
 
+	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli"
@@ -663,6 +664,14 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		RepositoryConfig: settings.RepositoryConfig,
 		RepositoryCache:  settings.RepositoryCache,
 	}
+
+	if registry.IsOCI(name) {
+		if version == "" {
+			return "", errors.New("version is explicitly required for OCI registries")
+		}
+		dl.Options = append(dl.Options, getter.WithTagName(version))
+	}
+
 	if c.Verify {
 		dl.Verify = downloader.VerifyAlways
 	}
@@ -716,5 +725,6 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 	if version != "" {
 		atVersion = fmt.Sprintf(" at version %q", version)
 	}
-	return filename, errors.Errorf("failed to download %q%s (hint: running `helm repo update` may help)", name, atVersion)
+
+	return filename, errors.Errorf("failed to download %q%s", name, atVersion)
 }
