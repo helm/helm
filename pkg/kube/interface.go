@@ -70,4 +70,13 @@ type Interface interface {
 	IsReachable() error
 }
 
+// InterfaceExt is introduced to avoid breaking backwards compatibility for Interface implementers.
+//
+// TODO Helm 4: Remove InterfaceExt and integrate its method(s) into the Interface.
+type InterfaceExt interface {
+	// WaitForDelete wait up to the given timeout for the specified resources to be deleted.
+	WaitForDelete(resources ResourceList, timeout time.Duration) error
+}
+
 var _ Interface = (*Client)(nil)
+var _ InterfaceExt = (*Client)(nil)
