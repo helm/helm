@@ -32,14 +32,14 @@ import (
 	"time"
 
 	"github.com/containerd/containerd/errdefs"
-	auth "github.com/deislabs/oras/pkg/auth/docker"
-	"github.com/docker/distribution/configuration"
-	"github.com/docker/distribution/registry"
-	_ "github.com/docker/distribution/registry/auth/htpasswd"
-	_ "github.com/docker/distribution/registry/storage/driver/inmemory"
+	"github.com/distribution/distribution/v3/configuration"
+	"github.com/distribution/distribution/v3/registry"
+	_ "github.com/distribution/distribution/v3/registry/auth/htpasswd"
+	_ "github.com/distribution/distribution/v3/registry/storage/driver/inmemory"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/bcrypt"
+	auth "oras.land/oras-go/pkg/auth/docker"
 
 	"helm.sh/helm/v3/pkg/chart"
 )

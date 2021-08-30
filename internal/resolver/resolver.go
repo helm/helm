@@ -57,6 +57,11 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 	locked := make([]*chart.Dependency, len(reqs))
 	missing := []string{}
 	for i, d := range reqs {
+		constraint, err := semver.NewConstraint(d.Version)
+		if err != nil {
+			return nil, errors.Wrapf(err, "dependency %q has an invalid version/constraint format", d.Name)
+		}
+
 		if d.Repository == "" {
 			// Local chart subfolder
 			if _, err := GetLocalPath(filepath.Join("charts", d.Name), r.chartpath); err != nil {
@@ -77,11 +82,20 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 				return nil, err
 			}
 
-			// The version of the chart locked will be the version of the chart
-			// currently listed in the file system within the chart.
 			ch, err := loader.LoadDir(chartpath)
 			if err != nil {
 				return nil, err
+			}
+
+			v, err := semver.NewVersion(ch.Metadata.Version)
+			if err != nil {
+				// Not a legit entry.
+				continue
+			}
+
+			if !constraint.Check(v) {
+				missing = append(missing, d.Name)
+				continue
 			}
 
 			locked[i] = &chart.Dependency{
@@ -90,11 +104,6 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 				Version:    ch.Metadata.Version,
 			}
 			continue
-		}
-
-		constraint, err := semver.NewConstraint(d.Version)
-		if err != nil {
-			return nil, errors.Wrapf(err, "dependency %q has an invalid version/constraint format", d.Name)
 		}
 
 		repoName := repoNames[d.Name]

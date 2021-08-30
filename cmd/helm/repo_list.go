@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"io"
 	"strings"
 
@@ -131,7 +132,7 @@ func compListRepos(prefix string, ignoredRepoNames []string) []string {
 		filteredRepos := filterRepos(f.Repositories, ignoredRepoNames)
 		for _, repo := range filteredRepos {
 			if strings.HasPrefix(repo.Name, prefix) {
-				rNames = append(rNames, repo.Name)
+				rNames = append(rNames, fmt.Sprintf("%s\t%s", repo.Name, repo.URL))
 			}
 		}
 	}

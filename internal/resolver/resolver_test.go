@@ -16,6 +16,7 @@ limitations under the License.
 package resolver
 
 import (
+	"runtime"
 	"testing"
 
 	"helm.sh/helm/v3/pkg/chart"
@@ -28,6 +29,18 @@ func TestResolve(t *testing.T) {
 		expect *chart.Lock
 		err    bool
 	}{
+		{
+			name: "repo from invalid version",
+			req: []*chart.Dependency{
+				{Name: "base", Repository: "file://base", Version: "1.1.0"},
+			},
+			expect: &chart.Lock{
+				Dependencies: []*chart.Dependency{
+					{Name: "base", Repository: "file://base", Version: "0.1.0"},
+				},
+			},
+			err: true,
+		},
 		{
 			name: "version failure",
 			req: []*chart.Dependency{
@@ -234,24 +247,28 @@ func TestGetLocalPath(t *testing.T) {
 		repo      string
 		chartpath string
 		expect    string
+		winExpect string
 		err       bool
 	}{
 		{
-			name:   "absolute path",
-			repo:   "file:////tmp",
-			expect: "/tmp",
+			name:      "absolute path",
+			repo:      "file:////",
+			expect:    "/",
+			winExpect: "\\",
 		},
 		{
 			name:      "relative path",
 			repo:      "file://../../testdata/chartpath/base",
 			chartpath: "foo/bar",
 			expect:    "testdata/chartpath/base",
+			winExpect: "testdata\\chartpath\\base",
 		},
 		{
 			name:      "current directory path",
 			repo:      "../charts/localdependency",
 			chartpath: "testdata/chartpath/charts",
 			expect:    "testdata/chartpath/charts/localdependency",
+			winExpect: "testdata\\chartpath\\charts\\localdependency",
 		},
 		{
 			name:      "invalid local path",
@@ -279,8 +296,12 @@ func TestGetLocalPath(t *testing.T) {
 			if tt.err {
 				t.Fatalf("Expected error in test %q", tt.name)
 			}
-			if p != tt.expect {
-				t.Errorf("%q: expected %q, got %q", tt.name, tt.expect, p)
+			expect := tt.expect
+			if runtime.GOOS == "windows" {
+				expect = tt.winExpect
+			}
+			if p != expect {
+				t.Errorf("%q: expected %q, got %q", tt.name, expect, p)
 			}
 		})
 	}
