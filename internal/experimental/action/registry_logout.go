@@ -16,15 +16,19 @@ limitations under the License.
 
 package action
 
-import "io"
+import (
+	"io"
+
+	"helm.sh/helm/v3/pkg/action"
+)
 
 // RegistryLogout performs a registry login operation.
 type RegistryLogout struct {
-	cfg *Configuration
+	cfg *action.Configuration
 }
 
 // NewRegistryLogout creates a new RegistryLogout object with the given configuration.
-func NewRegistryLogout(cfg *Configuration) *RegistryLogout {
+func NewRegistryLogout(cfg *action.Configuration) *RegistryLogout {
 	return &RegistryLogout{
 		cfg: cfg,
 	}
