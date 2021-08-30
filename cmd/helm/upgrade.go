@@ -17,9 +17,13 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/pkg/errors"
@@ -178,7 +182,20 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				warning("This chart is deprecated")
 			}
 
-			rel, err := client.Run(args[0], ch, vals)
+			// Create context and prepare the handle of SIGTERM
+			ctx := context.Background()
+			ctx, cancel := context.WithCancel(ctx)
+
+			// Handle SIGTERM
+			cSignal := make(chan os.Signal)
+			signal.Notify(cSignal, os.Interrupt, syscall.SIGTERM)
+			go func() {
+				<-cSignal
+				fmt.Fprintf(out, "Release %s has been cancelled.\n", args[0])
+				cancel()
+			}()
+
+			rel, err := client.RunWithContext(ctx, args[0], ch, vals)
 			if err != nil {
 				return errors.Wrap(err, "UPGRADE FAILED")
 			}

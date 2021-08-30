@@ -18,6 +18,7 @@ package action
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/url"
@@ -25,6 +26,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 
@@ -105,6 +107,8 @@ type Install struct {
 	// OutputDir/<ReleaseName>
 	UseReleaseName bool
 	PostRenderer   postrender.PostRenderer
+	// Lock to control raceconditions when the process receives a SIGTERM
+	Lock sync.Mutex
 }
 
 // ChartPathOptions captures common options used for controlling chart paths
@@ -175,7 +179,14 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 // Run executes the installation
 //
 // If DryRun is set to true, this will prepare the release, but not install it
+
 func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
+	ctx := context.Background()
+	return i.RunWithContext(ctx, chrt, vals)
+}
+
+// Run executes the installation with Context
+func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
 	// Check reachability of cluster unless in client-only mode (e.g. `helm template` without `--validate`)
 	if !i.ClientOnly {
 		if err := i.cfg.KubeClient.IsReachable(); err != nil {
@@ -332,11 +343,21 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 		// not working.
 		return rel, err
 	}
+	rChan := make(chan resultMessage)
+	go i.performInstall(rChan, rel, toBeAdopted, resources)
+	go i.handleContext(ctx, rChan, rel)
+	result := <-rChan
+	//start preformInstall go routine
+	return result.r, result.e
+}
+
+func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, toBeAdopted kube.ResourceList, resources kube.ResourceList) {
 
 	// pre-install hooks
 	if !i.DisableHooks {
 		if err := i.cfg.execHook(rel, release.HookPreInstall, i.Timeout); err != nil {
-			return i.failRelease(rel, fmt.Errorf("failed pre-install: %s", err))
+			i.reportToRun(c, rel, fmt.Errorf("failed pre-install: %s", err))
+			return
 		}
 	}
 
@@ -345,29 +366,34 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	// to true, since that is basically an upgrade operation.
 	if len(toBeAdopted) == 0 && len(resources) > 0 {
 		if _, err := i.cfg.KubeClient.Create(resources); err != nil {
-			return i.failRelease(rel, err)
+			i.reportToRun(c, rel, err)
+			return
 		}
 	} else if len(resources) > 0 {
 		if _, err := i.cfg.KubeClient.Update(toBeAdopted, resources, false); err != nil {
-			return i.failRelease(rel, err)
+			i.reportToRun(c, rel, err)
+			return
 		}
 	}
 
 	if i.Wait {
 		if i.WaitForJobs {
 			if err := i.cfg.KubeClient.WaitWithJobs(resources, i.Timeout); err != nil {
-				return i.failRelease(rel, err)
+				i.reportToRun(c, rel, err)
+				return
 			}
 		} else {
 			if err := i.cfg.KubeClient.Wait(resources, i.Timeout); err != nil {
-				return i.failRelease(rel, err)
+				i.reportToRun(c, rel, err)
+				return
 			}
 		}
 	}
 
 	if !i.DisableHooks {
 		if err := i.cfg.execHook(rel, release.HookPostInstall, i.Timeout); err != nil {
-			return i.failRelease(rel, fmt.Errorf("failed post-install: %s", err))
+			i.reportToRun(c, rel, fmt.Errorf("failed post-install: %s", err))
+			return
 		}
 	}
 
@@ -388,9 +414,23 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 		i.cfg.Log("failed to record the release: %s", err)
 	}
 
-	return rel, nil
+	i.reportToRun(c, rel, nil)
 }
-
+func (i *Install) handleContext(ctx context.Context, c chan<- resultMessage, rel *release.Release) {
+	go func() {
+		<-ctx.Done()
+		err := ctx.Err()
+		i.reportToRun(c, rel, err)
+	}()
+}
+func (i *Install) reportToRun(c chan<- resultMessage, rel *release.Release, err error) {
+	i.Lock.Lock()
+	if err != nil {
+		rel, err = i.failRelease(rel, err)
+	}
+	c <- resultMessage{r: rel, e: err}
+	i.Lock.Unlock()
+}
 func (i *Install) failRelease(rel *release.Release, err error) (*release.Release, error) {
 	rel.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", i.ReleaseName, err.Error()))
 	if i.Atomic {
