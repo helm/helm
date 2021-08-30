@@ -20,16 +20,15 @@ import (
 	"io"
 
 	"helm.sh/helm/v3/internal/experimental/registry"
-	"helm.sh/helm/v3/pkg/action"
 )
 
 // RegistryLogin performs a registry login operation.
 type RegistryLogin struct {
-	cfg *action.Configuration
+	cfg *Configuration
 }
 
 // NewRegistryLogin creates a new RegistryLogin object with the given configuration.
-func NewRegistryLogin(cfg *action.Configuration) *RegistryLogin {
+func NewRegistryLogin(cfg *Configuration) *RegistryLogin {
 	return &RegistryLogin{
 		cfg: cfg,
 	}

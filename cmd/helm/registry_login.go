@@ -29,7 +29,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
-	experimental "helm.sh/helm/v3/internal/experimental/action"
 	"helm.sh/helm/v3/pkg/action"
 )
 
@@ -55,7 +54,7 @@ func newRegistryLoginCmd(cfg *action.Configuration, out io.Writer) *cobra.Comman
 				return err
 			}
 
-			return experimental.NewRegistryLogin(cfg).Run(out, hostname, username, password, insecureOpt)
+			return action.NewRegistryLogin(cfg).Run(out, hostname, username, password, insecureOpt)
 		},
 	}
 
