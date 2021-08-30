@@ -19,6 +19,7 @@ package engine
 import (
 	"encoding/base64"
 	"fmt"
+	"log"
 	"path"
 	"strings"
 
@@ -47,11 +48,12 @@ func newFiles(from []*chart.File) files {
 //
 // This is intended to be accessed from within a template, so a missed key returns
 // an empty []byte.
-func (f files) GetBytes(name string) ([]byte, error) {
+func (f files) GetBytes(name string) []byte {
 	if v, ok := f[name]; ok {
-		return v, nil
+		return v
 	}
-	return []byte{}, fmt.Errorf("file %s not included", name)
+	log.Printf("WARNING: %s not included", name)
+	return nil
 }
 
 // Get returns a string representation of the given file.
@@ -60,13 +62,9 @@ func (f files) GetBytes(name string) ([]byte, error) {
 // template.
 //
 //	{{.Files.Get "foo"}}
-func (f files) Get(name string) (string, error) {
-	content, err := f.GetBytes(name)
-	if err != nil {
-		return "", err
-	}
-
-	return string(content), nil
+func (f files) Get(name string) string {
+	content := f.GetBytes(name)
+	return string(content)
 }
 
 // Glob takes a glob pattern and returns another files object only containing

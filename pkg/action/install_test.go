@@ -17,9 +17,11 @@ limitations under the License.
 package action
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -731,7 +733,7 @@ func TestNameAndChartGenerateName(t *testing.T) {
 	}
 }
 
-func TestInstallFailsWhenWrongPathsIncluded(t *testing.T) {
+func TestInstallUsesEmptyContentWrongPathsIncluded(t *testing.T) {
 	is := assert.New(t)
 	vals := map[string]interface{}{}
 
@@ -763,14 +765,27 @@ func TestInstallFailsWhenWrongPathsIncluded(t *testing.T) {
 		},
 	}
 
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+	defer func() {
+		log.SetOutput(os.Stderr)
+	}()
+
 	for _, tc := range tests {
 		t.Run(tc.Name, func(t *testing.T) {
 			instAction := installAction(t)
-			instAction.ExternalPaths = append(instAction.ExternalPaths, tc.IncludedFilePath)
+			if tc.IncludedFilePath != "" {
+				instAction.ExternalPaths = append(instAction.ExternalPaths, tc.IncludedFilePath)
+			}
 
-			_, err := instAction.Run(buildChart(withExternalFileTemplate(tc.ExternalPath)), vals)
-			expectedErr := fmt.Sprintf("<.Files.Get>: error calling Get: file %s not included", tc.ExternalPath)
-			is.Error(err, expectedErr)
+			rel, err := instAction.Run(buildChart(withExternalFileTemplate(tc.ExternalPath)), vals)
+			is.Contains(buf.String(), "not included")
+			is.NoError(err)
+			is.Equal(
+				rel.Manifest,
+				"---\n# Source: hello/templates/hello\nhello: world\n---\n# Source: hello/templates/with-external-paths\ndata:\n",
+			)
+			buf.Reset()
 		})
 	}
 }

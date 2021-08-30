@@ -16,6 +16,9 @@ limitations under the License.
 package engine
 
 import (
+	"bytes"
+	"log"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -48,15 +51,15 @@ func TestNewFiles(t *testing.T) {
 	}
 
 	for i, f := range cases {
-		gotBytes, err := files.GetBytes(f.path)
+		gotBytes := files.GetBytes(f.path)
 		got := string(gotBytes)
-		if err != nil || got != f.data {
+		if got != f.data {
 			t.Errorf("%d: expected %q, got %q", i, f.data, got)
 		}
 
-		gotBytes, err = files.GetBytes(f.path)
+		gotBytes = files.GetBytes(f.path)
 		got = string(gotBytes)
-		if err != nil || got != f.data {
+		if got != f.data {
 			t.Errorf("%d: expected %q, got %q", i, f.data, got)
 		}
 	}
@@ -67,9 +70,15 @@ func TestGetNonExistingFile(t *testing.T) {
 
 	f := getTestFiles()
 
-	content, err := f.Get(NonExistingFileName)
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+	defer func() {
+		log.SetOutput(os.Stderr)
+	}()
+
+	content := f.Get(NonExistingFileName)
 	as.Empty(content)
-	as.Error(err, "not included")
+	as.Contains(buf.String(), "not included")
 }
 
 func TestFileGlob(t *testing.T) {
@@ -81,9 +90,8 @@ func TestFileGlob(t *testing.T) {
 
 	as.Len(matched, 2, "Should be two files in glob story/**")
 
-	content, err := matched.Get("story/author.txt")
+	content := matched.Get("story/author.txt")
 	as.Equal("Joseph Conrad", content)
-	as.NoError(err)
 }
 
 func TestToConfig(t *testing.T) {

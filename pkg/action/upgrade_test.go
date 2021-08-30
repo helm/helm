@@ -17,8 +17,11 @@ limitations under the License.
 package action
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"log"
+	"os"
 	"testing"
 	"time"
 
@@ -421,19 +424,32 @@ func TestUpgradeFailsWhenWrongPathsIncluded(t *testing.T) {
 		},
 	}
 
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+	defer func() {
+		log.SetOutput(os.Stderr)
+	}()
+
 	for _, tc := range tests {
 		t.Run(tc.Name, func(t *testing.T) {
 			upAction := upgradeAction(t)
-			upAction.ExternalPaths = append(upAction.ExternalPaths, tc.IncludedFilePath)
+			if tc.IncludedFilePath != "" {
+				upAction.ExternalPaths = append(upAction.ExternalPaths, tc.IncludedFilePath)
+			}
 
 			rel := releaseStub()
 			rel.Name = "test"
 			rel.Info.Status = release.StatusDeployed
 			upAction.cfg.Releases.Create(rel)
 
-			_, err := upAction.Run(rel.Name, buildChart(withExternalFileTemplate(tc.ExternalPath)), vals)
-			expectedErr := fmt.Sprintf("<.Files.Get>: error calling Get: file %s not included", tc.ExternalPath)
-			is.Error(err, expectedErr)
+			rel, err := upAction.Run(rel.Name, buildChart(withExternalFileTemplate(tc.ExternalPath)), vals)
+			is.Contains(buf.String(), "not included")
+			is.NoError(err)
+			is.Equal(
+				rel.Manifest,
+				"---\n# Source: hello/templates/hello\nhello: world\n---\n# Source: hello/templates/with-external-paths\ndata:\n",
+			)
+			buf.Reset()
 		})
 	}
 }
