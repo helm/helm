@@ -802,6 +802,7 @@ func normalizeURL(baseURL, urlOrPath string) (string, error) {
 		return urlOrPath, errors.Wrap(err, "base URL failed to parse")
 	}
 
+	u2.RawPath = path.Join(u2.RawPath, urlOrPath)
 	u2.Path = path.Join(u2.Path, urlOrPath)
 	return u2.String(), nil
 }

@@ -51,7 +51,7 @@ Environment variables:
 | $HELM_CONFIG_HOME                  | set an alternative location for storing Helm configuration.                       |
 | $HELM_DATA_HOME                    | set an alternative location for storing Helm data.                                |
 | $HELM_DEBUG                        | indicate whether or not Helm is running in Debug mode                             |
-| $HELM_DRIVER                       | set the backend storage driver. Values are: configmap, secret, memory, postgres   |
+| $HELM_DRIVER                       | set the backend storage driver. Values are: configmap, secret, memory, sql.       |
 | $HELM_DRIVER_SQL_CONNECTION_STRING | set the connection string the SQL storage driver should use.                      |
 | $HELM_MAX_HISTORY                  | set the maximum number of helm release history.                                   |
 | $HELM_NAMESPACE                    | set the namespace used for the helm operations.                                   |
