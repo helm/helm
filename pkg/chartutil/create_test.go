@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 )
 
@@ -75,21 +76,25 @@ func TestCreateFrom(t *testing.T) {
 	}
 	defer os.RemoveAll(tdir)
 
-	chartname := "foo"
+	cf := &chart.Metadata{
+		APIVersion: chart.APIVersionV1,
+		Name:       "foo",
+		Version:    "0.1.0",
+	}
 	srcdir := "./testdata/frobnitz/charts/mariner"
 
-	if err := CreateFrom(chartname, tdir, srcdir); err != nil {
+	if err := CreateFrom(cf, tdir, srcdir); err != nil {
 		t.Fatal(err)
 	}
 
-	dir := filepath.Join(tdir, chartname)
-	c := filepath.Join(tdir, chartname)
+	dir := filepath.Join(tdir, "foo")
+	c := filepath.Join(tdir, cf.Name)
 	mychart, err := loader.LoadDir(c)
 	if err != nil {
 		t.Fatalf("Failed to load newly created chart %q: %s", c, err)
 	}
 
-	if mychart.Name() != chartname {
+	if mychart.Name() != "foo" {
 		t.Errorf("Expected name to be 'foo', got %q", mychart.Name())
 	}
 

@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"helm.sh/helm/v3/pkg/chart"
 	"io"
 	"path/filepath"
 
@@ -50,9 +51,10 @@ will be overwritten, but other files will be left alone.
 `
 
 type createOptions struct {
-	starter    string // --starter
-	name       string
-	starterDir string
+	starter      string // --starter
+	name         string
+	starterDir   string
+	originalMeta bool
 }
 
 func newCreateCmd(out io.Writer) *cobra.Command {
@@ -80,6 +82,7 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&o.starter, "starter", "p", "", "the name or absolute path to Helm starter scaffold")
+	cmd.Flags().BoolVar(&o.originalMeta, "original-meta", false, "use Chart.yaml from the starter template")
 	return cmd
 }
 
@@ -87,18 +90,37 @@ func (o *createOptions) run(out io.Writer) error {
 	fmt.Fprintf(out, "Creating %s\n", o.name)
 
 	chartname := filepath.Base(o.name)
-
-	if o.starter != "" {
-		// Create from the starter
-		lstarter := filepath.Join(o.starterDir, o.starter)
-		// If path is absolute, we don't want to prefix it with helm starters folder
-		if filepath.IsAbs(o.starter) {
-			lstarter = o.starter
-		}
-		return chartutil.CreateFrom(chartname, filepath.Dir(o.name), lstarter)
+	// No starter chart path is given, creating from default template
+	if o.starter == "" {
+		chartutil.Stderr = out
+		_, err := chartutil.Create(chartname, filepath.Dir(o.name))
+		return err
 	}
 
-	chartutil.Stderr = out
-	_, err := chartutil.Create(chartname, filepath.Dir(o.name))
-	return err
+	// Create from the starter
+	lstarter := filepath.Join(o.starterDir, o.starter)
+	// If path is absolute, we don't want to prefix it with helm starters folder
+	if filepath.IsAbs(o.starter) {
+		lstarter = o.starter
+	}
+
+	cfile := &chart.Metadata{
+		Name:        chartname,
+		Description: "A Helm chart for Kubernetes",
+		Type:        "application",
+		Version:     "0.1.0",
+		AppVersion:  "0.1.0",
+		APIVersion:  chart.APIVersionV2,
+	}
+	if o.originalMeta {
+		chartYamlPath := filepath.Join(lstarter, "Chart.yaml")
+		originalChartfile, err := chartutil.LoadChartfile(chartYamlPath)
+		if err != nil {
+			return err
+		}
+		originalChartfile.Name = chartname
+		cfile = originalChartfile
+	}
+
+	return chartutil.CreateFrom(cfile, filepath.Dir(o.name), lstarter)
 }

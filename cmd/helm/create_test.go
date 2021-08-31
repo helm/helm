@@ -193,6 +193,76 @@ func TestCreateStarterAbsoluteCmd(t *testing.T) {
 	}
 }
 
+func TestCreateStarterAbsoluteCmdOriginalMeta(t *testing.T) {
+	defer resetEnv()()
+	defer ensure.HelmHome(t)()
+	cname := "testchart"
+
+	// Create a starter.
+	starterchart := helmpath.DataPath("starters")
+	os.MkdirAll(starterchart, 0755)
+	starterChartPath, err := chartutil.Create("starterchart", starterchart)
+	if err != nil {
+		t.Fatalf("Could not create chart: %s", err)
+	} else {
+		t.Logf("Created %s", starterChartPath)
+	}
+
+	chartYamlPath := filepath.Join(starterChartPath, "Chart.yaml")
+	meta, err := chartutil.LoadChartfile(chartYamlPath)
+	if err != nil {
+		t.Fatalf("Could not read Chart.yaml of the template: %s", err)
+	}
+	meta.Dependencies = []*chart.Dependency{
+		{
+			Name:       "some-dependency",
+			Version:    "1.0.1",
+			Repository: "@repo",
+		},
+	}
+	err = chartutil.SaveChartfile(chartYamlPath, meta)
+	if err != nil {
+		t.Fatalf("Could not save Chart.yaml of the template: %s", err)
+	}
+	os.MkdirAll(helmpath.CachePath(), 0755)
+	defer testChdir(t, helmpath.CachePath())()
+
+	// Run a create
+	if _, _, err := executeActionCommand(fmt.Sprintf("create --starter=%s %s --original-meta", starterChartPath, cname)); err != nil {
+		t.Errorf("Failed to run create: %s", err)
+		return
+	}
+
+	// Test that the chart is there
+	if fi, err := os.Stat(cname); err != nil {
+		t.Fatalf("no chart directory: %s", err)
+	} else if !fi.IsDir() {
+		t.Fatalf("chart is not directory")
+	}
+
+	c, err := loader.LoadDir(cname)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if c.Name() != cname {
+		t.Errorf("Expected %q name, got %q", cname, c.Name())
+	}
+	if c.Metadata.APIVersion != chart.APIVersionV2 {
+		t.Errorf("Wrong API version: %q", c.Metadata.APIVersion)
+	}
+
+	if len(c.Metadata.Dependencies) == 0 {
+		t.Errorf("Chart.yaml of the created chart does not match the template")
+	}
+
+	expectedNumberOfTemplates := 8
+	if l := len(c.Templates); l != expectedNumberOfTemplates {
+		t.Errorf("Expected %d templates, got %d", expectedNumberOfTemplates, l)
+	}
+
+}
+
 func TestCreateFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "create", true)
 	checkFileCompletion(t, "create myname", false)

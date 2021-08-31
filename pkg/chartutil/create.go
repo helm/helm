@@ -511,12 +511,13 @@ spec:
 var Stderr io.Writer = os.Stderr
 
 // CreateFrom creates a new chart, but scaffolds it from the src chart.
-func CreateFrom(chartname, dest, src string) error {
+func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
 	schart, err := loader.Load(src)
 	if err != nil {
 		return errors.Wrapf(err, "could not load %s", src)
 	}
-	schart.Metadata.Name = chartname
+
+	schart.Metadata = chartfile
 
 	var updatedTemplates []*chart.File
 
