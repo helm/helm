@@ -260,7 +260,6 @@ func (e Engine) renderWithReferences(tpls, referenceTpls map[string]renderable) 
 		if err := t.ExecuteTemplate(&buf, filename, vals); err != nil {
 			return map[string]string{}, cleanupExecError(filename, err)
 		}
-		delete(vals, "Template")
 
 		// Work around the issue where Go will emit "<no value>" even if Options(missing=zero)
 		// is set. Since missing=error will never get here, we do not need to handle
