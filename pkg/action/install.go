@@ -198,6 +198,10 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		return nil, err
 	}
 
+	if err := chartutil.ProcessDependencies(chrt, vals); err != nil {
+		return nil, err
+	}
+
 	// Pre-install anything in the crd/ directory. We do this before Helm
 	// contacts the upstream server and builds the capabilities object.
 	if crds := chrt.CRDObjects(); !i.ClientOnly && !i.SkipCRDs && len(crds) > 0 {
@@ -224,10 +228,6 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		i.cfg.Releases = storage.Init(mem)
 	} else if !i.ClientOnly && len(i.APIVersions) > 0 {
 		i.cfg.Log("API Version list given outside of client only mode, this list will be ignored")
-	}
-
-	if err := chartutil.ProcessDependencies(chrt, vals); err != nil {
-		return nil, err
 	}
 
 	// Make sure if Atomic is set, that wait is set as well. This makes it so
