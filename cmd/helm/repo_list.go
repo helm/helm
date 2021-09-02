@@ -30,8 +30,15 @@ import (
 	"helm.sh/helm/v3/pkg/repo"
 )
 
+type repoListOptions struct {
+	allowEmpty   bool
+	repoFile     string
+	outputFormat output.Format
+}
+
 func newRepoListCmd(out io.Writer) *cobra.Command {
-	var outfmt output.Format
+	o := &repoListOptions{}
+
 	cmd := &cobra.Command{
 		Use:               "list",
 		Aliases:           []string{"ls"},
@@ -39,18 +46,27 @@ func newRepoListCmd(out io.Writer) *cobra.Command {
 		Args:              require.NoArgs,
 		ValidArgsFunction: noCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			f, err := repo.LoadFile(settings.RepositoryConfig)
-			if isNotExist(err) || (len(f.Repositories) == 0 && !(outfmt == output.JSON || outfmt == output.YAML)) {
-				return errors.New("no repositories to show")
-			}
-
-			return outfmt.Write(out, &repoListWriter{f.Repositories})
+			o.repoFile = settings.RepositoryConfig
+			return o.run(out)
 		},
 	}
 
-	bindOutputFlag(cmd, &outfmt)
+	f := cmd.Flags()
+	f.BoolVar(&o.allowEmpty, "allow-empty", false, "exit with status 0 and no error message if no repositories to show")
+	bindOutputFlag(cmd, &o.outputFormat)
 
 	return cmd
+}
+
+func (o *repoListOptions) run(out io.Writer) error {
+	f, err := repo.LoadFile(o.repoFile)
+	if o.allowEmpty {
+		return o.outputFormat.Write(out, &repoListWriter{f.Repositories})
+	}
+	if isNotExist(err) || (len(f.Repositories) == 0 && !(o.outputFormat == output.JSON || o.outputFormat == output.YAML)) {
+		return errors.New("no repositories to show")
+	}
+	return o.outputFormat.Write(out, &repoListWriter{f.Repositories})
 }
 
 type repositoryElement struct {

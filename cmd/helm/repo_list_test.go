@@ -17,7 +17,12 @@ limitations under the License.
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
+
+	"helm.sh/helm/v3/pkg/cli/output"
+	"helm.sh/helm/v3/pkg/repo/repotest"
 )
 
 func TestRepoListOutputCompletion(t *testing.T) {
@@ -26,4 +31,36 @@ func TestRepoListOutputCompletion(t *testing.T) {
 
 func TestRepoListFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "repo list", false)
+}
+
+func TestRepoListAllowEmpty(t *testing.T) {
+	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ts.Stop()
+
+	rootDir := ts.Root()
+	repoFile := filepath.Join(rootDir, "repositories.yaml")
+
+	// Remove existing repo
+	const testRepoName = "test"
+
+	rmOpts := repoRemoveOptions{
+		names:     []string{testRepoName},
+		repoFile:  repoFile,
+		repoCache: rootDir,
+	}
+	if err := rmOpts.run(os.Stderr); err != nil {
+		t.Error(err)
+	}
+
+	listOpts := repoListOptions{
+		allowEmpty:   true,
+		repoFile:     repoFile,
+		outputFormat: output.Table,
+	}
+	if err := listOpts.run(os.Stderr); err != nil {
+		t.Error("Error not expected when listing repositories with allow-empty flag")
+	}
 }
