@@ -55,7 +55,7 @@ jobs:
           make dist checksum VERSION="${VERSION}"
 
       - name: Azure CLI Action
-        uses: Azure/cli@1.0.4
+        uses: Azure/cli@v1
         with:
           inlineScript: |
             az storage blob upload-batch -s _dist/ -d "$AZURE_STORAGE_CONTAINER_NAME" --pattern 'helm-*' --connection-string "$AZURE_STORAGE_CONNECTION_STRING"

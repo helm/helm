@@ -4,12 +4,6 @@ on:
     tags:
       - v*
 
-  workflow_dispatch:
-    inputs:
-      version:
-        description: Version
-        required: true
-
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -25,15 +19,9 @@ jobs:
         with:
           go-version: '1.16'
 
-      - name: Set Version (tag event)
+      - name: Set Version
         run: |
           echo "::set-output name=VERSION::${GITHUB_REF##*/}"
-        if: github.event == "create"
-
-      - name: Set Version (dispatch event)
-        run: |
-          echo "::set-output name=VERSION::${{ github.event.inputs.version }}"
-        if: github.event == "workflow_dispatch"
 
       - name: Build Helm Binaries
         run: |
@@ -41,7 +29,7 @@ jobs:
           make dist checksum VERSION="${VERSION}"
 
       - name: Azure CLI Action
-        uses: Azure/cli@1.0.4
+        uses: Azure/cli@v1
         with:
           inlineScript: |
             az storage blob upload-batch -s _dist/ -d "$AZURE_STORAGE_CONTAINER_NAME" --pattern 'helm-*' --connection-string "$AZURE_STORAGE_CONNECTION_STRING"
