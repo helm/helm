@@ -58,31 +58,36 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 	locked := make([]*chart.Dependency, len(reqs))
 	missing := []string{}
 	for i, d := range reqs {
-		constraint, err := semver.NewConstraint(d.Version)
-		if err != nil {
-			return nil, errors.Wrapf(err, "dependency %q has an invalid version/constraint format", d.Name)
-		}
+		var constraint *semver.Constraints
+		var chartpath string
+		var err error
 
-		if d.Repository == "" {
-			// Local chart subfolder
-			if _, err := GetLocalPath(filepath.Join("charts", d.Name), r.chartpath); err != nil {
-				return nil, err
-			}
-
-			locked[i] = &chart.Dependency{
-				Name:       d.Name,
-				Repository: "",
-				Version:    d.Version,
-			}
-			continue
-		}
-		if strings.HasPrefix(d.Repository, "file://") {
-
-			chartpath, err := GetLocalPath(d.Repository, r.chartpath)
+		// If version is defined
+		if d.Version != "" {
+			constraint, err = semver.NewConstraint(d.Version)
 			if err != nil {
-				return nil, err
+				return nil, errors.Wrapf(err, "dependency %q has an invalid version/constraint format", d.Name)
+			}
+		}
+
+		// Local chart
+		if d.Repository == "" || strings.HasPrefix(d.Repository, "file://") {
+
+			if d.Repository == "" {
+				// From charts subfolder
+				chartpath, err = GetLocalPath(filepath.Join("charts", d.Name), r.chartpath)
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				// From file:// repository
+				chartpath, err = GetLocalPath(d.Repository, r.chartpath)
+				if err != nil {
+					return nil, err
+				}
 			}
 
+			// Load chart to validate the version
 			ch, err := loader.LoadDir(chartpath)
 			if err != nil {
 				return nil, err
@@ -90,11 +95,15 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 
 			v, err := semver.NewVersion(ch.Metadata.Version)
 			if err != nil {
-				// Not a legit entry.
+				// If version is not set and the version from the local chart is invalid
+				if d.Version == "" {
+					missing = append(missing, d.Name)
+				}
 				continue
 			}
 
-			if !constraint.Check(v) {
+			// If version is set but does not match the local chart
+			if d.Version != "" && !constraint.Check(v) {
 				missing = append(missing, d.Name)
 				continue
 			}
