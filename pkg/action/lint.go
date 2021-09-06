@@ -36,6 +36,7 @@ type Lint struct {
 	Strict        bool
 	Namespace     string
 	WithSubcharts bool
+	Quiet         bool
 }
 
 // LintResult is the result of Lint
@@ -73,6 +74,16 @@ func (l *Lint) Run(paths []string, vals map[string]interface{}) *LintResult {
 		}
 	}
 	return result
+}
+
+// HasWaringsOrErrors checks is LintResult has any warnings or errors
+func HasWarningsOrErrors(result *LintResult) bool {
+	for _, msg := range result.Messages {
+		if msg.Severity > support.InfoSev {
+			return true
+		}
+	}
+	return false
 }
 
 func lintChart(path string, vals map[string]interface{}, namespace string, strict bool) (support.Linter, error) {
