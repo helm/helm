@@ -302,7 +302,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			if m.Debug {
 				fmt.Fprintf(m.Out, "Archiving %s from repo %s\n", dep.Name, dep.Repository)
 			}
-			ver, err := tarFromLocalDir(m.ChartPath, dep.Name, dep.Repository, dep.Version)
+			ver, err := tarFromLocalDir(m.ChartPath, dep.Name, dep.Repository, dep.Version, tmpPath)
 			if err != nil {
 				saveError = err
 				break
@@ -852,10 +852,8 @@ func writeLock(chartpath string, lock *chart.Lock, legacyLockfile bool) error {
 	return ioutil.WriteFile(dest, data, 0644)
 }
 
-// archive a dep chart from local directory and save it into charts/
-func tarFromLocalDir(chartpath, name, repo, version string) (string, error) {
-	destPath := filepath.Join(chartpath, "charts")
-
+// archive a dep chart from local directory and save it into destPath
+func tarFromLocalDir(chartpath, name, repo, version, destPath string) (string, error) {
 	if !strings.HasPrefix(repo, "file://") {
 		return "", errors.Errorf("wrong format: chart %s repository %s", name, repo)
 	}

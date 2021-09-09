@@ -263,6 +263,10 @@ func TestDownloadAll(t *testing.T) {
 	if err := m.downloadAll([]*chart.Dependency{signDep, localDep}); err != nil {
 		t.Error(err)
 	}
+
+	if _, err := os.Stat(filepath.Join(chartPath, "charts", "signtest-0.1.0.tgz")); os.IsNotExist(err) {
+		t.Error(err)
+	}
 }
 
 func TestUpdateBeforeBuild(t *testing.T) {
