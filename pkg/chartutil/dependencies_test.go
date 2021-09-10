@@ -239,6 +239,37 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	}
 }
 
+func TestProcessDependencyImportValuesMultiLevelPrecedence(t *testing.T) {
+	c := loadChart(t, "testdata/three-level-dependent-chart/umbrella")
+
+	e := make(map[string]string)
+
+	e["app1.service.port"] = "3456"
+	e["app2.service.port"] = "8080"
+
+	if err := processDependencyImportValues(c); err != nil {
+		t.Fatalf("processing import values dependencies %v", err)
+	}
+	cc := Values(c.Values)
+	for kk, vv := range e {
+		pv, err := cc.PathValue(kk)
+		if err != nil {
+			t.Fatalf("retrieving import values table %v %v", kk, err)
+		}
+
+		switch pv := pv.(type) {
+		case float64:
+			if s := strconv.FormatFloat(pv, 'f', -1, 64); s != vv {
+				t.Errorf("failed to match imported float value %v with expected %v", s, vv)
+			}
+		default:
+			if pv != vv {
+				t.Errorf("failed to match imported string value %q with expected %q", pv, vv)
+			}
+		}
+	}
+}
+
 func TestProcessDependencyImportValuesForEnabledCharts(t *testing.T) {
 	c := loadChart(t, "testdata/import-values-from-enabled-subchart/parent-chart")
 	nameOverride := "parent-chart-prod"
