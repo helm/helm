@@ -146,6 +146,7 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 					linter.RunLinterRule(support.WarningSev, fpath, validateNoDeprecations(yamlStruct))
 
 					linter.RunLinterRule(support.ErrorSev, fpath, validateMatchSelector(yamlStruct, renderedContent))
+					linter.RunLinterRule(support.ErrorSev, fpath, validateListAnnotations(yamlStruct, renderedContent))
 				}
 			}
 		}
@@ -289,6 +290,28 @@ func validateMatchSelector(yamlStruct *K8sYamlStruct, manifest string) error {
 		// verify that matchLabels or matchExpressions is present
 		if !(strings.Contains(manifest, "matchLabels") || strings.Contains(manifest, "matchExpressions")) {
 			return fmt.Errorf("a %s must contain matchLabels or matchExpressions, and %q does not", yamlStruct.Kind, yamlStruct.Metadata.Name)
+		}
+	}
+	return nil
+}
+func validateListAnnotations(yamlStruct *K8sYamlStruct, manifest string) error {
+	if yamlStruct.Kind == "List" {
+		m := struct {
+			Items []struct {
+				Metadata struct {
+					Annotations map[string]string
+				}
+			}
+		}{}
+
+		if err := yaml.Unmarshal([]byte(manifest), &m); err != nil {
+			return validateYamlContent(err)
+		}
+
+		for _, i := range m.Items {
+			if _, ok := i.Metadata.Annotations["helm.sh/resource-policy"]; ok {
+				return errors.New("Annotation 'helm.sh/resource-policy' within List objects are ignored")
+			}
 		}
 	}
 	return nil

@@ -1,4 +1,4 @@
-Error: values don't meet the specifications of the schema(s) in the following chart(s):
+Error: INSTALLATION FAILED: values don't meet the specifications of the schema(s) in the following chart(s):
 subchart-with-schema:
 - age: Must be greater than or equal to 0
 

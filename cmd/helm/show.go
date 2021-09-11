@@ -51,6 +51,11 @@ This command inspects a chart (directory, file, or URL) and displays the content
 of the README file
 `
 
+const showCRDsDesc = `
+This command inspects a chart (directory, file, or URL) and displays the contents
+of the CustomResourceDefintion files
+`
+
 func newShowCmd(out io.Writer) *cobra.Command {
 	client := action.NewShow(action.ShowAll)
 
@@ -139,7 +144,24 @@ func newShowCmd(out io.Writer) *cobra.Command {
 		},
 	}
 
-	cmds := []*cobra.Command{all, readmeSubCmd, valuesSubCmd, chartSubCmd}
+	crdsSubCmd := &cobra.Command{
+		Use:               "crds [CHART]",
+		Short:             "show the chart's CRDs",
+		Long:              showCRDsDesc,
+		Args:              require.ExactArgs(1),
+		ValidArgsFunction: validArgsFunc,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client.OutputFormat = action.ShowCRDs
+			output, err := runShow(args, client)
+			if err != nil {
+				return err
+			}
+			fmt.Fprint(out, output)
+			return nil
+		},
+	}
+
+	cmds := []*cobra.Command{all, readmeSubCmd, valuesSubCmd, chartSubCmd, crdsSubCmd}
 	for _, subCmd := range cmds {
 		addShowFlags(subCmd, client)
 		showCommand.AddCommand(subCmd)
@@ -174,6 +196,10 @@ func runShow(args []string, client *action.Show) (string, error) {
 	if client.Version == "" && client.Devel {
 		debug("setting version to >0.0.0-0")
 		client.Version = ">0.0.0-0"
+	}
+
+	if err := checkOCI(args[0]); err != nil {
+		return "", err
 	}
 
 	cp, err := client.ChartPathOptions.LocateChart(args[0], settings)

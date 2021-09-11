@@ -97,7 +97,7 @@ const warnStartDelim = "HELM_ERR_START"
 const warnEndDelim = "HELM_ERR_END"
 const recursionMaxNums = 1000
 
-var warnRegex = regexp.MustCompile(warnStartDelim + `(.*)` + warnEndDelim)
+var warnRegex = regexp.MustCompile(warnStartDelim + `((?s).*)` + warnEndDelim)
 
 func warnWrap(warn string) string {
 	return warnStartDelim + warn + warnEndDelim
@@ -344,13 +344,20 @@ func allTemplates(c *chart.Chart, vals chartutil.Values) map[string]renderable {
 //
 // As it recurses, it also sets the values to be appropriate for the template
 // scope.
-func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.Values) {
+func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.Values) map[string]interface{} {
+	subCharts := make(map[string]interface{})
+	chartMetaData := struct {
+		chart.Metadata
+		IsRoot bool
+	}{*c.Metadata, c.IsRoot()}
+
 	next := map[string]interface{}{
-		"Chart":        c.Metadata,
+		"Chart":        chartMetaData,
 		"Files":        newFiles(c.Files),
 		"Release":      vals["Release"],
 		"Capabilities": vals["Capabilities"],
 		"Values":       make(chartutil.Values),
+		"Subcharts":    subCharts,
 	}
 
 	// If there is a {{.Values.ThisChart}} in the parent metadata,
@@ -362,7 +369,7 @@ func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.
 	}
 
 	for _, child := range c.Dependencies() {
-		recAllTpls(child, templates, next)
+		subCharts[child.Name()] = recAllTpls(child, templates, next)
 	}
 
 	newParentID := c.ChartFullPath()
@@ -376,6 +383,8 @@ func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.
 			basePath: path.Join(newParentID, "templates"),
 		}
 	}
+
+	return next
 }
 
 // isTemplateValid returns true if the template is valid for the chart type

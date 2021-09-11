@@ -51,7 +51,7 @@ Environment variables:
 | $HELM_CONFIG_HOME                  | set an alternative location for storing Helm configuration.                       |
 | $HELM_DATA_HOME                    | set an alternative location for storing Helm data.                                |
 | $HELM_DEBUG                        | indicate whether or not Helm is running in Debug mode                             |
-| $HELM_DRIVER                       | set the backend storage driver. Values are: configmap, secret, memory, postgres   |
+| $HELM_DRIVER                       | set the backend storage driver. Values are: configmap, secret, memory, sql.       |
 | $HELM_DRIVER_SQL_CONNECTION_STRING | set the connection string the SQL storage driver should use.                      |
 | $HELM_MAX_HISTORY                  | set the maximum number of helm release history.                                   |
 | $HELM_NAMESPACE                    | set the namespace used for the helm operations.                                   |
@@ -200,7 +200,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	// Add *experimental* subcommands
 	cmd.AddCommand(
 		newRegistryCmd(actionConfig, out),
-		newChartCmd(actionConfig, out),
+		newPushCmd(actionConfig, out),
 	)
 
 	// Find and add plugins
@@ -261,4 +261,13 @@ func checkForExpiredRepos(repofile string) {
 		}
 	}
 
+}
+
+// When dealing with OCI-based charts, ensure that the user has
+// enabled the experimental feature gate prior to continuing
+func checkOCI(ref string) error {
+	if registry.IsOCI(ref) && !FeatureGateOCI.IsEnabled() {
+		return FeatureGateOCI.Error()
+	}
+	return nil
 }

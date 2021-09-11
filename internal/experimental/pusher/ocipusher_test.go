@@ -1,11 +1,10 @@
 /*
 Copyright The Helm Authors.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,25 +13,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package action
+package pusher
 
 import (
-	"io"
+	"testing"
 )
 
-// RegistryLogout performs a registry login operation.
-type RegistryLogout struct {
-	cfg *Configuration
-}
-
-// NewRegistryLogout creates a new RegistryLogout object with the given configuration.
-func NewRegistryLogout(cfg *Configuration) *RegistryLogout {
-	return &RegistryLogout{
-		cfg: cfg,
+func TestNewOCIPusher(t *testing.T) {
+	testfn := func(ops *options) {
+		if ops.registryClient == nil {
+			t.Fatalf("the OCIPusher's registryClient should not be null")
+		}
 	}
-}
 
-// Run executes the registry logout operation
-func (a *RegistryLogout) Run(out io.Writer, hostname string) error {
-	return a.cfg.RegistryClient.Logout(hostname)
+	p, err := NewOCIPusher(testfn)
+	if p == nil {
+		t.Error("NewOCIPusher returned nil")
+	}
+	if err != nil {
+		t.Error(err)
+	}
 }

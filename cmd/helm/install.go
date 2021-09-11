@@ -17,8 +17,13 @@ limitations under the License.
 package main
 
 import (
+	"context"
+	"fmt"
 	"io"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/pkg/errors"
@@ -119,7 +124,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		RunE: func(_ *cobra.Command, args []string) error {
 			rel, err := runInstall(args, client, valueOpts, out)
 			if err != nil {
-				return err
+				return errors.Wrap(err, "INSTALLATION FAILED")
 			}
 
 			return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false})
@@ -182,6 +187,10 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	}
 	client.ReleaseName = name
 
+	if err := checkOCI(chart); err != nil {
+		return nil, err
+	}
+
 	cp, err := client.ChartPathOptions.LocateChart(chart, settings)
 	if err != nil {
 		return nil, err
@@ -239,7 +248,21 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	}
 
 	client.Namespace = settings.Namespace()
-	return client.Run(chartRequested, vals)
+
+	// Create context and prepare the handle of SIGTERM
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+
+	// Handle SIGTERM
+	cSignal := make(chan os.Signal)
+	signal.Notify(cSignal, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-cSignal
+		fmt.Fprintf(out, "Release %s has been cancelled.\n", args[0])
+		cancel()
+	}()
+
+	return client.RunWithContext(ctx, chartRequested, vals)
 }
 
 // checkIfInstallable validates if a chart can be installed

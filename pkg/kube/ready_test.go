@@ -4,7 +4,6 @@ Copyright The Helm Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
@@ -242,45 +241,50 @@ func Test_ReadyChecker_jobReady(t *testing.T) {
 	}{
 		{
 			name:    "job is completed",
-			args:    args{job: newJob("foo", 1, 1, 1, 0)},
+			args:    args{job: newJob("foo", 1, intToInt32(1), 1, 0)},
 			want:    true,
 			wantErr: false,
 		},
 		{
 			name:    "job is incomplete",
-			args:    args{job: newJob("foo", 1, 1, 0, 0)},
+			args:    args{job: newJob("foo", 1, intToInt32(1), 0, 0)},
 			want:    false,
 			wantErr: false,
 		},
 		{
 			name:    "job is failed but within BackoffLimit",
-			args:    args{job: newJob("foo", 1, 1, 0, 1)},
+			args:    args{job: newJob("foo", 1, intToInt32(1), 0, 1)},
 			want:    false,
 			wantErr: false,
 		},
 		{
 			name:    "job is completed with retry",
-			args:    args{job: newJob("foo", 1, 1, 1, 1)},
+			args:    args{job: newJob("foo", 1, intToInt32(1), 1, 1)},
 			want:    true,
 			wantErr: false,
 		},
 		{
 			name:    "job is failed and beyond BackoffLimit",
-			args:    args{job: newJob("foo", 1, 1, 0, 2)},
+			args:    args{job: newJob("foo", 1, intToInt32(1), 0, 2)},
 			want:    false,
 			wantErr: true,
 		},
 		{
 			name:    "job is completed single run",
-			args:    args{job: newJob("foo", 0, 1, 1, 0)},
+			args:    args{job: newJob("foo", 0, intToInt32(1), 1, 0)},
 			want:    true,
 			wantErr: false,
 		},
 		{
 			name:    "job is failed single run",
-			args:    args{job: newJob("foo", 0, 1, 0, 1)},
+			args:    args{job: newJob("foo", 0, intToInt32(1), 0, 1)},
 			want:    false,
 			wantErr: true,
+		},
+		{
+			name: "job with null completions",
+			args: args{job: newJob("foo", 0, nil, 1, 0)},
+			want: true,
 		},
 	}
 	for _, tt := range tests {
@@ -494,7 +498,7 @@ func newPersistentVolumeClaim(name string, phase corev1.PersistentVolumeClaimPha
 	}
 }
 
-func newJob(name string, backoffLimit, completions, succeeded, failed int) *batchv1.Job {
+func newJob(name string, backoffLimit int, completions *int32, succeeded int, failed int) *batchv1.Job {
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -502,7 +506,7 @@ func newJob(name string, backoffLimit, completions, succeeded, failed int) *batc
 		},
 		Spec: batchv1.JobSpec{
 			BackoffLimit: intToInt32(backoffLimit),
-			Completions:  intToInt32(completions),
+			Completions:  completions,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:   name,

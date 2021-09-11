@@ -162,6 +162,15 @@ func (c *Client) WaitWithJobs(resources ResourceList, timeout time.Duration) err
 	return w.waitForResources(resources)
 }
 
+// WaitForDelete wait up to the given timeout for the specified resources to be deleted.
+func (c *Client) WaitForDelete(resources ResourceList, timeout time.Duration) error {
+	w := waiter{
+		log:     c.Log,
+		timeout: timeout,
+	}
+	return w.waitForDeletedResources(resources)
+}
+
 func (c *Client) namespace() string {
 	if c.Namespace != "" {
 		return c.Namespace

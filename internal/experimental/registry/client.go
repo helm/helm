@@ -17,325 +17,458 @@ limitations under the License.
 package registry // import "helm.sh/helm/v3/internal/experimental/registry"
 
 import (
-	"bytes"
-	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
-	"sort"
+	"strings"
 
-	auth "github.com/deislabs/oras/pkg/auth/docker"
-	"github.com/deislabs/oras/pkg/content"
-	"github.com/deislabs/oras/pkg/oras"
-	"github.com/gosuri/uitable"
+	"github.com/containerd/containerd/remotes"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
+	"oras.land/oras-go/pkg/auth"
+	dockerauth "oras.land/oras-go/pkg/auth/docker"
+	"oras.land/oras-go/pkg/content"
+	"oras.land/oras-go/pkg/oras"
 
+	"helm.sh/helm/v3/internal/version"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/helmpath"
 )
 
-const (
-	// CredentialsFileBasename is the filename for auth credentials file
-	CredentialsFileBasename = "config.json"
-)
-
 type (
-	// Client works with OCI-compliant registries and local Helm chart cache
+	// Client works with OCI-compliant registries
 	Client struct {
 		debug bool
 		// path to repository config file e.g. ~/.docker/config.json
 		credentialsFile string
 		out             io.Writer
-		authorizer      *Authorizer
-		resolver        *Resolver
-		cache           *Cache
-		columnWidth     uint
+		authorizer      auth.Client
+		resolver        remotes.Resolver
 	}
+
+	// ClientOption allows specifying various settings configurable by the user for overriding the defaults
+	// used when creating a new default client
+	ClientOption func(*Client)
 )
 
 // NewClient returns a new registry client with config
-func NewClient(opts ...ClientOption) (*Client, error) {
+func NewClient(options ...ClientOption) (*Client, error) {
 	client := &Client{
 		out: ioutil.Discard,
 	}
-	for _, opt := range opts {
-		opt(client)
+	for _, option := range options {
+		option(client)
 	}
-	// set defaults if fields are missing
 	if client.credentialsFile == "" {
 		client.credentialsFile = helmpath.CachePath("registry", CredentialsFileBasename)
 	}
 	if client.authorizer == nil {
-		authClient, err := auth.NewClient(client.credentialsFile)
+		authClient, err := dockerauth.NewClient(client.credentialsFile)
 		if err != nil {
 			return nil, err
 		}
-		client.authorizer = &Authorizer{
-			Client: authClient,
-		}
+		client.authorizer = authClient
 	}
 	if client.resolver == nil {
-		resolver, err := client.authorizer.Resolver(context.Background(), http.DefaultClient, false)
+		headers := http.Header{}
+		headers.Set("User-Agent", version.GetUserAgent())
+		opts := []auth.ResolverOption{auth.WithResolverHeaders(headers)}
+		resolver, err := client.authorizer.ResolverWithOpts(opts...)
 		if err != nil {
 			return nil, err
 		}
-		client.resolver = &Resolver{
-			Resolver: resolver,
-		}
-	}
-	if client.cache == nil {
-		cache, err := NewCache(
-			CacheOptDebug(client.debug),
-			CacheOptWriter(client.out),
-			CacheOptRoot(helmpath.CachePath("registry", CacheRootDir)),
-		)
-		if err != nil {
-			return nil, err
-		}
-		client.cache = cache
-	}
-
-	if client.columnWidth == 0 {
-		client.columnWidth = 60
+		client.resolver = resolver
 	}
 	return client, nil
 }
 
+// ClientOptDebug returns a function that sets the debug setting on client options set
+func ClientOptDebug(debug bool) ClientOption {
+	return func(client *Client) {
+		client.debug = debug
+	}
+}
+
+// ClientOptWriter returns a function that sets the writer setting on client options set
+func ClientOptWriter(out io.Writer) ClientOption {
+	return func(client *Client) {
+		client.out = out
+	}
+}
+
+// ClientOptCredentialsFile returns a function that sets the credentialsFile setting on a client options set
+func ClientOptCredentialsFile(credentialsFile string) ClientOption {
+	return func(client *Client) {
+		client.credentialsFile = credentialsFile
+	}
+}
+
+type (
+	// LoginOption allows specifying various settings on login
+	LoginOption func(*loginOperation)
+
+	loginOperation struct {
+		username string
+		password string
+		insecure bool
+	}
+)
+
 // Login logs into a registry
-func (c *Client) Login(hostname string, username string, password string, insecure bool) error {
-	err := c.authorizer.Login(ctx(c.out, c.debug), hostname, username, password, insecure)
-	if err != nil {
+func (c *Client) Login(host string, options ...LoginOption) error {
+	operation := &loginOperation{}
+	for _, option := range options {
+		option(operation)
+	}
+	authorizerLoginOpts := []auth.LoginOption{
+		auth.WithLoginContext(ctx(c.out, c.debug)),
+		auth.WithLoginHostname(host),
+		auth.WithLoginUsername(operation.username),
+		auth.WithLoginSecret(operation.password),
+		auth.WithLoginUserAgent(version.GetUserAgent()),
+	}
+	if operation.insecure {
+		authorizerLoginOpts = append(authorizerLoginOpts, auth.WithLoginInsecure())
+	}
+	if err := c.authorizer.LoginWithOpts(authorizerLoginOpts...); err != nil {
 		return err
 	}
-	fmt.Fprintf(c.out, "Login succeeded\n")
+	fmt.Fprintln(c.out, "Login Succeeded")
 	return nil
 }
+
+// LoginOptBasicAuth returns a function that sets the username/password settings on login
+func LoginOptBasicAuth(username string, password string) LoginOption {
+	return func(operation *loginOperation) {
+		operation.username = username
+		operation.password = password
+	}
+}
+
+// LoginOptInsecure returns a function that sets the insecure setting on login
+func LoginOptInsecure(insecure bool) LoginOption {
+	return func(operation *loginOperation) {
+		operation.insecure = insecure
+	}
+}
+
+type (
+	// LogoutOption allows specifying various settings on logout
+	LogoutOption func(*logoutOperation)
+
+	logoutOperation struct{}
+)
 
 // Logout logs out of a registry
-func (c *Client) Logout(hostname string) error {
-	err := c.authorizer.Logout(ctx(c.out, c.debug), hostname)
-	if err != nil {
+func (c *Client) Logout(host string, opts ...LogoutOption) error {
+	operation := &logoutOperation{}
+	for _, opt := range opts {
+		opt(operation)
+	}
+	if err := c.authorizer.Logout(ctx(c.out, c.debug), host); err != nil {
 		return err
 	}
-	fmt.Fprintln(c.out, "Logout succeeded")
+	fmt.Fprintf(c.out, "Removing login credentials for %s\n", host)
 	return nil
 }
 
-// PushChart uploads a chart to a registry
-func (c *Client) PushChart(ref *Reference) error {
-	r, err := c.cache.FetchReference(ref)
-	if err != nil {
-		return err
-	}
-	if !r.Exists {
-		return errors.New(fmt.Sprintf("Chart not found: %s", r.Name))
-	}
-	fmt.Fprintf(c.out, "The push refers to repository [%s]\n", r.Repo)
-	c.printCacheRefSummary(r)
-	layers := []ocispec.Descriptor{*r.ContentLayer}
-	_, err = oras.Push(ctx(c.out, c.debug), c.resolver, r.Name, c.cache.Provider(), layers,
-		oras.WithConfig(*r.Config), oras.WithNameValidation(nil))
-	if err != nil {
-		return err
-	}
-	s := ""
-	numLayers := len(layers)
-	if 1 < numLayers {
-		s = "s"
-	}
-	fmt.Fprintf(c.out,
-		"%s: pushed to remote (%d layer%s, %s total)\n", r.Tag, numLayers, s, byteCountBinary(r.Size))
-	return nil
-}
+type (
+	// PullOption allows specifying various settings on pull
+	PullOption func(*pullOperation)
 
-// PullChart downloads a chart from a registry
-func (c *Client) PullChart(ref *Reference) (*bytes.Buffer, error) {
-	buf := bytes.NewBuffer(nil)
-
-	if ref.Tag == "" {
-		return buf, errors.New("tag explicitly required")
+	// PullResult is the result returned upon successful pull.
+	PullResult struct {
+		Manifest *descriptorPullSummary         `json:"manifest"`
+		Config   *descriptorPullSummary         `json:"config"`
+		Chart    *descriptorPullSummaryWithMeta `json:"chart"`
+		Prov     *descriptorPullSummary         `json:"prov"`
+		Ref      string                         `json:"ref"`
 	}
 
-	fmt.Fprintf(c.out, "%s: Pulling from %s\n", ref.Tag, ref.Repo)
+	descriptorPullSummary struct {
+		Data   []byte `json:"-"`
+		Digest string `json:"digest"`
+		Size   int64  `json:"size"`
+	}
 
+	descriptorPullSummaryWithMeta struct {
+		descriptorPullSummary
+		Meta *chart.Metadata `json:"meta"`
+	}
+
+	pullOperation struct {
+		withChart         bool
+		withProv          bool
+		ignoreMissingProv bool
+	}
+)
+
+// Pull downloads a chart from a registry
+func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
+	operation := &pullOperation{
+		withChart: true, // By default, always download the chart layer
+	}
+	for _, option := range options {
+		option(operation)
+	}
+	if !operation.withChart && !operation.withProv {
+		return nil, errors.New(
+			"must specify at least one layer to pull (chart/prov)")
+	}
 	store := content.NewMemoryStore()
-	fullname := ref.FullName()
-	_ = fullname
-	_, layerDescriptors, err := oras.Pull(ctx(c.out, c.debug), c.resolver, ref.FullName(), store,
+	allowedMediaTypes := []string{
+		ConfigMediaType,
+	}
+	minNumDescriptors := 1 // 1 for the config
+	if operation.withChart {
+		minNumDescriptors++
+		allowedMediaTypes = append(allowedMediaTypes, ChartLayerMediaType)
+	}
+	if operation.withProv {
+		if !operation.ignoreMissingProv {
+			minNumDescriptors++
+		}
+		allowedMediaTypes = append(allowedMediaTypes, ProvLayerMediaType)
+	}
+	manifest, descriptors, err := oras.Pull(ctx(c.out, c.debug), c.resolver, ref, store,
 		oras.WithPullEmptyNameAllowed(),
-		oras.WithAllowedMediaTypes(KnownMediaTypes()))
+		oras.WithAllowedMediaTypes(allowedMediaTypes))
 	if err != nil {
-		return buf, err
+		return nil, err
 	}
-
-	numLayers := len(layerDescriptors)
-	if numLayers < 1 {
-		return buf, errors.New(
-			fmt.Sprintf("manifest does not contain at least 1 layer (total: %d)", numLayers))
+	numDescriptors := len(descriptors)
+	if numDescriptors < minNumDescriptors {
+		return nil, errors.New(
+			fmt.Sprintf("manifest does not contain minimum number of descriptors (%d), descriptors found: %d",
+				minNumDescriptors, numDescriptors))
 	}
-
-	var contentLayer *ocispec.Descriptor
-	for _, layer := range layerDescriptors {
-		layer := layer
-		switch layer.MediaType {
-		case HelmChartContentLayerMediaType:
-			contentLayer = &layer
-
+	var configDescriptor *ocispec.Descriptor
+	var chartDescriptor *ocispec.Descriptor
+	var provDescriptor *ocispec.Descriptor
+	for _, descriptor := range descriptors {
+		d := descriptor
+		switch d.MediaType {
+		case ConfigMediaType:
+			configDescriptor = &d
+		case ChartLayerMediaType:
+			chartDescriptor = &d
+		case ProvLayerMediaType:
+			provDescriptor = &d
 		}
 	}
-
-	if contentLayer == nil {
-		return buf, errors.New(
+	if configDescriptor == nil {
+		return nil, errors.New(
+			fmt.Sprintf("could not load config with mediatype %s", ConfigMediaType))
+	}
+	if operation.withChart && chartDescriptor == nil {
+		return nil, errors.New(
 			fmt.Sprintf("manifest does not contain a layer with mediatype %s",
-				HelmChartContentLayerMediaType))
+				ChartLayerMediaType))
 	}
-
-	_, b, ok := store.Get(*contentLayer)
-	if !ok {
-		return buf, errors.Errorf("Unable to retrieve blob with digest %s", contentLayer.Digest)
+	var provMissing bool
+	if operation.withProv && provDescriptor == nil {
+		if operation.ignoreMissingProv {
+			provMissing = true
+		} else {
+			return nil, errors.New(
+				fmt.Sprintf("manifest does not contain a layer with mediatype %s",
+					ProvLayerMediaType))
+		}
 	}
-
-	buf = bytes.NewBuffer(b)
-	return buf, nil
-}
-
-// PullChartToCache pulls a chart from an OCI Registry to the Registry Cache.
-// This function is needed for `helm chart pull`, which is experimental and will be deprecated soon.
-// Likewise, the Registry cache will soon be deprecated as will this function.
-func (c *Client) PullChartToCache(ref *Reference) error {
-	if ref.Tag == "" {
-		return errors.New("tag explicitly required")
+	result := &PullResult{
+		Manifest: &descriptorPullSummary{
+			Digest: manifest.Digest.String(),
+			Size:   manifest.Size,
+		},
+		Config: &descriptorPullSummary{
+			Digest: configDescriptor.Digest.String(),
+			Size:   configDescriptor.Size,
+		},
+		Chart: &descriptorPullSummaryWithMeta{},
+		Prov:  &descriptorPullSummary{},
+		Ref:   ref,
 	}
-	existing, err := c.cache.FetchReference(ref)
-	if err != nil {
-		return err
-	}
-	fmt.Fprintf(c.out, "%s: Pulling from %s\n", ref.Tag, ref.Repo)
-	manifest, _, err := oras.Pull(ctx(c.out, c.debug), c.resolver, ref.FullName(), c.cache.Ingester(),
-		oras.WithPullEmptyNameAllowed(),
-		oras.WithAllowedMediaTypes(KnownMediaTypes()),
-		oras.WithContentProvideIngester(c.cache.ProvideIngester()))
-	if err != nil {
-		return err
-	}
-	err = c.cache.AddManifest(ref, &manifest)
-	if err != nil {
-		return err
-	}
-	r, err := c.cache.FetchReference(ref)
-	if err != nil {
-		return err
-	}
-	if !r.Exists {
-		return errors.New(fmt.Sprintf("Chart not found: %s", r.Name))
-	}
-	c.printCacheRefSummary(r)
-	if !existing.Exists {
-		fmt.Fprintf(c.out, "Status: Downloaded newer chart for %s\n", ref.FullName())
+	var getManifestErr error
+	if _, manifestData, ok := store.Get(manifest); !ok {
+		getManifestErr = errors.Errorf("Unable to retrieve blob with digest %s", manifest.Digest)
 	} else {
-		fmt.Fprintf(c.out, "Status: Chart is up to date for %s\n", ref.FullName())
+		result.Manifest.Data = manifestData
 	}
-	return err
+	if getManifestErr != nil {
+		return nil, getManifestErr
+	}
+	var getConfigDescriptorErr error
+	if _, configData, ok := store.Get(*configDescriptor); !ok {
+		getConfigDescriptorErr = errors.Errorf("Unable to retrieve blob with digest %s", configDescriptor.Digest)
+	} else {
+		result.Config.Data = configData
+		var meta *chart.Metadata
+		if err := json.Unmarshal(configData, &meta); err != nil {
+			return nil, err
+		}
+		result.Chart.Meta = meta
+	}
+	if getConfigDescriptorErr != nil {
+		return nil, getConfigDescriptorErr
+	}
+	if operation.withChart {
+		var getChartDescriptorErr error
+		if _, chartData, ok := store.Get(*chartDescriptor); !ok {
+			getChartDescriptorErr = errors.Errorf("Unable to retrieve blob with digest %s", chartDescriptor.Digest)
+		} else {
+			result.Chart.Data = chartData
+			result.Chart.Digest = chartDescriptor.Digest.String()
+			result.Chart.Size = chartDescriptor.Size
+		}
+		if getChartDescriptorErr != nil {
+			return nil, getChartDescriptorErr
+		}
+	}
+	if operation.withProv && !provMissing {
+		var getProvDescriptorErr error
+		if _, provData, ok := store.Get(*provDescriptor); !ok {
+			getProvDescriptorErr = errors.Errorf("Unable to retrieve blob with digest %s", provDescriptor.Digest)
+		} else {
+			result.Prov.Data = provData
+			result.Prov.Digest = provDescriptor.Digest.String()
+			result.Prov.Size = provDescriptor.Size
+		}
+		if getProvDescriptorErr != nil {
+			return nil, getProvDescriptorErr
+		}
+	}
+	fmt.Fprintf(c.out, "Pulled: %s\n", result.Ref)
+	fmt.Fprintf(c.out, "Digest: %s\n", result.Manifest.Digest)
+	return result, nil
 }
 
-// SaveChart stores a copy of chart in local cache
-func (c *Client) SaveChart(ch *chart.Chart, ref *Reference) error {
-	r, err := c.cache.StoreReference(ref, ch)
-	if err != nil {
-		return err
+// PullOptWithChart returns a function that sets the withChart setting on pull
+func PullOptWithChart(withChart bool) PullOption {
+	return func(operation *pullOperation) {
+		operation.withChart = withChart
 	}
-	c.printCacheRefSummary(r)
-	err = c.cache.AddManifest(ref, r.Manifest)
-	if err != nil {
-		return err
-	}
-	fmt.Fprintf(c.out, "%s: saved\n", r.Tag)
-	return nil
 }
 
-// LoadChart retrieves a chart object by reference
-func (c *Client) LoadChart(ref *Reference) (*chart.Chart, error) {
-	r, err := c.cache.FetchReference(ref)
+// PullOptWithProv returns a function that sets the withProv setting on pull
+func PullOptWithProv(withProv bool) PullOption {
+	return func(operation *pullOperation) {
+		operation.withProv = withProv
+	}
+}
+
+// PullOptIgnoreMissingProv returns a function that sets the ignoreMissingProv setting on pull
+func PullOptIgnoreMissingProv(ignoreMissingProv bool) PullOption {
+	return func(operation *pullOperation) {
+		operation.ignoreMissingProv = ignoreMissingProv
+	}
+}
+
+type (
+	// PushOption allows specifying various settings on push
+	PushOption func(*pushOperation)
+
+	// PushResult is the result returned upon successful push.
+	PushResult struct {
+		Manifest *descriptorPushSummary         `json:"manifest"`
+		Config   *descriptorPushSummary         `json:"config"`
+		Chart    *descriptorPushSummaryWithMeta `json:"chart"`
+		Prov     *descriptorPushSummary         `json:"prov"`
+		Ref      string                         `json:"ref"`
+	}
+
+	descriptorPushSummary struct {
+		Digest string `json:"digest"`
+		Size   int64  `json:"size"`
+	}
+
+	descriptorPushSummaryWithMeta struct {
+		descriptorPushSummary
+		Meta *chart.Metadata `json:"meta"`
+	}
+
+	pushOperation struct {
+		provData   []byte
+		strictMode bool
+	}
+)
+
+// Push uploads a chart to a registry.
+func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResult, error) {
+	operation := &pushOperation{
+		strictMode: true, // By default, enable strict mode
+	}
+	for _, option := range options {
+		option(operation)
+	}
+	meta, err := extractChartMeta(data)
 	if err != nil {
 		return nil, err
 	}
-	if !r.Exists {
-		return nil, errors.New(fmt.Sprintf("Chart not found: %s", ref.FullName()))
+	if operation.strictMode {
+		if !strings.HasSuffix(ref, fmt.Sprintf("/%s:%s", meta.Name, meta.Version)) {
+			return nil, errors.New(
+				"strict mode enabled, ref basename and tag must match the chart name and version")
+		}
 	}
-	c.printCacheRefSummary(r)
-	return r.Chart, nil
-}
-
-// RemoveChart deletes a locally saved chart
-func (c *Client) RemoveChart(ref *Reference) error {
-	r, err := c.cache.DeleteReference(ref)
-	if err != nil {
-		return err
-	}
-	if !r.Exists {
-		return errors.New(fmt.Sprintf("Chart not found: %s", ref.FullName()))
-	}
-	fmt.Fprintf(c.out, "%s: removed\n", r.Tag)
-	return nil
-}
-
-// PrintChartTable prints a list of locally stored charts
-func (c *Client) PrintChartTable() error {
-	table := uitable.New()
-	table.MaxColWidth = c.columnWidth
-	table.AddRow("REF", "NAME", "VERSION", "DIGEST", "SIZE", "CREATED")
-	rows, err := c.getChartTableRows()
-	if err != nil {
-		return err
-	}
-	for _, row := range rows {
-		table.AddRow(row...)
-	}
-	fmt.Fprintln(c.out, table.String())
-	return nil
-}
-
-// printCacheRefSummary prints out chart ref summary
-func (c *Client) printCacheRefSummary(r *CacheRefSummary) {
-	fmt.Fprintf(c.out, "ref:     %s\n", r.Name)
-	fmt.Fprintf(c.out, "digest:  %s\n", r.Manifest.Digest.Hex())
-	fmt.Fprintf(c.out, "size:    %s\n", byteCountBinary(r.Size))
-	fmt.Fprintf(c.out, "name:    %s\n", r.Chart.Metadata.Name)
-	fmt.Fprintf(c.out, "version: %s\n", r.Chart.Metadata.Version)
-}
-
-// getChartTableRows returns rows in uitable-friendly format
-func (c *Client) getChartTableRows() ([][]interface{}, error) {
-	rr, err := c.cache.ListReferences()
+	store := content.NewMemoryStore()
+	chartDescriptor := store.Add("", ChartLayerMediaType, data)
+	configData, err := json.Marshal(meta)
 	if err != nil {
 		return nil, err
 	}
-	refsMap := map[string]map[string]string{}
-	for _, r := range rr {
-		refsMap[r.Name] = map[string]string{
-			"name":    r.Chart.Metadata.Name,
-			"version": r.Chart.Metadata.Version,
-			"digest":  shortDigest(r.Manifest.Digest.Hex()),
-			"size":    byteCountBinary(r.Size),
-			"created": timeAgo(r.CreatedAt),
+	configDescriptor := store.Add("", ConfigMediaType, configData)
+	descriptors := []ocispec.Descriptor{chartDescriptor}
+	var provDescriptor ocispec.Descriptor
+	if operation.provData != nil {
+		provDescriptor = store.Add("", ProvLayerMediaType, operation.provData)
+		descriptors = append(descriptors, provDescriptor)
+	}
+	manifest, err := oras.Push(ctx(c.out, c.debug), c.resolver, ref, store, descriptors,
+		oras.WithConfig(configDescriptor), oras.WithNameValidation(nil))
+	if err != nil {
+		return nil, err
+	}
+	chartSummary := &descriptorPushSummaryWithMeta{
+		Meta: meta,
+	}
+	chartSummary.Digest = chartDescriptor.Digest.String()
+	chartSummary.Size = chartDescriptor.Size
+	result := &PushResult{
+		Manifest: &descriptorPushSummary{
+			Digest: manifest.Digest.String(),
+			Size:   manifest.Size,
+		},
+		Config: &descriptorPushSummary{
+			Digest: configDescriptor.Digest.String(),
+			Size:   configDescriptor.Size,
+		},
+		Chart: chartSummary,
+		Prov:  &descriptorPushSummary{}, // prevent nil references
+		Ref:   ref,
+	}
+	if operation.provData != nil {
+		result.Prov = &descriptorPushSummary{
+			Digest: provDescriptor.Digest.String(),
+			Size:   provDescriptor.Size,
 		}
 	}
-	// Sort and convert to format expected by uitable
-	rows := make([][]interface{}, len(refsMap))
-	keys := make([]string, 0, len(refsMap))
-	for key := range refsMap {
-		keys = append(keys, key)
+	fmt.Fprintf(c.out, "Pushed: %s\n", result.Ref)
+	fmt.Fprintf(c.out, "Digest: %s\n", result.Manifest.Digest)
+	return result, err
+}
+
+// PushOptProvData returns a function that sets the prov bytes setting on push
+func PushOptProvData(provData []byte) PushOption {
+	return func(operation *pushOperation) {
+		operation.provData = provData
 	}
-	sort.Strings(keys)
-	for i, key := range keys {
-		rows[i] = make([]interface{}, 6)
-		rows[i][0] = key
-		ref := refsMap[key]
-		for j, k := range []string{"name", "version", "digest", "size", "created"} {
-			rows[i][j+1] = ref[k]
-		}
+}
+
+// PushOptStrictMode returns a function that sets the strictMode setting on push
+func PushOptStrictMode(strictMode bool) PushOption {
+	return func(operation *pushOperation) {
+		operation.strictMode = strictMode
 	}
-	return rows, nil
 }

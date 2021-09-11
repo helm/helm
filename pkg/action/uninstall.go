@@ -23,6 +23,7 @@ import (
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/kube"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/releaseutil"
 	helmtime "helm.sh/helm/v3/pkg/time"
@@ -37,6 +38,7 @@ type Uninstall struct {
 	DisableHooks bool
 	DryRun       bool
 	KeepHistory  bool
+	Wait         bool
 	Timeout      time.Duration
 	Description  string
 }
@@ -110,12 +112,20 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 		u.cfg.Log("uninstall: Failed to store updated release: %s", err)
 	}
 
-	kept, errs := u.deleteRelease(rel)
+	deletedResources, kept, errs := u.deleteRelease(rel)
 
 	if kept != "" {
 		kept = "These resources were kept due to the resource policy:\n" + kept
 	}
 	res.Info = kept
+
+	if u.Wait {
+		if kubeClient, ok := u.cfg.KubeClient.(kube.InterfaceExt); ok {
+			if err := kubeClient.WaitForDelete(deletedResources, u.Timeout); err != nil {
+				errs = append(errs, err)
+			}
+		}
+	}
 
 	if !u.DisableHooks {
 		if err := u.cfg.execHook(rel, release.HookPostDelete, u.Timeout); err != nil {
@@ -172,12 +182,12 @@ func joinErrors(errs []error) string {
 	return strings.Join(es, "; ")
 }
 
-// deleteRelease deletes the release and returns manifests that were kept in the deletion process
-func (u *Uninstall) deleteRelease(rel *release.Release) (string, []error) {
+// deleteRelease deletes the release and returns list of delete resources and manifests that were kept in the deletion process
+func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, string, []error) {
 	var errs []error
 	caps, err := u.cfg.getCapabilities()
 	if err != nil {
-		return rel.Manifest, []error{errors.Wrap(err, "could not get apiVersions from Kubernetes")}
+		return nil, rel.Manifest, []error{errors.Wrap(err, "could not get apiVersions from Kubernetes")}
 	}
 
 	manifests := releaseutil.SplitManifests(rel.Manifest)
@@ -187,7 +197,7 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (string, []error) {
 		// FIXME: One way to delete at this point would be to try a label-based
 		// deletion. The problem with this is that we could get a false positive
 		// and delete something that was not legitimately part of this release.
-		return rel.Manifest, []error{errors.Wrap(err, "corrupted release record. You must manually delete the resources")}
+		return nil, rel.Manifest, []error{errors.Wrap(err, "corrupted release record. You must manually delete the resources")}
 	}
 
 	filesToKeep, filesToDelete := filterManifestsToKeep(files)
@@ -203,10 +213,10 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (string, []error) {
 
 	resources, err := u.cfg.KubeClient.Build(strings.NewReader(builder.String()), false)
 	if err != nil {
-		return "", []error{errors.Wrap(err, "unable to build kubernetes objects for delete")}
+		return nil, "", []error{errors.Wrap(err, "unable to build kubernetes objects for delete")}
 	}
 	if len(resources) > 0 {
 		_, errs = u.cfg.KubeClient.Delete(resources)
 	}
-	return kept, errs
+	return resources, kept, errs
 }
