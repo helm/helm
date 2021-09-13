@@ -18,6 +18,7 @@ package chartutil
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -338,4 +339,71 @@ func TestCoalesceTables(t *testing.T) {
 	if dst2["hole"].(string) != "black" {
 		t.Errorf("Expected hole string, got %v", dst2["boat"])
 	}
+}
+
+func TestCoalesceValuesWarnings(t *testing.T) {
+
+	c := withDeps(&chart.Chart{
+		Metadata: &chart.Metadata{Name: "level1"},
+		Values: map[string]interface{}{
+			"name": "moby",
+		},
+	},
+		withDeps(&chart.Chart{
+			Metadata: &chart.Metadata{Name: "level2"},
+			Values: map[string]interface{}{
+				"name": "pequod",
+			},
+		},
+			&chart.Chart{
+				Metadata: &chart.Metadata{Name: "level3"},
+				Values: map[string]interface{}{
+					"name": "ahab",
+					"boat": true,
+					"spear": map[string]interface{}{
+						"tip": true,
+						"sail": map[string]interface{}{
+							"cotton": true,
+						},
+					},
+				},
+			},
+		),
+	)
+
+	vals := map[string]interface{}{
+		"level2": map[string]interface{}{
+			"level3": map[string]interface{}{
+				"boat": map[string]interface{}{"mast": true},
+				"spear": map[string]interface{}{
+					"tip": map[string]interface{}{
+						"sharp": true,
+					},
+					"sail": true,
+				},
+			},
+		},
+	}
+
+	warnings := make([]string, 0)
+	printf := func(format string, v ...interface{}) {
+		t.Logf(format, v...)
+		warnings = append(warnings, fmt.Sprintf(format, v...))
+	}
+
+	_, err := coalesce(printf, c, vals, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Logf("vals: %v", vals)
+	assert.Contains(t, warnings, "warning: skipped value for level1.level2.level3.boat: Not a table.")
+	assert.Contains(t, warnings, "warning: destination for level1.level2.level3.spear.tip is a table. Ignoring non-table value (true)")
+	assert.Contains(t, warnings, "warning: cannot overwrite table with non table for level1.level2.level3.spear.sail (map[cotton:true])")
+
+}
+
+func TestConcatPrefix(t *testing.T) {
+	assert.Equal(t, "b", concatPrefix("", "b"))
+	assert.Equal(t, "a.b", concatPrefix("a", "b"))
 }
