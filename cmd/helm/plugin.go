@@ -19,6 +19,8 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"runtime"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -47,15 +49,22 @@ func newPluginCmd(out io.Writer) *cobra.Command {
 
 // runHook will execute a plugin hook.
 func runHook(p *plugin.Plugin, event string) error {
-	hook := p.Metadata.Hooks[event]
-	if hook == "" {
+	hookParts, hookErr := p.PrepareHook(event)
+	if len(hookParts) == 0 {
 		return nil
 	}
+	if hookErr != nil {
+		os.Stderr.WriteString(hookErr.Error())
+		return errors.Errorf("plugin hook %s exited with error", event)
+	}
+	hook := strings.Join(hookParts, " ")
 
-	prog := exec.Command("sh", "-c", hook)
-	// TODO make this work on windows
-	// I think its ... ¯\_(ツ)_/¯
-	// prog := exec.Command("cmd", "/C", p.Metadata.Hooks.Install())
+	var prog *exec.Cmd
+	if runtime.GOOS == "windows" {
+		prog = exec.Command("cmd", "/C", hook)
+	} else {
+		prog = exec.Command("sh", "-c", hook)
+	}
 
 	debug("running %s hook: %s", event, prog)
 
