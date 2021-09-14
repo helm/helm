@@ -1,12 +1,11 @@
 apiVersion: v2
-appVersion: 1.16.0
-dependencies:
-- import-values:
-  - defaults
-  name: library
-  repository: file://../library
-  version: 0.1.0
-description: A Helm chart for Kubernetes
 name: app2
+description: A Helm chart for Kubernetes
 type: application
 version: 0.1.0
+
+dependencies:
+- name: library
+  version: 0.1.0
+  import-values:
+    - defaults
