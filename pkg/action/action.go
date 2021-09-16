@@ -25,12 +25,14 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/agext/levenshtein"
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/chart"
@@ -44,6 +46,9 @@ import (
 	"helm.sh/helm/v3/pkg/storage/driver"
 	"helm.sh/helm/v3/pkg/time"
 )
+
+// Filename string for objects added by a post-renderer.
+const postRendererNewObjectFileName = "added-by-post-renderer.yaml"
 
 // Timestamper is a function capable of producing a timestamp.Timestamper.
 //
@@ -159,6 +164,13 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	}
 	notes := notesBuffer.String()
 
+	if pr != nil {
+		files, err = runPostRenderer(files, pr)
+		if err != nil {
+			return hs, b, notes, err
+		}
+	}
+
 	// Sort hooks, manifests, and partials. Only hooks and manifests are returned,
 	// as partials are not used after renderer.Render. Empty manifests are also
 	// removed here.
@@ -215,14 +227,174 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 		}
 	}
 
-	if pr != nil {
-		b, err = pr.Run(b)
-		if err != nil {
-			return hs, b, notes, errors.Wrap(err, "error while running post render on files")
+	return hs, b, notes, nil
+}
+
+// runPostRenderer runs post-renderer on a concatenated YAML of all rendered files.
+// The filename is preserved via YAML comment.
+// If YAML comments are stripped by a post-renderer, then the file name is
+// reconstructed by a similarity search over the object group, version, kind and metadata.
+// If GVK or metadata does not match any file, then an "added-by-post-renderer.yaml" name is used.
+func runPostRenderer(files map[string]string, pr postrender.PostRenderer) (map[string]string, error) {
+	b := bytes.NewBuffer(nil)
+	searchFields := []similaritySearchFields{}
+	commentPrefix := "# Source: "
+
+	// Split the rendered files into documents and add the temp comment.
+	reYamlDocumentSeparator := regexp.MustCompile(`\n*---\s*\n`)
+	for name, content := range files {
+		for _, document := range reYamlDocumentSeparator.Split(content, -1) {
+			// Skip empty documents.
+			if strings.TrimSpace(document) == "" {
+				continue
+			}
+			fmt.Fprintf(b, "---\n%s%s\n%s\n", commentPrefix, name, content)
+			newSearchFileds, err := getSimilaritySearchFields(name, document)
+			if err != nil {
+				return nil, err
+			}
+			searchFields = append(searchFields, newSearchFileds)
 		}
 	}
 
-	return hs, b, notes, nil
+	// Run post-renderer.
+	b, err := pr.Run(b)
+	if err != nil {
+		return nil, errors.Wrap(err, "error while running post-renderer on files")
+	}
+
+	postProcessedFiles := make(map[string]string)
+	// Split the post-processed stream into files.
+	for _, document := range reYamlDocumentSeparator.Split(b.String(), -1) {
+		if strings.TrimSpace(document) == "" {
+			continue
+		}
+
+		var filename string
+		// Try to read filename from a comment in hope that it was preserved.
+		if strings.HasPrefix(document, commentPrefix) {
+			lines := strings.SplitN(document, "\n", 2)
+			filename = strings.TrimPrefix(lines[0], commentPrefix)
+			document = lines[1]
+		} else {
+			// Otherwise, use fuzzy search.
+			filename, err = searchFilename(document, searchFields)
+			if err != nil {
+				return nil, errors.Wrap(err, "cannot parse a post-processed document")
+			}
+		}
+
+		if existingDocument, ok := postProcessedFiles[filename]; ok {
+			postProcessedFiles[filename] = existingDocument + "\n---\n" + document
+		} else {
+			postProcessedFiles[filename] = document
+		}
+	}
+
+	return postProcessedFiles, nil
+}
+
+type similaritySearchFields struct {
+	GroupVersion string
+	Kind         string
+	Name         string
+	Namespace    string
+	Labels       map[string]string
+	Annotations  map[string]string
+	Filename     string
+}
+
+// getSimilaritySearchFields fills the similaritySearchFields struct
+func getSimilaritySearchFields(filename, document string) (similaritySearchFields, error) {
+	ssf := similaritySearchFields{Filename: filename}
+
+	// Unmarshal the document.
+	var documentMap map[string]interface{}
+	err := yaml.Unmarshal([]byte(document), &documentMap)
+	if err != nil {
+		return ssf, errors.Wrapf(err, "could not unmarshal YAML file %s", filename)
+	}
+
+	apiVersion := documentMap["apiVersion"]
+	if _, ok := apiVersion.(string); !ok || apiVersion == nil {
+		return ssf, errors.Wrapf(err, "invalid apiVersion %v in file %s", apiVersion, filename)
+	}
+	ssf.GroupVersion = apiVersion.(string)
+
+	kind := documentMap["kind"]
+	if _, ok := kind.(string); !ok || kind == nil {
+		return ssf, errors.Wrapf(err, "invalid kind %v in file %s", kind, filename)
+	}
+	ssf.Kind = kind.(string)
+
+	metadata, ok := documentMap["metadata"].(map[string]interface{})
+	if !ok {
+		// Document has no metadata, hence no labels and annotations.
+		return ssf, nil
+	}
+
+	ssf.Annotations = make(map[string]string)
+	if annotations, ok := metadata["annotations"].(map[string]interface{}); ok {
+		for k, v := range annotations {
+			if _, ok := v.(string); ok {
+				ssf.Annotations[k] = v.(string)
+			}
+		}
+	}
+
+	ssf.Labels = make(map[string]string)
+	if labels, ok := metadata["labels"].(map[string]interface{}); ok {
+		for k, v := range labels {
+			if _, ok := v.(string); ok {
+				ssf.Labels[k] = v.(string)
+			}
+		}
+	}
+
+	return ssf, nil
+}
+
+// searchFilename returns a filename with the highest similarity of GVK, labels and annotations.
+// A special postRendererNewObjectFileName is used if no similar files were found.
+func searchFilename(document string, ssfSlice []similaritySearchFields) (filename string, err error) {
+	documentFields, err := getSimilaritySearchFields(postRendererNewObjectFileName, document)
+	if err != nil {
+		return
+	}
+	filename = postRendererNewObjectFileName
+	maxScore := 3.0 // Documents below this similarity threshold will be considered new.
+	for _, ssf := range ssfSlice {
+		score := similarity(documentFields.GroupVersion, ssf.GroupVersion)
+		score += similarity(documentFields.Kind, ssf.Kind)
+		score += similarity(documentFields.Name, ssf.Name)
+		score += similarity(documentFields.Namespace, ssf.Namespace)
+		for key, val := range documentFields.Labels {
+			coefficient := len(documentFields.Labels)
+			if ssfLabelValue, ok := ssf.Labels[key]; ok {
+				score += similarity(val, ssfLabelValue) / float64(coefficient)
+			}
+		}
+		for key, val := range documentFields.Annotations {
+			coefficient := len(documentFields.Labels)
+			if ssfAnnotationValue, ok := ssf.Annotations[key]; ok {
+				score += similarity(val, ssfAnnotationValue) / float64(coefficient)
+			}
+		}
+		if score >= maxScore {
+			maxScore = score
+			filename = ssf.Filename
+		}
+	}
+	return filename, nil
+}
+
+// similarity returns score in the range of 0..1
+func similarity(s1, s2 string) float64 {
+	params := levenshtein.NewParams().MinScore(0.5)
+	if len(s1) == 0 || len(s2) == 0 {
+		return 0
+	}
+	return levenshtein.Match(s1, s2, params)
 }
 
 // RESTClientGetter gets the rest client

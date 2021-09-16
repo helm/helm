@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
@@ -295,6 +296,32 @@ func TestInstallRelease_NoHooks(t *testing.T) {
 	is.True(res.Hooks[0].LastRun.CompletedAt.IsZero(), "hooks should not run with no-hooks")
 }
 
+type TestPostRenderer struct{}
+
+func (tpr TestPostRenderer) Run(renderedManifests *bytes.Buffer) (*bytes.Buffer, error) {
+	if bytes.Contains(renderedManifests.Bytes(), []byte("helm.sh/hook")) {
+		renderedManifests.WriteString("\n# helm hook was post-processed\n")
+		return renderedManifests, nil
+	}
+	fmt.Println(renderedManifests)
+	return nil, fmt.Errorf("Hook was not post-processed")
+}
+
+// Test if a post-renderer receives hooks.
+func TestInstallRelease_PostRendererReceivesHooks(t *testing.T) {
+	instAction := installAction(t)
+
+	var pr TestPostRenderer
+	instAction.PostRenderer = pr
+
+	vals := map[string]interface{}{}
+	res, err := instAction.Run(buildChart(), vals)
+	if err != nil {
+		t.Fatalf("Failed install: %s", err)
+	}
+	fmt.Printf("%v", res)
+}
+
 func TestInstallRelease_FailedHooks(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
@@ -363,6 +390,7 @@ func TestInstallRelease_Wait(t *testing.T) {
 	is.Contains(res.Info.Description, "I timed out")
 	is.Equal(res.Info.Status, release.StatusFailed)
 }
+
 func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
@@ -382,6 +410,7 @@ func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	is.Contains(res.Info.Description, "Release \"interrupted-release\" failed: context canceled")
 	is.Equal(res.Info.Status, release.StatusFailed)
 }
+
 func TestInstallRelease_WaitForJobs(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
@@ -439,8 +468,8 @@ func TestInstallRelease_Atomic(t *testing.T) {
 		is.Contains(err.Error(), "an error occurred while uninstalling the release")
 	})
 }
-func TestInstallRelease_Atomic_Interrupted(t *testing.T) {
 
+func TestInstallRelease_Atomic_Interrupted(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "interrupted-release"
@@ -464,8 +493,8 @@ func TestInstallRelease_Atomic_Interrupted(t *testing.T) {
 	_, err = instAction.cfg.Releases.Get(res.Name, res.Version)
 	is.Error(err)
 	is.Equal(err, driver.ErrReleaseNotFound)
-
 }
+
 func TestNameTemplate(t *testing.T) {
 	testCases := []nameTemplateTestCase{
 		// Just a straight up nop please
