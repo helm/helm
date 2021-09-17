@@ -39,9 +39,10 @@ const defaultMaxHistory = 10
 
 // EnvSettings describes all of the environment settings.
 type EnvSettings struct {
-	namespace string
-	config    *genericclioptions.ConfigFlags
+	config *genericclioptions.ConfigFlags
 
+	// KubeNamespace is the namespace to use for the Kubernetes client.
+	KubeNamespace string
 	// KubeConfig is the path to the kubeconfig file
 	KubeConfig string
 	// KubeContext is the name of the kubeconfig context.
@@ -72,7 +73,7 @@ type EnvSettings struct {
 
 func New() *EnvSettings {
 	env := &EnvSettings{
-		namespace:        os.Getenv("HELM_NAMESPACE"),
+		KubeNamespace:    os.Getenv("HELM_NAMESPACE"),
 		MaxHistory:       envIntOr("HELM_MAX_HISTORY", defaultMaxHistory),
 		KubeContext:      os.Getenv("HELM_KUBECONTEXT"),
 		KubeToken:        os.Getenv("HELM_KUBETOKEN"),
@@ -89,7 +90,7 @@ func New() *EnvSettings {
 
 	// bind to kubernetes config flags
 	env.config = &genericclioptions.ConfigFlags{
-		Namespace:        &env.namespace,
+		Namespace:        &env.KubeNamespace,
 		Context:          &env.KubeContext,
 		BearerToken:      &env.KubeToken,
 		APIServer:        &env.KubeAPIServer,
@@ -103,7 +104,7 @@ func New() *EnvSettings {
 
 // AddFlags binds flags to the given flagset.
 func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
-	fs.StringVarP(&s.namespace, "namespace", "n", s.namespace, "namespace scope for this request")
+	fs.StringVarP(&s.KubeNamespace, "KubeNamespace", "n", s.KubeNamespace, "KubeNamespace scope for this request")
 	fs.StringVar(&s.KubeConfig, "kubeconfig", "", "path to the kubeconfig file")
 	fs.StringVar(&s.KubeContext, "kube-context", s.KubeContext, "name of the kubeconfig context to use")
 	fs.StringVar(&s.KubeToken, "kube-token", s.KubeToken, "bearer token used for authentication")
