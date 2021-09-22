@@ -1,0 +1,12 @@
+apiVersion: v1
+name: gizmo
+description: Deploy a basic Alpine Linux pod
+version: 0.1.0
+home: https://helm.sh/helm
+dependencies:
+  - name: frobule
+    version: 0.1.0
+    alias: frobozz1
+  - name: frobule
+    version: 0.1.0
+    alias: frobozz2
