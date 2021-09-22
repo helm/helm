@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
@@ -64,8 +65,9 @@ func Load(name string) (*chart.Chart, error) {
 
 // BufferedFile represents an archive file buffered for later processing.
 type BufferedFile struct {
-	Name string
-	Data []byte
+	Name    string
+	Data    []byte
+	ModTime time.Time
 }
 
 // LoadFiles loads from in-memory files.
@@ -76,7 +78,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 	// do not rely on assumed ordering of files in the chart and crash
 	// if Chart.yaml was not coming early enough to initialize metadata
 	for _, f := range files {
-		c.Raw = append(c.Raw, &chart.File{Name: f.Name, Data: f.Data})
+		c.Raw = append(c.Raw, &chart.File{Name: f.Name, ModTime: f.ModTime, Data: f.Data})
 		if f.Name == "Chart.yaml" {
 			if c.Metadata == nil {
 				c.Metadata = new(chart.Metadata)
@@ -90,6 +92,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 			if c.Metadata.APIVersion == "" {
 				c.Metadata.APIVersion = chart.APIVersionV1
 			}
+			c.ModTime = f.ModTime
 		}
 	}
 	for _, f := range files {
@@ -109,6 +112,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 			}
 		case f.Name == "values.schema.json":
 			c.Schema = f.Data
+			c.SchemaModTime = f.ModTime
 
 		// Deprecated: requirements.yaml is deprecated use Chart.yaml.
 		// We will handle it for you because we are nice people

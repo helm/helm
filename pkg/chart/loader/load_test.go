@@ -217,8 +217,9 @@ func TestLoadFiles_BadCases(t *testing.T) {
 			name: "These files contain only requirements.lock",
 			bufferedFiles: []*BufferedFile{
 				{
-					Name: "requirements.lock",
-					Data: []byte(""),
+					Name:    "requirements.lock",
+					Data:    []byte(""),
+					ModTime: time.Now(),
 				},
 			},
 			expectError: "validation: chart.metadata.apiVersion is required"},
@@ -255,22 +256,27 @@ sources:
 home: http://example.com
 icon: https://example.com/64x64.png
 `),
+			ModTime: time.Now(),
 		},
 		{
-			Name: "values.yaml",
-			Data: []byte("var: some values"),
+			Name:    "values.yaml",
+			Data:    []byte("var: some values"),
+			ModTime: time.Now(),
 		},
 		{
-			Name: "values.schema.json",
-			Data: []byte("type: Values"),
+			Name:    "values.schema.json",
+			Data:    []byte("type: Values"),
+			ModTime: time.Now(),
 		},
 		{
-			Name: "templates/deployment.yaml",
-			Data: []byte("some deployment"),
+			Name:    "templates/deployment.yaml",
+			Data:    []byte("some deployment"),
+			ModTime: time.Now(),
 		},
 		{
-			Name: "templates/service.yaml",
-			Data: []byte("some service"),
+			Name:    "templates/service.yaml",
+			Data:    []byte("some service"),
+			ModTime: time.Now(),
 		},
 	}
 
@@ -312,21 +318,25 @@ icon: https://example.com/64x64.png
 func TestLoadFilesOrder(t *testing.T) {
 	goodFiles := []*BufferedFile{
 		{
-			Name: "requirements.yaml",
-			Data: []byte("dependencies:"),
+			Name:    "requirements.yaml",
+			Data:    []byte("dependencies:"),
+			ModTime: time.Now(),
 		},
 		{
-			Name: "values.yaml",
-			Data: []byte("var: some values"),
+			Name:    "values.yaml",
+			Data:    []byte("var: some values"),
+			ModTime: time.Now(),
 		},
 
 		{
-			Name: "templates/deployment.yaml",
-			Data: []byte("some deployment"),
+			Name:    "templates/deployment.yaml",
+			Data:    []byte("some deployment"),
+			ModTime: time.Now(),
 		},
 		{
-			Name: "templates/service.yaml",
-			Data: []byte("some service"),
+			Name:    "templates/service.yaml",
+			Data:    []byte("some service"),
+			ModTime: time.Now(),
 		},
 		{
 			Name: "Chart.yaml",
@@ -348,6 +358,7 @@ sources:
 home: http://example.com
 icon: https://example.com/64x64.png
 `),
+			ModTime: time.Now(),
 		},
 	}
 

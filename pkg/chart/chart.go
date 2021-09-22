@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 )
 
 // APIVersionV1 is the API version number for version 1.
@@ -48,9 +49,13 @@ type Chart struct {
 	Values map[string]interface{} `json:"values"`
 	// Schema is an optional JSON schema for imposing structure on Values
 	Schema []byte `json:"schema"`
+	// SchemaModTime the chart was last modified
+	SchemaModTime time.Time `json:"schemamodtime,omitempty"`
 	// Files are miscellaneous files in a chart archive,
 	// e.g. README, LICENSE, etc.
 	Files []*File `json:"files"`
+	// ModTime the chart was last modified
+	ModTime time.Time `json:"modtime,omitempty"`
 
 	parent       *Chart
 	dependencies []*Chart
