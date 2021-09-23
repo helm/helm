@@ -233,8 +233,8 @@ func TestSavePreservesTimestamps(t *testing.T) {
 		Files: []*chart.File{
 			{
 				Name:    "scheherazade/shahryar.txt",
-				Data:    []byte("1,001 Nights"),
 				ModTime: initialCreateTime,
+				Data:    []byte("1,001 Nights"),
 			},
 		},
 		Schema: []byte("{\n  \"title\": \"Values\"\n}"),

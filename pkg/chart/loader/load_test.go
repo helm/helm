@@ -218,8 +218,8 @@ func TestLoadFiles_BadCases(t *testing.T) {
 			bufferedFiles: []*BufferedFile{
 				{
 					Name:    "requirements.lock",
-					Data:    []byte(""),
 					ModTime: time.Now(),
+					Data:    []byte(""),
 				},
 			},
 			expectError: "validation: chart.metadata.apiVersion is required"},
@@ -260,23 +260,23 @@ icon: https://example.com/64x64.png
 		},
 		{
 			Name:    "values.yaml",
-			Data:    []byte("var: some values"),
 			ModTime: time.Now(),
+			Data:    []byte("var: some values"),
 		},
 		{
 			Name:    "values.schema.json",
-			Data:    []byte("type: Values"),
 			ModTime: time.Now(),
+			Data:    []byte("type: Values"),
 		},
 		{
 			Name:    "templates/deployment.yaml",
-			Data:    []byte("some deployment"),
 			ModTime: time.Now(),
+			Data:    []byte("some deployment"),
 		},
 		{
 			Name:    "templates/service.yaml",
-			Data:    []byte("some service"),
 			ModTime: time.Now(),
+			Data:    []byte("some service"),
 		},
 	}
 
@@ -319,27 +319,28 @@ func TestLoadFilesOrder(t *testing.T) {
 	goodFiles := []*BufferedFile{
 		{
 			Name:    "requirements.yaml",
-			Data:    []byte("dependencies:"),
 			ModTime: time.Now(),
+			Data:    []byte("dependencies:"),
 		},
 		{
 			Name:    "values.yaml",
-			Data:    []byte("var: some values"),
 			ModTime: time.Now(),
+			Data:    []byte("var: some values"),
 		},
 
 		{
 			Name:    "templates/deployment.yaml",
-			Data:    []byte("some deployment"),
 			ModTime: time.Now(),
+			Data:    []byte("some deployment"),
 		},
 		{
 			Name:    "templates/service.yaml",
-			Data:    []byte("some service"),
 			ModTime: time.Now(),
+			Data:    []byte("some service"),
 		},
 		{
-			Name: "Chart.yaml",
+			Name:    "Chart.yaml",
+			ModTime: time.Now(),
 			Data: []byte(`apiVersion: v1
 name: frobnitz
 description: This is a frobnitz.
@@ -358,7 +359,6 @@ sources:
 home: http://example.com
 icon: https://example.com/64x64.png
 `),
-			ModTime: time.Now(),
 		},
 	}
 

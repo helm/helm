@@ -66,8 +66,8 @@ func Load(name string) (*chart.Chart, error) {
 // BufferedFile represents an archive file buffered for later processing.
 type BufferedFile struct {
 	Name    string
-	Data    []byte
 	ModTime time.Time
+	Data    []byte
 }
 
 // LoadFiles loads from in-memory files.
