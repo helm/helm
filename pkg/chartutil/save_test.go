@@ -146,7 +146,11 @@ func TestSavePreservesTimestamps(t *testing.T) {
 			"imageId":   42,
 		},
 		Files: []*chart.File{
-			{Name: "scheherazade/shahryar.txt", Data: []byte("1,001 Nights")},
+			{
+				Name:    "scheherazade/shahryar.txt",
+				Data:    []byte("1,001 Nights"),
+				ModTime: initialCreateTime,
+			},
 		},
 		Schema: []byte("{\n  \"title\": \"Values\"\n}"),
 	}
@@ -162,8 +166,8 @@ func TestSavePreservesTimestamps(t *testing.T) {
 	}
 
 	for _, header := range allHeaders {
-		if header.ModTime.Before(initialCreateTime) {
-			t.Fatalf("File timestamp not preserved: %v", header.ModTime)
+		if header.ModTime.Equal(initialCreateTime) {
+			t.Fatalf("File timestamp not preserved: %v - init: %v", header.ModTime, initialCreateTime)
 		}
 	}
 }
