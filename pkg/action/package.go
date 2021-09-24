@@ -61,6 +61,8 @@ func (p *Package) Run(path string, vals map[string]interface{}) (string, error) 
 	err := validatePackage(path)
 	var name string
 	if err != nil {
+		// ugly err reset
+		err = nil
 		ch, err := loader.LoadDir(path)
 		if err != nil {
 			return "", err
