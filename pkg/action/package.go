@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
+	"strings"
 	"syscall"
 
 	"github.com/Masterminds/semver/v3"
@@ -56,45 +58,51 @@ func NewPackage() *Package {
 
 // Run executes 'helm package' against the given chart and returns the path to the packaged chart.
 func (p *Package) Run(path string, vals map[string]interface{}) (string, error) {
-	ch, err := loader.LoadDir(path)
+	err := validatePackage(path)
+	var name string
 	if err != nil {
-		return "", err
-	}
-
-	// If version is set, modify the version.
-	if p.Version != "" {
-		ch.Metadata.Version = p.Version
-	}
-
-	if err := validateVersion(ch.Metadata.Version); err != nil {
-		return "", err
-	}
-
-	if p.AppVersion != "" {
-		ch.Metadata.AppVersion = p.AppVersion
-	}
-
-	if reqs := ch.Metadata.Dependencies; reqs != nil {
-		if err := CheckDependencies(ch, reqs); err != nil {
-			return "", err
-		}
-	}
-
-	var dest string
-	if p.Destination == "." {
-		// Save to the current working directory.
-		dest, err = os.Getwd()
+		ch, err := loader.LoadDir(path)
 		if err != nil {
 			return "", err
 		}
-	} else {
-		// Otherwise save to set destination
-		dest = p.Destination
-	}
 
-	name, err := chartutil.Save(ch, dest)
-	if err != nil {
-		return "", errors.Wrap(err, "failed to save")
+		// If version is set, modify the version.
+		if p.Version != "" {
+			ch.Metadata.Version = p.Version
+		}
+
+		if err := validateVersion(ch.Metadata.Version); err != nil {
+			return "", err
+		}
+
+		if p.AppVersion != "" {
+			ch.Metadata.AppVersion = p.AppVersion
+		}
+
+		if reqs := ch.Metadata.Dependencies; reqs != nil {
+			if err := CheckDependencies(ch, reqs); err != nil {
+				return "", err
+			}
+		}
+
+		var dest string
+		if p.Destination == "." {
+			// Save to the current working directory.
+			dest, err = os.Getwd()
+			if err != nil {
+				return "", err
+			}
+		} else {
+			// Otherwise save to set destination
+			dest = p.Destination
+		}
+
+		name, err = chartutil.Save(ch, dest)
+		if err != nil {
+			return "", errors.Wrap(err, "failed to save")
+		}
+	} else {
+		name = path
 	}
 
 	if p.Sign {
@@ -102,6 +110,18 @@ func (p *Package) Run(path string, vals map[string]interface{}) (string, error) 
 	}
 
 	return name, err
+}
+
+func validatePackage(filename string) error {
+	switch fi, err := os.Stat(filename); {
+	case err != nil:
+		return err
+	case fi.IsDir():
+		return errors.New("filename is a folder")
+	case strings.EqualFold(filepath.Ext(filename), ".tgz"):
+		return nil
+	}
+	return errors.New("chart must be a tgz file")
 }
 
 // validateVersion Verify that version is a Version, and error out if it is not.
