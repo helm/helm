@@ -224,7 +224,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 	minNumDescriptors := 1 // 1 for the config
 	if operation.withChart {
 		minNumDescriptors++
-		allowedMediaTypes = append(allowedMediaTypes, ChartLayerMediaType)
+		allowedMediaTypes = append(allowedMediaTypes, ChartLayerMediaType, LegacyChartLayerMediaType)
 	}
 	if operation.withProv {
 		if !operation.ignoreMissingProv {
@@ -256,6 +256,9 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 			chartDescriptor = &d
 		case ProvLayerMediaType:
 			provDescriptor = &d
+		case LegacyChartLayerMediaType:
+			chartDescriptor = &d
+			fmt.Fprintf(c.out, "Warning: chart media type %s is deprecated\n", LegacyChartLayerMediaType)
 		}
 	}
 	if configDescriptor == nil {
