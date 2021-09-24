@@ -150,7 +150,7 @@ func TestValidatePackage(t *testing.T) {
 		{
 			"path is a folder",
 			"testdata/charts/",
-			errors.New("chart must be a tgz file"),
+			errors.New("filename is a folder"),
 		},
 		{
 			"path is a file",
@@ -161,7 +161,7 @@ func TestValidatePackage(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := validatePackage(tt.path); err != nil {
-				if err != tt.wantErr {
+				if err.Error() != tt.wantErr.Error() {
 					t.Errorf("Expected {%v}, got {%v}", tt.wantErr, err)
 				}
 			}
