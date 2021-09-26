@@ -235,6 +235,7 @@ func TestLoadFiles_BadCases(t *testing.T) {
 }
 
 func TestLoadFiles(t *testing.T) {
+	modTime := time.Now()
 	goodFiles := []*BufferedFile{
 		{
 			Name: "Chart.yaml",
@@ -256,26 +257,26 @@ sources:
 home: http://example.com
 icon: https://example.com/64x64.png
 `),
-			ModTime: time.Now(),
+			ModTime: modTime,
 		},
 		{
 			Name:    "values.yaml",
-			ModTime: time.Now(),
+			ModTime: modTime,
 			Data:    []byte("var: some values"),
 		},
 		{
 			Name:    "values.schema.json",
-			ModTime: time.Now(),
+			ModTime: modTime,
 			Data:    []byte("type: Values"),
 		},
 		{
 			Name:    "templates/deployment.yaml",
-			ModTime: time.Now(),
+			ModTime: modTime,
 			Data:    []byte("some deployment"),
 		},
 		{
 			Name:    "templates/service.yaml",
-			ModTime: time.Now(),
+			ModTime: modTime,
 			Data:    []byte("some service"),
 		},
 	}
@@ -303,6 +304,10 @@ icon: https://example.com/64x64.png
 
 	if len(c.Templates) != 2 {
 		t.Errorf("Expected number of templates == 2, got %d", len(c.Templates))
+	}
+
+	if !c.ModTime.Equal(modTime) {
+		t.Errorf("Expected chart modtime to be %v got %v\n", modTime, c.ModTime)
 	}
 
 	if _, err = LoadFiles([]*BufferedFile{}); err == nil {
