@@ -74,6 +74,7 @@ type BufferedFile struct {
 func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 	c := new(chart.Chart)
 	subcharts := make(map[string][]*BufferedFile)
+	subChartsKeys := make([]string, 0)
 
 	// do not rely on assumed ordering of files in the chart and crash
 	// if Chart.yaml was not coming early enough to initialize metadata
@@ -96,6 +97,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 		}
 	}
 	for _, f := range files {
+		// fmt.Printf("Checking file: %s\n", f.Name)
 		switch {
 		case f.Name == "Chart.yaml":
 			// already processed
@@ -139,22 +141,24 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 				c.Metadata = new(chart.Metadata)
 			}
 			if c.Metadata.APIVersion == chart.APIVersionV1 {
-				c.Files = append(c.Files, &chart.File{Name: f.Name, Data: f.Data})
+				c.Files = append(c.Files, &chart.File{Name: f.Name, Data: f.Data, ModTime: f.ModTime})
 			}
 
 		case strings.HasPrefix(f.Name, "templates/"):
-			c.Templates = append(c.Templates, &chart.File{Name: f.Name, Data: f.Data})
+			c.Templates = append(c.Templates, &chart.File{Name: f.Name, Data: f.Data, ModTime: f.ModTime})
 		case strings.HasPrefix(f.Name, "charts/"):
 			if filepath.Ext(f.Name) == ".prov" {
-				c.Files = append(c.Files, &chart.File{Name: f.Name, Data: f.Data})
+				c.Files = append(c.Files, &chart.File{Name: f.Name, Data: f.Data, ModTime: f.ModTime})
 				continue
 			}
 
 			fname := strings.TrimPrefix(f.Name, "charts/")
 			cname := strings.SplitN(fname, "/", 2)[0]
-			subcharts[cname] = append(subcharts[cname], &BufferedFile{Name: fname, Data: f.Data})
+			// map[string] is unsorted - keep an array to keep things sorted
+			subChartsKeys = append(subChartsKeys, cname)
+			subcharts[cname] = append(subcharts[cname], &BufferedFile{Name: fname, Data: f.Data, ModTime: f.ModTime})
 		default:
-			c.Files = append(c.Files, &chart.File{Name: f.Name, Data: f.Data})
+			c.Files = append(c.Files, &chart.File{Name: f.Name, Data: f.Data, ModTime: f.ModTime})
 		}
 	}
 
@@ -166,7 +170,8 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 		return c, err
 	}
 
-	for n, files := range subcharts {
+	for _, n := range subChartsKeys {
+		files := subcharts[n]
 		var sc *chart.Chart
 		var err error
 		switch {
