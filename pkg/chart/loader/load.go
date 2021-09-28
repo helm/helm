@@ -74,7 +74,7 @@ type BufferedFile struct {
 func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 	c := new(chart.Chart)
 	subcharts := make(map[string][]*BufferedFile)
-	subChartsKeys := make([]string, 0)
+	var subChartsKeys []string
 
 	// do not rely on assumed ordering of files in the chart and crash
 	// if Chart.yaml was not coming early enough to initialize metadata
@@ -155,7 +155,9 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 			fname := strings.TrimPrefix(f.Name, "charts/")
 			cname := strings.SplitN(fname, "/", 2)[0]
 			// map[string] is unsorted - keep an array to keep things sorted
-			subChartsKeys = append(subChartsKeys, cname)
+			if !stringInSlice(cname, subChartsKeys) {
+				subChartsKeys = append(subChartsKeys, cname)
+			}
 			subcharts[cname] = append(subcharts[cname], &BufferedFile{Name: fname, Data: f.Data, ModTime: f.ModTime})
 		default:
 			c.Files = append(c.Files, &chart.File{Name: f.Name, Data: f.Data, ModTime: f.ModTime})
@@ -206,4 +208,13 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 	}
 
 	return c, nil
+}
+
+func stringInSlice(a string, list []string) bool {
+	for _, b := range list {
+		if b == a {
+			return true
+		}
+	}
+	return false
 }
