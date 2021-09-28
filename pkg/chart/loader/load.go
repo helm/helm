@@ -97,7 +97,6 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 		}
 	}
 	for _, f := range files {
-		// fmt.Printf("Checking file: %s\n", f.Name)
 		switch {
 		case f.Name == "Chart.yaml":
 			// already processed
