@@ -21,7 +21,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -129,7 +128,7 @@ func TestSavePreservesTimestamps(t *testing.T) {
 	// written timestamp for the files.
 	initialCreateTime := time.Now().Add(-1 * time.Second)
 
-	tmp, err := ioutil.TempDir("", "helm-")
+	tmp, err := os.MkdirTemp("", "helm-")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -203,7 +202,7 @@ func retrieveAllHeadersFromTar(path string) ([]*tar.Header, error) {
 }
 
 func TestSaveDir(t *testing.T) {
-	tmp, err := ioutil.TempDir("", "helm-")
+	tmp, err := os.MkdirTemp("", "helm-")
 	if err != nil {
 		t.Fatal(err)
 	}

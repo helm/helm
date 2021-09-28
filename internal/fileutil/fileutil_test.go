@@ -18,14 +18,13 @@ package fileutil
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 )
 
 func TestAtomicWriteFile(t *testing.T) {
-	dir, err := ioutil.TempDir("", "helm-tmp")
+	dir, err := os.MkdirTemp("", "helm-tmp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +40,7 @@ func TestAtomicWriteFile(t *testing.T) {
 		t.Errorf("AtomicWriteFile error: %s", err)
 	}
 
-	got, err := ioutil.ReadFile(testpath)
+	got, err := os.ReadFile(testpath)
 	if err != nil {
 		t.Fatal(err)
 	}

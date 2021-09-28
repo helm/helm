@@ -16,7 +16,6 @@ limitations under the License.
 package installer // import "helm.sh/helm/v3/pkg/plugin/installer"
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -28,12 +27,12 @@ var _ Installer = new(LocalInstaller)
 
 func TestLocalInstaller(t *testing.T) {
 	// Make a temp dir
-	tdir, err := ioutil.TempDir("", "helm-installer-")
+	tdir, err := os.MkdirTemp("", "helm-installer-")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(tdir)
-	if err := ioutil.WriteFile(filepath.Join(tdir, "plugin.yaml"), []byte{}, 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(tdir, "plugin.yaml"), []byte{}, 0644); err != nil {
 		t.Fatal(err)
 	}
 

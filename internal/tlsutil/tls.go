@@ -19,7 +19,7 @@ package tlsutil
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"io/ioutil"
+	"os"
 
 	"github.com/pkg/errors"
 )
@@ -52,7 +52,7 @@ func NewClientTLS(certFile, keyFile, caFile string) (*tls.Config, error) {
 // Returns an error if the file could not be read, a certificate could not
 // be parsed, or if the file does not contain any certificates
 func CertPoolFromFile(filename string) (*x509.CertPool, error) {
-	b, err := ioutil.ReadFile(filename)
+	b, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, errors.Errorf("can't read CA file: %v", filename)
 	}
