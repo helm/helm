@@ -20,6 +20,7 @@ import (
 	"io/ioutil"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -43,18 +44,32 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 
 	// User specified a values files via -f/--values
 	for _, filePath := range opts.ValueFiles {
-		currentMap := map[string]interface{}{}
-
-		bytes, err := readFile(filePath, p)
+		isDir, err := isDirectory(filePath)
 		if err != nil {
 			return nil, err
 		}
+		if isDir {
+			files, err := ioutil.ReadDir(filePath)
+			if err != nil {
+				return nil, err
+			}
 
-		if err := yaml.Unmarshal(bytes, &currentMap); err != nil {
-			return nil, errors.Wrapf(err, "failed to parse %s", filePath)
+			for _, file := range files {
+				currentMap, err := unmarshallYaml(filepath.Join(filePath, file.Name()), p)
+				if err != nil {
+					return nil, err
+				}
+				// Merge with the previous map
+				base = mergeMaps(base, currentMap)
+			}
+		} else {
+			currentMap, err := unmarshallYaml(filePath, p)
+			if err != nil {
+				return nil, err
+			}
+			// Merge with the previous map
+			base = mergeMaps(base, currentMap)
 		}
-		// Merge with the previous map
-		base = mergeMaps(base, currentMap)
 	}
 
 	// User specified a value via --set
@@ -83,6 +98,31 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 	}
 
 	return base, nil
+}
+
+func isDirectory(filePath string) (bool, error) {
+	if strings.TrimSpace(filePath) == "-" {
+		return false, nil
+	}
+
+	fileInfo, err := os.Stat(filePath)
+	if err != nil {
+		return false, err
+	}
+	return fileInfo.Mode().IsDir(), nil
+}
+
+func unmarshallYaml(filePath string, p getter.Providers) (map[string]interface{}, error) {
+	currentMap := map[string]interface{}{}
+	bytes, err := readFile(filePath, p)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := yaml.Unmarshal(bytes, &currentMap); err != nil {
+		return nil, errors.Wrapf(err, "failed to parse %s", filePath)
+	}
+	return currentMap, nil
 }
 
 func mergeMaps(a, b map[string]interface{}) map[string]interface{} {

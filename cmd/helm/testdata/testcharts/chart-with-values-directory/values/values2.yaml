@@ -1,0 +1,3 @@
+service:
+  name: apache
+  internalPort: 80

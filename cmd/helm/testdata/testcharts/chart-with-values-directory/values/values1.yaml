@@ -1,0 +1,3 @@
+service:
+  type: ClusterIP
+  externalPort: 80
