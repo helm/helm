@@ -187,7 +187,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			ctx, cancel := context.WithCancel(ctx)
 
 			// Handle SIGTERM
-			cSignal := make(chan os.Signal)
+			cSignal := make(chan os.Signal, 1)
 			signal.Notify(cSignal, os.Interrupt, syscall.SIGTERM)
 			go func() {
 				<-cSignal

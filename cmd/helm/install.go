@@ -254,7 +254,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	ctx, cancel := context.WithCancel(ctx)
 
 	// Handle SIGTERM
-	cSignal := make(chan os.Signal)
+	cSignal := make(chan os.Signal, 1)
 	signal.Notify(cSignal, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-cSignal

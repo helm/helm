@@ -40,15 +40,15 @@ var (
 	errMissingName = errors.New("no name provided")
 
 	// errInvalidName indicates that an invalid release name was provided
-	errInvalidName = errors.New(fmt.Sprintf(
+	errInvalidName = fmt.Errorf(
 		"invalid release name, must match regex %s and the length must not be longer than 53",
-		validName.String()))
+		validName.String())
 
 	// errInvalidKubernetesName indicates that the name does not meet the Kubernetes
 	// restrictions on metadata names.
-	errInvalidKubernetesName = errors.New(fmt.Sprintf(
+	errInvalidKubernetesName = fmt.Errorf(
 		"invalid metadata name, must match regex %s and the length must not be longer than 253",
-		validName.String()))
+		validName.String())
 )
 
 const (

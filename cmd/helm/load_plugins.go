@@ -313,7 +313,7 @@ func loadFile(path string) (*pluginCommand, error) {
 	cmds := new(pluginCommand)
 	b, err := ioutil.ReadFile(path)
 	if err != nil {
-		return cmds, errors.New(fmt.Sprintf("File (%s) not provided by plugin. No plugin auto-completion possible.", path))
+		return cmds, fmt.Errorf("file (%s) not provided by plugin. No plugin auto-completion possible", path)
 	}
 
 	err = yaml.Unmarshal(b, cmds)
