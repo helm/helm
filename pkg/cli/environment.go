@@ -33,6 +33,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/rest"
 
+	"helm.sh/helm/v3/internal/version"
 	"helm.sh/helm/v3/pkg/helmpath"
 )
 
@@ -230,5 +231,9 @@ func (s *EnvSettings) SetNamespace(namespace string) {
 
 // RESTClientGetter gets the kubeconfig from EnvSettings
 func (s *EnvSettings) RESTClientGetter() genericclioptions.RESTClientGetter {
+	s.config.WrapConfigFn = func(c *rest.Config) *rest.Config {
+		c.UserAgent = version.GetUserAgent()
+		return c
+	}
 	return s.config
 }
