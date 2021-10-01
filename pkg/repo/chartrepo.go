@@ -124,7 +124,6 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 	parsedURL.Path = path.Join(parsedURL.Path, "index.yaml")
 
 	indexURL := parsedURL.String()
-	// TODO add user-agent
 	resp, err := r.Client.Get(indexURL,
 		getter.WithURL(r.Config.URL),
 		getter.WithInsecureSkipVerifyTLS(r.Config.InsecureSkipTLSverify),
