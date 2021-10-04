@@ -62,7 +62,7 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		option(client)
 	}
 	if client.credentialsFile == "" {
-		client.credentialsFile = helmpath.CachePath("registry", CredentialsFileBasename)
+		client.credentialsFile = helmpath.ConfigPath(CredentialsFileBasename)
 	}
 	if client.authorizer == nil {
 		authClient, err := dockerauth.NewClient(client.credentialsFile)
