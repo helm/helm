@@ -446,7 +446,8 @@ func (m *Manager) safeMoveDeps(deps []*chart.Dependency, source, dest string) er
 			fname := filepath.Join(dest, file.Name())
 			ch, err := loader.LoadFile(fname)
 			if err != nil {
-				fmt.Fprintf(m.Out, "Could not verify %s for deletion: %s (Skipping)", fname, err)
+				fmt.Fprintf(m.Out, "Could not verify %s for deletion: %s (Skipping)\n", fname, err)
+				continue
 			}
 			// local dependency - skip
 			if isLocalDependency[ch.Name()] {
