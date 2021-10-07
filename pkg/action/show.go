@@ -28,6 +28,7 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/cli"
 )
 
 // ShowOutputFormat is the format of the output of `helm show`
@@ -56,6 +57,8 @@ func (o ShowOutputFormat) String() string {
 //
 // It provides the implementation of 'helm show' and its respective subcommands.
 type Show struct {
+	cfg *Configuration
+
 	ChartPathOptions
 	Devel            bool
 	OutputFormat     ShowOutputFormat
@@ -64,9 +67,10 @@ type Show struct {
 }
 
 // NewShow creates a new Show object with the given configuration.
-func NewShow(output ShowOutputFormat) *Show {
+func NewShow(output ShowOutputFormat, cfg *Configuration) *Show {
 	return &Show{
 		OutputFormat: output,
+		cfg:          cfg,
 	}
 }
 
@@ -130,6 +134,10 @@ func (s *Show) Run(chartpath string) (string, error) {
 		}
 	}
 	return out.String(), nil
+}
+
+func (s *Show) LocateChart(name string, settings *cli.EnvSettings) (string, error) {
+	return s.ChartPathOptions.LocateChart(name, settings, s.cfg)
 }
 
 func findReadme(files []*chart.File) (file *chart.File) {

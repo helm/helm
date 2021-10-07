@@ -191,7 +191,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		return nil, err
 	}
 
-	cp, err := client.ChartPathOptions.LocateChart(chart, settings)
+	cp, err := client.LocateChart(chart, settings)
 	if err != nil {
 		return nil, err
 	}

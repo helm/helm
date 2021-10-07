@@ -56,8 +56,8 @@ This command inspects a chart (directory, file, or URL) and displays the content
 of the CustomResourceDefintion files
 `
 
-func newShowCmd(out io.Writer) *cobra.Command {
-	client := action.NewShow(action.ShowAll)
+func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+	client := action.NewShow(action.ShowAll, cfg)
 
 	showCommand := &cobra.Command{
 		Use:               "show",
@@ -202,7 +202,7 @@ func runShow(args []string, client *action.Show) (string, error) {
 		return "", err
 	}
 
-	cp, err := client.ChartPathOptions.LocateChart(args[0], settings)
+	cp, err := client.LocateChart(args[0], settings)
 	if err != nil {
 		return "", err
 	}

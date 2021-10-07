@@ -23,7 +23,7 @@ import (
 )
 
 func TestShow(t *testing.T) {
-	client := NewShow(ShowAll)
+	client := NewShow(ShowAll, nil)
 	client.chart = &chart.Chart{
 		Metadata: &chart.Metadata{Name: "alpine"},
 		Files: []*chart.File{
@@ -64,7 +64,7 @@ bar
 }
 
 func TestShowNoValues(t *testing.T) {
-	client := NewShow(ShowAll)
+	client := NewShow(ShowAll, nil)
 	client.chart = new(chart.Chart)
 
 	// Regression tests for missing values. See issue #1024.
@@ -80,7 +80,7 @@ func TestShowNoValues(t *testing.T) {
 }
 
 func TestShowValuesByJsonPathFormat(t *testing.T) {
-	client := NewShow(ShowValues)
+	client := NewShow(ShowValues, nil)
 	client.JSONPathTemplate = "{$.nestedKey.simpleKey}"
 	client.chart = buildChart(withSampleValues())
 	output, err := client.Run("")
@@ -94,7 +94,7 @@ func TestShowValuesByJsonPathFormat(t *testing.T) {
 }
 
 func TestShowCRDs(t *testing.T) {
-	client := NewShow(ShowCRDs)
+	client := NewShow(ShowCRDs, nil)
 	client.chart = &chart.Chart{
 		Metadata: &chart.Metadata{Name: "alpine"},
 		Files: []*chart.File{
@@ -122,7 +122,7 @@ bar
 }
 
 func TestShowNoReadme(t *testing.T) {
-	client := NewShow(ShowAll)
+	client := NewShow(ShowAll, nil)
 	client.chart = &chart.Chart{
 		Metadata: &chart.Metadata{Name: "alpine"},
 		Files: []*chart.File{

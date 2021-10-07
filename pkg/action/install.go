@@ -662,6 +662,10 @@ OUTER:
 	return nil
 }
 
+func (i *Install) LocateChart(name string, settings *cli.EnvSettings) (string, error) {
+	return i.ChartPathOptions.LocateChart(name, settings, i.cfg)
+}
+
 // LocateChart looks for a chart directory in known places, and returns either the full path or an error.
 //
 // This does not ensure that the chart is well-formed; only that the requested filename exists.
@@ -672,7 +676,7 @@ OUTER:
 // - URL
 //
 // If 'verify' was set on ChartPathOptions, this will attempt to also verify the chart.
-func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (string, error) {
+func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings, cfg *Configuration) (string, error) {
 	name = strings.TrimSpace(name)
 	version := strings.TrimSpace(c.Version)
 
@@ -709,7 +713,10 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		if version == "" {
 			return "", errors.New("version is explicitly required for OCI registries")
 		}
-		dl.Options = append(dl.Options, getter.WithTagName(version))
+		dl.Options = append(dl.Options,
+			getter.WithRegistryClient(cfg.RegistryClient),
+			getter.WithTagName(version),
+		)
 	}
 
 	if c.Verify {
