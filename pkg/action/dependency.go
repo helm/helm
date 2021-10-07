@@ -193,7 +193,7 @@ func (d *Dependency) printDependencies(chartpath string, out io.Writer, c *chart
 }
 
 // printMissing prints warnings about charts that are present on disk, but are
-// not in Charts.yaml.
+// not in Chart.yaml.
 func (d *Dependency) printMissing(chartpath string, out io.Writer, reqs []*chart.Dependency) {
 	folder := filepath.Join(chartpath, "charts/*")
 	files, err := filepath.Glob(folder)
