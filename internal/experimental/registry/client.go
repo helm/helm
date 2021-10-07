@@ -22,6 +22,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/containerd/containerd/remotes"
@@ -63,6 +64,13 @@ func NewClient(options ...ClientOption) (*Client, error) {
 	}
 	if client.credentialsFile == "" {
 		client.credentialsFile = helmpath.ConfigPath(CredentialsFileBasename)
+	} else {
+		// if the credentials file was specified explicitly, check if it exists
+		// dockerAuth.NewClient will ignore non existing file errors
+		// we cannot return an error here, as it would be a breaking change
+		if _, err := os.Stat(client.credentialsFile); os.IsNotExist(err) {
+			fmt.Fprintf(client.out, "Warning: registry credentials (%s) file cannot be found - will continue without it\n", client.credentialsFile)
+		}
 	}
 	if client.authorizer == nil {
 		authClient, err := dockerauth.NewClient(client.credentialsFile)
