@@ -33,7 +33,7 @@ This command consists of multiple subcommands to display information about a cha
 
 const showAllDesc = `
 This command inspects a chart (directory, file, or URL) and displays all its content
-(values.yaml, Charts.yaml, README)
+(values.yaml, Chart.yaml, README)
 `
 
 const showValuesDesc = `
@@ -43,7 +43,7 @@ of the values.yaml file
 
 const showChartDesc = `
 This command inspects a chart (directory, file, or URL) and displays the contents
-of the Charts.yaml file
+of the Chart.yaml file
 `
 
 const readmeChartDesc = `
