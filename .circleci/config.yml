@@ -6,7 +6,7 @@ orbs:
   azure-cli: circleci/azure-cli@1.0.0
 
 jobs:
-  build:
+  test:
     working_directory: ~/helm.sh/helm
     docker:
       - image: circleci/golang:1.16
@@ -30,6 +30,21 @@ jobs:
       - run:
           name: test
           command: make test-coverage
+  build:
+    working_directory: ~/helm.sh/helm
+    docker:
+      - image: circleci/golang:1.16
+      
+        auth:
+          username: $DOCKER_USER
+          password: $DOCKER_PASS
+
+    environment:
+      GOCACHE: "/tmp/go/cache"
+      GOLANGCI_LINT_VERSION: "1.36.0"
+
+    steps:
+      - checkout
       - deploy:
           name: deploy
           command: .circleci/deploy.sh
@@ -72,14 +87,21 @@ workflows:
   version: 2
   build:
     jobs:
+      - test
       - build:
           filters:
+            branches:
+              only:
+                - main
             tags:
               only: /.*/
       - generate-windows-installer:
           requires:
             - build
           filters:
+            branches:
+              only:
+                - main
             tags:
               only: /.*/
       - upload-binary:
@@ -87,5 +109,8 @@ workflows:
             - build
             - generate-windows-installer
           filters:
+            branches:
+              only:
+                - main
             tags:
               only: /.*/
