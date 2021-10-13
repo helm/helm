@@ -1,5 +1,8 @@
 ---
-version: 2
+version: 2.1
+
+orbs:
+  win: circleci/windows@2.2.0
 
 jobs:
   build:
@@ -29,12 +32,37 @@ jobs:
       - deploy:
           name: deploy
           command: .circleci/deploy.sh
+      - persist_to_workspace:
+          root: .
+          paths:
+            - _dist/windows-amd64/*
+  
+  generate-windows-installer:
+    executor: win/default
+    steps:
+      - checkout
+      - attach_workspace:
+          at: 'C:\tmp\workspace'
+      - run:
+          name: Copy from Workspace
+          command: 'Copy-Item "C:\tmp\workspace\*" "package" -Recurse'
+      - run:
+          name: install innosetup and build
+          command: Set-Location package && .\build.ps1
+      - store_artifacts:
+          path: output/
 
 workflows:
   version: 2
   build:
     jobs:
       - build:
+          filters:
+            tags:
+              only: /.*/
+      - generate-windows-installer:
+          requires:
+            - build
           filters:
             tags:
               only: /.*/
