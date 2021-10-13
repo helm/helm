@@ -7,11 +7,11 @@ PrivilegesRequired=lowest
 AppPublisher=Helm
 AppPublisherURL=https://helm.sh
 AppSupportURL=https://github.com/helm/helm
-LicenseFile="windows-amd64\LICENSE"
+LicenseFile="dist\LICENSE"
 OutputBaseFilename=helm_installer_win64
 
 [Files]
-Source: "windows-amd64\*" ; DestDir: "{app}\bin";
+Source: "dist\*" ; DestDir: "{app}\bin";
 
 [Registry]
 Root: "HKCU"; Subkey: "Environment"; ValueType: expandsz; ValueName: "Path"; ValueData: "{olddata};{app}\bin"; Check: NeedsAddPathHKCU(ExpandConstant('{app}\bin'))

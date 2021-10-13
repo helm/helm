@@ -3,6 +3,7 @@ version: 2.1
 
 orbs:
   win: circleci/windows@2.2.0
+  azure-cli: circleci/azure-cli@1.0.0
 
 jobs:
   build:
@@ -45,12 +46,27 @@ jobs:
           at: 'C:\tmp\workspace'
       - run:
           name: Copy from Workspace
-          command: 'Copy-Item "C:\tmp\workspace\*" "package" -Recurse'
+          command: Copy-Item -Path "C:\tmp\workspace\*" -Destination "package\dist" -Recurse
       - run:
           name: install innosetup and build
-          command: Set-Location package; .\build.ps1
+          command: Set-Location package; dir; .\build.ps1
+      - persist_to_workspace:
+          root: .
+          paths:
+           - package/output/*
       - store_artifacts:
-          path: output/
+          path: package/output/*
+    
+  upload-binary:
+    executor: azure-cli/default
+    steps:
+      - azure-cli/install
+      - attach_workspace:
+          at: '\tmp\workspace'
+      - run:
+          name: Upload binary
+          command: cd \tmp\workspace\ && ls && az storage blob upload-batch -s . -d "$AZURE_STORAGE_CONTAINER_NAME" --pattern 'helm_*' --connection-string "$AZURE_STORAGE_CONNECTION_STRING"
+
 
 workflows:
   version: 2
@@ -63,6 +79,13 @@ workflows:
       - generate-windows-installer:
           requires:
             - build
+          filters:
+            tags:
+              only: /.*/
+      - upload-binary:
+          requires:
+            - build
+            - generate-windows-installer
           filters:
             tags:
               only: /.*/
