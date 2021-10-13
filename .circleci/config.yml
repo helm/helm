@@ -48,7 +48,7 @@ jobs:
           command: 'Copy-Item "C:\tmp\workspace\*" "package" -Recurse'
       - run:
           name: install innosetup and build
-          command: Set-Location package && .\build.ps1
+          command: Set-Location package; .\build.ps1
       - store_artifacts:
           path: output/
 
