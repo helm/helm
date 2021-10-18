@@ -256,13 +256,6 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 		return nil
 	})
 
-	switch {
-	case err != nil:
-		return res, err
-	case len(updateErrors) != 0:
-		return res, errors.Errorf(strings.Join(updateErrors, " && "))
-	}
-
 	for _, info := range original.Difference(target) {
 		c.Log("Deleting %q in %s...", info.Name, info.Namespace)
 
@@ -283,6 +276,13 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			continue
 		}
 		res.Deleted = append(res.Deleted, info)
+	}
+
+	switch {
+	case err != nil:
+		return res, err
+	case len(updateErrors) != 0:
+		return res, errors.Errorf(strings.Join(updateErrors, " && "))
 	}
 	return res, nil
 }
