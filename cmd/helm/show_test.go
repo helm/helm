@@ -19,7 +19,6 @@ package main
 import (
 	"fmt"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"helm.sh/helm/v3/pkg/repo/repotest"
@@ -47,14 +46,14 @@ func TestShowPreReleaseChart(t *testing.T) {
 			name:        "show pre-release chart",
 			args:        "test/pre-release-chart",
 			fail:        true,
-			expectedErr: "failed to download \"test/pre-release-chart\"",
+			expectedErr: "failed to download \"test/pre-release-chart\". Use --devel for a development version",
 		},
 		{
 			name:        "show pre-release chart",
 			args:        "test/pre-release-chart",
 			fail:        true,
 			flags:       "--version 1.0.0",
-			expectedErr: "failed to download \"test/pre-release-chart\" at version \"1.0.0\"",
+			expectedErr: "failed to download \"test/pre-release-chart\" at version \"1.0.0\". Use --devel for a development version",
 		},
 		{
 			name:  "show pre-release chart with 'devel' flag",
@@ -77,7 +76,8 @@ func TestShowPreReleaseChart(t *testing.T) {
 			_, _, err := executeActionCommand(cmd)
 			if err != nil {
 				if tt.fail {
-					if !strings.Contains(err.Error(), tt.expectedErr) {
+					//if !strings.Contains(err.Error(), tt.expectedErr) {
+					if err.Error() != tt.expectedErr {
 						t.Errorf("%q expected error: %s, got: %s", tt.name, tt.expectedErr, err.Error())
 					}
 					return
