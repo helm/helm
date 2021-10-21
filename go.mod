@@ -18,7 +18,7 @@ require (
 	github.com/gobwas/glob v0.2.3
 	github.com/gofrs/flock v0.8.0
 	github.com/gosuri/uitable v0.0.4
-	github.com/jmoiron/sqlx v1.3.1
+	github.com/jmoiron/sqlx v1.3.4
 	github.com/lib/pq v1.10.3
 	github.com/mattn/go-shellwords v1.0.11
 	github.com/mitchellh/copystructure v1.1.1
@@ -34,12 +34,12 @@ require (
 	github.com/ziutek/mymysql v1.5.4 // indirect
 	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a
 	golang.org/x/term v0.0.0-20210220032956-6a3ed077a48d
-	k8s.io/api v0.22.1
+	k8s.io/api v0.22.2
 	k8s.io/apiextensions-apiserver v0.22.1
-	k8s.io/apimachinery v0.22.1
+	k8s.io/apimachinery v0.22.2
 	k8s.io/apiserver v0.22.1
 	k8s.io/cli-runtime v0.22.1
-	k8s.io/client-go v0.22.1
+	k8s.io/client-go v0.22.2
 	k8s.io/klog/v2 v2.9.0
 	k8s.io/kubectl v0.22.1
 	oras.land/oras-go v0.4.0
