@@ -70,6 +70,12 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 		Namespace: namespace,
 	}
 
+	// lint ignores import-values
+	// See https://github.com/helm/helm/issues/9658
+	if err := chartutil.ProcessDependencies(chart, values); err != nil {
+		return
+	}
+
 	cvals, err := chartutil.CoalesceValues(chart, values)
 	if err != nil {
 		return
