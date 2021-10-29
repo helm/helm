@@ -100,22 +100,30 @@ func (r *Rules) Ignore(path string, fi os.FileInfo) bool {
 	if path == "." || path == "./" {
 		return false
 	}
+
+	// Negative rules should only override positive ignore rules, rather
+	// than exclude everything aside from the pattern (e.g. Chart.yaml).
+	// See issue:
+	// 3622 Whitelisting in .helmignore with '/*' returns "chart metadata (Chart.yaml) missing"
+	positiveMatch := false
+	negativeMatch := false
+
 	for _, p := range r.patterns {
 		if p.match == nil {
 			log.Printf("ignore: no matcher supplied for %q", p.raw)
 			return false
 		}
 
-		// For negative rules, we need to capture and return non-matches,
-		// and continue for matches.
+		// For negative rules, we need to continue for non-matches,
+		// and record matches.
 		if p.negate {
 			if p.mustDir && !fi.IsDir() {
-				return true
+				continue
 			}
 			if !p.match(path, fi) {
-				return true
+				continue
 			}
-			continue
+			negativeMatch = true
 		}
 
 		// If the rule is looking for directories, and this is not a directory,
@@ -124,10 +132,11 @@ func (r *Rules) Ignore(path string, fi os.FileInfo) bool {
 			continue
 		}
 		if p.match(path, fi) {
-			return true
+			positiveMatch = true
 		}
 	}
-	return false
+
+	return positiveMatch && !negativeMatch
 }
 
 // parseRule parses a rule string and creates a pattern, which is then stored in the Rules object.
