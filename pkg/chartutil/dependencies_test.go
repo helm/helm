@@ -111,6 +111,10 @@ func TestDependencyEnabled(t *testing.T) {
 		"subcharts with alias also respect conditions",
 		M{"subchart1": M{"enabled": false}, "subchart2alias": M{"enabled": true, "subchartb": M{"enabled": true}}},
 		[]string{"parentchart", "parentchart.subchart2alias", "parentchart.subchart2alias.subchartb"},
+	}, {
+		"subcharts with alias also respect conditions on a non-existent value",
+		M{"subchart1": M{"enabled": false}, "subchart2alias2": M{}},
+		[]string{"parentchart"},
 	}}
 
 	for _, tc := range tests {

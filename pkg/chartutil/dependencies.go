@@ -51,6 +51,8 @@ func processDependencyConditions(reqs []*chart.Dependency, cvals Values, cpath s
 				} else if _, ok := err.(ErrNoValue); !ok {
 					// this is a real error
 					log.Printf("Warning: PathValue returned error %v", err)
+				} else {
+					r.Enabled = false
 				}
 			}
 		}
