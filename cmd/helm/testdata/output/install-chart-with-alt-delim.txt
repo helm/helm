@@ -1,0 +1,18 @@
+---
+# Source: chart-with-alt-delim/templates/alt-configmap.yaml
+# helm: delim=[[,]]
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alt-delim-chart-with-alt-delim-alt
+data:
+  myvalue: "Hello {{world}}"
+---
+# Source: chart-with-alt-delim/templates/normal-configmap.yaml
+# helm: delim=[[,]]
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alt-delim-chart-with-alt-delim-normal
+data:
+  myvalue: "Hello world"

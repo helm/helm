@@ -1,0 +1,7 @@
+# helm: delim=[[,]]
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: [[ template "chart-with-alt-delim.fullname" . ]]-alt
+data:
+  myvalue: "Hello {{world}}"

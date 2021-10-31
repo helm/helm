@@ -164,6 +164,12 @@ func TestInstall(t *testing.T) {
 			name: "install chart with library chart dependency",
 			cmd:  "install withlibchartp testdata/testcharts/chart-with-lib-dep",
 		},
+		// Install, chart with alternative delimiter
+		{
+			name:   "install with alternative delimiter",
+			cmd:    "install alt-delim testdata/testcharts/chart-with-alt-delim",
+			golden: "output/install-chart-with-alt-delim.txt",
+		},
 		// Install, library chart
 		{
 			name:      "install library chart",
