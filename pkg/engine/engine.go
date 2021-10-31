@@ -83,6 +83,15 @@ func RenderWithClient(chrt *chart.Chart, values chartutil.Values, config *rest.C
 	}.Render(chrt, values)
 }
 
+var magicCommentsRegexp = regexp.MustCompile(`^#\s*helm:\s*(?:(\w+)=([^\s]*))*`)
+
+type templateOpts struct {
+	// Left template delimiter
+	delimL string
+	// Right template delimiter
+	delimR string
+}
+
 // renderable is an object that can be rendered.
 type renderable struct {
 	// tpl is the current template.
@@ -91,6 +100,8 @@ type renderable struct {
 	vals chartutil.Values
 	// namespace prefix to the templates of the current chart
 	basePath string
+	// template engine options
+	opts templateOpts
 }
 
 const warnStartDelim = "HELM_ERR_START"
@@ -230,7 +241,7 @@ func (e Engine) renderWithReferences(tpls, referenceTpls map[string]renderable) 
 
 	for _, filename := range keys {
 		r := tpls[filename]
-		if _, err := t.New(filename).Parse(r.tpl); err != nil {
+		if _, err := t.New(filename).Delims(r.opts.delimL, r.opts.delimR).Parse(r.tpl); err != nil {
 			return map[string]string{}, cleanupParseError(filename, err)
 		}
 	}
@@ -380,6 +391,7 @@ func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.
 		templates[path.Join(newParentID, t.Name)] = renderable{
 			tpl:      string(t.Data),
 			vals:     next,
+			opts: 	  readTemplateMagicComments(string(t.Data)),
 			basePath: path.Join(newParentID, "templates"),
 		}
 	}
@@ -399,3 +411,17 @@ func isTemplateValid(ch *chart.Chart, templateName string) bool {
 func isLibraryChart(c *chart.Chart) bool {
 	return strings.EqualFold(c.Metadata.Type, "library")
 }
+
+func readTemplateMagicComments(templateBody string) templateOpts {
+	templateOpts := templateOpts{}
+	matches := magicCommentsRegexp.FindAllSubmatch([]byte(templateBody), -1)
+	for _, match := range matches {
+		if (strings.EqualFold(string(match[1]), "delim")) {
+			delim := strings.SplitN(string(match[2]), ",", 2)
+			templateOpts.delimL = strings.Repeat(delim[0], 2)
+			templateOpts.delimR = strings.Repeat(delim[1], 2)
+		}
+	}
+
+	return templateOpts
+ }

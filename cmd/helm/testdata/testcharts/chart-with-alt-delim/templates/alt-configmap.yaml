@@ -1,4 +1,4 @@
-# helm: delim=[[,]]
+# helm: delim=[,]
 apiVersion: v1
 kind: ConfigMap
 metadata:
