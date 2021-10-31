@@ -131,6 +131,11 @@ func TestTemplateCmd(t *testing.T) {
 			cmd:    fmt.Sprintf(`template '%s' --skip-tests`, chartPath),
 			golden: "output/template-skip-tests.txt",
 		},
+		{
+			name:   "template chart-with-alt-delim",
+			cmd:    "template alt-delim testdata/testcharts/chart-with-alt-delim",
+			golden: "output/template-chart-with-alt-delim.txt",
+		},
 	}
 	runTestCmd(t, tests)
 }

@@ -1,17 +1,6 @@
----
-# Source: chart-with-alt-delim/templates/alt-configmap.yaml
-# helm: delim=[,]
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: alt-delim-chart-with-alt-delim-alt
-data:
-  myvalue: "Hello {{world}}"
----
-# Source: chart-with-alt-delim/templates/normal-configmap.yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: alt-delim-chart-with-alt-delim-normal
-data:
-  myvalue: "Hello world"
+NAME: alt-delim
+LAST DEPLOYED: Fri Sep  2 22:04:05 1977
+NAMESPACE: default
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
