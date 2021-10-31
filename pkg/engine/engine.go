@@ -391,7 +391,7 @@ func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.
 		templates[path.Join(newParentID, t.Name)] = renderable{
 			tpl:      string(t.Data),
 			vals:     next,
-			opts: 	  readTemplateMagicComments(string(t.Data)),
+			opts:     readTemplateMagicComments(string(t.Data)),
 			basePath: path.Join(newParentID, "templates"),
 		}
 	}
@@ -416,7 +416,7 @@ func readTemplateMagicComments(templateBody string) templateOpts {
 	templateOpts := templateOpts{}
 	matches := magicCommentsRegexp.FindAllSubmatch([]byte(templateBody), -1)
 	for _, match := range matches {
-		if (strings.EqualFold(string(match[1]), "delim")) {
+		if strings.EqualFold(string(match[1]), "delim") {
 			delim := strings.SplitN(string(match[2]), ",", 2)
 			templateOpts.delimL = strings.Repeat(delim[0], 2)
 			templateOpts.delimR = strings.Repeat(delim[1], 2)
@@ -424,4 +424,4 @@ func readTemplateMagicComments(templateBody string) templateOpts {
 	}
 
 	return templateOpts
- }
+}
