@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -584,11 +585,20 @@ func (c *Client) waitForJob(obj runtime.Object, name string) (bool, error) {
 		return true, errors.Errorf("expected %s to be a *batch.Job, got %T", name, obj)
 	}
 
-	for _, c := range o.Status.Conditions {
-		if c.Type == batch.JobComplete && c.Status == "True" {
+	for _, condition := range o.Status.Conditions {
+		if condition.Type == batch.JobComplete && condition.Status == "True" {
 			return true, nil
-		} else if c.Type == batch.JobFailed && c.Status == "True" {
-			return true, errors.Errorf("job failed: %s", c.Reason)
+		} else if condition.Type == batch.JobFailed && condition.Status == "True" {
+			podList, err := c.kubeClient.CoreV1().Pods(o.Namespace).List(context.Background(), metav1.ListOptions{
+				LabelSelector: fmt.Sprintf("job-name=%s", name),
+			})
+			if err != nil {
+				c.Log("Failed to get logs for job %s", name)
+				return true, errors.Errorf("job failed: %s", condition.Reason)
+			}
+
+			c.outputContainerLogs(podList, o.Namespace)
+			return true, errors.Errorf("job failed: %s", condition.Reason)
 		}
 	}
 
@@ -610,6 +620,10 @@ func (c *Client) waitForPodSuccess(obj runtime.Object, name string) (bool, error
 		c.Log("Pod %s succeeded", o.Name)
 		return true, nil
 	case v1.PodFailed:
+		podList := &v1.PodList{
+			Items: []v1.Pod{*o},
+		}
+		c.outputContainerLogs(podList, o.Namespace)
 		return true, errors.Errorf("pod %s failed", o.Name)
 	case v1.PodPending:
 		c.Log("Pod %s pending", o.Name)
@@ -618,6 +632,34 @@ func (c *Client) waitForPodSuccess(obj runtime.Object, name string) (bool, error
 	}
 
 	return false, nil
+}
+
+// outputContainerLogs is a helper that outputs logs for a set of pods
+//
+// This operates on PodList.
+func (c *Client) outputContainerLogs(podList *v1.PodList, namespace string) {
+	for _, pod := range podList.Items {
+		for _, container := range pod.Spec.Containers {
+			options := &v1.PodLogOptions{
+				Container: container.Name,
+			}
+			request := c.kubeClient.CoreV1().Pods(namespace).GetLogs(pod.Name, options)
+			readCloser, err := request.Stream(context.Background())
+			if err != nil {
+				c.Log("Failed to stream pod logs for pod: %s, container: %s", pod.Name, container.Name)
+				break
+			}
+			log.Printf("Logs for pod: %s, container: %s\n", pod.Name, container.Name)
+			_, err = io.Copy(log.Writer(), readCloser)
+			if err != nil {
+				c.Log("Failed to copy IO from logs for pod: %s, container: %s", pod.Name, container.Name)
+			}
+			err = readCloser.Close()
+			if err != nil {
+				c.Log("Failed to close reader for pod: %s, container: %s", pod.Name, container.Name)
+			}
+		}
+	}
 }
 
 // scrubValidationError removes kubectl info from the message.
