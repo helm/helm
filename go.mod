@@ -46,3 +46,5 @@ require (
 	rsc.io/letsencrypt v0.0.3 // indirect
 	sigs.k8s.io/yaml v1.2.0
 )
+
+replace github.com/garyburd/redigo => github.com/gomodule/redigo v1.8.5
