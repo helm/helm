@@ -456,7 +456,7 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	}
 
 	manifestData, manifest, err := content.GenerateManifest(&configDescriptor, nil, descriptors...)
-	if err := memoryStore.StoreManifest(ref, manifest, manifestData); err != nil {
+	if err = memoryStore.StoreManifest(ref, manifest, manifestData); err != nil {
 		return nil, err
 	}
 

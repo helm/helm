@@ -202,7 +202,7 @@ func (suite *RegistryClientTestSuite) Test_1_Push() {
 	suite.Equal(int64(973), result.Chart.Size)
 	suite.Equal(int64(695), result.Prov.Size)
 	suite.Equal(
-		"sha256:c4fd4ca31f12f50a7f704bb1dfdf2e768b1e8bdeac3991b534b6bdb3f535aab1",
+		"sha256:af4c20a1df1431495e673c14ecfa3a2ba24839a7784349d6787cd67957392e83",
 		result.Manifest.Digest)
 	suite.Equal(
 		"sha256:8d17cb6bf6ccd8c29aace9a658495cbd5e2e87fc267876e86117c7db681c9580",
@@ -275,7 +275,7 @@ func (suite *RegistryClientTestSuite) Test_2_Pull() {
 	suite.Equal(int64(973), result.Chart.Size)
 	suite.Equal(int64(695), result.Prov.Size)
 	suite.Equal(
-		"sha256:c4fd4ca31f12f50a7f704bb1dfdf2e768b1e8bdeac3991b534b6bdb3f535aab1",
+		"sha256:af4c20a1df1431495e673c14ecfa3a2ba24839a7784349d6787cd67957392e83",
 		result.Manifest.Digest)
 	suite.Equal(
 		"sha256:8d17cb6bf6ccd8c29aace9a658495cbd5e2e87fc267876e86117c7db681c9580",
@@ -286,7 +286,7 @@ func (suite *RegistryClientTestSuite) Test_2_Pull() {
 	suite.Equal(
 		"sha256:b0a02b7412f78ae93324d48df8fcc316d8482e5ad7827b5b238657a29a22f256",
 		result.Prov.Digest)
-	suite.Equal("{\"schemaVersion\":2,\"config\":{\"mediaType\":\"application/vnd.cncf.helm.config.v1+json\",\"digest\":\"sha256:8d17cb6bf6ccd8c29aace9a658495cbd5e2e87fc267876e86117c7db681c9580\",\"size\":99},\"layers\":[{\"mediaType\":\"application/vnd.cncf.helm.chart.content.v1.tar+gzip\",\"digest\":\"sha256:e5ef611620fb97704d8751c16bab17fedb68883bfb0edc76f78a70e9173f9b55\",\"size\":973},{\"mediaType\":\"application/vnd.cncf.helm.chart.provenance.v1.prov\",\"digest\":\"sha256:b0a02b7412f78ae93324d48df8fcc316d8482e5ad7827b5b238657a29a22f256\",\"size\":695}]}",
+	suite.Equal("{\"schemaVersion\":2,\"config\":{\"mediaType\":\"application/vnd.cncf.helm.config.v1+json\",\"digest\":\"sha256:8d17cb6bf6ccd8c29aace9a658495cbd5e2e87fc267876e86117c7db681c9580\",\"size\":99},\"layers\":[{\"mediaType\":\"application/vnd.cncf.helm.chart.provenance.v1.prov\",\"digest\":\"sha256:b0a02b7412f78ae93324d48df8fcc316d8482e5ad7827b5b238657a29a22f256\",\"size\":695},{\"mediaType\":\"application/vnd.cncf.helm.chart.content.v1.tar+gzip\",\"digest\":\"sha256:e5ef611620fb97704d8751c16bab17fedb68883bfb0edc76f78a70e9173f9b55\",\"size\":973}]}",
 		string(result.Manifest.Data))
 	suite.Equal("{\"name\":\"signtest\",\"version\":\"0.1.0\",\"description\":\"A Helm chart for Kubernetes\",\"apiVersion\":\"v1\"}",
 		string(result.Config.Data))
