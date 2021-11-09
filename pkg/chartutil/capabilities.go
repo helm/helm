@@ -28,12 +28,10 @@ import (
 	helmversion "helm.sh/helm/v3/internal/version"
 )
 
-const (
+var (
 	k8sVersionMajor = 1
 	k8sVersionMinor = 20
-)
 
-var (
 	// DefaultVersionSet is the default version set, which includes only Core V1 ("v1").
 	DefaultVersionSet = allKnownVersions()
 
