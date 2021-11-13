@@ -1,5 +1,6 @@
 Release "funny-bunny" has been upgraded. Happy Helming!
-NAME: funny-bunny
+RELEASE NAME: funny-bunny
+CHART: testUpgradeChart-0.1.3
 LAST DEPLOYED: Fri Sep  2 22:04:05 1977
 NAMESPACE: default
 STATUS: deployed

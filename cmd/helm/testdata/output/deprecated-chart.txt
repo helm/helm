@@ -1,4 +1,5 @@
-NAME: aeneas
+RELEASE NAME: aeneas
+CHART: deprecated-0.1.0
 LAST DEPLOYED: Fri Sep  2 22:04:05 1977
 NAMESPACE: default
 STATUS: deployed

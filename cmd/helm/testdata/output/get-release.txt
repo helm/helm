@@ -1,4 +1,6 @@
-NAME: thomas-guide
+RELEASE NAME: thomas-guide
+CHART: foo-0.1.0-beta.1
+APP VERSION: 1.0
 LAST DEPLOYED: Fri Sep  2 22:04:05 1977
 NAMESPACE: default
 STATUS: deployed

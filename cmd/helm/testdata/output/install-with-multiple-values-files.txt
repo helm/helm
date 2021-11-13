@@ -1,4 +1,6 @@
-NAME: virgil
+RELEASE NAME: virgil
+CHART: alpine-0.1.0
+APP VERSION: 3.9
 LAST DEPLOYED: Fri Sep  2 22:04:05 1977
 NAMESPACE: default
 STATUS: deployed

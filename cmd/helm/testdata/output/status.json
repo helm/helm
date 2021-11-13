@@ -1,1 +1,1 @@
-{"name":"flummoxed-chickadee","info":{"first_deployed":"","last_deployed":"2016-01-16T00:00:00Z","deleted":"","status":"deployed","notes":"release notes"},"namespace":"default"}
+{"name":"flummoxed-chickadee","info":{"first_deployed":"","last_deployed":"2016-01-16T00:00:00Z","deleted":"","status":"deployed","notes":"release notes"},"chart":{"metadata":{"name":"Myrelease-Chart","version":"1.2.3"},"lock":null,"templates":null,"values":null,"schema":null,"files":null},"namespace":"default"}

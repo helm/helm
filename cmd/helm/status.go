@@ -36,6 +36,8 @@ import (
 var statusHelp = `
 This command shows the status of a named release.
 The status consists of:
+- name and version of the released chart
+- application version
 - last deployment time
 - k8s namespace in which the release lives
 - state of the release (can be: unknown, deployed, uninstalled, superseded, failed, uninstalling, pending-install, pending-upgrade or pending-rollback)
@@ -66,9 +68,6 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-
-			// strip chart metadata from the output
-			rel.Chart = nil
 
 			return outfmt.Write(out, &statusPrinter{rel, false, client.ShowDescription})
 		},
@@ -113,7 +112,11 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 	if s.release == nil {
 		return nil
 	}
-	fmt.Fprintf(out, "NAME: %s\n", s.release.Name)
+	fmt.Fprintf(out, "RELEASE NAME: %s\n", s.release.Name)
+	fmt.Fprintf(out, "CHART: %s-%s\n", s.release.Chart.Metadata.Name, s.release.Chart.Metadata.Version)
+	if len(s.release.Chart.Metadata.AppVersion) > 0 {
+		fmt.Fprintf(out, "APP VERSION: %s\n", s.release.Chart.Metadata.AppVersion)
+	}
 	if !s.release.Info.LastDeployed.IsZero() {
 		fmt.Fprintf(out, "LAST DEPLOYED: %s\n", s.release.Info.LastDeployed.Format(time.ANSIC))
 	}
