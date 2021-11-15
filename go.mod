@@ -9,15 +9,17 @@ require (
 	github.com/Masterminds/sprig/v3 v3.2.2
 	github.com/Masterminds/squirrel v1.5.0
 	github.com/Masterminds/vcs v1.13.1
+	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20200428143746-21a406dcc535
 	github.com/containerd/containerd v1.5.7
 	github.com/cyphar/filepath-securejoin v0.2.3
 	github.com/distribution/distribution/v3 v3.0.0-20210804104954-38ab4c606ee3
-	github.com/docker/docker v17.12.0-ce-rc1.0.20200618181300-9dc6525e6118+incompatible
+	github.com/docker/docker v17.12.1-ce+incompatible
 	github.com/evanphx/json-patch v4.11.0+incompatible
 	github.com/gobwas/glob v0.2.3
 	github.com/gofrs/flock v0.8.0
 	github.com/gosuri/uitable v0.0.4
+	github.com/gotestyourself/gotestyourself v1.4.0 // indirect
 	github.com/jmoiron/sqlx v1.3.4
 	github.com/lib/pq v1.10.3
 	github.com/mattn/go-shellwords v1.0.11
@@ -44,5 +46,5 @@ require (
 	k8s.io/kubectl v0.22.3
 	oras.land/oras-go v0.4.0
 	rsc.io/letsencrypt v0.0.3 // indirect
-	sigs.k8s.io/yaml v1.2.0
+	sigs.k8s.io/yaml v1.3.0
 )
