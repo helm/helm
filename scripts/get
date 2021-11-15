@@ -138,10 +138,10 @@ installFile() {
   HELM_TMP_BIN="$HELM_TMP/$OS-$ARCH/$PROJECT_NAME"
   TILLER_TMP_BIN="$HELM_TMP/$OS-$ARCH/$TILLER_NAME"
   echo "Preparing to install $PROJECT_NAME and $TILLER_NAME into ${HELM_INSTALL_DIR}"
-  runAsRoot cp "$HELM_TMP_BIN" "$HELM_INSTALL_DIR"
+  runAsRoot cp "$HELM_TMP_BIN" "$HELM_INSTALL_DIR/$PROJECT_NAME"
   echo "$PROJECT_NAME installed into $HELM_INSTALL_DIR/$PROJECT_NAME"
   if [ -x "$TILLER_TMP_BIN" ]; then
-    runAsRoot cp "$TILLER_TMP_BIN" "$HELM_INSTALL_DIR"
+    runAsRoot cp "$TILLER_TMP_BIN" "$HELM_INSTALL_DIR/$TILLER_NAME"
     echo "$TILLER_NAME installed into $HELM_INSTALL_DIR/$TILLER_NAME"
   else
     echo "info: $TILLER_NAME binary was not found in this release; skipping $TILLER_NAME installation"
