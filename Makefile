@@ -116,6 +116,11 @@ test-style:
 	GO111MODULE=on golangci-lint run
 	@scripts/validate-license.sh
 
+.PHONY: test-style-revive
+test-style-revive:
+	GO111MODULE=on revive ./...
+	@scripts/validate-license.sh
+
 .PHONY: test-acceptance
 test-acceptance: TARGETS = linux/amd64
 test-acceptance: build build-cross
