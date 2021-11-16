@@ -3,7 +3,7 @@ module helm.sh/helm/v3
 go 1.16
 
 require (
-	github.com/BurntSushi/toml v0.3.1
+	github.com/BurntSushi/toml v0.4.1
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/Masterminds/semver/v3 v3.1.1
 	github.com/Masterminds/sprig/v3 v3.2.2
@@ -34,14 +34,14 @@ require (
 	github.com/ziutek/mymysql v1.5.4 // indirect
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 	golang.org/x/term v0.0.0-20210220032956-6a3ed077a48d
-	k8s.io/api v0.22.1
-	k8s.io/apiextensions-apiserver v0.22.1
-	k8s.io/apimachinery v0.22.1
-	k8s.io/apiserver v0.22.1
-	k8s.io/cli-runtime v0.22.1
-	k8s.io/client-go v0.22.1
-	k8s.io/klog/v2 v2.9.0
-	k8s.io/kubectl v0.22.1
+	k8s.io/api v0.22.3
+	k8s.io/apiextensions-apiserver v0.22.3
+	k8s.io/apimachinery v0.22.3
+	k8s.io/apiserver v0.22.3
+	k8s.io/cli-runtime v0.22.3
+	k8s.io/client-go v0.22.3
+	k8s.io/klog/v2 v2.30.0
+	k8s.io/kubectl v0.22.3
 	oras.land/oras-go v0.5.0
-	sigs.k8s.io/yaml v1.2.0
+	sigs.k8s.io/yaml v1.3.0
 )
