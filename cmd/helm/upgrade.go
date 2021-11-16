@@ -186,8 +186,10 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			ctx := context.Background()
 			ctx, cancel := context.WithCancel(ctx)
 
-			// Handle SIGTERM
-			cSignal := make(chan os.Signal)
+			// Set up channel on which to send signal notifications.
+			// We must use a buffered channel or risk missing the signal
+			// if we're not ready to receive when the signal is sent.
+			cSignal := make(chan os.Signal, 2)
 			signal.Notify(cSignal, os.Interrupt, syscall.SIGTERM)
 			go func() {
 				<-cSignal
