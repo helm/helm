@@ -217,7 +217,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		return nil, errors.New(
 			"must specify at least one layer to pull (chart/prov)")
 	}
-	memoryStore := content.NewMemory()
+	store := content.NewMemoryStore()
 	allowedMediaTypes := []string{
 		ConfigMediaType,
 	}
@@ -232,24 +232,12 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		}
 		allowedMediaTypes = append(allowedMediaTypes, ProvLayerMediaType)
 	}
-
-	var descriptors, layers []ocispec.Descriptor
-	registryStore := content.Registry{Resolver: c.resolver}
-
-	manifest, err := oras.Copy(ctx(c.out, c.debug), registryStore, ref, memoryStore, "",
+	manifest, descriptors, err := oras.Pull(ctx(c.out, c.debug), c.resolver, ref, store,
 		oras.WithPullEmptyNameAllowed(),
-		oras.WithAllowedMediaTypes(allowedMediaTypes),
-		oras.WithLayerDescriptors(func(l []ocispec.Descriptor) {
-			layers = l
-		}))
+		oras.WithAllowedMediaTypes(allowedMediaTypes))
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
-
-	descriptors = append(descriptors, manifest)
-	descriptors = append(descriptors, layers...)
-
 	numDescriptors := len(descriptors)
 	if numDescriptors < minNumDescriptors {
 		return nil, errors.New(
@@ -306,7 +294,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		Ref:   ref,
 	}
 	var getManifestErr error
-	if _, manifestData, ok := memoryStore.Get(manifest); !ok {
+	if _, manifestData, ok := store.Get(manifest); !ok {
 		getManifestErr = errors.Errorf("Unable to retrieve blob with digest %s", manifest.Digest)
 	} else {
 		result.Manifest.Data = manifestData
@@ -315,7 +303,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		return nil, getManifestErr
 	}
 	var getConfigDescriptorErr error
-	if _, configData, ok := memoryStore.Get(*configDescriptor); !ok {
+	if _, configData, ok := store.Get(*configDescriptor); !ok {
 		getConfigDescriptorErr = errors.Errorf("Unable to retrieve blob with digest %s", configDescriptor.Digest)
 	} else {
 		result.Config.Data = configData
@@ -330,7 +318,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 	}
 	if operation.withChart {
 		var getChartDescriptorErr error
-		if _, chartData, ok := memoryStore.Get(*chartDescriptor); !ok {
+		if _, chartData, ok := store.Get(*chartDescriptor); !ok {
 			getChartDescriptorErr = errors.Errorf("Unable to retrieve blob with digest %s", chartDescriptor.Digest)
 		} else {
 			result.Chart.Data = chartData
@@ -343,7 +331,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 	}
 	if operation.withProv && !provMissing {
 		var getProvDescriptorErr error
-		if _, provData, ok := memoryStore.Get(*provDescriptor); !ok {
+		if _, provData, ok := store.Get(*provDescriptor); !ok {
 			getProvDescriptorErr = errors.Errorf("Unable to retrieve blob with digest %s", provDescriptor.Digest)
 		} else {
 			result.Prov.Data = provData
@@ -427,45 +415,21 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 				"strict mode enabled, ref basename and tag must match the chart name and version")
 		}
 	}
-	memoryStore := content.NewMemory()
-	chartDescriptor, err := memoryStore.Add("", ChartLayerMediaType, data)
-	if err != nil {
-		return nil, err
-	}
-
+	store := content.NewMemoryStore()
+	chartDescriptor := store.Add("", ChartLayerMediaType, data)
 	configData, err := json.Marshal(meta)
 	if err != nil {
 		return nil, err
 	}
-
-	configDescriptor, err := memoryStore.Add("", ConfigMediaType, configData)
-	if err != nil {
-		return nil, err
-	}
-
+	configDescriptor := store.Add("", ConfigMediaType, configData)
 	descriptors := []ocispec.Descriptor{chartDescriptor}
 	var provDescriptor ocispec.Descriptor
 	if operation.provData != nil {
-		provDescriptor, err = memoryStore.Add("", ProvLayerMediaType, operation.provData)
-		if err != nil {
-			return nil, err
-		}
-
+		provDescriptor = store.Add("", ProvLayerMediaType, operation.provData)
 		descriptors = append(descriptors, provDescriptor)
 	}
-
-	manifestData, manifest, err := content.GenerateManifest(&configDescriptor, nil, descriptors...)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := memoryStore.StoreManifest(ref, manifest, manifestData); err != nil {
-		return nil, err
-	}
-
-	registryStore := content.Registry{Resolver: c.resolver}
-	_, err = oras.Copy(ctx(c.out, c.debug), memoryStore, ref, registryStore, "",
-		oras.WithNameValidation(nil))
+	manifest, err := oras.Push(ctx(c.out, c.debug), c.resolver, ref, store, descriptors,
+		oras.WithConfig(configDescriptor), oras.WithNameValidation(nil))
 	if err != nil {
 		return nil, err
 	}

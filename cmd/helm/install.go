@@ -253,10 +253,8 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 
-	// Set up channel on which to send signal notifications.
-	// We must use a buffered channel or risk missing the signal
-	// if we're not ready to receive when the signal is sent.
-	cSignal := make(chan os.Signal, 2)
+	// Handle SIGTERM
+	cSignal := make(chan os.Signal)
 	signal.Notify(cSignal, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-cSignal
