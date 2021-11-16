@@ -5,7 +5,7 @@ jobs:
   build:
     working_directory: ~/helm.sh/helm
     docker:
-      - image: circleci/golang:1.16
+      - image: circleci/golang:1.17
       
         auth:
           username: $DOCKER_USER
