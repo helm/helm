@@ -21,8 +21,8 @@ jobs:
           sudo mv golangci-lint-$GOLANGCI_LINT_VERSION-linux-amd64/golangci-lint /usr/local/bin/golangci-lint
           rm -rf golangci-lint-$GOLANGCI_LINT_VERSION-linux-amd64*
         env:
-          GOLANGCI_LINT_VERSION: '1.36.0'
-          GOLANGCI_LINT_SHA256: '9b8856b3a1c9bfbcf3a06b78e94611763b79abd9751c245246787cd3bf0e78a5'
+          GOLANGCI_LINT_VERSION: '1.43.0'
+          GOLANGCI_LINT_SHA256: 'f3515cebec926257da703ba0a2b169e4a322c11dc31a8b4656b50a43e48877f4'
       - name: Test style
         run: make test-style
       - name: Run unit tests
