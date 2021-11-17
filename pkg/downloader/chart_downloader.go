@@ -73,6 +73,7 @@ type ChartDownloader struct {
 	RegistryClient   *registry.Client
 	RepositoryConfig string
 	RepositoryCache  string
+	RepositoryURL    string
 }
 
 // DownloadTo retrieves a chart. Depending on the settings, it may also download a provenance file.
@@ -196,6 +197,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 	}
 
 	if registry.IsOCI(u.String()) {
+		c.RepositoryURL = ref
 		return c.getOciURI(ref, version, u)
 	}
 
@@ -266,6 +268,9 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 	}
 
 	if r != nil && r.Config != nil {
+		if r.Config.URL != "" {
+			c.RepositoryURL = r.Config.URL
+		}
 		if r.Config.CertFile != "" || r.Config.KeyFile != "" || r.Config.CAFile != "" {
 			c.Options = append(c.Options, getter.WithTLSClientConfig(r.Config.CertFile, r.Config.KeyFile, r.Config.CAFile))
 		}
