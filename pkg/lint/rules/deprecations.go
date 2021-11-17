@@ -25,7 +25,7 @@ import (
 	kscheme "k8s.io/client-go/kubernetes/scheme"
 )
 
-const (
+var (
 	// This should be set in the Makefile based on the version of client-go being imported.
 	// These constants will be overwritten with LDFLAGS
 	k8sVersionMajor = 1
