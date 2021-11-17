@@ -1,8 +1,12 @@
 ---
-version: 2
+version: 2.1
+
+orbs:
+  win: circleci/windows@2.2.0
+  azure-cli: circleci/azure-cli@1.0.0
 
 jobs:
-  build:
+  test:
     working_directory: ~/helm.sh/helm
     docker:
       - image: circleci/golang:1.17
@@ -26,15 +30,89 @@ jobs:
       - run:
           name: test
           command: make test-coverage
+  build:
+    working_directory: ~/helm.sh/helm
+    docker:
+      - image: circleci/golang:1.16
+      
+        auth:
+          username: $DOCKER_USER
+          password: $DOCKER_PASS
+
+    environment:
+      GOCACHE: "/tmp/go/cache"
+      GOLANGCI_LINT_VERSION: "1.36.0"
+
+    steps:
+      - checkout
       - deploy:
           name: deploy
           command: .circleci/deploy.sh
+      - persist_to_workspace:
+          root: .
+          paths:
+            - _dist/windows-amd64/*
+  
+  generate-windows-installer:
+    executor: win/default
+    steps:
+      - checkout
+      - attach_workspace:
+          at: 'C:\tmp\workspace'
+      - run:
+          name: Copy from Workspace
+          command: Copy-Item -Path "C:\tmp\workspace\_dist\*" -Destination "package\" -Recurse
+      - run:
+          name: install innosetup and build
+          command: Set-Location package; dir; .\build.ps1
+      - persist_to_workspace:
+          root: .
+          paths:
+           - ./package/Output/*
+      - store_artifacts:
+          path: ./package/Output/
+    
+  upload-binary:
+    executor: azure-cli/default
+    steps:
+      - azure-cli/install
+      - attach_workspace:
+          at: '/tmp/workspace'
+      - run:
+          name: Upload binary
+          command: cd /tmp/workspace/package/Output; az storage blob upload-batch -s . -d "$AZURE_STORAGE_CONTAINER_NAME" --pattern 'helm-*' --connection-string "$AZURE_STORAGE_CONNECTION_STRING"
+
 
 workflows:
   version: 2
   build:
     jobs:
+      - test
       - build:
+          requires:
+            - test
           filters:
+            branches:
+              only:
+                - main
+            tags:
+              only: /.*/
+      - generate-windows-installer:
+          requires:
+            - build
+          filters:
+            branches:
+              only:
+                - main
+            tags:
+              only: /.*/
+      - upload-binary:
+          requires:
+            - build
+            - generate-windows-installer
+          filters:
+            branches:
+              only:
+                - main
             tags:
               only: /.*/
