@@ -350,6 +350,18 @@ func TestValidatePluginData(t *testing.T) {
 	}
 }
 
+func TestValidatePluginData_Empty_Plugin(t *testing.T) {
+	err := validatePluginData(nil, "")
+	if err == nil {
+		t.Error("should have trapped nil pointer for empty plugin")
+	}
+	p := new(Plugin)
+	err = validatePluginData(p, "")
+	if err == nil {
+		t.Error("should have trapped nil plugin metadata")
+	}
+}
+
 func TestDetectDuplicates(t *testing.T) {
 	plugs := []*Plugin{
 		mockPlugin("foo"),
