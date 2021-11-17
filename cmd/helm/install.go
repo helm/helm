@@ -210,6 +210,10 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		return nil, err
 	}
 
+	if client.ChartPathOptions.RepoURL != "" {
+		chartRequested.Metadata.RepoURL = client.ChartPathOptions.RepoURL
+	}
+
 	if err := checkIfInstallable(chartRequested); err != nil {
 		return nil, err
 	}

@@ -72,6 +72,7 @@ type ChartDownloader struct {
 	RegistryClient   *registry.Client
 	RepositoryConfig string
 	RepositoryCache  string
+	RepositoryURL    string
 }
 
 // DownloadTo retrieves a chart. Depending on the settings, it may also download a provenance file.
@@ -83,22 +84,22 @@ type ChartDownloader struct {
 //
 // For VerifyNever and VerifyIfPossible, the Verification may be empty.
 //
-// Returns a string path to the location where the file was downloaded and a verification
-// (if provenance was verified), or an error if something bad happened.
-func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *provenance.Verification, error) {
+// Returns two strings, the first of which is a path to the location where the file was downloaded, the second being the repository URL.
+// Also returned is a verification (if provenance was verified), or an error if something bad happened.
+func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, string, *provenance.Verification, error) {
 	u, err := c.ResolveChartVersion(ref, version)
 	if err != nil {
-		return "", nil, err
+		return "", "", nil, err
 	}
 
 	g, err := c.Getters.ByScheme(u.Scheme)
 	if err != nil {
-		return "", nil, err
+		return "", "", nil, err
 	}
 
 	data, err := g.Get(u.String(), c.Options...)
 	if err != nil {
-		return "", nil, err
+		return "", "", nil, err
 	}
 
 	name := filepath.Base(u.Path)
@@ -108,7 +109,7 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 
 	destfile := filepath.Join(dest, name)
 	if err := fileutil.AtomicWriteFile(destfile, data, 0644); err != nil {
-		return destfile, nil, err
+		return destfile, c.RepositoryURL, nil, err
 	}
 
 	// If provenance is requested, verify it.
@@ -117,14 +118,14 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 		body, err := g.Get(u.String() + ".prov")
 		if err != nil {
 			if c.Verify == VerifyAlways {
-				return destfile, ver, errors.Errorf("failed to fetch provenance %q", u.String()+".prov")
+				return destfile, c.RepositoryURL, ver, errors.Errorf("failed to fetch provenance %q", u.String()+".prov")
 			}
 			fmt.Fprintf(c.Out, "WARNING: Verification not found for %s: %s\n", ref, err)
-			return destfile, ver, nil
+			return destfile, c.RepositoryURL, ver, nil
 		}
 		provfile := destfile + ".prov"
 		if err := fileutil.AtomicWriteFile(provfile, body, 0644); err != nil {
-			return destfile, nil, err
+			return destfile, c.RepositoryURL, nil, err
 		}
 
 		if c.Verify != VerifyLater {
@@ -132,11 +133,11 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 			if err != nil {
 				// Fail always in this case, since it means the verification step
 				// failed.
-				return destfile, ver, err
+				return destfile, c.RepositoryURL, ver, err
 			}
 		}
 	}
-	return destfile, ver, nil
+	return destfile, c.RepositoryURL, ver, nil
 }
 
 // ResolveChartVersion resolves a chart reference to a URL.
@@ -226,6 +227,9 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 	}
 
 	if r != nil && r.Config != nil {
+		if r.Config.URL != "" && c.RepositoryURL == "" {
+			c.RepositoryURL = r.Config.URL
+		}
 		if r.Config.CertFile != "" || r.Config.KeyFile != "" || r.Config.CAFile != "" {
 			c.Options = append(c.Options, getter.WithTLSClientConfig(r.Config.CertFile, r.Config.KeyFile, r.Config.CAFile))
 		}
