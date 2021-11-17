@@ -84,7 +84,8 @@ type ChartDownloader struct {
 	ContentCache string
 
 	// Cache specifies the cache implementation to use.
-	Cache Cache
+	Cache         Cache
+	RepositoryURL string
 }
 
 // DownloadTo retrieves a chart. Depending on the settings, it may also download a provenance file.
@@ -356,12 +357,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (string, *url
 	}
 
 	if registry.IsOCI(u.String()) {
-		if c.RegistryClient == nil {
-			return "", nil, fmt.Errorf("unable to lookup ref %s at version '%s', missing registry client", ref, version)
-		}
-
-		digest, OCIref, err := c.RegistryClient.ValidateReference(ref, version, u)
-		return digest, OCIref, err
+		return c.getOciURI(ref, version, u)
 	}
 
 	rf, err := loadRepoConfig(c.RepositoryConfig)
@@ -430,6 +426,9 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (string, *url
 	}
 
 	if r != nil && r.Config != nil {
+		if r.Config.URL != "" {
+			c.RepositoryURL = r.Config.URL
+		}
 		if r.Config.CertFile != "" || r.Config.KeyFile != "" || r.Config.CAFile != "" {
 			c.Options = append(c.Options, getter.WithTLSClientConfig(r.Config.CertFile, r.Config.KeyFile, r.Config.CAFile))
 		}
