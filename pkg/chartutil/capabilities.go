@@ -29,8 +29,10 @@ import (
 )
 
 var (
-	k8sVersionMajor = 1
-	k8sVersionMinor = 20
+	// This should be set in the Makefile based on the version of client-go being imported.
+	// These constants will be overwritten with LDFLAGS (ldflags should be var and type string)
+	k8sVersionMajor = "1"
+	k8sVersionMinor = "20"
 
 	// DefaultVersionSet is the default version set, which includes only Core V1 ("v1").
 	DefaultVersionSet = allKnownVersions()
@@ -38,9 +40,9 @@ var (
 	// DefaultCapabilities is the default set of capabilities.
 	DefaultCapabilities = &Capabilities{
 		KubeVersion: KubeVersion{
-			Version: fmt.Sprintf("v%d.%d.0", k8sVersionMajor, k8sVersionMinor),
-			Major:   strconv.Itoa(k8sVersionMajor),
-			Minor:   strconv.Itoa(k8sVersionMinor),
+			Version: fmt.Sprintf("v%s.%s.0", k8sVersionMajor, k8sVersionMinor),
+			Major:   k8sVersionMajor,
+			Minor:   k8sVersionMinor,
 		},
 		APIVersions: DefaultVersionSet,
 		HelmVersion: helmversion.Get(),
