@@ -13,7 +13,7 @@ require (
 	github.com/containerd/containerd v1.5.7
 	github.com/cyphar/filepath-securejoin v0.2.3
 	github.com/distribution/distribution/v3 v3.0.0-20210926092439-1563384b69df
-	github.com/docker/docker v20.10.9+incompatible
+	github.com/docker/docker v20.10.11+incompatible
 	github.com/evanphx/json-patch v4.11.0+incompatible
 	github.com/gobwas/glob v0.2.3
 	github.com/gofrs/flock v0.8.0
