@@ -26,6 +26,9 @@ jobs:
       - run:
           name: test
           command: make test-coverage
+      - run:
+          name: test build
+          command: make
       - deploy:
           name: deploy
           command: .circleci/deploy.sh
