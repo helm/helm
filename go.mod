@@ -16,7 +16,7 @@ require (
 	github.com/docker/docker v17.12.0-ce-rc1.0.20200618181300-9dc6525e6118+incompatible
 	github.com/evanphx/json-patch v4.11.0+incompatible
 	github.com/gobwas/glob v0.2.3
-	github.com/gofrs/flock v0.8.0
+	github.com/gofrs/flock v0.8.1
 	github.com/gosuri/uitable v0.0.4
 	github.com/jmoiron/sqlx v1.3.1
 	github.com/lib/pq v1.10.0
