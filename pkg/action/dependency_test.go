@@ -17,7 +17,6 @@ limitations under the License.
 package action
 
 import (
-	"bytes"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -25,44 +24,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"helm.sh/helm/v3/internal/test"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
 )
-
-func TestList(t *testing.T) {
-	for _, tcase := range []struct {
-		chart  string
-		golden string
-	}{
-		{
-			chart:  "testdata/charts/chart-with-compressed-dependencies",
-			golden: "output/list-compressed-deps.txt",
-		},
-		{
-			chart:  "testdata/charts/chart-with-compressed-dependencies-2.1.8.tgz",
-			golden: "output/list-compressed-deps-tgz.txt",
-		},
-		{
-			chart:  "testdata/charts/chart-with-uncompressed-dependencies",
-			golden: "output/list-uncompressed-deps.txt",
-		},
-		{
-			chart:  "testdata/charts/chart-with-uncompressed-dependencies-2.1.8.tgz",
-			golden: "output/list-uncompressed-deps-tgz.txt",
-		},
-		{
-			chart:  "testdata/charts/chart-missing-deps",
-			golden: "output/list-missing-deps.txt",
-		},
-	} {
-		buf := bytes.Buffer{}
-		if err := NewDependency().List(tcase.chart, &buf); err != nil {
-			t.Fatal(err)
-		}
-		test.AssertGoldenBytes(t, buf.Bytes(), tcase.golden)
-	}
-}
 
 // TestDependencyStatus_Dashes is a regression test to make sure that dashes in
 // chart names do not cause resolution problems.
@@ -98,7 +62,7 @@ func TestDependencyStatus_Dashes(t *testing.T) {
 	}
 
 	// Now try to get the deps
-	stat := NewDependency().dependencyStatus(dir, dep, first)
+	stat := DependencyStatus(dir, dep, first)
 	if stat != "ok" {
 		t.Errorf("Unexpected status: %q", stat)
 	}
