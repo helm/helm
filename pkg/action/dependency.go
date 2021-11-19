@@ -24,7 +24,6 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/gosuri/uitable"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -40,6 +39,14 @@ type Dependency struct {
 	ColumnWidth uint
 }
 
+// DependencyEntry is the representation of a chart dependency, returned back to the user after running `helm dep list`
+type DependencyEntry struct {
+	Name       string
+	Version    string
+	Repository string
+	Status     string
+}
+
 // NewDependency creates a new Dependency object with the given configuration.
 func NewDependency() *Dependency {
 	return &Dependency{
@@ -48,25 +55,28 @@ func NewDependency() *Dependency {
 }
 
 // List executes 'helm dependency list'.
-func (d *Dependency) List(chartpath string, out io.Writer) error {
+func ListDependencies(chartpath string, out io.Writer) ([]DependencyEntry, error) {
 	c, err := loader.Load(chartpath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if c.Metadata.Dependencies == nil {
 		fmt.Fprintf(out, "WARNING: no dependencies at %s\n", filepath.Join(chartpath, "charts"))
-		return nil
+		return nil, nil
 	}
 
-	d.printDependencies(chartpath, out, c)
-	fmt.Fprintln(out)
-	d.printMissing(chartpath, out, c.Metadata.Dependencies)
-	return nil
+	var deplist = make([]DependencyEntry, 0, len(c.Metadata.Dependencies))
+
+	for _, d := range c.Metadata.Dependencies {
+		deplist = append(deplist, DependencyEntry{Name: d.Name, Version: d.Version, Repository: d.Repository, Status: DependencyStatus(chartpath, d, c)})
+	}
+
+	return deplist, nil
 }
 
-// dependencyStatus returns a string describing the status of a dependency viz a viz the parent chart.
-func (d *Dependency) dependencyStatus(chartpath string, dep *chart.Dependency, parent *chart.Chart) string {
+// DependencyStatus returns a string describing the status of a dependency viz a viz the parent chart.
+func DependencyStatus(chartpath string, dep *chart.Dependency, parent *chart.Chart) string {
 	filename := fmt.Sprintf("%s-%s.tgz", dep.Name, "*")
 
 	// If a chart is unpacked, this will check the unpacked chart's `charts/` directory for tarballs.
@@ -181,20 +191,9 @@ func statArchiveForStatus(archive string, dep *chart.Dependency) string {
 	return ""
 }
 
-// printDependencies prints all of the dependencies in the yaml file.
-func (d *Dependency) printDependencies(chartpath string, out io.Writer, c *chart.Chart) {
-	table := uitable.New()
-	table.MaxColWidth = d.ColumnWidth
-	table.AddRow("NAME", "VERSION", "REPOSITORY", "STATUS")
-	for _, row := range c.Metadata.Dependencies {
-		table.AddRow(row.Name, row.Version, row.Repository, d.dependencyStatus(chartpath, row, c))
-	}
-	fmt.Fprintln(out, table)
-}
-
 // printMissing prints warnings about charts that are present on disk, but are
 // not in Chart.yaml.
-func (d *Dependency) printMissing(chartpath string, out io.Writer, reqs []*chart.Dependency) {
+func PrintMissing(chartpath string, out io.Writer, reqs []DependencyEntry) {
 	folder := filepath.Join(chartpath, "charts/*")
 	files, err := filepath.Glob(folder)
 	if err != nil {

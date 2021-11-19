@@ -17,7 +17,6 @@ package main
 
 import (
 	"io"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
 
@@ -95,28 +94,5 @@ func newDependencyCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	cmd.AddCommand(newDependencyUpdateCmd(cfg, out))
 	cmd.AddCommand(newDependencyBuildCmd(cfg, out))
 
-	return cmd
-}
-
-func newDependencyListCmd(out io.Writer) *cobra.Command {
-	client := action.NewDependency()
-	cmd := &cobra.Command{
-		Use:     "list CHART",
-		Aliases: []string{"ls"},
-		Short:   "list the dependencies for the given chart",
-		Long:    dependencyListDesc,
-		Args:    require.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			chartpath := "."
-			if len(args) > 0 {
-				chartpath = filepath.Clean(args[0])
-			}
-			return client.List(chartpath, out)
-		},
-	}
-
-	f := cmd.Flags()
-
-	f.UintVar(&client.ColumnWidth, "max-col-width", 80, "maximum column width for output table")
 	return cmd
 }
