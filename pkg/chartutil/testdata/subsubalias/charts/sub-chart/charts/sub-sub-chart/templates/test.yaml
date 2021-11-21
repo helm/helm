@@ -1,0 +1,1 @@
+name: {{ required "name is required" .Values.name }}

@@ -1,0 +1,12 @@
+apiVersion: v2
+name: parent
+description: parent
+type: application
+version: 0.0.1
+dependencies:
+- name: sub-chart
+  version: 0.0.1
+  alias: sub1
+- name: sub-chart
+  version: 0.0.1
+  alias: sub2

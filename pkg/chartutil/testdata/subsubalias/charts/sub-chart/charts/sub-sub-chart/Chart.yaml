@@ -1,0 +1,5 @@
+apiVersion: v2
+name: sub-sub-chart
+description: sub-sub-chart
+type: application
+version: 0.0.1

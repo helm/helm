@@ -424,3 +424,48 @@ func TestDependentChartsWithSomeSubchartsSpecifiedInDependency(t *testing.T) {
 		t.Fatalf("expected 1 dependency specified in Chart.yaml, got %d", len(c.Metadata.Dependencies))
 	}
 }
+
+func TestAliasOfSubSubChartWithMultipleInstances(t *testing.T) {
+	c := loadChart(t, "testdata/subsubalias")
+
+	if len(c.Dependencies()) != 1 {
+		t.Fatalf("expected 1 dependencies for this chart, but got %d", len(c.Dependencies()))
+	}
+
+	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
+		t.Fatalf("expected no errors but got %q", err)
+	}
+
+	req := c.Metadata.Dependencies
+
+	if len(req) == 0 {
+		t.Fatalf("there are no dependencies to test")
+	}
+
+	sub1 := c.Dependencies()[0]
+	sub1subReq := sub1.Metadata.Dependencies[0]
+	sub1subAlias := getAliasDependency(sub1.Dependencies(), sub1subReq)
+	if len(sub1.Dependencies()) != 1 {
+		t.Fatalf("expected 1 dependencies for this chart, but got %d", len(c.Dependencies()))
+	}
+	if sub1subAlias == nil {
+		t.Fatalf("expected sub1subAlias to not be nil")
+	}
+	if sub1subAlias.Name() != "sub-sub1" {
+		t.Fatalf("expected name to be sub-sub1")
+	}
+
+	sub2 := c.Dependencies()[1]
+	sub2subReq := sub2.Metadata.Dependencies[0]
+	sub2subAlias := getAliasDependency(sub2.Dependencies(), sub2subReq)
+	if len(sub2.Dependencies()) != 1 {
+		t.Fatalf("expected 1 dependencies for this chart, but got %d", len(c.Dependencies()))
+	}
+	if sub2subAlias == nil {
+		t.Fatalf("expected sub2subAlias to not be nil")
+	}
+	if sub2subAlias.Name() != "sub-sub1" {
+		t.Fatalf("expected name to be sub-sub1")
+	}
+
+}

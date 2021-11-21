@@ -1,0 +1,6 @@
+sub1:
+  sub-sub1:
+    name: foo
+sub2:
+  sub-sub1:
+    name: baz

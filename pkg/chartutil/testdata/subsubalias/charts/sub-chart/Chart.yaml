@@ -1,0 +1,9 @@
+apiVersion: v2
+name: sub-chart
+description: sub-chart
+type: application
+version: 0.0.1
+dependencies:
+- name: sub-sub-chart
+  version: 0.0.1
+  alias: sub-sub1
