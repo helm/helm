@@ -95,7 +95,7 @@ func getAliasDependency(charts []*chart.Chart, dep *chart.Dependency) *chart.Cha
 		if c == nil {
 			continue
 		}
-		if c.Name() != dep.Name {
+		if !dep.EqualName(c.Name()) {
 			continue
 		}
 		if !IsCompatibleRange(dep.Version, c.Metadata.Version) {
@@ -129,7 +129,7 @@ func processDependencyEnabled(c *chart.Chart, v map[string]interface{}, path str
 Loop:
 	for _, existing := range c.Dependencies() {
 		for _, req := range c.Metadata.Dependencies {
-			if existing.Name() == req.Name && IsCompatibleRange(req.Version, existing.Metadata.Version) {
+			if req.EqualName(existing.Name()) && IsCompatibleRange(req.Version, existing.Metadata.Version) {
 				continue Loop
 			}
 		}
@@ -141,7 +141,7 @@ Loop:
 			chartDependencies = append(chartDependencies, chartDependency)
 		}
 		if req.Alias != "" {
-			req.Name = req.Alias
+			req.SetNameFromAlias()
 		}
 	}
 	c.SetDependencies(chartDependencies...)

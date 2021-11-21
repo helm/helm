@@ -47,6 +47,23 @@ type Dependency struct {
 	ImportValues []interface{} `json:"import-values,omitempty"`
 	// Alias usable alias to be used for the chart
 	Alias string `json:"alias,omitempty"`
+
+	originalName string
+}
+
+// SetNameFromAlias sets originalName if empty, so can be called multiple times.
+// This assumes that the first time SetNameFromAlias is called, d.Name is the name as
+// specified in the dependency's Chart.yaml
+func (d *Dependency) SetNameFromAlias() {
+	if d.originalName == "" {
+		d.originalName = d.Name
+	}
+	d.Name = d.Alias
+}
+
+// EqualName returns true if the dependency's name or originalName is equal to the given name.
+func (d *Dependency) EqualName(name string) bool {
+	return d.Name == name || d.originalName == name
 }
 
 // Validate checks for common problems with the dependency datastructure in
