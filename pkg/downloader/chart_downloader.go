@@ -160,6 +160,10 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 		return nil, errors.Errorf("invalid chart URL format: %s", ref)
 	}
 
+	if u.Scheme == "oci" {
+		c.RepositoryURL = ref
+	}
+
 	rf, err := loadRepoConfig(c.RepositoryConfig)
 	if err != nil {
 		return u, err
