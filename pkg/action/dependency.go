@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/gosuri/uitable"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -55,6 +56,38 @@ func NewDependency() *Dependency {
 }
 
 // List executes 'helm dependency list'.
+// DEPRECATED: use ListDependencies instead
+func (d *Dependency) List(chartpath string, out io.Writer) error {
+	c, err := loader.Load(chartpath)
+	if err != nil {
+		return err
+	}
+
+	if c.Metadata.Dependencies == nil {
+		fmt.Fprintf(out, "WARNING: no dependencies at %s\n", filepath.Join(chartpath, "charts"))
+		return nil
+	}
+
+	deps := mapDependenciesToDependencyEntries(c, chartpath)
+
+	d.printDependencies(chartpath, out, deps)
+	fmt.Fprintln(out)
+	PrintMissing(chartpath, out, deps)
+	return nil
+}
+
+// printDependencies prints all of the dependencies in the yaml file.
+func (d *Dependency) printDependencies(chartpath string, out io.Writer, deps []DependencyEntry) {
+	table := uitable.New()
+	table.MaxColWidth = d.ColumnWidth
+	table.AddRow("NAME", "VERSION", "REPOSITORY", "STATUS")
+	for _, row := range deps {
+		table.AddRow(row.Name, row.Version, row.Repository, row.Status)
+	}
+	fmt.Fprintln(out, table)
+}
+
+// ListDependencies executes 'helm dependency list' but it doesn't print anything unwanted
 func ListDependencies(chartpath string, out io.Writer) ([]DependencyEntry, error) {
 	c, err := loader.Load(chartpath)
 	if err != nil {
@@ -66,13 +99,18 @@ func ListDependencies(chartpath string, out io.Writer) ([]DependencyEntry, error
 		return nil, nil
 	}
 
+	return mapDependenciesToDependencyEntries(c, chartpath), nil
+}
+
+func mapDependenciesToDependencyEntries(c *chart.Chart, chartpath string) []DependencyEntry {
+
 	var deplist = make([]DependencyEntry, 0, len(c.Metadata.Dependencies))
 
 	for _, d := range c.Metadata.Dependencies {
 		deplist = append(deplist, DependencyEntry{Name: d.Name, Version: d.Version, Repository: d.Repository, Status: DependencyStatus(chartpath, d, c)})
 	}
 
-	return deplist, nil
+	return deplist
 }
 
 // DependencyStatus returns a string describing the status of a dependency viz a viz the parent chart.
