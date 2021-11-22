@@ -17,6 +17,7 @@ limitations under the License.
 package engine
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"path"
@@ -414,7 +415,8 @@ func isLibraryChart(c *chart.Chart) bool {
 
 func readTemplateMagicComments(templateBody string) templateOpts {
 	templateOpts := templateOpts{}
-	matches := magicCommentsRegexp.FindAllSubmatch([]byte(templateBody), -1)
+	templateHeader := templateHeader(templateBody)
+	matches := magicCommentsRegexp.FindAllSubmatch([]byte(templateHeader), -1)
 	for _, match := range matches {
 		if strings.EqualFold(string(match[1]), "delim") {
 			delim := strings.SplitN(string(match[2]), ",", 2)
@@ -424,4 +426,20 @@ func readTemplateMagicComments(templateBody string) templateOpts {
 	}
 
 	return templateOpts
+}
+
+// templateHeader returns the lines from the template until the first line that does not start with "#"
+//
+// This is used to avoid scanning whole templates with a regular expression when searching for magic comments.
+func templateHeader(templateBody string) string {
+	var headerBuffer strings.Builder
+	scanner := bufio.NewScanner(strings.NewReader(templateBody))
+	for scanner.Scan() {
+		if strings.HasPrefix(scanner.Text(), "#") {
+			headerBuffer.WriteString(scanner.Text())
+		} else {
+			break
+		}
+	}
+	return headerBuffer.String()
 }
