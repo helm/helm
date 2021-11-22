@@ -1,6 +1,6 @@
 ---
 # Source: chart-with-alt-delim/templates/alt-configmap.yaml
-# helm: delim=[,]
+# helm: delimiters=[[,]]
 apiVersion: v1
 kind: ConfigMap
 metadata:

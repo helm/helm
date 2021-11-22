@@ -17,7 +17,6 @@ limitations under the License.
 package engine
 
 import (
-	"bufio"
 	"fmt"
 	"log"
 	"path"
@@ -84,7 +83,14 @@ func RenderWithClient(chrt *chart.Chart, values chartutil.Values, config *rest.C
 	}.Render(chrt, values)
 }
 
-var magicCommentsRegexp = regexp.MustCompile(`^#\s*helm:\s*(?:(\w+)=([^\s]*))*`)
+// A regexp to match against first lines in a template that start with #
+var templateHeaderRegexp = regexp.MustCompile(`(?sm)\A((?:^#\s[^\n]*\n)*)`)
+
+// A regexp to capture a magic comment line in the template header
+var magicCommentsRegexp = regexp.MustCompile(`(?m-s)^#\s+helm:\s*(.*)$`)
+
+// The magic comment directive to set the template delimiters
+const setDelimitersDirective = "delimiters"
 
 type templateOpts struct {
 	// Left template delimiter
@@ -97,6 +103,8 @@ type templateOpts struct {
 type renderable struct {
 	// tpl is the current template.
 	tpl string
+	// header is the header extracted from the template (first lines starting with #)
+	header []byte
 	// vals are the values to be supplied to the template.
 	vals chartutil.Values
 	// namespace prefix to the templates of the current chart
@@ -269,6 +277,12 @@ func (e Engine) renderWithReferences(tpls, referenceTpls map[string]renderable) 
 		vals := tpls[filename].vals
 		vals["Template"] = chartutil.Values{"Name": filename, "BasePath": tpls[filename].basePath}
 		var buf strings.Builder
+
+		// Add template header to output without rendering it through the template engine
+		if _, err := buf.Write([]byte(tpls[filename].header)); err != nil {
+			return map[string]string{}, cleanupExecError(filename, err)
+		}
+
 		if err := t.ExecuteTemplate(&buf, filename, vals); err != nil {
 			return map[string]string{}, cleanupExecError(filename, err)
 		}
@@ -389,10 +403,12 @@ func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.
 		if !isTemplateValid(c, t.Name) {
 			continue
 		}
+		templateHeader, templateBody := extractTemplateHeaderAndBody(t.Data)
 		templates[path.Join(newParentID, t.Name)] = renderable{
-			tpl:      string(t.Data),
+			tpl:      string(templateBody),
+			header:   templateHeader,
 			vals:     next,
-			opts:     readTemplateMagicComments(string(t.Data)),
+			opts:     readTemplateMagicComments(templateHeader),
 			basePath: path.Join(newParentID, "templates"),
 		}
 	}
@@ -413,33 +429,31 @@ func isLibraryChart(c *chart.Chart) bool {
 	return strings.EqualFold(c.Metadata.Type, "library")
 }
 
-func readTemplateMagicComments(templateBody string) templateOpts {
-	templateOpts := templateOpts{}
-	templateHeader := templateHeader(templateBody)
-	matches := magicCommentsRegexp.FindAllSubmatch([]byte(templateHeader), -1)
-	for _, match := range matches {
-		if strings.EqualFold(string(match[1]), "delim") {
-			delim := strings.SplitN(string(match[2]), ",", 2)
-			templateOpts.delimL = strings.Repeat(delim[0], 2)
-			templateOpts.delimR = strings.Repeat(delim[1], 2)
-		}
-	}
-
-	return templateOpts
+// extractTemplateHeaderAndBody splits the template to the header and body components of the template
+//
+// the header is considered all the lines from the template until the first line that does not start with "#"
+// This is used to avoid scanning whole templates with a regular expression when searching for magic comments
+// and avoid rendering the header while still keeping it part of the output
+func extractTemplateHeaderAndBody(template []byte) ([]byte, []byte) {
+	headerBytes := templateHeaderRegexp.Find(template)
+	return headerBytes, template[len(headerBytes):]
 }
 
-// templateHeader returns the lines from the template until the first line that does not start with "#"
-//
-// This is used to avoid scanning whole templates with a regular expression when searching for magic comments.
-func templateHeader(templateBody string) string {
-	var headerBuffer strings.Builder
-	scanner := bufio.NewScanner(strings.NewReader(templateBody))
-	for scanner.Scan() {
-		if strings.HasPrefix(scanner.Text(), "#") {
-			headerBuffer.WriteString(scanner.Text())
-		} else {
-			break
+// readTemplateMagicComments reads magic comments from the template header and returns a `templateOpts` struct
+func readTemplateMagicComments(templateHeader []byte) templateOpts {
+	templateOpts := templateOpts{}
+	matches := magicCommentsRegexp.FindAllSubmatch(templateHeader, -1)
+	for _, match := range matches {
+		magicCommentBody := strings.SplitN(string(match[1]), "=", 2)
+		if len(magicCommentBody) == 2 && strings.EqualFold(magicCommentBody[0], setDelimitersDirective) {
+			delimiters := strings.SplitN(magicCommentBody[1], ",", 2)
+			if len(delimiters) != 2 {
+				log.Printf("Warning: invalid magic comment: %s", match[1])
+				continue
+			}
+			templateOpts.delimL = delimiters[0]
+			templateOpts.delimR = delimiters[1]
 		}
 	}
-	return headerBuffer.String()
+	return templateOpts
 }
