@@ -157,9 +157,23 @@ func Test_ReadyChecker_statefulSetReady(t *testing.T) {
 		{
 			name: "statefulset is not ready when partition is set",
 			args: args{
-				sts: newStatefulSet("foo", 1, 1, 1, 1),
+				sts: newStatefulSet("foo", 2, 1, 1, 0),
 			},
 			want: false,
+		},
+		{
+			name: "statefulset is ready when partition is set and no change in template",
+			args: args{
+				sts: newStatefulSet("foo", 2, 1, 2, 2),
+			},
+			want: true,
+		},
+		{
+			name: "statefulset is ready when partition is greater than replicas",
+			args: args{
+				sts: newStatefulSet("foo", 1, 2, 1, 1),
+			},
+			want: true,
 		},
 	}
 	for _, tt := range tests {
