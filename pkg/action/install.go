@@ -750,8 +750,8 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		return "", err
 	}
 
-	filename, rURL, _, err := dl.DownloadTo(name, version, settings.RepositoryCache)
-	c.RepoURL = rURL
+	filename, _, err := dl.DownloadTo(name, version, settings.RepositoryCache)
+	c.RepoURL = dl.RepositoryURL
 	if err == nil {
 		lname, err := filepath.Abs(filename)
 		if err != nil {

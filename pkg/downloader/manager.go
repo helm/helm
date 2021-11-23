@@ -357,7 +357,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 				getter.WithTagName(version))
 		}
 
-		if _, _, _, err = dl.DownloadTo(churl, version, tmpPath); err != nil {
+		if _, _, err = dl.DownloadTo(churl, version, tmpPath); err != nil {
 			saveError = errors.Wrapf(err, "could not download %s", churl)
 			break
 		}

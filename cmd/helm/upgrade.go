@@ -152,7 +152,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if client.ChartPathOptions.RepoURL != "" && ch.Metadata.RepoURL == "" {
+			if client.ChartPathOptions.RepoURL != "" {
 				ch.Metadata.RepoURL = client.ChartPathOptions.RepoURL
 			}
 			if req := ch.Metadata.Dependencies; req != nil {

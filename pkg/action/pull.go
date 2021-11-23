@@ -127,7 +127,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		chartRef = chartURL
 	}
 
-	saved, _, v, err := c.DownloadTo(chartRef, p.Version, dest)
+	saved, v, err := c.DownloadTo(chartRef, p.Version, dest)
 	if err != nil {
 		return out.String(), err
 	}
