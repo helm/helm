@@ -34,14 +34,14 @@ require (
 	github.com/ziutek/mymysql v1.5.4 // indirect
 	golang.org/x/crypto v0.0.0-20211117183948-ae814b36b871
 	golang.org/x/term v0.0.0-20210220032956-6a3ed077a48d
-	k8s.io/api v0.22.3
-	k8s.io/apiextensions-apiserver v0.22.3
-	k8s.io/apimachinery v0.22.3
-	k8s.io/apiserver v0.22.3
-	k8s.io/cli-runtime v0.22.3
-	k8s.io/client-go v0.22.3
+	k8s.io/api v0.22.4
+	k8s.io/apiextensions-apiserver v0.22.4
+	k8s.io/apimachinery v0.22.4
+	k8s.io/apiserver v0.22.4
+	k8s.io/cli-runtime v0.22.4
+	k8s.io/client-go v0.22.4
 	k8s.io/klog/v2 v2.30.0
-	k8s.io/kubectl v0.22.3
+	k8s.io/kubectl v0.22.4
 	oras.land/oras-go v1.0.0
 	sigs.k8s.io/yaml v1.3.0
 )
