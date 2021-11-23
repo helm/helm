@@ -231,7 +231,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 	}
 
 	if r != nil && r.Config != nil {
-		if r.Config.URL != "" && c.RepositoryURL == "" {
+		if r.Config.URL != "" {
 			c.RepositoryURL = r.Config.URL
 		}
 		if r.Config.CertFile != "" || r.Config.KeyFile != "" || r.Config.CAFile != "" {
