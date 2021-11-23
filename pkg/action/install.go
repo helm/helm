@@ -657,7 +657,7 @@ OUTER:
 	}
 
 	if len(missing) > 0 {
-		return errors.Errorf("found in Chart.yaml, but missing in charts/ directory: %s", strings.Join(missing, ", "))
+		return errors.Errorf("found in Chart.yaml, but missing in charts/ directory: %s. Did you run `helm dependency build`?", strings.Join(missing, ", "))
 	}
 	return nil
 }

@@ -1,1 +1,1 @@
-Error: found in Chart.yaml, but missing in charts/ directory: reqsubchart2
+Error: found in Chart.yaml, but missing in charts/ directory: reqsubchart2. Did you run `helm dependency build`?
