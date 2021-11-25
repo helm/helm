@@ -223,7 +223,7 @@ func (g *TarGzExtractor) Extract(buffer *bytes.Buffer, targetDir string) error {
 		return err
 	}
 
-	if err := os.MkdirAll(targetDir, 0755); err != nil {
+	if err = os.MkdirAll(targetDir, 0755); err != nil && !os.IsExist(err) {
 		return err
 	}
 
