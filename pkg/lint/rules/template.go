@@ -99,6 +99,9 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 	for _, template := range chart.Templates {
 		fileName, data := template.Name, template.Data
 		fpath = fileName
+        if chart.Metadata.Type == "library" {
+            linter.RunLinterRule(support.WarningSev, fpath, validateLibraryTemplate(fileName))
+        }
 
 		linter.RunLinterRule(support.ErrorSev, fpath, validateAllowedExtension(fileName))
 		// These are v3 specific checks to make sure and warn people if their
@@ -177,6 +180,13 @@ func validateTopIndentLevel(content string) error {
 		return nil
 	}
 	return scanner.Err()
+}
+
+func validateLibraryTemplate(fileName string) error {
+    if fileName[0] != '_' {
+        return fmt.Errorf("template file name %s does not start with '_' character", fileName)
+    }
+    return nil
 }
 
 // Validation functions
