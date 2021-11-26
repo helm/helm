@@ -116,28 +116,38 @@ func LoadIndexFile(path string) (*IndexFile, error) {
 	return i, nil
 }
 
-var cache = make(map[string]*IndexFile)
-var cacheLock sync.RWMutex
+type cacheEntry struct {
+	indexFile *IndexFile
+	err       error
+	lock      sync.RWMutex
+}
 
+var cache sync.Map
+
+// LoadIndexFileWithCaching is a wrapper around LoadIndexFile
+// it adds an internal global cache to avoid reading the same file multiple times
 func LoadIndexFileWithCaching(path string) (*IndexFile, error) {
-	// if already in cache, return cached entry
-	cacheLock.RLock()
-	if idx, ok := cache[path]; ok {
-		cacheLock.RUnlock()
-		// safe to return a pointer to the cached entry here since once in cache
-		// entry will never be overwritten
-		return idx, nil
+	// assume the entry is not cached, prepare a newEntry
+	newEntry := &cacheEntry{}
+	// lock to avoid threading issues in case of multiple loads in parallel
+	newEntry.lock.Lock()
+
+	// check if index already in cache, add newEntry atomically if not-cached
+	if v, loaded := cache.LoadOrStore(path, newEntry); loaded {
+		// We hit the cache. newEntry is not needed anymore
+		newEntry.lock.Unlock()
+		entry := v.(*cacheEntry)
+		// wait for RLock on cached entry
+		// LoadIndexFile might not have completed yet in another go-routine
+		entry.lock.RLock()
+		defer entry.lock.RUnlock()
+		return entry.indexFile, entry.err
 	}
-	cacheLock.RUnlock()
-	// not in cache, need to load from disk
-	idx, err := LoadIndexFile(path)
-	if err == nil {
-		// we fetched the index successfully. Store it in cache.
-		cacheLock.Lock()
-		cache[path] = idx
-		cacheLock.Unlock()
-	}
-	return idx, err
+	// no entry found in cache
+	// LoadIndexFile while holding the write-lock
+	newEntry.indexFile, newEntry.err = LoadIndexFile(path)
+	defer newEntry.lock.Unlock()
+	return newEntry.indexFile, newEntry.err
 }
 
 // MustAdd adds a file to the index
