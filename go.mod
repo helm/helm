@@ -20,7 +20,7 @@ require (
 	github.com/gosuri/uitable v0.0.4
 	github.com/jmoiron/sqlx v1.3.4
 	github.com/lib/pq v1.10.4
-	github.com/mattn/go-shellwords v1.0.11
+	github.com/mattn/go-shellwords v1.0.12
 	github.com/mitchellh/copystructure v1.2.0
 	github.com/opencontainers/image-spec v1.0.2
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
