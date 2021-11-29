@@ -46,6 +46,7 @@ type Pull struct {
 	VerifyLater bool
 	UntarDir    string
 	DestDir     string
+	PlainHTTP   bool
 	cfg         *Configuration
 }
 
@@ -75,6 +76,12 @@ func NewPullWithOpts(opts ...PullOpt) *Pull {
 // Run executes 'helm pull' against the given release.
 func (p *Pull) Run(chartRef string) (string, error) {
 	var out strings.Builder
+
+	if p.InsecureSkipTLSverify || p.PlainHTTP {
+		if err := p.cfg.RegistryClient.WithResolver(p.InsecureSkipTLSverify, p.PlainHTTP); err != nil {
+			return out.String(), err
+		}
+	}
 
 	c := downloader.ChartDownloader{
 		Out:     &out,

@@ -18,6 +18,7 @@ package registry // import "helm.sh/helm/v3/pkg/registry"
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -143,6 +144,36 @@ func ClientOptCredentialsFile(credentialsFile string) ClientOption {
 	return func(client *Client) {
 		client.credentialsFile = credentialsFile
 	}
+}
+
+func (c *Client) newResolver(insecure, plainHTTP bool) (remotes.Resolver, error) {
+	headers := http.Header{}
+	headers.Set("User-Agent", version.GetUserAgent())
+	opts := []auth.ResolverOption{auth.WithResolverHeaders(headers)}
+
+	if insecure {
+		httpClient := http.DefaultClient
+		httpClient.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		}
+		opts = append(opts, auth.WithResolverClient(httpClient))
+	}
+	if plainHTTP {
+		opts = append(opts, auth.WithResolverPlainHTTP())
+	}
+
+	return c.authorizer.ResolverWithOpts(opts...)
+}
+
+func (c *Client) WithResolver(insecure, plainHTTP bool) error {
+	resolver, err := c.newResolver(insecure, plainHTTP)
+	if err != nil {
+		return err
+	}
+	c.resolver = resolver
+	return nil
 }
 
 type (

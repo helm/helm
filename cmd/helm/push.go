@@ -54,5 +54,9 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		},
 	}
 
+	f := cmd.Flags()
+	f.BoolVar(&client.InsecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the chart upload")
+	f.BoolVar(&client.PlainHTTP, "plain-http", false, "use plain http and not https to connect oci registry")
+
 	return cmd
 }
