@@ -94,8 +94,8 @@ func (r *File) Get(name string) *Entry {
 	return nil
 }
 
-// Get returns an entry with the given URL if it exists, otherwise returns nil
-func (r *File) GetURL(url string) *Entry {
+// GetRepoFromURL returns an entry with the given URL if it exists, otherwise returns nil
+func (r *File) GetRepoFromURL(url string) *Entry {
 	for _, entry := range r.Repositories {
 		if entry.URL == url {
 			return entry
@@ -109,7 +109,7 @@ func FindRepoEntry(url string, repositoryConfig string) (*Entry, error) {
 	if err != nil {
 		return nil, err
 	}
-	entry := f.GetURL(url)
+	entry := f.GetRepoFromURL(url)
 	if entry == nil {
 		return nil, nil
 	}

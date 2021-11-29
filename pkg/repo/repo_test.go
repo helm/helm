@@ -128,7 +128,7 @@ func TestRepoFile_Get(t *testing.T) {
 	}
 }
 
-func TestRepoFile_GetURL(t *testing.T) {
+func TestGetRepoFromURL(t *testing.T) {
 	repo := NewFile()
 	repo.Add(
 		&Entry{
@@ -151,7 +151,7 @@ func TestRepoFile_GetURL(t *testing.T) {
 
 	url := "https://example.com/second"
 
-	entry := repo.GetURL(url)
+	entry := repo.GetRepoFromURL(url)
 	if entry == nil {
 		t.Fatalf("Expected repo entry %q to be found", url)
 	}
@@ -160,7 +160,7 @@ func TestRepoFile_GetURL(t *testing.T) {
 		t.Errorf("Expected repo Name to be %q but got %q", "second", entry.Name)
 	}
 
-	entry = repo.GetURL("http://nonexistent.example.com/nonexistent")
+	entry = repo.GetRepoFromURL("http://nonexistent.example.com/nonexistent")
 	if entry != nil {
 		t.Errorf("Got unexpected entry %+v", entry)
 	}
