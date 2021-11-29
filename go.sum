@@ -87,8 +87,8 @@ github.com/Masterminds/sprig v2.22.0+incompatible h1:z4yfnGrZ7netVz+0EDJ0Wi+5VZC
 github.com/Masterminds/sprig v2.22.0+incompatible/go.mod h1:y6hNFY5UBTIWBxnzTeuNhlNS5hqE0NB0E6fgfo2Br3o=
 github.com/Masterminds/sprig/v3 v3.2.2 h1:17jRggJu518dr3QaafizSXOjKYp94wKfABxUmyxvxX8=
 github.com/Masterminds/sprig/v3 v3.2.2/go.mod h1:UoaO7Yp8KlPnJIYWTFkMaqPUYKTfGFPhxNuwnnxkKlk=
-github.com/Masterminds/squirrel v1.5.1 h1:kWAKlLLJFxZG7N2E0mBMNWVp5AuUX+JUrnhFN74Eg+w=
-github.com/Masterminds/squirrel v1.5.1/go.mod h1:NNaOrjSoIDfDA40n7sr2tPNZRfjzjA400rg+riTZj10=
+github.com/Masterminds/squirrel v1.5.2 h1:UiOEi2ZX4RCSkpiNDQN5kro/XIBpSRk9iTqdIRPzUXE=
+github.com/Masterminds/squirrel v1.5.2/go.mod h1:NNaOrjSoIDfDA40n7sr2tPNZRfjzjA400rg+riTZj10=
 github.com/Masterminds/vcs v1.13.1 h1:NL3G1X7/7xduQtA2sJLpVpfHTNBALVNSjob6KEjPXNQ=
 github.com/Masterminds/vcs v1.13.1/go.mod h1:N09YCmOQr6RLxC6UNHzuVwAdodYbbnycGHSmwVJjcKA=
 github.com/Microsoft/go-winio v0.4.11/go.mod h1:VhR8bwka0BXejwEJY73c50VrPtXAaKcyvVC4A4RozmA=
