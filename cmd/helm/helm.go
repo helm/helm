@@ -43,10 +43,6 @@ const FeatureGateOCI = gates.Gate("HELM_EXPERIMENTAL_OCI")
 
 var settings = cli.New()
 
-func init() {
-	log.SetFlags(log.Lshortfile)
-}
-
 func debug(format string, v ...interface{}) {
 	if settings.Debug {
 		format = fmt.Sprintf("[debug] %s\n", format)
@@ -60,6 +56,8 @@ func warning(format string, v ...interface{}) {
 }
 
 func main() {
+	log.SetFlags(log.Lshortfile)
+
 	// Setting the name of the app for managedFields in the Kubernetes client.
 	// It is set here to the full name of "helm" so that renaming of helm to
 	// another name (e.g., helm2 or helm3) does not change the name of the
@@ -67,7 +65,7 @@ func main() {
 	kube.ManagedFieldsManager = "helm"
 
 	actionConfig := new(action.Configuration)
-	cmd, err := newRootCmd(actionConfig, os.Stdout, os.Args[1:])
+	cmd, err := NewRootCmd(actionConfig, os.Stdout, os.Args[1:])
 	if err != nil {
 		warning("%+v", err)
 		os.Exit(1)
