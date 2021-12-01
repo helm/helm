@@ -88,7 +88,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		h.LastRun.CompletedAt = helmtime.Now()
 
 		if isTestHook(h) {
-			// "Why create a new client for each hook?" Because `cfg` can be `nil` outside the `for` loop.
+			// "Why create a new client for each hook?" Because `cfg.RESTClientGetter` can be `nil` before the `for` loop, as detected by the `TestInstall/basic_install` and `TestInstallRelease` tests.
 			client, err := cfg.KubernetesClientSet()
 			if err != nil {
 				return errors.Wrapf(err, "unable to create Kubernetes client set to fetch pod logs")
