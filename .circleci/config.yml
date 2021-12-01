@@ -5,7 +5,7 @@ jobs:
   build:
     working_directory: ~/helm.sh/helm
     docker:
-      - image: circleci/golang:1.16
+      - image: circleci/golang:1.17
       
         auth:
           username: $DOCKER_USER
@@ -26,6 +26,9 @@ jobs:
       - run:
           name: test
           command: make test-coverage
+      - run:
+          name: test build
+          command: make
       - deploy:
           name: deploy
           command: .circleci/deploy.sh

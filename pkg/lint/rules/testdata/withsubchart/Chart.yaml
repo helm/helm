@@ -1,0 +1,16 @@
+apiVersion: v2
+name: withsubchart
+description: A Helm chart for Kubernetes
+type: application
+version: 0.1.0
+appVersion: "1.16.0"
+icon: http://riverrun.io
+
+dependencies:
+  - name: subchart
+    version: 0.1.16
+    repository: "file://../subchart"
+    import-values:
+      - child: subchart
+        parent: subchart
+

@@ -33,35 +33,53 @@ const bashCompDesc = `
 Generate the autocompletion script for Helm for the bash shell.
 
 To load completions in your current shell session:
-$ source <(helm completion bash)
+
+    source <(helm completion bash)
 
 To load completions for every new session, execute once:
-Linux:
-  $ helm completion bash > /etc/bash_completion.d/helm
-MacOS:
-  $ helm completion bash > /usr/local/etc/bash_completion.d/helm
+- Linux:
+
+      helm completion bash > /etc/bash_completion.d/helm
+
+- MacOS:
+
+      helm completion bash > /usr/local/etc/bash_completion.d/helm
 `
 
 const zshCompDesc = `
 Generate the autocompletion script for Helm for the zsh shell.
 
 To load completions in your current shell session:
-$ source <(helm completion zsh)
+
+    source <(helm completion zsh)
 
 To load completions for every new session, execute once:
-$ helm completion zsh > "${fpath[1]}/_helm"
+
+    helm completion zsh > "${fpath[1]}/_helm"
 `
 
 const fishCompDesc = `
 Generate the autocompletion script for Helm for the fish shell.
 
 To load completions in your current shell session:
-$ helm completion fish | source
+
+    helm completion fish | source
 
 To load completions for every new session, execute once:
-$ helm completion fish > ~/.config/fish/completions/helm.fish
+
+    helm completion fish > ~/.config/fish/completions/helm.fish
 
 You will need to start a new shell for this setup to take effect.
+`
+
+const powershellCompDesc = `
+Generate the autocompletion script for powershell.
+
+To load completions in your current shell session:
+PS C:\> helm completion powershell | Out-String | Invoke-Expression
+
+To load completions for every new session, add the output of the above command
+to your powershell profile.
 `
 
 const (
@@ -80,16 +98,16 @@ func newCompletionCmd(out io.Writer) *cobra.Command {
 	}
 
 	bash := &cobra.Command{
-		Use:                   "bash",
-		Short:                 "generate autocompletion script for bash",
-		Long:                  bashCompDesc,
-		Args:                  require.NoArgs,
-		DisableFlagsInUseLine: true,
-		ValidArgsFunction:     noCompletions,
+		Use:               "bash",
+		Short:             "generate autocompletion script for bash",
+		Long:              bashCompDesc,
+		Args:              require.NoArgs,
+		ValidArgsFunction: noCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runCompletionBash(out, cmd)
 		},
 	}
+	bash.Flags().BoolVar(&disableCompDescriptions, noDescFlagName, false, noDescFlagText)
 
 	zsh := &cobra.Command{
 		Use:               "zsh",
@@ -115,13 +133,25 @@ func newCompletionCmd(out io.Writer) *cobra.Command {
 	}
 	fish.Flags().BoolVar(&disableCompDescriptions, noDescFlagName, false, noDescFlagText)
 
-	cmd.AddCommand(bash, zsh, fish)
+	powershell := &cobra.Command{
+		Use:               "powershell",
+		Short:             "generate autocompletion script for powershell",
+		Long:              powershellCompDesc,
+		Args:              require.NoArgs,
+		ValidArgsFunction: noCompletions,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runCompletionPowershell(out, cmd)
+		},
+	}
+	powershell.Flags().BoolVar(&disableCompDescriptions, noDescFlagName, false, noDescFlagText)
+
+	cmd.AddCommand(bash, zsh, fish, powershell)
 
 	return cmd
 }
 
 func runCompletionBash(out io.Writer, cmd *cobra.Command) error {
-	err := cmd.Root().GenBashCompletion(out)
+	err := cmd.Root().GenBashCompletionV2(out, !disableCompDescriptions)
 
 	// In case the user renamed the helm binary (e.g., to be able to run
 	// both helm2 and helm3), we hook the new binary name to the completion function
@@ -170,6 +200,13 @@ compdef _helm %[1]s
 
 func runCompletionFish(out io.Writer, cmd *cobra.Command) error {
 	return cmd.Root().GenFishCompletion(out, !disableCompDescriptions)
+}
+
+func runCompletionPowershell(out io.Writer, cmd *cobra.Command) error {
+	if disableCompDescriptions {
+		return cmd.Root().GenPowerShellCompletion(out)
+	}
+	return cmd.Root().GenPowerShellCompletionWithDesc(out)
 }
 
 // Function to disable file completion

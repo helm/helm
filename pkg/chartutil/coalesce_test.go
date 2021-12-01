@@ -18,6 +18,7 @@ package chartutil
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -78,15 +79,28 @@ func TestCoalesceValues(t *testing.T) {
 			"right":    "exists",
 			"scope":    "moby",
 			"top":      "nope",
+			"global": map[string]interface{}{
+				"nested2": map[string]interface{}{"l0": "moby"},
+			},
 		},
 	},
 		withDeps(&chart.Chart{
 			Metadata: &chart.Metadata{Name: "pequod"},
-			Values:   map[string]interface{}{"name": "pequod", "scope": "pequod"},
+			Values: map[string]interface{}{
+				"name":  "pequod",
+				"scope": "pequod",
+				"global": map[string]interface{}{
+					"nested2": map[string]interface{}{"l1": "pequod"},
+				},
+			},
 		},
 			&chart.Chart{
 				Metadata: &chart.Metadata{Name: "ahab"},
 				Values: map[string]interface{}{
+					"global": map[string]interface{}{
+						"nested":  map[string]interface{}{"foo": "bar"},
+						"nested2": map[string]interface{}{"l2": "ahab"},
+					},
 					"scope":  "ahab",
 					"name":   "ahab",
 					"boat":   true,
@@ -96,7 +110,12 @@ func TestCoalesceValues(t *testing.T) {
 		),
 		&chart.Chart{
 			Metadata: &chart.Metadata{Name: "spouter"},
-			Values:   map[string]interface{}{"scope": "spouter"},
+			Values: map[string]interface{}{
+				"scope": "spouter",
+				"global": map[string]interface{}{
+					"nested2": map[string]interface{}{"l1": "spouter"},
+				},
+			},
 		},
 	)
 
@@ -135,9 +154,11 @@ func TestCoalesceValues(t *testing.T) {
 		{"{{.pequod.ahab.scope}}", "whale"},
 		{"{{.pequod.ahab.nested.foo}}", "true"},
 		{"{{.pequod.ahab.global.name}}", "Ishmael"},
+		{"{{.pequod.ahab.global.nested.foo}}", "bar"},
 		{"{{.pequod.ahab.global.subject}}", "Queequeg"},
 		{"{{.pequod.ahab.global.harpooner}}", "Tashtego"},
 		{"{{.pequod.global.name}}", "Ishmael"},
+		{"{{.pequod.global.nested.foo}}", "<no value>"},
 		{"{{.pequod.global.subject}}", "Queequeg"},
 		{"{{.spouter.global.name}}", "Ishmael"},
 		{"{{.spouter.global.harpooner}}", "<no value>"},
@@ -147,6 +168,19 @@ func TestCoalesceValues(t *testing.T) {
 		{"{{.spouter.global.nested.boat}}", "true"},
 		{"{{.pequod.global.nested.sail}}", "true"},
 		{"{{.spouter.global.nested.sail}}", "<no value>"},
+
+		{"{{.global.nested2.l0}}", "moby"},
+		{"{{.global.nested2.l1}}", "<no value>"},
+		{"{{.global.nested2.l2}}", "<no value>"},
+		{"{{.pequod.global.nested2.l0}}", "moby"},
+		{"{{.pequod.global.nested2.l1}}", "pequod"},
+		{"{{.pequod.global.nested2.l2}}", "<no value>"},
+		{"{{.pequod.ahab.global.nested2.l0}}", "moby"},
+		{"{{.pequod.ahab.global.nested2.l1}}", "pequod"},
+		{"{{.pequod.ahab.global.nested2.l2}}", "ahab"},
+		{"{{.spouter.global.nested2.l0}}", "moby"},
+		{"{{.spouter.global.nested2.l1}}", "spouter"},
+		{"{{.spouter.global.nested2.l2}}", "<no value>"},
 	}
 
 	for _, tt := range tests {
@@ -305,4 +339,71 @@ func TestCoalesceTables(t *testing.T) {
 	if dst2["hole"].(string) != "black" {
 		t.Errorf("Expected hole string, got %v", dst2["boat"])
 	}
+}
+
+func TestCoalesceValuesWarnings(t *testing.T) {
+
+	c := withDeps(&chart.Chart{
+		Metadata: &chart.Metadata{Name: "level1"},
+		Values: map[string]interface{}{
+			"name": "moby",
+		},
+	},
+		withDeps(&chart.Chart{
+			Metadata: &chart.Metadata{Name: "level2"},
+			Values: map[string]interface{}{
+				"name": "pequod",
+			},
+		},
+			&chart.Chart{
+				Metadata: &chart.Metadata{Name: "level3"},
+				Values: map[string]interface{}{
+					"name": "ahab",
+					"boat": true,
+					"spear": map[string]interface{}{
+						"tip": true,
+						"sail": map[string]interface{}{
+							"cotton": true,
+						},
+					},
+				},
+			},
+		),
+	)
+
+	vals := map[string]interface{}{
+		"level2": map[string]interface{}{
+			"level3": map[string]interface{}{
+				"boat": map[string]interface{}{"mast": true},
+				"spear": map[string]interface{}{
+					"tip": map[string]interface{}{
+						"sharp": true,
+					},
+					"sail": true,
+				},
+			},
+		},
+	}
+
+	warnings := make([]string, 0)
+	printf := func(format string, v ...interface{}) {
+		t.Logf(format, v...)
+		warnings = append(warnings, fmt.Sprintf(format, v...))
+	}
+
+	_, err := coalesce(printf, c, vals, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Logf("vals: %v", vals)
+	assert.Contains(t, warnings, "warning: skipped value for level1.level2.level3.boat: Not a table.")
+	assert.Contains(t, warnings, "warning: destination for level1.level2.level3.spear.tip is a table. Ignoring non-table value (true)")
+	assert.Contains(t, warnings, "warning: cannot overwrite table with non table for level1.level2.level3.spear.sail (map[cotton:true])")
+
+}
+
+func TestConcatPrefix(t *testing.T) {
+	assert.Equal(t, "b", concatPrefix("", "b"))
+	assert.Equal(t, "a.b", concatPrefix("a", "b"))
 }

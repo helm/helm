@@ -1,16 +1,19 @@
 maintainers:
   - adamreese
   - bacongobbler
-  - fibonacci1729
   - hickeyma
   - jdolitsky
   - marckhouzam
   - mattfarina
   - prydonius
+  - scottrigby
   - SlickNik
   - technosophos
-  - viglesiasce
+triage:
+  - yxxhero
+  - zonggen
 emeritus:
+  - fibonacci1729
   - jascott1
   - michelleN
   - migmartri
@@ -19,3 +22,4 @@ emeritus:
   - seh
   - thomastaylor312
   - vaikas-google
+  - viglesiasce

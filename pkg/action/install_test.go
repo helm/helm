@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -25,6 +26,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -34,7 +36,7 @@ import (
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage/driver"
-	"helm.sh/helm/v3/pkg/time"
+	helmtime "helm.sh/helm/v3/pkg/time"
 )
 
 type nameTemplateTestCase struct {
@@ -361,7 +363,25 @@ func TestInstallRelease_Wait(t *testing.T) {
 	is.Contains(res.Info.Description, "I timed out")
 	is.Equal(res.Info.Status, release.StatusFailed)
 }
+func TestInstallRelease_Wait_Interrupted(t *testing.T) {
+	is := assert.New(t)
+	instAction := installAction(t)
+	instAction.ReleaseName = "interrupted-release"
+	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+	failer.WaitDuration = 10 * time.Second
+	instAction.cfg.KubeClient = failer
+	instAction.Wait = true
+	vals := map[string]interface{}{}
 
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	time.AfterFunc(time.Second, cancel)
+
+	res, err := instAction.RunWithContext(ctx, buildChart(), vals)
+	is.Error(err)
+	is.Contains(res.Info.Description, "Release \"interrupted-release\" failed: context canceled")
+	is.Equal(res.Info.Status, release.StatusFailed)
+}
 func TestInstallRelease_WaitForJobs(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
@@ -419,7 +439,33 @@ func TestInstallRelease_Atomic(t *testing.T) {
 		is.Contains(err.Error(), "an error occurred while uninstalling the release")
 	})
 }
+func TestInstallRelease_Atomic_Interrupted(t *testing.T) {
 
+	is := assert.New(t)
+	instAction := installAction(t)
+	instAction.ReleaseName = "interrupted-release"
+	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+	failer.WaitDuration = 10 * time.Second
+	instAction.cfg.KubeClient = failer
+	instAction.Atomic = true
+	vals := map[string]interface{}{}
+
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	time.AfterFunc(time.Second, cancel)
+
+	res, err := instAction.RunWithContext(ctx, buildChart(), vals)
+	is.Error(err)
+	is.Contains(err.Error(), "context canceled")
+	is.Contains(err.Error(), "atomic")
+	is.Contains(err.Error(), "uninstalled")
+
+	// Now make sure it isn't in storage any more
+	_, err = instAction.cfg.Releases.Get(res.Name, res.Version)
+	is.Error(err)
+	is.Equal(err, driver.ErrReleaseNotFound)
+
+}
 func TestNameTemplate(t *testing.T) {
 	testCases := []nameTemplateTestCase{
 		// Just a straight up nop please
@@ -624,32 +670,32 @@ func TestNameAndChartGenerateName(t *testing.T) {
 		{
 			"local filepath",
 			"./chart",
-			fmt.Sprintf("chart-%d", time.Now().Unix()),
+			fmt.Sprintf("chart-%d", helmtime.Now().Unix()),
 		},
 		{
 			"dot filepath",
 			".",
-			fmt.Sprintf("chart-%d", time.Now().Unix()),
+			fmt.Sprintf("chart-%d", helmtime.Now().Unix()),
 		},
 		{
 			"empty filepath",
 			"",
-			fmt.Sprintf("chart-%d", time.Now().Unix()),
+			fmt.Sprintf("chart-%d", helmtime.Now().Unix()),
 		},
 		{
 			"packaged chart",
 			"chart.tgz",
-			fmt.Sprintf("chart-%d", time.Now().Unix()),
+			fmt.Sprintf("chart-%d", helmtime.Now().Unix()),
 		},
 		{
 			"packaged chart with .tar.gz extension",
 			"chart.tar.gz",
-			fmt.Sprintf("chart-%d", time.Now().Unix()),
+			fmt.Sprintf("chart-%d", helmtime.Now().Unix()),
 		},
 		{
 			"packaged chart with local extension",
 			"./chart.tgz",
-			fmt.Sprintf("chart-%d", time.Now().Unix()),
+			fmt.Sprintf("chart-%d", helmtime.Now().Unix()),
 		},
 	}
 

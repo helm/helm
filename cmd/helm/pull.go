@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -65,10 +64,8 @@ func newPullCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				client.Version = ">0.0.0-0"
 			}
 
-			if strings.HasPrefix(args[0], "oci://") {
-				if !FeatureGateOCI.IsEnabled() {
-					return FeatureGateOCI.Error()
-				}
+			if err := checkOCI(args[0]); err != nil {
+				return err
 			}
 
 			for i := 0; i < len(args); i++ {

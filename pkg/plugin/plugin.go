@@ -152,7 +152,7 @@ func (p *Plugin) PrepareCommand(extraArgs []string) (string, []string, error) {
 		parts = strings.Split(os.ExpandEnv(p.Metadata.Command), " ")
 	}
 	if len(parts) == 0 || parts[0] == "" {
-		return "", nil, fmt.Errorf("No plugin command is applicable")
+		return "", nil, fmt.Errorf("no plugin command is applicable")
 	}
 
 	main := parts[0]

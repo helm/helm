@@ -157,8 +157,8 @@ func newReleaseListWriter(releases []*release.Release, timeFormat string) *relea
 			Namespace:  r.Namespace,
 			Revision:   strconv.Itoa(r.Version),
 			Status:     r.Info.Status.String(),
-			Chart:      fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version),
-			AppVersion: r.Chart.Metadata.AppVersion,
+			Chart:      formatChartname(r.Chart),
+			AppVersion: formatAppVersion(r.Chart),
 		}
 
 		t := "-"
