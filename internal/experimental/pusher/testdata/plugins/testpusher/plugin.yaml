@@ -1,0 +1,15 @@
+name: "testpusher"
+version: "0.1.0"
+usage: "Push a package to a test:// remote"
+description: |-
+  Print the environment that the plugin was given, then exit.
+
+  This registers the test:// protocol.
+
+command: "$HELM_PLUGIN_DIR/push.sh"
+ignoreFlags: true
+uploaders:
+#- command: "$HELM_PLUGIN_DIR/push.sh"
+- command: "echo"
+  protocols:
+    - "test"

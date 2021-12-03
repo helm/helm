@@ -1,0 +1,11 @@
+name: "uploader"
+version: "1.2.3"
+usage: "usage"
+description: |-
+  upload something
+command: "echo Hello"
+uploaders:
+  - protocols:
+    - "myprotocol"
+    - "myprotocols"
+    command: "echo Upload"

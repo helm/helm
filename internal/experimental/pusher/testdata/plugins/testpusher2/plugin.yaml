@@ -1,0 +1,10 @@
+name: "testpusher2"
+version: "0.1.0"
+usage: "Push a different package to a test2:// remote"
+description: "Handle test2 scheme"
+command: "$HELM_PLUGIN_DIR/push.sh"
+ignoreFlags: true
+uploaders:
+- command: "echo"
+  protocols:
+    - "test2"

@@ -43,6 +43,16 @@ type Downloaders struct {
 	Command string `json:"command"`
 }
 
+// Uploaders represents the plugins capability if it can publish
+// charts to special sources
+type Uploaders struct {
+	// Protocols are the list of schemes from the charts URL.
+	Protocols []string `json:"protocols"`
+	// Command is the executable path with which the plugin performs
+	// the actual upload for the corresponding Protocols
+	Command string `json:"command"`
+}
+
 // PlatformCommand represents a command for a particular operating system and architecture
 type PlatformCommand struct {
 	OperatingSystem string `json:"os"`
@@ -97,6 +107,10 @@ type Metadata struct {
 	// Downloaders field is used if the plugin supply downloader mechanism
 	// for special protocols.
 	Downloaders []Downloaders `json:"downloaders"`
+
+	// Uploaders field is used if the plugin supply uploader mechanism
+	// for special protocols.
+	Uploaders []Uploaders `json:"uploaders"`
 
 	// UseTunnelDeprecated indicates that this command needs a tunnel.
 	// Setting this will cause a number of side effects, such as the

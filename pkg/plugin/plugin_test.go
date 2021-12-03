@@ -242,6 +242,36 @@ func TestDownloader(t *testing.T) {
 	}
 }
 
+func TestUploader(t *testing.T) {
+	dirname := "testdata/plugdir/good/uploader"
+	plug, err := LoadDir(dirname)
+	if err != nil {
+		t.Fatalf("error loading uploader plugin: %s", err)
+	}
+
+	if plug.Dir != dirname {
+		t.Fatalf("Expected dir %q, got %q", dirname, plug.Dir)
+	}
+
+	expect := &Metadata{
+		Name:        "uploader",
+		Version:     "1.2.3",
+		Usage:       "usage",
+		Description: "upload something",
+		Command:     "echo Hello",
+		Uploaders: []Uploaders{
+			{
+				Protocols: []string{"myprotocol", "myprotocols"},
+				Command:   "echo Upload",
+			},
+		},
+	}
+
+	if !reflect.DeepEqual(expect, plug.Metadata) {
+		t.Fatalf("Expected metadata %v, got %v", expect, plug.Metadata)
+	}
+}
+
 func TestLoadAll(t *testing.T) {
 
 	// Verify that empty dir loads:
@@ -257,8 +287,8 @@ func TestLoadAll(t *testing.T) {
 		t.Fatalf("Could not load %q: %s", basedir, err)
 	}
 
-	if l := len(plugs); l != 3 {
-		t.Fatalf("expected 3 plugins, found %d", l)
+	if l := len(plugs); l != 4 {
+		t.Fatalf("expected 4 plugins, found %d", l)
 	}
 
 	if plugs[0].Metadata.Name != "downloader" {
@@ -268,6 +298,9 @@ func TestLoadAll(t *testing.T) {
 		t.Errorf("Expected first plugin to be echo, got %q", plugs[0].Metadata.Name)
 	}
 	if plugs[2].Metadata.Name != "hello" {
+		t.Errorf("Expected second plugin to be hello, got %q", plugs[1].Metadata.Name)
+	}
+	if plugs[3].Metadata.Name != "uploader" {
 		t.Errorf("Expected second plugin to be hello, got %q", plugs[1].Metadata.Name)
 	}
 }
@@ -296,7 +329,7 @@ func TestFindPlugins(t *testing.T) {
 		{
 			name:     "normal",
 			plugdirs: "./testdata/plugdir/good",
-			expected: 3,
+			expected: 4,
 		},
 	}
 	for _, c := range cases {

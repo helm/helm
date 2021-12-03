@@ -22,6 +22,8 @@ import (
 	"helm.sh/helm/v3/pkg/cli"
 )
 
+const pluginDir = "testdata/plugins"
+
 func TestProvider(t *testing.T) {
 	p := Provider{
 		[]string{"one", "three"},
@@ -53,15 +55,26 @@ func TestProviders(t *testing.T) {
 
 func TestAll(t *testing.T) {
 	env := cli.New()
+	env.PluginsDirectory = pluginDir
+
 	all := All(env)
-	if len(all) != 1 {
-		t.Errorf("expected 1 provider (OCI), got %d", len(all))
+	if len(all) != 3 {
+		t.Errorf("expected 3 providers (OCI plus two plugins), got %d", len(all))
+	}
+
+	if _, err := all.ByScheme("test2"); err != nil {
+		t.Error(err)
 	}
 }
 
 func TestByScheme(t *testing.T) {
 	env := cli.New()
+	env.PluginsDirectory = pluginDir
+
 	g := All(env)
+	if _, err := g.ByScheme("test"); err != nil {
+		t.Error(err)
+	}
 	if _, err := g.ByScheme(registry.OCIScheme); err != nil {
 		t.Error(err)
 	}
