@@ -39,29 +39,46 @@ func (g *OCIGetter) Get(href string, options ...Option) (*bytes.Buffer, error) {
 func (g *OCIGetter) get(href string) (*bytes.Buffer, error) {
 	client := g.opts.registryClient
 
-	ref := strings.TrimPrefix(href, "oci://")
+	ref := strings.TrimPrefix(href, fmt.Sprintf("%s://", registry.OCIScheme))
+
+	var pullOpts []registry.PullOption
+	requestingProv := strings.HasSuffix(ref, ".prov")
+	if requestingProv {
+		ref = strings.TrimSuffix(ref, ".prov")
+		pullOpts = append(pullOpts,
+			registry.PullOptWithChart(false),
+			registry.PullOptWithProv(true))
+	}
+
 	if version := g.opts.version; version != "" {
 		ref = fmt.Sprintf("%s:%s", ref, version)
 	}
 
-	r, err := registry.ParseReference(ref)
+	result, err := client.Pull(ref, pullOpts...)
 	if err != nil {
 		return nil, err
 	}
 
-	buf, err := client.PullChart(r)
-	if err != nil {
-		return nil, err
+	if requestingProv {
+		return bytes.NewBuffer(result.Prov.Data), nil
 	}
-
-	return buf, nil
+	return bytes.NewBuffer(result.Chart.Data), nil
 }
 
 // NewOCIGetter constructs a valid http/https client as a Getter
-func NewOCIGetter(options ...Option) (Getter, error) {
-	var client OCIGetter
+func NewOCIGetter(ops ...Option) (Getter, error) {
+	registryClient, err := registry.NewClient()
+	if err != nil {
+		return nil, err
+	}
 
-	for _, opt := range options {
+	client := OCIGetter{
+		opts: options{
+			registryClient: registryClient,
+		},
+	}
+
+	for _, opt := range ops {
 		opt(&client.opts)
 	}
 

@@ -25,10 +25,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/docker/docker/pkg/term"
+	"github.com/docker/docker/pkg/term" //nolint
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
+	experimental "helm.sh/helm/v3/internal/experimental/action"
 	"helm.sh/helm/v3/pkg/action"
 )
 
@@ -54,7 +55,7 @@ func newRegistryLoginCmd(cfg *action.Configuration, out io.Writer) *cobra.Comman
 				return err
 			}
 
-			return action.NewRegistryLogin(cfg).Run(out, hostname, username, password, insecureOpt)
+			return experimental.NewRegistryLogin(cfg).Run(out, hostname, username, password, insecureOpt)
 		},
 	}
 
@@ -67,7 +68,7 @@ func newRegistryLoginCmd(cfg *action.Configuration, out io.Writer) *cobra.Comman
 	return cmd
 }
 
-// Adapted from https://github.com/deislabs/oras
+// Adapted from https://github.com/oras-project/oras
 func getUsernamePassword(usernameOpt string, passwordOpt string, passwordFromStdinOpt bool) (string, string, error) {
 	var err error
 	username := usernameOpt
@@ -110,7 +111,7 @@ func getUsernamePassword(usernameOpt string, passwordOpt string, passwordFromStd
 	return username, password, nil
 }
 
-// Copied/adapted from https://github.com/deislabs/oras
+// Copied/adapted from https://github.com/oras-project/oras
 func readLine(prompt string, silent bool) (string, error) {
 	fmt.Print(prompt)
 	if silent {

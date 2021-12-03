@@ -118,56 +118,72 @@ func mustParseTime(t string) helmtime.Time {
 }
 
 func TestStatusCompletion(t *testing.T) {
-	releasesMockWithStatus := func(info *release.Info, hooks ...*release.Hook) []*release.Release {
-		info.LastDeployed = helmtime.Unix(1452902400, 0).UTC()
-		return []*release.Release{{
+	rels := []*release.Release{
+		{
 			Name:      "athos",
 			Namespace: "default",
-			Info:      info,
-			Chart:     &chart.Chart{},
-			Hooks:     hooks,
+			Info: &release.Info{
+				Status: release.StatusDeployed,
+			},
+			Chart: &chart.Chart{
+				Metadata: &chart.Metadata{
+					Name:    "Athos-chart",
+					Version: "1.2.3",
+				},
+			},
 		}, {
 			Name:      "porthos",
 			Namespace: "default",
-			Info:      info,
-			Chart:     &chart.Chart{},
-			Hooks:     hooks,
+			Info: &release.Info{
+				Status: release.StatusFailed,
+			},
+			Chart: &chart.Chart{
+				Metadata: &chart.Metadata{
+					Name:    "Porthos-chart",
+					Version: "111.222.333",
+				},
+			},
 		}, {
 			Name:      "aramis",
 			Namespace: "default",
-			Info:      info,
-			Chart:     &chart.Chart{},
-			Hooks:     hooks,
+			Info: &release.Info{
+				Status: release.StatusUninstalled,
+			},
+			Chart: &chart.Chart{
+				Metadata: &chart.Metadata{
+					Name:    "Aramis-chart",
+					Version: "0.0.0",
+				},
+			},
 		}, {
 			Name:      "dartagnan",
 			Namespace: "gascony",
-			Info:      info,
-			Chart:     &chart.Chart{},
-			Hooks:     hooks,
+			Info: &release.Info{
+				Status: release.StatusUnknown,
+			},
+			Chart: &chart.Chart{
+				Metadata: &chart.Metadata{
+					Name:    "Dartagnan-chart",
+					Version: "1.2.3-prerelease",
+				},
+			},
 		}}
-	}
 
 	tests := []cmdTestCase{{
 		name:   "completion for status",
 		cmd:    "__complete status a",
 		golden: "output/status-comp.txt",
-		rels: releasesMockWithStatus(&release.Info{
-			Status: release.StatusDeployed,
-		}),
+		rels:   rels,
 	}, {
 		name:   "completion for status with too many arguments",
 		cmd:    "__complete status dartagnan ''",
 		golden: "output/status-wrong-args-comp.txt",
-		rels: releasesMockWithStatus(&release.Info{
-			Status: release.StatusDeployed,
-		}),
+		rels:   rels,
 	}, {
-		name:   "completion for status with too many arguments",
+		name:   "completion for status with global flag",
 		cmd:    "__complete status --debug a",
 		golden: "output/status-comp.txt",
-		rels: releasesMockWithStatus(&release.Info{
-			Status: release.StatusDeployed,
-		}),
+		rels:   rels,
 	}}
 	runTestCmd(t, tests)
 }

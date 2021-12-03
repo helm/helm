@@ -24,6 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
+	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"k8s.io/client-go/kubernetes"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
@@ -60,7 +61,7 @@ func newSecretClient(lc *lazyClient) *secretClient {
 	return &secretClient{lazyClient: lc}
 }
 
-func (s *secretClient) Create(ctx context.Context, secret *v1.Secret, opts metav1.CreateOptions) (*v1.Secret, error) {
+func (s *secretClient) Create(ctx context.Context, secret *v1.Secret, opts metav1.CreateOptions) (result *v1.Secret, err error) {
 	if err := s.init(); err != nil {
 		return nil, err
 	}
@@ -114,6 +115,13 @@ func (s *secretClient) Patch(ctx context.Context, name string, pt types.PatchTyp
 		return nil, err
 	}
 	return s.client.CoreV1().Secrets(s.namespace).Patch(ctx, name, pt, data, opts, subresources...)
+}
+
+func (s *secretClient) Apply(ctx context.Context, secretConfiguration *applycorev1.SecretApplyConfiguration, opts metav1.ApplyOptions) (*v1.Secret, error) {
+	if err := s.init(); err != nil {
+		return nil, err
+	}
+	return s.client.CoreV1().Secrets(s.namespace).Apply(ctx, secretConfiguration, opts)
 }
 
 // configMapClient implements a corev1.ConfigMapInterface
@@ -179,4 +187,11 @@ func (c *configMapClient) Patch(ctx context.Context, name string, pt types.Patch
 		return nil, err
 	}
 	return c.client.CoreV1().ConfigMaps(c.namespace).Patch(ctx, name, pt, data, opts, subresources...)
+}
+
+func (c *configMapClient) Apply(ctx context.Context, configMap *applycorev1.ConfigMapApplyConfiguration, opts metav1.ApplyOptions) (*v1.ConfigMap, error) {
+	if err := c.init(); err != nil {
+		return nil, err
+	}
+	return c.client.CoreV1().ConfigMaps(c.namespace).Apply(ctx, configMap, opts)
 }

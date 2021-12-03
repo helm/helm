@@ -17,9 +17,13 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/pkg/errors"
@@ -30,6 +34,7 @@ import (
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/cli/values"
+	"helm.sh/helm/v3/pkg/downloader"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/storage/driver"
 )
@@ -74,7 +79,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Args:  require.ExactArgs(2),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			if len(args) == 0 {
-				return compListReleases(toComplete, cfg)
+				return compListReleases(toComplete, args, cfg)
 			}
 			if len(args) == 1 {
 				return compListCharts(toComplete, true)
@@ -82,6 +87,10 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := checkOCI(args[1]); err != nil {
+				return err
+			}
+
 			client.Namespace = settings.Namespace()
 
 			// Fixes #7002 - Support reading values from STDIN for `upgrade` command
@@ -132,7 +141,8 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return err
 			}
 
-			vals, err := valueOpts.MergeValues(getter.All(settings))
+			p := getter.All(settings)
+			vals, err := valueOpts.MergeValues(p)
 			if err != nil {
 				return err
 			}
@@ -144,7 +154,28 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 			if req := ch.Metadata.Dependencies; req != nil {
 				if err := action.CheckDependencies(ch, req); err != nil {
-					return err
+					err = errors.Wrap(err, "An error occurred while checking for chart dependencies. You may need to run `helm dependency build` to fetch missing dependencies")
+					if client.DependencyUpdate {
+						man := &downloader.Manager{
+							Out:              out,
+							ChartPath:        chartPath,
+							Keyring:          client.ChartPathOptions.Keyring,
+							SkipUpdate:       false,
+							Getters:          p,
+							RepositoryConfig: settings.RepositoryConfig,
+							RepositoryCache:  settings.RepositoryCache,
+							Debug:            settings.Debug,
+						}
+						if err := man.Update(); err != nil {
+							return err
+						}
+						// Reload the chart with the updated Chart.lock file.
+						if ch, err = loader.Load(chartPath); err != nil {
+							return errors.Wrap(err, "failed reloading chart after repo update")
+						}
+					} else {
+						return err
+					}
 				}
 			}
 
@@ -152,7 +183,22 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				warning("This chart is deprecated")
 			}
 
-			rel, err := client.Run(args[0], ch, vals)
+			// Create context and prepare the handle of SIGTERM
+			ctx := context.Background()
+			ctx, cancel := context.WithCancel(ctx)
+
+			// Set up channel on which to send signal notifications.
+			// We must use a buffered channel or risk missing the signal
+			// if we're not ready to receive when the signal is sent.
+			cSignal := make(chan os.Signal, 2)
+			signal.Notify(cSignal, os.Interrupt, syscall.SIGTERM)
+			go func() {
+				<-cSignal
+				fmt.Fprintf(out, "Release %s has been cancelled.\n", args[0])
+				cancel()
+			}()
+
+			rel, err := client.RunWithContext(ctx, args[0], ch, vals)
 			if err != nil {
 				return errors.Wrap(err, "UPGRADE FAILED")
 			}
@@ -186,6 +232,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.CleanupOnFail, "cleanup-on-fail", false, "allow deletion of new resources created in this upgrade when upgrade fails")
 	f.BoolVar(&client.SubNotes, "render-subchart-notes", false, "if set, render subchart notes along with the parent")
 	f.StringVar(&client.Description, "description", "", "add a custom description")
+	f.BoolVar(&client.DependencyUpdate, "dependency-update", false, "update dependencies if they are missing before installing the chart")
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 	addValueOptionsFlags(f, valueOpts)
 	bindOutputFlag(cmd, &outfmt)

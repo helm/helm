@@ -25,6 +25,20 @@ import (
 	"github.com/spf13/pflag"
 )
 
+func TestSetNamespace(t *testing.T) {
+	settings := New()
+
+	if settings.namespace != "" {
+		t.Errorf("Expected empty namespace, got %s", settings.namespace)
+	}
+
+	settings.SetNamespace("testns")
+	if settings.namespace != "testns" {
+		t.Errorf("Expected namespace testns, got %s", settings.namespace)
+	}
+
+}
+
 func TestEnvSettings(t *testing.T) {
 	tests := []struct {
 		name string

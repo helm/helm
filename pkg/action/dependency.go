@@ -37,11 +37,14 @@ type Dependency struct {
 	Verify      bool
 	Keyring     string
 	SkipRefresh bool
+	ColumnWidth uint
 }
 
 // NewDependency creates a new Dependency object with the given configuration.
 func NewDependency() *Dependency {
-	return &Dependency{}
+	return &Dependency{
+		ColumnWidth: 80,
+	}
 }
 
 // List executes 'helm dependency list'.
@@ -62,14 +65,14 @@ func (d *Dependency) List(chartpath string, out io.Writer) error {
 	return nil
 }
 
-// dependecyStatus returns a string describing the status of a dependency viz a viz the parent chart.
+// dependencyStatus returns a string describing the status of a dependency viz a viz the parent chart.
 func (d *Dependency) dependencyStatus(chartpath string, dep *chart.Dependency, parent *chart.Chart) string {
 	filename := fmt.Sprintf("%s-%s.tgz", dep.Name, "*")
 
 	// If a chart is unpacked, this will check the unpacked chart's `charts/` directory for tarballs.
 	// Technically, this is COMPLETELY unnecessary, and should be removed in Helm 4. It is here
 	// to preserved backward compatibility. In Helm 2/3, there is a "difference" between
-	// the tgz version (which outputs "ok" if it unpacks) and the loaded version (which outouts
+	// the tgz version (which outputs "ok" if it unpacks) and the loaded version (which outputs
 	// "unpacked"). Early in Helm 2's history, this would have made a difference. But it no
 	// longer does. However, since this code shipped with Helm 3, the output must remain stable
 	// until Helm 4.
@@ -181,7 +184,7 @@ func statArchiveForStatus(archive string, dep *chart.Dependency) string {
 // printDependencies prints all of the dependencies in the yaml file.
 func (d *Dependency) printDependencies(chartpath string, out io.Writer, c *chart.Chart) {
 	table := uitable.New()
-	table.MaxColWidth = 80
+	table.MaxColWidth = d.ColumnWidth
 	table.AddRow("NAME", "VERSION", "REPOSITORY", "STATUS")
 	for _, row := range c.Metadata.Dependencies {
 		table.AddRow(row.Name, row.Version, row.Repository, d.dependencyStatus(chartpath, row, c))
@@ -190,7 +193,7 @@ func (d *Dependency) printDependencies(chartpath string, out io.Writer, c *chart
 }
 
 // printMissing prints warnings about charts that are present on disk, but are
-// not in Charts.yaml.
+// not in Chart.yaml.
 func (d *Dependency) printMissing(chartpath string, out io.Writer, reqs []*chart.Dependency) {
 	folder := filepath.Join(chartpath, "charts/*")
 	files, err := filepath.Glob(folder)

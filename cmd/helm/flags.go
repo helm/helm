@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -46,7 +47,7 @@ func addValueOptionsFlags(f *pflag.FlagSet, v *values.Options) {
 }
 
 func addChartPathOptionsFlags(f *pflag.FlagSet, c *action.ChartPathOptions) {
-	f.StringVar(&c.Version, "version", "", "specify the exact chart version to use. If this is not specified, the latest version is used")
+	f.StringVar(&c.Version, "version", "", "specify a version constraint for the chart version to use. This constraint can be a specific tag (e.g. 1.1.1) or it may reference a valid range (e.g. ^2.0.0). If this is not specified, the latest version is used")
 	f.BoolVar(&c.Verify, "verify", false, "verify the package before using it")
 	f.StringVar(&c.Keyring, "keyring", defaultKeyring(), "location of public keys used for verification")
 	f.StringVar(&c.RepoURL, "repo", "", "chart repository url where to locate the requested chart")
@@ -56,6 +57,7 @@ func addChartPathOptionsFlags(f *pflag.FlagSet, c *action.ChartPathOptions) {
 	f.StringVar(&c.KeyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.BoolVar(&c.InsecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the chart download")
 	f.StringVar(&c.CaFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+	f.BoolVar(&c.PassCredentialsAll, "pass-credentials", false, "pass credentials to all domains")
 }
 
 // bindOutputFlag will add the output flag to the given command and bind the
@@ -66,11 +68,14 @@ func bindOutputFlag(cmd *cobra.Command, varRef *output.Format) {
 
 	err := cmd.RegisterFlagCompletionFunc(outputFlag, func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		var formatNames []string
-		for _, format := range output.Formats() {
+		for format, desc := range output.FormatsWithDesc() {
 			if strings.HasPrefix(format, toComplete) {
-				formatNames = append(formatNames, format)
+				formatNames = append(formatNames, fmt.Sprintf("%s\t%s", format, desc))
 			}
 		}
+
+		// Sort the results to get a deterministic order for the tests
+		sort.Strings(formatNames)
 		return formatNames, cobra.ShellCompDirectiveNoFileComp
 	})
 
@@ -150,7 +155,21 @@ func compVersionFlag(chartRef string, toComplete string) ([]string, cobra.ShellC
 		for _, details := range indexFile.Entries[chartName] {
 			version := details.Metadata.Version
 			if strings.HasPrefix(version, toComplete) {
-				versions = append(versions, version)
+				appVersion := details.Metadata.AppVersion
+				appVersionDesc := ""
+				if appVersion != "" {
+					appVersionDesc = fmt.Sprintf("App: %s, ", appVersion)
+				}
+				created := details.Created.Format("January 2, 2006")
+				createdDesc := ""
+				if created != "" {
+					createdDesc = fmt.Sprintf("Created: %s ", created)
+				}
+				deprecated := ""
+				if details.Metadata.Deprecated {
+					deprecated = "(deprecated)"
+				}
+				versions = append(versions, fmt.Sprintf("%s\t%s%s%s", version, appVersionDesc, createdDesc, deprecated))
 			}
 		}
 	}

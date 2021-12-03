@@ -25,6 +25,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/downloader"
@@ -82,6 +83,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		Getters: getter.All(p.Settings),
 		Options: []getter.Option{
 			getter.WithBasicAuth(p.Username, p.Password),
+			getter.WithPassCredentialsAll(p.PassCredentialsAll),
 			getter.WithTLSClientConfig(p.CertFile, p.KeyFile, p.CaFile),
 			getter.WithInsecureSkipVerifyTLS(p.InsecureSkipTLSverify),
 		},
@@ -89,7 +91,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		RepositoryCache:  p.Settings.RepositoryCache,
 	}
 
-	if strings.HasPrefix(chartRef, "oci://") {
+	if registry.IsOCI(chartRef) {
 		if p.Version == "" {
 			return out.String(), errors.Errorf("--version flag is explicitly required for OCI registries")
 		}
@@ -118,7 +120,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 	}
 
 	if p.RepoURL != "" {
-		chartURL, err := repo.FindChartInAuthAndTLSRepoURL(p.RepoURL, p.Username, p.Password, chartRef, p.Version, p.CertFile, p.KeyFile, p.CaFile, p.InsecureSkipTLSverify, getter.All(p.Settings))
+		chartURL, err := repo.FindChartInAuthAndTLSAndPassRepoURL(p.RepoURL, p.Username, p.Password, chartRef, p.Version, p.CertFile, p.KeyFile, p.CaFile, p.InsecureSkipTLSverify, p.PassCredentialsAll, getter.All(p.Settings))
 		if err != nil {
 			return out.String(), err
 		}

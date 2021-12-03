@@ -26,11 +26,10 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/deislabs/oras/pkg/auth/docker"
-	"github.com/docker/distribution/configuration"
-	"github.com/docker/distribution/registry"
-	_ "github.com/docker/distribution/registry/auth/htpasswd"           // used for docker test registry
-	_ "github.com/docker/distribution/registry/storage/driver/inmemory" // used for docker test registry
+	"github.com/distribution/distribution/v3/configuration"
+	"github.com/distribution/distribution/v3/registry"
+	_ "github.com/distribution/distribution/v3/registry/auth/htpasswd"           // used for docker test registry
+	_ "github.com/distribution/distribution/v3/registry/storage/driver/inmemory" // used for docker test registry
 	"github.com/phayes/freeport"
 	"golang.org/x/crypto/bcrypt"
 	"sigs.k8s.io/yaml"
@@ -54,6 +53,23 @@ func NewTempServerWithCleanup(t *testing.T, glob string) (*Server, error) {
 	srv, err := NewTempServer(glob)
 	t.Cleanup(func() { os.RemoveAll(srv.docroot) })
 	return srv, err
+}
+
+// Set up a fake repo with basic auth enabled
+func NewTempServerWithCleanupAndBasicAuth(t *testing.T, glob string) *Server {
+	srv, err := NewTempServerWithCleanup(t, glob)
+	srv.Stop()
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv.WithMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		username, password, ok := r.BasicAuth()
+		if !ok || username != "username" || password != "password" {
+			t.Errorf("Expected request to use basic auth and for username == 'username' and password == 'password', got '%v', '%s', '%s'", ok, username, password)
+		}
+	}))
+	srv.Start()
+	return srv
 }
 
 type OCIServer struct {
@@ -134,40 +150,25 @@ func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
 
 	credentialsFile := filepath.Join(srv.Dir, "config.json")
 
-	client, err := auth.NewClient(credentialsFile)
-	if err != nil {
-		t.Fatalf("error creating auth client")
-	}
-
-	resolver, err := client.Resolver(context.Background(), http.DefaultClient, false)
-	if err != nil {
-		t.Fatalf("error creating resolver")
-	}
-
 	// init test client
 	registryClient, err := ociRegistry.NewClient(
 		ociRegistry.ClientOptDebug(true),
 		ociRegistry.ClientOptWriter(os.Stdout),
-		ociRegistry.ClientOptAuthorizer(&ociRegistry.Authorizer{
-			Client: client,
-		}),
-		ociRegistry.ClientOptResolver(&ociRegistry.Resolver{
-			Resolver: resolver,
-		}),
+		ociRegistry.ClientOptCredentialsFile(credentialsFile),
 	)
 	if err != nil {
 		t.Fatalf("error creating registry client")
 	}
 
-	err = registryClient.Login(srv.RegistryURL, srv.TestUsername, srv.TestPassword, false)
+	err = registryClient.Login(
+		srv.RegistryURL,
+		ociRegistry.LoginOptBasicAuth(srv.TestUsername, srv.TestPassword),
+		ociRegistry.LoginOptInsecure(false))
 	if err != nil {
 		t.Fatalf("error logging into registry with good credentials")
 	}
 
-	ref, err := ociRegistry.ParseReference(fmt.Sprintf("%s/u/ocitestuser/oci-dependent-chart:0.1.0", srv.RegistryURL))
-	if err != nil {
-		t.Fatalf("")
-	}
+	ref := fmt.Sprintf("%s/u/ocitestuser/oci-dependent-chart:0.1.0", srv.RegistryURL)
 
 	err = chartutil.ExpandFile(srv.Dir, filepath.Join(srv.Dir, "oci-dependent-chart-0.1.0.tgz"))
 	if err != nil {
@@ -185,35 +186,56 @@ func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
 		t.Fatal("error removing chart before push")
 	}
 
-	err = registryClient.SaveChart(ch, ref)
+	// save it back to disk..
+	absPath, err := chartutil.Save(ch, srv.Dir)
 	if err != nil {
-		t.Fatal("error saving chart")
+		t.Fatal("could not create chart archive")
 	}
 
-	err = registryClient.PushChart(ref)
+	// load it into memory...
+	contentBytes, err := ioutil.ReadFile(absPath)
 	if err != nil {
-		t.Fatal("error pushing chart")
+		t.Fatal("could not load chart into memory")
 	}
 
-	if cfg.DependingChart != nil {
-		c := cfg.DependingChart
-		dependingRef, err := ociRegistry.ParseReference(fmt.Sprintf("%s/u/ocitestuser/oci-depending-chart:1.2.3", srv.RegistryURL))
-		if err != nil {
-			t.Fatal("error parsing reference for depending chart reference")
-		}
-
-		err = registryClient.SaveChart(c, dependingRef)
-		if err != nil {
-			t.Fatal("error saving depending chart")
-		}
-
-		err = registryClient.PushChart(dependingRef)
-		if err != nil {
-			t.Fatal("error pushing depending chart")
-		}
+	result, err := registryClient.Push(contentBytes, ref)
+	if err != nil {
+		t.Fatalf("error pushing dependent chart: %s", err)
 	}
+	t.Logf("Manifest.Digest: %s, Manifest.Size: %d, "+
+		"Config.Digest: %s, Config.Size: %d, "+
+		"Chart.Digest: %s, Chart.Size: %d",
+		result.Manifest.Digest, result.Manifest.Size,
+		result.Config.Digest, result.Config.Size,
+		result.Chart.Digest, result.Chart.Size)
 
 	srv.Client = registryClient
+	c := cfg.DependingChart
+	if c == nil {
+		return
+	}
+
+	dependingRef := fmt.Sprintf("%s/u/ocitestuser/%s:%s",
+		srv.RegistryURL, c.Metadata.Name, c.Metadata.Version)
+
+	// load it into memory...
+	absPath = filepath.Join(srv.Dir,
+		fmt.Sprintf("%s-%s.tgz", c.Metadata.Name, c.Metadata.Version))
+	contentBytes, err = ioutil.ReadFile(absPath)
+	if err != nil {
+		t.Fatal("could not load chart into memory")
+	}
+
+	result, err = registryClient.Push(contentBytes, dependingRef)
+	if err != nil {
+		t.Fatalf("error pushing depending chart: %s", err)
+	}
+	t.Logf("Manifest.Digest: %s, Manifest.Size: %d, "+
+		"Config.Digest: %s, Config.Size: %d, "+
+		"Chart.Digest: %s, Chart.Size: %d",
+		result.Manifest.Digest, result.Manifest.Size,
+		result.Config.Digest, result.Config.Size,
+		result.Chart.Digest, result.Chart.Size)
 }
 
 // NewTempServer creates a server inside of a temp dir.

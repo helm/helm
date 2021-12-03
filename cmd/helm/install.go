@@ -17,8 +17,13 @@ limitations under the License.
 package main
 
 import (
+	"context"
+	"fmt"
 	"io"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/pkg/errors"
@@ -119,7 +124,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		RunE: func(_ *cobra.Command, args []string) error {
 			rel, err := runInstall(args, client, valueOpts, out)
 			if err != nil {
-				return err
+				return errors.Wrap(err, "INSTALLATION FAILED")
 			}
 
 			return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false})
@@ -145,7 +150,7 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 	f.StringVar(&client.NameTemplate, "name-template", "", "specify template used to name the release")
 	f.StringVar(&client.Description, "description", "", "add a custom description")
 	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored")
-	f.BoolVar(&client.DependencyUpdate, "dependency-update", false, "run helm dependency update before installing the chart")
+	f.BoolVar(&client.DependencyUpdate, "dependency-update", false, "update dependencies if they are missing before installing the chart")
 	f.BoolVar(&client.DisableOpenAPIValidation, "disable-openapi-validation", false, "if set, the installation process will not validate rendered templates against the Kubernetes OpenAPI Schema")
 	f.BoolVar(&client.Atomic, "atomic", false, "if set, the installation process deletes the installation on failure. The --wait flag will be set automatically if --atomic is used")
 	f.BoolVar(&client.SkipCRDs, "skip-crds", false, "if set, no CRDs will be installed. By default, CRDs are installed if not already present")
@@ -182,6 +187,10 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	}
 	client.ReleaseName = name
 
+	if err := checkOCI(chart); err != nil {
+		return nil, err
+	}
+
 	cp, err := client.ChartPathOptions.LocateChart(chart, settings)
 	if err != nil {
 		return nil, err
@@ -214,6 +223,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		// As of Helm 2.4.0, this is treated as a stopping condition:
 		// https://github.com/helm/helm/issues/2209
 		if err := action.CheckDependencies(chartRequested, req); err != nil {
+			err = errors.Wrap(err, "An error occurred while checking for chart dependencies. You may need to run `helm dependency build` to fetch missing dependencies")
 			if client.DependencyUpdate {
 				man := &downloader.Manager{
 					Out:              out,
@@ -239,7 +249,23 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	}
 
 	client.Namespace = settings.Namespace()
-	return client.Run(chartRequested, vals)
+
+	// Create context and prepare the handle of SIGTERM
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+
+	// Set up channel on which to send signal notifications.
+	// We must use a buffered channel or risk missing the signal
+	// if we're not ready to receive when the signal is sent.
+	cSignal := make(chan os.Signal, 2)
+	signal.Notify(cSignal, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-cSignal
+		fmt.Fprintf(out, "Release %s has been cancelled.\n", args[0])
+		cancel()
+	}()
+
+	return client.RunWithContext(ctx, chartRequested, vals)
 }
 
 // checkIfInstallable validates if a chart can be installed

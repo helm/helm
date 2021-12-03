@@ -361,7 +361,7 @@ func TestStorageRemoveLeastRecent(t *testing.T) {
 	}
 }
 
-func TestStorageDontDeleteDeployed(t *testing.T) {
+func TestStorageDoNotDeleteDeployed(t *testing.T) {
 	storage := Init(driver.NewMemory())
 	storage.Log = t.Logf
 	storage.MaxHistory = 3

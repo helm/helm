@@ -292,14 +292,14 @@ func startLocalTLSServerForTests(handler http.Handler) (*httptest.Server, error)
 	return httptest.NewTLSServer(handler), nil
 }
 
-func TestFindChartInAuthAndTLSRepoURL(t *testing.T) {
+func TestFindChartInAuthAndTLSAndPassRepoURL(t *testing.T) {
 	srv, err := startLocalTLSServerForTests(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer srv.Close()
 
-	chartURL, err := FindChartInAuthAndTLSRepoURL(srv.URL, "", "", "nginx", "", "", "", "", true, getter.All(&cli.EnvSettings{}))
+	chartURL, err := FindChartInAuthAndTLSAndPassRepoURL(srv.URL, "", "", "nginx", "", "", "", "", true, false, getter.All(&cli.EnvSettings{}))
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -308,10 +308,10 @@ func TestFindChartInAuthAndTLSRepoURL(t *testing.T) {
 	}
 
 	// If the insecureSkipTLsverify is false, it will return an error that contains "x509: certificate signed by unknown authority".
-	_, err = FindChartInAuthAndTLSRepoURL(srv.URL, "", "", "nginx", "0.1.0", "", "", "", false, getter.All(&cli.EnvSettings{}))
+	_, err = FindChartInAuthAndTLSAndPassRepoURL(srv.URL, "", "", "nginx", "0.1.0", "", "", "", false, false, getter.All(&cli.EnvSettings{}))
 
 	if !strings.Contains(err.Error(), "x509: certificate signed by unknown authority") {
-		t.Errorf("Expected TLS error for function  FindChartInAuthAndTLSRepoURL not found, but got a different error (%v)", err)
+		t.Errorf("Expected TLS error for function  FindChartInAuthAndTLSAndPassRepoURL not found, but got a different error (%v)", err)
 	}
 }
 
@@ -398,6 +398,14 @@ func TestResolveReferenceURL(t *testing.T) {
 		t.Errorf("%s", err)
 	}
 	if chartURL != "https://charts.helm.sh/stable/nginx-0.2.0.tgz" {
+		t.Errorf("%s", chartURL)
+	}
+
+	chartURL, err = ResolveReferenceURL("http://localhost:8123/charts%2fwith%2fescaped%2fslash", "nginx-0.2.0.tgz")
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	if chartURL != "http://localhost:8123/charts%2fwith%2fescaped%2fslash/nginx-0.2.0.tgz" {
 		t.Errorf("%s", chartURL)
 	}
 }

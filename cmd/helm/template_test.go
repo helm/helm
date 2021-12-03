@@ -62,7 +62,7 @@ func TestTemplateCmd(t *testing.T) {
 			name:      "check chart bad type",
 			cmd:       fmt.Sprintf("template '%s'", "testdata/testcharts/chart-bad-type"),
 			wantError: true,
-			golden:    "output/install-chart-bad-type.txt",
+			golden:    "output/template-chart-bad-type.txt",
 		},
 		{
 			name:   "check chart with dependency which is an app chart acting as a library chart",
@@ -73,6 +73,11 @@ func TestTemplateCmd(t *testing.T) {
 			name:   "check chart with dependency which is an app chart archive acting as a library chart",
 			cmd:    fmt.Sprintf("template '%s'", "testdata/testcharts/chart-with-template-lib-archive-dep"),
 			golden: "output/template-chart-with-template-lib-archive-dep.txt",
+		},
+		{
+			name:   "check kube version",
+			cmd:    fmt.Sprintf("template --kube-version 1.16.0 '%s'", chartPath),
+			golden: "output/template-with-kube-version.txt",
 		},
 		{
 			name:   "check kube api versions",

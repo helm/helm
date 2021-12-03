@@ -55,8 +55,8 @@ func (s *Storage) Get(name string, version int) (*rspb.Release, error) {
 }
 
 // Create creates a new storage entry holding the release. An
-// error is returned if the storage driver failed to store the
-// release, or a release with identical an key already exists.
+// error is returned if the storage driver fails to store the
+// release, or a release with an identical key already exists.
 func (s *Storage) Create(rls *rspb.Release) error {
 	s.Log("creating release %q", makeKey(rls.Name, rls.Version))
 	if s.MaxHistory > 0 {
@@ -156,7 +156,7 @@ func (s *Storage) History(name string) ([]*rspb.Release, error) {
 	return s.Driver.Query(map[string]string{"name": name, "owner": "helm"})
 }
 
-// removeLeastRecent removes items from history until the lengh number of releases
+// removeLeastRecent removes items from history until the length number of releases
 // does not exceed max.
 //
 // We allow max to be set explicitly so that calling functions can "make space"

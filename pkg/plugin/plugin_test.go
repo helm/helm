@@ -193,7 +193,7 @@ func TestLoadDir(t *testing.T) {
 		Version:     "0.1.0",
 		Usage:       "usage",
 		Description: "description",
-		Command:     "$HELM_PLUGIN_SELF/hello.sh",
+		Command:     "$HELM_PLUGIN_DIR/hello.sh",
 		IgnoreFlags: true,
 		Hooks: map[string]string{
 			Install: "echo installing...",
@@ -289,7 +289,7 @@ func TestFindPlugins(t *testing.T) {
 			expected: 0,
 		},
 		{
-			name:     "plugdirs doens't have plugin",
+			name:     "plugdirs doesn't have plugin",
 			plugdirs: ".",
 			expected: 0,
 		},
