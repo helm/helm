@@ -53,7 +53,7 @@ of the README file
 
 const showCRDsDesc = `
 This command inspects a chart (directory, file, or URL) and displays the contents
-of the CustomResourceDefintion files
+of the CustomResourceDefinition files
 `
 
 func newShowCmd(out io.Writer) *cobra.Command {
