@@ -18,7 +18,9 @@ package action
 import (
 	"bytes"
 	"context"
+	"io"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -126,12 +128,17 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 // getHookLog gets the log from the pod associated with the given hook, which is expected to be a test hook.
 func getHookLog(client kubernetes.Interface, rel *release.Release, hook *release.Hook) (release.HookLog, error) {
 	req := client.CoreV1().Pods(rel.Namespace).GetLogs(hook.Name, &v1.PodLogOptions{})
-	responseBody, err := req.DoRaw(context.Background())
+	responseBody, err := req.Stream(context.Background())
+	var nothing release.HookLog
 	if err != nil {
-		var nothing release.HookLog
 		return nothing, errors.Wrapf(err, "unable to get pod logs for %s", hook.Name)
 	}
-	return release.HookLog(responseBody), nil
+	stringBuilder := new(strings.Builder)
+	_, err = io.Copy(stringBuilder, responseBody)
+	if err != nil {
+		return nothing, errors.Wrapf(err, "unable to get pod logs for %s", hook.Name)
+	}
+	return release.HookLog(stringBuilder.String()), nil
 }
 
 // hookByWeight is a sorter for hooks
