@@ -325,15 +325,13 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 	doneChan := make(chan interface{})
 	go u.releasingUpgrade(rChan, upgradedRelease, current, target, originalRelease)
 	go u.handleContext(ctx, doneChan, ctxChan, upgradedRelease)
-	var result resultMessage
 	select {
-	case result = <-rChan:
+	case result := <-rChan:
 		doneChan <- true
-	case result = <-ctxChan:
-		close(rChan)
+		return result.r, result.e
+	case result := <-ctxChan:
+		return result.r, result.e
 	}
-
-	return result.r, result.e
 }
 
 // Function used to lock the Mutex, this is important for the case when the atomic flag is set.
