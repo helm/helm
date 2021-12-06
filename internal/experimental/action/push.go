@@ -55,6 +55,15 @@ func NewPushWithOpts(opts ...PushOpt) *Push {
 
 // Run executes 'helm push' against the given chart archive.
 func (p *Push) Run(chartRef string, remote string) (string, error) {
+	remoteSplit := strings.SplitN(remote, ":", 1)
+
+	remoteUrl := remoteSplit[0]
+
+	tag := ""
+	if len(remoteSplit) > 1 {
+		tag = remoteSplit[1]
+	}
+
 	var out strings.Builder
 
 	c := uploader.ChartUploader{
@@ -63,9 +72,9 @@ func (p *Push) Run(chartRef string, remote string) (string, error) {
 		Options: []pusher.Option{},
 	}
 
-	if registry.IsOCI(remote) {
+	if registry.IsOCI(remoteUrl) {
 		c.Options = append(c.Options, pusher.WithRegistryClient(p.cfg.RegistryClient))
 	}
 
-	return out.String(), c.UploadTo(chartRef, remote)
+	return out.String(), c.UploadTo(chartRef, remoteUrl, tag)
 }
