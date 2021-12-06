@@ -54,5 +54,5 @@ func (c *ChartUploader) UploadTo(ref, remote string, tag string) error {
 		return err
 	}
 
-	return p.Push(ref, fmt.Sprintf("%s:%s", u.String(), tag), c.Options...)
+	return p.Push(ref, u.String(), tag, c.Options...)
 }

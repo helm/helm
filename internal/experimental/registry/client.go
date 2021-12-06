@@ -400,7 +400,7 @@ type (
 // Push uploads a chart to a registry.
 func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResult, error) {
 	operation := &pushOperation{
-		strictMode: true, // By default, enable strict mode
+		strictMode: false, // disabled untill we can figure out how to override this for tags
 	}
 	for _, option := range options {
 		option(operation)

@@ -44,7 +44,7 @@ func WithRegistryClient(client *registry.Client) Option {
 // Pusher is an interface to support upload to the specified URL.
 type Pusher interface {
 	// Push file content by url string
-	Push(chartRef, url string, options ...Option) error
+	Push(chartRef, url string, tag string, options ...Option) error
 }
 
 // Constructor is the function for every pusher which creates a specific instance
