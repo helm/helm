@@ -69,7 +69,7 @@ func Test_ReadyChecker_deploymentReady(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := NewReadyChecker(fake.NewSimpleClientset(), nil)
-			if got := c.deploymentReady(tt.args.rs, tt.args.dep); got != tt.want {
+			if got := c.deploymentReady(context.TODO(), tt.args.rs, tt.args.dep); got != tt.want {
 				t.Errorf("deploymentReady() = %v, want %v", got, tt.want)
 			}
 		})

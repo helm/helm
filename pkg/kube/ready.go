@@ -18,6 +18,7 @@ package kube // import "helm.sh/helm/v3/pkg/kube"
 
 import (
 	"context"
+	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
@@ -123,7 +124,7 @@ func (c *ReadyChecker) IsReady(ctx context.Context, v *resource.Info) (bool, err
 		if err != nil || newReplicaSet == nil {
 			return false, err
 		}
-		if !c.deploymentReady(newReplicaSet, currentDeployment) {
+		if !c.deploymentReady(ctx, newReplicaSet, currentDeployment) {
 			return false, nil
 		}
 	case *corev1.PersistentVolumeClaim:
@@ -218,7 +219,11 @@ func (c *ReadyChecker) isPodReady(pod *corev1.Pod) bool {
 			return true
 		}
 	}
-	c.log("Pod is not ready: %s/%s", pod.GetNamespace(), pod.GetName())
+	msg := podDetails(pod)
+	if msg == "" {
+		msg = string(pod.Status.Phase)
+	}
+	c.log("Pod is not ready: %s/%s %s", pod.GetNamespace(), pod.GetName(), msg)
 	return false
 }
 
@@ -271,10 +276,19 @@ func (c *ReadyChecker) volumeReady(v *corev1.PersistentVolumeClaim) bool {
 	return true
 }
 
-func (c *ReadyChecker) deploymentReady(rs *appsv1.ReplicaSet, dep *appsv1.Deployment) bool {
+func (c *ReadyChecker) deploymentReady(ctx context.Context, rs *appsv1.ReplicaSet, dep *appsv1.Deployment) bool {
 	expectedReady := *dep.Spec.Replicas - deploymentutil.MaxUnavailable(*dep)
 	if !(rs.Status.ReadyReplicas >= expectedReady) {
 		c.log("Deployment is not ready: %s/%s. %d out of %d expected pods are ready", dep.Namespace, dep.Name, rs.Status.ReadyReplicas, expectedReady)
+		pods, err := c.podsforObject(ctx, rs.Namespace, rs)
+		if err != nil {
+			c.log("Error getting pods for ReplicaSet %s/%s: %v", rs.Namespace, rs.Name, err)
+			return false
+		}
+		for _, pod := range pods {
+			// Print out pod status
+			c.isPodReady(&pod)
+		}
 		return false
 	}
 	return true
@@ -394,4 +408,35 @@ func getPods(ctx context.Context, client kubernetes.Interface, namespace, select
 		LabelSelector: selector,
 	})
 	return list.Items, err
+}
+
+func podDetails(pod *corev1.Pod) string {
+	for _, c := range pod.Status.Conditions {
+		if c.Type == corev1.PodScheduled {
+			if c.Reason == corev1.PodReasonUnschedulable {
+				msg := c.Reason
+				if len(c.Message) > 0 {
+					msg += fmt.Sprintf(" (unscheduled: %s)", c.Message)
+				}
+				return msg
+			}
+		}
+	}
+
+	statuses := []corev1.ContainerStatus{}
+	statuses = append(statuses, pod.Status.InitContainerStatuses...)
+	statuses = append(statuses, pod.Status.EphemeralContainerStatuses...)
+	statuses = append(statuses, pod.Status.ContainerStatuses...)
+
+	for _, s := range statuses {
+		if s.State.Waiting != nil {
+			msg := s.State.Waiting.Reason
+			if len(s.State.Waiting.Message) > 0 {
+				msg += fmt.Sprintf(" (waiting: %s)", s.State.Waiting.Message)
+			}
+			return msg
+		}
+	}
+
+	return ""
 }
