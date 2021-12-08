@@ -20,10 +20,10 @@ import (
 	"strings"
 
 	"helm.sh/helm/v3/internal/experimental/pusher"
-	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/internal/experimental/uploader"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v3/pkg/registry"
 )
 
 // Push is the action for uploading a chart.
