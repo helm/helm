@@ -38,7 +38,7 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := experimental.NewPushWithOpts(experimental.WithPushConfig(cfg))
 
 	cmd := &cobra.Command{
-		Use:               "push [chart] [remote]",
+		Use:               "push [chart] [remote] [tag]",
 		Short:             "push a chart to remote",
 		Long:              pushDesc,
 		Hidden:            !FeatureGateOCI.IsEnabled(),
@@ -48,7 +48,7 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			chartRef := args[0]
 			remote := args[1]
 			client.Settings = settings
-			output, err := client.Run(chartRef, remote)
+			output, err := client.Run(chartRef, remote, client.Tag)
 			if err != nil {
 				return err
 			}
@@ -56,6 +56,9 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return nil
 		},
 	}
+
+	f := cmd.Flags()
+	f.StringVar(&client.Tag, "tag", "", "Special deployment tags such as latest/qa. Default: Chart.Version")
 
 	return cmd
 }

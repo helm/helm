@@ -39,7 +39,7 @@ type ChartUploader struct {
 }
 
 // UploadTo uploads a chart. Depending on the settings, it may also upload a provenance file.
-func (c *ChartUploader) UploadTo(ref, remote string) error {
+func (c *ChartUploader) UploadTo(ref, remote string, tag string) error {
 	u, err := url.Parse(remote)
 	if err != nil {
 		return errors.Errorf("invalid chart URL format: %s", remote)
@@ -54,5 +54,5 @@ func (c *ChartUploader) UploadTo(ref, remote string) error {
 		return err
 	}
 
-	return p.Push(ref, u.String(), c.Options...)
+	return p.Push(ref, u.String(), tag, c.Options...)
 }

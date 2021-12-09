@@ -34,14 +34,14 @@ type OCIPusher struct {
 }
 
 // Push performs a Push from repo.Pusher.
-func (pusher *OCIPusher) Push(chartRef, href string, options ...Option) error {
+func (pusher *OCIPusher) Push(chartRef, href string, tag string, options ...Option) error {
 	for _, opt := range options {
 		opt(&pusher.opts)
 	}
-	return pusher.push(chartRef, href)
+	return pusher.push(chartRef, href, tag)
 }
 
-func (pusher *OCIPusher) push(chartRef, href string) error {
+func (pusher *OCIPusher) push(chartRef, href string, tag string) error {
 	stat, err := os.Stat(chartRef)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -75,12 +75,18 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 		pushOpts = append(pushOpts, registry.PushOptProvData(provBytes))
 	}
 
+	pushVersion := meta.Metadata.Version
+	if tag != "" {
+		pushVersion = tag
+	}
+
 	ref := fmt.Sprintf("%s:%s",
 		path.Join(strings.TrimPrefix(href, fmt.Sprintf("%s://", registry.OCIScheme)), meta.Metadata.Name),
-		meta.Metadata.Version)
+		pushVersion)
 
 	_, err = client.Push(chartBytes, ref, pushOpts...)
 	return err
+
 }
 
 // NewOCIPusher constructs a valid OCI client as a Pusher
