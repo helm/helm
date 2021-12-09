@@ -100,14 +100,9 @@ func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
 // the given writer. These can be immediately output to the user or captured for
 // other uses
 func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
-	client, err := r.cfg.KubernetesClientSet()
-	if err != nil {
-		return errors.Wrap(err, "unable to get kubernetes client to fetch pod logs")
-	}
-
 	for _, h := range rel.Hooks {
 		if isTestHook(h) {
-			hookLog, err := getHookLog(client, rel, h)
+			hookLog, err := getHookLog(r.cfg, rel, h)
 			if err != nil {
 				return err
 			}
