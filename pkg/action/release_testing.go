@@ -102,7 +102,7 @@ func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
 func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 	for _, h := range rel.Hooks {
 		if isTestHook(h) {
-			hookLog, err := getHookLog(r.cfg, rel, h)
+			hookLog, err := r.cfg.GetHookLog(rel, h)
 			if err != nil {
 				return err
 			}

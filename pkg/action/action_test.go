@@ -50,6 +50,10 @@ func actionConfigFixture(t *testing.T) *Configuration {
 		t.Fatal(err)
 	}
 
+	mockHookLogGetter := func(rel *release.Release, hook *release.Hook) (release.HookLog, error) {
+		return release.HookLog("example test pod log output"), err
+	}
+
 	return &Configuration{
 		Releases:       storage.Init(driver.NewMemory()),
 		KubeClient:     &kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: ioutil.Discard}},
@@ -61,6 +65,7 @@ func actionConfigFixture(t *testing.T) *Configuration {
 				t.Logf(format, v...)
 			}
 		},
+		GetHookLog: mockHookLogGetter,
 	}
 }
 

@@ -17,14 +17,10 @@ package action
 
 import (
 	"bytes"
-	"context"
-	"io"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
-	v1 "k8s.io/api/core/v1"
 
 	"helm.sh/helm/v3/pkg/release"
 	helmtime "helm.sh/helm/v3/pkg/time"
@@ -89,7 +85,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		h.LastRun.CompletedAt = helmtime.Now()
 
 		if isTestHook(h) {
-			hookLog, err := getHookLog(cfg, rl, h)
+			hookLog, err := cfg.GetHookLog(rl, h)
 			if err != nil {
 				return err
 			}
@@ -118,26 +114,6 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 	}
 
 	return nil
-}
-
-// getHookLog gets the log from the pod associated with the given hook, which is expected to be a test hook.
-func getHookLog(cfg *Configuration, rel *release.Release, hook *release.Hook) (release.HookLog, error) {
-	var nothing release.HookLog
-	client, err := cfg.KubernetesClientSet()
-	if err != nil {
-		return nothing, errors.Wrapf(err, "unable to create Kubernetes client set to fetch pod logs")
-	}
-	req := client.CoreV1().Pods(rel.Namespace).GetLogs(hook.Name, &v1.PodLogOptions{})
-	responseBody, err := req.Stream(context.Background())
-	if err != nil {
-		return nothing, errors.Wrapf(err, "unable to get pod logs for %s", hook.Name)
-	}
-	stringBuilder := new(strings.Builder)
-	_, err = io.Copy(stringBuilder, responseBody)
-	if err != nil {
-		return nothing, errors.Wrapf(err, "unable to get pod logs for %s", hook.Name)
-	}
-	return release.HookLog(stringBuilder.String()), nil
 }
 
 // hookByWeight is a sorter for hooks
