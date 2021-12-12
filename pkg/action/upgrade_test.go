@@ -36,6 +36,7 @@ func upgradeAction(t *testing.T) *Upgrade {
 	config := actionConfigFixture(t)
 	upAction := NewUpgrade(config)
 	upAction.Namespace = "spaced"
+	upAction.UpgradeTimeout = 60 * time.Second
 
 	return upAction
 }

@@ -18,6 +18,7 @@ package action
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -35,16 +36,17 @@ import (
 type Rollback struct {
 	cfg *Configuration
 
-	Version       int
-	Timeout       time.Duration
-	Wait          bool
-	WaitForJobs   bool
-	DisableHooks  bool
-	DryRun        bool
-	Recreate      bool // will (if true) recreate pods after a rollback.
-	Force         bool // will (if true) force resource upgrade through uninstall/recreate if needed
-	CleanupOnFail bool
-	MaxHistory    int // MaxHistory limits the maximum number of revisions saved per release
+	Version         int
+	Timeout         time.Duration
+	RollbackTimeout time.Duration
+	Wait            bool
+	WaitForJobs     bool
+	DisableHooks    bool
+	DryRun          bool
+	Recreate        bool // will (if true) recreate pods after a rollback.
+	Force           bool // will (if true) force resource upgrade through uninstall/recreate if needed
+	CleanupOnFail   bool
+	MaxHistory      int // MaxHistory limits the maximum number of revisions saved per release
 }
 
 // NewRollback creates a new Rollback object with the given configuration.
@@ -54,8 +56,66 @@ func NewRollback(cfg *Configuration) *Rollback {
 	}
 }
 
+// TESTING ONLY
+func (r *Rollback) RunTest(name string, sleep time.Duration) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	eChan := make(chan error)
+
+	go func() {
+		err := r.RunWithSleep(ctx, name, sleep)
+		eChan <- err
+	}()
+
+	var err error
+	select {
+	case <-time.After(r.RollbackTimeout):
+		cancel()
+	case err = <-eChan:
+		break
+	}
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Run executes 'helm rollback' against the given release.
 func (r *Rollback) Run(name string) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	eChan := make(chan error)
+
+	go func() {
+		err := r.RunWithContext(ctx, name)
+		eChan <- err
+	}()
+
+	var err error
+	select {
+	case <-time.After(r.RollbackTimeout):
+		cancel()
+	case err = <-eChan:
+		break
+	}
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// TESTING ONLY
+func (r *Rollback) RunWithSleep(ctx context.Context, name string, sleep time.Duration) error {
+	time.Sleep(sleep)
+	return r.RunWithContext(ctx, name)
+}
+
+// Run executes 'helm rollback' against the given release with a given context
+func (r *Rollback) RunWithContext(ctx context.Context, name string) error {
 	if err := r.cfg.KubeClient.IsReachable(); err != nil {
 		return err
 	}

@@ -61,8 +61,10 @@ type Upgrade struct {
 	Namespace string
 	// SkipCRDs skips installing CRDs when install flag is enabled during upgrade
 	SkipCRDs bool
-	// Timeout is the timeout for this operation
+	// Timeout is the timeout for individual hooks/kubernetes operations
 	Timeout time.Duration
+	// UpgradeTimeout is the timeout for this entire upgrade operation
+	UpgradeTimeout time.Duration
 	// Wait determines whether the wait operation should be performed after the upgrade is requested.
 	Wait bool
 	// WaitForJobs determines whether the wait operation for the Jobs should be performed after the upgrade is requested.
@@ -475,6 +477,7 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 		rollin.Recreate = u.Recreate
 		rollin.Force = u.Force
 		rollin.Timeout = u.Timeout
+		rollin.RollbackTimeout = u.UpgradeTimeout / 2
 		if rollErr := rollin.Run(rel.Name); rollErr != nil {
 			return rel, errors.Wrapf(rollErr, "an error occurred while rolling back the release. original upgrade error: %s", err)
 		}
