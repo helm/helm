@@ -21,10 +21,10 @@ import (
 	"time"
 
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
+	"helm.sh/helm/v3/pkg/release"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"helm.sh/helm/v3/pkg/release"
 )
 
 func rollbackAction(t *testing.T) *Rollback {
