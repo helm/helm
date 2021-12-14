@@ -1,0 +1,1 @@
+Error: invalid argument "brainfuck" for "-o, --output" flag: invalid format type

@@ -19,10 +19,13 @@ package test
 import (
 	"bytes"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 )
 
 // UpdateGolden writes out the golden files with the latest values, rather than failing the test.
@@ -30,6 +33,7 @@ var updateGolden = flag.Bool("update", false, "update golden files")
 
 // TestingT describes a testing object compatible with the critical functions from the testing.T type
 type TestingT interface {
+	Errorf(format string, args ...interface{})
 	Fatal(...interface{})
 	Fatalf(string, ...interface{})
 	HelperT
@@ -69,6 +73,48 @@ func AssertGoldenFile(t TestingT, actualFileName string, expectedFilename string
 	AssertGoldenBytes(t, actual, expectedFilename)
 }
 
+// AssertGoldenStringWithCustomLineValidation asserts that the given string matches the contents of the given file, using the given function to check each line.
+// It is useful when the output is expected to contain information that cannot be predicted, such as timestamps.
+//
+// The line validation function must return a pair of values representing, respectively,
+//
+// 1. whether the expected line is "special" or not, and
+//
+// 2. if the expected line is special, the validity of the actual line.
+//
+// "Not special" means that the actual line must be exactly equal to the expected line to be considered valid.
+func AssertGoldenStringWithCustomLineValidation(t TestingT, checkLine func(expected, actual string) (bool, error)) func(actualOutput, expectedFilename string) {
+	t.Helper()
+	is := assert.New(t)
+	return func(actualOutput, expectedFilename string) {
+		expectedOutput, err := ioutil.ReadFile(path(expectedFilename))
+		if err != nil {
+			t.Fatalf("%v", err)
+		}
+		expectedLines := strings.Split(string(normalize(expectedOutput)), "\n")
+		actualLines := strings.Split(string(normalize([]byte(actualOutput))), "\n")
+		expectedLineCount := len(expectedLines)
+		actualLineCount := len(actualLines)
+		for i := 0; i < max(expectedLineCount, actualLineCount); i++ {
+			lineNumber := i + 1
+			actualLine, expectedLine := "", "" // We do this to prevent index-out-of-range errors if the number of lines doesn't match between the expected and the actual output.
+			if i < actualLineCount {
+				actualLine = actualLines[i]
+			}
+			if i < expectedLineCount {
+				expectedLine = expectedLines[i]
+			}
+			if isSpecialLine, err := checkLine(expectedLine, actualLine); isSpecialLine {
+				if err != nil {
+					t.Errorf("Unexpected content on line %d (%v): %s", lineNumber, err.Error(), actualLine)
+				}
+			} else {
+				is.Equal(expectedLine, actualLine, fmt.Sprintf("Line %d in the actual output does not match line %d in the expected output (%s).", lineNumber, lineNumber, expectedFilename))
+			}
+		}
+	}
+}
+
 func path(filename string) string {
 	if filepath.IsAbs(filename) {
 		return filename
@@ -102,4 +148,11 @@ func update(filename string, in []byte) error {
 
 func normalize(in []byte) []byte {
 	return bytes.Replace(in, []byte("\r\n"), []byte("\n"), -1)
+}
+
+func max(x, y int) int {
+	if x > y {
+		return x
+	}
+	return y
 }

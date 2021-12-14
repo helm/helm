@@ -1,0 +1,14 @@
+NAME: doge
+LAST DEPLOYED: Fri Sep  2 22:04:05 1977
+NAMESPACE: default
+STATUS: deployed
+REVISION: 1
+TEST SUITE:     doge-test-pod
+Last Started:   Fri Apr 20 13:37:00 2021
+Last Completed: Fri Apr 20 14:00:00 2021
+Phase:          Succeeded
+NOTES:
+Some mock release notes!
+
+POD LOGS: doge-test-pod
+example test pod log output

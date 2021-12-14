@@ -47,6 +47,13 @@ func init() {
 
 func runTestCmd(t *testing.T, tests []cmdTestCase) {
 	t.Helper()
+	runTestCmdWithCustomAssertion(t, tests, func(actualOutput, expectedFilename string) {
+		test.AssertGoldenString(t, actualOutput, expectedFilename)
+	})
+}
+
+func runTestCmdWithCustomAssertion(t *testing.T, tests []cmdTestCase, assertion func(actualOutput, expectedFilename string)) {
+	t.Helper()
 	for _, tt := range tests {
 		for i := 0; i <= tt.repeat; i++ {
 			t.Run(tt.name, func(t *testing.T) {
@@ -64,7 +71,7 @@ func runTestCmd(t *testing.T, tests []cmdTestCase) {
 					t.Errorf("expected error, got '%v'", err)
 				}
 				if tt.golden != "" {
-					test.AssertGoldenString(t, out, tt.golden)
+					assertion(out, tt.golden)
 				}
 			})
 		}
@@ -113,6 +120,9 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 		KubeClient:   &kubefake.PrintingKubeClient{Out: ioutil.Discard},
 		Capabilities: chartutil.DefaultCapabilities,
 		Log:          func(format string, v ...interface{}) {},
+		GetHookLog: func(rel *release.Release, hook *release.Hook) (release.HookLog, error) {
+			return release.HookLog("example test pod log output"), nil
+		},
 	}
 
 	root, err := newRootCmd(actionConfig, buf, args)
