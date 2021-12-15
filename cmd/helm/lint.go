@@ -120,6 +120,7 @@ func newLintCmd(out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.BoolVar(&client.Strict, "strict", false, "fail on lint warnings")
 	f.BoolVar(&client.WithSubcharts, "with-subcharts", false, "lint dependent charts")
+	f.StringArrayVarP(&client.APIVersions, "api-versions", "a", []string{}, "Kubernetes api versions used for Capabilities.APIVersions")
 	addValueOptionsFlags(f, valueOpts)
 
 	return cmd

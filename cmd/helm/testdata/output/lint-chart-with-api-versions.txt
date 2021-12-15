@@ -1,0 +1,5 @@
+==> Linting testdata/testcharts/chart-with-api-versions
+[INFO] Chart.yaml: icon is recommended
+[INFO] values.yaml: file does not exist
+
+1 chart(s) linted, 0 chart(s) failed

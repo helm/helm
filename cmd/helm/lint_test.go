@@ -33,6 +33,11 @@ func TestLintCmdWithSubchartsFlag(t *testing.T) {
 		cmd:       fmt.Sprintf("lint --with-subcharts %s", testChart),
 		golden:    "output/lint-chart-with-bad-subcharts-with-subcharts.txt",
 		wantError: true,
+	}, {
+		name:      "lint good chart using --api-versions flag",
+		cmd:       "lint --api-versions networking.k8s.io/v1 testdata/testcharts/chart-with-api-versions",
+		golden:    "output/lint-chart-with-api-versions.txt",
+		wantError: false,
 	}}
 	runTestCmd(t, tests)
 }

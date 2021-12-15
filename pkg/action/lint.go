@@ -36,6 +36,7 @@ type Lint struct {
 	Strict        bool
 	Namespace     string
 	WithSubcharts bool
+	APIVersions   []string
 }
 
 // LintResult is the result of Lint
@@ -58,7 +59,7 @@ func (l *Lint) Run(paths []string, vals map[string]interface{}) *LintResult {
 	}
 	result := &LintResult{}
 	for _, path := range paths {
-		linter, err := lintChart(path, vals, l.Namespace, l.Strict)
+		linter, err := lintChart(path, vals, l.Namespace, l.Strict, l.APIVersions)
 		if err != nil {
 			result.Errors = append(result.Errors, err)
 			continue
@@ -75,7 +76,7 @@ func (l *Lint) Run(paths []string, vals map[string]interface{}) *LintResult {
 	return result
 }
 
-func lintChart(path string, vals map[string]interface{}, namespace string, strict bool) (support.Linter, error) {
+func lintChart(path string, vals map[string]interface{}, namespace string, strict bool, apiVersions []string) (support.Linter, error) {
 	var chartPath string
 	linter := support.Linter{}
 
@@ -114,5 +115,5 @@ func lintChart(path string, vals map[string]interface{}, namespace string, stric
 		return linter, errors.Wrap(err, "unable to check Chart.yaml file in chart")
 	}
 
-	return lint.All(chartPath, vals, namespace, strict), nil
+	return lint.All(chartPath, vals, namespace, strict, apiVersions), nil
 }
