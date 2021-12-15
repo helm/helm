@@ -120,6 +120,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.DisableOpenAPIValidation = client.DisableOpenAPIValidation
 					instClient.SubNotes = client.SubNotes
 					instClient.Description = client.Description
+					instClient.DependencyUpdate = client.DependencyUpdate
 
 					rel, err := runInstall(args, instClient, valueOpts, out)
 					if err != nil {
