@@ -97,19 +97,22 @@ func AssertGoldenStringWithCustomLineValidation(t TestingT, checkLine func(expec
 		actualLineCount := len(actualLines)
 		for i := 0; i < max(expectedLineCount, actualLineCount); i++ {
 			lineNumber := i + 1
-			actualLine, expectedLine := "", "" // We do this to prevent index-out-of-range errors if the number of lines doesn't match between the expected and the actual output.
-			if i < actualLineCount {
-				actualLine = actualLines[i]
-			}
-			if i < expectedLineCount {
-				expectedLine = expectedLines[i]
-			}
-			if isSpecialLine, err := checkLine(expectedLine, actualLine); isSpecialLine {
-				if err != nil {
-					t.Errorf("Unexpected content on line %d (%v): %s", lineNumber, err.Error(), actualLine)
-				}
+			// We need to prevent index-out-of-range errors if the number of lines doesn't match between the expected and the actual output.
+			// But we cannot just use the empty string as a default value, because that's equivalent to downright ignoring trailing empty lines.
+			if lineNumber > expectedLineCount {
+				t.Errorf("Output should only have %d line(s), but has %d. Line %d is: %q", expectedLineCount, actualLineCount, lineNumber, actualLines[i])
+			} else if lineNumber > actualLineCount {
+				t.Errorf("Output should have %d line(s), but has only %d. Line %d should have been: %q", expectedLineCount, actualLineCount, lineNumber, expectedLines[i])
 			} else {
-				is.Equal(expectedLine, actualLine, fmt.Sprintf("Line %d in the actual output does not match line %d in the expected output (%s).", lineNumber, lineNumber, expectedFilename))
+				actualLine := actualLines[i]
+				expectedLine := expectedLines[i]
+				if isSpecialLine, err := checkLine(expectedLine, actualLine); isSpecialLine {
+					if err != nil {
+						t.Errorf("Unexpected content on line %d (%v): %s", lineNumber, err.Error(), actualLine)
+					}
+				} else {
+					is.Equal(expectedLine, actualLine, fmt.Sprintf("Line %d in the actual output does not match line %d in the expected output (%s).", lineNumber, lineNumber, expectedFilename))
+				}
 			}
 		}
 	}
