@@ -91,8 +91,8 @@ func AssertGoldenStringWithCustomLineValidation(t TestingT, checkLine func(expec
 		if err != nil {
 			t.Fatalf("%v", err)
 		}
-		expectedLines := strings.Split(string(normalize(expectedOutput)), "\n")
-		actualLines := strings.Split(string(normalize([]byte(actualOutput))), "\n")
+		expectedLines := lines(expectedOutput)
+		actualLines := lines([]byte(actualOutput))
 		expectedLineCount := len(expectedLines)
 		actualLineCount := len(actualLines)
 		for i := 0; i < max(expectedLineCount, actualLineCount); i++ {
@@ -116,6 +116,10 @@ func AssertGoldenStringWithCustomLineValidation(t TestingT, checkLine func(expec
 			}
 		}
 	}
+}
+
+func lines(raw []byte) []string {
+	return strings.Split(strings.TrimSuffix(string(normalize(raw)), "\n"), "\n") // We first remove the final newline (if any), so that e.g. the 2-line string "a\nb\n" is mapped to ["a", "b"] and not ["a", "b", ""].
 }
 
 func path(filename string) string {
