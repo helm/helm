@@ -345,7 +345,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	}
 	rChan := make(chan resultMessage)
 	go i.performInstall(rChan, rel, toBeAdopted, resources)
-	go i.handleContext(ctx, rChan, rel)
+	i.handleContext(ctx, rChan, rel)
 	result := <-rChan
 	//start preformInstall go routine
 	return result.r, result.e
