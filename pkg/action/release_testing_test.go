@@ -60,7 +60,7 @@ func TestReleaseTesting_NoFilters(t *testing.T) {
 	}
 }
 
-func TestReleaseTesting_PostiveFilter(t *testing.T) {
+func TestReleaseTesting_PositiveFilter(t *testing.T) {
 	is := assert.New(t)
 	req := require.New(t)
 
