@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v3/internal/test"
 	"helm.sh/helm/v3/pkg/chart"
@@ -56,9 +57,12 @@ func installAction(t *testing.T) *Install {
 
 func TestInstallRelease(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
+
 	instAction := installAction(t)
 	vals := map[string]interface{}{}
-	res, err := instAction.Run(buildChart(), vals)
+	ctx, done := context.WithCancel(context.Background())
+	res, err := instAction.RunWithContext(ctx, buildChart(), vals)
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
 	}
@@ -77,6 +81,14 @@ func TestInstallRelease(t *testing.T) {
 	is.NotEqual(len(rel.Manifest), 0)
 	is.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world")
 	is.Equal(rel.Info.Description, "Install complete")
+
+	// Detecting previous bug where context termination after successful release
+	// caused release to fail.
+	done()
+	time.Sleep(time.Millisecond * 100)
+	lastRelease, err := instAction.cfg.Releases.Last(rel.Name)
+	req.NoError(err)
+	is.Equal(lastRelease.Info.Status, release.StatusDeployed)
 }
 
 func TestInstallReleaseWithValues(t *testing.T) {
