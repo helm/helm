@@ -177,7 +177,7 @@ func (o *repoAddOptions) run(out io.Writer) error {
 		InsecureSkipTLSverify: o.insecureSkipTLSverify,
 	}
 
-	// Check If the repo name is legal
+	// Check if the repo name is legal
 	if strings.Contains(o.name, "/") {
 		return errors.Errorf("repository name (%s) contains '/', please specify a different name without '/'", o.name)
 	}

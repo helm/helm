@@ -137,6 +137,8 @@ func TestRepoAddCheckLegalName(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer ts.Stop()
+	defer resetEnv()()
+
 	const testRepoName = "test-hub/test-name"
 
 	rootDir := ensure.TempDir(t)
