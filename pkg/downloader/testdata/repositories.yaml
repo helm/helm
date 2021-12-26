@@ -23,4 +23,4 @@ repositories:
     caFile: "ca"
   - name: testing-https-insecureskip-tls-verify
     url: "https://example-https-insecureskiptlsverify.com"
-    insecure_skip_tls_verify: true 
+    insecure_skip_tls_verify: true
