@@ -276,6 +276,10 @@ func TestInstallVersionCompletion(t *testing.T) {
 		cmd:    fmt.Sprintf("%s __complete install --generate-name testing/alpine --version ''", repoSetup),
 		golden: "output/version-comp.txt",
 	}, {
+		name:   "completion for install version flag, no filter",
+		cmd:    fmt.Sprintf("%s __complete install releasename testing/alpine --version 0.3", repoSetup),
+		golden: "output/version-comp.txt",
+	}, {
 		name:   "completion for install version flag too few args",
 		cmd:    fmt.Sprintf("%s __complete install testing/alpine --version ''", repoSetup),
 		golden: "output/version-invalid-comp.txt",

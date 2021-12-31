@@ -312,8 +312,9 @@ func compListCharts(toComplete string, includeFiles bool) ([]string, cobra.Shell
 		}
 		repoWithSlash := fmt.Sprintf("%s/", repo)
 		if strings.HasPrefix(toComplete, repoWithSlash) {
-			// Must complete with charts within the specified repo
-			completions = append(completions, compListChartsOfRepo(repo, toComplete)...)
+			// Must complete with charts within the specified repo.
+			// Don't filter on toComplete to allow for shell fuzzy matching
+			completions = append(completions, compListChartsOfRepo(repo, "")...)
 			noSpace = false
 			break
 		} else if strings.HasPrefix(repo, toComplete) {
