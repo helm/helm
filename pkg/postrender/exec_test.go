@@ -116,7 +116,7 @@ func TestExecRun(t *testing.T) {
 	testpath, cleanup := setupTestingScript(t)
 	defer cleanup()
 
-	renderer, err := NewExec(testpath)
+	renderer, err := NewExec(testpath, []string{})
 	require.NoError(t, err)
 
 	output, err := renderer.Run(bytes.NewBufferString("FOOTEST"))

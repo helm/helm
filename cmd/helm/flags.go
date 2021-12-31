@@ -36,8 +36,11 @@ import (
 	"helm.sh/helm/v3/pkg/repo"
 )
 
-const outputFlag = "output"
-const postRenderFlag = "post-renderer"
+const (
+	outputFlag         = "output"
+	postRenderFlag     = "post-renderer"
+	postRenderArgsFlag = "post-renderer-args"
+)
 
 func addValueOptionsFlags(f *pflag.FlagSet, v *values.Options) {
 	f.StringSliceVarP(&v.ValueFiles, "values", "f", []string{}, "specify values in a YAML file or a URL (can specify multiple)")
@@ -112,30 +115,70 @@ func (o *outputValue) Set(s string) error {
 }
 
 func bindPostRenderFlag(cmd *cobra.Command, varRef *postrender.PostRenderer) {
-	cmd.Flags().Var(&postRenderer{varRef}, postRenderFlag, "the path to an executable to be used for post rendering. If it exists in $PATH, the binary will be used, otherwise it will try to look for the executable at the given path")
+	p := &postRendererOptions{varRef, "", []string{}}
+	cmd.Flags().Var(&postRendererExecFlag{p}, postRenderFlag, "the path to an executable to be used for post rendering. If it exists in $PATH, the binary will be used, otherwise it will try to look for the executable at the given path")
+	cmd.Flags().Var(&postRendererArgsFlag{p}, postRenderArgsFlag, "the args to an executable to be used for post rendering.  (can specify multiple)")
 }
 
-type postRenderer struct {
-	renderer *postrender.PostRenderer
+type postRendererOptions struct {
+	renderer   *postrender.PostRenderer
+	binaryPath string
+	args       []string
 }
 
-func (p postRenderer) String() string {
-	return "exec"
+type postRendererExecFlag struct {
+	options *postRendererOptions
 }
 
-func (p postRenderer) Type() string {
-	return "postrenderer"
+func (p postRendererExecFlag) String() string {
+	return ""
 }
 
-func (p postRenderer) Set(s string) error {
+func (p postRendererExecFlag) Type() string {
+	return "postrenderer-exec"
+}
+
+func (p postRendererExecFlag) Set(s string) error {
 	if s == "" {
 		return nil
 	}
-	pr, err := postrender.NewExec(s)
+	p.options.binaryPath = s
+	pr, err := postrender.NewExec(p.options.binaryPath, p.options.args)
 	if err != nil {
 		return err
 	}
-	*p.renderer = pr
+	*p.options.renderer = pr
+	return nil
+}
+
+type postRendererArgsFlag struct {
+	options *postRendererOptions
+}
+
+func (p postRendererArgsFlag) String() string {
+	return ""
+}
+
+func (p postRendererArgsFlag) Type() string {
+	return "postrenderer-args"
+}
+
+func (p postRendererArgsFlag) Set(s string) error {
+	if s == "" {
+		return nil
+	}
+	p.options.args = append(p.options.args, s)
+	// skip if postRenderFlag not set or parsed
+	if len(p.options.binaryPath) == 0 {
+		return nil
+	}
+	// update if already create PostRenderer
+	pr, err := postrender.NewExec(p.options.binaryPath, p.options.args)
+	if err != nil {
+		return err
+	}
+
+	*p.options.renderer = pr
 	return nil
 }
 
