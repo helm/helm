@@ -198,6 +198,10 @@ func TestRepoRemoveCompletion(t *testing.T) {
 		cmd:    fmt.Sprintf("%s __completeNoDesc repo remove ''", repoSetup),
 		golden: "output/repo_list_comp.txt",
 	}, {
+		name:   "completion for repo remove, no filter",
+		cmd:    fmt.Sprintf("%s __completeNoDesc repo remove fo", repoSetup),
+		golden: "output/repo_list_comp.txt",
+	}, {
 		name:   "completion for repo remove repetition",
 		cmd:    fmt.Sprintf("%s __completeNoDesc repo remove foo ''", repoSetup),
 		golden: "output/repo_repeat_comp.txt",

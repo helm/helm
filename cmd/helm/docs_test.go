@@ -26,9 +26,9 @@ func TestDocsTypeFlagCompletion(t *testing.T) {
 		cmd:    "__complete docs --type ''",
 		golden: "output/docs-type-comp.txt",
 	}, {
-		name:   "completion for docs --type",
+		name:   "completion for docs --type, no filter",
 		cmd:    "__complete docs --type mar",
-		golden: "output/docs-type-filtered-comp.txt",
+		golden: "output/docs-type-comp.txt",
 	}}
 	runTestCmd(t, tests)
 }
