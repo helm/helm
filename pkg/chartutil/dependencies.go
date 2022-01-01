@@ -198,19 +198,23 @@ Loop:
 }
 
 // pathToMap creates a nested map given a YAML path in dot notation.
-func pathToMap(path string, data map[string]interface{}) map[string]interface{} {
+func pathToMap(path string, data interface{}) map[string]interface{} {
 	if path == "." {
-		return data
+		if istable(data) {
+			return data.(map[string]interface{})
+		}
+		return nil
 	}
 	return set(parsePath(path), data)
 }
 
-func set(path []string, data map[string]interface{}) map[string]interface{} {
+func set(path []string, data interface{}) map[string]interface{} {
 	if len(path) == 0 {
 		return nil
 	}
-	cur := data
-	for i := len(path) - 1; i >= 0; i-- {
+	cur := make(map[string]interface{})
+	cur[path[len(path)-1]] = data
+	for i := len(path) - 2; i >= 0; i-- {
 		cur = map[string]interface{}{path[i]: cur}
 	}
 	return cur
@@ -231,37 +235,24 @@ func processImportValues(c *chart.Chart) error {
 	for _, r := range c.Metadata.Dependencies {
 		var outiv []interface{}
 		for _, riv := range r.ImportValues {
-			switch iv := riv.(type) {
-			case map[string]interface{}:
-				child := iv["child"].(string)
-				parent := iv["parent"].(string)
+			params := make(map[string]string)
 
-				outiv = append(outiv, map[string]string{
-					"child":  child,
-					"parent": parent,
-				})
-
-				// get child table
-				vv, err := cvals.Table(r.Name + "." + child)
-				if err != nil {
-					log.Printf("Warning: ImportValues missing table from chart %s: %v", r.Name, err)
-					continue
-				}
-				// create value map from child to be merged into parent
-				b = CoalesceTables(cvals, pathToMap(parent, vv.AsMap()))
-			case string:
-				child := "exports." + iv
-				outiv = append(outiv, map[string]string{
-					"child":  child,
-					"parent": ".",
-				})
-				vm, err := cvals.Table(r.Name + "." + child)
-				if err != nil {
-					log.Printf("Warning: ImportValues missing table: %v", err)
-					continue
-				}
-				b = CoalesceTables(b, vm.AsMap())
+			if iv, ok := riv.(map[string]interface{}); ok {
+				params["child"] = iv["child"].(string)
+				params["parent"] = iv["parent"].(string)
+			} else if iv, ok := riv.(string); ok {
+				params["child"] = "exports." + iv
+				params["parent"] = "."
 			}
+
+			outiv = append(outiv, params)
+			vm, err := cvals.PathValue(r.Name + "." + params["child"])
+			if err != nil {
+				log.Printf("Warning: Importing value from chart %s failed: %v", r.Name, err)
+				continue
+			}
+
+			b = CoalesceTables(cvals, pathToMap(params["parent"], vm))
 		}
 		// set our formatted import values
 		r.ImportValues = outiv

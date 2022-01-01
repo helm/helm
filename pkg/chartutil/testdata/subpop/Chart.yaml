@@ -25,6 +25,14 @@ dependencies:
         parent: .
       - SCBexported2
       - SC1exported1
+      - child: SC1data.SC1bool
+        parent: imported-chart1-SC1bool
+      - child: SC1data.SC1float
+        parent: imported-chart1-SC1float
+      - child: SC1data.SC1int
+        parent: imported-chart1-SC1int
+      - child: SC1data.SC1string
+        parent: imported-chart1-SC1string
 
   - name: subchart2
     repository: http://localhost:10191

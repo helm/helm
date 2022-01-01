@@ -206,6 +206,11 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	e["overridden-chartA-B.SCBextra1"] = "13"
 	e["overridden-chartA-B.SC1extra6"] = "77"
 
+	e["imported-chart1-SC1bool"] = "true"
+	e["imported-chart1-SC1float"] = "3.14"
+	e["imported-chart1-SC1int"] = "100"
+	e["imported-chart1-SC1string"] = "dollywood"
+
 	// `exports` style
 	e["SCBexported1B"] = "1965"
 	e["SC1extra7"] = "true"
