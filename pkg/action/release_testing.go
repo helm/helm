@@ -64,27 +64,8 @@ func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
 		return rel, err
 	}
 
-	skippedHooks := []*release.Hook{}
-	executingHooks := []*release.Hook{}
-	if len(r.Filters["!name"]) != 0 {
-		for _, h := range rel.Hooks {
-			if contains(r.Filters["!name"], h.Name) {
-				skippedHooks = append(skippedHooks, h)
-			} else {
-				executingHooks = append(executingHooks, h)
-			}
-		}
-		rel.Hooks = executingHooks
-	}
-	if len(r.Filters["name"]) != 0 {
-		executingHooks = nil
-		for _, h := range rel.Hooks {
-			if contains(r.Filters["name"], h.Name) {
-				executingHooks = append(executingHooks, h)
-			} else {
-				skippedHooks = append(skippedHooks, h)
-			}
-		}
+	skippedHooks, executingHooks := filterHooks(r.Filters, rel)
+	if len(executingHooks) != 0 {
 		rel.Hooks = executingHooks
 	}
 
@@ -107,31 +88,13 @@ func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 		return errors.Wrap(err, "unable to get kubernetes client to fetch pod logs")
 	}
 
-	skippedHooks := []*release.Hook{}
-	executingHooks := []*release.Hook{}
-	if len(r.Filters["!name"]) != 0 {
-		for _, h := range rel.Hooks {
-			if contains(r.Filters["!name"], h.Name) {
-				skippedHooks = append(skippedHooks, h)
-			} else {
-				executingHooks = append(executingHooks, h)
-			}
-		}
-		rel.Hooks = executingHooks
-	}
-	if len(r.Filters["name"]) != 0 {
-		executingHooks = nil
-		for _, h := range rel.Hooks {
-			if contains(r.Filters["name"], h.Name) {
-				executingHooks = append(executingHooks, h)
-			} else {
-				skippedHooks = append(skippedHooks, h)
-			}
-		}
-		rel.Hooks = executingHooks
+	_, executingHooks := filterHooks(r.Filters, rel)
+
+	if len(executingHooks) == 0 {
+		executingHooks = rel.Hooks
 	}
 
-	for _, h := range rel.Hooks {
+	for _, h := range executingHooks {
 		for _, e := range h.Events {
 			if e == release.HookTest {
 				req := client.CoreV1().Pods(r.Namespace).GetLogs(h.Name, &v1.PodLogOptions{})
@@ -150,6 +113,31 @@ func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 		}
 	}
 	return nil
+}
+
+// Filter skipped and executing hooks
+func filterHooks(filters map[string][]string, rel *release.Release) (skippedHooks, executingHooks []*release.Hook) {
+	if len(filters["!name"]) != 0 {
+		for _, h := range rel.Hooks {
+			if contains(filters["!name"], h.Name) {
+				skippedHooks = append(skippedHooks, h)
+			} else {
+				executingHooks = append(executingHooks, h)
+			}
+		}
+	}
+
+	if len(filters["name"]) != 0 {
+		executingHooks = nil
+		for _, h := range rel.Hooks {
+			if contains(filters["name"], h.Name) {
+				executingHooks = append(executingHooks, h)
+			} else {
+				skippedHooks = append(skippedHooks, h)
+			}
+		}
+	}
+	return
 }
 
 func contains(arr []string, value string) bool {
