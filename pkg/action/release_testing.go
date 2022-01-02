@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sort"
 	"time"
 
 	"github.com/pkg/errors"
@@ -93,6 +94,8 @@ func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 	if len(executingHooks) == 0 {
 		executingHooks = rel.Hooks
 	}
+
+	sort.Stable(hookByWeight(executingHooks))
 
 	for _, h := range executingHooks {
 		for _, e := range h.Events {
