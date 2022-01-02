@@ -107,6 +107,30 @@ func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 		return errors.Wrap(err, "unable to get kubernetes client to fetch pod logs")
 	}
 
+	skippedHooks := []*release.Hook{}
+	executingHooks := []*release.Hook{}
+	if len(r.Filters["!name"]) != 0 {
+		for _, h := range rel.Hooks {
+			if contains(r.Filters["!name"], h.Name) {
+				skippedHooks = append(skippedHooks, h)
+			} else {
+				executingHooks = append(executingHooks, h)
+			}
+		}
+		rel.Hooks = executingHooks
+	}
+	if len(r.Filters["name"]) != 0 {
+		executingHooks = nil
+		for _, h := range rel.Hooks {
+			if contains(r.Filters["name"], h.Name) {
+				executingHooks = append(executingHooks, h)
+			} else {
+				skippedHooks = append(skippedHooks, h)
+			}
+		}
+		rel.Hooks = executingHooks
+	}
+
 	for _, h := range rel.Hooks {
 		for _, e := range h.Events {
 			if e == release.HookTest {
