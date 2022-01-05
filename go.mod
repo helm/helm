@@ -45,3 +45,5 @@ require (
 	oras.land/oras-go v1.1.0-rc3
 	sigs.k8s.io/yaml v1.3.0
 )
+
+replace oras.land/oras-go => github.com/sabre1041/oras-go v1.0.1-0.20220105042547-7ebb8809edae
