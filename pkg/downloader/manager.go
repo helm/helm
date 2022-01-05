@@ -594,6 +594,8 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 			continue
 		}
 
+		// See https://helm.sh/docs/topics/registries/#specifying-dependencies
+		// See createTestingMetadataForOCI()
 		if registry.IsOCI(dd.Repository) {
 			reposMap[dd.Name] = dd.Repository
 			continue
