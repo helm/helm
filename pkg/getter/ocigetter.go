@@ -54,6 +54,11 @@ func (g *OCIGetter) get(href string) (*bytes.Buffer, error) {
 		ref = fmt.Sprintf("%s:%s", ref, version)
 	}
 
+	// Convert plus (+) to underscore (_) in request string before pull
+	// This must remain right above client.Pull()
+	// See https://github.com/helm/helm/issues/10166
+	ref = strings.ReplaceAll(ref, "+", "_")
+
 	result, err := client.Pull(ref, pullOpts...)
 	if err != nil {
 		return nil, err

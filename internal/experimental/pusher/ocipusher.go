@@ -79,6 +79,11 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 		path.Join(strings.TrimPrefix(href, fmt.Sprintf("%s://", registry.OCIScheme)), meta.Metadata.Name),
 		meta.Metadata.Version)
 
+	// Convert plus (+) to underscore (_) before push, so OCI doesn't choke
+	// This must remain right above client.Push()
+	// See https://github.com/helm/helm/issues/10166
+	ref = strings.ReplaceAll(ref, "+", "_")
+
 	_, err = client.Push(chartBytes, ref, pushOpts...)
 	return err
 }
