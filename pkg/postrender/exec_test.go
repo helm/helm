@@ -116,7 +116,24 @@ func TestExecRun(t *testing.T) {
 	testpath, cleanup := setupTestingScript(t)
 	defer cleanup()
 
-	renderer, err := NewExec(testpath, []string{})
+	renderer, err := NewExec(testpath)
+	require.NoError(t, err)
+
+	output, err := renderer.Run(bytes.NewBufferString("FOOTEST"))
+	is.NoError(err)
+	is.Contains(output.String(), "BARTEST")
+}
+
+func TestNewExecWithArgsRun(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// the actual Run test uses a basic sed example, so skip this test on windows
+		t.Skip("skipping on windows")
+	}
+	is := assert.New(t)
+	testpath, cleanup := setupTestingScript(t)
+	defer cleanup()
+
+	renderer, err := NewExecWithArgs(testpath, []string{})
 	require.NoError(t, err)
 
 	output, err := renderer.Run(bytes.NewBufferString("FOOTEST"))
