@@ -34,7 +34,15 @@ type execRender struct {
 // It returns an error if the binary cannot be found. If the path does not
 // contain any separators, it will search in $PATH, otherwise it will resolve
 // any relative paths to a fully qualified path
-func NewExec(binaryPath string, args []string) (PostRenderer, error) {
+func NewExec(binaryPath string) (PostRenderer, error) {
+	fullPath, err := getFullPath(binaryPath)
+	if err != nil {
+		return nil, err
+	}
+	return &execRender{fullPath, []string{}}, nil
+}
+
+func NewExecWithArgs(binaryPath string, args []string) (PostRenderer, error) {
 	fullPath, err := getFullPath(binaryPath)
 	if err != nil {
 		return nil, err

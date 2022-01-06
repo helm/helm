@@ -143,7 +143,7 @@ func (p postRendererExecFlag) Set(s string) error {
 		return nil
 	}
 	p.options.binaryPath = s
-	pr, err := postrender.NewExec(p.options.binaryPath, p.options.args)
+	pr, err := postrender.NewExecWithArgs(p.options.binaryPath, p.options.args)
 	if err != nil {
 		return err
 	}
@@ -173,7 +173,7 @@ func (p postRendererArgsFlag) Set(s string) error {
 		return nil
 	}
 	// update if already create PostRenderer
-	pr, err := postrender.NewExec(p.options.binaryPath, p.options.args)
+	pr, err := postrender.NewExecWithArgs(p.options.binaryPath, p.options.args)
 	if err != nil {
 		return err
 	}
