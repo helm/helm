@@ -123,7 +123,7 @@ func TestInstall(t *testing.T) {
 		// Install, using the name-template
 		{
 			name:   "install with name-template",
-			cmd:    "install testdata/testcharts/empty --name-template '{{upper \"foobar\"}}'",
+			cmd:    "install testdata/testcharts/empty --name-template '{{ \"foobar\"}}'",
 			golden: "output/install-name-template.txt",
 		},
 		// Install, perform chart verification along the way.
