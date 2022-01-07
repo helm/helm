@@ -245,7 +245,7 @@ func (m *Manager) resolve(req []*chart.Dependency, repoNames map[string]string) 
 		if registry.IsOCI(d.Repository) {
 			// TODO(scottrigby): fix HTTP error
 			// > Error: Get "https://localhost:5000/v2/helm-charts/tags/list": http: server gave HTTP response to HTTPS client
-			ref := strings.Trim(d.Repository, "oci://")
+			ref := strings.TrimPrefix(d.Repository, "oci://")
 			tags, err := m.RegistryClient.Tags(ref)
 			if err != nil {
 				return nil, err
