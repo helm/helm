@@ -31,6 +31,9 @@ import (
 	dockerauth "oras.land/oras-go/pkg/auth/docker"
 	"oras.land/oras-go/pkg/content"
 	"oras.land/oras-go/pkg/oras"
+	"oras.land/oras-go/pkg/registry"
+	registrremote "oras.land/oras-go/pkg/registry/remote"
+	registryauth "oras.land/oras-go/pkg/registry/remote/auth"
 
 	"helm.sh/helm/v3/internal/version"
 	"helm.sh/helm/v3/pkg/chart"
@@ -49,10 +52,11 @@ type (
 	Client struct {
 		debug bool
 		// path to repository config file e.g. ~/.docker/config.json
-		credentialsFile string
-		out             io.Writer
-		authorizer      auth.Client
-		resolver        remotes.Resolver
+		credentialsFile    string
+		out                io.Writer
+		authorizer         auth.Client
+		registryAuthorizer *registryauth.Client
+		resolver           remotes.Resolver
 	}
 
 	// ClientOption allows specifying various settings configurable by the user for overriding the defaults
@@ -87,6 +91,15 @@ func NewClient(options ...ClientOption) (*Client, error) {
 			return nil, err
 		}
 		client.resolver = resolver
+	}
+	if client.registryAuthorizer == nil {
+		client.registryAuthorizer = &registryauth.Client{
+			Header: http.Header{
+				"User-Agent": {version.GetUserAgent()},
+			},
+			Cache: registryauth.DefaultCache,
+		}
+
 	}
 	return client, nil
 }
@@ -538,4 +551,19 @@ func PushOptStrictMode(strictMode bool) PushOption {
 	return func(operation *pushOperation) {
 		operation.strictMode = strictMode
 	}
+}
+
+// Tags lists all tags for a given repository
+func (c *Client) Tags(ref string) ([]string, error) {
+	parsedReference, err := registry.ParseReference(ref)
+	if err != nil {
+		return nil, err
+	}
+
+	repository := registrremote.Repository{
+		Reference: parsedReference,
+		Client:    c.registryAuthorizer,
+	}
+
+	return registry.Tags(ctx(c.out, c.debug), &repository)
 }
