@@ -139,6 +139,20 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 				return nil, errors.Wrapf(FeatureGateOCI.Error(),
 					"repository %s is an OCI registry", d.Repository)
 			}
+
+			// This works, fake it to test mocking the version
+			// tags := []string{"0.1.0", "0.1.1", "0.2.0"}
+			tags := d.OCITagVersions
+			vs = make(repo.ChartVersions, len(tags))
+			for ti, t := range tags {
+				// Mock chart version objects
+				version := &repo.ChartVersion{
+					Metadata: &chart.Metadata{
+						Version: t,
+					},
+				}
+				vs[ti] = version
+			}
 		}
 
 		locked[i] = &chart.Dependency{
@@ -149,7 +163,8 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 		// The version are already sorted and hence the first one to satisfy the constraint is used
 		for _, ver := range vs {
 			v, err := semver.NewVersion(ver.Version)
-			if err != nil || len(ver.URLs) == 0 {
+			// OCI does not need URLs
+			if err != nil || (!registry.IsOCI(d.Repository) && len(ver.URLs) == 0) {
 				// Not a legit entry.
 				continue
 			}

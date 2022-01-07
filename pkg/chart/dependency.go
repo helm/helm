@@ -47,6 +47,10 @@ type Dependency struct {
 	ImportValues []interface{} `json:"import-values,omitempty"`
 	// Alias usable alias to be used for the chart
 	Alias string `json:"alias,omitempty"`
+	// OCI tag versions available to check against the constraint when Version
+	// contains a semantic version range.
+	// See (*Manager).resolve.
+	OCITagVersions []string `json:"-"`
 }
 
 // Validate checks for common problems with the dependency datastructure in
