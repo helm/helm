@@ -29,6 +29,8 @@ import (
 	"sync"
 	"time"
 
+	"k8s.io/client-go/rest"
+
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/pkg/errors"
 	batch "k8s.io/api/batch/v1"
@@ -83,7 +85,7 @@ type Client struct {
 	// Namespace allows to bypass the kubeconfig file for the choice of the namespace
 	Namespace string
 
-	kubeClient *kubernetes.Clientset
+	kubeClient kubernetes.Interface
 }
 
 func init() {
@@ -111,7 +113,7 @@ func New(getter genericclioptions.RESTClientGetter) *Client {
 var nopLogger = func(_ string, _ ...interface{}) {}
 
 // getKubeClient get or create a new KubernetesClientSet
-func (c *Client) getKubeClient() (*kubernetes.Clientset, error) {
+func (c *Client) getKubeClient() (kubernetes.Interface, error) {
 	var err error
 	if c.kubeClient == nil {
 		c.kubeClient, err = c.Factory.KubernetesClientSet()
@@ -131,7 +133,7 @@ func (c *Client) IsReachable() error {
 	if err != nil {
 		return errors.Wrap(err, "Kubernetes cluster unreachable")
 	}
-	if _, err := client.ServerVersion(); err != nil {
+	if _, err := client.Discovery().ServerVersion(); err != nil {
 		return errors.Wrap(err, "Kubernetes cluster unreachable")
 	}
 	return nil
@@ -810,6 +812,48 @@ func (c *Client) waitForPodSuccess(obj runtime.Object, name string) (bool, error
 	}
 
 	return false, nil
+}
+
+// GetPodList uses the kubernetes interface to get the list of pods filtered by listOptions
+func (c *Client) GetPodList(namespace string, listOptions metav1.ListOptions) (*v1.PodList, error) {
+	podList, err := c.kubeClient.CoreV1().Pods(namespace).List(context.Background(), listOptions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pod list with options: %+v with error: %v", listOptions, err)
+	}
+	return podList, nil
+}
+
+// OutputContainerLogsForPodList is a helper that outputs logs for a list of pods
+func (c *Client) OutputContainerLogsForPodList(podList *v1.PodList, namespace string, writer io.Writer) error {
+	for _, pod := range podList.Items {
+		for _, container := range pod.Spec.Containers {
+			options := &v1.PodLogOptions{
+				Container: container.Name,
+			}
+			request := c.kubeClient.CoreV1().Pods(namespace).GetLogs(pod.Name, options)
+			err2 := copyRequestStreamToWriter(request, pod.Name, container.Name, writer)
+			if err2 != nil {
+				return err2
+			}
+		}
+	}
+	return nil
+}
+
+func copyRequestStreamToWriter(request *rest.Request, podName, containerName string, writer io.Writer) error {
+	readCloser, err := request.Stream(context.Background())
+	if err != nil {
+		return errors.Errorf("Failed to stream pod logs for pod: %s, container: %s", podName, containerName)
+	}
+	defer readCloser.Close()
+	_, err = io.Copy(writer, readCloser)
+	if err != nil {
+		return errors.Errorf("Failed to copy IO from logs for pod: %s, container: %s", podName, containerName)
+	}
+	if err != nil {
+		return errors.Errorf("Failed to close reader for pod: %s, container: %s", podName, containerName)
+	}
+	return nil
 }
 
 // scrubValidationError removes kubectl info from the message.
