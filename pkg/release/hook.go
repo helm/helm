@@ -50,6 +50,17 @@ const (
 
 func (x HookDeletePolicy) String() string { return string(x) }
 
+// HookOutputLogPolicy specifies the hook output log policy
+type HookOutputLogPolicy string
+
+// Hook output log policy types
+const (
+	HookOutputOnSucceeded HookOutputLogPolicy = "hook-succeeded"
+	HookOutputOnFailed    HookOutputLogPolicy = "hook-failed"
+)
+
+func (x HookOutputLogPolicy) String() string { return string(x) }
+
 // HookAnnotation is the label name for a hook
 const HookAnnotation = "helm.sh/hook"
 
@@ -58,6 +69,9 @@ const HookWeightAnnotation = "helm.sh/hook-weight"
 
 // HookDeleteAnnotation is the label name for the delete policy for a hook
 const HookDeleteAnnotation = "helm.sh/hook-delete-policy"
+
+// HookOutputLogAnnotation is the label name for the output log policy for a hook
+const HookOutputLogAnnotation = "helm.sh/hook-output-log-policy"
 
 // Hook defines a hook object.
 type Hook struct {
@@ -76,6 +90,8 @@ type Hook struct {
 	Weight int `json:"weight,omitempty"`
 	// DeletePolicies are the policies that indicate when to delete the hook
 	DeletePolicies []HookDeletePolicy `json:"delete_policies,omitempty"`
+	// OutputLogPolicies defines whether we should copy hook logs back to main process
+	OutputLogPolicies []HookOutputLogPolicy `json:"output_log_policies,omitempty"`
 }
 
 // A HookExecution records the result for the last execution of a hook for a given release.

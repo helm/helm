@@ -78,6 +78,12 @@ type Interface interface {
 type InterfaceExt interface {
 	// WaitForDelete wait up to the given timeout for the specified resources to be deleted.
 	WaitForDelete(resources ResourceList, timeout time.Duration) error
+
+	// GetPodList list all pods that match the specified listOptions
+	GetPodList(namespace string, listOptions metav1.ListOptions) (*v1.PodList, error)
+
+	// OutputContainerLogsForPodList output the logs for a pod list
+	OutputContainerLogsForPodList(podList *v1.PodList, namespace string, writer io.Writer) error
 }
 
 // InterfaceDeletionPropagation is introduced to avoid breaking backwards compatibility for Interface implementers.
