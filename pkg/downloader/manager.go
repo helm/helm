@@ -578,7 +578,8 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 	missing := []string{}
 	for _, dd := range deps {
 		// Don't map the repository, we don't need to download chart from charts directory
-		if dd.Repository == "" {
+		// When OCI is used there is no Helm repository
+		if dd.Repository == "" || registry.IsOCI(dd.Repository) {
 			continue
 		}
 		// if dep chart is from local path, verify the path is valid
@@ -594,8 +595,6 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 			continue
 		}
 
-		// See https://helm.sh/docs/topics/registries/#specifying-dependencies
-		// See createTestingMetadataForOCI()
 		if registry.IsOCI(dd.Repository) {
 			reposMap[dd.Name] = dd.Repository
 			continue
