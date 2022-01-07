@@ -17,9 +17,7 @@ package resolver
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -35,10 +33,6 @@ import (
 	"helm.sh/helm/v3/pkg/helmpath"
 	"helm.sh/helm/v3/pkg/provenance"
 	"helm.sh/helm/v3/pkg/repo"
-
-	orasregistry "oras.land/oras-go/pkg/registry"
-	orasremote "oras.land/oras-go/pkg/registry/remote"
-	orasauth "oras.land/oras-go/pkg/registry/remote/auth"
 )
 
 const FeatureGateOCI = gates.Gate("HELM_EXPERIMENTAL_OCI")
@@ -58,7 +52,6 @@ func New(chartpath, cachepath string) *Resolver {
 }
 
 // Resolve resolves dependencies and returns a lock file with the resolution.
-// To-do: clarify that we use "Repository" in struct as URL for registrytoo, even though strictly speaking it's not a helm "repository"
 func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string) (*chart.Lock, error) {
 
 	// Now we clone the dependencies, locking as we go.
@@ -146,67 +139,6 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 				return nil, errors.Wrapf(FeatureGateOCI.Error(),
 					"repository %s is an OCI registry", d.Repository)
 			}
-
-			// Call ORAS tag API
-			// See https://github.com/oras-project/oras-go/pull/89
-			// 	- using string: concat d.Repository + d.Name
-			// 	- does latest version exist, find out how Masterminds/semver checks this given contstraint string, and get the version
-			// To-do: use registry.ctx()
-			// 	How to get the opts though without context from a *Client?
-			ctx := context.Background()
-			// Do we need to extract something from this string in order to work?
-			ociRepository := d.Repository
-			parsedRepository, err := orasregistry.ParseReference(ociRepository)
-			if err != nil {
-				return nil, errors.Wrapf(err, "no cached repository for %s found. (try 'helm repo update')", repoName)
-			}
-
-			// To:do: Can we get client values from registry.NewClient()?
-			// 	 If so how to pass client ops without an existing *Client?
-			// Example code for this:
-			// client, err := registry.NewClient()
-			// if err != nil {
-			// 	return nil, err
-			// }
-			client := &orasauth.Client{
-				Header: http.Header{
-					"User-Agent": {"oras-go"},
-				},
-				Cache: orasauth.DefaultCache,
-			}
-
-			repository := orasremote.Repository{
-				Reference: parsedRepository,
-				Client:    client,
-			}
-
-			// Get tags from ORAS tag API
-			// To-do: The block farther below comment says
-			//   "The version are already sorted and hence the first one to satisfy the constraint is used"
-			// 	 So how do we ensure these are sorted?
-			tags, err := orasregistry.Tags(ctx, &repository)
-			if err != nil {
-				return nil, err
-			}
-
-			// Mock chart version objects
-			vs = make(repo.ChartVersions, len(tags))
-			for i, tag := range tags {
-				// Change underscore (_) back to plus (+) for Helm
-				// See https://github.com/helm/helm/issues/10166
-				tag = strings.ReplaceAll(tag, "_", "+")
-
-				// Then add those on what comes from equivalent of tags
-				// To-do: do we need anything here other than Version and Name?
-				vs[i].Version = tag
-				vs[i].Name = d.Name
-			}
-
-			// Ultimately either here before continue, or below, we want to accomplish:
-			// 	 1. if there's a reference that matches the version (did it work or not? could it locate image? 401 or 403 etc)
-			// 	 2. if so, proceed
-			// But below, if `len(ver.URLs) == 0` it's not considered valid, so we continue
-			// what is the equivalent of this for OCI? There is no tarball URL(s), right?
 		}
 
 		locked[i] = &chart.Dependency{
