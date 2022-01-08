@@ -92,6 +92,7 @@ type Upgrade struct {
 	SubNotes bool
 	// Description is the description of this operation
 	Description string
+	Labels      map[string]string
 	// PostRender is an optional post-renderer
 	//
 	// If this is non-nil, then after templates are rendered, they will be sent to the
@@ -251,6 +252,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		Version:  revision,
 		Manifest: manifestDoc.String(),
 		Hooks:    hooks,
+		Labels:   u.Labels,
 	}
 
 	if len(notesTxt) > 0 {

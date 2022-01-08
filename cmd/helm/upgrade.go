@@ -117,6 +117,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.SubNotes = client.SubNotes
 					instClient.Description = client.Description
 					instClient.DependencyUpdate = client.DependencyUpdate
+					instClient.Labels = client.Labels
 
 					rel, err := runInstall(args, instClient, valueOpts, out)
 					if err != nil {
@@ -228,6 +229,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.IntVar(&client.MaxHistory, "history-max", settings.MaxHistory, "limit the maximum number of revisions saved per release. Use 0 for no limit")
 	f.BoolVar(&client.CleanupOnFail, "cleanup-on-fail", false, "allow deletion of new resources created in this upgrade when upgrade fails")
 	f.BoolVar(&client.SubNotes, "render-subchart-notes", false, "if set, render subchart notes along with the parent")
+	f.StringToStringVarP(&client.Labels, "labels", "l", nil, "Labels that would be added to relese metadata. Should be divided by comma. (Currently works only with configmap and secret storage drivers)")
 	f.StringVar(&client.Description, "description", "", "add a custom description")
 	f.BoolVar(&client.DependencyUpdate, "dependency-update", false, "update dependencies if they are missing before installing the chart")
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
