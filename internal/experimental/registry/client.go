@@ -37,6 +37,13 @@ import (
 	"helm.sh/helm/v3/pkg/helmpath"
 )
 
+// See https://github.com/helm/helm/issues/10166
+const registryUnderscoreMessage = `
+OCI artifact references do not support the plus sign(+). To solve this Helm
+adopts the convention of changing plus (+) to underscore (_) in chart version
+references during registry push - and OCI artifact reference from underscore
+back to plus on registry pull.`
+
 type (
 	// Client works with OCI-compliant registries
 	Client struct {
@@ -207,6 +214,11 @@ type (
 
 // Pull downloads a chart from a registry
 func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
+	// Convert plus (+) to underscore (_) in request string before pull
+	// This must remain right at the top of client.Pull()
+	// See https://github.com/helm/helm/issues/10166
+	ref = strings.ReplaceAll(ref, "+", "_")
+
 	operation := &pullOperation{
 		withChart: true, // By default, always download the chart layer
 	}
@@ -354,8 +366,15 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 			return nil, getProvDescriptorErr
 		}
 	}
+
 	fmt.Fprintf(c.out, "Pulled: %s\n", result.Ref)
 	fmt.Fprintf(c.out, "Digest: %s\n", result.Manifest.Digest)
+
+	if strings.Contains(result.Ref, "_") {
+		fmt.Fprintf(c.out, "%s contains an underscore.\n", result.Ref)
+		fmt.Fprint(c.out, registryUnderscoreMessage)
+	}
+
 	return result, nil
 }
 
@@ -411,6 +430,11 @@ type (
 
 // Push uploads a chart to a registry.
 func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResult, error) {
+	// Convert plus (+) to underscore (_) before push, so OCI doesn't choke
+	// See https://github.com/helm/helm/issues/10166
+	origRef := ref
+	ref = strings.ReplaceAll(ref, "+", "_")
+
 	operation := &pushOperation{
 		strictMode: true, // By default, enable strict mode
 	}
@@ -422,7 +446,7 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 		return nil, err
 	}
 	if operation.strictMode {
-		if !strings.HasSuffix(ref, fmt.Sprintf("/%s:%s", meta.Name, meta.Version)) {
+		if !strings.HasSuffix(origRef, fmt.Sprintf("/%s:%s", meta.Name, meta.Version)) {
 			return nil, errors.New(
 				"strict mode enabled, ref basename and tag must match the chart name and version")
 		}
@@ -495,6 +519,11 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	}
 	fmt.Fprintf(c.out, "Pushed: %s\n", result.Ref)
 	fmt.Fprintf(c.out, "Digest: %s\n", result.Manifest.Digest)
+	if strings.Contains(result.Ref, "_") {
+		fmt.Fprintf(c.out, "%s contains an underscore.\n", result.Ref)
+		fmt.Fprint(c.out, registryUnderscoreMessage)
+	}
+
 	return result, err
 }
 
