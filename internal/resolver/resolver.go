@@ -39,15 +39,17 @@ const FeatureGateOCI = gates.Gate("HELM_EXPERIMENTAL_OCI")
 
 // Resolver resolves dependencies from semantic version ranges to a particular version.
 type Resolver struct {
-	chartpath string
-	cachepath string
+	chartpath      string
+	cachepath      string
+	registryClient *registry.Client
 }
 
-// New creates a new resolver for a given chart and a given helm home.
-func New(chartpath, cachepath string) *Resolver {
+// New creates a new resolver for a given chart, helm home and registry client.
+func New(chartpath, cachepath string, registryClient *registry.Client) *Resolver {
 	return &Resolver{
-		chartpath: chartpath,
-		cachepath: cachepath,
+		chartpath:      chartpath,
+		cachepath:      cachepath,
+		registryClient: registryClient,
 	}
 }
 

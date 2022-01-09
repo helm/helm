@@ -232,7 +232,7 @@ func (m *Manager) loadChartDir() (*chart.Chart, error) {
 //
 // This returns a lock file, which has all of the dependencies normalized to a specific version.
 func (m *Manager) resolve(req []*chart.Dependency, repoNames map[string]string) (*chart.Lock, error) {
-	res := resolver.New(m.ChartPath, m.RepositoryCache)
+	res := resolver.New(m.ChartPath, m.RepositoryCache, m.RegistryClient)
 	// NOTE: When OCI dependencies specify a semver range in Version,
 	// (*Resolver).Resolve must somehow get the list of OCI tag versions
 	// available to check against this constraint. However for backward
