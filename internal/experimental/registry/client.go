@@ -39,10 +39,10 @@ import (
 
 // See https://github.com/helm/helm/issues/10166
 const registryUnderscoreMessage = `
-OCI artifact references do not support the plus sign(+). To solve this Helm
-adopts the convention of changing plus (+) to underscore (_) in chart version
-references during registry push - and OCI artifact reference from underscore
-back to plus on registry pull.`
+OCI artifact references (e.g. tags) do not support the plus sign (+). To support
+storing semantic versions, Helm adopts the convention of changing plus (+) to
+an underscore (_) in chart version tags when pushing to a registry and back to
+a plus (+) when pulling from a registry.`
 
 type (
 	// Client works with OCI-compliant registries
@@ -372,7 +372,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 
 	if strings.Contains(result.Ref, "_") {
 		fmt.Fprintf(c.out, "%s contains an underscore.\n", result.Ref)
-		fmt.Fprint(c.out, registryUnderscoreMessage)
+		fmt.Fprint(c.out, registryUnderscoreMessage+"\n")
 	}
 
 	return result, nil
@@ -521,7 +521,7 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	fmt.Fprintf(c.out, "Digest: %s\n", result.Manifest.Digest)
 	if strings.Contains(result.Ref, "_") {
 		fmt.Fprintf(c.out, "%s contains an underscore.\n", result.Ref)
-		fmt.Fprint(c.out, registryUnderscoreMessage)
+		fmt.Fprint(c.out, registryUnderscoreMessage+"\n")
 	}
 
 	return result, err
