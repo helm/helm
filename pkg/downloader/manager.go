@@ -233,26 +233,6 @@ func (m *Manager) loadChartDir() (*chart.Chart, error) {
 // This returns a lock file, which has all of the dependencies normalized to a specific version.
 func (m *Manager) resolve(req []*chart.Dependency, repoNames map[string]string) (*chart.Lock, error) {
 	res := resolver.New(m.ChartPath, m.RepositoryCache, m.RegistryClient)
-	// NOTE: When OCI dependencies specify a semver range in Version,
-	// (*Resolver).Resolve must somehow get the list of OCI tag versions
-	// available to check against this constraint. However for backward
-	// compatibility we can not change that function signature to pass a
-	// *registry.Client required to get tags from the ORAS tag listing API.
-	// However we can add a new backward compatible struct field to
-	// *chart.Dependency, so that we can pass these along to
-	// (*Resolver).resolve from here through reqs []*chart.Dependency.
-	for i, d := range req {
-		if registry.IsOCI(d.Repository) {
-			// TODO(scottrigby): fix HTTP error
-			// > Error: Get "https://localhost:5000/v2/helm-charts/tags/list": http: server gave HTTP response to HTTPS client
-			ref := strings.TrimPrefix(d.Repository, "oci://")
-			tags, err := m.RegistryClient.Tags(ref)
-			if err != nil {
-				return nil, err
-			}
-			req[i].OCITagVersions = tags
-		}
-	}
 	return res.Resolve(req, repoNames)
 }
 

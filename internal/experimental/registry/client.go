@@ -22,8 +22,10 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"sort"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/containerd/containerd/remotes"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
@@ -553,7 +555,7 @@ func PushOptStrictMode(strictMode bool) PushOption {
 	}
 }
 
-// Tags lists all tags for a given repository
+// Tags provides an all semver compliant tags for a given repository
 func (c *Client) Tags(ref string) ([]string, error) {
 	parsedReference, err := registry.ParseReference(ref)
 	if err != nil {
@@ -565,5 +567,27 @@ func (c *Client) Tags(ref string) ([]string, error) {
 		Client:    c.registryAuthorizer,
 	}
 
-	return registry.Tags(ctx(c.out, c.debug), &repository)
+	registrtyTags, err := registry.Tags(ctx(c.out, c.debug), &repository)
+	if err != nil {
+		return nil, err
+	}
+
+	var tagVersions []*semver.Version
+	for _, tag := range registrtyTags {
+		tagVersion, err := semver.StrictNewVersion(tag)
+		if err != nil {
+			tagVersions = append(tagVersions, tagVersion)
+		}
+	}
+
+	sort.Sort(semver.Collection(tagVersions))
+
+	tags := make([]string, len(tagVersions))
+
+	for iTv, tv := range tagVersions {
+		tags[iTv] = tv.String()
+	}
+
+	return tags, nil
+
 }

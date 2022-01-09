@@ -18,6 +18,7 @@ package resolver
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -136,15 +137,19 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 			}
 			found = false
 		} else {
+			fmt.Println("Entering OCI block")
 			version = d.Version
 			if !FeatureGateOCI.IsEnabled() {
 				return nil, errors.Wrapf(FeatureGateOCI.Error(),
 					"repository %s is an OCI registry", d.Repository)
 			}
 
-			// This works, fake it to test mocking the version
-			// tags := []string{"0.1.0", "0.1.1", "0.2.0"}
-			tags := d.OCITagVersions
+			// Retrive list of tags for repository
+			tags, err := r.registryClient.Tags(d.Repository)
+			if err != nil {
+				return nil, errors.Wrapf(err, "could not retrieve list of tags for repository", d.Repository)
+			}
+
 			vs = make(repo.ChartVersions, len(tags))
 			for ti, t := range tags {
 				// Mock chart version objects
