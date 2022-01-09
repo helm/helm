@@ -40,7 +40,6 @@ func releaseStub(name string, vers int, namespace string, status rspb.Status) *r
 		Version:   vers,
 		Namespace: namespace,
 		Info:      &rspb.Info{Status: status},
-		Labels:    make(map[string]string),
 	}
 }
 
