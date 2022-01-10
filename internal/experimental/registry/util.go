@@ -36,6 +36,16 @@ func IsOCI(url string) bool {
 	return strings.HasPrefix(url, fmt.Sprintf("%s://", OCIScheme))
 }
 
+// ContainsTag determines whether a tag is found in a provided list of tags
+func ContainsTag(tags []string, tag string) bool {
+	for _, t := range tags {
+		if tag == t {
+			return true
+		}
+	}
+	return false
+}
+
 // extractChartMeta is used to extract a chart metadata from a byte array
 func extractChartMeta(chartData []byte) (*chart.Metadata, error) {
 	ch, err := loader.LoadArchive(bytes.NewReader(chartData))

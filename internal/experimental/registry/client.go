@@ -567,20 +567,21 @@ func (c *Client) Tags(ref string) ([]string, error) {
 		Client:    c.registryAuthorizer,
 	}
 
-	registrtyTags, err := registry.Tags(ctx(c.out, c.debug), &repository)
+	registryTags, err := registry.Tags(ctx(c.out, c.debug), &repository)
 	if err != nil {
 		return nil, err
 	}
 
 	var tagVersions []*semver.Version
-	for _, tag := range registrtyTags {
+	for _, tag := range registryTags {
 		tagVersion, err := semver.StrictNewVersion(tag)
-		if err != nil {
+		if err == nil {
 			tagVersions = append(tagVersions, tagVersion)
 		}
 	}
 
-	sort.Sort(semver.Collection(tagVersions))
+	// Sort the collection
+	sort.Sort(sort.Reverse(semver.Collection(tagVersions)))
 
 	tags := make([]string, len(tagVersions))
 

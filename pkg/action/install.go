@@ -695,10 +695,9 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 	}
 
 	if registry.IsOCI(name) {
-		if version == "" {
-			return "", errors.New("version is explicitly required for OCI registries")
+		if version != "" {
+			dl.Options = append(dl.Options, getter.WithTagName(version))
 		}
-		dl.Options = append(dl.Options, getter.WithTagName(version))
 	}
 
 	if c.Verify {

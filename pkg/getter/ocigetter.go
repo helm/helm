@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	"helm.sh/helm/v3/internal/experimental/registry"
 )
 
@@ -50,9 +52,28 @@ func (g *OCIGetter) get(href string) (*bytes.Buffer, error) {
 			registry.PullOptWithProv(true))
 	}
 
-	if version := g.opts.version; version != "" {
-		ref = fmt.Sprintf("%s:%s", ref, version)
+	// Retrieve list of repository tags
+	tags, err := client.Tags(ref)
+	if err != nil {
+		return nil, err
 	}
+
+	//Determine if version provided. If not
+	providedVersion := g.opts.version
+	if g.opts.version == "" {
+		if len(tags) > 0 {
+			providedVersion = tags[0]
+		} else {
+			return nil, errors.Errorf("Unable to locate any tags in provided repository: %s", ref)
+		}
+
+	} else {
+		if !registry.ContainsTag(tags, providedVersion) {
+			return nil, errors.Errorf("Could not located provided version %s in repository %s", providedVersion, ref)
+		}
+	}
+
+	ref = fmt.Sprintf("%s:%s", ref, providedVersion)
 
 	result, err := client.Pull(ref, pullOpts...)
 	if err != nil {
