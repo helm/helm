@@ -32,43 +32,38 @@ func TestIsSystemLabel(t *testing.T) {
 	}
 }
 
-type filterSystemLabelsTest struct {
-	args, expected map[string]string
-}
-
-var filterSystemLabelsTests = []filterSystemLabelsTest{
-	filterSystemLabelsTest{nil, nil},
-	filterSystemLabelsTest{map[string]string{}, nil},
-	filterSystemLabelsTest{map[string]string{
-		"name":       "name",
-		"owner":      "owner",
-		"status":     "status",
-		"version":    "version",
-		"createdAt":  "createdAt",
-		"modifiedAt": "modifiedAt",
-	}, nil},
-	filterSystemLabelsTest{map[string]string{
-		"StaTus": "status",
-		"name":   "name",
-		"owner":  "owner",
-		"key":    "value",
-	}, map[string]string{
-		"StaTus": "status",
-		"key":    "value",
-	}},
-	filterSystemLabelsTest{map[string]string{
-		"key1": "value1",
-		"key2": "value2",
-	}, map[string]string{
-		"key1": "value1",
-		"key2": "value2",
-	}},
-}
-
 func TestFilterSystemLabels(t *testing.T) {
-	for _, test := range filterSystemLabelsTests {
-		if output := filterSystemLabels(test.args); !reflect.DeepEqual(test.expected, output) {
-			t.Errorf("Expected {%v}, got {%v}", test.expected, output)
+	var tests = [][2]map[string]string{
+		{nil, nil},
+		{map[string]string{}, nil},
+		{map[string]string{
+			"name":       "name",
+			"owner":      "owner",
+			"status":     "status",
+			"version":    "version",
+			"createdAt":  "createdAt",
+			"modifiedAt": "modifiedAt",
+		}, nil},
+		{map[string]string{
+			"StaTus": "status",
+			"name":   "name",
+			"owner":  "owner",
+			"key":    "value",
+		}, map[string]string{
+			"StaTus": "status",
+			"key":    "value",
+		}},
+		{map[string]string{
+			"key1": "value1",
+			"key2": "value2",
+		}, map[string]string{
+			"key1": "value1",
+			"key2": "value2",
+		}},
+	}
+	for _, test := range tests {
+		if output := filterSystemLabels(test[0]); !reflect.DeepEqual(test[1], output) {
+			t.Errorf("Expected {%v}, got {%v}", test[1], output)
 		}
 	}
 }
