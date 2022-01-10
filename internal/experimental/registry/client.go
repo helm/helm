@@ -213,11 +213,11 @@ type (
 )
 
 // Pull downloads a chart from a registry
-func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
-	// Convert plus (+) to underscore (_) in request string before pull
-	// This must remain right at the top of client.Pull()
-	// See https://github.com/helm/helm/issues/10166
-	ref = strings.ReplaceAll(ref, "+", "_")
+func (c *Client) Pull(rawRef string, options ...PullOption) (*PullResult, error) {
+	ref, err := parseReference(rawRef)
+	if err != nil {
+		return nil, err
+	}
 
 	operation := &pullOperation{
 		withChart: true, // By default, always download the chart layer
@@ -248,14 +248,13 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 	var descriptors, layers []ocispec.Descriptor
 	registryStore := content.Registry{Resolver: c.resolver}
 
-	manifest, err := oras.Copy(ctx(c.out, c.debug), registryStore, ref, memoryStore, "",
+	manifest, err := oras.Copy(ctx(c.out, c.debug), registryStore, ref.String(), memoryStore, "",
 		oras.WithPullEmptyNameAllowed(),
 		oras.WithAllowedMediaTypes(allowedMediaTypes),
 		oras.WithLayerDescriptors(func(l []ocispec.Descriptor) {
 			layers = l
 		}))
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
 
@@ -315,7 +314,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		},
 		Chart: &descriptorPullSummaryWithMeta{},
 		Prov:  &descriptorPullSummary{},
-		Ref:   ref,
+		Ref:   ref.String(),
 	}
 	var getManifestErr error
 	if _, manifestData, ok := memoryStore.Get(manifest); !ok {
@@ -429,11 +428,11 @@ type (
 )
 
 // Push uploads a chart to a registry.
-func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResult, error) {
-	// Convert plus (+) to underscore (_) before push, so OCI doesn't choke
-	// See https://github.com/helm/helm/issues/10166
-	origRef := ref
-	ref = strings.ReplaceAll(ref, "+", "_")
+func (c *Client) Push(data []byte, rawRef string, options ...PushOption) (*PushResult, error) {
+	ref, err := parseReference(rawRef)
+	if err != nil {
+		return nil, err
+	}
 
 	operation := &pushOperation{
 		strictMode: true, // By default, enable strict mode
@@ -446,7 +445,7 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 		return nil, err
 	}
 	if operation.strictMode {
-		if !strings.HasSuffix(origRef, fmt.Sprintf("/%s:%s", meta.Name, meta.Version)) {
+		if !strings.HasSuffix(rawRef, fmt.Sprintf("/%s:%s", meta.Name, meta.Version)) {
 			return nil, errors.New(
 				"strict mode enabled, ref basename and tag must match the chart name and version")
 		}
@@ -483,12 +482,12 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 		return nil, err
 	}
 
-	if err := memoryStore.StoreManifest(ref, manifest, manifestData); err != nil {
+	if err := memoryStore.StoreManifest(ref.String(), manifest, manifestData); err != nil {
 		return nil, err
 	}
 
 	registryStore := content.Registry{Resolver: c.resolver}
-	_, err = oras.Copy(ctx(c.out, c.debug), memoryStore, ref, registryStore, "",
+	_, err = oras.Copy(ctx(c.out, c.debug), memoryStore, ref.String(), registryStore, "",
 		oras.WithNameValidation(nil))
 	if err != nil {
 		return nil, err
@@ -509,7 +508,7 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 		},
 		Chart: chartSummary,
 		Prov:  &descriptorPushSummary{}, // prevent nil references
-		Ref:   ref,
+		Ref:   ref.String(),
 	}
 	if operation.provData != nil {
 		result.Prov = &descriptorPushSummary{
