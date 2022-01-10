@@ -23,7 +23,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/Masterminds/semver"
+	"github.com/Masterminds/semver/v3"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	orascontext "oras.land/oras-go/pkg/context"
