@@ -386,5 +386,52 @@ func TestUpgradeRelease_Interrupted_Atomic(t *testing.T) {
 	is.NoError(err)
 	// Should have rolled back to the previous
 	is.Equal(updatedRes.Info.Status, release.StatusDeployed)
+}
 
+func TestUpgradeRelease_Labels(t *testing.T) {
+	is := assert.New(t)
+	upAction := upgradeAction(t)
+
+	rel := releaseStub()
+	rel.Name = "labels"
+	// It's needed to check that suppressed release would keep original labels
+	// Also it's needed for check that original release labels not passed to upgraded release, cause right now this functionality is not implemented and would cause problems with deletion of labels (meant nullifing existing labels)
+	rel.Labels = map[string]string{
+		"key1": "val1",
+		"key2": "val2",
+	}
+	rel.Info.Status = release.StatusDeployed
+
+	err := upAction.cfg.Releases.Create(rel)
+	is.NoError(err)
+
+	upAction.Labels = map[string]string{
+		"key3": "val3",
+		"key4": "val4",
+	}
+	// setting newValues and upgrading
+	res, err := upAction.Run(rel.Name, buildChart(), nil)
+	is.NoError(err)
+
+	// Now make sure it is actually upgraded
+	updatedRes, err := upAction.cfg.Releases.Get(res.Name, 2)
+	is.NoError(err)
+
+	if updatedRes == nil {
+		is.Fail("Updated Release is nil")
+		return
+	}
+	is.Equal(release.StatusDeployed, updatedRes.Info.Status)
+	is.Equal(upAction.Labels, updatedRes.Labels)
+
+	// Now make sure it is suppressed release still contains original labels
+	initialRes, err := upAction.cfg.Releases.Get(res.Name, 1)
+	is.NoError(err)
+
+	if initialRes == nil {
+		is.Fail("Updated Release is nil")
+		return
+	}
+	is.Equal(initialRes.Info.Status, release.StatusSuperseded)
+	is.Equal(initialRes.Labels, rel.Labels)
 }

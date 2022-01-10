@@ -717,3 +717,18 @@ func TestNameAndChartGenerateName(t *testing.T) {
 		})
 	}
 }
+
+func TestInstallWithLabels(t *testing.T) {
+	is := assert.New(t)
+	instAction := installAction(t)
+	instAction.Labels = map[string]string{
+		"key1": "val1",
+		"key2": "val2",
+	}
+	res, err := instAction.Run(buildChart(), nil)
+	if err != nil {
+		t.Fatalf("Failed install: %s", err)
+	}
+
+	is.Equal(instAction.Labels, res.Labels)
+}

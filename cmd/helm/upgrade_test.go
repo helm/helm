@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -430,4 +431,32 @@ func TestUpgradeFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "upgrade", false)
 	checkFileCompletion(t, "upgrade myrelease", true)
 	checkFileCompletion(t, "upgrade myrelease repo/chart", false)
+}
+
+func TestUpgradeInstallWithLabels(t *testing.T) {
+	releaseName := "funny-bunny-labels"
+	_, _, chartPath := prepareMockRelease(releaseName, t)
+
+	defer resetEnv()()
+
+	store := storageFixture()
+
+	expectedLabels := map[string]string{
+		"key1": "val1",
+		"key2": "val2",
+	}
+	cmd := fmt.Sprintf("upgrade %s --install --labels key1=val1,key2=val2 '%s'", releaseName, chartPath)
+	_, _, err := executeActionCommandC(store, cmd)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	updatedRel, err := store.Get(releaseName, 1)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	if !reflect.DeepEqual(updatedRel.Labels, expectedLabels) {
+		t.Errorf("Expected {%v}, got {%v}", expectedLabels, updatedRel.Labels)
+	}
 }
