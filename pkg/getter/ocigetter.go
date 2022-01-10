@@ -30,7 +30,7 @@ type OCIGetter struct {
 	opts options
 }
 
-//Get performs a Get from repo.Getter and returns the body.
+// Get performs a Get from repo.Getter and returns the body.
 func (g *OCIGetter) Get(href string, options ...Option) (*bytes.Buffer, error) {
 	for _, opt := range options {
 		opt(&g.opts)
@@ -57,23 +57,22 @@ func (g *OCIGetter) get(href string) (*bytes.Buffer, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	//Determine if version provided. If not
-	providedVersion := g.opts.version
-	if g.opts.version == "" {
-		if len(tags) > 0 {
-			providedVersion = tags[0]
-		} else {
-			return nil, errors.Errorf("Unable to locate any tags in provided repository: %s", ref)
-		}
-
-	} else {
-		if !registry.ContainsTag(tags, providedVersion) {
-			return nil, errors.Errorf("Could not located provided version %s in repository %s", providedVersion, ref)
-		}
+	if len(tags) == 0 {
+		return nil, errors.Errorf("Unable to locate any tags in provided repository: %s", ref)
 	}
 
-	ref = fmt.Sprintf("%s:%s", ref, providedVersion)
+	// Determine if version provided
+	// If empty, try to get the highest available tag
+	// If exact version, try to find it
+	// If semver constraint string, try to find a match
+	providedVersion := g.opts.version
+
+	tag, err := registry.GetTagMatchingVersionOrConstraint(tags, providedVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	ref = fmt.Sprintf("%s:%s", ref, tag)
 
 	result, err := client.Pull(ref, pullOpts...)
 	if err != nil {
