@@ -92,13 +92,13 @@ func (p *Pull) Run(chartRef string) (string, error) {
 	}
 
 	if registry.IsOCI(chartRef) {
-		if p.Version == "" {
-			return out.String(), errors.Errorf("--version flag is explicitly required for OCI registries")
-		}
-
 		c.Options = append(c.Options,
-			getter.WithRegistryClient(p.cfg.RegistryClient),
-			getter.WithTagName(p.Version))
+			getter.WithRegistryClient(p.cfg.RegistryClient))
+
+		if p.Version != "" {
+			c.Options = append(c.Options,
+				getter.WithTagName(p.Version))
+		}
 	}
 
 	if p.Verify {

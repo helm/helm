@@ -18,7 +18,6 @@ package resolver
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -137,7 +136,6 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 			}
 			found = false
 		} else {
-			fmt.Println("Entering OCI block")
 			version = d.Version
 			if !FeatureGateOCI.IsEnabled() {
 				return nil, errors.Wrapf(FeatureGateOCI.Error(),
