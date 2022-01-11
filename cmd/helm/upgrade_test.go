@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -359,7 +358,7 @@ func TestUpgradeInstallWithValuesFromStdin(t *testing.T) {
 
 func prepareMockRelease(releaseName string, t *testing.T) (func(n string, v int, ch *chart.Chart) *release.Release, *chart.Chart, string) {
 	tmpChart := ensure.TempDir(t)
-	configmapData, err := ioutil.ReadFile("testdata/testcharts/upgradetest/templates/configmap.yaml")
+	configmapData, err := os.ReadFile("testdata/testcharts/upgradetest/templates/configmap.yaml")
 	if err != nil {
 		t.Fatalf("Error loading template yaml %v", err)
 	}

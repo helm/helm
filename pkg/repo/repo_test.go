@@ -17,7 +17,6 @@ limitations under the License.
 package repo
 
 import (
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -198,7 +197,7 @@ func TestWriteFile(t *testing.T) {
 		},
 	)
 
-	file, err := ioutil.TempFile("", "helm-repo")
+	file, err := os.CreateTemp("", "helm-repo")
 	if err != nil {
 		t.Errorf("failed to create test-file (%v)", err)
 	}

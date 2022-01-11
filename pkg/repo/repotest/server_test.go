@@ -16,7 +16,7 @@ limitations under the License.
 package repotest
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -68,7 +68,7 @@ func TestServer(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	data, err := ioutil.ReadAll(res.Body)
+	data, err := io.ReadAll(res.Body)
 	res.Body.Close()
 	if err != nil {
 		t.Fatal(err)

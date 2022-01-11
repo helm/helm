@@ -18,7 +18,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -98,7 +98,7 @@ func TestRepoAdd(t *testing.T) {
 	}
 	os.Setenv(xdg.CacheHomeEnvVar, rootDir)
 
-	if err := o.run(ioutil.Discard); err != nil {
+	if err := o.run(io.Discard); err != nil {
 		t.Error(err)
 	}
 
@@ -122,11 +122,11 @@ func TestRepoAdd(t *testing.T) {
 
 	o.forceUpdate = true
 
-	if err := o.run(ioutil.Discard); err != nil {
+	if err := o.run(io.Discard); err != nil {
 		t.Errorf("Repository was not updated: %s", err)
 	}
 
-	if err := o.run(ioutil.Discard); err != nil {
+	if err := o.run(io.Discard); err != nil {
 		t.Errorf("Duplicate repository name was added")
 	}
 }
@@ -174,14 +174,14 @@ func repoAddConcurrent(t *testing.T, testName, repoFile string) {
 				forceUpdate:        false,
 				repoFile:           repoFile,
 			}
-			if err := o.run(ioutil.Discard); err != nil {
+			if err := o.run(io.Discard); err != nil {
 				t.Error(err)
 			}
 		}(fmt.Sprintf("%s-%d", testName, i))
 	}
 	wg.Wait()
 
-	b, err := ioutil.ReadFile(repoFile)
+	b, err := os.ReadFile(repoFile)
 	if err != nil {
 		t.Error(err)
 	}

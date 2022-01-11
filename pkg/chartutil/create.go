@@ -19,7 +19,6 @@ package chartutil
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -673,7 +672,7 @@ func writeFile(name string, content []byte) error {
 	if err := os.MkdirAll(filepath.Dir(name), 0755); err != nil {
 		return err
 	}
-	return ioutil.WriteFile(name, content, 0644)
+	return os.WriteFile(name, content, 0644)
 }
 
 func validateChartName(name string) error {

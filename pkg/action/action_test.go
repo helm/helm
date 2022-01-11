@@ -17,7 +17,7 @@ package action
 
 import (
 	"flag"
-	"io/ioutil"
+	"io"
 	"os"
 	"testing"
 
@@ -38,7 +38,7 @@ var verbose = flag.Bool("test.log", false, "enable test logging")
 func actionConfigFixture(t *testing.T) *Configuration {
 	t.Helper()
 
-	tdir, err := ioutil.TempDir("", "helm-action-test")
+	tdir, err := os.MkdirTemp("", "helm-action-test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func actionConfigFixture(t *testing.T) *Configuration {
 
 	return &Configuration{
 		Releases:       storage.Init(driver.NewMemory()),
-		KubeClient:     &kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: ioutil.Discard}},
+		KubeClient:     &kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}},
 		Capabilities:   chartutil.DefaultCapabilities,
 		RegistryClient: registryClient,
 		Log: func(format string, v ...interface{}) {

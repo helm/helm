@@ -32,7 +32,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package fs
 
 import (
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -46,7 +45,7 @@ var (
 )
 
 func TestRenameWithFallback(t *testing.T) {
-	dir, err := ioutil.TempDir("", "helm-tmp")
+	dir, err := os.MkdirTemp("", "helm-tmp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +83,7 @@ func TestRenameWithFallback(t *testing.T) {
 }
 
 func TestCopyDir(t *testing.T) {
-	dir, err := ioutil.TempDir("", "helm-tmp")
+	dir, err := os.MkdirTemp("", "helm-tmp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -145,7 +144,7 @@ func TestCopyDir(t *testing.T) {
 			t.Fatalf("expected %s to be a directory", dn)
 		}
 
-		got, err := ioutil.ReadFile(fn)
+		got, err := os.ReadFile(fn)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -189,7 +188,7 @@ func TestCopyDirFail_SrcInaccessible(t *testing.T) {
 	})
 	defer cleanup()
 
-	dir, err := ioutil.TempDir("", "helm-tmp")
+	dir, err := os.MkdirTemp("", "helm-tmp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -218,7 +217,7 @@ func TestCopyDirFail_DstInaccessible(t *testing.T) {
 
 	var srcdir, dstdir string
 
-	dir, err := ioutil.TempDir("", "helm-tmp")
+	dir, err := os.MkdirTemp("", "helm-tmp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -243,7 +242,7 @@ func TestCopyDirFail_DstInaccessible(t *testing.T) {
 func TestCopyDirFail_SrcIsNotDir(t *testing.T) {
 	var srcdir, dstdir string
 
-	dir, err := ioutil.TempDir("", "helm-tmp")
+	dir, err := os.MkdirTemp("", "helm-tmp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -269,7 +268,7 @@ func TestCopyDirFail_SrcIsNotDir(t *testing.T) {
 func TestCopyDirFail_DstExists(t *testing.T) {
 	var srcdir, dstdir string
 
-	dir, err := ioutil.TempDir("", "helm-tmp")
+	dir, err := os.MkdirTemp("", "helm-tmp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -314,7 +313,7 @@ func TestCopyDirFailOpen(t *testing.T) {
 
 	var srcdir, dstdir string
 
-	dir, err := ioutil.TempDir("", "helm-tmp")
+	dir, err := os.MkdirTemp("", "helm-tmp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -345,7 +344,7 @@ func TestCopyDirFailOpen(t *testing.T) {
 }
 
 func TestCopyFile(t *testing.T) {
-	dir, err := ioutil.TempDir("", "helm-tmp")
+	dir, err := os.MkdirTemp("", "helm-tmp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -367,7 +366,7 @@ func TestCopyFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := ioutil.ReadFile(destf)
+	got, err := os.ReadFile(destf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -405,7 +404,7 @@ func cleanUpDir(dir string) {
 }
 
 func TestCopyFileSymlink(t *testing.T) {
-	var tempdir, err = ioutil.TempDir("", "gotest")
+	var tempdir, err = os.MkdirTemp("", "gotest")
 
 	if err != nil {
 		t.Fatalf("failed to create directory: %s", err)
@@ -432,11 +431,11 @@ func TestCopyFileSymlink(t *testing.T) {
 				// Creating symlinks on Windows require an additional permission
 				// regular users aren't granted usually. So we copy the file
 				// content as a fall back instead of creating a real symlink.
-				srcb, err := ioutil.ReadFile(symlink)
+				srcb, err := os.ReadFile(symlink)
 				if err != nil {
 					t.Fatalf("%+v", err)
 				}
-				dstb, err := ioutil.ReadFile(dst)
+				dstb, err := os.ReadFile(dst)
 				if err != nil {
 					t.Fatalf("%+v", err)
 				}
@@ -477,7 +476,7 @@ func TestCopyFileFail(t *testing.T) {
 		t.Skip("Skipping for root user")
 	}
 
-	dir, err := ioutil.TempDir("", "helm-tmp")
+	dir, err := os.MkdirTemp("", "helm-tmp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -517,7 +516,7 @@ func TestCopyFileFail(t *testing.T) {
 // files this function creates. It is the caller's responsibility to call
 // this function before the test is done running, whether there's an error or not.
 func setupInaccessibleDir(t *testing.T, op func(dir string) error) func() {
-	dir, err := ioutil.TempDir("", "helm-tmp")
+	dir, err := os.MkdirTemp("", "helm-tmp")
 	if err != nil {
 		t.Fatal(err)
 		return nil // keep compiler happy
@@ -617,7 +616,7 @@ func TestIsSymlink(t *testing.T) {
 		t.Skip("Skipping for root user")
 	}
 
-	dir, err := ioutil.TempDir("", "helm-tmp")
+	dir, err := os.MkdirTemp("", "helm-tmp")
 	if err != nil {
 		t.Fatal(err)
 	}
