@@ -37,6 +37,13 @@ import (
 	"helm.sh/helm/v3/pkg/helmpath"
 )
 
+// See https://github.com/helm/helm/issues/10166
+const registryUnderscoreMessage = `
+OCI artifact references (e.g. tags) do not support the plus sign (+). To support
+storing semantic versions, Helm adopts the convention of changing plus (+) to
+an underscore (_) in chart version tags when pushing to a registry and back to
+a plus (+) when pulling from a registry.`
+
 type (
 	// Client works with OCI-compliant registries
 	Client struct {
@@ -207,6 +214,11 @@ type (
 
 // Pull downloads a chart from a registry
 func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
+	parsedRef, err := parseReference(ref)
+	if err != nil {
+		return nil, err
+	}
+
 	operation := &pullOperation{
 		withChart: true, // By default, always download the chart layer
 	}
@@ -236,14 +248,13 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 	var descriptors, layers []ocispec.Descriptor
 	registryStore := content.Registry{Resolver: c.resolver}
 
-	manifest, err := oras.Copy(ctx(c.out, c.debug), registryStore, ref, memoryStore, "",
+	manifest, err := oras.Copy(ctx(c.out, c.debug), registryStore, parsedRef.String(), memoryStore, "",
 		oras.WithPullEmptyNameAllowed(),
 		oras.WithAllowedMediaTypes(allowedMediaTypes),
 		oras.WithLayerDescriptors(func(l []ocispec.Descriptor) {
 			layers = l
 		}))
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
 
@@ -303,7 +314,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		},
 		Chart: &descriptorPullSummaryWithMeta{},
 		Prov:  &descriptorPullSummary{},
-		Ref:   ref,
+		Ref:   parsedRef.String(),
 	}
 	var getManifestErr error
 	if _, manifestData, ok := memoryStore.Get(manifest); !ok {
@@ -354,8 +365,15 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 			return nil, getProvDescriptorErr
 		}
 	}
+
 	fmt.Fprintf(c.out, "Pulled: %s\n", result.Ref)
 	fmt.Fprintf(c.out, "Digest: %s\n", result.Manifest.Digest)
+
+	if strings.Contains(result.Ref, "_") {
+		fmt.Fprintf(c.out, "%s contains an underscore.\n", result.Ref)
+		fmt.Fprint(c.out, registryUnderscoreMessage+"\n")
+	}
+
 	return result, nil
 }
 
@@ -411,6 +429,11 @@ type (
 
 // Push uploads a chart to a registry.
 func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResult, error) {
+	parsedRef, err := parseReference(ref)
+	if err != nil {
+		return nil, err
+	}
+
 	operation := &pushOperation{
 		strictMode: true, // By default, enable strict mode
 	}
@@ -459,12 +482,12 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 		return nil, err
 	}
 
-	if err := memoryStore.StoreManifest(ref, manifest, manifestData); err != nil {
+	if err := memoryStore.StoreManifest(parsedRef.String(), manifest, manifestData); err != nil {
 		return nil, err
 	}
 
 	registryStore := content.Registry{Resolver: c.resolver}
-	_, err = oras.Copy(ctx(c.out, c.debug), memoryStore, ref, registryStore, "",
+	_, err = oras.Copy(ctx(c.out, c.debug), memoryStore, parsedRef.String(), registryStore, "",
 		oras.WithNameValidation(nil))
 	if err != nil {
 		return nil, err
@@ -485,7 +508,7 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 		},
 		Chart: chartSummary,
 		Prov:  &descriptorPushSummary{}, // prevent nil references
-		Ref:   ref,
+		Ref:   parsedRef.String(),
 	}
 	if operation.provData != nil {
 		result.Prov = &descriptorPushSummary{
@@ -495,6 +518,11 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	}
 	fmt.Fprintf(c.out, "Pushed: %s\n", result.Ref)
 	fmt.Fprintf(c.out, "Digest: %s\n", result.Manifest.Digest)
+	if strings.Contains(parsedRef.Reference, "_") {
+		fmt.Fprintf(c.out, "%s contains an underscore.\n", result.Ref)
+		fmt.Fprint(c.out, registryUnderscoreMessage+"\n")
+	}
+
 	return result, err
 }
 
