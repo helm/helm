@@ -86,7 +86,15 @@ func (s *Show) Run(chartpath string) (string, error) {
 
 	var out strings.Builder
 	if s.OutputFormat == ShowChart || s.OutputFormat == ShowAll {
-		fmt.Fprintf(&out, "%s\n", cf)
+		if s.JSONPathTemplate != "" {
+			printer, err := printers.NewJSONPathPrinter(s.JSONPathTemplate)
+			if err != nil {
+				return "", errors.Wrapf(err, "error parsing jsonpath %s", s.JSONPathTemplate)
+			}
+			printer.Execute(&out, s.chart.Metadata)
+		} else {
+			fmt.Fprintf(&out, "%s\n", cf)
+		}
 	}
 
 	if (s.OutputFormat == ShowValues || s.OutputFormat == ShowAll) && s.chart.Values != nil {
