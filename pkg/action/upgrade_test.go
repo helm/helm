@@ -19,6 +19,7 @@ package action
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
@@ -388,6 +389,21 @@ func TestUpgradeRelease_Interrupted_Atomic(t *testing.T) {
 	is.Equal(updatedRes.Info.Status, release.StatusDeployed)
 }
 
+func TestMergeCustomLabels(t *testing.T) {
+	var tests = [][3]map[string]string{
+		{nil, nil, map[string]string{}},
+		{map[string]string{}, map[string]string{}, map[string]string{}},
+		{map[string]string{"k1": "v1", "k2": "v2"}, nil, map[string]string{"k1": "v1", "k2": "v2"}},
+		{nil, map[string]string{"k1": "v1", "k2": "v2"}, map[string]string{"k1": "v1", "k2": "v2"}},
+		{map[string]string{"k1": "v1", "k2": "v2"}, map[string]string{"k1": "null", "k2": "v3"}, map[string]string{"k2": "v3"}},
+	}
+	for _, test := range tests {
+		if output := mergeCustomLabels(test[0], test[1]); !reflect.DeepEqual(test[2], output) {
+			t.Errorf("Expected {%v}, got {%v}", test[2], output)
+		}
+	}
+}
+
 func TestUpgradeRelease_Labels(t *testing.T) {
 	is := assert.New(t)
 	upAction := upgradeAction(t)
@@ -395,10 +411,9 @@ func TestUpgradeRelease_Labels(t *testing.T) {
 	rel := releaseStub()
 	rel.Name = "labels"
 	// It's needed to check that suppressed release would keep original labels
-	// Also it's needed for check that original release labels not passed to upgraded release, cause right now this functionality is not implemented and would cause problems with deletion of labels (meant nullifing existing labels)
 	rel.Labels = map[string]string{
 		"key1": "val1",
-		"key2": "val2",
+		"key2": "val2.1",
 	}
 	rel.Info.Status = release.StatusDeployed
 
@@ -406,14 +421,15 @@ func TestUpgradeRelease_Labels(t *testing.T) {
 	is.NoError(err)
 
 	upAction.Labels = map[string]string{
+		"key1": "null",
+		"key2": "val2.2",
 		"key3": "val3",
-		"key4": "val4",
 	}
 	// setting newValues and upgrading
 	res, err := upAction.Run(rel.Name, buildChart(), nil)
 	is.NoError(err)
 
-	// Now make sure it is actually upgraded
+	// Now make sure it is actually upgraded and labels were merged
 	updatedRes, err := upAction.cfg.Releases.Get(res.Name, 2)
 	is.NoError(err)
 
@@ -422,7 +438,7 @@ func TestUpgradeRelease_Labels(t *testing.T) {
 		return
 	}
 	is.Equal(release.StatusDeployed, updatedRes.Info.Status)
-	is.Equal(upAction.Labels, updatedRes.Labels)
+	is.Equal(mergeCustomLabels(rel.Labels, upAction.Labels), updatedRes.Labels)
 
 	// Now make sure it is suppressed release still contains original labels
 	initialRes, err := upAction.cfg.Releases.Get(res.Name, 1)

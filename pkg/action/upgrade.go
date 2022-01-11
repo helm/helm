@@ -252,7 +252,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		Version:  revision,
 		Manifest: manifestDoc.String(),
 		Hooks:    hooks,
-		Labels:   u.Labels,
+		Labels:   mergeCustomLabels(lastRelease.Labels, u.Labels),
 	}
 
 	if len(notesTxt) > 0 {
@@ -570,4 +570,14 @@ func recreate(cfg *Configuration, resources kube.ResourceList) error {
 func objectKey(r *resource.Info) string {
 	gvk := r.Object.GetObjectKind().GroupVersionKind()
 	return fmt.Sprintf("%s/%s/%s/%s", gvk.GroupVersion().String(), gvk.Kind, r.Namespace, r.Name)
+}
+
+func mergeCustomLabels(current, desired map[string]string) map[string]string {
+	labels := mergeStrStrMaps(current, desired)
+	for k, v := range labels {
+		if v == "null" {
+			delete(labels, k)
+		}
+	}
+	return labels
 }
