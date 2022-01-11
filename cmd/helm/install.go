@@ -155,7 +155,7 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 	f.BoolVar(&client.Atomic, "atomic", false, "if set, the installation process deletes the installation on failure. The --wait flag will be set automatically if --atomic is used")
 	f.BoolVar(&client.SkipCRDs, "skip-crds", false, "if set, no CRDs will be installed. By default, CRDs are installed if not already present")
 	f.BoolVar(&client.SubNotes, "render-subchart-notes", false, "if set, render subchart notes along with the parent")
-	f.StringToStringVarP(&client.Labels, "labels", "l", nil, "Labels that would be added to relese metadata. Should be divided by comma. (Currently works only with configmap and secret storage drivers).")
+	f.StringToStringVarP(&client.Labels, "labels", "l", nil, "Labels that would be added to relese metadata. Should be divided by comma.")
 	addValueOptionsFlags(f, valueOpts)
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 

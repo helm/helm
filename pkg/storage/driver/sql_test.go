@@ -62,6 +62,8 @@ func TestSQLGet(t *testing.T) {
 			),
 		).RowsWillBeClosed()
 
+	mockGetReleaseCustomLabels(mock, key, namespace, rel.Labels)
+
 	got, err := sqlDriver.Get(key)
 	if err != nil {
 		t.Fatalf("Failed to get release: %v", err)
@@ -77,38 +79,42 @@ func TestSQLGet(t *testing.T) {
 }
 
 func TestSQLList(t *testing.T) {
-	body1, _ := encodeRelease(releaseStub("key-1", 1, "default", rspb.StatusUninstalled))
-	body2, _ := encodeRelease(releaseStub("key-2", 1, "default", rspb.StatusUninstalled))
-	body3, _ := encodeRelease(releaseStub("key-3", 1, "default", rspb.StatusDeployed))
-	body4, _ := encodeRelease(releaseStub("key-4", 1, "default", rspb.StatusDeployed))
-	body5, _ := encodeRelease(releaseStub("key-5", 1, "default", rspb.StatusSuperseded))
-	body6, _ := encodeRelease(releaseStub("key-6", 1, "default", rspb.StatusSuperseded))
+	releases := []*rspb.Release{}
+	releases = append(releases, releaseStub("key-1", 1, "default", rspb.StatusUninstalled))
+	releases = append(releases, releaseStub("key-2", 1, "default", rspb.StatusUninstalled))
+	releases = append(releases, releaseStub("key-3", 1, "default", rspb.StatusDeployed))
+	releases = append(releases, releaseStub("key-4", 1, "default", rspb.StatusDeployed))
+	releases = append(releases, releaseStub("key-5", 1, "default", rspb.StatusSuperseded))
+	releases = append(releases, releaseStub("key-6", 1, "default", rspb.StatusSuperseded))
 
 	sqlDriver, mock := newTestFixtureSQL(t)
 
 	for i := 0; i < 3; i++ {
 		query := fmt.Sprintf(
-			"SELECT %s FROM %s WHERE %s = $1 AND %s = $2",
+			"SELECT %s, %s, %s FROM %s WHERE %s = $1 AND %s = $2",
+			sqlReleaseTableKeyColumn,
+			sqlReleaseTableNamespaceColumn,
 			sqlReleaseTableBodyColumn,
 			sqlReleaseTableName,
 			sqlReleaseTableOwnerColumn,
 			sqlReleaseTableNamespaceColumn,
 		)
 
+		rows := mock.NewRows([]string{
+			sqlReleaseTableBodyColumn,
+		})
+		for _, r := range releases {
+			body, _ := encodeRelease(r)
+			rows.AddRow(body)
+		}
 		mock.
 			ExpectQuery(regexp.QuoteMeta(query)).
 			WithArgs(sqlReleaseDefaultOwner, sqlDriver.namespace).
-			WillReturnRows(
-				mock.NewRows([]string{
-					sqlReleaseTableBodyColumn,
-				}).
-					AddRow(body1).
-					AddRow(body2).
-					AddRow(body3).
-					AddRow(body4).
-					AddRow(body5).
-					AddRow(body6),
-			).RowsWillBeClosed()
+			WillReturnRows(rows).RowsWillBeClosed()
+
+		for _, r := range releases {
+			mockGetReleaseCustomLabels(mock, "", r.Namespace, r.Labels)
+		}
 	}
 
 	// list all deleted releases
@@ -181,6 +187,21 @@ func TestSqlCreate(t *testing.T) {
 		ExpectExec(regexp.QuoteMeta(query)).
 		WithArgs(key, sqlReleaseDefaultType, body, rel.Name, rel.Namespace, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, int(time.Now().Unix())).
 		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	labelsQuery := fmt.Sprintf(
+		"INSERT INTO %s (%s,%s,%s,%s) VALUES ($1,$2,$3,$4)",
+		sqlCustomLabelsTableName,
+		sqlCustomLabelsTableReleaseKeyColumn,
+		sqlCustomLabelsTableReleaseNamespaceColumn,
+		sqlCustomLabelsTableKeyColumn,
+		sqlCustomLabelsTableValueColumn,
+	)
+	for k, v := range rel.Labels {
+		mock.
+			ExpectExec(regexp.QuoteMeta(labelsQuery)).
+			WithArgs(key, rel.Namespace, k, v).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+	}
 	mock.ExpectCommit()
 
 	if err := sqlDriver.Create(key, rel); err != nil {
@@ -316,7 +337,9 @@ func TestSqlQuery(t *testing.T) {
 	sqlDriver, mock := newTestFixtureSQL(t)
 
 	query := fmt.Sprintf(
-		"SELECT %s FROM %s WHERE %s = $1 AND %s = $2 AND %s = $3 AND %s = $4",
+		"SELECT %s, %s, %s FROM %s WHERE %s = $1 AND %s = $2 AND %s = $3 AND %s = $4",
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableNamespaceColumn,
 		sqlReleaseTableBodyColumn,
 		sqlReleaseTableName,
 		sqlReleaseTableNameColumn,
@@ -345,8 +368,12 @@ func TestSqlQuery(t *testing.T) {
 			),
 		).RowsWillBeClosed()
 
+	mockGetReleaseCustomLabels(mock, "", deployedRelease.Namespace, deployedRelease.Labels)
+
 	query = fmt.Sprintf(
-		"SELECT %s FROM %s WHERE %s = $1 AND %s = $2 AND %s = $3",
+		"SELECT %s, %s, %s FROM %s WHERE %s = $1 AND %s = $2 AND %s = $3",
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableNamespaceColumn,
 		sqlReleaseTableBodyColumn,
 		sqlReleaseTableName,
 		sqlReleaseTableNameColumn,
@@ -366,6 +393,9 @@ func TestSqlQuery(t *testing.T) {
 				deployedReleaseBody,
 			),
 		).RowsWillBeClosed()
+
+	mockGetReleaseCustomLabels(mock, "", supersededRelease.Namespace, supersededRelease.Labels)
+	mockGetReleaseCustomLabels(mock, "", deployedRelease.Namespace, deployedRelease.Labels)
 
 	_, err := sqlDriver.Query(labelSetUnknown)
 	if err == nil {
@@ -447,6 +477,18 @@ func TestSqlDelete(t *testing.T) {
 		ExpectExec(regexp.QuoteMeta(deleteQuery)).
 		WithArgs(key, namespace).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	deleteLabelsQuery := fmt.Sprintf(
+		"DELETE FROM %s WHERE %s = $1 AND %s = $2",
+		sqlCustomLabelsTableName,
+		sqlCustomLabelsTableReleaseKeyColumn,
+		sqlCustomLabelsTableReleaseNamespaceColumn,
+	)
+	mock.
+		ExpectExec(regexp.QuoteMeta(deleteLabelsQuery)).
+		WithArgs(key, namespace).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
 	mock.ExpectCommit()
 
 	deletedRelease, err := sqlDriver.Delete(key)
@@ -460,4 +502,27 @@ func TestSqlDelete(t *testing.T) {
 	if !reflect.DeepEqual(rel, deletedRelease) {
 		t.Errorf("Expected release {%v}, got {%v}", rel, deletedRelease)
 	}
+}
+
+func mockGetReleaseCustomLabels(mock sqlmock.Sqlmock, key string, namespace string, labels map[string]string) {
+	query := fmt.Sprintf(
+		regexp.QuoteMeta("SELECT %s, %s FROM %s WHERE %s = $1 AND %s = $2"),
+		sqlCustomLabelsTableKeyColumn,
+		sqlCustomLabelsTableValueColumn,
+		sqlCustomLabelsTableName,
+		sqlCustomLabelsTableReleaseKeyColumn,
+		sqlCustomLabelsTableReleaseNamespaceColumn,
+	)
+
+	eq := mock.ExpectQuery(query).
+		WithArgs(key, namespace)
+
+	returnRows := mock.NewRows([]string{
+		sqlCustomLabelsTableKeyColumn,
+		sqlCustomLabelsTableValueColumn,
+	})
+	for k, v := range labels {
+		returnRows.AddRow(k, v)
+	}
+	eq.WillReturnRows(returnRows).RowsWillBeClosed()
 }
