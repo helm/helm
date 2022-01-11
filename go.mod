@@ -42,6 +42,6 @@ require (
 	k8s.io/client-go v0.23.1
 	k8s.io/klog/v2 v2.30.0
 	k8s.io/kubectl v0.23.1
-	oras.land/oras-go v1.1.0-rc2
+	oras.land/oras-go v1.1.0-rc3
 	sigs.k8s.io/yaml v1.3.0
 )
