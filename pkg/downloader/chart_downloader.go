@@ -139,12 +139,41 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 	return destfile, ver, nil
 }
 
+func (c *ChartDownloader) getOciUri(ref, version string, u *url.URL) (*url.URL, error) {
+	// Retrieve list of repository tags
+	tags, err := c.RegistryClient.Tags(ref)
+	if err != nil {
+		return nil, err
+	}
+	if len(tags) == 0 {
+		return nil, errors.Errorf("Unable to locate any tags in provided repository: %s", ref)
+	}
+
+	// Determine if version provided
+	// If empty, try to get the highest available tag
+	// If exact version, try to find it
+	// If semver constraint string, try to find a match
+	providedVersion := version
+
+	tag, err := registry.GetTagMatchingVersionOrConstraint(tags, providedVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO Find a net/url equivalent of this
+	//ref = fmt.Sprintf("%s:%s", ref, tag)
+	u.Path = fmt.Sprintf("%s:%s", u.Path, tag)
+
+	return u, err
+}
+
 // ResolveChartVersion resolves a chart reference to a URL.
 //
 // It returns the URL and sets the ChartDownloader's Options that can fetch
 // the URL using the appropriate Getter.
 //
-// A reference may be an HTTP URL, a 'reponame/chartname' reference, or a local path.
+// A reference may be an HTTP URL, an oci reference URL, a 'reponame/chartname'
+// reference, or a local path.
 //
 // A version is a SemVer string (1.2.3-beta.1+f334a6789).
 //
@@ -157,6 +186,10 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 	u, err := url.Parse(ref)
 	if err != nil {
 		return nil, errors.Errorf("invalid chart URL format: %s", ref)
+	}
+
+	if registry.IsOCI(u.Path) {
+		return c.getOciUri(ref, version, u)
 	}
 
 	rf, err := loadRepoConfig(c.RepositoryConfig)

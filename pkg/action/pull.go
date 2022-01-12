@@ -94,11 +94,6 @@ func (p *Pull) Run(chartRef string) (string, error) {
 	if registry.IsOCI(chartRef) {
 		c.Options = append(c.Options,
 			getter.WithRegistryClient(p.cfg.RegistryClient))
-
-		if p.Version != "" {
-			c.Options = append(c.Options,
-				getter.WithTagName(p.Version))
-		}
 	}
 
 	if p.Verify {
