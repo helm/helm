@@ -132,7 +132,7 @@ func TestInstallRelease_NoName(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected failure when no name is specified")
 	}
-	assert.Contains(t, err.Error(), "name is required")
+	assert.Contains(t, err.Error(), "no name provided")
 }
 
 func TestInstallRelease_WithNotes(t *testing.T) {

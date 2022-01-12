@@ -83,6 +83,13 @@ func outputFlagCompletionTest(t *testing.T, cmdName string) {
 		rels: releasesMockWithStatus(&release.Info{
 			Status: release.StatusDeployed,
 		}),
+	}, {
+		name:   "completion for output flag, no filter",
+		cmd:    fmt.Sprintf("__complete %s --output jso", cmdName),
+		golden: "output/output-comp.txt",
+		rels: releasesMockWithStatus(&release.Info{
+			Status: release.StatusDeployed,
+		}),
 	}}
 	runTestCmd(t, tests)
 }

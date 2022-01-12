@@ -19,7 +19,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/gosuri/uitable"
 	"github.com/pkg/errors"
@@ -131,9 +130,7 @@ func compListRepos(prefix string, ignoredRepoNames []string) []string {
 	if err == nil && len(f.Repositories) > 0 {
 		filteredRepos := filterRepos(f.Repositories, ignoredRepoNames)
 		for _, repo := range filteredRepos {
-			if strings.HasPrefix(repo.Name, prefix) {
-				rNames = append(rNames, fmt.Sprintf("%s\t%s", repo.Name, repo.URL))
-			}
+			rNames = append(rNames, fmt.Sprintf("%s\t%s", repo.Name, repo.URL))
 		}
 	}
 	return rNames
