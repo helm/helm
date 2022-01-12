@@ -154,9 +154,7 @@ func (c *ChartDownloader) getOciURI(ref, version string, u *url.URL) (*url.URL, 
 	// If empty, try to get the highest available tag
 	// If exact version, try to find it
 	// If semver constraint string, try to find a match
-	providedVersion := version
-
-	tag, err := registry.GetTagMatchingVersionOrConstraint(tags, providedVersion)
+	tag, err := registry.GetTagMatchingVersionOrConstraint(tags, version)
 	if err != nil {
 		return nil, err
 	}
