@@ -23,6 +23,8 @@ import (
 	"io"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	orascontext "oras.land/oras-go/pkg/context"
 	"oras.land/oras-go/pkg/registry"
@@ -34,6 +36,53 @@ import (
 // IsOCI determines whether or not a URL is to be treated as an OCI URL
 func IsOCI(url string) bool {
 	return strings.HasPrefix(url, fmt.Sprintf("%s://", OCIScheme))
+}
+
+// ContainsTag determines whether a tag is found in a provided list of tags
+func ContainsTag(tags []string, tag string) bool {
+	for _, t := range tags {
+		if tag == t {
+			return true
+		}
+	}
+	return false
+}
+
+func GetTagMatchingVersionOrConstraint(tags []string, versionString string) (string, error) {
+	var constraint *semver.Constraints
+	if versionString == "" {
+		// If string is empty, set wildcard constraint
+		constraint, _ = semver.NewConstraint("*")
+	} else {
+		// when customer input exact version, check whether have exact match
+		// one first
+		for _, v := range tags {
+			if versionString == v {
+				return v, nil
+			}
+		}
+
+		// Otherwise set constraint to the string given
+		var err error
+		constraint, err = semver.NewConstraint(versionString)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	// Otherwise try to find the first available version matching the string,
+	// in case it is a constraint
+	for _, v := range tags {
+		test, err := semver.NewVersion(v)
+		if err != nil {
+			continue
+		}
+		if constraint.Check(test) {
+			return v, nil
+		}
+	}
+
+	return "", errors.Errorf("Could not locate a version matching provided version string %s", versionString)
 }
 
 // extractChartMeta is used to extract a chart metadata from a byte array

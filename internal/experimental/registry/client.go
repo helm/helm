@@ -17,13 +17,16 @@ limitations under the License.
 package registry // import "helm.sh/helm/v3/internal/experimental/registry"
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"sort"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/containerd/containerd/remotes"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
@@ -31,6 +34,9 @@ import (
 	dockerauth "oras.land/oras-go/pkg/auth/docker"
 	"oras.land/oras-go/pkg/content"
 	"oras.land/oras-go/pkg/oras"
+	"oras.land/oras-go/pkg/registry"
+	registryremote "oras.land/oras-go/pkg/registry/remote"
+	registryauth "oras.land/oras-go/pkg/registry/remote/auth"
 
 	"helm.sh/helm/v3/internal/version"
 	"helm.sh/helm/v3/pkg/chart"
@@ -49,10 +55,11 @@ type (
 	Client struct {
 		debug bool
 		// path to repository config file e.g. ~/.docker/config.json
-		credentialsFile string
-		out             io.Writer
-		authorizer      auth.Client
-		resolver        remotes.Resolver
+		credentialsFile    string
+		out                io.Writer
+		authorizer         auth.Client
+		registryAuthorizer *registryauth.Client
+		resolver           remotes.Resolver
 	}
 
 	// ClientOption allows specifying various settings configurable by the user for overriding the defaults
@@ -87,6 +94,32 @@ func NewClient(options ...ClientOption) (*Client, error) {
 			return nil, err
 		}
 		client.resolver = resolver
+	}
+	if client.registryAuthorizer == nil {
+		client.registryAuthorizer = &registryauth.Client{
+			Header: http.Header{
+				"User-Agent": {version.GetUserAgent()},
+			},
+			Cache: registryauth.DefaultCache,
+			Credential: func(ctx context.Context, reg string) (registryauth.Credential, error) {
+				dockerClient, ok := client.authorizer.(*dockerauth.Client)
+				if !ok {
+					return registryauth.EmptyCredential, errors.New("unable to obtain docker client")
+				}
+
+				username, password, err := dockerClient.Credential(reg)
+				if err != nil {
+					return registryauth.EmptyCredential, errors.New("unable to retrieve credentials")
+				}
+
+				return registryauth.Credential{
+					Username: username,
+					Password: password,
+				}, nil
+
+			},
+		}
+
 	}
 	return client, nil
 }
@@ -538,4 +571,56 @@ func PushOptStrictMode(strictMode bool) PushOption {
 	return func(operation *pushOperation) {
 		operation.strictMode = strictMode
 	}
+}
+
+// Tags provides a sorted list all semver compliant tags for a given repository
+func (c *Client) Tags(ref string) ([]string, error) {
+	parsedReference, err := registry.ParseReference(ref)
+	if err != nil {
+		return nil, err
+	}
+
+	repository := registryremote.Repository{
+		Reference: parsedReference,
+		Client:    c.registryAuthorizer,
+	}
+
+	var registryTags []string
+
+	for {
+		registryTags, err = registry.Tags(ctx(c.out, c.debug), &repository)
+		if err != nil {
+			// Fallback to http based request
+			if !repository.PlainHTTP && strings.Contains(err.Error(), "server gave HTTP response") {
+				repository.PlainHTTP = true
+				continue
+			}
+			return nil, err
+		}
+
+		break
+
+	}
+
+	var tagVersions []*semver.Version
+	for _, tag := range registryTags {
+		// Change underscore (_) back to plus (+) for Helm
+		// See https://github.com/helm/helm/issues/10166
+		tagVersion, err := semver.StrictNewVersion(strings.ReplaceAll(tag, "_", "+"))
+		if err == nil {
+			tagVersions = append(tagVersions, tagVersion)
+		}
+	}
+
+	// Sort the collection
+	sort.Sort(sort.Reverse(semver.Collection(tagVersions)))
+
+	tags := make([]string, len(tagVersions))
+
+	for iTv, tv := range tagVersions {
+		tags[iTv] = tv.String()
+	}
+
+	return tags, nil
+
 }
