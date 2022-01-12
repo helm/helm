@@ -76,7 +76,7 @@ func main() {
 	// run when each command's execute method is called
 	cobra.OnInitialize(func() {
 		helmDriver := os.Getenv("HELM_DRIVER")
-		if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), helmDriver, debug); err != nil {
+		if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), helmDriver, debug, actionConfig.GetHookLogFromRealCluster); err != nil {
 			log.Fatal(err)
 		}
 		if helmDriver == "memory" {

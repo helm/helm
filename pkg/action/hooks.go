@@ -85,11 +85,11 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		h.LastRun.CompletedAt = helmtime.Now()
 
 		if isTestHook(h) {
-			hookLog, err := cfg.GetHookLog(rl, h)
+			hookLog, err := cfg.HookLogGetter(rl, h)
 			if err != nil {
 				return err
 			}
-			h.LastRun.Log = &hookLog
+			h.LastRun.Log = hookLog
 		}
 
 		// Mark hook as succeeded or failed

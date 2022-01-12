@@ -94,9 +94,15 @@ func TestReleaseTestingYamlOutput(t *testing.T) {
 
 	tests := []cmdTestCase{
 		{
-			name:   "test with yaml output format",
+			name:   "test with yaml output format without logs",
 			cmd:    "test doge --output yaml",
-			golden: "output/test-output-yaml.txt",
+			golden: "output/test-output-yaml-without-logs.txt",
+			rels:   mockReleases,
+		},
+		{
+			name:   "test with yaml output format with logs",
+			cmd:    "test doge --output yaml --logs",
+			golden: "output/test-output-yaml-with-logs.txt",
 			rels:   mockReleases,
 		},
 	}

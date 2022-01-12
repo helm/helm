@@ -120,8 +120,9 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 		KubeClient:   &kubefake.PrintingKubeClient{Out: ioutil.Discard},
 		Capabilities: chartutil.DefaultCapabilities,
 		Log:          func(format string, v ...interface{}) {},
-		GetHookLog: func(rel *release.Release, hook *release.Hook) (release.HookLog, error) {
-			return release.HookLog("example test pod log output"), nil
+		HookLogGetter: func(rel *release.Release, hook *release.Hook) (*release.HookLog, error) {
+			hookLog := release.HookLog("example test pod log output")
+			return &hookLog, nil
 		},
 	}
 

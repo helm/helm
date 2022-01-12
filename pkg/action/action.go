@@ -99,8 +99,10 @@ type Configuration struct {
 
 	Log func(string, ...interface{})
 
-	GetHookLog func(rel *release.Release, hook *release.Hook) (release.HookLog, error)
+	HookLogGetter HookLogGetter
 }
+
+type HookLogGetter func(rel *release.Release, hook *release.Hook) (*release.HookLog, error)
 
 // renderResources renders the templates in a chart
 //
@@ -281,9 +283,14 @@ func (cfg *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 	return cfg.Capabilities, nil
 }
 
-// getHookLogFromCluster gets the log from the pod associated with the given hook, which is expected to be a test hook.
-func (cfg *Configuration) getHookLogFromCluster(rel *release.Release, hook *release.Hook) (release.HookLog, error) {
-	var nothing release.HookLog
+// GetNoHookLogAtAll doesn't get any log.
+func (cfg *Configuration) GetNoHookLogAtAll(rel *release.Release, hook *release.Hook) (*release.HookLog, error) {
+	return nil, nil
+}
+
+// GetHookLogFromRealCluster gets the log from the pod associated with the given hook, which is expected to be a test hook.
+func (cfg *Configuration) GetHookLogFromRealCluster(rel *release.Release, hook *release.Hook) (*release.HookLog, error) {
+	var nothing *release.HookLog
 	client, err := cfg.KubernetesClientSet()
 	if err != nil {
 		return nothing, errors.Wrapf(err, "unable to create Kubernetes client set to fetch pod logs")
@@ -298,7 +305,8 @@ func (cfg *Configuration) getHookLogFromCluster(rel *release.Release, hook *rele
 	if err != nil {
 		return nothing, errors.Wrapf(err, "unable to get pod logs for %s", hook.Name)
 	}
-	return release.HookLog(stringBuilder.String()), nil
+	hookLog := release.HookLog(stringBuilder.String())
+	return &hookLog, nil
 }
 
 // KubernetesClientSet creates a new kubernetes ClientSet based on the configuration
@@ -387,7 +395,7 @@ func (cfg *Configuration) recordRelease(r *release.Release) {
 }
 
 // Init initializes the action configuration
-func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namespace, helmDriver string, log DebugLog) error {
+func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namespace, helmDriver string, log DebugLog, hookLogGetter HookLogGetter) error {
 	kc := kube.New(getter)
 	kc.Log = log
 
@@ -440,7 +448,7 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 	cfg.KubeClient = kc
 	cfg.Releases = store
 	cfg.Log = log
-	cfg.GetHookLog = cfg.getHookLogFromCluster
+	cfg.HookLogGetter = hookLogGetter
 
 	return nil
 }

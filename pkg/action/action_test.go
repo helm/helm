@@ -50,8 +50,9 @@ func actionConfigFixture(t *testing.T) *Configuration {
 		t.Fatal(err)
 	}
 
-	mockHookLogGetter := func(rel *release.Release, hook *release.Hook) (release.HookLog, error) {
-		return release.HookLog("example test pod log output"), nil
+	mockHookLogGetter := func(rel *release.Release, hook *release.Hook) (*release.HookLog, error) {
+		hookLog := release.HookLog("example test pod log output")
+		return &hookLog, nil
 	}
 
 	return &Configuration{
@@ -65,7 +66,7 @@ func actionConfigFixture(t *testing.T) *Configuration {
 				t.Logf(format, v...)
 			}
 		},
-		GetHookLog: mockHookLogGetter,
+		HookLogGetter: mockHookLogGetter,
 	}
 }
 

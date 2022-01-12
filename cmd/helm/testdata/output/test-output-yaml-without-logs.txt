@@ -1,0 +1,41 @@
+chart:
+  files: null
+  lock: null
+  metadata:
+    appVersion: "1.0"
+    name: foo
+    version: 0.1.0-beta.1
+  schema: null
+  templates:
+  - data: YXBpVmVyc2lvbjogdjEKa2luZDogU2VjcmV0Cm1ldGFkYXRhOgogIG5hbWU6IGZpeHR1cmUK
+    name: templates/foo.tpl
+  values: null
+config:
+  name: value
+hooks:
+- delete_policies:
+  - before-hook-creation
+  events:
+  - test
+  kind: Pod
+  last_run:
+    completed_at: "2021-04-20T14:00:00.000001337Z"
+    phase: Succeeded
+    started_at: "2021-04-20T13:37:00.000001337Z"
+  name: doge-test-pod
+  path: doge-test-pod
+info:
+  deleted: ""
+  description: Release mock
+  first_deployed: "1977-09-02T22:04:05Z"
+  last_deployed: "1977-09-02T22:04:05Z"
+  notes: Some mock release notes!
+  status: deployed
+manifest: |
+  apiVersion: v1
+  kind: Secret
+  metadata:
+    name: fixture
+name: doge
+namespace: default
+version: 1

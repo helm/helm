@@ -102,11 +102,11 @@ func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
 func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 	for _, h := range rel.Hooks {
 		if isTestHook(h) {
-			hookLog, err := r.cfg.GetHookLog(rel, h)
+			hookLog, err := r.cfg.HookLogGetter(rel, h)
 			if err != nil {
 				return err
 			}
-			_, err = fmt.Fprintf(out, "POD LOGS: %s\n%s\n", h.Name, string(hookLog))
+			_, err = fmt.Fprintf(out, "POD LOGS: %s\n%s\n", h.Name, string(*hookLog))
 			if err != nil {
 				return errors.Wrapf(err, "unable to write pod logs for %s", h.Name)
 			}
