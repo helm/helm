@@ -18,6 +18,7 @@ package resolver
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -144,7 +145,8 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 
 			// Retrieve list of tags for repository
 			ref := fmt.Sprintf("%s/%s", strings.TrimPrefix(d.Repository, fmt.Sprintf("%s://", registry.OCIScheme)), d.Name)
-			tags, err := r.registryClient.Tags(ref)			if err != nil {
+			tags, err := r.registryClient.Tags(ref)
+			if err != nil {
 				return nil, errors.Wrapf(err, "could not retrieve list of tags for repository %s", d.Repository)
 			}
 
