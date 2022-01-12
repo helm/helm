@@ -604,7 +604,9 @@ func (c *Client) Tags(ref string) ([]string, error) {
 
 	var tagVersions []*semver.Version
 	for _, tag := range registryTags {
-		tagVersion, err := semver.StrictNewVersion(tag)
+		// Change underscore (_) back to plus (+) for Helm
+		// See https://github.com/helm/helm/issues/10166
+		tagVersion, err := semver.StrictNewVersion(strings.ReplaceAll(tag, "_", "+"))
 		if err == nil {
 			tagVersions = append(tagVersions, tagVersion)
 		}
