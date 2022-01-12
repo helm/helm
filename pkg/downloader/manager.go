@@ -344,11 +344,6 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 
 		version := ""
 		if registry.IsOCI(churl) {
-			if !resolver.FeatureGateOCI.IsEnabled() {
-				return errors.Wrapf(resolver.FeatureGateOCI.Error(),
-					"the repository %s is an OCI registry", churl)
-			}
-
 			churl, version, err = parseOCIRef(churl)
 			if err != nil {
 				return errors.Wrapf(err, "could not parse OCI reference")

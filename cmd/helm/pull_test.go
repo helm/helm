@@ -34,7 +34,6 @@ func TestPullCmd(t *testing.T) {
 	}
 	defer srv.Stop()
 
-	os.Setenv("HELM_EXPERIMENTAL_OCI", "1")
 	ociSrv, err := repotest.NewOCIServer(t, srv.Root())
 	if err != nil {
 		t.Fatal(err)

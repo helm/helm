@@ -297,7 +297,7 @@ func (suite *RegistryClientTestSuite) Test_2_Pull() {
 func (suite *RegistryClientTestSuite) Test_3_Tags() {
 
 	// Load test chart (to build ref pushed in previous test)
-	chartData, err := ioutil.ReadFile("../../../pkg/downloader/testdata/local-subchart-0.1.0.tgz")
+	chartData, err := ioutil.ReadFile("../downloader/testdata/local-subchart-0.1.0.tgz")
 	suite.Nil(err, "no error loading test chart")
 	meta, err := extractChartMeta(chartData)
 	suite.Nil(err, "no error extracting chart meta")

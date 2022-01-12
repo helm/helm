@@ -198,10 +198,6 @@ func runShow(args []string, client *action.Show) (string, error) {
 		client.Version = ">0.0.0-0"
 	}
 
-	if err := checkOCI(args[0]); err != nil {
-		return "", err
-	}
-
 	cp, err := client.ChartPathOptions.LocateChart(args[0], settings)
 	if err != nil {
 		return "", err

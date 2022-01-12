@@ -38,12 +38,10 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := experimental.NewPushWithOpts(experimental.WithPushConfig(cfg))
 
 	cmd := &cobra.Command{
-		Use:               "push [chart] [remote]",
-		Short:             "push a chart to remote",
-		Long:              pushDesc,
-		Hidden:            !FeatureGateOCI.IsEnabled(),
-		PersistentPreRunE: checkOCIFeatureGate(),
-		Args:              require.MinimumNArgs(2),
+		Use:   "push [chart] [remote]",
+		Short: "push a chart to remote",
+		Long:  pushDesc,
+		Args:  require.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			chartRef := args[0]
 			remote := args[1]
