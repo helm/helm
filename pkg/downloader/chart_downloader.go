@@ -141,7 +141,7 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 
 func (c *ChartDownloader) getOciURI(ref, version string, u *url.URL) (*url.URL, error) {
 	// Retrieve list of repository tags
-	tags, err := c.RegistryClient.Tags(ref)
+	tags, err := c.RegistryClient.Tags(strings.TrimPrefix(ref, fmt.Sprintf("%s://", registry.OCIScheme)))
 	if err != nil {
 		return nil, err
 	}
@@ -160,8 +160,6 @@ func (c *ChartDownloader) getOciURI(ref, version string, u *url.URL) (*url.URL, 
 		return nil, err
 	}
 
-	// TODO Find a net/url equivalent of this
-	//ref = fmt.Sprintf("%s:%s", ref, tag)
 	u.Path = fmt.Sprintf("%s:%s", u.Path, tag)
 
 	return u, err
@@ -188,7 +186,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 		return nil, errors.Errorf("invalid chart URL format: %s", ref)
 	}
 
-	if registry.IsOCI(u.Path) {
+	if registry.IsOCI(u.String()) {
 		return c.getOciURI(ref, version, u)
 	}
 
