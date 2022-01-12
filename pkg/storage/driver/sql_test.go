@@ -196,7 +196,7 @@ func TestSqlCreate(t *testing.T) {
 		sqlCustomLabelsTableKeyColumn,
 		sqlCustomLabelsTableValueColumn,
 	)
-	for k, v := range rel.Labels {
+	for k, v := range filterSystemLabels(rel.Labels) {
 		mock.
 			ExpectExec(regexp.QuoteMeta(labelsQuery)).
 			WithArgs(key, rel.Namespace, k, v).
@@ -477,6 +477,8 @@ func TestSqlDelete(t *testing.T) {
 		ExpectExec(regexp.QuoteMeta(deleteQuery)).
 		WithArgs(key, namespace).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	mockGetReleaseCustomLabels(mock, key, namespace, rel.Labels)
 
 	deleteLabelsQuery := fmt.Sprintf(
 		"DELETE FROM %s WHERE %s = $1 AND %s = $2",

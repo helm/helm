@@ -226,6 +226,9 @@ func newSecretsObject(key string, rls *rspb.Release, lbs labels) (*v1.Secret, er
 		lbs.init()
 	}
 
+	// apply custom labels
+	lbs.fromMap(rls.Labels)
+
 	// apply labels
 	lbs.set("name", rls.Name)
 	lbs.set("owner", owner)

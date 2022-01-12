@@ -34,8 +34,8 @@ func TestIsSystemLabel(t *testing.T) {
 
 func TestFilterSystemLabels(t *testing.T) {
 	var tests = [][2]map[string]string{
-		{nil, nil},
-		{map[string]string{}, nil},
+		{nil, map[string]string{}},
+		{map[string]string{}, map[string]string{}},
 		{map[string]string{
 			"name":       "name",
 			"owner":      "owner",
@@ -43,7 +43,7 @@ func TestFilterSystemLabels(t *testing.T) {
 			"version":    "version",
 			"createdAt":  "createdAt",
 			"modifiedAt": "modifiedAt",
-		}, nil},
+		}, map[string]string{}},
 		{map[string]string{
 			"StaTus": "status",
 			"name":   "name",

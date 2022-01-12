@@ -598,6 +598,11 @@ func (s *SQL) Delete(key string) (*rspb.Release, error) {
 		return release, err
 	}
 
+	if release.Labels, err = s.getReleaseCustomLabels(key, s.namespace); err != nil {
+		s.Log("failed to get release %s/%s custom labels: %v", s.namespace, key, err)
+		return nil, err
+	}
+
 	deleteCustomLabelsQuery, args, err := s.statementBuilder.
 		Delete(sqlCustomLabelsTableName).
 		Where(sq.Eq{sqlCustomLabelsTableReleaseKeyColumn: key}).

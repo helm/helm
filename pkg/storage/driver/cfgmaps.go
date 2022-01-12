@@ -244,6 +244,9 @@ func newConfigMapsObject(key string, rls *rspb.Release, lbs labels) (*v1.ConfigM
 		lbs.init()
 	}
 
+	// apply custom labels
+	lbs.fromMap(rls.Labels)
+
 	// apply labels
 	lbs.set("name", rls.Name)
 	lbs.set("owner", owner)
