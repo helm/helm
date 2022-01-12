@@ -143,8 +143,8 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 			}
 
 			// Retrieve list of tags for repository
-			tags, err := r.registryClient.Tags(d.Repository)
-			if err != nil {
+			ref := fmt.Sprintf("%s/%s", strings.TrimPrefix(d.Repository, fmt.Sprintf("%s://", registry.OCIScheme)), d.Name)
+			tags, err := r.registryClient.Tags(ref)			if err != nil {
 				return nil, errors.Wrapf(err, "could not retrieve list of tags for repository %s", d.Repository)
 			}
 
