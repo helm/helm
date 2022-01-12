@@ -139,7 +139,7 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 	return destfile, ver, nil
 }
 
-func (c *ChartDownloader) getOciUri(ref, version string, u *url.URL) (*url.URL, error) {
+func (c *ChartDownloader) getOciURI(ref, version string, u *url.URL) (*url.URL, error) {
 	// Retrieve list of repository tags
 	tags, err := c.RegistryClient.Tags(ref)
 	if err != nil {
@@ -189,7 +189,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 	}
 
 	if registry.IsOCI(u.Path) {
-		return c.getOciUri(ref, version, u)
+		return c.getOciURI(ref, version, u)
 	}
 
 	rf, err := loadRepoConfig(c.RepositoryConfig)
