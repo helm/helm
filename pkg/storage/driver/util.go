@@ -104,10 +104,5 @@ func filterSystemLabels(lbs map[string]string) map[string]string {
 			result[k] = v
 		}
 	}
-
-	// Workaround to make tests work while labels storage is not implemented for SQL storage driver
-	if len(result) == 0 {
-		return nil
-	}
 	return result
 }
