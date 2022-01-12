@@ -103,7 +103,8 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 
 	name := filepath.Base(u.Path)
 	if u.Scheme == registry.OCIScheme {
-		name = fmt.Sprintf("%s-%s.tgz", name, version)
+		idx := strings.LastIndexByte(name, ':')
+		name = fmt.Sprintf("%s-%s.tgz", name[:idx], name[idx+1:])
 	}
 
 	destfile := filepath.Join(dest, name)
