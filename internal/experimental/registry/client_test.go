@@ -294,7 +294,23 @@ func (suite *RegistryClientTestSuite) Test_2_Pull() {
 	suite.Equal(provData, result.Prov.Data)
 }
 
-func (suite *RegistryClientTestSuite) Test_3_Logout() {
+func (suite *RegistryClientTestSuite) Test_3_Tags() {
+
+	// Load test chart (to build ref pushed in previous test)
+	chartData, err := ioutil.ReadFile("../../../pkg/downloader/testdata/local-subchart-0.1.0.tgz")
+	suite.Nil(err, "no error loading test chart")
+	meta, err := extractChartMeta(chartData)
+	suite.Nil(err, "no error extracting chart meta")
+	ref := fmt.Sprintf("%s/testrepo/%s", suite.DockerRegistryHost, meta.Name)
+
+	// Query for tags and validate length
+	tags, err := suite.RegistryClient.Tags(ref)
+	suite.Nil(err, "no error retrieving tags")
+	suite.Equal(1, len(tags))
+
+}
+
+func (suite *RegistryClientTestSuite) Test_4_Logout() {
 	err := suite.RegistryClient.Logout("this-host-aint-real:5000")
 	suite.NotNil(err, "error logging out of registry that has no entry")
 
@@ -302,7 +318,7 @@ func (suite *RegistryClientTestSuite) Test_3_Logout() {
 	suite.Nil(err, "no error logging out of registry")
 }
 
-func (suite *RegistryClientTestSuite) Test_4_ManInTheMiddle() {
+func (suite *RegistryClientTestSuite) Test_5_ManInTheMiddle() {
 	ref := fmt.Sprintf("%s/testrepo/supposedlysafechart:9.9.9", suite.CompromisedRegistryHost)
 
 	// returns content that does not match the expected digest

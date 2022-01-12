@@ -17,6 +17,7 @@ limitations under the License.
 package registry // import "helm.sh/helm/v3/internal/experimental/registry"
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -34,7 +35,7 @@ import (
 	"oras.land/oras-go/pkg/content"
 	"oras.land/oras-go/pkg/oras"
 	"oras.land/oras-go/pkg/registry"
-	registrremote "oras.land/oras-go/pkg/registry/remote"
+	registryremote "oras.land/oras-go/pkg/registry/remote"
 	registryauth "oras.land/oras-go/pkg/registry/remote/auth"
 
 	"helm.sh/helm/v3/internal/version"
@@ -100,6 +101,23 @@ func NewClient(options ...ClientOption) (*Client, error) {
 				"User-Agent": {version.GetUserAgent()},
 			},
 			Cache: registryauth.DefaultCache,
+			Credential: func(ctx context.Context, reg string) (registryauth.Credential, error) {
+				dockerClient, ok := client.authorizer.(*dockerauth.Client)
+				if !ok {
+					return registryauth.EmptyCredential, errors.New("unable to obtain docker client")
+				}
+
+				username, password, err := dockerClient.Credential(reg)
+				if err != nil {
+					return registryauth.EmptyCredential, errors.New("unable to retrieve credentials")
+				}
+
+				return registryauth.Credential{
+					Username: username,
+					Password: password,
+				}, nil
+
+			},
 		}
 
 	}
@@ -555,21 +573,33 @@ func PushOptStrictMode(strictMode bool) PushOption {
 	}
 }
 
-// Tags provides an all semver compliant tags for a given repository
+// Tags provides a sorted list all semver compliant tags for a given repository
 func (c *Client) Tags(ref string) ([]string, error) {
 	parsedReference, err := registry.ParseReference(ref)
 	if err != nil {
 		return nil, err
 	}
 
-	repository := registrremote.Repository{
+	repository := registryremote.Repository{
 		Reference: parsedReference,
 		Client:    c.registryAuthorizer,
 	}
 
-	registryTags, err := registry.Tags(ctx(c.out, c.debug), &repository)
-	if err != nil {
-		return nil, err
+	var registryTags []string
+
+	for {
+		registryTags, err = registry.Tags(ctx(c.out, c.debug), &repository)
+		if err != nil {
+			// Fallback to http based request
+			if !repository.PlainHTTP && strings.Contains(err.Error(), "server gave HTTP response") {
+				repository.PlainHTTP = true
+				continue
+			}
+			return nil, err
+		}
+
+		break
+
 	}
 
 	var tagVersions []*semver.Version
