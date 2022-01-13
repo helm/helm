@@ -29,8 +29,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/registry"
 	"helm.sh/helm/v3/pkg/repo"
 )
 
@@ -193,7 +193,6 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		newDocsCmd(out),
 	)
 
-	// Add *experimental* subcommands
 	cmd.AddCommand(
 		newRegistryCmd(actionConfig, out),
 		newPushCmd(actionConfig, out),
@@ -257,13 +256,4 @@ func checkForExpiredRepos(repofile string) {
 		}
 	}
 
-}
-
-// When dealing with OCI-based charts, ensure that the user has
-// enabled the experimental feature gate prior to continuing
-func checkOCI(ref string) error {
-	if registry.IsOCI(ref) && !FeatureGateOCI.IsEnabled() {
-		return FeatureGateOCI.Error()
-	}
-	return nil
 }

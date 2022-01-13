@@ -14,30 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package action
 
 import (
 	"io"
-
-	"github.com/spf13/cobra"
-
-	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/pkg/action"
 )
 
-const registryLogoutDesc = `
-Remove credentials stored for a remote registry.
-`
+// RegistryLogout performs a registry login operation.
+type RegistryLogout struct {
+	cfg *Configuration
+}
 
-func newRegistryLogoutCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
-	return &cobra.Command{
-		Use:   "logout [host]",
-		Short: "logout from a registry",
-		Long:  registryLogoutDesc,
-		Args:  require.MinimumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			hostname := args[0]
-			return action.NewRegistryLogout(cfg).Run(out, hostname)
-		},
+// NewRegistryLogout creates a new RegistryLogout object with the given configuration.
+func NewRegistryLogout(cfg *Configuration) *RegistryLogout {
+	return &RegistryLogout{
+		cfg: cfg,
 	}
+}
+
+// Run executes the registry logout operation
+func (a *RegistryLogout) Run(out io.Writer, hostname string) error {
+	return a.cfg.RegistryClient.Logout(hostname)
 }

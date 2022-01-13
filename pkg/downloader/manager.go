@@ -34,7 +34,6 @@ import (
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/internal/resolver"
 	"helm.sh/helm/v3/internal/third_party/dep/fs"
 	"helm.sh/helm/v3/internal/urlutil"
@@ -43,6 +42,7 @@ import (
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/helmpath"
+	"helm.sh/helm/v3/pkg/registry"
 	"helm.sh/helm/v3/pkg/repo"
 )
 
@@ -344,11 +344,6 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 
 		version := ""
 		if registry.IsOCI(churl) {
-			if !resolver.FeatureGateOCI.IsEnabled() {
-				return errors.Wrapf(resolver.FeatureGateOCI.Error(),
-					"the repository %s is an OCI registry", churl)
-			}
-
 			churl, version, err = parseOCIRef(churl)
 			if err != nil {
 				return errors.Wrapf(err, "could not parse OCI reference")

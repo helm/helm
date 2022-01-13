@@ -29,7 +29,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
-	experimental "helm.sh/helm/v3/internal/experimental/action"
 	"helm.sh/helm/v3/pkg/action"
 )
 
@@ -42,11 +41,10 @@ func newRegistryLoginCmd(cfg *action.Configuration, out io.Writer) *cobra.Comman
 	var passwordFromStdinOpt, insecureOpt bool
 
 	cmd := &cobra.Command{
-		Use:    "login [host]",
-		Short:  "login to a registry",
-		Long:   registryLoginDesc,
-		Args:   require.MinimumNArgs(1),
-		Hidden: !FeatureGateOCI.IsEnabled(),
+		Use:   "login [host]",
+		Short: "login to a registry",
+		Long:  registryLoginDesc,
+		Args:  require.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hostname := args[0]
 
@@ -55,7 +53,7 @@ func newRegistryLoginCmd(cfg *action.Configuration, out io.Writer) *cobra.Comman
 				return err
 			}
 
-			return experimental.NewRegistryLogin(cfg).Run(out, hostname, username, password, insecureOpt)
+			return action.NewRegistryLogin(cfg).Run(out, hostname, username, password, insecureOpt)
 		},
 	}
 

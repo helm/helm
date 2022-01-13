@@ -51,11 +51,6 @@ func TestDependencyUpdateCmd(t *testing.T) {
 	}
 	ociSrv.Run(t, repotest.WithDependingChart(c))
 
-	err = os.Setenv("HELM_EXPERIMENTAL_OCI", "1")
-	if err != nil {
-		t.Fatal("failed to set environment variable enabling OCI support")
-	}
-
 	if err := srv.LinkIndices(); err != nil {
 		t.Fatal(err)
 	}
