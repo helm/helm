@@ -19,10 +19,10 @@ package action
 import (
 	"strings"
 
-	"helm.sh/helm/v3/pkg/action/pusher"
-	"helm.sh/helm/v3/pkg/action/uploader"
 	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v3/pkg/pusher"
 	"helm.sh/helm/v3/pkg/registry"
+	"helm.sh/helm/v3/pkg/uploader"
 )
 
 // Push is the action for uploading a chart.
