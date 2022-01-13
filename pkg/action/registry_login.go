@@ -19,22 +19,25 @@ package action
 import (
 	"io"
 
-	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/registry"
 )
 
-// RegistryLogout performs a registry login operation.
-type RegistryLogout struct {
-	cfg *action.Configuration
+// RegistryLogin performs a registry login operation.
+type RegistryLogin struct {
+	cfg *Configuration
 }
 
-// NewRegistryLogout creates a new RegistryLogout object with the given configuration.
-func NewRegistryLogout(cfg *action.Configuration) *RegistryLogout {
-	return &RegistryLogout{
+// NewRegistryLogin creates a new RegistryLogin object with the given configuration.
+func NewRegistryLogin(cfg *Configuration) *RegistryLogin {
+	return &RegistryLogin{
 		cfg: cfg,
 	}
 }
 
-// Run executes the registry logout operation
-func (a *RegistryLogout) Run(out io.Writer, hostname string) error {
-	return a.cfg.RegistryClient.Logout(hostname)
+// Run executes the registry login operation
+func (a *RegistryLogin) Run(out io.Writer, hostname string, username string, password string, insecure bool) error {
+	return a.cfg.RegistryClient.Login(
+		hostname,
+		registry.LoginOptBasicAuth(username, password),
+		registry.LoginOptInsecure(insecure))
 }
