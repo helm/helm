@@ -75,6 +75,7 @@ func main() {
 		if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), helmDriver, debug); err != nil {
 			log.Fatal(err)
 		}
+		actionConfig.HookLogGetter = actionConfig.GetHookLogFromRealCluster
 		if helmDriver == "memory" {
 			loadReleasesInMemory(actionConfig)
 		}

@@ -47,6 +47,13 @@ func init() {
 
 func runTestCmd(t *testing.T, tests []cmdTestCase) {
 	t.Helper()
+	runTestCmdWithCustomAssertion(t, tests, func(actualOutput, expectedFilename string) {
+		test.AssertGoldenString(t, actualOutput, expectedFilename)
+	})
+}
+
+func runTestCmdWithCustomAssertion(t *testing.T, tests []cmdTestCase, assertion func(actualOutput, expectedFilename string)) {
+	t.Helper()
 	for _, tt := range tests {
 		for i := 0; i <= tt.repeat; i++ {
 			t.Run(tt.name, func(t *testing.T) {
@@ -64,7 +71,7 @@ func runTestCmd(t *testing.T, tests []cmdTestCase) {
 					t.Errorf("expected error, got '%v'", err)
 				}
 				if tt.golden != "" {
-					test.AssertGoldenString(t, out, tt.golden)
+					assertion(out, tt.golden)
 				}
 			})
 		}
@@ -109,10 +116,11 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 	buf := new(bytes.Buffer)
 
 	actionConfig := &action.Configuration{
-		Releases:     store,
-		KubeClient:   &kubefake.PrintingKubeClient{Out: ioutil.Discard},
-		Capabilities: chartutil.DefaultCapabilities,
-		Log:          func(format string, v ...interface{}) {},
+		Releases:      store,
+		KubeClient:    &kubefake.PrintingKubeClient{Out: ioutil.Discard},
+		Capabilities:  chartutil.DefaultCapabilities,
+		Log:           func(format string, v ...interface{}) {},
+		HookLogGetter: test.GetMockedHookLog,
 	}
 
 	root, err := newRootCmd(actionConfig, buf, args)
