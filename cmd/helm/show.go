@@ -56,8 +56,8 @@ This command inspects a chart (directory, file, or URL) and displays the content
 of the CustomResourceDefinition files
 `
 
-func newShowCmd(out io.Writer) *cobra.Command {
-	client := action.NewShow(action.ShowAll)
+func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+	client := action.NewShowWithConfig(action.ShowAll, cfg)
 
 	showCommand := &cobra.Command{
 		Use:               "show",
