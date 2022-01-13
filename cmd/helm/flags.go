@@ -69,9 +69,7 @@ func bindOutputFlag(cmd *cobra.Command, varRef *output.Format) {
 	err := cmd.RegisterFlagCompletionFunc(outputFlag, func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		var formatNames []string
 		for format, desc := range output.FormatsWithDesc() {
-			if strings.HasPrefix(format, toComplete) {
-				formatNames = append(formatNames, fmt.Sprintf("%s\t%s", format, desc))
-			}
+			formatNames = append(formatNames, fmt.Sprintf("%s\t%s", format, desc))
 		}
 
 		// Sort the results to get a deterministic order for the tests
@@ -153,24 +151,21 @@ func compVersionFlag(chartRef string, toComplete string) ([]string, cobra.ShellC
 	var versions []string
 	if indexFile, err := repo.LoadIndexFile(path); err == nil {
 		for _, details := range indexFile.Entries[chartName] {
-			version := details.Metadata.Version
-			if strings.HasPrefix(version, toComplete) {
-				appVersion := details.Metadata.AppVersion
-				appVersionDesc := ""
-				if appVersion != "" {
-					appVersionDesc = fmt.Sprintf("App: %s, ", appVersion)
-				}
-				created := details.Created.Format("January 2, 2006")
-				createdDesc := ""
-				if created != "" {
-					createdDesc = fmt.Sprintf("Created: %s ", created)
-				}
-				deprecated := ""
-				if details.Metadata.Deprecated {
-					deprecated = "(deprecated)"
-				}
-				versions = append(versions, fmt.Sprintf("%s\t%s%s%s", version, appVersionDesc, createdDesc, deprecated))
+			appVersion := details.Metadata.AppVersion
+			appVersionDesc := ""
+			if appVersion != "" {
+				appVersionDesc = fmt.Sprintf("App: %s, ", appVersion)
 			}
+			created := details.Created.Format("January 2, 2006")
+			createdDesc := ""
+			if created != "" {
+				createdDesc = fmt.Sprintf("Created: %s ", created)
+			}
+			deprecated := ""
+			if details.Metadata.Deprecated {
+				deprecated = "(deprecated)"
+			}
+			versions = append(versions, fmt.Sprintf("%s\t%s%s%s", details.Metadata.Version, appVersionDesc, createdDesc, deprecated))
 		}
 	}
 

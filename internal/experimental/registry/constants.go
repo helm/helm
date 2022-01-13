@@ -21,7 +21,7 @@ const (
 	OCIScheme = "oci"
 
 	// CredentialsFileBasename is the filename for auth credentials file
-	CredentialsFileBasename = "registry.json"
+	CredentialsFileBasename = "registry/config.json"
 
 	// ConfigMediaType is the reserved media type for the Helm chart manifest config
 	ConfigMediaType = "application/vnd.cncf.helm.config.v1+json"

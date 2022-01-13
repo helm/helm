@@ -112,9 +112,12 @@ type resultMessage struct {
 
 // NewUpgrade creates a new Upgrade object with the given configuration.
 func NewUpgrade(cfg *Configuration) *Upgrade {
-	return &Upgrade{
+	up := &Upgrade{
 		cfg: cfg,
 	}
+	up.ChartPathOptions.registryClient = cfg.RegistryClient
+
+	return up
 }
 
 // Run executes the upgrade on the given release.

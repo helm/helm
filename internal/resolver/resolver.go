@@ -18,6 +18,7 @@ package resolver
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -39,15 +40,17 @@ const FeatureGateOCI = gates.Gate("HELM_EXPERIMENTAL_OCI")
 
 // Resolver resolves dependencies from semantic version ranges to a particular version.
 type Resolver struct {
-	chartpath string
-	cachepath string
+	chartpath      string
+	cachepath      string
+	registryClient *registry.Client
 }
 
-// New creates a new resolver for a given chart and a given helm home.
-func New(chartpath, cachepath string) *Resolver {
+// New creates a new resolver for a given chart, helm home and registry client.
+func New(chartpath, cachepath string, registryClient *registry.Client) *Resolver {
 	return &Resolver{
-		chartpath: chartpath,
-		cachepath: cachepath,
+		chartpath:      chartpath,
+		cachepath:      cachepath,
+		registryClient: registryClient,
 	}
 }
 
@@ -139,6 +142,24 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 				return nil, errors.Wrapf(FeatureGateOCI.Error(),
 					"repository %s is an OCI registry", d.Repository)
 			}
+
+			// Retrieve list of tags for repository
+			ref := fmt.Sprintf("%s/%s", strings.TrimPrefix(d.Repository, fmt.Sprintf("%s://", registry.OCIScheme)), d.Name)
+			tags, err := r.registryClient.Tags(ref)
+			if err != nil {
+				return nil, errors.Wrapf(err, "could not retrieve list of tags for repository %s", d.Repository)
+			}
+
+			vs = make(repo.ChartVersions, len(tags))
+			for ti, t := range tags {
+				// Mock chart version objects
+				version := &repo.ChartVersion{
+					Metadata: &chart.Metadata{
+						Version: t,
+					},
+				}
+				vs[ti] = version
+			}
 		}
 
 		locked[i] = &chart.Dependency{
@@ -149,7 +170,8 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 		// The version are already sorted and hence the first one to satisfy the constraint is used
 		for _, ver := range vs {
 			v, err := semver.NewVersion(ver.Version)
-			if err != nil || len(ver.URLs) == 0 {
+			// OCI does not need URLs
+			if err != nil || (!registry.IsOCI(d.Repository) && len(ver.URLs) == 0) {
 				// Not a legit entry.
 				continue
 			}

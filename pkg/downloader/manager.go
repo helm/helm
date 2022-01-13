@@ -232,7 +232,7 @@ func (m *Manager) loadChartDir() (*chart.Chart, error) {
 //
 // This returns a lock file, which has all of the dependencies normalized to a specific version.
 func (m *Manager) resolve(req []*chart.Dependency, repoNames map[string]string) (*chart.Lock, error) {
-	res := resolver.New(m.ChartPath, m.RepositoryCache)
+	res := resolver.New(m.ChartPath, m.RepositoryCache, m.RegistryClient)
 	return res.Resolve(req, repoNames)
 }
 
@@ -332,6 +332,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			Keyring:          m.Keyring,
 			RepositoryConfig: m.RepositoryConfig,
 			RepositoryCache:  m.RepositoryCache,
+			RegistryClient:   m.RegistryClient,
 			Getters:          m.Getters,
 			Options: []getter.Option{
 				getter.WithBasicAuth(username, password),
@@ -578,8 +579,7 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 	missing := []string{}
 	for _, dd := range deps {
 		// Don't map the repository, we don't need to download chart from charts directory
-		// When OCI is used there is no Helm repository
-		if dd.Repository == "" || registry.IsOCI(dd.Repository) {
+		if dd.Repository == "" {
 			continue
 		}
 		// if dep chart is from local path, verify the path is valid
