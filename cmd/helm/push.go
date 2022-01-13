@@ -24,6 +24,7 @@ import (
 
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/pusher"
 )
 
 const pushDesc = `
@@ -41,6 +42,23 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Short: "push a chart to remote",
 		Long:  pushDesc,
 		Args:  require.MinimumNArgs(2),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if len(args) == 0 {
+				// Do file completion for the chart file to push
+				return nil, cobra.ShellCompDirectiveDefault
+			}
+			if len(args) == 1 {
+				providers := []pusher.Provider(pusher.All(settings))
+				var comps []string
+				for _, p := range providers {
+					for _, scheme := range p.Schemes {
+						comps = append(comps, fmt.Sprintf("%s://", scheme))
+					}
+				}
+				return comps, cobra.ShellCompDirectiveNoFileComp | cobra.ShellCompDirectiveNoSpace
+			}
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			chartRef := args[0]
 			remote := args[1]
