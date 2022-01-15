@@ -112,6 +112,13 @@ func NewClient(options ...ClientOption) (*Client, error) {
 					return registryauth.EmptyCredential, errors.New("unable to retrieve credentials")
 				}
 
+				// A blank returned username and password value is a bearer token
+				if username == "" && password != "" {
+					return registryauth.Credential{
+						RefreshToken: password,
+					}, nil
+				}
+
 				return registryauth.Credential{
 					Username: username,
 					Password: password,
