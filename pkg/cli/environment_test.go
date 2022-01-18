@@ -51,9 +51,9 @@ func TestEnvSettings(t *testing.T) {
 		ns, kcontext string
 		debug        bool
 		maxhistory   int
-		kAsUser      string
-		kAsGroups    []string
-		kCaFile      string
+		asUser       string
+		asGroups     []string
+		caFile       string
 	}{
 		{
 			name:       "defaults",
@@ -66,9 +66,9 @@ func TestEnvSettings(t *testing.T) {
 			ns:         "myns",
 			debug:      true,
 			maxhistory: defaultMaxHistory,
-			kAsUser:    "poro",
-			kAsGroups:  []string{"admins", "teatime", "snackeaters"},
-			kCaFile:    "/tmp/ca.crt",
+			asUser:     "poro",
+			asGroups:   []string{"admins", "teatime", "snackeaters"},
+			caFile:     "/tmp/ca.crt",
 		},
 		{
 			name:       "with envvars set",
@@ -76,9 +76,9 @@ func TestEnvSettings(t *testing.T) {
 			ns:         "yourns",
 			maxhistory: 5,
 			debug:      true,
-			kAsUser:    "pikachu",
-			kAsGroups:  []string{"operators", "snackeaters", "partyanimals"},
-			kCaFile:    "/tmp/ca.crt",
+			asUser:     "pikachu",
+			asGroups:   []string{"operators", "snackeaters", "partyanimals"},
+			caFile:     "/tmp/ca.crt",
 		},
 		{
 			name:       "with flags and envvars set",
@@ -87,9 +87,9 @@ func TestEnvSettings(t *testing.T) {
 			ns:         "myns",
 			debug:      true,
 			maxhistory: 5,
-			kAsUser:    "poro",
-			kAsGroups:  []string{"admins", "teatime", "snackeaters"},
-			kCaFile:    "/my/ca.crt",
+			asUser:     "poro",
+			asGroups:   []string{"admins", "teatime", "snackeaters"},
+			caFile:     "/my/ca.crt",
 		},
 	}
 
@@ -119,14 +119,14 @@ func TestEnvSettings(t *testing.T) {
 			if settings.MaxHistory != tt.maxhistory {
 				t.Errorf("expected maxHistory %d, got %d", tt.maxhistory, settings.MaxHistory)
 			}
-			if tt.kAsUser != settings.KubeAsUser {
-				t.Errorf("expected kAsUser %q, got %q", tt.kAsUser, settings.KubeAsUser)
+			if tt.asUser != settings.KubeAsUser {
+				t.Errorf("expected kAsUser %q, got %q", tt.asUser, settings.KubeAsUser)
 			}
-			if !reflect.DeepEqual(tt.kAsGroups, settings.KubeAsGroups) {
-				t.Errorf("expected kAsGroups %+v, got %+v", len(tt.kAsGroups), len(settings.KubeAsGroups))
+			if !reflect.DeepEqual(tt.asGroups, settings.KubeAsGroups) {
+				t.Errorf("expected kAsGroups %+v, got %+v", len(tt.asGroups), len(settings.KubeAsGroups))
 			}
-			if tt.kCaFile != settings.KubeCaFile {
-				t.Errorf("expected kCaFile %q, got %q", tt.kCaFile, settings.KubeCaFile)
+			if tt.caFile != settings.KubeCaFile {
+				t.Errorf("expected kCaFile %q, got %q", tt.caFile, settings.KubeCaFile)
 			}
 		})
 	}
