@@ -104,8 +104,9 @@ func validateChartYamlFormat(chartFileError error) error {
 }
 
 func validateChartName(cf *chart.Metadata) error {
-	if cf.Name == "" {
-		return errors.New("name is required")
+	err := chartutil.ValidateReleaseName(cf.Name)
+	if err != nil {
+		return err
 	}
 	return nil
 }
