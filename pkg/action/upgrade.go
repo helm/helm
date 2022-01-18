@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/resource"
 
@@ -169,6 +170,13 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		return nil, nil, errMissingChart
 	}
 
+	// install anything in the crds directory.
+	if crds := chart.CRDObjects(); len(crds) > 0 {
+		if err := installCRDs(u.cfg, crds); err != nil {
+			return nil, nil, err
+		}
+	}
+
 	// finds the last non-deleted release with the given name
 	lastRelease, err := u.cfg.Releases.Last(name)
 	if err != nil {
@@ -258,6 +266,51 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 	}
 	err = validateManifest(u.cfg.KubeClient, manifestDoc.Bytes(), !u.DisableOpenAPIValidation)
 	return currentRelease, upgradedRelease, err
+}
+
+func installCRDs(cfg *Configuration, crds []chart.CRD) error {
+	// We do these one file at a time in the order they were read.
+	totalItems := []*resource.Info{}
+	for _, obj := range crds {
+		// Read in the resources
+		res, err := cfg.KubeClient.Build(bytes.NewBuffer(obj.File.Data), false)
+		if err != nil {
+			return errors.Wrapf(err, "failed to install CRD %s", obj.Name)
+		}
+
+		// Send them to Kube
+		if _, err := cfg.KubeClient.Create(res); err != nil {
+			// If the error is CRD already exists, continue.
+			if apierrors.IsAlreadyExists(err) {
+				if _, err := cfg.KubeClient.Update(res, res, true); err != nil {
+					return errors.Wrapf(err, "failed to update CRD %s", obj.Name)
+				}
+				totalItems = append(totalItems, res...)
+				continue
+			}
+			return errors.Wrapf(err, "failed to install CRD %s", obj.Name)
+		}
+		totalItems = append(totalItems, res...)
+	}
+	if len(totalItems) > 0 {
+		// Invalidate the local cache, since it will not have the new CRDs
+		// present.
+		discoveryClient, err := cfg.RESTClientGetter.ToDiscoveryClient()
+		if err != nil {
+			return err
+		}
+		cfg.Log("Clearing discovery cache")
+		discoveryClient.Invalidate()
+		// Give time for the CRD to be recognized.
+
+		if err := cfg.KubeClient.Wait(totalItems, 60*time.Second); err != nil {
+			return err
+		}
+
+		// Make sure to force a rebuild of the cache.
+		discoveryClient.ServerGroups()
+	}
+	return nil
 }
 
 func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedRelease *release.Release) (*release.Release, error) {
