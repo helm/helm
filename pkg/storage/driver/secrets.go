@@ -161,6 +161,12 @@ func (secrets *Secrets) Create(key string, rls *rspb.Release) error {
 			return ErrReleaseExists
 		}
 
+		//if 'Request entity too large' in err, then tell user their chart is too large. Related to https://github.com/helm/helm/issues/8281
+		if strings.Contains(err.Error(), "entity too large") ||
+			strings.Contains(err.Error(), "data: Too long") {
+			secrets.Log("This may be due to the helm chart being >1MB. See https://github.com/helm/helm/issues/8281 for more details, and make sure you are not bundling unnecessary resources into the .tar.gz file.")
+		}
+
 		return errors.Wrap(err, "create: failed to create")
 	}
 	return nil
