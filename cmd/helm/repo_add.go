@@ -119,7 +119,7 @@ func (o *repoAddOptions) run(out io.Writer) error {
 	repoFileExt := filepath.Ext(o.repoFile)
 	var lockPath string
 	if len(repoFileExt) > 0 && len(repoFileExt) < len(o.repoFile) {
-		lockPath = strings.Replace(o.repoFile, repoFileExt, ".lock", 1)
+		lockPath = strings.TrimSuffix(o.repoFile, repoFileExt) + ".lock"
 	} else {
 		lockPath = o.repoFile + ".lock"
 	}
