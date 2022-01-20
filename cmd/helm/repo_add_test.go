@@ -48,7 +48,11 @@ func TestRepoAddCmd(t *testing.T) {
 	}
 	defer srv2.Stop()
 
-	tmpdir := ensure.TempDir(t)
+	tmpdir := filepath.Join(ensure.TempDir(t), "path-component/data")
+	err = os.MkdirAll(tmpdir, 0777)
+	if err != nil {
+		t.Fatal(err)
+	}
 	repoFile := filepath.Join(tmpdir, "repositories.yaml")
 
 	tests := []cmdTestCase{
