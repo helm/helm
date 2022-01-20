@@ -48,7 +48,7 @@ func TestRepoAddCmd(t *testing.T) {
 	}
 	defer srv2.Stop()
 
-	tmpdir := filepath.Join(ensure.TempDir(t), "path-component/data")
+	tmpdir := filepath.Join(ensure.TempDir(t), "path-component.yaml/data")
 	err = os.MkdirAll(tmpdir, 0777)
 	if err != nil {
 		t.Fatal(err)
