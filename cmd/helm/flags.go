@@ -116,8 +116,8 @@ func (o *outputValue) Set(s string) error {
 
 func bindPostRenderFlag(cmd *cobra.Command, varRef *postrender.PostRenderer) {
 	p := &postRendererOptions{varRef, "", []string{}}
-	cmd.Flags().Var(&postRendererExecFlag{p}, postRenderFlag, "the path to an executable to be used for post rendering. If it exists in $PATH, the binary will be used, otherwise it will try to look for the executable at the given path")
-	cmd.Flags().Var(&postRendererArgsFlag{p}, postRenderArgsFlag, "the args to an executable to be used for post rendering.  (can specify multiple)")
+	cmd.Flags().Var(&postRendererString{p}, postRenderFlag, "the path to an executable to be used for post rendering. If it exists in $PATH, the binary will be used, otherwise it will try to look for the executable at the given path")
+	cmd.Flags().Var(&postRendererArgsSlice{p}, postRenderArgsFlag, "the args to an executable to be used for post rendering.  (can specify multiple)")
 }
 
 type postRendererOptions struct {
@@ -126,24 +126,24 @@ type postRendererOptions struct {
 	args       []string
 }
 
-type postRendererExecFlag struct {
+type postRendererString struct {
 	options *postRendererOptions
 }
 
-func (p postRendererExecFlag) String() string {
-	return ""
+func (p *postRendererString) String() string {
+	return p.options.binaryPath
 }
 
-func (p postRendererExecFlag) Type() string {
-	return "postrenderer-exec"
+func (p *postRendererString) Type() string {
+	return "postRendererString"
 }
 
-func (p postRendererExecFlag) Set(s string) error {
-	if s == "" {
+func (p *postRendererString) Set(val string) error {
+	if val == "" {
 		return nil
 	}
-	p.options.binaryPath = s
-	pr, err := postrender.NewExecWithArgs(p.options.binaryPath, p.options.args)
+	p.options.binaryPath = val
+	pr, err := postrender.NewExec(p.options.binaryPath, p.options.args...)
 	if err != nil {
 		return err
 	}
@@ -151,35 +151,44 @@ func (p postRendererExecFlag) Set(s string) error {
 	return nil
 }
 
-type postRendererArgsFlag struct {
+type postRendererArgsSlice struct {
 	options *postRendererOptions
 }
 
-func (p postRendererArgsFlag) String() string {
-	return ""
+func (p *postRendererArgsSlice) String() string {
+	return "[" + strings.Join(p.options.args, ",") + "]"
 }
 
-func (p postRendererArgsFlag) Type() string {
-	return "postrenderer-args"
+func (p *postRendererArgsSlice) Type() string {
+	return "postRendererArgsSlice"
 }
 
-func (p postRendererArgsFlag) Set(s string) error {
-	if s == "" {
+func (p *postRendererArgsSlice) Set(val string) error {
+	if val == "" || p.options.binaryPath == "" {
 		return nil
 	}
-	p.options.args = append(p.options.args, s)
-	// skip if postRenderFlag not set or parsed
-	if len(p.options.binaryPath) == 0 {
-		return nil
-	}
-	// update if already create PostRenderer
-	pr, err := postrender.NewExecWithArgs(p.options.binaryPath, p.options.args)
+	p.options.args = append(p.options.args, val)
+	// overwrite if already create PostRenderer by `post-renderer` flags
+	pr, err := postrender.NewExec(p.options.binaryPath, p.options.args...)
 	if err != nil {
 		return err
 	}
-
 	*p.options.renderer = pr
 	return nil
+}
+
+func (p *postRendererArgsSlice) Append(val string) error {
+	p.options.args = append(p.options.args, val)
+	return nil
+}
+
+func (p *postRendererArgsSlice) Replace(val []string) error {
+	p.options.args = val
+	return nil
+}
+
+func (p *postRendererArgsSlice) GetSlice() []string {
+	return p.options.args
 }
 
 func compVersionFlag(chartRef string, toComplete string) ([]string, cobra.ShellCompDirective) {

@@ -31,7 +31,11 @@ import (
 )
 
 const testingScript = `#!/bin/sh
+if [ $# -eq 0 ]; then
 sed s/FOOTEST/BARTEST/g <&0
+else
+sed s/FOOTEST/BARTEST$#/g <&0
+fi
 `
 
 func TestGetFullPath(t *testing.T) {
@@ -124,7 +128,7 @@ func TestExecRun(t *testing.T) {
 	is.Contains(output.String(), "BARTEST")
 }
 
-func TestNewExecWithArgsRun(t *testing.T) {
+func TestNewExecWithOneArgsRun(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		// the actual Run test uses a basic sed example, so skip this test on windows
 		t.Skip("skipping on windows")
@@ -133,12 +137,29 @@ func TestNewExecWithArgsRun(t *testing.T) {
 	testpath, cleanup := setupTestingScript(t)
 	defer cleanup()
 
-	renderer, err := NewExecWithArgs(testpath, []string{})
+	renderer, err := NewExec(testpath, "FOOTEST")
 	require.NoError(t, err)
 
 	output, err := renderer.Run(bytes.NewBufferString("FOOTEST"))
 	is.NoError(err)
-	is.Contains(output.String(), "BARTEST")
+	is.Contains(output.String(), "BARTEST1")
+}
+
+func TestNewExecWithTwoArgsRun(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// the actual Run test uses a basic sed example, so skip this test on windows
+		t.Skip("skipping on windows")
+	}
+	is := assert.New(t)
+	testpath, cleanup := setupTestingScript(t)
+	defer cleanup()
+
+	renderer, err := NewExec(testpath, "FOOTEST", "FOOTEST")
+	require.NoError(t, err)
+
+	output, err := renderer.Run(bytes.NewBufferString("FOOTEST"))
+	is.NoError(err)
+	is.Contains(output.String(), "BARTEST2")
 }
 
 func setupTestingScript(t *testing.T) (filepath string, cleanup func()) {
