@@ -44,7 +44,7 @@ func ShutdownNoOp() error {
 	return nil
 }
 
-// execHook executes all of the hooks for the given hook event and return a shutdownHook function to trigger deletions after doing other things like e.g. retrieving logs.
+// execHook executes all of the hooks for the given hook event and returns a shutdownHook function to trigger deletions after doing other things like e.g. retrieving logs.
 func (cfg *Configuration) execHookWithDelayedShutdown(rl *release.Release, hook release.HookEvent, timeout time.Duration) (ExecuteShutdownHooks, error) {
 	executingHooks := []*release.Hook{}
 
