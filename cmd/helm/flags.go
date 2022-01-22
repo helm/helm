@@ -117,7 +117,7 @@ func (o *outputValue) Set(s string) error {
 func bindPostRenderFlag(cmd *cobra.Command, varRef *postrender.PostRenderer) {
 	p := &postRendererOptions{varRef, "", []string{}}
 	cmd.Flags().Var(&postRendererString{p}, postRenderFlag, "the path to an executable to be used for post rendering. If it exists in $PATH, the binary will be used, otherwise it will try to look for the executable at the given path")
-	cmd.Flags().Var(&postRendererArgsSlice{p}, postRenderArgsFlag, "the args to an executable to be used for post rendering.  (can specify multiple)")
+	cmd.Flags().Var(&postRendererArgsSlice{p}, postRenderArgsFlag, "an argument to the post-renderer (can specify multiple)")
 }
 
 type postRendererOptions struct {
@@ -164,10 +164,15 @@ func (p *postRendererArgsSlice) Type() string {
 }
 
 func (p *postRendererArgsSlice) Set(val string) error {
-	if val == "" || p.options.binaryPath == "" {
+	if val == "" {
 		return nil
 	}
+
 	p.options.args = append(p.options.args, val)
+
+	if p.options.binaryPath == "" {
+		return nil
+	}
 	// overwrite if already create PostRenderer by `post-renderer` flags
 	pr, err := postrender.NewExec(p.options.binaryPath, p.options.args...)
 	if err != nil {

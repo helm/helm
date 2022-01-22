@@ -34,7 +34,7 @@ const testingScript = `#!/bin/sh
 if [ $# -eq 0 ]; then
 sed s/FOOTEST/BARTEST/g <&0
 else
-sed s/FOOTEST/BARTEST$#/g <&0
+sed s/FOOTEST/"$*"/g <&0
 fi
 `
 
@@ -137,12 +137,12 @@ func TestNewExecWithOneArgsRun(t *testing.T) {
 	testpath, cleanup := setupTestingScript(t)
 	defer cleanup()
 
-	renderer, err := NewExec(testpath, "FOOTEST")
+	renderer, err := NewExec(testpath, "ARG1")
 	require.NoError(t, err)
 
 	output, err := renderer.Run(bytes.NewBufferString("FOOTEST"))
 	is.NoError(err)
-	is.Contains(output.String(), "BARTEST1")
+	is.Contains(output.String(), "ARG1")
 }
 
 func TestNewExecWithTwoArgsRun(t *testing.T) {
@@ -154,12 +154,12 @@ func TestNewExecWithTwoArgsRun(t *testing.T) {
 	testpath, cleanup := setupTestingScript(t)
 	defer cleanup()
 
-	renderer, err := NewExec(testpath, "FOOTEST", "FOOTEST")
+	renderer, err := NewExec(testpath, "ARG1", "ARG2")
 	require.NoError(t, err)
 
 	output, err := renderer.Run(bytes.NewBufferString("FOOTEST"))
 	is.NoError(err)
-	is.Contains(output.String(), "BARTEST2")
+	is.Contains(output.String(), "ARG1 ARG2")
 }
 
 func setupTestingScript(t *testing.T) (filepath string, cleanup func()) {
