@@ -112,7 +112,6 @@ func (cfg *Configuration) execHookWithDelayedShutdown(rl *release.Release, hook 
 				}
 				return err
 			}, err
-
 		}
 		h.LastRun.Phase = release.HookPhaseSucceeded
 	}
