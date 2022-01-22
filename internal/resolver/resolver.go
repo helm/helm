@@ -29,15 +29,12 @@ import (
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/gates"
 	"helm.sh/helm/v3/pkg/gitutils"
 	"helm.sh/helm/v3/pkg/helmpath"
 	"helm.sh/helm/v3/pkg/provenance"
 	"helm.sh/helm/v3/pkg/registry"
 	"helm.sh/helm/v3/pkg/repo"
 )
-
-const FeatureGateOCI = gates.Gate("HELM_EXPERIMENTAL_OCI")
 
 var hasGitReference = gitutils.HasGitReference
 
