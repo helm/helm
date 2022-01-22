@@ -64,7 +64,8 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 					client.Filters["!name"] = append(client.Filters["!name"], notName.ReplaceAllLiteralString(f, ""))
 				}
 			}
-			rel, runErr := client.Run(args[0])
+			rel, shutdown, runErr := client.Run(args[0])
+			defer shutdown()
 			// We only return an error if we weren't even able to get the
 			// release, otherwise we keep going so we can print status and logs
 			// if requested

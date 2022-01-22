@@ -28,6 +28,24 @@ import (
 
 // execHook executes all of the hooks for the given hook event.
 func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, timeout time.Duration) error {
+	shutdown, err := cfg.execHookWithDelayedShutdown(rl, hook, timeout)
+	if err != nil {
+		if err := shutdown(); err != nil {
+			return err
+		}
+		return err
+	}
+	return shutdown()
+}
+
+type ExecuteShutdownHooks = func() error
+
+func ShutdownNoOp() error {
+	return nil
+}
+
+// execHook executes all of the hooks for the given hook event and return a shutdownHook function to trigger deletions after doing other things like e.g. retrieving logs.
+func (cfg *Configuration) execHookWithDelayedShutdown(rl *release.Release, hook release.HookEvent, timeout time.Duration) (ExecuteShutdownHooks, error) {
 	executingHooks := []*release.Hook{}
 
 	for _, h := range rl.Hooks {
@@ -52,12 +70,12 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		}
 
 		if err := cfg.deleteHookByPolicy(h, release.HookBeforeHookCreation); err != nil {
-			return err
+			return ShutdownNoOp, err
 		}
 
 		resources, err := cfg.KubeClient.Build(bytes.NewBufferString(h.Manifest), true)
 		if err != nil {
-			return errors.Wrapf(err, "unable to build kubernetes object for %s hook %s", hook, h.Path)
+			return ShutdownNoOp, errors.Wrapf(err, "unable to build kubernetes object for %s hook %s", hook, h.Path)
 		}
 
 		// Record the time at which the hook was applied to the cluster
@@ -76,7 +94,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		if _, err := cfg.KubeClient.Create(resources); err != nil {
 			h.LastRun.CompletedAt = helmtime.Now()
 			h.LastRun.Phase = release.HookPhaseFailed
-			return errors.Wrapf(err, "warning: Hook %s %s failed", hook, h.Path)
+			return ShutdownNoOp, errors.Wrapf(err, "warning: Hook %s %s failed", hook, h.Path)
 		}
 
 		// Watch hook resources until they have completed
@@ -88,23 +106,27 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 			h.LastRun.Phase = release.HookPhaseFailed
 			// If a hook is failed, check the annotation of the hook to determine whether the hook should be deleted
 			// under failed condition. If so, then clear the corresponding resource object in the hook
-			if err := cfg.deleteHookByPolicy(h, release.HookFailed); err != nil {
+			return func() error {
+				if err := cfg.deleteHookByPolicy(h, release.HookFailed); err != nil {
+					return err
+				}
 				return err
-			}
-			return err
+			}, err
+
 		}
 		h.LastRun.Phase = release.HookPhaseSucceeded
 	}
 
-	// If all hooks are successful, check the annotation of each hook to determine whether the hook should be deleted
-	// under succeeded condition. If so, then clear the corresponding resource object in each hook
-	for _, h := range executingHooks {
-		if err := cfg.deleteHookByPolicy(h, release.HookSucceeded); err != nil {
-			return err
+	return func() error {
+		// If all hooks are successful, check the annotation of each hook to determine whether the hook should be deleted
+		// under succeeded condition. If so, then clear the corresponding resource object in each hook
+		for _, h := range executingHooks {
+			if err := cfg.deleteHookByPolicy(h, release.HookSucceeded); err != nil {
+				return err
+			}
 		}
-	}
-
-	return nil
+		return nil
+	}, nil
 }
 
 // hookByWeight is a sorter for hooks

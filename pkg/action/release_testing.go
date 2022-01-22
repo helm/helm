@@ -49,19 +49,19 @@ func NewReleaseTesting(cfg *Configuration) *ReleaseTesting {
 }
 
 // Run executes 'helm test' against the given release.
-func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
+func (r *ReleaseTesting) Run(name string) (*release.Release, ExecuteShutdownHooks, error) {
 	if err := r.cfg.KubeClient.IsReachable(); err != nil {
-		return nil, err
+		return nil, ShutdownNoOp, err
 	}
 
 	if err := chartutil.ValidateReleaseName(name); err != nil {
-		return nil, errors.Errorf("releaseTest: Release name is invalid: %s", name)
+		return nil, ShutdownNoOp, errors.Errorf("releaseTest: Release name is invalid: %s", name)
 	}
 
 	// finds the non-deleted release with the given name
 	rel, err := r.cfg.Releases.Last(name)
 	if err != nil {
-		return rel, err
+		return rel, ShutdownNoOp, err
 	}
 
 	skippedHooks := []*release.Hook{}
@@ -88,14 +88,16 @@ func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
 		rel.Hooks = executingHooks
 	}
 
-	if err := r.cfg.execHook(rel, release.HookTest, r.Timeout); err != nil {
+	shutdown, err := r.cfg.execHookWithDelayedShutdown(rel, release.HookTest, r.Timeout)
+
+	if err != nil {
 		rel.Hooks = append(skippedHooks, rel.Hooks...)
 		r.cfg.Releases.Update(rel)
-		return rel, err
+		return rel, shutdown, err
 	}
 
 	rel.Hooks = append(skippedHooks, rel.Hooks...)
-	return rel, r.cfg.Releases.Update(rel)
+	return rel, shutdown, r.cfg.Releases.Update(rel)
 }
 
 // GetPodLogs will write the logs for all test pods in the given release into
