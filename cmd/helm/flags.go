@@ -164,10 +164,8 @@ func (p *postRendererArgsSlice) Type() string {
 }
 
 func (p *postRendererArgsSlice) Set(val string) error {
-	if val == "" {
-		return nil
-	}
 
+	// a post-renderer defined by a user may accept empty arguments
 	p.options.args = append(p.options.args, val)
 
 	if p.options.binaryPath == "" {
