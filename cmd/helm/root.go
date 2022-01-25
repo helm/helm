@@ -167,7 +167,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		newPullCmd(actionConfig, out),
 		newShowCmd(actionConfig, out),
 		newLintCmd(out),
-		newPackageCmd(out),
+		newPackageCmd(actionConfig, out),
 		newRepoCmd(out),
 		newSearchCmd(out),
 		newVerifyCmd(out),
