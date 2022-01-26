@@ -55,11 +55,12 @@ func TestSchemeHostAndPortMatches(t *testing.T) {
 		{"https://example.com:443", "https://example.com:443", true},
 		{"http://example.com:1234", "http://example.com:5678", false},
 		{"https://example.com:1234", "https://example.com:5678", false},
-		// The following lines are subject of change, currently only there
-		// to ensure that the existing logic works as expected and the
-		// upcoming fix / improvement works as wanted
-		{"http://example.com:80", "http://example.com", false},
-		{"https://example.com:443", "https://example.com", false},
+		{"http://example.com:80", "http://example.com", true},
+		{"https://example.com:443", "https://example.com", true},
+		{"http://example.com:80", "https://example.com", false},
+		{"https://example.com:443", "http://example.com", false},
+		{"http://example.com:1234", "http://example.com", false},
+		{"https://example.com:1234", "https://example.com", false},
 	} {
 		u1, _ := url.Parse(tt.a)
 		u2, _ := url.Parse(tt.b)

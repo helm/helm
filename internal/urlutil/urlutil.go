@@ -77,5 +77,19 @@ func SchemeHostAndPortMatches(u1, u2 *url.URL) bool {
 	// Host on URL (returned from url.Parse) contains the port if present.
 	// This check ensures credentials are not passed between different
 	// services on different ports.
-	return u1.Scheme == u2.Scheme && u1.Host == u2.Host
+	getPort := func(url *url.URL) string {
+		if url.Port() == "" {
+			if url.Scheme == "https" { // is always lower case
+				return "443"
+			}
+
+			if url.Scheme == "http" {
+				return "80"
+			}
+		}
+		return url.Port()
+	}
+	u1Port := getPort(u1)
+	u2Port := getPort(u2)
+	return u1.Scheme == u2.Scheme && u1.Hostname() == u2.Hostname() && u1Port == u2Port
 }
