@@ -23,8 +23,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/spf13/cobra"
-
 	"helm.sh/helm/v3/internal/test/ensure"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -191,13 +189,6 @@ func TestSetAppVersion(t *testing.T) {
 	}
 	if ch.Metadata.AppVersion != expectedAppVersion {
 		t.Errorf("expected app-version %q, found %q", expectedAppVersion, ch.Metadata.AppVersion)
-	}
-}
-
-func setFlags(cmd *cobra.Command, flags map[string]string) {
-	dest := cmd.Flags()
-	for f, v := range flags {
-		dest.Set(f, v)
 	}
 }
 
