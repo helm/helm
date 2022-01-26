@@ -16,10 +16,11 @@ limitations under the License.
 package main
 
 import (
-	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -118,15 +119,12 @@ func TestPackage(t *testing.T) {
 			if err := os.MkdirAll("toot", 0777); err != nil {
 				t.Fatal(err)
 			}
-			var buf bytes.Buffer
-			c := newPackageCmd(&buf)
 
 			// This is an unfortunate byproduct of the tmpdir
 			if v, ok := tt.flags["keyring"]; ok && len(v) > 0 {
 				tt.flags["keyring"] = filepath.Join(origDir, v)
 			}
 
-			setFlags(c, tt.flags)
 			re := regexp.MustCompile(tt.expect)
 
 			adjustedArgs := make([]string, len(tt.args))
@@ -134,16 +132,21 @@ func TestPackage(t *testing.T) {
 				adjustedArgs[i] = filepath.Join(origDir, f)
 			}
 
-			err := c.RunE(c, adjustedArgs)
+			cmd := []string{"package"}
+			if len(adjustedArgs) > 0 {
+				cmd = append(cmd, adjustedArgs...)
+			}
+			for k, v := range tt.flags {
+				if v != "0" {
+					cmd = append(cmd, fmt.Sprintf("--%s=%s", k, v))
+				}
+			}
+			_, _, err = executeActionCommand(strings.Join(cmd, " "))
 			if err != nil {
 				if tt.err && re.MatchString(err.Error()) {
 					return
 				}
 				t.Fatalf("%q: expected error %q, got %q", tt.name, tt.expect, err)
-			}
-
-			if !re.Match(buf.Bytes()) {
-				t.Errorf("%q: expected output %q, got %q", tt.name, tt.expect, buf.String())
 			}
 
 			if len(tt.hasfile) > 0 {
@@ -168,26 +171,21 @@ func TestPackage(t *testing.T) {
 func TestSetAppVersion(t *testing.T) {
 	var ch *chart.Chart
 	expectedAppVersion := "app-version-foo"
-
+	chartToPackage := "testdata/testcharts/alpine"
 	dir := ensure.TempDir(t)
-
-	c := newPackageCmd(&bytes.Buffer{})
-	flags := map[string]string{
-		"destination": dir,
-		"app-version": expectedAppVersion,
+	cmd := fmt.Sprintf("package %s --destination=%s --app-version=%s", chartToPackage, dir, expectedAppVersion)
+	_, output, err := executeActionCommand(cmd)
+	if err != nil {
+		t.Logf("Output: %s", output)
+		t.Fatal(err)
 	}
-	setFlags(c, flags)
-	if err := c.RunE(c, []string{"testdata/testcharts/alpine"}); err != nil {
-		t.Errorf("unexpected error %q", err)
-	}
-
 	chartPath := filepath.Join(dir, "alpine-0.1.0.tgz")
 	if fi, err := os.Stat(chartPath); err != nil {
 		t.Errorf("expected file %q, got err %q", chartPath, err)
 	} else if fi.Size() == 0 {
 		t.Errorf("file %q has zero bytes.", chartPath)
 	}
-	ch, err := loader.Load(chartPath)
+	ch, err = loader.Load(chartPath)
 	if err != nil {
 		t.Fatalf("unexpected error loading packaged chart: %v", err)
 	}
