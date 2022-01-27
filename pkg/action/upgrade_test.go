@@ -40,6 +40,33 @@ func upgradeAction(t *testing.T) *Upgrade {
 	return upAction
 }
 
+func TestUpgradeRelease_Success(t *testing.T) {
+	is := assert.New(t)
+	req := require.New(t)
+
+	upAction := upgradeAction(t)
+	rel := releaseStub()
+	rel.Name = "previous-release"
+	rel.Info.Status = release.StatusDeployed
+	req.NoError(upAction.cfg.Releases.Create(rel))
+
+	upAction.Wait = true
+	vals := map[string]interface{}{}
+
+	ctx, done := context.WithCancel(context.Background())
+	res, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
+	done()
+	req.NoError(err)
+	is.Equal(res.Info.Status, release.StatusDeployed)
+
+	// Detecting previous bug where context termination after successful release
+	// caused release to fail.
+	time.Sleep(time.Millisecond * 100)
+	lastRelease, err := upAction.cfg.Releases.Last(rel.Name)
+	req.NoError(err)
+	is.Equal(lastRelease.Info.Status, release.StatusDeployed)
+}
+
 func TestUpgradeRelease_Wait(t *testing.T) {
 	is := assert.New(t)
 	req := require.New(t)

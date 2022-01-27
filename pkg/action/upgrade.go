@@ -326,11 +326,11 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 	rChan := make(chan resultMessage)
 	ctxChan := make(chan resultMessage)
 	doneChan := make(chan interface{})
+	defer close(doneChan)
 	go u.releasingUpgrade(rChan, upgradedRelease, current, target, originalRelease)
 	go u.handleContext(ctx, doneChan, ctxChan, upgradedRelease)
 	select {
 	case result := <-rChan:
-		doneChan <- true
 		return result.r, result.e
 	case result := <-ctxChan:
 		return result.r, result.e
@@ -351,17 +351,15 @@ func (u *Upgrade) reportToPerformUpgrade(c chan<- resultMessage, rel *release.Re
 
 // Setup listener for SIGINT and SIGTERM
 func (u *Upgrade) handleContext(ctx context.Context, done chan interface{}, c chan<- resultMessage, upgradedRelease *release.Release) {
-	go func() {
-		select {
-		case <-ctx.Done():
-			err := ctx.Err()
+	select {
+	case <-ctx.Done():
+		err := ctx.Err()
 
-			// when the atomic flag is set the ongoing release finish first and doesn't give time for the rollback happens.
-			u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, err)
-		case <-done:
-			return
-		}
-	}()
+		// when the atomic flag is set the ongoing release finish first and doesn't give time for the rollback happens.
+		u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, err)
+	case <-done:
+		return
+	}
 }
 func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *release.Release, current kube.ResourceList, target kube.ResourceList, originalRelease *release.Release) {
 	// pre-upgrade hooks
