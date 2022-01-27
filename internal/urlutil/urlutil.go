@@ -71,3 +71,11 @@ func ExtractHostname(addr string) (string, error) {
 	}
 	return u.Hostname(), nil
 }
+
+// SchemeHostAndPortMatches returns if the scheme, port and hostname of the given url matches
+func SchemeHostAndPortMatches(u1, u2 *url.URL) bool {
+	// Host on URL (returned from url.Parse) contains the port if present.
+	// This check ensures credentials are not passed between different
+	// services on different ports.
+	return u1.Scheme == u2.Scheme && u1.Host == u2.Host
+}
