@@ -175,6 +175,20 @@ func Test_ReadyChecker_statefulSetReady(t *testing.T) {
 			},
 			want: true,
 		},
+		{
+			name: "statefulset is not ready when status of latest generation has not yet been observed",
+			args: args{
+				sts: newStatefulSetWithNewGeneration("foo", 1, 0, 1, 1),
+			},
+			want: false,
+		},
+		{
+			name: "statefulset is not ready when current revision for current replicas does not match update revision for updated replicas",
+			args: args{
+				sts: newStatefulSetWithUpdateRevision("foo", 1, 0, 1, 1, "foo-bbbbbbb"),
+			},
+			want: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -377,8 +391,9 @@ func newDaemonSet(name string, maxUnavailable, numberReady, desiredNumberSchedul
 func newStatefulSet(name string, replicas, partition, readyReplicas, updatedReplicas int) *appsv1.StatefulSet {
 	return &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: defaultNamespace,
+			Name:       name,
+			Namespace:  defaultNamespace,
+			Generation: int64(1),
 		},
 		Spec: appsv1.StatefulSetSpec{
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
@@ -404,10 +419,25 @@ func newStatefulSet(name string, replicas, partition, readyReplicas, updatedRepl
 			},
 		},
 		Status: appsv1.StatefulSetStatus{
-			UpdatedReplicas: int32(updatedReplicas),
-			ReadyReplicas:   int32(readyReplicas),
+			ObservedGeneration: int64(1),
+			CurrentRevision:    name + "-aaaaaaa",
+			UpdateRevision:     name + "-aaaaaaa",
+			UpdatedReplicas:    int32(updatedReplicas),
+			ReadyReplicas:      int32(readyReplicas),
 		},
 	}
+}
+
+func newStatefulSetWithNewGeneration(name string, replicas, partition, readyReplicas, updatedReplicas int) *appsv1.StatefulSet {
+	ss := newStatefulSet(name, replicas, partition, readyReplicas, updatedReplicas)
+	ss.Generation++
+	return ss
+}
+
+func newStatefulSetWithUpdateRevision(name string, replicas, partition, readyReplicas, updatedReplicas int, updateRevision string) *appsv1.StatefulSet {
+	ss := newStatefulSet(name, replicas, partition, readyReplicas, updatedReplicas)
+	ss.Status.UpdateRevision = updateRevision
+	return ss
 }
 
 func newDeployment(name string, replicas, maxSurge, maxUnavailable int) *appsv1.Deployment {
