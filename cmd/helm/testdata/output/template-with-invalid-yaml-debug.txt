@@ -1,13 +1,13 @@
 ---
 # Source: chart-with-template-with-invalid-yaml/templates/alpine-pod.yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  name: "release-name-my-alpine"
-spec:
-  containers:
-  - name: waiter
-    image: "alpine:3.9"
-    command: ["/bin/sleep","9000"]
-invalid
+ 1 apiVersion: v1
+ 2 kind: Pod
+ 3 metadata:
+ 4   name: "release-name-my-alpine"
+ 5 spec:
+ 6   containers:
+ 7   - name: waiter
+ 8     image: "alpine:3.9"
+ 9     command: ["/bin/sleep","9000"]
+10 invalid
 Error: YAML parse error on chart-with-template-with-invalid-yaml/templates/alpine-pod.yaml: error converting YAML to JSON: yaml: line 11: could not find expected ':'
