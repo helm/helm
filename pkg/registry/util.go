@@ -105,11 +105,11 @@ func ctx(out io.Writer, debug bool) context.Context {
 	return ctx
 }
 
-// parseReference will parse and validate the reference, and clean tags when
+// ParseReference will parse and validate the reference, and clean tags when
 // applicable tags are only cleaned when plus (+) signs are present, and are
 // converted to underscores (_) before pushing
 // See https://github.com/helm/helm/issues/10166
-func parseReference(raw string) (registry.Reference, error) {
+func ParseReference(raw string) (registry.Reference, error) {
 	// The sole possible reference modification is replacing plus (+) signs
 	// present in tags with underscores (_). To do this properly, we first
 	// need to identify a tag, and then pass it on to the reference parser

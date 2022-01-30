@@ -247,7 +247,7 @@ type (
 
 // Pull downloads a chart from a registry
 func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
-	parsedRef, err := parseReference(ref)
+	parsedRef, err := ParseReference(ref)
 	if err != nil {
 		return nil, err
 	}
@@ -458,7 +458,7 @@ type (
 
 // Push uploads a chart to a registry.
 func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResult, error) {
-	parsedRef, err := parseReference(ref)
+	parsedRef, err := ParseReference(ref)
 	if err != nil {
 		return nil, err
 	}
