@@ -1,0 +1,4 @@
+name: numargs
+usage: "echo num args"
+description: "echo number of arguments received"
+command: "$HELM_PLUGIN_DIR/numargs.sh"
