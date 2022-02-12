@@ -22,7 +22,6 @@ package main
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -50,11 +49,7 @@ func checkPermsStderr() (string, error) {
 }
 
 func TestCheckPerms(t *testing.T) {
-	tdir, err := ioutil.TempDir("", "helmtest")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tdir)
+	tdir := t.TempDir()
 	tfile := filepath.Join(tdir, "testconfig")
 	fh, err := os.OpenFile(tfile, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0440)
 	if err != nil {

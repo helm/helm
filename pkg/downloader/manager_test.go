@@ -17,7 +17,6 @@ package downloader
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -218,11 +217,7 @@ func TestGetRepoNames(t *testing.T) {
 }
 
 func TestDownloadAll(t *testing.T) {
-	chartPath, err := ioutil.TempDir("", "test-downloadall")
-	if err != nil {
-		t.Fatalf("could not create tempdir: %v", err)
-	}
-	defer os.RemoveAll(chartPath)
+	chartPath := t.TempDir()
 	m := &Manager{
 		Out:              new(bytes.Buffer),
 		RepositoryConfig: repoConfig,

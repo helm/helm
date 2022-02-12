@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -552,15 +551,11 @@ func TestInstallReleaseOutputDir(t *testing.T) {
 	instAction := installAction(t)
 	vals := map[string]interface{}{}
 
-	dir, err := ioutil.TempDir("", "output-dir")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	instAction.OutputDir = dir
 
-	_, err = instAction.Run(buildChart(withSampleTemplates(), withMultipleManifestTemplate()), vals)
+	_, err := instAction.Run(buildChart(withSampleTemplates(), withMultipleManifestTemplate()), vals)
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
 	}
@@ -588,11 +583,7 @@ func TestInstallOutputDirWithReleaseName(t *testing.T) {
 	instAction := installAction(t)
 	vals := map[string]interface{}{}
 
-	dir, err := ioutil.TempDir("", "output-dir")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	instAction.OutputDir = dir
 	instAction.UseReleaseName = true
@@ -600,7 +591,7 @@ func TestInstallOutputDirWithReleaseName(t *testing.T) {
 
 	newDir := filepath.Join(dir, instAction.ReleaseName)
 
-	_, err = instAction.Run(buildChart(withSampleTemplates(), withMultipleManifestTemplate()), vals)
+	_, err := instAction.Run(buildChart(withSampleTemplates(), withMultipleManifestTemplate()), vals)
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
 	}
