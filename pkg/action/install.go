@@ -25,10 +25,13 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"text/template"
 	"time"
+
+	"helm.sh/helm/v3/pkg/chart/loader"
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/pkg/errors"
@@ -102,6 +105,8 @@ type Install struct {
 	PostRenderer   postrender.PostRenderer
 	// Lock to control raceconditions when the process receives a SIGTERM
 	Lock sync.Mutex
+	// ExternalPaths is list of included files in configuration
+	ExternalPaths []string
 }
 
 // ChartPathOptions captures common options used for controlling chart paths
@@ -176,10 +181,76 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 	return nil
 }
 
+// loadExternalPaths takes external paths from a given configuration and puts the files in a chart.
+// The alias can be defined, but if not, the alias will be the ordinal number of the path in the list starting from 0.
+// Example: install test ./bin/test --include-path vol_name1@/path/to/dir1 --include-path /path/to/dir2
+// The first included file has the alias vol_name1, and it can be used from the config map: {{ (.Files.Glob "vol1/**").AsConfig | nindent 2 }}
+// The Second included file hasn't an alias but is generated with the number 1, and it can be used from the config map {{ (.Files.Glob "1/**").AsConfig | nindent 2 }}
+func loadExternalPaths(ch *chart.Chart, externalPaths []string) error {
+	var errs []string
+	includeDefaultAlias := false
+	if len(externalPaths) > 1 {
+		includeDefaultAlias = true
+	}
+	for i, p := range externalPaths {
+		var alias string
+		if strings.Contains(p, "@") {
+			aliasPath := strings.Split(p, "@")
+			alias = aliasPath[0]
+			p = aliasPath[1]
+		}
+		allPaths, err := loader.ExpandFilePath(p)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("%s (path not accessible)", p))
+		}
+
+		for _, currentPath := range allPaths {
+			fileContentBytes, err := ioutil.ReadFile(currentPath)
+			if err != nil {
+				errs = append(errs, fmt.Sprintf("%s (not readable)", currentPath))
+				continue
+			}
+
+			p = strings.ReplaceAll(p, "\\", "/")
+			if !strings.HasSuffix(p, "/") {
+				p = p + "/"
+			}
+			if currentPath == p {
+				errs = append(errs, fmt.Sprintf("%s (accepts only directory, not file)", currentPath))
+			}
+			if includeDefaultAlias {
+				if alias != "" {
+					currentPath = strings.Replace(currentPath, p, alias+"/", 1)
+				} else {
+					currentPath = strings.Replace(currentPath, p, strconv.Itoa(i)+"/", 1)
+				}
+			} else {
+				if alias != "" {
+					currentPath = strings.Replace(currentPath, p, alias+"/", 1)
+				} else {
+					currentPath = strings.Replace(currentPath, p, "", 1)
+				}
+			}
+
+			newFile := chart.File{Name: currentPath, Data: fileContentBytes}
+			for _, file := range ch.Files {
+				if file.Name == newFile.Name && bytes.Equal(file.Data, newFile.Data) {
+					continue
+				}
+			}
+			ch.Files = append(ch.Files, &newFile)
+		}
+	}
+
+	if len(errs) > 0 {
+		return errors.New(fmt.Sprint("Failed to load external paths: ", strings.Join(errs, "; ")))
+	}
+	return nil
+}
+
 // Run executes the installation
 //
 // If DryRun is set to true, this will prepare the release, but not install it
-
 func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
 	ctx := context.Background()
 	return i.RunWithContext(ctx, chrt, vals)
@@ -187,6 +258,9 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 
 // Run executes the installation with Context
 func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
+	if err := loadExternalPaths(chrt, i.ExternalPaths); err != nil {
+		return nil, err
+	}
 	// Check reachability of cluster unless in client-only mode (e.g. `helm template` without `--validate`)
 	if !i.ClientOnly {
 		if err := i.cfg.KubeClient.IsReachable(); err != nil {

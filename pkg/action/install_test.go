@@ -40,10 +40,19 @@ import (
 	helmtime "helm.sh/helm/v3/pkg/time"
 )
 
+const ExternalFileRelPath = "testdata/files"
+const ExternalFileName = "external.txt"
+
 type nameTemplateTestCase struct {
 	tpl              string
 	expected         string
 	expectedErrorStr string
+}
+
+type includeExternalPathTestCase struct {
+	Name             string
+	IncludedFilePath string
+	ExternalPath     string
 }
 
 func installAction(t *testing.T) *Install {
@@ -723,6 +732,54 @@ func TestNameAndChartGenerateName(t *testing.T) {
 
 			is.Equal(tc.ExpectedName, name)
 			is.Equal(tc.Chart, chrt)
+		})
+	}
+}
+
+func TestInstallFailsWhenWrongPathsIncluded(t *testing.T) {
+	is := assert.New(t)
+	vals := map[string]interface{}{}
+
+	tests := []includeExternalPathTestCase{
+		{
+			Name:             "included paths not passed",
+			IncludedFilePath: "",
+			ExternalPath:     ExternalFileRelPath,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.Name, func(t *testing.T) {
+			instAction := installAction(t)
+			instAction.ExternalPaths = append(instAction.ExternalPaths, tc.IncludedFilePath)
+
+			_, err := instAction.Run(buildChart(withExternalFileTemplate(tc.ExternalPath)), vals)
+			expectedErr := fmt.Sprintf("<.Files.Get>: error calling Get: file %s not included", tc.ExternalPath)
+			is.Error(err, expectedErr)
+		})
+	}
+}
+
+func TestInstallWhenIncludePathsPassed(t *testing.T) {
+	is := assert.New(t)
+	vals := map[string]interface{}{}
+
+	tests := []includeExternalPathTestCase{
+		{
+			Name:             "relative path is included and external file is relative",
+			IncludedFilePath: ExternalFileRelPath,
+			ExternalPath:     ExternalFileName,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.Name, func(t *testing.T) {
+			instAction := installAction(t)
+			instAction.ExternalPaths = append(instAction.ExternalPaths, tc.IncludedFilePath)
+
+			installRelease, err := instAction.Run(buildChart(withExternalFileTemplate(tc.ExternalPath)), vals)
+			is.Contains(installRelease.Manifest, "out-of-chart-dir")
+			is.NoError(err)
 		})
 	}
 }

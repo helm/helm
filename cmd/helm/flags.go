@@ -63,6 +63,11 @@ func addChartPathOptionsFlags(f *pflag.FlagSet, c *action.ChartPathOptions) {
 	f.BoolVar(&c.PassCredentialsAll, "pass-credentials", false, "pass credentials to all domains")
 }
 
+// addExternalPathsFlags adds flags to the given command
+func addExternalPathsFlags(f *pflag.FlagSet, v *[]string) {
+	f.StringArrayVar(v, "include-path", []string{}, "paths to local directories to add during chart installation")
+}
+
 // bindOutputFlag will add the output flag to the given command and bind the
 // value to the given format pointer
 func bindOutputFlag(cmd *cobra.Command, varRef *output.Format) {

@@ -77,6 +77,18 @@ func TestInstall(t *testing.T) {
 			cmd:    "install virgil testdata/testcharts/alpine -f testdata/testcharts/alpine/extra_values.yaml",
 			golden: "output/install-with-values-file.txt",
 		},
+		// Install, external dir
+		{
+			name:   "install with external dir",
+			cmd:    "install virgil testdata/testcharts/external --set glob.enabled=true --include-path testdata/files/",
+			golden: "output/install-with-external-files.txt",
+		},
+		// Install, external dir with alias
+		{
+			name:   "chart with template with external dir and alias",
+			cmd:    "install virgil testdata/testcharts/externalAlias --set glob.enabled=true --include-path vol1@testdata/files/",
+			golden: "output/install-with-external-files.txt",
+		},
 		// Install, no hooks
 		{
 			name:   "install without hooks",

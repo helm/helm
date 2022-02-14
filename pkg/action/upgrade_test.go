@@ -326,6 +326,87 @@ func TestUpgradeRelease_Pending(t *testing.T) {
 	req.Contains(err.Error(), "progress", err)
 }
 
+func TestUpgradeFailsWhenEmptyPathIncluded(t *testing.T) {
+	is := assert.New(t)
+	vals := map[string]interface{}{}
+
+	t.Run("included paths not passed", func(t *testing.T) {
+		upAction := upgradeAction(t)
+		upAction.ExternalPaths = append(upAction.ExternalPaths, "")
+
+		rel := releaseStub()
+		rel.Name = "test"
+		rel.Info.Status = release.StatusDeployed
+		upAction.cfg.Releases.Create(rel)
+
+		_, err := upAction.Run(rel.Name, buildChart(withExternalFileTemplate("external.txt")), vals)
+		expectedErr := "Failed to load external paths:  (path not accessible)"
+		is.Error(err, expectedErr)
+	})
+}
+
+func TestUpgradeFailsWhenWrongPathsIncluded(t *testing.T) {
+	is := assert.New(t)
+	vals := map[string]interface{}{}
+
+	tests := []includeExternalPathTestCase{
+		{
+			Name:             "included paths not passed",
+			IncludedFilePath: "testdata/files2",
+			ExternalPath:     "external.txt",
+		},
+		{
+			Name:             "included paths not passed",
+			IncludedFilePath: "testdata2/files",
+			ExternalPath:     "external.txt",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.Name, func(t *testing.T) {
+			upAction := upgradeAction(t)
+			upAction.ExternalPaths = append(upAction.ExternalPaths, tc.IncludedFilePath)
+
+			rel := releaseStub()
+			rel.Name = "test"
+			rel.Info.Status = release.StatusDeployed
+			upAction.cfg.Releases.Create(rel)
+
+			_, err := upAction.Run(rel.Name, buildChart(withExternalFileTemplate(tc.ExternalPath)), vals)
+			expectedErr := fmt.Sprintf("Failed to load external paths:%s(path not accessible)", tc.IncludedFilePath)
+			is.Error(err, expectedErr)
+		})
+	}
+}
+
+func TestUpgradeWhenIncludePathsPassed(t *testing.T) {
+	is := assert.New(t)
+	vals := map[string]interface{}{}
+
+	tests := []includeExternalPathTestCase{
+		{
+			Name:             "relative path of directory is included and external file is relative",
+			IncludedFilePath: "testdata/files",
+			ExternalPath:     "external.txt",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.Name, func(t *testing.T) {
+			upAction := upgradeAction(t)
+			upAction.ExternalPaths = append(upAction.ExternalPaths, tc.IncludedFilePath)
+
+			rel := releaseStub()
+			rel.Name = "test"
+			rel.Info.Status = release.StatusDeployed
+			upAction.cfg.Releases.Create(rel)
+
+			upgradeRelease, err := upAction.Run(rel.Name, buildChart(withExternalFileTemplate(tc.ExternalPath)), vals)
+			is.Contains(upgradeRelease.Manifest, "out-of-chart-dir")
+			is.NoError(err)
+		})
+	}
+}
 func TestUpgradeRelease_Interrupted_Wait(t *testing.T) {
 
 	is := assert.New(t)

@@ -101,8 +101,10 @@ type Upgrade struct {
 	DisableOpenAPIValidation bool
 	// Get missing dependencies
 	DependencyUpdate bool
-	// Lock to control raceconditions when the process receives a SIGTERM
+	// Lock to control race conditions when the process receives a SIGTERM
 	Lock sync.Mutex
+	// ExternalPaths is list of included files in configuration
+	ExternalPaths []string
 }
 
 type resultMessage struct {
@@ -176,6 +178,10 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		if errors.Is(err, driver.ErrReleaseNotFound) {
 			return nil, nil, driver.NewErrNoDeployedReleases(name)
 		}
+		return nil, nil, err
+	}
+
+	if err := loadExternalPaths(chart, u.ExternalPaths); err != nil {
 		return nil, nil, err
 	}
 

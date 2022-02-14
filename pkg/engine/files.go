@@ -18,6 +18,7 @@ package engine
 
 import (
 	"encoding/base64"
+	"fmt"
 	"path"
 	"strings"
 
@@ -50,6 +51,7 @@ func (f files) GetBytes(name string) []byte {
 	if v, ok := f[name]; ok {
 		return v
 	}
+	fmt.Printf("file %s not included", name)
 	return []byte{}
 }
 
@@ -60,7 +62,8 @@ func (f files) GetBytes(name string) []byte {
 //
 //	{{.Files.Get "foo"}}
 func (f files) Get(name string) string {
-	return string(f.GetBytes(name))
+	content := f.GetBytes(name)
+	return string(content)
 }
 
 // Glob takes a glob pattern and returns another files object only containing
@@ -102,7 +105,8 @@ func (f files) Glob(pattern string) files {
 //   data:
 // {{ .Files.Glob("config/**").AsConfig() | indent 4 }}
 func (f files) AsConfig() string {
-	if f == nil {
+	if f == nil || len(f) == 0 {
+		fmt.Println("must pass path")
 		return ""
 	}
 
@@ -131,7 +135,8 @@ func (f files) AsConfig() string {
 //   data:
 // {{ .Files.Glob("secrets/*").AsSecrets() }}
 func (f files) AsSecrets() string {
-	if f == nil {
+	if f == nil || len(f) == 0 {
+		fmt.Println("must pass files")
 		return ""
 	}
 
@@ -153,7 +158,8 @@ func (f files) AsSecrets() string {
 // {{ . }}{{ end }}
 func (f files) Lines(path string) []string {
 	if f == nil || f[path] == nil {
-		return []string{}
+		fmt.Println("must pass files")
+		return nil
 	}
 
 	return strings.Split(string(f[path]), "\n")
