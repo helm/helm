@@ -123,7 +123,7 @@ func TestInstall(t *testing.T) {
 		// Install, using the name-template
 		{
 			name:   "install with name-template",
-			cmd:    "install testdata/testcharts/empty --name-template '{{upper \"foobar\"}}'",
+			cmd:    "install testdata/testcharts/empty --name-template '{{ \"foobar\"}}'",
 			golden: "output/install-name-template.txt",
 		},
 		// Install, perform chart verification along the way.
@@ -274,6 +274,10 @@ func TestInstallVersionCompletion(t *testing.T) {
 	}, {
 		name:   "completion for install version flag with generate-name",
 		cmd:    fmt.Sprintf("%s __complete install --generate-name testing/alpine --version ''", repoSetup),
+		golden: "output/version-comp.txt",
+	}, {
+		name:   "completion for install version flag, no filter",
+		cmd:    fmt.Sprintf("%s __complete install releasename testing/alpine --version 0.3", repoSetup),
 		golden: "output/version-comp.txt",
 	}, {
 		name:   "completion for install version flag too few args",

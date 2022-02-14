@@ -49,9 +49,9 @@ a path to an unpacked chart directory or a URL.
 
 To override values in a chart, use either the '--values' flag and pass in a file
 or use the '--set' flag and pass configuration from the command line, to force
-a string value use '--set-string'. In case a value is large and therefore
-you want not to use neither '--values' nor '--set', use '--set-file' to read the
-single large value from file.
+a string value use '--set-string'. You can use '--set-file' to set individual
+values from a file when the value itself is too long for the command line
+or is dynamically generated.
 
     $ helm install -f myvalues.yaml myredis ./redis
 
@@ -187,10 +187,6 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	}
 	client.ReleaseName = name
 
-	if err := checkOCI(chart); err != nil {
-		return nil, err
-	}
-
 	cp, err := client.ChartPathOptions.LocateChart(chart, settings)
 	if err != nil {
 		return nil, err
@@ -223,6 +219,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		// As of Helm 2.4.0, this is treated as a stopping condition:
 		// https://github.com/helm/helm/issues/2209
 		if err := action.CheckDependencies(chartRequested, req); err != nil {
+			err = errors.Wrap(err, "An error occurred while checking for chart dependencies. You may need to run `helm dependency build` to fetch missing dependencies")
 			if client.DependencyUpdate {
 				man := &downloader.Manager{
 					Out:              out,
@@ -253,8 +250,10 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 
-	// Handle SIGTERM
-	cSignal := make(chan os.Signal)
+	// Set up channel on which to send signal notifications.
+	// We must use a buffered channel or risk missing the signal
+	// if we're not ready to receive when the signal is sent.
+	cSignal := make(chan os.Signal, 2)
 	signal.Notify(cSignal, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-cSignal

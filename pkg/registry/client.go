@@ -14,16 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package registry // import "helm.sh/helm/v3/internal/experimental/registry"
+package registry // import "helm.sh/helm/v3/pkg/registry"
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"sort"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/containerd/containerd/remotes"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
@@ -31,21 +34,32 @@ import (
 	dockerauth "oras.land/oras-go/pkg/auth/docker"
 	"oras.land/oras-go/pkg/content"
 	"oras.land/oras-go/pkg/oras"
+	"oras.land/oras-go/pkg/registry"
+	registryremote "oras.land/oras-go/pkg/registry/remote"
+	registryauth "oras.land/oras-go/pkg/registry/remote/auth"
 
 	"helm.sh/helm/v3/internal/version"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/helmpath"
 )
 
+// See https://github.com/helm/helm/issues/10166
+const registryUnderscoreMessage = `
+OCI artifact references (e.g. tags) do not support the plus sign (+). To support
+storing semantic versions, Helm adopts the convention of changing plus (+) to
+an underscore (_) in chart version tags when pushing to a registry and back to
+a plus (+) when pulling from a registry.`
+
 type (
 	// Client works with OCI-compliant registries
 	Client struct {
 		debug bool
 		// path to repository config file e.g. ~/.docker/config.json
-		credentialsFile string
-		out             io.Writer
-		authorizer      auth.Client
-		resolver        remotes.Resolver
+		credentialsFile    string
+		out                io.Writer
+		authorizer         auth.Client
+		registryAuthorizer *registryauth.Client
+		resolver           remotes.Resolver
 	}
 
 	// ClientOption allows specifying various settings configurable by the user for overriding the defaults
@@ -65,7 +79,7 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		client.credentialsFile = helmpath.ConfigPath(CredentialsFileBasename)
 	}
 	if client.authorizer == nil {
-		authClient, err := dockerauth.NewClient(client.credentialsFile)
+		authClient, err := dockerauth.NewClientWithDockerFallback(client.credentialsFile)
 		if err != nil {
 			return nil, err
 		}
@@ -80,6 +94,39 @@ func NewClient(options ...ClientOption) (*Client, error) {
 			return nil, err
 		}
 		client.resolver = resolver
+	}
+	if client.registryAuthorizer == nil {
+		client.registryAuthorizer = &registryauth.Client{
+			Header: http.Header{
+				"User-Agent": {version.GetUserAgent()},
+			},
+			Cache: registryauth.DefaultCache,
+			Credential: func(ctx context.Context, reg string) (registryauth.Credential, error) {
+				dockerClient, ok := client.authorizer.(*dockerauth.Client)
+				if !ok {
+					return registryauth.EmptyCredential, errors.New("unable to obtain docker client")
+				}
+
+				username, password, err := dockerClient.Credential(reg)
+				if err != nil {
+					return registryauth.EmptyCredential, errors.New("unable to retrieve credentials")
+				}
+
+				// A blank returned username and password value is a bearer token
+				if username == "" && password != "" {
+					return registryauth.Credential{
+						RefreshToken: password,
+					}, nil
+				}
+
+				return registryauth.Credential{
+					Username: username,
+					Password: password,
+				}, nil
+
+			},
+		}
+
 	}
 	return client, nil
 }
@@ -207,6 +254,11 @@ type (
 
 // Pull downloads a chart from a registry
 func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
+	parsedRef, err := parseReference(ref)
+	if err != nil {
+		return nil, err
+	}
+
 	operation := &pullOperation{
 		withChart: true, // By default, always download the chart layer
 	}
@@ -217,7 +269,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		return nil, errors.New(
 			"must specify at least one layer to pull (chart/prov)")
 	}
-	store := content.NewMemoryStore()
+	memoryStore := content.NewMemory()
 	allowedMediaTypes := []string{
 		ConfigMediaType,
 	}
@@ -232,17 +284,27 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		}
 		allowedMediaTypes = append(allowedMediaTypes, ProvLayerMediaType)
 	}
-	manifest, descriptors, err := oras.Pull(ctx(c.out, c.debug), c.resolver, ref, store,
+
+	var descriptors, layers []ocispec.Descriptor
+	registryStore := content.Registry{Resolver: c.resolver}
+
+	manifest, err := oras.Copy(ctx(c.out, c.debug), registryStore, parsedRef.String(), memoryStore, "",
 		oras.WithPullEmptyNameAllowed(),
-		oras.WithAllowedMediaTypes(allowedMediaTypes))
+		oras.WithAllowedMediaTypes(allowedMediaTypes),
+		oras.WithLayerDescriptors(func(l []ocispec.Descriptor) {
+			layers = l
+		}))
 	if err != nil {
 		return nil, err
 	}
+
+	descriptors = append(descriptors, manifest)
+	descriptors = append(descriptors, layers...)
+
 	numDescriptors := len(descriptors)
 	if numDescriptors < minNumDescriptors {
-		return nil, errors.New(
-			fmt.Sprintf("manifest does not contain minimum number of descriptors (%d), descriptors found: %d",
-				minNumDescriptors, numDescriptors))
+		return nil, fmt.Errorf("manifest does not contain minimum number of descriptors (%d), descriptors found: %d",
+			minNumDescriptors, numDescriptors)
 	}
 	var configDescriptor *ocispec.Descriptor
 	var chartDescriptor *ocispec.Descriptor
@@ -262,22 +324,19 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		}
 	}
 	if configDescriptor == nil {
-		return nil, errors.New(
-			fmt.Sprintf("could not load config with mediatype %s", ConfigMediaType))
+		return nil, fmt.Errorf("could not load config with mediatype %s", ConfigMediaType)
 	}
 	if operation.withChart && chartDescriptor == nil {
-		return nil, errors.New(
-			fmt.Sprintf("manifest does not contain a layer with mediatype %s",
-				ChartLayerMediaType))
+		return nil, fmt.Errorf("manifest does not contain a layer with mediatype %s",
+			ChartLayerMediaType)
 	}
 	var provMissing bool
 	if operation.withProv && provDescriptor == nil {
 		if operation.ignoreMissingProv {
 			provMissing = true
 		} else {
-			return nil, errors.New(
-				fmt.Sprintf("manifest does not contain a layer with mediatype %s",
-					ProvLayerMediaType))
+			return nil, fmt.Errorf("manifest does not contain a layer with mediatype %s",
+				ProvLayerMediaType)
 		}
 	}
 	result := &PullResult{
@@ -291,10 +350,10 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		},
 		Chart: &descriptorPullSummaryWithMeta{},
 		Prov:  &descriptorPullSummary{},
-		Ref:   ref,
+		Ref:   parsedRef.String(),
 	}
 	var getManifestErr error
-	if _, manifestData, ok := store.Get(manifest); !ok {
+	if _, manifestData, ok := memoryStore.Get(manifest); !ok {
 		getManifestErr = errors.Errorf("Unable to retrieve blob with digest %s", manifest.Digest)
 	} else {
 		result.Manifest.Data = manifestData
@@ -303,7 +362,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		return nil, getManifestErr
 	}
 	var getConfigDescriptorErr error
-	if _, configData, ok := store.Get(*configDescriptor); !ok {
+	if _, configData, ok := memoryStore.Get(*configDescriptor); !ok {
 		getConfigDescriptorErr = errors.Errorf("Unable to retrieve blob with digest %s", configDescriptor.Digest)
 	} else {
 		result.Config.Data = configData
@@ -318,7 +377,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 	}
 	if operation.withChart {
 		var getChartDescriptorErr error
-		if _, chartData, ok := store.Get(*chartDescriptor); !ok {
+		if _, chartData, ok := memoryStore.Get(*chartDescriptor); !ok {
 			getChartDescriptorErr = errors.Errorf("Unable to retrieve blob with digest %s", chartDescriptor.Digest)
 		} else {
 			result.Chart.Data = chartData
@@ -331,7 +390,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 	}
 	if operation.withProv && !provMissing {
 		var getProvDescriptorErr error
-		if _, provData, ok := store.Get(*provDescriptor); !ok {
+		if _, provData, ok := memoryStore.Get(*provDescriptor); !ok {
 			getProvDescriptorErr = errors.Errorf("Unable to retrieve blob with digest %s", provDescriptor.Digest)
 		} else {
 			result.Prov.Data = provData
@@ -342,8 +401,15 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 			return nil, getProvDescriptorErr
 		}
 	}
+
 	fmt.Fprintf(c.out, "Pulled: %s\n", result.Ref)
 	fmt.Fprintf(c.out, "Digest: %s\n", result.Manifest.Digest)
+
+	if strings.Contains(result.Ref, "_") {
+		fmt.Fprintf(c.out, "%s contains an underscore.\n", result.Ref)
+		fmt.Fprint(c.out, registryUnderscoreMessage+"\n")
+	}
+
 	return result, nil
 }
 
@@ -399,6 +465,11 @@ type (
 
 // Push uploads a chart to a registry.
 func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResult, error) {
+	parsedRef, err := parseReference(ref)
+	if err != nil {
+		return nil, err
+	}
+
 	operation := &pushOperation{
 		strictMode: true, // By default, enable strict mode
 	}
@@ -415,21 +486,45 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 				"strict mode enabled, ref basename and tag must match the chart name and version")
 		}
 	}
-	store := content.NewMemoryStore()
-	chartDescriptor := store.Add("", ChartLayerMediaType, data)
+	memoryStore := content.NewMemory()
+	chartDescriptor, err := memoryStore.Add("", ChartLayerMediaType, data)
+	if err != nil {
+		return nil, err
+	}
+
 	configData, err := json.Marshal(meta)
 	if err != nil {
 		return nil, err
 	}
-	configDescriptor := store.Add("", ConfigMediaType, configData)
+
+	configDescriptor, err := memoryStore.Add("", ConfigMediaType, configData)
+	if err != nil {
+		return nil, err
+	}
+
 	descriptors := []ocispec.Descriptor{chartDescriptor}
 	var provDescriptor ocispec.Descriptor
 	if operation.provData != nil {
-		provDescriptor = store.Add("", ProvLayerMediaType, operation.provData)
+		provDescriptor, err = memoryStore.Add("", ProvLayerMediaType, operation.provData)
+		if err != nil {
+			return nil, err
+		}
+
 		descriptors = append(descriptors, provDescriptor)
 	}
-	manifest, err := oras.Push(ctx(c.out, c.debug), c.resolver, ref, store, descriptors,
-		oras.WithConfig(configDescriptor), oras.WithNameValidation(nil))
+
+	manifestData, manifest, err := content.GenerateManifest(&configDescriptor, nil, descriptors...)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := memoryStore.StoreManifest(parsedRef.String(), manifest, manifestData); err != nil {
+		return nil, err
+	}
+
+	registryStore := content.Registry{Resolver: c.resolver}
+	_, err = oras.Copy(ctx(c.out, c.debug), memoryStore, parsedRef.String(), registryStore, "",
+		oras.WithNameValidation(nil))
 	if err != nil {
 		return nil, err
 	}
@@ -449,7 +544,7 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 		},
 		Chart: chartSummary,
 		Prov:  &descriptorPushSummary{}, // prevent nil references
-		Ref:   ref,
+		Ref:   parsedRef.String(),
 	}
 	if operation.provData != nil {
 		result.Prov = &descriptorPushSummary{
@@ -459,6 +554,11 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	}
 	fmt.Fprintf(c.out, "Pushed: %s\n", result.Ref)
 	fmt.Fprintf(c.out, "Digest: %s\n", result.Manifest.Digest)
+	if strings.Contains(parsedRef.Reference, "_") {
+		fmt.Fprintf(c.out, "%s contains an underscore.\n", result.Ref)
+		fmt.Fprint(c.out, registryUnderscoreMessage+"\n")
+	}
+
 	return result, err
 }
 
@@ -474,4 +574,56 @@ func PushOptStrictMode(strictMode bool) PushOption {
 	return func(operation *pushOperation) {
 		operation.strictMode = strictMode
 	}
+}
+
+// Tags provides a sorted list all semver compliant tags for a given repository
+func (c *Client) Tags(ref string) ([]string, error) {
+	parsedReference, err := registry.ParseReference(ref)
+	if err != nil {
+		return nil, err
+	}
+
+	repository := registryremote.Repository{
+		Reference: parsedReference,
+		Client:    c.registryAuthorizer,
+	}
+
+	var registryTags []string
+
+	for {
+		registryTags, err = registry.Tags(ctx(c.out, c.debug), &repository)
+		if err != nil {
+			// Fallback to http based request
+			if !repository.PlainHTTP && strings.Contains(err.Error(), "server gave HTTP response") {
+				repository.PlainHTTP = true
+				continue
+			}
+			return nil, err
+		}
+
+		break
+
+	}
+
+	var tagVersions []*semver.Version
+	for _, tag := range registryTags {
+		// Change underscore (_) back to plus (+) for Helm
+		// See https://github.com/helm/helm/issues/10166
+		tagVersion, err := semver.StrictNewVersion(strings.ReplaceAll(tag, "_", "+"))
+		if err == nil {
+			tagVersions = append(tagVersions, tagVersion)
+		}
+	}
+
+	// Sort the collection
+	sort.Sort(sort.Reverse(semver.Collection(tagVersions)))
+
+	tags := make([]string, len(tagVersions))
+
+	for iTv, tv := range tagVersions {
+		tags[iTv] = tv.String()
+	}
+
+	return tags, nil
+
 }

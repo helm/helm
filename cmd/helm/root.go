@@ -29,8 +29,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/registry"
 	"helm.sh/helm/v3/pkg/repo"
 )
 
@@ -106,9 +106,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 			nsNames := []string{}
 			if namespaces, err := client.CoreV1().Namespaces().List(context.Background(), metav1.ListOptions{TimeoutSeconds: &to}); err == nil {
 				for _, ns := range namespaces.Items {
-					if strings.HasPrefix(ns.Name, toComplete) {
-						nsNames = append(nsNames, ns.Name)
-					}
+					nsNames = append(nsNames, ns.Name)
 				}
 				return nsNames, cobra.ShellCompDirectiveNoFileComp
 			}
@@ -133,9 +131,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 			&clientcmd.ConfigOverrides{}).RawConfig(); err == nil {
 			comps := []string{}
 			for name, context := range config.Contexts {
-				if strings.HasPrefix(name, toComplete) {
-					comps = append(comps, fmt.Sprintf("%s\t%s", name, context.Cluster))
-				}
+				comps = append(comps, fmt.Sprintf("%s\t%s", name, context.Cluster))
 			}
 			return comps, cobra.ShellCompDirectiveNoFileComp
 		}
@@ -169,7 +165,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		newCreateCmd(out),
 		newDependencyCmd(actionConfig, out),
 		newPullCmd(actionConfig, out),
-		newShowCmd(out),
+		newShowCmd(actionConfig, out),
 		newLintCmd(out),
 		newPackageCmd(out),
 		newRepoCmd(out),
@@ -197,7 +193,6 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		newDocsCmd(out),
 	)
 
-	// Add *experimental* subcommands
 	cmd.AddCommand(
 		newRegistryCmd(actionConfig, out),
 		newPushCmd(actionConfig, out),
@@ -261,13 +256,4 @@ func checkForExpiredRepos(repofile string) {
 		}
 	}
 
-}
-
-// When dealing with OCI-based charts, ensure that the user has
-// enabled the experimental feature gate prior to continuing
-func checkOCI(ref string) error {
-	if registry.IsOCI(ref) && !FeatureGateOCI.IsEnabled() {
-		return FeatureGateOCI.Error()
-	}
-	return nil
 }

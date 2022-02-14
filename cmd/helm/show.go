@@ -53,11 +53,11 @@ of the README file
 
 const showCRDsDesc = `
 This command inspects a chart (directory, file, or URL) and displays the contents
-of the CustomResourceDefintion files
+of the CustomResourceDefinition files
 `
 
-func newShowCmd(out io.Writer) *cobra.Command {
-	client := action.NewShow(action.ShowAll)
+func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+	client := action.NewShowWithConfig(action.ShowAll, cfg)
 
 	showCommand := &cobra.Command{
 		Use:               "show",
@@ -196,10 +196,6 @@ func runShow(args []string, client *action.Show) (string, error) {
 	if client.Version == "" && client.Devel {
 		debug("setting version to >0.0.0-0")
 		client.Version = ">0.0.0-0"
-	}
-
-	if err := checkOCI(args[0]); err != nil {
-		return "", err
 	}
 
 	cp, err := client.ChartPathOptions.LocateChart(args[0], settings)

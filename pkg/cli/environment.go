@@ -81,7 +81,7 @@ func New() *EnvSettings {
 		KubeAPIServer:    os.Getenv("HELM_KUBEAPISERVER"),
 		KubeCaFile:       os.Getenv("HELM_KUBECAFILE"),
 		PluginsDirectory: envOr("HELM_PLUGINS", helmpath.DataPath("plugins")),
-		RegistryConfig:   envOr("HELM_REGISTRY_CONFIG", helmpath.ConfigPath("registry.json")),
+		RegistryConfig:   envOr("HELM_REGISTRY_CONFIG", helmpath.ConfigPath("registry/config.json")),
 		RepositoryConfig: envOr("HELM_REPOSITORY_CONFIG", helmpath.ConfigPath("repositories.yaml")),
 		RepositoryCache:  envOr("HELM_REPOSITORY_CACHE", helmpath.CachePath("repository")),
 	}
@@ -178,6 +178,11 @@ func (s *EnvSettings) Namespace() string {
 		return ns
 	}
 	return "default"
+}
+
+// SetNamespace sets the namespace in the configuration
+func (s *EnvSettings) SetNamespace(namespace string) {
+	s.namespace = namespace
 }
 
 // RESTClientGetter gets the kubeconfig from EnvSettings

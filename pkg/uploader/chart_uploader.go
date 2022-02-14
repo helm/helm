@@ -22,8 +22,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/v3/internal/experimental/pusher"
-	"helm.sh/helm/v3/internal/experimental/registry"
+	"helm.sh/helm/v3/pkg/pusher"
+	"helm.sh/helm/v3/pkg/registry"
 )
 
 // ChartUploader handles uploading a chart.
@@ -46,7 +46,7 @@ func (c *ChartUploader) UploadTo(ref, remote string) error {
 	}
 
 	if u.Scheme == "" {
-		return errors.New(fmt.Sprintf("scheme prefix missing from remote (e.g. \"%s://\")", registry.OCIScheme))
+		return fmt.Errorf("scheme prefix missing from remote (e.g. \"%s://\")", registry.OCIScheme)
 	}
 
 	p, err := c.Pushers.ByScheme(u.Scheme)

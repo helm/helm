@@ -1,10 +1,11 @@
 /*
 Copyright The Helm Authors.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,29 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package action
 
 import (
 	"io"
-
-	"github.com/spf13/cobra"
-
-	"helm.sh/helm/v3/pkg/action"
 )
 
-const registryHelp = `
-This command consists of multiple subcommands to interact with registries.
-`
+// RegistryLogout performs a registry login operation.
+type RegistryLogout struct {
+	cfg *Configuration
+}
 
-func newRegistryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "registry",
-		Short: "login to or logout from a registry",
-		Long:  registryHelp,
+// NewRegistryLogout creates a new RegistryLogout object with the given configuration.
+func NewRegistryLogout(cfg *Configuration) *RegistryLogout {
+	return &RegistryLogout{
+		cfg: cfg,
 	}
-	cmd.AddCommand(
-		newRegistryLoginCmd(cfg, out),
-		newRegistryLogoutCmd(cfg, out),
-	)
-	return cmd
+}
+
+// Run executes the registry logout operation
+func (a *RegistryLogout) Run(out io.Writer, hostname string) error {
+	return a.cfg.RegistryClient.Logout(hostname)
 }

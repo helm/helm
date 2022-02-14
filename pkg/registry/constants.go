@@ -14,14 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package registry // import "helm.sh/helm/v3/internal/experimental/registry"
+package registry // import "helm.sh/helm/v3/pkg/registry"
 
 const (
 	// OCIScheme is the URL scheme for OCI-based requests
 	OCIScheme = "oci"
 
 	// CredentialsFileBasename is the filename for auth credentials file
-	CredentialsFileBasename = "registry.json"
+	CredentialsFileBasename = "registry/config.json"
 
 	// ConfigMediaType is the reserved media type for the Helm chart manifest config
 	ConfigMediaType = "application/vnd.cncf.helm.config.v1+json"

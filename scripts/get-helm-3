@@ -51,7 +51,7 @@ initOS() {
 
   case "$OS" in
     # Minimalist GNU for Windows
-    mingw*) OS='windows';;
+    mingw*|cygwin*) OS='windows';;
   esac
 }
 
