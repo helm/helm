@@ -17,8 +17,6 @@ limitations under the License.
 package lint
 
 import (
-	"io/ioutil"
-	"os"
 	"strings"
 	"testing"
 
@@ -120,11 +118,7 @@ func TestGoodChart(t *testing.T) {
 //
 // See https://github.com/helm/helm/issues/7923
 func TestHelmCreateChart(t *testing.T) {
-	dir, err := ioutil.TempDir("", "-helm-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	createdChart, err := chartutil.Create("testhelmcreatepasseslint", dir)
 	if err != nil {

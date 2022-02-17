@@ -18,7 +18,6 @@ package action
 import (
 	"flag"
 	"io/ioutil"
-	"os"
 	"testing"
 
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
@@ -37,13 +36,6 @@ var verbose = flag.Bool("test.log", false, "enable test logging")
 
 func actionConfigFixture(t *testing.T) *Configuration {
 	t.Helper()
-
-	tdir, err := ioutil.TempDir("", "helm-action-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Cleanup(func() { os.RemoveAll(tdir) })
 
 	registryClient, err := registry.NewClient()
 	if err != nil {
