@@ -269,6 +269,134 @@ func TestProcessDependencyImportValuesForEnabledCharts(t *testing.T) {
 	}
 }
 
+func TestProcessDependencyImportComplexValuesForEnabledCharts(t *testing.T) {
+
+	//    # dev || !condition1 || condition2 && condition3 || condition 4
+	//    condition: dev.enabled !condition1.enabled condition2.enabled,condition3.enabled condition4.enabled
+
+	//    # prod && !condition4 || condition1
+	//    condition: prod.enabled,!condition4.enabled condition1.enabled
+
+	type M = map[string]interface{}
+	tests := []struct {
+		name string
+		v    M
+		e    []string // expected charts including duplicates in alphanumeric order
+	}{{
+		// dev: null
+		// prod: null
+		"tags with no effect",
+		M{"tags": M{"nothinguseful": false}},
+		[]string{"parent-chart", "parent-chart.dev", "parent-chart.prod"},
+	}, {
+		// dev: dev
+		// prod: null
+		"tags with enable dev",
+		M{"dev": M{"enabled": true}},
+		[]string{"parent-chart", "parent-chart.dev", "parent-chart.prod"},
+	}, {
+		// dev: null  -> true
+		// prod: prod -> true
+		"tags with enable prod",
+		M{"prod": M{"enabled": true}},
+		[]string{"parent-chart", "parent-chart.dev", "parent-chart.prod"},
+	}, {
+		// dev: !condition1 -> !true
+		// prod: condition1 -> true
+		"tags with enable condition1",
+		M{"condition1": M{"enabled": true}},
+		[]string{"parent-chart", "parent-chart.prod"},
+	}, {
+		// dev: !condition1 || condition2 -> !true || true
+		// prod: condition1               -> true
+		"tags with enable condition1 and condition2",
+		M{"condition1": M{"enabled": true}, "condition2": M{"enabled": true}},
+		[]string{"parent-chart", "parent-chart.dev", "parent-chart.prod"},
+	}, {
+		// dev: !condition1 || condition2 && condition3 -> !true || true && true
+		// prod: condition1                             -> true
+		"tags with enable condition1, condition2 and condition3",
+		M{"condition1": M{"enabled": true}, "condition2": M{"enabled": true}, "condition3": M{"enabled": true}},
+		[]string{"parent-chart", "parent-chart.dev", "parent-chart.prod"},
+	}, {
+		// dev: !condition1 || condition2 && condition3 -> !true || true && false
+		// prod: condition1                                 true
+		"tags with enable condition1 and condition2, disable condition3",
+		M{"condition1": M{"enabled": true}, "condition2": M{"enabled": true}, "condition3": M{"enabled": false}},
+		[]string{"parent-chart", "parent-chart.prod"},
+	}, {
+		// dev: !condition1 || condition2 && condition3 -> !false || true && true
+		// prod: condition1                             -> false
+		"tags with enable condition2 and condition3, disable condition1",
+		M{"condition1": M{"enabled": false}, "condition2": M{"enabled": true}, "condition3": M{"enabled": true}},
+		[]string{"parent-chart", "parent-chart.dev"},
+	}, {
+		// dev: !condition1 || condition2 && condition3 -> !true || false && true
+		// prod: condition1                             -> true
+		"tags with enable condition1 and condition3, disable condition2",
+		M{"condition1": M{"enabled": true}, "condition2": M{"enabled": false}, "condition3": M{"enabled": true}},
+		[]string{"parent-chart", "parent-chart.prod"},
+	}, {
+		// dev: !condition1 || condition2 && condition3 || condition 4 -> !true || true && true || true
+		// prod: !condition 4 || condition1                            -> !true || true
+		"tags with enable condition1, condition2, condition3 and condition4",
+		M{"condition1": M{"enabled": true}, "condition2": M{"enabled": true}, "condition3": M{"enabled": true}, "condition4": M{"enabled": true}},
+		[]string{"parent-chart", "parent-chart.dev", "parent-chart.prod"},
+	}, {
+		// dev: !condition1 || condition2 && condition3 || condition 4 -> !true || true && true || false
+		// prod: !condition 4 || condition1                            ->  !false || true
+		"tags with enable condition1, condition2 and condition3, disable condition4",
+		M{"condition1": M{"enabled": true}, "condition2": M{"enabled": true}, "condition3": M{"enabled": true}, "condition4": M{"enabled": false}},
+		[]string{"parent-chart", "parent-chart.dev", "parent-chart.prod"},
+	}, {
+		// dev: !condition1 || condition2 && condition3 || condition 4 -> !true || true && false || false
+		// prod: !condition 4 || condition1                            -> !false || true
+		"tags with enable condition1 and condition2, disable condition3 and condition4",
+		M{"condition1": M{"enabled": true}, "condition2": M{"enabled": true}, "condition3": M{"enabled": false}, "condition4": M{"enabled": false}},
+		[]string{"parent-chart", "parent-chart.prod"},
+	}, {
+		// dev: !condition1 || condition2 && condition3 || condition 4 -> !true || false && true || false
+		// prod: !condition 4 || condition1                            -> !false || true
+		"tags with enable condition1 and condition3, disable condition2 and condition4",
+		M{"condition1": M{"enabled": true}, "condition2": M{"enabled": false}, "condition3": M{"enabled": true}, "condition4": M{"enabled": false}},
+		[]string{"parent-chart", "parent-chart.prod"},
+	}, {
+		// dev: !condition1 || condition2 && condition3 || condition 4 -> !false || true && true || false
+		// prod: !condition 4 || condition1                            -> !false || false
+		"tags with enable condition2 and condition3, disable condition1 and condition4",
+		M{"condition1": M{"enabled": false}, "condition2": M{"enabled": true}, "condition3": M{"enabled": true}, "condition4": M{"enabled": false}},
+		[]string{"parent-chart", "parent-chart.dev", "parent-chart.prod"},
+	}, {
+		// dev: dev || !condition1 || condition2 && condition3 || condition 4 -> true || !false || true && true || true
+		// prod: prod && !condition 4 || condition1                            -> true || !true || false
+		"tags with enable all and disable 1",
+		M{"condition1": M{"enabled": false}, "condition2": M{"enabled": true}, "condition3": M{"enabled": true}, "condition4": M{"enabled": true}, "prod": M{"enabled": true}, "dev": M{"enabled": false}},
+		[]string{"parent-chart", "parent-chart.dev"},
+	},
+	}
+
+	for _, tc := range tests {
+		c := loadChart(t, "testdata/import-complex-values-from-enabled-subchart/parent-chart")
+		t.Run(
+			tc.name, func(t *testing.T) {
+				if err := processDependencyEnabled(c, tc.v, ""); err != nil {
+					t.Fatalf("error processing enabled dependencies %v", err)
+				}
+
+				names := extractChartNames(c)
+				if len(names) != len(tc.e) {
+					t.Fatalf("slice lengths do not match got %v, expected %v", len(names), len(tc.e))
+				}
+				for i := range names {
+					if names[i] != tc.e[i] {
+						t.Fatalf("slice values do not match got %v, expected %v", names, tc.e)
+					}
+				}
+			},
+		)
+	}
+}
+
 func TestGetAliasDependency(t *testing.T) {
 	c := loadChart(t, "testdata/frobnitz")
 	req := c.Metadata.Dependencies

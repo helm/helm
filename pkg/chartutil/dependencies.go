@@ -16,6 +16,7 @@ limitations under the License.
 package chartutil
 
 import (
+	"go/build/constraint"
 	"log"
 	"strings"
 
@@ -31,31 +32,99 @@ func ProcessDependencies(c *chart.Chart, v Values) error {
 }
 
 // processDependencyConditions disables charts based on condition path value in values
+//
+// Adapted from git@github.com:golang/go.git src/go/build/constraint/expr.go:394
+//
+// In order to be compatible with the previous design, this is a bit different
+// from the tag resolve logic of go.
+//
+// ' ' for OR, ',' for AND, '!' prefix for neg
+//
+// If an expr is not specified, it is not false, but null, that is, it will be ignored
+//
+// !cond1,cond2 cond3
+// cond1 = true, cond2 = true, cond3 = true
+// Usually means (false && true || true) -> true
+//
+// but if
+// cond1 = false, cond2 = null, cond3 = null
+// the result is (true && null || null) -> true
+// but not (true && false || false) -> false
 func processDependencyConditions(reqs []*chart.Dependency, cvals Values, cpath string) {
 	if reqs == nil {
 		return
 	}
 	for _, r := range reqs {
-		for _, c := range strings.Split(strings.TrimSpace(r.Condition), ",") {
-			if len(c) > 0 {
+
+		var x constraint.Expr
+		for _, clause := range strings.Fields(r.Condition) {
+			var y constraint.Expr
+			for _, lit := range strings.Split(clause, ",") {
+				var z constraint.Expr
+				var neg bool
+				if strings.HasPrefix(lit, "!") {
+					lit = lit[len("!"):]
+					neg = true
+				}
+
 				// retrieve value
-				vv, err := cvals.PathValue(cpath + c)
+				vv, err := cvals.PathValue(cpath + lit)
 				if err == nil {
 					// if not bool, warn
-					if bv, ok := vv.(bool); ok {
-						r.Enabled = bv
-						break
+					if _, ok := vv.(bool); ok {
+						z = tag(lit)
+						if neg {
+							z = not(z)
+						}
 					} else {
-						log.Printf("Warning: Condition path '%s' for chart %s returned non-bool value", c, r.Name)
+						log.Printf("Warning: Condition path '%s' for chart %s returned non-bool value", lit, r.Name)
 					}
 				} else if _, ok := err.(ErrNoValue); !ok {
 					// this is a real error
 					log.Printf("Warning: PathValue returned error %v", err)
 				}
+
+				if z != nil {
+					if y == nil {
+						y = z
+					} else {
+						y = and(y, z)
+					}
+				}
+
 			}
+
+			if y != nil {
+				if x == nil {
+					x = y
+				} else {
+					x = or(x, y)
+				}
+			}
+
+		}
+
+		if x != nil {
+			r.Enabled = x.Eval(
+				func(tag string) bool {
+
+					// This value has been checked before, so it is unlikely that an error will be reported here
+					vv, _ := cvals.PathValue(cpath + tag)
+					if bv, ok := vv.(bool); ok {
+						return bv
+					}
+
+					return false
+				},
+			)
 		}
 	}
 }
+
+func tag(tag string) constraint.Expr           { return &constraint.TagExpr{Tag: tag} }
+func not(x constraint.Expr) constraint.Expr    { return &constraint.NotExpr{X: x} }
+func and(x, y constraint.Expr) constraint.Expr { return &constraint.AndExpr{X: x, Y: y} }
+func or(x, y constraint.Expr) constraint.Expr  { return &constraint.OrExpr{X: x, Y: y} }
 
 // processDependencyTags disables charts based on tags in values
 func processDependencyTags(reqs []*chart.Dependency, cvals Values) {
