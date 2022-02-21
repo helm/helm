@@ -567,6 +567,107 @@ func TestParseIntoString(t *testing.T) {
 	}
 }
 
+func TestParseJSON(t *testing.T) {
+	tests := []struct {
+		input  string
+		got    map[string]interface{}
+		expect map[string]interface{}
+		err    bool
+	}{
+		{ // set json scalars values, and replace one existing key
+			input: "outer.inner1=\"1\",outer.inner3=3,outer.inner4=true,outer.inner5=\"true\"",
+			got: map[string]interface{}{
+				"outer": map[string]interface{}{
+					"inner1": "overwrite",
+					"inner2": "value2",
+				},
+			},
+			expect: map[string]interface{}{
+				"outer": map[string]interface{}{
+					"inner1": "1",
+					"inner2": "value2",
+					"inner3": 3,
+					"inner4": true,
+					"inner5": "true",
+				},
+			},
+			err: false,
+		},
+		{ // set json objects and arrays, and replace one existing key
+			input: "outer.inner1={\"a\":\"1\",\"b\":2,\"c\":[1,2,3]},outer.inner3=[\"new value 1\",\"new value 2\"],outer.inner4={\"aa\":\"1\",\"bb\":2,\"cc\":[1,2,3]},outer.inner5=[{\"A\":\"1\",\"B\":2,\"C\":[1,2,3]}]",
+			got: map[string]interface{}{
+				"outer": map[string]interface{}{
+					"inner1": map[string]interface{}{
+						"x": "overwrite",
+					},
+					"inner2": "value2",
+					"inner3": []interface{}{
+						"overwrite",
+					},
+				},
+			},
+			expect: map[string]interface{}{
+				"outer": map[string]interface{}{
+					"inner1": map[string]interface{}{"a": "1", "b": 2, "c": []interface{}{1, 2, 3}},
+					"inner2": "value2",
+					"inner3": []interface{}{"new value 1", "new value 2"},
+					"inner4": map[string]interface{}{"aa": "1", "bb": 2, "cc": []interface{}{1, 2, 3}},
+					"inner5": []interface{}{map[string]interface{}{"A": "1", "B": 2, "C": []interface{}{1, 2, 3}}},
+				},
+			},
+			err: false,
+		},
+		{ // null assigment, and no value assigned (equivalent to null)
+			input: "outer.inner1=,outer.inner3={\"aa\":\"1\",\"bb\":2,\"cc\":[1,2,3]},outer.inner3.cc[1]=null",
+			got: map[string]interface{}{
+				"outer": map[string]interface{}{
+					"inner1": map[string]interface{}{
+						"x": "overwrite",
+					},
+					"inner2": "value2",
+				},
+			},
+			expect: map[string]interface{}{
+				"outer": map[string]interface{}{
+					"inner1": nil,
+					"inner2": "value2",
+					"inner3": map[string]interface{}{"aa": "1", "bb": 2, "cc": []interface{}{1, nil, 3}},
+				},
+			},
+			err: false,
+		},
+		{ // syntax error
+			input:  "outer.inner1={\"a\":\"1\",\"b\":2,\"c\":[1,2,3]},outer.inner3=[\"new value 1\",\"new value 2\"],outer.inner4={\"aa\":\"1\",\"bb\":2,\"cc\":[1,2,3]},outer.inner5={\"A\":\"1\",\"B\":2,\"C\":[1,2,3]}]",
+			got:    nil,
+			expect: nil,
+			err:    true,
+		},
+	}
+	for _, tt := range tests {
+		if err := ParseJSON(tt.input, tt.got); err != nil {
+			if tt.err {
+				continue
+			}
+			t.Fatalf("%s: %s", tt.input, err)
+		}
+		if tt.err {
+			t.Fatalf("%s: Expected error. Got nil", tt.input)
+		}
+		y1, err := yaml.Marshal(tt.expect)
+		if err != nil {
+			t.Fatalf("Error serializing expected value: %s", err)
+		}
+		y2, err := yaml.Marshal(tt.got)
+		if err != nil {
+			t.Fatalf("Error serializing parsed value: %s", err)
+		}
+
+		if string(y1) != string(y2) {
+			t.Errorf("%s: Expected:\n%s\nGot:\n%s", tt.input, y1, y2)
+		}
+	}
+}
+
 func TestParseFile(t *testing.T) {
 	input := "name1=path1"
 	expect := map[string]interface{}{

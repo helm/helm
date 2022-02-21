@@ -34,6 +34,7 @@ type Options struct {
 	StringValues []string
 	Values       []string
 	FileValues   []string
+	JSONValues   []string
 }
 
 // MergeValues merges values from files specified via -f/--values and directly
@@ -55,6 +56,13 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 		}
 		// Merge with the previous map
 		base = mergeMaps(base, currentMap)
+	}
+
+	// User specified a value via --set-json
+	for _, value := range opts.JSONValues {
+		if err := strvals.ParseJSON(value, base); err != nil {
+			return nil, errors.Errorf("failed parsing --set-json data %s", value)
+		}
 	}
 
 	// User specified a value via --set
