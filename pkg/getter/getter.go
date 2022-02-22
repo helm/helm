@@ -121,6 +121,7 @@ func WithUntar() Option {
 	}
 }
 
+// WithTransport sets the http.Transport to allow overwriting the HTTPGetter default.
 func WithTransport(transport *http.Transport) Option {
 	return func(opts *options) {
 		opts.transport = transport
