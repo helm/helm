@@ -21,6 +21,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sync"
 
 	"github.com/pkg/errors"
 
@@ -33,6 +34,7 @@ import (
 type HTTPGetter struct {
 	opts      options
 	transport *http.Transport
+	once      sync.Once
 }
 
 // Get performs a Get from repo.Getter and returns the body.
@@ -107,11 +109,19 @@ func NewHTTPGetter(options ...Option) (Getter, error) {
 }
 
 func (g *HTTPGetter) httpClient() (*http.Client, error) {
-	if g.transport == nil {
-		g.transport = &http.Transport{
-			DisableCompression: true,
-			Proxy:              http.ProxyFromEnvironment,
-		}
+	var transport *http.Transport
+
+	if g.opts.transport != nil {
+		transport = g.opts.transport
+	} else {
+		g.once.Do(func() {
+			g.transport = &http.Transport{
+				DisableCompression: true,
+				Proxy:              http.ProxyFromEnvironment,
+			}
+		})
+
+		transport = g.transport
 	}
 
 	if (g.opts.certFile != "" && g.opts.keyFile != "") || g.opts.caFile != "" {
@@ -127,21 +137,21 @@ func (g *HTTPGetter) httpClient() (*http.Client, error) {
 		}
 		tlsConf.ServerName = sni
 
-		g.transport.TLSClientConfig = tlsConf
+		transport.TLSClientConfig = tlsConf
 	}
 
 	if g.opts.insecureSkipVerifyTLS {
-		if g.transport.TLSClientConfig == nil {
-			g.transport.TLSClientConfig = &tls.Config{
+		if transport.TLSClientConfig == nil {
+			transport.TLSClientConfig = &tls.Config{
 				InsecureSkipVerify: true,
 			}
 		} else {
-			g.transport.TLSClientConfig.InsecureSkipVerify = true
+			transport.TLSClientConfig.InsecureSkipVerify = true
 		}
 	}
 
 	client := &http.Client{
-		Transport: g.transport,
+		Transport: transport,
 		Timeout:   g.opts.timeout,
 	}
 

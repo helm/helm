@@ -50,6 +50,7 @@ func TestHTTPGetter(t *testing.T) {
 	ca, pub, priv := join(cd, "rootca.crt"), join(cd, "crt.pem"), join(cd, "key.pem")
 	insecure := false
 	timeout := time.Second * 5
+	transport := &http.Transport{}
 
 	// Test with options
 	g, err = NewHTTPGetter(
@@ -59,6 +60,7 @@ func TestHTTPGetter(t *testing.T) {
 		WithTLSClientConfig(pub, priv, ca),
 		WithInsecureSkipVerifyTLS(insecure),
 		WithTimeout(timeout),
+		WithTransport(transport),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -103,6 +105,10 @@ func TestHTTPGetter(t *testing.T) {
 
 	if hg.opts.timeout != timeout {
 		t.Errorf("Expected NewHTTPGetter to contain %s as Timeout flag, got %s", timeout, hg.opts.timeout)
+	}
+
+	if hg.opts.transport != transport {
+		t.Errorf("Expected NewHTTPGetter to contain %p as Transport, got %p", transport, hg.opts.transport)
 	}
 
 	// Test if setting insecureSkipVerifyTLS is being passed to the ops
@@ -442,4 +448,74 @@ func verifyInsecureSkipVerify(t *testing.T, g HTTPGetter, caseName string, expec
 			caseName, expectedValue, gotValue)
 	}
 	return transport
+}
+
+func TestDefaultHTTPTransportReuse(t *testing.T) {
+	g := HTTPGetter{}
+
+	httpClient1, err := g.httpClient()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if httpClient1 == nil {
+		t.Fatalf("Expected non nil value for http client")
+	}
+
+	transport1 := (httpClient1.Transport).(*http.Transport)
+
+	httpClient2, err := g.httpClient()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if httpClient2 == nil {
+		t.Fatalf("Expected non nil value for http client")
+	}
+
+	transport2 := (httpClient2.Transport).(*http.Transport)
+
+	if transport1 != transport2 {
+		t.Fatalf("Expected default transport to be reused")
+	}
+}
+
+func TestHTTPTransportOption(t *testing.T) {
+	transport := &http.Transport{}
+
+	g := HTTPGetter{}
+	g.opts.transport = transport
+	httpClient1, err := g.httpClient()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if httpClient1 == nil {
+		t.Fatalf("Expected non nil value for http client")
+	}
+
+	transport1 := (httpClient1.Transport).(*http.Transport)
+
+	if transport1 != transport {
+		t.Fatalf("Expected transport option to be applied")
+	}
+
+	httpClient2, err := g.httpClient()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if httpClient2 == nil {
+		t.Fatalf("Expected non nil value for http client")
+	}
+
+	transport2 := (httpClient2.Transport).(*http.Transport)
+
+	if transport1 != transport2 {
+		t.Fatalf("Expected applied transport to be reused")
+	}
 }
