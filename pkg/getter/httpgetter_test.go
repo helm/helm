@@ -402,24 +402,24 @@ func TestHTTPGetterTarDownload(t *testing.T) {
 func TestHttpClientInsecureSkipVerify(t *testing.T) {
 	g := HTTPGetter{}
 	g.opts.url = "https://localhost"
-	verifyInsecureSkipVerify(t, g, "Blank HTTPGetter", false)
+	verifyInsecureSkipVerify(t, &g, "Blank HTTPGetter", false)
 
 	g = HTTPGetter{}
 	g.opts.url = "https://localhost"
 	g.opts.caFile = "testdata/ca.crt"
-	verifyInsecureSkipVerify(t, g, "HTTPGetter with ca file", false)
+	verifyInsecureSkipVerify(t, &g, "HTTPGetter with ca file", false)
 
 	g = HTTPGetter{}
 	g.opts.url = "https://localhost"
 	g.opts.insecureSkipVerifyTLS = true
-	verifyInsecureSkipVerify(t, g, "HTTPGetter with skip cert verification only", true)
+	verifyInsecureSkipVerify(t, &g, "HTTPGetter with skip cert verification only", true)
 
 	g = HTTPGetter{}
 	g.opts.url = "https://localhost"
 	g.opts.certFile = "testdata/client.crt"
 	g.opts.keyFile = "testdata/client.key"
 	g.opts.insecureSkipVerifyTLS = true
-	transport := verifyInsecureSkipVerify(t, g, "HTTPGetter with 2 way ssl", true)
+	transport := verifyInsecureSkipVerify(t, &g, "HTTPGetter with 2 way ssl", true)
 	if len(transport.TLSClientConfig.Certificates) <= 0 {
 		t.Fatal("transport.TLSClientConfig.Certificates is not present")
 	}
@@ -428,7 +428,7 @@ func TestHttpClientInsecureSkipVerify(t *testing.T) {
 	}
 }
 
-func verifyInsecureSkipVerify(t *testing.T, g HTTPGetter, caseName string, expectedValue bool) *http.Transport {
+func verifyInsecureSkipVerify(t *testing.T, g *HTTPGetter, caseName string, expectedValue bool) *http.Transport {
 	returnVal, err := g.httpClient()
 
 	if err != nil {
