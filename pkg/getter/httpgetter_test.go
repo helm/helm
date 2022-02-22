@@ -518,4 +518,15 @@ func TestHTTPTransportOption(t *testing.T) {
 	if transport1 != transport2 {
 		t.Fatalf("Expected applied transport to be reused")
 	}
+
+	g = HTTPGetter{}
+	g.opts.url = "https://localhost"
+	g.opts.certFile = "testdata/client.crt"
+	g.opts.keyFile = "testdata/client.key"
+	g.opts.insecureSkipVerifyTLS = true
+	g.opts.transport = transport
+	usedTransport := verifyInsecureSkipVerify(t, &g, "HTTPGetter with 2 way ssl", false)
+	if usedTransport.TLSClientConfig != nil {
+		t.Fatal("transport.TLSClientConfig should not be set")
+	}
 }
