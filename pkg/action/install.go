@@ -117,6 +117,7 @@ type ChartPathOptions struct {
 	Username              string // --username
 	Verify                bool   // --verify
 	Version               string // --version
+	PlainHTTP             bool   // --plain-http
 
 	// registryClient provides a registry client but is not added with
 	// options from a flag
@@ -692,6 +693,12 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 	}
 	if filepath.IsAbs(name) || strings.HasPrefix(name, ".") {
 		return name, errors.Errorf("path %q not found", name)
+	}
+
+	if c.InsecureSkipTLSverify {
+		if err := c.registryClient.WithResolver(c.InsecureSkipTLSverify, c.PlainHTTP); err != nil {
+			return "", err
+		}
 	}
 
 	dl := downloader.ChartDownloader{
