@@ -86,8 +86,6 @@ type ChartDownloader struct {
 // Returns a string path to the location where the file was downloaded and a verification
 // (if provenance was verified), or an error if something bad happened.
 func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *provenance.Verification, error) {
-	var out strings.Builder
-
 	u, err := c.ResolveChartVersion(ref, version)
 	if err != nil {
 		return "", nil, err
