@@ -111,7 +111,7 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 
 	destfile := filepath.Join(dest, name)
 	if err := fileutil.AtomicWriteFile(destfile, data, 0644); err != nil {
-		fmt.Fprintf(&out, "Chart downloaded to: %s\n", destfile)
+		fmt.Fprintf(c.Out, "Chart downloaded to: %s\n", destfile)
 		return destfile, nil, err
 	}
 
