@@ -513,11 +513,7 @@ func TestIndexWrite(t *testing.T) {
 	if err := i.MustAdd(&chart.Metadata{APIVersion: "v2", Name: "clipper", Version: "0.1.0"}, "clipper-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890"); err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
-	dir, err := ioutil.TempDir("", "helm-tmp")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 	testpath := filepath.Join(dir, "test")
 	i.WriteFile(testpath, 0600)
 

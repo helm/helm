@@ -112,6 +112,13 @@ func NewClient(options ...ClientOption) (*Client, error) {
 					return registryauth.EmptyCredential, errors.New("unable to retrieve credentials")
 				}
 
+				// A blank returned username and password value is a bearer token
+				if username == "" && password != "" {
+					return registryauth.Credential{
+						RefreshToken: password,
+					}, nil
+				}
+
 				return registryauth.Credential{
 					Username: username,
 					Password: password,
@@ -296,9 +303,8 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 
 	numDescriptors := len(descriptors)
 	if numDescriptors < minNumDescriptors {
-		return nil, errors.New(
-			fmt.Sprintf("manifest does not contain minimum number of descriptors (%d), descriptors found: %d",
-				minNumDescriptors, numDescriptors))
+		return nil, fmt.Errorf("manifest does not contain minimum number of descriptors (%d), descriptors found: %d",
+			minNumDescriptors, numDescriptors)
 	}
 	var configDescriptor *ocispec.Descriptor
 	var chartDescriptor *ocispec.Descriptor
@@ -318,22 +324,19 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		}
 	}
 	if configDescriptor == nil {
-		return nil, errors.New(
-			fmt.Sprintf("could not load config with mediatype %s", ConfigMediaType))
+		return nil, fmt.Errorf("could not load config with mediatype %s", ConfigMediaType)
 	}
 	if operation.withChart && chartDescriptor == nil {
-		return nil, errors.New(
-			fmt.Sprintf("manifest does not contain a layer with mediatype %s",
-				ChartLayerMediaType))
+		return nil, fmt.Errorf("manifest does not contain a layer with mediatype %s",
+			ChartLayerMediaType)
 	}
 	var provMissing bool
 	if operation.withProv && provDescriptor == nil {
 		if operation.ignoreMissingProv {
 			provMissing = true
 		} else {
-			return nil, errors.New(
-				fmt.Sprintf("manifest does not contain a layer with mediatype %s",
-					ProvLayerMediaType))
+			return nil, fmt.Errorf("manifest does not contain a layer with mediatype %s",
+				ProvLayerMediaType)
 		}
 	}
 	result := &PullResult{

@@ -135,22 +135,36 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 			found = false
 		} else {
 			version = d.Version
-			// Retrieve list of tags for repository
-			ref := fmt.Sprintf("%s/%s", strings.TrimPrefix(d.Repository, fmt.Sprintf("%s://", registry.OCIScheme)), d.Name)
-			tags, err := r.registryClient.Tags(ref)
-			if err != nil {
-				return nil, errors.Wrapf(err, "could not retrieve list of tags for repository %s", d.Repository)
-			}
 
-			vs = make(repo.ChartVersions, len(tags))
-			for ti, t := range tags {
-				// Mock chart version objects
-				version := &repo.ChartVersion{
+			// Check to see if an explicit version has been provided
+			_, err := semver.NewVersion(version)
+
+			// Use an explicit version, otherwise search for tags
+			if err == nil {
+				vs = []*repo.ChartVersion{{
 					Metadata: &chart.Metadata{
-						Version: t,
+						Version: version,
 					},
+				}}
+
+			} else {
+				// Retrieve list of tags for repository
+				ref := fmt.Sprintf("%s/%s", strings.TrimPrefix(d.Repository, fmt.Sprintf("%s://", registry.OCIScheme)), d.Name)
+				tags, err := r.registryClient.Tags(ref)
+				if err != nil {
+					return nil, errors.Wrapf(err, "could not retrieve list of tags for repository %s", d.Repository)
 				}
-				vs[ti] = version
+
+				vs = make(repo.ChartVersions, len(tags))
+				for ti, t := range tags {
+					// Mock chart version objects
+					version := &repo.ChartVersion{
+						Metadata: &chart.Metadata{
+							Version: t,
+						},
+					}
+					vs[ti] = version
+				}
 			}
 		}
 
