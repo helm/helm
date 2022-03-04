@@ -400,12 +400,12 @@ func parseOCIRef(chartRef string) (string, string, error) {
 func (m *Manager) safeMoveDeps(deps []*chart.Dependency, source, dest string) error {
 	existsInSourceDirectory := map[string]bool{}
 	isLocalDependency := map[string]bool{}
-	sourceFiles, err := ioutil.ReadDir(source)
+	sourceFiles, err := os.ReadDir(source)
 	if err != nil {
 		return err
 	}
 	// attempt to read destFiles; fail fast if we can't
-	destFiles, err := ioutil.ReadDir(dest)
+	destFiles, err := os.ReadDir(dest)
 	if err != nil {
 		return err
 	}
@@ -436,7 +436,7 @@ func (m *Manager) safeMoveDeps(deps []*chart.Dependency, source, dest string) er
 	}
 
 	fmt.Fprintln(m.Out, "Deleting outdated charts")
-	// find all files that exist in dest that do not exist in source; delete them (outdated dependendencies)
+	// find all files that exist in dest that do not exist in source; delete them (outdated dependencies)
 	for _, file := range destFiles {
 		if !file.IsDir() && !existsInSourceDirectory[file.Name()] {
 			fname := filepath.Join(dest, file.Name())

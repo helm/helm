@@ -403,11 +403,7 @@ func TestLoadV2WithReqs(t *testing.T) {
 }
 
 func TestLoadInvalidArchive(t *testing.T) {
-	tmpdir, err := ioutil.TempDir("", "helm-test-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpdir)
+	tmpdir := t.TempDir()
 
 	writeTar := func(filename, internalPath string, body []byte) {
 		dest, err := os.Create(filename)
@@ -459,7 +455,7 @@ func TestLoadInvalidArchive(t *testing.T) {
 	} {
 		illegalChart := filepath.Join(tmpdir, tt.chartname)
 		writeTar(illegalChart, tt.internal, []byte("hello: world"))
-		_, err = Load(illegalChart)
+		_, err := Load(illegalChart)
 		if err == nil {
 			t.Fatal("expected error when unpacking illegal files")
 		}
@@ -471,7 +467,7 @@ func TestLoadInvalidArchive(t *testing.T) {
 	// Make sure that absolute path gets interpreted as relative
 	illegalChart := filepath.Join(tmpdir, "abs-path.tgz")
 	writeTar(illegalChart, "/Chart.yaml", []byte("hello: world"))
-	_, err = Load(illegalChart)
+	_, err := Load(illegalChart)
 	if err.Error() != "validation: chart.metadata.name is required" {
 		t.Error(err)
 	}

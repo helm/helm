@@ -41,10 +41,11 @@ func newRegistryLoginCmd(cfg *action.Configuration, out io.Writer) *cobra.Comman
 	var passwordFromStdinOpt, insecureOpt bool
 
 	cmd := &cobra.Command{
-		Use:   "login [host]",
-		Short: "login to a registry",
-		Long:  registryLoginDesc,
-		Args:  require.MinimumNArgs(1),
+		Use:               "login [host]",
+		Short:             "login to a registry",
+		Long:              registryLoginDesc,
+		Args:              require.MinimumNArgs(1),
+		ValidArgsFunction: noCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hostname := args[0]
 

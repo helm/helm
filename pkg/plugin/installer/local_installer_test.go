@@ -28,11 +28,7 @@ var _ Installer = new(LocalInstaller)
 
 func TestLocalInstaller(t *testing.T) {
 	// Make a temp dir
-	tdir, err := ioutil.TempDir("", "helm-installer-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tdir)
+	tdir := t.TempDir()
 	if err := ioutil.WriteFile(filepath.Join(tdir, "plugin.yaml"), []byte{}, 0644); err != nil {
 		t.Fatal(err)
 	}
