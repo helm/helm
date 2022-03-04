@@ -72,6 +72,7 @@ func (suite *RegistryClientTestSuite) SetupSuite() {
 		ClientOptDebug(true),
 		ClientOptWriter(suite.Out),
 		ClientOptCredentialsFile(credentialsFile),
+		ClientOptResolver(nil),
 	)
 	suite.Nil(err, "no error creating registry client")
 
