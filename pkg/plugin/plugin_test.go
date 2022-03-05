@@ -212,6 +212,13 @@ func TestLoadDirDuplicateEntries(t *testing.T) {
 	}
 }
 
+func TestLoadDirNoMetadata(t *testing.T) {
+	dirname := "testdata/plugdir/bad/empty-config"
+	if plug, err := LoadDir(dirname); err == nil || plug == nil {
+		t.Errorf("successfully loaded empty plugin")
+	}
+}
+
 func TestDownloader(t *testing.T) {
 	dirname := "testdata/plugdir/good/downloader"
 	plug, err := LoadDir(dirname)
@@ -252,6 +259,36 @@ func TestLoadAll(t *testing.T) {
 	}
 
 	basedir := "testdata/plugdir/good"
+	plugs, err := LoadAll(basedir)
+	if err != nil {
+		t.Fatalf("Could not load %q: %s", basedir, err)
+	}
+
+	if l := len(plugs); l != 3 {
+		t.Fatalf("expected 3 plugins, found %d", l)
+	}
+
+	if plugs[0].Metadata.Name != "downloader" {
+		t.Errorf("Expected first plugin to be echo, got %q", plugs[0].Metadata.Name)
+	}
+	if plugs[1].Metadata.Name != "echo" {
+		t.Errorf("Expected first plugin to be echo, got %q", plugs[0].Metadata.Name)
+	}
+	if plugs[2].Metadata.Name != "hello" {
+		t.Errorf("Expected second plugin to be hello, got %q", plugs[1].Metadata.Name)
+	}
+}
+
+func TestLoadAllAndSkipEmptyOnes(t *testing.T) {
+
+	// Verify that empty dir loads:
+	if plugs, err := LoadAll("testdata"); err != nil {
+		t.Fatalf("error loading dir with no plugins: %s", err)
+	} else if len(plugs) > 0 {
+		t.Fatalf("expected empty dir to have 0 plugins")
+	}
+
+	basedir := "testdata/plugdir/bad/skip-some"
 	plugs, err := LoadAll(basedir)
 	if err != nil {
 		t.Fatalf("Could not load %q: %s", basedir, err)

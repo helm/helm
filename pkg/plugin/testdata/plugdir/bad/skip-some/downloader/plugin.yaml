@@ -1,0 +1,11 @@
+name: "downloader"
+version: "1.2.3"
+usage: "usage"
+description: |-
+  download something
+command: "echo Hello"
+downloaders:
+  - protocols:
+    - "myprotocol"
+    - "myprotocols"
+    command: "echo Download"
