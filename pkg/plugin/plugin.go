@@ -172,7 +172,7 @@ func (p *Plugin) PrepareCommand(extraArgs []string) (string, []string, error) {
 var validPluginName = regexp.MustCompile("^[A-Za-z0-9_-]+$")
 
 // validatePluginData validates a plugin's YAML data.
-// IF the plugin metadata is non-existent(the YAML data does not
+// If the plugin metadata is non-existent(the YAML data does not
 //		exist -> empty plugin YAML file), the plugin cannot be loaded
 // 		because of missing metadata.
 func validatePluginData(plug *Plugin, filepath string) error {
@@ -232,7 +232,7 @@ func LoadDir(dirname string) (*Plugin, error) {
 		return nil, errors.Wrapf(err, "failed to load plugin at %q", pluginfile)
 	}
 	if plug.Metadata == nil {
-		return plug, errors.New(fmt.Sprintf("configuration data missing at %q", pluginfile))
+		return plug, fmt.Errorf("configuration data missing at %q", pluginfile)
 	}
 	validationError := validatePluginData(plug, pluginfile)
 	if validationError != nil {
