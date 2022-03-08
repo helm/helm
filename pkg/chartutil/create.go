@@ -63,6 +63,8 @@ const (
 	ServiceAccountName = TemplatesDir + sep + "serviceaccount.yaml"
 	// HorizontalPodAutoscalerName is the name of the example hpa file.
 	HorizontalPodAutoscalerName = TemplatesDir + sep + "hpa.yaml"
+	// PodDisruptionBudgetName is the name of the example pdb file.
+	PodDisruptionBudgetName = TemplatesDir + sep + "pdb.yaml"
 	// NotesName is the name of the example NOTES.txt file.
 	NotesName = TemplatesDir + sep + "NOTES.txt"
 	// HelpersName is the name of the example helpers file.
@@ -179,6 +181,9 @@ autoscaling:
   maxReplicas: 100
   targetCPUUtilizationPercentage: 80
   # targetMemoryUtilizationPercentage: 80
+
+podDisruptionBudget: {}
+  # maxUnavailable: 1
 
 nodeSelector: {}
 
@@ -396,6 +401,20 @@ spec:
         name: memory
         targetAverageUtilization: {{ .Values.autoscaling.targetMemoryUtilizationPercentage }}
     {{- end }}
+{{- end }}
+`
+
+const defaultPodDisruptionBudget = `{{- if .Values.podDisruptionBudget -}}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "<CHARTNAME>.fullname" . }}
+  labels:
+    {{- include "<CHARTNAME>.labels" . | nindent 4 }}
+spec:
+  {{- toYaml .Values.podDisruptionBudget | nindent 2 }}
+  selector:
+    {{- include "<CHARTNAME>.selectorLabels" . | nindent 4 }}
 {{- end }}
 `
 
@@ -629,6 +648,11 @@ func Create(name, dir string) (string, error) {
 			// hpa.yaml
 			path:    filepath.Join(cdir, HorizontalPodAutoscalerName),
 			content: transform(defaultHorizontalPodAutoscaler, name),
+		},
+		{
+			// pdb.yaml
+			path:    filepath.Join(cdir, PodDisruptionBudgetName),
+			content: transform(defaultPodDisruptionBudget, name),
 		},
 		{
 			// NOTES.txt
