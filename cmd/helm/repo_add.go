@@ -177,6 +177,11 @@ func (o *repoAddOptions) run(out io.Writer) error {
 		InsecureSkipTLSverify: o.insecureSkipTLSverify,
 	}
 
+	// Check if the repo name is legal
+	if strings.Contains(o.name, "/") {
+		return errors.Errorf("repository name (%s) contains '/', please specify a different name without '/'", o.name)
+	}
+
 	// If the repo exists do one of two things:
 	// 1. If the configuration for the name is the same continue without error
 	// 2. When the config is different require --force-update
