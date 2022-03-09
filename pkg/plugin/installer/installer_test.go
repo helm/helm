@@ -38,3 +38,15 @@ func TestIsRemoteHTTPArchive(t *testing.T) {
 		t.Error("Expected media type match to fail")
 	}
 }
+
+func TestIsPlugin(t *testing.T) {
+	if isPlugin("../testdata/plugdir/bad/empty-config") {
+		t.Errorf("Expected empty plugin file not to be considered a plugin")
+	}
+	if !isPlugin("../testdata/plugdir/good/echo") {
+		t.Errorf("Expected valid plugin file to be considered a plugin")
+	}
+	if isPlugin("../testdata/plugdir/bad/invalid") {
+		t.Errorf("Expected invalid plugin not to be considered a plugin")
+	}
+}

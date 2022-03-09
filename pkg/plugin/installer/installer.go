@@ -17,6 +17,7 @@ package installer
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -26,6 +27,7 @@ import (
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/pkg/plugin"
+	"sigs.k8s.io/yaml"
 )
 
 // ErrMissingMetadata indicates that plugin.yaml is missing.
@@ -120,10 +122,18 @@ func isRemoteHTTPArchive(source string) bool {
 	return false
 }
 
-// isPlugin checks if the directory contains a plugin.yaml file.
+// isPlugin checks if the directory contains a valid plugin.yaml file
 func isPlugin(dirname string) bool {
-	_, err := os.Stat(filepath.Join(dirname, plugin.PluginFileName))
-	return err == nil
+	fpath := filepath.Join(dirname, plugin.PluginFileName)
+	if _, err := os.Stat(fpath); err != nil {
+		return false
+	}
+	plug := &plugin.Plugin{Dir: dirname}
+	data, _ := ioutil.ReadFile(fpath)
+	if err := yaml.UnmarshalStrict(data, &plug.Metadata); err != nil || plug.Metadata == nil {
+		return false
+	}
+	return true
 }
 
 var logger = log.New(os.Stderr, "[debug] ", log.Lshortfile)
