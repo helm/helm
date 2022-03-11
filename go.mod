@@ -1,6 +1,6 @@
 module helm.sh/helm/v3
 
-go 1.16
+go 1.17
 
 require (
 	github.com/BurntSushi/toml v1.0.0
