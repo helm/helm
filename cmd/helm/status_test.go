@@ -108,6 +108,14 @@ func TestStatusCmd(t *testing.T) {
 				},
 			},
 		),
+	}, {
+		name:   "get status of a deployed release with wait",
+		cmd:    "status --wait flummoxed-chickadee",
+		golden: "output/status.txt",
+		rels: releasesMockWithStatus(&release.Info{
+			Status:      release.StatusDeployed,
+			Description: "Mock description",
+		}),
 	}}
 	runTestCmd(t, tests)
 }

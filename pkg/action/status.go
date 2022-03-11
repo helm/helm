@@ -17,6 +17,11 @@ limitations under the License.
 package action
 
 import (
+	"bytes"
+	"time"
+
+	"github.com/pkg/errors"
+
 	"helm.sh/helm/v3/pkg/release"
 )
 
@@ -32,6 +37,10 @@ type Status struct {
 	// only affect print type table.
 	// TODO Helm 4: Remove this flag and output the description by default.
 	ShowDescription bool
+
+	Timeout     time.Duration
+	Wait        bool
+	WaitForJobs bool
 }
 
 // NewStatus creates a new Status object with the given configuration.
@@ -47,5 +56,23 @@ func (s *Status) Run(name string) (*release.Release, error) {
 		return nil, err
 	}
 
-	return s.cfg.releaseContent(name, s.Version)
+	release, err := s.cfg.releaseContent(name, s.Version)
+	if s.Wait && err == nil {
+		resources, err := s.cfg.KubeClient.Build(bytes.NewBufferString(release.Manifest), false)
+		if err != nil {
+			return release, errors.Wrap(err, "unable to build kubernetes objects from existing release manifest")
+		}
+
+		if s.WaitForJobs {
+			if err := s.cfg.KubeClient.WaitWithJobs(resources, s.Timeout); err != nil {
+				return nil, err
+			}
+		} else {
+			if err := s.cfg.KubeClient.Wait(resources, s.Timeout); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return release, err
 }
