@@ -113,7 +113,7 @@ test-coverage:
 
 .PHONY: test-style
 test-style:
-	GO111MODULE=on golangci-lint run
+	GO111MODULE=on golangci-lint run -v
 	@scripts/validate-license.sh
 
 .PHONY: test-acceptance
