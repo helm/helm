@@ -20,7 +20,7 @@
 : ${BINARY_NAME:="helm"}
 : ${USE_SUDO:="true"}
 : ${DEBUG:="false"}
-: ${VERIFY_CHECKSUM:="true"}
+: ${VERIFY_CHECKSUM:="false"}
 : ${VERIFY_SIGNATURES:="false"}
 : ${HELM_INSTALL_DIR:="/usr/local/bin"}
 : ${GPG_PUBRING:="pubring.kbx"}
