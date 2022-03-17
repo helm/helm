@@ -284,8 +284,17 @@ func TestKindSorterNamespaceAgainstUnknown(t *testing.T) {
 }
 
 // test hook sorting with a small subset of kinds, since it uses the same algorithm as sortManifestsByKind
-func TestKindSorterForHooks(t *testing.T) {
-	hooks := []*release.Hook{
+func TestSortHooks(t *testing.T) {
+	type testCase struct {
+		description string
+		hooks       []*release.Hook
+		order       KindSortOrder
+		expected    string
+	}
+
+	// hooksInstallUninstall is a list of hooks with Kinds that need to be installed in one order and uninstalled
+	// in the reverse order.
+	hooksInstallUninstall := []*release.Hook{
 		{
 			Name: "i",
 			Kind: "ClusterRole",
@@ -304,29 +313,68 @@ func TestKindSorterForHooks(t *testing.T) {
 		},
 	}
 
-	for _, test := range []struct {
-		description string
-		order       KindSortOrder
-		expected    string
-	}{
-		{"install", InstallOrder, "acij"},
-		{"uninstall", UninstallOrder, "jica"},
+	installCase := testCase{
+		description: "install_order_wihtout_weight",
+		order:       InstallOrder,
+		expected:    "acij",
+		hooks:       hooksInstallUninstall,
+	}
+	uninstallCase := testCase{
+		description: "uninstall_order_wihtout_weight",
+		order:       UninstallOrder,
+		expected:    "jica",
+		hooks:       hooksInstallUninstall,
+	}
+
+	// compositeOrderCase is a test case to check that order priorities is applied correctly:
+	// First by weight, then by kind, finally by name.
+	compositeOrderCase := testCase{
+		description: "install_order_composite",
+		order:       InstallOrder,
+		expected:    "pod_00_sa_01_pod_02_job_03_job_04_",
+		hooks: []*release.Hook{
+			{
+				// Pod goes third by Kind order.
+				Name: "pod_02_",
+				Kind: "Pod",
+			},
+			{
+				// ServiceAccount goes second, as per Kind InstallOrder.
+				Name: "sa_01_",
+				Kind: "ServiceAccount",
+			},
+			{
+				// Job goes fourth by Kind order.
+				Name: "job_03_",
+				Kind: "Job",
+			},
+			{
+				// This pod will go first as it has -1 weight.
+				Name:   "pod_00_",
+				Kind:   "Pod",
+				Weight: -1,
+			},
+			{
+				// This job goes fifth as their name comes later than the other Job.
+				Name: "job_04_",
+				Kind: "Job",
+			},
+		},
+	}
+
+	for _, test := range []testCase{
+		installCase,
+		uninstallCase,
+		compositeOrderCase,
 	} {
-		var buf bytes.Buffer
 		t.Run(test.description, func(t *testing.T) {
-			if got, want := len(test.expected), len(hooks); got != want {
-				t.Fatalf("Expected %d names in order, got %d", want, got)
-			}
+			buf := bytes.Buffer{}
 			defer buf.Reset()
-			orig := hooks
-			for _, r := range sortHooksByKind(hooks, test.order) {
+
+			for _, r := range sortHooks(test.hooks, test.order) {
 				buf.WriteString(r.Name)
 			}
-			for i, hook := range orig {
-				if hook != hooks[i] {
-					t.Fatal("Expected input to sortHooksByKind to stay the same")
-				}
-			}
+
 			if got := buf.String(); got != test.expected {
 				t.Errorf("Expected %q, got %q", test.expected, got)
 			}

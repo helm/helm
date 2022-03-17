@@ -118,13 +118,24 @@ func sortManifestsByKind(manifests []Manifest, ordering KindSortOrder) []Manifes
 	return manifests
 }
 
-// sort hooks by kind, using an out-of-place sort to preserve the input parameters.
-//
-// Results are sorted by 'ordering', keeping order of items with equal kind/priority
-func sortHooksByKind(hooks []*release.Hook, ordering KindSortOrder) []*release.Hook {
+// sortHooks sorts hooks by weight, kind, and finally by name.
+// Kind order is defined by ordering.
+func sortHooks(hooks []*release.Hook, ordering KindSortOrder) []*release.Hook {
 	h := hooks
+
+	// Sort first by name, the least important ordering.
+	sort.Slice(h, func(i, j int) bool {
+		return h[i].Name < h[j].Name
+	})
+
+	// Then sort by kind, keeping equal elements in their original order (Stable).
 	sort.SliceStable(h, func(i, j int) bool {
 		return lessByKind(h[i], h[j], h[i].Kind, h[j].Kind, ordering)
+	})
+
+	// Finally, sort by weight, again keeping equal elements in their original order.
+	sort.SliceStable(h, func(i, j int) bool {
+		return h[i].Weight < h[j].Weight
 	})
 
 	return h

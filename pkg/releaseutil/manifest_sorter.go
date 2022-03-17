@@ -108,7 +108,7 @@ func SortManifests(files map[string]string, apis chartutil.VersionSet, ordering 
 		}
 	}
 
-	return sortHooksByKind(result.hooks, ordering), sortManifestsByKind(result.generic, ordering), nil
+	return sortHooks(result.hooks, ordering), sortManifestsByKind(result.generic, ordering), nil
 }
 
 // sort takes a manifestFile object which may contain multiple resource definition
