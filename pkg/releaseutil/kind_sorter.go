@@ -111,8 +111,9 @@ var UninstallOrder KindSortOrder = []string{
 //
 // Results are sorted by 'ordering', keeping order of items with equal kind/priority
 func sortManifestsByKind(manifests []Manifest, ordering KindSortOrder) []Manifest {
+	lessFunc := lessByKind(ordering)
 	sort.SliceStable(manifests, func(i, j int) bool {
-		return lessByKind(manifests[i], manifests[j], manifests[i].Head.Kind, manifests[j].Head.Kind, ordering)
+		return lessFunc(manifests[i].Head.Kind, manifests[j].Head.Kind)
 	})
 
 	return manifests
@@ -129,8 +130,9 @@ func sortHooks(hooks []*release.Hook, ordering KindSortOrder) []*release.Hook {
 	})
 
 	// Then sort by kind, keeping equal elements in their original order (Stable).
+	lessFunc := lessByKind(ordering)
 	sort.SliceStable(h, func(i, j int) bool {
-		return lessByKind(h[i], h[j], h[i].Kind, h[j].Kind, ordering)
+		return lessFunc(h[i].Kind, h[j].Kind)
 	})
 
 	// Finally, sort by weight, again keeping equal elements in their original order.
@@ -141,29 +143,32 @@ func sortHooks(hooks []*release.Hook, ordering KindSortOrder) []*release.Hook {
 	return h
 }
 
-func lessByKind(a interface{}, b interface{}, kindA string, kindB string, o KindSortOrder) bool {
+// lessByKind takes a KindSortOrder and returns a LessFunc that compares two kinds according to said order.
+func lessByKind(o KindSortOrder) func(kindA string, kindB string) bool {
 	ordering := make(map[string]int, len(o))
 	for v, k := range o {
 		ordering[k] = v
 	}
 
-	first, aok := ordering[kindA]
-	second, bok := ordering[kindB]
+	return func(kindA string, kindB string) bool {
+		first, aok := ordering[kindA]
+		second, bok := ordering[kindB]
 
-	if !aok && !bok {
-		// if both are unknown then sort alphabetically by kind, keep original order if same kind
-		if kindA != kindB {
-			return kindA < kindB
+		if !aok && !bok {
+			// if both are unknown then sort alphabetically by kind, keep original order if same kind
+			if kindA != kindB {
+				return kindA < kindB
+			}
+			return first < second
 		}
+		// unknown kind is last
+		if !aok {
+			return false
+		}
+		if !bok {
+			return true
+		}
+		// sort different kinds, keep original order if same priority
 		return first < second
 	}
-	// unknown kind is last
-	if !aok {
-		return false
-	}
-	if !bok {
-		return true
-	}
-	// sort different kinds, keep original order if same priority
-	return first < second
 }
