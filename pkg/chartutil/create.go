@@ -500,7 +500,18 @@ spec:
     - name: wget
       image: busybox
       command: ['wget']
-      args: ['{{ include "<CHARTNAME>.fullname" . }}:{{ .Values.service.port }}']
+      args: ['-O', '/dev/null', '{{ include "<CHARTNAME>.fullname" . }}:{{ .Values.service.port }}']
+      securityContext:
+        runAsUser: 1000
+        runAsNonRoot: true
+        readOnlyRootFilesystem: true
+      resources:
+        limits:
+          memory: 60Mi
+          cpu: 200m
+        requests:
+          memory: 10Mi
+          cpu: 10m
   restartPolicy: Never
 `
 
