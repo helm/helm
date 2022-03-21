@@ -21,6 +21,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
@@ -141,35 +142,40 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 	return destfile, ver, nil
 }
 
+var sha256re = regexp.MustCompile(`^sha256:[0-9a-fA-F]{64}$`)
+
 func (c *ChartDownloader) getOciURI(ref, version string, u *url.URL) (*url.URL, error) {
-	var tag string
 	var err error
 
 	// Evaluate whether an explicit version has been provided. Otherwise, determine version to use
-	_, errSemVer := semver.NewVersion(version)
-	if errSemVer == nil {
-		tag = version
+	if sha256re.MatchString(version) {
+		u.Path = fmt.Sprintf("%s@%s", u.Path, version)
 	} else {
-		// Retrieve list of repository tags
-		tags, err := c.RegistryClient.Tags(strings.TrimPrefix(ref, fmt.Sprintf("%s://", registry.OCIScheme)))
-		if err != nil {
-			return nil, err
-		}
-		if len(tags) == 0 {
-			return nil, errors.Errorf("Unable to locate any tags in provided repository: %s", ref)
-		}
+		var tag string
+		_, errSemVer := semver.NewVersion(version)
+		if errSemVer == nil {
+			tag = version
+		} else {
+			// Retrieve list of repository tags
+			tags, err := c.RegistryClient.Tags(strings.TrimPrefix(ref, fmt.Sprintf("%s://", registry.OCIScheme)))
+			if err != nil {
+				return nil, err
+			}
+			if len(tags) == 0 {
+				return nil, errors.Errorf("Unable to locate any tags in provided repository: %s", ref)
+			}
 
-		// Determine if version provided
-		// If empty, try to get the highest available tag
-		// If exact version, try to find it
-		// If semver constraint string, try to find a match
-		tag, err = registry.GetTagMatchingVersionOrConstraint(tags, version)
-		if err != nil {
-			return nil, err
+			// Determine if version provided
+			// If empty, try to get the highest available tag
+			// If exact version, try to find it
+			// If semver constraint string, try to find a match
+			tag, err = registry.GetTagMatchingVersionOrConstraint(tags, version)
+			if err != nil {
+				return nil, err
+			}
 		}
+		u.Path = fmt.Sprintf("%s:%s", u.Path, tag)
 	}
-
-	u.Path = fmt.Sprintf("%s:%s", u.Path, tag)
 
 	return u, err
 }
@@ -182,7 +188,9 @@ func (c *ChartDownloader) getOciURI(ref, version string, u *url.URL) (*url.URL, 
 // A reference may be an HTTP URL, an oci reference URL, a 'reponame/chartname'
 // reference, or a local path.
 //
-// A version is a SemVer string (1.2.3-beta.1+f334a6789).
+// A version is a SemVer string (1.2.3-beta.1+f334a6789) or a SHA256 digest of
+// the chart's manifest
+// (sha256:d234555386402a5867ef0169fefe5486858b6d8d209eaf32fd26d29b16807fd6).
 //
 //	- For fully qualified URLs, the version will be ignored (since URLs aren't versioned)
 //	- For a chart reference
