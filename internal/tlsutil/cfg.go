@@ -66,27 +66,6 @@ func ReadCertFromSecDir(cfgFileBaseName string, host string) (opts Options, err 
 		fmt.Printf("%v OS not supported for this oci pull. Contact your administrator for more information !!!", runtime.GOOS)
 	} else {
 		var clientCertDir = "/etc/docker/certs.d/"
-		/* var fileName = helmpath.ConfigPath(cfgFileBaseName)
-		data, err := ioutil.ReadFile(fileName)
-
-		if err != nil {
-			fmt.Printf("Config file not exist %v\n", err)
-		}
-
-		var configDataMap map[string]map[string]interface{}
-		err = json.Unmarshal(data, &configDataMap)
-
-		if err != nil {
-			fmt.Printf("Please do login before initiating the pull : %v", err)
-		}
-
-		keys := reflect.ValueOf(configDataMap["auths"]).MapKeys()
-		strkeys := make([]string, len(keys))
-		for i := 0; i < len(keys); i++ {
-			strkeys[i] = keys[i].String()
-		}
-		//fmt.Print(strings.Join(strkeys, ","))
-		strkey := strings.Join(strkeys, "") */
 		clientCertDir = clientCertDir + host
 
 		if _, err := os.Stat(clientCertDir); err != nil {
@@ -100,13 +79,10 @@ func ReadCertFromSecDir(cfgFileBaseName string, host string) (opts Options, err 
 				for _, file := range files {
 					if filepath.Ext(file.Name()) == ".crt" {
 						opts.CaCertFile = clientCertDir + "/" + file.Name()
-						//fmt.Printf("cafile: %v\n", opts.CaCertFile)
 					} else if filepath.Ext(file.Name()) == ".pem" {
 						opts.CertFile = clientCertDir + "/" + file.Name()
-						//fmt.Printf("certFile: %v\n", opts.CertFile)
 					} else if filepath.Ext(file.Name()) == ".key" {
 						opts.KeyFile = clientCertDir + "/" + file.Name()
-						//fmt.Printf("keyFile: %v\n", opts.KeyFile)
 					}
 				}
 			} else {
