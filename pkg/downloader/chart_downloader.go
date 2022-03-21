@@ -116,13 +116,21 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 	// If provenance is requested, verify it.
 	ver := &provenance.Verification{}
 	if c.Verify > VerifyNever {
-		body, err := g.Get(u.String() + ".prov")
+		initialURL := u.String()
+		u.Path += ".prov"
+		body, err := g.Get(u.String())
 		if err != nil {
-			if c.Verify == VerifyAlways {
-				return destfile, ver, errors.Errorf("failed to fetch provenance %q", u.String()+".prov")
+			// Try again adding the ".prov" to the end of the URL (not the path).
+			// This maintains backwards-compatibility with chart Repos built to work with older versions of Helm
+			var retryErr error
+			body, retryErr = g.Get(initialURL + ".prov")
+			if retryErr != nil {
+				if c.Verify == VerifyAlways {
+					return destfile, ver, errors.Errorf("failed to fetch provenance %q", u.String())
+				}
+				fmt.Fprintf(c.Out, "WARNING: Verification not found for %s: %s\n", ref, err)
+				return destfile, ver, nil
 			}
-			fmt.Fprintf(c.Out, "WARNING: Verification not found for %s: %s\n", ref, err)
-			return destfile, ver, nil
 		}
 		provfile := destfile + ".prov"
 		if err := fileutil.AtomicWriteFile(provfile, body, 0644); err != nil {
