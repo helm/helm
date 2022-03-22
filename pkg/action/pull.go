@@ -125,23 +125,27 @@ func (p *Pull) Run(chartRef string) (string, error) {
 
 	saved, v, err := c.DownloadTo(chartRef, p.Version, dest)
 	if err != nil {
-		registryClient, err := registry.NewCrosClient(chartRef,
-			registry.ClientOptDebug(p.Settings.Debug),
-			registry.ClientOptCredentialsFile(p.Settings.RegistryConfig),
-			registry.ClientOptWriter(&out),
-		)
-		if err != nil {
+		fmt.Printf("Error : %v\n", err)
+		if strings.Contains(fmt.Sprint(err), "remote error: tls: handshake failure") {
+			registryClient, err := registry.NewCrosClient(chartRef,
+				registry.ClientOptDebug(p.Settings.Debug),
+				registry.ClientOptCredentialsFile(p.Settings.RegistryConfig),
+				registry.ClientOptWriter(&out),
+			)
+			if err != nil {
+				return out.String(), err
+			}
+			c.Options = append(c.Options,
+				getter.WithRegistryClient(registryClient),
+				getter.WithTagName(p.Version))
+
+			saved, v, err = c.DownloadTo(chartRef, p.Version, dest)
+			if err != nil {
+				return out.String(), err
+			}
+		} else {
 			return out.String(), err
 		}
-		c.Options = append(c.Options,
-			getter.WithRegistryClient(registryClient),
-			getter.WithTagName(p.Version))
-
-		saved, v, err = c.DownloadTo(chartRef, p.Version, dest)
-		if err != nil {
-			return out.String(), err
-		}
-
 	}
 
 	if p.Verify {
