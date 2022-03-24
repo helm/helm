@@ -22,8 +22,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/pkg/errors"
 )
@@ -61,13 +63,27 @@ func ClientConfig(opts Options) (cfg *tls.Config, err error) {
 	return cfg, nil
 }
 
-func ReadCertFromSecDir(cfgFileBaseName string, host string) (opts Options, err error) {
+func ReadCertFromSecDir(host string) (opts Options, err error) {
 	if runtime.GOOS == "windows" || runtime.GOOS == "unix" {
 		fmt.Printf("%v OS not supported for this oci pull. Contact your administrator for more information !!!", runtime.GOOS)
+		os.Exit(1)
 	} else {
-		var clientCertDir = "/etc/docker/certs.d/"
-		clientCertDir = clientCertDir + host
-
+		cmd, err := exec.Command("helm", "env", "HELM_SECONDARY_CERT_DIR").Output()
+		if err != nil {
+			fmt.Printf("Error : %s", err)
+			os.Exit(1)
+		}
+		clientCertDir := strings.TrimSuffix(string(cmd), "\n")
+		if clientCertDir == "" {
+			fmt.Printf("Please Configure secondary certificate directory for ssl connection set/export HELM_SECONDARY_CERT_DIR='/etc/docker/certs.d/'\n")
+			os.Exit(1)
+		}
+		lastIndex := strings.LastIndexByte(clientCertDir, '/')
+		if lastIndex < 19 {
+			clientCertDir = fmt.Sprintf("%s/%s", clientCertDir, host)
+		} else {
+			clientCertDir = fmt.Sprintf("%s%s", clientCertDir, host)
+		}
 		if _, err := os.Stat(clientCertDir); err != nil {
 			if os.IsNotExist(err) {
 				os.MkdirAll(clientCertDir, os.ModePerm)
@@ -78,11 +94,11 @@ func ReadCertFromSecDir(cfgFileBaseName string, host string) (opts Options, err 
 			if files, err := ioutil.ReadDir(clientCertDir); err == nil {
 				for _, file := range files {
 					if filepath.Ext(file.Name()) == ".crt" {
-						opts.CaCertFile = clientCertDir + "/" + file.Name()
+						opts.CaCertFile = fmt.Sprintf("%s/%s", clientCertDir, file.Name())
 					} else if filepath.Ext(file.Name()) == ".pem" {
-						opts.CertFile = clientCertDir + "/" + file.Name()
+						opts.CertFile = fmt.Sprintf("%s/%s", clientCertDir, file.Name())
 					} else if filepath.Ext(file.Name()) == ".key" {
-						opts.KeyFile = clientCertDir + "/" + file.Name()
+						opts.KeyFile = fmt.Sprintf("%s/%s", clientCertDir, file.Name())
 					}
 				}
 			} else {
@@ -90,22 +106,22 @@ func ReadCertFromSecDir(cfgFileBaseName string, host string) (opts Options, err 
 				os.Exit(1)
 			}
 			if opts.CaCertFile == "" && opts.CertFile == "" && opts.KeyFile == "" {
-				fmt.Printf("Error Certificate (cacerts.crt,client.pem,client.key) required : Client authentication failed due to certificate not present in cert directory !! \n")
+				fmt.Printf("Error : Missing certificate (cacerts.crt,client.pem,client.key) required !!\n")
 				os.Exit(1)
 			}
 
 			if opts.CaCertFile == "" && opts.CertFile == "" {
-				fmt.Printf("Error Certificate Required : Root-CA and client certificate (cacerts.crt,client.pem) not found.\n")
+				fmt.Printf("Error : Missing certificate : Root-CA and client certificate (cacerts.crt,client.pem) required !!\n")
 				os.Exit(1)
 			}
 
 			if opts.CaCertFile == "" && opts.KeyFile == "" {
-				fmt.Printf("Error Certificate Required :  Root-CA and and client keyfie (cacerts.crt,client.key) not found.\n")
+				fmt.Printf("Error Certificate Required :  Root-CA and and client key (cacerts.crt,client.key) not found.\n")
 				os.Exit(1)
 			}
 
 			if opts.CertFile == "" && opts.KeyFile == "" {
-				fmt.Printf("Error Certificate Required : Client certificate and client keyfile (client.pem,client.key) not found.\n")
+				fmt.Printf("Error Certificate Required : Client certificate and client key (client.pem,client.key) not found.\n")
 				os.Exit(1)
 			}
 			if opts.CaCertFile == "" {
