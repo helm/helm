@@ -155,9 +155,9 @@ func NewCrosClient(chartref string, options ...ClientOption) (*Client, error) {
 	if client.resolver == nil {
 		host, err := urlutil.ExtractHostname(chartref)
 		if err != nil {
-
+			fmt.Printf("error :%v\n", err)
 		}
-		clientOpts, err := tlsutil.ReadCertFromSecDir(CredentialsFileBasename, host)
+		clientOpts, err := tlsutil.ReadCertFromSecDir(host)
 		if err != nil {
 			return client, errors.Wrapf(err, "Client certificate/directory Not Exist !!")
 		}
