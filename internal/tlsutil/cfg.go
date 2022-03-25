@@ -105,34 +105,32 @@ func ReadCertFromSecDir(host string) (opts Options, err error) {
 				fmt.Printf(" Certificate not found in current directory - %v\n ", err)
 				os.Exit(1)
 			}
-			if opts.CaCertFile == "" && opts.CertFile == "" && opts.KeyFile == "" {
+			switch {
+			case opts.CaCertFile == "" && opts.CertFile == "" && opts.KeyFile == "":
 				fmt.Printf("Error : Missing certificate (cacerts.crt,client.pem,client.key) required !!\n")
 				os.Exit(1)
-			}
-
-			if opts.CaCertFile == "" && opts.CertFile == "" {
+			case opts.CaCertFile == "" && opts.CertFile == "":
 				fmt.Printf("Error : Missing certificate : Root-CA and client certificate (cacerts.crt,client.pem) required !!\n")
 				os.Exit(1)
-			}
+			case opts.CaCertFile == "" && opts.KeyFile == "":
+				fmt.Printf("Error : Missing Certificate : Root-CA and and client key (cacerts.crt,client.key) required.\n")
+				os.Exit(1)
 
-			if opts.CaCertFile == "" && opts.KeyFile == "" {
-				fmt.Printf("Error Certificate Required :  Root-CA and and client key (cacerts.crt,client.key) not found.\n")
+			case opts.CertFile == "" && opts.KeyFile == "":
+				fmt.Printf("Error : Missing Certificate : Client certificate and client key (client.pem,client.key) required.\n")
 				os.Exit(1)
 			}
+			switch {
+			case opts.CaCertFile == "":
+				fmt.Printf("Error : Missing Certificate : Client Root-CA (cacerts.crt) required.\n")
+				os.Exit(1)
+			case opts.CertFile == "":
+				fmt.Printf("Error : Missing Certificate : Client certificate(client.pem) required.\n")
+				os.Exit(1)
+			case opts.KeyFile == "":
+				fmt.Printf("Error : Missing Certificate : Client keyfile (client.key) required.\n")
+				os.Exit(1)
 
-			if opts.CertFile == "" && opts.KeyFile == "" {
-				fmt.Printf("Error Certificate Required : Client certificate and client key (client.pem,client.key) not found.\n")
-				os.Exit(1)
-			}
-			if opts.CaCertFile == "" {
-				fmt.Printf("Error Certificate Required : Client Root-CA (cacerts.crt) not found.\n")
-				os.Exit(1)
-			} else if opts.CertFile == "" {
-				fmt.Printf("Error Certificate Required : Client certificate(client.pem) not found.\n")
-				os.Exit(1)
-			} else if opts.KeyFile == "" {
-				fmt.Printf("Error Certificate Required : Client keyfile (client.key) not found.\n")
-				os.Exit(1)
 			}
 		}
 	}
