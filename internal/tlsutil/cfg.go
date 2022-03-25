@@ -78,8 +78,8 @@ func ReadCertFromSecDir(host string) (opts Options, err error) {
 			fmt.Printf("Please Configure secondary certificate directory for ssl connection set/export HELM_SECONDARY_CERT_DIR='/etc/docker/certs.d/'\n")
 			os.Exit(1)
 		}
-		lastIndex := strings.LastIndexByte(clientCertDir, '/')
-		if lastIndex < 19 {
+
+		if clientCertDir[len(clientCertDir)-1] != '/' {
 			clientCertDir = fmt.Sprintf("%s/%s", clientCertDir, host)
 		} else {
 			clientCertDir = fmt.Sprintf("%s%s", clientCertDir, host)
