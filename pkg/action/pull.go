@@ -125,7 +125,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 
 	saved, v, err := c.DownloadTo(chartRef, p.Version, dest)
 	if err != nil {
-		if strings.Contains(fmt.Sprint(err), "remote error: tls: handshake failure") {
+		if registry.IsOCI(chartRef) && strings.Contains(fmt.Sprint(err), "remote error: tls: handshake failure") {
 			registryClient, err := registry.NewCrosClient(chartRef,
 				registry.ClientOptDebug(p.Settings.Debug),
 				registry.ClientOptCredentialsFile(p.Settings.RegistryConfig),
