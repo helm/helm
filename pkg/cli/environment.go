@@ -118,7 +118,6 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.RegistryConfig, "registry-config", s.RegistryConfig, "path to the registry config file")
 	fs.StringVar(&s.RepositoryConfig, "repository-config", s.RepositoryConfig, "path to the file containing repository names and URLs")
 	fs.StringVar(&s.RepositoryCache, "repository-cache", s.RepositoryCache, "path to the file containing cached repository indexes")
-	fs.StringVar(&s.ClientSecCertDirectory, "client-sec-cert-dir", s.ClientSecCertDirectory, "path to the secondary certificate directory used for 2-way ssl support(oci pull for artificat repo)")
 }
 
 func envOr(name, def string) string {
