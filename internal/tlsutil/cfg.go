@@ -68,14 +68,14 @@ func ReadCertFromSecDir(host string) (opts Options, err error) {
 		fmt.Printf("%v OS not supported for this oci pull. Contact your administrator for more information !!!", runtime.GOOS)
 		os.Exit(1)
 	} else {
-		cmd, err := exec.Command("helm", "env", "HELM_SECONDARY_CERT_DIR").Output()
+		cmd, err := exec.Command("helm", "env", "HELM_CLIENT_TLS_CERT_DIR").Output()
 		if err != nil {
 			fmt.Printf("Error : %s", err)
 			os.Exit(1)
 		}
 		clientCertDir := strings.TrimSuffix(string(cmd), "\n")
 		if clientCertDir == "" {
-			fmt.Printf("Please Configure secondary certificate directory for ssl connection set/export HELM_SECONDARY_CERT_DIR='/etc/docker/certs.d/'\n")
+			fmt.Printf("Please configure client certificate directory for tls connection set/export HELM_CLIENT_TLS_CERT_DIR='/etc/docker/certs.d/'\n")
 			os.Exit(1)
 		}
 
@@ -87,7 +87,7 @@ func ReadCertFromSecDir(host string) (opts Options, err error) {
 		if _, err := os.Stat(clientCertDir); err != nil {
 			if os.IsNotExist(err) {
 				os.MkdirAll(clientCertDir, os.ModePerm)
-				return opts, errors.Wrapf(err, "Client Certificate Directory Not Exist !! \n %v Directory created.", clientCertDir)
+				return opts, errors.Wrapf(err, "%v\n%v Directory created.", clientCertDir)
 			}
 		} else {
 

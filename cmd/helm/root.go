@@ -67,7 +67,7 @@ Environment variables:
 | $HELM_KUBEASUSER                   | set the Username to impersonate for the operation.                                |
 | $HELM_KUBECONTEXT                  | set the name of the kubeconfig context.                                           |
 | $HELM_KUBETOKEN                    | set the Bearer KubeToken used for authentication.                                 |
-| $HELM_SECONDARY_CERT_DIR           | set the secondary certificate directory for 2-way ssl support for oci pull.       |
+| $HELM_CLIENT_TLS_CERT_DIR           | set the certificate directory for 2-way tls support for oci pull.                 |
 
 Helm stores cache, configuration, and data based on the following configuration order:
 
