@@ -395,8 +395,9 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 
 	numDescriptors := len(descriptors)
 	if numDescriptors < minNumDescriptors {
-		return nil, fmt.Errorf("manifest does not contain minimum number of descriptors (%d), descriptors found: %d",
-			minNumDescriptors, numDescriptors)
+		return nil, errors.New(
+			fmt.Sprintf("manifest does not contain minimum number of descriptors (%d), descriptors found: %d",
+				minNumDescriptors, numDescriptors))
 	}
 	var configDescriptor *ocispec.Descriptor
 	var chartDescriptor *ocispec.Descriptor
@@ -416,19 +417,22 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		}
 	}
 	if configDescriptor == nil {
-		return nil, fmt.Errorf("could not load config with mediatype %s", ConfigMediaType)
+		return nil, errors.New(
+			fmt.Sprintf("could not load config with mediatype %s", ConfigMediaType))
 	}
 	if operation.withChart && chartDescriptor == nil {
-		return nil, fmt.Errorf("manifest does not contain a layer with mediatype %s",
-			ChartLayerMediaType)
+		return nil, errors.New(
+			fmt.Sprintf("manifest does not contain a layer with mediatype %s",
+				ChartLayerMediaType))
 	}
 	var provMissing bool
 	if operation.withProv && provDescriptor == nil {
 		if operation.ignoreMissingProv {
 			provMissing = true
 		} else {
-			return nil, fmt.Errorf("manifest does not contain a layer with mediatype %s",
-				ProvLayerMediaType)
+			return nil, errors.New(
+				fmt.Sprintf("manifest does not contain a layer with mediatype %s",
+					ProvLayerMediaType))
 		}
 	}
 	result := &PullResult{
