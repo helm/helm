@@ -87,7 +87,7 @@ func ReadCertFromSecDir(host string) (opts Options, err error) {
 		if _, err := os.Stat(clientCertDir); err != nil {
 			if os.IsNotExist(err) {
 				os.MkdirAll(clientCertDir, os.ModePerm)
-				return opts, errors.Wrapf(err, "%v\n%v Directory created.", clientCertDir)
+				return opts, errors.Wrapf(err, clientCertDir, "%v\n%v Directory created.")
 			}
 		} else {
 
