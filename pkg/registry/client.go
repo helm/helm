@@ -22,9 +22,11 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/containerd/containerd/remotes"
@@ -38,6 +40,8 @@ import (
 	registryremote "oras.land/oras-go/pkg/registry/remote"
 	registryauth "oras.land/oras-go/pkg/registry/remote/auth"
 
+	"helm.sh/helm/v3/internal/tlsutil"
+	"helm.sh/helm/v3/internal/urlutil"
 	"helm.sh/helm/v3/internal/version"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/helmpath"
@@ -95,6 +99,94 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		}
 		client.resolver = resolver
 	}
+	if client.registryAuthorizer == nil {
+		client.registryAuthorizer = &registryauth.Client{
+			Header: http.Header{
+				"User-Agent": {version.GetUserAgent()},
+			},
+			Cache: registryauth.DefaultCache,
+			Credential: func(ctx context.Context, reg string) (registryauth.Credential, error) {
+				dockerClient, ok := client.authorizer.(*dockerauth.Client)
+				if !ok {
+					return registryauth.EmptyCredential, errors.New("unable to obtain docker client")
+				}
+
+				username, password, err := dockerClient.Credential(reg)
+				if err != nil {
+					return registryauth.EmptyCredential, errors.New("unable to retrieve credentials")
+				}
+
+				// A blank returned username and password value is a bearer token
+				if username == "" && password != "" {
+					return registryauth.Credential{
+						RefreshToken: password,
+					}, nil
+				}
+
+				return registryauth.Credential{
+					Username: username,
+					Password: password,
+				}, nil
+
+			},
+		}
+
+	}
+	return client, nil
+}
+
+func NewCrosClient(chartref string, options ...ClientOption) (*Client, error) {
+	client := &Client{
+		out: ioutil.Discard,
+	}
+	for _, option := range options {
+		option(client)
+	}
+	if client.credentialsFile == "" {
+		client.credentialsFile = helmpath.ConfigPath(CredentialsFileBasename)
+	}
+	if client.authorizer == nil {
+		authClient, err := dockerauth.NewClientWithDockerFallback(client.credentialsFile)
+		if err != nil {
+			return nil, err
+		}
+		client.authorizer = authClient
+	}
+	if client.resolver == nil {
+		host, err := urlutil.ExtractHostname(chartref)
+		if err != nil {
+			fmt.Printf("error :%v\n", err)
+		}
+		clientOpts, err := tlsutil.ReadCertFromSecDir(host)
+		if err != nil {
+			return client, errors.Wrapf(err, "Client certificate/directory Not Exist !!")
+		}
+		cfgtls, err := tlsutil.ClientConfig(clientOpts)
+		if err != nil {
+			fmt.Printf("error :%v\n", err)
+
+		}
+		var rt http.RoundTripper = &http.Transport{
+			Dial: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).Dial,
+			TLSHandshakeTimeout:   30 * time.Second,
+			TLSClientConfig:       cfgtls,
+			ResponseHeaderTimeout: time.Duration(3 * time.Second),
+			DisableKeepAlives:     true,
+		}
+		crosclient := http.Client{Transport: rt, Timeout: 30 * time.Second}
+		headers := http.Header{}
+		headers.Set("User-Agent", version.GetUserAgent())
+		opts := []auth.ResolverOption{auth.WithResolverHeaders(headers), auth.WithResolverClient(&crosclient)}
+		resolver, err := client.authorizer.ResolverWithOpts(opts...)
+		if err != nil {
+			return nil, err
+		}
+		client.resolver = resolver
+	}
+
 	if client.registryAuthorizer == nil {
 		client.registryAuthorizer = &registryauth.Client{
 			Header: http.Header{
@@ -303,9 +395,8 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 
 	numDescriptors := len(descriptors)
 	if numDescriptors < minNumDescriptors {
-		return nil, errors.New(
-			fmt.Sprintf("manifest does not contain minimum number of descriptors (%d), descriptors found: %d",
-				minNumDescriptors, numDescriptors))
+		return nil, fmt.Errorf("manifest does not contain minimum number of descriptors (%d), descriptors found: %d",
+			minNumDescriptors, numDescriptors)
 	}
 	var configDescriptor *ocispec.Descriptor
 	var chartDescriptor *ocispec.Descriptor
@@ -325,22 +416,19 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		}
 	}
 	if configDescriptor == nil {
-		return nil, errors.New(
-			fmt.Sprintf("could not load config with mediatype %s", ConfigMediaType))
+		return nil, fmt.Errorf("could not load config with mediatype %s", ConfigMediaType)
 	}
 	if operation.withChart && chartDescriptor == nil {
-		return nil, errors.New(
-			fmt.Sprintf("manifest does not contain a layer with mediatype %s",
-				ChartLayerMediaType))
+		return nil, fmt.Errorf("manifest does not contain a layer with mediatype %s",
+			ChartLayerMediaType)
 	}
 	var provMissing bool
 	if operation.withProv && provDescriptor == nil {
 		if operation.ignoreMissingProv {
 			provMissing = true
 		} else {
-			return nil, errors.New(
-				fmt.Sprintf("manifest does not contain a layer with mediatype %s",
-					ProvLayerMediaType))
+			return nil, fmt.Errorf("manifest does not contain a layer with mediatype %s",
+				ProvLayerMediaType)
 		}
 	}
 	result := &PullResult{

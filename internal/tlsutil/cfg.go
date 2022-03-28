@@ -19,7 +19,13 @@ package tlsutil
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
+	"io/ioutil"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strings"
 
 	"github.com/pkg/errors"
 )
@@ -55,4 +61,78 @@ func ClientConfig(opts Options) (cfg *tls.Config, err error) {
 
 	cfg = &tls.Config{InsecureSkipVerify: opts.InsecureSkipVerify, Certificates: []tls.Certificate{*cert}, RootCAs: pool}
 	return cfg, nil
+}
+
+func ReadCertFromSecDir(host string) (opts Options, err error) {
+	if runtime.GOOS == "windows" || runtime.GOOS == "unix" {
+		fmt.Printf("%v OS not supported for this oci pull. Contact your administrator for more information !!!", runtime.GOOS)
+		os.Exit(1)
+	} else {
+		cmd, err := exec.Command("helm", "env", "HELM_CLIENT_TLS_CERT_DIR").Output()
+		if err != nil {
+			fmt.Printf("Error : %s", err)
+			os.Exit(1)
+		}
+		clientCertDir := strings.TrimSuffix(string(cmd), "\n")
+		if clientCertDir == "" {
+			fmt.Printf("Please configure client certificate directory for tls connection set/export HELM_CLIENT_TLS_CERT_DIR='/etc/docker/certs.d/'\n")
+			os.Exit(1)
+		}
+
+		if clientCertDir[len(clientCertDir)-1] != '/' {
+			clientCertDir = fmt.Sprintf("%s/%s", clientCertDir, host)
+		} else {
+			clientCertDir = fmt.Sprintf("%s%s", clientCertDir, host)
+		}
+		if _, err := os.Stat(clientCertDir); err != nil {
+			if os.IsNotExist(err) {
+				os.MkdirAll(clientCertDir, os.ModePerm)
+				return opts, errors.Wrapf(err, clientCertDir, "%v\n%v Directory created.")
+			}
+		} else {
+
+			if files, err := ioutil.ReadDir(clientCertDir); err == nil {
+				for _, file := range files {
+					if filepath.Ext(file.Name()) == ".crt" {
+						opts.CaCertFile = fmt.Sprintf("%s/%s", clientCertDir, file.Name())
+					} else if filepath.Ext(file.Name()) == ".pem" {
+						opts.CertFile = fmt.Sprintf("%s/%s", clientCertDir, file.Name())
+					} else if filepath.Ext(file.Name()) == ".key" {
+						opts.KeyFile = fmt.Sprintf("%s/%s", clientCertDir, file.Name())
+					}
+				}
+			} else {
+				fmt.Printf(" Certificate not found in current directory - %v\n ", err)
+				os.Exit(1)
+			}
+			switch {
+			case opts.CaCertFile == "" && opts.CertFile == "" && opts.KeyFile == "":
+				fmt.Printf("Error : Missing certificate (cacerts.crt,client.pem,client.key) required !!\n")
+				os.Exit(1)
+			case opts.CaCertFile == "" && opts.CertFile == "":
+				fmt.Printf("Error : Missing certificate : Root-CA and client certificate (cacerts.crt,client.pem) required !!\n")
+				os.Exit(1)
+			case opts.CaCertFile == "" && opts.KeyFile == "":
+				fmt.Printf("Error : Missing Certificate : Root-CA and and client key (cacerts.crt,client.key) required.\n")
+				os.Exit(1)
+
+			case opts.CertFile == "" && opts.KeyFile == "":
+				fmt.Printf("Error : Missing Certificate : Client certificate and client key (client.pem,client.key) required.\n")
+				os.Exit(1)
+			}
+			switch {
+			case opts.CaCertFile == "":
+				fmt.Printf("Error : Missing Certificate : Client Root-CA (cacerts.crt) required.\n")
+				os.Exit(1)
+			case opts.CertFile == "":
+				fmt.Printf("Error : Missing Certificate : Client certificate(client.pem) required.\n")
+				os.Exit(1)
+			case opts.KeyFile == "":
+				fmt.Printf("Error : Missing Certificate : Client keyfile (client.key) required.\n")
+				os.Exit(1)
+
+			}
+		}
+	}
+	return opts, nil
 }
