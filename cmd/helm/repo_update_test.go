@@ -238,3 +238,46 @@ func TestUpdateChartsFailWithError(t *testing.T) {
 		t.Error("Update was not successful and should return error message because 'fail-on-repo-update-fail' flag set")
 	}
 }
+
+func TestUpdateChartsShowValidationErrors(t *testing.T) {
+	defer resetEnv()()
+	defer ensure.HelmHome(t)()
+
+	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ts.Stop()
+
+	var invalidURL = ts.URL() + "55"
+	r, err := repo.NewChartRepository(&repo.Entry{
+		Name: "charts",
+		URL:  invalidURL,
+	}, getter.All(settings))
+	if err != nil {
+		t.Error(err)
+	}
+
+	b := bytes.NewBuffer(nil)
+	err = updateCharts([]*repo.ChartRepository{r}, b, true, true)
+	if err == nil {
+		t.Error("Repo update should return error because update of repository fails and 'fail-on-repo-update-fail' flag set")
+		return
+	}
+	var expectedErr = "Failed to update the following repositories"
+	var receivedErr = err.Error()
+	if !strings.Contains(receivedErr, expectedErr) {
+		t.Errorf("Expected error (%s) but got (%s) instead", expectedErr, receivedErr)
+	}
+	if !strings.Contains(receivedErr, invalidURL) {
+		t.Errorf("Expected invalid URL (%s) in error message but got (%s) instead", invalidURL, receivedErr)
+	}
+
+	got := b.String()
+	if !strings.Contains(got, "Unable to get an update") {
+		t.Errorf("Repo should have failed update but instead got: %q", got)
+	}
+	if strings.Contains(got, "Update Complete.") {
+		t.Error("Update was not successful and should return error message because 'fail-on-repo-update-fail' flag set")
+	}
+}
