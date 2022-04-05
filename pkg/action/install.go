@@ -766,5 +766,5 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		atVersion = fmt.Sprintf(" at version %q", version)
 	}
 
-	return filename, errors.Errorf("failed to download %q%s", name, atVersion)
+	return filename, errors.Errorf("failed to download %q%s because of %s", name, atVersion, err)
 }
