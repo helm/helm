@@ -75,6 +75,9 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 	for _, value := range opts.FileValues {
 		reader := func(rs []rune) (interface{}, error) {
 			bytes, err := readFile(string(rs), p)
+			if err != nil {
+				return nil, err
+			}
 			return string(bytes), err
 		}
 		if err := strvals.ParseIntoFile(value, base, reader); err != nil {
@@ -117,5 +120,8 @@ func readFile(filePath string, p getter.Providers) ([]byte, error) {
 		return ioutil.ReadFile(filePath)
 	}
 	data, err := g.Get(filePath, getter.WithURL(filePath))
+	if err != nil {
+		return nil, err
+	}
 	return data.Bytes(), err
 }
