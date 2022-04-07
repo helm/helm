@@ -67,6 +67,7 @@ Environment variables:
 | $HELM_KUBEASUSER                   | set the Username to impersonate for the operation.                                |
 | $HELM_KUBECONTEXT                  | set the name of the kubeconfig context.                                           |
 | $HELM_KUBETOKEN                    | set the Bearer KubeToken used for authentication.                                 |
+| $HELM_DEFAULT_BURST_LIMIT          | set the default burst limit in the case the server contains many CRDs             |
 
 Helm stores cache, configuration, and data based on the following configuration order:
 
