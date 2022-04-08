@@ -72,25 +72,25 @@ type EnvSettings struct {
 	PluginsDirectory string
 	// MaxHistory is the max release history maintained.
 	MaxHistory int
-	// DefaultBurstLimit is the default client-side throttling limit.
-	DefaultBurstLimit int
+	// BurstLimit is the default client-side throttling limit.
+	BurstLimit int
 }
 
 func New() *EnvSettings {
 	env := &EnvSettings{
-		namespace:         os.Getenv("HELM_NAMESPACE"),
-		MaxHistory:        envIntOr("HELM_MAX_HISTORY", defaultMaxHistory),
-		KubeContext:       os.Getenv("HELM_KUBECONTEXT"),
-		KubeToken:         os.Getenv("HELM_KUBETOKEN"),
-		KubeAsUser:        os.Getenv("HELM_KUBEASUSER"),
-		KubeAsGroups:      envCSV("HELM_KUBEASGROUPS"),
-		KubeAPIServer:     os.Getenv("HELM_KUBEAPISERVER"),
-		KubeCaFile:        os.Getenv("HELM_KUBECAFILE"),
-		PluginsDirectory:  envOr("HELM_PLUGINS", helmpath.DataPath("plugins")),
-		RegistryConfig:    envOr("HELM_REGISTRY_CONFIG", helmpath.ConfigPath("registry/config.json")),
-		RepositoryConfig:  envOr("HELM_REPOSITORY_CONFIG", helmpath.ConfigPath("repositories.yaml")),
-		RepositoryCache:   envOr("HELM_REPOSITORY_CACHE", helmpath.CachePath("repository")),
-		DefaultBurstLimit: envIntOr("HELM_DEFAULT_BURST_LIMIT", defaultBurstLimit),
+		namespace:        os.Getenv("HELM_NAMESPACE"),
+		MaxHistory:       envIntOr("HELM_MAX_HISTORY", defaultMaxHistory),
+		KubeContext:      os.Getenv("HELM_KUBECONTEXT"),
+		KubeToken:        os.Getenv("HELM_KUBETOKEN"),
+		KubeAsUser:       os.Getenv("HELM_KUBEASUSER"),
+		KubeAsGroups:     envCSV("HELM_KUBEASGROUPS"),
+		KubeAPIServer:    os.Getenv("HELM_KUBEAPISERVER"),
+		KubeCaFile:       os.Getenv("HELM_KUBECAFILE"),
+		PluginsDirectory: envOr("HELM_PLUGINS", helmpath.DataPath("plugins")),
+		RegistryConfig:   envOr("HELM_REGISTRY_CONFIG", helmpath.ConfigPath("registry/config.json")),
+		RepositoryConfig: envOr("HELM_REPOSITORY_CONFIG", helmpath.ConfigPath("repositories.yaml")),
+		RepositoryCache:  envOr("HELM_REPOSITORY_CACHE", helmpath.CachePath("repository")),
+		BurstLimit:       envIntOr("HELM_BURST_LIMIT", defaultBurstLimit),
 	}
 	env.Debug, _ = strconv.ParseBool(os.Getenv("HELM_DEBUG"))
 
@@ -105,7 +105,7 @@ func New() *EnvSettings {
 		Impersonate:      &env.KubeAsUser,
 		ImpersonateGroup: &env.KubeAsGroups,
 		WrapConfigFn: func(config *rest.Config) *rest.Config {
-			config.Burst = env.DefaultBurstLimit
+			config.Burst = env.BurstLimit
 			return config
 		},
 	}
@@ -126,7 +126,7 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.RegistryConfig, "registry-config", s.RegistryConfig, "path to the registry config file")
 	fs.StringVar(&s.RepositoryConfig, "repository-config", s.RepositoryConfig, "path to the file containing repository names and URLs")
 	fs.StringVar(&s.RepositoryCache, "repository-cache", s.RepositoryCache, "path to the file containing cached repository indexes")
-	fs.IntVar(&s.DefaultBurstLimit, "default-burst-limit", s.DefaultBurstLimit, "client-side default throttling limit")
+	fs.IntVar(&s.BurstLimit, "burst-limit", s.BurstLimit, "client-side default throttling limit")
 }
 
 func envOr(name, def string) string {
@@ -158,18 +158,18 @@ func envCSV(name string) (ls []string) {
 
 func (s *EnvSettings) EnvVars() map[string]string {
 	envvars := map[string]string{
-		"HELM_BIN":                 os.Args[0],
-		"HELM_CACHE_HOME":          helmpath.CachePath(""),
-		"HELM_CONFIG_HOME":         helmpath.ConfigPath(""),
-		"HELM_DATA_HOME":           helmpath.DataPath(""),
-		"HELM_DEBUG":               fmt.Sprint(s.Debug),
-		"HELM_PLUGINS":             s.PluginsDirectory,
-		"HELM_REGISTRY_CONFIG":     s.RegistryConfig,
-		"HELM_REPOSITORY_CACHE":    s.RepositoryCache,
-		"HELM_REPOSITORY_CONFIG":   s.RepositoryConfig,
-		"HELM_NAMESPACE":           s.Namespace(),
-		"HELM_MAX_HISTORY":         strconv.Itoa(s.MaxHistory),
-		"HELM_DEFAULT_BURST_LIMIT": strconv.Itoa(s.DefaultBurstLimit),
+		"HELM_BIN":               os.Args[0],
+		"HELM_CACHE_HOME":        helmpath.CachePath(""),
+		"HELM_CONFIG_HOME":       helmpath.ConfigPath(""),
+		"HELM_DATA_HOME":         helmpath.DataPath(""),
+		"HELM_DEBUG":             fmt.Sprint(s.Debug),
+		"HELM_PLUGINS":           s.PluginsDirectory,
+		"HELM_REGISTRY_CONFIG":   s.RegistryConfig,
+		"HELM_REPOSITORY_CACHE":  s.RepositoryCache,
+		"HELM_REPOSITORY_CONFIG": s.RepositoryConfig,
+		"HELM_NAMESPACE":         s.Namespace(),
+		"HELM_MAX_HISTORY":       strconv.Itoa(s.MaxHistory),
+		"HELM_BURST_LIMIT":       strconv.Itoa(s.BurstLimit),
 
 		// broken, these are populated from helm flags and not kubeconfig.
 		"HELM_KUBECONTEXT":   s.KubeContext,
