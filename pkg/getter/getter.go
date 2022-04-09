@@ -18,6 +18,7 @@ package getter
 
 import (
 	"bytes"
+	"net/http"
 	"time"
 
 	"github.com/pkg/errors"
@@ -43,6 +44,7 @@ type options struct {
 	version               string
 	registryClient        *registry.Client
 	timeout               time.Duration
+	transport             *http.Transport
 }
 
 // Option allows specifying various settings configurable by the user for overriding the defaults
@@ -116,6 +118,13 @@ func WithRegistryClient(client *registry.Client) Option {
 func WithUntar() Option {
 	return func(opts *options) {
 		opts.unTar = true
+	}
+}
+
+// WithTransport sets the http.Transport to allow overwriting the HTTPGetter default.
+func WithTransport(transport *http.Transport) Option {
+	return func(opts *options) {
+		opts.transport = transport
 	}
 }
 
