@@ -751,13 +751,13 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 	}
 
 	filename, _, err := dl.DownloadTo(name, version, settings.RepositoryCache)
-	if err == nil {
-		lname, err := filepath.Abs(filename)
-		if err != nil {
-			return filename, err
-		}
-		return lname, nil
-	} else {
+	if err != nil {
 		return "", err
 	}
+
+	lname, err := filepath.Abs(filename)
+	if err != nil {
+		return filename, err
+	}
+	return lname, nil
 }
