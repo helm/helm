@@ -81,9 +81,9 @@ $(BINDIR)/$(BINNAME): $(SRC)
 
 
 .PHONY: build-linux-amd64
-build-linux-amd64:  $(BINDIR)/$(BINNAME)
+build-linux-amd64:  $(BINDIR)/$(BINNAME)-linux-amd64
 
-$(BINDIR)/$(BINNAME): $(SRC)
+$(BINDIR)/$(BINNAME)-linux-amd64: $(SRC)
 	GO111MODULE=on CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build $(GOFLAGS) -trimpath -tags '$(TAGS)' -ldflags '$(LDFLAGS)' -o '$(BINDIR)'/$(BINNAME) ./cmd/helm
 
 # ------------------------------------------------------------------------------
