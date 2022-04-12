@@ -113,6 +113,10 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	}
 
 	deletedResources, kept, errs := u.deleteRelease(rel)
+	if errs != nil {
+		u.cfg.Log("uninstall: Failed to delete release: %s", errs)
+		return nil, errors.Errorf("failed to delete release: %s", name)
+	}
 
 	if kept != "" {
 		kept = "These resources were kept due to the resource policy:\n" + kept
