@@ -23,8 +23,14 @@ import (
 	"helm.sh/helm/v3/pkg/releaseutil"
 )
 
-func filterManifestsToKeep(manifests []releaseutil.Manifest) (keep, remaining []releaseutil.Manifest) {
+func filterManifestsToKeep(manifests []releaseutil.Manifest, onlyRelease bool) (keep, remaining []releaseutil.Manifest) {
 	for _, m := range manifests {
+		if onlyRelease {
+			if m.Head.Metadata != nil {
+				keep = append(keep, m)
+			}
+			continue
+		}
 		if m.Head.Metadata == nil || m.Head.Metadata.Annotations == nil || len(m.Head.Metadata.Annotations) == 0 {
 			remaining = append(remaining, m)
 			continue
