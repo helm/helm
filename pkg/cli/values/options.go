@@ -17,13 +17,14 @@ limitations under the License.
 package values
 
 import (
+	"bytes"
 	"io"
 	"net/url"
 	"os"
 	"strings"
 
 	"github.com/pkg/errors"
-	"sigs.k8s.io/yaml"
+	"k8s.io/apimachinery/pkg/util/yaml"
 
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/strvals"
@@ -45,18 +46,15 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 
 	// User specified a values files via -f/--values
 	for _, filePath := range opts.ValueFiles {
-		currentMap := map[string]interface{}{}
-
-		bytes, err := readFile(filePath, p)
+		data, err := readFile(filePath, p)
 		if err != nil {
 			return nil, err
 		}
 
-		if err := yaml.Unmarshal(bytes, &currentMap); err != nil {
+		base, err = mergeYaml(base, data)
+		if err != nil {
 			return nil, errors.Wrapf(err, "failed to parse %s", filePath)
 		}
-		// Merge with the previous map
-		base = mergeMaps(base, currentMap)
 	}
 
 	// User specified a value via --set-json
@@ -83,15 +81,37 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 	// User specified a value via --set-file
 	for _, value := range opts.FileValues {
 		reader := func(rs []rune) (interface{}, error) {
-			bytes, err := readFile(string(rs), p)
+			data, err := readFile(string(rs), p)
 			if err != nil {
 				return nil, err
 			}
-			return string(bytes), err
+			return string(data), err
 		}
 		if err := strvals.ParseIntoFile(value, base, reader); err != nil {
 			return nil, errors.Wrap(err, "failed parsing --set-file data")
 		}
+	}
+
+	return base, nil
+}
+
+// mergeYaml merges data into an existing Go map. data must be a YAML format.
+// If the file contains multiple documents, each document will be merged separately.
+func mergeYaml(base map[string]interface{}, data []byte) (map[string]interface{}, error) {
+	decoder := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(data), 4096)
+
+	for {
+		currentMap := map[string]interface{}{}
+		err := decoder.Decode(&currentMap)
+
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return nil, err
+		}
+
+		// Merge with the previous map
+		base = mergeMaps(base, currentMap)
 	}
 
 	return base, nil
