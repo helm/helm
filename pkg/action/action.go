@@ -220,6 +220,13 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 		if err != nil {
 			return hs, b, notes, errors.Wrap(err, "error while running post render on files")
 		}
+		for _, hook := range hs {
+			sb, err := pr.Run(bytes.NewBufferString(hook.Manifest))
+			if err != nil {
+				return hs, b, notes, errors.Wrap(err, "error while running post render on hooks")
+			}
+			hook.Manifest = sb.String()
+		}
 	}
 
 	return hs, b, notes, nil
