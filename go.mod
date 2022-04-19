@@ -1,4 +1,4 @@
-module helm.sh/helm/v3
+module github.com/zze326/helm
 
 go 1.17
 
