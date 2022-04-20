@@ -22,8 +22,7 @@
 : ${DEBUG:="false"}
 : ${VERIFY_CHECKSUM:="true"}
 : ${VERIFY_SIGNATURES:="false"}
-: ${DEFAULT_ROOT_INSTALL_DIR:="/usr/local/bin"}
-: ${DEFAULT_USER_INSTALL_DIR:="${HOME}/.local/bin"}
+: ${HELM_INSTALL_DIR:="/usr/local/bin"}
 : ${GPG_PUBRING:="pubring.kbx"}
 
 HAS_CURL="$(type "curl" &> /dev/null && echo true || echo false)"
@@ -330,10 +329,8 @@ set +u
 
 if [ -n $INSTALL_DIR ]; then
   HELM_INSTALL_DIR=$INSTALL_DIR
-elif [ $USE_SUDO == "true" ]; then
-  HELM_INSTALL_DIR=$DEFAULT_ROOT_INSTALL_DIR
 elif [ $USE_SUDO == "false" ]; then
-  HELM_INSTALL_DIR=$DEFAULT_USER_INSTALL_DIR
+  HELM_INSTALL_DIR="${HOME}/.local/bin"
 fi
 
 mkdir -p $HELM_INSTALL_DIR
