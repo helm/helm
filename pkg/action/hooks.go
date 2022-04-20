@@ -17,17 +17,24 @@ package action
 
 import (
 	"bytes"
+	"context"
+	"fmt"
+	"io"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"helm.sh/helm/v3/pkg/kube"
 	"helm.sh/helm/v3/pkg/release"
 	helmtime "helm.sh/helm/v3/pkg/time"
 )
 
 // execHook executes all of the hooks for the given hook event.
-func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, timeout time.Duration) error {
+func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, timeout time.Duration) (string, error) {
 	executingHooks := []*release.Hook{}
 
 	for _, h := range rl.Hooks {
@@ -52,12 +59,12 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		}
 
 		if err := cfg.deleteHookByPolicy(h, release.HookBeforeHookCreation); err != nil {
-			return err
+			return "", err
 		}
 
 		resources, err := cfg.KubeClient.Build(bytes.NewBufferString(h.Manifest), true)
 		if err != nil {
-			return errors.Wrapf(err, "unable to build kubernetes object for %s hook %s", hook, h.Path)
+			return "", errors.Wrapf(err, "unable to build kubernetes object for %s hook %s", hook, h.Path)
 		}
 
 		// Record the time at which the hook was applied to the cluster
@@ -76,7 +83,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		if _, err := cfg.KubeClient.Create(resources); err != nil {
 			h.LastRun.CompletedAt = helmtime.Now()
 			h.LastRun.Phase = release.HookPhaseFailed
-			return errors.Wrapf(err, "warning: Hook %s %s failed", hook, h.Path)
+			return "", errors.Wrapf(err, "warning: Hook %s %s failed", hook, h.Path)
 		}
 
 		// Watch hook resources until they have completed
@@ -86,12 +93,18 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		// Mark hook as succeeded or failed
 		if err != nil {
 			h.LastRun.Phase = release.HookPhaseFailed
+
+			logs, lerr := cfg.hookGetLogs(rl, h, resources)
+			if lerr != nil {
+				return logs, lerr
+			}
+
 			// If a hook is failed, check the annotation of the hook to determine whether the hook should be deleted
 			// under failed condition. If so, then clear the corresponding resource object in the hook
 			if err := cfg.deleteHookByPolicy(h, release.HookFailed); err != nil {
-				return err
+				return logs, err
 			}
-			return err
+			return logs, err
 		}
 		h.LastRun.Phase = release.HookPhaseSucceeded
 	}
@@ -100,11 +113,11 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 	// under succeeded condition. If so, then clear the corresponding resource object in each hook
 	for _, h := range executingHooks {
 		if err := cfg.deleteHookByPolicy(h, release.HookSucceeded); err != nil {
-			return err
+			return "", err
 		}
 	}
 
-	return nil
+	return "", nil
 }
 
 // hookByWeight is a sorter for hooks
@@ -148,4 +161,84 @@ func hookHasDeletePolicy(h *release.Hook, policy release.HookDeletePolicy) bool 
 		}
 	}
 	return false
+}
+
+func (cfg *Configuration) hookGetLogs(rl *release.Release, h *release.Hook, resources kube.ResourceList) (string, error) {
+	client, err := cfg.KubernetesClientSet()
+	if err != nil {
+		return "", errors.Wrap(err, "unable to get kubernetes client to fetch pod logs")
+	}
+
+	switch h.Kind {
+	case "Job":
+		for _, res := range resources {
+			versioned := kube.AsVersioned(res)
+			selector, err := kube.SelectorsForObject(versioned)
+			if err != nil {
+				// If no selector is returned, it means this object is
+				// definitely not a pod, so continue onward
+				continue
+			}
+
+			pods, err := client.CoreV1().Pods(res.Namespace).List(context.Background(), metav1.ListOptions{
+				LabelSelector: selector.String(),
+			})
+			if err != nil {
+				return "", errors.Wrapf(err, "unable to get pods for object %s because an error occurred", res.Name)
+			}
+
+			var logs []string
+
+			for _, pod := range pods.Items {
+				log, err := cfg.hookGetPodLogs(rl, &pod)
+				if err != nil {
+					return "", err
+				}
+
+				logs = append(logs, log)
+			}
+
+			return strings.Join(logs, "\n"), nil
+		}
+	case "Pod":
+		pod, err := client.CoreV1().Pods(rl.Namespace).Get(context.Background(), h.Name, metav1.GetOptions{})
+		if err != nil {
+			return "", errors.Wrapf(err, "unable to get pods for object %s because an error occurred", h.Name)
+		}
+
+		return cfg.hookGetPodLogs(rl, pod)
+	default:
+		return "", nil
+	}
+
+	return "", nil
+}
+
+func (cfg *Configuration) hookGetPodLogs(rl *release.Release, pod *v1.Pod) (string, error) {
+	client, err := cfg.KubernetesClientSet()
+	if err != nil {
+		return "", errors.Wrap(err, "unable to get kubernetes client to fetch pod logs")
+	}
+
+	var logs []string
+
+	for _, container := range pod.Spec.Containers {
+		req := client.CoreV1().Pods(rl.Namespace).GetLogs(pod.Name, &v1.PodLogOptions{
+			Container: container.Name,
+			Follow:    false,
+		})
+		logReader, err := req.Stream(context.Background())
+		if err != nil {
+			return "", errors.Wrapf(err, "unable to get pod logs for object %s/%s", pod.Name, container.Name)
+		}
+		defer logReader.Close()
+
+		out, _ := io.ReadAll(logReader)
+
+		logs = append(logs, fmt.Sprintf("HOOK LOGS: pod %s, container %s:\n%s", pod.Name, container.Name, string(out)))
+
+		cfg.Log("HOOK LOGS: pod %s, container %s:\n%s", pod.Name, container.Name, string(out))
+	}
+
+	return strings.Join(logs, "\n"), nil
 }

@@ -44,6 +44,7 @@ type Rollback struct {
 	Recreate      bool // will (if true) recreate pods after a rollback.
 	Force         bool // will (if true) force resource upgrade through uninstall/recreate if needed
 	CleanupOnFail bool
+	LogOnFail     bool
 	MaxHistory    int // MaxHistory limits the maximum number of revisions saved per release
 }
 
@@ -154,10 +155,12 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 	if err != nil {
 		return targetRelease, errors.Wrap(err, "unable to build kubernetes objects from new release manifest")
 	}
-
 	// pre-rollback hooks
 	if !r.DisableHooks {
-		if err := r.cfg.execHook(targetRelease, release.HookPreRollback, r.Timeout); err != nil {
+		if logs, err := r.cfg.execHook(targetRelease, release.HookPreRollback, r.Timeout); err != nil {
+			if r.LogOnFail {
+				fmt.Println(logs)
+			}
 			return targetRelease, err
 		}
 	} else {
@@ -224,7 +227,10 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 
 	// post-rollback hooks
 	if !r.DisableHooks {
-		if err := r.cfg.execHook(targetRelease, release.HookPostRollback, r.Timeout); err != nil {
+		if logs, err := r.cfg.execHook(targetRelease, release.HookPostRollback, r.Timeout); err != nil {
+			if r.LogOnFail {
+				fmt.Println(logs)
+			}
 			return targetRelease, err
 		}
 	}

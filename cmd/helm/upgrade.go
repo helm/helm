@@ -119,6 +119,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.SubNotes = client.SubNotes
 					instClient.Description = client.Description
 					instClient.DependencyUpdate = client.DependencyUpdate
+					instClient.LogOnFail = client.LogOnFail
 
 					rel, err := runInstall(args, instClient, valueOpts, out)
 					if err != nil {
@@ -199,6 +200,12 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 			rel, err := client.RunWithContext(ctx, args[0], ch, vals)
 			if err != nil {
+				// if client.LogOnFail && outfmt == output.Table {
+				// 	for _, hook := range rel.Hooks {
+				// 		fmt.Fprintf(out, hook.LastRun.Logs)
+				// 	}
+				// }
+
 				return errors.Wrap(err, "UPGRADE FAILED")
 			}
 
@@ -229,6 +236,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.Atomic, "atomic", false, "if set, upgrade process rolls back changes made in case of failed upgrade. The --wait flag will be set automatically if --atomic is used")
 	f.IntVar(&client.MaxHistory, "history-max", settings.MaxHistory, "limit the maximum number of revisions saved per release. Use 0 for no limit")
 	f.BoolVar(&client.CleanupOnFail, "cleanup-on-fail", false, "allow deletion of new resources created in this upgrade when upgrade fails")
+	f.BoolVar(&client.LogOnFail, "log-on-fail", false, "show failed job log when upgrade fails")
 	f.BoolVar(&client.SubNotes, "render-subchart-notes", false, "if set, render subchart notes along with the parent")
 	f.StringVar(&client.Description, "description", "", "add a custom description")
 	f.BoolVar(&client.DependencyUpdate, "dependency-update", false, "update dependencies if they are missing before installing the chart")

@@ -88,6 +88,8 @@ type Upgrade struct {
 	Atomic bool
 	// CleanupOnFail will, if true, cause the upgrade to delete newly-created resources on a failed update.
 	CleanupOnFail bool
+	// LogOnFail will, if true, cause the upgrade to show jobs log on a failed update.
+	LogOnFail bool
 	// SubNotes determines whether sub-notes are rendered in the chart.
 	SubNotes bool
 	// Description is the description of this operation
@@ -365,7 +367,10 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 	// pre-upgrade hooks
 
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(upgradedRelease, release.HookPreUpgrade, u.Timeout); err != nil {
+		if logs, err := u.cfg.execHook(upgradedRelease, release.HookPreUpgrade, u.Timeout); err != nil {
+			if u.LogOnFail {
+				fmt.Println(logs)
+			}
 			u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, fmt.Errorf("pre-upgrade hooks failed: %s", err))
 			return
 		}
@@ -411,7 +416,11 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 
 	// post-upgrade hooks
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(upgradedRelease, release.HookPostUpgrade, u.Timeout); err != nil {
+		if logs, err := u.cfg.execHook(upgradedRelease, release.HookPostUpgrade, u.Timeout); err != nil {
+			if u.LogOnFail {
+				fmt.Println(logs)
+			}
+
 			u.reportToPerformUpgrade(c, upgradedRelease, results.Created, fmt.Errorf("post-upgrade hooks failed: %s", err))
 			return
 		}

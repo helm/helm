@@ -763,7 +763,7 @@ func (c *Client) waitForJob(obj runtime.Object, name string) (bool, error) {
 		if c.Type == batch.JobComplete && c.Status == "True" {
 			return true, nil
 		} else if c.Type == batch.JobFailed && c.Status == "True" {
-			return true, errors.Errorf("job failed: %s", c.Reason)
+			return true, errors.Errorf("job %s failed: %s", name, c.Reason)
 		}
 	}
 

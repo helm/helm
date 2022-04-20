@@ -78,6 +78,7 @@ type Install struct {
 	WaitForJobs              bool
 	Devel                    bool
 	DependencyUpdate         bool
+	LogOnFail                bool
 	Timeout                  time.Duration
 	Namespace                string
 	ReleaseName              string
@@ -358,7 +359,11 @@ func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, t
 
 	// pre-install hooks
 	if !i.DisableHooks {
-		if err := i.cfg.execHook(rel, release.HookPreInstall, i.Timeout); err != nil {
+		if logs, err := i.cfg.execHook(rel, release.HookPreInstall, i.Timeout); err != nil {
+			if i.LogOnFail {
+				fmt.Println(logs)
+			}
+
 			i.reportToRun(c, rel, fmt.Errorf("failed pre-install: %s", err))
 			return
 		}
@@ -393,8 +398,13 @@ func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, t
 		}
 	}
 
+	// post-install hooks
 	if !i.DisableHooks {
-		if err := i.cfg.execHook(rel, release.HookPostInstall, i.Timeout); err != nil {
+		if logs, err := i.cfg.execHook(rel, release.HookPostInstall, i.Timeout); err != nil {
+			if i.LogOnFail {
+				fmt.Println(logs)
+			}
+
 			i.reportToRun(c, rel, fmt.Errorf("failed post-install: %s", err))
 			return
 		}
