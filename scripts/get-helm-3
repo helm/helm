@@ -22,7 +22,8 @@
 : ${DEBUG:="false"}
 : ${VERIFY_CHECKSUM:="true"}
 : ${VERIFY_SIGNATURES:="false"}
-: ${HELM_INSTALL_DIR:="/usr/local/bin"}
+: ${DEFAULT_ROOT_INSTALL_DIR:="/usr/local/bin"}
+: ${DEFAULT_USER_INSTALL_DIR:="${HOME}/.local/bin"}
 : ${GPG_PUBRING:="pubring.kbx"}
 
 HAS_CURL="$(type "curl" &> /dev/null && echo true || echo false)"
@@ -169,7 +170,11 @@ installFile() {
   tar xf "$HELM_TMP_FILE" -C "$HELM_TMP"
   HELM_TMP_BIN="$HELM_TMP/$OS-$ARCH/helm"
   echo "Preparing to install $BINARY_NAME into ${HELM_INSTALL_DIR}"
-  runAsRoot cp "$HELM_TMP_BIN" "$HELM_INSTALL_DIR/$BINARY_NAME"
+  if [ $USE_SUDO == "true" ]; then
+    runAsRoot cp "$HELM_TMP_BIN" "$HELM_INSTALL_DIR/$BINARY_NAME"
+  else
+    cp "$HELM_TMP_BIN" "$HELM_INSTALL_DIR/$BINARY_NAME"
+  fi
   echo "$BINARY_NAME installed into $HELM_INSTALL_DIR/$BINARY_NAME"
 }
 
@@ -265,6 +270,7 @@ help () {
   echo -e "\t[--version|-v <desired_version>] . When not defined it fetches the latest release from GitHub"
   echo -e "\te.g. --version v3.0.0 or -v canary"
   echo -e "\t[--no-sudo]  ->> install without sudo"
+  echo -e "\t[--install-dir] . When not defined, it installs to '/usr/local/bin', or '~/.local/bin' if --no-sudo"
 }
 
 # cleanup temporary files to avoid https://github.com/helm/helm/issues/2977
@@ -302,6 +308,15 @@ while [[ $# -gt 0 ]]; do
     '--no-sudo')
        USE_SUDO="false"
        ;;
+    '--install-dir'|-i)
+       shift
+       if [[ $# -ne 0 ]]; then
+           export INSTALL_DIR="${1}"
+       else
+           echo -e "Please provide the desired version. e.g. --install-dir ~/.local/bin"
+           exit 0
+       fi
+       ;;
     '--help'|-h)
        help
        exit 0
@@ -312,6 +327,16 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 set +u
+
+if [ -n $INSTALL_DIR ]; then
+  HELM_INSTALL_DIR=$INSTALL_DIR
+elif [ $USE_SUDO == "true" ]; then
+  HELM_INSTALL_DIR=$DEFAULT_ROOT_INSTALL_DIR
+elif [ $USE_SUDO == "false" ]; then
+  HELM_INSTALL_DIR=$DEFAULT_USER_INSTALL_DIR
+fi
+
+mkdir -p $HELM_INSTALL_DIR
 
 initArch
 initOS
