@@ -29,6 +29,9 @@ import (
 // execHook executes all of the hooks for the given hook event.
 func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, timeout time.Duration) error {
 	shutdown, err := cfg.execHookWithDelayedShutdown(rl, hook, timeout)
+	if shutdown == nil {
+		return nil
+	}
 	if err != nil {
 		if err := shutdown(); err != nil {
 			return err
