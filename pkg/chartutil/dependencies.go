@@ -217,27 +217,57 @@ func set(path []string, data map[string]interface{}) map[string]interface{} {
 	return cur
 }
 
-// processImportExportValues merges values between child and parent based on the chart's dependencies' ImportValues
-// and ExportValues fields.
-func processImportExportValues(c *chart.Chart) error {
+// processImportValues merges Values from dependent charts to the current chart based on ImportValues field.
+func processImportValues(c *chart.Chart) error {
 	if c.Metadata.Dependencies == nil {
 		return nil
 	}
-	// combine chart values and empty config to get Values
+
 	cvals, err := CoalesceValues(c, nil)
 	if err != nil {
 		return err
 	}
-	b := make(map[string]interface{})
-	// For each dependency export values from parent or import values from child if export-values or import-values
-	// specified.
+
+	importedValuesMap := make(map[string]interface{})
 	for _, r := range c.Metadata.Dependencies {
-		b = CoalesceTables(b, getExportedValues(c, r, cvals))
-		b = CoalesceTables(b, getImportedValues(r, cvals))
+		importedValuesMap = CoalesceTables(importedValuesMap, getImportedValues(r, cvals))
 	}
 
-	// set the new values
-	c.Values = CoalesceTables(cvals, b)
+	c.Values = CoalesceTables(importedValuesMap, cvals)
+
+	return nil
+}
+
+// processExportValues merges Values from current chart to the child charts based on ExportValues field.
+func processExportValues(c *chart.Chart) error {
+	if c.Metadata.Dependencies == nil {
+		return nil
+	}
+
+	for _, r := range c.Metadata.Dependencies {
+
+		// combine chart values and empty config to get Values
+		pvals, err := CoalesceValues(c, nil)
+		if err != nil {
+			return err
+		}
+
+		var rc *chart.Chart
+		for _, dep := range c.Dependencies() {
+			if dep.Name() == r.Name {
+				rc = dep
+			}
+		}
+
+		cvals, err := CoalesceValues(rc, nil)
+		if err != nil {
+			return err
+		}
+
+		rc.Values = CoalesceTables(getExportedValues(c.Name(), r, pvals), cvals)
+
+		return nil
+	}
 
 	return nil
 }
@@ -285,13 +315,13 @@ func getImportedValues(r *chart.Dependency, cvals Values) map[string]interface{}
 }
 
 // Generates values map which is exported from parent to specified child via export-values.
-func getExportedValues(c *chart.Chart, r *chart.Dependency, cvals Values) map[string]interface{} {
+func getExportedValues(parentName string, r *chart.Dependency, pvals Values) map[string]interface{} {
 	b := make(map[string]interface{})
 	var exportValues []interface{}
 	for _, rev := range r.ExportValues {
-		parent, child, err := parseExportValues(rev, r)
+		parent, child, err := parseExportValues(rev)
 		if err != nil {
-			log.Printf("Warning: invalid ExportValues defined in chart %q for its dependency %q: %s", c.Name(), r.Name, err)
+			log.Printf("Warning: invalid ExportValues defined in chart %q for its dependency %q: %s", parentName, r.Name, err)
 			continue
 		}
 
@@ -302,28 +332,31 @@ func getExportedValues(c *chart.Chart, r *chart.Dependency, cvals Values) map[st
 
 		var childValMap map[string]interface{}
 		// try to get parent table
-		vm, err := cvals.Table(parent)
+		vm, err := pvals.Table(parent)
 		if err == nil {
-			childValMap = pathToMap(child, vm.AsMap())
+			if child == "" {
+				childValMap = vm.AsMap()
+			} else {
+				childValMap = pathToMap(child, vm.AsMap())
+			}
 		} else {
 			// still it might be not a table but a simple value
-			value, e := cvals.PathValue(parent)
+			value, e := pvals.PathValue(parent)
 			if e != nil {
-				log.Printf("Warning: ExportValues defined in chart %q for its dependency %q can't get the parent path: %v", c.Name(), r.Name, err)
+				log.Printf("Warning: ExportValues defined in chart %q for its dependency %q can't get the parent path: %s", parentName, r.Name, err.Error())
 				continue
 			}
 
 			childSlice := parsePath(child)
-			childLen := len(childSlice)
-			if childLen == 1 {
-				log.Printf("Warning: in ExportValues defined in chart %q for its dependency %q you are trying to assign a primitive data type (string, int, etc) to the root of your dependent chart values. We will ignore this ExportValues, because this is most likely not what you want. Fix the ExportValues to hide this warning.", c.Name(), r.Name)
+			if len(childSlice) == 1 && childSlice[0] == "" {
+				log.Printf("Warning: in ExportValues defined in chart %q for its dependency %q you are trying to assign a primitive data type (string, int, etc) to the root of your dependent chart values. We will ignore this ExportValues, because this is most likely not what you want. Fix the ExportValues to hide this warning.", parentName, r.Name)
 				continue
 			}
 
 			childValMap = pathToMap(
-				joinPath(childSlice[:childLen-1]...),
+				joinPath(childSlice[:len(childSlice)-1]...),
 				map[string]interface{}{
-					childSlice[childLen-1]: value,
+					childSlice[len(childSlice)-1]: value,
 				},
 			)
 		}
@@ -338,7 +371,7 @@ func getExportedValues(c *chart.Chart, r *chart.Dependency, cvals Values) map[st
 }
 
 // Parse and validate export-values.
-func parseExportValues(rev interface{}, r *chart.Dependency) (string, string, error) {
+func parseExportValues(rev interface{}) (string, string, error) {
 	var parent, child string
 
 	switch ev := rev.(type) {
@@ -348,30 +381,30 @@ func parseExportValues(rev interface{}, r *chart.Dependency) (string, string, er
 		if !ok {
 			return "", "", fmt.Errorf("parent can't be of null type")
 		}
+
 		child, ok = ev["child"].(string)
 		if !ok {
 			return "", "", fmt.Errorf("child can't be of null type")
 		}
 
-		switch parent {
-		case "", ".":
+		if strings.TrimSpace(parent) == "" || strings.TrimSpace(parent) == "." {
 			return "", "", fmt.Errorf("parent %q is not allowed", parent)
 		}
 
-		switch child {
-		case "", ".":
-			child = r.Name
-		default:
-			child = r.Name + "." + child
+		parent = strings.TrimSpace(parent)
+		child = strings.TrimSpace(child)
+
+		if child == "." {
+			child = ""
 		}
 	case string:
-		switch parent = ev; parent {
+		switch parent = strings.TrimSpace(ev); parent {
 		case "", ".":
 			parent = "exports"
 		default:
 			parent = "exports." + parent
 		}
-		child = r.Name
+		child = ""
 	default:
 		return "", "", fmt.Errorf("invalid type of ExportValues")
 	}
@@ -382,11 +415,16 @@ func parseExportValues(rev interface{}, r *chart.Dependency) (string, string, er
 // processDependencyImportExportValues imports (child to parent) and/or exports (parent to child) values if
 // import-values or export-values specified for the dependency.
 func processDependencyImportExportValues(c *chart.Chart) error {
+	if err := processExportValues(c); err != nil {
+		return err
+	}
+
 	for _, d := range c.Dependencies() {
 		// recurse
 		if err := processDependencyImportExportValues(d); err != nil {
 			return err
 		}
 	}
-	return processImportExportValues(c)
+
+	return processImportValues(c)
 }
