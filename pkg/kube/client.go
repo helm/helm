@@ -297,6 +297,24 @@ func (c *Client) Delete(resources ResourceList) (*Result, []error) {
 	mtx := sync.Mutex{}
 	err := perform(resources, func(info *resource.Info) error {
 		c.Log("Starting delete for %q %s", info.Name, info.Mapping.GroupVersionKind.Kind)
+		if err := info.Get(); err != nil {
+			c.Log("Unable to get obj %q, err: %s", info.Name, err)
+			mtx.Lock()
+			defer mtx.Unlock()
+			// Collect the error and continue on
+			errs = append(errs, err)
+			return nil
+		}
+		annotations, err := metadataAccessor.Annotations(info.Object)
+		if err != nil {
+			c.Log("Unable to get annotations on %q, err: %s", info.Name, err)
+		}
+		if annotations != nil && annotations[ResourcePolicyAnno] == KeepPolicy {
+			c.Log("Skipping delete of %q due to annotation [%s=%s]", info.Name, ResourcePolicyAnno, KeepPolicy)
+			mtx.Lock()
+			defer mtx.Unlock()
+			return nil
+		}
 		if err := c.skipIfNotFound(deleteResource(info)); err != nil {
 			mtx.Lock()
 			defer mtx.Unlock()
