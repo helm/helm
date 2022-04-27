@@ -310,7 +310,7 @@ func TestFindChartInAuthAndTLSAndPassRepoURL(t *testing.T) {
 	// If the insecureSkipTLsverify is false, it will return an error that contains "x509: certificate signed by unknown authority".
 	_, err = FindChartInAuthAndTLSAndPassRepoURL(srv.URL, "", "", "nginx", "0.1.0", "", "", "", false, false, getter.All(&cli.EnvSettings{}))
 
-	if !strings.Contains(err.Error(), "x509: certificate signed by unknown authority") {
+	if !strings.Contains(err.Error(), "x509: certificate signed by unknown authority") && !strings.Contains(err.Error(), "certificate is not trusted") {
 		t.Errorf("Expected TLS error for function  FindChartInAuthAndTLSAndPassRepoURL not found, but got a different error (%v)", err)
 	}
 }
