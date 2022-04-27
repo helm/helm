@@ -21,7 +21,6 @@ import (
 	"compress/gzip"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -209,11 +208,7 @@ func TestHTTPInstallerUpdate(t *testing.T) {
 func TestExtract(t *testing.T) {
 	source := "https://repo.localdomain/plugins/fake-plugin-0.0.1.tar.gz"
 
-	tempDir, err := ioutil.TempDir("", "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
 	// Set the umask to default open permissions so we can actually test
 	oldmask := syscall.Umask(0000)

@@ -14,27 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package action
+package main
 
 import (
-	"io"
-
-	"helm.sh/helm/v3/pkg/action"
+	"testing"
 )
 
-// RegistryLogout performs a registry login operation.
-type RegistryLogout struct {
-	cfg *action.Configuration
-}
-
-// NewRegistryLogout creates a new RegistryLogout object with the given configuration.
-func NewRegistryLogout(cfg *action.Configuration) *RegistryLogout {
-	return &RegistryLogout{
-		cfg: cfg,
-	}
-}
-
-// Run executes the registry logout operation
-func (a *RegistryLogout) Run(out io.Writer, hostname string) error {
-	return a.cfg.RegistryClient.Logout(hostname)
+func TestRegistryLogoutFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "registry logout", false)
 }

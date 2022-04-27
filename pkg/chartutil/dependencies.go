@@ -268,7 +268,7 @@ func processImportValues(c *chart.Chart) error {
 	}
 
 	// set the new values
-	c.Values = CoalesceTables(b, cvals)
+	c.Values = CoalesceTables(cvals, b)
 
 	return nil
 }

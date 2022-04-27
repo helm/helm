@@ -13,7 +13,7 @@ A few tips for working with Common:
 - Be careful when using functions that generate random data (like `common.fullname.unique`).
   They may trigger unwanted upgrades or have other side effects.
 
-In this document, we use `RELEASE-NAME` as the name of the release.
+In this document, we use `release-name` as the name of the release.
 
 ## Resource Kinds
 
@@ -733,7 +733,7 @@ metadata:
   labels:
     app.kubernetes.io/name: metadata
     app.kubernetes.io/managed-by: "Helm"
-    app.kubernetes.io/instance: "RELEASE-NAME"
+    app.kubernetes.io/instance: "release-name"
     helm.sh/chart: metadata-0.1.0
     first: "matt"
     last: "butcher"
@@ -748,7 +748,7 @@ metadata:
   labels:
     app.kubernetes.io/name: metadata
     app.kubernetes.io/managed-by: "Helm"
-    app.kubernetes.io/instance: "RELEASE-NAME"
+    app.kubernetes.io/instance: "release-name"
     helm.sh/chart: metadata-0.1.0
   annotations:
 ```
@@ -791,7 +791,7 @@ Example output:
 ```yaml
 app.kubernetes.io/name: labelizer
 app.kubernetes.io/managed-by: "Tiller"
-app.kubernetes.io/instance: "RELEASE-NAME"
+app.kubernetes.io/instance: "release-name"
 helm.sh/chart: labelizer-0.1.0
 ```
 

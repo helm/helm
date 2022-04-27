@@ -32,12 +32,12 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
-	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/engine"
 	"helm.sh/helm/v3/pkg/kube"
 	"helm.sh/helm/v3/pkg/postrender"
+	"helm.sh/helm/v3/pkg/registry"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/releaseutil"
 	"helm.sh/helm/v3/pkg/storage"
@@ -272,6 +272,7 @@ func (cfg *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 			Major:   kubeVersion.Major,
 			Minor:   kubeVersion.Minor,
 		},
+		HelmVersion: chartutil.DefaultCapabilities.HelmVersion,
 	}
 	return cfg.Capabilities, nil
 }

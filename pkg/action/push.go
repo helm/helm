@@ -19,10 +19,9 @@ package action
 import (
 	"strings"
 
-	"helm.sh/helm/v3/internal/experimental/registry"
-	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/pusher"
+	"helm.sh/helm/v3/pkg/registry"
 	"helm.sh/helm/v3/pkg/uploader"
 )
 
@@ -30,17 +29,17 @@ import (
 //
 // It provides the implementation of 'helm push'.
 type Push struct {
-	action.ChartPathOptions
+	ChartPathOptions
 
 	Settings *cli.EnvSettings
-	cfg      *action.Configuration
+	cfg      *Configuration
 }
 
 // PushOpt is a type of function that sets options for a push action.
 type PushOpt func(*Push)
 
 // WithPushConfig sets the cfg field on the push configuration object.
-func WithPushConfig(cfg *action.Configuration) PushOpt {
+func WithPushConfig(cfg *Configuration) PushOpt {
 	return func(p *Push) {
 		p.cfg = cfg
 	}

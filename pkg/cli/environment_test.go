@@ -51,9 +51,9 @@ func TestEnvSettings(t *testing.T) {
 		ns, kcontext string
 		debug        bool
 		maxhistory   int
-		kAsUser      string
-		kAsGroups    []string
-		kCaFile      string
+		kubeAsUser   string
+		kubeAsGroups []string
+		kubeCaFile   string
 	}{
 		{
 			name:       "defaults",
@@ -61,35 +61,35 @@ func TestEnvSettings(t *testing.T) {
 			maxhistory: defaultMaxHistory,
 		},
 		{
-			name:       "with flags set",
-			args:       "--debug --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters --kube-ca-file=/tmp/ca.crt",
-			ns:         "myns",
-			debug:      true,
-			maxhistory: defaultMaxHistory,
-			kAsUser:    "poro",
-			kAsGroups:  []string{"admins", "teatime", "snackeaters"},
-			kCaFile:    "/tmp/ca.crt",
+			name:         "with flags set",
+			args:         "--debug --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters --kube-ca-file=/tmp/ca.crt",
+			ns:           "myns",
+			debug:        true,
+			maxhistory:   defaultMaxHistory,
+			kubeAsUser:   "poro",
+			kubeAsGroups: []string{"admins", "teatime", "snackeaters"},
+			kubeCaFile:   "/tmp/ca.crt",
 		},
 		{
-			name:       "with envvars set",
-			envvars:    map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_MAX_HISTORY": "5", "HELM_KUBECAFILE": "/tmp/ca.crt"},
-			ns:         "yourns",
-			maxhistory: 5,
-			debug:      true,
-			kAsUser:    "pikachu",
-			kAsGroups:  []string{"operators", "snackeaters", "partyanimals"},
-			kCaFile:    "/tmp/ca.crt",
+			name:         "with envvars set",
+			envvars:      map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_MAX_HISTORY": "5", "HELM_KUBECAFILE": "/tmp/ca.crt"},
+			ns:           "yourns",
+			maxhistory:   5,
+			debug:        true,
+			kubeAsUser:   "pikachu",
+			kubeAsGroups: []string{"operators", "snackeaters", "partyanimals"},
+			kubeCaFile:   "/tmp/ca.crt",
 		},
 		{
-			name:       "with flags and envvars set",
-			args:       "--debug --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters --kube-ca-file=/my/ca.crt",
-			envvars:    map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_MAX_HISTORY": "5", "HELM_KUBECAFILE": "/tmp/ca.crt"},
-			ns:         "myns",
-			debug:      true,
-			maxhistory: 5,
-			kAsUser:    "poro",
-			kAsGroups:  []string{"admins", "teatime", "snackeaters"},
-			kCaFile:    "/my/ca.crt",
+			name:         "with flags and envvars set",
+			args:         "--debug --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters --kube-ca-file=/my/ca.crt",
+			envvars:      map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_MAX_HISTORY": "5", "HELM_KUBECAFILE": "/tmp/ca.crt"},
+			ns:           "myns",
+			debug:        true,
+			maxhistory:   5,
+			kubeAsUser:   "poro",
+			kubeAsGroups: []string{"admins", "teatime", "snackeaters"},
+			kubeCaFile:   "/my/ca.crt",
 		},
 	}
 
@@ -119,14 +119,14 @@ func TestEnvSettings(t *testing.T) {
 			if settings.MaxHistory != tt.maxhistory {
 				t.Errorf("expected maxHistory %d, got %d", tt.maxhistory, settings.MaxHistory)
 			}
-			if tt.kAsUser != settings.KubeAsUser {
-				t.Errorf("expected kAsUser %q, got %q", tt.kAsUser, settings.KubeAsUser)
+			if tt.kubeAsUser != settings.KubeAsUser {
+				t.Errorf("expected kAsUser %q, got %q", tt.kubeAsUser, settings.KubeAsUser)
 			}
-			if !reflect.DeepEqual(tt.kAsGroups, settings.KubeAsGroups) {
-				t.Errorf("expected kAsGroups %+v, got %+v", len(tt.kAsGroups), len(settings.KubeAsGroups))
+			if !reflect.DeepEqual(tt.kubeAsGroups, settings.KubeAsGroups) {
+				t.Errorf("expected kAsGroups %+v, got %+v", len(tt.kubeAsGroups), len(settings.KubeAsGroups))
 			}
-			if tt.kCaFile != settings.KubeCaFile {
-				t.Errorf("expected kCaFile %q, got %q", tt.kCaFile, settings.KubeCaFile)
+			if tt.kubeCaFile != settings.KubeCaFile {
+				t.Errorf("expected kCaFile %q, got %q", tt.kubeCaFile, settings.KubeCaFile)
 			}
 		})
 	}

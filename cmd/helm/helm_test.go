@@ -60,35 +60,17 @@ func runTestCmd(t *testing.T, tests []cmdTestCase) {
 				}
 				t.Logf("running cmd (attempt %d): %s", i+1, tt.cmd)
 				_, out, err := executeActionCommandC(storage, tt.cmd)
-				if (err != nil) != tt.wantError {
-					t.Errorf("expected error, got '%v'", err)
+				if tt.wantError && err == nil {
+					t.Errorf("expected error, got success with the following output:\n%s", out)
+				}
+				if !tt.wantError && err != nil {
+					t.Errorf("expected no error, got: '%v'", err)
 				}
 				if tt.golden != "" {
 					test.AssertGoldenString(t, out, tt.golden)
 				}
 			})
 		}
-	}
-}
-
-func runTestActionCmd(t *testing.T, tests []cmdTestCase) {
-	t.Helper()
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			defer resetEnv()()
-
-			store := storageFixture()
-			for _, rel := range tt.rels {
-				store.Create(rel)
-			}
-			_, out, err := executeActionCommandC(store, tt.cmd)
-			if (err != nil) != tt.wantError {
-				t.Errorf("expected error, got '%v'", err)
-			}
-			if tt.golden != "" {
-				test.AssertGoldenString(t, out, tt.golden)
-			}
-		})
 	}
 }
 

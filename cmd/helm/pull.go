@@ -64,10 +64,6 @@ func newPullCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				client.Version = ">0.0.0-0"
 			}
 
-			if err := checkOCI(args[0]); err != nil {
-				return err
-			}
-
 			for i := 0; i < len(args); i++ {
 				output, err := client.Run(args[i])
 				if err != nil {

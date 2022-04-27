@@ -138,7 +138,7 @@ func (suite *RegistryClientTestSuite) Test_1_Push() {
 	suite.NotNil(err, "error pushing non-chart bytes")
 
 	// Load a test chart
-	chartData, err := ioutil.ReadFile("../../../pkg/repo/repotest/testdata/examplechart-0.1.0.tgz")
+	chartData, err := ioutil.ReadFile("../repo/repotest/testdata/examplechart-0.1.0.tgz")
 	suite.Nil(err, "no error loading test chart")
 	meta, err := extractChartMeta(chartData)
 	suite.Nil(err, "no error extracting chart meta")
@@ -162,7 +162,7 @@ func (suite *RegistryClientTestSuite) Test_1_Push() {
 	suite.Nil(err, "no error pushing non-strict ref (bad tag), with strict mode disabled")
 
 	// basic push, good ref
-	chartData, err = ioutil.ReadFile("../../../pkg/downloader/testdata/local-subchart-0.1.0.tgz")
+	chartData, err = ioutil.ReadFile("../downloader/testdata/local-subchart-0.1.0.tgz")
 	suite.Nil(err, "no error loading test chart")
 	meta, err = extractChartMeta(chartData)
 	suite.Nil(err, "no error extracting chart meta")
@@ -174,13 +174,13 @@ func (suite *RegistryClientTestSuite) Test_1_Push() {
 	suite.Nil(err, "no error pulling a simple chart")
 
 	// Load another test chart
-	chartData, err = ioutil.ReadFile("../../../pkg/downloader/testdata/signtest-0.1.0.tgz")
+	chartData, err = ioutil.ReadFile("../downloader/testdata/signtest-0.1.0.tgz")
 	suite.Nil(err, "no error loading test chart")
 	meta, err = extractChartMeta(chartData)
 	suite.Nil(err, "no error extracting chart meta")
 
 	// Load prov file
-	provData, err := ioutil.ReadFile("../../../pkg/downloader/testdata/signtest-0.1.0.tgz.prov")
+	provData, err := ioutil.ReadFile("../downloader/testdata/signtest-0.1.0.tgz.prov")
 	suite.Nil(err, "no error loading test prov")
 
 	// push with prov
@@ -222,7 +222,7 @@ func (suite *RegistryClientTestSuite) Test_2_Pull() {
 	suite.NotNil(err, "error on bad/missing ref")
 
 	// Load test chart (to build ref pushed in previous test)
-	chartData, err := ioutil.ReadFile("../../../pkg/downloader/testdata/local-subchart-0.1.0.tgz")
+	chartData, err := ioutil.ReadFile("../downloader/testdata/local-subchart-0.1.0.tgz")
 	suite.Nil(err, "no error loading test chart")
 	meta, err := extractChartMeta(chartData)
 	suite.Nil(err, "no error extracting chart meta")
@@ -244,14 +244,14 @@ func (suite *RegistryClientTestSuite) Test_2_Pull() {
 		"no error pulling a chart with prov when no prov exists, ignoring missing")
 
 	// Load test chart (to build ref pushed in previous test)
-	chartData, err = ioutil.ReadFile("../../../pkg/downloader/testdata/signtest-0.1.0.tgz")
+	chartData, err = ioutil.ReadFile("../downloader/testdata/signtest-0.1.0.tgz")
 	suite.Nil(err, "no error loading test chart")
 	meta, err = extractChartMeta(chartData)
 	suite.Nil(err, "no error extracting chart meta")
 	ref = fmt.Sprintf("%s/testrepo/%s:%s", suite.DockerRegistryHost, meta.Name, meta.Version)
 
 	// Load prov file
-	provData, err := ioutil.ReadFile("../../../pkg/downloader/testdata/signtest-0.1.0.tgz.prov")
+	provData, err := ioutil.ReadFile("../downloader/testdata/signtest-0.1.0.tgz.prov")
 	suite.Nil(err, "no error loading test prov")
 
 	// no chart and no prov causes error
@@ -294,7 +294,23 @@ func (suite *RegistryClientTestSuite) Test_2_Pull() {
 	suite.Equal(provData, result.Prov.Data)
 }
 
-func (suite *RegistryClientTestSuite) Test_3_Logout() {
+func (suite *RegistryClientTestSuite) Test_3_Tags() {
+
+	// Load test chart (to build ref pushed in previous test)
+	chartData, err := ioutil.ReadFile("../downloader/testdata/local-subchart-0.1.0.tgz")
+	suite.Nil(err, "no error loading test chart")
+	meta, err := extractChartMeta(chartData)
+	suite.Nil(err, "no error extracting chart meta")
+	ref := fmt.Sprintf("%s/testrepo/%s", suite.DockerRegistryHost, meta.Name)
+
+	// Query for tags and validate length
+	tags, err := suite.RegistryClient.Tags(ref)
+	suite.Nil(err, "no error retrieving tags")
+	suite.Equal(1, len(tags))
+
+}
+
+func (suite *RegistryClientTestSuite) Test_4_Logout() {
 	err := suite.RegistryClient.Logout("this-host-aint-real:5000")
 	suite.NotNil(err, "error logging out of registry that has no entry")
 
@@ -302,7 +318,7 @@ func (suite *RegistryClientTestSuite) Test_3_Logout() {
 	suite.Nil(err, "no error logging out of registry")
 }
 
-func (suite *RegistryClientTestSuite) Test_4_ManInTheMiddle() {
+func (suite *RegistryClientTestSuite) Test_5_ManInTheMiddle() {
 	ref := fmt.Sprintf("%s/testrepo/supposedlysafechart:9.9.9", suite.CompromisedRegistryHost)
 
 	// returns content that does not match the expected digest

@@ -3,7 +3,7 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: "RELEASE-NAME-my-alpine"
+  name: "release-name-my-alpine"
 spec:
   containers:
   - name: waiter

@@ -164,6 +164,11 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		r.cfg.Log("rollback hooks disabled for %s", targetRelease.Name)
 	}
 
+	// It is safe to use "force" here because these are resources currently rendered by the chart.
+	err = target.Visit(setMetadataVisitor(targetRelease.Name, targetRelease.Namespace, true))
+	if err != nil {
+		return targetRelease, errors.Wrap(err, "unable to set metadata visitor from target release")
+	}
 	results, err := r.cfg.KubeClient.Update(current, target, r.Force)
 
 	if err != nil {

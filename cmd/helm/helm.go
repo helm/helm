@@ -31,15 +31,11 @@ import (
 
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/gates"
 	"helm.sh/helm/v3/pkg/kube"
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage/driver"
 )
-
-// FeatureGateOCI is the feature gate for checking if `helm chart` and `helm registry` commands should work
-const FeatureGateOCI = gates.Gate("HELM_EXPERIMENTAL_OCI")
 
 var settings = cli.New()
 
@@ -92,15 +88,6 @@ func main() {
 		default:
 			os.Exit(1)
 		}
-	}
-}
-
-func checkOCIFeatureGate() func(_ *cobra.Command, _ []string) error {
-	return func(_ *cobra.Command, _ []string) error {
-		if !FeatureGateOCI.IsEnabled() {
-			return FeatureGateOCI.Error()
-		}
-		return nil
 	}
 }
 
