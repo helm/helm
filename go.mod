@@ -13,7 +13,7 @@ require (
 	github.com/containerd/containerd v1.6.3
 	github.com/cyphar/filepath-securejoin v0.2.3
 	github.com/distribution/distribution/v3 v3.0.0-20211118083504-a29a3c99a684
-	github.com/docker/docker v20.10.13+incompatible
+	github.com/docker/docker v20.10.14+incompatible
 	github.com/evanphx/json-patch v4.12.0+incompatible
 	github.com/gobwas/glob v0.2.3
 	github.com/gofrs/flock v0.8.1
@@ -41,7 +41,7 @@ require (
 	k8s.io/client-go v0.23.5
 	k8s.io/klog/v2 v2.30.0
 	k8s.io/kubectl v0.23.5
-	oras.land/oras-go v1.1.1
+	oras.land/oras-go v1.1.0
 	sigs.k8s.io/yaml v1.3.0
 )
 
