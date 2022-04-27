@@ -10,7 +10,7 @@ require (
 	github.com/Masterminds/squirrel v1.5.2
 	github.com/Masterminds/vcs v1.13.3
 	github.com/asaskevich/govalidator v0.0.0-20200428143746-21a406dcc535
-	github.com/containerd/containerd v1.6.1
+	github.com/containerd/containerd v1.6.3
 	github.com/cyphar/filepath-securejoin v0.2.3
 	github.com/distribution/distribution/v3 v3.0.0-20211118083504-a29a3c99a684
 	github.com/docker/docker v20.10.13+incompatible
@@ -22,7 +22,7 @@ require (
 	github.com/lib/pq v1.10.4
 	github.com/mattn/go-shellwords v1.0.12
 	github.com/mitchellh/copystructure v1.2.0
-	github.com/opencontainers/image-spec v1.0.2
+	github.com/opencontainers/image-spec v1.0.3-0.20211202183452-c5a74bcca799
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
 	github.com/pkg/errors v0.9.1
 	github.com/rubenv/sql-migrate v1.1.1
@@ -121,10 +121,11 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/monochromegane/go-gitignore v0.0.0-20200626010858-205db1a8cc00 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
+	github.com/onsi/gomega v1.10.3 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/prometheus/client_golang v1.11.0 // indirect
+	github.com/prometheus/client_golang v1.11.1 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.30.0 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
