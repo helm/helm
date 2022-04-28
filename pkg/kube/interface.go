@@ -68,6 +68,8 @@ type Interface interface {
 
 	// IsReachable checks whether the client is able to connect to the cluster.
 	IsReachable() error
+
+	Get(resources ResourceList, reader io.Reader) (string, error)
 }
 
 // InterfaceExt is introduced to avoid breaking backwards compatibility for Interface implementers.

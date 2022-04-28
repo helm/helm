@@ -124,6 +124,10 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 		fmt.Fprintf(out, "DESCRIPTION: %s\n", s.release.Info.Description)
 	}
 
+	if len(s.release.Info.Resources) > 0 {
+		fmt.Fprintf(out, "RESOURCES:\n%s\n", s.release.Info.Resources)
+	}
+
 	executions := executionsByHookEvent(s.release)
 	if tests, ok := executions[release.HookTest]; !ok || len(tests) == 0 {
 		fmt.Fprintln(out, "TEST SUITE: None")
