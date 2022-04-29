@@ -129,7 +129,8 @@ func callPluginExecutable(pluginName string, main string, argv []string, out io.
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
 
-	prog := exec.Command(main, argv...)
+	mainCmdExp := os.ExpandEnv(main)
+	prog := exec.Command(mainCmdExp, argv...)
 	prog.Env = env
 	prog.Stdin = os.Stdin
 	prog.Stdout = out
