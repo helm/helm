@@ -45,6 +45,7 @@ type options struct {
 	registryClient        *registry.Client
 	timeout               time.Duration
 	transport             *http.Transport
+	ifModifiedSince       *time.Time
 }
 
 // Option allows specifying various settings configurable by the user for overriding the defaults
@@ -118,6 +119,20 @@ func WithRegistryClient(client *registry.Client) Option {
 func WithUntar() Option {
 	return func(opts *options) {
 		opts.unTar = true
+	}
+}
+
+// WithIfModifiedSince leverages the HTTP caching mechanism
+// defined on RFC7234 4.3.2. It prevents the HTTP getter from
+// downloading index that haven't been modified based on `since`.
+// If the file was not modified, getter will return a
+// `304 Not Modified`, as per RFC.
+//
+// The caller is responsible for caching previously downloaded
+// index files and handling the returning error.
+func WithIfModifiedSince(since time.Time) Option {
+	return func(opts *options) {
+		opts.ifModifiedSince = &since
 	}
 }
 

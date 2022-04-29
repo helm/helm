@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"net/url"
 	"sync"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -56,6 +57,10 @@ func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
 	req.Header.Set("User-Agent", version.GetUserAgent())
 	if g.opts.userAgent != "" {
 		req.Header.Set("User-Agent", g.opts.userAgent)
+	}
+
+	if g.opts.ifModifiedSince != nil {
+		req.Header.Set("If-Modified-Since", g.opts.ifModifiedSince.Format(time.RFC1123))
 	}
 
 	// Before setting the basic auth credentials, make sure the URL associated
