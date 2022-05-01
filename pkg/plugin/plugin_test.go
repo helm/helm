@@ -329,6 +329,26 @@ func TestSetupEnv(t *testing.T) {
 	}
 }
 
+func TestSetupEnvWithSpace(t *testing.T) {
+	name := "sureshdsk"
+	base := filepath.Join("testdata/helm home/helm/plugins", name)
+
+	s := cli.New()
+	s.PluginsDirectory = "testdata/helm home/helm/plugins"
+
+	SetupPluginEnv(s, name, base)
+	for _, tt := range []struct {
+		name, expect string
+	}{
+		{"HELM_PLUGIN_NAME", name},
+		{"HELM_PLUGIN_DIR", base},
+	} {
+		if got := os.Getenv(tt.name); got != tt.expect {
+			t.Errorf("Expected $%s=%q, got %q", tt.name, tt.expect, got)
+		}
+	}
+}
+
 func TestValidatePluginData(t *testing.T) {
 	for i, item := range []struct {
 		pass bool

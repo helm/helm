@@ -161,6 +161,81 @@ func TestLoadPlugins(t *testing.T) {
 	}
 }
 
+func TestLoadPluginsWithSpace(t *testing.T) {
+	settings.PluginsDirectory = "testdata/helm home with space/helm/plugins"
+	settings.RepositoryConfig = "testdata/helm home with space/helm/repositories.yaml"
+	settings.RepositoryCache = "testdata/helm home with space/helm/repository"
+
+	var (
+		out bytes.Buffer
+		cmd cobra.Command
+	)
+	loadPlugins(&cmd, &out)
+
+	envs := strings.Join([]string{
+		"fullenv",
+		"testdata/helm home with space/helm/plugins/fullenv",
+		"testdata/helm home with space/helm/plugins",
+		"testdata/helm home with space/helm/repositories.yaml",
+		"testdata/helm home with space/helm/repository",
+		os.Args[0],
+	}, "\n")
+
+	// Test that the YAML file was correctly converted to a command.
+	tests := []struct {
+		use    string
+		short  string
+		long   string
+		expect string
+		args   []string
+		code   int
+	}{
+		{"fullenv", "show env vars", "show all env vars", envs + "\n", []string{}, 0},
+	}
+
+	plugins := cmd.Commands()
+
+	if len(plugins) != len(tests) {
+		t.Fatalf("Expected %d plugins, got %d", len(tests), len(plugins))
+	}
+
+	for i := 0; i < len(plugins); i++ {
+		out.Reset()
+		tt := tests[i]
+		pp := plugins[i]
+		if pp.Use != tt.use {
+			t.Errorf("%d: Expected Use=%q, got %q", i, tt.use, pp.Use)
+		}
+		if pp.Short != tt.short {
+			t.Errorf("%d: Expected Use=%q, got %q", i, tt.short, pp.Short)
+		}
+		if pp.Long != tt.long {
+			t.Errorf("%d: Expected Use=%q, got %q", i, tt.long, pp.Long)
+		}
+
+		// Currently, plugins assume a Linux subsystem. Skip the execution
+		// tests until this is fixed
+		if runtime.GOOS != "windows" {
+			if err := pp.RunE(pp, tt.args); err != nil {
+				if tt.code > 0 {
+					perr, ok := err.(pluginError)
+					if !ok {
+						t.Errorf("Expected %s to return pluginError: got %v(%T)", tt.use, err, err)
+					}
+					if perr.code != tt.code {
+						t.Errorf("Expected %s to return %d: got %d", tt.use, tt.code, perr.code)
+					}
+				} else {
+					t.Errorf("Error running %s: %+v", tt.use, err)
+				}
+			}
+			if out.String() != tt.expect {
+				t.Errorf("Expected %s to output:\n%s\ngot\n%s", tt.use, tt.expect, out.String())
+			}
+		}
+	}
+}
+
 type staticCompletionDetails struct {
 	use       string
 	validArgs []string
