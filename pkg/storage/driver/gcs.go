@@ -261,32 +261,7 @@ func (s *GCS) Delete(key string) (*rspb.Release, error) {
 	return release, nil
 }
 
-// DeletePrefixedReleases deletes all prefixed releases
-func (s *GCS) DeletePrefixedReleases() error {
-	query := storage.Query{
-		Prefix: fmt.Sprintf("%s/", s.pathPrefix),
-	}
-	ctx := context.Background()
-	objs := s.client.Bucket(s.bucket).Objects(ctx, &query)
-	for {
-		objAttrs, err := objs.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			s.Log("unable to delete objects", err)
-			return err
-		}
-		obj := s.client.Bucket(s.bucket).Object(objAttrs.Name)
-		if obj.Delete(ctx); err != nil {
-			s.Log("failed to delete object: (%s) %v", objAttrs.Name, err)
-		}
-		s.Log("object deleted successfully: (%s)", objAttrs.Name)
-	}
-
-	return nil
-}
-
+// fullPathName returns the full path name composed by prefix, name and namespace
 func (s *GCS) fullPathName(name, namespace string) string {
 	if namespace == "" {
 		namespace = defaultNamespace
@@ -297,6 +272,7 @@ func (s *GCS) fullPathName(name, namespace string) string {
 	)
 }
 
+// metadata returns the metadata list from release
 func (s *GCS) metadata(rls *rspb.Release, isCreation bool) map[string]string {
 	ts := strconv.FormatInt(time.Now().UTC().UnixNano(), 10)
 	md := map[string]string{
@@ -313,6 +289,7 @@ func (s *GCS) metadata(rls *rspb.Release, isCreation bool) map[string]string {
 	return md
 }
 
+// readRelease helps to read a release by the object key
 func (s *GCS) readRelease(key string, withMetadata bool) (*rspb.Release, map[string]string, error) {
 	metadata := make(map[string]string)
 	ctx := context.Background()
@@ -349,6 +326,7 @@ func (s *GCS) readRelease(key string, withMetadata bool) (*rspb.Release, map[str
 	return release, metadata, nil
 }
 
+// listNamespaces helps to list namespaces inside a bucket
 func (s *GCS) listNamespaces() ([]string, error) {
 	if s.namespace != "" {
 		return []string{s.namespace}, nil
@@ -384,6 +362,7 @@ func (s *GCS) listNamespaces() ([]string, error) {
 	return namespaces, nil
 }
 
+// listReleases helps to list releases in a namespace "folder"
 func (s *GCS) listReleases(namespace string) ([]string, error) {
 	releases := []string{}
 

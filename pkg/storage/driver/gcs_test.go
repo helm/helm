@@ -17,38 +17,61 @@ limitations under the License.
 package driver
 
 import (
-	"fmt"
+	"context"
+	"encoding/json"
+	"flag"
+	"net/http"
 	"os"
 	"reflect"
 	"testing"
+	"time"
 
+	"cloud.google.com/go/httpreplay"
+	"cloud.google.com/go/storage"
+	"google.golang.org/api/iterator"
+	"google.golang.org/api/option"
 	rspb "helm.sh/helm/v3/pkg/release"
 )
 
-var prefixes = []string{"helm-releases", "helm-releases-list"}
+var (
+	rec = flag.Bool("record", false, "record RPCs")
+
+	gcsDriver *GCS
+)
 
 func TestMain(m *testing.M) {
-	removeReleases()
+	cleanup := newTestFixtureGCS()
 
+	clearObjects()
 	retCode := m.Run()
+	clearObjects()
 
-	// removeReleases()
-
+	cleanup()
 	os.Exit(retCode)
 }
 
-func removeReleases() {
-	for _, prefix := range prefixes {
-		gcsDriver := newTestFixtureGCS(prefix, "default")
-		if err := gcsDriver.DeletePrefixedReleases(); err != nil {
-			fmt.Printf("Expected error on setup tests: %v", err)
-			os.Exit(1)
+func clearObjects() {
+	ctx := context.Background()
+	objs := gcsDriver.client.
+		Bucket(gcsDriver.bucket).
+		Objects(ctx, &storage.Query{Prefix: ""})
+	for {
+		objAttrs, err := objs.Next()
+		if err == iterator.Done {
+			break
 		}
+		if err != nil {
+			panic(err)
+		}
+		obj := gcsDriver.client.
+			Bucket(gcsDriver.bucket).
+			Object(objAttrs.Name)
+		obj.Delete(ctx)
 	}
 }
 
 func TestGCSName(t *testing.T) {
-	gcsDriver := newTestFixtureGCS("helm-releases", "default")
+	// gcsDriver := newTestFixtureGCS("helm-releases", "default")
 	if gcsDriver.Name() != GCSDriverName {
 		t.Errorf("Expected name to be %s, got %s", GCSDriverName, gcsDriver.Name())
 	}
@@ -59,8 +82,6 @@ func TestGCSGet(t *testing.T) {
 	name := "gcs-test-get"
 	key := testKey(name, vers)
 	rel := releaseStub(name, vers, "default", rspb.StatusDeployed)
-
-	gcsDriver := newTestFixtureGCS("helm-releases", "default")
 
 	// create stub
 	if err := gcsDriver.Create(key, rel); err != nil {
@@ -82,8 +103,6 @@ func TestGCSGetNotExist(t *testing.T) {
 	name := "gcs-test-get-not-exists"
 	key := testKey(name, vers)
 
-	gcsDriver := newTestFixtureGCS("helm-releases", "default")
-
 	got, err := gcsDriver.Get(key)
 	if err == nil || got != nil {
 		t.Fatal("Release must be not found")
@@ -92,11 +111,9 @@ func TestGCSGetNotExist(t *testing.T) {
 
 func TestGCSCreate(t *testing.T) {
 	vers := 1
-	name := "gcs-test"
+	name := "gcs-test-create"
 	key := testKey(name, vers)
 	rel := releaseStub(name, vers, "default", rspb.StatusDeployed)
-
-	gcsDriver := newTestFixtureGCS("helm-releases", "default")
 
 	if err := gcsDriver.Create(key, rel); err != nil {
 		t.Fatalf("failed to create release with key %s: %v", key, err)
@@ -108,8 +125,6 @@ func TestGCSUpdate(t *testing.T) {
 	name := "gcs-test-update"
 	key := testKey(name, vers)
 	rel := releaseStub(name, vers, "default", rspb.StatusDeployed)
-
-	gcsDriver := newTestFixtureGCS("helm-releases", "default")
 
 	// create stub
 	if err := gcsDriver.Create(key, rel); err != nil {
@@ -127,8 +142,6 @@ func TestGCSDelete(t *testing.T) {
 	name := "gcs-test-delete"
 	key := testKey(name, vers)
 	rel := releaseStub(name, vers, "default", rspb.StatusDeployed)
-
-	gcsDriver := newTestFixtureGCS("helm-releases", "default")
 
 	// create stub
 	if err := gcsDriver.Create(key, rel); err != nil {
@@ -151,14 +164,15 @@ func TestGCSDeleteNotFound(t *testing.T) {
 	name := "gcs-test-delete-not-found"
 	key := testKey(name, vers)
 
-	gcsDriver := newTestFixtureGCS("helm-releases", "default")
-
 	if _, err := gcsDriver.Delete(key); err == nil {
 		t.Fatalf("release found with key %s: %v", key, err)
 	}
 }
 
 func TestGCSList(t *testing.T) {
+	gcsDriver.pathPrefix = "helm-tests-list"
+	gcsDriver.namespace = ""
+
 	namespaceA := "list-a"
 	namespaceB := "list-b"
 
@@ -174,8 +188,6 @@ func TestGCSList(t *testing.T) {
 		{"gcs-test-list-key-5", namespaceB, rspb.StatusSuperseded},
 		{"gcs-test-list-key-6", namespaceB, rspb.StatusSuperseded},
 	}
-
-	gcsDriver := newTestFixtureGCS("helm-releases-list", "")
 
 	// create stubs
 	for _, tt := range tests {
@@ -223,6 +235,8 @@ func TestGCSList(t *testing.T) {
 }
 
 func TestGCSQuery(t *testing.T) {
+	gcsDriver.pathPrefix = "helm-tests-query"
+
 	namespace := "default"
 	tests := []struct {
 		key       string
@@ -236,8 +250,6 @@ func TestGCSQuery(t *testing.T) {
 		{"gcs-test-list-key-5", namespace, rspb.StatusSuperseded},
 		{"gcs-test-list-key-6", namespace, rspb.StatusSuperseded},
 	}
-
-	gcsDriver := newTestFixtureGCS("helm-releases-query", "")
 
 	// create stubs
 	for _, tt := range tests {
@@ -259,4 +271,68 @@ func TestGCSQuery(t *testing.T) {
 	if err != ErrReleaseNotFound {
 		t.Errorf("Expected {%v}, got {%v}", ErrReleaseNotFound, err)
 	}
+}
+
+// newTestFixtureGCS mocks the GCS (for testing purposes)
+func newTestFixtureGCS() func() {
+	flag.Parse()
+	prefix := "helm-tests"
+	namespace := "default"
+	replayFilename := "gcs.replay"
+
+	ctx := context.Background()
+
+	var hc *http.Client
+	cleanup := func() {}
+
+	if *rec {
+		now := time.Now().UTC()
+		if !httpreplay.Supported() {
+			panic("HTTP replay not supported")
+		}
+		nowBytes, err := json.Marshal(now)
+		if err != nil {
+			panic(err)
+		}
+		recorder, err := httpreplay.NewRecorder(replayFilename, nowBytes)
+		if err != nil {
+			panic(err)
+		}
+		hc, err = recorder.Client(ctx)
+		if err != nil {
+			panic(err)
+		}
+		cleanup = func() {
+			if err := recorder.Close(); err != nil {
+				panic(err)
+			}
+		}
+	} else {
+		httpreplay.DebugHeaders()
+		replayer, err := httpreplay.NewReplayer(replayFilename)
+		if err != nil {
+			panic(err)
+		}
+		var t time.Time
+		if err := json.Unmarshal(replayer.Initial(), &t); err != nil {
+			panic(err)
+		}
+		hc, err = replayer.Client(ctx)
+		if err != nil {
+			panic(err)
+		}
+		cleanup = func() {}
+	}
+	client, _ := storage.NewClient(ctx, option.WithHTTPClient(hc))
+
+	gcsDriver = &GCS{
+		client: client,
+
+		bucket:     "helm-tests",
+		pathPrefix: prefix,
+		namespace:  namespace,
+
+		Log: func(a string, b ...interface{}) {},
+	}
+	return cleanup
 }

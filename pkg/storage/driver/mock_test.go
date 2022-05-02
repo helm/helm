@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"testing"
 
-	"cloud.google.com/go/storage"
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
@@ -263,19 +262,4 @@ func newTestFixtureSQL(t *testing.T, releases ...*rspb.Release) (*SQL, sqlmock.S
 		namespace:        "default",
 		statementBuilder: sq.StatementBuilder.PlaceholderFormat(sq.Dollar),
 	}, mock
-}
-
-// newTestFixtureGCS mocks the GCS (for testing purposes)
-func newTestFixtureGCS(prefix, namespace string) *GCS {
-	client, _ := storage.NewClient(context.Background())
-
-	return &GCS{
-		client: client,
-
-		bucket:     "helm-tests",
-		pathPrefix: prefix,
-		namespace:  namespace,
-
-		Log: func(a string, b ...interface{}) {},
-	}
 }
