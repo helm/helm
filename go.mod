@@ -3,6 +3,8 @@ module helm.sh/helm/v3
 go 1.17
 
 require (
+	cloud.google.com/go v0.101.0
+	cloud.google.com/go/storage v1.22.0
 	github.com/BurntSushi/toml v1.0.0
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/Masterminds/semver/v3 v3.1.1
@@ -33,6 +35,7 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0
 	golang.org/x/crypto v0.0.0-20211117183948-ae814b36b871
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
+	google.golang.org/api v0.77.0
 	k8s.io/api v0.23.5
 	k8s.io/apiextensions-apiserver v0.23.5
 	k8s.io/apimachinery v0.23.5
@@ -46,10 +49,8 @@ require (
 )
 
 require (
-	cloud.google.com/go v0.101.0 // indirect
 	cloud.google.com/go/compute v1.6.0 // indirect
 	cloud.google.com/go/iam v0.3.0 // indirect
-	cloud.google.com/go/storage v1.22.0 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
 	github.com/Azure/go-autorest/autorest v0.11.20 // indirect
@@ -154,7 +155,6 @@ require (
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
 	golang.org/x/xerrors v0.0.0-20220411194840-2f41105eb62f // indirect
-	google.golang.org/api v0.77.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20220414192740-2d67ff6cf2b4 // indirect
 	google.golang.org/grpc v1.45.0 // indirect
