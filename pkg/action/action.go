@@ -407,6 +407,17 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 			panic(fmt.Sprintf("Unable to instantiate SQL driver: %v", err))
 		}
 		store = storage.Init(d)
+	case "gcs":
+		d, err := driver.NewGCS(
+			os.Getenv("HELM_DRIVER_GCS_BUCKET"),
+			namespace,
+			os.Getenv("HELM_DRIVER_GCS_PREFIX_PATH"),
+			log,
+		)
+		if err != nil {
+			panic(fmt.Sprintf("Unable to instantiate GCS driver: %v", err))
+		}
+		store = storage.Init(d)
 	default:
 		// Not sure what to do here.
 		panic("Unknown driver in HELM_DRIVER: " + helmDriver)
