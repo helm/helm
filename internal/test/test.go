@@ -40,15 +40,6 @@ type HelperT interface {
 	Helper()
 }
 
-// AssertGoldenBytes asserts that the give actual content matches the contents of the given filename
-func AssertGoldenBytes(t TestingT, actual []byte, filename string) {
-	t.Helper()
-
-	if err := compare(actual, path(filename)); err != nil {
-		t.Fatalf("%v", err)
-	}
-}
-
 // AssertGoldenString asserts that the given string matches the contents of the given file.
 func AssertGoldenString(t TestingT, actual, filename string) {
 	t.Helper()
@@ -66,7 +57,7 @@ func AssertGoldenFile(t TestingT, actualFileName string, expectedFilename string
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
-	AssertGoldenBytes(t, actual, expectedFilename)
+	AssertGoldenString(t, string(actual), expectedFilename)
 }
 
 func path(filename string) string {
