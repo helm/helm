@@ -55,6 +55,8 @@ type GCS struct {
 
 	namespace string
 
+	now string
+
 	Log func(string, ...interface{})
 }
 
@@ -72,6 +74,8 @@ func NewGCS(bucket, pathPrefix, namespace string, logger func(string, ...interfa
 		bucket:     bucket,
 		pathPrefix: pathPrefix,
 		namespace:  namespace,
+
+		now: time.Now().Format("2006-01-02 15:04:05"),
 
 		Log: logger,
 	}
@@ -275,17 +279,16 @@ func (s *GCS) fullPathName(name, namespace string) string {
 
 // metadata returns the metadata list from release
 func (s *GCS) metadata(rls *rspb.Release, isCreation bool) map[string]string {
-	ts := strconv.FormatInt(time.Now().UTC().UnixNano(), 10)
 	md := map[string]string{
 		gcsReleaseNameMetadata:       rls.Name,
 		gcsReleaseNamespaceMetadata:  rls.Namespace,
 		gcsReleaseStatusMetadata:     rls.Info.Status.String(),
 		gcsReleaseVersionMetadata:    strconv.Itoa(rls.Version),
 		gcsReleaseOwnerColumn:        "helm",
-		gcsReleaseModifiedAtMetadata: ts,
+		gcsReleaseModifiedAtMetadata: s.now,
 	}
 	if isCreation {
-		md[gcsReleaseCreatedAtMetadata] = ts
+		md[gcsReleaseCreatedAtMetadata] = s.now
 	}
 	return md
 }

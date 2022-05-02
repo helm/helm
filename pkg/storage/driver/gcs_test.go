@@ -30,12 +30,12 @@ import (
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
-
 	rspb "helm.sh/helm/v3/pkg/release"
 )
 
 var (
-	rec = flag.Bool("record", false, "record RPCs")
+	gcsNow = "1987-16-01 09:10:11"
+	gcsRec = flag.Bool("record", false, "record RPCs")
 
 	gcsDriver *GCS
 )
@@ -72,7 +72,6 @@ func clearObjects() {
 }
 
 func TestGCSName(t *testing.T) {
-	// gcsDriver := newTestFixtureGCS("helm-releases", "default")
 	if gcsDriver.Name() != GCSDriverName {
 		t.Errorf("Expected name to be %s, got %s", GCSDriverName, gcsDriver.Name())
 	}
@@ -286,7 +285,7 @@ func newTestFixtureGCS() func() {
 	var hc *http.Client
 	cleanup := func() {}
 
-	if *rec {
+	if *gcsRec {
 		now := time.Now().UTC()
 		if !httpreplay.Supported() {
 			panic("HTTP replay not supported")
@@ -332,7 +331,10 @@ func newTestFixtureGCS() func() {
 		pathPrefix: prefix,
 		namespace:  namespace,
 
+		now: gcsNow,
+
 		Log: func(a string, b ...interface{}) {},
 	}
+
 	return cleanup
 }
