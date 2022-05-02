@@ -350,7 +350,9 @@ func (s *GCS) listNamespaces() ([]string, error) {
 			s.Log("unable to list objects", err)
 			return []string{}, err
 		}
-		objectName, _, _ := strings.Cut(strings.TrimPrefix(objAttrs.Name, prefix), "/")
+		objectNameWithoutPrefix := strings.TrimPrefix(objAttrs.Name, prefix)
+		eq := strings.IndexByte(objectNameWithoutPrefix, '/')
+		objectName := objectNameWithoutPrefix[:eq]
 		objectsName[objectName] = objectName
 	}
 

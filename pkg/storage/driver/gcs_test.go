@@ -321,7 +321,6 @@ func newTestFixtureGCS() func() {
 		if err != nil {
 			panic(err)
 		}
-		cleanup = func() {}
 	}
 	client, _ := storage.NewClient(ctx, option.WithHTTPClient(hc))
 
