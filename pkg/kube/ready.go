@@ -89,13 +89,6 @@ type ReadyChecker struct {
 // IsReady will fetch the latest state of the object from the server prior to
 // performing readiness checks, and it will return any error encountered.
 func (c *ReadyChecker) IsReady(ctx context.Context, v *resource.Info) (bool, error) {
-	var (
-		// This defaults to true, otherwise we get to a point where
-		// things will always return false unless one of the objects
-		// that manages pods has been hit
-		ok  = true
-		err error
-	)
 	switch value := AsVersioned(v).(type) {
 	case *corev1.Pod:
 		pod, err := c.client.CoreV1().Pods(v.Namespace).Get(ctx, v.Name, metav1.GetOptions{})
@@ -180,11 +173,30 @@ func (c *ReadyChecker) IsReady(ctx context.Context, v *resource.Info) (bool, err
 		if !c.statefulSetReady(sts) {
 			return false, nil
 		}
-	case *corev1.ReplicationController, *extensionsv1beta1.ReplicaSet, *appsv1beta2.ReplicaSet, *appsv1.ReplicaSet:
-		ok, err = c.podsReadyForObject(ctx, v.Namespace, value)
-	}
-	if !ok || err != nil {
-		return false, err
+	case *corev1.ReplicationController:
+		rc, err := c.client.CoreV1().ReplicationControllers(v.Namespace).Get(ctx, v.Name, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+		if !c.replicationControllerReady(rc) {
+			return false, nil
+		}
+		ready, err := c.podsReadyForObject(ctx, v.Namespace, value)
+		if !ready || err != nil {
+			return false, err
+		}
+	case *extensionsv1beta1.ReplicaSet, *appsv1beta2.ReplicaSet, *appsv1.ReplicaSet:
+		rs, err := c.client.AppsV1().ReplicaSets(v.Namespace).Get(ctx, v.Name, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+		if !c.replicaSetReady(rs) {
+			return false, nil
+		}
+		ready, err := c.podsReadyForObject(ctx, v.Namespace, value)
+		if !ready || err != nil {
+			return false, err
+		}
 	}
 	return true, nil
 }
@@ -272,6 +284,16 @@ func (c *ReadyChecker) volumeReady(v *corev1.PersistentVolumeClaim) bool {
 }
 
 func (c *ReadyChecker) deploymentReady(rs *appsv1.ReplicaSet, dep *appsv1.Deployment) bool {
+	// Verify the generation observed by the replicaSet controller matches the spec generation
+	if !c.replicaSetReady(rs) {
+		return false
+	}
+	// Verify the generation observed by the deployment controller matches the spec generation
+	if dep.Status.ObservedGeneration != dep.ObjectMeta.Generation {
+		c.log("Deployment is not ready: %s/%s. observedGeneration (%s) does not match spec generation (%s).", dep.Namespace, dep.Name, dep.Status.ObservedGeneration, dep.ObjectMeta.Generation)
+		return false
+	}
+
 	expectedReady := *dep.Spec.Replicas - deploymentutil.MaxUnavailable(*dep)
 	if !(rs.Status.ReadyReplicas >= expectedReady) {
 		c.log("Deployment is not ready: %s/%s. %d out of %d expected pods are ready", dep.Namespace, dep.Name, rs.Status.ReadyReplicas, expectedReady)
@@ -281,6 +303,12 @@ func (c *ReadyChecker) deploymentReady(rs *appsv1.ReplicaSet, dep *appsv1.Deploy
 }
 
 func (c *ReadyChecker) daemonSetReady(ds *appsv1.DaemonSet) bool {
+	// Verify the generation observed by the daemonSet controller matches the spec generation
+	if ds.Status.ObservedGeneration != ds.ObjectMeta.Generation {
+		c.log("DaemonSet is not ready: %s/%s. observedGeneration (%s) does not match spec generation (%s).", ds.Namespace, ds.Name, ds.Status.ObservedGeneration, ds.ObjectMeta.Generation)
+		return false
+	}
+
 	// If the update strategy is not a rolling update, there will be nothing to wait for
 	if ds.Spec.UpdateStrategy.Type != appsv1.RollingUpdateDaemonSetStrategyType {
 		return true
@@ -351,6 +379,12 @@ func (c *ReadyChecker) crdReady(crd apiextv1.CustomResourceDefinition) bool {
 }
 
 func (c *ReadyChecker) statefulSetReady(sts *appsv1.StatefulSet) bool {
+	// Verify the generation observed by the statefulSet controller matches the spec generation
+	if sts.Status.ObservedGeneration != sts.ObjectMeta.Generation {
+		c.log("Statefulset is not ready: %s/%s. observedGeneration (%s) does not match spec generation (%s).", sts.Namespace, sts.Name, sts.Status.ObservedGeneration, sts.ObjectMeta.Generation)
+		return false
+	}
+
 	// If the update strategy is not a rolling update, there will be nothing to wait for
 	if sts.Spec.UpdateStrategy.Type != appsv1.RollingUpdateStatefulSetStrategyType {
 		return true
@@ -384,6 +418,24 @@ func (c *ReadyChecker) statefulSetReady(sts *appsv1.StatefulSet) bool {
 
 	if int(sts.Status.ReadyReplicas) != replicas {
 		c.log("StatefulSet is not ready: %s/%s. %d out of %d expected pods are ready", sts.Namespace, sts.Name, sts.Status.ReadyReplicas, replicas)
+		return false
+	}
+	return true
+}
+
+func (c *ReadyChecker) replicationControllerReady(rc *corev1.ReplicationController) bool {
+	// Verify the generation observed by the replicationController controller matches the spec generation
+	if rc.Status.ObservedGeneration != rc.ObjectMeta.Generation {
+		c.log("ReplicationController is not ready: %s/%s. observedGeneration (%s) does not match spec generation (%s).", rc.Namespace, rc.Name, rc.Status.ObservedGeneration, rc.ObjectMeta.Generation)
+		return false
+	}
+	return true
+}
+
+func (c *ReadyChecker) replicaSetReady(rs *appsv1.ReplicaSet) bool {
+	// Verify the generation observed by the replicaSet controller matches the spec generation
+	if rs.Status.ObservedGeneration != rs.ObjectMeta.Generation {
+		c.log("ReplicaSet is not ready: %s/%s. observedGeneration (%s) does not match spec generation (%s).", rs.Namespace, rs.Name, rs.Status.ObservedGeneration, rs.ObjectMeta.Generation)
 		return false
 	}
 	return true
