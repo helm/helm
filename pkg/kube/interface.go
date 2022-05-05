@@ -68,8 +68,6 @@ type Interface interface {
 
 	// IsReachable checks whether the client is able to connect to the cluster.
 	IsReachable() error
-
-	Get(resources ResourceList, reader io.Reader) (string, error)
 }
 
 // InterfaceExt is introduced to avoid breaking backwards compatibility for Interface implementers.
@@ -80,5 +78,14 @@ type InterfaceExt interface {
 	WaitForDelete(resources ResourceList, timeout time.Duration) error
 }
 
+// InterfaceResources is introduced to avoid breaking backwards compatibility for Interface implementers.
+//
+// TODO Helm 4: Remove InterfaceResources and integrate its method(s) into the Interface.
+type InterfaceResources interface {
+	// Get details of deployed resources in ResourceList to be printed.
+	Get(resources ResourceList, reader io.Reader) (string, error)
+}
+
 var _ Interface = (*Client)(nil)
 var _ InterfaceExt = (*Client)(nil)
+var _ InterfaceResources = (*Client)(nil)
