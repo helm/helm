@@ -37,6 +37,27 @@ func TestLintCmdWithSubchartsFlag(t *testing.T) {
 	runTestCmd(t, tests)
 }
 
+func TestLintCmdWithQuietFlag(t *testing.T) {
+	testChart1 := "testdata/testcharts/alpine"
+	testChart2 := "testdata/testcharts/chart-bad-requirements"
+	tests := []cmdTestCase{{
+		name:   "lint good chart using --quiet flag",
+		cmd:    fmt.Sprintf("lint --quiet %s", testChart1),
+		golden: "output/lint-quiet.txt",
+	}, {
+		name:      "lint two charts, one with error using --quiet flag",
+		cmd:       fmt.Sprintf("lint --quiet %s %s", testChart1, testChart2),
+		golden:    "output/lint-quiet-with-error.txt",
+		wantError: true,
+	}, {
+		name:   "lint chart with warning using --quiet flag",
+		cmd:    "lint --quiet testdata/testcharts/chart-with-only-crds",
+		golden: "output/lint-quiet-with-warning.txt",
+	}}
+	runTestCmd(t, tests)
+
+}
+
 func TestLintFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "lint", true)
 	checkFileCompletion(t, "lint mypath", true) // Multiple paths can be given
