@@ -318,7 +318,7 @@ func TestProcessDependencyExportValues(t *testing.T) {
 	for kk, vv := range e {
 		pv, err := cc.PathValue(kk)
 		if err != nil {
-			t.Fatalf("retrieving export values table %v %v", kk, err)
+			t.Errorf("retrieving export values table %v %v", kk, err)
 		}
 
 		switch pv := pv.(type) {

@@ -198,7 +198,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		return nil, err
 	}
 
-	if err := chartutil.ProcessDependencies(chrt, vals); err != nil {
+	if err := chartutil.ProcessDependencies(chrt, &vals); err != nil {
 		return nil, err
 	}
 
@@ -349,7 +349,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	go i.performInstall(rChan, rel, toBeAdopted, resources)
 	go i.handleContext(ctx, rChan, doneChan, rel)
 	result := <-rChan
-	//start preformInstall go routine
+	// start preformInstall go routine
 	return result.r, result.e
 }
 

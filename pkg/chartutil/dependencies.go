@@ -16,18 +16,26 @@ limitations under the License.
 package chartutil
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"strings"
+
+	"github.com/mitchellh/copystructure"
 
 	"helm.sh/helm/v3/pkg/chart"
 )
 
 // ProcessDependencies checks through this chart's dependencies, processing accordingly.
-func ProcessDependencies(c *chart.Chart, v Values) error {
-	if err := processDependencyEnabled(c, v, ""); err != nil {
+func ProcessDependencies(c *chart.Chart, v *map[string]interface{}) error {
+	if err := processDependencyExportExtraValues(c, v); err != nil {
 		return err
 	}
+
+	if err := processDependencyEnabled(c, *v, ""); err != nil {
+		return err
+	}
+
 	return processDependencyImportExportValues(c)
 }
 
@@ -217,105 +225,187 @@ func set(path []string, data map[string]interface{}) map[string]interface{} {
 	return cur
 }
 
-// processImportValues merges Values from dependent charts to the current chart based on ImportValues field.
+// processImportValues merges values from child to parent based on the chart's dependencies' ImportValues field.
 func processImportValues(c *chart.Chart) error {
 	if c.Metadata.Dependencies == nil {
 		return nil
 	}
+	// combine chart values and empty config to get Values
+	cvals, err := CoalesceValues(c, nil)
+	if err != nil {
+		return err
+	}
+	b := make(map[string]interface{})
+	// import values from each dependency if specified in import-values
+	for _, r := range c.Metadata.Dependencies {
+		var outiv []interface{}
+		for _, riv := range r.ImportValues {
+			switch iv := riv.(type) {
+			case map[string]interface{}:
+				child := iv["child"].(string)
+				parent := iv["parent"].(string)
 
+				outiv = append(outiv, map[string]string{
+					"child":  child,
+					"parent": parent,
+				})
+
+				// get child table
+				vv, err := cvals.Table(r.Name + "." + child)
+				if err != nil {
+					log.Printf("Warning: ImportValues missing table from chart %s: %v", r.Name, err)
+					continue
+				}
+				// create value map from child to be merged into parent
+				b = CoalesceTables(cvals, pathToMap(parent, vv.AsMap()))
+			case string:
+				child := "exports." + iv
+				outiv = append(outiv, map[string]string{
+					"child":  child,
+					"parent": ".",
+				})
+				vm, err := cvals.Table(r.Name + "." + child)
+				if err != nil {
+					log.Printf("Warning: ImportValues missing table: %v", err)
+					continue
+				}
+				b = CoalesceTables(b, vm.AsMap())
+			}
+		}
+		// set our formatted import values
+		r.ImportValues = outiv
+	}
+
+	// set the new values
+	c.Values = CoalesceTables(cvals, b)
+
+	return nil
+}
+
+// Extend Chart Values according to export-values directive of its parent Chart.
+func processExportValues(c *chart.Chart) error {
+	if c.Parent() == nil || c.Parent().Metadata.Dependencies == nil {
+		return nil
+	}
+
+	// Get current chart as chart.Dependency object.
+	var cr *chart.Dependency
+	for _, r := range c.Parent().Metadata.Dependencies {
+		if r.Name == c.Name() {
+			cr = r
+			break
+		}
+	}
+
+	if cr == nil {
+		return nil
+	}
+
+	// Get parent chart values.
+	pvals, err := CoalesceValues(c.Parent(), nil)
+	if err != nil {
+		return err
+	}
+
+	// Get current chart values.
 	cvals, err := CoalesceValues(c, nil)
 	if err != nil {
 		return err
 	}
 
-	importedValuesMap := make(map[string]interface{})
-	for _, r := range c.Metadata.Dependencies {
-		importedValuesMap = CoalesceTables(importedValuesMap, getImportedValues(r, cvals))
+	// Generate Values map to be merged into current chart, according to export-values directive.
+	exportedValues, err := getExportedValues(c.Parent().Name(), cr, pvals)
+	if err != nil {
+		return err
 	}
 
-	c.Values = CoalesceTables(importedValuesMap, cvals)
+	cv, err := copystructure.Copy(cvals)
+	if err != nil {
+		return err
+	}
+
+	// Merge newly generated extra Values map into current chart Values.
+	c.Values = CoalesceTables(exportedValues, cv.(Values))
 
 	return nil
 }
 
-// processExportValues merges Values from current chart to the child charts based on ExportValues field.
-func processExportValues(c *chart.Chart) error {
-	if c.Metadata.Dependencies == nil {
+// Extend extra Values overrides according to export-values directive, if needed.
+func processExportExtraValues(c *chart.Chart, extraVals *map[string]interface{}) error {
+	if c.Parent() == nil || c.Parent().Metadata.Dependencies == nil {
 		return nil
 	}
 
-	for _, r := range c.Metadata.Dependencies {
+	// Get current Chart as chart.Dependency.
+	var cr *chart.Dependency
+	for _, r := range c.Parent().Metadata.Dependencies {
+		if r.Name == c.Name() {
+			cr = r
+			break
+		}
+	}
 
-		// combine chart values and empty config to get Values
-		pvals, err := CoalesceValues(c, nil)
+	if cr == nil {
+		return nil
+	}
+
+	for _, exportValue := range cr.ExportValues {
+		parent, child, err := parseExportValues(exportValue)
 		if err != nil {
-			return err
+			log.Printf("Warning: invalid ExportValues defined in chart %q for its dependency %q: %s", c.Parent().Name(), cr.Name, err)
+			continue
 		}
 
-		var rc *chart.Chart
-		for _, dep := range c.Dependencies() {
-			if dep.Name() == r.Name {
-				rc = dep
+		headlessParentChartPath := stripFirstPathPart(c.Parent().ChartPath())
+		var exportParentTablePath string
+		if headlessParentChartPath != "" {
+			exportParentTablePath = joinPath(headlessParentChartPath, parent)
+		} else {
+			exportParentTablePath = parent
+		}
+
+		// If present, get extra Values overrides table from parent path, as defined in export-values.
+		extraParentVals, err := Values(*extraVals).Table(exportParentTablePath)
+		if err != nil {
+			var errNoTable ErrNoTable
+			if errors.As(err, &errNoTable) {
+				continue
+			} else {
+				return err
 			}
 		}
 
-		cvals, err := CoalesceValues(rc, nil)
+		var extraChildValsPath string
+		if child != "" {
+			extraChildValsPath = joinPath(stripFirstPathPart(c.ChartPath()), child)
+		} else {
+			extraChildValsPath = stripFirstPathPart(c.ChartPath())
+		}
+
+		// Do not overwrite anything — skip if something present in destination.
+		var errNoTable ErrNoTable
+		var errNoValue ErrNoValue
+		_, errTable := Values(*extraVals).Table(extraChildValsPath)
+		_, errValue := Values(*extraVals).PathValue(extraChildValsPath)
+		if !(errors.As(errTable, &errNoTable) && errors.As(errValue, &errNoValue)) {
+			continue
+		}
+
+		// Create new Values map structure to be merged into extra Values overrides map.
+		extraChildVals, err := copystructure.Copy(pathToMap(extraChildValsPath, extraParentVals.AsMap()))
 		if err != nil {
 			return err
 		}
 
-		rc.Values = CoalesceTables(getExportedValues(c.Name(), r, pvals), cvals)
-
-		return nil
+		// Merge new Values into existing extra Values overrides.
+		*extraVals = CoalesceTables(extraChildVals.(map[string]interface{}), *extraVals)
 	}
 
 	return nil
 }
 
-// Generates values map which is imported from specified child to parent via import-values.
-func getImportedValues(r *chart.Dependency, cvals Values) map[string]interface{} {
-	b := make(map[string]interface{})
-	var outiv []interface{}
-	for _, riv := range r.ImportValues {
-		switch iv := riv.(type) {
-		case map[string]interface{}:
-			child := iv["child"].(string)
-			parent := iv["parent"].(string)
-
-			outiv = append(outiv, map[string]string{
-				"child":  child,
-				"parent": parent,
-			})
-
-			// get child table
-			vv, err := cvals.Table(r.Name + "." + child)
-			if err != nil {
-				log.Printf("Warning: ImportValues missing table from chart %s: %v", r.Name, err)
-				continue
-			}
-			// create value map from child to be merged into parent
-			b = CoalesceTables(cvals, pathToMap(parent, vv.AsMap()))
-		case string:
-			child := "exports." + iv
-			outiv = append(outiv, map[string]string{
-				"child":  child,
-				"parent": ".",
-			})
-			vm, err := cvals.Table(r.Name + "." + child)
-			if err != nil {
-				log.Printf("Warning: ImportValues missing table: %v", err)
-				continue
-			}
-			b = CoalesceTables(b, vm.AsMap())
-		}
-	}
-	// set our formatted import values
-	r.ImportValues = outiv
-	return b
-}
-
-// Generates values map which is exported from parent to specified child via export-values.
-func getExportedValues(parentName string, r *chart.Dependency, pvals Values) map[string]interface{} {
+// Generate Values map to be merged into child chart, according to export-values directive of parent chart.
+func getExportedValues(parentName string, r *chart.Dependency, pvals Values) (map[string]interface{}, error) {
 	b := make(map[string]interface{})
 	var exportValues []interface{}
 	for _, rev := range r.ExportValues {
@@ -331,16 +421,17 @@ func getExportedValues(parentName string, r *chart.Dependency, pvals Values) map
 		})
 
 		var childValMap map[string]interface{}
-		// try to get parent table
+		// Try to get parent table for parent path specified in export-values.
 		vm, err := pvals.Table(parent)
 		if err == nil {
+			// It IS a valid table.
 			if child == "" {
 				childValMap = vm.AsMap()
 			} else {
 				childValMap = pathToMap(child, vm.AsMap())
 			}
 		} else {
-			// still it might be not a table but a simple value
+			// If it's not a table, it might be a simple value.
 			value, e := pvals.PathValue(parent)
 			if e != nil {
 				log.Printf("Warning: ExportValues defined in chart %q for its dependency %q can't get the parent path: %s", parentName, r.Name, err.Error())
@@ -353,21 +444,31 @@ func getExportedValues(parentName string, r *chart.Dependency, pvals Values) map
 				continue
 			}
 
-			childValMap = pathToMap(
-				joinPath(childSlice[:len(childSlice)-1]...),
-				map[string]interface{}{
-					childSlice[len(childSlice)-1]: value,
-				},
-			)
+			childPath := joinPath(childSlice[:len(childSlice)-1]...)
+			childMap := map[string]interface{}{
+				childSlice[len(childSlice)-1]: value,
+			}
+
+			if childPath != "" {
+				childValMap = pathToMap(childPath, childMap)
+			} else {
+				childValMap = childMap
+			}
 		}
 
-		// merge new map with values exported to the child into the resulting values map
-		b = CoalesceTables(childValMap, b)
+		chValMap, err := copystructure.Copy(childValMap)
+		if err != nil {
+			return b, err
+		}
+
+		// Merge new Values map for current export-values directive into other new Values maps for other export-values directives.
+		b = CoalesceTables(chValMap.(map[string]interface{}), b)
 	}
-	// set formatted export values
+
+	// Set formatted export values.
 	r.ExportValues = exportValues
 
-	return b
+	return b, nil
 }
 
 // Parse and validate export-values.
@@ -379,12 +480,12 @@ func parseExportValues(rev interface{}) (string, string, error) {
 		var ok bool
 		parent, ok = ev["parent"].(string)
 		if !ok {
-			return "", "", fmt.Errorf("parent can't be of null type")
+			return "", "", fmt.Errorf("parent must be a string")
 		}
 
 		child, ok = ev["child"].(string)
 		if !ok {
-			return "", "", fmt.Errorf("child can't be of null type")
+			return "", "", fmt.Errorf("child must be a string")
 		}
 
 		if strings.TrimSpace(parent) == "" || strings.TrimSpace(parent) == "." {
@@ -406,25 +507,65 @@ func parseExportValues(rev interface{}) (string, string, error) {
 		}
 		child = ""
 	default:
-		return "", "", fmt.Errorf("invalid type of ExportValues")
+		return "", "", fmt.Errorf("invalid format of ExportValues")
 	}
 
 	return parent, child, nil
 }
 
-// processDependencyImportExportValues imports (child to parent) and/or exports (parent to child) values if
-// import-values or export-values specified for the dependency.
 func processDependencyImportExportValues(c *chart.Chart) error {
+	if err := processDependencyExportValues(c); err != nil {
+		return err
+	}
+
+	return processDependencyImportValues(c)
+}
+
+// Update Values of Chart and its Dependencies according to export-values directive.
+func processDependencyExportValues(c *chart.Chart) error {
 	if err := processExportValues(c); err != nil {
 		return err
 	}
 
 	for _, d := range c.Dependencies() {
 		// recurse
-		if err := processDependencyImportExportValues(d); err != nil {
+		if err := processDependencyExportValues(d); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Update Values of Chart and its Dependencies according to import-values directive.
+func processDependencyImportValues(c *chart.Chart) error {
+	for _, d := range c.Dependencies() {
+		// recurse
+		if err := processDependencyImportValues(d); err != nil {
 			return err
 		}
 	}
 
 	return processImportValues(c)
+}
+
+// Update extra Values overrides according to export-values directive, if needed.
+func processDependencyExportExtraValues(c *chart.Chart, extraVals *map[string]interface{}) error {
+	if err := processExportExtraValues(c, extraVals); err != nil {
+		return err
+	}
+
+	for _, d := range c.Dependencies() {
+		// recurse
+		if err := processDependencyExportExtraValues(d, extraVals); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func stripFirstPathPart(path string) string {
+	pathParts := parsePath(path)[1:]
+	return joinPath(pathParts...)
 }
