@@ -149,6 +149,16 @@ func TestListCmd(t *testing.T) {
 		golden: "output/list.txt",
 		rels:   releaseFixture,
 	}, {
+		name:   "list releases in full yaml format",
+		cmd:    "list --output yaml",
+		golden: "output/list-full-yaml.txt",
+		rels:   releaseFixture,
+	}, {
+		name:   "list releases in full json format",
+		cmd:    "list --output json",
+		golden: "output/list-full-json.txt",
+		rels:   releaseFixture,
+	}, {
 		name:   "list all releases",
 		cmd:    "list --all",
 		golden: "output/list-all.txt",
