@@ -712,6 +712,10 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		RegistryClient:   c.registryClient,
 	}
 
+	if registry.IsOCI(name) {
+		dl.Options = append(dl.Options, getter.WithRegistryClient(c.registryClient))
+	}
+
 	if c.Verify {
 		dl.Verify = downloader.VerifyAlways
 	}
