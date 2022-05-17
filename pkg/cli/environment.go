@@ -30,12 +30,16 @@ import (
 
 	"github.com/spf13/pflag"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/client-go/rest"
 
 	"helm.sh/helm/v3/pkg/helmpath"
 )
 
 // defaultMaxHistory sets the maximum number of releases to 0: unlimited
 const defaultMaxHistory = 10
+
+// defaultBurstLimit sets the default client-side throttling limit
+const defaultBurstLimit = 100
 
 // EnvSettings describes all of the environment settings.
 type EnvSettings struct {
@@ -68,6 +72,8 @@ type EnvSettings struct {
 	PluginsDirectory string
 	// MaxHistory is the max release history maintained.
 	MaxHistory int
+	// BurstLimit is the default client-side throttling limit.
+	BurstLimit int
 }
 
 func New() *EnvSettings {
@@ -84,6 +90,7 @@ func New() *EnvSettings {
 		RegistryConfig:   envOr("HELM_REGISTRY_CONFIG", helmpath.ConfigPath("registry/config.json")),
 		RepositoryConfig: envOr("HELM_REPOSITORY_CONFIG", helmpath.ConfigPath("repositories.yaml")),
 		RepositoryCache:  envOr("HELM_REPOSITORY_CACHE", helmpath.CachePath("repository")),
+		BurstLimit:       envIntOr("HELM_BURST_LIMIT", defaultBurstLimit),
 	}
 	env.Debug, _ = strconv.ParseBool(os.Getenv("HELM_DEBUG"))
 
@@ -97,6 +104,10 @@ func New() *EnvSettings {
 		KubeConfig:       &env.KubeConfig,
 		Impersonate:      &env.KubeAsUser,
 		ImpersonateGroup: &env.KubeAsGroups,
+		WrapConfigFn: func(config *rest.Config) *rest.Config {
+			config.Burst = env.BurstLimit
+			return config
+		},
 	}
 	return env
 }
@@ -115,6 +126,7 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.RegistryConfig, "registry-config", s.RegistryConfig, "path to the registry config file")
 	fs.StringVar(&s.RepositoryConfig, "repository-config", s.RepositoryConfig, "path to the file containing repository names and URLs")
 	fs.StringVar(&s.RepositoryCache, "repository-cache", s.RepositoryCache, "path to the file containing cached repository indexes")
+	fs.IntVar(&s.BurstLimit, "burst-limit", s.BurstLimit, "client-side default throttling limit")
 }
 
 func envOr(name, def string) string {
@@ -157,6 +169,7 @@ func (s *EnvSettings) EnvVars() map[string]string {
 		"HELM_REPOSITORY_CONFIG": s.RepositoryConfig,
 		"HELM_NAMESPACE":         s.Namespace(),
 		"HELM_MAX_HISTORY":       strconv.Itoa(s.MaxHistory),
+		"HELM_BURST_LIMIT":       strconv.Itoa(s.BurstLimit),
 
 		// broken, these are populated from helm flags and not kubeconfig.
 		"HELM_KUBECONTEXT":   s.KubeContext,
