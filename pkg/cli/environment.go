@@ -39,7 +39,7 @@ import (
 const defaultMaxHistory = 10
 
 // defaultBurstLimit sets the default client-side throttling limit
-const defaultBurstLimit = 250
+const defaultBurstLimit = 100
 
 // EnvSettings describes all of the environment settings.
 type EnvSettings struct {
