@@ -75,8 +75,17 @@ func NewForSource(source, version string) (Installer, error) {
 }
 
 // FindSource determines the correct Installer for the given source.
-func FindSource(location, version string) (Installer, error) {
-	installer, err := existingVCSRepo(location, version)
+func FindSource(location string) (Installer, error) {
+	installer, err := existingVCSRepo(location)
+	if err != nil && err.Error() == "Cannot detect VCS" {
+		return installer, errors.New("cannot get information about plugin source")
+	}
+	return installer, err
+}
+
+// FindSourceWithVersion determines the correct Installer for the given source with provided version.
+func FindSourceWithVersion(location, version string) (Installer, error) {
+	installer, err := existingVCSRepoWithVersion(location, version)
 	if err != nil && err.Error() == "Cannot detect VCS" {
 		return installer, errors.New("cannot get information about plugin source")
 	}

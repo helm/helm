@@ -16,11 +16,11 @@ limitations under the License.
 package installer // import "helm.sh/helm/v3/pkg/plugin/installer"
 
 import (
-	"github.com/Masterminds/vcs"
 	"os"
 	"sort"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/Masterminds/vcs"
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/internal/third_party/dep/fs"
@@ -35,7 +35,19 @@ type VCSInstaller struct {
 	base
 }
 
-func existingVCSRepo(location, version string) (Installer, error) {
+func existingVCSRepo(location string) (Installer, error) {
+	repo, err := vcs.NewRepo("", location)
+	if err != nil {
+		return nil, err
+	}
+	i := &VCSInstaller{
+		Repo: repo,
+		base: newBase(repo.Remote()),
+	}
+	return i, nil
+}
+
+func existingVCSRepoWithVersion(location, version string) (Installer, error) {
 	repo, err := vcs.NewRepo("", location)
 	if err != nil {
 		return nil, err
