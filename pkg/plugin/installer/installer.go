@@ -26,7 +26,7 @@ import (
         "github.com/pkg/errors"
 
         "helm.sh/helm/v3/pkg/plugin"
-
+)
 
 // ErrMissingMetadata indicates that plugin.yaml is missing.
 var ErrMissingMetadata = errors.New("plugin metadata (plugin.yaml) missing")
