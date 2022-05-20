@@ -17,16 +17,18 @@ package plugin // import "helm.sh/helm/v3/pkg/plugin"
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
-	"helm.sh/helm/v3/pkg/cli"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
 	"runtime"
-	"sigs.k8s.io/yaml"
 	"strings"
 	"unicode"
+	
+	"github.com/pkg/errors"
+	"sigs.k8s.io/yaml"
+
+	"helm.sh/helm/v3/pkg/cli"
 )
 
 const PluginFileName = "plugin.yaml"
