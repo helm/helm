@@ -17,13 +17,13 @@ package installer
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
+	"helm.sh/helm/v3/pkg/plugin"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
-	"github.com/pkg/errors"
-	"helm.sh/helm/v3/pkg/plugin"
 )
 
 // ErrMissingMetadata indicates that plugin.yaml is missing.
