@@ -44,12 +44,13 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		}
 	}
 
-	// hooke are pre-ordered by kind, so keep order stable
+	// hooks are pre-ordered by kind, so keep order stable
 	sort.Stable(hookByWeight(executingHooks))
 
 	for i, h := range executingHooks {
 		// Set default delete policy to before-hook-creation
 		cfg.hookSetDeletePolicy(h)
+		setDefaultDeletePolicy(h)
 
 		if err := cfg.deleteHookByPolicy(h, release.HookBeforeHookCreation, waitStrategy, timeout); err != nil {
 			return err
@@ -58,6 +59,17 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		resources, err := cfg.KubeClient.Build(bytes.NewBufferString(h.Manifest), true)
 		if err != nil {
 			return fmt.Errorf("unable to build kubernetes object for %s hook %s: %w", hook, h.Path, err)
+		}
+
+		// It is safe to use "force" here because these are resources currently rendered by the chart.
+		err = resources.Visit(setMetadataVisitor(rl.Name, rl.Namespace, true))
+		if err != nil {
+			return err
+		}
+
+		toBeUpdated, err := existingResourceConflict(resources, rl.Name, rl.Namespace)
+		if err != nil {
+			return errors.Wrap(err, "rendered hook manifests contain a resource that already exists. Unable to continue")
 		}
 
 		// Record the time at which the hook was applied to the cluster
@@ -76,6 +88,8 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		if _, err := cfg.KubeClient.Create(
 			resources,
 			kube.ClientCreateOptionServerSideApply(serverSideApply, false)); err != nil {
+		// Create or update the hook resources
+		if _, err := cfg.KubeClient.Update(toBeUpdated, resources, false); err != nil {
 			h.LastRun.CompletedAt = helmtime.Now()
 			h.LastRun.Phase = release.HookPhaseFailed
 			return fmt.Errorf("warning: Hook %s %s failed: %w", hook, h.Path, err)
@@ -256,4 +270,14 @@ func (cfg *Configuration) deriveNamespace(h *release.Hook, namespace string) (st
 // supported by helm.
 func hookHasOutputLogPolicy(h *release.Hook, policy release.HookOutputLogPolicy) bool {
 	return slices.Contains(h.OutputLogPolicies, policy)
+}
+
+func setDefaultDeletePolicy(h *release.Hook) {
+	if h.DeletePolicies != nil && len(h.DeletePolicies) > 0 {
+		return
+	}
+	// TODO(luisdavim): We should probably add the group/version to the hook resources to avoid conflicts with CRs
+	if h.Kind == "Job" || h.Kind == "Pod" {
+		h.DeletePolicies = []release.HookDeletePolicy{release.HookBeforeHookCreation}
+	}
 }
