@@ -20,14 +20,20 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"net/http"
 	"reflect"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
+	kuberuntime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/cli-runtime/pkg/resource"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest/fake"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
@@ -236,6 +242,7 @@ type HookFailingKubeWaiter struct {
 }
 
 func (*HookFailingKubeClient) Build(reader io.Reader, _ bool) (kube.ResourceList, error) {
+	var rList kube.ResourceList
 	configMap := &v1.ConfigMap{}
 
 	err := yaml.NewYAMLOrJSONDecoder(reader, 1000).Decode(configMap)
@@ -244,10 +251,33 @@ func (*HookFailingKubeClient) Build(reader io.Reader, _ bool) (kube.ResourceList
 		return kube.ResourceList{}, err
 	}
 
-	return kube.ResourceList{{
+	coreV1GV := schema.GroupVersion{Version: "v1"}
+	body := io.NopCloser(bytes.NewReader([]byte(kuberuntime.EncodeOrDie(scheme.Codecs.CodecForVersions(scheme.Codecs.LegacyCodec(coreV1GV), scheme.Codecs.UniversalDecoder(coreV1GV), coreV1GV, coreV1GV), configMap))))
+	rList = append(rList, &resource.Info{
 		Name:      configMap.Name,
 		Namespace: configMap.Namespace,
-	}}, nil
+		Mapping: &meta.RESTMapping{
+			Resource:         schema.GroupVersionResource{Group: "", Version: "v1", Resource: "configmap"},
+			GroupVersionKind: schema.GroupVersionKind{Group: "", Version: "v1", Kind: "ConfigMap"},
+			Scope:            meta.RESTScopeNamespace,
+		},
+		Client: &fake.RESTClient{
+			GroupVersion:         schema.GroupVersion{Group: "apps", Version: "v1"},
+			NegotiatedSerializer: scheme.Codecs.WithoutConversion(),
+			Client: fake.CreateHTTPClient(func(_ *http.Request) (*http.Response, error) {
+				header := http.Header{}
+				header.Set("Content-Type", kuberuntime.ContentTypeJSON)
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Header:     header,
+					Body:       body,
+				}, nil
+			}),
+		},
+		Object: configMap,
+	})
+
+	return rList, nil
 }
 
 func (h *HookFailingKubeWaiter) WatchUntilReady(resources kube.ResourceList, _ time.Duration) error {
@@ -389,7 +419,7 @@ data:
 			err := configuration.execHook(&tc.inputRelease, hookEvent, kube.StatusWatcherStrategy, 600, serverSideApply)
 
 			if !reflect.DeepEqual(kubeClient.deleteRecord, tc.expectedDeleteRecord) {
-				t.Fatalf("Got unexpected delete record, expected: %#v, but got: %#v", kubeClient.deleteRecord, tc.expectedDeleteRecord)
+				t.Fatalf("Got unexpected delete record, expected: %#v, but got: %#v", tc.expectedDeleteRecord, kubeClient.deleteRecord)
 			}
 
 			if err != nil && !tc.expectError {
