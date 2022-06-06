@@ -29,11 +29,14 @@ import (
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/gitutils"
 	"helm.sh/helm/v3/pkg/helmpath"
 	"helm.sh/helm/v3/pkg/provenance"
 	"helm.sh/helm/v3/pkg/registry"
 	"helm.sh/helm/v3/pkg/repo"
 )
+
+var hasGitReference = gitutils.HasGitReference
 
 // Resolver resolves dependencies from semantic version ranges to a particular version.
 type Resolver struct {
@@ -103,6 +106,27 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 				Name:       d.Name,
 				Repository: d.Repository,
 				Version:    ch.Metadata.Version,
+			}
+			continue
+		}
+
+		if strings.HasPrefix(d.Repository, "git://") {
+
+			found, err := hasGitReference(strings.TrimPrefix(d.Repository, "git://"), d.Version, d.Name)
+
+			if err != nil {
+				return nil, err
+			}
+
+			if !found {
+				return nil, fmt.Errorf(`dependency %q is missing git branch or tag: %s.
+			When using a "git://" type repository, the "version" should be a valid branch or tag name`, d.Name, d.Version)
+			}
+
+			locked[i] = &chart.Dependency{
+				Name:       d.Name,
+				Repository: d.Repository,
+				Version:    d.Version,
 			}
 			continue
 		}

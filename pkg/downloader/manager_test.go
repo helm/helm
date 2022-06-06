@@ -80,55 +80,36 @@ func TestFindChartURL(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	name := "alpine"
-	version := "0.1.0"
-	repoURL := "http://example.com/charts"
-
-	churl, username, password, insecureSkipTLSVerify, passcredentialsall, _, _, _, err := m.findChartURL(name, version, repoURL, repos)
-	if err != nil {
-		t.Fatal(err)
+	tests := []struct {
+		name, version, repoURL, expectChurl, expectUserName, expectPassword string
+		expectInsecureSkipTLSVerify, expectPasscredentialsall               bool
+	}{
+		{name: "alpine", version: "0.1.0", repoURL: "http://example.com/charts", expectChurl: "https://charts.helm.sh/stable/alpine-0.1.0.tgz", expectUserName: "", expectPassword: "", expectInsecureSkipTLSVerify: false, expectPasscredentialsall: false},
+		{name: "tlsfoo", version: "1.2.3", repoURL: "https://example-https-insecureskiptlsverify.com", expectChurl: "https://example.com/tlsfoo-1.2.3.tgz", expectUserName: "", expectPassword: "", expectInsecureSkipTLSVerify: true, expectPasscredentialsall: false},
+		{name: "helm-test", version: "master", repoURL: "git://https://github.com/rally25rs/helm-test-chart.git", expectChurl: "git://https://github.com/rally25rs/helm-test-chart.git", expectUserName: "", expectPassword: "", expectInsecureSkipTLSVerify: false, expectPasscredentialsall: false},
+	}
+	for _, tt := range tests {
+		churl, username, password, insecureSkipTLSVerify, passcredentialsall, _, _, _, err := m.findChartURL(tt.name, tt.version, tt.repoURL, repos)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if churl != tt.expectChurl {
+			t.Errorf("Unexpected URL %q", churl)
+		}
+		if username != tt.expectUserName {
+			t.Errorf("Unexpected username %q", username)
+		}
+		if password != tt.expectPassword {
+			t.Errorf("Unexpected password %q", password)
+		}
+		if insecureSkipTLSVerify != tt.expectInsecureSkipTLSVerify {
+			t.Errorf("Unexpected insecureSkipTLSVerify %t", insecureSkipTLSVerify)
+		}
+		if passcredentialsall != tt.expectPasscredentialsall {
+			t.Errorf("Unexpected passcredentialsall %t", passcredentialsall)
+		}
 	}
 
-	if churl != "https://charts.helm.sh/stable/alpine-0.1.0.tgz" {
-		t.Errorf("Unexpected URL %q", churl)
-	}
-	if username != "" {
-		t.Errorf("Unexpected username %q", username)
-	}
-	if password != "" {
-		t.Errorf("Unexpected password %q", password)
-	}
-	if passcredentialsall != false {
-		t.Errorf("Unexpected passcredentialsall %t", passcredentialsall)
-	}
-	if insecureSkipTLSVerify {
-		t.Errorf("Unexpected insecureSkipTLSVerify %t", insecureSkipTLSVerify)
-	}
-
-	name = "tlsfoo"
-	version = "1.2.3"
-	repoURL = "https://example-https-insecureskiptlsverify.com"
-
-	churl, username, password, insecureSkipTLSVerify, passcredentialsall, _, _, _, err = m.findChartURL(name, version, repoURL, repos)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if !insecureSkipTLSVerify {
-		t.Errorf("Unexpected insecureSkipTLSVerify %t", insecureSkipTLSVerify)
-	}
-	if churl != "https://example.com/tlsfoo-1.2.3.tgz" {
-		t.Errorf("Unexpected URL %q", churl)
-	}
-	if username != "" {
-		t.Errorf("Unexpected username %q", username)
-	}
-	if password != "" {
-		t.Errorf("Unexpected password %q", password)
-	}
-	if passcredentialsall != false {
-		t.Errorf("Unexpected passcredentialsall %t", passcredentialsall)
-	}
 }
 
 func TestGetRepoNames(t *testing.T) {
@@ -192,6 +173,13 @@ func TestGetRepoNames(t *testing.T) {
 				{Name: "local-subchart", Repository: ""},
 			},
 			expect: map[string]string{},
+		},
+		{
+			name: "repo from git url",
+			req: []*chart.Dependency{
+				{Name: "local-dep", Repository: "git://https://github.com/git/git"},
+			},
+			expect: map[string]string{"local-dep": "git://https://github.com/git/git"},
 		},
 	}
 

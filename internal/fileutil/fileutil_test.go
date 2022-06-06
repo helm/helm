@@ -17,7 +17,10 @@ limitations under the License.
 package fileutil
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -54,5 +57,49 @@ func TestAtomicWriteFile(t *testing.T) {
 	if mode != gotinfo.Mode() {
 		t.Fatalf("expected %s: to be the same mode as %s",
 			mode, gotinfo.Mode())
+	}
+}
+
+func TestCompressDirToTgz(t *testing.T) {
+
+	testDataDir := "testdata"
+	chartTestDir := "testdata/testdir"
+
+	chartBytes, err := CompressDirToTgz(chartTestDir, testDataDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// gzip read
+	gr, err := gzip.NewReader(chartBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer gr.Close()
+
+	// tar read
+	tr := tar.NewReader(gr)
+	defer gr.Close()
+
+	found := false
+	fileBytes := bytes.NewBuffer(nil)
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if hdr.Name == "testdir/testfile" {
+			found = true
+			_, err := io.Copy(fileBytes, tr)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("testdir/testfile not found")
+	}
+	if !bytes.Equal(fileBytes.Bytes(), []byte("helm")) {
+		t.Fatalf("testdir/testfile's content not match, excpcted %s, got %s", "helm", fileBytes.String())
 	}
 }

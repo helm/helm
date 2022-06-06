@@ -71,6 +71,36 @@ the dependency charts stored locally. The path should start with a prefix of
 If the dependency chart is retrieved locally, it is not required to have the
 repository added to helm by "helm add repo". Version matching is also supported
 for this case.
+
+A repository can be defined as a git URL. The path must start with a prefix of
+"git://" followed by a valid git repository URL.
+
+    # Chart.yaml
+    dependencies:
+    - name: helm-chart
+      version: "main"
+      repository: "git://https://github.com/helm/helm-chart.git"
+
+The 'repository' can be the https or ssh URL that you would use to clone a git
+repo or add as a git remote, prefixed with 'git:'.
+For example 'git://git@github.com:helm/helm-chart.git' or
+'git://https://github.com/helm/helm-chart.git'
+
+When using a 'git://' repository, the 'version' must be a valid  semantic tag or branch
+name for the git repo. For example 'master'.
+
+Limitations when working with git repositories:
+* Helm will use the 'git' executable on your system to retrieve information
+about the repo. The 'git' command must be properly configured and available
+on the PATH.
+* When specifying a private repo, if git tries to query the user for
+username/passowrd for an HTTPS url, or for a certificate password for an SSH
+url, it may cause Helm to hang. Input is not forwarded to the child git
+process, so it will not be able to receive user input. For private repos
+it is recommended to use an SSH git url, and have your git client configured
+with an SSH cert that does not require a password.
+* The helm chart and 'Chart.yaml' must be in the root of the git repo.
+The chart cannot be loaded from a subdirectory.
 `
 
 const dependencyListDesc = `

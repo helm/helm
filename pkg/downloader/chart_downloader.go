@@ -26,6 +26,8 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/pkg/errors"
 
+	giturls "github.com/whilp/git-urls"
+
 	"helm.sh/helm/v3/internal/fileutil"
 	"helm.sh/helm/v3/internal/urlutil"
 	"helm.sh/helm/v3/pkg/getter"
@@ -92,7 +94,15 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 		return "", nil, err
 	}
 
-	g, err := c.Getters.ByScheme(u.Scheme)
+	scheme := ""
+
+	if strings.HasPrefix(ref, "git://") {
+		scheme = "git"
+	} else {
+		scheme = u.Scheme
+	}
+
+	g, err := c.Getters.ByScheme(scheme)
 	if err != nil {
 		return "", nil, err
 	}
@@ -103,9 +113,16 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 	}
 
 	name := filepath.Base(u.Path)
-	if u.Scheme == registry.OCIScheme {
+	if u.Scheme == registry.OCIScheme || u.Scheme == "git" {
 		idx := strings.LastIndexByte(name, ':')
 		name = fmt.Sprintf("%s-%s.tgz", name[:idx], name[idx+1:])
+	}
+	if scheme == "git" {
+		gitGetter, ok := g.(*getter.GitGetter)
+		if !ok {
+			return "", nil, fmt.Errorf("can't convert to GITGetter")
+		}
+		name = fmt.Sprintf("%s-%s.tgz", gitGetter.ChartName(), version)
 	}
 
 	destfile := filepath.Join(dest, name)
@@ -180,7 +197,7 @@ func (c *ChartDownloader) getOciURI(ref, version string, u *url.URL) (*url.URL, 
 // the URL using the appropriate Getter.
 //
 // A reference may be an HTTP URL, an oci reference URL, a 'reponame/chartname'
-// reference, or a local path.
+// reference, git URL, or a local path.
 //
 // A version is a SemVer string (1.2.3-beta.1+f334a6789).
 //
@@ -190,6 +207,14 @@ func (c *ChartDownloader) getOciURI(ref, version string, u *url.URL) (*url.URL, 
 //		* If version is empty, this will return the URL for the latest version
 //		* If no version can be found, an error is returned
 func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, error) {
+	if strings.HasPrefix(ref, "git://") {
+		gitURL := strings.TrimPrefix(ref, "git://")
+		u, err := giturls.Parse(gitURL)
+		if err != nil {
+			return nil, errors.Errorf("invalid git URL format: %s", gitURL)
+		}
+		return u, nil
+	}
 	u, err := url.Parse(ref)
 	if err != nil {
 		return nil, errors.Errorf("invalid chart URL format: %s", ref)
