@@ -16,6 +16,8 @@ limitations under the License.
 package getter
 
 import (
+	"bytes"
+	"compress/gzip"
 	"fmt"
 	"io"
 	"net/http"
@@ -361,6 +363,30 @@ func TestDownloadInsecureSkipTLSVerify(t *testing.T) {
 		t.Error(err)
 	}
 
+}
+
+func TestHTTPGetterWithCompression(t *testing.T) {
+	expectedData := []byte("index.yaml")
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Encoding", "gzip")
+		gzipWriter := gzip.NewWriter(w)
+		gzipWriter.Write(expectedData)
+		gzipWriter.Close()
+	}))
+
+	defer srv.Close()
+
+	g, err := NewHTTPGetter(WithURL(srv.URL), WithCompression())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	data, _ := g.Get(srv.URL)
+
+	if bytes.Compare(data.Bytes(), expectedData) != 0 {
+		t.Fatalf("Expected response with uncompressed data %s, but got %s", expectedData, data.Bytes())
+	}
 }
 
 func TestHTTPGetterTarDownload(t *testing.T) {
