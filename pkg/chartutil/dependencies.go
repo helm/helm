@@ -324,10 +324,61 @@ func processExportValues(c *chart.Chart) error {
 		return err
 	}
 
+	ev, err := copystructure.Copy(exportedValues)
+	if err != nil {
+		return err
+	}
+
 	// Merge newly generated extra Values map into current chart Values.
-	c.Values = CoalesceTables(exportedValues, cv.(Values))
+	c.Values = CoalesceTables(ev.(map[string]interface{}), cv.(Values))
+
+	evForSync, err := copystructure.Copy(exportedValues)
+	if err != nil {
+		return err
+	}
+
+	// Make sure no parent chart will override our new extra Values in this chart.
+	if err := syncChartOverridesToParentsValues(c, evForSync.(map[string]interface{})); err != nil {
+		return err
+	}
 
 	return nil
+}
+
+// Get Values map with overrides destined for current chart and merge these overrides into all its parent charts
+// Values, while prefixing the to be applied parent overrides with the relative path to the current chart. This is
+// to avoid values from parent charts having precedence to the overrides passed to the current chart.
+func syncChartOverridesToParentsValues(c *chart.Chart, overrides map[string]interface{}) error {
+	if c.Parent() == nil {
+		return nil
+	}
+
+	// Get parent chart values.
+	pvals, err := CoalesceValues(c.Parent(), nil)
+	if err != nil {
+		return err
+	}
+
+	pv, err := copystructure.Copy(pvals)
+	if err != nil {
+		return err
+	}
+
+	o, err := copystructure.Copy(overrides)
+	if err != nil {
+		return err
+	}
+
+	parentOverrides := pathToMap(c.Name(), o.(map[string]interface{}))
+
+	po, err := copystructure.Copy(parentOverrides)
+	if err != nil {
+		return err
+	}
+
+	c.Parent().Values = CoalesceTables(po.(map[string]interface{}), pv.(Values))
+
+	return syncChartOverridesToParentsValues(c.Parent(), parentOverrides)
 }
 
 // Extend extra Values overrides according to export-values directive, if needed.
