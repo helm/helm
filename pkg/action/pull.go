@@ -86,6 +86,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 			getter.WithPassCredentialsAll(p.PassCredentialsAll),
 			getter.WithTLSClientConfig(p.CertFile, p.KeyFile, p.CaFile),
 			getter.WithInsecureSkipVerifyTLS(p.InsecureSkipTLSverify),
+			getter.WithTwoWayTLSEnable(p.TlsEnabled),
 		},
 		RegistryClient:   p.cfg.RegistryClient,
 		RepositoryConfig: p.Settings.RepositoryConfig,
@@ -93,8 +94,25 @@ func (p *Pull) Run(chartRef string) (string, error) {
 	}
 
 	if registry.IsOCI(chartRef) {
-		c.Options = append(c.Options,
-			getter.WithRegistryClient(p.cfg.RegistryClient))
+		//fmt.Println("pull.go :===> tls enabled", p.TlsEnabled)
+		//fmt.Println("pull.go : ====> ", chartRef)
+		if !p.TlsEnabled {
+			c.Options = append(c.Options,
+				getter.WithRegistryClient(p.cfg.RegistryClient),
+			)
+		} else {
+			registryClient, err := registry.NewClient(
+				registry.ClientOptDebug(p.Settings.Debug),
+				registry.ClientOptCredentialsFile(p.Settings.RegistryConfig),
+				registry.ClientOptWriter(&out),
+				registry.ClientOptTwoWayTLSEnable(p.TlsEnabled),
+				registry.ClientOptChartRef(chartRef),
+			)
+			if err != nil {
+				return out.String(), err
+			}
+			c.Options = append(c.Options, getter.WithRegistryClient(registryClient))
+		}
 	}
 
 	if p.Verify {

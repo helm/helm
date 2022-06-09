@@ -61,6 +61,7 @@ func addChartPathOptionsFlags(f *pflag.FlagSet, c *action.ChartPathOptions) {
 	f.BoolVar(&c.InsecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the chart download")
 	f.StringVar(&c.CaFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 	f.BoolVar(&c.PassCredentialsAll, "pass-credentials", false, "pass credentials to all domains")
+	f.BoolVar(&c.TlsEnabled, "tls-enabled", false, "if two-way tls authentication enabled then trying to send client certificate")
 }
 
 // bindOutputFlag will add the output flag to the given command and bind the

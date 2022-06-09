@@ -117,6 +117,7 @@ type ChartPathOptions struct {
 	Username              string // --username
 	Verify                bool   // --verify
 	Version               string // --version
+	TlsEnabled            bool   // --tls-enabled
 
 	// registryClient provides a registry client but is not added with
 	// options from a flag

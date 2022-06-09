@@ -69,5 +69,9 @@ func ExtractHostname(addr string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return u.Hostname(), nil
+	if u.Port() != "" {
+		return u.Hostname() + ":" + u.Port(), nil
+	} else {
+		return u.Hostname(), nil
+	}
 }

@@ -68,6 +68,7 @@ Environment variables:
 | $HELM_KUBECONTEXT                  | set the name of the kubeconfig context.                                                           |
 | $HELM_KUBETOKEN                    | set the Bearer KubeToken used for authentication.                                                 |
 | $HELM_BURST_LIMIT                  | set the default burst limit in the case the server contains many CRDs (default 100, -1 to disable)|
+| $HELM_CLIENT_TLS_CERT_DIR          | set the certificate directory for 2-way tls support for oci pull.                 |
 
 Helm stores cache, configuration, and data based on the following configuration order:
 

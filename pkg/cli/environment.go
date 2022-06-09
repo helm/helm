@@ -74,23 +74,26 @@ type EnvSettings struct {
 	MaxHistory int
 	// BurstLimit is the default client-side throttling limit.
 	BurstLimit int
+	// Secondary Certificate directory for helm oci pull
+	ClientSecCertDirectory string
 }
 
 func New() *EnvSettings {
 	env := &EnvSettings{
-		namespace:        os.Getenv("HELM_NAMESPACE"),
-		MaxHistory:       envIntOr("HELM_MAX_HISTORY", defaultMaxHistory),
-		KubeContext:      os.Getenv("HELM_KUBECONTEXT"),
-		KubeToken:        os.Getenv("HELM_KUBETOKEN"),
-		KubeAsUser:       os.Getenv("HELM_KUBEASUSER"),
-		KubeAsGroups:     envCSV("HELM_KUBEASGROUPS"),
-		KubeAPIServer:    os.Getenv("HELM_KUBEAPISERVER"),
-		KubeCaFile:       os.Getenv("HELM_KUBECAFILE"),
-		PluginsDirectory: envOr("HELM_PLUGINS", helmpath.DataPath("plugins")),
-		RegistryConfig:   envOr("HELM_REGISTRY_CONFIG", helmpath.ConfigPath("registry/config.json")),
-		RepositoryConfig: envOr("HELM_REPOSITORY_CONFIG", helmpath.ConfigPath("repositories.yaml")),
-		RepositoryCache:  envOr("HELM_REPOSITORY_CACHE", helmpath.CachePath("repository")),
-		BurstLimit:       envIntOr("HELM_BURST_LIMIT", defaultBurstLimit),
+		namespace:              os.Getenv("HELM_NAMESPACE"),
+		MaxHistory:             envIntOr("HELM_MAX_HISTORY", defaultMaxHistory),
+		KubeContext:            os.Getenv("HELM_KUBECONTEXT"),
+		KubeToken:              os.Getenv("HELM_KUBETOKEN"),
+		KubeAsUser:             os.Getenv("HELM_KUBEASUSER"),
+		KubeAsGroups:           envCSV("HELM_KUBEASGROUPS"),
+		KubeAPIServer:          os.Getenv("HELM_KUBEAPISERVER"),
+		KubeCaFile:             os.Getenv("HELM_KUBECAFILE"),
+		ClientSecCertDirectory: envOr("HELM_CLIENT_TLS_CERT_DIR", ""),
+		PluginsDirectory:       envOr("HELM_PLUGINS", helmpath.DataPath("plugins")),
+		RegistryConfig:         envOr("HELM_REGISTRY_CONFIG", helmpath.ConfigPath("registry/config.json")),
+		RepositoryConfig:       envOr("HELM_REPOSITORY_CONFIG", helmpath.ConfigPath("repositories.yaml")),
+		RepositoryCache:        envOr("HELM_REPOSITORY_CACHE", helmpath.CachePath("repository")),
+		BurstLimit:             envIntOr("HELM_BURST_LIMIT", defaultBurstLimit),
 	}
 	env.Debug, _ = strconv.ParseBool(os.Getenv("HELM_DEBUG"))
 
@@ -158,18 +161,19 @@ func envCSV(name string) (ls []string) {
 
 func (s *EnvSettings) EnvVars() map[string]string {
 	envvars := map[string]string{
-		"HELM_BIN":               os.Args[0],
-		"HELM_CACHE_HOME":        helmpath.CachePath(""),
-		"HELM_CONFIG_HOME":       helmpath.ConfigPath(""),
-		"HELM_DATA_HOME":         helmpath.DataPath(""),
-		"HELM_DEBUG":             fmt.Sprint(s.Debug),
-		"HELM_PLUGINS":           s.PluginsDirectory,
-		"HELM_REGISTRY_CONFIG":   s.RegistryConfig,
-		"HELM_REPOSITORY_CACHE":  s.RepositoryCache,
-		"HELM_REPOSITORY_CONFIG": s.RepositoryConfig,
-		"HELM_NAMESPACE":         s.Namespace(),
-		"HELM_MAX_HISTORY":       strconv.Itoa(s.MaxHistory),
-		"HELM_BURST_LIMIT":       strconv.Itoa(s.BurstLimit),
+		"HELM_BIN":                 os.Args[0],
+		"HELM_CACHE_HOME":          helmpath.CachePath(""),
+		"HELM_CONFIG_HOME":         helmpath.ConfigPath(""),
+		"HELM_DATA_HOME":           helmpath.DataPath(""),
+		"HELM_DEBUG":               fmt.Sprint(s.Debug),
+		"HELM_PLUGINS":             s.PluginsDirectory,
+		"HELM_REGISTRY_CONFIG":     s.RegistryConfig,
+		"HELM_REPOSITORY_CACHE":    s.RepositoryCache,
+		"HELM_REPOSITORY_CONFIG":   s.RepositoryConfig,
+		"HELM_NAMESPACE":           s.Namespace(),
+		"HELM_MAX_HISTORY":         strconv.Itoa(s.MaxHistory),
+		"HELM_BURST_LIMIT":         strconv.Itoa(s.BurstLimit),
+		"HELM_CLIENT_TLS_CERT_DIR": s.ClientSecCertDirectory,
 
 		// broken, these are populated from helm flags and not kubeconfig.
 		"HELM_KUBECONTEXT":   s.KubeContext,
