@@ -18,6 +18,7 @@ package rules // import "helm.sh/helm/v3/pkg/lint/rules"
 
 import (
 	"fmt"
+	"regexp"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -104,9 +105,14 @@ func validateChartYamlFormat(chartFileError error) error {
 }
 
 func validateChartName(cf *chart.Metadata) error {
+	var validName = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$`)
+
 	if cf.Name == "" {
 		return errors.New("name is required")
+	} else if !validName.MatchString(cf.Name){
+		return errors.New("Invalid Name")
 	}
+	
 	return nil
 }
 
