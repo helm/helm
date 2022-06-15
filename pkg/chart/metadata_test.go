@@ -73,6 +73,30 @@ func TestValidate(t *testing.T) {
 			ValidationError("dependency \"bad\" has disallowed characters in the alias"),
 		},
 		{
+			&Metadata{
+				Name:       "test",
+				APIVersion: "v2",
+				Version:    "1.0",
+				Type:       "application",
+				Dependencies: []*Dependency{
+					nil,
+				},
+			},
+			ValidationError("the dependency's item can not be nil"),
+		},
+		{
+			&Metadata{
+				Name:       "test",
+				APIVersion: "v2",
+				Version:    "1.0",
+				Type:       "application",
+				Maintainers: []*Maintainer{
+					nil,
+				},
+			},
+			ValidationError("the maintainer's item can not be nil"),
+		},
+		{
 			&Metadata{APIVersion: "v2", Name: "test", Version: "1.2.3.4"},
 			ValidationError("chart.metadata.version \"1.2.3.4\" is invalid"),
 		},
