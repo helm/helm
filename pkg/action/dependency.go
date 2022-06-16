@@ -60,7 +60,6 @@ func (d *Dependency) List(chartpath string, out io.Writer) error {
 	}
 
 	d.printDependencies(chartpath, out, c)
-	fmt.Fprintln(out)
 	d.printMissing(chartpath, out, c.Metadata.Dependencies)
 	return nil
 }
