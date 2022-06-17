@@ -196,6 +196,8 @@ func TestSqlCreate(t *testing.T) {
 		sqlCustomLabelsTableKeyColumn,
 		sqlCustomLabelsTableValueColumn,
 	)
+
+	mock.MatchExpectationsInOrder(false)
 	for k, v := range filterSystemLabels(rel.Labels) {
 		mock.
 			ExpectExec(regexp.QuoteMeta(labelsQuery)).
