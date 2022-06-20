@@ -159,7 +159,7 @@ func newReleaseListWriter(releases []*release.Release, timeFormat string) *relea
 			Namespace:    r.Namespace,
 			Revision:     strconv.Itoa(r.Version),
 			Status:       r.Info.Status.String(),
-			Chart:        fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version),
+			Chart:        formatChartname(r.Chart),
 			ChartName:    r.Chart.Metadata.Name,
 			ChartVersion: r.Chart.Metadata.Version,
 			AppVersion:   r.Chart.Metadata.AppVersion,
