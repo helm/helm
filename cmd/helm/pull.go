@@ -80,7 +80,7 @@ func newPullCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.Untar, "untar", false, "if set to true, will untar the chart after downloading it")
 	f.BoolVar(&client.VerifyLater, "prov", false, "fetch the provenance file, but don't perform verification")
 	f.StringVar(&client.UntarDir, "untardir", ".", "if untar is specified, this flag specifies the name of the directory into which the chart is expanded")
-	f.StringVarP(&client.DestDir, "destination", "d", ".", "location to write the chart. If this and tardir are specified, tardir is appended to this")
+	f.StringVarP(&client.DestDir, "destination", "d", ".", "location to write the chart. If this and untardir are specified, untardir is appended to this")
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 
 	err := cmd.RegisterFlagCompletionFunc("version", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

@@ -208,14 +208,15 @@ func TestMerge(t *testing.T) {
 
 	if len(ind1.Entries) != 2 {
 		t.Errorf("Expected 2 entries, got %d", len(ind1.Entries))
-		vs := ind1.Entries["dreadnought"]
-		if len(vs) != 2 {
-			t.Errorf("Expected 2 versions, got %d", len(vs))
-		}
-		v := vs[0]
-		if v.Version != "0.2.0" {
-			t.Errorf("Expected %q version to be 0.2.0, got %s", v.Name, v.Version)
-		}
+	}
+
+	vs := ind1.Entries["dreadnought"]
+	if len(vs) != 2 {
+		t.Errorf("Expected 2 versions, got %d", len(vs))
+	}
+
+	if v := vs[1]; v.Version != "0.2.0" {
+		t.Errorf("Expected %q version to be 0.2.0, got %s", v.Name, v.Version)
 	}
 
 }

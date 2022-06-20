@@ -54,27 +54,31 @@ func TestEnvSettings(t *testing.T) {
 		kubeAsUser   string
 		kubeAsGroups []string
 		kubeCaFile   string
+		burstLimit   int
 	}{
 		{
 			name:       "defaults",
 			ns:         "default",
 			maxhistory: defaultMaxHistory,
+			burstLimit: defaultBurstLimit,
 		},
 		{
 			name:         "with flags set",
-			args:         "--debug --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters --kube-ca-file=/tmp/ca.crt",
+			args:         "--debug --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters --kube-ca-file=/tmp/ca.crt --burst-limit 100",
 			ns:           "myns",
 			debug:        true,
 			maxhistory:   defaultMaxHistory,
+			burstLimit:   100,
 			kubeAsUser:   "poro",
 			kubeAsGroups: []string{"admins", "teatime", "snackeaters"},
 			kubeCaFile:   "/tmp/ca.crt",
 		},
 		{
 			name:         "with envvars set",
-			envvars:      map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_MAX_HISTORY": "5", "HELM_KUBECAFILE": "/tmp/ca.crt"},
+			envvars:      map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_MAX_HISTORY": "5", "HELM_KUBECAFILE": "/tmp/ca.crt", "HELM_BURST_LIMIT": "150"},
 			ns:           "yourns",
 			maxhistory:   5,
+			burstLimit:   150,
 			debug:        true,
 			kubeAsUser:   "pikachu",
 			kubeAsGroups: []string{"operators", "snackeaters", "partyanimals"},
@@ -82,11 +86,12 @@ func TestEnvSettings(t *testing.T) {
 		},
 		{
 			name:         "with flags and envvars set",
-			args:         "--debug --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters --kube-ca-file=/my/ca.crt",
-			envvars:      map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_MAX_HISTORY": "5", "HELM_KUBECAFILE": "/tmp/ca.crt"},
+			args:         "--debug --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters --kube-ca-file=/my/ca.crt --burst-limit 175",
+			envvars:      map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_MAX_HISTORY": "5", "HELM_KUBECAFILE": "/tmp/ca.crt", "HELM_BURST_LIMIT": "200"},
 			ns:           "myns",
 			debug:        true,
 			maxhistory:   5,
+			burstLimit:   175,
 			kubeAsUser:   "poro",
 			kubeAsGroups: []string{"admins", "teatime", "snackeaters"},
 			kubeCaFile:   "/my/ca.crt",
@@ -127,6 +132,9 @@ func TestEnvSettings(t *testing.T) {
 			}
 			if tt.kubeCaFile != settings.KubeCaFile {
 				t.Errorf("expected kCaFile %q, got %q", tt.kubeCaFile, settings.KubeCaFile)
+			}
+			if tt.burstLimit != settings.BurstLimit {
+				t.Errorf("expected BurstLimit %d, got %d", tt.burstLimit, settings.BurstLimit)
 			}
 		})
 	}
