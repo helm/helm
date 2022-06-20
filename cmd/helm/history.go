@@ -159,6 +159,24 @@ func getReleaseHistory(rls []*release.Release) (history releaseHistory) {
 	return history
 }
 
+func getChartname(c *chart.Chart) string {
+	if c == nil || c.Metadata == nil {
+		// This is an edge case that has happened in prod, though we don't
+		// know how: https://github.com/helm/helm/issues/1347
+		return "MISSING"
+	}
+	return c.Metadata.Name
+}
+
+func getChartVerison(c *chart.Chart) string {
+	if c == nil || c.Metadata == nil {
+		// This is an edge case that has happened in prod, though we don't
+		// know how: https://github.com/helm/helm/issues/1347
+		return "MISSING"
+	}
+	return c.Metadata.Version
+}
+
 func formatChartname(c *chart.Chart) string {
 	if c == nil || c.Metadata == nil {
 		// This is an edge case that has happened in prod, though we don't

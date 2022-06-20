@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"helm.sh/helm/v3/pkg/release"
 )
 
@@ -121,4 +123,29 @@ func TestHistoryCompletion(t *testing.T) {
 func TestHistoryFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "history", false)
 	checkFileCompletion(t, "history myrelease", false)
+}
+
+func TestGetChartDetails(t *testing.T) {
+	demoRelease := release.Mock(&release.MockReleaseOptions{
+		Name:    "demo",
+		Version: 1.0,
+		Status:  release.StatusDeployed,
+	})
+
+	assert.Equal(t, formatAppVersion(demoRelease.Chart), "1.0", nil)
+	assert.Equal(t, getChartVerison(demoRelease.Chart), "0.1.0-beta.1", nil)
+	assert.Equal(t, getChartname(demoRelease.Chart), "foo", nil)
+}
+
+func TestGetChartDetailsWithNullChart(t *testing.T) {
+	demoRelease := release.Mock(&release.MockReleaseOptions{
+		Name:    "demo",
+		Version: 1.0,
+		Status:  release.StatusDeployed,
+	})
+	demoRelease.Chart = nil
+
+	assert.Equal(t, formatAppVersion(demoRelease.Chart), "MISSING", nil)
+	assert.Equal(t, getChartVerison(demoRelease.Chart), "MISSING", nil)
+	assert.Equal(t, getChartname(demoRelease.Chart), "MISSING", nil)
 }
