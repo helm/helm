@@ -43,7 +43,7 @@ result in an error, and the chart will not be saved locally.
 `
 
 func newPullCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
-	client := action.NewPullWithOpts(action.WithConfig(cfg))
+	client := action.NewPullWithOpts(action.WithConfig(cfg), action.WithPullOptWriter(out))
 
 	cmd := &cobra.Command{
 		Use:     "pull [chart URL | repo/chartname] [...]",

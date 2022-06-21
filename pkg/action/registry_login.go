@@ -24,7 +24,36 @@ import (
 
 // RegistryLogin performs a registry login operation.
 type RegistryLogin struct {
-	cfg *Configuration
+	cfg      *Configuration
+	certFile string
+	keyFile  string
+	caFile   string
+}
+
+type RegistryLoginOpt func(*RegistryLogin) error
+
+// WithCertFile specifies the path to the certificate file to use for TLS.
+func WithCertFile(certFile string) RegistryLoginOpt {
+	return func(r *RegistryLogin) error {
+		r.certFile = certFile
+		return nil
+	}
+}
+
+// WithKeyFile specifies the path to the key file to use for TLS.
+func WithKeyFile(keyFile string) RegistryLoginOpt {
+	return func(r *RegistryLogin) error {
+		r.keyFile = keyFile
+		return nil
+	}
+}
+
+// WithCAFile specifies the path to the CA file to use for TLS.
+func WithCAFile(caFile string) RegistryLoginOpt {
+	return func(r *RegistryLogin) error {
+		r.caFile = caFile
+		return nil
+	}
 }
 
 // NewRegistryLogin creates a new RegistryLogin object with the given configuration.
@@ -35,9 +64,15 @@ func NewRegistryLogin(cfg *Configuration) *RegistryLogin {
 }
 
 // Run executes the registry login operation
-func (a *RegistryLogin) Run(out io.Writer, hostname string, username string, password string, insecure bool) error {
+func (a *RegistryLogin) Run(out io.Writer, hostname string, username string, password string, opts ...RegistryLoginOpt) error {
+	for _, opt := range opts {
+		if err := opt(a); err != nil {
+			return err
+		}
+	}
+
 	return a.cfg.RegistryClient.Login(
 		hostname,
 		registry.LoginOptBasicAuth(username, password),
-		registry.LoginOptInsecure(insecure))
+		registry.LoginOptTLSClientConfig(a.certFile, a.keyFile, a.caFile))
 }
