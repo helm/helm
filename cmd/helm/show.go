@@ -84,7 +84,7 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		ValidArgsFunction: validArgsFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowAll
-			output, err := runShow(args, client)
+			output, err := runShow(args, client, out)
 			if err != nil {
 				return err
 			}
@@ -101,7 +101,7 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		ValidArgsFunction: validArgsFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowValues
-			output, err := runShow(args, client)
+			output, err := runShow(args, client, out)
 			if err != nil {
 				return err
 			}
@@ -118,7 +118,7 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		ValidArgsFunction: validArgsFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowChart
-			output, err := runShow(args, client)
+			output, err := runShow(args, client, out)
 			if err != nil {
 				return err
 			}
@@ -135,7 +135,7 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		ValidArgsFunction: validArgsFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowReadme
-			output, err := runShow(args, client)
+			output, err := runShow(args, client, out)
 			if err != nil {
 				return err
 			}
@@ -152,7 +152,7 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		ValidArgsFunction: validArgsFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowCRDs
-			output, err := runShow(args, client)
+			output, err := runShow(args, client, out)
 			if err != nil {
 				return err
 			}
@@ -191,14 +191,14 @@ func addShowFlags(subCmd *cobra.Command, client *action.Show) {
 	}
 }
 
-func runShow(args []string, client *action.Show) (string, error) {
+func runShow(args []string, client *action.Show, out io.Writer) (string, error) {
 	debug("Original chart version: %q", client.Version)
 	if client.Version == "" && client.Devel {
 		debug("setting version to >0.0.0-0")
 		client.Version = ">0.0.0-0"
 	}
 
-	cp, err := client.ChartPathOptions.LocateChart(args[0], settings)
+	cp, err := client.ChartPathOptions.LocateChart(args[0], out, settings)
 	if err != nil {
 		return "", err
 	}
