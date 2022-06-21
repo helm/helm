@@ -25,6 +25,22 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 )
 
+func TestAsMap(t *testing.T) {
+	var nilValues Values
+	asMap := nilValues.AsMap()
+	if asMap == nil {
+		t.Error("nilValues.AsMap() must not be nil")
+	}
+	asMap["foo"] = "bar"
+	nilValuesPtr := &nilValues
+	nilPtrAsMap := nilValuesPtr.AsMap()
+	if nilPtrAsMap == nil {
+		t.Error("nilValuesPtr.AsMap() must not be nil")
+	}
+	nilPtrAsMap["foo"] = "bar"
+
+}
+
 func TestReadValues(t *testing.T) {
 	doc := `# Test YAML parse
 poet: "Coleridge"
