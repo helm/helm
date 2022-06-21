@@ -18,13 +18,16 @@ package action
 import (
 	"flag"
 	"io/ioutil"
+	"runtime"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
+	"helm.sh/helm/v3/pkg/postrender"
 	"helm.sh/helm/v3/pkg/registry"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage"
@@ -280,4 +283,38 @@ func TestGetVersionSet(t *testing.T) {
 	if vs.Has("nosuchversion/v1") {
 		t.Error("Non-existent version is reported found.")
 	}
+}
+
+func TestPostRenderHookManifests(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// the actual Run test uses a basic sed example, so skip this test on windows
+		t.Skip("skipping on windows")
+	}
+
+	hs := []*release.Hook{
+		{
+			Name:     "finding-nemo",
+			Kind:     "Pod",
+			Path:     "finding-nemo",
+			Manifest: manifestWithTestHook,
+			Events: []release.HookEvent{
+				release.HookTest,
+			},
+		},
+	}
+
+	pr, err := postrender.NewExec("sed", "s/fake-image/local-image/")
+	if err != nil {
+		t.Error(err)
+	}
+
+	if err := postRenderHookManifests(hs, pr); err != nil {
+		t.Error(err)
+	}
+
+	is := assert.New(t)
+	for _, hook := range hs {
+		is.Contains(hook.Manifest, "local-image")
+	}
+
 }
