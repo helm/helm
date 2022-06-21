@@ -28,7 +28,10 @@ type RegistryLogin struct {
 	certFile string
 	keyFile  string
 	caFile   string
+<<<<<<< HEAD
 	insecure bool
+=======
+>>>>>>> e676fd1c (Enable custom certificates option for OCI)
 }
 
 type RegistryLoginOpt func(*RegistryLogin) error
@@ -83,6 +86,9 @@ func (a *RegistryLogin) Run(out io.Writer, hostname string, username string, pas
 	return a.cfg.RegistryClient.Login(
 		hostname,
 		registry.LoginOptBasicAuth(username, password),
+<<<<<<< HEAD
 		registry.LoginOptInsecure(a.insecure),
+=======
+>>>>>>> e676fd1c (Enable custom certificates option for OCI)
 		registry.LoginOptTLSClientConfig(a.certFile, a.keyFile, a.caFile))
 }

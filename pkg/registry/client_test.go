@@ -18,6 +18,7 @@ package registry
 
 import (
 <<<<<<< HEAD
+<<<<<<< HEAD
 	"bytes"
 	"context"
 	"fmt"
@@ -29,10 +30,14 @@ import (
 >>>>>>> dd5e82b5 (refactor to new test suite)
 	"os"
 	"path/filepath"
+=======
+	"fmt"
+	"os"
+>>>>>>> e676fd1c (Enable custom certificates option for OCI)
 	"testing"
-	"time"
 
 	"github.com/containerd/containerd/errdefs"
+<<<<<<< HEAD
 	"github.com/distribution/distribution/v3/configuration"
 	"github.com/distribution/distribution/v3/registry"
 	"github.com/phayes/freeport"
@@ -182,6 +187,18 @@ func (suite *RegistryClientTestSuite) SetupSuite() {
 	suite.Nil(err, "no error creating test registry")
 
 	suite.CompromisedRegistryHost = initCompromisedRegistryTestServer()
+=======
+	"github.com/stretchr/testify/suite"
+)
+
+type RegistryClientTestSuite struct {
+	TestSuite
+}
+
+func (suite *RegistryClientTestSuite) SetupSuite() {
+	// init test client
+	dockerRegistry := setup(&suite.TestSuite, false)
+>>>>>>> e676fd1c (Enable custom certificates option for OCI)
 
 	// plain http registry
 	plainHTTPConfig := &configuration.Configuration{}

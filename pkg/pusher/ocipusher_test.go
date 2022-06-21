@@ -35,12 +35,18 @@ func TestNewOCIPusher(t *testing.T) {
 	cd := "../../testdata"
 	join := filepath.Join
 	ca, pub, priv := join(cd, "rootca.crt"), join(cd, "crt.pem"), join(cd, "key.pem")
+<<<<<<< HEAD
 	insecureSkipTLSverify := false
+=======
+>>>>>>> e676fd1c (Enable custom certificates option for OCI)
 
 	// Test with options
 	p, err = NewOCIPusher(
 		WithTLSClientConfig(pub, priv, ca),
+<<<<<<< HEAD
 		WithInsecureSkipTLSVerify(insecureSkipTLSverify),
+=======
+>>>>>>> e676fd1c (Enable custom certificates option for OCI)
 	)
 	if err != nil {
 		t.Fatal(err)

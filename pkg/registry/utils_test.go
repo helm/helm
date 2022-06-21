@@ -59,25 +59,14 @@ var (
 
 type TestSuite struct {
 	suite.Suite
-	Out                io.Writer
-	DockerRegistryHost string
-
+	Out                     io.Writer
+	DockerRegistryHost      string
 	CompromisedRegistryHost string
 	WorkspaceDir            string
 	RegistryClient          *Client
-
-	Context context.Context
-	Cancel  func()
 }
 
-// setup creates a oci registry for use in testing and sets the internal
-// RegistryClient in the provided *TestSutie object with a client for communicating
-// to the registry for testing:
-//
-//	tlsEnabled - true for an https registry, false for http
-//	insecure - true for forcing the client to trust the certs when communicating to the registry
-//	            false otherwise
-func setup(suite *TestSuite, tlsEnabled bool, insecure bool) *registry.Registry {
+func setup(suite *TestSuite, tlsEnabled bool) *registry.Registry {
 	suite.WorkspaceDir = testWorkspaceDir
 	os.RemoveAll(suite.WorkspaceDir)
 	os.Mkdir(suite.WorkspaceDir, 0700)
@@ -135,7 +124,6 @@ func setup(suite *TestSuite, tlsEnabled bool, insecure bool) *registry.Registry 
 		// That function does not handle matching of ip addresses in octal,
 		// decimal or hex form.
 		suite.DockerRegistryHost = fmt.Sprintf("0x7f000001:%d", port)
-
 	} else {
 		suite.DockerRegistryHost = fmt.Sprintf("localhost:%d", port)
 	}
@@ -159,8 +147,7 @@ func setup(suite *TestSuite, tlsEnabled bool, insecure bool) *registry.Registry 
 		config.HTTP.TLS.Key = tlsServerKey
 		config.HTTP.TLS.ClientCAs = []string{tlsCA}
 	}
-	suite.Context, suite.Cancel = context.WithCancel(context.Background())
-	dockerRegistry, err := registry.NewRegistry(suite.Context, config)
+	dockerRegistry, err := registry.NewRegistry(context.Background(), config)
 	suite.Nil(err, "no error creating test registry")
 
 	suite.CompromisedRegistryHost = initCompromisedRegistryTestServer()

@@ -27,11 +27,18 @@ import (
 //
 // Pushers may or may not ignore these parameters as they are passed in.
 type options struct {
+<<<<<<< HEAD
 	registryClient        *registry.Client
 	certFile              string
 	keyFile               string
 	caFile                string
 	insecureSkipTLSverify bool
+=======
+	registryClient *registry.Client
+	certFile       string
+	keyFile        string
+	caFile         string
+>>>>>>> e676fd1c (Enable custom certificates option for OCI)
 }
 
 // Option allows specifying various settings configurable by the user for overriding the defaults
@@ -54,6 +61,7 @@ func WithTLSClientConfig(certFile, keyFile, caFile string) Option {
 	}
 }
 
+<<<<<<< HEAD
 // WithInsecureSkipTLSVerify determines if a TLS Certificate will be checked
 func WithInsecureSkipTLSVerify(insecureSkipTLSVerify bool) Option {
 	return func(opts *options) {
@@ -61,6 +69,8 @@ func WithInsecureSkipTLSVerify(insecureSkipTLSVerify bool) Option {
 	}
 }
 
+=======
+>>>>>>> e676fd1c (Enable custom certificates option for OCI)
 // Pusher is an interface to support upload to the specified URL.
 type Pusher interface {
 	// Push file content by url string
