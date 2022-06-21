@@ -34,8 +34,14 @@ If the chart has an associated provenance file,
 it will also be uploaded.
 `
 
+type registryPushOptions struct {
+	certFile string
+	keyFile  string
+	caFile   string
+}
+
 func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
-	client := action.NewPushWithOpts(action.WithPushConfig(cfg))
+	o := &registryPushOptions{}
 
 	cmd := &cobra.Command{
 		Use:   "push [chart] [remote]",
@@ -62,6 +68,9 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			chartRef := args[0]
 			remote := args[1]
+			client := action.NewPushWithOpts(action.WithPushConfig(cfg),
+				action.WithTLSClientConfig(o.certFile, o.keyFile, o.caFile),
+				action.WithPushOptWriter(out))
 			client.Settings = settings
 			output, err := client.Run(chartRef, remote)
 			if err != nil {
@@ -71,6 +80,11 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return nil
 		},
 	}
+
+	f := cmd.Flags()
+	f.StringVar(&o.certFile, "cert-file", "", "identify registry client using this SSL certificate file")
+	f.StringVar(&o.keyFile, "key-file", "", "identify registry client using this SSL key file")
+	f.StringVar(&o.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 
 	return cmd
 }

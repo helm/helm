@@ -136,7 +136,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				client.Version = ">0.0.0-0"
 			}
 
-			chartPath, err := client.ChartPathOptions.LocateChart(args[1], settings)
+			chartPath, err := client.ChartPathOptions.LocateChart(args[1], out, settings)
 			if err != nil {
 				return err
 			}
