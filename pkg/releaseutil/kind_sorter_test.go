@@ -70,6 +70,10 @@ func TestKindSorter(t *testing.T) {
 			Head: &SimpleHead{Kind: "Deployment"},
 		},
 		{
+			Name: "m",
+			Head: &SimpleHead{Kind: "Endpoints"},
+		},
+		{
 			Name: "!",
 			Head: &SimpleHead{Kind: "HonkyTonkSet"},
 		},
@@ -146,7 +150,7 @@ func TestKindSorter(t *testing.T) {
 			Head: &SimpleHead{Kind: "Secret"},
 		},
 		{
-			Name: "m",
+			Name: "M",
 			Head: &SimpleHead{Kind: "Service"},
 		},
 		{
