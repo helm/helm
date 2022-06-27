@@ -154,6 +154,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 
 	registryClient, err := registry.NewClient(
 		registry.ClientOptDebug(settings.Debug),
+		registry.ClientOptEnableCache(true),
 		registry.ClientOptWriter(out),
 		registry.ClientOptCredentialsFile(settings.RegistryConfig),
 	)
