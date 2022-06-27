@@ -153,6 +153,7 @@ func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
 	// init test client
 	registryClient, err := ociRegistry.NewClient(
 		ociRegistry.ClientOptDebug(true),
+		ociRegistry.ClientOptEnableCache(true),
 		ociRegistry.ClientOptWriter(os.Stdout),
 		ociRegistry.ClientOptCredentialsFile(credentialsFile),
 	)
