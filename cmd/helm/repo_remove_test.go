@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	"helm.sh/helm/v3/internal/test/ensure"
+	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/helmpath"
 	"helm.sh/helm/v3/pkg/repo"
 	"helm.sh/helm/v3/pkg/repo/repotest"
@@ -53,13 +54,13 @@ func TestRepoRemove(t *testing.T) {
 	if err := rmOpts.run(os.Stderr); err == nil {
 		t.Errorf("Expected error removing %s, but did not get one.", testRepoName)
 	}
-	o := &repoAddOptions{
-		name:     testRepoName,
-		url:      ts.URL(),
-		repoFile: repoFile,
+	o := &action.RepoAddOptions{
+		Name:     testRepoName,
+		URL:      ts.URL(),
+		RepoFile: repoFile,
 	}
 
-	if err := o.run(os.Stderr); err != nil {
+	if err := o.Run(settings, os.Stderr); err != nil {
 		t.Error(err)
 	}
 
@@ -92,13 +93,13 @@ func TestRepoRemove(t *testing.T) {
 
 	// Add test repos
 	for _, repoName := range testRepoNames {
-		o := &repoAddOptions{
-			name:     repoName,
-			url:      ts.URL(),
-			repoFile: repoFile,
+		o := &action.RepoAddOptions{
+			Name:     repoName,
+			URL:      ts.URL(),
+			RepoFile: repoFile,
 		}
 
-		if err := o.run(os.Stderr); err != nil {
+		if err := o.Run(settings, os.Stderr); err != nil {
 			t.Error(err)
 		}
 
@@ -177,13 +178,13 @@ func TestRepoRemoveCompletion(t *testing.T) {
 
 	// Add test repos
 	for _, repoName := range testRepoNames {
-		o := &repoAddOptions{
-			name:     repoName,
-			url:      ts.URL(),
-			repoFile: repoFile,
+		o := &action.RepoAddOptions{
+			Name:     repoName,
+			URL:      ts.URL(),
+			RepoFile: repoFile,
 		}
 
-		if err := o.run(os.Stderr); err != nil {
+		if err := o.Run(settings, os.Stderr); err != nil {
 			t.Error(err)
 		}
 	}
