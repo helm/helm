@@ -80,6 +80,8 @@ type EnvSettings struct {
 	MaxHistory int
 	// BurstLimit is the default client-side throttling limit.
 	BurstLimit int
+	// RegistryInsecure is set transport data to registry use http transport schema
+	RegistryInsecure bool
 }
 
 func New() *EnvSettings {
@@ -99,6 +101,7 @@ func New() *EnvSettings {
 		RepositoryConfig:          envOr("HELM_REPOSITORY_CONFIG", helmpath.ConfigPath("repositories.yaml")),
 		RepositoryCache:           envOr("HELM_REPOSITORY_CACHE", helmpath.CachePath("repository")),
 		BurstLimit:                envIntOr("HELM_BURST_LIMIT", defaultBurstLimit),
+		RegistryInsecure:          envBoolOr("HELM_REGISTRY_INSECURE", false),
 	}
 	env.Debug, _ = strconv.ParseBool(os.Getenv("HELM_DEBUG"))
 
@@ -139,6 +142,8 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.RepositoryConfig, "repository-config", s.RepositoryConfig, "path to the file containing repository names and URLs")
 	fs.StringVar(&s.RepositoryCache, "repository-cache", s.RepositoryCache, "path to the file containing cached repository indexes")
 	fs.IntVar(&s.BurstLimit, "burst-limit", s.BurstLimit, "client-side default throttling limit")
+	fs.BoolVar(&s.RegistryInsecure, "registry-insecure", false, "set registry is insecure mode, use http transport data")
+
 }
 
 func envOr(name, def string) string {
