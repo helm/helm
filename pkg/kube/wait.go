@@ -50,7 +50,7 @@ func (w *waiter) waitForResources(created ResourceList) error {
 	ctx, cancel := context.WithTimeout(context.Background(), w.timeout)
 	defer cancel()
 
-	return wait.PollImmediateUntil(2*time.Second, func() (bool, error) {
+	return wait.PollUntil(2*time.Second, func() (bool, error) {
 		for _, v := range created {
 			ready, err := w.c.IsReady(ctx, v)
 			if !ready || err != nil {
