@@ -640,8 +640,12 @@ func (c *Client) Tags(ref string) ([]string, error) {
 
 }
 
+// tagToVersion parses an OCI tag string and converts it to a semantic version.
+// It returns an error if the tag can not be parsed.
+// semver allows plus (+) which is now allowed in OCI tags, so these will have
+// been converted to underscore (_) by helm push.
+// This function will change underscore (_) in the tag back to plus (+).
+// See https://github.com/helm/helm/issues/10166
 func tagToVersion(tag string) (*semver.Version, error) {
-	// Change underscore (_) back to plus (+) for Helm
-	// See https://github.com/helm/helm/issues/10166
 	return semver.NewVersion(strings.ReplaceAll(tag, "_", "+"))
 }
