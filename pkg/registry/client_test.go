@@ -384,17 +384,17 @@ func TestTagToVersion(t *testing.T) {
 		"empty": {
 			tag:     "",
 			version: nil,
-			err:     "Version string empty",
+			err:     "Invalid Semantic Version",
 		},
 		"x": {
 			tag:     "1",
-			version: nil,
-			err:     "Invalid Semantic Version",
+			version: semver.MustParse("1"),
+			err:     "",
 		},
 		"x.y": {
 			tag:     "1.1",
-			version: nil,
-			err:     "Invalid Semantic Version",
+			version: semver.MustParse("1.1"),
+			err:     "",
 		},
 		"x.y.z": {
 			tag:     "1.22.333",
@@ -410,6 +410,36 @@ func TestTagToVersion(t *testing.T) {
 			tag:     "1.22.333_xzy",
 			version: semver.MustParse("1.22.333+xzy"),
 			err:     "",
+		},
+		"vX.Y.Z+metadata": {
+			tag:     "v1.22.333_xyz",
+			version: semver.MustParse("v1.22.333+xyz"),
+			err:     "",
+		},
+		"vX.Y.Z-prerelease": {
+			tag:     "v1.22.333-alpha.0",
+			version: semver.MustParse("v1.22.333-alpha.0"),
+			err:     "",
+		},
+		"vX.Y.Z": {
+			tag:     "v1.22.333",
+			version: semver.MustParse("v1.22.333"),
+			err:     "",
+		},
+		"vX.Y": {
+			tag:     "v1.22",
+			version: semver.MustParse("v1.22"),
+			err:     "",
+		},
+		"vX": {
+			tag:     "v1",
+			version: semver.MustParse("v1"),
+			err:     "",
+		},
+		"v": {
+			tag:     "v",
+			version: nil,
+			err:     "Invalid Semantic Version",
 		},
 	}
 	for title, tc := range tests {

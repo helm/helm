@@ -643,5 +643,5 @@ func (c *Client) Tags(ref string) ([]string, error) {
 func tagToVersion(tag string) (*semver.Version, error) {
 	// Change underscore (_) back to plus (+) for Helm
 	// See https://github.com/helm/helm/issues/10166
-	return semver.StrictNewVersion(strings.ReplaceAll(tag, "_", "+"))
+	return semver.NewVersion(strings.ReplaceAll(tag, "_", "+"))
 }
