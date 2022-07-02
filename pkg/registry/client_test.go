@@ -455,3 +455,64 @@ func TestTagToVersion(t *testing.T) {
 		})
 	}
 }
+
+func TestExtractVersionsFromRegistryTags(t *testing.T) {
+	type testCase struct {
+		tags     []string
+		versions []string
+	}
+
+	tests := map[string]testCase{
+		"empty tags": {
+			tags:     []string{},
+			versions: []string{},
+		},
+		"nil tags": {
+			tags:     nil,
+			versions: []string{},
+		},
+		"one-empty-string": {
+			tags:     []string{""},
+			versions: []string{},
+		},
+		"non-semver": {
+			tags:     []string{"test-tag"},
+			versions: []string{},
+		},
+		"one-strict": {
+			tags:     []string{"1.2.3"},
+			versions: []string{"1.2.3"},
+		},
+		"one-v-prefix": {
+			tags:     []string{"v1.2.3"},
+			versions: []string{"v1.2.3"},
+		},
+		"duplicate-versions": {
+			tags:     []string{"1.2.3", "1.2.3"},
+			versions: []string{"1.2.3", "1.2.3"},
+		},
+		"duplicate-versions-with-and-without-v-prefix-retain-original-order-1": {
+			tags:     []string{"1.2.3", "v1.2.3"},
+			versions: []string{"1.2.3", "v1.2.3"},
+		},
+		"duplicate-versions-with-and-without-v-prefix-retain-original-order-2": {
+			tags:     []string{"v1.2.3", "1.2.3"},
+			versions: []string{"v1.2.3", "1.2.3"},
+		},
+		"unsorted-are-returned-sorted": {
+			tags:     []string{"1.2.3-alpha.1", "v2.3.4-beta.10", "2.3.4", "v1.2.3", "2.3.4-alpha.3"},
+			versions: []string{"2.3.4", "v2.3.4-beta.10", "2.3.4-alpha.3", "v1.2.3", "1.2.3-alpha.1"},
+		},
+		"mix": {
+			tags:     []string{"v1.2.3", "2.3.4", "test-tag", "v1.2.3"},
+			versions: []string{"2.3.4", "v1.2.3", "v1.2.3"},
+		},
+	}
+	for title, tc := range tests {
+		tc := tc
+		t.Run(title, func(t *testing.T) {
+			versions := extractVersionsFromRegistryTags(tc.tags)
+			assert.Equal(t, tc.versions, versions)
+		})
+	}
+}

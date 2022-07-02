@@ -616,9 +616,19 @@ func (c *Client) Tags(ref string) ([]string, error) {
 		}
 
 		break
-
 	}
+	return extractVersionsFromRegistryTags(registryTags), nil
+}
 
+// extractVersionsFromRegistryTags parses a list of OCI tag strings returns a
+// list containing only those that are valid Helm chart version strings.
+// The returned list is ordered by semantic version with the newest version
+// first.
+// Semantic versions are *not* de-duplicated.
+// Versions may have a v-prefix and if there are two semantically equal versions
+// with and without a v-prefix, both will be returned in their same order that
+// they were supplied.
+func extractVersionsFromRegistryTags(registryTags []string) []string {
 	var tagVersions []*semver.Version
 	for _, tag := range registryTags {
 		tagVersion, err := tagToVersion(tag)
@@ -633,11 +643,9 @@ func (c *Client) Tags(ref string) ([]string, error) {
 	tags := make([]string, len(tagVersions))
 
 	for iTv, tv := range tagVersions {
-		tags[iTv] = tv.String()
+		tags[iTv] = tv.Original()
 	}
-
-	return tags, nil
-
+	return tags
 }
 
 // tagToVersion parses an OCI tag string and converts it to a semantic version.
