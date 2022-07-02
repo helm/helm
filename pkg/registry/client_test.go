@@ -31,12 +31,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/distribution/distribution/v3/configuration"
 	"github.com/distribution/distribution/v3/registry"
 	_ "github.com/distribution/distribution/v3/registry/auth/htpasswd"
 	_ "github.com/distribution/distribution/v3/registry/storage/driver/inmemory"
 	"github.com/phayes/freeport"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -370,4 +372,56 @@ func initCompromisedRegistryTestServer() string {
 
 	u, _ := url.Parse(s.URL)
 	return fmt.Sprintf("localhost:%s", u.Port())
+}
+
+func TestTagToVersion(t *testing.T) {
+	type testCase struct {
+		tag     string
+		version *semver.Version
+		err     string
+	}
+	tests := map[string]testCase{
+		"empty": {
+			tag:     "",
+			version: nil,
+			err:     "Version string empty",
+		},
+		"x": {
+			tag:     "1",
+			version: nil,
+			err:     "Invalid Semantic Version",
+		},
+		"x.y": {
+			tag:     "1.1",
+			version: nil,
+			err:     "Invalid Semantic Version",
+		},
+		"x.y.z": {
+			tag:     "1.22.333",
+			version: semver.MustParse("1.22.333"),
+			err:     "",
+		},
+		"x.y.z-prerelease": {
+			tag:     "1.22.333-alpha.0",
+			version: semver.MustParse("1.22.333-alpha.0"),
+			err:     "",
+		},
+		"convert-underscore-in-metadata": {
+			tag:     "1.22.333_xzy",
+			version: semver.MustParse("1.22.333+xzy"),
+			err:     "",
+		},
+	}
+	for title, tc := range tests {
+		tc := tc
+		t.Run(title, func(t *testing.T) {
+			version, err := tagToVersion(tc.tag)
+			assert.Equal(t, tc.version, version)
+			if tc.err != "" {
+				assert.EqualError(t, err, tc.err)
+			} else {
+				assert.Nil(t, err)
+			}
+		})
+	}
 }
