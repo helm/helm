@@ -113,6 +113,13 @@ func Test_ReadyChecker_daemonSetReady(t *testing.T) {
 			},
 			want: true,
 		},
+		{
+			name: "daemonset is not ready when ObservedGeneration is 0",
+			args: args{
+				ds: newNotLoadDaemonSet("foo", 1, 1, 2, 2),
+			},
+			want: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -384,8 +391,15 @@ func newDaemonSet(name string, maxUnavailable, numberReady, desiredNumberSchedul
 			DesiredNumberScheduled: int32(desiredNumberScheduled),
 			NumberReady:            int32(numberReady),
 			UpdatedNumberScheduled: int32(updatedNumberScheduled),
+			ObservedGeneration:     int64(1),
 		},
 	}
+}
+
+func newNotLoadDaemonSet(name string, maxUnavailable, numberReady, desiredNumberScheduled, updatedNumberScheduled int) *appsv1.DaemonSet {
+	ds := newDaemonSet(name, maxUnavailable, numberReady, desiredNumberScheduled, updatedNumberScheduled)
+	ds.Status.ObservedGeneration = 0
+	return ds
 }
 
 func newStatefulSet(name string, replicas, partition, readyReplicas, updatedReplicas int) *appsv1.StatefulSet {
