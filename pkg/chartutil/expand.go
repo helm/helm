@@ -32,28 +32,40 @@ import (
 
 // Expand uncompresses and extracts a chart into the specified directory.
 func Expand(dir string, r io.Reader) error {
+	return ExpandDirName(dir, "", r)
+}
+
+func ExpandDirName(dir, dirName string, r io.Reader) error {
 	files, err := loader.LoadArchiveFiles(r)
 	if err != nil {
 		return err
 	}
 
-	// Get the name of the chart
-	var chartName string
-	for _, file := range files {
-		if file.Name == "Chart.yaml" {
-			ch := &chart.Metadata{}
-			if err := yaml.Unmarshal(file.Data, ch); err != nil {
-				return errors.Wrap(err, "cannot load Chart.yaml")
-			}
-			chartName = ch.Name
+	getDirName := func() (string, error) {
+		if dirName != "" {
+			return dirName, nil
 		}
+
+		for _, file := range files {
+			if file.Name == "Chart.yaml" {
+				ch := &chart.Metadata{}
+				if err := yaml.Unmarshal(file.Data, ch); err != nil {
+					return "", errors.Wrap(err, "cannot load Chart.yaml")
+				}
+				return ch.Name, nil
+			}
+		}
+
+		return "", nil
 	}
-	if chartName == "" {
-		return errors.New("chart name not specified")
+
+	chartDirName, err := getDirName()
+	if err != nil {
+		return errors.Wrapf(err, "chart directory name not specified")
 	}
 
 	// Find the base directory
-	chartdir, err := securejoin.SecureJoin(dir, chartName)
+	chartdir, err := securejoin.SecureJoin(dir, chartDirName)
 	if err != nil {
 		return err
 	}
@@ -88,4 +100,14 @@ func ExpandFile(dest, src string) error {
 	}
 	defer h.Close()
 	return Expand(dest, h)
+}
+
+// ExpandDir expands the src file into the dest directory with the given dirName.
+func ExpandDir(dest, src, dirName string) error {
+	h, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer h.Close()
+	return ExpandDirName(dest, dirName, h)
 }

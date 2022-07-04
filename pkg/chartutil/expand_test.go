@@ -122,3 +122,51 @@ func TestExpandFile(t *testing.T) {
 		}
 	}
 }
+
+func TestExpandDir(t *testing.T) {
+	dest := t.TempDir()
+
+	if err := ExpandDir(dest, "testdata/frobnitz-1.2.3.tgz", "oh-my-frobnitz"); err != nil {
+		t.Fatal(err)
+	}
+
+	expectedChartPath := filepath.Join(dest, "oh-my-frobnitz")
+	fi, err := os.Stat(expectedChartPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !fi.IsDir() {
+		t.Fatalf("expected a chart directory at %s", expectedChartPath)
+	}
+
+	dir, err := os.Open(expectedChartPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fis, err := dir.Readdir(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectLen := 11
+	if len(fis) != expectLen {
+		t.Errorf("Expected %d files, but got %d", expectLen, len(fis))
+	}
+
+	for _, fi := range fis {
+		expect, err := os.Stat(filepath.Join("testdata", "frobnitz", fi.Name()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		// os.Stat can return different values for directories, based on the OS
+		// for Linux, for example, os.Stat alwaty returns the size of the directory
+		// (value-4096) regardless of the size of the contents of the directory
+		mode := expect.Mode()
+		if !mode.IsDir() {
+			if fi.Size() != expect.Size() {
+				t.Errorf("Expected %s to have size %d, got %d", fi.Name(), expect.Size(), fi.Size())
+			}
+		}
+	}
+}

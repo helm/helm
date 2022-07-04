@@ -126,6 +126,17 @@ func TestPullCmd(t *testing.T) {
 			expectSha:    "sha256:e5ef611620fb97704d8751c16bab17fedb68883bfb0edc76f78a70e9173f9b55",
 		},
 		{
+			name:         "Fetch, untar with mutually exclusive untardirname",
+			args:         "test/signtest --untar --untardir signtest --untardirname signtest2",
+			wantError:    true,
+			wantErrorMsg: fmt.Sprintf("if any flags in the group [untardir untardirname] are set none of the others can be; [untardir untardirname] were all set, not equal to expected error if any flags in the group [untardir untardirname] are set none of the others can be; [untardir untardirname] were all set"),
+		},
+		{
+			name:       "Fetch and untardirname",
+			args:       "test/reqtest --untar --untardirname reg",
+			expectFile: "./reg/Chart.yaml",
+		},
+		{
 			name:       "Chart fetch using repo URL",
 			expectFile: "./signtest-0.1.0.tgz",
 			args:       "signtest --repo " + srv.URL(),
