@@ -1,4 +1,4 @@
-// +build windows
+//go:build windows
 
 /*
 Copyright (c) for portions of rename_windows.go are held by The Go Authors, 2016 and are provided under

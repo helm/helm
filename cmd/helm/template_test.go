@@ -43,7 +43,7 @@ func TestTemplateCmd(t *testing.T) {
 		},
 		{
 			name:   "check name template",
-			cmd:    fmt.Sprintf(`template '%s' --name-template='foobar-{{ b64enc "abc" }}-baz'`, chartPath),
+			cmd:    fmt.Sprintf(`template '%s' --name-template='foobar-{{ b64enc "abc" | lower }}-baz'`, chartPath),
 			golden: "output/template-name-template.txt",
 		},
 		{

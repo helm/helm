@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/registry"
 )
 
 func TestResolve(t *testing.T) {
@@ -139,7 +140,8 @@ func TestResolve(t *testing.T) {
 	}
 
 	repoNames := map[string]string{"alpine": "kubernetes-charts", "redis": "kubernetes-charts"}
-	r := New("testdata/chartpath", "testdata/repository")
+	registryClient, _ := registry.NewClient()
+	r := New("testdata/chartpath", "testdata/repository", registryClient)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			l, err := r.Resolve(tt.req, repoNames)

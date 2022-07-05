@@ -25,18 +25,14 @@ import (
 )
 
 func TestAtomicWriteFile(t *testing.T) {
-	dir, err := ioutil.TempDir("", "helm-tmp")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	testpath := filepath.Join(dir, "test")
 	stringContent := "Test content"
 	reader := bytes.NewReader([]byte(stringContent))
 	mode := os.FileMode(0644)
 
-	err = AtomicWriteFile(testpath, reader, mode)
+	err := AtomicWriteFile(testpath, reader, mode)
 	if err != nil {
 		t.Errorf("AtomicWriteFile error: %s", err)
 	}

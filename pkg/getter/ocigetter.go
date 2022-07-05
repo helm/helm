@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"strings"
 
-	"helm.sh/helm/v3/internal/experimental/registry"
+	"helm.sh/helm/v3/pkg/registry"
 )
 
 // OCIGetter is the default HTTP(/S) backend handler
@@ -28,7 +28,7 @@ type OCIGetter struct {
 	opts options
 }
 
-//Get performs a Get from repo.Getter and returns the body.
+// Get performs a Get from repo.Getter and returns the body.
 func (g *OCIGetter) Get(href string, options ...Option) (*bytes.Buffer, error) {
 	for _, opt := range options {
 		opt(&g.opts)
@@ -50,10 +50,6 @@ func (g *OCIGetter) get(href string) (*bytes.Buffer, error) {
 			registry.PullOptWithProv(true))
 	}
 
-	if version := g.opts.version; version != "" {
-		ref = fmt.Sprintf("%s:%s", ref, version)
-	}
-
 	result, err := client.Pull(ref, pullOpts...)
 	if err != nil {
 		return nil, err
@@ -67,7 +63,9 @@ func (g *OCIGetter) get(href string) (*bytes.Buffer, error) {
 
 // NewOCIGetter constructs a valid http/https client as a Getter
 func NewOCIGetter(ops ...Option) (Getter, error) {
-	registryClient, err := registry.NewClient()
+	registryClient, err := registry.NewClient(
+		registry.ClientOptEnableCache(true),
+	)
 	if err != nil {
 		return nil, err
 	}

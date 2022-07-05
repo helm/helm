@@ -29,8 +29,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/registry"
 	"helm.sh/helm/v3/pkg/repo"
 )
 
@@ -45,28 +45,31 @@ Common actions for Helm:
 
 Environment variables:
 
-| Name                               | Description                                                                       |
-|------------------------------------|-----------------------------------------------------------------------------------|
-| $HELM_CACHE_HOME                   | set an alternative location for storing cached files.                             |
-| $HELM_CONFIG_HOME                  | set an alternative location for storing Helm configuration.                       |
-| $HELM_DATA_HOME                    | set an alternative location for storing Helm data.                                |
-| $HELM_DEBUG                        | indicate whether or not Helm is running in Debug mode                             |
-| $HELM_DRIVER                       | set the backend storage driver. Values are: configmap, secret, memory, sql.       |
-| $HELM_DRIVER_SQL_CONNECTION_STRING | set the connection string the SQL storage driver should use.                      |
-| $HELM_MAX_HISTORY                  | set the maximum number of helm release history.                                   |
-| $HELM_NAMESPACE                    | set the namespace used for the helm operations.                                   |
-| $HELM_NO_PLUGINS                   | disable plugins. Set HELM_NO_PLUGINS=1 to disable plugins.                        |
-| $HELM_PLUGINS                      | set the path to the plugins directory                                             |
-| $HELM_REGISTRY_CONFIG              | set the path to the registry config file.                                         |
-| $HELM_REPOSITORY_CACHE             | set the path to the repository cache directory                                    |
-| $HELM_REPOSITORY_CONFIG            | set the path to the repositories file.                                            |
-| $KUBECONFIG                        | set an alternative Kubernetes configuration file (default "~/.kube/config")       |
-| $HELM_KUBEAPISERVER                | set the Kubernetes API Server Endpoint for authentication                         |
-| $HELM_KUBECAFILE                   | set the Kubernetes certificate authority file.                                    |
-| $HELM_KUBEASGROUPS                 | set the Groups to use for impersonation using a comma-separated list.             |
-| $HELM_KUBEASUSER                   | set the Username to impersonate for the operation.                                |
-| $HELM_KUBECONTEXT                  | set the name of the kubeconfig context.                                           |
-| $HELM_KUBETOKEN                    | set the Bearer KubeToken used for authentication.                                 |
+| Name                               | Description                                                                                       |
+|------------------------------------|---------------------------------------------------------------------------------------------------|
+| $HELM_CACHE_HOME                   | set an alternative location for storing cached files.                                             |
+| $HELM_CONFIG_HOME                  | set an alternative location for storing Helm configuration.                                       |
+| $HELM_DATA_HOME                    | set an alternative location for storing Helm data.                                                |
+| $HELM_DEBUG                        | indicate whether or not Helm is running in Debug mode                                             |
+| $HELM_DRIVER                       | set the backend storage driver. Values are: configmap, secret, memory, sql.                       |
+| $HELM_DRIVER_SQL_CONNECTION_STRING | set the connection string the SQL storage driver should use.                                      |
+| $HELM_MAX_HISTORY                  | set the maximum number of helm release history.                                                   |
+| $HELM_NAMESPACE                    | set the namespace used for the helm operations.                                                   |
+| $HELM_NO_PLUGINS                   | disable plugins. Set HELM_NO_PLUGINS=1 to disable plugins.                                        |
+| $HELM_PLUGINS                      | set the path to the plugins directory                                                             |
+| $HELM_REGISTRY_CONFIG              | set the path to the registry config file.                                                         |
+| $HELM_REPOSITORY_CACHE             | set the path to the repository cache directory                                                    |
+| $HELM_REPOSITORY_CONFIG            | set the path to the repositories file.                                                            |
+| $KUBECONFIG                        | set an alternative Kubernetes configuration file (default "~/.kube/config")                       |
+| $HELM_KUBEAPISERVER                | set the Kubernetes API Server Endpoint for authentication                                         |
+| $HELM_KUBECAFILE                   | set the Kubernetes certificate authority file.                                                    |
+| $HELM_KUBEASGROUPS                 | set the Groups to use for impersonation using a comma-separated list.                             |
+| $HELM_KUBEASUSER                   | set the Username to impersonate for the operation.                                                |
+| $HELM_KUBECONTEXT                  | set the name of the kubeconfig context.                                                           |
+| $HELM_KUBETOKEN                    | set the Bearer KubeToken used for authentication.                                                 |
+| $HELM_KUBEINSECURE_SKIP_TLS_VERIFY | indicate if the Kubernetes API server's certificate validation should be skipped (insecure)       |
+| $HELM_KUBETLS_SERVER_NAME          | set the server name used to validate the Kubernetes API server certificate                        |
+| $HELM_BURST_LIMIT                  | set the default burst limit in the case the server contains many CRDs (default 100, -1 to disable)|
 
 Helm stores cache, configuration, and data based on the following configuration order:
 
@@ -106,9 +109,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 			nsNames := []string{}
 			if namespaces, err := client.CoreV1().Namespaces().List(context.Background(), metav1.ListOptions{TimeoutSeconds: &to}); err == nil {
 				for _, ns := range namespaces.Items {
-					if strings.HasPrefix(ns.Name, toComplete) {
-						nsNames = append(nsNames, ns.Name)
-					}
+					nsNames = append(nsNames, ns.Name)
 				}
 				return nsNames, cobra.ShellCompDirectiveNoFileComp
 			}
@@ -133,9 +134,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 			&clientcmd.ConfigOverrides{}).RawConfig(); err == nil {
 			comps := []string{}
 			for name, context := range config.Contexts {
-				if strings.HasPrefix(name, toComplete) {
-					comps = append(comps, fmt.Sprintf("%s\t%s", name, context.Cluster))
-				}
+				comps = append(comps, fmt.Sprintf("%s\t%s", name, context.Cluster))
 			}
 			return comps, cobra.ShellCompDirectiveNoFileComp
 		}
@@ -155,6 +154,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 
 	registryClient, err := registry.NewClient(
 		registry.ClientOptDebug(settings.Debug),
+		registry.ClientOptEnableCache(true),
 		registry.ClientOptWriter(out),
 		registry.ClientOptCredentialsFile(settings.RegistryConfig),
 	)
@@ -169,9 +169,9 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		newCreateCmd(out),
 		newDependencyCmd(actionConfig, out),
 		newPullCmd(actionConfig, out),
-		newShowCmd(out),
+		newShowCmd(actionConfig, out),
 		newLintCmd(out),
-		newPackageCmd(out),
+		newPackageCmd(actionConfig, out),
 		newRepoCmd(out),
 		newSearchCmd(out),
 		newVerifyCmd(out),
@@ -197,7 +197,6 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		newDocsCmd(out),
 	)
 
-	// Add *experimental* subcommands
 	cmd.AddCommand(
 		newRegistryCmd(actionConfig, out),
 		newPushCmd(actionConfig, out),
@@ -261,13 +260,4 @@ func checkForExpiredRepos(repofile string) {
 		}
 	}
 
-}
-
-// When dealing with OCI-based charts, ensure that the user has
-// enabled the experimental feature gate prior to continuing
-func checkOCI(ref string) error {
-	if registry.IsOCI(ref) && !FeatureGateOCI.IsEnabled() {
-		return FeatureGateOCI.Error()
-	}
-	return nil
 }

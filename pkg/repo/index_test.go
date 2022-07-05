@@ -208,14 +208,15 @@ func TestMerge(t *testing.T) {
 
 	if len(ind1.Entries) != 2 {
 		t.Errorf("Expected 2 entries, got %d", len(ind1.Entries))
-		vs := ind1.Entries["dreadnought"]
-		if len(vs) != 2 {
-			t.Errorf("Expected 2 versions, got %d", len(vs))
-		}
-		v := vs[0]
-		if v.Version != "0.2.0" {
-			t.Errorf("Expected %q version to be 0.2.0, got %s", v.Name, v.Version)
-		}
+	}
+
+	vs := ind1.Entries["dreadnought"]
+	if len(vs) != 2 {
+		t.Errorf("Expected 2 versions, got %d", len(vs))
+	}
+
+	if v := vs[1]; v.Version != "0.2.0" {
+		t.Errorf("Expected %q version to be 0.2.0, got %s", v.Name, v.Version)
 	}
 
 }
@@ -513,11 +514,7 @@ func TestIndexWrite(t *testing.T) {
 	if err := i.MustAdd(&chart.Metadata{APIVersion: "v2", Name: "clipper", Version: "0.1.0"}, "clipper-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890"); err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
-	dir, err := ioutil.TempDir("", "helm-tmp")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 	testpath := filepath.Join(dir, "test")
 	i.WriteFile(testpath, 0600)
 

@@ -34,7 +34,6 @@ func TestPullCmd(t *testing.T) {
 	}
 	defer srv.Stop()
 
-	os.Setenv("HELM_EXPERIMENTAL_OCI", "1")
 	ociSrv, err := repotest.NewOCIServer(t, srv.Root())
 	if err != nil {
 		t.Fatal(err)
@@ -370,6 +369,10 @@ func TestPullVersionCompletion(t *testing.T) {
 	tests := []cmdTestCase{{
 		name:   "completion for pull version flag",
 		cmd:    fmt.Sprintf("%s __complete pull testing/alpine --version ''", repoSetup),
+		golden: "output/version-comp.txt",
+	}, {
+		name:   "completion for pull version flag, no filter",
+		cmd:    fmt.Sprintf("%s __complete pull testing/alpine --version 0.3", repoSetup),
 		golden: "output/version-comp.txt",
 	}, {
 		name:   "completion for pull version flag too few args",

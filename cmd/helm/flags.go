@@ -36,8 +36,11 @@ import (
 	"helm.sh/helm/v3/pkg/repo"
 )
 
-const outputFlag = "output"
-const postRenderFlag = "post-renderer"
+const (
+	outputFlag         = "output"
+	postRenderFlag     = "post-renderer"
+	postRenderArgsFlag = "post-renderer-args"
+)
 
 func addValueOptionsFlags(f *pflag.FlagSet, v *values.Options) {
 	f.StringSliceVarP(&v.ValueFiles, "values", "f", []string{}, "specify values in a YAML file or a URL (can specify multiple)")
@@ -69,9 +72,7 @@ func bindOutputFlag(cmd *cobra.Command, varRef *output.Format) {
 	err := cmd.RegisterFlagCompletionFunc(outputFlag, func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		var formatNames []string
 		for format, desc := range output.FormatsWithDesc() {
-			if strings.HasPrefix(format, toComplete) {
-				formatNames = append(formatNames, fmt.Sprintf("%s\t%s", format, desc))
-			}
+			formatNames = append(formatNames, fmt.Sprintf("%s\t%s", format, desc))
 		}
 
 		// Sort the results to get a deterministic order for the tests
@@ -112,31 +113,83 @@ func (o *outputValue) Set(s string) error {
 }
 
 func bindPostRenderFlag(cmd *cobra.Command, varRef *postrender.PostRenderer) {
-	cmd.Flags().Var(&postRenderer{varRef}, postRenderFlag, "the path to an executable to be used for post rendering. If it exists in $PATH, the binary will be used, otherwise it will try to look for the executable at the given path")
+	p := &postRendererOptions{varRef, "", []string{}}
+	cmd.Flags().Var(&postRendererString{p}, postRenderFlag, "the path to an executable to be used for post rendering. If it exists in $PATH, the binary will be used, otherwise it will try to look for the executable at the given path")
+	cmd.Flags().Var(&postRendererArgsSlice{p}, postRenderArgsFlag, "an argument to the post-renderer (can specify multiple)")
 }
 
-type postRenderer struct {
-	renderer *postrender.PostRenderer
+type postRendererOptions struct {
+	renderer   *postrender.PostRenderer
+	binaryPath string
+	args       []string
 }
 
-func (p postRenderer) String() string {
-	return "exec"
+type postRendererString struct {
+	options *postRendererOptions
 }
 
-func (p postRenderer) Type() string {
-	return "postrenderer"
+func (p *postRendererString) String() string {
+	return p.options.binaryPath
 }
 
-func (p postRenderer) Set(s string) error {
-	if s == "" {
+func (p *postRendererString) Type() string {
+	return "postRendererString"
+}
+
+func (p *postRendererString) Set(val string) error {
+	if val == "" {
 		return nil
 	}
-	pr, err := postrender.NewExec(s)
+	p.options.binaryPath = val
+	pr, err := postrender.NewExec(p.options.binaryPath, p.options.args...)
 	if err != nil {
 		return err
 	}
-	*p.renderer = pr
+	*p.options.renderer = pr
 	return nil
+}
+
+type postRendererArgsSlice struct {
+	options *postRendererOptions
+}
+
+func (p *postRendererArgsSlice) String() string {
+	return "[" + strings.Join(p.options.args, ",") + "]"
+}
+
+func (p *postRendererArgsSlice) Type() string {
+	return "postRendererArgsSlice"
+}
+
+func (p *postRendererArgsSlice) Set(val string) error {
+
+	// a post-renderer defined by a user may accept empty arguments
+	p.options.args = append(p.options.args, val)
+
+	if p.options.binaryPath == "" {
+		return nil
+	}
+	// overwrite if already create PostRenderer by `post-renderer` flags
+	pr, err := postrender.NewExec(p.options.binaryPath, p.options.args...)
+	if err != nil {
+		return err
+	}
+	*p.options.renderer = pr
+	return nil
+}
+
+func (p *postRendererArgsSlice) Append(val string) error {
+	p.options.args = append(p.options.args, val)
+	return nil
+}
+
+func (p *postRendererArgsSlice) Replace(val []string) error {
+	p.options.args = val
+	return nil
+}
+
+func (p *postRendererArgsSlice) GetSlice() []string {
+	return p.options.args
 }
 
 func compVersionFlag(chartRef string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -153,24 +206,21 @@ func compVersionFlag(chartRef string, toComplete string) ([]string, cobra.ShellC
 	var versions []string
 	if indexFile, err := repo.LoadIndexFile(path); err == nil {
 		for _, details := range indexFile.Entries[chartName] {
-			version := details.Metadata.Version
-			if strings.HasPrefix(version, toComplete) {
-				appVersion := details.Metadata.AppVersion
-				appVersionDesc := ""
-				if appVersion != "" {
-					appVersionDesc = fmt.Sprintf("App: %s, ", appVersion)
-				}
-				created := details.Created.Format("January 2, 2006")
-				createdDesc := ""
-				if created != "" {
-					createdDesc = fmt.Sprintf("Created: %s ", created)
-				}
-				deprecated := ""
-				if details.Metadata.Deprecated {
-					deprecated = "(deprecated)"
-				}
-				versions = append(versions, fmt.Sprintf("%s\t%s%s%s", version, appVersionDesc, createdDesc, deprecated))
+			appVersion := details.Metadata.AppVersion
+			appVersionDesc := ""
+			if appVersion != "" {
+				appVersionDesc = fmt.Sprintf("App: %s, ", appVersion)
 			}
+			created := details.Created.Format("January 2, 2006")
+			createdDesc := ""
+			if created != "" {
+				createdDesc = fmt.Sprintf("Created: %s ", created)
+			}
+			deprecated := ""
+			if details.Metadata.Deprecated {
+				deprecated = "(deprecated)"
+			}
+			versions = append(versions, fmt.Sprintf("%s\t%s%s%s", details.Metadata.Version, appVersionDesc, createdDesc, deprecated))
 		}
 	}
 

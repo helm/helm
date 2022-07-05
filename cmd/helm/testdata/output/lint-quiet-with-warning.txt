@@ -1,0 +1,4 @@
+==> Linting testdata/testcharts/chart-with-only-crds
+[WARNING] templates/: directory not found
+
+1 chart(s) linted, 0 chart(s) failed

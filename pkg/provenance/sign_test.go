@@ -16,13 +16,16 @@ limitations under the License.
 package provenance
 
 import (
+	"crypto"
+	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	pgperrors "golang.org/x/crypto/openpgp/errors"
+	pgperrors "golang.org/x/crypto/openpgp/errors" //nolint
 )
 
 const (
@@ -227,6 +230,36 @@ func TestClearSign(t *testing.T) {
 
 	if !strings.Contains(sig, testMessageBlock) {
 		t.Errorf("expected message block to be in sig: %s", sig)
+	}
+}
+
+// failSigner always fails to sign and returns an error
+type failSigner struct{}
+
+func (s failSigner) Public() crypto.PublicKey {
+	return nil
+}
+
+func (s failSigner) Sign(_ io.Reader, _ []byte, _ crypto.SignerOpts) ([]byte, error) {
+	return nil, fmt.Errorf("always fails")
+}
+
+func TestClearSignError(t *testing.T) {
+	signer, err := NewFromFiles(testKeyfile, testPubfile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// ensure that signing always fails
+	signer.Entity.PrivateKey.PrivateKey = failSigner{}
+
+	sig, err := signer.ClearSign(testChartfile)
+	if err == nil {
+		t.Fatal("didn't get an error from ClearSign but expected one")
+	}
+
+	if sig != "" {
+		t.Fatalf("expected an empty signature after failed ClearSign but got %q", sig)
 	}
 }
 

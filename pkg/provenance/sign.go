@@ -26,9 +26,9 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"golang.org/x/crypto/openpgp"
-	"golang.org/x/crypto/openpgp/clearsign"
-	"golang.org/x/crypto/openpgp/packet"
+	"golang.org/x/crypto/openpgp"           //nolint
+	"golang.org/x/crypto/openpgp/clearsign" //nolint
+	"golang.org/x/crypto/openpgp/packet"    //nolint
 	"sigs.k8s.io/yaml"
 
 	hapi "helm.sh/helm/v3/pkg/chart"
@@ -216,7 +216,7 @@ func (s *Signatory) ClearSign(chartpath string) (string, error) {
 
 	b, err := messageBlock(chartpath)
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 
 	// Sign the buffer
@@ -224,9 +224,24 @@ func (s *Signatory) ClearSign(chartpath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	_, err = io.Copy(w, b)
-	w.Close()
-	return out.String(), err
+
+	if err != nil {
+		// NB: We intentionally don't call `w.Close()` here! `w.Close()` is the method which
+		// actually does the PGP signing, and therefore is the part which uses the private key.
+		// In other words, if we call Close here, there's a risk that there's an attempt to use the
+		// private key to sign garbage data (since we know that io.Copy failed, `w` won't contain
+		// anything useful).
+		return "", errors.Wrap(err, "failed to write to clearsign encoder")
+	}
+
+	err = w.Close()
+	if err != nil {
+		return "", errors.Wrap(err, "failed to either sign or armor message block")
+	}
+
+	return out.String(), nil
 }
 
 // Verify checks a signature and verifies that it is legit for a chart.

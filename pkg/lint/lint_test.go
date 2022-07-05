@@ -17,8 +17,6 @@ limitations under the License.
 package lint
 
 import (
-	"io/ioutil"
-	"os"
 	"strings"
 	"testing"
 
@@ -35,6 +33,7 @@ const badChartDir = "rules/testdata/badchartfile"
 const badValuesFileDir = "rules/testdata/badvaluesfile"
 const badYamlFileDir = "rules/testdata/albatross"
 const goodChartDir = "rules/testdata/goodone"
+const subChartValuesDir = "rules/testdata/withsubchart"
 
 func TestBadChart(t *testing.T) {
 	m := All(badChartDir, values, namespace, strict).Messages
@@ -119,11 +118,7 @@ func TestGoodChart(t *testing.T) {
 //
 // See https://github.com/helm/helm/issues/7923
 func TestHelmCreateChart(t *testing.T) {
-	dir, err := ioutil.TempDir("", "-helm-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	createdChart, err := chartutil.Create("testhelmcreatepasseslint", dir)
 	if err != nil {
@@ -142,5 +137,17 @@ func TestHelmCreateChart(t *testing.T) {
 		}
 	} else if msg := m[0].Err.Error(); !strings.Contains(msg, "icon is recommended") {
 		t.Errorf("Unexpected lint error: %s", msg)
+	}
+}
+
+// lint ignores import-values
+// See https://github.com/helm/helm/issues/9658
+func TestSubChartValuesChart(t *testing.T) {
+	m := All(subChartValuesDir, values, namespace, strict).Messages
+	if len(m) != 0 {
+		t.Error("All returned linter messages when it shouldn't have")
+		for i, msg := range m {
+			t.Logf("Message %d: %s", i, msg)
+		}
 	}
 }

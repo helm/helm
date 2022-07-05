@@ -5,16 +5,21 @@ maintainers:
   - jdolitsky
   - marckhouzam
   - mattfarina
-  - prydonius
+  - sabre1041
   - scottrigby
   - SlickNik
   - technosophos
+triage:
+  - joejulian
+  - yxxhero
+  - zonggen
 emeritus:
   - fibonacci1729
   - jascott1
   - michelleN
   - migmartri
   - nebril
+  - prydonius
   - rimusz
   - seh
   - thomastaylor312

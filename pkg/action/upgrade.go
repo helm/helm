@@ -112,9 +112,12 @@ type resultMessage struct {
 
 // NewUpgrade creates a new Upgrade object with the given configuration.
 func NewUpgrade(cfg *Configuration) *Upgrade {
-	return &Upgrade{
+	up := &Upgrade{
 		cfg: cfg,
 	}
+	up.ChartPathOptions.registryClient = cfg.RegistryClient
+
+	return up
 }
 
 // Run executes the upgrade on the given release.
@@ -321,11 +324,17 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 		return nil, err
 	}
 	rChan := make(chan resultMessage)
+	ctxChan := make(chan resultMessage)
+	doneChan := make(chan interface{})
+	defer close(doneChan)
 	go u.releasingUpgrade(rChan, upgradedRelease, current, target, originalRelease)
-	go u.handleContext(ctx, rChan, upgradedRelease)
-	result := <-rChan
-
-	return result.r, result.e
+	go u.handleContext(ctx, doneChan, ctxChan, upgradedRelease)
+	select {
+	case result := <-rChan:
+		return result.r, result.e
+	case result := <-ctxChan:
+		return result.r, result.e
+	}
 }
 
 // Function used to lock the Mutex, this is important for the case when the atomic flag is set.
@@ -341,14 +350,16 @@ func (u *Upgrade) reportToPerformUpgrade(c chan<- resultMessage, rel *release.Re
 }
 
 // Setup listener for SIGINT and SIGTERM
-func (u *Upgrade) handleContext(ctx context.Context, c chan<- resultMessage, upgradedRelease *release.Release) {
-
-	go func() {
-		<-ctx.Done()
+func (u *Upgrade) handleContext(ctx context.Context, done chan interface{}, c chan<- resultMessage, upgradedRelease *release.Release) {
+	select {
+	case <-ctx.Done():
 		err := ctx.Err()
+
 		// when the atomic flag is set the ongoing release finish first and doesn't give time for the rollback happens.
 		u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, err)
-	}()
+	case <-done:
+		return
+	}
 }
 func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *release.Release, current kube.ResourceList, target kube.ResourceList, originalRelease *release.Release) {
 	// pre-upgrade hooks
@@ -380,6 +391,9 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 	}
 
 	if u.Wait {
+		u.cfg.Log(
+			"waiting for release %s resources (created: %d updated: %d  deleted: %d)",
+			upgradedRelease.Name, len(results.Created), len(results.Updated), len(results.Deleted))
 		if u.WaitForJobs {
 			if err := u.cfg.KubeClient.WaitWithJobs(target, u.Timeout); err != nil {
 				u.cfg.recordRelease(originalRelease)
