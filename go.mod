@@ -10,7 +10,7 @@ require (
 	github.com/Masterminds/squirrel v1.5.3
 	github.com/Masterminds/vcs v1.13.3
 	github.com/asaskevich/govalidator v0.0.0-20200428143746-21a406dcc535
-	github.com/containerd/containerd v1.6.4
+	github.com/containerd/containerd v1.6.6
 	github.com/cyphar/filepath-securejoin v0.2.3
 	github.com/distribution/distribution/v3 v3.0.0-20211118083504-a29a3c99a684
 	github.com/docker/docker v20.10.16+incompatible
@@ -147,7 +147,7 @@ require (
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20220209214540-3681064d5158 // indirect
+	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad // indirect
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20220107163113-42d7afdf6368 // indirect
