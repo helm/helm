@@ -45,7 +45,7 @@ func AssertGoldenString(t TestingT, actual, filename string) {
 	t.Helper()
 
 	if err := compare([]byte(actual), path(filename)); err != nil {
-		t.Fatalf("%v", err)
+		t.Fatalf("%v\n", err)
 	}
 }
 
@@ -79,7 +79,7 @@ func compare(actual []byte, filename string) error {
 	}
 	expected = normalize(expected)
 	if !bytes.Equal(expected, actual) {
-		return errors.Errorf("does not match golden file %s\n\nWANT:\n'%s'\n\nGOT:\n'%s'\n", filename, expected, actual)
+		return errors.Errorf("does not match golden file %s\n\nWANT:\n'%s'\n\nGOT:\n'%s'", filename, expected, actual)
 	}
 	return nil
 }

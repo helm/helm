@@ -5,7 +5,7 @@ jobs:
   build:
     working_directory: ~/helm.sh/helm
     docker:
-      - image: circleci/golang:1.17
+      - image: cimg/go:1.18
       
         auth:
           username: $DOCKER_USER
@@ -13,7 +13,7 @@ jobs:
 
     environment:
       GOCACHE: "/tmp/go/cache"
-      GOLANGCI_LINT_VERSION: "1.43.0"
+      GOLANGCI_LINT_VERSION: "1.46.2"
 
     steps:
       - checkout
