@@ -300,7 +300,7 @@ func (c *ReadyChecker) daemonSetReady(ds *appsv1.DaemonSet) bool {
 	}
 
 	expectedReady := int(ds.Status.DesiredNumberScheduled) - maxUnavailable
-	if !(int(ds.Status.NumberReady) >= expectedReady) {
+	if !(int(ds.Status.NumberReady) >= expectedReady) || expectedReady < 0 {
 		c.log("DaemonSet is not ready: %s/%s. %d out of %d expected pods are ready", ds.Namespace, ds.Name, ds.Status.NumberReady, expectedReady)
 		return false
 	}
