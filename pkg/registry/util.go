@@ -31,7 +31,14 @@ import (
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/time"
 )
+
+// Timestamper is a function capable of producing a timestamp.Timestamper.
+//
+// By default, this is a time.Time function from the Helm time package. This can
+// be overridden for testing though, so that timestamps are predictable.
+var Timestamper = time.Now
 
 // IsOCI determines whether or not a URL is to be treated as an OCI URL
 func IsOCI(url string) bool {

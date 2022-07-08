@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/containerd/containerd/remotes"
@@ -527,7 +528,33 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 		descriptors = append(descriptors, provDescriptor)
 	}
 
-	manifestData, manifest, err := content.GenerateManifest(&configDescriptor, nil, descriptors...)
+	annotations := make(map[string]string)
+
+	annotations[ocispec.AnnotationCreated] = Timestamper().Format(time.RFC3339)
+	if len(meta.Maintainers) > 0 {
+		authors := make([]string, len(meta.Maintainers))
+		for i, m := range meta.Maintainers {
+			authors[i] = m.String()
+		}
+		annotations[ocispec.AnnotationAuthors] = strings.Join(authors, ", ")
+	}
+	if len(meta.Sources) > 0 {
+		annotations[ocispec.AnnotationSource] = meta.Sources[0]
+	}
+	if len(meta.Home) > 0 {
+		annotations[ocispec.AnnotationURL] = meta.Home
+	}
+	if len(meta.Version) > 0 {
+		annotations[ocispec.AnnotationVersion] = meta.Version
+	}
+	if len(meta.Name) > 0 {
+		annotations[ocispec.AnnotationTitle] = meta.Name
+	}
+	if len(meta.Description) > 0 {
+		annotations[ocispec.AnnotationDescription] = meta.Description
+	}
+
+	manifestData, manifest, err := content.GenerateManifest(&configDescriptor, annotations, descriptors...)
 	if err != nil {
 		return nil, err
 	}

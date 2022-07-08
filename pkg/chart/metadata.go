@@ -16,6 +16,7 @@ limitations under the License.
 package chart
 
 import (
+	"fmt"
 	"strings"
 	"unicode"
 
@@ -30,6 +31,12 @@ type Maintainer struct {
 	Email string `json:"email,omitempty"`
 	// URL is an optional URL to an address for the named maintainer
 	URL string `json:"url,omitempty"`
+}
+
+var _ fmt.Stringer = &Maintainer{}
+
+func (m *Maintainer) String() string {
+	return fmt.Sprintf("%s (%s)", m.Name, m.Email)
 }
 
 // Validate checks valid data and sanitizes string characters.

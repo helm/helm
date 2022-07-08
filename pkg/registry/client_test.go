@@ -39,6 +39,8 @@ import (
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/bcrypt"
+
+	helmtime "helm.sh/helm/v3/pkg/time"
 )
 
 var (
@@ -55,6 +57,12 @@ type RegistryClientTestSuite struct {
 	CompromisedRegistryHost string
 	WorkspaceDir            string
 	RegistryClient          *Client
+}
+
+func testTimestamper() helmtime.Time { return helmtime.Unix(242085845, 0).UTC() }
+
+func init() {
+	Timestamper = testTimestamper
 }
 
 func (suite *RegistryClientTestSuite) SetupSuite() {
@@ -198,12 +206,12 @@ func (suite *RegistryClientTestSuite) Test_1_Push() {
 	suite.Equal(ref, result.Ref)
 	suite.Equal(meta.Name, result.Chart.Meta.Name)
 	suite.Equal(meta.Version, result.Chart.Meta.Version)
-	suite.Equal(int64(512), result.Manifest.Size)
+	suite.Equal(int64(742), result.Manifest.Size)
 	suite.Equal(int64(99), result.Config.Size)
 	suite.Equal(int64(973), result.Chart.Size)
 	suite.Equal(int64(695), result.Prov.Size)
 	suite.Equal(
-		"sha256:af4c20a1df1431495e673c14ecfa3a2ba24839a7784349d6787cd67957392e83",
+		"sha256:fbbade96da6050f68f94f122881e3b80051a18f13ab5f4081868dd494538f5c2",
 		result.Manifest.Digest)
 	suite.Equal(
 		"sha256:8d17cb6bf6ccd8c29aace9a658495cbd5e2e87fc267876e86117c7db681c9580",
@@ -271,12 +279,12 @@ func (suite *RegistryClientTestSuite) Test_2_Pull() {
 	suite.Equal(ref, result.Ref)
 	suite.Equal(meta.Name, result.Chart.Meta.Name)
 	suite.Equal(meta.Version, result.Chart.Meta.Version)
-	suite.Equal(int64(512), result.Manifest.Size)
+	suite.Equal(int64(742), result.Manifest.Size)
 	suite.Equal(int64(99), result.Config.Size)
 	suite.Equal(int64(973), result.Chart.Size)
 	suite.Equal(int64(695), result.Prov.Size)
 	suite.Equal(
-		"sha256:af4c20a1df1431495e673c14ecfa3a2ba24839a7784349d6787cd67957392e83",
+		"sha256:fbbade96da6050f68f94f122881e3b80051a18f13ab5f4081868dd494538f5c2",
 		result.Manifest.Digest)
 	suite.Equal(
 		"sha256:8d17cb6bf6ccd8c29aace9a658495cbd5e2e87fc267876e86117c7db681c9580",
@@ -287,7 +295,7 @@ func (suite *RegistryClientTestSuite) Test_2_Pull() {
 	suite.Equal(
 		"sha256:b0a02b7412f78ae93324d48df8fcc316d8482e5ad7827b5b238657a29a22f256",
 		result.Prov.Digest)
-	suite.Equal("{\"schemaVersion\":2,\"config\":{\"mediaType\":\"application/vnd.cncf.helm.config.v1+json\",\"digest\":\"sha256:8d17cb6bf6ccd8c29aace9a658495cbd5e2e87fc267876e86117c7db681c9580\",\"size\":99},\"layers\":[{\"mediaType\":\"application/vnd.cncf.helm.chart.provenance.v1.prov\",\"digest\":\"sha256:b0a02b7412f78ae93324d48df8fcc316d8482e5ad7827b5b238657a29a22f256\",\"size\":695},{\"mediaType\":\"application/vnd.cncf.helm.chart.content.v1.tar+gzip\",\"digest\":\"sha256:e5ef611620fb97704d8751c16bab17fedb68883bfb0edc76f78a70e9173f9b55\",\"size\":973}]}",
+	suite.Equal("{\"schemaVersion\":2,\"config\":{\"mediaType\":\"application/vnd.cncf.helm.config.v1+json\",\"digest\":\"sha256:8d17cb6bf6ccd8c29aace9a658495cbd5e2e87fc267876e86117c7db681c9580\",\"size\":99},\"layers\":[{\"mediaType\":\"application/vnd.cncf.helm.chart.provenance.v1.prov\",\"digest\":\"sha256:b0a02b7412f78ae93324d48df8fcc316d8482e5ad7827b5b238657a29a22f256\",\"size\":695},{\"mediaType\":\"application/vnd.cncf.helm.chart.content.v1.tar+gzip\",\"digest\":\"sha256:e5ef611620fb97704d8751c16bab17fedb68883bfb0edc76f78a70e9173f9b55\",\"size\":973}],\"annotations\":{\"org.opencontainers.image.created\":\"1977-09-02T22:04:05Z\",\"org.opencontainers.image.description\":\"A Helm chart for Kubernetes\",\"org.opencontainers.image.title\":\"signtest\",\"org.opencontainers.image.version\":\"0.1.0\"}}",
 		string(result.Manifest.Data))
 	suite.Equal("{\"name\":\"signtest\",\"version\":\"0.1.0\",\"description\":\"A Helm chart for Kubernetes\",\"apiVersion\":\"v1\"}",
 		string(result.Config.Data))
