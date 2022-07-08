@@ -248,21 +248,21 @@ type (
 
 	// PullResult is the result returned upon successful pull.
 	PullResult struct {
-		Manifest *descriptorPullSummary         `json:"manifest"`
-		Config   *descriptorPullSummary         `json:"config"`
-		Chart    *descriptorPullSummaryWithMeta `json:"chart"`
-		Prov     *descriptorPullSummary         `json:"prov"`
+		Manifest *DescriptorPullSummary         `json:"manifest"`
+		Config   *DescriptorPullSummary         `json:"config"`
+		Chart    *DescriptorPullSummaryWithMeta `json:"chart"`
+		Prov     *DescriptorPullSummary         `json:"prov"`
 		Ref      string                         `json:"ref"`
 	}
 
-	descriptorPullSummary struct {
+	DescriptorPullSummary struct {
 		Data   []byte `json:"-"`
 		Digest string `json:"digest"`
 		Size   int64  `json:"size"`
 	}
 
-	descriptorPullSummaryWithMeta struct {
-		descriptorPullSummary
+	DescriptorPullSummaryWithMeta struct {
+		DescriptorPullSummary
 		Meta *chart.Metadata `json:"meta"`
 	}
 
@@ -361,16 +361,16 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		}
 	}
 	result := &PullResult{
-		Manifest: &descriptorPullSummary{
+		Manifest: &DescriptorPullSummary{
 			Digest: manifest.Digest.String(),
 			Size:   manifest.Size,
 		},
-		Config: &descriptorPullSummary{
+		Config: &DescriptorPullSummary{
 			Digest: configDescriptor.Digest.String(),
 			Size:   configDescriptor.Size,
 		},
-		Chart: &descriptorPullSummaryWithMeta{},
-		Prov:  &descriptorPullSummary{},
+		Chart: &DescriptorPullSummaryWithMeta{},
+		Prov:  &DescriptorPullSummary{},
 		Ref:   parsedRef.String(),
 	}
 	var getManifestErr error
