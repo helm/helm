@@ -166,6 +166,13 @@ func ClientOptCredentialsFile(credentialsFile string) ClientOption {
 	}
 }
 
+// ClientOptResolver returns a function that sets the resolver setting on a client options set
+func ClientOptResolver(resolver remotes.Resolver) ClientOption {
+	return func(client *Client) {
+		client.resolver = resolver
+	}
+}
+
 type (
 	// LoginOption allows specifying various settings on login
 	LoginOption func(*loginOperation)
