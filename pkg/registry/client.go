@@ -57,6 +57,7 @@ type (
 		enableCache bool
 		// path to repository config file e.g. ~/.docker/config.json
 		credentialsFile    string
+		plainHTTP          bool
 		out                io.Writer
 		authorizer         auth.Client
 		registryAuthorizer *registryauth.Client
@@ -90,6 +91,9 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		headers := http.Header{}
 		headers.Set("User-Agent", version.GetUserAgent())
 		opts := []auth.ResolverOption{auth.WithResolverHeaders(headers)}
+		if client.plainHTTP {
+			opts = append(opts, auth.WithResolverPlainHTTP())
+		}
 		resolver, err := client.authorizer.ResolverWithOpts(opts...)
 		if err != nil {
 			return nil, err
@@ -163,6 +167,12 @@ func ClientOptWriter(out io.Writer) ClientOption {
 func ClientOptCredentialsFile(credentialsFile string) ClientOption {
 	return func(client *Client) {
 		client.credentialsFile = credentialsFile
+	}
+}
+
+func ClientOptPlainHTTP() ClientOption {
+	return func(client *Client) {
+		client.plainHTTP = true
 	}
 }
 
