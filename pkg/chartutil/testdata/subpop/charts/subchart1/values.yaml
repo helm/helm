@@ -26,6 +26,9 @@ overridden-chartA:
   SCAstring: "jabbathehut"
   SC1extra3: true
 
+force-overridden-chartA:
+  SCAFbool: true # Will be overridden by the import
+
 imported-chartA-B:
   SC1extra5: "tiller"
 

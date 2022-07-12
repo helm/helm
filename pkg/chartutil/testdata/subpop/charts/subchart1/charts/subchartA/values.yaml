@@ -14,4 +14,6 @@ SCAdata:
   SCAstring: "jabba"
   SCAnested1:
     SCAnested2: true
+SCAdata-forced:
+  SCAFbool: false
 

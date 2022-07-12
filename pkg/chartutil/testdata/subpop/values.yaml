@@ -10,7 +10,6 @@ overridden-chart1:
   SC1string: "pollywog"
   SPextra2: 42
 
-
 imported-chartA:
   SPextra3: 1.337
 

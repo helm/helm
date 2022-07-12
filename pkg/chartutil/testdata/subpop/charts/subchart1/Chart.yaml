@@ -17,7 +17,9 @@ dependencies:
         parent: overridden-chartA
       - child: SCAdata
         parent: imported-chartA-B
-
+      - child: SCAdata-forced
+        parent: force-overridden-chartA
+        strategy: override
   - name: subchartb
     repository: http://localhost:10191
     version: 0.1.0

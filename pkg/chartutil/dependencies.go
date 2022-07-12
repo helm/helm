@@ -226,49 +226,72 @@ func processImportValues(c *chart.Chart) error {
 	if err != nil {
 		return err
 	}
-	b := make(map[string]interface{})
+	c.Values = copyMap(cvals)
+	overrides := make(map[string]interface{})
 	// import values from each dependency if specified in import-values
 	for _, r := range c.Metadata.Dependencies {
 		var outiv []interface{}
 		for _, riv := range r.ImportValues {
+			var strategy string
+			var values map[string]interface{}
+			var child string
+			parent := "."
 			switch iv := riv.(type) {
 			case map[string]interface{}:
-				child := iv["child"].(string)
-				parent := iv["parent"].(string)
-
-				outiv = append(outiv, map[string]string{
-					"child":  child,
-					"parent": parent,
-				})
-
-				// get child table
-				vv, err := cvals.Table(r.Name + "." + child)
-				if err != nil {
-					log.Printf("Warning: ImportValues missing table from chart %s: %v", r.Name, err)
-					continue
+				var strategyOk bool
+				strategy, strategyOk = iv["strategy"].(string)
+				if !strategyOk {
+					strategy = "ifNotPresent"
 				}
-				// create value map from child to be merged into parent
-				b = CoalesceTables(cvals, pathToMap(parent, vv.AsMap()))
+				if key, ok := iv["key"].(string); ok {
+					child = "exports." + key
+					vm, err := cvals.Table(r.Name + "." + child)
+					if err != nil {
+						log.Printf("Warning: ImportValues missing table: %v", err)
+						continue
+					}
+					values = vm.AsMap()
+				} else {
+					child = iv["child"].(string)
+					parent = iv["parent"].(string)
+					vv, err := cvals.Table(r.Name + "." + child)
+					if err != nil {
+						log.Printf("Warning: ImportValues missing table from chart %s: %v", r.Name, err)
+						continue
+					}
+					values = pathToMap(parent, vv.AsMap())
+				}
 			case string:
+				// backwards compat to use the override strategy when using a string
+				strategy = "override"
 				child := "exports." + iv
-				outiv = append(outiv, map[string]string{
-					"child":  child,
-					"parent": ".",
-				})
 				vm, err := cvals.Table(r.Name + "." + child)
 				if err != nil {
 					log.Printf("Warning: ImportValues missing table: %v", err)
 					continue
 				}
-				b = CoalesceTables(b, vm.AsMap())
+				values = vm.AsMap()
 			}
+			// merge the values from the child into the parent values according to the import strategy
+			if strategy == "override" {
+				overrides = CoalesceTables(overrides, values)
+			} else if strategy == "ifNotPresent" {
+				c.Values = CoalesceTables(c.Values, values)
+			} else {
+				log.Printf("Warning: ImportValues with an invalid import strategy %v", strategy)
+				continue
+			}
+			outiv = append(outiv, map[string]string{
+				"child": child,
+				"parent": parent,
+				"strategy": strategy,
+			})
 		}
 		// set our formatted import values
 		r.ImportValues = outiv
 	}
-
-	// set the new values
-	c.Values = CoalesceTables(cvals, b)
+	// merge the overrides into the parent values
+	c.Values = CoalesceTables(overrides, c.Values)
 
 	return nil
 }

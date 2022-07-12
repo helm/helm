@@ -2,4 +2,4 @@ exports:
   defaults:
     service:
       type: ClusterIP
-      port: 1010
+      port: 3030

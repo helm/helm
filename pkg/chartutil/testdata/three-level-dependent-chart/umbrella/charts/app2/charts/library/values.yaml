@@ -2,4 +2,4 @@ exports:
   defaults:
     service:
       type: ClusterIP
-      port: 9090
+      port: 2020

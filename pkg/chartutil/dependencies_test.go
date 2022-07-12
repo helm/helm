@@ -206,6 +206,8 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	e["overridden-chartA-B.SCBextra1"] = "13"
 	e["overridden-chartA-B.SC1extra6"] = "77"
 
+	e["subchart1.force-overridden-chartA.SCAFbool"] = "false"
+
 	// `exports` style
 	e["SCBexported1B"] = "1965"
 	e["SC1extra7"] = "true"
@@ -225,15 +227,15 @@ func TestProcessDependencyImportValues(t *testing.T) {
 		switch pv := pv.(type) {
 		case float64:
 			if s := strconv.FormatFloat(pv, 'f', -1, 64); s != vv {
-				t.Errorf("failed to match imported float value %v with expected %v", s, vv)
+				t.Errorf("%v: failed to match imported float value %v with expected %v", kk, s, vv)
 			}
 		case bool:
 			if b := strconv.FormatBool(pv); b != vv {
-				t.Errorf("failed to match imported bool value %v with expected %v", b, vv)
+				t.Errorf("%v: failed to match imported bool value %v with expected %v", kk, b, vv)
 			}
 		default:
 			if pv != vv {
-				t.Errorf("failed to match imported string value %q with expected %q", pv, vv)
+				t.Errorf("%v: failed to match imported string value %q with expected %q", kk, pv, vv)
 			}
 		}
 	}
@@ -244,8 +246,9 @@ func TestProcessDependencyImportValuesMultiLevelPrecedence(t *testing.T) {
 
 	e := make(map[string]string)
 
-	e["app1.service.port"] = "3456"
-	e["app2.service.port"] = "8080"
+	e["app1.service.port"] = "1010" // app1 is the chart with the default import override behavior
+	e["app2.service.port"] = "2222" // app2 is the chart with the ifNotPresent import behavior
+	e["app3.service.port"] = "1234" // app3 is the chart with the default import override behavior, but the port is overridden in the umbrella chart
 
 	if err := processDependencyImportValues(c); err != nil {
 		t.Fatalf("processing import values dependencies %v", err)

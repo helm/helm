@@ -1,3 +1,3 @@
 service:
   type: ClusterIP
-  port: 2222
+  port: 3333
