@@ -90,6 +90,7 @@ type releaseInfo struct {
 	Chart       string        `json:"chart"`
 	AppVersion  string        `json:"app_version"`
 	Description string        `json:"description"`
+	ReleaseTag  string        `json:"release_tag"`
 }
 
 type releaseHistory []releaseInfo
@@ -104,9 +105,13 @@ func (r releaseHistory) WriteYAML(out io.Writer) error {
 
 func (r releaseHistory) WriteTable(out io.Writer) error {
 	tbl := uitable.New()
-	tbl.AddRow("REVISION", "UPDATED", "STATUS", "CHART", "APP VERSION", "DESCRIPTION")
+	tbl.AddRow("REVISION", "UPDATED", "STATUS", "CHART", "APP VERSION", "DESCRIPTION", "RELEASE TAG")
 	for _, item := range r {
-		tbl.AddRow(item.Revision, item.Updated.Format(time.ANSIC), item.Status, item.Chart, item.AppVersion, item.Description)
+		if item.ReleaseTag != "" {
+			tbl.AddRow(item.Revision, item.Updated.Format(time.ANSIC), item.Status, item.Chart, item.AppVersion, item.Description, item.ReleaseTag)
+		} else {
+			tbl.AddRow(item.Revision, item.Updated.Format(time.ANSIC), item.Status, item.Chart, item.AppVersion, item.Description)
+		}
 	}
 	return output.EncodeTable(out, tbl)
 }
@@ -141,6 +146,7 @@ func getReleaseHistory(rls []*release.Release) (history releaseHistory) {
 		v := r.Version
 		d := r.Info.Description
 		a := formatAppVersion(r.Chart)
+		t := r.Info.ReleaseTag
 
 		rInfo := releaseInfo{
 			Revision:    v,
@@ -148,6 +154,7 @@ func getReleaseHistory(rls []*release.Release) (history releaseHistory) {
 			Chart:       c,
 			AppVersion:  a,
 			Description: d,
+			ReleaseTag:  t,
 		}
 		if !r.Info.LastDeployed.IsZero() {
 			rInfo.Updated = r.Info.LastDeployed

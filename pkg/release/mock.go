@@ -41,11 +41,12 @@ metadata:
 
 // MockReleaseOptions allows for user-configurable options on mock release objects.
 type MockReleaseOptions struct {
-	Name      string
-	Version   int
-	Chart     *chart.Chart
-	Status    Status
-	Namespace string
+	Name       string
+	Version    int
+	Chart      *chart.Chart
+	Status     Status
+	Namespace  string
+	ReleaseTag string
 }
 
 // Mock creates a mock release object based on options set by MockReleaseOptions. This function should typically not be used outside of testing.
@@ -92,6 +93,7 @@ func Mock(opts *MockReleaseOptions) *Release {
 		Status:        scode,
 		Description:   "Release mock",
 		Notes:         "Some mock release notes!",
+		ReleaseTag:    opts.ReleaseTag,
 	}
 
 	return &Release{

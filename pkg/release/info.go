@@ -33,4 +33,6 @@ type Info struct {
 	Status Status `json:"status,omitempty"`
 	// Contains the rendered templates/NOTES.txt if available
 	Notes string `json:"notes,omitempty"`
+	// ReleaseTag is a optional tag that can be added to the release
+	ReleaseTag string `json:"release_tag,omitempty"`
 }

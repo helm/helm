@@ -102,6 +102,8 @@ type Install struct {
 	PostRenderer   postrender.PostRenderer
 	// Lock to control raceconditions when the process receives a SIGTERM
 	Lock sync.Mutex
+	// Used to tag a release // --release-tag
+	ReleaseTag string
 }
 
 // ChartPathOptions captures common options used for controlling chart paths
@@ -405,6 +407,7 @@ func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, t
 		rel.SetStatus(release.StatusDeployed, "Install complete")
 	}
 
+	rel.SetReleaseTag(i.ReleaseTag)
 	// This is a tricky case. The release has been created, but the result
 	// cannot be recorded. The truest thing to tell the user is that the
 	// release was created. However, the user will not be able to do anything

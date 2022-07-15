@@ -103,6 +103,8 @@ type Upgrade struct {
 	DependencyUpdate bool
 	// Lock to control raceconditions when the process receives a SIGTERM
 	Lock sync.Mutex
+	// Used to tag a release // --release-tag
+	ReleaseTag string
 }
 
 type resultMessage struct {
@@ -247,6 +249,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 			LastDeployed:  Timestamper(),
 			Status:        release.StatusPendingUpgrade,
 			Description:   "Preparing upgrade", // This should be overwritten later.
+			ReleaseTag:    u.ReleaseTag,        // update release tag
 		},
 		Version:  revision,
 		Manifest: manifestDoc.String(),

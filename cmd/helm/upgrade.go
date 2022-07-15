@@ -117,6 +117,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.SubNotes = client.SubNotes
 					instClient.Description = client.Description
 					instClient.DependencyUpdate = client.DependencyUpdate
+					instClient.ReleaseTag = client.ReleaseTag
 
 					rel, err := runInstall(args, instClient, valueOpts, out)
 					if err != nil {
@@ -230,6 +231,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.SubNotes, "render-subchart-notes", false, "if set, render subchart notes along with the parent")
 	f.StringVar(&client.Description, "description", "", "add a custom description")
 	f.BoolVar(&client.DependencyUpdate, "dependency-update", false, "update dependencies if they are missing before installing the chart")
+	f.StringVar(&client.ReleaseTag, "release-tag", "", "if set, a tag can be added to the name of the release")
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 	addValueOptionsFlags(f, valueOpts)
 	bindOutputFlag(cmd, &outfmt)

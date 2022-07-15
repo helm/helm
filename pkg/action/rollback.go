@@ -131,6 +131,7 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 			// Because we lose the reference to previous version elsewhere, we set the
 			// message here, and only override it later if we experience failure.
 			Description: fmt.Sprintf("Rollback to %d", previousVersion),
+			ReleaseTag:  previousRelease.Info.ReleaseTag,
 		},
 		Version:  currentRelease.Version + 1,
 		Manifest: previousRelease.Manifest,

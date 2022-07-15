@@ -47,3 +47,8 @@ func (r *Release) SetStatus(status Status, msg string) {
 	r.Info.Status = status
 	r.Info.Description = msg
 }
+
+// SetReleaseTag is a helper for setting the tag on a release.
+func (r *Release) SetReleaseTag(rt string) {
+	r.Info.ReleaseTag = rt
+}
