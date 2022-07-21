@@ -670,7 +670,7 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 		}
 		wg.Add(1)
 		go func(r *repo.ChartRepository) {
-			if _, err := r.DownloadIndexFile(); err != nil {
+			if _, _, err := r.DownloadIndexFile(); err != nil {
 				// For those dependencies that are not known to helm and using a
 				// generated key name we display the repo url.
 				if strings.HasPrefix(r.Config.Name, managerKeyPrefix) {
