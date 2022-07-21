@@ -115,10 +115,10 @@ func (r *ChartRepository) Load() error {
 }
 
 // DownloadIndexFile fetches the index from a repository.
-func (r *ChartRepository) DownloadIndexFile() (string, error) {
+func (r *ChartRepository) DownloadIndexFile() (string, string, error) {
 	parsedURL, err := url.Parse(r.Config.URL)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	parsedURL.RawPath = path.Join(parsedURL.RawPath, "index.yaml")
 	parsedURL.Path = path.Join(parsedURL.Path, "index.yaml")
@@ -133,17 +133,17 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 		getter.WithPassCredentialsAll(r.Config.PassCredentialsAll),
 	)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	index, err := ioutil.ReadAll(resp)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	indexFile, err := loadIndex(index, r.Config.URL)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	// Create the chart list file in the cache directory
@@ -158,7 +158,7 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 	// Create the index file in the cache directory
 	fname := filepath.Join(r.CachePath, helmpath.CacheIndexFile(r.Config.Name))
 	os.MkdirAll(filepath.Dir(fname), 0755)
-	return fname, ioutil.WriteFile(fname, index, 0644)
+	return fname, chartsFile, ioutil.WriteFile(fname, index, 0644)
 }
 
 // Index generates an index for the chart repository and writes an index.yaml file.
@@ -249,10 +249,13 @@ func FindChartInAuthAndTLSAndPassRepoURL(repoURL, username, password, chartName,
 	if err != nil {
 		return "", err
 	}
-	idx, err := r.DownloadIndexFile()
+	idx, chart, err := r.DownloadIndexFile()
 	if err != nil {
 		return "", errors.Wrapf(err, "looks like %q is not a valid chart repository or cannot be reached", repoURL)
 	}
+	// Clean up temp files.
+	defer os.RemoveAll(idx)
+	defer os.RemoveAll(chart)
 
 	// Read the index file for the repository to get chart information and return chart URL
 	repoIndex, err := LoadIndexFile(idx)
