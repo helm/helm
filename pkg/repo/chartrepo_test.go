@@ -156,7 +156,7 @@ func TestIndexCustomSchemeDownload(t *testing.T) {
 	}
 	defer os.Remove(tempIndexFile.Name())
 
-	idx, err := repo.DownloadIndexFile()
+	idx, _, err := repo.DownloadIndexFile()
 	if err != nil {
 		t.Fatalf("Failed to download index file to %s: %v", idx, err)
 	}
