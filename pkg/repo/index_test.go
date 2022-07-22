@@ -237,7 +237,7 @@ func TestDownloadIndexFile(t *testing.T) {
 			t.Errorf("Problem creating chart repository from %s: %v", testRepo, err)
 		}
 
-		idx, _, err := r.DownloadIndexFile()
+		idx, err := r.DownloadIndexFile()
 		if err != nil {
 			t.Fatalf("Failed to download index file to %s: %#v", idx, err)
 		}
@@ -290,7 +290,7 @@ func TestDownloadIndexFile(t *testing.T) {
 			t.Errorf("Problem creating chart repository from %s: %v", testRepo, err)
 		}
 
-		idx, _, err := r.DownloadIndexFile()
+		idx, err := r.DownloadIndexFile()
 		if err != nil {
 			t.Fatalf("Failed to download index file to %s: %#v", idx, err)
 		}
