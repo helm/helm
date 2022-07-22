@@ -18,7 +18,6 @@ package engine
 
 import (
 	"encoding/base64"
-	"fmt"
 	"log"
 	"path"
 	"strings"
@@ -105,9 +104,10 @@ func (f files) Glob(pattern string) files {
 //
 //   data:
 // {{ .Files.Glob("config/**").AsConfig() | indent 4 }}
-func (f files) AsConfig() (string, error) {
-	if f == nil || len(f) == 0 {
-		return "", fmt.Errorf("must pass files")
+func (f files) AsConfig() string {
+	if len(f) == 0 {
+		log.Printf("must pass files")
+		return ""
 	}
 
 	m := make(map[string]string)
@@ -117,7 +117,7 @@ func (f files) AsConfig() (string, error) {
 		m[path.Base(k)] = string(v)
 	}
 
-	return toYAML(m), nil
+	return toYAML(m)
 }
 
 // AsSecrets returns the base64-encoded value of a Files object suitable for
@@ -134,9 +134,10 @@ func (f files) AsConfig() (string, error) {
 //
 //   data:
 // {{ .Files.Glob("secrets/*").AsSecrets() }}
-func (f files) AsSecrets() (string, error) {
-	if f == nil || len(f) == 0 {
-		return "", fmt.Errorf("must pass files")
+func (f files) AsSecrets() string {
+	if len(f) == 0 {
+		log.Printf("must pass files")
+		return ""
 	}
 
 	m := make(map[string]string)
@@ -145,7 +146,7 @@ func (f files) AsSecrets() (string, error) {
 		m[path.Base(k)] = base64.StdEncoding.EncodeToString(v)
 	}
 
-	return toYAML(m), nil
+	return toYAML(m)
 }
 
 // Lines returns each line of a named file (split by "\n") as a slice, so it can
@@ -155,10 +156,11 @@ func (f files) AsSecrets() (string, error) {
 //
 // {{ range .Files.Lines "foo/bar.html" }}
 // {{ . }}{{ end }}
-func (f files) Lines(path string) ([]string, error) {
+func (f files) Lines(path string) []string {
 	if f == nil || f[path] == nil {
-		return nil, fmt.Errorf("must pass files")
+		log.Printf("must pass files")
+		return nil
 	}
 
-	return strings.Split(string(f[path]), "\n"), nil
+	return strings.Split(string(f[path]), "\n")
 }

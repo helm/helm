@@ -98,17 +98,22 @@ func TestToConfig(t *testing.T) {
 	as := assert.New(t)
 
 	f := getTestFiles()
-	out, err := f.Glob("**/captain.txt").AsConfig()
+
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+	defer func() {
+		log.SetOutput(os.Stderr)
+	}()
+
+	out := f.Glob("**/captain.txt").AsConfig()
 	as.Equal("captain.txt: The Captain", out)
-	as.NoError(err)
 
-	out, err = f.Glob("ship/**").AsConfig()
+	out = f.Glob("ship/**").AsConfig()
 	as.Equal("captain.txt: The Captain\nstowaway.txt: Legatt", out)
-	as.NoError(err)
 
-	out, err = f.Glob(NonExistingFileName).AsConfig()
+	out = f.Glob(NonExistingFileName).AsConfig()
 	as.Empty(out)
-	as.Error(err, "must pass files")
+	as.Contains(buf.String(), "must pass files")
 }
 
 func TestToSecret(t *testing.T) {
@@ -116,13 +121,18 @@ func TestToSecret(t *testing.T) {
 
 	f := getTestFiles()
 
-	out, err := f.Glob("ship/**").AsSecrets()
-	as.Equal("captain.txt: VGhlIENhcHRhaW4=\nstowaway.txt: TGVnYXR0", out)
-	as.NoError(err)
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+	defer func() {
+		log.SetOutput(os.Stderr)
+	}()
 
-	out, err = f.Glob(NonExistingFileName).AsSecrets()
+	out := f.Glob("ship/**").AsSecrets()
+	as.Equal("captain.txt: VGhlIENhcHRhaW4=\nstowaway.txt: TGVnYXR0", out)
+
+	out = f.Glob(NonExistingFileName).AsSecrets()
 	as.Empty(out)
-	as.Errorf(err, "must pass files")
+	as.Contains(buf.String(), "must pass files")
 }
 
 func TestLines(t *testing.T) {
@@ -130,12 +140,17 @@ func TestLines(t *testing.T) {
 
 	f := getTestFiles()
 
-	out, err := f.Lines("multiline/test.txt")
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+	defer func() {
+		log.SetOutput(os.Stderr)
+	}()
+
+	out := f.Lines("multiline/test.txt")
 	as.Len(out, 2)
 	as.Equal("bar", out[0])
-	as.NoError(err)
 
-	out, err = f.Lines(NonExistingFileName)
+	out = f.Lines(NonExistingFileName)
 	as.Nil(out)
-	as.Error(err, "must pass files")
+	as.Contains(buf.String(), "must pass files")
 }
