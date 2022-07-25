@@ -62,18 +62,18 @@ func TestMutualtlsPull(t *testing.T) {
 	}{
 		{
 			name:       "Fetch OCI Chart",
-			args:       fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart --version 0.1.0 --ca-file ../../testdata/rootca.crt --cert-file ../../testdata/rootca.crt --key-file ../../testdata/rootca.key --tls-enabled", ociSrv.RegistryURL),
+			args:       fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart --version 0.1.0 --ca-file ../../testdata/rootca.crt --cert-file ../../testdata/rootca.crt --key-file ../../testdata/rootca.key --mtls-enabled", ociSrv.RegistryURL),
 			expectFile: "./oci-dependent-chart-0.1.0.tgz",
 		},
 		{
 			name:       "Fail fetching non-existent OCI chart with mutual tls enabled",
-			args:       fmt.Sprintf("oci://%s/u/ocitestuser/nosuchthing --version 0.1.0 --tls-enabled", ociSrv.RegistryURL),
+			args:       fmt.Sprintf("oci://%s/u/ocitestuser/nosuchthing --version 0.1.0 --mtls-enabled", ociSrv.RegistryURL),
 			failExpect: "Failed to fetch",
 			wantError:  true,
 		},
 		{
 			name:         "Fail fetching OCI chart without version specified with mutual tls enabled",
-			args:         fmt.Sprintf("oci://%s/u/ocitestuser/nosuchthing --tls-enabled", ociSrv.RegistryURL),
+			args:         fmt.Sprintf("oci://%s/u/ocitestuser/nosuchthing --mtls-enabled", ociSrv.RegistryURL),
 			wantErrorMsg: "Error: --version flag is explicitly required for OCI registries",
 			wantError:    true,
 		},
