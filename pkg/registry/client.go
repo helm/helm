@@ -61,6 +61,7 @@ type (
 		authorizer         auth.Client
 		registryAuthorizer *registryauth.Client
 		resolver           remotes.Resolver
+		PlainHTTP          bool
 	}
 
 	// ClientOption allows specifying various settings configurable by the user for overriding the defaults
@@ -90,6 +91,9 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		headers := http.Header{}
 		headers.Set("User-Agent", version.GetUserAgent())
 		opts := []auth.ResolverOption{auth.WithResolverHeaders(headers)}
+		if client.PlainHTTP {
+			opts = append(opts, auth.WithResolverPlainHTTP())
+		}
 		resolver, err := client.authorizer.ResolverWithOpts(opts...)
 		if err != nil {
 			return nil, err
@@ -163,6 +167,13 @@ func ClientOptWriter(out io.Writer) ClientOption {
 func ClientOptCredentialsFile(credentialsFile string) ClientOption {
 	return func(client *Client) {
 		client.credentialsFile = credentialsFile
+	}
+}
+
+// ClientPlainHTTP returns a function that sets the PlainHTTP setting to true on resolver. use http schema transport data
+func ClientPlainHTTP() ClientOption {
+	return func(client *Client) {
+		client.PlainHTTP = true
 	}
 }
 
