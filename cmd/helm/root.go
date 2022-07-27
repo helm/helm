@@ -152,12 +152,16 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	flags.ParseErrorsWhitelist.UnknownFlags = true
 	flags.Parse(args)
 
-	registryClient, err := registry.NewClient(
+	clientOptions := []registry.ClientOption{
 		registry.ClientOptDebug(settings.Debug),
 		registry.ClientOptEnableCache(true),
 		registry.ClientOptWriter(out),
 		registry.ClientOptCredentialsFile(settings.RegistryConfig),
-	)
+	}
+	if settings.RegistryPlainHTTP {
+		clientOptions = append(clientOptions, registry.ClientPlainHTTP())
+	}
+	registryClient, err := registry.NewClient(clientOptions...)
 	if err != nil {
 		return nil, err
 	}
