@@ -42,6 +42,7 @@ type options struct {
 	passCredentialsAll    bool
 	userAgent             string
 	version               string
+	tlsEnabled            bool
 	registryClient        *registry.Client
 	timeout               time.Duration
 	transport             *http.Transport
@@ -84,6 +85,12 @@ func WithUserAgent(userAgent string) Option {
 func WithInsecureSkipVerifyTLS(insecureSkipVerifyTLS bool) Option {
 	return func(opts *options) {
 		opts.insecureSkipVerifyTLS = insecureSkipVerifyTLS
+	}
+}
+
+func WithTwoWayTLSEnable(tlsEnabled bool) Option {
+	return func(opts *options) {
+		opts.tlsEnabled = tlsEnabled
 	}
 }
 

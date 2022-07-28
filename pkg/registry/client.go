@@ -22,9 +22,11 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/containerd/containerd/remotes"
@@ -38,6 +40,7 @@ import (
 	registryremote "oras.land/oras-go/pkg/registry/remote"
 	registryauth "oras.land/oras-go/pkg/registry/remote/auth"
 
+	"helm.sh/helm/v3/internal/tlsutil"
 	"helm.sh/helm/v3/internal/version"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/helmpath"
@@ -61,6 +64,9 @@ type (
 		authorizer         auth.Client
 		registryAuthorizer *registryauth.Client
 		resolver           remotes.Resolver
+		tlsEnabled         bool
+		chartRef           string
+		utilOpts           tlsutil.Options
 	}
 
 	// ClientOption allows specifying various settings configurable by the user for overriding the defaults
@@ -87,16 +93,41 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		client.authorizer = authClient
 	}
 	if client.resolver == nil {
-		headers := http.Header{}
-		headers.Set("User-Agent", version.GetUserAgent())
-		opts := []auth.ResolverOption{auth.WithResolverHeaders(headers)}
-		resolver, err := client.authorizer.ResolverWithOpts(opts...)
-		if err != nil {
-			return nil, err
+		if client.tlsEnabled {
+			cfgtls, err := tlsutil.ClientConfig(client.utilOpts)
+			if err != nil {
+				fmt.Printf("error :%v\n", err)
+			}
+			var rt http.RoundTripper = &http.Transport{
+				Dial: (&net.Dialer{
+					Timeout:   30 * time.Second,
+					KeepAlive: 30 * time.Second,
+				}).Dial,
+				TLSHandshakeTimeout:   30 * time.Second,
+				TLSClientConfig:       cfgtls,
+				ResponseHeaderTimeout: time.Duration(30 * time.Second),
+				DisableKeepAlives:     true,
+			}
+			sClient := http.Client{Transport: rt, Timeout: 30 * time.Second}
+			headers := http.Header{}
+			headers.Set("User-Agent", version.GetUserAgent())
+			opts := []auth.ResolverOption{auth.WithResolverHeaders(headers), auth.WithResolverClient(&sClient)}
+			resolver, err := client.authorizer.ResolverWithOpts(opts...)
+			if err != nil {
+				return nil, err
+			}
+			client.resolver = resolver
+		} else {
+			headers := http.Header{}
+			headers.Set("User-Agent", version.GetUserAgent())
+			opts := []auth.ResolverOption{auth.WithResolverHeaders(headers)}
+			resolver, err := client.authorizer.ResolverWithOpts(opts...)
+			if err != nil {
+				return nil, err
+			}
+			client.resolver = resolver
 		}
-		client.resolver = resolver
 	}
-
 	// allocate a cache if option is set
 	var cache registryauth.Cache
 	if client.enableCache {
@@ -159,10 +190,30 @@ func ClientOptWriter(out io.Writer) ClientOption {
 	}
 }
 
+func ClientOptChartRef(chartRef string) ClientOption {
+	return func(client *Client) {
+		client.chartRef = chartRef
+	}
+}
+
 // ClientOptCredentialsFile returns a function that sets the credentialsFile setting on a client options set
 func ClientOptCredentialsFile(credentialsFile string) ClientOption {
 	return func(client *Client) {
 		client.credentialsFile = credentialsFile
+	}
+}
+
+//ClientOptTwoWayTLSEnable returns a function that sets the client certificate when two-way tls authentication enable
+func ClientOptTwoWayTLSEnable(tlsEnabled bool) ClientOption {
+	return func(client *Client) {
+		client.tlsEnabled = tlsEnabled
+	}
+}
+
+//ClientOptTwoWayTLSEnable returns a function that sets the client certificate when two-way tls authentication enable
+func ClientOptWithTLSOpts(tlsOpts tlsutil.Options) ClientOption {
+	return func(client *Client) {
+		client.utilOpts = tlsOpts
 	}
 }
 

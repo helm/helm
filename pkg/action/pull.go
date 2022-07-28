@@ -25,6 +25,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"helm.sh/helm/v3/internal/tlsutil"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/downloader"
@@ -86,6 +87,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 			getter.WithPassCredentialsAll(p.PassCredentialsAll),
 			getter.WithTLSClientConfig(p.CertFile, p.KeyFile, p.CaFile),
 			getter.WithInsecureSkipVerifyTLS(p.InsecureSkipTLSverify),
+			getter.WithTwoWayTLSEnable(p.TlsEnabled),
 		},
 		RegistryClient:   p.cfg.RegistryClient,
 		RepositoryConfig: p.Settings.RepositoryConfig,
@@ -93,8 +95,24 @@ func (p *Pull) Run(chartRef string) (string, error) {
 	}
 
 	if registry.IsOCI(chartRef) {
-		c.Options = append(c.Options,
-			getter.WithRegistryClient(p.cfg.RegistryClient))
+		if !p.TlsEnabled {
+			c.Options = append(c.Options,
+				getter.WithRegistryClient(p.cfg.RegistryClient),
+			)
+		} else {
+			registryClient, err := registry.NewClient(
+				registry.ClientOptDebug(p.Settings.Debug),
+				registry.ClientOptCredentialsFile(p.Settings.RegistryConfig),
+				registry.ClientOptWriter(&out),
+				registry.ClientOptTwoWayTLSEnable(p.TlsEnabled),
+				registry.ClientOptChartRef(chartRef),
+				registry.ClientOptWithTLSOpts(tlsutil.Options{CaCertFile: p.CaFile, KeyFile: p.KeyFile, CertFile: p.CertFile, InsecureSkipVerify: p.InsecureSkipTLSverify}),
+			)
+			if err != nil {
+				return out.String(), err
+			}
+			c.Options = append(c.Options, getter.WithRegistryClient(registryClient))
+		}
 	}
 
 	if p.Verify {
