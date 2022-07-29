@@ -249,14 +249,12 @@ func FindChartInAuthAndTLSAndPassRepoURL(repoURL, username, password, chartName,
 	if err != nil {
 		return "", err
 	}
-	// Use a random path name so it can be deleted for cleanup.
-	r.CachePath = helmpath.CachePath(name)
 	idx, err := r.DownloadIndexFile()
 	if err != nil {
 		return "", errors.Wrapf(err, "looks like %q is not a valid chart repository or cannot be reached", repoURL)
 	}
-	// Clean up temp files.
-	defer os.RemoveAll(r.CachePath)
+	defer os.RemoveAll(filepath.Join(r.CachePath, helmpath.CacheChartsFile(r.Config.Name)))
+	defer os.RemoveAll(filepath.Join(r.CachePath, helmpath.CacheIndexFile(r.Config.Name)))
 
 	// Read the index file for the repository to get chart information and return chart URL
 	repoIndex, err := LoadIndexFile(idx)
