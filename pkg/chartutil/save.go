@@ -83,8 +83,8 @@ func SaveDir(c *chart.Chart, dest string) error {
 	// Save dependencies
 	base := filepath.Join(outdir, ChartsDir)
 	for _, dep := range c.Dependencies() {
-		// Here, we write each dependency as a tar file.
-		if _, err := Save(dep, base); err != nil {
+		// Here, we call the SaveDir function again for each dependency
+		if err := SaveDir(dep, base); err != nil {
 			return errors.Wrapf(err, "saving %s", dep.ChartFullPath())
 		}
 	}
