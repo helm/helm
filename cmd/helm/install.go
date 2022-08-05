@@ -86,13 +86,14 @@ the '--debug' and '--dry-run' flags can be combined.
 If --verify is set, the chart MUST have a provenance file, and the provenance
 file MUST pass all verification steps.
 
-There are five different ways you can express the chart you want to install:
+There are six different ways you can express the chart you want to install:
 
 1. By chart reference: helm install mymaria example/mariadb
 2. By path to a packaged chart: helm install mynginx ./nginx-1.2.3.tgz
 3. By path to an unpacked chart directory: helm install mynginx ./nginx
 4. By absolute URL: helm install mynginx https://example.com/charts/nginx-1.2.3.tgz
 5. By chart reference and repo url: helm install --repo https://example.com/charts/ mynginx nginx
+6. By OCI registries: helm install mynginx --version 1.2.3 oci://example.com/charts/nginx
 
 CHART REFERENCES
 
