@@ -112,7 +112,10 @@ func readFile(filePath string, p getter.Providers) ([]byte, error) {
 	if strings.TrimSpace(filePath) == "-" {
 		return ioutil.ReadAll(os.Stdin)
 	}
-	u, _ := url.Parse(filePath)
+	u, err := url.Parse(filePath)
+	if err != nil {
+		return nil, err
+	}
 
 	// FIXME: maybe someone handle other protocols like ftp.
 	g, err := p.ByScheme(u.Scheme)
