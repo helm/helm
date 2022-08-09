@@ -62,8 +62,8 @@ func (p *Package) Run(path string, vals map[string]interface{}) (string, error) 
 		return "", err
 	}
 
-	if matched, _ := regexp.MatchString("^[[:lower:][:digit:]-]+$", ch.Name()); !matched {
-		return "", errors.New(fmt.Sprintf("Invalid chart name \"%s\". Chart names must be lower case letters and numbers with optionally dashes (-) for separator\n", ch.Name()))
+	if err := validateName(ch.Name()); err != nil {
+		return "", err
 	}
 
 	// If version is set, modify the version.
@@ -107,6 +107,14 @@ func (p *Package) Run(path string, vals map[string]interface{}) (string, error) 
 	}
 
 	return name, err
+}
+
+// validateName verifies if the chart name has any illegal characters or not
+func validateName(name string) error {
+	if matched, _ := regexp.MatchString("^[[:lower:][:digit:]-]+$", name); !matched {
+		return errors.New(fmt.Sprintf("Invalid chart name \"%s\". Chart names must be lower case letters and numbers with optionally dashes (-) for separator\n", name))
+	}
+	return nil
 }
 
 // validateVersion Verify that version is a Version, and error out if it is not.

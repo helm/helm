@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -119,6 +120,53 @@ func TestValidateVersion(t *testing.T) {
 					t.Errorf("Expected {%v}, got {%v}", tt.wantErr, err)
 				}
 
+			}
+		})
+	}
+}
+
+func TestValidateName(t *testing.T) {
+	type args struct {
+		name string
+	}
+	expectedError := "Invalid chart name \"%s\". Chart names must be lower case letters and numbers with optionally dashes (-) for separator\n"
+	tests := []struct {
+		name string
+		args
+	}{
+		{
+			"Uppercase letter in name",
+			args{
+				name: "TestChart",
+			},
+		},
+		{
+			"Whitespace ( ) in name",
+			args{
+				name: "test chart",
+			},
+		},
+		{
+			"Underscore (_) in name",
+			args{
+				name: "test_chart",
+			},
+		},
+		{
+			"dot (.) in name",
+			args{
+				name: "TestChart",
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if err := validateName(test.args.name); err != nil {
+				er := fmt.Sprintf(expectedError, test.args.name)
+				if err.Error() != er {
+					t.Errorf("Expected {%v}, got {%v}", er, err)
+				}
 			}
 		})
 	}
