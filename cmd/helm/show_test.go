@@ -47,14 +47,14 @@ func TestShowPreReleaseChart(t *testing.T) {
 			name:        "show pre-release chart",
 			args:        "test/pre-release-chart",
 			fail:        true,
-			expectedErr: "failed to download \"test/pre-release-chart\"",
+			expectedErr: "chart \"pre-release-chart\" matching  not found in test index. (try 'helm repo update'): no chart version found for pre-release-chart-",
 		},
 		{
 			name:        "show pre-release chart",
 			args:        "test/pre-release-chart",
 			fail:        true,
 			flags:       "--version 1.0.0",
-			expectedErr: "failed to download \"test/pre-release-chart\" at version \"1.0.0\"",
+			expectedErr: "chart \"pre-release-chart\" matching 1.0.0 not found in test index. (try 'helm repo update'): no chart version found for pre-release-chart-1.0.0",
 		},
 		{
 			name:  "show pre-release chart with 'devel' flag",
