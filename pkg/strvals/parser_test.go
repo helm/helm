@@ -62,6 +62,14 @@ func TestSetIndex(t *testing.T) {
 			val:     4,
 			err:     true,
 		},
+		{
+			name:    "large",
+			initial: []interface{}{0, 1, 2, 3, 4, 5},
+			expect:  []interface{}{0, 1, 2, 3, 4, 5},
+			add:     MaxIndex + 1,
+			val:     4,
+			err:     true,
+		},
 	}
 
 	for _, tt := range tests {
