@@ -29,6 +29,10 @@ import (
 // ErrNotList indicates that a non-list was treated as a list.
 var ErrNotList = errors.New("not a list")
 
+// MaxIndex is the maximum index that will be allowed by setIndex.
+// The default value 65536 = 1024 * 64
+var MaxIndex = 65536
+
 // ToYAML takes a string of arguments and converts to a YAML document.
 func ToYAML(s string) (string, error) {
 	m, err := Parse(s)
@@ -248,6 +252,9 @@ func setIndex(list []interface{}, index int, val interface{}) (l2 []interface{},
 
 	if index < 0 {
 		return list, fmt.Errorf("negative %d index not allowed", index)
+	}
+	if index > MaxIndex {
+		return list, fmt.Errorf("index of %d is greater than maximum supported index of %d", index, MaxIndex)
 	}
 	if len(list) <= index {
 		newlist := make([]interface{}, index+1)
