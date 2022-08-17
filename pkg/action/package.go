@@ -112,7 +112,7 @@ func (p *Package) Run(path string, vals map[string]interface{}) (string, error) 
 // validateName verifies if the chart name has any illegal characters or not
 func validateName(name string) error {
 	if matched, _ := regexp.MatchString("^[[:lower:][:digit:]-]+$", name); !matched {
-		return errors.New(fmt.Sprintf("Invalid chart name \"%s\". Chart names must be lower case letters and numbers with optionally dashes (-) for separator\n", name))
+		return fmt.Errorf("Invalid chart name \"%s\". Chart names must be lower case letters and numbers with optionally dashes (-) for separator\n", name)
 	}
 	return nil
 }
