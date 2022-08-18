@@ -99,6 +99,28 @@ func TestFuncs(t *testing.T) {
 		tpl:    `{{ lookup "v1" "Namespace" "" "unlikelynamespace99999999" }}`,
 		expect: `map[]`,
 		vars:   `["one", "two"]`,
+	}, {
+		tpl:    "{{ . | jq `.ports[] | select(.name == \"grpc\") | .containerPort` | first }}",
+		expect: "8080",
+		vars: map[string]any{
+			"ports": []any{
+				map[string]any{
+					"containerPort": 80,
+					"name":          "http",
+					"protocol":      "TCP",
+				},
+				map[string]any{
+					"containerPort": 443,
+					"name":          "https",
+					"protocol":      "TCP",
+				},
+				map[string]any{
+					"containerPort": 8080,
+					"name":          "grpc",
+					"protocol":      "TCP",
+				},
+			},
+		},
 	}}
 
 	for _, tt := range tests {
