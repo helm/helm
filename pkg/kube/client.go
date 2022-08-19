@@ -68,6 +68,7 @@ type Client struct {
 	// Namespace allows to bypass the kubeconfig file for the choice of the namespace
 	Namespace string
 
+	mu         sync.Mutex
 	kubeClient *kubernetes.Clientset
 }
 
@@ -98,6 +99,8 @@ var nopLogger = func(_ string, _ ...interface{}) {}
 
 // getKubeClient get or create a new KubernetesClientSet
 func (c *Client) getKubeClient() (*kubernetes.Clientset, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	var err error
 	if c.kubeClient == nil {
 		c.kubeClient, err = c.Factory.KubernetesClientSet()
