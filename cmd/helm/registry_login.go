@@ -25,7 +25,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/docker/docker/pkg/term" //nolint
+	"github.com/moby/term"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
