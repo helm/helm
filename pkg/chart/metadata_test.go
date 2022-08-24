@@ -82,7 +82,7 @@ func TestValidate(t *testing.T) {
 					nil,
 				},
 			},
-			ValidationError("the dependency's item can not be nil"),
+			ValidationError("dependency cannot be an empty list"),
 		},
 		{
 			&Metadata{
@@ -94,7 +94,7 @@ func TestValidate(t *testing.T) {
 					nil,
 				},
 			},
-			ValidationError("the maintainer's item can not be nil"),
+			ValidationError("maintainer cannot be an empty list"),
 		},
 		{
 			&Metadata{APIVersion: "v2", Name: "test", Version: "1.2.3.4"},
