@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"k8s.io/utils/strings/slices"
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/pkg/chart"
@@ -547,13 +548,15 @@ spec:
 var Stderr io.Writer = os.Stderr
 
 // CreateFrom creates a new chart, but scaffolds it from the src chart.
-func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
+func CreateFrom(name, dest, src string, keepMetadata bool) error {
 	schart, err := loader.Load(src)
 	if err != nil {
 		return errors.Wrapf(err, "could not load %s", src)
 	}
 
-	schart.Metadata = chartfile
+	if err = setMetadata(schart, name, keepMetadata); err != nil {
+		return errors.Wrap(err, "could not set metadata")
+	}
 
 	var updatedTemplates []*chart.File
 
@@ -574,12 +577,12 @@ func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
 	}
 	schart.Values = m
 
-	// SaveDir looks for the file values.yaml when saving rather than the values
-	// key in order to preserve the comments in the YAML. The name placeholder
-	// needs to be replaced on that file.
+	// SaveDir looks for the files values.yaml and Chart.yaml when saving rather than the values
+	// and metadata keys in order to preserve the comments in the YAML. The name placeholder
+	// needs to be replaced on these files.
 	for _, f := range schart.Raw {
-		if f.Name == ValuesfileName {
-			f.Data = transform(string(f.Data), schart.Name())
+		if slices.Contains([]string{ValuesfileName, ChartfileName}, f.Name) {
+			f.Data = transform(string(f.Data), name)
 		}
 	}
 
@@ -719,5 +722,25 @@ func validateChartName(name string) error {
 	if !chartName.MatchString(name) {
 		return fmt.Errorf("chart name must match the regular expression %q", chartName.String())
 	}
+	return nil
+}
+
+func setMetadata(schart *chart.Chart, name string, keepMetadata bool) error {
+	for _, f := range schart.Raw {
+		if f.Name == ChartfileName {
+			// Overwrite Metadata only if flag was not set by user to keep backwards compatibility.
+			if !keepMetadata {
+				f.Data = []byte(fmt.Sprintf(defaultChartfile, name))
+			}
+
+			// Deserialize Metadata and check for errors
+			var m chart.Metadata
+			if err := yaml.Unmarshal(transform(string(f.Data), name), &m); err != nil {
+				return errors.Wrap(err, "transforming charts file")
+			}
+			schart.Metadata = &m
+		}
+	}
+
 	return nil
 }

@@ -21,10 +21,10 @@ import (
 	"io"
 	"path/filepath"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/helmpath"
 )
@@ -51,9 +51,10 @@ will be overwritten, but other files will be left alone.
 `
 
 type createOptions struct {
-	starter    string // --starter
-	name       string
-	starterDir string
+	starter      string // --starter
+	name         string
+	starterDir   string
+	keepMetadata bool
 }
 
 func newCreateCmd(out io.Writer) *cobra.Command {
@@ -73,6 +74,13 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 			// No more completions, so disable file completion
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		},
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if len(o.starter) == 0 && o.keepMetadata {
+				return errors.New("the -k/--keep-metadata flag can only be specified when using a starter")
+			}
+
+			return nil
+		},
 		RunE: func(_ *cobra.Command, args []string) error {
 			o.name = args[0]
 			o.starterDir = helmpath.DataPath("starters")
@@ -81,6 +89,7 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&o.starter, "starter", "p", "", "the name or absolute path to Helm starter scaffold")
+	cmd.Flags().BoolVarP(&o.keepMetadata, "keep-metadata", "k", false, "if specified, does not override the starter's Chart.yaml")
 	return cmd
 }
 
@@ -88,14 +97,6 @@ func (o *createOptions) run(out io.Writer) error {
 	fmt.Fprintf(out, "Creating %s\n", o.name)
 
 	chartname := filepath.Base(o.name)
-	cfile := &chart.Metadata{
-		Name:        chartname,
-		Description: "A Helm chart for Kubernetes",
-		Type:        "application",
-		Version:     "0.1.0",
-		AppVersion:  "0.1.0",
-		APIVersion:  chart.APIVersionV2,
-	}
 
 	if o.starter != "" {
 		// Create from the starter
@@ -104,7 +105,7 @@ func (o *createOptions) run(out io.Writer) error {
 		if filepath.IsAbs(o.starter) {
 			lstarter = o.starter
 		}
-		return chartutil.CreateFrom(cfile, filepath.Dir(o.name), lstarter)
+		return chartutil.CreateFrom(chartname, filepath.Dir(chartname), lstarter, o.keepMetadata)
 	}
 
 	chartutil.Stderr = out

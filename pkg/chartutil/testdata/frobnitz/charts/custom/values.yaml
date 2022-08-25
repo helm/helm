@@ -1,0 +1,22 @@
+# Default values for <CHARTNAME>.
+# This is a YAML-formatted file. https://github.com/toml-lang/toml
+# Declare name/value pairs to be passed into your templates.
+# name: "value"
+
+<CHARTNAME>:
+  test: true
+
+replicaCount: 1
+
+image:
+  repository: ""
+  pullPolicy: IfNotPresent
+  tag: latest
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+service:
+  type: ClusterIP
+  port: 80
