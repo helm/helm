@@ -53,7 +53,8 @@ a plus (+) when pulling from a registry.`
 type (
 	// Client works with OCI-compliant registries
 	Client struct {
-		debug bool
+		debug       bool
+		enableCache bool
 		// path to repository config file e.g. ~/.docker/config.json
 		credentialsFile    string
 		out                io.Writer
@@ -95,12 +96,18 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		}
 		client.resolver = resolver
 	}
+
+	// allocate a cache if option is set
+	var cache registryauth.Cache
+	if client.enableCache {
+		cache = registryauth.DefaultCache
+	}
 	if client.registryAuthorizer == nil {
 		client.registryAuthorizer = &registryauth.Client{
 			Header: http.Header{
 				"User-Agent": {version.GetUserAgent()},
 			},
-			Cache: registryauth.DefaultCache,
+			Cache: cache,
 			Credential: func(ctx context.Context, reg string) (registryauth.Credential, error) {
 				dockerClient, ok := client.authorizer.(*dockerauth.Client)
 				if !ok {
@@ -135,6 +142,13 @@ func NewClient(options ...ClientOption) (*Client, error) {
 func ClientOptDebug(debug bool) ClientOption {
 	return func(client *Client) {
 		client.debug = debug
+	}
+}
+
+// ClientOptEnableCache returns a function that sets the enableCache setting on a client options set
+func ClientOptEnableCache(enableCache bool) ClientOption {
+	return func(client *Client) {
+		client.enableCache = enableCache
 	}
 }
 
