@@ -157,7 +157,7 @@ func TestListCmd(t *testing.T) {
 		name:   "list releases in full json format",
 		cmd:    "list --output json",
 		golden: "output/list-full-json.txt",
-    rels:   releaseFixture,
+		rels:   releaseFixture,
 	}, {
 		name:   "list without headers",
 		cmd:    "list --no-headers",
