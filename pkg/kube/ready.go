@@ -284,7 +284,7 @@ func (c *ReadyChecker) volumeReady(v *corev1.PersistentVolumeClaim) bool {
 }
 
 func (c *ReadyChecker) deploymentReady(rs *appsv1.ReplicaSet, dep *appsv1.Deployment) bool {
-	// Verify the generation observed by the replicaSet controller matches the spec generation
+	// Verify the replicaset readiness
 	if !c.replicaSetReady(rs) {
 		return false
 	}
