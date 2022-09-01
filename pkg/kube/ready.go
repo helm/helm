@@ -391,12 +391,6 @@ func (c *ReadyChecker) statefulSetReady(sts *appsv1.StatefulSet) bool {
 		return true
 	}
 
-	// Make sure the status is up-to-date with the StatefulSet changes
-	if sts.Status.ObservedGeneration < sts.Generation {
-		c.log("StatefulSet is not ready: %s/%s. update has not yet been observed", sts.Namespace, sts.Name)
-		return false
-	}
-
 	// Dereference all the pointers because StatefulSets like them
 	var partition int
 	// 1 is the default for replicas if not set
