@@ -19,6 +19,8 @@ package values
 import (
 	"reflect"
 	"testing"
+
+	"helm.sh/helm/v3/pkg/getter"
 )
 
 func TestMergeValues(t *testing.T) {
@@ -73,5 +75,14 @@ func TestMergeValues(t *testing.T) {
 	equal = reflect.DeepEqual(testMap, expectedMap)
 	if !equal {
 		t.Errorf("Expected a map with different keys to merge properly with another map. Expected: %v, got %v", expectedMap, testMap)
+	}
+}
+
+func TestReadFile(t *testing.T) {
+	var p getter.Providers
+	filePath := "%a.txt"
+	_, err := readFile(filePath, p)
+	if err == nil {
+		t.Errorf("Expected error when has special strings")
 	}
 }
