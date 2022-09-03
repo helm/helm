@@ -102,23 +102,24 @@ type Configuration struct {
 // TODO: This function is badly in need of a refactor.
 // TODO: As part of the refactor the duplicate code in cmd/helm/template.go should be removed
 //       This code has to do with writing files to disk.
-func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, dryRun bool) ([]*release.Hook, *bytes.Buffer, string, error) {
+func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, dryRun bool) ([]*release.Hook, *bytes.Buffer, *bytes.Buffer, string, error) {
 	hs := []*release.Hook{}
+	crdb := bytes.NewBuffer(nil)
 	b := bytes.NewBuffer(nil)
 
 	caps, err := cfg.getCapabilities()
 	if err != nil {
-		return hs, b, "", err
+		return hs, crdb, b, "", err
 	}
 
 	if ch.Metadata.KubeVersion != "" {
 		if !chartutil.IsCompatibleRange(ch.Metadata.KubeVersion, caps.KubeVersion.String()) {
-			return hs, b, "", errors.Errorf("chart requires kubeVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, caps.KubeVersion.String())
+			return hs, crdb, b, "", errors.Errorf("chart requires kubeVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, caps.KubeVersion.String())
 		}
 	}
 
 	var files map[string]string
-	var err2 error
+	var crdFiles map[string]string
 
 	// A `helm template` or `helm install --dry-run` should not talk to the remote cluster.
 	// It will break in interesting and exotic ways because other data (e.g. discovery)
@@ -128,15 +129,75 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	if !dryRun && cfg.RESTClientGetter != nil {
 		restConfig, err := cfg.RESTClientGetter.ToRESTConfig()
 		if err != nil {
-			return hs, b, "", err
+			return hs, crdb, b, "", err
 		}
-		files, err2 = engine.RenderWithClient(ch, values, restConfig)
+
+		if crdFiles, err = engine.RenderCRDsWithClient(ch, values, restConfig); err != nil {
+			return hs, crdb, b, "", err
+		}
+
+		if files, err = engine.RenderWithClient(ch, values, restConfig); err != nil {
+			return hs, crdb, b, "", err
+		}
 	} else {
-		files, err2 = engine.Render(ch, values)
+		if crdFiles, err = engine.RenderCRDs(ch, values); err != nil {
+			return hs, crdb, b, "", err
+		}
+
+		if files, err = engine.Render(ch, values); err != nil {
+			return hs, crdb, b, "", err
+		}
 	}
 
-	if err2 != nil {
-		return hs, b, "", err2
+	// Aggregate all valid manifests into one big doc.
+	fileWritten := make(map[string]bool)
+
+	crdBuffer := crdb
+	if includeCrds {
+		crdBuffer = b
+	}
+
+	// Sort hooks, manifests, and partials. Only hooks and manifests are returned,
+	// as partials are not used after renderer.Render. Empty manifests are also
+	// removed here.
+	crdHs, crdManifests, err := releaseutil.SortManifests(crdFiles, caps.APIVersions, releaseutil.InstallOrder)
+	if err != nil {
+		// By catching parse errors here, we can prevent bogus releases from going
+		// to Kubernetes.
+		//
+		// We return the files as a big blob of data to help the user debug parser
+		// errors.
+		for name, content := range crdFiles {
+			if strings.TrimSpace(content) == "" {
+				continue
+			}
+			fmt.Fprintf(crdBuffer, "---\n# Source: %s\n%s\n", name, content)
+		}
+		return hs, crdb, b, "", err
+	}
+
+	if len(crdHs) > 0 {
+		return hs, crdb, b, "", errors.Errorf("hook annotations are not supported for CRDs")
+	}
+
+	for _, m := range crdManifests {
+		if outputDir == "" {
+			fmt.Fprintf(crdBuffer, "---\n# Source: %s\n%s\n", m.Name, m.Content)
+		} else {
+			newDir := outputDir
+			if useReleaseName {
+				newDir = filepath.Join(outputDir, releaseName)
+			}
+			// NOTE: We do not have to worry about the post-renderer because
+			// output dir is only used by `helm template`. In the next major
+			// release, we should move this logic to template only as it is not
+			// used by install or upgrade
+			err = writeToFile(newDir, m.Name, m.Content, fileWritten[m.Name])
+			if err != nil {
+				return hs, crdb, b, "", err
+			}
+			fileWritten[m.Name] = true
+		}
 	}
 
 	// NOTES.txt gets rendered like all the other files, but because it's not a hook nor a resource,
@@ -175,24 +236,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 			}
 			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", name, content)
 		}
-		return hs, b, "", err
-	}
-
-	// Aggregate all valid manifests into one big doc.
-	fileWritten := make(map[string]bool)
-
-	if includeCrds {
-		for _, crd := range ch.CRDObjects() {
-			if outputDir == "" {
-				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Name, string(crd.File.Data[:]))
-			} else {
-				err = writeToFile(outputDir, crd.Filename, string(crd.File.Data[:]), fileWritten[crd.Name])
-				if err != nil {
-					return hs, b, "", err
-				}
-				fileWritten[crd.Name] = true
-			}
-		}
+		return hs, crdb, b, "", err
 	}
 
 	for _, m := range manifests {
@@ -209,7 +253,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 			// used by install or upgrade
 			err = writeToFile(newDir, m.Name, m.Content, fileWritten[m.Name])
 			if err != nil {
-				return hs, b, "", err
+				return hs, crdb, b, "", err
 			}
 			fileWritten[m.Name] = true
 		}
@@ -218,11 +262,11 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	if pr != nil {
 		b, err = pr.Run(b)
 		if err != nil {
-			return hs, b, notes, errors.Wrap(err, "error while running post render on files")
+			return hs, crdb, b, notes, errors.Wrap(err, "error while running post render on files")
 		}
 	}
 
-	return hs, b, notes, nil
+	return hs, crdb, b, notes, nil
 }
 
 // RESTClientGetter gets the rest client

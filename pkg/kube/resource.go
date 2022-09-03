@@ -16,7 +16,9 @@ limitations under the License.
 
 package kube // import "helm.sh/helm/v3/pkg/kube"
 
-import "k8s.io/cli-runtime/pkg/resource"
+import (
+	"k8s.io/cli-runtime/pkg/resource"
+)
 
 // ResourceList provides convenience methods for comparing collections of Infos.
 type ResourceList []*resource.Info

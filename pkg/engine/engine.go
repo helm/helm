@@ -64,8 +64,9 @@ type Engine struct {
 // section contains a value named "bar", that value will be passed on to the
 // bar chart during render time.
 func (e Engine) Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, error) {
-	tmap := allTemplates(chrt, values)
-	return e.render(tmap)
+	m := allTemplates(chrt, values)
+	tmap, rmap := m, m
+	return e.renderWithReferences(tmap, rmap)
 }
 
 // Render takes a chart, optional values, and value overrides, and attempts to
@@ -81,6 +82,45 @@ func RenderWithClient(chrt *chart.Chart, values chartutil.Values, config *rest.C
 	return Engine{
 		config: config,
 	}.Render(chrt, values)
+}
+
+// Render takes a chart, optional values, and value overrides, and attempts to render the Go templates.
+//
+// Render can be called repeatedly on the same engine.
+//
+// This will look in the chart's 'crds' data (e.g. the 'crds/' directory)
+// and attempt to render the crds there using the values passed in.
+//
+// Values are scoped to their templates. A dependency template will not have
+// access to the values set for its parent. If chart "foo" includes chart "bar",
+// "bar" will not have access to the values for "foo".
+//
+// Values should be prepared with something like `chartutils.ReadValues`.
+//
+// Values are passed through the templates according to scope. If the top layer
+// chart includes the chart foo, which includes the chart bar, the values map
+// will be examined for a table called "foo". If "foo" is found in vals,
+// that section of the values will be passed into the "foo" chart. And if that
+// section contains a value named "bar", that value will be passed on to the
+// bar chart during render time.
+func (e Engine) RenderCRDs(chrt *chart.Chart, values chartutil.Values) (map[string]string, error) {
+	tmap, rmap := allCRDs(chrt, values)
+	return e.renderWithReferences(tmap, rmap)
+}
+
+// RenderCRDs takes a chart, optional values, and value overrides, and attempts to
+// render the Go templates using the default options.
+func RenderCRDs(chrt *chart.Chart, values chartutil.Values) (map[string]string, error) {
+	return new(Engine).RenderCRDs(chrt, values)
+}
+
+// RenderCRDsWithClient takes a chart, optional values, and value overrides, and attempts to
+// render the Go templates using the default options. This engine is client aware and so can have template
+// functions that interact with the client
+func RenderCRDsWithClient(chrt *chart.Chart, values chartutil.Values, config *rest.Config) (map[string]string, error) {
+	return Engine{
+		config: config,
+	}.RenderCRDs(chrt, values)
 }
 
 // renderable is an object that can be rendered.
@@ -331,20 +371,40 @@ func (p byPathLen) Less(i, j int) bool {
 	return ca < cb
 }
 
+func mergeMaps(ms ...map[string]renderable) map[string]renderable {
+	res := map[string]renderable{}
+	for _, m := range ms {
+		for k, v := range m {
+			res[k] = v
+		}
+	}
+	return res
+}
+
 // allTemplates returns all templates for a chart and its dependencies.
 //
 // As it goes, it also prepares the values in a scope-sensitive manner.
 func allTemplates(c *chart.Chart, vals chartutil.Values) map[string]renderable {
 	templates := make(map[string]renderable)
-	recAllTpls(c, templates, vals)
+	recAll(c, templates, nil, vals)
 	return templates
 }
 
-// recAllTpls recurses through the templates in a chart.
+// allCRDs returns all CRDs for a chart and its dependencies.
 //
-// As it recurses, it also sets the values to be appropriate for the template
+// As it goes, it also prepares the values in a scope-sensitive manner.
+func allCRDs(c *chart.Chart, vals chartutil.Values) (map[string]renderable, map[string]renderable) {
+	templates := make(map[string]renderable)
+	crds := make(map[string]renderable)
+	recAll(c, templates, crds, vals)
+	return crds, mergeMaps(templates, crds)
+}
+
+// recAllTpls recurses through the templates/ CRDs in a chart.
+//
+// As it recurses, it also sets the values to be appropriate for the template/ crd
 // scope.
-func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.Values) map[string]interface{} {
+func recAll(c *chart.Chart, templates, crds map[string]renderable, vals chartutil.Values) map[string]interface{} {
 	subCharts := make(map[string]interface{})
 	chartMetaData := struct {
 		chart.Metadata
@@ -369,18 +429,34 @@ func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.
 	}
 
 	for _, child := range c.Dependencies() {
-		subCharts[child.Name()] = recAllTpls(child, templates, next)
+		subCharts[child.Name()] = recAll(child, templates, crds, next)
 	}
 
 	newParentID := c.ChartFullPath()
-	for _, t := range c.Templates {
-		if !isTemplateValid(c, t.Name) {
-			continue
+
+	if templates != nil {
+		for _, t := range c.Templates {
+			if !isTemplateValid(c, t.Name) {
+				continue
+			}
+			templates[path.Join(newParentID, t.Name)] = renderable{
+				tpl:      string(t.Data),
+				vals:     next,
+				basePath: path.Join(newParentID, "templates"),
+			}
 		}
-		templates[path.Join(newParentID, t.Name)] = renderable{
-			tpl:      string(t.Data),
-			vals:     next,
-			basePath: path.Join(newParentID, "templates"),
+	}
+
+	if crds != nil {
+		for _, t := range c.CRDs() {
+			if !isTemplateValid(c, t.Name) {
+				continue
+			}
+			crds[path.Join(newParentID, t.Name)] = renderable{
+				tpl:      string(t.Data),
+				vals:     next,
+				basePath: path.Join(newParentID, "crds"),
+			}
 		}
 	}
 

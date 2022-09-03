@@ -45,6 +45,12 @@ func existingResourceConflict(resources kube.ResourceList, releaseName, releaseN
 			return err
 		}
 
+		// Resources created by PrintingKubeClient do not have a Client or a Mapping value set.
+		// For these resources we can skip conflict detection.
+		if (info.Client == nil) || (info.Mapping == nil) {
+			return nil
+		}
+
 		helper := resource.NewHelper(info.Client, info.Mapping)
 		existing, err := helper.Get(info.Namespace, info.Name)
 		if err != nil {

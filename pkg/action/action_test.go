@@ -102,6 +102,48 @@ subjects:
   namespace: {{ .Release.Namespace }}
 `
 
+var crdManifests = `apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: crontabs.stable.example.com
+spec:
+  group: stable.example.com
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                cronSpec:
+                  type: string
+                image:
+                  type: string
+                replicas:
+                  type: integer
+  conversion:
+    strategy: Webhook
+    webhook:
+      conversionReviewVersions: ["v1","v1beta1"]
+      clientConfig:
+        service:
+          namespace: {{ .Release.Namespace }}
+          name: {{ template "_planet" . }}
+          path: /crdconvert
+        caBundle: "Ci0tLS0tQk...<base64-encoded PEM bundle>...tLS0K"
+  scope: Namespaced
+  names:
+    plural: crontabs
+    singular: crontab
+    kind: CronTab
+    shortNames:
+    - ct
+`
+
 type chartOptions struct {
 	*chart.Chart
 }
@@ -213,6 +255,16 @@ func withMultipleManifestTemplate() chartOption {
 	return func(opts *chartOptions) {
 		sampleTemplates := []*chart.File{
 			{Name: "templates/rbac", Data: []byte(rbacManifests)},
+		}
+		opts.Templates = append(opts.Templates, sampleTemplates...)
+	}
+}
+
+func withTemplatedCRDs() chartOption {
+	return func(opts *chartOptions) {
+		sampleTemplates := []*chart.File{
+			{Name: "templates/partials/_planet", Data: []byte(`{{define "_planet"}}Earth{{end}}`)},
+			{Name: "crds/hello", Data: []byte(crdManifests)},
 		}
 		opts.Templates = append(opts.Templates, sampleTemplates...)
 	}

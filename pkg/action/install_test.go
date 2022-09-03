@@ -173,6 +173,25 @@ func TestInstallRelease_WithNotes(t *testing.T) {
 	is.Equal(rel.Info.Notes, "note here")
 }
 
+func TestInstallRelease_WithTemplatedCRDs(t *testing.T) {
+	is := assert.New(t)
+	instAction := installAction(t)
+	instAction.ReleaseName = "with-crds"
+	vals := map[string]interface{}{}
+	res, err := instAction.Run(buildChart(withTemplatedCRDs()), vals)
+	if err != nil {
+		t.Fatalf("Failed install: %s", err)
+	}
+
+	rel, err := instAction.cfg.Releases.Get(res.Name, res.Version)
+	if err != nil {
+		t.Fatalf("Failed getting release: %s", err)
+	}
+	is.Contains(rel.Manifest, "---\n# Source: hello/crds/hello")
+	is.Contains(rel.Manifest, "namespace: spaced")
+	is.Contains(rel.Manifest, "name: Earth")
+}
+
 func TestInstallRelease_WithNotesRendered(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)

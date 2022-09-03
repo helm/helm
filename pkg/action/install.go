@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -133,29 +134,24 @@ func NewInstall(cfg *Configuration) *Install {
 	return in
 }
 
-func (i *Install) installCRDs(crds []chart.CRD) error {
+func (i *Install) installCRDs(crds kube.ResourceList) error {
 	// We do these one file at a time in the order they were read.
 	totalItems := []*resource.Info{}
-	for _, obj := range crds {
-		// Read in the resources
-		res, err := i.cfg.KubeClient.Build(bytes.NewBuffer(obj.File.Data), false)
-		if err != nil {
-			return errors.Wrapf(err, "failed to install CRD %s", obj.Name)
-		}
-
+	for _, crd := range crds {
 		// Send them to Kube
-		if _, err := i.cfg.KubeClient.Create(res); err != nil {
+		if _, err := i.cfg.KubeClient.Create([]*resource.Info{crd}); err != nil {
 			// If the error is CRD already exists, continue.
 			if apierrors.IsAlreadyExists(err) {
-				crdName := res[0].Name
+				crdName := crd.Name
 				i.cfg.Log("CRD %s is already present. Skipping.", crdName)
 				continue
 			}
-			return errors.Wrapf(err, "failed to install CRD %s", obj.Name)
+			return errors.Wrapf(err, "failed to install CRD %s", crd.Name)
 		}
-		totalItems = append(totalItems, res...)
+		totalItems = append(totalItems, crd)
 	}
-	if len(totalItems) > 0 {
+
+	if (i.cfg.RESTClientGetter != nil) && (len(totalItems) > 0) {
 		// Invalidate the local cache, since it will not have the new CRDs
 		// present.
 		discoveryClient, err := i.cfg.RESTClientGetter.ToDiscoveryClient()
@@ -208,8 +204,6 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		// On dry run, bail here
 		if i.DryRun {
 			i.cfg.Log("WARNING: This chart or one of its subcharts contains CRDs. Rendering may fail or contain inaccuracies.")
-		} else if err := i.installCRDs(crds); err != nil {
-			return nil, err
 		}
 	}
 
@@ -256,7 +250,8 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	rel := i.createRelease(chrt, vals)
 
 	var manifestDoc *bytes.Buffer
-	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, i.DryRun)
+	var crdManifestDoc *bytes.Buffer
+	rel.Hooks, crdManifestDoc, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, i.DryRun)
 	// Even for errors, attach this if available
 	if manifestDoc != nil {
 		rel.Manifest = manifestDoc.String()
@@ -271,11 +266,45 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	// Mark this release as in-progress
 	rel.SetStatus(release.StatusPendingInstall, "Initial install underway")
 
-	var toBeAdopted kube.ResourceList
+	// build CRD resources
+	crdResources, err := i.cfg.KubeClient.Build(crdManifestDoc, !i.DisableOpenAPIValidation)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to build kubernetes objects from release manifest")
+	}
+
+	manifestDocCrdFiltered := kube.FilterManifest(io.NopCloser(manifestDoc), func(err error, r *metav1.PartialObjectMetadata) bool {
+		return (err == nil) && (r.GetObjectKind().GroupVersionKind().Group == "apiextensions.k8s.io") &&
+			(r.GetObjectKind().GroupVersionKind().Kind == "CustomResourceDefinition")
+	})
+
+	templateCrdResources, err := i.cfg.KubeClient.Build(manifestDocCrdFiltered, !i.DisableOpenAPIValidation)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to build kubernetes objects from release manifest")
+	}
+
+	// It is safe to use "force" here because these are resources currently rendered by the chart.
+	err = templateCrdResources.Visit(setMetadataVisitor(rel.Name, rel.Namespace, true))
+	if err != nil {
+		return nil, err
+	}
+
+	// combine resources from 'crds/' and 'templates/'
+	crdResources = append(crdResources, templateCrdResources...)
+
+	if err := i.installCRDs(crdResources); err != nil {
+		return nil, err
+	}
+
 	resources, err := i.cfg.KubeClient.Build(bytes.NewBufferString(rel.Manifest), !i.DisableOpenAPIValidation)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to build kubernetes objects from release manifest")
 	}
+
+	// Remove the CRDs from the resources, they are already installed
+	resources = resources.Filter(func(r *resource.Info) bool {
+		return !((r.Object.GetObjectKind().GroupVersionKind().Group == "apiextensions.k8s.io") &&
+			(r.Object.GetObjectKind().GroupVersionKind().Kind == "CustomResourceDefinition"))
+	})
 
 	// It is safe to use "force" here because these are resources currently rendered by the chart.
 	err = resources.Visit(setMetadataVisitor(rel.Name, rel.Namespace, true))
@@ -283,6 +312,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		return nil, err
 	}
 
+	var toBeAdopted kube.ResourceList
 	// Install requires an extra validation step of checking that resources
 	// don't already exist before we actually create resources. If we continue
 	// forward and create the release object with resources that already exist,
