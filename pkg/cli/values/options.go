@@ -34,6 +34,7 @@ type Options struct {
 	StringValues []string
 	Values       []string
 	FileValues   []string
+	JSONValues   []string
 }
 
 // MergeValues merges values from files specified via -f/--values and directly
@@ -57,6 +58,13 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 		base = mergeMaps(base, currentMap)
 	}
 
+	// User specified a value via --set-json
+	for _, value := range opts.JSONValues {
+		if err := strvals.ParseJSON(value, base); err != nil {
+			return nil, errors.Errorf("failed parsing --set-json data %s", value)
+		}
+	}
+
 	// User specified a value via --set
 	for _, value := range opts.Values {
 		if err := strvals.ParseInto(value, base); err != nil {
@@ -75,6 +83,9 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 	for _, value := range opts.FileValues {
 		reader := func(rs []rune) (interface{}, error) {
 			bytes, err := readFile(string(rs), p)
+			if err != nil {
+				return nil, err
+			}
 			return string(bytes), err
 		}
 		if err := strvals.ParseIntoFile(value, base, reader); err != nil {
@@ -109,7 +120,10 @@ func readFile(filePath string, p getter.Providers) ([]byte, error) {
 	if strings.TrimSpace(filePath) == "-" {
 		return ioutil.ReadAll(os.Stdin)
 	}
-	u, _ := url.Parse(filePath)
+	u, err := url.Parse(filePath)
+	if err != nil {
+		return nil, err
+	}
 
 	// FIXME: maybe someone handle other protocols like ftp.
 	g, err := p.ByScheme(u.Scheme)
@@ -117,5 +131,8 @@ func readFile(filePath string, p getter.Providers) ([]byte, error) {
 		return ioutil.ReadFile(filePath)
 	}
 	data, err := g.Get(filePath, getter.WithURL(filePath))
+	if err != nil {
+		return nil, err
+	}
 	return data.Bytes(), err
 }

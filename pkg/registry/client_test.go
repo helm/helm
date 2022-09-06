@@ -70,6 +70,7 @@ func (suite *RegistryClientTestSuite) SetupSuite() {
 	var err error
 	suite.RegistryClient, err = NewClient(
 		ClientOptDebug(true),
+		ClientOptEnableCache(true),
 		ClientOptWriter(suite.Out),
 		ClientOptCredentialsFile(credentialsFile),
 	)

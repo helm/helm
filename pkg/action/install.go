@@ -712,6 +712,10 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		RegistryClient:   c.registryClient,
 	}
 
+	if registry.IsOCI(name) {
+		dl.Options = append(dl.Options, getter.WithRegistryClient(c.registryClient))
+	}
+
 	if c.Verify {
 		dl.Verify = downloader.VerifyAlways
 	}
@@ -751,20 +755,13 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 	}
 
 	filename, _, err := dl.DownloadTo(name, version, settings.RepositoryCache)
-	if err == nil {
-		lname, err := filepath.Abs(filename)
-		if err != nil {
-			return filename, err
-		}
-		return lname, nil
-	} else if settings.Debug {
+	if err != nil {
+		return "", err
+	}
+
+	lname, err := filepath.Abs(filename)
+	if err != nil {
 		return filename, err
 	}
-
-	atVersion := ""
-	if version != "" {
-		atVersion = fmt.Sprintf(" at version %q", version)
-	}
-
-	return filename, errors.Errorf("failed to download %q%s", name, atVersion)
+	return lname, nil
 }

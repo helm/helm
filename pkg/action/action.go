@@ -272,6 +272,7 @@ func (cfg *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 			Major:   kubeVersion.Major,
 			Minor:   kubeVersion.Minor,
 		},
+		HelmVersion: chartutil.DefaultCapabilities.HelmVersion,
 	}
 	return cfg.Capabilities, nil
 }
