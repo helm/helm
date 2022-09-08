@@ -103,13 +103,10 @@ func warnWrap(warn string) string {
 	return warnStartDelim + warn + warnEndDelim
 }
 
-// initFunMap creates the Engine's FuncMap and adds context-specific functions.
-func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]renderable) {
-	funcMap := funcMap()
-	includedNames := make(map[string]int)
-
-	// Add the 'include' function here so we can close over t.
-	funcMap["include"] = func(name string, data interface{}) (string, error) {
+// 'include' needs to be defined in the scope of a 'tpl' template as
+// well as regular file-loaded templates.
+func includeFun(t *template.Template, includedNames map[string]int) func(string, interface{}) (string, error) {
+	return func(name string, data interface{}) (string, error) {
 		var buf strings.Builder
 		if v, ok := includedNames[name]; ok {
 			if v > recursionMaxNums {
@@ -123,32 +120,42 @@ func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]render
 		includedNames[name]--
 		return buf.String(), err
 	}
+}
+
+// initFunMap creates the Engine's FuncMap and adds context-specific functions.
+func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]renderable) {
+	funcMap := funcMap()
+	includedNames := make(map[string]int)
+
+	// Add the 'include' function here so we can close over t.
+	funcMap["include"] = includeFun(t, includedNames)
 
 	// Add the 'tpl' function here
 	funcMap["tpl"] = func(tpl string, vals chartutil.Values) (string, error) {
-		basePath, err := vals.PathValue("Template.BasePath")
+		t, err := t.Clone()
 		if err != nil {
-			return "", errors.Wrapf(err, "cannot retrieve Template.Basepath from values inside tpl function: %s", tpl)
+			return "", errors.Wrapf(err, "cannot clone template")
 		}
 
-		templateName, err := vals.PathValue("Template.Name")
+		// Re-inject 'include' so that it can close over our clone of t;
+		// this lets any 'define's inside tpl be 'include'd.
+		tplFuncMap := template.FuncMap{
+			"include": includeFun(t, includedNames),
+		}
+		t.Funcs(tplFuncMap)
+
+		t, err = t.Parse(tpl)
 		if err != nil {
-			return "", errors.Wrapf(err, "cannot retrieve Template.Name from values inside tpl function: %s", tpl)
+			return "", errors.Wrapf(err, "cannot parse template %q", tpl)
 		}
 
-		templates := map[string]renderable{
-			templateName.(string): {
-				tpl:      tpl,
-				vals:     vals,
-				basePath: basePath.(string),
-			},
-		}
-
-		result, err := e.renderWithReferences(templates, referenceTpls)
-		if err != nil {
+		var buf strings.Builder
+		if err := t.Execute(&buf, vals); err != nil {
 			return "", errors.Wrapf(err, "error during tpl function execution for %q", tpl)
 		}
-		return result[templateName.(string)], nil
+
+		// See comment in renderWithReferences explaining the <no value> hack.
+		return strings.ReplaceAll(buf.String(), "<no value>", ""), nil
 	}
 
 	// Add the `required` function here so we can use lintMode
