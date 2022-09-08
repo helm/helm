@@ -103,7 +103,7 @@ func postRenderHookManifests(hs []*release.Hook, pr postrender.PostRenderer) err
 	for _, hook := range hs {
 		sb, err := pr.Run(bytes.NewBufferString(hook.Manifest))
 		if err != nil {
-			return errors.Wrapf(err, "error while running post render on hook: %s manifest", hook.Name)
+			return errors.Wrapf(err, "error while running postRender on hook: %s, which is path: %s and kind: %s", hook.Name, hook.Path, hook.Kind)
 		}
 		hook.Manifest = sb.String()
 	}

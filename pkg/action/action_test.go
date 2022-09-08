@@ -16,9 +16,9 @@ limitations under the License.
 package action
 
 import (
+	"bytes"
 	"flag"
 	"io/ioutil"
-	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -27,7 +27,6 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
-	"helm.sh/helm/v3/pkg/postrender"
 	"helm.sh/helm/v3/pkg/registry"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage"
@@ -285,17 +284,33 @@ func TestGetVersionSet(t *testing.T) {
 	}
 }
 
-func TestPostRenderHookManifests(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		// the actual Run test uses a basic sed example, so skip this test on windows
-		t.Skip("skipping on windows")
+type PostRendererMock struct {
+}
+
+func (p *PostRendererMock) Run(renderedManifests *bytes.Buffer) (*bytes.Buffer, error) {
+	var output = &bytes.Buffer{}
+	for {
+		line, err := renderedManifests.ReadBytes('\n')
+
+		if len(line) > 0 {
+			output.Write(bytes.ReplaceAll(line, []byte("fake-image"), []byte("local-image")))
+		}
+		// ReadBytes returns err != nil if and only if the returned data does not end in delim.
+		if err != nil {
+			break
+		}
 	}
+
+	return output, nil
+}
+
+func TestPostRenderHookManifests(t *testing.T) {
 
 	hs := []*release.Hook{
 		{
-			Name:     "finding-nemo",
+			Name:     "test-postrender-hook",
 			Kind:     "Pod",
-			Path:     "finding-nemo",
+			Path:     "test-postrender-hook",
 			Manifest: manifestWithTestHook,
 			Events: []release.HookEvent{
 				release.HookTest,
@@ -303,10 +318,7 @@ func TestPostRenderHookManifests(t *testing.T) {
 		},
 	}
 
-	pr, err := postrender.NewExec("sed", "s/fake-image/local-image/")
-	if err != nil {
-		t.Error(err)
-	}
+	pr := &PostRendererMock{}
 
 	if err := postRenderHookManifests(hs, pr); err != nil {
 		t.Error(err)
