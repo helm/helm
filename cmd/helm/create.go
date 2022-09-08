@@ -105,7 +105,7 @@ func (o *createOptions) run(out io.Writer) error {
 		if filepath.IsAbs(o.starter) {
 			lstarter = o.starter
 		}
-		return chartutil.CreateFrom(chartname, filepath.Dir(chartname), lstarter, o.keepMetadata)
+		return chartutil.CreateFromWithMetadata(chartname, filepath.Dir(chartname), lstarter, o.keepMetadata)
 	}
 
 	chartutil.Stderr = out
