@@ -548,22 +548,23 @@ spec:
 var Stderr io.Writer = os.Stderr
 
 // CreateFrom creates a new chart, but scaffolds it from the src chart.
-// Deprecated: Use CreateFromWithMetadata
-// TODO Helm 4: Fold CreateFromWithMetadata back into CreateFrom
+// Deprecated: Use CreateFromWithOverride
+// TODO Helm 4: Fold CreateFromWithOverride back into CreateFrom
 func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
-	return CreateFromWithMetadata(chartfile.Name, dest, src, false)
+	return CreateFromWithOverride(chartfile.Name, dest, src, chartfile)
 }
 
-// CreateFromWithMetadata creates a new chart, but scaffolds it from the src chart and
-// provides the option to preserve custom metadata (Chart.yaml) files.
-func CreateFromWithMetadata(name, dest, src string, keepMetadata bool) error {
+// CreateFromWithOverride creates a new chart, but scaffolds it from the src chart and
+// provides the option to override the chart's metadata (Chart.yaml).
+func CreateFromWithOverride(name, dest, src string, override *chart.Metadata) error {
 	schart, err := loader.Load(src)
 	if err != nil {
 		return errors.Wrapf(err, "could not load %s", src)
 	}
 
-	if err = setMetadata(schart, name, keepMetadata); err != nil {
-		return errors.Wrap(err, "could not set metadata")
+	// Override the chart's metadata if the user requested it
+	if err := setMetadata(schart, name, override); err != nil {
+		return errors.Wrap(err, "setting metadata")
 	}
 
 	var updatedTemplates []*chart.File
@@ -733,20 +734,36 @@ func validateChartName(name string) error {
 	return nil
 }
 
-func setMetadata(schart *chart.Chart, name string, keepMetadata bool) error {
+func setMetadata(schart *chart.Chart, name string, override *chart.Metadata) error {
+	// Override the source chart's metadata and raw chart file content
+	// if the user provided a chart.Metadata struct
+	if override != nil {
+		schart.Metadata = override
+		for _, f := range schart.Raw {
+			if f.Name == ChartfileName {
+				metadataBytes, err := yaml.Marshal(schart.Metadata)
+				if err != nil {
+					return errors.Wrap(err, "marshalling metadata override")
+				}
+
+				f.Data = metadataBytes
+				break
+			}
+		}
+
+		return nil
+	}
+
+	// Unmarshal Chart.yaml from source directory while replacing
+	// all <CHARTNAME> placeholders if no override was requested
 	for _, f := range schart.Raw {
 		if f.Name == ChartfileName {
-			// Overwrite Metadata only if flag was not set by user to keep backwards compatibility.
-			if !keepMetadata {
-				f.Data = []byte(fmt.Sprintf(defaultChartfile, name))
-			}
-
-			// Deserialize Metadata and check for errors
 			var m chart.Metadata
 			if err := yaml.Unmarshal(transform(string(f.Data), name), &m); err != nil {
 				return errors.Wrap(err, "transforming charts file")
 			}
 			schart.Metadata = &m
+			break
 		}
 	}
 

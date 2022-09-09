@@ -23,6 +23,7 @@ import (
 	"strings"
 	"testing"
 
+	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 )
 
@@ -67,10 +68,16 @@ func TestCreate(t *testing.T) {
 func TestCreateFrom(t *testing.T) {
 	tdir := t.TempDir()
 
+	cf := &chart.Metadata{
+		APIVersion: chart.APIVersionV1,
+		Name:       "foo",
+		Version:    "0.1.0",
+	}
+
 	chartname := "foo"
 	srcdir := "./testdata/frobnitz/charts/mariner"
 
-	if err := CreateFrom(chartname, tdir, srcdir, false); err != nil {
+	if err := CreateFrom(cf, tdir, srcdir); err != nil {
 		t.Fatal(err)
 	}
 
@@ -105,7 +112,7 @@ func TestCreateFrom(t *testing.T) {
 	}
 }
 
-func TestCreateFromKeepMetadata(t *testing.T) {
+func TestCreateFromWithOverride(t *testing.T) {
 	tdir := t.TempDir()
 
 	chartname := "foo"
@@ -116,7 +123,7 @@ func TestCreateFromKeepMetadata(t *testing.T) {
 		t.Errorf("Unable to read file %s: %s", srcMetadata, err)
 	}
 
-	if err := CreateFrom(chartname, tdir, srcdir, true); err != nil {
+	if err := CreateFromWithOverride(chartname, tdir, srcdir, nil); err != nil {
 		t.Fatal(err)
 	}
 
