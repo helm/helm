@@ -90,7 +90,7 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&o.starter, "starter", "p", "", "the name or absolute path to Helm starter scaffold")
-	cmd.Flags().BoolVarP(&o.noOverride, "no-override", "n", false, "if specified, does not override the starter's Chart.yaml")
+	cmd.Flags().BoolVarP(&o.noOverride, "no-override", "o", false, "if specified, does not override the starter's Chart.yaml")
 	return cmd
 }
 
