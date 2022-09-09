@@ -52,10 +52,10 @@ will be overwritten, but other files will be left alone.
 `
 
 type createOptions struct {
-	starter      string // --starter
-	name         string
-	starterDir   string
-	keepMetadata bool
+	starter    string // --starter
+	name       string
+	starterDir string
+	noOverride bool
 }
 
 func newCreateCmd(out io.Writer) *cobra.Command {
@@ -76,7 +76,7 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if len(o.starter) == 0 && o.keepMetadata {
+			if len(o.starter) == 0 && o.noOverride {
 				return errors.New("the -k/--keep-metadata flag can only be specified when using a starter")
 			}
 
@@ -90,7 +90,7 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&o.starter, "starter", "p", "", "the name or absolute path to Helm starter scaffold")
-	cmd.Flags().BoolVarP(&o.keepMetadata, "keep-metadata", "k", false, "if specified, does not override the starter's Chart.yaml")
+	cmd.Flags().BoolVarP(&o.noOverride, "no-override", "n", false, "if specified, does not override the starter's Chart.yaml")
 	return cmd
 }
 
@@ -107,7 +107,7 @@ func (o *createOptions) run(out io.Writer) error {
 		APIVersion:  chart.APIVersionV2,
 	}
 
-	if o.keepMetadata {
+	if o.noOverride {
 		cfile = nil
 	}
 
