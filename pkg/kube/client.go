@@ -54,7 +54,6 @@ import (
 	"k8s.io/client-go/rest"
 	cachetools "k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
-	"k8s.io/kubectl/pkg/cmd/get"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 
@@ -150,11 +149,8 @@ func transformRequests(req *rest.Request) {
 	req.Param("includeObject", "Object")
 }
 
-func (c *Client) Get(resources ResourceList, reader io.Reader) (string, error) {
+func (c *Client) Get(resources ResourceList, reader io.Reader) (map[string][]runtime.Object, error) {
 	buf := new(bytes.Buffer)
-	printFlags := get.NewHumanPrintFlags()
-	typePrinter, _ := printFlags.ToPrinter("")
-	printer := &get.TablePrinter{Delegate: typePrinter}
 	objs := make(map[string][]runtime.Object)
 
 	podSelectors := []map[string]string{}
@@ -180,30 +176,10 @@ func (c *Client) Get(resources ResourceList, reader io.Reader) (string, error) {
 		return nil
 	})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	var keys []string
-	for key := range objs {
-		keys = append(keys, key)
-	}
-
-	for _, t := range keys {
-		if _, err = fmt.Fprintf(buf, "==> %s\n", t); err != nil {
-			return "", err
-		}
-		vk := objs[t]
-		for _, resource := range vk {
-			if err := printer.PrintObj(resource, buf); err != nil {
-				c.Log("failed to print object type %s: %v", t, err)
-				return "", err
-			}
-		}
-		if _, err := buf.WriteString("\n"); err != nil {
-			return "", err
-		}
-	}
-	return buf.String(), nil
+	return objs, nil
 }
 
 func (c *Client) getSelectRelationPod(info *resource.Info, objs map[string][]runtime.Object, podSelectors *[]map[string]string) (map[string][]runtime.Object, error) {

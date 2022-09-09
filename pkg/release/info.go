@@ -17,6 +17,7 @@ package release
 
 import (
 	"helm.sh/helm/v3/pkg/time"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // Info describes release information.
@@ -34,5 +35,5 @@ type Info struct {
 	// Contains the rendered templates/NOTES.txt if available
 	Notes string `json:"notes,omitempty"`
 	// Contains the deployed resources information
-	Resources string `json:"resources,omitempty"`
+	Resources map[string][]runtime.Object `json:"resources,omitempty"`
 }

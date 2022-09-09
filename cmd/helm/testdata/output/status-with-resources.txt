@@ -4,5 +4,6 @@ NAMESPACE: default
 STATUS: deployed
 REVISION: 0
 RESOURCES:
-hello resource
+==> test
+
 TEST SUITE: None

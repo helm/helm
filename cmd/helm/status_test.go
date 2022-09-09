@@ -23,6 +23,7 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/release"
 	helmtime "helm.sh/helm/v3/pkg/time"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 func TestStatusCmd(t *testing.T) {
@@ -74,7 +75,9 @@ func TestStatusCmd(t *testing.T) {
 		golden: "output/status-with-resources.txt",
 		rels: releasesMockWithStatus(
 			&release.Info{
-				Resources: "hello resource",
+				Resources: map[string][]runtime.Object{
+					"test": []runtime.Object{},
+				},
 				Status:    release.StatusDeployed,
 			},
 		),
@@ -84,7 +87,9 @@ func TestStatusCmd(t *testing.T) {
 		golden: "output/status-with-resources.json",
 		rels: releasesMockWithStatus(
 			&release.Info{
-				Resources: "hello resource",
+				Resources: map[string][]runtime.Object{
+					"test": []runtime.Object{},
+				},
 				Status:    release.StatusDeployed,
 			},
 		),
