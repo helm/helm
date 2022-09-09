@@ -19,7 +19,7 @@ package main
 import (
 	"testing"
 	"time"
-	
+
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/release"
 	helmtime "helm.sh/helm/v3/pkg/time"
@@ -82,7 +82,7 @@ func TestStatusCmd(t *testing.T) {
 		cmd:    "status --show-resources flummoxed-chickadee -o json",
 		golden: "output/status-with-resources.json",
 		rels: releasesMockWithStatus(
-			&release.Info{				
+			&release.Info{
 				Status: release.StatusDeployed,
 			},
 		),
