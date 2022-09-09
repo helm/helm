@@ -72,7 +72,7 @@ func (s *Status) Run(name string) (*release.Release, error) {
 		}
 
 		rel.Info.Resources = resp
-		
+
 		return rel, nil
 	}
 	return nil, err

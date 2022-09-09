@@ -17,21 +17,22 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"log"
 	"strings"
 	"time"
-	"bytes"
 
 	"github.com/spf13/cobra"
+
+	"k8s.io/kubectl/pkg/cmd/get"
 
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/release"
-	"k8s.io/kubectl/pkg/cmd/get"
 )
 
 // NOTE: Keep the list of statuses up-to-date with pkg/release/status.go.
@@ -149,7 +150,7 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 					fmt.Fprintf(buf, "failed to print object type %s: %v\n", t, err)
 				}
 			}
-			
+
 			buf.WriteString("\n")
 		}
 
