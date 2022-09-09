@@ -130,7 +130,7 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 		fmt.Fprintf(out, "DESCRIPTION: %s\n", s.release.Info.Description)
 	}
 
-	if s.showResources && len(s.release.Info.Resources) > 0 {
+	if s.showResources && s.release.Info.Resources != nil && len(s.release.Info.Resources) > 0 {
 		buf := new(bytes.Buffer)
 		printFlags := get.NewHumanPrintFlags()
 		typePrinter, _ := printFlags.ToPrinter("")

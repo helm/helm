@@ -19,9 +19,7 @@ package main
 import (
 	"testing"
 	"time"
-
-	"k8s.io/apimachinery/pkg/runtime"
-
+	
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/release"
 	helmtime "helm.sh/helm/v3/pkg/time"
@@ -76,9 +74,6 @@ func TestStatusCmd(t *testing.T) {
 		golden: "output/status-with-resources.txt",
 		rels: releasesMockWithStatus(
 			&release.Info{
-				Resources: map[string][]runtime.Object{
-					"test": {},
-				},
 				Status: release.StatusDeployed,
 			},
 		),
@@ -87,10 +82,7 @@ func TestStatusCmd(t *testing.T) {
 		cmd:    "status --show-resources flummoxed-chickadee -o json",
 		golden: "output/status-with-resources.json",
 		rels: releasesMockWithStatus(
-			&release.Info{
-				Resources: map[string][]runtime.Object{
-					"test": {},
-				},
+			&release.Info{				
 				Status: release.StatusDeployed,
 			},
 		),
