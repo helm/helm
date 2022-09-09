@@ -53,6 +53,7 @@ func SaveDir(c *chart.Chart, dest string) error {
 	for _, f := range c.Raw {
 		if f.Name == ChartfileName {
 			hasRawMetadata = true
+			break
 		}
 	}
 

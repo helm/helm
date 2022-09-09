@@ -23,6 +23,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"helm.sh/helm/v3/pkg/chart"
 
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -97,6 +98,18 @@ func (o *createOptions) run(out io.Writer) error {
 	fmt.Fprintf(out, "Creating %s\n", o.name)
 
 	chartname := filepath.Base(o.name)
+	cfile := &chart.Metadata{
+		Name:        chartname,
+		Description: "A Helm chart for Kubernetes",
+		Type:        "application",
+		Version:     "0.1.0",
+		AppVersion:  "0.1.0",
+		APIVersion:  chart.APIVersionV2,
+	}
+
+	if o.keepMetadata {
+		cfile = nil
+	}
 
 	if o.starter != "" {
 		// Create from the starter
@@ -105,7 +118,7 @@ func (o *createOptions) run(out io.Writer) error {
 		if filepath.IsAbs(o.starter) {
 			lstarter = o.starter
 		}
-		return chartutil.CreateFromWithMetadata(chartname, filepath.Dir(chartname), lstarter, o.keepMetadata)
+		return chartutil.CreateFromWithOverride(chartname, filepath.Dir(chartname), lstarter, cfile)
 	}
 
 	chartutil.Stderr = out
