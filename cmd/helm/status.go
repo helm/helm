@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"log"
@@ -24,6 +25,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
+	"k8s.io/kubectl/pkg/cmd/get"
 
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
@@ -127,8 +130,31 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 		fmt.Fprintf(out, "DESCRIPTION: %s\n", s.release.Info.Description)
 	}
 
-	if s.showResources && len(s.release.Info.Resources) > 0 {
-		fmt.Fprintf(out, "RESOURCES:\n%s\n", s.release.Info.Resources)
+	if s.showResources && s.release.Info.Resources != nil && len(s.release.Info.Resources) > 0 {
+		buf := new(bytes.Buffer)
+		printFlags := get.NewHumanPrintFlags()
+		typePrinter, _ := printFlags.ToPrinter("")
+		printer := &get.TablePrinter{Delegate: typePrinter}
+
+		var keys []string
+		for key := range s.release.Info.Resources {
+			keys = append(keys, key)
+		}
+
+		for _, t := range keys {
+			fmt.Fprintf(buf, "==> %s\n", t)
+
+			vk := s.release.Info.Resources[t]
+			for _, resource := range vk {
+				if err := printer.PrintObj(resource, buf); err != nil {
+					fmt.Fprintf(buf, "failed to print object type %s: %v\n", t, err)
+				}
+			}
+
+			buf.WriteString("\n")
+		}
+
+		fmt.Fprintf(out, "RESOURCES:\n%s\n", buf.String())
 	}
 
 	executions := executionsByHookEvent(s.release)

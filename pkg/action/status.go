@@ -70,9 +70,9 @@ func (s *Status) Run(name string) (*release.Release, error) {
 		if err != nil {
 			return nil, err
 		}
-		if resp != "" {
-			rel.Info.Resources = resp
-		}
+
+		rel.Info.Resources = resp
+
 		return rel, nil
 	}
 	return nil, err

@@ -74,8 +74,7 @@ func TestStatusCmd(t *testing.T) {
 		golden: "output/status-with-resources.txt",
 		rels: releasesMockWithStatus(
 			&release.Info{
-				Resources: "hello resource",
-				Status:    release.StatusDeployed,
+				Status: release.StatusDeployed,
 			},
 		),
 	}, {
@@ -84,8 +83,7 @@ func TestStatusCmd(t *testing.T) {
 		golden: "output/status-with-resources.json",
 		rels: releasesMockWithStatus(
 			&release.Info{
-				Resources: "hello resource",
-				Status:    release.StatusDeployed,
+				Status: release.StatusDeployed,
 			},
 		),
 	}, {

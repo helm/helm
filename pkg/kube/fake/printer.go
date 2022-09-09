@@ -22,6 +22,7 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/cli-runtime/pkg/resource"
 
 	"helm.sh/helm/v3/pkg/kube"
@@ -47,12 +48,12 @@ func (p *PrintingKubeClient) Create(resources kube.ResourceList) (*kube.Result, 
 	return &kube.Result{Created: resources}, nil
 }
 
-func (p *PrintingKubeClient) Get(resources kube.ResourceList, reader io.Reader) (string, error) {
+func (p *PrintingKubeClient) Get(resources kube.ResourceList, reader io.Reader) (map[string][]runtime.Object, error) {
 	_, err := io.Copy(p.Out, bufferize(resources))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return "", nil
+	return make(map[string][]runtime.Object), nil
 }
 
 func (p *PrintingKubeClient) Wait(resources kube.ResourceList, _ time.Duration) error {
