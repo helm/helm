@@ -17,6 +17,9 @@ limitations under the License.
 package action
 
 import (
+	"bytes"
+
+	"helm.sh/helm/v3/pkg/kube"
 	"helm.sh/helm/v3/pkg/release"
 )
 
@@ -32,6 +35,10 @@ type Status struct {
 	// only affect print type table.
 	// TODO Helm 4: Remove this flag and output the description by default.
 	ShowDescription bool
+
+	// If true, display resources of release to output format
+	// TODO Helm 4: Remove this flag and output the resources by default.
+	ShowResources bool
 }
 
 // NewStatus creates a new Status object with the given configuration.
@@ -47,5 +54,26 @@ func (s *Status) Run(name string) (*release.Release, error) {
 		return nil, err
 	}
 
-	return s.cfg.releaseContent(name, s.Version)
+	if !s.ShowResources {
+		return s.cfg.releaseContent(name, s.Version)
+	}
+
+	rel, err := s.cfg.releaseContent(name, s.Version)
+	if err != nil {
+		return nil, err
+	}
+
+	resources, _ := s.cfg.KubeClient.Build(bytes.NewBufferString(rel.Manifest), false)
+
+	if kubeClient, ok := s.cfg.KubeClient.(kube.InterfaceResources); ok {
+		resp, err := kubeClient.Get(resources, bytes.NewBufferString(rel.Manifest))
+		if err != nil {
+			return nil, err
+		}
+
+		rel.Info.Resources = resp
+
+		return rel, nil
+	}
+	return nil, err
 }
