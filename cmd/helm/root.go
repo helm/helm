@@ -158,7 +158,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		registry.ClientOptWriter(out),
 		registry.ClientOptCredentialsFile(settings.RegistryConfig),
 	)
-	if err != nil {
+	if len(flags.Args()) > 0 && flags.Args()[0] != "version" && err != nil {
 		return nil, err
 	}
 	actionConfig.RegistryClient = registryClient
