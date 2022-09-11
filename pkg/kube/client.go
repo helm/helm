@@ -41,6 +41,7 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -373,16 +374,17 @@ func perform(infos ResourceList, fn func(*resource.Info) error) error {
 		return ErrNoObjectsVisited
 	}
 
+	errorList := make([]error, 0)
 	errs := make(chan error)
 	go batchPerform(infos, fn, errs)
 
 	for range infos {
 		err := <-errs
 		if err != nil {
-			return err
+			errorList = append(errorList, err)
 		}
 	}
-	return nil
+	return utilerrors.NewAggregate(errorList)
 }
 
 // getManagedFieldsManager returns the manager string. If one was set it will be returned.

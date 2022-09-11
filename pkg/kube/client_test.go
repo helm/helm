@@ -18,10 +18,12 @@ package kube
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"sync"
 	"testing"
 
 	v1 "k8s.io/api/core/v1"
@@ -265,19 +267,32 @@ func TestPerform(t *testing.T) {
 			name:   "Valid input",
 			reader: strings.NewReader(guestbookManifest),
 			count:  6,
-		}, {
+		},
+		{
 			name:       "Empty manifests",
 			reader:     strings.NewReader(""),
 			err:        true,
 			errMessage: "no objects visited",
+		},
+		{
+			name:       "Error manifests",
+			reader:     strings.NewReader(testErrorManifest),
+			count:      2,
+			err:        true,
+			errMessage: "[resource endpoints/my-service already exists, resource services/redis-master already exists]",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			results := []*resource.Info{}
-
+			resourceMap := sync.Map{}
 			fn := func(info *resource.Info) error {
+				_, exist := resourceMap.Load(info.ObjectName())
+				if exist {
+					return fmt.Errorf("resource %s already exists", info.ObjectName())
+				}
+				resourceMap.Store(info.ObjectName(), struct{}{})
 				results = append(results, info)
 				return nil
 			}
@@ -519,4 +534,60 @@ spec:
           value: dns
         ports:
         - containerPort: 80
+`
+
+const testErrorManifest = `
+kind: Endpoints
+apiVersion: v1
+metadata:
+  name: my-service
+subsets:
+  - addresses:
+      - ip: "1.2.3.4"
+    ports:
+      - port: 9376
+---
+kind: Endpoints
+apiVersion: v1
+metadata:
+  name: my-service
+subsets:
+  - addresses:
+      - ip: "1.2.3.4"
+    ports:
+      - port: 9376
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-master
+  labels:
+    app: redis
+    tier: backend
+    role: master
+spec:
+  ports:
+  - port: 6379
+    targetPort: 6379
+  selector:
+    app: redis
+    tier: backend
+    role: master
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-master
+  labels:
+    app: redis
+    tier: backend
+    role: master
+spec:
+  ports:
+  - port: 6379
+    targetPort: 6379
+  selector:
+    app: redis
+    tier: backend
+    role: master
 `
