@@ -101,8 +101,9 @@ type Configuration struct {
 //
 // TODO: This function is badly in need of a refactor.
 // TODO: As part of the refactor the duplicate code in cmd/helm/template.go should be removed
-//       This code has to do with writing files to disk.
-func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, dryRun bool) ([]*release.Hook, *bytes.Buffer, string, error) {
+//
+//	This code has to do with writing files to disk.
+func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, showFiles []string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, dryRun bool) ([]*release.Hook, *bytes.Buffer, string, error) {
 	hs := []*release.Hook{}
 	b := bytes.NewBuffer(nil)
 
@@ -183,8 +184,8 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 
 	if includeCrds {
 		for _, crd := range ch.CRDObjects() {
-			if outputDir == "" {
-				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Name, string(crd.File.Data[:]))
+			if outputDir == "" || len(showFiles) > 0 {
+				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Filename, string(crd.File.Data[:]))
 			} else {
 				err = writeToFile(outputDir, crd.Filename, string(crd.File.Data[:]), fileWritten[crd.Name])
 				if err != nil {
@@ -196,7 +197,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	}
 
 	for _, m := range manifests {
-		if outputDir == "" {
+		if outputDir == "" || len(showFiles) > 0 {
 			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", m.Name, m.Content)
 		} else {
 			newDir := outputDir

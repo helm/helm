@@ -79,6 +79,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			client.ClientOnly = !validate
 			client.APIVersions = chartutil.VersionSet(extraAPIs)
 			client.IncludeCRDs = includeCrds
+			client.ShowFiles = showFiles
 			rel, err := runInstall(args, client, valueOpts, out)
 
 			if err != nil && !settings.Debug {
@@ -129,7 +130,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					sort.Sort(releaseutil.BySplitManifestsOrder(manifestsKeys))
 
 					manifestNameRegex := regexp.MustCompile("# Source: [^/]+/(.+)")
-					var manifestsToRender []string
+					manifestsToRender := map[string]string{}
 					for _, f := range showFiles {
 						missing := true
 						// Use linux-style filepath separators to unify user's input path
@@ -153,15 +154,29 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 							if matched, _ := filepath.Match(f, manifestPath); !matched {
 								continue
 							}
-							manifestsToRender = append(manifestsToRender, manifest)
+							manifestsToRender[manifestName] = manifest
 							missing = false
 						}
 						if missing {
-							return fmt.Errorf("could not find template %s in chart", f)
+							fmt.Printf("could not find template %s in chart\n", f)
 						}
 					}
-					for _, m := range manifestsToRender {
-						fmt.Fprintf(out, "---\n%s\n", m)
+
+					for fileName, manifest := range manifestsToRender {
+						if client.OutputDir == "" {
+							fmt.Fprintf(out, "---\n%s\n", manifest)
+						} else {
+							fileWritten := make(map[string]bool)
+							newDir := client.OutputDir
+							if client.UseReleaseName {
+								newDir = filepath.Join(client.OutputDir, client.ReleaseName)
+							}
+							err = writeToFile(newDir, fileName, manifest, fileWritten[fileName])
+							if err != nil {
+								return err
+							}
+							fileWritten[fileName] = true
+						}
 					}
 				} else {
 					fmt.Fprintf(out, "%s", manifests.String())
