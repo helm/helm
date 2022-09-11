@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
@@ -30,6 +31,7 @@ import (
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/storage/driver"
 )
 
 // NOTE: Keep the list of statuses up-to-date with pkg/release/status.go.
@@ -62,9 +64,14 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return compListReleases(toComplete, args, cfg)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			rel, err := client.Run(args[0])
+			releaseName := args[0]
+			ns := settings.Namespace()
+			rel, err := client.Run(releaseName)
 			if err != nil {
-				return err
+				if errors.Is(err, driver.ErrReleaseNotFound) {
+					return fmt.Errorf("release '%s' not found in namespace '%s'", releaseName, ns)
+				}
+				return fmt.Errorf("failed to get release '%s' status in namespace '%s', error: %v", releaseName, ns, err)
 			}
 
 			// strip chart metadata from the output
