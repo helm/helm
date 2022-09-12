@@ -29,7 +29,7 @@ type HookFailingKubeClient struct {
 	deleteRecord []resource.Info
 }
 
-func (_ *HookFailingKubeClient) Build(reader io.Reader, _ bool) (kube.ResourceList, error) {
+func (*HookFailingKubeClient) Build(reader io.Reader, _ bool) (kube.ResourceList, error) {
 	configMap := &v1.ConfigMap{}
 
 	err := yaml.NewYAMLOrJSONDecoder(reader, 1000).Decode(configMap)
