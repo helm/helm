@@ -17,9 +17,6 @@ package action
 
 import (
 	"bytes"
-	"fmt"
-	"log"
-	"slices"
 	"sort"
 	"time"
 
@@ -91,11 +88,6 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		// Mark hook as succeeded or failed
 		if err != nil {
 			h.LastRun.Phase = release.HookPhaseFailed
-			// If a hook is failed, check the annotation of the hook to determine if we should copy the logs client side
-			if errOutputting := cfg.outputLogsByPolicy(h, rl.Namespace, release.HookOutputOnFailed); errOutputting != nil {
-				// We log the error here as we want to propagate the hook failure upwards to the release object.
-				log.Printf("error outputting logs for hook failure: %v", errOutputting)
-			}
 			// If a hook is failed, check the annotation of the hook to determine whether the hook should be deleted
 			// under failed condition. If so, then clear the corresponding resource object in the hook
 			if errDeleting := cfg.deleteHookByPolicy(h, release.HookFailed, waitStrategy, timeout); errDeleting != nil {
@@ -203,35 +195,14 @@ func (cfg *Configuration) hookSetDeletePolicy(h *release.Hook) {
 	}
 }
 
-// outputLogsByPolicy outputs a pods logs if the hook policy instructs it to
-func (cfg *Configuration) outputLogsByPolicy(h *release.Hook, releaseNamespace string, policy release.HookOutputLogPolicy) error {
-	if !hookHasOutputLogPolicy(h, policy) {
-		return nil
-	}
-	namespace, err := cfg.deriveNamespace(h, releaseNamespace)
-	if err != nil {
-		return err
-	}
-	switch h.Kind {
-	case "Job":
-		return cfg.outputContainerLogsForListOptions(namespace, metav1.ListOptions{LabelSelector: fmt.Sprintf("job-name=%s", h.Name)})
-	case "Pod":
-		return cfg.outputContainerLogsForListOptions(namespace, metav1.ListOptions{FieldSelector: fmt.Sprintf("metadata.name=%s", h.Name)})
-	default:
-		return nil
-	}
-}
-
-func (cfg *Configuration) outputContainerLogsForListOptions(namespace string, listOptions metav1.ListOptions) error {
-	// TODO Helm 4: Remove this check when GetPodList and OutputContainerLogsForPodList are moved from InterfaceLogs to Interface
-	if kubeClient, ok := cfg.KubeClient.(kube.InterfaceLogs); ok {
-		podList, err := kubeClient.GetPodList(namespace, listOptions)
-		if err != nil {
+// deleteHooksByPolicy deletes all hooks if the hook policy instructs it to
+func (cfg *Configuration) deleteHooksByPolicy(hooks []*release.Hook, policy release.HookDeletePolicy) error {
+	for _, h := range hooks {
+		if err := cfg.deleteHookByPolicy(h, policy); err != nil {
 			return err
 		}
-		err = kubeClient.OutputContainerLogsForPodList(podList, namespace, cfg.HookOutputFunc)
-		return err
 	}
+
 	return nil
 }
 
