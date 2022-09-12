@@ -41,7 +41,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 	// hooke are pre-ordered by kind, so keep order stable
 	sort.Stable(hookByWeight(executingHooks))
 
-	for _, h := range executingHooks {
+	for i, h := range executingHooks {
 		// Set default delete policy to before-hook-creation
 		if h.DeletePolicies == nil || len(h.DeletePolicies) == 0 {
 			// TODO(jlegrone): Only apply before-hook-creation delete policy to run to completion
@@ -91,6 +91,13 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 			if err := cfg.deleteHookByPolicy(h, release.HookFailed); err != nil {
 				return err
 			}
+
+			// If a hook is failed, check the annotation of the previous successful hooks to determine whether the hook
+			// should be deleted under succeeded condition.
+			if err := cfg.deleteHooksByPolicy(executingHooks[0:i], release.HookSucceeded); err != nil {
+				return err
+			}
+
 			return err
 		}
 		h.LastRun.Phase = release.HookPhaseSucceeded
@@ -98,10 +105,8 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 
 	// If all hooks are successful, check the annotation of each hook to determine whether the hook should be deleted
 	// under succeeded condition. If so, then clear the corresponding resource object in each hook
-	for _, h := range executingHooks {
-		if err := cfg.deleteHookByPolicy(h, release.HookSucceeded); err != nil {
-			return err
-		}
+	if err := cfg.deleteHooksByPolicy(executingHooks, release.HookSucceeded); err != nil {
+		return err
 	}
 
 	return nil
@@ -148,4 +153,15 @@ func hookHasDeletePolicy(h *release.Hook, policy release.HookDeletePolicy) bool 
 		}
 	}
 	return false
+}
+
+// deleteHooksByPolicy deletes all hooks if the hook policy instructs it to
+func (cfg *Configuration) deleteHooksByPolicy(hooks []*release.Hook, policy release.HookDeletePolicy) error {
+	for _, h := range hooks {
+		if err := cfg.deleteHookByPolicy(h, policy); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

@@ -137,15 +137,23 @@ data:
 				Namespace: "test",
 			}, []resource.Info{
 				{
+					// This should be in the record for `before-hook-creation`
 					Name:      "build-config-1",
 					Namespace: "test",
 				},
 				{
+					// This should be in the record for `before-hook-creation`
 					Name:      "build-config-2",
 					Namespace: "test",
 				},
 				{
+					// This should be in the record for cleaning up (the failure first)
 					Name:      "build-config-2",
+					Namespace: "test",
+				},
+				{
+					// This should be in the record for cleaning up (then the previously successful)
+					Name:      "build-config-1",
 					Namespace: "test",
 				},
 			}, true,
