@@ -18,6 +18,7 @@ package kube // import "helm.sh/helm/v3/pkg/kube"
 
 import (
 	"context"
+	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
@@ -25,6 +26,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
+	storagev1 "k8s.io/api/storage/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,6 +38,8 @@ import (
 
 	deploymentutil "helm.sh/helm/v3/internal/third_party/k8s.io/kubernetes/deployment/util"
 )
+
+const defaultStorageClassAnnotation = "storageclass.kubernetes.io/is-default-class"
 
 // ReadyCheckerOption is a function that configures a ReadyChecker.
 type ReadyCheckerOption func(*ReadyChecker)
@@ -131,7 +135,13 @@ func (c *ReadyChecker) IsReady(ctx context.Context, v *resource.Info) (bool, err
 		if err != nil {
 			return false, err
 		}
-		if !c.volumeReady(claim) {
+
+		storageClass, err := getStorageClassFromPvc(ctx, c.client, claim)
+		if err != nil {
+			return false, err
+		}
+
+		if !c.volumeReady(claim, storageClass) {
 			return false, nil
 		}
 	case *corev1.Service:
@@ -263,7 +273,13 @@ func (c *ReadyChecker) serviceReady(s *corev1.Service) bool {
 	return true
 }
 
-func (c *ReadyChecker) volumeReady(v *corev1.PersistentVolumeClaim) bool {
+func (c *ReadyChecker) volumeReady(v *corev1.PersistentVolumeClaim, storageClass *storagev1.StorageClass) bool {
+	if storageClass != nil &&
+		storageClass.VolumeBindingMode != nil &&
+		*storageClass.VolumeBindingMode == storagev1.VolumeBindingWaitForFirstConsumer {
+		return true
+	}
+
 	if v.Status.Phase != corev1.ClaimBound {
 		c.log("PersistentVolumeClaim is not bound: %s/%s", v.GetNamespace(), v.GetName())
 		return false
@@ -408,4 +424,27 @@ func getPods(ctx context.Context, client kubernetes.Interface, namespace, select
 		LabelSelector: selector,
 	})
 	return list.Items, err
+}
+
+func getStorageClassFromPvc(ctx context.Context, client kubernetes.Interface, pvc *corev1.PersistentVolumeClaim) (*storagev1.StorageClass, error) {
+	if pvc.Spec.StorageClassName != nil && *pvc.Spec.StorageClassName != "" {
+		storageClass, err := client.StorageV1().StorageClasses().Get(ctx, *pvc.Spec.StorageClassName, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		return storageClass, nil
+	}
+
+	storageClasses, err := client.StorageV1().StorageClasses().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("could not list storage classes: %w", err)
+	}
+
+	for _, storageClass := range storageClasses.Items {
+		if isDefaultClass, ok := storageClass.GetAnnotations()[defaultStorageClassAnnotation]; ok && isDefaultClass == "true" {
+			return &storageClass, nil
+		}
+	}
+
+	return nil, fmt.Errorf("could not get associated storage class for PVC %s", pvc.Name)
 }

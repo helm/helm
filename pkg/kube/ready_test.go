@@ -23,10 +23,12 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/utils/pointer"
 )
 
 const defaultNamespace = metav1.NamespaceDefault
@@ -320,7 +322,8 @@ func Test_ReadyChecker_jobReady(t *testing.T) {
 
 func Test_ReadyChecker_volumeReady(t *testing.T) {
 	type args struct {
-		v *corev1.PersistentVolumeClaim
+		v            *corev1.PersistentVolumeClaim
+		storageClass *storagev1.StorageClass
 	}
 	tests := []struct {
 		name string
@@ -330,23 +333,131 @@ func Test_ReadyChecker_volumeReady(t *testing.T) {
 		{
 			name: "pvc is bound",
 			args: args{
-				v: newPersistentVolumeClaim("foo", corev1.ClaimBound),
+				v:            newPersistentVolumeClaim("foo", corev1.ClaimBound),
+				storageClass: newStorageClass("foo", storagev1.VolumeBindingImmediate, nil),
 			},
 			want: true,
 		},
 		{
 			name: "pvc is not ready",
 			args: args{
-				v: newPersistentVolumeClaim("foo", corev1.ClaimPending),
+				v:            newPersistentVolumeClaim("foo", corev1.ClaimPending),
+				storageClass: newStorageClass("foo", storagev1.VolumeBindingImmediate, nil),
 			},
 			want: false,
+		},
+		{
+			name: "pvc is not ready but storage claim bind is WaitForConsumer",
+			args: args{
+				v:            newPersistentVolumeClaim("foo", corev1.ClaimPending),
+				storageClass: newStorageClass("foo", storagev1.VolumeBindingWaitForFirstConsumer, nil),
+			},
+			want: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := NewReadyChecker(fake.NewSimpleClientset(), nil)
-			if got := c.volumeReady(tt.args.v); got != tt.want {
+			if got := c.volumeReady(tt.args.v, tt.args.storageClass); got != tt.want {
 				t.Errorf("volumeReady() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_getStorageClassFromPvc(t *testing.T) {
+	type args struct {
+		pvc *corev1.PersistentVolumeClaim
+		scs *storagev1.StorageClassList
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    string
+		wantErr bool
+	}{
+		{
+			name: "pvc has storage class and it exists",
+			args: args{
+				pvc: func() *corev1.PersistentVolumeClaim {
+					claim := newPersistentVolumeClaim("foo", corev1.ClaimPending)
+					claim.Spec.StorageClassName = pointer.String("default-sc")
+					return claim
+				}(),
+				scs: &storagev1.StorageClassList{
+					Items: []storagev1.StorageClass{
+						*newStorageClass("default-sc", storagev1.VolumeBindingImmediate, nil),
+					},
+				},
+			},
+			want:    "default-sc",
+			wantErr: false,
+		},
+		{
+			name: "pvc has storage class and it does not exist",
+			args: args{
+				pvc: func() *corev1.PersistentVolumeClaim {
+					claim := newPersistentVolumeClaim("foo", corev1.ClaimPending)
+					claim.Spec.StorageClassName = pointer.String("default-sc")
+					return claim
+				}(),
+				scs: &storagev1.StorageClassList{
+					Items: []storagev1.StorageClass{},
+				},
+			},
+			want:    "",
+			wantErr: true,
+		},
+		{
+			name: "pvc has default storage class and it does exist",
+			args: args{
+				pvc: func() *corev1.PersistentVolumeClaim {
+					claim := newPersistentVolumeClaim("foo", corev1.ClaimPending)
+					return claim
+				}(),
+				scs: &storagev1.StorageClassList{
+					Items: []storagev1.StorageClass{
+						*newStorageClass("default-sc", storagev1.VolumeBindingImmediate, map[string]string{
+							defaultStorageClassAnnotation: "true",
+						}),
+						*newStorageClass("other-sc", storagev1.VolumeBindingImmediate, nil),
+					},
+				},
+			},
+			want:    "default-sc",
+			wantErr: false,
+		},
+		{
+			name: "pvc has default storage class and it does not exist",
+			args: args{
+				pvc: func() *corev1.PersistentVolumeClaim {
+					claim := newPersistentVolumeClaim("foo", corev1.ClaimPending)
+					return claim
+				}(),
+				scs: &storagev1.StorageClassList{
+					Items: []storagev1.StorageClass{
+						*newStorageClass("default-sc", storagev1.VolumeBindingImmediate, map[string]string{
+							defaultStorageClassAnnotation: "false",
+						}),
+						*newStorageClass("other-sc", storagev1.VolumeBindingImmediate, nil),
+					},
+				},
+			},
+			want:    "",
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := fake.NewSimpleClientset(tt.args.scs)
+
+			got, err := getStorageClassFromPvc(context.Background(), client, tt.args.pvc)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("getStorageClassFromPvc() returns err %v, but wantErr is %t", err, tt.wantErr)
+			}
+
+			if got != nil && got.Name != tt.want {
+				t.Errorf("getStorageClassFromPvc() has name %v, want %v", got.Name, tt.want)
 			}
 		})
 	}
@@ -527,6 +638,16 @@ func newPersistentVolumeClaim(name string, phase corev1.PersistentVolumeClaimPha
 		Status: corev1.PersistentVolumeClaimStatus{
 			Phase: phase,
 		},
+	}
+}
+
+func newStorageClass(name string, bindingMode storagev1.VolumeBindingMode, annotations map[string]string) *storagev1.StorageClass {
+	return &storagev1.StorageClass{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        name,
+			Annotations: annotations,
+		},
+		VolumeBindingMode: &bindingMode,
 	}
 }
 
