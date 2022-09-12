@@ -17,21 +17,13 @@ package action
 
 import (
 	"bytes"
-	"fmt"
-	"log"
-	"slices"
 	"sort"
 	"time"
 
-	"helm.sh/helm/v4/pkg/kube"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v3"
 
-	release "helm.sh/helm/v4/pkg/release/v1"
-	helmtime "helm.sh/helm/v4/pkg/time"
+	"helm.sh/helm/v3/pkg/release"
+	helmtime "helm.sh/helm/v3/pkg/time"
 )
 
 // execHook executes all of the hooks for the given hook event.
@@ -49,9 +41,9 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 	// hooke are pre-ordered by kind, so keep order stable
 	sort.Stable(hookByWeight(executingHooks))
 
-	for _, h := range executingHooks {
+	for i, h := range executingHooks {
 		// Set default delete policy to before-hook-creation
-		if len(h.DeletePolicies) == 0 {
+		if h.DeletePolicies == nil || len(h.DeletePolicies) == 0 {
 			// TODO(jlegrone): Only apply before-hook-creation delete policy to run to completion
 			//                 resources. For all other resource types update in place if a
 			//                 resource with the same name already exists and is owned by the
@@ -59,7 +51,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 			h.DeletePolicies = []release.HookDeletePolicy{release.HookBeforeHookCreation}
 		}
 
-		if err := cfg.deleteHookByPolicy(h, release.HookBeforeHookCreation, timeout); err != nil {
+		if err := cfg.deleteHookByPolicy(h, release.HookBeforeHookCreation); err != nil {
 			return err
 		}
 
@@ -94,33 +86,27 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		// Mark hook as succeeded or failed
 		if err != nil {
 			h.LastRun.Phase = release.HookPhaseFailed
-			// If a hook is failed, check the annotation of the hook to determine if we should copy the logs client side
-			if errOutputting := cfg.outputLogsByPolicy(h, rl.Namespace, release.HookOutputOnFailed); errOutputting != nil {
-				// We log the error here as we want to propagate the hook failure upwards to the release object.
-				log.Printf("error outputting logs for hook failure: %v", errOutputting)
-			}
 			// If a hook is failed, check the annotation of the hook to determine whether the hook should be deleted
 			// under failed condition. If so, then clear the corresponding resource object in the hook
-			if errDeleting := cfg.deleteHookByPolicy(h, release.HookFailed, timeout); errDeleting != nil {
-				// We log the error here as we want to propagate the hook failure upwards to the release object.
-				log.Printf("error deleting the hook resource on hook failure: %v", errDeleting)
+			if err := cfg.deleteHookByPolicy(h, release.HookFailed); err != nil {
+				return err
 			}
+
+			// If a hook is failed, check the annotation of the previous successful hooks to determine whether the hook
+			// should be deleted under succeeded condition.
+			if err := cfg.deleteHooksByPolicy(executingHooks[0:i], release.HookSucceeded); err != nil {
+				return err
+			}
+
 			return err
 		}
 		h.LastRun.Phase = release.HookPhaseSucceeded
 	}
 
 	// If all hooks are successful, check the annotation of each hook to determine whether the hook should be deleted
-	// or output should be logged under succeeded condition. If so, then clear the corresponding resource object in each hook
-	for i := len(executingHooks) - 1; i >= 0; i-- {
-		h := executingHooks[i]
-		if err := cfg.outputLogsByPolicy(h, rl.Namespace, release.HookOutputOnSucceeded); err != nil {
-			// We log here as we still want to attempt hook resource deletion even if output logging fails.
-			log.Printf("error outputting logs for hook failure: %v", err)
-		}
-		if err := cfg.deleteHookByPolicy(h, release.HookSucceeded, timeout); err != nil {
-			return err
-		}
+	// under succeeded condition. If so, then clear the corresponding resource object in each hook
+	if err := cfg.deleteHooksByPolicy(executingHooks, release.HookSucceeded); err != nil {
+		return err
 	}
 
 	return nil
@@ -139,7 +125,7 @@ func (x hookByWeight) Less(i, j int) bool {
 }
 
 // deleteHookByPolicy deletes a hook if the hook policy instructs it to
-func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.HookDeletePolicy, timeout time.Duration) error {
+func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.HookDeletePolicy) error {
 	// Never delete CustomResourceDefinitions; this could cause lots of
 	// cascading garbage collection.
 	if h.Kind == "CustomResourceDefinition" {
@@ -153,13 +139,6 @@ func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.Hoo
 		_, errs := cfg.KubeClient.Delete(resources)
 		if len(errs) > 0 {
 			return errors.New(joinErrors(errs))
-		}
-
-		// wait for resources until they are deleted to avoid conflicts
-		if kubeClient, ok := cfg.KubeClient.(kube.InterfaceExt); ok {
-			if err := kubeClient.WaitForDelete(resources, timeout); err != nil {
-				return err
-			}
 		}
 	}
 	return nil
@@ -176,56 +155,13 @@ func hookHasDeletePolicy(h *release.Hook, policy release.HookDeletePolicy) bool 
 	return false
 }
 
-// outputLogsByPolicy outputs a pods logs if the hook policy instructs it to
-func (cfg *Configuration) outputLogsByPolicy(h *release.Hook, releaseNamespace string, policy release.HookOutputLogPolicy) error {
-	if !hookHasOutputLogPolicy(h, policy) {
-		return nil
-	}
-	namespace, err := cfg.deriveNamespace(h, releaseNamespace)
-	if err != nil {
-		return err
-	}
-	switch h.Kind {
-	case "Job":
-		return cfg.outputContainerLogsForListOptions(namespace, metav1.ListOptions{LabelSelector: fmt.Sprintf("job-name=%s", h.Name)})
-	case "Pod":
-		return cfg.outputContainerLogsForListOptions(namespace, metav1.ListOptions{FieldSelector: fmt.Sprintf("metadata.name=%s", h.Name)})
-	default:
-		return nil
-	}
-}
-
-func (cfg *Configuration) outputContainerLogsForListOptions(namespace string, listOptions metav1.ListOptions) error {
-	// TODO Helm 4: Remove this check when GetPodList and OutputContainerLogsForPodList are moved from InterfaceLogs to Interface
-	if kubeClient, ok := cfg.KubeClient.(kube.InterfaceLogs); ok {
-		podList, err := kubeClient.GetPodList(namespace, listOptions)
-		if err != nil {
+// deleteHooksByPolicy deletes all hooks if the hook policy instructs it to
+func (cfg *Configuration) deleteHooksByPolicy(hooks []*release.Hook, policy release.HookDeletePolicy) error {
+	for _, h := range hooks {
+		if err := cfg.deleteHookByPolicy(h, policy); err != nil {
 			return err
 		}
-		err = kubeClient.OutputContainerLogsForPodList(podList, namespace, cfg.HookOutputFunc)
-		return err
 	}
+
 	return nil
-}
-
-func (cfg *Configuration) deriveNamespace(h *release.Hook, namespace string) (string, error) {
-	tmp := struct {
-		Metadata struct {
-			Namespace string
-		}
-	}{}
-	err := yaml.Unmarshal([]byte(h.Manifest), &tmp)
-	if err != nil {
-		return "", errors.Wrapf(err, "unable to parse metadata.namespace from kubernetes manifest for output logs hook %s", h.Path)
-	}
-	if tmp.Metadata.Namespace == "" {
-		return namespace, nil
-	}
-	return tmp.Metadata.Namespace, nil
-}
-
-// hookHasOutputLogPolicy determines whether the defined hook output log policy matches the hook output log policies
-// supported by helm.
-func hookHasOutputLogPolicy(h *release.Hook, policy release.HookOutputLogPolicy) bool {
-	return slices.Contains(h.OutputLogPolicies, policy)
 }
