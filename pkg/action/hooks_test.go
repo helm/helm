@@ -66,34 +66,26 @@ func (h *HookFailingKubeClient) Delete(resources kube.ResourceList) (*kube.Resul
 }
 
 func TestHooksCleanUp(t *testing.T) {
-	hookKubeClient := &HookFailingKubeClient{kubefake.PrintingKubeClient{Out: ioutil.Discard}, resource.Info{
-		Name:      "build-config-2",
-		Namespace: "test",
-	}, []resource.Info{}}
-
-	configuration := &Configuration{
-		Releases:     storage.Init(driver.NewMemory()),
-		KubeClient:   hookKubeClient,
-		Capabilities: chartutil.DefaultCapabilities,
-		Log: func(format string, v ...interface{}) {
-			t.Helper()
-			if *verbose {
-				t.Logf(format, v...)
-			}
-		},
-	}
-
 	hookEvent := release.HookPreInstall
 
-	r := &release.Release{
-		Name:      "test-release",
-		Namespace: "test",
-		Hooks: []*release.Hook{
-			{
-				Name: "hook-1",
-				Kind: "ConfigMap",
-				Path: "templates/service_account.yaml",
-				Manifest: `apiVersion: v1
+	testCases := []struct {
+		name                 string
+		inputRelease         release.Release
+		failOn               resource.Info
+		expectedDeleteRecord []resource.Info
+		expectError          bool
+	}{
+		{
+			"Deletion hook runs for previously successful hook on failure of a heavier weight hook",
+			release.Release{
+				Name:      "test-release",
+				Namespace: "test",
+				Hooks: []*release.Hook{
+					{
+						Name: "hook-1",
+						Kind: "ConfigMap",
+						Path: "templates/service_account.yaml",
+						Manifest: `apiVersion: v1
 kind: ConfigMap
 metadata:
   name: build-config-1
@@ -101,24 +93,24 @@ metadata:
 data:
   foo: bar
 `,
-				Weight: -5,
-				Events: []release.HookEvent{
-					hookEvent,
-				},
-				DeletePolicies: []release.HookDeletePolicy{
-					release.HookBeforeHookCreation,
-					release.HookSucceeded,
-					release.HookFailed,
-				},
-				LastRun: release.HookExecution{
-					Phase: release.HookPhaseSucceeded,
-				},
-			},
-			{
-				Name: "hook-2",
-				Kind: "ConfigMap",
-				Path: "templates/job.yaml",
-				Manifest: `apiVersion: v1
+						Weight: -5,
+						Events: []release.HookEvent{
+							hookEvent,
+						},
+						DeletePolicies: []release.HookDeletePolicy{
+							release.HookBeforeHookCreation,
+							release.HookSucceeded,
+							release.HookFailed,
+						},
+						LastRun: release.HookExecution{
+							Phase: release.HookPhaseSucceeded,
+						},
+					},
+					{
+						Name: "hook-2",
+						Kind: "ConfigMap",
+						Path: "templates/job.yaml",
+						Manifest: `apiVersion: v1
 kind: ConfigMap
 metadata:
   name: build-config-2
@@ -126,42 +118,71 @@ metadata:
 data:
   foo: bar
 `,
-				Weight: 0,
-				Events: []release.HookEvent{
-					hookEvent,
+						Weight: 0,
+						Events: []release.HookEvent{
+							hookEvent,
+						},
+						DeletePolicies: []release.HookDeletePolicy{
+							release.HookBeforeHookCreation,
+							release.HookSucceeded,
+							release.HookFailed,
+						},
+						LastRun: release.HookExecution{
+							Phase: release.HookPhaseFailed,
+						},
+					},
 				},
-				DeletePolicies: []release.HookDeletePolicy{
-					release.HookBeforeHookCreation,
-					release.HookSucceeded,
-					release.HookFailed,
+			}, resource.Info{
+				Name:      "build-config-2",
+				Namespace: "test",
+			}, []resource.Info{
+				{
+					Name:      "build-config-1",
+					Namespace: "test",
 				},
-				LastRun: release.HookExecution{
-					Phase: release.HookPhaseFailed,
+				{
+					Name:      "build-config-2",
+					Namespace: "test",
 				},
-			},
+				{
+					Name:      "build-config-2",
+					Namespace: "test",
+				},
+			}, true,
 		},
 	}
 
-	_ = configuration.execHook(r, hookEvent, 600)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			kubeClient := &HookFailingKubeClient{
+				kubefake.PrintingKubeClient{Out: ioutil.Discard}, tc.failOn, []resource.Info{},
+			}
 
-	if !reflect.DeepEqual(hookKubeClient.deleteRecord, []resource.Info{
-		{
-			Name:      "build-config-1",
-			Namespace: "test",
-		},
-		{
-			Name:      "build-config-2",
-			Namespace: "test",
-		},
-		{
-			Name:      "build-config-2",
-			Namespace: "test",
-		},
-	}) {
-		t.Fatalf("Got unexpected delete record")
+			configuration := &Configuration{
+				Releases:     storage.Init(driver.NewMemory()),
+				KubeClient:   kubeClient,
+				Capabilities: chartutil.DefaultCapabilities,
+				Log: func(format string, v ...interface{}) {
+					t.Helper()
+					if *verbose {
+						t.Logf(format, v...)
+					}
+				},
+			}
+
+			err := configuration.execHook(&tc.inputRelease, hookEvent, 600)
+
+			if !reflect.DeepEqual(kubeClient.deleteRecord, tc.expectedDeleteRecord) {
+				t.Fatalf("Got unexpected delete record, expected: %#v, but got: %#v", kubeClient.deleteRecord, tc.expectedDeleteRecord)
+			}
+
+			if err != nil && !tc.expectError {
+				t.Fatalf("Got an unexpected error.")
+			}
+
+			if err == nil && tc.expectError {
+				t.Fatalf("Expected and error but did not get it.")
+			}
+		})
 	}
-
-	//if err != nil {
-	//	t.Fatalf("An expected error occured: %#v", err)
-	//}
 }
