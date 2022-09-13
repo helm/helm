@@ -1,4 +1,4 @@
 Error: INSTALLATION FAILED: values don't meet the specifications of the schema(s) in the following chart(s):
 empty:
-- age: Must be greater than or equal to 0
+- age: must be >= 0 but found -5
 
