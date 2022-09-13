@@ -24,8 +24,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/santhosh-tekuri/jsonschema/v6"
-	"github.com/xeipuuv/gojsonschema"
-	"sigs.k8s.io/yaml"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
@@ -34,10 +32,9 @@ import (
 func ValidateAgainstSchema(chrt *chart.Chart, values map[string]interface{}) error {
 	var sb strings.Builder
 	if chrt.Schema != nil {
-		err := ValidateAgainstSingleSchema(values, chrt.Schema)
-		if err != nil {
+		if err := ValidateAgainstSingleSchema(values, chrt.Schema); err != nil {
 			sb.WriteString(fmt.Sprintf("%s:\n", chrt.Name()))
-			sb.WriteString(err.Error())
+			sb.WriteString(fmt.Sprintf("%s\n", err.Error()))
 		}
 	}
 
@@ -64,54 +61,13 @@ func ValidateAgainstSingleSchema(values Values, schemaJSON []byte) (reterr error
 		}
 	}()
 
-	valuesData, err := yaml.Marshal(values)
-	if err != nil {
-		return err
-	}
-	valuesJSON, err := yaml.YAMLToJSON(valuesData)
-	if err != nil {
-		return err
-	}
-	if bytes.Equal(valuesJSON, []byte("null")) {
-		valuesJSON = []byte("{}")
-	}
-
-	if schemaIs2020(schemaJSON) {
-		return validateUsingNewValidator(valuesJSON, schemaJSON)
-	}
-
-	schemaLoader := gojsonschema.NewBytesLoader(schemaJSON)
-	valuesLoader := gojsonschema.NewBytesLoader(valuesJSON)
-
-	result, err := gojsonschema.Validate(schemaLoader, valuesLoader)
-	if err != nil {
-		return err
-	}
-
-	if !result.Valid() {
-		var sb strings.Builder
-		for _, desc := range result.Errors() {
-			sb.WriteString(fmt.Sprintf("- %s\n", desc))
-		}
-		return errors.New(sb.String())
-	}
-
-	return nil
-}
-
-func validateUsingNewValidator(valuesJSON, schemaJSON []byte) error {
 	schema, err := jsonschema.UnmarshalJSON(bytes.NewReader(schemaJSON))
-	if err != nil {
-		return err
-	}
-	values, err := jsonschema.UnmarshalJSON(bytes.NewReader(valuesJSON))
 	if err != nil {
 		return err
 	}
 
 	compiler := jsonschema.NewCompiler()
-	err = compiler.AddResource("file:///values.schema.json", schema)
-	if err != nil {
+	if err := compiler.AddResource("file:///values.schema.json", schema); err != nil {
 		return err
 	}
 
@@ -120,13 +76,42 @@ func validateUsingNewValidator(valuesJSON, schemaJSON []byte) error {
 		return err
 	}
 
-	return validator.Validate(values)
-}
-
-func schemaIs2020(schemaJSON []byte) bool {
-	var partialSchema struct {
-		Schema string `json:"$schema"`
+	valuesJSON, err := json.Marshal(values)
+	if err != nil {
+		return err
 	}
-	_ = json.Unmarshal(schemaJSON, &partialSchema)
-	return partialSchema.Schema == "https://json-schema.org/draft/2020-12/schema"
+
+	if bytes.Equal(valuesJSON, []byte("null")) {
+		valuesJSON = []byte("{}")
+	}
+
+	valuesObj, err := jsonschema.UnmarshalJSON(bytes.NewReader(valuesJSON))
+	if err != nil {
+		return err
+	}
+
+	if err = validator.Validate(valuesObj); err != nil {
+		var jsonschemaError *jsonschema.ValidationError
+		if errors.As(err, &jsonschemaError) {
+			// We remove the initial error line as it points to a fake schema file location, and might lead to confusion.
+			// We replace the empty location string with `/` to make it more readable.
+			cleanErrMessage := strings.Replace(
+				strings.Replace(
+					jsonschemaError.Error(),
+					"jsonschema validation failed with 'file:///values.schema.json#'\n",
+					"",
+					-1,
+				),
+				"- at '':",
+				"- at '/':",
+				-1,
+			)
+
+			return errors.New(cleanErrMessage)
+		}
+
+		return err
+	}
+
+	return nil
 }

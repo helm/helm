@@ -20,6 +20,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
 
@@ -40,51 +42,31 @@ func TestValidateAgainstSingleSchema(t *testing.T) {
 
 func TestValidateAgainstInvalidSingleSchema(t *testing.T) {
 	values, err := ReadValuesFile("./testdata/test-values.yaml")
-	if err != nil {
-		t.Fatalf("Error reading YAML file: %s", err)
-	}
+	assert.NoError(t, err)
+
 	schema, err := os.ReadFile("./testdata/test-values-invalid.schema.json")
-	if err != nil {
-		t.Fatalf("Error reading YAML file: %s", err)
-	}
+	assert.NoError(t, err)
 
-	var errString string
-	if err := ValidateAgainstSingleSchema(values, schema); err == nil {
-		t.Fatalf("Expected an error, but got nil")
-	} else {
-		errString = err.Error()
-	}
-
-	expectedErrString := "unable to validate schema: runtime error: invalid " +
-		"memory address or nil pointer dereference"
-	if errString != expectedErrString {
-		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
-	}
+	assert.EqualError(
+		t,
+		ValidateAgainstSingleSchema(values, schema),
+		"unable to validate schema: runtime error: invalid memory address or nil pointer dereference",
+	)
 }
 
 func TestValidateAgainstSingleSchemaNegative(t *testing.T) {
 	values, err := ReadValuesFile("./testdata/test-values-negative.yaml")
-	if err != nil {
-		t.Fatalf("Error reading YAML file: %s", err)
-	}
+	assert.NoError(t, err)
+
 	schema, err := os.ReadFile("./testdata/test-values.schema.json")
-	if err != nil {
-		t.Fatalf("Error reading YAML file: %s", err)
-	}
+	assert.NoError(t, err)
 
-	var errString string
-	if err := ValidateAgainstSingleSchema(values, schema); err == nil {
-		t.Fatalf("Expected an error, but got nil")
-	} else {
-		errString = err.Error()
-	}
-
-	expectedErrString := `- (root): employmentInfo is required
-- age: Must be greater than or equal to 0
-`
-	if errString != expectedErrString {
-		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
-	}
+	assert.EqualError(
+		t,
+		ValidateAgainstSingleSchema(values, schema),
+		`- at '/': missing property 'employmentInfo'
+- at '/age': minimum: got -5, want 0`,
+	)
 }
 
 const subchartSchema = `{
@@ -166,19 +148,13 @@ func TestValidateAgainstSchemaNegative(t *testing.T) {
 		"subchart": map[string]interface{}{},
 	}
 
-	var errString string
-	if err := ValidateAgainstSchema(chrt, vals); err == nil {
-		t.Fatalf("Expected an error, but got nil")
-	} else {
-		errString = err.Error()
-	}
-
-	expectedErrString := `subchart:
-- (root): age is required
-`
-	if errString != expectedErrString {
-		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
-	}
+	assert.EqualError(
+		t,
+		ValidateAgainstSchema(chrt, vals),
+		`subchart:
+- at '/': missing property 'age'
+`,
+	)
 }
 
 func TestValidateAgainstSchema2020(t *testing.T) {
@@ -230,18 +206,12 @@ func TestValidateAgainstSchema2020Negative(t *testing.T) {
 		},
 	}
 
-	var errString string
-	if err := ValidateAgainstSchema(chrt, vals); err == nil {
-		t.Fatalf("Expected an error, but got nil")
-	} else {
-		errString = err.Error()
-	}
-
-	expectedErrString := `subchart:
-jsonschema validation failed with 'file:///values.schema.json#'
+	assert.EqualError(
+		t,
+		ValidateAgainstSchema(chrt, vals),
+		`subchart:
 - at '/data': no items match contains schema
-  - at '/data/0': got number, want string`
-	if errString != expectedErrString {
-		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
-	}
+  - at '/data/0': got number, want string
+`,
+	)
 }
