@@ -17,7 +17,9 @@ package kube // import "helm.sh/helm/v3/pkg/kube"
 
 import (
 	"context"
+	"fmt"
 	"testing"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -25,7 +27,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes/fake"
+	k8stest "k8s.io/client-go/testing"
 )
 
 const defaultNamespace = metav1.NamespaceDefault
@@ -259,6 +264,158 @@ func Test_ReadyChecker_podsReadyForObject(t *testing.T) {
 			}
 			if got != tt.want {
 				t.Errorf("podsReadyForObject() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_ReadyChecker_waitJobReady(t *testing.T) {
+	type jobEventAction func(job batchv1.Job) (batchv1.Job, watch.EventType)
+	type args struct {
+		job        *batchv1.Job
+		actions    []jobEventAction
+		wantErr    error
+		ctxTimeout *time.Duration
+	}
+	makeDuration := func(timeout time.Duration) *time.Duration {
+		return &timeout
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "job is succeeded on deletion",
+			args: args{
+				job: newJob("foo", 1, intToInt32(1), 0, 0),
+				actions: []jobEventAction{
+					func(job batchv1.Job) (batchv1.Job, watch.EventType) {
+						return job, watch.Added
+					},
+					func(job batchv1.Job) (batchv1.Job, watch.EventType) {
+						job.Status.Succeeded = 1
+						return job, watch.Deleted
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "job is succeeded on modification",
+			args: args{
+				job: newJob("foo", 1, intToInt32(1), 0, 0),
+				actions: []jobEventAction{
+					func(job batchv1.Job) (batchv1.Job, watch.EventType) {
+						return job, watch.Added
+					},
+					func(job batchv1.Job) (batchv1.Job, watch.EventType) {
+						job.Status.Succeeded = 1
+						return job, watch.Modified
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "job is failed",
+			args: args{job: newJob("foo", 1, intToInt32(1), 0, 1)},
+			want: false,
+		},
+		{
+			name: "job deleted never succeeded",
+			args: args{
+				job: newJob("foo", 1, intToInt32(1), 0, 0),
+				actions: []jobEventAction{
+					func(job batchv1.Job) (batchv1.Job, watch.EventType) {
+						return job, watch.Added
+					},
+					func(job batchv1.Job) (batchv1.Job, watch.EventType) {
+						return job, watch.Deleted
+					},
+				},
+				wantErr: fmt.Errorf("job default/foo is deleted but wasn't ready"),
+			},
+		},
+		{
+			name: "job is succeeded and deleted",
+			args: args{
+				job: newJob("foo", 0, intToInt32(1), 0, 0),
+				actions: []jobEventAction{
+					func(job batchv1.Job) (batchv1.Job, watch.EventType) {
+						job.Status.Succeeded = 1
+						return job, watch.Deleted
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "job with null completions",
+			args: args{job: newJob("foo", 0, nil, 1, 0)},
+			want: true,
+		},
+		{
+			name: "job is succeeded",
+			args: args{job: newJob("foo", 1, intToInt32(1), 1, 0)},
+			want: true,
+		},
+		{
+			name: "wait times out",
+			args: args{
+				job:        newJob("foo", 1, intToInt32(1), 0, 0),
+				ctxTimeout: makeDuration(time.Millisecond * 10),
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		testArgs := tt.args
+		t.Run(tt.name, func(t *testing.T) {
+			fakeClient := fake.NewSimpleClientset(testArgs.job)
+			watcher := watch.NewFake()
+			fakeClient.PrependWatchReactor(
+				"jobs",
+				k8stest.DefaultWatchReactor(watcher, nil),
+			)
+
+			go func(job batchv1.Job, eventActions []jobEventAction) {
+				defer watcher.Stop()
+				for _, jobAction := range eventActions {
+					job, event := jobAction(job)
+					watcher.Action(event, &job)
+				}
+			}(*testArgs.job, testArgs.actions)
+
+			checker := NewReadyChecker(fakeClient, nil, CheckJobs(true))
+			res := &resource.Info{
+				Object:    testArgs.job,
+				Namespace: testArgs.job.Namespace,
+				Name:      testArgs.job.Name,
+			}
+
+			var (
+				ctx    = context.Background()
+				cancel context.CancelFunc
+			)
+			if testArgs.ctxTimeout != nil {
+				ctx, cancel = context.WithTimeout(ctx, *testArgs.ctxTimeout)
+				defer cancel()
+			}
+
+			got, err := checker.waitJobsReady(ctx, ResourceList{res})
+			if err != nil {
+				if testArgs.wantErr == nil {
+					t.Errorf("waitJobsReady() wanted no error, got '%v'", err)
+				} else if testArgs.wantErr.Error() != err.Error() {
+					t.Errorf("waitJobsReady() wanted error '%v', got '%v'", testArgs.wantErr, err)
+				}
+			} else if testArgs.wantErr != nil {
+				t.Errorf("waitJobsReady() wanted error '%v', got none", testArgs.wantErr)
+			}
+
+			if got != tt.want {
+				t.Errorf("waitJobsReady() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -551,6 +708,10 @@ func newPersistentVolumeClaim(name string, phase corev1.PersistentVolumeClaimPha
 
 func newJob(name string, backoffLimit int, completions *int32, succeeded int, failed int) *batchv1.Job {
 	return &batchv1.Job{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Job",
+			APIVersion: "batch/v1",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: defaultNamespace,

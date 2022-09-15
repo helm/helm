@@ -29,8 +29,10 @@ import (
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -80,6 +82,89 @@ type ReadyChecker struct {
 	log           func(string, ...interface{})
 	checkJobs     bool
 	pausedAsReady bool
+}
+
+// getResourceWatch attempts to get watch.Interface for the supplied resource.
+// resource is expected to have a name.
+func (c *ReadyChecker) getResourceWatch(ctx context.Context, resource *resource.Info) (watch.Interface, error) {
+	if resource.Name == "" {
+		return nil, fmt.Errorf("can't get watch for resource with empty name")
+	}
+	fieldNameSelector := fmt.Sprintf("metadata.name=%s", fields.EscapeValue(resource.Name))
+	listOpts := metav1.ListOptions{
+		FieldSelector:   fieldNameSelector,
+		ResourceVersion: resource.ResourceVersion,
+	}
+	switch resourceType := AsVersioned(resource).(type) {
+	case *batchv1.Job:
+		return c.client.BatchV1().Jobs(resource.Namespace).Watch(ctx, listOpts)
+	default:
+		return nil, fmt.Errorf("can't get watch for resoure of type %T - not implemented", resourceType)
+	}
+}
+
+// convert event.Object to *batchv1.Job or return an error.
+func eventObjectAsJob(event watch.Event) (*batchv1.Job, error) {
+	job, ok := event.Object.(*batchv1.Job)
+	if !ok {
+		return nil, fmt.Errorf(
+			"expected runtime.Object type of type *batchv1.Job, got %T",
+			job,
+		)
+	}
+	return job, nil
+}
+
+// waitJobsReady waits until all jobs from resource list are ready.
+// Returns error if context is done or a job wasn't ready.
+// If resource list has no jobs it returns true without an error.
+func (c *ReadyChecker) waitJobsReady(ctx context.Context, resources ResourceList) (bool, error) {
+	for _, resource := range resources {
+		switch job := AsVersioned(resource).(type) {
+		case *batchv1.Job:
+			lastSeen := job
+			jobWatch, err := c.getResourceWatch(ctx, resource)
+			if err != nil {
+				c.log("Falling back to polling, error watching job events: %v", err)
+				return c.IsReady(ctx, resource)
+			}
+			defer jobWatch.Stop()
+			isReady, err := c.jobReady(lastSeen)
+			if err != nil {
+				return isReady, err
+			}
+			for !isReady {
+				select {
+				case <-ctx.Done():
+					isReady, err = c.jobReady(lastSeen)
+					if err != nil {
+						return isReady, err
+					}
+					return isReady, ctx.Err()
+				case event, ok := <-jobWatch.ResultChan():
+					if !ok {
+						return c.jobReady(lastSeen)
+					}
+					lastSeen, err = eventObjectAsJob(event)
+					if err != nil {
+						return isReady, err
+					}
+					isReady, err = c.jobReady(lastSeen)
+					if err != nil {
+						return isReady, err
+					}
+					if event.Type == watch.Deleted && !isReady {
+						return false, fmt.Errorf(
+							"job %v/%v is deleted but wasn't ready",
+							lastSeen.GetNamespace(),
+							lastSeen.GetName(),
+						)
+					}
+				}
+			}
+		}
+	}
+	return true, nil
 }
 
 // IsReady checks if v is ready. It supports checking readiness for pods,

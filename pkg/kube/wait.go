@@ -42,15 +42,15 @@ type waiter struct {
 	log     func(string, ...interface{})
 }
 
-// waitForResources polls to get the current status of all pods, PVCs, Services and
-// Jobs(optional) until all are ready or a timeout is reached
+// waitForResources polls to get the current status of all pods, PVCs, Services and until all are ready or a timeout is reached.
+// For jobs (optional) it watches for events and checks if the job is (or was) ready at the time of event.
 func (w *waiter) waitForResources(created ResourceList) error {
 	w.log("beginning wait for %d resources with timeout of %v", len(created), w.timeout)
 
 	ctx, cancel := context.WithTimeout(context.Background(), w.timeout)
 	defer cancel()
 
-	return wait.PollUntilContextCancel(ctx, 2*time.Second, true, func(ctx context.Context) (bool, error) {
+	err := wait.PollUntilContextCancel(ctx, 2*time.Second, true, func(ctx context.Context) (bool, error) {
 		for _, v := range created {
 			ready, err := w.c.IsReady(ctx, v)
 			if !ready || err != nil {
@@ -59,6 +59,21 @@ func (w *waiter) waitForResources(created ResourceList) error {
 		}
 		return true, nil
 	})
+
+	if err != nil {
+		return err
+	}
+
+	if w.c.checkJobs {
+		jobsReady, err := w.c.waitJobsReady(ctx, created)
+		if err != nil {
+			return err
+		}
+		if !jobsReady {
+			return errors.New("jobs not ready")
+		}
+	}
+	return nil
 }
 
 // waitForDeletedResources polls to check if all the resources are deleted or a timeout is reached
