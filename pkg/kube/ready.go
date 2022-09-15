@@ -19,6 +19,7 @@ package kube // import "helm.sh/helm/v3/pkg/kube"
 import (
 	"context"
 
+	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
@@ -30,6 +31,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -81,6 +83,40 @@ type ReadyChecker struct {
 	pausedAsReady bool
 }
 
+// waitJobsReady waits until all jobs from resource list are ready.
+// Returns error if context is done or a job was deleted without being ready.
+// If resource list has no jobs it returns true without error.
+func (c *ReadyChecker) waitJobsReady(ctx context.Context, resources ResourceList) (bool, error) {
+	for _, v := range resources {
+		switch job := AsVersioned(v).(type) {
+		case *batchv1.Job:
+			jobWatch, err := v.Watch(v.ResourceVersion)
+			if err != nil {
+				return c.jobReady(job), err
+			}
+			defer jobWatch.Stop()
+			for !c.jobReady(job) {
+				select {
+				case <-ctx.Done():
+					return c.jobReady(job), ctx.Err()
+				case event, ok := <-jobWatch.ResultChan():
+					if !ok {
+						break
+					}
+					err = ConvertUnstructuredObject(event.Object, &job)
+					if err != nil {
+						return false, err
+					}
+					if event.Type == watch.Deleted && !c.jobReady(job) {
+						return false, errors.Errorf("job %v/%v is deleted but wasn't ready", job.GetNamespace(), job.GetName())
+					}
+				}
+			}
+		}
+	}
+	return true, nil
+}
+
 // IsReady checks if v is ready. It supports checking readiness for pods,
 // deployments, persistent volume claims, services, daemon sets, custom
 // resource definitions, stateful sets, replication controllers, and replica
@@ -101,13 +137,6 @@ func (c *ReadyChecker) IsReady(ctx context.Context, v *resource.Info) (bool, err
 		pod, err := c.client.CoreV1().Pods(v.Namespace).Get(ctx, v.Name, metav1.GetOptions{})
 		if err != nil || !c.isPodReady(pod) {
 			return false, err
-		}
-	case *batchv1.Job:
-		if c.checkJobs {
-			job, err := c.client.BatchV1().Jobs(v.Namespace).Get(ctx, v.Name, metav1.GetOptions{})
-			if err != nil || !c.jobReady(job) {
-				return false, err
-			}
 		}
 	case *appsv1.Deployment, *appsv1beta1.Deployment, *appsv1beta2.Deployment, *extensionsv1beta1.Deployment:
 		currentDeployment, err := c.client.AppsV1().Deployments(v.Namespace).Get(ctx, v.Name, metav1.GetOptions{})

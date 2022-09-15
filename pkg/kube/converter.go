@@ -19,6 +19,8 @@ package kube // import "helm.sh/helm/v3/pkg/kube"
 import (
 	"sync"
 
+	"github.com/pkg/errors"
+
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -66,4 +68,16 @@ func kubernetesNativeScheme() *runtime.Scheme {
 		apiextensionsv1.AddToScheme(k8sNativeScheme)
 	})
 	return k8sNativeScheme
+}
+
+// ConvertUnstructuredObject converts runtime.Unstructured to concrete resource representation.
+func ConvertUnstructuredObject(obj runtime.Object, concrete interface{}) error {
+	unstructObj, ok := obj.(runtime.Unstructured)
+	if !ok {
+		return errors.Errorf("object expected to be runtime.Unstrcutured, but got %T", obj)
+	}
+	return runtime.DefaultUnstructuredConverter.FromUnstructured(
+		unstructObj.UnstructuredContent(),
+		concrete,
+	)
 }
