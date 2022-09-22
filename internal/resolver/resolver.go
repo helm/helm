@@ -56,7 +56,7 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 
 	// Now we clone the dependencies, locking as we go.
 	locked := make([]*chart.Dependency, len(reqs))
-	missing := []string{}
+	missing := make(map[string]string)
 	for i, d := range reqs {
 		constraint, err := semver.NewConstraint(d.Version)
 		if err != nil {
@@ -95,7 +95,7 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 			}
 
 			if !constraint.Check(v) {
-				missing = append(missing, d.Name)
+				addMissingChart(missing, d)
 				continue
 			}
 
@@ -173,7 +173,7 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 			Repository: d.Repository,
 			Version:    version,
 		}
-		// The version are already sorted and hence the first one to satisfy the constraint is used
+		// The versions are already sorted and hence the first one to satisfy the constraint is used
 		for _, ver := range vs {
 			v, err := semver.NewVersion(ver.Version)
 			// OCI does not need URLs
@@ -189,11 +189,16 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 		}
 
 		if !found {
-			missing = append(missing, d.Name)
+			addMissingChart(missing, d)
 		}
 	}
 	if len(missing) > 0 {
-		return nil, errors.Errorf("can't get a valid version for repositories %s. Try changing the version constraint in Chart.yaml", strings.Join(missing, ", "))
+		missingVersionsList := ""
+		for name, repo := range missing {
+			missingVersionsList += fmt.Sprintf("\n- %s in %s", name, repo)
+		}
+		return nil, errors.Errorf("can't find the specified chart version for these dependencies in their "+
+			"respective repos:\n%s\n\nTry changing the version constraint(s) in the 'Chart.yaml' file.", missingVersionsList)
 	}
 
 	digest, err := HashReq(reqs, locked)
@@ -206,6 +211,10 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 		Digest:       digest,
 		Dependencies: locked,
 	}, nil
+}
+
+func addMissingChart(missing map[string]string, d *chart.Dependency) {
+	missing[fmt.Sprintf("%s (%s)", d.Name, d.Version)] = d.Repository
 }
 
 // HashReq generates a hash of the dependencies.
