@@ -668,6 +668,7 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 		if err != nil {
 			return err
 		}
+		r.CachePath = m.RepositoryCache
 		wg.Add(1)
 		go func(r *repo.ChartRepository) {
 			if _, err := r.DownloadIndexFile(); err != nil {
