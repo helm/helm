@@ -152,12 +152,18 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 		fmt.Fprintln(&charts, name)
 	}
 	chartsFile := filepath.Join(r.CachePath, helmpath.CacheChartsFile(r.Config.Name))
-	os.MkdirAll(filepath.Dir(chartsFile), 0755)
-	ioutil.WriteFile(chartsFile, []byte(charts.String()), 0644)
+	if err := os.MkdirAll(filepath.Dir(chartsFile), 0755); err != nil {
+		return "", err
+	}
+	if err := ioutil.WriteFile(chartsFile, []byte(charts.String()), 0644); err != nil {
+		return "", err
+	}
 
 	// Create the index file in the cache directory
 	fname := filepath.Join(r.CachePath, helmpath.CacheIndexFile(r.Config.Name))
-	os.MkdirAll(filepath.Dir(fname), 0755)
+	if err := os.MkdirAll(filepath.Dir(fname), 0755); err != nil {
+		return "", err
+	}
 	return fname, ioutil.WriteFile(fname, index, 0644)
 }
 
