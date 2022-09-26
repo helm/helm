@@ -420,6 +420,9 @@ func TestInstallRelease_Atomic(t *testing.T) {
 		failer.WaitError = fmt.Errorf("I timed out")
 		instAction.cfg.KubeClient = failer
 		instAction.Atomic = true
+		// disabling hooks to avoid an early fail when the
+		// the WaitForDelete is called on the pre-delete hook execution
+		instAction.DisableHooks = true
 		vals := map[string]interface{}{}
 
 		res, err := instAction.Run(buildChart(), vals)
