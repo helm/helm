@@ -64,7 +64,7 @@ var Extractors = map[string]Extractor{
 // This should be refactored in Helm 4, combined with the extension-based mechanism.
 func mediaTypeToExtension(mt string) (string, bool) {
 	switch strings.ToLower(mt) {
-	case "application/gzip", "application/x-gzip", "application/x-tgz", "application/x-gtar":
+	case "application/gzip", "application/x-gzip", "application/x-tgz", "application/x-gtar", "application/octet-stream":
 		return ".tgz", true
 	default:
 		return "", false
