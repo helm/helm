@@ -141,7 +141,7 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 					break
 				}
 
-				// If YAML linting fails, it will always be fails next block. so we should return here.
+				//  If YAML linting fails here, it will always fail in the next block as well, so we should return here.
 				// fix https://github.com/helm/helm/issues/11391
 				if !linter.RunLinterRule(support.ErrorSev, fpath, validateYamlContent(err)) {
 					return
