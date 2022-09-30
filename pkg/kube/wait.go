@@ -22,6 +22,9 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	"google.golang.org/grpc/codes"
+
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
@@ -32,7 +35,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
@@ -40,6 +42,22 @@ type waiter struct {
 	c       ReadyChecker
 	timeout time.Duration
 	log     func(string, ...interface{})
+}
+
+// isServiceUnavailable helps figure out if the error is caused by etcd not being available
+// see https://pkg.go.dev/go.etcd.io/etcd/api/v3/v3rpc/rpctypes for `codes.Unavailable`
+// we use this to check if the etcdserver is not available we should retry in case
+// this is a temporary situation
+func isServiceUnavailable(err error) bool {
+	if err != nil {
+		err = rpctypes.Error(err)
+		if ev, ok := err.(rpctypes.EtcdError); ok {
+			if ev.Code() == codes.Unavailable {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // waitForResources polls to get the current status of all pods, PVCs, Services and
@@ -54,6 +72,9 @@ func (w *waiter) waitForResources(created ResourceList) error {
 		for _, v := range created {
 			ready, err := w.c.IsReady(ctx, v)
 			if !ready || err != nil {
+				if isServiceUnavailable(err) {
+					return false, nil
+				}
 				return false, err
 			}
 		}
@@ -72,6 +93,9 @@ func (w *waiter) waitForDeletedResources(deleted ResourceList) error {
 		for _, v := range deleted {
 			err := v.Get()
 			if err == nil || !apierrors.IsNotFound(err) {
+				if isServiceUnavailable(err) {
+					return false, nil
+				}
 				return false, err
 			}
 		}
