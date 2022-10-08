@@ -23,6 +23,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"sort"
 	"strings"
 
@@ -416,8 +417,8 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		}
 	}
 
-	fmt.Fprintf(c.out, "Pulled: %s\n", result.Ref)
-	fmt.Fprintf(c.out, "Digest: %s\n", result.Manifest.Digest)
+	fmt.Fprintf(os.Stderr, "Pulled: %s\n", result.Ref)
+	fmt.Fprintf(os.Stderr, "Digest: %s\n", result.Manifest.Digest)
 
 	if strings.Contains(result.Ref, "_") {
 		fmt.Fprintf(c.out, "%s contains an underscore.\n", result.Ref)
