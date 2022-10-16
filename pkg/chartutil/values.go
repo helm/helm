@@ -156,6 +156,9 @@ func ToRenderValues(chrt *chart.Chart, chrtVals map[string]interface{}, options 
 		return top, err
 	}
 
+	// Remove nil values from the coalesced map
+	vals = TrimNilValues(vals)
+
 	if err := ValidateAgainstSchema(chrt, vals); err != nil {
 		errFmt := "values don't meet the specifications of the schema(s) in the following chart(s):\n%s"
 		return top, fmt.Errorf(errFmt, err.Error())
