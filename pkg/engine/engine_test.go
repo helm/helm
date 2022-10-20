@@ -865,3 +865,36 @@ func TestRenderLoadTemplateForTplFromFile(t *testing.T) {
 		t.Fatalf("Expected %q, got %q", expect, got)
 	}
 }
+
+func TestRenderTplEmpty(t *testing.T) {
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "TplEmpty"},
+		Templates: []*chart.File{
+			{Name: "templates/empty-string", Data: []byte(`{{tpl "" .}}`)},
+			{Name: "templates/empty-action", Data: []byte(`{{tpl "{{ \"\"}}" .}}`)},
+			{Name: "templates/only-defines", Data: []byte(`{{tpl "{{define \"not-invoked\"}}not-rendered{{end}}" .}}`)},
+		},
+	}
+	v := chartutil.Values{
+		"Chart": c.Metadata,
+		"Release": chartutil.Values{
+			"Name": "TestRelease",
+		},
+	}
+
+	out, err := Render(c, v)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expects := map[string]string{
+		"TplEmpty/templates/empty-string": "",
+		"TplEmpty/templates/empty-action": "",
+		"TplEmpty/templates/only-defines": "",
+	}
+	for file, expect := range expects {
+		if out[file] != expect {
+			t.Errorf("Expected %q, got %q", expect, out[file])
+		}
+	}
+}
