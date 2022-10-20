@@ -898,3 +898,52 @@ func TestRenderTplEmpty(t *testing.T) {
 		}
 	}
 }
+
+func TestRenderTplTemplateNames(t *testing.T) {
+	// .Template.BasePath and .Name make it through
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "TplTemplateNames"},
+		Templates: []*chart.File{
+			{Name: "templates/default-basepath", Data: []byte(`{{tpl "{{ .Template.BasePath }}" .}}`)},
+			{Name: "templates/default-name", Data: []byte(`{{tpl "{{ .Template.Name }}" .}}`)},
+			{Name: "templates/modified-basepath", Data: []byte(`{{tpl "{{ .Template.BasePath }}" .Values.dot}}`)},
+			{Name: "templates/modified-name", Data: []byte(`{{tpl "{{ .Template.Name }}" .Values.dot}}`)},
+			// Current implementation injects the 'tpl' template as if it were a template file, and
+			// so only BasePath and Name make it through.
+			{Name: "templates/modified-field", Data: []byte(`{{tpl "{{ .Template.Field }}" .Values.dot}}`)},
+		},
+	}
+	v := chartutil.Values{
+		"Values": chartutil.Values{
+			"dot": chartutil.Values{
+				"Template": chartutil.Values{
+					"BasePath": "path/to/template",
+					"Name":     "name-of-template",
+					"Field":    "extra-field",
+				},
+			},
+		},
+		"Chart": c.Metadata,
+		"Release": chartutil.Values{
+			"Name": "TestRelease",
+		},
+	}
+
+	out, err := Render(c, v)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expects := map[string]string{
+		"TplTemplateNames/templates/default-basepath":  "TplTemplateNames/templates",
+		"TplTemplateNames/templates/default-name":      "TplTemplateNames/templates/default-name",
+		"TplTemplateNames/templates/modified-basepath": "path/to/template",
+		"TplTemplateNames/templates/modified-name":     "name-of-template",
+		"TplTemplateNames/templates/modified-field":    "",
+	}
+	for file, expect := range expects {
+		if out[file] != expect {
+			t.Errorf("Expected %q, got %q", expect, out[file])
+		}
+	}
+}
