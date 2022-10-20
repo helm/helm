@@ -123,7 +123,7 @@ func includeFun(t *template.Template, includedNames map[string]int) func(string,
 }
 
 // initFunMap creates the Engine's FuncMap and adds context-specific functions.
-func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]renderable) {
+func (e Engine) initFunMap(t *template.Template) {
 	funcMap := funcMap()
 	includedNames := make(map[string]int)
 
@@ -154,7 +154,7 @@ func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]render
 			return "", errors.Wrapf(err, "error during tpl function execution for %q", tpl)
 		}
 
-		// See comment in renderWithReferences explaining the <no value> hack.
+		// See comment in render explaining the <no value> hack.
 		return strings.ReplaceAll(buf.String(), "<no value>", ""), nil
 	}
 
@@ -200,13 +200,7 @@ func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]render
 }
 
 // render takes a map of templates/values and renders them.
-func (e Engine) render(tpls map[string]renderable) (map[string]string, error) {
-	return e.renderWithReferences(tpls, tpls)
-}
-
-// renderWithReferences takes a map of templates/values to render, and a map of
-// templates which can be referenced within them.
-func (e Engine) renderWithReferences(tpls, referenceTpls map[string]renderable) (rendered map[string]string, err error) {
+func (e Engine) render(tpls map[string]renderable) (rendered map[string]string, err error) {
 	// Basically, what we do here is start with an empty parent template and then
 	// build up a list of templates -- one for each file. Once all of the templates
 	// have been parsed, we loop through again and execute every template.
@@ -228,28 +222,16 @@ func (e Engine) renderWithReferences(tpls, referenceTpls map[string]renderable) 
 		t.Option("missingkey=zero")
 	}
 
-	e.initFunMap(t, referenceTpls)
+	e.initFunMap(t)
 
 	// We want to parse the templates in a predictable order. The order favors
 	// higher-level (in file system) templates over deeply nested templates.
 	keys := sortTemplates(tpls)
-	referenceKeys := sortTemplates(referenceTpls)
 
 	for _, filename := range keys {
 		r := tpls[filename]
 		if _, err := t.New(filename).Parse(r.tpl); err != nil {
 			return map[string]string{}, cleanupParseError(filename, err)
-		}
-	}
-
-	// Adding the reference templates to the template context
-	// so they can be referenced in the tpl function
-	for _, filename := range referenceKeys {
-		if t.Lookup(filename) == nil {
-			r := referenceTpls[filename]
-			if _, err := t.New(filename).Parse(r.tpl); err != nil {
-				return map[string]string{}, cleanupParseError(filename, err)
-			}
 		}
 	}
 
