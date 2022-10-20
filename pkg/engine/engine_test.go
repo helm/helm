@@ -830,3 +830,38 @@ func TestRenderRecursionLimit(t *testing.T) {
 	}
 
 }
+
+func TestRenderLoadTemplateForTplFromFile(t *testing.T) {
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "TplLoadFromFile"},
+		Templates: []*chart.File{
+			{Name: "templates/base", Data: []byte(`{{ tpl (.Files.Get .Values.filename) . }}`)},
+			{Name: "templates/_function", Data: []byte(`{{define "test-function"}}test-function{{end}}`)},
+		},
+		Files: []*chart.File{
+			{Name: "test", Data: []byte(`{{ tpl (.Files.Get .Values.filename2) .}}`)},
+			{Name: "test2", Data: []byte(`{{include "test-function" .}}{{define "nested-define"}}nested-define-content{{end}} {{include "nested-define" .}}`)},
+		},
+	}
+
+	v := chartutil.Values{
+		"Values": chartutil.Values{
+			"filename":  "test",
+			"filename2": "test2",
+		},
+		"Chart": c.Metadata,
+		"Release": chartutil.Values{
+			"Name": "TestRelease",
+		},
+	}
+
+	out, err := Render(c, v)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expect := "test-function nested-define-content"
+	if got := out["TplLoadFromFile/templates/base"]; got != expect {
+		t.Fatalf("Expected %q, got %q", expect, got)
+	}
+}
