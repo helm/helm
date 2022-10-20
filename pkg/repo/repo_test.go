@@ -203,7 +203,7 @@ func TestWriteFile(t *testing.T) {
 		t.Errorf("failed to create test-file (%v)", err)
 	}
 	defer os.Remove(file.Name())
-	if err := sampleRepository.WriteFile(file.Name(), 0644); err != nil {
+	if err := sampleRepository.WriteFile(file.Name(), 0600); err != nil {
 		t.Errorf("failed to write file (%v)", err)
 	}
 
