@@ -947,3 +947,54 @@ func TestRenderTplTemplateNames(t *testing.T) {
 		}
 	}
 }
+
+func TestRenderTplRedefines(t *testing.T) {
+	// Redefining a template inside 'tpl' does not affect the outer definition
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "TplRedefines"},
+		Templates: []*chart.File{
+			{Name: "templates/_partials", Data: []byte(`{{define "partial"}}original-in-partial{{end}}`)},
+			{Name: "templates/partial", Data: []byte(
+				`before: {{include "partial" .}}\n{{tpl .Values.partialText .}}\nafter: {{include "partial" .}}`,
+			)},
+			{Name: "templates/manifest", Data: []byte(
+				`{{define "manifest"}}original-in-manifest{{end}}` +
+					`before: {{include "manifest" .}}\n{{tpl .Values.manifestText .}}\nafter: {{include "manifest" .}}`,
+			)},
+			// The current implementation replaces the manifest text and re-parses, so a
+			// partial template defined only in the manifest invoking tpl cannot be accessed
+			// by that tpl call.
+			//{Name: "templates/manifest-only", Data: []byte(
+			//	`{{define "manifest-only"}}only-in-manifest{{end}}` +
+			//		`before: {{include "manifest-only" .}}\n{{tpl .Values.manifestOnlyText .}}\nafter: {{include "manifest-only" .}}`,
+			//)},
+		},
+	}
+	v := chartutil.Values{
+		"Values": chartutil.Values{
+			"partialText":      `{{define "partial"}}redefined-in-tpl{{end}}tpl: {{include "partial" .}}`,
+			"manifestText":     `{{define "manifest"}}redefined-in-tpl{{end}}tpl: {{include "manifest" .}}`,
+			"manifestOnlyText": `tpl: {{include "manifest-only" .}}`,
+		},
+		"Chart": c.Metadata,
+		"Release": chartutil.Values{
+			"Name": "TestRelease",
+		},
+	}
+
+	out, err := Render(c, v)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expects := map[string]string{
+		"TplRedefines/templates/partial":  `before: original-in-partial\ntpl: original-in-partial\nafter: original-in-partial`,
+		"TplRedefines/templates/manifest": `before: original-in-manifest\ntpl: redefined-in-tpl\nafter: original-in-manifest`,
+		//"TplRedefines/templates/manifest-only": `before: only-in-manifest\ntpl: only-in-manifest\nafter: only-in-manifest`,
+	}
+	for file, expect := range expects {
+		if out[file] != expect {
+			t.Errorf("Expected %q, got %q", expect, out[file])
+		}
+	}
+}
