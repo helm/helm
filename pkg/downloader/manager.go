@@ -313,7 +313,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 
 		// Any failure to resolve/download a chart should fail:
 		// https://github.com/helm/helm/issues/1439
-		churl, username, password, insecureskiptlsverify, passcredentialsall, caFile, certFile, keyFile, err := m.findChartURL(dep.Name, dep.Version, dep.Repository, repos)
+		churl, username, password, _, passcredentialsall, caFile, certFile, keyFile, err := m.findChartURL(dep.Name, dep.Version, dep.Repository, repos)
 		if err != nil {
 			saveError = errors.Wrapf(err, "could not find %s", churl)
 			break
@@ -337,8 +337,8 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			Options: []getter.Option{
 				getter.WithBasicAuth(username, password),
 				getter.WithPassCredentialsAll(passcredentialsall),
-				getter.WithInsecureSkipVerifyTLS(insecureskiptlsverify),
 				getter.WithTLSClientConfig(certFile, keyFile, caFile),
+				getter.WithRegistryClient(m.RegistryClient),
 			},
 		}
 
@@ -349,7 +349,6 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 				return errors.Wrapf(err, "could not parse OCI reference")
 			}
 			dl.Options = append(dl.Options,
-				getter.WithRegistryClient(m.RegistryClient),
 				getter.WithTagName(version))
 		}
 

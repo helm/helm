@@ -68,6 +68,11 @@ func newDependencyBuildCmd(cfg *action.Configuration, out io.Writer) *cobra.Comm
 			if client.Verify {
 				man.Verify = downloader.VerifyIfPossible
 			}
+			if client.InsecureSkipTLSverify || client.PlainHTTP {
+				if err := man.RegistryClient.WithResolver(client.InsecureSkipTLSverify, client.PlainHTTP); err != nil {
+					return err
+				}
+			}
 			err := man.Build()
 			if e, ok := err.(downloader.ErrRepoNotFound); ok {
 				return fmt.Errorf("%s. Please add the missing repos via 'helm repo add'", e.Error())
@@ -80,6 +85,8 @@ func newDependencyBuildCmd(cfg *action.Configuration, out io.Writer) *cobra.Comm
 	f.BoolVar(&client.Verify, "verify", false, "verify the packages against signatures")
 	f.StringVar(&client.Keyring, "keyring", defaultKeyring(), "keyring containing public keys")
 	f.BoolVar(&client.SkipRefresh, "skip-refresh", false, "do not refresh the local repository cache")
+	f.BoolVar(&client.InsecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the chart download")
+	f.BoolVar(&client.PlainHTTP, "plain-http", false, "use plain http to connect oci registry")
 
 	return cmd
 }

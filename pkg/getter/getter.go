@@ -37,6 +37,7 @@ type options struct {
 	caFile                string
 	unTar                 bool
 	insecureSkipVerifyTLS bool
+	plainHTTP             bool
 	username              string
 	password              string
 	passCredentialsAll    bool
