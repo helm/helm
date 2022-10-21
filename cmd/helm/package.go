@@ -132,6 +132,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&client.InsecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the chart download")
 	f.BoolVar(&client.PlainHTTP, "plain-http", false, "use insecure HTTP connections for the chart download")
 	f.StringVar(&client.CaFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+	addValueOptionsFlags(f, valueOpts)
 
 	return cmd
 }
