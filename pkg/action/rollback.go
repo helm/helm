@@ -141,10 +141,6 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 }
 
 func (r *Rollback) performRollback(currentRelease, targetRelease *release.Release) (*release.Release, error) {
-	if r.DryRun {
-		r.cfg.Log("dry run for %s", targetRelease.Name)
-		return targetRelease, nil
-	}
 
 	current, err := r.cfg.KubeClient.Build(bytes.NewBufferString(currentRelease.Manifest), true)
 	if err != nil {
@@ -154,6 +150,11 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 	target, err := r.cfg.KubeClient.Build(bytes.NewBufferString(targetRelease.Manifest), true)
 	if err != nil {
 		return targetRelease, errors.Wrap(err, "unable to build kubernetes objects from new release manifest")
+	}
+
+	if r.DryRun {
+		r.cfg.Log("dry run for %s", targetRelease.Name)
+		return targetRelease, nil
 	}
 
 	// pre-rollback hooks
