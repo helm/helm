@@ -1,3 +1,0 @@
-Error: "helm get hooks" requires 1 argument
-
-Usage:  helm get hooks RELEASE_NAME [flags]

@@ -1,5 +1,0 @@
-foo
-bar
-baz
-:4
-Completion ended with directive: ShellCompDirectiveNoFileComp

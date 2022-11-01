@@ -1,3 +1,0 @@
-Error: "helm rollback" requires at least 1 argument
-
-Usage:  helm rollback <RELEASE> [REVISION] [flags]

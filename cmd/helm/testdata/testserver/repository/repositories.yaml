@@ -1,6 +1,0 @@
-apiVersion: v1
-generated: 2016-10-04T13:50:02.87649685-06:00
-repositories:
-- cache: ""
-  name: test
-  url: http://127.0.0.1:49216

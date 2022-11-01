@@ -1,2 +1,0 @@
-COMPUTED VALUES:
-name: value

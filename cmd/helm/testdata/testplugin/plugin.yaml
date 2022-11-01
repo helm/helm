@@ -1,4 +1,0 @@
-name: testplugin
-usage: "echo test"
-description: "This echos test"
-command: "echo test"

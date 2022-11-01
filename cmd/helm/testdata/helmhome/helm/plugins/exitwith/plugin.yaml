@@ -1,4 +1,0 @@
-name: exitwith
-usage: "exitwith code"
-description: "This exits with the specified exit code"
-command: "$HELM_PLUGIN_DIR/exitwith.sh"

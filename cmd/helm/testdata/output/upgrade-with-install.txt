@@ -1,7 +1,0 @@
-Release "zany-bunny" has been upgraded. Happy Helming!
-NAME: zany-bunny
-LAST DEPLOYED: Fri Sep  2 22:04:05 1977
-NAMESPACE: default
-STATUS: deployed
-REVISION: 2
-TEST SUITE: None

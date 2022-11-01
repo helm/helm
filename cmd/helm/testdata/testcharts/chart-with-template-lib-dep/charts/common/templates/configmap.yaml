@@ -1,6 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: common-configmap
-data:
-  myvalue: "Hello World"
