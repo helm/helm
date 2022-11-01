@@ -1,6 +1,0 @@
-apiVersion: v1
-metadata:
-    name: multicharttest-chart1-configmap
-data:
-    dat: |
-    {{ .Values.config | indent 4 }}

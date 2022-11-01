@@ -1,5 +1,0 @@
-apiVersion: v2
-name: library
-description: A Helm chart for Kubernetes
-type: library
-version: 0.1.0
