@@ -76,6 +76,8 @@ func TestIndexFile(t *testing.T) {
 		{&chart.Metadata{APIVersion: "v2", Name: "cutter", Version: "0.2.0"}, "cutter-0.2.0.tgz", "http://example.com/charts", "sha256:1234567890abc"},
 		{&chart.Metadata{APIVersion: "v2", Name: "setter", Version: "0.1.9+alpha"}, "setter-0.1.9+alpha.tgz", "http://example.com/charts", "sha256:1234567890abc"},
 		{&chart.Metadata{APIVersion: "v2", Name: "setter", Version: "0.1.9+beta"}, "setter-0.1.9+beta.tgz", "http://example.com/charts", "sha256:1234567890abc"},
+		{&chart.Metadata{APIVersion: "v2", Name: "setter", Version: "0.1.8"}, "setter-0.1.8.tgz", "http://example.com/charts", "sha256:1234567890abc"},
+		{&chart.Metadata{APIVersion: "v2", Name: "setter", Version: "0.1.8+beta"}, "setter-0.1.8+beta.tgz", "http://example.com/charts", "sha256:1234567890abc"},
 	} {
 		if err := i.MustAdd(x.md, x.filename, x.baseURL, x.digest); err != nil {
 			t.Errorf("unexpected error adding to index: %s", err)
@@ -113,6 +115,11 @@ func TestIndexFile(t *testing.T) {
 	cv, err = i.Get("setter", "0.1.9+alpha")
 	if err != nil || cv.Metadata.Version != "0.1.9+alpha" {
 		t.Errorf("Expected version: 0.1.9+alpha")
+	}
+
+	cv, err = i.Get("setter", "0.1.8")
+	if err != nil || cv.Metadata.Version != "0.1.8" {
+		t.Errorf("Expected version: 0.1.8")
 	}
 }
 
