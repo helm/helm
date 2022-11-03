@@ -151,7 +151,7 @@ func TestIndexCustomSchemeDownload(t *testing.T) {
 	repo.CachePath = ensure.TempDir(t)
 	defer os.RemoveAll(repo.CachePath)
 
-	tempIndexFile, err := ioutil.TempFile("", "test-repo")
+	tempIndexFile, err := os.CreateTemp("", "test-repo")
 	if err != nil {
 		t.Fatalf("Failed to create temp index file: %v", err)
 	}
