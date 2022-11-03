@@ -266,7 +266,7 @@ func verifyIndex(t *testing.T, actual *IndexFile) {
 // startLocalServerForTests Start the local helm server
 func startLocalServerForTests(handler http.Handler) (*httptest.Server, error) {
 	if handler == nil {
-		fileBytes, err := ioutil.ReadFile("testdata/local-index.yaml")
+		fileBytes, err := os.ReadFile("testdata/local-index.yaml")
 		if err != nil {
 			return nil, err
 		}
@@ -281,7 +281,7 @@ func startLocalServerForTests(handler http.Handler) (*httptest.Server, error) {
 // startLocalTLSServerForTests Start the local helm server with TLS
 func startLocalTLSServerForTests(handler http.Handler) (*httptest.Server, error) {
 	if handler == nil {
-		fileBytes, err := ioutil.ReadFile("testdata/local-index.yaml")
+		fileBytes, err := os.ReadFile("testdata/local-index.yaml")
 		if err != nil {
 			return nil, err
 		}

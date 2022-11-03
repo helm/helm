@@ -29,7 +29,7 @@ import (
 
 // LoadChartfile loads a Chart.yaml file into a *chart.Metadata.
 func LoadChartfile(filename string) (*chart.Metadata, error) {
-	b, err := ioutil.ReadFile(filename)
+	b, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func IsChartDir(dirName string) (bool, error) {
 		return false, errors.Errorf("no %s exists in directory %q", ChartfileName, dirName)
 	}
 
-	chartYamlContent, err := ioutil.ReadFile(chartYaml)
+	chartYamlContent, err := os.ReadFile(chartYaml)
 	if err != nil {
 		return false, errors.Errorf("cannot read %s in directory %q", ChartfileName, dirName)
 	}

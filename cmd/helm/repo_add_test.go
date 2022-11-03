@@ -218,7 +218,7 @@ func repoAddConcurrent(t *testing.T, testName, repoFile string) {
 	}
 	wg.Wait()
 
-	b, err := ioutil.ReadFile(repoFile)
+	b, err := os.ReadFile(repoFile)
 	if err != nil {
 		t.Error(err)
 	}

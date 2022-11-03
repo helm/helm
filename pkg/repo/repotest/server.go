@@ -194,7 +194,7 @@ func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
 	}
 
 	// load it into memory...
-	contentBytes, err := ioutil.ReadFile(absPath)
+	contentBytes, err := os.ReadFile(absPath)
 	if err != nil {
 		t.Fatal("could not load chart into memory")
 	}
@@ -222,7 +222,7 @@ func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
 	// load it into memory...
 	absPath = filepath.Join(srv.Dir,
 		fmt.Sprintf("%s-%s.tgz", c.Metadata.Name, c.Metadata.Version))
-	contentBytes, err = ioutil.ReadFile(absPath)
+	contentBytes, err = os.ReadFile(absPath)
 	if err != nil {
 		t.Fatal("could not load chart into memory")
 	}
@@ -317,7 +317,7 @@ func (s *Server) CopyCharts(origin string) ([]string, error) {
 	for i, f := range files {
 		base := filepath.Base(f)
 		newname := filepath.Join(s.docroot, base)
-		data, err := ioutil.ReadFile(f)
+		data, err := os.ReadFile(f)
 		if err != nil {
 			return []string{}, err
 		}
@@ -400,6 +400,7 @@ func (s *Server) Stop() {
 // URL returns the URL of the server.
 //
 // Example:
+//
 //	http://localhost:1776
 func (s *Server) URL() string {
 	return s.srv.URL
