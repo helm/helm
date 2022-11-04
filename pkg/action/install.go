@@ -86,6 +86,7 @@ type Install struct {
 	OutputDir                string
 	Atomic                   bool
 	SkipCRDs                 bool
+	SkipSchemaValidation     bool
 	SubNotes                 bool
 	DisableOpenAPIValidation bool
 	IncludeCRDs              bool
@@ -248,9 +249,18 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		IsInstall: !isUpgrade,
 		IsUpgrade: isUpgrade,
 	}
-	valuesToRender, err := chartutil.ToRenderValues(chrt, vals, options, caps)
-	if err != nil {
-		return nil, err
+
+	var valuesToRender chartutil.Values
+	if i.SkipSchemaValidation {
+		valuesToRender, err = chartutil.ToRenderValuesSkipSchemaValidation(chrt, vals, options, caps)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		valuesToRender, err = chartutil.ToRenderValues(chrt, vals, options, caps)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	rel := i.createRelease(chrt, vals)
@@ -456,10 +466,10 @@ func (i *Install) failRelease(rel *release.Release, err error) (*release.Release
 //
 // Roughly, this will return an error if name is
 //
-//	- empty
-//	- too long
-//	- already in use, and not deleted
-//	- used by a deleted release, and i.Replace is false
+//   - empty
+//   - too long
+//   - already in use, and not deleted
+//   - used by a deleted release, and i.Replace is false
 func (i *Install) availableName() error {
 	start := i.ReleaseName
 

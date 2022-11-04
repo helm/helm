@@ -23,6 +23,7 @@ import (
 var (
 	values                  = make(map[string]interface{})
 	namespace               = "testNamespace"
+	skipSchemaValidation    = false
 	strict                  = false
 	chart1MultipleChartLint = "testdata/charts/multiplecharts-lint-chart-1"
 	chart2MultipleChartLint = "testdata/charts/multiplecharts-lint-chart-2"
@@ -78,7 +79,7 @@ func TestLintChart(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := lintChart(tt.chartPath, map[string]interface{}{}, namespace, strict)
+			_, err := lintChart(tt.chartPath, map[string]interface{}{}, namespace, strict, skipSchemaValidation)
 			switch {
 			case err != nil && !tt.err:
 				t.Errorf("%s", err)

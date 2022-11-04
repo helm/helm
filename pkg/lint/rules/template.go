@@ -45,7 +45,7 @@ var (
 )
 
 // Templates lints the templates in the Linter.
-func Templates(linter *support.Linter, values map[string]interface{}, namespace string, strict bool) {
+func Templates(linter *support.Linter, values map[string]interface{}, namespace string, strict bool, skipSchemaValidation bool) {
 	fpath := "templates/"
 	templatesPath := filepath.Join(linter.ChartDir, fpath)
 
@@ -80,11 +80,22 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 	if err != nil {
 		return
 	}
-	valuesToRender, err := chartutil.ToRenderValues(chart, cvals, options, nil)
-	if err != nil {
-		linter.RunLinterRule(support.ErrorSev, fpath, err)
-		return
+
+	var valuesToRender chartutil.Values
+	if skipSchemaValidation {
+		valuesToRender, err = chartutil.ToRenderValuesSkipSchemaValidation(chart, cvals, options, nil)
+		if err != nil {
+			linter.RunLinterRule(support.ErrorSev, fpath, err)
+			return
+		}
+	} else {
+		valuesToRender, err = chartutil.ToRenderValues(chart, cvals, options, nil)
+		if err != nil {
+			linter.RunLinterRule(support.ErrorSev, fpath, err)
+			return
+		}
 	}
+
 	var e engine.Engine
 	e.LintMode = true
 	renderedContentMap, err := e.Render(chart, valuesToRender)
