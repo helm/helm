@@ -18,7 +18,6 @@ package repo
 
 import (
 	"bytes"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -151,7 +150,7 @@ func TestIndexCustomSchemeDownload(t *testing.T) {
 	repo.CachePath = ensure.TempDir(t)
 	defer os.RemoveAll(repo.CachePath)
 
-	tempIndexFile, err := ioutil.TempFile("", "test-repo")
+	tempIndexFile, err := os.CreateTemp("", "test-repo")
 	if err != nil {
 		t.Fatalf("Failed to create temp index file: %v", err)
 	}
@@ -266,7 +265,7 @@ func verifyIndex(t *testing.T, actual *IndexFile) {
 // startLocalServerForTests Start the local helm server
 func startLocalServerForTests(handler http.Handler) (*httptest.Server, error) {
 	if handler == nil {
-		fileBytes, err := ioutil.ReadFile("testdata/local-index.yaml")
+		fileBytes, err := os.ReadFile("testdata/local-index.yaml")
 		if err != nil {
 			return nil, err
 		}
@@ -281,7 +280,7 @@ func startLocalServerForTests(handler http.Handler) (*httptest.Server, error) {
 // startLocalTLSServerForTests Start the local helm server with TLS
 func startLocalTLSServerForTests(handler http.Handler) (*httptest.Server, error) {
 	if handler == nil {
-		fileBytes, err := ioutil.ReadFile("testdata/local-index.yaml")
+		fileBytes, err := os.ReadFile("testdata/local-index.yaml")
 		if err != nil {
 			return nil, err
 		}
