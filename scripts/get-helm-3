@@ -100,8 +100,7 @@ verifySupported() {
   fi
 
   if [ "${HAS_GIT}" != "true" ]; then
-    echo "Git is required for plugin install"
-    exit 1
+    echo "[WARNING] Could not find git. It is required for plugin installation."
   fi
 }
 
