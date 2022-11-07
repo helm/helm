@@ -248,7 +248,7 @@ func processImportValues(c *chart.Chart) error {
 					continue
 				}
 				// create value map from child to be merged into parent
-				b = CoalesceTables(cvals, pathToMap(parent, vv.AsMap()))
+				b = CoalesceTables(b, pathToMap(parent, vv.AsMap()))
 			case string:
 				child := "exports." + iv
 				outiv = append(outiv, map[string]string{
@@ -268,7 +268,7 @@ func processImportValues(c *chart.Chart) error {
 	}
 
 	// set the new values
-	c.Values = CoalesceTables(cvals, b)
+	c.Values = CoalesceTables(b, cvals)
 
 	return nil
 }
