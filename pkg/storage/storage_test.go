@@ -278,8 +278,40 @@ func TestStorageHistory(t *testing.T) {
 	}
 }
 
-func TestStorageRemoveLeastRecentWithError(t *testing.T) {
-	storage := Init(driver.NewMemory())
+var errMaxHistoryMockDriverSomethingHappened = errors.New("something happened")
+
+type MaxHistoryMockDriver struct {
+	Driver driver.Driver
+}
+
+func NewMaxHistoryMockDriver(d driver.Driver) *MaxHistoryMockDriver {
+	return &MaxHistoryMockDriver{Driver: d}
+}
+func (d *MaxHistoryMockDriver) Create(key string, rls *rspb.Release) error {
+	return d.Driver.Create(key, rls)
+}
+func (d *MaxHistoryMockDriver) Update(key string, rls *rspb.Release) error {
+	return d.Driver.Update(key, rls)
+}
+func (d *MaxHistoryMockDriver) Delete(key string) (*rspb.Release, error) {
+	return nil, errMaxHistoryMockDriverSomethingHappened
+}
+func (d *MaxHistoryMockDriver) Get(key string) (*rspb.Release, error) {
+	return d.Driver.Get(key)
+}
+func (d *MaxHistoryMockDriver) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
+	return d.Driver.List(filter)
+}
+func (d *MaxHistoryMockDriver) Query(labels map[string]string) ([]*rspb.Release, error) {
+	return d.Driver.Query(labels)
+}
+func (d *MaxHistoryMockDriver) Name() string {
+	return d.Driver.Name()
+}
+
+func TestMaxHistoryErrorHandling(t *testing.T) {
+	//func TestStorageRemoveLeastRecentWithError(t *testing.T) {
+	storage := Init(NewMaxHistoryMockDriver(driver.NewMemory()))
 	storage.Log = t.Logf
 
 	storage.MaxHistory = 1
@@ -297,7 +329,7 @@ func TestStorageRemoveLeastRecentWithError(t *testing.T) {
 	setup()
 
 	rls2 := ReleaseTestData{Name: name, Version: 2, Status: rspb.StatusSuperseded}.ToRelease()
-	wantErr := driver.ErrNoDeployedReleases
+	wantErr := errMaxHistoryMockDriverSomethingHappened
 	gotErr := storage.Create(rls2)
 	if !errors.Is(gotErr, wantErr) {
 		t.Fatalf("Storing release 'angry-bird' (v2) should return the error %#v, but returned %#v", wantErr, gotErr)
@@ -441,6 +473,65 @@ func TestStorageLast(t *testing.T) {
 
 	if h.Version != 4 {
 		t.Errorf("Expected revision 4, got %d", h.Version)
+	}
+}
+
+// TestUpgradeInitiallyFailedRelease tests a case when there are no deployed release yet, but history limit has been
+// reached: the has-no-deployed-releases error should not occur in such case.
+func TestUpgradeInitiallyFailedReleaseWithHistoryLimit(t *testing.T) {
+	storage := Init(driver.NewMemory())
+	storage.MaxHistory = 4
+
+	const name = "angry-bird"
+
+	// setup storage with test releases
+	setup := func() {
+		// release records
+		rls0 := ReleaseTestData{Name: name, Version: 1, Status: rspb.StatusFailed}.ToRelease()
+		rls1 := ReleaseTestData{Name: name, Version: 2, Status: rspb.StatusFailed}.ToRelease()
+		rls2 := ReleaseTestData{Name: name, Version: 3, Status: rspb.StatusFailed}.ToRelease()
+		rls3 := ReleaseTestData{Name: name, Version: 4, Status: rspb.StatusFailed}.ToRelease()
+
+		// create the release records in the storage
+		assertErrNil(t.Fatal, storage.Create(rls0), "Storing release 'angry-bird' (v1)")
+		assertErrNil(t.Fatal, storage.Create(rls1), "Storing release 'angry-bird' (v2)")
+		assertErrNil(t.Fatal, storage.Create(rls2), "Storing release 'angry-bird' (v3)")
+		assertErrNil(t.Fatal, storage.Create(rls3), "Storing release 'angry-bird' (v4)")
+
+		hist, err := storage.History(name)
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+
+		wantHistoryLen := 4
+		if len(hist) != wantHistoryLen {
+			t.Fatalf("expected history of release %q to contain %d releases, got %d", name, wantHistoryLen, len(hist))
+		}
+	}
+
+	setup()
+
+	rls5 := ReleaseTestData{Name: name, Version: 5, Status: rspb.StatusFailed}.ToRelease()
+	err := storage.Create(rls5)
+	if err != nil {
+		t.Fatalf("Failed to create a new release version: %s", err)
+	}
+
+	hist, err := storage.History(name)
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+
+	for i, rel := range hist {
+		wantVersion := i + 2
+		if rel.Version != wantVersion {
+			t.Fatalf("Expected history release %d version to equal %d, got %d", i+1, wantVersion, rel.Version)
+		}
+
+		wantStatus := rspb.StatusFailed
+		if rel.Info.Status != wantStatus {
+			t.Fatalf("Expected history release %d status to equal %q, got %q", i+1, wantStatus, rel.Info.Status)
+		}
 	}
 }
 

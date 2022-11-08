@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -309,8 +310,15 @@ func TestFindChartInAuthAndTLSAndPassRepoURL(t *testing.T) {
 
 	// If the insecureSkipTLsverify is false, it will return an error that contains "x509: certificate signed by unknown authority".
 	_, err = FindChartInAuthAndTLSAndPassRepoURL(srv.URL, "", "", "nginx", "0.1.0", "", "", "", false, false, getter.All(&cli.EnvSettings{}))
-
-	if !strings.Contains(err.Error(), "x509: certificate signed by unknown authority") {
+	// Go communicates with the platform and different platforms return different messages. Go itself tests darwin
+	// differently for its message. On newer versions of Darwin the message includes the "Acme Co" portion while older
+	// versions of Darwin do not. As there are people developing Helm using both old and new versions of Darwin we test
+	// for both messages.
+	if runtime.GOOS == "darwin" {
+		if !strings.Contains(err.Error(), "x509: “Acme Co” certificate is not trusted") && !strings.Contains(err.Error(), "x509: certificate signed by unknown authority") {
+			t.Errorf("Expected TLS error for function  FindChartInAuthAndTLSAndPassRepoURL not found, but got a different error (%v)", err)
+		}
+	} else if !strings.Contains(err.Error(), "x509: certificate signed by unknown authority") {
 		t.Errorf("Expected TLS error for function  FindChartInAuthAndTLSAndPassRepoURL not found, but got a different error (%v)", err)
 	}
 }

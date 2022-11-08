@@ -192,7 +192,18 @@ func (c *Client) newBuilder() *resource.Builder {
 
 // Build validates for Kubernetes objects and returns unstructured infos.
 func (c *Client) Build(reader io.Reader, validate bool) (ResourceList, error) {
-	schema, err := c.Factory.Validator(validate)
+	validationDirective := metav1.FieldValidationIgnore
+	if validate {
+		validationDirective = metav1.FieldValidationStrict
+	}
+
+	dynamicClient, err := c.Factory.DynamicClient()
+	if err != nil {
+		return nil, err
+	}
+
+	verifier := resource.NewQueryParamVerifier(dynamicClient, c.Factory.OpenAPIGetter(), resource.QueryParamFieldValidation)
+	schema, err := c.Factory.Validator(validationDirective, verifier)
 	if err != nil {
 		return nil, err
 	}
@@ -315,16 +326,20 @@ func (c *Client) Delete(resources ResourceList) (*Result, []error) {
 			defer mtx.Unlock()
 			return nil
 		}
-		if err := c.skipIfNotFound(deleteResource(info)); err != nil {
-			mtx.Lock()
-			defer mtx.Unlock()
-			// Collect the error and continue on
-			errs = append(errs, err)
-		} else {
+		err := deleteResource(info)
+		if err == nil || apierrors.IsNotFound(err) {
+			if err != nil {
+				c.Log("Ignoring delete failure for %q %s: %v", info.Name, info.Mapping.GroupVersionKind, err)
+			}
 			mtx.Lock()
 			defer mtx.Unlock()
 			res.Deleted = append(res.Deleted, info)
+			return nil
 		}
+		mtx.Lock()
+		defer mtx.Unlock()
+		// Collect the error and continue on
+		errs = append(errs, err)
 		return nil
 	})
 	if err != nil {
@@ -339,14 +354,6 @@ func (c *Client) Delete(resources ResourceList) (*Result, []error) {
 		return nil, errs
 	}
 	return res, nil
-}
-
-func (c *Client) skipIfNotFound(err error) error {
-	if apierrors.IsNotFound(err) {
-		c.Log("%v", err)
-		return nil
-	}
-	return err
 }
 
 func (c *Client) watchTimeout(t time.Duration) func(*resource.Info) error {
