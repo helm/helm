@@ -1,2 +1,2 @@
 metadata:
-  name: {{ .Values.subchart.name | lower }}
+  name: {{ .Values.fromsubchart.name | lower }}

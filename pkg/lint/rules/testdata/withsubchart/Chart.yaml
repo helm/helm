@@ -12,5 +12,5 @@ dependencies:
     repository: "file://../subchart"
     import-values:
       - child: subchart
-        parent: subchart
+        parent: fromsubchart
 
