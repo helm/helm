@@ -422,7 +422,10 @@ func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, t
 	}
 
 	if !i.DisableHooks {
-		if err := i.cfg.execHook(rel, release.HookPostInstall, i.Timeout); err != nil {
+		i.Lock.Lock()
+		err := i.cfg.execHook(rel, release.HookPostInstall, i.Timeout)
+		i.Lock.Unlock()
+		if err != nil {
 			i.reportToRun(c, rel, fmt.Errorf("failed post-install: %s", err))
 			return
 		}
