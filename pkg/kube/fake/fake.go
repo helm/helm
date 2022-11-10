@@ -47,6 +47,7 @@ type FailingKubeClient struct {
 	BuildUnstructuredError           error
 	WaitAndGetCompletedPodPhaseError error
 	WaitDuration                     time.Duration
+	WatchDuration                    time.Duration
 }
 
 // Create returns the configured error if set or prints
@@ -100,6 +101,7 @@ func (f *FailingKubeClient) Delete(resources kube.ResourceList) (*kube.Result, [
 
 // WatchUntilReady returns the configured error if set or prints
 func (f *FailingKubeClient) WatchUntilReady(resources kube.ResourceList, d time.Duration) error {
+	time.Sleep(f.WatchDuration)
 	if f.WatchUntilReadyError != nil {
 		return f.WatchUntilReadyError
 	}
