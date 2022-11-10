@@ -89,13 +89,22 @@ func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
 	}
 
 	if err := r.cfg.execHook(rel, release.HookTest, r.Timeout); err != nil {
-		rel.Hooks = append(skippedHooks, rel.Hooks...)
-		r.cfg.Releases.Update(rel)
+		rel, _ = r.updateHooks(rel, append(skippedHooks, rel.Hooks...))
 		return rel, err
 	}
 
-	rel.Hooks = append(skippedHooks, rel.Hooks...)
-	return rel, r.cfg.Releases.Update(rel)
+	return r.updateHooks(rel, append(skippedHooks, rel.Hooks...))
+}
+
+func (r *ReleaseTesting) updateHooks(rel *release.Release, hooks []*release.Hook) (*release.Release, error) {
+	rel, err := r.cfg.Releases.Get(rel.Name, rel.Version)
+	if err != nil {
+		return rel, err
+	}
+
+	rel.Hooks = hooks
+	err = r.cfg.Releases.Update(rel)
+	return rel, err
 }
 
 // GetPodLogs will write the logs for all test pods in the given release into
