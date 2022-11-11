@@ -47,9 +47,8 @@ faked locally. Additionally, none of the server-side testing of chart validity
 `
 
 func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
-	var validate bool
-	var includeCrds bool
-	var skipTests bool
+	var validate, includeCrds, skipTests, useReleaseName bool
+	var outputDir string
 	client := action.NewInstall(cfg)
 	valueOpts := &values.Options{}
 	var kubeVersion string
@@ -77,97 +76,75 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			client.ReleaseName = "release-name"
 			client.Replace = true // Skip the name check
 			client.ClientOnly = !validate
-			client.APIVersions = chartutil.VersionSet(extraAPIs)
-			client.IncludeCRDs = includeCrds
+			client.APIVersions = extraAPIs
 			rel, err := runInstall(args, client, valueOpts, out)
-
-			if err != nil && !settings.Debug {
+			if rel == nil || (err != nil && !settings.Debug) {
 				if rel != nil {
 					return fmt.Errorf("%w\n\nUse --debug flag to render out invalid YAML", err)
 				}
 				return err
 			}
-
 			// We ignore a potential error here because, when the --debug flag was specified,
 			// we always want to print the YAML, even if it is not valid. The error is still returned afterwards.
-			if rel != nil {
-				var manifests bytes.Buffer
-				fmt.Fprintln(&manifests, strings.TrimSpace(rel.Manifest))
-				if !client.DisableHooks {
-					fileWritten := make(map[string]bool)
-					for _, m := range rel.Hooks {
-						if skipTests && isTestHook(m) {
-							continue
-						}
-						if client.OutputDir == "" {
-							fmt.Fprintf(&manifests, "---\n# Source: %s\n%s\n", m.Path, m.Manifest)
-						} else {
-							newDir := client.OutputDir
-							if client.UseReleaseName {
-								newDir = filepath.Join(client.OutputDir, client.ReleaseName)
-							}
-							err = writeToFile(newDir, m.Path, m.Manifest, fileWritten[m.Path])
-							if err != nil {
-								return err
-							}
-							fileWritten[m.Path] = true
-						}
 
+			if outputDir != "" && useReleaseName {
+				outputDir = filepath.Join(outputDir, client.ReleaseName)
+			}
+			fileWritten := make(map[string]bool)
+
+			// deal hooks
+			if !client.DisableHooks {
+				for _, m := range rel.Hooks {
+					if matchFilePatterns(m.Path, showFiles) || (skipTests && isTestHook(m)) {
+						continue
+					}
+					err = writeManifest(outputDir, m.Path, m.Manifest, fileWritten, out)
+					if err != nil {
+						return err
 					}
 				}
-
-				// if we have a list of files to render, then check that each of the
-				// provided files exists in the chart.
-				if len(showFiles) > 0 {
-					// This is necessary to ensure consistent manifest ordering when using --show-only
-					// with globs or directory names.
-					splitManifests := releaseutil.SplitManifests(manifests.String())
-					manifestsKeys := make([]string, 0, len(splitManifests))
-					for k := range splitManifests {
-						manifestsKeys = append(manifestsKeys, k)
+			}
+			// deal crds
+			if includeCrds && !client.SkipCRDs && rel.Chart != nil {
+				for _, crd := range rel.Chart.CRDObjects() {
+					if !matchFilePatterns(crd.Name, showFiles) {
+						continue
 					}
-					sort.Sort(releaseutil.BySplitManifestsOrder(manifestsKeys))
-
-					manifestNameRegex := regexp.MustCompile("# Source: [^/]+/(.+)")
-					var manifestsToRender []string
-					for _, f := range showFiles {
-						missing := true
-						// Use linux-style filepath separators to unify user's input path
-						f = filepath.ToSlash(f)
-						for _, manifestKey := range manifestsKeys {
-							manifest := splitManifests[manifestKey]
-							submatch := manifestNameRegex.FindStringSubmatch(manifest)
-							if len(submatch) == 0 {
-								continue
-							}
-							manifestName := submatch[1]
-							// manifest.Name is rendered using linux-style filepath separators on Windows as
-							// well as macOS/linux.
-							manifestPathSplit := strings.Split(manifestName, "/")
-							// manifest.Path is connected using linux-style filepath separators on Windows as
-							// well as macOS/linux
-							manifestPath := strings.Join(manifestPathSplit, "/")
-
-							// if the filepath provided matches a manifest path in the
-							// chart, render that manifest
-							if matched, _ := filepath.Match(f, manifestPath); !matched {
-								continue
-							}
-							manifestsToRender = append(manifestsToRender, manifest)
-							missing = false
-						}
-						if missing {
-							return fmt.Errorf("could not find template %s in chart", f)
-						}
+					err = writeManifest(outputDir, crd.Name, string(crd.File.Data), fileWritten, out)
+					if err != nil {
+						return err
 					}
-					for _, m := range manifestsToRender {
-						fmt.Fprintf(out, "---\n%s\n", m)
-					}
-				} else {
-					fmt.Fprintf(out, "%s", manifests.String())
 				}
 			}
 
+			// deal manifests
+			var manifests bytes.Buffer
+			_, _ = fmt.Fprintln(&manifests, strings.TrimSpace(rel.Manifest))
+			// This is necessary to ensure consistent manifest ordering when using --show-only
+			// with globs or directory names.
+			splitManifests := releaseutil.SplitManifests(manifests.String())
+			manifestsKeys := make([]string, 0, len(splitManifests))
+			manifestNameRegex := regexp.MustCompile("# Source: [^/]+/(.+)")
+			for k := range splitManifests {
+				manifestsKeys = append(manifestsKeys, k)
+			}
+			sort.Sort(releaseutil.BySplitManifestsOrder(manifestsKeys))
+			for _, manifestKey := range manifestsKeys {
+				manifest := splitManifests[manifestKey]
+				submatch := manifestNameRegex.FindStringSubmatch(manifest)
+				var manifestName string
+				if len(submatch) > 1 {
+					manifestName = submatch[1]
+				}
+				if matchFilePatterns(manifestName, showFiles) {
+					// remove text like # Source: XXX/XXX.yaml
+					manifest = manifestNameRegex.ReplaceAllString(manifest, "")
+					//err = writeManifest(outputDir, , manifest, fileWritten, out) todo
+					if err != nil {
+						return err
+					}
+				}
+			}
 			return err
 		},
 	}
@@ -175,14 +152,14 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	addInstallFlags(cmd, f, client, valueOpts)
 	f.StringArrayVarP(&showFiles, "show-only", "s", []string{}, "only show manifests rendered from the given templates")
-	f.StringVar(&client.OutputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
+	f.StringVar(&outputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
 	f.BoolVar(&validate, "validate", false, "validate your manifests against the Kubernetes cluster you are currently pointing at. This is the same validation performed on an install")
 	f.BoolVar(&includeCrds, "include-crds", false, "include CRDs in the templated output")
 	f.BoolVar(&skipTests, "skip-tests", false, "skip tests from templated output")
 	f.BoolVar(&client.IsUpgrade, "is-upgrade", false, "set .Release.IsUpgrade instead of .Release.IsInstall")
 	f.StringVar(&kubeVersion, "kube-version", "", "Kubernetes version used for Capabilities.KubeVersion")
 	f.StringSliceVarP(&extraAPIs, "api-versions", "a", []string{}, "Kubernetes api versions used for Capabilities.APIVersions")
-	f.BoolVar(&client.UseReleaseName, "release-name", false, "use release name in the output-dir path.")
+	f.BoolVar(&useReleaseName, "release-name", false, "use release name in the output-dir path.")
 	bindPostRenderFlag(cmd, &client.PostRenderer)
 
 	return cmd
@@ -197,11 +174,7 @@ func isTestHook(h *release.Hook) bool {
 	return false
 }
 
-// The following functions (writeToFile, createOrOpenFile, and ensureDirectoryForFile)
-// are copied from the actions package. This is part of a change to correct a
-// bug introduced by #8156. As part of the todo to refactor renderResources
-// this duplicate code should be removed. It is added here so that the API
-// surface area is as minimally impacted as possible in fixing the issue.
+// writeToFile write manifests into output dir.
 func writeToFile(outputDir string, name string, data string, append bool) error {
 	outfileName := strings.Join([]string{outputDir, name}, string(filepath.Separator))
 
@@ -242,4 +215,31 @@ func ensureDirectoryForFile(file string) error {
 	}
 
 	return os.MkdirAll(baseDir, 0755)
+}
+
+func matchFilePatterns(target string, sf []string) bool {
+	if len(sf) == 0 {
+		return true
+	}
+	for _, pattern := range sf {
+		pattern = filepath.ToSlash(pattern)
+		matched, _ := filepath.Match(pattern, target)
+		if matched {
+			return true
+		}
+	}
+	return false
+}
+
+func writeManifest(outputDir, path, manifest string, fileWritten map[string]bool, outStream io.Writer) error {
+	if outputDir == "" {
+		fmt.Fprintf(outStream, "---\n# Source: %s\n%s\n", path, manifest)
+	} else {
+		err := writeToFile(outputDir, path, manifest, fileWritten[path])
+		if err != nil {
+			return err
+		}
+		fileWritten[path] = true
+	}
+	return nil
 }

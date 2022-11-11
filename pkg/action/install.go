@@ -23,7 +23,6 @@ import (
 	"io/ioutil"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -68,27 +67,29 @@ type Install struct {
 
 	ChartPathOptions
 
-	ClientOnly               bool
-	Force                    bool
-	CreateNamespace          bool
-	DryRun                   bool
-	DisableHooks             bool
-	Replace                  bool
-	Wait                     bool
-	WaitForJobs              bool
-	Devel                    bool
-	DependencyUpdate         bool
-	Timeout                  time.Duration
-	Namespace                string
-	ReleaseName              string
-	GenerateName             bool
-	NameTemplate             string
-	Description              string
+	ClientOnly       bool
+	Force            bool
+	CreateNamespace  bool
+	DryRun           bool
+	DisableHooks     bool
+	Replace          bool
+	Wait             bool
+	WaitForJobs      bool
+	Devel            bool
+	DependencyUpdate bool
+	Timeout          time.Duration
+	Namespace        string
+	ReleaseName      string
+	GenerateName     bool
+	NameTemplate     string
+	Description      string
+	// Deprecated
 	OutputDir                string
 	Atomic                   bool
 	SkipCRDs                 bool
 	SubNotes                 bool
 	DisableOpenAPIValidation bool
+	// Deprecated
 	IncludeCRDs              bool
 	// KubeVersion allows specifying a custom kubernetes version to use and
 	// APIVersions allows a manual set of supported API Versions to be passed
@@ -99,7 +100,7 @@ type Install struct {
 	IsUpgrade bool
 	// Used by helm template to add the release as part of OutputDir path
 	// OutputDir/<ReleaseName>
-	UseReleaseName bool
+	UseReleaseName bool // Deprecated
 	PostRenderer   postrender.PostRenderer
 	// Lock to control raceconditions when the process receives a SIGTERM
 	Lock sync.Mutex
@@ -186,7 +187,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	return i.RunWithContext(ctx, chrt, vals)
 }
 
-// Run executes the installation with Context
+// RunWithContext executes the installation with Context
 func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
 	// Check reachability of cluster unless in client-only mode (e.g. `helm template` without `--validate`)
 	if !i.ClientOnly {
@@ -257,7 +258,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	rel := i.createRelease(chrt, vals)
 
 	var manifestDoc *bytes.Buffer
-	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, i.DryRun)
+	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.SubNotes, i.PostRenderer, i.DryRun)
 	// Even for errors, attach this if available
 	if manifestDoc != nil {
 		rel.Manifest = manifestDoc.String()
@@ -532,50 +533,6 @@ func (i *Install) replaceRelease(rel *release.Release) error {
 	// For any other status, mark it as superseded and store the old record
 	last.SetStatus(release.StatusSuperseded, "superseded by new release")
 	return i.recordRelease(last)
-}
-
-// write the <data> to <output-dir>/<name>. <append> controls if the file is created or content will be appended
-func writeToFile(outputDir string, name string, data string, append bool) error {
-	outfileName := strings.Join([]string{outputDir, name}, string(filepath.Separator))
-
-	err := ensureDirectoryForFile(outfileName)
-	if err != nil {
-		return err
-	}
-
-	f, err := createOrOpenFile(outfileName, append)
-	if err != nil {
-		return err
-	}
-
-	defer f.Close()
-
-	_, err = f.WriteString(fmt.Sprintf("---\n# Source: %s\n%s\n", name, data))
-
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("wrote %s\n", outfileName)
-	return nil
-}
-
-func createOrOpenFile(filename string, append bool) (*os.File, error) {
-	if append {
-		return os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0600)
-	}
-	return os.Create(filename)
-}
-
-// check if the directory exists to create file. creates if don't exists
-func ensureDirectoryForFile(file string) error {
-	baseDir := path.Dir(file)
-	_, err := os.Stat(baseDir)
-	if err != nil && !os.IsNotExist(err) {
-		return err
-	}
-
-	return os.MkdirAll(baseDir, defaultDirectoryPermission)
 }
 
 // NameAndChart returns the name and chart that should be used.

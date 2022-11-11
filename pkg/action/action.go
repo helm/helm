@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -98,12 +97,8 @@ type Configuration struct {
 }
 
 // renderResources renders the templates in a chart
-//
-// TODO: This function is badly in need of a refactor.
-// TODO: As part of the refactor the duplicate code in cmd/helm/template.go should be removed
-//       This code has to do with writing files to disk.
-func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, dryRun bool) ([]*release.Hook, *bytes.Buffer, string, error) {
-	hs := []*release.Hook{}
+func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, subNotes bool, pr postrender.PostRenderer, dryRun bool) ([]*release.Hook, *bytes.Buffer, string, error) {
+	var hs []*release.Hook
 	b := bytes.NewBuffer(nil)
 
 	caps, err := cfg.getCapabilities()
@@ -178,41 +173,8 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 		return hs, b, "", err
 	}
 
-	// Aggregate all valid manifests into one big doc.
-	fileWritten := make(map[string]bool)
-
-	if includeCrds {
-		for _, crd := range ch.CRDObjects() {
-			if outputDir == "" {
-				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Name, string(crd.File.Data[:]))
-			} else {
-				err = writeToFile(outputDir, crd.Filename, string(crd.File.Data[:]), fileWritten[crd.Name])
-				if err != nil {
-					return hs, b, "", err
-				}
-				fileWritten[crd.Name] = true
-			}
-		}
-	}
-
 	for _, m := range manifests {
-		if outputDir == "" {
-			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", m.Name, m.Content)
-		} else {
-			newDir := outputDir
-			if useReleaseName {
-				newDir = filepath.Join(outputDir, releaseName)
-			}
-			// NOTE: We do not have to worry about the post-renderer because
-			// output dir is only used by `helm template`. In the next major
-			// release, we should move this logic to template only as it is not
-			// used by install or upgrade
-			err = writeToFile(newDir, m.Name, m.Content, fileWritten[m.Name])
-			if err != nil {
-				return hs, b, "", err
-			}
-			fileWritten[m.Name] = true
-		}
+		fmt.Fprintf(b, "---\n# Source: %s\n%s\n", m.Name, m.Content)
 	}
 
 	if pr != nil {
