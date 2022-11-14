@@ -39,9 +39,10 @@ import (
 )
 
 type waiter struct {
-	c       ReadyChecker
-	timeout time.Duration
-	log     func(string, ...interface{})
+	c       						ReadyChecker
+	timeout 						time.Duration
+	perResourceTimeout 	time.Duration
+	log     						func(string, ...interface{})
 }
 
 // isServiceUnavailable helps figure out if the error is caused by etcd not being available
@@ -68,7 +69,12 @@ func (w *waiter) waitForResources(created ResourceList) error {
 	ctx, cancel := context.WithTimeout(context.Background(), w.timeout)
 	defer cancel()
 
-	return wait.PollImmediateUntil(2*time.Second, func() (bool, error) {
+	timeout := 2 * time.Second
+	if w.perResourceTimeout > timeout {
+		timeout = w.perResourceTimeout
+	}
+
+	return wait.PollImmediateUntil(timeout, func() (bool, error) {
 		for _, v := range created {
 			ready, err := w.c.IsReady(ctx, v)
 			if !ready || err != nil {
