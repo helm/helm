@@ -147,6 +147,22 @@ func (c *Client) Wait(resources ResourceList, timeout time.Duration) error {
 	return w.waitForResources(resources)
 }
 
+// Wait waits up to the given timeout for the specified resources to be ready. perResourceTimeout means the timeout of each resource
+func (c *Client) WaitWithPerResource(resources ResourceList, timeout, perResourceTimeout time.Duration) error {
+	cs, err := c.getKubeClient()
+	if err != nil {
+		return err
+	}
+	checker := NewReadyChecker(cs, c.Log, PausedAsReady(true))
+	w := waiter{
+		c:                  checker,
+		log:                c.Log,
+		timeout:            timeout,
+		perResourceTimeout: perResourceTimeout,
+	}
+	return w.waitForResources(resources)
+}
+
 // WaitWithJobs wait up to the given timeout for the specified resources to be ready, including jobs.
 func (c *Client) WaitWithJobs(resources ResourceList, timeout time.Duration) error {
 	cs, err := c.getKubeClient()
