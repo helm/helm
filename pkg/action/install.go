@@ -59,8 +59,6 @@ import (
 // since there can be filepath in front of it.
 const notesFileSuffix = "NOTES.txt"
 
-const defaultDirectoryPermission = 0755
-
 // Install performs an installation operation.
 type Install struct {
 	cfg *Configuration
@@ -83,12 +81,14 @@ type Install struct {
 	GenerateName     bool
 	NameTemplate     string
 	Description      string
+	// OutputDir is deprecated because of template-related  code is removed from install action.
 	// Deprecated
 	OutputDir                string
 	Atomic                   bool
 	SkipCRDs                 bool
 	SubNotes                 bool
 	DisableOpenAPIValidation bool
+	// IncludeCRDs is deprecated because of template-related code is removed from install action.
 	// Deprecated
 	IncludeCRDs              bool
 	// KubeVersion allows specifying a custom kubernetes version to use and
@@ -98,9 +98,10 @@ type Install struct {
 	APIVersions chartutil.VersionSet
 	// Used by helm template to render charts with .Release.IsUpgrade. Ignored if Dry-Run is false
 	IsUpgrade bool
-	// Used by helm template to add the release as part of OutputDir path
+	// Used by helm template to add the release as part of OutputDir path, UseReleaseName is deprecated because of template-related code is removed from install action.
 	// OutputDir/<ReleaseName>
-	UseReleaseName bool // Deprecated
+	//Deprecated
+	UseReleaseName bool
 	PostRenderer   postrender.PostRenderer
 	// Lock to control raceconditions when the process receives a SIGTERM
 	Lock sync.Mutex
@@ -216,7 +217,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	}
 
 	if i.ClientOnly {
-		// Add mock objects in here so it doesn't use Kube API server
+		// Add mock objects in here, so it doesn't use Kube API server
 		// NOTE(bacongobbler): used for `helm template`
 		i.cfg.Capabilities = chartutil.DefaultCapabilities.Copy()
 		if i.KubeVersion != nil {

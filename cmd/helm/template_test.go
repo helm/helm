@@ -18,6 +18,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/stretchr/testify/assert"
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -163,6 +165,138 @@ func TestTemplateVersionCompletion(t *testing.T) {
 		golden: "output/version-invalid-comp.txt",
 	}}
 	runTestCmd(t, tests)
+}
+
+func TestTemplateOutputDir(t *testing.T) {
+	is := assert.New(t)
+	dir := t.TempDir()
+	releaseName := "madra"
+	_, out, err := executeActionCommand(fmt.Sprintf("template %s '%s' --output-dir=%s", releaseName, chartPath, dir))
+	if err != nil {
+		t.Logf("Output: %s", out)
+		t.Fatal(err)
+	}
+	var exitFileList = [][]string{
+		{dir, "subchart", "templates", "service.yaml"},
+		{dir, "subchart", "templates", "tests", "test-config.yaml"},
+		{dir, "subchart", "templates", "tests", "test-nothing.yaml"},
+		{dir, "subchart", "templates", "subdir", "role.yaml"},
+		{dir, "subchart", "templates", "subdir", "rolebinding.yaml"},
+		{dir, "subchart", "templates", "subdir", "serviceaccount.yaml"},
+		{dir, "subchart", "charts", "subcharta", "templates", "service.yaml"},
+		{dir, "subchart", "charts", "subchartb", "templates", "service.yaml"},
+	}
+	for _, s := range exitFileList {
+		_, err = os.Stat(filepath.Join(s...))
+		is.NoError(err)
+	}
+	notExistFileList := [][]string{
+		{dir, "hello", "templates", "empty"},
+		{dir, releaseName, "subchart", "templates", "service.yaml"},
+		{dir, releaseName, "subchart", "templates", "tests", "test-config.yaml"},
+		{dir, releaseName, "subchart", "templates", "tests", "test-nothing.yaml"},
+		{dir, releaseName, "subchart", "templates", "subdir", "role.yaml"},
+		{dir, releaseName, "subchart", "templates", "subdir", "rolebinding.yaml"},
+		{dir, releaseName, "subchart", "templates", "subdir", "serviceaccount.yaml"},
+		{dir, releaseName, "subchart", "charts", "subcharta", "templates", "service.yaml"},
+		{dir, releaseName, "subchart", "charts", "subchartb", "templates", "service.yaml"},
+	}
+	for _, f := range notExistFileList {
+		_, err = os.Stat(filepath.Join(f...))
+		is.True(os.IsNotExist(err))
+	}
+}
+
+func TestTemplateWithCRDsOutputDir(t *testing.T) {
+	is := assert.New(t)
+	dir := t.TempDir()
+	releaseName := "madra"
+	_, out, err := executeActionCommand(fmt.Sprintf("template %s '%s' --output-dir=%s --include-crds", releaseName, chartPath, dir))
+	if err != nil {
+		t.Logf("Output: %s", out)
+		t.Fatal(err)
+	}
+	var exitFileList = [][]string{
+		{dir, "subchart", "crds", "crdA.yaml"},
+	}
+	for _, s := range exitFileList {
+		_, err = os.Stat(filepath.Join(s...))
+		is.NoError(err)
+	}
+	notExistFileList := [][]string{
+		{dir, "hello", "templates", "empty"},
+		{dir, releaseName, "subchart", "templates", "service.yaml"},
+		{dir, releaseName, "subchart", "templates", "tests", "test-config.yaml"},
+		{dir, releaseName, "subchart", "templates", "tests", "test-nothing.yaml"},
+		{dir, releaseName, "subchart", "templates", "subdir", "role.yaml"},
+		{dir, releaseName, "subchart", "templates", "subdir", "rolebinding.yaml"},
+		{dir, releaseName, "subchart", "templates", "subdir", "serviceaccount.yaml"},
+		{dir, releaseName, "subchart", "charts", "subcharta", "templates", "service.yaml"},
+		{dir, releaseName, "subchart", "charts", "subchartb", "templates", "service.yaml"},
+	}
+	for _, f := range notExistFileList {
+		_, err = os.Stat(filepath.Join(f...))
+		is.True(os.IsNotExist(err))
+	}
+}
+
+func TestTemplateOutputDirWithReleaseName(t *testing.T) {
+	is := assert.New(t)
+	dir := t.TempDir()
+	releaseName := "madra"
+	_, out, err := executeActionCommand(fmt.Sprintf("template %s '%s' --output-dir=%s --release-name", releaseName, chartPath, dir))
+	if err != nil {
+		t.Logf("Output: %s", out)
+		t.Fatal(err)
+	}
+	var exitFileList = [][]string{
+		{dir, releaseName, "subchart", "templates", "service.yaml"},
+		{dir, releaseName, "subchart", "templates", "tests", "test-config.yaml"},
+		{dir, releaseName, "subchart", "templates", "tests", "test-nothing.yaml"},
+		{dir, releaseName, "subchart", "templates", "subdir", "role.yaml"},
+		{dir, releaseName, "subchart", "templates", "subdir", "rolebinding.yaml"},
+		{dir, releaseName, "subchart", "templates", "subdir", "serviceaccount.yaml"},
+		{dir, releaseName, "subchart", "charts", "subcharta", "templates", "service.yaml"},
+		{dir, releaseName, "subchart", "charts", "subchartb", "templates", "service.yaml"},
+	}
+	for _, s := range exitFileList {
+		_, err = os.Stat(filepath.Join(s...))
+		is.NoError(err)
+	}
+	notExistFileList := [][]string{
+		{dir, releaseName, "hello", "templates", "empty"},
+		{dir, "subchart", "templates", "service.yaml"},
+		{dir, "subchart", "templates", "tests", "test-config.yaml"},
+		{dir, "subchart", "templates", "tests", "test-nothing.yaml"},
+		{dir, "subchart", "templates", "subdir", "role.yaml"},
+		{dir, "subchart", "templates", "subdir", "rolebinding.yaml"},
+		{dir, "subchart", "templates", "subdir", "serviceaccount.yaml"},
+		{dir, "subchart", "charts", "subcharta", "templates", "service.yaml"},
+		{dir, "subchart", "charts", "subchartb", "templates", "service.yaml"},
+	}
+	for _, f := range notExistFileList {
+		_, err = os.Stat(filepath.Join(f...))
+		is.True(os.IsNotExist(err))
+	}
+}
+
+func TestTemplateOutputDirSkiptest(t *testing.T) {
+	is := assert.New(t)
+	dir := t.TempDir()
+	releaseName := "madra"
+	_, out, err := executeActionCommand(fmt.Sprintf("template %s '%s' --output-dir=%s --skip-tests", releaseName, chartPath, dir))
+	if err != nil {
+		t.Logf("Output: %s", out)
+		t.Fatal(err)
+	}
+	notExistFileList := [][]string{
+		{dir, "subchart", "templates", "tests", "test-config.yaml"},
+		{dir, "subchart", "templates", "tests", "test-nothing.yaml"},
+	}
+	for _, f := range notExistFileList {
+		_, err = os.Stat(filepath.Join(f...))
+		is.True(os.IsNotExist(err))
+	}
 }
 
 func TestTemplateFileCompletion(t *testing.T) {

@@ -92,25 +92,13 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 			fileWritten := make(map[string]bool)
 
-			// deal hooks
-			if !client.DisableHooks {
-				for _, m := range rel.Hooks {
-					if matchFilePatterns(m.Path, showFiles) || (skipTests && isTestHook(m)) {
-						continue
-					}
-					err = writeManifest(outputDir, m.Path, m.Manifest, fileWritten, out)
-					if err != nil {
-						return err
-					}
-				}
-			}
 			// deal crds
 			if includeCrds && !client.SkipCRDs && rel.Chart != nil {
 				for _, crd := range rel.Chart.CRDObjects() {
-					if !matchFilePatterns(crd.Name, showFiles) {
+					if len(showFiles) > 0 && !matchFilePatterns(crd.Name, showFiles) {
 						continue
 					}
-					err = writeManifest(outputDir, crd.Name, string(crd.File.Data), fileWritten, out)
+					err := writeManifest(outputDir, filepath.ToSlash(crd.Filename), string(crd.File.Data), fileWritten, true, out)
 					if err != nil {
 						return err
 					}
@@ -124,7 +112,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			// with globs or directory names.
 			splitManifests := releaseutil.SplitManifests(manifests.String())
 			manifestsKeys := make([]string, 0, len(splitManifests))
-			manifestNameRegex := regexp.MustCompile("# Source: [^/]+/(.+)")
+			manifestNameRegex := regexp.MustCompile("# Source: ([^/]+/)(.+)")
 			for k := range splitManifests {
 				manifestsKeys = append(manifestsKeys, k)
 			}
@@ -132,14 +120,27 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			for _, manifestKey := range manifestsKeys {
 				manifest := splitManifests[manifestKey]
 				submatch := manifestNameRegex.FindStringSubmatch(manifest)
-				var manifestName string
-				if len(submatch) > 1 {
-					manifestName = submatch[1]
+				var manifestName, manifestPath string
+				if len(submatch) > 2 {
+					manifestName = submatch[2]
+					manifestPath = submatch[1] + submatch[2]
 				}
-				if matchFilePatterns(manifestName, showFiles) {
-					// remove text like # Source: XXX/XXX.yaml
-					manifest = manifestNameRegex.ReplaceAllString(manifest, "")
-					//err = writeManifest(outputDir, , manifest, fileWritten, out) todo
+				if len(showFiles) > 0 && !matchFilePatterns(manifestName, showFiles) {
+					continue
+				}
+				err := writeManifest(outputDir, manifestPath, manifest, fileWritten, false, out)
+				if err != nil {
+					return err
+				}
+			}
+
+			// deal hooks
+			if !client.DisableHooks {
+				for _, m := range rel.Hooks {
+					if (skipTests && isTestHook(m)) || (len(showFiles) > 0 && !matchFilePatterns(m.Name, showFiles)) {
+						continue
+					}
+					err := writeManifest(outputDir, m.Path, m.Manifest, fileWritten, true, out)
 					if err != nil {
 						return err
 					}
@@ -175,8 +176,8 @@ func isTestHook(h *release.Hook) bool {
 }
 
 // writeToFile write manifests into output dir.
-func writeToFile(outputDir string, name string, data string, append bool) error {
-	outfileName := strings.Join([]string{outputDir, name}, string(filepath.Separator))
+func writeToFile(outputDir string, name string, data string, append, withHeader bool) error {
+	outfileName := filepath.Join(outputDir, name)
 
 	err := ensureDirectoryForFile(outfileName)
 	if err != nil {
@@ -190,7 +191,7 @@ func writeToFile(outputDir string, name string, data string, append bool) error 
 
 	defer f.Close()
 
-	_, err = f.WriteString(fmt.Sprintf("---\n# Source: %s\n%s\n", name, data))
+	err = writeStream(name, data, withHeader, f)
 
 	if err != nil {
 		return err
@@ -218,9 +219,6 @@ func ensureDirectoryForFile(file string) error {
 }
 
 func matchFilePatterns(target string, sf []string) bool {
-	if len(sf) == 0 {
-		return true
-	}
 	for _, pattern := range sf {
 		pattern = filepath.ToSlash(pattern)
 		matched, _ := filepath.Match(pattern, target)
@@ -231,15 +229,35 @@ func matchFilePatterns(target string, sf []string) bool {
 	return false
 }
 
-func writeManifest(outputDir, path, manifest string, fileWritten map[string]bool, outStream io.Writer) error {
+// writeManifest write manifest to stdout or file stream. use withHeader to control if write file header `# Source: XXXXX.yaml` or not.
+func writeManifest(outputDir, path, manifest string, fileWritten map[string]bool, withHeader bool, outStream io.Writer) error {
 	if outputDir == "" {
-		fmt.Fprintf(outStream, "---\n# Source: %s\n%s\n", path, manifest)
+		return writeStream(path, manifest, withHeader, outStream)
 	} else {
-		err := writeToFile(outputDir, path, manifest, fileWritten[path])
+		err := writeToFile(outputDir, path, manifest, fileWritten[path], withHeader)
 		if err != nil {
 			return err
 		}
 		fileWritten[path] = true
 	}
 	return nil
+}
+
+func writeStream(path, manifest string, withHeader bool, outStream io.Writer) error {
+	//write yaml delimiter
+	_, err := fmt.Fprintf(outStream, "---\n")
+	if err != nil {
+		return err
+	}
+	//write file header
+	if withHeader {
+		_, err = fmt.Fprintf(outStream, "# Source: %s\n", path)
+		if err != nil {
+			return err
+		}
+	}
+
+	//write manifest content
+	_, err = fmt.Fprintf(outStream, "%s\n", manifest)
+	return err
 }

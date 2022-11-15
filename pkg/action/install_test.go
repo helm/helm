@@ -20,8 +20,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -30,7 +28,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"helm.sh/helm/v3/internal/test"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
@@ -544,74 +541,6 @@ func TestNameTemplate(t *testing.T) {
 			}
 		}
 	}
-}
-
-func TestInstallReleaseOutputDir(t *testing.T) {
-	is := assert.New(t)
-	instAction := installAction(t)
-	vals := map[string]interface{}{}
-
-	dir := t.TempDir()
-
-	instAction.OutputDir = dir
-
-	_, err := instAction.Run(buildChart(withSampleTemplates(), withMultipleManifestTemplate()), vals)
-	if err != nil {
-		t.Fatalf("Failed install: %s", err)
-	}
-
-	_, err = os.Stat(filepath.Join(dir, "hello/templates/goodbye"))
-	is.NoError(err)
-
-	_, err = os.Stat(filepath.Join(dir, "hello/templates/hello"))
-	is.NoError(err)
-
-	_, err = os.Stat(filepath.Join(dir, "hello/templates/with-partials"))
-	is.NoError(err)
-
-	_, err = os.Stat(filepath.Join(dir, "hello/templates/rbac"))
-	is.NoError(err)
-
-	test.AssertGoldenFile(t, filepath.Join(dir, "hello/templates/rbac"), "rbac.txt")
-
-	_, err = os.Stat(filepath.Join(dir, "hello/templates/empty"))
-	is.True(os.IsNotExist(err))
-}
-
-func TestInstallOutputDirWithReleaseName(t *testing.T) {
-	is := assert.New(t)
-	instAction := installAction(t)
-	vals := map[string]interface{}{}
-
-	dir := t.TempDir()
-
-	instAction.OutputDir = dir
-	instAction.UseReleaseName = true
-	instAction.ReleaseName = "madra"
-
-	newDir := filepath.Join(dir, instAction.ReleaseName)
-
-	_, err := instAction.Run(buildChart(withSampleTemplates(), withMultipleManifestTemplate()), vals)
-	if err != nil {
-		t.Fatalf("Failed install: %s", err)
-	}
-
-	_, err = os.Stat(filepath.Join(newDir, "hello/templates/goodbye"))
-	is.NoError(err)
-
-	_, err = os.Stat(filepath.Join(newDir, "hello/templates/hello"))
-	is.NoError(err)
-
-	_, err = os.Stat(filepath.Join(newDir, "hello/templates/with-partials"))
-	is.NoError(err)
-
-	_, err = os.Stat(filepath.Join(newDir, "hello/templates/rbac"))
-	is.NoError(err)
-
-	test.AssertGoldenFile(t, filepath.Join(newDir, "hello/templates/rbac"), "rbac.txt")
-
-	_, err = os.Stat(filepath.Join(newDir, "hello/templates/empty"))
-	is.True(os.IsNotExist(err))
 }
 
 func TestNameAndChart(t *testing.T) {

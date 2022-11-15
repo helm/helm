@@ -1,4 +1,21 @@
 ---
+# Source: subchart/charts/subcharta/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: subcharta
+  labels:
+    helm.sh/chart: "subcharta-0.1.0"
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: apache
+  selector:
+    app.kubernetes.io/name: subcharta
+---
 # Source: subchart/templates/service.yaml
 apiVersion: v1
 kind: Service
@@ -19,20 +36,3 @@ spec:
     name: nginx
   selector:
     app.kubernetes.io/name: subchart
----
-# Source: subchart/charts/subcharta/templates/service.yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: subcharta
-  labels:
-    helm.sh/chart: "subcharta-0.1.0"
-spec:
-  type: ClusterIP
-  ports:
-  - port: 80
-    targetPort: 80
-    protocol: TCP
-    name: apache
-  selector:
-    app.kubernetes.io/name: subcharta
