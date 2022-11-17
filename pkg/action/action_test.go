@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -75,32 +75,6 @@ var manifestWithTestHook = `kind: Pod
 	  image: fake-image
 	  cmd: fake-command
   `
-
-var rbacManifests = `apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: schedule-agents
-rules:
-- apiGroups: [""]
-  resources: ["pods", "pods/exec", "pods/log"]
-  verbs: ["*"]
-
----
-
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: schedule-agents
-  namespace: {{ default .Release.Namespace}}
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: schedule-agents
-subjects:
-- kind: ServiceAccount
-  name: schedule-agents
-  namespace: {{ .Release.Namespace }}
-`
 
 type chartOptions struct {
 	*chart.Chart
@@ -204,15 +178,6 @@ func withSampleIncludingIncorrectTemplates() chartOption {
 			{Name: "templates/incorrect", Data: []byte("{{ .Values.bad.doh }}")},
 			{Name: "templates/with-partials", Data: []byte(`hello: {{ template "_planet" . }}`)},
 			{Name: "templates/partials/_planet", Data: []byte(`{{define "_planet"}}Earth{{end}}`)},
-		}
-		opts.Templates = append(opts.Templates, sampleTemplates...)
-	}
-}
-
-func withMultipleManifestTemplate() chartOption {
-	return func(opts *chartOptions) {
-		sampleTemplates := []*chart.File{
-			{Name: "templates/rbac", Data: []byte(rbacManifests)},
 		}
 		opts.Templates = append(opts.Templates, sampleTemplates...)
 	}

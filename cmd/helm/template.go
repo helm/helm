@@ -235,13 +235,13 @@ func matchFilePatterns(target string, sf []string) bool {
 func writeManifest(outputDir, path, manifest string, fileWritten map[string]bool, withHeader bool, outStream io.Writer) error {
 	if outputDir == "" {
 		return writeStream(path, manifest, withHeader, outStream)
-	} else {
-		err := writeToFile(outputDir, path, manifest, fileWritten[path], withHeader)
-		if err != nil {
-			return err
-		}
-		fileWritten[path] = true
 	}
+	err := writeToFile(outputDir, path, manifest, fileWritten[path], withHeader)
+	if err != nil {
+		return err
+	}
+	fileWritten[path] = true
+
 	return nil
 }
 
