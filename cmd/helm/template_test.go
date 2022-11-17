@@ -176,7 +176,7 @@ func TestTemplateOutputDir(t *testing.T) {
 		t.Logf("Output: %s", out)
 		t.Fatal(err)
 	}
-	var exitFileList = [][]string{
+	var existent = [][]string{
 		{dir, "subchart", "templates", "service.yaml"},
 		{dir, "subchart", "templates", "tests", "test-config.yaml"},
 		{dir, "subchart", "templates", "tests", "test-nothing.yaml"},
@@ -186,11 +186,11 @@ func TestTemplateOutputDir(t *testing.T) {
 		{dir, "subchart", "charts", "subcharta", "templates", "service.yaml"},
 		{dir, "subchart", "charts", "subchartb", "templates", "service.yaml"},
 	}
-	for _, s := range exitFileList {
+	for _, s := range existent {
 		_, err = os.Stat(filepath.Join(s...))
 		is.NoError(err)
 	}
-	notExistFileList := [][]string{
+	nonexistent := [][]string{
 		{dir, "hello", "templates", "empty"},
 		{dir, releaseName, "subchart", "templates", "service.yaml"},
 		{dir, releaseName, "subchart", "templates", "tests", "test-config.yaml"},
@@ -201,7 +201,7 @@ func TestTemplateOutputDir(t *testing.T) {
 		{dir, releaseName, "subchart", "charts", "subcharta", "templates", "service.yaml"},
 		{dir, releaseName, "subchart", "charts", "subchartb", "templates", "service.yaml"},
 	}
-	for _, f := range notExistFileList {
+	for _, f := range nonexistent {
 		_, err = os.Stat(filepath.Join(f...))
 		is.True(os.IsNotExist(err))
 	}
@@ -216,14 +216,14 @@ func TestTemplateWithCRDsOutputDir(t *testing.T) {
 		t.Logf("Output: %s", out)
 		t.Fatal(err)
 	}
-	var exitFileList = [][]string{
+	var existent = [][]string{
 		{dir, "subchart", "crds", "crdA.yaml"},
 	}
-	for _, s := range exitFileList {
+	for _, s := range existent {
 		_, err = os.Stat(filepath.Join(s...))
 		is.NoError(err)
 	}
-	notExistFileList := [][]string{
+	nonexistent := [][]string{
 		{dir, "hello", "templates", "empty"},
 		{dir, releaseName, "subchart", "templates", "service.yaml"},
 		{dir, releaseName, "subchart", "templates", "tests", "test-config.yaml"},
@@ -234,7 +234,7 @@ func TestTemplateWithCRDsOutputDir(t *testing.T) {
 		{dir, releaseName, "subchart", "charts", "subcharta", "templates", "service.yaml"},
 		{dir, releaseName, "subchart", "charts", "subchartb", "templates", "service.yaml"},
 	}
-	for _, f := range notExistFileList {
+	for _, f := range nonexistent {
 		_, err = os.Stat(filepath.Join(f...))
 		is.True(os.IsNotExist(err))
 	}
@@ -249,7 +249,7 @@ func TestTemplateOutputDirWithReleaseName(t *testing.T) {
 		t.Logf("Output: %s", out)
 		t.Fatal(err)
 	}
-	var exitFileList = [][]string{
+	var existent = [][]string{
 		{dir, releaseName, "subchart", "templates", "service.yaml"},
 		{dir, releaseName, "subchart", "templates", "tests", "test-config.yaml"},
 		{dir, releaseName, "subchart", "templates", "tests", "test-nothing.yaml"},
@@ -259,11 +259,11 @@ func TestTemplateOutputDirWithReleaseName(t *testing.T) {
 		{dir, releaseName, "subchart", "charts", "subcharta", "templates", "service.yaml"},
 		{dir, releaseName, "subchart", "charts", "subchartb", "templates", "service.yaml"},
 	}
-	for _, s := range exitFileList {
+	for _, s := range existent {
 		_, err = os.Stat(filepath.Join(s...))
 		is.NoError(err)
 	}
-	notExistFileList := [][]string{
+	nonexistent := [][]string{
 		{dir, releaseName, "hello", "templates", "empty"},
 		{dir, "subchart", "templates", "service.yaml"},
 		{dir, "subchart", "templates", "tests", "test-config.yaml"},
@@ -274,7 +274,7 @@ func TestTemplateOutputDirWithReleaseName(t *testing.T) {
 		{dir, "subchart", "charts", "subcharta", "templates", "service.yaml"},
 		{dir, "subchart", "charts", "subchartb", "templates", "service.yaml"},
 	}
-	for _, f := range notExistFileList {
+	for _, f := range nonexistent {
 		_, err = os.Stat(filepath.Join(f...))
 		is.True(os.IsNotExist(err))
 	}
@@ -289,11 +289,11 @@ func TestTemplateOutputDirSkiptest(t *testing.T) {
 		t.Logf("Output: %s", out)
 		t.Fatal(err)
 	}
-	notExistFileList := [][]string{
+	nonexistent := [][]string{
 		{dir, "subchart", "templates", "tests", "test-config.yaml"},
 		{dir, "subchart", "templates", "tests", "test-nothing.yaml"},
 	}
-	for _, f := range notExistFileList {
+	for _, f := range nonexistent {
 		_, err = os.Stat(filepath.Join(f...))
 		is.True(os.IsNotExist(err))
 	}

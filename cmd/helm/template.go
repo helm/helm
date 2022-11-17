@@ -112,6 +112,8 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			// with globs or directory names.
 			splitManifests := releaseutil.SplitManifests(manifests.String())
 			manifestsKeys := make([]string, 0, len(splitManifests))
+			// such as `# Source: subchart/templates/service.yaml` will be divided into two parts `subchart/`, `templates/service.yaml`
+			// and manifestName will be `templates/service.yaml` , manifestPath will be `subchart/templates/service.yam`
 			manifestNameRegex := regexp.MustCompile("# Source: ([^/]+/)(.+)")
 			for k := range splitManifests {
 				manifestsKeys = append(manifestsKeys, k)
@@ -229,7 +231,7 @@ func matchFilePatterns(target string, sf []string) bool {
 	return false
 }
 
-// writeManifest write manifest to stdout or file stream. use withHeader to control if write file header `# Source: XXXXX.yaml` or not.
+// writeManifest write manifest to stdout or file stream. use withHeader to control if write file header `# Source: XXXXX.yaml`.
 func writeManifest(outputDir, path, manifest string, fileWritten map[string]bool, withHeader bool, outStream io.Writer) error {
 	if outputDir == "" {
 		return writeStream(path, manifest, withHeader, outStream)
