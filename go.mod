@@ -34,7 +34,7 @@ require (
 	go.etcd.io/etcd/api/v3 v3.5.4
 	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
-	golang.org/x/text v0.3.7
+	golang.org/x/text v0.4.0
 	google.golang.org/grpc v1.47.0
 	k8s.io/api v0.25.2
 	k8s.io/apiextensions-apiserver v0.25.2
