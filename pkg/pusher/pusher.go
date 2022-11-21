@@ -27,10 +27,11 @@ import (
 //
 // Pushers may or may not ignore these parameters as they are passed in.
 type options struct {
-	registryClient *registry.Client
-	certFile       string
-	keyFile        string
-	caFile         string
+	registryClient        *registry.Client
+	certFile              string
+	keyFile               string
+	caFile                string
+	insecureSkipTLSverify bool
 }
 
 // Option allows specifying various settings configurable by the user for overriding the defaults
@@ -50,6 +51,13 @@ func WithTLSClientConfig(certFile, keyFile, caFile string) Option {
 		opts.certFile = certFile
 		opts.keyFile = keyFile
 		opts.caFile = caFile
+	}
+}
+
+// WithInsecureSkipTLSVerify determines if a TLS Certificate will be checked
+func WithInsecureSkipTLSVerify(insecureSkipTLSVerify bool) Option {
+	return func(opts *options) {
+		opts.insecureSkipTLSverify = insecureSkipTLSVerify
 	}
 }
 
