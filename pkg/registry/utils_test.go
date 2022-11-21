@@ -66,7 +66,7 @@ type TestSuite struct {
 	RegistryClient          *Client
 }
 
-func setup(suite *TestSuite, secure bool) *registry.Registry {
+func setup(suite *TestSuite, tlsEnabled bool, insecure bool) *registry.Registry {
 	suite.WorkspaceDir = testWorkspaceDir
 	os.RemoveAll(suite.WorkspaceDir)
 	os.Mkdir(suite.WorkspaceDir, 0700)
@@ -79,9 +79,9 @@ func setup(suite *TestSuite, secure bool) *registry.Registry {
 	credentialsFile := filepath.Join(suite.WorkspaceDir, CredentialsFileBasename)
 
 	// init test client
-	if secure {
+	if tlsEnabled {
 		var tlsConf *tls.Config
-		tlsConf, err = tlsutil.NewClientTLS(tlsCert, tlsKey, tlsCA)
+		tlsConf, err = tlsutil.NewClientTLS(tlsCert, tlsKey, tlsCA, insecure)
 		httpClient := &http.Client{
 			Transport: &http.Transport{
 				TLSClientConfig: tlsConf,
@@ -117,7 +117,7 @@ func setup(suite *TestSuite, secure bool) *registry.Registry {
 	config := &configuration.Configuration{}
 	port, err := freeport.GetFreePort()
 	suite.Nil(err, "no error finding free port for test registry")
-	if secure {
+	if tlsEnabled {
 		// docker has  "MatchLocalhost is a host match function which returns true for
 		// localhost, and is used to enforce http for localhost requests."
 		// That function does not handle matching of ip addresses in octal,
@@ -138,7 +138,7 @@ func setup(suite *TestSuite, secure bool) *registry.Registry {
 	}
 
 	// config tls
-	if secure {
+	if tlsEnabled {
 		// TLS config
 		// this set tlsConf.ClientAuth = tls.RequireAndVerifyClientCert in the
 		// server tls config

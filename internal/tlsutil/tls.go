@@ -25,8 +25,10 @@ import (
 )
 
 // NewClientTLS returns tls.Config appropriate for client auth.
-func NewClientTLS(certFile, keyFile, caFile string) (*tls.Config, error) {
-	config := tls.Config{}
+func NewClientTLS(certFile, keyFile, caFile string, insecureSkipTLSverify bool) (*tls.Config, error) {
+	config := tls.Config{
+		InsecureSkipVerify: insecureSkipTLSverify,
+	}
 
 	if certFile != "" && keyFile != "" {
 		cert, err := CertFromFilePair(certFile, keyFile)
