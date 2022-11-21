@@ -360,6 +360,7 @@ func (s *Server) Start() {
 func (s *Server) StartTLS() {
 	cd := "../../testdata"
 	ca, pub, priv := filepath.Join(cd, "rootca.crt"), filepath.Join(cd, "crt.pem"), filepath.Join(cd, "key.pem")
+	insecure := false
 
 	s.srv = httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if s.middleware != nil {
@@ -367,7 +368,7 @@ func (s *Server) StartTLS() {
 		}
 		http.FileServer(http.Dir(s.Root())).ServeHTTP(w, r)
 	}))
-	tlsConf, err := tlsutil.NewClientTLS(pub, priv, ca)
+	tlsConf, err := tlsutil.NewClientTLS(pub, priv, ca, insecure)
 	if err != nil {
 		panic(err)
 	}
@@ -400,6 +401,7 @@ func (s *Server) Stop() {
 // URL returns the URL of the server.
 //
 // Example:
+//
 //	http://localhost:1776
 func (s *Server) URL() string {
 	return s.srv.URL

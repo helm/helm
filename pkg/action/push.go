@@ -30,12 +30,13 @@ import (
 //
 // It provides the implementation of 'helm push'.
 type Push struct {
-	Settings *cli.EnvSettings
-	cfg      *Configuration
-	certFile string
-	keyFile  string
-	caFile   string
-	out      io.Writer
+	Settings              *cli.EnvSettings
+	cfg                   *Configuration
+	certFile              string
+	keyFile               string
+	caFile                string
+	insecureSkipTLSverify bool
+	out                   io.Writer
 }
 
 // PushOpt is a type of function that sets options for a push action.
@@ -54,6 +55,13 @@ func WithTLSClientConfig(certFile, keyFile, caFile string) PushOpt {
 		p.certFile = certFile
 		p.keyFile = keyFile
 		p.caFile = caFile
+	}
+}
+
+// WithInsecureSkipTLSVerify determines if a TLS Certificate will be checked
+func WithInsecureSkipTLSVerify(insecureSkipTLSVerify bool) PushOpt {
+	return func(p *Push) {
+		p.insecureSkipTLSverify = insecureSkipTLSVerify
 	}
 }
 
@@ -88,9 +96,9 @@ func (p *Push) Run(chartRef string, remote string) (string, error) {
 	if registry.IsOCI(remote) {
 		// Provide a tls enabled client for the pull command if the user has
 		// specified the cert file or key file or ca file.
-		if (p.certFile != "" && p.keyFile != "") || p.caFile != "" {
+		if (p.certFile != "" && p.keyFile != "") || p.caFile != "" || p.insecureSkipTLSverify {
 			registryClient, err := registry.NewRegistryClientWithTLS(p.out, p.certFile, p.keyFile, p.caFile,
-				p.Settings.RegistryConfig, p.Settings.Debug)
+				p.insecureSkipTLSverify, p.Settings.RegistryConfig, p.Settings.Debug)
 			if err != nil {
 				return out.String(), err
 			}

@@ -104,9 +104,9 @@ func (p *Pull) Run(chartRef string) (string, error) {
 	if registry.IsOCI(chartRef) {
 		// Provide a tls enabled client for the pull command if the user has
 		// specified the cert file or key file or ca file.
-		if (p.ChartPathOptions.CertFile != "" && p.ChartPathOptions.KeyFile != "") || p.ChartPathOptions.CaFile != "" {
+		if (p.ChartPathOptions.CertFile != "" && p.ChartPathOptions.KeyFile != "") || p.ChartPathOptions.CaFile != "" || p.ChartPathOptions.InsecureSkipTLSverify {
 			registryClient, err := registry.NewRegistryClientWithTLS(p.out, p.ChartPathOptions.CertFile, p.ChartPathOptions.KeyFile, p.ChartPathOptions.CaFile,
-				p.Settings.RegistryConfig, p.Settings.Debug)
+				p.ChartPathOptions.InsecureSkipTLSverify, p.Settings.RegistryConfig, p.Settings.Debug)
 			if err != nil {
 				return out.String(), err
 			}
@@ -114,6 +114,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		}
 		c.Options = append(c.Options,
 			getter.WithRegistryClient(p.cfg.RegistryClient))
+		c.RegistryClient = p.cfg.RegistryClient
 	}
 
 	if p.Verify {
