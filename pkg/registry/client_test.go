@@ -31,7 +31,7 @@ type RegistryClientTestSuite struct {
 
 func (suite *RegistryClientTestSuite) SetupSuite() {
 	// init test client
-	dockerRegistry := setup(&suite.TestSuite, false)
+	dockerRegistry := setup(&suite.TestSuite, false, false)
 
 	// Start Docker registry
 	go dockerRegistry.ListenAndServe()

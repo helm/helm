@@ -133,8 +133,8 @@ func parseReference(raw string) (registry.Reference, error) {
 }
 
 // NewRegistryClientWithTLS is a helper function to create a new registry client with TLS enabled.
-func NewRegistryClientWithTLS(out io.Writer, certFile, keyFile, caFile string, registryConfig string, debug bool) (*Client, error) {
-	tlsConf, err := tlsutil.NewClientTLS(certFile, keyFile, caFile)
+func NewRegistryClientWithTLS(out io.Writer, certFile, keyFile, caFile string, insecureSkipTLSverify bool, registryConfig string, debug bool) (*Client, error) {
+	tlsConf, err := tlsutil.NewClientTLS(certFile, keyFile, caFile, insecureSkipTLSverify)
 	if err != nil {
 		return nil, fmt.Errorf("can't create TLS config for client: %s", err)
 	}
