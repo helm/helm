@@ -36,6 +36,7 @@ import (
 	"helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/downloader"
 	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage/driver"
 )
 
@@ -96,7 +97,8 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				// If a release does not exist, install it.
 				histClient := action.NewHistory(cfg)
 				histClient.Max = 1
-				if _, err := histClient.Run(args[0]); err == driver.ErrReleaseNotFound {
+				rel, err := histClient.Run(args[0])
+				if err == driver.ErrReleaseNotFound || (len(rel) > 0 && rel[len(rel)-1].Info.Status == release.StatusUninstalled) {
 					// Only print this to stdout for table output
 					if outfmt == output.Table {
 						fmt.Fprintf(out, "Release %q does not exist. Installing it now.\n", args[0])
@@ -118,6 +120,9 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.SubNotes = client.SubNotes
 					instClient.Description = client.Description
 					instClient.DependencyUpdate = client.DependencyUpdate
+					if len(rel) > 0 && rel[len(rel)-1].Info.Status == release.StatusUninstalled {
+						instClient.Replace = true
+					}
 
 					rel, err := runInstall(args, instClient, valueOpts, out)
 					if err != nil {
