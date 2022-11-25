@@ -16,6 +16,7 @@ limitations under the License.
 package strvals
 
 import (
+	"fmt"
 	"testing"
 
 	"sigs.k8s.io/yaml"
@@ -247,8 +248,9 @@ func TestParseSet(t *testing.T) {
 			err: true,
 		},
 		{
-			str:    "name1.name2=",
-			expect: map[string]interface{}{"name1": map[string]interface{}{"name2": ""}},
+			"name1.name2=",
+			map[string]interface{}{},
+			false,
 		},
 		{
 			str: "name1.=name2",
@@ -752,5 +754,57 @@ func TestToYAML(t *testing.T) {
 	expect := "name: value"
 	if o != expect {
 		t.Errorf("Expected %q, got %q", expect, o)
+	}
+}
+
+func TestParseSetNestedLevels(t *testing.T) {
+	var keyMultipleNestedLevels string
+	for i := 1; i <= MaxNestedNameLevel+2; i++ {
+		tmpStr := fmt.Sprintf("name%d", i)
+		if i <= MaxNestedNameLevel+1 {
+			tmpStr = tmpStr + "."
+		}
+		keyMultipleNestedLevels += tmpStr
+	}
+	tests := []struct {
+		str    string
+		expect map[string]interface{}
+		err    bool
+	}{
+		{
+			"outer.middle.inner=value",
+			map[string]interface{}{"outer": map[string]interface{}{"middle": map[string]interface{}{"inner": "value"}}},
+			false,
+		},
+		{
+			str: keyMultipleNestedLevels + "=value",
+			err: true,
+		},
+	}
+
+	for _, tt := range tests {
+		got, err := Parse(tt.str)
+		if err != nil {
+			if tt.err {
+				continue
+			}
+			t.Fatalf("%s: %s", tt.str, err)
+		}
+		if tt.err {
+			t.Errorf("%s: Expected error. Got nil", tt.str)
+		}
+
+		y1, err := yaml.Marshal(tt.expect)
+		if err != nil {
+			t.Fatal(err)
+		}
+		y2, err := yaml.Marshal(got)
+		if err != nil {
+			t.Fatalf("Error serializing parsed value: %s", err)
+		}
+
+		if string(y1) != string(y2) {
+			t.Errorf("%s: Expected:\n%s\nGot:\n%s", tt.str, y1, y2)
+		}
 	}
 }
