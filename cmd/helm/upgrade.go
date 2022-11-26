@@ -121,8 +121,8 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				// If a release does not exist, install it.
 				histClient := action.NewHistory(cfg)
 				histClient.Max = 1
-				rel, err := histClient.Run(args[0])
-				if err == driver.ErrReleaseNotFound || (len(rel) > 0 && rel[len(rel)-1].Info.Status == release.StatusUninstalled) {
+				versions, err := histClient.Run(args[0])
+				if err == driver.ErrReleaseNotFound || isReleaseUninstalled(versions) {
 					// Only print this to stdout for table output
 					if outfmt == output.Table {
 						fmt.Fprintf(out, "Release %q does not exist. Installing it now.\n", args[0])
@@ -148,7 +148,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.DependencyUpdate = client.DependencyUpdate
 					instClient.Labels = client.Labels
 					instClient.EnableDNS = client.EnableDNS
-					if len(rel) > 0 && rel[len(rel)-1].Info.Status == release.StatusUninstalled {
+					if isReleaseUninstalled(versions) {
 						instClient.Replace = true
 					}
 
@@ -289,4 +289,8 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	}
 
 	return cmd
+}
+
+func isReleaseUninstalled(versions []*release.Release) bool {
+	return len(versions) > 0 && versions[len(versions)-1].Info.Status == release.StatusUninstalled
 }
