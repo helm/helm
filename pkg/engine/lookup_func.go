@@ -77,7 +77,7 @@ func NewLookupFunction(config *rest.Config) lookupFunc {
 	}
 }
 
-// getDynamicClientOnUnstructured returns a dynamic client on an Unstructured type. This client can be further namespaced.
+// getDynamicClientOnKind returns a dynamic client on an Unstructured type. This client can be further namespaced.
 func getDynamicClientOnKind(apiversion string, kind string, config *rest.Config) (dynamic.NamespaceableResourceInterface, bool, error) {
 	gvk := schema.FromAPIVersionAndKind(apiversion, kind)
 	apiRes, err := getAPIResourceForGVK(gvk, config)

@@ -24,6 +24,7 @@ package cli
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -116,6 +117,9 @@ func New() *EnvSettings {
 		ImpersonateGroup: &env.KubeAsGroups,
 		WrapConfigFn: func(config *rest.Config) *rest.Config {
 			config.Burst = env.BurstLimit
+			config.Wrap(func(rt http.RoundTripper) http.RoundTripper {
+				return &retryingRoundTripper{wrapped: rt}
+			})
 			return config
 		},
 	}

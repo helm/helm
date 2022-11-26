@@ -51,7 +51,8 @@ To override values in a chart, use either the '--values' flag and pass in a file
 or use the '--set' flag and pass configuration from the command line, to force
 a string value use '--set-string'. You can use '--set-file' to set individual
 values from a file when the value itself is too long for the command line
-or is dynamically generated.
+or is dynamically generated. You can also use '--set-json' to set json values
+(scalars/objects/arrays) from the command line.
 
     $ helm install -f myvalues.yaml myredis ./redis
 
@@ -67,6 +68,11 @@ or
 
     $ helm install --set-file my_script=dothings.sh myredis ./redis
 
+or
+
+    $ helm install --set-json 'master.sidecars=[{"name":"sidecar","image":"myImage","imagePullPolicy":"Always","ports":[{"name":"portname","containerPort":1234}]}]' myredis ./redis
+
+
 You can specify the '--values'/'-f' flag multiple times. The priority will be given to the
 last (right-most) file specified. For example, if both myvalues.yaml and override.yaml
 contained a key called 'Test', the value set in override.yaml would take precedence:
@@ -79,6 +85,13 @@ set for a key called 'foo', the 'newbar' value would take precedence:
 
     $ helm install --set foo=bar --set foo=newbar  myredis ./redis
 
+Similarly, in the following example 'foo' is set to '["four"]': 
+
+    $ helm install --set-json='foo=["one", "two", "three"]' --set-json='foo=["four"]' myredis ./redis
+
+And in the following example, 'foo' is set to '{"key1":"value1","key2":"bar"}':
+
+    $ helm install --set-json='foo={"key1":"value1","key2":"value2"}' --set-json='foo.key2="bar"' myredis ./redis
 
 To check the generated manifests of a release without installing the chart,
 the '--debug' and '--dry-run' flags can be combined.
@@ -86,13 +99,14 @@ the '--debug' and '--dry-run' flags can be combined.
 If --verify is set, the chart MUST have a provenance file, and the provenance
 file MUST pass all verification steps.
 
-There are five different ways you can express the chart you want to install:
+There are six different ways you can express the chart you want to install:
 
 1. By chart reference: helm install mymaria example/mariadb
 2. By path to a packaged chart: helm install mynginx ./nginx-1.2.3.tgz
 3. By path to an unpacked chart directory: helm install mynginx ./nginx
 4. By absolute URL: helm install mynginx https://example.com/charts/nginx-1.2.3.tgz
 5. By chart reference and repo url: helm install --repo https://example.com/charts/ mynginx nginx
+6. By OCI registries: helm install mynginx --version 1.2.3 oci://example.com/charts/nginx
 
 CHART REFERENCES
 

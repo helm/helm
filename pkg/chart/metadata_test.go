@@ -73,6 +73,30 @@ func TestValidate(t *testing.T) {
 			ValidationError("dependency \"bad\" has disallowed characters in the alias"),
 		},
 		{
+			&Metadata{
+				Name:       "test",
+				APIVersion: "v2",
+				Version:    "1.0",
+				Type:       "application",
+				Dependencies: []*Dependency{
+					nil,
+				},
+			},
+			ValidationError("dependency cannot be an empty list"),
+		},
+		{
+			&Metadata{
+				Name:       "test",
+				APIVersion: "v2",
+				Version:    "1.0",
+				Type:       "application",
+				Maintainers: []*Maintainer{
+					nil,
+				},
+			},
+			ValidationError("maintainer cannot be an empty list"),
+		},
+		{
 			&Metadata{APIVersion: "v2", Name: "test", Version: "1.2.3.4"},
 			ValidationError("chart.metadata.version \"1.2.3.4\" is invalid"),
 		},
