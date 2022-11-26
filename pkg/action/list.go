@@ -125,6 +125,7 @@ type List struct {
 	// Filter is a filter that is applied to the results
 	Filter       string
 	Short        bool
+	NoHeaders    bool
 	TimeFormat   string
 	Uninstalled  bool
 	Superseded   bool
