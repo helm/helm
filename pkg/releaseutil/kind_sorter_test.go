@@ -180,8 +180,8 @@ func TestKindSorter(t *testing.T) {
 		order       KindSortOrder
 		expected    string
 	}{
-		{"install", InstallOrder, "aAbcC3deEf1gh2iIjJkKlLmnopqrxstuUvw!"},
-		{"uninstall", UninstallOrder, "wvUmutsxrqponLlKkJjIi2hg1fEed3CcbAa!"},
+		{"install", InstallOrder, "aAbcC3deEf1gh2iIjJkKlLmMnopqrxstuUvw!"},
+		{"uninstall", UninstallOrder, "wvUMmutsxrqponLlKkJjIi2hg1fEed3CcbAa!"},
 	} {
 		var buf bytes.Buffer
 		t.Run(test.description, func(t *testing.T) {
