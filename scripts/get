@@ -206,7 +206,11 @@ while [[ $# -gt 0 ]]; do
     '--version'|-v)
        shift
        if [[ $# -ne 0 ]]; then
-           export DESIRED_VERSION="${1}"
+           VERSION="${1}"
+           if [[ ! "$VERSION" =~ ^v ]]; then
+             VERSION="v${VERSION}"
+           fi
+           export DESIRED_VERSION=$VERSION
        else
            echo -e "Please provide the desired version. e.g. --version v2.4.0 or -v latest"
            exit 0
