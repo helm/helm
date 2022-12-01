@@ -325,10 +325,8 @@ func (c *Client) Delete(resources ResourceList) (*Result, []error) {
 		return nil
 	})
 	if err != nil {
-		// Rewrite the message from "no objects visited" if that is what we got
-		// back
 		if err == ErrNoObjectsVisited {
-			err = errors.New("object not found, skipping delete")
+			err = fmt.Errorf("object not found, skipping delete: %w", ErrNoObjectsVisited)
 		}
 		errs = append(errs, err)
 	}
@@ -352,10 +350,10 @@ func (c *Client) watchTimeout(t time.Duration) func(*resource.Info) error {
 // For most kinds, it checks to see if the resource is marked as Added or Modified
 // by the Kubernetes event stream. For some kinds, it does more:
 //
-// - Jobs: A job is marked "Ready" when it has successfully completed. This is
-//   ascertained by watching the Status fields in a job's output.
-// - Pods: A pod is marked "Ready" when it has successfully completed. This is
-//   ascertained by watching the status.phase field in a pod's output.
+//   - Jobs: A job is marked "Ready" when it has successfully completed. This is
+//     ascertained by watching the Status fields in a job's output.
+//   - Pods: A pod is marked "Ready" when it has successfully completed. This is
+//     ascertained by watching the status.phase field in a pod's output.
 //
 // Handling for other kinds will be added as necessary.
 func (c *Client) WatchUntilReady(resources ResourceList, timeout time.Duration) error {
