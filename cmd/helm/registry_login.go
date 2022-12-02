@@ -21,15 +21,17 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
+	"syscall"
 
 	"github.com/moby/term"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
+
+	xTerm "golang.org/x/term"
 )
 
 const registryLoginDesc = `
@@ -74,12 +76,17 @@ func getUsernamePassword(usernameOpt string, passwordOpt string, passwordFromStd
 	password := passwordOpt
 
 	if passwordFromStdinOpt {
-		passwordFromStdin, err := ioutil.ReadAll(os.Stdin)
+		fmt.Printf("Enter registry password: ")
+
+		passwordFromStdin, err := xTerm.ReadPassword(int(syscall.Stdin))
+		fmt.Println()
+
 		if err != nil {
 			return "", "", err
 		}
-		password = strings.TrimSuffix(string(passwordFromStdin), "\n")
-		password = strings.TrimSuffix(password, "\r")
+
+		password = string(passwordFromStdin)
+		password = strings.TrimSpace(password)
 	} else if password == "" {
 		if username == "" {
 			username, err = readLine("Username: ", false)
