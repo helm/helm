@@ -70,6 +70,8 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Args:              require.NoArgs,
 		ValidArgsFunction: noCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			overrideRegistryWriter(cfg, outfmt)
+
 			if client.AllNamespaces {
 				if err := cfg.Init(settings.RESTClientGetter(), "", os.Getenv("HELM_DRIVER"), debug); err != nil {
 					return err

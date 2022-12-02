@@ -53,6 +53,8 @@ func newGetValuesCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return compListReleases(toComplete, args, cfg)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			overrideRegistryWriter(cfg, outfmt)
+
 			vals, err := client.Run(args[0])
 			if err != nil {
 				return err

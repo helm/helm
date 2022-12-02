@@ -30,6 +30,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/registry"
 	"helm.sh/helm/v3/pkg/repo"
 )
@@ -155,7 +156,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	registryClient, err := registry.NewClient(
 		registry.ClientOptDebug(settings.Debug),
 		registry.ClientOptEnableCache(true),
-		registry.ClientOptWriter(os.Stderr),
+		registry.ClientOptWriter(out),
 		registry.ClientOptCredentialsFile(settings.RegistryConfig),
 	)
 	if err != nil {
@@ -260,4 +261,11 @@ func checkForExpiredRepos(repofile string) {
 		}
 	}
 
+}
+
+func overrideRegistryWriter(cfg *action.Configuration, outfmt output.Format) {
+	// Ensure registry output doesn't break structured output
+	if outfmt != output.Table {
+		registry.ClientOptWriter(os.Stderr)(cfg.RegistryClient)
+	}
 }

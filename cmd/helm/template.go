@@ -34,6 +34,7 @@ import (
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/releaseutil"
 )
@@ -65,6 +66,8 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return compInstall(args, toComplete, client)
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
+			overrideRegistryWriter(cfg, output.YAML)
+
 			if kubeVersion != "" {
 				parsedKubeVersion, err := chartutil.ParseKubeVersion(kubeVersion)
 				if err != nil {
