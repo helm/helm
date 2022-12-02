@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
@@ -29,6 +30,7 @@ import (
 	orascontext "oras.land/oras-go/pkg/context"
 	"oras.land/oras-go/pkg/registry"
 
+	"helm.sh/helm/v3/internal/tlsutil"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 )
@@ -128,4 +130,28 @@ func parseReference(raw string) (registry.Reference, error) {
 	}
 
 	return registry.ParseReference(raw)
+}
+
+// NewRegistryClientWithTLS is a helper function to create a new registry client with TLS enabled.
+func NewRegistryClientWithTLS(out io.Writer, certFile, keyFile, caFile string, registryConfig string, debug bool) (*Client, error) {
+	tlsConf, err := tlsutil.NewClientTLS(certFile, keyFile, caFile)
+	if err != nil {
+		return nil, fmt.Errorf("can't create TLS config for client: %s", err)
+	}
+	// Create a new registry client
+	registryClient, err := NewClient(
+		ClientOptDebug(debug),
+		ClientOptEnableCache(true),
+		ClientOptWriter(out),
+		ClientOptCredentialsFile(registryConfig),
+		ClientOptHTTPClient(&http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: tlsConf,
+			},
+		}),
+	)
+	if err != nil {
+		return nil, err
+	}
+	return registryClient, nil
 }
