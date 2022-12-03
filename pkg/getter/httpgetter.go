@@ -52,7 +52,9 @@ func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	
+	req.Header.Set("Accept", "application/gzip,application/octet-stream")
+	
 	req.Header.Set("User-Agent", version.GetUserAgent())
 	if g.opts.userAgent != "" {
 		req.Header.Set("User-Agent", g.opts.userAgent)
@@ -115,8 +117,6 @@ func (g *HTTPGetter) httpClient() (*http.Client, error) {
 			Timeout:   g.opts.timeout,
 		}, nil
 	}
-	
-	req.Header.Set("Accept", "application/gzip,application/octet-stream")
 	
 	g.once.Do(func() {
 		g.transport = &http.Transport{
