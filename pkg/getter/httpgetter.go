@@ -115,7 +115,9 @@ func (g *HTTPGetter) httpClient() (*http.Client, error) {
 			Timeout:   g.opts.timeout,
 		}, nil
 	}
-
+	
+	req.Header.Set("Accept", "application/gzip,application/octet-stream")
+	
 	g.once.Do(func() {
 		g.transport = &http.Transport{
 			DisableCompression: true,
