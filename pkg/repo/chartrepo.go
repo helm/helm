@@ -219,7 +219,7 @@ func FindChartInAuthRepoURL(repoURL, username, password, chartName, chartVersion
 // but it also receives credentials and TLS verify flag for the chart repository.
 // TODO Helm 4, FindChartInAuthAndTLSRepoURL should be integrated into FindChartInAuthRepoURL.
 func FindChartInAuthAndTLSRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile string, insecureSkipTLSverify bool, getters getter.Providers) (string, error) {
-	return FindChartInAuthAndTLSAndPassRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile, false, false, getters)
+	return FindChartInAuthAndTLSAndPassRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile, insecureSkipTLSverify, false, getters)
 }
 
 // FindChartInAuthAndTLSAndPassRepoURL finds chart in chart repository pointed by repoURL
