@@ -21,9 +21,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/moby/term"
 	"github.com/spf13/cobra"
@@ -76,16 +78,28 @@ func getUsernamePassword(usernameOpt string, passwordOpt string, passwordFromStd
 	password := passwordOpt
 
 	if passwordFromStdinOpt {
-		fmt.Printf("Enter registry password: ")
+		var err error
+		var passwordFromStdin []byte
+		input := make(chan string, 1)
+		go getInput(input)
 
-		passwordFromStdin, err := xTerm.ReadPassword(int(syscall.Stdin))
-		fmt.Println()
+		select {
+		case i := <-input:
+			password = i
+		case <-time.After(1 * time.Millisecond):
+			fmt.Println("Password not detected via stdin")
+
+			fmt.Printf("Enter registry password: ")
+			passwordFromStdin, err = xTerm.ReadPassword(int(syscall.Stdin))
+
+			fmt.Println()
+			password = string(passwordFromStdin)
+		}
 
 		if err != nil {
 			return "", "", err
 		}
 
-		password = string(passwordFromStdin)
 		password = strings.TrimSpace(password)
 	} else if password == "" {
 		if username == "" {
@@ -140,4 +154,18 @@ func readLine(prompt string, silent bool) (string, error) {
 	}
 
 	return string(line), nil
+}
+
+func getInput(input chan string) {
+	r := bufio.NewReader(os.Stdin)
+	buf := make([]byte, 0, 1024)
+
+	n, err := r.Read(buf[:cap(buf)])
+	buf = buf[:n]
+
+	if n == 0 {
+		log.Fatal(err)
+	}
+
+	input <- string(buf)
 }
