@@ -136,7 +136,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return compInstall(args, toComplete, client)
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
-			overrideRegistryWriter(cfg, outfmt)
+			overrideRegistryWriter(cfg, outfmt, os.Stderr)
 
 			rel, err := runInstall(args, client, valueOpts, out)
 			if err != nil {

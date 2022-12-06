@@ -88,7 +88,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			overrideRegistryWriter(cfg, outfmt)
+			overrideRegistryWriter(cfg, outfmt, os.Stderr)
 
 			client.Namespace = settings.Namespace()
 

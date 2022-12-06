@@ -263,9 +263,9 @@ func checkForExpiredRepos(repofile string) {
 
 }
 
-func overrideRegistryWriter(cfg *action.Configuration, outfmt output.Format) {
+func overrideRegistryWriter(cfg *action.Configuration, outfmt output.Format, newWriter io.Writer) {
 	// Ensure registry output doesn't break structured output
 	if outfmt != output.Table {
-		registry.ClientOptWriter(os.Stderr)(cfg.RegistryClient)
+		registry.ClientOptWriter(newWriter)(cfg.RegistryClient)
 	}
 }

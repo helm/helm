@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"time"
 
@@ -67,7 +68,7 @@ func newHistoryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return compListReleases(toComplete, args, cfg)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			overrideRegistryWriter(cfg, outfmt)
+			overrideRegistryWriter(cfg, outfmt, os.Stderr)
 
 			history, err := getHistory(client, args[0])
 			if err != nil {

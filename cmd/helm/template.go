@@ -66,7 +66,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return compInstall(args, toComplete, client)
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
-			overrideRegistryWriter(cfg, output.YAML)
+			overrideRegistryWriter(cfg, output.YAML, os.Stderr)
 
 			if kubeVersion != "" {
 				parsedKubeVersion, err := chartutil.ParseKubeVersion(kubeVersion)

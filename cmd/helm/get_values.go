@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -53,7 +54,7 @@ func newGetValuesCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return compListReleases(toComplete, args, cfg)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			overrideRegistryWriter(cfg, outfmt)
+			overrideRegistryWriter(cfg, outfmt, os.Stderr)
 
 			vals, err := client.Run(args[0])
 			if err != nil {
