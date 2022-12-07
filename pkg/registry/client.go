@@ -216,8 +216,15 @@ func checkHostExists(host string) (bool, error) {
 	resp, err := http.Get(host)
 
 	if err != nil || resp == nil {
-		log.Fatalf("Failed to get response from host. Error: %v", err.Error())
-		return false, err
+		// The testing repository doesn't implement HTTPS correctly.
+		// TODO: Fix test repo responses
+		if err != nil && strings.HasSuffix(err.Error(), "server gave HTTP response to HTTPS client") {
+			log.Printf("Warning: %v", err.Error())
+			return true, nil
+		} else {
+			log.Printf("Failed to get response from host. Error: %v", err.Error())
+			return false, err
+		}
 	}
 
 	return true, nil
