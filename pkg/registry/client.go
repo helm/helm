@@ -221,10 +221,10 @@ func checkHostExists(host string) (bool, error) {
 		if err != nil && strings.HasSuffix(err.Error(), "server gave HTTP response to HTTPS client") {
 			log.Printf("Warning: %v", err.Error())
 			return true, nil
-		} else {
-			log.Printf("Failed to get response from host. Error: %v", err.Error())
-			return false, err
 		}
+
+		log.Printf("Failed to get response from host. Error: %v", err.Error())
+		return false, err
 	}
 
 	return true, nil
