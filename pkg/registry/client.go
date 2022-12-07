@@ -207,7 +207,7 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 	return nil
 }
 
-func checkHostExists(host string) (bool, error){
+func checkHostExists(host string) (bool, error) {
 	//Check if host exists
 	if !strings.HasPrefix(host, "https://") && !strings.HasPrefix(host, "http://") {
 		host = "https://" + host
@@ -215,7 +215,7 @@ func checkHostExists(host string) (bool, error){
 
 	resp, err := http.Get(host)
 
-	if err != nil || resp == nil{
+	if err != nil || resp == nil {
 		log.Fatalf("Failed to get response from host. Error: %v", err.Error())
 		return false, err
 	}
