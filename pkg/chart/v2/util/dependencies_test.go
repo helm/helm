@@ -286,6 +286,38 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	}
 }
 
+func TestProcessDependencyImportValuesFromSharedDependencyToAliases(t *testing.T) {
+	c := loadChart(t, "testdata/chart-with-import-from-aliased-dependencies")
+
+	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
+		t.Fatalf("expected no errors but got %q", err)
+	}
+	if err := processDependencyImportValues(c, true); err != nil {
+		t.Fatalf("processing import values dependencies %v", err)
+	}
+	e := make(map[string]string)
+
+	e["foo-defaults.defaultValue"] = "42"
+	e["bar-defaults.defaultValue"] = "42"
+
+	e["foo.defaults.defaultValue"] = "42"
+	e["bar.defaults.defaultValue"] = "42"
+
+	e["foo.grandchild.defaults.defaultValue"] = "42"
+	e["bar.grandchild.defaults.defaultValue"] = "42"
+
+	cValues := Values(c.Values)
+	for kk, vv := range e {
+		pv, err := cValues.PathValue(kk)
+		if err != nil {
+			t.Fatalf("retrieving import values table %v %v", kk, err)
+		}
+		if pv != vv {
+			t.Errorf("failed to match imported value %v with expected %v", pv, vv)
+		}
+	}
+}
+
 func TestProcessDependencyImportValuesMultiLevelPrecedence(t *testing.T) {
 	c := loadChart(t, "testdata/three-level-dependent-chart/umbrella")
 
