@@ -278,14 +278,14 @@ func (t *parser) key(data map[string]interface{}, nestedNameLevel int) (reterr e
 			}
 
 			// Recurse
-			if e := t.key(inner, nestedNameLevel); e != nil {
-				return e
-			}
-			if len(inner) == 0 {
+			e := t.key(inner, nestedNameLevel)
+			if e == nil && len(inner) == 0 {
 				return errors.Errorf("key map %q has no value", string(k))
 			}
-			set(data, string(k), inner)
-			return nil
+			if len(inner) != 0 {
+				set(data, string(k), inner)
+			}
+			return e
 		}
 	}
 }

@@ -248,9 +248,8 @@ func TestParseSet(t *testing.T) {
 			err: true,
 		},
 		{
-			"name1.name2=",
-			map[string]interface{}{},
-			false,
+			str:    "name1.name2=",
+			expect: map[string]interface{}{"name1": map[string]interface{}{"name2": ""}},
 		},
 		{
 			str: "name1.=name2",
@@ -770,15 +769,19 @@ func TestParseSetNestedLevels(t *testing.T) {
 		str    string
 		expect map[string]interface{}
 		err    bool
+		errStr string
 	}{
 		{
 			"outer.middle.inner=value",
 			map[string]interface{}{"outer": map[string]interface{}{"middle": map[string]interface{}{"inner": "value"}}},
 			false,
+			"",
 		},
 		{
 			str: keyMultipleNestedLevels + "=value",
 			err: true,
+			errStr: fmt.Sprintf("value name nested level is greater than maximum supported nested level of %d",
+				MaxNestedNameLevel),
 		},
 	}
 
@@ -786,6 +789,11 @@ func TestParseSetNestedLevels(t *testing.T) {
 		got, err := Parse(tt.str)
 		if err != nil {
 			if tt.err {
+				if tt.errStr != "" {
+					if err.Error() != tt.errStr {
+						t.Errorf("Expected error: %s. Got error: %s", tt.errStr, err.Error())
+					}
+				}
 				continue
 			}
 			t.Fatalf("%s: %s", tt.str, err)
