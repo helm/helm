@@ -19,9 +19,16 @@ package registry
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/big"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -44,6 +51,10 @@ import (
 var (
 	testWorkspaceDir         = "helm-registry-test"
 	testHtpasswdFileBasename = "authtest.htpasswd"
+	testCACertFileName       = "root.pem"
+	testCAKeyFileName        = "root-key.pem"
+	testClientCertFileName   = "client.pem"
+	testClientKeyFileName    = "client-key.pem"
 	testUsername             = "myuser"
 	testPassword             = "mypass"
 )
@@ -55,6 +66,15 @@ type RegistryClientTestSuite struct {
 	CompromisedRegistryHost string
 	WorkspaceDir            string
 	RegistryClient          *Client
+
+	PlainHTTPDockerRegistryHost       string
+	TLSDockerRegistryHost             string
+	TLSVerifyClientDockerRegistryHost string
+
+	PlainHTTPRegistryClient   *Client
+	InsecureRegistryClient    *Client
+	RegistryClientWithCA      *Client
+	RegistryClientWithCertKey *Client
 }
 
 func (suite *RegistryClientTestSuite) SetupSuite() {
@@ -66,8 +86,39 @@ func (suite *RegistryClientTestSuite) SetupSuite() {
 	suite.Out = &out
 	credentialsFile := filepath.Join(suite.WorkspaceDir, CredentialsFileBasename)
 
+	// find the first non-local IP as the registry address
+	// or else, using localhost will always be insecure
+	var hostname string
+	addrs, err := net.InterfaceAddrs()
+	suite.Nil(err, "error getting IP addresses")
+	for _, address := range addrs {
+		if n, ok := address.(*net.IPNet); ok {
+			if n.IP.IsLinkLocalUnicast() || n.IP.IsLoopback() {
+				continue
+			}
+			hostname = n.IP.String()
+			break
+		}
+	}
+	suite.NotEmpty(hostname, "failed to get ip address as hostname")
+
+	// generate self-sign CA cert/key and client cert/key
+	caCert, caKey, clientCert, clientKey, err := genCerts(hostname)
+	suite.Nil(err, "error generating certs")
+	caCertPath := filepath.Join(suite.WorkspaceDir, testCACertFileName)
+	err = ioutil.WriteFile(caCertPath, caCert, 0644)
+	suite.Nil(err, "error creating test ca cert file")
+	caKeyPath := filepath.Join(suite.WorkspaceDir, testCAKeyFileName)
+	err = ioutil.WriteFile(caKeyPath, caKey, 0644)
+	suite.Nil(err, "error creating test ca key file")
+	clientCertPath := filepath.Join(suite.WorkspaceDir, testClientCertFileName)
+	err = ioutil.WriteFile(clientCertPath, clientCert, 0644)
+	suite.Nil(err, "error creating test client cert file")
+	clientKeyPath := filepath.Join(suite.WorkspaceDir, testClientKeyFileName)
+	err = ioutil.WriteFile(clientKeyPath, clientKey, 0644)
+	suite.Nil(err, "error creating test client key file")
+
 	// init test client
-	var err error
 	suite.RegistryClient, err = NewClient(
 		ClientOptDebug(true),
 		ClientOptEnableCache(true),
@@ -75,6 +126,44 @@ func (suite *RegistryClientTestSuite) SetupSuite() {
 		ClientOptCredentialsFile(credentialsFile),
 	)
 	suite.Nil(err, "no error creating registry client")
+
+	// init plain http client
+	suite.PlainHTTPRegistryClient, err = NewClient(
+		ClientOptDebug(true),
+		ClientOptEnableCache(true),
+		ClientOptWriter(suite.Out),
+		ClientOptCredentialsFile(credentialsFile),
+		ClientOptPlainHTTP(true),
+	)
+	suite.Nil(err, "error creating plain http registry client")
+
+	// init insecure client
+	suite.InsecureRegistryClient, err = NewClient(
+		ClientOptDebug(true),
+		ClientOptEnableCache(true),
+		ClientOptWriter(suite.Out),
+		ClientOptInsecureSkipVerifyTLS(true),
+	)
+	suite.Nil(err, "error creating insecure registry client")
+
+	// init client with CA cert
+	suite.RegistryClientWithCA, err = NewClient(
+		ClientOptDebug(true),
+		ClientOptEnableCache(true),
+		ClientOptWriter(suite.Out),
+		ClientOptCAFile(caCertPath),
+	)
+	suite.Nil(err, "error creating registry client with CA cert")
+
+	// init client with CA cert and client cert/key
+	suite.RegistryClientWithCertKey, err = NewClient(
+		ClientOptDebug(true),
+		ClientOptEnableCache(true),
+		ClientOptWriter(suite.Out),
+		ClientOptCAFile(caCertPath),
+		ClientOptCertKeyFiles(clientCertPath, clientKeyPath),
+	)
+	suite.Nil(err, "error creating registry client with CA cert")
 
 	// create htpasswd file (w BCrypt, which is required)
 	pwBytes, err := bcrypt.GenerateFromPassword([]byte(testPassword), bcrypt.DefaultCost)
@@ -102,8 +191,60 @@ func (suite *RegistryClientTestSuite) SetupSuite() {
 
 	suite.CompromisedRegistryHost = initCompromisedRegistryTestServer()
 
-	// Start Docker registry
+	// plain http registry
+	plainHTTPConfig := &configuration.Configuration{}
+	plainHTTPPort, err := freeport.GetFreePort()
+	suite.Nil(err, "no error finding free port for test plain HTTP registry")
+	suite.PlainHTTPDockerRegistryHost = fmt.Sprintf("%s:%d", hostname, plainHTTPPort)
+	plainHTTPConfig.HTTP.Addr = fmt.Sprintf(":%d", plainHTTPPort)
+	plainHTTPConfig.Storage = map[string]configuration.Parameters{"inmemory": map[string]interface{}{}}
+	plainHTTPConfig.Auth = configuration.Auth{
+		"htpasswd": configuration.Parameters{
+			"realm": hostname,
+			"path":  htpasswdPath,
+		},
+	}
+	plainHTTPDockerRegistry, err := registry.NewRegistry(context.Background(), plainHTTPConfig)
+	suite.Nil(err, "no error creating test plain http registry")
+
+	// init TLS registry with self-signed CA
+	tlsRegistryPort, err := freeport.GetFreePort()
+	suite.Nil(err, "no error finding free port for test TLS registry")
+	suite.TLSDockerRegistryHost = fmt.Sprintf("%s:%d", hostname, tlsRegistryPort)
+
+	tlsRegistryConfig := &configuration.Configuration{}
+	tlsRegistryConfig.HTTP.Addr = fmt.Sprintf(":%d", tlsRegistryPort)
+	tlsRegistryConfig.HTTP.TLS.Certificate = caCertPath
+	tlsRegistryConfig.HTTP.TLS.Key = caKeyPath
+	tlsRegistryConfig.Storage = map[string]configuration.Parameters{"inmemory": map[string]interface{}{}}
+	tlsRegistryConfig.Auth = configuration.Auth{
+		"htpasswd": configuration.Parameters{
+			"realm": hostname,
+			"path":  htpasswdPath,
+		},
+	}
+	tlsDockerRegistry, err := registry.NewRegistry(context.Background(), tlsRegistryConfig)
+	suite.Nil(err, "no error creating test TLS registry")
+	// init TLS registry with self-signed CA and client verification enabled
+	anotherTLSRegistryPort, err := freeport.GetFreePort()
+	suite.Nil(err, "no error finding free port for test another TLS registry")
+	suite.TLSVerifyClientDockerRegistryHost = fmt.Sprintf("%s:%d", hostname, anotherTLSRegistryPort)
+
+	anotherTLSRegistryConfig := &configuration.Configuration{}
+	anotherTLSRegistryConfig.HTTP.Addr = fmt.Sprintf(":%d", anotherTLSRegistryPort)
+	anotherTLSRegistryConfig.HTTP.TLS.Certificate = caCertPath
+	anotherTLSRegistryConfig.HTTP.TLS.Key = caKeyPath
+	anotherTLSRegistryConfig.HTTP.TLS.ClientCAs = []string{caCertPath}
+	anotherTLSRegistryConfig.Storage = map[string]configuration.Parameters{"inmemory": map[string]interface{}{}}
+	// no auth because we cannot pass Login action
+	anotherTLSDockerRegistry, err := registry.NewRegistry(context.Background(), anotherTLSRegistryConfig)
+	suite.Nil(err, "no error creating test another TLS registry")
+
+	// start registries
 	go dockerRegistry.ListenAndServe()
+	go plainHTTPDockerRegistry.ListenAndServe()
+	go tlsDockerRegistry.ListenAndServe()
+	go anotherTLSDockerRegistry.ListenAndServe()
 }
 
 func (suite *RegistryClientTestSuite) TearDownSuite() {
@@ -130,6 +271,36 @@ func (suite *RegistryClientTestSuite) Test_0_Login() {
 		LoginOptBasicAuth(testUsername, testPassword),
 		LoginOptInsecure(true))
 	suite.Nil(err, "no error logging into registry with good credentials, insecure mode")
+
+	err = suite.PlainHTTPRegistryClient.Login(suite.PlainHTTPDockerRegistryHost,
+		LoginOptBasicAuth(testUsername, testPassword),
+		LoginOptInsecure(false))
+	suite.NotNil(err, "no error logging into registry with good credentials")
+
+	err = suite.PlainHTTPRegistryClient.Login(suite.PlainHTTPDockerRegistryHost,
+		LoginOptBasicAuth(testUsername, testPassword),
+		LoginOptInsecure(true))
+	suite.Nil(err, "error logging into registry with good credentials, insecure mode")
+
+	err = suite.InsecureRegistryClient.Login(suite.TLSDockerRegistryHost,
+		LoginOptBasicAuth(testUsername, testPassword),
+		LoginOptInsecure(false))
+	suite.NotNil(err, "no error logging into insecure with good credentials")
+
+	err = suite.InsecureRegistryClient.Login(suite.TLSDockerRegistryHost,
+		LoginOptBasicAuth(testUsername, testPassword),
+		LoginOptInsecure(true))
+	suite.Nil(err, "error logging into insecure with good credentials, insecure mode")
+
+	err = suite.RegistryClientWithCA.Login(suite.TLSDockerRegistryHost,
+		LoginOptBasicAuth(testUsername, testPassword),
+		LoginOptInsecure(false))
+	suite.NotNil(err, "no error logging into insecure with good credentials")
+
+	err = suite.RegistryClientWithCA.Login(suite.TLSDockerRegistryHost,
+		LoginOptBasicAuth(testUsername, testPassword),
+		LoginOptInsecure(true))
+	suite.Nil(err, "error logging into insecure with good credentials, insecure mode")
 }
 
 func (suite *RegistryClientTestSuite) Test_1_Push() {
@@ -317,6 +488,17 @@ func (suite *RegistryClientTestSuite) Test_4_Logout() {
 
 	err = suite.RegistryClient.Logout(suite.DockerRegistryHost)
 	suite.Nil(err, "no error logging out of registry")
+
+	err = suite.PlainHTTPRegistryClient.Logout(suite.PlainHTTPDockerRegistryHost)
+	suite.Nil(err, "error logging out of plain http registry")
+
+	err = suite.InsecureRegistryClient.Logout(suite.TLSDockerRegistryHost)
+	suite.Nil(err, "error logging out of insecure registry")
+
+	// error as logout happened for TLSDockerRegistryHost in last step
+	err = suite.RegistryClientWithCA.Logout(suite.TLSDockerRegistryHost)
+	suite.NotNil(err, "no error logging out of insecure registry with ca cert")
+
 }
 
 func (suite *RegistryClientTestSuite) Test_5_ManInTheMiddle() {
@@ -370,4 +552,104 @@ func initCompromisedRegistryTestServer() string {
 
 	u, _ := url.Parse(s.URL)
 	return fmt.Sprintf("localhost:%s", u.Port())
+}
+
+// Code from https://shaneutt.com/blog/golang-ca-and-signed-cert-go/
+func genCerts(ip string) (caCert, caKey, clientCert, clientKey []byte, retErr error) {
+	addr := net.ParseIP(ip)
+	if addr == nil {
+		retErr = fmt.Errorf("invalid IP %s", ip)
+		return
+	}
+	ca := &x509.Certificate{
+		SerialNumber: big.NewInt(2021),
+		Subject: pkix.Name{
+			CommonName:   "helm.sh",
+			Organization: []string{"Helm"},
+			Country:      []string{"US"},
+			Province:     []string{"CO"},
+			Locality:     []string{"Boulder"},
+		},
+		IPAddresses:           []net.IP{addr},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().AddDate(10, 0, 0),
+		IsCA:                  true,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		BasicConstraintsValid: true,
+	}
+
+	// create ca private and public key
+	caPrivKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	if err != nil {
+		retErr = err
+		return
+	}
+
+	// create the CA
+	caBytes, err := x509.CreateCertificate(rand.Reader, ca, ca, &caPrivKey.PublicKey, caPrivKey)
+	if err != nil {
+		retErr = err
+		return
+	}
+
+	// pem encode
+	caPEM := new(bytes.Buffer)
+	pem.Encode(caPEM, &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: caBytes,
+	})
+
+	caPrivKeyPEM := new(bytes.Buffer)
+	pem.Encode(caPrivKeyPEM, &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(caPrivKey),
+	})
+
+	// client certificate
+	cert := &x509.Certificate{
+		SerialNumber: big.NewInt(2021),
+		Subject: pkix.Name{
+			Organization: []string{"Helm"},
+			Country:      []string{"US"},
+			Province:     []string{"CO"},
+			Locality:     []string{"Boulder"},
+		},
+		NotBefore:    time.Now(),
+		NotAfter:     time.Now().AddDate(10, 0, 0),
+		SubjectKeyId: []byte{1, 2, 3, 4, 6},
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+	}
+
+	certPrivKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	if err != nil {
+		retErr = err
+		return
+	}
+
+	certBytes, err := x509.CreateCertificate(rand.Reader, cert, ca, &certPrivKey.PublicKey, caPrivKey)
+	if err != nil {
+		retErr = err
+		return
+	}
+
+	certPEM := new(bytes.Buffer)
+	pem.Encode(certPEM, &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: certBytes,
+	})
+
+	certPrivKeyPEM := new(bytes.Buffer)
+	pem.Encode(certPrivKeyPEM, &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(certPrivKey),
+	})
+
+	caCert = caPEM.Bytes()
+	caKey = caPrivKeyPEM.Bytes()
+	clientCert = certPEM.Bytes()
+	clientKey = certPrivKeyPEM.Bytes()
+
+	return caCert, caKey, clientCert, clientKey, nil
 }

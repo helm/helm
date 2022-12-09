@@ -18,6 +18,8 @@ package registry // import "helm.sh/helm/v3/pkg/registry"
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -61,6 +63,13 @@ type (
 		authorizer         auth.Client
 		registryAuthorizer *registryauth.Client
 		resolver           remotes.Resolver
+
+		// registry setting
+		certFile              string
+		keyFile               string
+		caFile                string
+		insecureSkipVerifyTLS bool
+		plainHTTP             bool
 	}
 
 	// ClientOption allows specifying various settings configurable by the user for overriding the defaults
@@ -90,7 +99,42 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		headers := http.Header{}
 		headers.Set("User-Agent", version.GetUserAgent())
 		opts := []auth.ResolverOption{auth.WithResolverHeaders(headers)}
+		if client.insecureSkipVerifyTLS {
+			opts = append(opts, auth.WithResolverPlainHTTP())
+		}
+		if client.caFile != "" || client.certFile != "" || client.keyFile != "" {
+			config := &tls.Config{
+				InsecureSkipVerify: client.insecureSkipVerifyTLS,
+			}
+			if client.caFile != "" {
+				caCert, err := ioutil.ReadFile(client.caFile)
+				if err != nil {
+					return nil, err
+				}
+
+				caCertPool := x509.NewCertPool()
+				caCertPool.AppendCertsFromPEM(caCert)
+				config.RootCAs = caCertPool
+			}
+
+			if client.certFile != "" && client.keyFile != "" {
+				cert, err := tls.LoadX509KeyPair(client.certFile, client.keyFile)
+				if err != nil {
+					return nil, err
+				}
+
+				config.Certificates = []tls.Certificate{cert}
+			}
+
+			opts = append(opts, auth.WithResolverClient(&http.Client{
+				Transport: &http.Transport{
+					TLSClientConfig: config,
+				},
+			}))
+
+		}
 		resolver, err := client.authorizer.ResolverWithOpts(opts...)
+
 		if err != nil {
 			return nil, err
 		}
@@ -163,6 +207,35 @@ func ClientOptWriter(out io.Writer) ClientOption {
 func ClientOptCredentialsFile(credentialsFile string) ClientOption {
 	return func(client *Client) {
 		client.credentialsFile = credentialsFile
+	}
+}
+
+// ClientOptCaFile returns a function that sets the CA file setting on a client options set
+func ClientOptCAFile(caFile string) ClientOption {
+	return func(client *Client) {
+		client.caFile = caFile
+	}
+}
+
+// ClientOptCaFile returns a function that sets the cert/key file setting on a client options set
+func ClientOptCertKeyFiles(certFile, keyFile string) ClientOption {
+	return func(client *Client) {
+		client.certFile = certFile
+		client.keyFile = keyFile
+	}
+}
+
+// ClientOptCaFile returns a function that sets the insecure setting on a client options set
+func ClientOptInsecureSkipVerifyTLS(insecureSkipVerifyTLS bool) ClientOption {
+	return func(client *Client) {
+		client.insecureSkipVerifyTLS = insecureSkipVerifyTLS
+	}
+}
+
+// ClientOptCaFile returns a function that sets the plain http setting on a client options set
+func ClientOptPlainHTTP(plainHTTP bool) ClientOption {
+	return func(client *Client) {
+		client.plainHTTP = plainHTTP
 	}
 }
 
