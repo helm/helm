@@ -101,19 +101,20 @@ type Configuration struct {
 //
 // TODO: This function is badly in need of a refactor.
 // TODO: As part of the refactor the duplicate code in cmd/helm/template.go should be removed
-//       This code has to do with writing files to disk.
-func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, dryRun bool) ([]*release.Hook, *bytes.Buffer, string, error) {
+//
+//	This code has to do with writing files to disk.
+func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, dryRun bool) ([]*release.Hook, *bytes.Buffer, string, []engine.Warning, error) {
 	hs := []*release.Hook{}
 	b := bytes.NewBuffer(nil)
 
 	caps, err := cfg.getCapabilities()
 	if err != nil {
-		return hs, b, "", err
+		return hs, b, "", nil, err
 	}
 
 	if ch.Metadata.KubeVersion != "" {
 		if !chartutil.IsCompatibleRange(ch.Metadata.KubeVersion, caps.KubeVersion.String()) {
-			return hs, b, "", errors.Errorf("chart requires kubeVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, caps.KubeVersion.String())
+			return hs, b, "", nil, errors.Errorf("chart requires kubeVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, caps.KubeVersion.String())
 		}
 	}
 
@@ -125,18 +126,20 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	// is mocked. It is not up to the template author to decide when the user wants to
 	// connect to the cluster. So when the user says to dry run, respect the user's
 	// wishes and do not connect to the cluster.
+	var theEngine engine.Engine
 	if !dryRun && cfg.RESTClientGetter != nil {
 		restConfig, err := cfg.RESTClientGetter.ToRESTConfig()
 		if err != nil {
-			return hs, b, "", err
+			return hs, b, "", nil, err
 		}
-		files, err2 = engine.RenderWithClient(ch, values, restConfig)
+		theEngine = engine.NewEngineWithClient(restConfig)
 	} else {
-		files, err2 = engine.Render(ch, values)
+		theEngine = engine.NewEngine()
 	}
+	files, err2 = theEngine.Render(ch, values)
 
 	if err2 != nil {
-		return hs, b, "", err2
+		return hs, b, "", nil, err2
 	}
 
 	// NOTES.txt gets rendered like all the other files, but because it's not a hook nor a resource,
@@ -175,7 +178,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 			}
 			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", name, content)
 		}
-		return hs, b, "", err
+		return hs, b, "", nil, err
 	}
 
 	// Aggregate all valid manifests into one big doc.
@@ -188,7 +191,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 			} else {
 				err = writeToFile(outputDir, crd.Filename, string(crd.File.Data[:]), fileWritten[crd.Name])
 				if err != nil {
-					return hs, b, "", err
+					return hs, b, "", nil, err
 				}
 				fileWritten[crd.Name] = true
 			}
@@ -209,7 +212,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 			// used by install or upgrade
 			err = writeToFile(newDir, m.Name, m.Content, fileWritten[m.Name])
 			if err != nil {
-				return hs, b, "", err
+				return hs, b, "", nil, err
 			}
 			fileWritten[m.Name] = true
 		}
@@ -218,11 +221,11 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	if pr != nil {
 		b, err = pr.Run(b)
 		if err != nil {
-			return hs, b, notes, errors.Wrap(err, "error while running post render on files")
+			return hs, b, notes, nil, errors.Wrap(err, "error while running post render on files")
 		}
 	}
 
-	return hs, b, notes, nil
+	return hs, b, notes, theEngine.GetWarnings(), nil
 }
 
 // RESTClientGetter gets the rest client

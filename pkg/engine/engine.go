@@ -42,6 +42,21 @@ type Engine struct {
 	LintMode bool
 	// the rest config to connect to the kubernetes api
 	config *rest.Config
+
+	warnings *Warnings
+}
+
+type Warning struct {
+	Message string
+}
+
+type Warnings []Warning
+
+func (w *Warnings) append(warning Warning) {
+	if w == nil {
+		w = &Warnings{}
+	}
+	*w = append(*w, warning)
 }
 
 // Render takes a chart, optional values, and value overrides, and attempts to render the Go templates.
@@ -71,16 +86,26 @@ func (e Engine) Render(chrt *chart.Chart, values chartutil.Values) (map[string]s
 // Render takes a chart, optional values, and value overrides, and attempts to
 // render the Go templates using the default options.
 func Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, error) {
-	return new(Engine).Render(chrt, values)
+	return NewEngine().Render(chrt, values)
 }
 
 // RenderWithClient takes a chart, optional values, and value overrides, and attempts to
 // render the Go templates using the default options. This engine is client aware and so can have template
 // functions that interact with the client
 func RenderWithClient(chrt *chart.Chart, values chartutil.Values, config *rest.Config) (map[string]string, error) {
+	return NewEngineWithClient(config).Render(chrt, values)
+}
+
+func NewEngineWithClient(config *rest.Config) Engine {
+	engine := NewEngine()
+	engine.config = config
+	return engine
+}
+
+func NewEngine() Engine {
 	return Engine{
-		config: config,
-	}.Render(chrt, values)
+		warnings: &Warnings{},
+	}
 }
 
 // renderable is an object that can be rendered.
@@ -101,6 +126,13 @@ var warnRegex = regexp.MustCompile(warnStartDelim + `((?s).*)` + warnEndDelim)
 
 func warnWrap(warn string) string {
 	return warnStartDelim + warn + warnEndDelim
+}
+
+func (e Engine) GetWarnings() []Warning {
+	if e.warnings == nil {
+		panic("Use NewEngine or NewEngineWithClient to create Engine")
+	}
+	return *e.warnings
 }
 
 // initFunMap creates the Engine's FuncMap and adds context-specific functions.
@@ -187,6 +219,17 @@ func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]render
 	// implementation.
 	if !e.LintMode && e.config != nil {
 		funcMap["lookup"] = NewLookupFunction(e.config)
+	}
+
+	funcMap["warn"] = func(msg string) string {
+		if e.warnings == nil { // Fallback if Engine was not created with constructor
+			fmt.Println("Warning:", msg)
+		} else {
+			e.warnings.append(Warning{
+				Message: msg,
+			})
+		}
+		return ""
 	}
 
 	t.Funcs(funcMap)

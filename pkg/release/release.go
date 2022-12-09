@@ -15,7 +15,10 @@ limitations under the License.
 
 package release
 
-import "helm.sh/helm/v3/pkg/chart"
+import (
+	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/engine"
+)
 
 // Release describes a deployment of a chart, together with the chart
 // and the variables used to deploy that chart.
@@ -37,6 +40,8 @@ type Release struct {
 	Version int `json:"version,omitempty"`
 	// Namespace is the kubernetes namespace of the release.
 	Namespace string `json:"namespace,omitempty"`
+
+	Warnings []engine.Warning
 	// Labels of the release.
 	// Disabled encoding into Json cause labels are stored in storage driver metadata field.
 	Labels map[string]string `json:"-"`
