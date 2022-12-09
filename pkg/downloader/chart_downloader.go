@@ -307,6 +307,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 		}
 		q := repoURL.Query()
 		// We need a trailing slash for ResolveReference to work, but make sure there isn't already one
+		repoURL.RawPath = strings.TrimSuffix(repoURL.RawPath, "/") + "/"
 		repoURL.Path = strings.TrimSuffix(repoURL.Path, "/") + "/"
 		u = repoURL.ResolveReference(u)
 		u.RawQuery = q.Encode()
