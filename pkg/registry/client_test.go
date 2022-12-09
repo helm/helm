@@ -497,7 +497,7 @@ func (suite *RegistryClientTestSuite) Test_4_Logout() {
 
 	// error as logout happened for TLSDockerRegistryHost in last step
 	err = suite.RegistryClientWithCA.Logout(suite.TLSDockerRegistryHost)
-	suite.NotNil(err, "no error logging out of insecure registry with ca cert")
+	suite.Nil(err, "no error logging out of registry with ca cert")
 
 }
 
