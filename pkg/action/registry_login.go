@@ -28,6 +28,7 @@ type RegistryLogin struct {
 	certFile string
 	keyFile  string
 	caFile   string
+	insecure bool
 }
 
 type RegistryLoginOpt func(*RegistryLogin) error
@@ -36,6 +37,14 @@ type RegistryLoginOpt func(*RegistryLogin) error
 func WithCertFile(certFile string) RegistryLoginOpt {
 	return func(r *RegistryLogin) error {
 		r.certFile = certFile
+		return nil
+	}
+}
+
+// WithKeyFile specifies whether to very certificates when communicating.
+func WithInsecure(insecure bool) RegistryLoginOpt {
+	return func(r *RegistryLogin) error {
+		r.insecure = insecure
 		return nil
 	}
 }
@@ -74,5 +83,6 @@ func (a *RegistryLogin) Run(out io.Writer, hostname string, username string, pas
 	return a.cfg.RegistryClient.Login(
 		hostname,
 		registry.LoginOptBasicAuth(username, password),
+		registry.LoginOptInsecure(a.insecure),
 		registry.LoginOptTLSClientConfig(a.certFile, a.keyFile, a.caFile))
 }
