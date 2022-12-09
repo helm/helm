@@ -43,6 +43,7 @@ type registryLoginOptions struct {
 	certFile             string
 	keyFile              string
 	caFile               string
+	insecure             bool
 }
 
 func newRegistryLoginCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
@@ -65,7 +66,8 @@ func newRegistryLoginCmd(cfg *action.Configuration, out io.Writer) *cobra.Comman
 			return action.NewRegistryLogin(cfg).Run(out, hostname, username, password,
 				action.WithCertFile(o.certFile),
 				action.WithKeyFile(o.keyFile),
-				action.WithCAFile(o.caFile))
+				action.WithCAFile(o.caFile),
+				action.WithInsecure(o.insecure))
 		},
 	}
 
@@ -73,6 +75,7 @@ func newRegistryLoginCmd(cfg *action.Configuration, out io.Writer) *cobra.Comman
 	f.StringVarP(&o.username, "username", "u", "", "registry username")
 	f.StringVarP(&o.password, "password", "p", "", "registry password or identity token")
 	f.BoolVarP(&o.passwordFromStdinOpt, "password-stdin", "", false, "read password or identity token from stdin")
+	f.BoolVarP(&o.insecure, "insecure", "", false, "allow connections to TLS registry without certs")
 	f.StringVar(&o.certFile, "cert-file", "", "identify registry client using this SSL certificate file")
 	f.StringVar(&o.keyFile, "key-file", "", "identify registry client using this SSL key file")
 	f.StringVar(&o.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
