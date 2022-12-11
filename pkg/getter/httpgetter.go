@@ -123,7 +123,7 @@ func (g *HTTPGetter) httpClient() (*http.Client, error) {
 		}
 	})
 
-	if (g.opts.certFile != "" && g.opts.keyFile != "") || g.opts.caFile != "" || g.opts.insecureSkipVerifyTLS {
+	if (g.opts.certFile != "" && g.opts.keyFile != "") || g.opts.caFile != "" {
 		tlsConf, err := tlsutil.NewClientTLS(g.opts.certFile, g.opts.keyFile, g.opts.caFile, g.opts.insecureSkipVerifyTLS)
 		if err != nil {
 			return nil, errors.Wrap(err, "can't create TLS config for client")
