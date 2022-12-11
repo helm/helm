@@ -1,0 +1,10 @@
+apiVersion: v2
+description: Common chartbuilding components and helpers
+name: bad-library-chart
+version: 0.0.1
+appVersion: 0.0.1
+home: https://helm.sh
+maintainers:
+- name: maintainer
+  email: helm+maintainer@gmail.com
+type: library
