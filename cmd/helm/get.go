@@ -48,6 +48,7 @@ func newGetCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	cmd.AddCommand(newGetManifestCmd(cfg, out))
 	cmd.AddCommand(newGetHooksCmd(cfg, out))
 	cmd.AddCommand(newGetNotesCmd(cfg, out))
+	cmd.AddCommand(newGetMetadataCmd(cfg, out))
 
 	return cmd
 }
