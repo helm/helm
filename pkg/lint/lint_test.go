@@ -34,6 +34,7 @@ const badValuesFileDir = "rules/testdata/badvaluesfile"
 const badYamlFileDir = "rules/testdata/albatross"
 const goodChartDir = "rules/testdata/goodone"
 const subChartValuesDir = "rules/testdata/withsubchart"
+const badLibraryFileDir = "rules/testdata/badlibrary"
 
 func TestBadChart(t *testing.T) {
 	m := All(badChartDir, values, namespace, strict).Messages
@@ -149,5 +150,32 @@ func TestSubChartValuesChart(t *testing.T) {
 		for i, msg := range m {
 			t.Logf("Message %d: %s", i, msg)
 		}
+	}
+}
+func TestBadLibraryChart(t *testing.T) {
+	m := All(badLibraryFileDir, values, namespace, strict).Messages
+	if len(m) != 3 {
+		t.Errorf("Number of errors %v", len(m))
+		t.Errorf("All didn't fail with expected errors, got %#v", m)
+	}
+	// Check for one INFO and 2 WARNINGs.
+	var i, w1, w2 bool
+	for _, msg := range m {
+		if msg.Severity == support.InfoSev {
+			if strings.Contains(msg.Err.Error(), "icon is recommended") {
+				i = true
+			}
+		}
+		if msg.Severity == support.WarningSev {
+			if strings.Contains(msg.Err.Error(), "file name fullname.tpl does not start with '_'") {
+				w1 = true
+			}
+			if strings.Contains(msg.Err.Error(), "file name shortname.tpl does not start with '_'") {
+				w2 = true
+			}
+		}
+	}
+	if !i || !w1 || !w2 {
+		t.Errorf("Didn't find all the expected errors, got %#v", m)
 	}
 }
