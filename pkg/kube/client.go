@@ -428,16 +428,20 @@ func (c *Client) Delete(resources ResourceList) (*Result, []error) {
 	mtx := sync.Mutex{}
 	err := perform(resources, func(info *resource.Info) error {
 		c.Log("Starting delete for %q %s", info.Name, info.Mapping.GroupVersionKind.Kind)
-		if err := c.skipIfNotFound(deleteResource(info)); err != nil {
-			mtx.Lock()
-			defer mtx.Unlock()
-			// Collect the error and continue on
-			errs = append(errs, err)
-		} else {
+		err := deleteResource(info)
+		if err == nil || apierrors.IsNotFound(err) {
+			if err != nil {
+				c.Log("Ignoring delete failure for %q %s: %v", info.Name, info.Mapping.GroupVersionKind, err)
+			}
 			mtx.Lock()
 			defer mtx.Unlock()
 			res.Deleted = append(res.Deleted, info)
+			return nil
 		}
+		mtx.Lock()
+		defer mtx.Unlock()
+		// Collect the error and continue on
+		errs = append(errs, err)
 		return nil
 	})
 	if err != nil {
@@ -452,14 +456,6 @@ func (c *Client) Delete(resources ResourceList) (*Result, []error) {
 		return nil, errs
 	}
 	return res, nil
-}
-
-func (c *Client) skipIfNotFound(err error) error {
-	if apierrors.IsNotFound(err) {
-		c.Log("%v", err)
-		return nil
-	}
-	return err
 }
 
 func (c *Client) watchTimeout(t time.Duration) func(*resource.Info) error {
