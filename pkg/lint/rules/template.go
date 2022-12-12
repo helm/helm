@@ -190,7 +190,7 @@ func validateTopIndentLevel(content string) error {
 
 func validateLibraryTemplate(fileName string) error {
 	if fileName[0] != '_' {
-		return fmt.Errorf("template file name %s does not start with '_' character", fileName)
+		return fmt.Errorf("template file name %s does not start with '_' character, which is not convention for library charts", fileName)
 	}
 	return nil
 }
