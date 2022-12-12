@@ -35,10 +35,12 @@ func TestNewOCIPusher(t *testing.T) {
 	cd := "../../testdata"
 	join := filepath.Join
 	ca, pub, priv := join(cd, "rootca.crt"), join(cd, "crt.pem"), join(cd, "key.pem")
+	insecureSkipTLSverify := false
 
 	// Test with options
 	p, err = NewOCIPusher(
 		WithTLSClientConfig(pub, priv, ca),
+		WithInsecureSkipTLSVerify(insecureSkipTLSverify),
 	)
 	if err != nil {
 		t.Fatal(err)
