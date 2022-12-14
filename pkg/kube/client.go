@@ -325,8 +325,8 @@ func (c *Client) Delete(resources ResourceList) (*Result, []error) {
 		return nil
 	})
 	if err != nil {
-		if err == ErrNoObjectsVisited {
-			err = fmt.Errorf("object not found, skipping delete: %w", ErrNoObjectsVisited)
+		if errors.Is(err, ErrNoObjectsVisited) {
+			err = fmt.Errorf("object not found, skipping delete: %w", err)
 		}
 		errs = append(errs, err)
 	}
