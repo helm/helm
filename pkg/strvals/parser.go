@@ -36,6 +36,10 @@ var ErrNotList = errors.New("not a list")
 // The default value 65536 = 1024 * 64
 var MaxIndex = 65536
 
+// MaxNestedNameLevel is the maximum level of nesting for a value name that
+// will be allowed.
+var MaxNestedNameLevel = 30
+
 // ToYAML takes a string of arguments and converts to a YAML document.
 func ToYAML(s string) (string, error) {
 	m, err := Parse(s)
@@ -155,7 +159,7 @@ func newFileParser(sc *bytes.Buffer, data map[string]interface{}, reader RunesVa
 
 func (t *parser) parse() error {
 	for {
-		err := t.key(t.data)
+		err := t.key(t.data, 0)
 		if err == nil {
 			continue
 		}
@@ -174,7 +178,7 @@ func runeSet(r []rune) map[rune]bool {
 	return s
 }
 
-func (t *parser) key(data map[string]interface{}) (reterr error) {
+func (t *parser) key(data map[string]interface{}, nestedNameLevel int) (reterr error) {
 	defer func() {
 		if r := recover(); r != nil {
 			reterr = fmt.Errorf("unable to parse key: %s", r)
@@ -204,7 +208,7 @@ func (t *parser) key(data map[string]interface{}) (reterr error) {
 			}
 
 			// Now we need to get the value after the ].
-			list, err = t.listItem(list, i)
+			list, err = t.listItem(list, i, nestedNameLevel)
 			set(data, kk, list)
 			return err
 		case last == '=':
@@ -261,6 +265,12 @@ func (t *parser) key(data map[string]interface{}) (reterr error) {
 			set(data, string(k), "")
 			return errors.Errorf("key %q has no value (cannot end with ,)", string(k))
 		case last == '.':
+			// Check value name is within the maximum nested name level
+			nestedNameLevel++
+			if nestedNameLevel > MaxNestedNameLevel {
+				return fmt.Errorf("value name nested level is greater than maximum supported nested level of %d", MaxNestedNameLevel)
+			}
+
 			// First, create or find the target map.
 			inner := map[string]interface{}{}
 			if _, ok := data[string(k)]; ok {
@@ -268,11 +278,13 @@ func (t *parser) key(data map[string]interface{}) (reterr error) {
 			}
 
 			// Recurse
-			e := t.key(inner)
-			if len(inner) == 0 {
+			e := t.key(inner, nestedNameLevel)
+			if e == nil && len(inner) == 0 {
 				return errors.Errorf("key map %q has no value", string(k))
 			}
-			set(data, string(k), inner)
+			if len(inner) != 0 {
+				set(data, string(k), inner)
+			}
 			return e
 		}
 	}
@@ -322,7 +334,7 @@ func (t *parser) keyIndex() (int, error) {
 	return strconv.Atoi(string(v))
 
 }
-func (t *parser) listItem(list []interface{}, i int) ([]interface{}, error) {
+func (t *parser) listItem(list []interface{}, i, nestedNameLevel int) ([]interface{}, error) {
 	if i < 0 {
 		return list, fmt.Errorf("negative %d index not allowed", i)
 	}
@@ -395,7 +407,7 @@ func (t *parser) listItem(list []interface{}, i int) ([]interface{}, error) {
 			}
 		}
 		// Now we need to get the value after the ].
-		list2, err := t.listItem(crtList, nextI)
+		list2, err := t.listItem(crtList, nextI, nestedNameLevel)
 		if err != nil {
 			return list, err
 		}
@@ -414,7 +426,7 @@ func (t *parser) listItem(list []interface{}, i int) ([]interface{}, error) {
 		}
 
 		// Recurse
-		e := t.key(inner)
+		e := t.key(inner, nestedNameLevel)
 		if e != nil {
 			return list, e
 		}
