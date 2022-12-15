@@ -55,10 +55,6 @@ var (
 	testHtpasswdFileBasename = "authtest.htpasswd"
 	testUsername             = "myuser"
 	testPassword             = "mypass"
-	testCACertFileName       = "root.pem"
-	testCAKeyFileName        = "root-key.pem"
-	testClientCertFileName   = "client.pem"
-	testClientKeyFileName    = "client-key.pem"
 )
 
 type TestSuite struct {
