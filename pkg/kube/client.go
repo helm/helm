@@ -308,17 +308,17 @@ func (c *Client) Delete(resources ResourceList) (*Result, []error) {
 	mtx := sync.Mutex{}
 	err := perform(resources, func(info *resource.Info) error {
 		c.Log("Starting delete for %q %s", info.Name, info.Mapping.GroupVersionKind.Kind)
-		if err := info.Get(); err != nil {
-			c.Log("Unable to get obj %q, err: %s", info.Name, err)
+		if err2 := info.Get(); err2 != nil {
+			c.Log("Unable to get obj %q, err2: %s", info.Name, err2)
 			mtx.Lock()
 			defer mtx.Unlock()
 			// Collect the error and continue on
-			errs = append(errs, err)
+			errs = append(errs, err2)
 			return nil
 		}
-		annotations, err := metadataAccessor.Annotations(info.Object)
-		if err != nil {
-			c.Log("Unable to get annotations on %q, err: %s", info.Name, err)
+		annotations, err2 := metadataAccessor.Annotations(info.Object)
+		if err2 != nil {
+			c.Log("Unable to get annotations on %q, err2: %s", info.Name, err2)
 		}
 		if annotations != nil && annotations[ResourcePolicyAnno] == KeepPolicy {
 			c.Log("Skipping delete of %q due to annotation [%s=%s]", info.Name, ResourcePolicyAnno, KeepPolicy)
@@ -326,10 +326,10 @@ func (c *Client) Delete(resources ResourceList) (*Result, []error) {
 			defer mtx.Unlock()
 			return nil
 		}
-		err := deleteResource(info)
-		if err == nil || apierrors.IsNotFound(err) {
-			if err != nil {
-				c.Log("Ignoring delete failure for %q %s: %v", info.Name, info.Mapping.GroupVersionKind, err)
+		err2 := deleteResource(info)
+		if err2 == nil || apierrors.IsNotFound(err2) {
+			if err2 != nil {
+				c.Log("Ignoring delete failure for %q %s: %v", info.Name, info.Mapping.GroupVersionKind, err2)
 			}
 			mtx.Lock()
 			defer mtx.Unlock()
@@ -339,7 +339,7 @@ func (c *Client) Delete(resources ResourceList) (*Result, []error) {
 		mtx.Lock()
 		defer mtx.Unlock()
 		// Collect the error and continue on
-		errs = append(errs, err)
+		errs = append(errs, err2)
 		return nil
 	})
 	if err != nil {
