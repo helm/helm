@@ -258,13 +258,12 @@ type (
 	LoginOption func(*loginOperation)
 
 	loginOperation struct {
-		username  string
-		password  string
-		insecure  bool
-		certFile  string
-		keyFile   string
-		caFile    string
-		plainHTTP bool
+		username string
+		password string
+		insecure bool
+		certFile string
+		keyFile  string
+		caFile   string
 	}
 )
 
@@ -297,13 +296,6 @@ func LoginOptBasicAuth(username string, password string) LoginOption {
 	return func(operation *loginOperation) {
 		operation.username = username
 		operation.password = password
-	}
-}
-
-// LoginOptBasicAuth returns a function that sets the username/password settings on login
-func LoginOptPlainHTTP() LoginOption {
-	return func(operation *loginOperation) {
-		operation.plainHTTP = true
 	}
 }
 
