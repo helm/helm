@@ -326,7 +326,7 @@ func (c *Client) Delete(resources ResourceList) (*Result, []error) {
 			defer mtx.Unlock()
 			return nil
 		}
-		err2 := deleteResource(info)
+		err2 = deleteResource(info)
 		if err2 == nil || apierrors.IsNotFound(err2) {
 			if err2 != nil {
 				c.Log("Ignoring delete failure for %q %s: %v", info.Name, info.Mapping.GroupVersionKind, err2)
