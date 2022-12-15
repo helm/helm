@@ -65,6 +65,9 @@ type TestSuite struct {
 	CompromisedRegistryHost string
 	WorkspaceDir            string
 	RegistryClient          *Client
+
+	Context context.Context
+	Cancel  func()
 }
 
 // setup creates a oci registry for use in testing and sets the internal
@@ -132,6 +135,7 @@ func setup(suite *TestSuite, tlsEnabled bool, insecure bool) *registry.Registry 
 		// That function does not handle matching of ip addresses in octal,
 		// decimal or hex form.
 		suite.DockerRegistryHost = fmt.Sprintf("0x7f000001:%d", port)
+
 	} else {
 		suite.DockerRegistryHost = fmt.Sprintf("localhost:%d", port)
 	}
@@ -155,7 +159,8 @@ func setup(suite *TestSuite, tlsEnabled bool, insecure bool) *registry.Registry 
 		config.HTTP.TLS.Key = tlsServerKey
 		config.HTTP.TLS.ClientCAs = []string{tlsCA}
 	}
-	dockerRegistry, err := registry.NewRegistry(context.Background(), config)
+	suite.Context, suite.Cancel = context.WithCancel(context.Background())
+	dockerRegistry, err := registry.NewRegistry(suite.Context, config)
 	suite.Nil(err, "no error creating test registry")
 
 	suite.CompromisedRegistryHost = initCompromisedRegistryTestServer()
