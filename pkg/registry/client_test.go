@@ -17,12 +17,16 @@ limitations under the License.
 package registry
 
 import (
+<<<<<<< HEAD
 	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
+=======
+	"fmt"
+>>>>>>> dd5e82b5 (refactor to new test suite)
 	"os"
 	"path/filepath"
 	"testing"
@@ -200,39 +204,8 @@ func (suite *RegistryClientTestSuite) SetupSuite() {
 	suite.Nil(err, "no error finding free port for test TLS registry")
 	suite.TLSDockerRegistryHost = fmt.Sprintf("%s:%d", hostname, tlsRegistryPort)
 
-	tlsRegistryConfig := &configuration.Configuration{}
-	tlsRegistryConfig.HTTP.Addr = fmt.Sprintf(":%d", tlsRegistryPort)
-	tlsRegistryConfig.HTTP.TLS.Certificate = caCertPath
-	tlsRegistryConfig.HTTP.TLS.Key = caKeyPath
-	tlsRegistryConfig.Storage = map[string]configuration.Parameters{"inmemory": map[string]interface{}{}}
-	tlsRegistryConfig.Auth = configuration.Auth{
-		"htpasswd": configuration.Parameters{
-			"realm": hostname,
-			"path":  htpasswdPath,
-		},
-	}
-	tlsDockerRegistry, err := registry.NewRegistry(context.Background(), tlsRegistryConfig)
-	suite.Nil(err, "no error creating test TLS registry")
-	// init TLS registry with self-signed CA and client verification enabled
-	anotherTLSRegistryPort, err := freeport.GetFreePort()
-	suite.Nil(err, "no error finding free port for test another TLS registry")
-	suite.TLSVerifyClientDockerRegistryHost = fmt.Sprintf("%s:%d", hostname, anotherTLSRegistryPort)
-
-	anotherTLSRegistryConfig := &configuration.Configuration{}
-	anotherTLSRegistryConfig.HTTP.Addr = fmt.Sprintf(":%d", anotherTLSRegistryPort)
-	anotherTLSRegistryConfig.HTTP.TLS.Certificate = caCertPath
-	anotherTLSRegistryConfig.HTTP.TLS.Key = caKeyPath
-	anotherTLSRegistryConfig.HTTP.TLS.ClientCAs = []string{caCertPath}
-	anotherTLSRegistryConfig.Storage = map[string]configuration.Parameters{"inmemory": map[string]interface{}{}}
-	// no auth because we cannot pass Login action
-	anotherTLSDockerRegistry, err := registry.NewRegistry(context.Background(), anotherTLSRegistryConfig)
-	suite.Nil(err, "no error creating test another TLS registry")
-
-	// start registries
+	// Start Docker registry
 	go dockerRegistry.ListenAndServe()
-	go plainHTTPDockerRegistry.ListenAndServe()
-	go tlsDockerRegistry.ListenAndServe()
-	go anotherTLSDockerRegistry.ListenAndServe()
 }
 
 func (suite *RegistryClientTestSuite) TearDownSuite() {
@@ -259,36 +232,6 @@ func (suite *RegistryClientTestSuite) Test_0_Login() {
 		LoginOptBasicAuth(testUsername, testPassword),
 		LoginOptInsecure(true))
 	suite.Nil(err, "no error logging into registry with good credentials, insecure mode")
-
-	err = suite.PlainHTTPRegistryClient.Login(suite.PlainHTTPDockerRegistryHost,
-		LoginOptBasicAuth(testUsername, testPassword),
-		LoginOptInsecure(false))
-	suite.NotNil(err, "no error logging into registry with good credentials")
-
-	err = suite.PlainHTTPRegistryClient.Login(suite.PlainHTTPDockerRegistryHost,
-		LoginOptBasicAuth(testUsername, testPassword),
-		LoginOptInsecure(true))
-	suite.Nil(err, "error logging into registry with good credentials, insecure mode")
-
-	err = suite.InsecureRegistryClient.Login(suite.TLSDockerRegistryHost,
-		LoginOptBasicAuth(testUsername, testPassword),
-		LoginOptInsecure(false))
-	suite.NotNil(err, "no error logging into insecure with good credentials")
-
-	err = suite.InsecureRegistryClient.Login(suite.TLSDockerRegistryHost,
-		LoginOptBasicAuth(testUsername, testPassword),
-		LoginOptInsecure(true))
-	suite.Nil(err, "error logging into insecure with good credentials, insecure mode")
-
-	err = suite.RegistryClientWithCA.Login(suite.TLSDockerRegistryHost,
-		LoginOptBasicAuth(testUsername, testPassword),
-		LoginOptInsecure(false))
-	suite.NotNil(err, "no error logging into insecure with good credentials")
-
-	err = suite.RegistryClientWithCA.Login(suite.TLSDockerRegistryHost,
-		LoginOptBasicAuth(testUsername, testPassword),
-		LoginOptInsecure(true))
-	suite.Nil(err, "error logging into insecure with good credentials, insecure mode")
 }
 
 func (suite *RegistryClientTestSuite) Test_1_Push() {
@@ -309,17 +252,6 @@ func (suite *RegistryClientTestSuite) Test_4_Logout() {
 
 	err = suite.RegistryClient.Logout(suite.DockerRegistryHost)
 	suite.Nil(err, "no error logging out of registry")
-
-	err = suite.PlainHTTPRegistryClient.Logout(suite.PlainHTTPDockerRegistryHost)
-	suite.Nil(err, "error logging out of plain http registry")
-
-	err = suite.InsecureRegistryClient.Logout(suite.TLSDockerRegistryHost)
-	suite.Nil(err, "error logging out of insecure registry")
-
-	// error as logout happened for TLSDockerRegistryHost in last step
-	err = suite.RegistryClientWithCA.Logout(suite.TLSDockerRegistryHost)
-	suite.Nil(err, "no error logging out of registry with ca cert")
-
 }
 
 func (suite *RegistryClientTestSuite) Test_5_ManInTheMiddle() {

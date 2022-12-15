@@ -155,3 +155,18 @@ func NewRegistryClientWithTLS(out io.Writer, certFile, keyFile, caFile string, i
 	}
 	return registryClient, nil
 }
+
+func NewRegistryClientHTTP(out io.Writer, certFile, keyFile, caFile string, insecureSkipTLSverify bool, registryConfig string, debug bool) (*Client, error) {
+	// Create a new http registry client
+	registryClient, err := NewClient(
+		ClientOptDebug(debug),
+		ClientOptEnableCache(true),
+		ClientOptWriter(out),
+		ClientOptCredentialsFile(registryConfig),
+		ClientOptPlainHTTP(true),
+	)
+	if err != nil {
+		return nil, err
+	}
+	return registryClient, nil
+}

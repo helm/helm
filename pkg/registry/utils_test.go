@@ -55,17 +55,29 @@ var (
 	testHtpasswdFileBasename = "authtest.htpasswd"
 	testUsername             = "myuser"
 	testPassword             = "mypass"
+	testCACertFileName       = "root.pem"
+	testCAKeyFileName        = "root-key.pem"
+	testClientCertFileName   = "client.pem"
+	testClientKeyFileName    = "client-key.pem"
 )
 
 type TestSuite struct {
 	suite.Suite
-	Out                     io.Writer
-	DockerRegistryHost      string
+	Out                io.Writer
+	DockerRegistryHost string
+
 	CompromisedRegistryHost string
 	WorkspaceDir            string
 	RegistryClient          *Client
 }
 
+// setup creates a oci registry for use in testing and sets the internal
+// RegistryClient in the provided *TestSutie object with a client for communicating
+// to the registry for testing:
+//
+//	tlsEnabled - true for an https registry, false for http
+//	insecure - true for forcing the client to trust the certs when communicating to the registry
+//	            false otherwise
 func setup(suite *TestSuite, tlsEnabled bool, insecure bool) *registry.Registry {
 	suite.WorkspaceDir = testWorkspaceDir
 	os.RemoveAll(suite.WorkspaceDir)
@@ -101,6 +113,7 @@ func setup(suite *TestSuite, tlsEnabled bool, insecure bool) *registry.Registry 
 			ClientOptEnableCache(true),
 			ClientOptWriter(suite.Out),
 			ClientOptCredentialsFile(credentialsFile),
+			ClientOptPlainHTTP(true),
 		)
 	}
 

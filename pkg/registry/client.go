@@ -70,7 +70,7 @@ type (
 		caFile                string
 		insecureSkipVerifyTLS bool
 		plainHTTP             bool
-		httpClient         *http.Client
+		httpClient            *http.Client
 	}
 
 	// ClientOption allows specifying various settings configurable by the user for overriding the defaults
@@ -132,7 +132,10 @@ func NewClient(options ...ClientOption) (*Client, error) {
 					TLSClientConfig: config,
 				},
 			}))
-
+		}
+		if client.plainHTTP {
+			opts = append(opts, auth.WithResolverPlainHTTP())
+		}
 		if client.httpClient != nil {
 			opts = append(opts, auth.WithResolverClient(client.httpClient))
 		}
@@ -240,6 +243,9 @@ func ClientOptInsecureSkipVerifyTLS(insecureSkipVerifyTLS bool) ClientOption {
 func ClientOptPlainHTTP(plainHTTP bool) ClientOption {
 	return func(client *Client) {
 		client.plainHTTP = plainHTTP
+	}
+}
+
 // ClientOptHTTPClient returns a function that sets the httpClient setting on a client options set
 func ClientOptHTTPClient(httpClient *http.Client) ClientOption {
 	return func(client *Client) {
@@ -252,12 +258,13 @@ type (
 	LoginOption func(*loginOperation)
 
 	loginOperation struct {
-		username string
-		password string
-		insecure bool
-		certFile string
-		keyFile  string
-		caFile   string
+		username  string
+		password  string
+		insecure  bool
+		certFile  string
+		keyFile   string
+		caFile    string
+		plainHTTP bool
 	}
 )
 
@@ -290,6 +297,13 @@ func LoginOptBasicAuth(username string, password string) LoginOption {
 	return func(operation *loginOperation) {
 		operation.username = username
 		operation.password = password
+	}
+}
+
+// LoginOptBasicAuth returns a function that sets the username/password settings on login
+func LoginOptPlainHTTP() LoginOption {
+	return func(operation *loginOperation) {
+		operation.plainHTTP = true
 	}
 }
 
