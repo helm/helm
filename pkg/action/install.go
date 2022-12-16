@@ -69,11 +69,12 @@ type Install struct {
 
 	ChartPathOptions
 
-	ClientOnly      bool
-	Force           bool
-	CreateNamespace bool
-	DryRun          bool
-	DryRunOption    string
+	ClientOnly          bool
+	Force               bool
+	Force3WayMergePatch bool
+	CreateNamespace     bool
+	DryRun              bool
+	DryRunOption        string
 	// HideSecret can be set to true when DryRun is enabled in order to hide
 	// Kubernetes Secrets in the output. It cannot be used outside of DryRun.
 	HideSecret               bool
@@ -455,7 +456,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	if len(toBeAdopted) == 0 && len(resources) > 0 {
 		_, err = i.cfg.KubeClient.Create(resources)
 	} else if len(resources) > 0 {
-		_, err = i.cfg.KubeClient.Update(toBeAdopted, resources, i.Force)
+		_, err = i.cfg.KubeClient.Update(toBeAdopted, resources, i.Force, i.Force3WayMergePatch)
 	}
 	if err != nil {
 		return rel, err
