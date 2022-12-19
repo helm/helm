@@ -79,7 +79,7 @@ func TestList_OneNamespace(t *testing.T) {
 func TestList_AllNamespaces(t *testing.T) {
 	is := assert.New(t)
 	lister := newListFixture(t)
-	makeMeSomeReleases(lister.cfg.Releases, t)
+	makeMeSomeReleasesWithDifferentNamespaces(lister.cfg.Releases, t)
 	lister.AllNamespaces = true
 	lister.SetStateMask()
 	list, err := lister.Run()
@@ -285,6 +285,34 @@ func makeMeSomeReleases(store *storage.Storage, t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, all, 3, "sanity test: three items added")
 }
+
+
+func makeMeSomeReleasesWithDifferentNamespaces(store *storage.Storage, t *testing.T) {
+	t.Helper()
+	one := releaseStub()
+	one.Name = "one"
+	one.Namespace = "default1"
+	one.Version = 1
+	two := releaseStub()
+	two.Name = "two"
+	two.Namespace = "default2"
+	two.Version = 2
+	three := releaseStub()
+	three.Name = "three"
+	three.Namespace = "default3"
+	three.Version = 3
+
+	for _, rel := range []*release.Release{one, two, three} {
+		if err := store.Create(rel); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	all, err := store.ListReleases()
+	assert.NoError(t, err)
+	assert.Len(t, all, 3, "sanity test: three items added")
+}
+
 
 func TestFilterLatestReleases(t *testing.T) {
 	t.Run("should filter old versions of the same release", func(t *testing.T) {
