@@ -84,7 +84,11 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		ValidArgsFunction: validArgsFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowAll
-			output, err := runShow(args, client, out)
+			err := addRegistryClient(client)
+			if err != nil {
+				return err
+			}
+			output, err := runShow(args, client)
 			if err != nil {
 				return err
 			}
@@ -101,7 +105,11 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		ValidArgsFunction: validArgsFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowValues
-			output, err := runShow(args, client, out)
+			err := addRegistryClient(client)
+			if err != nil {
+				return err
+			}
+			output, err := runShow(args, client)
 			if err != nil {
 				return err
 			}
@@ -118,7 +126,11 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		ValidArgsFunction: validArgsFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowChart
-			output, err := runShow(args, client, out)
+			err := addRegistryClient(client)
+			if err != nil {
+				return err
+			}
+			output, err := runShow(args, client)
 			if err != nil {
 				return err
 			}
@@ -135,7 +147,11 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		ValidArgsFunction: validArgsFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowReadme
-			output, err := runShow(args, client, out)
+			err := addRegistryClient(client)
+			if err != nil {
+				return err
+			}
+			output, err := runShow(args, client)
 			if err != nil {
 				return err
 			}
@@ -152,7 +168,11 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		ValidArgsFunction: validArgsFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowCRDs
-			output, err := runShow(args, client, out)
+			err := addRegistryClient(client)
+			if err != nil {
+				return err
+			}
+			output, err := runShow(args, client)
 			if err != nil {
 				return err
 			}
@@ -191,16 +211,25 @@ func addShowFlags(subCmd *cobra.Command, client *action.Show) {
 	}
 }
 
-func runShow(args []string, client *action.Show, out io.Writer) (string, error) {
+func runShow(args []string, client *action.Show) (string, error) {
 	debug("Original chart version: %q", client.Version)
 	if client.Version == "" && client.Devel {
 		debug("setting version to >0.0.0-0")
 		client.Version = ">0.0.0-0"
 	}
 
-	cp, err := client.ChartPathOptions.LocateChart(args[0], out, settings)
+	cp, err := client.ChartPathOptions.LocateChart(args[0], settings)
 	if err != nil {
 		return "", err
 	}
 	return client.Run(cp)
+}
+
+func addRegistryClient(client *action.Show) error {
+	registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile, client.InsecureSkipTLSverify)
+	if err != nil {
+		return fmt.Errorf("missing registry client: %w", err)
+	}
+	client.SetRegistryClient(registryClient)
+	return nil
 }

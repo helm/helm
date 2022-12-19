@@ -43,7 +43,7 @@ result in an error, and the chart will not be saved locally.
 `
 
 func newPullCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
-	client := action.NewPullWithOpts(action.WithConfig(cfg), action.WithPullOptWriter(out))
+	client := action.NewPullWithOpts(action.WithConfig(cfg))
 
 	cmd := &cobra.Command{
 		Use:     "pull [chart URL | repo/chartname] [...]",
@@ -63,6 +63,12 @@ func newPullCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				debug("setting version to >0.0.0-0")
 				client.Version = ">0.0.0-0"
 			}
+
+			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile, client.InsecureSkipTLSverify)
+			if err != nil {
+				return fmt.Errorf("missing registry client: %w", err)
+			}
+			client.SetRegistryClient(registryClient)
 
 			for i := 0; i < len(args); i++ {
 				output, err := client.Run(args[i])
