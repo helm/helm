@@ -286,7 +286,6 @@ func makeMeSomeReleases(store *storage.Storage, t *testing.T) {
 	assert.Len(t, all, 3, "sanity test: three items added")
 }
 
-
 func makeMeSomeReleasesWithDifferentNamespaces(store *storage.Storage, t *testing.T) {
 	t.Helper()
 	one := releaseStub()
@@ -312,7 +311,6 @@ func makeMeSomeReleasesWithDifferentNamespaces(store *storage.Storage, t *testin
 	assert.NoError(t, err)
 	assert.Len(t, all, 3, "sanity test: three items added")
 }
-
 
 func TestFilterLatestReleases(t *testing.T) {
 	t.Run("should filter old versions of the same release", func(t *testing.T) {
