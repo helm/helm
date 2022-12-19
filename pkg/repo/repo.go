@@ -100,6 +100,9 @@ func (r *File) Remove(name string) bool {
 	cp := []*Entry{}
 	found := false
 	for _, rf := range r.Repositories {
+		if rf == nil {
+			continue
+		}
 		if rf.Name == name {
 			found = true
 			continue
