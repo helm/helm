@@ -32,6 +32,7 @@ import (
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/kube"
 	"helm.sh/helm/v3/pkg/postrender"
+	"helm.sh/helm/v3/pkg/registry"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/releaseutil"
 	"helm.sh/helm/v3/pkg/storage/driver"
@@ -120,6 +121,11 @@ func NewUpgrade(cfg *Configuration) *Upgrade {
 	up.ChartPathOptions.registryClient = cfg.RegistryClient
 
 	return up
+}
+
+// SetRegistryClient sets the registry client to use when fetching charts.
+func (u *Upgrade) SetRegistryClient(client *registry.Client) {
+	u.ChartPathOptions.registryClient = client
 }
 
 // Run executes the upgrade on the given release.

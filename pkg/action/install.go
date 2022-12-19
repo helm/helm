@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -135,6 +134,11 @@ func NewInstall(cfg *Configuration) *Install {
 	in.ChartPathOptions.registryClient = cfg.RegistryClient
 
 	return in
+}
+
+// SetRegistryClient sets the registry client for the install action
+func (i *Install) SetRegistryClient(registryClient *registry.Client) {
+	i.ChartPathOptions.registryClient = registryClient
 }
 
 func (i *Install) installCRDs(crds []chart.CRD) error {
@@ -676,22 +680,11 @@ OUTER:
 // - URL
 //
 // If 'verify' was set on ChartPathOptions, this will attempt to also verify the chart.
-func (c *ChartPathOptions) LocateChart(name string, out io.Writer, settings *cli.EnvSettings) (string, error) {
-	// If there is no registry client and the name is in an OCI registry return
-	// an error and a lookup will not occur.
-	if registry.IsOCI(name) {
-		if (c.CertFile != "" && c.KeyFile != "") || c.CaFile != "" || c.InsecureSkipTLSverify {
-			registryClient, err := registry.NewRegistryClientWithTLS(out, c.CertFile, c.KeyFile, c.CaFile,
-				c.InsecureSkipTLSverify, settings.RegistryConfig, settings.Debug)
-			if err != nil {
-				return "", err
-			}
-			c.registryClient = registryClient
-		}
-		if c.registryClient == nil {
-			return "", fmt.Errorf("unable to lookup chart %q, missing registry client", name)
-		}
+func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (string, error) {
+	if registry.IsOCI(name) && c.registryClient == nil {
+		return "", fmt.Errorf("unable to lookup chart %q, missing registry client", name)
 	}
+
 	name = strings.TrimSpace(name)
 	version := strings.TrimSpace(c.Version)
 

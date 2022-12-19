@@ -67,6 +67,11 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			registryClient, err := newRegistryClient(o.certFile, o.keyFile, o.caFile, o.insecureSkipTLSverify)
+			if err != nil {
+				return fmt.Errorf("missing registry client: %w", err)
+			}
+			cfg.RegistryClient = registryClient
 			chartRef := args[0]
 			remote := args[1]
 			client := action.NewPushWithOpts(action.WithPushConfig(cfg),
