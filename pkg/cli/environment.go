@@ -14,7 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*Package cli describes the operating environment for the Helm CLI.
+/*
+Package cli describes the operating environment for the Helm CLI.
 
 Helm's environment encapsulates all of the service dependencies Helm has.
 These dependencies are expressed as interfaces so that alternate implementations
@@ -121,6 +122,7 @@ func New() *EnvSettings {
 			config.Wrap(func(rt http.RoundTripper) http.RoundTripper {
 				return &retryingRoundTripper{wrapped: rt}
 			})
+			config.UserAgent = version.GetUserAgent()
 			return config
 		},
 	}
@@ -231,9 +233,5 @@ func (s *EnvSettings) SetNamespace(namespace string) {
 
 // RESTClientGetter gets the kubeconfig from EnvSettings
 func (s *EnvSettings) RESTClientGetter() genericclioptions.RESTClientGetter {
-	s.config.WrapConfigFn = func(c *rest.Config) *rest.Config {
-		c.UserAgent = version.GetUserAgent()
-		return c
-	}
 	return s.config
 }
