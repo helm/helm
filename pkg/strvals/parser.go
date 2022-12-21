@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"strconv"
 	"strings"
 	"unicode"
@@ -232,7 +231,7 @@ func (t *parser) key(data map[string]interface{}, nestedNameLevel int) (reterr e
 					return err
 				}
 				set(data, string(k), jsonval)
-				if _, err = io.CopyN(ioutil.Discard, t.sc, dec.InputOffset()); err != nil {
+				if _, err = io.CopyN(io.Discard, t.sc, dec.InputOffset()); err != nil {
 					return err
 				}
 				// skip possible blanks and comma
@@ -366,7 +365,7 @@ func (t *parser) listItem(list []interface{}, i, nestedNameLevel int) ([]interfa
 			if list, err = setIndex(list, i, jsonval); err != nil {
 				return list, err
 			}
-			if _, err = io.CopyN(ioutil.Discard, t.sc, dec.InputOffset()); err != nil {
+			if _, err = io.CopyN(io.Discard, t.sc, dec.InputOffset()); err != nil {
 				return list, err
 			}
 			// skip possible blanks and comma
