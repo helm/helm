@@ -11,7 +11,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package loader
+package action
 
 import (
 	"testing"
@@ -22,17 +22,15 @@ import (
 func TestExpandLocalPath(t *testing.T) {
 	req := require.New(t)
 
-	glob, err := ExpandFilePath("testdata/frobnitz/*.yaml")
+	glob, err := expandFilePath("testdata/output/*.txt")
 	req.NoError(err)
-	req.Contains(glob, "testdata/frobnitz/Chart.yaml")
-	req.Contains(glob, "testdata/frobnitz/values.yaml")
+	req.Contains(glob, "testdata/output/list-compressed-deps.txt")
+	req.Contains(glob, "testdata/output/list-missing-deps.txt")
 
-	dir, err := ExpandFilePath("testdata/albatross/")
+	dir, err := expandFilePath("testdata/files/")
 	req.NoError(err)
-	req.Contains(dir, "testdata/albatross/Chart.yaml")
-	req.Contains(dir, "testdata/albatross/values.yaml")
+	req.Contains(dir, "testdata/files/external.txt")
 
-	file, err := ExpandFilePath("testdata/albatross/Chart.yaml")
-	req.NoError(err)
-	req.Contains(file, "testdata/albatross/Chart.yaml")
+	_, err = expandFilePath("testdata/non_existing")
+	req.Error(err)
 }

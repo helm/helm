@@ -11,7 +11,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package loader
+package action
 
 import (
 	"errors"
@@ -20,8 +20,8 @@ import (
 	"strings"
 )
 
-// ExpandFilePath expands a local file, dir or glob path to a list of files
-func ExpandFilePath(path string) ([]string, error) {
+// expandFilePath expands a local file, dir or glob path to a list of files
+func expandFilePath(path string) ([]string, error) {
 	if strings.Contains(path, "*") {
 		// if this is a glob, we expand it and return a list of files
 		return expandGlob(path)
