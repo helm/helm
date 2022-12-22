@@ -90,21 +90,11 @@ func (p *Push) Run(chartRef string, remote string) (string, error) {
 		Pushers: pusher.All(p.Settings),
 		Options: []pusher.Option{
 			pusher.WithTLSClientConfig(p.certFile, p.keyFile, p.caFile),
+			pusher.WithInsecureSkipTLSVerify(p.insecureSkipTLSverify),
 		},
 	}
 
 	if registry.IsOCI(remote) {
-		// Provide a tls enabled client for the pull command if the user has
-		// specified the cert file or key file or ca file.
-		if (p.certFile != "" && p.keyFile != "") || p.caFile != "" || p.insecureSkipTLSverify {
-			registryClient, err := registry.NewRegistryClientWithTLS(p.out, p.certFile, p.keyFile, p.caFile,
-				p.insecureSkipTLSverify, p.Settings.RegistryConfig, p.Settings.Debug)
-			if err != nil {
-				return out.String(), err
-			}
-			p.cfg.RegistryClient = registryClient
-		}
-
 		// Don't use the default registry client if tls options are set.
 		c.Options = append(c.Options, pusher.WithRegistryClient(p.cfg.RegistryClient))
 	}
