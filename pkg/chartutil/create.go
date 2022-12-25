@@ -190,7 +190,7 @@ volumes: []
 # Additional volumeMounts on the output Deployment definition.
 volumeMounts: []
 # - name: foo
-#   mounthPath: "/etc/foo"
+#   mountPath: "/etc/foo"
 #   readOnly: true
 
 nodeSelector: {}
