@@ -30,9 +30,10 @@ type base struct {
 
 func newBase(source string) base {
 	settings := cli.New()
+	pluginsDirs := filepath.SplitList(settings.PluginsDirectory)
 	return base{
 		Source:           source,
-		PluginsDirectory: settings.PluginsDirectory,
+		PluginsDirectory: pluginsDirs[0],
 	}
 }
 
