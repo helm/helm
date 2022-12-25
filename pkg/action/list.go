@@ -17,14 +17,18 @@ limitations under the License.
 package action
 
 import (
+	"os"
 	"path"
 	"regexp"
 
 	"k8s.io/apimachinery/pkg/labels"
 
+	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/releaseutil"
 )
+
+var settings = cli.New()
 
 // ListStates represents zero or more status codes that a list item may have set
 //
@@ -148,6 +152,12 @@ func NewList(cfg *Configuration) *List {
 func (l *List) Run() ([]*release.Release, error) {
 	if err := l.cfg.KubeClient.IsReachable(); err != nil {
 		return nil, err
+	}
+
+	if l.AllNamespaces {
+		if err := l.cfg.Init(settings.RESTClientGetter(), "", os.Getenv("HELM_DRIVER"), debug); err != nil {
+			return nil, err
+		}
 	}
 
 	var filter *regexp.Regexp
