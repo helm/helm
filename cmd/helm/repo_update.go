@@ -41,7 +41,8 @@ To update all the repositories, use 'helm repo update'.
 var errNoRepositories = errors.New("no repositories found. You must add one before updating")
 
 type repoUpdateOptions struct {
-	update               func([]*repo.ChartRepository, io.Writer, bool) error
+	showValidationErrors bool
+	update               func([]*repo.ChartRepository, io.Writer, bool, bool) error
 	repoFile             string
 	repoCache            string
 	names                []string
@@ -64,7 +65,7 @@ func newRepoUpdateCmd(out io.Writer) *cobra.Command {
 			o.repoFile = settings.RepositoryConfig
 			o.repoCache = settings.RepositoryCache
 			o.names = args
-			return o.run(out)
+			return o.run(out, args)
 		},
 	}
 
@@ -74,10 +75,12 @@ func newRepoUpdateCmd(out io.Writer) *cobra.Command {
 	// This should be deprecated in Helm 4 by update to the behaviour of `helm repo update` command.
 	f.BoolVar(&o.failOnRepoUpdateFail, "fail-on-repo-update-fail", false, "update fails if any of the repository updates fail")
 
+	f.BoolVar(&o.showValidationErrors, "show-repo-validation-errors", false, "show every invalid chart while indexing repository")
+
 	return cmd
 }
 
-func (o *repoUpdateOptions) run(out io.Writer) error {
+func (o *repoUpdateOptions) run(out io.Writer, args []string) error {
 	f, err := repo.LoadFile(o.repoFile)
 	switch {
 	case isNotExist(err):
@@ -111,10 +114,10 @@ func (o *repoUpdateOptions) run(out io.Writer) error {
 		}
 	}
 
-	return o.update(repos, out, o.failOnRepoUpdateFail)
+	return o.update(repos, out, o.failOnRepoUpdateFail, o.showValidationErrors)
 }
 
-func updateCharts(repos []*repo.ChartRepository, out io.Writer, failOnRepoUpdateFail bool) error {
+func updateCharts(repos []*repo.ChartRepository, out io.Writer, failOnRepoUpdateFail bool, showValidationErrors bool) error {
 	fmt.Fprintln(out, "Hang tight while we grab the latest from your chart repositories...")
 	var wg sync.WaitGroup
 	var repoFailList []string
@@ -122,7 +125,13 @@ func updateCharts(repos []*repo.ChartRepository, out io.Writer, failOnRepoUpdate
 		wg.Add(1)
 		go func(re *repo.ChartRepository) {
 			defer wg.Done()
-			if _, err := re.DownloadIndexFile(); err != nil {
+			var err error
+			if showValidationErrors {
+				_, err = re.ValidateAndDownloadIndexFile()
+			} else {
+				_, err = re.DownloadIndexFile()
+			}
+			if err != nil {
 				fmt.Fprintf(out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", re.Config.Name, re.Config.URL, err)
 				repoFailList = append(repoFailList, re.Config.URL)
 			} else {
