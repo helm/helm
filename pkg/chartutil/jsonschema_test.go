@@ -38,6 +38,30 @@ func TestValidateAgainstSingleSchema(t *testing.T) {
 	}
 }
 
+func TestValidateAgainstInvalidSingleSchema(t *testing.T) {
+	values, err := ReadValuesFile("./testdata/test-values.yaml")
+	if err != nil {
+		t.Fatalf("Error reading YAML file: %s", err)
+	}
+	schema, err := ioutil.ReadFile("./testdata/test-values-invalid.schema.json")
+	if err != nil {
+		t.Fatalf("Error reading YAML file: %s", err)
+	}
+
+	var errString string
+	if err := ValidateAgainstSingleSchema(values, schema); err == nil {
+		t.Fatalf("Expected an error, but got nil")
+	} else {
+		errString = err.Error()
+	}
+
+	expectedErrString := "unable to validate schema: runtime error: invalid " +
+		"memory address or nil pointer dereference"
+	if errString != expectedErrString {
+		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
+	}
+}
+
 func TestValidateAgainstSingleSchemaNegative(t *testing.T) {
 	values, err := ReadValuesFile("./testdata/test-values-negative.yaml")
 	if err != nil {
