@@ -66,7 +66,7 @@ type TestSuite struct {
 	RegistryClient          *Client
 }
 
-func setup(suite *TestSuite, tlsEnabled bool, insecure bool) *registry.Registry {
+func setup(suite *TestSuite, tlsEnabled bool, insecureSkipTLSVerify bool) *registry.Registry {
 	suite.WorkspaceDir = testWorkspaceDir
 	os.RemoveAll(suite.WorkspaceDir)
 	os.Mkdir(suite.WorkspaceDir, 0700)
@@ -81,7 +81,7 @@ func setup(suite *TestSuite, tlsEnabled bool, insecure bool) *registry.Registry 
 	// init test client
 	if tlsEnabled {
 		var tlsConf *tls.Config
-		tlsConf, err = tlsutil.NewClientTLS(tlsCert, tlsKey, tlsCA, insecure)
+		tlsConf, err = tlsutil.NewClientTLS(tlsCert, tlsKey, tlsCA, insecureSkipTLSVerify)
 		httpClient := &http.Client{
 			Transport: &http.Transport{
 				TLSClientConfig: tlsConf,
