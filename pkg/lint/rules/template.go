@@ -141,7 +141,7 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 					break
 				}
 
-				// If YAML linting fails, we sill progress. So we don't capture the returned state
+				// If YAML linting fails, we still progress. So we don't capture the returned state
 				// on this linter run.
 				linter.RunLinterRule(support.ErrorSev, fpath, validateYamlContent(err))
 
