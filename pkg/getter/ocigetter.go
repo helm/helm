@@ -122,13 +122,8 @@ func (g *OCIGetter) newRegistryClient() (*registry.Client, error) {
 		}
 	})
 
-<<<<<<< HEAD
 	if (g.opts.certFile != "" && g.opts.keyFile != "") || g.opts.caFile != "" || g.opts.insecureSkipVerifyTLS {
 		tlsConf, err := tlsutil.NewClientTLS(g.opts.certFile, g.opts.keyFile, g.opts.caFile, g.opts.insecureSkipVerifyTLS)
-=======
-	if (g.opts.certFile != "" && g.opts.keyFile != "") || g.opts.caFile != "" {
-		tlsConf, err := tlsutil.NewClientTLS(g.opts.certFile, g.opts.keyFile, g.opts.caFile)
->>>>>>> e676fd1c (Enable custom certificates option for OCI)
 		if err != nil {
 			return nil, fmt.Errorf("can't create TLS config for client: %w", err)
 		}

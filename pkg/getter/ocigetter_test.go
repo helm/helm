@@ -39,10 +39,7 @@ func TestOCIGetter(t *testing.T) {
 	ca, pub, priv := join(cd, "rootca.crt"), join(cd, "crt.pem"), join(cd, "key.pem")
 	timeout := time.Second * 5
 	transport := &http.Transport{}
-<<<<<<< HEAD
 	insecureSkipTLSverify := false
-=======
->>>>>>> e676fd1c (Enable custom certificates option for OCI)
 
 	// Test with options
 	g, err = NewOCIGetter(
@@ -50,10 +47,7 @@ func TestOCIGetter(t *testing.T) {
 		WithTLSClientConfig(pub, priv, ca),
 		WithTimeout(timeout),
 		WithTransport(transport),
-<<<<<<< HEAD
 		WithInsecureSkipVerifyTLS(insecureSkipTLSverify),
-=======
->>>>>>> e676fd1c (Enable custom certificates option for OCI)
 	)
 	if err != nil {
 		t.Fatal(err)

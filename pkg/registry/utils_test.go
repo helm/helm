@@ -66,7 +66,7 @@ type TestSuite struct {
 	RegistryClient          *Client
 }
 
-func setup(suite *TestSuite, tlsEnabled bool) *registry.Registry {
+func setup(suite *TestSuite, tlsEnabled bool, insecure bool) *registry.Registry {
 	suite.WorkspaceDir = testWorkspaceDir
 	os.RemoveAll(suite.WorkspaceDir)
 	os.Mkdir(suite.WorkspaceDir, 0700)
