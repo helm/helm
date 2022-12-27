@@ -29,12 +29,7 @@ type TLSRegistryClientTestSuite struct {
 
 func (suite *TLSRegistryClientTestSuite) SetupSuite() {
 	// init test client
-<<<<<<< HEAD
 	dockerRegistry := setup(&suite.TestSuite, true, false)
-=======
-	dockerRegistry := setup(&suite.TestSuite, true)
->>>>>>> e676fd1c (Enable custom certificates option for OCI)
-
 	// Start Docker registry
 	go dockerRegistry.ListenAndServe()
 }
