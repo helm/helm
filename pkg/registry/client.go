@@ -139,6 +139,9 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		if client.httpClient != nil {
 			opts = append(opts, auth.WithResolverClient(client.httpClient))
 		}
+		if client.plainHTTP {
+			opts = append(opts, auth.WithResolverPlainHTTP())
+		}
 		resolver, err := client.authorizer.ResolverWithOpts(opts...)
 
 		if err != nil {
