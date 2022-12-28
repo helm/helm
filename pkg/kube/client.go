@@ -115,7 +115,7 @@ func (c *Client) getKubeClient() (*kubernetes.Clientset, error) {
 func (c *Client) IsReachable() error {
 	client, err := c.getKubeClient()
 	if err == genericclioptions.ErrEmptyConfig {
-		// re-replace kubernetes ErrEmptyConfig error with a friendy error
+		// re-replace kubernetes ErrEmptyConfig error with a friendly error
 		// moar workarounds for Kubernetes API breaking.
 		return errors.New("Kubernetes cluster unreachable")
 	}

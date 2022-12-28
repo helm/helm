@@ -39,7 +39,7 @@ type lazypath string
 
 func (l lazypath) path(helmEnvVar, xdgEnvVar string, defaultFn func() string, elem ...string) string {
 
-	// There is an order to checking for a path.
+	// There is an order to check for a path.
 	// 1. See if a Helm specific environment variable has been set.
 	// 2. Check if an XDG environment variable is set
 	// 3. Fall back to a default

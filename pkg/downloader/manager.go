@@ -174,7 +174,7 @@ func (m *Manager) Update() error {
 	// has some information about them and, when possible, the index files
 	// locally.
 	// TODO(mattfarina): Repositories should be explicitly added by end users
-	// rather than automattic. In Helm v4 require users to add repositories. They
+	// rather than automatic. In Helm v4 require users to add repositories. They
 	// should have to add them in order to make sure they are aware of the
 	// repositories and opt-in to any locations, for security.
 	repoNames, err = m.ensureMissingRepos(repoNames, req)
@@ -249,7 +249,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	destPath := filepath.Join(m.ChartPath, "charts")
 	tmpPath := filepath.Join(m.ChartPath, "tmpcharts")
 
-	// Check if 'charts' directory is not actally a directory. If it does not exist, create it.
+	// Check if 'charts' directory is not actually a directory. If it does not exist, create it.
 	if fi, err := os.Stat(destPath); err == nil {
 		if !fi.IsDir() {
 			return errors.Errorf("%q is not a directory", destPath)

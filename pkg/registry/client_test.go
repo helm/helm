@@ -193,7 +193,7 @@ func (suite *RegistryClientTestSuite) Test_1_Push() {
 	suite.Nil(err, "no error pulling a simple chart")
 
 	// Validate the output
-	// Note: these digests/sizes etc may change if the test chart/prov files are modified,
+	// Note: these digests/sizes etc. may change if the test chart/prov files are modified,
 	// or if the format of the OCI manifest changes
 	suite.Equal(ref, result.Ref)
 	suite.Equal(meta.Name, result.Chart.Meta.Name)
@@ -266,7 +266,7 @@ func (suite *RegistryClientTestSuite) Test_2_Pull() {
 	suite.Nil(err, "no error pulling a chart with prov")
 
 	// Validate the output
-	// Note: these digests/sizes etc may change if the test chart/prov files are modified,
+	// Note: these digests/sizes etc. may change if the test chart/prov files are modified,
 	// or if the format of the OCI manifest changes
 	suite.Equal(ref, result.Ref)
 	suite.Equal(meta.Name, result.Chart.Meta.Name)

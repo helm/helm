@@ -73,7 +73,7 @@ func (o Format) Write(out io.Writer, w Writer) error {
 }
 
 // ParseFormat takes a raw string and returns the matching Format.
-// If the format does not exists, ErrInvalidFormatType is returned
+// If the format does not exist, ErrInvalidFormatType is returned
 func ParseFormat(s string) (out Format, err error) {
 	switch s {
 	case Table.String():

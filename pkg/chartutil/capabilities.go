@@ -111,7 +111,7 @@ func (v VersionSet) Has(apiVersion string) bool {
 }
 
 func allKnownVersions() VersionSet {
-	// We should register the built in extension APIs as well so CRDs are
+	// We should register the built-in extension APIs as well so CRDs are
 	// supported in the default version set. This has caused problems with `helm
 	// template` in the past, so let's be safe
 	apiextensionsv1beta1.AddToScheme(scheme.Scheme)
