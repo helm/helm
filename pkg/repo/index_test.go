@@ -60,6 +60,15 @@ entries:
       home: https://github.com/something
       digest: "sha256:1234567890abcdef"
 `
+	indexWithEmptyEntry = `
+apiVersion: v1
+entries:
+  grafana:
+  - apiVersion: v2
+    name: grafana
+  foo:
+  -
+`
 )
 
 func TestIndexFile(t *testing.T) {
@@ -149,6 +158,12 @@ func TestLoadIndex(t *testing.T) {
 func TestLoadIndex_Duplicates(t *testing.T) {
 	if _, err := loadIndex([]byte(indexWithDuplicates), "indexWithDuplicates"); err == nil {
 		t.Errorf("Expected an error when duplicate entries are present")
+	}
+}
+
+func TestLoadIndex_EmptyEntry(t *testing.T) {
+	if _, err := loadIndex([]byte(indexWithEmptyEntry), "indexWithEmptyEntry"); err != nil {
+		t.Errorf("unexpected error: %s", err)
 	}
 }
 
@@ -524,5 +539,23 @@ func TestIndexWrite(t *testing.T) {
 	}
 	if !strings.Contains(string(got), "clipper-0.1.0.tgz") {
 		t.Fatal("Index files doesn't contain expected content")
+	}
+}
+
+func TestAddFileIndexEntriesNil(t *testing.T) {
+	i := NewIndexFile()
+	i.APIVersion = chart.APIVersionV1
+	i.Entries = nil
+	for _, x := range []struct {
+		md       *chart.Metadata
+		filename string
+		baseURL  string
+		digest   string
+	}{
+		{&chart.Metadata{APIVersion: "v2", Name: " ", Version: "8033-5.apinie+s.r"}, "setter-0.1.9+beta.tgz", "http://example.com/charts", "sha256:1234567890abc"},
+	} {
+		if err := i.MustAdd(x.md, x.filename, x.baseURL, x.digest); err == nil {
+			t.Errorf("expected err to be non-nil when entries not initialized")
+		}
 	}
 }

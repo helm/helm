@@ -1,12 +1,12 @@
 module helm.sh/helm/v3
 
-go 1.18
+go 1.17
 
 require (
-	github.com/BurntSushi/toml v1.1.0
+	github.com/BurntSushi/toml v1.2.0
 	github.com/DATA-DOG/go-sqlmock v1.5.0
-	github.com/Masterminds/semver/v3 v3.1.1
-	github.com/Masterminds/sprig/v3 v3.2.2
+	github.com/Masterminds/semver/v3 v3.2.0
+	github.com/Masterminds/sprig/v3 v3.2.3
 	github.com/Masterminds/squirrel v1.5.3
 	github.com/Masterminds/vcs v1.13.3
 	github.com/asaskevich/govalidator v0.0.0-20200428143746-21a406dcc535
@@ -18,30 +18,30 @@ require (
 	github.com/gofrs/flock v0.8.1
 	github.com/gosuri/uitable v0.0.4
 	github.com/jmoiron/sqlx v1.3.5
-	github.com/lib/pq v1.10.6
+	github.com/lib/pq v1.10.7
 	github.com/mattn/go-shellwords v1.0.12
 	github.com/mitchellh/copystructure v1.2.0
 	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6
 	github.com/opencontainers/image-spec v1.0.3-0.20211202183452-c5a74bcca799
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/pkg/errors v0.9.1
-	github.com/rubenv/sql-migrate v1.1.2
-	github.com/sirupsen/logrus v1.8.1
-	github.com/spf13/cobra v1.5.0
+	github.com/rubenv/sql-migrate v1.2.0
+	github.com/sirupsen/logrus v1.9.0
+	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.7.4
 	github.com/xeipuuv/gojsonschema v1.2.0
-	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e
-	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
-	golang.org/x/text v0.3.7
-	k8s.io/api v0.25.0
-	k8s.io/apiextensions-apiserver v0.25.0
-	k8s.io/apimachinery v0.25.0
-	k8s.io/apiserver v0.25.0
-	k8s.io/cli-runtime v0.25.0
-	k8s.io/client-go v0.25.0
+	golang.org/x/crypto v0.3.0
+	golang.org/x/term v0.2.0
+	golang.org/x/text v0.5.0
+	k8s.io/api v0.25.2
+	k8s.io/apiextensions-apiserver v0.25.2
+	k8s.io/apimachinery v0.25.2
+	k8s.io/apiserver v0.25.2
+	k8s.io/cli-runtime v0.25.2
+	k8s.io/client-go v0.25.2
 	k8s.io/klog/v2 v2.70.1
-	k8s.io/kubectl v0.25.0
+	k8s.io/kubectl v0.25.2
 	oras.land/oras-go v1.2.0
 	sigs.k8s.io/yaml v1.3.0
 )
@@ -82,6 +82,7 @@ require (
 	github.com/exponent-io/jsonpath v0.0.0-20151013193312-d6023ce2651d // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/felixge/httpsnoop v1.0.1 // indirect
+	github.com/fvbommel/sortorder v1.0.1 // indirect
 	github.com/go-errors/errors v1.0.1 // indirect
 	github.com/go-gorp/gorp/v3 v3.0.2 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
@@ -94,16 +95,16 @@ require (
 	github.com/gomodule/redigo v1.8.2 // indirect
 	github.com/google/btree v1.0.1 // indirect
 	github.com/google/gnostic v0.5.7-v3refs // indirect
-	github.com/google/go-cmp v0.5.6 // indirect
+	github.com/google/go-cmp v0.5.8 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/uuid v1.2.0 // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/gregjones/httpcache v0.0.0-20180305231024-9cad4c3443a7 // indirect
-	github.com/huandu/xstrings v1.3.2 // indirect
+	github.com/huandu/xstrings v1.3.3 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
-	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/inconshreveable/mousetrap v1.0.1 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
@@ -142,10 +143,10 @@ require (
 	github.com/yvasiyarov/gorelic v0.0.0-20141212073537-a9bba5b9ab50 // indirect
 	github.com/yvasiyarov/newrelic_platform_go v0.0.0-20140908184405-b21fdbd4370f // indirect
 	go.starlark.net v0.0.0-20200306205701-8dd3e2ee1dd5 // indirect
-	golang.org/x/net v0.0.0-20220722155237-a158d28d115b // indirect
+	golang.org/x/net v0.2.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
-	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
+	golang.org/x/sys v0.2.0 // indirect
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20220502173005-c8bf987b8c21 // indirect
@@ -154,7 +155,7 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/component-base v0.25.0 // indirect
+	k8s.io/component-base v0.25.2 // indirect
 	k8s.io/kube-openapi v0.0.0-20220803162953-67bda5d908f1 // indirect
 	k8s.io/utils v0.0.0-20220728103510-ee6ede2d64ed // indirect
 	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect

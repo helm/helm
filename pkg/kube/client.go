@@ -17,12 +17,14 @@ limitations under the License.
 package kube // import "helm.sh/helm/v3/pkg/kube"
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -38,7 +40,9 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	metav1beta1 "k8s.io/apimachinery/pkg/apis/meta/v1beta1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
@@ -47,6 +51,7 @@ import (
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	cachetools "k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
@@ -132,6 +137,111 @@ func (c *Client) Create(resources ResourceList) (*Result, error) {
 	return &Result{Created: resources}, nil
 }
 
+func transformRequests(req *rest.Request) {
+	tableParam := strings.Join([]string{
+		fmt.Sprintf("application/json;as=Table;v=%s;g=%s", metav1.SchemeGroupVersion.Version, metav1.GroupName),
+		fmt.Sprintf("application/json;as=Table;v=%s;g=%s", metav1beta1.SchemeGroupVersion.Version, metav1beta1.GroupName),
+		"application/json",
+	}, ",")
+	req.SetHeader("Accept", tableParam)
+
+	// if sorting, ensure we receive the full object in order to introspect its fields via jsonpath
+	req.Param("includeObject", "Object")
+}
+
+func (c *Client) Get(resources ResourceList, reader io.Reader) (map[string][]runtime.Object, error) {
+	buf := new(bytes.Buffer)
+	objs := make(map[string][]runtime.Object)
+
+	podSelectors := []map[string]string{}
+	err := resources.Visit(func(info *resource.Info, err error) error {
+		if err != nil {
+			return err
+		}
+
+		gvk := info.ResourceMapping().GroupVersionKind
+		vk := gvk.Version + "/" + gvk.Kind
+		obj, err := getResource(info)
+		if err != nil {
+			fmt.Fprintf(buf, "Get resource %s failed, err:%v\n", info.Name, err)
+		} else {
+			objs[vk] = append(objs[vk], obj)
+
+			objs, err = c.getSelectRelationPod(info, objs, &podSelectors)
+			if err != nil {
+				c.Log("Warning: get the relation pod is failed, err:%s", err.Error())
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return objs, nil
+}
+
+func (c *Client) getSelectRelationPod(info *resource.Info, objs map[string][]runtime.Object, podSelectors *[]map[string]string) (map[string][]runtime.Object, error) {
+	if info == nil {
+		return objs, nil
+	}
+	c.Log("get relation pod of object: %s/%s/%s", info.Namespace, info.Mapping.GroupVersionKind.Kind, info.Name)
+	selector, ok, _ := getSelectorFromObject(info.Object)
+	if !ok {
+		return objs, nil
+	}
+
+	for index := range *podSelectors {
+		if reflect.DeepEqual((*podSelectors)[index], selector) {
+			// check if pods for selectors are already added. This avoids duplicate printing of pods
+			return objs, nil
+		}
+	}
+
+	*podSelectors = append(*podSelectors, selector)
+
+	infos, err := c.Factory.NewBuilder().
+		Unstructured().
+		ContinueOnError().
+		NamespaceParam(info.Namespace).
+		DefaultNamespace().
+		ResourceTypes("pods").
+		LabelSelector(labels.Set(selector).AsSelector().String()).
+		TransformRequests(transformRequests).
+		Do().Infos()
+	if err != nil {
+		return objs, err
+	}
+	vk := "v1/Pod(related)"
+
+	for _, info := range infos {
+		objs[vk] = append(objs[vk], info.Object)
+	}
+	return objs, nil
+}
+
+func getSelectorFromObject(obj runtime.Object) (map[string]string, bool, error) {
+	typed := obj.(*unstructured.Unstructured)
+	kind := typed.Object["kind"]
+	switch kind {
+	case "ReplicaSet", "Deployment", "StatefulSet", "DaemonSet", "Job":
+		return unstructured.NestedStringMap(typed.Object, "spec", "selector", "matchLabels")
+	case "ReplicationController":
+		return unstructured.NestedStringMap(typed.Object, "spec", "selector")
+	default:
+		return nil, false, nil
+	}
+}
+
+func getResource(info *resource.Info) (runtime.Object, error) {
+	obj, err := resource.NewHelper(info.Client, info.Mapping).Get(info.Namespace, info.Name)
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
+}
+
 // Wait waits up to the given timeout for the specified resources to be ready.
 func (c *Client) Wait(resources ResourceList, timeout time.Duration) error {
 	cs, err := c.getKubeClient()
@@ -207,11 +317,21 @@ func (c *Client) Build(reader io.Reader, validate bool) (ResourceList, error) {
 	if err != nil {
 		return nil, err
 	}
-	result, err := c.newBuilder().
-		Unstructured().
-		Schema(schema).
-		Stream(reader, "").
-		Do().Infos()
+	var result ResourceList
+	if validate {
+		result, err = c.newBuilder().
+			Unstructured().
+			Schema(schema).
+			Stream(reader, "").
+			Do().Infos()
+	} else {
+		result, err = c.newBuilder().
+			Unstructured().
+			Schema(schema).
+			Stream(reader, "").
+			TransformRequests(transformRequests).
+			Do().Infos()
+	}
 	return result, scrubValidationError(err)
 }
 
@@ -308,16 +428,20 @@ func (c *Client) Delete(resources ResourceList) (*Result, []error) {
 	mtx := sync.Mutex{}
 	err := perform(resources, func(info *resource.Info) error {
 		c.Log("Starting delete for %q %s", info.Name, info.Mapping.GroupVersionKind.Kind)
-		if err := c.skipIfNotFound(deleteResource(info)); err != nil {
-			mtx.Lock()
-			defer mtx.Unlock()
-			// Collect the error and continue on
-			errs = append(errs, err)
-		} else {
+		err := deleteResource(info)
+		if err == nil || apierrors.IsNotFound(err) {
+			if err != nil {
+				c.Log("Ignoring delete failure for %q %s: %v", info.Name, info.Mapping.GroupVersionKind, err)
+			}
 			mtx.Lock()
 			defer mtx.Unlock()
 			res.Deleted = append(res.Deleted, info)
+			return nil
 		}
+		mtx.Lock()
+		defer mtx.Unlock()
+		// Collect the error and continue on
+		errs = append(errs, err)
 		return nil
 	})
 	if err != nil {
@@ -332,14 +456,6 @@ func (c *Client) Delete(resources ResourceList) (*Result, []error) {
 		return nil, errs
 	}
 	return res, nil
-}
-
-func (c *Client) skipIfNotFound(err error) error {
-	if apierrors.IsNotFound(err) {
-		c.Log("%v", err)
-		return nil
-	}
-	return err
 }
 
 func (c *Client) watchTimeout(t time.Duration) func(*resource.Info) error {

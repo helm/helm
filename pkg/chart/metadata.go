@@ -34,6 +34,9 @@ type Maintainer struct {
 
 // Validate checks valid data and sanitizes string characters.
 func (m *Maintainer) Validate() error {
+	if m == nil {
+		return ValidationError("maintainer cannot be an empty list")
+	}
 	m.Name = sanitizeString(m.Name)
 	m.Email = sanitizeString(m.Email)
 	m.URL = sanitizeString(m.URL)

@@ -21,6 +21,7 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // Interface represents a client capable of communicating with the Kubernetes API.
@@ -78,5 +79,14 @@ type InterfaceExt interface {
 	WaitForDelete(resources ResourceList, timeout time.Duration) error
 }
 
+// InterfaceResources is introduced to avoid breaking backwards compatibility for Interface implementers.
+//
+// TODO Helm 4: Remove InterfaceResources and integrate its method(s) into the Interface.
+type InterfaceResources interface {
+	// Get details of deployed resources in ResourceList to be printed.
+	Get(resources ResourceList, reader io.Reader) (map[string][]runtime.Object, error)
+}
+
 var _ Interface = (*Client)(nil)
 var _ InterfaceExt = (*Client)(nil)
+var _ InterfaceResources = (*Client)(nil)
