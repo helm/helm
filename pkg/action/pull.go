@@ -18,6 +18,7 @@ package action
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -47,6 +48,7 @@ type Pull struct {
 	UntarDir    string
 	DestDir     string
 	cfg         *Configuration
+	out         io.Writer
 }
 
 type PullOpt func(*Pull)
@@ -54,6 +56,13 @@ type PullOpt func(*Pull)
 func WithConfig(cfg *Configuration) PullOpt {
 	return func(p *Pull) {
 		p.cfg = cfg
+	}
+}
+
+// WithOptWriter sets the registryOut field on the push configuration object.
+func WithPullOptWriter(out io.Writer) PullOpt {
+	return func(p *Pull) {
+		p.out = out
 	}
 }
 
@@ -93,6 +102,16 @@ func (p *Pull) Run(chartRef string) (string, error) {
 	}
 
 	if registry.IsOCI(chartRef) {
+		// Provide a tls enabled client for the pull command if the user has
+		// specified the cert file or key file or ca file.
+		if (p.ChartPathOptions.CertFile != "" && p.ChartPathOptions.KeyFile != "") || p.ChartPathOptions.CaFile != "" {
+			registryClient, err := registry.NewRegistryClientWithTLS(p.out, p.ChartPathOptions.CertFile, p.ChartPathOptions.KeyFile, p.ChartPathOptions.CaFile,
+				p.Settings.RegistryConfig, p.Settings.Debug)
+			if err != nil {
+				return out.String(), err
+			}
+			p.cfg.RegistryClient = registryClient
+		}
 		c.Options = append(c.Options,
 			getter.WithRegistryClient(p.cfg.RegistryClient))
 	}

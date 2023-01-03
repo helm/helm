@@ -152,12 +152,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	flags.ParseErrorsWhitelist.UnknownFlags = true
 	flags.Parse(args)
 
-	registryClient, err := registry.NewClient(
-		registry.ClientOptDebug(settings.Debug),
-		registry.ClientOptEnableCache(true),
-		registry.ClientOptWriter(os.Stderr),
-		registry.ClientOptCredentialsFile(settings.RegistryConfig),
-	)
+	registryClient, err := newRegistryClient(out)
 	if err != nil {
 		return nil, err
 	}
@@ -260,4 +255,18 @@ func checkForExpiredRepos(repofile string) {
 		}
 	}
 
+}
+
+func newRegistryClient(out io.Writer) (*registry.Client, error) {
+	// Create a new registry client
+	registryClient, err := registry.NewClient(
+		registry.ClientOptDebug(settings.Debug),
+		registry.ClientOptEnableCache(true),
+		registry.ClientOptWriter(os.Stderr),
+		registry.ClientOptCredentialsFile(settings.RegistryConfig),
+	)
+	if err != nil {
+		return nil, err
+	}
+	return registryClient, nil
 }

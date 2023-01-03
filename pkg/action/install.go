@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -456,10 +457,10 @@ func (i *Install) failRelease(rel *release.Release, err error) (*release.Release
 //
 // Roughly, this will return an error if name is
 //
-//	- empty
-//	- too long
-//	- already in use, and not deleted
-//	- used by a deleted release, and i.Replace is false
+//   - empty
+//   - too long
+//   - already in use, and not deleted
+//   - used by a deleted release, and i.Replace is false
 func (i *Install) availableName() error {
 	start := i.ReleaseName
 
@@ -672,13 +673,22 @@ OUTER:
 // - URL
 //
 // If 'verify' was set on ChartPathOptions, this will attempt to also verify the chart.
-func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (string, error) {
+func (c *ChartPathOptions) LocateChart(name string, out io.Writer, settings *cli.EnvSettings) (string, error) {
 	// If there is no registry client and the name is in an OCI registry return
 	// an error and a lookup will not occur.
-	if registry.IsOCI(name) && c.registryClient == nil {
-		return "", fmt.Errorf("unable to lookup chart %q, missing registry client", name)
+	if registry.IsOCI(name) {
+		if (c.CertFile != "" && c.KeyFile != "") || c.CaFile != "" {
+			registryClient, err := registry.NewRegistryClientWithTLS(out, c.CertFile, c.KeyFile, c.CaFile,
+				settings.RegistryConfig, settings.Debug)
+			if err != nil {
+				return "", err
+			}
+			c.registryClient = registryClient
+		}
+		if c.registryClient == nil {
+			return "", fmt.Errorf("unable to lookup chart %q, missing registry client", name)
+		}
 	}
-
 	name = strings.TrimSpace(name)
 	version := strings.TrimSpace(c.Version)
 

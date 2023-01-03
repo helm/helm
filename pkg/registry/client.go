@@ -70,6 +70,7 @@ type (
 		caFile                string
 		insecureSkipVerifyTLS bool
 		plainHTTP             bool
+		httpClient         *http.Client
 	}
 
 	// ClientOption allows specifying various settings configurable by the user for overriding the defaults
@@ -132,6 +133,8 @@ func NewClient(options ...ClientOption) (*Client, error) {
 				},
 			}))
 
+		if client.httpClient != nil {
+			opts = append(opts, auth.WithResolverClient(client.httpClient))
 		}
 		resolver, err := client.authorizer.ResolverWithOpts(opts...)
 
@@ -148,6 +151,7 @@ func NewClient(options ...ClientOption) (*Client, error) {
 	}
 	if client.registryAuthorizer == nil {
 		client.registryAuthorizer = &registryauth.Client{
+			Client: client.httpClient,
 			Header: http.Header{
 				"User-Agent": {version.GetUserAgent()},
 			},
@@ -236,6 +240,10 @@ func ClientOptInsecureSkipVerifyTLS(insecureSkipVerifyTLS bool) ClientOption {
 func ClientOptPlainHTTP(plainHTTP bool) ClientOption {
 	return func(client *Client) {
 		client.plainHTTP = plainHTTP
+// ClientOptHTTPClient returns a function that sets the httpClient setting on a client options set
+func ClientOptHTTPClient(httpClient *http.Client) ClientOption {
+	return func(client *Client) {
+		client.httpClient = httpClient
 	}
 }
 
@@ -247,6 +255,9 @@ type (
 		username string
 		password string
 		insecure bool
+		certFile string
+		keyFile  string
+		caFile   string
 	}
 )
 
@@ -262,6 +273,7 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 		auth.WithLoginUsername(operation.username),
 		auth.WithLoginSecret(operation.password),
 		auth.WithLoginUserAgent(version.GetUserAgent()),
+		auth.WithLoginTLS(operation.certFile, operation.keyFile, operation.caFile),
 	}
 	if operation.insecure {
 		authorizerLoginOpts = append(authorizerLoginOpts, auth.WithLoginInsecure())
@@ -285,6 +297,15 @@ func LoginOptBasicAuth(username string, password string) LoginOption {
 func LoginOptInsecure(insecure bool) LoginOption {
 	return func(operation *loginOperation) {
 		operation.insecure = insecure
+	}
+}
+
+// LoginOptTLSClientConfig returns a function that sets the TLS settings on login.
+func LoginOptTLSClientConfig(certFile, keyFile, caFile string) LoginOption {
+	return func(operation *loginOperation) {
+		operation.certFile = certFile
+		operation.keyFile = keyFile
+		operation.caFile = caFile
 	}
 }
 
