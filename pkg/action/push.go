@@ -36,6 +36,7 @@ type Push struct {
 	keyFile               string
 	caFile                string
 	insecureSkipTLSverify bool
+	plainHTTP             bool
 	out                   io.Writer
 }
 
@@ -97,8 +98,15 @@ func (p *Push) Run(chartRef string, remote string) (string, error) {
 		// Provide a tls enabled client for the pull command if the user has
 		// specified the cert file or key file or ca file.
 		if (p.certFile != "" && p.keyFile != "") || p.caFile != "" || p.insecureSkipTLSverify {
-			registryClient, err := registry.NewRegistryClientWithTLS(p.out, p.certFile, p.keyFile, p.caFile,
-				p.insecureSkipTLSverify, p.Settings.RegistryConfig, p.Settings.Debug)
+
+			var registryClient *registry.Client
+			var err error
+			if p.plainHTTP {
+				registryClient, err = registry.NewRegistryClientHTTP(p.out, p.Settings.RegistryConfig, p.Settings.Debug)
+			} else {
+				registryClient, err = registry.NewRegistryClientWithTLS(p.out, p.certFile, p.keyFile, p.caFile,
+					p.insecureSkipTLSverify, p.Settings.RegistryConfig, p.Settings.Debug)
+			}
 			if err != nil {
 				return out.String(), err
 			}

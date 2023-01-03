@@ -118,6 +118,7 @@ type ChartPathOptions struct {
 	Username              string // --username
 	Verify                bool   // --verify
 	Version               string // --version
+	PlainHTTP             bool   // --plain-http
 
 	// registryClient provides a registry client but is not added with
 	// options from a flag
@@ -678,8 +679,14 @@ func (c *ChartPathOptions) LocateChart(name string, out io.Writer, settings *cli
 	// an error and a lookup will not occur.
 	if registry.IsOCI(name) {
 		if (c.CertFile != "" && c.KeyFile != "") || c.CaFile != "" || c.InsecureSkipTLSverify {
-			registryClient, err := registry.NewRegistryClientWithTLS(out, c.CertFile, c.KeyFile, c.CaFile,
-				c.InsecureSkipTLSverify, settings.RegistryConfig, settings.Debug)
+			var registryClient *registry.Client
+			var err error
+			if c.PlainHTTP {
+				registryClient, err = registry.NewRegistryClientHTTP(out, settings.RegistryConfig, settings.Debug)
+			} else {
+				registryClient, err = registry.NewRegistryClientWithTLS(out, c.CertFile, c.KeyFile, c.CaFile,
+					c.InsecureSkipTLSverify, settings.RegistryConfig, settings.Debug)
+			}
 			if err != nil {
 				return "", err
 			}

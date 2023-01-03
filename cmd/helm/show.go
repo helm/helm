@@ -174,6 +174,7 @@ func addShowFlags(subCmd *cobra.Command, client *action.Show) {
 	f := subCmd.Flags()
 
 	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored")
+	f.BoolVar(&client.PlainHTTP, "plain-http", false, "use plain http connection instead of https")
 	if subCmd.Name() == "values" {
 		f.StringVar(&client.JSONPathTemplate, "jsonpath", "", "supply a JSONPath expression to filter the output")
 	}
