@@ -19,7 +19,6 @@ package action
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -45,17 +44,6 @@ import (
 	"helm.sh/helm/v3/pkg/storage/driver"
 	"helm.sh/helm/v3/pkg/time"
 )
-
-func init() {
-	log.SetFlags(log.Lshortfile)
-}
-
-func debug(format string, v ...interface{}) {
-	if settings.Debug {
-		format = fmt.Sprintf("[debug] %s\n", format)
-		log.Output(2, fmt.Sprintf(format, v...))
-	}
-}
 
 // Timestamper is a function capable of producing a timestamp.Timestamper.
 //
@@ -113,8 +101,7 @@ type Configuration struct {
 //
 // TODO: This function is badly in need of a refactor.
 // TODO: As part of the refactor the duplicate code in cmd/helm/template.go should be removed
-//
-//	This code has to do with writing files to disk.
+//       This code has to do with writing files to disk.
 func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, dryRun bool) ([]*release.Hook, *bytes.Buffer, string, error) {
 	hs := []*release.Hook{}
 	b := bytes.NewBuffer(nil)

@@ -17,13 +17,14 @@ limitations under the License.
 package action
 
 import (
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage"
+
+	"helm.sh/helm/v3/pkg/storage/driver"
 )
 
 func TestListStates(t *testing.T) {
@@ -80,13 +81,15 @@ func TestList_OneNamespace(t *testing.T) {
 func TestList_AllNamespaces(t *testing.T) {
 	is := assert.New(t)
 	lister := newListFixture(t)
-	makeMeSomeReleasesWithDifferentNamespaces(lister.cfg.Releases, t)
+	originalCfg := lister.cfg
+	lister.cfg.Releases.Driver = driver.NewMemory()
 	lister.AllNamespaces = true
-	lister.SetStateMask()
-	os.Setenv("HELM_DRIVER", "memory")
+	makeMeSomeReleasesWithDifferentNamespaces(lister.cfg.Releases, t)
 	list, err := lister.Run()
 	is.NoError(err)
 	is.Len(list, 3)
+	// Checking if the config was cloned
+	assert.NotEqualValues(t, originalCfg, lister.cfg)
 }
 
 func TestList_Sort(t *testing.T) {
@@ -294,24 +297,23 @@ func makeMeSomeReleasesWithDifferentNamespaces(store *storage.Storage, t *testin
 	one.Name = "one"
 	one.Namespace = "default1"
 	one.Version = 1
+	one.SetStatus(release.StatusDeployed, "")
 	two := releaseStub()
 	two.Name = "two"
 	two.Namespace = "default2"
 	two.Version = 2
+	two.SetStatus(release.StatusDeployed, "")
 	three := releaseStub()
 	three.Name = "three"
 	three.Namespace = "default3"
 	three.Version = 3
+	three.SetStatus(release.StatusDeployed, "")
 
 	for _, rel := range []*release.Release{one, two, three} {
 		if err := store.Create(rel); err != nil {
 			t.Fatal(err)
 		}
 	}
-
-	_, err := store.ListDeployed()
-	assert.NoError(t, err)
-	//assert.Len(t, all, 3, "sanity test: three items added")
 }
 
 func TestFilterLatestReleases(t *testing.T) {

@@ -17,9 +17,9 @@ limitations under the License.
 package action
 
 import (
-	"os"
 	"path"
 	"regexp"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/labels"
 
@@ -155,9 +155,12 @@ func (l *List) Run() ([]*release.Release, error) {
 	}
 
 	if l.AllNamespaces {
-		if err := l.cfg.Init(settings.RESTClientGetter(), "", os.Getenv("HELM_DRIVER"), debug); err != nil {
+		// For Empty Namespace the default behavior is to get all namespaces
+		clonedCfg, err := l.cfg.CloneWithNewNamespace("")
+		if err != nil {
 			return nil, err
 		}
+		l.cfg = clonedCfg
 	}
 
 	var filter *regexp.Regexp
@@ -331,4 +334,16 @@ func (l *List) SetStateMask() {
 	}
 
 	l.StateMask = state
+}
+
+// Create a clone of the config with a new namespace
+func (cfg *Configuration) CloneWithNewNamespace(namespace string) (*Configuration, error) {
+	newConf := &Configuration{}
+	newConf.Releases = cfg.Releases
+	getter := settings.RESTClientGetter()
+	helmDriver := strings.ToLower(cfg.Releases.Driver.Name()) //note: Driver.Name() returns capitalized driver names.
+
+	err := newConf.Init(getter, namespace, helmDriver, cfg.Log)
+
+	return newConf, err
 }
