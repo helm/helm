@@ -36,7 +36,7 @@ type Options struct {
 	Values        []string // --set
 	FileValues    []string // --set-file
 	JSONValues    []string // --set-json
-  LiteralValues []string // --set-literal
+	LiteralValues []string // --set-literal
 }
 
 // MergeValues merges values from files specified via -f/--values and directly
