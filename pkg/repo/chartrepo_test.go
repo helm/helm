@@ -385,35 +385,21 @@ func TestErrorFindChartInRepoURL(t *testing.T) {
 }
 
 func TestResolveReferenceURL(t *testing.T) {
-	chartURL, err := ResolveReferenceURL("http://localhost:8123/charts/", "nginx-0.2.0.tgz")
-	if err != nil {
-		t.Errorf("%s", err)
-	}
-	if chartURL != "http://localhost:8123/charts/nginx-0.2.0.tgz" {
-		t.Errorf("%s", chartURL)
-	}
-
-	chartURL, err = ResolveReferenceURL("http://localhost:8123/charts-with-no-trailing-slash", "nginx-0.2.0.tgz")
-	if err != nil {
-		t.Errorf("%s", err)
-	}
-	if chartURL != "http://localhost:8123/charts-with-no-trailing-slash/nginx-0.2.0.tgz" {
-		t.Errorf("%s", chartURL)
-	}
-
-	chartURL, err = ResolveReferenceURL("http://localhost:8123", "https://charts.helm.sh/stable/nginx-0.2.0.tgz")
-	if err != nil {
-		t.Errorf("%s", err)
-	}
-	if chartURL != "https://charts.helm.sh/stable/nginx-0.2.0.tgz" {
-		t.Errorf("%s", chartURL)
-	}
-
-	chartURL, err = ResolveReferenceURL("http://localhost:8123/charts%2fwith%2fescaped%2fslash", "nginx-0.2.0.tgz")
-	if err != nil {
-		t.Errorf("%s", err)
-	}
-	if chartURL != "http://localhost:8123/charts%2fwith%2fescaped%2fslash/nginx-0.2.0.tgz" {
-		t.Errorf("%s", chartURL)
+	for _, tt := range []struct {
+		baseURL, refURL, chartURL string
+	}{
+		{"http://localhost:8123/charts/", "nginx-0.2.0.tgz", "http://localhost:8123/charts/nginx-0.2.0.tgz"},
+		{"http://localhost:8123/charts-with-no-trailing-slash", "nginx-0.2.0.tgz", "http://localhost:8123/charts-with-no-trailing-slash/nginx-0.2.0.tgz"},
+		{"http://localhost:8123", "https://charts.helm.sh/stable/nginx-0.2.0.tgz", "https://charts.helm.sh/stable/nginx-0.2.0.tgz"},
+		{"http://localhost:8123/charts%2fwith%2fescaped%2fslash", "nginx-0.2.0.tgz", "http://localhost:8123/charts%2fwith%2fescaped%2fslash/nginx-0.2.0.tgz"},
+		{"http://localhost:8123/charts?with=queryparameter", "nginx-0.2.0.tgz", "http://localhost:8123/charts/nginx-0.2.0.tgz?with=queryparameter"},
+	} {
+		chartURL, err := ResolveReferenceURL(tt.baseURL, tt.refURL)
+		if err != nil {
+			t.Errorf("unexpected error in ResolveReferenceURL(%q, %q): %s", tt.baseURL, tt.refURL, err)
+		}
+		if chartURL != tt.chartURL {
+			t.Errorf("expected ResolveReferenceURL(%q, %q) to equal %q, got %q", tt.baseURL, tt.refURL, tt.chartURL, chartURL)
+		}
 	}
 }
