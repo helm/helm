@@ -21,6 +21,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage"
 
@@ -84,6 +85,7 @@ func TestList_AllNamespaces(t *testing.T) {
 	originalCfg := lister.cfg
 	lister.cfg.Releases.Driver = driver.NewMemory()
 	lister.AllNamespaces = true
+	lister.cfg.RESTClientGetter = cli.New().RESTClientGetter()
 	makeMeSomeReleasesWithDifferentNamespaces(lister.cfg.Releases, t)
 	list, err := lister.Run()
 	is.NoError(err)

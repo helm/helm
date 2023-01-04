@@ -22,13 +22,11 @@ import (
 	"strings"
 
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 
-	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/releaseutil"
 )
-
-var settings = cli.New()
 
 // ListStates represents zero or more status codes that a list item may have set
 //
@@ -340,7 +338,7 @@ func (l *List) SetStateMask() {
 func (cfg *Configuration) CloneWithNewNamespace(namespace string) (*Configuration, error) {
 	newConf := &Configuration{}
 	newConf.Releases = cfg.Releases
-	getter := settings.RESTClientGetter()
+	getter := cfg.RESTClientGetter.(genericclioptions.RESTClientGetter)
 	helmDriver := strings.ToLower(cfg.Releases.Driver.Name()) //note: Driver.Name() returns capitalized driver names.
 
 	err := newConf.Init(getter, namespace, helmDriver, cfg.Log)
