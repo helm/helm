@@ -106,6 +106,13 @@ func NewOCIPusher(ops ...Option) (Pusher, error) {
 }
 
 func (pusher *OCIPusher) newRegistryClient() (*registry.Client, error) {
+	if pusher.opts.plainHTTP {
+		registryClient, err := registry.NewClient(registry.ClientOptPlainHTTP(pusher.opts.plainHTTP))
+		if err != nil {
+			return nil, err
+		}
+		return registryClient, nil
+	}
 	if (pusher.opts.certFile != "" && pusher.opts.keyFile != "") || pusher.opts.caFile != "" || pusher.opts.insecureSkipTLSverify {
 		tlsConf, err := tlsutil.NewClientTLS(pusher.opts.certFile, pusher.opts.keyFile, pusher.opts.caFile, pusher.opts.insecureSkipTLSverify)
 		if err != nil {

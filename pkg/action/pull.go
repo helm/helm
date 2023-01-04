@@ -109,15 +109,16 @@ func (p *Pull) Run(chartRef string) (string, error) {
 	if registry.IsOCI(chartRef) {
 		// Provide a tls enabled client for the pull command if the user has
 		// specified the cert file or key file or ca file.
-		if (p.ChartPathOptions.CertFile != "" && p.ChartPathOptions.KeyFile != "") || p.ChartPathOptions.CaFile != "" || p.ChartPathOptions.InsecureSkipTLSverify {
-			var registryClient *registry.Client
-			var err error
-			if p.PlainHTTP {
-				registryClient, err = registry.NewRegistryClientHTTP(p.out, p.Settings.RegistryConfig, p.Settings.Debug)
-			} else {
-				registryClient, err = registry.NewRegistryClientWithTLS(p.out, p.CertFile, p.KeyFile, p.CaFile,
-					p.InsecureSkipTLSverify, p.Settings.RegistryConfig, p.Settings.Debug)
+		if p.PlainHTTP {
+			registryClient, err := registry.NewRegistryClientHTTP(p.out, p.Settings.RegistryConfig, p.Settings.Debug)
+			if err != nil {
+				return out.String(), err
 			}
+			p.cfg.RegistryClient = registryClient
+		}
+		if (p.ChartPathOptions.CertFile != "" && p.ChartPathOptions.KeyFile != "") || p.ChartPathOptions.CaFile != "" || p.ChartPathOptions.InsecureSkipTLSverify {
+			registryClient, err := registry.NewRegistryClientWithTLS(p.out, p.CertFile, p.KeyFile, p.CaFile,
+				p.InsecureSkipTLSverify, p.Settings.RegistryConfig, p.Settings.Debug)
 			if err != nil {
 				return out.String(), err
 			}

@@ -122,6 +122,14 @@ func (g *OCIGetter) newRegistryClient() (*registry.Client, error) {
 		}
 	})
 
+	if g.opts.plainHTTP {
+		registryClient, err := registry.NewClient(registry.ClientOptPlainHTTP(g.opts.plainHTTP))
+		if err != nil {
+			return nil, err
+		}
+		return registryClient, nil
+	}
+
 	if (g.opts.certFile != "" && g.opts.keyFile != "") || g.opts.caFile != "" || g.opts.insecureSkipVerifyTLS {
 		tlsConf, err := tlsutil.NewClientTLS(g.opts.certFile, g.opts.keyFile, g.opts.caFile, g.opts.insecureSkipVerifyTLS)
 		if err != nil {

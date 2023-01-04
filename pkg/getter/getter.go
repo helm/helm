@@ -45,6 +45,7 @@ type options struct {
 	registryClient        *registry.Client
 	timeout               time.Duration
 	transport             *http.Transport
+	plainHTTP             bool
 }
 
 // Option allows specifying various settings configurable by the user for overriding the defaults

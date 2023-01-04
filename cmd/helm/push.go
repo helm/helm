@@ -78,7 +78,8 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			client := action.NewPushWithOpts(action.WithPushConfig(cfg),
 				action.WithTLSClientConfig(o.certFile, o.keyFile, o.caFile),
 				action.WithInsecureSkipTLSVerify(o.insecureSkipTLSverify),
-				action.WithPushOptWriter(out))
+				action.WithPushOptWriter(out),
+				action.WithPushOptHTTP(o.plainHTTP))
 			client.Settings = settings
 			output, err := client.Run(chartRef, remote)
 			if err != nil {
