@@ -28,6 +28,7 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/registry"
 )
 
 // ShowOutputFormat is the format of the output of `helm show`
@@ -80,6 +81,11 @@ func NewShowWithConfig(output ShowOutputFormat, cfg *Configuration) *Show {
 	sh.ChartPathOptions.registryClient = cfg.RegistryClient
 
 	return sh
+}
+
+// SetRegistryClient sets the registry client to use when pulling a chart from a registry.
+func (s *Show) SetRegistryClient(client *registry.Client) {
+	s.ChartPathOptions.registryClient = client
 }
 
 // Run executes 'helm show' against the given release.

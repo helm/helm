@@ -81,6 +81,11 @@ func NewPullWithOpts(opts ...PullOpt) *Pull {
 	return p
 }
 
+// SetRegistryClient sets the registry client on the pull configuration object.
+func (p *Pull) SetRegistryClient(client *registry.Client) {
+	p.cfg.RegistryClient = client
+}
+
 // Run executes 'helm pull' against the given release.
 func (p *Pull) Run(chartRef string) (string, error) {
 	var out strings.Builder
