@@ -33,7 +33,7 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0
 	golang.org/x/crypto v0.3.0
 	golang.org/x/term v0.3.0
-	golang.org/x/text v0.5.0
+	golang.org/x/text v0.6.0
 	k8s.io/api v0.26.0
 	k8s.io/apiextensions-apiserver v0.26.0
 	k8s.io/apimachinery v0.26.0
