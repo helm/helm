@@ -257,6 +257,7 @@ func checkForExpiredRepos(repofile string) {
 
 }
 
+// newRegistryClient creates a new registry client.  plainHTTP takes precidence over any tls settings
 func newRegistryClient(certFile, keyFile, caFile string, insecureSkipTLSverify bool, plainHTTP bool) (*registry.Client, error) {
 
 	if plainHTTP {
