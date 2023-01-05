@@ -95,7 +95,7 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.StringVar(&o.keyFile, "key-file", "", "identify registry client using this SSL key file")
 	f.StringVar(&o.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 	f.BoolVar(&o.insecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the chart upload")
-	f.BoolVar(&o.plainHTTP, "plain-http", false, "push charts to registry over http")
+	f.BoolVar(&o.plainHTTP, "plain-http", false, "use plain http for the chart upload")
 
 	return cmd
 }
