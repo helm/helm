@@ -82,7 +82,7 @@ func TestValidate(t *testing.T) {
 					nil,
 				},
 			},
-			ValidationError("dependency cannot be an empty list"),
+			ValidationError("dependencies must not contain empty or null nodes"),
 		},
 		{
 			&Metadata{
@@ -94,7 +94,7 @@ func TestValidate(t *testing.T) {
 					nil,
 				},
 			},
-			ValidationError("maintainer cannot be an empty list"),
+			ValidationError("maintainers must not contain empty or null nodes"),
 		},
 		{
 			&Metadata{APIVersion: "v2", Name: "test", Version: "1.2.3.4"},
