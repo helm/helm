@@ -64,7 +64,7 @@ func newLiteralParser(sc *bytes.Buffer, data map[string]interface{}) *literalPar
 
 func (t *literalParser) parse() error {
 	for {
-		err := t.key(t.data)
+		err := t.key(t.data, 0)
 		if err == nil {
 			continue
 		}
@@ -89,7 +89,7 @@ func runesUntilLiteral(in io.RuneReader, stop map[rune]bool) ([]rune, rune, erro
 	}
 }
 
-func (t *literalParser) key(data map[string]interface{}) (reterr error) {
+func (t *literalParser) key(data map[string]interface{}, nestedNameLevel int) (reterr error) {
 	defer func() {
 		if r := recover(); r != nil {
 			reterr = fmt.Errorf("unable to parse key: %s", r)
@@ -114,6 +114,12 @@ func (t *literalParser) key(data map[string]interface{}) (reterr error) {
 			return nil
 
 		case lastRune == '.':
+			// Check value name is within the maximum nested name level
+			nestedNameLevel++
+			if nestedNameLevel > MaxNestedNameLevel {
+				return fmt.Errorf("value name nested level is greater than maximum supported nested level of %d", MaxNestedNameLevel)
+			}
+
 			// first, create or find the target map in the given data
 			inner := map[string]interface{}{}
 			if _, ok := data[string(key)]; ok {
@@ -121,11 +127,13 @@ func (t *literalParser) key(data map[string]interface{}) (reterr error) {
 			}
 
 			// recurse on sub-tree with remaining data
-			err := t.key(inner)
-			if len(inner) == 0 {
+			err := t.key(inner, nestedNameLevel)
+			if err == nil && len(inner) == 0 {
 				return errors.Errorf("key map %q has no value", string(key))
 			}
-			set(data, string(key), inner)
+			if len(inner) != 0 {
+				set(data, string(key), inner)
+			}
 			return err
 
 		case lastRune == '[':
@@ -143,7 +151,7 @@ func (t *literalParser) key(data map[string]interface{}) (reterr error) {
 			}
 
 			// now we need to get the value after the ]
-			list, err = t.listItem(list, i)
+			list, err = t.listItem(list, i, nestedNameLevel)
 			set(data, kk, list)
 			return err
 		}
@@ -162,7 +170,7 @@ func (t *literalParser) keyIndex() (int, error) {
 	return strconv.Atoi(string(v))
 }
 
-func (t *literalParser) listItem(list []interface{}, i int) ([]interface{}, error) {
+func (t *literalParser) listItem(list []interface{}, i, nestedNameLevel int) ([]interface{}, error) {
 	if i < 0 {
 		return list, fmt.Errorf("negative %d index not allowed", i)
 	}
@@ -196,7 +204,7 @@ func (t *literalParser) listItem(list []interface{}, i int) ([]interface{}, erro
 		}
 
 		// recurse
-		err := t.key(inner)
+		err := t.key(inner, nestedNameLevel)
 		if err != nil {
 			return list, err
 		}
@@ -218,7 +226,7 @@ func (t *literalParser) listItem(list []interface{}, i int) ([]interface{}, erro
 		}
 
 		// Now we need to get the value after the ].
-		list2, err := t.listItem(crtList, nextI)
+		list2, err := t.listItem(crtList, nextI, nestedNameLevel)
 		if err != nil {
 			return list, err
 		}
