@@ -25,7 +25,6 @@ import (
 	"log"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 
@@ -116,15 +115,11 @@ func (r *ChartRepository) Load() error {
 
 // DownloadIndexFile fetches the index from a repository.
 func (r *ChartRepository) DownloadIndexFile() (string, error) {
-	parsedURL, err := url.Parse(r.Config.URL)
+	indexURL, err := ResolveReferenceURL(r.Config.URL, "index.yaml")
 	if err != nil {
 		return "", err
 	}
-	parsedURL.RawPath = path.Join(parsedURL.RawPath, "index.yaml")
-	parsedURL.Path = path.Join(parsedURL.Path, "index.yaml")
 
-	indexURL := parsedURL.String()
-	// TODO add user-agent
 	resp, err := r.Client.Get(indexURL,
 		getter.WithURL(r.Config.URL),
 		getter.WithInsecureSkipVerifyTLS(r.Config.InsecureSkipTLSverify),
@@ -219,7 +214,7 @@ func FindChartInAuthRepoURL(repoURL, username, password, chartName, chartVersion
 // but it also receives credentials and TLS verify flag for the chart repository.
 // TODO Helm 4, FindChartInAuthAndTLSRepoURL should be integrated into FindChartInAuthRepoURL.
 func FindChartInAuthAndTLSRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile string, insecureSkipTLSverify bool, getters getter.Providers) (string, error) {
-	return FindChartInAuthAndTLSAndPassRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile, false, false, getters)
+	return FindChartInAuthAndTLSAndPassRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile, insecureSkipTLSverify, false, getters)
 }
 
 // FindChartInAuthAndTLSAndPassRepoURL finds chart in chart repository pointed by repoURL
@@ -290,18 +285,27 @@ func FindChartInAuthAndTLSAndPassRepoURL(repoURL, username, password, chartName,
 // ResolveReferenceURL resolves refURL relative to baseURL.
 // If refURL is absolute, it simply returns refURL.
 func ResolveReferenceURL(baseURL, refURL string) (string, error) {
-	// We need a trailing slash for ResolveReference to work, but make sure there isn't already one
-	parsedBaseURL, err := url.Parse(strings.TrimSuffix(baseURL, "/") + "/")
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to parse %s as URL", baseURL)
-	}
-
 	parsedRefURL, err := url.Parse(refURL)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to parse %s as URL", refURL)
 	}
 
-	return parsedBaseURL.ResolveReference(parsedRefURL).String(), nil
+	if parsedRefURL.IsAbs() {
+		return refURL, nil
+	}
+
+	parsedBaseURL, err := url.Parse(baseURL)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to parse %s as URL", baseURL)
+	}
+
+	// We need a trailing slash for ResolveReference to work, but make sure there isn't already one
+	parsedBaseURL.RawPath = strings.TrimSuffix(parsedBaseURL.RawPath, "/") + "/"
+	parsedBaseURL.Path = strings.TrimSuffix(parsedBaseURL.Path, "/") + "/"
+
+	resolvedURL := parsedBaseURL.ResolveReference(parsedRefURL)
+	resolvedURL.RawQuery = parsedBaseURL.RawQuery
+	return resolvedURL.String(), nil
 }
 
 func (e *Entry) String() string {

@@ -294,32 +294,13 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 	}
 
 	// TODO: Seems that picking first URL is not fully correct
-	u, err = url.Parse(cv.URLs[0])
+	resolvedURL, err := repo.ResolveReferenceURL(rc.URL, cv.URLs[0])
+
 	if err != nil {
 		return u, errors.Errorf("invalid chart URL format: %s", ref)
 	}
 
-	// If the URL is relative (no scheme), prepend the chart repo's base URL
-	if !u.IsAbs() {
-		repoURL, err := url.Parse(rc.URL)
-		if err != nil {
-			return repoURL, err
-		}
-		q := repoURL.Query()
-		// We need a trailing slash for ResolveReference to work, but make sure there isn't already one
-		repoURL.RawPath = strings.TrimSuffix(repoURL.RawPath, "/") + "/"
-		repoURL.Path = strings.TrimSuffix(repoURL.Path, "/") + "/"
-		u = repoURL.ResolveReference(u)
-		u.RawQuery = q.Encode()
-		// TODO add user-agent
-		if _, err := getter.NewHTTPGetter(getter.WithURL(rc.URL)); err != nil {
-			return repoURL, err
-		}
-		return u, err
-	}
-
-	// TODO add user-agent
-	return u, nil
+	return url.Parse(resolvedURL)
 }
 
 // VerifyChart takes a path to a chart archive and a keyring, and verifies the chart.
