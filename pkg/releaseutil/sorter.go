@@ -22,35 +22,6 @@ import (
 	rspb "helm.sh/helm/v3/pkg/release"
 )
 
-type list []*rspb.Release
-
-func (s list) Len() int      { return len(s) }
-func (s list) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
-
-// ByName sorts releases by name
-type ByName struct{ list }
-
-// Less compares to releases
-func (s ByName) Less(i, j int) bool { return s.list[i].Name < s.list[j].Name }
-
-// ByDate sorts releases by date
-type ByDate struct{ list }
-
-// Less compares to releases
-func (s ByDate) Less(i, j int) bool {
-	ti := s.list[i].Info.LastDeployed.Unix()
-	tj := s.list[j].Info.LastDeployed.Unix()
-	return ti < tj
-}
-
-// ByRevision sorts releases by revision number
-type ByRevision struct{ list }
-
-// Less compares to releases
-func (s ByRevision) Less(i, j int) bool {
-	return s.list[i].Version < s.list[j].Version
-}
-
 // Reverse reverses the list of releases sorted by the sort func.
 func Reverse(list []*rspb.Release, sortFn func([]*rspb.Release)) {
 	sortFn(list)
@@ -62,17 +33,25 @@ func Reverse(list []*rspb.Release, sortFn func([]*rspb.Release)) {
 // SortByName returns the list of releases sorted
 // in lexicographical order.
 func SortByName(list []*rspb.Release) {
-	sort.Sort(ByName{list})
+	sort.Slice(list, func(i, j int) bool {
+		return list[i].Name < list[j].Name
+	})
 }
 
 // SortByDate returns the list of releases sorted by a
 // release's last deployed time (in seconds).
 func SortByDate(list []*rspb.Release) {
-	sort.Sort(ByDate{list})
+	sort.Slice(list, func(i, j int) bool {
+		ti := list[i].Info.LastDeployed.Unix()
+		tj := list[j].Info.LastDeployed.Unix()
+		return ti < tj
+	})
 }
 
 // SortByRevision returns the list of releases sorted by a
 // release's revision number (release.Version).
 func SortByRevision(list []*rspb.Release) {
-	sort.Sort(ByRevision{list})
+	sort.Slice(list, func(i, j int) bool {
+		return list[i].Version < list[j].Version
+	})
 }
