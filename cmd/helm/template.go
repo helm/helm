@@ -46,10 +46,28 @@ faked locally. Additionally, none of the server-side testing of chart validity
 (e.g. whether an API is supported) is done.
 `
 
+func determineTemplateDryRunMode(dryRunModeFlag string) (*action.DryRunMode, error) {
+	switch dryRunModeFlag {
+	case "none":
+		return nil, fmt.Errorf("Invalid flag --dry-run=none for template")
+	case "false": // TODO: Remove "false" helm v4
+		// helm template --dry-run=false was previously ignored, and dry-run set anyway
+		return &action.DryRunModeClient, nil
+	case "client":
+	case "true": // TODO: Remove "true" helm v4
+		return &action.DryRunModeClient, nil
+	case "server":
+		return &action.DryRunModeServer, nil
+	}
+
+	return nil, fmt.Errorf("Invalid --dry-run flag value: %s", dryRunModeFlag)
+}
+
 func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	var validate bool
 	var includeCrds bool
 	var skipTests bool
+	var dryRunModeFlag string
 	client := action.NewInstall(cfg)
 	valueOpts := &values.Options{}
 	var kubeVersion string
@@ -73,7 +91,12 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				client.KubeVersion = parsedKubeVersion
 			}
 
+			dryRunMode, err := determineTemplateDryRunMode(dryRunModeFlag)
+			if err != nil {
+				return err
+			}
 			client.DryRun = true
+			client.DryRunMode = *dryRunMode
 			client.ReleaseName = "release-name"
 			client.Replace = true // Skip the name check
 			client.ClientOnly = !validate
@@ -173,7 +196,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	addInstallFlags(cmd, f, client, valueOpts)
+	addInstallFlags(cmd, f, client, &dryRunModeFlag, valueOpts)
 	f.StringArrayVarP(&showFiles, "show-only", "s", []string{}, "only show manifests rendered from the given templates")
 	f.StringVar(&client.OutputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
 	f.BoolVar(&validate, "validate", false, "validate your manifests against the Kubernetes cluster you are currently pointing at. This is the same validation performed on an install")

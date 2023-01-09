@@ -85,7 +85,7 @@ set for a key called 'foo', the 'newbar' value would take precedence:
 
     $ helm install --set foo=bar --set foo=newbar  myredis ./redis
 
-Similarly, in the following example 'foo' is set to '["four"]': 
+Similarly, in the following example 'foo' is set to '["four"]':
 
     $ helm install --set-json='foo=["one", "two", "three"]' --set-json='foo=["four"]' myredis ./redis
 
@@ -122,10 +122,26 @@ To see the list of chart repositories, use 'helm repo list'. To search for
 charts in a repository, use 'helm search'.
 `
 
+func determineInstallDryRunMode(dryRunModeFlag string) (*action.DryRunMode, error) {
+	switch dryRunModeFlag {
+	case "none":
+	case "false": // TODO: Remove "false" helm v4
+		return &action.DryRunModeNone, nil
+	case "client":
+	case "true": // TODO: Remove "true" helm v4
+		return &action.DryRunModeClient, nil
+	case "server":
+		return &action.DryRunModeServer, nil
+	}
+
+	return nil, fmt.Errorf("Invalid --dry-run flag value: %s", dryRunModeFlag)
+}
+
 func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewInstall(cfg)
 	valueOpts := &values.Options{}
 	var outfmt output.Format
+	var dryRunModeFlag string
 
 	cmd := &cobra.Command{
 		Use:   "install [NAME] [CHART]",
@@ -136,6 +152,15 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return compInstall(args, toComplete, client)
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
+
+			dryRunMode, err := determineInstallDryRunMode(dryRunModeFlag)
+			if err != nil {
+				return err
+			}
+
+			client.DryRunMode = *dryRunMode
+			fmt.Printf("drm: %s\n", client.DryRunMode)
+
 			rel, err := runInstall(args, client, valueOpts, out)
 			if err != nil {
 				return errors.Wrap(err, "INSTALLATION FAILED")
@@ -145,16 +170,21 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		},
 	}
 
-	addInstallFlags(cmd, cmd.Flags(), client, valueOpts)
+	addInstallFlags(cmd, cmd.Flags(), client, &dryRunModeFlag, valueOpts)
 	bindOutputFlag(cmd, &outfmt)
 	bindPostRenderFlag(cmd, &client.PostRenderer)
 
 	return cmd
 }
 
-func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Install, valueOpts *values.Options) {
+func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Install, dryRunModeFlag *string, valueOpts *values.Options) {
 	f.BoolVar(&client.CreateNamespace, "create-namespace", false, "create the release namespace if not present")
-	f.BoolVar(&client.DryRun, "dry-run", false, "simulate an install")
+	f.StringVar(
+		dryRunModeFlag,
+		"dry-run",
+		"none",
+		`simulate an install. Must be "none", "server", or "client". If client strategy, X. If server strategy, Y. For backwards compatibility, boolean values "true" and "false" are also accepted. "true" being a synonym for "client". "false" meaning disable dry-run`,
+	)
 	f.BoolVar(&client.Force, "force", false, "force resource updates through a replacement strategy")
 	f.BoolVar(&client.DisableHooks, "no-hooks", false, "prevent hooks from running during install")
 	f.BoolVar(&client.Replace, "replace", false, "re-use the given name, only if that name is a deleted release which remains in the history. This is unsafe in production")
