@@ -32,8 +32,6 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/pkg/errors"
-	"sigs.k8s.io/yaml"
-
 	"helm.sh/helm/v3/internal/resolver"
 	"helm.sh/helm/v3/internal/third_party/dep/fs"
 	"helm.sh/helm/v3/internal/urlutil"
@@ -44,6 +42,7 @@ import (
 	"helm.sh/helm/v3/pkg/helmpath"
 	"helm.sh/helm/v3/pkg/registry"
 	"helm.sh/helm/v3/pkg/repo"
+	"sigs.k8s.io/yaml"
 )
 
 // ErrRepoNotFound indicates that chart repositories can't be found in local repo cache.
@@ -136,7 +135,7 @@ func (m *Manager) Build() error {
 
 	if !m.SkipUpdate {
 		// For each repo in the file, update the cached copy of that repo
-		if err := m.UpdateRepositories(); err != nil {
+		if err := m.UpdateRepositories(c); err != nil {
 			return err
 		}
 	}
@@ -185,7 +184,7 @@ func (m *Manager) Update() error {
 	// For each of the repositories Helm is configured to know about, update
 	// the index information locally.
 	if !m.SkipUpdate {
-		if err := m.UpdateRepositories(); err != nil {
+		if err := m.UpdateRepositories(c); err != nil {
 			return err
 		}
 	}
@@ -643,12 +642,23 @@ repository, use "https://charts.example.com/" or "@example" instead of
 }
 
 // UpdateRepositories updates all of the local repos to the latest.
-func (m *Manager) UpdateRepositories() error {
+func (m *Manager) UpdateRepositories(c *chart.Chart) error {
 	rf, err := loadRepoConfig(m.RepositoryConfig)
 	if err != nil {
 		return err
 	}
-	repos := rf.Repositories
+	repos := []*repo.Entry{}
+	// Map of repos in the chart yaml file
+	reposRequired := map[string]bool{}
+	for _, d := range c.Metadata.Dependencies {
+		reposRequired[d.Repository] = true
+	}
+	//Only updating repos in chart yaml
+	for _, e := range rf.Repositories {
+		if _, isMapContainsKey := reposRequired[e.URL]; isMapContainsKey {
+			repos = append(repos, e)
+		}
+	}
 	if len(repos) > 0 {
 		fmt.Fprintln(m.Out, "Hang tight while we grab the latest from your chart repositories...")
 		// This prints warnings straight to out.
