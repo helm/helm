@@ -57,9 +57,9 @@ func TempDir(t *testing.T) string {
 //
 // You must clean up the directory that is returned.
 //
-// 	tempdir := TempFile(t, "foo", []byte("bar"))
-// 	defer os.RemoveAll(tempdir)
-// 	filename := filepath.Join(tempdir, "foo")
+//	tempdir := TempFile(t, "foo", []byte("bar"))
+//	defer os.RemoveAll(tempdir)
+//	filename := filepath.Join(tempdir, "foo")
 func TempFile(t *testing.T, name string, data []byte) string {
 	path := TempDir(t)
 	filename := filepath.Join(path, name)
