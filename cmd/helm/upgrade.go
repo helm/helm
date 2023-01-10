@@ -104,6 +104,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient := action.NewInstall(cfg)
 					instClient.CreateNamespace = createNamespace
 					instClient.ChartPathOptions = client.ChartPathOptions
+					instClient.Force = client.Force
 					instClient.DryRun = client.DryRun
 					instClient.DisableHooks = client.DisableHooks
 					instClient.SkipCRDs = client.SkipCRDs

@@ -69,6 +69,7 @@ type Install struct {
 	ChartPathOptions
 
 	ClientOnly               bool
+	Force                    bool
 	CreateNamespace          bool
 	DryRun                   bool
 	DisableHooks             bool
@@ -372,7 +373,7 @@ func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, t
 			return
 		}
 	} else if len(resources) > 0 {
-		if _, err := i.cfg.KubeClient.Update(toBeAdopted, resources, false); err != nil {
+		if _, err := i.cfg.KubeClient.Update(toBeAdopted, resources, i.Force); err != nil {
 			i.reportToRun(c, rel, err)
 			return
 		}
