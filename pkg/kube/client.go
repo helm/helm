@@ -149,7 +149,10 @@ func transformRequests(req *rest.Request) {
 	req.Param("includeObject", "Object")
 }
 
-func (c *Client) Get(resources ResourceList, reader io.Reader) (map[string][]runtime.Object, error) {
+// Get retrieves the resource objects supplied. If related is set to true the
+// related pods are fetched as well. If the passed in resources are a table kind
+// the related resources will also be fetched as kind=table.
+func (c *Client) Get(resources ResourceList, related bool) (map[string][]runtime.Object, error) {
 	buf := new(bytes.Buffer)
 	objs := make(map[string][]runtime.Object)
 
@@ -167,9 +170,20 @@ func (c *Client) Get(resources ResourceList, reader io.Reader) (map[string][]run
 		} else {
 			objs[vk] = append(objs[vk], obj)
 
-			objs, err = c.getSelectRelationPod(info, objs, &podSelectors)
-			if err != nil {
-				c.Log("Warning: get the relation pod is failed, err:%s", err.Error())
+			// Only fetch related pods if they are requested
+			if related {
+				// Discover if the existing object is a table. If it is, request
+				// the pods as Tables. Otherwise request them normally.
+				objGVK := obj.GetObjectKind().GroupVersionKind()
+				var isTable bool
+				if objGVK.Kind == "Table" {
+					isTable = true
+				}
+
+				objs, err = c.getSelectRelationPod(info, objs, isTable, &podSelectors)
+				if err != nil {
+					c.Log("Warning: get the relation pod is failed, err:%s", err.Error())
+				}
 			}
 		}
 
@@ -182,7 +196,7 @@ func (c *Client) Get(resources ResourceList, reader io.Reader) (map[string][]run
 	return objs, nil
 }
 
-func (c *Client) getSelectRelationPod(info *resource.Info, objs map[string][]runtime.Object, podSelectors *[]map[string]string) (map[string][]runtime.Object, error) {
+func (c *Client) getSelectRelationPod(info *resource.Info, objs map[string][]runtime.Object, table bool, podSelectors *[]map[string]string) (map[string][]runtime.Object, error) {
 	if info == nil {
 		return objs, nil
 	}
@@ -201,17 +215,33 @@ func (c *Client) getSelectRelationPod(info *resource.Info, objs map[string][]run
 
 	*podSelectors = append(*podSelectors, selector)
 
-	infos, err := c.Factory.NewBuilder().
-		Unstructured().
-		ContinueOnError().
-		NamespaceParam(info.Namespace).
-		DefaultNamespace().
-		ResourceTypes("pods").
-		LabelSelector(labels.Set(selector).AsSelector().String()).
-		TransformRequests(transformRequests).
-		Do().Infos()
-	if err != nil {
-		return objs, err
+	var infos []*resource.Info
+	var err error
+	if table {
+		infos, err = c.Factory.NewBuilder().
+			Unstructured().
+			ContinueOnError().
+			NamespaceParam(info.Namespace).
+			DefaultNamespace().
+			ResourceTypes("pods").
+			LabelSelector(labels.Set(selector).AsSelector().String()).
+			TransformRequests(transformRequests).
+			Do().Infos()
+		if err != nil {
+			return objs, err
+		}
+	} else {
+		infos, err = c.Factory.NewBuilder().
+			Unstructured().
+			ContinueOnError().
+			NamespaceParam(info.Namespace).
+			DefaultNamespace().
+			ResourceTypes("pods").
+			LabelSelector(labels.Set(selector).AsSelector().String()).
+			Do().Infos()
+		if err != nil {
+			return objs, err
+		}
 	}
 	vk := "v1/Pod(related)"
 
@@ -317,21 +347,38 @@ func (c *Client) Build(reader io.Reader, validate bool) (ResourceList, error) {
 	if err != nil {
 		return nil, err
 	}
-	var result ResourceList
+	result, err := c.newBuilder().
+		Unstructured().
+		Schema(schema).
+		Stream(reader, "").
+		Do().Infos()
+	return result, scrubValidationError(err)
+}
+
+// BuildTable validates for Kubernetes objects and returns unstructured infos.
+// The returned kind is a Table.
+func (c *Client) BuildTable(reader io.Reader, validate bool) (ResourceList, error) {
+	validationDirective := metav1.FieldValidationIgnore
 	if validate {
-		result, err = c.newBuilder().
-			Unstructured().
-			Schema(schema).
-			Stream(reader, "").
-			Do().Infos()
-	} else {
-		result, err = c.newBuilder().
-			Unstructured().
-			Schema(schema).
-			Stream(reader, "").
-			TransformRequests(transformRequests).
-			Do().Infos()
+		validationDirective = metav1.FieldValidationStrict
 	}
+
+	dynamicClient, err := c.Factory.DynamicClient()
+	if err != nil {
+		return nil, err
+	}
+
+	verifier := resource.NewQueryParamVerifier(dynamicClient, c.Factory.OpenAPIGetter(), resource.QueryParamFieldValidation)
+	schema, err := c.Factory.Validator(validationDirective, verifier)
+	if err != nil {
+		return nil, err
+	}
+	result, err := c.newBuilder().
+		Unstructured().
+		Schema(schema).
+		Stream(reader, "").
+		TransformRequests(transformRequests).
+		Do().Infos()
 	return result, scrubValidationError(err)
 }
 
@@ -472,10 +519,10 @@ func (c *Client) watchTimeout(t time.Duration) func(*resource.Info) error {
 // For most kinds, it checks to see if the resource is marked as Added or Modified
 // by the Kubernetes event stream. For some kinds, it does more:
 //
-// - Jobs: A job is marked "Ready" when it has successfully completed. This is
-//   ascertained by watching the Status fields in a job's output.
-// - Pods: A pod is marked "Ready" when it has successfully completed. This is
-//   ascertained by watching the status.phase field in a pod's output.
+//   - Jobs: A job is marked "Ready" when it has successfully completed. This is
+//     ascertained by watching the Status fields in a job's output.
+//   - Pods: A pod is marked "Ready" when it has successfully completed. This is
+//     ascertained by watching the status.phase field in a pod's output.
 //
 // Handling for other kinds will be added as necessary.
 func (c *Client) WatchUntilReady(resources ResourceList, timeout time.Duration) error {

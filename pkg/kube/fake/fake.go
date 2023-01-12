@@ -22,6 +22,7 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/cli-runtime/pkg/resource"
 
 	"helm.sh/helm/v3/pkg/kube"
@@ -33,11 +34,13 @@ import (
 type FailingKubeClient struct {
 	PrintingKubeClient
 	CreateError                      error
+	GetError                         error
 	WaitError                        error
 	DeleteError                      error
 	WatchUntilReadyError             error
 	UpdateError                      error
 	BuildError                       error
+	BuildTableError                  error
 	BuildUnstructuredError           error
 	WaitAndGetCompletedPodPhaseError error
 	WaitDuration                     time.Duration
@@ -49,6 +52,14 @@ func (f *FailingKubeClient) Create(resources kube.ResourceList) (*kube.Result, e
 		return nil, f.CreateError
 	}
 	return f.PrintingKubeClient.Create(resources)
+}
+
+// Get returns the configured error if set or prints
+func (f *FailingKubeClient) Get(resources kube.ResourceList, related bool) (map[string][]runtime.Object, error) {
+	if f.GetError != nil {
+		return nil, f.GetError
+	}
+	return f.PrintingKubeClient.Get(resources, related)
 }
 
 // Waits the amount of time defined on f.WaitDuration, then returns the configured error if set or prints.
@@ -106,6 +117,14 @@ func (f *FailingKubeClient) Build(r io.Reader, _ bool) (kube.ResourceList, error
 		return []*resource.Info{}, f.BuildError
 	}
 	return f.PrintingKubeClient.Build(r, false)
+}
+
+// BuildTable returns the configured error if set or prints
+func (f *FailingKubeClient) BuildTable(r io.Reader, _ bool) (kube.ResourceList, error) {
+	if f.BuildTableError != nil {
+		return []*resource.Info{}, f.BuildTableError
+	}
+	return f.PrintingKubeClient.BuildTable(r, false)
 }
 
 // WaitAndGetCompletedPodPhase returns the configured error if set or prints

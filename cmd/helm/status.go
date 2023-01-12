@@ -65,6 +65,13 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return compListReleases(toComplete, args, cfg)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+
+			// When the output format is a table the resources should be fetched
+			// and displayed as a table. When YAML or JSON the resources will be
+			// returned. This mirrors the handling in kubectl.
+			if outfmt == output.Table {
+				client.ShowResourcesTable = true
+			}
 			rel, err := client.Run(args[0])
 			if err != nil {
 				return err
