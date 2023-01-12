@@ -90,8 +90,8 @@ func TestList_AllNamespaces(t *testing.T) {
 	list, err := lister.Run()
 	is.NoError(err)
 	is.Len(list, 3)
-	// Checking if the config was cloned
-	assert.NotEqualValues(t, originalCfg, lister.cfg)
+	// Checking if config is not mutated
+	assert.EqualValues(t, originalCfg, lister.cfg)
 }
 
 func TestList_Sort(t *testing.T) {
