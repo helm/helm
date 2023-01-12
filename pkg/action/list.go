@@ -152,13 +152,14 @@ func (l *List) Run() ([]*release.Release, error) {
 		return nil, err
 	}
 
+	cfg := l.cfg
 	if l.AllNamespaces {
 		// For Empty Namespace the default behavior is to get all namespaces
 		clonedCfg, err := l.cfg.CloneWithNewNamespace("")
 		if err != nil {
 			return nil, err
 		}
-		l.cfg = clonedCfg
+		cfg = clonedCfg
 	}
 
 	var filter *regexp.Regexp
@@ -170,7 +171,7 @@ func (l *List) Run() ([]*release.Release, error) {
 		}
 	}
 
-	results, err := l.cfg.Releases.List(func(rel *release.Release) bool {
+	results, err := cfg.Releases.List(func(rel *release.Release) bool {
 		// Skip anything that doesn't match the filter.
 		if filter != nil && !filter.MatchString(rel.Name) {
 			return false
