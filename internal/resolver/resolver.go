@@ -57,6 +57,7 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 	// Now we clone the dependencies, locking as we go.
 	locked := make([]*chart.Dependency, len(reqs))
 	missing := []string{}
+	loadedIndexFiles := make(map[string]*repo.IndexFile)
 	for i, d := range reqs {
 		constraint, err := semver.NewConstraint(d.Version)
 		if err != nil {
@@ -123,9 +124,21 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 		var ok bool
 		found := true
 		if !registry.IsOCI(d.Repository) {
-			repoIndex, err := repo.LoadIndexFile(filepath.Join(r.cachepath, helmpath.CacheIndexFile(repoName)))
-			if err != nil {
-				return nil, errors.Wrapf(err, "no cached repository for %s found. (try 'helm repo update')", repoName)
+			filepath := filepath.Join(r.cachepath, helmpath.CacheIndexFile(repoName))
+			var repoIndex *repo.IndexFile
+
+			// Store previously loaded index files in a map. If repositories share the
+			// same index file there is no need to reload the same file again. This
+			// improves performance.
+			if indexFile, loaded := loadedIndexFiles[filepath]; !loaded {
+				var err error
+				repoIndex, err = repo.LoadIndexFile(filepath)
+				loadedIndexFiles[filepath] = repoIndex
+				if err != nil {
+					return nil, errors.Wrapf(err, "no cached repository for %s found. (try 'helm repo update')", repoName)
+				}
+			} else {
+				repoIndex = indexFile
 			}
 
 			vs, ok = repoIndex.Entries[d.Name]

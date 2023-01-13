@@ -27,7 +27,6 @@ import (
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/internal/fileutil"
-	"helm.sh/helm/v3/internal/urlutil"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/helmpath"
 	"helm.sh/helm/v3/pkg/provenance"
@@ -184,11 +183,11 @@ func (c *ChartDownloader) getOciURI(ref, version string, u *url.URL) (*url.URL, 
 //
 // A version is a SemVer string (1.2.3-beta.1+f334a6789).
 //
-//	- For fully qualified URLs, the version will be ignored (since URLs aren't versioned)
-//	- For a chart reference
-//		* If version is non-empty, this will return the URL for that version
-//		* If version is empty, this will return the URL for the latest version
-//		* If no version can be found, an error is returned
+//   - For fully qualified URLs, the version will be ignored (since URLs aren't versioned)
+//   - For a chart reference
+//   - If version is non-empty, this will return the URL for that version
+//   - If version is empty, this will return the URL for the latest version
+//   - If no version can be found, an error is returned
 func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, error) {
 	u, err := url.Parse(ref)
 	if err != nil {
@@ -378,19 +377,13 @@ func (c *ChartDownloader) scanReposForURL(u string, rf *repo.File) (*repo.Entry,
 		}
 
 		idxFile := filepath.Join(c.RepositoryCache, helmpath.CacheIndexFile(r.Config.Name))
-		i, err := repo.LoadIndexFile(idxFile)
+		yamlFile, err := os.ReadFile(idxFile)
 		if err != nil {
 			return nil, errors.Wrap(err, "no cached repo found. (try 'helm repo update')")
 		}
-
-		for _, entry := range i.Entries {
-			for _, ver := range entry {
-				for _, dl := range ver.URLs {
-					if urlutil.Equal(u, dl) {
-						return rc, nil
-					}
-				}
-			}
+		file := string(yamlFile[:])
+		if strings.Contains(file, u) {
+			return rc, nil
 		}
 	}
 	// This means that there is no repo file for the given URL.

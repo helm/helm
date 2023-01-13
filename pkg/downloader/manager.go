@@ -271,6 +271,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	fmt.Fprintf(m.Out, "Saving %d charts\n", len(deps))
 	var saveError error
 	churls := make(map[string]struct{})
+	baseChartUrls := make(map[string]string)
 	for _, dep := range deps {
 		// No repository means the chart is in charts directory
 		if dep.Repository == "" {
@@ -313,7 +314,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 
 		// Any failure to resolve/download a chart should fail:
 		// https://github.com/helm/helm/issues/1439
-		churl, username, password, insecureskiptlsverify, passcredentialsall, caFile, certFile, keyFile, err := m.findChartURL(dep.Name, dep.Version, dep.Repository, repos)
+		churl, username, password, insecureskiptlsverify, passcredentialsall, caFile, certFile, keyFile, err := m.findChartURL(dep.Name, dep.Version, dep.Repository, repos, baseChartUrls)
 		if err != nil {
 			saveError = errors.Wrapf(err, "could not find %s", churl)
 			break
@@ -502,6 +503,7 @@ func (m *Manager) ensureMissingRepos(repoNames map[string]string, deps []*chart.
 
 	var ru []*repo.Entry
 
+Outer:
 	for _, dd := range deps {
 
 		// If the chart is in the local charts directory no repository needs
@@ -528,6 +530,14 @@ func (m *Manager) ensureMissingRepos(repoNames map[string]string, deps []*chart.
 		rn = managerKeyPrefix + rn
 
 		repoNames[dd.Name] = rn
+
+		// If repository is already present don't add to array. This will skip
+		// unnecessary index file downloading improving performance.
+		for _, item := range ru {
+			if item.URL == dd.Repository {
+				continue Outer
+			}
+		}
 
 		// Assuming the repository is generally available. For Helm managed
 		// access controls the repository needs to be added through the user
@@ -703,7 +713,7 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 // repoURL is the repository to search
 //
 // If it finds a URL that is "relative", it will prepend the repoURL.
-func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRepository) (url, username, password string, insecureskiptlsverify, passcredentialsall bool, caFile, certFile, keyFile string, err error) {
+func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRepository, baseChartUrls map[string]string) (url, username, password string, insecureskiptlsverify, passcredentialsall bool, caFile, certFile, keyFile string, err error) {
 	if registry.IsOCI(repoURL) {
 		return fmt.Sprintf("%s/%s:%s", repoURL, name, version), "", "", false, false, "", "", "", nil
 	}
@@ -735,7 +745,19 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 			return
 		}
 	}
-	url, err = repo.FindChartInRepoURL(repoURL, name, version, certFile, keyFile, caFile, m.Getters)
+
+	// Store previously found chart URLs in a map. If repositories share the
+	// same repo URL there is no need to find the same repo URL again. This
+	// improves performance.
+	if baseURL, ok := baseChartUrls[repoURL]; !ok {
+		url, err = repo.FindChartInRepoURL(repoURL, name, version, certFile, keyFile, caFile, m.Getters)
+		if err == nil {
+			slice := strings.SplitAfter(url, "/")
+			baseChartUrls[repoURL] = strings.Join(slice[:len(slice)-1], "")
+		}
+	} else {
+		url = fmt.Sprintf("%s%s-%s.tgz", baseURL, name, version)
+	}
 	if err == nil {
 		return url, username, password, false, false, "", "", "", err
 	}
