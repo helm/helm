@@ -144,7 +144,7 @@ func TestResolve(t *testing.T) {
 	r := New("testdata/chartpath", "testdata/repository", registryClient)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			l, err := r.Resolve(tt.req, repoNames)
+			l, _, err := r.Resolve(tt.req, repoNames)
 			if err != nil {
 				if tt.err {
 					return
