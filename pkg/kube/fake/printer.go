@@ -48,7 +48,7 @@ func (p *PrintingKubeClient) Create(resources kube.ResourceList) (*kube.Result, 
 	return &kube.Result{Created: resources}, nil
 }
 
-func (p *PrintingKubeClient) Get(resources kube.ResourceList, reader io.Reader) (map[string][]runtime.Object, error) {
+func (p *PrintingKubeClient) Get(resources kube.ResourceList, related bool) (map[string][]runtime.Object, error) {
 	_, err := io.Copy(p.Out, bufferize(resources))
 	if err != nil {
 		return nil, err
@@ -102,6 +102,11 @@ func (p *PrintingKubeClient) Update(_, modified kube.ResourceList, _ bool) (*kub
 
 // Build implements KubeClient Build.
 func (p *PrintingKubeClient) Build(_ io.Reader, _ bool) (kube.ResourceList, error) {
+	return []*resource.Info{}, nil
+}
+
+// BuildTable implements KubeClient BuildTable.
+func (p *PrintingKubeClient) BuildTable(_ io.Reader, _ bool) (kube.ResourceList, error) {
 	return []*resource.Info{}, nil
 }
 
