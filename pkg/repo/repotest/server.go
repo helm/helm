@@ -400,7 +400,6 @@ func (s *Server) Stop() {
 // URL returns the URL of the server.
 //
 // Example:
-//
 //	http://localhost:1776
 func (s *Server) URL() string {
 	return s.srv.URL
@@ -422,17 +421,5 @@ func setTestingRepository(url, fname string) error {
 		Name: "test",
 		URL:  url,
 	})
-	return r.WriteFile(fname, 0644)
-}
-
-// setTestingRepository sets up a testing repository.yaml with the given URLs.
-func setTestingRepositories(urls []string, fname string) error {
-	r := repo.NewFile()
-	for _, url := range urls {
-		r.Add(&repo.Entry{
-			Name: "test",
-			URL:  url,
-		})
-	}
 	return r.WriteFile(fname, 0644)
 }
