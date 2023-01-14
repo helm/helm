@@ -576,7 +576,7 @@ func TestKey(t *testing.T) {
 // See issue https://github.com/helm/helm/issues/11509
 func TestUpdateOnlyRequiredRepos(t *testing.T) {
 	// Set up a fake repo
-	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")
+	srv, err := repotest.NewTempServerWithCleanupAndMultipleRepos(t, "testdata/*.tgz*")
 
 	if err != nil {
 		t.Fatal(err)

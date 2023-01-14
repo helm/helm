@@ -50,7 +50,22 @@ import (
 // The caller is responsible for stopping the server.
 // The temp dir will be removed by testing package automatically when test finished.
 func NewTempServerWithCleanup(t *testing.T, glob string) (*Server, error) {
-	srv, err := NewTempServer(glob)
+	srv, _, err := NewTempServer(glob)
+	t.Cleanup(func() { os.RemoveAll(srv.docroot) })
+	return srv, err
+}
+
+// Set up a server with multiple fake repo
+func NewTempServerWithCleanupAndMultipleRepos(t *testing.T, glob string) (*Server, error) {
+	srv, tdir, err := NewTempServer(glob)
+	urls := []string{srv.URL(), "http://foobarbazz:9001"}
+	if err := setTestingRepositories(urls, filepath.Join(tdir, "repositories.yaml")); err != nil {
+		panic(err)
+	}
+	if _, err := srv.CopyCharts(glob); err != nil {
+		srv.Stop()
+		return srv, err
+	}
 	t.Cleanup(func() { os.RemoveAll(srv.docroot) })
 	return srv, err
 }
@@ -248,21 +263,21 @@ func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
 // the server.
 //
 // Deprecated: use NewTempServerWithCleanup
-func NewTempServer(glob string) (*Server, error) {
+func NewTempServer(glob string) (*Server, string, error) {
 	tdir, err := ioutil.TempDir("", "helm-repotest-")
 	if err != nil {
-		return nil, err
+		return nil, tdir, err
 	}
 	srv := NewServer(tdir)
 
 	if glob != "" {
 		if _, err := srv.CopyCharts(glob); err != nil {
 			srv.Stop()
-			return srv, err
+			return srv, tdir, err
 		}
 	}
 
-	return srv, nil
+	return srv, tdir, nil
 }
 
 // NewServer creates a repository server for testing.
@@ -400,6 +415,7 @@ func (s *Server) Stop() {
 // URL returns the URL of the server.
 //
 // Example:
+//
 //	http://localhost:1776
 func (s *Server) URL() string {
 	return s.srv.URL
@@ -421,5 +437,18 @@ func setTestingRepository(url, fname string) error {
 		Name: "test",
 		URL:  url,
 	})
+	return r.WriteFile(fname, 0644)
+}
+
+// setTestingRepository sets up a testing repository.yaml with only the given URL.
+func setTestingRepositories(urls []string, fname string) error {
+	r := repo.NewFile()
+	for _, url := range urls {
+		r.Add(&repo.Entry{
+			Name: "test",
+			URL:  url,
+		})
+	}
+
 	return r.WriteFile(fname, 0644)
 }
