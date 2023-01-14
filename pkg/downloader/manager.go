@@ -660,10 +660,10 @@ func (m *Manager) UpdateRepositories(c *chart.Chart) error {
 			repos = append(repos, e)
 		}
 	}
-	if len(rf.Repositories) > 0 {
+	if len(repos) > 0 {
 		fmt.Fprintln(m.Out, "Hang tight while we grab the latest from your chart repositories...")
 		// This prints warnings straight to out.
-		if err := m.parallelRepoUpdate(rf.Repositories); err != nil {
+		if err := m.parallelRepoUpdate(repos); err != nil {
 			return err
 		}
 		fmt.Fprintln(m.Out, "Update Complete. ⎈Happy Helming!⎈")

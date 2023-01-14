@@ -55,20 +55,6 @@ func NewTempServerWithCleanup(t *testing.T, glob string) (*Server, error) {
 	return srv, err
 }
 
-// Setup mutliple fake repos
-func NewTempServerWithCleanupAndMultipleRepos(t *testing.T, glob string, repoUrls []string) (*Server, error) {
-	srv, err := NewTempServer(glob)
-	srv.Stop()
-	// Add the testing repository as the only repo.
-	if err := setTestingRepositories(repoUrls, filepath.Join(srv.docroot, "repositories.yaml")); err != nil {
-		panic(err)
-	}
-	srv.CopyCharts()
-	srv.Start()
-	t.Cleanup(func() { os.RemoveAll(srv.docroot) })
-	return srv, err
-}
-
 // Set up a fake repo with basic auth enabled
 func NewTempServerWithCleanupAndBasicAuth(t *testing.T, glob string) *Server {
 	srv, err := NewTempServerWithCleanup(t, glob)

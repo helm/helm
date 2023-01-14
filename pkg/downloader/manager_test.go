@@ -576,8 +576,7 @@ func TestKey(t *testing.T) {
 // See issue https://github.com/helm/helm/issues/11509
 func TestUpdateOnlyRequiredRepos(t *testing.T) {
 	// Set up a fake repo
-	srv, err := repotest.NewTempServerWithCleanupAndMultipleRepos(t, "testdata/*.tgz*", []string{"https://abc", "https://xyz"})
-	//srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")
+	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")
 
 	if err != nil {
 		t.Fatal(err)
@@ -590,17 +589,6 @@ func TestUpdateOnlyRequiredRepos(t *testing.T) {
 		return filepath.Join(append([]string{srv.Root()}, p...)...)
 	}
 
-	// Save dep
-	d := &chart.Chart{
-		Metadata: &chart.Metadata{
-			Name:       "dep-chart",
-			Version:    "0.1.0",
-			APIVersion: "v1",
-		},
-	}
-	if err := chartutil.SaveDir(d, dir()); err != nil {
-		t.Fatal(err)
-	}
 	// Save a chart
 	c := &chart.Chart{
 		Metadata: &chart.Metadata{
@@ -608,9 +596,9 @@ func TestUpdateOnlyRequiredRepos(t *testing.T) {
 			Version:    "0.1.0",
 			APIVersion: "v2",
 			Dependencies: []*chart.Dependency{{
-				Name:       d.Metadata.Name,
+				Name:       "local-subchart",
 				Version:    ">=0.1.0",
-				Repository: "https://abc",
+				Repository: srv.URL(),
 			}},
 		},
 	}
