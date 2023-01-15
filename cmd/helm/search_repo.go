@@ -64,14 +64,15 @@ Repositories are managed with 'helm repo' commands.
 const searchMaxScore = 25
 
 type searchRepoOptions struct {
-	versions     bool
-	regexp       bool
-	devel        bool
-	version      string
-	maxColWidth  uint
-	repoFile     string
-	repoCacheDir string
-	outputFormat output.Format
+	versions      bool
+	regexp        bool
+	devel         bool
+	version       string
+	maxColWidth   uint
+	repoFile      string
+	repoCacheDir  string
+	outputFormat  output.Format
+	noResultsFail bool
 }
 
 func newSearchRepoCmd(out io.Writer) *cobra.Command {
@@ -94,6 +95,7 @@ func newSearchRepoCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&o.devel, "devel", false, "use development versions (alpha, beta, and release candidate releases), too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored")
 	f.StringVar(&o.version, "version", "", "search using semantic versioning constraints on repositories you have added")
 	f.UintVar(&o.maxColWidth, "max-col-width", 50, "maximum column width for output table")
+	f.BoolVarP(&o.noResultsFail, "fail-if-no-results-found", "f", false, "exit with status code 1 if no results found")
 	bindOutputFlag(cmd, &o.outputFormat)
 
 	return cmd
@@ -124,7 +126,7 @@ func (o *searchRepoOptions) run(out io.Writer, args []string) error {
 		return err
 	}
 
-	return o.outputFormat.Write(out, &repoSearchWriter{data, o.maxColWidth})
+	return o.outputFormat.Write(out, &repoSearchWriter{data, o.maxColWidth, o.noResultsFail})
 }
 
 func (o *searchRepoOptions) setupSearchedVersion() {
@@ -205,8 +207,9 @@ type repoChartElement struct {
 }
 
 type repoSearchWriter struct {
-	results     []*search.Result
-	columnWidth uint
+	results       []*search.Result
+	columnWidth   uint
+	noResultsFail bool
 }
 
 func (r *repoSearchWriter) WriteTable(out io.Writer) error {
@@ -214,6 +217,9 @@ func (r *repoSearchWriter) WriteTable(out io.Writer) error {
 		_, err := out.Write([]byte("No results found\n"))
 		if err != nil {
 			return fmt.Errorf("unable to write results: %s", err)
+		}
+		if r.noResultsFail {
+			os.Exit(1)
 		}
 		return nil
 	}

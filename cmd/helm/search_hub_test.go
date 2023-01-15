@@ -17,9 +17,12 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"os/exec"
 	"testing"
 )
 
@@ -89,4 +92,59 @@ func TestSearchHubOutputCompletion(t *testing.T) {
 
 func TestSearchHubFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "search hub", true) // File completion may be useful when inputting a keyword
+}
+
+func TestSearchHubCmdExitCode(t *testing.T) {
+
+	if os.Getenv("RUN_MAIN_FOR_TESTING") == "1" {
+		// Setup a mock search service
+		var searchResult = `{"data":[]}`
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintln(w, searchResult)
+		}))
+		defer ts.Close()
+
+		os.Args = []string{"helm", "search", "hub", "syzygy", "--endpoint", ts.URL, "--fail-if-no-results-found"}
+
+		// We DO call helm's main() here. So this looks like a normal `helm` process.
+		main()
+
+		// As main calls os.Exit, we never reach this line.
+		// But the test called this block of code catches and verifies the exit code.
+		return
+	}
+
+	// Do a second run of this specific test(TestPluginExitCode) with RUN_MAIN_FOR_TESTING=1 set,
+	// So that the second run is able to run main() and this first run can verify the exit status returned by that.
+	//
+	// This technique originates from https://talks.golang.org/2014/testing.slide#23.
+	cmd := exec.Command(os.Args[0], "-test.run=TestSearchHubCmdExitCode")
+	cmd.Env = append(
+		os.Environ(),
+		"RUN_MAIN_FOR_TESTING=1",
+	)
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+	err := cmd.Run()
+	exiterr, ok := err.(*exec.ExitError)
+
+	if !ok {
+		t.Fatalf("Unexpected error returned by os.Exit: %T", err)
+	}
+
+	expectedStdout := "No results found\n"
+	if stdout.String() != expectedStdout {
+		t.Errorf("Expected %q written to stdout: Got %q", expectedStdout, stdout.String())
+	}
+
+	if stderr.String() != "" {
+		t.Errorf("Expected no writes to stderr: Got %q", stderr.String())
+	}
+
+	if exiterr.ExitCode() != 1 {
+		t.Errorf("Expected exit code 1: Got %d", exiterr.ExitCode())
+	}
+
 }
