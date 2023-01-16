@@ -62,14 +62,6 @@ const notesFileSuffix = "NOTES.txt"
 
 const defaultDirectoryPermission = 0755
 
-type DryRunMode string
-
-var (
-	DryRunModeNone   DryRunMode = "none"
-	DryRunModeClient DryRunMode = "client"
-	DryRunModeServer DryRunMode = "server"
-)
-
 // Install performs an installation operation.
 type Install struct {
 	cfg *Configuration

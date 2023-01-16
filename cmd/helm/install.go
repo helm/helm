@@ -122,7 +122,7 @@ To see the list of chart repositories, use 'helm repo list'. To search for
 charts in a repository, use 'helm search'.
 `
 
-func determineInstallDryRunMode(dryRunModeFlag string) (*action.DryRunMode, error) {
+func determineDryRunMode(dryRunModeFlag string) (*action.DryRunMode, error) {
 	switch dryRunModeFlag {
 	case "none":
 	case "false": // TODO: Remove "false" helm v4
@@ -153,7 +153,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
 
-			dryRunMode, err := determineInstallDryRunMode(dryRunModeFlag)
+			dryRunMode, err := determineDryRunMode(dryRunModeFlag)
 			if err != nil {
 				return err
 			}

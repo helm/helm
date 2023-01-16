@@ -69,9 +69,14 @@ type Upgrade struct {
 	WaitForJobs bool
 	// DisableHooks disables hook processing if set to true.
 	DisableHooks bool
-	// DryRun controls whether the operation is prepared, but not executed.
+	// Deprecated: DryRun controls whether the operation is prepared, but not executed.
 	// If `true`, the upgrade is prepared but not performed.
 	DryRun bool
+	// DryRunMode controls whether the operation is prepared, but not executed.
+	// If set, the upgrade is prepared but not performed.
+	// For DryRunModeClient
+	// For DryRunModeServer
+	DryRunMode DryRunMode
 	// Force will, if set to `true`, ignore certain warnings and perform the upgrade anyway.
 	//
 	// This should be used with caution.
@@ -153,7 +158,7 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 		return res, err
 	}
 
-	if !u.DryRun {
+	if !u.isDryRun() {
 		u.cfg.Log("updating status for upgraded release for %s", name)
 		if err := u.cfg.Releases.Update(upgradedRelease); err != nil {
 			return res, err
@@ -161,6 +166,23 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 	}
 
 	return res, nil
+}
+
+func (u *Upgrade) isDryRun() bool {
+	if u.DryRunMode != "" {
+		switch u.DryRunMode {
+		case DryRunModeClient:
+		case DryRunModeServer:
+			return true
+		case DryRunModeNone:
+			return false
+		default:
+			panic("Invalid DryRun mode")
+		}
+	}
+
+	// Fallback to legacy
+	return u.DryRun
 }
 
 // prepareUpgrade builds an upgraded release for an upgrade operation.
@@ -230,8 +252,9 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 	if err != nil {
 		return nil, nil, err
 	}
-	// Interacts with cluster if possible
-	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, true)
+
+	interactWithRemote := u.DryRunMode == DryRunModeServer
+	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, interactWithRemote)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -309,7 +332,7 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 		return nil
 	})
 
-	if u.DryRun {
+	if u.isDryRun() {
 		u.cfg.Log("dry run for %s", upgradedRelease.Name)
 		if len(u.Description) > 0 {
 			upgradedRelease.Info.Description = u.Description
