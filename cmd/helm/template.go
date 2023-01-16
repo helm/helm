@@ -73,7 +73,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				client.KubeVersion = parsedKubeVersion
 			}
 
-			client.DryRun = true
+			client.DryRun = "client"
 			client.ReleaseName = "release-name"
 			client.Replace = true // Skip the name check
 			client.ClientOnly = !validate

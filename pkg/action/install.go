@@ -71,7 +71,7 @@ type Install struct {
 	ClientOnly               bool
 	Force                    bool
 	CreateNamespace          bool
-	DryRun                   bool
+	DryRun                   string
 	DisableHooks             bool
 	Replace                  bool
 	Wait                     bool
@@ -128,6 +128,8 @@ type ChartPathOptions struct {
 func NewInstall(cfg *Configuration) *Install {
 	in := &Install{
 		cfg: cfg,
+		// Set default value of DryRun for before flags are binded (tests)
+		DryRun: "none",
 	}
 	in.ChartPathOptions.registryClient = cfg.RegistryClient
 
@@ -207,7 +209,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	// contacts the upstream server and builds the capabilities object.
 	if crds := chrt.CRDObjects(); !i.ClientOnly && !i.SkipCRDs && len(crds) > 0 {
 		// On dry run, bail here
-		if i.DryRun {
+		if i.DryRun != "none" && i.DryRun != "false" {
 			i.cfg.Log("WARNING: This chart or one of its subcharts contains CRDs. Rendering may fail or contain inaccuracies.")
 		} else if err := i.installCRDs(crds); err != nil {
 			return nil, err
@@ -241,7 +243,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	}
 
 	// special case for helm template --is-upgrade
-	isUpgrade := i.IsUpgrade && i.DryRun
+	isUpgrade := i.IsUpgrade && (i.DryRun != "none" && i.DryRun != "false") 
 	options := chartutil.ReleaseOptions{
 		Name:      i.ReleaseName,
 		Namespace: i.Namespace,
@@ -261,8 +263,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	// as they both set the Install.DryRun field to `true`. The `--dry-run` flag should be able
 	// to connect to remote for the lookup function. `helm template` is the only command that
 	// Install.APIVersions field will not be nil.
-	interactWithRemote := !i.DryRun || i.APIVersions == nil
-	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, interactWithRemote)
+	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, i.DryRun)
 	// Even for errors, attach this if available
 	if manifestDoc != nil {
 		rel.Manifest = manifestDoc.String()
@@ -303,7 +304,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	}
 
 	// Bail out here if it is a dry run
-	if i.DryRun {
+	if i.DryRun != "none" && i.DryRun != "false" {
 		rel.Info.Description = "Dry run complete"
 		return rel, nil
 	}
@@ -472,7 +473,8 @@ func (i *Install) availableName() error {
 	if err := chartutil.ValidateReleaseName(start); err != nil {
 		return errors.Wrapf(err, "release name %q", start)
 	}
-	if i.DryRun {
+	// On dry run, bail here
+	if i.DryRun != "none" && i.DryRun != "false" {
 		return nil
 	}
 

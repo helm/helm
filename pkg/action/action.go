@@ -102,7 +102,7 @@ type Configuration struct {
 // TODO: This function is badly in need of a refactor.
 // TODO: As part of the refactor the duplicate code in cmd/helm/template.go should be removed
 //       This code has to do with writing files to disk.
-func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, interactWithRemote bool) ([]*release.Hook, *bytes.Buffer, string, error) {
+func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, dryRun string) ([]*release.Hook, *bytes.Buffer, string, error) {
 	hs := []*release.Hook{}
 	b := bytes.NewBuffer(nil)
 
@@ -121,11 +121,11 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	var err2 error
 
 	// A `helm template`  should not talk to the remote cluster. However, commands
-	// with `--dry-run` should be able to try to connect to the cluster.
+	// with `--dry-run` with the value of false, none, or sever should try to connect to the cluster.
 	// This enables the ability to render 'lookup' functions.
 	// It may break in interesting and exotic ways because other data (e.g. discovery)
 	// is mocked.
-	if interactWithRemote && cfg.RESTClientGetter != nil {
+	if (dryRun == "server" ||  dryRun == "none" || dryRun == "false") && cfg.RESTClientGetter != nil {
 		restConfig, err := cfg.RESTClientGetter.ToRESTConfig()
 		if err != nil {
 			return hs, b, "", err
