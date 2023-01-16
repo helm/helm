@@ -320,6 +320,6 @@ func validateDryRunFlag(dryRunFlagValue string) error {
 	}
 	if !isAllowed {
 		return errors.New("Invalid dry-run flag. Flag must one of the following: false, true, none, client, sever")
-	} 
+	}
 	return nil
 }
