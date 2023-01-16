@@ -263,7 +263,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	client.Namespace = settings.Namespace()
 
 	// validate dry-run flag value is one of the allowed values
-	if err := validateDryRunFlag(client); err != nil {
+	if err := validateDryRunFlag(client.DryRun); err != nil {
 		return nil, err
 	}
 
@@ -308,12 +308,12 @@ func compInstall(args []string, toComplete string, client *action.Install) ([]st
 	return nil, cobra.ShellCompDirectiveNoFileComp
 }
 
-func validateDryRunFlag(client *action.Install) error {
+func validateDryRunFlag(dryRunFlagValue string) error {
 	// validate dry-run flag value with set of allowed value
 	allowedDryRunValues := []string{"false", "true", "none", "client", "server"}
 	isAllowed := false
 	for _, v := range allowedDryRunValues {
-		if client.DryRun == v {
+		if dryRunFlagValue == v {
 			isAllowed = true
 			break
 		}

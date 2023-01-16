@@ -120,11 +120,6 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.Description = client.Description
 					instClient.DependencyUpdate = client.DependencyUpdate
 
-					// validate dry-run flag value is one of the allowed values
-					if err := validateDryRunFlag(instClient); err != nil {
-						return err
-					}
-
 					rel, err := runInstall(args, instClient, valueOpts, out)
 					if err != nil {
 						return err
@@ -142,6 +137,10 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 			chartPath, err := client.ChartPathOptions.LocateChart(args[1], settings)
 			if err != nil {
+				return err
+			}
+			// validate dry-run flag value is one of the allowed values
+			if err := validateDryRunFlag(client.DryRun); err != nil {
 				return err
 			}
 

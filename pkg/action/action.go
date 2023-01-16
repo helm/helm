@@ -125,7 +125,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	// This enables the ability to render 'lookup' functions.
 	// It may break in interesting and exotic ways because other data (e.g. discovery)
 	// is mocked.
-	if (dryRun == "server" ||  dryRun == "none" || dryRun == "false") && cfg.RESTClientGetter != nil {
+	if (dryRun == "server" || dryRun == "none" || dryRun == "false") && cfg.RESTClientGetter != nil {
 		restConfig, err := cfg.RESTClientGetter.ToRESTConfig()
 		if err != nil {
 			return hs, b, "", err

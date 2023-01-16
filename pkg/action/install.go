@@ -243,7 +243,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	}
 
 	// special case for helm template --is-upgrade
-	isUpgrade := i.IsUpgrade && (i.DryRun != "none" && i.DryRun != "false") 
+	isUpgrade := i.IsUpgrade && (i.DryRun != "none" && i.DryRun != "false")
 	options := chartutil.ReleaseOptions{
 		Name:      i.ReleaseName,
 		Namespace: i.Namespace,
