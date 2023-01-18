@@ -225,7 +225,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 		for _, h := range hs {
 			hb := bytes.NewBuffer(nil)
 			fmt.Fprintf(hb, "---\n# Source: %s\n%s\n", h.Path, h.Manifest)
-			bpr, err = pr.Run(hb)
+			hb, err = pr.Run(hb)
 			if err != nil {
 				return hs, b, notes, errors.Wrap(err, "error while running post render on hook files")
 			}
