@@ -216,9 +216,20 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	}
 
 	if pr != nil {
-		b, err = pr.Run(b)
+		b, err = pr.Run(bpr)
 		if err != nil {
-			return hs, b, notes, errors.Wrap(err, "error while running post render on files")
+			return hs, b, notes, errors.Wrap(err, "error while running post render on manifest files")
+		}
+
+		// NOTE: Send Hook manifests to the post-renderer
+		for _, h := range hs {
+			hb := bytes.NewBuffer(nil)
+			fmt.Fprintf(hb, "---\n# Source: %s\n%s\n", h.Path, h.Manifest)
+			bpr, err = pr.Run(hb)
+			if err != nil {
+				return hs, b, notes, errors.Wrap(err, "error while running post render on hook files")
+			}
+			h.Manifest = hb.String()
 		}
 	}
 
