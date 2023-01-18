@@ -216,7 +216,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	}
 
 	if pr != nil {
-		b, err = pr.Run(bpr)
+		b, err = pr.Run(b)
 		if err != nil {
 			return hs, b, notes, errors.Wrap(err, "error while running post render on manifest files")
 		}
