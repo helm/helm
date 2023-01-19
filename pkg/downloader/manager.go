@@ -85,6 +85,10 @@ type Manager struct {
 // If SkipUpdate is set, this will not update the repository.
 func (m *Manager) Build() error {
 	c, err := m.loadChartDir()
+	if c.Metadata.Dependencies == nil && m.Debug {
+		fmt.Print("No dependencies found to build")
+		return nil
+	}
 	if err != nil {
 		return err
 	}
