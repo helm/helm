@@ -344,7 +344,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		// not working.
 		return rel, err
 	}
-	rChan := make(chan resultMessage)
+	rChan := make(chan resultMessage, 2)
 	doneChan := make(chan struct{})
 	defer close(doneChan)
 	go i.performInstall(rChan, rel, toBeAdopted, resources)
@@ -457,10 +457,10 @@ func (i *Install) failRelease(rel *release.Release, err error) (*release.Release
 //
 // Roughly, this will return an error if name is
 //
-//	- empty
-//	- too long
-//	- already in use, and not deleted
-//	- used by a deleted release, and i.Replace is false
+//   - empty
+//   - too long
+//   - already in use, and not deleted
+//   - used by a deleted release, and i.Replace is false
 func (i *Install) availableName() error {
 	start := i.ReleaseName
 
