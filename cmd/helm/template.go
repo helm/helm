@@ -48,19 +48,16 @@ faked locally. Additionally, none of the server-side testing of chart validity
 
 func determineTemplateDryRunMode(dryRunModeFlag string) (*action.DryRunMode, error) {
 	switch dryRunModeFlag {
-	case "none":
-		return nil, fmt.Errorf("Invalid flag --dry-run=none for template")
 	case "false": // TODO: Remove "false" helm v4
 		// helm template --dry-run=false was previously ignored, and dry-run set anyway
 		return &action.DryRunModeClient, nil
-	case "client":
-	case "true": // TODO: Remove "true" helm v4
+	case "unspecified", "client", "true": // TODO: Remove "true" helm v4
 		return &action.DryRunModeClient, nil
 	case "server":
 		return &action.DryRunModeServer, nil
 	}
 
-	return nil, fmt.Errorf("Invalid --dry-run flag value: %s", dryRunModeFlag)
+	return nil, fmt.Errorf("Invalid --dry-run flag value: '%s'", dryRunModeFlag)
 }
 
 func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
@@ -196,7 +193,14 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	addInstallFlags(cmd, f, client, &dryRunModeFlag, valueOpts)
+	addInstallFlags(cmd, f, client, valueOpts)
+	f.StringVar(
+		&dryRunModeFlag,
+		"dry-run",
+		"client",
+		`install simulation mode for templating. Must be "server", or "client". If client strategy, X. If server strategy, Y`,
+	)
+	f.Lookup("dry-run").NoOptDefVal = "unspecified"
 	f.StringArrayVarP(&showFiles, "show-only", "s", []string{}, "only show manifests rendered from the given templates")
 	f.StringVar(&client.OutputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
 	f.BoolVar(&validate, "validate", false, "validate your manifests against the Kubernetes cluster you are currently pointing at. This is the same validation performed on an install")

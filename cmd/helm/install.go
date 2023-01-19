@@ -124,11 +124,9 @@ charts in a repository, use 'helm search'.
 
 func determineDryRunMode(dryRunModeFlag string) (*action.DryRunMode, error) {
 	switch dryRunModeFlag {
-	case "none":
-	case "false": // TODO: Remove "false" helm v4
+	case "none", "false": // TODO: Remove "false" helm v4
 		return &action.DryRunModeNone, nil
-	case "client":
-	case "true": // TODO: Remove "true" helm v4
+	case "client", "unspecified", "true": // TODO: Remove "true" helm v4
 		return &action.DryRunModeClient, nil
 	case "server":
 		return &action.DryRunModeServer, nil
@@ -170,21 +168,24 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		},
 	}
 
-	addInstallFlags(cmd, cmd.Flags(), client, &dryRunModeFlag, valueOpts)
+	f := cmd.Flags()
+	addInstallFlags(cmd, f, client, valueOpts)
+	f.StringVar(
+		&dryRunModeFlag,
+		"dry-run",
+		"none",
+		`simulate an install. Must be "none", "server", or "client". If client strategy, X. If server strategy, Y. For backwards compatibility, boolean values "true" and "false" are also accepted. "true" being a synonym for "client". "false" meaning disable dry-run`,
+	)
+	f.Lookup("dry-run").NoOptDefVal = "unspecified"
+
 	bindOutputFlag(cmd, &outfmt)
 	bindPostRenderFlag(cmd, &client.PostRenderer)
 
 	return cmd
 }
 
-func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Install, dryRunModeFlag *string, valueOpts *values.Options) {
+func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Install, valueOpts *values.Options) {
 	f.BoolVar(&client.CreateNamespace, "create-namespace", false, "create the release namespace if not present")
-	f.StringVar(
-		dryRunModeFlag,
-		"dry-run",
-		"none",
-		`simulate an install. Must be "none", "server", or "client". If client strategy, X. If server strategy, Y. For backwards compatibility, boolean values "true" and "false" are also accepted. "true" being a synonym for "client". "false" meaning disable dry-run`,
-	)
 	f.BoolVar(&client.Force, "force", false, "force resource updates through a replacement strategy")
 	f.BoolVar(&client.DisableHooks, "no-hooks", false, "prevent hooks from running during install")
 	f.BoolVar(&client.Replace, "replace", false, "re-use the given name, only if that name is a deleted release which remains in the history. This is unsafe in production")
