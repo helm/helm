@@ -25,18 +25,22 @@ import (
 	"sort"
 	"strings"
 	"text/template"
+	"text/template/parse"
 
 	"github.com/pkg/errors"
-	"k8s.io/client-go/rest"
-
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
+	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/client-go/rest"
 )
+
+var ignoredValuesWhenReporting = []string{".Release.Name", ".Release.Namespace", ".Release.Service"}
 
 // Engine is an implementation of the Helm rendering implementation for templates.
 type Engine struct {
 	// If strict is enabled, template rendering will fail if a template references
-	// a value that was not passed in.
+	// a value that was not passed in or if an extra value was passed in and not
+	// referenced by the template.
 	Strict bool
 	// In LintMode, some 'required' template values may be missing, so don't fail
 	LintMode bool
@@ -246,6 +250,8 @@ func (e Engine) renderWithReferences(tpls, referenceTpls map[string]renderable) 
 		}
 	}
 
+	usedValues := sets.New[string]()
+	providedValues := sets.New[string]()
 	rendered = make(map[string]string, len(keys))
 	for _, filename := range keys {
 		// Don't render partials. We don't care out the direct output of partials.
@@ -261,10 +267,24 @@ func (e Engine) renderWithReferences(tpls, referenceTpls map[string]renderable) 
 			return map[string]string{}, cleanupExecError(filename, err)
 		}
 
+		usedValues = usedValues.Union(traverse(t.Lookup(filename).Copy().Root))
+		pv, err := getProvidedValues(vals)
+		if err != nil {
+			return map[string]string{}, err
+		}
+		providedValues = providedValues.Union(pv)
+
 		// Work around the issue where Go will emit "<no value>" even if Options(missing=zero)
 		// is set. Since missing=error will never get here, we do not need to handle
 		// the Strict case.
 		rendered[filename] = strings.ReplaceAll(buf.String(), "<no value>", "")
+	}
+
+	if e.Strict {
+		unused := providedValues.Difference(usedValues).Difference(sets.New(ignoredValuesWhenReporting...))
+		if unused.Len() > 0 {
+			return map[string]string{}, fmt.Errorf("there are unused fields in values files %+v", sets.List(unused))
+		}
 	}
 
 	return rendered, nil
@@ -398,4 +418,107 @@ func isTemplateValid(ch *chart.Chart, templateName string) bool {
 // isLibraryChart returns true if the chart is a library chart
 func isLibraryChart(c *chart.Chart) bool {
 	return strings.EqualFold(c.Metadata.Type, "library")
+}
+
+// traverse reads through the template and pulls out all referenced variables.
+func traverse(cur parse.Node) sets.Set[string] {
+	vars := sets.New[string]()
+	switch node := cur.(type) {
+	case *parse.ActionNode:
+		if node.Pipe != nil {
+			vars = vars.Union(traverse(node.Pipe))
+		}
+	case *parse.BoolNode:
+	case *parse.BranchNode:
+		if node.Pipe != nil {
+			vars = vars.Union(traverse(node.Pipe))
+		}
+		if node.List != nil {
+			vars = vars.Union(traverse(node.List))
+		}
+		if node.ElseList != nil {
+			vars = vars.Union( traverse(node.ElseList))
+		}
+	case *parse.BreakNode:
+	case *parse.ChainNode:
+	case *parse.CommandNode:
+		if node.Args != nil {
+			for _, arg := range node.Args {
+				vars = vars.Union(traverse(arg))
+			}
+		}
+		return vars
+	case *parse.CommentNode:
+	case *parse.ContinueNode:
+	case *parse.DotNode:
+	case *parse.IdentifierNode:
+	case *parse.IfNode:
+		vars = vars.Union( traverse(&node.BranchNode))
+	case *parse.ListNode:
+		if node.Nodes != nil {
+			for _, child := range node.Nodes {
+				vars = vars.Union(traverse(child))
+			}
+		}
+	case *parse.NilNode:
+	case *parse.NumberNode:
+	case *parse.PipeNode:
+		if node.Cmds != nil {
+			for _, cmd := range node.Cmds {
+				vars = vars.Union( traverse(cmd))
+			}
+		}
+		if node.Decl != nil {
+			for _, decl := range node.Decl {
+				vars = vars.Union(traverse(decl))
+			}
+		}
+	case *parse.RangeNode:
+		return traverse(&node.BranchNode)
+	case *parse.StringNode:
+	case *parse.TemplateNode:
+		if node.Pipe != nil {
+			vars = vars.Union(traverse(node.Pipe))
+		}
+	case *parse.TextNode:
+	case *parse.WithNode:
+		vars = vars.Union(traverse(&node.BranchNode))
+
+	case *parse.FieldNode:
+		vars = vars.Insert(fmt.Sprintf(".%s", strings.Join(node.Ident, ".")))
+
+	case *parse.VariableNode:
+		vars = vars.Insert(strings.Join(node.Ident, "."))
+	default:
+		panic("uncaught node type in go template")
+	}
+
+	return vars
+}
+
+func getProvidedValues(vals chartutil.Values) (sets.Set[string], error){
+	v, ok := vals["Values"].(chartutil.Values)
+	if !ok {
+		return nil, fmt.Errorf("luh")
+	}
+	f := flattenMapKeys(".Values", v)
+	return sets.New(f...), nil
+}
+
+// flattenMapKeys turns an interface into a list of variable paths to make it easy to log and
+// compare the used or unused values.
+func flattenMapKeys(root string, values chartutil.Values) []string {
+	keys := []string{}
+	for key, value := range values {
+		prefix := strings.Join([]string{root,key}, ".")
+		if v, ok := value.(map[string]interface{}); ok{
+			keys = append(keys,flattenMapKeys(prefix, v)...)
+		} else if v, ok := value.(chartutil.Values); ok{
+			keys = append(keys,flattenMapKeys(prefix, v)...)
+		} else {
+			keys = append(keys, prefix)
+		}
+	}
+
+	return keys
 }

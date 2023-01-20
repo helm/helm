@@ -830,3 +830,52 @@ func TestRenderRecursionLimit(t *testing.T) {
 	}
 
 }
+func TestReportUnusedValues(t *testing.T) {
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:    "UnusedValues",
+			Version: "4.2.0",
+		},
+		Templates: []*chart.File{
+			{Name: "templates/test1", Data: []byte("{{.Values.very.used | title }} {{.Values.extremely.used | title}}")},
+			{Name: "templates/test2", Data: []byte("{{.Values.super.used | lower }}")},
+			{Name: "templates/test3", Data: []byte("{{.Values.definitely.used}}")},
+			{Name: "templates/test4", Data: []byte("{{toJson .Values}}")},
+		},
+		Values: map[string]interface{}{"outer": "DEFAULT", "inner": "DEFAULT"},
+	}
+
+	vals := map[string]interface{}{
+		"Values": map[string]interface{}{
+			"very": map[string]interface{}{
+				"used": "used",
+			},
+			"extremely": chartutil.Values{
+				"used": "used",
+			},
+			"definitely": map[string]interface{}{
+				"used": "used",
+			},
+			"super": map[string]interface{}{
+				"used": "used",
+			},
+			"not": "not used",
+		},
+	}
+
+	v, err := chartutil.CoalesceValues(c, vals)
+	if err != nil {
+		t.Fatalf("Failed to coalesce values: %s", err)
+	}
+
+	engine := Engine{
+		Strict: true,
+		LintMode: false,
+		config: nil,
+	}
+
+	_, err = engine.Render(c, v)
+	if err == nil {
+		t.Errorf("Render should have returned an error for an unused variable: %s", err)
+	}
+}
