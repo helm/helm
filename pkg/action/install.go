@@ -458,8 +458,7 @@ func (i *Install) failRelease(rel *release.Release, err error) (*release.Release
 func (i *Install) isDryRun() bool {
 	if i.DryRunMode != "" {
 		switch i.DryRunMode {
-		case DryRunModeClient:
-		case DryRunModeServer:
+		case DryRunModeClient, DryRunModeServer:
 			return true
 		case DryRunModeNone:
 			return false

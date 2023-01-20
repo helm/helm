@@ -171,8 +171,7 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 func (u *Upgrade) isDryRun() bool {
 	if u.DryRunMode != "" {
 		switch u.DryRunMode {
-		case DryRunModeClient:
-		case DryRunModeServer:
+		case DryRunModeClient, DryRunModeServer:
 			return true
 		case DryRunModeNone:
 			return false
