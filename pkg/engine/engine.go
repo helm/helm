@@ -435,7 +435,7 @@ func traverse(cur parse.Node) sets.Set[string] {
 			vars = vars.Union(traverse(node.List))
 		}
 		if node.ElseList != nil {
-			vars = vars.Union( traverse(node.ElseList))
+			vars = vars.Union(traverse(node.ElseList))
 		}
 	case *parse.BreakNode:
 	case *parse.ChainNode:
@@ -451,7 +451,7 @@ func traverse(cur parse.Node) sets.Set[string] {
 	case *parse.DotNode:
 	case *parse.IdentifierNode:
 	case *parse.IfNode:
-		vars = vars.Union( traverse(&node.BranchNode))
+		vars = vars.Union(traverse(&node.BranchNode))
 	case *parse.ListNode:
 		if node.Nodes != nil {
 			for _, child := range node.Nodes {
@@ -463,7 +463,7 @@ func traverse(cur parse.Node) sets.Set[string] {
 	case *parse.PipeNode:
 		if node.Cmds != nil {
 			for _, cmd := range node.Cmds {
-				vars = vars.Union( traverse(cmd))
+				vars = vars.Union(traverse(cmd))
 			}
 		}
 		if node.Decl != nil {
@@ -494,7 +494,7 @@ func traverse(cur parse.Node) sets.Set[string] {
 	return vars
 }
 
-func getProvidedValues(vals chartutil.Values) (sets.Set[string], error){
+func getProvidedValues(vals chartutil.Values) (sets.Set[string], error) {
 	v, ok := vals["Values"].(chartutil.Values)
 	if !ok {
 		return nil, fmt.Errorf("luh")
@@ -508,11 +508,11 @@ func getProvidedValues(vals chartutil.Values) (sets.Set[string], error){
 func flattenMapKeys(root string, values chartutil.Values) []string {
 	keys := []string{}
 	for key, value := range values {
-		prefix := strings.Join([]string{root,key}, ".")
-		if v, ok := value.(map[string]interface{}); ok{
-			keys = append(keys,flattenMapKeys(prefix, v)...)
-		} else if v, ok := value.(chartutil.Values); ok{
-			keys = append(keys,flattenMapKeys(prefix, v)...)
+		prefix := strings.Join([]string{root, key}, ".")
+		if v, ok := value.(map[string]interface{}); ok {
+			keys = append(keys, flattenMapKeys(prefix, v)...)
+		} else if v, ok := value.(chartutil.Values); ok {
+			keys = append(keys, flattenMapKeys(prefix, v)...)
 		} else {
 			keys = append(keys, prefix)
 		}
