@@ -869,9 +869,9 @@ func TestReportUnusedValues(t *testing.T) {
 	}
 
 	engine := Engine{
-		Strict: true,
+		Strict:   true,
 		LintMode: false,
-		config: nil,
+		config:   nil,
 	}
 
 	_, err = engine.Render(c, v)
