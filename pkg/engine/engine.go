@@ -34,8 +34,6 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-var ignoredValuesWhenReporting = []string{".Release.Name", ".Release.Namespace", ".Release.Service"}
-
 // Engine is an implementation of the Helm rendering implementation for templates.
 type Engine struct {
 	// If strict is enabled, template rendering will fail if a template references
@@ -281,7 +279,7 @@ func (e Engine) renderWithReferences(tpls, referenceTpls map[string]renderable) 
 	}
 
 	if e.Strict {
-		unused := providedValues.Difference(usedValues).Difference(sets.New(ignoredValuesWhenReporting...))
+		unused := providedValues.Difference(usedValues)
 		if unused.Len() > 0 {
 			return map[string]string{}, fmt.Errorf("there are unused fields in values files %+v", sets.List(unused))
 		}
