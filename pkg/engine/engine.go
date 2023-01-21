@@ -28,10 +28,11 @@ import (
 	"text/template/parse"
 
 	"github.com/pkg/errors"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chartutil"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/rest"
+
+	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/chartutil"
 )
 
 // Engine is an implementation of the Helm rendering implementation for templates.
