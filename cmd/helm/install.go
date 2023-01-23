@@ -265,7 +265,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 
 	client.Namespace = settings.Namespace()
 
-	// validate dry-run flag value is one of the allowed values
+	// validate dry-run-option flag value is one of the allowed values
 	if err := validateDryRunOptionFlag(client.DryRunOption); err != nil {
 		return nil, err
 	}
@@ -312,7 +312,7 @@ func compInstall(args []string, toComplete string, client *action.Install) ([]st
 }
 
 func validateDryRunOptionFlag(dryRunOptionFlagValue string) error {
-	// validate dry-run flag value with set of allowed value
+	// validate dry-run-option flag value with set of allowed value
 	allowedDryRunValues := []string{"false", "true", "none", "client", "server"}
 	isAllowed := false
 	for _, v := range allowedDryRunValues {
