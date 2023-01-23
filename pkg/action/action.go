@@ -121,7 +121,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	var err2 error
 
 	// A `helm template`  should not talk to the remote cluster. However, commands
-	// with the flag `--dry-run-option` with the value of false, none, or sever  
+	// with the flag `--dry-run-option` with the value of false, none, or sever
 	// or with the flag `--dry-run` with the value of false should try to interact with the cluster.
 	// It may break in interesting and exotic ways because other data (e.g. discovery)
 	// is mocked.
