@@ -106,6 +106,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.ChartPathOptions = client.ChartPathOptions
 					instClient.Force = client.Force
 					instClient.DryRun = client.DryRun
+					instClient.DryRunOption = client.DryRunOption
 					instClient.DisableHooks = client.DisableHooks
 					instClient.SkipCRDs = client.SkipCRDs
 					instClient.Timeout = client.Timeout
@@ -119,7 +120,6 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.SubNotes = client.SubNotes
 					instClient.Description = client.Description
 					instClient.DependencyUpdate = client.DependencyUpdate
-
 					rel, err := runInstall(args, instClient, valueOpts, out)
 					if err != nil {
 						return err
@@ -140,7 +140,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return err
 			}
 			// validate dry-run flag value is one of the allowed values
-			if err := validateDryRunFlag(client.DryRun); err != nil {
+			if err := validateDryRunOptionFlag(client.DryRunOption); err != nil {
 				return err
 			}
 
@@ -218,8 +218,9 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&createNamespace, "create-namespace", false, "if --install is set, create the release namespace if not present")
 	f.BoolVarP(&client.Install, "install", "i", false, "if a release by this name doesn't already exist, run an install")
 	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored")
-	f.StringVar(&client.DryRun, "dry-run", "none", "simulate an install. If --dry-run is set with no option being specified or as 'client', it will not attempt cluster connections. Setting option as 'server' allows attempting cluster connections.")
-	f.Lookup("dry-run").NoOptDefVal = "client"
+	f.BoolVar(&client.DryRun, "dry-run", false, "simulate an upgrade")
+	f.StringVar(&client.DryRunOption, "dry-run-option", "none", "simulate an install. If --dry-run is set with no option being specified or as 'client', it will not attempt cluster connections. Setting option as 'server' allows attempting cluster connections.")
+	f.Lookup("dry-run-option").NoOptDefVal = "client"
 	f.BoolVar(&client.Recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
 	f.MarkDeprecated("recreate-pods", "functionality will no longer be updated. Consult the documentation for other methods to recreate pods")
 	f.BoolVar(&client.Force, "force", false, "force resource updates through a replacement strategy")
@@ -241,6 +242,8 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	addValueOptionsFlags(f, valueOpts)
 	bindOutputFlag(cmd, &outfmt)
 	bindPostRenderFlag(cmd, &client.PostRenderer)
+
+	cmd.MarkFlagsMutuallyExclusive("dry-run", "dry-run-option")
 
 	err := cmd.RegisterFlagCompletionFunc("version", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) != 2 {

@@ -70,7 +70,9 @@ type Upgrade struct {
 	// DisableHooks disables hook processing if set to true.
 	DisableHooks bool
 	// DryRun controls whether the operation is prepared, but not executed.
-	DryRun string
+	DryRun bool
+	// DryRunOption controls whether the operation is prepared, but not executed with options on whether or not to interact with the remote cluster.
+	DryRunOption string
 	// Force will, if set to `true`, ignore certain warnings and perform the upgrade anyway.
 	//
 	// This should be used with caution.
@@ -113,8 +115,6 @@ type resultMessage struct {
 func NewUpgrade(cfg *Configuration) *Upgrade {
 	up := &Upgrade{
 		cfg: cfg,
-		// Set default value of DryRun for before flags are binded (tests)
-		DryRun: "none",
 	}
 	up.ChartPathOptions.registryClient = cfg.RegistryClient
 
@@ -140,6 +140,12 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 	if err := chartutil.ValidateReleaseName(name); err != nil {
 		return nil, errors.Errorf("release name is invalid: %s", name)
 	}
+
+	// determine dry run behavior
+	if u.DryRun || u.DryRunOption == "client" || u.DryRunOption == "server" || u.DryRunOption == "true" {
+		u.DryRun = true
+	}
+
 	u.cfg.Log("preparing upgrade for %s", name)
 	currentRelease, upgradedRelease, err := u.prepareUpgrade(name, chart, vals)
 	if err != nil {
@@ -153,8 +159,9 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 	if err != nil {
 		return res, err
 	}
+
 	// Do not update for dry runs
-	if u.DryRun == "none" || u.DryRun == "false" {
+	if !u.DryRun {
 		u.cfg.Log("updating status for upgraded release for %s", name)
 		if err := u.cfg.Releases.Update(upgradedRelease); err != nil {
 			return res, err
@@ -232,7 +239,13 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		return nil, nil, err
 	}
 
-	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, u.DryRun)
+	// determine whether or not to interact with remote
+	var interactWithRemote bool
+	if !u.DryRun || u.DryRunOption == "server" {
+		interactWithRemote = true
+	}
+
+	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, interactWithRemote)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -311,7 +324,7 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 	})
 
 	// Run if it is a dry run
-	if u.DryRun != "none" && u.DryRun != "false" {
+	if u.DryRun {
 		u.cfg.Log("dry run for %s", upgradedRelease.Name)
 		if len(u.Description) > 0 {
 			upgradedRelease.Info.Description = u.Description

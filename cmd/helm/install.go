@@ -154,8 +154,9 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Install, valueOpts *values.Options) {
 	f.BoolVar(&client.CreateNamespace, "create-namespace", false, "create the release namespace if not present")
-	f.StringVar(&client.DryRun, "dry-run", "none", "simulate an install. If --dry-run is set with no option being specified or as 'client', it will not attempt cluster connections. Setting option as 'server' allows attempting cluster connections.")
-	f.Lookup("dry-run").NoOptDefVal = "client"
+	f.BoolVar(&client.DryRun, "dry-run", false, "simulate an install")
+	f.StringVar(&client.DryRunOption, "dry-run-option", "none", "simulate an install. If --dry-run is set with no option being specified or as 'client', it will not attempt cluster connections. Setting option as 'server' allows attempting cluster connections.")
+	f.Lookup("dry-run-option").NoOptDefVal = "client"
 	f.BoolVar(&client.Force, "force", false, "force resource updates through a replacement strategy")
 	f.BoolVar(&client.DisableHooks, "no-hooks", false, "prevent hooks from running during install")
 	f.BoolVar(&client.Replace, "replace", false, "re-use the given name, only if that name is a deleted release which remains in the history. This is unsafe in production")
@@ -173,6 +174,8 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 	f.BoolVar(&client.SubNotes, "render-subchart-notes", false, "if set, render subchart notes along with the parent")
 	addValueOptionsFlags(f, valueOpts)
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
+
+	cmd.MarkFlagsMutuallyExclusive("dry-run", "dry-run-option")
 
 	err := cmd.RegisterFlagCompletionFunc("version", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		requiredArgs := 2
@@ -263,7 +266,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	client.Namespace = settings.Namespace()
 
 	// validate dry-run flag value is one of the allowed values
-	if err := validateDryRunFlag(client.DryRun); err != nil {
+	if err := validateDryRunOptionFlag(client.DryRunOption); err != nil {
 		return nil, err
 	}
 
@@ -308,12 +311,12 @@ func compInstall(args []string, toComplete string, client *action.Install) ([]st
 	return nil, cobra.ShellCompDirectiveNoFileComp
 }
 
-func validateDryRunFlag(dryRunFlagValue string) error {
+func validateDryRunOptionFlag(dryRunOptionFlagValue string) error {
 	// validate dry-run flag value with set of allowed value
 	allowedDryRunValues := []string{"false", "true", "none", "client", "server"}
 	isAllowed := false
 	for _, v := range allowedDryRunValues {
-		if dryRunFlagValue == v {
+		if dryRunOptionFlagValue == v {
 			isAllowed = true
 			break
 		}

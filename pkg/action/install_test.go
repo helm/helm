@@ -234,7 +234,7 @@ func TestInstallRelease_WithChartAndDependencyAllNotes(t *testing.T) {
 func TestInstallRelease_DryRun(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
-	instAction.DryRun = "true"
+	instAction.DryRun = true
 	vals := map[string]interface{}{}
 	res, err := instAction.Run(buildChart(withSampleTemplates()), vals)
 	if err != nil {
@@ -258,7 +258,7 @@ func TestInstallRelease_DryRun(t *testing.T) {
 func TestInstallRelease_DryRun_Lookup(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
-	instAction.DryRun = "true"
+	instAction.DryRun = true
 	vals := map[string]interface{}{}
 
 	mockChart := buildChart(withSampleTemplates())
@@ -278,7 +278,7 @@ func TestInstallRelease_DryRun_Lookup(t *testing.T) {
 func TestInstallReleaseIncorrectTemplate_DryRun(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
-	instAction.DryRun = "true"
+	instAction.DryRun = true
 	vals := map[string]interface{}{}
 	_, err := instAction.Run(buildChart(withSampleIncludingIncorrectTemplates()), vals)
 	expectedErr := "\"hello/templates/incorrect\" at <.Values.bad.doh>: nil pointer evaluating interface {}.doh"
