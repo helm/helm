@@ -267,10 +267,7 @@ func (e Engine) renderWithReferences(tpls, referenceTpls map[string]renderable) 
 		}
 
 		usedValues = usedValues.Union(traverse(t.Lookup(filename).Copy().Root))
-		pv, err := getProvidedValues(vals)
-		if err != nil {
-			return map[string]string{}, err
-		}
+		pv := getProvidedValues(vals)
 		providedValues = providedValues.Union(pv)
 
 		// Work around the issue where Go will emit "<no value>" even if Options(missing=zero)
@@ -495,13 +492,15 @@ func traverse(cur parse.Node) sets.Set[string] {
 	return vars
 }
 
-func getProvidedValues(vals chartutil.Values) (sets.Set[string], error) {
+func getProvidedValues(vals chartutil.Values) sets.Set[string] {
 	v, ok := vals["Values"].(chartutil.Values)
 	if !ok {
-		return nil, fmt.Errorf("luh")
+		// When checking for unused values, if no values are found, we
+		// swallow the error here.
+		return sets.New[string]()
 	}
 	f := flattenMapKeys(".Values", v)
-	return sets.New(f...), nil
+	return sets.New(f...)
 }
 
 // flattenMapKeys turns an interface into a list of variable paths to make it easy to log and
