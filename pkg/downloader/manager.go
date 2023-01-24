@@ -71,10 +71,11 @@ type Manager struct {
 	// SkipUpdate indicates that the repository should not be updated first.
 	SkipUpdate bool
 	// Getter collection for the operation
-	Getters          []getter.Provider
-	RegistryClient   *registry.Client
-	RepositoryConfig string
-	RepositoryCache  string
+	Getters             []getter.Provider
+	RegistryClient      *registry.Client
+	RegistryAliasConfig string
+	RepositoryConfig    string
+	RepositoryCache     string
 
 	// ContentCache is a location where a cache of charts can be stored
 	ContentCache string
@@ -564,11 +565,20 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 	rf, err := loadRepoConfig(m.RepositoryConfig)
 	if err != nil {
 		if errors.Is(err, stdfs.ErrNotExist) {
-			return make(map[string]string), nil
+			rf = repo.NewFile()
+		} else {
+			return nil, err
 		}
-		return nil, err
 	}
-	repos := rf.Repositories
+
+	aliases, err := registry.LoadAliasesFile(m.RegistryAliasConfig)
+	if err != nil {
+		if errors.Is(err, stdfs.ErrNotExist) {
+			aliases = registry.NewAliasesFile()
+		} else {
+			return nil, err
+		}
+	}
 
 	reposMap := make(map[string]string)
 
@@ -593,6 +603,8 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 			continue
 		}
 
+		dd.Repository = aliases.Expand(dd.Repository)
+
 		if registry.IsOCI(dd.Repository) {
 			reposMap[dd.Name] = dd.Repository
 			continue
@@ -600,7 +612,7 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 
 		found := false
 
-		for _, repo := range repos {
+		for _, repo := range rf.Repositories {
 			if (strings.HasPrefix(dd.Repository, "@") && strings.TrimPrefix(dd.Repository, "@") == repo.Name) ||
 				(strings.HasPrefix(dd.Repository, "alias:") && strings.TrimPrefix(dd.Repository, "alias:") == repo.Name) {
 				found = true

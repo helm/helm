@@ -203,15 +203,16 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					err = fmt.Errorf("an error occurred while checking for chart dependencies. You may need to run `helm dependency build` to fetch missing dependencies: %w", err)
 					if client.DependencyUpdate {
 						man := &downloader.Manager{
-							Out:              out,
-							ChartPath:        chartPath,
-							Keyring:          client.Keyring,
-							SkipUpdate:       false,
-							Getters:          p,
-							RepositoryConfig: settings.RepositoryConfig,
-							RepositoryCache:  settings.RepositoryCache,
-							ContentCache:     settings.ContentCache,
-							Debug:            settings.Debug,
+							Out:                 out,
+							ChartPath:           chartPath,
+							Keyring:             client.Keyring,
+							SkipUpdate:          false,
+							Getters:             p,
+							RegistryAliasConfig: settings.RegistryAliasConfig,
+							RepositoryConfig:    settings.RepositoryConfig,
+							RepositoryCache:     settings.RepositoryCache,
+							ContentCache:        settings.ContentCache,
+							Debug:               settings.Debug,
 						}
 						if err := man.Update(); err != nil {
 							return err

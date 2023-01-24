@@ -61,16 +61,17 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 			}
 
 			man := &downloader.Manager{
-				Out:              out,
-				ChartPath:        chartpath,
-				Keyring:          client.Keyring,
-				SkipUpdate:       client.SkipRefresh,
-				Getters:          getter.All(settings),
-				RegistryClient:   registryClient,
-				RepositoryConfig: settings.RepositoryConfig,
-				RepositoryCache:  settings.RepositoryCache,
-				ContentCache:     settings.ContentCache,
-				Debug:            settings.Debug,
+				Out:                 out,
+				ChartPath:           chartpath,
+				Keyring:             client.Keyring,
+				SkipUpdate:          client.SkipRefresh,
+				Getters:             getter.All(settings),
+				RegistryClient:      registryClient,
+				RegistryAliasConfig: settings.RegistryAliasConfig,
+				RepositoryConfig:    settings.RepositoryConfig,
+				RepositoryCache:     settings.RepositoryCache,
+				ContentCache:        settings.ContentCache,
+				Debug:               settings.Debug,
 			}
 			if client.Verify {
 				man.Verify = downloader.VerifyIfPossible
