@@ -285,16 +285,17 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		if err := action.CheckDependencies(chartRequested, req); err != nil {
 			if client.DependencyUpdate {
 				man := &downloader.Manager{
-					Out:              out,
-					ChartPath:        cp,
-					Keyring:          client.Keyring,
-					SkipUpdate:       false,
-					Getters:          p,
-					RepositoryConfig: settings.RepositoryConfig,
-					RepositoryCache:  settings.RepositoryCache,
-					ContentCache:     settings.ContentCache,
-					Debug:            settings.Debug,
-					RegistryClient:   client.GetRegistryClient(),
+					Out:                 out,
+					ChartPath:           cp,
+					Keyring:             client.Keyring,
+					SkipUpdate:          false,
+					Getters:             p,
+					RegistryAliasConfig: settings.RegistryAliasConfig,
+					RepositoryConfig:    settings.RepositoryConfig,
+					RepositoryCache:     settings.RepositoryCache,
+					ContentCache:        settings.ContentCache,
+					Debug:               settings.Debug,
+					RegistryClient:      client.GetRegistryClient(),
 				}
 				if err := man.Update(); err != nil {
 					return nil, err
