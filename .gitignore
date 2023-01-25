@@ -10,3 +10,9 @@ bin/
 vendor/
 # Ignores charts pulled for dependency build tests
 cmd/helm/testdata/testcharts/issue-7233/charts/*
+cmd/helm/testdata/testcharts/chart-with-multi-level-deps/root/charts/*
+cmd/helm/testdata/testcharts/chart-with-multi-level-deps/root/Chart.lock
+cmd/helm/testdata/testcharts/chart-with-multi-level-deps/dep1/charts/*
+cmd/helm/testdata/testcharts/chart-with-multi-level-deps/dep1/Chart.lock
+cmd/helm/testdata/testcharts/chart-with-multi-level-deps/dep2/charts/*
+cmd/helm/testdata/testcharts/chart-with-multi-level-deps/dep2/Chart.lock

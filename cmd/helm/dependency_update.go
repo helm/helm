@@ -71,7 +71,7 @@ func newDependencyUpdateCmd(cfg *action.Configuration, out io.Writer) *cobra.Com
 			if client.Verify {
 				man.Verify = downloader.VerifyAlways
 			}
-			return man.Update()
+			return man.Update(client.BuildOrUpdateRecursive)
 		},
 	}
 
@@ -79,6 +79,7 @@ func newDependencyUpdateCmd(cfg *action.Configuration, out io.Writer) *cobra.Com
 	f.BoolVar(&client.Verify, "verify", false, "verify the packages against signatures")
 	f.StringVar(&client.Keyring, "keyring", defaultKeyring(), "keyring containing public keys")
 	f.BoolVar(&client.SkipRefresh, "skip-refresh", false, "do not refresh the local repository cache")
+	f.BoolVar(&client.BuildOrUpdateRecursive, "recursive", false, "update dependencies recursively")
 
 	return cmd
 }

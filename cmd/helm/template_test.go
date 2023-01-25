@@ -131,6 +131,22 @@ func TestTemplateCmd(t *testing.T) {
 			cmd:    fmt.Sprintf(`template '%s' --skip-tests`, chartPath),
 			golden: "output/template-skip-tests.txt",
 		},
+		{
+			name: "template with dependency update recursive",
+			preCmd: func(t *testing.T) error {
+				// We must reset the chart's dependency to actually
+				// exercise the ability to provision missing nested depencendies.
+				// If we don't do this, the chart will contain the `tgz` files from previous runs
+				// and the `--dependency-update-recursive` flag won't do much.
+				// Note the dependency files for the chart are ignored via .gitignore.
+				return resetChartDependencyState(
+					"testdata/testcharts/chart-with-multi-level-deps/root",
+					true,
+				)
+			},
+			cmd:    fmt.Sprintf(`template '%s' --dependency-update-recursive`, "testdata/testcharts/chart-with-multi-level-deps/root"),
+			golden: "output/template-dependency-update-recursive.txt",
+		},
 	}
 	runTestCmd(t, tests)
 }

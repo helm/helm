@@ -34,10 +34,11 @@ import (
 //
 // It provides the implementation of 'helm dependency' and its respective subcommands.
 type Dependency struct {
-	Verify      bool
-	Keyring     string
-	SkipRefresh bool
-	ColumnWidth uint
+	Verify                 bool
+	Keyring                string
+	SkipRefresh            bool
+	ColumnWidth            uint
+	BuildOrUpdateRecursive bool
 }
 
 // NewDependency creates a new Dependency object with the given configuration.

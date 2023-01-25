@@ -69,28 +69,29 @@ type Install struct {
 
 	ChartPathOptions
 
-	ClientOnly               bool
-	Force                    bool
-	CreateNamespace          bool
-	DryRun                   bool
-	DisableHooks             bool
-	Replace                  bool
-	Wait                     bool
-	WaitForJobs              bool
-	Devel                    bool
-	DependencyUpdate         bool
-	Timeout                  time.Duration
-	Namespace                string
-	ReleaseName              string
-	GenerateName             bool
-	NameTemplate             string
-	Description              string
-	OutputDir                string
-	Atomic                   bool
-	SkipCRDs                 bool
-	SubNotes                 bool
-	DisableOpenAPIValidation bool
-	IncludeCRDs              bool
+	ClientOnly                bool
+	Force                     bool
+	CreateNamespace           bool
+	DryRun                    bool
+	DisableHooks              bool
+	Replace                   bool
+	Wait                      bool
+	WaitForJobs               bool
+	Devel                     bool
+	DependencyUpdate          bool
+	DependencyUpdateRecursive bool
+	Timeout                   time.Duration
+	Namespace                 string
+	ReleaseName               string
+	GenerateName              bool
+	NameTemplate              string
+	Description               string
+	OutputDir                 string
+	Atomic                    bool
+	SkipCRDs                  bool
+	SubNotes                  bool
+	DisableOpenAPIValidation  bool
+	IncludeCRDs               bool
 	// KubeVersion allows specifying a custom kubernetes version to use and
 	// APIVersions allows a manual set of supported API Versions to be passed
 	// (for things like templating). These are ignored if ClientOnly is false

@@ -82,8 +82,8 @@ type Manager struct {
 // If the lockfile is not present, this will run a Manager.Update()
 //
 // If SkipUpdate is set, this will not update the repository.
-func (m *Manager) Build() error {
-	c, err := m.loadChartDir()
+func (m *Manager) Build(recursive bool) error {
+	c, err := m.loadChartDir(m.ChartPath)
 	if err != nil {
 		return err
 	}
@@ -92,7 +92,7 @@ func (m *Manager) Build() error {
 	// an update.
 	lock := c.Lock
 	if lock == nil {
-		return m.Update()
+		return m.Update(recursive)
 	}
 
 	// Check that all of the repos we're dependent on actually exist.
@@ -149,8 +149,30 @@ func (m *Manager) Build() error {
 // It first reads the Chart.yaml file, and then attempts to
 // negotiate versions based on that. It will download the versions
 // from remote chart repositories unless SkipUpdate is true.
-func (m *Manager) Update() error {
-	c, err := m.loadChartDir()
+//
+// If `recursive` is set to true, it will iterate over all dependencies
+// recursively and perform the update.
+func (m *Manager) Update(recursive bool) error {
+	if recursive {
+		depChartPaths, err := m.locateDependencies(m.ChartPath, recursive)
+
+		if err != nil {
+			return err
+		}
+
+		for _, depChartPath := range depChartPaths {
+			if err := m.doUpdate(depChartPath); err != nil {
+				return err
+			}
+		}
+	}
+
+	// for last, update the root chart
+	return m.doUpdate(m.ChartPath)
+}
+
+func (m *Manager) doUpdate(chartPath string) error {
+	c, err := m.loadChartDir(chartPath)
 	if err != nil {
 		return err
 	}
@@ -218,13 +240,13 @@ func (m *Manager) Update() error {
 	return writeLock(m.ChartPath, lock, c.Metadata.APIVersion == chart.APIVersionV1)
 }
 
-func (m *Manager) loadChartDir() (*chart.Chart, error) {
-	if fi, err := os.Stat(m.ChartPath); err != nil {
-		return nil, errors.Wrapf(err, "could not find %s", m.ChartPath)
+func (m *Manager) loadChartDir(chartPath string) (*chart.Chart, error) {
+	if fi, err := os.Stat(chartPath); err != nil {
+		return nil, errors.Wrapf(err, "could not find %s", chartPath)
 	} else if !fi.IsDir() {
 		return nil, errors.New("only unpacked charts can be updated")
 	}
-	return loader.LoadDir(m.ChartPath)
+	return loader.LoadDir(chartPath)
 }
 
 // resolve takes a list of dependencies and translates them into an exact version to download.
@@ -740,6 +762,63 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 	}
 	err = errors.Errorf("chart %s not found in %s: %s", name, repoURL, err)
 	return url, username, password, false, false, "", "", "", err
+}
+
+// LocateDependencies locates the dependencies for the given chart (optionally recursively)
+//
+// The returned list of Chart paths is ordered from "leaf to root" so we can issue updates in
+// the right order when iterating over this list.
+func (m *Manager) locateDependencies(baseChartPath string, resursive bool) ([]string, error) {
+	reversedDeps := []string{}
+
+	baseChart, err := m.loadChartDir(baseChartPath)
+
+	if err != nil {
+		return nil, err
+	}
+
+	for _, chartDependency := range baseChart.Metadata.Dependencies {
+
+		fullDepChartPath := chartDependency.Repository
+		isLocalChart := false
+
+		if strings.HasPrefix(
+			chartDependency.Repository,
+			"file://",
+		) {
+			isLocalChart = true
+
+			fullDepChartPath, err = filepath.Abs(
+				fmt.Sprintf(
+					"%s/%s",
+					baseChartPath, chartDependency.Repository[7:]), // removes "file://"
+			)
+
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		reversedDeps = append(
+			[]string{fullDepChartPath},
+			reversedDeps...,
+		)
+
+		if resursive && isLocalChart {
+			subDeps, err := m.locateDependencies(fullDepChartPath, resursive)
+
+			if err != nil {
+				return nil, err
+			}
+
+			reversedDeps = append(
+				subDeps,
+				reversedDeps...,
+			)
+		}
+	}
+
+	return reversedDeps, nil
 }
 
 // findEntryByName finds an entry in the chart repository whose name matches the given name.

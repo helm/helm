@@ -96,7 +96,7 @@ func newPackageCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 						RepositoryCache:  settings.RepositoryCache,
 					}
 
-					if err := downloadManager.Update(); err != nil {
+					if err := downloadManager.Update(client.DependencyUpdateRecursive); err != nil {
 						return err
 					}
 				}
@@ -119,6 +119,7 @@ func newPackageCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.StringVar(&client.AppVersion, "app-version", "", "set the appVersion on the chart to this version")
 	f.StringVarP(&client.Destination, "destination", "d", ".", "location to write the chart.")
 	f.BoolVarP(&client.DependencyUpdate, "dependency-update", "u", false, `update dependencies from "Chart.yaml" to dir "charts/" before packaging`)
+	f.BoolVarP(&client.DependencyUpdateRecursive, "dependency-update-recursive", "r", false, `update dependencies recursively from from "Chart.yaml" and all of its subcharts before packaging`)
 
 	return cmd
 }

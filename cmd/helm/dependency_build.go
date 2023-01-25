@@ -68,7 +68,7 @@ func newDependencyBuildCmd(cfg *action.Configuration, out io.Writer) *cobra.Comm
 			if client.Verify {
 				man.Verify = downloader.VerifyIfPossible
 			}
-			err := man.Build()
+			err := man.Build(client.BuildOrUpdateRecursive)
 			if e, ok := err.(downloader.ErrRepoNotFound); ok {
 				return fmt.Errorf("%s. Please add the missing repos via 'helm repo add'", e.Error())
 			}
@@ -80,6 +80,7 @@ func newDependencyBuildCmd(cfg *action.Configuration, out io.Writer) *cobra.Comm
 	f.BoolVar(&client.Verify, "verify", false, "verify the packages against signatures")
 	f.StringVar(&client.Keyring, "keyring", defaultKeyring(), "keyring containing public keys")
 	f.BoolVar(&client.SkipRefresh, "skip-refresh", false, "do not refresh the local repository cache")
+	f.BoolVar(&client.BuildOrUpdateRecursive, "recursive", false, "build dependencies recursively")
 
 	return cmd
 }

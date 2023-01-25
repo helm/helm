@@ -321,12 +321,12 @@ func TestUpdateBeforeBuild(t *testing.T) {
 	}
 
 	// Update before Build. see issue: https://github.com/helm/helm/issues/7101
-	err = m.Update()
+	err = m.Update(false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = m.Build()
+	err = m.Build(false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -396,7 +396,7 @@ func TestUpdateWithNoRepo(t *testing.T) {
 	}
 
 	// Test the update
-	err = m.Update()
+	err = m.Update(false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -461,13 +461,13 @@ func checkBuildWithOptionalFields(t *testing.T, chartName string, dep chart.Depe
 	}
 
 	// First build will update dependencies and create Chart.lock file.
-	err = m.Build()
+	err = m.Build(false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Second build should be passed. See PR #6655.
-	err = m.Build()
+	err = m.Build(false)
 	if err != nil {
 		t.Fatal(err)
 	}
