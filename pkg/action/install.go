@@ -204,13 +204,12 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		return nil, err
 	}
 
-	// determine dry run behavior
+	// Determine dry run behavior
 	if i.DryRun || i.DryRunOption == "client" || i.DryRunOption == "server" || i.DryRunOption == "true" {
 		i.DryRun = true
 	}
 
 	var interactWithRemote bool
-	//  `helm template` is the only command that Install.APIVersions field will not be nil.
 	if !i.DryRun || i.DryRunOption == "server" {
 		interactWithRemote = true
 	}

@@ -141,7 +141,7 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 		return nil, errors.Errorf("release name is invalid: %s", name)
 	}
 
-	// determine dry run behavior
+	// Determine dry run behavior
 	if u.DryRun || u.DryRunOption == "client" || u.DryRunOption == "server" || u.DryRunOption == "true" {
 		u.DryRun = true
 	}
@@ -239,7 +239,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		return nil, nil, err
 	}
 
-	// determine whether or not to interact with remote
+	// Determine whether or not to interact with remote
 	var interactWithRemote bool
 	if !u.DryRun || u.DryRunOption == "server" {
 		interactWithRemote = true

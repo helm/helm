@@ -139,7 +139,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			// validate dry-run flag value is one of the allowed values
+			// Validate dry-run flag value is one of the allowed values
 			if err := validateDryRunOptionFlag(client.DryRunOption); err != nil {
 				return err
 			}
