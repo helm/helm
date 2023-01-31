@@ -108,19 +108,21 @@ func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 	}
 
 	for _, h := range rel.Hooks {
-		for _, e := range h.Events {
-			if e == release.HookTest {
-				req := client.CoreV1().Pods(r.Namespace).GetLogs(h.Name, &v1.PodLogOptions{})
-				logReader, err := req.Stream(context.Background())
-				if err != nil {
-					return errors.Wrapf(err, "unable to get pod logs for %s", h.Name)
-				}
+		if h.Kind == "Pod" {
+			for _, e := range h.Events {
+				if e == release.HookTest {
+					req := client.CoreV1().Pods(r.Namespace).GetLogs(h.Name, &v1.PodLogOptions{})
+					logReader, err := req.Stream(context.Background())
+					if err != nil {
+						return errors.Wrapf(err, "unable to get pod logs for %s", h.Name)
+					}
 
-				fmt.Fprintf(out, "POD LOGS: %s\n", h.Name)
-				_, err = io.Copy(out, logReader)
-				fmt.Fprintln(out)
-				if err != nil {
-					return errors.Wrapf(err, "unable to write pod logs for %s", h.Name)
+					fmt.Fprintf(out, "POD LOGS: %s\n", h.Name)
+					_, err = io.Copy(out, logReader)
+					fmt.Fprintln(out)
+					if err != nil {
+						return errors.Wrapf(err, "unable to write pod logs for %s", h.Name)
+					}
 				}
 			}
 		}
