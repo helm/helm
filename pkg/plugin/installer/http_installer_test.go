@@ -348,3 +348,38 @@ func TestMediaTypeToExtension(t *testing.T) {
 		}
 	}
 }
+
+func TestHttpInstallerPath(t *testing.T) {
+	tests := []struct {
+		source         string
+		pluginName     string
+		helmPluginsDir string
+		expectPath     string
+	}{
+		{
+			source:         "",
+			pluginName:     "not-used",
+			helmPluginsDir: "/helm/data/plugins",
+			expectPath:     "",
+		}, {
+			source:         "https://github.com/jkroepke/helm-secrets",
+			pluginName:     "helm-http-plugin",
+			helmPluginsDir: "/helm/data/plugins",
+			expectPath:     "/helm/data/plugins/helm-http-plugin",
+		},
+	}
+
+	for _, tt := range tests {
+
+		os.Setenv("HELM_PLUGINS", tt.helmPluginsDir)
+		ins := &HTTPInstaller{
+			PluginName: tt.pluginName,
+			base:       newBase(tt.source),
+		}
+		insPath := ins.Path()
+		if insPath != tt.expectPath {
+			t.Errorf("expected name %s, got %s", tt.expectPath, insPath)
+		}
+		os.Unsetenv("HELM_PLUGINS")
+	}
+}
