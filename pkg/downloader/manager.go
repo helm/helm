@@ -137,12 +137,12 @@ func (m *Manager) Build() error {
 	}
 
 	if !m.SkipUpdate {
-		// For each repo in the file, update the cached copy of that repo
 		if !m.OptimizedUpdate {
 			if err := m.UpdateRepositories(); err != nil {
 				return err
 			}
 		} else {
+			// For each repo in the file, update the cached copy of that repo
 			if err := m.UpdateRepositoriesInChart(c); err != nil {
 				return err
 			}
@@ -194,12 +194,12 @@ func (m *Manager) Update() error {
 	// For each of the repositories Helm is configured to know about, update
 	// the index information locally.
 	if !m.SkipUpdate {
-		// For each repo in the file, update the cached copy of that repo
 		if !m.OptimizedUpdate {
 			if err := m.UpdateRepositories(); err != nil {
 				return err
 			}
 		} else {
+			// For each repo in the file, update the cached copy of that repo
 			if err := m.UpdateRepositoriesInChart(c); err != nil {
 				return err
 			}
@@ -672,7 +672,7 @@ func (m *Manager) UpdateRepositories() error {
 	return nil
 }
 
-// UpdateRepositories updates only the local repos in the chart.yaml to the latest.
+// UpdateRepositoriesInChart updates only the local repos in the chart.yaml to the latest.
 func (m *Manager) UpdateRepositoriesInChart(c *chart.Chart) error {
 	rf, err := loadRepoConfig(m.RepositoryConfig)
 	if err != nil {
