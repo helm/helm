@@ -4,7 +4,6 @@ run:
 linters:
   disable-all: true
   enable:
-    - deadcode
     - dupl
     - gofmt
     - goimports
@@ -15,7 +14,6 @@ linters:
     - nakedret
     - revive
     - unused
-    - varcheck
     - staticcheck
 
 linters-settings:
