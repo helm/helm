@@ -71,6 +71,8 @@ type Manager struct {
 	Keyring string
 	// SkipUpdate indicates that the repository should not be updated first.
 	SkipUpdate bool
+	// Update repos only in the chart.yaml
+	OptimizedUpdate bool
 	// Getter collection for the operation
 	Getters          []getter.Provider
 	RegistryClient   *registry.Client
@@ -136,9 +138,16 @@ func (m *Manager) Build() error {
 
 	if !m.SkipUpdate {
 		// For each repo in the file, update the cached copy of that repo
-		if err := m.UpdateRepositories(c); err != nil {
-			return err
+		if !m.OptimizedUpdate {
+			if err := m.UpdateRepositories(); err != nil {
+				return err
+			}
+		} else {
+			if err := m.UpdateRepositoriesInChart(c); err != nil {
+				return err
+			}
 		}
+
 	}
 
 	// Now we need to fetch every package here into charts/
@@ -185,9 +194,17 @@ func (m *Manager) Update() error {
 	// For each of the repositories Helm is configured to know about, update
 	// the index information locally.
 	if !m.SkipUpdate {
-		if err := m.UpdateRepositories(c); err != nil {
-			return err
+		// For each repo in the file, update the cached copy of that repo
+		if !m.OptimizedUpdate {
+			if err := m.UpdateRepositories(); err != nil {
+				return err
+			}
+		} else {
+			if err := m.UpdateRepositoriesInChart(c); err != nil {
+				return err
+			}
 		}
+
 	}
 
 	// Now we need to find out which version of a chart best satisfies the
@@ -643,7 +660,20 @@ repository, use "https://charts.example.com/" or "@example" instead of
 }
 
 // UpdateRepositories updates all of the local repos to the latest.
-func (m *Manager) UpdateRepositories(c *chart.Chart) error {
+func (m *Manager) UpdateRepositories() error {
+	rf, err := loadRepoConfig(m.RepositoryConfig)
+	if err != nil {
+		return err
+	}
+	repos := rf.Repositories
+	if err := m.parallelRepoUpdate(repos); err != nil {
+		return err
+	}
+	return nil
+}
+
+// UpdateRepositories updates only the local repos in the chart.yaml to the latest.
+func (m *Manager) UpdateRepositoriesInChart(c *chart.Chart) error {
 	rf, err := loadRepoConfig(m.RepositoryConfig)
 	if err != nil {
 		return err
@@ -660,18 +690,18 @@ func (m *Manager) UpdateRepositories(c *chart.Chart) error {
 			repos = append(repos, e)
 		}
 	}
-	if len(repos) > 0 {
-		fmt.Fprintln(m.Out, "Hang tight while we grab the latest from your chart repositories...")
-		// This prints warnings straight to out.
-		if err := m.parallelRepoUpdate(repos); err != nil {
-			return err
-		}
-		fmt.Fprintln(m.Out, "Update Complete. ⎈Happy Helming!⎈")
+	if err := m.parallelRepoUpdate(repos); err != nil {
+		return err
 	}
 	return nil
 }
 
 func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
+	if len(repos) <= 0 {
+		return nil
+	}
+	fmt.Fprintln(m.Out, "Hang tight while we grab the latest from your chart repositories...")
+	// This prints warnings straight to out.
 
 	var wg sync.WaitGroup
 	for _, c := range repos {
@@ -703,6 +733,7 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 	}
 	wg.Wait()
 
+	fmt.Fprintln(m.Out, "Update Complete. ⎈Happy Helming!⎈")
 	return nil
 }
 

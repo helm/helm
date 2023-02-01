@@ -67,6 +67,7 @@ func newDependencyUpdateCmd(cfg *action.Configuration, out io.Writer) *cobra.Com
 				RepositoryConfig: settings.RepositoryConfig,
 				RepositoryCache:  settings.RepositoryCache,
 				Debug:            settings.Debug,
+				OptimizedUpdate:  client.OptimizedUpdate,
 			}
 			if client.Verify {
 				man.Verify = downloader.VerifyAlways
@@ -79,6 +80,7 @@ func newDependencyUpdateCmd(cfg *action.Configuration, out io.Writer) *cobra.Com
 	f.BoolVar(&client.Verify, "verify", false, "verify the packages against signatures")
 	f.StringVar(&client.Keyring, "keyring", defaultKeyring(), "keyring containing public keys")
 	f.BoolVar(&client.SkipRefresh, "skip-refresh", false, "do not refresh the local repository cache")
+	f.BoolVar(&client.OptimizedUpdate, "optimized-update", false, "Refresh only the repos in chart.yaml")
 
 	return cmd
 }

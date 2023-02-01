@@ -618,6 +618,7 @@ func TestUpdateOnlyRequiredRepos(t *testing.T) {
 		Getters:          g,
 		RepositoryConfig: dir("repositories.yaml"),
 		RepositoryCache:  dir(),
+		OptimizedUpdate:  true,
 	}
 
 	err = m.Update()
