@@ -378,6 +378,22 @@ func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, t
 			return
 		}
 	}
+	
+	if !i.Wait && !i.DisableHooks {
+		// Check if there are any post-* hooks
+		hasPostHooks := false
+		for _, hook := range release.Hooks {
+			if strings.HasPrefix(hook.Kind, "post-") {
+				hasPostHooks = true
+				break
+			}
+		}
+
+		// Enable wait flag if there are post-* hooks
+		if hasPostHooks {
+			i.Wait = true
+		}
+	}
 
 	if i.Wait {
 		if i.WaitForJobs {
@@ -399,6 +415,7 @@ func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, t
 			return
 		}
 	}
+
 
 	if len(i.Description) > 0 {
 		rel.SetStatus(release.StatusDeployed, i.Description)
