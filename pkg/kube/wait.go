@@ -32,6 +32,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/cli-runtime/pkg/resource"
 
 	"k8s.io/apimachinery/pkg/util/wait"
 )
@@ -42,23 +43,55 @@ type waiter struct {
 	log     func(string, ...interface{})
 }
 
-// waitForResources polls to get the current status of all pods, PVCs, Services and
-// Jobs(optional) until all are ready or a timeout is reached
-func (w *waiter) waitForResources(created ResourceList) error {
-	w.log("beginning wait for %d resources with timeout of %v", len(created), w.timeout)
+// Jobs(optional) until all are ready or a timeout is reached.
+// If an error is encountered when checking on the status of a resource then retries
+// will be performed subject to the given maximum number of retries
+func (w *waiter) waitForResources(created ResourceList, waitRetries int) error {
+	w.log("beginning wait for %d resources with timeout of %v, maximum retries %d", len(created), w.timeout, waitRetries)
 
 	ctx, cancel := context.WithTimeout(context.Background(), w.timeout)
 	defer cancel()
 
+	numberOfErrors := make([]int, len(created))
+	for i := range numberOfErrors {
+		numberOfErrors[i] = 0
+	}
+
 	return wait.PollUntilContextCancel(ctx, 2*time.Second, true, func(ctx context.Context) (bool, error) {
-		for _, v := range created {
+		for i, v := range created {
 			ready, err := w.c.IsReady(ctx, v)
-			if !ready || err != nil {
+
+			if waitRetries > 0 && w.isRetryableError(err, v) {
+				numberOfErrors[i]++
+				if numberOfErrors[i] > waitRetries {
+					w.log("Max number of retries reached")
+					return false, err
+				}
+				w.log("Retrying as current number of retries %d less than max number of retries %d", numberOfErrors[i]-1, waitRetries)
+				return false, nil
+			}
+			numberOfErrors[i] = 0
+			if !ready {
 				return false, err
 			}
 		}
 		return true, nil
 	})
+}
+
+func (w *waiter) isRetryableError(err error, resource *resource.Info) bool {
+	if err == nil {
+		return false
+	}
+	w.log("Error received when checking status of resource %s. Error: '%s', Resource details: '%s'", resource.Name, err, resource)
+	if ev, ok := err.(*apierrors.StatusError); ok {
+		statusCode := ev.Status().Code
+		retryable := statusCode >= 500
+		w.log("Status code received: %d. Retryable error? %t", statusCode, retryable)
+		return retryable
+	}
+	w.log("Retryable error? %t", true)
+	return true
 }
 
 // waitForDeletedResources polls to check if all the resources are deleted or a timeout is reached

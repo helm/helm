@@ -62,7 +62,17 @@ func (p *PrintingKubeClient) Wait(resources kube.ResourceList, _ time.Duration) 
 	return err
 }
 
+func (p *PrintingKubeClient) WaitWithRetry(resources kube.ResourceList, _ time.Duration, _ int) error {
+	_, err := io.Copy(p.Out, bufferize(resources))
+	return err
+}
+
 func (p *PrintingKubeClient) WaitWithJobs(resources kube.ResourceList, _ time.Duration) error {
+	_, err := io.Copy(p.Out, bufferize(resources))
+	return err
+}
+
+func (p *PrintingKubeClient) WaitWithJobsWithRetry(resources kube.ResourceList, _ time.Duration, _ int) error {
 	_, err := io.Copy(p.Out, bufferize(resources))
 	return err
 }
