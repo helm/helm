@@ -432,7 +432,9 @@ func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, t
 		}
 	}
 
-	if i.Wait {
+	waitBeforePostHooks := !i.DisableHooks && i.cfg.hasPostInstallHooks(rel) || i.cfg.hasPostUpgradeHooks(rel)
+
+	if i.Wait || waitBeforePostHooks {
 		if i.WaitForJobs {
 			if err := i.cfg.KubeClient.WaitWithJobs(resources, i.Timeout); err != nil {
 				i.reportToRun(c, rel, err)
