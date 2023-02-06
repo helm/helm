@@ -43,6 +43,15 @@ func releaseStub(name string, vers int, namespace string, status rspb.Status) *r
 	}
 }
 
+func releaseStubWithDescription(name string, vers int, namespace string, status rspb.Status, description []byte) *rspb.Release {
+	return &rspb.Release{
+		Name:      name,
+		Version:   vers,
+		Namespace: namespace,
+		Info:      &rspb.Info{Status: status, Description: string(description)},
+	}
+}
+
 func testKey(name string, vers int) string {
 	return fmt.Sprintf("%s.v%d", name, vers)
 }
@@ -185,11 +194,13 @@ func (mock *MockSecretsInterface) Init(t *testing.T, releases ...*rspb.Release) 
 	for _, rls := range releases {
 		objkey := testKey(rls.Name, rls.Version)
 
-		secret, err := newSecretsObject(objkey, rls, nil)
+		secrets, err := newSecretObjects(objkey, rls, nil)
 		if err != nil {
 			t.Fatalf("Failed to create secret: %s", err)
 		}
-		mock.objects[objkey] = secret
+		for _, obj := range secrets {
+			mock.objects[obj.ObjectMeta.Name] = obj
+		}
 	}
 }
 

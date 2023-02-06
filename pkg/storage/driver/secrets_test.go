@@ -16,6 +16,7 @@ package driver
 import (
 	"encoding/base64"
 	"encoding/json"
+	"os"
 	"reflect"
 	"testing"
 
@@ -23,6 +24,8 @@ import (
 
 	rspb "helm.sh/helm/v3/pkg/release"
 )
+
+var LargeText, _ = os.ReadFile("test_large.txt")
 
 func TestSecretName(t *testing.T) {
 	c := newTestFixtureSecrets(t)
@@ -59,10 +62,11 @@ func TestUNcompressedSecretGet(t *testing.T) {
 	rel := releaseStub(name, vers, namespace, rspb.StatusDeployed)
 
 	// Create a test fixture which contains an uncompressed release
-	secret, err := newSecretsObject(key, rel, nil)
+	secretList, err := newSecretObjects(key, rel, nil)
 	if err != nil {
 		t.Fatalf("Failed to create secret: %s", err)
 	}
+	secret := secretList[0]
 	b, err := json.Marshal(rel)
 	if err != nil {
 		t.Fatalf("Failed to marshal release: %s", err)
@@ -237,5 +241,252 @@ func TestSecretDelete(t *testing.T) {
 	_, err = secrets.Get(key)
 	if !reflect.DeepEqual(ErrReleaseNotFound, err) {
 		t.Errorf("Expected {%v}, got {%v}", ErrReleaseNotFound, err)
+	}
+}
+
+func TestSecretGetLarge(t *testing.T) {
+	vers := 1
+	name := "large-pigeon"
+	namespace := "default"
+	key := testKey(name, vers)
+	rel := releaseStubWithDescription(name, vers, namespace, rspb.StatusDeployed, LargeText)
+
+	secrets := newTestFixtureSecrets(t, []*rspb.Release{rel}...)
+
+	// get release with key
+	got, err := secrets.Get(key)
+	if err != nil {
+		t.Fatalf("Failed to get release: %s", err)
+	}
+	// compare fetched release with original
+	if !reflect.DeepEqual(rel, got) {
+		t.Errorf("Expected {%v}, got {%v}", rel, got)
+	}
+}
+
+func TestSecretListLarge(t *testing.T) {
+	secrets := newTestFixtureSecrets(t, []*rspb.Release{
+		releaseStubWithDescription("key-1", 1, "default", rspb.StatusUninstalled, LargeText),
+		releaseStubWithDescription("key-2", 1, "default", rspb.StatusUninstalled, LargeText),
+		releaseStubWithDescription("key-3", 1, "default", rspb.StatusDeployed, LargeText),
+		releaseStubWithDescription("key-4", 1, "default", rspb.StatusDeployed, LargeText),
+		releaseStubWithDescription("key-5", 1, "default", rspb.StatusSuperseded, LargeText),
+		releaseStubWithDescription("key-6", 1, "default", rspb.StatusSuperseded, LargeText),
+	}...)
+
+	// list all deleted releases
+	del, err := secrets.List(func(rel *rspb.Release) bool {
+		return rel.Info.Status == rspb.StatusUninstalled
+	})
+	// check
+	if err != nil {
+		t.Errorf("Failed to list deleted: %s", err)
+	}
+	if len(del) != 2 {
+		t.Errorf("Expected 2 deleted, got %d:\n%v\n", len(del), del)
+	}
+
+	// list all deployed releases
+	dpl, err := secrets.List(func(rel *rspb.Release) bool {
+		return rel.Info.Status == rspb.StatusDeployed
+	})
+	// check
+	if err != nil {
+		t.Errorf("Failed to list deployed: %s", err)
+	}
+	if len(dpl) != 2 {
+		t.Errorf("Expected 2 deployed, got %d", len(dpl))
+	}
+
+	// list all superseded releases
+	ssd, err := secrets.List(func(rel *rspb.Release) bool {
+		return rel.Info.Status == rspb.StatusSuperseded
+	})
+	// check
+	if err != nil {
+		t.Errorf("Failed to list superseded: %s", err)
+	}
+	if len(ssd) != 2 {
+		t.Errorf("Expected 2 superseded, got %d", len(ssd))
+	}
+}
+
+func TestSecretQueryLarge(t *testing.T) {
+	secrets := newTestFixtureSecrets(t, []*rspb.Release{
+		releaseStubWithDescription("key-1", 1, "default", rspb.StatusUninstalled, LargeText),
+		releaseStubWithDescription("key-2", 1, "default", rspb.StatusUninstalled, LargeText),
+		releaseStubWithDescription("key-3", 1, "default", rspb.StatusDeployed, LargeText),
+		releaseStubWithDescription("key-4", 1, "default", rspb.StatusDeployed, LargeText),
+		releaseStubWithDescription("key-5", 1, "default", rspb.StatusSuperseded, LargeText),
+		releaseStubWithDescription("key-6", 1, "default", rspb.StatusSuperseded, LargeText),
+	}...)
+
+	// query all deployed releases
+	rls, err := secrets.Query(map[string]string{"status": "deployed"})
+	if err != nil {
+		t.Fatalf("Failed to query: %s", err)
+	}
+	// check
+	if len(rls) != 2 {
+		t.Fatalf("Expected 2 results, actual %d", len(rls))
+	}
+
+	// query a release that doesn't exist
+	_, err = secrets.Query(map[string]string{"name": "notExist"})
+	// check
+	if err != ErrReleaseNotFound {
+		t.Errorf("Expected {%v}, got {%v}", ErrReleaseNotFound, err)
+	}
+}
+
+func TestSecretCreateLarge(t *testing.T) {
+	secrets := newTestFixtureSecrets(t)
+
+	vers := 1
+	name := "large-pigeon"
+	namespace := "default"
+	key := testKey(name, vers)
+	rel := releaseStubWithDescription(name, vers, namespace, rspb.StatusDeployed, LargeText)
+
+	// store the release
+	if err := secrets.Create(key, rel); err != nil {
+		t.Fatalf("Failed to create release with key %q: %s", key, err)
+	}
+
+	// get the release back
+	got, err := secrets.Get(key)
+	if err != nil {
+		t.Fatalf("Failed to get release with key %q: %s", key, err)
+	}
+
+	// compare created release with original
+	if !reflect.DeepEqual(rel, got) {
+		t.Errorf("Expected {%v}, got {%v}", rel, got)
+	}
+}
+
+func TestSecretUpdateLargeToLarge(t *testing.T) {
+	vers := 1
+	name := "large-pigeon"
+	namespace := "default"
+	key := testKey(name, vers)
+	rel := releaseStubWithDescription(name, vers, namespace, rspb.StatusDeployed, LargeText)
+
+	secrets := newTestFixtureSecrets(t, []*rspb.Release{rel}...)
+
+	// modify release status code
+	rel.Info.Status = rspb.StatusSuperseded
+
+	// perform the update
+	if err := secrets.Update(key, rel); err != nil {
+		t.Fatalf("Failed to update release: %s", err)
+	}
+
+	// fetch the updated release
+	got, err := secrets.Get(key)
+	if err != nil {
+		t.Fatalf("Failed to get release with key %q: %s", key, err)
+	}
+
+	// check release has actually been updated by comparing modified fields
+	if rel.Info.Status != got.Info.Status {
+		t.Errorf("Expected status %s, got status %s", rel.Info.Status.String(), got.Info.Status.String())
+	}
+}
+
+func TestSecretUpdateLargeToSmall(t *testing.T) {
+	vers := 1
+	name := "large-pigeon"
+	namespace := "default"
+	key := testKey(name, vers)
+	rel := releaseStubWithDescription(name, vers, namespace, rspb.StatusDeployed, LargeText)
+
+	secrets := newTestFixtureSecrets(t, []*rspb.Release{rel}...)
+
+	// modify release description
+	rel.Info.Description = ""
+
+	// perform the update
+	if err := secrets.Update(key, rel); err != nil {
+		t.Fatalf("Failed to update release: %s", err)
+	}
+
+	// fetch the updated release
+	got, err := secrets.Get(key)
+	if err != nil {
+		t.Fatalf("Failed to get release with key %q: %s", key, err)
+	}
+
+	// check release has actually been updated by comparing modified fields
+	if rel.Info.Description != got.Info.Description {
+		t.Error("Expected empty description, got non-empty")
+	}
+
+	// check that there aren't any partials
+	if secretCount := len(secrets.impl.(*MockSecretsInterface).objects); secretCount != 1 {
+		t.Errorf("Expected a single secret, found {%d}", secretCount)
+	}
+}
+
+func TestSecretUpdateSmallToLarge(t *testing.T) {
+	vers := 1
+	name := "large-pigeon"
+	namespace := "default"
+	key := testKey(name, vers)
+	rel := releaseStub(name, vers, namespace, rspb.StatusDeployed)
+
+	secrets := newTestFixtureSecrets(t, []*rspb.Release{rel}...)
+
+	// modify release description
+	rel.Info.Description = string(LargeText)
+
+	// perform the update
+	if err := secrets.Update(key, rel); err != nil {
+		t.Fatalf("Failed to update release: %s", err)
+	}
+
+	// fetch the updated release
+	got, err := secrets.Get(key)
+	if err != nil {
+		t.Fatalf("Failed to get release with key %q: %s", key, err)
+	}
+
+	// check release has actually been updated by comparing modified fields
+	if rel.Info.Description != got.Info.Description {
+		t.Error("Expected same description, got different")
+	}
+
+	// check that there are partials
+	if secretCount := len(secrets.impl.(*MockSecretsInterface).objects); secretCount < 2 {
+		t.Errorf("Expected more than one secret, found {%d}", secretCount)
+	}
+}
+
+func TestSecretDeleteLarge(t *testing.T) {
+	vers := 1
+	name := "large-pigeon"
+	namespace := "default"
+	key := testKey(name, vers)
+	rel := releaseStubWithDescription(name, vers, namespace, rspb.StatusDeployed, LargeText)
+
+	secrets := newTestFixtureSecrets(t, []*rspb.Release{rel}...)
+
+	// perform the delete
+	rls, err := secrets.Delete(key)
+	if err != nil {
+		t.Fatalf("Failed to delete release with key %q: %s", key, err)
+	}
+	if !reflect.DeepEqual(rel, rls) {
+		t.Errorf("Expected {%v}, got {%v}", rel, rls)
+	}
+
+	// fetch the deleted release
+	_, err = secrets.Get(key)
+	if !reflect.DeepEqual(ErrReleaseNotFound, err) {
+		t.Errorf("Expected {%v}, got {%v}", ErrReleaseNotFound, err)
+	}
+	// Check that there's no leftover partial secrets
+	for key, _ := range secrets.impl.(*MockSecretsInterface).objects {
+		t.Errorf("Expected no extra secret, found {%s}", key)
 	}
 }
