@@ -286,6 +286,9 @@ func (secrets *Secrets) Delete(key string) (rls *rspb.Release, err error) {
 
 	// fetch main release object
 	obj, err := secrets.impl.Get(context.Background(), key, metav1.GetOptions{})
+	if err != nil {
+		return nil, errors.Wrapf(err, "delete: failed to get release %q", key)
+	}
 
 	// don't use _FetchReleaseData as we only need the keys, not the data
 	// fetch all keys that need to be deleted
@@ -396,7 +399,7 @@ func newSecretObjects(key string, rls *rspb.Release, lbs labels) ([]*v1.Secret, 
 	}
 
 	// build the reference to the next chunk
-	var currentChunkIndex int = 1
+	var currentChunkIndex = 1
 	currentChunkKey := makePartialKey(rls.Name, rls.Version, currentChunkIndex)
 
 	// add the continuedIn field
@@ -407,8 +410,8 @@ func newSecretObjects(key string, rls *rspb.Release, lbs labels) ([]*v1.Secret, 
 
 	// prepare to split
 	// use a window defined by idxStart:idxStop
-	var idxStart int = 0
-	var idxStop int = SizeCutoff
+	var idxStart int
+	var idxStop = SizeCutoff
 	for idxStop != len(releaseBytes) {
 		// shift window
 		idxStart += SizeCutoff
@@ -431,7 +434,7 @@ func newSecretObjects(key string, rls *rspb.Release, lbs labels) ([]*v1.Secret, 
 		}
 		// check if we'll need another partial chunk
 		if idxStop != len(releaseBytes) {
-			currentChunkIndex += 1                                                     // increment current chunk
+			currentChunkIndex++                                                   // increment current chunk
 			currentChunkKey = makePartialKey(rls.Name, rls.Version, currentChunkIndex) // make key for the next chunk
 			currentSecret.ObjectMeta.Labels["continuedIn"] = currentChunkKey           // store reference to it
 		}
