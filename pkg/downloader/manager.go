@@ -154,7 +154,7 @@ func (m *Manager) Build(recursive bool) error {
 // recursively and perform the update.
 func (m *Manager) Update(recursive bool) error {
 	if recursive {
-		depChartPaths, err := m.locateDependencies(m.ChartPath, recursive)
+		depChartPaths, err := m.locateLocalDependencies(m.ChartPath, recursive)
 
 		if err != nil {
 			return err
@@ -764,11 +764,11 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 	return url, username, password, false, false, "", "", "", err
 }
 
-// LocateDependencies locates the dependencies for the given chart (optionally recursively)
+// locateLocalDependencies locates local dependencies for the given chart (optionally recursively)
 //
 // The returned list of Chart paths is ordered from "leaf to root" so we can issue updates in
 // the right order when iterating over this list.
-func (m *Manager) locateDependencies(baseChartPath string, resursive bool) ([]string, error) {
+func (m *Manager) locateLocalDependencies(baseChartPath string, resursive bool) ([]string, error) {
 	reversedDeps := []string{}
 
 	baseChart, err := m.loadChartDir(baseChartPath)
@@ -780,13 +780,11 @@ func (m *Manager) locateDependencies(baseChartPath string, resursive bool) ([]st
 	for _, chartDependency := range baseChart.Metadata.Dependencies {
 
 		fullDepChartPath := chartDependency.Repository
-		isLocalChart := false
 
 		if strings.HasPrefix(
 			chartDependency.Repository,
 			"file://",
 		) {
-			isLocalChart = true
 
 			fullDepChartPath, err = filepath.Abs(
 				fmt.Sprintf(
@@ -797,15 +795,15 @@ func (m *Manager) locateDependencies(baseChartPath string, resursive bool) ([]st
 			if err != nil {
 				return nil, err
 			}
+
+			reversedDeps = append(
+				[]string{fullDepChartPath},
+				reversedDeps...,
+			)
 		}
 
-		reversedDeps = append(
-			[]string{fullDepChartPath},
-			reversedDeps...,
-		)
-
-		if resursive && isLocalChart {
-			subDeps, err := m.locateDependencies(fullDepChartPath, resursive)
+		if resursive {
+			subDeps, err := m.locateLocalDependencies(fullDepChartPath, resursive)
 
 			if err != nil {
 				return nil, err
