@@ -67,6 +67,10 @@ You can reach the Helm community and developers via the following channels:
   - [Helm Mailing List](https://lists.cncf.io/g/cncf-helm)
 - Developer Call: Thursdays at 9:30-10:00 Pacific ([meeting details](https://github.com/helm/community/blob/master/communication.md#meetings))
 
+### Contribution
+
+If you're interested in contributing, please refer to [CONTRIBUTING.md](CONTRIBUTING.md) **before submitting a pull request**.
+
 ### Code of conduct
 
 Participation in the Helm community is governed by the [Code of Conduct](code-of-conduct.md).
