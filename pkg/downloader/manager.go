@@ -270,7 +270,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 
 	fmt.Fprintf(m.Out, "Saving %d charts\n", len(deps))
 	var saveError error
-	churls := make(map[string]struct{})
+	var depsToDownload []*chart.Dependency
 	for _, dep := range deps {
 		// No repository means the chart is in charts directory
 		if dep.Repository == "" {
@@ -310,56 +310,70 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			dep.Version = ver
 			continue
 		}
-
-		// Any failure to resolve/download a chart should fail:
-		// https://github.com/helm/helm/issues/1439
-		churl, username, password, insecureskiptlsverify, passcredentialsall, caFile, certFile, keyFile, err := m.findChartURL(dep.Name, dep.Version, dep.Repository, repos)
-		if err != nil {
-			saveError = errors.Wrapf(err, "could not find %s", churl)
-			break
-		}
-
-		if _, ok := churls[churl]; ok {
-			fmt.Fprintf(m.Out, "Already downloaded %s from repo %s\n", dep.Name, dep.Repository)
-			continue
-		}
-
-		fmt.Fprintf(m.Out, "Downloading %s from repo %s\n", dep.Name, dep.Repository)
-
-		dl := ChartDownloader{
-			Out:              m.Out,
-			Verify:           m.Verify,
-			Keyring:          m.Keyring,
-			RepositoryConfig: m.RepositoryConfig,
-			RepositoryCache:  m.RepositoryCache,
-			RegistryClient:   m.RegistryClient,
-			Getters:          m.Getters,
-			Options: []getter.Option{
-				getter.WithBasicAuth(username, password),
-				getter.WithPassCredentialsAll(passcredentialsall),
-				getter.WithInsecureSkipVerifyTLS(insecureskiptlsverify),
-				getter.WithTLSClientConfig(certFile, keyFile, caFile),
-			},
-		}
-
-		version := ""
-		if registry.IsOCI(churl) {
-			churl, version, err = parseOCIRef(churl)
-			if err != nil {
-				return errors.Wrapf(err, "could not parse OCI reference")
-			}
-			dl.Options = append(dl.Options,
-				getter.WithRegistryClient(m.RegistryClient),
-				getter.WithTagName(version))
-		}
-
-		if _, _, err = dl.DownloadTo(churl, version, tmpPath); err != nil {
-			saveError = errors.Wrapf(err, "could not download %s", churl)
-			break
-		}
-
-		churls[churl] = struct{}{}
+		// Add dep to download list
+		depsToDownload = append(depsToDownload, dep)
 	}
+
+	// De-duplicate depsToDownload
+	deduplicatedDepsToDownload := deduplicateDeps(depsToDownload)
+
+	var wg sync.WaitGroup
+
+	sem := make(chan struct{}, 4)
+
+	for _, dep := range deduplicatedDepsToDownload {
+		wg.Add(1)
+		sem <- struct{}{}
+
+		go func(dep *chart.Dependency) {
+			defer wg.Done()
+
+			fmt.Fprintf(m.Out, "Downloading %s from repo %s\n", dep.Name, dep.Repository)
+
+			churl, username, password, insecureskiptlsverify, passcredentialsall, caFile, certFile, keyFile, err := m.findChartURL(dep.Name, dep.Version, dep.Repository, repos)
+			if err != nil {
+				saveError = errors.Wrapf(err, "could not find %s", churl)
+				return
+			}
+
+			dl := ChartDownloader{
+				Out:              m.Out,
+				Verify:           m.Verify,
+				Keyring:          m.Keyring,
+				RepositoryConfig: m.RepositoryConfig,
+				RepositoryCache:  m.RepositoryCache,
+				RegistryClient:   m.RegistryClient,
+				Getters:          m.Getters,
+				Options: []getter.Option{
+					getter.WithBasicAuth(username, password),
+					getter.WithPassCredentialsAll(passcredentialsall),
+					getter.WithInsecureSkipVerifyTLS(insecureskiptlsverify),
+					getter.WithTLSClientConfig(certFile, keyFile, caFile),
+				},
+			}
+
+			version := ""
+			if registry.IsOCI(churl) {
+				churl, version, err = parseOCIRef(churl)
+				if err != nil {
+					saveError = errors.Wrapf(err, "could not parse OCI reference")
+					return
+				}
+				dl.Options = append(dl.Options,
+					getter.WithRegistryClient(m.RegistryClient),
+					getter.WithTagName(version))
+			}
+
+			if _, _, err = dl.DownloadTo(churl, version, tmpPath); err != nil {
+				saveError = errors.Wrapf(err, "could not download %s", churl)
+				return
+			}
+
+			<-sem
+		}(dep)
+	}
+
+	wg.Wait()
 
 	// TODO: this should probably be refactored to be a []error, so we can capture and provide more information rather than "last error wins".
 	if saveError == nil {
@@ -372,6 +386,21 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		return saveError
 	}
 	return nil
+}
+
+func deduplicateDeps(deps []*chart.Dependency) []*chart.Dependency {
+	depsMap := make(map[string]bool)
+	var depsResult []*chart.Dependency
+
+	for _, dep := range deps {
+		depKey := fmt.Sprintf("%s/%s/%s", dep.Repository, dep.Name, dep.Version)
+		if _, ok := depsMap[depKey]; !ok {
+			depsMap[depKey] = true
+			depsResult = append(deps, dep)
+		}
+	}
+
+	return depsResult
 }
 
 func parseOCIRef(chartRef string) (string, string, error) {
