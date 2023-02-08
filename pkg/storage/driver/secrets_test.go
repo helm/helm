@@ -486,7 +486,7 @@ func TestSecretDeleteLarge(t *testing.T) {
 		t.Errorf("Expected {%v}, got {%v}", ErrReleaseNotFound, err)
 	}
 	// Check that there's no leftover partial secrets
-	for key, _ := range secrets.impl.(*MockSecretsInterface).objects {
+	for key := range secrets.impl.(*MockSecretsInterface).objects {
 		t.Errorf("Expected no extra secret, found {%s}", key)
 	}
 }

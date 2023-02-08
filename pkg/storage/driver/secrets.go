@@ -434,7 +434,7 @@ func newSecretObjects(key string, rls *rspb.Release, lbs labels) ([]*v1.Secret, 
 		}
 		// check if we'll need another partial chunk
 		if idxStop != len(releaseBytes) {
-			currentChunkIndex++                                                   // increment current chunk
+			currentChunkIndex++                                                        // increment current chunk
 			currentChunkKey = makePartialKey(rls.Name, rls.Version, currentChunkIndex) // make key for the next chunk
 			currentSecret.ObjectMeta.Labels["continuedIn"] = currentChunkKey           // store reference to it
 		}
