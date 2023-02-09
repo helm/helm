@@ -61,24 +61,25 @@ type Upgrade struct {
 	Namespace string
 	// SkipCRDs skips installing CRDs when install flag is enabled during upgrade
 	SkipCRDs bool
-	// Timeout is the timeout for this operation
+	// Timeout    is the timeout for this operation
 	Timeout time.Duration
-	// Wait determines whether the wait operation should be performed after the upgrade is requested.
+	// Wait    determines whether the wait operation should be performed after the upgrade is requested.
 	Wait bool
 	// WaitForJobs determines whether the wait operation for the Jobs should be performed after the upgrade is requested.
 	WaitForJobs bool
 	// DisableHooks disables hook processing if set to true.
-	DisableHooks bool
-	// DryRun controls whether the operation is prepared, but not executed.
+	DisableHooks    bool
+	HookParallelism int
+	// DryRun    controls whether the operation is prepared, but not executed.
 	// If `true`, the upgrade is prepared but not performed.
 	DryRun bool
-	// Force will, if set to `true`, ignore certain warnings and perform the upgrade anyway.
+	// Force    will, if set to `true`, ignore certain warnings and perform the upgrade anyway.
 	//
 	// This should be used with caution.
 	Force bool
-	// ResetValues will reset the values to the chart's built-ins rather than merging with existing.
+	// ResetValues    will reset the values to the chart's built-ins rather than merging with existing.
 	ResetValues bool
-	// ReuseValues will re-use the user's last supplied values.
+	// ReuseValues    will re-use the user's last supplied values.
 	ReuseValues bool
 	// Recreate will (if true) recreate pods after a rollback.
 	Recreate bool
@@ -367,7 +368,7 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 	// pre-upgrade hooks
 
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(upgradedRelease, release.HookPreUpgrade, u.Timeout); err != nil {
+		if err := u.cfg.execHookEvent(upgradedRelease, release.HookPreUpgrade, u.Timeout, u.HookParallelism); err != nil {
 			u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, fmt.Errorf("pre-upgrade hooks failed: %s", err))
 			return
 		}
@@ -413,7 +414,7 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 
 	// post-upgrade hooks
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(upgradedRelease, release.HookPostUpgrade, u.Timeout); err != nil {
+		if err := u.cfg.execHookEvent(upgradedRelease, release.HookPostUpgrade, u.Timeout, u.HookParallelism); err != nil {
 			u.reportToPerformUpgrade(c, upgradedRelease, results.Created, fmt.Errorf("post-upgrade hooks failed: %s", err))
 			return
 		}
@@ -478,6 +479,7 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 		rollin.Wait = true
 		rollin.WaitForJobs = u.WaitForJobs
 		rollin.DisableHooks = u.DisableHooks
+		rollin.HookParallelism = u.HookParallelism
 		rollin.Recreate = u.Recreate
 		rollin.Force = u.Force
 		rollin.Timeout = u.Timeout
