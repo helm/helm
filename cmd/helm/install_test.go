@@ -252,6 +252,12 @@ func TestInstall(t *testing.T) {
 			cmd:    fmt.Sprintf("install aeneas test/reqtest --username username --password password --repository-config %s --repository-cache %s", repoFile, srv.Root()),
 			golden: "output/install.txt",
 		},
+		// Verify hiding values works
+		{
+			name:   "install chart but hide values",
+			cmd:    "install with-values testdata/testcharts/chart-with-values --namespace default --debug --hide-values",
+			golden: "output/install-hide-values.txt",
+		},
 	}
 
 	runTestCmd(t, tests)

@@ -80,7 +80,7 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			// strip chart metadata from the output
 			rel.Chart = nil
 
-			return outfmt.Write(out, &statusPrinter{rel, false, client.ShowDescription, client.ShowResources})
+			return outfmt.Write(out, &statusPrinter{rel, false, !settings.HideValues, client.ShowDescription, client.ShowResources})
 		},
 	}
 
@@ -110,6 +110,7 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 type statusPrinter struct {
 	release         *release.Release
 	debug           bool
+	showValues      bool
 	showDescription bool
 	showResources   bool
 }
@@ -182,7 +183,7 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 		}
 	}
 
-	if s.debug {
+	if s.debug && s.showValues {
 		fmt.Fprintln(out, "USER-SUPPLIED VALUES:")
 		err := output.EncodeYAML(out, s.release.Config)
 		if err != nil {
@@ -205,7 +206,7 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 		fmt.Fprintln(out)
 	}
 
-	if strings.EqualFold(s.release.Info.Description, "Dry run complete") || s.debug {
+	if strings.EqualFold(s.release.Info.Description, "Dry run complete") || (s.debug && s.showValues) {
 		fmt.Fprintln(out, "HOOKS:")
 		for _, h := range s.release.Hooks {
 			fmt.Fprintf(out, "---\n# Source: %s\n%s\n", h.Path, h.Manifest)

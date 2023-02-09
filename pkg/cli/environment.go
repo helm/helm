@@ -71,6 +71,8 @@ type EnvSettings struct {
 	KubeTLSServerName string
 	// Debug indicates whether or not Helm is running in Debug mode.
 	Debug bool
+	// HideValues indicates whether Helm should not print config values (e.g. secrets).
+	HideValues bool
 	// RegistryConfig is the path to the registry config file.
 	RegistryConfig string
 	// RepositoryConfig is the path to the repositories file.
@@ -104,6 +106,7 @@ func New() *EnvSettings {
 		BurstLimit:                envIntOr("HELM_BURST_LIMIT", defaultBurstLimit),
 	}
 	env.Debug, _ = strconv.ParseBool(os.Getenv("HELM_DEBUG"))
+	env.HideValues, _ = strconv.ParseBool(os.Getenv("HELM_HIDE_VALUES"))
 
 	// bind to kubernetes config flags
 	env.config = &genericclioptions.ConfigFlags{
@@ -142,6 +145,7 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.KubeTLSServerName, "kube-tls-server-name", s.KubeTLSServerName, "server name to use for Kubernetes API server certificate validation. If it is not provided, the hostname used to contact the server is used")
 	fs.BoolVar(&s.KubeInsecureSkipTLSVerify, "kube-insecure-skip-tls-verify", s.KubeInsecureSkipTLSVerify, "if true, the Kubernetes API server's certificate will not be checked for validity. This will make your HTTPS connections insecure")
 	fs.BoolVar(&s.Debug, "debug", s.Debug, "enable verbose output")
+	fs.BoolVar(&s.HideValues, "hide-values", s.HideValues, "hide values (debug mode only)")
 	fs.StringVar(&s.RegistryConfig, "registry-config", s.RegistryConfig, "path to the registry config file")
 	fs.StringVar(&s.RepositoryConfig, "repository-config", s.RepositoryConfig, "path to the file containing repository names and URLs")
 	fs.StringVar(&s.RepositoryCache, "repository-cache", s.RepositoryCache, "path to the file containing cached repository indexes")
@@ -194,6 +198,7 @@ func (s *EnvSettings) EnvVars() map[string]string {
 		"HELM_CONFIG_HOME":       helmpath.ConfigPath(""),
 		"HELM_DATA_HOME":         helmpath.DataPath(""),
 		"HELM_DEBUG":             fmt.Sprint(s.Debug),
+		"HELM_HIDE_VALUES":       fmt.Sprint(s.HideValues),
 		"HELM_PLUGINS":           s.PluginsDirectory,
 		"HELM_REGISTRY_CONFIG":   s.RegistryConfig,
 		"HELM_REPOSITORY_CACHE":  s.RepositoryCache,

@@ -1,0 +1,7 @@
+apiVersion: v1
+description: Chart with values
+home: https://helm.sh/helm
+name: with-values
+sources:
+  - https://github.com/helm/helm
+version: 0.1.0
