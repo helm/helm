@@ -22,8 +22,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"helm.sh/helm/v3/pkg/chart"
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
 	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/time"
 )
 
 func uninstallAction(t *testing.T) *Uninstall {
@@ -94,4 +96,198 @@ func TestUninstallRelease_Wait(t *testing.T) {
 	is.Error(err)
 	is.Contains(err.Error(), "U timed out")
 	is.Equal(res.Release.Info.Status, release.StatusUninstalled)
+}
+
+func TestUninstallRelease_HookParallelism(t *testing.T) {
+	is := assert.New(t)
+	t.Run("hook parallelism of 0 defaults to 1", func(t *testing.T) {
+		unAction := uninstallAction(t)
+		unAction.HookParallelism = 0
+		chartDefaultValues := map[string]interface{}{
+			"subchart": map[string]interface{}{
+				"enabled": true,
+			},
+		}
+		dependency := chart.Dependency{
+			Name:       "subchart",
+			Version:    "0.1.0",
+			Repository: "http://some-repo.com",
+			Condition:  "subchart.enabled",
+		}
+		sampleChart := buildChart(
+			withName("sample"),
+			withValues(chartDefaultValues),
+			withMetadataDependency(dependency),
+		)
+		now := time.Now()
+		rel := &release.Release{
+			Name: "nuketown",
+			Info: &release.Info{
+				FirstDeployed: now,
+				LastDeployed:  now,
+				Status:        release.StatusDeployed,
+				Description:   "Named Release Stub",
+			},
+			Chart:   sampleChart,
+			Version: 1,
+			Hooks: []*release.Hook{
+				{
+					Name:     "test-cm",
+					Kind:     "ConfigMap",
+					Path:     "test-cm",
+					Manifest: manifestWithHook,
+					Events: []release.HookEvent{
+						release.HookPreDelete,
+						release.HookPostDelete,
+					},
+				},
+			},
+		}
+
+		err := unAction.cfg.Releases.Create(rel)
+		is.NoError(err)
+		res, err := unAction.Run(rel.Name)
+		if err != nil {
+			t.Fatalf("Failed uninstall: %s", err)
+		}
+		is.Equal("nuketown", res.Release.Name, "Expected release name.")
+		is.Len(res.Release.Hooks, 1)
+		is.Equal(manifestWithHook, res.Release.Hooks[0].Manifest)
+		is.Equal(release.HookPreDelete, res.Release.Hooks[0].Events[0])
+		is.Equal(release.HookPostDelete, res.Release.Hooks[0].Events[1])
+		is.Equal(0, len(res.Release.Manifest))
+		is.Equal("Uninstallation complete", res.Release.Info.Description)
+	})
+
+	t.Run("hook parallelism greater than number of hooks", func(t *testing.T) {
+		unAction := uninstallAction(t)
+		unAction.HookParallelism = 10
+		chartDefaultValues := map[string]interface{}{
+			"subchart": map[string]interface{}{
+				"enabled": true,
+			},
+		}
+		dependency := chart.Dependency{
+			Name:       "subchart",
+			Version:    "0.1.0",
+			Repository: "http://some-repo.com",
+			Condition:  "subchart.enabled",
+		}
+		sampleChart := buildChart(
+			withName("sample"),
+			withValues(chartDefaultValues),
+			withMetadataDependency(dependency),
+		)
+		now := time.Now()
+		rel := &release.Release{
+			Name: "nuketown",
+			Info: &release.Info{
+				FirstDeployed: now,
+				LastDeployed:  now,
+				Status:        release.StatusDeployed,
+				Description:   "Named Release Stub",
+			},
+			Chart:   sampleChart,
+			Version: 1,
+			Hooks: []*release.Hook{
+				{
+					Name:     "test-cm",
+					Kind:     "ConfigMap",
+					Path:     "test-cm",
+					Manifest: manifestWithHook,
+					Events: []release.HookEvent{
+						release.HookPreDelete,
+						release.HookPostDelete,
+					},
+				},
+			},
+		}
+
+		err := unAction.cfg.Releases.Create(rel)
+		is.NoError(err)
+		res, err := unAction.Run(rel.Name)
+		if err != nil {
+			t.Fatalf("Failed uninstall: %s", err)
+		}
+		is.Equal("nuketown", res.Release.Name, "Expected release name.")
+		is.Len(res.Release.Hooks, 1)
+		is.Equal(manifestWithHook, res.Release.Hooks[0].Manifest)
+		is.Equal(release.HookPreDelete, res.Release.Hooks[0].Events[0])
+		is.Equal(release.HookPostDelete, res.Release.Hooks[0].Events[1])
+		is.Equal(0, len(res.Release.Manifest))
+		is.Equal("Uninstallation complete", res.Release.Info.Description)
+	})
+
+	t.Run("hook parallelism with multiple hooks", func(t *testing.T) {
+		unAction := uninstallAction(t)
+		unAction.HookParallelism = 2
+		chartDefaultValues := map[string]interface{}{
+			"subchart": map[string]interface{}{
+				"enabled": true,
+			},
+		}
+		dependency := chart.Dependency{
+			Name:       "subchart",
+			Version:    "0.1.0",
+			Repository: "http://some-repo.com",
+			Condition:  "subchart.enabled",
+		}
+		sampleChart := buildChart(
+			withName("sample"),
+			withValues(chartDefaultValues),
+			withMetadataDependency(dependency),
+			withSecondHook(manifestWithHook),
+		)
+		now := time.Now()
+		rel := &release.Release{
+			Name: "nuketown",
+			Info: &release.Info{
+				FirstDeployed: now,
+				LastDeployed:  now,
+				Status:        release.StatusDeployed,
+				Description:   "Named Release Stub",
+			},
+			Chart:   sampleChart,
+			Version: 1,
+			Hooks: []*release.Hook{
+				{
+					Name:     "test-cm",
+					Kind:     "ConfigMap",
+					Path:     "test-cm",
+					Manifest: manifestWithHook,
+					Events: []release.HookEvent{
+						release.HookPreDelete,
+						release.HookPostDelete,
+					},
+				},
+				{
+					Name:     "test-cm",
+					Kind:     "ConfigMap",
+					Path:     "test-cm",
+					Manifest: manifestWithHook,
+					Events: []release.HookEvent{
+						release.HookPreDelete,
+						release.HookPostDelete,
+					},
+				},
+			},
+		}
+
+		err := unAction.cfg.Releases.Create(rel)
+		is.NoError(err)
+		res, err := unAction.Run(rel.Name)
+		if err != nil {
+			t.Fatalf("Failed uninstall: %s", err)
+		}
+		is.Equal("nuketown", res.Release.Name, "Expected release name.")
+		is.Len(rel.Hooks, 2)
+		is.Equal(manifestWithHook, res.Release.Hooks[0].Manifest)
+		is.Equal(release.HookPreDelete, res.Release.Hooks[0].Events[0])
+		is.Equal(release.HookPostDelete, res.Release.Hooks[0].Events[1])
+		is.Equal(manifestWithHook, res.Release.Hooks[1].Manifest)
+		is.Equal(release.HookPreDelete, res.Release.Hooks[1].Events[0])
+		is.Equal(release.HookPostDelete, res.Release.Hooks[1].Events[1])
+		is.Equal(0, len(res.Release.Manifest))
+		is.Equal("Uninstallation complete", res.Release.Info.Description)
+	})
 }
