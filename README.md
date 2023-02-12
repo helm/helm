@@ -30,7 +30,6 @@ Think of it like apt/yum/homebrew for Kubernetes.
 
 ## Install
 
-
 Binary downloads of the Helm client can be found on [the Releases page](https://github.com/helm/helm/releases/latest).
 
 Unpack the `helm` binary and add it to your PATH and you are good to go!
@@ -67,6 +66,10 @@ You can reach the Helm community and developers via the following channels:
 - Mailing List:
   - [Helm Mailing List](https://lists.cncf.io/g/cncf-helm)
 - Developer Call: Thursdays at 9:30-10:00 Pacific ([meeting details](https://github.com/helm/community/blob/master/communication.md#meetings))
+
+### Contribution
+
+If you're interested in contributing, please refer to the [Contributing Guide](CONTRIBUTING.md) **before submitting a pull request**.
 
 ### Code of conduct
 
