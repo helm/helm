@@ -151,7 +151,7 @@ func ToRenderValues(chrt *chart.Chart, chrtVals map[string]interface{}, options 
 		},
 	}
 
-	vals, err := CoalesceValues(chrt, chrtVals)
+	vals, err := MergeValues(chrt, chrtVals)
 	if err != nil {
 		return top, err
 	}

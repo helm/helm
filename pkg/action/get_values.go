@@ -50,7 +50,7 @@ func (g *GetValues) Run(name string) (map[string]interface{}, error) {
 
 	// If the user wants all values, compute the values and return.
 	if g.AllValues {
-		cfg, err := chartutil.CoalesceValues(rel.Chart, rel.Config)
+		cfg, err := chartutil.MergeValues(rel.Chart, rel.Config)
 		if err != nil {
 			return nil, err
 		}

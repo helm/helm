@@ -37,12 +37,43 @@ func concatPrefix(a, b string) string {
 //
 // Values are coalesced together using the following rules:
 //
-//	- Values in a higher level chart always override values in a lower-level
-//		dependency chart
-//	- Scalar values and arrays are replaced, maps are merged
-//	- A chart has access to all of the variables for it, as well as all of
-//		the values destined for its dependencies.
+//   - Values in a higher level chart always override values in a lower-level
+//     dependency chart
+//
+//   - Scalar values and arrays are replaced, maps are merged
+//
+//   - A chart has access to all of the variables for it, as well as all of
+//     the values destined for its dependencies.
+//
+//     Note that CoalesceValues automatically removes nil values
 func CoalesceValues(chrt *chart.Chart, vals map[string]interface{}) (Values, error) {
+	v, err := copystructure.Copy(vals)
+	if err != nil {
+		return vals, err
+	}
+
+	valsCopy := v.(map[string]interface{})
+	// if we have an empty map, make sure it is initialized
+	if valsCopy == nil {
+		valsCopy = make(map[string]interface{})
+	}
+
+	valsResult, err := coalesce(log.Printf, chrt, valsCopy, "")
+	return TrimNilValues(valsResult), err
+}
+
+// MergeValues coalesces all of the values in a chart (and its subcharts).
+//
+// Values are coalesced together using the following rules:
+//
+//   - Values in a higher level chart always override values in a lower-level
+//     dependency chart
+//   - Scalar values and arrays are replaced, maps are merged
+//   - A chart has access to all of the variables for it, as well as all of
+//     the values destined for its dependencies.
+//     Note that MergeValues does NOT automatically remove nil values, it is up
+//     to the caller to ensure that TrimNilValues is called at the appropriate time
+func MergeValues(chrt *chart.Chart, vals map[string]interface{}) (Values, error) {
 	v, err := copystructure.Copy(vals)
 	if err != nil {
 		return vals, err
@@ -57,7 +88,8 @@ func CoalesceValues(chrt *chart.Chart, vals map[string]interface{}) (Values, err
 }
 
 // TrimNilValues removes nil/null values from maps.
-//   To be used after CoalesceValues to remove keys as needed
+//
+//	To be used after CoalesceValues to remove keys as needed
 func TrimNilValues(vals map[string]interface{}) map[string]interface{} {
 	valsCopy, err := copystructure.Copy(vals)
 	if err != nil {

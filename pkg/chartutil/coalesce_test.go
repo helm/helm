@@ -65,12 +65,12 @@ func withDeps(c *chart.Chart, deps ...*chart.Chart) *chart.Chart {
 
 func TestTrimNilValues(t *testing.T) {
 	values := map[string]interface{}{
-		"top": "exists",
+		"top":    "exists",
 		"bottom": "exists",
-		"left": nil,
-		"right": "exists",
+		"left":   nil,
+		"right":  "exists",
 		"nested": map[string]interface{}{
-			"left": true,
+			"left":  true,
 			"right": nil,
 		},
 	}
@@ -102,10 +102,8 @@ func TestTrimNilValues(t *testing.T) {
 	}
 }
 
-func TestCoalesceValues(t *testing.T) {
-	is := assert.New(t)
-
-	c := withDeps(&chart.Chart{
+func getValuesChart() *chart.Chart {
+	return withDeps(&chart.Chart{
 		Metadata: &chart.Metadata{Name: "moby"},
 		Values: map[string]interface{}{
 			"back":     "exists",
@@ -160,6 +158,12 @@ func TestCoalesceValues(t *testing.T) {
 			},
 		},
 	)
+}
+
+func TestCoalesceValues(t *testing.T) {
+	is := assert.New(t)
+
+	c := getValuesChart()
 
 	vals, err := ReadValues(testCoalesceValuesYaml)
 	if err != nil {
@@ -175,6 +179,92 @@ func TestCoalesceValues(t *testing.T) {
 	}
 
 	v, err := CoalesceValues(c, vals)
+	if err != nil {
+		t.Fatal(err)
+	}
+	j, _ := json.MarshalIndent(v, "", "  ")
+	t.Logf("Coalesced Values: %s", string(j))
+
+	tests := []struct {
+		tpl    string
+		expect string
+	}{
+		{"{{.top}}", "yup"},
+		{"{{.back}}", ""},
+		{"{{.name}}", "moby"},
+		{"{{.global.name}}", "Ishmael"},
+		{"{{.global.subject}}", "Queequeg"},
+		{"{{.global.harpooner}}", "<no value>"},
+		{"{{.pequod.name}}", "pequod"},
+		{"{{.pequod.ahab.name}}", "ahab"},
+		{"{{.pequod.ahab.scope}}", "whale"},
+		{"{{.pequod.ahab.nested.foo}}", "true"},
+		{"{{.pequod.ahab.global.name}}", "Ishmael"},
+		{"{{.pequod.ahab.global.nested.foo}}", "bar"},
+		{"{{.pequod.ahab.global.subject}}", "Queequeg"},
+		{"{{.pequod.ahab.global.harpooner}}", "Tashtego"},
+		{"{{.pequod.global.name}}", "Ishmael"},
+		{"{{.pequod.global.nested.foo}}", "<no value>"},
+		{"{{.pequod.global.subject}}", "Queequeg"},
+		{"{{.spouter.global.name}}", "Ishmael"},
+		{"{{.spouter.global.harpooner}}", "<no value>"},
+
+		{"{{.global.nested.boat}}", "true"},
+		{"{{.pequod.global.nested.boat}}", "true"},
+		{"{{.spouter.global.nested.boat}}", "true"},
+		{"{{.pequod.global.nested.sail}}", "true"},
+		{"{{.spouter.global.nested.sail}}", "<no value>"},
+	}
+
+	for _, tt := range tests {
+		if o, err := ttpl(tt.tpl, v); err != nil || o != tt.expect {
+			t.Errorf("Expected %q to expand to %q, got %q", tt.tpl, tt.expect, o)
+		}
+	}
+
+	nullKeys := []string{"bottom", "right", "left", "front"}
+	for _, nullKey := range nullKeys {
+		if _, ok := v[nullKey]; ok {
+			t.Errorf("Expected key %q to be removed, still present", nullKey)
+		}
+	}
+
+	if _, ok := v["nested"].(map[string]interface{})["boat"]; ok {
+		t.Error("Expected nested boat key to be removed, still present")
+	}
+
+	subchart := v["pequod"].(map[string]interface{})["ahab"].(map[string]interface{})
+	if _, ok := subchart["boat"]; ok {
+		t.Error("Expected subchart boat key to be removed, still present")
+	}
+
+	if _, ok := subchart["nested"].(map[string]interface{})["bar"]; ok {
+		t.Error("Expected subchart nested bar key to be removed, still present")
+	}
+
+	// CoalesceValues should not mutate the passed arguments
+	is.Equal(valsCopy, vals)
+}
+
+func TestMergeValues(t *testing.T) {
+	is := assert.New(t)
+
+	c := getValuesChart()
+
+	vals, err := ReadValues(testCoalesceValuesYaml)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// taking a copy of the values before passing it
+	// to MergeValues as argument, so that we can
+	// use it for asserting later
+	valsCopy := make(Values, len(vals))
+	for key, value := range vals {
+		valsCopy[key] = value
+	}
+
+	v, err := MergeValues(c, vals)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -247,11 +337,12 @@ func TestCoalesceValues(t *testing.T) {
 		t.Error("Expected subchart boat key to be null")
 	}
 
+	// MergeValues should not mutate / remove nil values
 	if val, ok := subchart["nested"].(map[string]interface{})["bar"]; !ok || val != nil {
 		t.Error("Expected subchart nested bar key to be null")
 	}
 
-	// CoalesceValues should not mutate the passed arguments
+	// MergeValues should not mutate the passed arguments
 	is.Equal(valsCopy, vals)
 }
 

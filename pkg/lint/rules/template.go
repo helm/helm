@@ -76,7 +76,7 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 		return
 	}
 
-	cvals, err := chartutil.CoalesceValues(chart, values)
+	cvals, err := chartutil.MergeValues(chart, values)
 	if err != nil {
 		return
 	}

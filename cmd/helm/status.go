@@ -191,7 +191,7 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 		// Print an extra newline
 		fmt.Fprintln(out)
 
-		cfg, err := chartutil.CoalesceValues(s.release.Chart, s.release.Config)
+		cfg, err := chartutil.MergeValues(s.release.Chart, s.release.Config)
 		if err != nil {
 			return err
 		}

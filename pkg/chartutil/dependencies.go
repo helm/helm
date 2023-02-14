@@ -150,7 +150,7 @@ Loop:
 	for _, lr := range c.Metadata.Dependencies {
 		lr.Enabled = true
 	}
-	cvals, err := CoalesceValues(c, v)
+	cvals, err := MergeValues(c, v)
 	if err != nil {
 		return err
 	}
@@ -222,7 +222,7 @@ func processImportValues(c *chart.Chart) error {
 		return nil
 	}
 	// combine chart values and empty config to get Values
-	cvals, err := CoalesceValues(c, nil)
+	cvals, err := MergeValues(c, nil)
 	if err != nil {
 		return err
 	}
