@@ -1,0 +1,56 @@
+name: deploy
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - '*'
+jobs:
+  # Note the only differences between upload-canary and uplaod-tag jobs are:
+  # - only canary passes --overwrite flag
+  # - the VERSION make variable passed to 'make dist checksum' is expected to
+  #   be "canary" if the job is triggered by a push to "main" branch. If the
+  #   job is triggered by a tag push, VERSION should be the tag ref.
+  upload-canary:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.18'
+      - name: Build helm binaries
+        run: |
+          make build-cross
+          make dist checksum VERSION=canary
+      - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
+        with:
+          source_dir: _dist
+          container_name: ${{ secrets.AzureStorageContainerName }}
+          connection_string: ${{ secrets.AzureStorageConnectionString }}
+          # Possible solution to https://github.com/bacongobbler/azure-blob-storage-upload/issues/31
+          # extra_args: "--pattern 'helm-*'"
+          extra_args: '--pattern helm-*'
+          # WARNING: this will overwrite existing blobs in your blob storage
+          overwrite: 'true'
+
+  upload-tag:
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.18'
+      - name: Build helm binaries
+        run: |
+          make build-cross
+          make dist checksum VERSION="${{ github.ref_name }}"
+      - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
+        with:
+          source_dir: _dist
+          container_name: ${{ secrets.AzureStorageContainerName }}
+          connection_string: ${{ secrets.AzureStorageConnectionString }}
+          extra_args: '--pattern helm-*'
