@@ -56,6 +56,27 @@ func CoalesceValues(chrt *chart.Chart, vals map[string]interface{}) (Values, err
 	return coalesce(log.Printf, chrt, valsCopy, "")
 }
 
+// TrimNilValues removes nil/null values from maps.
+//   To be used after CoalesceValues to remove keys as needed
+func TrimNilValues(vals map[string]interface{}) map[string]interface{} {
+	valsCopy, err := copystructure.Copy(vals)
+	if err != nil {
+		return vals
+	}
+	valsCopyMap := valsCopy.(map[string]interface{})
+	for key, val := range valsCopyMap {
+		if val == nil {
+			// Iterate over the values and remove nil keys
+			delete(valsCopyMap, key)
+		} else if istable(val) {
+			// Recursively call into ourselves to remove keys from inner tables
+			valsCopyMap[key] = TrimNilValues(val.(map[string]interface{}))
+		}
+	}
+
+	return valsCopyMap
+}
+
 type printFn func(format string, v ...interface{})
 
 // coalesce coalesces the dest values and the chart values, giving priority to the dest values.
@@ -160,12 +181,7 @@ func coalesceValues(printf printFn, c *chart.Chart, v map[string]interface{}, pr
 	subPrefix := concatPrefix(prefix, c.Metadata.Name)
 	for key, val := range c.Values {
 		if value, ok := v[key]; ok {
-			if value == nil {
-				// When the YAML value is null, we remove the value's key.
-				// This allows Helm's various sources of values (value files or --set) to
-				// remove incompatible keys from any previous chart, file, or set values.
-				delete(v, key)
-			} else if dest, ok := value.(map[string]interface{}); ok {
+			if dest, ok := value.(map[string]interface{}); ok {
 				// if v[key] is a table, merge nv's val table into v[key].
 				src, ok := val.(map[string]interface{})
 				if !ok {
@@ -209,9 +225,7 @@ func coalesceTablesFullKey(printf printFn, dst, src map[string]interface{}, pref
 	// values.
 	for key, val := range src {
 		fullkey := concatPrefix(prefix, key)
-		if dv, ok := dst[key]; ok && dv == nil {
-			delete(dst, key)
-		} else if !ok {
+		if dv, ok := dst[key]; !ok {
 			dst[key] = val
 		} else if istable(val) {
 			if istable(dv) {

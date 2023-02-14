@@ -63,6 +63,45 @@ func withDeps(c *chart.Chart, deps ...*chart.Chart) *chart.Chart {
 	return c
 }
 
+func TestTrimNilValues(t *testing.T) {
+	values := map[string]interface{}{
+		"top": "exists",
+		"bottom": "exists",
+		"left": nil,
+		"right": "exists",
+		"nested": map[string]interface{}{
+			"left": true,
+			"right": nil,
+		},
+	}
+
+	values = TrimNilValues(values)
+
+	j, _ := json.MarshalIndent(values, "", "  ")
+	t.Logf("Trimmed Values: %s", string(j))
+
+	if val, ok := values["top"]; !ok || val != "exists" {
+		t.Errorf("Key top was expected to be 'exists' but it is %s", val)
+	}
+	if val, ok := values["bottom"]; !ok || val != "exists" {
+		t.Errorf("Key bottom was expected to be 'exists' but it is %s", val)
+	}
+	if val, ok := values["left"]; ok || val != nil {
+		t.Errorf("Key left was expected to be missing but it is %s", val)
+	}
+	if val, ok := values["right"]; !ok || val != "exists" {
+		t.Errorf("Key right was expected to be 'exists' but it is %s", val)
+	}
+
+	nested := values["nested"].(map[string]interface{})
+	if val, ok := nested["left"]; !ok || val != true {
+		t.Errorf("Key nested.left was expected to be true but it is %s", val)
+	}
+	if val, ok := nested["right"]; ok || val != nil {
+		t.Errorf("Key nested.right was expected to be missing but it is %s", val)
+	}
+}
+
 func TestCoalesceValues(t *testing.T) {
 	is := assert.New(t)
 
@@ -81,6 +120,9 @@ func TestCoalesceValues(t *testing.T) {
 			"top":      "nope",
 			"global": map[string]interface{}{
 				"nested2": map[string]interface{}{"l0": "moby"},
+			},
+			"pequod": map[string]interface{}{
+				"nested": map[string]interface{}{"foo": false, "bar": true},
 			},
 		},
 	},
@@ -191,22 +233,22 @@ func TestCoalesceValues(t *testing.T) {
 
 	nullKeys := []string{"bottom", "right", "left", "front"}
 	for _, nullKey := range nullKeys {
-		if _, ok := v[nullKey]; ok {
-			t.Errorf("Expected key %q to be removed, still present", nullKey)
+		if val, ok := v[nullKey]; !ok || val != nil {
+			t.Errorf("Expected key %q to be null", nullKey)
 		}
 	}
 
-	if _, ok := v["nested"].(map[string]interface{})["boat"]; ok {
-		t.Error("Expected nested boat key to be removed, still present")
+	if val, ok := v["nested"].(map[string]interface{})["boat"]; !ok || val != nil {
+		t.Error("Expected nested boat key to be null")
 	}
 
 	subchart := v["pequod"].(map[string]interface{})["ahab"].(map[string]interface{})
-	if _, ok := subchart["boat"]; ok {
-		t.Error("Expected subchart boat key to be removed, still present")
+	if val, ok := subchart["boat"]; !ok || val != nil {
+		t.Error("Expected subchart boat key to be null")
 	}
 
-	if _, ok := subchart["nested"].(map[string]interface{})["bar"]; ok {
-		t.Error("Expected subchart nested bar key to be removed, still present")
+	if val, ok := subchart["nested"].(map[string]interface{})["bar"]; !ok || val != nil {
+		t.Error("Expected subchart nested bar key to be null")
 	}
 
 	// CoalesceValues should not mutate the passed arguments
@@ -269,8 +311,8 @@ func TestCoalesceTables(t *testing.T) {
 		t.Errorf("Unexpected state: %v", addr["state"])
 	}
 
-	if _, ok = addr["country"]; ok {
-		t.Error("The country is not left out.")
+	if val, ok := addr["country"]; !ok || val != nil {
+		t.Error("The country should be null")
 	}
 
 	if det, ok := dst["details"].(map[string]interface{}); !ok {
@@ -283,8 +325,8 @@ func TestCoalesceTables(t *testing.T) {
 		t.Errorf("Expected boat string, got %v", dst["boat"])
 	}
 
-	if _, ok = dst["hole"]; ok {
-		t.Error("The hole still exists.")
+	if val, ok := dst["hole"]; !ok || val != nil {
+		t.Error("The hole should be null")
 	}
 
 	dst2 := map[string]interface{}{
