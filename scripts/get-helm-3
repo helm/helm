@@ -29,6 +29,7 @@ HAS_CURL="$(type "curl" &> /dev/null && echo true || echo false)"
 HAS_WGET="$(type "wget" &> /dev/null && echo true || echo false)"
 HAS_OPENSSL="$(type "openssl" &> /dev/null && echo true || echo false)"
 HAS_GPG="$(type "gpg" &> /dev/null && echo true || echo false)"
+HAS_GIT="$(type "git" &> /dev/null && echo true || echo false)"
 
 # initArch discovers the architecture for this system.
 initArch() {
@@ -96,6 +97,10 @@ verifySupported() {
       echo "Please set VERIFY_SIGNATURES=false or verify the signatures manually."
       exit 1
     fi
+  fi
+
+  if [ "${HAS_GIT}" != "true" ]; then
+    echo "[WARNING] Could not find git. It is required for plugin installation."
   fi
 }
 

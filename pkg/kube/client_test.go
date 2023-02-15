@@ -253,6 +253,45 @@ func TestBuild(t *testing.T) {
 	}
 }
 
+func TestBuildTable(t *testing.T) {
+	tests := []struct {
+		name      string
+		namespace string
+		reader    io.Reader
+		count     int
+		err       bool
+	}{
+		{
+			name:      "Valid input",
+			namespace: "test",
+			reader:    strings.NewReader(guestbookManifest),
+			count:     6,
+		}, {
+			name:      "Valid input, deploying resources into different namespaces",
+			namespace: "test",
+			reader:    strings.NewReader(namespacedGuestbookManifest),
+			count:     1,
+		},
+	}
+
+	c := newTestClient(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Test for an invalid manifest
+			infos, err := c.BuildTable(tt.reader, false)
+			if err != nil && !tt.err {
+				t.Errorf("Got error message when no error should have occurred: %v", err)
+			} else if err != nil && strings.Contains(err.Error(), "--validate=false") {
+				t.Error("error message was not scrubbed")
+			}
+
+			if len(infos) != tt.count {
+				t.Errorf("expected %d result objects, got %d", tt.count, len(infos))
+			}
+		})
+	}
+}
+
 func TestPerform(t *testing.T) {
 	tests := []struct {
 		name       string

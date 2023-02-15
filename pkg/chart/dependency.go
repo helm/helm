@@ -54,7 +54,7 @@ type Dependency struct {
 // loaded.
 func (d *Dependency) Validate() error {
 	if d == nil {
-		return ValidationError("dependency cannot be an empty list")
+		return ValidationError("dependencies must not contain empty or null nodes")
 	}
 	d.Name = sanitizeString(d.Name)
 	d.Version = sanitizeString(d.Version)
