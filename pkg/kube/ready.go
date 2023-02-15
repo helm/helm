@@ -81,6 +81,11 @@ type ReadyChecker struct {
 	pausedAsReady bool
 }
 
+// Readiness can be implemented by any CR to communicate to helm whether it should be considered Ready
+type Readiness interface {
+	IsReady() bool
+}
+
 // IsReady checks if v is ready. It supports checking readiness for pods,
 // deployments, persistent volume claims, services, daemon sets, custom
 // resource definitions, stateful sets, replication controllers, and replica
@@ -96,7 +101,15 @@ func (c *ReadyChecker) IsReady(ctx context.Context, v *resource.Info) (bool, err
 		ok  = true
 		err error
 	)
-	switch value := AsVersioned(v).(type) {
+	asVersioned := AsVersioned(v)
+
+	// If Readiness is implemented, set ok to result.
+	// Conditions on known types should override this.
+	if readiness, impl := asVersioned.(Readiness); impl {
+		ok = readiness.IsReady()
+	}
+
+	switch value := asVersioned.(type) {
 	case *corev1.Pod:
 		pod, err := c.client.CoreV1().Pods(v.Namespace).Get(ctx, v.Name, metav1.GetOptions{})
 		if err != nil || !c.isPodReady(pod) {
