@@ -441,7 +441,7 @@ spec:
     spec:
       containers:
       - name: master
-        image: k8s.gcr.io/redis:e2e  # or just image: redis
+        image: registry.k8s.io/redis:e2e  # or just image: redis
         resources:
           requests:
             cpu: 100m
