@@ -48,3 +48,19 @@ func TestLocalInstaller(t *testing.T) {
 	}
 	defer os.RemoveAll(filepath.Dir(helmpath.DataPath())) // helmpath.DataPath is like /tmp/helm013130971/helm
 }
+
+func TestLocalInstallerNotAFolder(t *testing.T) {
+	source := "../testdata/plugdir/good/echo/plugin.yaml"
+	i, err := NewForSource(source, "")
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+
+	err = Install(i)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if err != ErrPluginNotAFolder {
+		t.Fatalf("expected error to equal: %q", err)
+	}
+}

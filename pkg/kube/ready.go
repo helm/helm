@@ -291,7 +291,7 @@ func (c *ReadyChecker) daemonSetReady(ds *appsv1.DaemonSet) bool {
 		c.log("DaemonSet is not ready: %s/%s. %d out of %d expected pods have been scheduled", ds.Namespace, ds.Name, ds.Status.UpdatedNumberScheduled, ds.Status.DesiredNumberScheduled)
 		return false
 	}
-	maxUnavailable, err := intstr.GetValueFromIntOrPercent(ds.Spec.UpdateStrategy.RollingUpdate.MaxUnavailable, int(ds.Status.DesiredNumberScheduled), true)
+	maxUnavailable, err := intstr.GetScaledValueFromIntOrPercent(ds.Spec.UpdateStrategy.RollingUpdate.MaxUnavailable, int(ds.Status.DesiredNumberScheduled), true)
 	if err != nil {
 		// If for some reason the value is invalid, set max unavailable to the
 		// number of desired replicas. This is the same behavior as the
@@ -353,7 +353,14 @@ func (c *ReadyChecker) crdReady(crd apiextv1.CustomResourceDefinition) bool {
 func (c *ReadyChecker) statefulSetReady(sts *appsv1.StatefulSet) bool {
 	// If the update strategy is not a rolling update, there will be nothing to wait for
 	if sts.Spec.UpdateStrategy.Type != appsv1.RollingUpdateStatefulSetStrategyType {
+		c.log("StatefulSet skipped ready check: %s/%s. updateStrategy is %v", sts.Namespace, sts.Name, sts.Spec.UpdateStrategy.Type)
 		return true
+	}
+
+	// Make sure the status is up-to-date with the StatefulSet changes
+	if sts.Status.ObservedGeneration < sts.Generation {
+		c.log("StatefulSet is not ready: %s/%s. update has not yet been observed", sts.Namespace, sts.Name)
+		return false
 	}
 
 	// Dereference all the pointers because StatefulSets like them
@@ -386,6 +393,13 @@ func (c *ReadyChecker) statefulSetReady(sts *appsv1.StatefulSet) bool {
 		c.log("StatefulSet is not ready: %s/%s. %d out of %d expected pods are ready", sts.Namespace, sts.Name, sts.Status.ReadyReplicas, replicas)
 		return false
 	}
+
+	if sts.Status.CurrentRevision != sts.Status.UpdateRevision {
+		c.log("StatefulSet is not ready: %s/%s. currentRevision %s does not yet match updateRevision %s", sts.Namespace, sts.Name, sts.Status.CurrentRevision, sts.Status.UpdateRevision)
+		return false
+	}
+
+	c.log("StatefulSet is ready: %s/%s. %d out of %d expected pods are ready", sts.Namespace, sts.Name, sts.Status.ReadyReplicas, replicas)
 	return true
 }
 

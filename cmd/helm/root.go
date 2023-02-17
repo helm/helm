@@ -67,6 +67,8 @@ Environment variables:
 | $HELM_KUBEASUSER                   | set the Username to impersonate for the operation.                                                |
 | $HELM_KUBECONTEXT                  | set the name of the kubeconfig context.                                                           |
 | $HELM_KUBETOKEN                    | set the Bearer KubeToken used for authentication.                                                 |
+| $HELM_KUBEINSECURE_SKIP_TLS_VERIFY | indicate if the Kubernetes API server's certificate validation should be skipped (insecure)       |
+| $HELM_KUBETLS_SERVER_NAME          | set the server name used to validate the Kubernetes API server certificate                        |
 | $HELM_BURST_LIMIT                  | set the default burst limit in the case the server contains many CRDs (default 100, -1 to disable)|
 
 Helm stores cache, configuration, and data based on the following configuration order:
@@ -152,7 +154,8 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 
 	registryClient, err := registry.NewClient(
 		registry.ClientOptDebug(settings.Debug),
-		registry.ClientOptWriter(out),
+		registry.ClientOptEnableCache(true),
+		registry.ClientOptWriter(os.Stderr),
 		registry.ClientOptCredentialsFile(settings.RegistryConfig),
 	)
 	if err != nil {

@@ -23,6 +23,8 @@ import (
 	"testing"
 
 	"github.com/spf13/pflag"
+
+	"helm.sh/helm/v3/internal/version"
 )
 
 func TestSetNamespace(t *testing.T) {
@@ -48,13 +50,15 @@ func TestEnvSettings(t *testing.T) {
 		envvars map[string]string
 
 		// expected values
-		ns, kcontext string
-		debug        bool
-		maxhistory   int
-		kubeAsUser   string
-		kubeAsGroups []string
-		kubeCaFile   string
-		burstLimit   int
+		ns, kcontext  string
+		debug         bool
+		maxhistory    int
+		kubeAsUser    string
+		kubeAsGroups  []string
+		kubeCaFile    string
+		kubeInsecure  bool
+		kubeTLSServer string
+		burstLimit    int
 	}{
 		{
 			name:       "defaults",
@@ -63,38 +67,44 @@ func TestEnvSettings(t *testing.T) {
 			burstLimit: defaultBurstLimit,
 		},
 		{
-			name:         "with flags set",
-			args:         "--debug --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters --kube-ca-file=/tmp/ca.crt --burst-limit 100",
-			ns:           "myns",
-			debug:        true,
-			maxhistory:   defaultMaxHistory,
-			burstLimit:   100,
-			kubeAsUser:   "poro",
-			kubeAsGroups: []string{"admins", "teatime", "snackeaters"},
-			kubeCaFile:   "/tmp/ca.crt",
+			name:          "with flags set",
+			args:          "--debug --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters --kube-ca-file=/tmp/ca.crt --burst-limit 100 --kube-insecure-skip-tls-verify=true --kube-tls-server-name=example.org",
+			ns:            "myns",
+			debug:         true,
+			maxhistory:    defaultMaxHistory,
+			burstLimit:    100,
+			kubeAsUser:    "poro",
+			kubeAsGroups:  []string{"admins", "teatime", "snackeaters"},
+			kubeCaFile:    "/tmp/ca.crt",
+			kubeTLSServer: "example.org",
+			kubeInsecure:  true,
 		},
 		{
-			name:         "with envvars set",
-			envvars:      map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_MAX_HISTORY": "5", "HELM_KUBECAFILE": "/tmp/ca.crt", "HELM_BURST_LIMIT": "150"},
-			ns:           "yourns",
-			maxhistory:   5,
-			burstLimit:   150,
-			debug:        true,
-			kubeAsUser:   "pikachu",
-			kubeAsGroups: []string{"operators", "snackeaters", "partyanimals"},
-			kubeCaFile:   "/tmp/ca.crt",
+			name:          "with envvars set",
+			envvars:       map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_MAX_HISTORY": "5", "HELM_KUBECAFILE": "/tmp/ca.crt", "HELM_BURST_LIMIT": "150", "HELM_KUBEINSECURE_SKIP_TLS_VERIFY": "true", "HELM_KUBETLS_SERVER_NAME": "example.org"},
+			ns:            "yourns",
+			maxhistory:    5,
+			burstLimit:    150,
+			debug:         true,
+			kubeAsUser:    "pikachu",
+			kubeAsGroups:  []string{"operators", "snackeaters", "partyanimals"},
+			kubeCaFile:    "/tmp/ca.crt",
+			kubeTLSServer: "example.org",
+			kubeInsecure:  true,
 		},
 		{
-			name:         "with flags and envvars set",
-			args:         "--debug --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters --kube-ca-file=/my/ca.crt --burst-limit 175",
-			envvars:      map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_MAX_HISTORY": "5", "HELM_KUBECAFILE": "/tmp/ca.crt", "HELM_BURST_LIMIT": "200"},
-			ns:           "myns",
-			debug:        true,
-			maxhistory:   5,
-			burstLimit:   175,
-			kubeAsUser:   "poro",
-			kubeAsGroups: []string{"admins", "teatime", "snackeaters"},
-			kubeCaFile:   "/my/ca.crt",
+			name:          "with flags and envvars set",
+			args:          "--debug --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters --kube-ca-file=/my/ca.crt --burst-limit 175 --kube-insecure-skip-tls-verify=true --kube-tls-server-name=example.org",
+			envvars:       map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_MAX_HISTORY": "5", "HELM_KUBECAFILE": "/tmp/ca.crt", "HELM_BURST_LIMIT": "200", "HELM_KUBEINSECURE_SKIP_TLS_VERIFY": "true", "HELM_KUBETLS_SERVER_NAME": "example.org"},
+			ns:            "myns",
+			debug:         true,
+			maxhistory:    5,
+			burstLimit:    175,
+			kubeAsUser:    "poro",
+			kubeAsGroups:  []string{"admins", "teatime", "snackeaters"},
+			kubeCaFile:    "/my/ca.crt",
+			kubeTLSServer: "example.org",
+			kubeInsecure:  true,
 		},
 	}
 
@@ -136,7 +146,105 @@ func TestEnvSettings(t *testing.T) {
 			if tt.burstLimit != settings.BurstLimit {
 				t.Errorf("expected BurstLimit %d, got %d", tt.burstLimit, settings.BurstLimit)
 			}
+			if tt.kubeInsecure != settings.KubeInsecureSkipTLSVerify {
+				t.Errorf("expected kubeInsecure %t, got %t", tt.kubeInsecure, settings.KubeInsecureSkipTLSVerify)
+			}
+			if tt.kubeTLSServer != settings.KubeTLSServerName {
+				t.Errorf("expected kubeTLSServer %q, got %q", tt.kubeTLSServer, settings.KubeTLSServerName)
+			}
 		})
+	}
+}
+
+func TestEnvOrBool(t *testing.T) {
+	const envName = "TEST_ENV_OR_BOOL"
+	tests := []struct {
+		name     string
+		env      string
+		val      string
+		def      bool
+		expected bool
+	}{
+		{
+			name:     "unset with default false",
+			def:      false,
+			expected: false,
+		},
+		{
+			name:     "unset with default true",
+			def:      true,
+			expected: true,
+		},
+		{
+			name:     "blank env with default false",
+			env:      envName,
+			def:      false,
+			expected: false,
+		},
+		{
+			name:     "blank env with default true",
+			env:      envName,
+			def:      true,
+			expected: true,
+		},
+		{
+			name:     "env true with default false",
+			env:      envName,
+			val:      "true",
+			def:      false,
+			expected: true,
+		},
+		{
+			name:     "env false with default true",
+			env:      envName,
+			val:      "false",
+			def:      true,
+			expected: false,
+		},
+		{
+			name:     "env fails parsing with default true",
+			env:      envName,
+			val:      "NOT_A_BOOL",
+			def:      true,
+			expected: true,
+		},
+		{
+			name:     "env fails parsing with default false",
+			env:      envName,
+			val:      "NOT_A_BOOL",
+			def:      false,
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.env != "" {
+				t.Cleanup(func() {
+					os.Unsetenv(tt.env)
+				})
+				os.Setenv(tt.env, tt.val)
+			}
+			actual := envBoolOr(tt.env, tt.def)
+			if actual != tt.expected {
+				t.Errorf("expected result %t, got %t", tt.expected, actual)
+			}
+		})
+	}
+}
+
+func TestUserAgentHeaderInK8sRESTClientConfig(t *testing.T) {
+	defer resetEnv()()
+
+	settings := New()
+	restConfig, err := settings.RESTClientGetter().ToRESTConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedUserAgent := version.GetUserAgent()
+	if restConfig.UserAgent != expectedUserAgent {
+		t.Errorf("expected User-Agent header %q in K8s REST client config, got %q", expectedUserAgent, restConfig.UserAgent)
 	}
 }
 

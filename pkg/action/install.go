@@ -69,6 +69,7 @@ type Install struct {
 	ChartPathOptions
 
 	ClientOnly               bool
+	Force                    bool
 	CreateNamespace          bool
 	DryRun                   bool
 	DisableHooks             bool
@@ -97,6 +98,8 @@ type Install struct {
 	APIVersions chartutil.VersionSet
 	// Used by helm template to render charts with .Release.IsUpgrade. Ignored if Dry-Run is false
 	IsUpgrade bool
+	// Enable DNS lookups when rendering templates
+	EnableDNS bool
 	// Used by helm template to add the release as part of OutputDir path
 	// OutputDir/<ReleaseName>
 	UseReleaseName bool
@@ -257,7 +260,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	rel := i.createRelease(chrt, vals, i.Labels)
 
 	var manifestDoc *bytes.Buffer
-	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, i.DryRun)
+	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, i.DryRun, i.EnableDNS)
 	// Even for errors, attach this if available
 	if manifestDoc != nil {
 		rel.Manifest = manifestDoc.String()
@@ -373,7 +376,7 @@ func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, t
 			return
 		}
 	} else if len(resources) > 0 {
-		if _, err := i.cfg.KubeClient.Update(toBeAdopted, resources, false); err != nil {
+		if _, err := i.cfg.KubeClient.Update(toBeAdopted, resources, i.Force); err != nil {
 			i.reportToRun(c, rel, err)
 			return
 		}
@@ -457,10 +460,10 @@ func (i *Install) failRelease(rel *release.Release, err error) (*release.Release
 //
 // Roughly, this will return an error if name is
 //
-//	- empty
-//	- too long
-//	- already in use, and not deleted
-//	- used by a deleted release, and i.Replace is false
+//   - empty
+//   - too long
+//   - already in use, and not deleted
+//   - used by a deleted release, and i.Replace is false
 func (i *Install) availableName() error {
 	start := i.ReleaseName
 
@@ -757,20 +760,13 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 	}
 
 	filename, _, err := dl.DownloadTo(name, version, settings.RepositoryCache)
-	if err == nil {
-		lname, err := filepath.Abs(filename)
-		if err != nil {
-			return filename, err
-		}
-		return lname, nil
-	} else if settings.Debug {
+	if err != nil {
+		return "", err
+	}
+
+	lname, err := filepath.Abs(filename)
+	if err != nil {
 		return filename, err
 	}
-
-	atVersion := ""
-	if version != "" {
-		atVersion = fmt.Sprintf(" at version %q", version)
-	}
-
-	return filename, errors.Errorf("failed to download %q%s", name, atVersion)
+	return lname, nil
 }

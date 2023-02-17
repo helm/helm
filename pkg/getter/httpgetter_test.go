@@ -155,9 +155,8 @@ func TestHTTPGetter(t *testing.T) {
 
 func TestDownload(t *testing.T) {
 	expect := "Call me Ishmael"
-	expectedUserAgent := "I am Groot"
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defaultUserAgent := "Helm/" + strings.TrimPrefix(version.GetVersion(), "v")
+		defaultUserAgent := version.GetUserAgent()
 		if r.UserAgent() != defaultUserAgent {
 			t.Errorf("Expected '%s', got '%s'", defaultUserAgent, r.UserAgent())
 		}
@@ -179,6 +178,7 @@ func TestDownload(t *testing.T) {
 	}
 
 	// test with http server
+	const expectedUserAgent = "I am Groot"
 	basicAuthSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		username, password, ok := r.BasicAuth()
 		if !ok || username != "username" || password != "password" {
@@ -291,7 +291,6 @@ func TestDownloadTLS(t *testing.T) {
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "can't create TLS config for client"))
 	}
-	tlsConf.BuildNameToCertificate()
 	tlsConf.ServerName = "helm.sh"
 	tlsSrv.TLS = tlsConf
 	tlsSrv.StartTLS()

@@ -14,7 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*Package cli describes the operating environment for the Helm CLI.
+/*
+Package cli describes the operating environment for the Helm CLI.
 
 Helm's environment encapsulates all of the service dependencies Helm has.
 These dependencies are expressed as interfaces so that alternate implementations
@@ -24,6 +25,7 @@ package cli
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -32,6 +34,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/rest"
 
+	"helm.sh/helm/v3/internal/version"
 	"helm.sh/helm/v3/pkg/helmpath"
 )
 
@@ -60,6 +63,12 @@ type EnvSettings struct {
 	KubeAPIServer string
 	// Custom certificate authority file.
 	KubeCaFile string
+	// KubeInsecureSkipTLSVerify indicates if server's certificate will not be checked for validity.
+	// This makes the HTTPS connections insecure
+	KubeInsecureSkipTLSVerify bool
+	// KubeTLSServerName overrides the name to use for server certificate validation.
+	// If it is not provided, the hostname used to contact the server is used
+	KubeTLSServerName string
 	// Debug indicates whether or not Helm is running in Debug mode.
 	Debug bool
 	// RegistryConfig is the path to the registry config file.
@@ -78,19 +87,21 @@ type EnvSettings struct {
 
 func New() *EnvSettings {
 	env := &EnvSettings{
-		namespace:        os.Getenv("HELM_NAMESPACE"),
-		MaxHistory:       envIntOr("HELM_MAX_HISTORY", defaultMaxHistory),
-		KubeContext:      os.Getenv("HELM_KUBECONTEXT"),
-		KubeToken:        os.Getenv("HELM_KUBETOKEN"),
-		KubeAsUser:       os.Getenv("HELM_KUBEASUSER"),
-		KubeAsGroups:     envCSV("HELM_KUBEASGROUPS"),
-		KubeAPIServer:    os.Getenv("HELM_KUBEAPISERVER"),
-		KubeCaFile:       os.Getenv("HELM_KUBECAFILE"),
-		PluginsDirectory: envOr("HELM_PLUGINS", helmpath.DataPath("plugins")),
-		RegistryConfig:   envOr("HELM_REGISTRY_CONFIG", helmpath.ConfigPath("registry/config.json")),
-		RepositoryConfig: envOr("HELM_REPOSITORY_CONFIG", helmpath.ConfigPath("repositories.yaml")),
-		RepositoryCache:  envOr("HELM_REPOSITORY_CACHE", helmpath.CachePath("repository")),
-		BurstLimit:       envIntOr("HELM_BURST_LIMIT", defaultBurstLimit),
+		namespace:                 os.Getenv("HELM_NAMESPACE"),
+		MaxHistory:                envIntOr("HELM_MAX_HISTORY", defaultMaxHistory),
+		KubeContext:               os.Getenv("HELM_KUBECONTEXT"),
+		KubeToken:                 os.Getenv("HELM_KUBETOKEN"),
+		KubeAsUser:                os.Getenv("HELM_KUBEASUSER"),
+		KubeAsGroups:              envCSV("HELM_KUBEASGROUPS"),
+		KubeAPIServer:             os.Getenv("HELM_KUBEAPISERVER"),
+		KubeCaFile:                os.Getenv("HELM_KUBECAFILE"),
+		KubeTLSServerName:         os.Getenv("HELM_KUBETLS_SERVER_NAME"),
+		KubeInsecureSkipTLSVerify: envBoolOr("HELM_KUBEINSECURE_SKIP_TLS_VERIFY", false),
+		PluginsDirectory:          envOr("HELM_PLUGINS", helmpath.DataPath("plugins")),
+		RegistryConfig:            envOr("HELM_REGISTRY_CONFIG", helmpath.ConfigPath("registry/config.json")),
+		RepositoryConfig:          envOr("HELM_REPOSITORY_CONFIG", helmpath.ConfigPath("repositories.yaml")),
+		RepositoryCache:           envOr("HELM_REPOSITORY_CACHE", helmpath.CachePath("repository")),
+		BurstLimit:                envIntOr("HELM_BURST_LIMIT", defaultBurstLimit),
 	}
 	env.Debug, _ = strconv.ParseBool(os.Getenv("HELM_DEBUG"))
 
@@ -103,9 +114,15 @@ func New() *EnvSettings {
 		CAFile:           &env.KubeCaFile,
 		KubeConfig:       &env.KubeConfig,
 		Impersonate:      &env.KubeAsUser,
+		Insecure:         &env.KubeInsecureSkipTLSVerify,
+		TLSServerName:    &env.KubeTLSServerName,
 		ImpersonateGroup: &env.KubeAsGroups,
 		WrapConfigFn: func(config *rest.Config) *rest.Config {
 			config.Burst = env.BurstLimit
+			config.Wrap(func(rt http.RoundTripper) http.RoundTripper {
+				return &retryingRoundTripper{wrapped: rt}
+			})
+			config.UserAgent = version.GetUserAgent()
 			return config
 		},
 	}
@@ -122,6 +139,8 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringArrayVar(&s.KubeAsGroups, "kube-as-group", s.KubeAsGroups, "group to impersonate for the operation, this flag can be repeated to specify multiple groups.")
 	fs.StringVar(&s.KubeAPIServer, "kube-apiserver", s.KubeAPIServer, "the address and the port for the Kubernetes API server")
 	fs.StringVar(&s.KubeCaFile, "kube-ca-file", s.KubeCaFile, "the certificate authority file for the Kubernetes API server connection")
+	fs.StringVar(&s.KubeTLSServerName, "kube-tls-server-name", s.KubeTLSServerName, "server name to use for Kubernetes API server certificate validation. If it is not provided, the hostname used to contact the server is used")
+	fs.BoolVar(&s.KubeInsecureSkipTLSVerify, "kube-insecure-skip-tls-verify", s.KubeInsecureSkipTLSVerify, "if true, the Kubernetes API server's certificate will not be checked for validity. This will make your HTTPS connections insecure")
 	fs.BoolVar(&s.Debug, "debug", s.Debug, "enable verbose output")
 	fs.StringVar(&s.RegistryConfig, "registry-config", s.RegistryConfig, "path to the registry config file")
 	fs.StringVar(&s.RepositoryConfig, "repository-config", s.RepositoryConfig, "path to the file containing repository names and URLs")
@@ -134,6 +153,18 @@ func envOr(name, def string) string {
 		return v
 	}
 	return def
+}
+
+func envBoolOr(name string, def bool) bool {
+	if name == "" {
+		return def
+	}
+	envVal := envOr(name, strconv.FormatBool(def))
+	ret, err := strconv.ParseBool(envVal)
+	if err != nil {
+		return def
+	}
+	return ret
 }
 
 func envIntOr(name string, def int) int {
@@ -172,12 +203,14 @@ func (s *EnvSettings) EnvVars() map[string]string {
 		"HELM_BURST_LIMIT":       strconv.Itoa(s.BurstLimit),
 
 		// broken, these are populated from helm flags and not kubeconfig.
-		"HELM_KUBECONTEXT":   s.KubeContext,
-		"HELM_KUBETOKEN":     s.KubeToken,
-		"HELM_KUBEASUSER":    s.KubeAsUser,
-		"HELM_KUBEASGROUPS":  strings.Join(s.KubeAsGroups, ","),
-		"HELM_KUBEAPISERVER": s.KubeAPIServer,
-		"HELM_KUBECAFILE":    s.KubeCaFile,
+		"HELM_KUBECONTEXT":                  s.KubeContext,
+		"HELM_KUBETOKEN":                    s.KubeToken,
+		"HELM_KUBEASUSER":                   s.KubeAsUser,
+		"HELM_KUBEASGROUPS":                 strings.Join(s.KubeAsGroups, ","),
+		"HELM_KUBEAPISERVER":                s.KubeAPIServer,
+		"HELM_KUBECAFILE":                   s.KubeCaFile,
+		"HELM_KUBEINSECURE_SKIP_TLS_VERIFY": strconv.FormatBool(s.KubeInsecureSkipTLSVerify),
+		"HELM_KUBETLS_SERVER_NAME":          s.KubeTLSServerName,
 	}
 	if s.KubeConfig != "" {
 		envvars["KUBECONFIG"] = s.KubeConfig

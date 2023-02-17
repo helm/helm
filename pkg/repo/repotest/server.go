@@ -153,6 +153,7 @@ func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
 	// init test client
 	registryClient, err := ociRegistry.NewClient(
 		ociRegistry.ClientOptDebug(true),
+		ociRegistry.ClientOptEnableCache(true),
 		ociRegistry.ClientOptWriter(os.Stdout),
 		ociRegistry.ClientOptCredentialsFile(credentialsFile),
 	)
@@ -370,7 +371,6 @@ func (s *Server) StartTLS() {
 	if err != nil {
 		panic(err)
 	}
-	tlsConf.BuildNameToCertificate()
 	tlsConf.ServerName = "helm.sh"
 	s.srv.TLS = tlsConf
 	s.srv.StartTLS()

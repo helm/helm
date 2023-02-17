@@ -104,6 +104,8 @@ type Upgrade struct {
 	DependencyUpdate bool
 	// Lock to control raceconditions when the process receives a SIGTERM
 	Lock sync.Mutex
+	// Enable DNS lookups when rendering templates
+	EnableDNS bool
 }
 
 type resultMessage struct {
@@ -232,7 +234,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		return nil, nil, err
 	}
 
-	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, u.DryRun)
+	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, u.DryRun, u.EnableDNS)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -393,6 +395,9 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 	}
 
 	if u.Wait {
+		u.cfg.Log(
+			"waiting for release %s resources (created: %d updated: %d  deleted: %d)",
+			upgradedRelease.Name, len(results.Created), len(results.Updated), len(results.Deleted))
 		if u.WaitForJobs {
 			if err := u.cfg.KubeClient.WaitWithJobs(target, u.Timeout); err != nil {
 				u.cfg.recordRelease(originalRelease)

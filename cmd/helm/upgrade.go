@@ -51,7 +51,8 @@ To override values in a chart, use either the '--values' flag and pass in a file
 or use the '--set' flag and pass configuration from the command line, to force string
 values, use '--set-string'. You can use '--set-file' to set individual
 values from a file when the value itself is too long for the command line
-or is dynamically generated.
+or is dynamically generated. You can also use '--set-json' to set json values
+(scalars/objects/arrays) from the command line.
 
 You can specify the '--values'/'-f' flag multiple times. The priority will be given to the
 last (right-most) file specified. For example, if both myvalues.yaml and override.yaml
@@ -103,6 +104,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient := action.NewInstall(cfg)
 					instClient.CreateNamespace = createNamespace
 					instClient.ChartPathOptions = client.ChartPathOptions
+					instClient.Force = client.Force
 					instClient.DryRun = client.DryRun
 					instClient.DisableHooks = client.DisableHooks
 					instClient.SkipCRDs = client.SkipCRDs
@@ -118,12 +120,13 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.Description = client.Description
 					instClient.DependencyUpdate = client.DependencyUpdate
 					instClient.Labels = client.Labels
+					instClient.EnableDNS = client.EnableDNS
 
 					rel, err := runInstall(args, instClient, valueOpts, out)
 					if err != nil {
 						return err
 					}
-					return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false})
+					return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false, false})
 				} else if err != nil {
 					return err
 				}
@@ -205,7 +208,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				fmt.Fprintf(out, "Release %q has been upgraded. Happy Helming!\n", args[0])
 			}
 
-			return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false})
+			return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false, false})
 		},
 	}
 
@@ -232,6 +235,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.StringToStringVarP(&client.Labels, "labels", "l", nil, "Labels that would be added to release metadata. Should be separated by comma. Original release labels will be merged with upgrade labels. You can unset label using null.")
 	f.StringVar(&client.Description, "description", "", "add a custom description")
 	f.BoolVar(&client.DependencyUpdate, "dependency-update", false, "update dependencies if they are missing before installing the chart")
+	f.BoolVar(&client.EnableDNS, "enable-dns", false, "enable DNS lookups when rendering templates")
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 	addValueOptionsFlags(f, valueOpts)
 	bindOutputFlag(cmd, &outfmt)
