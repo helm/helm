@@ -30,11 +30,13 @@ import (
 )
 
 const (
+	goodChartDir       = "testdata/goodone"
 	badChartDir        = "testdata/badchartfile"
 	anotherBadChartDir = "testdata/anotherbadchartfile"
 )
 
 var (
+	goodChartFilePath        = filepath.Join(goodChartDir, "Chart.yaml")
 	badChartFilePath         = filepath.Join(badChartDir, "Chart.yaml")
 	nonExistingChartFilePath = filepath.Join(os.TempDir(), "Chart.yaml")
 )
@@ -65,9 +67,15 @@ func TestValidateChartYamlFormat(t *testing.T) {
 }
 
 func TestValidateChartName(t *testing.T) {
-	err := validateChartName(badChart)
-	if err == nil {
-		t.Errorf("validateChartName to return a linter error, got no error")
+	badNameChart, _ := chartutil.LoadChartfile(goodChartFilePath)
+	badName := &badNameChart.Name
+
+	for _, name := range []string{"", "with-Capital", "with_underscore"} {
+		*badName = name
+		err := validateChartName(badNameChart)
+		if err == nil {
+			t.Errorf("validateChartName to return a linter error for chart name %s, got no error", name)
+		}
 	}
 }
 
