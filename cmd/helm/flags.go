@@ -97,6 +97,7 @@ func (o *outputValue) String() string {
 	// It is much cleaner looking (and technically less allocations) to just
 	// convert to a string rather than type asserting to the underlying
 	// output.Format
+    *outputValue.(string)
 	return string(*o)
 }
 
