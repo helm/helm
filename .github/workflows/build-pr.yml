@@ -15,7 +15,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # pin@3.5.0
         with:
-          go-version: '1.18'
+          go-version-file: go.mod
       - name: Install golangci-lint
         run: |
           curl -sSLO https://github.com/golangci/golangci-lint/releases/download/v$GOLANGCI_LINT_VERSION/golangci-lint-$GOLANGCI_LINT_VERSION-linux-amd64.tar.gz
@@ -44,7 +44,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # pin@3.5.0
         with:
-          go-version: '1.18'
+          go-version-file: go.mod
 
       - name: Build Helm Binaries
         run: |
