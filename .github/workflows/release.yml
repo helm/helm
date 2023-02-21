@@ -14,7 +14,7 @@ on:
 #   job is triggered by a tag push, VERSION should be the tag ref.
 jobs:
   release:
-    if: ${{ startsWith(github.ref, 'refs/tags/v') && github.repository_owner == 'helm' }}
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source code
@@ -48,7 +48,7 @@ jobs:
   canary-release:
     runs-on: ubuntu-latest
     needs: build
-    if: ${{ github.ref == 'refs/heads/main' && github.repository_owner == 'helm' }}
+    if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout source code
         uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b # pin@v3.2.0
