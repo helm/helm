@@ -21,6 +21,7 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // Interface represents a client capable of communicating with the Kubernetes API.
@@ -78,5 +79,28 @@ type InterfaceExt interface {
 	WaitForDelete(resources ResourceList, timeout time.Duration) error
 }
 
+// InterfaceResources is introduced to avoid breaking backwards compatibility for Interface implementers.
+//
+// TODO Helm 4: Remove InterfaceResources and integrate its method(s) into the Interface.
+type InterfaceResources interface {
+	// Get details of deployed resources.
+	// The first argument is a list of resources to get. The second argument
+	// specifies if related pods should be fetched. For example, the pods being
+	// managed by a deployment.
+	Get(resources ResourceList, related bool) (map[string][]runtime.Object, error)
+
+	// BuildTable creates a resource list from a Reader. This differs from
+	// Interface.Build() in that a table kind is returned. A table is useful
+	// if you want to use a printer to display the information.
+	//
+	// Reader must contain a YAML stream (one or more YAML documents separated
+	// by "\n---\n")
+	//
+	// Validates against OpenAPI schema if validate is true.
+	// TODO Helm 4: Integrate into Build with an argument
+	BuildTable(reader io.Reader, validate bool) (ResourceList, error)
+}
+
 var _ Interface = (*Client)(nil)
 var _ InterfaceExt = (*Client)(nil)
+var _ InterfaceResources = (*Client)(nil)

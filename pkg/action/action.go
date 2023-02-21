@@ -101,8 +101,9 @@ type Configuration struct {
 //
 // TODO: This function is badly in need of a refactor.
 // TODO: As part of the refactor the duplicate code in cmd/helm/template.go should be removed
-//       This code has to do with writing files to disk.
-func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, dryRun bool) ([]*release.Hook, *bytes.Buffer, string, error) {
+//
+//	This code has to do with writing files to disk.
+func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, dryRun, enableDNS bool) ([]*release.Hook, *bytes.Buffer, string, error) {
 	hs := []*release.Hook{}
 	b := bytes.NewBuffer(nil)
 
@@ -130,9 +131,13 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 		if err != nil {
 			return hs, b, "", err
 		}
-		files, err2 = engine.RenderWithClient(ch, values, restConfig)
+		e := engine.New(restConfig)
+		e.EnableDNS = enableDNS
+		files, err2 = e.Render(ch, values)
 	} else {
-		files, err2 = engine.Render(ch, values)
+		var e engine.Engine
+		e.EnableDNS = enableDNS
+		files, err2 = e.Render(ch, values)
 	}
 
 	if err2 != nil {

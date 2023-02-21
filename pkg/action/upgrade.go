@@ -105,6 +105,8 @@ type Upgrade struct {
 	SkipSchemaValidation bool
 	// Lock to control raceconditions when the process receives a SIGTERM
 	Lock sync.Mutex
+	// Enable DNS lookups when rendering templates
+	EnableDNS bool
 }
 
 type resultMessage struct {
@@ -242,7 +244,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		}
 	}
 
-	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, u.DryRun)
+	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, u.DryRun, u.EnableDNS)
 	if err != nil {
 		return nil, nil, err
 	}
