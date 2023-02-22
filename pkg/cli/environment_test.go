@@ -23,6 +23,8 @@ import (
 	"testing"
 
 	"github.com/spf13/pflag"
+
+	"helm.sh/helm/v3/internal/version"
 )
 
 func TestSetNamespace(t *testing.T) {
@@ -228,6 +230,21 @@ func TestEnvOrBool(t *testing.T) {
 				t.Errorf("expected result %t, got %t", tt.expected, actual)
 			}
 		})
+	}
+}
+
+func TestUserAgentHeaderInK8sRESTClientConfig(t *testing.T) {
+	defer resetEnv()()
+
+	settings := New()
+	restConfig, err := settings.RESTClientGetter().ToRESTConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedUserAgent := version.GetUserAgent()
+	if restConfig.UserAgent != expectedUserAgent {
+		t.Errorf("expected User-Agent header %q in K8s REST client config, got %q", expectedUserAgent, restConfig.UserAgent)
 	}
 }
 

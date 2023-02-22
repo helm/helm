@@ -29,15 +29,17 @@ import (
 	"helm.sh/helm/v3/pkg/strvals"
 )
 
+// Options captures the different ways to specify values
 type Options struct {
-	ValueFiles   []string
-	StringValues []string
-	Values       []string
-	FileValues   []string
+	ValueFiles   []string // -f/--values
+	StringValues []string // --set-string
+	Values       []string // --set
+	FileValues   []string // --set-file
+	JSONValues   []string // --set-json
 }
 
 // MergeValues merges values from files specified via -f/--values and directly
-// via --set, --set-string, or --set-file, marshaling them to YAML
+// via --set-json, --set, --set-string, or --set-file, marshaling them to YAML
 func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, error) {
 	base := map[string]interface{}{}
 
@@ -55,6 +57,13 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 		}
 		// Merge with the previous map
 		base = mergeMaps(base, currentMap)
+	}
+
+	// User specified a value via --set-json
+	for _, value := range opts.JSONValues {
+		if err := strvals.ParseJSON(value, base); err != nil {
+			return nil, errors.Errorf("failed parsing --set-json data %s", value)
+		}
 	}
 
 	// User specified a value via --set
@@ -112,7 +121,10 @@ func readFile(filePath string, p getter.Providers) ([]byte, error) {
 	if strings.TrimSpace(filePath) == "-" {
 		return ioutil.ReadAll(os.Stdin)
 	}
-	u, _ := url.Parse(filePath)
+	u, err := url.Parse(filePath)
+	if err != nil {
+		return nil, err
+	}
 
 	// FIXME: maybe someone handle other protocols like ftp.
 	g, err := p.ByScheme(u.Scheme)

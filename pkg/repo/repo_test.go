@@ -225,3 +225,34 @@ func TestRepoNotExists(t *testing.T) {
 		t.Errorf("expected prompt `couldn't load repositories file`")
 	}
 }
+
+func TestRemoveRepositoryInvalidEntries(t *testing.T) {
+	sampleRepository := NewFile()
+	sampleRepository.Add(
+		&Entry{
+			Name: "stable",
+			URL:  "https://example.com/stable/charts",
+		},
+		&Entry{
+			Name: "incubator",
+			URL:  "https://example.com/incubator",
+		},
+		&Entry{},
+		nil,
+		&Entry{
+			Name: "test",
+			URL:  "https://example.com/test",
+		},
+	)
+
+	removeRepository := "stable"
+	found := sampleRepository.Remove(removeRepository)
+	if !found {
+		t.Errorf("expected repository %s not found", removeRepository)
+	}
+
+	found = sampleRepository.Has(removeRepository)
+	if found {
+		t.Errorf("repository %s not deleted", removeRepository)
+	}
+}

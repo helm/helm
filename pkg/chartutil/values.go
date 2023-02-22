@@ -68,7 +68,7 @@ func (v Values) Table(name string) (Values, error) {
 //
 // It protects against nil map panics.
 func (v Values) AsMap() map[string]interface{} {
-	if v == nil || len(v) == 0 {
+	if len(v) == 0 {
 		return map[string]interface{}{}
 	}
 	return v
