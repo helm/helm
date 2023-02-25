@@ -23,7 +23,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # pin@3.5.0
         with:
-          go-version-file: go.mod
+          go-version: '1.18'
 
       - name: Set Version
         id: set-version
@@ -55,7 +55,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # pin@3.5.0
         with:
-          go-version-file: go.mod
+          go-version: '1.18'
 
       - name: Build Helm Binaries
         run: |
