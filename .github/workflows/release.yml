@@ -3,10 +3,18 @@ on:
   create:
     tags:
       - v*
+  push:
+    branches:
+      - main
 
+# Note the only differences between release and canary-release jobs are:
+# - only canary passes --overwrite flag
+# - the VERSION make variable passed to 'make dist checksum' is expected to
+#   be "canary" if the job is triggered by a push to "main" branch. If the
+#   job is triggered by a tag push, VERSION should be the tag ref.
 jobs:
   release:
-    if: ${{ github.repository_owner == 'helm'}}
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source code
@@ -36,3 +44,30 @@ jobs:
           container_name: ${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}
           connection_string: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
           extra_args: '--pattern helm-*'
+
+  canary-release:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b # pin@v3.2.0
+
+      - name: Setup Go
+        uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # pin@3.5.0
+        with:
+          go-version-file: go.mod
+
+      - name: Build Helm Binaries
+        run: |
+          make build-cross
+          make dist checksum VERSION="canary"
+
+      - name: Upload Binaries
+        uses: bacongobbler/azure-blob-storage-upload@50f7d898b7697e864130ea04c303ca38b5751c50 # pin@3.0.0
+        with:
+          source_dir: _dist
+          container_name: ${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}
+          connection_string: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+          extra_args: '--pattern helm-*'
+          # WARNING: this will overwrite existing blobs in your blob storage
+          overwrite: 'true'
