@@ -434,7 +434,7 @@ func (c *ReadyChecker) statefulSetReady(sts *appsv1.StatefulSet) bool {
 func (c *ReadyChecker) replicationControllerReady(rc *corev1.ReplicationController) bool {
 	// Verify the generation observed by the replicationController controller matches the spec generation
 	if rc.Status.ObservedGeneration != rc.ObjectMeta.Generation {
-		c.log("ReplicationController is not ready: %s/%s. observedGeneration (%s) does not match spec generation (%s).", rc.Namespace, rc.Name, rc.Status.ObservedGeneration, rc.ObjectMeta.Generation)
+		c.log("ReplicationController is not ready: %s/%s. observedGeneration (%d) does not match spec generation (%d).", rc.Namespace, rc.Name, rc.Status.ObservedGeneration, rc.ObjectMeta.Generation)
 		return false
 	}
 	return true
