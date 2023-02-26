@@ -305,7 +305,7 @@ func (c *ReadyChecker) deploymentReady(rs *appsv1.ReplicaSet, dep *appsv1.Deploy
 func (c *ReadyChecker) daemonSetReady(ds *appsv1.DaemonSet) bool {
 	// Verify the generation observed by the daemonSet controller matches the spec generation
 	if ds.Status.ObservedGeneration != ds.ObjectMeta.Generation {
-		c.log("DaemonSet is not ready: %s/%s. observedGeneration (%s) does not match spec generation (%s).", ds.Namespace, ds.Name, ds.Status.ObservedGeneration, ds.ObjectMeta.Generation)
+		c.log("DaemonSet is not ready: %s/%s. observedGeneration (%d) does not match spec generation (%d).", ds.Namespace, ds.Name, ds.Status.ObservedGeneration, ds.ObjectMeta.Generation)
 		return false
 	}
 
