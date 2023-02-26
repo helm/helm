@@ -381,7 +381,7 @@ func (c *ReadyChecker) crdReady(crd apiextv1.CustomResourceDefinition) bool {
 func (c *ReadyChecker) statefulSetReady(sts *appsv1.StatefulSet) bool {
 	// Verify the generation observed by the statefulSet controller matches the spec generation
 	if sts.Status.ObservedGeneration != sts.ObjectMeta.Generation {
-		c.log("Statefulset is not ready: %s/%s. observedGeneration (%s) does not match spec generation (%s).", sts.Namespace, sts.Name, sts.Status.ObservedGeneration, sts.ObjectMeta.Generation)
+		c.log("StatefulSet is not ready: %s/%s. observedGeneration (%d) does not match spec generation (%d).", sts.Namespace, sts.Name, sts.Status.ObservedGeneration, sts.ObjectMeta.Generation)
 		return false
 	}
 
