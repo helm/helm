@@ -24,6 +24,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/Masterminds/sprig/v3"
+	"github.com/itchyny/gojq"
 	"sigs.k8s.io/yaml"
 )
 
@@ -35,12 +36,11 @@ import (
 //
 // Known late-bound functions:
 //
-//	- "include"
-//	- "tpl"
+//   - "include"
+//   - "tpl"
 //
 // These are late-bound in Engine.Render().  The
 // version included in the FuncMap is a placeholder.
-//
 func funcMap() template.FuncMap {
 	f := sprig.TxtFuncMap()
 	delete(f, "env")
@@ -55,6 +55,7 @@ func funcMap() template.FuncMap {
 		"toJson":        toJSON,
 		"fromJson":      fromJSON,
 		"fromJsonArray": fromJSONArray,
+		"jq":            jq,
 
 		// This is a placeholder for the "include" function, which is
 		// late-bound to a template. By declaring it here, we preserve the
@@ -174,4 +175,37 @@ func fromJSONArray(str string) []interface{} {
 		a = []interface{}{err.Error()}
 	}
 	return a
+}
+
+// jq is like sed for JSON/YAML data - you can use it to slice and filter
+// and map and transform structured data with the same ease that sed, awk, grep
+// and friends let you play with text.
+//
+// See the [jq Tutorial](https://stedolan.github.io/jq/tutorial/) for more.
+//
+// This is a pure go implementation of jq. The type of v should be
+// []interface{} for an array or map[string]interface{} for a map.
+// Since the jq filter returns a iterator, it will be collected as a slice
+// even there is only one item.
+// It will insert the returned error message string as
+// the first and only item in the returned array.
+func jq(exp string, v interface{}) []interface{} {
+	query, err := gojq.Parse(exp)
+	if err != nil {
+		return []interface{}{err.Error()}
+	}
+
+	iter := query.Run(v)
+	var list []interface{}
+	for {
+		it, ok := iter.Next()
+		if !ok {
+			break
+		}
+		if err, ok := it.(error); ok {
+			return []interface{}{err.Error()}
+		}
+		list = append(list, it)
+	}
+	return list
 }
