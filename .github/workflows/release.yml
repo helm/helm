@@ -25,14 +25,10 @@ jobs:
         with:
           go-version: '1.18'
 
-      - name: Set Version
-        id: set-version
-        run: |
-          echo "VERSION=$(echo ${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
       - name: Build Helm Binaries
         run: |
           make build-cross
-          make dist checksum VERSION="${{ steps.set-version.outputs.VERSION }}"
+          make dist checksum VERSION="${{ github.ref_name }}"
 
       - name: Upload Binaries
         uses: bacongobbler/azure-blob-storage-upload@50f7d898b7697e864130ea04c303ca38b5751c50 # pin@3.0.0
