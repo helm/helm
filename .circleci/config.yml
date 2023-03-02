@@ -9,4 +9,4 @@ jobs:
       - image: cimg/go:1.18
 
     steps:
-      - checkout
+      - noop
