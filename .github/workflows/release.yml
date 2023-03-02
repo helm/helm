@@ -24,6 +24,9 @@ jobs:
         uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # pin@3.5.0
         with:
           go-version: '1.18'
+      
+      - name: Run unit tests
+        run: make test-coverage
 
       - name: Build Helm Binaries
         run: |
@@ -52,6 +55,9 @@ jobs:
         uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # pin@3.5.0
         with:
           go-version: '1.18'
+
+      - name: Run unit tests
+        run: make test-coverage
 
       - name: Build Helm Binaries
         run: |
