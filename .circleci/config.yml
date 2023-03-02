@@ -3,10 +3,8 @@ version: 2
 
 jobs:
   build:
-    branches:
-      only: release-3.11
     docker:
       - image: cimg/go:1.18
 
     steps:
-      - noop
+      - checkout
