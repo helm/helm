@@ -111,7 +111,7 @@ func validateChartName(cf *chart.Metadata) error {
 		return errors.New("name is required")
 	}
 	if !validNameRegex.MatchString(cf.Name) {
-		return fmt.Errorf("invalid release name, must match regex %s", validNameRegex.String())
+		return fmt.Errorf("invalid chart name, must match regex %s", validNameRegex.String())
 	}
 	return nil
 }
