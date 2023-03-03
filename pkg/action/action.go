@@ -189,13 +189,13 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	if includeCrds {
 		for _, crd := range ch.CRDObjects() {
 			if outputDir == "" {
-				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Name, string(crd.File.Data[:]))
+				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Filename, string(crd.File.Data[:]))
 			} else {
-				err = writeToFile(outputDir, crd.Filename, string(crd.File.Data[:]), fileWritten[crd.Name])
+				err = writeToFile(outputDir, crd.Filename, string(crd.File.Data[:]), fileWritten[crd.Filename])
 				if err != nil {
 					return hs, b, "", err
 				}
-				fileWritten[crd.Name] = true
+				fileWritten[crd.Filename] = true
 			}
 		}
 	}
