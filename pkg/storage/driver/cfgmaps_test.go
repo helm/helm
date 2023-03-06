@@ -128,6 +128,26 @@ func TestConfigMapList(t *testing.T) {
 	if len(ssd) != 2 {
 		t.Errorf("Expected 2 superseded, got %d", len(ssd))
 	}
+
+	// list all uninstalled releases with label selectors
+	delSel, err := cfgmaps.ListWithSelector(func(rel *rspb.Release) bool { return true }, "status=uninstalled")
+	// check
+	if err != nil {
+		t.Errorf("Failed to list uninstalled: %s", err)
+	}
+	if len(delSel) != 2 {
+		t.Errorf("Expected 2 uninstalled, got %d:\n%v\n", len(del), del)
+	}
+
+	// list all uninstalled or deployed releases with label selectors
+	dplOrDelSel, err := cfgmaps.ListWithSelector(func(rel *rspb.Release) bool { return true }, "status in (uninstalled, deployed)")
+	// check
+	if err != nil {
+		t.Errorf("Failed to list uninstalled or deployed: %s", err)
+	}
+	if len(dplOrDelSel) != 4 {
+		t.Errorf("Expected 4 uninstalled or deployed, got %d:\n%v\n", len(del), del)
+	}
 }
 
 func TestConfigMapQuery(t *testing.T) {

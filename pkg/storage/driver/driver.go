@@ -85,11 +85,16 @@ type Deletor interface {
 //
 // List returns the set of all releases that satisfy the filter predicate.
 //
+// ListWithSelector returns the set of all releases that satisfy the filter predicate.
+// and label selector expression.
+//
 // Query returns the set of all releases that match the provided label set.
 type Queryor interface {
 	Get(key string) (*rspb.Release, error)
 	List(filter func(*rspb.Release) bool) ([]*rspb.Release, error)
+	ListWithSelector(filter func(*rspb.Release) bool, selector string) ([]*rspb.Release, error)
 	Query(labels map[string]string) ([]*rspb.Release, error)
+	CanPushDownLabelSelector() bool
 }
 
 // Driver is the interface composed of Creator, Updator, Deletor, and Queryor

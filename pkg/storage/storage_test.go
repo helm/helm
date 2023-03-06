@@ -308,6 +308,12 @@ func (d *MaxHistoryMockDriver) Query(labels map[string]string) ([]*rspb.Release,
 func (d *MaxHistoryMockDriver) Name() string {
 	return d.Driver.Name()
 }
+func (d *MaxHistoryMockDriver) ListWithSelector(filter func(*rspb.Release) bool, selector string) ([]*rspb.Release, error) {
+	return d.Driver.ListWithSelector(filter, selector)
+}
+func (d *MaxHistoryMockDriver) CanPushDownLabelSelector() bool {
+	return d.Driver.CanPushDownLabelSelector()
+}
 
 func TestMaxHistoryErrorHandling(t *testing.T) {
 	//func TestStorageRemoveLeastRecentWithError(t *testing.T) {

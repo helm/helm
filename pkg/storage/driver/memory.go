@@ -17,6 +17,7 @@ limitations under the License.
 package driver
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -42,6 +43,14 @@ type Memory struct {
 	namespace string
 	// A map of namespaces to releases
 	cache map[string]memReleases
+}
+
+func (mem *Memory) ListWithSelector(filter func(*rspb.Release) bool, selector string) ([]*rspb.Release, error) {
+	return nil, fmt.Errorf("selector based release list is not supported by this storage")
+}
+
+func (mem *Memory) CanPushDownLabelSelector() bool {
+	return false
 }
 
 // NewMemory initializes a new memory driver.

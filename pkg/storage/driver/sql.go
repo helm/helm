@@ -77,6 +77,14 @@ type SQL struct {
 	Log func(string, ...interface{})
 }
 
+func (s *SQL) ListWithSelector(filter func(*rspb.Release) bool, selector string) ([]*rspb.Release, error) {
+	return nil, fmt.Errorf("selector based release list is not supported by this storage")
+}
+
+func (s *SQL) CanPushDownLabelSelector() bool {
+	return false
+}
+
 // Name returns the name of the driver.
 func (s *SQL) Name() string {
 	return SQLDriverName

@@ -159,14 +159,21 @@ func (l *List) Run() ([]*release.Release, error) {
 		}
 	}
 
-	results, err := l.cfg.Releases.List(func(rel *release.Release) bool {
+	filterFunction := func(rel *release.Release) bool {
 		// Skip anything that doesn't match the filter.
 		if filter != nil && !filter.MatchString(rel.Name) {
 			return false
 		}
 
 		return true
-	})
+	}
+	var results []*release.Release
+	var err error
+	if l.cfg.Releases.CanPushDownLabelSelector() {
+		results, err = l.cfg.Releases.ListWithSelector(filterFunction, l.Selector)
+	} else {
+		results, err = l.cfg.Releases.List(filterFunction)
+	}
 
 	if err != nil {
 		return nil, err
@@ -187,12 +194,16 @@ func (l *List) Run() ([]*release.Release, error) {
 	// latest releases, otherwise outdated entries can be returned
 	results = l.filterStateMask(results)
 
-	// Skip anything that doesn't match the selector
-	selectorObj, err := labels.Parse(l.Selector)
-	if err != nil {
-		return nil, err
+	// If storage layer can't perform label selector filtering,
+	// then fall back to client side filtering
+	if !l.cfg.Releases.CanPushDownLabelSelector() {
+		// Skip anything that doesn't match the selector
+		selectorObj, err := labels.Parse(l.Selector)
+		if err != nil {
+			return nil, err
+		}
+		results = l.filterSelector(results, selectorObj)
 	}
-	results = l.filterSelector(results, selectorObj)
 
 	// Unfortunately, we have to sort before truncating, which can incur substantial overhead
 	l.sort(results)

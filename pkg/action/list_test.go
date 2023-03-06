@@ -350,6 +350,14 @@ func TestSelectorList(t *testing.T) {
 		is.Error(err)
 	})
 
+	t.Run("should select two releases with set selector", func(t *testing.T) {
+		lister.Selector = "key in (value1, value2)"
+		res, _ := lister.Run()
+
+		expectedFilteredList := []*release.Release{r1, r2}
+		assert.ElementsMatch(t, expectedFilteredList, res)
+	})
+
 	t.Run("should select one release with matching label", func(t *testing.T) {
 		lister.Selector = "key==value1"
 		res, _ := lister.Run()
