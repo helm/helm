@@ -29,8 +29,10 @@ import (
 //
 // It provides the implementation of 'helm push'.
 type Push struct {
-	Settings *cli.EnvSettings
-	cfg      *Configuration
+	Settings              *cli.EnvSettings
+	cfg                   *Configuration
+	InsecureSkipTLSverify bool
+	PlainHTTP             bool
 }
 
 // PushOpt is a type of function that sets options for a push action.
@@ -55,6 +57,12 @@ func NewPushWithOpts(opts ...PushOpt) *Push {
 // Run executes 'helm push' against the given chart archive.
 func (p *Push) Run(chartRef string, remote string) (string, error) {
 	var out strings.Builder
+
+	if p.InsecureSkipTLSverify || p.PlainHTTP {
+		if err := p.cfg.RegistryClient.WithResolver(p.InsecureSkipTLSverify, p.PlainHTTP); err != nil {
+			return out.String(), err
+		}
+	}
 
 	c := uploader.ChartUploader{
 		Out:     &out,
