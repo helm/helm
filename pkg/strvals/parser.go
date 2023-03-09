@@ -110,7 +110,6 @@ func ParseIntoString(s string, dest map[string]interface{}) error {
 // An empty val is treated as null.
 //
 // If a key exists in dest, the new value overwrites the dest version.
-//
 func ParseJSON(s string, dest map[string]interface{}) error {
 	scanner := bytes.NewBufferString(s)
 	t := newJSONParser(scanner, dest)

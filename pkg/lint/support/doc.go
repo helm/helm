@@ -14,7 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*Package support contains tools for linting charts.
+/*
+Package support contains tools for linting charts.
 
 Linting is the process of testing charts for errors or warnings regarding
 formatting, compilation, or standards compliance.
