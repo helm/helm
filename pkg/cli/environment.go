@@ -14,7 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*Package cli describes the operating environment for the Helm CLI.
+/*
+Package cli describes the operating environment for the Helm CLI.
 
 Helm's environment encapsulates all of the service dependencies Helm has.
 These dependencies are expressed as interfaces so that alternate implementations
@@ -33,6 +34,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/rest"
 
+	"helm.sh/helm/v3/internal/version"
 	"helm.sh/helm/v3/pkg/helmpath"
 )
 
@@ -120,6 +122,7 @@ func New() *EnvSettings {
 			config.Wrap(func(rt http.RoundTripper) http.RoundTripper {
 				return &retryingRoundTripper{wrapped: rt}
 			})
+			config.UserAgent = version.GetUserAgent()
 			return config
 		},
 	}

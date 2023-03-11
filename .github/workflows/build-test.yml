@@ -1,16 +1,21 @@
-name: build-pr
+name: build-test
 on:
+  push:
+    branches:
+      - 'main'
+      - 'release-**'
   pull_request:
     branches:
       - main
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v2
+        uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b # pin@v3.2.0
       - name: Setup Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # pin@3.5.0
         with:
           go-version: '1.18'
       - name: Install golangci-lint
@@ -27,3 +32,5 @@ jobs:
         run: make test-style
       - name: Run unit tests
         run: make test-coverage
+      - name: Test build
+        run: make test build

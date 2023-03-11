@@ -29,16 +29,17 @@ import (
 	"helm.sh/helm/v3/pkg/strvals"
 )
 
+// Options captures the different ways to specify values
 type Options struct {
-	ValueFiles   []string
-	StringValues []string
-	Values       []string
-	FileValues   []string
-	JSONValues   []string
+	ValueFiles   []string // -f/--values
+	StringValues []string // --set-string
+	Values       []string // --set
+	FileValues   []string // --set-file
+	JSONValues   []string // --set-json
 }
 
 // MergeValues merges values from files specified via -f/--values and directly
-// via --set, --set-string, or --set-file, marshaling them to YAML
+// via --set-json, --set, --set-string, or --set-file, marshaling them to YAML
 func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, error) {
 	base := map[string]interface{}{}
 
