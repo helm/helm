@@ -106,27 +106,36 @@ func New() *EnvSettings {
 	env.Debug, _ = strconv.ParseBool(os.Getenv("HELM_DEBUG"))
 
 	// bind to kubernetes config flags
-	env.config = &genericclioptions.ConfigFlags{
-		Namespace:        &env.namespace,
-		Context:          &env.KubeContext,
-		BearerToken:      &env.KubeToken,
-		APIServer:        &env.KubeAPIServer,
-		CAFile:           &env.KubeCaFile,
-		KubeConfig:       &env.KubeConfig,
-		Impersonate:      &env.KubeAsUser,
-		Insecure:         &env.KubeInsecureSkipTLSVerify,
-		TLSServerName:    &env.KubeTLSServerName,
-		ImpersonateGroup: &env.KubeAsGroups,
-		WrapConfigFn: func(config *rest.Config) *rest.Config {
-			config.Burst = env.BurstLimit
-			config.Wrap(func(rt http.RoundTripper) http.RoundTripper {
-				return &retryingRoundTripper{wrapped: rt}
-			})
-			config.UserAgent = version.GetUserAgent()
-			return config
-		},
-	}
+	env.config = buildConfigFlagsFromEnv(env)
 	return env
+}
+
+// buildConfigFlagsFromEnv builds a ConfigFlags object from the environment and
+// returns it. It uses a persistent config, meaning that underlying clients will
+// be cached and reused.
+func buildConfigFlagsFromEnv(env *EnvSettings) *genericclioptions.ConfigFlags {
+	flags := genericclioptions.NewConfigFlags(true)
+
+	flags.Namespace = &env.namespace
+	flags.Context = &env.KubeContext
+	flags.BearerToken = &env.KubeToken
+	flags.APIServer = &env.KubeAPIServer
+	flags.CAFile = &env.KubeCaFile
+	flags.KubeConfig = &env.KubeConfig
+	flags.Impersonate = &env.KubeAsUser
+	flags.Insecure = &env.KubeInsecureSkipTLSVerify
+	flags.TLSServerName = &env.KubeTLSServerName
+	flags.ImpersonateGroup = &env.KubeAsGroups
+	flags.WrapConfigFn = func(config *rest.Config) *rest.Config {
+		config.Burst = env.BurstLimit
+		config.Wrap(func(rt http.RoundTripper) http.RoundTripper {
+			return &retryingRoundTripper{wrapped: rt}
+		})
+		config.UserAgent = version.GetUserAgent()
+		return config
+	}
+
+	return flags
 }
 
 // AddFlags binds flags to the given flagset.
