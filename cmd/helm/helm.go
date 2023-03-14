@@ -72,6 +72,18 @@ func main() {
 	// run when each command's execute method is called
 	cobra.OnInitialize(func() {
 		helmDriver := os.Getenv("HELM_DRIVER")
+
+		if settings.KubeConfig != "" {
+			// If KubeConfig path is not empty, backup kube config to: <helm-config-path>/kubeconfig
+			// When the backup is successful, the settings.KubeConfig path is updated to backup file's path.
+			err = settings.BackupKubeConfig()
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else {
+			debug("kube config backup aborted due to empty KubeConfig path in settings")
+		}
+
 		if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), helmDriver, debug); err != nil {
 			log.Fatal(err)
 		}
