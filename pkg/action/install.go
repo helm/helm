@@ -136,6 +136,11 @@ func NewInstall(cfg *Configuration) *Install {
 	return in
 }
 
+// SetRegistryClient sets the registry client for the install action
+func (i *Install) SetRegistryClient(registryClient *registry.Client) {
+	i.ChartPathOptions.registryClient = registryClient
+}
+
 func (i *Install) installCRDs(crds []chart.CRD) error {
 	// We do these one file at a time in the order they were read.
 	totalItems := []*resource.Info{}
@@ -676,8 +681,6 @@ OUTER:
 //
 // If 'verify' was set on ChartPathOptions, this will attempt to also verify the chart.
 func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (string, error) {
-	// If there is no registry client and the name is in an OCI registry return
-	// an error and a lookup will not occur.
 	if registry.IsOCI(name) && c.registryClient == nil {
 		return "", fmt.Errorf("unable to lookup chart %q, missing registry client", name)
 	}

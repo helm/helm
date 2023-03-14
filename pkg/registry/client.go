@@ -61,6 +61,7 @@ type (
 		authorizer         auth.Client
 		registryAuthorizer *registryauth.Client
 		resolver           remotes.Resolver
+		httpClient         *http.Client
 	}
 
 	// ClientOption allows specifying various settings configurable by the user for overriding the defaults
@@ -90,6 +91,9 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		headers := http.Header{}
 		headers.Set("User-Agent", version.GetUserAgent())
 		opts := []auth.ResolverOption{auth.WithResolverHeaders(headers)}
+		if client.httpClient != nil {
+			opts = append(opts, auth.WithResolverClient(client.httpClient))
+		}
 		resolver, err := client.authorizer.ResolverWithOpts(opts...)
 		if err != nil {
 			return nil, err
@@ -104,6 +108,7 @@ func NewClient(options ...ClientOption) (*Client, error) {
 	}
 	if client.registryAuthorizer == nil {
 		client.registryAuthorizer = &registryauth.Client{
+			Client: client.httpClient,
 			Header: http.Header{
 				"User-Agent": {version.GetUserAgent()},
 			},
@@ -166,6 +171,13 @@ func ClientOptCredentialsFile(credentialsFile string) ClientOption {
 	}
 }
 
+// ClientOptHTTPClient returns a function that sets the httpClient setting on a client options set
+func ClientOptHTTPClient(httpClient *http.Client) ClientOption {
+	return func(client *Client) {
+		client.httpClient = httpClient
+	}
+}
+
 type (
 	// LoginOption allows specifying various settings on login
 	LoginOption func(*loginOperation)
@@ -174,6 +186,9 @@ type (
 		username string
 		password string
 		insecure bool
+		certFile string
+		keyFile  string
+		caFile   string
 	}
 )
 
@@ -189,6 +204,7 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 		auth.WithLoginUsername(operation.username),
 		auth.WithLoginSecret(operation.password),
 		auth.WithLoginUserAgent(version.GetUserAgent()),
+		auth.WithLoginTLS(operation.certFile, operation.keyFile, operation.caFile),
 	}
 	if operation.insecure {
 		authorizerLoginOpts = append(authorizerLoginOpts, auth.WithLoginInsecure())
@@ -212,6 +228,15 @@ func LoginOptBasicAuth(username string, password string) LoginOption {
 func LoginOptInsecure(insecure bool) LoginOption {
 	return func(operation *loginOperation) {
 		operation.insecure = insecure
+	}
+}
+
+// LoginOptTLSClientConfig returns a function that sets the TLS settings on login.
+func LoginOptTLSClientConfig(certFile, keyFile, caFile string) LoginOption {
+	return func(operation *loginOperation) {
+		operation.certFile = certFile
+		operation.keyFile = keyFile
+		operation.caFile = caFile
 	}
 }
 
