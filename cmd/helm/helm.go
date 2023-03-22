@@ -74,7 +74,7 @@ func main() {
 		helmDriver := os.Getenv("HELM_DRIVER")
 
 		if settings.KubeConfig != "" {
-			// If KubeConfig path is not empty, backup kube config to: <helm-config-path>/kubeconfig
+			// If KubeConfig path is not empty, backup kubeconfig to: <helm-config-path>/kubeconfig
 			// When the backup is successful, the settings.KubeConfig path is updated to backup file's path.
 			if err := settings.BackupKubeConfig(); err != nil {
 				log.Fatal(err)
