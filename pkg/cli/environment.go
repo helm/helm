@@ -238,7 +238,7 @@ func (s *EnvSettings) RESTClientGetter() genericclioptions.RESTClientGetter {
 	return s.config
 }
 
-// BackupKubeConfig copies kube config file to <helm-config-path>/kubeconfig
+// BackupKubeConfig copies kubeconfig file to <helm-config-path>/kubeconfig
 // as backup. The backup file will have rw permissions for user.
 // The backup file's path is updated in EnvSettings.KubeConfig.
 //
