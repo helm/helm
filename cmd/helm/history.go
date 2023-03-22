@@ -106,7 +106,7 @@ func (r releaseHistory) WriteTable(out io.Writer) error {
 	tbl := uitable.New()
 	tbl.AddRow("REVISION", "UPDATED", "STATUS", "CHART", "APP VERSION", "DESCRIPTION")
 	for _, item := range r {
-		tbl.AddRow(item.Revision, item.Updated.Format(time.ANSIC), item.Status, item.Chart, item.AppVersion, item.Description)
+		tbl.AddRow(item.Revision, item.Updated.Local().Format(time.ANSIC), item.Status, item.Chart, item.AppVersion, item.Description)
 	}
 	return output.EncodeTable(out, tbl)
 }
