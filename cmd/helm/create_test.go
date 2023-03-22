@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -77,7 +76,7 @@ func TestCreateStarterCmd(t *testing.T) {
 		t.Logf("Created %s", dest)
 	}
 	tplpath := filepath.Join(starterchart, "starterchart", "templates", "foo.tpl")
-	if err := ioutil.WriteFile(tplpath, []byte("test"), 0644); err != nil {
+	if err := os.WriteFile(tplpath, []byte("test"), 0644); err != nil {
 		t.Fatalf("Could not write template: %s", err)
 	}
 
@@ -140,7 +139,7 @@ func TestCreateStarterAbsoluteCmd(t *testing.T) {
 		t.Logf("Created %s", dest)
 	}
 	tplpath := filepath.Join(starterchart, "starterchart", "templates", "foo.tpl")
-	if err := ioutil.WriteFile(tplpath, []byte("test"), 0644); err != nil {
+	if err := os.WriteFile(tplpath, []byte("test"), 0644); err != nil {
 		t.Fatalf("Could not write template: %s", err)
 	}
 

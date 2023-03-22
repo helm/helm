@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/url"
 	"os"
 	"path"
@@ -246,7 +246,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 			i.cfg.Capabilities.KubeVersion = *i.KubeVersion
 		}
 		i.cfg.Capabilities.APIVersions = append(i.cfg.Capabilities.APIVersions, i.APIVersions...)
-		i.cfg.KubeClient = &kubefake.PrintingKubeClient{Out: ioutil.Discard}
+		i.cfg.KubeClient = &kubefake.PrintingKubeClient{Out: io.Discard}
 
 		mem := driver.NewMemory()
 		mem.SetNamespace(i.Namespace)

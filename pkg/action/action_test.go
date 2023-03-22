@@ -17,7 +17,7 @@ package action
 
 import (
 	"flag"
-	"io/ioutil"
+	"io"
 	"testing"
 
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
@@ -44,7 +44,7 @@ func actionConfigFixture(t *testing.T) *Configuration {
 
 	return &Configuration{
 		Releases:       storage.Init(driver.NewMemory()),
-		KubeClient:     &kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: ioutil.Discard}},
+		KubeClient:     &kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}},
 		Capabilities:   chartutil.DefaultCapabilities,
 		RegistryClient: registryClient,
 		Log: func(format string, v ...interface{}) {
