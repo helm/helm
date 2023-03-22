@@ -76,8 +76,7 @@ func main() {
 		if settings.KubeConfig != "" {
 			// If KubeConfig path is not empty, backup kube config to: <helm-config-path>/kubeconfig
 			// When the backup is successful, the settings.KubeConfig path is updated to backup file's path.
-			err = settings.BackupKubeConfig()
-			if err != nil {
+			if err := settings.BackupKubeConfig(); err != nil {
 				log.Fatal(err)
 			}
 		} else {
