@@ -243,7 +243,7 @@ func (s *EnvSettings) RESTClientGetter() genericclioptions.RESTClientGetter {
 // The backup file's path is updated in EnvSettings.KubeConfig.
 //
 // There is no safety check on EnvSettings.KubeConfig, i.e., the caller
-// should call this method only when there is kube config path specified.
+// should call this method only when there is kubeconfig path specified.
 // Else, the actual kubeconfig file read fails.
 func (s *EnvSettings) BackupKubeConfig() error {
 	// Form the backup file path as: <helm-config-path>/kubeconfig
