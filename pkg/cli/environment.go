@@ -255,7 +255,7 @@ func (s *EnvSettings) BackupKubeConfig() error {
 	helmConfigPath := helmpath.ConfigPath("")
 	kubeConfigBackupFilename := filepath.Join(helmConfigPath, "kubeconfig")
 
-	// Create reader from actual kube config file
+	// Create reader from actual kubeconfig file.
 	kubeConfigReader, err := os.Open(s.KubeConfig)
 	if err != nil {
 		return fmt.Errorf("failed to read input kubeconfig file %q: %v",
