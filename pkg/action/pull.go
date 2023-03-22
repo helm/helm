@@ -18,7 +18,6 @@ package action
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -114,7 +113,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 	dest := p.DestDir
 	if p.Untar {
 		var err error
-		dest, err = ioutil.TempDir("", "helm-")
+		dest, err = os.MkdirTemp("", "helm-")
 		if err != nil {
 			return out.String(), errors.Wrap(err, "failed to untar")
 		}
