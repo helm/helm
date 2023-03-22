@@ -80,7 +80,7 @@ func main() {
 				log.Fatal(err)
 			}
 		} else {
-			debug("kube config backup aborted due to empty KubeConfig path in settings")
+			debug("kubeconfig backup aborted due to the empty KubeConfig path in the settings")
 		}
 
 		if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), helmDriver, debug); err != nil {
