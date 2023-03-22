@@ -17,7 +17,7 @@ limitations under the License.
 package values
 
 import (
-	"io/ioutil"
+	"io"
 	"net/url"
 	"os"
 	"strings"
@@ -119,7 +119,7 @@ func mergeMaps(a, b map[string]interface{}) map[string]interface{} {
 // readFile load a file from stdin, the local directory, or a remote file with a url.
 func readFile(filePath string, p getter.Providers) ([]byte, error) {
 	if strings.TrimSpace(filePath) == "-" {
-		return ioutil.ReadAll(os.Stdin)
+		return io.ReadAll(os.Stdin)
 	}
 	u, err := url.Parse(filePath)
 	if err != nil {
@@ -129,7 +129,7 @@ func readFile(filePath string, p getter.Providers) ([]byte, error) {
 	// FIXME: maybe someone handle other protocols like ftp.
 	g, err := p.ByScheme(u.Scheme)
 	if err != nil {
-		return ioutil.ReadFile(filePath)
+		return os.ReadFile(filePath)
 	}
 	data, err := g.Get(filePath, getter.WithURL(filePath))
 	if err != nil {

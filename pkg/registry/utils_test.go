@@ -22,7 +22,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -110,7 +109,7 @@ func setup(suite *TestSuite, tlsEnabled bool, insecure bool) *registry.Registry 
 	pwBytes, err := bcrypt.GenerateFromPassword([]byte(testPassword), bcrypt.DefaultCost)
 	suite.Nil(err, "no error generating bcrypt password for test htpasswd file")
 	htpasswdPath := filepath.Join(suite.WorkspaceDir, testHtpasswdFileBasename)
-	err = ioutil.WriteFile(htpasswdPath, []byte(fmt.Sprintf("%s:%s\n", testUsername, string(pwBytes))), 0644)
+	err = os.WriteFile(htpasswdPath, []byte(fmt.Sprintf("%s:%s\n", testUsername, string(pwBytes))), 0644)
 	suite.Nil(err, "no error creating test htpasswd file")
 
 	// Registry config
@@ -200,7 +199,7 @@ func testPush(suite *TestSuite) {
 	suite.NotNil(err, "error pushing non-chart bytes")
 
 	// Load a test chart
-	chartData, err := ioutil.ReadFile("../repo/repotest/testdata/examplechart-0.1.0.tgz")
+	chartData, err := os.ReadFile("../repo/repotest/testdata/examplechart-0.1.0.tgz")
 	suite.Nil(err, "no error loading test chart")
 	meta, err := extractChartMeta(chartData)
 	suite.Nil(err, "no error extracting chart meta")
@@ -224,7 +223,7 @@ func testPush(suite *TestSuite) {
 	suite.Nil(err, "no error pushing non-strict ref (bad tag), with strict mode disabled")
 
 	// basic push, good ref
-	chartData, err = ioutil.ReadFile("../downloader/testdata/local-subchart-0.1.0.tgz")
+	chartData, err = os.ReadFile("../downloader/testdata/local-subchart-0.1.0.tgz")
 	suite.Nil(err, "no error loading test chart")
 	meta, err = extractChartMeta(chartData)
 	suite.Nil(err, "no error extracting chart meta")
@@ -236,13 +235,13 @@ func testPush(suite *TestSuite) {
 	suite.Nil(err, "no error pulling a simple chart")
 
 	// Load another test chart
-	chartData, err = ioutil.ReadFile("../downloader/testdata/signtest-0.1.0.tgz")
+	chartData, err = os.ReadFile("../downloader/testdata/signtest-0.1.0.tgz")
 	suite.Nil(err, "no error loading test chart")
 	meta, err = extractChartMeta(chartData)
 	suite.Nil(err, "no error extracting chart meta")
 
 	// Load prov file
-	provData, err := ioutil.ReadFile("../downloader/testdata/signtest-0.1.0.tgz.prov")
+	provData, err := os.ReadFile("../downloader/testdata/signtest-0.1.0.tgz.prov")
 	suite.Nil(err, "no error loading test prov")
 
 	// push with prov
@@ -284,7 +283,7 @@ func testPull(suite *TestSuite) {
 	suite.NotNil(err, "error on bad/missing ref")
 
 	// Load test chart (to build ref pushed in previous test)
-	chartData, err := ioutil.ReadFile("../downloader/testdata/local-subchart-0.1.0.tgz")
+	chartData, err := os.ReadFile("../downloader/testdata/local-subchart-0.1.0.tgz")
 	suite.Nil(err, "no error loading test chart")
 	meta, err := extractChartMeta(chartData)
 	suite.Nil(err, "no error extracting chart meta")
@@ -306,14 +305,14 @@ func testPull(suite *TestSuite) {
 		"no error pulling a chart with prov when no prov exists, ignoring missing")
 
 	// Load test chart (to build ref pushed in previous test)
-	chartData, err = ioutil.ReadFile("../downloader/testdata/signtest-0.1.0.tgz")
+	chartData, err = os.ReadFile("../downloader/testdata/signtest-0.1.0.tgz")
 	suite.Nil(err, "no error loading test chart")
 	meta, err = extractChartMeta(chartData)
 	suite.Nil(err, "no error extracting chart meta")
 	ref = fmt.Sprintf("%s/testrepo/%s:%s", suite.DockerRegistryHost, meta.Name, meta.Version)
 
 	// Load prov file
-	provData, err := ioutil.ReadFile("../downloader/testdata/signtest-0.1.0.tgz.prov")
+	provData, err := os.ReadFile("../downloader/testdata/signtest-0.1.0.tgz.prov")
 	suite.Nil(err, "no error loading test prov")
 
 	// no chart and no prov causes error
@@ -358,7 +357,7 @@ func testPull(suite *TestSuite) {
 
 func testTags(suite *TestSuite) {
 	// Load test chart (to build ref pushed in previous test)
-	chartData, err := ioutil.ReadFile("../downloader/testdata/local-subchart-0.1.0.tgz")
+	chartData, err := os.ReadFile("../downloader/testdata/local-subchart-0.1.0.tgz")
 	suite.Nil(err, "no error loading test chart")
 	meta, err := extractChartMeta(chartData)
 	suite.Nil(err, "no error extracting chart meta")

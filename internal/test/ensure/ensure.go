@@ -17,7 +17,6 @@ limitations under the License.
 package ensure
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -44,7 +43,7 @@ func HelmHome(t *testing.T) func() {
 // TempDir ensures a scratch test directory for unit testing purposes.
 func TempDir(t *testing.T) string {
 	t.Helper()
-	d, err := ioutil.TempDir("", "helm")
+	d, err := os.MkdirTemp("", "helm")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +62,7 @@ func TempDir(t *testing.T) string {
 func TempFile(t *testing.T, name string, data []byte) string {
 	path := TempDir(t)
 	filename := filepath.Join(path, name)
-	if err := ioutil.WriteFile(filename, data, 0755); err != nil {
+	if err := os.WriteFile(filename, data, 0755); err != nil {
 		t.Fatal(err)
 	}
 	return path

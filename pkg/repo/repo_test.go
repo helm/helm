@@ -17,7 +17,6 @@ limitations under the License.
 package repo
 
 import (
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -115,11 +114,11 @@ func TestRepoFile_Get(t *testing.T) {
 	name := "second"
 
 	entry := repo.Get(name)
-	if entry == nil {
+	if entry == nil { //nolint:staticcheck
 		t.Fatalf("Expected repo entry %q to be found", name)
 	}
 
-	if entry.URL != "https://example.com/second" {
+	if entry.URL != "https://example.com/second" { //nolint:staticcheck
 		t.Errorf("Expected repo URL to be %q but got %q", "https://example.com/second", entry.URL)
 	}
 
@@ -198,7 +197,7 @@ func TestWriteFile(t *testing.T) {
 		},
 	)
 
-	file, err := ioutil.TempFile("", "helm-repo")
+	file, err := os.CreateTemp("", "helm-repo")
 	if err != nil {
 		t.Errorf("failed to create test-file (%v)", err)
 	}

@@ -20,7 +20,6 @@ import (
 	"crypto"
 	"encoding/hex"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -297,7 +296,7 @@ func (s *Signatory) Verify(chartpath, sigpath string) (*Verification, error) {
 }
 
 func (s *Signatory) decodeSignature(filename string) (*clearsign.Block, error) {
-	data, err := ioutil.ReadFile(filename)
+	data, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}

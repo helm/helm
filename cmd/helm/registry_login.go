@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -90,7 +89,7 @@ func getUsernamePassword(usernameOpt string, passwordOpt string, passwordFromStd
 	password := passwordOpt
 
 	if passwordFromStdinOpt {
-		passwordFromStdin, err := ioutil.ReadAll(os.Stdin)
+		passwordFromStdin, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			return "", "", err
 		}
