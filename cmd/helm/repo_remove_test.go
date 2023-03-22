@@ -31,6 +31,7 @@ import (
 )
 
 func TestRepoRemove(t *testing.T) {
+	ensure.HelmHome(t)
 	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
 	if err != nil {
 		t.Fatal(err)

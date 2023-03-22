@@ -31,7 +31,7 @@ import (
 // Young'n, in these here parts, we test our tests.
 
 func TestServer(t *testing.T) {
-	defer ensure.HelmHome(t)()
+	ensure.HelmHome(t)
 
 	rootDir := ensure.TempDir(t)
 	defer os.RemoveAll(rootDir)
@@ -99,7 +99,7 @@ func TestServer(t *testing.T) {
 }
 
 func TestNewTempServer(t *testing.T) {
-	defer ensure.HelmHome(t)()
+	ensure.HelmHome(t)
 
 	srv, err := NewTempServerWithCleanup(t, "testdata/examplechart-0.1.0.tgz")
 	if err != nil {

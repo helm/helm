@@ -36,7 +36,6 @@ import (
 
 func TestSave(t *testing.T) {
 	tmp := ensure.TempDir(t)
-	defer os.RemoveAll(tmp)
 
 	for _, dest := range []string{tmp, path.Join(tmp, "newdir")} {
 		t.Run("outDir="+dest, func(t *testing.T) {

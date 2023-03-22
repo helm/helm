@@ -16,7 +16,6 @@ limitations under the License.
 package rules
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -80,7 +79,6 @@ func TestValidateDependencyInMetadata(t *testing.T) {
 
 func TestDependencies(t *testing.T) {
 	tmp := ensure.TempDir(t)
-	defer os.RemoveAll(tmp)
 
 	c := chartWithBadDependencies()
 	err := chartutil.SaveDir(&c, tmp)

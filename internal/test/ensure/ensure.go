@@ -27,7 +27,7 @@ import (
 )
 
 // HelmHome sets up a Helm Home in a temp dir.
-func HelmHome(t *testing.T) func() {
+func HelmHome(t *testing.T) {
 	t.Helper()
 	base := TempDir(t)
 	os.Setenv(xdg.CacheHomeEnvVar, base)
@@ -36,9 +36,6 @@ func HelmHome(t *testing.T) func() {
 	os.Setenv(helmpath.CacheHomeEnvVar, "")
 	os.Setenv(helmpath.ConfigHomeEnvVar, "")
 	os.Setenv(helmpath.DataHomeEnvVar, "")
-	return func() {
-		os.RemoveAll(base)
-	}
 }
 
 // TempDir ensures a scratch test directory for unit testing purposes.
@@ -48,6 +45,12 @@ func TempDir(t *testing.T) string {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() {
+		if !t.Failed() {
+			os.RemoveAll(d)
+		}
+	})
+
 	return d
 }
 
@@ -55,11 +58,7 @@ func TempDir(t *testing.T) string {
 //
 // It returns the path to the directory (to which you will still need to join the filename)
 //
-// You must clean up the directory that is returned.
-//
-// 	tempdir := TempFile(t, "foo", []byte("bar"))
-// 	defer os.RemoveAll(tempdir)
-// 	filename := filepath.Join(tempdir, "foo")
+// The whole TempDir will be Remove automatically
 func TempFile(t *testing.T, name string, data []byte) string {
 	path := TempDir(t)
 	filename := filepath.Join(path, name)

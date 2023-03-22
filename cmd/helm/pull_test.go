@@ -24,10 +24,12 @@ import (
 	"path/filepath"
 	"testing"
 
+	"helm.sh/helm/v3/internal/test/ensure"
 	"helm.sh/helm/v3/pkg/repo/repotest"
 )
 
 func TestPullCmd(t *testing.T) {
+	ensure.HelmHome(t)
 	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/testcharts/*.tgz*")
 	if err != nil {
 		t.Fatal(err)

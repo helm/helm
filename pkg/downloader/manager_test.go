@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"testing"
 
+	"helm.sh/helm/v3/internal/test/ensure"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -265,6 +266,7 @@ func TestDownloadAll(t *testing.T) {
 }
 
 func TestUpdateBeforeBuild(t *testing.T) {
+	ensure.HelmHome(t)
 	// Set up a fake repo
 	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")
 	if err != nil {
@@ -409,6 +411,7 @@ func TestUpdateWithNoRepo(t *testing.T) {
 // Parent chart includes local-subchart 0.1.0 subchart from a fake repository, by default.
 // If each of these main fields (name, version, repository) is not supplied by dep param, default value will be used.
 func checkBuildWithOptionalFields(t *testing.T, chartName string, dep chart.Dependency) {
+	ensure.HelmHome(t)
 	// Set up a fake repo
 	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")
 	if err != nil {
