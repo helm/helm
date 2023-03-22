@@ -270,7 +270,7 @@ func (s *EnvSettings) BackupKubeConfig() error {
 			s.KubeConfig, kubeConfigBackupFilename, err)
 	}
 
-	// Update the kube config in EnvSettings to backup file path
+	// Update the kubeconfig in EnvSettings to a backup file path.
 	s.KubeConfig = kubeConfigBackupFilename
 
 	return nil
