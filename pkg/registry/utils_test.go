@@ -39,6 +39,8 @@ import (
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/foxcpp/go-mockdns"
+
 	"helm.sh/helm/v3/internal/tlsutil"
 )
 
@@ -82,9 +84,19 @@ func setup(suite *TestSuite, tlsEnabled bool, insecure bool) *registry.Registry 
 	if tlsEnabled {
 		var tlsConf *tls.Config
 		tlsConf, err = tlsutil.NewClientTLS(tlsCert, tlsKey, tlsCA, insecure)
+
+		r := mockdns.Resolver{
+			Zones: map[string]mockdns.Zone{
+				"0x7f000001.": {
+					A: []string{"127.0.0.1"},
+				},
+			},
+		}
+
 		httpClient := &http.Client{
 			Transport: &http.Transport{
 				TLSClientConfig: tlsConf,
+				DialContext:     r.DialContext,
 			},
 		}
 		suite.Nil(err, "no error loading tlsconfog")
