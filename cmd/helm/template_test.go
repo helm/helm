@@ -131,6 +131,21 @@ func TestTemplateCmd(t *testing.T) {
 			cmd:    fmt.Sprintf(`template '%s' --skip-tests`, chartPath),
 			golden: "output/template-skip-tests.txt",
 		},
+		{
+			name:   "chart with template with external file",
+			cmd:    fmt.Sprintf("template '%s' --set external=testdata/files/external.txt --include-path testdata/files/external.txt", "testdata/testcharts/external"),
+			golden: "output/template-with-external-file.txt",
+		},
+		{
+			name:   "chart with template with external dir",
+			cmd:    fmt.Sprintf("template '%s' --set glob.enabled=true --include-path testdata/files/", "testdata/testcharts/external"),
+			golden: "output/template-with-external-dir.txt",
+		},
+		{
+			name:   "chart with template with external globbed files",
+			cmd:    fmt.Sprintf("template '%s' --set glob.enabled=true --include-path testdata/files/external.*.conf", "testdata/testcharts/external"),
+			golden: "output/template-with-external-glob.txt",
+		},
 	}
 	runTestCmd(t, tests)
 }

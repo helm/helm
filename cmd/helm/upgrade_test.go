@@ -357,6 +357,38 @@ func TestUpgradeInstallWithValuesFromStdin(t *testing.T) {
 
 }
 
+func TestUpgradeWithExternalFile(t *testing.T) {
+
+	releaseName := "funny-bunny-v7"
+
+	exFiles := []*chart.File{
+		{Name: "testdata/files/external.txt", Data: []byte("from-external-file")},
+	}
+
+	relMock, ch, chartPath := prepareMockReleaseWithExternal(releaseName, exFiles, t)
+
+	defer resetEnv()()
+
+	store := storageFixture()
+
+	store.Create(relMock(releaseName, 3, ch))
+
+	cmd := fmt.Sprintf("upgrade %s --set glob.enabled=false --set external=testdata/files/external.txt '%s'", releaseName, chartPath)
+	_, _, err := executeActionCommandC(store, cmd)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	updatedRel, err := store.Get(releaseName, 4)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	if !strings.Contains(updatedRel.Manifest, "from-external-file") {
+		t.Errorf("The value is not set correctly. manifest: %s", updatedRel.Manifest)
+	}
+}
+
 func prepareMockRelease(releaseName string, t *testing.T) (func(n string, v int, ch *chart.Chart) *release.Release, *chart.Chart, string) {
 	tmpChart := ensure.TempDir(t)
 	configmapData, err := ioutil.ReadFile("testdata/testcharts/upgradetest/templates/configmap.yaml")
@@ -371,6 +403,43 @@ func prepareMockRelease(releaseName string, t *testing.T) (func(n string, v int,
 			Version:     "0.1.0",
 		},
 		Templates: []*chart.File{{Name: "templates/configmap.yaml", Data: configmapData}},
+	}
+	chartPath := filepath.Join(tmpChart, cfile.Metadata.Name)
+	if err := chartutil.SaveDir(cfile, tmpChart); err != nil {
+		t.Fatalf("Error creating chart for upgrade: %v", err)
+	}
+	ch, err := loader.Load(chartPath)
+	if err != nil {
+		t.Fatalf("Error loading chart: %v", err)
+	}
+	_ = release.Mock(&release.MockReleaseOptions{
+		Name:  releaseName,
+		Chart: ch,
+	})
+
+	relMock := func(n string, v int, ch *chart.Chart) *release.Release {
+		return release.Mock(&release.MockReleaseOptions{Name: n, Version: v, Chart: ch})
+	}
+
+	return relMock, ch, chartPath
+}
+
+func prepareMockReleaseWithExternal(releaseName string, exFiles []*chart.File, t *testing.T) (func(n string, v int, ch *chart.Chart) *release.Release, *chart.Chart, string) {
+	tmpChart := ensure.TempDir(t)
+	configmapData, err := ioutil.ReadFile("testdata/testcharts/external/templates/config-map.yaml")
+
+	if err != nil {
+		t.Fatalf("Error loading template yaml %v", err)
+	}
+	cfile := &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion:  chart.APIVersionV1,
+			Name:        "testUpgradeChart",
+			Description: "A Helm chart for Kubernetes",
+			Version:     "0.1.0",
+		},
+		Templates: []*chart.File{{Name: "templates/configmap.yaml", Data: configmapData}},
+		Files:     exFiles,
 	}
 	chartPath := filepath.Join(tmpChart, cfile.Metadata.Name)
 	if err := chartutil.SaveDir(cfile, tmpChart); err != nil {

@@ -17,6 +17,7 @@ package action
 
 import (
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"testing"
 
@@ -31,6 +32,8 @@ import (
 	"helm.sh/helm/v3/pkg/storage/driver"
 	"helm.sh/helm/v3/pkg/time"
 )
+
+const withExternalPathsTemplatePath = "templates/with-external-paths"
 
 var verbose = flag.Bool("test.log", false, "enable test logging")
 
@@ -206,6 +209,15 @@ func withSampleIncludingIncorrectTemplates() chartOption {
 			{Name: "templates/partials/_planet", Data: []byte(`{{define "_planet"}}Earth{{end}}`)},
 		}
 		opts.Templates = append(opts.Templates, sampleTemplates...)
+	}
+}
+
+func withExternalFileTemplate(externalPath string) chartOption {
+	return func(opts *chartOptions) {
+		externalFilesTemplates := []*chart.File{
+			{Name: withExternalPathsTemplatePath, Data: []byte(fmt.Sprintf(`data: {{ .Files.Get "%s" }}`, externalPath))},
+		}
+		opts.Templates = append(opts.Templates, externalFilesTemplates...)
 	}
 }
 

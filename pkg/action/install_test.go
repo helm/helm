@@ -17,9 +17,11 @@ limitations under the License.
 package action
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -39,10 +41,18 @@ import (
 	helmtime "helm.sh/helm/v3/pkg/time"
 )
 
+const ExternalFileRelPath = "testdata/files/external.txt"
+
 type nameTemplateTestCase struct {
 	tpl              string
 	expected         string
 	expectedErrorStr string
+}
+
+type includeExternalPathTestCase struct {
+	Name             string
+	IncludedFilePath string
+	ExternalPath     string
 }
 
 func installAction(t *testing.T) *Install {
@@ -52,6 +62,11 @@ func installAction(t *testing.T) *Install {
 	instAction.ReleaseName = "test-install-release"
 
 	return instAction
+}
+
+func getAbsPath(path string) string {
+	absPath, _ := filepath.Abs(path)
+	return absPath
 }
 
 func TestInstallRelease(t *testing.T) {
@@ -714,6 +729,102 @@ func TestNameAndChartGenerateName(t *testing.T) {
 
 			is.Equal(tc.ExpectedName, name)
 			is.Equal(tc.Chart, chrt)
+		})
+	}
+}
+
+func TestInstallUsesEmptyContentWrongPathsIncluded(t *testing.T) {
+	is := assert.New(t)
+	vals := map[string]interface{}{}
+
+	tests := []includeExternalPathTestCase{
+		{
+			Name:             "included paths not passed",
+			IncludedFilePath: "",
+			ExternalPath:     ExternalFileRelPath,
+		},
+		{
+			Name:             "absolute path of file is included and external file is relative",
+			IncludedFilePath: getAbsPath(ExternalFileRelPath),
+			ExternalPath:     ExternalFileRelPath,
+		},
+		{
+			Name:             "relative path of file is included and external file is absolute",
+			IncludedFilePath: ExternalFileRelPath,
+			ExternalPath:     getAbsPath(ExternalFileRelPath),
+		},
+		{
+			Name:             "absolute path of directory is included and external file is relative",
+			IncludedFilePath: getAbsPath("testdata/files"),
+			ExternalPath:     ExternalFileRelPath,
+		},
+		{
+			Name:             "relative path of directory is included and external file is absolute",
+			IncludedFilePath: "testdata/files",
+			ExternalPath:     getAbsPath(ExternalFileRelPath),
+		},
+	}
+
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+	defer func() {
+		log.SetOutput(os.Stderr)
+	}()
+
+	for _, tc := range tests {
+		t.Run(tc.Name, func(t *testing.T) {
+			instAction := installAction(t)
+			if tc.IncludedFilePath != "" {
+				instAction.ExternalPaths = append(instAction.ExternalPaths, tc.IncludedFilePath)
+			}
+
+			rel, err := instAction.Run(buildChart(withExternalFileTemplate(tc.ExternalPath)), vals)
+			is.Contains(buf.String(), "not included")
+			is.NoError(err)
+			is.Equal(
+				rel.Manifest,
+				"---\n# Source: hello/templates/hello\nhello: world\n---\n# Source: hello/templates/with-external-paths\ndata:\n",
+			)
+			buf.Reset()
+		})
+	}
+}
+
+func TestInstallWhenIncludePathsPassed(t *testing.T) {
+	is := assert.New(t)
+	vals := map[string]interface{}{}
+
+	tests := []includeExternalPathTestCase{
+		{
+			Name:             "relative path of file is included and external file is relative",
+			IncludedFilePath: ExternalFileRelPath,
+			ExternalPath:     ExternalFileRelPath,
+		},
+		{
+			Name:             "absolute path of file is included and external file is absolute",
+			IncludedFilePath: getAbsPath(ExternalFileRelPath),
+			ExternalPath:     getAbsPath(ExternalFileRelPath),
+		},
+		{
+			Name:             "relative path of directory is included and external file is relative",
+			IncludedFilePath: "testdata/files",
+			ExternalPath:     ExternalFileRelPath,
+		},
+		{
+			Name:             "absolute path of directory is included and external file is absolute",
+			IncludedFilePath: getAbsPath("testdata/files"),
+			ExternalPath:     getAbsPath(ExternalFileRelPath),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.Name, func(t *testing.T) {
+			instAction := installAction(t)
+			instAction.ExternalPaths = append(instAction.ExternalPaths, tc.IncludedFilePath)
+
+			installRelease, err := instAction.Run(buildChart(withExternalFileTemplate(tc.ExternalPath)), vals)
+			is.Contains(installRelease.Manifest, "out-of-chart-dir")
+			is.NoError(err)
 		})
 	}
 }
