@@ -22,6 +22,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -34,6 +35,7 @@ import (
 	"github.com/distribution/distribution/v3/registry"
 	_ "github.com/distribution/distribution/v3/registry/auth/htpasswd"
 	_ "github.com/distribution/distribution/v3/registry/storage/driver/inmemory"
+	"github.com/foxcpp/go-mockdns"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/bcrypt"
@@ -63,6 +65,9 @@ type TestSuite struct {
 	CompromisedRegistryHost string
 	WorkspaceDir            string
 	RegistryClient          *Client
+
+	// A mock DNS server needed for TLS connection testing.
+	srv *mockdns.Server
 }
 
 func setup(suite *TestSuite, tlsEnabled bool, insecure bool) *registry.Registry {
@@ -122,6 +127,15 @@ func setup(suite *TestSuite, tlsEnabled bool, insecure bool) *registry.Registry 
 		// That function does not handle matching of ip addresses in octal,
 		// decimal or hex form.
 		suite.DockerRegistryHost = fmt.Sprintf("0x7f000001:%d", port)
+
+		// As of Go 1.20, Go may lookup "0x7f000001" as a DNS entry and fail.
+		// Using a mock DNS server to handle the address.
+		suite.srv, _ = mockdns.NewServer(map[string]mockdns.Zone{
+			"0x7f000001.": {
+				A: []string{"127.0.0.1"},
+			},
+		}, false)
+		suite.srv.PatchNet(net.DefaultResolver)
 	} else {
 		suite.DockerRegistryHost = fmt.Sprintf("localhost:%d", port)
 	}
@@ -150,6 +164,13 @@ func setup(suite *TestSuite, tlsEnabled bool, insecure bool) *registry.Registry 
 
 	suite.CompromisedRegistryHost = initCompromisedRegistryTestServer()
 	return dockerRegistry
+}
+
+func teardown(suite *TestSuite) {
+	if suite.srv != nil {
+		mockdns.UnpatchNet(net.DefaultResolver)
+		suite.srv.Close()
+	}
 }
 
 func initCompromisedRegistryTestServer() string {
