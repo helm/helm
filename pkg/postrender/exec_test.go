@@ -18,7 +18,6 @@ package postrender
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -167,7 +166,7 @@ func setupTestingScript(t *testing.T) (filepath string, cleanup func()) {
 
 	tempdir := ensure.TempDir(t)
 
-	f, err := ioutil.TempFile(tempdir, "post-render-test.sh")
+	f, err := os.CreateTemp(tempdir, "post-render-test.sh")
 	if err != nil {
 		t.Fatalf("unable to create tempfile for testing: %s", err)
 	}

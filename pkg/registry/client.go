@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"sort"
 	"strings"
@@ -72,7 +71,7 @@ type (
 // NewClient returns a new registry client with config
 func NewClient(options ...ClientOption) (*Client, error) {
 	client := &Client{
-		out: ioutil.Discard,
+		out: io.Discard,
 	}
 	for _, option := range options {
 		option(client)
