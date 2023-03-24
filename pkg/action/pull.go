@@ -18,7 +18,6 @@ package action
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -72,6 +71,11 @@ func NewPullWithOpts(opts ...PullOpt) *Pull {
 	return p
 }
 
+// SetRegistryClient sets the registry client on the pull configuration object.
+func (p *Pull) SetRegistryClient(client *registry.Client) {
+	p.cfg.RegistryClient = client
+}
+
 // Run executes 'helm pull' against the given release.
 func (p *Pull) Run(chartRef string) (string, error) {
 	var out strings.Builder
@@ -95,6 +99,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 	if registry.IsOCI(chartRef) {
 		c.Options = append(c.Options,
 			getter.WithRegistryClient(p.cfg.RegistryClient))
+		c.RegistryClient = p.cfg.RegistryClient
 	}
 
 	if p.Verify {
@@ -108,7 +113,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 	dest := p.DestDir
 	if p.Untar {
 		var err error
-		dest, err = ioutil.TempDir("", "helm-")
+		dest, err = os.MkdirTemp("", "helm-")
 		if err != nil {
 			return out.String(), errors.Wrap(err, "failed to untar")
 		}
