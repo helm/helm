@@ -155,11 +155,11 @@ func (m *Manager) Update() error {
 		return err
 	}
 
-	// If no dependencies are found, we consider this a successful
-	// completion.
 	req := c.Metadata.Dependencies
-	if req == nil {
-		return nil
+	// The nil check determines whether the 'dependencies:' key exists in a Chart.yaml.
+	// The len(chartDeps) < 1 check determines whether the 'dependencies' key is empty in a Chart.yaml.
+	if req == nil || len(req) < 1 {
+		fmt.Fprintln(m.Out, "No chart dependencies found")
 	}
 
 	// Get the names of the repositories the dependencies need that Helm is
