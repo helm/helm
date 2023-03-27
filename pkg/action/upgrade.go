@@ -106,6 +106,8 @@ type Upgrade struct {
 	Lock sync.Mutex
 	// Enable DNS lookups when rendering templates
 	EnableDNS bool
+	// Skip upgrade if there are no changes
+	SkipEmptyUpgrade bool
 }
 
 type resultMessage struct {
@@ -161,7 +163,9 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 		return res, err
 	}
 
-	if !u.DryRun {
+	if upgradedRelease.Skipped {
+		u.cfg.Log("upgrade release for %s was skipped", name)
+	} else if !u.DryRun {
 		u.cfg.Log("updating status for upgraded release for %s", name)
 		if err := u.cfg.Releases.Update(upgradedRelease); err != nil {
 			return res, err
@@ -316,6 +320,13 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 		current.Append(r)
 		return nil
 	})
+
+	if u.SkipEmptyUpgrade {
+		if len(toBeCreated) == 0 && len(toBeUpdated) == 0 {
+			upgradedRelease.Skipped = true
+			return upgradedRelease, nil
+		}
+	}
 
 	if u.DryRun {
 		u.cfg.Log("dry run for %s", upgradedRelease.Name)
