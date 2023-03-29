@@ -23,10 +23,17 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	v1 "k8s.io/api/core/v1"
-
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/release"
+	v1 "k8s.io/api/core/v1"
+)
+
+type PodLogFilter string
+
+const (
+	PodAll       PodLogFilter = "all"
+	PodSucceeded PodLogFilter = "succeeded"
+	PodFailed    PodLogFilter = "failed"
 )
 
 // ReleaseTesting is the action for testing a release.
@@ -101,7 +108,7 @@ func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
 // GetPodLogs will write the logs for all test pods in the given release into
 // the given writer. These can be immediately output to the user or captured for
 // other uses
-func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
+func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release, filter PodLogFilter) error {
 	client, err := r.cfg.KubernetesClientSet()
 	if err != nil {
 		return errors.Wrap(err, "unable to get kubernetes client to fetch pod logs")
@@ -110,6 +117,15 @@ func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 	for _, h := range rel.Hooks {
 		for _, e := range h.Events {
 			if e == release.HookTest {
+				// only print logs of failed pods
+				if filter == PodFailed && h.LastRun.Phase != release.HookPhaseFailed {
+					continue
+				}
+				// only print logs of succeeded pods
+				if filter == PodSucceeded && h.LastRun.Phase != release.HookPhaseSucceeded {
+					continue
+				}
+
 				req := client.CoreV1().Pods(r.Namespace).GetLogs(h.Name, &v1.PodLogOptions{})
 				logReader, err := req.Stream(context.Background())
 				if err != nil {

@@ -40,7 +40,7 @@ The tests to be run are defined in the chart that was installed.
 func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewReleaseTesting(cfg)
 	var outfmt = output.Table
-	var outputLogs bool
+	var outputLogs string
 	var filter []string
 
 	cmd := &cobra.Command{
@@ -76,10 +76,16 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 				return err
 			}
 
-			if outputLogs {
+			if outputLogs != "" {
+				podLogFilter := action.PodAll
+				if outputLogs == string(action.PodSucceeded) {
+					podLogFilter = action.PodSucceeded
+				} else if outputLogs == string(action.PodFailed) {
+					podLogFilter = action.PodFailed
+				}
 				// Print a newline to stdout to separate the output
 				fmt.Fprintln(out)
-				if err := client.GetPodLogs(out, rel); err != nil {
+				if err := client.GetPodLogs(out, rel, podLogFilter); err != nil {
 					return err
 				}
 			}
@@ -90,7 +96,7 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 
 	f := cmd.Flags()
 	f.DurationVar(&client.Timeout, "timeout", 300*time.Second, "time to wait for any individual Kubernetes operation (like Jobs for hooks)")
-	f.BoolVar(&outputLogs, "logs", false, "dump the logs from test pods (this runs after all tests are complete, but before any cleanup)")
+	f.StringVar(&outputLogs, "logs", "", "dump the logs from test pods (this runs after all tests are complete, but before any cleanup), options include [\"all\", \"succeeded\", \"failed\"]")
 	f.StringSliceVar(&filter, "filter", []string{}, "specify tests by attribute (currently \"name\") using attribute=value syntax or '!attribute=value' to exclude a test (can specify multiple or separate values with commas: name=test1,name=test2)")
 
 	return cmd
