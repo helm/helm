@@ -38,7 +38,7 @@ func TestSave(t *testing.T) {
 	tmp := ensure.TempDir(t)
 	defer os.RemoveAll(tmp)
 
-	for _, dest := range []string{tmp, path.Join(tmp, "newdir")} {
+	for _, dest := range []string{tmp, filepath.Join(tmp, "newdir")} {
 		t.Run("outDir="+dest, func(t *testing.T) {
 			c := &chart.Chart{
 				Metadata: &chart.Metadata{
@@ -210,7 +210,7 @@ func TestSaveDir(t *testing.T) {
 			{Name: "scheherazade/shahryar.txt", Data: []byte("1,001 Nights")},
 		},
 		Templates: []*chart.File{
-			{Name: filepath.Join(TemplatesDir, "nested", "dir", "thing.yaml"), Data: []byte("abc: {{ .Values.abc }}")},
+			{Name: path.Join(TemplatesDir, "nested", "dir", "thing.yaml"), Data: []byte("abc: {{ .Values.abc }}")},
 		},
 	}
 
@@ -227,11 +227,11 @@ func TestSaveDir(t *testing.T) {
 		t.Fatalf("Expected chart archive to have %q, got %q", c.Name(), c2.Name())
 	}
 
-	if len(c2.Templates) != 1 || c2.Templates[0].Name != filepath.Join(TemplatesDir, "nested", "dir", "thing.yaml") {
+	if len(c2.Templates) != 1 || c2.Templates[0].Name != c.Templates[0].Name {
 		t.Fatal("Templates data did not match")
 	}
 
-	if len(c2.Files) != 1 || c2.Files[0].Name != "scheherazade/shahryar.txt" {
+	if len(c2.Files) != 1 || c2.Files[0].Name != c.Files[0].Name {
 		t.Fatal("Files data did not match")
 	}
 }
