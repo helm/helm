@@ -336,7 +336,6 @@ func (secrets *Secrets) Delete(key string) (rls *rspb.Release, err error) {
 //	"owner"          - owner of the secret, currently "helm".
 //	"name"           - name of the release.
 //	"continuedIn"    - if set, the encoded contents of the release continue in the secret this references.
-//
 func newSecretObjects(key string, rls *rspb.Release, lbs labels) ([]*v1.Secret, error) {
 	const owner = "helm"
 
