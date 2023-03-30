@@ -80,6 +80,13 @@ build: $(BINDIR)/$(BINNAME)
 $(BINDIR)/$(BINNAME): $(SRC)
 	GO111MODULE=on CGO_ENABLED=$(CGO_ENABLED) go build $(GOFLAGS) -trimpath -tags '$(TAGS)' -ldflags '$(LDFLAGS)' -o '$(BINDIR)'/$(BINNAME) ./cmd/helm
 
+
+.PHONY: build-linux-amd64
+build-linux-amd64:  $(BINDIR)/$(BINNAME)-linux-amd64
+
+$(BINDIR)/$(BINNAME)-linux-amd64: $(SRC)
+	GO111MODULE=on CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build $(GOFLAGS) -trimpath -tags '$(TAGS)' -ldflags '$(LDFLAGS)' -o '$(BINDIR)'/$(BINNAME) ./cmd/helm
+
 # ------------------------------------------------------------------------------
 #  install
 

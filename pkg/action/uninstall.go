@@ -36,6 +36,7 @@ type Uninstall struct {
 	cfg *Configuration
 
 	DisableHooks bool
+	OnlyRelease  bool
 	DryRun       bool
 	KeepHistory  bool
 	Wait         bool
@@ -204,7 +205,7 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, stri
 		return nil, rel.Manifest, []error{errors.Wrap(err, "corrupted release record. You must manually delete the resources")}
 	}
 
-	filesToKeep, filesToDelete := filterManifestsToKeep(files)
+	filesToKeep, filesToDelete := filterManifestsToKeep(files, u.OnlyRelease)
 	var kept string
 	for _, f := range filesToKeep {
 		kept += "[" + f.Head.Kind + "] " + f.Head.Metadata.Name + "\n"

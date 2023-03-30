@@ -68,6 +68,7 @@ func newUninstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
+	f.BoolVar(&client.OnlyRelease, "only-release", false, "keep all k8s resources when uninstall")
 	f.BoolVar(&client.DryRun, "dry-run", false, "simulate a uninstall")
 	f.BoolVar(&client.DisableHooks, "no-hooks", false, "prevent hooks from running during uninstallation")
 	f.BoolVar(&client.KeepHistory, "keep-history", false, "remove all associated resources and mark the release as deleted, but retain the release history")
