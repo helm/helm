@@ -157,7 +157,7 @@ func (m *Manager) Update() error {
 
 	req := c.Metadata.Dependencies
 	// The nil check determines whether the 'dependencies:' key exists in a Chart.yaml.
-	// The len(chartDeps) < 1 check determines whether the 'dependencies' key is empty in a Chart.yaml.
+	// The len(req) < 1 check determines whether the 'dependencies' key is empty in a Chart.yaml.
 	if req == nil || len(req) < 1 {
 		fmt.Fprintln(m.Out, "No chart dependencies found")
 	}
