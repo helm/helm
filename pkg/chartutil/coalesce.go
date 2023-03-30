@@ -39,7 +39,9 @@ func concatPrefix(a, b string) string {
 //
 //   - Values in a higher level chart always override values in a lower-level
 //     dependency chart
+//
 //   - Scalar values and arrays are replaced, maps are merged
+//
 //   - A chart has access to all of the variables for it, as well as all of
 //     the values destined for its dependencies.
 //
