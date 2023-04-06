@@ -21,7 +21,6 @@ import (
 	"log"
 	"path"
 	"path/filepath"
-	"reflect"
 	"regexp"
 	"sort"
 	"strings"
@@ -285,11 +284,7 @@ func (e Engine) renderWithReferences(tpls, referenceTpls map[string]renderable) 
 		}
 
 		usedValues = usedValues.Union(traverse(t.Lookup(filename).Copy().Root))
-		pv, err := getProvidedValues(vals)
-		if err != nil {
-			return nil, err
-		}
-		providedValues = providedValues.Union(pv)
+		providedValues = providedValues.Union(getProvidedValues(vals))
 
 		// Work around the issue where Go will emit "<no value>" even if Options(missing=zero)
 		// is set. Since missing=error will never get here, we do not need to handle
@@ -517,23 +512,24 @@ func traverse(cur parse.Node) sets.Set[string] {
 // I'm explicitly ignoring those because we don't care about fields that aren't used
 // like $.Chart.name or $.Release.name because we don't set them in the cluster specific
 // values.
-func getProvidedValues(vals chartutil.Values) (sets.Set[string], error) {
+func getProvidedValues(vals chartutil.Values) sets.Set[string] {
 	chartUtilValues, keyExists := vals["Values"]
 	if !keyExists {
-		return nil, fmt.Errorf("no values key found")
+		return sets.New[string]()
 	}
 
-	if chartUtilValues == nil {
-		return nil, fmt.Errorf("values key is nil")
+	var superVals chartutil.Values
+	switch v := chartUtilValues.(type) {
+	case map[string]interface{}:
+		superVals = v
+	case chartutil.Values:
+		superVals = v
+	case nil:
+		return sets.New[string]()
 	}
 
-	values, ok := chartUtilValues.(chartutil.Values)
-	if !ok {
-		return nil, fmt.Errorf("could not typecast chart values %s", reflect.TypeOf(chartUtilValues))
-	}
-
-	f := flattenMapKeys(".Values", values)
-	return sets.New(f...), nil
+	f := flattenMapKeys(".Values", superVals)
+	return sets.New(f...)
 }
 
 // flattenMapKeys turns an interface into a list of variable paths to make it easy to log and
