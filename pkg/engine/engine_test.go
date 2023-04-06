@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 )
 
@@ -869,52 +870,133 @@ func TestRenderRecursionLimit(t *testing.T) {
 	}
 
 }
-func TestReportUnusedValues(t *testing.T) {
-	c := &chart.Chart{
+func TestReportUnusedValuesBasic(t *testing.T) {
+	chart := &chart.Chart{
 		Metadata: &chart.Metadata{
 			Name:    "UnusedValues",
 			Version: "4.2.0",
 		},
 		Templates: []*chart.File{
-			{Name: "templates/test1", Data: []byte("{{.Values.very.used | title }} {{.Values.extremely.used | title}}")},
-			{Name: "templates/test2", Data: []byte("{{.Values.super.used | lower }}")},
-			{Name: "templates/test3", Data: []byte("{{.Values.definitely.used}}")},
-			{Name: "templates/test4", Data: []byte("{{toJson .Values}}")},
+			{Name: "templates/test1", Data: []byte("{{$.Values.very.used | title }} {{$.Values.extremely.used | title}}")},
+			{Name: "templates/test2", Data: []byte("{{$.Values.super.used | lower }}")},
+			{Name: "templates/test3", Data: []byte("{{$.Values.definitely.used}}")},
 		},
-		Values: map[string]interface{}{"outer": "DEFAULT", "inner": "DEFAULT"},
+		Values: chartutil.Values{"outer": "DEFAULT", "inner": "DEFAULT"},
 	}
 
-	vals := map[string]interface{}{
-		"Values": map[string]interface{}{
-			"very": map[string]interface{}{
+	vals := chartutil.Values{
+		"Values": chartutil.Values{
+			"very": chartutil.Values{
 				"used": "used",
 			},
 			"extremely": chartutil.Values{
 				"used": "used",
 			},
-			"definitely": map[string]interface{}{
+			"definitely": chartutil.Values{
 				"used": "used",
 			},
-			"super": map[string]interface{}{
+			"super": chartutil.Values{
 				"used": "used",
 			},
 			"not": "not used",
 		},
 	}
 
-	v, err := chartutil.CoalesceValues(c, vals)
+	v, err := chartutil.CoalesceValues(chart, vals)
 	if err != nil {
 		t.Fatalf("Failed to coalesce values: %s", err)
 	}
 
 	engine := Engine{
 		Strict:   true,
-		LintMode: false,
+		LintMode: true,
 		config:   nil,
 	}
 
-	_, err = engine.Render(c, v)
+	_, err = engine.Render(chart, v)
 	if err == nil {
-		t.Errorf("Render should have returned an error for an unused variable: %s", err)
+		t.Errorf("should have errored, .Values.not is not used")
+	}
+
+	if !strings.Contains(err.Error(), "[.Values.not]") {
+		t.Errorf(".Values.not is unused and should have been in error message")
+	}
+}
+
+func TestReportUnusedValuesChartLoad(t *testing.T) {
+	unusedValuesChart, err := loader.Load("../../cmd/helm/testdata/testcharts/unused-values/")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	engine := Engine{
+		Strict:   true,
+		LintMode: true,
+		config:   nil,
+	}
+
+	options := chartutil.ReleaseOptions{
+		Name:      unusedValuesChart.Name(),
+		Namespace: "test",
+	}
+
+	vals, err := chartutil.ToRenderValues(unusedValuesChart, unusedValuesChart.Values, options, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = engine.Render(unusedValuesChart, vals)
+	if err == nil {
+		t.Fatalf("there is an unused value in this chart")
+	}
+
+	if !strings.Contains(err.Error(), "[.Values.unused]") {
+		t.Fatalf(".Values.unused is unused and should have been in error message")
+	}
+}
+
+func TestReportUnusedValuesDollarSign(t *testing.T) {
+	chart := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:    "UnusedValues",
+			Version: "4.2.0",
+		},
+		Templates: []*chart.File{
+			{Name: "templates/test1", Data: []byte("{{ .Values.super.used }}")},
+			{Name: "templates/test2", Data: []byte("{{ $.Values.definitely.used }}")},
+		},
+	}
+
+	vals := chartutil.Values{
+		"Values": chartutil.Values{
+			"definitely": chartutil.Values{
+				"used": "used",
+			},
+			"super": chartutil.Values{
+				"used": "used",
+			},
+			"not": "not used",
+		},
+	}
+
+	v, err := chartutil.CoalesceValues(chart, vals)
+	if err != nil {
+		t.Fatalf("Failed to coalesce values: %s", err)
+	}
+
+	engine := Engine{
+		Strict:   true,
+		LintMode: true,
+		config:   nil,
+	}
+
+	_, err = engine.Render(chart, v)
+	if err == nil {
+		t.Errorf("should have errored, $.Values.not is not used")
+	}
+
+	if !strings.Contains(err.Error(), "[.Values.not]") {
+		t.Error(err)
+		t.Errorf(".Values.not is the ONLY unused value")
 	}
 }

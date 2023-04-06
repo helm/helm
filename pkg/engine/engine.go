@@ -21,6 +21,7 @@ import (
 	"log"
 	"path"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"sort"
 	"strings"
@@ -284,7 +285,10 @@ func (e Engine) renderWithReferences(tpls, referenceTpls map[string]renderable) 
 		}
 
 		usedValues = usedValues.Union(traverse(t.Lookup(filename).Copy().Root))
-		pv := getProvidedValues(vals)
+		pv, err := getProvidedValues(vals)
+		if err != nil {
+			return nil, err
+		}
 		providedValues = providedValues.Union(pv)
 
 		// Work around the issue where Go will emit "<no value>" even if Options(missing=zero)
@@ -293,8 +297,8 @@ func (e Engine) renderWithReferences(tpls, referenceTpls map[string]renderable) 
 		rendered[filename] = strings.ReplaceAll(buf.String(), "<no value>", "")
 	}
 
-	if e.Strict {
-		unused := providedValues.Difference(usedValues)
+	if e.Strict && e.LintMode {
+		unused := setDifferenceWithParents(providedValues, usedValues)
 		if unused.Len() > 0 {
 			return map[string]string{}, fmt.Errorf("there are unused fields in values files %+v", sets.List(unused))
 		}
@@ -501,7 +505,7 @@ func traverse(cur parse.Node) sets.Set[string] {
 		vars = vars.Insert(fmt.Sprintf(".%s", strings.Join(node.Ident, ".")))
 
 	case *parse.VariableNode:
-		vars = vars.Insert(strings.Join(node.Ident, "."))
+		vars = vars.Insert(strings.TrimPrefix(strings.Join(node.Ident, "."), "$"))
 	default:
 		panic("uncaught node type in go template")
 	}
@@ -509,15 +513,27 @@ func traverse(cur parse.Node) sets.Set[string] {
 	return vars
 }
 
-func getProvidedValues(vals chartutil.Values) sets.Set[string] {
-	v, ok := vals["Values"].(chartutil.Values)
-	if !ok {
-		// When checking for unused values, if no values are found, we
-		// swallow the error here.
-		return sets.New[string]()
+// getProvidedValues grabs the Values part, ignoring the Chart and Release data.
+// I'm explicitly ignoring those because we don't care about fields that aren't used
+// like $.Chart.name or $.Release.name because we don't set them in the cluster specific
+// values.
+func getProvidedValues(vals chartutil.Values) (sets.Set[string], error) {
+	chartUtilValues, keyExists := vals["Values"]
+	if !keyExists {
+		return nil, fmt.Errorf("no values key found")
 	}
-	f := flattenMapKeys(".Values", v)
-	return sets.New(f...)
+
+	if chartUtilValues == nil {
+		return nil, fmt.Errorf("values key is nil")
+	}
+
+	values, ok := chartUtilValues.(chartutil.Values)
+	if !ok {
+		return nil, fmt.Errorf("could not typecast chart values %s", reflect.TypeOf(chartUtilValues))
+	}
+
+	f := flattenMapKeys(".Values", values)
+	return sets.New(f...), nil
 }
 
 // flattenMapKeys turns an interface into a list of variable paths to make it easy to log and
@@ -536,4 +552,23 @@ func flattenMapKeys(root string, values chartutil.Values) []string {
 	}
 
 	return keys
+}
+
+// setDifferenceWithParents checks for unused variables. However, there are instances where the
+// parent is used and the children are transitively used, not explicitly used. For example, a common
+// pattern in charts is to use the helm function {{ toJson $.Values.resources }} and put the limits
+// and requests nested in $.Values.resources. We never use $.Values.resources.cpu.limit explicitly,
+// but it is used.
+func setDifferenceWithParents(providedValues sets.Set[string], usedValues sets.Set[string]) sets.Set[string] {
+	unused := providedValues.Difference(usedValues)
+
+	for usedValue := range usedValues {
+		for unusedValue := range unused {
+			if strings.HasPrefix(unusedValue, usedValue) {
+				unused.Delete(unusedValue)
+			}
+		}
+	}
+
+	return unused
 }

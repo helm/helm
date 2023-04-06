@@ -1,0 +1,9 @@
+cluster:
+  name: silk-sonic
+
+resources:
+  cpu:
+    request: 32
+    limit: 64
+
+unused: values
