@@ -179,7 +179,7 @@ func TestSqlCreate(t *testing.T) {
 	mock.ExpectBegin()
 	mock.
 		ExpectExec(regexp.QuoteMeta(query)).
-		WithArgs(key, sqlReleaseDefaultType, body, rel.Name, rel.Namespace, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, int(time.Now().Unix())).
+		WithArgs(key, sqlReleaseDefaultType, body, rel.Name, rel.Namespace, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, MockSQLFuzzyTime(time.Now().Unix())).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 
@@ -220,7 +220,7 @@ func TestSqlCreateAlreadyExists(t *testing.T) {
 	mock.ExpectBegin()
 	mock.
 		ExpectExec(regexp.QuoteMeta(insertQuery)).
-		WithArgs(key, sqlReleaseDefaultType, body, rel.Name, rel.Namespace, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, int(time.Now().Unix())).
+		WithArgs(key, sqlReleaseDefaultType, body, rel.Name, rel.Namespace, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, MockSQLFuzzyTime(time.Now().Unix())).
 		WillReturnError(fmt.Errorf("dialect dependent SQL error"))
 
 	selectQuery := fmt.Sprintf(
@@ -278,7 +278,7 @@ func TestSqlUpdate(t *testing.T) {
 
 	mock.
 		ExpectExec(regexp.QuoteMeta(query)).
-		WithArgs(body, rel.Name, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, int(time.Now().Unix()), key, namespace).
+		WithArgs(body, rel.Name, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, MockSQLFuzzyTime(time.Now().Unix()), key, namespace).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	if err := sqlDriver.Update(key, rel); err != nil {
