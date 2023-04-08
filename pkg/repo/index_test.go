@@ -19,7 +19,6 @@ package repo
 import (
 	"bufio"
 	"bytes"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -273,7 +272,7 @@ func TestDownloadIndexFile(t *testing.T) {
 			t.Fatalf("error finding created charts file: %#v", err)
 		}
 
-		b, err := ioutil.ReadFile(idx)
+		b, err := os.ReadFile(idx)
 		if err != nil {
 			t.Fatalf("error reading charts file: %#v", err)
 		}
@@ -282,7 +281,7 @@ func TestDownloadIndexFile(t *testing.T) {
 
 	t.Run("should not decode the path in the repo url while downloading index", func(t *testing.T) {
 		chartRepoURLPath := "/some%2Fpath/test"
-		fileBytes, err := ioutil.ReadFile("testdata/local-index.yaml")
+		fileBytes, err := os.ReadFile("testdata/local-index.yaml")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -326,7 +325,7 @@ func TestDownloadIndexFile(t *testing.T) {
 			t.Fatalf("error finding created charts file: %#v", err)
 		}
 
-		b, err := ioutil.ReadFile(idx)
+		b, err := os.ReadFile(idx)
 		if err != nil {
 			t.Fatalf("error reading charts file: %#v", err)
 		}
@@ -533,7 +532,7 @@ func TestIndexWrite(t *testing.T) {
 	testpath := filepath.Join(dir, "test")
 	i.WriteFile(testpath, 0600)
 
-	got, err := ioutil.ReadFile(testpath)
+	got, err := os.ReadFile(testpath)
 	if err != nil {
 		t.Fatal(err)
 	}

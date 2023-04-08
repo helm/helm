@@ -20,7 +20,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/url"
 	"os"
@@ -845,7 +844,7 @@ func writeLock(chartpath string, lock *chart.Lock, legacyLockfile bool) error {
 		lockfileName = "requirements.lock"
 	}
 	dest := filepath.Join(chartpath, lockfileName)
-	return ioutil.WriteFile(dest, data, 0644)
+	return os.WriteFile(dest, data, 0644)
 }
 
 // archive a dep chart from local directory and save it into destPath

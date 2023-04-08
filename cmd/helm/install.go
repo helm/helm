@@ -136,6 +136,15 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return compInstall(args, toComplete, client)
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
+			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile, client.InsecureSkipTLSverify)
+			if err != nil {
+				return fmt.Errorf("missing registry client: %w", err)
+			}
+			client.SetRegistryClient(registryClient)
+
+			if client.DryRunOption == "unchanged" {
+				client.DryRunOption = "none"
+			}
 			rel, err := runInstall(args, client, valueOpts, out)
 			if err != nil {
 				return errors.Wrap(err, "INSTALLATION FAILED")
@@ -154,7 +163,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Install, valueOpts *values.Options) {
 	f.BoolVar(&client.CreateNamespace, "create-namespace", false, "create the release namespace if not present")
-	f.StringVar(&client.DryRunOption, "dry-run", "none", "simulate an install. If --dry-run is set with no option being specified or as 'client', it will not attempt cluster connections. Setting option as 'server' allows attempting cluster connections.")
+	f.StringVar(&client.DryRunOption, "dry-run", "unchanged", "simulate an install. If --dry-run is set with no option being specified or as '--dry-run=client', it will not attempt cluster connections. Setting '--dry-run=server' allows attempting cluster connections.")
 	f.Lookup("dry-run").NoOptDefVal = "client"
 	f.BoolVar(&client.Force, "force", false, "force resource updates through a replacement strategy")
 	f.BoolVar(&client.DisableHooks, "no-hooks", false, "prevent hooks from running during install")
