@@ -347,13 +347,17 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		return rel, err
 	}
 	rChan := make(chan resultMessage)
+	ctxChan := make(chan resultMessage)
 	doneChan := make(chan struct{})
 	defer close(doneChan)
 	go i.performInstall(rChan, rel, toBeAdopted, resources)
-	go i.handleContext(ctx, rChan, doneChan, rel)
-	result := <-rChan
-	//start preformInstall go routine
-	return result.r, result.e
+	go i.handleContext(ctx, ctxChan, doneChan, rel)
+	select {
+	case result := <-rChan:
+		return result.r, result.e
+	case result := <-ctxChan:
+		return result.r, result.e
+	}
 }
 
 func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, toBeAdopted kube.ResourceList, resources kube.ResourceList) {
