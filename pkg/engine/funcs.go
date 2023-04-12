@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/Masterminds/sprig/v3"
@@ -30,8 +31,8 @@ import (
 // funcMap returns a mapping of all of the functions that Engine has.
 //
 // Because some functions are late-bound (e.g. contain context-sensitive
-// data), the functions may not all perform identically outside of an Engine
-// as they will inside of an Engine.
+// data), the functions may not all perform identically outside an Engine
+// as they will inside an Engine.
 //
 // Known late-bound functions:
 //
@@ -47,13 +48,15 @@ func funcMap() template.FuncMap {
 
 	// Add some extra functionality
 	extra := template.FuncMap{
-		"toToml":        toTOML,
-		"toYaml":        toYAML,
-		"fromYaml":      fromYAML,
-		"fromYamlArray": fromYAMLArray,
-		"toJson":        toJSON,
-		"fromJson":      fromJSON,
-		"fromJsonArray": fromJSONArray,
+		"toToml":         toTOML,
+		"toYaml":         toYAML,
+		"fromYaml":       fromYAML,
+		"fromYamlArray":  fromYAMLArray,
+		"toJson":         toJSON,
+		"fromJson":       fromJSON,
+		"fromJsonArray":  fromJSONArray,
+		"toSeconds":      toSeconds,
+		"toMilliSeconds": toMilliSeconds,
 
 		// This is a placeholder for the "include" function, which is
 		// late-bound to a template. By declaring it here, we preserve the
@@ -82,7 +85,7 @@ func funcMap() template.FuncMap {
 func toYAML(v interface{}) string {
 	data, err := yaml.Marshal(v)
 	if err != nil {
-		// Swallow errors inside of a template.
+		// Swallow errors inside a template.
 		return ""
 	}
 	return strings.TrimSuffix(string(data), "\n")
@@ -139,7 +142,7 @@ func toTOML(v interface{}) string {
 func toJSON(v interface{}) string {
 	data, err := json.Marshal(v)
 	if err != nil {
-		// Swallow errors inside of a template.
+		// Swallow errors inside a template.
 		return ""
 	}
 	return string(data)
@@ -173,4 +176,28 @@ func fromJSONArray(str string) []interface{} {
 		a = []interface{}{err.Error()}
 	}
 	return a
+}
+
+// toSeconds converts a duration string to seconds
+//
+// For example for 1h it will be 3600
+func toSeconds(str string) float64 {
+	duration, err := time.ParseDuration(str)
+	if err != nil {
+		// Swallow errors inside a template.
+		return 0
+	}
+	return duration.Seconds()
+}
+
+// toMilliSeconds converts a duration string to milliseconds
+//
+// For example for 1h it will be 3600000
+func toMilliSeconds(str string) int64 {
+	duration, err := time.ParseDuration(str)
+	if err != nil {
+		// Swallow errors inside a template.
+		return 0
+	}
+	return duration.Milliseconds()
 }
