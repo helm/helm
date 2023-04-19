@@ -33,4 +33,4 @@ jobs:
       - name: Run unit tests
         run: make test-coverage
       - name: Test build
-        run: make test build
+        run: make build
