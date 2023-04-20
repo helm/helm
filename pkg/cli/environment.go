@@ -189,7 +189,7 @@ func envCSV(name string) (ls []string) {
 
 func (s *EnvSettings) EnvVars() map[string]string {
 	envvars := map[string]string{
-		"HELM_BIN":               os.Args[0],
+		"HELM_BIN":               envOr("HELM_BIN", os.Args[0]),
 		"HELM_CACHE_HOME":        helmpath.CachePath(""),
 		"HELM_CONFIG_HOME":       helmpath.ConfigPath(""),
 		"HELM_DATA_HOME":         helmpath.DataPath(""),
