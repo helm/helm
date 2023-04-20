@@ -1,0 +1,5 @@
+env	Output result in KEY=VALUE format
+json	Output result in JSON format
+yaml	Output result in YAML format
+:4
+Completion ended with directive: ShellCompDirectiveNoFileComp
