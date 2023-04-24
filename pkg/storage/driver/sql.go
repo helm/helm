@@ -355,6 +355,7 @@ func (s *SQL) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
 		s.Log("list: failed to list: %v", err)
 		return nil, err
 	}
+
 	var releases []*rspb.Release
 	for _, record := range records {
 		release, err := decodeRelease(record.Body)
