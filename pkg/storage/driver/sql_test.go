@@ -562,7 +562,54 @@ func TestCheckAlreadyAppliedNotFind(t *testing.T) {
 	mock.ExpectCommit()
 
 	if sqlDriver.checkAlreadyApplied(testMigrations) {
-		t.Errorf("Did find init id: %v, that not exists", initID)
+		t.Errorf("Did find init id: %v, that does not exist", initID)
+	}
+
+}
+
+func TestCheckAlreadyAppliedBigFind(t *testing.T) {
+	sqlDriver, mock := newTestFixtureSQL(t)
+
+	testMigrations := []*migrate.Migration{{Id: "init1"}, {Id: "init2"}, {Id: "init3"}}
+	mock.
+		ExpectQuery("").
+		WillReturnRows(
+			sqlmock.NewRows([]string{"id", "applied_at"}).
+				AddRow("1", time.Time{}).
+				AddRow("2", time.Time{}).
+				AddRow("init1", time.Time{}).
+				AddRow("init2", time.Time{}).
+				AddRow("3", time.Time{}).
+				AddRow("init3", time.Time{}).
+				AddRow("4", time.Time{}).
+				AddRow("5", time.Time{}))
+	mock.ExpectCommit()
+
+	if !sqlDriver.checkAlreadyApplied(testMigrations) {
+		t.Errorf("Did not find init ids, that exist")
+	}
+
+}
+
+func TestCheckAlreadyAppliedBigNotFind(t *testing.T) {
+	sqlDriver, mock := newTestFixtureSQL(t)
+
+	testMigrations := []*migrate.Migration{{Id: "init1"}, {Id: "init2"}, {Id: "init3"}}
+	mock.
+		ExpectQuery("").
+		WillReturnRows(
+			sqlmock.NewRows([]string{"id", "applied_at"}).
+				AddRow("1", time.Time{}).
+				AddRow("2", time.Time{}).
+				AddRow("init1", time.Time{}).
+				AddRow("3", time.Time{}).
+				AddRow("init2", time.Time{}).
+				AddRow("4", time.Time{}).
+				AddRow("5", time.Time{}))
+	mock.ExpectCommit()
+
+	if sqlDriver.checkAlreadyApplied(testMigrations) {
+		t.Errorf("Did not find init id: init3, that does not exist")
 	}
 
 }
