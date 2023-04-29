@@ -66,6 +66,7 @@ type pluginGetter struct {
 func (p *pluginGetter) setupOptionsEnv(env []string) []string {
 	env = append(env, fmt.Sprintf("HELM_PLUGIN_USERNAME=%s", p.opts.username))
 	env = append(env, fmt.Sprintf("HELM_PLUGIN_PASSWORD=%s", p.opts.password))
+	env = append(env, fmt.Sprintf("HELM_PLUGIN_PASS_CREDENTIALS_ALL=%t", p.opts.passCredentialsAll))
 	return env
 }
 
