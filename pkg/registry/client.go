@@ -551,7 +551,9 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 		descriptors = append(descriptors, provDescriptor)
 	}
 
-	manifestData, manifest, err := content.GenerateManifest(&configDescriptor, nil, descriptors...)
+	ociAnnotations := generateOCIAnnotations(meta)
+
+	manifestData, manifest, err := content.GenerateManifest(&configDescriptor, ociAnnotations, descriptors...)
 	if err != nil {
 		return nil, err
 	}
