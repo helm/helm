@@ -90,7 +90,7 @@ func (m *Manager) Build() error {
 	}
 
 	if c.Metadata.Dependencies == nil && m.Debug {
-		fmt.Print("No dependencies found to build")
+		fmt.Fprintln(m.Out, "No dependencies found to build")
 		return nil
 	}
 	// If a lock file is found, run a build from that. Otherwise, just do
