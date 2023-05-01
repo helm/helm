@@ -79,7 +79,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 			client.SetRegistryClient(registryClient)
 
-			if client.DryRunOption == "unchanged" {
+			if client.DryRunOption == "" {
 				client.DryRunOption = "true"
 			}
 			client.DryRun = true
