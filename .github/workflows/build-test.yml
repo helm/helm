@@ -30,6 +30,11 @@ jobs:
           GOLANGCI_LINT_SHA256: '4de479eb9d9bc29da51aec1834e7c255b333723d38dbd56781c68e5dddc6a90b'
       - name: Test style
         run: make test-style
+      - name: Scan for Vulnerabilities
+        uses: Templum/govulncheck-action@6bb063b41d78c53c2fc7f5589828e30ad7c697ee # pin@v1.0.0
+        with:
+          skip-upload: true
+          go-version: '1.20'
       - name: Run unit tests
         run: make test-coverage
       - name: Test build
