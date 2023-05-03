@@ -29,8 +29,6 @@ import (
 	"sync"
 	"time"
 
-	"k8s.io/client-go/rest"
-
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/pkg/errors"
 	batch "k8s.io/api/batch/v1"
