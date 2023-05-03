@@ -356,7 +356,7 @@ func TestInstallRelease_FailedHooks(t *testing.T) {
 	failer.WatchUntilReadyError = fmt.Errorf("Failed watch")
 	instAction.cfg.KubeClient = failer
 	outBuffer := &bytes.Buffer{}
-	failer.PrintingKubeClient = kubefake.PrintingKubeClient{Out: ioutil.Discard, LogOutput: outBuffer}
+	failer.PrintingKubeClient = kubefake.PrintingKubeClient{Out: io.Discard, LogOutput: outBuffer}
 
 	vals := map[string]interface{}{}
 	res, err := instAction.Run(buildChart(), vals)
