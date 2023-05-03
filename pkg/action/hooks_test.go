@@ -19,7 +19,7 @@ package action
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -166,7 +166,7 @@ func runInstallForHooksWithSuccess(t *testing.T, manifest, expectedNamespace str
 	instAction := installAction(t)
 	instAction.ReleaseName = "failed-hooks"
 	outBuffer := &bytes.Buffer{}
-	instAction.cfg.KubeClient = &kubefake.PrintingKubeClient{Out: ioutil.Discard, LogOutput: outBuffer}
+	instAction.cfg.KubeClient = &kubefake.PrintingKubeClient{Out: io.Discard, LogOutput: outBuffer}
 
 	templates := []*chart.File{
 		{Name: "templates/hello", Data: []byte("hello: world")},
@@ -192,7 +192,7 @@ func runInstallForHooksWithFailure(t *testing.T, manifest, expectedNamespace str
 	failingClient.WatchUntilReadyError = fmt.Errorf("failed watch")
 	instAction.cfg.KubeClient = failingClient
 	outBuffer := &bytes.Buffer{}
-	failingClient.PrintingKubeClient = kubefake.PrintingKubeClient{Out: ioutil.Discard, LogOutput: outBuffer}
+	failingClient.PrintingKubeClient = kubefake.PrintingKubeClient{Out: io.Discard, LogOutput: outBuffer}
 
 	templates := []*chart.File{
 		{Name: "templates/hello", Data: []byte("hello: world")},
