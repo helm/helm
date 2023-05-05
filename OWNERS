@@ -1,5 +1,6 @@
 maintainers:
   - hickeyma
+  - joejulian
   - jdolitsky
   - marckhouzam
   - mattfarina
@@ -7,7 +8,6 @@ maintainers:
   - scottrigby
   - technosophos
 triage:
-  - joejulian
   - yxxhero
   - zonggen
 emeritus:
