@@ -49,7 +49,7 @@ func (r *testRepo) UpdateVersion(version string) error {
 }
 
 func TestVCSInstaller(t *testing.T) {
-	defer ensure.HelmHome(t)()
+	ensure.HelmHome(t)
 
 	if err := os.MkdirAll(helmpath.DataPath("plugins"), 0755); err != nil {
 		t.Fatalf("Could not create %s: %s", helmpath.DataPath("plugins"), err)
@@ -102,7 +102,7 @@ func TestVCSInstaller(t *testing.T) {
 }
 
 func TestVCSInstallerNonExistentVersion(t *testing.T) {
-	defer ensure.HelmHome(t)()
+	ensure.HelmHome(t)
 
 	source := "https://github.com/adamreese/helm-env"
 	version := "0.2.0"
@@ -124,7 +124,7 @@ func TestVCSInstallerNonExistentVersion(t *testing.T) {
 	}
 }
 func TestVCSInstallerUpdate(t *testing.T) {
-	defer ensure.HelmHome(t)()
+	ensure.HelmHome(t)
 
 	source := "https://github.com/adamreese/helm-env"
 

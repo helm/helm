@@ -269,10 +269,9 @@ func TestDownloadTo_TLS(t *testing.T) {
 }
 
 func TestDownloadTo_VerifyLater(t *testing.T) {
-	defer ensure.HelmHome(t)()
+	ensure.HelmHome(t)
 
-	dest := ensure.TempDir(t)
-	defer os.RemoveAll(dest)
+	dest := t.TempDir()
 
 	// Set up a fake repo
 	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")

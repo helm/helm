@@ -102,10 +102,9 @@ func TestUpdateCmdInvalid(t *testing.T) {
 }
 
 func TestUpdateCustomCacheCmd(t *testing.T) {
-	rootDir := ensure.TempDir(t)
+	rootDir := t.TempDir()
 	cachePath := filepath.Join(rootDir, "updcustomcache")
 	os.Mkdir(cachePath, os.ModePerm)
-	defer os.RemoveAll(cachePath)
 
 	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
 	if err != nil {
@@ -129,7 +128,7 @@ func TestUpdateCustomCacheCmd(t *testing.T) {
 
 func TestUpdateCharts(t *testing.T) {
 	defer resetEnv()()
-	defer ensure.HelmHome(t)()
+	ensure.HelmHome(t)
 
 	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
 	if err != nil {
@@ -164,7 +163,7 @@ func TestRepoUpdateFileCompletion(t *testing.T) {
 
 func TestUpdateChartsFail(t *testing.T) {
 	defer resetEnv()()
-	defer ensure.HelmHome(t)()
+	ensure.HelmHome(t)
 
 	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
 	if err != nil {
@@ -197,7 +196,7 @@ func TestUpdateChartsFail(t *testing.T) {
 
 func TestUpdateChartsFailWithError(t *testing.T) {
 	defer resetEnv()()
-	defer ensure.HelmHome(t)()
+	ensure.HelmHome(t)
 
 	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
 	if err != nil {

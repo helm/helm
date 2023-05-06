@@ -23,7 +23,6 @@ import (
 	"strings"
 	"testing"
 
-	"helm.sh/helm/v3/internal/test/ensure"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/lint/support"
@@ -221,8 +220,7 @@ func TestDeprecatedAPIFails(t *testing.T) {
 			},
 		},
 	}
-	tmpdir := ensure.TempDir(t)
-	defer os.RemoveAll(tmpdir)
+	tmpdir := t.TempDir()
 
 	if err := chartutil.SaveDir(&mychart, tmpdir); err != nil {
 		t.Fatal(err)
@@ -278,8 +276,7 @@ func TestStrictTemplateParsingMapError(t *testing.T) {
 			},
 		},
 	}
-	dir := ensure.TempDir(t)
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 	if err := chartutil.SaveDir(&ch, dir); err != nil {
 		t.Fatal(err)
 	}
@@ -408,8 +405,7 @@ func TestEmptyWithCommentsManifests(t *testing.T) {
 			},
 		},
 	}
-	tmpdir := ensure.TempDir(t)
-	defer os.RemoveAll(tmpdir)
+	tmpdir := t.TempDir()
 
 	if err := chartutil.SaveDir(&mychart, tmpdir); err != nil {
 		t.Fatal(err)

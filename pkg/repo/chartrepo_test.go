@@ -30,7 +30,6 @@ import (
 
 	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/v3/internal/test/ensure"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/getter"
@@ -147,8 +146,7 @@ func TestIndexCustomSchemeDownload(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Problem loading chart repository from %s: %v", repoURL, err)
 	}
-	repo.CachePath = ensure.TempDir(t)
-	defer os.RemoveAll(repo.CachePath)
+	repo.CachePath = t.TempDir()
 
 	tempIndexFile, err := os.CreateTemp("", "test-repo")
 	if err != nil {
@@ -349,7 +347,7 @@ func TestFindChartInRepoURL(t *testing.T) {
 func TestErrorFindChartInRepoURL(t *testing.T) {
 
 	g := getter.All(&cli.EnvSettings{
-		RepositoryCache: ensure.TempDir(t),
+		RepositoryCache: t.TempDir(),
 	})
 
 	if _, err := FindChartInRepoURL("http://someserver/something", "nginx", "", "", "", "", g); err == nil {
