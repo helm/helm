@@ -55,7 +55,7 @@ func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
 	}
 
 	if err := chartutil.ValidateReleaseName(name); err != nil {
-		return nil, errors.Errorf("releaseTest: Release name is invalid: %s", name)
+		return nil, fmt.Errorf("releaseTest: Release name is invalid: %s", name)
 	}
 
 	// finds the non-deleted release with the given name
