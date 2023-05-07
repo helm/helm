@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -68,7 +69,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	}
 
 	if err := chartutil.ValidateReleaseName(name); err != nil {
-		return nil, errors.Errorf("uninstall: Release name is invalid: %s", name)
+		return nil, fmt.Errorf("uninstall: Release name is invalid: %s", name)
 	}
 
 	rels, err := u.cfg.Releases.History(name)
@@ -91,7 +92,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 			}
 			return &release.UninstallReleaseResponse{Release: rel}, nil
 		}
-		return nil, errors.Errorf("the release named %q is already deleted", name)
+		return nil, fmt.Errorf("the release named %q is already deleted", name)
 	}
 
 	u.cfg.Log("uninstall: Deleting %s", name)
@@ -117,7 +118,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	deletedResources, kept, errs := u.deleteRelease(rel)
 	if errs != nil {
 		u.cfg.Log("uninstall: Failed to delete release: %s", errs)
-		return nil, errors.Errorf("failed to delete release: %s", name)
+		return nil, fmt.Errorf("failed to delete release: %s", name)
 	}
 
 	if kept != "" {
@@ -155,7 +156,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 
 		// Return the errors that occurred while deleting the release, if any
 		if len(errs) > 0 {
-			return res, errors.Errorf("uninstallation completed with %d error(s): %s", len(errs), joinErrors(errs))
+			return res, fmt.Errorf("uninstallation completed with %d error(s): %s", len(errs), joinErrors(errs))
 		}
 
 		return res, nil
@@ -166,7 +167,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	}
 
 	if len(errs) > 0 {
-		return res, errors.Errorf("uninstallation completed with %d error(s): %s", len(errs), joinErrors(errs))
+		return res, fmt.Errorf("uninstallation completed with %d error(s): %s", len(errs), joinErrors(errs))
 	}
 	return res, nil
 }
