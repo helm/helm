@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -111,7 +112,7 @@ func lintChart(path string, vals map[string]interface{}, namespace string, stric
 			return linter, errors.Wrapf(err, "unable to read temporary output directory %s", tempDir)
 		}
 		if !files[0].IsDir() {
-			return linter, errors.Errorf("unexpected file %s in temporary output directory %s", files[0].Name(), tempDir)
+			return linter, fmt.Errorf("unexpected file %s in temporary output directory %s", files[0].Name(), tempDir)
 		}
 
 		chartPath = filepath.Join(tempDir, files[0].Name())
