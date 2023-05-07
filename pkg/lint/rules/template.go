@@ -205,7 +205,7 @@ func validateAllowedExtension(fileName string) error {
 		}
 	}
 
-	return errors.Errorf("file extension '%s' not valid. Valid extensions are .yaml, .yml, .tpl, or .txt", ext)
+	return fmt.Errorf("file extension '%s' not valid. Valid extensions are .yaml, .yml, .tpl, or .txt", ext)
 }
 
 func validateYamlContent(err error) error {
