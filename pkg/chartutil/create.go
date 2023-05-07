@@ -577,12 +577,12 @@ func Create(name, dir string) (string, error) {
 	if fi, err := os.Stat(path); err != nil {
 		return path, err
 	} else if !fi.IsDir() {
-		return path, errors.Errorf("no such directory %s", path)
+		return path, fmt.Errorf("no such directory %s", path)
 	}
 
 	cdir := filepath.Join(path, name)
 	if fi, err := os.Stat(cdir); err == nil && !fi.IsDir() {
-		return cdir, errors.Errorf("file %s already exists and is not a directory", cdir)
+		return cdir, fmt.Errorf("file %s already exists and is not a directory", cdir)
 	}
 
 	files := []struct {
