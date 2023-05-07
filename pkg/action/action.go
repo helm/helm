@@ -18,6 +18,7 @@ package action
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -25,7 +26,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/pkg/errors"
+	githubErrors "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/discovery"
@@ -223,7 +224,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	if pr != nil {
 		b, err = pr.Run(b)
 		if err != nil {
-			return hs, b, notes, errors.Wrap(err, "error while running post render on files")
+			return hs, b, notes, githubErrors.Wrap(err, "error while running post render on files")
 		}
 	}
 
@@ -247,13 +248,13 @@ func (cfg *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 	}
 	dc, err := cfg.RESTClientGetter.ToDiscoveryClient()
 	if err != nil {
-		return nil, errors.Wrap(err, "could not get Kubernetes discovery client")
+		return nil, githubErrors.Wrap(err, "could not get Kubernetes discovery client")
 	}
 	// force a discovery cache invalidation to always fetch the latest server version/capabilities.
 	dc.Invalidate()
 	kubeVersion, err := dc.ServerVersion()
 	if err != nil {
-		return nil, errors.Wrap(err, "could not get server version from Kubernetes")
+		return nil, githubErrors.Wrap(err, "could not get server version from Kubernetes")
 	}
 	// Issue #6361:
 	// Client-Go emits an error when an API service is registered but unimplemented.
@@ -266,7 +267,7 @@ func (cfg *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 			cfg.Log("WARNING: The Kubernetes server has an orphaned API service. Server reports: %s", err)
 			cfg.Log("WARNING: To fix this, kubectl delete apiservice <service-name>")
 		} else {
-			return nil, errors.Wrap(err, "could not get apiVersions from Kubernetes")
+			return nil, githubErrors.Wrap(err, "could not get apiVersions from Kubernetes")
 		}
 	}
 
@@ -286,7 +287,7 @@ func (cfg *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 func (cfg *Configuration) KubernetesClientSet() (kubernetes.Interface, error) {
 	conf, err := cfg.RESTClientGetter.ToRESTConfig()
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to generate config for kubernetes client")
+		return nil, githubErrors.Wrap(err, "unable to generate config for kubernetes client")
 	}
 
 	return kubernetes.NewForConfig(conf)
@@ -316,7 +317,7 @@ func (cfg *Configuration) releaseContent(name string, version int) (*release.Rel
 func GetVersionSet(client discovery.ServerResourcesInterface) (chartutil.VersionSet, error) {
 	groups, resources, err := client.ServerGroupsAndResources()
 	if err != nil && !discovery.IsGroupDiscoveryFailedError(err) {
-		return chartutil.DefaultVersionSet, errors.Wrap(err, "could not get apiVersions from Kubernetes")
+		return chartutil.DefaultVersionSet, githubErrors.Wrap(err, "could not get apiVersions from Kubernetes")
 	}
 
 	// FIXME: The Kubernetes test fixture for cli appears to always return nil

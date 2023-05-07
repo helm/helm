@@ -17,7 +17,7 @@ limitations under the License.
 package action
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/release"
@@ -50,7 +50,7 @@ func (h *History) Run(name string) ([]*release.Release, error) {
 	}
 
 	if err := chartutil.ValidateReleaseName(name); err != nil {
-		return nil, errors.Errorf("release name is invalid: %s", name)
+		return nil, fmt.Errorf("release name is invalid: %s", name)
 	}
 
 	h.cfg.Log("getting history for release %s", name)

@@ -17,10 +17,11 @@ package action
 
 import (
 	"bytes"
+	"errors"
 	"sort"
 	"time"
 
-	"github.com/pkg/errors"
+	githubErrors "github.com/pkg/errors"
 
 	"helm.sh/helm/v3/pkg/release"
 	helmtime "helm.sh/helm/v3/pkg/time"
@@ -57,7 +58,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 
 		resources, err := cfg.KubeClient.Build(bytes.NewBufferString(h.Manifest), true)
 		if err != nil {
-			return errors.Wrapf(err, "unable to build kubernetes object for %s hook %s", hook, h.Path)
+			return githubErrors.Wrapf(err, "unable to build kubernetes object for %s hook %s", hook, h.Path)
 		}
 
 		// Record the time at which the hook was applied to the cluster
@@ -76,7 +77,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		if _, err := cfg.KubeClient.Create(resources); err != nil {
 			h.LastRun.CompletedAt = helmtime.Now()
 			h.LastRun.Phase = release.HookPhaseFailed
-			return errors.Wrapf(err, "warning: Hook %s %s failed", hook, h.Path)
+			return githubErrors.Wrapf(err, "warning: Hook %s %s failed", hook, h.Path)
 		}
 
 		// Watch hook resources until they have completed
@@ -129,7 +130,7 @@ func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.Hoo
 	if hookHasDeletePolicy(h, policy) {
 		resources, err := cfg.KubeClient.Build(bytes.NewBufferString(h.Manifest), false)
 		if err != nil {
-			return errors.Wrapf(err, "unable to build kubernetes object for deleting hook %s", h.Path)
+			return githubErrors.Wrapf(err, "unable to build kubernetes object for deleting hook %s", h.Path)
 		}
 		_, errs := cfg.KubeClient.Delete(resources)
 		if len(errs) > 0 {
