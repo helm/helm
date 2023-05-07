@@ -28,9 +28,10 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"errors"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/pkg/errors"
+	githubErrors "github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/internal/resolver"
@@ -220,7 +221,7 @@ func (m *Manager) Update() error {
 
 func (m *Manager) loadChartDir() (*chart.Chart, error) {
 	if fi, err := os.Stat(m.ChartPath); err != nil {
-		return nil, errors.Wrapf(err, "could not find %s", m.ChartPath)
+		return nil, githubErrors.Wrapf(err, "could not find %s", m.ChartPath)
 	} else if !fi.IsDir() {
 		return nil, errors.New("only unpacked charts can be updated")
 	}
@@ -314,7 +315,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		// https://github.com/helm/helm/issues/1439
 		churl, username, password, insecureskiptlsverify, passcredentialsall, caFile, certFile, keyFile, err := m.findChartURL(dep.Name, dep.Version, dep.Repository, repos)
 		if err != nil {
-			saveError = errors.Wrapf(err, "could not find %s", churl)
+			saveError = githubErrors.Wrapf(err, "could not find %s", churl)
 			break
 		}
 
@@ -345,7 +346,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		if registry.IsOCI(churl) {
 			churl, version, err = parseOCIRef(churl)
 			if err != nil {
-				return errors.Wrapf(err, "could not parse OCI reference")
+				return githubErrors.Wrapf(err, "could not parse OCI reference")
 			}
 			dl.Options = append(dl.Options,
 				getter.WithRegistryClient(m.RegistryClient),
@@ -353,7 +354,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		}
 
 		if _, _, err = dl.DownloadTo(churl, version, tmpPath); err != nil {
-			saveError = errors.Wrapf(err, "could not download %s", churl)
+			saveError = githubErrors.Wrapf(err, "could not download %s", churl)
 			break
 		}
 
@@ -794,7 +795,7 @@ func normalizeURL(baseURL, urlOrPath string) (string, error) {
 	}
 	u2, err := url.Parse(baseURL)
 	if err != nil {
-		return urlOrPath, errors.Wrap(err, "base URL failed to parse")
+		return urlOrPath, githubErrors.Wrap(err, "base URL failed to parse")
 	}
 
 	u2.RawPath = path.Join(u2.RawPath, urlOrPath)
@@ -812,7 +813,7 @@ func (m *Manager) loadChartRepositories() (map[string]*repo.ChartRepository, err
 	// Load repositories.yaml file
 	rf, err := loadRepoConfig(m.RepositoryConfig)
 	if err != nil {
-		return indices, errors.Wrapf(err, "failed to load %s", m.RepositoryConfig)
+		return indices, githubErrors.Wrapf(err, "failed to load %s", m.RepositoryConfig)
 	}
 
 	for _, re := range rf.Repositories {
@@ -865,7 +866,7 @@ func tarFromLocalDir(chartpath, name, repo, version, destPath string) (string, e
 
 	constraint, err := semver.NewConstraint(version)
 	if err != nil {
-		return "", errors.Wrapf(err, "dependency %s has an invalid version/constraint format", name)
+		return "", githubErrors.Wrapf(err, "dependency %s has an invalid version/constraint format", name)
 	}
 
 	v, err := semver.NewVersion(ch.Metadata.Version)

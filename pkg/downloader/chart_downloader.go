@@ -16,6 +16,7 @@ limitations under the License.
 package downloader
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -24,7 +25,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/pkg/errors"
+	githubErrors "github.com/pkg/errors"
 
 	"helm.sh/helm/v3/internal/fileutil"
 	"helm.sh/helm/v3/internal/urlutil"
@@ -281,12 +282,12 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 	idxFile := filepath.Join(c.RepositoryCache, helmpath.CacheIndexFile(r.Config.Name))
 	i, err := repo.LoadIndexFile(idxFile)
 	if err != nil {
-		return u, errors.Wrap(err, "no cached repo found. (try 'helm repo update')")
+		return u, githubErrors.Wrap(err, "no cached repo found. (try 'helm repo update')")
 	}
 
 	cv, err := i.Get(chartName, version)
 	if err != nil {
-		return u, errors.Wrapf(err, "chart %q matching %s not found in %s index. (try 'helm repo update')", chartName, version, r.Config.Name)
+		return u, githubErrors.Wrapf(err, "chart %q matching %s not found in %s index. (try 'helm repo update')", chartName, version, r.Config.Name)
 	}
 
 	if len(cv.URLs) == 0 {
@@ -320,12 +321,12 @@ func VerifyChart(path, keyring string) (*provenance.Verification, error) {
 
 	provfile := path + ".prov"
 	if _, err := os.Stat(provfile); err != nil {
-		return nil, errors.Wrapf(err, "could not load provenance file %s", provfile)
+		return nil, githubErrors.Wrapf(err, "could not load provenance file %s", provfile)
 	}
 
 	sig, err := provenance.NewFromKeyring(keyring, "")
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to load keyring")
+		return nil, githubErrors.Wrap(err, "failed to load keyring")
 	}
 	return sig.Verify(path, provfile)
 }
@@ -380,7 +381,7 @@ func (c *ChartDownloader) scanReposForURL(u string, rf *repo.File) (*repo.Entry,
 		idxFile := filepath.Join(c.RepositoryCache, helmpath.CacheIndexFile(r.Config.Name))
 		i, err := repo.LoadIndexFile(idxFile)
 		if err != nil {
-			return nil, errors.Wrap(err, "no cached repo found. (try 'helm repo update')")
+			return nil, githubErrors.Wrap(err, "no cached repo found. (try 'helm repo update')")
 		}
 
 		for _, entry := range i.Entries {
@@ -399,7 +400,7 @@ func (c *ChartDownloader) scanReposForURL(u string, rf *repo.File) (*repo.Entry,
 
 func loadRepoConfig(file string) (*repo.File, error) {
 	r, err := repo.LoadFile(file)
-	if err != nil && !os.IsNotExist(errors.Cause(err)) {
+	if err != nil && !os.IsNotExist(err) {
 		return nil, err
 	}
 	return r, nil
