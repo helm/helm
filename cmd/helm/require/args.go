@@ -16,14 +16,15 @@ limitations under the License.
 package require
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
+
 	"github.com/spf13/cobra"
 )
 
 // NoArgs returns an error if any args are included.
 func NoArgs(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
-		return errors.Errorf(
+		return fmt.Errorf(
 			"%q accepts no arguments\n\nUsage:  %s",
 			cmd.CommandPath(),
 			cmd.UseLine(),
@@ -36,7 +37,7 @@ func NoArgs(cmd *cobra.Command, args []string) error {
 func ExactArgs(n int) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
 		if len(args) != n {
-			return errors.Errorf(
+			return fmt.Errorf(
 				"%q requires %d %s\n\nUsage:  %s",
 				cmd.CommandPath(),
 				n,
@@ -52,7 +53,7 @@ func ExactArgs(n int) cobra.PositionalArgs {
 func MaximumNArgs(n int) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
 		if len(args) > n {
-			return errors.Errorf(
+			return fmt.Errorf(
 				"%q accepts at most %d %s\n\nUsage:  %s",
 				cmd.CommandPath(),
 				n,
@@ -68,7 +69,7 @@ func MaximumNArgs(n int) cobra.PositionalArgs {
 func MinimumNArgs(n int) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
 		if len(args) < n {
-			return errors.Errorf(
+			return fmt.Errorf(
 				"%q requires at least %d %s\n\nUsage:  %s",
 				cmd.CommandPath(),
 				n,
