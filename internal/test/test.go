@@ -19,6 +19,7 @@ package test
 import (
 	"bytes"
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -79,7 +80,7 @@ func compare(actual []byte, filename string) error {
 	}
 	expected = normalize(expected)
 	if !bytes.Equal(expected, actual) {
-		return errors.Errorf("does not match golden file %s\n\nWANT:\n'%s'\n\nGOT:\n'%s'", filename, expected, actual)
+		return fmt.Errorf("does not match golden file %s\n\nWANT:\n'%s'\n\nGOT:\n'%s'", filename, expected, actual)
 	}
 	return nil
 }
