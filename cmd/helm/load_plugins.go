@@ -27,7 +27,6 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/yaml"
 
@@ -87,7 +86,7 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 				main, argv, prepCmdErr := plug.PrepareCommand(u)
 				if prepCmdErr != nil {
 					os.Stderr.WriteString(prepCmdErr.Error())
-					return errors.Errorf("plugin %q exited with error", md.Name)
+					return fmt.Errorf("plugin %q exited with error", md.Name)
 				}
 
 				return callPluginExecutable(md.Name, main, argv, out)
@@ -138,7 +137,7 @@ func callPluginExecutable(pluginName string, main string, argv []string, out io.
 			os.Stderr.Write(eerr.Stderr)
 			status := eerr.Sys().(syscall.WaitStatus)
 			return pluginError{
-				error: errors.Errorf("plugin %q exited with error", pluginName),
+				error: fmt.Errorf("plugin %q exited with error", pluginName),
 				code:  status.ExitStatus(),
 			}
 		}
