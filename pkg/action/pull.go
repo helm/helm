@@ -162,7 +162,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 			}
 
 		} else {
-			return out.String(), errors.Errorf("failed to untar: a file or directory with the name %s already exists", udCheck)
+			return out.String(), fmt.Errorf("failed to untar: a file or directory with the name %s already exists", udCheck)
 		}
 
 		return out.String(), chartutil.ExpandFile(ud, saved)
