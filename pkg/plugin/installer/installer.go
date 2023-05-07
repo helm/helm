@@ -16,14 +16,13 @@ limitations under the License.
 package installer
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/pkg/plugin"
 )
