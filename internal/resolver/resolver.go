@@ -130,7 +130,7 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 
 			vs, ok = repoIndex.Entries[d.Name]
 			if !ok {
-				return nil, errors.Errorf("%s chart not found in repo %s", d.Name, d.Repository)
+				return nil, fmt.Errorf("%s chart not found in repo %s", d.Name, d.Repository)
 			}
 			found = false
 		} else {
@@ -193,7 +193,7 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 		}
 	}
 	if len(missing) > 0 {
-		return nil, errors.Errorf("can't get a valid version for repositories %s. Try changing the version constraint in Chart.yaml", strings.Join(missing, ", "))
+		return nil, fmt.Errorf("can't get a valid version for repositories %s. Try changing the version constraint in Chart.yaml", strings.Join(missing, ", "))
 	}
 
 	digest, err := HashReq(reqs, locked)
@@ -254,7 +254,7 @@ func GetLocalPath(repo, chartpath string) (string, error) {
 	}
 
 	if _, err = os.Stat(depPath); os.IsNotExist(err) {
-		return "", errors.Errorf("directory %s not found", depPath)
+		return "", fmt.Errorf("directory %s not found", depPath)
 	} else if err != nil {
 		return "", err
 	}
