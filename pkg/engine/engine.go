@@ -168,7 +168,7 @@ func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]render
 				log.Printf("[INFO] Missing required value: %s", warn)
 				return "", nil
 			}
-			return val, errors.Errorf(warnWrap(warn))
+			return val, fmt.Errorf(warnWrap(warn))
 		} else if _, ok := val.(string); ok {
 			if val == "" {
 				if e.LintMode {
@@ -176,7 +176,7 @@ func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]render
 					log.Printf("[INFO] Missing required value: %s", warn)
 					return "", nil
 				}
-				return val, errors.Errorf(warnWrap(warn))
+				return val, fmt.Errorf(warnWrap(warn))
 			}
 		}
 		return val, nil
@@ -226,7 +226,7 @@ func (e Engine) renderWithReferences(tpls, referenceTpls map[string]renderable) 
 	// template engine.
 	defer func() {
 		if r := recover(); r != nil {
-			err = errors.Errorf("rendering template failed: %v", r)
+			err = fmt.Errorf("rendering template failed: %v", r)
 		}
 	}()
 	t := template.New("gotpl")
