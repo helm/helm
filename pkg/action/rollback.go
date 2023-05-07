@@ -93,7 +93,7 @@ func (r *Rollback) Run(name string) error {
 // the previous release's configuration
 func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Release, error) {
 	if err := chartutil.ValidateReleaseName(name); err != nil {
-		return nil, nil, errors.Errorf("prepareRollback: Release name is invalid: %s", name)
+		return nil, nil, fmt.Errorf("prepareRollback: Release name is invalid: %s", name)
 	}
 
 	if r.Version < 0 {
