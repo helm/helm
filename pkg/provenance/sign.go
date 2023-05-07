@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"crypto"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -143,7 +144,7 @@ func NewFromKeyring(keyringfile, id string) (*Signatory, error) {
 		}
 	}
 	if vague {
-		return s, errors.Errorf("more than one key contain the id %q", id)
+		return s, fmt.Errorf("more than one key contain the id %q", id)
 	}
 
 	s.Entity = candidate
@@ -254,7 +255,7 @@ func (s *Signatory) Verify(chartpath, sigpath string) (*Verification, error) {
 		if fi, err := os.Stat(fname); err != nil {
 			return ver, err
 		} else if fi.IsDir() {
-			return ver, errors.Errorf("%s cannot be a directory", fname)
+			return ver, fmt.Errorf("%s cannot be a directory", fname)
 		}
 	}
 
@@ -283,9 +284,9 @@ func (s *Signatory) Verify(chartpath, sigpath string) (*Verification, error) {
 	sum = "sha256:" + sum
 	basename := filepath.Base(chartpath)
 	if sha, ok := sums.Files[basename]; !ok {
-		return ver, errors.Errorf("provenance does not contain a SHA for a file named %q", basename)
+		return ver, fmt.Errorf("provenance does not contain a SHA for a file named %q", basename)
 	} else if sha != sum {
-		return ver, errors.Errorf("sha256 sum does not match for %s: %q != %q", basename, sha, sum)
+		return ver, fmt.Errorf("sha256 sum does not match for %s: %q != %q", basename, sha, sum)
 	}
 	ver.FileHash = sum
 	ver.FileName = basename
