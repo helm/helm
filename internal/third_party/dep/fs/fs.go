@@ -32,6 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package fs
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -39,7 +40,7 @@ import (
 	"runtime"
 	"syscall"
 
-	"github.com/pkg/errors"
+	githubErrors "github.com/pkg/errors"
 )
 
 // fs contains a copy of a few functions from dep tool code to avoid a dependency on golang/dep.
@@ -52,7 +53,7 @@ import (
 func RenameWithFallback(src, dst string) error {
 	_, err := os.Stat(src)
 	if err != nil {
-		return errors.Wrapf(err, "cannot stat %s", src)
+		return githubErrors.Wrapf(err, "cannot stat %s", src)
 	}
 
 	err = os.Rename(src, dst)
@@ -70,20 +71,20 @@ func renameByCopy(src, dst string) error {
 	if dir, _ := IsDir(src); dir {
 		cerr = CopyDir(src, dst)
 		if cerr != nil {
-			cerr = errors.Wrap(cerr, "copying directory failed")
+			cerr = githubErrors.Wrap(cerr, "copying directory failed")
 		}
 	} else {
 		cerr = copyFile(src, dst)
 		if cerr != nil {
-			cerr = errors.Wrap(cerr, "copying file failed")
+			cerr = githubErrors.Wrap(cerr, "copying file failed")
 		}
 	}
 
 	if cerr != nil {
-		return errors.Wrapf(cerr, "rename fallback failed: cannot rename %s to %s", src, dst)
+		return githubErrors.Wrapf(cerr, "rename fallback failed: cannot rename %s to %s", src, dst)
 	}
 
-	return errors.Wrapf(os.RemoveAll(src), "cannot delete %s", src)
+	return githubErrors.Wrapf(os.RemoveAll(src), "cannot delete %s", src)
 }
 
 var (
@@ -116,12 +117,12 @@ func CopyDir(src, dst string) error {
 	}
 
 	if err = os.MkdirAll(dst, fi.Mode()); err != nil {
-		return errors.Wrapf(err, "cannot mkdir %s", dst)
+		return githubErrors.Wrapf(err, "cannot mkdir %s", dst)
 	}
 
 	entries, err := os.ReadDir(src)
 	if err != nil {
-		return errors.Wrapf(err, "cannot read directory %s", dst)
+		return githubErrors.Wrapf(err, "cannot read directory %s", dst)
 	}
 
 	for _, entry := range entries {
@@ -130,13 +131,13 @@ func CopyDir(src, dst string) error {
 
 		if entry.IsDir() {
 			if err = CopyDir(srcPath, dstPath); err != nil {
-				return errors.Wrap(err, "copying directory failed")
+				return githubErrors.Wrap(err, "copying directory failed")
 			}
 		} else {
 			// This will include symlinks, which is what we want when
 			// copying things.
 			if err = copyFile(srcPath, dstPath); err != nil {
-				return errors.Wrap(err, "copying file failed")
+				return githubErrors.Wrap(err, "copying file failed")
 			}
 		}
 	}
@@ -150,7 +151,7 @@ func CopyDir(src, dst string) error {
 // of the source file. The file mode will be copied from the source.
 func copyFile(src, dst string) (err error) {
 	if sym, err := IsSymlink(src); err != nil {
-		return errors.Wrap(err, "symlink check failed")
+		return githubErrors.Wrap(err, "symlink check failed")
 	} else if sym {
 		if err := cloneSymlink(src, dst); err != nil {
 			if runtime.GOOS == "windows" {
