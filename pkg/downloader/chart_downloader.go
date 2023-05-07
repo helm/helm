@@ -400,7 +400,7 @@ func (c *ChartDownloader) scanReposForURL(u string, rf *repo.File) (*repo.Entry,
 
 func loadRepoConfig(file string) (*repo.File, error) {
 	r, err := repo.LoadFile(file)
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil && !os.IsNotExist(githubErrors.Cause(err)) {
 		return nil, err
 	}
 	return r, nil
