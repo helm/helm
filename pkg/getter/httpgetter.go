@@ -18,6 +18,7 @@ package getter
 import (
 	"bytes"
 	"crypto/tls"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -89,7 +90,7 @@ func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("failed to fetch %s : %s", href, resp.Status)
+		return nil, fmt.Errorf("failed to fetch %s : %s", href, resp.Status)
 	}
 
 	buf := bytes.NewBuffer(nil)
