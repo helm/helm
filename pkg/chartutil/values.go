@@ -17,12 +17,12 @@ limitations under the License.
 package chartutil
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 
-	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/pkg/chart"
