@@ -621,7 +621,7 @@ func (i *Install) NameAndChart(args []string) (string, string, error) {
 	}
 
 	if len(args) > 2 {
-		return args[0], args[1], errors.Errorf("expected at most two arguments, unexpected arguments: %v", strings.Join(args[2:], ", "))
+		return args[0], args[1], fmt.Errorf("expected at most two arguments, unexpected arguments: %v", strings.Join(args[2:], ", "))
 	}
 
 	if len(args) == 2 {
@@ -686,7 +686,7 @@ OUTER:
 	}
 
 	if len(missing) > 0 {
-		return errors.Errorf("found in Chart.yaml, but missing in charts/ directory: %s", strings.Join(missing, ", "))
+		return fmt.Errorf("found in Chart.yaml, but missing in charts/ directory: %s", strings.Join(missing, ", "))
 	}
 	return nil
 }
@@ -722,7 +722,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		return abs, nil
 	}
 	if filepath.IsAbs(name) || strings.HasPrefix(name, ".") {
-		return name, errors.Errorf("path %q not found", name)
+		return name, fmt.Errorf("path %q not found", name)
 	}
 
 	dl := downloader.ChartDownloader{
