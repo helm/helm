@@ -17,7 +17,7 @@ limitations under the License.
 package pusher
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/registry"
@@ -99,7 +99,7 @@ func (p Providers) ByScheme(scheme string) (Pusher, error) {
 			return pp.New()
 		}
 	}
-	return nil, errors.Errorf("scheme %q not supported", scheme)
+	return nil, fmt.Errorf("scheme %q not supported", scheme)
 }
 
 var ociProvider = Provider{

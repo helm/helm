@@ -48,7 +48,7 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 	stat, err := os.Stat(chartRef)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return errors.Errorf("%s: no such file", chartRef)
+			return fmt.Errorf("%s: no such file", chartRef)
 		}
 		return err
 	}
