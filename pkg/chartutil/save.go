@@ -20,12 +20,13 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"encoding/json"
+	 "errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/pkg/errors"
+	githubErrors "github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/pkg/chart"
@@ -85,7 +86,7 @@ func SaveDir(c *chart.Chart, dest string) error {
 	for _, dep := range c.Dependencies() {
 		// Here, we write each dependency as a tar file.
 		if _, err := Save(dep, base); err != nil {
-			return errors.Wrapf(err, "saving %s", dep.ChartFullPath())
+			return githubErrors.Wrapf(err, "saving %s", dep.ChartFullPath())
 		}
 	}
 	return nil
@@ -101,7 +102,7 @@ func SaveDir(c *chart.Chart, dest string) error {
 // This returns the absolute path to the chart archive file.
 func Save(c *chart.Chart, outDir string) (string, error) {
 	if err := c.Validate(); err != nil {
-		return "", errors.Wrap(err, "chart validation")
+		return "", githubErrors.Wrap(err, "chart validation")
 	}
 
 	filename := fmt.Sprintf("%s-%s.tgz", c.Name(), c.Metadata.Version)
@@ -113,7 +114,7 @@ func Save(c *chart.Chart, outDir string) (string, error) {
 				return "", err2
 			}
 		} else {
-			return "", errors.Wrapf(err, "stat %s", dir)
+			return "", githubErrors.Wrapf(err, "stat %s", dir)
 		}
 	} else if !stat.IsDir() {
 		return "", fmt.Errorf("is not a directory: %s", dir)

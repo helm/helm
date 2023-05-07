@@ -17,12 +17,13 @@ limitations under the License.
 package chartutil
 
 import (
+	 "errors"
 	"io"
 	"os"
 	"path/filepath"
 
 	securejoin "github.com/cyphar/filepath-securejoin"
-	"github.com/pkg/errors"
+	githubErrors "github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/pkg/chart"
@@ -42,7 +43,7 @@ func Expand(dir string, r io.Reader) error {
 		if file.Name == "Chart.yaml" {
 			ch := &chart.Metadata{}
 			if err := yaml.Unmarshal(file.Data, ch); err != nil {
-				return errors.Wrap(err, "cannot load Chart.yaml")
+				return githubErrors.Wrap(err, "cannot load Chart.yaml")
 			}
 			chartName = ch.Name
 		}

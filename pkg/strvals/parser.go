@@ -18,13 +18,14 @@ package strvals
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
 	"strings"
 	"unicode"
 
-	"github.com/pkg/errors"
+	githubErrors "github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 )
 
@@ -196,7 +197,7 @@ func (t *parser) key(data map[string]interface{}, nestedNameLevel int) (reterr e
 			// We are in a list index context, so we need to set an index.
 			i, err := t.keyIndex()
 			if err != nil {
-				return errors.Wrap(err, "error parsing index")
+				return githubErrors.Wrap(err, "error parsing index")
 			}
 			kk := string(k)
 			// Find or create target list
@@ -394,7 +395,7 @@ func (t *parser) listItem(list []interface{}, i, nestedNameLevel int) ([]interfa
 		// now we have a nested list. Read the index and handle.
 		nextI, err := t.keyIndex()
 		if err != nil {
-			return list, errors.Wrap(err, "error parsing index")
+			return list, githubErrors.Wrap(err, "error parsing index")
 		}
 		var crtList []interface{}
 		if len(list) > i {

@@ -25,8 +25,9 @@ import (
 	"sort"
 	"strings"
 	"text/template"
+	"errors"
 
-	"github.com/pkg/errors"
+	githubErrors "github.com/pkg/errors"
 	"k8s.io/client-go/rest"
 
 	"helm.sh/helm/v3/pkg/chart"
@@ -122,7 +123,7 @@ func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]render
 		var buf strings.Builder
 		if v, ok := includedNames[name]; ok {
 			if v > recursionMaxNums {
-				return "", errors.Wrapf(fmt.Errorf("unable to execute template"), "rendering template has a nested reference name: %s", name)
+				return "", githubErrors.Wrapf(fmt.Errorf("unable to execute template"), "rendering template has a nested reference name: %s", name)
 			}
 			includedNames[name]++
 		} else {
@@ -137,12 +138,12 @@ func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]render
 	funcMap["tpl"] = func(tpl string, vals chartutil.Values) (string, error) {
 		basePath, err := vals.PathValue("Template.BasePath")
 		if err != nil {
-			return "", errors.Wrapf(err, "cannot retrieve Template.Basepath from values inside tpl function: %s", tpl)
+			return "", githubErrors.Wrapf(err, "cannot retrieve Template.Basepath from values inside tpl function: %s", tpl)
 		}
 
 		templateName, err := vals.PathValue("Template.Name")
 		if err != nil {
-			return "", errors.Wrapf(err, "cannot retrieve Template.Name from values inside tpl function: %s", tpl)
+			return "", githubErrors.Wrapf(err, "cannot retrieve Template.Name from values inside tpl function: %s", tpl)
 		}
 
 		templates := map[string]renderable{
@@ -155,7 +156,7 @@ func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]render
 
 		result, err := e.renderWithReferences(templates, referenceTpls)
 		if err != nil {
-			return "", errors.Wrapf(err, "error during tpl function execution for %q", tpl)
+			return "", githubErrors.Wrapf(err, "error during tpl function execution for %q", tpl)
 		}
 		return result[templateName.(string)], nil
 	}

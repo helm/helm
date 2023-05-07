@@ -19,13 +19,14 @@ import (
 	"bytes"
 	"crypto"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/pkg/errors"
+	githubErrors "github.com/pkg/errors"
 	"golang.org/x/crypto/openpgp"           //nolint
 	"golang.org/x/crypto/openpgp/clearsign" //nolint
 	"golang.org/x/crypto/openpgp/packet"    //nolint
@@ -237,12 +238,12 @@ func (s *Signatory) ClearSign(chartpath string) (string, error) {
 		// In other words, if we call Close here, there's a risk that there's an attempt to use the
 		// private key to sign garbage data (since we know that io.Copy failed, `w` won't contain
 		// anything useful).
-		return "", errors.Wrap(err, "failed to write to clearsign encoder")
+		return "", githubErrors.Wrap(err, "failed to write to clearsign encoder")
 	}
 
 	err = w.Close()
 	if err != nil {
-		return "", errors.Wrap(err, "failed to either sign or armor message block")
+		return "", githubErrors.Wrap(err, "failed to either sign or armor message block")
 	}
 
 	return out.String(), nil
@@ -262,7 +263,7 @@ func (s *Signatory) Verify(chartpath, sigpath string) (*Verification, error) {
 	// First verify the signature
 	sig, err := s.decodeSignature(sigpath)
 	if err != nil {
-		return ver, errors.Wrap(err, "failed to decode signature")
+		return ver, githubErrors.Wrap(err, "failed to decode signature")
 	}
 
 	by, err := s.verifySignature(sig)

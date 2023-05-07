@@ -26,9 +26,10 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"errors"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/pkg/errors"
+	githubErrors "github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/internal/fileutil"
@@ -110,7 +111,7 @@ func LoadIndexFile(path string) (*IndexFile, error) {
 	}
 	i, err := loadIndex(b, path)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error loading %s", path)
+		return nil, githubErrors.Wrapf(err, "error loading %s", path)
 	}
 	return i, nil
 }
@@ -126,7 +127,7 @@ func (i IndexFile) MustAdd(md *chart.Metadata, filename, baseURL, digest string)
 		md.APIVersion = chart.APIVersionV1
 	}
 	if err := md.Validate(); err != nil {
-		return errors.Wrapf(err, "validate failed for %s", filename)
+		return githubErrors.Wrapf(err, "validate failed for %s", filename)
 	}
 
 	u := filename
@@ -320,7 +321,7 @@ func IndexDirectory(dir, baseURL string) (*IndexFile, error) {
 			return index, err
 		}
 		if err := index.MustAdd(c.Metadata, fname, parentURL, hash); err != nil {
-			return index, errors.Wrapf(err, "failed adding to %s to index", fname)
+			return index, githubErrors.Wrapf(err, "failed adding to %s to index", fname)
 		}
 	}
 	return index, nil
