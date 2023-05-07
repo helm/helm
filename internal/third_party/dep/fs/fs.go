@@ -32,6 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package fs
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -226,7 +227,7 @@ func IsDir(name string) (bool, error) {
 		return false, err
 	}
 	if !fi.IsDir() {
-		return false, errors.Errorf("%q is not a directory", name)
+		return false, fmt.Errorf("%q is not a directory", name)
 	}
 	return true, nil
 }
