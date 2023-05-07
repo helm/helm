@@ -21,7 +21,6 @@ import (
 	"log"
 
 	"github.com/mitchellh/copystructure"
-	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/pkg/chart"
 )
@@ -73,7 +72,7 @@ func coalesceDeps(printf printFn, chrt *chart.Chart, dest map[string]interface{}
 			// If dest doesn't already have the key, create it.
 			dest[subchart.Name()] = make(map[string]interface{})
 		} else if !istable(c) {
-			return dest, errors.Errorf("type mismatch on %s: %t", subchart.Name(), c)
+			return dest, fmt.Errorf("type mismatch on %s: %t", subchart.Name(), c)
 		}
 		if dv, ok := dest[subchart.Name()]; ok {
 			dvmap := dv.(map[string]interface{})
