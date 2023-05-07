@@ -145,7 +145,7 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 	u.Wait = u.Wait || u.Atomic
 
 	if err := chartutil.ValidateReleaseName(name); err != nil {
-		return nil, errors.Errorf("release name is invalid: %s", name)
+		return nil, fmt.Errorf("release name is invalid: %s", name)
 	}
 	u.cfg.Log("preparing upgrade for %s", name)
 	currentRelease, upgradedRelease, err := u.prepareUpgrade(name, chart, vals)
