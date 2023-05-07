@@ -17,7 +17,7 @@ limitations under the License.
 package action
 
 import (
-	 "errors"
+	"errors"
 	"fmt"
 
 	githubErrors "github.com/pkg/errors"
@@ -89,7 +89,7 @@ func checkOwnership(obj runtime.Object, releaseName, releaseNamespace string) er
 	}
 
 	if len(errs) > 0 {
-		err := githubErrors.New("invalid ownership metadata")
+		err := errors.New("invalid ownership metadata")
 		for _, e := range errs {
 			err = fmt.Errorf("%w; %s", err, e)
 		}
