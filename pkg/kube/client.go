@@ -410,7 +410,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 		originalInfo := original.Get(info)
 		if originalInfo == nil {
 			kind := info.Mapping.GroupVersionKind.Kind
-			return errors.Errorf("no %s with the name %q found", kind, info.Name)
+			return fmt.Errorf("no %s with the name %q found", kind, info.Name)
 		}
 
 		if err := updateResource(c, info, originalInfo.Object, force); err != nil {
@@ -427,7 +427,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 	case err != nil:
 		return res, err
 	case len(updateErrors) != 0:
-		return res, errors.Errorf(strings.Join(updateErrors, " && "))
+		return res, fmt.Errorf(strings.Join(updateErrors, " && "))
 	}
 
 	for _, info := range original.Difference(target) {
@@ -745,7 +745,7 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 		case watch.Error:
 			// Handle error and return with an error.
 			c.Log("Error event for %s", info.Name)
-			return true, errors.Errorf("failed to deploy %s", info.Name)
+			return true, fmt.Errorf("failed to deploy %s", info.Name)
 		default:
 			return false, nil
 		}
@@ -759,14 +759,14 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 func (c *Client) waitForJob(obj runtime.Object, name string) (bool, error) {
 	o, ok := obj.(*batch.Job)
 	if !ok {
-		return true, errors.Errorf("expected %s to be a *batch.Job, got %T", name, obj)
+		return true, fmt.Errorf("expected %s to be a *batch.Job, got %T", name, obj)
 	}
 
 	for _, c := range o.Status.Conditions {
 		if c.Type == batch.JobComplete && c.Status == "True" {
 			return true, nil
 		} else if c.Type == batch.JobFailed && c.Status == "True" {
-			return true, errors.Errorf("job failed: %s", c.Reason)
+			return true, fmt.Errorf("job failed: %s", c.Reason)
 		}
 	}
 
@@ -780,7 +780,7 @@ func (c *Client) waitForJob(obj runtime.Object, name string) (bool, error) {
 func (c *Client) waitForPodSuccess(obj runtime.Object, name string) (bool, error) {
 	o, ok := obj.(*v1.Pod)
 	if !ok {
-		return true, errors.Errorf("expected %s to be a *v1.Pod, got %T", name, obj)
+		return true, fmt.Errorf("expected %s to be a *v1.Pod, got %T", name, obj)
 	}
 
 	switch o.Status.Phase {
@@ -788,7 +788,7 @@ func (c *Client) waitForPodSuccess(obj runtime.Object, name string) (bool, error
 		c.Log("Pod %s succeeded", o.Name)
 		return true, nil
 	case v1.PodFailed:
-		return true, errors.Errorf("pod %s failed", o.Name)
+		return true, fmt.Errorf("pod %s failed", o.Name)
 	case v1.PodPending:
 		c.Log("Pod %s pending", o.Name)
 	case v1.PodRunning:
