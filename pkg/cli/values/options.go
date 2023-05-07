@@ -17,6 +17,7 @@ limitations under the License.
 package values
 
 import (
+	"fmt"
 	"io"
 	"net/url"
 	"os"
@@ -63,7 +64,7 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 	// User specified a value via --set-json
 	for _, value := range opts.JSONValues {
 		if err := strvals.ParseJSON(value, base); err != nil {
-			return nil, errors.Errorf("failed parsing --set-json data %s", value)
+			return nil, fmt.Errorf("failed parsing --set-json data %s", value)
 		}
 	}
 
