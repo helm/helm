@@ -17,11 +17,10 @@ limitations under the License.
 package storage // import "helm.sh/helm/v3/pkg/storage"
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"testing"
-
-	"github.com/pkg/errors"
 
 	rspb "helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage/driver"
