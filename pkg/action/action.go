@@ -114,7 +114,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 
 	if ch.Metadata.KubeVersion != "" {
 		if !chartutil.IsCompatibleRange(ch.Metadata.KubeVersion, caps.KubeVersion.String()) {
-			return hs, b, "", errors.Errorf("chart requires kubeVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, caps.KubeVersion.String())
+			return hs, b, "", fmt.Errorf("chart requires kubeVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, caps.KubeVersion.String())
 		}
 	}
 
@@ -302,7 +302,7 @@ func (cfg *Configuration) Now() time.Time {
 
 func (cfg *Configuration) releaseContent(name string, version int) (*release.Release, error) {
 	if err := chartutil.ValidateReleaseName(name); err != nil {
-		return nil, errors.Errorf("releaseContent: Release name is invalid: %s", name)
+		return nil, fmt.Errorf("releaseContent: Release name is invalid: %s", name)
 	}
 
 	if version <= 0 {
