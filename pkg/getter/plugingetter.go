@@ -17,12 +17,11 @@ package getter
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-
-	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/plugin"
@@ -78,7 +77,7 @@ func (p *pluginGetter) Get(href string, options ...Option) (*bytes.Buffer, error
 	if err := prog.Run(); err != nil {
 		if eerr, ok := err.(*exec.ExitError); ok {
 			os.Stderr.Write(eerr.Stderr)
-			return nil, errors.Errorf("plugin %q exited with error", p.command)
+			return nil, fmt.Errorf("plugin %q exited with error", p.command)
 		}
 		return nil, err
 	}
