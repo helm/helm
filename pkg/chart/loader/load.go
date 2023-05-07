@@ -18,6 +18,7 @@ package loader
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -171,7 +172,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 		case filepath.Ext(n) == ".tgz":
 			file := files[0]
 			if file.Name != n {
-				return c, errors.Errorf("error unpacking tar in %s: expected %s, got %s", c.Name(), n, file.Name)
+				return c, fmt.Errorf("error unpacking tar in %s: expected %s, got %s", c.Name(), n, file.Name)
 			}
 			// Untar the chart and add to c.Dependencies
 			sc, err = LoadArchive(bytes.NewBuffer(file.Data))
