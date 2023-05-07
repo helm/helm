@@ -119,7 +119,7 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 		body, err := g.Get(u.String() + ".prov")
 		if err != nil {
 			if c.Verify == VerifyAlways {
-				return destfile, ver, errors.Errorf("failed to fetch provenance %q", u.String()+".prov")
+				return destfile, ver, fmt.Errorf("failed to fetch provenance %q", u.String()+".prov")
 			}
 			fmt.Fprintf(c.Out, "WARNING: Verification not found for %s: %s\n", ref, err)
 			return destfile, ver, nil
@@ -156,7 +156,7 @@ func (c *ChartDownloader) getOciURI(ref, version string, u *url.URL) (*url.URL, 
 			return nil, err
 		}
 		if len(tags) == 0 {
-			return nil, errors.Errorf("Unable to locate any tags in provided repository: %s", ref)
+			return nil, fmt.Errorf("Unable to locate any tags in provided repository: %s", ref)
 		}
 
 		// Determine if version provided
@@ -192,7 +192,7 @@ func (c *ChartDownloader) getOciURI(ref, version string, u *url.URL) (*url.URL, 
 func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, error) {
 	u, err := url.Parse(ref)
 	if err != nil {
-		return nil, errors.Errorf("invalid chart URL format: %s", ref)
+		return nil, fmt.Errorf("invalid chart URL format: %s", ref)
 	}
 
 	if registry.IsOCI(u.String()) {
@@ -245,7 +245,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 	// See if it's of the form: repo/path_to_chart
 	p := strings.SplitN(u.Path, "/", 2)
 	if len(p) < 2 {
-		return u, errors.Errorf("non-absolute URLs should be in form of repo_name/path_to_chart, got: %s", u)
+		return u, fmt.Errorf("non-absolute URLs should be in form of repo_name/path_to_chart, got: %s", u)
 	}
 
 	repoName := p[0]
@@ -290,14 +290,14 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 	}
 
 	if len(cv.URLs) == 0 {
-		return u, errors.Errorf("chart %q has no downloadable URLs", ref)
+		return u, fmt.Errorf("chart %q has no downloadable URLs", ref)
 	}
 
 	// TODO: Seems that picking first URL is not fully correct
 	resolvedURL, err := repo.ResolveReferenceURL(rc.URL, cv.URLs[0])
 
 	if err != nil {
-		return u, errors.Errorf("invalid chart URL format: %s", ref)
+		return u, fmt.Errorf("invalid chart URL format: %s", ref)
 	}
 
 	return url.Parse(resolvedURL)
@@ -342,12 +342,12 @@ func pickChartRepositoryConfigByName(name string, cfgs []*repo.Entry) (*repo.Ent
 	for _, rc := range cfgs {
 		if rc.Name == name {
 			if rc.URL == "" {
-				return nil, errors.Errorf("no URL found for repository %s", name)
+				return nil, fmt.Errorf("no URL found for repository %s", name)
 			}
 			return rc, nil
 		}
 	}
-	return nil, errors.Errorf("repo %s not found", name)
+	return nil, fmt.Errorf("repo %s not found", name)
 }
 
 // scanReposForURL scans all repos to find which repo contains the given URL.
