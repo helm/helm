@@ -19,6 +19,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -28,7 +29,7 @@ import (
 	"strings"
 
 	securejoin "github.com/cyphar/filepath-securejoin"
-	"github.com/pkg/errors"
+	githubErrors "github.com/pkg/errors"
 
 	"helm.sh/helm/v3/internal/third_party/dep/fs"
 	"helm.sh/helm/v3/pkg/cli"
@@ -133,7 +134,7 @@ func (i *HTTPInstaller) Install() error {
 	}
 
 	if err := i.extractor.Extract(pluginData, i.CacheDir); err != nil {
-		return errors.Wrap(err, "extracting files from archive")
+		return githubErrors.Wrap(err, "extracting files from archive")
 	}
 
 	if !isPlugin(i.CacheDir) {
