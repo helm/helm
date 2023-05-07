@@ -251,7 +251,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	// Check if 'charts' directory is not actally a directory. If it does not exist, create it.
 	if fi, err := os.Stat(destPath); err == nil {
 		if !fi.IsDir() {
-			return errors.Errorf("%q is not a directory", destPath)
+			return fmt.Errorf("%q is not a directory", destPath)
 		}
 	} else if os.IsNotExist(err) {
 		if err := os.MkdirAll(destPath, 0755); err != nil {
@@ -377,7 +377,7 @@ func parseOCIRef(chartRef string) (string, string, error) {
 	refTagRegexp := regexp.MustCompile(`^(oci://[^:]+(:[0-9]{1,5})?[^:]+):(.*)$`)
 	caps := refTagRegexp.FindStringSubmatch(chartRef)
 	if len(caps) != 4 {
-		return "", "", errors.Errorf("improperly formatted oci chart reference: %s", chartRef)
+		return "", "", fmt.Errorf("improperly formatted oci chart reference: %s", chartRef)
 	}
 	chartRef = caps[1]
 	tag := caps[3]
@@ -738,7 +738,7 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 	if err == nil {
 		return url, username, password, false, false, "", "", "", err
 	}
-	err = errors.Errorf("chart %s not found in %s: %s", name, repoURL, err)
+	err = fmt.Errorf("chart %s not found in %s: %s", name, repoURL, err)
 	return url, username, password, false, false, "", "", "", err
 }
 
@@ -850,7 +850,7 @@ func writeLock(chartpath string, lock *chart.Lock, legacyLockfile bool) error {
 // archive a dep chart from local directory and save it into destPath
 func tarFromLocalDir(chartpath, name, repo, version, destPath string) (string, error) {
 	if !strings.HasPrefix(repo, "file://") {
-		return "", errors.Errorf("wrong format: chart %s repository %s", name, repo)
+		return "", fmt.Errorf("wrong format: chart %s repository %s", name, repo)
 	}
 
 	origPath, err := resolver.GetLocalPath(repo, chartpath)
@@ -878,7 +878,7 @@ func tarFromLocalDir(chartpath, name, repo, version, destPath string) (string, e
 		return ch.Metadata.Version, err
 	}
 
-	return "", errors.Errorf("can't get a valid version for dependency %s", name)
+	return "", fmt.Errorf("can't get a valid version for dependency %s", name)
 }
 
 // The prefix to use for cache keys created by the manager for repo names
