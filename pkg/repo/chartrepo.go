@@ -63,12 +63,12 @@ type ChartRepository struct {
 func NewChartRepository(cfg *Entry, getters getter.Providers) (*ChartRepository, error) {
 	u, err := url.Parse(cfg.URL)
 	if err != nil {
-		return nil, errors.Errorf("invalid chart URL format: %s", cfg.URL)
+		return nil, fmt.Errorf("invalid chart URL format: %s", cfg.URL)
 	}
 
 	client, err := getters.ByScheme(u.Scheme)
 	if err != nil {
-		return nil, errors.Errorf("could not find protocol handler for: %s", u.Scheme)
+		return nil, fmt.Errorf("could not find protocol handler for: %s", u.Scheme)
 	}
 
 	return &ChartRepository{
@@ -90,7 +90,7 @@ func (r *ChartRepository) Load() error {
 		return err
 	}
 	if !dirInfo.IsDir() {
-		return errors.Errorf("%q is not a directory", r.Config.Name)
+		return fmt.Errorf("%q is not a directory", r.Config.Name)
 	}
 
 	// FIXME: Why are we recursively walking directories?
@@ -265,11 +265,11 @@ func FindChartInAuthAndTLSAndPassRepoURL(repoURL, username, password, chartName,
 	}
 	cv, err := repoIndex.Get(chartName, chartVersion)
 	if err != nil {
-		return "", errors.Errorf("%s not found in %s repository", errMsg, repoURL)
+		return "", fmt.Errorf("%s not found in %s repository", errMsg, repoURL)
 	}
 
 	if len(cv.URLs) == 0 {
-		return "", errors.Errorf("%s has no downloadable URLs", errMsg)
+		return "", fmt.Errorf("%s has no downloadable URLs", errMsg)
 	}
 
 	chartURL := cv.URLs[0]
