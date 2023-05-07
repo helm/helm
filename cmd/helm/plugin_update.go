@@ -16,12 +16,12 @@ limitations under the License.
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/pkg/plugin"
@@ -81,7 +81,7 @@ func (o *pluginUpdateOptions) run(out io.Writer) error {
 		}
 	}
 	if len(errorPlugins) > 0 {
-		return errors.Errorf(strings.Join(errorPlugins, "\n"))
+		return fmt.Errorf(strings.Join(errorPlugins, "\n"))
 	}
 	return nil
 }
