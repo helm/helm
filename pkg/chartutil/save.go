@@ -41,7 +41,7 @@ func SaveDir(c *chart.Chart, dest string) error {
 	// Create the chart directory
 	outdir := filepath.Join(dest, c.Name())
 	if fi, err := os.Stat(outdir); err == nil && !fi.IsDir() {
-		return errors.Errorf("file %s already exists and is not a directory", outdir)
+		return fmt.Errorf("file %s already exists and is not a directory", outdir)
 	}
 	if err := os.MkdirAll(outdir, 0755); err != nil {
 		return err
@@ -116,7 +116,7 @@ func Save(c *chart.Chart, outDir string) (string, error) {
 			return "", errors.Wrapf(err, "stat %s", dir)
 		}
 	} else if !stat.IsDir() {
-		return "", errors.Errorf("is not a directory: %s", dir)
+		return "", fmt.Errorf("is not a directory: %s", dir)
 	}
 
 	f, err := os.Create(filename)
