@@ -102,7 +102,7 @@ func TestShowCRDs(t *testing.T) {
 			{Name: "crds/ignoreme.txt", Data: []byte("error")},
 			{Name: "crds/foo.yaml", Data: []byte("---\nfoo\n")},
 			{Name: "crds/bar.json", Data: []byte("---\nbar\n")},
-			{Name: "crds/baz.yaml", Data: []byte("\nbaz\n")},
+			{Name: "crds/baz.yaml", Data: []byte("baz\n")},
 		},
 	}
 
