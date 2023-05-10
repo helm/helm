@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -119,7 +118,7 @@ func (o *repoAddOptions) run(out io.Writer) error {
 	repoFileExt := filepath.Ext(o.repoFile)
 	var lockPath string
 	if len(repoFileExt) > 0 && len(repoFileExt) < len(o.repoFile) {
-		lockPath = strings.Replace(o.repoFile, repoFileExt, ".lock", 1)
+		lockPath = strings.TrimSuffix(o.repoFile, repoFileExt) + ".lock"
 	} else {
 		lockPath = o.repoFile + ".lock"
 	}
@@ -134,7 +133,7 @@ func (o *repoAddOptions) run(out io.Writer) error {
 		return err
 	}
 
-	b, err := ioutil.ReadFile(o.repoFile)
+	b, err := os.ReadFile(o.repoFile)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
@@ -175,6 +174,11 @@ func (o *repoAddOptions) run(out io.Writer) error {
 		KeyFile:               o.keyFile,
 		CAFile:                o.caFile,
 		InsecureSkipTLSverify: o.insecureSkipTLSverify,
+	}
+
+	// Check if the repo name is legal
+	if strings.Contains(o.name, "/") {
+		return errors.Errorf("repository name (%s) contains '/', please specify a different name without '/'", o.name)
 	}
 
 	// If the repo exists do one of two things:

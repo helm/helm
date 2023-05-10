@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"sort"
 	"strings"
@@ -53,13 +52,15 @@ a plus (+) when pulling from a registry.`
 type (
 	// Client works with OCI-compliant registries
 	Client struct {
-		debug bool
+		debug       bool
+		enableCache bool
 		// path to repository config file e.g. ~/.docker/config.json
 		credentialsFile    string
 		out                io.Writer
 		authorizer         auth.Client
 		registryAuthorizer *registryauth.Client
 		resolver           remotes.Resolver
+		httpClient         *http.Client
 	}
 
 	// ClientOption allows specifying various settings configurable by the user for overriding the defaults
@@ -70,7 +71,7 @@ type (
 // NewClient returns a new registry client with config
 func NewClient(options ...ClientOption) (*Client, error) {
 	client := &Client{
-		out: ioutil.Discard,
+		out: io.Discard,
 	}
 	for _, option := range options {
 		option(client)
@@ -89,18 +90,28 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		headers := http.Header{}
 		headers.Set("User-Agent", version.GetUserAgent())
 		opts := []auth.ResolverOption{auth.WithResolverHeaders(headers)}
+		if client.httpClient != nil {
+			opts = append(opts, auth.WithResolverClient(client.httpClient))
+		}
 		resolver, err := client.authorizer.ResolverWithOpts(opts...)
 		if err != nil {
 			return nil, err
 		}
 		client.resolver = resolver
 	}
+
+	// allocate a cache if option is set
+	var cache registryauth.Cache
+	if client.enableCache {
+		cache = registryauth.DefaultCache
+	}
 	if client.registryAuthorizer == nil {
 		client.registryAuthorizer = &registryauth.Client{
+			Client: client.httpClient,
 			Header: http.Header{
 				"User-Agent": {version.GetUserAgent()},
 			},
-			Cache: registryauth.DefaultCache,
+			Cache: cache,
 			Credential: func(ctx context.Context, reg string) (registryauth.Credential, error) {
 				dockerClient, ok := client.authorizer.(*dockerauth.Client)
 				if !ok {
@@ -110,6 +121,13 @@ func NewClient(options ...ClientOption) (*Client, error) {
 				username, password, err := dockerClient.Credential(reg)
 				if err != nil {
 					return registryauth.EmptyCredential, errors.New("unable to retrieve credentials")
+				}
+
+				// A blank returned username and password value is a bearer token
+				if username == "" && password != "" {
+					return registryauth.Credential{
+						RefreshToken: password,
+					}, nil
 				}
 
 				return registryauth.Credential{
@@ -131,6 +149,13 @@ func ClientOptDebug(debug bool) ClientOption {
 	}
 }
 
+// ClientOptEnableCache returns a function that sets the enableCache setting on a client options set
+func ClientOptEnableCache(enableCache bool) ClientOption {
+	return func(client *Client) {
+		client.enableCache = enableCache
+	}
+}
+
 // ClientOptWriter returns a function that sets the writer setting on client options set
 func ClientOptWriter(out io.Writer) ClientOption {
 	return func(client *Client) {
@@ -145,6 +170,13 @@ func ClientOptCredentialsFile(credentialsFile string) ClientOption {
 	}
 }
 
+// ClientOptHTTPClient returns a function that sets the httpClient setting on a client options set
+func ClientOptHTTPClient(httpClient *http.Client) ClientOption {
+	return func(client *Client) {
+		client.httpClient = httpClient
+	}
+}
+
 type (
 	// LoginOption allows specifying various settings on login
 	LoginOption func(*loginOperation)
@@ -153,6 +185,9 @@ type (
 		username string
 		password string
 		insecure bool
+		certFile string
+		keyFile  string
+		caFile   string
 	}
 )
 
@@ -168,6 +203,7 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 		auth.WithLoginUsername(operation.username),
 		auth.WithLoginSecret(operation.password),
 		auth.WithLoginUserAgent(version.GetUserAgent()),
+		auth.WithLoginTLS(operation.certFile, operation.keyFile, operation.caFile),
 	}
 	if operation.insecure {
 		authorizerLoginOpts = append(authorizerLoginOpts, auth.WithLoginInsecure())
@@ -191,6 +227,15 @@ func LoginOptBasicAuth(username string, password string) LoginOption {
 func LoginOptInsecure(insecure bool) LoginOption {
 	return func(operation *loginOperation) {
 		operation.insecure = insecure
+	}
+}
+
+// LoginOptTLSClientConfig returns a function that sets the TLS settings on login.
+func LoginOptTLSClientConfig(certFile, keyFile, caFile string) LoginOption {
+	return func(operation *loginOperation) {
+		operation.certFile = certFile
+		operation.keyFile = keyFile
+		operation.caFile = caFile
 	}
 }
 
@@ -296,9 +341,8 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 
 	numDescriptors := len(descriptors)
 	if numDescriptors < minNumDescriptors {
-		return nil, errors.New(
-			fmt.Sprintf("manifest does not contain minimum number of descriptors (%d), descriptors found: %d",
-				minNumDescriptors, numDescriptors))
+		return nil, fmt.Errorf("manifest does not contain minimum number of descriptors (%d), descriptors found: %d",
+			minNumDescriptors, numDescriptors)
 	}
 	var configDescriptor *ocispec.Descriptor
 	var chartDescriptor *ocispec.Descriptor
@@ -318,22 +362,19 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		}
 	}
 	if configDescriptor == nil {
-		return nil, errors.New(
-			fmt.Sprintf("could not load config with mediatype %s", ConfigMediaType))
+		return nil, fmt.Errorf("could not load config with mediatype %s", ConfigMediaType)
 	}
 	if operation.withChart && chartDescriptor == nil {
-		return nil, errors.New(
-			fmt.Sprintf("manifest does not contain a layer with mediatype %s",
-				ChartLayerMediaType))
+		return nil, fmt.Errorf("manifest does not contain a layer with mediatype %s",
+			ChartLayerMediaType)
 	}
 	var provMissing bool
 	if operation.withProv && provDescriptor == nil {
 		if operation.ignoreMissingProv {
 			provMissing = true
 		} else {
-			return nil, errors.New(
-				fmt.Sprintf("manifest does not contain a layer with mediatype %s",
-					ProvLayerMediaType))
+			return nil, fmt.Errorf("manifest does not contain a layer with mediatype %s",
+				ProvLayerMediaType)
 		}
 	}
 	result := &PullResult{
@@ -510,7 +551,9 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 		descriptors = append(descriptors, provDescriptor)
 	}
 
-	manifestData, manifest, err := content.GenerateManifest(&configDescriptor, nil, descriptors...)
+	ociAnnotations := generateOCIAnnotations(meta)
+
+	manifestData, manifest, err := content.GenerateManifest(&configDescriptor, ociAnnotations, descriptors...)
 	if err != nil {
 		return nil, err
 	}

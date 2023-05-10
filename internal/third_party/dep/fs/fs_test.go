@@ -32,7 +32,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package fs
 
 import (
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -46,13 +45,9 @@ var (
 )
 
 func TestRenameWithFallback(t *testing.T) {
-	dir, err := ioutil.TempDir("", "helm-tmp")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
-	if err = RenameWithFallback(filepath.Join(dir, "does_not_exists"), filepath.Join(dir, "dst")); err == nil {
+	if err := RenameWithFallback(filepath.Join(dir, "does_not_exists"), filepath.Join(dir, "dst")); err == nil {
 		t.Fatal("expected an error for non existing file, but got nil")
 	}
 
@@ -64,31 +59,27 @@ func TestRenameWithFallback(t *testing.T) {
 		srcf.Close()
 	}
 
-	if err = RenameWithFallback(srcpath, filepath.Join(dir, "dst")); err != nil {
+	if err := RenameWithFallback(srcpath, filepath.Join(dir, "dst")); err != nil {
 		t.Fatal(err)
 	}
 
 	srcpath = filepath.Join(dir, "a")
-	if err = os.MkdirAll(srcpath, 0777); err != nil {
+	if err := os.MkdirAll(srcpath, 0777); err != nil {
 		t.Fatal(err)
 	}
 
 	dstpath := filepath.Join(dir, "b")
-	if err = os.MkdirAll(dstpath, 0777); err != nil {
+	if err := os.MkdirAll(dstpath, 0777); err != nil {
 		t.Fatal(err)
 	}
 
-	if err = RenameWithFallback(srcpath, dstpath); err == nil {
+	if err := RenameWithFallback(srcpath, dstpath); err == nil {
 		t.Fatal("expected an error if dst is an existing directory, but got nil")
 	}
 }
 
 func TestCopyDir(t *testing.T) {
-	dir, err := ioutil.TempDir("", "helm-tmp")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	srcdir := filepath.Join(dir, "src")
 	if err := os.MkdirAll(srcdir, 0755); err != nil {
@@ -108,7 +99,7 @@ func TestCopyDir(t *testing.T) {
 	for i, file := range files {
 		fn := filepath.Join(srcdir, file.path)
 		dn := filepath.Dir(fn)
-		if err = os.MkdirAll(dn, 0755); err != nil {
+		if err := os.MkdirAll(dn, 0755); err != nil {
 			t.Fatal(err)
 		}
 
@@ -145,7 +136,7 @@ func TestCopyDir(t *testing.T) {
 			t.Fatalf("expected %s to be a directory", dn)
 		}
 
-		got, err := ioutil.ReadFile(fn)
+		got, err := os.ReadFile(fn)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -189,14 +180,10 @@ func TestCopyDirFail_SrcInaccessible(t *testing.T) {
 	})
 	defer cleanup()
 
-	dir, err := ioutil.TempDir("", "helm-tmp")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	dstdir = filepath.Join(dir, "dst")
-	if err = CopyDir(srcdir, dstdir); err == nil {
+	if err := CopyDir(srcdir, dstdir); err == nil {
 		t.Fatalf("expected error for CopyDir(%s, %s), got none", srcdir, dstdir)
 	}
 }
@@ -218,14 +205,10 @@ func TestCopyDirFail_DstInaccessible(t *testing.T) {
 
 	var srcdir, dstdir string
 
-	dir, err := ioutil.TempDir("", "helm-tmp")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	srcdir = filepath.Join(dir, "src")
-	if err = os.MkdirAll(srcdir, 0755); err != nil {
+	if err := os.MkdirAll(srcdir, 0755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -242,12 +225,9 @@ func TestCopyDirFail_DstInaccessible(t *testing.T) {
 
 func TestCopyDirFail_SrcIsNotDir(t *testing.T) {
 	var srcdir, dstdir string
+	var err error
 
-	dir, err := ioutil.TempDir("", "helm-tmp")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	srcdir = filepath.Join(dir, "src")
 	if _, err = os.Create(srcdir); err != nil {
@@ -268,12 +248,9 @@ func TestCopyDirFail_SrcIsNotDir(t *testing.T) {
 
 func TestCopyDirFail_DstExists(t *testing.T) {
 	var srcdir, dstdir string
+	var err error
 
-	dir, err := ioutil.TempDir("", "helm-tmp")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	srcdir = filepath.Join(dir, "src")
 	if err = os.MkdirAll(srcdir, 0755); err != nil {
@@ -314,14 +291,10 @@ func TestCopyDirFailOpen(t *testing.T) {
 
 	var srcdir, dstdir string
 
-	dir, err := ioutil.TempDir("", "helm-tmp")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	srcdir = filepath.Join(dir, "src")
-	if err = os.MkdirAll(srcdir, 0755); err != nil {
+	if err := os.MkdirAll(srcdir, 0755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -345,11 +318,7 @@ func TestCopyDirFailOpen(t *testing.T) {
 }
 
 func TestCopyFile(t *testing.T) {
-	dir, err := ioutil.TempDir("", "helm-tmp")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	srcf, err := os.Create(filepath.Join(dir, "srcfile"))
 	if err != nil {
@@ -367,7 +336,7 @@ func TestCopyFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := ioutil.ReadFile(destf)
+	got, err := os.ReadFile(destf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -405,13 +374,7 @@ func cleanUpDir(dir string) {
 }
 
 func TestCopyFileSymlink(t *testing.T) {
-	var tempdir, err = ioutil.TempDir("", "gotest")
-
-	if err != nil {
-		t.Fatalf("failed to create directory: %s", err)
-	}
-
-	defer cleanUpDir(tempdir)
+	tempdir := t.TempDir()
 
 	testcases := map[string]string{
 		filepath.Join("./testdata/symlinks/file-symlink"):         filepath.Join(tempdir, "dst-file"),
@@ -432,11 +395,11 @@ func TestCopyFileSymlink(t *testing.T) {
 				// Creating symlinks on Windows require an additional permission
 				// regular users aren't granted usually. So we copy the file
 				// content as a fall back instead of creating a real symlink.
-				srcb, err := ioutil.ReadFile(symlink)
+				srcb, err := os.ReadFile(symlink)
 				if err != nil {
 					t.Fatalf("%+v", err)
 				}
-				dstb, err := ioutil.ReadFile(dst)
+				dstb, err := os.ReadFile(dst)
 				if err != nil {
 					t.Fatalf("%+v", err)
 				}
@@ -477,11 +440,7 @@ func TestCopyFileFail(t *testing.T) {
 		t.Skip("Skipping for root user")
 	}
 
-	dir, err := ioutil.TempDir("", "helm-tmp")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	srcf, err := os.Create(filepath.Join(dir, "srcfile"))
 	if err != nil {
@@ -517,19 +476,12 @@ func TestCopyFileFail(t *testing.T) {
 // files this function creates. It is the caller's responsibility to call
 // this function before the test is done running, whether there's an error or not.
 func setupInaccessibleDir(t *testing.T, op func(dir string) error) func() {
-	dir, err := ioutil.TempDir("", "helm-tmp")
-	if err != nil {
-		t.Fatal(err)
-		return nil // keep compiler happy
-	}
+	dir := t.TempDir()
 
 	subdir := filepath.Join(dir, "dir")
 
 	cleanup := func() {
 		if err := os.Chmod(subdir, 0777); err != nil {
-			t.Error(err)
-		}
-		if err := os.RemoveAll(dir); err != nil {
 			t.Error(err)
 		}
 	}
@@ -617,14 +569,10 @@ func TestIsSymlink(t *testing.T) {
 		t.Skip("Skipping for root user")
 	}
 
-	dir, err := ioutil.TempDir("", "helm-tmp")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	dirPath := filepath.Join(dir, "directory")
-	if err = os.MkdirAll(dirPath, 0777); err != nil {
+	if err := os.MkdirAll(dirPath, 0777); err != nil {
 		t.Fatal(err)
 	}
 
