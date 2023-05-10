@@ -73,6 +73,12 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				client.KubeVersion = parsedKubeVersion
 			}
 
+			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile, client.InsecureSkipTLSverify)
+			if err != nil {
+				return fmt.Errorf("missing registry client: %w", err)
+			}
+			client.SetRegistryClient(registryClient)
+
 			client.DryRun = true
 			client.ReleaseName = "release-name"
 			client.Replace = true // Skip the name check
@@ -106,11 +112,15 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 							if client.UseReleaseName {
 								newDir = filepath.Join(client.OutputDir, client.ReleaseName)
 							}
+							_, err := os.Stat(filepath.Join(newDir, m.Path))
+							if err == nil {
+								fileWritten[m.Path] = true
+							}
+
 							err = writeToFile(newDir, m.Path, m.Manifest, fileWritten[m.Path])
 							if err != nil {
 								return err
 							}
-							fileWritten[m.Path] = true
 						}
 
 					}
@@ -181,7 +191,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&skipTests, "skip-tests", false, "skip tests from templated output")
 	f.BoolVar(&client.IsUpgrade, "is-upgrade", false, "set .Release.IsUpgrade instead of .Release.IsInstall")
 	f.StringVar(&kubeVersion, "kube-version", "", "Kubernetes version used for Capabilities.KubeVersion")
-	f.StringArrayVarP(&extraAPIs, "api-versions", "a", []string{}, "Kubernetes api versions used for Capabilities.APIVersions")
+	f.StringSliceVarP(&extraAPIs, "api-versions", "a", []string{}, "Kubernetes api versions used for Capabilities.APIVersions")
 	f.BoolVar(&client.UseReleaseName, "release-name", false, "use release name in the output-dir path.")
 	bindPostRenderFlag(cmd, &client.PostRenderer)
 

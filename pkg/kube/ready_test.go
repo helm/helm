@@ -281,6 +281,13 @@ func Test_ReadyChecker_statefulSetReady(t *testing.T) {
 			},
 			want: false,
 		},
+		{
+			name: "statefulset is ready when current revision for current replicas does not match update revision for updated replicas when using partition !=0",
+			args: args{
+				sts: newStatefulSetWithUpdateRevision("foo", 3, 2, 3, 3, "foo-bbbbbbb"),
+			},
+			want: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

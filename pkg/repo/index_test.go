@@ -19,7 +19,6 @@ package repo
 import (
 	"bufio"
 	"bytes"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -59,6 +58,15 @@ entries:
       version: 1.0.0
       home: https://github.com/something
       digest: "sha256:1234567890abcdef"
+`
+	indexWithEmptyEntry = `
+apiVersion: v1
+entries:
+  grafana:
+  - apiVersion: v2
+    name: grafana
+  foo:
+  -
 `
 )
 
@@ -149,6 +157,12 @@ func TestLoadIndex(t *testing.T) {
 func TestLoadIndex_Duplicates(t *testing.T) {
 	if _, err := loadIndex([]byte(indexWithDuplicates), "indexWithDuplicates"); err == nil {
 		t.Errorf("Expected an error when duplicate entries are present")
+	}
+}
+
+func TestLoadIndex_EmptyEntry(t *testing.T) {
+	if _, err := loadIndex([]byte(indexWithEmptyEntry), "indexWithEmptyEntry"); err != nil {
+		t.Errorf("unexpected error: %s", err)
 	}
 }
 
@@ -258,7 +272,7 @@ func TestDownloadIndexFile(t *testing.T) {
 			t.Fatalf("error finding created charts file: %#v", err)
 		}
 
-		b, err := ioutil.ReadFile(idx)
+		b, err := os.ReadFile(idx)
 		if err != nil {
 			t.Fatalf("error reading charts file: %#v", err)
 		}
@@ -267,7 +281,7 @@ func TestDownloadIndexFile(t *testing.T) {
 
 	t.Run("should not decode the path in the repo url while downloading index", func(t *testing.T) {
 		chartRepoURLPath := "/some%2Fpath/test"
-		fileBytes, err := ioutil.ReadFile("testdata/local-index.yaml")
+		fileBytes, err := os.ReadFile("testdata/local-index.yaml")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -311,7 +325,7 @@ func TestDownloadIndexFile(t *testing.T) {
 			t.Fatalf("error finding created charts file: %#v", err)
 		}
 
-		b, err := ioutil.ReadFile(idx)
+		b, err := os.ReadFile(idx)
 		if err != nil {
 			t.Fatalf("error reading charts file: %#v", err)
 		}
@@ -518,11 +532,29 @@ func TestIndexWrite(t *testing.T) {
 	testpath := filepath.Join(dir, "test")
 	i.WriteFile(testpath, 0600)
 
-	got, err := ioutil.ReadFile(testpath)
+	got, err := os.ReadFile(testpath)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(string(got), "clipper-0.1.0.tgz") {
 		t.Fatal("Index files doesn't contain expected content")
+	}
+}
+
+func TestAddFileIndexEntriesNil(t *testing.T) {
+	i := NewIndexFile()
+	i.APIVersion = chart.APIVersionV1
+	i.Entries = nil
+	for _, x := range []struct {
+		md       *chart.Metadata
+		filename string
+		baseURL  string
+		digest   string
+	}{
+		{&chart.Metadata{APIVersion: "v2", Name: " ", Version: "8033-5.apinie+s.r"}, "setter-0.1.9+beta.tgz", "http://example.com/charts", "sha256:1234567890abc"},
+	} {
+		if err := i.MustAdd(x.md, x.filename, x.baseURL, x.digest); err == nil {
+			t.Errorf("expected err to be non-nil when entries not initialized")
+		}
 	}
 }

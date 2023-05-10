@@ -19,7 +19,7 @@ package action
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -132,7 +132,7 @@ func TestInstallReleaseClientOnly(t *testing.T) {
 	instAction.Run(buildChart(), nil) // disregard output
 
 	is.Equal(instAction.cfg.Capabilities, chartutil.DefaultCapabilities)
-	is.Equal(instAction.cfg.KubeClient, &kubefake.PrintingKubeClient{Out: ioutil.Discard})
+	is.Equal(instAction.cfg.KubeClient, &kubefake.PrintingKubeClient{Out: io.Discard})
 }
 
 func TestInstallRelease_NoName(t *testing.T) {

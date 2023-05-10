@@ -18,7 +18,6 @@ package chartutil
 
 import (
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -72,7 +71,7 @@ func Expand(dir string, r io.Reader) error {
 			return err
 		}
 
-		if err := ioutil.WriteFile(outpath, file.Data, 0644); err != nil {
+		if err := os.WriteFile(outpath, file.Data, 0644); err != nil {
 			return err
 		}
 	}

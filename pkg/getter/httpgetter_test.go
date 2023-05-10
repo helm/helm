@@ -155,9 +155,8 @@ func TestHTTPGetter(t *testing.T) {
 
 func TestDownload(t *testing.T) {
 	expect := "Call me Ishmael"
-	expectedUserAgent := "I am Groot"
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defaultUserAgent := "Helm/" + strings.TrimPrefix(version.GetVersion(), "v")
+		defaultUserAgent := version.GetUserAgent()
 		if r.UserAgent() != defaultUserAgent {
 			t.Errorf("Expected '%s', got '%s'", defaultUserAgent, r.UserAgent())
 		}
@@ -179,6 +178,7 @@ func TestDownload(t *testing.T) {
 	}
 
 	// test with http server
+	const expectedUserAgent = "I am Groot"
 	basicAuthSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		username, password, ok := r.BasicAuth()
 		if !ok || username != "username" || password != "password" {
@@ -285,13 +285,13 @@ func TestDownload(t *testing.T) {
 func TestDownloadTLS(t *testing.T) {
 	cd := "../../testdata"
 	ca, pub, priv := filepath.Join(cd, "rootca.crt"), filepath.Join(cd, "crt.pem"), filepath.Join(cd, "key.pem")
+	insecureSkipTLSverify := false
 
 	tlsSrv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
-	tlsConf, err := tlsutil.NewClientTLS(pub, priv, ca)
+	tlsConf, err := tlsutil.NewClientTLS(pub, priv, ca, insecureSkipTLSverify)
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "can't create TLS config for client"))
 	}
-	tlsConf.BuildNameToCertificate()
 	tlsConf.ServerName = "helm.sh"
 	tlsSrv.TLS = tlsConf
 	tlsSrv.StartTLS()
@@ -435,10 +435,10 @@ func verifyInsecureSkipVerify(t *testing.T, g *HTTPGetter, caseName string, expe
 		t.Fatal(err)
 	}
 
-	if returnVal == nil {
+	if returnVal == nil { //nolint:staticcheck
 		t.Fatalf("Expected non nil value for http client")
 	}
-	transport := (returnVal.Transport).(*http.Transport)
+	transport := (returnVal.Transport).(*http.Transport) //nolint:staticcheck
 	gotValue := false
 	if transport.TLSClientConfig != nil {
 		gotValue = transport.TLSClientConfig.InsecureSkipVerify
@@ -459,11 +459,11 @@ func TestDefaultHTTPTransportReuse(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if httpClient1 == nil {
+	if httpClient1 == nil { //nolint:staticcheck
 		t.Fatalf("Expected non nil value for http client")
 	}
 
-	transport1 := (httpClient1.Transport).(*http.Transport)
+	transport1 := (httpClient1.Transport).(*http.Transport) //nolint:staticcheck
 
 	httpClient2, err := g.httpClient()
 
@@ -471,11 +471,11 @@ func TestDefaultHTTPTransportReuse(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if httpClient2 == nil {
+	if httpClient2 == nil { //nolint:staticcheck
 		t.Fatalf("Expected non nil value for http client")
 	}
 
-	transport2 := (httpClient2.Transport).(*http.Transport)
+	transport2 := (httpClient2.Transport).(*http.Transport) //nolint:staticcheck
 
 	if transport1 != transport2 {
 		t.Fatalf("Expected default transport to be reused")
@@ -493,11 +493,11 @@ func TestHTTPTransportOption(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if httpClient1 == nil {
+	if httpClient1 == nil { //nolint:staticcheck
 		t.Fatalf("Expected non nil value for http client")
 	}
 
-	transport1 := (httpClient1.Transport).(*http.Transport)
+	transport1 := (httpClient1.Transport).(*http.Transport) //nolint:staticcheck
 
 	if transport1 != transport {
 		t.Fatalf("Expected transport option to be applied")
@@ -509,11 +509,11 @@ func TestHTTPTransportOption(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if httpClient2 == nil {
+	if httpClient2 == nil { //nolint:staticcheck
 		t.Fatalf("Expected non nil value for http client")
 	}
 
-	transport2 := (httpClient2.Transport).(*http.Transport)
+	transport2 := (httpClient2.Transport).(*http.Transport) //nolint:staticcheck
 
 	if transport1 != transport2 {
 		t.Fatalf("Expected applied transport to be reused")

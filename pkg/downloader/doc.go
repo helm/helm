@@ -13,7 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*Package downloader provides a library for downloading charts.
+/*
+Package downloader provides a library for downloading charts.
 
 This package contains various tools for downloading charts from repository
 servers, and then storing them in Helm-specific directory structures. This
