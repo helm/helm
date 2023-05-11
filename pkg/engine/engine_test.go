@@ -21,6 +21,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"text/template"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -996,5 +997,76 @@ func TestRenderTplRedefines(t *testing.T) {
 		if out[file] != expect {
 			t.Errorf("Expected %q, got %q", expect, out[file])
 		}
+	}
+}
+
+func TestRenderTplMissingKey(t *testing.T) {
+	// Rendering a missing key results in empty/zero output.
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "TplMissingKey"},
+		Templates: []*chart.File{
+			{Name: "templates/manifest", Data: []byte(
+				`missingValue: {{tpl "{{.Values.noSuchKey}}" .}}`,
+			)},
+		},
+	}
+	v := chartutil.Values{
+		"Values": chartutil.Values{},
+		"Chart":  c.Metadata,
+		"Release": chartutil.Values{
+			"Name": "TestRelease",
+		},
+	}
+
+	out, err := Render(c, v)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expects := map[string]string{
+		"TplMissingKey/templates/manifest": `missingValue: `,
+	}
+	for file, expect := range expects {
+		if out[file] != expect {
+			t.Errorf("Expected %q, got %q", expect, out[file])
+		}
+	}
+}
+
+func TestRenderTplMissingKeyString(t *testing.T) {
+	// Rendering a missing key results in error
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "TplMissingKeyStrict"},
+		Templates: []*chart.File{
+			{Name: "templates/manifest", Data: []byte(
+				`missingValue: {{tpl "{{.Values.noSuchKey}}" .}}`,
+			)},
+		},
+	}
+	v := chartutil.Values{
+		"Values": chartutil.Values{},
+		"Chart":  c.Metadata,
+		"Release": chartutil.Values{
+			"Name": "TestRelease",
+		},
+	}
+
+	e := new(Engine)
+	e.Strict = true
+
+	out, err := e.Render(c, v)
+	if err == nil {
+		t.Errorf("Expected error, got %v", out)
+		return
+	}
+	switch err.(type) {
+	case (template.ExecError):
+		errTxt := fmt.Sprint(err)
+		if !strings.Contains(errTxt, "noSuchKey") {
+			t.Errorf("Expected error to contain 'noSuchKey', got %s", errTxt)
+		}
+	default:
+		// Some unexpected error.
+		t.Fatal(err)
 	}
 }
