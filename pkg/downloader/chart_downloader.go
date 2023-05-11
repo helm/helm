@@ -27,6 +27,7 @@ import (
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/internal/fileutil"
+	"helm.sh/helm/v3/internal/urlutil"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/helmpath"
 	"helm.sh/helm/v3/pkg/provenance"
@@ -377,13 +378,19 @@ func (c *ChartDownloader) scanReposForURL(u string, rf *repo.File) (*repo.Entry,
 		}
 
 		idxFile := filepath.Join(c.RepositoryCache, helmpath.CacheIndexFile(r.Config.Name))
-		yamlFile, err := os.ReadFile(idxFile)
+		i, err := repo.LoadIndexFile(idxFile)
 		if err != nil {
 			return nil, errors.Wrap(err, "no cached repo found. (try 'helm repo update')")
 		}
-		file := string(yamlFile[:])
-		if strings.Contains(file, u) {
-			return rc, nil
+
+		for _, entry := range i.Entries {
+			for _, ver := range entry {
+				for _, dl := range ver.URLs {
+					if urlutil.Equal(u, dl) {
+						return rc, nil
+					}
+				}
+			}
 		}
 	}
 	// This means that there is no repo file for the given URL.
