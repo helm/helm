@@ -98,6 +98,7 @@ func setup(suite *TestSuite, tlsEnabled bool, insecure bool) *registry.Registry 
 			ClientOptWriter(suite.Out),
 			ClientOptCredentialsFile(credentialsFile),
 			ClientOptHTTPClient(httpClient),
+			ClientOptResolver(nil),
 		)
 	} else {
 		suite.RegistryClient, err = NewClient(
@@ -105,6 +106,7 @@ func setup(suite *TestSuite, tlsEnabled bool, insecure bool) *registry.Registry 
 			ClientOptEnableCache(true),
 			ClientOptWriter(suite.Out),
 			ClientOptCredentialsFile(credentialsFile),
+			ClientOptResolver(nil),
 		)
 	}
 
