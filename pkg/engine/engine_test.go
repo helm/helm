@@ -18,6 +18,7 @@ package engine
 
 import (
 	"fmt"
+	"path"
 	"strings"
 	"sync"
 	"testing"
@@ -89,6 +90,7 @@ func TestRender(t *testing.T) {
 			{Name: "templates/test2", Data: []byte("{{.Values.global.callme | lower }}")},
 			{Name: "templates/test3", Data: []byte("{{.noValue}}")},
 			{Name: "templates/test4", Data: []byte("{{toJson .Values}}")},
+			{Name: "templates/test5", Data: []byte("{{getHostByName \"helm.sh\"}}")},
 		},
 		Values: map[string]interface{}{"outer": "DEFAULT", "inner": "DEFAULT"},
 	}
@@ -117,6 +119,7 @@ func TestRender(t *testing.T) {
 		"moby/templates/test2": "ishmael",
 		"moby/templates/test3": "",
 		"moby/templates/test4": `{"global":{"callme":"Ishmael"},"inner":"inn","outer":"spouter"}`,
+		"moby/templates/test5": "",
 	}
 
 	for name, data := range expect {
@@ -197,6 +200,42 @@ func TestRenderInternals(t *testing.T) {
 
 	if out["three"] != "Goodbye THREE" {
 		t.Errorf("Expected 'Goodbye THREE'. got %q", out["two"])
+	}
+}
+
+func TestRenderWIthDNS(t *testing.T) {
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:    "moby",
+			Version: "1.2.3",
+		},
+		Templates: []*chart.File{
+			{Name: "templates/test1", Data: []byte("{{getHostByName \"helm.sh\"}}")},
+		},
+		Values: map[string]interface{}{},
+	}
+
+	vals := map[string]interface{}{
+		"Values": map[string]interface{}{},
+	}
+
+	v, err := chartutil.CoalesceValues(c, vals)
+	if err != nil {
+		t.Fatalf("Failed to coalesce values: %s", err)
+	}
+
+	var e Engine
+	e.EnableDNS = true
+	out, err := e.Render(c, v)
+	if err != nil {
+		t.Errorf("Failed to render templates: %s", err)
+	}
+
+	for _, val := range c.Templates {
+		fp := path.Join("moby", val.Name)
+		if out[fp] == "" {
+			t.Errorf("Expected IP address, got %q", out[fp])
+		}
 	}
 }
 
