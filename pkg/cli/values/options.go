@@ -17,13 +17,14 @@ limitations under the License.
 package values
 
 import (
+	"bytes"
 	"io"
 	"net/url"
 	"os"
 	"strings"
 
 	"github.com/pkg/errors"
-	"sigs.k8s.io/yaml"
+	"k8s.io/apimachinery/pkg/util/yaml"
 
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/strvals"
@@ -46,18 +47,26 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 
 	// User specified a values files via -f/--values
 	for _, filePath := range opts.ValueFiles {
-		currentMap := map[string]interface{}{}
-
-		bytes, err := readFile(filePath, p)
+		data, err := readFile(filePath, p)
 		if err != nil {
 			return nil, err
 		}
 
-		if err := yaml.Unmarshal(bytes, &currentMap); err != nil {
-			return nil, errors.Wrapf(err, "failed to parse %s", filePath)
+		decoder := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(data), 4096)
+
+		for {
+			currentMap := map[string]interface{}{}
+			err := decoder.Decode(&currentMap)
+
+			if err == io.EOF {
+				break
+			} else if err != nil {
+				return nil, errors.Wrapf(err, "failed to parse %s", filePath)
+			}
+
+			// Merge with the previous map
+			base = mergeMaps(base, currentMap)
 		}
-		// Merge with the previous map
-		base = mergeMaps(base, currentMap)
 	}
 
 	// User specified a value via --set-json
