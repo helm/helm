@@ -145,33 +145,6 @@ func coalesceGlobals(printf printFn, dest, src map[string]interface{}, prefix st
 	dest[GlobalKey] = dg
 }
 
-func copyMap(src map[string]interface{}) map[string]interface{} {
-	m := make(map[string]interface{}, len(src))
-	for k, v := range src {
-		m[k] = v
-	}
-	return m
-}
-
-// stringCollectionsDeepCopy makes deep copy for string maps and lists.
-// For other types performs shallow copy.
-func stringCollectionsDeepCopy(src any) any {
-	switch t := src.(type) {
-	case map[string]any:
-		r := make(map[string]interface{}, len(t))
-		for k, v := range t {
-			r[k] = stringCollectionsDeepCopy(v)
-		}
-		return r
-	case []string:
-		r := make([]string, len(t))
-		copy(r, t)
-		return r
-	default:
-		return t
-	}
-}
-
 // coalesceValues builds up a values map for a particular chart.
 //
 // Values in v will override the values in the chart.

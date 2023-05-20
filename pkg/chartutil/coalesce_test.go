@@ -17,7 +17,6 @@ limitations under the License.
 package chartutil
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -69,9 +68,7 @@ func assertIsEqualToJSON(t *testing.T, name string, val any, expectedJson []byte
 	if err != nil {
 		t.Fatalf("JSON marshal failed: %v", err)
 	}
-	if !bytes.Equal(j, expectedJson) {
-		t.Errorf("%s contents changed, got: %v", name, string(j))
-	}
+	assert.Equal(t, expectedJson, j)
 }
 
 func TestCoalesceValues(t *testing.T) {
