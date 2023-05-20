@@ -57,6 +57,7 @@ func TestCreate(t *testing.T) {
 		TemplatesTestsDir,
 		TestConnectionName,
 		ValuesfileName,
+		SchemafileName,
 	} {
 		if _, err := os.Stat(filepath.Join(dir, f)); err != nil {
 			t.Errorf("Expected %s file: %s", f, err)
