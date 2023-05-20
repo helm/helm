@@ -41,7 +41,7 @@ something like this:
     ├── Chart.yaml          # Information about your chart
     ├── values.yaml         # The default values for your templates
     ├── values.schema.json  # The default scheme for the chart values
-    ├── charts/       		# Charts that this chart depends on
+    ├── charts/             # Charts that this chart depends on
     └── templates/          # The template files
         └── tests/          # The test files
 
