@@ -74,14 +74,14 @@ func newGetMetadataCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 }
 
 func (w metadataWriter) WriteTable(out io.Writer) error {
-	_, _ = fmt.Fprintln(out, fmt.Sprintf("NAME: %v", w.metadata.Name))
-	_, _ = fmt.Fprintln(out, fmt.Sprintf("CHART: %v", w.metadata.Chart))
-	_, _ = fmt.Fprintln(out, fmt.Sprintf("VERSION: %v", w.metadata.Version))
-	_, _ = fmt.Fprintln(out, fmt.Sprintf("APP_VERSION: %v", w.metadata.AppVersion))
-	_, _ = fmt.Fprintln(out, fmt.Sprintf("NAMESPACE: %v", w.metadata.Namespace))
-	_, _ = fmt.Fprintln(out, fmt.Sprintf("REVISION: %v", w.metadata.Revision))
-	_, _ = fmt.Fprintln(out, fmt.Sprintf("STATUS: %v", w.metadata.Status))
-	_, _ = fmt.Fprintln(out, fmt.Sprintf("DEPLOYED_AT: %v", w.metadata.DeployedAt))
+	_, _ = fmt.Fprintf(out, fmt.Sprintf("NAME: %v\n", w.metadata.Name))
+	_, _ = fmt.Fprintf(out, fmt.Sprintf("CHART: %v\n", w.metadata.Chart))
+	_, _ = fmt.Fprintf(out, fmt.Sprintf("VERSION: %v\n", w.metadata.Version))
+	_, _ = fmt.Fprintf(out, fmt.Sprintf("APP_VERSION: %v\n", w.metadata.AppVersion))
+	_, _ = fmt.Fprintf(out, fmt.Sprintf("NAMESPACE: %v\n", w.metadata.Namespace))
+	_, _ = fmt.Fprintf(out, fmt.Sprintf("REVISION: %v\n", w.metadata.Revision))
+	_, _ = fmt.Fprintf(out, fmt.Sprintf("STATUS: %v\n", w.metadata.Status))
+	_, _ = fmt.Fprintf(out, fmt.Sprintf("DEPLOYED_AT: %v\n", w.metadata.DeployedAt))
 	return nil
 }
 
