@@ -37,6 +37,7 @@ import (
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
+	multierror "github.com/hashicorp/go-multierror"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -149,7 +150,10 @@ func transformRequests(req *rest.Request) {
 	req.Param("includeObject", "Object")
 }
 
-func (c *Client) Get(resources ResourceList, reader io.Reader) (map[string][]runtime.Object, error) {
+// Get retrieves the resource objects supplied. If related is set to true the
+// related pods are fetched as well. If the passed in resources are a table kind
+// the related resources will also be fetched as kind=table.
+func (c *Client) Get(resources ResourceList, related bool) (map[string][]runtime.Object, error) {
 	buf := new(bytes.Buffer)
 	objs := make(map[string][]runtime.Object)
 
@@ -167,9 +171,20 @@ func (c *Client) Get(resources ResourceList, reader io.Reader) (map[string][]run
 		} else {
 			objs[vk] = append(objs[vk], obj)
 
-			objs, err = c.getSelectRelationPod(info, objs, &podSelectors)
-			if err != nil {
-				c.Log("Warning: get the relation pod is failed, err:%s", err.Error())
+			// Only fetch related pods if they are requested
+			if related {
+				// Discover if the existing object is a table. If it is, request
+				// the pods as Tables. Otherwise request them normally.
+				objGVK := obj.GetObjectKind().GroupVersionKind()
+				var isTable bool
+				if objGVK.Kind == "Table" {
+					isTable = true
+				}
+
+				objs, err = c.getSelectRelationPod(info, objs, isTable, &podSelectors)
+				if err != nil {
+					c.Log("Warning: get the relation pod is failed, err:%s", err.Error())
+				}
 			}
 		}
 
@@ -182,7 +197,7 @@ func (c *Client) Get(resources ResourceList, reader io.Reader) (map[string][]run
 	return objs, nil
 }
 
-func (c *Client) getSelectRelationPod(info *resource.Info, objs map[string][]runtime.Object, podSelectors *[]map[string]string) (map[string][]runtime.Object, error) {
+func (c *Client) getSelectRelationPod(info *resource.Info, objs map[string][]runtime.Object, table bool, podSelectors *[]map[string]string) (map[string][]runtime.Object, error) {
 	if info == nil {
 		return objs, nil
 	}
@@ -201,17 +216,33 @@ func (c *Client) getSelectRelationPod(info *resource.Info, objs map[string][]run
 
 	*podSelectors = append(*podSelectors, selector)
 
-	infos, err := c.Factory.NewBuilder().
-		Unstructured().
-		ContinueOnError().
-		NamespaceParam(info.Namespace).
-		DefaultNamespace().
-		ResourceTypes("pods").
-		LabelSelector(labels.Set(selector).AsSelector().String()).
-		TransformRequests(transformRequests).
-		Do().Infos()
-	if err != nil {
-		return objs, err
+	var infos []*resource.Info
+	var err error
+	if table {
+		infos, err = c.Factory.NewBuilder().
+			Unstructured().
+			ContinueOnError().
+			NamespaceParam(info.Namespace).
+			DefaultNamespace().
+			ResourceTypes("pods").
+			LabelSelector(labels.Set(selector).AsSelector().String()).
+			TransformRequests(transformRequests).
+			Do().Infos()
+		if err != nil {
+			return objs, err
+		}
+	} else {
+		infos, err = c.Factory.NewBuilder().
+			Unstructured().
+			ContinueOnError().
+			NamespaceParam(info.Namespace).
+			DefaultNamespace().
+			ResourceTypes("pods").
+			LabelSelector(labels.Set(selector).AsSelector().String()).
+			Do().Infos()
+		if err != nil {
+			return objs, err
+		}
 	}
 	vk := "v1/Pod(related)"
 
@@ -307,31 +338,36 @@ func (c *Client) Build(reader io.Reader, validate bool) (ResourceList, error) {
 		validationDirective = metav1.FieldValidationStrict
 	}
 
-	dynamicClient, err := c.Factory.DynamicClient()
+	schema, err := c.Factory.Validator(validationDirective)
 	if err != nil {
 		return nil, err
+	}
+	result, err := c.newBuilder().
+		Unstructured().
+		Schema(schema).
+		Stream(reader, "").
+		Do().Infos()
+	return result, scrubValidationError(err)
+}
+
+// BuildTable validates for Kubernetes objects and returns unstructured infos.
+// The returned kind is a Table.
+func (c *Client) BuildTable(reader io.Reader, validate bool) (ResourceList, error) {
+	validationDirective := metav1.FieldValidationIgnore
+	if validate {
+		validationDirective = metav1.FieldValidationStrict
 	}
 
-	verifier := resource.NewQueryParamVerifier(dynamicClient, c.Factory.OpenAPIGetter(), resource.QueryParamFieldValidation)
-	schema, err := c.Factory.Validator(validationDirective, verifier)
+	schema, err := c.Factory.Validator(validationDirective)
 	if err != nil {
 		return nil, err
 	}
-	var result ResourceList
-	if validate {
-		result, err = c.newBuilder().
-			Unstructured().
-			Schema(schema).
-			Stream(reader, "").
-			Do().Infos()
-	} else {
-		result, err = c.newBuilder().
-			Unstructured().
-			Schema(schema).
-			Stream(reader, "").
-			TransformRequests(transformRequests).
-			Do().Infos()
-	}
+	result, err := c.newBuilder().
+		Unstructured().
+		Schema(schema).
+		Stream(reader, "").
+		TransformRequests(transformRequests).
+		Do().Infos()
 	return result, scrubValidationError(err)
 }
 
@@ -409,7 +445,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			c.Log("Skipping delete of %q due to annotation [%s=%s]", info.Name, ResourcePolicyAnno, KeepPolicy)
 			continue
 		}
-		if err := deleteResource(info); err != nil {
+		if err := deleteResource(info, metav1.DeletePropagationBackground); err != nil {
 			c.Log("Failed to delete %q, err: %s", info.ObjectName(), err)
 			continue
 		}
@@ -418,17 +454,29 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 	return res, nil
 }
 
-// Delete deletes Kubernetes resources specified in the resources list. It will
-// attempt to delete all resources even if one or more fail and collect any
-// errors. All successfully deleted items will be returned in the `Deleted`
-// ResourceList that is part of the result.
+// Delete deletes Kubernetes resources specified in the resources list with
+// background cascade deletion. It will attempt to delete all resources even
+// if one or more fail and collect any errors. All successfully deleted items
+// will be returned in the `Deleted` ResourceList that is part of the result.
 func (c *Client) Delete(resources ResourceList) (*Result, []error) {
+	return delete(c, resources, metav1.DeletePropagationBackground)
+}
+
+// Delete deletes Kubernetes resources specified in the resources list with
+// given deletion propagation policy. It will attempt to delete all resources even
+// if one or more fail and collect any errors. All successfully deleted items
+// will be returned in the `Deleted` ResourceList that is part of the result.
+func (c *Client) DeleteWithPropagationPolicy(resources ResourceList, policy metav1.DeletionPropagation) (*Result, []error) {
+	return delete(c, resources, policy)
+}
+
+func delete(c *Client, resources ResourceList, propagation metav1.DeletionPropagation) (*Result, []error) {
 	var errs []error
 	res := &Result{}
 	mtx := sync.Mutex{}
 	err := perform(resources, func(info *resource.Info) error {
 		c.Log("Starting delete for %q %s", info.Name, info.Mapping.GroupVersionKind.Kind)
-		err := deleteResource(info)
+		err := deleteResource(info, propagation)
 		if err == nil || apierrors.IsNotFound(err) {
 			if err != nil {
 				c.Log("Ignoring delete failure for %q %s: %v", info.Name, info.Mapping.GroupVersionKind, err)
@@ -472,10 +520,10 @@ func (c *Client) watchTimeout(t time.Duration) func(*resource.Info) error {
 // For most kinds, it checks to see if the resource is marked as Added or Modified
 // by the Kubernetes event stream. For some kinds, it does more:
 //
-// - Jobs: A job is marked "Ready" when it has successfully completed. This is
-//   ascertained by watching the Status fields in a job's output.
-// - Pods: A pod is marked "Ready" when it has successfully completed. This is
-//   ascertained by watching the status.phase field in a pod's output.
+//   - Jobs: A job is marked "Ready" when it has successfully completed. This is
+//     ascertained by watching the Status fields in a job's output.
+//   - Pods: A pod is marked "Ready" when it has successfully completed. This is
+//     ascertained by watching the status.phase field in a pod's output.
 //
 // Handling for other kinds will be added as necessary.
 func (c *Client) WatchUntilReady(resources ResourceList, timeout time.Duration) error {
@@ -485,6 +533,8 @@ func (c *Client) WatchUntilReady(resources ResourceList, timeout time.Duration) 
 }
 
 func perform(infos ResourceList, fn func(*resource.Info) error) error {
+	var result error
+
 	if len(infos) == 0 {
 		return ErrNoObjectsVisited
 	}
@@ -495,10 +545,11 @@ func perform(infos ResourceList, fn func(*resource.Info) error) error {
 	for range infos {
 		err := <-errs
 		if err != nil {
-			return err
+			result = multierror.Append(result, err)
 		}
 	}
-	return nil
+
+	return result
 }
 
 // getManagedFieldsManager returns the manager string. If one was set it will be returned.
@@ -546,8 +597,7 @@ func createResource(info *resource.Info) error {
 	return info.Refresh(obj, true)
 }
 
-func deleteResource(info *resource.Info) error {
-	policy := metav1.DeletePropagationBackground
+func deleteResource(info *resource.Info, policy metav1.DeletionPropagation) error {
 	opts := &metav1.DeleteOptions{PropagationPolicy: &policy}
 	_, err := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(getManagedFieldsManager()).DeleteWithOptions(info.Namespace, info.Name, opts)
 	return err

@@ -21,17 +21,25 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	orascontext "oras.land/oras-go/pkg/context"
 	"oras.land/oras-go/pkg/registry"
 
+	"helm.sh/helm/v3/internal/tlsutil"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 )
+
+var immutableOciAnnotations = []string{
+	ocispec.AnnotationVersion,
+	ocispec.AnnotationTitle,
+}
 
 // IsOCI determines whether or not a URL is to be treated as an OCI URL
 func IsOCI(url string) bool {
@@ -128,4 +136,105 @@ func parseReference(raw string) (registry.Reference, error) {
 	}
 
 	return registry.ParseReference(raw)
+}
+
+// NewRegistryClientWithTLS is a helper function to create a new registry client with TLS enabled.
+func NewRegistryClientWithTLS(out io.Writer, certFile, keyFile, caFile string, insecureSkipTLSverify bool, registryConfig string, debug bool) (*Client, error) {
+	tlsConf, err := tlsutil.NewClientTLS(certFile, keyFile, caFile, insecureSkipTLSverify)
+	if err != nil {
+		return nil, fmt.Errorf("can't create TLS config for client: %s", err)
+	}
+	// Create a new registry client
+	registryClient, err := NewClient(
+		ClientOptDebug(debug),
+		ClientOptEnableCache(true),
+		ClientOptWriter(out),
+		ClientOptCredentialsFile(registryConfig),
+		ClientOptHTTPClient(&http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: tlsConf,
+			},
+		}),
+	)
+	if err != nil {
+		return nil, err
+	}
+	return registryClient, nil
+}
+
+// generateOCIAnnotations will generate OCI annotations to include within the OCI manifest
+func generateOCIAnnotations(meta *chart.Metadata) map[string]string {
+
+	// Get annotations from Chart attributes
+	ociAnnotations := generateChartOCIAnnotations(meta)
+
+	// Copy Chart annotations
+annotations:
+	for chartAnnotationKey, chartAnnotationValue := range meta.Annotations {
+
+		// Avoid overriding key properties
+		for _, immutableOciKey := range immutableOciAnnotations {
+			if immutableOciKey == chartAnnotationKey {
+				continue annotations
+			}
+		}
+
+		// Add chart annotation
+		ociAnnotations[chartAnnotationKey] = chartAnnotationValue
+	}
+
+	return ociAnnotations
+}
+
+// getChartOCIAnnotations will generate OCI annotations from the provided chart
+func generateChartOCIAnnotations(meta *chart.Metadata) map[string]string {
+	chartOCIAnnotations := map[string]string{}
+
+	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationDescription, meta.Description)
+	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationTitle, meta.Name)
+	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationVersion, meta.Version)
+	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationURL, meta.Home)
+
+	if len(meta.Sources) > 0 {
+		chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationSource, meta.Sources[0])
+	}
+
+	if meta.Maintainers != nil && len(meta.Maintainers) > 0 {
+		var maintainerSb strings.Builder
+
+		for maintainerIdx, maintainer := range meta.Maintainers {
+
+			if len(maintainer.Name) > 0 {
+				maintainerSb.WriteString(maintainer.Name)
+			}
+
+			if len(maintainer.Email) > 0 {
+				maintainerSb.WriteString(" (")
+				maintainerSb.WriteString(maintainer.Email)
+				maintainerSb.WriteString(")")
+			}
+
+			if maintainerIdx < len(meta.Maintainers)-1 {
+				maintainerSb.WriteString(", ")
+			}
+
+		}
+
+		chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationAuthors, maintainerSb.String())
+
+	}
+
+	return chartOCIAnnotations
+}
+
+// addToMap takes an existing map and adds an item if the value is not empty
+func addToMap(inputMap map[string]string, newKey string, newValue string) map[string]string {
+
+	// Add item to map if its
+	if len(strings.TrimSpace(newValue)) > 0 {
+		inputMap[newKey] = newValue
+	}
+
+	return inputMap
+
 }
