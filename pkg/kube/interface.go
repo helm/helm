@@ -17,6 +17,7 @@ limitations under the License.
 package kube
 
 import (
+	"context"
 	"io"
 	"time"
 
@@ -72,6 +73,19 @@ type Interface interface {
 	IsReachable() error
 }
 
+// ContextInterface is introduced to avoid breaking backwards compatability for Interface implementers.
+//
+// TODO Helm 4: Replace Interface methods that accept a time.Duration as an argument, with a context.
+type ContextInterface interface {
+	// WaitWithContext waits till a ctx timeout for the specified resources to be ready.
+	WaitWithContext(ctx context.Context, resources ResourceList) error
+	// WaitWithJobsContext wait up to the given ctx timeout for the specified resources to be ready, including jobs.
+	WaitWithJobsContext(ctx context.Context, resources ResourceList) error
+	WatchUntilReadyWithContext(context.Context, ResourceList) error
+	WaitAndGetCompletedPodPhaseWithContext(context.Context, string) (v1.PodPhase, error)
+	WaitForDeleteWithContext(context.Context, ResourceList) error
+}
+
 // InterfaceExt is introduced to avoid breaking backwards compatibility for Interface implementers.
 //
 // TODO Helm 4: Remove InterfaceExt and integrate its method(s) into the Interface.
@@ -112,5 +126,6 @@ type InterfaceResources interface {
 
 var _ Interface = (*Client)(nil)
 var _ InterfaceExt = (*Client)(nil)
+var _ ContextInterface = (*Client)(nil)
 var _ InterfaceDeletionPropagation = (*Client)(nil)
 var _ InterfaceResources = (*Client)(nil)

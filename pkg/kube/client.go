@@ -275,41 +275,67 @@ func getResource(info *resource.Info) (runtime.Object, error) {
 
 // Wait waits up to the given timeout for the specified resources to be ready.
 func (c *Client) Wait(resources ResourceList, timeout time.Duration) error {
+	// Helm 4 TODO: remove decarator around WaitWithContext.
+	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
+	defer cancel()
+
+	return c.WaitWithContext(ctx, resources)
+}
+
+// WaitWithContext waits up till ctx timeout for the specified resources to be ready.
+func (c *Client) WaitWithContext(ctx context.Context, resources ResourceList) error {
 	cs, err := c.getKubeClient()
 	if err != nil {
 		return err
 	}
 	checker := NewReadyChecker(cs, c.Log, PausedAsReady(true))
 	w := waiter{
-		c:       checker,
-		log:     c.Log,
-		timeout: timeout,
+		c:   checker,
+		log: c.Log,
 	}
-	return w.waitForResources(resources)
+	return w.waitForResources(ctx, resources)
 }
 
 // WaitWithJobs wait up to the given timeout for the specified resources to be ready, including jobs.
 func (c *Client) WaitWithJobs(resources ResourceList, timeout time.Duration) error {
+	// Helm 4 TODO: remove decarator around WaitWithJobsContext.
+	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
+	defer cancel()
+
+	return c.WaitWithJobsContext(ctx, resources)
+}
+
+// WaitWithJobsContext wait up to the given ctx timeout for the specified resources to be ready, including jobs.
+func (c *Client) WaitWithJobsContext(ctx context.Context, resources ResourceList) error {
 	cs, err := c.getKubeClient()
 	if err != nil {
 		return err
 	}
 	checker := NewReadyChecker(cs, c.Log, PausedAsReady(true), CheckJobs(true))
 	w := waiter{
-		c:       checker,
-		log:     c.Log,
-		timeout: timeout,
+		c:   checker,
+		log: c.Log,
 	}
-	return w.waitForResources(resources)
+
+	return w.waitForResources(ctx, resources)
 }
 
 // WaitForDelete wait up to the given timeout for the specified resources to be deleted.
 func (c *Client) WaitForDelete(resources ResourceList, timeout time.Duration) error {
+	// Helm 4 TODO: remove decarator around WaitWithJobsContext.
+	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
+	defer cancel()
+
+	return c.WaitForDeleteWithContext(ctx, resources)
+}
+
+// WaitForDelete wait up to the given timeout for the specified resources to be deleted.
+func (c *Client) WaitForDeleteWithContext(ctx context.Context, resources ResourceList) error {
 	w := waiter{
-		log:     c.Log,
-		timeout: timeout,
+		log: c.Log,
 	}
-	return w.waitForDeletedResources(resources)
+
+	return w.waitForDeletedResources(ctx, resources)
 }
 
 func (c *Client) namespace() string {
@@ -506,9 +532,9 @@ func delete(c *Client, resources ResourceList, propagation metav1.DeletionPropag
 	return res, nil
 }
 
-func (c *Client) watchTimeout(t time.Duration) func(*resource.Info) error {
+func (c *Client) watchTimeout(ctx context.Context) func(*resource.Info) error {
 	return func(info *resource.Info) error {
-		return c.watchUntilReady(t, info)
+		return c.watchUntilReady(ctx, info)
 	}
 }
 
@@ -527,9 +553,18 @@ func (c *Client) watchTimeout(t time.Duration) func(*resource.Info) error {
 //
 // Handling for other kinds will be added as necessary.
 func (c *Client) WatchUntilReady(resources ResourceList, timeout time.Duration) error {
+	// Helm 4 TODO: remove decarator around WatchUntilReadyWithContext.
+	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
+	defer cancel()
+
 	// For jobs, there's also the option to do poll c.Jobs(namespace).Get():
 	// https://github.com/adamreese/kubernetes/blob/master/test/e2e/job.go#L291-L300
-	return perform(resources, c.watchTimeout(timeout))
+	return c.WatchUntilReadyWithContext(ctx, resources)
+}
+
+// WatchUntilReadyWithContext -.
+func (c *Client) WatchUntilReadyWithContext(ctx context.Context, resources ResourceList) error {
+	return perform(resources, c.watchTimeout(ctx))
 }
 
 func perform(infos ResourceList, fn func(*resource.Info) error) error {
@@ -594,6 +629,7 @@ func createResource(info *resource.Info) error {
 	if err != nil {
 		return err
 	}
+
 	return info.Refresh(obj, true)
 }
 
@@ -695,7 +731,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 	return nil
 }
 
-func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) error {
+func (c *Client) watchUntilReady(ctx context.Context, info *resource.Info) error {
 	kind := info.Mapping.GroupVersionKind.Kind
 	switch kind {
 	case "Job", "Pod":
@@ -703,7 +739,7 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 		return nil
 	}
 
-	c.Log("Watching for changes to %s %s with timeout of %v", kind, info.Name, timeout)
+	c.Log("Watching for changes to %s %s with timeout of %v", kind, info.Name, timeFromCtx(ctx))
 
 	// Use a selector on the name of the resource. This should be unique for the
 	// given version and kind
@@ -719,8 +755,6 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 	// In the future, we might want to add some special logic for types
 	// like Ingress, Volume, etc.
 
-	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), timeout)
-	defer cancel()
 	_, err = watchtools.UntilWithSync(ctx, lw, &unstructured.Unstructured{}, nil, func(e watch.Event) (bool, error) {
 		// Make sure the incoming object is versioned as we use unstructured
 		// objects when we build manifests
@@ -809,6 +843,35 @@ func scrubValidationError(err error) error {
 		return errors.New(strings.ReplaceAll(err.Error(), "; "+stopValidateMessage, ""))
 	}
 	return err
+}
+
+func (c *Client) WaitAndGetCompletedPodPhaseWithContext(ctx context.Context, name string) (v1.PodPhase, error) {
+	client, err := c.getKubeClient()
+	if err != nil {
+		return v1.PodUnknown, err
+	}
+
+	watcher, err := client.CoreV1().Pods(c.namespace()).Watch(ctx, metav1.ListOptions{
+		FieldSelector: fmt.Sprintf("metadata.name=%s", name),
+	})
+	if err != nil {
+		return v1.PodUnknown, err
+	}
+
+	for event := range watcher.ResultChan() {
+		p, ok := event.Object.(*v1.Pod)
+		if !ok {
+			return v1.PodUnknown, fmt.Errorf("%s not a pod", name)
+		}
+		switch p.Status.Phase {
+		case v1.PodFailed:
+			return v1.PodFailed, nil
+		case v1.PodSucceeded:
+			return v1.PodSucceeded, nil
+		}
+	}
+
+	return v1.PodUnknown, err
 }
 
 // WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase

@@ -18,6 +18,7 @@ package action
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -54,8 +55,7 @@ func NewRollback(cfg *Configuration) *Rollback {
 	}
 }
 
-// Run executes 'helm rollback' against the given release.
-func (r *Rollback) Run(name string) error {
+func (r *Rollback) RunWithContext(ctx context.Context, name string) error {
 	if err := r.cfg.KubeClient.IsReachable(); err != nil {
 		return err
 	}
@@ -76,7 +76,7 @@ func (r *Rollback) Run(name string) error {
 	}
 
 	r.cfg.Log("performing rollback of %s", name)
-	if _, err := r.performRollback(currentRelease, targetRelease); err != nil {
+	if _, err := r.performRollback(ctx, currentRelease, targetRelease); err != nil {
 		return err
 	}
 
@@ -87,6 +87,14 @@ func (r *Rollback) Run(name string) error {
 		}
 	}
 	return nil
+}
+
+// Run executes 'helm rollback' against the given release.
+func (r *Rollback) Run(name string) error {
+	ctx, cancel := context.WithTimeout(context.TODO(), r.Timeout)
+	defer cancel()
+
+	return r.RunWithContext(ctx, name)
 }
 
 // prepareRollback finds the previous release and prepares a new release object with
@@ -140,7 +148,7 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 	return currentRelease, targetRelease, nil
 }
 
-func (r *Rollback) performRollback(currentRelease, targetRelease *release.Release) (*release.Release, error) {
+func (r *Rollback) performRollback(ctx context.Context, currentRelease, targetRelease *release.Release) (*release.Release, error) {
 	if r.DryRun {
 		r.cfg.Log("dry run for %s", targetRelease.Name)
 		return targetRelease, nil
@@ -157,7 +165,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 
 	// pre-rollback hooks
 	if !r.DisableHooks {
-		if err := r.cfg.execHook(targetRelease, release.HookPreRollback, r.Timeout); err != nil {
+		if err := r.cfg.execHook(ctx, targetRelease, release.HookPreRollback); err != nil {
 			return targetRelease, err
 		}
 	} else {
@@ -224,7 +232,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 
 	// post-rollback hooks
 	if !r.DisableHooks {
-		if err := r.cfg.execHook(targetRelease, release.HookPostRollback, r.Timeout); err != nil {
+		if err := r.cfg.execHook(ctx, targetRelease, release.HookPostRollback); err != nil {
 			return targetRelease, err
 		}
 	}

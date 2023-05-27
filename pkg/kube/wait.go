@@ -37,18 +37,22 @@ import (
 )
 
 type waiter struct {
-	c       ReadyChecker
-	timeout time.Duration
-	log     func(string, ...interface{})
+	c   ReadyChecker
+	log func(string, ...interface{})
+}
+
+// timeFromCtx extracts time until deadline of ctx.
+func timeFromCtx(ctx context.Context) time.Duration {
+	deadline, _ := ctx.Deadline()
+
+	return time.Until(deadline)
 }
 
 // waitForResources polls to get the current status of all pods, PVCs, Services and
 // Jobs(optional) until all are ready or a timeout is reached
-func (w *waiter) waitForResources(created ResourceList) error {
-	w.log("beginning wait for %d resources with timeout of %v", len(created), w.timeout)
+func (w *waiter) waitForResources(ctx context.Context, created ResourceList) error {
 
-	ctx, cancel := context.WithTimeout(context.Background(), w.timeout)
-	defer cancel()
+	w.log("beginning wait for %d resources with timeout of %v", len(created), timeFromCtx(ctx))
 
 	return wait.PollUntilContextCancel(ctx, 2*time.Second, true, func(ctx context.Context) (bool, error) {
 		for _, v := range created {
@@ -62,11 +66,8 @@ func (w *waiter) waitForResources(created ResourceList) error {
 }
 
 // waitForDeletedResources polls to check if all the resources are deleted or a timeout is reached
-func (w *waiter) waitForDeletedResources(deleted ResourceList) error {
-	w.log("beginning wait for %d resources to be deleted with timeout of %v", len(deleted), w.timeout)
-
-	ctx, cancel := context.WithTimeout(context.Background(), w.timeout)
-	defer cancel()
+func (w *waiter) waitForDeletedResources(ctx context.Context, deleted ResourceList) error {
+	w.log("beginning wait for %d resources to be deleted with timeout of %v", len(deleted), timeFromCtx(ctx))
 
 	return wait.PollUntilContextCancel(ctx, 2*time.Second, true, func(ctx context.Context) (bool, error) {
 		for _, v := range deleted {

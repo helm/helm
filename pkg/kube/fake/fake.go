@@ -18,6 +18,7 @@ limitations under the License.
 package fake
 
 import (
+	"context"
 	"io"
 	"time"
 
@@ -74,6 +75,15 @@ func (f *FailingKubeClient) Wait(resources kube.ResourceList, d time.Duration) e
 	return f.PrintingKubeClient.Wait(resources, d)
 }
 
+// Waits the amount of time defined on f.WaitDuration, then returns the configured error if set or prints.
+func (f *FailingKubeClient) WaitWithContext(ctx context.Context, resources kube.ResourceList) error {
+	time.Sleep(f.WaitDuration)
+	if f.WaitError != nil {
+		return f.WaitError
+	}
+	return f.PrintingKubeClient.Wait(resources, 0)
+}
+
 // WaitWithJobs returns the configured error if set or prints
 func (f *FailingKubeClient) WaitWithJobs(resources kube.ResourceList, d time.Duration) error {
 	if f.WaitError != nil {
@@ -82,12 +92,28 @@ func (f *FailingKubeClient) WaitWithJobs(resources kube.ResourceList, d time.Dur
 	return f.PrintingKubeClient.WaitWithJobs(resources, d)
 }
 
+// WaitWithJobs returns the configured error if set or prints
+func (f *FailingKubeClient) WaitWithJobsContext(ctx context.Context, resources kube.ResourceList) error {
+	if f.WaitError != nil {
+		return f.WaitError
+	}
+	return f.PrintingKubeClient.WaitWithJobsContext(ctx, resources)
+}
+
 // WaitForDelete returns the configured error if set or prints
 func (f *FailingKubeClient) WaitForDelete(resources kube.ResourceList, d time.Duration) error {
 	if f.WaitError != nil {
 		return f.WaitError
 	}
 	return f.PrintingKubeClient.WaitForDelete(resources, d)
+}
+
+// WaitForDeleteWithContext returns the configured error if set or prints
+func (f *FailingKubeClient) WaitForDeleteWithContext(ctx context.Context, resources kube.ResourceList) error {
+	if f.WaitError != nil {
+		return f.WaitError
+	}
+	return f.PrintingKubeClient.WaitForDelete(resources, 0)
 }
 
 // Delete returns the configured error if set or prints
@@ -141,12 +167,28 @@ func (f *FailingKubeClient) WaitAndGetCompletedPodPhase(s string, d time.Duratio
 	return f.PrintingKubeClient.WaitAndGetCompletedPodPhase(s, d)
 }
 
+// WaitAndGetCompletedPodPhaseWithContext returns the configured error if set or prints
+func (f *FailingKubeClient) WaitAndGetCompletedPodPhaseWithContext(ctx context.Context, s string) (v1.PodPhase, error) {
+	if f.WaitAndGetCompletedPodPhaseError != nil {
+		return v1.PodSucceeded, f.WaitAndGetCompletedPodPhaseError
+	}
+	return f.PrintingKubeClient.WaitAndGetCompletedPodPhase(s, 0)
+}
+
 // DeleteWithPropagationPolicy returns the configured error if set or prints
 func (f *FailingKubeClient) DeleteWithPropagationPolicy(resources kube.ResourceList, policy metav1.DeletionPropagation) (*kube.Result, []error) {
 	if f.DeleteWithPropagationError != nil {
 		return nil, []error{f.DeleteWithPropagationError}
 	}
 	return f.PrintingKubeClient.DeleteWithPropagationPolicy(resources, policy)
+}
+
+func (f *FailingKubeClient) WatchUntilReadyWithContext(ctx context.Context, resources kube.ResourceList) error {
+	if f.WatchUntilReadyError != nil {
+		return f.WatchUntilReadyError
+	}
+
+	return f.PrintingKubeClient.WatchUntilReady(resources, 0)
 }
 
 func createDummyResourceList() kube.ResourceList {
@@ -158,3 +200,10 @@ func createDummyResourceList() kube.ResourceList {
 	return resourceList
 
 }
+
+// compile time check that FailingKubeClient satiesfies our interfaces.
+var (
+	_ kube.Interface        = &FailingKubeClient{}
+	_ kube.ContextInterface = &FailingKubeClient{}
+	_ kube.InterfaceExt     = &FailingKubeClient{}
+)

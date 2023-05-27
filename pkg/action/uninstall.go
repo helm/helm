@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"context"
 	"strings"
 	"time"
 
@@ -54,6 +55,13 @@ func NewUninstall(cfg *Configuration) *Uninstall {
 
 // Run uninstalls the given release.
 func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) {
+	ctx, cancel := context.WithTimeout(context.TODO(), u.Timeout)
+	defer cancel()
+
+	return u.RunWithContext(ctx, name)
+}
+
+func (u *Uninstall) RunWithContext(ctx context.Context, name string) (*release.UninstallReleaseResponse, error) {
 	if err := u.cfg.KubeClient.IsReachable(); err != nil {
 		return nil, err
 	}
@@ -101,7 +109,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	res := &release.UninstallReleaseResponse{Release: rel}
 
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(rel, release.HookPreDelete, u.Timeout); err != nil {
+		if err := u.cfg.execHook(ctx, rel, release.HookPreDelete); err != nil {
 			return res, err
 		}
 	} else {
@@ -126,15 +134,15 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	res.Info = kept
 
 	if u.Wait {
-		if kubeClient, ok := u.cfg.KubeClient.(kube.InterfaceExt); ok {
-			if err := kubeClient.WaitForDelete(deletedResources, u.Timeout); err != nil {
+		if kubeClient, ok := u.cfg.KubeClient.(kube.ContextInterface); ok {
+			if err := kubeClient.WaitForDeleteWithContext(ctx, deletedResources); err != nil {
 				errs = append(errs, err)
 			}
 		}
 	}
 
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(rel, release.HookPostDelete, u.Timeout); err != nil {
+		if err := u.cfg.execHook(ctx, rel, release.HookPostDelete); err != nil {
 			errs = append(errs, err)
 		}
 	}

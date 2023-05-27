@@ -387,6 +387,7 @@ func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	time.AfterFunc(time.Second, cancel)
+	//cancel()
 
 	res, err := instAction.RunWithContext(ctx, buildChart(), vals)
 	is.Error(err)

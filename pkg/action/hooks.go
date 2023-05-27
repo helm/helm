@@ -17,17 +17,18 @@ package action
 
 import (
 	"bytes"
+	"context"
 	"sort"
-	"time"
 
 	"github.com/pkg/errors"
 
+	"helm.sh/helm/v3/pkg/kube"
 	"helm.sh/helm/v3/pkg/release"
 	helmtime "helm.sh/helm/v3/pkg/time"
 )
 
 // execHook executes all of the hooks for the given hook event.
-func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, timeout time.Duration) error {
+func (cfg *Configuration) execHook(ctx context.Context, rl *release.Release, hook release.HookEvent) error {
 	executingHooks := []*release.Hook{}
 
 	for _, h := range rl.Hooks {
@@ -79,8 +80,12 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 			return errors.Wrapf(err, "warning: Hook %s %s failed", hook, h.Path)
 		}
 
+		ctxInterface, ok := cfg.KubeClient.(kube.ContextInterface)
+		if !ok {
+			panic("KubeClient does not satisfies kube.ContextInterface")
+		}
 		// Watch hook resources until they have completed
-		err = cfg.KubeClient.WatchUntilReady(resources, timeout)
+		err = ctxInterface.WatchUntilReadyWithContext(ctx, resources)
 		// Note the time of success/failure
 		h.LastRun.CompletedAt = helmtime.Now()
 		// Mark hook as succeeded or failed

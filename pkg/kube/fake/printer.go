@@ -17,6 +17,7 @@ limitations under the License.
 package fake
 
 import (
+	"context"
 	"io"
 	"strings"
 	"time"
@@ -62,12 +63,27 @@ func (p *PrintingKubeClient) Wait(resources kube.ResourceList, _ time.Duration) 
 	return err
 }
 
+func (p *PrintingKubeClient) WaitWithContext(ctx context.Context, resources kube.ResourceList) error {
+	_, err := io.Copy(p.Out, bufferize(resources))
+	return err
+}
+
 func (p *PrintingKubeClient) WaitWithJobs(resources kube.ResourceList, _ time.Duration) error {
 	_, err := io.Copy(p.Out, bufferize(resources))
 	return err
 }
 
+func (p *PrintingKubeClient) WaitWithJobsContext(ctx context.Context, resources kube.ResourceList) error {
+	_, err := io.Copy(p.Out, bufferize(resources))
+	return err
+}
+
 func (p *PrintingKubeClient) WaitForDelete(resources kube.ResourceList, _ time.Duration) error {
+	_, err := io.Copy(p.Out, bufferize(resources))
+	return err
+}
+
+func (p *PrintingKubeClient) WaitForDeleteWithContext(ctx context.Context, resources kube.ResourceList) error {
 	_, err := io.Copy(p.Out, bufferize(resources))
 	return err
 }
@@ -85,6 +101,12 @@ func (p *PrintingKubeClient) Delete(resources kube.ResourceList) (*kube.Result, 
 
 // WatchUntilReady implements KubeClient WatchUntilReady.
 func (p *PrintingKubeClient) WatchUntilReady(resources kube.ResourceList, _ time.Duration) error {
+	_, err := io.Copy(p.Out, bufferize(resources))
+	return err
+}
+
+// WatchUntilReadyWithContext implements KubeClient WatchUntilReadyWithContext.
+func (p *PrintingKubeClient) WatchUntilReadyWithContext(ctx context.Context, resources kube.ResourceList) error {
 	_, err := io.Copy(p.Out, bufferize(resources))
 	return err
 }
@@ -116,6 +138,11 @@ func (p *PrintingKubeClient) WaitAndGetCompletedPodPhase(_ string, _ time.Durati
 	return v1.PodSucceeded, nil
 }
 
+// WaitAndGetCompletedPodPhaseWithContext implements KubeClient WaitAndGetCompletedPodPhaseWithContext.
+func (p *PrintingKubeClient) WaitAndGetCompletedPodPhaseWithContext(_ context.Context, _ string) (v1.PodPhase, error) {
+	return v1.PodSucceeded, nil
+}
+
 // DeleteWithPropagationPolicy implements KubeClient delete.
 //
 // It only prints out the content to be deleted.
@@ -134,3 +161,10 @@ func bufferize(resources kube.ResourceList) io.Reader {
 	}
 	return strings.NewReader(builder.String())
 }
+
+// compile time check that PrintingKubeClient satiesfies our interfaces.
+var (
+	_ kube.Interface        = &PrintingKubeClient{}
+	_ kube.ContextInterface = &PrintingKubeClient{}
+	_ kube.InterfaceExt     = &PrintingKubeClient{}
+)
