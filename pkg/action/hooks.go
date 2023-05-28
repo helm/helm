@@ -80,12 +80,15 @@ func (cfg *Configuration) execHook(ctx context.Context, rl *release.Release, hoo
 			return errors.Wrapf(err, "warning: Hook %s %s failed", hook, h.Path)
 		}
 
-		ctxInterface, ok := cfg.KubeClient.(kube.ContextInterface)
-		if !ok {
-			panic("KubeClient does not satisfies kube.ContextInterface")
+		// Check if kube.Interface implementation satisfies kube.ContextInterface interface.
+		// If it doesn't log a warning and move on, nothing we can do.
+		if kubeClient, ok := cfg.KubeClient.(kube.ContextInterface); ok {
+			// Watch hook resources until they have completed
+			err = kubeClient.WatchUntilReadyWithContext(ctx, resources)
+		} else {
+			cfg.Log("WARNING: kube.ContextInterface not satisfied")
 		}
-		// Watch hook resources until they have completed
-		err = ctxInterface.WatchUntilReadyWithContext(ctx, resources)
+
 		// Note the time of success/failure
 		h.LastRun.CompletedAt = helmtime.Now()
 		// Mark hook as succeeded or failed

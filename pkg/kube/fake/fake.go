@@ -77,11 +77,15 @@ func (f *FailingKubeClient) Wait(resources kube.ResourceList, d time.Duration) e
 
 // Waits the amount of time defined on f.WaitDuration, then returns the configured error if set or prints.
 func (f *FailingKubeClient) WaitWithContext(ctx context.Context, resources kube.ResourceList) error {
-	time.Sleep(f.WaitDuration)
 	if f.WaitError != nil {
 		return f.WaitError
 	}
-	return f.PrintingKubeClient.Wait(resources, 0)
+
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
+	return f.PrintingKubeClient.WaitWithContext(ctx, resources)
 }
 
 // WaitWithJobs returns the configured error if set or prints
@@ -97,6 +101,11 @@ func (f *FailingKubeClient) WaitWithJobsContext(ctx context.Context, resources k
 	if f.WaitError != nil {
 		return f.WaitError
 	}
+
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	return f.PrintingKubeClient.WaitWithJobsContext(ctx, resources)
 }
 
@@ -113,7 +122,12 @@ func (f *FailingKubeClient) WaitForDeleteWithContext(ctx context.Context, resour
 	if f.WaitError != nil {
 		return f.WaitError
 	}
-	return f.PrintingKubeClient.WaitForDelete(resources, 0)
+
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
+	return f.PrintingKubeClient.WaitForDeleteWithContext(ctx, resources)
 }
 
 // Delete returns the configured error if set or prints
@@ -172,7 +186,8 @@ func (f *FailingKubeClient) WaitAndGetCompletedPodPhaseWithContext(ctx context.C
 	if f.WaitAndGetCompletedPodPhaseError != nil {
 		return v1.PodSucceeded, f.WaitAndGetCompletedPodPhaseError
 	}
-	return f.PrintingKubeClient.WaitAndGetCompletedPodPhase(s, 0)
+
+	return f.PrintingKubeClient.WaitAndGetCompletedPodPhaseWithContext(ctx, s)
 }
 
 // DeleteWithPropagationPolicy returns the configured error if set or prints
@@ -186,6 +201,10 @@ func (f *FailingKubeClient) DeleteWithPropagationPolicy(resources kube.ResourceL
 func (f *FailingKubeClient) WatchUntilReadyWithContext(ctx context.Context, resources kube.ResourceList) error {
 	if f.WatchUntilReadyError != nil {
 		return f.WatchUntilReadyError
+	}
+
+	if err := ctx.Err(); err != nil {
+		return err
 	}
 
 	return f.PrintingKubeClient.WatchUntilReady(resources, 0)

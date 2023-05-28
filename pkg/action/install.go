@@ -204,7 +204,6 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 // Run executes the installation
 //
 // If DryRun is set to true, this will prepare the release, but not install it
-
 func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
 	ctx, cancel := context.WithTimeout(context.TODO(), i.Timeout)
 	defer cancel()
@@ -379,11 +378,10 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 }
 
 func (i *Install) performInstall(ctx context.Context, rel *release.Release, toBeAdopted, resources kube.ResourceList) (*release.Release, error) {
-
 	// pre-install hooks
 	if !i.DisableHooks {
 		if err := i.cfg.execHook(ctx, rel, release.HookPreInstall); err != nil {
-			return i.failRelease(rel, fmt.Errorf("failed pre-install: %w", err))
+			return i.failRelease(ctx, rel, fmt.Errorf("failed pre-install: %w", err))
 		}
 	}
 
@@ -392,31 +390,31 @@ func (i *Install) performInstall(ctx context.Context, rel *release.Release, toBe
 	// to true, since that is basically an upgrade operation.
 	if len(toBeAdopted) == 0 && len(resources) > 0 {
 		if _, err := i.cfg.KubeClient.Create(resources); err != nil {
-			return i.failRelease(rel, err)
+			return i.failRelease(ctx, rel, err)
 		}
 	} else if len(resources) > 0 {
 		if _, err := i.cfg.KubeClient.Update(toBeAdopted, resources, i.Force); err != nil {
-			return i.failRelease(rel, err)
+			return i.failRelease(ctx, rel, err)
 		}
 	}
 
-	if i.Wait {
-		kubeClient := i.cfg.KubeClient.(kube.ContextInterface)
-
+	// Check if kube.Interface implementation, also satisfies kube.ContextInterface.
+	kubeClient, ok := i.cfg.KubeClient.(kube.ContextInterface)
+	if i.Wait && ok {
 		if i.WaitForJobs {
 			if err := kubeClient.WaitWithJobsContext(ctx, resources); err != nil {
-				return i.failRelease(rel, err)
+				return i.failRelease(ctx, rel, err)
 			}
 		} else {
 			if err := kubeClient.WaitWithContext(ctx, resources); err != nil {
-				return i.failRelease(rel, err)
+				return i.failRelease(ctx, rel, err)
 			}
 		}
 	}
 
 	if !i.DisableHooks {
 		if err := i.cfg.execHook(ctx, rel, release.HookPostInstall); err != nil {
-			return i.failRelease(rel, fmt.Errorf("failed post-install: %w", err))
+			return i.failRelease(ctx, rel, fmt.Errorf("failed post-install: %w", err))
 		}
 	}
 
@@ -440,15 +438,18 @@ func (i *Install) performInstall(ctx context.Context, rel *release.Release, toBe
 	return rel, nil
 }
 
-func (i *Install) failRelease(rel *release.Release, err error) (*release.Release, error) {
+func (i *Install) failRelease(ctx context.Context, rel *release.Release, err error) (*release.Release, error) {
 	rel.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", i.ReleaseName, err.Error()))
 	if i.Atomic {
 		i.cfg.Log("Install failed and atomic is set, uninstalling release")
 		uninstall := NewUninstall(i.cfg)
 		uninstall.DisableHooks = i.DisableHooks
 		uninstall.KeepHistory = false
+		// TODO: Not sure if a new ctx should be created by the timeout field,
+		// because Timeout will be replaced by contexts. Should a background ctx be used
+		// so we don't timeout while uninstalling?
 		uninstall.Timeout = i.Timeout
-		if _, uninstallErr := uninstall.Run(i.ReleaseName); uninstallErr != nil {
+		if _, uninstallErr := uninstall.RunWithContext(context.Background(), i.ReleaseName); uninstallErr != nil {
 			return rel, errors.Wrapf(uninstallErr, "an error occurred while uninstalling the release. original install error: %s", err)
 		}
 		return rel, errors.Wrapf(err, "release %s failed, and has been uninstalled due to atomic being set", i.ReleaseName)

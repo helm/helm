@@ -364,17 +364,18 @@ func (u *Upgrade) releasingUpgrade(ctx context.Context, upgradedRelease *release
 		}
 	}
 
-	if u.Wait {
+	kubeClient, ok := u.cfg.KubeClient.(kube.ContextInterface)
+	if u.Wait && ok {
 		u.cfg.Log(
 			"waiting for release %s resources (created: %d updated: %d  deleted: %d)",
 			upgradedRelease.Name, len(results.Created), len(results.Updated), len(results.Deleted))
 		if u.WaitForJobs {
-			if err := u.cfg.KubeClient.WaitWithJobs(target, u.Timeout); err != nil {
+			if err := kubeClient.WaitWithJobsContext(ctx, target); err != nil {
 				u.cfg.recordRelease(originalRelease)
 				return u.failRelease(upgradedRelease, results.Created, err)
 			}
 		} else {
-			if err := u.cfg.KubeClient.Wait(target, u.Timeout); err != nil {
+			if err := kubeClient.WaitWithContext(ctx, target); err != nil {
 				u.cfg.recordRelease(originalRelease)
 				return u.failRelease(upgradedRelease, results.Created, err)
 			}

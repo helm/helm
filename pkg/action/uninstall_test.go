@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -57,7 +58,10 @@ func TestUninstallRelease_deleteRelease(t *testing.T) {
 		}
 	}`
 	unAction.cfg.Releases.Create(rel)
-	res, err := unAction.Run(rel.Name)
+
+	ctx := context.Background()
+
+	res, err := unAction.RunWithContext(ctx, rel.Name)
 	is.NoError(err)
 	expected := `These resources were kept due to the resource policy:
 [Secret] secret
@@ -90,7 +94,10 @@ func TestUninstallRelease_Wait(t *testing.T) {
 	failer := unAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitError = fmt.Errorf("U timed out")
 	unAction.cfg.KubeClient = failer
-	res, err := unAction.Run(rel.Name)
+
+	ctx := context.Background()
+
+	res, err := unAction.RunWithContext(ctx, rel.Name)
 	is.Error(err)
 	is.Contains(err.Error(), "U timed out")
 	is.Equal(res.Release.Info.Status, release.StatusUninstalled)
@@ -123,7 +130,10 @@ func TestUninstallRelease_Cascade(t *testing.T) {
 	failer.DeleteWithPropagationError = fmt.Errorf("Uninstall with cascade failed")
 	failer.BuildDummy = true
 	unAction.cfg.KubeClient = failer
-	_, err := unAction.Run(rel.Name)
+
+	ctx := context.Background()
+
+	_, err := unAction.RunWithContext(ctx, rel.Name)
 	is.Error(err)
 	is.Contains(err.Error(), "failed to delete release: come-fail-away")
 }
