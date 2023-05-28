@@ -361,10 +361,6 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		}
 	}
 
-	// if err := ctx.Err(); err != nil {
-	// 	return rel, err
-	// }
-
 	// Store the release in history before continuing (new in Helm 3). We always know
 	// that this is a create operation.
 	if err := i.cfg.Releases.Create(rel); err != nil {
