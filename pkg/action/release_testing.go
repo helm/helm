@@ -129,6 +129,10 @@ func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 				podLogOptions := &v1.PodLogOptions{}
 
 				pod, err := client.CoreV1().Pods(r.Namespace).Get(context.Background(), h.Name, metav1.GetOptions{})
+				if err != nil {
+					return errors.Wrapf(err, "unable to get pod info for %s", h.Name)
+				}
+
 				if container, ok := pod.Annotations["helm.sh/hook-logs-container"]; ok {
 					podLogOptions.Container = container
 				}
