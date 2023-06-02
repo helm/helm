@@ -357,7 +357,7 @@ func GetVersionSet(client discovery.ServerResourcesInterface) (chartutil.Version
 		versions = append(versions, k)
 	}
 
-	return chartutil.VersionSet(versions), nil
+	return versions, nil
 }
 
 // recordRelease with an update operation in case reuse has been set.
@@ -409,12 +409,12 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 			namespace,
 		)
 		if err != nil {
-			panic(fmt.Sprintf("Unable to instantiate SQL driver: %v", err))
+			return fmt.Errorf("unable to instantiate SQL driver: %w", err)
 		}
 		store = storage.Init(d)
 	default:
 		// Not sure what to do here.
-		panic("Unknown driver in HELM_DRIVER: " + helmDriver)
+		return fmt.Errorf("unknown driver in HELM_DRIVER %q", helmDriver)
 	}
 
 	cfg.RESTClientGetter = getter

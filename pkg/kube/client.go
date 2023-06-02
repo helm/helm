@@ -500,7 +500,7 @@ func delete(c *Client, resources ResourceList, propagation metav1.DeletionPropag
 		}
 		errs = append(errs, err)
 	}
-	if errs != nil {
+	if len(errs) != 0 {
 		return nil, errs
 	}
 	return res, nil
