@@ -65,6 +65,13 @@ last (right-most) set specified. For example, if both 'bar' and 'newbar' values 
 set for a key called 'foo', the 'newbar' value would take precedence:
 
     $ helm upgrade --set foo=bar --set foo=newbar redis ./redis
+
+You can update the values for an existing release with this command as well via the
+'--reuse-values' flag. The 'RELEASE' and 'CHART' arguments should be set to the original
+parameters, and existing values will be merged with any values set via '--values'/'-f'
+or '--set' flags. Priority is given to new values.
+
+    $ helm upgrade --reuse-values --set foo=bar --set foo=newbar redis ./redis
 `
 
 func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
