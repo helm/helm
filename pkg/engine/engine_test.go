@@ -26,6 +26,7 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 func TestSortTemplates(t *testing.T) {
@@ -916,6 +917,7 @@ func TestReportUnusedValuesBasic(t *testing.T) {
 	_, err = engine.Render(chart, v)
 	if err == nil {
 		t.Errorf("should have errored, .Values.not is not used")
+		t.FailNow()
 	}
 
 	if !strings.Contains(err.Error(), "[.Values.not]") {
@@ -933,6 +935,8 @@ func TestReportUnusedValuesChartLoad(t *testing.T) {
 		Strict:   true,
 		LintMode: true,
 		config:   nil,
+		usedValues: sets.New[string](),
+		providedValues: sets.New[string](),
 	}
 
 	options := chartutil.ReleaseOptions{
@@ -947,10 +951,11 @@ func TestReportUnusedValuesChartLoad(t *testing.T) {
 
 	_, err = engine.Render(unusedValuesChart, vals)
 	if err == nil {
-		t.Fatalf("there is an unused value in this chart")
+		t.Fatalf("there is an unused value in this chart, but we didn't find it")
 	}
 
 	if !strings.Contains(err.Error(), "[.Values.unused]") {
+		t.Log(err)
 		t.Fatalf(".Values.unused is unused and should have been in error message")
 	}
 }
@@ -993,6 +998,7 @@ func TestReportUnusedValuesDollarSign(t *testing.T) {
 	_, err = engine.Render(chart, v)
 	if err == nil {
 		t.Errorf("should have errored, $.Values.not is not used")
+		t.FailNow()
 	}
 
 	if !strings.Contains(err.Error(), "[.Values.not]") {

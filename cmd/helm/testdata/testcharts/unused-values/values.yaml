@@ -7,3 +7,6 @@ resources:
     limit: 64
 
 unused: values
+
+usedByTemplate: test
+template: "{{ .Values.usedByTemplate }}"

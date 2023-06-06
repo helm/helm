@@ -9,3 +9,4 @@ metadata:
 data:
   cluster-name: {{ $.Values.cluster.name }}
   json: {{ toJson $.Values.resources }}
+  template: {{ tpl $.Values.template . }}

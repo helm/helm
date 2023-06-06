@@ -47,12 +47,18 @@ type Engine struct {
 	config *rest.Config
 	// EnableDNS tells the engine to allow DNS lookups when rendering templates
 	EnableDNS bool
+	// usedValues is the set of values that are references in a chart
+	usedValues sets.Set[string]
+	// providedValues is a flattened map of every values given in the values files
+	providedValues sets.Set[string]
 }
 
 // New creates a new instance of Engine using the passed in rest config.
 func New(config *rest.Config) Engine {
 	return Engine{
 		config: config,
+		usedValues: sets.New[string](),
+		providedValues: sets.New[string](),
 	}
 }
 
@@ -75,7 +81,7 @@ func New(config *rest.Config) Engine {
 // that section of the values will be passed into the "foo" chart. And if that
 // section contains a value named "bar", that value will be passed on to the
 // bar chart during render time.
-func (e Engine) Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, error) {
+func (e *Engine) Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, error) {
 	tmap := allTemplates(chrt, values)
 	return e.render(tmap)
 }
@@ -90,9 +96,12 @@ func Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, erro
 // render the Go templates using the default options. This engine is client aware and so can have template
 // functions that interact with the client
 func RenderWithClient(chrt *chart.Chart, values chartutil.Values, config *rest.Config) (map[string]string, error) {
-	return Engine{
+	e := &Engine{
 		config: config,
-	}.Render(chrt, values)
+		usedValues: sets.New[string](),
+		providedValues: sets.New[string](),
+	}
+	return e.Render(chrt, values)
 }
 
 // renderable is an object that can be rendered.
@@ -116,7 +125,7 @@ func warnWrap(warn string) string {
 }
 
 // initFunMap creates the Engine's FuncMap and adds context-specific functions.
-func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]renderable) {
+func (e *Engine) initFunMap(t *template.Template, referenceTpls map[string]renderable) {
 	funcMap := funcMap()
 	includedNames := make(map[string]int)
 
@@ -213,13 +222,26 @@ func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]render
 }
 
 // render takes a map of templates/values and renders them.
-func (e Engine) render(tpls map[string]renderable) (map[string]string, error) {
-	return e.renderWithReferences(tpls, tpls)
+// When this function errors, it must return a map[string]string{}.
+func (e *Engine) render(tpls map[string]renderable) (map[string]string, error) {
+	rendered, err := e.renderWithReferences(tpls, tpls)
+	if err != nil {
+		return map[string]string{}, err
+	}
+
+	if e.Strict && e.LintMode {
+		unused := setDifferenceWithParents(e.providedValues, e.usedValues)
+		if unused.Len() > 0 {
+			return map[string]string{}, fmt.Errorf("there are unused fields in values files %+v", sets.List(unused))
+		}
+	}
+
+	return rendered, nil
 }
 
 // renderWithReferences takes a map of templates/values to render, and a map of
 // templates which can be referenced within them.
-func (e Engine) renderWithReferences(tpls, referenceTpls map[string]renderable) (rendered map[string]string, err error) {
+func (e *Engine) renderWithReferences(tpls, referenceTpls map[string]renderable) (rendered map[string]string, err error) {
 	// Basically, what we do here is start with an empty parent template and then
 	// build up a list of templates -- one for each file. Once all of the templates
 	// have been parsed, we loop through again and execute every template.
@@ -266,8 +288,6 @@ func (e Engine) renderWithReferences(tpls, referenceTpls map[string]renderable) 
 		}
 	}
 
-	usedValues := sets.New[string]()
-	providedValues := sets.New[string]()
 	rendered = make(map[string]string, len(keys))
 	for _, filename := range keys {
 		// Don't render partials. We don't care out the direct output of partials.
@@ -283,20 +303,13 @@ func (e Engine) renderWithReferences(tpls, referenceTpls map[string]renderable) 
 			return map[string]string{}, cleanupExecError(filename, err)
 		}
 
-		usedValues = usedValues.Union(traverse(t.Lookup(filename).Copy().Root))
-		providedValues = providedValues.Union(getProvidedValues(vals))
+		e.usedValues = e.usedValues.Union(traverse(t.Lookup(filename).Copy().Root))
+		e.providedValues = e.providedValues.Union(getProvidedValues(vals))
 
 		// Work around the issue where Go will emit "<no value>" even if Options(missing=zero)
 		// is set. Since missing=error will never get here, we do not need to handle
 		// the Strict case.
 		rendered[filename] = strings.ReplaceAll(buf.String(), "<no value>", "")
-	}
-
-	if e.Strict && e.LintMode {
-		unused := setDifferenceWithParents(providedValues, usedValues)
-		if unused.Len() > 0 {
-			return map[string]string{}, fmt.Errorf("there are unused fields in values files %+v", sets.List(unused))
-		}
 	}
 
 	return rendered, nil
