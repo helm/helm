@@ -29,9 +29,10 @@ import (
 	"sync"
 	"time"
 
+	rspb "helm.sh/helm/v3/pkg/release"
+
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/pkg/errors"
-	"helm.sh/helm/v3/pkg/release"
 	batch "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -858,7 +859,7 @@ func (c *Client) WaitAndGetCompletedPodPhase(name string, timeout time.Duration)
 }
 
 func getAnnotationDeletePropagation(annotation map[string]string) metav1.DeletionPropagation {
-	if propagation, ok := annotation[release.HookDeletePropagationAnnotation]; ok {
+	if propagation, ok := annotation[rspb.HookDeletePropagationAnnotation]; ok {
 		switch metav1.DeletionPropagation(propagation) {
 		case metav1.DeletePropagationBackground:
 			return metav1.DeletePropagationBackground
