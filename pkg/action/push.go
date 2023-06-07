@@ -36,6 +36,7 @@ type Push struct {
 	keyFile               string
 	caFile                string
 	insecureSkipTLSverify bool
+	plainHTTP             bool
 	out                   io.Writer
 }
 
@@ -65,6 +66,13 @@ func WithInsecureSkipTLSVerify(insecureSkipTLSVerify bool) PushOpt {
 	}
 }
 
+// WithPlainHTTP configures the use of plain HTTP connections.
+func WithPlainHTTP(plainHTTP bool) PushOpt {
+	return func(p *Push) {
+		p.plainHTTP = plainHTTP
+	}
+}
+
 // WithOptWriter sets the registryOut field on the push configuration object.
 func WithPushOptWriter(out io.Writer) PushOpt {
 	return func(p *Push) {
@@ -91,6 +99,7 @@ func (p *Push) Run(chartRef string, remote string) (string, error) {
 		Options: []pusher.Option{
 			pusher.WithTLSClientConfig(p.certFile, p.keyFile, p.caFile),
 			pusher.WithInsecureSkipTLSVerify(p.insecureSkipTLSverify),
+			pusher.WithPlainHTTP(p.plainHTTP),
 		},
 	}
 
