@@ -98,6 +98,12 @@ type Upgrade struct {
 	// If this is non-nil, then after templates are rendered, they will be sent to the
 	// post renderer before sending to the Kubernetes API server.
 	PostRenderer postrender.PostRenderer
+	// ResourceVisitor is an optional VisitorFunc applied to each rendered resource
+	//
+	// This is an alternative to PostRenderer. Unike PostRenderer, it allows each
+	// individual resource to be modified without having to parse and re-serialize the
+	// manifests.
+	ResourceVisitor resource.VisitorFunc
 	// DisableOpenAPIValidation controls whether OpenAPI validation is enforced.
 	DisableOpenAPIValidation bool
 	// Get missing dependencies
@@ -283,6 +289,13 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 	target, err := u.cfg.KubeClient.Build(bytes.NewBufferString(upgradedRelease.Manifest), !u.DisableOpenAPIValidation)
 	if err != nil {
 		return upgradedRelease, errors.Wrap(err, "unable to build kubernetes objects from new release manifest")
+	}
+
+	if u.ResourceVisitor != nil {
+		err = target.Visit(u.ResourceVisitor)
+		if err != nil {
+			return upgradedRelease, err
+		}
 	}
 
 	// It is safe to use force only on target because these are resources currently rendered by the chart.

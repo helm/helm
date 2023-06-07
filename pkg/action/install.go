@@ -104,6 +104,12 @@ type Install struct {
 	// OutputDir/<ReleaseName>
 	UseReleaseName bool
 	PostRenderer   postrender.PostRenderer
+	// ResourceVisitor is an optional VisitorFunc applied to each rendered resource
+	//
+	// This is an alternative to PostRenderer. Unike PostRenderer, it allows each
+	// individual resource to be modified without having to parse and re-serialize the
+	// manifests.
+	ResourceVisitor resource.VisitorFunc
 	// Lock to control raceconditions when the process receives a SIGTERM
 	Lock sync.Mutex
 }
@@ -300,6 +306,13 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	resources, err := i.cfg.KubeClient.Build(bytes.NewBufferString(rel.Manifest), !i.DisableOpenAPIValidation)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to build kubernetes objects from release manifest")
+	}
+
+	if i.ResourceVisitor != nil {
+		err = resources.Visit(i.ResourceVisitor)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// It is safe to use "force" here because these are resources currently rendered by the chart.
