@@ -341,7 +341,7 @@ func (u *Upgrade) releasingUpgrade(ctx context.Context, upgradedRelease *release
 	// pre-upgrade hooks
 
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(ctx, upgradedRelease, release.HookPreUpgrade); err != nil {
+		if err := u.cfg.execHook(u.Timeout, upgradedRelease, release.HookPreUpgrade); err != nil {
 			return u.failRelease(upgradedRelease, kube.ResourceList{}, fmt.Errorf("pre-upgrade hooks failed: %w", err))
 		}
 	} else {
@@ -364,27 +364,38 @@ func (u *Upgrade) releasingUpgrade(ctx context.Context, upgradedRelease *release
 		}
 	}
 
-	kubeClient, ok := u.cfg.KubeClient.(kube.ContextInterface)
-	if u.Wait && ok {
+	if u.Wait {
 		u.cfg.Log(
 			"waiting for release %s resources (created: %d updated: %d  deleted: %d)",
 			upgradedRelease.Name, len(results.Created), len(results.Updated), len(results.Deleted))
-		if u.WaitForJobs {
-			if err := kubeClient.WaitWithJobsContext(ctx, target); err != nil {
-				u.cfg.recordRelease(originalRelease)
-				return u.failRelease(upgradedRelease, results.Created, err)
-			}
-		} else {
-			if err := kubeClient.WaitWithContext(ctx, target); err != nil {
-				u.cfg.recordRelease(originalRelease)
-				return u.failRelease(upgradedRelease, results.Created, err)
-			}
+		var err error
+
+		ctx, cancel := context.WithTimeout(ctx, u.Timeout)
+		defer cancel()
+
+		kubeClient, ok := u.cfg.KubeClient.(kube.ContextInterface)
+		// Helm 4 TODO: WaitWithJobs and Wait should be replaced with their context
+		// aware counterparts.
+		switch {
+		case ok && u.WaitForJobs:
+			err = kubeClient.WaitWithJobsContext(ctx, target)
+		case ok && !u.WaitForJobs:
+			err = kubeClient.WaitWithContext(ctx, target)
+		case u.WaitForJobs:
+			err = u.cfg.KubeClient.WaitWithJobs(target, u.Timeout)
+		case !u.WaitForJobs:
+			err = u.cfg.KubeClient.Wait(target, u.Timeout)
+		}
+
+		if err != nil {
+			u.cfg.recordRelease(originalRelease)
+			return u.failRelease(upgradedRelease, results.Created, err)
 		}
 	}
 
 	// post-upgrade hooks
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(ctx, upgradedRelease, release.HookPostUpgrade); err != nil {
+		if err := u.cfg.execHook(u.Timeout, upgradedRelease, release.HookPostUpgrade); err != nil {
 			return u.failRelease(upgradedRelease, results.Created, fmt.Errorf("post-upgrade hooks failed: %w", err))
 		}
 	}

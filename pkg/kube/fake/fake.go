@@ -77,12 +77,9 @@ func (f *FailingKubeClient) Wait(resources kube.ResourceList, d time.Duration) e
 
 // Waits the amount of time defined on f.WaitDuration, then returns the configured error if set or prints.
 func (f *FailingKubeClient) WaitWithContext(ctx context.Context, resources kube.ResourceList) error {
+	time.Sleep(f.WaitDuration)
 	if f.WaitError != nil {
 		return f.WaitError
-	}
-
-	if err := ctx.Err(); err != nil {
-		return err
 	}
 
 	return f.PrintingKubeClient.WaitWithContext(ctx, resources)
@@ -101,11 +98,6 @@ func (f *FailingKubeClient) WaitWithJobsContext(ctx context.Context, resources k
 	if f.WaitError != nil {
 		return f.WaitError
 	}
-
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-
 	return f.PrintingKubeClient.WaitWithJobsContext(ctx, resources)
 }
 
@@ -122,11 +114,6 @@ func (f *FailingKubeClient) WaitForDeleteWithContext(ctx context.Context, resour
 	if f.WaitError != nil {
 		return f.WaitError
 	}
-
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-
 	return f.PrintingKubeClient.WaitForDeleteWithContext(ctx, resources)
 }
 
@@ -202,11 +189,6 @@ func (f *FailingKubeClient) WatchUntilReadyWithContext(ctx context.Context, reso
 	if f.WatchUntilReadyError != nil {
 		return f.WatchUntilReadyError
 	}
-
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-
 	return f.PrintingKubeClient.WatchUntilReady(resources, 0)
 }
 

@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"context"
 	"sort"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -28,7 +29,7 @@ import (
 )
 
 // execHook executes all of the hooks for the given hook event.
-func (cfg *Configuration) execHook(ctx context.Context, rl *release.Release, hook release.HookEvent) error {
+func (cfg *Configuration) execHook(timeout time.Duration, rl *release.Release, hook release.HookEvent) error {
 	executingHooks := []*release.Hook{}
 
 	for _, h := range rl.Hooks {
@@ -81,12 +82,17 @@ func (cfg *Configuration) execHook(ctx context.Context, rl *release.Release, hoo
 		}
 
 		// Check if kube.Interface implementation satisfies kube.ContextInterface interface.
-		// If it doesn't log a warning and move on, nothing we can do.
+		// If not, fallback to time based watch to maintain backwards compatibility.
 		if kubeClient, ok := cfg.KubeClient.(kube.ContextInterface); ok {
+			// Helm 4 TODO: WatchUntilReady should be replaced with it's context
+			// aware counterpart.
+			ctx, cancel := context.WithTimeout(context.TODO(), timeout)
+			defer cancel()
 			// Watch hook resources until they have completed
 			err = kubeClient.WatchUntilReadyWithContext(ctx, resources)
 		} else {
-			cfg.Log("WARNING: kube.ContextInterface not satisfied")
+			//
+			err = cfg.KubeClient.WatchUntilReady(resources, timeout)
 		}
 
 		// Note the time of success/failure

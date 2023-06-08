@@ -109,7 +109,7 @@ func (u *Uninstall) RunWithContext(ctx context.Context, name string) (*release.U
 	res := &release.UninstallReleaseResponse{Release: rel}
 
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(ctx, rel, release.HookPreDelete); err != nil {
+		if err := u.cfg.execHook(u.Timeout, rel, release.HookPreDelete); err != nil {
 			return res, err
 		}
 	} else {
@@ -134,15 +134,25 @@ func (u *Uninstall) RunWithContext(ctx context.Context, name string) (*release.U
 	res.Info = kept
 
 	if u.Wait {
-		if kubeClient, ok := u.cfg.KubeClient.(kube.ContextInterface); ok {
-			if err := kubeClient.WaitForDeleteWithContext(ctx, deletedResources); err != nil {
-				errs = append(errs, err)
-			}
+		var err error
+		// Helm 4 TODO: WaitForDelete should be replaced with it's context
+		// aware counterpart.
+		switch kubeClient := u.cfg.KubeClient.(type) {
+		case kube.ContextInterface:
+			err = kubeClient.WaitForDeleteWithContext(ctx, deletedResources)
+		case kube.InterfaceExt:
+			err = kubeClient.WaitForDelete(deletedResources, u.Timeout)
+		default:
+			u.cfg.Log("WARNING: KubeClient does not satisfy ContextInterface, or InterfaceExt")
+		}
+
+		if err != nil {
+			errs = append(errs, err)
 		}
 	}
 
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(ctx, rel, release.HookPostDelete); err != nil {
+		if err := u.cfg.execHook(u.Timeout, rel, release.HookPostDelete); err != nil {
 			errs = append(errs, err)
 		}
 	}

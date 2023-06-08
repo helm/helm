@@ -387,15 +387,13 @@ func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	instAction := installAction(t)
 	instAction.ReleaseName = "interrupted-release"
 	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+	failer.WaitError = context.Canceled
 	instAction.cfg.KubeClient = failer
 	instAction.Wait = true
 	vals := map[string]interface{}{}
 
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	cancel()
+	res, err := instAction.RunWithContext(context.Background(), buildChart(), vals)
 
-	res, err := instAction.RunWithContext(ctx, buildChart(), vals)
 	is.Error(err)
 	is.Contains(res.Info.Description, "Release \"interrupted-release\" failed: context canceled")
 	is.Equal(res.Info.Status, release.StatusFailed)
@@ -464,15 +462,12 @@ func TestInstallRelease_Atomic_Interrupted(t *testing.T) {
 	instAction := installAction(t)
 	instAction.ReleaseName = "interrupted-release"
 	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+	failer.WaitError = context.Canceled
 	instAction.cfg.KubeClient = failer
 	instAction.Atomic = true
 	vals := map[string]interface{}{}
 
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	cancel()
-
-	res, err := instAction.RunWithContext(ctx, buildChart(), vals)
+	res, err := instAction.RunWithContext(context.Background(), buildChart(), vals)
 	is.Error(err)
 	is.Contains(err.Error(), "context canceled")
 	is.Contains(err.Error(), "atomic")

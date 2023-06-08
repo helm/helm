@@ -739,7 +739,7 @@ func (c *Client) watchUntilReady(ctx context.Context, info *resource.Info) error
 		return nil
 	}
 
-	c.Log("Watching for changes to %s %s with timeout of %v", kind, info.Name, timeFromCtx(ctx))
+	c.Log("Watching for changes to %s %s with timeout of %q", kind, info.Name, timeFromCtx(ctx))
 
 	// Use a selector on the name of the resource. This should be unique for the
 	// given version and kind

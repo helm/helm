@@ -91,10 +91,7 @@ func (r *Rollback) RunWithContext(ctx context.Context, name string) error {
 
 // Run executes 'helm rollback' against the given release.
 func (r *Rollback) Run(name string) error {
-	ctx, cancel := context.WithTimeout(context.TODO(), r.Timeout)
-	defer cancel()
-
-	return r.RunWithContext(ctx, name)
+	return r.RunWithContext(context.TODO(), name)
 }
 
 // prepareRollback finds the previous release and prepares a new release object with
@@ -165,7 +162,7 @@ func (r *Rollback) performRollback(ctx context.Context, currentRelease, targetRe
 
 	// pre-rollback hooks
 	if !r.DisableHooks {
-		if err := r.cfg.execHook(ctx, targetRelease, release.HookPreRollback); err != nil {
+		if err := r.cfg.execHook(r.Timeout, targetRelease, release.HookPreRollback); err != nil {
 			return targetRelease, err
 		}
 	} else {
@@ -232,7 +229,7 @@ func (r *Rollback) performRollback(ctx context.Context, currentRelease, targetRe
 
 	// post-rollback hooks
 	if !r.DisableHooks {
-		if err := r.cfg.execHook(ctx, targetRelease, release.HookPostRollback); err != nil {
+		if err := r.cfg.execHook(r.Timeout, targetRelease, release.HookPostRollback); err != nil {
 			return targetRelease, err
 		}
 	}

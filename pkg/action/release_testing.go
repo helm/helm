@@ -87,7 +87,7 @@ func (r *ReleaseTesting) RunWithContext(ctx context.Context, name string) (*rele
 		rel.Hooks = executingHooks
 	}
 
-	if err := r.cfg.execHook(ctx, rel, release.HookTest); err != nil {
+	if err := r.cfg.execHook(r.Timeout, rel, release.HookTest); err != nil {
 		rel.Hooks = append(skippedHooks, rel.Hooks...)
 		r.cfg.Releases.Update(rel)
 		return rel, err
@@ -99,10 +99,7 @@ func (r *ReleaseTesting) RunWithContext(ctx context.Context, name string) (*rele
 
 // Run executes 'helm test' against the given release.
 func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
-	ctx, cancel := context.WithTimeout(context.TODO(), r.Timeout)
-	defer cancel()
-
-	return r.RunWithContext(ctx, name)
+	return r.RunWithContext(context.TODO(), name)
 }
 
 // GetPodLogs will write the logs for all test pods in the given release into

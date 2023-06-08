@@ -357,15 +357,12 @@ func TestUpgradeRelease_Interrupted_Wait(t *testing.T) {
 	upAction.cfg.Releases.Create(rel)
 
 	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+	failer.WaitError = context.Canceled
 	upAction.cfg.KubeClient = failer
 	upAction.Wait = true
 	vals := map[string]interface{}{}
 
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	cancel()
-
-	res, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
+	res, err := upAction.RunWithContext(context.Background(), rel.Name, buildChart(), vals)
 
 	req.Error(err)
 	is.Contains(res.Info.Description, "Upgrade \"interrupted-release\" failed: context canceled")
@@ -385,15 +382,17 @@ func TestUpgradeRelease_Interrupted_Atomic(t *testing.T) {
 	upAction.cfg.Releases.Create(rel)
 
 	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+	failer.WaitError = context.Canceled
+	failer.WaitDuration = 2 * time.Second
 	upAction.cfg.KubeClient = failer
 	upAction.Atomic = true
 	vals := map[string]interface{}{}
 
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	cancel()
+	// After the first Wait error, error needs to be set nil
+	// so atomic cleanup passes.
+	time.AfterFunc(failer.WaitDuration, func() { failer.WaitError = nil })
 
-	res, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
+	res, err := upAction.RunWithContext(context.Background(), rel.Name, buildChart(), vals)
 
 	req.Error(err)
 	is.Contains(err.Error(), "release interrupted-release failed, and has been rolled back due to atomic being set: context canceled")
