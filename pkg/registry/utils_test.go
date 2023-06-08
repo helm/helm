@@ -44,11 +44,11 @@ import (
 )
 
 const (
-	tlsServerKey  = "./testdata/tls/server-key.pem"
-	tlsServerCert = "./testdata/tls/server-cert.pem"
-	tlsCA         = "./testdata/tls/ca-cert.pem"
-	tlsKey        = "./testdata/tls/client-key.pem"
-	tlsCert       = "./testdata/tls/client-cert.pem"
+	tlsServerKey  = "./testdata/tls/server.key"
+	tlsServerCert = "./testdata/tls/server.crt"
+	tlsCA         = "./testdata/tls/ca.crt"
+	tlsKey        = "./testdata/tls/client.key"
+	tlsCert       = "./testdata/tls/client.crt"
 )
 
 var (
@@ -70,7 +70,7 @@ type TestSuite struct {
 	srv *mockdns.Server
 }
 
-func setup(suite *TestSuite, tlsEnabled bool, insecure bool) *registry.Registry {
+func setup(suite *TestSuite, tlsEnabled, insecure bool) *registry.Registry {
 	suite.WorkspaceDir = testWorkspaceDir
 	os.RemoveAll(suite.WorkspaceDir)
 	os.Mkdir(suite.WorkspaceDir, 0700)
@@ -83,31 +83,32 @@ func setup(suite *TestSuite, tlsEnabled bool, insecure bool) *registry.Registry 
 	credentialsFile := filepath.Join(suite.WorkspaceDir, CredentialsFileBasename)
 
 	// init test client
+	opts := []ClientOption{
+		ClientOptDebug(true),
+		ClientOptEnableCache(true),
+		ClientOptWriter(suite.Out),
+		ClientOptCredentialsFile(credentialsFile),
+	}
+
 	if tlsEnabled {
 		var tlsConf *tls.Config
-		tlsConf, err = tlsutil.NewClientTLS(tlsCert, tlsKey, tlsCA, insecure)
+		if insecure {
+			tlsConf, err = tlsutil.NewClientTLS("", "", "", true)
+		} else {
+			tlsConf, err = tlsutil.NewClientTLS(tlsCert, tlsKey, tlsCA, false)
+		}
 		httpClient := &http.Client{
 			Transport: &http.Transport{
 				TLSClientConfig: tlsConf,
 			},
 		}
-		suite.Nil(err, "no error loading tlsconfog")
-		suite.RegistryClient, err = NewClient(
-			ClientOptDebug(true),
-			ClientOptEnableCache(true),
-			ClientOptWriter(suite.Out),
-			ClientOptCredentialsFile(credentialsFile),
-			ClientOptHTTPClient(httpClient),
-		)
+		suite.Nil(err, "no error loading tls config")
+		opts = append(opts, ClientOptHTTPClient(httpClient))
 	} else {
-		suite.RegistryClient, err = NewClient(
-			ClientOptDebug(true),
-			ClientOptEnableCache(true),
-			ClientOptWriter(suite.Out),
-			ClientOptCredentialsFile(credentialsFile),
-		)
+		opts = append(opts, ClientOptPlainHTTP())
 	}
 
+	suite.RegistryClient, err = NewClient(opts...)
 	suite.Nil(err, "no error creating registry client")
 
 	// create htpasswd file (w BCrypt, which is required)
@@ -121,33 +122,30 @@ func setup(suite *TestSuite, tlsEnabled bool, insecure bool) *registry.Registry 
 	config := &configuration.Configuration{}
 	port, err := freeport.GetFreePort()
 	suite.Nil(err, "no error finding free port for test registry")
-	if tlsEnabled {
-		// docker has  "MatchLocalhost is a host match function which returns true for
-		// localhost, and is used to enforce http for localhost requests."
-		// That function does not handle matching of ip addresses in octal,
-		// decimal or hex form.
-		suite.DockerRegistryHost = fmt.Sprintf("0x7f000001:%d", port)
 
-		// As of Go 1.20, Go may lookup "0x7f000001" as a DNS entry and fail.
-		// Using a mock DNS server to handle the address.
-		suite.srv, _ = mockdns.NewServer(map[string]mockdns.Zone{
-			"0x7f000001.": {
-				A: []string{"127.0.0.1"},
-			},
-		}, false)
-		suite.srv.PatchNet(net.DefaultResolver)
-	} else {
-		suite.DockerRegistryHost = fmt.Sprintf("localhost:%d", port)
-	}
+	// Change the registry host to another host which is not localhost.
+	// This is required because Docker enforces HTTP if the registry
+	// host is localhost/127.0.0.1.
+	suite.DockerRegistryHost = fmt.Sprintf("helm-test-registry:%d", port)
+	suite.srv, _ = mockdns.NewServer(map[string]mockdns.Zone{
+		"helm-test-registry.": {
+			A: []string{"127.0.0.1"},
+		},
+	}, false)
+	suite.srv.PatchNet(net.DefaultResolver)
+
 	config.HTTP.Addr = fmt.Sprintf(":%d", port)
-	// config.HTTP.Addr = fmt.Sprintf("127.0.0.1:%d", port)
 	config.HTTP.DrainTimeout = time.Duration(10) * time.Second
 	config.Storage = map[string]configuration.Parameters{"inmemory": map[string]interface{}{}}
-	config.Auth = configuration.Auth{
-		"htpasswd": configuration.Parameters{
-			"realm": "localhost",
-			"path":  htpasswdPath,
-		},
+
+	// Basic auth is not possible if we are serving HTTP.
+	if tlsEnabled {
+		config.Auth = configuration.Auth{
+			"htpasswd": configuration.Parameters{
+				"realm": "localhost",
+				"path":  htpasswdPath,
+			},
+		}
 	}
 
 	// config tls
@@ -157,7 +155,10 @@ func setup(suite *TestSuite, tlsEnabled bool, insecure bool) *registry.Registry 
 		// server tls config
 		config.HTTP.TLS.Certificate = tlsServerCert
 		config.HTTP.TLS.Key = tlsServerKey
-		config.HTTP.TLS.ClientCAs = []string{tlsCA}
+		// Skip client authentication if the registry is insecure.
+		if !insecure {
+			config.HTTP.TLS.ClientCAs = []string{tlsCA}
+		}
 	}
 	dockerRegistry, err := registry.NewRegistry(context.Background(), config)
 	suite.Nil(err, "no error creating test registry")
