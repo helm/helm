@@ -166,7 +166,7 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 	}
 	if len(totalItems) > 0 {
 		// Give time for the CRD to be recognized.
-		if err := i.cfg.KubeClient.Wait(totalItems, 60*time.Second); err != nil {
+		if err := i.cfg.KubeClient.Wait(totalItems, i.Timeout); err != nil {
 			return err
 		}
 
