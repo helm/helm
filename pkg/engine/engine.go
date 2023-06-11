@@ -44,6 +44,11 @@ type Engine struct {
 	config *rest.Config
 	// EnableDNS tells the engine to allow DNS lookups when rendering templates
 	EnableDNS bool
+	// WithCustomFuncs allows you to provide a template.FuncMap containing custom template functions to be added or
+	// overridden. It is typically used as a configuration option to extend the default set of template functions with
+	// custom ones. The provided template.FuncMap can extend the default template functions, and the resulting
+	// FuncMap is used by the template engine.
+	WithCustomFuncs func(funcs template.FuncMap) template.FuncMap
 }
 
 // New creates a new instance of Engine using the passed in rest config.
@@ -204,6 +209,10 @@ func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]render
 		funcMap["getHostByName"] = func(name string) string {
 			return ""
 		}
+	}
+
+	if e.WithCustomFuncs != nil {
+		funcMap = e.WithCustomFuncs(funcMap)
 	}
 
 	t.Funcs(funcMap)
