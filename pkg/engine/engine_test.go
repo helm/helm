@@ -22,6 +22,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"text/template"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -724,6 +725,44 @@ func TestAlterFuncMap_require(t *testing.T) {
 	expectNum = "All  of them!"
 	if gotNum := out["conan/templates/bases"]; gotNum != expectNum {
 		t.Errorf("Expected %q, got %q (%v)", expectNum, gotNum, out)
+	}
+}
+
+func TestWithCustomFuncMap_tpl(t *testing.T) {
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "TplFunction"},
+		Templates: []*chart.File{
+			{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "Value: {{ .Values.value | custom }}" .}}`)},
+		},
+	}
+
+	v := chartutil.Values{
+		"Values": chartutil.Values{
+			"value": "myvalue",
+		},
+		"Chart": c.Metadata,
+		"Release": chartutil.Values{
+			"Name": "TestRelease",
+		},
+	}
+
+	e := Engine{
+		WithCustomFuncs: func(funcs template.FuncMap) template.FuncMap {
+			funcs["custom"] = func(name string) string {
+				return fmt.Sprintf("%s-from-custom-func", name)
+			}
+			return funcs
+		},
+	}
+
+	out, err := e.Render(c, v)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expect := "Evaluate tpl Value: myvalue-from-custom-func"
+	if got := out["TplFunction/templates/base"]; got != expect {
+		t.Errorf("Expected %q, got %q (%v)", expect, got, out)
 	}
 }
 
