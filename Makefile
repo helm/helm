@@ -105,6 +105,13 @@ test-unit:
 	@echo
 	@echo "==> Running unit tests <=="
 	GO111MODULE=on go test $(GOFLAGS) -run $(TESTS) $(PKG) $(TESTFLAGS)
+	@echo
+	@echo "==> Running unit test(s) with ldflags <=="
+# Test to check the deprecation warnings on k8s resources "with current k8s version" (input using ldflags).
+# In order to avoid the ldflags conflicting with other unit tests, this is ran separately. When ran w/o
+# ldflags, the test still passes with false positive result. Hence, no issues running it in unit/coverage tests.
+	GO111MODULE=on go test $(GOFLAGS) -run ^TestHelmCreateChart_CheckDeprecatedWarnings$$ ./pkg/lint/ $(TESTFLAGS) -ldflags '$(LDFLAGS)'
+
 
 .PHONY: test-coverage
 test-coverage:

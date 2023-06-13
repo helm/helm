@@ -617,6 +617,11 @@ func Create(name, dir string) (string, error) {
 		return cdir, errors.Errorf("file %s already exists and is not a directory", cdir)
 	}
 
+	// Note: For newly introduced resource manifest in `helm create` or while modified
+	// existing, i.e., when there is a change in files added to following slice, if
+	// the resource is disabled in values.yaml by default (similar to hpa and ingress),
+	// add the enabling condition in TestHelmCreateChart_CheckDeprecatedWarnings of
+	// pkg/lint/lint_test.go file in order to check the deprecation per current K8s version.
 	files := []struct {
 		path    string
 		content []byte
