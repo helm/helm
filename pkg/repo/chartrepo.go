@@ -98,7 +98,7 @@ func (r *ChartRepository) Load() error {
 	// what repos to use?
 	filepath.Walk(r.Config.Name, func(path string, f os.FileInfo, err error) error {
 		if !f.IsDir() {
-			if strings.Contains(f.Name(), "-index.yaml") {
+			if strings.Contains(f.Name(), "-index.json") || strings.Contains(f.Name(), "-index.yaml") {
 				i, err := LoadIndexFile(path)
 				if err != nil {
 					return err
@@ -115,12 +115,16 @@ func (r *ChartRepository) Load() error {
 
 // DownloadIndexFile fetches the index from a repository.
 func (r *ChartRepository) DownloadIndexFile() (string, error) {
-	indexURL, err := ResolveReferenceURL(r.Config.URL, "index.yaml")
+	jsonIndexURL, err := ResolveReferenceURL(r.Config.URL, "index.json")
+	if err != nil {
+		return "", err
+	}
+	yamlIndexURL, err := ResolveReferenceURL(r.Config.URL, "index.yaml")
 	if err != nil {
 		return "", err
 	}
 
-	resp, err := r.Client.Get(indexURL,
+	resp, err := r.Client.Get(jsonIndexURL,
 		getter.WithURL(r.Config.URL),
 		getter.WithInsecureSkipVerifyTLS(r.Config.InsecureSkipTLSverify),
 		getter.WithTLSClientConfig(r.Config.CertFile, r.Config.KeyFile, r.Config.CAFile),
@@ -136,9 +140,28 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 		return "", err
 	}
 
-	indexFile, err := loadIndex(index, r.Config.URL)
+	indexFile, err := loadIndex(index, jsonIndexURL)
 	if err != nil {
-		return "", err
+		resp, err = r.Client.Get(yamlIndexURL,
+			getter.WithURL(r.Config.URL),
+			getter.WithInsecureSkipVerifyTLS(r.Config.InsecureSkipTLSverify),
+			getter.WithTLSClientConfig(r.Config.CertFile, r.Config.KeyFile, r.Config.CAFile),
+			getter.WithBasicAuth(r.Config.Username, r.Config.Password),
+			getter.WithPassCredentialsAll(r.Config.PassCredentialsAll),
+		)
+		if err != nil {
+			return "", err
+		}
+
+		index, err = io.ReadAll(resp)
+		if err != nil {
+			return "", err
+		}
+
+		indexFile, err = loadIndex(index, yamlIndexURL)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	// Create the chart list file in the cache directory

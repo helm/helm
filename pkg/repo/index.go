@@ -52,6 +52,8 @@ var (
 	ErrNoChartName = errors.New("no chart name found")
 	// ErrEmptyIndexYaml indicates that the content of index.yaml is empty.
 	ErrEmptyIndexYaml = errors.New("empty index.yaml file")
+	// ErrEmptyIndexJson indicates that the content of index.json is empty.
+	ErrEmptyIndexJson = errors.New("empty index.json file")
 )
 
 // ChartVersions is a list of versioned chart references.
@@ -332,14 +334,18 @@ func IndexDirectory(dir, baseURL string) (*IndexFile, error) {
 // This will fail if API Version is not set (ErrNoAPIVersion) or if the unmarshal fails.
 func loadIndex(data []byte, source string) (*IndexFile, error) {
 	i := &IndexFile{}
+	isjson := strings.HasSuffix(source, ".json")
 
 	// TODO : add error for empty json
 	if len(data) == 0 {
-		return i, ErrEmptyIndexYaml
+		if isjson {
+			return i, ErrEmptyIndexJson
+		} else {
+			return i, ErrEmptyIndexYaml
+		}
 	}
 
-	// TODO : check file type, if json, unmarshal with json.
-	if strings.HasSuffix(source, ".json") {
+	if isjson {
 		if err := json.Unmarshal(data, i); err != nil {
 			return i, err
 		}
