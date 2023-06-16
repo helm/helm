@@ -68,7 +68,7 @@ func TestValidateValuesFileWellFormed(t *testing.T) {
 	tmpdir := ensure.TempFile(t, "values.yaml", []byte(badYaml))
 	defer os.RemoveAll(tmpdir)
 	valfile := filepath.Join(tmpdir, "values.yaml")
-	if err := validateValuesFile(valfile, map[string]interface{}{}); err == nil {
+	if err := validateValuesFile(valfile, map[string]any{}); err == nil {
 		t.Fatal("expected values file to fail parsing")
 	}
 }
@@ -80,7 +80,7 @@ func TestValidateValuesFileSchema(t *testing.T) {
 	createTestingSchema(t, tmpdir)
 
 	valfile := filepath.Join(tmpdir, "values.yaml")
-	if err := validateValuesFile(valfile, map[string]interface{}{}); err != nil {
+	if err := validateValuesFile(valfile, map[string]any{}); err != nil {
 		t.Fatalf("Failed validation with %s", err)
 	}
 }
@@ -94,7 +94,7 @@ func TestValidateValuesFileSchemaFailure(t *testing.T) {
 
 	valfile := filepath.Join(tmpdir, "values.yaml")
 
-	err := validateValuesFile(valfile, map[string]interface{}{})
+	err := validateValuesFile(valfile, map[string]any{})
 	if err == nil {
 		t.Fatal("expected values file to fail parsing")
 	}
@@ -104,7 +104,7 @@ func TestValidateValuesFileSchemaFailure(t *testing.T) {
 
 func TestValidateValuesFileSchemaOverrides(t *testing.T) {
 	yaml := "username: admin"
-	overrides := map[string]interface{}{
+	overrides := map[string]any{
 		"password": "swordfish",
 	}
 	tmpdir := ensure.TempFile(t, "values.yaml", []byte(yaml))
@@ -121,24 +121,24 @@ func TestValidateValuesFile(t *testing.T) {
 	tests := []struct {
 		name         string
 		yaml         string
-		overrides    map[string]interface{}
+		overrides    map[string]any
 		errorMessage string
 	}{
 		{
 			name:      "value added",
 			yaml:      "username: admin",
-			overrides: map[string]interface{}{"password": "swordfish"},
+			overrides: map[string]any{"password": "swordfish"},
 		},
 		{
 			name:         "value not overridden",
 			yaml:         "username: admin\npassword:",
-			overrides:    map[string]interface{}{"username": "anotherUser"},
+			overrides:    map[string]any{"username": "anotherUser"},
 			errorMessage: "Expected: string, given: null",
 		},
 		{
 			name:      "value overridden",
 			yaml:      "username: admin\npassword:",
-			overrides: map[string]interface{}{"username": "anotherUser", "password": "swordfish"},
+			overrides: map[string]any{"username": "anotherUser", "password": "swordfish"},
 		},
 	}
 

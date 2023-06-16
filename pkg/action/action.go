@@ -94,7 +94,7 @@ type Configuration struct {
 	// Capabilities describes the capabilities of the Kubernetes cluster.
 	Capabilities *chartutil.Capabilities
 
-	Log func(string, ...interface{})
+	Log func(string, ...any)
 }
 
 // renderResources renders the templates in a chart
@@ -238,7 +238,7 @@ type RESTClientGetter interface {
 }
 
 // DebugLog sets the logger that writes debug strings
-type DebugLog func(format string, v ...interface{})
+type DebugLog func(format string, v ...any)
 
 // capabilities builds a Capabilities from discovery information.
 func (cfg *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
@@ -327,7 +327,7 @@ func GetVersionSet(client discovery.ServerResourcesInterface) (chartutil.Version
 		return chartutil.DefaultVersionSet, nil
 	}
 
-	versionMap := make(map[string]interface{})
+	versionMap := make(map[string]any)
 	versions := []string{}
 
 	// Extract the groups

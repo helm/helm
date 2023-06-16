@@ -59,7 +59,7 @@ func TestInstallRelease(t *testing.T) {
 	req := require.New(t)
 
 	instAction := installAction(t)
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 	ctx, done := context.WithCancel(context.Background())
 	res, err := instAction.RunWithContext(ctx, buildChart(), vals)
 	if err != nil {
@@ -93,13 +93,13 @@ func TestInstallRelease(t *testing.T) {
 func TestInstallReleaseWithValues(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
-	userVals := map[string]interface{}{
-		"nestedKey": map[string]interface{}{
+	userVals := map[string]any{
+		"nestedKey": map[string]any{
 			"simpleKey": "simpleValue",
 		},
 	}
-	expectedUserValues := map[string]interface{}{
-		"nestedKey": map[string]interface{}{
+	expectedUserValues := map[string]any{
+		"nestedKey": map[string]any{
 			"simpleKey": "simpleValue",
 		},
 	}
@@ -138,7 +138,7 @@ func TestInstallReleaseClientOnly(t *testing.T) {
 func TestInstallRelease_NoName(t *testing.T) {
 	instAction := installAction(t)
 	instAction.ReleaseName = ""
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 	_, err := instAction.Run(buildChart(), vals)
 	if err == nil {
 		t.Fatal("expected failure when no name is specified")
@@ -150,7 +150,7 @@ func TestInstallRelease_WithNotes(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "with-notes"
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 	res, err := instAction.Run(buildChart(withNotes("note here")), vals)
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
@@ -177,7 +177,7 @@ func TestInstallRelease_WithNotesRendered(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "with-notes"
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 	res, err := instAction.Run(buildChart(withNotes("got-{{.Release.Name}}")), vals)
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
@@ -196,7 +196,7 @@ func TestInstallRelease_WithChartAndDependencyParentNotes(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "with-notes"
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 	res, err := instAction.Run(buildChart(withNotes("parent"), withDependency(withNotes("child"))), vals)
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
@@ -215,7 +215,7 @@ func TestInstallRelease_WithChartAndDependencyAllNotes(t *testing.T) {
 	instAction := installAction(t)
 	instAction.ReleaseName = "with-notes"
 	instAction.SubNotes = true
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 	res, err := instAction.Run(buildChart(withNotes("parent"), withDependency(withNotes("child"))), vals)
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
@@ -235,7 +235,7 @@ func TestInstallRelease_DryRun(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
 	instAction.DryRun = true
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 	res, err := instAction.Run(buildChart(withSampleTemplates()), vals)
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
@@ -259,7 +259,7 @@ func TestInstallRelease_DryRun_Lookup(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
 	instAction.DryRun = true
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	mockChart := buildChart(withSampleTemplates())
 	mockChart.Templates = append(mockChart.Templates, &chart.File{
@@ -279,7 +279,7 @@ func TestInstallReleaseIncorrectTemplate_DryRun(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
 	instAction.DryRun = true
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 	_, err := instAction.Run(buildChart(withSampleIncludingIncorrectTemplates()), vals)
 	expectedErr := "\"hello/templates/incorrect\" at <.Values.bad.doh>: nil pointer evaluating interface {}.doh"
 	if err == nil {
@@ -297,7 +297,7 @@ func TestInstallRelease_NoHooks(t *testing.T) {
 	instAction.ReleaseName = "no-hooks"
 	instAction.cfg.Releases.Create(releaseStub())
 
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 	res, err := instAction.Run(buildChart(), vals)
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
@@ -314,7 +314,7 @@ func TestInstallRelease_FailedHooks(t *testing.T) {
 	failer.WatchUntilReadyError = fmt.Errorf("Failed watch")
 	instAction.cfg.KubeClient = failer
 
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 	res, err := instAction.Run(buildChart(), vals)
 	is.Error(err)
 	is.Contains(res.Info.Description, "failed post-install")
@@ -331,7 +331,7 @@ func TestInstallRelease_ReplaceRelease(t *testing.T) {
 	instAction.cfg.Releases.Create(rel)
 	instAction.ReleaseName = rel.Name
 
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 	res, err := instAction.Run(buildChart(), vals)
 	is.NoError(err)
 
@@ -347,13 +347,13 @@ func TestInstallRelease_ReplaceRelease(t *testing.T) {
 func TestInstallRelease_KubeVersion(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 	_, err := instAction.Run(buildChart(withKube(">=0.0.0")), vals)
 	is.NoError(err)
 
 	// This should fail for a few hundred years
 	instAction.ReleaseName = "should-fail"
-	vals = map[string]interface{}{}
+	vals = map[string]any{}
 	_, err = instAction.Run(buildChart(withKube(">=99.0.0")), vals)
 	is.Error(err)
 	is.Contains(err.Error(), "chart requires kubeVersion")
@@ -367,7 +367,7 @@ func TestInstallRelease_Wait(t *testing.T) {
 	failer.WaitError = fmt.Errorf("I timed out")
 	instAction.cfg.KubeClient = failer
 	instAction.Wait = true
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	res, err := instAction.Run(buildChart(), vals)
 	is.Error(err)
@@ -382,7 +382,7 @@ func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	failer.WaitDuration = 10 * time.Second
 	instAction.cfg.KubeClient = failer
 	instAction.Wait = true
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
@@ -402,7 +402,7 @@ func TestInstallRelease_WaitForJobs(t *testing.T) {
 	instAction.cfg.KubeClient = failer
 	instAction.Wait = true
 	instAction.WaitForJobs = true
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	res, err := instAction.Run(buildChart(), vals)
 	is.Error(err)
@@ -420,7 +420,7 @@ func TestInstallRelease_Atomic(t *testing.T) {
 		failer.WaitError = fmt.Errorf("I timed out")
 		instAction.cfg.KubeClient = failer
 		instAction.Atomic = true
-		vals := map[string]interface{}{}
+		vals := map[string]any{}
 
 		res, err := instAction.Run(buildChart(), vals)
 		is.Error(err)
@@ -441,7 +441,7 @@ func TestInstallRelease_Atomic(t *testing.T) {
 		failer.DeleteError = fmt.Errorf("uninstall fail")
 		instAction.cfg.KubeClient = failer
 		instAction.Atomic = true
-		vals := map[string]interface{}{}
+		vals := map[string]any{}
 
 		_, err := instAction.Run(buildChart(), vals)
 		is.Error(err)
@@ -459,7 +459,7 @@ func TestInstallRelease_Atomic_Interrupted(t *testing.T) {
 	failer.WaitDuration = 10 * time.Second
 	instAction.cfg.KubeClient = failer
 	instAction.Atomic = true
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
@@ -549,7 +549,7 @@ func TestNameTemplate(t *testing.T) {
 func TestInstallReleaseOutputDir(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	dir := t.TempDir()
 
@@ -581,7 +581,7 @@ func TestInstallReleaseOutputDir(t *testing.T) {
 func TestInstallOutputDirWithReleaseName(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	dir := t.TempDir()
 

@@ -258,7 +258,7 @@ func newTestFixtureSQL(t *testing.T, releases ...*rspb.Release) (*SQL, sqlmock.S
 	sqlxDB := sqlx.NewDb(sqlDB, "sqlmock")
 	return &SQL{
 		db:               sqlxDB,
-		Log:              func(a string, b ...interface{}) {},
+		Log:              func(a string, b ...any) {},
 		namespace:        "default",
 		statementBuilder: sq.StatementBuilder.PlaceholderFormat(sq.Dollar),
 	}, mock

@@ -36,7 +36,7 @@ func TestShow(t *testing.T) {
 		Raw: []*chart.File{
 			{Name: "values.yaml", Data: []byte("VALUES\n")},
 		},
-		Values: map[string]interface{}{},
+		Values: map[string]any{},
 	}
 
 	output, err := client.Run("")

@@ -47,7 +47,7 @@ func actionConfigFixture(t *testing.T) *Configuration {
 		KubeClient:     &kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}},
 		Capabilities:   chartutil.DefaultCapabilities,
 		RegistryClient: registryClient,
-		Log: func(format string, v ...interface{}) {
+		Log: func(format string, v ...any) {
 			t.Helper()
 			if *verbose {
 				t.Logf(format, v...)
@@ -139,12 +139,12 @@ func withName(name string) chartOption {
 }
 
 func withSampleValues() chartOption {
-	values := map[string]interface{}{
+	values := map[string]any{
 		"someKey": "someValue",
-		"nestedKey": map[string]interface{}{
+		"nestedKey": map[string]any{
 			"simpleKey": "simpleValue",
-			"anotherNestedKey": map[string]interface{}{
-				"yetAnotherNestedKey": map[string]interface{}{
+			"anotherNestedKey": map[string]any{
+				"yetAnotherNestedKey": map[string]any{
 					"youReadyForAnotherNestedKey": "No",
 				},
 			},
@@ -155,7 +155,7 @@ func withSampleValues() chartOption {
 	}
 }
 
-func withValues(values map[string]interface{}) chartOption {
+func withValues(values map[string]any) chartOption {
 	return func(opts *chartOptions) {
 		opts.Values = values
 	}
@@ -240,7 +240,7 @@ func namedReleaseStub(name string, status release.Status) *release.Release {
 			Description:   "Named Release Stub",
 		},
 		Chart:   buildChart(withSampleTemplates()),
-		Config:  map[string]interface{}{"name": "value"},
+		Config:  map[string]any{"name": "value"},
 		Version: 1,
 		Hooks: []*release.Hook{
 			{

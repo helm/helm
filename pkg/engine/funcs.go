@@ -58,13 +58,13 @@ func funcMap() template.FuncMap {
 		// This is a placeholder for the "include" function, which is
 		// late-bound to a template. By declaring it here, we preserve the
 		// integrity of the linter.
-		"include":  func(string, interface{}) string { return "not implemented" },
-		"tpl":      func(string, interface{}) interface{} { return "not implemented" },
-		"required": func(string, interface{}) (interface{}, error) { return "not implemented", nil },
+		"include":  func(string, any) string { return "not implemented" },
+		"tpl":      func(string, any) any { return "not implemented" },
+		"required": func(string, any) (any, error) { return "not implemented", nil },
 		// Provide a placeholder for the "lookup" function, which requires a kubernetes
 		// connection.
-		"lookup": func(string, string, string, string) (map[string]interface{}, error) {
-			return map[string]interface{}{}, nil
+		"lookup": func(string, string, string, string) (map[string]any, error) {
+			return map[string]any{}, nil
 		},
 	}
 
@@ -79,7 +79,7 @@ func funcMap() template.FuncMap {
 // always return a string, even on marshal error (empty string).
 //
 // This is designed to be called from a template.
-func toYAML(v interface{}) string {
+func toYAML(v any) string {
 	data, err := yaml.Marshal(v)
 	if err != nil {
 		// Swallow errors inside of a template.
@@ -88,14 +88,14 @@ func toYAML(v interface{}) string {
 	return strings.TrimSuffix(string(data), "\n")
 }
 
-// fromYAML converts a YAML document into a map[string]interface{}.
+// fromYAML converts a YAML document into a map[string]any.
 //
 // This is not a general-purpose YAML parser, and will not parse all valid
 // YAML documents. Additionally, because its intended use is within templates
 // it tolerates errors. It will insert the returned error message string into
 // m["Error"] in the returned map.
-func fromYAML(str string) map[string]interface{} {
-	m := map[string]interface{}{}
+func fromYAML(str string) map[string]any {
+	m := map[string]any{}
 
 	if err := yaml.Unmarshal([]byte(str), &m); err != nil {
 		m["Error"] = err.Error()
@@ -103,17 +103,17 @@ func fromYAML(str string) map[string]interface{} {
 	return m
 }
 
-// fromYAMLArray converts a YAML array into a []interface{}.
+// fromYAMLArray converts a YAML array into a []any.
 //
 // This is not a general-purpose YAML parser, and will not parse all valid
 // YAML documents. Additionally, because its intended use is within templates
 // it tolerates errors. It will insert the returned error message string as
 // the first and only item in the returned array.
-func fromYAMLArray(str string) []interface{} {
-	a := []interface{}{}
+func fromYAMLArray(str string) []any {
+	a := []any{}
 
 	if err := yaml.Unmarshal([]byte(str), &a); err != nil {
-		a = []interface{}{err.Error()}
+		a = []any{err.Error()}
 	}
 	return a
 }
@@ -122,7 +122,7 @@ func fromYAMLArray(str string) []interface{} {
 // always return a string, even on marshal error (empty string).
 //
 // This is designed to be called from a template.
-func toTOML(v interface{}) string {
+func toTOML(v any) string {
 	b := bytes.NewBuffer(nil)
 	e := toml.NewEncoder(b)
 	err := e.Encode(v)
@@ -136,7 +136,7 @@ func toTOML(v interface{}) string {
 // always return a string, even on marshal error (empty string).
 //
 // This is designed to be called from a template.
-func toJSON(v interface{}) string {
+func toJSON(v any) string {
 	data, err := json.Marshal(v)
 	if err != nil {
 		// Swallow errors inside of a template.
@@ -145,14 +145,14 @@ func toJSON(v interface{}) string {
 	return string(data)
 }
 
-// fromJSON converts a JSON document into a map[string]interface{}.
+// fromJSON converts a JSON document into a map[string]any.
 //
 // This is not a general-purpose JSON parser, and will not parse all valid
 // JSON documents. Additionally, because its intended use is within templates
 // it tolerates errors. It will insert the returned error message string into
 // m["Error"] in the returned map.
-func fromJSON(str string) map[string]interface{} {
-	m := make(map[string]interface{})
+func fromJSON(str string) map[string]any {
+	m := make(map[string]any)
 
 	if err := json.Unmarshal([]byte(str), &m); err != nil {
 		m["Error"] = err.Error()
@@ -160,17 +160,17 @@ func fromJSON(str string) map[string]interface{} {
 	return m
 }
 
-// fromJSONArray converts a JSON array into a []interface{}.
+// fromJSONArray converts a JSON array into a []any.
 //
 // This is not a general-purpose JSON parser, and will not parse all valid
 // JSON documents. Additionally, because its intended use is within templates
 // it tolerates errors. It will insert the returned error message string as
 // the first and only item in the returned array.
-func fromJSONArray(str string) []interface{} {
-	a := []interface{}{}
+func fromJSONArray(str string) []any {
+	a := []any{}
 
 	if err := json.Unmarshal([]byte(str), &a); err != nil {
-		a = []interface{}{err.Error()}
+		a = []any{err.Error()}
 	}
 	return a
 }

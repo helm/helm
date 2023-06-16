@@ -42,7 +42,7 @@ const SecretsDriverName = "Secret"
 // SecretsInterface.
 type Secrets struct {
 	impl corev1.SecretInterface
-	Log  func(string, ...interface{})
+	Log  func(string, ...any)
 }
 
 // NewSecrets initializes a new Secrets wrapping an implementation of
@@ -50,7 +50,7 @@ type Secrets struct {
 func NewSecrets(impl corev1.SecretInterface) *Secrets {
 	return &Secrets{
 		impl: impl,
-		Log:  func(_ string, _ ...interface{}) {},
+		Log:  func(_ string, _ ...any) {},
 	}
 }
 

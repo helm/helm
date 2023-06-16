@@ -205,13 +205,13 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 //
 // If DryRun is set to true, this will prepare the release, but not install it
 
-func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
+func (i *Install) Run(chrt *chart.Chart, vals map[string]any) (*release.Release, error) {
 	ctx := context.Background()
 	return i.RunWithContext(ctx, chrt, vals)
 }
 
 // Run executes the installation with Context
-func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
+func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals map[string]any) (*release.Release, error) {
 	// Check reachability of cluster unless in client-only mode (e.g. `helm template` without `--validate`)
 	if !i.ClientOnly {
 		if err := i.cfg.KubeClient.IsReachable(); err != nil {
@@ -513,7 +513,7 @@ func (i *Install) availableName() error {
 }
 
 // createRelease creates a new release object
-func (i *Install) createRelease(chrt *chart.Chart, rawVals map[string]interface{}) *release.Release {
+func (i *Install) createRelease(chrt *chart.Chart, rawVals map[string]any) *release.Release {
 	ts := i.cfg.Now()
 	return &release.Release{
 		Name:      i.ReleaseName,

@@ -130,7 +130,7 @@ func sortHooksByKind(hooks []*release.Hook, ordering KindSortOrder) []*release.H
 	return h
 }
 
-func lessByKind(a interface{}, b interface{}, kindA string, kindB string, o KindSortOrder) bool {
+func lessByKind(a any, b any, kindA string, kindB string, o KindSortOrder) bool {
 	ordering := make(map[string]int, len(o))
 	for v, k := range o {
 		ordering[k] = v

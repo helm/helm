@@ -51,7 +51,7 @@ func TestUpgradeRelease_Success(t *testing.T) {
 	req.NoError(upAction.cfg.Releases.Create(rel))
 
 	upAction.Wait = true
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	ctx, done := context.WithCancel(context.Background())
 	res, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
@@ -81,7 +81,7 @@ func TestUpgradeRelease_Wait(t *testing.T) {
 	failer.WaitError = fmt.Errorf("I timed out")
 	upAction.cfg.KubeClient = failer
 	upAction.Wait = true
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	res, err := upAction.Run(rel.Name, buildChart(), vals)
 	req.Error(err)
@@ -104,7 +104,7 @@ func TestUpgradeRelease_WaitForJobs(t *testing.T) {
 	upAction.cfg.KubeClient = failer
 	upAction.Wait = true
 	upAction.WaitForJobs = true
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	res, err := upAction.Run(rel.Name, buildChart(), vals)
 	req.Error(err)
@@ -128,7 +128,7 @@ func TestUpgradeRelease_CleanupOnFail(t *testing.T) {
 	upAction.cfg.KubeClient = failer
 	upAction.Wait = true
 	upAction.CleanupOnFail = true
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	res, err := upAction.Run(rel.Name, buildChart(), vals)
 	req.Error(err)
@@ -154,7 +154,7 @@ func TestUpgradeRelease_Atomic(t *testing.T) {
 		failer.WatchUntilReadyError = fmt.Errorf("arming key removed")
 		upAction.cfg.KubeClient = failer
 		upAction.Atomic = true
-		vals := map[string]interface{}{}
+		vals := map[string]any{}
 
 		res, err := upAction.Run(rel.Name, buildChart(), vals)
 		req.Error(err)
@@ -179,7 +179,7 @@ func TestUpgradeRelease_Atomic(t *testing.T) {
 		failer.UpdateError = fmt.Errorf("update fail")
 		upAction.cfg.KubeClient = failer
 		upAction.Atomic = true
-		vals := map[string]interface{}{}
+		vals := map[string]any{}
 
 		_, err := upAction.Run(rel.Name, buildChart(), vals)
 		req.Error(err)
@@ -194,17 +194,17 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 	t.Run("reuse values should work with values", func(t *testing.T) {
 		upAction := upgradeAction(t)
 
-		existingValues := map[string]interface{}{
+		existingValues := map[string]any{
 			"name":        "value",
 			"maxHeapSize": "128m",
 			"replicas":    2,
 		}
-		newValues := map[string]interface{}{
+		newValues := map[string]any{
 			"name":        "newValue",
 			"maxHeapSize": "512m",
 			"cpu":         "12m",
 		}
-		expectedValues := map[string]interface{}{
+		expectedValues := map[string]any{
 			"name":        "newValue",
 			"maxHeapSize": "512m",
 			"cpu":         "12m",
@@ -238,8 +238,8 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 
 	t.Run("reuse values should not install disabled charts", func(t *testing.T) {
 		upAction := upgradeAction(t)
-		chartDefaultValues := map[string]interface{}{
-			"subchart": map[string]interface{}{
+		chartDefaultValues := map[string]any{
+			"subchart": map[string]any{
 				"enabled": true,
 			},
 		}
@@ -255,8 +255,8 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 			withMetadataDependency(dependency),
 		)
 		now := helmtime.Now()
-		existingValues := map[string]interface{}{
-			"subchart": map[string]interface{}{
+		existingValues := map[string]any{
+			"subchart": map[string]any{
 				"enabled": false,
 			},
 		}
@@ -283,7 +283,7 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 			withMetadataDependency(dependency),
 		)
 		// reusing values and upgrading
-		res, err := upAction.Run(rel.Name, sampleChartWithSubChart, map[string]interface{}{})
+		res, err := upAction.Run(rel.Name, sampleChartWithSubChart, map[string]any{})
 		is.NoError(err)
 
 		// Now get the upgraded release
@@ -297,8 +297,8 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 		is.Equal(release.StatusDeployed, updatedRes.Info.Status)
 		is.Equal(0, len(updatedRes.Chart.Dependencies()), "expected 0 dependencies")
 
-		expectedValues := map[string]interface{}{
-			"subchart": map[string]interface{}{
+		expectedValues := map[string]any{
+			"subchart": map[string]any{
 				"enabled": false,
 			},
 		}
@@ -320,7 +320,7 @@ func TestUpgradeRelease_Pending(t *testing.T) {
 	rel2.Version = 2
 	upAction.cfg.Releases.Create(rel2)
 
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	_, err := upAction.Run(rel.Name, buildChart(), vals)
 	req.Contains(err.Error(), "progress", err)
@@ -341,7 +341,7 @@ func TestUpgradeRelease_Interrupted_Wait(t *testing.T) {
 	failer.WaitDuration = 10 * time.Second
 	upAction.cfg.KubeClient = failer
 	upAction.Wait = true
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
@@ -370,7 +370,7 @@ func TestUpgradeRelease_Interrupted_Atomic(t *testing.T) {
 	failer.WaitDuration = 5 * time.Second
 	upAction.cfg.KubeClient = failer
 	upAction.Atomic = true
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)

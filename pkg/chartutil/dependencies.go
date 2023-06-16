@@ -115,7 +115,7 @@ func getAliasDependency(charts []*chart.Chart, dep *chart.Dependency) *chart.Cha
 }
 
 // processDependencyEnabled removes disabled charts from dependencies
-func processDependencyEnabled(c *chart.Chart, v map[string]interface{}, path string) error {
+func processDependencyEnabled(c *chart.Chart, v map[string]any, path string) error {
 	if c.Metadata.Dependencies == nil {
 		return nil
 	}
@@ -198,20 +198,20 @@ Loop:
 }
 
 // pathToMap creates a nested map given a YAML path in dot notation.
-func pathToMap(path string, data map[string]interface{}) map[string]interface{} {
+func pathToMap(path string, data map[string]any) map[string]any {
 	if path == "." {
 		return data
 	}
 	return set(parsePath(path), data)
 }
 
-func set(path []string, data map[string]interface{}) map[string]interface{} {
+func set(path []string, data map[string]any) map[string]any {
 	if len(path) == 0 {
 		return nil
 	}
 	cur := data
 	for i := len(path) - 1; i >= 0; i-- {
-		cur = map[string]interface{}{path[i]: cur}
+		cur = map[string]any{path[i]: cur}
 	}
 	return cur
 }
@@ -226,13 +226,13 @@ func processImportValues(c *chart.Chart) error {
 	if err != nil {
 		return err
 	}
-	b := make(map[string]interface{})
+	b := make(map[string]any)
 	// import values from each dependency if specified in import-values
 	for _, r := range c.Metadata.Dependencies {
-		var outiv []interface{}
+		var outiv []any
 		for _, riv := range r.ImportValues {
 			switch iv := riv.(type) {
-			case map[string]interface{}:
+			case map[string]any:
 				child := iv["child"].(string)
 				parent := iv["parent"].(string)
 

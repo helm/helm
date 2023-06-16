@@ -142,7 +142,7 @@ func setup(suite *TestSuite, tlsEnabled bool, insecure bool) *registry.Registry 
 	config.HTTP.Addr = fmt.Sprintf(":%d", port)
 	// config.HTTP.Addr = fmt.Sprintf("127.0.0.1:%d", port)
 	config.HTTP.DrainTimeout = time.Duration(10) * time.Second
-	config.Storage = map[string]configuration.Parameters{"inmemory": map[string]interface{}{}}
+	config.Storage = map[string]configuration.Parameters{"inmemory": map[string]any{}}
 	config.Auth = configuration.Auth{
 		"htpasswd": configuration.Parameters{
 			"realm": "localhost",

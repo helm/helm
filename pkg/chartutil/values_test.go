@@ -68,17 +68,17 @@ water:
 
 func TestToRenderValues(t *testing.T) {
 
-	chartValues := map[string]interface{}{
+	chartValues := map[string]any{
 		"name": "al Rashid",
-		"where": map[string]interface{}{
+		"where": map[string]any{
 			"city":  "Basrah",
 			"title": "caliph",
 		},
 	}
 
-	overrideValues := map[string]interface{}{
+	overrideValues := map[string]any{
 		"name": "Haroun",
-		"where": map[string]interface{}{
+		"where": map[string]any{
 			"city": "Baghdad",
 			"date": "809 CE",
 		},
@@ -112,7 +112,7 @@ func TestToRenderValues(t *testing.T) {
 	if name := res["Chart"].(*chart.Metadata).Name; name != "test" {
 		t.Errorf("Expected chart name 'test', got %q", name)
 	}
-	relmap := res["Release"].(map[string]interface{})
+	relmap := res["Release"].(map[string]any)
 	if name := relmap["Name"]; name.(string) != "Seven Voyages" {
 		t.Errorf("Expected release name 'Seven Voyages', got %q", name)
 	}
@@ -139,7 +139,7 @@ func TestToRenderValues(t *testing.T) {
 	if vals["name"] != "Haroun" {
 		t.Errorf("Expected 'Haroun', got %q (%v)", vals["name"], vals)
 	}
-	where := vals["where"].(map[string]interface{})
+	where := vals["where"].(map[string]any)
 	expects := map[string]string{
 		"city":  "Baghdad",
 		"date":  "809 CE",
@@ -223,7 +223,7 @@ chapter:
 	}
 }
 
-func matchValues(t *testing.T, data map[string]interface{}) {
+func matchValues(t *testing.T, data map[string]any) {
 	if data["poet"] != "Coleridge" {
 		t.Errorf("Unexpected poet: %s", data["poet"])
 	}
@@ -247,7 +247,7 @@ func matchValues(t *testing.T, data map[string]interface{}) {
 	}
 }
 
-func ttpl(tpl string, v map[string]interface{}) (string, error) {
+func ttpl(tpl string, v map[string]any) (string, error) {
 	var b bytes.Buffer
 	tt := template.Must(template.New("t").Parse(tpl))
 	err := tt.Execute(&b, v)

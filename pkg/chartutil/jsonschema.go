@@ -29,7 +29,7 @@ import (
 )
 
 // ValidateAgainstSchema checks that values does not violate the structure laid out in schema
-func ValidateAgainstSchema(chrt *chart.Chart, values map[string]interface{}) error {
+func ValidateAgainstSchema(chrt *chart.Chart, values map[string]any) error {
 	var sb strings.Builder
 	if chrt.Schema != nil {
 		err := ValidateAgainstSingleSchema(values, chrt.Schema)
@@ -41,7 +41,7 @@ func ValidateAgainstSchema(chrt *chart.Chart, values map[string]interface{}) err
 
 	// For each dependency, recursively call this function with the coalesced values
 	for _, subchart := range chrt.Dependencies() {
-		subchartValues := values[subchart.Name()].(map[string]interface{})
+		subchartValues := values[subchart.Name()].(map[string]any)
 		if err := ValidateAgainstSchema(subchart, subchartValues); err != nil {
 			sb.WriteString(err.Error())
 		}

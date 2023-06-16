@@ -48,7 +48,7 @@ func TestValidateAllowedExtension(t *testing.T) {
 	}
 }
 
-var values = map[string]interface{}{"nameOverride": "", "httpPort": 80}
+var values = map[string]any{"nameOverride": "", "httpPort": 80}
 
 const namespace = "testNamespace"
 const strict = false
@@ -266,7 +266,7 @@ func TestStrictTemplateParsingMapError(t *testing.T) {
 			APIVersion: "v2",
 			Version:    "0.1.0",
 		},
-		Values: map[string]interface{}{
+		Values: map[string]any{
 			"mymap": map[string]string{
 				"key1": "val1",
 			},

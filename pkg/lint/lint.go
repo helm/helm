@@ -24,7 +24,7 @@ import (
 )
 
 // All runs all of the available linters on the given base directory.
-func All(basedir string, values map[string]interface{}, namespace string, strict bool) support.Linter {
+func All(basedir string, values map[string]any, namespace string, strict bool) support.Linter {
 	// Using abs path to get directory context
 	chartDir, _ := filepath.Abs(basedir)
 

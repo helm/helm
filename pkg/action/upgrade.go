@@ -129,13 +129,13 @@ func (u *Upgrade) SetRegistryClient(client *registry.Client) {
 }
 
 // Run executes the upgrade on the given release.
-func (u *Upgrade) Run(name string, chart *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
+func (u *Upgrade) Run(name string, chart *chart.Chart, vals map[string]any) (*release.Release, error) {
 	ctx := context.Background()
 	return u.RunWithContext(ctx, name, chart, vals)
 }
 
 // RunWithContext executes the upgrade on the given release with context.
-func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
+func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.Chart, vals map[string]any) (*release.Release, error) {
 	if err := u.cfg.KubeClient.IsReachable(); err != nil {
 		return nil, err
 	}
@@ -172,7 +172,7 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 }
 
 // prepareUpgrade builds an upgraded release for an upgrade operation.
-func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[string]interface{}) (*release.Release, *release.Release, error) {
+func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[string]any) (*release.Release, *release.Release, error) {
 	if chart == nil {
 		return nil, nil, errMissingChart
 	}
@@ -333,7 +333,7 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 	}
 	rChan := make(chan resultMessage)
 	ctxChan := make(chan resultMessage)
-	doneChan := make(chan interface{})
+	doneChan := make(chan any)
 	defer close(doneChan)
 	go u.releasingUpgrade(rChan, upgradedRelease, current, target, originalRelease)
 	go u.handleContext(ctx, doneChan, ctxChan, upgradedRelease)
@@ -358,7 +358,7 @@ func (u *Upgrade) reportToPerformUpgrade(c chan<- resultMessage, rel *release.Re
 }
 
 // Setup listener for SIGINT and SIGTERM
-func (u *Upgrade) handleContext(ctx context.Context, done chan interface{}, c chan<- resultMessage, upgradedRelease *release.Release) {
+func (u *Upgrade) handleContext(ctx context.Context, done chan any, c chan<- resultMessage, upgradedRelease *release.Release) {
 	select {
 	case <-ctx.Done():
 		err := ctx.Err()
@@ -504,7 +504,7 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 //
 // This is skipped if the u.ResetValues flag is set, in which case the
 // request values are not altered.
-func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release, newVals map[string]interface{}) (map[string]interface{}, error) {
+func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release, newVals map[string]any) (map[string]any, error) {
 	if u.ResetValues {
 		// If ResetValues is set, we completely ignore current.Config.
 		u.cfg.Log("resetting values to the chart's original version")

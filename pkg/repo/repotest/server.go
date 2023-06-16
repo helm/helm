@@ -115,7 +115,7 @@ func NewOCIServer(t *testing.T, dir string) (*OCIServer, error) {
 
 	config.HTTP.Addr = fmt.Sprintf(":%d", port)
 	config.HTTP.DrainTimeout = time.Duration(10) * time.Second
-	config.Storage = map[string]configuration.Parameters{"inmemory": map[string]interface{}{}}
+	config.Storage = map[string]configuration.Parameters{"inmemory": map[string]any{}}
 	config.Auth = configuration.Auth{
 		"htpasswd": configuration.Parameters{
 			"realm": "localhost",

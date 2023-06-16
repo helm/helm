@@ -43,7 +43,7 @@ type Storage struct {
 	// ignored (meaning no limits are imposed).
 	MaxHistory int
 
-	Log func(string, ...interface{})
+	Log func(string, ...any)
 }
 
 // Get retrieves the release from storage. An error is returned
@@ -261,6 +261,6 @@ func Init(d driver.Driver) *Storage {
 	}
 	return &Storage{
 		Driver: d,
-		Log:    func(_ string, _ ...interface{}) {},
+		Log:    func(_ string, _ ...any) {},
 	}
 }

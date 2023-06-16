@@ -39,7 +39,7 @@ import (
 type waiter struct {
 	c       ReadyChecker
 	timeout time.Duration
-	log     func(string, ...interface{})
+	log     func(string, ...any)
 }
 
 // waitForResources polls to get the current status of all pods, PVCs, Services and

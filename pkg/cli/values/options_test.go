@@ -24,24 +24,24 @@ import (
 )
 
 func TestMergeValues(t *testing.T) {
-	nestedMap := map[string]interface{}{
+	nestedMap := map[string]any{
 		"foo": "bar",
 		"baz": map[string]string{
 			"cool": "stuff",
 		},
 	}
-	anotherNestedMap := map[string]interface{}{
+	anotherNestedMap := map[string]any{
 		"foo": "bar",
 		"baz": map[string]string{
 			"cool":    "things",
 			"awesome": "stuff",
 		},
 	}
-	flatMap := map[string]interface{}{
+	flatMap := map[string]any{
 		"foo": "bar",
 		"baz": "stuff",
 	}
-	anotherFlatMap := map[string]interface{}{
+	anotherFlatMap := map[string]any{
 		"testing": "fun",
 	}
 
@@ -64,7 +64,7 @@ func TestMergeValues(t *testing.T) {
 	}
 
 	testMap = mergeMaps(anotherFlatMap, anotherNestedMap)
-	expectedMap := map[string]interface{}{
+	expectedMap := map[string]any{
 		"testing": "fun",
 		"foo":     "bar",
 		"baz": map[string]string{

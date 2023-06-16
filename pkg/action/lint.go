@@ -51,7 +51,7 @@ func NewLint() *Lint {
 }
 
 // Run executes 'helm Lint' against the given chart.
-func (l *Lint) Run(paths []string, vals map[string]interface{}) *LintResult {
+func (l *Lint) Run(paths []string, vals map[string]any) *LintResult {
 	lowestTolerance := support.ErrorSev
 	if l.Strict {
 		lowestTolerance = support.WarningSev
@@ -85,7 +85,7 @@ func HasWarningsOrErrors(result *LintResult) bool {
 	return false
 }
 
-func lintChart(path string, vals map[string]interface{}, namespace string, strict bool) (support.Linter, error) {
+func lintChart(path string, vals map[string]any, namespace string, strict bool) (support.Linter, error) {
 	var chartPath string
 	linter := support.Linter{}
 

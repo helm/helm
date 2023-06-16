@@ -30,7 +30,7 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-type lookupFunc = func(apiversion string, resource string, namespace string, name string) (map[string]interface{}, error)
+type lookupFunc = func(apiversion string, resource string, namespace string, name string) (map[string]any, error)
 
 // NewLookupFunction returns a function for looking up objects in the cluster.
 //
@@ -39,11 +39,11 @@ type lookupFunc = func(apiversion string, resource string, namespace string, nam
 // This function is considered deprecated, and will be renamed in Helm 4. It will no
 // longer be a public function.
 func NewLookupFunction(config *rest.Config) lookupFunc {
-	return func(apiversion string, resource string, namespace string, name string) (map[string]interface{}, error) {
+	return func(apiversion string, resource string, namespace string, name string) (map[string]any, error) {
 		var client dynamic.ResourceInterface
 		c, namespaced, err := getDynamicClientOnKind(apiversion, resource, config)
 		if err != nil {
-			return map[string]interface{}{}, err
+			return map[string]any{}, err
 		}
 		if namespaced && namespace != "" {
 			client = c.Namespace(namespace)
@@ -57,9 +57,9 @@ func NewLookupFunction(config *rest.Config) lookupFunc {
 				if apierrors.IsNotFound(err) {
 					// Just return an empty interface when the object was not found.
 					// That way, users can use `if not (lookup ...)` in their templates.
-					return map[string]interface{}{}, nil
+					return map[string]any{}, nil
 				}
-				return map[string]interface{}{}, err
+				return map[string]any{}, err
 			}
 			return obj.UnstructuredContent(), nil
 		}
@@ -69,9 +69,9 @@ func NewLookupFunction(config *rest.Config) lookupFunc {
 			if apierrors.IsNotFound(err) {
 				// Just return an empty interface when the object was not found.
 				// That way, users can use `if not (lookup ...)` in their templates.
-				return map[string]interface{}{}, nil
+				return map[string]any{}, nil
 			}
-			return map[string]interface{}{}, err
+			return map[string]any{}, err
 		}
 		return obj.UnstructuredContent(), nil
 	}

@@ -92,14 +92,14 @@ func TestRender(t *testing.T) {
 			{Name: "templates/test4", Data: []byte("{{toJson .Values}}")},
 			{Name: "templates/test5", Data: []byte("{{getHostByName \"helm.sh\"}}")},
 		},
-		Values: map[string]interface{}{"outer": "DEFAULT", "inner": "DEFAULT"},
+		Values: map[string]any{"outer": "DEFAULT", "inner": "DEFAULT"},
 	}
 
-	vals := map[string]interface{}{
-		"Values": map[string]interface{}{
+	vals := map[string]any{
+		"Values": map[string]any{
 			"outer": "spouter",
 			"inner": "inn",
-			"global": map[string]interface{}{
+			"global": map[string]any{
 				"callme": "Ishmael",
 			},
 		},
@@ -212,11 +212,11 @@ func TestRenderWIthDNS(t *testing.T) {
 		Templates: []*chart.File{
 			{Name: "templates/test1", Data: []byte("{{getHostByName \"helm.sh\"}}")},
 		},
-		Values: map[string]interface{}{},
+		Values: map[string]any{},
 	}
 
-	vals := map[string]interface{}{
-		"Values": map[string]interface{}{},
+	vals := map[string]any{
+		"Values": map[string]any{},
 	}
 
 	v, err := chartutil.CoalesceValues(c, vals)
@@ -250,7 +250,7 @@ func TestParallelRenderInternals(t *testing.T) {
 			tpls := map[string]renderable{
 				"t": {
 					tpl:  `{{.val}}`,
-					vals: map[string]interface{}{"val": tt},
+					vals: map[string]any{"val": tt},
 				},
 			}
 			out, err := e.render(tpls)
@@ -267,7 +267,7 @@ func TestParallelRenderInternals(t *testing.T) {
 }
 
 func TestParseErrors(t *testing.T) {
-	vals := chartutil.Values{"Values": map[string]interface{}{}}
+	vals := chartutil.Values{"Values": map[string]any{}}
 
 	tplsUndefinedFunction := map[string]renderable{
 		"undefined_function": {tpl: `{{foo}}`, vals: vals},
@@ -283,7 +283,7 @@ func TestParseErrors(t *testing.T) {
 }
 
 func TestExecErrors(t *testing.T) {
-	vals := chartutil.Values{"Values": map[string]interface{}{}}
+	vals := chartutil.Values{"Values": map[string]any{}}
 	cases := []struct {
 		name     string
 		tpls     map[string]renderable
@@ -347,7 +347,7 @@ linebreak`,
 }
 
 func TestFailErrors(t *testing.T) {
-	vals := chartutil.Values{"Values": map[string]interface{}{}}
+	vals := chartutil.Values{"Values": map[string]any{}}
 
 	failtpl := `All your base are belong to us{{ fail "This is an error" }}`
 	tplsFailed := map[string]renderable{
@@ -452,7 +452,7 @@ func TestRenderDependency(t *testing.T) {
 		},
 	})
 
-	out, err := Render(ch, map[string]interface{}{})
+	out, err := Render(ch, map[string]any{})
 	if err != nil {
 		t.Fatalf("failed to render chart: %s", err)
 	}
@@ -483,7 +483,7 @@ func TestRenderNestedValues(t *testing.T) {
 			{Name: deepestpath, Data: []byte(`And this same {{.Values.what}} that smiles {{.Values.global.when}}`)},
 			{Name: checkrelease, Data: []byte(`Tomorrow will be {{default "happy" .Release.Name }}`)},
 		},
-		Values: map[string]interface{}{"what": "milkshake", "where": "here"},
+		Values: map[string]any{"what": "milkshake", "where": "here"},
 	}
 
 	inner := &chart.Chart{
@@ -491,7 +491,7 @@ func TestRenderNestedValues(t *testing.T) {
 		Templates: []*chart.File{
 			{Name: innerpath, Data: []byte(`Old {{.Values.who}} is still a-flyin'`)},
 		},
-		Values: map[string]interface{}{"who": "Robert", "what": "glasses"},
+		Values: map[string]any{"who": "Robert", "what": "glasses"},
 	}
 	inner.AddDependency(deepest)
 
@@ -501,10 +501,10 @@ func TestRenderNestedValues(t *testing.T) {
 			{Name: outerpath, Data: []byte(`Gather ye {{.Values.what}} while ye may`)},
 			{Name: subchartspath, Data: []byte(`The glorious Lamp of {{.Subcharts.herrick.Subcharts.deepest.Values.where}}, the {{.Subcharts.herrick.Values.what}}`)},
 		},
-		Values: map[string]interface{}{
+		Values: map[string]any{
 			"what": "stinkweed",
 			"who":  "me",
-			"herrick": map[string]interface{}{
+			"herrick": map[string]any{
 				"who":  "time",
 				"what": "Sun",
 			},
@@ -512,15 +512,15 @@ func TestRenderNestedValues(t *testing.T) {
 	}
 	outer.AddDependency(inner)
 
-	injValues := map[string]interface{}{
+	injValues := map[string]any{
 		"what": "rosebuds",
-		"herrick": map[string]interface{}{
-			"deepest": map[string]interface{}{
+		"herrick": map[string]any{
+			"deepest": map[string]any{
 				"what":  "flower",
 				"where": "Heaven",
 			},
 		},
-		"global": map[string]interface{}{
+		"global": map[string]any{
 			"when": "to-day",
 		},
 	}

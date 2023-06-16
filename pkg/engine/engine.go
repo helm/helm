@@ -118,7 +118,7 @@ func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]render
 	includedNames := make(map[string]int)
 
 	// Add the 'include' function here so we can close over t.
-	funcMap["include"] = func(name string, data interface{}) (string, error) {
+	funcMap["include"] = func(name string, data any) (string, error) {
 		var buf strings.Builder
 		if v, ok := includedNames[name]; ok {
 			if v > recursionMaxNums {
@@ -161,7 +161,7 @@ func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]render
 	}
 
 	// Add the `required` function here so we can use lintMode
-	funcMap["required"] = func(warn string, val interface{}) (interface{}, error) {
+	funcMap["required"] = func(warn string, val any) (any, error) {
 		if val == nil {
 			if e.LintMode {
 				// Don't fail on missing required values when linting
@@ -361,14 +361,14 @@ func allTemplates(c *chart.Chart, vals chartutil.Values) map[string]renderable {
 //
 // As it recurses, it also sets the values to be appropriate for the template
 // scope.
-func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.Values) map[string]interface{} {
-	subCharts := make(map[string]interface{})
+func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.Values) map[string]any {
+	subCharts := make(map[string]any)
 	chartMetaData := struct {
 		chart.Metadata
 		IsRoot bool
 	}{*c.Metadata, c.IsRoot()}
 
-	next := map[string]interface{}{
+	next := map[string]any{
 		"Chart":        chartMetaData,
 		"Files":        newFiles(c.Files),
 		"Release":      vals["Release"],

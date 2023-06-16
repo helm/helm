@@ -24,7 +24,7 @@ import (
 	"helm.sh/helm/v3/pkg/lint/support"
 )
 
-var values map[string]interface{}
+var values map[string]any
 
 const namespace = "testNamespace"
 const strict = false

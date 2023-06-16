@@ -74,7 +74,7 @@ type SQL struct {
 	namespace        string
 	statementBuilder sq.StatementBuilderType
 
-	Log func(string, ...interface{})
+	Log func(string, ...any)
 }
 
 // Name returns the name of the driver.
@@ -181,7 +181,7 @@ type SQLReleaseWrapper struct {
 }
 
 // NewSQL initializes a new sql driver.
-func NewSQL(connectionString string, logger func(string, ...interface{}), namespace string) (*SQL, error) {
+func NewSQL(connectionString string, logger func(string, ...any), namespace string) (*SQL, error) {
 	db, err := sqlx.Connect(postgreSQLDialect, connectionString)
 	if err != nil {
 		return nil, err

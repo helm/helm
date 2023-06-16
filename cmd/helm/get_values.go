@@ -33,7 +33,7 @@ This command downloads a values file for a given release.
 `
 
 type valuesWriter struct {
-	vals      map[string]interface{}
+	vals      map[string]any
 	allValues bool
 }
 

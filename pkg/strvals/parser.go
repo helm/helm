@@ -52,8 +52,8 @@ func ToYAML(s string) (string, error) {
 // Parse parses a set line.
 //
 // A set line is of the form name1=value1,name2=value2
-func Parse(s string) (map[string]interface{}, error) {
-	vals := map[string]interface{}{}
+func Parse(s string) (map[string]any, error) {
+	vals := map[string]any{}
 	scanner := bytes.NewBufferString(s)
 	t := newParser(scanner, vals, false)
 	err := t.parse()
@@ -63,8 +63,8 @@ func Parse(s string) (map[string]interface{}, error) {
 // ParseString parses a set line and forces a string value.
 //
 // A set line is of the form name1=value1,name2=value2
-func ParseString(s string) (map[string]interface{}, error) {
-	vals := map[string]interface{}{}
+func ParseString(s string) (map[string]any, error) {
+	vals := map[string]any{}
 	scanner := bytes.NewBufferString(s)
 	t := newParser(scanner, vals, true)
 	err := t.parse()
@@ -75,7 +75,7 @@ func ParseString(s string) (map[string]interface{}, error) {
 //
 // If the strval string has a key that exists in dest, it overwrites the
 // dest version.
-func ParseInto(s string, dest map[string]interface{}) error {
+func ParseInto(s string, dest map[string]any) error {
 	scanner := bytes.NewBufferString(s)
 	t := newParser(scanner, dest, false)
 	return t.parse()
@@ -87,8 +87,8 @@ func ParseInto(s string, dest map[string]interface{}) error {
 //
 // When the files at path1 and path2 contained "val1" and "val2" respectively, the set line is consumed as
 // name1=val1,name2=val2
-func ParseFile(s string, reader RunesValueReader) (map[string]interface{}, error) {
-	vals := map[string]interface{}{}
+func ParseFile(s string, reader RunesValueReader) (map[string]any, error) {
+	vals := map[string]any{}
 	scanner := bytes.NewBufferString(s)
 	t := newFileParser(scanner, vals, reader)
 	err := t.parse()
@@ -98,7 +98,7 @@ func ParseFile(s string, reader RunesValueReader) (map[string]interface{}, error
 // ParseIntoString parses a strvals line and merges the result into dest.
 //
 // This method always returns a string as the value.
-func ParseIntoString(s string, dest map[string]interface{}) error {
+func ParseIntoString(s string, dest map[string]any) error {
 	scanner := bytes.NewBufferString(s)
 	t := newParser(scanner, dest, true)
 	return t.parse()
@@ -109,7 +109,7 @@ func ParseIntoString(s string, dest map[string]interface{}) error {
 // An empty val is treated as null.
 //
 // If a key exists in dest, the new value overwrites the dest version.
-func ParseJSON(s string, dest map[string]interface{}) error {
+func ParseJSON(s string, dest map[string]any) error {
 	scanner := bytes.NewBufferString(s)
 	t := newJSONParser(scanner, dest)
 	return t.parse()
@@ -118,7 +118,7 @@ func ParseJSON(s string, dest map[string]interface{}) error {
 // ParseIntoFile parses a filevals line and merges the result into dest.
 //
 // This method always returns a string as the value.
-func ParseIntoFile(s string, dest map[string]interface{}, reader RunesValueReader) error {
+func ParseIntoFile(s string, dest map[string]any, reader RunesValueReader) error {
 	scanner := bytes.NewBufferString(s)
 	t := newFileParser(scanner, dest, reader)
 	return t.parse()
@@ -126,7 +126,7 @@ func ParseIntoFile(s string, dest map[string]interface{}, reader RunesValueReade
 
 // RunesValueReader is a function that takes the given value (a slice of runes)
 // and returns the parsed value
-type RunesValueReader func([]rune) (interface{}, error)
+type RunesValueReader func([]rune) (any, error)
 
 // parser is a simple parser that takes a strvals line and parses it into a
 // map representation.
@@ -135,23 +135,23 @@ type RunesValueReader func([]rune) (interface{}, error)
 // where data is the final parsed data from the parses with correct types
 type parser struct {
 	sc        *bytes.Buffer
-	data      map[string]interface{}
+	data      map[string]any
 	reader    RunesValueReader
 	isjsonval bool
 }
 
-func newParser(sc *bytes.Buffer, data map[string]interface{}, stringBool bool) *parser {
-	stringConverter := func(rs []rune) (interface{}, error) {
+func newParser(sc *bytes.Buffer, data map[string]any, stringBool bool) *parser {
+	stringConverter := func(rs []rune) (any, error) {
 		return typedVal(rs, stringBool), nil
 	}
 	return &parser{sc: sc, data: data, reader: stringConverter}
 }
 
-func newJSONParser(sc *bytes.Buffer, data map[string]interface{}) *parser {
+func newJSONParser(sc *bytes.Buffer, data map[string]any) *parser {
 	return &parser{sc: sc, data: data, reader: nil, isjsonval: true}
 }
 
-func newFileParser(sc *bytes.Buffer, data map[string]interface{}, reader RunesValueReader) *parser {
+func newFileParser(sc *bytes.Buffer, data map[string]any, reader RunesValueReader) *parser {
 	return &parser{sc: sc, data: data, reader: reader}
 }
 
@@ -176,7 +176,7 @@ func runeSet(r []rune) map[rune]bool {
 	return s
 }
 
-func (t *parser) key(data map[string]interface{}, nestedNameLevel int) (reterr error) {
+func (t *parser) key(data map[string]any, nestedNameLevel int) (reterr error) {
 	defer func() {
 		if r := recover(); r != nil {
 			reterr = fmt.Errorf("unable to parse key: %s", r)
@@ -200,9 +200,9 @@ func (t *parser) key(data map[string]interface{}, nestedNameLevel int) (reterr e
 			}
 			kk := string(k)
 			// Find or create target list
-			list := []interface{}{}
+			list := []any{}
 			if _, ok := data[kk]; ok {
-				list = data[kk].([]interface{})
+				list = data[kk].([]any)
 			}
 
 			// Now we need to get the value after the ].
@@ -224,7 +224,7 @@ func (t *parser) key(data map[string]interface{}, nestedNameLevel int) (reterr e
 				// Since Decode has its own buffer that consumes more characters (from underlying t.sc) than the ones actually decoded,
 				// we invoke Decode on a separate reader built with a copy of what is left in t.sc. After Decode is executed, we
 				// discard in t.sc the chars of the decoded json value (the number of those characters is returned by InputOffset).
-				var jsonval interface{}
+				var jsonval any
 				dec := json.NewDecoder(strings.NewReader(t.sc.String()))
 				if err = dec.Decode(&jsonval); err != nil {
 					return err
@@ -270,9 +270,9 @@ func (t *parser) key(data map[string]interface{}, nestedNameLevel int) (reterr e
 			}
 
 			// First, create or find the target map.
-			inner := map[string]interface{}{}
+			inner := map[string]any{}
 			if _, ok := data[string(k)]; ok {
-				inner = data[string(k)].(map[string]interface{})
+				inner = data[string(k)].(map[string]any)
 			}
 
 			// Recurse
@@ -288,7 +288,7 @@ func (t *parser) key(data map[string]interface{}, nestedNameLevel int) (reterr e
 	}
 }
 
-func set(data map[string]interface{}, key string, val interface{}) {
+func set(data map[string]any, key string, val any) {
 	// If key is empty, don't set it.
 	if len(key) == 0 {
 		return
@@ -296,7 +296,7 @@ func set(data map[string]interface{}, key string, val interface{}) {
 	data[key] = val
 }
 
-func setIndex(list []interface{}, index int, val interface{}) (l2 []interface{}, err error) {
+func setIndex(list []any, index int, val any) (l2 []any, err error) {
 	// There are possible index values that are out of range on a target system
 	// causing a panic. This will catch the panic and return an error instead.
 	// The value of the index that causes a panic varies from system to system.
@@ -313,7 +313,7 @@ func setIndex(list []interface{}, index int, val interface{}) (l2 []interface{},
 		return list, fmt.Errorf("index of %d is greater than maximum supported index of %d", index, MaxIndex)
 	}
 	if len(list) <= index {
-		newlist := make([]interface{}, index+1)
+		newlist := make([]any, index+1)
 		copy(newlist, list)
 		list = newlist
 	}
@@ -332,7 +332,7 @@ func (t *parser) keyIndex() (int, error) {
 	return strconv.Atoi(string(v))
 
 }
-func (t *parser) listItem(list []interface{}, i, nestedNameLevel int) ([]interface{}, error) {
+func (t *parser) listItem(list []any, i, nestedNameLevel int) ([]any, error) {
 	if i < 0 {
 		return list, fmt.Errorf("negative %d index not allowed", i)
 	}
@@ -356,7 +356,7 @@ func (t *parser) listItem(list []interface{}, i, nestedNameLevel int) ([]interfa
 			// Since Decode has its own buffer that consumes more characters (from underlying t.sc) than the ones actually decoded,
 			// we invoke Decode on a separate reader built with a copy of what is left in t.sc. After Decode is executed, we
 			// discard in t.sc the chars of the decoded json value (the number of those characters is returned by InputOffset).
-			var jsonval interface{}
+			var jsonval any
 			dec := json.NewDecoder(strings.NewReader(t.sc.String()))
 			if err = dec.Decode(&jsonval); err != nil {
 				return list, err
@@ -396,12 +396,12 @@ func (t *parser) listItem(list []interface{}, i, nestedNameLevel int) ([]interfa
 		if err != nil {
 			return list, errors.Wrap(err, "error parsing index")
 		}
-		var crtList []interface{}
+		var crtList []any
 		if len(list) > i {
 			// If nested list already exists, take the value of list to next cycle.
 			existed := list[i]
 			if existed != nil {
-				crtList = list[i].([]interface{})
+				crtList = list[i].([]any)
 			}
 		}
 		// Now we need to get the value after the ].
@@ -412,14 +412,14 @@ func (t *parser) listItem(list []interface{}, i, nestedNameLevel int) ([]interfa
 		return setIndex(list, i, list2)
 	case last == '.':
 		// We have a nested object. Send to t.key
-		inner := map[string]interface{}{}
+		inner := map[string]any{}
 		if len(list) > i {
 			var ok bool
-			inner, ok = list[i].(map[string]interface{})
+			inner, ok = list[i].(map[string]any)
 			if !ok {
 				// We have indices out of order. Initialize empty value.
-				list[i] = map[string]interface{}{}
-				inner = list[i].(map[string]interface{})
+				list[i] = map[string]any{}
+				inner = list[i].(map[string]any)
 			}
 		}
 
@@ -462,18 +462,18 @@ func (t *parser) val() ([]rune, error) {
 	return v, err
 }
 
-func (t *parser) valList() ([]interface{}, error) {
+func (t *parser) valList() ([]any, error) {
 	r, _, e := t.sc.ReadRune()
 	if e != nil {
-		return []interface{}{}, e
+		return []any{}, e
 	}
 
 	if r != '{' {
 		t.sc.UnreadRune()
-		return []interface{}{}, ErrNotList
+		return []any{}, ErrNotList
 	}
 
-	list := []interface{}{}
+	list := []any{}
 	stop := runeSet([]rune{',', '}'})
 	for {
 		switch rs, last, err := runesUntil(t.sc, stop); {
@@ -525,7 +525,7 @@ func inMap(k rune, m map[rune]bool) bool {
 	return ok
 }
 
-func typedVal(v []rune, st bool) interface{} {
+func typedVal(v []rune, st bool) any {
 	val := string(v)
 
 	if st {

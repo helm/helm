@@ -42,7 +42,7 @@ const ConfigMapsDriverName = "ConfigMap"
 // ConfigMapsInterface.
 type ConfigMaps struct {
 	impl corev1.ConfigMapInterface
-	Log  func(string, ...interface{})
+	Log  func(string, ...any)
 }
 
 // NewConfigMaps initializes a new ConfigMaps wrapping an implementation of
@@ -50,7 +50,7 @@ type ConfigMaps struct {
 func NewConfigMaps(impl corev1.ConfigMapInterface) *ConfigMaps {
 	return &ConfigMaps{
 		impl: impl,
-		Log:  func(_ string, _ ...interface{}) {},
+		Log:  func(_ string, _ ...any) {},
 	}
 }
 

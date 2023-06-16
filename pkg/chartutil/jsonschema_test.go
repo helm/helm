@@ -119,9 +119,9 @@ func TestValidateAgainstSchema(t *testing.T) {
 	}
 	chrt.AddDependency(subchart)
 
-	vals := map[string]interface{}{
+	vals := map[string]any{
 		"name": "John",
-		"subchart": map[string]interface{}{
+		"subchart": map[string]any{
 			"age": 25,
 		},
 	}
@@ -146,9 +146,9 @@ func TestValidateAgainstSchemaNegative(t *testing.T) {
 	}
 	chrt.AddDependency(subchart)
 
-	vals := map[string]interface{}{
+	vals := map[string]any{
 		"name":     "John",
-		"subchart": map[string]interface{}{},
+		"subchart": map[string]any{},
 	}
 
 	var errString string

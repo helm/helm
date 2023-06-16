@@ -128,7 +128,7 @@ func isPlugin(dirname string) bool {
 
 var logger = log.New(os.Stderr, "[debug] ", log.Lshortfile)
 
-func debug(format string, args ...interface{}) {
+func debug(format string, args ...any) {
 	if Debug {
 		logger.Output(2, fmt.Sprintf(format, args...))
 	}

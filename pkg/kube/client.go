@@ -70,7 +70,7 @@ var ManagedFieldsManager string
 // Client represents a client capable of communicating with the Kubernetes API.
 type Client struct {
 	Factory Factory
-	Log     func(string, ...interface{})
+	Log     func(string, ...any)
 	// Namespace allows to bypass the kubeconfig file for the choice of the namespace
 	Namespace string
 
@@ -100,7 +100,7 @@ func New(getter genericclioptions.RESTClientGetter) *Client {
 	}
 }
 
-var nopLogger = func(_ string, _ ...interface{}) {}
+var nopLogger = func(_ string, _ ...any) {}
 
 // getKubeClient get or create a new KubernetesClientSet
 func (c *Client) getKubeClient() (*kubernetes.Clientset, error) {

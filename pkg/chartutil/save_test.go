@@ -136,7 +136,7 @@ func TestSavePreservesTimestamps(t *testing.T) {
 			Name:       "ahab",
 			Version:    "1.2.3",
 		},
-		Values: map[string]interface{}{
+		Values: map[string]any{
 			"imageName": "testimage",
 			"imageId":   42,
 		},

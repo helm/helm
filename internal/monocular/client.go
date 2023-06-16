@@ -31,7 +31,7 @@ type Client struct {
 	BaseURL string
 
 	// The internal logger to use
-	Log func(string, ...interface{})
+	Log func(string, ...any)
 }
 
 // New creates a new client
@@ -48,7 +48,7 @@ func New(u string) (*Client, error) {
 	}, nil
 }
 
-var nopLogger = func(_ string, _ ...interface{}) {}
+var nopLogger = func(_ string, _ ...any) {}
 
 // Validate if the base URL for monocular is valid.
 func validate(u string) error {
