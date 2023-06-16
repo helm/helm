@@ -34,6 +34,7 @@ import (
 
 const (
 	testfile            = "testdata/local-index.yaml"
+	jsontestfile        = "testdata/local-index-json.json"
 	annotationstestfile = "testdata/local-index-annotations.yaml"
 	chartmuseumtestfile = "testdata/chartmuseum-index.yaml"
 	unorderedTestfile   = "testdata/local-index-unordered.yaml"
@@ -144,6 +145,10 @@ func TestLoadIndex(t *testing.T) {
 		{
 			Name:     "chartmuseum index file",
 			Filename: chartmuseumtestfile,
+		},
+		{
+			Name:     "json index file",
+			Filename: jsontestfile,
 		},
 	}
 

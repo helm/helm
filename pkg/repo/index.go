@@ -18,6 +18,7 @@ package repo
 
 import (
 	"bytes"
+	"encoding/json"
 	"log"
 	"os"
 	"path"
@@ -332,12 +333,20 @@ func IndexDirectory(dir, baseURL string) (*IndexFile, error) {
 func loadIndex(data []byte, source string) (*IndexFile, error) {
 	i := &IndexFile{}
 
+	// TODO : add error for empty json
 	if len(data) == 0 {
 		return i, ErrEmptyIndexYaml
 	}
 
-	if err := yaml.UnmarshalStrict(data, i); err != nil {
-		return i, err
+	// TODO : check file type, if json, unmarshal with json.
+	if strings.HasSuffix(source, ".json") {
+		if err := json.Unmarshal(data, i); err != nil {
+			return i, err
+		}
+	} else {
+		if err := yaml.UnmarshalStrict(data, i); err != nil {
+			return i, err
+		}
 	}
 
 	for name, cvs := range i.Entries {
