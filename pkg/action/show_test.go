@@ -122,6 +122,48 @@ bar
 	}
 }
 
+func TestShowCRDsDisabledSubchart(t *testing.T) {
+	client := NewShow(ShowCRDs)
+	client.chart = &chart.Chart{
+		Metadata: &chart.Metadata{Name: "alpine", Dependencies: []*chart.Dependency{
+			{Name: "enabledSubchart", Condition: "enabledSubchart.enabled"},
+			{Name: "disabledSubchart", Condition: "disabledSubchart.enabled"},
+		}},
+		Values: map[string]interface{}{
+			"enabledSubchart": map[string]interface{}{
+				"enabled": true,
+			},
+			"disabledSubchart": map[string]interface{}{
+				"enabled": false,
+			},
+		},
+	}
+	client.chart.SetDependencies(&chart.Chart{
+		Metadata: &chart.Metadata{Name: "enabledSubchart"},
+		Files: []*chart.File{
+			{Name: "crds/bar.yaml", Data: []byte("---\nbar\n")},
+		},
+	}, &chart.Chart{
+		Metadata: &chart.Metadata{Name: "disabledSubchart"},
+		Files: []*chart.File{
+			{Name: "crds/baz.yaml", Data: []byte("---\nbaz\n")},
+		},
+	})
+
+	output, err := client.Run("")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expect := `---
+bar
+
+`
+	if output != expect {
+		t.Errorf("Expected\n%q\nGot\n%q\n", expect, output)
+	}
+}
+
 func TestShowNoReadme(t *testing.T) {
 	client := NewShow(ShowAll)
 	client.chart = &chart.Chart{
