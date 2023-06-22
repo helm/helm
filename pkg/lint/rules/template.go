@@ -261,7 +261,7 @@ func validateMetadataNameFunc(obj *K8sYamlStruct) validation.ValidateNameFunc {
 		return validation.ValidateNamespaceName
 	case "serviceaccount":
 		return validation.ValidateServiceAccountName
-	case "certificatesigningrequest":
+	case "certificatesigningrequest", "list":
 		// No validation.
 		// https://github.com/kubernetes/kubernetes/blob/v1.20.0/pkg/apis/certificates/validation/validation.go#L137-L140
 		return func(name string, prefix bool) []string { return nil }
