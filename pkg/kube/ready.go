@@ -89,6 +89,13 @@ type ReadyChecker struct {
 // IsReady will fetch the latest state of the object from the server prior to
 // performing readiness checks, and it will return any error encountered.
 func (c *ReadyChecker) IsReady(ctx context.Context, v *resource.Info) (bool, error) {
+	var (
+		// This defaults to true, otherwise we get to a point where
+		// things will always return false unless one of the objects
+		// that manages pods has been hit
+		ok  = true
+		err error
+	)
 	switch value := AsVersioned(v).(type) {
 	case *corev1.Pod:
 		pod, err := c.client.CoreV1().Pods(v.Namespace).Get(ctx, v.Name, metav1.GetOptions{})
@@ -394,7 +401,7 @@ func (c *ReadyChecker) statefulSetReady(sts *appsv1.StatefulSet) bool {
 	// Dereference all the pointers because StatefulSets like them
 	var partition int
 	// 1 is the default for replicas if not set
-	var replicas = 1
+	replicas := 1
 	// For some reason, even if the update strategy is a rolling update, the
 	// actual rollingUpdate field can be nil. If it is, we can safely assume
 	// there is no partition value
