@@ -18,6 +18,8 @@ package repo
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"log"
 	"os"
 	"path"
@@ -101,16 +103,45 @@ func NewIndexFile() *IndexFile {
 	}
 }
 
+// indexFileCache stores previously loaded index files
+var indexFileCache = make(map[string]*IndexFile)
+
+// indexFileByteCache stores previously loaded index files based on file content
+var indexFileByteCache = make(map[string]*IndexFile)
+
 // LoadIndexFile takes a file at the given path and returns an IndexFile object
 func LoadIndexFile(path string) (*IndexFile, error) {
+	// If the file is already loaded, return it from the cache
+	if cached, ok := indexFileCache[path]; ok {
+		return cached, nil
+	}
+
+	// If the file is not in the cache, load it
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
+
+	// Hash the file content and use the hash as the key for caching
+	hasher := sha256.New()
+	hasher.Write(b)
+	hashKey := hex.EncodeToString(hasher.Sum(nil))
+
+	if cached, ok := indexFileByteCache[hashKey]; ok {
+		// Store the loaded file in the path-based cache too
+		indexFileCache[path] = cached
+		return cached, nil
+	}
+
 	i, err := loadIndex(b, path)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error loading %s", path)
 	}
+
+	// Store the loaded file in both caches
+	indexFileCache[path] = i
+	indexFileByteCache[hashKey] = i
+
 	return i, nil
 }
 
