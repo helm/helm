@@ -334,7 +334,10 @@ func IndexDirectory(dir, baseURL string) (*IndexFile, error) {
 // This will fail if API Version is not set (ErrNoAPIVersion) or if the unmarshal fails.
 func loadIndex(data []byte, source string) (*IndexFile, error) {
 	i := &IndexFile{}
-	isjson := strings.HasSuffix(source, ".json")
+	var isJSON bool
+	if fileExt := filepath.Ext(source); fileExt == ".json" {
+		isJSON = true
+	}
 
 	// TODO : add error for empty json
 	if len(data) == 0 {
