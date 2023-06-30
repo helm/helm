@@ -412,6 +412,17 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 			panic(fmt.Sprintf("Unable to instantiate SQL driver: %v", err))
 		}
 		store = storage.Init(d)
+	case "s3", "S3Driver":
+		d, err := driver.NewS3(
+			os.Getenv("HELM_DRIVER_S3_BUCKET_NAME"),
+			log,
+			namespace,
+		)
+		if err != nil {
+			panic(fmt.Sprintf("Unable to instantiate S3 driver: %v", err))
+		}
+		store = storage.Init(d)
+
 	default:
 		// Not sure what to do here.
 		panic("Unknown driver in HELM_DRIVER: " + helmDriver)
