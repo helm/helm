@@ -85,6 +85,52 @@ type EnvSettings struct {
 	BurstLimit int
 }
 
+func NewCustomEnvs(kubeConfigPath string, debugFlag bool) *EnvSettings {
+	// Add custom kubeconfig
+	env := &EnvSettings{
+		namespace:                 os.Getenv("HELM_NAMESPACE"),
+		MaxHistory:                envIntOr("HELM_MAX_HISTORY", defaultMaxHistory),
+		KubeContext:               os.Getenv("HELM_KUBECONTEXT"),
+		KubeConfig:                kubeConfigPath,
+		KubeToken:                 os.Getenv("HELM_KUBETOKEN"),
+		KubeAsUser:                os.Getenv("HELM_KUBEASUSER"),
+		KubeAsGroups:              envCSV("HELM_KUBEASGROUPS"),
+		KubeAPIServer:             os.Getenv("HELM_KUBEAPISERVER"),
+		KubeCaFile:                os.Getenv("HELM_KUBECAFILE"),
+		KubeTLSServerName:         os.Getenv("HELM_KUBETLS_SERVER_NAME"),
+		KubeInsecureSkipTLSVerify: envBoolOr("HELM_KUBEINSECURE_SKIP_TLS_VERIFY", false),
+		PluginsDirectory:          envOr("HELM_PLUGINS", helmpath.DataPath("plugins")),
+		RegistryConfig:            envOr("HELM_REGISTRY_CONFIG", helmpath.ConfigPath("registry/config.json")),
+		RepositoryConfig:          envOr("HELM_REPOSITORY_CONFIG", helmpath.ConfigPath("repositories.yaml")),
+		RepositoryCache:           envOr("HELM_REPOSITORY_CACHE", helmpath.CachePath("repository")),
+		BurstLimit:                envIntOr("HELM_BURST_LIMIT", defaultBurstLimit),
+	}
+	// env.Debug, _ = strconv.ParseBool(os.Getenv("HELM_DEBUG"))
+	env.Debug = debugFlag
+
+	// bind to kubernetes config flags
+	env.config = &genericclioptions.ConfigFlags{
+		Namespace:        &env.namespace,
+		Context:          &env.KubeContext,
+		BearerToken:      &env.KubeToken,
+		APIServer:        &env.KubeAPIServer,
+		CAFile:           &env.KubeCaFile,
+		KubeConfig:       &env.KubeConfig,
+		Impersonate:      &env.KubeAsUser,
+		Insecure:         &env.KubeInsecureSkipTLSVerify,
+		TLSServerName:    &env.KubeTLSServerName,
+		ImpersonateGroup: &env.KubeAsGroups,
+		WrapConfigFn: func(config *rest.Config) *rest.Config {
+			config.Burst = env.BurstLimit
+			config.Wrap(func(rt http.RoundTripper) http.RoundTripper {
+				return &retryingRoundTripper{wrapped: rt}
+			})
+			config.UserAgent = version.GetUserAgent()
+			return config
+		},
+	}
+	return env
+}
 func New() *EnvSettings {
 	env := &EnvSettings{
 		namespace:                 os.Getenv("HELM_NAMESPACE"),
