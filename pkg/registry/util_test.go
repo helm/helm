@@ -137,7 +137,7 @@ func TestGenerateOCIChartAnnotations(t *testing.T) {
 
 	for _, tt := range tests {
 
-		result := generateChartOCIAnnotations(tt.chart)
+		result := generateChartOCIAnnotations(tt.chart, true)
 
 		if !reflect.DeepEqual(tt.expect, result) {
 			t.Errorf("%s: expected map %v, got %v", tt.name, tt.expect, result)
@@ -206,7 +206,7 @@ func TestGenerateOCIAnnotations(t *testing.T) {
 
 	for _, tt := range tests {
 
-		result := generateOCIAnnotations(tt.chart)
+		result := generateOCIAnnotations(tt.chart, true)
 
 		if !reflect.DeepEqual(tt.expect, result) {
 			t.Errorf("%s: expected map %v, got %v", tt.name, tt.expect, result)
