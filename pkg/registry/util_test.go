@@ -19,8 +19,12 @@ package registry // import "helm.sh/helm/v3/pkg/registry"
 import (
 	"reflect"
 	"testing"
+	"time"
+
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	"helm.sh/helm/v3/pkg/chart"
+	helmtime "helm.sh/helm/v3/pkg/time"
 )
 
 func TestGenerateOCIChartAnnotations(t *testing.T) {
@@ -213,4 +217,24 @@ func TestGenerateOCIAnnotations(t *testing.T) {
 		}
 
 	}
+}
+
+func TestGenerateOCICreatedAnnotations(t *testing.T) {
+	chart := &chart.Metadata{
+		Name:    "oci",
+		Version: "0.0.1",
+	}
+
+	result := generateOCIAnnotations(chart, false)
+
+	// Check that created annotation exists
+	if _, ok := result[ocispec.AnnotationCreated]; !ok {
+		t.Errorf("%s annotation not created", ocispec.AnnotationCreated)
+	}
+
+	// Verify value of created artifact in RFC3339 format
+	if _, err := helmtime.Parse(time.RFC3339, result[ocispec.AnnotationCreated]); err != nil {
+		t.Errorf("%s annotation with value '%s' not in RFC3339 format", ocispec.AnnotationCreated, result[ocispec.AnnotationCreated])
+	}
+
 }
