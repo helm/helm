@@ -498,6 +498,7 @@ type (
 	pushOperation struct {
 		provData   []byte
 		strictMode bool
+		test       bool
 	}
 )
 
@@ -551,7 +552,7 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 		descriptors = append(descriptors, provDescriptor)
 	}
 
-	ociAnnotations := generateOCIAnnotations(meta)
+	ociAnnotations := generateOCIAnnotations(meta, operation.test)
 
 	manifestData, manifest, err := content.GenerateManifest(&configDescriptor, ociAnnotations, descriptors...)
 	if err != nil {
@@ -613,6 +614,13 @@ func PushOptProvData(provData []byte) PushOption {
 func PushOptStrictMode(strictMode bool) PushOption {
 	return func(operation *pushOperation) {
 		operation.strictMode = strictMode
+	}
+}
+
+// PushOptTest returns a function that sets whether test setting on push
+func PushOptTest(test bool) PushOption {
+	return func(operation *pushOperation) {
+		operation.test = test
 	}
 }
 

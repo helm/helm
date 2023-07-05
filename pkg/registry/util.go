@@ -23,6 +23,9 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
+
+	helmtime "helm.sh/helm/v3/pkg/time"
 
 	"github.com/Masterminds/semver/v3"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -163,10 +166,10 @@ func NewRegistryClientWithTLS(out io.Writer, certFile, keyFile, caFile string, i
 }
 
 // generateOCIAnnotations will generate OCI annotations to include within the OCI manifest
-func generateOCIAnnotations(meta *chart.Metadata) map[string]string {
+func generateOCIAnnotations(meta *chart.Metadata, test bool) map[string]string {
 
 	// Get annotations from Chart attributes
-	ociAnnotations := generateChartOCIAnnotations(meta)
+	ociAnnotations := generateChartOCIAnnotations(meta, test)
 
 	// Copy Chart annotations
 annotations:
@@ -187,13 +190,17 @@ annotations:
 }
 
 // getChartOCIAnnotations will generate OCI annotations from the provided chart
-func generateChartOCIAnnotations(meta *chart.Metadata) map[string]string {
+func generateChartOCIAnnotations(meta *chart.Metadata, test bool) map[string]string {
 	chartOCIAnnotations := map[string]string{}
 
 	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationDescription, meta.Description)
 	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationTitle, meta.Name)
 	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationVersion, meta.Version)
 	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationURL, meta.Home)
+
+	if !test {
+		chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationCreated, helmtime.Now().UTC().Format(time.RFC3339))
+	}
 
 	if len(meta.Sources) > 0 {
 		chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationSource, meta.Sources[0])

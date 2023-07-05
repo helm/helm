@@ -216,7 +216,7 @@ func initCompromisedRegistryTestServer() string {
 func testPush(suite *TestSuite) {
 	// Bad bytes
 	ref := fmt.Sprintf("%s/testrepo/testchart:1.2.3", suite.DockerRegistryHost)
-	_, err := suite.RegistryClient.Push([]byte("hello"), ref)
+	_, err := suite.RegistryClient.Push([]byte("hello"), ref, PushOptTest(true))
 	suite.NotNil(err, "error pushing non-chart bytes")
 
 	// Load a test chart
@@ -227,20 +227,20 @@ func testPush(suite *TestSuite) {
 
 	// non-strict ref (chart name)
 	ref = fmt.Sprintf("%s/testrepo/boop:%s", suite.DockerRegistryHost, meta.Version)
-	_, err = suite.RegistryClient.Push(chartData, ref)
+	_, err = suite.RegistryClient.Push(chartData, ref, PushOptTest(true))
 	suite.NotNil(err, "error pushing non-strict ref (bad basename)")
 
 	// non-strict ref (chart name), with strict mode disabled
-	_, err = suite.RegistryClient.Push(chartData, ref, PushOptStrictMode(false))
+	_, err = suite.RegistryClient.Push(chartData, ref, PushOptStrictMode(false), PushOptTest(true))
 	suite.Nil(err, "no error pushing non-strict ref (bad basename), with strict mode disabled")
 
 	// non-strict ref (chart version)
 	ref = fmt.Sprintf("%s/testrepo/%s:latest", suite.DockerRegistryHost, meta.Name)
-	_, err = suite.RegistryClient.Push(chartData, ref)
+	_, err = suite.RegistryClient.Push(chartData, ref, PushOptTest(true))
 	suite.NotNil(err, "error pushing non-strict ref (bad tag)")
 
 	// non-strict ref (chart version), with strict mode disabled
-	_, err = suite.RegistryClient.Push(chartData, ref, PushOptStrictMode(false))
+	_, err = suite.RegistryClient.Push(chartData, ref, PushOptStrictMode(false), PushOptTest(true))
 	suite.Nil(err, "no error pushing non-strict ref (bad tag), with strict mode disabled")
 
 	// basic push, good ref
@@ -249,7 +249,7 @@ func testPush(suite *TestSuite) {
 	meta, err = extractChartMeta(chartData)
 	suite.Nil(err, "no error extracting chart meta")
 	ref = fmt.Sprintf("%s/testrepo/%s:%s", suite.DockerRegistryHost, meta.Name, meta.Version)
-	_, err = suite.RegistryClient.Push(chartData, ref)
+	_, err = suite.RegistryClient.Push(chartData, ref, PushOptTest(true))
 	suite.Nil(err, "no error pushing good ref")
 
 	_, err = suite.RegistryClient.Pull(ref)
@@ -267,7 +267,7 @@ func testPush(suite *TestSuite) {
 
 	// push with prov
 	ref = fmt.Sprintf("%s/testrepo/%s:%s", suite.DockerRegistryHost, meta.Name, meta.Version)
-	result, err := suite.RegistryClient.Push(chartData, ref, PushOptProvData(provData))
+	result, err := suite.RegistryClient.Push(chartData, ref, PushOptProvData(provData), PushOptTest(true))
 	suite.Nil(err, "no error pushing good ref with prov")
 
 	_, err = suite.RegistryClient.Pull(ref)
