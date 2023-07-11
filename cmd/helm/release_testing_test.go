@@ -54,13 +54,13 @@ func TestReleaseTesting(t *testing.T) {
 	tests := []cmdTestCase{
 		{
 			name:   "test without logs",
-			cmd:    "test doge",
+			cmd:    "test shiny-shibe",
 			golden: "output/test-without-logs.txt",
 			rels:   mockReleases,
 		},
 		{
 			name:   "test with logs",
-			cmd:    "test doge --logs",
+			cmd:    "test shiny-shibe --logs",
 			golden: "output/test-with-logs.txt",
 			rels:   mockReleases,
 		},
@@ -98,11 +98,11 @@ func checkLineAs(out outputFormat) func(expected, actual string) (bool, error) {
 }
 
 func createMockRelease() *release.Release {
-	rel := release.Mock(&release.MockReleaseOptions{Name: "doge"})
+	rel := release.Mock(&release.MockReleaseOptions{Name: "shiny-shibe"})
 	rel.Hooks[0] = &release.Hook{
-		Name:   "doge-test-pod",
+		Name:   "shiny-shibe-test-pod",
 		Kind:   "Pod",
-		Path:   "doge-test-pod",
+		Path:   "shiny-shibe-test-pod",
 		Events: []release.HookEvent{release.HookTest},
 	}
 	return rel
