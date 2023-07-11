@@ -20,7 +20,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/url"
 	"os"
@@ -249,7 +248,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	destPath := filepath.Join(m.ChartPath, "charts")
 	tmpPath := filepath.Join(m.ChartPath, "tmpcharts")
 
-	// Check if 'charts' directory is not actally a directory. If it does not exist, create it.
+	// Check if 'charts' directory is not actually a directory. If it does not exist, create it.
 	if fi, err := os.Stat(destPath); err == nil {
 		if !fi.IsDir() {
 			return errors.Errorf("%q is not a directory", destPath)
@@ -400,12 +399,12 @@ func parseOCIRef(chartRef string) (string, string, error) {
 func (m *Manager) safeMoveDeps(deps []*chart.Dependency, source, dest string) error {
 	existsInSourceDirectory := map[string]bool{}
 	isLocalDependency := map[string]bool{}
-	sourceFiles, err := ioutil.ReadDir(source)
+	sourceFiles, err := os.ReadDir(source)
 	if err != nil {
 		return err
 	}
 	// attempt to read destFiles; fail fast if we can't
-	destFiles, err := ioutil.ReadDir(dest)
+	destFiles, err := os.ReadDir(dest)
 	if err != nil {
 		return err
 	}
@@ -436,7 +435,7 @@ func (m *Manager) safeMoveDeps(deps []*chart.Dependency, source, dest string) er
 	}
 
 	fmt.Fprintln(m.Out, "Deleting outdated charts")
-	// find all files that exist in dest that do not exist in source; delete them (outdated dependendencies)
+	// find all files that exist in dest that do not exist in source; delete them (outdated dependencies)
 	for _, file := range destFiles {
 		if !file.IsDir() && !existsInSourceDirectory[file.Name()] {
 			fname := filepath.Join(dest, file.Name())
@@ -845,7 +844,7 @@ func writeLock(chartpath string, lock *chart.Lock, legacyLockfile bool) error {
 		lockfileName = "requirements.lock"
 	}
 	dest := filepath.Join(chartpath, lockfileName)
-	return ioutil.WriteFile(dest, data, 0644)
+	return os.WriteFile(dest, data, 0644)
 }
 
 // archive a dep chart from local directory and save it into destPath

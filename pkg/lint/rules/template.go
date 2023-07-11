@@ -141,10 +141,11 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 					break
 				}
 
-				// If YAML linting fails, we sill progress. So we don't capture the returned state
-				// on this linter run.
-				linter.RunLinterRule(support.ErrorSev, fpath, validateYamlContent(err))
-
+				//  If YAML linting fails here, it will always fail in the next block as well, so we should return here.
+				// fix https://github.com/helm/helm/issues/11391
+				if !linter.RunLinterRule(support.ErrorSev, fpath, validateYamlContent(err)) {
+					return
+				}
 				if yamlStruct != nil {
 					// NOTE: set to warnings to allow users to support out-of-date kubernetes
 					// Refs https://github.com/helm/helm/issues/8596

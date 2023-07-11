@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/internal/fileutil"
@@ -141,22 +142,31 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 }
 
 func (c *ChartDownloader) getOciURI(ref, version string, u *url.URL) (*url.URL, error) {
-	// Retrieve list of repository tags
-	tags, err := c.RegistryClient.Tags(strings.TrimPrefix(ref, fmt.Sprintf("%s://", registry.OCIScheme)))
-	if err != nil {
-		return nil, err
-	}
-	if len(tags) == 0 {
-		return nil, errors.Errorf("Unable to locate any tags in provided repository: %s", ref)
-	}
+	var tag string
+	var err error
 
-	// Determine if version provided
-	// If empty, try to get the highest available tag
-	// If exact version, try to find it
-	// If semver constraint string, try to find a match
-	tag, err := registry.GetTagMatchingVersionOrConstraint(tags, version)
-	if err != nil {
-		return nil, err
+	// Evaluate whether an explicit version has been provided. Otherwise, determine version to use
+	_, errSemVer := semver.NewVersion(version)
+	if errSemVer == nil {
+		tag = version
+	} else {
+		// Retrieve list of repository tags
+		tags, err := c.RegistryClient.Tags(strings.TrimPrefix(ref, fmt.Sprintf("%s://", registry.OCIScheme)))
+		if err != nil {
+			return nil, err
+		}
+		if len(tags) == 0 {
+			return nil, errors.Errorf("Unable to locate any tags in provided repository: %s", ref)
+		}
+
+		// Determine if version provided
+		// If empty, try to get the highest available tag
+		// If exact version, try to find it
+		// If semver constraint string, try to find a match
+		tag, err = registry.GetTagMatchingVersionOrConstraint(tags, version)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	u.Path = fmt.Sprintf("%s:%s", u.Path, tag)
@@ -174,11 +184,11 @@ func (c *ChartDownloader) getOciURI(ref, version string, u *url.URL) (*url.URL, 
 //
 // A version is a SemVer string (1.2.3-beta.1+f334a6789).
 //
-//	- For fully qualified URLs, the version will be ignored (since URLs aren't versioned)
-//	- For a chart reference
-//		* If version is non-empty, this will return the URL for that version
-//		* If version is empty, this will return the URL for the latest version
-//		* If no version can be found, an error is returned
+//   - For fully qualified URLs, the version will be ignored (since URLs aren't versioned)
+//   - For a chart reference
+//   - If version is non-empty, this will return the URL for that version
+//   - If version is empty, this will return the URL for the latest version
+//   - If no version can be found, an error is returned
 func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, error) {
 	u, err := url.Parse(ref)
 	if err != nil {
@@ -284,31 +294,13 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 	}
 
 	// TODO: Seems that picking first URL is not fully correct
-	u, err = url.Parse(cv.URLs[0])
+	resolvedURL, err := repo.ResolveReferenceURL(rc.URL, cv.URLs[0])
+
 	if err != nil {
 		return u, errors.Errorf("invalid chart URL format: %s", ref)
 	}
 
-	// If the URL is relative (no scheme), prepend the chart repo's base URL
-	if !u.IsAbs() {
-		repoURL, err := url.Parse(rc.URL)
-		if err != nil {
-			return repoURL, err
-		}
-		q := repoURL.Query()
-		// We need a trailing slash for ResolveReference to work, but make sure there isn't already one
-		repoURL.Path = strings.TrimSuffix(repoURL.Path, "/") + "/"
-		u = repoURL.ResolveReference(u)
-		u.RawQuery = q.Encode()
-		// TODO add user-agent
-		if _, err := getter.NewHTTPGetter(getter.WithURL(rc.URL)); err != nil {
-			return repoURL, err
-		}
-		return u, err
-	}
-
-	// TODO add user-agent
-	return u, nil
+	return url.Parse(resolvedURL)
 }
 
 // VerifyChart takes a path to a chart archive and a keyring, and verifies the chart.

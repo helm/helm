@@ -17,7 +17,6 @@ limitations under the License.
 package rules
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -168,7 +167,7 @@ func TestValidateValuesFile(t *testing.T) {
 func createTestingSchema(t *testing.T, dir string) string {
 	t.Helper()
 	schemafile := filepath.Join(dir, "values.schema.json")
-	if err := ioutil.WriteFile(schemafile, []byte(testSchema), 0700); err != nil {
+	if err := os.WriteFile(schemafile, []byte(testSchema), 0700); err != nil {
 		t.Fatalf("Failed to write schema to tmpdir: %s", err)
 	}
 	return schemafile

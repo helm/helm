@@ -17,7 +17,6 @@ limitations under the License.
 package repo
 
 import (
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -115,11 +114,11 @@ func TestRepoFile_Get(t *testing.T) {
 	name := "second"
 
 	entry := repo.Get(name)
-	if entry == nil {
+	if entry == nil { //nolint:staticcheck
 		t.Fatalf("Expected repo entry %q to be found", name)
 	}
 
-	if entry.URL != "https://example.com/second" {
+	if entry.URL != "https://example.com/second" { //nolint:staticcheck
 		t.Errorf("Expected repo URL to be %q but got %q", "https://example.com/second", entry.URL)
 	}
 
@@ -198,12 +197,12 @@ func TestWriteFile(t *testing.T) {
 		},
 	)
 
-	file, err := ioutil.TempFile("", "helm-repo")
+	file, err := os.CreateTemp("", "helm-repo")
 	if err != nil {
 		t.Errorf("failed to create test-file (%v)", err)
 	}
 	defer os.Remove(file.Name())
-	if err := sampleRepository.WriteFile(file.Name(), 0644); err != nil {
+	if err := sampleRepository.WriteFile(file.Name(), 0600); err != nil {
 		t.Errorf("failed to write file (%v)", err)
 	}
 
@@ -223,5 +222,36 @@ func TestRepoNotExists(t *testing.T) {
 		t.Errorf("expected err to be non-nil when path does not exist")
 	} else if !strings.Contains(err.Error(), "couldn't load repositories file") {
 		t.Errorf("expected prompt `couldn't load repositories file`")
+	}
+}
+
+func TestRemoveRepositoryInvalidEntries(t *testing.T) {
+	sampleRepository := NewFile()
+	sampleRepository.Add(
+		&Entry{
+			Name: "stable",
+			URL:  "https://example.com/stable/charts",
+		},
+		&Entry{
+			Name: "incubator",
+			URL:  "https://example.com/incubator",
+		},
+		&Entry{},
+		nil,
+		&Entry{
+			Name: "test",
+			URL:  "https://example.com/test",
+		},
+	)
+
+	removeRepository := "stable"
+	found := sampleRepository.Remove(removeRepository)
+	if !found {
+		t.Errorf("expected repository %s not found", removeRepository)
+	}
+
+	found = sampleRepository.Has(removeRepository)
+	if found {
+		t.Errorf("repository %s not deleted", removeRepository)
 	}
 }
