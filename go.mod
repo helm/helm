@@ -33,7 +33,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.2
 	github.com/xeipuuv/gojsonschema v1.2.0
-	golang.org/x/crypto v0.5.0
+	golang.org/x/crypto v0.7.0
 	golang.org/x/term v0.6.0
 	golang.org/x/text v0.9.0
 	k8s.io/api v0.27.2
@@ -44,7 +44,7 @@ require (
 	k8s.io/client-go v0.27.2
 	k8s.io/klog/v2 v2.90.1
 	k8s.io/kubectl v0.27.2
-	oras.land/oras-go v1.2.2
+	oras.land/oras-go v1.2.3
 	sigs.k8s.io/yaml v1.3.0
 )
 
@@ -63,9 +63,9 @@ require (
 	github.com/chai2010/gettext-go v1.0.2 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/docker/cli v20.10.21+incompatible // indirect
+	github.com/docker/cli v23.0.1+incompatible // indirect
 	github.com/docker/distribution v2.8.2+incompatible // indirect
-	github.com/docker/docker v20.10.24+incompatible // indirect
+	github.com/docker/docker v23.0.1+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.7.0 // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
@@ -153,7 +153,6 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gotest.tools/v3 v3.4.0 // indirect
 	k8s.io/component-base v0.27.2 // indirect
 	k8s.io/kube-openapi v0.0.0-20230501164219-8b0f38b5fd1f // indirect
 	k8s.io/utils v0.0.0-20230220204549-a5ecb0141aa5 // indirect
