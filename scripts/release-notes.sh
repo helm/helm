@@ -89,6 +89,7 @@ Download Helm ${RELEASE}. The common platform binaries are here:
 - [Linux i386](https://get.helm.sh/helm-${RELEASE}-linux-386.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-386.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-386.tar.gz.sha256))
 - [Linux ppc64le](https://get.helm.sh/helm-${RELEASE}-linux-ppc64le.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-ppc64le.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-ppc64le.tar.gz.sha256))
 - [Linux s390x](https://get.helm.sh/helm-${RELEASE}-linux-s390x.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-s390x.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-s390x.tar.gz.sha256))
+- [Linux riscv64](https://get.helm.sh/helm-${RELEASE}-linux-riscv64.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-riscv64.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-riscv64.tar.gz.sha256))
 - [Windows amd64](https://get.helm.sh/helm-${RELEASE}-windows-amd64.zip) ([checksum](https://get.helm.sh/helm-${RELEASE}-windows-amd64.zip.sha256sum) / $(cat _dist/helm-${RELEASE}-windows-amd64.zip.sha256))
 
 The [Quickstart Guide](https://helm.sh/docs/intro/quickstart/) will get you going from there. For **upgrade instructions** or detailed installation notes, check the [install guide](https://helm.sh/docs/intro/install/). You can also use a [script to install](https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3) on any system with \`bash\`.
