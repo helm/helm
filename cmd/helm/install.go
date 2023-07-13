@@ -252,6 +252,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 					RepositoryConfig: settings.RepositoryConfig,
 					RepositoryCache:  settings.RepositoryCache,
 					Debug:            settings.Debug,
+					RegistryClient:   client.GetRegistryClient(),
 				}
 				if err := man.Update(); err != nil {
 					return nil, err
