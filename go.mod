@@ -36,12 +36,12 @@ require (
 	golang.org/x/crypto v0.11.0
 	golang.org/x/term v0.10.0
 	golang.org/x/text v0.11.0
-	k8s.io/api v0.27.2
+	k8s.io/api v0.27.3
 	k8s.io/apiextensions-apiserver v0.27.2
-	k8s.io/apimachinery v0.27.2
+	k8s.io/apimachinery v0.27.3
 	k8s.io/apiserver v0.27.2
-	k8s.io/cli-runtime v0.27.2
-	k8s.io/client-go v0.27.2
+	k8s.io/cli-runtime v0.27.3
+	k8s.io/client-go v0.27.3
 	k8s.io/klog/v2 v2.100.1
 	k8s.io/kubectl v0.27.2
 	oras.land/oras-go v1.2.3
