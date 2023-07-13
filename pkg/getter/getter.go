@@ -35,7 +35,6 @@ type options struct {
 	certFile              string
 	keyFile               string
 	caFile                string
-	unTar                 bool
 	insecureSkipVerifyTLS bool
 	username              string
 	password              string
@@ -112,12 +111,6 @@ func WithTagName(tagname string) Option {
 func WithRegistryClient(client *registry.Client) Option {
 	return func(opts *options) {
 		opts.registryClient = client
-	}
-}
-
-func WithUntar() Option {
-	return func(opts *options) {
-		opts.unTar = true
 	}
 }
 
