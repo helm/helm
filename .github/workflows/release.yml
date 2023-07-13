@@ -21,7 +21,7 @@ jobs:
         uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b # pin@v3.2.0
 
       - name: Setup Go
-        uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # pin@3.5.0
+        uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # pin@4.0.1
         with:
           go-version: '1.20'
       
@@ -52,7 +52,7 @@ jobs:
         uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b # pin@v3.2.0
 
       - name: Setup Go
-        uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # pin@3.5.0
+        uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # pin@4.0.1
         with:
           go-version: '1.20'
 
