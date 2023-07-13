@@ -275,13 +275,6 @@ func getResource(info *resource.Info) (runtime.Object, error) {
 
 // Wait waits up to the given timeout for the specified resources to be ready.
 func (c *Client) Wait(resources ResourceList, timeout time.Duration) error {
-	return c.WaitWithRetry(resources, timeout, 0)
-}
-
-// WaitWithRetry waits up to the given timeout for the specified resources to be ready. If an error
-// is encountered when checking on the status of a resource then retries will be performed subject
-// to the given maximum number of retries
-func (c *Client) WaitWithRetry(resources ResourceList, timeout time.Duration, waitRetries int) error {
 	cs, err := c.getKubeClient()
 	if err != nil {
 		return err
@@ -292,18 +285,11 @@ func (c *Client) WaitWithRetry(resources ResourceList, timeout time.Duration, wa
 		log:     c.Log,
 		timeout: timeout,
 	}
-	return w.waitForResources(resources, waitRetries)
+	return w.waitForResources(resources)
 }
 
 // WaitWithJobs wait up to the given timeout for the specified resources to be ready, including jobs.
 func (c *Client) WaitWithJobs(resources ResourceList, timeout time.Duration) error {
-	return c.WaitWithJobsWithRetry(resources, timeout, 0)
-}
-
-// WaitWithJobsWithRetry waits up to the given timeout for the specified resources to be ready, including jobs.
-// If an error is encountered when checking on the status of a resource then retries will be performed subject
-// to the given maximum number of retries
-func (c *Client) WaitWithJobsWithRetry(resources ResourceList, timeout time.Duration, waitRetries int) error {
 	cs, err := c.getKubeClient()
 	if err != nil {
 		return err
@@ -314,7 +300,7 @@ func (c *Client) WaitWithJobsWithRetry(resources ResourceList, timeout time.Dura
 		log:     c.Log,
 		timeout: timeout,
 	}
-	return w.waitForResources(resources, waitRetries)
+	return w.waitForResources(resources)
 }
 
 // WaitForDelete wait up to the given timeout for the specified resources to be deleted.

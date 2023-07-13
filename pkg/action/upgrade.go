@@ -68,8 +68,6 @@ type Upgrade struct {
 	Wait bool
 	// WaitForJobs determines whether the wait operation for the Jobs should be performed after the upgrade is requested.
 	WaitForJobs bool
-	// WaitRetries determines whether any failed resource state checks will be retried during the wait operation.
-	WaitRetries int
 	// DisableHooks disables hook processing if set to true.
 	DisableHooks bool
 	// DryRun controls whether the operation is prepared, but not executed.
@@ -404,24 +402,18 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 		u.cfg.Log(
 			"waiting for release %s resources (created: %d updated: %d  deleted: %d)",
 			upgradedRelease.Name, len(results.Created), len(results.Updated), len(results.Deleted))
-		var err error
 		if u.WaitForJobs {
-			if kubeClient, ok := u.cfg.KubeClient.(kube.InterfaceWithRetry); ok {
-				err = kubeClient.WaitWithJobsWithRetry(target, u.Timeout, u.WaitRetries)
-			} else {
-				err = u.cfg.KubeClient.WaitWithJobs(target, u.Timeout)
+			if err := u.cfg.KubeClient.WaitWithJobs(target, u.Timeout); err != nil {
+				u.cfg.recordRelease(originalRelease)
+				u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
+				return
 			}
 		} else {
-			if kubeClient, ok := u.cfg.KubeClient.(kube.InterfaceWithRetry); ok {
-				err = kubeClient.WaitWithRetry(target, u.Timeout, u.WaitRetries)
-			} else {
-				err = u.cfg.KubeClient.Wait(target, u.Timeout)
+			if err := u.cfg.KubeClient.Wait(target, u.Timeout); err != nil {
+				u.cfg.recordRelease(originalRelease)
+				u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
+				return
 			}
-		}
-		if err != nil {
-			u.cfg.recordRelease(originalRelease)
-			u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
-			return
 		}
 	}
 

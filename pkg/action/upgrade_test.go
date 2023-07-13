@@ -88,28 +88,6 @@ func TestUpgradeRelease_Wait(t *testing.T) {
 	is.Contains(res.Info.Description, "I timed out")
 	is.Equal(res.Info.Status, release.StatusFailed)
 }
-func TestUpgradeRelease_Wait_With_Retries(t *testing.T) {
-	is := assert.New(t)
-	req := require.New(t)
-
-	upAction := upgradeAction(t)
-	rel := releaseStub()
-	rel.Name = "come-fail-away"
-	rel.Info.Status = release.StatusDeployed
-	upAction.cfg.Releases.Create(rel)
-
-	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-	failer.WaitError = fmt.Errorf("I timed out")
-	upAction.cfg.KubeClient = failer
-	upAction.Wait = true
-	upAction.WaitRetries = 2
-	vals := map[string]interface{}{}
-
-	res, err := upAction.Run(rel.Name, buildChart(), vals)
-	req.Error(err)
-	is.Contains(res.Info.Description, "I timed out")
-	is.Equal(res.Info.Status, release.StatusFailed)
-}
 
 func TestUpgradeRelease_WaitForJobs(t *testing.T) {
 	is := assert.New(t)
@@ -126,30 +104,6 @@ func TestUpgradeRelease_WaitForJobs(t *testing.T) {
 	upAction.cfg.KubeClient = failer
 	upAction.Wait = true
 	upAction.WaitForJobs = true
-	vals := map[string]interface{}{}
-
-	res, err := upAction.Run(rel.Name, buildChart(), vals)
-	req.Error(err)
-	is.Contains(res.Info.Description, "I timed out")
-	is.Equal(res.Info.Status, release.StatusFailed)
-}
-
-func TestUpgradeRelease_WaitForJobs_With_Retries(t *testing.T) {
-	is := assert.New(t)
-	req := require.New(t)
-
-	upAction := upgradeAction(t)
-	rel := releaseStub()
-	rel.Name = "come-fail-away"
-	rel.Info.Status = release.StatusDeployed
-	upAction.cfg.Releases.Create(rel)
-
-	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-	failer.WaitError = fmt.Errorf("I timed out")
-	upAction.cfg.KubeClient = failer
-	upAction.Wait = true
-	upAction.WaitForJobs = true
-	upAction.WaitRetries = 2
 	vals := map[string]interface{}{}
 
 	res, err := upAction.Run(rel.Name, buildChart(), vals)

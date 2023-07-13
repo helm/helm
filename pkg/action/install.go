@@ -77,7 +77,6 @@ type Install struct {
 	Replace                  bool
 	Wait                     bool
 	WaitForJobs              bool
-	WaitRetries              int
 	Devel                    bool
 	DependencyUpdate         bool
 	Timeout                  time.Duration
@@ -414,23 +413,16 @@ func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, t
 	}
 
 	if i.Wait {
-		var err error
 		if i.WaitForJobs {
-			if kubeClient, ok := i.cfg.KubeClient.(kube.InterfaceWithRetry); ok {
-				err = kubeClient.WaitWithJobsWithRetry(resources, i.Timeout, i.WaitRetries)
-			} else {
-				err = i.cfg.KubeClient.WaitWithJobs(resources, i.Timeout)
+			if err := i.cfg.KubeClient.WaitWithJobs(resources, i.Timeout); err != nil {
+				i.reportToRun(c, rel, err)
+				return
 			}
 		} else {
-			if kubeClient, ok := i.cfg.KubeClient.(kube.InterfaceWithRetry); ok {
-				err = kubeClient.WaitWithRetry(resources, i.Timeout, i.WaitRetries)
-			} else {
-				err = i.cfg.KubeClient.Wait(resources, i.Timeout)
+			if err := i.cfg.KubeClient.Wait(resources, i.Timeout); err != nil {
+				i.reportToRun(c, rel, err)
+				return
 			}
-		}
-		if err != nil {
-			i.reportToRun(c, rel, err)
-			return
 		}
 	}
 

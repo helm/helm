@@ -19,6 +19,7 @@ package kube // import "helm.sh/helm/v3/pkg/kube"
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/pkg/errors"
@@ -43,11 +44,10 @@ type waiter struct {
 	log     func(string, ...interface{})
 }
 
-// Jobs(optional) until all are ready or a timeout is reached.
-// If an error is encountered when checking on the status of a resource then retries
-// will be performed subject to the given maximum number of retries
-func (w *waiter) waitForResources(created ResourceList, waitRetries int) error {
-	w.log("beginning wait for %d resources with timeout of %v, maximum retries %d", len(created), w.timeout, waitRetries)
+// waitForResources polls to get the current status of all pods, PVCs, Services and
+// Jobs(optional) until all are ready or a timeout is reached
+func (w *waiter) waitForResources(created ResourceList) error {
+	w.log("beginning wait for %d resources with timeout of %v", len(created), w.timeout)
 
 	ctx, cancel := context.WithTimeout(context.Background(), w.timeout)
 	defer cancel()
@@ -58,6 +58,7 @@ func (w *waiter) waitForResources(created ResourceList, waitRetries int) error {
 	}
 
 	return wait.PollUntilContextCancel(ctx, 2*time.Second, true, func(ctx context.Context) (bool, error) {
+		waitRetries := 30
 		for i, v := range created {
 			ready, err := w.c.IsReady(ctx, v)
 
@@ -86,12 +87,16 @@ func (w *waiter) isRetryableError(err error, resource *resource.Info) bool {
 	w.log("Error received when checking status of resource %s. Error: '%s', Resource details: '%s'", resource.Name, err, resource)
 	if ev, ok := err.(*apierrors.StatusError); ok {
 		statusCode := ev.Status().Code
-		retryable := statusCode >= 500
+		retryable := w.isRetryableHTTPStatusCode(statusCode)
 		w.log("Status code received: %d. Retryable error? %t", statusCode, retryable)
 		return retryable
 	}
 	w.log("Retryable error? %t", true)
 	return true
+}
+
+func (w *waiter) isRetryableHTTPStatusCode(httpStatusCode int32) bool {
+	return httpStatusCode == 0 || httpStatusCode == http.StatusTooManyRequests || (httpStatusCode >= 500 && httpStatusCode != http.StatusNotImplemented)
 }
 
 // waitForDeletedResources polls to check if all the resources are deleted or a timeout is reached

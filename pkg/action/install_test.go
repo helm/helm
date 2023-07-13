@@ -393,22 +393,6 @@ func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	is.Contains(res.Info.Description, "Release \"interrupted-release\" failed: context canceled")
 	is.Equal(res.Info.Status, release.StatusFailed)
 }
-func TestInstallRelease_Wait_With_Retries(t *testing.T) {
-	is := assert.New(t)
-	instAction := installAction(t)
-	instAction.ReleaseName = "come-fail-away"
-	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-	failer.WaitError = fmt.Errorf("I timed out")
-	instAction.cfg.KubeClient = failer
-	instAction.Wait = true
-	instAction.WaitRetries = 2
-	vals := map[string]interface{}{}
-
-	res, err := instAction.Run(buildChart(), vals)
-	is.Error(err)
-	is.Contains(res.Info.Description, "I timed out")
-	is.Equal(res.Info.Status, release.StatusFailed)
-}
 func TestInstallRelease_WaitForJobs(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)

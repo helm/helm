@@ -110,19 +110,7 @@ type InterfaceResources interface {
 	BuildTable(reader io.Reader, validate bool) (ResourceList, error)
 }
 
-// InterfaceWithRetry is introduced to avoid breaking backwards compatibility for Interface implementers.
-//
-// TODO Helm 4: Remove InterfaceWithRetry and integrate its method(s) into the Interface.
-type InterfaceWithRetry interface {
-	// Wait waits up to the given timeout for the specified resources to be ready.
-	WaitWithRetry(resources ResourceList, timeout time.Duration, waitRetries int) error
-
-	// WaitWithJobs wait up to the given timeout for the specified resources to be ready, including jobs.
-	WaitWithJobsWithRetry(resources ResourceList, timeout time.Duration, waitRetries int) error
-}
-
 var _ Interface = (*Client)(nil)
 var _ InterfaceExt = (*Client)(nil)
 var _ InterfaceDeletionPropagation = (*Client)(nil)
 var _ InterfaceResources = (*Client)(nil)
-var _ InterfaceWithRetry = (*Client)(nil)
