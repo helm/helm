@@ -86,6 +86,9 @@ By default, the default directories depend on the Operating System. The defaults
 | Windows          | %TEMP%\helm               | %APPDATA%\helm                 | %APPDATA%\helm          |
 `
 
+// CMDNeedRegistryClient Any new command need RegistryClient should be added to this list.
+var CMDNeedRegistryClient = []string{"show", "template", "install", "upgrade", "pull", "registry", "dependency", "dep", "push", "package"}
+
 func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string) (*cobra.Command, error) {
 	cmd := &cobra.Command{
 		Use:          "helm",
@@ -154,7 +157,13 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 
 	registryClient, err := newDefaultRegistryClient()
 	if err != nil {
-		return nil, err
+		// see issues #11009
+		debug("generate registry client failed: %v", err.Error())
+		for i := 0; len(args) > 0 && i < len(CMDNeedRegistryClient); i++ {
+			if CMDNeedRegistryClient[i] == args[0] {
+				return nil, err
+			}
+		}
 	}
 	actionConfig.RegistryClient = registryClient
 
