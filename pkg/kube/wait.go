@@ -47,6 +47,11 @@ type waiter struct {
 func (w *waiter) waitForResources(created ResourceList) error {
 	w.log("beginning wait for %d resources with timeout of %v", len(created), w.timeout)
 
+	// Set a default timeout of 5 minutes
+	if w.timeout == 0 {
+		w.timeout = time.Minute * 5
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), w.timeout)
 	defer cancel()
 
@@ -64,6 +69,11 @@ func (w *waiter) waitForResources(created ResourceList) error {
 // waitForDeletedResources polls to check if all the resources are deleted or a timeout is reached
 func (w *waiter) waitForDeletedResources(deleted ResourceList) error {
 	w.log("beginning wait for %d resources to be deleted with timeout of %v", len(deleted), w.timeout)
+
+	// Set a default timeout of 5 minutes
+	if w.timeout == 0 {
+		w.timeout = time.Minute * 5
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), w.timeout)
 	defer cancel()
