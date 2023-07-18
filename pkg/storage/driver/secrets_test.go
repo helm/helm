@@ -128,6 +128,20 @@ func TestSecretList(t *testing.T) {
 	if len(ssd) != 2 {
 		t.Errorf("Expected 2 superseded, got %d", len(ssd))
 	}
+
+	
+	// list all release with labels
+	lbl, err := secrets.List(func(_ *rspb.Release) bool { return true })
+	if err != nil {
+		t.Fatalf("Failed to query: %s", err)
+	}
+
+	// check
+	for _, r := range lbl {
+		if r.Labels == nil {
+			t.Fatalf("Expected release labels is nil")
+		}
+	}
 }
 
 func TestSecretQuery(t *testing.T) {
@@ -151,6 +165,18 @@ func TestSecretQuery(t *testing.T) {
 	_, err = secrets.Query(map[string]string{"name": "notExist"})
 	if err != ErrReleaseNotFound {
 		t.Errorf("Expected {%v}, got {%v}", ErrReleaseNotFound, err)
+	}
+
+	// check all release labels
+	arls, err := secrets.Query(map[string]string{})
+	if err != nil {
+		t.Fatalf("Failed to query: %s", err)
+	}
+
+	for _, r := range arls {
+		if r.Labels == nil {
+			t.Fatalf("Expected release labels is nil")
+		}
 	}
 }
 
