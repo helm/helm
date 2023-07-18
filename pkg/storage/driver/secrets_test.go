@@ -165,7 +165,7 @@ func TestSecretQuery(t *testing.T) {
 		t.Errorf("Expected {%v}, got {%v}", ErrReleaseNotFound, err)
 	}
 
-	// query secret with labels
+	// query secrets with labels
 	rlb, err := secrets.Query(map[string]string{})
 	if err != nil {
 		t.Fatalf("Failed to query: %s", err)
