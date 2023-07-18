@@ -171,6 +171,7 @@ func TestSecretQuery(t *testing.T) {
 		t.Fatalf("Failed to query: %s", err)
 	}
 
+	// check
 	for _, r := range rlb {
 		if r.Labels == nil {
 			t.Fatalf("Expected release labels is nil")
