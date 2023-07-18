@@ -59,7 +59,7 @@ type (
 		out                io.Writer
 		authorizer         auth.Client
 		registryAuthorizer *registryauth.Client
-		resolver           remotes.Resolver
+		resolver           func(ref registry.Reference) (remotes.Resolver, error)
 		httpClient         *http.Client
 	}
 
@@ -86,9 +86,23 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		}
 		client.authorizer = authClient
 	}
-	if client.resolver == nil {
+	client.resolver = func(ref registry.Reference) (remotes.Resolver, error) {
 		headers := http.Header{}
 		headers.Set("User-Agent", version.GetUserAgent())
+		dockerClient, ok := client.authorizer.(*dockerauth.Client)
+		if ok {
+			username, password, err := dockerClient.Credential(ref.Registry)
+			if err != nil {
+				return nil, errors.New("unable to retrieve credentials")
+			}
+			// A blank returned username and password value is a bearer token
+			if username == "" && password != "" {
+				headers.Set("Authorization", fmt.Sprintf("Bearer %s", password))
+			} else {
+				headers.Set("Authorization", fmt.Sprintf("Basic %s", basicAuth(username, password)))
+			}
+		}
+
 		opts := []auth.ResolverOption{auth.WithResolverHeaders(headers)}
 		if client.httpClient != nil {
 			opts = append(opts, auth.WithResolverClient(client.httpClient))
@@ -97,9 +111,8 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		if err != nil {
 			return nil, err
 		}
-		client.resolver = resolver
+		return resolver, nil
 	}
-
 	// allocate a cache if option is set
 	var cache registryauth.Cache
 	if client.enableCache {
@@ -117,7 +130,6 @@ func NewClient(options ...ClientOption) (*Client, error) {
 				if !ok {
 					return registryauth.EmptyCredential, errors.New("unable to obtain docker client")
 				}
-
 				username, password, err := dockerClient.Credential(reg)
 				if err != nil {
 					return registryauth.EmptyCredential, errors.New("unable to retrieve credentials")
@@ -324,7 +336,11 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 	}
 
 	var descriptors, layers []ocispec.Descriptor
-	registryStore := content.Registry{Resolver: c.resolver}
+	remotesResolver, err := c.resolver(parsedRef)
+	if err != nil {
+		return nil, err
+	}
+	registryStore := content.Registry{Resolver: remotesResolver}
 
 	manifest, err := oras.Copy(ctx(c.out, c.debug), registryStore, parsedRef.String(), memoryStore, "",
 		oras.WithPullEmptyNameAllowed(),
@@ -562,8 +578,11 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	if err := memoryStore.StoreManifest(parsedRef.String(), manifest, manifestData); err != nil {
 		return nil, err
 	}
-
-	registryStore := content.Registry{Resolver: c.resolver}
+	remotesResolver, err := c.resolver(parsedRef)
+	if err != nil {
+		return nil, err
+	}
+	registryStore := content.Registry{Resolver: remotesResolver}
 	_, err = oras.Copy(ctx(c.out, c.debug), memoryStore, parsedRef.String(), registryStore, "",
 		oras.WithNameValidation(nil))
 	if err != nil {

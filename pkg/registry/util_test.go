@@ -238,3 +238,31 @@ func TestGenerateOCICreatedAnnotations(t *testing.T) {
 	}
 
 }
+
+func Test_basicAuth(t *testing.T) {
+	type args struct {
+		username string
+		password string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "Basic Auth",
+			args: args{
+				username: "admin",
+				password: "passw0rd",
+			},
+			want: "YWRtaW46cGFzc3cwcmQ=",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := basicAuth(tt.args.username, tt.args.password); got != tt.want {
+				t.Errorf("basicAuth() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
