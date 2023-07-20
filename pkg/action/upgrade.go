@@ -149,11 +149,6 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 		return nil, errors.Errorf("release name is invalid: %s", name)
 	}
 
-	// Determine dry run behavior
-	if u.DryRun || u.DryRunOption == "client" || u.DryRunOption == "server" || u.DryRunOption == "true" {
-		u.DryRun = true
-	}
-
 	u.cfg.Log("preparing upgrade for %s", name)
 	currentRelease, upgradedRelease, err := u.prepareUpgrade(name, chart, vals)
 	if err != nil {
@@ -169,7 +164,7 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 	}
 
 	// Do not update for dry runs
-	if !u.DryRun {
+	if !u.isDryRun() {
 		u.cfg.Log("updating status for upgraded release for %s", name)
 		if err := u.cfg.Releases.Update(upgradedRelease); err != nil {
 			return res, err
@@ -177,6 +172,14 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 	}
 
 	return res, nil
+}
+
+// isDryRun returns true if Upgrade is set to run as a DryRun
+func (u *Upgrade) isDryRun() bool {
+	if u.DryRun || u.DryRunOption == "client" || u.DryRunOption == "server" || u.DryRunOption == "true" {
+		return true
+	}
+	return false
 }
 
 // prepareUpgrade builds an upgraded release for an upgrade operation.
@@ -249,7 +252,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 
 	// Determine whether or not to interact with remote
 	var interactWithRemote bool
-	if !u.DryRun || u.DryRunOption == "server" {
+	if !u.isDryRun() || u.DryRunOption == "server" || u.DryRunOption == "none" || u.DryRunOption == "false" {
 		interactWithRemote = true
 	}
 
@@ -332,7 +335,7 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 	})
 
 	// Run if it is a dry run
-	if u.DryRun {
+	if u.isDryRun() {
 		u.cfg.Log("dry run for %s", upgradedRelease.Name)
 		if len(u.Description) > 0 {
 			upgradedRelease.Info.Description = u.Description
