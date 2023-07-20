@@ -43,6 +43,7 @@ type repoIndexOptions struct {
 	dir   string
 	url   string
 	merge string
+	json  bool
 }
 
 func newRepoIndexCmd(out io.Writer) *cobra.Command {
@@ -70,6 +71,7 @@ func newRepoIndexCmd(out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.StringVar(&o.url, "url", "", "url of chart repository")
 	f.StringVar(&o.merge, "merge", "", "merge the generated index into the given index")
+	f.BoolVar(&o.json, "json", false, "output in JSON format")
 
 	return cmd
 }
@@ -80,10 +82,10 @@ func (i *repoIndexOptions) run(out io.Writer) error {
 		return err
 	}
 
-	return index(path, i.url, i.merge)
+	return index(path, i.url, i.merge, i.json)
 }
 
-func index(dir, url, mergeTo string) error {
+func index(dir, url, mergeTo string, json bool) error {
 	out := filepath.Join(dir, "index.yaml")
 
 	i, err := repo.IndexDirectory(dir, url)
@@ -95,7 +97,7 @@ func index(dir, url, mergeTo string) error {
 		var i2 *repo.IndexFile
 		if _, err := os.Stat(mergeTo); os.IsNotExist(err) {
 			i2 = repo.NewIndexFile()
-			i2.WriteFile(mergeTo, 0644)
+			writeIndexFile(i2, mergeTo, json)
 		} else {
 			i2, err = repo.LoadIndexFile(mergeTo)
 			if err != nil {
@@ -105,5 +107,12 @@ func index(dir, url, mergeTo string) error {
 		i.Merge(i2)
 	}
 	i.SortEntries()
+	return writeIndexFile(i, out, json)
+}
+
+func writeIndexFile(i *repo.IndexFile, out string, json bool) error {
+	if json {
+		return i.WriteJSONFile(out, 0644)
+	}
 	return i.WriteFile(out, 0644)
 }
