@@ -142,6 +142,9 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 			client.SetRegistryClient(registryClient)
 
+			// This is for the case where "" is specifically passed in as a
+			// value. When there is no value passed in NoOptDefVal will be used
+			// and it is set to client. See addInstallFlags.
 			if client.DryRunOption == "" {
 				client.DryRunOption = "none"
 			}
@@ -163,6 +166,11 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Install, valueOpts *values.Options) {
 	f.BoolVar(&client.CreateNamespace, "create-namespace", false, "create the release namespace if not present")
+	// --dry-run options with expected outcome:
+	// - Not set means no dry run and server is contacted.
+	// - Set with no value, a value of client, or a value of true and the server is not contacted
+	// - Set with a value of false, none, or false and the server is contacted
+	// The true/false part is meant to reflect some legacy behavior while none is equal to "".
 	f.StringVar(&client.DryRunOption, "dry-run", "", "simulate an install. If --dry-run is set with no option being specified or as '--dry-run=client', it will not attempt cluster connections. Setting '--dry-run=server' allows attempting cluster connections.")
 	f.Lookup("dry-run").NoOptDefVal = "client"
 	f.BoolVar(&client.Force, "force", false, "force resource updates through a replacement strategy")
