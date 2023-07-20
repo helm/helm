@@ -37,6 +37,7 @@ const (
 	annotationstestfile = "testdata/local-index-annotations.yaml"
 	chartmuseumtestfile = "testdata/chartmuseum-index.yaml"
 	unorderedTestfile   = "testdata/local-index-unordered.yaml"
+	jsonTestfile        = "testdata/local-index.json"
 	testRepo            = "test-repo"
 	indexWithDuplicates = `
 apiVersion: v1
@@ -144,6 +145,10 @@ func TestLoadIndex(t *testing.T) {
 		{
 			Name:     "chartmuseum index file",
 			Filename: chartmuseumtestfile,
+		},
+		{
+			Name:     "JSON index file",
+			Filename: jsonTestfile,
 		},
 	}
 
