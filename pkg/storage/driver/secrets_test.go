@@ -129,7 +129,6 @@ func TestSecretList(t *testing.T) {
 		t.Errorf("Expected 2 superseded, got %d", len(ssd))
 	}
 
-	
 	// list all release with labels
 	lbl, err := secrets.List(func(_ *rspb.Release) bool { return true })
 	if err != nil {

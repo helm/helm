@@ -138,7 +138,7 @@ func (secrets *Secrets) Query(labels map[string]string) ([]*rspb.Release, error)
 		}
 
 		rls.Labels = item.ObjectMeta.Labels
-		
+
 		results = append(results, rls)
 	}
 	return results, nil
