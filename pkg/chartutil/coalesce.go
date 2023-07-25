@@ -43,15 +43,9 @@ func concatPrefix(a, b string) string {
 //   - A chart has access to all of the variables for it, as well as all of
 //     the values destined for its dependencies.
 func CoalesceValues(chrt *chart.Chart, vals map[string]interface{}) (Values, error) {
-	v, err := copystructure.Copy(vals)
+	valsCopy, err := copyValues(vals)
 	if err != nil {
 		return vals, err
-	}
-
-	valsCopy := v.(map[string]interface{})
-	// if we have an empty map, make sure it is initialized
-	if valsCopy == nil {
-		valsCopy = make(map[string]interface{})
 	}
 	return coalesce(log.Printf, chrt, valsCopy, "", false)
 }
@@ -71,6 +65,14 @@ func CoalesceValues(chrt *chart.Chart, vals map[string]interface{}) (Values, err
 // logic need to retain them for when Coalescing will happen again later in the
 // business logic.
 func MergeValues(chrt *chart.Chart, vals map[string]interface{}) (Values, error) {
+	valsCopy, err := copyValues(vals)
+	if err != nil {
+		return vals, err
+	}
+	return coalesce(log.Printf, chrt, valsCopy, "", true)
+}
+
+func copyValues(vals map[string]interface{}) (Values, error) {
 	v, err := copystructure.Copy(vals)
 	if err != nil {
 		return vals, err
@@ -81,14 +83,19 @@ func MergeValues(chrt *chart.Chart, vals map[string]interface{}) (Values, error)
 	if valsCopy == nil {
 		valsCopy = make(map[string]interface{})
 	}
-	return coalesce(log.Printf, chrt, valsCopy, "", true)
+
+	return valsCopy, nil
 }
 
 type printFn func(format string, v ...interface{})
 
 // coalesce coalesces the dest values and the chart values, giving priority to the dest values.
 //
-// This is a helper function for CoalesceValues.
+// This is a helper function for CoalesceValues and MergeValues.
+//
+// Note, the merge argument specifies whether this is being used by MergeValues
+// or CoalesceValues. Coalescing removes null values and their keys in some
+// situations while merging keeps the null values.
 func coalesce(printf printFn, ch *chart.Chart, dest map[string]interface{}, prefix string, merge bool) (map[string]interface{}, error) {
 	coalesceValues(printf, ch, dest, prefix, merge)
 	return coalesceDeps(printf, ch, dest, prefix, merge)

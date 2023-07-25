@@ -321,7 +321,7 @@ func TestProcessDependencyImportValuesForEnabledCharts(t *testing.T) {
 	c := loadChart(t, "testdata/import-values-from-enabled-subchart/parent-chart")
 	nameOverride := "parent-chart-prod"
 
-	if err := processDependencyImportValues(c, false); err != nil {
+	if err := processDependencyImportValues(c, true); err != nil {
 		t.Fatalf("processing import values dependencies %v", err)
 	}
 
