@@ -18,6 +18,12 @@ import (
 	"testing"
 )
 
+func TestGetSystemLabel(t *testing.T) {
+	if output := GetSystemLabels(); !reflect.DeepEqual(systemLabels, output) {
+		t.Errorf("Expected {%v}, got {%v}", systemLabels, output)
+	}
+}
+
 func TestIsSystemLabel(t *testing.T) {
 	tests := map[string]bool{
 		"name":  true,
@@ -64,6 +70,39 @@ func TestFilterSystemLabels(t *testing.T) {
 	for _, test := range tests {
 		if output := filterSystemLabels(test[0]); !reflect.DeepEqual(test[1], output) {
 			t.Errorf("Expected {%v}, got {%v}", test[1], output)
+		}
+	}
+}
+
+func TestContainsSystemLabels(t *testing.T) {
+	var tests = []struct {
+		input  map[string]string
+		output bool
+	}{
+		{nil, false},
+		{map[string]string{}, false},
+		{map[string]string{
+			"name":       "name",
+			"owner":      "owner",
+			"status":     "status",
+			"version":    "version",
+			"createdAt":  "createdAt",
+			"modifiedAt": "modifiedAt",
+		}, true},
+		{map[string]string{
+			"StaTus": "status",
+			"name":   "name",
+			"owner":  "owner",
+			"key":    "value",
+		}, true},
+		{map[string]string{
+			"key1": "value1",
+			"key2": "value2",
+		}, false},
+	}
+	for _, test := range tests {
+		if output := ContainsSystemLabels(test.input); !reflect.DeepEqual(test.output, output) {
+			t.Errorf("Expected {%v}, got {%v}", test.output, output)
 		}
 	}
 }

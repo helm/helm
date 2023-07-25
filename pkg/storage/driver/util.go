@@ -88,7 +88,7 @@ func decodeRelease(data string) (*rspb.Release, error) {
 
 // Checks if label is system
 func isSystemLabel(key string) bool {
-	for _, v := range systemLabels {
+	for _, v := range GetSystemLabels() {
 		if key == v {
 			return true
 		}
@@ -105,4 +105,18 @@ func filterSystemLabels(lbs map[string]string) map[string]string {
 		}
 	}
 	return result
+}
+
+// Checks if labels array contains system labels
+func ContainsSystemLabels(lbs map[string]string) bool {
+	for k := range lbs {
+		if isSystemLabel(k) {
+			return true
+		}
+	}
+	return false
+}
+
+func GetSystemLabels() []string {
+	return systemLabels
 }
