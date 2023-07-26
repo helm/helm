@@ -11,3 +11,9 @@ dependencies:
 - name: app2
   version: 0.1.0
   condition: app2.enabled
+- name: app3
+  version: 0.1.0
+  condition: app3.enabled
+- name: app4
+  version: 0.1.0
+  condition: app4.enabled

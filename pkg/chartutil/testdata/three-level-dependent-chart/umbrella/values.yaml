@@ -6,3 +6,9 @@ app1:
 
 app2:
   enabled: true
+
+app3:
+  enabled: true
+
+app4:
+  enabled: true

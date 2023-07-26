@@ -229,7 +229,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		return nil, err
 	}
 
-	if err := chartutil.ProcessDependencies(chrt, vals); err != nil {
+	if err := chartutil.ProcessDependenciesWithMerge(chrt, vals); err != nil {
 		return nil, err
 	}
 
