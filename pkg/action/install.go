@@ -257,7 +257,6 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		return nil, err
 	}
 
-	fmt.Println(driver.ContainsSystemLabels(i.Labels))
 	if driver.ContainsSystemLabels(i.Labels) {
 		return nil, fmt.Errorf("user suplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels())
 	}
