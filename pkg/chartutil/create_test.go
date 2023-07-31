@@ -18,7 +18,6 @@ package chartutil
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -100,7 +99,7 @@ func TestCreateFrom(t *testing.T) {
 		}
 
 		// Check each file to make sure <CHARTNAME> has been replaced
-		b, err := ioutil.ReadFile(filepath.Join(dir, f))
+		b, err := os.ReadFile(filepath.Join(dir, f))
 		if err != nil {
 			t.Errorf("Unable to read file %s: %s", f, err)
 		}
@@ -131,7 +130,7 @@ func TestCreate_Overwrite(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	data, err := ioutil.ReadFile(tplname)
+	data, err := os.ReadFile(tplname)
 	if err != nil {
 		t.Fatal(err)
 	}

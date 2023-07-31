@@ -17,7 +17,6 @@ limitations under the License.
 package action
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -76,14 +75,14 @@ func (l *Lint) Run(paths []string, vals map[string]interface{}) *LintResult {
 	return result
 }
 
-// HasWaringsOrErrors checks is LintResult has any warnings or errors
+// HasWarningsOrErrors checks is LintResult has any warnings or errors
 func HasWarningsOrErrors(result *LintResult) bool {
 	for _, msg := range result.Messages {
 		if msg.Severity > support.InfoSev {
 			return true
 		}
 	}
-	return false
+	return len(result.Errors) > 0
 }
 
 func lintChart(path string, vals map[string]interface{}, namespace string, strict bool) (support.Linter, error) {
@@ -91,7 +90,7 @@ func lintChart(path string, vals map[string]interface{}, namespace string, stric
 	linter := support.Linter{}
 
 	if strings.HasSuffix(path, ".tgz") || strings.HasSuffix(path, ".tar.gz") {
-		tempDir, err := ioutil.TempDir("", "helm-lint")
+		tempDir, err := os.MkdirTemp("", "helm-lint")
 		if err != nil {
 			return linter, errors.Wrap(err, "unable to create temp dir to extract tarball")
 		}

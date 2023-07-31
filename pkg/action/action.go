@@ -101,8 +101,9 @@ type Configuration struct {
 //
 // TODO: This function is badly in need of a refactor.
 // TODO: As part of the refactor the duplicate code in cmd/helm/template.go should be removed
-//       This code has to do with writing files to disk.
-func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, dryRun bool) ([]*release.Hook, *bytes.Buffer, string, error) {
+//
+//	This code has to do with writing files to disk.
+func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, interactWithRemote, enableDNS bool) ([]*release.Hook, *bytes.Buffer, string, error) {
 	hs := []*release.Hook{}
 	b := bytes.NewBuffer(nil)
 
@@ -120,19 +121,21 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	var files map[string]string
 	var err2 error
 
-	// A `helm template` or `helm install --dry-run` should not talk to the remote cluster.
-	// It will break in interesting and exotic ways because other data (e.g. discovery)
-	// is mocked. It is not up to the template author to decide when the user wants to
-	// connect to the cluster. So when the user says to dry run, respect the user's
-	// wishes and do not connect to the cluster.
-	if !dryRun && cfg.RESTClientGetter != nil {
+	// A `helm template` should not talk to the remote cluster. However, commands with the flag
+	//`--dry-run` with the value of `false`, `none`, or `server` should try to interact with the cluster.
+	// It may break in interesting and exotic ways because other data (e.g. discovery) is mocked.
+	if interactWithRemote && cfg.RESTClientGetter != nil {
 		restConfig, err := cfg.RESTClientGetter.ToRESTConfig()
 		if err != nil {
 			return hs, b, "", err
 		}
-		files, err2 = engine.RenderWithClient(ch, values, restConfig)
+		e := engine.New(restConfig)
+		e.EnableDNS = enableDNS
+		files, err2 = e.Render(ch, values)
 	} else {
-		files, err2 = engine.Render(ch, values)
+		var e engine.Engine
+		e.EnableDNS = enableDNS
+		files, err2 = e.Render(ch, values)
 	}
 
 	if err2 != nil {
@@ -184,13 +187,13 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	if includeCrds {
 		for _, crd := range ch.CRDObjects() {
 			if outputDir == "" {
-				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Name, string(crd.File.Data[:]))
+				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Filename, string(crd.File.Data[:]))
 			} else {
-				err = writeToFile(outputDir, crd.Filename, string(crd.File.Data[:]), fileWritten[crd.Name])
+				err = writeToFile(outputDir, crd.Filename, string(crd.File.Data[:]), fileWritten[crd.Filename])
 				if err != nil {
 					return hs, b, "", err
 				}
-				fileWritten[crd.Name] = true
+				fileWritten[crd.Filename] = true
 			}
 		}
 	}

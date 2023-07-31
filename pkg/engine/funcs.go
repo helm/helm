@@ -35,12 +35,11 @@ import (
 //
 // Known late-bound functions:
 //
-//	- "include"
-//	- "tpl"
+//   - "include"
+//   - "tpl"
 //
 // These are late-bound in Engine.Render().  The
 // version included in the FuncMap is a placeholder.
-//
 func funcMap() template.FuncMap {
 	f := sprig.TxtFuncMap()
 	delete(f, "env")

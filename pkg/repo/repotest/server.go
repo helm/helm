@@ -18,7 +18,6 @@ package repotest
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -102,7 +101,7 @@ func NewOCIServer(t *testing.T, dir string) (*OCIServer, error) {
 		t.Fatal("error generating bcrypt password for test htpasswd file")
 	}
 	htpasswdPath := filepath.Join(dir, testHtpasswdFileBasename)
-	err = ioutil.WriteFile(htpasswdPath, []byte(fmt.Sprintf("%s:%s\n", testUsername, string(pwBytes))), 0644)
+	err = os.WriteFile(htpasswdPath, []byte(fmt.Sprintf("%s:%s\n", testUsername, string(pwBytes))), 0644)
 	if err != nil {
 		t.Fatalf("error creating test htpasswd file")
 	}
@@ -194,7 +193,7 @@ func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
 	}
 
 	// load it into memory...
-	contentBytes, err := ioutil.ReadFile(absPath)
+	contentBytes, err := os.ReadFile(absPath)
 	if err != nil {
 		t.Fatal("could not load chart into memory")
 	}
@@ -222,7 +221,7 @@ func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
 	// load it into memory...
 	absPath = filepath.Join(srv.Dir,
 		fmt.Sprintf("%s-%s.tgz", c.Metadata.Name, c.Metadata.Version))
-	contentBytes, err = ioutil.ReadFile(absPath)
+	contentBytes, err = os.ReadFile(absPath)
 	if err != nil {
 		t.Fatal("could not load chart into memory")
 	}
@@ -249,7 +248,7 @@ func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
 //
 // Deprecated: use NewTempServerWithCleanup
 func NewTempServer(glob string) (*Server, error) {
-	tdir, err := ioutil.TempDir("", "helm-repotest-")
+	tdir, err := os.MkdirTemp("", "helm-repotest-")
 	if err != nil {
 		return nil, err
 	}
@@ -317,11 +316,11 @@ func (s *Server) CopyCharts(origin string) ([]string, error) {
 	for i, f := range files {
 		base := filepath.Base(f)
 		newname := filepath.Join(s.docroot, base)
-		data, err := ioutil.ReadFile(f)
+		data, err := os.ReadFile(f)
 		if err != nil {
 			return []string{}, err
 		}
-		if err := ioutil.WriteFile(newname, data, 0644); err != nil {
+		if err := os.WriteFile(newname, data, 0644); err != nil {
 			return []string{}, err
 		}
 		copied[i] = newname
@@ -345,7 +344,7 @@ func (s *Server) CreateIndex() error {
 	}
 
 	ifile := filepath.Join(s.docroot, "index.yaml")
-	return ioutil.WriteFile(ifile, d, 0644)
+	return os.WriteFile(ifile, d, 0644)
 }
 
 func (s *Server) Start() {
@@ -360,6 +359,7 @@ func (s *Server) Start() {
 func (s *Server) StartTLS() {
 	cd := "../../testdata"
 	ca, pub, priv := filepath.Join(cd, "rootca.crt"), filepath.Join(cd, "crt.pem"), filepath.Join(cd, "key.pem")
+	insecure := false
 
 	s.srv = httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if s.middleware != nil {
@@ -367,11 +367,10 @@ func (s *Server) StartTLS() {
 		}
 		http.FileServer(http.Dir(s.Root())).ServeHTTP(w, r)
 	}))
-	tlsConf, err := tlsutil.NewClientTLS(pub, priv, ca)
+	tlsConf, err := tlsutil.NewClientTLS(pub, priv, ca, insecure)
 	if err != nil {
 		panic(err)
 	}
-	tlsConf.BuildNameToCertificate()
 	tlsConf.ServerName = "helm.sh"
 	s.srv.TLS = tlsConf
 	s.srv.StartTLS()
@@ -386,7 +385,7 @@ func (s *Server) StartTLS() {
 		CAFile: filepath.Join("../../testdata", "rootca.crt"),
 	})
 
-	if err := r.WriteFile(repoConfig, 0644); err != nil {
+	if err := r.WriteFile(repoConfig, 0600); err != nil {
 		panic(err)
 	}
 }
@@ -401,6 +400,7 @@ func (s *Server) Stop() {
 // URL returns the URL of the server.
 //
 // Example:
+//
 //	http://localhost:1776
 func (s *Server) URL() string {
 	return s.srv.URL
@@ -422,5 +422,5 @@ func setTestingRepository(url, fname string) error {
 		Name: "test",
 		URL:  url,
 	})
-	return r.WriteFile(fname, 0644)
+	return r.WriteFile(fname, 0640)
 }

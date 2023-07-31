@@ -19,7 +19,6 @@ package chartutil
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -312,7 +311,7 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: 80
+              containerPort: {{ .Values.service.port }}
               protocol: TCP
           livenessProbe:
             httpGet:
@@ -370,7 +369,7 @@ metadata:
 `
 
 const defaultHorizontalPodAutoscaler = `{{- if .Values.autoscaling.enabled }}
-apiVersion: autoscaling/v2beta1
+apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: {{ include "<CHARTNAME>.fullname" . }}
@@ -388,13 +387,17 @@ spec:
     - type: Resource
       resource:
         name: cpu
-        targetAverageUtilization: {{ .Values.autoscaling.targetCPUUtilizationPercentage }}
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.targetCPUUtilizationPercentage }}
     {{- end }}
     {{- if .Values.autoscaling.targetMemoryUtilizationPercentage }}
     - type: Resource
       resource:
         name: memory
-        targetAverageUtilization: {{ .Values.autoscaling.targetMemoryUtilizationPercentage }}
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.targetMemoryUtilizationPercentage }}
     {{- end }}
 {{- end }}
 `
@@ -673,7 +676,7 @@ func writeFile(name string, content []byte) error {
 	if err := os.MkdirAll(filepath.Dir(name), 0755); err != nil {
 		return err
 	}
-	return ioutil.WriteFile(name, content, 0644)
+	return os.WriteFile(name, content, 0644)
 }
 
 func validateChartName(name string) error {
