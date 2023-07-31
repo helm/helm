@@ -82,7 +82,7 @@ func HasWarningsOrErrors(result *LintResult) bool {
 			return true
 		}
 	}
-	return false
+	return len(result.Errors) > 0
 }
 
 func lintChart(path string, vals map[string]interface{}, namespace string, strict bool) (support.Linter, error) {

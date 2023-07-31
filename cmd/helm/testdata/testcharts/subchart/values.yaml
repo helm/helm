@@ -53,3 +53,7 @@ exports:
       SC1exported2:
         all:
           SC1exported3: "SC1expstr"
+
+configmap:
+  enabled: false
+  value: "foo"

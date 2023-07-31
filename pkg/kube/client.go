@@ -37,6 +37,7 @@ import (
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
+	multierror "github.com/hashicorp/go-multierror"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -337,13 +338,7 @@ func (c *Client) Build(reader io.Reader, validate bool) (ResourceList, error) {
 		validationDirective = metav1.FieldValidationStrict
 	}
 
-	dynamicClient, err := c.Factory.DynamicClient()
-	if err != nil {
-		return nil, err
-	}
-
-	verifier := resource.NewQueryParamVerifier(dynamicClient, c.Factory.OpenAPIGetter(), resource.QueryParamFieldValidation)
-	schema, err := c.Factory.Validator(validationDirective, verifier)
+	schema, err := c.Factory.Validator(validationDirective)
 	if err != nil {
 		return nil, err
 	}
@@ -363,13 +358,7 @@ func (c *Client) BuildTable(reader io.Reader, validate bool) (ResourceList, erro
 		validationDirective = metav1.FieldValidationStrict
 	}
 
-	dynamicClient, err := c.Factory.DynamicClient()
-	if err != nil {
-		return nil, err
-	}
-
-	verifier := resource.NewQueryParamVerifier(dynamicClient, c.Factory.OpenAPIGetter(), resource.QueryParamFieldValidation)
-	schema, err := c.Factory.Validator(validationDirective, verifier)
+	schema, err := c.Factory.Validator(validationDirective)
 	if err != nil {
 		return nil, err
 	}
@@ -456,7 +445,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			c.Log("Skipping delete of %q due to annotation [%s=%s]", info.Name, ResourcePolicyAnno, KeepPolicy)
 			continue
 		}
-		if err := deleteResource(info); err != nil {
+		if err := deleteResource(info, metav1.DeletePropagationBackground); err != nil {
 			c.Log("Failed to delete %q, err: %s", info.ObjectName(), err)
 			continue
 		}
@@ -465,17 +454,29 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 	return res, nil
 }
 
-// Delete deletes Kubernetes resources specified in the resources list. It will
-// attempt to delete all resources even if one or more fail and collect any
-// errors. All successfully deleted items will be returned in the `Deleted`
-// ResourceList that is part of the result.
+// Delete deletes Kubernetes resources specified in the resources list with
+// background cascade deletion. It will attempt to delete all resources even
+// if one or more fail and collect any errors. All successfully deleted items
+// will be returned in the `Deleted` ResourceList that is part of the result.
 func (c *Client) Delete(resources ResourceList) (*Result, []error) {
+	return delete(c, resources, metav1.DeletePropagationBackground)
+}
+
+// Delete deletes Kubernetes resources specified in the resources list with
+// given deletion propagation policy. It will attempt to delete all resources even
+// if one or more fail and collect any errors. All successfully deleted items
+// will be returned in the `Deleted` ResourceList that is part of the result.
+func (c *Client) DeleteWithPropagationPolicy(resources ResourceList, policy metav1.DeletionPropagation) (*Result, []error) {
+	return delete(c, resources, policy)
+}
+
+func delete(c *Client, resources ResourceList, propagation metav1.DeletionPropagation) (*Result, []error) {
 	var errs []error
 	res := &Result{}
 	mtx := sync.Mutex{}
 	err := perform(resources, func(info *resource.Info) error {
 		c.Log("Starting delete for %q %s", info.Name, info.Mapping.GroupVersionKind.Kind)
-		err := deleteResource(info)
+		err := deleteResource(info, propagation)
 		if err == nil || apierrors.IsNotFound(err) {
 			if err != nil {
 				c.Log("Ignoring delete failure for %q %s: %v", info.Name, info.Mapping.GroupVersionKind, err)
@@ -532,6 +533,8 @@ func (c *Client) WatchUntilReady(resources ResourceList, timeout time.Duration) 
 }
 
 func perform(infos ResourceList, fn func(*resource.Info) error) error {
+	var result error
+
 	if len(infos) == 0 {
 		return ErrNoObjectsVisited
 	}
@@ -542,10 +545,11 @@ func perform(infos ResourceList, fn func(*resource.Info) error) error {
 	for range infos {
 		err := <-errs
 		if err != nil {
-			return err
+			result = multierror.Append(result, err)
 		}
 	}
-	return nil
+
+	return result
 }
 
 // getManagedFieldsManager returns the manager string. If one was set it will be returned.
@@ -593,8 +597,7 @@ func createResource(info *resource.Info) error {
 	return info.Refresh(obj, true)
 }
 
-func deleteResource(info *resource.Info) error {
-	policy := metav1.DeletePropagationBackground
+func deleteResource(info *resource.Info, policy metav1.DeletionPropagation) error {
 	opts := &metav1.DeleteOptions{PropagationPolicy: &policy}
 	_, err := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(getManagedFieldsManager()).DeleteWithOptions(info.Namespace, info.Name, opts)
 	return err

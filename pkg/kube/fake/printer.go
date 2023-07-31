@@ -22,6 +22,7 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/cli-runtime/pkg/resource"
 
@@ -113,6 +114,17 @@ func (p *PrintingKubeClient) BuildTable(_ io.Reader, _ bool) (kube.ResourceList,
 // WaitAndGetCompletedPodPhase implements KubeClient WaitAndGetCompletedPodPhase.
 func (p *PrintingKubeClient) WaitAndGetCompletedPodPhase(_ string, _ time.Duration) (v1.PodPhase, error) {
 	return v1.PodSucceeded, nil
+}
+
+// DeleteWithPropagationPolicy implements KubeClient delete.
+//
+// It only prints out the content to be deleted.
+func (p *PrintingKubeClient) DeleteWithPropagationPolicy(resources kube.ResourceList, policy metav1.DeletionPropagation) (*kube.Result, []error) {
+	_, err := io.Copy(p.Out, bufferize(resources))
+	if err != nil {
+		return nil, []error{err}
+	}
+	return &kube.Result{Deleted: resources}, nil
 }
 
 func bufferize(resources kube.ResourceList) io.Reader {
