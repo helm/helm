@@ -113,10 +113,12 @@ func TestIgnore(t *testing.T) {
 		{`helm.txt/`, "helm.txt", false},
 
 		// Negation tests
-		{`!helm.txt`, "helm.txt", false},
-		{`!helm.txt`, "tiller.txt", true},
-		{`!*.txt`, "cargo", true},
-		{`!cargo/`, "mast/", true},
+		{"!helm.txt\n*", "helm.txt", false},
+		{"!helm.txt", "tiller.txt", false}, // Don't ignore files that match zero patterns
+		{"!helm.txt\n*", "tiller.txt", true},
+		{"!*.txt\n*", "cargo", true},
+		{"!cargo/\n*", "cargo", false},
+		{"!cargo/\n*", "cargo/a.txt", true},
 
 		// Absolute path tests
 		{`/a.txt`, "a.txt", true},

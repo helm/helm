@@ -102,20 +102,7 @@ func (r *Rules) Ignore(path string, fi os.FileInfo) bool {
 	}
 	for _, p := range r.patterns {
 		if p.match == nil {
-			log.Printf("ignore: no matcher supplied for %q", p.raw)
 			return false
-		}
-
-		// For negative rules, we need to capture and return non-matches,
-		// and continue for matches.
-		if p.negate {
-			if p.mustDir && !fi.IsDir() {
-				return true
-			}
-			if !p.match(path, fi) {
-				return true
-			}
-			continue
 		}
 
 		// If the rule is looking for directories, and this is not a directory,
@@ -123,9 +110,14 @@ func (r *Rules) Ignore(path string, fi os.FileInfo) bool {
 		if p.mustDir && !fi.IsDir() {
 			continue
 		}
+
+		// For negative rules, we need to capture and return non-matches,
+		// and continue for matches.
 		if p.match(path, fi) {
-			return true
+			// if negate, then return false to "should I ignore"
+			return !p.negate
 		}
+
 	}
 	return false
 }
