@@ -115,6 +115,7 @@ type ChartPathOptions struct {
 	CertFile              string // --cert-file
 	KeyFile               string // --key-file
 	InsecureSkipTLSverify bool   // --insecure-skip-verify
+	PlainHTTP             bool   // --plain-http
 	Keyring               string // --keyring
 	Password              string // --password
 	PassCredentialsAll    bool   // --pass-credentials
@@ -753,6 +754,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 			getter.WithPassCredentialsAll(c.PassCredentialsAll),
 			getter.WithTLSClientConfig(c.CertFile, c.KeyFile, c.CaFile),
 			getter.WithInsecureSkipVerifyTLS(c.InsecureSkipTLSverify),
+			getter.WithPlainHTTP(c.PlainHTTP),
 		},
 		RepositoryConfig: settings.RepositoryConfig,
 		RepositoryCache:  settings.RepositoryCache,

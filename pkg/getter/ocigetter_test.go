@@ -39,7 +39,8 @@ func TestOCIGetter(t *testing.T) {
 	ca, pub, priv := join(cd, "rootca.crt"), join(cd, "crt.pem"), join(cd, "key.pem")
 	timeout := time.Second * 5
 	transport := &http.Transport{}
-	insecureSkipTLSverify := false
+	insecureSkipVerifyTLS := false
+	plainHTTP := false
 
 	// Test with options
 	g, err = NewOCIGetter(
@@ -47,7 +48,8 @@ func TestOCIGetter(t *testing.T) {
 		WithTLSClientConfig(pub, priv, ca),
 		WithTimeout(timeout),
 		WithTransport(transport),
-		WithInsecureSkipVerifyTLS(insecureSkipTLSverify),
+		WithInsecureSkipVerifyTLS(insecureSkipVerifyTLS),
+		WithPlainHTTP(plainHTTP),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -84,6 +86,14 @@ func TestOCIGetter(t *testing.T) {
 
 	if og.opts.transport != transport {
 		t.Errorf("Expected NewOCIGetter to contain %p as Transport, got %p", transport, og.opts.transport)
+	}
+
+	if og.opts.plainHTTP != plainHTTP {
+		t.Errorf("Expected NewOCIGetter to have plainHTTP as %t, got %t", plainHTTP, og.opts.plainHTTP)
+	}
+
+	if og.opts.insecureSkipVerifyTLS != insecureSkipVerifyTLS {
+		t.Errorf("Expected NewOCIGetter to have insecureSkipVerifyTLS as %t, got %t", insecureSkipVerifyTLS, og.opts.insecureSkipVerifyTLS)
 	}
 
 	// Test if setting registryClient is being passed to the ops

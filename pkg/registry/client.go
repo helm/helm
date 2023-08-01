@@ -61,6 +61,7 @@ type (
 		registryAuthorizer *registryauth.Client
 		resolver           remotes.Resolver
 		httpClient         *http.Client
+		plainHTTP          bool
 	}
 
 	// ClientOption allows specifying various settings configurable by the user for overriding the defaults
@@ -92,6 +93,9 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		opts := []auth.ResolverOption{auth.WithResolverHeaders(headers)}
 		if client.httpClient != nil {
 			opts = append(opts, auth.WithResolverClient(client.httpClient))
+		}
+		if client.plainHTTP {
+			opts = append(opts, auth.WithResolverPlainHTTP())
 		}
 		resolver, err := client.authorizer.ResolverWithOpts(opts...)
 		if err != nil {
@@ -174,6 +178,12 @@ func ClientOptCredentialsFile(credentialsFile string) ClientOption {
 func ClientOptHTTPClient(httpClient *http.Client) ClientOption {
 	return func(client *Client) {
 		client.httpClient = httpClient
+	}
+}
+
+func ClientOptPlainHTTP() ClientOption {
+	return func(c *Client) {
+		c.plainHTTP = true
 	}
 }
 
@@ -634,23 +644,14 @@ func (c *Client) Tags(ref string) ([]string, error) {
 	repository := registryremote.Repository{
 		Reference: parsedReference,
 		Client:    c.registryAuthorizer,
+		PlainHTTP: c.plainHTTP,
 	}
 
 	var registryTags []string
 
-	for {
-		registryTags, err = registry.Tags(ctx(c.out, c.debug), &repository)
-		if err != nil {
-			// Fallback to http based request
-			if !repository.PlainHTTP && strings.Contains(err.Error(), "server gave HTTP response") {
-				repository.PlainHTTP = true
-				continue
-			}
-			return nil, err
-		}
-
-		break
-
+	registryTags, err = registry.Tags(ctx(c.out, c.debug), &repository)
+	if err != nil {
+		return nil, err
 	}
 
 	var tagVersions []*semver.Version
