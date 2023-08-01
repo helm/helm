@@ -42,6 +42,15 @@ type Engine struct {
 	LintMode bool
 	// the rest config to connect to the kubernetes api
 	config *rest.Config
+	// EnableDNS tells the engine to allow DNS lookups when rendering templates
+	EnableDNS bool
+}
+
+// New creates a new instance of Engine using the passed in rest config.
+func New(config *rest.Config) Engine {
+	return Engine{
+		config: config,
+	}
 }
 
 // Render takes a chart, optional values, and value overrides, and attempts to render the Go templates.
@@ -97,7 +106,7 @@ const warnStartDelim = "HELM_ERR_START"
 const warnEndDelim = "HELM_ERR_END"
 const recursionMaxNums = 1000
 
-var warnRegex = regexp.MustCompile(warnStartDelim + `(.*)` + warnEndDelim)
+var warnRegex = regexp.MustCompile(warnStartDelim + `((?s).*)` + warnEndDelim)
 
 func warnWrap(warn string) string {
 	return warnStartDelim + warn + warnEndDelim
@@ -173,10 +182,28 @@ func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]render
 		return val, nil
 	}
 
+	// Override sprig fail function for linting and wrapping message
+	funcMap["fail"] = func(msg string) (string, error) {
+		if e.LintMode {
+			// Don't fail when linting
+			log.Printf("[INFO] Fail: %s", msg)
+			return "", nil
+		}
+		return "", errors.New(warnWrap(msg))
+	}
+
 	// If we are not linting and have a cluster connection, provide a Kubernetes-backed
 	// implementation.
 	if !e.LintMode && e.config != nil {
 		funcMap["lookup"] = NewLookupFunction(e.config)
+	}
+
+	// When DNS lookups are not enabled override the sprig function and return
+	// an empty string.
+	if !e.EnableDNS {
+		funcMap["getHostByName"] = func(name string) string {
+			return ""
+		}
 	}
 
 	t.Funcs(funcMap)
@@ -334,13 +361,20 @@ func allTemplates(c *chart.Chart, vals chartutil.Values) map[string]renderable {
 //
 // As it recurses, it also sets the values to be appropriate for the template
 // scope.
-func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.Values) {
+func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.Values) map[string]interface{} {
+	subCharts := make(map[string]interface{})
+	chartMetaData := struct {
+		chart.Metadata
+		IsRoot bool
+	}{*c.Metadata, c.IsRoot()}
+
 	next := map[string]interface{}{
-		"Chart":        c.Metadata,
+		"Chart":        chartMetaData,
 		"Files":        newFiles(c.Files),
 		"Release":      vals["Release"],
 		"Capabilities": vals["Capabilities"],
 		"Values":       make(chartutil.Values),
+		"Subcharts":    subCharts,
 	}
 
 	// If there is a {{.Values.ThisChart}} in the parent metadata,
@@ -352,7 +386,7 @@ func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.
 	}
 
 	for _, child := range c.Dependencies() {
-		recAllTpls(child, templates, next)
+		subCharts[child.Name()] = recAllTpls(child, templates, next)
 	}
 
 	newParentID := c.ChartFullPath()
@@ -366,6 +400,8 @@ func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.
 			basePath: path.Join(newParentID, "templates"),
 		}
 	}
+
+	return next
 }
 
 // isTemplateValid returns true if the template is valid for the chart type

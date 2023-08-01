@@ -33,7 +33,7 @@ This command consists of multiple subcommands to display information about a cha
 
 const showAllDesc = `
 This command inspects a chart (directory, file, or URL) and displays all its content
-(values.yaml, Charts.yaml, README)
+(values.yaml, Chart.yaml, README)
 `
 
 const showValuesDesc = `
@@ -43,7 +43,7 @@ of the values.yaml file
 
 const showChartDesc = `
 This command inspects a chart (directory, file, or URL) and displays the contents
-of the Charts.yaml file
+of the Chart.yaml file
 `
 
 const readmeChartDesc = `
@@ -51,8 +51,13 @@ This command inspects a chart (directory, file, or URL) and displays the content
 of the README file
 `
 
-func newShowCmd(out io.Writer) *cobra.Command {
-	client := action.NewShow(action.ShowAll)
+const showCRDsDesc = `
+This command inspects a chart (directory, file, or URL) and displays the contents
+of the CustomResourceDefinition files
+`
+
+func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+	client := action.NewShowWithConfig(action.ShowAll, cfg)
 
 	showCommand := &cobra.Command{
 		Use:               "show",
@@ -79,6 +84,10 @@ func newShowCmd(out io.Writer) *cobra.Command {
 		ValidArgsFunction: validArgsFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowAll
+			err := addRegistryClient(client)
+			if err != nil {
+				return err
+			}
 			output, err := runShow(args, client)
 			if err != nil {
 				return err
@@ -96,6 +105,10 @@ func newShowCmd(out io.Writer) *cobra.Command {
 		ValidArgsFunction: validArgsFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowValues
+			err := addRegistryClient(client)
+			if err != nil {
+				return err
+			}
 			output, err := runShow(args, client)
 			if err != nil {
 				return err
@@ -113,6 +126,10 @@ func newShowCmd(out io.Writer) *cobra.Command {
 		ValidArgsFunction: validArgsFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowChart
+			err := addRegistryClient(client)
+			if err != nil {
+				return err
+			}
 			output, err := runShow(args, client)
 			if err != nil {
 				return err
@@ -130,6 +147,10 @@ func newShowCmd(out io.Writer) *cobra.Command {
 		ValidArgsFunction: validArgsFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowReadme
+			err := addRegistryClient(client)
+			if err != nil {
+				return err
+			}
 			output, err := runShow(args, client)
 			if err != nil {
 				return err
@@ -139,7 +160,28 @@ func newShowCmd(out io.Writer) *cobra.Command {
 		},
 	}
 
-	cmds := []*cobra.Command{all, readmeSubCmd, valuesSubCmd, chartSubCmd}
+	crdsSubCmd := &cobra.Command{
+		Use:               "crds [CHART]",
+		Short:             "show the chart's CRDs",
+		Long:              showCRDsDesc,
+		Args:              require.ExactArgs(1),
+		ValidArgsFunction: validArgsFunc,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client.OutputFormat = action.ShowCRDs
+			err := addRegistryClient(client)
+			if err != nil {
+				return err
+			}
+			output, err := runShow(args, client)
+			if err != nil {
+				return err
+			}
+			fmt.Fprint(out, output)
+			return nil
+		},
+	}
+
+	cmds := []*cobra.Command{all, readmeSubCmd, valuesSubCmd, chartSubCmd, crdsSubCmd}
 	for _, subCmd := range cmds {
 		addShowFlags(subCmd, client)
 		showCommand.AddCommand(subCmd)
@@ -181,4 +223,14 @@ func runShow(args []string, client *action.Show) (string, error) {
 		return "", err
 	}
 	return client.Run(cp)
+}
+
+func addRegistryClient(client *action.Show) error {
+	registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
+		client.InsecureSkipTLSverify, client.PlainHTTP)
+	if err != nil {
+		return fmt.Errorf("missing registry client: %w", err)
+	}
+	client.SetRegistryClient(registryClient)
+	return nil
 }

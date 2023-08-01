@@ -18,9 +18,11 @@ package engine
 
 import (
 	"fmt"
+	"path"
 	"strings"
 	"sync"
 	"testing"
+	"text/template"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -89,6 +91,7 @@ func TestRender(t *testing.T) {
 			{Name: "templates/test2", Data: []byte("{{.Values.global.callme | lower }}")},
 			{Name: "templates/test3", Data: []byte("{{.noValue}}")},
 			{Name: "templates/test4", Data: []byte("{{toJson .Values}}")},
+			{Name: "templates/test5", Data: []byte("{{getHostByName \"helm.sh\"}}")},
 		},
 		Values: map[string]interface{}{"outer": "DEFAULT", "inner": "DEFAULT"},
 	}
@@ -117,6 +120,7 @@ func TestRender(t *testing.T) {
 		"moby/templates/test2": "ishmael",
 		"moby/templates/test3": "",
 		"moby/templates/test4": `{"global":{"callme":"Ishmael"},"inner":"inn","outer":"spouter"}`,
+		"moby/templates/test5": "",
 	}
 
 	for name, data := range expect {
@@ -200,6 +204,42 @@ func TestRenderInternals(t *testing.T) {
 	}
 }
 
+func TestRenderWIthDNS(t *testing.T) {
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:    "moby",
+			Version: "1.2.3",
+		},
+		Templates: []*chart.File{
+			{Name: "templates/test1", Data: []byte("{{getHostByName \"helm.sh\"}}")},
+		},
+		Values: map[string]interface{}{},
+	}
+
+	vals := map[string]interface{}{
+		"Values": map[string]interface{}{},
+	}
+
+	v, err := chartutil.CoalesceValues(c, vals)
+	if err != nil {
+		t.Fatalf("Failed to coalesce values: %s", err)
+	}
+
+	var e Engine
+	e.EnableDNS = true
+	out, err := e.Render(c, v)
+	if err != nil {
+		t.Errorf("Failed to render templates: %s", err)
+	}
+
+	for _, val := range c.Templates {
+		fp := path.Join("moby", val.Name)
+		if out[fp] == "" {
+			t.Errorf("Expected IP address, got %q", out[fp])
+		}
+	}
+}
+
 func TestParallelRenderInternals(t *testing.T) {
 	// Make sure that we can use one Engine to run parallel template renders.
 	e := new(Engine)
@@ -245,44 +285,94 @@ func TestParseErrors(t *testing.T) {
 
 func TestExecErrors(t *testing.T) {
 	vals := chartutil.Values{"Values": map[string]interface{}{}}
-
-	tplsMissingRequired := map[string]renderable{
-		"missing_required": {tpl: `{{required "foo is required" .Values.foo}}`, vals: vals},
-	}
-	_, err := new(Engine).render(tplsMissingRequired)
-	if err == nil {
-		t.Fatalf("Expected failures while rendering: %s", err)
-	}
-	expected := `execution error at (missing_required:1:2): foo is required`
-	if err.Error() != expected {
-		t.Errorf("Expected '%s', got %q", expected, err.Error())
-	}
-
-	tplsMissingRequired = map[string]renderable{
-		"missing_required_with_colons": {tpl: `{{required ":this: message: has many: colons:" .Values.foo}}`, vals: vals},
-	}
-	_, err = new(Engine).render(tplsMissingRequired)
-	if err == nil {
-		t.Fatalf("Expected failures while rendering: %s", err)
-	}
-	expected = `execution error at (missing_required_with_colons:1:2): :this: message: has many: colons:`
-	if err.Error() != expected {
-		t.Errorf("Expected '%s', got %q", expected, err.Error())
-	}
-
-	issue6044tpl := `{{ $someEmptyValue := "" }}
+	cases := []struct {
+		name     string
+		tpls     map[string]renderable
+		expected string
+	}{
+		{
+			name: "MissingRequired",
+			tpls: map[string]renderable{
+				"missing_required": {tpl: `{{required "foo is required" .Values.foo}}`, vals: vals},
+			},
+			expected: `execution error at (missing_required:1:2): foo is required`,
+		},
+		{
+			name: "MissingRequiredWithColons",
+			tpls: map[string]renderable{
+				"missing_required_with_colons": {tpl: `{{required ":this: message: has many: colons:" .Values.foo}}`, vals: vals},
+			},
+			expected: `execution error at (missing_required_with_colons:1:2): :this: message: has many: colons:`,
+		},
+		{
+			name: "Issue6044",
+			tpls: map[string]renderable{
+				"issue6044": {
+					vals: vals,
+					tpl: `{{ $someEmptyValue := "" }}
 {{ $myvar := "abc" }}
-{{- required (printf "%s: something is missing" $myvar) $someEmptyValue | repeat 0 }}`
-	tplsMissingRequired = map[string]renderable{
-		"issue6044": {tpl: issue6044tpl, vals: vals},
+{{- required (printf "%s: something is missing" $myvar) $someEmptyValue | repeat 0 }}`,
+				},
+			},
+			expected: `execution error at (issue6044:3:4): abc: something is missing`,
+		},
+		{
+			name: "MissingRequiredWithNewlines",
+			tpls: map[string]renderable{
+				"issue9981": {tpl: `{{required "foo is required\nmore info after the break" .Values.foo}}`, vals: vals},
+			},
+			expected: `execution error at (issue9981:1:2): foo is required
+more info after the break`,
+		},
+		{
+			name: "FailWithNewlines",
+			tpls: map[string]renderable{
+				"issue9981": {tpl: `{{fail "something is wrong\nlinebreak"}}`, vals: vals},
+			},
+			expected: `execution error at (issue9981:1:2): something is wrong
+linebreak`,
+		},
 	}
-	_, err = new(Engine).render(tplsMissingRequired)
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := new(Engine).render(tt.tpls)
+			if err == nil {
+				t.Fatalf("Expected failures while rendering: %s", err)
+			}
+			if err.Error() != tt.expected {
+				t.Errorf("Expected %q, got %q", tt.expected, err.Error())
+			}
+		})
+	}
+}
+
+func TestFailErrors(t *testing.T) {
+	vals := chartutil.Values{"Values": map[string]interface{}{}}
+
+	failtpl := `All your base are belong to us{{ fail "This is an error" }}`
+	tplsFailed := map[string]renderable{
+		"failtpl": {tpl: failtpl, vals: vals},
+	}
+	_, err := new(Engine).render(tplsFailed)
 	if err == nil {
 		t.Fatalf("Expected failures while rendering: %s", err)
 	}
-	expected = `execution error at (issue6044:3:4): abc: something is missing`
+	expected := `execution error at (failtpl:1:33): This is an error`
 	if err.Error() != expected {
 		t.Errorf("Expected '%s', got %q", expected, err.Error())
+	}
+
+	var e Engine
+	e.LintMode = true
+	out, err := e.render(tplsFailed)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectStr := "All your base are belong to us"
+	if gotStr := out["failtpl"]; gotStr != expectStr {
+		t.Errorf("Expected %q, got %q (%v)", expectStr, gotStr, out)
 	}
 }
 
@@ -314,6 +404,36 @@ func TestAllTemplates(t *testing.T) {
 	tpls := allTemplates(ch1, chartutil.Values{})
 	if len(tpls) != 5 {
 		t.Errorf("Expected 5 charts, got %d", len(tpls))
+	}
+}
+
+func TestChartValuesContainsIsRoot(t *testing.T) {
+	ch1 := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "parent"},
+		Templates: []*chart.File{
+			{Name: "templates/isroot", Data: []byte("{{.Chart.IsRoot}}")},
+		},
+	}
+	dep1 := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "child"},
+		Templates: []*chart.File{
+			{Name: "templates/isroot", Data: []byte("{{.Chart.IsRoot}}")},
+		},
+	}
+	ch1.AddDependency(dep1)
+
+	out, err := Render(ch1, chartutil.Values{})
+	if err != nil {
+		t.Fatalf("failed to render templates: %s", err)
+	}
+	expects := map[string]string{
+		"parent/charts/child/templates/isroot": "false",
+		"parent/templates/isroot":              "true",
+	}
+	for file, expect := range expects {
+		if out[file] != expect {
+			t.Errorf("Expected %q, got %q", expect, out[file])
+		}
 	}
 }
 
@@ -355,6 +475,8 @@ func TestRenderNestedValues(t *testing.T) {
 	// Ensure namespacing rules are working.
 	deepestpath := "templates/inner.tpl"
 	checkrelease := "templates/release.tpl"
+	// Ensure subcharts scopes are working.
+	subchartspath := "templates/subcharts.tpl"
 
 	deepest := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "deepest"},
@@ -362,7 +484,7 @@ func TestRenderNestedValues(t *testing.T) {
 			{Name: deepestpath, Data: []byte(`And this same {{.Values.what}} that smiles {{.Values.global.when}}`)},
 			{Name: checkrelease, Data: []byte(`Tomorrow will be {{default "happy" .Release.Name }}`)},
 		},
-		Values: map[string]interface{}{"what": "milkshake"},
+		Values: map[string]interface{}{"what": "milkshake", "where": "here"},
 	}
 
 	inner := &chart.Chart{
@@ -370,7 +492,7 @@ func TestRenderNestedValues(t *testing.T) {
 		Templates: []*chart.File{
 			{Name: innerpath, Data: []byte(`Old {{.Values.who}} is still a-flyin'`)},
 		},
-		Values: map[string]interface{}{"who": "Robert"},
+		Values: map[string]interface{}{"who": "Robert", "what": "glasses"},
 	}
 	inner.AddDependency(deepest)
 
@@ -378,12 +500,14 @@ func TestRenderNestedValues(t *testing.T) {
 		Metadata: &chart.Metadata{Name: "top"},
 		Templates: []*chart.File{
 			{Name: outerpath, Data: []byte(`Gather ye {{.Values.what}} while ye may`)},
+			{Name: subchartspath, Data: []byte(`The glorious Lamp of {{.Subcharts.herrick.Subcharts.deepest.Values.where}}, the {{.Subcharts.herrick.Values.what}}`)},
 		},
 		Values: map[string]interface{}{
 			"what": "stinkweed",
 			"who":  "me",
 			"herrick": map[string]interface{}{
-				"who": "time",
+				"who":  "time",
+				"what": "Sun",
 			},
 		},
 	}
@@ -393,7 +517,8 @@ func TestRenderNestedValues(t *testing.T) {
 		"what": "rosebuds",
 		"herrick": map[string]interface{}{
 			"deepest": map[string]interface{}{
-				"what": "flower",
+				"what":  "flower",
+				"where": "Heaven",
 			},
 		},
 		"global": map[string]interface{}{
@@ -440,6 +565,11 @@ func TestRenderNestedValues(t *testing.T) {
 	if out[fullcheckrelease] != "Tomorrow will be dyin" {
 		t.Errorf("Unexpected release: %q", out[fullcheckrelease])
 	}
+
+	fullchecksubcharts := "top/" + subchartspath
+	if out[fullchecksubcharts] != "The glorious Lamp of Heaven, the Sun" {
+		t.Errorf("Unexpected subcharts: %q", out[fullchecksubcharts])
+	}
 }
 
 func TestRenderBuiltinValues(t *testing.T) {
@@ -459,6 +589,7 @@ func TestRenderBuiltinValues(t *testing.T) {
 		Metadata: &chart.Metadata{Name: "Troy"},
 		Templates: []*chart.File{
 			{Name: "templates/Aeneas", Data: []byte(`{{.Template.Name}}{{.Chart.Name}}{{.Release.Name}}`)},
+			{Name: "templates/Amata", Data: []byte(`{{.Subcharts.Latium.Chart.Name}} {{.Subcharts.Latium.Files.author | printf "%s"}}`)},
 		},
 	}
 	outer.AddDependency(inner)
@@ -481,6 +612,7 @@ func TestRenderBuiltinValues(t *testing.T) {
 	expects := map[string]string{
 		"Troy/charts/Latium/templates/Lavinia": "Troy/charts/Latium/templates/LaviniaLatiumAeneid",
 		"Troy/templates/Aeneas":                "Troy/templates/AeneasTroyAeneid",
+		"Troy/templates/Amata":                 "Latium Virgil",
 		"Troy/charts/Latium/templates/From":    "Virgil Aeneid",
 	}
 	for file, expect := range expects {
@@ -737,4 +869,243 @@ func TestRenderRecursionLimit(t *testing.T) {
 		t.Errorf("Expected %q, got %q (%v)", expect, got, out)
 	}
 
+}
+
+func TestRenderLoadTemplateForTplFromFile(t *testing.T) {
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "TplLoadFromFile"},
+		Templates: []*chart.File{
+			{Name: "templates/base", Data: []byte(`{{ tpl (.Files.Get .Values.filename) . }}`)},
+			{Name: "templates/_function", Data: []byte(`{{define "test-function"}}test-function{{end}}`)},
+		},
+		Files: []*chart.File{
+			{Name: "test", Data: []byte(`{{ tpl (.Files.Get .Values.filename2) .}}`)},
+			{Name: "test2", Data: []byte(`{{include "test-function" .}}{{define "nested-define"}}nested-define-content{{end}} {{include "nested-define" .}}`)},
+		},
+	}
+
+	v := chartutil.Values{
+		"Values": chartutil.Values{
+			"filename":  "test",
+			"filename2": "test2",
+		},
+		"Chart": c.Metadata,
+		"Release": chartutil.Values{
+			"Name": "TestRelease",
+		},
+	}
+
+	out, err := Render(c, v)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expect := "test-function nested-define-content"
+	if got := out["TplLoadFromFile/templates/base"]; got != expect {
+		t.Fatalf("Expected %q, got %q", expect, got)
+	}
+}
+
+func TestRenderTplEmpty(t *testing.T) {
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "TplEmpty"},
+		Templates: []*chart.File{
+			{Name: "templates/empty-string", Data: []byte(`{{tpl "" .}}`)},
+			{Name: "templates/empty-action", Data: []byte(`{{tpl "{{ \"\"}}" .}}`)},
+			{Name: "templates/only-defines", Data: []byte(`{{tpl "{{define \"not-invoked\"}}not-rendered{{end}}" .}}`)},
+		},
+	}
+	v := chartutil.Values{
+		"Chart": c.Metadata,
+		"Release": chartutil.Values{
+			"Name": "TestRelease",
+		},
+	}
+
+	out, err := Render(c, v)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expects := map[string]string{
+		"TplEmpty/templates/empty-string": "",
+		"TplEmpty/templates/empty-action": "",
+		"TplEmpty/templates/only-defines": "",
+	}
+	for file, expect := range expects {
+		if out[file] != expect {
+			t.Errorf("Expected %q, got %q", expect, out[file])
+		}
+	}
+}
+
+func TestRenderTplTemplateNames(t *testing.T) {
+	// .Template.BasePath and .Name make it through
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "TplTemplateNames"},
+		Templates: []*chart.File{
+			{Name: "templates/default-basepath", Data: []byte(`{{tpl "{{ .Template.BasePath }}" .}}`)},
+			{Name: "templates/default-name", Data: []byte(`{{tpl "{{ .Template.Name }}" .}}`)},
+			{Name: "templates/modified-basepath", Data: []byte(`{{tpl "{{ .Template.BasePath }}" .Values.dot}}`)},
+			{Name: "templates/modified-name", Data: []byte(`{{tpl "{{ .Template.Name }}" .Values.dot}}`)},
+			// Current implementation injects the 'tpl' template as if it were a template file, and
+			// so only BasePath and Name make it through.
+			{Name: "templates/modified-field", Data: []byte(`{{tpl "{{ .Template.Field }}" .Values.dot}}`)},
+		},
+	}
+	v := chartutil.Values{
+		"Values": chartutil.Values{
+			"dot": chartutil.Values{
+				"Template": chartutil.Values{
+					"BasePath": "path/to/template",
+					"Name":     "name-of-template",
+					"Field":    "extra-field",
+				},
+			},
+		},
+		"Chart": c.Metadata,
+		"Release": chartutil.Values{
+			"Name": "TestRelease",
+		},
+	}
+
+	out, err := Render(c, v)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expects := map[string]string{
+		"TplTemplateNames/templates/default-basepath":  "TplTemplateNames/templates",
+		"TplTemplateNames/templates/default-name":      "TplTemplateNames/templates/default-name",
+		"TplTemplateNames/templates/modified-basepath": "path/to/template",
+		"TplTemplateNames/templates/modified-name":     "name-of-template",
+		"TplTemplateNames/templates/modified-field":    "",
+	}
+	for file, expect := range expects {
+		if out[file] != expect {
+			t.Errorf("Expected %q, got %q", expect, out[file])
+		}
+	}
+}
+
+func TestRenderTplRedefines(t *testing.T) {
+	// Redefining a template inside 'tpl' does not affect the outer definition
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "TplRedefines"},
+		Templates: []*chart.File{
+			{Name: "templates/_partials", Data: []byte(`{{define "partial"}}original-in-partial{{end}}`)},
+			{Name: "templates/partial", Data: []byte(
+				`before: {{include "partial" .}}\n{{tpl .Values.partialText .}}\nafter: {{include "partial" .}}`,
+			)},
+			{Name: "templates/manifest", Data: []byte(
+				`{{define "manifest"}}original-in-manifest{{end}}` +
+					`before: {{include "manifest" .}}\n{{tpl .Values.manifestText .}}\nafter: {{include "manifest" .}}`,
+			)},
+			// The current implementation replaces the manifest text and re-parses, so a
+			// partial template defined only in the manifest invoking tpl cannot be accessed
+			// by that tpl call.
+			//{Name: "templates/manifest-only", Data: []byte(
+			//	`{{define "manifest-only"}}only-in-manifest{{end}}` +
+			//		`before: {{include "manifest-only" .}}\n{{tpl .Values.manifestOnlyText .}}\nafter: {{include "manifest-only" .}}`,
+			//)},
+		},
+	}
+	v := chartutil.Values{
+		"Values": chartutil.Values{
+			"partialText":      `{{define "partial"}}redefined-in-tpl{{end}}tpl: {{include "partial" .}}`,
+			"manifestText":     `{{define "manifest"}}redefined-in-tpl{{end}}tpl: {{include "manifest" .}}`,
+			"manifestOnlyText": `tpl: {{include "manifest-only" .}}`,
+		},
+		"Chart": c.Metadata,
+		"Release": chartutil.Values{
+			"Name": "TestRelease",
+		},
+	}
+
+	out, err := Render(c, v)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expects := map[string]string{
+		"TplRedefines/templates/partial":  `before: original-in-partial\ntpl: original-in-partial\nafter: original-in-partial`,
+		"TplRedefines/templates/manifest": `before: original-in-manifest\ntpl: redefined-in-tpl\nafter: original-in-manifest`,
+		//"TplRedefines/templates/manifest-only": `before: only-in-manifest\ntpl: only-in-manifest\nafter: only-in-manifest`,
+	}
+	for file, expect := range expects {
+		if out[file] != expect {
+			t.Errorf("Expected %q, got %q", expect, out[file])
+		}
+	}
+}
+
+func TestRenderTplMissingKey(t *testing.T) {
+	// Rendering a missing key results in empty/zero output.
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "TplMissingKey"},
+		Templates: []*chart.File{
+			{Name: "templates/manifest", Data: []byte(
+				`missingValue: {{tpl "{{.Values.noSuchKey}}" .}}`,
+			)},
+		},
+	}
+	v := chartutil.Values{
+		"Values": chartutil.Values{},
+		"Chart":  c.Metadata,
+		"Release": chartutil.Values{
+			"Name": "TestRelease",
+		},
+	}
+
+	out, err := Render(c, v)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expects := map[string]string{
+		"TplMissingKey/templates/manifest": `missingValue: `,
+	}
+	for file, expect := range expects {
+		if out[file] != expect {
+			t.Errorf("Expected %q, got %q", expect, out[file])
+		}
+	}
+}
+
+func TestRenderTplMissingKeyString(t *testing.T) {
+	// Rendering a missing key results in error
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "TplMissingKeyStrict"},
+		Templates: []*chart.File{
+			{Name: "templates/manifest", Data: []byte(
+				`missingValue: {{tpl "{{.Values.noSuchKey}}" .}}`,
+			)},
+		},
+	}
+	v := chartutil.Values{
+		"Values": chartutil.Values{},
+		"Chart":  c.Metadata,
+		"Release": chartutil.Values{
+			"Name": "TestRelease",
+		},
+	}
+
+	e := new(Engine)
+	e.Strict = true
+
+	out, err := e.Render(c, v)
+	if err == nil {
+		t.Errorf("Expected error, got %v", out)
+		return
+	}
+	switch err.(type) {
+	case (template.ExecError):
+		errTxt := fmt.Sprint(err)
+		if !strings.Contains(errTxt, "noSuchKey") {
+			t.Errorf("Expected error to contain 'noSuchKey', got %s", errTxt)
+		}
+	default:
+		// Some unexpected error.
+		t.Fatal(err)
+	}
 }

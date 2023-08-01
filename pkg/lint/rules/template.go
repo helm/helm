@@ -70,6 +70,12 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 		Namespace: namespace,
 	}
 
+	// lint ignores import-values
+	// See https://github.com/helm/helm/issues/9658
+	if err := chartutil.ProcessDependenciesWithMerge(chart, values); err != nil {
+		return
+	}
+
 	cvals, err := chartutil.CoalesceValues(chart, values)
 	if err != nil {
 		return
@@ -113,7 +119,7 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 
 		// NOTE: disabled for now, Refs https://github.com/helm/helm/issues/1463
 		// Check that all the templates have a matching value
-		//linter.RunLinterRule(support.WarningSev, fpath, validateNoMissingValues(templatesPath, valuesToRender, preExecutedTemplate))
+		// linter.RunLinterRule(support.WarningSev, fpath, validateNoMissingValues(templatesPath, valuesToRender, preExecutedTemplate))
 
 		// NOTE: disabled for now, Refs https://github.com/helm/helm/issues/1037
 		// linter.RunLinterRule(support.WarningSev, fpath, validateQuotes(string(preExecutedTemplate)))
@@ -135,10 +141,11 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 					break
 				}
 
-				// If YAML linting fails, we sill progress. So we don't capture the returned state
-				// on this linter run.
-				linter.RunLinterRule(support.ErrorSev, fpath, validateYamlContent(err))
-
+				//  If YAML linting fails here, it will always fail in the next block as well, so we should return here.
+				// fix https://github.com/helm/helm/issues/11391
+				if !linter.RunLinterRule(support.ErrorSev, fpath, validateYamlContent(err)) {
+					return
+				}
 				if yamlStruct != nil {
 					// NOTE: set to warnings to allow users to support out-of-date kubernetes
 					// Refs https://github.com/helm/helm/issues/8596
@@ -146,6 +153,7 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 					linter.RunLinterRule(support.WarningSev, fpath, validateNoDeprecations(yamlStruct))
 
 					linter.RunLinterRule(support.ErrorSev, fpath, validateMatchSelector(yamlStruct, renderedContent))
+					linter.RunLinterRule(support.ErrorSev, fpath, validateListAnnotations(yamlStruct, renderedContent))
 				}
 			}
 		}
@@ -180,10 +188,10 @@ func validateTopIndentLevel(content string) error {
 
 // Validation functions
 func validateTemplatesDir(templatesPath string) error {
-	if fi, err := os.Stat(templatesPath); err != nil {
-		return errors.New("directory not found")
-	} else if !fi.IsDir() {
-		return errors.New("not a directory")
+	if fi, err := os.Stat(templatesPath); err == nil {
+		if !fi.IsDir() {
+			return errors.New("not a directory")
+		}
 	}
 	return nil
 }
@@ -289,6 +297,28 @@ func validateMatchSelector(yamlStruct *K8sYamlStruct, manifest string) error {
 		// verify that matchLabels or matchExpressions is present
 		if !(strings.Contains(manifest, "matchLabels") || strings.Contains(manifest, "matchExpressions")) {
 			return fmt.Errorf("a %s must contain matchLabels or matchExpressions, and %q does not", yamlStruct.Kind, yamlStruct.Metadata.Name)
+		}
+	}
+	return nil
+}
+func validateListAnnotations(yamlStruct *K8sYamlStruct, manifest string) error {
+	if yamlStruct.Kind == "List" {
+		m := struct {
+			Items []struct {
+				Metadata struct {
+					Annotations map[string]string
+				}
+			}
+		}{}
+
+		if err := yaml.Unmarshal([]byte(manifest), &m); err != nil {
+			return validateYamlContent(err)
+		}
+
+		for _, i := range m.Items {
+			if _, ok := i.Metadata.Annotations["helm.sh/resource-policy"]; ok {
+				return errors.New("Annotation 'helm.sh/resource-policy' within List objects are ignored")
+			}
 		}
 	}
 	return nil

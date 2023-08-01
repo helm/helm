@@ -18,6 +18,7 @@ package rules // import "helm.sh/helm/v3/pkg/lint/rules"
 
 import (
 	"fmt"
+	"strconv"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -25,11 +26,12 @@ import (
 	kscheme "k8s.io/client-go/kubernetes/scheme"
 )
 
-const (
+var (
 	// This should be set in the Makefile based on the version of client-go being imported.
-	// These constants will be overwritten with LDFLAGS
-	k8sVersionMajor = 1
-	k8sVersionMinor = 20
+	// These constants will be overwritten with LDFLAGS. The version components must be
+	// strings in order for LDFLAGS to set them.
+	k8sVersionMajor = "1"
+	k8sVersionMinor = "20"
 )
 
 // deprecatedAPIError indicates than an API is deprecated in Kubernetes
@@ -60,7 +62,16 @@ func validateNoDeprecations(resource *K8sYamlStruct) error {
 		}
 		return err
 	}
-	if !deprecation.IsDeprecated(runtimeObject, k8sVersionMajor, k8sVersionMinor) {
+	maj, err := strconv.Atoi(k8sVersionMajor)
+	if err != nil {
+		return err
+	}
+	min, err := strconv.Atoi(k8sVersionMinor)
+	if err != nil {
+		return err
+	}
+
+	if !deprecation.IsDeprecated(runtimeObject, maj, min) {
 		return nil
 	}
 	gvk := fmt.Sprintf("%s %s", resource.APIVersion, resource.Kind)

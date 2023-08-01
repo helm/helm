@@ -17,9 +17,13 @@ limitations under the License.
 package action
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	kubefake "helm.sh/helm/v3/pkg/kube/fake"
+	"helm.sh/helm/v3/pkg/release"
 )
 
 func uninstallAction(t *testing.T) *Uninstall {
@@ -59,4 +63,67 @@ func TestUninstallRelease_deleteRelease(t *testing.T) {
 [Secret] secret
 `
 	is.Contains(res.Info, expected)
+}
+
+func TestUninstallRelease_Wait(t *testing.T) {
+	is := assert.New(t)
+
+	unAction := uninstallAction(t)
+	unAction.DisableHooks = true
+	unAction.DryRun = false
+	unAction.Wait = true
+
+	rel := releaseStub()
+	rel.Name = "come-fail-away"
+	rel.Manifest = `{
+		"apiVersion": "v1",
+		"kind": "Secret",
+		"metadata": {
+		  "name": "secret"
+		},
+		"type": "Opaque",
+		"data": {
+		  "password": "password"
+		}
+	}`
+	unAction.cfg.Releases.Create(rel)
+	failer := unAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+	failer.WaitError = fmt.Errorf("U timed out")
+	unAction.cfg.KubeClient = failer
+	res, err := unAction.Run(rel.Name)
+	is.Error(err)
+	is.Contains(err.Error(), "U timed out")
+	is.Equal(res.Release.Info.Status, release.StatusUninstalled)
+}
+
+func TestUninstallRelease_Cascade(t *testing.T) {
+	is := assert.New(t)
+
+	unAction := uninstallAction(t)
+	unAction.DisableHooks = true
+	unAction.DryRun = false
+	unAction.Wait = false
+	unAction.DeletionPropagation = "foreground"
+
+	rel := releaseStub()
+	rel.Name = "come-fail-away"
+	rel.Manifest = `{
+		"apiVersion": "v1",
+		"kind": "Secret",
+		"metadata": {
+		  "name": "secret"
+		},
+		"type": "Opaque",
+		"data": {
+		  "password": "password"
+		}
+	}`
+	unAction.cfg.Releases.Create(rel)
+	failer := unAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+	failer.DeleteWithPropagationError = fmt.Errorf("Uninstall with cascade failed")
+	failer.BuildDummy = true
+	unAction.cfg.KubeClient = failer
+	_, err := unAction.Run(rel.Name)
+	is.Error(err)
+	is.Contains(err.Error(), "failed to delete release: come-fail-away")
 }

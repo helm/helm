@@ -17,7 +17,6 @@ package plugin // import "helm.sh/helm/v3/pkg/plugin"
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -152,7 +151,7 @@ func (p *Plugin) PrepareCommand(extraArgs []string) (string, []string, error) {
 		parts = strings.Split(os.ExpandEnv(p.Metadata.Command), " ")
 	}
 	if len(parts) == 0 || parts[0] == "" {
-		return "", nil, fmt.Errorf("No plugin command is applicable")
+		return "", nil, fmt.Errorf("no plugin command is applicable")
 	}
 
 	main := parts[0]
@@ -216,7 +215,7 @@ func detectDuplicates(plugs []*Plugin) error {
 // LoadDir loads a plugin from the given directory.
 func LoadDir(dirname string) (*Plugin, error) {
 	pluginfile := filepath.Join(dirname, PluginFileName)
-	data, err := ioutil.ReadFile(pluginfile)
+	data, err := os.ReadFile(pluginfile)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read plugin at %q", pluginfile)
 	}

@@ -25,6 +25,8 @@ import (
 var chartPath = "testdata/testcharts/subchart"
 
 func TestTemplateCmd(t *testing.T) {
+	deletevalchart := "testdata/testcharts/issue-9027"
+
 	tests := []cmdTestCase{
 		{
 			name:   "check name",
@@ -43,7 +45,7 @@ func TestTemplateCmd(t *testing.T) {
 		},
 		{
 			name:   "check name template",
-			cmd:    fmt.Sprintf(`template '%s' --name-template='foobar-{{ b64enc "abc" }}-baz'`, chartPath),
+			cmd:    fmt.Sprintf(`template '%s' --name-template='foobar-{{ b64enc "abc" | lower }}-baz'`, chartPath),
 			golden: "output/template-name-template.txt",
 		},
 		{
@@ -62,7 +64,7 @@ func TestTemplateCmd(t *testing.T) {
 			name:      "check chart bad type",
 			cmd:       fmt.Sprintf("template '%s'", "testdata/testcharts/chart-bad-type"),
 			wantError: true,
-			golden:    "output/install-chart-bad-type.txt",
+			golden:    "output/template-chart-bad-type.txt",
 		},
 		{
 			name:   "check chart with dependency which is an app chart acting as a library chart",
@@ -73,6 +75,11 @@ func TestTemplateCmd(t *testing.T) {
 			name:   "check chart with dependency which is an app chart archive acting as a library chart",
 			cmd:    fmt.Sprintf("template '%s'", "testdata/testcharts/chart-with-template-lib-archive-dep"),
 			golden: "output/template-chart-with-template-lib-archive-dep.txt",
+		},
+		{
+			name:   "check kube version",
+			cmd:    fmt.Sprintf("template --kube-version 1.16.0 '%s'", chartPath),
+			golden: "output/template-with-kube-version.txt",
 		},
 		{
 			name:   "check kube api versions",
@@ -125,6 +132,34 @@ func TestTemplateCmd(t *testing.T) {
 			name:   "template skip-tests",
 			cmd:    fmt.Sprintf(`template '%s' --skip-tests`, chartPath),
 			golden: "output/template-skip-tests.txt",
+		},
+		{
+			// This test case is to ensure the case where specified dependencies
+			// in the Chart.yaml and those where the Chart.yaml don't have them
+			// specified are the same.
+			name:   "ensure nil/null values pass to subcharts delete values",
+			cmd:    fmt.Sprintf("template '%s'", deletevalchart),
+			golden: "output/issue-9027.txt",
+		},
+		{
+			// Ensure that imported values take precedence over parent chart values
+			name:   "template with imported subchart values ensuring import",
+			cmd:    fmt.Sprintf("template '%s' --set configmap.enabled=true --set subchartb.enabled=true", chartPath),
+			golden: "output/template-subchart-cm.txt",
+		},
+		{
+			// Ensure that user input values take precedence over imported
+			// values from sub-charts.
+			name:   "template with imported subchart values set with --set",
+			cmd:    fmt.Sprintf("template '%s' --set configmap.enabled=true --set subchartb.enabled=true --set configmap.value=baz", chartPath),
+			golden: "output/template-subchart-cm-set.txt",
+		},
+		{
+			// Ensure that user input values take precedence over imported
+			// values from sub-charts when passed by file
+			name:   "template with imported subchart values set with --set",
+			cmd:    fmt.Sprintf("template '%s' -f %s/extra_values.yaml", chartPath, chartPath),
+			golden: "output/template-subchart-cm-set-file.txt",
 		},
 	}
 	runTestCmd(t, tests)

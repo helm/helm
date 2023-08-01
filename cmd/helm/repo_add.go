@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -48,6 +47,8 @@ type repoAddOptions struct {
 	url                  string
 	username             string
 	password             string
+	passwordFromStdinOpt bool
+	passCredentialsAll   bool
 	forceUpdate          bool
 	allowDeprecatedRepos bool
 
@@ -84,6 +85,7 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.StringVar(&o.username, "username", "", "chart repository username")
 	f.StringVar(&o.password, "password", "", "chart repository password")
+	f.BoolVarP(&o.passwordFromStdinOpt, "password-stdin", "", false, "read chart repository password from stdin")
 	f.BoolVar(&o.forceUpdate, "force-update", false, "replace (overwrite) the repo if it already exists")
 	f.BoolVar(&o.deprecatedNoUpdate, "no-update", false, "Ignored. Formerly, it would disabled forced updates. It is deprecated by force-update.")
 	f.StringVar(&o.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
@@ -91,6 +93,7 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&o.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 	f.BoolVar(&o.insecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the repository")
 	f.BoolVar(&o.allowDeprecatedRepos, "allow-deprecated-repos", false, "by default, this command will not allow adding official repos that have been permanently deleted. This disables that behavior")
+	f.BoolVar(&o.passCredentialsAll, "pass-credentials", false, "pass credentials to all domains")
 
 	return cmd
 }
@@ -112,7 +115,14 @@ func (o *repoAddOptions) run(out io.Writer) error {
 	}
 
 	// Acquire a file lock for process synchronization
-	fileLock := flock.New(strings.Replace(o.repoFile, filepath.Ext(o.repoFile), ".lock", 1))
+	repoFileExt := filepath.Ext(o.repoFile)
+	var lockPath string
+	if len(repoFileExt) > 0 && len(repoFileExt) < len(o.repoFile) {
+		lockPath = strings.TrimSuffix(o.repoFile, repoFileExt) + ".lock"
+	} else {
+		lockPath = o.repoFile + ".lock"
+	}
+	fileLock := flock.New(lockPath)
 	lockCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	locked, err := fileLock.TryLockContext(lockCtx, time.Second)
@@ -123,7 +133,7 @@ func (o *repoAddOptions) run(out io.Writer) error {
 		return err
 	}
 
-	b, err := ioutil.ReadFile(o.repoFile)
+	b, err := os.ReadFile(o.repoFile)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
@@ -134,14 +144,24 @@ func (o *repoAddOptions) run(out io.Writer) error {
 	}
 
 	if o.username != "" && o.password == "" {
-		fd := int(os.Stdin.Fd())
-		fmt.Fprint(out, "Password: ")
-		password, err := term.ReadPassword(fd)
-		fmt.Fprintln(out)
-		if err != nil {
-			return err
+		if o.passwordFromStdinOpt {
+			passwordFromStdin, err := io.ReadAll(os.Stdin)
+			if err != nil {
+				return err
+			}
+			password := strings.TrimSuffix(string(passwordFromStdin), "\n")
+			password = strings.TrimSuffix(password, "\r")
+			o.password = password
+		} else {
+			fd := int(os.Stdin.Fd())
+			fmt.Fprint(out, "Password: ")
+			password, err := term.ReadPassword(fd)
+			fmt.Fprintln(out)
+			if err != nil {
+				return err
+			}
+			o.password = string(password)
 		}
-		o.password = string(password)
 	}
 
 	c := repo.Entry{
@@ -149,10 +169,16 @@ func (o *repoAddOptions) run(out io.Writer) error {
 		URL:                   o.url,
 		Username:              o.username,
 		Password:              o.password,
+		PassCredentialsAll:    o.passCredentialsAll,
 		CertFile:              o.certFile,
 		KeyFile:               o.keyFile,
 		CAFile:                o.caFile,
 		InsecureSkipTLSverify: o.insecureSkipTLSverify,
+	}
+
+	// Check if the repo name is legal
+	if strings.Contains(o.name, "/") {
+		return errors.Errorf("repository name (%s) contains '/', please specify a different name without '/'", o.name)
 	}
 
 	// If the repo exists do one of two things:
@@ -186,7 +212,7 @@ func (o *repoAddOptions) run(out io.Writer) error {
 
 	f.Update(&c)
 
-	if err := f.WriteFile(o.repoFile, 0644); err != nil {
+	if err := f.WriteFile(o.repoFile, 0600); err != nil {
 		return err
 	}
 	fmt.Fprintf(out, "%q has been added to your repositories\n", o.name)

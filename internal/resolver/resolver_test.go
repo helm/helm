@@ -16,9 +16,11 @@ limitations under the License.
 package resolver
 
 import (
+	"runtime"
 	"testing"
 
 	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/registry"
 )
 
 func TestResolve(t *testing.T) {
@@ -28,6 +30,18 @@ func TestResolve(t *testing.T) {
 		expect *chart.Lock
 		err    bool
 	}{
+		{
+			name: "repo from invalid version",
+			req: []*chart.Dependency{
+				{Name: "base", Repository: "file://base", Version: "1.1.0"},
+			},
+			expect: &chart.Lock{
+				Dependencies: []*chart.Dependency{
+					{Name: "base", Repository: "file://base", Version: "0.1.0"},
+				},
+			},
+			err: true,
+		},
 		{
 			name: "version failure",
 			req: []*chart.Dependency{
@@ -126,7 +140,8 @@ func TestResolve(t *testing.T) {
 	}
 
 	repoNames := map[string]string{"alpine": "kubernetes-charts", "redis": "kubernetes-charts"}
-	r := New("testdata/chartpath", "testdata/repository")
+	registryClient, _ := registry.NewClient()
+	r := New("testdata/chartpath", "testdata/repository", registryClient)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			l, err := r.Resolve(tt.req, repoNames)
@@ -234,24 +249,28 @@ func TestGetLocalPath(t *testing.T) {
 		repo      string
 		chartpath string
 		expect    string
+		winExpect string
 		err       bool
 	}{
 		{
-			name:   "absolute path",
-			repo:   "file:////tmp",
-			expect: "/tmp",
+			name:      "absolute path",
+			repo:      "file:////",
+			expect:    "/",
+			winExpect: "\\",
 		},
 		{
 			name:      "relative path",
 			repo:      "file://../../testdata/chartpath/base",
 			chartpath: "foo/bar",
 			expect:    "testdata/chartpath/base",
+			winExpect: "testdata\\chartpath\\base",
 		},
 		{
 			name:      "current directory path",
 			repo:      "../charts/localdependency",
 			chartpath: "testdata/chartpath/charts",
 			expect:    "testdata/chartpath/charts/localdependency",
+			winExpect: "testdata\\chartpath\\charts\\localdependency",
 		},
 		{
 			name:      "invalid local path",
@@ -279,8 +298,12 @@ func TestGetLocalPath(t *testing.T) {
 			if tt.err {
 				t.Fatalf("Expected error in test %q", tt.name)
 			}
-			if p != tt.expect {
-				t.Errorf("%q: expected %q, got %q", tt.name, tt.expect, p)
+			expect := tt.expect
+			if runtime.GOOS == "windows" {
+				expect = tt.winExpect
+			}
+			if p != expect {
+				t.Errorf("%q: expected %q, got %q", tt.name, expect, p)
 			}
 		})
 	}

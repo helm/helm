@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,6 +31,7 @@ import (
 )
 
 func TestUpgradeCmd(t *testing.T) {
+
 	tmpChart := ensure.TempDir(t)
 	cfile := &chart.Chart{
 		Metadata: &chart.Metadata{
@@ -79,6 +79,7 @@ func TestUpgradeCmd(t *testing.T) {
 
 	missingDepsPath := "testdata/testcharts/chart-missing-deps"
 	badDepsPath := "testdata/testcharts/chart-bad-requirements"
+	presentDepsPath := "testdata/testcharts/chart-with-subchart-update"
 
 	relWithStatusMock := func(n string, v int, ch *chart.Chart, status release.Status) *release.Release {
 		return release.Mock(&release.MockReleaseOptions{Name: n, Version: v, Chart: ch, Status: status})
@@ -148,6 +149,12 @@ func TestUpgradeCmd(t *testing.T) {
 			cmd:       fmt.Sprintf("upgrade bonkers-bunny '%s'", badDepsPath),
 			golden:    "output/upgrade-with-bad-dependencies.txt",
 			wantError: true,
+		},
+		{
+			name:   "upgrade a release with resolving missing dependencies",
+			cmd:    fmt.Sprintf("upgrade --dependency-update funny-bunny %s", presentDepsPath),
+			golden: "output/upgrade-with-dependency-update.txt",
+			rels:   []*release.Release{relMock("funny-bunny", 2, ch2)},
 		},
 		{
 			name:      "upgrade a non-existent release",
@@ -351,7 +358,7 @@ func TestUpgradeInstallWithValuesFromStdin(t *testing.T) {
 
 func prepareMockRelease(releaseName string, t *testing.T) (func(n string, v int, ch *chart.Chart) *release.Release, *chart.Chart, string) {
 	tmpChart := ensure.TempDir(t)
-	configmapData, err := ioutil.ReadFile("testdata/testcharts/upgradetest/templates/configmap.yaml")
+	configmapData, err := os.ReadFile("testdata/testcharts/upgradetest/templates/configmap.yaml")
 	if err != nil {
 		t.Fatalf("Error loading template yaml %v", err)
 	}
@@ -397,6 +404,10 @@ func TestUpgradeVersionCompletion(t *testing.T) {
 	tests := []cmdTestCase{{
 		name:   "completion for upgrade version flag",
 		cmd:    fmt.Sprintf("%s __complete upgrade releasename testing/alpine --version ''", repoSetup),
+		golden: "output/version-comp.txt",
+	}, {
+		name:   "completion for upgrade version flag, no filter",
+		cmd:    fmt.Sprintf("%s __complete upgrade releasename testing/alpine --version 0.3", repoSetup),
 		golden: "output/version-comp.txt",
 	}, {
 		name:   "completion for upgrade version flag too few args",

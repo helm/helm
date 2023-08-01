@@ -86,7 +86,7 @@ func TestPlatformPrepareCommand(t *testing.T) {
 			Name:    "test",
 			Command: "echo -n os-arch",
 			PlatformCommand: []PlatformCommand{
-				{OperatingSystem: "linux", Architecture: "i386", Command: "echo -n linux-i386"},
+				{OperatingSystem: "linux", Architecture: "386", Command: "echo -n linux-386"},
 				{OperatingSystem: "linux", Architecture: "amd64", Command: "echo -n linux-amd64"},
 				{OperatingSystem: "linux", Architecture: "arm64", Command: "echo -n linux-arm64"},
 				{OperatingSystem: "linux", Architecture: "ppc64le", Command: "echo -n linux-ppc64le"},
@@ -98,8 +98,8 @@ func TestPlatformPrepareCommand(t *testing.T) {
 	var osStrCmp string
 	os := runtime.GOOS
 	arch := runtime.GOARCH
-	if os == "linux" && arch == "i386" {
-		osStrCmp = "linux-i386"
+	if os == "linux" && arch == "386" {
+		osStrCmp = "linux-386"
 	} else if os == "linux" && arch == "amd64" {
 		osStrCmp = "linux-amd64"
 	} else if os == "linux" && arch == "arm64" {
@@ -125,7 +125,7 @@ func TestPartialPlatformPrepareCommand(t *testing.T) {
 			Name:    "test",
 			Command: "echo -n os-arch",
 			PlatformCommand: []PlatformCommand{
-				{OperatingSystem: "linux", Architecture: "i386", Command: "echo -n linux-i386"},
+				{OperatingSystem: "linux", Architecture: "386", Command: "echo -n linux-386"},
 				{OperatingSystem: "windows", Architecture: "amd64", Command: "echo -n win-64"},
 			},
 		},
@@ -134,7 +134,7 @@ func TestPartialPlatformPrepareCommand(t *testing.T) {
 	os := runtime.GOOS
 	arch := runtime.GOARCH
 	if os == "linux" {
-		osStrCmp = "linux-i386"
+		osStrCmp = "linux-386"
 	} else if os == "windows" && arch == "amd64" {
 		osStrCmp = "win-64"
 	} else {
@@ -166,7 +166,7 @@ func TestNoMatchPrepareCommand(t *testing.T) {
 		Metadata: &Metadata{
 			Name: "test",
 			PlatformCommand: []PlatformCommand{
-				{OperatingSystem: "no-os", Architecture: "amd64", Command: "echo -n linux-i386"},
+				{OperatingSystem: "no-os", Architecture: "amd64", Command: "echo -n linux-386"},
 			},
 		},
 	}
@@ -193,7 +193,7 @@ func TestLoadDir(t *testing.T) {
 		Version:     "0.1.0",
 		Usage:       "usage",
 		Description: "description",
-		Command:     "$HELM_PLUGIN_SELF/hello.sh",
+		Command:     "$HELM_PLUGIN_DIR/hello.sh",
 		IgnoreFlags: true,
 		Hooks: map[string]string{
 			Install: "echo installing...",

@@ -1,0 +1,8 @@
+appVersion: "1.0"
+chart: foo
+deployedAt: "1977-09-02T22:04:05Z"
+name: thomas-guide
+namespace: default
+revision: 1
+status: deployed
+version: 0.1.0-beta.1

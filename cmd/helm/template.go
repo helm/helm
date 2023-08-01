@@ -52,6 +52,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	var skipTests bool
 	client := action.NewInstall(cfg)
 	valueOpts := &values.Options{}
+	var kubeVersion string
 	var extraAPIs []string
 	var showFiles []string
 
@@ -64,8 +65,29 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return compInstall(args, toComplete, client)
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
+			if kubeVersion != "" {
+				parsedKubeVersion, err := chartutil.ParseKubeVersion(kubeVersion)
+				if err != nil {
+					return fmt.Errorf("invalid kube version '%s': %s", kubeVersion, err)
+				}
+				client.KubeVersion = parsedKubeVersion
+			}
+
+			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
+				client.InsecureSkipTLSverify, client.PlainHTTP)
+			if err != nil {
+				return fmt.Errorf("missing registry client: %w", err)
+			}
+			client.SetRegistryClient(registryClient)
+
+			// This is for the case where "" is specifically passed in as a
+			// value. When there is no value passed in NoOptDefVal will be used
+			// and it is set to client. See addInstallFlags.
+			if client.DryRunOption == "" {
+				client.DryRunOption = "true"
+			}
 			client.DryRun = true
-			client.ReleaseName = "RELEASE-NAME"
+			client.ReleaseName = "release-name"
 			client.Replace = true // Skip the name check
 			client.ClientOnly = !validate
 			client.APIVersions = chartutil.VersionSet(extraAPIs)
@@ -97,11 +119,15 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 							if client.UseReleaseName {
 								newDir = filepath.Join(client.OutputDir, client.ReleaseName)
 							}
+							_, err := os.Stat(filepath.Join(newDir, m.Path))
+							if err == nil {
+								fileWritten[m.Path] = true
+							}
+
 							err = writeToFile(newDir, m.Path, m.Manifest, fileWritten[m.Path])
 							if err != nil {
 								return err
 							}
-							fileWritten[m.Path] = true
 						}
 
 					}
@@ -171,7 +197,8 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&includeCrds, "include-crds", false, "include CRDs in the templated output")
 	f.BoolVar(&skipTests, "skip-tests", false, "skip tests from templated output")
 	f.BoolVar(&client.IsUpgrade, "is-upgrade", false, "set .Release.IsUpgrade instead of .Release.IsInstall")
-	f.StringArrayVarP(&extraAPIs, "api-versions", "a", []string{}, "Kubernetes api versions used for Capabilities.APIVersions")
+	f.StringVar(&kubeVersion, "kube-version", "", "Kubernetes version used for Capabilities.KubeVersion")
+	f.StringSliceVarP(&extraAPIs, "api-versions", "a", []string{}, "Kubernetes api versions used for Capabilities.APIVersions")
 	f.BoolVar(&client.UseReleaseName, "release-name", false, "use release name in the output-dir path.")
 	bindPostRenderFlag(cmd, &client.PostRenderer)
 

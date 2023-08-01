@@ -277,11 +277,6 @@ func TestPluginDynamicCompletion(t *testing.T) {
 		cmd:    "__complete echo -n mynamespace ''",
 		golden: "output/plugin_echo_no_directive.txt",
 		rels:   []*release.Release{},
-	}, {
-		name:   "completion for plugin bad directive",
-		cmd:    "__complete echo ''",
-		golden: "output/plugin_echo_bad_directive.txt",
-		rels:   []*release.Release{},
 	}}
 	for _, test := range tests {
 		settings.PluginsDirectory = "testdata/helmhome/helm/plugins"
@@ -313,6 +308,11 @@ func TestPluginCmdsCompletion(t *testing.T) {
 		golden: "output/plugin_list_comp.txt",
 		rels:   []*release.Release{},
 	}, {
+		name:   "completion for plugin update, no filter",
+		cmd:    "__complete plugin update full",
+		golden: "output/plugin_list_comp.txt",
+		rels:   []*release.Release{},
+	}, {
 		name:   "completion for plugin update repetition",
 		cmd:    "__complete plugin update args ''",
 		golden: "output/plugin_repeat_comp.txt",
@@ -320,6 +320,11 @@ func TestPluginCmdsCompletion(t *testing.T) {
 	}, {
 		name:   "completion for plugin uninstall",
 		cmd:    "__complete plugin uninstall ''",
+		golden: "output/plugin_list_comp.txt",
+		rels:   []*release.Release{},
+	}, {
+		name:   "completion for plugin uninstall, no filter",
+		cmd:    "__complete plugin uninstall full",
 		golden: "output/plugin_list_comp.txt",
 		rels:   []*release.Release{},
 	}, {

@@ -17,7 +17,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -47,15 +46,10 @@ func TestDependencyUpdateCmd(t *testing.T) {
 
 	ociChartName := "oci-depending-chart"
 	c := createTestingMetadataForOCI(ociChartName, ociSrv.RegistryURL)
-	if err := chartutil.SaveDir(c, ociSrv.Dir); err != nil {
+	if _, err := chartutil.Save(c, ociSrv.Dir); err != nil {
 		t.Fatal(err)
 	}
 	ociSrv.Run(t, repotest.WithDependingChart(c))
-
-	err = os.Setenv("HELM_EXPERIMENTAL_OCI", "1")
-	if err != nil {
-		t.Fatal("failed to set environment variable enabling OCI support")
-	}
 
 	if err := srv.LinkIndices(); err != nil {
 		t.Fatal(err)
@@ -134,6 +128,9 @@ func TestDependencyUpdateCmd(t *testing.T) {
 	}
 
 	// test for OCI charts
+	if err := chartutil.SaveDir(c, dir()); err != nil {
+		t.Fatal(err)
+	}
 	cmd := fmt.Sprintf("dependency update '%s' --repository-config %s --repository-cache %s --registry-config %s/config.json",
 		dir(ociChartName),
 		dir("repositories.yaml"),
@@ -188,7 +185,7 @@ func TestDependencyUpdateCmd_DoNotDeleteOldChartsOnError(t *testing.T) {
 	}
 
 	// Make sure charts dir still has dependencies
-	files, err := ioutil.ReadDir(filepath.Join(dir(chartname), "charts"))
+	files, err := os.ReadDir(filepath.Join(dir(chartname), "charts"))
 	if err != nil {
 		t.Fatal(err)
 	}
