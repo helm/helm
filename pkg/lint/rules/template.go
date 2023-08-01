@@ -188,10 +188,10 @@ func validateTopIndentLevel(content string) error {
 
 // Validation functions
 func validateTemplatesDir(templatesPath string) error {
-	if fi, err := os.Stat(templatesPath); err != nil {
-		return errors.New("directory not found")
-	} else if !fi.IsDir() {
-		return errors.New("not a directory")
+	if fi, err := os.Stat(templatesPath); err == nil {
+		if !fi.IsDir() {
+			return errors.New("not a directory")
+		}
 	}
 	return nil
 }

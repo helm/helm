@@ -43,17 +43,12 @@ func TestBadChart(t *testing.T) {
 		t.Errorf("Number of errors %v", len(m))
 		t.Errorf("All didn't fail with expected errors, got %#v", m)
 	}
-	// There should be one INFO, 2 WARNINGs and 2 ERROR messages, check for them
-	var i, w, e, e2, e3, e4, e5, e6 bool
+	// There should be one INFO, and 2 ERROR messages, check for them
+	var i, e, e2, e3, e4, e5, e6 bool
 	for _, msg := range m {
 		if msg.Severity == support.InfoSev {
 			if strings.Contains(msg.Err.Error(), "icon is recommended") {
 				i = true
-			}
-		}
-		if msg.Severity == support.WarningSev {
-			if strings.Contains(msg.Err.Error(), "directory not found") {
-				w = true
 			}
 		}
 		if msg.Severity == support.ErrorSev {
@@ -81,7 +76,7 @@ func TestBadChart(t *testing.T) {
 			}
 		}
 	}
-	if !e || !e2 || !e3 || !e4 || !e5 || !w || !i || !e6 {
+	if !e || !e2 || !e3 || !e4 || !e5 || !i || !e6 {
 		t.Errorf("Didn't find all the expected errors, got %#v", m)
 	}
 }
