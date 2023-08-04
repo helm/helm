@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"io"
 	"log"
 
@@ -27,19 +28,17 @@ import (
 	"helm.sh/helm/v3/pkg/cli/output"
 )
 
-var getAllHelp = `
-This command prints a human readable collection of information about the
-notes, hooks, supplied values, and generated manifest file of the given release.
-`
+type metadataWriter struct {
+	metadata *action.Metadata
+}
 
-func newGetAllCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
-	var template string
-	client := action.NewGet(cfg)
+func newGetMetadataCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+	var outfmt output.Format
+	client := action.NewGetMetadata(cfg)
 
 	cmd := &cobra.Command{
-		Use:   "all RELEASE_NAME",
-		Short: "download all information for a named release",
-		Long:  getAllHelp,
+		Use:   "metadata RELEASE_NAME",
+		Short: "This command fetches metadata for a given release",
 		Args:  require.ExactArgs(1),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			if len(args) != 0 {
@@ -48,23 +47,16 @@ func newGetAllCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return compListReleases(toComplete, args, cfg)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			res, err := client.Run(args[0])
+			releaseMetadata, err := client.Run(args[0])
 			if err != nil {
 				return err
 			}
-			if template != "" {
-				data := map[string]interface{}{
-					"Release": res,
-				}
-				return tpl(template, data, out)
-			}
-
-			return output.Table.Write(out, &statusPrinter{res, true, false, false, true})
+			return outfmt.Write(out, &metadataWriter{releaseMetadata})
 		},
 	}
 
 	f := cmd.Flags()
-	f.IntVar(&client.Version, "revision", 0, "get the named release with revision")
+	f.IntVar(&client.Version, "revision", 0, "specify release revision")
 	err := cmd.RegisterFlagCompletionFunc("revision", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) == 1 {
 			return compListRevisions(toComplete, cfg, args[0])
@@ -76,7 +68,27 @@ func newGetAllCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		log.Fatal(err)
 	}
 
-	f.StringVar(&template, "template", "", "go template for formatting the output, eg: {{.Release.Name}}")
+	bindOutputFlag(cmd, &outfmt)
 
 	return cmd
+}
+
+func (w metadataWriter) WriteTable(out io.Writer) error {
+	_, _ = fmt.Fprintf(out, "NAME: %v\n", w.metadata.Name)
+	_, _ = fmt.Fprintf(out, "CHART: %v\n", w.metadata.Chart)
+	_, _ = fmt.Fprintf(out, "VERSION: %v\n", w.metadata.Version)
+	_, _ = fmt.Fprintf(out, "APP_VERSION: %v\n", w.metadata.AppVersion)
+	_, _ = fmt.Fprintf(out, "NAMESPACE: %v\n", w.metadata.Namespace)
+	_, _ = fmt.Fprintf(out, "REVISION: %v\n", w.metadata.Revision)
+	_, _ = fmt.Fprintf(out, "STATUS: %v\n", w.metadata.Status)
+	_, _ = fmt.Fprintf(out, "DEPLOYED_AT: %v\n", w.metadata.DeployedAt)
+	return nil
+}
+
+func (w metadataWriter) WriteJSON(out io.Writer) error {
+	return output.EncodeJSON(out, w.metadata)
+}
+
+func (w metadataWriter) WriteYAML(out io.Writer) error {
+	return output.EncodeYAML(out, w.metadata)
 }
