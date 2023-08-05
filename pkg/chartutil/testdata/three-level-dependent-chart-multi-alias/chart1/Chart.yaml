@@ -1,0 +1,13 @@
+apiVersion: v2
+name: chart1
+description: A Helm chart for Kubernetes
+type: application
+version: 0.1.0
+
+dependencies:
+- name: chart2
+  version: 0.1.0
+  alias: 2a
+- name: chart2
+  version: 0.1.0
+  alias: 2b

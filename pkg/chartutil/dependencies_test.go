@@ -502,3 +502,37 @@ func TestDependentChartsWithSomeSubchartsSpecifiedInDependency(t *testing.T) {
 		t.Fatalf("expected 1 dependency specified in Chart.yaml, got %d", len(c.Metadata.Dependencies))
 	}
 }
+
+func TestMultiLevelDependentChartsWithMultipleAliases(t *testing.T) {
+	c1 := loadChart(t, "testdata/three-level-dependent-chart-multi-alias/chart1")
+
+	if err := processDependencyEnabled(c1, c1.Values, ""); err != nil {
+		t.Fatalf("expected no errors but got %q", err)
+	}
+
+	if len(c1.Dependencies()) != 2 {
+		t.Fatalf("expected 2 dependencies for chart1, but got %d", len(c1.Dependencies()))
+	}
+
+	c1DepA := c1.Dependencies()[0]
+	if c1DepA.Metadata.Name != "2a" {
+		t.Fatalf("expected chart1's first dependency name to be 2a, but got %s", c1DepA.Metadata.Name)
+	}
+
+	c1DepB := c1.Dependencies()[1]
+	if c1DepB.Metadata.Name != "2b" {
+		t.Fatalf("expected chart1's second dependency name to be 2b, but got %s", c1DepB.Metadata.Name)
+	}
+
+	for _, c2 := range c1.Dependencies() {
+		c2DepA := c2.Dependencies()[0]
+		if c2DepA.Metadata.Name != "3a" {
+			t.Fatalf("expected chart2's first dependency name to be 3a, but got %s", c2DepA.Metadata.Name)
+		}
+
+		c2DepB := c2.Dependencies()[1]
+		if c2DepB.Metadata.Name != "3b" {
+			t.Fatalf("expected chart2's second dependency name to be 3b, but got %s", c2DepB.Metadata.Name)
+		}
+	}
+}
