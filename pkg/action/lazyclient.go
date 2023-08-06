@@ -52,6 +52,78 @@ func (s *lazyClient) init() error {
 	return s.clientErr
 }
 
+// multiSecretClient implements a corev1.SecretsInterface
+type multiSecretClient struct{ *lazyClient }
+
+var _ corev1.SecretInterface = (*multiSecretClient)(nil)
+
+func newMultiSecretClient(lc *lazyClient) *multiSecretClient {
+	return &multiSecretClient{lazyClient: lc}
+}
+
+func (s *multiSecretClient) Create(ctx context.Context, secret *v1.Secret, opts metav1.CreateOptions) (result *v1.Secret, err error) {
+	if err := s.init(); err != nil {
+		return nil, err
+	}
+	return s.client.CoreV1().Secrets(s.namespace).Create(ctx, secret, opts)
+}
+
+func (s *multiSecretClient) Update(ctx context.Context, secret *v1.Secret, opts metav1.UpdateOptions) (*v1.Secret, error) {
+	if err := s.init(); err != nil {
+		return nil, err
+	}
+	return s.client.CoreV1().Secrets(s.namespace).Update(ctx, secret, opts)
+}
+
+func (s *multiSecretClient) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
+	if err := s.init(); err != nil {
+		return err
+	}
+	return s.client.CoreV1().Secrets(s.namespace).Delete(ctx, name, opts)
+}
+
+func (s *multiSecretClient) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
+	if err := s.init(); err != nil {
+		return err
+	}
+	return s.client.CoreV1().Secrets(s.namespace).DeleteCollection(ctx, opts, listOpts)
+}
+
+func (s *multiSecretClient) Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.Secret, error) {
+	if err := s.init(); err != nil {
+		return nil, err
+	}
+	return s.client.CoreV1().Secrets(s.namespace).Get(ctx, name, opts)
+}
+
+func (s *multiSecretClient) List(ctx context.Context, opts metav1.ListOptions) (*v1.SecretList, error) {
+	if err := s.init(); err != nil {
+		return nil, err
+	}
+	return s.client.CoreV1().Secrets(s.namespace).List(ctx, opts)
+}
+
+func (s *multiSecretClient) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
+	if err := s.init(); err != nil {
+		return nil, err
+	}
+	return s.client.CoreV1().Secrets(s.namespace).Watch(ctx, opts)
+}
+
+func (s *multiSecretClient) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (*v1.Secret, error) {
+	if err := s.init(); err != nil {
+		return nil, err
+	}
+	return s.client.CoreV1().Secrets(s.namespace).Patch(ctx, name, pt, data, opts, subresources...)
+}
+
+func (s *multiSecretClient) Apply(ctx context.Context, secretConfiguration *applycorev1.SecretApplyConfiguration, opts metav1.ApplyOptions) (*v1.Secret, error) {
+	if err := s.init(); err != nil {
+		return nil, err
+	}
+	return s.client.CoreV1().Secrets(s.namespace).Apply(ctx, secretConfiguration, opts)
+}
+
 // secretClient implements a corev1.SecretsInterface
 type secretClient struct{ *lazyClient }
 
