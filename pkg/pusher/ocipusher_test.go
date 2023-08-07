@@ -36,11 +36,13 @@ func TestNewOCIPusher(t *testing.T) {
 	join := filepath.Join
 	ca, pub, priv := join(cd, "rootca.crt"), join(cd, "crt.pem"), join(cd, "key.pem")
 	insecureSkipTLSverify := false
+	plainHTTP := false
 
 	// Test with options
 	p, err = NewOCIPusher(
 		WithTLSClientConfig(pub, priv, ca),
 		WithInsecureSkipTLSVerify(insecureSkipTLSverify),
+		WithPlainHTTP(plainHTTP),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -61,6 +63,14 @@ func TestNewOCIPusher(t *testing.T) {
 
 	if op.opts.caFile != ca {
 		t.Errorf("Expected NewOCIPusher to contain %q as the CA file, got %q", ca, op.opts.caFile)
+	}
+
+	if op.opts.plainHTTP != plainHTTP {
+		t.Errorf("Expected NewOCIPusher to have plainHTTP as %t, got %t", plainHTTP, op.opts.plainHTTP)
+	}
+
+	if op.opts.insecureSkipTLSverify != insecureSkipTLSverify {
+		t.Errorf("Expected NewOCIPusher to have insecureSkipVerifyTLS as %t, got %t", insecureSkipTLSverify, op.opts.insecureSkipTLSverify)
 	}
 
 	// Test if setting registryClient is being passed to the ops

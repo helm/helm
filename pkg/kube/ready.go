@@ -18,6 +18,7 @@ package kube // import "helm.sh/helm/v3/pkg/kube"
 
 import (
 	"context"
+	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
@@ -83,8 +84,8 @@ type ReadyChecker struct {
 
 // IsReady checks if v is ready. It supports checking readiness for pods,
 // deployments, persistent volume claims, services, daemon sets, custom
-// resource definitions, stateful sets, replication controllers, and replica
-// sets. All other resource kinds are always considered ready.
+// resource definitions, stateful sets, replication controllers, jobs (optional),
+// and replica sets. All other resource kinds are always considered ready.
 //
 // IsReady will fetch the latest state of the object from the server prior to
 // performing readiness checks, and it will return any error encountered.
@@ -105,9 +106,11 @@ func (c *ReadyChecker) IsReady(ctx context.Context, v *resource.Info) (bool, err
 	case *batchv1.Job:
 		if c.checkJobs {
 			job, err := c.client.BatchV1().Jobs(v.Namespace).Get(ctx, v.Name, metav1.GetOptions{})
-			if err != nil || !c.jobReady(job) {
+			if err != nil {
 				return false, err
 			}
+			ready, err := c.jobReady(job)
+			return ready, err
 		}
 	case *appsv1.Deployment, *appsv1beta1.Deployment, *appsv1beta2.Deployment, *extensionsv1beta1.Deployment:
 		currentDeployment, err := c.client.AppsV1().Deployments(v.Namespace).Get(ctx, v.Name, metav1.GetOptions{})
@@ -222,16 +225,17 @@ func (c *ReadyChecker) isPodReady(pod *corev1.Pod) bool {
 	return false
 }
 
-func (c *ReadyChecker) jobReady(job *batchv1.Job) bool {
+func (c *ReadyChecker) jobReady(job *batchv1.Job) (bool, error) {
 	if job.Status.Failed > *job.Spec.BackoffLimit {
 		c.log("Job is failed: %s/%s", job.GetNamespace(), job.GetName())
-		return false
+		// If a job is failed, it can't recover, so throw an error
+		return false, fmt.Errorf("job is failed: %s/%s", job.GetNamespace(), job.GetName())
 	}
 	if job.Spec.Completions != nil && job.Status.Succeeded < *job.Spec.Completions {
 		c.log("Job is not completed: %s/%s", job.GetNamespace(), job.GetName())
-		return false
+		return false, nil
 	}
-	return true
+	return true, nil
 }
 
 func (c *ReadyChecker) serviceReady(s *corev1.Service) bool {
