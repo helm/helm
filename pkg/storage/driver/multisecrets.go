@@ -16,20 +16,20 @@ limitations under the License.
 
 // Supports both single and multiple Secrets to hold a Helm release.
 
-// TODO
-// Arch
-//   - Consider implementing chunk support as v2 driver?
-// Code
-//   - Complete the remove code duplication of chunking code
-//     See loadRemainingChunks() not currently working b/c no access to secrets.impl.Get()
-//   - Likely remove HELM_DRIVER_CHUNKSIZE setting and fix size at ~1MB
-//   - Tests
+/*
+TODO
+- Clesnup K8s Secret splitting code in newMultiSecretsObject
+- Get rid of chunksize in Secret; look at data length
+- Does chunk size need to be configurable as envvar?
+- Tests
+*/
 
 package driver // import "helm.sh/helm/v3/pkg/storage/driver"
 
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -51,12 +51,14 @@ var _ Driver = (*MultiSecrets)(nil)
 // MultiSecretsDriverName is the string name of the driver.
 const MultiSecretsDriverName = "MultiSecret"
 
+// Default max chunk size is 1Mb
+const maxChunkSize = (1024 * 1000) // approx 1MB in bytes
+
 // MultiSecrets is a wrapper around an implementation of a kubernetes
 // SecretsInterface.
 type MultiSecrets struct {
 	impl corev1.SecretInterface
 	Log  func(string, ...interface{})
-	//	loadRemainingChunks func(string, ...interface{}) ([]byte, error)
 }
 
 // NewMultiSecrets initializes a new Secrets wrapping an implementation of
@@ -65,7 +67,6 @@ func NewMultiSecrets(impl corev1.SecretInterface) *MultiSecrets {
 	return &MultiSecrets{
 		impl: impl,
 		Log:  func(_ string, _ ...interface{}) {},
-		//		loadRemainingChunks: func(_ string, _ ...interface{}) (_ []byte, _ error) {},
 	}
 }
 
@@ -86,24 +87,10 @@ func (secrets *MultiSecrets) Get(key string) (*rspb.Release, error) {
 		return nil, errors.Wrapf(err, "get: failed to get %q", key)
 	}
 
-	// Add remaining chunks; use single function
-	// obj.Data["release"], _ = secrets.loadRemainingChunks(key, obj)
-	// Let decode release fail if release contains incorrect data?
+	// Load any remaining chunks
+	obj.Data["release"], _ = loadRemainingChunks(obj, secrets)
 
-	// Add remaining chunks; duplicated code
-
-	chunks, _ := strconv.Atoi(string(obj.Data["chunks"]))
-	for chunk := 2; chunk <= chunks; chunk++ {
-		key := fmt.Sprintf("%s.%d", obj.ObjectMeta.Name, chunk)
-		chunkobj, _ := secrets.impl.Get(context.Background(), key, metav1.GetOptions{})
-		if err != nil {
-			if apierrors.IsNotFound(err) {
-				return nil, ErrReleaseNotFound
-			}
-			return nil, errors.Wrapf(err, "get: failed to get %q", key)
-		}
-		obj.Data["release"] = append(obj.Data["release"], chunkobj.Data["release"]...)
-	}
+	// TODO Let decode release fail if release contains incorrect data?
 
 	// found the secret, decode the base64 data string
 	r, err := decodeRelease(string(obj.Data["release"]))
@@ -130,30 +117,18 @@ func (secrets *MultiSecrets) List(filter func(*rspb.Release) bool) ([]*rspb.Rele
 		// If chunked, add remaining chunks
 		chunk, err := strconv.Atoi(string(item.Data["chunk"]))
 		if err == nil && chunk > 1 {
+			// Skip any Secret that is not 1st chunk
 			continue
 		} else {
-			chunks, _ := strconv.Atoi(string(item.Data["chunks"]))
-			for chunk := 2; chunk <= chunks; chunk++ {
-				key := fmt.Sprintf("%s.%d", item.ObjectMeta.Name, chunk)
-				chunkobj, _ := secrets.impl.Get(context.Background(), key, metav1.GetOptions{})
-				if err != nil {
-					if apierrors.IsNotFound(err) {
-						return nil, ErrReleaseNotFound
-					}
-					return nil, errors.Wrapf(err, "get: failed to get %q", key)
-				}
-				item.Data["release"] = append(item.Data["release"], chunkobj.Data["release"]...)
-			}
+			// Load any remaining chunks
+			item.Data["release"], _ = loadRemainingChunks(&item, secrets)
 		}
-
 		rls, err := decodeRelease(string(item.Data["release"]))
 		if err != nil {
 			secrets.Log("list: failed to decode release: %v: %s", item, err)
 			continue
 		}
-
 		rls.Labels = item.ObjectMeta.Labels
-
 		if filter(rls) {
 			results = append(results, rls)
 		}
@@ -187,19 +162,14 @@ func (secrets *MultiSecrets) Query(labels map[string]string) ([]*rspb.Release, e
 	var results []*rspb.Release
 	for _, item := range list.Items {
 		// If chunked, add remaining chunks
-		chunks, _ := strconv.Atoi(string(item.Data["chunks"]))
-		for chunk := 2; chunk <= chunks; chunk++ {
-			key := fmt.Sprintf("%s.%d", item.ObjectMeta.Name, chunk)
-			chunkobj, _ := secrets.impl.Get(context.Background(), key, metav1.GetOptions{})
-			if err != nil {
-				if apierrors.IsNotFound(err) {
-					return nil, ErrReleaseNotFound
-				}
-				return nil, errors.Wrapf(err, "get: failed to get %q", key)
-			}
-			item.Data["release"] = append(item.Data["release"], chunkobj.Data["release"]...)
+		chunk, err := strconv.Atoi(string(item.Data["chunk"]))
+		if err == nil && chunk > 1 {
+			// Skip any Secret that is not 1st chunk
+			continue
+		} else {
+			// Load any remaining chunks
+			item.Data["release"], _ = loadRemainingChunks(&item, secrets)
 		}
-
 		rls, err := decodeRelease(string(item.Data["release"]))
 		if err != nil {
 			secrets.Log("query: failed to decode release: %s", err)
@@ -220,7 +190,7 @@ func (secrets *MultiSecrets) Create(key string, rls *rspb.Release) error {
 	lbs.set("createdAt", strconv.Itoa(int(time.Now().Unix())))
 
 	// create a new secret to hold the release
-	objs, err := newMultiSecretsObject(key, rls, lbs, 1)
+	objs, err := newMultiSecretsObject(key, rls, lbs, -1)
 	if err != nil {
 		return errors.Wrapf(err, "create: failed to encode release %q", rls.Name)
 	}
@@ -240,27 +210,16 @@ func (secrets *MultiSecrets) Create(key string, rls *rspb.Release) error {
 // Update updates the Secret holding the release. If not found
 // the Secret is created to hold the release.
 func (secrets *MultiSecrets) Update(key string, rls *rspb.Release) error {
-	// Get release 1st to check if chunked or not
-	obj, err := secrets.impl.Get(context.Background(), key, metav1.GetOptions{})
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			return errors.Wrapf(err, "get: release not found %q", rls.Name)
-		}
-		return errors.Wrapf(err, "get: failed to get %q", key)
-	}
-	chunks, err := strconv.Atoi(string(obj.Data["chunks"]))
-	if err != nil {
-		chunks = 0
-	}
-
 	// set labels for secrets object meta data
 	var lbs labels
 
 	lbs.init()
 	lbs.set("modifiedAt", strconv.Itoa(int(time.Now().Unix())))
 
+	chunkSizeExist, _ := getMaxChunkSize(key, secrets, 0)
+
 	// create a new secret object to hold the release
-	objs, err := newMultiSecretsObject(key, rls, lbs, chunks)
+	objs, err := newMultiSecretsObject(key, rls, lbs, chunkSizeExist)
 	if err != nil {
 		return errors.Wrapf(err, "update: failed to encode release %q", rls.Name)
 	}
@@ -302,7 +261,7 @@ func (secrets *MultiSecrets) Delete(key string) (rls *rspb.Release, err error) {
 	return rls, err
 }
 
-// newSecretsObject constructs a kubernetes Secret object
+// newMultiSecretsObject constructs a kubernetes Secret object
 // to store a release. Each secret data entry is the base64
 // encoded gzipped string of a release.
 //
@@ -314,9 +273,8 @@ func (secrets *MultiSecrets) Delete(key string) (rls *rspb.Release, err error) {
 //	"status"         - status of the release (see pkg/release/status.go for variants)
 //	"owner"          - owner of the secret, currently "helm".
 //	"name"           - name of the release.
-func newMultiSecretsObject(key string, rls *rspb.Release, lbs labels, chunks int) (*[]v1.Secret, error) {
+func newMultiSecretsObject(key string, rls *rspb.Release, lbs labels, chunkSizeExist int) (*[]v1.Secret, error) {
 	const owner = "helm"
-	const maxChunkSize = (1024 * 1000) // approx 1MB in bytes
 
 	// encode the release
 	s, err := encodeRelease(rls)
@@ -346,20 +304,13 @@ func newMultiSecretsObject(key string, rls *rspb.Release, lbs labels, chunks int
 	// This would potentially be a breaking change
 	// and should only happen between major versions.
 
+	chunkSize, _ := getMaxChunkSize(key, nil, chunkSizeExist)
+
 	objs := []v1.Secret{}
-	if chunks > 0 {
+	// Needs chunking?
+	if len(s) > chunkSize {
 		origData := s
 
-		chunkSize := maxChunkSize
-		sz := strings.TrimSpace(os.Getenv("HELM_DRIVER_CHUNKSIZE"))
-		if sz != "" {
-			size, err := strconv.Atoi(sz)
-			if err == nil && size < maxChunkSize {
-				chunkSize = size
-			} else {
-				return nil, errors.Wrapf(err, "newSecretsObject: cannot use chunk size: %s", sz)
-			}
-		}
 		lbs.set("chunksize", strconv.Itoa(chunkSize))
 
 		slices := []string{}
@@ -372,7 +323,7 @@ func newMultiSecretsObject(key string, rls *rspb.Release, lbs labels, chunks int
 			}
 			lastI = i
 		}
-		// handle the leftovers at the end
+		// handle the leftover data at the end
 		if len(origData)-lastIndex > chunkSize {
 			slices = append(slices, origData[lastIndex:lastIndex+chunkSize], origData[lastIndex+chunkSize:])
 		} else {
@@ -402,6 +353,7 @@ func newMultiSecretsObject(key string, rls *rspb.Release, lbs labels, chunks int
 			i += 1
 		}
 	} else {
+		// No chunking required, create 100% BWC Secret
 		objs = append(objs, v1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:   key,
@@ -415,18 +367,63 @@ func newMultiSecretsObject(key string, rls *rspb.Release, lbs labels, chunks int
 }
 
 // Load remaining chunks given a key and 1st release Secret
-//func (secrets *Secrets) loadRemainingChunks(key string, obj *v1.Secret) ([]byte, error) {
-//	chunks, _ := strconv.Atoi(string(obj.Data["chunks"]))
-//	for chunk := 2 ; chunk <= chunks ; chunk++ {
-//			key := fmt.Sprintf("%s.%d", obj.ObjectMeta.Name, chunk)
-//			chunkobj, err := secrets.impl.Get(context.Background(), key, metav1.GetOptions{})
-//			if err != nil {
-//				if apierrors.IsNotFound(err) {
-//					return nil, ErrReleaseNotFound
-//				}
-//				return nil, errors.Wrapf(err, "get: failed to get %q", key)
-//			}
-//			obj.Data["release"] = append(obj.Data["release"], chunkobj.Data["release"]...)
-//	}
-//	return obj.Data["release"], nil
-//}
+func loadRemainingChunks(obj *v1.Secret, multiSecretImpl *MultiSecrets) ([]byte, error) {
+	chunks, _ := strconv.Atoi(string(obj.Data["chunks"]))
+	for chunk := 2; chunk <= chunks; chunk++ {
+		key := fmt.Sprintf("%s.%d", obj.ObjectMeta.Name, chunk)
+		chunkobj, err := multiSecretImpl.impl.Get(context.Background(), key, metav1.GetOptions{})
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				return nil, ErrReleaseNotFound
+			}
+			return nil, errors.Wrapf(err, "get: failed to get %q", key)
+		}
+		obj.Data["release"] = append(obj.Data["release"], chunkobj.Data["release"]...)
+	}
+	return obj.Data["release"], nil
+}
+
+// Determine the chunk size to use
+// Order: chunksize from existing secret, default, envvar
+func getMaxChunkSize(key string, multiSecretImpl *MultiSecrets, chunkSizeExist int) (int, error) {
+	chunkSize := 0
+	sz := ""
+	if chunkSizeExist > 0 {
+		// CASE 1: chunk size from existing Secret already known
+		chunkSize = chunkSizeExist
+	} else if multiSecretImpl != nil {
+		// CASE 2: Get the chunksize from the existing Secret
+		obj, err := multiSecretImpl.impl.Get(context.Background(), key, metav1.GetOptions{})
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				return -1, ErrReleaseNotFound
+			}
+			return -1, errors.Wrapf(err, "get: failed to get %q", key)
+		}
+		//(*obj).ObjectMeta.Labels["chunksize"]
+		sz = obj.ObjectMeta.Labels["chunksize"]
+		if sz != "" {
+			size, err := strconv.Atoi(sz)
+			if err == nil && size < maxChunkSize {
+				chunkSize = size
+			} else {
+				log.Fatal(errors.Wrapf(err, "newSecretsObject: cannot use chunk size: %s", sz))
+				//return nil, errors.Wrapf(err, "newSecretsObject: cannot use chunk size: %s", sz)
+			}
+		}
+	} else {
+		// CASE 3: use the default or the envvar
+		chunkSize = maxChunkSize
+		sz := strings.TrimSpace(os.Getenv("MULTISECRETS_CHUNKSIZE"))
+		if sz != "" {
+			size, err := strconv.Atoi(sz)
+			if err == nil && size < maxChunkSize {
+				chunkSize = size
+			} else {
+				log.Fatal(errors.Wrapf(err, "newSecretsObject: cannot use chunk size: %s", sz))
+				//return nil, errors.Wrapf(err, "newSecretsObject: cannot use chunk size: %s", sz)
+			}
+		}
+	}
+	return chunkSize, nil
+}
