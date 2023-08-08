@@ -18,7 +18,9 @@ package action
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -26,6 +28,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/discovery"
@@ -95,7 +98,15 @@ type Configuration struct {
 	Capabilities *chartutil.Capabilities
 
 	Log func(string, ...interface{})
+
+	HookLogGetter HookLogGetter
 }
+
+// A HookLogGetter gets the log of the given hook.
+//
+// The empty string represents the output from a pod that didn't print anything (i.e. the empty log).
+// The nil pointer represents no log at all.
+type HookLogGetter func(rel *release.Release, hook *release.Hook) (*release.HookLog, error)
 
 // renderResources renders the templates in a chart
 //
@@ -278,6 +289,27 @@ func (cfg *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 		HelmVersion: chartutil.DefaultCapabilities.HelmVersion,
 	}
 	return cfg.Capabilities, nil
+}
+
+// GetHookLogFromRealCluster gets the log from the pod associated with the given hook, which is expected to be a test hook.
+func (cfg *Configuration) GetHookLogFromRealCluster(rel *release.Release, hook *release.Hook) (*release.HookLog, error) {
+	var nothing *release.HookLog
+	client, err := cfg.KubernetesClientSet()
+	if err != nil {
+		return nothing, errors.Wrapf(err, "unable to create Kubernetes client set to fetch pod logs")
+	}
+	req := client.CoreV1().Pods(rel.Namespace).GetLogs(hook.Name, &v1.PodLogOptions{})
+	responseBody, err := req.Stream(context.Background())
+	if err != nil {
+		return nothing, errors.Wrapf(err, "unable to get pod logs for %s", hook.Name)
+	}
+	stringBuilder := new(strings.Builder)
+	_, err = io.Copy(stringBuilder, responseBody)
+	if err != nil {
+		return nothing, errors.Wrapf(err, "unable to get pod logs for %s", hook.Name)
+	}
+	hookLog := release.HookLog(stringBuilder.String())
+	return &hookLog, nil
 }
 
 // KubernetesClientSet creates a new kubernetes ClientSet based on the configuration

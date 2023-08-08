@@ -22,6 +22,7 @@ import (
 
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
 
+	"helm.sh/helm/v3/internal/test"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
@@ -53,6 +54,7 @@ func actionConfigFixture(t *testing.T) *Configuration {
 				t.Logf(format, v...)
 			}
 		},
+		HookLogGetter: test.GetMockedHookLog,
 	}
 }
 

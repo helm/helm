@@ -19,10 +19,15 @@ package test
 import (
 	"bytes"
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
+
+	"helm.sh/helm/v3/pkg/release"
 )
 
 // UpdateGolden writes out the golden files with the latest values, rather than failing the test.
@@ -30,6 +35,7 @@ var updateGolden = flag.Bool("update", false, "update golden files")
 
 // TestingT describes a testing object compatible with the critical functions from the testing.T type
 type TestingT interface {
+	Errorf(format string, args ...interface{})
 	Fatal(...interface{})
 	Fatalf(string, ...interface{})
 	HelperT
@@ -60,6 +66,55 @@ func AssertGoldenFile(t TestingT, actualFileName string, expectedFilename string
 	AssertGoldenString(t, string(actual), expectedFilename)
 }
 
+// AssertGoldenStringWithCustomLineValidation asserts that the given string matches the contents of the given file, using the given function to check each line.
+// It is useful when the output is expected to contain information that cannot be predicted, such as timestamps.
+//
+// The line validation function must return a pair of values representing, respectively,
+//
+// 1. whether the expected line is "special" or not, and
+//
+// 2. if the expected line is special, the validity of the actual line.
+//
+// "Not special" means that the actual line must be exactly equal to the expected line to be considered valid.
+func AssertGoldenStringWithCustomLineValidation(t TestingT, checkLine func(expected, actual string) (bool, error)) func(actualOutput, expectedFilename string) {
+	t.Helper()
+	is := assert.New(t)
+	return func(actualOutput, expectedFilename string) {
+		expectedOutput, err := os.ReadFile(path(expectedFilename))
+		if err != nil {
+			t.Fatalf("%v", err)
+		}
+		expectedLines := lines(expectedOutput)
+		actualLines := lines([]byte(actualOutput))
+		expectedLineCount := len(expectedLines)
+		actualLineCount := len(actualLines)
+		for i := 0; i < max(expectedLineCount, actualLineCount); i++ {
+			lineNumber := i + 1
+			// We need to prevent index-out-of-range errors if the number of lines doesn't match between the expected and the actual output.
+			// But we cannot just use the empty string as a default value, because that's equivalent to downright ignoring trailing empty lines.
+			if lineNumber > expectedLineCount {
+				t.Errorf("Output should only have %d line(s), but has %d. Line %d is: %q", expectedLineCount, actualLineCount, lineNumber, actualLines[i])
+			} else if lineNumber > actualLineCount {
+				t.Errorf("Output should have %d line(s), but has only %d. Line %d should have been: %q", expectedLineCount, actualLineCount, lineNumber, expectedLines[i])
+			} else {
+				actualLine := actualLines[i]
+				expectedLine := expectedLines[i]
+				if isSpecialLine, err := checkLine(expectedLine, actualLine); isSpecialLine {
+					if err != nil {
+						t.Errorf("Unexpected content on line %d (%v): %s", lineNumber, err.Error(), actualLine)
+					}
+				} else {
+					is.Equal(expectedLine, actualLine, fmt.Sprintf("Line %d in the actual output does not match line %d in the expected output (%s).", lineNumber, lineNumber, expectedFilename))
+				}
+			}
+		}
+	}
+}
+
+func lines(raw []byte) []string {
+	return strings.Split(strings.TrimSuffix(string(normalize(raw)), "\n"), "\n") // We first remove the final newline (if any), so that e.g. the 2-line string "a\nb\n" is mapped to ["a", "b"] and not ["a", "b", ""].
+}
+
 func path(filename string) string {
 	if filepath.IsAbs(filename) {
 		return filename
@@ -84,6 +139,11 @@ func compare(actual []byte, filename string) error {
 	return nil
 }
 
+func GetMockedHookLog(rel *release.Release, hook *release.Hook) (*release.HookLog, error) {
+	hookLog := release.HookLog("example test pod log output")
+	return &hookLog, nil
+}
+
 func update(filename string, in []byte) error {
 	if !*updateGolden {
 		return nil
@@ -93,4 +153,11 @@ func update(filename string, in []byte) error {
 
 func normalize(in []byte) []byte {
 	return bytes.Replace(in, []byte("\r\n"), []byte("\n"), -1)
+}
+
+func max(x, y int) int {
+	if x > y {
+		return x
+	}
+	return y
 }
