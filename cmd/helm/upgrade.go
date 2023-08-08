@@ -51,7 +51,8 @@ To override values in a chart, use either the '--values' flag and pass in a file
 or use the '--set' flag and pass configuration from the command line, to force string
 values, use '--set-string'. You can use '--set-file' to set individual
 values from a file when the value itself is too long for the command line
-or is dynamically generated.
+or is dynamically generated. You can also use '--set-json' to set json values
+(scalars/objects/arrays) from the command line.
 
 You can specify the '--values'/'-f' flag multiple times. The priority will be given to the
 last (right-most) file specified. For example, if both myvalues.yaml and override.yaml
@@ -89,6 +90,19 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.Namespace = settings.Namespace()
 
+			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
+				client.InsecureSkipTLSverify, client.PlainHTTP)
+			if err != nil {
+				return fmt.Errorf("missing registry client: %w", err)
+			}
+			client.SetRegistryClient(registryClient)
+
+			// This is for the case where "" is specifically passed in as a
+			// value. When there is no value passed in NoOptDefVal will be used
+			// and it is set to client. See addInstallFlags.
+			if client.DryRunOption == "" {
+				client.DryRunOption = "none"
+			}
 			// Fixes #7002 - Support reading values from STDIN for `upgrade` command
 			// Must load values AFTER determining if we have to call install so that values loaded from stdin are are not read twice
 			if client.Install {
@@ -103,7 +117,9 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient := action.NewInstall(cfg)
 					instClient.CreateNamespace = createNamespace
 					instClient.ChartPathOptions = client.ChartPathOptions
+					instClient.Force = client.Force
 					instClient.DryRun = client.DryRun
+					instClient.DryRunOption = client.DryRunOption
 					instClient.DisableHooks = client.DisableHooks
 					instClient.SkipCRDs = client.SkipCRDs
 					instClient.Timeout = client.Timeout
@@ -117,12 +133,13 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.SubNotes = client.SubNotes
 					instClient.Description = client.Description
 					instClient.DependencyUpdate = client.DependencyUpdate
+					instClient.EnableDNS = client.EnableDNS
 
 					rel, err := runInstall(args, instClient, valueOpts, out)
 					if err != nil {
 						return err
 					}
-					return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false})
+					return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false, false})
 				} else if err != nil {
 					return err
 				}
@@ -135,6 +152,10 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 			chartPath, err := client.ChartPathOptions.LocateChart(args[1], settings)
 			if err != nil {
+				return err
+			}
+			// Validate dry-run flag value is one of the allowed values
+			if err := validateDryRunOptionFlag(client.DryRunOption); err != nil {
 				return err
 			}
 
@@ -204,7 +225,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				fmt.Fprintf(out, "Release %q has been upgraded. Happy Helming!\n", args[0])
 			}
 
-			return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false})
+			return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false, false})
 		},
 	}
 
@@ -212,7 +233,8 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&createNamespace, "create-namespace", false, "if --install is set, create the release namespace if not present")
 	f.BoolVarP(&client.Install, "install", "i", false, "if a release by this name doesn't already exist, run an install")
 	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored")
-	f.BoolVar(&client.DryRun, "dry-run", false, "simulate an upgrade")
+	f.StringVar(&client.DryRunOption, "dry-run", "", "simulate an install. If --dry-run is set with no option being specified or as '--dry-run=client', it will not attempt cluster connections. Setting '--dry-run=server' allows attempting cluster connections.")
+	f.Lookup("dry-run").NoOptDefVal = "client"
 	f.BoolVar(&client.Recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
 	f.MarkDeprecated("recreate-pods", "functionality will no longer be updated. Consult the documentation for other methods to recreate pods")
 	f.BoolVar(&client.Force, "force", false, "force resource updates through a replacement strategy")
@@ -230,6 +252,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.SubNotes, "render-subchart-notes", false, "if set, render subchart notes along with the parent")
 	f.StringVar(&client.Description, "description", "", "add a custom description")
 	f.BoolVar(&client.DependencyUpdate, "dependency-update", false, "update dependencies if they are missing before installing the chart")
+	f.BoolVar(&client.EnableDNS, "enable-dns", false, "enable DNS lookups when rendering templates")
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 	addValueOptionsFlags(f, valueOpts)
 	bindOutputFlag(cmd, &outfmt)

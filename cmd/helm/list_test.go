@@ -149,6 +149,11 @@ func TestListCmd(t *testing.T) {
 		golden: "output/list.txt",
 		rels:   releaseFixture,
 	}, {
+		name:   "list without headers",
+		cmd:    "list --no-headers",
+		golden: "output/list-no-headers.txt",
+		rels:   releaseFixture,
+	}, {
 		name:   "list all releases",
 		cmd:    "list --all",
 		golden: "output/list-all.txt",

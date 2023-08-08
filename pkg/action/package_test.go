@@ -17,7 +17,6 @@ limitations under the License.
 package action
 
 import (
-	"io/ioutil"
 	"os"
 	"path"
 	"testing"
@@ -71,7 +70,7 @@ func TestPassphraseFileFetcher_WithInvalidStdin(t *testing.T) {
 	directory := ensure.TempDir(t)
 	defer os.RemoveAll(directory)
 
-	stdin, err := ioutil.TempFile(directory, "non-existing")
+	stdin, err := os.CreateTemp(directory, "non-existing")
 	if err != nil {
 		t.Fatal("Unable to create test file", err)
 	}

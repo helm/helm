@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"sort"
 	"strings"
@@ -53,13 +52,16 @@ a plus (+) when pulling from a registry.`
 type (
 	// Client works with OCI-compliant registries
 	Client struct {
-		debug bool
+		debug       bool
+		enableCache bool
 		// path to repository config file e.g. ~/.docker/config.json
 		credentialsFile    string
 		out                io.Writer
 		authorizer         auth.Client
 		registryAuthorizer *registryauth.Client
-		resolver           remotes.Resolver
+		resolver           func(ref registry.Reference) (remotes.Resolver, error)
+		httpClient         *http.Client
+		plainHTTP          bool
 	}
 
 	// ClientOption allows specifying various settings configurable by the user for overriding the defaults
@@ -70,7 +72,7 @@ type (
 // NewClient returns a new registry client with config
 func NewClient(options ...ClientOption) (*Client, error) {
 	client := &Client{
-		out: ioutil.Discard,
+		out: io.Discard,
 	}
 	for _, option := range options {
 		option(client)
@@ -85,28 +87,53 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		}
 		client.authorizer = authClient
 	}
-	if client.resolver == nil {
+	client.resolver = func(ref registry.Reference) (remotes.Resolver, error) {
 		headers := http.Header{}
 		headers.Set("User-Agent", version.GetUserAgent())
+		dockerClient, ok := client.authorizer.(*dockerauth.Client)
+		if ok {
+			username, password, err := dockerClient.Credential(ref.Registry)
+			if err != nil {
+				return nil, errors.New("unable to retrieve credentials")
+			}
+			// A blank returned username and password value is a bearer token
+			if username == "" && password != "" {
+				headers.Set("Authorization", fmt.Sprintf("Bearer %s", password))
+			} else {
+				headers.Set("Authorization", fmt.Sprintf("Basic %s", basicAuth(username, password)))
+			}
+		}
+
 		opts := []auth.ResolverOption{auth.WithResolverHeaders(headers)}
+		if client.httpClient != nil {
+			opts = append(opts, auth.WithResolverClient(client.httpClient))
+		}
+		if client.plainHTTP {
+			opts = append(opts, auth.WithResolverPlainHTTP())
+		}
 		resolver, err := client.authorizer.ResolverWithOpts(opts...)
 		if err != nil {
 			return nil, err
 		}
-		client.resolver = resolver
+		return resolver, nil
+	}
+	// allocate a cache if option is set
+	var cache registryauth.Cache
+	if client.enableCache {
+		cache = registryauth.DefaultCache
 	}
 	if client.registryAuthorizer == nil {
 		client.registryAuthorizer = &registryauth.Client{
+			Client: client.httpClient,
 			Header: http.Header{
 				"User-Agent": {version.GetUserAgent()},
 			},
-			Cache: registryauth.DefaultCache,
+			Cache: cache,
 			Credential: func(ctx context.Context, reg string) (registryauth.Credential, error) {
 				dockerClient, ok := client.authorizer.(*dockerauth.Client)
 				if !ok {
 					return registryauth.EmptyCredential, errors.New("unable to obtain docker client")
 				}
-
 				username, password, err := dockerClient.Credential(reg)
 				if err != nil {
 					return registryauth.EmptyCredential, errors.New("unable to retrieve credentials")
@@ -138,6 +165,13 @@ func ClientOptDebug(debug bool) ClientOption {
 	}
 }
 
+// ClientOptEnableCache returns a function that sets the enableCache setting on a client options set
+func ClientOptEnableCache(enableCache bool) ClientOption {
+	return func(client *Client) {
+		client.enableCache = enableCache
+	}
+}
+
 // ClientOptWriter returns a function that sets the writer setting on client options set
 func ClientOptWriter(out io.Writer) ClientOption {
 	return func(client *Client) {
@@ -152,6 +186,19 @@ func ClientOptCredentialsFile(credentialsFile string) ClientOption {
 	}
 }
 
+// ClientOptHTTPClient returns a function that sets the httpClient setting on a client options set
+func ClientOptHTTPClient(httpClient *http.Client) ClientOption {
+	return func(client *Client) {
+		client.httpClient = httpClient
+	}
+}
+
+func ClientOptPlainHTTP() ClientOption {
+	return func(c *Client) {
+		c.plainHTTP = true
+	}
+}
+
 type (
 	// LoginOption allows specifying various settings on login
 	LoginOption func(*loginOperation)
@@ -160,6 +207,9 @@ type (
 		username string
 		password string
 		insecure bool
+		certFile string
+		keyFile  string
+		caFile   string
 	}
 )
 
@@ -175,6 +225,7 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 		auth.WithLoginUsername(operation.username),
 		auth.WithLoginSecret(operation.password),
 		auth.WithLoginUserAgent(version.GetUserAgent()),
+		auth.WithLoginTLS(operation.certFile, operation.keyFile, operation.caFile),
 	}
 	if operation.insecure {
 		authorizerLoginOpts = append(authorizerLoginOpts, auth.WithLoginInsecure())
@@ -198,6 +249,15 @@ func LoginOptBasicAuth(username string, password string) LoginOption {
 func LoginOptInsecure(insecure bool) LoginOption {
 	return func(operation *loginOperation) {
 		operation.insecure = insecure
+	}
+}
+
+// LoginOptTLSClientConfig returns a function that sets the TLS settings on login.
+func LoginOptTLSClientConfig(certFile, keyFile, caFile string) LoginOption {
+	return func(operation *loginOperation) {
+		operation.certFile = certFile
+		operation.keyFile = keyFile
+		operation.caFile = caFile
 	}
 }
 
@@ -286,7 +346,11 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 	}
 
 	var descriptors, layers []ocispec.Descriptor
-	registryStore := content.Registry{Resolver: c.resolver}
+	remotesResolver, err := c.resolver(parsedRef)
+	if err != nil {
+		return nil, err
+	}
+	registryStore := content.Registry{Resolver: remotesResolver}
 
 	manifest, err := oras.Copy(ctx(c.out, c.debug), registryStore, parsedRef.String(), memoryStore, "",
 		oras.WithPullEmptyNameAllowed(),
@@ -460,6 +524,7 @@ type (
 	pushOperation struct {
 		provData   []byte
 		strictMode bool
+		test       bool
 	}
 )
 
@@ -513,7 +578,9 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 		descriptors = append(descriptors, provDescriptor)
 	}
 
-	manifestData, manifest, err := content.GenerateManifest(&configDescriptor, nil, descriptors...)
+	ociAnnotations := generateOCIAnnotations(meta, operation.test)
+
+	manifestData, manifest, err := content.GenerateManifest(&configDescriptor, ociAnnotations, descriptors...)
 	if err != nil {
 		return nil, err
 	}
@@ -521,8 +588,11 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	if err := memoryStore.StoreManifest(parsedRef.String(), manifest, manifestData); err != nil {
 		return nil, err
 	}
-
-	registryStore := content.Registry{Resolver: c.resolver}
+	remotesResolver, err := c.resolver(parsedRef)
+	if err != nil {
+		return nil, err
+	}
+	registryStore := content.Registry{Resolver: remotesResolver}
 	_, err = oras.Copy(ctx(c.out, c.debug), memoryStore, parsedRef.String(), registryStore, "",
 		oras.WithNameValidation(nil))
 	if err != nil {
@@ -576,6 +646,13 @@ func PushOptStrictMode(strictMode bool) PushOption {
 	}
 }
 
+// PushOptTest returns a function that sets whether test setting on push
+func PushOptTest(test bool) PushOption {
+	return func(operation *pushOperation) {
+		operation.test = test
+	}
+}
+
 // Tags provides a sorted list all semver compliant tags for a given repository
 func (c *Client) Tags(ref string) ([]string, error) {
 	parsedReference, err := registry.ParseReference(ref)
@@ -586,23 +663,14 @@ func (c *Client) Tags(ref string) ([]string, error) {
 	repository := registryremote.Repository{
 		Reference: parsedReference,
 		Client:    c.registryAuthorizer,
+		PlainHTTP: c.plainHTTP,
 	}
 
 	var registryTags []string
 
-	for {
-		registryTags, err = registry.Tags(ctx(c.out, c.debug), &repository)
-		if err != nil {
-			// Fallback to http based request
-			if !repository.PlainHTTP && strings.Contains(err.Error(), "server gave HTTP response") {
-				repository.PlainHTTP = true
-				continue
-			}
-			return nil, err
-		}
-
-		break
-
+	registryTags, err = registry.Tags(ctx(c.out, c.debug), &repository)
+	if err != nil {
+		return nil, err
 	}
 
 	var tagVersions []*semver.Version

@@ -18,12 +18,13 @@ ACCEPTANCE_DIR:=../acceptance-testing
 ACCEPTANCE_RUN_TESTS=.
 
 # go option
-PKG        := ./...
-TAGS       :=
-TESTS      := .
-TESTFLAGS  :=
-LDFLAGS    := -w -s
-GOFLAGS    :=
+PKG         := ./...
+TAGS        :=
+TESTS       := .
+TESTFLAGS   :=
+LDFLAGS     := -w -s
+GOFLAGS     :=
+CGO_ENABLED ?= 0
 
 # Rebuild the binary if any of these files change
 SRC := $(shell find . -type f -name '*.go' -print) go.mod go.sum
@@ -77,7 +78,7 @@ all: build
 build: $(BINDIR)/$(BINNAME)
 
 $(BINDIR)/$(BINNAME): $(SRC)
-	GO111MODULE=on go build $(GOFLAGS) -trimpath -tags '$(TAGS)' -ldflags '$(LDFLAGS)' -o '$(BINDIR)'/$(BINNAME) ./cmd/helm
+	GO111MODULE=on CGO_ENABLED=$(CGO_ENABLED) go build $(GOFLAGS) -trimpath -tags '$(TAGS)' -ldflags '$(LDFLAGS)' -o '$(BINDIR)'/$(BINNAME) ./cmd/helm
 
 # ------------------------------------------------------------------------------
 #  install
@@ -149,15 +150,15 @@ gen-test-golden: test-unit
 # ------------------------------------------------------------------------------
 #  dependencies
 
-# If go get is run from inside the project directory it will add the dependencies
-# to the go.mod file. To avoid that we change to a directory without a go.mod file
-# when downloading the following dependencies
+# If go install is run from inside the project directory it will add the
+# dependencies to the go.mod file. To avoid that we change to a directory
+# without a go.mod file when downloading the following dependencies
 
 $(GOX):
-	(cd /; GO111MODULE=on go get -u github.com/mitchellh/gox)
+	(cd /; GO111MODULE=on go install github.com/mitchellh/gox@latest)
 
 $(GOIMPORTS):
-	(cd /; GO111MODULE=on go get -u golang.org/x/tools/cmd/goimports)
+	(cd /; GO111MODULE=on go install golang.org/x/tools/cmd/goimports@latest)
 
 # ------------------------------------------------------------------------------
 #  release

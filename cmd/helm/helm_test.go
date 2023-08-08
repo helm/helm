@@ -18,7 +18,7 @@ package main
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"os"
 	"os/exec"
 	"runtime"
@@ -60,8 +60,11 @@ func runTestCmd(t *testing.T, tests []cmdTestCase) {
 				}
 				t.Logf("running cmd (attempt %d): %s", i+1, tt.cmd)
 				_, out, err := executeActionCommandC(storage, tt.cmd)
-				if (err != nil) != tt.wantError {
-					t.Errorf("expected error, got '%v'", err)
+				if tt.wantError && err == nil {
+					t.Errorf("expected error, got success with the following output:\n%s", out)
+				}
+				if !tt.wantError && err != nil {
+					t.Errorf("expected no error, got: '%v'", err)
 				}
 				if tt.golden != "" {
 					test.AssertGoldenString(t, out, tt.golden)
@@ -89,7 +92,7 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 
 	actionConfig := &action.Configuration{
 		Releases:     store,
-		KubeClient:   &kubefake.PrintingKubeClient{Out: ioutil.Discard},
+		KubeClient:   &kubefake.PrintingKubeClient{Out: io.Discard},
 		Capabilities: chartutil.DefaultCapabilities,
 		Log:          func(format string, v ...interface{}) {},
 	}

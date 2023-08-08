@@ -114,7 +114,7 @@ func (c *Client) Search(term string) ([]SearchResult, error) {
 	p.RawQuery = "q=" + url.QueryEscape(term)
 
 	// Create request
-	req, err := http.NewRequest("GET", p.String(), nil)
+	req, err := http.NewRequest(http.MethodGet, p.String(), nil)
 	if err != nil {
 		return nil, err
 	}

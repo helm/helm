@@ -84,6 +84,10 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		ValidArgsFunction: validArgsFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowAll
+			err := addRegistryClient(client)
+			if err != nil {
+				return err
+			}
 			output, err := runShow(args, client)
 			if err != nil {
 				return err
@@ -101,6 +105,10 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		ValidArgsFunction: validArgsFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowValues
+			err := addRegistryClient(client)
+			if err != nil {
+				return err
+			}
 			output, err := runShow(args, client)
 			if err != nil {
 				return err
@@ -118,6 +126,10 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		ValidArgsFunction: validArgsFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowChart
+			err := addRegistryClient(client)
+			if err != nil {
+				return err
+			}
 			output, err := runShow(args, client)
 			if err != nil {
 				return err
@@ -135,6 +147,10 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		ValidArgsFunction: validArgsFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowReadme
+			err := addRegistryClient(client)
+			if err != nil {
+				return err
+			}
 			output, err := runShow(args, client)
 			if err != nil {
 				return err
@@ -152,6 +168,10 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		ValidArgsFunction: validArgsFunc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowCRDs
+			err := addRegistryClient(client)
+			if err != nil {
+				return err
+			}
 			output, err := runShow(args, client)
 			if err != nil {
 				return err
@@ -203,4 +223,14 @@ func runShow(args []string, client *action.Show) (string, error) {
 		return "", err
 	}
 	return client.Run(cp)
+}
+
+func addRegistryClient(client *action.Show) error {
+	registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
+		client.InsecureSkipTLSverify, client.PlainHTTP)
+	if err != nil {
+		return fmt.Errorf("missing registry client: %w", err)
+	}
+	client.SetRegistryClient(registryClient)
+	return nil
 }
