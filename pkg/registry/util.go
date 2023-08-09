@@ -19,12 +19,17 @@ package registry // import "helm.sh/helm/v3/pkg/registry"
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
+	"time"
+
+	helmtime "helm.sh/helm/v3/pkg/time"
 
 	"github.com/Masterminds/semver/v3"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	orascontext "oras.land/oras-go/pkg/context"
@@ -34,6 +39,11 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 )
+
+var immutableOciAnnotations = []string{
+	ocispec.AnnotationVersion,
+	ocispec.AnnotationTitle,
+}
 
 // IsOCI determines whether or not a URL is to be treated as an OCI URL
 func IsOCI(url string) bool {
@@ -154,4 +164,95 @@ func NewRegistryClientWithTLS(out io.Writer, certFile, keyFile, caFile string, i
 		return nil, err
 	}
 	return registryClient, nil
+}
+
+// generateOCIAnnotations will generate OCI annotations to include within the OCI manifest
+func generateOCIAnnotations(meta *chart.Metadata, test bool) map[string]string {
+
+	// Get annotations from Chart attributes
+	ociAnnotations := generateChartOCIAnnotations(meta, test)
+
+	// Copy Chart annotations
+annotations:
+	for chartAnnotationKey, chartAnnotationValue := range meta.Annotations {
+
+		// Avoid overriding key properties
+		for _, immutableOciKey := range immutableOciAnnotations {
+			if immutableOciKey == chartAnnotationKey {
+				continue annotations
+			}
+		}
+
+		// Add chart annotation
+		ociAnnotations[chartAnnotationKey] = chartAnnotationValue
+	}
+
+	return ociAnnotations
+}
+
+// getChartOCIAnnotations will generate OCI annotations from the provided chart
+func generateChartOCIAnnotations(meta *chart.Metadata, test bool) map[string]string {
+	chartOCIAnnotations := map[string]string{}
+
+	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationDescription, meta.Description)
+	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationTitle, meta.Name)
+	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationVersion, meta.Version)
+	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationURL, meta.Home)
+
+	if !test {
+		chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationCreated, helmtime.Now().UTC().Format(time.RFC3339))
+	}
+
+	if len(meta.Sources) > 0 {
+		chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationSource, meta.Sources[0])
+	}
+
+	if meta.Maintainers != nil && len(meta.Maintainers) > 0 {
+		var maintainerSb strings.Builder
+
+		for maintainerIdx, maintainer := range meta.Maintainers {
+
+			if len(maintainer.Name) > 0 {
+				maintainerSb.WriteString(maintainer.Name)
+			}
+
+			if len(maintainer.Email) > 0 {
+				maintainerSb.WriteString(" (")
+				maintainerSb.WriteString(maintainer.Email)
+				maintainerSb.WriteString(")")
+			}
+
+			if maintainerIdx < len(meta.Maintainers)-1 {
+				maintainerSb.WriteString(", ")
+			}
+
+		}
+
+		chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationAuthors, maintainerSb.String())
+
+	}
+
+	return chartOCIAnnotations
+}
+
+// addToMap takes an existing map and adds an item if the value is not empty
+func addToMap(inputMap map[string]string, newKey string, newValue string) map[string]string {
+
+	// Add item to map if its
+	if len(strings.TrimSpace(newValue)) > 0 {
+		inputMap[newKey] = newValue
+	}
+
+	return inputMap
+
+}
+
+// See 2 (end of page 4) https://www.ietf.org/rfc/rfc2617.txt
+// "To receive authorization, the client sends the userid and password,
+// separated by a single colon (":") character, within a base64
+// encoded string in the credentials."
+// It is not meant to be urlencoded.
+func basicAuth(username, password string) string {
+	auth := username + ":" + password
+	return base64.StdEncoding.EncodeToString([]byte(auth))
 }

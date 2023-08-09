@@ -22,7 +22,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -35,6 +35,7 @@ import (
 	"github.com/distribution/distribution/v3/registry"
 	_ "github.com/distribution/distribution/v3/registry/auth/htpasswd"
 	_ "github.com/distribution/distribution/v3/registry/storage/driver/inmemory"
+	"github.com/foxcpp/go-mockdns"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/bcrypt"
@@ -43,11 +44,11 @@ import (
 )
 
 const (
-	tlsServerKey  = "./testdata/tls/server-key.pem"
-	tlsServerCert = "./testdata/tls/server-cert.pem"
-	tlsCA         = "./testdata/tls/ca-cert.pem"
-	tlsKey        = "./testdata/tls/client-key.pem"
-	tlsCert       = "./testdata/tls/client-cert.pem"
+	tlsServerKey  = "./testdata/tls/server.key"
+	tlsServerCert = "./testdata/tls/server.crt"
+	tlsCA         = "./testdata/tls/ca.crt"
+	tlsKey        = "./testdata/tls/client.key"
+	tlsCert       = "./testdata/tls/client.crt"
 )
 
 var (
@@ -64,9 +65,12 @@ type TestSuite struct {
 	CompromisedRegistryHost string
 	WorkspaceDir            string
 	RegistryClient          *Client
+
+	// A mock DNS server needed for TLS connection testing.
+	srv *mockdns.Server
 }
 
-func setup(suite *TestSuite, tlsEnabled bool, insecure bool) *registry.Registry {
+func setup(suite *TestSuite, tlsEnabled, insecure bool) *registry.Registry {
 	suite.WorkspaceDir = testWorkspaceDir
 	os.RemoveAll(suite.WorkspaceDir)
 	os.Mkdir(suite.WorkspaceDir, 0700)
@@ -79,62 +83,69 @@ func setup(suite *TestSuite, tlsEnabled bool, insecure bool) *registry.Registry 
 	credentialsFile := filepath.Join(suite.WorkspaceDir, CredentialsFileBasename)
 
 	// init test client
+	opts := []ClientOption{
+		ClientOptDebug(true),
+		ClientOptEnableCache(true),
+		ClientOptWriter(suite.Out),
+		ClientOptCredentialsFile(credentialsFile),
+	}
+
 	if tlsEnabled {
 		var tlsConf *tls.Config
-		tlsConf, err = tlsutil.NewClientTLS(tlsCert, tlsKey, tlsCA, insecure)
+		if insecure {
+			tlsConf, err = tlsutil.NewClientTLS("", "", "", true)
+		} else {
+			tlsConf, err = tlsutil.NewClientTLS(tlsCert, tlsKey, tlsCA, false)
+		}
 		httpClient := &http.Client{
 			Transport: &http.Transport{
 				TLSClientConfig: tlsConf,
 			},
 		}
-		suite.Nil(err, "no error loading tlsconfog")
-		suite.RegistryClient, err = NewClient(
-			ClientOptDebug(true),
-			ClientOptEnableCache(true),
-			ClientOptWriter(suite.Out),
-			ClientOptCredentialsFile(credentialsFile),
-			ClientOptHTTPClient(httpClient),
-		)
+		suite.Nil(err, "no error loading tls config")
+		opts = append(opts, ClientOptHTTPClient(httpClient))
 	} else {
-		suite.RegistryClient, err = NewClient(
-			ClientOptDebug(true),
-			ClientOptEnableCache(true),
-			ClientOptWriter(suite.Out),
-			ClientOptCredentialsFile(credentialsFile),
-		)
+		opts = append(opts, ClientOptPlainHTTP())
 	}
 
+	suite.RegistryClient, err = NewClient(opts...)
 	suite.Nil(err, "no error creating registry client")
 
 	// create htpasswd file (w BCrypt, which is required)
 	pwBytes, err := bcrypt.GenerateFromPassword([]byte(testPassword), bcrypt.DefaultCost)
 	suite.Nil(err, "no error generating bcrypt password for test htpasswd file")
 	htpasswdPath := filepath.Join(suite.WorkspaceDir, testHtpasswdFileBasename)
-	err = ioutil.WriteFile(htpasswdPath, []byte(fmt.Sprintf("%s:%s\n", testUsername, string(pwBytes))), 0644)
+	err = os.WriteFile(htpasswdPath, []byte(fmt.Sprintf("%s:%s\n", testUsername, string(pwBytes))), 0644)
 	suite.Nil(err, "no error creating test htpasswd file")
 
 	// Registry config
 	config := &configuration.Configuration{}
 	port, err := freeport.GetFreePort()
 	suite.Nil(err, "no error finding free port for test registry")
-	if tlsEnabled {
-		// docker has  "MatchLocalhost is a host match function which returns true for
-		// localhost, and is used to enforce http for localhost requests."
-		// That function does not handle matching of ip addresses in octal,
-		// decimal or hex form.
-		suite.DockerRegistryHost = fmt.Sprintf("0x7f000001:%d", port)
-	} else {
-		suite.DockerRegistryHost = fmt.Sprintf("localhost:%d", port)
-	}
+
+	// Change the registry host to another host which is not localhost.
+	// This is required because Docker enforces HTTP if the registry
+	// host is localhost/127.0.0.1.
+	suite.DockerRegistryHost = fmt.Sprintf("helm-test-registry:%d", port)
+	suite.srv, _ = mockdns.NewServer(map[string]mockdns.Zone{
+		"helm-test-registry.": {
+			A: []string{"127.0.0.1"},
+		},
+	}, false)
+	suite.srv.PatchNet(net.DefaultResolver)
+
 	config.HTTP.Addr = fmt.Sprintf(":%d", port)
-	// config.HTTP.Addr = fmt.Sprintf("127.0.0.1:%d", port)
 	config.HTTP.DrainTimeout = time.Duration(10) * time.Second
 	config.Storage = map[string]configuration.Parameters{"inmemory": map[string]interface{}{}}
-	config.Auth = configuration.Auth{
-		"htpasswd": configuration.Parameters{
-			"realm": "localhost",
-			"path":  htpasswdPath,
-		},
+
+	// Basic auth is not possible if we are serving HTTP.
+	if tlsEnabled {
+		config.Auth = configuration.Auth{
+			"htpasswd": configuration.Parameters{
+				"realm": "localhost",
+				"path":  htpasswdPath,
+			},
+		}
 	}
 
 	// config tls
@@ -144,13 +155,23 @@ func setup(suite *TestSuite, tlsEnabled bool, insecure bool) *registry.Registry 
 		// server tls config
 		config.HTTP.TLS.Certificate = tlsServerCert
 		config.HTTP.TLS.Key = tlsServerKey
-		config.HTTP.TLS.ClientCAs = []string{tlsCA}
+		// Skip client authentication if the registry is insecure.
+		if !insecure {
+			config.HTTP.TLS.ClientCAs = []string{tlsCA}
+		}
 	}
 	dockerRegistry, err := registry.NewRegistry(context.Background(), config)
 	suite.Nil(err, "no error creating test registry")
 
 	suite.CompromisedRegistryHost = initCompromisedRegistryTestServer()
 	return dockerRegistry
+}
+
+func teardown(suite *TestSuite) {
+	if suite.srv != nil {
+		mockdns.UnpatchNet(net.DefaultResolver)
+		suite.srv.Close()
+	}
 }
 
 func initCompromisedRegistryTestServer() string {
@@ -196,58 +217,58 @@ func initCompromisedRegistryTestServer() string {
 func testPush(suite *TestSuite) {
 	// Bad bytes
 	ref := fmt.Sprintf("%s/testrepo/testchart:1.2.3", suite.DockerRegistryHost)
-	_, err := suite.RegistryClient.Push([]byte("hello"), ref)
+	_, err := suite.RegistryClient.Push([]byte("hello"), ref, PushOptTest(true))
 	suite.NotNil(err, "error pushing non-chart bytes")
 
 	// Load a test chart
-	chartData, err := ioutil.ReadFile("../repo/repotest/testdata/examplechart-0.1.0.tgz")
+	chartData, err := os.ReadFile("../repo/repotest/testdata/examplechart-0.1.0.tgz")
 	suite.Nil(err, "no error loading test chart")
 	meta, err := extractChartMeta(chartData)
 	suite.Nil(err, "no error extracting chart meta")
 
 	// non-strict ref (chart name)
 	ref = fmt.Sprintf("%s/testrepo/boop:%s", suite.DockerRegistryHost, meta.Version)
-	_, err = suite.RegistryClient.Push(chartData, ref)
+	_, err = suite.RegistryClient.Push(chartData, ref, PushOptTest(true))
 	suite.NotNil(err, "error pushing non-strict ref (bad basename)")
 
 	// non-strict ref (chart name), with strict mode disabled
-	_, err = suite.RegistryClient.Push(chartData, ref, PushOptStrictMode(false))
+	_, err = suite.RegistryClient.Push(chartData, ref, PushOptStrictMode(false), PushOptTest(true))
 	suite.Nil(err, "no error pushing non-strict ref (bad basename), with strict mode disabled")
 
 	// non-strict ref (chart version)
 	ref = fmt.Sprintf("%s/testrepo/%s:latest", suite.DockerRegistryHost, meta.Name)
-	_, err = suite.RegistryClient.Push(chartData, ref)
+	_, err = suite.RegistryClient.Push(chartData, ref, PushOptTest(true))
 	suite.NotNil(err, "error pushing non-strict ref (bad tag)")
 
 	// non-strict ref (chart version), with strict mode disabled
-	_, err = suite.RegistryClient.Push(chartData, ref, PushOptStrictMode(false))
+	_, err = suite.RegistryClient.Push(chartData, ref, PushOptStrictMode(false), PushOptTest(true))
 	suite.Nil(err, "no error pushing non-strict ref (bad tag), with strict mode disabled")
 
 	// basic push, good ref
-	chartData, err = ioutil.ReadFile("../downloader/testdata/local-subchart-0.1.0.tgz")
+	chartData, err = os.ReadFile("../downloader/testdata/local-subchart-0.1.0.tgz")
 	suite.Nil(err, "no error loading test chart")
 	meta, err = extractChartMeta(chartData)
 	suite.Nil(err, "no error extracting chart meta")
 	ref = fmt.Sprintf("%s/testrepo/%s:%s", suite.DockerRegistryHost, meta.Name, meta.Version)
-	_, err = suite.RegistryClient.Push(chartData, ref)
+	_, err = suite.RegistryClient.Push(chartData, ref, PushOptTest(true))
 	suite.Nil(err, "no error pushing good ref")
 
 	_, err = suite.RegistryClient.Pull(ref)
 	suite.Nil(err, "no error pulling a simple chart")
 
 	// Load another test chart
-	chartData, err = ioutil.ReadFile("../downloader/testdata/signtest-0.1.0.tgz")
+	chartData, err = os.ReadFile("../downloader/testdata/signtest-0.1.0.tgz")
 	suite.Nil(err, "no error loading test chart")
 	meta, err = extractChartMeta(chartData)
 	suite.Nil(err, "no error extracting chart meta")
 
 	// Load prov file
-	provData, err := ioutil.ReadFile("../downloader/testdata/signtest-0.1.0.tgz.prov")
+	provData, err := os.ReadFile("../downloader/testdata/signtest-0.1.0.tgz.prov")
 	suite.Nil(err, "no error loading test prov")
 
 	// push with prov
 	ref = fmt.Sprintf("%s/testrepo/%s:%s", suite.DockerRegistryHost, meta.Name, meta.Version)
-	result, err := suite.RegistryClient.Push(chartData, ref, PushOptProvData(provData))
+	result, err := suite.RegistryClient.Push(chartData, ref, PushOptProvData(provData), PushOptTest(true))
 	suite.Nil(err, "no error pushing good ref with prov")
 
 	_, err = suite.RegistryClient.Pull(ref)
@@ -259,12 +280,12 @@ func testPush(suite *TestSuite) {
 	suite.Equal(ref, result.Ref)
 	suite.Equal(meta.Name, result.Chart.Meta.Name)
 	suite.Equal(meta.Version, result.Chart.Meta.Version)
-	suite.Equal(int64(512), result.Manifest.Size)
+	suite.Equal(int64(684), result.Manifest.Size)
 	suite.Equal(int64(99), result.Config.Size)
 	suite.Equal(int64(973), result.Chart.Size)
 	suite.Equal(int64(695), result.Prov.Size)
 	suite.Equal(
-		"sha256:af4c20a1df1431495e673c14ecfa3a2ba24839a7784349d6787cd67957392e83",
+		"sha256:b57e8ffd938c43253f30afedb3c209136288e6b3af3b33473e95ea3b805888e6",
 		result.Manifest.Digest)
 	suite.Equal(
 		"sha256:8d17cb6bf6ccd8c29aace9a658495cbd5e2e87fc267876e86117c7db681c9580",
@@ -284,7 +305,7 @@ func testPull(suite *TestSuite) {
 	suite.NotNil(err, "error on bad/missing ref")
 
 	// Load test chart (to build ref pushed in previous test)
-	chartData, err := ioutil.ReadFile("../downloader/testdata/local-subchart-0.1.0.tgz")
+	chartData, err := os.ReadFile("../downloader/testdata/local-subchart-0.1.0.tgz")
 	suite.Nil(err, "no error loading test chart")
 	meta, err := extractChartMeta(chartData)
 	suite.Nil(err, "no error extracting chart meta")
@@ -306,14 +327,14 @@ func testPull(suite *TestSuite) {
 		"no error pulling a chart with prov when no prov exists, ignoring missing")
 
 	// Load test chart (to build ref pushed in previous test)
-	chartData, err = ioutil.ReadFile("../downloader/testdata/signtest-0.1.0.tgz")
+	chartData, err = os.ReadFile("../downloader/testdata/signtest-0.1.0.tgz")
 	suite.Nil(err, "no error loading test chart")
 	meta, err = extractChartMeta(chartData)
 	suite.Nil(err, "no error extracting chart meta")
 	ref = fmt.Sprintf("%s/testrepo/%s:%s", suite.DockerRegistryHost, meta.Name, meta.Version)
 
 	// Load prov file
-	provData, err := ioutil.ReadFile("../downloader/testdata/signtest-0.1.0.tgz.prov")
+	provData, err := os.ReadFile("../downloader/testdata/signtest-0.1.0.tgz.prov")
 	suite.Nil(err, "no error loading test prov")
 
 	// no chart and no prov causes error
@@ -332,12 +353,12 @@ func testPull(suite *TestSuite) {
 	suite.Equal(ref, result.Ref)
 	suite.Equal(meta.Name, result.Chart.Meta.Name)
 	suite.Equal(meta.Version, result.Chart.Meta.Version)
-	suite.Equal(int64(512), result.Manifest.Size)
+	suite.Equal(int64(684), result.Manifest.Size)
 	suite.Equal(int64(99), result.Config.Size)
 	suite.Equal(int64(973), result.Chart.Size)
 	suite.Equal(int64(695), result.Prov.Size)
 	suite.Equal(
-		"sha256:af4c20a1df1431495e673c14ecfa3a2ba24839a7784349d6787cd67957392e83",
+		"sha256:b57e8ffd938c43253f30afedb3c209136288e6b3af3b33473e95ea3b805888e6",
 		result.Manifest.Digest)
 	suite.Equal(
 		"sha256:8d17cb6bf6ccd8c29aace9a658495cbd5e2e87fc267876e86117c7db681c9580",
@@ -348,7 +369,7 @@ func testPull(suite *TestSuite) {
 	suite.Equal(
 		"sha256:b0a02b7412f78ae93324d48df8fcc316d8482e5ad7827b5b238657a29a22f256",
 		result.Prov.Digest)
-	suite.Equal("{\"schemaVersion\":2,\"config\":{\"mediaType\":\"application/vnd.cncf.helm.config.v1+json\",\"digest\":\"sha256:8d17cb6bf6ccd8c29aace9a658495cbd5e2e87fc267876e86117c7db681c9580\",\"size\":99},\"layers\":[{\"mediaType\":\"application/vnd.cncf.helm.chart.provenance.v1.prov\",\"digest\":\"sha256:b0a02b7412f78ae93324d48df8fcc316d8482e5ad7827b5b238657a29a22f256\",\"size\":695},{\"mediaType\":\"application/vnd.cncf.helm.chart.content.v1.tar+gzip\",\"digest\":\"sha256:e5ef611620fb97704d8751c16bab17fedb68883bfb0edc76f78a70e9173f9b55\",\"size\":973}]}",
+	suite.Equal("{\"schemaVersion\":2,\"config\":{\"mediaType\":\"application/vnd.cncf.helm.config.v1+json\",\"digest\":\"sha256:8d17cb6bf6ccd8c29aace9a658495cbd5e2e87fc267876e86117c7db681c9580\",\"size\":99},\"layers\":[{\"mediaType\":\"application/vnd.cncf.helm.chart.provenance.v1.prov\",\"digest\":\"sha256:b0a02b7412f78ae93324d48df8fcc316d8482e5ad7827b5b238657a29a22f256\",\"size\":695},{\"mediaType\":\"application/vnd.cncf.helm.chart.content.v1.tar+gzip\",\"digest\":\"sha256:e5ef611620fb97704d8751c16bab17fedb68883bfb0edc76f78a70e9173f9b55\",\"size\":973}],\"annotations\":{\"org.opencontainers.image.description\":\"A Helm chart for Kubernetes\",\"org.opencontainers.image.title\":\"signtest\",\"org.opencontainers.image.version\":\"0.1.0\"}}",
 		string(result.Manifest.Data))
 	suite.Equal("{\"name\":\"signtest\",\"version\":\"0.1.0\",\"description\":\"A Helm chart for Kubernetes\",\"apiVersion\":\"v1\"}",
 		string(result.Config.Data))
@@ -358,7 +379,7 @@ func testPull(suite *TestSuite) {
 
 func testTags(suite *TestSuite) {
 	// Load test chart (to build ref pushed in previous test)
-	chartData, err := ioutil.ReadFile("../downloader/testdata/local-subchart-0.1.0.tgz")
+	chartData, err := os.ReadFile("../downloader/testdata/local-subchart-0.1.0.tgz")
 	suite.Nil(err, "no error loading test chart")
 	meta, err := extractChartMeta(chartData)
 	suite.Nil(err, "no error extracting chart meta")

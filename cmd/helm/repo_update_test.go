@@ -19,7 +19,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -119,7 +118,7 @@ func TestUpdateCustomCacheCmd(t *testing.T) {
 		repoFile:  filepath.Join(ts.Root(), "repositories.yaml"),
 		repoCache: cachePath,
 	}
-	b := ioutil.Discard
+	b := io.Discard
 	if err := o.run(b); err != nil {
 		t.Fatal(err)
 	}

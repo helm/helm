@@ -21,7 +21,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -259,7 +258,7 @@ func compListChartsOfRepo(repoName string, prefix string) []string {
 	var charts []string
 
 	path := filepath.Join(settings.RepositoryCache, helmpath.CacheChartsFile(repoName))
-	content, err := ioutil.ReadFile(path)
+	content, err := os.ReadFile(path)
 	if err == nil {
 		scanner := bufio.NewScanner(bytes.NewReader(content))
 		for scanner.Scan() {
