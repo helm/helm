@@ -73,6 +73,7 @@ type Install struct {
 	Force                    bool
 	CreateNamespace          bool
 	DryRun                   bool
+	DryRunOption             string
 	DisableHooks             bool
 	Replace                  bool
 	Wait                     bool
@@ -114,6 +115,7 @@ type ChartPathOptions struct {
 	CertFile              string // --cert-file
 	KeyFile               string // --key-file
 	InsecureSkipTLSverify bool   // --insecure-skip-verify
+	PlainHTTP             bool   // --plain-http
 	Keyring               string // --keyring
 	Password              string // --password
 	PassCredentialsAll    bool   // --pass-credentials
@@ -140,6 +142,11 @@ func NewInstall(cfg *Configuration) *Install {
 // SetRegistryClient sets the registry client for the install action
 func (i *Install) SetRegistryClient(registryClient *registry.Client) {
 	i.ChartPathOptions.registryClient = registryClient
+}
+
+// GetRegistryClient get the registry client.
+func (i *Install) GetRegistryClient() *registry.Client {
+	return i.ChartPathOptions.registryClient
 }
 
 func (i *Install) installCRDs(crds []chart.CRD) error {
@@ -223,15 +230,20 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		return nil, err
 	}
 
-	if err := chartutil.ProcessDependencies(chrt, vals); err != nil {
+	if err := chartutil.ProcessDependenciesWithMerge(chrt, vals); err != nil {
 		return nil, err
+	}
+
+	var interactWithRemote bool
+	if !i.isDryRun() || i.DryRunOption == "server" || i.DryRunOption == "none" || i.DryRunOption == "false" {
+		interactWithRemote = true
 	}
 
 	// Pre-install anything in the crd/ directory. We do this before Helm
 	// contacts the upstream server and builds the capabilities object.
 	if crds := chrt.CRDObjects(); !i.ClientOnly && !i.SkipCRDs && len(crds) > 0 {
 		// On dry run, bail here
-		if i.DryRun {
+		if i.isDryRun() {
 			i.cfg.Log("WARNING: This chart or one of its subcharts contains CRDs. Rendering may fail or contain inaccuracies.")
 		} else if err := i.installCRDs(crds); err != nil {
 			return nil, err
@@ -265,7 +277,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	}
 
 	// special case for helm template --is-upgrade
-	isUpgrade := i.IsUpgrade && i.DryRun
+	isUpgrade := i.IsUpgrade && i.isDryRun()
 	options := chartutil.ReleaseOptions{
 		Name:      i.ReleaseName,
 		Namespace: i.Namespace,
@@ -281,7 +293,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	rel := i.createRelease(chrt, vals)
 
 	var manifestDoc *bytes.Buffer
-	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, i.DryRun, i.EnableDNS)
+	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, interactWithRemote, i.EnableDNS)
 	// Even for errors, attach this if available
 	if manifestDoc != nil {
 		rel.Manifest = manifestDoc.String()
@@ -317,12 +329,12 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	if !i.ClientOnly && !isUpgrade && len(resources) > 0 {
 		toBeAdopted, err = existingResourceConflict(resources, rel.Name, rel.Namespace)
 		if err != nil {
-			return nil, errors.Wrap(err, "rendered manifests contain a resource that already exists. Unable to continue with install")
+			return nil, errors.Wrap(err, "Unable to continue with install")
 		}
 	}
 
 	// Bail out here if it is a dry run
-	if i.DryRun {
+	if i.isDryRun() {
 		rel.Info.Description = "Dry run complete"
 		return rel, nil
 	}
@@ -380,6 +392,14 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	case result := <-ctxChan:
 		return result.r, result.e
 	}
+}
+
+// isDryRun returns true if Upgrade is set to run as a DryRun
+func (i *Install) isDryRun() bool {
+	if i.DryRun || i.DryRunOption == "client" || i.DryRunOption == "server" || i.DryRunOption == "true" {
+		return true
+	}
+	return false
 }
 
 func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, toBeAdopted kube.ResourceList, resources kube.ResourceList) {
@@ -495,7 +515,8 @@ func (i *Install) availableName() error {
 	if err := chartutil.ValidateReleaseName(start); err != nil {
 		return errors.Wrapf(err, "release name %q", start)
 	}
-	if i.DryRun {
+	// On dry run, bail here
+	if i.isDryRun() {
 		return nil
 	}
 
@@ -733,6 +754,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 			getter.WithPassCredentialsAll(c.PassCredentialsAll),
 			getter.WithTLSClientConfig(c.CertFile, c.KeyFile, c.CaFile),
 			getter.WithInsecureSkipVerifyTLS(c.InsecureSkipTLSverify),
+			getter.WithPlainHTTP(c.PlainHTTP),
 		},
 		RepositoryConfig: settings.RepositoryConfig,
 		RepositoryCache:  settings.RepositoryCache,
