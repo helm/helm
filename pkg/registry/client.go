@@ -87,36 +87,40 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		}
 		client.authorizer = authClient
 	}
-	client.resolver = func(ref registry.Reference) (remotes.Resolver, error) {
-		headers := http.Header{}
-		headers.Set("User-Agent", version.GetUserAgent())
-		dockerClient, ok := client.authorizer.(*dockerauth.Client)
-		if ok {
-			username, password, err := dockerClient.Credential(ref.Registry)
-			if err != nil {
-				return nil, errors.New("unable to retrieve credentials")
-			}
-			// A blank returned username and password value is a bearer token
-			if username == "" && password != "" {
-				headers.Set("Authorization", fmt.Sprintf("Bearer %s", password))
-			} else {
-				headers.Set("Authorization", fmt.Sprintf("Basic %s", basicAuth(username, password)))
-			}
-		}
 
-		opts := []auth.ResolverOption{auth.WithResolverHeaders(headers)}
-		if client.httpClient != nil {
-			opts = append(opts, auth.WithResolverClient(client.httpClient))
+	if client.resolver == nil {
+		client.resolver = func(ref registry.Reference) (remotes.Resolver, error) {
+			headers := http.Header{}
+			headers.Set("User-Agent", version.GetUserAgent())
+			dockerClient, ok := client.authorizer.(*dockerauth.Client)
+			if ok {
+				username, password, err := dockerClient.Credential(ref.Registry)
+				if err != nil {
+					return nil, errors.New("unable to retrieve credentials")
+				}
+				// A blank returned username and password value is a bearer token
+				if username == "" && password != "" {
+					headers.Set("Authorization", fmt.Sprintf("Bearer %s", password))
+				} else {
+					headers.Set("Authorization", fmt.Sprintf("Basic %s", basicAuth(username, password)))
+				}
+			}
+
+			opts := []auth.ResolverOption{auth.WithResolverHeaders(headers)}
+			if client.httpClient != nil {
+				opts = append(opts, auth.WithResolverClient(client.httpClient))
+			}
+			if client.plainHTTP {
+				opts = append(opts, auth.WithResolverPlainHTTP())
+			}
+			resolver, err := client.authorizer.ResolverWithOpts(opts...)
+			if err != nil {
+				return nil, err
+			}
+			return resolver, nil
 		}
-		if client.plainHTTP {
-			opts = append(opts, auth.WithResolverPlainHTTP())
-		}
-		resolver, err := client.authorizer.ResolverWithOpts(opts...)
-		if err != nil {
-			return nil, err
-		}
-		return resolver, nil
 	}
+
 	// allocate a cache if option is set
 	var cache registryauth.Cache
 	if client.enableCache {
@@ -202,7 +206,9 @@ func ClientOptPlainHTTP() ClientOption {
 // ClientOptResolver returns a function that sets the resolver setting on a client options set
 func ClientOptResolver(resolver remotes.Resolver) ClientOption {
 	return func(client *Client) {
-		client.resolver = resolver
+		client.resolver = func(ref registry.Reference) (remotes.Resolver, error) {
+			return resolver, nil
+		}
 	}
 }
 
