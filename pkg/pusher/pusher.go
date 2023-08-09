@@ -32,6 +32,7 @@ type options struct {
 	keyFile               string
 	caFile                string
 	insecureSkipTLSverify bool
+	plainHTTP             bool
 }
 
 // Option allows specifying various settings configurable by the user for overriding the defaults
@@ -58,6 +59,12 @@ func WithTLSClientConfig(certFile, keyFile, caFile string) Option {
 func WithInsecureSkipTLSVerify(insecureSkipTLSVerify bool) Option {
 	return func(opts *options) {
 		opts.insecureSkipTLSverify = insecureSkipTLSVerify
+	}
+}
+
+func WithPlainHTTP(plainHTTP bool) Option {
+	return func(opts *options) {
+		opts.plainHTTP = plainHTTP
 	}
 }
 

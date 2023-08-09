@@ -21,6 +21,7 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -79,6 +80,14 @@ type InterfaceExt interface {
 	WaitForDelete(resources ResourceList, timeout time.Duration) error
 }
 
+// InterfaceDeletionPropagation is introduced to avoid breaking backwards compatibility for Interface implementers.
+//
+// TODO Helm 4: Remove InterfaceDeletionPropagation and integrate its method(s) into the Interface.
+type InterfaceDeletionPropagation interface {
+	// Delete destroys one or more resources. The deletion propagation is handled as per the given deletion propagation value.
+	DeleteWithPropagationPolicy(resources ResourceList, policy metav1.DeletionPropagation) (*Result, []error)
+}
+
 // InterfaceResources is introduced to avoid breaking backwards compatibility for Interface implementers.
 //
 // TODO Helm 4: Remove InterfaceResources and integrate its method(s) into the Interface.
@@ -103,4 +112,5 @@ type InterfaceResources interface {
 
 var _ Interface = (*Client)(nil)
 var _ InterfaceExt = (*Client)(nil)
+var _ InterfaceDeletionPropagation = (*Client)(nil)
 var _ InterfaceResources = (*Client)(nil)

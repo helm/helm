@@ -1,7 +1,7 @@
 ==> Linting testdata/testcharts/chart-bad-requirements
 [ERROR] Chart.yaml: unable to parse YAML
 	error converting YAML to JSON: yaml: line 6: did not find expected '-' indicator
-[WARNING] templates/: directory not found
+[ERROR] templates/: cannot load Chart.yaml: error converting YAML to JSON: yaml: line 6: did not find expected '-' indicator
 [ERROR] : unable to load chart
 	cannot load Chart.yaml: error converting YAML to JSON: yaml: line 6: did not find expected '-' indicator
 
