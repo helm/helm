@@ -42,6 +42,15 @@ type Engine struct {
 	LintMode bool
 	// the rest config to connect to the kubernetes api
 	config *rest.Config
+	// EnableDNS tells the engine to allow DNS lookups when rendering templates
+	EnableDNS bool
+}
+
+// New creates a new instance of Engine using the passed in rest config.
+func New(config *rest.Config) Engine {
+	return Engine{
+		config: config,
+	}
 }
 
 // Render takes a chart, optional values, and value overrides, and attempts to render the Go templates.
@@ -187,6 +196,14 @@ func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]render
 	// implementation.
 	if !e.LintMode && e.config != nil {
 		funcMap["lookup"] = NewLookupFunction(e.config)
+	}
+
+	// When DNS lookups are not enabled override the sprig function and return
+	// an empty string.
+	if !e.EnableDNS {
+		funcMap["getHostByName"] = func(name string) string {
+			return ""
+		}
 	}
 
 	t.Funcs(funcMap)

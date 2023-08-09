@@ -19,7 +19,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -311,7 +310,7 @@ func addPluginCommands(plugin *plugin.Plugin, baseCmd *cobra.Command, cmds *plug
 // loadFile takes a yaml file at the given path, parses it and returns a pluginCommand object
 func loadFile(path string) (*pluginCommand, error) {
 	cmds := new(pluginCommand)
-	b, err := ioutil.ReadFile(path)
+	b, err := os.ReadFile(path)
 	if err != nil {
 		return cmds, fmt.Errorf("file (%s) not provided by plugin. No plugin auto-completion possible", path)
 	}

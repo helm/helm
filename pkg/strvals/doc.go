@@ -13,7 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*Package strvals provides tools for working with strval lines.
+/*
+Package strvals provides tools for working with strval lines.
 
 Helm supports a compressed format for YAML settings which we call strvals.
 The format is roughly like this:
