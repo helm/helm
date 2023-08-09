@@ -37,6 +37,7 @@ type options struct {
 	caFile                string
 	unTar                 bool
 	insecureSkipVerifyTLS bool
+	plainHTTP             bool
 	username              string
 	password              string
 	passCredentialsAll    bool
@@ -93,6 +94,12 @@ func WithTLSClientConfig(certFile, keyFile, caFile string) Option {
 		opts.certFile = certFile
 		opts.keyFile = keyFile
 		opts.caFile = caFile
+	}
+}
+
+func WithPlainHTTP(plainHTTP bool) Option {
+	return func(opts *options) {
+		opts.plainHTTP = plainHTTP
 	}
 }
 
