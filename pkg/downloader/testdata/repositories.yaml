@@ -21,3 +21,8 @@ repositories:
     certFile: "cert"
     keyFile: "key"
     caFile: "ca"
+  - name: testing-https-insecureskip-tls-verify
+    url: "https://example-https-insecureskiptlsverify.com"
+    insecure_skip_tls_verify: true
+  - name: encoded-url
+    url: "http://example.com/with%2Fslash"

@@ -16,8 +16,9 @@ limitations under the License.
 package repotest
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -33,6 +34,7 @@ func TestServer(t *testing.T) {
 	defer ensure.HelmHome(t)()
 
 	rootDir := ensure.TempDir(t)
+	defer os.RemoveAll(rootDir)
 
 	srv := NewServer(rootDir)
 	defer srv.Stop()
@@ -66,7 +68,7 @@ func TestServer(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	data, err := ioutil.ReadAll(res.Body)
+	data, err := io.ReadAll(res.Body)
 	res.Body.Close()
 	if err != nil {
 		t.Fatal(err)
@@ -99,7 +101,7 @@ func TestServer(t *testing.T) {
 func TestNewTempServer(t *testing.T) {
 	defer ensure.HelmHome(t)()
 
-	srv, err := NewTempServer("testdata/examplechart-0.1.0.tgz")
+	srv, err := NewTempServerWithCleanup(t, "testdata/examplechart-0.1.0.tgz")
 	if err != nil {
 		t.Fatal(err)
 	}

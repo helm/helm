@@ -1,0 +1,2 @@
+:4
+Completion ended with directive: ShellCompDirectiveNoFileComp

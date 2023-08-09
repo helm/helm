@@ -48,6 +48,8 @@ the template:
 - .GitCommit is the git commit
 - .GitTreeState is the state of the git tree when Helm was built
 - .GoVersion contains the version of Go that Helm was compiled with
+
+For example, --template='Version: {{.Version}}' outputs 'Version: v3.2.1'.
 `
 
 type versionOptions struct {
@@ -59,10 +61,11 @@ func newVersionCmd(out io.Writer) *cobra.Command {
 	o := &versionOptions{}
 
 	cmd := &cobra.Command{
-		Use:   "version",
-		Short: "print the client version information",
-		Long:  versionDesc,
-		Args:  require.NoArgs,
+		Use:               "version",
+		Short:             "print the client version information",
+		Long:              versionDesc,
+		Args:              require.NoArgs,
+		ValidArgsFunction: noCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return o.run(out)
 		},

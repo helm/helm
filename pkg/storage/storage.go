@@ -55,13 +55,16 @@ func (s *Storage) Get(name string, version int) (*rspb.Release, error) {
 }
 
 // Create creates a new storage entry holding the release. An
-// error is returned if the storage driver failed to store the
-// release, or a release with identical an key already exists.
+// error is returned if the storage driver fails to store the
+// release, or a release with an identical key already exists.
 func (s *Storage) Create(rls *rspb.Release) error {
 	s.Log("creating release %q", makeKey(rls.Name, rls.Version))
 	if s.MaxHistory > 0 {
 		// Want to make space for one more release.
-		s.removeLeastRecent(rls.Name, s.MaxHistory-1)
+		if err := s.removeLeastRecent(rls.Name, s.MaxHistory-1); err != nil &&
+			!errors.Is(err, driver.ErrReleaseNotFound) {
+			return err
+		}
 	}
 	return s.Driver.Create(makeKey(rls.Name, rls.Version), rls)
 }
@@ -153,7 +156,7 @@ func (s *Storage) History(name string) ([]*rspb.Release, error) {
 	return s.Driver.Query(map[string]string{"name": name, "owner": "helm"})
 }
 
-// removeLeastRecent removes items from history until the lengh number of releases
+// removeLeastRecent removes items from history until the length number of releases
 // does not exceed max.
 //
 // We allow max to be set explicitly so that calling functions can "make space"
@@ -174,7 +177,7 @@ func (s *Storage) removeLeastRecent(name string, max int) error {
 	relutil.SortByRevision(h)
 
 	lastDeployed, err := s.Deployed(name)
-	if err != nil {
+	if err != nil && !errors.Is(err, driver.ErrNoDeployedReleases) {
 		return err
 	}
 

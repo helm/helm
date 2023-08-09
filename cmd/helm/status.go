@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"log"
@@ -24,6 +25,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
+	"k8s.io/kubectl/pkg/cmd/get"
 
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
@@ -39,7 +42,9 @@ The status consists of:
 - last deployment time
 - k8s namespace in which the release lives
 - state of the release (can be: unknown, deployed, uninstalled, superseded, failed, uninstalling, pending-install, pending-upgrade or pending-rollback)
-- list of resources that this release consists of, sorted by kind
+- revision of the release
+- description of the release (can be completion message or error message, need to enable --show-desc)
+- list of resources that this release consists of (need to enable --show-resources)
 - details on last test suite run, if applicable
 - additional notes provided by the chart
 `
@@ -57,9 +62,16 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if len(args) != 0 {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
-			return compListReleases(toComplete, cfg)
+			return compListReleases(toComplete, args, cfg)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+
+			// When the output format is a table the resources should be fetched
+			// and displayed as a table. When YAML or JSON the resources will be
+			// returned. This mirrors the handling in kubectl.
+			if outfmt == output.Table {
+				client.ShowResourcesTable = true
+			}
 			rel, err := client.Run(args[0])
 			if err != nil {
 				return err
@@ -68,7 +80,7 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			// strip chart metadata from the output
 			rel.Chart = nil
 
-			return outfmt.Write(out, &statusPrinter{rel, false})
+			return outfmt.Write(out, &statusPrinter{rel, false, client.ShowDescription, client.ShowResources})
 		},
 	}
 
@@ -88,13 +100,18 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	}
 
 	bindOutputFlag(cmd, &outfmt)
+	f.BoolVar(&client.ShowDescription, "show-desc", false, "if set, display the description message of the named release")
+
+	f.BoolVar(&client.ShowResources, "show-resources", false, "if set, display the resources of the named release")
 
 	return cmd
 }
 
 type statusPrinter struct {
-	release *release.Release
-	debug   bool
+	release         *release.Release
+	debug           bool
+	showDescription bool
+	showResources   bool
 }
 
 func (s statusPrinter) WriteJSON(out io.Writer) error {
@@ -116,6 +133,36 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 	fmt.Fprintf(out, "NAMESPACE: %s\n", s.release.Namespace)
 	fmt.Fprintf(out, "STATUS: %s\n", s.release.Info.Status.String())
 	fmt.Fprintf(out, "REVISION: %d\n", s.release.Version)
+	if s.showDescription {
+		fmt.Fprintf(out, "DESCRIPTION: %s\n", s.release.Info.Description)
+	}
+
+	if s.showResources && s.release.Info.Resources != nil && len(s.release.Info.Resources) > 0 {
+		buf := new(bytes.Buffer)
+		printFlags := get.NewHumanPrintFlags()
+		typePrinter, _ := printFlags.ToPrinter("")
+		printer := &get.TablePrinter{Delegate: typePrinter}
+
+		var keys []string
+		for key := range s.release.Info.Resources {
+			keys = append(keys, key)
+		}
+
+		for _, t := range keys {
+			fmt.Fprintf(buf, "==> %s\n", t)
+
+			vk := s.release.Info.Resources[t]
+			for _, resource := range vk {
+				if err := printer.PrintObj(resource, buf); err != nil {
+					fmt.Fprintf(buf, "failed to print object type %s: %v\n", t, err)
+				}
+			}
+
+			buf.WriteString("\n")
+		}
+
+		fmt.Fprintf(out, "RESOURCES:\n%s\n", buf.String())
+	}
 
 	executions := executionsByHookEvent(s.release)
 	if tests, ok := executions[release.HookTest]; !ok || len(tests) == 0 {

@@ -25,6 +25,7 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 
+	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/release"
 )
 
@@ -36,12 +37,14 @@ type ReleaseTesting struct {
 	Timeout time.Duration
 	// Used for fetching logs from test pods
 	Namespace string
+	Filters   map[string][]string
 }
 
 // NewReleaseTesting creates a new ReleaseTesting object with the given configuration.
 func NewReleaseTesting(cfg *Configuration) *ReleaseTesting {
 	return &ReleaseTesting{
-		cfg: cfg,
+		cfg:     cfg,
+		Filters: map[string][]string{},
 	}
 }
 
@@ -51,7 +54,7 @@ func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
 		return nil, err
 	}
 
-	if err := validateReleaseName(name); err != nil {
+	if err := chartutil.ValidateReleaseName(name); err != nil {
 		return nil, errors.Errorf("releaseTest: Release name is invalid: %s", name)
 	}
 
@@ -61,11 +64,37 @@ func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
 		return rel, err
 	}
 
+	skippedHooks := []*release.Hook{}
+	executingHooks := []*release.Hook{}
+	if len(r.Filters["!name"]) != 0 {
+		for _, h := range rel.Hooks {
+			if contains(r.Filters["!name"], h.Name) {
+				skippedHooks = append(skippedHooks, h)
+			} else {
+				executingHooks = append(executingHooks, h)
+			}
+		}
+		rel.Hooks = executingHooks
+	}
+	if len(r.Filters["name"]) != 0 {
+		executingHooks = nil
+		for _, h := range rel.Hooks {
+			if contains(r.Filters["name"], h.Name) {
+				executingHooks = append(executingHooks, h)
+			} else {
+				skippedHooks = append(skippedHooks, h)
+			}
+		}
+		rel.Hooks = executingHooks
+	}
+
 	if err := r.cfg.execHook(rel, release.HookTest, r.Timeout); err != nil {
+		rel.Hooks = append(skippedHooks, rel.Hooks...)
 		r.cfg.Releases.Update(rel)
 		return rel, err
 	}
 
+	rel.Hooks = append(skippedHooks, rel.Hooks...)
 	return rel, r.cfg.Releases.Update(rel)
 }
 
@@ -97,4 +126,13 @@ func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 		}
 	}
 	return nil
+}
+
+func contains(arr []string, value string) bool {
+	for _, item := range arr {
+		if item == value {
+			return true
+		}
+	}
+	return false
 }

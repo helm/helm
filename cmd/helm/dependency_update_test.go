@@ -17,7 +17,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -33,12 +32,24 @@ import (
 )
 
 func TestDependencyUpdateCmd(t *testing.T) {
-	srv, err := repotest.NewTempServer("testdata/testcharts/*.tgz")
+	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/testcharts/*.tgz")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer srv.Stop()
 	t.Logf("Listening on directory %s", srv.Root())
+
+	ociSrv, err := repotest.NewOCIServer(t, srv.Root())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ociChartName := "oci-depending-chart"
+	c := createTestingMetadataForOCI(ociChartName, ociSrv.RegistryURL)
+	if _, err := chartutil.Save(c, ociSrv.Dir); err != nil {
+		t.Fatal(err)
+	}
+	ociSrv.Run(t, repotest.WithDependingChart(c))
 
 	if err := srv.LinkIndices(); err != nil {
 		t.Fatal(err)
@@ -115,13 +126,32 @@ func TestDependencyUpdateCmd(t *testing.T) {
 	if _, err := os.Stat(unexpected); err == nil {
 		t.Fatalf("Unexpected %q", unexpected)
 	}
+
+	// test for OCI charts
+	if err := chartutil.SaveDir(c, dir()); err != nil {
+		t.Fatal(err)
+	}
+	cmd := fmt.Sprintf("dependency update '%s' --repository-config %s --repository-cache %s --registry-config %s/config.json",
+		dir(ociChartName),
+		dir("repositories.yaml"),
+		dir(),
+		dir())
+	_, out, err = executeActionCommand(cmd)
+	if err != nil {
+		t.Logf("Output: %s", out)
+		t.Fatal(err)
+	}
+	expect = dir(ociChartName, "charts/oci-dependent-chart-0.1.0.tgz")
+	if _, err := os.Stat(expect); err != nil {
+		t.Fatal(err)
+	}
 }
 
-func TestDependencyUpdateCmd_DontDeleteOldChartsOnError(t *testing.T) {
+func TestDependencyUpdateCmd_DoNotDeleteOldChartsOnError(t *testing.T) {
 	defer resetEnv()()
 	defer ensure.HelmHome(t)()
 
-	srv, err := repotest.NewTempServer("testdata/testcharts/*.tgz")
+	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/testcharts/*.tgz")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,7 +185,7 @@ func TestDependencyUpdateCmd_DontDeleteOldChartsOnError(t *testing.T) {
 	}
 
 	// Make sure charts dir still has dependencies
-	files, err := ioutil.ReadDir(filepath.Join(dir(chartname), "charts"))
+	files, err := os.ReadDir(filepath.Join(dir(chartname), "charts"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,6 +218,19 @@ func createTestingMetadata(name, baseURL string) *chart.Chart {
 			Dependencies: []*chart.Dependency{
 				{Name: "reqtest", Version: "0.1.0", Repository: baseURL},
 				{Name: "compressedchart", Version: "0.1.0", Repository: baseURL},
+			},
+		},
+	}
+}
+
+func createTestingMetadataForOCI(name, registryURL string) *chart.Chart {
+	return &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: chart.APIVersionV2,
+			Name:       name,
+			Version:    "1.2.3",
+			Dependencies: []*chart.Dependency{
+				{Name: "oci-dependent-chart", Version: "0.1.0", Repository: fmt.Sprintf("oci://%s/u/ocitestuser", registryURL)},
 			},
 		},
 	}

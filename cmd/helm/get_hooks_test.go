@@ -37,6 +37,15 @@ func TestGetHooks(t *testing.T) {
 	runTestCmd(t, tests)
 }
 
+func TestGetHooksCompletion(t *testing.T) {
+	checkReleaseCompletion(t, "get hooks", false)
+}
+
 func TestGetHooksRevisionCompletion(t *testing.T) {
 	revisionFlagCompletionTest(t, "get hooks")
+}
+
+func TestGetHooksFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "get hooks", false)
+	checkFileCompletion(t, "get hooks myrelease", false)
 }

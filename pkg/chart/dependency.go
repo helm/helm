@@ -49,6 +49,26 @@ type Dependency struct {
 	Alias string `json:"alias,omitempty"`
 }
 
+// Validate checks for common problems with the dependency datastructure in
+// the chart. This check must be done at load time before the dependency's charts are
+// loaded.
+func (d *Dependency) Validate() error {
+	if d == nil {
+		return ValidationError("dependencies must not contain empty or null nodes")
+	}
+	d.Name = sanitizeString(d.Name)
+	d.Version = sanitizeString(d.Version)
+	d.Repository = sanitizeString(d.Repository)
+	d.Condition = sanitizeString(d.Condition)
+	for i := range d.Tags {
+		d.Tags[i] = sanitizeString(d.Tags[i])
+	}
+	if d.Alias != "" && !aliasNameFormat.MatchString(d.Alias) {
+		return ValidationErrorf("dependency %q has disallowed characters in the alias", d.Name)
+	}
+	return nil
+}
+
 // Lock is a lock file for dependencies.
 //
 // It represents the state that the dependencies should be in.

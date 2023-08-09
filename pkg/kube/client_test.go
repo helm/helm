@@ -19,7 +19,6 @@ package kube
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strings"
 	"testing"
@@ -37,7 +36,7 @@ var unstructuredSerializer = resource.UnstructuredPlusDefaultContentConfig().Neg
 var codec = scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
 func objBody(obj runtime.Object) io.ReadCloser {
-	return ioutil.NopCloser(bytes.NewReader([]byte(runtime.EncodeOrDie(codec, obj))))
+	return io.NopCloser(bytes.NewReader([]byte(runtime.EncodeOrDie(codec, obj))))
 }
 
 func newPod(name string) v1.Pod {
@@ -87,13 +86,16 @@ func notFoundBody() *metav1.Status {
 func newResponse(code int, obj runtime.Object) (*http.Response, error) {
 	header := http.Header{}
 	header.Set("Content-Type", runtime.ContentTypeJSON)
-	body := ioutil.NopCloser(bytes.NewReader([]byte(runtime.EncodeOrDie(codec, obj))))
+	body := io.NopCloser(bytes.NewReader([]byte(runtime.EncodeOrDie(codec, obj))))
 	return &http.Response{StatusCode: code, Header: header, Body: body}, nil
 }
 
-func newTestClient() *Client {
+func newTestClient(t *testing.T) *Client {
+	testFactory := cmdtesting.NewTestFactory()
+	t.Cleanup(testFactory.Cleanup)
+
 	return &Client{
-		Factory: cmdtesting.NewTestFactory().WithNamespace("default"),
+		Factory: testFactory.WithNamespace("default"),
 		Log:     nopLogger,
 	}
 }
@@ -107,7 +109,7 @@ func TestUpdate(t *testing.T) {
 
 	var actions []string
 
-	c := newTestClient()
+	c := newTestClient(t)
 	c.Factory.(*cmdtesting.TestFactory).UnstructuredClient = &fake.RESTClient{
 		NegotiatedSerializer: unstructuredSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
@@ -120,7 +122,7 @@ func TestUpdate(t *testing.T) {
 			case p == "/namespaces/default/pods/otter" && m == "GET":
 				return newResponse(200, &listA.Items[1])
 			case p == "/namespaces/default/pods/otter" && m == "PATCH":
-				data, err := ioutil.ReadAll(req.Body)
+				data, err := io.ReadAll(req.Body)
 				if err != nil {
 					t.Fatalf("could not dump request: %s", err)
 				}
@@ -133,7 +135,7 @@ func TestUpdate(t *testing.T) {
 			case p == "/namespaces/default/pods/dolphin" && m == "GET":
 				return newResponse(404, notFoundBody())
 			case p == "/namespaces/default/pods/starfish" && m == "PATCH":
-				data, err := ioutil.ReadAll(req.Body)
+				data, err := io.ReadAll(req.Body)
 				if err != nil {
 					t.Fatalf("could not dump request: %s", err)
 				}
@@ -232,11 +234,50 @@ func TestBuild(t *testing.T) {
 		},
 	}
 
-	c := newTestClient()
+	c := newTestClient(t)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Test for an invalid manifest
 			infos, err := c.Build(tt.reader, false)
+			if err != nil && !tt.err {
+				t.Errorf("Got error message when no error should have occurred: %v", err)
+			} else if err != nil && strings.Contains(err.Error(), "--validate=false") {
+				t.Error("error message was not scrubbed")
+			}
+
+			if len(infos) != tt.count {
+				t.Errorf("expected %d result objects, got %d", tt.count, len(infos))
+			}
+		})
+	}
+}
+
+func TestBuildTable(t *testing.T) {
+	tests := []struct {
+		name      string
+		namespace string
+		reader    io.Reader
+		count     int
+		err       bool
+	}{
+		{
+			name:      "Valid input",
+			namespace: "test",
+			reader:    strings.NewReader(guestbookManifest),
+			count:     6,
+		}, {
+			name:      "Valid input, deploying resources into different namespaces",
+			namespace: "test",
+			reader:    strings.NewReader(namespacedGuestbookManifest),
+			count:     1,
+		},
+	}
+
+	c := newTestClient(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Test for an invalid manifest
+			infos, err := c.BuildTable(tt.reader, false)
 			if err != nil && !tt.err {
 				t.Errorf("Got error message when no error should have occurred: %v", err)
 			} else if err != nil && strings.Contains(err.Error(), "--validate=false") {
@@ -279,7 +320,7 @@ func TestPerform(t *testing.T) {
 				return nil
 			}
 
-			c := newTestClient()
+			c := newTestClient(t)
 			infos, err := c.Build(tt.reader, false)
 			if err != nil && err.Error() != tt.errMessage {
 				t.Errorf("Error while building manifests: %v", err)
@@ -399,7 +440,7 @@ spec:
     spec:
       containers:
       - name: master
-        image: k8s.gcr.io/redis:e2e  # or just image: redis
+        image: registry.k8s.io/redis:e2e  # or just image: redis
         resources:
           requests:
             cpu: 100m

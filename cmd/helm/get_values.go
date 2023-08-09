@@ -50,7 +50,7 @@ func newGetValuesCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if len(args) != 0 {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
-			return compListReleases(toComplete, cfg)
+			return compListReleases(toComplete, args, cfg)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			vals, err := client.Run(args[0])

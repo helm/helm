@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -28,8 +29,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/registry"
+	"helm.sh/helm/v3/pkg/repo"
 )
 
 var globalUsage = `The Kubernetes package manager
@@ -43,16 +45,31 @@ Common actions for Helm:
 
 Environment variables:
 
-| Name                               | Description                                                                       |
-|------------------------------------|-----------------------------------------------------------------------------------|
-| $HELM_CACHE_HOME                   | set an alternative location for storing cached files.                             |
-| $HELM_CONFIG_HOME                  | set an alternative location for storing Helm configuration.                       |
-| $HELM_DATA_HOME                    | set an alternative location for storing Helm data.                                |
-| $HELM_DRIVER                       | set the backend storage driver. Values are: configmap, secret, memory, postgres   |
-| $HELM_DRIVER_SQL_CONNECTION_STRING | set the connection string the SQL storage driver should use.                      |
-| $HELM_MAX_HISTORY                  | set the maximum number of helm release history.                                   |
-| $HELM_NO_PLUGINS                   | disable plugins. Set HELM_NO_PLUGINS=1 to disable plugins.                        |
-| $KUBECONFIG                        | set an alternative Kubernetes configuration file (default "~/.kube/config")       |
+| Name                               | Description                                                                                       |
+|------------------------------------|---------------------------------------------------------------------------------------------------|
+| $HELM_CACHE_HOME                   | set an alternative location for storing cached files.                                             |
+| $HELM_CONFIG_HOME                  | set an alternative location for storing Helm configuration.                                       |
+| $HELM_DATA_HOME                    | set an alternative location for storing Helm data.                                                |
+| $HELM_DEBUG                        | indicate whether or not Helm is running in Debug mode                                             |
+| $HELM_DRIVER                       | set the backend storage driver. Values are: configmap, secret, memory, sql.                       |
+| $HELM_DRIVER_SQL_CONNECTION_STRING | set the connection string the SQL storage driver should use.                                      |
+| $HELM_MAX_HISTORY                  | set the maximum number of helm release history.                                                   |
+| $HELM_NAMESPACE                    | set the namespace used for the helm operations.                                                   |
+| $HELM_NO_PLUGINS                   | disable plugins. Set HELM_NO_PLUGINS=1 to disable plugins.                                        |
+| $HELM_PLUGINS                      | set the path to the plugins directory                                                             |
+| $HELM_REGISTRY_CONFIG              | set the path to the registry config file.                                                         |
+| $HELM_REPOSITORY_CACHE             | set the path to the repository cache directory                                                    |
+| $HELM_REPOSITORY_CONFIG            | set the path to the repositories file.                                                            |
+| $KUBECONFIG                        | set an alternative Kubernetes configuration file (default "~/.kube/config")                       |
+| $HELM_KUBEAPISERVER                | set the Kubernetes API Server Endpoint for authentication                                         |
+| $HELM_KUBECAFILE                   | set the Kubernetes certificate authority file.                                                    |
+| $HELM_KUBEASGROUPS                 | set the Groups to use for impersonation using a comma-separated list.                             |
+| $HELM_KUBEASUSER                   | set the Username to impersonate for the operation.                                                |
+| $HELM_KUBECONTEXT                  | set the name of the kubeconfig context.                                                           |
+| $HELM_KUBETOKEN                    | set the Bearer KubeToken used for authentication.                                                 |
+| $HELM_KUBEINSECURE_SKIP_TLS_VERIFY | indicate if the Kubernetes API server's certificate validation should be skipped (insecure)       |
+| $HELM_KUBETLS_SERVER_NAME          | set the server name used to validate the Kubernetes API server certificate                        |
+| $HELM_BURST_LIMIT                  | set the default burst limit in the case the server contains many CRDs (default 100, -1 to disable)|
 
 Helm stores cache, configuration, and data based on the following configuration order:
 
@@ -79,11 +96,12 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	flags := cmd.PersistentFlags()
 
 	settings.AddFlags(flags)
+	addKlogFlags(flags)
 
 	// Setup shell completion for the namespace flag
 	err := cmd.RegisterFlagCompletionFunc("namespace", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if client, err := actionConfig.KubernetesClientSet(); err == nil {
-			// Choose a long enough timeout that the user notices somethings is not working
+			// Choose a long enough timeout that the user notices something is not working
 			// but short enough that the user is not made to wait very long
 			to := int64(3)
 			cobra.CompDebugln(fmt.Sprintf("About to call kube client for namespaces with timeout of: %d", to), settings.Debug)
@@ -91,9 +109,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 			nsNames := []string{}
 			if namespaces, err := client.CoreV1().Namespaces().List(context.Background(), metav1.ListOptions{TimeoutSeconds: &to}); err == nil {
 				for _, ns := range namespaces.Items {
-					if strings.HasPrefix(ns.Name, toComplete) {
-						nsNames = append(nsNames, ns.Name)
-					}
+					nsNames = append(nsNames, ns.Name)
 				}
 				return nsNames, cobra.ShellCompDirectiveNoFileComp
 			}
@@ -116,13 +132,11 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		if config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 			loadingRules,
 			&clientcmd.ConfigOverrides{}).RawConfig(); err == nil {
-			ctxs := []string{}
-			for name := range config.Contexts {
-				if strings.HasPrefix(name, toComplete) {
-					ctxs = append(ctxs, name)
-				}
+			comps := []string{}
+			for name, context := range config.Contexts {
+				comps = append(comps, fmt.Sprintf("%s\t%s", name, context.Cluster))
 			}
-			return ctxs, cobra.ShellCompDirectiveNoFileComp
+			return comps, cobra.ShellCompDirectiveNoFileComp
 		}
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	})
@@ -138,15 +152,21 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	flags.ParseErrorsWhitelist.UnknownFlags = true
 	flags.Parse(args)
 
+	registryClient, err := newDefaultRegistryClient(false)
+	if err != nil {
+		return nil, err
+	}
+	actionConfig.RegistryClient = registryClient
+
 	// Add subcommands
 	cmd.AddCommand(
 		// chart commands
 		newCreateCmd(out),
-		newDependencyCmd(out),
-		newPullCmd(out),
-		newShowCmd(out),
+		newDependencyCmd(actionConfig, out),
+		newPullCmd(actionConfig, out),
+		newShowCmd(actionConfig, out),
 		newLintCmd(out),
-		newPackageCmd(out),
+		newPackageCmd(actionConfig, out),
 		newRepoCmd(out),
 		newSearchCmd(out),
 		newVerifyCmd(out),
@@ -172,23 +192,112 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		newDocsCmd(out),
 	)
 
-	// Add *experimental* subcommands
-	registryClient, err := registry.NewClient(
-		registry.ClientOptDebug(settings.Debug),
-		registry.ClientOptWriter(out),
-		registry.ClientOptCredentialsFile(settings.RegistryConfig),
-	)
-	if err != nil {
-		return nil, err
-	}
-	actionConfig.RegistryClient = registryClient
 	cmd.AddCommand(
 		newRegistryCmd(actionConfig, out),
-		newChartCmd(actionConfig, out),
+		newPushCmd(actionConfig, out),
 	)
 
 	// Find and add plugins
 	loadPlugins(cmd, out)
 
+	// Check permissions on critical files
+	checkPerms()
+
+	// Check for expired repositories
+	checkForExpiredRepos(settings.RepositoryConfig)
+
 	return cmd, nil
+}
+
+func checkForExpiredRepos(repofile string) {
+
+	expiredRepos := []struct {
+		name string
+		old  string
+		new  string
+	}{
+		{
+			name: "stable",
+			old:  "kubernetes-charts.storage.googleapis.com",
+			new:  "https://charts.helm.sh/stable",
+		},
+		{
+			name: "incubator",
+			old:  "kubernetes-charts-incubator.storage.googleapis.com",
+			new:  "https://charts.helm.sh/incubator",
+		},
+	}
+
+	// parse repo file.
+	// Ignore the error because it is okay for a repo file to be unparseable at this
+	// stage. Later checks will trap the error and respond accordingly.
+	repoFile, err := repo.LoadFile(repofile)
+	if err != nil {
+		return
+	}
+
+	for _, exp := range expiredRepos {
+		r := repoFile.Get(exp.name)
+		if r == nil {
+			return
+		}
+
+		if url := r.URL; strings.Contains(url, exp.old) {
+			fmt.Fprintf(
+				os.Stderr,
+				"WARNING: %q is deprecated for %q and will be deleted Nov. 13, 2020.\nWARNING: You should switch to %q via:\nWARNING: helm repo add %q %q --force-update\n",
+				exp.old,
+				exp.name,
+				exp.new,
+				exp.name,
+				exp.new,
+			)
+		}
+	}
+
+}
+
+func newRegistryClient(certFile, keyFile, caFile string, insecureSkipTLSverify, plainHTTP bool) (*registry.Client, error) {
+	if certFile != "" && keyFile != "" || caFile != "" || insecureSkipTLSverify {
+		registryClient, err := newRegistryClientWithTLS(certFile, keyFile, caFile, insecureSkipTLSverify)
+		if err != nil {
+			return nil, err
+		}
+		return registryClient, nil
+	}
+	registryClient, err := newDefaultRegistryClient(plainHTTP)
+	if err != nil {
+		return nil, err
+	}
+	return registryClient, nil
+}
+
+func newDefaultRegistryClient(plainHTTP bool) (*registry.Client, error) {
+	opts := []registry.ClientOption{
+		registry.ClientOptDebug(settings.Debug),
+		registry.ClientOptEnableCache(true),
+		registry.ClientOptWriter(os.Stderr),
+		registry.ClientOptCredentialsFile(settings.RegistryConfig),
+	}
+	if plainHTTP {
+		opts = append(opts, registry.ClientOptPlainHTTP())
+	}
+
+	// Create a new registry client
+	registryClient, err := registry.NewClient(opts...)
+	if err != nil {
+		return nil, err
+	}
+	return registryClient, nil
+}
+
+func newRegistryClientWithTLS(certFile, keyFile, caFile string, insecureSkipTLSverify bool) (*registry.Client, error) {
+	// Create a new registry client
+	registryClient, err := registry.NewRegistryClientWithTLS(os.Stderr, certFile, keyFile, caFile, insecureSkipTLSverify,
+		settings.RegistryConfig, settings.Debug,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return registryClient, nil
 }

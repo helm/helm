@@ -292,6 +292,11 @@ func TestSqlUpdate(t *testing.T) {
 
 func TestSqlQuery(t *testing.T) {
 	// Reflect actual use cases in ../storage.go
+	labelSetUnknown := map[string]string{
+		"name":   "smug-pigeon",
+		"owner":  sqlReleaseDefaultOwner,
+		"status": "unknown",
+	}
 	labelSetDeployed := map[string]string{
 		"name":   "smug-pigeon",
 		"owner":  sqlReleaseDefaultOwner,
@@ -319,6 +324,15 @@ func TestSqlQuery(t *testing.T) {
 		sqlReleaseTableStatusColumn,
 		sqlReleaseTableNamespaceColumn,
 	)
+
+	mock.
+		ExpectQuery(regexp.QuoteMeta(query)).
+		WithArgs("smug-pigeon", sqlReleaseDefaultOwner, "unknown", "default").
+		WillReturnRows(
+			mock.NewRows([]string{
+				sqlReleaseTableBodyColumn,
+			}),
+		).RowsWillBeClosed()
 
 	mock.
 		ExpectQuery(regexp.QuoteMeta(query)).
@@ -352,6 +366,13 @@ func TestSqlQuery(t *testing.T) {
 				deployedReleaseBody,
 			),
 		).RowsWillBeClosed()
+
+	_, err := sqlDriver.Query(labelSetUnknown)
+	if err == nil {
+		t.Errorf("Expected error {%v}, got nil", ErrReleaseNotFound)
+	} else if err != ErrReleaseNotFound {
+		t.Fatalf("failed to query for unknown smug-pigeon release: %v", err)
+	}
 
 	results, err := sqlDriver.Query(labelSetDeployed)
 	if err != nil {

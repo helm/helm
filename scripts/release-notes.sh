@@ -39,8 +39,8 @@ done
 
 ## Check for hints that checksum files were downloaded
 ## from `make fetch-dist`
-if [[ ! -e "./_dist/helm-${RELEASE}-darwin-amd64.tar.gz.sha256" ]]; then
-  echo "checksum file ./_dist/helm-${RELEASE}-darwin-amd64.tar.gz.sha256 not found in ./_dist/"
+if [[ ! -e "./_dist/helm-${RELEASE}-darwin-amd64.tar.gz.sha256sum" ]]; then
+  echo "checksum file ./_dist/helm-${RELEASE}-darwin-amd64.tar.gz.sha256sum not found in ./_dist/"
   echo "Did you forget to run \`make fetch-dist\` first ?"
   exit 1
 fi
@@ -70,7 +70,7 @@ The community keeps growing, and we'd love to see you there!
   - `#helm-users` for questions and just to hang out
   - `#helm-dev` for discussing PRs, code, and bugs
 - Hang out at the Public Developer Call: Thursday, 9:30 Pacific via [Zoom](https://zoom.us/j/696660622)
-- Test, debug, and contribute charts: [GitHub/helm/charts](https://github.com/helm/charts)
+- Test, debug, and contribute charts: [ArtifactHub/packages](https://artifacthub.io/packages/search?kind=0)
 
 ## Notable Changes
 
@@ -82,15 +82,16 @@ The community keeps growing, and we'd love to see you there!
 Download Helm ${RELEASE}. The common platform binaries are here:
 
 - [MacOS amd64](https://get.helm.sh/helm-${RELEASE}-darwin-amd64.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-darwin-amd64.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-darwin-amd64.tar.gz.sha256))
+- [MacOS arm64](https://get.helm.sh/helm-${RELEASE}-darwin-arm64.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-darwin-arm64.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-darwin-arm64.tar.gz.sha256))
 - [Linux amd64](https://get.helm.sh/helm-${RELEASE}-linux-amd64.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-amd64.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-amd64.tar.gz.sha256))
 - [Linux arm](https://get.helm.sh/helm-${RELEASE}-linux-arm.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-arm.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-arm.tar.gz.sha256))
 - [Linux arm64](https://get.helm.sh/helm-${RELEASE}-linux-arm64.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-arm64.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-arm64.tar.gz.sha256))
 - [Linux i386](https://get.helm.sh/helm-${RELEASE}-linux-386.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-386.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-386.tar.gz.sha256))
 - [Linux ppc64le](https://get.helm.sh/helm-${RELEASE}-linux-ppc64le.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-ppc64le.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-ppc64le.tar.gz.sha256))
-- [Linux s390x](https://get.helm.sh/helm-${RELEASE}-linux-s390x.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-s390x.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-darwin-amd64.tar.gz.sha256))
+- [Linux s390x](https://get.helm.sh/helm-${RELEASE}-linux-s390x.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-s390x.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-s390x.tar.gz.sha256))
 - [Windows amd64](https://get.helm.sh/helm-${RELEASE}-windows-amd64.zip) ([checksum](https://get.helm.sh/helm-${RELEASE}-windows-amd64.zip.sha256sum) / $(cat _dist/helm-${RELEASE}-windows-amd64.zip.sha256))
 
-The [Quickstart Guide](https://docs.helm.sh/using_helm/#quickstart-guide) will get you going from there. For **upgrade instructions** or detailed installation notes, check the [install guide](https://docs.helm.sh/using_helm/#installing-helm). You can also use a [script to install](https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3) on any system with \`bash\`.
+The [Quickstart Guide](https://helm.sh/docs/intro/quickstart/) will get you going from there. For **upgrade instructions** or detailed installation notes, check the [install guide](https://helm.sh/docs/intro/install/). You can also use a [script to install](https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3) on any system with \`bash\`.
 
 ## What's Next
 

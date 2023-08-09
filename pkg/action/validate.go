@@ -46,12 +46,12 @@ func existingResourceConflict(resources kube.ResourceList, releaseName, releaseN
 		}
 
 		helper := resource.NewHelper(info.Client, info.Mapping)
-		existing, err := helper.Get(info.Namespace, info.Name, info.Export)
+		existing, err := helper.Get(info.Namespace, info.Name)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				return nil
 			}
-			return errors.Wrap(err, "could not get information about the resource")
+			return errors.Wrapf(err, "could not get information about the resource %s", resourceString(info))
 		}
 
 		// Allow adoption of the resource if it is managed by Helm and is annotated with correct release name and namespace.

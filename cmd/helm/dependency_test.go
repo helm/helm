@@ -51,3 +51,7 @@ func TestDependencyListCmd(t *testing.T) {
 		}}
 	runTestCmd(t, tests)
 }
+
+func TestDependencyFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "dependency", false)
+}

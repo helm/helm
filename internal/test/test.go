@@ -19,7 +19,7 @@ package test
 import (
 	"bytes"
 	"flag"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -40,33 +40,24 @@ type HelperT interface {
 	Helper()
 }
 
-// AssertGoldenBytes asserts that the give actual content matches the contents of the given filename
-func AssertGoldenBytes(t TestingT, actual []byte, filename string) {
-	t.Helper()
-
-	if err := compare(actual, path(filename)); err != nil {
-		t.Fatalf("%v", err)
-	}
-}
-
 // AssertGoldenString asserts that the given string matches the contents of the given file.
 func AssertGoldenString(t TestingT, actual, filename string) {
 	t.Helper()
 
 	if err := compare([]byte(actual), path(filename)); err != nil {
-		t.Fatalf("%v", err)
+		t.Fatalf("%v\n", err)
 	}
 }
 
-// AssertGoldenFile assers that the content of the actual file matches the contents of the expected file
+// AssertGoldenFile asserts that the content of the actual file matches the contents of the expected file
 func AssertGoldenFile(t TestingT, actualFileName string, expectedFilename string) {
 	t.Helper()
 
-	actual, err := ioutil.ReadFile(actualFileName)
+	actual, err := os.ReadFile(actualFileName)
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
-	AssertGoldenBytes(t, actual, expectedFilename)
+	AssertGoldenString(t, string(actual), expectedFilename)
 }
 
 func path(filename string) string {
@@ -77,16 +68,18 @@ func path(filename string) string {
 }
 
 func compare(actual []byte, filename string) error {
+	actual = normalize(actual)
 	if err := update(filename, actual); err != nil {
 		return err
 	}
 
-	expected, err := ioutil.ReadFile(filename)
+	expected, err := os.ReadFile(filename)
 	if err != nil {
 		return errors.Wrapf(err, "unable to read testdata %s", filename)
 	}
+	expected = normalize(expected)
 	if !bytes.Equal(expected, actual) {
-		return errors.Errorf("does not match golden file %s\n\nWANT:\n'%s'\n\nGOT:\n'%s'\n", filename, expected, actual)
+		return errors.Errorf("does not match golden file %s\n\nWANT:\n'%s'\n\nGOT:\n'%s'", filename, expected, actual)
 	}
 	return nil
 }
@@ -95,7 +88,7 @@ func update(filename string, in []byte) error {
 	if !*updateGolden {
 		return nil
 	}
-	return ioutil.WriteFile(filename, normalize(in), 0666)
+	return os.WriteFile(filename, normalize(in), 0666)
 }
 
 func normalize(in []byte) []byte {

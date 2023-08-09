@@ -23,11 +23,15 @@ import (
 )
 
 func TestShow(t *testing.T) {
-	client := NewShow(ShowAll)
+	config := actionConfigFixture(t)
+	client := NewShowWithConfig(ShowAll, config)
 	client.chart = &chart.Chart{
 		Metadata: &chart.Metadata{Name: "alpine"},
 		Files: []*chart.File{
 			{Name: "README.md", Data: []byte("README\n")},
+			{Name: "crds/ignoreme.txt", Data: []byte("error")},
+			{Name: "crds/foo.yaml", Data: []byte("---\nfoo\n")},
+			{Name: "crds/bar.json", Data: []byte("---\nbar\n")},
 		},
 		Raw: []*chart.File{
 			{Name: "values.yaml", Data: []byte("VALUES\n")},
@@ -48,6 +52,12 @@ VALUES
 ---
 README
 
+---
+foo
+
+---
+bar
+
 `
 	if output != expect {
 		t.Errorf("Expected\n%q\nGot\n%q\n", expect, output)
@@ -67,5 +77,77 @@ func TestShowNoValues(t *testing.T) {
 
 	if len(output) != 0 {
 		t.Errorf("expected empty values buffer, got %s", output)
+	}
+}
+
+func TestShowValuesByJsonPathFormat(t *testing.T) {
+	client := NewShow(ShowValues)
+	client.JSONPathTemplate = "{$.nestedKey.simpleKey}"
+	client.chart = buildChart(withSampleValues())
+	output, err := client.Run("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	expect := "simpleValue"
+	if output != expect {
+		t.Errorf("Expected\n%q\nGot\n%q\n", expect, output)
+	}
+}
+
+func TestShowCRDs(t *testing.T) {
+	client := NewShow(ShowCRDs)
+	client.chart = &chart.Chart{
+		Metadata: &chart.Metadata{Name: "alpine"},
+		Files: []*chart.File{
+			{Name: "crds/ignoreme.txt", Data: []byte("error")},
+			{Name: "crds/foo.yaml", Data: []byte("---\nfoo\n")},
+			{Name: "crds/bar.json", Data: []byte("---\nbar\n")},
+		},
+	}
+
+	output, err := client.Run("")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expect := `---
+foo
+
+---
+bar
+
+`
+	if output != expect {
+		t.Errorf("Expected\n%q\nGot\n%q\n", expect, output)
+	}
+}
+
+func TestShowNoReadme(t *testing.T) {
+	client := NewShow(ShowAll)
+	client.chart = &chart.Chart{
+		Metadata: &chart.Metadata{Name: "alpine"},
+		Files: []*chart.File{
+			{Name: "crds/ignoreme.txt", Data: []byte("error")},
+			{Name: "crds/foo.yaml", Data: []byte("---\nfoo\n")},
+			{Name: "crds/bar.json", Data: []byte("---\nbar\n")},
+		},
+	}
+
+	output, err := client.Run("")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expect := `name: alpine
+
+---
+foo
+
+---
+bar
+
+`
+	if output != expect {
+		t.Errorf("Expected\n%q\nGot\n%q\n", expect, output)
 	}
 }

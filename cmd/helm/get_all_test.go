@@ -42,6 +42,15 @@ func TestGetCmd(t *testing.T) {
 	runTestCmd(t, tests)
 }
 
+func TestGetAllCompletion(t *testing.T) {
+	checkReleaseCompletion(t, "get all", false)
+}
+
 func TestGetAllRevisionCompletion(t *testing.T) {
 	revisionFlagCompletionTest(t, "get all")
+}
+
+func TestGetAllFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "get all", false)
+	checkFileCompletion(t, "get all myrelease", false)
 }

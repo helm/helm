@@ -18,7 +18,7 @@ package repo
 
 import (
 	"bytes"
-	"io/ioutil"
+	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -49,6 +49,8 @@ var (
 	ErrNoChartVersion = errors.New("no chart version found")
 	// ErrNoChartName indicates that a chart with the given name is not found.
 	ErrNoChartName = errors.New("no chart name found")
+	// ErrEmptyIndexYaml indicates that the content of index.yaml is empty.
+	ErrEmptyIndexYaml = errors.New("empty index.yaml file")
 )
 
 // ChartVersions is a list of versioned chart references.
@@ -77,10 +79,16 @@ func (c ChartVersions) Less(a, b int) bool {
 
 // IndexFile represents the index file in a chart repository
 type IndexFile struct {
+	// This is used ONLY for validation against chartmuseum's index files and is discarded after validation.
+	ServerInfo map[string]interface{}   `json:"serverInfo,omitempty"`
 	APIVersion string                   `json:"apiVersion"`
 	Generated  time.Time                `json:"generated"`
 	Entries    map[string]ChartVersions `json:"entries"`
 	PublicKeys []string                 `json:"publicKeys,omitempty"`
+
+	// Annotations are additional mappings uninterpreted by Helm. They are made available for
+	// other applications to add information to the index file.
+	Annotations map[string]string `json:"annotations,omitempty"`
 }
 
 // NewIndexFile initializes an index.
@@ -95,20 +103,35 @@ func NewIndexFile() *IndexFile {
 
 // LoadIndexFile takes a file at the given path and returns an IndexFile object
 func LoadIndexFile(path string) (*IndexFile, error) {
-	b, err := ioutil.ReadFile(path)
+	b, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	return loadIndex(b)
+	i, err := loadIndex(b, path)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error loading %s", path)
+	}
+	return i, nil
 }
 
-// Add adds a file to the index
+// MustAdd adds a file to the index
 // This can leave the index in an unsorted state
-func (i IndexFile) Add(md *chart.Metadata, filename, baseURL, digest string) {
+func (i IndexFile) MustAdd(md *chart.Metadata, filename, baseURL, digest string) error {
+	if i.Entries == nil {
+		return errors.New("entries not initialized")
+	}
+
+	if md.APIVersion == "" {
+		md.APIVersion = chart.APIVersionV1
+	}
+	if err := md.Validate(); err != nil {
+		return errors.Wrapf(err, "validate failed for %s", filename)
+	}
+
 	u := filename
 	if baseURL != "" {
-		var err error
 		_, file := filepath.Split(filename)
+		var err error
 		u, err = urlutil.URLJoin(baseURL, file)
 		if err != nil {
 			u = path.Join(baseURL, file)
@@ -120,10 +143,17 @@ func (i IndexFile) Add(md *chart.Metadata, filename, baseURL, digest string) {
 		Digest:   digest,
 		Created:  time.Now(),
 	}
-	if ee, ok := i.Entries[md.Name]; !ok {
-		i.Entries[md.Name] = ChartVersions{cr}
-	} else {
-		i.Entries[md.Name] = append(ee, cr)
+	ee := i.Entries[md.Name]
+	i.Entries[md.Name] = append(ee, cr)
+	return nil
+}
+
+// Add adds a file to the index and logs an error.
+//
+// Deprecated: Use index.MustAdd instead.
+func (i IndexFile) Add(md *chart.Metadata, filename, baseURL, digest string) {
+	if err := i.MustAdd(md, filename, baseURL, digest); err != nil {
+		log.Printf("skipping loading invalid entry for chart %q %q from %s: %s", md.Name, md.Version, filename, err)
 	}
 }
 
@@ -228,6 +258,23 @@ type ChartVersion struct {
 	Created time.Time `json:"created,omitempty"`
 	Removed bool      `json:"removed,omitempty"`
 	Digest  string    `json:"digest,omitempty"`
+
+	// ChecksumDeprecated is deprecated in Helm 3, and therefore ignored. Helm 3 replaced
+	// this with Digest. However, with a strict YAML parser enabled, a field must be
+	// present on the struct for backwards compatibility.
+	ChecksumDeprecated string `json:"checksum,omitempty"`
+
+	// EngineDeprecated is deprecated in Helm 3, and therefore ignored. However, with a strict
+	// YAML parser enabled, this field must be present.
+	EngineDeprecated string `json:"engine,omitempty"`
+
+	// TillerVersionDeprecated is deprecated in Helm 3, and therefore ignored. However, with a strict
+	// YAML parser enabled, this field must be present.
+	TillerVersionDeprecated string `json:"tillerVersion,omitempty"`
+
+	// URLDeprecated is deprecated in Helm 3, superseded by URLs. It is ignored. However,
+	// with a strict YAML parser enabled, this must be present on the struct.
+	URLDeprecated string `json:"url,omitempty"`
 }
 
 // IndexDirectory reads a (flat) directory and generates an index.
@@ -271,18 +318,42 @@ func IndexDirectory(dir, baseURL string) (*IndexFile, error) {
 		if err != nil {
 			return index, err
 		}
-		index.Add(c.Metadata, fname, parentURL, hash)
+		if err := index.MustAdd(c.Metadata, fname, parentURL, hash); err != nil {
+			return index, errors.Wrapf(err, "failed adding to %s to index", fname)
+		}
 	}
 	return index, nil
 }
 
 // loadIndex loads an index file and does minimal validity checking.
 //
+// The source parameter is only used for logging.
 // This will fail if API Version is not set (ErrNoAPIVersion) or if the unmarshal fails.
-func loadIndex(data []byte) (*IndexFile, error) {
+func loadIndex(data []byte, source string) (*IndexFile, error) {
 	i := &IndexFile{}
-	if err := yaml.Unmarshal(data, i); err != nil {
+
+	if len(data) == 0 {
+		return i, ErrEmptyIndexYaml
+	}
+
+	if err := yaml.UnmarshalStrict(data, i); err != nil {
 		return i, err
+	}
+
+	for name, cvs := range i.Entries {
+		for idx := len(cvs) - 1; idx >= 0; idx-- {
+			if cvs[idx] == nil {
+				log.Printf("skipping loading invalid entry for chart %q from %s: empty entry", name, source)
+				continue
+			}
+			if cvs[idx].APIVersion == "" {
+				cvs[idx].APIVersion = chart.APIVersionV1
+			}
+			if err := cvs[idx].Validate(); err != nil {
+				log.Printf("skipping loading invalid entry for chart %q %q from %s: %s", name, cvs[idx].Version, source, err)
+				cvs = append(cvs[:idx], cvs[idx+1:]...)
+			}
+		}
 	}
 	i.SortEntries()
 	if i.APIVersion == "" {

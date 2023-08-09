@@ -37,6 +37,9 @@ func TestManuallyProcessArgs(t *testing.T) {
 		"--kubeconfig", "/home/foo",
 		"--kube-context=test1",
 		"--kube-context", "test1",
+		"--kube-as-user", "pikachu",
+		"--kube-as-group", "teatime",
+		"--kube-as-group", "admins",
 		"-n=test2",
 		"-n", "test2",
 		"--namespace=test2",
@@ -51,6 +54,9 @@ func TestManuallyProcessArgs(t *testing.T) {
 		"--kubeconfig", "/home/foo",
 		"--kube-context=test1",
 		"--kube-context", "test1",
+		"--kube-as-user", "pikachu",
+		"--kube-as-group", "teatime",
+		"--kube-as-group", "admins",
 		"-n=test2",
 		"-n", "test2",
 		"--namespace=test2",
@@ -271,11 +277,6 @@ func TestPluginDynamicCompletion(t *testing.T) {
 		cmd:    "__complete echo -n mynamespace ''",
 		golden: "output/plugin_echo_no_directive.txt",
 		rels:   []*release.Release{},
-	}, {
-		name:   "completion for plugin bad directive",
-		cmd:    "__complete echo ''",
-		golden: "output/plugin_echo_bad_directive.txt",
-		rels:   []*release.Release{},
 	}}
 	for _, test := range tests {
 		settings.PluginsDirectory = "testdata/helmhome/helm/plugins"
@@ -297,4 +298,81 @@ func TestLoadPlugins_HelmNoPlugins(t *testing.T) {
 	if len(plugins) != 0 {
 		t.Fatalf("Expected 0 plugins, got %d", len(plugins))
 	}
+}
+
+func TestPluginCmdsCompletion(t *testing.T) {
+
+	tests := []cmdTestCase{{
+		name:   "completion for plugin update",
+		cmd:    "__complete plugin update ''",
+		golden: "output/plugin_list_comp.txt",
+		rels:   []*release.Release{},
+	}, {
+		name:   "completion for plugin update, no filter",
+		cmd:    "__complete plugin update full",
+		golden: "output/plugin_list_comp.txt",
+		rels:   []*release.Release{},
+	}, {
+		name:   "completion for plugin update repetition",
+		cmd:    "__complete plugin update args ''",
+		golden: "output/plugin_repeat_comp.txt",
+		rels:   []*release.Release{},
+	}, {
+		name:   "completion for plugin uninstall",
+		cmd:    "__complete plugin uninstall ''",
+		golden: "output/plugin_list_comp.txt",
+		rels:   []*release.Release{},
+	}, {
+		name:   "completion for plugin uninstall, no filter",
+		cmd:    "__complete plugin uninstall full",
+		golden: "output/plugin_list_comp.txt",
+		rels:   []*release.Release{},
+	}, {
+		name:   "completion for plugin uninstall repetition",
+		cmd:    "__complete plugin uninstall args ''",
+		golden: "output/plugin_repeat_comp.txt",
+		rels:   []*release.Release{},
+	}, {
+		name:   "completion for plugin list",
+		cmd:    "__complete plugin list ''",
+		golden: "output/empty_nofile_comp.txt",
+		rels:   []*release.Release{},
+	}, {
+		name:   "completion for plugin install no args",
+		cmd:    "__complete plugin install ''",
+		golden: "output/empty_default_comp.txt",
+		rels:   []*release.Release{},
+	}, {
+		name:   "completion for plugin install one arg",
+		cmd:    "__complete plugin list /tmp ''",
+		golden: "output/empty_nofile_comp.txt",
+		rels:   []*release.Release{},
+	}, {}}
+	for _, test := range tests {
+		settings.PluginsDirectory = "testdata/helmhome/helm/plugins"
+		runTestCmd(t, []cmdTestCase{test})
+	}
+}
+
+func TestPluginFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "plugin", false)
+}
+
+func TestPluginInstallFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "plugin install", true)
+	checkFileCompletion(t, "plugin install mypath", false)
+}
+
+func TestPluginListFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "plugin list", false)
+}
+
+func TestPluginUninstallFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "plugin uninstall", false)
+	checkFileCompletion(t, "plugin uninstall myplugin", false)
+}
+
+func TestPluginUpdateFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "plugin update", false)
+	checkFileCompletion(t, "plugin update myplugin", false)
 }

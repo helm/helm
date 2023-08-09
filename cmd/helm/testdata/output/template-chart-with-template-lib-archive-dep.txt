@@ -7,7 +7,7 @@ metadata:
     app: chart-with-template-lib-archive-dep
     chart: chart-with-template-lib-archive-dep-0.1.0
     heritage: Helm
-    release: RELEASE-NAME
+    release: release-name
   name: release-name-chart-with-template-lib-archive-dep
 spec:
   ports:
@@ -16,30 +16,30 @@ spec:
     targetPort: http
   selector:
     app: chart-with-template-lib-archive-dep
-    release: RELEASE-NAME
+    release: release-name
   type: ClusterIP
 ---
 # Source: chart-with-template-lib-archive-dep/templates/deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: RELEASE-NAME-chart-with-template-lib-archive-dep
+  name: release-name-chart-with-template-lib-archive-dep
   labels:
     app: chart-with-template-lib-archive-dep
     chart: chart-with-template-lib-archive-dep-0.1.0
-    release: RELEASE-NAME
+    release: release-name
     heritage: Helm
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: chart-with-template-lib-archive-dep
-      release: RELEASE-NAME
+      release: release-name
   template:
     metadata:
       labels:
         app: chart-with-template-lib-archive-dep
-        release: RELEASE-NAME
+        release: release-name
     spec:
       containers:
         - name: chart-with-template-lib-archive-dep

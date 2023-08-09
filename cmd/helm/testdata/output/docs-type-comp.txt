@@ -1,0 +1,5 @@
+bash
+man
+markdown
+:4
+Completion ended with directive: ShellCompDirectiveNoFileComp

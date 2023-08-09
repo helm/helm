@@ -87,3 +87,7 @@ func TestSearchRepositoriesCmd(t *testing.T) {
 func TestSearchRepoOutputCompletion(t *testing.T) {
 	outputFlagCompletionTest(t, "search repo")
 }
+
+func TestSearchRepoFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "search repo", true) // File completion may be useful when inputting a keyword
+}

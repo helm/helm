@@ -1,0 +1,114 @@
+---
+# Source: subchart/templates/subdir/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: subchart-sa
+---
+# Source: subchart/templates/subdir/role.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: subchart-role
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get","list","watch"]
+---
+# Source: subchart/templates/subdir/rolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: subchart-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: subchart-role
+subjects:
+- kind: ServiceAccount
+  name: subchart-sa
+  namespace: default
+---
+# Source: subchart/charts/subcharta/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: subcharta
+  labels:
+    helm.sh/chart: "subcharta-0.1.0"
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: apache
+  selector:
+    app.kubernetes.io/name: subcharta
+---
+# Source: subchart/charts/subchartb/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: subchartb
+  labels:
+    helm.sh/chart: "subchartb-0.1.0"
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: nginx
+  selector:
+    app.kubernetes.io/name: subchartb
+---
+# Source: subchart/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: subchart
+  labels:
+    helm.sh/chart: "subchart-0.1.0"
+    app.kubernetes.io/instance: "release-name"
+    kube-version/major: "1"
+    kube-version/minor: "16"
+    kube-version/version: "v1.16.0"
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: nginx
+  selector:
+    app.kubernetes.io/name: subchart
+---
+# Source: subchart/templates/tests/test-config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "release-name-testconfig"
+  annotations:
+    "helm.sh/hook": test
+data:
+  message: Hello World
+---
+# Source: subchart/templates/tests/test-nothing.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "release-name-test"
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: test
+      image: "alpine:latest"
+      envFrom:
+        - configMapRef:
+            name: "release-name-testconfig"
+      command:
+        - echo
+        - "$message"
+  restartPolicy: Never

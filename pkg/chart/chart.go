@@ -17,6 +17,7 @@ package chart
 
 import (
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -25,6 +26,9 @@ const APIVersionV1 = "v1"
 
 // APIVersionV2 is the API version number for version 2.
 const APIVersionV2 = "v2"
+
+// aliasNameFormat defines the characters that are legal in an alias name.
+var aliasNameFormat = regexp.MustCompile("^[a-zA-Z0-9_-]+$")
 
 // Chart is a helm package that contains metadata, a default config, zero or more
 // optionally parameterizable templates, and zero or more charts (dependencies).
