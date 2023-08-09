@@ -252,6 +252,17 @@ func TestInstall(t *testing.T) {
 			cmd:    fmt.Sprintf("install aeneas test/reqtest --username username --password password --repository-config %s --repository-cache %s", repoFile, srv.Root()),
 			golden: "output/install.txt",
 		},
+		// Verify that a remote chart is used with --remote-repo
+		{
+			name:   "basic install with --remote-repo",
+			cmd:    "install aeneas reqtest --namespace default --repo " + srv.URL() + " --username username --password password --remote-repo",
+			golden: "output/install.txt",
+		},
+		{
+			name:      "existing local path with --remote-repo",
+			cmd:       "install aeneas testdata/testcharts/empty --namespace default --repo " + srv.URL() + " --username username --password password --remote-repo",
+			wantError: true,
+		},
 	}
 
 	runTestCmd(t, tests)

@@ -118,6 +118,7 @@ type ChartPathOptions struct {
 	Keyring               string // --keyring
 	Password              string // --password
 	PassCredentialsAll    bool   // --pass-credentials
+	RemoteRepo            bool   // --remote-repo
 	RepoURL               string // --repo
 	Username              string // --username
 	Verify                bool   // --verify
@@ -727,23 +728,30 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 	}
 
 	name = strings.TrimSpace(name)
-	version := strings.TrimSpace(c.Version)
 
-	if _, err := os.Stat(name); err == nil {
-		abs, err := filepath.Abs(name)
-		if err != nil {
-			return abs, err
-		}
-		if c.Verify {
-			if _, err := downloader.VerifyChart(abs, c.Keyring); err != nil {
-				return "", err
+	if !c.RemoteRepo {
+		if _, err := os.Stat(name); err == nil {
+			abs, err := filepath.Abs(name)
+			if err != nil {
+				return abs, err
 			}
+			if c.Verify {
+				if _, err := downloader.VerifyChart(abs, c.Keyring); err != nil {
+					return "", err
+				}
+			}
+			return abs, nil
 		}
-		return abs, nil
+		if filepath.IsAbs(name) || strings.HasPrefix(name, ".") {
+			return name, errors.Errorf("path %q not found", name)
+		}
 	}
-	if filepath.IsAbs(name) || strings.HasPrefix(name, ".") {
-		return name, errors.Errorf("path %q not found", name)
-	}
+
+	return c.locateRemoteChart(name, settings)
+}
+
+func (c *ChartPathOptions) locateRemoteChart(name string, settings *cli.EnvSettings) (string, error) {
+	version := strings.TrimSpace(c.Version)
 
 	dl := downloader.ChartDownloader{
 		Out:     os.Stdout,
