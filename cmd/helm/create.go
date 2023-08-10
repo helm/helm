@@ -77,7 +77,7 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if len(o.starter) == 0 && o.noOverride {
-				return errors.New("the -k/--keep-metadata flag can only be specified when using a starter")
+				return errors.New("the -o/--no-override flag can only be specified when using a starter")
 			}
 
 			return nil
