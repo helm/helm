@@ -115,7 +115,7 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 		return nil, nil, err
 	}
 
-	// Check if the version to be rolled back exists
+	// Check if the history version to be rolled back exists
 	previousVersionExist := false
 	for _, historyRelease := range historyReleases {
 		version := historyRelease.Version
