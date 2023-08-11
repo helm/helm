@@ -493,10 +493,8 @@ func delete(c *Client, resources ResourceList, propagation metav1.DeletionPropag
 		return nil
 	})
 	if err != nil {
-		// Rewrite the message from "no objects visited" if that is what we got
-		// back
-		if err == ErrNoObjectsVisited {
-			err = errors.New("object not found, skipping delete")
+		if errors.Is(err, ErrNoObjectsVisited) {
+			err = fmt.Errorf("object not found, skipping delete: %w", err)
 		}
 		errs = append(errs, err)
 	}

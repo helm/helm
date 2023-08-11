@@ -20,6 +20,10 @@ exports:
 
   SCBexported2:
     SCBexported2A: "blaster"
+  
+  configmap: 
+    configmap: 
+      value: "bar"
 
 global:
   kolla:

@@ -72,7 +72,7 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 
 	// lint ignores import-values
 	// See https://github.com/helm/helm/issues/9658
-	if err := chartutil.ProcessDependencies(chart, values); err != nil {
+	if err := chartutil.ProcessDependenciesWithMerge(chart, values); err != nil {
 		return
 	}
 
@@ -141,10 +141,11 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 					break
 				}
 
-				// If YAML linting fails, we sill progress. So we don't capture the returned state
-				// on this linter run.
-				linter.RunLinterRule(support.ErrorSev, fpath, validateYamlContent(err))
-
+				//  If YAML linting fails here, it will always fail in the next block as well, so we should return here.
+				// fix https://github.com/helm/helm/issues/11391
+				if !linter.RunLinterRule(support.ErrorSev, fpath, validateYamlContent(err)) {
+					return
+				}
 				if yamlStruct != nil {
 					// NOTE: set to warnings to allow users to support out-of-date kubernetes
 					// Refs https://github.com/helm/helm/issues/8596
@@ -187,10 +188,10 @@ func validateTopIndentLevel(content string) error {
 
 // Validation functions
 func validateTemplatesDir(templatesPath string) error {
-	if fi, err := os.Stat(templatesPath); err != nil {
-		return errors.New("directory not found")
-	} else if !fi.IsDir() {
-		return errors.New("not a directory")
+	if fi, err := os.Stat(templatesPath); err == nil {
+		if !fi.IsDir() {
+			return errors.New("not a directory")
+		}
 	}
 	return nil
 }

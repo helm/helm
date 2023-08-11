@@ -97,12 +97,19 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client.Namespace = settings.Namespace()
 
-			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile, client.InsecureSkipTLSverify)
+			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
+				client.InsecureSkipTLSverify, client.PlainHTTP)
 			if err != nil {
 				return fmt.Errorf("missing registry client: %w", err)
 			}
 			client.SetRegistryClient(registryClient)
 
+			// This is for the case where "" is specifically passed in as a
+			// value. When there is no value passed in NoOptDefVal will be used
+			// and it is set to client. See addInstallFlags.
+			if client.DryRunOption == "" {
+				client.DryRunOption = "none"
+			}
 			// Fixes #7002 - Support reading values from STDIN for `upgrade` command
 			// Must load values AFTER determining if we have to call install so that values loaded from stdin are are not read twice
 			if client.Install {
@@ -119,6 +126,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.ChartPathOptions = client.ChartPathOptions
 					instClient.Force = client.Force
 					instClient.DryRun = client.DryRun
+					instClient.DryRunOption = client.DryRunOption
 					instClient.DisableHooks = client.DisableHooks
 					instClient.SkipCRDs = client.SkipCRDs
 					instClient.Timeout = client.Timeout
@@ -151,6 +159,10 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 			chartPath, err := client.ChartPathOptions.LocateChart(args[1], settings)
 			if err != nil {
+				return err
+			}
+			// Validate dry-run flag value is one of the allowed values
+			if err := validateDryRunOptionFlag(client.DryRunOption); err != nil {
 				return err
 			}
 
@@ -228,7 +240,8 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&createNamespace, "create-namespace", false, "if --install is set, create the release namespace if not present")
 	f.BoolVarP(&client.Install, "install", "i", false, "if a release by this name doesn't already exist, run an install")
 	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored")
-	f.BoolVar(&client.DryRun, "dry-run", false, "simulate an upgrade")
+	f.StringVar(&client.DryRunOption, "dry-run", "", "simulate an install. If --dry-run is set with no option being specified or as '--dry-run=client', it will not attempt cluster connections. Setting '--dry-run=server' allows attempting cluster connections.")
+	f.Lookup("dry-run").NoOptDefVal = "client"
 	f.BoolVar(&client.Recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
 	f.MarkDeprecated("recreate-pods", "functionality will no longer be updated. Consult the documentation for other methods to recreate pods")
 	f.BoolVar(&client.Force, "force", false, "force resource updates through a replacement strategy")

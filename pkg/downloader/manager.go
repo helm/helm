@@ -248,7 +248,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	destPath := filepath.Join(m.ChartPath, "charts")
 	tmpPath := filepath.Join(m.ChartPath, "tmpcharts")
 
-	// Check if 'charts' directory is not actally a directory. If it does not exist, create it.
+	// Check if 'charts' directory is not actually a directory. If it does not exist, create it.
 	if fi, err := os.Stat(destPath); err == nil {
 		if !fi.IsDir() {
 			return errors.Errorf("%q is not a directory", destPath)
