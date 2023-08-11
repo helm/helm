@@ -19,7 +19,6 @@ package repo
 import (
 	"bufio"
 	"bytes"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -85,6 +84,8 @@ func TestIndexFile(t *testing.T) {
 		{&chart.Metadata{APIVersion: "v2", Name: "cutter", Version: "0.2.0"}, "cutter-0.2.0.tgz", "http://example.com/charts", "sha256:1234567890abc"},
 		{&chart.Metadata{APIVersion: "v2", Name: "setter", Version: "0.1.9+alpha"}, "setter-0.1.9+alpha.tgz", "http://example.com/charts", "sha256:1234567890abc"},
 		{&chart.Metadata{APIVersion: "v2", Name: "setter", Version: "0.1.9+beta"}, "setter-0.1.9+beta.tgz", "http://example.com/charts", "sha256:1234567890abc"},
+		{&chart.Metadata{APIVersion: "v2", Name: "setter", Version: "0.1.8"}, "setter-0.1.8.tgz", "http://example.com/charts", "sha256:1234567890abc"},
+		{&chart.Metadata{APIVersion: "v2", Name: "setter", Version: "0.1.8+beta"}, "setter-0.1.8+beta.tgz", "http://example.com/charts", "sha256:1234567890abc"},
 	} {
 		if err := i.MustAdd(x.md, x.filename, x.baseURL, x.digest); err != nil {
 			t.Errorf("unexpected error adding to index: %s", err)
@@ -122,6 +123,11 @@ func TestIndexFile(t *testing.T) {
 	cv, err = i.Get("setter", "0.1.9+alpha")
 	if err != nil || cv.Metadata.Version != "0.1.9+alpha" {
 		t.Errorf("Expected version: 0.1.9+alpha")
+	}
+
+	cv, err = i.Get("setter", "0.1.8")
+	if err != nil || cv.Metadata.Version != "0.1.8" {
+		t.Errorf("Expected version: 0.1.8")
 	}
 }
 
@@ -273,7 +279,7 @@ func TestDownloadIndexFile(t *testing.T) {
 			t.Fatalf("error finding created charts file: %#v", err)
 		}
 
-		b, err := ioutil.ReadFile(idx)
+		b, err := os.ReadFile(idx)
 		if err != nil {
 			t.Fatalf("error reading charts file: %#v", err)
 		}
@@ -282,7 +288,7 @@ func TestDownloadIndexFile(t *testing.T) {
 
 	t.Run("should not decode the path in the repo url while downloading index", func(t *testing.T) {
 		chartRepoURLPath := "/some%2Fpath/test"
-		fileBytes, err := ioutil.ReadFile("testdata/local-index.yaml")
+		fileBytes, err := os.ReadFile("testdata/local-index.yaml")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -326,7 +332,7 @@ func TestDownloadIndexFile(t *testing.T) {
 			t.Fatalf("error finding created charts file: %#v", err)
 		}
 
-		b, err := ioutil.ReadFile(idx)
+		b, err := os.ReadFile(idx)
 		if err != nil {
 			t.Fatalf("error reading charts file: %#v", err)
 		}
@@ -533,7 +539,7 @@ func TestIndexWrite(t *testing.T) {
 	testpath := filepath.Join(dir, "test")
 	i.WriteFile(testpath, 0600)
 
-	got, err := ioutil.ReadFile(testpath)
+	got, err := os.ReadFile(testpath)
 	if err != nil {
 		t.Fatal(err)
 	}
