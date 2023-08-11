@@ -18,7 +18,6 @@ package action
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -29,6 +28,7 @@ import (
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/downloader"
 	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/registry"
 	"helm.sh/helm/v3/pkg/repo"
 )
 
@@ -71,6 +71,11 @@ func NewPullWithOpts(opts ...PullOpt) *Pull {
 	return p
 }
 
+// SetRegistryClient sets the registry client on the pull configuration object.
+func (p *Pull) SetRegistryClient(client *registry.Client) {
+	p.cfg.RegistryClient = client
+}
+
 // Run executes 'helm pull' against the given release.
 func (p *Pull) Run(chartRef string) (string, error) {
 	var out strings.Builder
@@ -82,21 +87,20 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		Getters: getter.All(p.Settings),
 		Options: []getter.Option{
 			getter.WithBasicAuth(p.Username, p.Password),
+			getter.WithPassCredentialsAll(p.PassCredentialsAll),
 			getter.WithTLSClientConfig(p.CertFile, p.KeyFile, p.CaFile),
 			getter.WithInsecureSkipVerifyTLS(p.InsecureSkipTLSverify),
+			getter.WithPlainHTTP(p.PlainHTTP),
 		},
+		RegistryClient:   p.cfg.RegistryClient,
 		RepositoryConfig: p.Settings.RepositoryConfig,
 		RepositoryCache:  p.Settings.RepositoryCache,
 	}
 
-	if strings.HasPrefix(chartRef, "oci://") {
-		if p.Version == "" {
-			return out.String(), errors.Errorf("--version flag is explicitly required for OCI registries")
-		}
-
+	if registry.IsOCI(chartRef) {
 		c.Options = append(c.Options,
-			getter.WithRegistryClient(p.cfg.RegistryClient),
-			getter.WithTagName(p.Version))
+			getter.WithRegistryClient(p.cfg.RegistryClient))
+		c.RegistryClient = p.cfg.RegistryClient
 	}
 
 	if p.Verify {
@@ -110,7 +114,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 	dest := p.DestDir
 	if p.Untar {
 		var err error
-		dest, err = ioutil.TempDir("", "helm-")
+		dest, err = os.MkdirTemp("", "helm-")
 		if err != nil {
 			return out.String(), errors.Wrap(err, "failed to untar")
 		}
@@ -118,7 +122,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 	}
 
 	if p.RepoURL != "" {
-		chartURL, err := repo.FindChartInAuthAndTLSRepoURL(p.RepoURL, p.Username, p.Password, chartRef, p.Version, p.CertFile, p.KeyFile, p.CaFile, p.InsecureSkipTLSverify, getter.All(p.Settings))
+		chartURL, err := repo.FindChartInAuthAndTLSAndPassRepoURL(p.RepoURL, p.Username, p.Password, chartRef, p.Version, p.CertFile, p.KeyFile, p.CaFile, p.InsecureSkipTLSverify, p.PassCredentialsAll, getter.All(p.Settings))
 		if err != nil {
 			return out.String(), err
 		}

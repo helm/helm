@@ -18,9 +18,10 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 
@@ -47,7 +48,11 @@ func TestRepoAddCmd(t *testing.T) {
 	}
 	defer srv2.Stop()
 
-	tmpdir := ensure.TempDir(t)
+	tmpdir := filepath.Join(ensure.TempDir(t), "path-component.yaml/data")
+	err = os.MkdirAll(tmpdir, 0777)
+	if err != nil {
+		t.Fatal(err)
+	}
 	repoFile := filepath.Join(tmpdir, "repositories.yaml")
 
 	tests := []cmdTestCase{
@@ -97,7 +102,7 @@ func TestRepoAdd(t *testing.T) {
 	}
 	os.Setenv(xdg.CacheHomeEnvVar, rootDir)
 
-	if err := o.run(ioutil.Discard); err != nil {
+	if err := o.run(io.Discard); err != nil {
 		t.Error(err)
 	}
 
@@ -121,12 +126,45 @@ func TestRepoAdd(t *testing.T) {
 
 	o.forceUpdate = true
 
-	if err := o.run(ioutil.Discard); err != nil {
+	if err := o.run(io.Discard); err != nil {
 		t.Errorf("Repository was not updated: %s", err)
 	}
 
-	if err := o.run(ioutil.Discard); err != nil {
+	if err := o.run(io.Discard); err != nil {
 		t.Errorf("Duplicate repository name was added")
+	}
+}
+
+func TestRepoAddCheckLegalName(t *testing.T) {
+	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ts.Stop()
+	defer resetEnv()()
+
+	const testRepoName = "test-hub/test-name"
+
+	rootDir := ensure.TempDir(t)
+	repoFile := filepath.Join(ensure.TempDir(t), "repositories.yaml")
+
+	o := &repoAddOptions{
+		name:               testRepoName,
+		url:                ts.URL(),
+		forceUpdate:        false,
+		deprecatedNoUpdate: true,
+		repoFile:           repoFile,
+	}
+	os.Setenv(xdg.CacheHomeEnvVar, rootDir)
+
+	wantErrorMsg := fmt.Sprintf("repository name (%s) contains '/', please specify a different name without '/'", testRepoName)
+
+	if err := o.run(io.Discard); err != nil {
+		if wantErrorMsg != err.Error() {
+			t.Fatalf("Actual error %s, not equal to expected error %s", err, wantErrorMsg)
+		}
+	} else {
+		t.Fatalf("expect reported an error.")
 	}
 }
 
@@ -139,6 +177,18 @@ func TestRepoAddConcurrentGoRoutines(t *testing.T) {
 func TestRepoAddConcurrentDirNotExist(t *testing.T) {
 	const testName = "test-name-2"
 	repoFile := filepath.Join(ensure.TempDir(t), "foo", "repositories.yaml")
+	repoAddConcurrent(t, testName, repoFile)
+}
+
+func TestRepoAddConcurrentNoFileExtension(t *testing.T) {
+	const testName = "test-name-3"
+	repoFile := filepath.Join(ensure.TempDir(t), "repositories")
+	repoAddConcurrent(t, testName, repoFile)
+}
+
+func TestRepoAddConcurrentHiddenFile(t *testing.T) {
+	const testName = "test-name-4"
+	repoFile := filepath.Join(ensure.TempDir(t), ".repositories")
 	repoAddConcurrent(t, testName, repoFile)
 }
 
@@ -161,14 +211,14 @@ func repoAddConcurrent(t *testing.T, testName, repoFile string) {
 				forceUpdate:        false,
 				repoFile:           repoFile,
 			}
-			if err := o.run(ioutil.Discard); err != nil {
+			if err := o.run(io.Discard); err != nil {
 				t.Error(err)
 			}
 		}(fmt.Sprintf("%s-%d", testName, i))
 	}
 	wg.Wait()
 
-	b, err := ioutil.ReadFile(repoFile)
+	b, err := os.ReadFile(repoFile)
 	if err != nil {
 		t.Error(err)
 	}
@@ -191,4 +241,34 @@ func TestRepoAddFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "repo add", false)
 	checkFileCompletion(t, "repo add reponame", false)
 	checkFileCompletion(t, "repo add reponame https://example.com", false)
+}
+
+func TestRepoAddWithPasswordFromStdin(t *testing.T) {
+	srv := repotest.NewTempServerWithCleanupAndBasicAuth(t, "testdata/testserver/*.*")
+	defer srv.Stop()
+
+	defer resetEnv()()
+
+	in, err := os.Open("testdata/password")
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	tmpdir := ensure.TempDir(t)
+	repoFile := filepath.Join(tmpdir, "repositories.yaml")
+
+	store := storageFixture()
+
+	const testName = "test-name"
+	const username = "username"
+	cmd := fmt.Sprintf("repo add %s %s --repository-config %s --repository-cache %s --username %s --password-stdin", testName, srv.URL(), repoFile, tmpdir, username)
+	var result string
+	_, result, err = executeActionCommandStdinC(store, in, cmd)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	if !strings.Contains(result, fmt.Sprintf("\"%s\" has been added to your repositories", testName)) {
+		t.Errorf("Repo was not successfully added. Output: %s", result)
+	}
 }

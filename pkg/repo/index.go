@@ -18,7 +18,6 @@ package repo
 
 import (
 	"bytes"
-	"io/ioutil"
 	"log"
 	"os"
 	"path"
@@ -50,6 +49,8 @@ var (
 	ErrNoChartVersion = errors.New("no chart version found")
 	// ErrNoChartName indicates that a chart with the given name is not found.
 	ErrNoChartName = errors.New("no chart name found")
+	// ErrEmptyIndexYaml indicates that the content of index.yaml is empty.
+	ErrEmptyIndexYaml = errors.New("empty index.yaml file")
 )
 
 // ChartVersions is a list of versioned chart references.
@@ -102,7 +103,7 @@ func NewIndexFile() *IndexFile {
 
 // LoadIndexFile takes a file at the given path and returns an IndexFile object
 func LoadIndexFile(path string) (*IndexFile, error) {
-	b, err := ioutil.ReadFile(path)
+	b, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -116,6 +117,10 @@ func LoadIndexFile(path string) (*IndexFile, error) {
 // MustAdd adds a file to the index
 // This can leave the index in an unsorted state
 func (i IndexFile) MustAdd(md *chart.Metadata, filename, baseURL, digest string) error {
+	if i.Entries == nil {
+		return errors.New("entries not initialized")
+	}
+
 	if md.APIVersion == "" {
 		md.APIVersion = chart.APIVersionV1
 	}
@@ -267,7 +272,7 @@ type ChartVersion struct {
 	// YAML parser enabled, this field must be present.
 	TillerVersionDeprecated string `json:"tillerVersion,omitempty"`
 
-	// URLDeprecated is deprectaed in Helm 3, superseded by URLs. It is ignored. However,
+	// URLDeprecated is deprecated in Helm 3, superseded by URLs. It is ignored. However,
 	// with a strict YAML parser enabled, this must be present on the struct.
 	URLDeprecated string `json:"url,omitempty"`
 }
@@ -326,12 +331,21 @@ func IndexDirectory(dir, baseURL string) (*IndexFile, error) {
 // This will fail if API Version is not set (ErrNoAPIVersion) or if the unmarshal fails.
 func loadIndex(data []byte, source string) (*IndexFile, error) {
 	i := &IndexFile{}
+
+	if len(data) == 0 {
+		return i, ErrEmptyIndexYaml
+	}
+
 	if err := yaml.UnmarshalStrict(data, i); err != nil {
 		return i, err
 	}
 
 	for name, cvs := range i.Entries {
 		for idx := len(cvs) - 1; idx >= 0; idx-- {
+			if cvs[idx] == nil {
+				log.Printf("skipping loading invalid entry for chart %q from %s: empty entry", name, source)
+				continue
+			}
 			if cvs[idx].APIVersion == "" {
 				cvs[idx].APIVersion = chart.APIVersionV1
 			}

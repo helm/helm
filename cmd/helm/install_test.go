@@ -18,10 +18,39 @@ package main
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"path/filepath"
 	"testing"
+
+	"helm.sh/helm/v3/pkg/repo/repotest"
 )
 
 func TestInstall(t *testing.T) {
+	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/testcharts/*.tgz*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer srv.Stop()
+
+	srv.WithMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		username, password, ok := r.BasicAuth()
+		if !ok || username != "username" || password != "password" {
+			t.Errorf("Expected request to use basic auth and for username == 'username' and password == 'password', got '%v', '%s', '%s'", ok, username, password)
+		}
+	}))
+
+	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.FileServer(http.Dir(srv.Root())).ServeHTTP(w, r)
+	}))
+	defer srv2.Close()
+
+	if err := srv.LinkIndices(); err != nil {
+		t.Fatal(err)
+	}
+
+	repoFile := filepath.Join(srv.Root(), "repositories.yaml")
+
 	tests := []cmdTestCase{
 		// Install, base case
 		{
@@ -94,7 +123,7 @@ func TestInstall(t *testing.T) {
 		// Install, using the name-template
 		{
 			name:   "install with name-template",
-			cmd:    "install testdata/testcharts/empty --name-template '{{upper \"foobar\"}}'",
+			cmd:    "install testdata/testcharts/empty --name-template '{{ \"foobar\"}}'",
 			golden: "output/install-name-template.txt",
 		},
 		// Install, perform chart verification along the way.
@@ -140,7 +169,7 @@ func TestInstall(t *testing.T) {
 			name:      "install library chart",
 			cmd:       "install libchart testdata/testcharts/lib-chart",
 			wantError: true,
-			golden:    "output/template-lib-chart.txt",
+			golden:    "output/install-lib-chart.txt",
 		},
 		// Install, chart with bad type
 		{
@@ -207,9 +236,25 @@ func TestInstall(t *testing.T) {
 			name: "install chart with only crds",
 			cmd:  "install crd-test testdata/testcharts/chart-with-only-crds --namespace default",
 		},
+		// Verify the user/pass works
+		{
+			name:   "basic install with credentials",
+			cmd:    "install aeneas reqtest --namespace default --repo " + srv.URL() + " --username username --password password",
+			golden: "output/install.txt",
+		},
+		{
+			name:   "basic install with credentials",
+			cmd:    "install aeneas reqtest --namespace default --repo " + srv2.URL + " --username username --password password --pass-credentials",
+			golden: "output/install.txt",
+		},
+		{
+			name:   "basic install with credentials and no repo",
+			cmd:    fmt.Sprintf("install aeneas test/reqtest --username username --password password --repository-config %s --repository-cache %s", repoFile, srv.Root()),
+			golden: "output/install.txt",
+		},
 	}
 
-	runTestActionCmd(t, tests)
+	runTestCmd(t, tests)
 }
 
 func TestInstallOutputCompletion(t *testing.T) {
@@ -229,6 +274,10 @@ func TestInstallVersionCompletion(t *testing.T) {
 	}, {
 		name:   "completion for install version flag with generate-name",
 		cmd:    fmt.Sprintf("%s __complete install --generate-name testing/alpine --version ''", repoSetup),
+		golden: "output/version-comp.txt",
+	}, {
+		name:   "completion for install version flag, no filter",
+		cmd:    fmt.Sprintf("%s __complete install releasename testing/alpine --version 0.3", repoSetup),
 		golden: "output/version-comp.txt",
 	}, {
 		name:   "completion for install version flag too few args",

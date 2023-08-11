@@ -25,6 +25,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"helm.sh/helm/v3/cmd/helm/require"
 )
@@ -69,14 +71,7 @@ func newDocsCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&o.generateHeaders, "generate-headers", false, "generate standard headers for markdown files")
 
 	cmd.RegisterFlagCompletionFunc("type", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		types := []string{"bash", "man", "markdown"}
-		var comps []string
-		for _, t := range types {
-			if strings.HasPrefix(t, toComplete) {
-				comps = append(comps, t)
-			}
-		}
-		return comps, cobra.ShellCompDirectiveNoFileComp
+		return []string{"bash", "man", "markdown"}, cobra.ShellCompDirectiveNoFileComp
 	})
 
 	return cmd
@@ -91,7 +86,7 @@ func (o *docsOptions) run(out io.Writer) error {
 			hdrFunc := func(filename string) string {
 				base := filepath.Base(filename)
 				name := strings.TrimSuffix(base, path.Ext(base))
-				title := strings.Title(strings.Replace(name, "_", " ", -1))
+				title := cases.Title(language.Und, cases.NoLower).String(strings.Replace(name, "_", " ", -1))
 				return fmt.Sprintf("---\ntitle: \"%s\"\n---\n\n", title)
 			}
 

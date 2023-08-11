@@ -162,7 +162,7 @@ type SQLReleaseWrapper struct {
 	// The primary key, made of {release-name}.{release-version}
 	Key string `db:"key"`
 
-	// See https://github.com/helm/helm/blob/master/pkg/storage/driver/secrets.go#L236
+	// See https://github.com/helm/helm/blob/c9fe3d118caec699eb2565df9838673af379ce12/pkg/storage/driver/secrets.go#L231
 	Type string `db:"type"`
 
 	// The rspb.Release body, as a base64-encoded string
@@ -288,7 +288,7 @@ func (s *SQL) Query(labels map[string]string) ([]*rspb.Release, error) {
 			sb = sb.Where(sq.Eq{key: labels[key]})
 		} else {
 			s.Log("unknown label %s", key)
-			return nil, fmt.Errorf("unknow label %s", key)
+			return nil, fmt.Errorf("unknown label %s", key)
 		}
 	}
 
@@ -308,6 +308,10 @@ func (s *SQL) Query(labels map[string]string) ([]*rspb.Release, error) {
 	if err := s.db.Select(&records, query, args...); err != nil {
 		s.Log("list: failed to query with labels: %v", err)
 		return nil, err
+	}
+
+	if len(records) == 0 {
+		return nil, ErrReleaseNotFound
 	}
 
 	var releases []*rspb.Release

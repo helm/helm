@@ -21,11 +21,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 
@@ -48,6 +47,7 @@ type Entry struct {
 	KeyFile               string `json:"keyFile"`
 	CAFile                string `json:"caFile"`
 	InsecureSkipTLSverify bool   `json:"insecure_skip_tls_verify"`
+	PassCredentialsAll    bool   `json:"pass_credentials_all"`
 }
 
 // ChartRepository represents a chart repository
@@ -115,26 +115,23 @@ func (r *ChartRepository) Load() error {
 
 // DownloadIndexFile fetches the index from a repository.
 func (r *ChartRepository) DownloadIndexFile() (string, error) {
-	parsedURL, err := url.Parse(r.Config.URL)
+	indexURL, err := ResolveReferenceURL(r.Config.URL, "index.yaml")
 	if err != nil {
 		return "", err
 	}
-	parsedURL.RawPath = path.Join(parsedURL.RawPath, "index.yaml")
-	parsedURL.Path = path.Join(parsedURL.Path, "index.yaml")
 
-	indexURL := parsedURL.String()
-	// TODO add user-agent
 	resp, err := r.Client.Get(indexURL,
 		getter.WithURL(r.Config.URL),
 		getter.WithInsecureSkipVerifyTLS(r.Config.InsecureSkipTLSverify),
 		getter.WithTLSClientConfig(r.Config.CertFile, r.Config.KeyFile, r.Config.CAFile),
 		getter.WithBasicAuth(r.Config.Username, r.Config.Password),
+		getter.WithPassCredentialsAll(r.Config.PassCredentialsAll),
 	)
 	if err != nil {
 		return "", err
 	}
 
-	index, err := ioutil.ReadAll(resp)
+	index, err := io.ReadAll(resp)
 	if err != nil {
 		return "", err
 	}
@@ -151,12 +148,12 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 	}
 	chartsFile := filepath.Join(r.CachePath, helmpath.CacheChartsFile(r.Config.Name))
 	os.MkdirAll(filepath.Dir(chartsFile), 0755)
-	ioutil.WriteFile(chartsFile, []byte(charts.String()), 0644)
+	os.WriteFile(chartsFile, []byte(charts.String()), 0644)
 
 	// Create the index file in the cache directory
 	fname := filepath.Join(r.CachePath, helmpath.CacheIndexFile(r.Config.Name))
 	os.MkdirAll(filepath.Dir(fname), 0755)
-	return fname, ioutil.WriteFile(fname, index, 0644)
+	return fname, os.WriteFile(fname, index, 0644)
 }
 
 // Index generates an index for the chart repository and writes an index.yaml file.
@@ -173,7 +170,7 @@ func (r *ChartRepository) saveIndexFile() error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(filepath.Join(r.Config.Name, indexPath), index, 0644)
+	return os.WriteFile(filepath.Join(r.Config.Name, indexPath), index, 0644)
 }
 
 func (r *ChartRepository) generateIndex() error {
@@ -217,6 +214,15 @@ func FindChartInAuthRepoURL(repoURL, username, password, chartName, chartVersion
 // but it also receives credentials and TLS verify flag for the chart repository.
 // TODO Helm 4, FindChartInAuthAndTLSRepoURL should be integrated into FindChartInAuthRepoURL.
 func FindChartInAuthAndTLSRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile string, insecureSkipTLSverify bool, getters getter.Providers) (string, error) {
+	return FindChartInAuthAndTLSAndPassRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile, insecureSkipTLSverify, false, getters)
+}
+
+// FindChartInAuthAndTLSAndPassRepoURL finds chart in chart repository pointed by repoURL
+// without adding repo to repositories, like FindChartInRepoURL,
+// but it also receives credentials, TLS verify flag, and if credentials should
+// be passed on to other domains.
+// TODO Helm 4, FindChartInAuthAndTLSAndPassRepoURL should be integrated into FindChartInAuthRepoURL.
+func FindChartInAuthAndTLSAndPassRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile string, insecureSkipTLSverify, passCredentialsAll bool, getters getter.Providers) (string, error) {
 
 	// Download and write the index file to a temporary location
 	buf := make([]byte, 20)
@@ -227,6 +233,7 @@ func FindChartInAuthAndTLSRepoURL(repoURL, username, password, chartName, chartV
 		URL:                   repoURL,
 		Username:              username,
 		Password:              password,
+		PassCredentialsAll:    passCredentialsAll,
 		CertFile:              certFile,
 		KeyFile:               keyFile,
 		CAFile:                caFile,
@@ -241,6 +248,10 @@ func FindChartInAuthAndTLSRepoURL(repoURL, username, password, chartName, chartV
 	if err != nil {
 		return "", errors.Wrapf(err, "looks like %q is not a valid chart repository or cannot be reached", repoURL)
 	}
+	defer func() {
+		os.RemoveAll(filepath.Join(r.CachePath, helmpath.CacheChartsFile(r.Config.Name)))
+		os.RemoveAll(filepath.Join(r.CachePath, helmpath.CacheIndexFile(r.Config.Name)))
+	}()
 
 	// Read the index file for the repository to get chart information and return chart URL
 	repoIndex, err := LoadIndexFile(idx)
@@ -274,19 +285,27 @@ func FindChartInAuthAndTLSRepoURL(repoURL, username, password, chartName, chartV
 // ResolveReferenceURL resolves refURL relative to baseURL.
 // If refURL is absolute, it simply returns refURL.
 func ResolveReferenceURL(baseURL, refURL string) (string, error) {
-	parsedBaseURL, err := url.Parse(baseURL)
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to parse %s as URL", baseURL)
-	}
-
 	parsedRefURL, err := url.Parse(refURL)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to parse %s as URL", refURL)
 	}
 
+	if parsedRefURL.IsAbs() {
+		return refURL, nil
+	}
+
+	parsedBaseURL, err := url.Parse(baseURL)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to parse %s as URL", baseURL)
+	}
+
 	// We need a trailing slash for ResolveReference to work, but make sure there isn't already one
+	parsedBaseURL.RawPath = strings.TrimSuffix(parsedBaseURL.RawPath, "/") + "/"
 	parsedBaseURL.Path = strings.TrimSuffix(parsedBaseURL.Path, "/") + "/"
-	return parsedBaseURL.ResolveReference(parsedRefURL).String(), nil
+
+	resolvedURL := parsedBaseURL.ResolveReference(parsedRefURL)
+	resolvedURL.RawQuery = parsedBaseURL.RawQuery
+	return resolvedURL.String(), nil
 }
 
 func (e *Entry) String() string {

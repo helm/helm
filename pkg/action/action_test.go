@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,21 +16,16 @@ limitations under the License.
 package action
 
 import (
-	"context"
 	"flag"
-	"io/ioutil"
-	"net/http"
-	"os"
-	"path/filepath"
+	"io"
 	"testing"
 
-	dockerauth "github.com/deislabs/oras/pkg/auth/docker"
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
 
-	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
+	"helm.sh/helm/v3/pkg/registry"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage"
 	"helm.sh/helm/v3/pkg/storage/driver"
@@ -42,47 +37,14 @@ var verbose = flag.Bool("test.log", false, "enable test logging")
 func actionConfigFixture(t *testing.T) *Configuration {
 	t.Helper()
 
-	client, err := dockerauth.NewClient()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	resolver, err := client.Resolver(context.Background(), http.DefaultClient, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	tdir, err := ioutil.TempDir("", "helm-action-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Cleanup(func() { os.RemoveAll(tdir) })
-
-	cache, err := registry.NewCache(
-		registry.CacheOptDebug(true),
-		registry.CacheOptRoot(filepath.Join(tdir, registry.CacheRootDir)),
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	registryClient, err := registry.NewClient(
-		registry.ClientOptAuthorizer(&registry.Authorizer{
-			Client: client,
-		}),
-		registry.ClientOptResolver(&registry.Resolver{
-			Resolver: resolver,
-		}),
-		registry.ClientOptCache(cache),
-	)
+	registryClient, err := registry.NewClient()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	return &Configuration{
 		Releases:       storage.Init(driver.NewMemory()),
-		KubeClient:     &kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: ioutil.Discard}},
+		KubeClient:     &kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}},
 		Capabilities:   chartutil.DefaultCapabilities,
 		RegistryClient: registryClient,
 		Log: func(format string, v ...interface{}) {

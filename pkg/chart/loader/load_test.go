@@ -21,7 +21,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -90,13 +89,13 @@ func TestLoadDirWithSymlink(t *testing.T) {
 func TestBomTestData(t *testing.T) {
 	testFiles := []string{"frobnitz_with_bom/.helmignore", "frobnitz_with_bom/templates/template.tpl", "frobnitz_with_bom/Chart.yaml"}
 	for _, file := range testFiles {
-		data, err := ioutil.ReadFile("testdata/" + file)
+		data, err := os.ReadFile("testdata/" + file)
 		if err != nil || !bytes.HasPrefix(data, utf8bom) {
 			t.Errorf("Test file has no BOM or is invalid: testdata/%s", file)
 		}
 	}
 
-	archive, err := ioutil.ReadFile("testdata/frobnitz_with_bom.tgz")
+	archive, err := os.ReadFile("testdata/frobnitz_with_bom.tgz")
 	if err != nil {
 		t.Fatalf("Error reading archive frobnitz_with_bom.tgz: %s", err)
 	}
@@ -403,11 +402,7 @@ func TestLoadV2WithReqs(t *testing.T) {
 }
 
 func TestLoadInvalidArchive(t *testing.T) {
-	tmpdir, err := ioutil.TempDir("", "helm-test-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpdir)
+	tmpdir := t.TempDir()
 
 	writeTar := func(filename, internalPath string, body []byte) {
 		dest, err := os.Create(filename)
@@ -459,7 +454,7 @@ func TestLoadInvalidArchive(t *testing.T) {
 	} {
 		illegalChart := filepath.Join(tmpdir, tt.chartname)
 		writeTar(illegalChart, tt.internal, []byte("hello: world"))
-		_, err = Load(illegalChart)
+		_, err := Load(illegalChart)
 		if err == nil {
 			t.Fatal("expected error when unpacking illegal files")
 		}
@@ -471,7 +466,7 @@ func TestLoadInvalidArchive(t *testing.T) {
 	// Make sure that absolute path gets interpreted as relative
 	illegalChart := filepath.Join(tmpdir, "abs-path.tgz")
 	writeTar(illegalChart, "/Chart.yaml", []byte("hello: world"))
-	_, err = Load(illegalChart)
+	_, err := Load(illegalChart)
 	if err.Error() != "validation: chart.metadata.name is required" {
 		t.Error(err)
 	}

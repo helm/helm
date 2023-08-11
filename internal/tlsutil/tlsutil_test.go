@@ -46,7 +46,7 @@ func TestClientConfig(t *testing.T) {
 		t.Fatalf("expecting 1 client certificates, got %d", got)
 	}
 	if cfg.InsecureSkipVerify {
-		t.Fatalf("insecure skip verify mistmatch, expecting false")
+		t.Fatalf("insecure skip verify mismatch, expecting false")
 	}
 	if cfg.RootCAs == nil {
 		t.Fatalf("mismatch tls RootCAs, expecting non-nil")
@@ -65,8 +65,9 @@ func TestNewClientTLS(t *testing.T) {
 	certFile := testfile(t, testCertFile)
 	keyFile := testfile(t, testKeyFile)
 	caCertFile := testfile(t, testCaCertFile)
+	insecureSkipTLSverify := false
 
-	cfg, err := NewClientTLS(certFile, keyFile, caCertFile)
+	cfg, err := NewClientTLS(certFile, keyFile, caCertFile, insecureSkipTLSverify)
 	if err != nil {
 		t.Error(err)
 	}
@@ -75,13 +76,13 @@ func TestNewClientTLS(t *testing.T) {
 		t.Fatalf("expecting 1 client certificates, got %d", got)
 	}
 	if cfg.InsecureSkipVerify {
-		t.Fatalf("insecure skip verify mistmatch, expecting false")
+		t.Fatalf("insecure skip verify mismatch, expecting false")
 	}
 	if cfg.RootCAs == nil {
 		t.Fatalf("mismatch tls RootCAs, expecting non-nil")
 	}
 
-	cfg, err = NewClientTLS("", "", caCertFile)
+	cfg, err = NewClientTLS("", "", caCertFile, insecureSkipTLSverify)
 	if err != nil {
 		t.Error(err)
 	}
@@ -90,13 +91,13 @@ func TestNewClientTLS(t *testing.T) {
 		t.Fatalf("expecting 0 client certificates, got %d", got)
 	}
 	if cfg.InsecureSkipVerify {
-		t.Fatalf("insecure skip verify mistmatch, expecting false")
+		t.Fatalf("insecure skip verify mismatch, expecting false")
 	}
 	if cfg.RootCAs == nil {
 		t.Fatalf("mismatch tls RootCAs, expecting non-nil")
 	}
 
-	cfg, err = NewClientTLS(certFile, keyFile, "")
+	cfg, err = NewClientTLS(certFile, keyFile, "", insecureSkipTLSverify)
 	if err != nil {
 		t.Error(err)
 	}
@@ -105,7 +106,7 @@ func TestNewClientTLS(t *testing.T) {
 		t.Fatalf("expecting 1 client certificates, got %d", got)
 	}
 	if cfg.InsecureSkipVerify {
-		t.Fatalf("insecure skip verify mistmatch, expecting false")
+		t.Fatalf("insecure skip verify mismatch, expecting false")
 	}
 	if cfg.RootCAs != nil {
 		t.Fatalf("mismatch tls RootCAs, expecting nil")

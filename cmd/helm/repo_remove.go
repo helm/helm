@@ -67,7 +67,7 @@ func (o *repoRemoveOptions) run(out io.Writer) error {
 		if !r.Remove(name) {
 			return errors.Errorf("no repo named %q found", name)
 		}
-		if err := r.WriteFile(o.repoFile, 0644); err != nil {
+		if err := r.WriteFile(o.repoFile, 0600); err != nil {
 			return err
 		}
 

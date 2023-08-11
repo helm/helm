@@ -102,5 +102,5 @@ const (
 	HookPhaseFailed HookPhase = "Failed"
 )
 
-// Strng converts a hook phase to a printable string
+// String converts a hook phase to a printable string
 func (x HookPhase) String() string { return string(x) }

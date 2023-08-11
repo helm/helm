@@ -17,7 +17,7 @@
     status: deployed
   chart:
     metadata:
-      name: prothos-chart
+      name: porthos-chart
       version: 0.2.0
       appversion: 0.2.2
 - name: aramis

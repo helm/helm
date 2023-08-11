@@ -18,7 +18,6 @@ package postrender
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -31,7 +30,11 @@ import (
 )
 
 const testingScript = `#!/bin/sh
+if [ $# -eq 0 ]; then
 sed s/FOOTEST/BARTEST/g <&0
+else
+sed s/FOOTEST/"$*"/g <&0
+fi
 `
 
 func TestGetFullPath(t *testing.T) {
@@ -124,12 +127,46 @@ func TestExecRun(t *testing.T) {
 	is.Contains(output.String(), "BARTEST")
 }
 
+func TestNewExecWithOneArgsRun(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// the actual Run test uses a basic sed example, so skip this test on windows
+		t.Skip("skipping on windows")
+	}
+	is := assert.New(t)
+	testpath, cleanup := setupTestingScript(t)
+	defer cleanup()
+
+	renderer, err := NewExec(testpath, "ARG1")
+	require.NoError(t, err)
+
+	output, err := renderer.Run(bytes.NewBufferString("FOOTEST"))
+	is.NoError(err)
+	is.Contains(output.String(), "ARG1")
+}
+
+func TestNewExecWithTwoArgsRun(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// the actual Run test uses a basic sed example, so skip this test on windows
+		t.Skip("skipping on windows")
+	}
+	is := assert.New(t)
+	testpath, cleanup := setupTestingScript(t)
+	defer cleanup()
+
+	renderer, err := NewExec(testpath, "ARG1", "ARG2")
+	require.NoError(t, err)
+
+	output, err := renderer.Run(bytes.NewBufferString("FOOTEST"))
+	is.NoError(err)
+	is.Contains(output.String(), "ARG1 ARG2")
+}
+
 func setupTestingScript(t *testing.T) (filepath string, cleanup func()) {
 	t.Helper()
 
 	tempdir := ensure.TempDir(t)
 
-	f, err := ioutil.TempFile(tempdir, "post-render-test.sh")
+	f, err := os.CreateTemp(tempdir, "post-render-test.sh")
 	if err != nil {
 		t.Fatalf("unable to create tempfile for testing: %s", err)
 	}
