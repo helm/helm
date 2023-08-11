@@ -59,9 +59,9 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 			notName := regexp.MustCompile(`^!\s?name=`)
 			for _, f := range filter {
 				if strings.HasPrefix(f, "name=") {
-					client.Filters["name"] = append(client.Filters["name"], strings.TrimPrefix(f, "name="))
+					client.Filters[action.IncludeNameFilter] = append(client.Filters[action.IncludeNameFilter], strings.TrimPrefix(f, "name="))
 				} else if notName.MatchString(f) {
-					client.Filters["!name"] = append(client.Filters["!name"], notName.ReplaceAllLiteralString(f, ""))
+					client.Filters[action.ExcludeNameFilter] = append(client.Filters[action.ExcludeNameFilter], notName.ReplaceAllLiteralString(f, ""))
 				}
 			}
 			rel, runErr := client.Run(args[0])
