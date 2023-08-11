@@ -121,6 +121,8 @@ fullnameOverride: ""
 serviceAccount:
   # Specifies whether a service account should be created
   create: true
+  # Automatically mount a ServiceAccount's API credentials?
+  automount: true
   # Annotations to add to the service account
   annotations: {}
   # The name of the service account to use.
@@ -390,6 +392,7 @@ metadata:
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
+  automountServiceAccountToken: {{ .Values.serviceAccount.automount }}
 {{- end }}
 `
 
