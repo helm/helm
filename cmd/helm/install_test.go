@@ -254,7 +254,7 @@ func TestInstall(t *testing.T) {
 		},
 	}
 
-	runTestActionCmd(t, tests)
+	runTestCmd(t, tests)
 }
 
 func TestInstallOutputCompletion(t *testing.T) {

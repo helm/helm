@@ -21,7 +21,7 @@ coverdir=$(mktemp -d /tmp/coverage.XXXXXXXXXX)
 profile="${coverdir}/cover.out"
 
 pushd /
-hash goveralls 2>/dev/null || go get github.com/mattn/goveralls
+hash goveralls 2>/dev/null || go install github.com/mattn/goveralls@v0.0.11
 popd
 
 generate_cover_data() {
@@ -37,7 +37,7 @@ generate_cover_data() {
 }
 
 push_to_coveralls() {
-  goveralls -coverprofile="${profile}" -service=circle-ci
+  goveralls -coverprofile="${profile}" -service=github
 }
 
 generate_cover_data

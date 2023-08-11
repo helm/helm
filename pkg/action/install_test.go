@@ -19,7 +19,7 @@ package action
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -132,7 +132,7 @@ func TestInstallReleaseClientOnly(t *testing.T) {
 	instAction.Run(buildChart(), nil) // disregard output
 
 	is.Equal(instAction.cfg.Capabilities, chartutil.DefaultCapabilities)
-	is.Equal(instAction.cfg.KubeClient, &kubefake.PrintingKubeClient{Out: ioutil.Discard})
+	is.Equal(instAction.cfg.KubeClient, &kubefake.PrintingKubeClient{Out: io.Discard})
 }
 
 func TestInstallRelease_NoName(t *testing.T) {
@@ -254,7 +254,7 @@ func TestInstallRelease_DryRun(t *testing.T) {
 	is.Equal(res.Info.Description, "Dry run complete")
 }
 
-// Regression test for #7955: Lookup must not connect to Kubernetes on a dry-run.
+// Regression test for #7955
 func TestInstallRelease_DryRun_Lookup(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
