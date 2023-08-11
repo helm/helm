@@ -18,7 +18,6 @@ package action
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -60,7 +59,7 @@ func TestList(t *testing.T) {
 		if err := NewDependency().List(tcase.chart, &buf); err != nil {
 			t.Fatal(err)
 		}
-		test.AssertGoldenBytes(t, buf.Bytes(), tcase.golden)
+		test.AssertGoldenString(t, buf.String(), tcase.golden)
 	}
 }
 
@@ -68,11 +67,7 @@ func TestList(t *testing.T) {
 // chart names do not cause resolution problems.
 func TestDependencyStatus_Dashes(t *testing.T) {
 	// Make a temp dir
-	dir, err := ioutil.TempDir("", "helmtest-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	chartpath := filepath.Join(dir, "charts")
 	if err := os.MkdirAll(chartpath, 0700); err != nil {
@@ -81,7 +76,7 @@ func TestDependencyStatus_Dashes(t *testing.T) {
 
 	// Add some fake charts
 	first := buildChart(withName("first-chart"))
-	_, err = chartutil.Save(first, chartpath)
+	_, err := chartutil.Save(first, chartpath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,11 +101,7 @@ func TestDependencyStatus_Dashes(t *testing.T) {
 
 func TestStatArchiveForStatus(t *testing.T) {
 	// Make a temp dir
-	dir, err := ioutil.TempDir("", "helmtest-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	chartpath := filepath.Join(dir, "charts")
 	if err := os.MkdirAll(chartpath, 0700); err != nil {

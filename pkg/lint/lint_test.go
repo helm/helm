@@ -17,10 +17,9 @@ limitations under the License.
 package lint
 
 import (
-	"io/ioutil"
-	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/lint/support"
@@ -36,6 +35,7 @@ const badValuesFileDir = "rules/testdata/badvaluesfile"
 const badYamlFileDir = "rules/testdata/albatross"
 const goodChartDir = "rules/testdata/goodone"
 const subChartValuesDir = "rules/testdata/withsubchart"
+const malformedTemplate = "rules/testdata/malformed-template"
 
 func TestBadChart(t *testing.T) {
 	m := All(badChartDir, values, namespace, strict).Messages
@@ -43,17 +43,12 @@ func TestBadChart(t *testing.T) {
 		t.Errorf("Number of errors %v", len(m))
 		t.Errorf("All didn't fail with expected errors, got %#v", m)
 	}
-	// There should be one INFO, 2 WARNINGs and 2 ERROR messages, check for them
-	var i, w, e, e2, e3, e4, e5, e6 bool
+	// There should be one INFO, and 2 ERROR messages, check for them
+	var i, e, e2, e3, e4, e5, e6 bool
 	for _, msg := range m {
 		if msg.Severity == support.InfoSev {
 			if strings.Contains(msg.Err.Error(), "icon is recommended") {
 				i = true
-			}
-		}
-		if msg.Severity == support.WarningSev {
-			if strings.Contains(msg.Err.Error(), "directory not found") {
-				w = true
 			}
 		}
 		if msg.Severity == support.ErrorSev {
@@ -81,7 +76,7 @@ func TestBadChart(t *testing.T) {
 			}
 		}
 	}
-	if !e || !e2 || !e3 || !e4 || !e5 || !w || !i || !e6 {
+	if !e || !e2 || !e3 || !e4 || !e5 || !i || !e6 {
 		t.Errorf("Didn't find all the expected errors, got %#v", m)
 	}
 }
@@ -120,11 +115,7 @@ func TestGoodChart(t *testing.T) {
 //
 // See https://github.com/helm/helm/issues/7923
 func TestHelmCreateChart(t *testing.T) {
-	dir, err := ioutil.TempDir("", "-helm-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	createdChart, err := chartutil.Create("testhelmcreatepasseslint", dir)
 	if err != nil {
@@ -154,6 +145,29 @@ func TestSubChartValuesChart(t *testing.T) {
 		t.Error("All returned linter messages when it shouldn't have")
 		for i, msg := range m {
 			t.Logf("Message %d: %s", i, msg)
+		}
+	}
+}
+
+// lint stuck with malformed template object
+// See https://github.com/helm/helm/issues/11391
+func TestMalformedTemplate(t *testing.T) {
+	c := time.After(3 * time.Second)
+	ch := make(chan int, 1)
+	var m []support.Message
+	go func() {
+		m = All(malformedTemplate, values, namespace, strict).Messages
+		ch <- 1
+	}()
+	select {
+	case <-c:
+		t.Fatalf("lint malformed template timeout")
+	case <-ch:
+		if len(m) != 1 {
+			t.Fatalf("All didn't fail with expected errors, got %#v", m)
+		}
+		if !strings.Contains(m[0].Err.Error(), "invalid character '{'") {
+			t.Errorf("All didn't have the error for invalid character '{'")
 		}
 	}
 }

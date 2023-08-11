@@ -83,8 +83,7 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 
 			if client.Short {
-
-				names := make([]string, 0)
+				names := make([]string, 0, len(results))
 				for _, res := range results {
 					names = append(names, res.Name)
 				}
@@ -103,17 +102,16 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 						fmt.Fprintln(out, res.Name)
 					}
 					return nil
-				default:
-					return outfmt.Write(out, newReleaseListWriter(results, client.TimeFormat))
 				}
 			}
 
-			return outfmt.Write(out, newReleaseListWriter(results, client.TimeFormat))
+			return outfmt.Write(out, newReleaseListWriter(results, client.TimeFormat, client.NoHeaders))
 		},
 	}
 
 	f := cmd.Flags()
 	f.BoolVarP(&client.Short, "short", "q", false, "output short (quiet) listing format")
+	f.BoolVarP(&client.NoHeaders, "no-headers", "", false, "don't print headers when using the default output format")
 	f.StringVar(&client.TimeFormat, "time-format", "", `format time using golang time formatter. Example: --time-format "2006-01-02 15:04:05Z0700"`)
 	f.BoolVarP(&client.ByDate, "date", "d", false, "sort by release date")
 	f.BoolVarP(&client.SortReverse, "reverse", "r", false, "reverse the sort order")
@@ -145,10 +143,11 @@ type releaseElement struct {
 }
 
 type releaseListWriter struct {
-	releases []releaseElement
+	releases  []releaseElement
+	noHeaders bool
 }
 
-func newReleaseListWriter(releases []*release.Release, timeFormat string) *releaseListWriter {
+func newReleaseListWriter(releases []*release.Release, timeFormat string, noHeaders bool) *releaseListWriter {
 	// Initialize the array so no results returns an empty array instead of null
 	elements := make([]releaseElement, 0, len(releases))
 	for _, r := range releases {
@@ -173,12 +172,14 @@ func newReleaseListWriter(releases []*release.Release, timeFormat string) *relea
 
 		elements = append(elements, element)
 	}
-	return &releaseListWriter{elements}
+	return &releaseListWriter{elements, noHeaders}
 }
 
 func (r *releaseListWriter) WriteTable(out io.Writer) error {
 	table := uitable.New()
-	table.AddRow("NAME", "NAMESPACE", "REVISION", "UPDATED", "STATUS", "CHART", "APP VERSION")
+	if !r.noHeaders {
+		table.AddRow("NAME", "NAMESPACE", "REVISION", "UPDATED", "STATUS", "CHART", "APP VERSION")
+	}
 	for _, r := range r.releases {
 		table.AddRow(r.Name, r.Namespace, r.Revision, r.Updated, r.Status, r.Chart, r.AppVersion)
 	}

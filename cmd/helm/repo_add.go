@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -119,7 +118,7 @@ func (o *repoAddOptions) run(out io.Writer) error {
 	repoFileExt := filepath.Ext(o.repoFile)
 	var lockPath string
 	if len(repoFileExt) > 0 && len(repoFileExt) < len(o.repoFile) {
-		lockPath = strings.Replace(o.repoFile, repoFileExt, ".lock", 1)
+		lockPath = strings.TrimSuffix(o.repoFile, repoFileExt) + ".lock"
 	} else {
 		lockPath = o.repoFile + ".lock"
 	}
@@ -134,7 +133,7 @@ func (o *repoAddOptions) run(out io.Writer) error {
 		return err
 	}
 
-	b, err := ioutil.ReadFile(o.repoFile)
+	b, err := os.ReadFile(o.repoFile)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
@@ -177,6 +176,11 @@ func (o *repoAddOptions) run(out io.Writer) error {
 		InsecureSkipTLSverify: o.insecureSkipTLSverify,
 	}
 
+	// Check if the repo name is legal
+	if strings.Contains(o.name, "/") {
+		return errors.Errorf("repository name (%s) contains '/', please specify a different name without '/'", o.name)
+	}
+
 	// If the repo exists do one of two things:
 	// 1. If the configuration for the name is the same continue without error
 	// 2. When the config is different require --force-update
@@ -208,7 +212,7 @@ func (o *repoAddOptions) run(out io.Writer) error {
 
 	f.Update(&c)
 
-	if err := f.WriteFile(o.repoFile, 0644); err != nil {
+	if err := f.WriteFile(o.repoFile, 0600); err != nil {
 		return err
 	}
 	fmt.Fprintf(out, "%q has been added to your repositories\n", o.name)

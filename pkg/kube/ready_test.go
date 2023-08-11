@@ -4,7 +4,6 @@ Copyright The Helm Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
@@ -175,6 +174,27 @@ func Test_ReadyChecker_statefulSetReady(t *testing.T) {
 			},
 			want: true,
 		},
+		{
+			name: "statefulset is not ready when status of latest generation has not yet been observed",
+			args: args{
+				sts: newStatefulSetWithNewGeneration("foo", 1, 0, 1, 1),
+			},
+			want: false,
+		},
+		{
+			name: "statefulset is not ready when current revision for current replicas does not match update revision for updated replicas",
+			args: args{
+				sts: newStatefulSetWithUpdateRevision("foo", 1, 0, 1, 1, "foo-bbbbbbb"),
+			},
+			want: false,
+		},
+		{
+			name: "statefulset is ready when current revision for current replicas does not match update revision for updated replicas when using partition !=0",
+			args: args{
+				sts: newStatefulSetWithUpdateRevision("foo", 3, 2, 3, 3, "foo-bbbbbbb"),
+			},
+			want: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -249,44 +269,52 @@ func Test_ReadyChecker_jobReady(t *testing.T) {
 		job *batchv1.Job
 	}
 	tests := []struct {
-		name string
-		args args
-		want bool
+		name    string
+		args    args
+		want    bool
+		wantErr bool
 	}{
 		{
-			name: "job is completed",
-			args: args{job: newJob("foo", 1, intToInt32(1), 1, 0)},
-			want: true,
+			name:    "job is completed",
+			args:    args{job: newJob("foo", 1, intToInt32(1), 1, 0)},
+			want:    true,
+			wantErr: false,
 		},
 		{
-			name: "job is incomplete",
-			args: args{job: newJob("foo", 1, intToInt32(1), 0, 0)},
-			want: false,
+			name:    "job is incomplete",
+			args:    args{job: newJob("foo", 1, intToInt32(1), 0, 0)},
+			want:    false,
+			wantErr: false,
 		},
 		{
-			name: "job is failed",
-			args: args{job: newJob("foo", 1, intToInt32(1), 0, 1)},
-			want: false,
+			name:    "job is failed but within BackoffLimit",
+			args:    args{job: newJob("foo", 1, intToInt32(1), 0, 1)},
+			want:    false,
+			wantErr: false,
 		},
 		{
-			name: "job is completed with retry",
-			args: args{job: newJob("foo", 1, intToInt32(1), 1, 1)},
-			want: true,
+			name:    "job is completed with retry",
+			args:    args{job: newJob("foo", 1, intToInt32(1), 1, 1)},
+			want:    true,
+			wantErr: false,
 		},
 		{
-			name: "job is failed with retry",
-			args: args{job: newJob("foo", 1, intToInt32(1), 0, 2)},
-			want: false,
+			name:    "job is failed and beyond BackoffLimit",
+			args:    args{job: newJob("foo", 1, intToInt32(1), 0, 2)},
+			want:    false,
+			wantErr: true,
 		},
 		{
-			name: "job is completed single run",
-			args: args{job: newJob("foo", 0, intToInt32(1), 1, 0)},
-			want: true,
+			name:    "job is completed single run",
+			args:    args{job: newJob("foo", 0, intToInt32(1), 1, 0)},
+			want:    true,
+			wantErr: false,
 		},
 		{
-			name: "job is failed single run",
-			args: args{job: newJob("foo", 0, intToInt32(1), 0, 1)},
-			want: false,
+			name:    "job is failed single run",
+			args:    args{job: newJob("foo", 0, intToInt32(1), 0, 1)},
+			want:    false,
+			wantErr: true,
 		},
 		{
 			name: "job with null completions",
@@ -297,7 +325,12 @@ func Test_ReadyChecker_jobReady(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := NewReadyChecker(fake.NewSimpleClientset(), nil)
-			if got := c.jobReady(tt.args.job); got != tt.want {
+			got, err := c.jobReady(tt.args.job)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("jobReady() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
 				t.Errorf("jobReady() = %v, want %v", got, tt.want)
 			}
 		})
@@ -377,8 +410,9 @@ func newDaemonSet(name string, maxUnavailable, numberReady, desiredNumberSchedul
 func newStatefulSet(name string, replicas, partition, readyReplicas, updatedReplicas int) *appsv1.StatefulSet {
 	return &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: defaultNamespace,
+			Name:       name,
+			Namespace:  defaultNamespace,
+			Generation: int64(1),
 		},
 		Spec: appsv1.StatefulSetSpec{
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
@@ -404,10 +438,25 @@ func newStatefulSet(name string, replicas, partition, readyReplicas, updatedRepl
 			},
 		},
 		Status: appsv1.StatefulSetStatus{
-			UpdatedReplicas: int32(updatedReplicas),
-			ReadyReplicas:   int32(readyReplicas),
+			ObservedGeneration: int64(1),
+			CurrentRevision:    name + "-aaaaaaa",
+			UpdateRevision:     name + "-aaaaaaa",
+			UpdatedReplicas:    int32(updatedReplicas),
+			ReadyReplicas:      int32(readyReplicas),
 		},
 	}
+}
+
+func newStatefulSetWithNewGeneration(name string, replicas, partition, readyReplicas, updatedReplicas int) *appsv1.StatefulSet {
+	ss := newStatefulSet(name, replicas, partition, readyReplicas, updatedReplicas)
+	ss.Generation++
+	return ss
+}
+
+func newStatefulSetWithUpdateRevision(name string, replicas, partition, readyReplicas, updatedReplicas int, updateRevision string) *appsv1.StatefulSet {
+	ss := newStatefulSet(name, replicas, partition, readyReplicas, updatedReplicas)
+	ss.Status.UpdateRevision = updateRevision
+	return ss
 }
 
 func newDeployment(name string, replicas, maxSurge, maxUnavailable int) *appsv1.Deployment {

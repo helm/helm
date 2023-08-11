@@ -21,7 +21,7 @@ import (
 	"compress/gzip"
 	"encoding/base64"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 
 	rspb "helm.sh/helm/v3/pkg/release"
 )
@@ -63,13 +63,13 @@ func decodeRelease(data string) (*rspb.Release, error) {
 	// For backwards compatibility with releases that were stored before
 	// compression was introduced we skip decompression if the
 	// gzip magic header is not found
-	if bytes.Equal(b[0:3], magicGzip) {
+	if len(b) > 3 && bytes.Equal(b[0:3], magicGzip) {
 		r, err := gzip.NewReader(bytes.NewReader(b))
 		if err != nil {
 			return nil, err
 		}
 		defer r.Close()
-		b2, err := ioutil.ReadAll(r)
+		b2, err := io.ReadAll(r)
 		if err != nil {
 			return nil, err
 		}

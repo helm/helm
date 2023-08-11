@@ -51,7 +51,8 @@ To override values in a chart, use either the '--values' flag and pass in a file
 or use the '--set' flag and pass configuration from the command line, to force
 a string value use '--set-string'. You can use '--set-file' to set individual
 values from a file when the value itself is too long for the command line
-or is dynamically generated.
+or is dynamically generated. You can also use '--set-json' to set json values
+(scalars/objects/arrays) from the command line.
 
     $ helm install -f myvalues.yaml myredis ./redis
 
@@ -67,6 +68,11 @@ or
 
     $ helm install --set-file my_script=dothings.sh myredis ./redis
 
+or
+
+    $ helm install --set-json 'master.sidecars=[{"name":"sidecar","image":"myImage","imagePullPolicy":"Always","ports":[{"name":"portname","containerPort":1234}]}]' myredis ./redis
+
+
 You can specify the '--values'/'-f' flag multiple times. The priority will be given to the
 last (right-most) file specified. For example, if both myvalues.yaml and override.yaml
 contained a key called 'Test', the value set in override.yaml would take precedence:
@@ -79,6 +85,13 @@ set for a key called 'foo', the 'newbar' value would take precedence:
 
     $ helm install --set foo=bar --set foo=newbar  myredis ./redis
 
+Similarly, in the following example 'foo' is set to '["four"]': 
+
+    $ helm install --set-json='foo=["one", "two", "three"]' --set-json='foo=["four"]' myredis ./redis
+
+And in the following example, 'foo' is set to '{"key1":"value1","key2":"bar"}':
+
+    $ helm install --set-json='foo={"key1":"value1","key2":"value2"}' --set-json='foo.key2="bar"' myredis ./redis
 
 To check the generated manifests of a release without installing the chart,
 the '--debug' and '--dry-run' flags can be combined.
@@ -86,13 +99,14 @@ the '--debug' and '--dry-run' flags can be combined.
 If --verify is set, the chart MUST have a provenance file, and the provenance
 file MUST pass all verification steps.
 
-There are five different ways you can express the chart you want to install:
+There are six different ways you can express the chart you want to install:
 
 1. By chart reference: helm install mymaria example/mariadb
 2. By path to a packaged chart: helm install mynginx ./nginx-1.2.3.tgz
 3. By path to an unpacked chart directory: helm install mynginx ./nginx
 4. By absolute URL: helm install mynginx https://example.com/charts/nginx-1.2.3.tgz
 5. By chart reference and repo url: helm install --repo https://example.com/charts/ mynginx nginx
+6. By OCI registries: helm install mynginx --version 1.2.3 oci://example.com/charts/nginx
 
 CHART REFERENCES
 
@@ -122,12 +136,25 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return compInstall(args, toComplete, client)
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
+			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
+				client.InsecureSkipTLSverify, client.PlainHTTP)
+			if err != nil {
+				return fmt.Errorf("missing registry client: %w", err)
+			}
+			client.SetRegistryClient(registryClient)
+
+			// This is for the case where "" is specifically passed in as a
+			// value. When there is no value passed in NoOptDefVal will be used
+			// and it is set to client. See addInstallFlags.
+			if client.DryRunOption == "" {
+				client.DryRunOption = "none"
+			}
 			rel, err := runInstall(args, client, valueOpts, out)
 			if err != nil {
 				return errors.Wrap(err, "INSTALLATION FAILED")
 			}
 
-			return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false})
+			return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false, false})
 		},
 	}
 
@@ -140,7 +167,14 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Install, valueOpts *values.Options) {
 	f.BoolVar(&client.CreateNamespace, "create-namespace", false, "create the release namespace if not present")
-	f.BoolVar(&client.DryRun, "dry-run", false, "simulate an install")
+	// --dry-run options with expected outcome:
+	// - Not set means no dry run and server is contacted.
+	// - Set with no value, a value of client, or a value of true and the server is not contacted
+	// - Set with a value of false, none, or false and the server is contacted
+	// The true/false part is meant to reflect some legacy behavior while none is equal to "".
+	f.StringVar(&client.DryRunOption, "dry-run", "", "simulate an install. If --dry-run is set with no option being specified or as '--dry-run=client', it will not attempt cluster connections. Setting '--dry-run=server' allows attempting cluster connections.")
+	f.Lookup("dry-run").NoOptDefVal = "client"
+	f.BoolVar(&client.Force, "force", false, "force resource updates through a replacement strategy")
 	f.BoolVar(&client.DisableHooks, "no-hooks", false, "prevent hooks from running during install")
 	f.BoolVar(&client.Replace, "replace", false, "re-use the given name, only if that name is a deleted release which remains in the history. This is unsafe in production")
 	f.DurationVar(&client.Timeout, "timeout", 300*time.Second, "time to wait for any individual Kubernetes operation (like Jobs for hooks)")
@@ -155,6 +189,7 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 	f.BoolVar(&client.Atomic, "atomic", false, "if set, the installation process deletes the installation on failure. The --wait flag will be set automatically if --atomic is used")
 	f.BoolVar(&client.SkipCRDs, "skip-crds", false, "if set, no CRDs will be installed. By default, CRDs are installed if not already present")
 	f.BoolVar(&client.SubNotes, "render-subchart-notes", false, "if set, render subchart notes along with the parent")
+	f.BoolVar(&client.EnableDNS, "enable-dns", false, "enable DNS lookups when rendering templates")
 	addValueOptionsFlags(f, valueOpts)
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 
@@ -230,6 +265,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 					RepositoryConfig: settings.RepositoryConfig,
 					RepositoryCache:  settings.RepositoryCache,
 					Debug:            settings.Debug,
+					RegistryClient:   client.GetRegistryClient(),
 				}
 				if err := man.Update(); err != nil {
 					return nil, err
@@ -245,6 +281,11 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	}
 
 	client.Namespace = settings.Namespace()
+
+	// Validate DryRunOption member is one of the allowed values
+	if err := validateDryRunOptionFlag(client.DryRunOption); err != nil {
+		return nil, err
+	}
 
 	// Create context and prepare the handle of SIGTERM
 	ctx := context.Background()
@@ -285,4 +326,20 @@ func compInstall(args []string, toComplete string, client *action.Install) ([]st
 		return compListCharts(toComplete, true)
 	}
 	return nil, cobra.ShellCompDirectiveNoFileComp
+}
+
+func validateDryRunOptionFlag(dryRunOptionFlagValue string) error {
+	// Validate dry-run flag value with a set of allowed value
+	allowedDryRunValues := []string{"false", "true", "none", "client", "server"}
+	isAllowed := false
+	for _, v := range allowedDryRunValues {
+		if dryRunOptionFlagValue == v {
+			isAllowed = true
+			break
+		}
+	}
+	if !isAllowed {
+		return errors.New("Invalid dry-run flag. Flag must one of the following: false, true, none, client, server")
+	}
+	return nil
 }

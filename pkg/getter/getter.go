@@ -18,6 +18,7 @@ package getter
 
 import (
 	"bytes"
+	"net/http"
 	"time"
 
 	"github.com/pkg/errors"
@@ -36,6 +37,7 @@ type options struct {
 	caFile                string
 	unTar                 bool
 	insecureSkipVerifyTLS bool
+	plainHTTP             bool
 	username              string
 	password              string
 	passCredentialsAll    bool
@@ -43,6 +45,7 @@ type options struct {
 	version               string
 	registryClient        *registry.Client
 	timeout               time.Duration
+	transport             *http.Transport
 }
 
 // Option allows specifying various settings configurable by the user for overriding the defaults
@@ -94,6 +97,12 @@ func WithTLSClientConfig(certFile, keyFile, caFile string) Option {
 	}
 }
 
+func WithPlainHTTP(plainHTTP bool) Option {
+	return func(opts *options) {
+		opts.plainHTTP = plainHTTP
+	}
+}
+
 // WithTimeout sets the timeout for requests
 func WithTimeout(timeout time.Duration) Option {
 	return func(opts *options) {
@@ -116,6 +125,13 @@ func WithRegistryClient(client *registry.Client) Option {
 func WithUntar() Option {
 	return func(opts *options) {
 		opts.unTar = true
+	}
+}
+
+// WithTransport sets the http.Transport to allow overwriting the HTTPGetter default.
+func WithTransport(transport *http.Transport) Option {
+	return func(opts *options) {
+		opts.transport = transport
 	}
 }
 
