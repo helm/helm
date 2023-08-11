@@ -1,0 +1,75 @@
+name: release
+on:
+  create:
+    tags:
+      - v*
+  push:
+    branches:
+      - main
+
+# Note the only differences between release and canary-release jobs are:
+# - only canary passes --overwrite flag
+# - the VERSION make variable passed to 'make dist checksum' is expected to
+#   be "canary" if the job is triggered by a push to "main" branch. If the
+#   job is triggered by a tag push, VERSION should be the tag ref.
+jobs:
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # pin@v3.5.3
+
+      - name: Setup Go
+        uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # pin@4.1.0
+        with:
+          go-version: '1.20'
+      
+      - name: Run unit tests
+        run: make test-coverage
+
+      - name: Build Helm Binaries
+        run: |
+          make build-cross
+          make dist checksum VERSION="${{ github.ref_name }}"
+
+      - name: Upload Binaries
+        uses: bacongobbler/azure-blob-storage-upload@50f7d898b7697e864130ea04c303ca38b5751c50 # pin@3.0.0
+        env:
+          AZURE_STORAGE_CONNECTION_STRING: "${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}"
+          AZURE_STORAGE_CONTAINER_NAME: "${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}"
+        with:
+          source_dir: _dist
+          container_name: ${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}
+          connection_string: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+          extra_args: '--pattern helm-*'
+
+  canary-release:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # pin@v3.5.3
+
+      - name: Setup Go
+        uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # pin@4.1.0
+        with:
+          go-version: '1.20'
+
+      - name: Run unit tests
+        run: make test-coverage
+
+      - name: Build Helm Binaries
+        run: |
+          make build-cross
+          make dist checksum VERSION="canary"
+
+      - name: Upload Binaries
+        uses: bacongobbler/azure-blob-storage-upload@50f7d898b7697e864130ea04c303ca38b5751c50 # pin@3.0.0
+        with:
+          source_dir: _dist
+          container_name: ${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}
+          connection_string: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+          extra_args: '--pattern helm-*'
+          # WARNING: this will overwrite existing blobs in your blob storage
+          overwrite: 'true'
