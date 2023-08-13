@@ -37,6 +37,7 @@ type Rollback struct {
 
 	Version       int
 	Timeout       time.Duration
+	HookTimeout   time.Duration
 	Wait          bool
 	WaitForJobs   bool
 	DisableHooks  bool
@@ -157,7 +158,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 
 	// pre-rollback hooks
 	if !r.DisableHooks {
-		if err := r.cfg.execHook(targetRelease, release.HookPreRollback, r.Timeout); err != nil {
+		if err := r.cfg.execHook(targetRelease, release.HookPreRollback, r.HookTimeout); err != nil {
 			return targetRelease, err
 		}
 	} else {
@@ -224,7 +225,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 
 	// post-rollback hooks
 	if !r.DisableHooks {
-		if err := r.cfg.execHook(targetRelease, release.HookPostRollback, r.Timeout); err != nil {
+		if err := r.cfg.execHook(targetRelease, release.HookPostRollback, r.HookTimeout); err != nil {
 			return targetRelease, err
 		}
 	}
