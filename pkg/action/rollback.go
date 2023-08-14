@@ -156,6 +156,11 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		return targetRelease, errors.Wrap(err, "unable to build kubernetes objects from new release manifest")
 	}
 
+	// using HookTimeout if set otherwise using Timeout
+	if r.HookTimeout == 0*time.Second {
+		r.HookTimeout = r.Timeout
+	}
+
 	// pre-rollback hooks
 	if !r.DisableHooks {
 		if err := r.cfg.execHook(targetRelease, release.HookPreRollback, r.HookTimeout); err != nil {

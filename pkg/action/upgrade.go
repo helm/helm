@@ -390,8 +390,11 @@ func (u *Upgrade) handleContext(ctx context.Context, done chan interface{}, c ch
 	}
 }
 func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *release.Release, current kube.ResourceList, target kube.ResourceList, originalRelease *release.Release) {
+	// using HookTimeout if set otherwise using Timeout
+	if u.HookTimeout == 0*time.Second {
+		u.HookTimeout = u.Timeout
+	}
 	// pre-upgrade hooks
-
 	if !u.DisableHooks {
 		if err := u.cfg.execHook(upgradedRelease, release.HookPreUpgrade, u.HookTimeout); err != nil {
 			u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, fmt.Errorf("pre-upgrade hooks failed: %s", err))

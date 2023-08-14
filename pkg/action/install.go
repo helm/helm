@@ -405,6 +405,11 @@ func (i *Install) isDryRun() bool {
 
 func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, toBeAdopted kube.ResourceList, resources kube.ResourceList) {
 
+	// using HookTimeout if set otherwise using Timeout
+	if i.HookTimeout == 0*time.Second {
+		i.HookTimeout = i.Timeout
+	}
+
 	// pre-install hooks
 	if !i.DisableHooks {
 		if err := i.cfg.execHook(rel, release.HookPreInstall, i.HookTimeout); err != nil {

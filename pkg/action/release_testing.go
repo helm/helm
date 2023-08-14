@@ -94,6 +94,11 @@ func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
 		rel.Hooks = executingHooks
 	}
 
+	// using HookTimeout if set otherwise using Timeout
+	if r.HookTimeout == 0*time.Second {
+		r.HookTimeout = r.Timeout
+	}
+
 	if err := r.cfg.execHook(rel, release.HookTest, r.HookTimeout); err != nil {
 		rel.Hooks = append(skippedHooks, rel.Hooks...)
 		r.cfg.Releases.Update(rel)

@@ -105,7 +105,10 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	rel.Info.Deleted = helmtime.Now()
 	rel.Info.Description = "Deletion in progress (or silently failed)"
 	res := &release.UninstallReleaseResponse{Release: rel}
-
+	// using HookTimeout if set otherwise using Timeout
+	if u.HookTimeout == 0*time.Second {
+		u.HookTimeout = u.Timeout
+	}
 	if !u.DisableHooks {
 		if err := u.cfg.execHook(rel, release.HookPreDelete, u.HookTimeout); err != nil {
 			return res, err
