@@ -48,6 +48,7 @@ type Chart struct {
 	Values map[string]interface{} `json:"values"`
 	// Schema is an optional JSON schema for imposing structure on Values
 	Schema []byte `json:"schema"`
+	Cue []byte `json:"cue"`
 	// Files are miscellaneous files in a chart archive,
 	// e.g. README, LICENSE, etc.
 	Files []*File `json:"files"`
