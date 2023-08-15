@@ -109,6 +109,8 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 			}
 		case f.Name == "values.schema.json":
 			c.Schema = f.Data
+		case f.Name == "values.schema.cue":
+			c.Cue = f.Data
 
 		// Deprecated: requirements.yaml is deprecated use Chart.yaml.
 		// We will handle it for you because we are nice people

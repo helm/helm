@@ -21,11 +21,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
-	"github.com/xeipuuv/gojsonschema"
-	"sigs.k8s.io/yaml"
+	cueyaml "cuelang.org/go/encoding/yaml"
+	"cuelang.org/go/cue/cuecontext"
+	"cuelang.org/go/cue/errors"
 
+	"github.com/xeipuuv/gojsonschema"
 	"helm.sh/helm/v3/pkg/chart"
+	"sigs.k8s.io/yaml"
 )
 
 // ValidateAgainstSchema checks that values does not violate the structure laid out in schema
@@ -33,6 +35,19 @@ func ValidateAgainstSchema(chrt *chart.Chart, values map[string]interface{}) err
 	var sb strings.Builder
 	if chrt.Schema != nil {
 		err := ValidateAgainstSingleSchema(values, chrt.Schema)
+		if err != nil {
+			sb.WriteString(fmt.Sprintf("%s:\n", chrt.Name()))
+			sb.WriteString(err.Error())
+		}
+	}
+	if chrt.Cue != nil {
+		ctx := cuecontext.New()
+		cue := ctx.CompileBytes(chrt.Cue)
+		valuesData, err := yaml.Marshal(values)
+		if err != nil {
+			return err
+		}
+		err = cueyaml.Validate(valuesData, cue)
 		if err != nil {
 			sb.WriteString(fmt.Sprintf("%s:\n", chrt.Name()))
 			sb.WriteString(err.Error())
