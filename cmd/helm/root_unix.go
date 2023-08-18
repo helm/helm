@@ -49,9 +49,6 @@ func checkPerms() {
 	}
 
 	perm := fi.Mode().Perm()
-	if perm&0040 > 0 {
-		warning("Kubernetes configuration file is group-readable. This is insecure. Location: %s", kc)
-	}
 	if perm&0004 > 0 {
 		warning("Kubernetes configuration file is world-readable. This is insecure. Location: %s", kc)
 	}
