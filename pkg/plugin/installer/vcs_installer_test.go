@@ -56,7 +56,7 @@ func TestVCSInstaller(t *testing.T) {
 	}
 
 	source := "https://github.com/adamreese/helm-env"
-	testRepoPath, _ := filepath.Abs("../testdata/plugdir/echo")
+	testRepoPath, _ := filepath.Abs("../testdata/plugdir/good/echo")
 	repo := &testRepo{
 		local: testRepoPath,
 		tags:  []string{"0.1.0", "0.1.1"},

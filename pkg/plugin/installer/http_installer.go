@@ -59,6 +59,18 @@ var Extractors = map[string]Extractor{
 	".tgz":    &TarGzExtractor{},
 }
 
+// Convert a media type to an extractor extension.
+//
+// This should be refactored in Helm 4, combined with the extension-based mechanism.
+func mediaTypeToExtension(mt string) (string, bool) {
+	switch strings.ToLower(mt) {
+	case "application/gzip", "application/x-gzip", "application/x-tgz", "application/x-gtar":
+		return ".tgz", true
+	default:
+		return "", false
+	}
+}
+
 // NewExtractor creates a new extractor matching the source file name
 func NewExtractor(source string) (Extractor, error) {
 	for suffix, extractor := range Extractors {
@@ -150,13 +162,13 @@ func (i HTTPInstaller) Path() string {
 	return helmpath.DataPath("plugins", i.PluginName)
 }
 
-// CleanJoin resolves dest as a subpath of root.
+// cleanJoin resolves dest as a subpath of root.
 //
 // This function runs several security checks on the path, generating an error if
 // the supplied `dest` looks suspicious or would result in dubious behavior on the
 // filesystem.
 //
-// CleanJoin assumes that any attempt by `dest` to break out of the CWD is an attempt
+// cleanJoin assumes that any attempt by `dest` to break out of the CWD is an attempt
 // to be malicious. (If you don't care about this, use the securejoin-filepath library.)
 // It will emit an error if it detects paths that _look_ malicious, operating on the
 // assumption that we don't actually want to do anything with files that already

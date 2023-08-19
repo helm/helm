@@ -18,7 +18,6 @@ package action
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -29,6 +28,7 @@ import (
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/downloader"
 	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/registry"
 	"helm.sh/helm/v3/pkg/repo"
 )
 
@@ -45,11 +45,35 @@ type Pull struct {
 	VerifyLater bool
 	UntarDir    string
 	DestDir     string
+	cfg         *Configuration
 }
 
-// NewPull creates a new Pull object with the given configuration.
+type PullOpt func(*Pull)
+
+func WithConfig(cfg *Configuration) PullOpt {
+	return func(p *Pull) {
+		p.cfg = cfg
+	}
+}
+
+// NewPull creates a new Pull object.
 func NewPull() *Pull {
-	return &Pull{}
+	return NewPullWithOpts()
+}
+
+// NewPullWithOpts creates a new pull, with configuration options.
+func NewPullWithOpts(opts ...PullOpt) *Pull {
+	p := &Pull{}
+	for _, fn := range opts {
+		fn(p)
+	}
+
+	return p
+}
+
+// SetRegistryClient sets the registry client on the pull configuration object.
+func (p *Pull) SetRegistryClient(client *registry.Client) {
+	p.cfg.RegistryClient = client
 }
 
 // Run executes 'helm pull' against the given release.
@@ -63,11 +87,20 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		Getters: getter.All(p.Settings),
 		Options: []getter.Option{
 			getter.WithBasicAuth(p.Username, p.Password),
+			getter.WithPassCredentialsAll(p.PassCredentialsAll),
 			getter.WithTLSClientConfig(p.CertFile, p.KeyFile, p.CaFile),
 			getter.WithInsecureSkipVerifyTLS(p.InsecureSkipTLSverify),
+			getter.WithPlainHTTP(p.PlainHTTP),
 		},
+		RegistryClient:   p.cfg.RegistryClient,
 		RepositoryConfig: p.Settings.RepositoryConfig,
 		RepositoryCache:  p.Settings.RepositoryCache,
+	}
+
+	if registry.IsOCI(chartRef) {
+		c.Options = append(c.Options,
+			getter.WithRegistryClient(p.cfg.RegistryClient))
+		c.RegistryClient = p.cfg.RegistryClient
 	}
 
 	if p.Verify {
@@ -81,7 +114,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 	dest := p.DestDir
 	if p.Untar {
 		var err error
-		dest, err = ioutil.TempDir("", "helm-")
+		dest, err = os.MkdirTemp("", "helm-")
 		if err != nil {
 			return out.String(), errors.Wrap(err, "failed to untar")
 		}
@@ -89,7 +122,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 	}
 
 	if p.RepoURL != "" {
-		chartURL, err := repo.FindChartInAuthRepoURL(p.RepoURL, p.Username, p.Password, chartRef, p.Version, p.CertFile, p.KeyFile, p.CaFile, getter.All(p.Settings))
+		chartURL, err := repo.FindChartInAuthAndTLSAndPassRepoURL(p.RepoURL, p.Username, p.Password, chartRef, p.Version, p.CertFile, p.KeyFile, p.CaFile, p.InsecureSkipTLSverify, p.PassCredentialsAll, getter.All(p.Settings))
 		if err != nil {
 			return out.String(), err
 		}
@@ -123,6 +156,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 			_, chartName := filepath.Split(chartRef)
 			udCheck = filepath.Join(udCheck, chartName)
 		}
+
 		if _, err := os.Stat(udCheck); err != nil {
 			if err := os.MkdirAll(udCheck, 0755); err != nil {
 				return out.String(), errors.Wrap(err, "failed to untar (mkdir)")

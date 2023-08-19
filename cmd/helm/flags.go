@@ -17,13 +17,16 @@ limitations under the License.
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"k8s.io/klog/v2"
 
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli/output"
@@ -33,18 +36,23 @@ import (
 	"helm.sh/helm/v3/pkg/repo"
 )
 
-const outputFlag = "output"
-const postRenderFlag = "post-renderer"
+const (
+	outputFlag         = "output"
+	postRenderFlag     = "post-renderer"
+	postRenderArgsFlag = "post-renderer-args"
+)
 
 func addValueOptionsFlags(f *pflag.FlagSet, v *values.Options) {
 	f.StringSliceVarP(&v.ValueFiles, "values", "f", []string{}, "specify values in a YAML file or a URL (can specify multiple)")
 	f.StringArrayVar(&v.Values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.StringArrayVar(&v.StringValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.StringArrayVar(&v.FileValues, "set-file", []string{}, "set values from respective files specified via the command line (can specify multiple or separate values with commas: key1=path1,key2=path2)")
+	f.StringArrayVar(&v.JSONValues, "set-json", []string{}, "set JSON values on the command line (can specify multiple or separate values with commas: key1=jsonval1,key2=jsonval2)")
+	f.StringArrayVar(&v.LiteralValues, "set-literal", []string{}, "set a literal STRING value on the command line")
 }
 
 func addChartPathOptionsFlags(f *pflag.FlagSet, c *action.ChartPathOptions) {
-	f.StringVar(&c.Version, "version", "", "specify the exact chart version to use. If this is not specified, the latest version is used")
+	f.StringVar(&c.Version, "version", "", "specify a version constraint for the chart version to use. This constraint can be a specific tag (e.g. 1.1.1) or it may reference a valid range (e.g. ^2.0.0). If this is not specified, the latest version is used")
 	f.BoolVar(&c.Verify, "verify", false, "verify the package before using it")
 	f.StringVar(&c.Keyring, "keyring", defaultKeyring(), "location of public keys used for verification")
 	f.StringVar(&c.RepoURL, "repo", "", "chart repository url where to locate the requested chart")
@@ -53,7 +61,9 @@ func addChartPathOptionsFlags(f *pflag.FlagSet, c *action.ChartPathOptions) {
 	f.StringVar(&c.CertFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
 	f.StringVar(&c.KeyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.BoolVar(&c.InsecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the chart download")
+	f.BoolVar(&c.PlainHTTP, "plain-http", false, "use insecure HTTP connections for the chart download")
 	f.StringVar(&c.CaFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+	f.BoolVar(&c.PassCredentialsAll, "pass-credentials", false, "pass credentials to all domains")
 }
 
 // bindOutputFlag will add the output flag to the given command and bind the
@@ -64,12 +74,13 @@ func bindOutputFlag(cmd *cobra.Command, varRef *output.Format) {
 
 	err := cmd.RegisterFlagCompletionFunc(outputFlag, func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		var formatNames []string
-		for _, format := range output.Formats() {
-			if strings.HasPrefix(format, toComplete) {
-				formatNames = append(formatNames, format)
-			}
+		for format, desc := range output.FormatsWithDesc() {
+			formatNames = append(formatNames, fmt.Sprintf("%s\t%s", format, desc))
 		}
-		return formatNames, cobra.ShellCompDirectiveDefault
+
+		// Sort the results to get a deterministic order for the tests
+		sort.Strings(formatNames)
+		return formatNames, cobra.ShellCompDirectiveNoFileComp
 	})
 
 	if err != nil {
@@ -105,31 +116,83 @@ func (o *outputValue) Set(s string) error {
 }
 
 func bindPostRenderFlag(cmd *cobra.Command, varRef *postrender.PostRenderer) {
-	cmd.Flags().Var(&postRenderer{varRef}, postRenderFlag, "the path to an executable to be used for post rendering. If it exists in $PATH, the binary will be used, otherwise it will try to look for the executable at the given path")
+	p := &postRendererOptions{varRef, "", []string{}}
+	cmd.Flags().Var(&postRendererString{p}, postRenderFlag, "the path to an executable to be used for post rendering. If it exists in $PATH, the binary will be used, otherwise it will try to look for the executable at the given path")
+	cmd.Flags().Var(&postRendererArgsSlice{p}, postRenderArgsFlag, "an argument to the post-renderer (can specify multiple)")
 }
 
-type postRenderer struct {
-	renderer *postrender.PostRenderer
+type postRendererOptions struct {
+	renderer   *postrender.PostRenderer
+	binaryPath string
+	args       []string
 }
 
-func (p postRenderer) String() string {
-	return "exec"
+type postRendererString struct {
+	options *postRendererOptions
 }
 
-func (p postRenderer) Type() string {
-	return "postrenderer"
+func (p *postRendererString) String() string {
+	return p.options.binaryPath
 }
 
-func (p postRenderer) Set(s string) error {
-	if s == "" {
+func (p *postRendererString) Type() string {
+	return "postRendererString"
+}
+
+func (p *postRendererString) Set(val string) error {
+	if val == "" {
 		return nil
 	}
-	pr, err := postrender.NewExec(s)
+	p.options.binaryPath = val
+	pr, err := postrender.NewExec(p.options.binaryPath, p.options.args...)
 	if err != nil {
 		return err
 	}
-	*p.renderer = pr
+	*p.options.renderer = pr
 	return nil
+}
+
+type postRendererArgsSlice struct {
+	options *postRendererOptions
+}
+
+func (p *postRendererArgsSlice) String() string {
+	return "[" + strings.Join(p.options.args, ",") + "]"
+}
+
+func (p *postRendererArgsSlice) Type() string {
+	return "postRendererArgsSlice"
+}
+
+func (p *postRendererArgsSlice) Set(val string) error {
+
+	// a post-renderer defined by a user may accept empty arguments
+	p.options.args = append(p.options.args, val)
+
+	if p.options.binaryPath == "" {
+		return nil
+	}
+	// overwrite if already create PostRenderer by `post-renderer` flags
+	pr, err := postrender.NewExec(p.options.binaryPath, p.options.args...)
+	if err != nil {
+		return err
+	}
+	*p.options.renderer = pr
+	return nil
+}
+
+func (p *postRendererArgsSlice) Append(val string) error {
+	p.options.args = append(p.options.args, val)
+	return nil
+}
+
+func (p *postRendererArgsSlice) Replace(val []string) error {
+	p.options.args = val
+	return nil
+}
+
+func (p *postRendererArgsSlice) GetSlice() []string {
+	return p.options.args
 }
 
 func compVersionFlag(chartRef string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -146,12 +209,44 @@ func compVersionFlag(chartRef string, toComplete string) ([]string, cobra.ShellC
 	var versions []string
 	if indexFile, err := repo.LoadIndexFile(path); err == nil {
 		for _, details := range indexFile.Entries[chartName] {
-			version := details.Metadata.Version
-			if strings.HasPrefix(version, toComplete) {
-				versions = append(versions, version)
+			appVersion := details.Metadata.AppVersion
+			appVersionDesc := ""
+			if appVersion != "" {
+				appVersionDesc = fmt.Sprintf("App: %s, ", appVersion)
 			}
+			created := details.Created.Format("January 2, 2006")
+			createdDesc := ""
+			if created != "" {
+				createdDesc = fmt.Sprintf("Created: %s ", created)
+			}
+			deprecated := ""
+			if details.Metadata.Deprecated {
+				deprecated = "(deprecated)"
+			}
+			versions = append(versions, fmt.Sprintf("%s\t%s%s%s", details.Metadata.Version, appVersionDesc, createdDesc, deprecated))
 		}
 	}
 
 	return versions, cobra.ShellCompDirectiveNoFileComp
+}
+
+// addKlogFlags adds flags from k8s.io/klog
+// marks the flags as hidden to avoid polluting the help text
+func addKlogFlags(fs *pflag.FlagSet) {
+	local := flag.NewFlagSet("klog", flag.ExitOnError)
+	klog.InitFlags(local)
+	local.VisitAll(func(fl *flag.Flag) {
+		fl.Name = normalize(fl.Name)
+		if fs.Lookup(fl.Name) != nil {
+			return
+		}
+		newflag := pflag.PFlagFromGoFlag(fl)
+		newflag.Hidden = true
+		fs.AddFlag(newflag)
+	})
+}
+
+// normalize replaces underscores with hyphens
+func normalize(s string) string {
+	return strings.ReplaceAll(s, "_", "-")
 }

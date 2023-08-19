@@ -45,7 +45,7 @@ func newGetAllCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if len(args) != 0 {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
-			return compListReleases(toComplete, cfg)
+			return compListReleases(toComplete, args, cfg)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			res, err := client.Run(args[0])
@@ -59,7 +59,7 @@ func newGetAllCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return tpl(template, data, out)
 			}
 
-			return output.Table.Write(out, &statusPrinter{res, true, false})
+			return output.Table.Write(out, &statusPrinter{res, true, false, false})
 		},
 	}
 

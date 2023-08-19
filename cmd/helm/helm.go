@@ -17,16 +17,13 @@ limitations under the License.
 package main // import "helm.sh/helm/v3/cmd/helm"
 
 import (
-	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
-	"k8s.io/klog"
 	"sigs.k8s.io/yaml"
 
 	// Import to initialize client auth plugins.
@@ -34,14 +31,11 @@ import (
 
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/gates"
+	"helm.sh/helm/v3/pkg/kube"
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage/driver"
 )
-
-// FeatureGateOCI is the feature gate for checking if `helm chart` and `helm registry` commands should work
-const FeatureGateOCI = gates.Gate("HELM_EXPERIMENTAL_OCI")
 
 var settings = cli.New()
 
@@ -61,21 +55,17 @@ func warning(format string, v ...interface{}) {
 	fmt.Fprintf(os.Stderr, format, v...)
 }
 
-func initKubeLogs() {
-	pflag.CommandLine.SetNormalizeFunc(wordSepNormalizeFunc)
-	gofs := flag.NewFlagSet("klog", flag.ExitOnError)
-	klog.InitFlags(gofs)
-	pflag.CommandLine.AddGoFlagSet(gofs)
-	pflag.CommandLine.Set("logtostderr", "true")
-}
-
 func main() {
-	initKubeLogs()
+	// Setting the name of the app for managedFields in the Kubernetes client.
+	// It is set here to the full name of "helm" so that renaming of helm to
+	// another name (e.g., helm2 or helm3) does not change the name of the
+	// manager as picked up by the automated name detection.
+	kube.ManagedFieldsManager = "helm"
 
 	actionConfig := new(action.Configuration)
 	cmd, err := newRootCmd(actionConfig, os.Stdout, os.Args[1:])
 	if err != nil {
-		debug("%+v", err)
+		warning("%+v", err)
 		os.Exit(1)
 	}
 
@@ -101,20 +91,6 @@ func main() {
 	}
 }
 
-// wordSepNormalizeFunc changes all flags that contain "_" separators
-func wordSepNormalizeFunc(f *pflag.FlagSet, name string) pflag.NormalizedName {
-	return pflag.NormalizedName(strings.ReplaceAll(name, "_", "-"))
-}
-
-func checkOCIFeatureGate() func(_ *cobra.Command, _ []string) error {
-	return func(_ *cobra.Command, _ []string) error {
-		if !FeatureGateOCI.IsEnabled() {
-			return FeatureGateOCI.Error()
-		}
-		return nil
-	}
-}
-
 // This function loads releases into the memory storage if the
 // environment variable is properly set.
 func loadReleasesInMemory(actionConfig *action.Configuration) {
@@ -130,10 +106,10 @@ func loadReleasesInMemory(actionConfig *action.Configuration) {
 		return
 	}
 
-	actionConfig.KubeClient = &kubefake.PrintingKubeClient{Out: ioutil.Discard}
+	actionConfig.KubeClient = &kubefake.PrintingKubeClient{Out: io.Discard}
 
 	for _, path := range filePaths {
-		b, err := ioutil.ReadFile(path)
+		b, err := os.ReadFile(path)
 		if err != nil {
 			log.Fatal("Unable to read memory driver data", err)
 		}

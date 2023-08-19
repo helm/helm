@@ -14,8 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package monocular contains the logic for interacting with monocular instances
-// like the Helm Hub.
+// Package monocular contains the logic for interacting with a Monocular
+// compatible search API endpoint. For example, as implemented by the Artifact
+// Hub.
 //
-// This is a library for interacting with monocular
+// This is a library for interacting with a monocular compatible search API
 package monocular

@@ -17,7 +17,6 @@ limitations under the License.
 package rules
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -118,10 +117,57 @@ func TestValidateValuesFileSchemaOverrides(t *testing.T) {
 	}
 }
 
+func TestValidateValuesFile(t *testing.T) {
+	tests := []struct {
+		name         string
+		yaml         string
+		overrides    map[string]interface{}
+		errorMessage string
+	}{
+		{
+			name:      "value added",
+			yaml:      "username: admin",
+			overrides: map[string]interface{}{"password": "swordfish"},
+		},
+		{
+			name:         "value not overridden",
+			yaml:         "username: admin\npassword:",
+			overrides:    map[string]interface{}{"username": "anotherUser"},
+			errorMessage: "Expected: string, given: null",
+		},
+		{
+			name:      "value overridden",
+			yaml:      "username: admin\npassword:",
+			overrides: map[string]interface{}{"username": "anotherUser", "password": "swordfish"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpdir := ensure.TempFile(t, "values.yaml", []byte(tt.yaml))
+			defer os.RemoveAll(tmpdir)
+			createTestingSchema(t, tmpdir)
+
+			valfile := filepath.Join(tmpdir, "values.yaml")
+
+			err := validateValuesFile(valfile, tt.overrides)
+
+			switch {
+			case err != nil && tt.errorMessage == "":
+				t.Errorf("Failed validation with %s", err)
+			case err == nil && tt.errorMessage != "":
+				t.Error("expected values file to fail parsing")
+			case err != nil && tt.errorMessage != "":
+				assert.Contains(t, err.Error(), tt.errorMessage, "Failed with unexpected error")
+			}
+		})
+	}
+}
+
 func createTestingSchema(t *testing.T, dir string) string {
 	t.Helper()
 	schemafile := filepath.Join(dir, "values.schema.json")
-	if err := ioutil.WriteFile(schemafile, []byte(testSchema), 0700); err != nil {
+	if err := os.WriteFile(schemafile, []byte(testSchema), 0700); err != nil {
 		t.Fatalf("Failed to write schema to tmpdir: %s", err)
 	}
 	return schemafile

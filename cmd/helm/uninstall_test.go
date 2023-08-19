@@ -58,6 +58,12 @@ func TestUninstall(t *testing.T) {
 			rels:   []*release.Release{release.Mock(&release.MockReleaseOptions{Name: "aeneas"})},
 		},
 		{
+			name:   "wait",
+			cmd:    "uninstall aeneas --wait",
+			golden: "output/uninstall-wait.txt",
+			rels:   []*release.Release{release.Mock(&release.MockReleaseOptions{Name: "aeneas"})},
+		},
+		{
 			name:      "uninstall without release",
 			cmd:       "uninstall",
 			golden:    "output/uninstall-no-args.txt",
@@ -65,6 +71,10 @@ func TestUninstall(t *testing.T) {
 		},
 	}
 	runTestCmd(t, tests)
+}
+
+func TestUninstallCompletion(t *testing.T) {
+	checkReleaseCompletion(t, "uninstall", true)
 }
 
 func TestUninstallFileCompletion(t *testing.T) {

@@ -17,28 +17,108 @@ limitations under the License.
 package action
 
 import (
+	"os"
+	"path"
 	"testing"
 
-	"helm.sh/helm/v3/pkg/chart"
+	"github.com/Masterminds/semver/v3"
+
+	"helm.sh/helm/v3/internal/test/ensure"
 )
 
-func TestSetVersion(t *testing.T) {
-	c := &chart.Chart{
-		Metadata: &chart.Metadata{
-			Name:    "prow",
-			Version: "0.0.1",
+func TestPassphraseFileFetcher(t *testing.T) {
+	secret := "secret"
+	directory := ensure.TempFile(t, "passphrase-file", []byte(secret))
+	defer os.RemoveAll(directory)
+
+	fetcher, err := passphraseFileFetcher(path.Join(directory, "passphrase-file"), nil)
+	if err != nil {
+		t.Fatal("Unable to create passphraseFileFetcher", err)
+	}
+
+	passphrase, err := fetcher("key")
+	if err != nil {
+		t.Fatal("Unable to fetch passphrase")
+	}
+
+	if string(passphrase) != secret {
+		t.Errorf("Expected %s got %s", secret, string(passphrase))
+	}
+}
+
+func TestPassphraseFileFetcher_WithLineBreak(t *testing.T) {
+	secret := "secret"
+	directory := ensure.TempFile(t, "passphrase-file", []byte(secret+"\n\n."))
+	defer os.RemoveAll(directory)
+
+	fetcher, err := passphraseFileFetcher(path.Join(directory, "passphrase-file"), nil)
+	if err != nil {
+		t.Fatal("Unable to create passphraseFileFetcher", err)
+	}
+
+	passphrase, err := fetcher("key")
+	if err != nil {
+		t.Fatal("Unable to fetch passphrase")
+	}
+
+	if string(passphrase) != secret {
+		t.Errorf("Expected %s got %s", secret, string(passphrase))
+	}
+}
+
+func TestPassphraseFileFetcher_WithInvalidStdin(t *testing.T) {
+	directory := ensure.TempDir(t)
+	defer os.RemoveAll(directory)
+
+	stdin, err := os.CreateTemp(directory, "non-existing")
+	if err != nil {
+		t.Fatal("Unable to create test file", err)
+	}
+
+	if _, err := passphraseFileFetcher("-", stdin); err == nil {
+		t.Error("Expected passphraseFileFetcher returning an error")
+	}
+}
+
+func TestValidateVersion(t *testing.T) {
+	type args struct {
+		ver string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr error
+	}{
+		{
+			"normal semver version",
+			args{
+				ver: "1.1.3-23658",
+			},
+			nil,
+		},
+		{
+			"Pre version number starting with 0",
+			args{
+				ver: "1.1.3-023658",
+			},
+			semver.ErrSegmentStartsZero,
+		},
+		{
+			"Invalid version number",
+			args{
+				ver: "1.1.3.sd.023658",
+			},
+			semver.ErrInvalidSemVer,
 		},
 	}
-	expect := "1.2.3-beta.5"
-	if err := setVersion(c, expect); err != nil {
-		t.Fatal(err)
-	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := validateVersion(tt.args.ver); err != nil {
+				if err != tt.wantErr {
+					t.Errorf("Expected {%v}, got {%v}", tt.wantErr, err)
+				}
 
-	if c.Metadata.Version != expect {
-		t.Errorf("Expected %q, got %q", expect, c.Metadata.Version)
-	}
-
-	if err := setVersion(c, "monkeyface"); err == nil {
-		t.Error("Expected bogus version to return an error.")
+			}
+		})
 	}
 }

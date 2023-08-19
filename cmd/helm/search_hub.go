@@ -30,29 +30,38 @@ import (
 )
 
 const searchHubDesc = `
-Search the Helm Hub or an instance of Monocular for Helm charts.
+Search for Helm charts in the Artifact Hub or your own hub instance.
 
-The Helm Hub provides a centralized search for publicly available distributed
-charts. It is maintained by the Helm project. It can be visited at
-https://hub.helm.sh
+Artifact Hub is a web-based application that enables finding, installing, and
+publishing packages and configurations for CNCF projects, including publicly
+available distributed charts Helm charts. It is a Cloud Native Computing
+Foundation sandbox project. You can browse the hub at https://artifacthub.io/
 
-Monocular is a web-based application that enables the search and discovery of
-charts from multiple Helm Chart repositories. It is the codebase that powers the
-Helm Hub. You can find it at https://github.com/helm/monocular
+The [KEYWORD] argument accepts either a keyword string, or quoted string of rich
+query options. For rich query options documentation, see
+https://artifacthub.github.io/hub/api/?urls.primaryName=Monocular%20compatible%20search%20API#/Monocular/get_api_chartsvc_v1_charts_search
+
+Previous versions of Helm used an instance of Monocular as the default
+'endpoint', so for backwards compatibility Artifact Hub is compatible with the
+Monocular search API. Similarly, when setting the 'endpoint' flag, the specified
+endpoint must also be implement a Monocular compatible search API endpoint.
+Note that when specifying a Monocular instance as the 'endpoint', rich queries
+are not supported. For API details, see https://github.com/helm/monocular
 `
 
 type searchHubOptions struct {
 	searchEndpoint string
 	maxColWidth    uint
 	outputFormat   output.Format
+	listRepoURL    bool
 }
 
 func newSearchHubCmd(out io.Writer) *cobra.Command {
 	o := &searchHubOptions{}
 
 	cmd := &cobra.Command{
-		Use:   "hub [keyword]",
-		Short: "search for charts in the Helm Hub or an instance of Monocular",
+		Use:   "hub [KEYWORD]",
+		Short: "search for charts in the Artifact Hub or your own hub instance",
 		Long:  searchHubDesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return o.run(out, args)
@@ -60,8 +69,10 @@ func newSearchHubCmd(out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.StringVar(&o.searchEndpoint, "endpoint", "https://hub.helm.sh", "monocular instance to query for charts")
+	f.StringVar(&o.searchEndpoint, "endpoint", "https://hub.helm.sh", "Hub instance to query for charts")
 	f.UintVar(&o.maxColWidth, "max-col-width", 50, "maximum column width for output table")
+	f.BoolVar(&o.listRepoURL, "list-repo-url", false, "print charts repository URL")
+
 	bindOutputFlag(cmd, &o.outputFormat)
 
 	return cmd
@@ -80,28 +91,42 @@ func (o *searchHubOptions) run(out io.Writer, args []string) error {
 		return fmt.Errorf("unable to perform search against %q", o.searchEndpoint)
 	}
 
-	return o.outputFormat.Write(out, newHubSearchWriter(results, o.searchEndpoint, o.maxColWidth))
+	return o.outputFormat.Write(out, newHubSearchWriter(results, o.searchEndpoint, o.maxColWidth, o.listRepoURL))
+}
+
+type hubChartRepo struct {
+	URL  string `json:"url"`
+	Name string `json:"name"`
 }
 
 type hubChartElement struct {
-	URL         string `json:"url"`
-	Version     string `json:"version"`
-	AppVersion  string `json:"app_version"`
-	Description string `json:"description"`
+	URL         string       `json:"url"`
+	Version     string       `json:"version"`
+	AppVersion  string       `json:"app_version"`
+	Description string       `json:"description"`
+	Repository  hubChartRepo `json:"repository"`
 }
 
 type hubSearchWriter struct {
 	elements    []hubChartElement
 	columnWidth uint
+	listRepoURL bool
 }
 
-func newHubSearchWriter(results []monocular.SearchResult, endpoint string, columnWidth uint) *hubSearchWriter {
+func newHubSearchWriter(results []monocular.SearchResult, endpoint string, columnWidth uint, listRepoURL bool) *hubSearchWriter {
 	var elements []hubChartElement
 	for _, r := range results {
+		// Backwards compatibility for Monocular
 		url := endpoint + "/charts/" + r.ID
-		elements = append(elements, hubChartElement{url, r.Relationships.LatestChartVersion.Data.Version, r.Relationships.LatestChartVersion.Data.AppVersion, r.Attributes.Description})
+
+		// Check for artifactHub compatibility
+		if r.ArtifactHub.PackageURL != "" {
+			url = r.ArtifactHub.PackageURL
+		}
+
+		elements = append(elements, hubChartElement{url, r.Relationships.LatestChartVersion.Data.Version, r.Relationships.LatestChartVersion.Data.AppVersion, r.Attributes.Description, hubChartRepo{URL: r.Attributes.Repo.URL, Name: r.Attributes.Repo.Name}})
 	}
-	return &hubSearchWriter{elements, columnWidth}
+	return &hubSearchWriter{elements, columnWidth, listRepoURL}
 }
 
 func (h *hubSearchWriter) WriteTable(out io.Writer) error {
@@ -114,9 +139,19 @@ func (h *hubSearchWriter) WriteTable(out io.Writer) error {
 	}
 	table := uitable.New()
 	table.MaxColWidth = h.columnWidth
-	table.AddRow("URL", "CHART VERSION", "APP VERSION", "DESCRIPTION")
+
+	if h.listRepoURL {
+		table.AddRow("URL", "CHART VERSION", "APP VERSION", "DESCRIPTION", "REPO URL")
+	} else {
+		table.AddRow("URL", "CHART VERSION", "APP VERSION", "DESCRIPTION")
+	}
+
 	for _, r := range h.elements {
-		table.AddRow(r.URL, r.Version, r.AppVersion, r.Description)
+		if h.listRepoURL {
+			table.AddRow(r.URL, r.Version, r.AppVersion, r.Description, r.Repository.URL)
+		} else {
+			table.AddRow(r.URL, r.Version, r.AppVersion, r.Description)
+		}
 	}
 	return output.EncodeTable(out, table)
 }
@@ -134,7 +169,7 @@ func (h *hubSearchWriter) encodeByFormat(out io.Writer, format output.Format) er
 	chartList := make([]hubChartElement, 0, len(h.elements))
 
 	for _, r := range h.elements {
-		chartList = append(chartList, hubChartElement{r.URL, r.Version, r.AppVersion, r.Description})
+		chartList = append(chartList, hubChartElement{r.URL, r.Version, r.AppVersion, r.Description, r.Repository})
 	}
 
 	switch format {

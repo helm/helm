@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/gosuri/uitable"
@@ -36,11 +37,14 @@ type Dependency struct {
 	Verify      bool
 	Keyring     string
 	SkipRefresh bool
+	ColumnWidth uint
 }
 
 // NewDependency creates a new Dependency object with the given configuration.
 func NewDependency() *Dependency {
-	return &Dependency{}
+	return &Dependency{
+		ColumnWidth: 80,
+	}
 }
 
 // List executes 'helm dependency list'.
@@ -61,13 +65,14 @@ func (d *Dependency) List(chartpath string, out io.Writer) error {
 	return nil
 }
 
+// dependencyStatus returns a string describing the status of a dependency viz a viz the parent chart.
 func (d *Dependency) dependencyStatus(chartpath string, dep *chart.Dependency, parent *chart.Chart) string {
 	filename := fmt.Sprintf("%s-%s.tgz", dep.Name, "*")
 
 	// If a chart is unpacked, this will check the unpacked chart's `charts/` directory for tarballs.
 	// Technically, this is COMPLETELY unnecessary, and should be removed in Helm 4. It is here
 	// to preserved backward compatibility. In Helm 2/3, there is a "difference" between
-	// the tgz version (which outputs "ok" if it unpacks) and the loaded version (which outouts
+	// the tgz version (which outputs "ok" if it unpacks) and the loaded version (which outputs
 	// "unpacked"). Early in Helm 2's history, this would have made a difference. But it no
 	// longer does. However, since this code shipped with Helm 3, the output must remain stable
 	// until Helm 4.
@@ -75,35 +80,40 @@ func (d *Dependency) dependencyStatus(chartpath string, dep *chart.Dependency, p
 	case err != nil:
 		return "bad pattern"
 	case len(archives) > 1:
-		return "too many matches"
+		// See if the second part is a SemVer
+		found := []string{}
+		for _, arc := range archives {
+			// we need to trip the prefix dirs and the extension off.
+			filename = strings.TrimSuffix(filepath.Base(arc), ".tgz")
+			maybeVersion := strings.TrimPrefix(filename, fmt.Sprintf("%s-", dep.Name))
+
+			if _, err := semver.StrictNewVersion(maybeVersion); err == nil {
+				// If the version parsed without an error, it is possibly a valid
+				// version.
+				found = append(found, arc)
+			}
+		}
+
+		if l := len(found); l == 1 {
+			// If we get here, we do the same thing as in len(archives) == 1.
+			if r := statArchiveForStatus(found[0], dep); r != "" {
+				return r
+			}
+
+			// Fall through and look for directories
+		} else if l > 1 {
+			return "too many matches"
+		}
+
+		// The sanest thing to do here is to fall through and see if we have any directory
+		// matches.
+
 	case len(archives) == 1:
 		archive := archives[0]
-		if _, err := os.Stat(archive); err == nil {
-			c, err := loader.Load(archive)
-			if err != nil {
-				return "corrupt"
-			}
-			if c.Name() != dep.Name {
-				return "misnamed"
-			}
-
-			if c.Metadata.Version != dep.Version {
-				constraint, err := semver.NewConstraint(dep.Version)
-				if err != nil {
-					return "invalid version"
-				}
-
-				v, err := semver.NewVersion(c.Metadata.Version)
-				if err != nil {
-					return "invalid version"
-				}
-
-				if !constraint.Check(v) {
-					return "wrong version"
-				}
-			}
-			return "ok"
+		if r := statArchiveForStatus(archive, dep); r != "" {
+			return r
 		}
+
 	}
 	// End unnecessary code.
 
@@ -137,10 +147,44 @@ func (d *Dependency) dependencyStatus(chartpath string, dep *chart.Dependency, p
 	return "unpacked"
 }
 
+// stat an archive and return a message if the stat is successful
+//
+// This is a refactor of the code originally in dependencyStatus. It is here to
+// support legacy behavior, and should be removed in Helm 4.
+func statArchiveForStatus(archive string, dep *chart.Dependency) string {
+	if _, err := os.Stat(archive); err == nil {
+		c, err := loader.Load(archive)
+		if err != nil {
+			return "corrupt"
+		}
+		if c.Name() != dep.Name {
+			return "misnamed"
+		}
+
+		if c.Metadata.Version != dep.Version {
+			constraint, err := semver.NewConstraint(dep.Version)
+			if err != nil {
+				return "invalid version"
+			}
+
+			v, err := semver.NewVersion(c.Metadata.Version)
+			if err != nil {
+				return "invalid version"
+			}
+
+			if !constraint.Check(v) {
+				return "wrong version"
+			}
+		}
+		return "ok"
+	}
+	return ""
+}
+
 // printDependencies prints all of the dependencies in the yaml file.
 func (d *Dependency) printDependencies(chartpath string, out io.Writer, c *chart.Chart) {
 	table := uitable.New()
-	table.MaxColWidth = 80
+	table.MaxColWidth = d.ColumnWidth
 	table.AddRow("NAME", "VERSION", "REPOSITORY", "STATUS")
 	for _, row := range c.Metadata.Dependencies {
 		table.AddRow(row.Name, row.Version, row.Repository, d.dependencyStatus(chartpath, row, c))
@@ -149,7 +193,7 @@ func (d *Dependency) printDependencies(chartpath string, out io.Writer, c *chart
 }
 
 // printMissing prints warnings about charts that are present on disk, but are
-// not in Charts.yaml.
+// not in Chart.yaml.
 func (d *Dependency) printMissing(chartpath string, out io.Writer, reqs []*chart.Dependency) {
 	folder := filepath.Join(chartpath, "charts/*")
 	files, err := filepath.Glob(folder)

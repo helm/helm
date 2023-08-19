@@ -57,8 +57,8 @@ func TestAll(t *testing.T) {
 	env.PluginsDirectory = pluginDir
 
 	all := All(env)
-	if len(all) != 3 {
-		t.Errorf("expected 3 providers (default plus two plugins), got %d", len(all))
+	if len(all) != 4 {
+		t.Errorf("expected 4 providers (default plus three plugins), got %d", len(all))
 	}
 
 	if _, err := all.ByScheme("test2"); err != nil {

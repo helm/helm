@@ -18,11 +18,13 @@ package getter
 
 import (
 	"bytes"
+	"net/http"
 	"time"
 
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v3/pkg/registry"
 )
 
 // options are generic parameters to be provided to the getter during instantiation.
@@ -33,11 +35,17 @@ type options struct {
 	certFile              string
 	keyFile               string
 	caFile                string
+	unTar                 bool
 	insecureSkipVerifyTLS bool
+	plainHTTP             bool
 	username              string
 	password              string
+	passCredentialsAll    bool
 	userAgent             string
+	version               string
+	registryClient        *registry.Client
 	timeout               time.Duration
+	transport             *http.Transport
 }
 
 // Option allows specifying various settings configurable by the user for overriding the defaults
@@ -57,6 +65,12 @@ func WithBasicAuth(username, password string) Option {
 	return func(opts *options) {
 		opts.username = username
 		opts.password = password
+	}
+}
+
+func WithPassCredentialsAll(pass bool) Option {
+	return func(opts *options) {
+		opts.passCredentialsAll = pass
 	}
 }
 
@@ -83,10 +97,41 @@ func WithTLSClientConfig(certFile, keyFile, caFile string) Option {
 	}
 }
 
+func WithPlainHTTP(plainHTTP bool) Option {
+	return func(opts *options) {
+		opts.plainHTTP = plainHTTP
+	}
+}
+
 // WithTimeout sets the timeout for requests
 func WithTimeout(timeout time.Duration) Option {
 	return func(opts *options) {
 		opts.timeout = timeout
+	}
+}
+
+func WithTagName(tagname string) Option {
+	return func(opts *options) {
+		opts.version = tagname
+	}
+}
+
+func WithRegistryClient(client *registry.Client) Option {
+	return func(opts *options) {
+		opts.registryClient = client
+	}
+}
+
+func WithUntar() Option {
+	return func(opts *options) {
+		opts.unTar = true
+	}
+}
+
+// WithTransport sets the http.Transport to allow overwriting the HTTPGetter default.
+func WithTransport(transport *http.Transport) Option {
+	return func(opts *options) {
+		opts.transport = transport
 	}
 }
 
@@ -134,16 +179,33 @@ func (p Providers) ByScheme(scheme string) (Getter, error) {
 	return nil, errors.Errorf("scheme %q not supported", scheme)
 }
 
+const (
+	// The cost timeout references curl's default connection timeout.
+	// https://github.com/curl/curl/blob/master/lib/connect.h#L40C21-L40C21
+	// The helm commands are usually executed manually. Considering the acceptable waiting time, we reduced the entire request time to 120s.
+	DefaultHTTPTimeout = 120
+)
+
+var defaultOptions = []Option{WithTimeout(time.Second * DefaultHTTPTimeout)}
+
 var httpProvider = Provider{
 	Schemes: []string{"http", "https"},
-	New:     NewHTTPGetter,
+	New: func(options ...Option) (Getter, error) {
+		options = append(options, defaultOptions...)
+		return NewHTTPGetter(options...)
+	},
+}
+
+var ociProvider = Provider{
+	Schemes: []string{registry.OCIScheme},
+	New:     NewOCIGetter,
 }
 
 // All finds all of the registered getters as a list of Provider instances.
 // Currently, the built-in getters and the discovered plugins with downloader
 // notations are collected.
 func All(settings *cli.EnvSettings) Providers {
-	result := Providers{httpProvider}
+	result := Providers{httpProvider, ociProvider}
 	pluginDownloaders, _ := collectPlugins(settings)
 	result = append(result, pluginDownloaders...)
 	return result

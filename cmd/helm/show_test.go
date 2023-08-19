@@ -26,7 +26,7 @@ import (
 )
 
 func TestShowPreReleaseChart(t *testing.T) {
-	srv, err := repotest.NewTempServer("testdata/testcharts/*.tgz*")
+	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/testcharts/*.tgz*")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +47,14 @@ func TestShowPreReleaseChart(t *testing.T) {
 			name:        "show pre-release chart",
 			args:        "test/pre-release-chart",
 			fail:        true,
-			expectedErr: "failed to download \"test/pre-release-chart\"",
+			expectedErr: "chart \"pre-release-chart\" matching  not found in test index. (try 'helm repo update'): no chart version found for pre-release-chart-",
+		},
+		{
+			name:        "show pre-release chart",
+			args:        "test/pre-release-chart",
+			fail:        true,
+			flags:       "--version 1.0.0",
+			expectedErr: "chart \"pre-release-chart\" matching 1.0.0 not found in test index. (try 'helm repo update'): no chart version found for pre-release-chart-1.0.0",
 		},
 		{
 			name:  "show pre-release chart with 'devel' flag",
@@ -90,6 +97,10 @@ func TestShowVersionCompletion(t *testing.T) {
 	tests := []cmdTestCase{{
 		name:   "completion for show version flag",
 		cmd:    fmt.Sprintf("%s __complete show chart testing/alpine --version ''", repoSetup),
+		golden: "output/version-comp.txt",
+	}, {
+		name:   "completion for show version flag, no filter",
+		cmd:    fmt.Sprintf("%s __complete show chart testing/alpine --version 0.3", repoSetup),
 		golden: "output/version-comp.txt",
 	}, {
 		name:   "completion for show version flag too few args",
@@ -137,4 +148,8 @@ func TestShowReadmeFileCompletion(t *testing.T) {
 
 func TestShowValuesFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "show values", true)
+}
+
+func TestShowCRDsFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "show crds", true)
 }

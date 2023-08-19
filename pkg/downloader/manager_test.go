@@ -17,11 +17,13 @@ package downloader
 
 import (
 	"bytes"
+	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
 
 	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/repo/repotest"
@@ -52,6 +54,7 @@ func TestNormalizeURL(t *testing.T) {
 	}{
 		{name: "basic URL", base: "https://example.com", path: "http://helm.sh/foo", expect: "http://helm.sh/foo"},
 		{name: "relative path", base: "https://helm.sh/charts", path: "foo", expect: "https://helm.sh/charts/foo"},
+		{name: "Encoded path", base: "https://helm.sh/a%2Fb/charts", path: "foo", expect: "https://helm.sh/a%2Fb/charts/foo"},
 	}
 
 	for _, tt := range tests {
@@ -81,11 +84,12 @@ func TestFindChartURL(t *testing.T) {
 	version := "0.1.0"
 	repoURL := "http://example.com/charts"
 
-	churl, username, password, err := m.findChartURL(name, version, repoURL, repos)
+	churl, username, password, insecureSkipTLSVerify, passcredentialsall, _, _, _, err := m.findChartURL(name, version, repoURL, repos)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if churl != "https://kubernetes-charts.storage.googleapis.com/alpine-0.1.0.tgz" {
+
+	if churl != "https://charts.helm.sh/stable/alpine-0.1.0.tgz" {
 		t.Errorf("Unexpected URL %q", churl)
 	}
 	if username != "" {
@@ -93,6 +97,37 @@ func TestFindChartURL(t *testing.T) {
 	}
 	if password != "" {
 		t.Errorf("Unexpected password %q", password)
+	}
+	if passcredentialsall != false {
+		t.Errorf("Unexpected passcredentialsall %t", passcredentialsall)
+	}
+	if insecureSkipTLSVerify {
+		t.Errorf("Unexpected insecureSkipTLSVerify %t", insecureSkipTLSVerify)
+	}
+
+	name = "tlsfoo"
+	version = "1.2.3"
+	repoURL = "https://example-https-insecureskiptlsverify.com"
+
+	churl, username, password, insecureSkipTLSVerify, passcredentialsall, _, _, _, err = m.findChartURL(name, version, repoURL, repos)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !insecureSkipTLSVerify {
+		t.Errorf("Unexpected insecureSkipTLSVerify %t", insecureSkipTLSVerify)
+	}
+	if churl != "https://example.com/tlsfoo-1.2.3.tgz" {
+		t.Errorf("Unexpected URL %q", churl)
+	}
+	if username != "" {
+		t.Errorf("Unexpected username %q", username)
+	}
+	if password != "" {
+		t.Errorf("Unexpected password %q", password)
+	}
+	if passcredentialsall != false {
+		t.Errorf("Unexpected passcredentialsall %t", passcredentialsall)
 	}
 }
 
@@ -181,9 +216,57 @@ func TestGetRepoNames(t *testing.T) {
 	}
 }
 
+func TestDownloadAll(t *testing.T) {
+	chartPath := t.TempDir()
+	m := &Manager{
+		Out:              new(bytes.Buffer),
+		RepositoryConfig: repoConfig,
+		RepositoryCache:  repoCache,
+		ChartPath:        chartPath,
+	}
+	signtest, err := loader.LoadDir(filepath.Join("testdata", "signtest"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := chartutil.SaveDir(signtest, filepath.Join(chartPath, "testdata")); err != nil {
+		t.Fatal(err)
+	}
+
+	local, err := loader.LoadDir(filepath.Join("testdata", "local-subchart"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := chartutil.SaveDir(local, filepath.Join(chartPath, "charts")); err != nil {
+		t.Fatal(err)
+	}
+
+	signDep := &chart.Dependency{
+		Name:       signtest.Name(),
+		Repository: "file://./testdata/signtest",
+		Version:    signtest.Metadata.Version,
+	}
+	localDep := &chart.Dependency{
+		Name:       local.Name(),
+		Repository: "",
+		Version:    local.Metadata.Version,
+	}
+
+	// create a 'tmpcharts' directory to test #5567
+	if err := os.MkdirAll(filepath.Join(chartPath, "tmpcharts"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.downloadAll([]*chart.Dependency{signDep, localDep}); err != nil {
+		t.Error(err)
+	}
+
+	if _, err := os.Stat(filepath.Join(chartPath, "charts", "signtest-0.1.0.tgz")); os.IsNotExist(err) {
+		t.Error(err)
+	}
+}
+
 func TestUpdateBeforeBuild(t *testing.T) {
 	// Set up a fake repo
-	srv, err := repotest.NewTempServer("testdata/*.tgz*")
+	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -249,6 +332,76 @@ func TestUpdateBeforeBuild(t *testing.T) {
 	}
 }
 
+// TestUpdateWithNoRepo is for the case of a dependency that has no repo listed.
+// This happens when the dependency is in the charts directory and does not need
+// to be fetched.
+func TestUpdateWithNoRepo(t *testing.T) {
+	// Set up a fake repo
+	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer srv.Stop()
+	if err := srv.LinkIndices(); err != nil {
+		t.Fatal(err)
+	}
+	dir := func(p ...string) string {
+		return filepath.Join(append([]string{srv.Root()}, p...)...)
+	}
+
+	// Setup the dependent chart
+	d := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:       "dep-chart",
+			Version:    "0.1.0",
+			APIVersion: "v1",
+		},
+	}
+
+	// Save a chart with the dependency
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:       "with-dependency",
+			Version:    "0.1.0",
+			APIVersion: "v2",
+			Dependencies: []*chart.Dependency{{
+				Name:    d.Metadata.Name,
+				Version: "0.1.0",
+			}},
+		},
+	}
+	if err := chartutil.SaveDir(c, dir()); err != nil {
+		t.Fatal(err)
+	}
+
+	// Save dependent chart into the parents charts directory. If the chart is
+	// not in the charts directory Helm will return an error that it is not
+	// found.
+	if err := chartutil.SaveDir(d, dir(c.Metadata.Name, "charts")); err != nil {
+		t.Fatal(err)
+	}
+
+	// Set-up a manager
+	b := bytes.NewBuffer(nil)
+	g := getter.Providers{getter.Provider{
+		Schemes: []string{"http", "https"},
+		New:     getter.NewHTTPGetter,
+	}}
+	m := &Manager{
+		ChartPath:        dir(c.Metadata.Name),
+		Out:              b,
+		Getters:          g,
+		RepositoryConfig: dir("repositories.yaml"),
+		RepositoryCache:  dir(),
+	}
+
+	// Test the update
+	err = m.Update()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 // This function is the skeleton test code of failing tests for #6416 and #6871 and bugs due to #5874.
 //
 // This function is used by below tests that ensures success of build operation
@@ -257,7 +410,7 @@ func TestUpdateBeforeBuild(t *testing.T) {
 // If each of these main fields (name, version, repository) is not supplied by dep param, default value will be used.
 func checkBuildWithOptionalFields(t *testing.T, chartName string, dep chart.Dependency) {
 	// Set up a fake repo
-	srv, err := repotest.NewTempServer("testdata/*.tgz*")
+	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")
 	if err != nil {
 		t.Fatal(err)
 	}

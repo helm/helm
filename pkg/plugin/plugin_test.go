@@ -16,6 +16,7 @@ limitations under the License.
 package plugin // import "helm.sh/helm/v3/pkg/plugin"
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -85,7 +86,7 @@ func TestPlatformPrepareCommand(t *testing.T) {
 			Name:    "test",
 			Command: "echo -n os-arch",
 			PlatformCommand: []PlatformCommand{
-				{OperatingSystem: "linux", Architecture: "i386", Command: "echo -n linux-i386"},
+				{OperatingSystem: "linux", Architecture: "386", Command: "echo -n linux-386"},
 				{OperatingSystem: "linux", Architecture: "amd64", Command: "echo -n linux-amd64"},
 				{OperatingSystem: "linux", Architecture: "arm64", Command: "echo -n linux-arm64"},
 				{OperatingSystem: "linux", Architecture: "ppc64le", Command: "echo -n linux-ppc64le"},
@@ -97,8 +98,8 @@ func TestPlatformPrepareCommand(t *testing.T) {
 	var osStrCmp string
 	os := runtime.GOOS
 	arch := runtime.GOARCH
-	if os == "linux" && arch == "i386" {
-		osStrCmp = "linux-i386"
+	if os == "linux" && arch == "386" {
+		osStrCmp = "linux-386"
 	} else if os == "linux" && arch == "amd64" {
 		osStrCmp = "linux-amd64"
 	} else if os == "linux" && arch == "arm64" {
@@ -124,7 +125,7 @@ func TestPartialPlatformPrepareCommand(t *testing.T) {
 			Name:    "test",
 			Command: "echo -n os-arch",
 			PlatformCommand: []PlatformCommand{
-				{OperatingSystem: "linux", Architecture: "i386", Command: "echo -n linux-i386"},
+				{OperatingSystem: "linux", Architecture: "386", Command: "echo -n linux-386"},
 				{OperatingSystem: "windows", Architecture: "amd64", Command: "echo -n win-64"},
 			},
 		},
@@ -133,7 +134,7 @@ func TestPartialPlatformPrepareCommand(t *testing.T) {
 	os := runtime.GOOS
 	arch := runtime.GOARCH
 	if os == "linux" {
-		osStrCmp = "linux-i386"
+		osStrCmp = "linux-386"
 	} else if os == "windows" && arch == "amd64" {
 		osStrCmp = "win-64"
 	} else {
@@ -165,7 +166,7 @@ func TestNoMatchPrepareCommand(t *testing.T) {
 		Metadata: &Metadata{
 			Name: "test",
 			PlatformCommand: []PlatformCommand{
-				{OperatingSystem: "no-os", Architecture: "amd64", Command: "echo -n linux-i386"},
+				{OperatingSystem: "no-os", Architecture: "amd64", Command: "echo -n linux-386"},
 			},
 		},
 	}
@@ -177,7 +178,7 @@ func TestNoMatchPrepareCommand(t *testing.T) {
 }
 
 func TestLoadDir(t *testing.T) {
-	dirname := "testdata/plugdir/hello"
+	dirname := "testdata/plugdir/good/hello"
 	plug, err := LoadDir(dirname)
 	if err != nil {
 		t.Fatalf("error loading Hello plugin: %s", err)
@@ -192,7 +193,7 @@ func TestLoadDir(t *testing.T) {
 		Version:     "0.1.0",
 		Usage:       "usage",
 		Description: "description",
-		Command:     "$HELM_PLUGIN_SELF/hello.sh",
+		Command:     "$HELM_PLUGIN_DIR/hello.sh",
 		IgnoreFlags: true,
 		Hooks: map[string]string{
 			Install: "echo installing...",
@@ -204,8 +205,15 @@ func TestLoadDir(t *testing.T) {
 	}
 }
 
+func TestLoadDirDuplicateEntries(t *testing.T) {
+	dirname := "testdata/plugdir/bad/duplicate-entries"
+	if _, err := LoadDir(dirname); err == nil {
+		t.Errorf("successfully loaded plugin with duplicate entries when it should've failed")
+	}
+}
+
 func TestDownloader(t *testing.T) {
-	dirname := "testdata/plugdir/downloader"
+	dirname := "testdata/plugdir/good/downloader"
 	plug, err := LoadDir(dirname)
 	if err != nil {
 		t.Fatalf("error loading Hello plugin: %s", err)
@@ -243,7 +251,7 @@ func TestLoadAll(t *testing.T) {
 		t.Fatalf("expected empty dir to have 0 plugins")
 	}
 
-	basedir := "testdata/plugdir"
+	basedir := "testdata/plugdir/good"
 	plugs, err := LoadAll(basedir)
 	if err != nil {
 		t.Fatalf("Could not load %q: %s", basedir, err)
@@ -281,13 +289,13 @@ func TestFindPlugins(t *testing.T) {
 			expected: 0,
 		},
 		{
-			name:     "plugdirs doens't have plugin",
+			name:     "plugdirs doesn't have plugin",
 			plugdirs: ".",
 			expected: 0,
 		},
 		{
 			name:     "normal",
-			plugdirs: "./testdata/plugdir",
+			plugdirs: "./testdata/plugdir/good",
 			expected: 3,
 		},
 	}
@@ -318,5 +326,53 @@ func TestSetupEnv(t *testing.T) {
 		if got := os.Getenv(tt.name); got != tt.expect {
 			t.Errorf("Expected $%s=%q, got %q", tt.name, tt.expect, got)
 		}
+	}
+}
+
+func TestValidatePluginData(t *testing.T) {
+	for i, item := range []struct {
+		pass bool
+		plug *Plugin
+	}{
+		{true, mockPlugin("abcdefghijklmnopqrstuvwxyz0123456789_-ABC")},
+		{true, mockPlugin("foo-bar-FOO-BAR_1234")},
+		{false, mockPlugin("foo -bar")},
+		{false, mockPlugin("$foo -bar")}, // Test leading chars
+		{false, mockPlugin("foo -bar ")}, // Test trailing chars
+		{false, mockPlugin("foo\nbar")},  // Test newline
+	} {
+		err := validatePluginData(item.plug, fmt.Sprintf("test-%d", i))
+		if item.pass && err != nil {
+			t.Errorf("failed to validate case %d: %s", i, err)
+		} else if !item.pass && err == nil {
+			t.Errorf("expected case %d to fail", i)
+		}
+	}
+}
+
+func TestDetectDuplicates(t *testing.T) {
+	plugs := []*Plugin{
+		mockPlugin("foo"),
+		mockPlugin("bar"),
+	}
+	if err := detectDuplicates(plugs); err != nil {
+		t.Error("no duplicates in the first set")
+	}
+	plugs = append(plugs, mockPlugin("foo"))
+	if err := detectDuplicates(plugs); err == nil {
+		t.Error("duplicates in the second set")
+	}
+}
+
+func mockPlugin(name string) *Plugin {
+	return &Plugin{
+		Metadata: &Metadata{
+			Name:        name,
+			Version:     "v0.1.2",
+			Usage:       "Mock plugin",
+			Description: "Mock plugin for testing",
+			Command:     "echo mock plugin",
+		},
+		Dir: "no-such-dir",
 	}
 }

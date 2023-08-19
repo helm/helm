@@ -19,12 +19,16 @@ package action
 import (
 	"github.com/pkg/errors"
 
+	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/release"
 )
 
 // History is the action for checking the release's ledger.
 //
 // It provides the implementation of 'helm history'.
+// It returns all the revisions for a specific release.
+// To list up to one revision of every release in one specific, or in all,
+// namespaces, see the List action.
 type History struct {
 	cfg *Configuration
 
@@ -45,7 +49,7 @@ func (h *History) Run(name string) ([]*release.Release, error) {
 		return nil, err
 	}
 
-	if err := validateReleaseName(name); err != nil {
+	if err := chartutil.ValidateReleaseName(name); err != nil {
 		return nil, errors.Errorf("release name is invalid: %s", name)
 	}
 

@@ -89,5 +89,5 @@ func TestSearchRepoOutputCompletion(t *testing.T) {
 }
 
 func TestSearchRepoFileCompletion(t *testing.T) {
-	checkFileCompletion(t, "search repo", true) // File completion may be useful when inputing a keyword
+	checkFileCompletion(t, "search repo", true) // File completion may be useful when inputting a keyword
 }

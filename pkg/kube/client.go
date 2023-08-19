@@ -17,10 +17,14 @@ limitations under the License.
 package kube // import "helm.sh/helm/v3/pkg/kube"
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -33,17 +37,22 @@ import (
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
+	multierror "github.com/hashicorp/go-multierror"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	metav1beta1 "k8s.io/apimachinery/pkg/apis/meta/v1beta1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	cachetools "k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
@@ -54,12 +63,18 @@ var ErrNoObjectsVisited = errors.New("no objects visited")
 
 var metadataAccessor = meta.NewAccessor()
 
+// ManagedFieldsManager is the name of the manager of Kubernetes managedFields
+// first introduced in Kubernetes 1.18
+var ManagedFieldsManager string
+
 // Client represents a client capable of communicating with the Kubernetes API.
 type Client struct {
 	Factory Factory
 	Log     func(string, ...interface{})
 	// Namespace allows to bypass the kubeconfig file for the choice of the namespace
 	Namespace string
+
+	kubeClient *kubernetes.Clientset
 }
 
 var addToScheme sync.Once
@@ -87,9 +102,19 @@ func New(getter genericclioptions.RESTClientGetter) *Client {
 
 var nopLogger = func(_ string, _ ...interface{}) {}
 
-// IsReachable tests connectivity to the cluster
+// getKubeClient get or create a new KubernetesClientSet
+func (c *Client) getKubeClient() (*kubernetes.Clientset, error) {
+	var err error
+	if c.kubeClient == nil {
+		c.kubeClient, err = c.Factory.KubernetesClientSet()
+	}
+
+	return c.kubeClient, err
+}
+
+// IsReachable tests connectivity to the cluster.
 func (c *Client) IsReachable() error {
-	client, err := c.Factory.KubernetesClientSet()
+	client, err := c.getKubeClient()
 	if err == genericclioptions.ErrEmptyConfig {
 		// re-replace kubernetes ErrEmptyConfig error with a friendy error
 		// moar workarounds for Kubernetes API breaking.
@@ -113,18 +138,178 @@ func (c *Client) Create(resources ResourceList) (*Result, error) {
 	return &Result{Created: resources}, nil
 }
 
-// Wait up to the given timeout for the specified resources to be ready
+func transformRequests(req *rest.Request) {
+	tableParam := strings.Join([]string{
+		fmt.Sprintf("application/json;as=Table;v=%s;g=%s", metav1.SchemeGroupVersion.Version, metav1.GroupName),
+		fmt.Sprintf("application/json;as=Table;v=%s;g=%s", metav1beta1.SchemeGroupVersion.Version, metav1beta1.GroupName),
+		"application/json",
+	}, ",")
+	req.SetHeader("Accept", tableParam)
+
+	// if sorting, ensure we receive the full object in order to introspect its fields via jsonpath
+	req.Param("includeObject", "Object")
+}
+
+// Get retrieves the resource objects supplied. If related is set to true the
+// related pods are fetched as well. If the passed in resources are a table kind
+// the related resources will also be fetched as kind=table.
+func (c *Client) Get(resources ResourceList, related bool) (map[string][]runtime.Object, error) {
+	buf := new(bytes.Buffer)
+	objs := make(map[string][]runtime.Object)
+
+	podSelectors := []map[string]string{}
+	err := resources.Visit(func(info *resource.Info, err error) error {
+		if err != nil {
+			return err
+		}
+
+		gvk := info.ResourceMapping().GroupVersionKind
+		vk := gvk.Version + "/" + gvk.Kind
+		obj, err := getResource(info)
+		if err != nil {
+			fmt.Fprintf(buf, "Get resource %s failed, err:%v\n", info.Name, err)
+		} else {
+			objs[vk] = append(objs[vk], obj)
+
+			// Only fetch related pods if they are requested
+			if related {
+				// Discover if the existing object is a table. If it is, request
+				// the pods as Tables. Otherwise request them normally.
+				objGVK := obj.GetObjectKind().GroupVersionKind()
+				var isTable bool
+				if objGVK.Kind == "Table" {
+					isTable = true
+				}
+
+				objs, err = c.getSelectRelationPod(info, objs, isTable, &podSelectors)
+				if err != nil {
+					c.Log("Warning: get the relation pod is failed, err:%s", err.Error())
+				}
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return objs, nil
+}
+
+func (c *Client) getSelectRelationPod(info *resource.Info, objs map[string][]runtime.Object, table bool, podSelectors *[]map[string]string) (map[string][]runtime.Object, error) {
+	if info == nil {
+		return objs, nil
+	}
+	c.Log("get relation pod of object: %s/%s/%s", info.Namespace, info.Mapping.GroupVersionKind.Kind, info.Name)
+	selector, ok, _ := getSelectorFromObject(info.Object)
+	if !ok {
+		return objs, nil
+	}
+
+	for index := range *podSelectors {
+		if reflect.DeepEqual((*podSelectors)[index], selector) {
+			// check if pods for selectors are already added. This avoids duplicate printing of pods
+			return objs, nil
+		}
+	}
+
+	*podSelectors = append(*podSelectors, selector)
+
+	var infos []*resource.Info
+	var err error
+	if table {
+		infos, err = c.Factory.NewBuilder().
+			Unstructured().
+			ContinueOnError().
+			NamespaceParam(info.Namespace).
+			DefaultNamespace().
+			ResourceTypes("pods").
+			LabelSelector(labels.Set(selector).AsSelector().String()).
+			TransformRequests(transformRequests).
+			Do().Infos()
+		if err != nil {
+			return objs, err
+		}
+	} else {
+		infos, err = c.Factory.NewBuilder().
+			Unstructured().
+			ContinueOnError().
+			NamespaceParam(info.Namespace).
+			DefaultNamespace().
+			ResourceTypes("pods").
+			LabelSelector(labels.Set(selector).AsSelector().String()).
+			Do().Infos()
+		if err != nil {
+			return objs, err
+		}
+	}
+	vk := "v1/Pod(related)"
+
+	for _, info := range infos {
+		objs[vk] = append(objs[vk], info.Object)
+	}
+	return objs, nil
+}
+
+func getSelectorFromObject(obj runtime.Object) (map[string]string, bool, error) {
+	typed := obj.(*unstructured.Unstructured)
+	kind := typed.Object["kind"]
+	switch kind {
+	case "ReplicaSet", "Deployment", "StatefulSet", "DaemonSet", "Job":
+		return unstructured.NestedStringMap(typed.Object, "spec", "selector", "matchLabels")
+	case "ReplicationController":
+		return unstructured.NestedStringMap(typed.Object, "spec", "selector")
+	default:
+		return nil, false, nil
+	}
+}
+
+func getResource(info *resource.Info) (runtime.Object, error) {
+	obj, err := resource.NewHelper(info.Client, info.Mapping).Get(info.Namespace, info.Name)
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
+}
+
+// Wait waits up to the given timeout for the specified resources to be ready.
 func (c *Client) Wait(resources ResourceList, timeout time.Duration) error {
-	cs, err := c.Factory.KubernetesClientSet()
+	cs, err := c.getKubeClient()
 	if err != nil {
 		return err
 	}
+	checker := NewReadyChecker(cs, c.Log, PausedAsReady(true))
 	w := waiter{
-		c:       cs,
+		c:       checker,
 		log:     c.Log,
 		timeout: timeout,
 	}
 	return w.waitForResources(resources)
+}
+
+// WaitWithJobs wait up to the given timeout for the specified resources to be ready, including jobs.
+func (c *Client) WaitWithJobs(resources ResourceList, timeout time.Duration) error {
+	cs, err := c.getKubeClient()
+	if err != nil {
+		return err
+	}
+	checker := NewReadyChecker(cs, c.Log, PausedAsReady(true), CheckJobs(true))
+	w := waiter{
+		c:       checker,
+		log:     c.Log,
+		timeout: timeout,
+	}
+	return w.waitForResources(resources)
+}
+
+// WaitForDelete wait up to the given timeout for the specified resources to be deleted.
+func (c *Client) WaitForDelete(resources ResourceList, timeout time.Duration) error {
+	w := waiter{
+		log:     c.Log,
+		timeout: timeout,
+	}
+	return w.waitForDeletedResources(resources)
 }
 
 func (c *Client) namespace() string {
@@ -148,7 +333,12 @@ func (c *Client) newBuilder() *resource.Builder {
 
 // Build validates for Kubernetes objects and returns unstructured infos.
 func (c *Client) Build(reader io.Reader, validate bool) (ResourceList, error) {
-	schema, err := c.Factory.Validator(validate)
+	validationDirective := metav1.FieldValidationIgnore
+	if validate {
+		validationDirective = metav1.FieldValidationStrict
+	}
+
+	schema, err := c.Factory.Validator(validationDirective)
 	if err != nil {
 		return nil, err
 	}
@@ -160,8 +350,29 @@ func (c *Client) Build(reader io.Reader, validate bool) (ResourceList, error) {
 	return result, scrubValidationError(err)
 }
 
+// BuildTable validates for Kubernetes objects and returns unstructured infos.
+// The returned kind is a Table.
+func (c *Client) BuildTable(reader io.Reader, validate bool) (ResourceList, error) {
+	validationDirective := metav1.FieldValidationIgnore
+	if validate {
+		validationDirective = metav1.FieldValidationStrict
+	}
+
+	schema, err := c.Factory.Validator(validationDirective)
+	if err != nil {
+		return nil, err
+	}
+	result, err := c.newBuilder().
+		Unstructured().
+		Schema(schema).
+		Stream(reader, "").
+		TransformRequests(transformRequests).
+		Do().Infos()
+	return result, scrubValidationError(err)
+}
+
 // Update takes the current list of objects and target list of objects and
-// creates resources that don't already exists, updates resources that have been
+// creates resources that don't already exist, updates resources that have been
 // modified in the target configuration, and deletes resources from the current
 // configuration that are not present in the target configuration. If an error
 // occurs, a Result will still be returned with the error, containing all
@@ -177,8 +388,8 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			return err
 		}
 
-		helper := resource.NewHelper(info.Client, info.Mapping)
-		if _, err := helper.Get(info.Namespace, info.Name, info.Export); err != nil {
+		helper := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(getManagedFieldsManager())
+		if _, err := helper.Get(info.Namespace, info.Name); err != nil {
 			if !apierrors.IsNotFound(err) {
 				return errors.Wrap(err, "could not get information about the resource")
 			}
@@ -220,7 +431,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 	}
 
 	for _, info := range original.Difference(target) {
-		c.Log("Deleting %q in %s...", info.Name, info.Namespace)
+		c.Log("Deleting %s %q in namespace %s...", info.Mapping.GroupVersionKind.Kind, info.Name, info.Namespace)
 
 		if err := info.Get(); err != nil {
 			c.Log("Unable to get obj %q, err: %s", info.Name, err)
@@ -234,7 +445,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			c.Log("Skipping delete of %q due to annotation [%s=%s]", info.Name, ResourcePolicyAnno, KeepPolicy)
 			continue
 		}
-		if err := deleteResource(info); err != nil {
+		if err := deleteResource(info, metav1.DeletePropagationBackground); err != nil {
 			c.Log("Failed to delete %q, err: %s", info.ObjectName(), err)
 			continue
 		}
@@ -243,33 +454,47 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 	return res, nil
 }
 
-// Delete deletes Kubernetes resources specified in the resources list. It will
-// attempt to delete all resources even if one or more fail and collect any
-// errors. All successfully deleted items will be returned in the `Deleted`
-// ResourceList that is part of the result.
+// Delete deletes Kubernetes resources specified in the resources list with
+// background cascade deletion. It will attempt to delete all resources even
+// if one or more fail and collect any errors. All successfully deleted items
+// will be returned in the `Deleted` ResourceList that is part of the result.
 func (c *Client) Delete(resources ResourceList) (*Result, []error) {
+	return delete(c, resources, metav1.DeletePropagationBackground)
+}
+
+// Delete deletes Kubernetes resources specified in the resources list with
+// given deletion propagation policy. It will attempt to delete all resources even
+// if one or more fail and collect any errors. All successfully deleted items
+// will be returned in the `Deleted` ResourceList that is part of the result.
+func (c *Client) DeleteWithPropagationPolicy(resources ResourceList, policy metav1.DeletionPropagation) (*Result, []error) {
+	return delete(c, resources, policy)
+}
+
+func delete(c *Client, resources ResourceList, propagation metav1.DeletionPropagation) (*Result, []error) {
 	var errs []error
 	res := &Result{}
 	mtx := sync.Mutex{}
 	err := perform(resources, func(info *resource.Info) error {
 		c.Log("Starting delete for %q %s", info.Name, info.Mapping.GroupVersionKind.Kind)
-		if err := c.skipIfNotFound(deleteResource(info)); err != nil {
-			mtx.Lock()
-			defer mtx.Unlock()
-			// Collect the error and continue on
-			errs = append(errs, err)
-		} else {
+		err := deleteResource(info, propagation)
+		if err == nil || apierrors.IsNotFound(err) {
+			if err != nil {
+				c.Log("Ignoring delete failure for %q %s: %v", info.Name, info.Mapping.GroupVersionKind, err)
+			}
 			mtx.Lock()
 			defer mtx.Unlock()
 			res.Deleted = append(res.Deleted, info)
+			return nil
 		}
+		mtx.Lock()
+		defer mtx.Unlock()
+		// Collect the error and continue on
+		errs = append(errs, err)
 		return nil
 	})
 	if err != nil {
-		// Rewrite the message from "no objects visited" if that is what we got
-		// back
-		if err == ErrNoObjectsVisited {
-			err = errors.New("object not found, skipping delete")
+		if errors.Is(err, ErrNoObjectsVisited) {
+			err = fmt.Errorf("object not found, skipping delete: %w", err)
 		}
 		errs = append(errs, err)
 	}
@@ -277,14 +502,6 @@ func (c *Client) Delete(resources ResourceList) (*Result, []error) {
 		return nil, errs
 	}
 	return res, nil
-}
-
-func (c *Client) skipIfNotFound(err error) error {
-	if apierrors.IsNotFound(err) {
-		c.Log("%v", err)
-		return nil
-	}
-	return err
 }
 
 func (c *Client) watchTimeout(t time.Duration) func(*resource.Info) error {
@@ -295,16 +512,16 @@ func (c *Client) watchTimeout(t time.Duration) func(*resource.Info) error {
 
 // WatchUntilReady watches the resources given and waits until it is ready.
 //
-// This function is mainly for hook implementations. It watches for a resource to
+// This method is mainly for hook implementations. It watches for a resource to
 // hit a particular milestone. The milestone depends on the Kind.
 //
 // For most kinds, it checks to see if the resource is marked as Added or Modified
 // by the Kubernetes event stream. For some kinds, it does more:
 //
-// - Jobs: A job is marked "Ready" when it has successfully completed. This is
-//   ascertained by watching the Status fields in a job's output.
-// - Pods: A pod is marked "Ready" when it has successfully completed. This is
-//   ascertained by watching the status.phase field in a pod's output.
+//   - Jobs: A job is marked "Ready" when it has successfully completed. This is
+//     ascertained by watching the Status fields in a job's output.
+//   - Pods: A pod is marked "Ready" when it has successfully completed. This is
+//     ascertained by watching the status.phase field in a pod's output.
 //
 // Handling for other kinds will be added as necessary.
 func (c *Client) WatchUntilReady(resources ResourceList, timeout time.Duration) error {
@@ -314,6 +531,8 @@ func (c *Client) WatchUntilReady(resources ResourceList, timeout time.Duration) 
 }
 
 func perform(infos ResourceList, fn func(*resource.Info) error) error {
+	var result error
+
 	if len(infos) == 0 {
 		return ErrNoObjectsVisited
 	}
@@ -324,10 +543,31 @@ func perform(infos ResourceList, fn func(*resource.Info) error) error {
 	for range infos {
 		err := <-errs
 		if err != nil {
-			return err
+			result = multierror.Append(result, err)
 		}
 	}
-	return nil
+
+	return result
+}
+
+// getManagedFieldsManager returns the manager string. If one was set it will be returned.
+// Otherwise, one is calculated based on the name of the binary.
+func getManagedFieldsManager() string {
+
+	// When a manager is explicitly set use it
+	if ManagedFieldsManager != "" {
+		return ManagedFieldsManager
+	}
+
+	// When no manager is set and no calling application can be found it is unknown
+	if len(os.Args[0]) == 0 {
+		return "unknown"
+	}
+
+	// When there is an application that can be determined and no set manager
+	// use the base name. This is one of the ways Kubernetes libs handle figuring
+	// names out.
+	return filepath.Base(os.Args[0])
 }
 
 func batchPerform(infos ResourceList, fn func(*resource.Info) error, errs chan<- error) {
@@ -348,17 +588,16 @@ func batchPerform(infos ResourceList, fn func(*resource.Info) error, errs chan<-
 }
 
 func createResource(info *resource.Info) error {
-	obj, err := resource.NewHelper(info.Client, info.Mapping).Create(info.Namespace, true, info.Object)
+	obj, err := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(getManagedFieldsManager()).Create(info.Namespace, true, info.Object)
 	if err != nil {
 		return err
 	}
 	return info.Refresh(obj, true)
 }
 
-func deleteResource(info *resource.Info) error {
-	policy := metav1.DeletePropagationBackground
+func deleteResource(info *resource.Info, policy metav1.DeletionPropagation) error {
 	opts := &metav1.DeleteOptions{PropagationPolicy: &policy}
-	_, err := resource.NewHelper(info.Client, info.Mapping).DeleteWithOptions(info.Namespace, info.Name, opts)
+	_, err := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(getManagedFieldsManager()).DeleteWithOptions(info.Namespace, info.Name, opts)
 	return err
 }
 
@@ -373,8 +612,8 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 	}
 
 	// Fetch the current object for the three way merge
-	helper := resource.NewHelper(target.Client, target.Mapping)
-	currentObj, err := helper.Get(target.Namespace, target.Name, target.Export)
+	helper := resource.NewHelper(target.Client, target.Mapping).WithFieldManager(getManagedFieldsManager())
+	currentObj, err := helper.Get(target.Namespace, target.Name)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return nil, types.StrategicMergePatchType, errors.Wrapf(err, "unable to get data for current object %s/%s", target.Namespace, target.Name)
 	}
@@ -415,7 +654,7 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force bool) error {
 	var (
 		obj    runtime.Object
-		helper = resource.NewHelper(target.Client, target.Mapping)
+		helper = resource.NewHelper(target.Client, target.Mapping).WithFieldManager(getManagedFieldsManager())
 		kind   = target.Mapping.GroupVersionKind.Kind
 	)
 
@@ -434,7 +673,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		}
 
 		if patch == nil || string(patch) == "{}" {
-			c.Log("Looks like there are no changes for %s %q", target.Mapping.GroupVersionKind.Kind, target.Name)
+			c.Log("Looks like there are no changes for %s %q", kind, target.Name)
 			// This needs to happen to make sure that Helm has the latest info from the API
 			// Otherwise there will be no labels and other functions that use labels will panic
 			if err := target.Get(); err != nil {
@@ -443,6 +682,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 			return nil
 		}
 		// send patch to server
+		c.Log("Patch %s %q in namespace %s", kind, target.Name, target.Namespace)
 		obj, err = helper.Patch(target.Namespace, target.Name, patchType, patch, nil)
 		if err != nil {
 			return errors.Wrapf(err, "cannot patch %q with kind %s", target.Name, kind)
@@ -572,7 +812,7 @@ func scrubValidationError(err error) error {
 // WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
 // and returns said phase (PodSucceeded or PodFailed qualify).
 func (c *Client) WaitAndGetCompletedPodPhase(name string, timeout time.Duration) (v1.PodPhase, error) {
-	client, err := c.Factory.KubernetesClientSet()
+	client, err := c.getKubeClient()
 	if err != nil {
 		return v1.PodUnknown, err
 	}
@@ -581,6 +821,9 @@ func (c *Client) WaitAndGetCompletedPodPhase(name string, timeout time.Duration)
 		FieldSelector:  fmt.Sprintf("metadata.name=%s", name),
 		TimeoutSeconds: &to,
 	})
+	if err != nil {
+		return v1.PodUnknown, err
+	}
 
 	for event := range watcher.ResultChan() {
 		p, ok := event.Object.(*v1.Pod)

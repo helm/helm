@@ -20,15 +20,14 @@ import (
 	"crypto"
 	"encoding/hex"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
-	"golang.org/x/crypto/openpgp"
-	"golang.org/x/crypto/openpgp/clearsign"
-	"golang.org/x/crypto/openpgp/packet"
+	"golang.org/x/crypto/openpgp"           //nolint
+	"golang.org/x/crypto/openpgp/clearsign" //nolint
+	"golang.org/x/crypto/openpgp/packet"    //nolint
 	"sigs.k8s.io/yaml"
 
 	hapi "helm.sh/helm/v3/pkg/chart"
@@ -42,9 +41,13 @@ var defaultPGPConfig = packet.Config{
 // SumCollection represents a collection of file and image checksums.
 //
 // Files are of the form:
+//
 //	FILENAME: "sha256:SUM"
+//
 // Images are of the form:
+//
 //	"IMAGE:TAG": "sha256:SUM"
+//
 // Docker optionally supports sha512, and if this is the case, the hash marker
 // will be 'sha512' instead of 'sha256'.
 type SumCollection struct {
@@ -216,7 +219,7 @@ func (s *Signatory) ClearSign(chartpath string) (string, error) {
 
 	b, err := messageBlock(chartpath)
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 
 	// Sign the buffer
@@ -224,9 +227,24 @@ func (s *Signatory) ClearSign(chartpath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	_, err = io.Copy(w, b)
-	w.Close()
-	return out.String(), err
+
+	if err != nil {
+		// NB: We intentionally don't call `w.Close()` here! `w.Close()` is the method which
+		// actually does the PGP signing, and therefore is the part which uses the private key.
+		// In other words, if we call Close here, there's a risk that there's an attempt to use the
+		// private key to sign garbage data (since we know that io.Copy failed, `w` won't contain
+		// anything useful).
+		return "", errors.Wrap(err, "failed to write to clearsign encoder")
+	}
+
+	err = w.Close()
+	if err != nil {
+		return "", errors.Wrap(err, "failed to either sign or armor message block")
+	}
+
+	return out.String(), nil
 }
 
 // Verify checks a signature and verifies that it is legit for a chart.
@@ -278,7 +296,7 @@ func (s *Signatory) Verify(chartpath, sigpath string) (*Verification, error) {
 }
 
 func (s *Signatory) decodeSignature(filename string) (*clearsign.Block, error) {
-	data, err := ioutil.ReadFile(filename)
+	data, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}

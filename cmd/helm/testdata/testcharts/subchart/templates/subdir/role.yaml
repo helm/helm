@@ -3,5 +3,6 @@ kind: Role
 metadata:
   name: {{ .Chart.Name }}-role
 rules:
-- resources: ["*"]
+- apiGroups: [""]
+  resources: ["pods"]
   verbs: ["get","list","watch"]

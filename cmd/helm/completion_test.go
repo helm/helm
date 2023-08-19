@@ -29,9 +29,14 @@ import (
 func checkFileCompletion(t *testing.T, cmdName string, shouldBePerformed bool) {
 	storage := storageFixture()
 	storage.Create(&release.Release{
-		Name:    "myrelease",
-		Info:    &release.Info{Status: release.StatusDeployed},
-		Chart:   &chart.Chart{},
+		Name: "myrelease",
+		Info: &release.Info{Status: release.StatusDeployed},
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{
+				Name:    "Myrelease-Chart",
+				Version: "1.2.3",
+			},
+		},
 		Version: 1,
 	})
 
@@ -42,10 +47,10 @@ func checkFileCompletion(t *testing.T, cmdName string, shouldBePerformed bool) {
 	}
 	if !strings.Contains(out, "ShellCompDirectiveNoFileComp") != shouldBePerformed {
 		if shouldBePerformed {
-			t.Error(fmt.Sprintf("Unexpected directive ShellCompDirectiveNoFileComp when completing '%s'", cmdName))
+			t.Errorf("Unexpected directive ShellCompDirectiveNoFileComp when completing '%s'", cmdName)
 		} else {
 
-			t.Error(fmt.Sprintf("Did not receive directive ShellCompDirectiveNoFileComp when completing '%s'", cmdName))
+			t.Errorf("Did not receive directive ShellCompDirectiveNoFileComp when completing '%s'", cmdName)
 		}
 		t.Log(out)
 	}
@@ -56,4 +61,33 @@ func TestCompletionFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "completion bash", false)
 	checkFileCompletion(t, "completion zsh", false)
 	checkFileCompletion(t, "completion fish", false)
+}
+
+func checkReleaseCompletion(t *testing.T, cmdName string, multiReleasesAllowed bool) {
+	multiReleaseTestGolden := "output/empty_nofile_comp.txt"
+	if multiReleasesAllowed {
+		multiReleaseTestGolden = "output/release_list_repeat_comp.txt"
+	}
+	tests := []cmdTestCase{{
+		name:   "completion for uninstall",
+		cmd:    fmt.Sprintf("__complete %s ''", cmdName),
+		golden: "output/release_list_comp.txt",
+		rels: []*release.Release{
+			release.Mock(&release.MockReleaseOptions{Name: "athos"}),
+			release.Mock(&release.MockReleaseOptions{Name: "porthos"}),
+			release.Mock(&release.MockReleaseOptions{Name: "aramis"}),
+		},
+	}, {
+		name:   "completion for uninstall repetition",
+		cmd:    fmt.Sprintf("__complete %s porthos ''", cmdName),
+		golden: multiReleaseTestGolden,
+		rels: []*release.Release{
+			release.Mock(&release.MockReleaseOptions{Name: "athos"}),
+			release.Mock(&release.MockReleaseOptions{Name: "porthos"}),
+			release.Mock(&release.MockReleaseOptions{Name: "aramis"}),
+		},
+	}}
+	for _, test := range tests {
+		runTestCmd(t, []cmdTestCase{test})
+	}
 }

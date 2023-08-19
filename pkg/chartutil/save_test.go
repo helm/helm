@@ -21,7 +21,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -39,7 +38,7 @@ func TestSave(t *testing.T) {
 	tmp := ensure.TempDir(t)
 	defer os.RemoveAll(tmp)
 
-	for _, dest := range []string{tmp, path.Join(tmp, "newdir")} {
+	for _, dest := range []string{tmp, filepath.Join(tmp, "newdir")} {
 		t.Run("outDir="+dest, func(t *testing.T) {
 			c := &chart.Chart{
 				Metadata: &chart.Metadata{
@@ -102,7 +101,7 @@ func TestSave(t *testing.T) {
 				t.Fatal(err)
 			}
 			if c2.Lock == nil {
-				t.Fatal("Expected v2 chart archive to containe a Chart.lock file")
+				t.Fatal("Expected v2 chart archive to contain a Chart.lock file")
 			}
 			if c2.Lock.Digest != c.Lock.Digest {
 				t.Fatal("Chart.lock data did not match")
@@ -129,17 +128,13 @@ func TestSavePreservesTimestamps(t *testing.T) {
 	// written timestamp for the files.
 	initialCreateTime := time.Now().Add(-1 * time.Second)
 
-	tmp, err := ioutil.TempDir("", "helm-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmp)
+	tmp := t.TempDir()
 
 	c := &chart.Chart{
 		Metadata: &chart.Metadata{
 			APIVersion: chart.APIVersionV1,
 			Name:       "ahab",
-			Version:    "1.2.3.4",
+			Version:    "1.2.3",
 		},
 		Values: map[string]interface{}{
 			"imageName": "testimage",
@@ -203,11 +198,7 @@ func retrieveAllHeadersFromTar(path string) ([]*tar.Header, error) {
 }
 
 func TestSaveDir(t *testing.T) {
-	tmp, err := ioutil.TempDir("", "helm-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmp)
+	tmp := t.TempDir()
 
 	c := &chart.Chart{
 		Metadata: &chart.Metadata{
@@ -219,7 +210,7 @@ func TestSaveDir(t *testing.T) {
 			{Name: "scheherazade/shahryar.txt", Data: []byte("1,001 Nights")},
 		},
 		Templates: []*chart.File{
-			{Name: filepath.Join(TemplatesDir, "nested", "dir", "thing.yaml"), Data: []byte("abc: {{ .Values.abc }}")},
+			{Name: path.Join(TemplatesDir, "nested", "dir", "thing.yaml"), Data: []byte("abc: {{ .Values.abc }}")},
 		},
 	}
 
@@ -236,11 +227,11 @@ func TestSaveDir(t *testing.T) {
 		t.Fatalf("Expected chart archive to have %q, got %q", c.Name(), c2.Name())
 	}
 
-	if len(c2.Templates) != 1 || c2.Templates[0].Name != filepath.Join(TemplatesDir, "nested", "dir", "thing.yaml") {
+	if len(c2.Templates) != 1 || c2.Templates[0].Name != c.Templates[0].Name {
 		t.Fatal("Templates data did not match")
 	}
 
-	if len(c2.Files) != 1 || c2.Files[0].Name != "scheherazade/shahryar.txt" {
+	if len(c2.Files) != 1 || c2.Files[0].Name != c.Files[0].Name {
 		t.Fatal("Files data did not match")
 	}
 }

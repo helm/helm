@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gosuri/uitable"
@@ -65,7 +64,7 @@ func newHistoryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if len(args) != 0 {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
-			return compListReleases(toComplete, cfg)
+			return compListReleases(toComplete, args, cfg)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			history, err := getHistory(client, args[0])
@@ -191,10 +190,9 @@ func compListRevisions(toComplete string, cfg *action.Configuration, releaseName
 	var revisions []string
 	if hist, err := client.Run(releaseName); err == nil {
 		for _, release := range hist {
-			version := strconv.Itoa(release.Version)
-			if strings.HasPrefix(version, toComplete) {
-				revisions = append(revisions, version)
-			}
+			appVersion := fmt.Sprintf("App: %s", release.Chart.Metadata.AppVersion)
+			chartDesc := fmt.Sprintf("Chart: %s-%s", release.Chart.Metadata.Name, release.Chart.Metadata.Version)
+			revisions = append(revisions, fmt.Sprintf("%s\t%s, %s", strconv.Itoa(release.Version), appVersion, chartDesc))
 		}
 		return revisions, cobra.ShellCompDirectiveNoFileComp
 	}

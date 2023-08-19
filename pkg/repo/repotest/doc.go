@@ -13,7 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*Package repotest provides utilities for testing.
+/*
+Package repotest provides utilities for testing.
 
 The server provides a testing server that can be set up and torn down quickly.
 */
