@@ -77,6 +77,7 @@ func TestRollbackCmd(t *testing.T) {
 		rels:      rels,
 		wantError: true,
 	}}
+
 	runTestCmd(t, tests)
 }
 
