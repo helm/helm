@@ -72,7 +72,7 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 
 	// lint ignores import-values
 	// See https://github.com/helm/helm/issues/9658
-	if err := chartutil.ProcessDependencies(chart, values); err != nil {
+	if err := chartutil.ProcessDependenciesWithMerge(chart, values); err != nil {
 		return
 	}
 
@@ -188,10 +188,10 @@ func validateTopIndentLevel(content string) error {
 
 // Validation functions
 func validateTemplatesDir(templatesPath string) error {
-	if fi, err := os.Stat(templatesPath); err != nil {
-		return errors.New("directory not found")
-	} else if !fi.IsDir() {
-		return errors.New("not a directory")
+	if fi, err := os.Stat(templatesPath); err == nil {
+		if !fi.IsDir() {
+			return errors.New("not a directory")
+		}
 	}
 	return nil
 }
