@@ -717,3 +717,33 @@ func TestNameAndChartGenerateName(t *testing.T) {
 		})
 	}
 }
+
+func TestInstallWithLabels(t *testing.T) {
+	is := assert.New(t)
+	instAction := installAction(t)
+	instAction.Labels = map[string]string{
+		"key1": "val1",
+		"key2": "val2",
+	}
+	res, err := instAction.Run(buildChart(), nil)
+	if err != nil {
+		t.Fatalf("Failed install: %s", err)
+	}
+
+	is.Equal(instAction.Labels, res.Labels)
+}
+
+func TestInstallWithSystemLabels(t *testing.T) {
+	is := assert.New(t)
+	instAction := installAction(t)
+	instAction.Labels = map[string]string{
+		"owner": "val1",
+		"key2":  "val2",
+	}
+	_, err := instAction.Run(buildChart(), nil)
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+
+	is.Equal(fmt.Errorf("user suplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels()), err)
+}
