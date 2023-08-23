@@ -1,43 +1,14 @@
 ---
+
+# This file can be removed when Helm no longer uses CircleCI on any release
+# branches. Once CircleCI is turned off this file can be removed.
 version: 2
 
 jobs:
   build:
-    working_directory: ~/helm.sh/helm
     docker:
       - image: cimg/go:1.18
-      
-        auth:
-          username: $DOCKER_USER
-          password: $DOCKER_PASS
-
-    environment:
-      GOCACHE: "/tmp/go/cache"
-      GOLANGCI_LINT_VERSION: "1.46.2"
 
     steps:
       - checkout
-      - run:
-          name: install test dependencies
-          command: .circleci/bootstrap.sh
-      - run:
-          name: test style
-          command: make test-style
-      - run:
-          name: test
-          command: make test-coverage
-      - run:
-          name: test build
-          command: make
-      - deploy:
-          name: deploy
-          command: .circleci/deploy.sh
 
-workflows:
-  version: 2
-  build:
-    jobs:
-      - build:
-          filters:
-            tags:
-              only: /.*/

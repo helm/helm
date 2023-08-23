@@ -32,6 +32,7 @@ import (
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/kube"
 	"helm.sh/helm/v3/pkg/postrender"
+	"helm.sh/helm/v3/pkg/registry"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/releaseutil"
 	"helm.sh/helm/v3/pkg/storage/driver"
@@ -70,8 +71,9 @@ type Upgrade struct {
 	// DisableHooks disables hook processing if set to true.
 	DisableHooks bool
 	// DryRun controls whether the operation is prepared, but not executed.
-	// If `true`, the upgrade is prepared but not performed.
 	DryRun bool
+	// DryRunOption controls whether the operation is prepared, but not executed with options on whether or not to interact with the remote cluster.
+	DryRunOption string
 	// Force will, if set to `true`, ignore certain warnings and perform the upgrade anyway.
 	//
 	// This should be used with caution.
@@ -123,6 +125,11 @@ func NewUpgrade(cfg *Configuration) *Upgrade {
 	return up
 }
 
+// SetRegistryClient sets the registry client to use when fetching charts.
+func (u *Upgrade) SetRegistryClient(client *registry.Client) {
+	u.ChartPathOptions.registryClient = client
+}
+
 // Run executes the upgrade on the given release.
 func (u *Upgrade) Run(name string, chart *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
 	ctx := context.Background()
@@ -142,6 +149,7 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 	if err := chartutil.ValidateReleaseName(name); err != nil {
 		return nil, errors.Errorf("release name is invalid: %s", name)
 	}
+
 	u.cfg.Log("preparing upgrade for %s", name)
 	currentRelease, upgradedRelease, err := u.prepareUpgrade(name, chart, vals)
 	if err != nil {
@@ -156,7 +164,8 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 		return res, err
 	}
 
-	if !u.DryRun {
+	// Do not update for dry runs
+	if !u.isDryRun() {
 		u.cfg.Log("updating status for upgraded release for %s", name)
 		if err := u.cfg.Releases.Update(upgradedRelease); err != nil {
 			return res, err
@@ -164,6 +173,14 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 	}
 
 	return res, nil
+}
+
+// isDryRun returns true if Upgrade is set to run as a DryRun
+func (u *Upgrade) isDryRun() bool {
+	if u.DryRun || u.DryRunOption == "client" || u.DryRunOption == "server" || u.DryRunOption == "true" {
+		return true
+	}
+	return false
 }
 
 // prepareUpgrade builds an upgraded release for an upgrade operation.
@@ -210,7 +227,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		return nil, nil, err
 	}
 
-	if err := chartutil.ProcessDependencies(chart, vals); err != nil {
+	if err := chartutil.ProcessDependenciesWithMerge(chart, vals); err != nil {
 		return nil, nil, err
 	}
 
@@ -234,7 +251,13 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		return nil, nil, err
 	}
 
-	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, u.DryRun, u.EnableDNS)
+	// Determine whether or not to interact with remote
+	var interactWithRemote bool
+	if !u.isDryRun() || u.DryRunOption == "server" || u.DryRunOption == "none" || u.DryRunOption == "false" {
+		interactWithRemote = true
+	}
+
+	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, interactWithRemote, u.EnableDNS)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -307,7 +330,7 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 
 	toBeUpdated, err := existingResourceConflict(toBeCreated, upgradedRelease.Name, upgradedRelease.Namespace)
 	if err != nil {
-		return nil, errors.Wrap(err, "rendered manifests contain a resource that already exists. Unable to continue with update")
+		return nil, errors.Wrap(err, "Unable to continue with update")
 	}
 
 	toBeUpdated.Visit(func(r *resource.Info, err error) error {
@@ -318,7 +341,8 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 		return nil
 	})
 
-	if u.DryRun {
+	// Run if it is a dry run
+	if u.isDryRun() {
 		u.cfg.Log("dry run for %s", upgradedRelease.Name)
 		if len(u.Description) > 0 {
 			upgradedRelease.Info.Description = u.Description

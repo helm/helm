@@ -85,7 +85,10 @@ func ensureArchive(name string, raw *os.File) error {
 	if err != nil && err != io.EOF {
 		return fmt.Errorf("file '%s' cannot be read: %s", name, err)
 	}
-	if contentType := http.DetectContentType(buffer); contentType != "application/x-gzip" {
+
+	// Helm may identify achieve of the application/x-gzip as application/vnd.ms-fontobject.
+	// Fix for: https://github.com/helm/helm/issues/12261
+	if contentType := http.DetectContentType(buffer); contentType != "application/x-gzip" && !isGZipApplication(buffer) {
 		// TODO: Is there a way to reliably test if a file content is YAML? ghodss/yaml accepts a wide
 		//       variety of content (Makefile, .zshrc) as valid YAML without errors.
 
@@ -96,6 +99,12 @@ func ensureArchive(name string, raw *os.File) error {
 		return fmt.Errorf("file '%s' does not appear to be a gzipped archive; got '%s'", name, contentType)
 	}
 	return nil
+}
+
+// isGZipApplication checks whether the achieve is of the application/x-gzip type.
+func isGZipApplication(data []byte) bool {
+	sig := []byte("\x1F\x8B\x08")
+	return bytes.HasPrefix(data, sig)
 }
 
 // LoadArchiveFiles reads in files out of an archive into memory. This function

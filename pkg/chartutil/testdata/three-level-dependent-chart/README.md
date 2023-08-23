@@ -8,7 +8,7 @@ Consists of the following charts:
 - App Chart (Uses Library Chart as dependecy, 2x: app1/app2)
 - Umbrella Chart (Has all the app charts as dependencies)
 
-The precendence is as follows: `library < app < umbrella`
+The precedence is as follows: `library < app < umbrella`
 
 Catches two use-cases:
 

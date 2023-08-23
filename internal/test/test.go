@@ -19,7 +19,7 @@ package test
 import (
 	"bytes"
 	"flag"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -53,7 +53,7 @@ func AssertGoldenString(t TestingT, actual, filename string) {
 func AssertGoldenFile(t TestingT, actualFileName string, expectedFilename string) {
 	t.Helper()
 
-	actual, err := ioutil.ReadFile(actualFileName)
+	actual, err := os.ReadFile(actualFileName)
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -73,7 +73,7 @@ func compare(actual []byte, filename string) error {
 		return err
 	}
 
-	expected, err := ioutil.ReadFile(filename)
+	expected, err := os.ReadFile(filename)
 	if err != nil {
 		return errors.Wrapf(err, "unable to read testdata %s", filename)
 	}
@@ -88,7 +88,7 @@ func update(filename string, in []byte) error {
 	if !*updateGolden {
 		return nil
 	}
-	return ioutil.WriteFile(filename, normalize(in), 0666)
+	return os.WriteFile(filename, normalize(in), 0666)
 }
 
 func normalize(in []byte) []byte {

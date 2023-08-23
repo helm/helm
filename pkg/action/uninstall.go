@@ -22,6 +22,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/kube"
 	"helm.sh/helm/v3/pkg/release"
@@ -35,12 +37,14 @@ import (
 type Uninstall struct {
 	cfg *Configuration
 
-	DisableHooks bool
-	DryRun       bool
-	KeepHistory  bool
-	Wait         bool
-	Timeout      time.Duration
-	Description  string
+	DisableHooks        bool
+	DryRun              bool
+	IgnoreNotFound      bool
+	KeepHistory         bool
+	Wait                bool
+	DeletionPropagation string
+	Timeout             time.Duration
+	Description         string
 }
 
 // NewUninstall creates a new Uninstall object with the given configuration.
@@ -71,6 +75,9 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 
 	rels, err := u.cfg.Releases.History(name)
 	if err != nil {
+		if u.IgnoreNotFound {
+			return nil, nil
+		}
 		return nil, errors.Wrapf(err, "uninstall: Release not loaded: %s", name)
 	}
 	if len(rels) < 1 {
@@ -220,7 +227,25 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, stri
 		return nil, "", []error{errors.Wrap(err, "unable to build kubernetes objects for delete")}
 	}
 	if len(resources) > 0 {
+		if kubeClient, ok := u.cfg.KubeClient.(kube.InterfaceDeletionPropagation); ok {
+			_, errs = kubeClient.DeleteWithPropagationPolicy(resources, parseCascadingFlag(u.cfg, u.DeletionPropagation))
+			return resources, kept, errs
+		}
 		_, errs = u.cfg.KubeClient.Delete(resources)
 	}
 	return resources, kept, errs
+}
+
+func parseCascadingFlag(cfg *Configuration, cascadingFlag string) v1.DeletionPropagation {
+	switch cascadingFlag {
+	case "orphan":
+		return v1.DeletePropagationOrphan
+	case "foreground":
+		return v1.DeletePropagationForeground
+	case "background":
+		return v1.DeletePropagationBackground
+	default:
+		cfg.Log("uninstall: given cascade value: %s, defaulting to delete propagation background", cascadingFlag)
+		return v1.DeletePropagationBackground
+	}
 }

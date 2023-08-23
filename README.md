@@ -1,6 +1,6 @@
 # Helm
 
-[![CircleCI](https://circleci.com/gh/helm/helm.svg?style=shield)](https://circleci.com/gh/helm/helm)
+[![Build Status](https://github.com/helm/helm/workflows/release/badge.svg)](https://github.com/helm/helm/actions?workflow=release)
 [![Go Report Card](https://goreportcard.com/badge/github.com/helm/helm)](https://goreportcard.com/report/github.com/helm/helm)
 [![GoDoc](https://img.shields.io/static/v1?label=godoc&message=reference&color=blue)](https://pkg.go.dev/helm.sh/helm/v3)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/3131/badge)](https://bestpractices.coreinfrastructure.org/projects/3131)
@@ -29,7 +29,6 @@ Think of it like apt/yum/homebrew for Kubernetes.
   (like Debian or RedHat packages)
 
 ## Install
-
 
 Binary downloads of the Helm client can be found on [the Releases page](https://github.com/helm/helm/releases/latest).
 
@@ -67,6 +66,10 @@ You can reach the Helm community and developers via the following channels:
 - Mailing List:
   - [Helm Mailing List](https://lists.cncf.io/g/cncf-helm)
 - Developer Call: Thursdays at 9:30-10:00 Pacific ([meeting details](https://github.com/helm/community/blob/master/communication.md#meetings))
+
+### Contribution
+
+If you're interested in contributing, please refer to the [Contributing Guide](CONTRIBUTING.md) **before submitting a pull request**.
 
 ### Code of conduct
 
