@@ -50,11 +50,6 @@ func (suite *TLSRegistryClientTestSuite) Test_0_Login() {
 		LoginOptBasicAuth(testUsername, testPassword),
 		LoginOptTLSClientConfig(tlsCert, tlsKey, tlsCA))
 	suite.Nil(err, "no error logging into registry with good credentials")
-
-	err = suite.RegistryClient.Login(suite.DockerRegistryHost,
-		LoginOptBasicAuth(testUsername, testPassword),
-		LoginOptTLSClientConfig(tlsCert, tlsKey, tlsCA))
-	suite.Nil(err, "no error logging into registry with good credentials, insecure mode")
 }
 
 func (suite *TLSRegistryClientTestSuite) Test_1_Push() {

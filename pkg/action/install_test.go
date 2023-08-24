@@ -254,7 +254,7 @@ func TestInstallRelease_DryRun(t *testing.T) {
 	is.Equal(res.Info.Description, "Dry run complete")
 }
 
-// Regression test for #7955: Lookup must not connect to Kubernetes on a dry-run.
+// Regression test for #7955
 func TestInstallRelease_DryRun_Lookup(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
@@ -716,4 +716,34 @@ func TestNameAndChartGenerateName(t *testing.T) {
 			is.Equal(tc.Chart, chrt)
 		})
 	}
+}
+
+func TestInstallWithLabels(t *testing.T) {
+	is := assert.New(t)
+	instAction := installAction(t)
+	instAction.Labels = map[string]string{
+		"key1": "val1",
+		"key2": "val2",
+	}
+	res, err := instAction.Run(buildChart(), nil)
+	if err != nil {
+		t.Fatalf("Failed install: %s", err)
+	}
+
+	is.Equal(instAction.Labels, res.Labels)
+}
+
+func TestInstallWithSystemLabels(t *testing.T) {
+	is := assert.New(t)
+	instAction := installAction(t)
+	instAction.Labels = map[string]string{
+		"owner": "val1",
+		"key2":  "val2",
+	}
+	_, err := instAction.Run(buildChart(), nil)
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+
+	is.Equal(fmt.Errorf("user suplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels()), err)
 }
