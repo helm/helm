@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sort"
 	"time"
 
 	"github.com/pkg/errors"
@@ -112,7 +113,9 @@ func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 		return errors.Wrap(err, "unable to get kubernetes client to fetch pod logs")
 	}
 
-	for _, h := range rel.Hooks {
+	hooksByWight := append([]*release.Hook{}, rel.Hooks...)
+	sort.Stable(hookByWeight(hooksByWight))
+	for _, h := range hooksByWight {
 		for _, e := range h.Events {
 			if e == release.HookTest {
 				if contains(r.Filters[ExcludeNameFilter], h.Name) {
