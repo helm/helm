@@ -21,6 +21,7 @@ import (
 	"time"
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
+	migrate "github.com/rubenv/sql-migrate"
 
 	rspb "helm.sh/helm/v3/pkg/release"
 )
@@ -529,4 +530,39 @@ func mockGetReleaseCustomLabels(mock sqlmock.Sqlmock, key string, namespace stri
 		returnRows.AddRow(k, v)
 	}
 	eq.WillReturnRows(returnRows).RowsWillBeClosed()
+}
+
+func TestCheckAlreadyAppliedFind(t *testing.T) {
+	sqlDriver, mock := newTestFixtureSQL(t)
+	initID := "init"
+	testMigrations := []*migrate.Migration{{Id: initID}}
+	mock.
+		ExpectQuery("").
+		WillReturnRows(
+			sqlmock.NewRows([]string{"id", "applied_at"}).
+				AddRow(initID, time.Time{}))
+	mock.ExpectCommit()
+
+	if !sqlDriver.checkAlreadyApplied(testMigrations) {
+		t.Errorf("Did not find init id: %v", initID)
+	}
+
+}
+
+func TestCheckAlreadyAppliedNotFind(t *testing.T) {
+	sqlDriver, mock := newTestFixtureSQL(t)
+	initID := "init"
+	testMigrations := []*migrate.Migration{{Id: initID}}
+	mock.
+		ExpectQuery("").
+		WillReturnRows(
+			sqlmock.NewRows([]string{"id", "applied_at"}).
+				AddRow("1", time.Time{}).
+				AddRow("2", time.Time{}))
+	mock.ExpectCommit()
+
+	if sqlDriver.checkAlreadyApplied(testMigrations) {
+		t.Errorf("Did find init id: %v, that not exists", initID)
+	}
+
 }
