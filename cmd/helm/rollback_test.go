@@ -65,6 +65,12 @@ func TestRollbackCmd(t *testing.T) {
 		golden: "output/rollback-no-revision.txt",
 		rels:   rels,
 	}, {
+		name:      "rollback a release with non-existent version",
+		cmd:       "rollback funny-honey 3",
+		golden:    "output/rollback-non-existent-version.txt",
+		rels:      rels,
+		wantError: true,
+	}, {
 		name:      "rollback a release without release name",
 		cmd:       "rollback",
 		golden:    "output/rollback-no-args.txt",

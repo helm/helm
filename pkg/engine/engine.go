@@ -391,6 +391,9 @@ func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.
 
 	newParentID := c.ChartFullPath()
 	for _, t := range c.Templates {
+		if t == nil {
+			continue
+		}
 		if !isTemplateValid(c, t.Name) {
 			continue
 		}
