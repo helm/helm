@@ -233,6 +233,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 			c.Options = append(c.Options, getter.WithTLSClientConfig(rc.CertFile, rc.KeyFile, rc.CAFile))
 		}
 		if rc.Username != "" && rc.Password != "" {
+			fmt.Fprintf(c.Out, "WARNING: find the same URL repo with a configured password will override the pass-credentials parameter with PassCredentialsAll: %v.", rc.PassCredentialsAll)
 			c.Options = append(
 				c.Options,
 				getter.WithBasicAuth(rc.Username, rc.Password),
@@ -270,6 +271,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 			c.Options = append(c.Options, getter.WithTLSClientConfig(r.Config.CertFile, r.Config.KeyFile, r.Config.CAFile))
 		}
 		if r.Config.Username != "" && r.Config.Password != "" {
+			fmt.Fprintf(c.Out, "WARNING: find the same name repo with a configured password will override the pass-credentials parameter with PassCredentialsAll: %v.", r.Config.PassCredentialsAll)
 			c.Options = append(c.Options,
 				getter.WithBasicAuth(r.Config.Username, r.Config.Password),
 				getter.WithPassCredentialsAll(r.Config.PassCredentialsAll),
