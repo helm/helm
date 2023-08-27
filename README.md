@@ -39,7 +39,6 @@ If you want to use a package manager:
 - [Homebrew](https://brew.sh/) users can use `brew install helm`.
 - [Chocolatey](https://chocolatey.org/) users can use `choco install kubernetes-helm`.
 - [Scoop](https://scoop.sh/) users can use `scoop install helm`.
-- [GoFish](https://gofi.sh/) users can use `gofish install helm`.
 - [Snapcraft](https://snapcraft.io/) users can use `snap install helm --classic`
 
 To rapidly get Helm up and running, start with the [Quick Start Guide](https://helm.sh/docs/intro/quickstart/).
