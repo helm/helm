@@ -32,8 +32,8 @@ const rollbackDesc = `
 This command rolls back a release to a previous revision.
 
 The first argument of the rollback command is the name of a release, and the
-second is a revision (version) number. If this argument is omitted, it will
-roll back to the previous release.
+second is a revision (version) number. If this argument is omitted or set to
+0, it will roll back to the previous release.
 
 To see revision numbers, run 'helm history RELEASE'.
 `
