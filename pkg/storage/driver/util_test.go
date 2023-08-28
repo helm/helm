@@ -111,7 +111,11 @@ func TestContainsSystemLabels(t *testing.T) {
 
 func TestEncryptDecryptAES(t *testing.T) {
 	encryptionKey := make([]byte, 16)
-	_, _ = rand.Read(encryptionKey)
+	_, err := rand.Read(encryptionKey)
+	if err != nil {
+		t.Errorf("error generating test encryption key: %v", err)
+		return
+	}
 
 	plaintext := []byte("Dummy release data.")
 
