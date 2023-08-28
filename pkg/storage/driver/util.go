@@ -53,8 +53,14 @@ func encodeRelease(rls *rspb.Release) (string, error) {
 	switch encryptionAlgorithm {
 	case "aes":
 		data, err = encryptDataAES(b, []byte(encryptionKey))
-	default:
+	case "":
 		data = b
+	default:
+		return "", fmt.Errorf("error encrypting release: unknown algorithm %v", encryptionAlgorithm)
+	}
+
+	if err != nil {
+		return "", err
 	}
 
 	var buf bytes.Buffer
@@ -104,8 +110,14 @@ func decodeRelease(data string) (*rspb.Release, error) {
 	switch encryptionAlgorithm {
 	case "aes":
 		releaseBytes, err = decryptDataAES(b, []byte(encryptionKey))
-	default:
+	case "":
 		releaseBytes = b
+	default:
+		return nil, fmt.Errorf("error decrypting release: unknown algorithm %v", encryptionAlgorithm)
+	}
+
+	if err != nil {
+		return nil, err
 	}
 
 	var rls rspb.Release
