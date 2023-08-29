@@ -310,7 +310,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "<CHARTNAME>.selectorLabels" . | nindent 8 }}
+        {{- include "<CHARTNAME>.labels" . | nindent 8 }}
 	{{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
