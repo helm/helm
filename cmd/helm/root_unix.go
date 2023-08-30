@@ -40,7 +40,7 @@ func checkPerms() {
 			// can proceed happily without a KUBECONFIG, so this is not a fatal error.
 			return
 		}
-		kc = filepath.Join(u.HomeDir, ".kube", "config")
+		_ = filepath.Join(u.HomeDir, ".kube", "config")
 	}
 	fi, err := os.Stat(kc)
 	if err != nil {
