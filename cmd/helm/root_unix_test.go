@@ -17,29 +17,3 @@ limitations under the License.
 */
 
 package main
-
-import (
-	"bytes"
-	"io"
-	"os"
-)
-
-func checkPermsStderr() (string, error) {
-	r, w, err := os.Pipe()
-	if err != nil {
-		return "", err
-	}
-
-	stderr := os.Stderr
-	os.Stderr = w
-	defer func() {
-		os.Stderr = stderr
-	}()
-
-	checkPerms()
-	w.Close()
-
-	var text bytes.Buffer
-	io.Copy(&text, r)
-	return text.String(), nil
-}
