@@ -155,7 +155,7 @@ gen-test-golden: test-unit
 # without a go.mod file when downloading the following dependencies
 
 $(GOX):
-	(cd /; GO111MODULE=on go install github.com/mitchellh/gox@master)
+	(cd /; GO111MODULE=on go install github.com/mitchellh/gox@v1.0.2-0.20220701044238-9f712387e2d2)
 
 $(GOIMPORTS):
 	(cd /; GO111MODULE=on go install golang.org/x/tools/cmd/goimports@latest)
