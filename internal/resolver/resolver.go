@@ -199,7 +199,7 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 			if constraint.Check(v) {
 				found = true
 				if len(ver.URLs) > 0 {
-					urls[ver.Name] = ver.URLs[0]
+					urls[d.Repository+ver.Name+ver.Version] = ver.URLs[0]
 				}
 				locked[i].Version = v.Original()
 				break

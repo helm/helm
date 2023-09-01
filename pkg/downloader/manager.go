@@ -745,8 +745,9 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 		}
 	}
 
-	if _, ok := urls[name]; ok {
-		url = urls[name]
+	urlsKey := repoURL + name + version
+	if _, ok := urls[urlsKey]; ok {
+		url = urls[urlsKey]
 	} else {
 		url, err = repo.FindChartInRepoURL(repoURL, name, version, certFile, keyFile, caFile, m.Getters)
 	}
