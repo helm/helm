@@ -24,10 +24,13 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -42,14 +45,14 @@ import (
 	"helm.sh/helm/v3/pkg/releaseutil"
 	"helm.sh/helm/v3/pkg/storage"
 	"helm.sh/helm/v3/pkg/storage/driver"
-	"helm.sh/helm/v3/pkg/time"
+	helmtime "helm.sh/helm/v3/pkg/time"
 )
 
 // Timestamper is a function capable of producing a timestamp.Timestamper.
 //
-// By default, this is a time.Time function from the Helm time package. This can
+// By default, this is a helmtime.Time function from the Helm time package. This can
 // be overridden for testing though, so that timestamps are predictable.
-var Timestamper = time.Now
+var Timestamper = helmtime.Now
 
 var (
 	// errMissingChart indicates that a chart was not provided.
@@ -228,6 +231,66 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	return hs, b, notes, nil
 }
 
+// Install CRDs
+func (cfg *Configuration) installCRDs(crds []chart.CRD) error {
+	// We do these one file at a time in the order they were read.
+	totalItems := []*resource.Info{}
+	for _, obj := range crds {
+		// Read in the resources
+		res, err := cfg.KubeClient.Build(bytes.NewBuffer(obj.File.Data), false)
+		if err != nil {
+			return errors.Wrapf(err, "failed to install CRD %s", obj.Name)
+		}
+
+		// Send them to Kube
+		if _, err := cfg.KubeClient.Create(res); err != nil {
+			// If the error is CRD already exists, continue.
+			if apierrors.IsAlreadyExists(err) {
+				crdName := res[0].Name
+				cfg.Log("CRD %s is already present. Skipping.", crdName)
+				continue
+			}
+			return errors.Wrapf(err, "failed to install CRD %s", obj.Name)
+		}
+		totalItems = append(totalItems, res...)
+	}
+	if len(totalItems) > 0 {
+		// Give time for the CRD to be recognized.
+		if err := cfg.KubeClient.Wait(totalItems, 60*time.Second); err != nil {
+			return err
+		}
+
+		// If we have already gathered the capabilities, we need to invalidate
+		// the cache so that the new CRDs are recognized. This should only be
+		// the case when an action configuration is reused for multiple actions,
+		// as otherwise it is later loaded by ourselves when getCapabilities
+		// is called later on in the installation process.
+		if cfg.Capabilities != nil {
+			discoveryClient, err := cfg.RESTClientGetter.ToDiscoveryClient()
+			if err != nil {
+				return err
+			}
+
+			cfg.Log("Clearing discovery cache")
+			discoveryClient.Invalidate()
+
+			_, _ = discoveryClient.ServerGroups()
+		}
+
+		// Invalidate the REST mapper, since it will not have the new CRDs
+		// present.
+		restMapper, err := cfg.RESTClientGetter.ToRESTMapper()
+		if err != nil {
+			return err
+		}
+		if resettable, ok := restMapper.(meta.ResettableRESTMapper); ok {
+			cfg.Log("Clearing REST mapper cache")
+			resettable.Reset()
+		}
+	}
+	return nil
+}
+
 // RESTClientGetter gets the rest client
 type RESTClientGetter interface {
 	ToRESTConfig() (*rest.Config, error)
@@ -293,8 +356,8 @@ func (cfg *Configuration) KubernetesClientSet() (kubernetes.Interface, error) {
 // Now generates a timestamp
 //
 // If the configuration has a Timestamper on it, that will be used.
-// Otherwise, this will use time.Now().
-func (cfg *Configuration) Now() time.Time {
+// Otherwise, this will use helmtime.Now().
+func (cfg *Configuration) Now() helmtime.Time {
 	return Timestamper()
 }
 

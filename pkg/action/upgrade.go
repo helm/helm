@@ -46,7 +46,7 @@ type Upgrade struct {
 
 	ChartPathOptions
 
-	// Install is a purely informative flag that indicates whether this upgrade was done in "install" mode.
+	// Install is a largely informative flag that indicates whether this upgrade was done in "install" mode.
 	//
 	// Applications may use this to determine whether this Upgrade operation was done as part of a
 	// pure upgrade (Upgrade.Install == false) or as part of an install-or-upgrade operation
@@ -55,12 +55,14 @@ type Upgrade struct {
 	// Setting this to `true` will NOT cause `Upgrade` to perform an install if the release does not exist.
 	// That process must be handled by creating an Install action directly. See cmd/upgrade.go for an
 	// example of how this flag is used.
+	//
+	// This flag does affect how CRDs are handled - CRDs will only be installed if this flag is set.
 	Install bool
 	// Devel indicates that the operation is done in devel mode.
 	Devel bool
 	// Namespace is the namespace in which this operation should be performed.
 	Namespace string
-	// SkipCRDs skips installing CRDs when install flag is enabled during upgrade
+	// SkipCRDs skips installing new CRDs during upgrade, if this upgrade was done in install mode. Note, CRDs will never be upgraded if they already exist.
 	SkipCRDs bool
 	// Timeout is the timeout for this operation
 	Timeout time.Duration
@@ -231,6 +233,23 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		return nil, nil, err
 	}
 
+	// Determine whether or not to interact with remote
+	var interactWithRemote bool
+	if !u.isDryRun() || u.DryRunOption == "server" || u.DryRunOption == "none" || u.DryRunOption == "false" {
+		interactWithRemote = true
+	}
+
+	// Pre-install anything in the crd/ directory. We do this before Helm
+	// contacts the upstream server and builds the capabilities object.
+	if crds := chart.CRDObjects(); u.Install && !u.SkipCRDs && len(crds) > 0 {
+		// On dry run, bail here
+		if u.isDryRun() {
+			u.cfg.Log("WARNING: This chart or one of its subcharts contains CRDs. Rendering may fail or contain inaccuracies.")
+		} else if err := u.cfg.installCRDs(crds); err != nil {
+			return nil, nil, err
+		}
+	}
+
 	// Increment revision count. This is passed to templates, and also stored on
 	// the release object.
 	revision := lastRelease.Version + 1
@@ -249,12 +268,6 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 	valuesToRender, err := chartutil.ToRenderValues(chart, vals, options, caps)
 	if err != nil {
 		return nil, nil, err
-	}
-
-	// Determine whether or not to interact with remote
-	var interactWithRemote bool
-	if !u.isDryRun() || u.DryRunOption == "server" || u.DryRunOption == "none" || u.DryRunOption == "false" {
-		interactWithRemote = true
 	}
 
 	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, interactWithRemote, u.EnableDNS)

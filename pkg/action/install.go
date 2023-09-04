@@ -34,9 +34,7 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/cli-runtime/pkg/resource"
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/pkg/chart"
@@ -150,65 +148,6 @@ func (i *Install) GetRegistryClient() *registry.Client {
 	return i.ChartPathOptions.registryClient
 }
 
-func (i *Install) installCRDs(crds []chart.CRD) error {
-	// We do these one file at a time in the order they were read.
-	totalItems := []*resource.Info{}
-	for _, obj := range crds {
-		// Read in the resources
-		res, err := i.cfg.KubeClient.Build(bytes.NewBuffer(obj.File.Data), false)
-		if err != nil {
-			return errors.Wrapf(err, "failed to install CRD %s", obj.Name)
-		}
-
-		// Send them to Kube
-		if _, err := i.cfg.KubeClient.Create(res); err != nil {
-			// If the error is CRD already exists, continue.
-			if apierrors.IsAlreadyExists(err) {
-				crdName := res[0].Name
-				i.cfg.Log("CRD %s is already present. Skipping.", crdName)
-				continue
-			}
-			return errors.Wrapf(err, "failed to install CRD %s", obj.Name)
-		}
-		totalItems = append(totalItems, res...)
-	}
-	if len(totalItems) > 0 {
-		// Give time for the CRD to be recognized.
-		if err := i.cfg.KubeClient.Wait(totalItems, 60*time.Second); err != nil {
-			return err
-		}
-
-		// If we have already gathered the capabilities, we need to invalidate
-		// the cache so that the new CRDs are recognized. This should only be
-		// the case when an action configuration is reused for multiple actions,
-		// as otherwise it is later loaded by ourselves when getCapabilities
-		// is called later on in the installation process.
-		if i.cfg.Capabilities != nil {
-			discoveryClient, err := i.cfg.RESTClientGetter.ToDiscoveryClient()
-			if err != nil {
-				return err
-			}
-
-			i.cfg.Log("Clearing discovery cache")
-			discoveryClient.Invalidate()
-
-			_, _ = discoveryClient.ServerGroups()
-		}
-
-		// Invalidate the REST mapper, since it will not have the new CRDs
-		// present.
-		restMapper, err := i.cfg.RESTClientGetter.ToRESTMapper()
-		if err != nil {
-			return err
-		}
-		if resettable, ok := restMapper.(meta.ResettableRESTMapper); ok {
-			i.cfg.Log("Clearing REST mapper cache")
-			resettable.Reset()
-		}
-	}
-	return nil
-}
-
 // Run executes the installation
 //
 // If DryRun is set to true, this will prepare the release, but not install it
@@ -246,7 +185,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		// On dry run, bail here
 		if i.isDryRun() {
 			i.cfg.Log("WARNING: This chart or one of its subcharts contains CRDs. Rendering may fail or contain inaccuracies.")
-		} else if err := i.installCRDs(crds); err != nil {
+		} else if err := i.cfg.installCRDs(crds); err != nil {
 			return nil, err
 		}
 	}
