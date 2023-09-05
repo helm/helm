@@ -234,7 +234,7 @@ func coalesceValues(printf printFn, c *chart.Chart, v map[string]interface{}, pr
 					// If the original value is nil, there is nothing to coalesce, so we don't print
 					// the warning
 					if val != nil {
-						printf("warning: skipped value for %s.%s: Not a map.", subPrefix, key)
+						printf("warning: skipped value for %s.%s: Not a mapping.", subPrefix, key)
 					}
 				} else {
 					// Because v has higher precedence than nv, dest values override src
