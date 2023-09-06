@@ -89,7 +89,7 @@ func (i *VCSInstaller) Install() error {
 	}
 
 	debug("copying %s to %s", i.Repo.LocalPath(), i.Path())
-	return fs.CopyDir(i.Repo.LocalPath(), i.Path())
+	return fs.CopyDir(i.Repo.LocalPath(), i.Path(), []string{".git"})
 }
 
 // Update updates a remote repository
