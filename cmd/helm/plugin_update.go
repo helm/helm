@@ -16,12 +16,12 @@ limitations under the License.
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
-	"strings"
 
-	"github.com/pkg/errors"
+	multierror "github.com/hashicorp/go-multierror"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/pkg/plugin"
@@ -29,7 +29,8 @@ import (
 )
 
 type pluginUpdateOptions struct {
-	names []string
+	plugins []*plugin.Plugin
+	all     bool
 }
 
 func newPluginUpdateCmd(out io.Writer) *cobra.Command {
@@ -42,48 +43,64 @@ func newPluginUpdateCmd(out io.Writer) *cobra.Command {
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compListPlugins(toComplete, args), cobra.ShellCompDirectiveNoFileComp
 		},
+		Args: func(cmd *cobra.Command, args []string) error {
+			return o.args(args)
+		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			return o.complete(args)
+			return o.findSelectedPlugins(args)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return o.run(out)
 		},
 	}
+	cmd.Flags().BoolVarP(&o.all, "all", "a", false, "Update all installed plugins")
 	return cmd
 }
 
-func (o *pluginUpdateOptions) complete(args []string) error {
-	if len(args) == 0 {
-		return errors.New("please provide plugin name to update")
+func (o *pluginUpdateOptions) args(args []string) error {
+	if (o.all && len(args) > 0) || (!o.all && len(args) == 0) {
+		return errors.New("please provide plugin name to update or use --all")
 	}
-	o.names = args
 	return nil
 }
 
-func (o *pluginUpdateOptions) run(out io.Writer) error {
-	installer.Debug = settings.Debug
+func (o *pluginUpdateOptions) findSelectedPlugins(args []string) error {
 	debug("loading installed plugins from %s", settings.PluginsDirectory)
 	plugins, err := plugin.FindPlugins(settings.PluginsDirectory)
 	if err != nil {
 		return err
 	}
-	var errorPlugins []string
 
-	for _, name := range o.names {
-		if found := findPlugin(plugins, name); found != nil {
-			if err := updatePlugin(found); err != nil {
-				errorPlugins = append(errorPlugins, fmt.Sprintf("Failed to update plugin %s, got error (%v)", name, err))
+	if o.all {
+		o.plugins = plugins
+	} else {
+		for _, name := range args {
+			if plugin := findPlugin(plugins, name); plugin != nil {
+				o.plugins = append(o.plugins, plugin)
 			} else {
-				fmt.Fprintf(out, "Updated plugin: %s\n", name)
+				err = multierror.Append(err, fmt.Errorf("plugin: %s not found", name))
 			}
-		} else {
-			errorPlugins = append(errorPlugins, fmt.Sprintf("Plugin: %s not found", name))
+		}
+		if err != nil {
+			return err
 		}
 	}
-	if len(errorPlugins) > 0 {
-		return errors.Errorf(strings.Join(errorPlugins, "\n"))
-	}
 	return nil
+}
+
+func (o *pluginUpdateOptions) run(out io.Writer) error {
+	installer.Debug = settings.Debug
+
+	var errs error
+	for _, plugin := range o.plugins {
+		name := plugin.Metadata.Name
+		if err := updatePlugin(plugin); err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("failed to update plugin %s, got error (%w)", name, err))
+		} else {
+			fmt.Fprintf(out, "Updated plugin: %s\n", name)
+		}
+	}
+	return errs
 }
 
 func updatePlugin(p *plugin.Plugin) error {
