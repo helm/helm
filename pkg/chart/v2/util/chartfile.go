@@ -33,7 +33,7 @@ func LoadChartfile(filename string) (*chart.Metadata, error) {
 		return nil, err
 	}
 	y := new(chart.Metadata)
-	err = yaml.Unmarshal(b, y)
+	err = yaml.UnmarshalStrict(b, y)
 	return y, err
 }
 
