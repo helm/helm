@@ -21,6 +21,7 @@ import (
 	"time"
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
+	migrate "github.com/rubenv/sql-migrate"
 
 	rspb "helm.sh/helm/v3/pkg/release"
 )
@@ -529,4 +530,52 @@ func mockGetReleaseCustomLabels(mock sqlmock.Sqlmock, key string, namespace stri
 		returnRows.AddRow(k, v)
 	}
 	eq.WillReturnRows(returnRows).RowsWillBeClosed()
+}
+
+func TestSqlChechkAppliedMigrations(t *testing.T) {
+	cases := []struct {
+		migrationsToApply    []*migrate.Migration
+		appliedMigrationsIds []string
+		expectedResult       bool
+		errorExplanation     string
+	}{
+		{
+			migrationsToApply:    []*migrate.Migration{{Id: "init1"}, {Id: "init2"}, {Id: "init3"}},
+			appliedMigrationsIds: []string{"1", "2", "init1", "3", "init2", "4", "5"},
+			expectedResult:       false,
+			errorExplanation:     "Has found one migration id \"init3\" as applied, that was not applied",
+		},
+		{
+			migrationsToApply:    []*migrate.Migration{{Id: "init1"}, {Id: "init2"}, {Id: "init3"}},
+			appliedMigrationsIds: []string{"1", "2", "init1", "3", "init2", "4", "init3", "5"},
+			expectedResult:       true,
+			errorExplanation:     "Has not found one or more migration ids, that was applied",
+		},
+		{
+			migrationsToApply:    []*migrate.Migration{{Id: "init"}},
+			appliedMigrationsIds: []string{"1", "2", "3", "inits", "4", "tinit", "5"},
+			expectedResult:       false,
+			errorExplanation:     "Has found single \"init\", that was not applied",
+		},
+		{
+			migrationsToApply:    []*migrate.Migration{{Id: "init"}},
+			appliedMigrationsIds: []string{"1", "2", "init", "3", "init2", "4", "init3", "5"},
+			expectedResult:       true,
+			errorExplanation:     "Has not found single migration id \"init\", that was applied",
+		},
+	}
+	for i, c := range cases {
+		sqlDriver, mock := newTestFixtureSQL(t)
+		rows := sqlmock.NewRows([]string{"id", "applied_at"})
+		for _, id := range c.appliedMigrationsIds {
+			rows.AddRow(id, time.Time{})
+		}
+		mock.
+			ExpectQuery("").
+			WillReturnRows(rows)
+		mock.ExpectCommit()
+		if sqlDriver.checkAlreadyApplied(c.migrationsToApply) != c.expectedResult {
+			t.Errorf("Test case: %v, Expected: %v, Have: %v, Explanation: %v", i, c.expectedResult, !c.expectedResult, c.errorExplanation)
+		}
+	}
 }
