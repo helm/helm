@@ -206,6 +206,77 @@ func TestDependencyUpdateCmd_DoNotDeleteOldChartsOnError(t *testing.T) {
 	}
 }
 
+/*
+TestDependencyUpdateCmd_RemoveChartDepsWhenDepsRemoved tests for the case when a chart previously had dependencies
+defined, and they were later removed, that helm dep update properly removes/cleanses those dependencies from the charts/ directory,
+which also verifies that the lock file was updated properly because dependencies from the lockfile are written to the charts/ directory.
+*/
+func TestDependencyUpdateCmd_RemoveChartDepsWhenDepsRemoved(t *testing.T) {
+	defer resetEnv()()
+	defer ensure.HelmHome(t)()
+
+	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/testcharts/*.tgz")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer srv.Stop()
+	t.Logf("Listening on directory %s", srv.Root())
+
+	if err := srv.LinkIndices(); err != nil {
+		t.Fatal(err)
+	}
+
+	dir := func(p ...string) string {
+		return filepath.Join(append([]string{srv.Root()}, p...)...)
+	}
+
+	// Create chart with dependencies.
+	chartname := "depup"
+	ch := createTestingMetadata(chartname, srv.URL())
+	if err := chartutil.SaveDir(ch, dir()); err != nil {
+		t.Fatal(err)
+	}
+
+	// Run dep update to store chart dependencies in charts/ dir.
+	_, output, err := executeActionCommand(fmt.Sprintf("dependency update %s --repository-config %s --repository-cache %s", dir(chartname), dir("repositories.yaml"), dir()))
+	if err != nil {
+		t.Logf("Output: %s", output)
+		t.Fatal(err)
+	}
+
+	// Update chart to remove dependencies.
+	ch = createTestingMetadataWithNoDeps(chartname, srv.URL())
+	if err := chartutil.SaveDir(ch, dir()); err != nil {
+		t.Fatal(err)
+	}
+
+	// Run dep update to remove chart dependencies from charts/ dir.
+	_, output, err = executeActionCommand(fmt.Sprintf("dependency update %s --repository-config %s --repository-cache %s", dir(chartname), dir("repositories.yaml"), dir()))
+	if err != nil {
+		t.Logf("Output: %s", output)
+		t.Fatal(err)
+	}
+
+	// Chart repo is down.
+	srv.Stop()
+
+	// Get chart dependencies from charts/ dir. There shouldn't be any after the last update.
+	deps, err := os.ReadDir(filepath.Join(dir(chartname), "charts"))
+	if err != nil {
+		t.Fatal("Failed to get dependencies from charts/ dir")
+	}
+
+	// Make sure charts/ dir has no dependencies.
+	if len(deps) != 0 {
+		t.Fatalf("Expected 0 chart dependencies, got %d", len(deps))
+	}
+
+	// Make sure tmpcharts is deleted.
+	if _, err := os.Stat(filepath.Join(dir(chartname), "tmpcharts")); !os.IsNotExist(err) {
+		t.Fatalf("tmpcharts dir still exists")
+	}
+}
+
 // createTestingMetadata creates a basic chart that depends on reqtest-0.1.0
 //
 // The baseURL can be used to point to a particular repository server.
@@ -219,6 +290,19 @@ func createTestingMetadata(name, baseURL string) *chart.Chart {
 				{Name: "reqtest", Version: "0.1.0", Repository: baseURL},
 				{Name: "compressedchart", Version: "0.1.0", Repository: baseURL},
 			},
+		},
+	}
+}
+
+// createTestingMetadataWithNoDeps creates a basic chart with no dependencies
+//
+// The baseURL can be used to point to a particular repository server.
+func createTestingMetadataWithNoDeps(name, baseURL string) *chart.Chart {
+	return &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: chart.APIVersionV2,
+			Name:       name,
+			Version:    "1.2.3",
 		},
 	}
 }
