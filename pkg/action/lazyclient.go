@@ -20,7 +20,6 @@ import (
 	"context"
 	"sync"
 
-	"helm.sh/helm/v3/pkg/storage/driver"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -28,6 +27,8 @@ import (
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"k8s.io/client-go/kubernetes"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+
+	"helm.sh/helm/v3/pkg/storage/driver"
 )
 
 // lazyClient is a workaround to deal with Kubernetes having an unstable client API.
