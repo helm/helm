@@ -137,7 +137,7 @@ func (s *SQL) ensureDBSetup() error {
 				Up: []string{
 					fmt.Sprintf(`
 						CREATE TABLE %s (
-							%s VARCHAR(67),
+							%s VARCHAR(90),
 							%s VARCHAR(64) NOT NULL,
 							%s TEXT NOT NULL,
 							%s VARCHAR(64) NOT NULL,
