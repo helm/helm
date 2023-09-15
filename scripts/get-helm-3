@@ -108,14 +108,14 @@ verifySupported() {
 checkDesiredVersion() {
   if [ "x$DESIRED_VERSION" == "x" ]; then
     # Get tag from release URL
-    local latest_release_url="https://api.github.com/repos/helm/helm/releases/latest"
+    local latest_release_url="https://get.helm.sh/helm-latest-version"
     local latest_release_response=""
     if [ "${HAS_CURL}" == "true" ]; then
       latest_release_response=$( curl -L --silent --show-error --fail "$latest_release_url" 2>&1 || true )
     elif [ "${HAS_WGET}" == "true" ]; then
       latest_release_response=$( wget "$latest_release_url" -O - 2>&1 || true )
     fi
-    TAG=$( echo "$latest_release_response" | grep '"tag_name"' | sed -E 's/.*"(v[0-9\.]+)".*/\1/g' )
+    TAG=$( echo "$latest_release_response" | grep '^v[0-9]' )
     if [ "x$TAG" == "x" ]; then
       printf "Could not retrieve the latest release tag information from %s: %s\n" "${latest_release_url}" "${latest_release_response}"
       exit 1
