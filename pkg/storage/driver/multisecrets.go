@@ -154,7 +154,6 @@ func (secrets *MultiSecrets) List(filter func(*rspb.Release) bool) ([]*rspb.Rele
 // Query fetches all releases that match the provided map of labels.
 // An error is returned if the secret fails to retrieve the releases.
 func (secrets *MultiSecrets) Query(labels map[string]string) ([]*rspb.Release, error) {
-	const firstchunk = 1
 	ls := kblabels.Set{}
 	for k, v := range labels {
 		if errs := validation.IsValidLabelValue(v); len(errs) != 0 {
@@ -365,7 +364,7 @@ func newMultiSecretsObject(key string, rls *rspb.Release, lbs labels, chunkSizeE
 					Data: map[string][]byte{"release": []byte(str), "chunk": []byte(fmt.Sprintf("%d", i)), "chunks": []byte(fmt.Sprintf("%d", len(slices)))},
 				})
 			}
-			i += 1
+			i++
 		}
 	} else {
 		// No chunking required, create 100% BWC Secret
