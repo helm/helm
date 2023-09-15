@@ -46,6 +46,21 @@ import (
 	rspb "helm.sh/helm/v3/pkg/release"
 )
 
+// multiSecretContextKey is defined instead of the built-in string type to avoid collisions.
+type multiSecretContextKey string
+
+var multiSecretContextNamespace = multiSecretContextKey("namespace")
+
+// GetNamespaceFromContext gets the namespace value from the context.
+func GetNamespaceFromContext(ctx context.Context) (string, bool) {
+	if v := ctx.Value(multiSecretContextNamespace); v != nil {
+		if namespace, ok := v.(string); ok {
+			return namespace, ok
+		}
+	}
+	return "", false
+}
+
 var _ Driver = (*MultiSecrets)(nil)
 
 // MultiSecretsDriverName is the string name of the driver.
@@ -371,7 +386,8 @@ func loadRemainingChunks(obj *v1.Secret, multiSecretImpl *MultiSecrets) ([]byte,
 	chunks, _ := strconv.Atoi(string(obj.Data["chunks"]))
 	for chunk := 2; chunk <= chunks; chunk++ {
 		key := fmt.Sprintf("%s.%d", obj.ObjectMeta.Name, chunk)
-		chunkobj, err := multiSecretImpl.impl.Get(context.Background(), key, metav1.GetOptions{})
+		ctx := context.WithValue(context.Background(), multiSecretContextNamespace, obj.Namespace)
+		chunkobj, err := multiSecretImpl.impl.Get(ctx, key, metav1.GetOptions{})
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				return nil, ErrReleaseNotFound

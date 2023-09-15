@@ -20,6 +20,7 @@ import (
 	"context"
 	"sync"
 
+	"helm.sh/helm/v3/pkg/storage/driver"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -93,7 +94,11 @@ func (s *multiSecretClient) Get(ctx context.Context, name string, opts metav1.Ge
 	if err := s.init(); err != nil {
 		return nil, err
 	}
-	return s.client.CoreV1().Secrets(s.namespace).Get(ctx, name, opts)
+	namespace := s.namespace
+	if v, ok := driver.GetNamespaceFromContext(ctx); ok {
+		namespace = v
+	}
+	return s.client.CoreV1().Secrets(namespace).Get(ctx, name, opts)
 }
 
 func (s *multiSecretClient) List(ctx context.Context, opts metav1.ListOptions) (*v1.SecretList, error) {
