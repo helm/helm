@@ -11,6 +11,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+//nolint:dupl
 package driver
 
 import (
@@ -38,10 +39,10 @@ func TestMultiSecretsGet(t *testing.T) {
 	key := testKey(name, vers)
 	rel := releaseStub(name, vers, namespace, rspb.StatusDeployed)
 
-	secrets := newTestFixtureMultiSecrets(t, []*rspb.Release{rel}...)
+	multisecrets := newTestFixtureMultiSecrets(t, []*rspb.Release{rel}...)
 
 	// get release with key
-	got, err := secrets.Get(key)
+	got, err := multisecrets.Get(key)
 	if err != nil {
 		t.Fatalf("Failed to get release: %s", err)
 	}
@@ -68,12 +69,12 @@ func TestUNcompressedMultiSecretsGet(t *testing.T) {
 		t.Fatalf("Failed to marshal release: %s", err)
 	}
 	secret.Data["release"] = []byte(base64.StdEncoding.EncodeToString(b))
-	var mock MockSecretsInterface
+	var mock MockMultiSecretsInterface
 	mock.objects = map[string]*v1.Secret{key: secret}
-	secrets := NewSecrets(&mock)
+	multisecrets := NewMultiSecrets(&mock)
 
 	// get release with key
-	got, err := secrets.Get(key)
+	got, err := multisecrets.Get(key)
 	if err != nil {
 		t.Fatalf("Failed to get release: %s", err)
 	}
@@ -84,17 +85,17 @@ func TestUNcompressedMultiSecretsGet(t *testing.T) {
 }
 
 func TestMultiSecretsList(t *testing.T) {
-	secrets := newTestFixtureMultiSecrets(t, []*rspb.Release{
-		releaseStub("key-1", 1, "default", rspb.StatusUninstalled),
-		releaseStub("key-2", 1, "default", rspb.StatusUninstalled),
-		releaseStub("key-3", 1, "default", rspb.StatusDeployed),
-		releaseStub("key-4", 1, "default", rspb.StatusDeployed),
-		releaseStub("key-5", 1, "default", rspb.StatusSuperseded),
-		releaseStub("key-6", 1, "default", rspb.StatusSuperseded),
+	multisecrets := newTestFixtureMultiSecrets(t, []*rspb.Release{
+		releaseStub("multi-secrets-key-1", 1, "default", rspb.StatusUninstalled),
+		releaseStub("multi-secrets-key-2", 1, "default", rspb.StatusUninstalled),
+		releaseStub("multi-secrets-key-3", 1, "default", rspb.StatusDeployed),
+		releaseStub("multi-secrets-key-4", 1, "default", rspb.StatusDeployed),
+		releaseStub("multi-secrets-key-5", 1, "default", rspb.StatusSuperseded),
+		releaseStub("multi-secrets-key-6", 1, "default", rspb.StatusSuperseded),
 	}...)
 
 	// list all deleted releases
-	del, err := secrets.List(func(rel *rspb.Release) bool {
+	del, err := multisecrets.List(func(rel *rspb.Release) bool {
 		return rel.Info.Status == rspb.StatusUninstalled
 	})
 	// check
@@ -106,7 +107,7 @@ func TestMultiSecretsList(t *testing.T) {
 	}
 
 	// list all deployed releases
-	dpl, err := secrets.List(func(rel *rspb.Release) bool {
+	dpl, err := multisecrets.List(func(rel *rspb.Release) bool {
 		return rel.Info.Status == rspb.StatusDeployed
 	})
 	// check
@@ -118,7 +119,7 @@ func TestMultiSecretsList(t *testing.T) {
 	}
 
 	// list all superseded releases
-	ssd, err := secrets.List(func(rel *rspb.Release) bool {
+	ssd, err := multisecrets.List(func(rel *rspb.Release) bool {
 		return rel.Info.Status == rspb.StatusSuperseded
 	})
 	// check
@@ -131,16 +132,16 @@ func TestMultiSecretsList(t *testing.T) {
 }
 
 func TestMultiSecretsQuery(t *testing.T) {
-	secrets := newTestFixtureMultiSecrets(t, []*rspb.Release{
-		releaseStub("key-1", 1, "default", rspb.StatusUninstalled),
-		releaseStub("key-2", 1, "default", rspb.StatusUninstalled),
-		releaseStub("key-3", 1, "default", rspb.StatusDeployed),
-		releaseStub("key-4", 1, "default", rspb.StatusDeployed),
-		releaseStub("key-5", 1, "default", rspb.StatusSuperseded),
-		releaseStub("key-6", 1, "default", rspb.StatusSuperseded),
+	multisecrets := newTestFixtureMultiSecrets(t, []*rspb.Release{
+		releaseStub("multi-secrets-key-1", 1, "default", rspb.StatusUninstalled),
+		releaseStub("multi-secrets-key-2", 1, "default", rspb.StatusUninstalled),
+		releaseStub("multi-secrets-key-3", 1, "default", rspb.StatusDeployed),
+		releaseStub("multi-secrets-key-4", 1, "default", rspb.StatusDeployed),
+		releaseStub("multi-secrets-key-5", 1, "default", rspb.StatusSuperseded),
+		releaseStub("multi-secrets-key-6", 1, "default", rspb.StatusSuperseded),
 	}...)
 
-	rls, err := secrets.Query(map[string]string{"status": "deployed"})
+	rls, err := multisecrets.Query(map[string]string{"status": "deployed"})
 	if err != nil {
 		t.Fatalf("Failed to query: %s", err)
 	}
@@ -148,14 +149,14 @@ func TestMultiSecretsQuery(t *testing.T) {
 		t.Fatalf("Expected 2 results, actual %d", len(rls))
 	}
 
-	_, err = secrets.Query(map[string]string{"name": "notExist"})
+	_, err = multisecrets.Query(map[string]string{"name": "notExist"})
 	if err != ErrReleaseNotFound {
 		t.Errorf("Expected {%v}, got {%v}", ErrReleaseNotFound, err)
 	}
 }
 
 func TestMultiSecretsCreate(t *testing.T) {
-	secrets := newTestFixtureMultiSecrets(t)
+	multisecrets := newTestFixtureMultiSecrets(t)
 
 	vers := 1
 	name := "smug-pigeon"
@@ -164,12 +165,12 @@ func TestMultiSecretsCreate(t *testing.T) {
 	rel := releaseStub(name, vers, namespace, rspb.StatusDeployed)
 
 	// store the release in a secret
-	if err := secrets.Create(key, rel); err != nil {
+	if err := multisecrets.Create(key, rel); err != nil {
 		t.Fatalf("Failed to create release with key %q: %s", key, err)
 	}
 
 	// get the release back
-	got, err := secrets.Get(key)
+	got, err := multisecrets.Get(key)
 	if err != nil {
 		t.Fatalf("Failed to get release with key %q: %s", key, err)
 	}
@@ -187,18 +188,18 @@ func TestMultiSecretsUpdate(t *testing.T) {
 	key := testKey(name, vers)
 	rel := releaseStub(name, vers, namespace, rspb.StatusDeployed)
 
-	secrets := newTestFixtureMultiSecrets(t, []*rspb.Release{rel}...)
+	multisecrets := newTestFixtureMultiSecrets(t, []*rspb.Release{rel}...)
 
 	// modify release status code
 	rel.Info.Status = rspb.StatusSuperseded
 
 	// perform the update
-	if err := secrets.Update(key, rel); err != nil {
+	if err := multisecrets.Update(key, rel); err != nil {
 		t.Fatalf("Failed to update release: %s", err)
 	}
 
 	// fetch the updated release
-	got, err := secrets.Get(key)
+	got, err := multisecrets.Get(key)
 	if err != nil {
 		t.Fatalf("Failed to get release with key %q: %s", key, err)
 	}
@@ -216,16 +217,16 @@ func TestMultiSecretsDelete(t *testing.T) {
 	key := testKey(name, vers)
 	rel := releaseStub(name, vers, namespace, rspb.StatusDeployed)
 
-	secrets := newTestFixtureMultiSecrets(t, []*rspb.Release{rel}...)
+	multisecrets := newTestFixtureMultiSecrets(t, []*rspb.Release{rel}...)
 
 	// perform the delete on a non-existing release
-	_, err := secrets.Delete("nonexistent")
+	_, err := multisecrets.Delete("nonexistent")
 	if err != ErrReleaseNotFound {
 		t.Fatalf("Expected ErrReleaseNotFound, got: {%v}", err)
 	}
 
 	// perform the delete
-	rls, err := secrets.Delete(key)
+	rls, err := multisecrets.Delete(key)
 	if err != nil {
 		t.Fatalf("Failed to delete release with key %q: %s", key, err)
 	}
@@ -234,7 +235,7 @@ func TestMultiSecretsDelete(t *testing.T) {
 	}
 
 	// fetch the deleted release
-	_, err = secrets.Get(key)
+	_, err = multisecrets.Get(key)
 	if !reflect.DeepEqual(ErrReleaseNotFound, err) {
 		t.Errorf("Expected {%v}, got {%v}", ErrReleaseNotFound, err)
 	}
