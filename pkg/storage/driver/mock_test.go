@@ -252,6 +252,92 @@ func (mock *MockSecretsInterface) Delete(_ context.Context, name string, _ metav
 	return nil
 }
 
+// newTestFixtureMultiSecrets initializes a MockMultiSecretsInterface.
+// MultiSecrets are created for each release provided.
+func newTestFixtureMultiSecrets(t *testing.T, releases ...*rspb.Release) *MultiSecrets {
+	var mock MockMultiSecretsInterface
+	mock.Init(t, releases...)
+
+	return NewMultiSecrets(&mock)
+}
+
+// MockMultiSecretsInterface mocks a kubernetes SecretsInterface
+type MockMultiSecretsInterface struct {
+	corev1.SecretInterface
+
+	objects map[string]*v1.Secret
+}
+
+// Init initializes the MockMultiSecretsInterface with the set of releases.
+func (mock *MockMultiSecretsInterface) Init(t *testing.T, releases ...*rspb.Release) {
+	mock.objects = map[string]*v1.Secret{}
+
+	for _, rls := range releases {
+		objkey := testKey(rls.Name, rls.Version)
+
+		secrets, err := newMultiSecretsObject(objkey, rls, nil, -1)
+		if err != nil {
+			t.Fatalf("Failed to create secrets: %s", err)
+		}
+		mock.objects[objkey] = &(*secrets)[0]
+	}
+}
+
+// Get returns the Secret by name.
+func (mock *MockMultiSecretsInterface) Get(_ context.Context, name string, _ metav1.GetOptions) (*v1.Secret, error) {
+	object, ok := mock.objects[name]
+	if !ok {
+		return nil, apierrors.NewNotFound(v1.Resource("tests"), name)
+	}
+	return object, nil
+}
+
+// List returns the a of Secret.
+func (mock *MockMultiSecretsInterface) List(_ context.Context, opts metav1.ListOptions) (*v1.SecretList, error) {
+	var list v1.SecretList
+
+	labelSelector, err := kblabels.Parse(opts.LabelSelector)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, secret := range mock.objects {
+		if labelSelector.Matches(kblabels.Set(secret.ObjectMeta.Labels)) {
+			list.Items = append(list.Items, *secret)
+		}
+	}
+	return &list, nil
+}
+
+// Create creates a new Secret.
+func (mock *MockMultiSecretsInterface) Create(_ context.Context, secret *v1.Secret, _ metav1.CreateOptions) (*v1.Secret, error) {
+	name := secret.ObjectMeta.Name
+	if object, ok := mock.objects[name]; ok {
+		return object, apierrors.NewAlreadyExists(v1.Resource("tests"), name)
+	}
+	mock.objects[name] = secret
+	return secret, nil
+}
+
+// Update updates a Secret.
+func (mock *MockMultiSecretsInterface) Update(_ context.Context, secret *v1.Secret, _ metav1.UpdateOptions) (*v1.Secret, error) {
+	name := secret.ObjectMeta.Name
+	if _, ok := mock.objects[name]; !ok {
+		return nil, apierrors.NewNotFound(v1.Resource("tests"), name)
+	}
+	mock.objects[name] = secret
+	return secret, nil
+}
+
+// Delete deletes a Secret by name.
+func (mock *MockMultiSecretsInterface) Delete(_ context.Context, name string, _ metav1.DeleteOptions) error {
+	if _, ok := mock.objects[name]; !ok {
+		return apierrors.NewNotFound(v1.Resource("tests"), name)
+	}
+	delete(mock.objects, name)
+	return nil
+}
+
 // newTestFixtureSQL mocks the SQL database (for testing purposes)
 func newTestFixtureSQL(t *testing.T, _ ...*rspb.Release) (*SQL, sqlmock.Sqlmock) {
 	sqlDB, mock, err := sqlmock.New()
