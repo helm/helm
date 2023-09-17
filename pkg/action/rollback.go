@@ -110,6 +110,24 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 		previousVersion = currentRelease.Version - 1
 	}
 
+	historyReleases, err := r.cfg.Releases.History(name)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Check if the history version to be rolled back exists
+	previousVersionExist := false
+	for _, historyRelease := range historyReleases {
+		version := historyRelease.Version
+		if previousVersion == version {
+			previousVersionExist = true
+			break
+		}
+	}
+	if !previousVersionExist {
+		return nil, nil, errors.Errorf("release has no %d version", previousVersion)
+	}
+
 	r.cfg.Log("rolling back %s (current: v%d, target: v%d)", name, currentRelease.Version, previousVersion)
 
 	previousRelease, err := r.cfg.Releases.Get(name, previousVersion)

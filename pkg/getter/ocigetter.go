@@ -137,12 +137,15 @@ func (g *OCIGetter) newRegistryClient() (*registry.Client, error) {
 		g.transport.TLSClientConfig = tlsConf
 	}
 
-	client, err := registry.NewClient(
-		registry.ClientOptHTTPClient(&http.Client{
-			Transport: g.transport,
-			Timeout:   g.opts.timeout,
-		}),
-	)
+	opts := []registry.ClientOption{registry.ClientOptHTTPClient(&http.Client{
+		Transport: g.transport,
+		Timeout:   g.opts.timeout,
+	})}
+	if g.opts.plainHTTP {
+		opts = append(opts, registry.ClientOptPlainHTTP())
+	}
+
+	client, err := registry.NewClient(opts...)
 
 	if err != nil {
 		return nil, err

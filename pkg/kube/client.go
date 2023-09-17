@@ -69,6 +69,14 @@ var ManagedFieldsManager string
 
 // Client represents a client capable of communicating with the Kubernetes API.
 type Client struct {
+	// Factory provides a minimal version of the kubectl Factory interface. If
+	// you need the full Factory you can type switch to the full interface.
+	// Since Kubernetes Go API does not provide backwards compatibility across
+	// minor versions, this API does not follow Helm backwards compatibility.
+	// Helm is exposing Kubernetes in this property and cannot guarantee this
+	// will not change. The minimal interface only has the functions that Helm
+	// needs. The smaller surface area of the interface means there is a lower
+	// chance of it changing.
 	Factory Factory
 	Log     func(string, ...interface{})
 	// Namespace allows to bypass the kubeconfig file for the choice of the namespace
@@ -493,10 +501,8 @@ func delete(c *Client, resources ResourceList, propagation metav1.DeletionPropag
 		return nil
 	})
 	if err != nil {
-		// Rewrite the message from "no objects visited" if that is what we got
-		// back
-		if err == ErrNoObjectsVisited {
-			err = errors.New("object not found, skipping delete")
+		if errors.Is(err, ErrNoObjectsVisited) {
+			err = fmt.Errorf("object not found, skipping delete: %w", err)
 		}
 		errs = append(errs, err)
 	}

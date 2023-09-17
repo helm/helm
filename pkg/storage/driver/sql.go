@@ -49,6 +49,7 @@ const postgreSQLDialect = "postgres"
 const SQLDriverName = "SQL"
 
 const sqlReleaseTableName = "releases_v1"
+const sqlCustomLabelsTableName = "custom_labels_v1"
 
 const (
 	sqlReleaseTableKeyColumn        = "key"
@@ -61,6 +62,17 @@ const (
 	sqlReleaseTableOwnerColumn      = "owner"
 	sqlReleaseTableCreatedAtColumn  = "createdAt"
 	sqlReleaseTableModifiedAtColumn = "modifiedAt"
+
+	sqlCustomLabelsTableReleaseKeyColumn       = "releaseKey"
+	sqlCustomLabelsTableReleaseNamespaceColumn = "releaseNamespace"
+	sqlCustomLabelsTableKeyColumn              = "key"
+	sqlCustomLabelsTableValueColumn            = "value"
+)
+
+// Following limits based on k8s labels limits - https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set
+const (
+	sqlCustomLabelsTableKeyMaxLenght   = 253 + 1 + 63
+	sqlCustomLabelsTableValueMaxLenght = 63
 )
 
 const (
@@ -82,8 +94,42 @@ func (s *SQL) Name() string {
 	return SQLDriverName
 }
 
+// Check if all migrations al
+func (s *SQL) checkAlreadyApplied(migrations []*migrate.Migration) bool {
+	// make map (set) of ids for fast search
+	migrationsIds := make(map[string]struct{})
+	for _, migration := range migrations {
+		migrationsIds[migration.Id] = struct{}{}
+	}
+
+	// get list of applied migrations
+	migrate.SetDisableCreateTable(true)
+	records, err := migrate.GetMigrationRecords(s.db.DB, postgreSQLDialect)
+	migrate.SetDisableCreateTable(false)
+	if err != nil {
+		s.Log("checkAlreadyApplied: failed to get migration records: %v", err)
+		return false
+	}
+
+	for _, record := range records {
+		if _, ok := migrationsIds[record.Id]; ok {
+			s.Log("checkAlreadyApplied: found previous migration (Id: %v) applied at %v", record.Id, record.AppliedAt)
+			delete(migrationsIds, record.Id)
+		}
+	}
+
+	// check if all migrations appliyed
+	if len(migrationsIds) != 0 {
+		for id := range migrationsIds {
+			s.Log("checkAlreadyApplied: find unapplied migration (id: %v)", id)
+		}
+		return false
+	}
+	return true
+}
+
 func (s *SQL) ensureDBSetup() error {
-	// Populate the database with the relations we need if they don't exist yet
+
 	migrations := &migrate.MemoryMigrationSource{
 		Migrations: []*migrate.Migration{
 			{
@@ -109,9 +155,9 @@ func (s *SQL) ensureDBSetup() error {
 						CREATE INDEX ON %s (%s);
 						CREATE INDEX ON %s (%s);
 						CREATE INDEX ON %s (%s);
-						
+	
 						GRANT ALL ON %s TO PUBLIC;
-
+	
 						ALTER TABLE %s ENABLE ROW LEVEL SECURITY;
 					`,
 						sqlReleaseTableName,
@@ -150,9 +196,50 @@ func (s *SQL) ensureDBSetup() error {
 					`, sqlReleaseTableName),
 				},
 			},
+			{
+				Id: "custom_labels",
+				Up: []string{
+					fmt.Sprintf(`
+						CREATE TABLE %s (
+							%s VARCHAR(64),
+							%s VARCHAR(67),
+							%s VARCHAR(%d), 
+							%s VARCHAR(%d)
+						);
+						CREATE INDEX ON %s (%s, %s);
+						
+						GRANT ALL ON %s TO PUBLIC;
+						ALTER TABLE %s ENABLE ROW LEVEL SECURITY;
+					`,
+						sqlCustomLabelsTableName,
+						sqlCustomLabelsTableReleaseKeyColumn,
+						sqlCustomLabelsTableReleaseNamespaceColumn,
+						sqlCustomLabelsTableKeyColumn,
+						sqlCustomLabelsTableKeyMaxLenght,
+						sqlCustomLabelsTableValueColumn,
+						sqlCustomLabelsTableValueMaxLenght,
+						sqlCustomLabelsTableName,
+						sqlCustomLabelsTableReleaseKeyColumn,
+						sqlCustomLabelsTableReleaseNamespaceColumn,
+						sqlCustomLabelsTableName,
+						sqlCustomLabelsTableName,
+					),
+				},
+				Down: []string{
+					fmt.Sprintf(`
+						DELETE TABLE %s;
+					`, sqlCustomLabelsTableName),
+				},
+			},
 		},
 	}
 
+	// Check that init migration already applied
+	if s.checkAlreadyApplied(migrations.Migrations) {
+		return nil
+	}
+
+	// Populate the database with the relations we need if they don't exist yet
 	_, err := migrate.Exec(s.db.DB, postgreSQLDialect, migrations, migrate.Up)
 	return err
 }
@@ -178,6 +265,13 @@ type SQLReleaseWrapper struct {
 	Owner      string `db:"owner"`
 	CreatedAt  int    `db:"createdAt"`
 	ModifiedAt int    `db:"modifiedAt"`
+}
+
+type SQLReleaseCustomLabelWrapper struct {
+	ReleaseKey       string `db:"release_key"`
+	ReleaseNamespace string `db:"release_namespace"`
+	Key              string `db:"key"`
+	Value            string `db:"value"`
 }
 
 // NewSQL initializes a new sql driver.
@@ -230,13 +324,18 @@ func (s *SQL) Get(key string) (*rspb.Release, error) {
 		return nil, err
 	}
 
+	if release.Labels, err = s.getReleaseCustomLabels(key, s.namespace); err != nil {
+		s.Log("failed to get release %s/%s custom labels: %v", s.namespace, key, err)
+		return nil, err
+	}
+
 	return release, nil
 }
 
 // List returns the list of all releases such that filter(release) == true
 func (s *SQL) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
 	sb := s.statementBuilder.
-		Select(sqlReleaseTableBodyColumn).
+		Select(sqlReleaseTableKeyColumn, sqlReleaseTableNamespaceColumn, sqlReleaseTableBodyColumn).
 		From(sqlReleaseTableName).
 		Where(sq.Eq{sqlReleaseTableOwnerColumn: sqlReleaseDefaultOwner})
 
@@ -264,6 +363,12 @@ func (s *SQL) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
 			s.Log("list: failed to decode release: %v: %v", record, err)
 			continue
 		}
+
+		if release.Labels, err = s.getReleaseCustomLabels(record.Key, record.Namespace); err != nil {
+			s.Log("failed to get release %s/%s custom labels: %v", record.Namespace, record.Key, err)
+			return nil, err
+		}
+
 		if filter(release) {
 			releases = append(releases, release)
 		}
@@ -275,7 +380,7 @@ func (s *SQL) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
 // Query returns the set of releases that match the provided set of labels.
 func (s *SQL) Query(labels map[string]string) ([]*rspb.Release, error) {
 	sb := s.statementBuilder.
-		Select(sqlReleaseTableBodyColumn).
+		Select(sqlReleaseTableKeyColumn, sqlReleaseTableNamespaceColumn, sqlReleaseTableBodyColumn).
 		From(sqlReleaseTableName)
 
 	keys := make([]string, 0, len(labels))
@@ -321,6 +426,12 @@ func (s *SQL) Query(labels map[string]string) ([]*rspb.Release, error) {
 			s.Log("list: failed to decode release: %v: %v", record, err)
 			continue
 		}
+
+		if release.Labels, err = s.getReleaseCustomLabels(record.Key, record.Namespace); err != nil {
+			s.Log("failed to get release %s/%s custom labels: %v", record.Namespace, record.Key, err)
+			return nil, err
+		}
+
 		releases = append(releases, release)
 	}
 
@@ -402,6 +513,36 @@ func (s *SQL) Create(key string, rls *rspb.Release) error {
 
 		s.Log("failed to store release %s in SQL database: %v", key, err)
 		return err
+	}
+
+	// Filtering labels before insert cause in SQL storage driver system releases are stored in separate columns of release table
+	for k, v := range filterSystemLabels(rls.Labels) {
+		insertLabelsQuery, args, err := s.statementBuilder.
+			Insert(sqlCustomLabelsTableName).
+			Columns(
+				sqlCustomLabelsTableReleaseKeyColumn,
+				sqlCustomLabelsTableReleaseNamespaceColumn,
+				sqlCustomLabelsTableKeyColumn,
+				sqlCustomLabelsTableValueColumn,
+			).
+			Values(
+				key,
+				namespace,
+				k,
+				v,
+			).ToSql()
+
+		if err != nil {
+			defer transaction.Rollback()
+			s.Log("failed to build insert query: %v", err)
+			return err
+		}
+
+		if _, err := transaction.Exec(insertLabelsQuery, args...); err != nil {
+			defer transaction.Rollback()
+			s.Log("failed to write Labels: %v", err)
+			return err
+		}
 	}
 	defer transaction.Commit()
 
@@ -487,10 +628,56 @@ func (s *SQL) Delete(key string) (*rspb.Release, error) {
 		Where(sq.Eq{sqlReleaseTableNamespaceColumn: s.namespace}).
 		ToSql()
 	if err != nil {
-		s.Log("failed to build select query: %v", err)
+		s.Log("failed to build delete query: %v", err)
 		return nil, err
 	}
 
 	_, err = transaction.Exec(deleteQuery, args...)
+	if err != nil {
+		s.Log("failed perform delete query: %v", err)
+		return release, err
+	}
+
+	if release.Labels, err = s.getReleaseCustomLabels(key, s.namespace); err != nil {
+		s.Log("failed to get release %s/%s custom labels: %v", s.namespace, key, err)
+		return nil, err
+	}
+
+	deleteCustomLabelsQuery, args, err := s.statementBuilder.
+		Delete(sqlCustomLabelsTableName).
+		Where(sq.Eq{sqlCustomLabelsTableReleaseKeyColumn: key}).
+		Where(sq.Eq{sqlCustomLabelsTableReleaseNamespaceColumn: s.namespace}).
+		ToSql()
+
+	if err != nil {
+		s.Log("failed to build delete Labels query: %v", err)
+		return nil, err
+	}
+	_, err = transaction.Exec(deleteCustomLabelsQuery, args...)
 	return release, err
+}
+
+// Get release custom labels from database
+func (s *SQL) getReleaseCustomLabels(key string, namespace string) (map[string]string, error) {
+	query, args, err := s.statementBuilder.
+		Select(sqlCustomLabelsTableKeyColumn, sqlCustomLabelsTableValueColumn).
+		From(sqlCustomLabelsTableName).
+		Where(sq.Eq{sqlCustomLabelsTableReleaseKeyColumn: key,
+			sqlCustomLabelsTableReleaseNamespaceColumn: s.namespace}).
+		ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	var labelsList = []SQLReleaseCustomLabelWrapper{}
+	if err := s.db.Select(&labelsList, query, args...); err != nil {
+		return nil, err
+	}
+
+	labelsMap := make(map[string]string)
+	for _, i := range labelsList {
+		labelsMap[i.Key] = i.Value
+	}
+
+	return filterSystemLabels(labelsMap), nil
 }
