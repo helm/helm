@@ -17,9 +17,11 @@ limitations under the License.
 package driver // import "helm.sh/helm/v3/pkg/storage/driver"
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"testing"
+	"text/template"
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
 	sq "github.com/Masterminds/squirrel"
@@ -33,6 +35,35 @@ import (
 
 	rspb "helm.sh/helm/v3/pkg/release"
 )
+
+var multiReleaseTestTmpl = `
+{{.}}:
+  {{.}}Sub1:
+    {{.}}Sub1Sub1: true
+  {{.}}Sub2:
+    {{.}}Sub2Sub1: "{{.}}Sub2Sub1Value"
+    {{.}}Sub2Sub2: false
+    {{.}}Sub2Sub3: false
+    {{.}}Sub2Sub4: false
+    {{.}}Sub2Sub5: "{{.}}Sub2Sub5Value"
+    {{.}}Sub2Sub6: "{{.}}Sub2Sub6Value"
+`
+
+func multiReleaseStub(name string, vers int, namespace string, status rspb.Status) *rspb.Release {
+	var buf bytes.Buffer
+	tmpl, _ := template.New("").Parse(multiReleaseTestTmpl)
+	for i := 0; i < 100; i++ {
+		tmpl.Execute(&buf, fmt.Sprintf("field%d", i))
+	}
+
+	return &rspb.Release{
+		Name:      name,
+		Version:   vers,
+		Namespace: namespace,
+		Info:      &rspb.Info{Status: status},
+		Manifest:  buf.String(),
+	}
+}
 
 func releaseStub(name string, vers int, namespace string, status rspb.Status) *rspb.Release {
 	return &rspb.Release{
@@ -275,11 +306,14 @@ func (mock *MockMultiSecretsInterface) Init(t *testing.T, releases ...*rspb.Rele
 	for _, rls := range releases {
 		objkey := testKey(rls.Name, rls.Version)
 
-		secrets, err := newMultiSecretsObject(objkey, rls, nil, -1)
+		secrets, err := newMultiSecretsObject(objkey, rls, nil, 1024)
 		if err != nil {
 			t.Fatalf("Failed to create secrets: %s", err)
 		}
-		mock.objects[objkey] = &(*secrets)[0]
+		for _, se := range *secrets {
+			v := se
+			mock.objects[se.Name] = &v
+		}
 	}
 }
 
@@ -302,8 +336,9 @@ func (mock *MockMultiSecretsInterface) List(_ context.Context, opts metav1.ListO
 	}
 
 	for _, secret := range mock.objects {
-		if labelSelector.Matches(kblabels.Set(secret.ObjectMeta.Labels)) {
-			list.Items = append(list.Items, *secret)
+		temp := *secret
+		if labelSelector.Matches(kblabels.Set(temp.ObjectMeta.Labels)) {
+			list.Items = append(list.Items, temp)
 		}
 	}
 	return &list, nil
@@ -322,10 +357,11 @@ func (mock *MockMultiSecretsInterface) Create(_ context.Context, secret *v1.Secr
 // Update updates a Secret.
 func (mock *MockMultiSecretsInterface) Update(_ context.Context, secret *v1.Secret, _ metav1.UpdateOptions) (*v1.Secret, error) {
 	name := secret.ObjectMeta.Name
+	temp := *secret
 	if _, ok := mock.objects[name]; !ok {
 		return nil, apierrors.NewNotFound(v1.Resource("tests"), name)
 	}
-	mock.objects[name] = secret
+	mock.objects[name] = &temp
 	return secret, nil
 }
 
