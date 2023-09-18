@@ -10,7 +10,7 @@ require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/Masterminds/vcs v1.13.3
 	github.com/asaskevich/govalidator v0.0.0-20200428143746-21a406dcc535
-	github.com/containerd/containerd v1.7.3
+	github.com/containerd/containerd v1.7.6
 	github.com/cyphar/filepath-securejoin v0.2.4
 	github.com/distribution/distribution/v3 v3.0.0-20221208165359-362910506bc2
 	github.com/evanphx/json-patch v5.6.0+incompatible
@@ -49,10 +49,11 @@ require (
 )
 
 require (
-	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230106234847-43070de90fa1 // indirect
+	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
+	github.com/Microsoft/hcsshim v0.11.0 // indirect
 	github.com/Shopify/logrus-bugsnag v0.0.0-20171204204709-577dee27f20d // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bshuster-repo/logrus-logstash-hook v1.0.0 // indirect
