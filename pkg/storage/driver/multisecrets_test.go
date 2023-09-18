@@ -17,6 +17,7 @@ package driver
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -37,7 +38,7 @@ func TestMultiSecretsGet(t *testing.T) {
 	name := "smug-pigeon"
 	namespace := "default"
 	key := testKey(name, vers)
-	rel := releaseStub(name, vers, namespace, rspb.StatusDeployed)
+	rel := multiReleaseStub(name, vers, namespace, rspb.StatusDeployed)
 
 	multisecrets := newTestFixtureMultiSecrets(t, []*rspb.Release{rel}...)
 
@@ -57,7 +58,7 @@ func TestUNcompressedMultiSecretsGet(t *testing.T) {
 	name := "smug-pigeon"
 	namespace := "default"
 	key := testKey(name, vers)
-	rel := releaseStub(name, vers, namespace, rspb.StatusDeployed)
+	rel := multiReleaseStub(name, vers, namespace, rspb.StatusDeployed)
 
 	// Create a test fixture which contains an uncompressed release
 	secret, err := newSecretsObject(key, rel, nil)
@@ -85,14 +86,7 @@ func TestUNcompressedMultiSecretsGet(t *testing.T) {
 }
 
 func TestMultiSecretsList(t *testing.T) {
-	multisecrets := newTestFixtureMultiSecrets(t, []*rspb.Release{
-		releaseStub("multi-secrets-key-1", 1, "default", rspb.StatusUninstalled),
-		releaseStub("multi-secrets-key-2", 1, "default", rspb.StatusUninstalled),
-		releaseStub("multi-secrets-key-3", 1, "default", rspb.StatusDeployed),
-		releaseStub("multi-secrets-key-4", 1, "default", rspb.StatusDeployed),
-		releaseStub("multi-secrets-key-5", 1, "default", rspb.StatusSuperseded),
-		releaseStub("multi-secrets-key-6", 1, "default", rspb.StatusSuperseded),
-	}...)
+	multisecrets := fakeMultiSecretsWithRels(t)
 
 	// list all deleted releases
 	del, err := multisecrets.List(func(rel *rspb.Release) bool {
@@ -106,6 +100,7 @@ func TestMultiSecretsList(t *testing.T) {
 		t.Errorf("Expected 2 deleted, got %d:\n%v\n", len(del), del)
 	}
 
+	multisecrets = fakeMultiSecretsWithRels(t)
 	// list all deployed releases
 	dpl, err := multisecrets.List(func(rel *rspb.Release) bool {
 		return rel.Info.Status == rspb.StatusDeployed
@@ -118,6 +113,7 @@ func TestMultiSecretsList(t *testing.T) {
 		t.Errorf("Expected 2 deployed, got %d", len(dpl))
 	}
 
+	multisecrets = fakeMultiSecretsWithRels(t)
 	// list all superseded releases
 	ssd, err := multisecrets.List(func(rel *rspb.Release) bool {
 		return rel.Info.Status == rspb.StatusSuperseded
@@ -132,14 +128,7 @@ func TestMultiSecretsList(t *testing.T) {
 }
 
 func TestMultiSecretsQuery(t *testing.T) {
-	multisecrets := newTestFixtureMultiSecrets(t, []*rspb.Release{
-		releaseStub("multi-secrets-key-1", 1, "default", rspb.StatusUninstalled),
-		releaseStub("multi-secrets-key-2", 1, "default", rspb.StatusUninstalled),
-		releaseStub("multi-secrets-key-3", 1, "default", rspb.StatusDeployed),
-		releaseStub("multi-secrets-key-4", 1, "default", rspb.StatusDeployed),
-		releaseStub("multi-secrets-key-5", 1, "default", rspb.StatusSuperseded),
-		releaseStub("multi-secrets-key-6", 1, "default", rspb.StatusSuperseded),
-	}...)
+	multisecrets := fakeMultiSecretsWithRels(t)
 
 	rls, err := multisecrets.Query(map[string]string{"status": "deployed"})
 	if err != nil {
@@ -162,13 +151,12 @@ func TestMultiSecretsCreate(t *testing.T) {
 	name := "smug-pigeon"
 	namespace := "default"
 	key := testKey(name, vers)
-	rel := releaseStub(name, vers, namespace, rspb.StatusDeployed)
+	rel := multiReleaseStub(name, vers, namespace, rspb.StatusDeployed)
 
 	// store the release in a secret
 	if err := multisecrets.Create(key, rel); err != nil {
 		t.Fatalf("Failed to create release with key %q: %s", key, err)
 	}
-
 	// get the release back
 	got, err := multisecrets.Get(key)
 	if err != nil {
@@ -186,7 +174,7 @@ func TestMultiSecretsUpdate(t *testing.T) {
 	name := "smug-pigeon"
 	namespace := "default"
 	key := testKey(name, vers)
-	rel := releaseStub(name, vers, namespace, rspb.StatusDeployed)
+	rel := multiReleaseStub(name, vers, namespace, rspb.StatusDeployed)
 
 	multisecrets := newTestFixtureMultiSecrets(t, []*rspb.Release{rel}...)
 
@@ -215,7 +203,7 @@ func TestMultiSecretsDelete(t *testing.T) {
 	name := "smug-pigeon"
 	namespace := "default"
 	key := testKey(name, vers)
-	rel := releaseStub(name, vers, namespace, rspb.StatusDeployed)
+	rel := multiReleaseStub(name, vers, namespace, rspb.StatusDeployed)
 
 	multisecrets := newTestFixtureMultiSecrets(t, []*rspb.Release{rel}...)
 
@@ -239,4 +227,72 @@ func TestMultiSecretsDelete(t *testing.T) {
 	if !reflect.DeepEqual(ErrReleaseNotFound, err) {
 		t.Errorf("Expected {%v}, got {%v}", ErrReleaseNotFound, err)
 	}
+}
+
+func TestMultiSecretsSplitChunks(t *testing.T) {
+	vers := 1
+	name := "smug-pigeon"
+	namespace := "default"
+	key := testKey(name, vers)
+	tests := []struct {
+		rls    *rspb.Release
+		size   int
+		chunks int
+	}{
+		{
+			multiReleaseStub(name, vers, namespace, rspb.StatusDeployed),
+			10240,
+			1,
+		},
+		{
+			multiReleaseStub(name, vers, namespace, rspb.StatusDeployed),
+			4096,
+			2,
+		},
+		{
+			multiReleaseStub(name, vers, namespace, rspb.StatusDeployed),
+			2048,
+			3,
+		},
+		{
+			multiReleaseStub(name, vers, namespace, rspb.StatusDeployed),
+			1024,
+			5,
+		},
+		{
+			multiReleaseStub(name, vers, namespace, rspb.StatusDeployed),
+			512,
+			10,
+		},
+	}
+
+	for _, item := range tests {
+		secrets, err := newMultiSecretsObject(key, item.rls, nil, item.size)
+		if err != nil {
+			t.Fatalf("Failed to create secrets: %s", err)
+		}
+		if !reflect.DeepEqual(item.chunks, len(*secrets)) {
+			t.Errorf("Expected {%v}, got {%v}", 5, len(*secrets))
+		}
+		for k, se := range *secrets {
+			if k == 0 && se.Name != "smug-pigeon.v1" {
+				t.Errorf("Expected {%s}, got {%s}", "smug-pigeon.v1", se.Name)
+			}
+			if k > 0 && se.Name != fmt.Sprintf("smug-pigeon.v1.%d", k+1) {
+				t.Errorf("Expected {%s}, got {%s}", "smug-pigeon.v1", se.Name)
+			}
+		}
+	}
+}
+
+func fakeMultiSecretsWithRels(t *testing.T) *MultiSecrets {
+	t.Helper()
+	return newTestFixtureMultiSecrets(t, []*rspb.Release{
+		multiReleaseStub("multi-secrets-key-1", 1, "default", rspb.StatusUninstalled),
+		multiReleaseStub("multi-secrets-key-2", 1, "default", rspb.StatusUninstalled),
+		multiReleaseStub("multi-secrets-key-3", 1, "default", rspb.StatusDeployed),
+		multiReleaseStub("multi-secrets-key-4", 1, "default", rspb.StatusDeployed),
+		multiReleaseStub("multi-secrets-key-5", 1, "default", rspb.StatusSuperseded),
+		multiReleaseStub("multi-secrets-key-6", 1, "default", rspb.StatusSuperseded),
+	}...)
 }

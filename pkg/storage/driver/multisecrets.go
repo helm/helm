@@ -383,6 +383,8 @@ func newMultiSecretsObject(key string, rls *rspb.Release, lbs labels, chunkSizeE
 // Load remaining chunks given a key and 1st release Secret
 func loadRemainingChunks(obj *v1.Secret, multiSecretImpl *MultiSecrets) ([]byte, error) {
 	chunks, _ := strconv.Atoi(string(obj.Data["chunks"]))
+	releaseData := make([]byte, 0, len(obj.Data["release"])*chunks)
+	releaseData = append(releaseData, obj.Data["release"]...)
 	for chunk := 2; chunk <= chunks; chunk++ {
 		key := fmt.Sprintf("%s.%d", obj.ObjectMeta.Name, chunk)
 		ctx := context.WithValue(context.Background(), multiSecretContextNamespace, obj.Namespace)
@@ -393,9 +395,9 @@ func loadRemainingChunks(obj *v1.Secret, multiSecretImpl *MultiSecrets) ([]byte,
 			}
 			return nil, errors.Wrapf(err, "get: failed to get %q", key)
 		}
-		obj.Data["release"] = append(obj.Data["release"], chunkobj.Data["release"]...)
+		releaseData = append(releaseData, chunkobj.Data["release"]...)
 	}
-	return obj.Data["release"], nil
+	return releaseData, nil
 }
 
 // Determine the chunk size to use
