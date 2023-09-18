@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strconv"
 	"testing"
 
 	v1 "k8s.io/api/core/v1"
@@ -242,7 +243,7 @@ func TestMultiSecretsSplitChunks(t *testing.T) {
 		{
 			multiReleaseStub(name, vers, namespace, rspb.StatusDeployed),
 			10240,
-			1,
+			0,
 		},
 		{
 			multiReleaseStub(name, vers, namespace, rspb.StatusDeployed),
@@ -271,15 +272,29 @@ func TestMultiSecretsSplitChunks(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create secrets: %s", err)
 		}
-		if !reflect.DeepEqual(item.chunks, len(*secrets)) {
-			t.Errorf("Expected {%v}, got {%v}", 5, len(*secrets))
-		}
 		for k, se := range *secrets {
 			if k == 0 && se.Name != "smug-pigeon.v1" {
 				t.Errorf("Expected {%s}, got {%s}", "smug-pigeon.v1", se.Name)
 			}
 			if k > 0 && se.Name != fmt.Sprintf("smug-pigeon.v1.%d", k+1) {
 				t.Errorf("Expected {%s}, got {%s}", "smug-pigeon.v1", se.Name)
+			}
+			if item.chunks == 0 {
+				if _, ok := se.Data["chunks"]; ok {
+					t.Error("Expected false, got true")
+				}
+				if _, ok := se.Data["chunk"]; ok {
+					t.Error("Expected false, got true")
+				}
+			} else {
+				chunks, _ := strconv.Atoi(string(se.Data["chunks"]))
+				if !reflect.DeepEqual(item.chunks, chunks) {
+					t.Errorf("Expected {%v}, got {%v}", item.chunks, chunks)
+				}
+				chunk, _ := strconv.Atoi(string(se.Data["chunk"]))
+				if !reflect.DeepEqual(k+1, chunk) {
+					t.Errorf("Expected {%v}, got {%v}", k+1, chunk)
+				}
 			}
 		}
 	}
