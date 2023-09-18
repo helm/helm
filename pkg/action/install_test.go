@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -369,10 +370,14 @@ func TestInstallRelease_Wait(t *testing.T) {
 	instAction.Wait = true
 	vals := map[string]interface{}{}
 
+	goroutines := runtime.NumGoroutine()
+
 	res, err := instAction.Run(buildChart(), vals)
 	is.Error(err)
 	is.Contains(res.Info.Description, "I timed out")
 	is.Equal(res.Info.Status, release.StatusFailed)
+
+	is.Equal(goroutines, runtime.NumGoroutine())
 }
 func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	is := assert.New(t)
@@ -388,10 +393,16 @@ func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	ctx, cancel := context.WithCancel(ctx)
 	time.AfterFunc(time.Second, cancel)
 
+	goroutines := runtime.NumGoroutine()
+
 	res, err := instAction.RunWithContext(ctx, buildChart(), vals)
 	is.Error(err)
 	is.Contains(res.Info.Description, "Release \"interrupted-release\" failed: context canceled")
 	is.Equal(res.Info.Status, release.StatusFailed)
+
+	is.Equal(goroutines+1, runtime.NumGoroutine()) // installation goroutine still is in background
+	time.Sleep(10 * time.Second)                   // wait for goroutine to finish
+	is.Equal(goroutines, runtime.NumGoroutine())
 }
 func TestInstallRelease_WaitForJobs(t *testing.T) {
 	is := assert.New(t)
