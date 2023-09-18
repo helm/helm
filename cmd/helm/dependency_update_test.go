@@ -206,6 +206,61 @@ func TestDependencyUpdateCmd_DoNotDeleteOldChartsOnError(t *testing.T) {
 	}
 }
 
+func TestDependencyUpdateCmd_WithRepoThatWasNotAdded(t *testing.T) {
+	srv := setupMockRepoServer(t)
+	srvForUnmanagedRepo := setupMockRepoServer(t)
+	defer srv.Stop()
+	defer srvForUnmanagedRepo.Stop()
+
+	dir := func(p ...string) string {
+		return filepath.Join(append([]string{srv.Root()}, p...)...)
+	}
+
+	chartname := "depup"
+	ch := createTestingMetadata(chartname, srv.URL())
+	chartDependency := &chart.Dependency{
+		Name:       "signtest",
+		Version:    "0.1.0",
+		Repository: srvForUnmanagedRepo.URL(),
+	}
+	ch.Metadata.Dependencies = append(ch.Metadata.Dependencies, chartDependency)
+
+	if err := chartutil.SaveDir(ch, dir()); err != nil {
+		t.Fatal(err)
+	}
+
+	_, out, err := executeActionCommand(
+		fmt.Sprintf("dependency update '%s' --repository-config %s --repository-cache %s", dir(chartname),
+			dir("repositories.yaml"), dir()),
+	)
+
+	if err != nil {
+		t.Logf("Output: %s", out)
+		t.Fatal(err)
+	}
+
+	// This is written directly to stdout, so we have to capture as is
+	if !strings.Contains(out, `Getting updates for unmanaged Helm repositories...`) {
+		t.Errorf("No ‘unmanaged’ Helm repo used in test chartdependency or it doesn’t cause the creation "+
+			"of an ‘ad hoc’ repo index cache file\n%s", out)
+	}
+}
+
+func setupMockRepoServer(t *testing.T) *repotest.Server {
+	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/testcharts/*.tgz")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Logf("Listening on directory %s", srv.Root())
+
+	if err := srv.LinkIndices(); err != nil {
+		t.Fatal(err)
+	}
+
+	return srv
+}
+
 // createTestingMetadata creates a basic chart that depends on reqtest-0.1.0
 //
 // The baseURL can be used to point to a particular repository server.
