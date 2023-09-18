@@ -16,14 +16,6 @@ limitations under the License.
 
 // Supports both single and multiple Secrets to hold a Helm release.
 
-/*
-TODO
-- Clesnup K8s Secret splitting code in newMultiSecretsObject
-- Get rid of chunksize in Secret; look at data length
-- Does chunk size need to be configurable as envvar?
-- Tests
-*/
-
 package driver // import "helm.sh/helm/v3/pkg/storage/driver"
 
 import (
