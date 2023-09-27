@@ -18,6 +18,7 @@ package repo
 
 import (
 	"bytes"
+	"encoding/json"
 	"log"
 	"os"
 	"path"
@@ -232,6 +233,18 @@ func (i IndexFile) WriteFile(dest string, mode os.FileMode) error {
 	return fileutil.AtomicWriteFile(dest, bytes.NewReader(b), mode)
 }
 
+// WriteJSONFile writes an index file in JSON format to the given destination
+// path.
+//
+// The mode on the file is set to 'mode'.
+func (i IndexFile) WriteJSONFile(dest string, mode os.FileMode) error {
+	b, err := json.MarshalIndent(i, "", "  ")
+	if err != nil {
+		return err
+	}
+	return fileutil.AtomicWriteFile(dest, bytes.NewReader(b), mode)
+}
+
 // Merge merges the given index file into this index.
 //
 // This merges by name and version.
@@ -336,7 +349,7 @@ func loadIndex(data []byte, source string) (*IndexFile, error) {
 		return i, ErrEmptyIndexYaml
 	}
 
-	if err := yaml.UnmarshalStrict(data, i); err != nil {
+	if err := jsonOrYamlUnmarshal(data, i); err != nil {
 		return i, err
 	}
 
@@ -360,4 +373,18 @@ func loadIndex(data []byte, source string) (*IndexFile, error) {
 		return i, ErrNoAPIVersion
 	}
 	return i, nil
+}
+
+// jsonOrYamlUnmarshal unmarshals the given byte slice containing JSON or YAML
+// into the provided interface.
+//
+// It automatically detects whether the data is in JSON or YAML format by
+// checking its validity as JSON. If the data is valid JSON, it will use the
+// `encoding/json` package to unmarshal it. Otherwise, it will use the
+// `sigs.k8s.io/yaml` package to unmarshal the YAML data.
+func jsonOrYamlUnmarshal(b []byte, i interface{}) error {
+	if json.Valid(b) {
+		return json.Unmarshal(b, i)
+	}
+	return yaml.UnmarshalStrict(b, i)
 }

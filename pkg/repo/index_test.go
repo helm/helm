@@ -19,6 +19,7 @@ package repo
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -37,6 +38,7 @@ const (
 	annotationstestfile = "testdata/local-index-annotations.yaml"
 	chartmuseumtestfile = "testdata/chartmuseum-index.yaml"
 	unorderedTestfile   = "testdata/local-index-unordered.yaml"
+	jsonTestfile        = "testdata/local-index.json"
 	testRepo            = "test-repo"
 	indexWithDuplicates = `
 apiVersion: v1
@@ -144,6 +146,10 @@ func TestLoadIndex(t *testing.T) {
 		{
 			Name:     "chartmuseum index file",
 			Filename: chartmuseumtestfile,
+		},
+		{
+			Name:     "JSON index file",
+			Filename: jsonTestfile,
 		},
 	}
 
@@ -542,6 +548,27 @@ func TestIndexWrite(t *testing.T) {
 	got, err := os.ReadFile(testpath)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if !strings.Contains(string(got), "clipper-0.1.0.tgz") {
+		t.Fatal("Index files doesn't contain expected content")
+	}
+}
+
+func TestIndexJSONWrite(t *testing.T) {
+	i := NewIndexFile()
+	if err := i.MustAdd(&chart.Metadata{APIVersion: "v2", Name: "clipper", Version: "0.1.0"}, "clipper-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890"); err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+	dir := t.TempDir()
+	testpath := filepath.Join(dir, "test")
+	i.WriteJSONFile(testpath, 0600)
+
+	got, err := os.ReadFile(testpath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !json.Valid(got) {
+		t.Fatal("Index files doesn't contain valid JSON")
 	}
 	if !strings.Contains(string(got), "clipper-0.1.0.tgz") {
 		t.Fatal("Index files doesn't contain expected content")
