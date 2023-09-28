@@ -35,6 +35,7 @@ jobs:
           make dist checksum VERSION="${{ github.ref_name }}"
       
       - name: Set latest version
+        run: |
           # Push the latest semver tag, excluding prerelease tags
           git tag | sort -r --version-sort | grep '^v[0-9]' | grep -v '-' | head -n1 > _dist/helm-latest-version
 
