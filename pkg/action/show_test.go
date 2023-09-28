@@ -23,7 +23,8 @@ import (
 )
 
 func TestShow(t *testing.T) {
-	client := NewShow(ShowAll)
+	config := actionConfigFixture(t)
+	client := NewShowWithConfig(ShowAll, config)
 	client.chart = &chart.Chart{
 		Metadata: &chart.Metadata{Name: "alpine"},
 		Files: []*chart.File{

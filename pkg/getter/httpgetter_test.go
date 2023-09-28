@@ -50,6 +50,7 @@ func TestHTTPGetter(t *testing.T) {
 	ca, pub, priv := join(cd, "rootca.crt"), join(cd, "crt.pem"), join(cd, "key.pem")
 	insecure := false
 	timeout := time.Second * 5
+	transport := &http.Transport{}
 
 	// Test with options
 	g, err = NewHTTPGetter(
@@ -59,6 +60,7 @@ func TestHTTPGetter(t *testing.T) {
 		WithTLSClientConfig(pub, priv, ca),
 		WithInsecureSkipVerifyTLS(insecure),
 		WithTimeout(timeout),
+		WithTransport(transport),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -105,6 +107,10 @@ func TestHTTPGetter(t *testing.T) {
 		t.Errorf("Expected NewHTTPGetter to contain %s as Timeout flag, got %s", timeout, hg.opts.timeout)
 	}
 
+	if hg.opts.transport != transport {
+		t.Errorf("Expected NewHTTPGetter to contain %p as Transport, got %p", transport, hg.opts.transport)
+	}
+
 	// Test if setting insecureSkipVerifyTLS is being passed to the ops
 	insecure = true
 
@@ -149,9 +155,8 @@ func TestHTTPGetter(t *testing.T) {
 
 func TestDownload(t *testing.T) {
 	expect := "Call me Ishmael"
-	expectedUserAgent := "I am Groot"
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defaultUserAgent := "Helm/" + strings.TrimPrefix(version.GetVersion(), "v")
+		defaultUserAgent := version.GetUserAgent()
 		if r.UserAgent() != defaultUserAgent {
 			t.Errorf("Expected '%s', got '%s'", defaultUserAgent, r.UserAgent())
 		}
@@ -173,6 +178,7 @@ func TestDownload(t *testing.T) {
 	}
 
 	// test with http server
+	const expectedUserAgent = "I am Groot"
 	basicAuthSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		username, password, ok := r.BasicAuth()
 		if !ok || username != "username" || password != "password" {
@@ -279,13 +285,13 @@ func TestDownload(t *testing.T) {
 func TestDownloadTLS(t *testing.T) {
 	cd := "../../testdata"
 	ca, pub, priv := filepath.Join(cd, "rootca.crt"), filepath.Join(cd, "crt.pem"), filepath.Join(cd, "key.pem")
+	insecureSkipTLSverify := false
 
 	tlsSrv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
-	tlsConf, err := tlsutil.NewClientTLS(pub, priv, ca)
+	tlsConf, err := tlsutil.NewClientTLS(pub, priv, ca, insecureSkipTLSverify)
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "can't create TLS config for client"))
 	}
-	tlsConf.BuildNameToCertificate()
 	tlsConf.ServerName = "helm.sh"
 	tlsSrv.TLS = tlsConf
 	tlsSrv.StartTLS()
@@ -396,24 +402,24 @@ func TestHTTPGetterTarDownload(t *testing.T) {
 func TestHttpClientInsecureSkipVerify(t *testing.T) {
 	g := HTTPGetter{}
 	g.opts.url = "https://localhost"
-	verifyInsecureSkipVerify(t, g, "Blank HTTPGetter", false)
+	verifyInsecureSkipVerify(t, &g, "Blank HTTPGetter", false)
 
 	g = HTTPGetter{}
 	g.opts.url = "https://localhost"
 	g.opts.caFile = "testdata/ca.crt"
-	verifyInsecureSkipVerify(t, g, "HTTPGetter with ca file", false)
+	verifyInsecureSkipVerify(t, &g, "HTTPGetter with ca file", false)
 
 	g = HTTPGetter{}
 	g.opts.url = "https://localhost"
 	g.opts.insecureSkipVerifyTLS = true
-	verifyInsecureSkipVerify(t, g, "HTTPGetter with skip cert verification only", true)
+	verifyInsecureSkipVerify(t, &g, "HTTPGetter with skip cert verification only", true)
 
 	g = HTTPGetter{}
 	g.opts.url = "https://localhost"
 	g.opts.certFile = "testdata/client.crt"
 	g.opts.keyFile = "testdata/client.key"
 	g.opts.insecureSkipVerifyTLS = true
-	transport := verifyInsecureSkipVerify(t, g, "HTTPGetter with 2 way ssl", true)
+	transport := verifyInsecureSkipVerify(t, &g, "HTTPGetter with 2 way ssl", true)
 	if len(transport.TLSClientConfig.Certificates) <= 0 {
 		t.Fatal("transport.TLSClientConfig.Certificates is not present")
 	}
@@ -422,17 +428,17 @@ func TestHttpClientInsecureSkipVerify(t *testing.T) {
 	}
 }
 
-func verifyInsecureSkipVerify(t *testing.T, g HTTPGetter, caseName string, expectedValue bool) *http.Transport {
+func verifyInsecureSkipVerify(t *testing.T, g *HTTPGetter, caseName string, expectedValue bool) *http.Transport {
 	returnVal, err := g.httpClient()
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if returnVal == nil {
+	if returnVal == nil { //nolint:staticcheck
 		t.Fatalf("Expected non nil value for http client")
 	}
-	transport := (returnVal.Transport).(*http.Transport)
+	transport := (returnVal.Transport).(*http.Transport) //nolint:staticcheck
 	gotValue := false
 	if transport.TLSClientConfig != nil {
 		gotValue = transport.TLSClientConfig.InsecureSkipVerify
@@ -442,4 +448,85 @@ func verifyInsecureSkipVerify(t *testing.T, g HTTPGetter, caseName string, expec
 			caseName, expectedValue, gotValue)
 	}
 	return transport
+}
+
+func TestDefaultHTTPTransportReuse(t *testing.T) {
+	g := HTTPGetter{}
+
+	httpClient1, err := g.httpClient()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if httpClient1 == nil { //nolint:staticcheck
+		t.Fatalf("Expected non nil value for http client")
+	}
+
+	transport1 := (httpClient1.Transport).(*http.Transport) //nolint:staticcheck
+
+	httpClient2, err := g.httpClient()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if httpClient2 == nil { //nolint:staticcheck
+		t.Fatalf("Expected non nil value for http client")
+	}
+
+	transport2 := (httpClient2.Transport).(*http.Transport) //nolint:staticcheck
+
+	if transport1 != transport2 {
+		t.Fatalf("Expected default transport to be reused")
+	}
+}
+
+func TestHTTPTransportOption(t *testing.T) {
+	transport := &http.Transport{}
+
+	g := HTTPGetter{}
+	g.opts.transport = transport
+	httpClient1, err := g.httpClient()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if httpClient1 == nil { //nolint:staticcheck
+		t.Fatalf("Expected non nil value for http client")
+	}
+
+	transport1 := (httpClient1.Transport).(*http.Transport) //nolint:staticcheck
+
+	if transport1 != transport {
+		t.Fatalf("Expected transport option to be applied")
+	}
+
+	httpClient2, err := g.httpClient()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if httpClient2 == nil { //nolint:staticcheck
+		t.Fatalf("Expected non nil value for http client")
+	}
+
+	transport2 := (httpClient2.Transport).(*http.Transport) //nolint:staticcheck
+
+	if transport1 != transport2 {
+		t.Fatalf("Expected applied transport to be reused")
+	}
+
+	g = HTTPGetter{}
+	g.opts.url = "https://localhost"
+	g.opts.certFile = "testdata/client.crt"
+	g.opts.keyFile = "testdata/client.key"
+	g.opts.insecureSkipVerifyTLS = true
+	g.opts.transport = transport
+	usedTransport := verifyInsecureSkipVerify(t, &g, "HTTPGetter with 2 way ssl", false)
+	if usedTransport.TLSClientConfig != nil {
+		t.Fatal("transport.TLSClientConfig should not be set")
+	}
 }

@@ -48,6 +48,7 @@ func TestResolveChartRef(t *testing.T) {
 		{name: "reference, testing-relative repo", ref: "testing-relative/bar", expect: "http://example.com/helm/bar-1.2.3.tgz"},
 		{name: "reference, testing-relative-trailing-slash repo", ref: "testing-relative-trailing-slash/foo", expect: "http://example.com/helm/charts/foo-1.2.3.tgz"},
 		{name: "reference, testing-relative-trailing-slash repo", ref: "testing-relative-trailing-slash/bar", expect: "http://example.com/helm/bar-1.2.3.tgz"},
+		{name: "encoded URL", ref: "encoded-url/foobar", expect: "http://example.com/with%2Fslash/charts/foobar-4.2.1.tgz"},
 		{name: "full URL, HTTPS, irrelevant version", ref: "https://example.com/foo-1.2.3.tgz", version: "0.1.0", expect: "https://example.com/foo-1.2.3.tgz", fail: true},
 		{name: "full URL, file", ref: "file:///foo-1.2.3.tgz", fail: true},
 		{name: "invalid", ref: "invalid-1.2.3", fail: true},
@@ -268,10 +269,9 @@ func TestDownloadTo_TLS(t *testing.T) {
 }
 
 func TestDownloadTo_VerifyLater(t *testing.T) {
-	defer ensure.HelmHome(t)()
+	ensure.HelmHome(t)
 
-	dest := ensure.TempDir(t)
-	defer os.RemoveAll(dest)
+	dest := t.TempDir()
 
 	// Set up a fake repo
 	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")

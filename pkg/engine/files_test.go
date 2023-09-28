@@ -28,7 +28,8 @@ var cases = []struct {
 	{"ship/stowaway.txt", "Legatt"},
 	{"story/name.txt", "The Secret Sharer"},
 	{"story/author.txt", "Joseph Conrad"},
-	{"multiline/test.txt", "bar\nfoo"},
+	{"multiline/test.txt", "bar\nfoo\n"},
+	{"multiline/test_with_blank_lines.txt", "bar\nfoo\n\n\n"},
 }
 
 func getTestFiles() files {
@@ -95,4 +96,16 @@ func TestLines(t *testing.T) {
 	as.Len(out, 2)
 
 	as.Equal("bar", out[0])
+}
+
+func TestBlankLines(t *testing.T) {
+	as := assert.New(t)
+
+	f := getTestFiles()
+
+	out := f.Lines("multiline/test_with_blank_lines.txt")
+	as.Len(out, 4)
+
+	as.Equal("bar", out[0])
+	as.Equal("", out[3])
 }

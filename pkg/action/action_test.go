@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,16 +17,15 @@ package action
 
 import (
 	"flag"
-	"io/ioutil"
-	"os"
+	"io"
 	"testing"
 
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
 
-	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
+	"helm.sh/helm/v3/pkg/registry"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage"
 	"helm.sh/helm/v3/pkg/storage/driver"
@@ -38,13 +37,6 @@ var verbose = flag.Bool("test.log", false, "enable test logging")
 func actionConfigFixture(t *testing.T) *Configuration {
 	t.Helper()
 
-	tdir, err := ioutil.TempDir("", "helm-action-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Cleanup(func() { os.RemoveAll(tdir) })
-
 	registryClient, err := registry.NewClient()
 	if err != nil {
 		t.Fatal(err)
@@ -52,7 +44,7 @@ func actionConfigFixture(t *testing.T) *Configuration {
 
 	return &Configuration{
 		Releases:       storage.Init(driver.NewMemory()),
-		KubeClient:     &kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: ioutil.Discard}},
+		KubeClient:     &kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}},
 		Capabilities:   chartutil.DefaultCapabilities,
 		RegistryClient: registryClient,
 		Log: func(format string, v ...interface{}) {

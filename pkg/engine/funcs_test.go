@@ -117,9 +117,9 @@ func TestFuncs(t *testing.T) {
 // version of mergo (even accidentally) that causes a breaking change. See
 // sprig changelog and notes for more details.
 // Note, Go modules assume semver is never broken. So, there is no way to tell
-// the tooling to not update to a minor or patch version. `go get -u` could be
-// used to accidentally update mergo. This test and message should catch the
-// problem and explain why it's happening.
+// the tooling to not update to a minor or patch version. `go install` could
+// be used to accidentally update mergo. This test and message should catch
+// the problem and explain why it's happening.
 func TestMerge(t *testing.T) {
 	dict := map[string]interface{}{
 		"src2": map[string]interface{}{

@@ -18,7 +18,6 @@ package chartutil
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -28,11 +27,7 @@ import (
 )
 
 func TestCreate(t *testing.T) {
-	tdir, err := ioutil.TempDir("", "helm-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tdir)
+	tdir := t.TempDir()
 
 	c, err := Create("foo", tdir)
 	if err != nil {
@@ -70,11 +65,7 @@ func TestCreate(t *testing.T) {
 }
 
 func TestCreateFrom(t *testing.T) {
-	tdir, err := ioutil.TempDir("", "helm-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tdir)
+	tdir := t.TempDir()
 
 	cf := &chart.Metadata{
 		APIVersion: chart.APIVersionV1,
@@ -108,7 +99,7 @@ func TestCreateFrom(t *testing.T) {
 		}
 
 		// Check each file to make sure <CHARTNAME> has been replaced
-		b, err := ioutil.ReadFile(filepath.Join(dir, f))
+		b, err := os.ReadFile(filepath.Join(dir, f))
 		if err != nil {
 			t.Errorf("Unable to read file %s: %s", f, err)
 		}
@@ -120,11 +111,7 @@ func TestCreateFrom(t *testing.T) {
 
 // TestCreate_Overwrite is a regression test for making sure that files are overwritten.
 func TestCreate_Overwrite(t *testing.T) {
-	tdir, err := ioutil.TempDir("", "helm-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tdir)
+	tdir := t.TempDir()
 
 	var errlog bytes.Buffer
 
@@ -143,7 +130,7 @@ func TestCreate_Overwrite(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	data, err := ioutil.ReadFile(tplname)
+	data, err := os.ReadFile(tplname)
 	if err != nil {
 		t.Fatal(err)
 	}

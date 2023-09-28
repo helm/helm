@@ -19,16 +19,17 @@ package action
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
-	"log"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v3/internal/test"
 	"helm.sh/helm/v3/pkg/chart"
@@ -56,9 +57,12 @@ func installAction(t *testing.T) *Install {
 
 func TestInstallRelease(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
+
 	instAction := installAction(t)
 	vals := map[string]interface{}{}
-	res, err := instAction.Run(buildChart(), vals)
+	ctx, done := context.WithCancel(context.Background())
+	res, err := instAction.RunWithContext(ctx, buildChart(), vals)
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
 	}
@@ -77,6 +81,14 @@ func TestInstallRelease(t *testing.T) {
 	is.NotEqual(len(rel.Manifest), 0)
 	is.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world")
 	is.Equal(rel.Info.Description, "Install complete")
+
+	// Detecting previous bug where context termination after successful release
+	// caused release to fail.
+	done()
+	time.Sleep(time.Millisecond * 100)
+	lastRelease, err := instAction.cfg.Releases.Last(rel.Name)
+	req.NoError(err)
+	is.Equal(lastRelease.Info.Status, release.StatusDeployed)
 }
 
 func TestInstallReleaseWithValues(t *testing.T) {
@@ -121,7 +133,7 @@ func TestInstallReleaseClientOnly(t *testing.T) {
 	instAction.Run(buildChart(), nil) // disregard output
 
 	is.Equal(instAction.cfg.Capabilities, chartutil.DefaultCapabilities)
-	is.Equal(instAction.cfg.KubeClient, &kubefake.PrintingKubeClient{Out: ioutil.Discard})
+	is.Equal(instAction.cfg.KubeClient, &kubefake.PrintingKubeClient{Out: io.Discard})
 }
 
 func TestInstallRelease_NoName(t *testing.T) {
@@ -132,7 +144,7 @@ func TestInstallRelease_NoName(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected failure when no name is specified")
 	}
-	assert.Contains(t, err.Error(), "name is required")
+	assert.Contains(t, err.Error(), "no name provided")
 }
 
 func TestInstallRelease_WithNotes(t *testing.T) {
@@ -243,7 +255,7 @@ func TestInstallRelease_DryRun(t *testing.T) {
 	is.Equal(res.Info.Description, "Dry run complete")
 }
 
-// Regression test for #7955: Lookup must not connect to Kubernetes on a dry-run.
+// Regression test for #7955
 func TestInstallRelease_DryRun_Lookup(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
@@ -358,10 +370,14 @@ func TestInstallRelease_Wait(t *testing.T) {
 	instAction.Wait = true
 	vals := map[string]interface{}{}
 
+	goroutines := runtime.NumGoroutine()
+
 	res, err := instAction.Run(buildChart(), vals)
 	is.Error(err)
 	is.Contains(res.Info.Description, "I timed out")
 	is.Equal(res.Info.Status, release.StatusFailed)
+
+	is.Equal(goroutines, runtime.NumGoroutine())
 }
 func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	is := assert.New(t)
@@ -377,10 +393,16 @@ func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	ctx, cancel := context.WithCancel(ctx)
 	time.AfterFunc(time.Second, cancel)
 
+	goroutines := runtime.NumGoroutine()
+
 	res, err := instAction.RunWithContext(ctx, buildChart(), vals)
 	is.Error(err)
 	is.Contains(res.Info.Description, "Release \"interrupted-release\" failed: context canceled")
 	is.Equal(res.Info.Status, release.StatusFailed)
+
+	is.Equal(goroutines+1, runtime.NumGoroutine()) // installation goroutine still is in background
+	time.Sleep(10 * time.Second)                   // wait for goroutine to finish
+	is.Equal(goroutines, runtime.NumGoroutine())
 }
 func TestInstallRelease_WaitForJobs(t *testing.T) {
 	is := assert.New(t)
@@ -540,15 +562,11 @@ func TestInstallReleaseOutputDir(t *testing.T) {
 	instAction := installAction(t)
 	vals := map[string]interface{}{}
 
-	dir, err := ioutil.TempDir("", "output-dir")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	instAction.OutputDir = dir
 
-	_, err = instAction.Run(buildChart(withSampleTemplates(), withMultipleManifestTemplate()), vals)
+	_, err := instAction.Run(buildChart(withSampleTemplates(), withMultipleManifestTemplate()), vals)
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
 	}
@@ -576,11 +594,7 @@ func TestInstallOutputDirWithReleaseName(t *testing.T) {
 	instAction := installAction(t)
 	vals := map[string]interface{}{}
 
-	dir, err := ioutil.TempDir("", "output-dir")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	instAction.OutputDir = dir
 	instAction.UseReleaseName = true
@@ -588,7 +602,7 @@ func TestInstallOutputDirWithReleaseName(t *testing.T) {
 
 	newDir := filepath.Join(dir, instAction.ReleaseName)
 
-	_, err = instAction.Run(buildChart(withSampleTemplates(), withMultipleManifestTemplate()), vals)
+	_, err := instAction.Run(buildChart(withSampleTemplates(), withMultipleManifestTemplate()), vals)
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
 	}
@@ -713,4 +727,34 @@ func TestNameAndChartGenerateName(t *testing.T) {
 			is.Equal(tc.Chart, chrt)
 		})
 	}
+}
+
+func TestInstallWithLabels(t *testing.T) {
+	is := assert.New(t)
+	instAction := installAction(t)
+	instAction.Labels = map[string]string{
+		"key1": "val1",
+		"key2": "val2",
+	}
+	res, err := instAction.Run(buildChart(), nil)
+	if err != nil {
+		t.Fatalf("Failed install: %s", err)
+	}
+
+	is.Equal(instAction.Labels, res.Labels)
+}
+
+func TestInstallWithSystemLabels(t *testing.T) {
+	is := assert.New(t)
+	instAction := installAction(t)
+	instAction.Labels = map[string]string{
+		"owner": "val1",
+		"key2":  "val2",
+	}
+	_, err := instAction.Run(buildChart(), nil)
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+
+	is.Equal(fmt.Errorf("user suplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels()), err)
 }

@@ -13,7 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*Package provenance provides tools for establishing the authenticity of a chart.
+/*
+Package provenance provides tools for establishing the authenticity of a chart.
 
 In Helm, provenance is established via several factors. The primary factor is the
 cryptographic signature of a chart. Chart authors may sign charts, which in turn

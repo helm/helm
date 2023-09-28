@@ -40,19 +40,24 @@ var (
 	errMissingName = errors.New("no name provided")
 
 	// errInvalidName indicates that an invalid release name was provided
-	errInvalidName = errors.New(fmt.Sprintf(
+	errInvalidName = fmt.Errorf(
 		"invalid release name, must match regex %s and the length must not be longer than 53",
-		validName.String()))
+		validName.String())
 
 	// errInvalidKubernetesName indicates that the name does not meet the Kubernetes
 	// restrictions on metadata names.
-	errInvalidKubernetesName = errors.New(fmt.Sprintf(
+	errInvalidKubernetesName = fmt.Errorf(
 		"invalid metadata name, must match regex %s and the length must not be longer than 253",
-		validName.String()))
+		validName.String())
 )
 
 const (
-	// maxNameLen is the maximum length Helm allows for a release name
+	// According to the Kubernetes docs (https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#rfc-1035-label-names)
+	// some resource names have a max length of 63 characters while others have a max
+	// length of 253 characters. As we cannot be sure the resources used in a chart, we
+	// therefore need to limit it to 63 chars and reserve 10 chars for additional part to name
+	// of the resource. The reason is that chart maintainers can use release name as part of
+	// the resource name (and some additional chars).
 	maxReleaseNameLen = 53
 	// maxMetadataNameLen is the maximum length Kubernetes allows for any name.
 	maxMetadataNameLen = 253

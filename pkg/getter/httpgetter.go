@@ -21,6 +21,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sync"
 
 	"github.com/pkg/errors"
 
@@ -31,7 +32,9 @@ import (
 
 // HTTPGetter is the default HTTP(/S) backend handler
 type HTTPGetter struct {
-	opts options
+	opts      options
+	transport *http.Transport
+	once      sync.Once
 }
 
 // Get performs a Get from repo.Getter and returns the body.
@@ -106,16 +109,25 @@ func NewHTTPGetter(options ...Option) (Getter, error) {
 }
 
 func (g *HTTPGetter) httpClient() (*http.Client, error) {
-	transport := &http.Transport{
-		DisableCompression: true,
-		Proxy:              http.ProxyFromEnvironment,
+	if g.opts.transport != nil {
+		return &http.Client{
+			Transport: g.opts.transport,
+			Timeout:   g.opts.timeout,
+		}, nil
 	}
-	if (g.opts.certFile != "" && g.opts.keyFile != "") || g.opts.caFile != "" {
-		tlsConf, err := tlsutil.NewClientTLS(g.opts.certFile, g.opts.keyFile, g.opts.caFile)
+
+	g.once.Do(func() {
+		g.transport = &http.Transport{
+			DisableCompression: true,
+			Proxy:              http.ProxyFromEnvironment,
+		}
+	})
+
+	if (g.opts.certFile != "" && g.opts.keyFile != "") || g.opts.caFile != "" || g.opts.insecureSkipVerifyTLS {
+		tlsConf, err := tlsutil.NewClientTLS(g.opts.certFile, g.opts.keyFile, g.opts.caFile, g.opts.insecureSkipVerifyTLS)
 		if err != nil {
 			return nil, errors.Wrap(err, "can't create TLS config for client")
 		}
-		tlsConf.BuildNameToCertificate()
 
 		sni, err := urlutil.ExtractHostname(g.opts.url)
 		if err != nil {
@@ -123,21 +135,21 @@ func (g *HTTPGetter) httpClient() (*http.Client, error) {
 		}
 		tlsConf.ServerName = sni
 
-		transport.TLSClientConfig = tlsConf
+		g.transport.TLSClientConfig = tlsConf
 	}
 
 	if g.opts.insecureSkipVerifyTLS {
-		if transport.TLSClientConfig == nil {
-			transport.TLSClientConfig = &tls.Config{
+		if g.transport.TLSClientConfig == nil {
+			g.transport.TLSClientConfig = &tls.Config{
 				InsecureSkipVerify: true,
 			}
 		} else {
-			transport.TLSClientConfig.InsecureSkipVerify = true
+			g.transport.TLSClientConfig.InsecureSkipVerify = true
 		}
 	}
 
 	client := &http.Client{
-		Transport: transport,
+		Transport: g.transport,
 		Timeout:   g.opts.timeout,
 	}
 

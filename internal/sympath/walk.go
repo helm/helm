@@ -71,7 +71,7 @@ func symwalk(path string, info os.FileInfo, walkFn filepath.WalkFunc) error {
 		if err != nil {
 			return errors.Wrapf(err, "error evaluating symlink %s", path)
 		}
-		log.Printf("found symbolic link in path: %s resolves to %s", path, resolved)
+		log.Printf("found symbolic link in path: %s resolves to %s. Contents of linked file included and used", path, resolved)
 		if info, err = os.Lstat(resolved); err != nil {
 			return err
 		}

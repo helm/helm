@@ -19,7 +19,7 @@ package chartutil
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -68,7 +68,7 @@ func (v Values) Table(name string) (Values, error) {
 //
 // It protects against nil map panics.
 func (v Values) AsMap() map[string]interface{} {
-	if v == nil || len(v) == 0 {
+	if len(v) == 0 {
 		return map[string]interface{}{}
 	}
 	return v
@@ -114,7 +114,7 @@ func ReadValues(data []byte) (vals Values, err error) {
 
 // ReadValuesFile will parse a YAML file into a map of values.
 func ReadValuesFile(filename string) (Values, error) {
-	data, err := ioutil.ReadFile(filename)
+	data, err := os.ReadFile(filename)
 	if err != nil {
 		return map[string]interface{}{}, err
 	}

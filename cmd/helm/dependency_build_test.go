@@ -50,11 +50,6 @@ func TestDependencyBuildCmd(t *testing.T) {
 	}
 	ociSrv.Run(t, repotest.WithDependingChart(c))
 
-	err = os.Setenv("HELM_EXPERIMENTAL_OCI", "1")
-	if err != nil {
-		t.Fatal("failed to set environment variable enabling OCI support")
-	}
-
 	dir := func(p ...string) string {
 		return filepath.Join(append([]string{srv.Root()}, p...)...)
 	}
