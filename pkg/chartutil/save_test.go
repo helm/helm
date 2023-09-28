@@ -111,7 +111,7 @@ func TestSave(t *testing.T) {
 }
 
 func TestRepeatableSave(t *testing.T) {
-	tmp := ensure.TempDir(t)
+	tmp := t.TempDir()
 	defer os.RemoveAll(tmp)
 	modTime := time.Date(2021, 9, 1, 20, 34, 58, 651387237, time.UTC)
 	tests := []struct {
