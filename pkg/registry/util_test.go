@@ -17,6 +17,7 @@ limitations under the License.
 package registry // import "helm.sh/helm/v3/pkg/registry"
 
 import (
+	"net/http"
 	"reflect"
 	"testing"
 	"time"
@@ -262,6 +263,52 @@ func Test_basicAuth(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := basicAuth(tt.args.username, tt.args.password); got != tt.want {
 				t.Errorf("basicAuth() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_authHeader(t *testing.T) {
+	tests := []struct {
+		name           string
+		username       string
+		password       string
+		expectedHeader http.Header
+	}{
+		{
+			name:     "basic login header with username and password",
+			username: "admin",
+			password: "passw0rd",
+			expectedHeader: func() http.Header {
+				header := http.Header{}
+				header.Set("Authorization", "Basic YWRtaW46cGFzc3cwcmQ=")
+				return header
+			}(),
+		},
+		{
+			name:     "bearer login header with no username and password",
+			username: "",
+			password: "hunter2",
+			expectedHeader: func() http.Header {
+				header := http.Header{}
+				header.Set("Authorization", "Bearer hunter2")
+				return header
+			}(),
+		},
+		{
+			name:           "no change in header with neither username nor password",
+			username:       "",
+			password:       "",
+			expectedHeader: http.Header{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := &http.Header{}
+			authHeader(tt.username, tt.password, got)
+			if !reflect.DeepEqual(*got, tt.expectedHeader) {
+				t.Errorf("authHeader got %#v wanted %#v", *got, tt.expectedHeader)
 			}
 		})
 	}
