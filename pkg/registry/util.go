@@ -256,3 +256,22 @@ func basicAuth(username, password string) string {
 	auth := username + ":" + password
 	return base64.StdEncoding.EncodeToString([]byte(auth))
 }
+
+// authHeader generates an HTTP authorization header based on the provided
+// username and password and sets it in the provided HTTP headers pointer.
+//
+// If both username and password are empty, no header is set.
+// If only the password is provided, a "Bearer" token is created and set in
+// the Authorization header.
+// If both username and password are provided, a "Basic" authentication token
+// is created using the basicAuth function, and set in the Authorization header.
+func authHeader(username, password string, headers *http.Header) {
+	if username == "" && password == "" {
+		return
+	}
+	if username == "" {
+		headers.Set("Authorization", fmt.Sprintf("Bearer %s", password))
+		return
+	}
+	headers.Set("Authorization", fmt.Sprintf("Basic %s", basicAuth(username, password)))
+}
