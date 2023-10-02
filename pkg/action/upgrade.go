@@ -262,7 +262,6 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		return nil, nil, err
 	}
 
-	fmt.Println(driver.ContainsSystemLabels(u.Labels))
 	if driver.ContainsSystemLabels(u.Labels) {
 		return nil, nil, fmt.Errorf("user suplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels())
 	}
