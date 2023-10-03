@@ -107,7 +107,7 @@ func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Releas
 			continue
 		}
 
-		rls.Labels = filterSystemLabels(item.ObjectMeta.Labels)
+		rls.Labels = item.ObjectMeta.Labels
 
 		if filter(rls) {
 			results = append(results, rls)
