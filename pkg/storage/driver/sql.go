@@ -19,6 +19,7 @@ package driver // import "helm.sh/helm/v3/pkg/storage/driver"
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -368,6 +369,9 @@ func (s *SQL) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
 			s.Log("failed to get release %s/%s custom labels: %v", record.Namespace, record.Key, err)
 			return nil, err
 		}
+		for k, v := range getReleaseSystemLabels(release) {
+			release.Labels[k] = v
+		}
 
 		if filter(release) {
 			releases = append(releases, release)
@@ -680,4 +684,14 @@ func (s *SQL) getReleaseCustomLabels(key string, namespace string) (map[string]s
 	}
 
 	return filterSystemLabels(labelsMap), nil
+}
+
+// Rebuild system labels from release object
+func getReleaseSystemLabels(rls *rspb.Release) map[string]string {
+	return map[string]string{
+		"name":    rls.Name,
+		"owner":   sqlReleaseDefaultOwner,
+		"status":  rls.Info.Status.String(),
+		"version": strconv.Itoa(rls.Version),
+	}
 }
