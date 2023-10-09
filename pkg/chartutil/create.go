@@ -392,7 +392,7 @@ metadata:
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
-  automountServiceAccountToken: {{ .Values.serviceAccount.automount }}
+automountServiceAccountToken: {{ .Values.serviceAccount.automount }}
 {{- end }}
 `
 
