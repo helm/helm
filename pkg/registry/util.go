@@ -19,10 +19,14 @@ package registry // import "helm.sh/helm/v3/pkg/registry"
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
+	"time"
+
+	helmtime "helm.sh/helm/v3/pkg/time"
 
 	"github.com/Masterminds/semver/v3"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -163,10 +167,10 @@ func NewRegistryClientWithTLS(out io.Writer, certFile, keyFile, caFile string, i
 }
 
 // generateOCIAnnotations will generate OCI annotations to include within the OCI manifest
-func generateOCIAnnotations(meta *chart.Metadata) map[string]string {
+func generateOCIAnnotations(meta *chart.Metadata, test bool) map[string]string {
 
 	// Get annotations from Chart attributes
-	ociAnnotations := generateChartOCIAnnotations(meta)
+	ociAnnotations := generateChartOCIAnnotations(meta, test)
 
 	// Copy Chart annotations
 annotations:
@@ -187,13 +191,17 @@ annotations:
 }
 
 // getChartOCIAnnotations will generate OCI annotations from the provided chart
-func generateChartOCIAnnotations(meta *chart.Metadata) map[string]string {
+func generateChartOCIAnnotations(meta *chart.Metadata, test bool) map[string]string {
 	chartOCIAnnotations := map[string]string{}
 
 	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationDescription, meta.Description)
 	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationTitle, meta.Name)
 	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationVersion, meta.Version)
 	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationURL, meta.Home)
+
+	if !test {
+		chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationCreated, helmtime.Now().UTC().Format(time.RFC3339))
+	}
 
 	if len(meta.Sources) > 0 {
 		chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationSource, meta.Sources[0])
@@ -237,4 +245,33 @@ func addToMap(inputMap map[string]string, newKey string, newValue string) map[st
 
 	return inputMap
 
+}
+
+// See 2 (end of page 4) https://www.ietf.org/rfc/rfc2617.txt
+// "To receive authorization, the client sends the userid and password,
+// separated by a single colon (":") character, within a base64
+// encoded string in the credentials."
+// It is not meant to be urlencoded.
+func basicAuth(username, password string) string {
+	auth := username + ":" + password
+	return base64.StdEncoding.EncodeToString([]byte(auth))
+}
+
+// authHeader generates an HTTP authorization header based on the provided
+// username and password and sets it in the provided HTTP headers pointer.
+//
+// If both username and password are empty, no header is set.
+// If only the password is provided, a "Bearer" token is created and set in
+// the Authorization header.
+// If both username and password are provided, a "Basic" authentication token
+// is created using the basicAuth function, and set in the Authorization header.
+func authHeader(username, password string, headers *http.Header) {
+	if username == "" && password == "" {
+		return
+	}
+	if username == "" {
+		headers.Set("Authorization", fmt.Sprintf("Bearer %s", password))
+		return
+	}
+	headers.Set("Authorization", fmt.Sprintf("Basic %s", basicAuth(username, password)))
 }

@@ -39,6 +39,7 @@ type registryPushOptions struct {
 	keyFile               string
 	caFile                string
 	insecureSkipTLSverify bool
+	plainHTTP             bool
 }
 
 func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
@@ -67,7 +68,7 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			registryClient, err := newRegistryClient(o.certFile, o.keyFile, o.caFile, o.insecureSkipTLSverify)
+			registryClient, err := newRegistryClient(o.certFile, o.keyFile, o.caFile, o.insecureSkipTLSverify, o.plainHTTP)
 			if err != nil {
 				return fmt.Errorf("missing registry client: %w", err)
 			}
@@ -77,6 +78,7 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			client := action.NewPushWithOpts(action.WithPushConfig(cfg),
 				action.WithTLSClientConfig(o.certFile, o.keyFile, o.caFile),
 				action.WithInsecureSkipTLSVerify(o.insecureSkipTLSverify),
+				action.WithPlainHTTP(o.plainHTTP),
 				action.WithPushOptWriter(out))
 			client.Settings = settings
 			output, err := client.Run(chartRef, remote)
@@ -93,6 +95,7 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.StringVar(&o.keyFile, "key-file", "", "identify registry client using this SSL key file")
 	f.StringVar(&o.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 	f.BoolVar(&o.insecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the chart upload")
+	f.BoolVar(&o.plainHTTP, "plain-http", false, "use insecure HTTP connections for the chart upload")
 
 	return cmd
 }

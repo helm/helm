@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -259,7 +260,7 @@ func TestInstallRelease_DryRun(t *testing.T) {
 	is.Equal(res.Info.Description, "Dry run complete")
 }
 
-// Regression test for #7955: Lookup must not connect to Kubernetes on a dry-run.
+// Regression test for #7955
 func TestInstallRelease_DryRun_Lookup(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
@@ -377,10 +378,14 @@ func TestInstallRelease_Wait(t *testing.T) {
 	instAction.Wait = true
 	vals := map[string]interface{}{}
 
+	goroutines := runtime.NumGoroutine()
+
 	res, err := instAction.RunWithContext(context.Background(), buildChart(), vals)
 	is.Error(err)
 	is.Contains(res.Info.Description, "I timed out")
 	is.Equal(res.Info.Status, release.StatusFailed)
+
+	is.Equal(goroutines, runtime.NumGoroutine())
 }
 func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	is := assert.New(t)
@@ -393,7 +398,6 @@ func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	vals := map[string]interface{}{}
 
 	res, err := instAction.RunWithContext(context.Background(), buildChart(), vals)
-
 	is.Error(err)
 	is.Contains(res.Info.Description, "Release \"interrupted-release\" failed: context canceled")
 	is.Equal(res.Info.Status, release.StatusFailed)
@@ -718,4 +722,34 @@ func TestNameAndChartGenerateName(t *testing.T) {
 			is.Equal(tc.Chart, chrt)
 		})
 	}
+}
+
+func TestInstallWithLabels(t *testing.T) {
+	is := assert.New(t)
+	instAction := installAction(t)
+	instAction.Labels = map[string]string{
+		"key1": "val1",
+		"key2": "val2",
+	}
+	res, err := instAction.Run(buildChart(), nil)
+	if err != nil {
+		t.Fatalf("Failed install: %s", err)
+	}
+
+	is.Equal(instAction.Labels, res.Labels)
+}
+
+func TestInstallWithSystemLabels(t *testing.T) {
+	is := assert.New(t)
+	instAction := installAction(t)
+	instAction.Labels = map[string]string{
+		"owner": "val1",
+		"key2":  "val2",
+	}
+	_, err := instAction.Run(buildChart(), nil)
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+
+	is.Equal(fmt.Errorf("user suplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels()), err)
 }

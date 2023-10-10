@@ -29,14 +29,12 @@ import (
 	"testing"
 	"time"
 
-	"helm.sh/helm/v3/internal/test/ensure"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 )
 
 func TestSave(t *testing.T) {
-	tmp := ensure.TempDir(t)
-	defer os.RemoveAll(tmp)
+	tmp := t.TempDir()
 
 	for _, dest := range []string{tmp, filepath.Join(tmp, "newdir")} {
 		t.Run("outDir="+dest, func(t *testing.T) {
