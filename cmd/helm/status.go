@@ -80,7 +80,7 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			// strip chart metadata from the output
 			rel.Chart = nil
 
-			return outfmt.Write(out, &statusPrinter{rel, false, client.ShowDescription, client.ShowResources})
+			return outfmt.Write(out, &statusPrinter{rel, false, client.ShowDescription, client.ShowResources, false})
 		},
 	}
 
@@ -112,6 +112,7 @@ type statusPrinter struct {
 	debug           bool
 	showDescription bool
 	showResources   bool
+	showMetadata    bool
 }
 
 func (s statusPrinter) WriteJSON(out io.Writer) error {
@@ -126,15 +127,20 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 	if s.release == nil {
 		return nil
 	}
-	fmt.Fprintf(out, "NAME: %s\n", s.release.Name)
+	_, _ = fmt.Fprintf(out, "NAME: %s\n", s.release.Name)
 	if !s.release.Info.LastDeployed.IsZero() {
-		fmt.Fprintf(out, "LAST DEPLOYED: %s\n", s.release.Info.LastDeployed.Format(time.ANSIC))
+		_, _ = fmt.Fprintf(out, "LAST DEPLOYED: %s\n", s.release.Info.LastDeployed.Format(time.ANSIC))
 	}
-	fmt.Fprintf(out, "NAMESPACE: %s\n", s.release.Namespace)
-	fmt.Fprintf(out, "STATUS: %s\n", s.release.Info.Status.String())
-	fmt.Fprintf(out, "REVISION: %d\n", s.release.Version)
+	_, _ = fmt.Fprintf(out, "NAMESPACE: %s\n", s.release.Namespace)
+	_, _ = fmt.Fprintf(out, "STATUS: %s\n", s.release.Info.Status.String())
+	_, _ = fmt.Fprintf(out, "REVISION: %d\n", s.release.Version)
+	if s.showMetadata {
+		_, _ = fmt.Fprintf(out, "CHART: %s\n", s.release.Chart.Metadata.Name)
+		_, _ = fmt.Fprintf(out, "VERSION: %s\n", s.release.Chart.Metadata.Version)
+		_, _ = fmt.Fprintf(out, "APP_VERSION: %s\n", s.release.Chart.Metadata.AppVersion)
+	}
 	if s.showDescription {
-		fmt.Fprintf(out, "DESCRIPTION: %s\n", s.release.Info.Description)
+		_, _ = fmt.Fprintf(out, "DESCRIPTION: %s\n", s.release.Info.Description)
 	}
 
 	if s.showResources && s.release.Info.Resources != nil && len(s.release.Info.Resources) > 0 {
@@ -149,31 +155,31 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 		}
 
 		for _, t := range keys {
-			fmt.Fprintf(buf, "==> %s\n", t)
+			_, _ = fmt.Fprintf(buf, "==> %s\n", t)
 
 			vk := s.release.Info.Resources[t]
 			for _, resource := range vk {
 				if err := printer.PrintObj(resource, buf); err != nil {
-					fmt.Fprintf(buf, "failed to print object type %s: %v\n", t, err)
+					_, _ = fmt.Fprintf(buf, "failed to print object type %s: %v\n", t, err)
 				}
 			}
 
 			buf.WriteString("\n")
 		}
 
-		fmt.Fprintf(out, "RESOURCES:\n%s\n", buf.String())
+		_, _ = fmt.Fprintf(out, "RESOURCES:\n%s\n", buf.String())
 	}
 
 	executions := executionsByHookEvent(s.release)
 	if tests, ok := executions[release.HookTest]; !ok || len(tests) == 0 {
-		fmt.Fprintln(out, "TEST SUITE: None")
+		_, _ = fmt.Fprintln(out, "TEST SUITE: None")
 	} else {
 		for _, h := range tests {
 			// Don't print anything if hook has not been initiated
 			if h.LastRun.StartedAt.IsZero() {
 				continue
 			}
-			fmt.Fprintf(out, "TEST SUITE:     %s\n%s\n%s\n%s\n",
+			_, _ = fmt.Fprintf(out, "TEST SUITE:     %s\n%s\n%s\n%s\n",
 				h.Name,
 				fmt.Sprintf("Last Started:   %s", h.LastRun.StartedAt.Format(time.ANSIC)),
 				fmt.Sprintf("Last Completed: %s", h.LastRun.CompletedAt.Format(time.ANSIC)),
@@ -183,38 +189,38 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 	}
 
 	if s.debug {
-		fmt.Fprintln(out, "USER-SUPPLIED VALUES:")
+		_, _ = fmt.Fprintln(out, "USER-SUPPLIED VALUES:")
 		err := output.EncodeYAML(out, s.release.Config)
 		if err != nil {
 			return err
 		}
 		// Print an extra newline
-		fmt.Fprintln(out)
+		_, _ = fmt.Fprintln(out)
 
 		cfg, err := chartutil.CoalesceValues(s.release.Chart, s.release.Config)
 		if err != nil {
 			return err
 		}
 
-		fmt.Fprintln(out, "COMPUTED VALUES:")
+		_, _ = fmt.Fprintln(out, "COMPUTED VALUES:")
 		err = output.EncodeYAML(out, cfg.AsMap())
 		if err != nil {
 			return err
 		}
 		// Print an extra newline
-		fmt.Fprintln(out)
+		_, _ = fmt.Fprintln(out)
 	}
 
 	if strings.EqualFold(s.release.Info.Description, "Dry run complete") || s.debug {
-		fmt.Fprintln(out, "HOOKS:")
+		_, _ = fmt.Fprintln(out, "HOOKS:")
 		for _, h := range s.release.Hooks {
-			fmt.Fprintf(out, "---\n# Source: %s\n%s\n", h.Path, h.Manifest)
+			_, _ = fmt.Fprintf(out, "---\n# Source: %s\n%s\n", h.Path, h.Manifest)
 		}
-		fmt.Fprintf(out, "MANIFEST:\n%s\n", s.release.Manifest)
+		_, _ = fmt.Fprintf(out, "MANIFEST:\n%s\n", s.release.Manifest)
 	}
 
 	if len(s.release.Info.Notes) > 0 {
-		fmt.Fprintf(out, "NOTES:\n%s\n", strings.TrimSpace(s.release.Info.Notes))
+		_, _ = fmt.Fprintf(out, "NOTES:\n%s\n", strings.TrimSpace(s.release.Info.Notes))
 	}
 	return nil
 }

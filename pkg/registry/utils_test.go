@@ -88,6 +88,7 @@ func setup(suite *TestSuite, tlsEnabled, insecure bool) *registry.Registry {
 		ClientOptEnableCache(true),
 		ClientOptWriter(suite.Out),
 		ClientOptCredentialsFile(credentialsFile),
+		ClientOptResolver(nil),
 	}
 
 	if tlsEnabled {
