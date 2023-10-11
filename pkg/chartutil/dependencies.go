@@ -297,20 +297,22 @@ func processImportValues(c *chart.Chart, merge bool) error {
 		r.ImportValues = outiv
 	}
 
-	// Imported values from a child to a parent chart have a higher priority than
-	// values specified in the parent chart.
+	// Imported values from a child to a parent chart have a lower priority than
+	// the parents values. This enables parent charts to import a large section
+	// from a child and then override select parts. This is why b is merged into
+	// cvals in the code below and not the other way around.
 	if merge {
 		// deep copying the cvals as there are cases where pointers can end
 		// up in the cvals when they are copied onto b in ways that break things.
 		cvals = deepCopyMap(cvals)
-		c.Values = MergeTables(b, cvals)
+		c.Values = MergeTables(cvals, b)
 	} else {
 		// Trimming the nil values from cvals is needed for backwards compatibility.
 		// Previously, the b value had been populated with cvals along with some
 		// overrides. This caused the coalescing functionality to remove the
 		// nil/null values. This trimming is for backwards compat.
 		cvals = trimNilValues(cvals)
-		c.Values = CoalesceTables(b, cvals)
+		c.Values = CoalesceTables(cvals, b)
 	}
 
 	return nil
