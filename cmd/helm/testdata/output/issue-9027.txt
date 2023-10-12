@@ -1,0 +1,32 @@
+---
+# Source: issue-9027/charts/subchart/templates/values.yaml
+global:
+  hash:
+    key3: 13
+    key4: 4
+    key5: 5
+    key6: 6
+hash:
+  key3: 13
+  key4: 4
+  key5: 5
+  key6: 6
+---
+# Source: issue-9027/templates/values.yaml
+global:
+  hash:
+    key1: null
+    key2: null
+    key3: 13
+subchart:
+  global:
+    hash:
+      key3: 13
+      key4: 4
+      key5: 5
+      key6: 6
+  hash:
+    key3: 13
+    key4: 4
+    key5: 5
+    key6: 6

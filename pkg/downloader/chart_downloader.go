@@ -184,11 +184,11 @@ func (c *ChartDownloader) getOciURI(ref, version string, u *url.URL) (*url.URL, 
 //
 // A version is a SemVer string (1.2.3-beta.1+f334a6789).
 //
-//	- For fully qualified URLs, the version will be ignored (since URLs aren't versioned)
-//	- For a chart reference
-//		* If version is non-empty, this will return the URL for that version
-//		* If version is empty, this will return the URL for the latest version
-//		* If no version can be found, an error is returned
+//   - For fully qualified URLs, the version will be ignored (since URLs aren't versioned)
+//   - For a chart reference
+//   - If version is non-empty, this will return the URL for that version
+//   - If version is empty, this will return the URL for the latest version
+//   - If no version can be found, an error is returned
 func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, error) {
 	u, err := url.Parse(ref)
 	if err != nil {

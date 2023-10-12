@@ -32,7 +32,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package fs
 
 import (
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -137,7 +136,7 @@ func TestCopyDir(t *testing.T) {
 			t.Fatalf("expected %s to be a directory", dn)
 		}
 
-		got, err := ioutil.ReadFile(fn)
+		got, err := os.ReadFile(fn)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -337,7 +336,7 @@ func TestCopyFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := ioutil.ReadFile(destf)
+	got, err := os.ReadFile(destf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -396,11 +395,11 @@ func TestCopyFileSymlink(t *testing.T) {
 				// Creating symlinks on Windows require an additional permission
 				// regular users aren't granted usually. So we copy the file
 				// content as a fall back instead of creating a real symlink.
-				srcb, err := ioutil.ReadFile(symlink)
+				srcb, err := os.ReadFile(symlink)
 				if err != nil {
 					t.Fatalf("%+v", err)
 				}
-				dstb, err := ioutil.ReadFile(dst)
+				dstb, err := os.ReadFile(dst)
 				if err != nil {
 					t.Fatalf("%+v", err)
 				}

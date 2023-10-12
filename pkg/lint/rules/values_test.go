@@ -17,7 +17,6 @@ limitations under the License.
 package rules
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -67,7 +66,6 @@ func TestValidateValuesFileWellFormed(t *testing.T) {
 	not:well[]{}formed
 	`
 	tmpdir := ensure.TempFile(t, "values.yaml", []byte(badYaml))
-	defer os.RemoveAll(tmpdir)
 	valfile := filepath.Join(tmpdir, "values.yaml")
 	if err := validateValuesFile(valfile, map[string]interface{}{}); err == nil {
 		t.Fatal("expected values file to fail parsing")
@@ -77,7 +75,6 @@ func TestValidateValuesFileWellFormed(t *testing.T) {
 func TestValidateValuesFileSchema(t *testing.T) {
 	yaml := "username: admin\npassword: swordfish"
 	tmpdir := ensure.TempFile(t, "values.yaml", []byte(yaml))
-	defer os.RemoveAll(tmpdir)
 	createTestingSchema(t, tmpdir)
 
 	valfile := filepath.Join(tmpdir, "values.yaml")
@@ -90,7 +87,6 @@ func TestValidateValuesFileSchemaFailure(t *testing.T) {
 	// 1234 is an int, not a string. This should fail.
 	yaml := "username: 1234\npassword: swordfish"
 	tmpdir := ensure.TempFile(t, "values.yaml", []byte(yaml))
-	defer os.RemoveAll(tmpdir)
 	createTestingSchema(t, tmpdir)
 
 	valfile := filepath.Join(tmpdir, "values.yaml")
@@ -109,7 +105,6 @@ func TestValidateValuesFileSchemaOverrides(t *testing.T) {
 		"password": "swordfish",
 	}
 	tmpdir := ensure.TempFile(t, "values.yaml", []byte(yaml))
-	defer os.RemoveAll(tmpdir)
 	createTestingSchema(t, tmpdir)
 
 	valfile := filepath.Join(tmpdir, "values.yaml")
@@ -146,7 +141,6 @@ func TestValidateValuesFile(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tmpdir := ensure.TempFile(t, "values.yaml", []byte(tt.yaml))
-			defer os.RemoveAll(tmpdir)
 			createTestingSchema(t, tmpdir)
 
 			valfile := filepath.Join(tmpdir, "values.yaml")
@@ -168,7 +162,7 @@ func TestValidateValuesFile(t *testing.T) {
 func createTestingSchema(t *testing.T, dir string) string {
 	t.Helper()
 	schemafile := filepath.Join(dir, "values.schema.json")
-	if err := ioutil.WriteFile(schemafile, []byte(testSchema), 0700); err != nil {
+	if err := os.WriteFile(schemafile, []byte(testSchema), 0700); err != nil {
 		t.Fatalf("Failed to write schema to tmpdir: %s", err)
 	}
 	return schemafile

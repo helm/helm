@@ -21,7 +21,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/url"
 	"os"
@@ -131,7 +131,7 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 		return "", err
 	}
 
-	index, err := ioutil.ReadAll(resp)
+	index, err := io.ReadAll(resp)
 	if err != nil {
 		return "", err
 	}
@@ -148,12 +148,12 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 	}
 	chartsFile := filepath.Join(r.CachePath, helmpath.CacheChartsFile(r.Config.Name))
 	os.MkdirAll(filepath.Dir(chartsFile), 0755)
-	ioutil.WriteFile(chartsFile, []byte(charts.String()), 0644)
+	os.WriteFile(chartsFile, []byte(charts.String()), 0644)
 
 	// Create the index file in the cache directory
 	fname := filepath.Join(r.CachePath, helmpath.CacheIndexFile(r.Config.Name))
 	os.MkdirAll(filepath.Dir(fname), 0755)
-	return fname, ioutil.WriteFile(fname, index, 0644)
+	return fname, os.WriteFile(fname, index, 0644)
 }
 
 // Index generates an index for the chart repository and writes an index.yaml file.
@@ -170,7 +170,7 @@ func (r *ChartRepository) saveIndexFile() error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(filepath.Join(r.Config.Name, indexPath), index, 0644)
+	return os.WriteFile(filepath.Join(r.Config.Name, indexPath), index, 0644)
 }
 
 func (r *ChartRepository) generateIndex() error {

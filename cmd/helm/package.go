@@ -19,7 +19,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -87,7 +86,7 @@ func newPackageCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 				if client.DependencyUpdate {
 					downloadManager := &downloader.Manager{
-						Out:              ioutil.Discard,
+						Out:              io.Discard,
 						ChartPath:        path,
 						Keyring:          client.Keyring,
 						Getters:          p,

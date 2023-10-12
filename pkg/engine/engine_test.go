@@ -22,6 +22,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"text/template"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -868,4 +869,243 @@ func TestRenderRecursionLimit(t *testing.T) {
 		t.Errorf("Expected %q, got %q (%v)", expect, got, out)
 	}
 
+}
+
+func TestRenderLoadTemplateForTplFromFile(t *testing.T) {
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "TplLoadFromFile"},
+		Templates: []*chart.File{
+			{Name: "templates/base", Data: []byte(`{{ tpl (.Files.Get .Values.filename) . }}`)},
+			{Name: "templates/_function", Data: []byte(`{{define "test-function"}}test-function{{end}}`)},
+		},
+		Files: []*chart.File{
+			{Name: "test", Data: []byte(`{{ tpl (.Files.Get .Values.filename2) .}}`)},
+			{Name: "test2", Data: []byte(`{{include "test-function" .}}{{define "nested-define"}}nested-define-content{{end}} {{include "nested-define" .}}`)},
+		},
+	}
+
+	v := chartutil.Values{
+		"Values": chartutil.Values{
+			"filename":  "test",
+			"filename2": "test2",
+		},
+		"Chart": c.Metadata,
+		"Release": chartutil.Values{
+			"Name": "TestRelease",
+		},
+	}
+
+	out, err := Render(c, v)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expect := "test-function nested-define-content"
+	if got := out["TplLoadFromFile/templates/base"]; got != expect {
+		t.Fatalf("Expected %q, got %q", expect, got)
+	}
+}
+
+func TestRenderTplEmpty(t *testing.T) {
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "TplEmpty"},
+		Templates: []*chart.File{
+			{Name: "templates/empty-string", Data: []byte(`{{tpl "" .}}`)},
+			{Name: "templates/empty-action", Data: []byte(`{{tpl "{{ \"\"}}" .}}`)},
+			{Name: "templates/only-defines", Data: []byte(`{{tpl "{{define \"not-invoked\"}}not-rendered{{end}}" .}}`)},
+		},
+	}
+	v := chartutil.Values{
+		"Chart": c.Metadata,
+		"Release": chartutil.Values{
+			"Name": "TestRelease",
+		},
+	}
+
+	out, err := Render(c, v)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expects := map[string]string{
+		"TplEmpty/templates/empty-string": "",
+		"TplEmpty/templates/empty-action": "",
+		"TplEmpty/templates/only-defines": "",
+	}
+	for file, expect := range expects {
+		if out[file] != expect {
+			t.Errorf("Expected %q, got %q", expect, out[file])
+		}
+	}
+}
+
+func TestRenderTplTemplateNames(t *testing.T) {
+	// .Template.BasePath and .Name make it through
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "TplTemplateNames"},
+		Templates: []*chart.File{
+			{Name: "templates/default-basepath", Data: []byte(`{{tpl "{{ .Template.BasePath }}" .}}`)},
+			{Name: "templates/default-name", Data: []byte(`{{tpl "{{ .Template.Name }}" .}}`)},
+			{Name: "templates/modified-basepath", Data: []byte(`{{tpl "{{ .Template.BasePath }}" .Values.dot}}`)},
+			{Name: "templates/modified-name", Data: []byte(`{{tpl "{{ .Template.Name }}" .Values.dot}}`)},
+			// Current implementation injects the 'tpl' template as if it were a template file, and
+			// so only BasePath and Name make it through.
+			{Name: "templates/modified-field", Data: []byte(`{{tpl "{{ .Template.Field }}" .Values.dot}}`)},
+		},
+	}
+	v := chartutil.Values{
+		"Values": chartutil.Values{
+			"dot": chartutil.Values{
+				"Template": chartutil.Values{
+					"BasePath": "path/to/template",
+					"Name":     "name-of-template",
+					"Field":    "extra-field",
+				},
+			},
+		},
+		"Chart": c.Metadata,
+		"Release": chartutil.Values{
+			"Name": "TestRelease",
+		},
+	}
+
+	out, err := Render(c, v)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expects := map[string]string{
+		"TplTemplateNames/templates/default-basepath":  "TplTemplateNames/templates",
+		"TplTemplateNames/templates/default-name":      "TplTemplateNames/templates/default-name",
+		"TplTemplateNames/templates/modified-basepath": "path/to/template",
+		"TplTemplateNames/templates/modified-name":     "name-of-template",
+		"TplTemplateNames/templates/modified-field":    "",
+	}
+	for file, expect := range expects {
+		if out[file] != expect {
+			t.Errorf("Expected %q, got %q", expect, out[file])
+		}
+	}
+}
+
+func TestRenderTplRedefines(t *testing.T) {
+	// Redefining a template inside 'tpl' does not affect the outer definition
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "TplRedefines"},
+		Templates: []*chart.File{
+			{Name: "templates/_partials", Data: []byte(`{{define "partial"}}original-in-partial{{end}}`)},
+			{Name: "templates/partial", Data: []byte(
+				`before: {{include "partial" .}}\n{{tpl .Values.partialText .}}\nafter: {{include "partial" .}}`,
+			)},
+			{Name: "templates/manifest", Data: []byte(
+				`{{define "manifest"}}original-in-manifest{{end}}` +
+					`before: {{include "manifest" .}}\n{{tpl .Values.manifestText .}}\nafter: {{include "manifest" .}}`,
+			)},
+			// The current implementation replaces the manifest text and re-parses, so a
+			// partial template defined only in the manifest invoking tpl cannot be accessed
+			// by that tpl call.
+			//{Name: "templates/manifest-only", Data: []byte(
+			//	`{{define "manifest-only"}}only-in-manifest{{end}}` +
+			//		`before: {{include "manifest-only" .}}\n{{tpl .Values.manifestOnlyText .}}\nafter: {{include "manifest-only" .}}`,
+			//)},
+		},
+	}
+	v := chartutil.Values{
+		"Values": chartutil.Values{
+			"partialText":      `{{define "partial"}}redefined-in-tpl{{end}}tpl: {{include "partial" .}}`,
+			"manifestText":     `{{define "manifest"}}redefined-in-tpl{{end}}tpl: {{include "manifest" .}}`,
+			"manifestOnlyText": `tpl: {{include "manifest-only" .}}`,
+		},
+		"Chart": c.Metadata,
+		"Release": chartutil.Values{
+			"Name": "TestRelease",
+		},
+	}
+
+	out, err := Render(c, v)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expects := map[string]string{
+		"TplRedefines/templates/partial":  `before: original-in-partial\ntpl: original-in-partial\nafter: original-in-partial`,
+		"TplRedefines/templates/manifest": `before: original-in-manifest\ntpl: redefined-in-tpl\nafter: original-in-manifest`,
+		//"TplRedefines/templates/manifest-only": `before: only-in-manifest\ntpl: only-in-manifest\nafter: only-in-manifest`,
+	}
+	for file, expect := range expects {
+		if out[file] != expect {
+			t.Errorf("Expected %q, got %q", expect, out[file])
+		}
+	}
+}
+
+func TestRenderTplMissingKey(t *testing.T) {
+	// Rendering a missing key results in empty/zero output.
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "TplMissingKey"},
+		Templates: []*chart.File{
+			{Name: "templates/manifest", Data: []byte(
+				`missingValue: {{tpl "{{.Values.noSuchKey}}" .}}`,
+			)},
+		},
+	}
+	v := chartutil.Values{
+		"Values": chartutil.Values{},
+		"Chart":  c.Metadata,
+		"Release": chartutil.Values{
+			"Name": "TestRelease",
+		},
+	}
+
+	out, err := Render(c, v)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expects := map[string]string{
+		"TplMissingKey/templates/manifest": `missingValue: `,
+	}
+	for file, expect := range expects {
+		if out[file] != expect {
+			t.Errorf("Expected %q, got %q", expect, out[file])
+		}
+	}
+}
+
+func TestRenderTplMissingKeyString(t *testing.T) {
+	// Rendering a missing key results in error
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "TplMissingKeyStrict"},
+		Templates: []*chart.File{
+			{Name: "templates/manifest", Data: []byte(
+				`missingValue: {{tpl "{{.Values.noSuchKey}}" .}}`,
+			)},
+		},
+	}
+	v := chartutil.Values{
+		"Values": chartutil.Values{},
+		"Chart":  c.Metadata,
+		"Release": chartutil.Values{
+			"Name": "TestRelease",
+		},
+	}
+
+	e := new(Engine)
+	e.Strict = true
+
+	out, err := e.Render(c, v)
+	if err == nil {
+		t.Errorf("Expected error, got %v", out)
+		return
+	}
+	switch err.(type) {
+	case (template.ExecError):
+		errTxt := fmt.Sprint(err)
+		if !strings.Contains(errTxt, "noSuchKey") {
+			t.Errorf("Expected error to contain 'noSuchKey', got %s", errTxt)
+		}
+	default:
+		// Some unexpected error.
+		t.Fatal(err)
+	}
 }

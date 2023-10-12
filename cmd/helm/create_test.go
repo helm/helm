@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -31,9 +30,9 @@ import (
 )
 
 func TestCreateCmd(t *testing.T) {
-	defer ensure.HelmHome(t)()
+	ensure.HelmHome(t)
 	cname := "testchart"
-	dir := ensure.TempDir(t)
+	dir := t.TempDir()
 	defer testChdir(t, dir)()
 
 	// Run a create
@@ -62,7 +61,7 @@ func TestCreateCmd(t *testing.T) {
 }
 
 func TestCreateStarterCmd(t *testing.T) {
-	defer ensure.HelmHome(t)()
+	ensure.HelmHome(t)
 	cname := "testchart"
 	defer resetEnv()()
 	os.MkdirAll(helmpath.CachePath(), 0755)
@@ -77,7 +76,7 @@ func TestCreateStarterCmd(t *testing.T) {
 		t.Logf("Created %s", dest)
 	}
 	tplpath := filepath.Join(starterchart, "starterchart", "templates", "foo.tpl")
-	if err := ioutil.WriteFile(tplpath, []byte("test"), 0644); err != nil {
+	if err := os.WriteFile(tplpath, []byte("test"), 0644); err != nil {
 		t.Fatalf("Could not write template: %s", err)
 	}
 
@@ -128,7 +127,7 @@ func TestCreateStarterCmd(t *testing.T) {
 
 func TestCreateStarterAbsoluteCmd(t *testing.T) {
 	defer resetEnv()()
-	defer ensure.HelmHome(t)()
+	ensure.HelmHome(t)
 	cname := "testchart"
 
 	// Create a starter.
@@ -140,7 +139,7 @@ func TestCreateStarterAbsoluteCmd(t *testing.T) {
 		t.Logf("Created %s", dest)
 	}
 	tplpath := filepath.Join(starterchart, "starterchart", "templates", "foo.tpl")
-	if err := ioutil.WriteFile(tplpath, []byte("test"), 0644); err != nil {
+	if err := os.WriteFile(tplpath, []byte("test"), 0644); err != nil {
 		t.Fatalf("Could not write template: %s", err)
 	}
 
