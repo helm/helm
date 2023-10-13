@@ -146,7 +146,7 @@ func (cfgmaps *ConfigMaps) Query(labels map[string]string) ([]*rspb.Release, err
 			cfgmaps.Log("query: failed to decode release: %s", err)
 			continue
 		}
-		rls.Labels = filterSystemLabels(item.ObjectMeta.Labels)
+		rls.Labels = item.ObjectMeta.Labels
 		results = append(results, rls)
 	}
 	return results, nil
