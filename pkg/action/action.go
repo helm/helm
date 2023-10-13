@@ -118,28 +118,22 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 		}
 	}
 
-	var files map[string]string
-	var err2 error
-
 	// A `helm template` should not talk to the remote cluster. However, commands with the flag
 	//`--dry-run` with the value of `false`, `none`, or `server` should try to interact with the cluster.
 	// It may break in interesting and exotic ways because other data (e.g. discovery) is mocked.
+	var e engine.Engine
 	if interactWithRemote && cfg.RESTClientGetter != nil {
 		restConfig, err := cfg.RESTClientGetter.ToRESTConfig()
 		if err != nil {
 			return hs, b, "", err
 		}
-		e := engine.New(restConfig)
-		e.EnableDNS = enableDNS
-		files, err2 = e.Render(ch, values)
-	} else {
-		var e engine.Engine
-		e.EnableDNS = enableDNS
-		files, err2 = e.Render(ch, values)
+		e = engine.New(restConfig)
 	}
-
-	if err2 != nil {
-		return hs, b, "", err2
+	e.EnableDNS = enableDNS
+	e.Log = cfg.Log
+	files, err := e.Render(ch, values)
+	if err != nil {
+		return hs, b, "", err
 	}
 
 	// NOTES.txt gets rendered like all the other files, but because it's not a hook nor a resource,
