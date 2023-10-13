@@ -136,7 +136,7 @@ func TestConfigMapList(t *testing.T) {
 	}
 	_, ok = rls.Labels["key1"]
 	if !ok {
-		t.Fatalf("Expected 'key-1' label in results, actual %v", rls.Labels)
+		t.Fatalf("Expected 'key1' label in results, actual %v", rls.Labels)
 	}
 }
 
