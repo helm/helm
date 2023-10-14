@@ -23,6 +23,7 @@ import (
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/releaseutil"
 	helmtime "helm.sh/helm/v3/pkg/time"
 )
 
@@ -115,6 +116,45 @@ func (x hookByWeight) Swap(i, j int) { x[i], x[j] = x[j], x[i] }
 func (x hookByWeight) Less(i, j int) bool {
 	if x[i].Weight == x[j].Weight {
 		return x[i].Name < x[j].Name
+	}
+	return x[i].Weight < x[j].Weight
+}
+
+func (x hookByWeight) LessFixed(i, j int) bool {
+	if x[i].Weight == x[j].Weight {
+		ordering := make(map[string]int, len(releaseutil.InstallOrder))
+		for v, k := range releaseutil.InstallOrder {
+			ordering[k] = v
+		}
+
+		first, iok := ordering[x[i].Kind]
+		second, jok := ordering[x[j].Kind]
+
+		// As in https://github.com/helm/helm/blob/fe595b69d78b213ab181d98ce24dde2454a56f9d/pkg/releaseutil/kind_sorter.go#L145C15-L145C15
+		if !iok && !jok {
+			// If both are unknown then sort alphabetically by kind.
+			if x[i].Kind != x[j].Kind {
+				return x[i].Kind < x[j].Kind
+			}
+
+			// Otherwise, let Stable() preserve the original order.
+			return false
+		}
+
+		// Unknown kind is last.
+		if !iok {
+			return false
+		}
+		if !jok {
+			return true
+		}
+
+		if first == second {
+			// According to the documentation, name is the last tiebreaker.
+			return x[i].Name < x[j].Name
+		}
+
+		return first < second
 	}
 	return x[i].Weight < x[j].Weight
 }
