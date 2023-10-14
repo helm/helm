@@ -125,15 +125,13 @@ func (x hookByWeight) Less(i, j int) bool {
 		first, iok := ordering[x[i].Kind]
 		second, jok := ordering[x[j].Kind]
 
-		// As in https://github.com/helm/helm/blob/fe595b69d78b213ab181d98ce24dde2454a56f9d/pkg/releaseutil/kind_sorter.go#L145C15-L145C15
 		if !iok && !jok {
-			// If both are unknown then sort alphabetically by kind.
-			if x[i].Kind != x[j].Kind {
-				return x[i].Kind < x[j].Kind
+			// Sort unknown kinds alphabetically, with name as the tiebreaker.
+			if x[i].Kind == x[j].Kind {
+				return x[i].Name < x[j].Name
 			}
 
-			// Otherwise, let Stable() preserve the original order.
-			return false
+			return x[i].Kind < x[j].Kind
 		}
 
 		// Unknown kind is last.

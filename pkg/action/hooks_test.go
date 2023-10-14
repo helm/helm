@@ -31,6 +31,9 @@ func TestHookByWeight(t *testing.T) {
 		{Weight: 1, Kind: "ServiceAccount", Name: "ServiceAccountB"},
 		{Weight: 1, Kind: "ServiceAccount", Name: "ServiceAccountA"},
 		{Weight: 0, Kind: "Job", Name: "Job"},
+		{Weight: 0, Kind: "UnknownB", Name: "UnknownB1"},
+		{Weight: 0, Kind: "UnknownB", Name: "UnknownB0"},
+		{Weight: 0, Kind: "UnknownA", Name: "UnknownA"},
 		{Weight: -1, Kind: "APIService", Name: "APIServiceB"},
 		{Weight: -1, Kind: "APIService", Name: "APIServiceA"},
 	}
@@ -41,6 +44,9 @@ func TestHookByWeight(t *testing.T) {
 		{Weight: -1, Kind: "APIService", Name: "APIServiceA"},
 		{Weight: -1, Kind: "APIService", Name: "APIServiceB"},
 		{Weight: 0, Kind: "Job", Name: "Job"},
+		{Weight: 0, Kind: "UnknownA", Name: "UnknownA"},
+		{Weight: 0, Kind: "UnknownB", Name: "UnknownB0"},
+		{Weight: 0, Kind: "UnknownB", Name: "UnknownB1"},
 		{Weight: 1, Kind: "ServiceAccount", Name: "ServiceAccountA"},
 		{Weight: 1, Kind: "ServiceAccount", Name: "ServiceAccountB"},
 		{Weight: 1, Kind: "Pod", Name: "PodA"},
@@ -62,6 +68,8 @@ func TestHookByWeight_KindSorted(t *testing.T) {
 		{Weight: -1, Kind: "Pod", Name: "podA"},
 		{Weight: 0, Kind: "Job", Name: "Job"},
 		{Weight: 1, Kind: "APIService", Name: "APIServiceA"},
+		{Weight: 0, Kind: "UnknownA", Name: "Unknown1"},
+		{Weight: 0, Kind: "UnknownB", Name: "Unknown0"},
 	}
 
 	sort.Stable(hookByWeight(hooks))
@@ -70,6 +78,8 @@ func TestHookByWeight_KindSorted(t *testing.T) {
 		{Weight: -1, Kind: "Pod", Name: "podA"},
 		{Weight: 0, Kind: "Pod", Name: "podB"},
 		{Weight: 0, Kind: "Job", Name: "Job"},
+		{Weight: 0, Kind: "UnknownA", Name: "Unknown1"},
+		{Weight: 0, Kind: "UnknownB", Name: "Unknown0"},
 		{Weight: 1, Kind: "ServiceAccount", Name: "ServiceAccountA"},
 		{Weight: 1, Kind: "ServiceAccount", Name: "ServiceAccountB"},
 		{Weight: 1, Kind: "APIService", Name: "APIServiceA"},
