@@ -115,6 +115,7 @@ func (x hookByWeight) Len() int      { return len(x) }
 func (x hookByWeight) Swap(i, j int) { x[i], x[j] = x[j], x[i] }
 func (x hookByWeight) Less(i, j int) bool {
 	if x[i].Weight == x[j].Weight {
+		// It's safe to assume that we can use InstallOrder as hooks will be creating resources.
 		ordering := make(map[string]int, len(releaseutil.InstallOrder))
 		for v, k := range releaseutil.InstallOrder {
 			ordering[k] = v
