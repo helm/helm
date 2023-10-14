@@ -23,7 +23,7 @@ import (
 	"helm.sh/helm/v3/pkg/release"
 )
 
-func Test_hookByWeight(t *testing.T) {
+func TestHookByWeight(t *testing.T) {
 	hooks := []*release.Hook{
 		// The previous sorter sorts by (Weight, Name) so would fail this test as
 		// "PodA" < "ServiceAccountA".
@@ -53,7 +53,7 @@ func Test_hookByWeight(t *testing.T) {
 	}
 }
 
-func Test_hookByWeight_KindSorted(t *testing.T) {
+func TestHookByWeight_KindSorted(t *testing.T) {
 	// This test assumes that the list of hooks starts off sorted by Kind.
 	hooks := []*release.Hook{
 		{Weight: 1, Kind: "ServiceAccount", Name: "ServiceAccountB"},
