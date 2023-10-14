@@ -25,7 +25,9 @@ import (
 
 func Test_hookByWeight(t *testing.T) {
 	hooks := []*release.Hook{
-		{Weight: 1, Kind: "Pod", Name: "podA"},
+		// The previous sorter sorts by (Weight, Name) so would fail this test as
+		// "PodA" < "ServiceAccountA".
+		{Weight: 1, Kind: "Pod", Name: "PodA"},
 		{Weight: 1, Kind: "ServiceAccount", Name: "ServiceAccountB"},
 		{Weight: 1, Kind: "ServiceAccount", Name: "ServiceAccountA"},
 		{Weight: 0, Kind: "Job", Name: "Job"},
@@ -42,6 +44,35 @@ func Test_hookByWeight(t *testing.T) {
 		{Weight: 1, Kind: "ServiceAccount", Name: "ServiceAccountA"},
 		{Weight: 1, Kind: "ServiceAccount", Name: "ServiceAccountB"},
 		{Weight: 1, Kind: "Pod", Name: "podA"},
+	}
+
+	for i, hook := range hooks {
+		if hook.Name != expected[i].Name {
+			t.Errorf("Expected hook %d to be %s, got %s", i, expected[i].Name, hook.Name)
+		}
+	}
+}
+
+func Test_hookByWeight_KindSorted(t *testing.T) {
+	// This test assumes that the list of hooks starts off sorted by Kind.
+	hooks := []*release.Hook{
+		{Weight: 1, Kind: "ServiceAccount", Name: "ServiceAccountB"},
+		{Weight: 1, Kind: "ServiceAccount", Name: "ServiceAccountA"},
+		{Weight: 0, Kind: "Pod", Name: "podB"},
+		{Weight: -1, Kind: "Pod", Name: "podA"},
+		{Weight: 0, Kind: "Job", Name: "Job"},
+		{Weight: 1, Kind: "APIService", Name: "APIServiceA"},
+	}
+
+	sort.Stable(hookByWeight(hooks))
+
+	expected := []*release.Hook{
+		{Weight: -1, Kind: "Pod", Name: "podA"},
+		{Weight: 0, Kind: "Pod", Name: "podB"},
+		{Weight: 0, Kind: "Job", Name: "Job"},
+		{Weight: 1, Kind: "ServiceAccount", Name: "ServiceAccountA"},
+		{Weight: 1, Kind: "ServiceAccount", Name: "ServiceAccountB"},
+		{Weight: 1, Kind: "APIService", Name: "APIServiceA"},
 	}
 
 	for i, hook := range hooks {
