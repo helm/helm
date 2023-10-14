@@ -43,7 +43,7 @@ func Test_hookByWeight(t *testing.T) {
 		{Weight: 0, Kind: "Job", Name: "Job"},
 		{Weight: 1, Kind: "ServiceAccount", Name: "ServiceAccountA"},
 		{Weight: 1, Kind: "ServiceAccount", Name: "ServiceAccountB"},
-		{Weight: 1, Kind: "Pod", Name: "podA"},
+		{Weight: 1, Kind: "Pod", Name: "PodA"},
 	}
 
 	for i, hook := range hooks {
