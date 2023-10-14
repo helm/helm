@@ -39,8 +39,9 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		}
 	}
 
-	// hooke are pre-ordered by kind, so keep order stable
-	sort.Stable(hookByWeight(executingHooks))
+	// Since we want to sort by name among hooks of the same kind, we need to re-sort and can't use
+	// Stable() and rely on the existing sort by kind.
+	sort.Sort(hookByWeight(executingHooks))
 
 	for _, h := range executingHooks {
 		// Set default delete policy to before-hook-creation
