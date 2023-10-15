@@ -51,6 +51,20 @@ jobs:
           connection_string: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
           extra_args: '--pattern helm-*'
 
+      - name: Setup Komac
+        run: |
+          curl -fSsL -o komac.jar https://github.com/russellbanks/Komac/releases/download/v1.11.0/Komac-1.11.0-all.jar
+          echo '1c26bb7bee6228ad095fe67d10ed254363099b3395f809bd6d95a3f72b2740fc komac.jar' | sha256sum --check --status -
+
+      - name: Publish to Winget
+        run: |
+          $JAVA_HOME_17_X64/bin/java -jar komac.jar update \
+            --id Helm.Helm \
+            --version $(echo '${{ github.ref_name }}' | sed 's/^v//') \
+            --urls https://get.helm.sh/helm-${{ github.ref_name }}-windows-amd64.zip
+            --token ${{ secrets.WINGET_TOKEN }}
+            --submit
+
   canary-release:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
