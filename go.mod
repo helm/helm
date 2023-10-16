@@ -17,6 +17,7 @@ require (
 	github.com/foxcpp/go-mockdns v1.0.0
 	github.com/gobwas/glob v0.2.3
 	github.com/gofrs/flock v0.8.1
+	github.com/google/safetext v0.0.0-20230106111101-7156a760e523
 	github.com/gosuri/uitable v0.0.4
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/jmoiron/sqlx v1.3.5

@@ -22,7 +22,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"text/template"
+
+	template "github.com/google/safetext/yamltemplate"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"

@@ -18,7 +18,8 @@ package main
 
 import (
 	"io"
-	"text/template"
+
+	template "github.com/google/safetext/yamltemplate"
 )
 
 func tpl(t string, vals map[string]interface{}, out io.Writer) error {

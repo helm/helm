@@ -20,7 +20,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"strings"
-	"text/template"
+
+	template "github.com/google/safetext/yamltemplate"
 
 	"github.com/BurntSushi/toml"
 	"github.com/Masterminds/sprig/v3"

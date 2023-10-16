@@ -20,7 +20,8 @@ import (
 	"bytes"
 	"fmt"
 	"testing"
-	"text/template"
+
+	template "github.com/google/safetext/yamltemplate"
 
 	"helm.sh/helm/v3/pkg/chart"
 )

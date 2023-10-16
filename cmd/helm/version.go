@@ -19,7 +19,8 @@ package main
 import (
 	"fmt"
 	"io"
-	"text/template"
+
+	template "github.com/google/safetext/yamltemplate"
 
 	"github.com/spf13/cobra"
 

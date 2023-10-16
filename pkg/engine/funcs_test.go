@@ -19,7 +19,8 @@ package engine
 import (
 	"strings"
 	"testing"
-	"text/template"
+
+	template "github.com/google/safetext/yamltemplate"
 
 	"github.com/stretchr/testify/assert"
 )

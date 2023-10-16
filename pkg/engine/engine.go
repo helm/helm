@@ -24,7 +24,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
-	"text/template"
+
+	template "github.com/google/safetext/yamltemplate"
 
 	"github.com/pkg/errors"
 	"k8s.io/client-go/rest"
