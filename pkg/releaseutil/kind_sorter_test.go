@@ -26,6 +26,10 @@ import (
 func TestKindSorter(t *testing.T) {
 	manifests := []Manifest{
 		{
+			Name: "U",
+			Head: &SimpleHead{Kind: "IngressClass"},
+		},
+		{
 			Name: "E",
 			Head: &SimpleHead{Kind: "SecretList"},
 		},
@@ -165,6 +169,10 @@ func TestKindSorter(t *testing.T) {
 			Name: "x",
 			Head: &SimpleHead{Kind: "HorizontalPodAutoscaler"},
 		},
+		{
+			Name: "F",
+			Head: &SimpleHead{Kind: "PriorityClass"},
+		},
 	}
 
 	for _, test := range []struct {
@@ -172,8 +180,8 @@ func TestKindSorter(t *testing.T) {
 		order       KindSortOrder
 		expected    string
 	}{
-		{"install", InstallOrder, "aAbcC3deEf1gh2iIjJkKlLmnopqrxstuvw!"},
-		{"uninstall", UninstallOrder, "wvmutsxrqponLlKkJjIi2hg1fEed3CcbAa!"},
+		{"install", InstallOrder, "FaAbcC3deEf1gh2iIjJkKlLmnopqrxstuUvw!"},
+		{"uninstall", UninstallOrder, "wvUmutsxrqponLlKkJjIi2hg1fEed3CcbAaF!"},
 	} {
 		var buf bytes.Buffer
 		t.Run(test.description, func(t *testing.T) {

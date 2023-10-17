@@ -18,12 +18,13 @@ package getter
 
 import (
 	"bytes"
+	"net/http"
 	"time"
 
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/v3/internal/experimental/registry"
 	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v3/pkg/registry"
 )
 
 // options are generic parameters to be provided to the getter during instantiation.
@@ -36,6 +37,7 @@ type options struct {
 	caFile                string
 	unTar                 bool
 	insecureSkipVerifyTLS bool
+	plainHTTP             bool
 	username              string
 	password              string
 	passCredentialsAll    bool
@@ -43,6 +45,7 @@ type options struct {
 	version               string
 	registryClient        *registry.Client
 	timeout               time.Duration
+	transport             *http.Transport
 }
 
 // Option allows specifying various settings configurable by the user for overriding the defaults
@@ -94,6 +97,12 @@ func WithTLSClientConfig(certFile, keyFile, caFile string) Option {
 	}
 }
 
+func WithPlainHTTP(plainHTTP bool) Option {
+	return func(opts *options) {
+		opts.plainHTTP = plainHTTP
+	}
+}
+
 // WithTimeout sets the timeout for requests
 func WithTimeout(timeout time.Duration) Option {
 	return func(opts *options) {
@@ -116,6 +125,13 @@ func WithRegistryClient(client *registry.Client) Option {
 func WithUntar() Option {
 	return func(opts *options) {
 		opts.unTar = true
+	}
+}
+
+// WithTransport sets the http.Transport to allow overwriting the HTTPGetter default.
+func WithTransport(transport *http.Transport) Option {
+	return func(opts *options) {
+		opts.transport = transport
 	}
 }
 
@@ -163,13 +179,25 @@ func (p Providers) ByScheme(scheme string) (Getter, error) {
 	return nil, errors.Errorf("scheme %q not supported", scheme)
 }
 
+const (
+	// The cost timeout references curl's default connection timeout.
+	// https://github.com/curl/curl/blob/master/lib/connect.h#L40C21-L40C21
+	// The helm commands are usually executed manually. Considering the acceptable waiting time, we reduced the entire request time to 120s.
+	DefaultHTTPTimeout = 120
+)
+
+var defaultOptions = []Option{WithTimeout(time.Second * DefaultHTTPTimeout)}
+
 var httpProvider = Provider{
 	Schemes: []string{"http", "https"},
-	New:     NewHTTPGetter,
+	New: func(options ...Option) (Getter, error) {
+		options = append(options, defaultOptions...)
+		return NewHTTPGetter(options...)
+	},
 }
 
 var ociProvider = Provider{
-	Schemes: []string{"oci"},
+	Schemes: []string{registry.OCIScheme},
 	New:     NewOCIGetter,
 }
 

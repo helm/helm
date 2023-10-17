@@ -16,6 +16,7 @@ limitations under the License.
 package strvals
 
 import (
+	"fmt"
 	"testing"
 
 	"sigs.k8s.io/yaml"
@@ -59,6 +60,14 @@ func TestSetIndex(t *testing.T) {
 			initial: []interface{}{0, 1, 2, 3, 4, 5},
 			expect:  []interface{}{0, 1, 2, 3, 4, 5},
 			add:     -1,
+			val:     4,
+			err:     true,
+		},
+		{
+			name:    "large",
+			initial: []interface{}{0, 1, 2, 3, 4, 5},
+			expect:  []interface{}{0, 1, 2, 3, 4, 5},
+			add:     MaxIndex + 1,
 			val:     4,
 			err:     true,
 		},
@@ -567,6 +576,107 @@ func TestParseIntoString(t *testing.T) {
 	}
 }
 
+func TestParseJSON(t *testing.T) {
+	tests := []struct {
+		input  string
+		got    map[string]interface{}
+		expect map[string]interface{}
+		err    bool
+	}{
+		{ // set json scalars values, and replace one existing key
+			input: "outer.inner1=\"1\",outer.inner3=3,outer.inner4=true,outer.inner5=\"true\"",
+			got: map[string]interface{}{
+				"outer": map[string]interface{}{
+					"inner1": "overwrite",
+					"inner2": "value2",
+				},
+			},
+			expect: map[string]interface{}{
+				"outer": map[string]interface{}{
+					"inner1": "1",
+					"inner2": "value2",
+					"inner3": 3,
+					"inner4": true,
+					"inner5": "true",
+				},
+			},
+			err: false,
+		},
+		{ // set json objects and arrays, and replace one existing key
+			input: "outer.inner1={\"a\":\"1\",\"b\":2,\"c\":[1,2,3]},outer.inner3=[\"new value 1\",\"new value 2\"],outer.inner4={\"aa\":\"1\",\"bb\":2,\"cc\":[1,2,3]},outer.inner5=[{\"A\":\"1\",\"B\":2,\"C\":[1,2,3]}]",
+			got: map[string]interface{}{
+				"outer": map[string]interface{}{
+					"inner1": map[string]interface{}{
+						"x": "overwrite",
+					},
+					"inner2": "value2",
+					"inner3": []interface{}{
+						"overwrite",
+					},
+				},
+			},
+			expect: map[string]interface{}{
+				"outer": map[string]interface{}{
+					"inner1": map[string]interface{}{"a": "1", "b": 2, "c": []interface{}{1, 2, 3}},
+					"inner2": "value2",
+					"inner3": []interface{}{"new value 1", "new value 2"},
+					"inner4": map[string]interface{}{"aa": "1", "bb": 2, "cc": []interface{}{1, 2, 3}},
+					"inner5": []interface{}{map[string]interface{}{"A": "1", "B": 2, "C": []interface{}{1, 2, 3}}},
+				},
+			},
+			err: false,
+		},
+		{ // null assigment, and no value assigned (equivalent to null)
+			input: "outer.inner1=,outer.inner3={\"aa\":\"1\",\"bb\":2,\"cc\":[1,2,3]},outer.inner3.cc[1]=null",
+			got: map[string]interface{}{
+				"outer": map[string]interface{}{
+					"inner1": map[string]interface{}{
+						"x": "overwrite",
+					},
+					"inner2": "value2",
+				},
+			},
+			expect: map[string]interface{}{
+				"outer": map[string]interface{}{
+					"inner1": nil,
+					"inner2": "value2",
+					"inner3": map[string]interface{}{"aa": "1", "bb": 2, "cc": []interface{}{1, nil, 3}},
+				},
+			},
+			err: false,
+		},
+		{ // syntax error
+			input:  "outer.inner1={\"a\":\"1\",\"b\":2,\"c\":[1,2,3]},outer.inner3=[\"new value 1\",\"new value 2\"],outer.inner4={\"aa\":\"1\",\"bb\":2,\"cc\":[1,2,3]},outer.inner5={\"A\":\"1\",\"B\":2,\"C\":[1,2,3]}]",
+			got:    nil,
+			expect: nil,
+			err:    true,
+		},
+	}
+	for _, tt := range tests {
+		if err := ParseJSON(tt.input, tt.got); err != nil {
+			if tt.err {
+				continue
+			}
+			t.Fatalf("%s: %s", tt.input, err)
+		}
+		if tt.err {
+			t.Fatalf("%s: Expected error. Got nil", tt.input)
+		}
+		y1, err := yaml.Marshal(tt.expect)
+		if err != nil {
+			t.Fatalf("Error serializing expected value: %s", err)
+		}
+		y2, err := yaml.Marshal(tt.got)
+		if err != nil {
+			t.Fatalf("Error serializing parsed value: %s", err)
+		}
+
+		if string(y1) != string(y2) {
+			t.Errorf("%s: Expected:\n%s\nGot:\n%s", tt.input, y1, y2)
+		}
+	}
+}
+
 func TestParseFile(t *testing.T) {
 	input := "name1=path1"
 	expect := map[string]interface{}{
@@ -643,5 +753,66 @@ func TestToYAML(t *testing.T) {
 	expect := "name: value"
 	if o != expect {
 		t.Errorf("Expected %q, got %q", expect, o)
+	}
+}
+
+func TestParseSetNestedLevels(t *testing.T) {
+	var keyMultipleNestedLevels string
+	for i := 1; i <= MaxNestedNameLevel+2; i++ {
+		tmpStr := fmt.Sprintf("name%d", i)
+		if i <= MaxNestedNameLevel+1 {
+			tmpStr = tmpStr + "."
+		}
+		keyMultipleNestedLevels += tmpStr
+	}
+	tests := []struct {
+		str    string
+		expect map[string]interface{}
+		err    bool
+		errStr string
+	}{
+		{
+			"outer.middle.inner=value",
+			map[string]interface{}{"outer": map[string]interface{}{"middle": map[string]interface{}{"inner": "value"}}},
+			false,
+			"",
+		},
+		{
+			str: keyMultipleNestedLevels + "=value",
+			err: true,
+			errStr: fmt.Sprintf("value name nested level is greater than maximum supported nested level of %d",
+				MaxNestedNameLevel),
+		},
+	}
+
+	for _, tt := range tests {
+		got, err := Parse(tt.str)
+		if err != nil {
+			if tt.err {
+				if tt.errStr != "" {
+					if err.Error() != tt.errStr {
+						t.Errorf("Expected error: %s. Got error: %s", tt.errStr, err.Error())
+					}
+				}
+				continue
+			}
+			t.Fatalf("%s: %s", tt.str, err)
+		}
+		if tt.err {
+			t.Errorf("%s: Expected error. Got nil", tt.str)
+		}
+
+		y1, err := yaml.Marshal(tt.expect)
+		if err != nil {
+			t.Fatal(err)
+		}
+		y2, err := yaml.Marshal(got)
+		if err != nil {
+			t.Fatalf("Error serializing parsed value: %s", err)
+		}
+
+		if string(y1) != string(y2) {
+			t.Errorf("%s: Expected:\n%s\nGot:\n%s", tt.str, y1, y2)
+		}
 	}
 }

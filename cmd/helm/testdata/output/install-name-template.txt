@@ -1,4 +1,4 @@
-NAME: FOOBAR
+NAME: foobar
 LAST DEPLOYED: Fri Sep  2 22:04:05 1977
 NAMESPACE: default
 STATUS: deployed

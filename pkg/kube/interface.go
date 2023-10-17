@@ -21,6 +21,8 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // Interface represents a client capable of communicating with the Kubernetes API.
@@ -30,14 +32,19 @@ type Interface interface {
 	// Create creates one or more resources.
 	Create(resources ResourceList) (*Result, error)
 
+	// Wait waits up to the given timeout for the specified resources to be ready.
 	Wait(resources ResourceList, timeout time.Duration) error
 
+	// WaitWithJobs wait up to the given timeout for the specified resources to be ready, including jobs.
 	WaitWithJobs(resources ResourceList, timeout time.Duration) error
 
 	// Delete destroys one or more resources.
 	Delete(resources ResourceList) (*Result, []error)
 
-	// Watch the resource in reader until it is "ready". This method
+	// WatchUntilReady watches the resources given and waits until it is ready.
+	//
+	// This method is mainly for hook implementations. It watches for a resource to
+	// hit a particular milestone. The milestone depends on the Kind.
 	//
 	// For Jobs, "ready" means the Job ran to completion (exited without error).
 	// For Pods, "ready" means the Pod phase is marked "succeeded".
@@ -49,9 +56,9 @@ type Interface interface {
 	// if it doesn't exist.
 	Update(original, target ResourceList, force bool) (*Result, error)
 
-	// Build creates a resource list from a Reader
+	// Build creates a resource list from a Reader.
 	//
-	// reader must contain a YAML stream (one or more YAML documents separated
+	// Reader must contain a YAML stream (one or more YAML documents separated
 	// by "\n---\n")
 	//
 	// Validates against OpenAPI schema if validate is true.
@@ -61,8 +68,49 @@ type Interface interface {
 	// and returns said phase (PodSucceeded or PodFailed qualify).
 	WaitAndGetCompletedPodPhase(name string, timeout time.Duration) (v1.PodPhase, error)
 
-	// isReachable checks whether the client is able to connect to the cluster
+	// IsReachable checks whether the client is able to connect to the cluster.
 	IsReachable() error
 }
 
+// InterfaceExt is introduced to avoid breaking backwards compatibility for Interface implementers.
+//
+// TODO Helm 4: Remove InterfaceExt and integrate its method(s) into the Interface.
+type InterfaceExt interface {
+	// WaitForDelete wait up to the given timeout for the specified resources to be deleted.
+	WaitForDelete(resources ResourceList, timeout time.Duration) error
+}
+
+// InterfaceDeletionPropagation is introduced to avoid breaking backwards compatibility for Interface implementers.
+//
+// TODO Helm 4: Remove InterfaceDeletionPropagation and integrate its method(s) into the Interface.
+type InterfaceDeletionPropagation interface {
+	// Delete destroys one or more resources. The deletion propagation is handled as per the given deletion propagation value.
+	DeleteWithPropagationPolicy(resources ResourceList, policy metav1.DeletionPropagation) (*Result, []error)
+}
+
+// InterfaceResources is introduced to avoid breaking backwards compatibility for Interface implementers.
+//
+// TODO Helm 4: Remove InterfaceResources and integrate its method(s) into the Interface.
+type InterfaceResources interface {
+	// Get details of deployed resources.
+	// The first argument is a list of resources to get. The second argument
+	// specifies if related pods should be fetched. For example, the pods being
+	// managed by a deployment.
+	Get(resources ResourceList, related bool) (map[string][]runtime.Object, error)
+
+	// BuildTable creates a resource list from a Reader. This differs from
+	// Interface.Build() in that a table kind is returned. A table is useful
+	// if you want to use a printer to display the information.
+	//
+	// Reader must contain a YAML stream (one or more YAML documents separated
+	// by "\n---\n")
+	//
+	// Validates against OpenAPI schema if validate is true.
+	// TODO Helm 4: Integrate into Build with an argument
+	BuildTable(reader io.Reader, validate bool) (ResourceList, error)
+}
+
 var _ Interface = (*Client)(nil)
+var _ InterfaceExt = (*Client)(nil)
+var _ InterfaceDeletionPropagation = (*Client)(nil)
+var _ InterfaceResources = (*Client)(nil)

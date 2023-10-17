@@ -28,6 +28,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -49,7 +50,7 @@ func (w *waiter) waitForResources(created ResourceList) error {
 	ctx, cancel := context.WithTimeout(context.Background(), w.timeout)
 	defer cancel()
 
-	return wait.PollImmediateUntil(2*time.Second, func() (bool, error) {
+	return wait.PollUntilContextCancel(ctx, 2*time.Second, true, func(ctx context.Context) (bool, error) {
 		for _, v := range created {
 			ready, err := w.c.IsReady(ctx, v)
 			if !ready || err != nil {
@@ -57,7 +58,25 @@ func (w *waiter) waitForResources(created ResourceList) error {
 			}
 		}
 		return true, nil
-	}, ctx.Done())
+	})
+}
+
+// waitForDeletedResources polls to check if all the resources are deleted or a timeout is reached
+func (w *waiter) waitForDeletedResources(deleted ResourceList) error {
+	w.log("beginning wait for %d resources to be deleted with timeout of %v", len(deleted), w.timeout)
+
+	ctx, cancel := context.WithTimeout(context.Background(), w.timeout)
+	defer cancel()
+
+	return wait.PollUntilContextCancel(ctx, 2*time.Second, true, func(ctx context.Context) (bool, error) {
+		for _, v := range deleted {
+			err := v.Get()
+			if err == nil || !apierrors.IsNotFound(err) {
+				return false, err
+			}
+		}
+		return true, nil
+	})
 }
 
 // SelectorsForObject returns the pod label selector for a given object

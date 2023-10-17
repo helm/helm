@@ -29,6 +29,7 @@ type KindSortOrder []string
 //
 // Those occurring earlier in the list get installed before those occurring later in the list.
 var InstallOrder KindSortOrder = []string{
+	"PriorityClass",
 	"Namespace",
 	"NetworkPolicy",
 	"ResourceQuota",
@@ -61,6 +62,7 @@ var InstallOrder KindSortOrder = []string{
 	"StatefulSet",
 	"Job",
 	"CronJob",
+	"IngressClass",
 	"Ingress",
 	"APIService",
 }
@@ -71,6 +73,7 @@ var InstallOrder KindSortOrder = []string{
 var UninstallOrder KindSortOrder = []string{
 	"APIService",
 	"Ingress",
+	"IngressClass",
 	"Service",
 	"CronJob",
 	"Job",
@@ -103,6 +106,7 @@ var UninstallOrder KindSortOrder = []string{
 	"ResourceQuota",
 	"NetworkPolicy",
 	"Namespace",
+	"PriorityClass",
 }
 
 // sort manifests by kind.

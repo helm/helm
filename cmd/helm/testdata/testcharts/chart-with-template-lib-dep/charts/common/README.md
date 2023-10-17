@@ -13,7 +13,7 @@ A few tips for working with Common:
 - Be careful when using functions that generate random data (like `common.fullname.unique`).
   They may trigger unwanted upgrades or have other side effects.
 
-In this document, we use `RELEASE-NAME` as the name of the release.
+In this document, we use `release-name` as the name of the release.
 
 ## Resource Kinds
 
@@ -733,7 +733,7 @@ metadata:
   labels:
     app: metadata
     heritage: "Tiller"
-    release: "RELEASE-NAME"
+    release: "release-name"
     chart: metadata-0.1.0
     first: "matt"
     last: "butcher"
@@ -748,7 +748,7 @@ metadata:
   labels:
     app: metadata
     heritage: "Tiller"
-    release: "RELEASE-NAME"
+    release: "release-name"
     chart: metadata-0.1.0
   annotations:
 ```
@@ -791,7 +791,7 @@ Example output:
 ```yaml
 app: labelizer
 heritage: "Tiller"
-release: "RELEASE-NAME"
+release: "release-name"
 chart: labelizer-0.1.0
 ```
 

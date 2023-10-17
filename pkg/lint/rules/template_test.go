@@ -23,7 +23,6 @@ import (
 	"strings"
 	"testing"
 
-	"helm.sh/helm/v3/internal/test/ensure"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/lint/support"
@@ -221,8 +220,7 @@ func TestDeprecatedAPIFails(t *testing.T) {
 			},
 		},
 	}
-	tmpdir := ensure.TempDir(t)
-	defer os.RemoveAll(tmpdir)
+	tmpdir := t.TempDir()
 
 	if err := chartutil.SaveDir(&mychart, tmpdir); err != nil {
 		t.Fatal(err)
@@ -278,8 +276,7 @@ func TestStrictTemplateParsingMapError(t *testing.T) {
 			},
 		},
 	}
-	dir := ensure.TempDir(t)
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 	if err := chartutil.SaveDir(&ch, dir); err != nil {
 		t.Fatal(err)
 	}
@@ -408,8 +405,7 @@ func TestEmptyWithCommentsManifests(t *testing.T) {
 			},
 		},
 	}
-	tmpdir := ensure.TempDir(t)
-	defer os.RemoveAll(tmpdir)
+	tmpdir := t.TempDir()
 
 	if err := chartutil.SaveDir(&mychart, tmpdir); err != nil {
 		t.Fatal(err)
@@ -422,5 +418,43 @@ func TestEmptyWithCommentsManifests(t *testing.T) {
 			t.Logf("Message %d: %s", i, msg)
 		}
 		t.Fatalf("Expected 0 lint errors, got %d", l)
+	}
+}
+func TestValidateListAnnotations(t *testing.T) {
+	md := &K8sYamlStruct{
+		APIVersion: "v1",
+		Kind:       "List",
+		Metadata: k8sYamlMetadata{
+			Name: "list",
+		},
+	}
+	manifest := `
+apiVersion: v1
+kind: List
+items:
+  - apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      annotations:
+        helm.sh/resource-policy: keep
+`
+
+	if err := validateListAnnotations(md, manifest); err == nil {
+		t.Fatal("expected list with nested keep annotations to fail")
+	}
+
+	manifest = `
+apiVersion: v1
+kind: List
+metadata:
+  annotations:
+    helm.sh/resource-policy: keep
+items:
+  - apiVersion: v1
+    kind: ConfigMap
+`
+
+	if err := validateListAnnotations(md, manifest); err != nil {
+		t.Fatalf("List objects keep annotations should pass. got: %s", err)
 	}
 }

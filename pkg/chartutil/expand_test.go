@@ -17,18 +17,13 @@ limitations under the License.
 package chartutil
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 )
 
 func TestExpand(t *testing.T) {
-	dest, err := ioutil.TempDir("", "helm-testing-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dest)
+	dest := t.TempDir()
 
 	reader, err := os.Open("testdata/frobnitz-1.2.3.tgz")
 	if err != nil {
@@ -81,11 +76,7 @@ func TestExpand(t *testing.T) {
 }
 
 func TestExpandFile(t *testing.T) {
-	dest, err := ioutil.TempDir("", "helm-testing-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dest)
+	dest := t.TempDir()
 
 	if err := ExpandFile(dest, "testdata/frobnitz-1.2.3.tgz"); err != nil {
 		t.Fatal(err)

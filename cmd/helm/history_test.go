@@ -96,6 +96,11 @@ func revisionFlagCompletionTest(t *testing.T, cmdName string) {
 		rels:   releases,
 		golden: "output/revision-comp.txt",
 	}, {
+		name:   "completion for revision flag, no filter",
+		cmd:    fmt.Sprintf("__complete %s musketeers --revision 1", cmdName),
+		rels:   releases,
+		golden: "output/revision-comp.txt",
+	}, {
 		name:   "completion for revision flag with too few args",
 		cmd:    fmt.Sprintf("__complete %s --revision ''", cmdName),
 		rels:   releases,

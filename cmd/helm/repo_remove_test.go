@@ -18,12 +18,12 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"helm.sh/helm/v3/internal/test/ensure"
 	"helm.sh/helm/v3/pkg/helmpath"
 	"helm.sh/helm/v3/pkg/repo"
 	"helm.sh/helm/v3/pkg/repo/repotest"
@@ -36,7 +36,7 @@ func TestRepoRemove(t *testing.T) {
 	}
 	defer ts.Stop()
 
-	rootDir := ensure.TempDir(t)
+	rootDir := t.TempDir()
 	repoFile := filepath.Join(rootDir, "repositories.yaml")
 
 	const testRepoName = "test-name"
@@ -158,6 +158,55 @@ func testCacheFiles(t *testing.T, cacheIndexFile string, cacheChartsFile string,
 	}
 	if _, err := os.Stat(cacheChartsFile); err == nil {
 		t.Errorf("Error cache chart file was not removed for repository %s", repoName)
+	}
+}
+
+func TestRepoRemoveCompletion(t *testing.T) {
+	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ts.Stop()
+
+	rootDir := t.TempDir()
+	repoFile := filepath.Join(rootDir, "repositories.yaml")
+	repoCache := filepath.Join(rootDir, "cache/")
+
+	var testRepoNames = []string{"foo", "bar", "baz"}
+
+	// Add test repos
+	for _, repoName := range testRepoNames {
+		o := &repoAddOptions{
+			name:     repoName,
+			url:      ts.URL(),
+			repoFile: repoFile,
+		}
+
+		if err := o.run(os.Stderr); err != nil {
+			t.Error(err)
+		}
+	}
+
+	repoSetup := fmt.Sprintf("--repository-config %s --repository-cache %s", repoFile, repoCache)
+
+	// In the following tests, we turn off descriptions for completions by using __completeNoDesc.
+	// We have to do this because the description will contain the port used by the webserver,
+	// and that port changes each time we run the test.
+	tests := []cmdTestCase{{
+		name:   "completion for repo remove",
+		cmd:    fmt.Sprintf("%s __completeNoDesc repo remove ''", repoSetup),
+		golden: "output/repo_list_comp.txt",
+	}, {
+		name:   "completion for repo remove, no filter",
+		cmd:    fmt.Sprintf("%s __completeNoDesc repo remove fo", repoSetup),
+		golden: "output/repo_list_comp.txt",
+	}, {
+		name:   "completion for repo remove repetition",
+		cmd:    fmt.Sprintf("%s __completeNoDesc repo remove foo ''", repoSetup),
+		golden: "output/repo_repeat_comp.txt",
+	}}
+	for _, test := range tests {
+		runTestCmd(t, []cmdTestCase{test})
 	}
 }
 

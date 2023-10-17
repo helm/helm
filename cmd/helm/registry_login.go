@@ -21,11 +21,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 
-	"github.com/docker/docker/pkg/term"
+	"github.com/moby/term"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
@@ -36,45 +35,61 @@ const registryLoginDesc = `
 Authenticate to a remote registry.
 `
 
+type registryLoginOptions struct {
+	username             string
+	password             string
+	passwordFromStdinOpt bool
+	certFile             string
+	keyFile              string
+	caFile               string
+	insecure             bool
+}
+
 func newRegistryLoginCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
-	var usernameOpt, passwordOpt string
-	var passwordFromStdinOpt, insecureOpt bool
+	o := &registryLoginOptions{}
 
 	cmd := &cobra.Command{
-		Use:    "login [host]",
-		Short:  "login to a registry",
-		Long:   registryLoginDesc,
-		Args:   require.MinimumNArgs(1),
-		Hidden: !FeatureGateOCI.IsEnabled(),
+		Use:               "login [host]",
+		Short:             "login to a registry",
+		Long:              registryLoginDesc,
+		Args:              require.MinimumNArgs(1),
+		ValidArgsFunction: noCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hostname := args[0]
 
-			username, password, err := getUsernamePassword(usernameOpt, passwordOpt, passwordFromStdinOpt)
+			username, password, err := getUsernamePassword(o.username, o.password, o.passwordFromStdinOpt)
 			if err != nil {
 				return err
 			}
 
-			return action.NewRegistryLogin(cfg).Run(out, hostname, username, password, insecureOpt)
+			return action.NewRegistryLogin(cfg).Run(out, hostname, username, password,
+				action.WithCertFile(o.certFile),
+				action.WithKeyFile(o.keyFile),
+				action.WithCAFile(o.caFile),
+				action.WithInsecure(o.insecure))
 		},
 	}
 
 	f := cmd.Flags()
-	f.StringVarP(&usernameOpt, "username", "u", "", "registry username")
-	f.StringVarP(&passwordOpt, "password", "p", "", "registry password or identity token")
-	f.BoolVarP(&passwordFromStdinOpt, "password-stdin", "", false, "read password or identity token from stdin")
-	f.BoolVarP(&insecureOpt, "insecure", "", false, "allow connections to TLS registry without certs")
+	f.StringVarP(&o.username, "username", "u", "", "registry username")
+	f.StringVarP(&o.password, "password", "p", "", "registry password or identity token")
+	f.BoolVarP(&o.passwordFromStdinOpt, "password-stdin", "", false, "read password or identity token from stdin")
+	f.BoolVarP(&o.insecure, "insecure", "", false, "allow connections to TLS registry without certs")
+	f.StringVar(&o.certFile, "cert-file", "", "identify registry client using this SSL certificate file")
+	f.StringVar(&o.keyFile, "key-file", "", "identify registry client using this SSL key file")
+	f.StringVar(&o.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 
 	return cmd
 }
 
-// Adapted from https://github.com/deislabs/oras
+// Adapted from https://github.com/oras-project/oras
 func getUsernamePassword(usernameOpt string, passwordOpt string, passwordFromStdinOpt bool) (string, string, error) {
 	var err error
 	username := usernameOpt
 	password := passwordOpt
 
 	if passwordFromStdinOpt {
-		passwordFromStdin, err := ioutil.ReadAll(os.Stdin)
+		passwordFromStdin, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			return "", "", err
 		}
@@ -110,7 +125,7 @@ func getUsernamePassword(usernameOpt string, passwordOpt string, passwordFromStd
 	return username, password, nil
 }
 
-// Copied/adapted from https://github.com/deislabs/oras
+// Copied/adapted from https://github.com/oras-project/oras
 func readLine(prompt string, silent bool) (string, error) {
 	fmt.Print(prompt)
 	if silent {
