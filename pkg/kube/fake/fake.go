@@ -50,11 +50,11 @@ type FailingKubeClient struct {
 }
 
 // Create returns the configured error if set or prints
-func (f *FailingKubeClient) Create(resources kube.ResourceList) (*kube.Result, error) {
+func (f *FailingKubeClient) Create(resources kube.ResourceList, validate bool) (*kube.Result, error) {
 	if f.CreateError != nil {
 		return nil, f.CreateError
 	}
-	return f.PrintingKubeClient.Create(resources)
+	return f.PrintingKubeClient.Create(resources, validate)
 }
 
 // Get returns the configured error if set or prints
@@ -107,11 +107,11 @@ func (f *FailingKubeClient) WatchUntilReady(resources kube.ResourceList, d time.
 }
 
 // Update returns the configured error if set or prints
-func (f *FailingKubeClient) Update(r, modified kube.ResourceList, ignoreMe bool) (*kube.Result, error) {
+func (f *FailingKubeClient) Update(r, modified kube.ResourceList, ignoreMe bool, validate bool) (*kube.Result, error) {
 	if f.UpdateError != nil {
 		return &kube.Result{}, f.UpdateError
 	}
-	return f.PrintingKubeClient.Update(r, modified, ignoreMe)
+	return f.PrintingKubeClient.Update(r, modified, ignoreMe, validate)
 }
 
 // Build returns the configured error if set or prints

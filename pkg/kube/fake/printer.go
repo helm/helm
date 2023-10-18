@@ -41,7 +41,7 @@ func (p *PrintingKubeClient) IsReachable() error {
 }
 
 // Create prints the values of what would be created with a real KubeClient.
-func (p *PrintingKubeClient) Create(resources kube.ResourceList) (*kube.Result, error) {
+func (p *PrintingKubeClient) Create(resources kube.ResourceList, _ bool) (*kube.Result, error) {
 	_, err := io.Copy(p.Out, bufferize(resources))
 	if err != nil {
 		return nil, err
@@ -90,7 +90,7 @@ func (p *PrintingKubeClient) WatchUntilReady(resources kube.ResourceList, _ time
 }
 
 // Update implements KubeClient Update.
-func (p *PrintingKubeClient) Update(_, modified kube.ResourceList, _ bool) (*kube.Result, error) {
+func (p *PrintingKubeClient) Update(_, modified kube.ResourceList, _ bool, _ bool) (*kube.Result, error) {
 	_, err := io.Copy(p.Out, bufferize(modified))
 	if err != nil {
 		return nil, err
