@@ -101,11 +101,14 @@ func newTestClient(t *testing.T) *Client {
 }
 
 func TestUpdate(t *testing.T) {
-	listA := newPodList("starfish", "otter", "squid")
-	listB := newPodList("starfish", "otter", "dolphin")
-	listC := newPodList("starfish", "otter", "dolphin")
+	listA := newPodList("starfish", "otter", "squid", "shark")
+	listB := newPodList("starfish", "otter", "dolphin", "shark")
+	listC := newPodList("starfish", "otter", "dolphin", "shark")
 	listB.Items[0].Spec.Containers[0].Ports = []v1.ContainerPort{{Name: "https", ContainerPort: 443}}
 	listC.Items[0].Spec.Containers[0].Ports = []v1.ContainerPort{{Name: "https", ContainerPort: 443}}
+	// Labels change is prohibited as this is immutable field
+	listB.Items[3].Labels = map[string]string{"changed": "changed"}
+	listC.Items[3].Labels = map[string]string{"changed": "changed"}
 
 	var actions []string
 
@@ -146,11 +149,30 @@ func TestUpdate(t *testing.T) {
 				}
 				return newResponse(200, &listB.Items[0])
 			case p == "/namespaces/default/pods" && m == "POST":
-				return newResponse(200, &listB.Items[1])
+				data, err := io.ReadAll(req.Body)
+				if err != nil {
+					t.Fatalf("could not dump request: %s", err)
+				}
+				req.Body.Close()
+
+				var returnElement *v1.Pod
+				if strings.Contains(string(data), "dolphin") {
+					returnElement = &listB.Items[2]
+				} else if strings.Contains(string(data), "shark") {
+					returnElement = &listB.Items[3]
+				} else {
+					t.Fatalf("Creation of new pods with unknown name: %s", string(data))
+				}
+
+				return newResponse(200, returnElement)
 			case p == "/namespaces/default/pods/squid" && m == "DELETE":
 				return newResponse(200, &listB.Items[1])
 			case p == "/namespaces/default/pods/squid" && m == "GET":
 				return newResponse(200, &listB.Items[2])
+			case p == "/namespaces/default/pods/shark" && (m == "PUT" || m == "PATCH"):
+				return newResponse(422, &listA.Items[3])
+			case p == "/namespaces/default/pods/shark" && (m == "DELETE" || m == "POST" || m == "GET"):
+				return newResponse(200, &listA.Items[3])
 			default:
 				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
 				return nil, nil
@@ -166,7 +188,7 @@ func TestUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err := c.Update(first, second, false)
+	result, err := c.Update(first, second, false, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -174,7 +196,7 @@ func TestUpdate(t *testing.T) {
 	if len(result.Created) != 1 {
 		t.Errorf("expected 1 resource created, got %d", len(result.Created))
 	}
-	if len(result.Updated) != 2 {
+	if len(result.Updated) != 3 {
 		t.Errorf("expected 2 resource updated, got %d", len(result.Updated))
 	}
 	if len(result.Deleted) != 1 {
@@ -199,6 +221,11 @@ func TestUpdate(t *testing.T) {
 		"/namespaces/default/pods/otter:GET",
 		"/namespaces/default/pods/otter:GET",
 		"/namespaces/default/pods/dolphin:GET",
+		"/namespaces/default/pods:POST",
+		"/namespaces/default/pods/shark:GET",
+		"/namespaces/default/pods/shark:GET",
+		"/namespaces/default/pods/shark:PATCH",
+		"/namespaces/default/pods/shark:DELETE",
 		"/namespaces/default/pods:POST",
 		"/namespaces/default/pods/squid:GET",
 		"/namespaces/default/pods/squid:DELETE",

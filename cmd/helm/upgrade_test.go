@@ -175,6 +175,12 @@ func TestUpgradeCmd(t *testing.T) {
 			wantError: true,
 			rels:      []*release.Release{relWithStatusMock("funny-bunny", 2, ch, release.StatusPendingInstall)},
 		},
+		{
+			name:   "upgrade a release with --recreate-immutable-resources flag",
+			cmd:    fmt.Sprintf("upgrade funny-bunny '%s' --recreate-immutable-resources", chartPath),
+			golden: "output/upgrade.txt",
+			rels:   []*release.Release{relMock("funny-bunny", 2, ch)},
+		},
 	}
 	runTestCmd(t, tests)
 }
