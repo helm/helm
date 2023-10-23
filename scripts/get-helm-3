@@ -113,7 +113,7 @@ checkDesiredVersion() {
     if [ "${HAS_CURL}" == "true" ]; then
       latest_release_response=$( curl -L --silent --show-error --fail "$latest_release_url" 2>&1 || true )
     elif [ "${HAS_WGET}" == "true" ]; then
-      latest_release_response=$( wget "$latest_release_url" -O - 2>&1 || true )
+      latest_release_response=$( wget "$latest_release_url" -q -O - 2>&1 || true )
     fi
     TAG=$( echo "$latest_release_response" | grep '^v[0-9]' )
     if [ "x$TAG" == "x" ]; then
