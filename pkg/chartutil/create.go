@@ -108,13 +108,30 @@ const defaultValues = `# Default values for %s.
 
 replicaCount: 1
 
+global:
+  image:
+    # if set it will overwrite all registry entries
+    registry: ""
+    # if set it will overwrite all pullPolicy
+	pullPolicy:
+
 image:
-  repository: nginx
+  registry: docker.io
+  repository: library/nginx
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
 
 imagePullSecrets: []
+
+testConnection:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: library/busybox
+    # default without any tag
+    tag: ""
+
 nameOverride: ""
 fullnameOverride: ""
 
@@ -326,8 +343,10 @@ spec:
         - name: {{ .Chart.Name }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.image }}
+          image: "{{ coalesce $.Values.global.image.registry .registry }}/{{ .repository }}:{{ .tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ coalesce .Values.global.image.pullPolicy .pullPolicy }}
+          {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}
@@ -518,7 +537,10 @@ Create the name of the service account to use
 {{- end }}
 `
 
-const defaultTestConnection = `apiVersion: v1
+const defaultTestConnection = `{{- with .Values.testConnection }}
+{{- if .enabled }}
+---
+apiVersion: v1
 kind: Pod
 metadata:
   name: "{{ include "<CHARTNAME>.fullname" . }}-test-connection"
@@ -529,10 +551,15 @@ metadata:
 spec:
   containers:
     - name: wget
-      image: busybox
+      {{- with .image }}
+      image: "{{ coalesce $.Values.global.image.registry .registry }}/{{ .repository }}{{ if .tag }}{{ printf ":%s" .tag }}{{ end }}
+      imagePullPolicy: {{ coalesce $.Values.global.pullPolicy .pullPolicy }}
+      {{- end }}
       command: ['wget']
-      args: ['{{ include "<CHARTNAME>.fullname" . }}:{{ .Values.service.port }}']
+      args: ['{{ include "<CHARTNAME>.fullname" $ }}:{{ $.Values.service.port }}']
   restartPolicy: Never
+{{- end }}{{/* end-if enabled */}}
+{{- end }}{{/* end-with testConnection*/}}
 `
 
 // Stderr is an io.Writer to which error messages can be written
