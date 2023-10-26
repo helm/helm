@@ -19,7 +19,6 @@ package registry // import "helm.sh/helm/v3/pkg/registry"
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
@@ -245,14 +244,4 @@ func addToMap(inputMap map[string]string, newKey string, newValue string) map[st
 
 	return inputMap
 
-}
-
-// See 2 (end of page 4) https://www.ietf.org/rfc/rfc2617.txt
-// "To receive authorization, the client sends the userid and password,
-// separated by a single colon (":") character, within a base64
-// encoded string in the credentials."
-// It is not meant to be urlencoded.
-func basicAuth(username, password string) string {
-	auth := username + ":" + password
-	return base64.StdEncoding.EncodeToString([]byte(auth))
 }
