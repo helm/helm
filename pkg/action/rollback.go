@@ -19,6 +19,7 @@ package action
 import (
 	"bytes"
 	"fmt"
+	"helm.sh/helm/v3/pkg/storage/driver"
 	"strings"
 	"time"
 
@@ -45,6 +46,7 @@ type Rollback struct {
 	Force         bool // will (if true) force resource upgrade through uninstall/recreate if needed
 	CleanupOnFail bool
 	MaxHistory    int // MaxHistory limits the maximum number of revisions saved per release
+	Labels        map[string]string
 }
 
 // NewRollback creates a new Rollback object with the given configuration.
@@ -135,6 +137,9 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 		return nil, nil, err
 	}
 
+	if driver.ContainsSystemLabels(r.Labels) {
+		return nil, nil, fmt.Errorf("user suplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels())
+	}
 	// Store a new release object with previous release's configuration
 	targetRelease := &release.Release{
 		Name:      name,
@@ -151,6 +156,7 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 			Description: fmt.Sprintf("Rollback to %d", previousVersion),
 		},
 		Version:  currentRelease.Version + 1,
+		Labels:   mergeCustomLabels(previousRelease.Labels, r.Labels),
 		Manifest: previousRelease.Manifest,
 		Hooks:    previousRelease.Hooks,
 	}

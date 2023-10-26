@@ -17,6 +17,8 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
+	"reflect"
 	"testing"
 
 	"helm.sh/helm/v3/pkg/chart"
@@ -120,4 +122,46 @@ func TestRollbackFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "rollback", false)
 	checkFileCompletion(t, "rollback myrelease", false)
 	checkFileCompletion(t, "rollback myrelease 1", false)
+}
+
+func TestRollbackWithLabels(t *testing.T) {
+	labels1 := map[string]string{"operation": "install", "firstLabel": "firstValue"}
+	labels2 := map[string]string{"operation": "upgrade", "secondLabel": "secondValue"}
+	expectedLabels := map[string]string{"operation": "rollback", "firstLabel": "firstValue"}
+
+	releaseName := "funny-bunny-labels"
+	rels := []*release.Release{
+		{
+			Name:    releaseName,
+			Info:    &release.Info{Status: release.StatusSuperseded},
+			Chart:   &chart.Chart{},
+			Version: 1,
+			Labels:  labels1,
+		},
+		{
+			Name:    releaseName,
+			Info:    &release.Info{Status: release.StatusDeployed},
+			Chart:   &chart.Chart{},
+			Version: 2,
+			Labels:  labels2,
+		},
+	}
+	storage := storageFixture()
+	for _, rel := range rels {
+		if err := storage.Create(rel); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_, _, err := executeActionCommandC(storage, fmt.Sprintf("rollback -l operation=rollback %s 1", releaseName))
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+	updatedRel, err := storage.Get(releaseName, 3)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	if !reflect.DeepEqual(updatedRel.Labels, expectedLabels) {
+		t.Errorf("Expected {%v}, got {%v}", expectedLabels, updatedRel.Labels)
+	}
 }
