@@ -18,6 +18,7 @@ package releaseutil
 
 import (
 	"sort"
+	"strconv"
 
 	"helm.sh/helm/v3/pkg/release"
 )
@@ -109,11 +110,29 @@ var UninstallOrder KindSortOrder = []string{
 	"PriorityClass",
 }
 
+// OrderWeightAnnotation is the label name for configuring the sorted weight of a manifest
+const OrderWeightAnnotation = "helm.sh/order-weight"
+
 // sort manifests by kind.
 //
 // Results are sorted by 'ordering', keeping order of items with equal kind/priority
+// if a manifest defines a `helm.sh/order-weight` annotation, i
 func sortManifestsByKind(manifests []Manifest, ordering KindSortOrder) []Manifest {
 	sort.SliceStable(manifests, func(i, j int) bool {
+		iPriority, err := strconv.Atoi(manifests[i].Head.Metadata.Annotations[OrderWeightAnnotation])
+		if err != nil {
+			iPriority = 0
+		}
+		jPriority, err := strconv.Atoi(manifests[j].Head.Metadata.Annotations[OrderWeightAnnotation])
+		if err != nil {
+			jPriority = 0
+		}
+		if iPriority < jPriority {
+			return true
+		} else if iPriority > jPriority {
+			return false
+		}
+		// if the resolved priorities match, default to the legacy lessByKind logic for final sorting
 		return lessByKind(manifests[i], manifests[j], manifests[i].Head.Kind, manifests[j].Head.Kind, ordering)
 	})
 
