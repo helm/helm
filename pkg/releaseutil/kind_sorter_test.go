@@ -18,9 +18,11 @@ package releaseutil
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
 	"helm.sh/helm/v3/pkg/release"
+	"sigs.k8s.io/yaml"
 )
 
 func TestKindSorter(t *testing.T) {
@@ -284,6 +286,102 @@ func TestKindSorterNamespaceAgainstUnknown(t *testing.T) {
 		if expectedOrder[i].Name != manifest.Name {
 			t.Errorf("Expected %s, got %s", expectedOrder[i].Name, manifest.Name)
 		}
+	}
+}
+
+func TestKindSorterOrderWeight(t *testing.T) {
+
+	for _, test := range []struct {
+		description string
+		input       string
+		expected    []string
+	}{
+		{
+			description: "no weights",
+			input: `
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: a
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: b
+`,
+			expected: []string{"rbac.authorization.k8s.io/v1:ClusterRole:a", "rbac.authorization.k8s.io/v1:ClusterRole:b"},
+		},
+		{
+			description: "one weighted object",
+			input: `
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: a
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: b
+  annotations:
+    "helm.sh/order-weight": 1
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: c
+`,
+			expected: []string{"rbac.authorization.k8s.io/v1:ClusterRole:a", "rbac.authorization.k8s.io/v1:ClusterRole:c", "rbac.authorization.k8s.io/v1:ClusterRole:b"},
+		},
+		{
+			description: "negative weight",
+			input: `
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: a
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: b
+  annotations:
+    "helm.sh/order-weight": -1
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: c
+`,
+			expected: []string{"rbac.authorization.k8s.io/v1:ClusterRole:b", "rbac.authorization.k8s.io/v1:ClusterRole:a", "rbac.authorization.k8s.io/v1:ClusterRole:c"},
+		},
+	} {
+		t.Run(test.description, func(t *testing.T) {
+			objects := SplitManifests(test.input)
+			manifests := []Manifest{}
+			for _, m := range objects {
+				var sh SimpleHead
+				if err := yaml.Unmarshal([]byte(m), &sh); err != nil {
+					t.Log(err)
+					continue
+				}
+				name := sh.Metadata.Name
+				content := m
+				manifests = append(manifests, Manifest{Name: name, Content: content, Head: &sh})
+			}
+			manifests = sortManifestsByKind(manifests, InstallOrder)
+			if got := len(manifests); got != len(test.expected) {
+				t.Errorf("Expected %d, got %d", len(test.expected), got)
+			} else {
+				for i, manifest := range manifests {
+					got := fmt.Sprintf("%s:%s:%s", manifest.Head.Version, manifest.Head.Kind, manifest.Name)
+					if test.expected[i] != got {
+						t.Errorf("Expected %s, got %s", test.expected[i], got)
+					}
+				}
+			}
+
+		})
 	}
 }
 
