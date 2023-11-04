@@ -82,6 +82,8 @@ type Upgrade struct {
 	ResetValues bool
 	// ReuseValues will re-use the user's last supplied values.
 	ReuseValues bool
+	// ResetThenReuseValues will reset the values to the chart's built-ins then merge with user's last supplied values.
+	ResetThenReuseValues bool
 	// Recreate will (if true) recreate pods after a rollback.
 	Recreate bool
 	// MaxHistory limits the maximum number of revisions saved per release
@@ -548,6 +550,15 @@ func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release, newV
 		newVals = chartutil.CoalesceTables(newVals, current.Config)
 
 		chart.Values = oldVals
+
+		return newVals, nil
+	}
+
+	// If the ResetThenReuseValues flag is set, we use the new chart's values, but we copy the old config's values over the new config's values.
+	if u.ResetThenReuseValues {
+		u.cfg.Log("merging values from old release to new values")
+
+		newVals = chartutil.CoalesceTables(newVals, current.Config)
 
 		return newVals, nil
 	}
